@@ -1,3 +1,11 @@
+import { experienceProblems } from './experience-problems';
+import type { createProjectReadyPort } from '../stage/route/project-ready-port.svelte';
+import type { StageDomainRead } from '../stage/source-admission';
+import type { StageAssetLeases } from '../stage/route/stage-asset-leases.svelte';
+import type { ExperiencePreviewHost } from './experience-preview-host';
+import type VisitorPreviewSurface from '$lib/visitor/VisitorPreviewSurface.svelte';
+import type { ComponentProps } from 'svelte';
+import { isAllowedShippedTextureUri } from '$lib/visitor/shipped-static-registry';
 /**
  * Experience's shared-region projections.
  *
@@ -164,3 +172,63 @@ export function experienceHomesView(
 }
 
 export type ExperienceRegionViews = ReturnType<typeof createExperienceRegionViews>;
+
+
+/** The retained visitor surface reads its frozen entry and the live display options. */
+export function createExperiencePreviewView(input: {
+	readonly preview: ExperiencePreviewHost;
+	readonly assets: Pick<StageAssetLeases, 'urls' | 'textureScope'>;
+	readonly look: { readonly reducedMotion: () => boolean; readonly sky: () => ComponentProps<typeof VisitorPreviewSurface>['sky'] };
+}) {
+	const view = $derived.by(() => {
+		const { preview, assets, look } = input;
+		if (preview.surface === null || preview.viewRead === null) return null;
+		const entry = preview.view?.entry ?? null;
+		const read = preview.viewRead as StageDomainRead;
+		return {
+			surface: preview.surface,
+			props: {
+				geometry: read.geometry,
+				scene: read.scene,
+				graph: read.graph,
+				program: entry === null ? null : entry.kind === 'presentations' ? (entry.program ?? null) : entry.program,
+				experienceOptions: entry === null ? null : entry.kind === 'presentations' ? (entry.options ?? null) : entry.options,
+				entryPresentationId: entry?.kind === 'program' ? entry.entryPresentationId : null,
+				runEpoch: preview.view?.epoch ?? 0,
+				active: preview.openState,
+				resolveTexture: (uri: string) => isAllowedShippedTextureUri(uri) ? uri : null,
+				modelUrls: assets.urls,
+				textureScope: assets.textureScope,
+				artworkScope: preview.artworkScope,
+				reducedMotion: look.reducedMotion(),
+				title: entry?.title ?? null,
+				experienceTitle: entry?.title ?? null,
+				startMode: preview.requestedMode ?? (entry?.kind === 'program' && entry.entryPresentationId !== null ? 'presentation' : 'welcome'),
+				guideStopCount: preview.stats.stops,
+				guideSeconds: preview.stats.seconds,
+				viewLabels: preview.labels,
+				onExit: preview.close,
+				sky: look.sky()
+			},
+			active: preview.openState
+		};
+	});
+	return () => view;
+}
+
+
+export function createExperienceSourceViews(
+	ready: ReturnType<typeof createProjectReadyPort>,
+	binding: StageExperienceBinding,
+	services: () => StageAdapterServices | null
+) {
+	const problems = $derived.by(() => {
+		const envelope = ready.envelope();
+		return envelope === null ? [] : experienceProblems(envelope, ready.snapshot()?.domain.diagnostics ?? []);
+	});
+	const homes = $derived(experienceHomesView(binding, services(), ready.envelope()));
+	return {
+		get problems() { return problems; },
+		get homes() { return homes; }
+	};
+}

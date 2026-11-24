@@ -7,9 +7,18 @@ export function createProjectReadyPort(boot: () => BootState) {
 		return current.status === 'ready' || current.status === 'empty' ? current.snapshot : null;
 	});
 
+	const envelope = $derived(snapshot === null ? null : stageEnvelope(snapshot));
+	const sourceFindings = $derived.by(() => {
+		if (snapshot === null) return null;
+		const { diagnostics, closure } = snapshot.domain;
+		return diagnostics.length === 0 && closure.length === 0 ? null : { diagnostics, closure };
+	});
+
 	return {
 		snapshot: () => snapshot,
-		envelope: () => snapshot === null ? null : stageEnvelope(snapshot),
+		envelope: () => envelope,
+		findings: () => sourceFindings,
+		active: () => snapshot !== null,
 		datumMeters: () => snapshot?.domain.datumMeters ?? 0
 	};
 }

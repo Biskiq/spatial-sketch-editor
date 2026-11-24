@@ -367,7 +367,8 @@ export function composedSpatialHost(): { file: string; code: string }[] {
 		[path.join(EDITOR_LIB, 'authoring/stage/route/stage-experience-binding.svelte.ts'), 'createStageExperienceBinding'],
 		[path.join(EDITOR_LIB, 'authoring/stage/route/stage-shell-state.svelte.ts'), 'createStageShellState'],
 		[path.join(EDITOR_LIB, 'authoring/stage/route/stage-shell-commands.ts'), 'createStageShellCommands'],
-		[path.join(EDITOR_LIB, 'authoring/stage/route/stage-selection-view.ts'), 'createStageSelectionView'],
+		[path.join(EDITOR_LIB, 'authoring/stage/route/stage-selection-presentation.svelte.ts'), 'createStageSelectionReadout'],
+		[path.join(EDITOR_LIB, 'authoring/stage/route/stage-viewport.svelte.ts'), 'createStageViewport'],
 		[path.join(EDITOR_LIB, 'authoring/stage/route/stage-viewing.ts'), 'createStageViewing'],
 		[path.join(EDITOR_LIB, 'authoring/stage/route/stage-history-command.ts'), 'createStageHistoryCommand'],
 		[path.join(EDITOR_LIB, 'authoring/stage/route/stage-window-listeners.ts'), 'createStageWindowListeners'],
@@ -484,7 +485,7 @@ export type ModuleBindingEdge =
 	| { readonly kind: 'dynamic'; readonly specifier: string };
 
 /** The script of a `.svelte` file (instance and module), or the source of a TS module. */
-function scriptSources(file: string, source: string): string[] {
+export function scriptSources(file: string, source: string): string[] {
 	if (!file.endsWith('.svelte')) return [source];
 	const parsed = parse(source, { modern: true });
 	const scripts: string[] = [];
@@ -534,6 +535,15 @@ export function moduleBindingEdges(file: string, source: string): ModuleBindingE
 						if (specifier === null) edges.push({ kind: 'export-local', local: imported, exported: element.name.text });
 						else edges.push({ kind: 'export-named', specifier, imported, exported: element.name.text, typeOnly: node.isTypeOnly || element.isTypeOnly });
 					}
+				}
+			} else if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument) &&
+				ts.isStringLiteralLike(node.argument.literal)) {
+				const specifier = node.argument.literal.text;
+				const qualifier = node.qualifier?.getText(tree).split('.')[0];
+				if (qualifier) {
+					edges.push({ kind: 'import-named', specifier, imported: qualifier, local: '', typeOnly: true });
+				} else {
+					edges.push({ kind: 'import-namespace', specifier, local: '', typeOnly: true });
 				}
 			} else if (
 				ts.isCallExpression(node) &&

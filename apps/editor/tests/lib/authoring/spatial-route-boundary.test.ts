@@ -182,12 +182,12 @@ describe('spatial route composition boundary (X1)', () => {
 		expect(stripComments(fs.readFileSync(ARTWORK_ENTRY, 'utf8'))).toContain('createStageArtworkInteraction({');
 		// One drag/click authority, injected into every input owner.
 		expect(code.match(/createStagePressTracker\(\)/g) ?? []).toHaveLength(1);
-		expect(code).toContain('pointerDown: (event: PointerEvent) => stageInput.pointerDown(event)');
-		expect(code).toContain('pointerMove: (event: PointerEvent) => stageInput.pointerMove(event)');
-		expect(code).toContain('pointerUp: (event: PointerEvent) => stageInput.pointerUp(event)');
-		expect(code).toContain('pointerCancel: (event: PointerEvent) => stageInput.pointerCancel(event)');
-		expect(code).toContain('lostPointerCapture: (event: PointerEvent) => stageInput.lostPointerCapture(event)');
-		expect(code).toContain('wheel: (event: WheelEvent) => stageInput.wheel(event)');
+		expect(stripComments(fs.readFileSync(CORE_REGIONS, 'utf8'))).toContain('pointerDown: (event: PointerEvent) => stageInput.pointerDown(event)');
+		expect(stripComments(fs.readFileSync(CORE_REGIONS, 'utf8'))).toContain('pointerMove: (event: PointerEvent) => stageInput.pointerMove(event)');
+		expect(stripComments(fs.readFileSync(CORE_REGIONS, 'utf8'))).toContain('pointerUp: (event: PointerEvent) => stageInput.pointerUp(event)');
+		expect(stripComments(fs.readFileSync(CORE_REGIONS, 'utf8'))).toContain('pointerCancel: (event: PointerEvent) => stageInput.pointerCancel(event)');
+		expect(stripComments(fs.readFileSync(CORE_REGIONS, 'utf8'))).toContain('lostPointerCapture: (event: PointerEvent) => stageInput.lostPointerCapture(event)');
+		expect(stripComments(fs.readFileSync(CORE_REGIONS, 'utf8'))).toContain('wheel: (event: WheelEvent) => stageInput.wheel(event)');
 		expect(code).toMatch(/createStageWindowListeners\(\{\s*keyboard: stageKeyboard,/);
 		expect(stripComments(fs.readFileSync(LISTENERS, 'utf8'))).toContain('input.keyboard.handleKey(event);');
 	});
@@ -293,9 +293,10 @@ describe('spatial route composition boundary (X1)', () => {
 		expect(code).toContain('createStageExperienceBinding({');
 		expect(code + wiringCode).toContain('createStageShellState({');
 		expect(code + wiringCode).toContain('createStageShellCommands({');
-		expect(code).toContain('createStageSelectionView()');
-		expect(code).toContain('stageDockView({');
-		expect(code).toContain('stageFindView({');
+		expect(code).toContain('createStageSelectionReadout({');
+		expect(stripComments(fs.readFileSync(path.join(EDITOR_SRC, 'lib/authoring/stage/route/stage-selection-presentation.svelte.ts'), 'utf8'))).toContain('createStageSelectionView()');
+		expect(stripComments(fs.readFileSync(path.join(EDITOR_SRC, 'lib/authoring/stage/route/stage-contribution-views.svelte.ts'), 'utf8'))).toContain('stageDockView({');
+		expect(stripComments(fs.readFileSync(path.join(EDITOR_SRC, 'lib/authoring/stage/route/stage-contribution-views.svelte.ts'), 'utf8'))).toContain('stageFindView({');
 		expect(stripComments(fs.readFileSync(CORE_REGIONS, 'utf8'))).toContain('get hostTools() { return shell.hostToolOverlay; }');
 		for (const region of ['StageProjectNotices', 'StageViewportRegion', 'StagePanels', 'StageToolbars']) {
 			expect(markup.match(new RegExp(`<${region}\\b`, 'g')) ?? [], region).toHaveLength(1);
@@ -343,7 +344,15 @@ describe('spatial route composition boundary (X1)', () => {
 
 	it('imports the X3 controllers and regions directly, and no region reaches a route owner', () => {
 		const direct = compositionTargets();
-		for (const target of [EXPERIENCE_BINDING, SHELL_STATE, SHELL_COMMANDS, SELECTION_VIEW, CONTRIBUTION_VIEW, NOTICES, VIEWPORT_REGION, PANELS, TOOLBARS]) {
+		const regionFiles = [NOTICES, VIEWPORT_REGION, PANELS, TOOLBARS];
+		const regionDependencies = moduleBindingEdges(path.join(EDITOR_LIB, 'authoring/workspace/host/WorkspaceHost.svelte'),
+			fs.readFileSync(path.join(EDITOR_LIB, 'authoring/workspace/host/WorkspaceHost.svelte'), 'utf8'))
+			.flatMap((edge) => 'specifier' in edge ? [resolveSpecifier(ROUTE, edge.specifier)] : []);
+		direct.push(...regionDependencies.filter((file): file is string => file !== null));
+		for (const target of [EXPERIENCE_BINDING, SHELL_STATE, SHELL_COMMANDS,
+			path.join(EDITOR_LIB, 'authoring/stage/route/stage-selection-presentation.svelte.ts'),
+			path.join(EDITOR_LIB, 'authoring/stage/route/stage-contribution-views.svelte.ts'),
+			...regionFiles]) {
 			expect(direct).toContain(target);
 		}
 		const forbidden = new Set([

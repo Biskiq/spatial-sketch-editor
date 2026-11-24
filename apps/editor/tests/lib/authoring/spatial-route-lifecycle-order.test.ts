@@ -370,7 +370,7 @@ it('preserves every Escape rung and the prelude through the mounted window liste
 		closeTask: () => handle('task'),
 		activeWorldTool: () => active('world-tool') ? 'build' : 'select',
 		clearWorldTool: () => handle('world-tool'),
-		dismissSky: () => claim('sky'),
+		featureEscape: [{ id: 'sky', escapeRungs: { sky: () => claim('sky') ? 'handled' : 'pass' } }],
 		lens: () => 'world',
 		furnishStripOpen: () => active('furnish-strip'),
 		closeFurnishStrip: () => handle('furnish-strip'),

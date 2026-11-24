@@ -65,8 +65,8 @@ export function createRepairSession(input: {
 		onClose: close
 	}));
 
+	attachAuthoring();
 	return {
-		attachAuthoring,
 		reset,
 		close,
 		dismiss,

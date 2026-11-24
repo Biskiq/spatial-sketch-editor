@@ -1,5 +1,4 @@
 <script lang="ts">
-	import type { ExperienceController } from '$lib/authoring/experience/experience-controller.svelte';
 	import type { ExperienceProblem } from '$lib/authoring/experience/experience-problems';
 	import EditorHead from '$lib/authoring/stage/shell/EditorHead.svelte';
 	import StagePanels from '$lib/authoring/stage/shell/StagePanels.svelte';
@@ -17,38 +16,28 @@
 </script>
 
 {#if host}
-	{@const adapterServices = host.adapterServices}
 	{@const appearance = host.appearance}
 	{@const artwork = host.artwork}
 	{@const boot = host.boot}
 	{@const bootRepair = host.bootRepair}
 	{@const changeLens = host.changeLens}
-	{@const commands = host.commands}
 	{@const coreRegions = host.coreRegions}
 	{@const currentEnvelope = host.currentEnvelope}
 	{@const dismissResumeOffer = host.dismissResumeOffer}
-	{@const evaluation = host.evaluation}
 	{@const experience = host.experience}
-	{@const experienceFeature = host.experienceFeature}
 	{@const history = host.history}
 	{@const historyState = host.historyState}
 	{@const library = host.library}
 	{@const lightInspection = host.lightInspection}
-	{@const lookThroughActiveNow = host.lookThroughActiveNow}
-	{@const patchDrafting = host.patchDrafting}
 	{@const pendingReplacement = host.pendingReplacement}
 	{@const preview = host.preview}
 	{@const previewAvailable = host.previewAvailable}
 	{@const previewController = host.previewController}
 	{@const projectSession = host.projectSession}
 	{@const readings = host.readings}
-	{@const ready = host.ready}
-	{@const refresh = host.refresh}
 	{@const resumeOffer = host.resumeOffer}
 	{@const resumePendingSave = host.resumePendingSave}
 	{@const runReplacement = host.runReplacement}
-	{@const selection = host.selection}
-	{@const setReading = host.setReading}
 	{@const shell = host.shell}
 	{@const sky = host.sky}
 	{@const sourceFindings = host.sourceFindings}

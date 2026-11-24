@@ -31,10 +31,11 @@ import {
 } from '../stage-input';
 import type { StageInterruptionReason } from '../stage-interruption';
 import type { ViewingIntent } from '@portfolio/camera-core';
-import { ESCAPE_LADDER, type EscapeRung } from '../../workspace/escape-ladder';
+import { compileEscapeLadder, type BuiltInEscapeRung, type FeatureEscapeRegistration } from '../../workspace/escape-ladder';
 import type { EscapeContext, EscapeResult } from '../../workspace/protocol';
 
 export type StageKeyboardInput = {
+	readonly featureEscape: readonly FeatureEscapeRegistration[];
 	readonly artworkEscape: () => boolean;
 	readonly previewActive: () => boolean;
 	readonly closePreview: () => void;
@@ -97,7 +98,6 @@ export type StageKeyboardInput = {
 	readonly toolbarFocused?: () => boolean;
 	/** Move focus to the dock's Select key after Escape returned the editor to Select. */
 	readonly focusSelectKey?: () => void;
-	readonly dismissSky?: () => boolean;
 	readonly lens: () => 'world' | 'experience';
 	readonly selectionPresent: () => boolean;
 	readonly closeSelection: () => void;
@@ -139,7 +139,7 @@ export function createStageKeyboard(input: StageKeyboardInput): StageKeyboard {
 		if (context.toolbarFocus) input.focusSelectKey?.();
 	}
 
-	const escapeSteps: Record<EscapeRung, (context: EscapeContext) => EscapeResult> = {
+	const builtInEscape: Record<BuiltInEscapeRung, (context: EscapeContext) => EscapeResult> = {
 		'pending-delete': () => {
 			if (!input.pendingDelete()) return 'pass';
 			input.clearPendingDelete();
@@ -218,7 +218,6 @@ export function createStageKeyboard(input: StageKeyboardInput): StageKeyboard {
 			settleFocus(context);
 			return 'handled';
 		},
-		sky: () => input.dismissSky?.() ? 'handled' : 'pass',
 		'furnish-strip': (context) => {
 			if (input.lens() !== 'world' || input.furnishStripOpen?.() !== true) return 'pass';
 			input.closeFurnishStrip?.();
@@ -253,12 +252,14 @@ export function createStageKeyboard(input: StageKeyboardInput): StageKeyboard {
 		}
 	};
 
+	const escapeSteps = compileEscapeLadder(builtInEscape, input.featureEscape);
+
 	function dismiss(event: KeyboardEvent): void {
 		const context: EscapeContext = {
 			event, stage: null, claimed: false, armedHostTool: null, toolbarFocus: false
 		};
-		for (const { rung } of ESCAPE_LADDER) {
-			if (escapeSteps[rung](context) === 'handled') return;
+		for (const handle of escapeSteps) {
+			if (handle(context) === 'handled') return;
 		}
 	}
 

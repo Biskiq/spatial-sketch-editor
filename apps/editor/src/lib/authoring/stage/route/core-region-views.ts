@@ -2,7 +2,7 @@ import type { StageHeightSheet } from '../stage-height-sheet';
 import type { StageLens } from '../stage-session';
 import type { StageFacade } from '../stage-facade';
 import type { StageReadSnapshot } from '../accepted-read';
-import { PAPER_TONES } from '../paper-plan';
+import { PAPER_TONES, isPaperPlanVisible } from '../paper-plan';
 import type { StageSelectionEntry } from '../semantic-selection';
 import {
 	contribution,
@@ -39,7 +39,7 @@ export function createCoreRegionViews(input: {
 	readonly scenePick: Canvas['scenePick'];
 	readonly lightPreview: Canvas['lightPreview'];
 	readonly assets: StageAssetLeases;
-	readonly planAppearance: () => Canvas['planAppearance'];
+	readonly planAppearance: () => NonNullable<Canvas['planAppearance']>;
 	readonly paperContentBounds: () => Canvas['contentBounds'];
 	readonly snapshotBounds: () => Canvas['snapshotBounds'];
 	readonly selection: () => StageSelectionEntry | null;
@@ -47,7 +47,6 @@ export function createCoreRegionViews(input: {
 	readonly lookThroughActive: () => boolean;
 	readonly lens: () => StageLens;
 	readonly previewing: () => boolean;
-	readonly paperVisible: () => boolean;
 	readonly cursor: () => ViewportRegion['stageCursor'];
 	readonly lookThrough: () => ViewportRegion['lookThrough'];
 	readonly viewportInput: ViewportRegion['input'];
@@ -65,6 +64,8 @@ export function createCoreRegionViews(input: {
 	readonly show: () => ToolbarRegion['show'];
 }) {
 	const { shell, viewport, stageInput, assets, project, commands } = input;
+
+	const paperVisible = () => isPaperPlanVisible(viewport.evaluation, input.planAppearance());
 
 	function canvas(snapshot: StageReadSnapshot) {
 		return contribution<'core', 'canvas'>()({
@@ -118,7 +119,7 @@ export function createCoreRegionViews(input: {
 		get viewportHeight() { return viewport.rect?.height ?? 0; },
 		get tracePreview() { return viewport.tracePreview; },
 		get hostTools() { return shell.hostToolOverlay; },
-		get lightGround() { return input.paperVisible() || viewport.evaluation?.renderedReading === '3d'; }
+		get lightGround() { return paperVisible() || viewport.evaluation?.renderedReading === '3d'; }
 	});
 
 	const head = contribution<'core', 'head'>()({
@@ -164,7 +165,7 @@ export function createCoreRegionViews(input: {
 		get overlay() { return input.overlay(); },
 		get scaleBar() {
 			return input.lens() === 'world' && viewport.evaluation?.projectionKind === 'plan-orthographic'
-				? { bar: shell.draftingScaleBar, quiet: input.paperVisible() }
+				? { bar: shell.draftingScaleBar, quiet: paperVisible() }
 				: null;
 		},
 		get heightSheet() {
@@ -186,7 +187,7 @@ export function createCoreRegionViews(input: {
 		get notice() { return input.lens() !== 'experience' ? shell.notice : ''; },
 		get stageCursor() { return input.cursor(); },
 		get styleCursor() { return stageInput.stageCursor; },
-		get paperVisible() { return input.paperVisible(); },
+		get paperVisible() { return paperVisible(); },
 		input: input.viewportInput,
 		onLaneWidth: shell.setSheetLaneWidth,
 		onActivateDisclosure: activateDisclosure
@@ -212,4 +213,25 @@ export function createCoreRegionViews(input: {
 	});
 
 	return { canvas, overlay, head, viewport: viewportRegion, toolbars, panels };
+}
+
+
+export function createViewportInput(
+	stageInput: StageInputArbiter,
+	artwork: Pick<ViewportRegion['input'], 'dragOver' | 'drop'> & { readonly leave: () => void },
+	lookThroughActive: () => boolean
+): ViewportRegion['input'] {
+	return {
+		pointerDown: (event: PointerEvent) => stageInput.pointerDown(event),
+		pointerMove: (event: PointerEvent) => stageInput.pointerMove(event),
+		pointerUp: (event: PointerEvent) => stageInput.pointerUp(event),
+		pointerCancel: (event: PointerEvent) => stageInput.pointerCancel(event),
+		lostPointerCapture: (event: PointerEvent) => stageInput.lostPointerCapture(event),
+		click: (event: MouseEvent) => stageInput.click(event),
+		wheel: (event: WheelEvent) => stageInput.wheel(event),
+		pointerLeave: () => { stageInput.clearHover(); artwork.leave(); },
+		dragOver: artwork.dragOver,
+		drop: artwork.drop,
+		contextMenu: (event: MouseEvent) => { if (lookThroughActive()) event.preventDefault(); }
+	};
 }

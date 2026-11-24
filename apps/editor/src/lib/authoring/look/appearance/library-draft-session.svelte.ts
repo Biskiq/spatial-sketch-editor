@@ -261,8 +261,8 @@ export function createLibraryDraftSession(input: {
 	const materialEditor = $derived(
 		input.finishes().libraryDraft !== null && input.canShowEditor() ? readDraft() : readFinish()
 	);
-	return {
-		attachGuards, endLibraryDraft, dismissMaterialEditor, finishTileSource,
+	attachGuards();
+	return { endLibraryDraft, dismissMaterialEditor, finishTileSource,
 		draftPreview: () => libraryDraftPreview,
 		get shelf() { return finishShelf; },
 		get materialEditor() { return materialEditor; }

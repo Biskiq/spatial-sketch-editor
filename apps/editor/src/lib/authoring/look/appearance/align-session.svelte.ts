@@ -2,7 +2,7 @@ import { untrack } from 'svelte';
 import { ALIGN_CARD_COVER_PX, ALIGN_INDEX_LANE_PX, regionFraming } from '../align-chart';
 import { finishCardTargetKey } from '../finish-card.svelte';
 import type { StageFacade } from '../../stage/facade/view-contract';
-import type { AlignCutawayRequest } from '../../stage/readings/layout-readings-view';
+import type { AlignCutawayRequest } from '../../stage/cutaway/align-cutaway-request';
 import type { StageReadSnapshot } from '../../stage/accepted-read';
 import type { StageShellState } from '../../stage/route/stage-shell-state.svelte';
 import type { StageLens } from '../../stage/stage-session';

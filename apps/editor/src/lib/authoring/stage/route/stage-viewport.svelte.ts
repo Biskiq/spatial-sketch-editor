@@ -60,14 +60,14 @@ export type StageFrameScheduler = {
 export type StageViewportInput = {
 	/** The mounted facade, or `null` before activation and after teardown. */
 	readonly facade: () => StageFacade | null;
-	readonly stageElement: () => HTMLElement | undefined;
+	readonly stageElement?: () => HTMLElement | undefined;
 	readonly throughFrameElement: () => HTMLElement | null;
 	readonly lookThroughActive: () => boolean;
 	/** The isolated visitor Preview owns the Camera output and unmounts the Canvas. */
 	readonly previewing: () => boolean;
 	readonly lens: () => 'world' | 'experience';
-	/** The host's revealed source ids, as the Plan parameters read them. */
-	readonly revealed: () => readonly string[];
+	/** Optional external projection for standalone viewport consumers. */
+	readonly revealed?: () => readonly string[];
 	readonly roomLabels: () => { readonly plan: boolean; readonly threeD: boolean };
 	readonly groundReachMeters: () => number | undefined;
 	readonly nowSeconds: () => number;
@@ -97,8 +97,25 @@ function sameRect(left: ViewportRect, right: ViewportRect): boolean {
 	);
 }
 
+export function capturePointer(target: Element, pointerId: number): boolean {
+	try {
+		target.setPointerCapture(pointerId);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+export function absoluteCss(event: PointerEvent): [number, number] {
+	return [event.clientX, event.clientY];
+}
+
+
 export function createStageViewport(input: StageViewportInput) {
 	const scheduler = input.scheduler ?? browserScheduler;
+	let element = $state<HTMLDivElement>();
+	const readElement = input.stageElement ?? (() => element);
+	let revealed = $state.raw<readonly string[]>([]);
 	let evaluation = $state.raw<ViewportEvaluation | null>(null);
 	let rect = $state.raw<ViewportRect | null>(null);
 	let planView = $state.raw<PlanEvaluation | null>(null);
@@ -120,7 +137,7 @@ export function createStageViewport(input: StageViewportInput) {
 
 	/** The one rect a pointer, the evaluation and the overlays all share. */
 	function measure(): ViewportRect {
-		const element = input.stageElement();
+		const element = readElement();
 		const width = element?.clientWidth ?? 0;
 		const height = element?.clientHeight ?? 0;
 		const bounds = element?.getBoundingClientRect();
@@ -138,7 +155,7 @@ export function createStageViewport(input: StageViewportInput) {
 		| { readonly absolute: ViewportRect; readonly local: StageFramedViewport }
 		| null {
 		const frameElement = input.throughFrameElement();
-		if (input.stageElement() === undefined || frameElement === null) return null;
+		if (readElement() === undefined || frameElement === null) return null;
 		const stageRect = rect ?? measure();
 		const frameRect = frameElement.getBoundingClientRect();
 		const width = frameRect.width;
@@ -199,7 +216,7 @@ export function createStageViewport(input: StageViewportInput) {
 
 		// The Plan evaluation is recomputed only when it would actually differ, and
 		// **the facade is the authority on that**, not this presenter.
-		const parameters = { reveal: [...input.revealed()].sort() };
+		const parameters = { reveal: [...(input.revealed?.() ?? revealed)].sort() };
 		const parametersKey =
 			parameters.reveal.length === 0 ? '' : JSON.stringify(parameters.reveal);
 		if (parametersKey !== planParametersKey) {
@@ -292,7 +309,7 @@ export function createStageViewport(input: StageViewportInput) {
 			// unmounted: evaluating or refreshing an inspection view here would be a
 			// second reader of an output this run no longer owns.
 			if (input.previewing()) return;
-			const element = input.stageElement();
+			const element = readElement();
 			if (element !== undefined) {
 				const next = measure();
 				if (rect === null || !sameRect(rect, next)) rect = next;
@@ -307,7 +324,23 @@ export function createStageViewport(input: StageViewportInput) {
 		}
 	}
 
+	function stageCss(event: PointerEvent): [number, number] {
+		const current = rect ?? measure();
+		return [event.clientX - current.left, event.clientY - current.top];
+	}
+
+	function toggleReveal(sourceId: string): void {
+		revealed = revealed.includes(sourceId)
+			? revealed.filter((id) => id !== sourceId)
+			: [...revealed, sourceId];
+	}
+
 	return {
+		get stageElement() { return element; },
+		set stageElement(value: HTMLDivElement | undefined) { element = value; },
+		stageCss,
+		toggleReveal,
+		clearRevealed: () => { revealed = []; },
 		get evaluation(): ViewportEvaluation | null {
 			return evaluation;
 		},

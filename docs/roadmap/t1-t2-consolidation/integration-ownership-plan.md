@@ -1,16 +1,15 @@
 # X9 Integration ownership recovery
 
-**Status:** draft plan, the first commit of its own pull request. This is Tier 2: it replaces
-guards (a check change) and restructures the shared shell. The owner approved the direction on
-2026-11-24 with amendments, which this revision applies:
+**Status.** Implementation and acceptance evidence are tracked in draft PR #413. This is Tier 2
+because it changes architecture checks and restructures the shared shell. The owner approved
+the direction on 2026-11-24 with these amendments.
 
 - **R1:** nested URLs are deferred. X9 is component-level World/Experience decomposition. It keeps a
   future navigation seam and independent Studio ownership (§3, §8).
 - **R2:** replacing the X1–X3 guards is approved, on condition that every existing architectural
   guarantee is preserved. Appendix B maps each old assertion to its replacement.
 
-Implementation starts once the owner approves this revision. The owner decides again before merge.
-C4 and U7 stay held until this pull request merges. The pull request stays unmerged until then.
+The owner decides again before merge. C4 and U7 stay held until this pull request merges.
 
 **Base:** `main` at `41814cd91`, after C3 #412 and U6 #411. Line references below are to
 `apps/editor/src/routes/project/[projectId]/spatial/+page.svelte` at that commit ("the route").
@@ -35,6 +34,52 @@ Two kinds of work stay outside X9 unless a demonstrated correctness blocker requ
 
 - converting singletons to instances
 - refactoring feature internals
+
+## Recovery decisions
+
+- The Stage session owns the canonical lens rune. The binding observes it and keeps the existing
+  refusal and camera transitions. A plain reader failed mounted reactivity checks. The direct
+  subscription experiment also failed mounted lifecycle checks. A session-owned rune passed those
+  checks and removed the binding's mirror. The single lifecycle cell still installs the ordered
+  lifecycle once. Explicit deferred callbacks expose Preview and command operations once their
+  respective owners exist.
+- Core owns the viewport element, coordinate reads, project readiness, shared frame arbitration,
+  selection presentation and contribution views. The selection presentation can temporarily hide
+  the canonical primary during Experience link picking. The project session owns source download.
+  Experience owns focus and Preview views. Studio owns its Stage adapter. Core keeps a single
+  World Index memo per mounted workspace.
+- Feature owners install effects at construction. Paint registers before the draft publisher.
+  Layout Readings registers hold release before Artwork cancellation. An experiment moving all
+  effects to owner construction without preserving that order failed the mounted blur case.
+  The host compatibility phase table is now empty.
+- Appearance's Canvas contribution uses explicit live getters. The shared Material Editor is
+  keyed by Draft/Finish mode. The mounted tests check live proposal publication and the original
+  remount and focus behavior while the Canvas remains mounted.
+- The keyboard arbiter keeps the existing Escape ordering. Sky registers its own rung through
+  the same protocol exercised by the admission probe. Core retains the prelude and the steps
+  that share unwind context or established core ports.
+
+### Scratch feature admission
+
+The uncommitted Quux probe added a reactive reading, a World button, a live overlay mark, a
+selection effect and owner callbacks for reset, lens leave, project leave and Escape. Type
+checking and the mounted selection, overlay, Escape and lens round-trip case passed. Lifecycle
+reset and project leave were registered in the probe and were outside that case's assertions.
+
+| Shared file | Added / removed lines | Registration |
+| --- | ---: | --- |
+| `protocol.ts` | 2 / 1 | One feature ID |
+| `lifecycle-order.ts` | 3 / 0 | Three ordered lifecycle steps |
+| `escape-ladder.ts` | 1 / 0 | One ordered rung ahead of Palette |
+| `region-ownership.ts` | 1 / 1 | Append one owner to marks |
+| `workspace-host.svelte.ts` | 6 / 2 | Import, construction, lifecycle, Escape, overlay and view |
+| `WorkspaceHost.svelte` | 2 / 0 | Component import and World trailing mount |
+| `integration-ownership.manifest.ts` | 3 / 0 | One feature entry |
+
+The scratch owners and placement were 52 lines across three files. The probe required four explicit
+registration surfaces in addition to the original list in §5.4: feature identity, the Escape
+handler registration, overlay contribution and publication of the view. They carry typed values
+and make the dispatch and mount sites visible in review. The scratch test added 25 lines.
 
 ## 1. Evidence
 

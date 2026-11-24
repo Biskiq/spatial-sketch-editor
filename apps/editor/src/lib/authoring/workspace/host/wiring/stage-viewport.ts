@@ -5,19 +5,16 @@
  * construction sequence and the viewport's argument bag has one home. The
  * closures capture the host's state exactly as the inline call did.
  */
-import type { ViewportRect } from '@portfolio/camera-core';
 import type { StageFacade } from '../../../stage/stage-facade';
 import type { StageShellState } from '../../../stage/route/stage-shell-state.svelte';
 import { createStageViewport } from '../../../stage/route/stage-viewport.svelte';
 
 export type StageViewportWiring = {
 	readonly facade: () => StageFacade | null;
-	readonly stageElement: () => HTMLDivElement | undefined;
 	readonly throughFrameElement: () => HTMLElement | null;
 	readonly lookThroughActive: () => boolean;
 	readonly previewing: () => boolean;
 	readonly lens: () => 'world' | 'experience';
-	readonly revealed: () => string[];
 	readonly preferences: () => StageShellState['preferences'];
 	readonly groundReachMeters: () => number | undefined;
 	readonly nowSeconds: () => number;
@@ -30,12 +27,10 @@ export type StageViewportWiring = {
 export function wireStageViewport(deps: StageViewportWiring) {
 	return createStageViewport({
 		facade: deps.facade,
-		stageElement: deps.stageElement,
 		throughFrameElement: deps.throughFrameElement,
 		lookThroughActive: deps.lookThroughActive,
 		previewing: deps.previewing,
 		lens: deps.lens,
-		revealed: deps.revealed,
 		roomLabels: () => ({
 			plan: deps.preferences().roomLabels2d,
 			threeD: deps.preferences().roomLabels3d
@@ -48,5 +43,3 @@ export function wireStageViewport(deps: StageViewportWiring) {
 		onAfterRefresh: deps.onAfterRefresh
 	});
 }
-
-export type StageViewportRect = ViewportRect;

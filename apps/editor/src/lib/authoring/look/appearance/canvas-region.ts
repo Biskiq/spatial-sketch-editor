@@ -9,16 +9,23 @@ import type { StageReadSnapshot } from '../../stage/accepted-read';
  * member reference the entry can expose without a wrapper method.
  */
 type Canvas = RegionContribution<'appearance', 'canvas'>;
+type CardKeys = Pick<Canvas, 'scene' | 'proposals'>;
+type AlignKeys = Pick<Canvas, 'alignHiddenWallIds'>;
+type RepairKeys = Pick<Canvas, 'onFinishOutcome' | 'repairAffectedTargets'>;
 
 export function createAppearanceCanvasRegion(input: {
-	readonly card: { canvasKeys(snapshot: StageReadSnapshot): Canvas };
-	readonly align: { readonly canvasKeys: Partial<Canvas> };
-	readonly repair: { readonly canvasKeys: Partial<Canvas> };
+	readonly card: { canvasKeys(snapshot: StageReadSnapshot): CardKeys };
+	readonly align: { readonly canvasKeys: AlignKeys };
+	readonly repair: { readonly canvasKeys: RepairKeys };
 }) {
-	return (snapshot: StageReadSnapshot) =>
-		contribution<'appearance', 'canvas'>()({
-			...input.card.canvasKeys(snapshot),
-			...input.align.canvasKeys,
-			...input.repair.canvasKeys
-		} as Canvas);
+	return (snapshot: StageReadSnapshot) => {
+		const card = input.card.canvasKeys(snapshot);
+		return contribution<'appearance', 'canvas'>()({
+			get scene() { return card.scene; },
+			get proposals() { return card.proposals; },
+			get alignHiddenWallIds() { return input.align.canvasKeys.alignHiddenWallIds; },
+			onFinishOutcome: input.repair.canvasKeys.onFinishOutcome,
+			get repairAffectedTargets() { return input.repair.canvasKeys.repairAffectedTargets; }
+		});
+	};
 }

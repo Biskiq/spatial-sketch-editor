@@ -11,7 +11,7 @@ import type { StageFacade } from '../stage-facade';
 import type { StageLens } from '../stage-session';
 import { nearWallCutaway } from '../cutaway/near-wall-cutaway.svelte';
 import { setResolvedCutaway } from '../cutaway/cutaway-resolved';
-import type { AlignCutawayRequest } from './layout-readings-view';
+import type { AlignCutawayRequest } from '../cutaway/align-cutaway-request';
 
 export function createCutawayHost(input: {
 	readonly selection: () => StageSelectionEntry | null;

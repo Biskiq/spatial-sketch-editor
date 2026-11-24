@@ -292,6 +292,74 @@ it('drops the previous Card gesture and rename, then publishes the curved Wall s
 	expect(anchor.mock.invocationCallOrder[0]).toBeLessThan(hosts.mock.invocationCallOrder[0]!);
 });
 
+it('publishes live Finish proposals on the existing Canvas', async () => {
+	const object = { ...primitiveEntity(0), materialInstanceId: 'oak' };
+	await mountSource(await createUnitProject({
+		id: 'project-1', name: 'Finish project',
+		scene: {
+			...createEmptyUnitSceneDocument(),
+			materials: [{ id: 'oak', name: 'Shared oak', base: { catalogue: 'wood-oak-veneer' } }],
+			entities: [object, { ...primitiveEntity(1), materialInstanceId: 'oak' }]
+		}
+	}));
+	const stage = owner('stage');
+	const reference = sceneEntityReference(object.id, stage.snapshot().domain.unitRevisions.scene);
+	stage.setSelection({ ordered: [{ reference }], primary: reference });
+	await tick();
+	const canvas = target.querySelector('[data-testid="stage-canvas"]');
+	expect(canvas?.getAttribute('data-proposals')).toBe('0');
+	const { card } = owner('finishes');
+	const subject = { kind: 'entity' as const, entityId: object.id };
+	card.requestOpen(subject);
+	card.setReach(subject, 'all');
+	await tick();
+	expect(canvas?.getAttribute('data-proposals')).toBe('1');
+	card.setReach(subject, 'this');
+	await tick();
+	expect(canvas?.getAttribute('data-proposals')).toBe('0');
+	expect(target.querySelector('[data-testid="stage-canvas"]')).toBe(canvas);
+});
+
+it('remounts the Material Editor when switching between Finish and Library Draft', async () => {
+	const object = { ...primitiveEntity(0), materialInstanceId: 'oak' };
+	await mountSource(await createUnitProject({
+		id: 'project-1', name: 'Finish project',
+		scene: {
+			...createEmptyUnitSceneDocument(),
+			materials: [{ id: 'oak', name: 'Custom oak', base: { catalogue: 'wood-oak-veneer' } }],
+			entities: [object]
+		}
+	}));
+	const stage = owner('stage');
+	const reference = sceneEntityReference(object.id, stage.snapshot().domain.unitRevisions.scene);
+	stage.setSelection({ ordered: [{ reference }], primary: reference });
+	await tick();
+	const finishes = owner('finishes');
+	finishes.editor.openFor({ kind: 'entity', entityId: object.id }, object.name);
+	await tick();
+	const first = target.querySelector('[data-material-editor-mode="finish"]');
+	expect(first).not.toBeNull();
+	expect(document.activeElement).toBe(first?.querySelector('[data-material-editor-close]'));
+
+	owner('commands').armWorldTool('paint');
+	const entry = finishes.libraryBrowse().find(({ source }) => source === 'curated');
+	if (entry === undefined) throw new Error('Expected a curated Finish');
+	expect(finishes.openLibraryDraft(entry.ref)).toBe(true);
+	await tick();
+	const draft = target.querySelector('[data-material-editor-mode="draft"]');
+	expect(draft).not.toBeNull();
+	expect(first?.isConnected).toBe(false);
+	expect(document.activeElement).toBe(draft?.querySelector('[data-material-editor-close]'));
+
+	finishes.cancelLibraryDraft();
+	await tick();
+	const returned = target.querySelector('[data-material-editor-mode="finish"]');
+	expect(returned).not.toBeNull();
+	expect(returned).not.toBe(first);
+	expect(draft?.isConnected).toBe(false);
+	expect(document.activeElement).toBe(returned?.querySelector('[data-material-editor-close]'));
+});
+
 it('releases the inspection and held cutaway when Preview takes the Stage', async () => {
 	await mountSource(await createUnitProject({
 		id: 'project-1', name: 'Preview project', layout: buildStarterEnclosureLayout(),

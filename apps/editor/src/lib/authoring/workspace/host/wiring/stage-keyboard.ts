@@ -1,7 +1,7 @@
 /**
  * The keyboard wiring module.
  *
- * The host passes the Escape groups as owners (Library, Sky, readings) and its
+ * The host passes the Escape handlers and its
  * own live reads; the module keeps the long key-map argument literal out of the
  * host body.
  */
@@ -24,7 +24,6 @@ export type StageKeyboardWiring = Omit<
 	KeyboardInput,
 	| 'libraryOpen'
 	| 'toggleLibrary'
-	| 'dismissSky'
 	| 'liftActive'
 	| 'putBackLift'
 	| 'sliceDraftActive'
@@ -61,7 +60,6 @@ export type StageKeyboardWiring = Omit<
 	readonly shell: StageShellState;
 	readonly appearanceRungs: AppearanceRungs;
 	readonly libraryEscape: Pick<KeyboardInput, 'libraryOpen' | 'toggleLibrary'>;
-	readonly skyEscape: Pick<KeyboardInput, 'dismissSky'>;
 	readonly readingsEscape: Pick<
 		KeyboardInput,
 		'liftActive' | 'putBackLift' | 'sliceDraftActive' | 'cancelSliceDraft' | 'sliceActive' | 'putBackSlice'
@@ -70,6 +68,7 @@ export type StageKeyboardWiring = Omit<
 
 export function wireStageKeyboard(input: StageKeyboardWiring) {
 	return createStageKeyboard({
+		featureEscape: input.featureEscape,
 		artworkEscape: input.artworkEscape,
 		previewActive: input.previewActive,
 		closePreview: input.closePreview,
@@ -112,7 +111,6 @@ export function wireStageKeyboard(input: StageKeyboardWiring) {
 		closeFurnishStrip: () => input.shell.setFurnishStripOpen(false),
 		toolbarFocused: input.toolbarFocused,
 		focusSelectKey: input.focusSelectKey,
-		...input.skyEscape,
 		lens: input.lens,
 		selectionPresent: input.selectionPresent,
 		closeSelection: input.closeSelection,

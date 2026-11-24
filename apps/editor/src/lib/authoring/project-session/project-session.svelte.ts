@@ -910,6 +910,17 @@ export function createProjectSession(host: {
 		return true;
 	}
 
+	function downloadSourceJson(): void {
+		const snapshot = boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot : null;
+		if (snapshot === null) return;
+		const canonical = snapshot.canonicalJson;
+		const url = URL.createObjectURL(new Blob([canonical], { type: 'application/json' }));
+		const anchor = document.createElement('a');
+		anchor.href = url;
+		anchor.download = `${snapshot.domain.name.replace(/[^\w.-]+/g, '-') || 'project'}.json`;
+		anchor.click();
+		URL.revokeObjectURL(url);
+	}
 	function requestReplacement(action: 'starter' | 'empty' | 'source'): void {
 		if (projectActionBusy) return;
 		if (activeProject()) {
@@ -1088,6 +1099,7 @@ export function createProjectSession(host: {
 	}
 
 	return {
+		downloadSourceJson,
 		get boot() { return boot; },
 		get headSave() { return headSave; },
 		get resumeOffer() { return resumeOffer; },

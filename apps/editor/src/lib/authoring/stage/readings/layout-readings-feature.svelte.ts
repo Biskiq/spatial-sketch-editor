@@ -26,19 +26,14 @@ export function createLayoutReadingsFeature(deps: LayoutReadingsDependencies) {
 		clearLift: lift.clear,
 		clearSlice: slice.clear,
 		resetCutaway: cutaway.reset,
-		clearCutawayFailures: cutaway.clearFailures
+		clearCutawayFailures: cutaway.clearFailures,
+		installEffects: [
+			unfold.attachAnchor, cutaway.attachPreviewHold, slice.attachMirror,
+			cutaway.attachClassification, plan.attach, lift.attachScope
+		]
 	});
 	return {
 		id: 'layout-readings' as const,
-		/** Compatibility phase: the cutaway Preview-hold effect must precede Artwork's guard effect. */
-		attachReadings: () => {
-			unfold.attachAnchor();
-			cutaway.attachPreviewHold();
-			slice.attachMirror();
-			cutaway.attachClassification();
-			plan.attach();
-			lift.attachScope();
-		},
 		get liftControl() { return lift.control; },
 		get nearWallsControl() { return cutaway.control; },
 		get sliceMode() { return slice.mode; },

@@ -104,7 +104,7 @@ const HEIGHT_SHEET_RAIL_READ = 'track?.getBoundingClientRect()';
 function postureSources(): { file: string; code: string }[] {
 	const route = readFileSync(ROUTE, 'utf8');
 	expect(composedSpatialHost().some(({ file }) => file === STAGE_VIEWING)).toBe(true);
-	const files = [ROUTE, SHELL_STATE, STAGE_VIEWING];
+	const files = [ROUTE, SHELL_STATE, STAGE_VIEWING, join(STAGE_DIR, 'route/stage-viewport.svelte.ts')];
 	if (importClosure([ROUTE]).has(EXPERIENCE_LENS)) {
 		expect(route).toContain('createStageExperienceBinding({');
 		expect(readFileSync(EXPERIENCE_BINDING, 'utf8')).toContain('createExperienceLens({');
@@ -145,7 +145,21 @@ describe('Stage shell composition', () => {
 		const futureConsumers = ['studio', 'extensions'].flatMap((name) =>
 			listSourceFiles(join(EDITOR_SRC, 'lib', 'authoring', name)).filter((file) => /\.(ts|svelte)$/.test(file))
 		);
+		// This Studio-owned bridge is the Stage consumer of these ports. The
+		// copy journey still crosses the adapter seam at exactly this site.
+		const studioBridge = join(EDITOR_SRC, 'lib/authoring/studio/studio-stage-ports.ts');
+		const reviewedStudioStageImports = new Set([
+			'../stage/route/stage-content-bounds.svelte',
+			'../stage/route/stage-shell-commands',
+			'../stage/route/stage-shell-state.svelte',
+			'../stage/route/stage-viewing',
+			'../stage/semantic-selection',
+			'../stage/stage-facade',
+			'../stage/stage-input',
+			'../stage/subject-scope'
+		]);
 		const offenders = [...files, ...futureConsumers].flatMap((file) => imports(file, readFileSync(file, 'utf8'))
+			.filter((specifier) => file !== studioBridge || !reviewedStudioStageImports.has(specifier))
 			.map((specifier) => `${relativeToRepo(file)}: ${specifier}`));
 		expect(offenders).toEqual([]);
 	});

@@ -18,8 +18,6 @@ export function createStudioFeature(deps: {
 	readonly lens: () => StudioLens;
 	readonly previewing: () => boolean;
 	readonly ready: () => boolean;
-	readonly entities: () => readonly { readonly id: string; readonly name: string; readonly kind: string }[];
-	readonly selectedEntityId: () => string | null;
 	readonly armObjects: () => void;
 	readonly dockReady: () => boolean;
 	readonly intent: string;
@@ -45,8 +43,8 @@ export function createStudioFeature(deps: {
 		revision: () => port.revision,
 		lens: deps.lens,
 		previewing: deps.previewing,
-		selectedEntityId: deps.selectedEntityId,
-		entities: deps.entities
+		selectedEntityId: deps.ports.selectedEntityId,
+		entities: deps.ports.entities
 	});
 	const entry = createStudioEntrySession({
 		controller: () => controller,
@@ -62,8 +60,8 @@ export function createStudioFeature(deps: {
 		taskOpen: deps.taskOpen,
 		activeWorldTool: deps.activeWorldTool,
 		libraryOpen: deps.libraryOpen,
-		selectedEntityId: deps.selectedEntityId,
-		entities: deps.entities,
+		selectedEntityId: deps.ports.selectedEntityId,
+		entities: deps.ports.entities,
 		attachArm: port.attachArm,
 		navigate: deps.navigate
 	});

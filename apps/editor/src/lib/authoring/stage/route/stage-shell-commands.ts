@@ -21,7 +21,7 @@ import { planFragmentOf, type PlanEvaluation } from '@portfolio/layout-core';
 import { planSourceKindOf } from './plan-source-kind';
 import type { StageCardActionRecord, StageFacade, StageSourceHit } from '../stage-facade';
 import type { StageSelection, StageSession, StageTask } from '../stage-session';
-import { primaryEntry, type StageSelectionEntry } from '../semantic-selection';
+import { primaryEntry, sameReference, type StageSelectionEntry } from '../semantic-selection';
 import {
 	STAGE_ERASER_TASK
 } from '../stage-eraser';
@@ -30,7 +30,6 @@ import { STAGE_MEASURE_TASK } from '../stage-measure';
 import type { WorldToolId } from '$lib/authoring/world-toolbar/registry';
 import type { ExperienceController } from '$lib/authoring/experience/experience-controller.svelte';
 import type { ExperienceLens } from '$lib/authoring/experience/experience-lens.svelte';
-import type { ExperienceSubject } from '$lib/authoring/experience/experience-model';
 import {
 	STAGE_HOST_ADAPTER_ID,
 	type StageDockKey
@@ -48,9 +47,7 @@ export type StageShellCommandInput = {
 	readonly shell: StageShellState;
 	readonly selection: () => StageSelectionEntry | null;
 	readonly setSelection: (entry: StageSelectionEntry | null) => void;
-	readonly focus: {
-		select(subject: ExperienceSubject | null): void;
-	};
+	readonly clearExperienceFocus: () => void;
 	readonly experience: {
 		readonly lens: ExperienceLens;
 		readonly active: () => ExperienceController | null;
@@ -141,7 +138,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 		const key = keyOf(next);
 		input.setSelection(next);
 		if (key !== '' && key !== previous) {
-			input.focus.select(null);
+			input.clearExperienceFocus();
 			shell.setCardOpen(true);
 		}
 	}
@@ -168,7 +165,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 		if (hit.reference !== undefined) {
 			stage.setSelection({ ordered: [{ reference: hit.reference }], primary: hit.reference });
 			input.setSelection(primaryEntry(stage.selectionState()));
-			input.focus.select(null);
+			input.clearExperienceFocus();
 			shell.setCardOpen(true);
 			return;
 		}
@@ -186,7 +183,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 		};
 		stage.select(selected);
 		input.setSelection(primaryEntry(stage.selectionState()));
-		input.focus.select(null);
+		input.clearExperienceFocus();
 		shell.setCardOpen(true);
 	}
 
@@ -203,7 +200,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 			});
 			if (change.kind === 'selected') {
 				input.setSelection(primaryEntry(stage.selectionState()));
-				input.focus.select(null);
+				input.clearExperienceFocus();
 				shell.setCardOpen(true);
 				return;
 			}
@@ -220,7 +217,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 			ref: fragment.ref
 		});
 		input.setSelection(primaryEntry(stage.selectionState()));
-		input.focus.select(null);
+		input.clearExperienceFocus();
 		shell.setCardOpen(true);
 	}
 
@@ -236,7 +233,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 				primary: subject.reference
 			});
 			input.setSelection(primaryEntry(stage.selectionState()));
-			input.focus.select(null);
+			input.clearExperienceFocus();
 			return;
 		}
 		const layoutId = sourceId.startsWith('layout:')
@@ -251,7 +248,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 			ref: fragment.ref
 		});
 		input.setSelection(primaryEntry(stage.selectionState()));
-		input.focus.select(null);
+		input.clearExperienceFocus();
 	}
 
 	/** Stage-select a subject from an Experience Card link. */
@@ -261,7 +258,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 		const change = stage.setSelection({ ordered: [{ reference }], primary: reference });
 		if (change.kind === 'refused') return;
 		input.setSelection(primaryEntry(stage.selectionState()));
-		input.focus.select(null);
+		input.clearExperienceFocus();
 		shell.setCardOpen(true);
 	}
 
@@ -269,11 +266,21 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 	function closeSelection(): void {
 		input.facade()?.select(null);
 		input.setSelection(null);
-		input.focus.select(null);
+		input.clearExperienceFocus();
 		shell.setCardOpen(true);
 	}
 
 	/** The Card is an overlay: hiding it is not a selection change. */
+	function openSpaceCreated(reference: Parameters<typeof sameReference>[0]): void {
+		const stage = input.facade();
+		if (stage === null) return;
+		const selected = primaryEntry(stage.selectionState());
+		if (selected === null || !sameReference(selected.reference, reference)) return;
+		armWorldTool('select');
+		syncPrimarySelection(selected);
+		shell.requestCardRename(reference);
+	}
+
 	function closeCard(): void {
 		shell.setCardOpen(false);
 	}
@@ -835,6 +842,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 
 	return {
 		syncPrimarySelection,
+		openSpaceCreated,
 		selectHit,
 		selectUnfoldedSubject,
 		selectSource,

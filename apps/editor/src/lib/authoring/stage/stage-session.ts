@@ -22,6 +22,7 @@
  */
 import { immutableF4Data, resolveReference, type SemanticReference, type F4JsonValue, type AcceptedRevision } from '@portfolio/project-model';
 
+import { createStageSessionLens } from './stage-session-lens.svelte';
 import type { EntryRequalification } from './selection-requalification';
 import type { PlanSourceKind, PlanSourceRef } from '@portfolio/layout-core';
 import type { StageReadSnapshot } from './accepted-read';
@@ -402,7 +403,7 @@ export function createStageSession(options: { sessionEpoch?: SessionEpoch; epoch
 	let current: StageReadSnapshot | null = null;
 	let selectionValue: StageSelectionState = EMPTY_SELECTION;
 	let hoverValue: StageSelectionEntry | null = null;
-	let lens: StageLens = 'world';
+	const lens = createStageSessionLens();
 	// Grid/Snap are creator view state, not project state: they survive a content
 	// change and a replacement exactly as the lens does.
 	let draftingValue: StageDraftingState = STAGE_DRAFTING_DEFAULTS;
@@ -519,7 +520,7 @@ type LegacySelectionOutcome = 'admitted' | 'cleared' | 'refused';
 			return { kind: 'selected' };
 		},
 		select: setLegacy,
-		lens: () => lens,
+		lens: lens.read,
 		resizeHandles: () => resizeHandlesVisible,
 		setResizeHandles(visible) { if (!disposed) resizeHandlesVisible = visible; },
 		drafting: () => draftingValue,
@@ -532,7 +533,7 @@ type LegacySelectionOutcome = 'admitted' | 'cleared' | 'refused';
 		writerGeneration: () => writerGeneration,
 		taskChoiceGeneration: () => taskChoiceGeneration,
 		changeLens(next) {
-			if (disposed || next === lens) return false;
+			if (disposed || next === lens.read()) return false;
 			hoverValue = null;
 			taskChoiceGeneration += 1;
 			// Park before cancelling, and hold the parked task across cancellation: a
@@ -561,14 +562,14 @@ type LegacySelectionOutcome = 'admitted' | 'cleared' | 'refused';
 				taskStatus = 'inactive';
 				cancelTaskWriters();
 			}
-			lens = next;
+			lens.write(next);
 			return true;
 		},
 		taskLifecycle: () => task === null ? null : { status: taskStatus, task },
 		resumeTask(validate) {
 			if (disposed || current === null) return { kind: 'refused', code: 'stale-session', message: 'Open a current source before resuming a task.' };
 			if (task === null || taskStatus !== 'inactive') return { kind: 'refused', code: 'no-inactive-task', message: 'Choose an inactive task to resume.' };
-			if ((task.lens ?? 'world') !== lens) return { kind: 'refused', code: 'wrong-lens', message: `Return to the ${task.lens ?? 'world'} lens before resuming.` };
+			if ((task.lens ?? 'world') !== lens.read()) return { kind: 'refused', code: 'wrong-lens', message: `Return to the ${task.lens ?? 'world'} lens before resuming.` };
 			// Explicit identity requalification within this source; replacement clears tasks.
 			let target = task.target;
 			if (target) {
@@ -600,7 +601,7 @@ type LegacySelectionOutcome = 'admitted' | 'cleared' | 'refused';
 			return taskStatus === 'active' ? task : null;
 		},
 		openTask(next) {
-			if (disposed || (next.lens ?? 'world') !== lens) return false;
+			if (disposed || (next.lens ?? 'world') !== lens.read()) return false;
 			taskChoiceGeneration += 1;
 			if (task !== null) cancelTaskWriters();
 			else writerGeneration += 1;

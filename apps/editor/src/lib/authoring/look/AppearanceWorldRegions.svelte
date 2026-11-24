@@ -32,7 +32,9 @@
 {/if}
 
 {#if materialEditor !== null}
-	<LibraryMaterialEditor {...materialEditor} />
+	{#key materialEditor.mode}
+		<LibraryMaterialEditor {...materialEditor} />
+	{/key}
 {/if}
 
 {#if paint !== null}

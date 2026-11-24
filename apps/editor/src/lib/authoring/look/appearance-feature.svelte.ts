@@ -32,14 +32,14 @@ export type AppearanceDependencies = {
 
 export function createAppearanceFeature(deps: AppearanceDependencies) {
 	const finishes = createAppearanceFinishAuthority(deps.finishes);
-	const draft = createLibraryDraftSession({ ...deps.draft, finishes: () => finishes });
-	const card = createCardSession({ ...deps.card, finishes: () => finishes, draftPreview: draft.draftPreview });
+	const card = createCardSession({ ...deps.card, finishes: () => finishes, draftPreview: () => draft.draftPreview() });
 	const paint = createPaintSession({
 		...deps.paint,
 		finishes: () => finishes,
-		finishTileSource: draft.finishTileSource,
-		endLibraryDraft: draft.endLibraryDraft
+		finishTileSource: (id) => draft.finishTileSource(id),
+		endLibraryDraft: () => draft.endLibraryDraft()
 	});
+	const draft = createLibraryDraftSession({ ...deps.draft, finishes: () => finishes });
 	const materialImport = createAppearanceImportSession({
 		...deps.materialImport,
 		finishes: () => finishes,
@@ -57,11 +57,6 @@ export function createAppearanceFeature(deps: AppearanceDependencies) {
 	});
 	return {
 		id: 'appearance' as const,
-		/** Compatibility phase: the draft swap and project issue reset follow Paint. */
-		attachAuthoring: () => {
-			draft.attachGuards();
-			repair.attachAuthoring();
-		},
 		lifecycle: {
 			interruptForReplacement: {
 				'end-operations-no-camera': operations.endNoCamera,

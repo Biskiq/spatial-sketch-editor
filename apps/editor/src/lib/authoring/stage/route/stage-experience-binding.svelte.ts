@@ -78,7 +78,7 @@ export type StageExperienceBindingInput = {
 };
 
 export function createStageExperienceBinding(input: StageExperienceBindingInput) {
-	let lensState = $state<'world' | 'experience'>('world');
+	const lensState = $derived(input.session.lens());
 	let controller = $state.raw<ExperienceController | null>(null);
 	/** The Guide is closed by default; every lens entry starts closed. */
 	let experienceGuideOpen = $state(false);
@@ -313,7 +313,6 @@ export function createStageExperienceBinding(input: StageExperienceBindingInput)
 		input.notice('');
 		const stage = input.stage();
 		if (stage?.changeLens(next)) {
-			lensState = input.session.lens();
 			// Leaving the lens ends its transient posture; a refused switch keeps it.
 			if (previous === 'experience' && lensState !== 'experience') lens.deactivate();
 			input.shell().setTask(null);
@@ -436,6 +435,8 @@ export function createStageExperienceBinding(input: StageExperienceBindingInput)
 
 	return {
 		lens,
+		readFocus: () => experienceFocus.read(),
+		clearFocus: () => experienceFocus.select(null),
 		get lensState() {
 			return lensState;
 		},

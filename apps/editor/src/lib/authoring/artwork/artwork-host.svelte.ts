@@ -43,12 +43,10 @@ export function createArtworkHost(input: ArtworkDependencies) {
 			interaction.cancelResize();
 		}
 
-		function attachGuard(): void {
-			$effect(() => {
-				if (!input.ready()) cancel();
-				if (!canPlace()) cancelAll();
-			});
-		}
+		$effect(() => {
+			if (!input.ready()) cancel();
+			if (!canPlace()) cancelAll();
+		});
 
 		function dragOver(event: DragEvent): void {
 			if (interaction.acceptsDrop(event.dataTransfer)) event.preventDefault();
@@ -89,7 +87,7 @@ export function createArtworkHost(input: ArtworkDependencies) {
 			}
 		});
 
-		return { attachGuard, cancel, cancelAll, dragOver, canvas, overlay, viewport };
+		return { cancel, cancelAll, dragOver, canvas, overlay, viewport };
 	}
 
 	return {

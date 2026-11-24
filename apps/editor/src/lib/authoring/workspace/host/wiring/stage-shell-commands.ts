@@ -28,7 +28,7 @@ export function wireStageShellCommands(input: StageShellCommandsWiring) {
 		shell: input.shell,
 		selection: input.selection,
 		setSelection: input.setSelection,
-		focus: input.focus,
+		clearExperienceFocus: input.clearExperienceFocus,
 		experience: {
 			lens: input.lens,
 			active: input.active

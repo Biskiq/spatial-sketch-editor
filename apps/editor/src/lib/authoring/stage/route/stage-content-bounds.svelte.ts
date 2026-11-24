@@ -1,5 +1,6 @@
 import type { StageReadSnapshot } from '../accepted-read';
 import type { StageFacade } from '../stage-facade';
+import type { createScenePickSource } from '../../scene/scene-pick-source';
 import type { GridRect } from '../stage-grid';
 
 export function readStageContentBounds(stage: StageFacade): {
@@ -25,12 +26,14 @@ export function readStageContentBounds(stage: StageFacade): {
 }
 
 export function createStageContentBounds(input: {
-	readonly renderRootsRevision: () => number;
+	readonly scenePick: Pick<ReturnType<typeof createScenePickSource>, 'onRenderRootsChanged'>;
 	readonly snapshot: () => StageReadSnapshot | null;
 	readonly facade: () => StageFacade | null;
 }) {
+	let renderRootsRevision = $state(0);
+	$effect(() => input.scenePick.onRenderRootsChanged(() => (renderRootsRevision += 1)));
 	const stageContentBounds = $derived.by(() => {
-		input.renderRootsRevision();
+		void renderRootsRevision;
 		if (input.snapshot() === null) return null;
 		const facade = input.facade();
 		return facade === null ? null : readStageContentBounds(facade);
@@ -44,6 +47,7 @@ export function createStageContentBounds(input: {
 	$effect(() => input.facade()?.camera.setContentBounds(stageContentBounds));
 
 	return {
+		renderRootsRevision: () => renderRootsRevision,
 		get stage() { return stageContentBounds; },
 		get paper() { return paperContentBounds; }
 	};

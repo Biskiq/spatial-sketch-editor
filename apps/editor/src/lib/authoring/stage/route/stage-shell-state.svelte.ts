@@ -165,6 +165,7 @@ export function createStageShellState(input: StageShellStateInput) {
 	let cardRenameTarget = $state.raw<SemanticReference | null>(null);
 	/** True while an authored (non-navigation) gesture holds the Stage: the Card fades. */
 	let cardGesturing = $state(false);
+	let stageGesturing = $state(false);
 
 	/** Whether the armed tool's palette is open above the dock. */
 	let paletteOpen = $state(true);
@@ -509,6 +510,7 @@ export function createStageShellState(input: StageShellStateInput) {
 		readonly navigation?: boolean;
 		readonly owner: string;
 	} | null): void {
+		stageGesturing = lease !== null;
 		const cameraEdit =
 			lease !== null &&
 			(lease.owner === 'experience-view-edit' || lease.owner === 'experience-path-point');
@@ -711,6 +713,7 @@ export function createStageShellState(input: StageShellStateInput) {
 		get cardRenameTarget() { return cardRenameTarget; },
 		requestCardRename,
 		consumeCardRename,
+		get stageGesturing() { return stageGesturing; },
 		get cardGesturing() {
 			return cardGesturing;
 		},

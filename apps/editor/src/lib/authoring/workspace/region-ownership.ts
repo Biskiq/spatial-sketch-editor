@@ -21,6 +21,23 @@ export const REGION_LIST_KEYS = {
 	candidates: ['core', 'artwork']
 } as const satisfies Partial<Record<keyof RegionProps['overlay'], readonly WorkspaceOwner[]>>;
 
+type OverlayList = keyof typeof REGION_LIST_KEYS;
+export type OverlayLists = {
+	[Owner in WorkspaceOwner]?: {
+		[Key in OverlayList as Owner extends (typeof REGION_LIST_KEYS)[Key][number] ? Key : never]?:
+			RegionProps['overlay'][Key];
+	};
+};
+
+export function overlayList<Key extends OverlayList>(
+	key: Key,
+	contributions: OverlayLists
+): NonNullable<RegionProps['overlay'][Key]> {
+	type Items = NonNullable<RegionProps['overlay'][Key]>[number];
+	const lists = contributions as Partial<Record<WorkspaceOwner, Partial<Record<Key, readonly Items[]>>>>;
+	return REGION_LIST_KEYS[key].flatMap((owner) => lists[owner]?.[key] ?? []) as NonNullable<RegionProps['overlay'][Key]>;
+}
+
 export const REGION_KEY_OWNER = {
 	canvas: {
 		geometry: 'core',

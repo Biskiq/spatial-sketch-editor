@@ -583,19 +583,23 @@ selection/history/runes/DOM into shared packages.
 
 ### Workspace host and feature modules
 
-The spatial route is two calls: `createWorkspaceHost` and `<WorkspaceHost>`. The host factory is a
-construction sequence of core factories, feature entries, `wiring/<controller>` modules and the
-one lifecycle runner; it holds no reactive state, projections or event logic of its own. The
-host's `WorkspaceHost.svelte` mounts the shared regions in today's DOM order and selects a
-workspace through one member.
+The spatial route creates one workspace host and mounts one `WorkspaceHost`. The Stage session
+owns the reactive lens and its refusal-capable writer. The shell and Experience binding observe
+that same lens. The Head requests the ordered lifecycle transition. Contextual Show commands use
+the Experience binding for the underlying transition. Preview is constructed once and its
+operations are read lazily by callbacks that run after construction.
 
-A capability lives in its feature: one entry, cohesive sub-owners, its region components and one
-view type. The entry composes only; sub-owners never import a sibling at runtime. Shared
-composition changes are declarative and bounded: one manifest feature entry, its
-`LIFECYCLE_ORDER` steps, its `ESCAPE_LADDER` rung, its `REGION_KEY_OWNER` keys, its singleton
-consumers and its cross-feature ports. The guards in
-`apps/editor/tests/lib/authoring/integration-ownership.test.ts` and the manifest beside them check
-that contract; `test:arch` runs them.
+An integration feature has one entry, cohesive sub-owners and its region components. It owns its
+state, effects and presentation getters. The shared lifecycle runner and keyboard arbiter own
+cross-feature ordering. Region assembly preserves live getters and combines explicitly ordered
+list contributions. A region may read several owners to assemble a shared view. Those reads
+belong to the region or its presenter.
+
+Admitting a feature uses declared lifecycle steps, ordered Escape rungs, region keys and
+explicit construction ports. The registration points are
+`workspace/lifecycle-order.ts`, `workspace/escape-ladder.ts`, `workspace/region-ownership.ts`
+and the feature manifest. The architecture lane runs the integration ownership and earlier
+boundary suites together.
 
 The fixed input order is unchanged: pinch/second pointer → active posture layer → adapter intents →
 navigation, so a posture claims a gesture before adapters see it. Escape precedence is the data

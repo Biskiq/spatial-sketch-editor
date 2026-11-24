@@ -17,3 +17,20 @@ export function readStageCursor(input: {
 	if (input.taskKind() === 'layout-ink' || input.toolArmed()) return 'draw';
 	return 'select';
 }
+
+
+export function createStageCursor(input: {
+	readonly experience: Pick<Parameters<typeof readStageCursor>[0], 'viewEditKind' | 'placingView'>;
+	readonly stageInput: Pick<import('./stage-input.svelte').StageInputArbiter, 'drag' | 'hoverMove'>;
+	readonly shell: Pick<import('./stage-shell-state.svelte').StageShellState, 'task' | 'armedHostTool'>;
+	readonly lookThroughActive: () => boolean;
+}) {
+	return () => readStageCursor({
+		...input.experience,
+		dragMode: () => input.stageInput.drag?.mode ?? null,
+		taskKind: () => input.shell.task?.kind ?? null,
+		lookThroughActive: input.lookThroughActive,
+		hoverMove: () => input.stageInput.hoverMove,
+		toolArmed: () => input.shell.armedHostTool !== null
+	});
+}

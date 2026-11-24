@@ -4,7 +4,10 @@ export function createLayoutReadingsLifecycle(input: {
 	readonly clearSlice: () => void;
 	readonly resetCutaway: () => void;
 	readonly clearCutawayFailures: () => void;
+	readonly installEffects: readonly (() => void)[];
 }) {
+	for (const install of input.installEffects) install();
+
 	function clearReadings(): void {
 		input.clearLift();
 		input.clearSlice();

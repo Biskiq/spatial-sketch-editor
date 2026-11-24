@@ -63,11 +63,11 @@ export function createSkyHost(input: {
 		});
 	}
 
-	function dismiss(): boolean {
-		if (!look.panelOpen) return false;
+	function dismiss() {
+		if (!look.panelOpen) return 'pass' as const;
 		look.setPanelOpen(false);
 		document.querySelector<HTMLButtonElement>('[data-stage-environment-control]')?.focus();
-		return true;
+		return 'handled' as const;
 	}
 
 	function groundReachMeters(): number | undefined {

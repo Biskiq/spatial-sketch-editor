@@ -6,7 +6,7 @@ export function createSkyFeature(deps: SkyDependencies) {
 	const sky = createSkyHost(deps);	return {
 		id: 'sky' as const,
 		regions: { canvas: sky.canvas, overlay: sky.overlay, panels: sky.panels },
-		escape: { dismissSky: sky.dismiss },
+		escapeRungs: { sky: sky.dismiss },
 		ports: {
 			groundReachMeters: sky.groundReachMeters,
 			cardStratum: sky.cardStratum,
