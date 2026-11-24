@@ -48,7 +48,25 @@ import {
 } from './layout-room-reconciliation';
 import type { LayoutDocumentIssue } from './layout-issue';
 import type { LayoutVec2 } from './layout-coordinates';
-import { roomSurfaceLineage, type LayoutSurfaceLineage } from './layout-surface-reference';
+import { CURVE_ARC_LENGTH_TOLERANCE } from './layout-geometry-curve';
+import { validateWallFirstOpeningSet } from './layout-opening-set';
+import {
+	buildClosedWallCircleCenterlineFromRay
+} from './layout-closed-wall';
+import {
+	certifyRoundRoom,
+	type RoundOperationCorrespondence,
+	type RoundOperationJunctionCorrespondence,
+	type RoundOperationOpeningCorrespondence,
+	type RoundOperationWallCorrespondence
+} from './layout-round-room';
+import {
+	normalizeLayoutSurfaceLineage,
+	repackWallSurfaceLineage,
+	roomSurfaceLineage,
+	type LayoutSurfaceLineage
+} from './layout-surface-reference';
+import { wallCurveChainLength } from './layout-wall-curve-algebra';
 import {
 	allocateCapturedId,
 	layoutWorkingLevelIssue,
@@ -99,7 +117,9 @@ export type WallFirstOpRejectionCode =
 	| 'captured_id_in_use'
 	/* SP1b lifecycle. */
 	| 'not_open_space'
-	| 'space_outline_invalid';
+	| 'space_outline_invalid'
+	/* C2 Round repack conflict. */
+	| 'round_repack_conflict';
 
 export type WallFirstOpRejection = {
 	code: WallFirstOpRejectionCode;
@@ -107,6 +127,8 @@ export type WallFirstOpRejection = {
 	/** Involved authored IDs where available. */
 	wallIds?: string[];
 	roomIds?: string[];
+	junctionIds?: string[];
+	openingIds?: string[];
 	/** Candidate face key, when the rejection names a face (not a wall). */
 	faceKey?: string;
 	/** Face-extraction diagnostics that caused the rejection, if any. */
@@ -130,6 +152,12 @@ export type WallFirstOpPlan =
 			retiredRoomIds: readonly string[];
 			/** Why an open Space retired; SP1c reads these for consequence lines. */
 			spaceRetirements?: readonly SpaceRetirement[];
+			/** Round Rooms automatically repacked to one closed Wall on last detach. */
+			repackedRoundRoomIds?: readonly string[];
+			/** Round Rooms whose `round` fact cleared (open Space, divide, or merge). */
+			clearedRoundRoomIds?: readonly string[];
+			/** Operation-local Round Room correspondence when affected. */
+			roundCorrespondence?: RoundOperationCorrespondence;
 	  }
 	| {
 			kind: 'rejected';
@@ -435,6 +463,279 @@ function planWallRemovalSet(
 		surfaceLineage = roomSurfaceLineage(result.lineage);
 	}
 
+	// --- C2 automatic lossless repack on last external detach ----------------
+	// A Round Room that was externally attached in the baseline and now has zero
+	// outside Wall incidence repacks into one canonical 16-span closed Wall.
+	// Detached enclosure copies (zero outside incidence in baseline) never repack.
+	const repackedRoundRoomIds: string[] = [];
+	const roundWallCorr: RoundOperationWallCorrespondence[] = [];
+	const roundJunctionCorr: RoundOperationJunctionCorrespondence[] = [];
+	const roundOpeningCorr: RoundOperationOpeningCorrespondence[] = [];
+	const roundRoomOutsideWallIds = (doc: LayoutDocumentWallFirst, room: LayoutWallFirstRoom): string[] => {
+		const ringWallIds = new Set(room.boundary.map((ref) => ref.wallId));
+		const rimJunctionIds = new Set<string>();
+		for (const wall of doc.walls) {
+			if (!ringWallIds.has(wall.id)) continue;
+			rimJunctionIds.add(wall.startJunctionId);
+			rimJunctionIds.add(wall.endJunctionId);
+		}
+		return doc.walls
+			.filter(
+				(w) =>
+					!ringWallIds.has(w.id) &&
+					(rimJunctionIds.has(w.startJunctionId) || rimJunctionIds.has(w.endJunctionId))
+			)
+			.map((w) => w.id);
+	};
+
+	for (const baseRoom of document.rooms) {
+		if (baseRoom.round === undefined || baseRoom.boundary.length <= 1) continue;
+		if (roundRoomOutsideWallIds(document, baseRoom).length === 0) continue;
+		const afterRoom = candidate.rooms.find((r) => r.id === baseRoom.id);
+		if (
+			!afterRoom ||
+			afterRoom.round === undefined ||
+			afterRoom.virtualEdges.length > 0 ||
+			afterRoom.boundary.length <= 1
+		) {
+			continue;
+		}
+		if (roundRoomOutsideWallIds(candidate, afterRoom).length > 0) continue;
+
+		// Trigger repack!
+		const candWallById = new Map(candidate.walls.map((w) => [w.id, w] as const));
+		const candJunctionById = new Map(candidate.junctions.map((j) => [j.id, j] as const));
+		const members = afterRoom.boundary;
+		const seamRef = members[0]!;
+		const seamWall = candWallById.get(seamRef.wallId);
+		if (!seamWall) {
+			return reject({
+				code: 'round_repack_conflict',
+				message: `Round Room '${afterRoom.id}' seam Wall '${seamRef.wallId}' is missing`,
+				roomIds: [afterRoom.id],
+				wallIds: [seamRef.wallId]
+			});
+		}
+		const seamJunctionId =
+			seamRef.direction === 'forward' ? seamWall.startJunctionId : seamWall.endJunctionId;
+
+		// 1. Uniform attributes check (height, thickness, optional name).
+		for (const ref of members) {
+			const w = candWallById.get(ref.wallId);
+			if (!w) {
+				return reject({
+					code: 'round_repack_conflict',
+					message: `Round Room '${afterRoom.id}' member Wall '${ref.wallId}' is missing`,
+					roomIds: [afterRoom.id],
+					wallIds: [ref.wallId]
+				});
+			}
+			if (w.height !== seamWall.height || w.thickness !== seamWall.thickness || w.name !== seamWall.name) {
+				const reason =
+					w.height !== seamWall.height
+						? 'height'
+						: w.thickness !== seamWall.thickness
+							? 'thickness'
+							: 'name';
+				return reject({
+					code: 'round_repack_conflict',
+					message: `Cannot repack Round Room '${afterRoom.id}': member Walls '${seamWall.id}' and '${w.id}' disagree on ${reason}. Equalize attributes or Release round before detaching.`,
+					roomIds: [afterRoom.id],
+					wallIds: [seamWall.id, w.id]
+				});
+			}
+		}
+
+		// 2. Discarded rim Junctions must not anchor another Space (virtual edges or boundary).
+		const ringWallIdSet = new Set(members.map((m) => m.wallId));
+		const retiredArcIds = members.slice(1).map((m) => m.wallId);
+		const discardedJunctionIds = new Set<string>();
+		for (const ref of members) {
+			const w = candWallById.get(ref.wallId)!;
+			if (w.startJunctionId !== seamJunctionId) discardedJunctionIds.add(w.startJunctionId);
+			if (w.endJunctionId !== seamJunctionId) discardedJunctionIds.add(w.endJunctionId);
+		}
+		for (const other of candidate.rooms) {
+			if (other.id === afterRoom.id) continue;
+			const anchorHit =
+				other.virtualEdges.find(
+					(e) => discardedJunctionIds.has(e.startJunctionId) || discardedJunctionIds.has(e.endJunctionId)
+				);
+			if (anchorHit) {
+				const hitJ = discardedJunctionIds.has(anchorHit.startJunctionId)
+					? anchorHit.startJunctionId
+					: anchorHit.endJunctionId;
+				return reject({
+					code: 'round_repack_conflict',
+					message: `Cannot repack Round Room '${afterRoom.id}': rim Junction '${hitJ}' anchors Space '${other.id}'.`,
+					roomIds: [afterRoom.id, other.id],
+					junctionIds: [hitJ]
+				});
+			}
+			const sharedBoundaryWall = other.boundary.find((ref) => ringWallIdSet.has(ref.wallId));
+			if (sharedBoundaryWall) {
+				return reject({
+					code: 'round_repack_conflict',
+					message: `Cannot repack Round Room '${afterRoom.id}': Wall '${sharedBoundaryWall.wallId}' is shared with Space '${other.id}'.`,
+					roomIds: [afterRoom.id, other.id],
+					wallIds: [sharedBoundaryWall.wallId]
+				});
+			}
+		}
+
+		// 3. Certify and rebuild canonical 16-span closed Wall.
+		const cert = certifyRoundRoom(candidate, afterRoom);
+		if (cert.kind === 'invalid') {
+			return reject({
+				code: 'round_repack_conflict',
+				message: cert.issue.message,
+				roomIds: [afterRoom.id]
+			});
+		}
+		const rebuilt = buildClosedWallCircleCenterlineFromRay({
+			center: cert.certified.center,
+			radius: cert.certified.radius,
+			seamDirection: cert.certified.seamDirection,
+			wallId: seamWall.id,
+			explicitSeam: cert.certified.seamPoint
+		});
+		if (rebuilt.kind === 'rejected') {
+			return reject({
+				code: 'round_repack_conflict',
+				message: rebuilt.rejection.message,
+				roomIds: [afterRoom.id],
+				wallIds: [seamWall.id]
+			});
+		}
+		const closedLength = wallCurveChainLength({
+			startPoint: cert.certified.seamPoint,
+			endPoint: cert.certified.seamPoint,
+			knots: rebuilt.centerline.kind === 'cubic-chain' ? rebuilt.centerline.knots : [],
+			spans: rebuilt.centerline.kind === 'cubic-chain' ? rebuilt.centerline.spans : []
+		});
+
+		// 4. Rehost Openings from all member arcs onto the canonical closed Wall.
+		const memberCumulative: Array<{
+			readonly wallId: string;
+			readonly direction: 'forward' | 'reverse';
+			readonly startDist: number;
+			readonly length: number;
+		}> = [];
+		let accum = 0;
+		for (const ref of members) {
+			const w = candWallById.get(ref.wallId)!;
+			const startPt = candJunctionById.get(w.startJunctionId)?.point;
+			const endPt = candJunctionById.get(w.endJunctionId)?.point;
+			if (!startPt || !endPt) {
+				return reject({
+					code: 'round_repack_conflict',
+					message: `Round Room '${afterRoom.id}' Wall '${w.id}' has unresolved endpoints`,
+					roomIds: [afterRoom.id],
+					wallIds: [w.id]
+				});
+			}
+			const len =
+				w.centerline.kind === 'line'
+					? Math.hypot(endPt[0] - startPt[0], endPt[1] - startPt[1])
+					: wallCurveChainLength({
+							startPoint: startPt,
+							endPoint: endPt,
+							knots: w.centerline.knots,
+							spans: w.centerline.spans
+						});
+			memberCumulative.push({
+				wallId: w.id,
+				direction: ref.direction,
+				startDist: accum,
+				length: len
+			});
+			accum += len;
+		}
+		const memberByWallId = new Map(memberCumulative.map((m) => [m.wallId, m] as const));
+		const nextOpenings: LayoutWallOpening[] = [];
+		for (const opening of candidate.openings) {
+			const m = memberByWallId.get(opening.wallId);
+			if (!m) {
+				nextOpenings.push(opening);
+				continue;
+			}
+			if (opening.connectsRoomIds !== undefined) {
+				return reject({
+					code: 'round_repack_conflict',
+					message: `Cannot repack Round Room '${afterRoom.id}': Opening '${opening.id}' still carries portal relation '${opening.connectsRoomIds.join(', ')}'.`,
+					roomIds: [afterRoom.id],
+					openingIds: [opening.id]
+				});
+			}
+			const rimStart =
+				m.direction === 'forward'
+					? m.startDist + opening.offset
+					: m.startDist + (m.length - (opening.offset + opening.width));
+			const wrapped = ((rimStart % closedLength) + closedLength) % closedLength;
+			const offset = closedLength - wrapped <= CURVE_ARC_LENGTH_TOLERANCE ? 0 : wrapped;
+			nextOpenings.push({
+				...opening,
+				wallId: seamWall.id,
+				offset
+			});
+			roundOpeningCorr.push({
+				openingId: opening.id,
+				beforeWallId: opening.wallId,
+				afterWallId: seamWall.id
+			});
+		}
+
+		const repackedWall: LayoutWall = {
+			...seamWall,
+			startJunctionId: seamJunctionId,
+			endJunctionId: seamJunctionId,
+			centerline: rebuilt.centerline
+		};
+		candidate.walls = candidate.walls.flatMap((w) => {
+			if (w.id === seamWall.id) return [repackedWall];
+			if (ringWallIdSet.has(w.id)) return [];
+			return [w];
+		});
+		candidate.openings = nextOpenings;
+		candidate.rooms = candidate.rooms.map((r) =>
+			r.id === afterRoom.id
+				? { ...r, boundary: [{ wallId: seamWall.id, direction: 'forward' }] }
+				: r
+		);
+		candidate.regions = carryRegionWallIntents(
+			candidate.regions,
+			new Map(retiredArcIds.map((id) => [id, [seamWall.id]]))
+		);
+
+		const openingIssues = validateWallFirstOpeningSet(candidate);
+		if (openingIssues.length > 0) {
+			const first = openingIssues[0]!;
+			return reject({
+				code: 'round_repack_conflict',
+				message: first.message,
+				roomIds: [afterRoom.id],
+				wallIds: [first.wallId],
+				openingIds: [first.openingId]
+			});
+		}
+
+		for (const jId of discardedJunctionIds) removedEndpointIds.add(jId);
+		surfaceLineage = [
+			...surfaceLineage,
+			...repackWallSurfaceLineage({ survivorWallId: seamWall.id, members })
+		];
+		repackedRoundRoomIds.push(afterRoom.id);
+		roundWallCorr.push({
+			kind: 'repack',
+			sourceWallIds: members.map((m) => m.wallId),
+			survivorWallId: seamWall.id
+		});
+		roundJunctionCorr.push({ kind: 'preserved', junctionId: seamJunctionId });
+		for (const jId of discardedJunctionIds) {
+			roundJunctionCorr.push({ kind: 'retired', junctionId: jId, after: null });
+		}
+	}
+
 	// I8 — prune Junctions the operation released. A released endpoint is kept
 	// when a surviving Wall OR any final Space's virtual edge references it.
 	// Anchors that were kept alive by a baseline Space's virtual edge and whose
@@ -465,14 +766,53 @@ function planWallRemovalSet(
 			(!removedEndpointIds.has(junction.id) && !baselineVirtualJunctionIds.has(junction.id))
 	);
 
-	return validateAndCompile(candidate, reject, (committed) => ({
-		kind: 'success',
-		document: committed,
-		lineage,
-		surfaceLineage,
-		retiredRoomIds,
-		spaceRetirements
-	}));
+	return validateAndCompile(candidate, reject, (committed) => {
+		const norm = normalizeLayoutSurfaceLineage({
+			beforeLayout: document,
+			afterLayout: committed,
+			lineage: surfaceLineage
+		});
+		if (norm.kind === 'rejected') {
+			return reject({
+				code: 'invalid_candidate_document',
+				message: norm.message
+			});
+		}
+		const clearedRoundRoomIds: string[] = [];
+		const roundRoomCorr: RoundOperationCorrespondence['rooms'][number][] = [];
+		for (const baseRoom of document.rooms) {
+			if (baseRoom.round === undefined) continue;
+			const afterRoom = committed.rooms.find((r) => r.id === baseRoom.id);
+			if (!afterRoom) {
+				roundRoomCorr.push({ roomId: baseRoom.id, status: 'retired' });
+			} else if (afterRoom.round === undefined) {
+				clearedRoundRoomIds.push(baseRoom.id);
+				roundRoomCorr.push({ roomId: baseRoom.id, status: 'cleared-round' });
+			} else {
+				roundRoomCorr.push({ roomId: baseRoom.id, status: 'preserved' });
+			}
+		}
+		const roundCorrespondence: RoundOperationCorrespondence | undefined =
+			repackedRoundRoomIds.length > 0 || clearedRoundRoomIds.length > 0
+				? {
+						rooms: roundRoomCorr,
+						walls: roundWallCorr,
+						junctions: roundJunctionCorr,
+						openings: roundOpeningCorr
+					}
+				: undefined;
+		return {
+			kind: 'success',
+			document: committed,
+			lineage,
+			surfaceLineage: norm.lineage,
+			retiredRoomIds,
+			spaceRetirements,
+			...(repackedRoundRoomIds.length > 0 ? { repackedRoundRoomIds } : {}),
+			...(clearedRoundRoomIds.length > 0 ? { clearedRoundRoomIds } : {}),
+			...(roundCorrespondence ? { roundCorrespondence } : {})
+		};
+	});
 }
 
 /**
