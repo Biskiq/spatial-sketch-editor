@@ -32,11 +32,7 @@
 	import { primaryEntry, sameReference, type StageSelectionEntry } from '$lib/authoring/stage/semantic-selection';
 	import type { StageDomainRead } from '$lib/authoring/stage/source-admission';
 	import { createStageSession } from '$lib/authoring/stage/stage-session';
-	import {
-		createLightLookThrough,
-		lookThroughCone
-	} from '$lib/authoring/stage/route/light-look-through.svelte';
-	import { lightById } from '$lib/authoring/adapters/light/light-subjects';
+	import { createLightInspectionFeature } from '$lib/authoring/look/light-inspection-feature.svelte';
 	import {
 		createStageFacade,
 		type StageFacade,
@@ -198,10 +194,9 @@
 		type StageExperienceBinding
 	} from '$lib/authoring/stage/route/stage-experience-binding.svelte';
 	import type { ExperienceController } from '$lib/authoring/experience/experience-controller.svelte';
-	import type { StageLightInspection, StageObjectStudio } from '$lib/authoring/stage/stage-adapter-host';
+	import type { StageObjectStudio } from '$lib/authoring/stage/stage-adapter-host';
 	import { isStudioOperation, isStudioWorldTool, studioAdmitsCardAction } from '$lib/authoring/studio/studio-model';
 	import { createStudioController, type StudioController } from '$lib/authoring/studio/studio-controller.svelte';
-	import { armedLightKind } from '$lib/authoring/look/light-tool.svelte';
 	import StudioScopeStrip from '$lib/authoring/studio/StudioScopeStrip.svelte';
 	import StudioTransferStrip from '$lib/authoring/studio/StudioTransferStrip.svelte';
 	import StudioRootPanel from '$lib/authoring/studio/StudioRootPanel.svelte';
@@ -271,7 +266,6 @@
 		notice: { read: () => shell.notice, write: (message) => shell.setNotice(message) }
 	});
 
-	/** The route's one Spot Look-through session; created with the Stage wiring. */
 	/** Object Studio's one session value, created once the commands it calls exist. */
 	let studio!: StudioController;
 	let studioRevision = $state(0);
@@ -283,15 +277,6 @@
 			studio.enterFromWorld(entityId, 'edit-in-studio')
 				? { kind: 'entered' }
 				: { kind: 'refused', message: 'That object cannot be edited in Object Studio.' }
-	};
-
-	let lightInspection: ReturnType<typeof createLightLookThrough> | null = null;
-	const lightInspectionPort: StageLightInspection = {
-		enter: (lightId) =>
-			lightInspection?.enter(lightId) ?? {
-				kind: 'refused',
-				message: 'The Stage is still opening; try again in a moment.'
-			}
 	};
 
 	function openSpaceCreated(reference: Parameters<typeof sameReference>[0]): void {
@@ -312,7 +297,7 @@
 		materialProofs,
 		ports: {
 			finishCard: () => finishes,
-			lightInspection: () => lightInspectionPort,
+			lightInspection: () => lightInspection.ports.card,
 			objectStudio: () => objectStudioPort,
 			openSpaceCreated: () => openSpaceCreated
 		},
@@ -442,7 +427,7 @@
 		stopAndRestore: () => {
 			// Preview takes the one Camera output: the light inspection restores its
 			// entry standpoint synchronously before the ticket moves.
-			lightInspection?.cancel();
+			lightInspection.ports.cancel();
 			// Align, the material Editor, Import and the repair pickers end by their
 			// cancel paths; Align restores its entry standpoint first (U6 lifecycle).
 			endMaterialOperations(true);
@@ -489,10 +474,10 @@
 
 	/** The one Look-through predicate: a View inspection or a Spot inspection. */
 	function lookThroughActiveNow(): boolean {
-		return experience.lookThroughActive() || lightInspection?.active() === true;
+		return experience.lookThroughActive() || lightInspection.ports.active();
 	}
 
-	lightInspection = createLightLookThrough({
+	const lightInspection = createLightInspectionFeature({
 		stage: () => facade,
 		services: () => adapterServices,
 		lens: () => experience.lensState,
@@ -500,7 +485,9 @@
 		refresh: () => refresh(),
 		absoluteCss,
 		capturePointer,
-		stageElement: () => stageEl
+		stageElement: () => stageEl,
+		evaluation: () => evaluation,
+		previewing: () => preview !== null
 	});
 
 	const viewing = createStageViewing({
@@ -554,22 +541,15 @@
 	const currentEnvelope = $derived(ready.envelope());
 	const experienceFloorDatum = $derived(ready.datumMeters());
 	const activeLayer = $derived(
-		experience.posture ?? (lightInspection?.active() ? lightInspection.posture : null)
+		experience.posture ?? (lightInspection.ports.active() ? lightInspection.posture : null)
 	);
 	installLookThroughFrame({
 		frame: () => throughFrameEl,
 		viewSession: () => experience.lookThroughSession(),
-		lightSession: () => lightInspection?.session() ?? null,
+		lightSession: lightInspection.ports.session,
 		refresh
 	});
-	// A lens switch and a Preview takeover both replace the Stage's posture; the
-	// Spot inspection must restore its entry before either can present another.
-	$effect(() => {
-		if (experience.lensState !== 'world') lightInspection?.cancel();
-	});
-	$effect(() => {
-		if (preview !== null) lightInspection?.cancel();
-	});
+	lightInspection.attachGuards();
 
 	function changeLens(next: 'world' | 'experience'): void {
 		lifecycle.leaveLens(next);
@@ -970,7 +950,7 @@
 			sliceDraw.disarm();
 			sliceReading.level();
 		},
-		lightArmed: (id) => armedLightKind(id) !== null,
+		lightArmed: lightInspection.ports.lightArmed,
 		isStudioTool: isStudioWorldTool,
 		studioActive: () => studio?.active === true,
 		libraryReplaceQualified: () => finishes?.libraryTarget() != null,
@@ -2180,17 +2160,7 @@
 	const lifecycle = createFeatureLifecycle({
 		core,
 		features: [
-			{
-				id: 'light-inspection',
-				lifecycle: {
-					interruptForReplacement: { cancel: () => lightInspection?.cancel() },
-					resetPresentation: { cancel: () => lightInspection?.cancel() },
-					accepted: { reconcile: () => lightInspection?.reconcile() },
-					historyInstalled: { reconcile: () => lightInspection?.reconcile() },
-					leaveLens: { cancel: () => lightInspection?.cancel() },
-					dispose: { dispose: () => lightInspection?.dispose() }
-				}
-			},
+			lightInspection,
 			{
 				id: 'appearance',
 				lifecycle: {
@@ -2486,19 +2456,8 @@
 	}));
 
 	const viewportLookThrough = $derived.by(() => {
-		const controller = lightInspection;
-		const inspection = controller?.session() ?? null;
-		if (controller !== null && inspection !== null) {
-			return {
-				mode: 'light' as const,
-				label: inspection.label,
-				moved: controller.moved(),
-				canUpdate: !controller.busy(),
-				beam: controller.beam(),
-				onUpdate: (): void => void controller.finish(),
-				onExit: (): boolean => controller.exit()
-			};
-		}
+		const lightFrame = lightInspection.frame;
+		if (lightFrame !== null) return lightFrame;
 		const current = experience.lookThroughSession();
 		if (current === null) return null;
 		return {
@@ -2514,34 +2473,6 @@
 		};
 	});
 
-	/** The inspected Spot's real cone, projected by the one evaluation. */
-	const lightCoverage = $derived.by(() => {
-		const inspection = lightInspection?.session() ?? null;
-		const stage = facade;
-		const current = evaluation;
-		if (inspection === null || stage === null || current === null) return null;
-		const light = lightById(stage.snapshot(), inspection.lightId);
-		if (light === null || light.light !== 'spot') return null;
-		const evaluationId = stage.evaluationId();
-		if (evaluationId === null) return null;
-		const projectRing = (points: readonly (readonly [number, number, number])[]) => {
-			const projected: [number, number][] = [];
-			for (const point of points) {
-				const result = stage.projectWorld(point, evaluationId);
-				if (result.kind !== 'projected') return null;
-				projected.push([
-					result.css[0] - current.rect.left,
-					result.css[1] - current.rect.top
-				]);
-			}
-			return projected;
-		};
-		const cone = lookThroughCone(light);
-		const capRing = projectRing(cone.capRing);
-		if (capRing === null || capRing.length === 0) return null;
-		const innerRing = cone.innerRing === null ? null : projectRing(cone.innerRing);
-		return { capRing, innerRing };
-	});
 
 	const viewportPreview = $derived.by(() => {
 		if (previewSurface === null || previewViewRead === null) return null;
@@ -2796,7 +2727,7 @@
 				: null}
 			lift={liftPill}
 			slice={slicePill}
-			{lightCoverage}
+			{...lightInspection.regions.viewport}
 			pendingViewWrite={experience.pendingViewWrite}
 			onResolvePendingViewWrite={() => void experience.confirmPendingViewWrite()}
 			onCancelPendingViewWrite={() => experience.clearPendingViewWrite()}
