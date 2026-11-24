@@ -121,8 +121,7 @@
 		stageFindView,
 		stageInactiveTask,
 		stageTaskHost,
-		type StageHeadFindEntry,
-		type StudioFindState
+		type StageHeadFindEntry
 	} from '$lib/authoring/stage/route/stage-contribution-view';
 	import { createStageShellState } from '$lib/authoring/stage/route/stage-shell-state.svelte';
 	import {
@@ -143,23 +142,19 @@
 		type StageExperienceBinding
 	} from '$lib/authoring/stage/route/stage-experience-binding.svelte';
 	import type { ExperienceController } from '$lib/authoring/experience/experience-controller.svelte';
-	import type { StageObjectStudio } from '$lib/authoring/stage/stage-adapter-host';
 	import { isStudioOperation, isStudioWorldTool, studioAdmitsCardAction } from '$lib/authoring/studio/studio-model';
 	import { createStudioController, type StudioController } from '$lib/authoring/studio/studio-controller.svelte';
-	import StudioScopeStrip from '$lib/authoring/studio/StudioScopeStrip.svelte';
-	import StudioTransferStrip from '$lib/authoring/studio/StudioTransferStrip.svelte';
-	import StudioRootPanel from '$lib/authoring/studio/StudioRootPanel.svelte';
+	import StudioWorldRegions from '$lib/authoring/studio/StudioWorldRegions.svelte';
+	import { createStudioFeature } from '$lib/authoring/studio/studio-feature.svelte';
 	import { createSubjectScope } from '$lib/authoring/stage/subject-scope';
 	import { sceneEntityReference } from '$lib/authoring/adapters/scene/placement';
 	import {
 		STUDIO_ENTRY_PARAM,
 		STUDIO_ENTRY_VALUE,
 		STUDIO_OBJECT_PARAM,
-		PLACE_COPY_PARAM,
-		studioProjectUrl
+		PLACE_COPY_PARAM
 	} from '$lib/platform/studio-entry';
-	import { requestFormCopyIntake } from '$lib/authoring/adapters/scene/library/intake';
-	import { beginFormCopyTransfer, copyLanded, endFormCopyTransfer, peekFormCopyTransfer, type FormCopyTransfer } from '$lib/authoring/adapters/scene/library/transfer';
+	import { beginFormCopyTransfer } from '$lib/authoring/adapters/scene/library/transfer';
 	import { runPlaceCopy } from '$lib/authoring/studio/place-copy-journey';
 
 	installPerfWorkObserver();
@@ -217,16 +212,26 @@
 
 	/** Object Studio's one session value, created once the commands it calls exist. */
 	let studio!: StudioController;
-	let studioRevision = $state(0);
-	let studioArmPending = $state(false);
-	const objectStudioPort: StageObjectStudio = {
-		available: () =>
-			studio !== undefined && !studio.active && experience.lensState === 'world' && preview === null,
-		edit: (entityId) =>
-			studio.enterFromWorld(entityId, 'edit-in-studio')
-				? { kind: 'entered' }
-				: { kind: 'refused', message: 'That object cannot be edited in Object Studio.' }
-	};
+	const studioFeature = createStudioFeature({
+		controller: () => studio,
+		lens: () => experience.lensState,
+		previewing: () => preview !== null,
+		ready: () => boot.status === 'ready' || boot.status === 'empty',
+		entities: () => facade?.snapshot().domain.scene.entities ?? [],
+		selectedEntityId: () =>
+			selection !== null && selection.reference.domain === 'scene' ? selection.reference.subject.id : null,
+		armObjects: () => commands.armWorldTool('objects'),
+		dockReady: () => dockKeys.some((key) => key.slot === 'library'),
+		intent,
+		entry: studioEntry,
+		placeCopyItem,
+		projectId,
+		renderRootsRevision: () => renderRootsRevision,
+		taskOpen: () => shell.task !== null,
+		activeWorldTool: () => shell.activeWorldTool,
+		libraryOpen: () => shell.libraryOpen,
+		navigate: (href) => void goto(href)
+	});
 
 	function openSpaceCreated(reference: Parameters<typeof sameReference>[0]): void {
 		const stage = facade;
@@ -247,7 +252,7 @@
 		ports: {
 			finishCard: () => appearance.ports.adapter(),
 			lightInspection: () => lightInspection.ports.card,
-			objectStudio: () => objectStudioPort,
+			objectStudio: () => studioFeature.ports.objectStudio,
 			openSpaceCreated: () => openSpaceCreated
 		},
 		projectSession: () => projectSession,
@@ -566,23 +571,6 @@
 		subjects: locatedSubjects,
 		scope: shell.worldScope
 	}));
-	/** What Find knows of Object Studio: the selected form it can open, and its own entries. */
-	const studioFind = $derived.by((): StudioFindState | null => {
-		if (experience.lensState !== 'world' || preview !== null) return null;
-		void studioRevision;
-		const selectedId =
-			selection !== null && selection.reference.domain === 'scene' ? selection.reference.subject.id : null;
-		const selectedForm =
-			selectedId !== null &&
-			(facade?.snapshot().domain.scene.entities ?? []).some((entity) => entity.id === selectedId && entity.kind === 'form');
-		return {
-			active: studio?.active === true,
-			origin: studio?.origin ?? 'world',
-			context: studio?.context ?? 'world',
-			canEdit: selectedForm && studio?.active !== true,
-			rootCount: studio?.roots.length ?? 0
-		};
-	});
 	const dockView = $derived(stageDockView({ facade, revision: shell.contributionsVersion }));
 	const library = createLibraryFeature({
 		shell,
@@ -629,7 +617,7 @@
 		query: shell.findQuery,
 		worldIndex: selectionViewView.worldIndex,
 		dockKeys,
-		studio: studioFind
+		studio: studioFeature.regions.find
 	}));
 
 	const heightSheet = session.heightSheet();
@@ -712,20 +700,7 @@
 		isStudioTool: isStudioWorldTool,
 		studioActive: () => studio?.active === true,
 		libraryReplaceQualified: () => finishes?.libraryTarget() != null,
-		runStudioEntry: (id) => {
-			if (id === 'edit') {
-				const selectedId =
-					selection !== null && selection.reference.domain === 'scene' ? selection.reference.subject.id : null;
-				if (selectedId !== null) void objectStudioPort.edit(selectedId);
-			} else if (id === 'back-to-world') studio.backToWorld();
-			else if (id === 'back-to-projects') studio.backToProjects();
-			else if (id === 'open-in-world') studio.openInWorld();
-			else if (id === 'new-object-here') studio.newObjectHere();
-			else if (id === 'choose-object') studio.openChooser();
-			else if (id === 'context-world') studio.setContext('world');
-			else if (id === 'context-mat') studio.setContext('mat');
-			else if (id === 'new-object-project') void goto('/studio');
-		}
+		runStudioEntry: studioFeature.ports.runStudioEntry
 	});
 
 	studio = createStudioController({
@@ -754,7 +729,7 @@
 			clearHover();
 			shell.bumpContributions();
 			facade?.notifySurfaceChange();
-			studioRevision += 1;
+			studioFeature.ports.bumpRevision();
 		},
 		captureView: () => {
 			const camera = facade?.camera.state();
@@ -804,12 +779,7 @@
 			if (bounds === null || rect === null) return;
 			submit({ kind: 'fit', bounds: { min: bounds.min, max: bounds.max }, rect, paddingFraction: 0.25 }, nowSeconds());
 		},
-		armCreation: () => {
-			// The dock's Objects key appears once the adapters have bound: wait for it
-			// instead of refusing a creation the creator just asked for.
-			if (dockKeys.some((key) => key.slot === 'library')) commands.armWorldTool('objects');
-			else studioArmPending = true;
-		},
+		armCreation: studioFeature.ports.armCreation,
 		closeCreation: () => {
 			const close = (): void => {
 				// The placement task stays armed for repeat placing: Studio has its root now.
@@ -1124,7 +1094,7 @@
 		lens: () => experience.lensState,
 		selectionPresent: () => selection !== null,
 		closeSelection: () => commands.closeSelection(),
-		leaveStudio: () => studio.active && studio.backToWorld(),
+		leaveStudio: studioFeature.ports.leaveStudio,
 		...readings.escape,
 		setCutawayHeld: readings.ports.setCutawayHeld
 	});
@@ -1139,82 +1109,7 @@
 
 	let renderRootsRevision = $state(0);
 	$effect(() => scenePick.onRenderRootsChanged(() => (renderRootsRevision += 1)));
-	// A frame that waited for the scoped body to mount is retried as bodies change.
-	$effect(() => {
-		void renderRootsRevision;
-		untrack(() => studio.retryFrame());
-	});
-	// Open the posture named by the address once, when the project is on the Stage.
-	let studioOpened = false;
-	$effect(() => {
-		if (!studioEntry.studio || studioOpened) return;
-		if ((boot.status !== 'ready' && boot.status !== 'empty') || facade === null) return;
-		studioOpened = true;
-		// Open editable copy: only a freshly minted project takes it, at the datum, through
-		// the Place instrument's ordinary typed Place.
-		if (studioEntry.copyId !== null && intent === 'create') {
-			requestFormCopyIntake(projectId, { itemId: studioEntry.copyId, mode: 'datum' });
-		}
-		untrack(() => studio.openFromEntry({ objectId: studioEntry.objectId, minted: intent === 'create' }));
-	});
-	// Place copy in World: arm the saved copy once the project is on the Stage; the creator
-	// then clicks where it goes, through the same Place session as My Objects.
-	let placeCopyArmed = false;
-	/**
-	 * The way back from a cross-project Place copy, while one is pending. Read once: it
-	 * belongs to this arrival, and a different project's visit never inherits it.
-	 */
-	let transfer = $state<FormCopyTransfer | null>(
-		placeCopyItem !== null && peekFormCopyTransfer()?.itemId === placeCopyItem && peekFormCopyTransfer()?.sourceProjectId !== projectId
-			? peekFormCopyTransfer()
-			: null
-	);
-	/** The intended copy landed: its exact minted entity id is in the accepted source. */
-	function settleTransfer(): void {
-		if (transfer === null) return;
-		const entities = facade?.snapshot().domain.scene.entities ?? [];
-		if (!copyLanded(transfer, entities)) return;
-		transfer = null;
-		endFormCopyTransfer();
-	}
-	function returnToObject(): void {
-		if (transfer === null) return;
-		const back = transfer;
-		void goto(studioProjectUrl(back.sourceProjectId, { load: true, object: back.objectId })).then(() => {
-			endFormCopyTransfer();
-		});
-	}
-	const transferArmed = $derived(shell.task !== null || shell.activeWorldTool === 'objects' || shell.libraryOpen);
-	$effect(() => {
-		if (placeCopyItem === null || placeCopyArmed || studioEntry.studio) return;
-		if ((boot.status !== 'ready' && boot.status !== 'empty') || facade === null) return;
-		if (!dockKeys.some((key) => key.slot === 'library')) return;
-		placeCopyArmed = true;
-		requestFormCopyIntake(projectId, { itemId: placeCopyItem, mode: 'arm', entityId: transfer?.entityId });
-		untrack(() => commands.armWorldTool('objects'));
-		// One-shot: a reload must not re-arm a copy the creator already placed or dismissed.
-		const url = new URL(window.location.href);
-		if (url.searchParams.has(PLACE_COPY_PARAM)) {
-			url.searchParams.delete(PLACE_COPY_PARAM);
-			replaceState(`${url.pathname}${url.search}`, {});
-		}
-	});
-	$effect(() => {
-		if (!studioArmPending) return;
-		if (!studio.active) {
-			studioArmPending = false;
-			return;
-		}
-		if (!dockKeys.some((key) => key.slot === 'library')) return;
-		studioArmPending = false;
-		untrack(() => commands.armWorldTool('objects'));
-	});
-	// A creation gesture that ends with no new form returns the creator to the scoped root.
-	$effect(() => {
-		if (!studio.creating || studioArmPending) return;
-		if (shell.task !== null || shell.activeWorldTool === 'objects' || shell.libraryOpen) return;
-		untrack(() => studio.cancelCreation());
-	});
+	studioFeature.attachEntry();
 	const contentBounds = createStageContentBounds({
 		renderRootsRevision: () => renderRootsRevision,
 		snapshot: ready.snapshot,
@@ -1355,7 +1250,7 @@
 				id: 'studio',
 				lifecycle: {
 					resetPresentation: { end: () => studio?.end() },
-					accepted: { reconcile: () => studio?.reconcile(), 'settle-transfer': settleTransfer },
+					accepted: { reconcile: () => studio?.reconcile(), 'settle-transfer': studioFeature.ports.settleTransfer },
 					historyInstalled: { reconcile: () => studio?.reconcile() },
 					leaveLens: {
 						'leave-for-lens': (next) => {
@@ -1432,7 +1327,7 @@
 		const appearanceCanvas = appearance.regions.regionsCanvas(snapshot);
 		const features = {
 			get studio() {
-				void studioRevision;
+				void studioFeature.ports.revision();
 				return studio.active ? { rootId: studio.rootId, context: studio.context } : null;
 			},
 		};
@@ -1676,46 +1571,16 @@
 		data-index-open={preview === null && shell.indexOpen}
 		data-library-open={shell.libraryOpen && preview === null}
 	>
-		{#if preview === null && experience.lensState === 'world' && transfer !== null && !studio.active && (boot.status === 'ready' || boot.status === 'empty')}
-			<StudioTransferStrip
-				name={transfer.objectName}
-				armed={transferArmed}
-				onReturn={returnToObject}
-				onDismiss={() => { transfer = null; endFormCopyTransfer(); }}
-			/>
-		{/if}
-		{#if preview === null && experience.lensState === 'world' && studio.active}
-			<StudioScopeStrip
-				phase={studio.phase}
-				origin={studio.origin}
-				context={studio.context}
-				name={studio.rootName}
-				rootCount={studio.roots.length}
-				onContext={(next) => studio.setContext(next)}
-				onNewObject={() => studio.newObjectHere()}
-				onChoose={() => studio.openChooser()}
-				onBackToWorld={() => studio.backToWorld()}
-				onBackToProjects={() => studio.backToProjects()}
-				onOpenInWorld={() => studio.openInWorld()}
-				onPlaceCopy={() => void studio.placeCopyInWorld()}
-				placingCopy={studio.placingCopy}
-			/>
-			<StudioRootPanel
-				phase={studio.phase}
-				roots={studio.roots}
-				origin={studio.origin}
-				canUndo={historyState.canUndo}
-				creating={studio.creating}
-				onChoose={(id) => studio.chooseRoot(id)}
-				onOpenChooser={() => studio.openChooser()}
-				onNewObject={() => studio.newObjectHere()}
-				onUndo={history.undo}
-				onBackToWorld={() => studio.backToWorld()}
-				onBackToProjects={() => studio.backToProjects()}
-				onOpenInWorld={() => studio.openInWorld()}
-				onCancelCreation={() => studio.cancelCreation()}
-			/>
-		{/if}
+		<StudioWorldRegions
+			previewing={preview !== null}
+			lens={experience.lensState}
+			ready={boot.status === 'ready' || boot.status === 'empty'}
+			transfer={studioFeature.regions.transfer}
+			scope={studioFeature.regions.scope}
+			root={studioFeature.regions.root}
+			canUndo={historyState.canUndo}
+			onUndo={history.undo}
+		/>
 
 		<StageViewportRegion
 			{...coreRegions.viewport}
@@ -1842,7 +1707,7 @@
 
 	</div>
 
-	<StageBootPanels {boot} repair={bootRepair} transferName={transfer?.objectName ?? null} {runReplacement} {returnToObject} />
+	<StageBootPanels {boot} repair={bootRepair} transferName={studioFeature.ports.transferName()} {runReplacement} returnToObject={studioFeature.ports.returnToObject} />
 	<StageReplaceDialog {pendingReplacement} {runReplacement} cancelReplacement={projectSession.cancelReplacement} />
 
 </div>
