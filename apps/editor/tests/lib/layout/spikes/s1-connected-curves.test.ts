@@ -380,9 +380,8 @@ describe('T1 S1 connected curves evidence', () => {
 		expect(planResizeClosedWallRadius({ document: second.state.layout, wallId, radius: 6 })).toMatchObject({
 			kind: 'rejected', rejection: { code: 'not_closed_wall' }
 		});
-		expect(planWallFirstRoomMove(first.state.layout, roomId, [1, 0])).toMatchObject({
-			kind: 'rejected', rejection: { code: 'room_not_isolated' }
-		});
+		// C3 replaces the original S1 move refusal with physical-component translation.
+		expect(planWallFirstRoomMove(first.state.layout, roomId, [1, 0]).kind).toBe('success');
 		const layout = second.state.layout;
 		expect(planDuplicateIsolatedRoom(layout, { roomId, delta: [20, 0] }, capture('refused-copy'), layout.floor.id)).toMatchObject({
 			kind: 'rejected', rejection: { code: 'room_not_isolated' }

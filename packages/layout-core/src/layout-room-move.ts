@@ -500,9 +500,9 @@ export function planWallFirstRoomMove(
 		return reject('unknown_room', `Unknown room '${roomId}'`, [roomId]);
 	}
 
-	// Shared isolation policy in its group scope (amendment A): the
-	// movable unit is the connected Room group containing this Room.
-	const isolation = resolveIsolatedRoomGroupSubgraph(document, roomId);
+	// Round translation carries the complete attached physical component;
+	// ordinary Rooms retain the existing group isolation policy.
+	const isolation = resolveIsolatedRoomGroupSubgraph(document, roomId, { includePhysicalAttachments: true });
 	if (isolation.kind === 'rejected') {
 		return reject(
 			isolation.rejection.code,

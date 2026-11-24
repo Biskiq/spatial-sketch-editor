@@ -18,6 +18,7 @@ import {
 	planDuplicateIsolatedRoom,
 	planDuplicateRoom,
 	planResizeClosedWallRadius,
+	planResizeRoundRoomRadius,
 	planTranslateClosedWall,
 	planWallChain,
 	planWallFirstRoomMove,
@@ -651,4 +652,43 @@ describe('C1 · Translation and numerical consistency falsifiers', () => {
 		expect(nearOriginTiny.resolution.joins.every((j) => j.kind === 'miter')).toBe(true);
 		expect(nearOriginTiny.resolution.joins.every((j) => !j.interfaceSuppressed)).toBe(true);
 	});
+});
+
+describe('C3 · non-axis ring translation and copy', () => {
+	it('preserves a non-axis ring through repeated radius and world-translation cycles with reloads', () => {
+		let current = createTwoWallRoundRing([0, 0], [3, 4], true);
+		const roomId = current.rooms[0]!.id;
+		const seam = current.walls[0]!.startJunctionId;
+		const wallIds = current.rooms[0]!.boundary.map((ref) => ref.wallId);
+		const opening = planCreateWallFirstOpening(current, { wallId: wallIds[0]!, kind: 'window', offset: 1, width: 0.5 }, mintLayoutIdCapture(() => 'c3-phase-window'), current.floor.id);
+		if (opening.kind !== 'success') throw new Error(JSON.stringify(opening));
+		current = opening.document;
+		const reload = (doc: LayoutDocumentWallFirst) => {
+			const json = serializeWallFirstLayoutDocument(doc);
+			const parsed = parseWallFirstLayoutDocumentJson(json);
+			if (!parsed.success) throw new Error(JSON.stringify(parsed.issues));
+			expect(parsed.canonicalJson).toBe(json);
+			return parsed.document;
+		};
+		for (let i = 0; i < 20; i++) {
+			const radius = i % 2 ? 4.25 : 6.25;
+			const resize = planResizeRoundRoomRadius({ document: current, roomId, radius });
+			if (resize.kind !== 'success') throw new Error(JSON.stringify(resize));
+			current = reload(resize.document);
+			const outward = planWallFirstRoomMove(current, roomId, BIG_SHIFT);
+			if (outward.kind !== 'success') throw new Error(JSON.stringify(outward));
+			const high = reload(outward.document);
+			expect(high.rooms[0]!.round).toEqual({ center: BIG_SHIFT, radius });
+			const copy = planDuplicateRoom(high, { roomId, delta: [-BIG_SHIFT[0] + 25, -BIG_SHIFT[1]] }, mintLayoutIdCapture(() => `c3-phase-copy-${i}`), high.floor.id);
+			if (copy.kind !== 'success') throw new Error(JSON.stringify(copy));
+			expect(copy.document.rooms.find((room) => room.id === copy.createdRoomId)!.round).toEqual({ center: [25, 0], radius });
+			const back = planWallFirstRoomMove(high, roomId, [-BIG_SHIFT[0], -BIG_SHIFT[1]]);
+			if (back.kind !== 'success') throw new Error(JSON.stringify(back));
+			current = reload(back.document);
+			expect(current.rooms[0]!.round).toEqual({ center: [0, 0], radius });
+			expect(current.rooms[0]!.boundary.map((ref) => ref.wallId)).toEqual(wallIds);
+			expect(roundRoomSeamJunctionId(current.rooms[0]!, new Map(current.walls.map((wall) => [wall.id, wall])))).toBe(seam);
+			expect(current.openings[0]!.offset).toBeCloseTo(radius / 5, 8);
+		}
+	}, 120000);
 });
