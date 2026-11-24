@@ -984,6 +984,25 @@ export function planResizeRoundRoomRadius(options: {
 		allocator: guardedRadiusAllocator(allocationAttempted)
 	});
 	if ('rejection' in reconciliation) {
+		if (
+			reconciliation.rejection.code === 'space_outline_invalid' &&
+			reconciliation.rejection.roomIds !== undefined &&
+			reconciliation.rejection.roomIds.length === 2
+		) {
+			const [idA, idB] = reconciliation.rejection.roomIds;
+			const matched = spacePlacementIssues(preStructural.document).find(
+				(issue) =>
+					(issue.roomIds[0] === idA && issue.roomIds[1] === idB) ||
+					(issue.roomIds[0] === idB && issue.roomIds[1] === idA)
+			);
+			if (matched) {
+				return rejectRadius(
+					matched.code === 'space_contains_space' ? 'space_contains_space' : 'space_overlap',
+					matched.message,
+					{ roomIds: matched.roomIds }
+				);
+			}
+		}
 		return rejectRadius(
 			reconciliation.rejection.code === 'space_outline_invalid'
 				? 'space_outline_invalid'

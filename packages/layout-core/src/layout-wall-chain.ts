@@ -546,7 +546,6 @@ export function planWallChain(options: WallChainPlanOptions): WallChainPlan {
 }
 
 function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
-	const allocator = createCapturedWallChainAllocator(options.capture);
 	const thickness = options.thickness ?? WALL_CHAIN_DEFAULTS.thickness;
 	const reject = (rejection: WallChainRejection): WallChainPlan => ({ kind: 'rejected', rejection });
 	const levelIssue = layoutWorkingLevelIssue(options.baseline, options.levelId);
@@ -756,142 +755,206 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 	}
 
 	if (targetedClosedWallIds.size > 0) {
-		const closedWallId = [...targetedClosedWallIds][0]!;
-		const closedWall = baselineWallsById.get(closedWallId)!;
-		const roundRoom = findEnclosingRoundRoomForWall(options.baseline, closedWallId);
-		if (!roundRoom) {
-			return reject({
-				code: 'closed_wall_isolated',
-				message: `Closed Wall '${closedWallId}' has no enclosing Round Room`,
-				wallIds: [closedWallId]
-			});
-		}
-		const cert = certifyRoundRoom(options.baseline, roundRoom);
-		if (cert.kind === 'invalid') {
-			return reject({
-				code: 'invalid_candidate_document',
-				message: cert.issue.message,
-				wallIds: [closedWallId]
-			});
-		}
-		if (closedWall.centerline.kind !== 'cubic-chain') {
-			return reject({
-				code: 'invalid_candidate_document',
-				message: `Closed Wall '${closedWallId}' must be a cubic-chain`,
-				wallIds: [closedWallId]
-			});
-		}
-		const seamPoint = cert.certified.seamPoint;
-		const closedChain = {
-			startPoint: seamPoint,
-			endPoint: seamPoint,
-			knots: closedWall.centerline.knots,
-			spans: closedWall.centerline.spans
-		};
-		const closedLength = wallCurveChainLength(closedChain);
-		const safeCuts = enumerateClosedWallSafeCutStations(
-			options.baseline.openings,
-			closedWallId,
-			closedLength
-		);
-		if (safeCuts.seamOccupied) {
-			return reject({
-				code: 'noding_rejected',
-				message: `Opening '${safeCuts.seamBlockingOpeningIds.join(', ')}' spans the seam of closed Wall '${closedWallId}'; move it off the seam before attaching`,
-				wallIds: [closedWallId]
-			});
-		}
-		const sampledClosed = wallCenterlineSamples(closedWall, seamPoint, seamPoint, 'forward');
-		if (!sampledClosed) {
-			return reject({
-				code: 'noding_rejected',
-				message: `Closed Wall '${closedWallId}' cannot be sampled`,
-				wallIds: [closedWallId]
-			});
-		}
-
+		const sortedClosedWallIds = [...targetedClosedWallIds].sort();
 		type SnappedClosedPoint =
 			| { readonly pointIndex: number; readonly kind: 'seam' }
 			| { readonly pointIndex: number; readonly kind: 'interior'; readonly split: ResolvedWallSplitResult };
-		const snappedPoints: SnappedClosedPoint[] = [];
-		const closedSnappedIndices = new Set<number>();
-		for (const [pointIndex, wallId] of declaredHostByPointIndex) {
-			if (wallId === closedWallId) closedSnappedIndices.add(pointIndex);
-		}
-		for (const [pointIndex, junctionId] of declaredAnchorByPointIndex) {
-			if (junctionId === closedWall.startJunctionId) closedSnappedIndices.add(pointIndex);
-		}
+		type PreparedClosedHost = {
+			readonly closedWall: LayoutWall;
+			readonly roundRoomId: string;
+			readonly seamPoint: LayoutVec2;
+			readonly closedLength: number;
+			readonly snappedPoints: readonly SnappedClosedPoint[];
+			readonly stationCandidates: readonly (readonly ResolvedWallSplitResult[])[];
+		};
+		const preparedHosts: PreparedClosedHost[] = [];
 
-		for (const pointIndex of [...closedSnappedIndices].sort((a, b) => a - b)) {
-			const pt = resolved[pointIndex]!.point;
-			if (
-				declaredAnchorByPointIndex.get(pointIndex) === closedWall.startJunctionId ||
-				coincidesAsJunction(pt, seamPoint)
-			) {
-				snappedPoints.push({ pointIndex, kind: 'seam' });
-				continue;
-			}
-			const proj = projectPointToSampledSegment(pt, sampledClosed);
-			const splitRes = resolveWallCurveSplit(closedChain, proj.distance);
-			if (splitRes.kind === 'rejected') {
-				if (splitRes.code === 'split_at_endpoint') {
-					snappedPoints.push({ pointIndex, kind: 'seam' });
-					continue;
-				}
+		for (const closedWallId of sortedClosedWallIds) {
+			const closedWall = baselineWallsById.get(closedWallId)!;
+			const roundRoom = findEnclosingRoundRoomForWall(options.baseline, closedWallId);
+			if (!roundRoom) {
 				return reject({
-					code: 'noding_rejected',
-					message: splitRes.message,
+					code: 'closed_wall_isolated',
+					message: `Closed Wall '${closedWallId}' has no enclosing Round Room`,
 					wallIds: [closedWallId]
 				});
 			}
-			snappedPoints.push({ pointIndex, kind: 'interior', split: splitRes.result });
-		}
-
-		const uniqueInteriorCuts: ResolvedWallSplitResult[] = [];
-		const interiorEntries = snappedPoints
-			.filter((entry): entry is Extract<SnappedClosedPoint, { kind: 'interior' }> => entry.kind === 'interior')
-			.sort((a, b) => a.split.distance - b.split.distance);
-		for (const entry of interiorEntries) {
-			if (!uniqueInteriorCuts.some((existing) => coincidesAsJunction(existing.point, entry.split.point))) {
-				uniqueInteriorCuts.push(entry.split);
-			}
-		}
-
-		if (uniqueInteriorCuts.length === 0) {
-			let firstRejection: WallChainPlan | null = null;
-			for (const candidateStation of safeCuts.candidates) {
-				const splitRes = resolveWallCurveSplit(closedChain, candidateStation);
-				if (splitRes.kind !== 'resolved') continue;
-				if (coincidesAsJunction(splitRes.result.point, seamPoint)) continue;
-				const attempt = executeWallChainCandidate(options, allocator, thickness, height, resolved, legEndpoints, close, arcLeg, declaredHostByPointIndex, {
-					closedWall,
-					roundRoomId: roundRoom.id,
-					seamPoint,
-					closedLength,
-					stations: [splitRes.result],
-					snappedPoints
+			const cert = certifyRoundRoom(options.baseline, roundRoom);
+			if (cert.kind === 'invalid') {
+				return reject({
+					code: 'invalid_candidate_document',
+					message: cert.issue.message,
+					wallIds: [closedWallId]
 				});
-				if (attempt.kind === 'success') return attempt;
-				firstRejection ??= attempt;
 			}
-			return firstRejection ?? reject({
-				code: 'noding_rejected',
-				message: `No admissible second cut found to attach at seam of closed Wall '${closedWallId}'`,
-				wallIds: [closedWallId]
+			if (closedWall.centerline.kind !== 'cubic-chain') {
+				return reject({
+					code: 'invalid_candidate_document',
+					message: `Closed Wall '${closedWallId}' must be a cubic-chain`,
+					wallIds: [closedWallId]
+				});
+			}
+			const seamPoint = cert.certified.seamPoint;
+			const closedChain = {
+				startPoint: seamPoint,
+				endPoint: seamPoint,
+				knots: closedWall.centerline.knots,
+				spans: closedWall.centerline.spans
+			};
+			const closedLength = wallCurveChainLength(closedChain);
+			const safeCuts = enumerateClosedWallSafeCutStations(
+				options.baseline.openings,
+				closedWallId,
+				closedLength
+			);
+			if (safeCuts.seamOccupied) {
+				return reject({
+					code: 'noding_rejected',
+					message: `Opening '${safeCuts.seamBlockingOpeningIds.join(', ')}' spans the seam of closed Wall '${closedWallId}'; move it off the seam before attaching`,
+					wallIds: [closedWallId]
+				});
+			}
+			const sampledClosed = wallCenterlineSamples(closedWall, seamPoint, seamPoint, 'forward');
+			if (!sampledClosed) {
+				return reject({
+					code: 'noding_rejected',
+					message: `Closed Wall '${closedWallId}' cannot be sampled`,
+					wallIds: [closedWallId]
+				});
+			}
+
+			const snappedPoints: SnappedClosedPoint[] = [];
+			const closedSnappedIndices = new Set<number>();
+			for (const [pointIndex, wallId] of declaredHostByPointIndex) {
+				if (wallId === closedWallId) closedSnappedIndices.add(pointIndex);
+			}
+			for (const [pointIndex, junctionId] of declaredAnchorByPointIndex) {
+				if (junctionId === closedWall.startJunctionId) closedSnappedIndices.add(pointIndex);
+			}
+
+			for (const pointIndex of [...closedSnappedIndices].sort((a, b) => a - b)) {
+				const pt = resolved[pointIndex]!.point;
+				if (
+					declaredAnchorByPointIndex.get(pointIndex) === closedWall.startJunctionId ||
+					coincidesAsJunction(pt, seamPoint)
+				) {
+					snappedPoints.push({ pointIndex, kind: 'seam' });
+					continue;
+				}
+				const proj = projectPointToSampledSegment(pt, sampledClosed);
+				const splitRes = resolveWallCurveSplit(closedChain, proj.distance);
+				if (splitRes.kind === 'rejected') {
+					if (splitRes.code === 'split_at_endpoint') {
+						snappedPoints.push({ pointIndex, kind: 'seam' });
+						continue;
+					}
+					return reject({
+						code: 'noding_rejected',
+						message: splitRes.message,
+						wallIds: [closedWallId]
+					});
+				}
+				snappedPoints.push({ pointIndex, kind: 'interior', split: splitRes.result });
+			}
+
+			const uniqueInteriorCuts: ResolvedWallSplitResult[] = [];
+			const interiorEntries = snappedPoints
+				.filter((entry): entry is Extract<SnappedClosedPoint, { kind: 'interior' }> => entry.kind === 'interior')
+				.sort((a, b) => a.split.distance - b.split.distance);
+			for (const entry of interiorEntries) {
+				if (!uniqueInteriorCuts.some((existing) => coincidesAsJunction(existing.point, entry.split.point))) {
+					uniqueInteriorCuts.push(entry.split);
+				}
+			}
+
+			let stationCandidates: (readonly ResolvedWallSplitResult[])[];
+			if (uniqueInteriorCuts.length > 0) {
+				stationCandidates = [uniqueInteriorCuts];
+			} else {
+				stationCandidates = [];
+				for (const candidateStation of safeCuts.candidates) {
+					const splitRes = resolveWallCurveSplit(closedChain, candidateStation);
+					if (splitRes.kind !== 'resolved') continue;
+					if (coincidesAsJunction(splitRes.result.point, seamPoint)) continue;
+					stationCandidates.push([splitRes.result]);
+				}
+				if (stationCandidates.length === 0) {
+					return reject({
+						code: 'noding_rejected',
+						message: `No admissible second cut found to attach at seam of closed Wall '${closedWallId}'`,
+						wallIds: [closedWallId]
+					});
+				}
+			}
+
+			preparedHosts.push({
+				closedWall,
+				roundRoomId: roundRoom.id,
+				seamPoint,
+				closedLength,
+				snappedPoints,
+				stationCandidates
 			});
 		}
 
-		return executeWallChainCandidate(options, allocator, thickness, height, resolved, legEndpoints, close, arcLeg, declaredHostByPointIndex, {
-			closedWall,
-			roundRoomId: roundRoom.id,
-			seamPoint,
-			closedLength,
-			stations: uniqueInteriorCuts,
-			snappedPoints
+		// Enumerate combinations ordered by increasing index sum so `[0, 0, ...]`
+		// (opposite station on each seam-only host) is tried first, capped at 64.
+		const MAX_SEAM_CANDIDATE_COMBINATIONS = 64;
+		const maxSum = preparedHosts.reduce((sum, host) => sum + host.stationCandidates.length - 1, 0);
+		const combinations: number[][] = [];
+		const collectWithSum = (hostIndex: number, remainingSum: number, current: number[]): void => {
+			if (combinations.length >= MAX_SEAM_CANDIDATE_COMBINATIONS) return;
+			if (hostIndex === preparedHosts.length - 1) {
+				const maxIdx = preparedHosts[hostIndex]!.stationCandidates.length - 1;
+				if (remainingSum >= 0 && remainingSum <= maxIdx) {
+					combinations.push([...current, remainingSum]);
+				}
+				return;
+			}
+			const maxIdx = Math.min(remainingSum, preparedHosts[hostIndex]!.stationCandidates.length - 1);
+			for (let idx = 0; idx <= maxIdx; idx += 1) {
+				current.push(idx);
+				collectWithSum(hostIndex + 1, remainingSum - idx, current);
+				current.pop();
+				if (combinations.length >= MAX_SEAM_CANDIDATE_COMBINATIONS) return;
+			}
+		};
+		for (let targetSum = 0; targetSum <= maxSum && combinations.length < MAX_SEAM_CANDIDATE_COMBINATIONS; targetSum += 1) {
+			collectWithSum(0, targetSum, []);
+		}
+
+		let firstRejection: WallChainPlan | null = null;
+		for (const combo of combinations) {
+			const closedSpecs: ClosedToRingSpec[] = preparedHosts.map((host, hostIdx) => ({
+				closedWall: host.closedWall,
+				roundRoomId: host.roundRoomId,
+				seamPoint: host.seamPoint,
+				closedLength: host.closedLength,
+				stations: host.stationCandidates[combo[hostIdx]!]!,
+				snappedPoints: host.snappedPoints
+			}));
+			const attempt = executeWallChainCandidate(
+				options,
+				thickness,
+				height,
+				resolved,
+				legEndpoints,
+				close,
+				arcLeg,
+				declaredHostByPointIndex,
+				closedSpecs
+			);
+			if (attempt.kind === 'success') return attempt;
+			firstRejection ??= attempt;
+		}
+		return firstRejection ?? reject({
+			code: 'noding_rejected',
+			message: `No admissible second cut found to attach at seam of closed Wall '${sortedClosedWallIds[0]!}'`,
+			wallIds: sortedClosedWallIds
 		});
 	}
 
-	return executeWallChainCandidate(options, allocator, thickness, height, resolved, legEndpoints, close, arcLeg, declaredHostByPointIndex, null);
+	return executeWallChainCandidate(options, thickness, height, resolved, legEndpoints, close, arcLeg, declaredHostByPointIndex, []);
 }
 
 type ClosedToRingSpec = {
@@ -908,7 +971,6 @@ type ClosedToRingSpec = {
 
 function executeWallChainCandidate(
 	options: WallChainPlanOptions,
-	allocator: WallChainIdAllocator,
 	thickness: number,
 	height: number,
 	resolvedInput: ReadonlyArray<{ junctionId: string | null; point: LayoutVec2 }>,
@@ -916,8 +978,9 @@ function executeWallChainCandidate(
 	close: boolean,
 	arcLeg: { readonly pointIndex: number; readonly centerline: LayoutWall['centerline'] } | null,
 	declaredHostByPointIndexInput: ReadonlyMap<number, string>,
-	closedSpec: ClosedToRingSpec | null
+	closedSpecs: readonly ClosedToRingSpec[]
 ): WallChainPlan {
+	const allocator = createCapturedWallChainAllocator(options.capture);
 	const reject = (rejection: WallChainRejection): WallChainPlan => ({ kind: 'rejected', rejection });
 	const resolved = resolvedInput.map((entry) => ({
 		junctionId: entry.junctionId,
@@ -933,10 +996,11 @@ function executeWallChainCandidate(
 	const closedPartitionSurfaceLineage: LayoutSurfaceLineage[number][] = [];
 	const closedPartitionJunctionCorr: RoundOperationJunctionCorrespondence[] = [];
 	const closedPartitionOpeningCorr: RoundOperationOpeningCorrespondence[] = [];
-	let closedPartitionWallCorr: RoundOperationCorrespondence['walls'][number] | null = null;
+	const closedPartitionWallCorrs: RoundOperationCorrespondence['walls'][number][] = [];
+	const regionWallSplits = new Map<string, readonly string[]>();
 	const closedHostFragmentIds: string[] = [];
 
-	if (closedSpec !== null) {
+	for (const closedSpec of closedSpecs) {
 		const { closedWall, roundRoomId, seamPoint, closedLength, stations, snappedPoints } = closedSpec;
 		const seamJunctionId = closedWall.startJunctionId;
 		const segments = partitionClosedWallChainAtStations({
@@ -1039,17 +1103,14 @@ function executeWallChainCandidate(
 				: r
 		);
 		const allFragIds = fragmentWalls.map((w) => w.id);
-		candidate.regions = carryRegionWallIntents(
-			candidate.regions,
-			new Map([[closedWall.id, allFragIds]])
-		);
+		regionWallSplits.set(closedWall.id, allFragIds);
 		splitWallIds.add(closedWall.id);
 		closedHostFragmentIds.push(...allFragIds);
-		closedPartitionWallCorr = {
+		closedPartitionWallCorrs.push({
 			kind: 'subdivision',
 			sourceWallId: closedWall.id,
 			fragmentWallIds: allFragIds
-		};
+		});
 
 		// Bind snapped draft points to the resolved rim Junctions and remove closed-Wall host declarations.
 		for (const snapped of snappedPoints) {
@@ -1063,6 +1124,9 @@ function executeWallChainCandidate(
 			}
 			declaredHostByPointIndex.delete(snapped.pointIndex);
 		}
+	}
+	if (regionWallSplits.size > 0) {
+		candidate.regions = carryRegionWallIntents(candidate.regions, regionWallSplits);
 	}
 
 	// Allocate one junction per distinct unresolved chain point (resolved
@@ -1421,10 +1485,10 @@ function executeWallChainCandidate(
 		}
 	}
 	const roundCorrespondence: RoundOperationCorrespondence | undefined =
-		closedPartitionWallCorr !== null || clearedRoundRoomIds.length > 0
+		closedPartitionWallCorrs.length > 0 || clearedRoundRoomIds.length > 0
 			? {
 					rooms: roundRoomCorr,
-					walls: closedPartitionWallCorr ? [closedPartitionWallCorr] : [],
+					walls: closedPartitionWallCorrs,
 					junctions: closedPartitionJunctionCorr,
 					openings: closedPartitionOpeningCorr
 				}
@@ -1546,25 +1610,48 @@ function validateEndpointHostSnaps(input: {
 	// (An UNRELATED component the chain merely crosses stays untouched: this check
 	// reads declarations only, never the draft geometry.)
 	const declarationComponentKeys = new Set<string | symbol>();
+	const targetedClosedComponentKeys = new Set<string | symbol>();
+	const wallByIdMap = new Map(baseline.walls.map((w) => [w.id, w] as const));
 	for (const wallId of declaredHostByPointIndex.values()) {
 		const key = componentKeyByWallId.get(wallId);
-		if (key !== undefined) declarationComponentKeys.add(key);
+		if (key !== undefined) {
+			declarationComponentKeys.add(key);
+			const w = wallByIdMap.get(wallId);
+			if (w && isClosedWall(w)) targetedClosedComponentKeys.add(key);
+		}
 	}
 	for (const junctionId of declaredJunctionByPointIndex.values()) {
 		const key = componentKeyByJunctionId.get(junctionId);
-		if (key !== undefined) declarationComponentKeys.add(key);
+		if (key !== undefined) {
+			declarationComponentKeys.add(key);
+			for (const w of baseline.walls) {
+				if (isClosedWall(w) && w.startJunctionId === junctionId) {
+					targetedClosedComponentKeys.add(key);
+				}
+			}
+		}
 	}
 	if (declarationComponentKeys.size > 1) {
-		// F3 — one open Space is one authored group even when its surviving Walls
-		// sit in several topology components (an opposite-Wall erase). A chain that
-		// declares only that Space's own boundary Junctions/Walls re-closes the
-		// Space; it is not the deferred class-4 join of two independent structures.
-		const declaredJunctionIds = [...declaredJunctionByPointIndex.values()];
-		const declaredHostWallIds = [...declaredHostByPointIndex.values()];
-		if (!declarationsRecloseOneOpenSpace(baseline, declaredJunctionIds, declaredHostWallIds)) {
-			return invalid(
-				'Chain declarations name more than one connected component; joining independent groups is a deliberate join operation'
-			);
+		const nonClosedComponentKeys = [...declarationComponentKeys].filter(
+			(key) => !targetedClosedComponentKeys.has(key)
+		);
+		// C2 multi-host attachment: explicitly targeted closed Walls are isolated
+		// single-Wall components before first attachment, so bridging O–O (or R–O)
+		// in one stroke is admitted whenever at most one non-closed component is
+		// involved. Two or more independent non-closed groups still require either
+		// re-closing one open Space (F3) or the deferred class-4 join (D-10).
+		if (nonClosedComponentKeys.length > 1) {
+			// F3 — one open Space is one authored group even when its surviving Walls
+			// sit in several topology components (an opposite-Wall erase). A chain that
+			// declares only that Space's own boundary Junctions/Walls re-closes the
+			// Space; it is not the deferred class-4 join of two independent structures.
+			const declaredJunctionIds = [...declaredJunctionByPointIndex.values()];
+			const declaredHostWallIds = [...declaredHostByPointIndex.values()];
+			if (!declarationsRecloseOneOpenSpace(baseline, declaredJunctionIds, declaredHostWallIds)) {
+				return invalid(
+					'Chain declarations name more than one connected component; joining independent groups is a deliberate join operation'
+				);
+			}
 		}
 	}
 

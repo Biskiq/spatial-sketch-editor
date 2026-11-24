@@ -11,6 +11,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	CLOSED_WALL_CIRCLE_ACCURACY,
 	ROUND_ROOM_MEMBER_EDIT_MESSAGE,
+	certifyRoundRoom,
 	compileWallFirstLayoutGeometry,
 	createEmptyWallFirstLayoutDocument,
 	createWallFirstArchitectureVerdictScope,
@@ -60,6 +61,7 @@ import {
 	roundRoomSeamJunctionId,
 	serializeWallFirstLayoutDocument,
 	validateWallFirstLayoutDocument,
+	validateWallFirstTopology,
 	verifySweptBoundsGeometryDelta,
 	wallCenterlineCubics,
 	wallCubicChain,
@@ -403,6 +405,292 @@ describe('T1 Wave 4 · C2 Topology and Radius Core', () => {
 				levelId: rot.document.floor.id
 			});
 			expect(undeclared.kind).toBe('rejected');
+
+			// Attach to an existing non-seam rim Junction on an open-arc ring.
+			const ring = createConnectedRing({ seed: 'existing-rim-attach' });
+			const nonSeamRimId = ring.rimJunctionIds.find((id) => id !== ring.seamId)!;
+			const nonSeamRimPt = ring.document.junctions.find((j) => j.id === nonSeamRimId)!.point;
+			const rimAttached = expectSuccess(
+				planWallSegment({
+					baseline: ring.document,
+					start: nonSeamRimPt,
+					end: [nonSeamRimPt[0] + 4, nonSeamRimPt[1] + 4],
+					endpointJunctionSnaps: [{ pointIndex: 0, junctionId: nonSeamRimId }],
+					capture: cap('rim-attach-existing'),
+					levelId: ring.document.floor.id
+				})
+			);
+			expect(rimAttached.startJunctionId).toBe(nonSeamRimId);
+			expect(rimAttached.document.rooms.find((r) => r.id === ring.roomId)!.round).toEqual({
+				center: [0, 0],
+				radius: 5
+			});
+
+			// Independent undeclared overlap on an open-arc ring leaves the ring untouched.
+			const ringBeforeJson = serializeWallFirstLayoutDocument(ring.document);
+			const ringWallCount = ring.document.walls.length;
+			const independentOnRing = expectSuccess(
+				planWallSegment({
+					baseline: ring.document,
+					start: [-10, 2],
+					end: [10, 2],
+					capture: cap('indep-ring-cross'),
+					levelId: ring.document.floor.id
+				})
+			);
+			expect(independentOnRing.splitWallIds).toEqual([]);
+			expect(independentOnRing.document.walls).toHaveLength(ringWallCount + 1);
+			expect(serializeWallFirstLayoutDocument(ring.document)).toBe(ringBeforeJson);
+
+			// All-rekey falsifier: start-side Wall keeps rot.wallId at seam; rekeying every Wall fails Round/seam identity.
+			const singleAttach = expectSuccess(
+				planWallSegment({
+					baseline: rot.document,
+					start: [0, 9],
+					end: [0, 5],
+					endpointHostWallId: rot.wallId,
+					capture: cap('rekey-falsifier'),
+					levelId: rot.document.floor.id
+				})
+			);
+			const attachedRoom = singleAttach.document.rooms.find((r) => r.id === rot.roomId)!;
+			expect(attachedRoom.boundary[0]!.wallId).toBe(rot.wallId);
+			const allRekeyed: LayoutDocumentWallFirst = {
+				...singleAttach.document,
+				walls: singleAttach.document.walls.map((w) =>
+					w.id === rot.wallId ? { ...w, id: 'rekeyed-wall-id' } : w
+				),
+				rooms: singleAttach.document.rooms.map((r) => ({
+					...r,
+					boundary: r.boundary.map((ref) =>
+						ref.wallId === rot.wallId ? { ...ref, wallId: 'rekeyed-wall-id' } : ref
+					)
+				}))
+			};
+			expect(allRekeyed.rooms.find((r) => r.id === rot.roomId)!.boundary[0]!.wallId).not.toBe(rot.wallId);
+			const wallCorr = singleAttach.roundCorrespondence?.walls[0];
+			expect(wallCorr?.kind).toBe('subdivision');
+			if (wallCorr?.kind === 'subdivision') {
+				expect(wallCorr.fragmentWallIds[0]).toBe(rot.wallId);
+			}
+		});
+
+		it('connects two isolated Round Rooms in one stroke (O-O), derives a 3rd ordinary Room on O=O, resizes either, and refuses multi-host failures atomically', () => {
+			// Two isolated circular Rooms: O1 at (0, 0) r=5, O2 at (16, 0) r=5.
+			const rot1 = createRotunda({ center: [0, 0], radius: 5, seed: 'oo-rot1' });
+			const rot2Create = expectSuccess(
+				planCreateCircularRoom({
+					baseline: rot1.document,
+					center: [16, 0],
+					rim: [21, 0],
+					thickness: 0.2,
+					height: 3,
+					capture: cap('oo-rot2'),
+					levelId: rot1.document.floor.id,
+					roomNamePrefix: 'Rotunda'
+				})
+			);
+			const rot2Id = rot2Create.createdRoomIds[0]!;
+			const rot2WallId = rot2Create.wallId;
+			const rot2SeamId = rot2Create.junctionId;
+
+			// Add V1 Region with intendedGaps referencing both isolated closed Walls.
+			const withRegion = expectSuccess(
+				planCreateRegion({
+					baseline: rot2Create.document,
+					capture: cap('oo-region'),
+					intent: {
+						role: 'floor',
+						footprint: [
+							[-10, -10],
+							[26, -10],
+							[26, 10],
+							[-10, 10]
+						],
+						elevation: 0,
+						thickness: 0.1
+					}
+				})
+			).document;
+			const twoCircleDoc: LayoutDocumentWallFirst = {
+				...withRegion,
+				regions: withRegion.regions.map((r) => ({ ...r, intendedGaps: [rot1.wallId, rot2WallId] }))
+			};
+
+			// 1. O–O in one stroke via planWallSegment (both hosts partitioned atomically).
+			// Attach at ~45 deg on O1 and ~135 deg on O2 so the bridge meets both circles cleanly without tangent grazing.
+			const d45 = 5 * Math.SQRT1_2;
+			const ooPlan = expectSuccess(
+				planWallSegment({
+					baseline: twoCircleDoc,
+					start: [d45, d45],
+					end: [16 - d45, d45],
+					endpointHostSnaps: [
+						{ pointIndex: 0, wallId: rot1.wallId },
+						{ pointIndex: 1, wallId: rot2WallId }
+					],
+					capture: cap('oo-bridge-1'),
+					levelId: twoCircleDoc.floor.id
+				})
+			);
+			expect(ooPlan.document.rooms).toHaveLength(2);
+			const ooR1 = ooPlan.document.rooms.find((r) => r.id === rot1.roomId)!;
+			const ooR2 = ooPlan.document.rooms.find((r) => r.id === rot2Id)!;
+			expect(ooR1.round).toEqual({ center: [0, 0], radius: 5 });
+			expect(ooR2.round).toEqual({ center: [16, 0], radius: 5 });
+			expect(ooR1.boundary).toHaveLength(2);
+			expect(ooR2.boundary).toHaveLength(2);
+			expect(ooR1.boundary[0]!.wallId).toBe(rot1.wallId);
+			expect(ooR2.boundary[0]!.wallId).toBe(rot2WallId);
+			expect(roundRoomSeamJunctionId(ooR1, new Map(ooPlan.document.walls.map((w) => [w.id, w])))).toBe(rot1.seamId);
+			expect(roundRoomSeamJunctionId(ooR2, new Map(ooPlan.document.walls.map((w) => [w.id, w])))).toBe(rot2SeamId);
+			expect(ooPlan.roundCorrespondence?.walls).toHaveLength(2);
+			expect(ooPlan.surfaceLineage.length).toBeGreaterThanOrEqual(2);
+			const ooGaps = ooPlan.document.regions[0]!.intendedGaps;
+			expect(ooGaps).toEqual(expect.arrayContaining([rot1.wallId, rot2WallId]));
+			expect(ooGaps.length).toBe(4);
+			expect(validateWallFirstLayoutDocument(ooPlan.document).success).toBe(true);
+			expect(validateWallFirstTopology(ooPlan.document)).toBeUndefined();
+			expect(hasBlockingLayoutIssues(compileWallFirstLayoutGeometry(ooPlan.document).issues)).toBe(false);
+
+			// Also verify seam-to-seam O–O in one stroke when seams face each other without tangent fold.
+			const rotA = createRotunda({ center: [0, 0], radius: 5, seed: 'oo-seam-a' });
+			const rotBCreate = expectSuccess(
+				planCreateCircularRoom({
+					baseline: rotA.document,
+					center: [16, 10],
+					rim: [11, 10],
+					capture: cap('oo-seam-b'),
+					levelId: rotA.document.floor.id,
+					roomNamePrefix: 'Rotunda'
+				})
+			);
+			const ooSeamPlan = expectSuccess(
+				planWallSegment({
+					baseline: rotBCreate.document,
+					start: [5, 0],
+					end: [11, 10],
+					endpointJunctionSnaps: [
+						{ pointIndex: 0, junctionId: rotA.seamId },
+						{ pointIndex: 1, junctionId: rotBCreate.junctionId }
+					],
+					capture: cap('oo-seam-bridge'),
+					levelId: rotBCreate.document.floor.id
+				})
+			);
+			expect(ooSeamPlan.document.rooms).toHaveLength(2);
+			expect(ooSeamPlan.document.rooms.every((r) => r.round !== undefined && r.boundary.length === 2)).toBe(true);
+
+			// 2. O=O: adding a second connecting Wall derives a 3rd ordinary Room naturally.
+			const ooR1SecondArcId = ooR1.boundary[1]!.wallId;
+			const ooR2SecondArcId = ooR2.boundary[1]!.wallId;
+			const oeqoPlan = expectSuccess(
+				planWallSegment({
+					baseline: ooPlan.document,
+					start: [d45, -d45],
+					end: [16 - d45, -d45],
+					endpointHostSnaps: [
+						{ pointIndex: 0, wallId: ooR1SecondArcId },
+						{ pointIndex: 1, wallId: ooR2SecondArcId }
+					],
+					capture: cap('oeqo-bridge-2'),
+					levelId: ooPlan.document.floor.id
+				})
+			);
+			expect(oeqoPlan.document.rooms).toHaveLength(3);
+			const derivedMiddle = oeqoPlan.document.rooms.find((r) => r.id !== rot1.roomId && r.id !== rot2Id)!;
+			expect(derivedMiddle.round).toBeUndefined();
+			expect(oeqoPlan.document.rooms.find((r) => r.id === rot1.roomId)!.round).toEqual({ center: [0, 0], radius: 5 });
+			expect(oeqoPlan.document.rooms.find((r) => r.id === rot2Id)!.round).toEqual({ center: [16, 0], radius: 5 });
+			expect(validateWallFirstLayoutDocument(oeqoPlan.document).success).toBe(true);
+			expect(validateWallFirstTopology(oeqoPlan.document)).toBeUndefined();
+			expect(hasBlockingLayoutIssues(compileWallFirstLayoutGeometry(oeqoPlan.document).issues)).toBe(false);
+
+			// 3. Resize either Round Room in O=O updates connecting Walls & derived 3rd Room cleanly.
+			const resized1 = expectSuccess(
+				planResizeRoundRoomRadius({ document: oeqoPlan.document, roomId: rot1.roomId, radius: 5.5 })
+			);
+			expect(resized1.document.rooms).toHaveLength(3);
+			expect(resized1.document.rooms.find((r) => r.id === rot1.roomId)!.round).toEqual({ center: [0, 0], radius: 5.5 });
+			expect(resized1.document.rooms.find((r) => r.id === rot2Id)!.round).toEqual({ center: [16, 0], radius: 5 });
+			expect(resized1.document.rooms.find((r) => r.id === derivedMiddle.id)!.round).toBeUndefined();
+
+			const resized2 = expectSuccess(
+				planResizeRoundRoomRadius({ document: resized1.document, roomId: rot2Id, radius: 4.5 })
+			);
+			expect(resized2.document.rooms).toHaveLength(3);
+			expect(resized2.document.rooms.find((r) => r.id === rot2Id)!.round).toEqual({ center: [16, 0], radius: 4.5 });
+			expect(resized2.document.rooms.find((r) => r.id === derivedMiddle.id)).toBeDefined();
+			expect(validateWallFirstLayoutDocument(resized2.document).success).toBe(true);
+			expect(validateWallFirstTopology(resized2.document)).toBeUndefined();
+			expect(hasBlockingLayoutIssues(compileWallFirstLayoutGeometry(resized2.document).issues)).toBe(false);
+
+			// Excessive resize that would collide with O2 refuses atomically leaving baseline untouched.
+			const beforeCollisionJson = serializeWallFirstLayoutDocument(resized2.document);
+			const collideResize = planResizeRoundRoomRadius({
+				document: resized2.document,
+				roomId: rot1.roomId,
+				radius: 12
+			});
+			expect(collideResize.kind).toBe('rejected');
+			expect(serializeWallFirstLayoutDocument(resized2.document)).toBe(beforeCollisionJson);
+
+			// 4. Multi-host atomic failures: host 1 is clean, host 2 fails -> whole operation refuses & host 1 stays closed.
+			const rot2Len = wallFirstWallLength(twoCircleDoc, rot2WallId)!;
+			const seamBlockedDoc = expectSuccess(
+				planCreateWallFirstOpening(
+					twoCircleDoc,
+					{ wallId: rot2WallId, kind: 'door', offset: rot2Len - 0.4, width: 0.8, height: 2.1, sillHeight: 0 },
+					cap('oo-seam-block-op'),
+					twoCircleDoc.floor.id
+				)
+			).document;
+			const beforeSeamBlockJson = serializeWallFirstLayoutDocument(seamBlockedDoc);
+			const seamBlockedAttempt = planWallSegment({
+				baseline: seamBlockedDoc,
+				start: [0, 5],
+				end: [16, 5],
+				endpointHostSnaps: [
+					{ pointIndex: 0, wallId: rot1.wallId },
+					{ pointIndex: 1, wallId: rot2WallId }
+				],
+				capture: cap('oo-seam-block-try'),
+				levelId: seamBlockedDoc.floor.id
+			});
+			expect(seamBlockedAttempt).toMatchObject({ kind: 'rejected', rejection: { code: 'noding_rejected' } });
+			if (seamBlockedAttempt.kind === 'rejected') {
+				expect(seamBlockedAttempt.rejection.wallIds).toContain(rot2WallId);
+			}
+			expect(serializeWallFirstLayoutDocument(seamBlockedDoc)).toBe(beforeSeamBlockJson);
+			expect(isClosedWall(seamBlockedDoc.walls.find((w) => w.id === rot1.wallId)!)).toBe(true);
+
+			// Host 2 Opening interior cut at (16, 5) = 1/4 circumference = rot2Len * 0.25.
+			const opInteriorDoc = expectSuccess(
+				planCreateWallFirstOpening(
+					twoCircleDoc,
+					{ wallId: rot2WallId, kind: 'window', offset: rot2Len * 0.25 - 0.5, width: 1.0, height: 1.2, sillHeight: 1 },
+					cap('oo-int-block-op'),
+					twoCircleDoc.floor.id
+				)
+			).document;
+			const beforeIntBlockJson = serializeWallFirstLayoutDocument(opInteriorDoc);
+			const intBlockedAttempt = planWallSegment({
+				baseline: opInteriorDoc,
+				start: [0, 5],
+				end: [16, 5],
+				endpointHostSnaps: [
+					{ pointIndex: 0, wallId: rot1.wallId },
+					{ pointIndex: 1, wallId: rot2WallId }
+				],
+				capture: cap('oo-int-block-try'),
+				levelId: opInteriorDoc.floor.id
+			});
+			expect(intBlockedAttempt).toMatchObject({ kind: 'rejected', rejection: { code: 'noding_rejected' } });
+			if (intBlockedAttempt.kind === 'rejected') {
+				expect(intBlockedAttempt.rejection.wallIds).toContain(rot2WallId);
+			}
+			expect(serializeWallFirstLayoutDocument(opInteriorDoc)).toBe(beforeIntBlockJson);
+			expect(isClosedWall(opInteriorDoc.walls.find((w) => w.id === rot1.wallId)!)).toBe(true);
 		});
 	});
 
@@ -436,9 +724,44 @@ describe('T1 Wave 4 · C2 Topology and Radius Core', () => {
 			);
 			const docWithCurvedNeighbour = curvedDoc.document;
 
+			// Add an Opening on the outside neighbour so we verify its offset & width stay unscaled, and far Junction stays fixed.
+			const farJunctionId = docWithCurvedNeighbour.walls
+				.find((w) => w.id === outsideId)!
+				.endJunctionId;
+			const farPointBefore = docWithCurvedNeighbour.junctions.find((j) => j.id === farJunctionId)!.point;
+			const withOutsideOp = expectSuccess(
+				planCreateWallFirstOpening(
+					docWithCurvedNeighbour,
+					{ wallId: outsideId, kind: 'door', offset: 2.0, width: 0.9, height: 2.1, sillHeight: 0 },
+					cap('nb-unscaled-op'),
+					docWithCurvedNeighbour.floor.id
+				)
+			).document;
+
+			// Add a curved neighbour with TWO moved endpoints (arched outside wall between two rim Junctions of the same Round Room).
+			const rimJ1 = ring.seamId; // (5, 0)
+			const rimJ2 = ring.rimJunctionIds[1]!; // (0, 5)
+			const pRim1 = withOutsideOp.junctions.find((j) => j.id === rimJ1)!.point;
+			const pRim2 = withOutsideOp.junctions.find((j) => j.id === rimJ2)!.point;
+			const withTwoEndNeighbour = expectSuccess(
+				planWallChain({
+					baseline: withOutsideOp,
+					points: [pRim1, pRim2],
+					close: false,
+					arc: { pointIndex: 0, apex: [4.5, 4.5] },
+					endpointJunctionSnaps: [
+						{ pointIndex: 0, junctionId: rimJ1 },
+						{ pointIndex: 1, junctionId: rimJ2 }
+					],
+					capture: cap('two-end-arch'),
+					levelId: withOutsideOp.floor.id
+				})
+			);
+			const twoEndWallId = withTwoEndNeighbour.authoredWallIds[0]!;
+
 			const resized = expectSuccess(
 				planResizeRoundRoomRadius({
-					document: docWithCurvedNeighbour,
+					document: withTwoEndNeighbour.document,
 					roomId: ring.roomId,
 					radius: 5.5
 				})
@@ -452,12 +775,25 @@ describe('T1 Wave 4 · C2 Topology and Radius Core', () => {
 			expect(afterOp.offset).toBeCloseTo(arcLen * 0.25 * 1.1, 9);
 			expect(afterOp.width).toBe(0.8);
 
+			// Neighbour Opening stayed unscaled and far Junction stayed fixed.
+			const nbOpAfter = resized.document.openings.find((o) => o.wallId === outsideId)!;
+			expect(nbOpAfter.offset).toBe(2.0);
+			expect(nbOpAfter.width).toBe(0.9);
+			expect(resized.document.junctions.find((j) => j.id === farJunctionId)!.point).toEqual(farPointBefore);
+
 			// Curved neighbour kept its interior knot fixed while its rim endpoint moved to radius 5.5.
 			const nbAfter = resized.document.walls.find((w) => w.id === outsideId)!;
 			expect(nbAfter.centerline.kind).toBe('cubic-chain');
 			if (nbAfter.centerline.kind === 'cubic-chain') {
 				expect(nbAfter.centerline.knots[0]!.point).toEqual([1.0, 10.5]);
 			}
+			// Two-moved-endpoint neighbour moved both rim endpoints to radius 5.5.
+			const twoEndAfter = resized.document.walls.find((w) => w.id === twoEndWallId)!;
+			const twoEndStart = resized.document.junctions.find((j) => j.id === twoEndAfter.startJunctionId)!.point;
+			const twoEndEnd = resized.document.junctions.find((j) => j.id === twoEndAfter.endJunctionId)!.point;
+			expect(Math.hypot(twoEndStart[0], twoEndStart[1])).toBeCloseTo(5.5, 9);
+			expect(Math.hypot(twoEndEnd[0], twoEndEnd[1])).toBeCloseTo(5.5, 9);
+
 			const sameRadius = planResizeRoundRoomRadius({
 				document: resized.document,
 				roomId: ring.roomId,
@@ -466,7 +802,7 @@ describe('T1 Wave 4 · C2 Topology and Radius Core', () => {
 			expect(sameRadius).toMatchObject({ kind: 'rejected', rejection: { code: 'no_op' } });
 		});
 
-		it('refuses atomically on neighbour Opening fit, coupled second Round Room, and open-Space invalidity', () => {
+		it('refuses atomically on neighbour Opening fit, coupled second Round Room, topology crossing, open-Space invalidity, containment, and overlap', () => {
 			const ring = createConnectedRing({ seed: 'resize-refuse' });
 			const outsideId = ring.outsideWallIds[0]!;
 			// Add a 3.8 m Opening on the 4 m outside neighbour so shrinking or growing into it fails fit.
@@ -487,27 +823,107 @@ describe('T1 Wave 4 · C2 Topology and Radius Core', () => {
 			expect(fitFail).toMatchObject({ kind: 'rejected', rejection: { code: 'opening_does_not_fit' } });
 			expect(serializeWallFirstLayoutDocument(withNbOp)).toBe(beforeJson);
 
-			// Coupled Round Room sharing a rim Junction.
+			// Valid, certified coupled Round Room baseline sharing two rim Junctions at (d45, d45) and (d45, -d45).
+			const d45 = 5 * Math.SQRT1_2;
 			const rot1 = createRotunda({ center: [0, 0], radius: 5, seed: 'coupled-1' });
-			const rot2 = expectSuccess(
-				planCreateCircularRoom({
+			const r1Attach = expectSuccess(
+				planWallChain({
 					baseline: rot1.document,
-					center: [12, 0],
-					rim: [9, 0],
-					capture: cap('coupled-2'),
+					points: [
+						[d45, d45],
+						[2 * d45, 2 * d45]
+					],
+					close: false,
+					endpointHostSnaps: [{ pointIndex: 0, wallId: rot1.wallId }],
+					capture: cap('c1-a1'),
 					levelId: rot1.document.floor.id
 				})
 			);
-			const rot2RoomId = rot2.createdRoomIds[0]!;
-			// Connect rot1 and rot2 via a wall and then also test direct shared rim junction on an open-ring fixture.
-			const coupledDoc: LayoutDocumentWallFirst = {
-				...rot2.document,
-				rooms: rot2.document.rooms.map((r) =>
-					r.id === rot2RoomId
-						? { ...r, boundary: [{ wallId: rot1.wallId, direction: 'forward' }] }
-						: r
+			const r1Arc2 = r1Attach.createdWallIds.find((id) => !r1Attach.authoredWallIds.includes(id))!;
+			const r1Attach2 = expectSuccess(
+				planWallChain({
+					baseline: r1Attach.document,
+					points: [
+						[d45, -d45],
+						[2 * d45, -2 * d45]
+					],
+					close: false,
+					endpointHostSnaps: [{ pointIndex: 0, wallId: r1Arc2 }],
+					capture: cap('c1-a2'),
+					levelId: r1Attach.document.floor.id
+				})
+			);
+			const r1StubIds = new Set([r1Attach.authoredWallIds[0]!, r1Attach2.authoredWallIds[0]!]);
+			const r1RingDoc: LayoutDocumentWallFirst = {
+				...r1Attach2.document,
+				walls: r1Attach2.document.walls.filter((w) => !r1StubIds.has(w.id)),
+				junctions: r1Attach2.document.junctions.filter((j) =>
+					r1Attach2.document.walls.some(
+						(w) => !r1StubIds.has(w.id) && (w.startJunctionId === j.id || w.endJunctionId === j.id)
+					)
 				)
 			};
+			const j1Top = r1RingDoc.junctions.find((j) => Math.hypot(j.point[0] - d45, j.point[1] - d45) < 1e-3)!;
+			const j1Bot = r1RingDoc.junctions.find((j) => Math.hypot(j.point[0] - d45, j.point[1] + d45) < 1e-3)!;
+
+			const rot2 = createRotunda({ center: [2 * d45, 0], radius: 5, seed: 'coupled-2' });
+			const r2Attach = expectSuccess(
+				planWallChain({
+					baseline: rot2.document,
+					points: [
+						[d45, -d45],
+						[0, -2 * d45]
+					],
+					close: false,
+					endpointHostSnaps: [{ pointIndex: 0, wallId: rot2.wallId }],
+					capture: cap('c2-a1'),
+					levelId: rot2.document.floor.id
+				})
+			);
+			const r2Arc2 = r2Attach.createdWallIds.find((id) => !r2Attach.authoredWallIds.includes(id))!;
+			const r2Attach2 = expectSuccess(
+				planWallChain({
+					baseline: r2Attach.document,
+					points: [
+						[d45, d45],
+						[0, 2 * d45]
+					],
+					close: false,
+					endpointHostSnaps: [{ pointIndex: 0, wallId: rot2.wallId }],
+					capture: cap('c2-a2'),
+					levelId: r2Attach.document.floor.id
+				})
+			);
+			const r2StubIds = new Set([r2Attach.authoredWallIds[0]!, r2Attach2.authoredWallIds[0]!]);
+			const j2Top = r2Attach2.document.junctions.find((j) => Math.hypot(j.point[0] - d45, j.point[1] - d45) < 1e-3)!;
+			const j2Bot = r2Attach2.document.junctions.find((j) => Math.hypot(j.point[0] - d45, j.point[1] + d45) < 1e-3)!;
+			const remapJ = (jId: string) =>
+				jId === j2Top.id ? j1Top.id : jId === j2Bot.id ? j1Bot.id : jId;
+			const r2Walls = r2Attach2.document.walls
+				.filter((w) => !r2StubIds.has(w.id))
+				.map((w) => ({
+					...w,
+					startJunctionId: remapJ(w.startJunctionId),
+					endJunctionId: remapJ(w.endJunctionId)
+				}));
+			const r2Junctions = r2Attach2.document.junctions.filter(
+				(j) =>
+					j.id !== j2Top.id &&
+					j.id !== j2Bot.id &&
+					r2Walls.some((w) => w.startJunctionId === j.id || w.endJunctionId === j.id)
+			);
+			const coupledDoc: LayoutDocumentWallFirst = {
+				...r1RingDoc,
+				junctions: [...r1RingDoc.junctions, ...r2Junctions],
+				walls: [...r1RingDoc.walls, ...r2Walls],
+				rooms: [...r1RingDoc.rooms, ...r2Attach2.document.rooms]
+			};
+			expect(validateWallFirstLayoutDocument(coupledDoc).success).toBe(true);
+			expect(validateWallFirstTopology(coupledDoc)).toBeUndefined();
+			expect(hasBlockingLayoutIssues(compileWallFirstLayoutGeometry(coupledDoc).issues)).toBe(false);
+			expect(certifyRoundRoom(coupledDoc, coupledDoc.rooms.find((r) => r.id === rot1.roomId)!).kind).toBe('certified');
+			expect(certifyRoundRoom(coupledDoc, coupledDoc.rooms.find((r) => r.id === rot2.roomId)!).kind).toBe('certified');
+			const beforeCoupledJson = serializeWallFirstLayoutDocument(coupledDoc);
 			const coupledFail = planResizeRoundRoomRadius({
 				document: coupledDoc,
 				roomId: rot1.roomId,
@@ -515,8 +931,123 @@ describe('T1 Wave 4 · C2 Topology and Radius Core', () => {
 			});
 			expect(coupledFail).toMatchObject({
 				kind: 'rejected',
-				rejection: { code: 'coupled_round_room' }
+				rejection: {
+					code: 'coupled_round_room',
+					roomIds: [rot1.roomId, rot2.roomId],
+					junctionIds: expect.arrayContaining([j1Top.id, j1Bot.id])
+				}
 			});
+			expect(serializeWallFirstLayoutDocument(coupledDoc)).toBe(beforeCoupledJson);
+
+			// Topology crossing refusal on resize: shrinking past an interior wall attached to the ring.
+			const gal = createAttachedGallery({ seed: 'resize-topo-fail' });
+			const beforeTopoFail = serializeWallFirstLayoutDocument(gal.document);
+			const topoFail = planResizeRoundRoomRadius({
+				document: gal.document,
+				roomId: gal.rotundaId,
+				radius: 12
+			});
+			expect(topoFail).toMatchObject({ kind: 'rejected', rejection: { code: 'topology_invalid' } });
+			expect(serializeWallFirstLayoutDocument(gal.document)).toBe(beforeTopoFail);
+
+			// Open-Space outline invalidity (space_outline_invalid): shrinking moves virtual chord across a fixed notch finger.
+			const rotOutline = createRotunda({ center: [0, 0], radius: 5, seed: 'resize-outline' });
+			const notchAttach = expectSuccess(
+				planWallChain({
+					baseline: rotOutline.document,
+					points: [
+						[0, 5],
+						[4, 9],
+						[10, 9],
+						[10, 6.6],
+						[2, 6.6],
+						[2, 6.0],
+						[10, 6.0],
+						[10, 0],
+						[5, 0]
+					],
+					close: false,
+					endpointHostSnaps: [{ pointIndex: 0, wallId: rotOutline.wallId }],
+					endpointJunctionSnaps: [{ pointIndex: 8, junctionId: rotOutline.seamId }],
+					capture: cap('notch-annex'),
+					levelId: rotOutline.document.floor.id
+				})
+			);
+			const notchSpaceId = notchAttach.document.rooms.find((r) => r.id !== rotOutline.roomId)!.id;
+			const firstLegWallId = notchAttach.authoredWallIds[0]!;
+			const openedNotch = expectSuccess(
+				planDeleteWall(notchAttach.document, firstLegWallId, cap('open-notch'), notchAttach.document.floor.id)
+			).document;
+			expect(validateWallFirstLayoutDocument(openedNotch).success).toBe(true);
+			const beforeNotchJson = serializeWallFirstLayoutDocument(openedNotch);
+			const outlineFail = planResizeRoundRoomRadius({
+				document: openedNotch,
+				roomId: rotOutline.roomId,
+				radius: 4
+			});
+			expect(outlineFail).toMatchObject({ kind: 'rejected', rejection: { code: 'space_outline_invalid' } });
+			expect(serializeWallFirstLayoutDocument(openedNotch)).toBe(beforeNotchJson);
+			expect(openedNotch.rooms.some((r) => r.id === notchSpaceId)).toBe(true);
+
+			// Open-Space containment (space_contains_space): shrinking enclosed Round Room inside an independent open U-box.
+			const rotContain = createRotunda({ center: [0, 0], radius: 10, seed: 'resize-contain' });
+			const innerBox = expectSuccess(
+				planWallChain({
+					baseline: rotContain.document,
+					points: [
+						[-6, -6],
+						[6, -6],
+						[6, 6],
+						[-6, 6]
+					],
+					close: true,
+					capture: cap('contain-box'),
+					levelId: rotContain.document.floor.id
+				})
+			);
+			const innerOpen = expectSuccess(
+				planDeleteWall(innerBox.document, innerBox.authoredWallIds[0]!, cap('contain-open'), innerBox.document.floor.id)
+			).document;
+			const innerOpenId = innerOpen.rooms.find((r) => r.id !== rotContain.roomId)!.id;
+			const beforeContainJson = serializeWallFirstLayoutDocument(innerOpen);
+			const containFail = planResizeRoundRoomRadius({
+				document: innerOpen,
+				roomId: rotContain.roomId,
+				radius: 3
+			});
+			expect(containFail).toMatchObject({ kind: 'rejected', rejection: { code: 'space_contains_space' } });
+			expect(serializeWallFirstLayoutDocument(innerOpen)).toBe(beforeContainJson);
+			expect(innerOpen.rooms.some((r) => r.id === innerOpenId)).toBe(true);
+
+			// Open-Space overlap (space_overlap): growing Round Room into an independent open U-box's open side without touching physical walls.
+			const rotOverlap = createRotunda({ center: [0, 0], radius: 5, seed: 'resize-overlap' });
+			const sideBox = expectSuccess(
+				planWallChain({
+					baseline: rotOverlap.document,
+					points: [
+						[8, -5],
+						[12, -5],
+						[12, 5],
+						[8, 5]
+					],
+					close: true,
+					capture: cap('overlap-box'),
+					levelId: rotOverlap.document.floor.id
+				})
+			);
+			const sideOpen = expectSuccess(
+				planDeleteWall(sideBox.document, sideBox.authoredWallIds[3]!, cap('overlap-open'), sideBox.document.floor.id)
+			).document;
+			const sideOpenId = sideOpen.rooms.find((r) => r.id !== rotOverlap.roomId)!.id;
+			const beforeOverlapJson = serializeWallFirstLayoutDocument(sideOpen);
+			const overlapFail = planResizeRoundRoomRadius({
+				document: sideOpen,
+				roomId: rotOverlap.roomId,
+				radius: 8.5
+			});
+			expect(overlapFail).toMatchObject({ kind: 'rejected', rejection: { code: 'space_overlap' } });
+			expect(serializeWallFirstLayoutDocument(sideOpen)).toBe(beforeOverlapJson);
+			expect(sideOpen.rooms.some((r) => r.id === sideOpenId)).toBe(true);
 		});
 	});
 
@@ -605,6 +1136,33 @@ describe('T1 Wave 4 · C2 Topology and Radius Core', () => {
 				)
 			};
 			expect(validateWallFirstLayoutDocument(perturbed).success).toBe(false);
+
+			// Collapsed cuts at both [0, 0] and [2**32, -(2**32)] refuse cleanly without mutating source.
+			for (const [label, shift] of [
+				['origin', [0, 0] as LayoutVec2],
+				['shifted', BIG_SHIFT]
+			] as const) {
+				const base = createRotunda({ center: shift, radius: 5, seed: `collapse-${label}` });
+				const baseJson = serializeWallFirstLayoutDocument(base.document);
+				// Two points 1e-12 m apart near (cx, cz + 5) collapse at destination precision into one cut / zero-length leg.
+				const collapsed = planWallChain({
+					baseline: base.document,
+					points: [
+						[shift[0], shift[1] + 5],
+						[shift[0] + 1e-12, shift[1] + 5],
+						[shift[0], shift[1] + 9]
+					],
+					close: false,
+					endpointHostSnaps: [
+						{ pointIndex: 0, wallId: base.wallId },
+						{ pointIndex: 1, wallId: base.wallId }
+					],
+					capture: cap(`collapse-try-${label}`),
+					levelId: base.document.floor.id
+				});
+				expect(collapsed.kind).toBe('rejected');
+				expect(serializeWallFirstLayoutDocument(base.document)).toBe(baseJson);
+			}
 		});
 	});
 
@@ -635,6 +1193,74 @@ describe('T1 Wave 4 · C2 Topology and Radius Core', () => {
 			if (blockedAttach.kind === 'rejected') {
 				expect(blockedAttach.rejection.message).toContain('seam-door');
 			}
+
+			// Interior cut through an Opening refuses and names the Opening ID.
+			const withIntOp = expectSuccess(
+				planCreateWallFirstOpening(
+					rot.document,
+					{ wallId: rot.wallId, kind: 'window', offset: len * 0.25 - 0.5, width: 1.0, height: 1.2, sillHeight: 1 },
+					cap('int-win'),
+					rot.document.floor.id
+				)
+			).document;
+			const intBlocked = planWallSegment({
+				baseline: withIntOp,
+				start: [0, 9],
+				end: [0, 5],
+				endpointHostWallId: rot.wallId,
+				capture: cap('int-cut-fail'),
+				levelId: withIntOp.floor.id
+			});
+			expect(intBlocked).toMatchObject({ kind: 'rejected', rejection: { code: 'noding_rejected' } });
+			if (intBlocked.kind === 'rejected') {
+				expect(intBlocked.rejection.message).toContain(withIntOp.openings[0]!.id);
+			}
+
+			// Exact split at Opening END keeps Opening on preceding fragment; exact split at Opening START places it on following fragment at offset 0.
+			const cutDist = len * 0.25;
+			const exactEndDoc = expectSuccess(
+				planCreateWallFirstOpening(
+					rot.document,
+					{ wallId: rot.wallId, kind: 'window', offset: cutDist - 1.0, width: 1.0, height: 1.2, sillHeight: 1 },
+					cap('exact-end-op'),
+					rot.document.floor.id
+				)
+			).document;
+			const exactEndPlan = expectSuccess(
+				planWallSegment({
+					baseline: exactEndDoc,
+					start: [0, 9],
+					end: [0, 5],
+					endpointHostWallId: rot.wallId,
+					capture: cap('exact-end-cut'),
+					levelId: exactEndDoc.floor.id
+				})
+			);
+			expect(exactEndPlan.document.openings[0]!.wallId).toBe(rot.wallId);
+
+			const exactStartDoc = expectSuccess(
+				planCreateWallFirstOpening(
+					rot.document,
+					{ wallId: rot.wallId, kind: 'window', offset: cutDist, width: 1.0, height: 1.2, sillHeight: 1 },
+					cap('exact-start-op'),
+					rot.document.floor.id
+				)
+			).document;
+			const exactStartPlan = expectSuccess(
+				planWallSegment({
+					baseline: exactStartDoc,
+					start: [0, 9],
+					end: [0, 5],
+					endpointHostWallId: rot.wallId,
+					capture: cap('exact-start-cut'),
+					levelId: exactStartDoc.floor.id
+				})
+			);
+			const followingArcId = exactStartPlan.createdWallIds.find(
+				(id) => !exactStartPlan.authoredWallIds.includes(id)
+			)!;
+			expect(exactStartPlan.document.openings[0]!.wallId).toBe(followingArcId);
+			expect(exactStartPlan.document.openings[0]!.offset).toBeCloseTo(0, 6);
 		});
 
 		it('automatically repacks on uniform last detach, rehosting Openings from reversed/later arcs, and refuses mixed attributes', () => {
@@ -834,14 +1460,35 @@ describe('T1 Wave 4 · C2 Topology and Radius Core', () => {
 			expect(rel.document.rooms.find((r) => r.id === ring.roomId)!.round).toBeUndefined();
 		});
 
-		it('releases an isolated circle with unoccupied seam keeping seam Junction ID', () => {
+		it('releases an isolated circle with unoccupied seam keeping seam Junction ID and carrying V1 intendedGaps', () => {
 			const rot = createRotunda({ seed: 'release-unocc' });
+			const withRegion = expectSuccess(
+				planCreateRegion({
+					baseline: rot.document,
+					capture: cap('rel-region'),
+					intent: {
+						role: 'floor',
+						footprint: [
+							[-10, -10],
+							[10, -10],
+							[10, 10],
+							[-10, 10]
+						],
+						elevation: 0,
+						thickness: 0.1
+					}
+				})
+			).document;
+			const docWithGaps: LayoutDocumentWallFirst = {
+				...withRegion,
+				regions: withRegion.regions.map((r) => ({ ...r, intendedGaps: [rot.wallId] }))
+			};
 			const rel = expectSuccess(
 				planReleaseRoundRoom({
-					document: rot.document,
+					document: docWithGaps,
 					roomId: rot.roomId,
 					capture: cap('rel-unocc'),
-					levelId: rot.document.floor.id
+					levelId: docWithGaps.floor.id
 				})
 			);
 			expect(rel.mode).toBe('split-closed-circle');
@@ -849,7 +1496,10 @@ describe('T1 Wave 4 · C2 Topology and Radius Core', () => {
 			expect(rel.document.junctions.some((j) => j.id === rot.seamId)).toBe(true);
 			expect(rel.document.walls).toHaveLength(2);
 			expect(rel.surfaceLineage.length).toBe(2);
-			expect(rel.document.regions).toHaveLength(0);
+			expect(rel.document.regions).toHaveLength(1);
+			expect(rel.document.regions[0]!.intendedGaps).toEqual(
+				expect.arrayContaining([rot.wallId, rel.createdWallIds[0]!])
+			);
 		});
 
 		it('releases an occupied-seam circle by retiring old seam Junction, preserving seam knot and continuous seam-spanning Opening, with exact replay', () => {
@@ -1126,6 +1776,37 @@ describe('T1 Wave 4 · C2 Topology and Radius Core', () => {
 			expect(
 				resolveLayoutRoomInterior(retired, compiledRet, { roomId: ring.roomId, role: 'inside' })
 			).toMatchObject({ kind: 'unresolved', code: 'missing-room' });
+
+			// Divide: both survivor and newly born Room resolve their own interiors.
+			const divRing = createConnectedRing({ seed: 'interior-divide' });
+			const divRoom = divRing.document.rooms.find((r) => r.id === divRing.roomId)!;
+			const divJ0 = divRing.seamId;
+			const divJOpp = divRing.rimJunctionIds[1]!;
+			const divP0 = divRing.document.junctions.find((j) => j.id === divJ0)!.point;
+			const divPOpp = divRing.document.junctions.find((j) => j.id === divJOpp)!.point;
+			const divided = expectSuccess(
+				planWallChain({
+					baseline: divRing.document,
+					points: [divP0, divPOpp],
+					close: false,
+					endpointJunctionSnaps: [
+						{ pointIndex: 0, junctionId: divJ0 },
+						{ pointIndex: 1, junctionId: divJOpp }
+					],
+					capture: cap('int-div'),
+					levelId: divRing.document.floor.id
+				})
+			);
+			const compiledDiv = compileWallFirstLayoutGeometry(divided.document).geometry;
+			expect(divided.document.rooms).toHaveLength(2);
+			for (const r of divided.document.rooms) {
+				const divRes = resolveLayoutRoomInterior(divided.document, compiledDiv, {
+					roomId: r.id,
+					role: 'inside'
+				});
+				expect(divRes.kind).toBe('resolved');
+			}
+			expect(divRoom.id).toBe(divRing.roomId);
 		});
 	});
 
@@ -1240,10 +1921,35 @@ describe('T1 Wave 4 · C2 Topology and Radius Core', () => {
 					revDoc.floor.id
 				)
 			).document;
+			// Add V1 horizontal region with intendedGaps referencing every ring arc.
+			const withRegion = expectSuccess(
+				planCreateRegion({
+					baseline: withOp,
+					capture: cap('rev-repack-reg'),
+					intent: {
+						role: 'floor',
+						footprint: [
+							[-12, -12],
+							[12, -12],
+							[12, 12],
+							[-12, 12]
+						],
+						elevation: 0,
+						thickness: 0.1
+					}
+				})
+			).document;
+			const docWithRegion: LayoutDocumentWallFirst = {
+				...withRegion,
+				regions: withRegion.regions.map((r) => ({
+					...r,
+					intendedGaps: room.boundary.map((b) => b.wallId)
+				}))
+			};
 
-			// Mixed thickness & mixed name refuse round_repack_conflict.
+			// Mixed thickness, mixed name, and open-Space virtual-edge anchor refuse round_repack_conflict.
 			const d1 = expectSuccess(
-				planDeleteWall(withOp, ring.outsideWallIds[0]!, cap('rev-del-1'), withOp.floor.id)
+				planDeleteWall(docWithRegion, ring.outsideWallIds[0]!, cap('rev-del-1'), docWithRegion.floor.id)
 			).document;
 			const mixedThick = expectSuccess(
 				planExactWallThickness(d1, secondArcId, 0.35)
@@ -1259,7 +1965,16 @@ describe('T1 Wave 4 · C2 Topology and Radius Core', () => {
 				planDeleteWall(mixedName, ring.outsideWallIds[1]!, cap('rev-del-name'), mixedName.floor.id)
 			).toMatchObject({ kind: 'rejected', rejection: { code: 'round_repack_conflict' } });
 
-			// Uniform repack succeeds and flips S5a side on reversed member.
+			// Open-Space virtual-edge anchor on a discarded rim Junction refuses round_repack_conflict.
+			const galAnchor = createAttachedGallery({ seed: 'repack-space-anchor' });
+			const openedGalAnchor = expectSuccess(
+				planDeleteWall(galAnchor.document, galAnchor.annexWallIds[0]!, cap('repack-open-gal'), galAnchor.document.floor.id)
+			).document;
+			expect(
+				planDeleteWall(openedGalAnchor, galAnchor.annexWallIds[3]!, cap('rev-del-anchor'), openedGalAnchor.floor.id)
+			).toMatchObject({ kind: 'rejected', rejection: { code: 'round_repack_conflict' } });
+
+			// Uniform repack succeeds, flips S5a side on reversed member, and carries V1 intendedGaps onto surviving closed Wall.
 			const repacked = expectSuccess(
 				planDeleteWall(d1, ring.outsideWallIds[1]!, cap('rev-del-ok'), d1.floor.id)
 			);
@@ -1272,21 +1987,39 @@ describe('T1 Wave 4 · C2 Topology and Radius Core', () => {
 				)
 			).toBe(true);
 			expect(repacked.document.openings[0]!.wallId).toBe(ring.seamWallId);
+			expect(repacked.document.regions[0]!.intendedGaps).toEqual([ring.seamWallId]);
 		});
 
 		it('refuses occupied-seam Release on external anchor or when no legal cut pair exists, and enforces rect/open-side/2-arc dissolve guards', () => {
 			const rot = createRotunda({ seed: 'rel-refusals' });
 			const len = wallFirstWallLength(rot.document, rot.wallId)!;
-			// Huge seam-spanning Opening leaves too little solid room for 2 cuts -> no_admissible_release_cuts.
-			const hugeOp = expectSuccess(
+			// Two Openings (one spanning seam, one filling the rest) leave no legal cut pair -> no_admissible_release_cuts.
+			const seamFill = expectSuccess(
 				planCreateWallFirstOpening(
 					rot.document,
-					{ wallId: rot.wallId, kind: 'window', offset: 0.1, width: len - 0.2, height: 1.2, sillHeight: 1 },
-					cap('huge-op'),
+					{ wallId: rot.wallId, kind: 'door', offset: len - 1.0, width: 2.0, height: 2.1, sillHeight: 0 },
+					cap('huge-seam'),
 					rot.document.floor.id
 				)
 			).document;
-			expect(hugeOp.openings).toHaveLength(1);
+			const hugeOp = expectSuccess(
+				planCreateWallFirstOpening(
+					seamFill,
+					{ wallId: rot.wallId, kind: 'window', offset: 1.0, width: len - 2.0, height: 1.2, sillHeight: 1 },
+					cap('huge-op'),
+					seamFill.floor.id
+				)
+			).document;
+			const beforeHugeJson = serializeWallFirstLayoutDocument(hugeOp);
+			expect(
+				planReleaseRoundRoom({
+					document: hugeOp,
+					roomId: rot.roomId,
+					capture: cap('rel-no-cuts'),
+					levelId: hugeOp.floor.id
+				})
+			).toMatchObject({ kind: 'rejected', rejection: { code: 'no_admissible_release_cuts' } });
+			expect(serializeWallFirstLayoutDocument(hugeOp)).toBe(beforeHugeJson);
 
 			// Add an Opening spanning seam + test seam_junction_referenced via a virtual edge referencing seamId.
 			const withSeamDoor = expectSuccess(
