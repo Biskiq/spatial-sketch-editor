@@ -57,7 +57,6 @@ export function createCoreRegionViews(input: {
 	readonly locationLabel: () => RegionProps['head']['locationLabel'];
 	readonly findEntries: () => NonNullable<RegionProps['head']['find']>['entries'];
 	readonly projectActionsUnavailableReason: () => RegionProps['head']['projectActionsUnavailableReason'];
-	readonly rects: () => PanelRegion['rects'];
 	readonly index: () => PanelRegion['index'];
 	readonly card: () => PanelRegion['card'];
 	readonly inactiveTask: () => PanelRegion['inactiveTask'];
@@ -201,7 +200,6 @@ export function createCoreRegionViews(input: {
 	});
 
 	const panels = contribution<'core', 'panels'>()({
-		get rects() { return input.rects(); },
 		get index() { return input.index(); },
 		get card() { return input.card(); },
 		get inactiveTask() { return input.inactiveTask(); },

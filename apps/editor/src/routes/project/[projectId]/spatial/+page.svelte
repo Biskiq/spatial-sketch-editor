@@ -105,16 +105,10 @@
 	import { verifyArtworkDecode } from '$lib/render/artwork/artwork-decode';
 	import { readVerifiedArtwork } from '$lib/authoring/artwork/project-artwork';
 	import { createArtworkScope, type ArtworkBytes } from '$lib/render/artwork/artwork-scope';
-	import { pointInPolygon } from '@portfolio/layout-core';
-	import { createStagePanelRects } from '$lib/authoring/stage/shell/stage-panel-rects.svelte';
-	import { celestialDialModel, placeCelestialDial } from '$lib/authoring/look/celestial-dial';
-	import { bindSkySession } from '$lib/authoring/look/sky-session.svelte';
-	import { sunMarkAnchor } from '$lib/render/world-environment';
 	import { aimThroughWindows } from '$lib/authoring/look/aim-through-windows';
-	import { createLookAuthoring } from '$lib/authoring/look/look-authoring.svelte';
 	import { createScenePickSource } from '$lib/authoring/scene/scene-pick-source';
+	import { createSkyFeature } from '$lib/authoring/look/sky-feature.svelte';
 	import { isPaperPlanVisible } from '$lib/authoring/stage/paper-plan';
-	import { WORLD_ENVIRONMENT_GROUND_RADIUS_METERS } from '$lib/render/world-environment';
 	import { experienceFocus } from '$lib/authoring/experience/focus.svelte';
 	import { experienceProblems, loweringProblem, type ExperienceProblem } from '$lib/authoring/experience/experience-problems';
 	import { createExperiencePreview } from '$lib/authoring/experience/experience-preview.svelte';
@@ -485,10 +479,7 @@
 		lens: () => experience.lensState,
 		revealed: () => revealed,
 		roomLabels: () => ({ plan: shell.preferences.roomLabels2d, threeD: shell.preferences.roomLabels3d }),
-		groundReachMeters: () =>
-			look.sky !== null && look.sky.preset !== 'studio'
-				? WORLD_ENVIRONMENT_GROUND_RADIUS_METERS
-				: undefined,
+		groundReachMeters: () => sky.ports.groundReachMeters(),
 		nowSeconds,
 		advanceLookThroughZoom: (now) => experience.advanceLookThroughZoom(now),
 		advancePlayback: (now) => experience.advancePlayback(now),
@@ -851,16 +842,26 @@
 	}));
 
 	const heightSheet = session.heightSheet();
-	const skyRects = createStagePanelRects();
-	const look = createLookAuthoring({
-		sky: () => currentEnvelope?.units.scene.data.environment?.sky ?? null,
-		scene: () => currentEnvelope?.units.scene.data ?? null,
-		sessionKey: () => boot.status === 'ready' || boot.status === 'empty'
-			? boot.snapshot.sessionEpoch
-			: '',
+	const sky = createSkyFeature({
+		look: {
+			sky: () => currentEnvelope?.units.scene.data.environment?.sky ?? null,
+			scene: () => currentEnvelope?.units.scene.data ?? null,
+			sessionKey: () => boot.status === 'ready' || boot.status === 'empty'
+				? boot.snapshot.sessionEpoch
+				: '',
+			services: () => adapterServices,
+			windowHeading: () => facade ? aimThroughWindows(facade.snapshot().domain.geometry) : null,
+			onNotice: (message) => shell.setNotice(message)
+		},
+		lens: () => experience.lensState,
+		previewing: () => preview !== null,
+		taskActive: () => shell.task !== null,
+		toolArmed: () => shell.armedHostTool !== null,
+		facade: () => facade,
+		evaluation: () => evaluation,
+		bounds: () => stageContentBounds,
 		services: () => adapterServices,
-		windowHeading: () => facade ? aimThroughWindows(facade.snapshot().domain.geometry) : null,
-		onNotice: (message) => shell.setNotice(message)
+		fading: () => liveStageGesture || stageInput.drag?.mode === 'orbit'
 	});
 
 	let artworkInteraction!: ReturnType<typeof createStageArtworkInteraction>;
@@ -1398,12 +1399,7 @@
 				!active.matches('[data-world-select]');
 		},
 		focusSelectKey: () => document.querySelector<HTMLElement>('[data-world-toolbar] [data-world-select]')?.focus(),
-		dismissSky: () => {
-			if (!look.panelOpen) return false;
-			look.setPanelOpen(false);
-			document.querySelector<HTMLButtonElement>('[data-stage-environment-control]')?.focus();
-			return true;
-		},
+		...sky.escape,
 		lens: () => experience.lensState,
 		selectionPresent: () => selection !== null,
 		closeSelection: () => commands.closeSelection(),
@@ -1547,7 +1543,7 @@
 		const entity = subject?.reference?.domain === 'scene'
 			? selectionViewView.scenePayload?.entities.find((entry) => entry.id === subject.sourceId)
 			: undefined;
-		return (entity?.kind === 'artwork' ? artworkInteraction.card(entity) : null) ?? look.cardStratum(subject);
+		return (entity?.kind === 'artwork' ? artworkInteraction.card(entity) : null) ?? sky.ports.cardStratum(subject);
 	});
 	const worldCard = $derived(stageWorldCardView({
 		facade,
@@ -1775,34 +1771,7 @@
 		contextMenu: (event: MouseEvent) => { if (lookThroughActiveNow()) event.preventDefault(); }
 	};
 
-	const dialPlacement = $derived.by(() => {
-		if (!look.panelOpen || experience.lensState !== 'world' || preview !== null ||
-			shell.task !== null || shell.armedHostTool !== null || look.studioWhileEditing ||
-			look.sky?.preset === 'studio' || !look.sky || !evaluation || !facade) return null;
-		void stageContentBounds;
-		const domain = facade.snapshot().domain;
-		const geometry = domain.geometry;
-		const datum = domain.datumMeters;
-		const boxes = [
-			...geometry.walls.map((wall) => wall.bounds3),
-			...domain.scene.entities.flatMap((entity) => {
-				const bounds = facade?.sceneBounds(entity.id);
-				return bounds ? [bounds] : [];
-			})
-		];
-		// Client rects: placement tests them against `dialProject`, which is in the
-		// viewport frame (`camera.rect`), not the stage-local frame of the marks.
-		const obstacles = [skyRects.panel, skyRects.dock, ...skyRects.fixed].flatMap((rect) => {
-			if (!rect || rect.width <= 0) return [];
-			return [{ left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom }];
-		});
-		const origin = sunMarkAnchor({ bounds: stageContentBounds, groundY: datum + 0.008 });
-		return placeCelestialDial(origin, evaluation, obstacles, ([x, , z]) => boxes.some(({ min, max }) =>
-			max[1] > datum + 0.05 && min[1] <= datum + 0.3 && x >= min[0] && x <= max[0] && z >= min[2] && z <= max[2]),
-		([x, , z]) => geometry.rooms.length === 0 || geometry.rooms.some(({ floorPolygon }) => pointInPolygon([x, z], floorPolygon)), geometry.bounds);
-	});
-	const dial = $derived(dialPlacement ? celestialDialModel(look.shownSky, dialPlacement) : null);
-	$effect(() => adapterServices ? bindSkySession(adapterServices.stage.session, { look, dial: () => dial }) : undefined);
+	sky.attachSession();
 
 	const coreRegions = createCoreRegionViews({
 		projectId, heightSheet, project: projectSession, shell, history, scenePick, lightPreview,
@@ -1831,7 +1800,6 @@
 		locationLabel: () => selectionViewView.locationLabel,
 		findEntries: () => findView.entries,
 		projectActionsUnavailableReason: () => projectActionsUnavailableReason,
-		rects: () => skyRects,
 		index: () => indexRegion,
 		card: () => cardRegion,
 		inactiveTask: () => inactiveTaskRegion,
@@ -1845,7 +1813,6 @@
 		if (snapshot === null) return null;
 		const coreCanvas = coreRegions.canvas(snapshot);
 		const features = {
-			get dial() { return dial; },
 			get scene() {
 				const accepted = ready.snapshot()?.domain.scene;
 				return accepted === undefined ? snapshot.domain.scene : withFinishInstancePreview(accepted, libraryDraftPreview ?? finishes.card.preview);
@@ -1857,7 +1824,6 @@
 				void studioRevision;
 				return studio.active ? { rootId: studio.rootId, context: studio.context } : null;
 			},
-			get sky() { return look.stageSky; },
 			get proposals() { return finishes.card.proposalEntries(); },
 			get alignHiddenWallIds() { return readings.alignHiddenWallIds; },
 			onFinishOutcome: finishes.issues.recordOutcome,
@@ -1873,11 +1839,12 @@
 		};
 		return Object.defineProperties(coreCanvas, {
 			...Object.getOwnPropertyDescriptors(features),
+			...Object.getOwnPropertyDescriptors(sky.regions.canvas),
 			...Object.getOwnPropertyDescriptors(liftCanvas),
 			...Object.getOwnPropertyDescriptors(cutawayCanvas),
 			...Object.getOwnPropertyDescriptors(sliceCanvas),
 			...unfold
-		}) as typeof coreCanvas & typeof features & typeof liftCanvas & typeof cutawayCanvas & typeof sliceCanvas & typeof unfoldCanvas;
+		}) as typeof coreCanvas & typeof features & typeof sky.regions.canvas & typeof liftCanvas & typeof cutawayCanvas & typeof sliceCanvas & typeof unfoldCanvas;
 	});
 
 	/**
@@ -1939,8 +1906,8 @@
 
 	const overlay = $derived({
 		...coreRegions.overlay,
-		celestial: dial && evaluation ? { dial, camera: evaluation, haze: look.shownSky.haze, owner: look.gesture.owner } : null,
-		marks: [...coreRegions.overlay.marks!, ...look.stageMarks],
+		celestial: sky.regions.overlay.celestial,
+		marks: [...coreRegions.overlay.marks!, ...(sky.regions.overlay.marks ?? [])],
 		candidates: [...coreRegions.overlay.candidates!, ...(artworkInteraction.placementCandidate === null ? [] : [artworkInteraction.placementCandidate])],
 		sliceDraft: readings.regions.overlay.sliceDraft
 	});
@@ -2001,7 +1968,7 @@
 				guideSeconds: previewGuideStats.seconds,
 				viewLabels: previewViewLabels,
 				onExit: previewController.close,
-				sky: look.sky
+				sky: sky.sky
 			},
 			active: preview !== null
 		};
@@ -2041,7 +2008,7 @@
 			onFurnish: () => commands.toggleFurnishStrip(),
 			onFurnishBrowse: () => commands.browseFurnish(),
 			onObjectPick: (assetId: string) => commands.pickWorldObject(assetId),
-			onMaterialPick: look.pickMaterial,
+			onMaterialPick: sky.ports.pickMaterial,
 			finishShelf,
 			onFinishPick: (ref) => {
 				// Library opened from the Paint tray: a pick arms Paint and hands back to the tray.
@@ -2055,11 +2022,11 @@
 			onFinishImageCancel: () => finishes.cancelImage(),
 			onFinishImageRetry: () => void finishes.retryImageUpload(),
 			onFinishImageReset: () => finishes.resetImage(),
-			lookShelf: look.libraryShelf,
+			lookShelf: sky.libraryShelf,
 			artworkShelf: selectionViewView.scenePayload === null ? null : selectionViewView.scenePayload.artworkLibrary ?? [],
 			onArtworkPick: (entry) => { commands.selectTool(); artworkInteraction.arm(entry); },
 			onArtworkImport: (files: File[]) => { commands.selectTool(); void artworkInteraction.importFiles(files); },
-			onLookPick: look.pickLibraryEntry,
+			onLookPick: sky.ports.pickLibraryEntry,
 			trayOwnsPlate: shell.armedHostTool === 'paint' && preview === null && !shell.libraryOpen,
 			paintChip: paintTray.active === null ? null : { color: paintTray.active.color, shape: paintTray.active.kind === 'colour' ? 'colour' : 'material', source: paintTray.active.kind === 'finish' ? paintTileSource(paintTray.active.key, finishTileSource) : null },
 			plateKind: shell.activeWorldTool === 'walls' || shell.activeWorldTool === 'opening' || shell.activeWorldTool === 'room' || shell.activeWorldTool === 'terrace' || shell.activeWorldTool === 'roofline' ? 'ink' : shell.activeWorldTool === 'objects' ? 'objects' : shell.activeWorldTool === 'slice' ? 'slice' : null,
@@ -2276,8 +2243,8 @@
 								shell.updatePreferences({ ...shell.preferences, planAppearance }),
 							measureActive: shell.activeWorldTool === 'measure',
 							onMeasure: () => commands.armWorldTool('measure'),
-							studioWhileEditing: look.studioWhileEditing,
-							onStudioWhileEditing: look.setStudioWhileEditing,
+							studioWhileEditing: sky.studioWhileEditing,
+							onStudioWhileEditing: sky.ports.setStudioWhileEditing,
 							roomLabels2d: shell.preferences.roomLabels2d,
 							roomLabels3d: shell.preferences.roomLabels3d,
 							paperTone2d: shell.preferences.paperTone2d,
@@ -2320,7 +2287,7 @@
 		<StagePanels
 			{...coreRegions.panels}
 			{toolbars}
-			environment={adapterServices && experience.lensState === 'world' ? { look, fading: liveStageGesture || stageInput.drag?.mode === 'orbit' } : null}
+			{...sky.regions.panels}
 			previewing={preview !== null}
 		/>
 
@@ -2337,7 +2304,7 @@
 				tileSource={libraryTileSource}
 				objects={libraryObjects}
 				artwork={selectionViewView.scenePayload === null ? null : selectionViewView.scenePayload.artworkLibrary ?? []}
-				looks={look.libraryShelf}
+				looks={sky.libraryShelf}
 				inspection={shell.libraryInspection}
 				onInspection={(next) => shell.setLibraryInspection(next)}
 				onView={(next) => shell.setLibraryView(next)}
@@ -2396,7 +2363,7 @@
 				}}
 				onLook={(id) => {
 					closeLibrary();
-					look.pickLibraryEntry(id);
+					sky.ports.pickLibraryEntry(id);
 				}}
 			/>
 			{/key}

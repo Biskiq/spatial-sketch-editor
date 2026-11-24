@@ -170,7 +170,7 @@ export const REGION_KEY_OWNER = {
 	panels: {
 		previewing: 'experience',
 		toolbars: 'core',
-		rects: 'core',
+		rects: 'sky',
 		environment: 'sky',
 		index: 'core',
 		scrim: 'core',
