@@ -28,6 +28,8 @@
 	import { finishCardTargetKey, type FinishCardView } from './finish-card.svelte';
 	import FinishTile from './FinishTile.svelte';
 	import FinishSwapPicker from './FinishSwapPicker.svelte';
+	import StagePaintWheel from '$lib/authoring/stage/shell/StagePaintWheel.svelte';
+	import type { PaintColour } from './paint-pick';
 
 	let {
 		services,
@@ -54,6 +56,9 @@
 	let revision = $state(0);
 	let openKey = $state<string | null>(null);
 	let swapOpen = $state(false);
+	/** The Any colour picker: Paint's radial presentation, beside the Card. */
+	let colourOpen = $state(false);
+	let colourSwatch = $state<HTMLButtonElement>();
 	let renaming = $state(false);
 	let renameDraft = $state('');
 	let menuOpen = $state(false);
@@ -86,6 +91,7 @@
 		if (next === openKey && !changed) return;
 		openKey = next;
 		swapOpen = false;
+		colourOpen = false;
 		renaming = false;
 		menuOpen = false;
 	});
@@ -186,6 +192,19 @@
 		if (openPart !== null) void card?.setColour(openPart.target, value.toLowerCase());
 	}
 
+	/** Done or a linked palette chip writes once (one Undo); Escape and × only drop the preview. */
+	function useColour(colour: PaintColour): void {
+		if (colour.kind === 'slot') chooseSlot(colour.slotId);
+		else commitHex(colour.hex);
+		closeColour(false);
+	}
+
+	function closeColour(discard = true): void {
+		if (discard) card?.cancel();
+		colourOpen = false;
+		colourSwatch?.focus();
+	}
+
 	function chooseSheen(id: SheenStepId): void {
 		if (openPart !== null) void card?.setSheen(openPart.target, id);
 	}
@@ -195,6 +214,19 @@
 			return `${current.material.label} is captured at r ${current.sheen.scan.mean.toFixed(2)} — it can’t be made rougher than captured`;
 		}
 		return step.id === current.sheen.original ? `${step.label} · nearest to the original` : step.label;
+	}
+
+	/**
+	 * Swap… opens the shared Library on Materials with this target and reach (U5).
+	 * Without a route Library (a harness) the inline picker stays the fallback.
+	 */
+	function openSwap(): void {
+		const authoring = services.finishes?.current ?? null;
+		if (authoring !== null && openPart !== null && authoring.requestLibrarySwap(openPart.target, openPart.place)) {
+			swapOpen = false;
+			return;
+		}
+		swapOpen = !swapOpen;
 	}
 
 	function swapTo(id: Parameters<NonNullable<typeof card>['swap']>[1]): void {
@@ -311,11 +343,12 @@
 						<button
 							type="button"
 							class="link push"
-							title="Choose another material — keeps this colour and sheen"
+							title="Choose another material in the Library — keeps this colour and sheen"
+							aria-haspopup="dialog"
 							aria-expanded={swapOpen}
 							data-finish-swap
-							onclick={() => (swapOpen = !swapOpen)}
-						>Swap ›</button>
+							onclick={openSwap}
+						>Swap…</button>
 					</div>
 				</div>
 				{#if swapOpen}
@@ -351,24 +384,33 @@
 								onclick={() => chooseSlot(chip.id)}
 							></button>
 						{/each}
-						<label
+						<button
+							type="button"
 							class="chip add"
 							class:lit={view.colour.custom}
 							style={view.colour.custom ? `--chip: ${view.colour.hex}` : undefined}
 							title={view.colour.custom ? `${view.colour.hex} · not linked to the palette` : 'Any colour'}
-						>
-							{#if !view.colour.custom}<span aria-hidden="true">+</span>{/if}
-							<input
-								type="color"
-								aria-label="Any colour"
-								data-finish-colour-any
-								value={view.colour.hex ?? '#9aa58c'}
-								oninput={(event) => previewHex(event.currentTarget.value)}
-								onchange={(event) => commitHex(event.currentTarget.value)}
-								onblur={() => card.cancel()}
-							/>
-						</label>
+							aria-label="Any colour"
+							aria-haspopup="dialog"
+							aria-expanded={colourOpen}
+							data-finish-colour-any
+							bind:this={colourSwatch}
+							onclick={() => (colourOpen ? closeColour() : (colourOpen = true))}
+						>{#if !view.colour.custom}<span aria-hidden="true">+</span>{/if}</button>
 					</div>
+					{#if colourOpen}
+						<div class="colour-picker" data-finish-colour-picker>
+							<StagePaintWheel
+								title="Finish colour"
+								initial={view.colour.hex ?? '#9aa58c'}
+								original={view.colour.hex ?? null}
+								palette={view.colour.chips}
+								onChange={previewHex}
+								onUse={useColour}
+								onClose={() => closeColour()}
+							/>
+						</div>
+					{/if}
 				</div>
 
 				<div class="row">
@@ -726,13 +768,18 @@
 	.chip.add {
 		border-style: dashed;
 	}
-	.chip input {
+	/*
+		Finish colour floats beside the Card, on the Stage side, top-aligned with it.
+		No ancestor between it and the Card is positioned, so the Card is its
+		containing block and the Card's scrolling writer does not clip it.
+	*/
+	.colour-picker {
 		position: absolute;
-		inset: 0;
-		width: 100%;
-		height: 100%;
-		opacity: 0;
-		cursor: pointer;
+		z-index: 3;
+		top: 0;
+		right: calc(100% + 10px);
+		max-height: calc(100% + 120px);
+		display: flex;
 	}
 	.steps {
 		display: inline-flex;

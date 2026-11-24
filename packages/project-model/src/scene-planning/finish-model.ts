@@ -552,17 +552,49 @@ export function withFinishInstancePreview<TS extends FinishScene>(
 			? ({ ...entity, materialInstanceId: id } as SceneEntity)
 			: entity
 	);
-	const surfaceFinishes = scene.surfaceFinishes?.map((assignment) =>
-		users.has(`surface:${surfaceKey(assignment.surface)}`)
-			? { ...assignment, finish: { materialInstanceId: id } }
-			: assignment
-	);
+	const assigned = new Set<string>();
+	const replaced = (scene.surfaceFinishes ?? []).map((assignment) => {
+		const key = `surface:${surfaceKey(assignment.surface)}`;
+		assigned.add(key);
+		return users.has(key) ? { ...assignment, finish: { materialInstanceId: id } } : assignment;
+	});
+	// A face with no accepted Finish yet previews its first assignment too.
+	const first: SceneSurfaceFinish[] = [];
+	for (const user of preview.users) {
+		if (!user.startsWith('surface:') || assigned.has(user)) continue;
+		const surface = surfaceRefFromKey(user.slice('surface:'.length));
+		if (surface !== null) first.push({ surface, finish: { materialInstanceId: id } });
+	}
+	const surfaceFinishes = first.length === 0 ? scene.surfaceFinishes : [...replaced, ...first];
 	return {
 		...scene,
 		materials,
 		entities,
 		...(surfaceFinishes === undefined ? {} : { surfaceFinishes })
 	} as TS;
+}
+
+/** The surface a `surfaceKey` names, or null when the key is not one. */
+function surfaceRefFromKey(key: string): SceneSurfaceRef | null {
+	let parts: unknown;
+	try {
+		parts = JSON.parse(key);
+	} catch {
+		return null;
+	}
+	if (!Array.isArray(parts) || !parts.every((part) => typeof part === 'string')) return null;
+	const [kind, a, b] = parts as string[];
+	const ref: SceneSurfaceRef | null =
+		kind === 'wall-side' && a !== undefined && (b === 'left' || b === 'right')
+			? { kind, wallId: a, side: b }
+			: kind === 'room-floor' && a !== undefined
+				? { kind, roomId: a }
+				: kind === 'room-lid' && a !== undefined
+					? { kind, roomId: a }
+					: kind === 'region-face' && a !== undefined && (b === 'top' || b === 'underside' || b === 'edge')
+						? { kind, regionId: a, face: b }
+						: null;
+	return ref !== null && surfaceKey(ref) === key ? ref : null;
 }
 
 /** A stable, readable label for a Finish key when no catalogue is at hand. */

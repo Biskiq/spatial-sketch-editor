@@ -80,6 +80,16 @@ export type StageKeyboardInput = {
 	readonly clearWorldTool: () => void;
 	readonly worldPlateOpen: () => boolean;
 	readonly closeWorldPlate: () => void;
+	/** Furnish's quick strip is open with no tool armed; Escape folds it like a plate. */
+	readonly furnishStripOpen?: () => boolean;
+	readonly closeFurnishStrip?: () => void;
+	/**
+	 * Whether keyboard focus sits on a non-Select World dock key or inside a tool
+	 * strip that an Escape rung may close. Read before the rung runs.
+	 */
+	readonly toolbarFocused?: () => boolean;
+	/** Move focus to the dock's Select key after Escape returned the editor to Select. */
+	readonly focusSelectKey?: () => void;
 	readonly dismissSky?: () => boolean;
 	readonly lens: () => 'world' | 'experience';
 	readonly selectionPresent: () => boolean;
@@ -338,12 +348,17 @@ export function createStageKeyboard(input: StageKeyboardInput): StageKeyboard {
 				const armedKey = input.armedDockKey();
 				if (input.task() !== null && armedKey?.palette === true && input.paletteOpen()) { input.closePalette(); break; }
 				if (input.libraryOpen()) { input.toggleLibrary(); break; }
-				if (input.task() !== null) input.closeTask();
-				else if (input.activeWorldTool() !== 'select') { input.clearWorldTool(); }
+				// A rung that returns the editor to Select must not leave keyboard focus
+				// (and its halo) on the key or strip it just closed. Stage focus stays.
+				const toolbarFocus = input.toolbarFocused?.() === true;
+				const settleFocus = () => { if (toolbarFocus) input.focusSelectKey?.(); };
+				if (input.task() !== null) { input.closeTask(); settleFocus(); }
+				else if (input.activeWorldTool() !== 'select') { input.clearWorldTool(); settleFocus(); }
 				// The plate is the last layer before Select: once the tool is clear,
 				// Escape folds the parchment instead of moving the selection.
 				else if (input.dismissSky?.()) { break; }
-				else if (input.lens() === 'world' && input.worldPlateOpen()) { input.closeWorldPlate(); }
+				else if (input.lens() === 'world' && input.furnishStripOpen?.() === true) { input.closeFurnishStrip?.(); settleFocus(); }
+				else if (input.lens() === 'world' && input.worldPlateOpen()) { input.closeWorldPlate(); settleFocus(); }
 				else {
 					// A selection — including one made inside a temporary reading — closes
 					// first, then the next Escape puts the reading back (X1: Lift). A claimed

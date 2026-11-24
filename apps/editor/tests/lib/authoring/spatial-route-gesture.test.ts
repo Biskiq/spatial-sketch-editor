@@ -234,7 +234,7 @@ function worldKey(label: string): HTMLButtonElement {
 
 /** One kind in the external Library's rail. */
 function libraryKind(label: string): HTMLButtonElement {
-	const kind = [...target.querySelectorAll<HTMLButtonElement>('.library .rail button')]
+	const kind = [...target.querySelectorAll<HTMLButtonElement>('[data-stage-library] [data-library-kind]')]
 		.find((node) => node.textContent?.includes(label));
 	if (kind === undefined) throw new Error(`the Library offers no ${label} kind`);
 	return kind;
@@ -246,7 +246,7 @@ async function openPlacement(): Promise<void> {
 	await settled();
 	libraryKind('Objects').click();
 	await settled();
-	const tile = target.querySelector<HTMLButtonElement>('.library .simple-open');
+	const tile = target.querySelector<HTMLButtonElement>('[data-stage-library] [data-library-simple]');
 	if (tile === null) throw new Error('the Library offers no object tile');
 	tile.click();
 	await settled();
@@ -1052,7 +1052,7 @@ describe('mounted Stage drawing and deletion', () => {
 
 	it('arms every dock key by its shortcut and from Find without changing the selection', async () => {
 		const before = facade().selectionState();
-		for (const [letter, kind] of [['p', 'layout-ink'], ['m', 'host-measure'], ['e', 'host-erase'], ['l', 'place-object']] as const) {
+		for (const [letter, kind] of [['p', 'layout-ink'], ['m', 'host-measure'], ['e', 'host-erase']] as const) {
 			key(letter);
 			await settled();
 			expect(facade().session.task()?.kind, letter).toBe(kind);
@@ -1064,6 +1064,14 @@ describe('mounted Stage drawing and deletion', () => {
 			];
 			expect(engaged, letter).toHaveLength(1);
 		}
+		// U5: `L` opens the Library (the dock key's own action), not a placement.
+		key('l');
+		await settled();
+		expect(target.querySelector('[data-stage-library]')).not.toBeNull();
+		expect(facade().selectionState()).toEqual(before);
+		key('l');
+		await settled();
+		expect(target.querySelector('[data-stage-library]')).toBeNull();
 		key('v');
 		await settled();
 		expect(facade().session.task()).toBeNull();
@@ -2960,7 +2968,7 @@ describe('mounted X2 gesture lifetimes', () => {
 		await settled();
 		libraryKind('Artwork').click();
 		await settled();
-		const tile = [...target.querySelectorAll<HTMLButtonElement>('.library .simple-open')]
+		const tile = [...target.querySelectorAll<HTMLButtonElement>('[data-stage-library] [data-library-simple]')]
 			.find((node) => node.textContent?.includes('Gesture print'));
 		if (tile === undefined) throw new Error('the Library offers no Gesture print tile');
 		tile.click();

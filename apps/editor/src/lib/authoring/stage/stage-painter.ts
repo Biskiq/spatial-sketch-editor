@@ -99,6 +99,11 @@ export type StagePaintOptions = {
 	readonly surfaceScope?: () => PaintRadius;
 	readonly setSurfaceScope?: (scope: PaintRadius) => void;
 	readonly activeLabel: () => string;
+	/**
+	 * A sample that does not change the pick (the Material editor's draft retarget)
+	 * names what it did instead of `Sampled · <pick>`; `null` keeps the default.
+	 */
+	readonly sampleMessage?: () => string | null;
 	/** What the pointed surface or object wears now, for the consequence line; `null` when it has no named Finish. */
 	/** Clock for long-press sampling; tests inject one. */
 	readonly now?: () => number;
@@ -349,7 +354,7 @@ export function createStagePainter(
 			? await options.copy(target.hit)
 			: await options.copySurface(target.surface);
 		notice = copied
-			? { kind: 'accepted', message: `Sampled · ${options.activeLabel()}`, css }
+			? { kind: 'accepted', message: options.sampleMessage?.() ?? `Sampled · ${options.activeLabel()}`, css }
 			: { kind: 'refused', message: 'That has no Finish colour.', css };
 		onChange();
 	}

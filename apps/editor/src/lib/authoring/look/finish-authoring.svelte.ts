@@ -27,6 +27,10 @@ import {
 	finishKeyOfSurface,
 	finishSheenReading,
 	finishHasColourImage,
+	applyFinishPatch,
+	baseRecipeOf,
+	sheenStepEdits,
+	type FinishInstancePreview,
 	inspectFinish,
 	isFinishPaintable,
 	isPristineInstance,
@@ -97,7 +101,13 @@ import {
 } from './finish-image.svelte';
 import type { ImportedProjectImage } from '../artwork/project-artwork';
 import type { CoatReading } from './colour-coat-port';
-import { createFinishCard, type FinishCard } from './finish-card.svelte';
+import {
+	createFinishCard,
+	finishCardTargetKey,
+	type FinishCard,
+	type FinishCardTarget,
+	type FinishReachChoice
+} from './finish-card.svelte';
 import {
 	materialFamilies,
 	materialFamilyOf,
@@ -109,7 +119,7 @@ import {
 	libraryFamilyLabel,
 	type LibraryFinishEntry
 } from '../library/library-catalogue';
-import { libraryTargetOf, selectionEntriesOfFinishUsers, type LibraryTarget } from '../library/library-target';
+import { libraryTargetOf, libraryTargetOfPick, selectionEntriesOfFinishUsers, type LibraryTarget } from '../library/library-target';
 import {
 	beginLibraryDraft,
 	libraryDraftChanged,
@@ -117,11 +127,31 @@ import {
 	type LibraryDraft
 } from '../library/library-draft';
 
+/** A Stage pick the draft editor retargets to. */
+export type LibraryDraftPick =
+	| { readonly kind: 'entity'; readonly entityId: string }
+	| { readonly kind: 'surface'; readonly surface: SceneSurfaceRef };
+
+export type LibrarySwapRequest = {
+	readonly target: FinishCardTarget;
+	readonly targetKey: string;
+	readonly place: string;
+	readonly finishName: string;
+	readonly materialLabel: string;
+	readonly currentId: MaterialId | null;
+	/** The reach the Card showed; null when there was nothing to choose. */
+	readonly reach: FinishReachChoice | null;
+	readonly reachLine: string;
+	readonly users: number;
+};
+
 export type FinishAuthoringHost = {
 	readonly services: () => StageAdapterServices | null;
 	readonly onNotice: (message: string) => void;
 	/** Open Library › Finishes, scrolled to the current tile. */
 	readonly openFinishes: () => void;
+	/** Open the Library on Materials in Swap mode for the request just captured. */
+	readonly openLibrarySwap?: () => void;
 	/** Arm the host Paint task, optionally in the Finish dropper. */
 	readonly armPaint: (mode: { readonly kind: 'paint' } | { readonly kind: 'dropper' }) => void;
 	/** Whether the host Paint tool is armed now; a Library pick then arms, never assigns. */
@@ -283,6 +313,10 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 	let busy = $state(false);
 	/** The Library's Customise… draft; view state only until Apply. */
 	let libraryDraft = $state.raw<LibraryDraft | null>(null);
+	/** The draft editor's own target: a Stage pick, kept apart from the canonical selection. */
+	let libraryDraftPick = $state.raw<LibraryDraftPick | null>(null);
+	/** The draft's last refusal, shown in place until the next edit or retarget. */
+	let draftRefusal = $state<string | null>(null);
 
 	/** The one From-image flow: upload states, cancellation and retry. */
 	const imageFlow: FinishImageFlow = createFinishImageFlow({
@@ -753,8 +787,10 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 	}
 
 	/**
-	 * Open a Customise… draft. Draft state is view state: this call and every
-	 * step change write nothing. Apply is the one authoring call.
+	 * Open a Customise… draft. Draft state is view state: this call, every
+	 * field change and every retarget write nothing. Apply is the one write.
+	 * The draft target starts on the qualified selection and is never the
+	 * canonical selection afterwards.
 	 */
 	function openLibraryDraft(ref: Exclude<SceneFinishRef, 'model-own'>): boolean {
 		const key = finishKeyOfRef(ref);
@@ -764,76 +800,317 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 			return false;
 		}
 		libraryDraft = beginLibraryDraft(entry);
+		const target = libraryTarget();
+		libraryDraftPick = target === null
+			? null
+			: target.kind === 'entity'
+				? { kind: 'entity', entityId: target.entityId }
+				: { kind: 'surface', surface: target.surface };
+		draftRefusal = null;
 		return true;
 	}
 
 	function setLibraryDraftStep(step: LibraryDraft['step']): void {
 		if (libraryDraft === null) return;
 		libraryDraft = { ...libraryDraft, step };
+		draftRefusal = null;
+	}
+
+	/** Back to the Finish's own sheen: a local reset, no write. */
+	function resetLibraryDraftStep(): void {
+		if (libraryDraft === null) return;
+		const entry = libraryBrowse().find((candidate) => candidate.key === libraryDraft!.finishKey);
+		libraryDraft = beginLibraryDraft(entry ?? {
+			key: libraryDraft.finishKey,
+			ref: libraryDraft.ref,
+			name: libraryDraft.name,
+			materialLabel: libraryDraft.baseLabel,
+			source: libraryDraft.source,
+			reading: libraryDraft.reading,
+			userKeys: libraryDraft.users
+		});
+		draftRefusal = null;
 	}
 
 	function cancelLibraryDraft(): void {
 		libraryDraft = null;
+		libraryDraftPick = null;
+		draftRefusal = null;
 	}
 
-	/** What Apply would do, for the detail pane; no host call. */
+	/** The draft's target, requalified against the accepted Scene now. */
+	function libraryDraftTarget(): LibraryTarget | null {
+		const pick = libraryDraftPick;
+		const services = servicesNow();
+		if (pick === null || services === null) return null;
+		return libraryTargetOfPick(pick, stageEnvelope(services.stage.snapshot()));
+	}
+
+	/**
+	 * A Stage pick while the draft editor is open moves the cobalt proposal. An
+	 * ineligible pick leaves the proposal where it was and says why.
+	 */
+	function retargetLibraryDraft(pick: LibraryDraftPick): boolean {
+		const services = servicesNow();
+		if (libraryDraft === null || services === null) return false;
+		const next = libraryTargetOfPick(pick, stageEnvelope(services.stage.snapshot()));
+		if (next === null) {
+			const kept = libraryDraftTarget();
+			host.onNotice(kept === null
+				? 'That cannot take a Finish. Click a surface or object.'
+				: `That cannot take a Finish. The preview stays on ${kept.label}.`);
+			return false;
+		}
+		libraryDraftPick = pick;
+		draftRefusal = null;
+		host.onNotice(`Draft preview on ${next.label} · nothing is written`);
+		return true;
+	}
+
+	/** What the draft would write, as a plan or a reason; no host call. */
+	function draftPlanNow():
+		| { readonly kind: 'edit'; readonly plan: Extract<ReturnType<typeof libraryDraftPlan>, { ok: true }> }
+		| { readonly kind: 'assign'; readonly target: LibraryTarget }
+		| { readonly kind: 'refused'; readonly message: string } {
+		const draft = libraryDraft;
+		if (draft === null) return { kind: 'refused', message: 'No draft is open.' };
+		const target = libraryDraftTarget();
+		if (target === null) return { kind: 'refused', message: 'Click a surface or object to preview and apply.' };
+		const entry = libraryBrowse().find((candidate) => candidate.key === draft.finishKey);
+		if (entry === undefined) return { kind: 'refused', message: 'That Finish is no longer in this project.' };
+		const changed = libraryDraftChanged(draft, entry.reading);
+		if (!changed) {
+			if (target.finishKey === draft.finishKey) {
+				return { kind: 'refused', message: `${target.label} already wears ${draft.name}. Change a field or pick another surface.` };
+			}
+			return { kind: 'assign', target };
+		}
+		const plan = libraryDraftPlan(draft, target, entry.reading, entry.userKeys);
+		if (!plan.ok) {
+			return {
+				kind: 'refused',
+				message: target.finishKey !== draft.finishKey
+					? `An edited draft applies only where ${draft.name} is worn today. Pick one of its surfaces, or reset the sheen to assign it here.`
+					: plan.message
+			};
+		}
+		return { kind: 'edit', plan };
+	}
+
+	/** What Apply would do, for the editor footer; no host call. */
 	function libraryDraftStatus(): {
 		readonly active: boolean;
 		readonly canApply: boolean;
 		readonly changed: boolean;
 		readonly targetLabel: string | null;
 		readonly reason: string | null;
+		readonly canPaint: boolean;
+		readonly paintReason: string | null;
 	} {
 		const draft = libraryDraft;
 		if (draft === null) {
-			return { active: false, canApply: false, changed: false, targetLabel: null, reason: null };
+			return { active: false, canApply: false, changed: false, targetLabel: null, reason: null, canPaint: false, paintReason: null };
 		}
-		const target = libraryTarget();
+		const target = libraryDraftTarget();
 		const entry = libraryBrowse().find((candidate) => candidate.key === draft.finishKey);
-		const reading = entry?.reading ?? draft.reading;
-		const users = entry?.userKeys ?? draft.users;
-		const plan = libraryDraftPlan(draft, target, reading, users);
+		const changed = libraryDraftChanged(draft, entry?.reading ?? draft.reading);
+		const plan = draftPlanNow();
 		return {
 			active: true,
-			canApply: plan.ok,
-			changed: libraryDraftChanged(draft, reading),
+			canApply: plan.kind !== 'refused' && !busy,
+			changed,
 			targetLabel: target?.label ?? null,
-			reason: plan.ok ? null : plan.message
+			reason: draftRefusal ?? (plan.kind === 'refused' ? plan.message : null),
+			canPaint: !changed,
+			paintReason: changed ? 'An edited sheen has no Paint path yet. Apply it, or reset to paint with the original.' : null
 		};
 	}
 
-	/** One accepted scene-finish-patch for the draft: the same path as the Finish Card. */
+	/**
+	 * The render-only Stage projection of the draft on its target. Null when it
+	 * cannot project (no target, unresolved Finish): the editor then says so.
+	 */
+	function libraryDraftPreview(): FinishInstancePreview | null {
+		const draft = libraryDraft;
+		const target = libraryDraftTarget();
+		const current = scene();
+		if (draft === null || target === null || current === null) return null;
+		const entry = libraryBrowse().find((candidate) => candidate.key === draft.finishKey);
+		if (entry === undefined) return null;
+		const instance: SceneMaterialInstance | null = 'curated' in draft.ref
+			? { id: `curated:${draft.ref.curated}`, name: draft.name, base: { catalogue: draft.ref.curated } }
+			: (materialInstanceById(current.materials, draft.ref.project) as SceneMaterialInstance | null);
+		if (instance === null || instance === undefined) return null;
+		const recipes = (current.materialIndex?.definitions ?? new Map()) as ReadonlyMap<string, import('@portfolio/project-model/materials').Recipe>;
+		const edits = libraryDraftChanged(draft, entry.reading) ? sheenStepEdits(entry.reading, draft.step) : [];
+		if (edits.length === 0) {
+			return target.finishKey === draft.finishKey ? null : { users: [target.key], instance };
+		}
+		const result = applyFinishPatch(instance, edits, baseRecipeOf(instance, recipes));
+		return result.ok ? { users: [target.key], instance: result.instance } : null;
+	}
+
+	/**
+	 * The draft's own Finish for inspection, independent of the target: the
+	 * patched instance when the sheen changed, the original when it did not, or
+	 * the reason no draft render can be made.
+	 */
+	function libraryDraftInstance():
+		| { readonly ok: true; readonly changed: boolean; readonly instance: SceneMaterialInstance }
+		| { readonly ok: false; readonly reason: string }
+		| null {
+		const draft = libraryDraft;
+		const current = scene();
+		if (draft === null || current === null) return null;
+		const entry = libraryBrowse().find((candidate) => candidate.key === draft.finishKey);
+		const instance: SceneMaterialInstance | null | undefined = 'curated' in draft.ref
+			? { id: `curated:${draft.ref.curated}`, name: draft.name, base: { catalogue: draft.ref.curated } }
+			: (materialInstanceById(current.materials, draft.ref.project) as SceneMaterialInstance | null);
+		if (entry === undefined || instance === null || instance === undefined) {
+			return { ok: false, reason: 'The Finish is no longer in the project.' };
+		}
+		const recipes = (current.materialIndex?.definitions ?? new Map()) as ReadonlyMap<string, import('@portfolio/project-model/materials').Recipe>;
+		const edits = libraryDraftChanged(draft, entry.reading) ? sheenStepEdits(entry.reading, draft.step) : [];
+		if (edits.length === 0) return { ok: true, changed: false, instance };
+		const result = applyFinishPatch(instance, edits, baseRecipeOf(instance, recipes));
+		return result.ok
+			? { ok: true, changed: true, instance: result.instance }
+			: { ok: false, reason: 'This sheen cannot be drawn from the material’s recipe.' };
+	}
+
+	/**
+	 * Apply the draft: one accepted operation, one Undo. An edited sheen goes
+	 * through the same scene-finish-patch as the Finish Card; an unchanged draft
+	 * assigns its existing Finish to the requalified target.
+	 */
 	async function applyLibraryDraft(): Promise<boolean> {
 		const draft = libraryDraft;
-		if (draft === null) return false;
-		const target = libraryTarget();
-		const entry = libraryBrowse().find((candidate) => candidate.key === draft.finishKey);
-		if (entry === undefined) {
-			host.onNotice('That Finish is no longer in this project.');
+		if (draft === null || busy) return false;
+		const plan = draftPlanNow();
+		if (plan.kind === 'refused') {
+			draftRefusal = plan.message;
 			return false;
 		}
-		const plan = libraryDraftPlan(draft, target, entry.reading, entry.userKeys);
-		if (!plan.ok) {
-			host.onNotice(plan.message);
-			return false;
+		if (plan.kind === 'assign') {
+			const target = plan.target;
+			const accepted = target.kind === 'entity'
+				? await assign([target.entityId], draft.ref)
+				: await assignSurfaces([target.surface], draft.ref);
+			if (!accepted) {
+				draftRefusal = 'That change could not be made. Nothing changed.';
+				return false;
+			}
+			noteUsed(draft.finishKey);
+			host.onNotice(`Applied ${draft.name} to ${target.label} · one undo`);
+			cancelLibraryDraft();
+			return true;
 		}
+		const target = libraryDraftTarget();
 		busy = true;
 		try {
 			const outcome = await accept({
 				kind: 'scene-finish-patch',
 				payload: {
 					finish: draft.ref,
-					edits: plan.edits,
-					mode: plan.mode,
-					selectedUsers: plan.selectedUsers,
-					expectedUsers: plan.expectedUsers
+					edits: plan.plan.edits,
+					mode: plan.plan.mode,
+					selectedUsers: plan.plan.selectedUsers,
+					expectedUsers: plan.plan.expectedUsers
 				},
-				allocatedIds: plan.allocates ? [newId('scene-finish', crypto.randomUUID())] : []
+				allocatedIds: plan.plan.allocates ? [newId('scene-finish', crypto.randomUUID())] : []
 			});
-			if (outcome.kind !== 'accepted') return false;
-			host.onNotice(`Applied ${draft.name} to ${target?.label ?? 'the selection'}.`);
-			libraryDraft = null;
+			if (outcome.kind !== 'accepted') {
+				draftRefusal = 'That change could not be made. Nothing changed.';
+				return false;
+			}
+			host.onNotice(`Applied ${draft.name} to ${target?.label ?? 'the surface'} · one undo`);
+			cancelLibraryDraft();
 			return true;
+		} finally {
+			busy = false;
+		}
+	}
+
+	/** *Use for Paint* from the draft: arms its existing Finish, never writes. */
+	function paintLibraryDraft(): boolean {
+		const draft = libraryDraft;
+		if (draft === null) return false;
+		const status = libraryDraftStatus();
+		if (!status.canPaint) {
+			draftRefusal = status.paintReason;
+			return false;
+		}
+		pickMaterialKey(draft.finishKey);
+		cancelLibraryDraft();
+		return true;
+	}
+
+	/**
+	 * The Card's *Swap…* hand-off (U5): the target, place and reach the Card showed,
+	 * captured once. The Library shows it before activation; Apply requalifies it.
+	 */
+	let librarySwap = $state.raw<LibrarySwapRequest | null>(null);
+
+	function requestLibrarySwap(target: FinishCardTarget, place: string): boolean {
+		const view = card.view(target, place);
+		if (view === null || view.kind !== 'finish' || !view.material.swappable) {
+			host.onNotice('This surface has no material to swap.');
+			return false;
+		}
+		librarySwap = {
+			target,
+			targetKey: finishCardTargetKey(target),
+			place,
+			finishName: view.name,
+			materialLabel: view.material.label,
+			currentId: view.material.catalogueId,
+			reach: view.reach.options === null ? null : view.reach.choice,
+			reachLine: view.reach.options === null
+				? view.reach.line
+				: view.reach.choice === 'all'
+					? view.reach.options.allLabel
+					: view.reach.options.thisLabel,
+			users: view.reach.users
+		};
+		if (host.openLibrarySwap === undefined) {
+			librarySwap = null;
+			return false;
+		}
+		host.openLibrarySwap();
+		return true;
+	}
+
+	function clearLibrarySwap(): void {
+		librarySwap = null;
+	}
+
+	/**
+	 * Swap the captured target to a curated material through the Card's
+	 * treatment-preserving command. A stale target or reach refuses in place.
+	 */
+	async function applyLibrarySwap(materialId: MaterialId): Promise<{ readonly ok: true } | { readonly ok: false; readonly message: string }> {
+		const request = librarySwap;
+		if (request === null) return { ok: false, message: 'Open Swap from a Finish Card first.' };
+		const view = card.view(request.target, request.place);
+		if (view === null || view.kind !== 'finish' || !view.material.swappable) {
+			return { ok: false, message: `${request.place} can no longer be swapped. Nothing changed.` };
+		}
+		if (view.reach.users !== request.users) {
+			return { ok: false, message: `Now used by ${view.reach.users} — reopen Swap from the Card. Nothing changed.` };
+		}
+		if (view.material.catalogueId === materialId) {
+			return { ok: false, message: `${request.place} is already ${view.material.label}.` };
+		}
+		if (request.reach !== null && view.reach.choice !== request.reach) card.setReach(request.target, request.reach);
+		busy = true;
+		try {
+			const accepted = await card.swap(request.target, materialId);
+			if (!accepted) {
+				return { ok: false, message: card.refusalFor(request.target) ?? 'That swap could not be made. Nothing changed.' };
+			}
+			host.onNotice(`Swapped ${request.place} to ${catalogueLabel(materialId)} — colour and sheen kept.`);
+			librarySwap = { ...request, currentId: materialId, materialLabel: catalogueLabel(materialId) };
+			return { ok: true };
 		} finally {
 			busy = false;
 		}
@@ -1225,6 +1502,8 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 	/** The dropper's one click: copy the target's Finish, or its authored colour. */
 	async function copyFrom(target: { readonly sourceId: string } | string): Promise<boolean> {
 		const targetId = typeof target === 'string' ? target : target.sourceId;
+		// The draft editor borrows the dropper's pick: a click moves its proposal.
+		if (libraryDraft !== null) return retargetLibraryDraft({ kind: 'entity', entityId: targetId });
 		const view = viewFor(targetId);
 		dropper = false;
 		if (view === null) {
@@ -1383,6 +1662,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 
 	/** Copy the authored Finish from a Layout surface; an unpainted surface has nothing to copy. */
 	async function copySurface(surface: PaintableSurface): Promise<boolean> {
+		if (libraryDraft !== null) return retargetLibraryDraft({ kind: 'surface', surface: surface as SceneSurfaceRef });
 		const current = scene();
 		dropper = false;
 		if (current === null) {
@@ -1512,7 +1792,8 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 					: { kind: 'finish', key: activeKey };
 		},
 		get dropperArmed() {
-			return dropper;
+			// An open draft editor picks its target through the dropper path.
+			return dropper || libraryDraft !== null;
 		},
 		get busy() {
 			return busy;
@@ -1534,6 +1815,18 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		get libraryDraft() {
 			return libraryDraft;
 		},
+		libraryDraftTarget,
+		libraryDraftPreview,
+		libraryDraftInstance,
+		retargetLibraryDraft,
+		resetLibraryDraftStep,
+		paintLibraryDraft,
+		get librarySwap() {
+			return librarySwap;
+		},
+		requestLibrarySwap,
+		clearLibrarySwap,
+		applyLibrarySwap,
 		paletteView,
 		paintTray,
 		pickFinish,
