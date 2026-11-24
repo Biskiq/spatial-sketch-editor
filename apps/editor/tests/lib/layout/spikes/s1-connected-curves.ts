@@ -186,18 +186,22 @@ export function attach(state: State, hostId: string, index: number) {
 
 export function stripAnnex(layout: Layout, roomId: string): Layout {
 	const ring = new Set(boundary(layout, roomId).map((ref) => ref.wallId));
-	const outside = layout.walls.filter((entry) => !ring.has(entry.id));
-	const stripped = outside.reduce((current, entry, index) => accepted(
-		planDeleteWall(current, entry.id, capture(`detach-${index}`), current.floor.id)
-	).document, layout);
-	// SP1c carries an opened annex as a Space; this staging fixture wants the
-	// historical stripped state, so it drops the annex records without touching
-	// the target Room's ring.
-	const annexRoomIds = new Set(stripped.rooms.filter((room) => room.id !== roomId).map((room) => room.id));
+	const ringWalls = layout.walls.filter((entry) => ring.has(entry.id));
+	const ringJunctionIds = new Set(
+		ringWalls.flatMap((entry) => [entry.startJunctionId, entry.endJunctionId])
+	);
+	const annexRoomIds = new Set(
+		layout.rooms.filter((room) => room.id !== roomId).map((room) => room.id)
+	);
+	// Stage the historical un-repacked isolated 3-arc ring directly without
+	// triggering C2's automatic last-detach repack on `planDeleteWall`.
 	return {
-		...stripped,
-		rooms: stripped.rooms.filter((room) => room.id === roomId),
-		objects: stripped.objects.map((object) =>
+		...layout,
+		junctions: layout.junctions.filter((j) => ringJunctionIds.has(j.id)),
+		walls: ringWalls,
+		rooms: layout.rooms.filter((room) => room.id === roomId),
+		openings: layout.openings.filter((o) => ring.has(o.wallId)),
+		objects: layout.objects.map((object) =>
 			object.roomId !== undefined && annexRoomIds.has(object.roomId)
 				? { ...object, roomId: undefined }
 				: object

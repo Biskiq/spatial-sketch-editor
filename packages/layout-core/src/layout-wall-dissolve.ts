@@ -63,6 +63,11 @@ import {
 import { validateWallFirstOpeningSet } from './layout-opening-set';
 import { validateWallFirstPortalRelations } from './layout-wall-portals';
 import { joinWallSurfaceLineage, type LayoutSurfaceLineage } from './layout-surface-reference';
+import {
+	findRoundRoomSeamOwner,
+	ROUND_ROOM_MEMBER_EDIT_MESSAGE
+} from './layout-round-room';
+import { tangentAnchorsAllowContinuation } from './layout-junction-resolution';
 
 /** Dissolve-only rejection codes; stable machine codes per operation. */
 export type DissolveSpecificRejectionCode =
@@ -81,7 +86,8 @@ export type DissolveSpecificRejectionCode =
 	| 'portal_relation_invalid'
 	| 'wall_height_below_opening'
 	| 'invalid_candidate_document'
-	| 'captured_id_in_use';
+	| 'captured_id_in_use'
+	| 'round_room_member_locked';
 
 /**
  * Dissolve rejection: the shared topology rejection shape plus the
@@ -182,6 +188,17 @@ export function planDissolveJunction(
 			message: `Junction '${junctionId}' is the seam of closed Wall '${closedIncident.id}' (closed_wall_isolated); a loop cannot dissolve`,
 			junctionIds: [junctionId],
 			wallIds: [closedIncident.id]
+		});
+	}
+
+	const seamOwner = findRoundRoomSeamOwner(document, junctionId);
+	if (seamOwner) {
+		return reject({
+			code: 'round_room_member_locked',
+			message: ROUND_ROOM_MEMBER_EDIT_MESSAGE,
+			junctionIds: [junctionId],
+			wallIds: [...seamOwner.wallIds],
+			roomIds: [seamOwner.room.id]
 		});
 	}
 
@@ -344,7 +361,11 @@ export function planDissolveJunction(
 				arrivingControl.handleIn,
 				departingControl.handleOut,
 				junctionPoint
-			)
+			) &&
+			!tangentAnchorsAllowContinuation(junctionPoint, [
+				arrivingControl.handleIn,
+				departingControl.handleOut
+			])
 		) {
 			return reject({
 				code: 'non_tangent_curved_pair',

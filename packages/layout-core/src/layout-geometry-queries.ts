@@ -1,6 +1,7 @@
 import type { LayoutVec2 } from './layout-coordinates';
 import type {
 	CompiledLayoutGeometry,
+	CompiledPhysicalWall,
 	CompiledQueryAabb,
 	CompiledQueryPoint,
 	CompiledQueryPolygon,
@@ -9,6 +10,12 @@ import type {
 	CompiledRoom,
 	LayoutBounds2
 } from './layout-geometry-types';
+import {
+	wallSideSurfaceRef,
+	type LayoutWallSide,
+	type LayoutWallSideSurfaceRef
+} from './layout-surface-reference';
+import type { LayoutDocumentWallFirst } from './layout-wall-first-types';
 import { polygonsShareInteriorArea } from './layout-face-extraction';
 import { pointInPolygon } from './layout-geometry-objects';
 
@@ -272,5 +279,85 @@ function regionUndersideSource(region: CompiledRegion): OverheadSource | null {
 		subject: { kind: 'region', id: region.regionId },
 		outline: region.footprint.map((point): LayoutVec2 => [point[0], point[1]]),
 		elevation: region.bottomY
+	};
+}
+
+// ---------------------------------------------------------------------------
+// C2 — Layout interior coverage query ({ roomId, role: 'inside' })
+// ---------------------------------------------------------------------------
+
+export type LayoutRoomInteriorRef = {
+	readonly roomId: string;
+	readonly role: 'inside';
+};
+
+export type ResolvedInteriorWallSide = {
+	readonly surface: LayoutWallSideSurfaceRef;
+	readonly wallId: string;
+	readonly side: LayoutWallSide;
+	readonly direction: 'forward' | 'reverse';
+	readonly physical: CompiledPhysicalWall;
+};
+
+export type LayoutRoomInteriorResolution =
+	| {
+			readonly kind: 'resolved';
+			readonly reference: LayoutRoomInteriorRef;
+			readonly roomId: string;
+			readonly wallSides: readonly ResolvedInteriorWallSide[];
+	  }
+	| {
+			readonly kind: 'unresolved';
+			readonly reference: LayoutRoomInteriorRef;
+			readonly code: 'missing-room' | 'missing-compiled-wall';
+			readonly message: string;
+	  };
+
+/**
+ * Resolve `{ roomId, role: 'inside' }` into ordered S5a physical Wall-side
+ * surface references and compiled physical Walls from the Room/Space's
+ * oriented boundary. Excludes virtual edges and outside Walls.
+ */
+export function resolveLayoutRoomInterior(
+	document: Pick<LayoutDocumentWallFirst, 'rooms'>,
+	compiled: CompiledLayoutGeometry,
+	reference: LayoutRoomInteriorRef
+): LayoutRoomInteriorResolution {
+	const room = document.rooms.find((candidate) => candidate.id === reference.roomId);
+	const compiledRoom = compiled.rooms.find((candidate) => candidate.roomId === reference.roomId);
+	if (!room || !compiledRoom) {
+		return {
+			kind: 'unresolved',
+			reference,
+			code: 'missing-room',
+			message: `Room '${reference.roomId}' is not present in the Layout document or compiled geometry`
+		};
+	}
+	const physicalById = new Map(compiled.walls.map((w) => [w.wallId, w] as const));
+	const wallSides: ResolvedInteriorWallSide[] = [];
+	for (const ref of room.boundary) {
+		const physical = physicalById.get(ref.wallId);
+		if (!physical) {
+			return {
+				kind: 'unresolved',
+				reference,
+				code: 'missing-compiled-wall',
+				message: `Wall '${ref.wallId}' of Room '${reference.roomId}' has no compiled physical Wall`
+			};
+		}
+		const side: LayoutWallSide = ref.direction === 'forward' ? 'left' : 'right';
+		wallSides.push({
+			surface: wallSideSurfaceRef(ref.wallId, side),
+			wallId: ref.wallId,
+			side,
+			direction: ref.direction,
+			physical
+		});
+	}
+	return {
+		kind: 'resolved',
+		reference,
+		roomId: room.id,
+		wallSides
 	};
 }
