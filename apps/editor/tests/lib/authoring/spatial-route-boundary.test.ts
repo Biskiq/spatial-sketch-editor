@@ -20,6 +20,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import { LIFECYCLE_ORDER } from '$lib/authoring/workspace/lifecycle-order';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -122,8 +123,11 @@ describe('spatial route composition boundary (X1)', () => {
 		expect(code).toContain('stageEpoch.markTornDown()');
 		expect(code).toContain('stageEpoch.dispose()');
 		// U4 drops a live Finish Card gesture before delegating to the same epoch history owner.
-		expect(code).toMatch(/onUndo=\{\(\) => \{\s*finishes\.card\.cancel\(\);\s*void stageEpoch\.undo\(\);\s*\}\}/);
-		expect(code).toMatch(/onRedo=\{\(\) => \{\s*finishes\.card\.cancel\(\);\s*void stageEpoch\.redo\(\);\s*\}\}/);
+		expect(code).toMatch(/onUndo=\{\(\) => lifecycle\.historyStep\('undo'\)\}/);
+		expect(code).toMatch(/onRedo=\{\(\) => lifecycle\.historyStep\('redo'\)\}/);
+		expect(LIFECYCLE_ORDER.historyStep).toEqual(['appearance:cancel-card-gesture', 'core:run-history']);
+		expect(code).toMatch(/historyStep:\s*\{\s*'cancel-card-gesture': \(\) => \{ finishes\.card\.cancel\(\); \}/);
+		expect(code).toMatch(/'run-history': \(direction\) => \{\s*if \(direction === 'undo'\) void stageEpoch\.undo\(\);\s*else void stageEpoch\.redo\(\);/);
 		expect(code).toMatch(/get artworkScope\(\)\s*\{\s*return stageAssets\.artworkScope\s*;/);
 	});
 

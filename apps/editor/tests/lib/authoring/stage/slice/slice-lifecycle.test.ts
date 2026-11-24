@@ -11,6 +11,7 @@
  * while Slice is armed, and the clip applier that requests a frame even when the ink
  * layer is unmounted (Look Through).
  */
+import { LIFECYCLE_ORDER } from '$lib/authoring/workspace/lifecycle-order';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -28,12 +29,15 @@ describe('the reading ends with the project and with the lens', () => {
 		// a floor rather than an equality.
 		expect(lifts.length).toBeGreaterThanOrEqual(2);
 		expect(slices.length).toBeGreaterThanOrEqual(2);
-		for (const anchor of ['// Leaving the project ends the reading', 'function resetViewContext(): void {']) {
-			const at = route.indexOf(anchor);
-			expect(at, anchor).toBeGreaterThan(0);
-			const window = route.slice(at, at + 400);
-			expect(window, anchor).toContain('sliceReading.clear()');
-		}
+		const at = route.indexOf('function clearProjectReadings(): void {');
+		expect(at).toBeGreaterThan(0);
+		expect(route.slice(at, at + 300)).toMatch(/interiorLift\.clear\(\);[\s\S]*sliceReading\.clear\(\);[\s\S]*setResolvedSlice\(null\);/);
+		expect(route).toMatch(/function resetLayoutReadings\(\): void \{[\s\S]*?wallFace\.clear\(\);\s*clearProjectReadings\(\);/);
+		expect(route).toContain('resetPresentation: { reset: resetLayoutReadings }');
+		expect(route).toContain("leaveProject: { 'clear-readings': clearProjectReadings }");
+		expect(route).toContain('$effect(() => () => lifecycle.leaveProject())');
+		expect(LIFECYCLE_ORDER.resetPresentation).toContain('layout-readings:reset');
+		expect(LIFECYCLE_ORDER.leaveProject).toContain('layout-readings:clear-readings');
 	});
 
 	it('ends the reading when the lens leaves World', () => {

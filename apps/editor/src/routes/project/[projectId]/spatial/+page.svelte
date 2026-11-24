@@ -19,6 +19,7 @@
 	 * and the Height Sheet remain exactly where they were.
 	 */
 	import { onDestroy, onMount, tick, untrack } from 'svelte';
+	import { createFeatureLifecycle } from '$lib/authoring/workspace/lifecycle-runner';
 	import { page } from '$app/state';
 	import { goto, replaceState } from '$app/navigation';
 	import { env } from '$env/dynamic/public';
@@ -321,14 +322,14 @@
 		}),
 		adapterFactories: stageAdapterFactories,
 		targetSources: { models: modelAnalyses.provider },
-		interruptInput: interruptForReplacement,
-		resetFocus: () => experienceFocus.reset(),
-		resetPresentationBeforeSwap: resetPresentationBeforeSwap,
-		resetPresentation: resetViewContext,
-		onFacadeMounted: bindEpochFacade,
-		onAdaptersChanged: refreshAdapterPresentation,
-		onAccepted: refreshAcceptedPresentation,
-		onHistoryInstalled: completeHistoryInstall,
+		interruptInput: () => lifecycle.interruptForReplacement(),
+		resetFocus: () => lifecycle.resetFocus(),
+		resetPresentationBeforeSwap: () => lifecycle.resetPresentationBeforeSwap(),
+		resetPresentation: () => lifecycle.resetPresentation(),
+		onFacadeMounted: (next) => lifecycle.facadeMounted(next),
+		onAdaptersChanged: () => lifecycle.adaptersChanged(),
+		onAccepted: () => lifecycle.accepted(),
+		onHistoryInstalled: (outcome) => lifecycle.historyInstalled(outcome),
 		onNotice: (message) => shell.setNotice(message),
 		refresh: () => refresh(),
 		isActiveProject: () => boot.status === 'ready' || boot.status === 'empty'
@@ -569,12 +570,7 @@
 	});
 
 	function changeLens(next: 'world' | 'experience'): void {
-		// Experience is the visitor's reading of the same source: Studio's pending task
-		// is resolved and its posture ends first, or the lens stays where it is.
-		if (next !== 'world' && studio !== undefined && !studio.leaveForLens()) return;
-		if (next !== 'world' && experience.lensState === 'world' && !endMaterialOperations(true)) return;
-		lightInspection?.cancel();
-		experience.changeLens(next);
+		lifecycle.leaveLens(next);
 	}
 
 	const selectionView = createStageSelectionView();
@@ -1083,16 +1079,7 @@
 				if (studio.active && !studio.creating) close();
 			}, 0);
 		},
-		settlePending: () => {
-			if (session.gesture() !== null) {
-				shell.setNotice('Finish or cancel the current gesture first.');
-				return false;
-			}
-			finishes.card.cancel();
-			artworkInteraction.cancel();
-			commands.armWorldTool('select');
-			return true;
-		},
+		settlePending: () => lifecycle.settlePending(),
 		notice: (message) => shell.setNotice(message),
 		syncUrl: (state) => {
 			try {
@@ -1938,20 +1925,7 @@
 		return experience.lensState === 'world' && preview === null && wallUnfold.state === null;
 	}
 
-	$effect(() => () => {
-		// Leaving the project ends the reading: neither Lift nor the Slice is carried
-		// across routes. The reading is a module singleton, so a cut left here would
-		// reappear in the next project.
-		interiorLift.clear();
-		sliceDraw.disarm();
-		sliceReading.clear();
-		setResolvedSlice(null);
-		nearWallCutaway.reset();
-		setResolvedCutaway(null);
-		finishes?.cancelImage();
-		artworkInteraction.dispose();
-		stageAssets.disposeArtwork();
-	});
+	$effect(() => () => lifecycle.leaveProject());
 	$effect(() => {
 		if (experience.lensState === 'world') return;
 		// The Slice reads the world Stage: leaving the lens ends it exactly as a replaced
@@ -2043,20 +2017,23 @@
 
 	projectSession.bindNavigation();
 
-	function resetViewContext(): void {
-		// A replaced project has no standpoint to put back into the new Camera, and
-		// no overhead to keep lifted: Lift is session state, never a document value.
-		lightInspection?.cancel();
-		studio?.end();
+	function resetLayoutReadings(): void {
+		// A replaced project starts with no Wall Face, Lift, Slice or cutaway.
 		wallFace.clear();
+		clearProjectReadings();
+		cutawayFailedIds = new Set();
+	}
+
+	function clearProjectReadings(): void {
 		interiorLift.clear();
 		sliceDraw.disarm();
 		sliceReading.clear();
 		setResolvedSlice(null);
-		// X2 is session state too: a replaced project starts at Cut with no memory.
 		nearWallCutaway.reset();
 		setResolvedCutaway(null);
-		cutawayFailedIds = new Set();
+	}
+
+	function resetSelectionAndShell(): void {
 		selection = null;
 		shell.setTask(null);
 		revealed = [];
@@ -2064,10 +2041,12 @@
 		shell.setPendingDelete(null);
 		shell.setArmedTool(null);
 		shell.setCardOpen(true);
-		artworkInteraction.cancel();
-		artworkInteraction.cancelResize();
-		stageInput.reset();
-		stageViewport.reset();
+	}
+
+	function syncAcceptedTaskAndSelection(): void {
+		shell.setTask(facade?.session.task() ?? null);
+		commands.syncPrimarySelection(facade ? primaryEntry(facade.selectionState()) : null);
+		commands.syncContributedTask();
 	}
 
 	function endMaterialOperations(restoreCamera: boolean): boolean {
@@ -2083,57 +2062,13 @@
 		return true;
 	}
 
-	function interruptForReplacement(): void {
-		// The old facade is about to be disposed; its inspection restores the entry
-		// standpoint now, never through the replacement's Camera.
-		lightInspection?.cancel();
-		clearHover();
-		interruptPress('replacement');
-		// Cancel old material operations before the facade and its Camera are replaced.
-		endMaterialOperations(false);
-		finishes?.issues.reset();
-	}
-
-	function resetPresentationBeforeSwap(): void {
-		shell.setExpandedPresentationId(null);
-	}
-
-	function bindEpochFacade(next: StageFacade): void {
-		shell.bindFacade(next);
-	}
-
-	function refreshAdapterPresentation(): void {
-		shell.bumpContributions();
-		shell.setTask(facade?.session.task() ?? null);
-		commands.syncPrimarySelection(facade ? primaryEntry(facade.selectionState()) : null);
-		commands.syncContributedTask();
-	}
-
-	function refreshAcceptedPresentation(): void {
-		// An accepted source can delete or move the Spot under inspection. End the
-		// idle session now instead of waiting for the next pointer action.
-		lightInspection?.reconcile();
-		shell.setTask(facade?.session.task() ?? null);
-		commands.syncPrimarySelection(facade ? primaryEntry(facade.selectionState()) : null);
-		commands.syncContributedTask();
-		stageViewport.invalidatePlan();
-		studio?.reconcile();
-		settleTransfer();
-		refresh();
-	}
-
-	function completeHistoryInstall(outcome: {
+	function installHistorySelection(outcome: {
 		readonly selectionClearedReason: 'subject-retired' | 'no-correspondence' | null;
 	}): void {
 		selection = facade ? primaryEntry(facade.selectionState()) : null;
 		if (outcome.selectionClearedReason !== null) {
 			shell.setNotice('The selected subject no longer exists in the restored source.');
 		}
-		// Undo/Redo installs an accepted source too; the inspected Spot may have
-		// changed or disappeared.
-		lightInspection?.reconcile();
-		stageViewport.invalidatePlan();
-		studio?.reconcile();
 	}
 
 	function nowSeconds(): number {
@@ -2185,8 +2120,10 @@
 	}
 
 	function setReading(reading: '3d' | 'plan'): void {
-		finishes.card.cancel();
-		submit({ kind: 'set-reading', reading }, readingIntentClockSeconds(shell.reducedMotion, nowSeconds()));
+		lifecycle.readingChange(reading);
+	}
+
+	function endPressForReading(): void {
 		if (stageInput.drag !== null && session.gesture() === null) {
 			if (stageInput.drag.mode === 'adapter' && facade !== null) {
 				const css: [number, number] = [stageInput.drag.x - (rect?.left ?? 0), stageInput.drag.y - (rect?.top ?? 0)];
@@ -2359,52 +2296,191 @@
 		return () => wallUnfold.setCameraExecutor(null);
 	});
 
+	function onKey(event: KeyboardEvent): void {
+		if (event.defaultPrevented) return;
+		if (event.altKey) shell.suspendSnap(true);
+		handleKey(event);
+	}
+
+	function onReleaseSnap(event: KeyboardEvent): void {
+		if (event.key === 'Alt') shell.suspendSnap(false);
+		stageKeyboard.handleKeyUp(event);
+	}
+
+	function onWindowBlur(): void {
+		lifecycle.windowBlur();
+	}
+
+	let removeInterruptions: () => void;
+	const lifecycle = createFeatureLifecycle({
+		core: {
+			interruptForReplacement: {
+				'clear-hover': clearHover,
+				'interrupt-press': () => interruptPress('replacement')
+			},
+			resetPresentationBeforeSwap: {
+				'collapse-expanded-presentation': () => shell.setExpandedPresentationId(null)
+			},
+			resetPresentation: {
+				'reset-selection-and-shell': resetSelectionAndShell,
+				'reset-input': () => stageInput.reset(),
+				'reset-viewport': () => stageViewport.reset()
+			},
+			facadeMounted: { 'bind-facade': (next) => shell.bindFacade(next) },
+			adaptersChanged: {
+				'refresh-adapter-presentation': () => {
+					shell.bumpContributions();
+					syncAcceptedTaskAndSelection();
+				}
+			},
+			accepted: {
+				'sync-task-and-selection': syncAcceptedTaskAndSelection,
+				'invalidate-plan': () => stageViewport.invalidatePlan(),
+				refresh
+			},
+			historyInstalled: {
+				'install-selection': installHistorySelection,
+				'invalidate-plan': () => stageViewport.invalidatePlan()
+			},
+			historyStep: {
+				'run-history': (direction) => {
+					if (direction === 'undo') void stageEpoch.undo();
+					else void stageEpoch.redo();
+				}
+			},
+			readingChange: {
+				'submit-reading': (reading) => {
+					submit({ kind: 'set-reading', reading }, readingIntentClockSeconds(shell.reducedMotion, nowSeconds()));
+				},
+				'end-press-for-reading': endPressForReading
+			},
+			settlePending: {
+				'refuse-during-gesture': () => {
+					if (session.gesture() === null) return;
+					shell.setNotice('Finish or cancel the current gesture first.');
+					return false;
+				},
+				'arm-select': () => commands.armWorldTool('select')
+			},
+			windowBlur: { 'release-snap': () => shell.suspendSnap(false) },
+			leaveProject: { 'dispose-artwork-assets': () => stageAssets.disposeArtwork() },
+			start: {
+				'perf-mark': () => perfMark('stage:route-mounted'),
+				'start-shell': () => shell.start(),
+				'start-viewport': () => stageViewport.start(),
+				'install-listeners': () => {
+					window.addEventListener('keydown', onKey);
+					window.addEventListener('keyup', onReleaseSnap);
+					window.addEventListener('blur', onWindowBlur);
+				},
+				'install-interruptions': () => {
+					removeInterruptions = installStageInterruptions(window, document, interruptPress);
+				},
+				'load-project': () => { void projectSession.load(projectId, intent); }
+			},
+			dispose: {
+				'mark-torn-down': () => stageEpoch.markTornDown(),
+				'dispose-viewport': () => stageViewport.dispose(),
+				'dispose-shell': () => shell.dispose(),
+				'clear-hover': clearHover,
+				'remove-listeners': () => {
+					window.removeEventListener('keydown', onKey);
+					window.removeEventListener('keyup', onReleaseSnap);
+					window.removeEventListener('blur', onWindowBlur);
+				},
+				'remove-interruptions': () => removeInterruptions(),
+				'dispose-epoch': () => stageEpoch.dispose()
+			}
+		},
+		features: [
+			{
+				id: 'light-inspection',
+				lifecycle: {
+					interruptForReplacement: { cancel: () => lightInspection?.cancel() },
+					resetPresentation: { cancel: () => lightInspection?.cancel() },
+					accepted: { reconcile: () => lightInspection?.reconcile() },
+					historyInstalled: { reconcile: () => lightInspection?.reconcile() },
+					leaveLens: { cancel: () => lightInspection?.cancel() },
+					dispose: { dispose: () => lightInspection?.dispose() }
+				}
+			},
+			{
+				id: 'appearance',
+				lifecycle: {
+					interruptForReplacement: {
+						'end-operations-no-camera': () => { endMaterialOperations(false); },
+						'reset-issues': () => finishes?.issues.reset()
+					},
+					historyStep: { 'cancel-card-gesture': () => { finishes.card.cancel(); } },
+					readingChange: { 'cancel-card-gesture': () => { finishes.card.cancel(); } },
+					settlePending: { 'cancel-card-gesture': () => { finishes.card.cancel(); } },
+					leaveLens: {
+						'end-operations-restore-camera': (next) => {
+							if (next !== 'world' && experience.lensState === 'world') return endMaterialOperations(true);
+						}
+					},
+					windowBlur: { 'cancel-card-gesture': () => { finishes?.card.cancel(); } },
+					leaveProject: { 'cancel-image': () => finishes?.cancelImage() },
+					dispose: {
+						'end-operations-no-camera': () => { endMaterialOperations(false); },
+						'reset-issues': () => finishes.issues.reset()
+					}
+				}
+			},
+			{
+				id: 'experience',
+				lifecycle: {
+					resetFocus: { 'reset-focus': () => experienceFocus.reset() },
+					leaveLens: { 'change-lens': (next) => experience.changeLens(next) },
+					start: { start: () => experience.start() },
+					dispose: { dispose: () => experience.dispose() }
+				}
+			},
+			{
+				id: 'studio',
+				lifecycle: {
+					resetPresentation: { end: () => studio?.end() },
+					accepted: { reconcile: () => studio?.reconcile(), 'settle-transfer': settleTransfer },
+					historyInstalled: { reconcile: () => studio?.reconcile() },
+					leaveLens: {
+						'leave-for-lens': (next) => {
+							if (next !== 'world' && studio !== undefined) return studio.leaveForLens();
+						}
+					}
+				}
+			},
+			{
+				id: 'layout-readings',
+				lifecycle: {
+					resetPresentation: { reset: resetLayoutReadings },
+					windowBlur: { 'release-hold': () => nearWallCutaway.setHeld(false) },
+					leaveProject: { 'clear-readings': clearProjectReadings },
+					dispose: {
+						'dispose-unfold': () => unfoldGestures.dispose(),
+						'release-hold': () => nearWallCutaway.setHeld(false),
+						'clear-cutaway-mirror': () => setResolvedCutaway(null)
+					}
+				}
+			},
+			{
+				id: 'artwork',
+				lifecycle: {
+					resetPresentation: {
+						cancel: () => {
+							artworkInteraction.cancel();
+							artworkInteraction.cancelResize();
+						}
+					},
+					settlePending: { cancel: () => { artworkInteraction.cancel(); } },
+					leaveProject: { dispose: () => artworkInteraction.dispose() }
+				}
+			}
+		]
+	});
+
 	onMount(() => {
-		perfMark('stage:route-mounted');
-		experience.start();
-		shell.start();
-		stageViewport.start();
-
-		const onKey = (event: KeyboardEvent) => {
-			if (event.defaultPrevented) return;
-			if (event.altKey) shell.suspendSnap(true);
-			handleKey(event);
-		};
-		const onReleaseSnap = (event: KeyboardEvent) => {
-			if (event.key === 'Alt') shell.suspendSnap(false);
-			stageKeyboard.handleKeyUp(event);
-		};
-		const onWindowBlur = () => {
-			shell.suspendSnap(false);
-			nearWallCutaway.setHeld(false);
-			// A Finish Card drag that loses the window is a cancel, never a write.
-			finishes?.card.cancel();
-		};
-		window.addEventListener('keydown', onKey);
-		window.addEventListener('keyup', onReleaseSnap);
-		window.addEventListener('blur', onWindowBlur);
-		const removeInterruptions = installStageInterruptions(window, document, interruptPress);
-
-		void projectSession.load(projectId, intent);
-
-		return () => {
-			endMaterialOperations(false);
-			finishes.issues.reset();
-			unfoldGestures.dispose();
-			lightInspection?.dispose();
-			experience.dispose();
-			stageEpoch.markTornDown();
-			stageViewport.dispose();
-			shell.dispose();
-			clearHover();
-			window.removeEventListener('keydown', onKey);
-			window.removeEventListener('keyup', onReleaseSnap);
-			window.removeEventListener('blur', onWindowBlur);
-			nearWallCutaway.setHeld(false);
-			setResolvedCutaway(null);
-			removeInterruptions();
-			stageEpoch.dispose();
-		};
+		lifecycle.start();
+		return lifecycle.dispose;
 	});
 
 	// The Stage input handlers are named once and passed as a group to the region.
@@ -2734,8 +2810,8 @@
 			redoUnavailableReason={historyState.redoUnavailableReason ?? 'Nothing to redo.'}
 			canUndo={historyState.canUndo}
 			canRedo={historyState.canRedo}
-			onUndo={() => { finishes.card.cancel(); void stageEpoch.undo(); }}
-			onRedo={() => { finishes.card.cancel(); void stageEpoch.redo(); }}
+			onUndo={() => lifecycle.historyStep('undo')}
+			onRedo={() => lifecycle.historyStep('redo')}
 			save={headSave}
 			onReloadRemote={(offer) => void applyReloadOffer(offer)}
 			saveUnavailableReason="Conditional Save needs the cloud client; this session has none."
@@ -2820,7 +2896,7 @@
 				onChoose={(id) => studio.chooseRoot(id)}
 				onOpenChooser={() => studio.openChooser()}
 				onNewObject={() => studio.newObjectHere()}
-				onUndo={() => { finishes.card.cancel(); void stageEpoch.undo(); }}
+				onUndo={() => lifecycle.historyStep('undo')}
 				onBackToWorld={() => studio.backToWorld()}
 				onBackToProjects={() => studio.backToProjects()}
 				onOpenInWorld={() => studio.openInWorld()}

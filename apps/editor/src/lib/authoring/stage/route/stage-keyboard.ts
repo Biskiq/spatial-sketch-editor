@@ -31,6 +31,8 @@ import {
 } from '../stage-input';
 import type { StageInterruptionReason } from '../stage-interruption';
 import type { ViewingIntent } from '@portfolio/camera-core';
+import { ESCAPE_LADDER, type EscapeRung } from '../../workspace/escape-ladder';
+import type { EscapeContext, EscapeResult } from '../../workspace/protocol';
 
 export type StageKeyboardInput = {
 	readonly artworkEscape: () => boolean;
@@ -131,6 +133,133 @@ export function createStageKeyboard(input: StageKeyboardInput): StageKeyboard {
 		// means the map has exactly one reading transition.
 		void readingIntentClockSeconds;
 		input.setReading(reading);
+	}
+
+	function settleFocus(context: EscapeContext): void {
+		if (context.toolbarFocus) input.focusSelectKey?.();
+	}
+
+	const escapeSteps: Record<EscapeRung, (context: EscapeContext) => EscapeResult> = {
+		'pending-delete': () => {
+			if (!input.pendingDelete()) return 'pass';
+			input.clearPendingDelete();
+			return 'handled';
+		},
+		'finish-gesture': () => input.cancelFinishGesture?.() === true ? 'handled' : 'pass',
+		'adapter-gesture-cancel': (context) => {
+			context.stage = input.facade();
+			return context.stage?.gestureKeyIntent({ kind: 'cancel' }).claimed ? 'handled' : 'pass';
+		},
+		disclosure: ({ stage }) => {
+			if (!stage?.closeDisclosure()) return 'pass';
+			stage.notifySurfaceChange();
+			return 'handled';
+		},
+		'adapter-keyboard-cancel': ({ stage }) => {
+			if (!stage?.keyboardIntent({ kind: 'cancel' }).claimed) return 'pass';
+			input.interrupt('escape');
+			return 'handled';
+		},
+		press: () => {
+			const hadPress = input.pressing();
+			input.interrupt('escape');
+			return hadPress ? 'handled' : 'pass';
+		},
+		library: () => {
+			if (!input.libraryOpen()) return 'pass';
+			input.toggleLibrary();
+			return 'handled';
+		},
+		align: () => input.dismissAlign?.() === true ? 'handled' : 'pass',
+		'material-editor': () => input.dismissMaterialEditor?.() === true ? 'handled' : 'pass',
+		'material-import': () => input.dismissMaterialImport?.() === true ? 'handled' : 'pass',
+		'repair-drawer': () => input.dismissRepairDrawer?.() === true ? 'handled' : 'pass',
+		measure: (context) => {
+			context.armedHostTool = input.armedHostTool();
+			if (context.armedHostTool !== 'measure' || !input.measureTool()?.clear()) return 'pass';
+			input.refreshHostTools();
+			return 'handled';
+		},
+		erase: ({ armedHostTool }) => {
+			if (armedHostTool !== 'erase' || !input.eraserTool()?.clear()) return 'pass';
+			input.clearEraseHover();
+			input.refreshHostTools();
+			return 'handled';
+		},
+		'paint-picker': ({ armedHostTool }) =>
+			armedHostTool === 'paint' && input.dismissPaint?.() === true ? 'handled' : 'pass',
+		'paint-tool': ({ armedHostTool }) => {
+			if (armedHostTool !== 'paint' || !input.paintTool?.()?.clear()) return 'pass';
+			input.clearPaintHover?.();
+			input.refreshHostTools();
+			return 'handled';
+		},
+		'slice-draft': () => {
+			if (input.sliceDraftActive?.() !== true) return 'pass';
+			input.cancelSliceDraft?.();
+			return 'handled';
+		},
+		palette: () => {
+			const armedKey = input.armedDockKey();
+			if (input.task() === null || armedKey?.palette !== true || !input.paletteOpen()) return 'pass';
+			input.closePalette();
+			return 'handled';
+		},
+		task: (context) => {
+			context.toolbarFocus = input.toolbarFocused?.() === true;
+			if (input.task() === null) return 'pass';
+			input.closeTask();
+			settleFocus(context);
+			return 'handled';
+		},
+		'world-tool': (context) => {
+			if (input.activeWorldTool() === 'select') return 'pass';
+			input.clearWorldTool();
+			settleFocus(context);
+			return 'handled';
+		},
+		sky: () => input.dismissSky?.() ? 'handled' : 'pass',
+		'furnish-strip': (context) => {
+			if (input.lens() !== 'world' || input.furnishStripOpen?.() !== true) return 'pass';
+			input.closeFurnishStrip?.();
+			settleFocus(context);
+			return 'handled';
+		},
+		'world-plate': (context) => {
+			if (input.lens() !== 'world' || !input.worldPlateOpen()) return 'pass';
+			input.closeWorldPlate();
+			settleFocus(context);
+			return 'handled';
+		},
+		'unwind-claim': (context) => {
+			context.claimed = input.activeLayer()?.key(context.event, 'unwind') === 'claimed';
+			return 'pass';
+		},
+		leave: ({ claimed }) => !claimed && input.leaveStudio?.() === true ? 'handled' : 'pass',
+		selection: ({ claimed }) => {
+			if (claimed || !input.selectionPresent()) return 'pass';
+			input.closeSelection();
+			return 'handled';
+		},
+		lift: ({ claimed }) => {
+			if (claimed || !input.liftActive()) return 'pass';
+			input.putBackLift();
+			return 'handled';
+		},
+		slice: ({ claimed }) => {
+			if (claimed || !input.sliceActive()) return 'pass';
+			input.putBackSlice();
+			return 'handled';
+		}
+	};
+
+	function dismiss(event: KeyboardEvent): void {
+		const context: EscapeContext = {
+			event, stage: null, claimed: false, armedHostTool: null, toolbarFocus: false
+		};
+		for (const { rung } of ESCAPE_LADDER) {
+			if (escapeSteps[rung](context) === 'handled') return;
+		}
 	}
 
 	function handleKey(event: KeyboardEvent): void {
@@ -318,71 +447,9 @@ export function createStageKeyboard(input: StageKeyboardInput): StageKeyboard {
 				input.requestDelete();
 				break;
 			}
-			case 'dismiss': {
-				// The deepest open context closes first. A disclosed-but-unconfirmed
-				// destructive action is deeper than the task; a **live proposal** is deeper
-				// than the tool that produced it, so the armed tool cancels its own chain
-				// before the unwind disarms it (palette-first Esc, no hidden proposal).
-				if (input.pendingDelete()) {
-					input.clearPendingDelete();
-					break;
-				}
-				if (input.cancelFinishGesture?.() === true) break;
-				const stage = input.facade();
-				// A live mark writer cancels first, then an open disclosure closes; neither
-				// is a task, and neither may reach the task/selection unwinding below.
-				// The adapter claimed this Escape (first restores numeric entry, second
-				// cancels the writer). Interrupting the press here would turn the first
-				// Escape into the second, so only an unclaimed key unwinds the press.
-				if (stage !== null && stage.gestureKeyIntent({ kind: 'cancel' }).claimed) break;
-				if (stage !== null && stage.closeDisclosure()) { stage.notifySurfaceChange(); break; }
-				if (stage !== null && stage.keyboardIntent({ kind: 'cancel' }).claimed) { input.interrupt('escape'); break; }
-				const hadPress = input.pressing();
-				input.interrupt('escape');
-				if (hadPress) break;
-				// U6 Escape precedence: Library › Align › editor › import › drawers › dropper › tray › draft.
-				if (input.libraryOpen()) { input.toggleLibrary(); break; }
-				if (input.dismissAlign?.() === true) break;
-				if (input.dismissMaterialEditor?.() === true) break;
-				if (input.dismissMaterialImport?.() === true) break;
-				if (input.dismissRepairDrawer?.() === true) break;
-				// A host tool clears its own measurement or words first, an open
-				// palette folds next, and only then does the armed tool disarm.
-				const armedHostTool = input.armedHostTool();
-				if (armedHostTool === 'measure' && input.measureTool()?.clear()) { input.refreshHostTools(); break; }
-				if (armedHostTool === 'erase' && input.eraserTool()?.clear()) { input.clearEraseHover(); input.refreshHostTools(); break; }
-				if (armedHostTool === 'paint' && input.dismissPaint?.() === true) break;
-				if (armedHostTool === 'paint' && input.paintTool?.()?.clear()) { input.clearPaintHover?.(); input.refreshHostTools(); break; }
-				// A live drawn draft/edit is not the cut itself: Escape returns the cut to
-				// its last committed segment first, and only a later Escape puts it back.
-				if (input.sliceDraftActive?.() === true) { input.cancelSliceDraft?.(); break; }
-				const armedKey = input.armedDockKey();
-				if (input.task() !== null && armedKey?.palette === true && input.paletteOpen()) { input.closePalette(); break; }
-				// A rung that returns the editor to Select must not leave keyboard focus
-				// (and its halo) on the key or strip it just closed. Stage focus stays.
-				const toolbarFocus = input.toolbarFocused?.() === true;
-				const settleFocus = () => { if (toolbarFocus) input.focusSelectKey?.(); };
-				if (input.task() !== null) { input.closeTask(); settleFocus(); }
-				else if (input.activeWorldTool() !== 'select') { input.clearWorldTool(); settleFocus(); }
-				// The plate is the last layer before Select: once the tool is clear,
-				// Escape folds the parchment instead of moving the selection.
-				else if (input.dismissSky?.()) { break; }
-				else if (input.lens() === 'world' && input.furnishStripOpen?.() === true) { input.closeFurnishStrip?.(); settleFocus(); }
-				else if (input.lens() === 'world' && input.worldPlateOpen()) { input.closeWorldPlate(); settleFocus(); }
-				else {
-					// A selection — including one made inside a temporary reading — closes
-					// first, then the next Escape puts the reading back (X1: Lift). A claimed
-					// unwind does neither, and every earlier rung has already won.
-					const claimed = input.activeLayer()?.key(event, 'unwind') === 'claimed';
-					if (!claimed && input.leaveStudio?.() === true) break;
-					if (!claimed && input.selectionPresent()) input.closeSelection();
-					else if (!claimed && input.liftActive()) input.putBackLift();
-					// A-4: the tool rung above already returned the creator to Select with the
-					// cut kept, so this next Escape is the one that puts the cut back.
-					else if (!claimed && input.sliceActive()) input.putBackSlice();
-				}
+			case 'dismiss':
+				dismiss(event);
 				break;
-			}
 			case 'none':
 				break;
 		}
