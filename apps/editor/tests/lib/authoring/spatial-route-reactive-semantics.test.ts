@@ -32,7 +32,8 @@ const harness = vi.hoisted(() => {
 	const commands = undefined as ReturnType<typeof import('$lib/authoring/stage/route/stage-shell-commands').createStageShellCommands> | undefined;
 	const scenePick = undefined as ReturnType<typeof import('$lib/authoring/scene/scene-pick-source').createScenePickSource> | undefined;
 	const studio = undefined as ReturnType<typeof import('$lib/authoring/studio/studio-controller.svelte').createStudioController> | undefined;
-	return { document, stage, shell, finishes, light, artwork, preview, paintTray, sliceDraw, commands, scenePick, studio };
+	const canvasViews = undefined as ReturnType<typeof import('$lib/authoring/workspace/host/wiring/stage-canvas-views.svelte').createStageCanvasViews> | undefined;
+	return { document, stage, shell, finishes, light, artwork, preview, paintTray, sliceDraw, commands, scenePick, studio, canvasViews };
 });
 function capture<Args extends unknown[], K extends Exclude<keyof typeof harness, 'document'>>(
 	factory: (...args: Args) => (typeof harness)[K],
@@ -104,6 +105,11 @@ vi.mock('$lib/authoring/scene/scene-pick-source', async (original) => {
 vi.mock('$lib/authoring/studio/studio-controller.svelte', async (original) => {
 	const actual = await original<typeof import('$lib/authoring/studio/studio-controller.svelte')>();
 	return { ...actual, createStudioController: capture(actual.createStudioController, 'studio') };
+});
+
+vi.mock('$lib/authoring/workspace/host/wiring/stage-canvas-views.svelte', async (original) => {
+	const actual = await original<typeof import('$lib/authoring/workspace/host/wiring/stage-canvas-views.svelte')>();
+	return { ...actual, createStageCanvasViews: capture(actual.createStageCanvasViews, 'canvasViews') };
 });
 
 vi.mock('$lib/authoring/stage/shell/EditorHead.svelte', async () => ({
@@ -308,12 +314,15 @@ it('publishes live Finish proposals on the existing Canvas', async () => {
 	await tick();
 	const canvas = target.querySelector('[data-testid="stage-canvas"]');
 	expect(canvas?.getAttribute('data-proposals')).toBe('0');
+	const descriptor = owner('canvasViews').canvas!;
+	expect(Object.getOwnPropertyDescriptor(descriptor, 'proposals')?.get).toBeTypeOf('function');
 	const { card } = owner('finishes');
 	const subject = { kind: 'entity' as const, entityId: object.id };
 	card.requestOpen(subject);
 	card.setReach(subject, 'all');
 	await tick();
 	expect(canvas?.getAttribute('data-proposals')).toBe('1');
+	expect(owner('canvasViews').canvas).toBe(descriptor);
 	card.setReach(subject, 'this');
 	await tick();
 	expect(canvas?.getAttribute('data-proposals')).toBe('0');

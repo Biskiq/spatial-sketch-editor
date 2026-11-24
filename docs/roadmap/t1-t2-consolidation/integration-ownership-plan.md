@@ -79,7 +79,86 @@ reset and project leave were registered in the probe and were outside that case'
 The scratch owners and placement were 52 lines across three files. The probe required four explicit
 registration surfaces in addition to the original list in §5.4: feature identity, the Escape
 handler registration, overlay contribution and publication of the view. They carry typed values
-and make the dispatch and mount sites visible in review. The scratch test added 25 lines.
+and make the dispatch and mount sites visible in review. The scratch test added 26 lines.
+
+### Production line changes
+
+These counts use `git diff --no-renames --numstat` under `apps/editor/src` at production
+checkpoint `a66a2a9cb`. They include comments and blank lines.
+
+| Area | From `41814cd91` added / removed | From `380b871f0` added / removed |
+| --- | ---: | ---: |
+| Spatial route | 4 / 3,567 | 0 / 0 |
+| Workspace host and wiring | 1,849 / 0 | 377 / 919 |
+| Workspace protocol and placements | 610 / 0 | 55 / 3 |
+| Stage core and shell | 1,346 / 156 | 324 / 46 |
+| Feature and project owners | 3,702 / 7 | 328 / 98 |
+| Other | 2 / 1 | 0 / 0 |
+| Total | 7,513 / 3,731 | 1,084 / 1,066 |
+
+The whole extraction is +3,782 lines. The recovery is +18, with the host and wiring down 542.
+The host factory is 921 lines with no local runes. It still assembles wide dependency objects
+and some multi-step callbacks. Canvas and region assembly remain reactive cross-feature
+presenters. Their reads preserve individual region invalidation and the snapshot sampling point
+for the idle Unfold anchor.
+
+### Acceptance evidence and open decisions
+
+The production checkpoint passed the fast lane (6,345 cases), the heavy lane (138), type
+checking (zero errors, 10 existing warnings) and a clean provenance build. Fast includes 229
+mounted route cases across gesture, Experience homes, source replacement, resume Save, viewport,
+lifecycle order and reactive semantics. GitHub reported green merge gate, guard, Linux, editor,
+package and API jobs on that checkpoint. The subsequent test-only guard revision runs the
+architecture lane against the same production code (388 cases). Reinstating the checkpoint's
+spread merge and unkeyed editor in a scratch tree made both new Appearance tests fail.
+
+| Co-trigger in the mounted characterization | Asserted behavior |
+| --- | --- |
+| Selection | Finish gesture cancellation, rename consumption, Unfold anchor and cutaway hosts preserve order |
+| Lens and tool changes | Lift scope survives, Slice clears on lens leave, and tool leave disarms the draft while keeping the committed cut |
+| Preview entry | Inspection and held cutaway release before Preview takes the Stage |
+| Paint disarm | The tray and draft settle through the ordered owner effects |
+| Source replacement and project teardown | Lift, Slice and resolved mirrors reset |
+| Render-root revision | Studio retries framing before Camera bounds publish |
+
+The eager spatial closure measured 1,428.718 → 1,438.264 KiB gzip with 74 files at both
+revisions (+0.67%). The home, editor, projects and publication closures kept 23, 24, 33 and 58
+files respectively, with each gzip change below 0.02%. The provenance-backed first-load and
+publication authoring exclusions passed. The Vite walk from the reported eager file sets
+measured 133.526 → 133.524 KiB lazy gzip, with 32 JS and 18 CSS in both builds. The original
+baseline table reports 19 lazy CSS files. Comparing the current pair, dynamic entry names
+match after normalizing the package path and the content hash for Form evaluation. Neither
+changed its eager/lazy classification.
+
+Five instrumented switches on an empty production project at 1280 × 800 kept the same Stage
+Canvas and recorded one route mount on each build. The base control-update times in ms were
+9.6, 4.7, 2.3, 5.4 and 1.9. Recovery measured 10.1, 4.5, 6.4, 3.5 and 2.0. The median was
+4.7 → 4.5 ms, and the next-animation-frame median was 15.4 → 16.0 ms. Each run loaded two
+scripts during first use and recorded no fetch or XHR during the switches. The mounted suites
+verify persistence suppression through their API and session assertions.
+
+Browser comparisons covered World, Experience, Library, Paint, Import with a checker image,
+Object Studio entry and default Slice at 1280 × 800 and 1024 × 768, plus the readings menu and
+Lift at 1024 × 768.
+Both builds opened the Project actions menu after startup. Desktop Library thumbnails were at
+different loading stages in the captures. The full visual matrix remains open for Align,
+Material Editor, Repair, Spot Look-through and Preview. The mounted UI tests cover
+several of those feature interactions.
+
+Both `SPOT_REQUIRE_VERIFIED=1` invocations, from clean base and production checkpoint trees,
+timed out on the Project actions menu before opening either grid. The partial ledgers contain
+matching build identity marks. Both harness reports are `unverified` because they stopped before
+their provenance check. M and L editing timings and labels are unmeasured. A product browser
+check of the menu after startup worked on both builds. The failure's cause inside the
+measurement flow remains unconfirmed. The spot runs were performed once per revision.
+
+Appendix B replay is unfinished. The legacy controller and route assertions and their synthetic
+controls still run. The new markup guard replays eight of the old presentation placement
+controls at both roots. The ownership checks resolve static aliases, namespace members and
+barrels for named authorities. The domain rules record exact retained Stage edges and
+type-only bridges. Remaining enforcement work includes strict CR4 callback projections,
+complete CR5 attribute and EC2 return shapes, the remaining call ownership and singleton
+member classifications, and full equivalence replay before guard retirement.
 
 ## 1. Evidence
 

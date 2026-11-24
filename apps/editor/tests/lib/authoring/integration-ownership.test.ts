@@ -12,6 +12,7 @@ import { join, relative } from 'node:path';
 import { parse as parseSvelte } from 'svelte/compiler';
 import { importClosure, listSourceFiles, moduleBindingEdges, resolveSpecifier, scriptSources } from '../../helpers/import-closure';
 import { AUTHORITIES, COMPAT_PHASES, FEATURES, REGION_MOUNTS, SINGLETONS, SPATIAL_ROUTE } from './integration-ownership.manifest';
+import { DOMAIN_TO_CORE } from './integration-domain-dependencies';
 
 const ROOT = process.cwd();
 const HOST = 'src/lib/authoring/workspace/host/workspace-host.svelte.ts';
@@ -244,9 +245,8 @@ function calls(source: Source, names: ReadonlySet<string>): number {
 	return count;
 }
 
-function mounts(source: Source, names: ReadonlySet<string>): number {
-	if (!source.file.endsWith('.svelte') || names.size === 0) return 0;
-	let count = 0;
+function walkMarkup(source: Source, onNode: (node: Record<string, unknown>) => void) {
+	if (!source.file.endsWith('.svelte')) return;
 	const visit = (node: unknown): void => {
 		if (node === null || typeof node !== 'object') return;
 		if (Array.isArray(node)) {
@@ -254,12 +254,18 @@ function mounts(source: Source, names: ReadonlySet<string>): number {
 			return;
 		}
 		const candidate = node as Record<string, unknown>;
-		if (candidate.type === 'Component' && typeof candidate.name === 'string' && names.has(candidate.name)) {
-			count += 1;
-		}
+		onNode(candidate);
 		Object.values(candidate).forEach(visit);
 	};
 	visit(parseSvelte(source.code, { modern: true }).fragment);
+}
+
+function mounts(source: Source, names: ReadonlySet<string>): number {
+	if (names.size === 0) return 0;
+	let count = 0;
+	walkMarkup(source, (node) => {
+		if (node.type === 'Component' && typeof node.name === 'string' && names.has(node.name)) count += 1;
+	});
 	return count;
 }
 
@@ -346,6 +352,7 @@ const domainRoots = new Set([
 const domainFiles = new Set(['exact-number.ts', 'material-proof.ts', 'model-contact.ts']);
 
 function layerOf(file: string) {
+	if (/^src\/lib\/(render|content)\//.test(file)) return 'domain';
 	if (!file.startsWith(authoringRoot)) return null;
 	if (file === HOST || file === HOST_COMPONENT) return 'host';
 	if (presentations.has(file)) return 'presentation';
@@ -383,6 +390,8 @@ function forbiddenDependency(source: Source, edge: ResolvedBinding): string | nu
 		to === 'wiring' || to === 'workspace')) return `D1 ${key}`;
 	if (source.file.startsWith(authoringRoot + 'adapters/') && edge.target.startsWith(authoringRoot + 'stage/route/')) return `D8 ${key}`;
 	if (memberFeature.get(source.file) === 'studio' && (isWorldOnly(edge.target) || to === 'workspace')) return `D6 ${key}`;
+	if (from === 'domain' && to === 'core' && edge.target !== authoringRoot + 'stage/stage-adapter-host.ts' &&
+		!DOMAIN_TO_CORE.has(key)) return `D10 ${source.file} → ${edge.target}`;
 	return null;
 }
 
@@ -406,10 +415,18 @@ describe('dependency direction', () => {
 		]);
 	});
 
-	it('checks actual resolved dependencies (D1, D3, D6, D8, D9)', () => {
+	it('checks actual resolved dependencies (D1, D3, D6, D8–D10)', () => {
 		const violations = sourceTree().flatMap((source) =>
 			source.edges.flatMap((edge) => forbiddenDependency(source, edge) ?? []));
 		expect([...new Set(violations)].sort()).toEqual([]);
+	});
+
+	it('rejects an unrelated domain caller of a legacy core bridge (D10 control)', () => {
+		const source = readSource(authoringRoot + 'layout/quux.ts', `
+			export { resolvedSliceNow } from '$lib/authoring/stage/slice/slice-resolved';
+			type Core = typeof import('$lib/authoring/stage/stage-facade').createStageFacade;
+		`);
+		expect(source.edges.map((edge) => forbiddenDependency(source, edge)?.split(' ')[0])).toEqual(['D10', 'D10']);
 	});
 
 	it('refuses fresh relative, alias, type-query and dynamic controller edges', () => {
@@ -469,6 +486,71 @@ describe('construction boundaries', () => {
 		expect(constructionViolations(source, 'createWorkspaceHost', installers)).toEqual([
 			'factory FunctionDeclaration', 'factory ExpressionStatement', 'reactivity belongs to an owner'
 		]);
+	});
+});
+
+function markupViolations(source: Source, allowedMounts: ReadonlySet<string>) {
+	const divClasses = new Set<string>();
+	const violations: string[] = [];
+	const expression = (value: unknown) => {
+		if (value === null || typeof value !== 'object') return '';
+		const { start, end } = value as { start?: number; end?: number };
+		return typeof start === 'number' && typeof end === 'number'
+			? source.code.slice(start, end).trim() : '';
+	};
+	walkMarkup(source, (node) => {
+		if (node.type === 'RegularElement') {
+			const attrs = node.attributes as { name?: string; value?: { type: string; data?: string }[] }[];
+			const className = attrs.find((attr) => attr.name === 'class')?.value?.[0]?.data ?? '';
+			if (source.file !== HOST_COMPONENT || node.name !== 'div' ||
+				!['editor-host', 'editor-body'].includes(className) || divClasses.has(className)) {
+				violations.push(`unexpected element ${node.name as string} ${className}`);
+			}
+			divClasses.add(className);
+		}
+		if (node.type === 'Component' && !allowedMounts.has(node.name as string)) {
+			violations.push(`unexpected component ${node.name as string}`);
+		}
+		if (node.type === 'IfBlock' || node.type === 'KeyBlock') {
+			const condition = expression(node.test ?? node.expression);
+			// Head visibility is currently composed from the Preview read.
+			if (!/^host(?:\.\w+)*$/.test(condition) && condition !== 'preview === null') {
+				violations.push(`compound condition ${condition}`);
+			}
+		}
+		if (node.type === 'EachBlock' || node.type === 'AwaitBlock' || node.type === 'SvelteComponent') {
+			violations.push(`unexpected markup ${node.type}`);
+		}
+		if (node.type === 'Attribute' && (node.name === 'onUndo' || node.name === 'onRedo')) {
+			const value = node.value as { expression?: unknown };
+			if (expression(value.expression) !== (node.name === 'onUndo' ? 'history.undo' : 'history.redo')) {
+				violations.push(`unexpected history binding ${node.name}`);
+			}
+		}
+	});
+	return violations;
+}
+
+describe('root markup ownership', () => {
+	const hostMounts = new Set([
+		...REGION_MOUNTS.filter(([, , mount]) => mount === HOST_COMPONENT).map(([name]) => name),
+		...FEATURES.flatMap(({ regions }) => regions.map((file) => file.split('/').at(-1)!.replace(/\.svelte$/, ''))),
+		'StageBootPanels', 'StageReplaceDialog', 'WorldLeading', 'WorldTrailing'
+	]);
+	it('limits shared roots to composition markup (CR5)', () => {
+		expect(markupViolations(readSource(SPATIAL_ROUTE), new Set(['WorkspaceHost']))).toEqual([]);
+		expect(markupViolations(readSource(HOST_COMPONENT), hostMounts)).toEqual([]);
+	});
+	it('rejects the retired inline shell and region placements (Appendix B.4 control)', () => {
+		const synthetic = [
+			'<div class="stage-frame"></div>', '<EditorIndex {...index} />', '<EditorCard {...card} />',
+			'<ExperienceGuide {...guide} />', '<ExperienceDock {...dock} />',
+			'<StageDraftingControl {...drafting} />', '<StageScaleBar {...bar} />',
+			'<StageHeightSheet {...sheet} />'
+		].join('\n');
+		for (const [file, mounts] of [[SPATIAL_ROUTE, new Set(['WorkspaceHost'])], [HOST_COMPONENT, hostMounts]] as const) {
+			expect(markupViolations(readSource(file, synthetic), mounts)).toHaveLength(8);
+		}
 	});
 });
 
@@ -578,18 +660,13 @@ function singletonViolations(source: Source, singleton: Singleton, graph: Readon
 			}
 		}
 	});
-	if (source.file.endsWith('.svelte')) {
-		const visit = (node: unknown): void => {
-			if (node === null || typeof node !== 'object') return;
-			const part = node as Record<string, any>;
-			if (part.type === 'MemberExpression' && part.object?.type === 'Identifier') {
-				const member = part.computed ? part.property?.value : part.property?.name;
-				check(part.object.name, typeof member === 'string' ? member : undefined);
-			}
-			Object.values(part).forEach(visit);
-		};
-		visit(parseSvelte(source.code, { modern: true }).fragment);
-	}
+	walkMarkup(source, (node) => {
+		if (node.type !== 'MemberExpression') return;
+		const object = node.object as { type: string; name?: string };
+		const property = node.property as { value?: unknown; name?: unknown };
+		const member = node.computed ? property.value : property.name;
+		if (object.type === 'Identifier') check(object.name, typeof member === 'string' ? member : undefined);
+	});
 	return [...violations];
 }
 
