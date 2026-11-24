@@ -103,6 +103,28 @@ export function isPristineInstance(instance: SceneMaterialInstance): boolean {
 	return 'catalogue' in instance.base && instance.overrides === undefined;
 }
 
+/**
+ * Find the first non-pristine project Finish in document order with an
+ * identical base and pruned overrides (canonical value equality, name ignored).
+ * Shared by the assign planners and the editor's allocation prediction so the
+ * two cannot disagree.
+ */
+export function findIdenticalFinish(
+	materials: readonly SceneMaterialInstance[],
+	base: SceneMaterialInstance['base'],
+	overrides: FinishOverrides | undefined
+): SceneMaterialInstance | null {
+	const pruned = pruneOverrides(overrides);
+	const target = { base, ...(pruned === undefined ? {} : { overrides: pruned }) };
+	for (const instance of materials) {
+		if (isPristineInstance(instance)) continue;
+		const candidatePruned = pruneOverrides(instance.overrides);
+		const candidate = { base: instance.base, ...(candidatePruned === undefined ? {} : { overrides: candidatePruned }) };
+		if (sameSceneValues(candidate, target)) return instance;
+	}
+	return null;
+}
+
 /** The catalogue base a Finish names, or null for a resource-backed definition. */
 export function catalogueBaseOf(instance: SceneMaterialInstance): MaterialId | null {
 	return 'catalogue' in instance.base ? (instance.base.catalogue as MaterialId) : null;

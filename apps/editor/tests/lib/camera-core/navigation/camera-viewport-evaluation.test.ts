@@ -879,4 +879,46 @@ describe('R217.S19 — display ground clip range', () => {
 		expect(evaluation.far).toBeGreaterThanOrEqual(sphere.far);
 		expect(evaluation.near).toBeLessThan(evaluation.far);
 	});
+
+	it('frames Plan extents when fit arrives during a 3D -> Plan flip, and 3D extents during Plan -> 3D', () => {
+		const squareRect: ViewportRect = { left: 0, top: 0, width: 800, height: 800, devicePixelRatio: 1 };
+		// Flat floor: width 4, height 0, depth 10. Plan vertical = 10; 3D horizontal = hypot(4, 10) ≈ 10.77.
+		const bounds = { min: [0, 0, 0] as [number, number, number], max: [4, 0, 10] as [number, number, number] };
+
+		const start3d = state({ reading: '3d' });
+		const flippingToPlan = requestViewingIntent(
+			start3d,
+			{ kind: 'set-reading', reading: 'plan' },
+			0
+		);
+		expect(flippingToPlan.kind).toBe('accepted');
+		if (flippingToPlan.kind !== 'accepted') return;
+		const fitDuringToPlan = requestViewingIntent(
+			flippingToPlan.state,
+			{ kind: 'fit', bounds, rect: squareRect, paddingFraction: 0.1 },
+			0.05
+		);
+		expect(fitDuringToPlan.kind).toBe('accepted');
+		if (fitDuringToPlan.kind !== 'accepted') return;
+		// Plan frames vertical = depth = 10 over usable = 0.8 => 12.5 m
+		expect(fitDuringToPlan.state.pose.targetPlaneHeightMeters).toBeCloseTo(10 / 0.8, 4);
+
+		const startPlan = state({ reading: 'plan' });
+		const flippingTo3d = requestViewingIntent(
+			startPlan,
+			{ kind: 'set-reading', reading: '3d' },
+			0
+		);
+		expect(flippingTo3d.kind).toBe('accepted');
+		if (flippingTo3d.kind !== 'accepted') return;
+		const fitDuringTo3d = requestViewingIntent(
+			flippingTo3d.state,
+			{ kind: 'fit', bounds, rect: squareRect, paddingFraction: 0.1 },
+			0.05
+		);
+		expect(fitDuringTo3d.kind).toBe('accepted');
+		if (fitDuringTo3d.kind !== 'accepted') return;
+		// 3D frames horizontal = hypot(4, 10) over usable = 0.8
+		expect(fitDuringTo3d.state.pose.targetPlaneHeightMeters).toBeCloseTo(Math.hypot(4, 10) / 0.8, 4);
+	});
 });

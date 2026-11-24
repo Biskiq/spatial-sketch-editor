@@ -1,22 +1,30 @@
 /**
- * The Library's Customise… draft (T2.S8 U5).
+ * The Library's Customise… draft (T2.S8 U5 / U6).
  *
- * A draft is local view state: beginning it, changing a sheen step and closing
- * it never touch the authoring host, so the project cannot change until Apply.
- * Apply is one accepted `scene-finish-patch` over the draft's Finish, with the
- * same reach rules the Finish Card uses. U6's Material editor replaces the
- * draft's one control; this module fixes the no-write and one-Undo contract it
- * must keep.
+ * A draft is local view state: beginning it, editing any field and closing it
+ * never touch the authoring host, so the project cannot change until Apply or
+ * the first Paint stroke.
+ *
+ * Every edited-draft Apply and first draft Paint goes through one assign with
+ * `derive: { edits, identity: 'reuse' }` on the named targets only: a curated
+ * base with no overrides takes the curated path, an identical project Finish
+ * (via the shared `findIdenticalFinish`) is reused with zero allocation, and
+ * otherwise exactly one Finish is created. No existing Finish definition or
+ * unrelated shared user is ever changed.
  */
 import {
-	sheenStepEdits,
+	applyFinishPatch,
+	baseRecipeOf,
+	findIdenticalFinish,
+	isPristineInstance,
 	type FinishPatchEdit,
 	type FinishSheenReading,
 	type SceneFinishRef,
 	type SheenStepId
 } from '@portfolio/project-model/scene-planning';
+import { pruneOverrides, type Recipe } from '@portfolio/project-model/materials';
+import type { SceneMaterialInstance } from '@portfolio/project-model';
 import type { LibraryFinishEntry } from './library-catalogue';
-import type { LibraryTarget } from './library-target';
 
 export const SHEEN_STEP_ORDER: readonly SheenStepId[] = ['matte', 'satin', 'gloss'];
 
@@ -33,21 +41,22 @@ export type LibraryDraft = {
 	readonly source: 'curated' | 'project';
 	readonly step: SheenStepId;
 	readonly reading: FinishSheenReading;
-	/** The users the entry had when the draft opened; Apply re-reads them. */
+	/** Full typed patch list accumulated in the Material editor (U6). */
+	readonly edits: readonly FinishPatchEdit[];
 	readonly users: readonly string[];
 };
 
-export type LibraryDraftPlan =
+export type DerivedAssignPrediction =
 	| {
 			readonly ok: true;
-			readonly mode: 'just-this' | 'all' | 'in-place';
-			readonly selectedUsers: readonly string[];
-			readonly expectedUsers: readonly string[];
-			readonly edits: readonly FinishPatchEdit[];
-			/** Curated and just-this patches allocate one Scene Finish. */
+			/** Resolved Finish key (`curated:<id>` or `project:<id>`), or `null` when a new Finish will be created. */
+			readonly existingKey: string | null;
+			/** True when the assign command needs one allocated `scene-finish` id. */
 			readonly allocates: boolean;
+			/** The resulting synthetic instance for preview/inspection. */
+			readonly instance: SceneMaterialInstance;
 	  }
-	| { readonly ok: false; readonly message: string };
+	| { readonly ok: false; readonly code: string; readonly message: string };
 
 function defaultStep(reading: FinishSheenReading): SheenStepId {
 	if (reading.current !== null) return reading.current;
@@ -68,67 +77,67 @@ export function beginLibraryDraft(
 		source: entry.source,
 		step,
 		reading: entry.reading,
+		edits: [],
 		users: [...entry.userKeys]
 	};
 }
 
 /**
- * What Apply would write, or the refusal in place. `reading` and `users` are
- * passed fresh so a changed target, reach or base refuses rather than widens.
+ * Predict what a `derive: { edits, identity: 'reuse' }` assign will resolve to,
+ * using the exact `findIdenticalFinish` helper shared with the planner.
  */
-export function libraryDraftPlan(
-	draft: LibraryDraft,
-	target: LibraryTarget | null,
-	reading: FinishSheenReading,
-	users: readonly string[]
-): LibraryDraftPlan {
-	if (target === null) return { ok: false, message: 'Select an object or surface first.' };
-	if (target.finishKey !== draft.finishKey) {
-		return { ok: false, message: `Select a surface wearing ${draft.name} first.` };
+export function predictDerivedAssign(input: {
+	readonly materials: readonly SceneMaterialInstance[];
+	readonly sourceInstance: SceneMaterialInstance;
+	readonly edits: readonly FinishPatchEdit[];
+	readonly recipes: ReadonlyMap<string, Recipe>;
+	readonly includesModel: boolean;
+}): DerivedAssignPrediction {
+	const { materials, sourceInstance, edits, recipes, includesModel } = input;
+	let derived = sourceInstance;
+	if (edits.length > 0) {
+		const patched = applyFinishPatch(sourceInstance, edits, baseRecipeOf(sourceInstance, recipes));
+		if (!patched.ok) {
+			if (patched.problem.code !== 'no-change') {
+				return { ok: false, code: patched.problem.code, message: patched.problem.message };
+			}
+		} else {
+			derived = patched.instance;
+		}
 	}
-	if (!users.includes(target.key)) {
-		return { ok: false, message: `${target.label} no longer wears ${draft.name}.` };
-	}
-	const edits = sheenStepEdits(reading, draft.step);
-	if (edits.length === 0 || !libraryDraftChanged(draft, reading)) {
-		const alternative = reading.steps.some((step) => !step.disabled && step.id !== reading.current);
-		return {
-			ok: false,
-			message: alternative
-				? 'That sheen is already set. Choose another.'
-				: 'No other sheen is reachable for this material.'
-		};
-	}
-	if (users.length <= 1) {
+	const pruned = pruneOverrides(derived.overrides);
+	if ('catalogue' in derived.base && pruned === undefined) {
+		const catId = derived.base.catalogue;
+		const hasPristine = materials.some(
+			(instance) => isPristineInstance(instance) && 'catalogue' in instance.base && instance.base.catalogue === catId
+		);
 		return {
 			ok: true,
-			mode: draft.source === 'curated' ? 'all' : 'in-place',
-			selectedUsers: [target.key],
-			expectedUsers: users,
-			edits,
-			allocates: draft.source === 'curated'
+			existingKey: `curated:${catId}`,
+			allocates: includesModel && !hasPristine,
+			instance: { ...derived, overrides: undefined }
+		};
+	}
+	const identical = findIdenticalFinish(materials, derived.base, pruned);
+	if (identical !== null) {
+		return {
+			ok: true,
+			existingKey: `project:${identical.id}`,
+			allocates: false,
+			instance: identical
 		};
 	}
 	return {
 		ok: true,
-		mode: 'just-this',
-		selectedUsers: [target.key],
-		expectedUsers: users,
-		edits,
-		allocates: true
+		existingKey: null,
+		allocates: true,
+		instance: pruned === undefined ? { ...derived, overrides: undefined } : { ...derived, overrides: pruned }
 	};
 }
 
-/** Whether the draft's step differs from what the Finish now reads. */
-export function libraryDraftChanged(draft: LibraryDraft, reading: FinishSheenReading): boolean {
-	const step = reading.steps.find((candidate) => candidate.id === draft.step);
-	if (step === undefined || step.disabled) return false;
-	// A sheen between steps opens on its nearest named step; only choosing another one is an edit.
-	if (reading.current === null) return step.id !== defaultStep(reading);
-	if (step.id !== reading.current) return true;
-	// Re-selecting the current step writes nothing, except the explicit reset of
-	// a Finish whose base already reads as that step.
-	return step.id === reading.original && reading.originalExact && reading.changed;
+/** Whether the draft has any edits relative to its source Finish. */
+export function libraryDraftChanged(draft: LibraryDraft): boolean {
+	return draft.edits.length > 0;
 }
 
 /** A user-facing label for one step. */

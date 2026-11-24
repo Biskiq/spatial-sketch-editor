@@ -9,6 +9,8 @@ export type SceneSurfaceRef = LayoutSurfaceRef;
 export type SceneSurfaceLook = {
 	readonly material: StandardMaterialDescriptor;
 	readonly textures: SceneTextureSpec | null;
+	/** Canonical Finish key (`project:<id>` or `curated:<id>`) for outcome reporting. */
+	readonly finishKey?: string;
 };
 
 /** A retained representation asks only for a look; it never reads Scene truth. */

@@ -23,6 +23,8 @@
  */
 import {
 	FINISH_NAME_MAX_LENGTH,
+	SCENE_FINISH_ASSIGN,
+	SCENE_SURFACE_FINISH_ASSIGN,
 	applyFinishPatch,
 	baseRecipeOf,
 	baseTileMeters,
@@ -60,11 +62,12 @@ import type {
 	ScenePaletteSlot,
 	SceneSurfaceRef
 } from '@portfolio/project-model';
-import type { Mapping, Recipe } from '@portfolio/project-model/materials';
+import type { MapRole, Mapping, Recipe } from '@portfolio/project-model/materials';
 import { surfaceKey } from '@portfolio/layout-core';
 import { stageEnvelope, type StageAdapterServices } from '../stage/stage-adapter-host';
 import type { StageSelectionEntry } from '../stage/semantic-selection';
 import { layoutSurfaceTarget } from './colour-coat-port';
+import { materialFamilies, materialFamilyOf } from '$lib/content/material-presentation';
 
 export type FinishCardTarget =
 	| { readonly kind: 'entity'; readonly entityId: string }
@@ -136,11 +139,13 @@ export type FinishCardView =
 			readonly meta: string;
 			/** The FinishTile source and swatch colour of the Finish itself. */
 			readonly tile: { readonly source: { readonly kind: 'catalogue'; readonly id: MaterialId } | null; readonly color: string };
-			readonly material: { readonly label: string; readonly catalogueId: MaterialId | null; readonly swappable: boolean };
+			/** `sub` is the prototype's second line: family and source (`Wood · Curated`, `Imported`). */
+			readonly material: { readonly label: string; readonly sub: string; readonly catalogueId: MaterialId | null; readonly swappable: boolean };
 			readonly reach: FinishCardReach;
 			readonly colour: FinishCardColour;
 			readonly sheen: FinishSheenReading & { readonly caption: string };
 			readonly pattern: FinishCardPattern | null;
+			readonly align: { readonly kind: 'wall' | 'floor'; readonly label: string } | null;
 			readonly more: {
 				readonly roughness: number;
 				readonly roughnessMax: number;
@@ -162,9 +167,13 @@ export type FinishCardHost = {
 	readonly isFavourite?: (finishKey: string) => boolean;
 	readonly toggleFavourite?: (finishKey: string) => void;
 	/** More › Image › Replace for an object (S4b's From-image flow). */
-	readonly replaceImage?: (entityId: string, file: File, mode: 'in-place' | 'all' | 'just-this') => Promise<void>;
+	readonly replaceImage?: (entityId: string, file: File, mode: 'in-place' | 'all' | 'just-this') => Promise<import('./finish-image.svelte').FinishImageOutcome>;
 	/** Called after any accepted write (e.g. to note the Finish as recently used). */
 	readonly onAccepted?: (finishKey: string) => void;
+	/** Select every user of a Finish (Card ⋯ › Select all). */
+	readonly selectFinishUsers?: (ref: Exclude<SceneFinishRef, 'model-own'>) => Promise<boolean>;
+	/** Toast notification after "Give this surface its own copy". */
+	readonly onOwnCopy?: () => void;
 };
 
 type Inspected = {
@@ -243,6 +252,39 @@ function mappingOf(source: FinishSource, recipes: ReadonlyMap<string, Recipe>): 
 
 function recipeOfSource(source: FinishSource, recipes: ReadonlyMap<string, Recipe>): Recipe | undefined {
 	return baseRecipeOf({ id: '', name: '', base: source.base }, recipes);
+}
+
+/** A scalar role's channel when neither the override nor the base names one (glTF ORM packing). */
+const DEFAULT_SCALAR_COMPONENT: Readonly<Record<'roughness' | 'metalness' | 'occlusion', 'r' | 'g' | 'b'>> = {
+	occlusion: 'r',
+	roughness: 'g',
+	metalness: 'b'
+};
+
+/** A project image imported by the S4 flow, as a replacement binding needs it. */
+export type FinishRoleImage = {
+	readonly assetId: string;
+	readonly sha256: string;
+	readonly mime: string;
+	readonly byteSize: number;
+	readonly name: string;
+};
+
+/**
+ * The binding that swaps one role's image and keeps everything else the role
+ * already says (its own mapping, normal convention, scalar channel and invert),
+ * from the override when there is one and the base otherwise.
+ */
+export function roleImageBinding(source: FinishSource, recipes: ReadonlyMap<string, Recipe>, role: MapRole, textureId: string): Record<string, unknown> {
+	const override = source.overrides?.maps?.[role];
+	const current = (override ?? recipeOfSource(source, recipes)?.maps?.[role] ?? null) as
+		| { readonly mapping?: Mapping; readonly convention?: '+Y' | '-Y'; readonly component?: 'r' | 'g' | 'b' | 'a'; readonly invert?: boolean }
+		| null;
+	const image = { textureId };
+	const mapping = current?.mapping === undefined ? {} : { mapping: current.mapping };
+	if (role === 'color') return { image, ...mapping };
+	if (role === 'normal') return { image, convention: current?.convention ?? '+Y', ...mapping };
+	return { image, component: current?.component ?? DEFAULT_SCALAR_COMPONENT[role], invert: current?.invert ?? false, ...mapping };
 }
 
 /** The edits that set a mapping, resetting it when it equals the base's own. */
@@ -449,6 +491,24 @@ export function createFinishCard(host: FinishCardHost) {
 		};
 	}
 
+	/** An imported Finish names its image files, as the prototype's meta line does. */
+	function importedMetaOf(recipe: Recipe | undefined, materialLabel: string): string {
+		const images = new Set<string>();
+		for (const binding of Object.values(recipe?.maps ?? {})) {
+			const image = (binding as { readonly image?: unknown } | undefined)?.image;
+			if (typeof image === 'string') images.add(image);
+		}
+		return images.size === 0 ? `Imported Finish · from ${materialLabel}` : `Imported Finish · ${plural(images.size, 'image file')}`;
+	}
+
+	/** The raw material's family and source, as the prototype's Material row reads them. */
+	function materialSubOf(catalogueId: MaterialId | null): string {
+		if (catalogueId === null) return 'Imported';
+		const family = materialFamilyOf(catalogueId);
+		const label = materialFamilies.find((entry) => entry.id === family)?.label;
+		return label === undefined ? 'Curated' : `${label} · Curated`;
+	}
+
 	/** One user's whole Finish reading for the Card. `label` names the target ("North wall · Inside"). */
 	function view(target: FinishCardTarget, label: string): FinishCardView | null {
 		const inspected = inspect(target);
@@ -478,20 +538,29 @@ export function createFinishCard(host: FinishCardHost) {
 			name: found.instance.name,
 			canRename: !curated,
 			renameTitle: curated ? 'Curated names stay fixed — your first change makes a Finish you can rename' : 'Rename (Enter)',
+			// The prototype's meta line (`finish.js`); the use count lives on the reach line.
 			meta: curated
-				? `Curated material · ${plural(users, 'use')}`
-				: `Project Finish · from ${materialLabel} · ${plural(users, 'use')}`,
+				? 'Curated material · your first change makes a Finish'
+				: catalogueId === null
+					? importedMetaOf(recipeOfSource(source, found.recipes), materialLabel)
+					: `Project Finish · from ${materialLabel}`,
 			tile: {
 				source: curated && catalogueId !== null ? { kind: 'catalogue', id: catalogueId } : null,
 				color:
 					colourOf(found).hex ??
 					(catalogueId !== null ? (host.swatchOf?.(catalogueId) ?? '#c4b4a0') : (recipeOfSource(source, found.recipes)?.color ?? '#c4b4a0'))
 			},
-			material: { label: materialLabel, catalogueId, swappable: true },
+			material: { label: materialLabel, sub: materialSubOf(catalogueId), catalogueId, swappable: true },
 			reach: reachOf(found, label),
 			colour: colourOf(found),
 			sheen,
 			pattern,
+			align:
+				target.kind === 'surface' && target.surface.kind === 'wall-side'
+					? { kind: 'wall', label: 'Align on wall…' }
+					: target.kind === 'surface' && target.surface.kind === 'room-floor'
+						? { kind: 'floor', label: 'Align on floor…' }
+						: null,
 			more: {
 				roughness: sheen.effective,
 				roughnessMax: Math.min(1, sheen.scan.mean),
@@ -603,7 +672,12 @@ export function createFinishCard(host: FinishCardHost) {
 
 	async function write(
 		target: FinishCardTarget,
-		build: (inspected: Inspected) => { readonly edits: readonly FinishPatchEdit[]; readonly base?: { readonly catalogue: MaterialId } } | null
+		build: (inspected: Inspected) => {
+			readonly edits: readonly FinishPatchEdit[];
+			readonly base?: { readonly catalogue: MaterialId };
+			/** Image registrations the edits bind (the S4 import's record and pin). */
+			readonly images?: readonly unknown[];
+		} | null
 	): Promise<boolean> {
 		clearPreview();
 		const services = host.services();
@@ -627,7 +701,8 @@ export function createFinishCard(host: FinishCardHost) {
 					mode: plan.mode,
 					selectedUsers: plan.selectedUsers,
 					expectedUsers: found.users.map((user) => user.key),
-					...(built.base === undefined ? {} : { base: built.base })
+					...(built.base === undefined ? {} : { base: built.base }),
+					...(built.images === undefined || built.images.length === 0 ? {} : { images: built.images })
 				} as never,
 				capturedInputs: [],
 				allocatedIds: plan.allocates ? [{ kind: 'scene-finish', id: crypto.randomUUID() }] : []
@@ -775,6 +850,70 @@ export function createFinishCard(host: FinishCardHost) {
 		return write(target, (inspected) => ({ edits: editsToward(inspected.instance.overrides, undefined) }));
 	}
 
+	/** Give this surface/object its own independent copy (`derive` with `identity: 'fresh'`). */
+	async function giveOwnCopy(target: FinishCardTarget): Promise<boolean> {
+		const services = host.services();
+		const inspected = inspect(target);
+		if (services === null || inspected === null || !('ref' in inspected)) return false;
+		const found = inspected as Inspected;
+		if ('curated' in found.ref || found.users.length < 2) return false;
+		clearPreview();
+		busy = true;
+		try {
+			const shot = services.stage.snapshot();
+			const freshId = `finish:${crypto.randomUUID()}`;
+			const isEntity = target.kind === 'entity';
+			const intentTarget = isEntity
+				? {
+						version: 1 as const,
+						domain: 'scene' as const,
+						revision: { kind: 'exact' as const, contentRevision: stageEnvelope(shot).units.scene.header.contentRevision },
+						subject: { kind: 'entity' as const, id: target.entityId },
+						instancePath: [],
+						location: { kind: 'project-root' as const },
+						componentId: null,
+						capabilityId: null
+					}
+				: layoutSurfaceTarget(shot, target.surface);
+			if (intentTarget === null) return false;
+			const outcome = await services.authoring.accept({
+				version: 1,
+				kind: isEntity ? SCENE_FINISH_ASSIGN : SCENE_SURFACE_FINISH_ASSIGN,
+				operationId: crypto.randomUUID(),
+				expectedRevision: shot.acceptedRevision,
+				targets: [intentTarget],
+				payload: (isEntity
+					? { finish: found.ref, entityIds: [target.entityId], derive: { edits: [], identity: 'fresh' } }
+					: { finish: found.ref, surfaces: [target.surface], derive: { edits: [], identity: 'fresh' } }) as never,
+				capturedInputs: [],
+				allocatedIds: [{ kind: 'scene-finish', id: freshId }]
+			});
+			if (outcome.kind === 'installed') {
+				refusal = null;
+				reopenAfterInstall(found.targetKey);
+				host.onAccepted?.(`project:${freshId}`);
+				host.onOwnCopy?.();
+				return true;
+			}
+			if (outcome.kind === 'refused') {
+				refusal = { targetKey: found.targetKey, message: outcome.message ?? 'Could not make a separate copy.' };
+			}
+			return false;
+		} finally {
+			busy = false;
+		}
+	}
+
+	/** Select all users of this Finish and set reach to All. */
+	async function selectAllUsers(target: FinishCardTarget): Promise<boolean> {
+		const inspected = inspect(target);
+		if (inspected === null || !('ref' in inspected)) return false;
+		const found = inspected as Inspected;
+		if (found.users.length < 2) return false;
+		setReach(target, 'all');
+		return (await host.selectFinishUsers?.(found.ref)) ?? false;
+	}
+
 	/** Rename a project Finish; curated names stay fixed. */
 	async function rename(target: FinishCardTarget, name: string): Promise<boolean> {
 		const services = host.services();
@@ -809,10 +948,36 @@ export function createFinishCard(host: FinishCardHost) {
 		return false;
 	}
 
-	function replaceImage(target: FinishCardTarget, file: File): Promise<void> {
-		if (target.kind !== 'entity' || host.replaceImage === undefined) return Promise.resolve();
+	/**
+	 * Repair's *Replace image…* for any role and any target: one E4 patch that
+	 * binds the S4-imported image and registers its record and pin, so it is one
+	 * undo and Undo restores the old binding (and its issue) exactly.
+	 */
+	function replaceRoleImage(target: FinishCardTarget, role: MapRole, image: FinishRoleImage): Promise<boolean> {
+		return write(target, (inspected) => {
+			const scene = host.services()?.stage.snapshot().domain.scene;
+			const resources = host.services() === null ? [] : stageEnvelope(host.services()!.stage.snapshot()).units.resources.data.resources;
+			const recorded = scene?.textures.some((texture) => texture.id === image.assetId) ?? false;
+			const pinned = resources.some(
+				(resource) => resource.kind === 'texture' && resource.id === image.assetId && resource.pin?.hash === image.sha256
+			);
+			return {
+				edits: [{ field: `maps.${role}` as const, op: 'set', value: roleImageBinding(sourceOf(inspected), inspected.recipes, role, image.assetId) }],
+				images: [
+					{
+						hash: image.sha256,
+						source: { textureId: image.assetId },
+						...(recorded && pinned ? {} : { texture: { name: image.name, pin: { hash: image.sha256, mime: image.mime, size: image.byteSize } } })
+					}
+				]
+			};
+		});
+	}
+
+	function replaceImage(target: FinishCardTarget, file: File): Promise<import('./finish-image.svelte').FinishImageOutcome> {
+		if (target.kind !== 'entity' || host.replaceImage === undefined) return Promise.resolve({ kind: 'refused', message: 'Replacing this surface image is not available yet.' });
 		const inspected = inspect(target);
-		if (inspected === null || !('ref' in inspected)) return Promise.resolve();
+		if (inspected === null || !('ref' in inspected)) return Promise.resolve({ kind: 'refused', message: 'That Finish is no longer available.' });
 		const found = inspected as Inspected;
 		const plan = planOf(found);
 		// The From-image flow names one object's reach: a D5 subset it cannot
@@ -861,6 +1026,14 @@ export function createFinishCard(host: FinishCardHost) {
 			frame = typeof requestAnimationFrame === 'function' ? requestAnimationFrame(flushPreview) : null;
 			if (frame === null) flushPreview();
 		}
+	}
+
+	/** Generic render-only preview over any typed Finish patch (reused by editor and Align). */
+	function previewEdits(
+		target: FinishCardTarget,
+		edits: (source: FinishSource, recipes: ReadonlyMap<string, Recipe>) => readonly FinishPatchEdit[]
+	): void {
+		schedulePreview(target, (inspected) => edits(sourceOf(inspected), inspected.recipes));
 	}
 
 	/** A colour gesture in progress (the wheel): preview only. */
@@ -926,11 +1099,24 @@ export function createFinishCard(host: FinishCardHost) {
 		setDirection,
 		swap,
 		resetToOriginal,
+		giveOwnCopy,
+		selectAllUsers,
 		rename,
 		replaceImage,
+		replaceRoleImage,
+		/** The Card's open user (`finishCardTargetKey`), or null when no user is open. */
+		get focusedKey(): string | null {
+			return focusKey;
+		},
+		previewEdits,
 		previewColour,
 		previewRoughness,
 		cancel,
+		inspectedOf(target: FinishCardTarget) {
+			const found = inspect(target);
+			if (found === null || !('ref' in found)) return null;
+			return { ...found, reach: choiceFor(found) };
+		},
 		toggleFavourite: (finishKey: string) => host.toggleFavourite?.(finishKey),
 		surfaceKeyOf: (surface: SceneSurfaceRef) => surfaceKey(surface)
 	};

@@ -45,6 +45,7 @@ import {
 	type TextureScopeKey
 } from './texture-store';
 import type { FinishTextureViews } from './finish-sampling';
+import { isImageLoadFailure, type ImageLoadFailurePhase } from './image-load-failure';
 import type { Texture } from 'three';
 
 export type FinishViewIssueCode =
@@ -56,11 +57,14 @@ export type FinishViewIssueCode =
 export type FinishViewIssue = {
 	readonly code: FinishViewIssueCode;
 	readonly view?: string;
+	readonly uri?: string;
 	readonly role?: MapRole;
 	readonly required?: number;
 	readonly available?: number;
 	readonly action?: string;
 	readonly message?: string;
+	readonly phase?: ImageLoadFailurePhase;
+	readonly httpStatus?: number;
 };
 
 export type FinishViewSource = {
@@ -641,7 +645,13 @@ export async function acquireFinishViews(
 				view: source.view,
 				role: source.role,
 				message: error instanceof Error ? error.message : String(error),
-				action: 'Retry the image or remove that role.'
+				action: 'Retry the image or remove that role.',
+				...(isImageLoadFailure(error)
+					? {
+							phase: error.phase,
+							...(error.httpStatus === undefined ? {} : { httpStatus: error.httpStatus })
+						}
+					: {})
 			});
 			return abort();
 		}

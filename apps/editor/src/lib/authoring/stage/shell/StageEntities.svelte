@@ -18,6 +18,7 @@
 	import type { ArtworkScope } from '$lib/render/artwork/artwork-scope';
 	import type { SceneModelSupport } from '$lib/render/scene-model-representation';
 	import type { TextureLoadScope } from '$lib/render/resources/texture-store';
+	import type { FinishOutcomeSink } from '$lib/render/resources/finish-outcome-sink';
 	import VisitorEntityGroups from '$lib/visitor/VisitorEntityGroups.svelte';
 
 	let {
@@ -31,7 +32,8 @@
 		onEntityRenderable,
 		scenePick,
 		onEntityRoot,
-		includeLights = true
+		includeLights = true,
+		onFinishOutcome
 	}: {
 		scene: RuntimeScene;
 		/** The route's authenticated project texture scope (S4b). */
@@ -50,6 +52,7 @@
 		/** Optional registration wrapper; Paper redraws when a Scene root arrives. */
 		onEntityRoot?: (id: string, root: Parameters<ScenePickSource['register']>[1]) => () => void;
 		includeLights?: boolean;
+		onFinishOutcome?: FinishOutcomeSink;
 	} = $props();
 
 	let modelSupport = $state.raw<SceneModelSupport | null>(null);
@@ -79,4 +82,4 @@
 	});
 </script>
 
-<VisitorEntityGroups {scene} {textureScope} {textureRevision} {artworkScope} {onArtworkError} {modelUrls} {onFormRendererReady} {includeLights} {modelSupport} onModelDrawn={() => onEntityRenderable?.()} onEntityRoot={onEntityRoot ?? scenePick.register} />
+<VisitorEntityGroups {scene} {textureScope} {textureRevision} {artworkScope} {onArtworkError} {modelUrls} {onFormRendererReady} {includeLights} {modelSupport} onModelDrawn={() => onEntityRenderable?.()} onEntityRoot={onEntityRoot ?? scenePick.register} {onFinishOutcome} />

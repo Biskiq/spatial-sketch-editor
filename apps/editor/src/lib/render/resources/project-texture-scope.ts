@@ -36,6 +36,7 @@ import {
 } from './texture-store';
 import { imageSha256 } from '$lib/render/artwork/image-digest';
 import { probeRawImage } from './image-encoding';
+import { ImageLoadFailure, isImageLoadFailure } from './image-load-failure';
 import { invalidateFinishViewsForSource, releaseFinishViewsForScope } from './finish-views';
 
 export type ProjectTexturePin = {
@@ -151,6 +152,12 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 		if (!previewUris.has(assetId)) previewUris.set(assetId, URL.createObjectURL(blob));
 	}
 
+	function httpStatusOf(error: unknown): number | undefined {
+		if (typeof error !== 'object' || error === null) return undefined;
+		const status = (error as { status?: unknown; httpStatus?: unknown }).httpStatus ?? (error as { status?: unknown }).status;
+		return typeof status === 'number' && Number.isInteger(status) ? status : undefined;
+	}
+
 	async function loadProjectImage(
 		assetId: string,
 		isCurrent: () => boolean = () => true,
@@ -158,13 +165,34 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 		signal: AbortSignal = abort.signal
 	): Promise<ThreeTexture> {
 		const pin = input.pins().get(assetId);
-		if (pin === undefined) throw new Error('The image is not registered in this project.');
-		const content = await input.load(assetId, signal);
+		if (pin === undefined) {
+			throw new ImageLoadFailure('The image is not registered in this project.', 'acquire', 404);
+		}
+		let content: ProjectTextureResolution;
+		try {
+			content = await input.load(assetId, signal);
+		} catch (error) {
+			if (signal.aborted || disposed || !isCurrent()) throw error;
+			if (isImageLoadFailure(error)) throw error;
+			throw new ImageLoadFailure(
+				error instanceof Error ? error.message : 'The image could not be loaded.',
+				'acquire',
+				httpStatusOf(error)
+			);
+		}
 		signal.throwIfAborted();
-		const probe = probeArtworkImage(content.bytes);
-		// A raw role must preserve stored channels; validate the container before
-		// the decoder allocates anything (orientation, precision, profile).
-		if (raw) probeRawImage(content.bytes);
+		let probe: ReturnType<typeof probeArtworkImage>;
+		try {
+			probe = probeArtworkImage(content.bytes);
+			// A raw role must preserve stored channels; validate the container before
+			// the decoder allocates anything (orientation, precision, profile).
+			if (raw) probeRawImage(content.bytes);
+		} catch (error) {
+			throw new ImageLoadFailure(
+				error instanceof Error ? error.message : 'The image cannot be decoded.',
+				'decode'
+			);
+		}
 		const digest = `sha256-${await imageSha256(content.bytes)}`;
 		if (
 			content.mime !== pin.mime ||
@@ -172,12 +200,21 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 			content.bytes.length !== pin.size ||
 			digest !== pin.hash
 		) {
-			throw new Error('The image bytes do not match the saved project.');
+			throw new ImageLoadFailure('The image bytes do not match the saved project.', 'verify');
 		}
 		const blob = new Blob([Uint8Array.from(content.bytes)], { type: pin.mime });
 
 		if (raw) {
-			const bitmap = await decodeRaw(content.bytes, pin.mime);
+			let bitmap: ImageBitmap | null;
+			try {
+				bitmap = await decodeRaw(content.bytes, pin.mime);
+			} catch (error) {
+				if (signal.aborted || disposed || !isCurrent()) throw error;
+				throw new ImageLoadFailure(
+					error instanceof Error ? error.message : 'The raw image cannot be decoded.',
+					'decode'
+				);
+			}
 			if (signal.aborted) {
 				bitmap?.close();
 				signal.throwIfAborted();
@@ -196,7 +233,16 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 
 		const url = URL.createObjectURL(blob);
 		try {
-			const texture = await loader.loadAsync(url);
+			let texture: ThreeTexture;
+			try {
+				texture = await loader.loadAsync(url);
+			} catch (error) {
+				if (signal.aborted || disposed || !isCurrent()) throw error;
+				throw new ImageLoadFailure(
+					error instanceof Error ? error.message : 'The image cannot be decoded.',
+					'decode'
+				);
+			}
 			if (disposed || !isCurrent()) {
 				texture.dispose();
 				throw new Error('The project texture scope is closed.');
@@ -216,12 +262,36 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 			if (typeof createImageBitmap !== 'function' || typeof fetch !== 'function') {
 				throw new Error('Raw material maps require fetch and createImageBitmap.');
 			}
-			const response = await fetch(uri, { signal });
-			if (!response.ok) throw new Error(`Could not load raw material map (${response.status}).`);
+			let response: Response;
+			try {
+				response = await fetch(uri, { signal });
+			} catch (error) {
+				if (signal?.aborted || disposed) throw error;
+				throw new ImageLoadFailure(
+					error instanceof Error ? error.message : 'The material map is unreachable.',
+					'acquire'
+				);
+			}
+			if (!response.ok) {
+				throw new ImageLoadFailure(
+					`Could not load raw material map (${response.status}).`,
+					'acquire',
+					response.status
+				);
+			}
 			const blob = await response.blob();
 			const bytes = new Uint8Array(await blob.arrayBuffer());
-			probeRawImage(bytes);
-			const bitmap = await decodeRaw(bytes, blob.type || 'image/png');
+			let bitmap: Awaited<ReturnType<typeof decodeRaw>>;
+			try {
+				probeRawImage(bytes);
+				bitmap = await decodeRaw(bytes, blob.type || 'image/png');
+			} catch (error) {
+				if (signal?.aborted || disposed || isImageLoadFailure(error)) throw error;
+				throw new ImageLoadFailure(
+					error instanceof Error ? error.message : 'The material map cannot be decoded.',
+					'decode'
+				);
+			}
 			if (signal?.aborted) {
 				bitmap?.close();
 				signal.throwIfAborted();
@@ -235,7 +305,16 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 			(texture.userData ??= {}).s8SourceBytes = bytes.byteLength;
 			return texture;
 		}
-		const texture = await loader.loadAsync(uri);
+		let texture: ThreeTexture;
+		try {
+			texture = await loader.loadAsync(uri);
+		} catch (error) {
+			if (signal?.aborted || disposed) throw error;
+			throw new ImageLoadFailure(
+				error instanceof Error ? error.message : 'The material image could not load.',
+				'acquire'
+			);
+		}
 		if (disposed) {
 			texture.dispose();
 			throw new Error('The project texture scope is closed.');

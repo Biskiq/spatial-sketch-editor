@@ -206,7 +206,7 @@ describe('T2.S8 U5 — Library service', () => {
 		expect((fx.scene().entities[0] as { materialId?: string }).materialId).toBe('wood-oak-veneer');
 	});
 
-	it('opens and steps a draft with no history, then applies one in-place patch', async () => {
+	it('opens and steps a draft with no history, then applies as derived reuse without mutating the source Finish', async () => {
 		const shared: SceneMaterialInstance = {
 			id: 'oak',
 			name: 'Lobby oak',
@@ -221,16 +221,20 @@ describe('T2.S8 U5 — Library service', () => {
 		expect(fx.accepted).toEqual([]);
 		expect(fx.finishes.libraryDraft?.step).toBe('gloss');
 		const status = fx.finishes.libraryDraftStatus();
-		expect(status).toMatchObject({ active: true, canApply: true, changed: true, targetLabel: 'a' });
+		expect(status).toMatchObject({ active: true, canApply: true, changed: true, targetLabel: 'a', canPaint: true });
 		expect(await fx.finishes.applyLibraryDraft()).toBe(true);
-		expect(fx.accepted).toEqual(['scene-finish-patch']);
+		expect(fx.accepted).toEqual(['scene-finish-assign']);
 		expect(fx.finishes.libraryDraft).toBeNull();
-		expect(fx.scene().materials[0]?.overrides?.roughness).toBeLessThan(0.9);
+		// Source Finish definition stays byte-identical; target gets a new derived Finish.
+		expect(fx.scene().materials.find((m) => m.id === 'oak')).toEqual(shared);
+		const assignedId = (fx.scene().entities[0] as { materialInstanceId?: string }).materialInstanceId;
+		expect(assignedId).not.toBe('oak');
+		expect(fx.scene().materials.find((m) => m.id === assignedId)?.overrides?.roughness).toBeLessThan(0.9);
 		expect((await fx.coordinator.undo()).kind).toBe('restored');
-		expect(fx.scene().materials[0]?.overrides?.roughness).toBe(0.9);
+		expect((fx.scene().entities[0] as { materialInstanceId?: string }).materialInstanceId).toBe('oak');
 	});
 
-	it('copies just the selected user of a shared project Finish', async () => {
+	it('applies an edited draft to one user of a shared project Finish, leaving the other user and definition untouched, and reuses it on a second Apply', async () => {
 		const shared: SceneMaterialInstance = {
 			id: 'oak',
 			name: 'Lobby oak',
@@ -242,23 +246,29 @@ describe('T2.S8 U5 — Library service', () => {
 		expect(fx.finishes.openLibraryDraft({ project: 'oak' })).toBe(true);
 		fx.finishes.setLibraryDraftStep('gloss');
 		expect(await fx.finishes.applyLibraryDraft()).toBe(true);
-		expect(fx.accepted).toEqual(['scene-finish-patch']);
+		expect(fx.accepted).toEqual(['scene-finish-assign']);
 		expect(fx.scene().materials).toHaveLength(2);
 		const created = fx.scene().materials.find((material) => material.id !== 'oak');
 		expect((fx.scene().entities.find((entity) => entity.id === 'a') as { materialInstanceId?: string }).materialInstanceId).toBe(created?.id);
 		expect((fx.scene().entities.find((entity) => entity.id === 'b') as { materialInstanceId?: string }).materialInstanceId).toBe('oak');
-		expect((await fx.coordinator.undo()).kind).toBe('restored');
-		expect(fx.scene().materials).toHaveLength(1);
-		expect((fx.scene().entities.find((entity) => entity.id === 'a') as { materialInstanceId?: string }).materialInstanceId).toBe('oak');
+		expect(fx.scene().materials.find((m) => m.id === 'oak')).toEqual(shared);
+
+		// Applying the same edited draft to `b` reuses the Finish created above (no 3rd Finish)
+		fx.selectEntity('b');
+		expect(fx.finishes.openLibraryDraft({ project: 'oak' })).toBe(true);
+		fx.finishes.setLibraryDraftStep('gloss');
+		expect(await fx.finishes.applyLibraryDraft()).toBe(true);
+		expect(fx.scene().materials).toHaveLength(2);
+		expect((fx.scene().entities.find((entity) => entity.id === 'b') as { materialInstanceId?: string }).materialInstanceId).toBe(created?.id);
 	});
 
-	it('materializes a curated draft for its user, then Undo returns the curated normal form', async () => {
+	it('materializes a curated draft for its user via derive reuse, then Undo returns the curated normal form', async () => {
 		const fx = await harness({ entities: [box('a')] });
 		fx.selectEntity('a');
 		expect(fx.finishes.openLibraryDraft({ curated: 'wood-oak-veneer' })).toBe(true);
 		fx.finishes.setLibraryDraftStep('gloss');
 		expect(await fx.finishes.applyLibraryDraft()).toBe(true);
-		expect(fx.accepted).toEqual(['scene-finish-patch']);
+		expect(fx.accepted).toEqual(['scene-finish-assign']);
 		expect(fx.scene().materials).toHaveLength(1);
 		expect((fx.scene().entities[0] as { materialInstanceId?: string }).materialInstanceId).toBe(fx.scene().materials[0]?.id);
 		expect((await fx.coordinator.undo()).kind).toBe('restored');
@@ -266,7 +276,7 @@ describe('T2.S8 U5 — Library service', () => {
 		expect((fx.scene().entities[0] as { materialInstanceId?: string }).materialInstanceId).toBeUndefined();
 	});
 
-	it('refuses a draft on a target wearing another Finish and keeps the draft', async () => {
+	it('applies an edited draft to a target wearing another Finish without mutating either Finish', async () => {
 		const oak: SceneMaterialInstance = {
 			id: 'oak',
 			name: 'Oak',
@@ -286,11 +296,12 @@ describe('T2.S8 U5 — Library service', () => {
 		fx.selectEntity('b');
 		expect(fx.finishes.openLibraryDraft({ project: 'oak' })).toBe(true);
 		fx.finishes.setLibraryDraftStep('gloss');
-		expect(fx.finishes.libraryDraftStatus()).toMatchObject({ canApply: false, changed: true });
-		expect(await fx.finishes.applyLibraryDraft()).toBe(false);
-		expect(fx.accepted).toEqual([]);
-		expect(fx.finishes.libraryDraft?.finishKey).toBe('project:oak');
-		expect(fx.finishes.libraryDraftStatus().reason).toMatch(/applies only where Oak is worn/);
+		expect(fx.finishes.libraryDraftStatus()).toMatchObject({ canApply: true, changed: true, canPaint: true });
+		expect(await fx.finishes.applyLibraryDraft()).toBe(true);
+		expect(fx.accepted).toEqual(['scene-finish-assign']);
+		expect(fx.scene().materials.find((m) => m.id === 'oak')).toEqual(oak);
+		expect(fx.scene().materials.find((m) => m.id === 'walnut')).toEqual(walnut);
+		expect(fx.scene().materials).toHaveLength(3);
 	});
 
 	it('assigns an unchanged draft to another target as one Undo', async () => {
@@ -309,7 +320,7 @@ describe('T2.S8 U5 — Library service', () => {
 		expect((fx.scene().entities[1] as { materialInstanceId?: string }).materialInstanceId).toBe('walnut');
 	});
 
-	it('retargets the draft preview without touching the selection or writing', async () => {
+	it('retargets the draft preview and arms Use for Paint on an edited draft, resolving once and reusing on the second stroke', async () => {
 		const oak: SceneMaterialInstance = { id: 'oak', name: 'Oak', base: { catalogue: 'wood-oak-veneer' }, overrides: { color: '#a07850' } } as SceneMaterialInstance;
 		const fx = await harness({ entities: [box('a', 'oak'), box('b', 'oak')], materials: [oak] });
 		fx.selectEntity('a');
@@ -324,12 +335,16 @@ describe('T2.S8 U5 — Library service', () => {
 		expect(fx.selection()).toEqual(before);
 		fx.finishes.setLibraryDraftStep('gloss');
 		expect(fx.finishes.libraryDraftPreview()?.users).toEqual([fx.finishes.libraryDraftTarget()?.key]);
-		expect(fx.finishes.paintLibraryDraft()).toBe(false);
-		expect(fx.finishes.libraryDraftStatus().reason).toMatch(/no Paint path/);
-		fx.finishes.resetLibraryDraftStep();
 		expect(fx.finishes.paintLibraryDraft()).toBe(true);
 		expect(fx.finishes.libraryDraft).toBeNull();
+		expect(fx.finishes.activePick?.kind).toBe('draft');
 		expect(fx.accepted).toEqual([]);
+		// First stroke creates one Finish and re-arms its key; second stroke reuses it without adding another.
+		expect(await fx.finishes.paintEntities(['a'])).toBe('accepted');
+		expect(fx.scene().materials).toHaveLength(2);
+		expect(fx.finishes.activePick?.kind).toBe('finish');
+		expect(await fx.finishes.paintEntities(['b'])).toBe('accepted');
+		expect(fx.scene().materials).toHaveLength(2);
 	});
 
 	it('swaps the Card target through the treatment-preserving command and refuses a stale reach', async () => {

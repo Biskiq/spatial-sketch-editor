@@ -50,6 +50,7 @@ const EDITOR_INK: Record<string, { count: number; owner: string }> = {
 	'lib/authoring/stage/shell/stage-mat-grid.ts': { count: 2, owner: 'mat grid node materials' },
 	'lib/authoring/stage/shell/StageMatGround.svelte': { count: 2, owner: 'plate tint and mat shadow' },
 	'lib/authoring/stage/shell/StageSelectionLayer.svelte': { count: 2, owner: 'selection ink' },
+	'lib/authoring/stage/shell/StageRepairLayer.svelte': { count: 1, owner: 'repair amber hatch ink (T2.S8 U6)' },
 	'lib/authoring/stage/shell/StageLiftLayer.svelte': { count: 1, owner: 'lift ink' },
 	'lib/authoring/stage/shell/StageSliceLayer.svelte': { count: 6, owner: 'slice ink (SL1 plane/outline/ghost + SL2 drawn plane/depth/draft)' },
 	'lib/authoring/stage/cutaway/StageCutawayLayer.svelte': { count: 2, owner: 'cutaway ink (stub caps, seam faces)' },
@@ -271,11 +272,11 @@ describe('material-factory-boundary: one factory for world materials', () => {
 		expect(shell).toContain('useRenderResources()');
 		expect(shell).not.toContain('createMaterialStore');
 		expect(shell).toMatch(
-			/createWallRepresentation\(\s*materials,\s*undefined,\s*null,\s*null,\s*\(\) => invalidate\(\),\s*resolveSurfaceLook,\s*viewGeneration\s*\)/
+			/createWallRepresentation\(\s*materials,\s*undefined,\s*null,\s*null,\s*\(\) => invalidate\(\),\s*resolveSurfaceLook,\s*viewGeneration(?:,\s*\(outcome\) => onFinishOutcome\?\.\(outcome\))?\s*\)/
 		);
 		expect(shell).toContain('createObjectRepresentation(materials, resources.geometry)');
 		expect(shell).toMatch(
-			/createRoomRepresentation\(\s*materials,\s*undefined,\s*null,\s*null,\s*\(\) => invalidate\(\),\s*resolveSurfaceLook,\s*viewGeneration\s*\)/
+			/createRoomRepresentation\(\s*materials,\s*undefined,\s*null,\s*null,\s*\(\) => invalidate\(\),\s*resolveSurfaceLook,\s*viewGeneration(?:,\s*\(outcome\) => onFinishOutcome\?\.\(outcome\))?\s*\)/
 		);
 		// The representations release their leases; the Canvas frees what is left.
 		expect(shell).not.toMatch(/materials\.dispose\(\)/);

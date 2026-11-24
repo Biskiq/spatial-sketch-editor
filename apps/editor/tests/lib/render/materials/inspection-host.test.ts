@@ -447,4 +447,33 @@ describe('thumbnails', () => {
 		await rig.host.thumbnail({ subject: OAK, width: 16 });
 		expect(rig.host.stats().draws).toBe(4);
 	});
+
+	it('treats lightTurnRadians: 0 as identical to omitted and redraws for non-zero turn', async () => {
+		rig = harness();
+		const baseReq = {
+			subject: OAK,
+			geometry: 'sphere' as const,
+			lighting: 'library-studio' as const,
+			display: 'lit' as const,
+			sizePx: [32, 32] as const
+		};
+		const states: InspectionState[] = [];
+		const stop1 = rig.host.observe(baseReq, (s) => states.push(s));
+		await vi.waitFor(() => expect(states.at(-1)?.status).toBe('ready'));
+		expect(rig.host.stats().draws).toBe(1);
+		stop1();
+
+		const statesZero: InspectionState[] = [];
+		const stop2 = rig.host.observe({ ...baseReq, lightTurnRadians: 0 }, (s) => statesZero.push(s));
+		await vi.waitFor(() => expect(statesZero.at(-1)?.status).toBe('ready'));
+		// Zero turn matches the settled omitted-turn key: zero extra draws.
+		expect(rig.host.stats().draws).toBe(1);
+		stop2();
+
+		const statesTurned: InspectionState[] = [];
+		const stop3 = rig.host.observe({ ...baseReq, lightTurnRadians: 0.4 }, (s) => statesTurned.push(s));
+		await vi.waitFor(() => expect(statesTurned.at(-1)?.status).toBe('ready'));
+		expect(rig.host.stats().draws).toBe(2);
+		stop3();
+	});
 });

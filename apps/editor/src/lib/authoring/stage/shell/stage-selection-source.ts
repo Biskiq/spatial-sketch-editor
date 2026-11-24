@@ -11,7 +11,10 @@
  * shape `subjectWhollyHidden` reads. That is the one cost: it runs on selection,
  * reading or geometry change, never per frame.
  */
-import { Box3, Mesh, Vector3, type Object3D } from 'three';
+import { Box3, BufferAttribute, BufferGeometry, Mesh, Vector3, type Object3D } from 'three';
+import type { LayoutSurfaceRef } from '@portfolio/layout-core';
+import type { Layout3dPickRange } from '$lib/layout/wall-mesh-builder';
+import { renderIdentityOf } from '$lib/render/render-identity';
 import type { ScenePickSource } from '../../scene/scene-pick-source';
 import { hasVisibleAncestor } from '../../scene/scene-pick-source';
 import type { StageSelectionEntry } from '../semantic-selection';
@@ -30,6 +33,38 @@ export function drawnMeshesOf(objects: readonly Object3D[]): Mesh[] {
 		});
 	}
 	return meshes;
+}
+
+/** A surface-only index view over the existing buffers; the caller disposes the wrapper. */
+export function repairSurfaceGeometry(mesh: Mesh, surface: LayoutSurfaceRef): BufferGeometry | null {
+	const source = mesh.geometry;
+	const identity = renderIdentityOf(mesh);
+	if (surface.kind === 'room-floor' || surface.kind === 'room-lid') {
+		const kind = surface.kind === 'room-floor' ? 'floor' : 'lid';
+		if (identity?.kind !== kind || identity.id !== surface.roomId) return null;
+		return source;
+	}
+	const indices: number[] = [];
+	const index = source.getIndex();
+	const add = (start: number, count: number) => {
+		for (let i = start; i < start + count; i += 1) indices.push(index === null ? i : index.getX(i));
+	};
+	if (surface.kind === 'wall-side') {
+		if (identity?.kind !== 'wall' || identity.id !== surface.wallId) return null;
+		const ranges = source.userData.pickRanges as readonly Layout3dPickRange[] | undefined;
+		for (const range of ranges ?? []) {
+			if (range.segmentId === surface.wallId && range.paintSide === surface.side) add(range.start, range.count);
+		}
+	} else {
+		if (identity?.kind !== 'region' || identity.id !== surface.regionId) return null;
+		const faces = source.userData.regionSurfaces as readonly string[] | undefined;
+		for (const [triangle, face] of (faces ?? []).entries()) if (face === surface.face) add(triangle * 3, 3);
+	}
+	if (indices.length === 0) return null;
+	const geometry = new BufferGeometry();
+	for (const [name, attribute] of Object.entries(source.attributes)) geometry.setAttribute(name, attribute);
+	geometry.setIndex(new BufferAttribute(new Uint32Array(indices), 1));
+	return geometry;
 }
 
 /**

@@ -83,6 +83,7 @@ import {
 	toggleFavourite as toggleFavouriteKey,
 	touchRecent,
 	type PaintColour,
+	type PaintDraftPick,
 	type PaintPick
 } from './paint-pick';
 import {
@@ -109,6 +110,23 @@ import {
 	type FinishReachChoice
 } from './finish-card.svelte';
 import {
+	createFinishEditor,
+	buildFinishEditorFields,
+	mergeDraftEdits,
+	type EditorFieldsView,
+	type FinishEditor
+} from './finish-editor.svelte';
+import { createFinishAlign, type FinishAlign } from './finish-align.svelte';
+import {
+	createAppearanceIssues,
+	repairSurfaceRef,
+	type AppearanceIssue,
+	type AppearanceIssueActionKind,
+	type AppearanceIssuesService
+} from './appearance-issues.svelte';
+import type { TargetAnalysis } from '@portfolio/project-model/materials';
+import type { FinishPatchEdit } from '@portfolio/project-model/scene-planning';
+import {
 	materialFamilies,
 	materialFamilyOf,
 	materialTreatmentFacts,
@@ -123,7 +141,7 @@ import { libraryTargetOf, libraryTargetOfPick, selectionEntriesOfFinishUsers, ty
 import {
 	beginLibraryDraft,
 	libraryDraftChanged,
-	libraryDraftPlan,
+	predictDerivedAssign,
 	type LibraryDraft
 } from '../library/library-draft';
 
@@ -158,12 +176,24 @@ export type FinishAuthoringHost = {
 	readonly isPaintArmed?: () => boolean;
 	/** Creator favourites and recents. Defaults to the device store. */
 	readonly preferences?: PaintPreferenceStore;
-	/**
-	 * The colour-coat seam. U3's planner supplies it; until then Paint offers no
+	/** The colour-coat seam. U3's planner supplies it; until then Paint offers no
 	 * Colours tab, because a colour that keeps relief needs the coat dedupe rule
 	 * rather than an edit of a Finish other surfaces share.
 	 */
 	readonly colourCoat?: PaintColourPort;
+	/** Optional target analysis for static Finish diagnostics (UV / normal / metric basis). */
+	readonly targetAnalysis?: () => TargetAnalysis | undefined;
+	/** Exact-byte storage recovery for Relink… (zero history entries). */
+	readonly repairAsset?: (
+		assetId: string,
+		bytes: Uint8Array,
+		expectedPin: string,
+		signal?: AbortSignal
+	) => Promise<{ readonly ok: true } | { readonly ok: false; readonly message: string }>;
+	/** Invalidate cached GPU/store views for one project asset and reload Stage textures. */
+	readonly invalidateAndReloadAsset?: (assetId: string) => void;
+	/** Retry failed textures on Stage and inspection preview. */
+	readonly retryTextures?: () => void;
 	/**
 	 * S4b's creator-bytes seam. These are absent in a route with no cloud project;
 	 * *+ From image* then refuses with the same words Artwork uses.
@@ -307,6 +337,7 @@ function newId(kind: string, id: string) {
 export function createFinishAuthoring(host: FinishAuthoringHost) {
 	let activeKey = $state.raw<string | null>(null);
 	let activeColour = $state.raw<PaintColour | null>(null);
+	let activeDraft = $state.raw<PaintDraftPick | null>(null);
 	const preferenceStore = host.preferences ?? createDevicePaintPreferences();
 	let prefs = $state.raw<PaintPreferences>(preferenceStore.load());
 	let dropper = $state(false);
@@ -372,6 +403,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 	function activate(key: string): void {
 		activeKey = key;
 		activeColour = null;
+		activeDraft = null;
 	}
 
 	function setPrefs(next: PaintPreferences): void {
@@ -812,11 +844,33 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 
 	function setLibraryDraftStep(step: LibraryDraft['step']): void {
 		if (libraryDraft === null) return;
-		libraryDraft = { ...libraryDraft, step };
+		const entry = libraryBrowse().find((candidate) => candidate.key === libraryDraft!.finishKey);
+		const reading = entry?.reading ?? libraryDraft.reading;
+		const stepEdits = sheenStepEdits(reading, step);
+		libraryDraft = {
+			...libraryDraft,
+			step,
+			edits: stepEdits.length === 0 ? libraryDraft.edits.filter((e) => e.field !== 'roughness') : mergeDraftEdits(libraryDraft.edits, stepEdits)
+		};
 		draftRefusal = null;
 	}
 
-	/** Back to the Finish's own sheen: a local reset, no write. */
+	function patchLibraryDraft(incoming: readonly FinishPatchEdit[]): void {
+		if (libraryDraft === null || incoming.length === 0) return;
+		libraryDraft = {
+			...libraryDraft,
+			edits: mergeDraftEdits(libraryDraft.edits, incoming)
+		};
+		draftRefusal = null;
+	}
+
+	function setLibraryDraftEdits(edits: readonly FinishPatchEdit[]): void {
+		if (libraryDraft === null) return;
+		libraryDraft = { ...libraryDraft, edits: [...edits] };
+		draftRefusal = null;
+	}
+
+	/** Back to the Finish's own recipe: a local reset, no write. */
 	function resetLibraryDraftStep(): void {
 		if (libraryDraft === null) return;
 		const entry = libraryBrowse().find((candidate) => candidate.key === libraryDraft!.finishKey);
@@ -867,34 +921,48 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		return true;
 	}
 
+	function draftSourceInstance(draft: LibraryDraft): SceneMaterialInstance | null {
+		const current = scene();
+		if (current === null) return null;
+		return 'curated' in draft.ref
+			? { id: `curated:${draft.ref.curated}`, name: draft.name, base: { catalogue: draft.ref.curated } }
+			: (materialInstanceById(current.materials, draft.ref.project) ?? null);
+	}
+
 	/** What the draft would write, as a plan or a reason; no host call. */
 	function draftPlanNow():
-		| { readonly kind: 'edit'; readonly plan: Extract<ReturnType<typeof libraryDraftPlan>, { ok: true }> }
 		| { readonly kind: 'assign'; readonly target: LibraryTarget }
+		| { readonly kind: 'derive'; readonly target: LibraryTarget; readonly allocates: boolean; readonly existingKey: string | null }
 		| { readonly kind: 'refused'; readonly message: string } {
 		const draft = libraryDraft;
 		if (draft === null) return { kind: 'refused', message: 'No draft is open.' };
 		const target = libraryDraftTarget();
 		if (target === null) return { kind: 'refused', message: 'Click a surface or object to preview and apply.' };
-		const entry = libraryBrowse().find((candidate) => candidate.key === draft.finishKey);
-		if (entry === undefined) return { kind: 'refused', message: 'That Finish is no longer in this project.' };
-		const changed = libraryDraftChanged(draft, entry.reading);
-		if (!changed) {
+		const current = scene();
+		const source = draftSourceInstance(draft);
+		if (current === null || source === null) return { kind: 'refused', message: 'That Finish is no longer in this project.' };
+		if (!libraryDraftChanged(draft)) {
 			if (target.finishKey === draft.finishKey) {
 				return { kind: 'refused', message: `${target.label} already wears ${draft.name}. Change a field or pick another surface.` };
 			}
 			return { kind: 'assign', target };
 		}
-		const plan = libraryDraftPlan(draft, target, entry.reading, entry.userKeys);
-		if (!plan.ok) {
-			return {
-				kind: 'refused',
-				message: target.finishKey !== draft.finishKey
-					? `An edited draft applies only where ${draft.name} is worn today. Pick one of its surfaces, or reset the sheen to assign it here.`
-					: plan.message
-			};
+		const recipes = (current.materialIndex?.definitions ?? new Map()) as ReadonlyMap<string, import('@portfolio/project-model/materials').Recipe>;
+		const includesModel = target.kind === 'entity' && entityOf(target.entityId)?.kind === 'model';
+		const prediction = predictDerivedAssign({
+			materials: current.materials,
+			sourceInstance: source,
+			edits: draft.edits,
+			recipes,
+			includesModel
+		});
+		if (!prediction.ok) {
+			return { kind: 'refused', message: prediction.message };
 		}
-		return { kind: 'edit', plan };
+		if (prediction.existingKey !== null && target.finishKey === prediction.existingKey) {
+			return { kind: 'refused', message: `${target.label} already wears this.` };
+		}
+		return { kind: 'derive', target, allocates: prediction.allocates, existingKey: prediction.existingKey };
 	}
 
 	/** What Apply would do, for the editor footer; no host call. */
@@ -912,8 +980,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 			return { active: false, canApply: false, changed: false, targetLabel: null, reason: null, canPaint: false, paintReason: null };
 		}
 		const target = libraryDraftTarget();
-		const entry = libraryBrowse().find((candidate) => candidate.key === draft.finishKey);
-		const changed = libraryDraftChanged(draft, entry?.reading ?? draft.reading);
+		const changed = libraryDraftChanged(draft);
 		const plan = draftPlanNow();
 		return {
 			active: true,
@@ -921,8 +988,8 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 			changed,
 			targetLabel: target?.label ?? null,
 			reason: draftRefusal ?? (plan.kind === 'refused' ? plan.message : null),
-			canPaint: !changed,
-			paintReason: changed ? 'An edited sheen has no Paint path yet. Apply it, or reset to paint with the original.' : null
+			canPaint: !busy,
+			paintReason: null
 		};
 	}
 
@@ -935,25 +1002,21 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		const target = libraryDraftTarget();
 		const current = scene();
 		if (draft === null || target === null || current === null) return null;
-		const entry = libraryBrowse().find((candidate) => candidate.key === draft.finishKey);
-		if (entry === undefined) return null;
-		const instance: SceneMaterialInstance | null = 'curated' in draft.ref
-			? { id: `curated:${draft.ref.curated}`, name: draft.name, base: { catalogue: draft.ref.curated } }
-			: (materialInstanceById(current.materials, draft.ref.project) as SceneMaterialInstance | null);
-		if (instance === null || instance === undefined) return null;
+		const instance = draftSourceInstance(draft);
+		if (instance === null) return null;
 		const recipes = (current.materialIndex?.definitions ?? new Map()) as ReadonlyMap<string, import('@portfolio/project-model/materials').Recipe>;
-		const edits = libraryDraftChanged(draft, entry.reading) ? sheenStepEdits(entry.reading, draft.step) : [];
-		if (edits.length === 0) {
+		if (draft.edits.length === 0) {
 			return target.finishKey === draft.finishKey ? null : { users: [target.key], instance };
 		}
-		const result = applyFinishPatch(instance, edits, baseRecipeOf(instance, recipes));
-		return result.ok ? { users: [target.key], instance: result.instance } : null;
+		const result = applyFinishPatch(instance, draft.edits, baseRecipeOf(instance, recipes));
+		if (!result.ok) {
+			return result.problem.code === 'no-change' ? { users: [target.key], instance } : null;
+		}
+		return { users: [target.key], instance: result.instance };
 	}
 
 	/**
-	 * The draft's own Finish for inspection, independent of the target: the
-	 * patched instance when the sheen changed, the original when it did not, or
-	 * the reason no draft render can be made.
+	 * The draft's own Finish for inspection, independent of the target.
 	 */
 	function libraryDraftInstance():
 		| { readonly ok: true; readonly changed: boolean; readonly instance: SceneMaterialInstance }
@@ -962,26 +1025,48 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		const draft = libraryDraft;
 		const current = scene();
 		if (draft === null || current === null) return null;
-		const entry = libraryBrowse().find((candidate) => candidate.key === draft.finishKey);
-		const instance: SceneMaterialInstance | null | undefined = 'curated' in draft.ref
-			? { id: `curated:${draft.ref.curated}`, name: draft.name, base: { catalogue: draft.ref.curated } }
-			: (materialInstanceById(current.materials, draft.ref.project) as SceneMaterialInstance | null);
-		if (entry === undefined || instance === null || instance === undefined) {
+		const instance = draftSourceInstance(draft);
+		if (instance === null) {
 			return { ok: false, reason: 'The Finish is no longer in the project.' };
 		}
 		const recipes = (current.materialIndex?.definitions ?? new Map()) as ReadonlyMap<string, import('@portfolio/project-model/materials').Recipe>;
-		const edits = libraryDraftChanged(draft, entry.reading) ? sheenStepEdits(entry.reading, draft.step) : [];
-		if (edits.length === 0) return { ok: true, changed: false, instance };
-		const result = applyFinishPatch(instance, edits, baseRecipeOf(instance, recipes));
-		return result.ok
-			? { ok: true, changed: true, instance: result.instance }
-			: { ok: false, reason: 'This sheen cannot be drawn from the material’s recipe.' };
+		if (draft.edits.length === 0) return { ok: true, changed: false, instance };
+		const result = applyFinishPatch(instance, draft.edits, baseRecipeOf(instance, recipes));
+		if (!result.ok) {
+			return result.problem.code === 'no-change'
+				? { ok: true, changed: false, instance }
+				: { ok: false, reason: result.problem.message };
+		}
+		return { ok: true, changed: true, instance: result.instance };
+	}
+
+	function libraryDraftFields(): EditorFieldsView | null {
+		const draft = libraryDraft;
+		const current = scene();
+		if (draft === null || current === null) return null;
+		const resolved = libraryDraftInstance();
+		if (resolved === null || !resolved.ok) return null;
+		const target = libraryDraftTarget();
+		const entityKind =
+			target !== null && target.kind === 'entity'
+				? ((entityOf(target.entityId)?.kind as 'primitive' | 'form' | 'model' | undefined) ?? null)
+				: null;
+		const recipes = (current.materialIndex?.definitions ?? new Map()) as ReadonlyMap<string, import('@portfolio/project-model/materials').Recipe>;
+		return buildFinishEditorFields({
+			source: { base: resolved.instance.base, overrides: resolved.instance.overrides },
+			recipes,
+			palette: current.palette ?? [],
+			entityKind,
+			facts: treatmentFacts,
+			materialLabel: draft.baseLabel,
+			curated: draft.source === 'curated'
+		});
 	}
 
 	/**
-	 * Apply the draft: one accepted operation, one Undo. An edited sheen goes
-	 * through the same scene-finish-patch as the Finish Card; an unchanged draft
-	 * assigns its existing Finish to the requalified target.
+	 * Apply the draft: one accepted assign, one Undo. An edited draft uses
+	 * `derive: { edits, identity: 'reuse' }` on the named target only, never
+	 * mutating any Finish definition or unrelated shared user.
 	 */
 	async function applyLibraryDraft(): Promise<boolean> {
 		const draft = libraryDraft;
@@ -1005,25 +1090,44 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 			cancelLibraryDraft();
 			return true;
 		}
-		const target = libraryDraftTarget();
+		const target = plan.target;
+		const services = servicesNow();
+		if (services === null) {
+			draftRefusal = 'The Stage is still opening.';
+			return false;
+		}
+		const allocatedId = plan.allocates ? `finish:${crypto.randomUUID()}` : null;
+		const snapshot = services.stage.snapshot();
 		busy = true;
 		try {
+			const isEntity = target.kind === 'entity';
+			const intentTargets: SemanticReference[] = isEntity
+				? [entityReference(services, target.entityId)]
+				: [{
+						version: 1,
+						domain: 'layout',
+						revision: { kind: 'exact', contentRevision: snapshot.domain.unitRevisions.layout },
+						subject: surfaceTargetSubject(target.surface as PaintableSurface),
+						instancePath: [],
+						location: { kind: 'layout-location', levelId: snapshot.domain.layoutLevelId, structureInstancePath: [] },
+						componentId: surfaceTargetComponent(target.surface as PaintableSurface),
+						capabilityId: null
+					}];
 			const outcome = await accept({
-				kind: 'scene-finish-patch',
-				payload: {
-					finish: draft.ref,
-					edits: plan.plan.edits,
-					mode: plan.plan.mode,
-					selectedUsers: plan.plan.selectedUsers,
-					expectedUsers: plan.plan.expectedUsers
-				},
-				allocatedIds: plan.plan.allocates ? [newId('scene-finish', crypto.randomUUID())] : []
+				kind: isEntity ? 'scene-finish-assign' : 'scene-surface-finish-assign',
+				payload: isEntity
+					? { finish: draft.ref, entityIds: [target.entityId], derive: { edits: draft.edits, identity: 'reuse' } }
+					: { finish: draft.ref, surfaces: [target.surface], derive: { edits: draft.edits, identity: 'reuse' } },
+				targets: intentTargets,
+				allocatedIds: allocatedId === null ? [] : [newId('scene-finish', allocatedId)]
 			});
 			if (outcome.kind !== 'accepted') {
 				draftRefusal = 'That change could not be made. Nothing changed.';
 				return false;
 			}
-			host.onNotice(`Applied ${draft.name} to ${target?.label ?? 'the surface'} · one undo`);
+			const resultingKey = plan.existingKey ?? (allocatedId !== null ? `project:${allocatedId}` : draft.finishKey);
+			noteUsed(resultingKey);
+			host.onNotice(`Applied ${draft.name} to ${target.label} · one undo`);
 			cancelLibraryDraft();
 			return true;
 		} finally {
@@ -1031,16 +1135,20 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		}
 	}
 
-	/** *Use for Paint* from the draft: arms its existing Finish, never writes. */
+	/** *Use for Paint* from the draft: arms its existing Finish (unchanged) or a draft pick (edited). */
 	function paintLibraryDraft(): boolean {
 		const draft = libraryDraft;
 		if (draft === null) return false;
-		const status = libraryDraftStatus();
-		if (!status.canPaint) {
-			draftRefusal = status.paintReason;
-			return false;
+		if (!libraryDraftChanged(draft)) {
+			pickMaterialKey(draft.finishKey);
+			cancelLibraryDraft();
+			return true;
 		}
-		pickMaterialKey(draft.finishKey);
+		activeKey = null;
+		activeColour = null;
+		activeDraft = { kind: 'draft', ref: draft.ref, edits: draft.edits, name: draft.name };
+		dropper = false;
+		host.onNotice(`Paint · ${draft.name}`);
 		cancelLibraryDraft();
 		return true;
 	}
@@ -1323,6 +1431,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 			host.onNotice('That Finish is not in this project.');
 			return;
 		}
+		dropper = false;
 		activate(key);
 	}
 
@@ -1340,6 +1449,8 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 			}
 			activeColour = colour;
 		}
+		dropper = false;
+		activeDraft = null;
 		activeKey = null;
 	}
 
@@ -1391,7 +1502,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 				// asset was reused and the Scene already says exactly this.
 				if (outcome.reason === 'no-change' || outcome.code === 'no-change') {
 					host.onNotice('That image is already applied.');
-					return { kind: 'accepted' };
+					return { kind: 'no-op', message: 'That image is already applied.' };
 				}
 				return { kind: 'refused', message: outcome.message ?? 'The image could not be saved.' };
 			}
@@ -1445,7 +1556,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 				return { kind: 'refused', message: outcome.message ?? 'The image could not be saved.' };
 			}
 			return { kind: 'no-op' };
-		});
+		}).then(() => undefined);
 	}
 
 	function setPaletteSlotColor(slotId: string, color: string): Promise<void> {
@@ -1529,6 +1640,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		if (pick.kind === 'slot' && !colourKeyResolves(colourKey(pick))) return false;
 		activeColour = pick;
 		activeKey = null;
+		activeDraft = null;
 		host.onNotice(`Paint · ${colourLabel(pick)}`);
 		return true;
 	}
@@ -1539,6 +1651,62 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 	 * out of the write; when none is left the answer is `already`.
 	 */
 	async function paintEntities(entityIds: readonly string[]): Promise<'accepted' | 'already' | 'refused'> {
+		if (activeDraft !== null) {
+			const draft = activeDraft;
+			const current = scene();
+			const services = servicesNow();
+			if (current === null || services === null) return 'refused';
+			const source: SceneMaterialInstance | null =
+				'curated' in draft.ref
+					? { id: `curated:${draft.ref.curated}`, name: draft.name, base: { catalogue: draft.ref.curated } }
+					: (materialInstanceById(current.materials, draft.ref.project) ?? null);
+			if (source === null) {
+				host.onNotice('That Finish no longer exists.');
+				return 'refused';
+			}
+			const views = entityIds.map((id) => viewFor(id)).filter((v): v is FinishEntityView => v !== null);
+			if (views.length === 0) {
+				host.onNotice(paintabilityNotice(entityOf(entityIds[0] ?? null)));
+				return 'refused';
+			}
+			const recipes = (current.materialIndex?.definitions ?? new Map()) as ReadonlyMap<string, import('@portfolio/project-model/materials').Recipe>;
+			const prediction = predictDerivedAssign({
+				materials: current.materials,
+				sourceInstance: source,
+				edits: draft.edits,
+				recipes,
+				includesModel: views.some((v) => v.kind === 'model')
+			});
+			if (!prediction.ok) {
+				host.onNotice(prediction.message);
+				return 'refused';
+			}
+			const fresh = prediction.existingKey === null ? views : views.filter((v) => v.key !== prediction.existingKey);
+			if (fresh.length === 0) {
+				host.onNotice(`Already ${draft.name}`);
+				return 'already';
+			}
+			const allocatedId = prediction.allocates ? `finish:${crypto.randomUUID()}` : null;
+			const snapshot = services.stage.snapshot();
+			busy = true;
+			try {
+				const outcome = await accept({
+					kind: 'scene-finish-assign',
+					payload: { finish: draft.ref, entityIds: fresh.map((v) => v.entityId), derive: { edits: draft.edits, identity: 'reuse' } },
+					targets: fresh.map((v) => entityReference(services, v.entityId)),
+					allocatedIds: allocatedId === null ? [] : [newId('scene-finish', allocatedId)]
+				});
+				if (outcome.kind !== 'accepted') return 'refused';
+				const resultingKey = prediction.existingKey ?? `project:${allocatedId}`;
+				// Re-arm the resolved Finish so subsequent strokes reuse it without adding another.
+				activeDraft = null;
+				activeKey = resultingKey;
+				noteUsed(resultingKey);
+				return 'accepted';
+			} finally {
+				busy = false;
+			}
+		}
 		if (activeColour !== null) {
 			const port = host.colourCoat;
 			if (port === undefined) return 'refused';
@@ -1580,6 +1748,61 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 
 	/** Paint one or more stable Layout surfaces in one Scene acceptance. */
 	async function paintSurface(surfaces: readonly PaintableSurface[]): Promise<boolean> {
+		if (activeDraft !== null) {
+			const draft = activeDraft;
+			const current = scene();
+			const services = servicesNow();
+			if (current === null || services === null || surfaces.length === 0) return false;
+			const source: SceneMaterialInstance | null =
+				'curated' in draft.ref
+					? { id: `curated:${draft.ref.curated}`, name: draft.name, base: { catalogue: draft.ref.curated } }
+					: (materialInstanceById(current.materials, draft.ref.project) ?? null);
+			if (source === null) {
+				host.onNotice('That Finish no longer exists.');
+				return false;
+			}
+			const recipes = (current.materialIndex?.definitions ?? new Map()) as ReadonlyMap<string, import('@portfolio/project-model/materials').Recipe>;
+			const prediction = predictDerivedAssign({
+				materials: current.materials,
+				sourceInstance: source,
+				edits: draft.edits,
+				recipes,
+				includesModel: false
+			});
+			if (!prediction.ok) {
+				host.onNotice(prediction.message);
+				return false;
+			}
+			const allocatedId = prediction.allocates ? `finish:${crypto.randomUUID()}` : null;
+			const snapshot = services.stage.snapshot();
+			const targets: SemanticReference[] = surfaces.map((surface) => ({
+				version: 1,
+				domain: 'layout',
+				revision: { kind: 'exact', contentRevision: snapshot.domain.unitRevisions.layout },
+				subject: surfaceTargetSubject(surface),
+				instancePath: [],
+				location: { kind: 'layout-location', levelId: snapshot.domain.layoutLevelId, structureInstancePath: [] },
+				componentId: surfaceTargetComponent(surface),
+				capabilityId: null
+			}));
+			busy = true;
+			try {
+				const outcome = await accept({
+					kind: 'scene-surface-finish-assign',
+					payload: { finish: draft.ref, surfaces, derive: { edits: draft.edits, identity: 'reuse' } },
+					targets,
+					allocatedIds: allocatedId === null ? [] : [newId('scene-finish', allocatedId)]
+				});
+				if (outcome.kind !== 'accepted') return false;
+				const resultingKey = prediction.existingKey ?? `project:${allocatedId}`;
+				activeDraft = null;
+				activeKey = resultingKey;
+				noteUsed(resultingKey);
+				return true;
+			} finally {
+				busy = false;
+			}
+		}
 		if (activeColour !== null) {
 			const port = host.colourCoat;
 			if (port === undefined || surfaces.length === 0) return false;
@@ -1707,11 +1930,11 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 	}
 
 	/** The Card's More › Image › Replace: the reach was chosen before the edit (D2). */
-	function replaceImageFor(entityId: string, file: File, mode: 'just-this' | 'all' | 'in-place'): Promise<void> {
+	function replaceImageFor(entityId: string, file: File, mode: 'just-this' | 'all' | 'in-place'): Promise<FinishImageOutcome> {
 		const context = captureImageWrite();
 		if (context === null) {
 			host.onNotice('The Stage is still opening.');
-			return Promise.resolve();
+			return Promise.resolve({ kind: 'refused', message: 'The Stage is still opening.' });
 		}
 		return imageFlow.begin(file, async (image, warning) => {
 			if (!imageWriteIsCurrent(context)) return { kind: 'no-op' };
@@ -1724,21 +1947,213 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 	}
 
 	const catalogueLabel = (id: MaterialId): string => (materialById.has(id) ? getMaterial(id).label : id);
+	const treatmentFacts = materialTreatmentFacts(catalogueLabel);
+	const swatchOf = (id: MaterialId): string => {
+		if (!materialById.has(id)) return '#c4b4a0';
+		const material = getMaterial(id);
+		return material.swatchColor ?? material.fallbackColor;
+	};
 	/** The quick Finish on the Card (U4): its one adapter. */
 	const card: FinishCard = createFinishCard({
 		services: servicesNow,
 		labelForMaterial: catalogueLabel,
-		facts: materialTreatmentFacts(catalogueLabel),
-		swatchOf: (id) => {
-			if (!materialById.has(id)) return '#c4b4a0';
-			const material = getMaterial(id);
-			return material.swatchColor ?? material.fallbackColor;
-		},
+		facts: treatmentFacts,
+		swatchOf,
 		isFavourite: isFavouriteMaterial,
 		toggleFavourite: toggleFavouriteMaterial,
 		replaceImage: replaceImageFor,
-		onAccepted: () => undefined
+		onAccepted: () => undefined,
+		selectFinishUsers,
+		onOwnCopy: () => host.onNotice('This surface now has its own copy')
 	});
+	/** The Material editor facet (U6): Finish mode over the Card adapter. */
+	const editor: FinishEditor = createFinishEditor({
+		card: () => card,
+		facts: treatmentFacts,
+		labelForMaterial: catalogueLabel,
+		swatchOf
+	});
+	/** Align on wall and floor session (U6). */
+	const align: FinishAlign = createFinishAlign();
+
+	/** Appearance issues service (U6): static + runtime merged for pill, drawer, strip & hatch. */
+	const issues: AppearanceIssuesService = createAppearanceIssues({
+		envelope: () => {
+			const services = servicesNow();
+			return services === null ? null : stageEnvelope(services.stage.snapshot());
+		},
+		targetAnalysis: host.targetAnalysis,
+		repairAsset: host.repairAsset,
+		invalidateAndReloadAsset: host.invalidateAndReloadAsset,
+		retryTextures: host.retryTextures
+	});
+
+	function targetFromKey(targetKey: string): FinishCardTarget | null {
+		if (targetKey.startsWith('entity:')) {
+			return { kind: 'entity', entityId: targetKey.slice('entity:'.length) };
+		}
+		if (targetKey.startsWith('surface:')) {
+			const surface = repairSurfaceRef(targetKey);
+			return surface === null ? null : { kind: 'surface', surface };
+		}
+		return null;
+	}
+
+	function focusIssueTarget(issue: AppearanceIssue): boolean {
+		const services = servicesNow();
+		const firstKey = issue.affected[0];
+		if (services === null || firstKey === undefined) return false;
+		const target = targetFromKey(firstKey);
+		if (target === null) return false;
+		const ref = finishRefOfKey(issue.finishKey);
+		const shot = services.stage.snapshot();
+		const envelope = stageEnvelope(shot);
+		const inspected = ref !== null && ref !== 'model-own' ? inspectFinish(envelope, ref) : null;
+		const matchingUser = inspected?.users.find((u) => u.key === firstKey);
+		if (matchingUser !== undefined) {
+			const entries = selectionEntriesOfFinishUsers([matchingUser], shot);
+			if (entries.length > 0) {
+				services.stage.setSelection({ ordered: entries, primary: entries[0]!.reference });
+			}
+		}
+		card.requestOpen(target);
+		return true;
+	}
+
+	async function runIssueAction(
+		issue: AppearanceIssue,
+		kind: AppearanceIssueActionKind,
+		target: FinishCardTarget,
+		file?: File
+	): Promise<boolean> {
+		if (kind === 'retry') {
+			issues.retry(issue);
+			return true;
+		}
+		if (kind === 'relink') {
+			if (file === undefined) return false;
+			const outcome = await issues.relink(issue, file);
+			if (outcome.ok) host.onNotice(`Relinked ${issue.file ?? 'image'}`);
+			return outcome.ok;
+		}
+		if (kind === 'replace') {
+			if (file === undefined) return false;
+			const role = issue.role ?? 'color';
+			let outcome: FinishImageOutcome;
+			if (role === 'color' && target.kind === 'entity') {
+				// An object's colour image: S4's own replace, with its tint rule.
+				outcome = await card.replaceImage(target, file);
+			} else {
+				// Any other role, or a surface: the S4 import, then one E4 patch that
+				// binds the image to exactly this role and registers its pin.
+				const context = captureImageWrite();
+				if (context === null) {
+					issues.setRefusal(issue.id, 'The Stage is still opening.');
+					return false;
+				}
+				outcome = await imageFlow.begin(file, async (image, warning) => {
+					if (!imageWriteIsCurrent(context)) return { kind: 'no-op' };
+					if (await card.replaceRoleImage(target, role, image)) {
+						if (warning !== null) host.onNotice(warning);
+						return { kind: 'accepted' };
+					}
+					return { kind: 'refused', message: card.refusalFor(target) ?? 'The image was not replaced.' };
+				});
+			}
+			if (outcome.kind !== 'accepted') {
+				issues.setRefusal(issue.id, outcome.message ?? 'The image was not replaced.');
+				return false;
+			}
+			issues.noteRepaired({
+				finishKey: issue.finishKey,
+				finishName: issue.finishName,
+				code: issue.code,
+				role: issue.role,
+				action: 'replaced image',
+				history: 'authored'
+			});
+			return true;
+		}
+		if (kind === 'disable-role') {
+			const role = issue.role ?? 'color';
+			let ok = false;
+			if (role === 'color') {
+				ok = await card.setColourMode(target, 'painted');
+			} else {
+				ok = await card.edit(target, () => [{ field: `maps.${role}` as const, op: 'disable' }]);
+			}
+			if (ok) {
+				issues.noteRepaired({
+					finishKey: issue.finishKey,
+					finishName: issue.finishName,
+					code: issue.code,
+					role: issue.role,
+					action: role === 'color' ? 'used colour instead' : `turned off ${role}`,
+					history: 'authored'
+				});
+			}
+			return ok;
+		}
+		if (kind === 'uv0') {
+			const ok = await card.edit(target, () => [
+				{ field: 'mapping', op: 'set', value: { kind: 'uv', set: 0, repeat: [1, 1], rotation: 0, offset: [0, 0] } }
+			]);
+			if (ok) {
+				issues.noteRepaired({
+					finishKey: issue.finishKey,
+					finishName: issue.finishName,
+					code: issue.code,
+					role: issue.role,
+					action: 'UV set 0',
+					history: 'authored'
+				});
+			}
+			return ok;
+		}
+		if (kind === 'surface-mapping') {
+			const ok = await card.edit(
+				target,
+				() => [
+					{
+						field: 'mapping',
+						op: 'set',
+						value: {
+							kind: 'surface',
+							metric: { tileMeters: [1, 1], offset: [0, 0], rotation: 0 }
+						}
+					}
+				]
+			);
+			if (ok) {
+				issues.noteRepaired({
+					finishKey: issue.finishKey,
+					finishName: issue.finishName,
+					code: issue.code,
+					role: issue.role,
+					action: 'surface mapping',
+					history: 'authored'
+				});
+			}
+			return ok;
+		}
+		return false;
+	}
+
+	function requestAlign(target: FinishCardTarget, place: string, invoker?: HTMLElement | null): { readonly ok: boolean; readonly message?: string } {
+		const services = servicesNow();
+		if (services === null) return { ok: false, message: 'The Stage is still opening.' };
+		const shot = services.stage.snapshot();
+		editor.close(false);
+		const res = align.enter({
+			target,
+			place,
+			layout: stageEnvelope(shot).units.layout.data,
+			geometry: shot.domain.geometry,
+			invoker
+		});
+		if (!res.ok) return { ok: false, message: res.message };
+		return { ok: true };
+	}
 
 	function setActive(entityId: string): void {
 		const view = viewFor(entityId);
@@ -1750,6 +2165,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 	}
 
 	function activeLabel(): string {
+		if (activeDraft !== null) return activeDraft.name;
 		if (activeColour !== null) return colourLabel(activeColour);
 		return activeKey === null ? 'No Finish' : labelOfKey(activeKey);
 	}
@@ -1767,7 +2183,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 	}
 
 	function hasActive(): boolean {
-		return activeKey !== null || activeColour !== null;
+		return activeKey !== null || activeColour !== null || activeDraft !== null;
 	}
 
 	function isAssignable(entityId: string): boolean {
@@ -1785,11 +2201,13 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 			return activeColour;
 		},
 		get activePick(): PaintPick | null {
-			return activeColour !== null
-				? { kind: 'colour', colour: activeColour }
-				: activeKey === null
-					? null
-					: { kind: 'finish', key: activeKey };
+			return activeDraft !== null
+				? activeDraft
+				: activeColour !== null
+					? { kind: 'colour', colour: activeColour }
+					: activeKey === null
+						? null
+						: { kind: 'finish', key: activeKey };
 		},
 		get dropperArmed() {
 			// An open draft editor picks its target through the dropper path.
@@ -1802,6 +2220,10 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 			return imageFlow.state;
 		},
 		card,
+		editor,
+		align,
+		requestAlign,
+		noteUsedFinish: noteUsed,
 		libraryShelf,
 		libraryBrowse,
 		libraryTarget,
@@ -1809,6 +2231,9 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		applyLibraryFinish,
 		openLibraryDraft,
 		setLibraryDraftStep,
+		patchLibraryDraft,
+		setLibraryDraftEdits,
+		libraryDraftFields,
 		cancelLibraryDraft,
 		libraryDraftStatus,
 		applyLibraryDraft,
@@ -1838,7 +2263,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		wornLabel,
 		coatReading,
 		addFromImage,
-		retryImageUpload: () => imageFlow.retry(),
+		retryImageUpload: () => imageFlow.retry().then(() => undefined),
 		cancelImage: () => imageFlow.cancel(),
 		resetImage: () => imageFlow.reset(),
 		setPaletteSlotColor,
@@ -1857,7 +2282,10 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		armDropper,
 		cancelDropper,
 		copyFrom,
-		openFinishes: () => host.openFinishes()
+		openFinishes: () => host.openFinishes(),
+		issues,
+		runIssueAction,
+		focusIssueTarget
 	};
 }
 

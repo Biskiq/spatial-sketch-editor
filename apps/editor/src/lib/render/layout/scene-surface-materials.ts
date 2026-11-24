@@ -7,11 +7,18 @@ import {
 	releaseEffectiveVariant
 } from '$lib/render/resources/texture-store';
 import type { MaterialTextureSlotKey, StandardMaterialDescriptor } from '$lib/render/resources/material-descriptor';
+import { surfaceKey } from '@portfolio/layout-core';
 import {
 	acquireFinishViews,
 	type FinishViewGeneration,
+	type FinishViewIssue,
 	type FinishViewLease
 } from '$lib/render/resources/finish-views';
+import {
+	classifyFinishViewIssues,
+	type FinishOutcomeSink,
+	type FinishTargetOutcomeState
+} from '$lib/render/resources/finish-outcome-sink';
 import type { Material } from 'three';
 import type { SceneSurfaceLook, SceneSurfaceLookResolver, SceneSurfaceRef } from './surface-look';
 
@@ -19,6 +26,8 @@ type SurfaceLook = SceneSurfaceLook & {
 	loaded: boolean;
 	views: FinishViewLease | null;
 	controller: AbortController | null;
+	readonly targets: Set<string>;
+	lastOutcome: { readonly state: FinishTargetOutcomeState; readonly issues: readonly FinishViewIssue[] } | null;
 };
 type Variant = {
 	readonly seed: string;
@@ -38,24 +47,50 @@ export function createSceneSurfaceMaterials(input: {
 	readonly resolveSurfaceLook?: SceneSurfaceLookResolver;
 	/** The owning Canvas's generation; a replacement refuses only its own loads. */
 	readonly viewGeneration?: () => FinishViewGeneration | null;
+	/** Optional Stage-only sink for sampled Finish view outcomes. */
+	readonly onFinishOutcome?: FinishOutcomeSink;
 }): { materialFor(surface: SceneSurfaceRef): Material | null; materialKeys(): readonly string[]; reloadTextures(): void; dispose(): void } {
 	const leases = new Map<string, ReturnType<MaterialStore['acquire']>>();
 	const variants = new Map<string, Variant>();
 	const looks = new Map<string, SurfaceLook>();
 	let disposed = false;
 
+	function emitOutcome(look: SurfaceLook, state: FinishTargetOutcomeState, issues: readonly FinishViewIssue[]): void {
+		look.lastOutcome = { state, issues };
+		if (input.onFinishOutcome === undefined || look.finishKey === undefined) return;
+		for (const targetKey of look.targets) {
+			input.onFinishOutcome({ targetKey, finishKey: look.finishKey, state, issues });
+		}
+	}
+
 	function lookFor(surface: SceneSurfaceRef): SurfaceLook | null {
 		const resolved = input.resolveSurfaceLook?.(surface) ?? null;
 		if (resolved === null) return null;
-		const key = JSON.stringify([resolved.material, resolved.textures]);
+		const key = JSON.stringify([resolved.material, resolved.textures, resolved.finishKey ?? null]);
+		const targetKey = `surface:${surfaceKey(surface)}`;
 		const existing = looks.get(key);
-		if (existing !== undefined) return existing;
+		if (existing !== undefined) {
+			if (!existing.targets.has(targetKey)) {
+				existing.targets.add(targetKey);
+				if (existing.lastOutcome !== null && existing.finishKey !== undefined) {
+					input.onFinishOutcome?.({
+						targetKey,
+						finishKey: existing.finishKey,
+						state: existing.lastOutcome.state,
+						issues: existing.lastOutcome.issues
+					});
+				}
+			}
+			return existing;
+		}
 		const sampled = resolved.material.kind === 'standard' && resolved.material.finish !== undefined;
 		const look: SurfaceLook = {
 			...resolved,
 			loaded: sampled ? false : resolved.textures === null,
 			views: null,
-			controller: null
+			controller: null,
+			targets: new Set([targetKey]),
+			lastOutcome: null
 		};
 		looks.set(key, look);
 		loadLook(look);
@@ -67,6 +102,7 @@ export function createSceneSurfaceMaterials(input: {
 			const sources = look.textures?.views ?? [];
 			const controller = new AbortController();
 			look.controller = controller;
+			emitOutcome(look, 'pending', []);
 			void acquireFinishViews(
 				sources,
 				input.scope,
@@ -75,12 +111,13 @@ export function createSceneSurfaceMaterials(input: {
 			)
 				.then((lease) => {
 					if (look.controller === controller) look.controller = null;
-					if (disposed) {
+					if (disposed || controller.signal.aborted) {
 						lease.release();
 						return;
 					}
 					const named = new Set(sources.map((source) => source.view));
 					const complete = lease.issues.length === 0 && Object.keys(lease.views).length === named.size;
+					emitOutcome(look, classifyFinishViewIssues(lease.issues, complete), lease.issues);
 					if (!complete) {
 						lease.release();
 						return;

@@ -44,6 +44,7 @@ import { DEFAULT_FLOOR_COLOR } from '$lib/visitor/room-presentation';
 import type { TextureLoadScope } from '$lib/render/resources/texture-store';
 import { createSceneSurfaceMaterials } from '$lib/render/layout/scene-surface-materials';
 import type { FinishViewGeneration } from '$lib/render/resources/finish-views';
+import type { FinishOutcomeSink } from '$lib/render/resources/finish-outcome-sink';
 import type { SceneSurfaceLookResolver } from '$lib/render/layout/surface-look';
 
 /** One retained Room: what it was built from, its group, its buffers and its floor/lid meshes. */
@@ -176,7 +177,8 @@ export function createRoomRepresentation(
 	initialScope: TextureLoadScope | null = null,
 	onMaterialChange: () => void = () => {},
 	resolveSurfaceLook?: SceneSurfaceLookResolver,
-	viewGeneration?: () => FinishViewGeneration | null
+	viewGeneration?: () => FinishViewGeneration | null,
+	onFinishOutcome?: FinishOutcomeSink
 ): RoomRepresentation {
 	const object3d = new Group();
 	object3d.name = 'VisitorLayoutRooms';
@@ -194,7 +196,8 @@ export function createRoomRepresentation(
 		scope: activeScope,
 		onMaterialChange: refreshSurfaceMaterials,
 		resolveSurfaceLook,
-		viewGeneration
+		viewGeneration,
+		onFinishOutcome
 	});
 	let hidden: ReadonlySet<string> = new Set();
 	/** The remembered reading: a Room built later is born lifted. */
@@ -228,7 +231,8 @@ export function createRoomRepresentation(
 			scope: activeScope,
 			onMaterialChange: refreshSurfaceMaterials,
 			resolveSurfaceLook,
-			viewGeneration
+			viewGeneration,
+			onFinishOutcome
 		});
 		const previous = surfaceMaterials;
 		surfaceMaterials = next;

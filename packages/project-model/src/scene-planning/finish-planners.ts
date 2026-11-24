@@ -39,7 +39,7 @@ import type {
 	SceneSurfaceRef,
 	SceneTextureAsset
 } from '../scene';
-import { readRecipe } from '../materials/read';
+import { pruneOverrides, readRecipe } from '../materials/read';
 import { readMaterialDefinition, type MaterialResourceImage } from '../materials/definition';
 import { EMPTY_MATERIAL_PROOF, verifyMaterialDigest, type MaterialDigestProof } from '../materials/proof';
 import { createImageIndex, resolveFinish, mergeImageIndexes, shippedImageIndex, materialImageIndex } from '../materials/resolve';
@@ -61,6 +61,7 @@ import type { CameraFreeSceneDocument as SceneDocument, ProjectEnvelope, TypedRe
 import {
 	applyFinishEdit,
 	catalogueBaseOf,
+	findIdenticalFinish,
 	finishEditIsNoop,
 	finishKeyOfRef,
 	finishOf,
@@ -898,10 +899,25 @@ function stageMaterialImage(
 	return null;
 }
 
+/** Optional recipe derivation carried by the two assign commands (T2.S8 U6). */
+export type FinishAssignDerive = {
+	readonly edits: readonly FinishPatchEdit[];
+	readonly identity: 'reuse' | 'fresh';
+};
+
 /** Read a typed Finish patch. Values are judged after application by the strict reader. */
-function readPatchEdits(reader: ShapeReader, raw: unknown, path: string): FinishPatchEdit[] | null {
-	if (!Array.isArray(raw) || raw.length === 0) {
-		reader.problem(path, 'invalid-value', `${path} must be a non-empty list of field edits`);
+function readPatchEdits(
+	reader: ShapeReader,
+	raw: unknown,
+	path: string,
+	allowEmpty = false
+): FinishPatchEdit[] | null {
+	if (!Array.isArray(raw) || (!allowEmpty && raw.length === 0)) {
+		reader.problem(
+			path,
+			'invalid-value',
+			allowEmpty ? `${path} must be a list of field edits` : `${path} must be a non-empty list of field edits`
+		);
 		return null;
 	}
 	const edits: FinishPatchEdit[] = [];
@@ -935,6 +951,17 @@ function readPatchEdits(reader: ShapeReader, raw: unknown, path: string): Finish
 		edits.push({ field, op: 'reset' });
 	}
 	return edits;
+}
+
+/** Read an optional assign `derive` clause. */
+function readAssignDerive(reader: ShapeReader, raw: unknown, path: string): FinishAssignDerive | null {
+	if (raw === undefined) return null;
+	const record = reader.object(raw, path, ['edits', 'identity']);
+	if (record === null) return null;
+	const identity = reader.tag(record.identity, `${path}.identity`, ['reuse', 'fresh']) as 'reuse' | 'fresh' | null;
+	const edits = readPatchEdits(reader, record.edits, `${path}.edits`, true);
+	if (identity === null || edits === null) return null;
+	return { edits, identity };
 }
 
 /** Read a list of Finish user keys (`entity:<id>` / `surface:<key>`). */
@@ -1226,11 +1253,92 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 		removed: grant.removed ?? []
 	});
 
+	const resolveDerivedAssign = (
+		sourceFinish: SceneFinishRef,
+		derive: FinishAssignDerive,
+		allowPristineProject: boolean
+	):
+		| { readonly kind: 'resolved'; readonly finish: SceneFinishRef; readonly created: SceneMaterialInstance | null }
+		| { readonly kind: 'outcome'; readonly outcome: PlannerOutcome<ProjectEnvelope> } => {
+		if (sourceFinish === 'model-own') {
+			return { kind: 'outcome', outcome: refuse("Model's own cannot be derived.", 'not-paintable') };
+		}
+		const curated = 'curated' in sourceFinish ? sourceFinish.curated : null;
+		const project = 'project' in sourceFinish ? materialInstanceById(before.materials, sourceFinish.project) : undefined;
+		if (curated !== null && !MATERIAL_ID.test(curated)) {
+			return { kind: 'outcome', outcome: refuse('That curated Finish does not exist.', 'unknown-catalogue') };
+		}
+		if ('project' in sourceFinish && (project === undefined || (!allowPristineProject && isPristineInstance(project)))) {
+			return { kind: 'outcome', outcome: refuse('That project Finish no longer exists.', 'unknown-finish') };
+		}
+		const recipes = materialRecipesOf(envelope);
+		const seed: SceneMaterialInstance =
+			curated !== null
+				? { id: '__derive__', name: labelOf(options, curated), base: { catalogue: curated } }
+				: { ...project!, id: '__derive__' };
+		let derived: SceneMaterialInstance = seed;
+		if (derive.edits.length > 0) {
+			const patched = applyFinishPatch(seed, derive.edits, baseRecipeOf(seed, recipes));
+			if (!patched.ok) {
+				if (patched.problem.code !== 'no-change') {
+					return {
+						kind: 'outcome',
+						outcome: {
+							kind: 'rejected',
+							code: patched.problem.code,
+							message: patched.problem.message,
+							diagnostics: [{ path: patched.problem.path, code: patched.problem.code, message: patched.problem.message }]
+						}
+					};
+				}
+			} else {
+				derived = patched.instance;
+			}
+		}
+		const pruned = pruneOverrides(derived.overrides);
+		if (derive.identity === 'reuse') {
+			if ('catalogue' in derived.base && pruned === undefined) {
+				return { kind: 'resolved', finish: { curated: derived.base.catalogue as MaterialId }, created: null };
+			}
+			const identical = findIdenticalFinish(before.materials, derived.base, pruned);
+			if (identical !== null) {
+				return { kind: 'resolved', finish: { project: identical.id }, created: null };
+			}
+		}
+		const allocation = allocationOf(request, ['scene-finish', 'scene-material'], true);
+		if ('missing' in allocation) {
+			return { kind: 'outcome', outcome: refuse(allocation.missing, 'missing-allocation') };
+		}
+		const allocatedId = allocation.id!;
+		if (before.materials.some((instance) => instance.id === allocatedId)) {
+			return { kind: 'outcome', outcome: refuse('That Finish id is already in use.', 'unexpected-allocation') };
+		}
+		let created: SceneMaterialInstance = {
+			id: allocatedId,
+			name:
+				curated !== null
+					? nextFinishName(labelOf(options, curated), before.materials)
+					: nextFinishName(project!.name, before.materials),
+			base: derived.base,
+			...(pruned === undefined ? {} : { overrides: pruned })
+		};
+		if (options.treatmentFacts !== undefined) {
+			const context = nameContextOf(options, recipes, before.palette);
+			const wasGenerated = curated !== null || isGeneratedFinishName(project!.name, project!, context);
+			if (wasGenerated) {
+				const label = generatedFinishName(curated !== null ? created : { ...created, name: project!.name }, context);
+				created = { ...created, name: uniqueFinishName(label, before.materials, null) };
+			}
+		}
+		return { kind: 'resolved', finish: { project: created.id }, created };
+	};
+
 	if (kind === SCENE_FINISH_ASSIGN) {
-		const payload = reader.object(request.intent.payload, '$.payload', ['finish', 'entityIds']);
-		const finish = payload === null ? null : readFinishRef(reader, payload.finish, '$.payload.finish');
+		const payload = reader.object(request.intent.payload, '$.payload', ['finish', 'entityIds', 'derive']);
+		const rawFinish = payload === null ? null : readFinishRef(reader, payload.finish, '$.payload.finish');
 		const entityIds = payload === null ? null : readMaterialIdList(reader, payload.entityIds, '$.payload.entityIds');
-		if (finish === null || entityIds === null || reader.issues.length > 0) {
+		const derive = payload === null ? null : readAssignDerive(reader, payload.derive, '$.payload.derive');
+		if (rawFinish === null || entityIds === null || reader.issues.length > 0) {
 			return refuse(reader.issues[0]?.message ?? 'Paint needs one Finish and at least one object.');
 		}
 		if (request.intent.targets.length !== entityIds.length) {
@@ -1250,23 +1358,35 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 					'not-paintable'
 				);
 			}
-			if (finish === 'model-own' && entity.kind !== 'model') {
+			if (rawFinish === 'model-own' && entity.kind !== 'model') {
 				return refuse("Model's own can only be painted onto a model.", 'not-paintable');
 			}
 			targets.push(entity);
+		}
+		let finish: SceneFinishRef = rawFinish;
+		let derivedCreated: SceneMaterialInstance | null = null;
+		if (derive !== null) {
+			const resolved = resolveDerivedAssign(rawFinish, derive, true);
+			if (resolved.kind === 'outcome') return resolved.outcome;
+			finish = resolved.finish;
+			derivedCreated = resolved.created;
 		}
 		const curatedFinish = typeof finish === 'object' && 'curated' in finish ? finish : null;
 		const projectFinish = typeof finish === 'object' && 'project' in finish ? finish : null;
 		if (curatedFinish !== null && !MATERIAL_ID.test(curatedFinish.curated)) {
 			return refuse('That curated Finish does not exist.', 'unknown-catalogue');
 		}
-		if (projectFinish !== null && materialInstanceById(before.materials, projectFinish.project) === undefined) {
+		if (
+			projectFinish !== null &&
+			derivedCreated === null &&
+			materialInstanceById(before.materials, projectFinish.project) === undefined
+		) {
 			return refuse('That project Finish no longer exists.', 'unknown-finish');
 		}
 		// A model can only carry a curated Finish through a pristine instance. Reuse
 		// the first one in document order, or install exactly one new instance.
 		let pristineId: string | null = null;
-		if (curatedFinish !== null && targets.some((entity) => entity.kind === 'model')) {
+		if (derivedCreated === null && curatedFinish !== null && targets.some((entity) => entity.kind === 'model')) {
 			const reusable = before.materials.find(
 				(instance) => isPristineInstance(instance) && catalogueBaseOf(instance) === curatedFinish.curated
 			);
@@ -1277,13 +1397,15 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 				pristineId = allocation.id;
 			}
 		}
-		const allocation = allocationOf(request, ['scene-finish', 'scene-material'], false);
-		if ('missing' in allocation) return refuse(allocation.missing, 'unexpected-allocation');
-		if (pristineId === null && allocation.id !== null) {
-			return refuse('Painting these objects needs no allocated Finish id.', 'unexpected-allocation');
+		if (derivedCreated === null) {
+			const allocation = allocationOf(request, ['scene-finish', 'scene-material'], false);
+			if ('missing' in allocation) return refuse(allocation.missing, 'unexpected-allocation');
+			if (pristineId === null && allocation.id !== null) {
+				return refuse('Painting these objects needs no allocated Finish id.', 'unexpected-allocation');
+			}
 		}
 
-		const materials = [...before.materials];
+		const materials = derivedCreated === null ? [...before.materials] : [...before.materials, derivedCreated];
 		if (pristineId !== null && !materials.some((instance) => instance.id === pristineId)) {
 			if (curatedFinish !== null) {
 				materials.push({
@@ -1338,30 +1460,48 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 	}
 
 	if (kind === SCENE_SURFACE_FINISH_ASSIGN) {
-		const payload = reader.object(request.intent.payload, '$.payload', ['finish', 'surfaces']);
-		const finish = payload === null ? null : readFinishRef(reader, payload.finish, '$.payload.finish');
+		const payload = reader.object(request.intent.payload, '$.payload', ['finish', 'surfaces', 'derive']);
+		const rawFinish = payload === null ? null : readFinishRef(reader, payload.finish, '$.payload.finish');
 		const surfaces = payload === null ? null : readSurfaceRefs(reader, payload.surfaces, '$.payload.surfaces');
-		if (finish === null || surfaces === null || reader.issues.length > 0) {
+		const derive = payload === null ? null : readAssignDerive(reader, payload.derive, '$.payload.derive');
+		if (rawFinish === null || surfaces === null || reader.issues.length > 0) {
 			return refuse(reader.issues[0]?.message ?? 'Paint needs one Finish and at least one surface.');
 		}
-		if (finish === 'model-own') return refuse("Model's own cannot be painted onto a Layout surface.", 'not-paintable');
-		if (request.allocatedIds.length > 0) return refuse('Painting Layout surfaces needs no allocated id.', 'unexpected-allocation');
-		const curated = 'curated' in finish ? finish.curated : null;
-		const project = 'project' in finish ? before.materials.find((entry) => entry.id === finish.project) : undefined;
+		if (rawFinish === 'model-own') return refuse("Model's own cannot be painted onto a Layout surface.", 'not-paintable');
+		let finish: SceneFinishRef = rawFinish;
+		let derivedCreated: SceneMaterialInstance | null = null;
+		if (derive !== null) {
+			const resolved = resolveDerivedAssign(rawFinish, derive, false);
+			if (resolved.kind === 'outcome') return resolved.outcome;
+			finish = resolved.finish;
+			derivedCreated = resolved.created;
+		}
+		if (derivedCreated === null && request.allocatedIds.length > 0) {
+			return refuse('Painting Layout surfaces needs no allocated id.', 'unexpected-allocation');
+		}
+		const curated = typeof finish === 'object' && 'curated' in finish ? finish.curated : null;
+		const project =
+			typeof finish === 'object' && 'project' in finish
+				? derivedCreated ?? before.materials.find((entry) => entry.id === finish.project)
+				: undefined;
 		if (curated !== null && !MATERIAL_ID.test(curated)) return refuse('That curated Finish does not exist.', 'unknown-catalogue');
-		if ('project' in finish && (project === undefined || isPristineInstance(project))) {
+		if (
+			typeof finish === 'object' &&
+			'project' in finish &&
+			(project === undefined || (derivedCreated === null && isPristineInstance(project)))
+		) {
 			return refuse('That project Finish no longer exists.', 'unknown-finish');
 		}
 		if (request.intent.targets.length !== surfaces.length) return refuse('Paint must address exactly the surfaces it names.');
 		const layoutUnit = envelope.units.layout;
-		const layout = layoutUnit.data;
 		const existing = new Map((before.surfaceFinishes ?? []).map((entry) => [surfaceKey(entry.surface), entry]));
 		const next = new Map(existing);
 		const changedKeys: string[] = [];
 		const addedKeys: string[] = [];
-		const assignedFinish: SceneSurfaceFinish['finish'] = 'curated' in finish
-			? { materialId: finish.curated }
-			: { materialInstanceId: finish.project };
+		const assignedFinish: SceneSurfaceFinish['finish'] =
+			typeof finish === 'object' && 'curated' in finish
+				? { materialId: finish.curated }
+				: { materialInstanceId: (finish as { readonly project: string }).project };
 		for (const [index, surface] of surfaces.entries()) {
 			const problem = surfaceTargetProblem(request.intent.targets[index]!, surface, layoutUnit);
 			if (problem !== null) return problem;
@@ -1372,18 +1512,20 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 			else if (JSON.stringify(previous) !== JSON.stringify(assignment)) changedKeys.push(key);
 			next.set(key, assignment);
 		}
-		const after: SceneDocument = { ...before, surfaceFinishes: sortedSurfaceFinishes(next) };
+		const materials = derivedCreated === null ? before.materials : [...before.materials, derivedCreated];
+		const after: SceneDocument = { ...before, materials, surfaceFinishes: sortedSurfaceFinishes(next) };
 		if (sameSceneValues(before, after)) return refuse('Every chosen surface already has that Finish.', 'no-change');
 		return complete(
 			after,
 			{
 				surfaceFinishes: { changedKeys, addedKeys },
+				...(derivedCreated === null ? {} : { materials: materialGrant({ added: [derivedCreated.id] }) }),
 				createdEntityIds: [],
 				changedEntityIds: [],
 				changedEntityFields: []
 			},
 			[...new Set([...addedKeys, ...changedKeys])].sort(),
-			['surfaceFinishes', 'finish']
+			derivedCreated === null ? ['surfaceFinishes', 'finish'] : ['surfaceFinishes', 'finish', 'materials']
 		);
 	}
 

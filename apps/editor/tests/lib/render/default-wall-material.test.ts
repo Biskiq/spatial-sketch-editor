@@ -42,14 +42,17 @@ describe('the default Wall surface', () => {
 				finish: { materialId: 'marble-light' }
 			}]
 		};
-		const { factory, dispose } = createVisitorWallMaterialFactory(store, () => DEFAULT_WALL_COLOR, 0, undefined, {
+		const { factory, dispose } = createVisitorWallMaterialFactory(store, () => DEFAULT_WALL_COLOR, DEFAULT_WALL_UNLIT_SHARE, undefined, {
 			resolveSurfaceLook: (surface) => resolveSceneSurfaceLook(scene, surface, undefined)
 		});
 		const mesh = { roomId: 'wall-painted', wallRanges: [{ segmentId: 'wall-painted' }] } as never;
 		const left = factory('side', mesh, 'left').material as MeshStandardMaterial;
 		const right = factory('side', mesh, 'right').material as MeshStandardMaterial;
 		expect(left.color.getHexString()).toBe('e8e4dc');
+		expect(left.emissiveIntensity).toBe(1);
+		expect(left.emissive.getHex()).toBe(0x000000);
 		expect(right.color.getHexString()).toBe(DEFAULT_WALL_COLOR.slice(1));
+		expect(right.emissiveIntensity).toBe(DEFAULT_WALL_UNLIT_SHARE);
 		dispose();
 		store.dispose();
 	});
@@ -74,7 +77,7 @@ describe('the default Wall surface', () => {
 		);
 		const shell = source('src/lib/visitor/VisitorLayoutShell.svelte');
 		expect(shell).toMatch(
-			/createWallRepresentation\(\s*materials,\s*undefined,\s*null,\s*null,\s*\(\) => invalidate\(\),\s*resolveSurfaceLook,\s*viewGeneration\s*\)/
+			/createWallRepresentation\(\s*materials,\s*undefined,\s*null,\s*null,\s*\(\) => invalidate\(\),\s*resolveSurfaceLook,\s*viewGeneration(?:,\s*\(outcome\) => onFinishOutcome\?\.\(outcome\))?\s*\)/
 		);
 		expect(shell).toContain('walls.setScene(scene, textureScope)');
 		expect(shell).toContain('rooms.setScene(scene, textureScope)');

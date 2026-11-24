@@ -242,22 +242,51 @@ describe('T2.S8 U5 recovery — Library sheet', () => {
 	});
 });
 
-describe('T2.S8 U5 recovery — Material editor', () => {
+import { buildFinishEditorFields } from '$lib/authoring/look/finish-editor.svelte';
+import { materialTreatmentFacts } from '$lib/content/material-presentation';
+import { materialById } from '$lib/content/materials';
+
+const editorFacts = materialTreatmentFacts((id: MaterialId) => (materialById.has(id) ? getMaterial(id).label : id));
+
+describe('T2.S8 U6 — Material editor', () => {
 	function editor(status: Record<string, unknown> = {}, extra: Record<string, unknown> = {}) {
-		const callbacks = { onStep: vi.fn(), onReset: vi.fn(), onApply: vi.fn(async () => true), onPaint: vi.fn(), onCancel: vi.fn() };
+		const callbacks = {
+			onCommit: vi.fn(),
+			onResetAll: vi.fn(),
+			onApplyDraft: vi.fn(async () => true),
+			onPaintDraft: vi.fn(),
+			onCancelDraft: vi.fn(),
+			onCompare: vi.fn()
+		};
+		const source = { base: { catalogue: 'wood-oak-veneer' as const } };
+		const fields = buildFinishEditorFields({
+			source,
+			recipes: new Map(),
+			palette: [],
+			entityKind: null,
+			facts: editorFacts,
+			materialLabel: 'Oak Veneer',
+			curated: false
+		});
 		const host = document.createElement('div');
 		document.body.append(host);
 		mounted.push(
 			mount(LibraryMaterialEditor, {
 				target: host,
 				props: {
-					draft: beginLibraryDraft(project),
-					entry: project,
-					status: { canApply: true, changed: false, targetLabel: 'Chair', reason: null, canPaint: true, paintReason: null, ...status },
-					previewing: false,
+					mode: 'draft',
+					name: project.name,
+					baseLabel: project.materialLabel,
+					finishKey: project.key,
 					tileSource: null,
-					draftSource: null,
-					draftReason: null,
+					originalSource: null,
+					fields,
+					source,
+					recipes: new Map(),
+					palette: [],
+					facts: editorFacts,
+					draftStatus: { canApply: true, changed: false, targetLabel: 'Chair', reason: null, canPaint: true, paintReason: null, ...status },
+					previewing: false,
 					...extra,
 					...callbacks
 				}
@@ -268,48 +297,39 @@ describe('T2.S8 U5 recovery — Material editor', () => {
 		return { host, q, ...callbacks };
 	}
 
-	it('focuses close, steps sheen, applies once and keeps Save unavailable', async () => {
+	it('focuses close, exposes active controls, applies once and keeps Save unavailable', async () => {
 		const fx = editor();
 		expect(document.activeElement).toBe(fx.q('[data-material-editor-close]'));
 		expect(fx.q('[data-material-editor-target]')?.textContent).toMatch(/Chair/);
-		fx.q<HTMLButtonElement>('[data-material-editor-step="gloss"]')?.click();
-		expect(fx.onStep).toHaveBeenCalledWith('gloss');
 		expect(fx.q<HTMLButtonElement>('[data-material-editor-save]')?.disabled).toBe(true);
-		expect(fx.q('[data-material-editor-field="colour"] [disabled]')).not.toBeNull();
+		fx.q<HTMLButtonElement>('[data-material-editor-colour-mode="stained"]')?.click();
+		expect(fx.onCommit).toHaveBeenCalledWith('colour', expect.any(Array));
 		fx.q<HTMLButtonElement>('[data-material-editor-apply]')?.click();
 		await settle();
-		expect(fx.onApply).toHaveBeenCalledTimes(1);
+		expect(fx.onApplyDraft).toHaveBeenCalledTimes(1);
 		fx.q<HTMLButtonElement>('[data-material-editor-paint]')?.click();
-		expect(fx.onPaint).toHaveBeenCalledTimes(1);
+		expect(fx.onPaintDraft).toHaveBeenCalledTimes(1);
 	});
 
-	it('Compare switches between the real draft and original renders', () => {
+	it('Compare toggles when both original and live sources are available, and disables otherwise', () => {
 		const original = { kind: 'catalogue', id: 'wood-oak-veneer' } as const;
 		const drafted = { kind: 'catalogue', id: 'metal-brushed-steel' } as const;
-		const fx = editor({ changed: true }, { tileSource: original, draftSource: drafted });
+		const fx = editor({ changed: true }, { tileSource: drafted, originalSource: original });
 		const compare = fx.q<HTMLButtonElement>('[data-material-editor-compare]');
 		expect(compare?.disabled).toBe(false);
-		expect(fx.q('[data-inspect-caption]')?.textContent).toBe('Draft');
-		expect(fx.q('.wash')).toBeNull();
 		compare?.click();
-		flushSync();
-		expect(compare?.getAttribute('aria-checked')).toBe('true');
-		expect(fx.q('[data-inspect-caption]')?.textContent).toBe('Original');
-	});
+		expect(fx.onCompare).toHaveBeenCalledWith(true);
 
-	it('shows the labelled original and says why Compare is unavailable when no draft renders', () => {
-		const fx = editor({ changed: true }, { tileSource: { kind: 'catalogue', id: 'wood-oak-veneer' }, draftReason: 'This sheen cannot be drawn.' });
-		expect(fx.q<HTMLButtonElement>('[data-material-editor-compare]')?.disabled).toBe(true);
-		expect(fx.q('[data-inspect-caption]')?.textContent).toBe('Original');
-		expect(fx.q('[data-material-editor-compare-note]')?.textContent).toMatch(/cannot be drawn.*Compare is unavailable/);
+		const noOrig = editor({ changed: true }, { tileSource: drafted, originalSource: null });
+		expect(noOrig.q<HTMLButtonElement>('[data-material-editor-compare]')?.disabled).toBe(true);
 	});
 
 	it('shows a refusal in place, disables Apply, and cancels on Escape', () => {
-		const fx = editor({ canApply: false, reason: 'Pick a surface.', canPaint: false, paintReason: 'No Paint path.' });
+		const fx = editor({ canApply: false, reason: 'Pick a surface.', canPaint: false });
 		expect(fx.q<HTMLButtonElement>('[data-material-editor-apply]')?.disabled).toBe(true);
 		expect(fx.q<HTMLButtonElement>('[data-material-editor-paint]')?.disabled).toBe(true);
 		expect(fx.q('[data-material-editor-reason]')?.textContent).toMatch(/Pick a surface/);
 		fx.q('[data-material-editor]')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-		expect(fx.onCancel).toHaveBeenCalledTimes(1);
+		expect(fx.onCancelDraft).toHaveBeenCalledTimes(1);
 	});
 });

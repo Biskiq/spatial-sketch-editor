@@ -295,6 +295,12 @@ describe('presentation token ownership', () => {
 		}
 	});
 
+	it('pins --stage-repair equal to --ld-caution (R1)', () => {
+		const tokens = declarations(readFileSync(TOKEN_FILE, 'utf8'));
+		expect(tokens.get('--stage-repair')).toBe(tokens.get('--ld-caution'));
+		expect(normalize(SPATIAL_PAINT_ROLES.repair)).toBe(tokens.get('--ld-caution'));
+	});
+
 	it('keeps the retired duplicate names out of the tree', () => {
 		const retired = [
 			'--shell-forest-2',

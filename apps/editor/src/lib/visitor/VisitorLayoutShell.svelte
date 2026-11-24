@@ -4,6 +4,7 @@
 	import type { CompiledLayoutGeometry } from '@portfolio/layout-core';
 	import { resolveSceneSurfaceLook } from '$lib/render/layout/scene-surface-look';
 	import type { SceneSurfaceLookResolver } from '$lib/render/layout/surface-look';
+	import type { FinishOutcomeSink } from '$lib/render/resources/finish-outcome-sink';
 	import { neutralVisitorRoomPresentation } from './room-presentation';
 	import { createRegionRepresentation } from '$lib/render/layout-region-representation';
 	import { createWallRepresentation } from '$lib/render/layout-wall-representation';
@@ -29,7 +30,8 @@
 		liftedRoomIds = [],
 		liftedRegionIds = [],
 		cutawayWallIds = [],
-		onIdentity
+		onIdentity,
+		onFinishOutcome
 	}: {
 		geometry: CompiledLayoutGeometry;
 		scene?: RuntimeScene | null;
@@ -66,6 +68,8 @@
 		 * subtree by name. Returns the host's unregister function.
 		 */
 		onIdentity?: (index: LayoutIdentityIndex) => (() => void) | void;
+		/** Optional Stage-only sink for sampled Finish view outcomes. */
+		onFinishOutcome?: FinishOutcomeSink;
 	} = $props();
 
 	const floorElevationById = $derived(
@@ -106,7 +110,8 @@
 		null,
 		() => invalidate(),
 		resolveSurfaceLook,
-		viewGeneration
+		viewGeneration,
+		(outcome) => onFinishOutcome?.(outcome)
 	);
 
 	// Update and teardown are separate effects on purpose: Svelte runs a
@@ -153,7 +158,8 @@
 		null,
 		() => invalidate(),
 		resolveSurfaceLook,
-		viewGeneration
+		viewGeneration,
+		(outcome) => onFinishOutcome?.(outcome)
 	);
 	const regions = createRegionRepresentation(
 		materials,
@@ -161,7 +167,8 @@
 		() => invalidate(),
 		resolveSurfaceLook,
 		undefined,
-		viewGeneration
+		viewGeneration,
+		(outcome) => onFinishOutcome?.(outcome)
 	);
 	$effect(() => { if (regions.update(geometry)) invalidate(); });
 

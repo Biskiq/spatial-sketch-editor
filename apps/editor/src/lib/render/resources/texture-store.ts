@@ -24,6 +24,7 @@ import {
 import type { MaterialDefinition, MaterialTextureSlot } from '$lib/types/materials';
 import { countWork } from '@portfolio/layout-core';
 import { probeRawImage } from './image-encoding';
+import { ImageLoadFailure, isImageLoadFailure } from './image-load-failure';
 import type { TextureVariantSource } from './texture-variant';
 
 export type LoadedTextureMaps = Partial<Record<MaterialTextureSlot, ThreeTexture>>;
@@ -38,6 +39,7 @@ type SourceEntry = {
   promise: Promise<ThreeTexture> | null;
   texture?: ThreeTexture;
   error?: string;
+  failure?: ImageLoadFailure;
   /** Callers still waiting; the final abort cancels the shared IO. */
   waiters: number;
   /** The shared load was cancelled; a late completion must not install. */
@@ -495,7 +497,13 @@ function loadSource(
   const key = sourceKey(scope ?? null, url, policy, storage);
   const existing = sourceCache.get(key);
   if (existing) {
-    if (existing.error) return Promise.reject(new Error(existing.error));
+    if (existing.error) {
+      return Promise.reject(
+        existing.failure !== undefined
+          ? new ImageLoadFailure(existing.error, existing.failure.phase, existing.failure.httpStatus)
+          : new Error(existing.error)
+      );
+    }
     if (existing.texture) return Promise.resolve(existing.texture);
     if (existing.promise !== null) return waitForSource(key, existing, existing.promise, signal);
     return Promise.reject(new Error('Texture load is not available.'));
@@ -636,8 +644,11 @@ async function loadViaDefaultSourceLoader(
     if (entry.cancelled || signal.aborted) throw abortReason(signal);
     const message = `Failed to load texture for material "${materialId}": ${url}`;
     console.warn(message, event);
-    if (sourceCache.get(key) === entry) entry.error = message;
-    throw new Error(message);
+    if (sourceCache.get(key) === entry) {
+      entry.error = message;
+      if (isImageLoadFailure(event)) entry.failure = event;
+    }
+    throw isImageLoadFailure(event) ? event : new Error(message);
   }
 }
 
@@ -668,8 +679,11 @@ async function loadViaScopedLoader(
     if (entry.cancelled || signal.aborted) throw abortReason(signal);
     const message = `Failed to load texture for material "${materialId}": ${url}`;
     console.warn(message, event);
-    if (sourceCache.get(key) === entry) entry.error = message;
-    throw new Error(message);
+    if (sourceCache.get(key) === entry) {
+      entry.error = message;
+      if (isImageLoadFailure(event)) entry.failure = event;
+    }
+    throw isImageLoadFailure(event) ? event : new Error(message);
   }
 }
 

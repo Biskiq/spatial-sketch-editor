@@ -57,6 +57,8 @@ import StageMatGround from './StageMatGround.svelte';
 	import StageLiftLayer from './StageLiftLayer.svelte';
 	import StageOpenSideLayer from './StageOpenSideLayer.svelte';
 	import StageSelectionLayer from './StageSelectionLayer.svelte';
+	import StageRepairLayer from './StageRepairLayer.svelte';
+	import type { FinishOutcomeSink } from '$lib/render/resources/finish-outcome-sink';
 	import { ghostSubjectOf, selectionObjectsOf } from './stage-selection-source';
 	import { subjectWhollyHidden } from '../slice/slice-ghost';
 	import StageWallDevelopment from './StageWallDevelopment.svelte';
@@ -136,8 +138,11 @@ import StageMatGround from './StageMatGround.svelte';
 		sliceDraft = null,
 		cutawayWallIds = [],
 		cutawayStubTopY = null,
+		alignHiddenWallIds = [],
 		onCutawayFailure,
-		studio = null
+		studio = null,
+		onFinishOutcome,
+		repairAffectedTargets
 	}: {
 		geometry: CompiledLayoutGeometry;
 		sourceContentId: string;
@@ -208,6 +213,11 @@ import StageMatGround from './StageMatGround.svelte';
 		 */
 		cutawayWallIds?: readonly string[];
 		cutawayStubTopY?: number | null;
+		/**
+		 * Wall Align (T2.S8 U6): the Walls in front of the faced side, hidden for the
+		 * session so nothing covers the surface being aligned. Display-only, never authored.
+		 */
+		alignHiddenWallIds?: readonly string[];
 		/** Walls whose cap component failed; the route closes them to whole (D12). */
 		onCutawayFailure?: (wallIds: readonly string[]) => void;
 		/**
@@ -217,6 +227,10 @@ import StageMatGround from './StageMatGround.svelte';
 		 * set separately on the facade, and nothing here writes source.
 		 */
 		studio?: { readonly rootId: string | null; readonly context: 'world' | 'mat' } | null;
+		/** Optional Stage-only sink for sampled Finish view outcomes (U6 Repair). */
+		onFinishOutcome?: FinishOutcomeSink;
+		/** Union of open appearance issues' affected target keys (U6 Repair hatch). */
+		repairAffectedTargets?: ReadonlySet<string>;
 	} = $props();
 
 	/**
@@ -487,10 +501,11 @@ import StageMatGround from './StageMatGround.svelte';
 		<VisitorLayoutShell {geometry} {scene} textureScope={textureScope} plinth={false} doorFrames={false}
 			{textureRevision}
 			treatment={scene.environment?.treatment}
-			hiddenWallIds={unfoldedWallId === null ? [] : [unfoldedWallId]}
+			hiddenWallIds={unfoldedWallId === null ? alignHiddenWallIds : [unfoldedWallId, ...alignHiddenWallIds]}
 			{liftedRoomIds}
 			{liftedRegionIds}
 			{cutawayWallIds}
+			{onFinishOutcome}
 			onIdentity={scenePick.registerLayoutIdentity} />
 	</T.Group>
 	{/if}
@@ -524,6 +539,7 @@ import StageMatGround from './StageMatGround.svelte';
 		{scenePick}
 		scene={drawnScene}
 		{modelUrls}
+		{onFinishOutcome}
 		includeLights={sky !== null}
 		onFormRendererReady={formRendererReady}
 		onEntityRenderable={entityRendererReady}
@@ -576,6 +592,13 @@ import StageMatGround from './StageMatGround.svelte';
 			fade={1 - (paperReveal?.sheet ?? 0)}
 			unclippedSelection={sliceGhostSelection !== null}
 		/>
+		{#if repairAffectedTargets && repairAffectedTargets.size > 0}
+			<StageRepairLayer
+				affectedTargets={repairAffectedTargets}
+				{scenePick}
+				revision={`${layoutRevision}:${sceneRootRevision + entityRenderRevision}`}
+			/>
+		{/if}
 		{/if}
 	{/if}
 	{#if !paperVisible && framedViewport === null}

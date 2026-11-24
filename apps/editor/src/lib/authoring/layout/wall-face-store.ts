@@ -27,9 +27,23 @@ export type WallFaceReading = {
  * captured state through the Camera session. Each returns whether the Camera
  * accepted, so a refusal is reported rather than assumed.
  */
+/**
+ * Align (U6): the faced surface's centre and metres, so the route can frame it
+ * inside the chrome-free Stage region instead of the whole canvas. Absent for
+ * the plain A6 Face, which keeps its conservative whole-canvas frame.
+ */
+export type WallFaceFit = {
+	readonly center: readonly [number, number, number];
+	readonly surfaceMeters: readonly [number, number];
+};
+
+type FloorBounds = { readonly min: readonly [number, number, number]; readonly max: readonly [number, number, number] };
+
 export type WallFaceCameraPort = {
 	standpoint(): ViewportCameraState | null;
-	face(frame: WallFaceFrame): boolean;
+	face(frame: WallFaceFrame, fit?: WallFaceFit): boolean;
+	/** Plan reading + fit on floor bounds (Align on floor, U6). */
+	frameFloor?(bounds: FloorBounds, fit?: WallFaceFit): boolean;
 	putBack(entry: ViewportCameraState): boolean;
 };
 
@@ -55,14 +69,48 @@ class WallFaceStore {
 	}
 
 	/** Face one Wall. A refused Camera writes no reading and moves nothing. */
-	face(input: { readonly wallId: string; readonly frame: WallFaceFrame }): WallFaceOutcome {
+	face(input: { readonly wallId: string; readonly frame: WallFaceFrame; readonly fit?: WallFaceFit }): WallFaceOutcome {
 		const port = this.#port;
 		if (port === null) return { kind: 'refused', reason: 'no-camera' };
 		const entry = port.standpoint();
 		if (entry === null) return { kind: 'refused', reason: 'no-camera' };
-		if (!port.face(input.frame)) return { kind: 'refused', reason: 'camera-refused' };
+		if (!(input.fit === undefined ? port.face(input.frame) : port.face(input.frame, input.fit))) {
+			return { kind: 'refused', reason: 'camera-refused' };
+		}
 		this.#reading = { wallId: input.wallId, entry };
 		return { kind: 'applied' };
+	}
+
+	/** Frame one Room floor in Plan reading; Put back restores the entry standpoint. */
+	faceFloor(input: {
+		readonly roomId: string;
+		readonly bounds: FloorBounds;
+		readonly fit?: WallFaceFit;
+	}): WallFaceOutcome {
+		const port = this.#port;
+		if (port === null || port.frameFloor === undefined) return { kind: 'refused', reason: 'no-camera' };
+		const entry = port.standpoint();
+		if (entry === null) return { kind: 'refused', reason: 'no-camera' };
+		if (!port.frameFloor(input.bounds, input.fit)) return { kind: 'refused', reason: 'camera-refused' };
+		this.#reading = { wallId: `floor:${input.roomId}`, entry };
+		return { kind: 'applied' };
+	}
+
+	/**
+	 * Re-frame the live reading (a resized or re-laned Stage). The captured entry
+	 * standpoint is kept, so Put back still returns to where Face started.
+	 */
+	reframe(input: { readonly frame: WallFaceFrame; readonly fit?: WallFaceFit } | { readonly floor: FloorBounds; readonly fit?: WallFaceFit }): WallFaceOutcome {
+		if (this.#reading === null) return { kind: 'refused', reason: 'not-facing' };
+		const port = this.#port;
+		if (port === null) return { kind: 'refused', reason: 'no-camera' };
+		const ok =
+			'floor' in input
+				? port.frameFloor?.(input.floor, input.fit) ?? false
+				: input.fit === undefined
+					? port.face(input.frame)
+					: port.face(input.frame, input.fit);
+		return ok ? { kind: 'applied' } : { kind: 'refused', reason: 'camera-refused' };
 	}
 
 	/**

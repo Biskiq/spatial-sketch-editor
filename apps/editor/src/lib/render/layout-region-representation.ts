@@ -3,6 +3,7 @@ import { Group, Mesh, type Material } from 'three';
 import { buildRegionMeshGeometry } from '$lib/render/layout/region-mesh-builder';
 import { createSceneSurfaceMaterials } from '$lib/render/layout/scene-surface-materials';
 import type { FinishViewGeneration } from '$lib/render/resources/finish-views';
+import type { FinishOutcomeSink } from '$lib/render/resources/finish-outcome-sink';
 import type { SceneSurfaceLookResolver } from '$lib/render/layout/surface-look';
 import type { TextureLoadScope } from '$lib/render/resources/texture-store';
 import { DEFAULT_FLOOR_COLOR } from '$lib/visitor/room-presentation';
@@ -19,7 +20,8 @@ export function createRegionRepresentation(
 	onMaterialChange: () => void = () => {},
 	resolveSurfaceLook?: SceneSurfaceLookResolver,
 	treatment: MaterialTreatment | undefined = undefined,
-	viewGeneration?: () => FinishViewGeneration | null
+	viewGeneration?: () => FinishViewGeneration | null,
+	onFinishOutcome?: FinishOutcomeSink
 ) {
 	const object3d = new Group();
 	object3d.name = 'LayoutRegions';
@@ -89,7 +91,8 @@ export function createRegionRepresentation(
 		scope: textureScope,
 		onMaterialChange: refreshSurfaceMaterials,
 		resolveSurfaceLook,
-		viewGeneration
+		viewGeneration,
+		onFinishOutcome
 	});
 	function refreshSurfaceMaterials(): void {
 		if (entries.size === 0) return;
@@ -105,7 +108,8 @@ export function createRegionRepresentation(
 			scope: activeScope,
 			onMaterialChange: refreshSurfaceMaterials,
 			resolveSurfaceLook,
-			viewGeneration
+			viewGeneration,
+			onFinishOutcome
 		});
 		refreshSurfaceMaterials();
 		previous.dispose();

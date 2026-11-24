@@ -76,6 +76,11 @@ export type StageKeyboardInput = {
 	readonly closePalette: () => void;
 	readonly libraryOpen: () => boolean;
 	readonly toggleLibrary: () => void;
+	/** U6 Escape rungs: Align › editor › import › drawers (all after Library, before dropper/tray/draft). */
+	readonly dismissAlign?: () => boolean;
+	readonly dismissMaterialEditor?: () => boolean;
+	readonly dismissMaterialImport?: () => boolean;
+	readonly dismissRepairDrawer?: () => boolean;
 	readonly activeWorldTool: () => string;
 	readonly clearWorldTool: () => void;
 	readonly worldPlateOpen: () => boolean;
@@ -335,6 +340,12 @@ export function createStageKeyboard(input: StageKeyboardInput): StageKeyboard {
 				const hadPress = input.pressing();
 				input.interrupt('escape');
 				if (hadPress) break;
+				// U6 Escape precedence: Library › Align › editor › import › drawers › dropper › tray › draft.
+				if (input.libraryOpen()) { input.toggleLibrary(); break; }
+				if (input.dismissAlign?.() === true) break;
+				if (input.dismissMaterialEditor?.() === true) break;
+				if (input.dismissMaterialImport?.() === true) break;
+				if (input.dismissRepairDrawer?.() === true) break;
 				// A host tool clears its own measurement or words first, an open
 				// palette folds next, and only then does the armed tool disarm.
 				const armedHostTool = input.armedHostTool();
@@ -347,7 +358,6 @@ export function createStageKeyboard(input: StageKeyboardInput): StageKeyboard {
 				if (input.sliceDraftActive?.() === true) { input.cancelSliceDraft?.(); break; }
 				const armedKey = input.armedDockKey();
 				if (input.task() !== null && armedKey?.palette === true && input.paletteOpen()) { input.closePalette(); break; }
-				if (input.libraryOpen()) { input.toggleLibrary(); break; }
 				// A rung that returns the editor to Select must not leave keyboard focus
 				// (and its halo) on the key or strip it just closed. Stage focus stays.
 				const toolbarFocus = input.toolbarFocused?.() === true;

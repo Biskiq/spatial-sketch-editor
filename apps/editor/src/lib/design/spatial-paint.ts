@@ -28,6 +28,8 @@ export const SPATIAL_PAINT_ROLES = Object.freeze({
 	hover: '#4f8f6c',
 	/** The erase treatment: red, never gold. */
 	erase: '#d0412d',
+	/** Surfaces needing material repair: the existing living-draft caution amber (R1). */
+	repair: '#a9631f',
 	/** Paper's sheet: a neutral drafting stone that holds with the editor's cards. */
 	paper: '#e5e8e1',
 	/** The mat outside the plate. */
@@ -49,6 +51,7 @@ export const SPATIAL_PAINT_CSS_VAR: Readonly<Record<SpatialPaintRole, string>> =
 	selection: '--stage-selection',
 	hover: '--stage-hover',
 	erase: '--stage-erase',
+	repair: '--stage-repair',
 	paper: '--stage-paper',
 	mat: '--stage-mat',
 	gridMinor: '--stage-grid-minor',

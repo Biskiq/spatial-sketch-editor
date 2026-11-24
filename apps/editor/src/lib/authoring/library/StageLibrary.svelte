@@ -74,6 +74,7 @@
 		onObject,
 		onArtwork,
 		onArtworkImport,
+		onMaterialImport,
 		onLook
 	}: {
 		entries: readonly LibraryFinishEntry[];
@@ -106,6 +107,7 @@
 		onObject: (assetId: string) => void;
 		onArtwork: (entry: ArtworkLibraryEntry) => void;
 		onArtworkImport: (files: File[]) => void;
+		onMaterialImport?: (files: readonly File[], invoker?: HTMLElement | null) => void;
 		onLook: (id: string) => void;
 	} = $props();
 
@@ -134,6 +136,23 @@
 	let searchEl = $state<HTMLInputElement>();
 	let sectionEl = $state<HTMLElement>();
 	let artworkInput = $state<HTMLInputElement>();
+	let materialImportInput = $state<HTMLInputElement>();
+	let materialImportBtn = $state<HTMLButtonElement>();
+
+	function chooseMaterialFiles(files: FileList | null): void {
+		if (!files || files.length === 0 || !onMaterialImport) return;
+		const list = [...files];
+		if (materialImportInput) materialImportInput.value = '';
+		onMaterialImport(list, materialImportBtn ?? null);
+	}
+
+	function onDropFiles(event: DragEvent): void {
+		if (!onMaterialImport || kind !== 'materials') return;
+		const files = event.dataTransfer?.files;
+		if (!files || files.length === 0) return;
+		event.preventDefault();
+		onMaterialImport([...files], materialImportBtn ?? null);
+	}
 
 	/** Replace writes to the target the sheet opened with, or refuses. */
 	const capturedTarget = untrack(() => (intent === 'replace' ? target : null));
@@ -419,6 +438,10 @@
 	data-stage-library
 	data-library-intent={intent}
 	onkeydown={onKeydown}
+	ondragover={(event) => {
+		if (kind === 'materials' && onMaterialImport) event.preventDefault();
+	}}
+	ondrop={onDropFiles}
 >
 	<header class="lb-h">
 		<h2 id="library-title" class="lb-t">Library</h2>
@@ -469,6 +492,23 @@
 					{/each}
 				</select>
 			</label>
+			{#if onMaterialImport}
+				<input
+					type="file"
+					accept="image/png,image/jpeg,image/webp"
+					multiple
+					hidden
+					bind:this={materialImportInput}
+					onchange={() => chooseMaterialFiles(materialImportInput?.files ?? null)}
+				/>
+				<button
+					type="button"
+					class="btn sm"
+					bind:this={materialImportBtn}
+					data-library-import
+					onclick={() => materialImportInput?.click()}
+				>Import…</button>
+			{/if}
 		{/if}
 		{#if kind === 'artwork' && artwork !== null}
 			<input
@@ -928,7 +968,7 @@
 	.fchip[aria-pressed='true'] { background: var(--shell-forest); border-color: var(--shell-forest); color: var(--shell-ivory); }
 	.fchip.clear { text-decoration: underline; color: var(--shell-ink); }
 	.refusal, .kept { margin: 0; padding: 6px 12px; font-size: 12px; border-bottom: 1px solid var(--shell-hairline); }
-	.refusal { color: #8a3a12; background: color-mix(in srgb, #d98a3a 10%, transparent); }
+	.refusal { color: var(--shell-refuse); background: var(--shell-refuse-bg); }
 	.kept { color: var(--shell-ink-2); }
 	.lb-b {
 		position: relative;
@@ -1098,7 +1138,7 @@
 		padding: 0 7px;
 		border-radius: 999px;
 		font-size: 11px;
-		color: #2a4aa8;
+		color: var(--stage-proposal);
 	}
 	.mc .star:focus-visible, .mc .xp:focus-visible, .mc .users:focus-visible { outline: 2px solid var(--shell-forest); }
 	.vchips { position: absolute; left: 6px; top: calc(6px + 26px + 4px); display: flex; gap: 4px; }
@@ -1191,7 +1231,7 @@
 	.facts { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-size: 12px; margin: 0; }
 	.facts dt { color: var(--shell-ink-2); }
 	.facts dd { margin: 0; overflow-wrap: anywhere; }
-	.facts .warn { color: #8a5a12; }
+	.facts .warn { color: var(--shell-caution); }
 	.acts { display: flex; gap: 6px; flex-wrap: wrap; }
 	.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
