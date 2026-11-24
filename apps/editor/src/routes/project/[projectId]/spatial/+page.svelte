@@ -100,14 +100,13 @@
 	import { artworkReference } from '$lib/authoring/artwork/artwork-command';
 	import { verifyArtworkDecode } from '$lib/render/artwork/artwork-decode';
 	import { readVerifiedArtwork } from '$lib/authoring/artwork/project-artwork';
-	import { createArtworkScope, type ArtworkBytes } from '$lib/render/artwork/artwork-scope';
-	import { aimThroughWindows } from '$lib/authoring/look/aim-through-windows';
+		import { aimThroughWindows } from '$lib/authoring/look/aim-through-windows';
 	import { createScenePickSource } from '$lib/authoring/scene/scene-pick-source';
 	import { createSkyFeature } from '$lib/authoring/look/sky-feature.svelte';
 	import { isPaperPlanVisible } from '$lib/authoring/stage/paper-plan';
 	import { experienceFocus } from '$lib/authoring/experience/focus.svelte';
 	import { experienceProblems, loweringProblem, type ExperienceProblem } from '$lib/authoring/experience/experience-problems';
-	import { createExperiencePreview } from '$lib/authoring/experience/experience-preview.svelte';
+	import { createExperienceFeature, type ExperienceFeature } from '$lib/authoring/experience/experience-feature.svelte';
 	import { isAllowedShippedTextureUri } from '$lib/visitor/shipped-static-registry';
 	import { createProjectSession } from '$lib/authoring/project-session/project-session.svelte';
 	import { createProjectApi, createProjectAuth, type ProjectApi } from '$lib/platform/project-persistence';
@@ -313,8 +312,12 @@
 	let throughFrameEl: HTMLElement | undefined = $state(undefined);
 	let liveStageGesture = $state(false);
 
-	/** The Experience binding owns lens/View/Look Through; the shell state owns chrome. */
-	let experience!: StageExperienceBinding;
+	/**
+	 * The Experience feature composes the binding's owners. The binding itself is
+	 * constructed here until the step 12 wiring modules, as Studio's controller is;
+	 * the feature owns the Preview host, the host reads and its lifecycle stage.
+	 */
+	let experienceFeature!: ExperienceFeature;
 	/** Paint's one Finish intent home, built after the commands it calls. */
 	let finishes!: FinishAuthoring;
 	const shell = createStageShellState({
@@ -337,19 +340,19 @@
 			else if (surface !== null) finishes?.card.requestOpen({ kind: 'surface', surface });
 		}
 	});
-	experience = createStageExperienceBinding({
+	const experienceBinding = createStageExperienceBinding({
 		session,
 		stage: () => facade,
 		shell: () => shell,
 		selection: () => selection,
 		cardIdentity: () => selectionViewView?.cardIdentity ?? null,
-		floorDatum: () => experienceFloorDatum,
+		floorDatum: () => experienceFeature.ports.floorDatum,
 		closeSelection: () => commands.closeSelection(),
 		clearStageSelection: () => {
 			facade?.select(null);
 			selection = null;
 		},
-		preview: () => previewController,
+		preview: () => experienceFeature.ports.previewController,
 		reducedMotion: () => shell.reducedMotion,
 		evaluation: () => evaluation,
 		rect: () => rect,
@@ -368,60 +371,58 @@
 		setStagePickPresentationId: (id) => shell.setStagePickPresentationId(id)
 	});
 
-	const previewController = createExperiencePreview({
-		lens: () => experience.lensState,
-		snapshot: () => (boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot : null),
-		token: () => session.token(),
-		isCurrent: (token) => session.isCurrent(token as never),
-		envelope: () => currentEnvelope,
-		envelopeOf: (snapshot) => stageEnvelope(snapshot as Parameters<typeof stageEnvelope>[0]),
-		focus: () => experienceFocus.read(),
-		setProblem: (problem) => shell.setPreviewProblem(problem as ExperienceProblem | null),
-		stage: () => facade,
-		stopAndRestore: () => {
-			// Preview takes the one Camera output: the light inspection restores its
-			// entry standpoint synchronously before the ticket moves.
-			lightInspection.ports.cancel();
-			// Align, the material Editor, Import and the repair pickers end by their
-			// cancel paths; Align restores its entry standpoint first (U6 lifecycle).
-			appearance.ports.endOperations(true);
-			experience.stopAndRestore();
+	experienceFeature = createExperienceFeature({
+		binding: experienceBinding,
+		preview: {
+			api,
+			projectId,
+			lens: () => experienceBinding.lensState,
+			snapshot: () => (boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot : null),
+			token: () => session.token(),
+			isCurrent: (token) => session.isCurrent(token as never),
+			envelope: () => currentEnvelope,
+			envelopeOf: (snapshot) => stageEnvelope(snapshot as Parameters<typeof stageEnvelope>[0]),
+			focus: () => experienceFocus.read(),
+			setProblem: (problem) => shell.setPreviewProblem(problem as ExperienceProblem | null),
+			stage: () => facade,
+			stopAndRestore: () => {
+				// Preview takes the one Camera output: the light inspection restores its
+				// entry standpoint synchronously before the ticket moves.
+				lightInspection.ports.cancel();
+				// Align, the material Editor, Import and the repair pickers end by their
+				// cancel paths; Align restores its entry standpoint first (U6 lifecycle).
+				appearance.ports.endOperations(true);
+				experienceBinding.stopAndRestore();
+			},
+			snapSuspended: () => shell.drafting.snapSuspended,
+			patchDrafting: (patch) => shell.patchDrafting(patch),
+			notice: (message) => shell.setNotice(message),
+			perfMark: (name, data) => perfMark(name, data)
 		},
-		snapSuspended: () => shell.drafting.snapSuspended,
-		patchDrafting: (patch) => shell.patchDrafting(patch),
-		notice: (message) => shell.setNotice(message),
-		perfMark: (name, data) => perfMark(name, data),
-		async prepareArtwork(domain, signal) {
-			const read = domain as StageDomainRead;
-			const images = new Map(read.scene.entities.flatMap((entity) =>
-				entity.kind === 'artwork' ? [[entity.source.assetId, entity.source] as const] : []));
-			if (!images.size) return null;
-			if (api === null) throw new Error('Artwork images are unavailable in Preview.');
-			const bytes = new Map<string, ArtworkBytes>();
-			const rows = new Map((await api.listAssets(projectId, signal)).map((row) => [row.id, row]));
-			for (const [id, image] of images) {
-				const row = rows.get(id);
-				if (!row) throw new Error('A placed Artwork is missing. Retry entering Preview.');
-				const content = await readVerifiedArtwork(api, projectId, image, signal, row);
-				await verifyArtworkDecode(content.bytes, content.mime, image);
-				signal.throwIfAborted();
-				bytes.set(id, content);
-			}
-			return createArtworkScope(async (image) => {
-				const content = bytes.get(image.assetId);
-				if (!content) throw new Error('Artwork is missing in this Preview.');
-				return content;
-			});
+		host: {
+			services: () => adapterServices,
+			selection: () => selection,
+			cardIdentity: () => selectionViewView?.cardIdentity ?? null,
+			bring: () => {
+				const target = selectionViewView.selectedWorldPoint();
+				if (target !== null) bringIntoView(target);
+			},
+			selectStageReference: (reference) => commands.selectStageReference(reference),
+			referenceLabel: (reference) => selectionViewView.referenceLabel(reference),
+			datumMeters: ready.datumMeters
 		}
 	});
-	const preview = $derived(previewController.preview);
-	const previewView = $derived(previewController.view);
-	const previewViewRead = $derived(previewController.viewRead as StageDomainRead | null);
-	const previewSurface = $derived(previewController.surface);
-	const previewRequestedMode = $derived(previewController.requestedMode);
-	const previewGuideStats = $derived(previewController.stats);
-	const previewViewLabels = $derived(previewController.labels);
-	const previewAvailable = $derived(previewController.available);
+	const experience = experienceFeature.ports.binding;
+
+	const previewController = experienceFeature.ports.previewController;
+	const preview = $derived(experienceFeature.ports.preview);
+	const previewView = $derived(experienceFeature.ports.previewView);
+	const previewViewRead = $derived(experienceFeature.ports.previewViewRead as StageDomainRead | null);
+	const previewSurface = $derived(experienceFeature.ports.previewSurface);
+	const previewRequestedMode = $derived(experienceFeature.ports.previewRequestedMode);
+	const previewGuideStats = $derived(experienceFeature.ports.previewGuideStats);
+	const previewViewLabels = $derived(experienceFeature.ports.previewViewLabels);
+	const previewAvailable = $derived(experienceFeature.ports.previewAvailable);
 	const projectActionsUnavailableReason = $derived(projectSession.projectActionsUnavailableReason());
 	const adapterServices = $derived(stageEpoch.services);
 	const press = createStagePressTracker();
@@ -490,7 +491,6 @@
 	const marks = $derived(stageViewport.marks);
 	const tracePreview = $derived(stageViewport.tracePreview);
 	const currentEnvelope = $derived(ready.envelope());
-	const experienceFloorDatum = $derived(ready.datumMeters());
 	const activeLayer = $derived(
 		experience.posture ?? (lightInspection.ports.active() ? lightInspection.posture : null)
 	);
@@ -1133,22 +1133,11 @@
 	const worldCard = $derived(stageWorldCardView({
 		facade,
 		subject: selectionViewView.cardSubject,
-		datumMeters: experienceFloorDatum,
+		datumMeters: experienceFeature.ports.floorDatum,
 		look: lookCardStratum,
 		revision: shell.contributionsVersion
 	}));
-	const experienceShownCard = $derived.by(() => experience.cardView({
-		services: adapterServices,
-		selection,
-		sceneSubject: experience.sceneSubject,
-		cardIdentity: selectionViewView.cardIdentity,
-		bring: () => {
-			const target = selectionViewView.selectedWorldPoint();
-			if (target !== null) bringIntoView(target);
-		},
-		selectStageReference: (reference) => commands.selectStageReference(reference),
-		referenceLabel: (reference) => selectionViewView.referenceLabel(reference)
-	}));
+	const experienceShownCard = $derived(experienceFeature.ports.shownCard);
 	const shownCard = $derived.by(() => {
 		if (experience.lensState === 'experience') return experienceShownCard;
 		return {
@@ -1237,15 +1226,7 @@
 		features: [
 			lightInspection,
 			appearance,
-			{
-				id: 'experience',
-				lifecycle: {
-					resetFocus: { 'reset-focus': () => experienceFocus.reset() },
-					leaveLens: { 'change-lens': (next) => experience.changeLens(next) },
-					start: { start: () => experience.start() },
-					dispose: { dispose: () => experience.dispose() }
-				}
-			},
+			{ id: 'experience', lifecycle: experienceFeature.lifecycle },
 			{
 				id: 'studio',
 				lifecycle: {
@@ -1360,11 +1341,10 @@
 	});
 
 	const stageCursor = $derived(readStageCursor({
-		viewEditKind: () => experience.viewEdit?.kind ?? null,
+		...experienceFeature.ports.cursor,
 		dragMode: () => stageInput.drag?.mode ?? null,
 		taskKind: () => shell.task?.kind ?? null,
 		lookThroughActive: lookThroughActiveNow,
-		placingView: () => experience.experienceTool === 'place',
 		hoverMove: () => stageInput.hoverMove,
 		toolArmed: () => shell.armedHostTool !== null
 	}));
@@ -1591,7 +1571,7 @@
 					placementGhost: experience.placementGhost(),
 					liveEdit: experience.viewEdit,
 					advanced: experience.advancedViewId !== null,
-					datum: experienceFloorDatum,
+					datum: experienceFeature.ports.floorDatum,
 					rig: experience.playback.status === 'idle' ? null : experience.playback.sample,
 					onLookThrough: (viewId: string) => experience.lookThroughView(viewId),
 					showMarkers: shell.showMarkers,
