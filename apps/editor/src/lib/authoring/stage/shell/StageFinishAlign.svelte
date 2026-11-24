@@ -11,7 +11,7 @@
 	 * Dragging or nudging previews through the Card adapter; pointerup / keyup
 	 * commits once (C12). Nothing here is serialized.
 	 */
-	import { onDestroy, onMount } from 'svelte';
+	import { onDestroy, onMount, untrack } from 'svelte';
 	import {
 		alignArrowDirection,
 		alignArrowTurn,
@@ -75,12 +75,16 @@
 	let keyDirty = $state<'offset' | 'angle' | null>(null);
 	let cancelDrag: (() => void) | null = null;
 
-	function discardGesture(): void {
+	function clearGesture(): void {
 		cancelDrag?.();
 		cancelDrag = null;
 		live = null;
 		heldK = null;
 		keyDirty = null;
+	}
+
+	function discardGesture(): void {
+		clearGesture();
 		onCancelPreview();
 	}
 
@@ -96,7 +100,12 @@
 		};
 	});
 
-	onDestroy(discardGesture);
+	// The parent's nullable Align contribution can disappear before cleanup runs.
+	const cancelMountedPreview = untrack(() => onCancelPreview);
+	onDestroy(() => {
+		clearGesture();
+		cancelMountedPreview();
+	});
 
 	// The layer covers the whole Stage so projected Stage-local pixels map 1:1;
 	// CSS clips its chrome to the Index/Card/tray-free region. Never measured here.

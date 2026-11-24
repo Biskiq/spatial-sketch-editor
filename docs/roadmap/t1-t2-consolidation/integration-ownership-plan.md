@@ -55,6 +55,9 @@ Two kinds of work stay outside X9 unless a demonstrated correctness blocker requ
 - Appearance's Canvas contribution uses explicit live getters. The shared Material Editor is
   keyed by Draft/Finish mode. The mounted tests check live proposal publication and the original
   remount and focus behavior while the Canvas remains mounted.
+- Align keeps its mounted cancellation callback available for teardown. The production browser
+  exposed a callback error when Escape withdrew the prop contribution before cleanup. Removing
+  that contribution during a live gesture now has a mounted regression case.
 - The keyboard arbiter keeps the existing Escape ordering. Sky registers its own rung through
   the same protocol exercised by the admission probe. Core retains the prelude and the steps
   that share unwind context or established core ports.
@@ -101,6 +104,8 @@ The host factory is 921 lines with no local runes. It still assembles wide depen
 and some multi-step callbacks. Canvas and region assembly remain reactive cross-feature
 presenters. Their reads preserve individual region invalidation and the snapshot sampling point
 for the idle Unfold anchor.
+The follow-up Align fix adds 12 and removes 3 Stage shell lines, bringing the net changes to
++3,791 from the base and +27 from the handoff.
 
 ### Acceptance evidence and open decisions
 
@@ -138,12 +143,12 @@ scripts during first use and recorded no fetch or XHR during the switches. The m
 verify persistence suppression through their API and session assertions.
 
 Browser comparisons covered World, Experience, Library, Paint, Import with a checker image,
-Object Studio entry and default Slice at 1280 × 800 and 1024 × 768, plus the readings menu and
-Lift at 1024 × 768.
-Both builds opened the Project actions menu after startup. Desktop Library thumbnails were at
-different loading stages in the captures. The full visual matrix remains open for Align,
-Material Editor, Repair, Spot Look-through and Preview. The mounted UI tests cover
-several of those feature interactions.
+Object Studio entry, default Slice, the Finish Material Editor, Spot Look-through and visitor
+Preview at 1280 × 800 and 1024 × 768. The readings menu and Lift were checked at 1024 × 768.
+Repair was exercised at both sizes with a controlled texture request failure. Both builds opened
+the Project actions menu after startup. Desktop Library thumbnails were at different loading
+stages in the captures. Floor Align entry worked at both sizes and exposed the teardown error
+described above. The mounted UI case exercises the Finish/Draft round trip and focus restoration.
 
 Both `SPOT_REQUIRE_VERIFIED=1` invocations, from clean base and production checkpoint trees,
 timed out on the Project actions menu before opening either grid. The partial ledgers contain
