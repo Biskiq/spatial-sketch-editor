@@ -714,6 +714,64 @@ describe('T1 Wave 4 · C2 Topology and Radius Core', () => {
 			expect(validateWallFirstTopology(oeqoPlan.document)).toBeUndefined();
 			expect(hasBlockingLayoutIssues(compileWallFirstLayoutGeometry(oeqoPlan.document).issues)).toBe(false);
 
+			// C3: both production components translate as one unit, including the
+			// bridge Walls and, for O=O, the ordinary Room between the circles.
+			for (const [baseline, bridgeIds] of [
+				[ooPlan.document, ooPlan.authoredWallIds],
+				[oeqoPlan.document, [...ooPlan.authoredWallIds, ...oeqoPlan.authoredWallIds]]
+			] as const) {
+				const originalJson = serializeWallFirstLayoutDocument(baseline);
+				const reload = (document: LayoutDocumentWallFirst) => {
+					const json = serializeWallFirstLayoutDocument(document);
+					const parsed = parseWallFirstLayoutDocumentJson(json);
+					if (!parsed.success) throw new Error(JSON.stringify(parsed.issues));
+					expect(parsed.canonicalJson).toBe(json);
+					return parsed.document;
+				};
+				const checkMove = (before: LayoutDocumentWallFirst, delta: LayoutVec2) => {
+					const move = expectSuccess(planWallFirstRoomMove(before, rot1.roomId, delta));
+					expect(new Set(move.movedRoomIds)).toEqual(new Set(before.rooms.map((room) => room.id)));
+					expect(new Set(move.changedJunctionIds)).toEqual(new Set(before.junctions.map((junction) => junction.id)));
+					expect(new Set(move.changedWallIds)).toEqual(new Set(before.walls.map((wall) => wall.id)));
+					expect(move.document.rooms.map((room) => room.id).sort()).toEqual(before.rooms.map((room) => room.id).sort());
+					for (const room of before.rooms) {
+						const moved = move.document.rooms.find((entry) => entry.id === room.id)!;
+						expect(moved.boundary).toEqual(room.boundary);
+						if (room.round) {
+							expect(moved.round).toEqual({ center: [room.round.center[0] + delta[0], room.round.center[1] + delta[1]], radius: room.round.radius });
+							expect(roundRoomSeamJunctionId(moved, new Map(move.document.walls.map((wall) => [wall.id, wall]))))
+								.toBe(roundRoomSeamJunctionId(room, new Map(before.walls.map((wall) => [wall.id, wall]))));
+							expect(certifyRoundRoom(move.document, moved).kind).toBe('certified');
+						}
+					}
+					for (const junction of before.junctions) {
+						const moved = move.document.junctions.find((entry) => entry.id === junction.id)!;
+						const tolerance = 4 * 2 ** -20;
+						expect(Math.abs(moved.point[0] - (junction.point[0] + delta[0]))).toBeLessThan(tolerance);
+						expect(Math.abs(moved.point[1] - (junction.point[1] + delta[1]))).toBeLessThan(tolerance);
+					}
+					for (const id of bridgeIds) {
+						const wall = before.walls.find((entry) => entry.id === id)!;
+						const moved = move.document.walls.find((entry) => entry.id === id)!;
+						expect(moved).toEqual(wall);
+						expect(moved.centerline.kind).toBe('line');
+					}
+					return reload(move.document);
+				};
+				let back = baseline;
+				for (let iteration = 0; iteration < 20; iteration++) {
+					const high = checkMove(back, BIG_SHIFT);
+					back = checkMove(high, [-BIG_SHIFT[0], -BIG_SHIFT[1]]);
+					expect(back.rooms.find((room) => room.id === rot1.roomId)!.round).toEqual({ center: [0, 0], radius: 5 });
+					expect(back.rooms.find((room) => room.id === rot2Id)!.round).toEqual({ center: [16, 0], radius: 5 });
+					for (const junction of baseline.junctions) {
+						const point = back.junctions.find((entry) => entry.id === junction.id)!.point;
+						expect(Math.hypot(point[0] - junction.point[0], point[1] - junction.point[1])).toBeLessThan(4 * 2 ** -20);
+					}
+				}
+				expect(serializeWallFirstLayoutDocument(baseline)).toBe(originalJson);
+			}
+
 			// 3. Resize either Round Room in O=O updates connecting Walls & derived 3rd Room cleanly.
 			const resized1 = expectSuccess(
 				planResizeRoundRoomRadius({ document: oeqoPlan.document, roomId: rot1.roomId, radius: 5.5 })
