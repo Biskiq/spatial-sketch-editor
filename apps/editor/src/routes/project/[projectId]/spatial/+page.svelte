@@ -3100,8 +3100,6 @@
 					viewportWidth={rect?.width ?? 856}
 					viewportHeight={rect?.height ?? 608}
 					projected={alignBounds}
-					canvasLeft={evaluation?.rect.left ?? 0}
-					canvasTop={evaluation?.rect.top ?? 0}
 					source={{ base: alignInspected.instance.base, overrides: alignInspected.instance.overrides }}
 					recipes={sceneNow.materialIndex?.definitions ?? new Map()}
 					onMaterialPreview={(edits) => finishes.card.previewEdits(activeAlign.target, () => edits)}

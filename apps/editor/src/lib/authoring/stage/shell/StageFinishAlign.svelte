@@ -36,9 +36,7 @@
 		onPutBack,
 		viewportWidth = 856,
 		viewportHeight = 608,
-		projected = null,
-		canvasLeft = 0,
-		canvasTop = 0
+		projected = null
 	}: {
 		align: ActiveFinishAlign;
 		refusal?: string | null;
@@ -53,16 +51,12 @@
 		onPutBack: () => void;
 		viewportWidth?: number;
 		viewportHeight?: number;
-		/** The target surface's four corners projected through the live Camera, in canvas-local CSS px. */
+		/** The target surface's four corners projected through the live Camera, in Stage-local CSS px. */
 		projected?: { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number } | null;
-		canvasLeft?: number;
-		canvasTop?: number;
 	} = $props();
 
 	let liveOff = $state<[number, number] | null>(null);
 	let liveRot = $state<number | null>(null);
-	let svgEl = $state<SVGSVGElement | null>(null);
-	let svgBox = $state({ left: 0, top: 0, width: 0, height: 0 });
 	let keyDirty = $state<'offset' | 'angle' | null>(null);
 	let cancelDrag: (() => void) | null = null;
 
@@ -87,27 +81,12 @@
 		};
 	});
 
-	// Measure the SVG's own box so projected canvas pixels map exactly onto it.
-	$effect(() => {
-		const element = svgEl;
-		if (element === null) return;
-		const measure = () => {
-			const box = element.getBoundingClientRect();
-			svgBox = { left: box.left, top: box.top, width: box.width, height: box.height };
-		};
-		measure();
-		const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
-		observer?.observe(element);
-		window.addEventListener('resize', measure);
-		return () => {
-			observer?.disconnect();
-			window.removeEventListener('resize', measure);
-		};
-	});
 	onDestroy(discardGesture);
 
+	// The layer covers the whole Stage so projected Stage-local pixels map 1:1;
+	// CSS clips its chrome to the Index/Card/tray-free region. Never measured here.
 	const boxW = $derived(Math.max(320, viewportWidth));
-	const boxH = $derived(Math.max(240, viewportHeight - 88));
+	const boxH = $derived(Math.max(240, viewportHeight));
 
 	const tile = $derived(Math.max(0.02, tileMeters));
 	const curOff = $derived<readonly [number, number]>(liveOff ?? [offsetMeters[0], offsetMeters[1]]);
@@ -123,15 +102,15 @@
 	 * fallback (no evaluation yet, or tests) fits the declared extent.
 	 */
 	const surfaceRect = $derived.by(() => {
-		const width = svgBox.width > 0 ? svgBox.width : boxW;
-		const height = svgBox.height > 0 ? svgBox.height : boxH;
+		const width = boxW;
+		const height = boxH;
 		const live = projected;
-		if (live !== null && svgBox.width > 0) {
+		if (live !== null) {
 			return {
 				boxW: width,
 				boxH: height,
-				x0: live.left - (svgBox.left - canvasLeft),
-				y0: live.top - (svgBox.top - canvasTop),
+				x0: live.left,
+				y0: live.top,
 				w: Math.max(1, live.right - live.left),
 				h: Math.max(1, live.bottom - live.top)
 			};
@@ -345,10 +324,11 @@
 	</div>
 	{#if refusal}<div role="status" class="al-refusal">{refusal}</div>{/if}
 
-	<svg
-		class="al-svg"
-		bind:this={svgEl}
-		width={surfaceRect.boxW}
+	<div class="al-clip">
+		<svg
+			class="al-svg"
+			style={`width:${surfaceRect.boxW}px;height:${surfaceRect.boxH}px`}
+			width={surfaceRect.boxW}
 		height={surfaceRect.boxH}
 		viewBox={`0 0 ${surfaceRect.boxW} ${surfaceRect.boxH}`}
 		role="img"
@@ -465,8 +445,11 @@
 				onkeyup={onAngleKeyup}
 				onblur={discardGesture}
 			/>
-		</g>
-	</svg>
+			</g>
+		</svg>
+	</div>
+
+	<div class="al-frame" aria-hidden="true"></div>
 
 	<div class="al-note" data-align-note>
 		Drag the square to move the pattern (1 cm snap, Shift for 1 mm) · drag the round handle to turn it (15° steps, Alt for any angle) · arrows nudge. Ruler, grid and handles are never saved.
@@ -477,21 +460,32 @@
 	.align-shell {
 		position: absolute;
 		z-index: 42;
+		inset: 0;
+		pointer-events: none;
+	}
+	/* The shell's chrome is clipped to the same Stage region as the SVG. */
+	.al-frame {
+		position: absolute;
+		z-index: 2;
 		top: 10px;
 		left: calc(var(--library-index-cover, var(--index-cover, 0px)) + 10px);
 		right: calc(var(--card-cover, 298px) + 10px);
 		bottom: calc(var(--lower-column-height, 92px) + 14px);
-		display: flex;
-		flex-direction: column;
 		border: 1px solid var(--shell-hairline-strong);
 		border-radius: 14px;
-		overflow: hidden;
 		box-shadow: var(--shell-shadow);
 		pointer-events: none;
 	}
 	.al-bar {
-		flex: 0 0 auto;
+		position: absolute;
+		z-index: 3;
+		top: 10px;
+		left: calc(var(--library-index-cover, var(--index-cover, 0px)) + 10px);
+		right: calc(var(--card-cover, 298px) + 10px);
 		min-height: 41px;
+		border-radius: 14px 14px 0 0;
+		border: 1px solid var(--shell-hairline-strong);
+		border-bottom: 0;
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
@@ -536,10 +530,22 @@
 		border-color: var(--shell-action);
 		color: var(--shell-on-action);
 	}
+	/* Full-Stage SVG in its own Stage coordinates, clipped by an HTML box to the
+	   Index/Card/tray-free region; the overlay never reads layout. */
+	.al-clip {
+		position: absolute;
+		z-index: 1;
+		top: 10px;
+		left: calc(var(--library-index-cover, var(--index-cover, 0px)) + 10px);
+		right: calc(var(--card-cover, 298px) + 10px);
+		bottom: calc(var(--lower-column-height, 92px) + 14px);
+		overflow: hidden;
+		pointer-events: none;
+	}
 	.al-svg {
-		flex: 1;
-		width: 100%;
-		min-height: 0;
+		position: absolute;
+		top: -10px;
+		left: calc(-1 * (var(--library-index-cover, var(--index-cover, 0px)) + 10px));
 		display: block;
 		pointer-events: none;
 	}
@@ -569,7 +575,12 @@
 		outline-offset: 2px;
 	}
 	.al-note {
-		flex: 0 0 auto;
+		position: absolute;
+		z-index: 3;
+		bottom: calc(var(--lower-column-height, 92px) + 14px);
+		left: calc(var(--library-index-cover, var(--index-cover, 0px)) + 10px);
+		right: calc(var(--card-cover, 298px) + 10px);
+		border-radius: 0 0 14px 14px;
 		min-height: 46px;
 		display: flex;
 		align-items: center;
