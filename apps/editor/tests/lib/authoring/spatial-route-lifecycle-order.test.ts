@@ -4,18 +4,24 @@ import { afterEach, expect, it, vi } from 'vitest';
 import {
 	CAMERA_UNIT_FORMAT_VERSION,
 	computeEnvelopeSourceContentId,
+	createEmptyUnitSceneDocument,
 	type ProjectEnvelope
 } from '@portfolio/project-model/units';
+import type { AuthoringIntent } from '@portfolio/project-model';
+import { sceneEntityReference } from '$lib/authoring/adapters/scene/placement';
+import type { FinishCard } from '$lib/authoring/look/finish-card.svelte';
 import type { StageProjectEpoch } from '$lib/authoring/stage/route/stage-project-epoch.svelte';
 import { buildStarterEnclosureLayout } from '$lib/authoring/stage/starter-gallery';
 import { STUDIO_ENTRY_PARAM, STUDIO_ENTRY_VALUE } from '$lib/platform/studio-entry';
 import { EXPERIENCE, VIEWS } from '../experience/fixtures';
+import { primitiveEntity } from './__fixtures__/f4-current-source-fixtures';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import { page } from './fixtures/app-state';
 import Page from '../../../src/routes/project/[projectId]/spatial/+page.svelte';
 
 const harness = vi.hoisted(() => ({
 	epoch: null as StageProjectEpoch | null,
+	card: null as FinishCard | null,
 	loadProject: vi.fn(),
 	loadSession: vi.fn(),
 	activate: vi.fn()
@@ -49,9 +55,17 @@ vi.mock('$lib/authoring/stage/route/stage-project-epoch.svelte', async (original
 	};
 });
 
-vi.mock('$lib/authoring/stage/shell/EditorHead.svelte', async () => ({
-	default: (await import('./fixtures/HeadProbe.svelte')).default
-}));
+vi.mock('$lib/authoring/look/finish-card.svelte', async (original) => {
+	const actual = await original<typeof import('$lib/authoring/look/finish-card.svelte')>();
+	return {
+		...actual,
+		createFinishCard(input: Parameters<typeof actual.createFinishCard>[0]) {
+			const card = actual.createFinishCard(input);
+			harness.card = card;
+			return card;
+		}
+	};
+});
 vi.mock('$lib/authoring/stage/shell/StageCanvas.svelte', async () => ({
 	default: (await import('./fixtures/StageCanvasProbe.svelte')).default
 }));
@@ -97,7 +111,10 @@ function button(root: HTMLElement, selector: string): HTMLButtonElement {
 }
 
 async function chooseLens(root: HTMLElement, lens: 'world' | 'experience') {
-	const control = button(root, `[data-testid="lens-${lens}"]`);
+	const label = lens === 'world' ? 'World' : 'Experience';
+	const control = Array.from(root.querySelectorAll<HTMLButtonElement>('[aria-label="Product lens"] button'))
+		.find((candidate) => candidate.textContent?.trim() === label);
+	if (control === undefined) throw new Error(`Missing lens control ${label}`);
 	control.click();
 	await tick();
 	return control.getAttribute('aria-pressed') === 'true';
@@ -110,6 +127,7 @@ afterEach(async () => {
 	target = null;
 	page.url.searchParams.delete(STUDIO_ENTRY_PARAM);
 	harness.epoch = null;
+	harness.card = null;
 	vi.clearAllMocks();
 	vi.restoreAllMocks();
 	vi.unstubAllGlobals();
@@ -169,4 +187,108 @@ it('lets Show open a source finding in Experience while the Head refuses a switc
 
 	expect(stage.session.lens()).toBe('experience');
 	expect(stage.session.gesture()).toBeNull();
+});
+
+async function mountHistoryProject() {
+	const object = primitiveEntity(0);
+	const root = await mountRoute(await createUnitProject({
+		id: 'project-1',
+		name: 'History project',
+		layout: buildStarterEnclosureLayout(),
+		scene: { ...createEmptyUnitSceneDocument(), entities: [object] }
+	}));
+	const epoch = harness.epoch;
+	const card = harness.card;
+	if (epoch?.facade == null || epoch.acceptance === null || card === null) {
+		throw new Error('Expected the admitted editing owners');
+	}
+	return { root, epoch, stage: epoch.facade, acceptance: epoch.acceptance, card, object };
+}
+
+type HistoryProject = Awaited<ReturnType<typeof mountHistoryProject>>;
+
+async function acceptSceneEdit(project: HistoryProject, input: Pick<AuthoringIntent, 'kind' | 'payload' | 'targets' | 'allocatedIds'>) {
+	const outcome = await project.acceptance.accept({
+		...input,
+		version: 1,
+		operationId: crypto.randomUUID(),
+		expectedRevision: project.stage.snapshot().acceptedRevision,
+		capturedInputs: []
+	});
+	expect(outcome.kind).toBe('installed');
+	await tick();
+}
+
+async function pressHistory(
+	project: HistoryProject,
+	control: HTMLButtonElement,
+	direction: 'undo' | 'redo',
+	expectedSource: string
+) {
+	const cancel = vi.spyOn(project.card, 'cancel');
+	const step = vi.spyOn(project.epoch, direction);
+	const accept = vi.spyOn(project.acceptance, 'accept');
+	project.card.previewRoughness({ kind: 'entity', entityId: project.object.id }, 0.72);
+	expect(project.card.gestureActive).toBe(true);
+	const previousPosition = project.epoch.history.position;
+	control.click();
+	await vi.waitFor(() => expect(project.stage.snapshot().sourceContentId).toBe(expectedSource));
+	expect(cancel.mock.invocationCallOrder[0]).toBeLessThan(step.mock.invocationCallOrder[0]!);
+	expect(step).toHaveBeenCalledOnce();
+	expect(accept).not.toHaveBeenCalled();
+	expect(project.card.gestureActive).toBe(false);
+	expect(project.epoch.history.position).toBe(previousPosition + (direction === 'undo' ? -1 : 1));
+	cancel.mockRestore();
+	step.mockRestore();
+	accept.mockRestore();
+}
+
+it('cancels a live Finish Card gesture before Head Undo and Redo after a lens round trip', async () => {
+	const project = await mountHistoryProject();
+	const before = project.stage.snapshot();
+	await acceptSceneEdit(project, {
+		kind: 'set-name',
+		payload: { entityId: project.object.id, name: 'Renamed plinth' },
+		targets: [sceneEntityReference(project.object.id, before.domain.unitRevisions.scene)],
+		allocatedIds: []
+	});
+	const edited = project.stage.snapshot().sourceContentId;
+	expect(await chooseLens(project.root, 'experience')).toBe(true);
+	expect(await chooseLens(project.root, 'world')).toBe(true);
+	await pressHistory(project, button(project.root, '[data-head-undo]'), 'undo', before.sourceContentId);
+	await pressHistory(project, button(project.root, '[data-head-redo]'), 'redo', edited);
+});
+
+it('cancels a live Finish Card gesture before Undo from the Studio Root panel', async () => {
+	const project = await mountHistoryProject();
+	const entityId = 'test-studio-root';
+	await acceptSceneEdit(project, {
+		kind: 'create-form',
+		payload: {
+			plane: 'plan',
+			outline: [
+				{ u: 0, v: 0, smooth: false },
+				{ u: 2, v: 0, smooth: false },
+				{ u: 2, v: 1, smooth: false },
+				{ u: 0, v: 1, smooth: false }
+			],
+			extent: 0.8, position: [3, 0, 2], yaw: 0, materialId: 'plaster-warm', name: 'Studio root'
+		},
+		targets: [],
+		allocatedIds: [{ kind: 'scene-entity', id: entityId }]
+	});
+	expect(project.epoch.services?.objectStudio?.edit(entityId).kind).toBe('entered');
+	const before = project.stage.snapshot();
+	await acceptSceneEdit(project, {
+		kind: 'delete-one',
+		payload: { entityId },
+		targets: [sceneEntityReference(entityId, before.domain.unitRevisions.scene)],
+		allocatedIds: []
+	});
+	await pressHistory(
+		project,
+		button(project.root, '[data-studio-action="undo"]'),
+		'undo',
+		before.sourceContentId
+	);
 });

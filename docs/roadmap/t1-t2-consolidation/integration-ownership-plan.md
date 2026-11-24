@@ -469,11 +469,18 @@ order, taken from the route at the base commit. The lifecycle runner calls steps
 | `historyStep(direction)` (2737, 2738, 2823) | `appearance:cancel-card-gesture` → `core:run-history` |
 | `readingChange(reading)` (`setReading`, 2187) | `appearance:cancel-card-gesture` → `core:submit-reading` → `core:end-press-for-reading` |
 | `settlePending` (Studio port, 1086; refusal-capable) | `core:refuse-during-gesture` → `appearance:cancel-card-gesture` → `artwork:cancel` → `core:arm-select` |
-| `leaveLens(next)` (`changeLens`, 571; refusal-capable) | `studio:leave-for-lens` (when `next !== 'world'`) → `appearance:end-operations-restore-camera` (when `next !== 'world'` and the lens is World) → `light-inspection:cancel` → `experience:change-lens` |
+| `leaveLens(next)` (Head workspace switch, route `changeLens`, 571; refusal-capable) | `studio:leave-for-lens` (when `next !== 'world'`) → `appearance:end-operations-restore-camera` (when `next !== 'world'` and the lens is World) → `light-inspection:cancel` → `experience:change-lens` |
 | `windowBlur` (2377) | `core:release-snap` → `layout-readings:release-hold` → `appearance:cancel-card-gesture` |
 | `leaveProject` (teardown of the 1941 effect) | `layout-readings:clear-readings` (`interiorLift.clear`, `sliceDraw.disarm`, `sliceReading.clear`, `setResolvedSlice(null)`, `nearWallCutaway.reset`, `setResolvedCutaway(null)`; in that order) → `appearance:cancel-image` → `artwork:dispose` → `core:dispose-artwork-assets` |
 | `start` (`onMount`, 2362) | `core:perf-mark` → `experience:start` → `core:start-shell` → `core:start-viewport` → `core:install-listeners` → `core:install-interruptions` → `core:load-project` |
 | `dispose` (`onMount` cleanup) | `appearance:end-operations-no-camera` → `appearance:reset-issues` → `layout-readings:dispose-unfold` → `light-inspection:dispose` → `experience:dispose` → `core:mark-torn-down` → `core:dispose-viewport` → `core:dispose-shell` → `core:clear-hover` → `core:remove-listeners` → `layout-readings:release-hold` → `layout-readings:clear-cutaway-mirror` → `core:remove-interruptions` → `core:dispose-epoch` |
+
+The Head's workspace control requests `leaveLens(next)`. Experience-owned contextual commands
+such as **Show** on a source finding and **Open in World** use the Experience binding's own
+navigation path. Both paths converge in the binding, which delegates the lens write through the
+facade to the Stage session. Contextual navigation retains the binding's existing press
+interruption and the Stage session's gesture release. A mounted case pins the difference when a
+live Studio gesture makes the Head refuse.
 
 **Registration is declarative.**
 
@@ -723,7 +730,7 @@ It does not state lifecycle or rung order. Those are the source tables (§4.4, �
 | D9 | Presentation never reaches a controller. Core region components, workspace components, feature region components and Card sections never import, at runtime or as types, the host, a wiring module, a core controller, a feature entry or a sub-owner. They type their props from `workspace/protocol.ts`, their own feature's view type module, or domain types. |
 | D10 | Domain reaches core only through the adapter-contract modules. Today's domain → core edges form the shrink-only `DOMAIN_TO_CORE` list. |
 | AU | **Authority uniqueness.** Each `AUTHORITIES` factory has exactly one construction site in `src/**`, at the site the manifest names. The check counts AST calls across the source tree, not route text. The list:<br>- epoch, asset leases, project session, Stage session, `createStageFacade`, viewport<br>- press tracker, input arbiter, keyboard, Unfold gestures, Artwork interaction<br>- Experience binding, `createExperienceLens`, `createExperiencePlayback`<br>- shell state, shell commands, selection view, dock view, find view<br>- Save state and Head Save, history command, window listeners<br>- lifecycle runner, `late()` |
-| CO | **Call ownership.** Each `CALL_OWNERS` call or member form is called only from its listed owner modules, generated from today's call sites and shrink-only. The list:<br>- `createStageAcceptanceHost`, `mountStageAdapter`, `createStageAdapterServices`<br>- the session's `replace`<br>- model pin resolution, `stageArtworkScope`, adapter-factory iteration<br>- `stageKeyAction`, `stageKeyFromTextEntry`, `stageKeyFromControl`<br>- the Artwork resize and placement planners, the Unfold pick and opening-drag planners<br>- `requestViewingIntent`; the epoch's `undo` and `redo`<br>- window `addEventListener('keydown' \| 'keyup' \| 'blur')` in the composed host |
+| CO | **Call ownership.** Each `CALL_OWNERS` call or member form is called only from its listed owner modules, generated from today's call sites and shrink-only. The list:<br>- `createStageAcceptanceHost`, `mountStageAdapter`, `createStageAdapterServices`<br>- the session's `replace` and `changeLens` (facade alone calls the latter; Experience binding alone calls the facade lens transition)<br>- Head workspace requests are the only callers of `leaveLens`; Experience contextual actions stay on the binding path (§4.4)<br>- model pin resolution, `stageArtworkScope`, adapter-factory iteration<br>- `stageKeyAction`, `stageKeyFromTextEntry`, `stageKeyFromControl`<br>- the Artwork resize and placement planners, the Unfold pick and opening-drag planners<br>- `requestViewingIntent`; the epoch's `undo` and `redo`<br>- window `addEventListener('keydown' \| 'keyup' \| 'blur')` in the composed host |
 | RM | **Region mounts.** Each `REGION_MOUNTS` component is mounted exactly once, at its listed site, across all composition roots and region components:<br>- `EditorHead`, `StageProjectNotices`, `StageViewportRegion`, `StagePanels`, `StageToolbars`, `StageCanvas`, `StageCamera`<br>- `EditorIndex`, `EditorCard`, `ExperienceGuide`, `ExperienceDock`, `StageDraftingControl`, `StageScaleBar`, `StageHeightSheet` |
 
 The existing visitor/public guards are unchanged.
@@ -868,8 +875,8 @@ deleted before its replacement is green and its old negative control fails under
 Rules for every step:
 
 1. **Tests.**
-   - Run the five route-mount suites unchanged at every step: `spatial-route-gesture` (98 cases),
-     `-experience-homes` (54), `-source-replacement` (20), `-resume-save` (8) and `-viewport` (4).
+   - Run the five route-mount suites unchanged at every step: `spatial-route-gesture` (121 cases),
+     `-experience-homes` (55), `-source-replacement` (20), `-resume-save` (8) and `-viewport` (4).
    - Run the step 1 suites at every step.
    - Run `test:fast` and `test:arch`, one at a time.
    - No assertion in the route-mount or step 1 suites changes. Only a step's own string
@@ -897,7 +904,7 @@ Rules for every step:
 
 | Step | Content |
 | --- | --- |
-| 1 | **Characterization**, green on the unmodified route, before any production change.<br>`spatial-route-lifecycle-order.test.ts` spies on the existing modules and pins:<br>- each §4.4 event's call order, including `historyStep`, `readingChange` and `settlePending`<br>- the full Escape ladder order with every rung active, and the prelude (Artwork, Preview gate, posture capture)<br>- session continuity across 5 lens round trips: StageCanvas mock mounted once; the same facade and history instance; `projectSession.load` called once; epoch `activate` unchanged<br>- **Undo/Redo cancellation**: with a live Finish Card gesture, Head Undo, Head Redo and the Studio Root panel's Undo each call `card.cancel` before the epoch's `undo`/`redo`; the gesture writes nothing; the history step runs once<br>- Undo/Redo after a lens round trip<br>- project switch and replacement: singletons reset, mirrors null, and nothing leaks into the next project<br>- Lift retains its active state and scope across World → Experience → World. Leaving World clears Slice and nulls its resolved pick mirror. Project replacement and teardown end both readings.<br><br>`spatial-route-reactive-semantics.test.ts` covers the co-triggered effects:<br>- For every pair of Appendix A effects with different owners, the implementer lists the reactive sources each reads (reads inside `untrack` excluded) and the state each writes.<br>- A pair is co-triggered when the two share a source, or when one writes what the other reads.<br>- Each co-triggered pair gets a mounted case. The case triggers the source and asserts both effects' observable outcomes, plus their relative order when one feeds the other.<br>- The minimum set is: selection change (582, 934, 1468, 1721, 1814), lens change (556, 564, 1955, 2556), Preview start (567, 1541), replacement and accepted (1201, 1230, 1233, 1735, 1935), tool change (649, 1964, 1969) and project switch (1941).<br>- The pull request records the pair table.<br><br>Also record the base `integration-hotspots.json` (report-only), the §1.6 bundle sets and the §9 M/L spot run. |
+| 1 | **Characterization**, green on the unmodified route, before any production change.<br>`spatial-route-lifecycle-order.test.ts` spies on the existing modules and pins:<br>- each §4.4 event's call order, including `historyStep`, `readingChange` and `settlePending`<br>- Head departure refusal and contextual **Show** gesture release share the same Stage session lens writer<br>- the full Escape ladder order with every rung active, and the prelude (Artwork, Preview gate, posture capture)<br>- session continuity across 5 lens round trips: StageCanvas mock mounted once; the same facade and history instance; `projectSession.load` called once; epoch `activate` unchanged<br>- **Undo/Redo cancellation**: with a live Finish Card gesture, Head Undo, Head Redo and the Studio Root panel's Undo each call `card.cancel` before the epoch's `undo`/`redo`; the gesture writes nothing; the history step runs once<br>- Undo/Redo after a lens round trip<br>- project switch and replacement: singletons reset, mirrors null, and nothing leaks into the next project<br>- Lift retains its active state and scope across World → Experience → World. Leaving World clears Slice and nulls its resolved pick mirror. Project replacement and teardown end both readings.<br><br>`spatial-route-reactive-semantics.test.ts` covers the co-triggered effects:<br>- For every pair of Appendix A effects with different owners, the implementer lists the reactive sources each reads (reads inside `untrack` excluded) and the state each writes.<br>- A pair is co-triggered when the two share a source, or when one writes what the other reads.<br>- Each co-triggered pair gets a mounted case. The case triggers the source and asserts both effects' observable outcomes, plus their relative order when one feeds the other.<br>- The minimum set is: selection change (582, 934, 1468, 1721, 1814), lens change (556, 564, 1955, 2556), Preview start (567, 1541), replacement and accepted (1201, 1230, 1233, 1735, 1935), tool change (649, 1964, 1969) and project switch (1941).<br>- The pull request records the pair table.<br><br>Also record the base `integration-hotspots.json` (report-only), the §1.6 bundle sets and the §9 M/L spot run. |
 | 2 | **Protocol.**<br>- Add `workspace/protocol.ts`, `lifecycle-order.ts`, `escape-ladder.ts`, `region-ownership.ts` and `lifecycle-runner.ts`.<br>- The route builds its existing chains through the runner, with inline step closures.<br>- The keyboard's `dismiss` case iterates `ESCAPE_LADDER`. Core rung bodies move verbatim; feature rungs are still route closures.<br>- The step 1 tests prove that table order equals today's order. |
 | 3 | **Core modules.**<br>- Add the §4.2 core modules: route input, ready port, viewing, history command, window listeners, content bounds, look-through frame, cursor, core region views, core lifecycle steps, boot repair and panels, replace dialog.<br>- Narrow `StageAdapterServices` to `finishCard`.<br>- Replace the shell-command runtime imports with ports. |
 | 4 | `light-inspection` feature |
@@ -951,8 +958,10 @@ reported to the owner before the change is made (§11).
 
 X9 adds no nested route. These conditions keep URL-addressed workspaces a contained later change:
 
-- The Stage session's `changeLens` stays the only lens writer, and `leaveLens` is the one
-  refusal-capable lifecycle event in front of it.
+- The Stage session's `changeLens` stays the only lens writer. The facade delegates to it from
+  the Experience binding. The Head's workspace switch uses the refusal-capable `leaveLens`
+  event. Experience contextual navigation uses the binding directly and keeps its existing
+  interruption behavior. A future workspace request can use the same seam as the Head.
 - `WorkspaceHost` selects the workspace from one host member, and workspaces hold no state. A future
   `(workspace)/+layout.svelte` can therefore host `WorkspaceHost`, with thin pages that only request
   a workspace.
@@ -1100,6 +1109,7 @@ the compatibility phases that exist at the end of step 12.
 | 24 | 1969 | artwork cancel effect | phase `artwork.attachGuard()` |
 | 25 | 2279–2334 | Wall Face camera port, Unfold camera executor | phase `readings.attachCameraPorts()` |
 | 26 | 2362 | `onMount` (start and dispose tables) | core `installStageMount(cell)` |
+| 26a | 2452 | Scope the Sky dial binding to the admitted adapter session and dispose the prior binding | phase `sky.attachSession()` |
 | 27 | 2556–2565 | Align ownership, Align reframe | phase `appearance.attachAlign()` |
 | — | — | lifecycle runner; `late()` set | core |
 
