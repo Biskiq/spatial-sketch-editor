@@ -130,6 +130,7 @@ export const ARCH_FILES: string[] = [
 	'tests/lib/authoring/spatial-route-boundary.test.ts',
 	'tests/lib/authoring/authoring-controller-boundary.test.ts',
 	'tests/lib/authoring/integration-ownership.test.ts',
+	'tests/lib/authoring/integration-hotspots.test.ts',
 	// X7: the Scene adapter composes its placement, mark-gesture, contribution and
 	// presenter owners and keeps no lifetime of its own.
 	'tests/lib/authoring/scene-adapter-boundary.test.ts',
