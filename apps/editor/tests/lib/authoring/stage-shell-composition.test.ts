@@ -47,6 +47,8 @@ const ROUTE = join(EDITOR_SRC, 'routes', 'project', '[projectId]', 'spatial', '+
 const PROJECT_SESSION_DIR = join(EDITOR_SRC, 'lib', 'authoring', 'project-session');
 const EXPERIENCE_LENS = join(EDITOR_SRC, 'lib', 'authoring', 'experience', 'experience-lens.svelte.ts');
 const EXPERIENCE_BINDING = join(STAGE_DIR, 'route', 'stage-experience-binding.svelte.ts');
+const CORE_REGION_VIEWS = join(STAGE_DIR, 'route', 'core-region-views.ts');
+const STAGE_VIEWING = join(STAGE_DIR, 'route', 'stage-viewing.ts');
 const SHELL_STATE = join(STAGE_DIR, 'route', 'stage-shell-state.svelte.ts');
 const ROUTE_VIEWPORT = join(SHELL_DIR, 'StageViewportRegion.svelte');
 const ROUTE_PANELS = join(SHELL_DIR, 'StagePanels.svelte');
@@ -95,7 +97,8 @@ const HEIGHT_SHEET_RAIL_READ = 'track?.getBoundingClientRect()';
 /** The route and the controllers it constructs, never all dependencies. */
 function postureSources(): { file: string; code: string }[] {
 	const route = readFileSync(ROUTE, 'utf8');
-	const files = [ROUTE, SHELL_STATE];
+	expect(composedSpatialHost().some(({ file }) => file === STAGE_VIEWING)).toBe(true);
+	const files = [ROUTE, SHELL_STATE, STAGE_VIEWING];
 	if (importClosure([ROUTE]).has(EXPERIENCE_LENS)) {
 		expect(route).toContain('createStageExperienceBinding({');
 		expect(readFileSync(EXPERIENCE_BINDING, 'utf8')).toContain('createExperienceLens({');
@@ -375,7 +378,7 @@ describe('Stage shell composition', () => {
 		// membership, never as a second renderer, a clipped geometry copy or a 2D
 		// transform of the same mesh. A defect here is invisible in a lane report: the
 		// drawing would simply disagree with what the hit path calls selectable.
-		const route = stripComments(readFileSync(ROUTE, 'utf8'));
+		const region = stripComments(readFileSync(CORE_REGION_VIEWS, 'utf8'));
 		const canvas = codeOf(CANVAS_FILE);
 
 		// One geometry set: the Canvas takes the compiled domain geometry and the
@@ -384,7 +387,7 @@ describe('Stage shell composition', () => {
 		// fragment, groups streams or builds plan geometry.
 		expect(canvas).toContain('geometry: CompiledLayoutGeometry');
 		expect(readSource(relativeToRepo(ROUTE_VIEWPORT))).toContain('<StageCanvas');
-		expect(route).toContain('geometry: boot.snapshot.domain.geometry');
+		expect(region).toContain('geometry: snapshot.domain.geometry');
 		expect(canvas).toContain('plan?: PlanEvaluation | null');
 		expect(canvas).toContain("from './StagePaper.svelte'");
 		expect(canvas).not.toMatch(/PlanFragment|planParameters|buildPaperPlan/);
@@ -447,8 +450,9 @@ describe('Stage shell composition', () => {
 		// A reading change must end the route press after the lease policy runs.
 		// The mounted spatial-route-gesture suite also proves the adapter receives
 		// the interruption first and preserves its exact Resume/Discard proposal.
-		const reading = route.slice(route.indexOf('function setReading('), route.indexOf('function fit('));
-		expect(reading).toMatch(/if \(stageInput\.drag !== null && session\.gesture\(\) === null\) \{[\s\S]*interruptPress\('reading-change'\);/);
+		const viewing = stripComments(readFileSync(STAGE_VIEWING, 'utf8'));
+		const reading = viewing.slice(viewing.indexOf('function endPressForReading('), viewing.indexOf('function patchDrafting('));
+		expect(reading).toMatch(/if \(stageInput\.drag !== null && session\.gesture\(\) === null\) \{[\s\S]*stageInput\.interrupt\('reading-change'\);/);
 		// One ending, used by every path, so a policy-released lease is not released
 		// twice and no ending is forgotten.
 		expect((input.match(/function endGesture\(\)/g) ?? []).length).toBe(1);
@@ -657,10 +661,11 @@ describe('Stage shell lanes and the Card (R217.S22)', () => {
 	it('keeps pin creation and jumps while leaving pin removal unexposed', () => {
 		const route = stripComments(readFileSync(ROUTE, 'utf8'));
 		expect(route).not.toContain('pinHintSeen');
-		expect(route).toContain('shell.addHeightPin');
-		expect(route).toContain('onAddPin: shell.addHeightPin');
-		expect(route).not.toContain('removeHeightPin');
-		expect(route).not.toContain('onRemovePin');
+		const region = stripComments(readFileSync(CORE_REGION_VIEWS, 'utf8'));
+		expect(region).toContain('shell.addHeightPin');
+		expect(region).toContain('onAddPin: shell.addHeightPin');
+		expect(route + region).not.toContain('removeHeightPin');
+		expect(route + region).not.toContain('onRemovePin');
 		const sheet = codeOf(HEIGHT_SHEET);
 		expect(sheet).not.toContain('PIN_HINT_MS');
 		expect(sheet).not.toContain('pin-context');

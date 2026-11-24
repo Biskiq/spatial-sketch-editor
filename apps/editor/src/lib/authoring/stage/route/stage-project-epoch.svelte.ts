@@ -46,14 +46,14 @@ import type { StageFacade } from '../stage-facade';
 import {
 	createStageAcceptanceHost,
 	type StageAcceptanceHost,
-	type StageHistoryCommandOutcome,
 	type StageHistoryState
 } from '../host-acceptance';
 import type { StageSession } from '../stage-session';
 import { stageEnvelope } from '../unit-stage-source';
 import { perfMark } from '$lib/platform/perf-marks';
 import type { StageAssetLeases } from './stage-asset-leases.svelte';
-import type { FinishAuthoring } from '../../look/finish-authoring.svelte';
+import type { FeatureLifecycle } from '../../workspace/protocol';
+import type { StageFinishCardPort } from '../stage-adapter-host';
 import type { MaterialProofRegistry } from '../../material-proof';
 
 /** The existing project-session API, narrowed to what the epoch composes. */
@@ -83,28 +83,16 @@ export type StageProjectEpochInput = {
 	readonly preview: () => StageProjectEpochPreview;
 	readonly createFacade: (snapshot: StageReadSnapshot) => StageFacade;
 	readonly adapterFactories: readonly StageAdapterFactory[];
-	/**
-	 * The route's one Spot Look-through session, offered to the Light Card. It is
-	 * read lazily because the route's controller is created around this epoch.
-	 */
-	readonly lightInspection?: () => StageLightInspection | null;
-	/** The route's Object Studio posture, offered to a form's Card. */
-	readonly objectStudio?: () => StageObjectStudio | null;
-	/** Clear old hover and interrupt the old gesture before the session swaps. */
-	readonly interruptInput: () => void;
-	readonly resetFocus: () => void;
-	/** Presentation that names the replaced source, cleared before disposal. */
-	readonly resetPresentationBeforeSwap: () => void;
-	/** Full view reset once the new epoch is mounted (the baseline's `resetViewContext`). */
-	readonly resetPresentation: () => void;
-	/** The new facade exists; bind host tools and re-read session-level view state. */
-	readonly onFacadeMounted: (facade: StageFacade) => void;
-	readonly onAdaptersChanged: () => void;
-	readonly onAccepted: () => void;
-	readonly openSpaceCreated?: ReturnType<typeof createStageAdapterServices>['openSpaceCreated'];
-	readonly onHistoryInstalled: (
-		outcome: Extract<StageHistoryCommandOutcome, { kind: 'installed' }>
-	) => void;
+	readonly ports?: {
+		readonly lightInspection?: () => StageLightInspection | null;
+		readonly objectStudio?: () => StageObjectStudio | null;
+		readonly finishCard?: () => StageFinishCardPort | null;
+		readonly openSpaceCreated?: () => ReturnType<typeof createStageAdapterServices>['openSpaceCreated'];
+	};
+	readonly lifecycle: () => Pick<FeatureLifecycle,
+		'interruptForReplacement' | 'resetFocus' | 'resetPresentationBeforeSwap' | 'resetPresentation' |
+		'facadeMounted' | 'adaptersChanged' | 'accepted' | 'historyInstalled'
+	>;
 	readonly onNotice: (message: string) => void;
 	/** Publish the mounted view after a history command completes. */
 	readonly refresh: () => void;
@@ -112,8 +100,6 @@ export type StageProjectEpochInput = {
 	/** Deterministic test seams; production uses the existing owners. */
 	readonly createAcceptance?: typeof createStageAcceptanceHost;
 	readonly createServices?: typeof createStageAdapterServices;
-	/** The route's Finish service getter, shared with every replacement epoch. */
-	readonly finishes?: () => FinishAuthoring | null;
 	/**
 	 * The route's host-owned target sources (approved model analyses). Stable
 	 * across replacement epochs; a new facade reads the new accepted identity.
@@ -189,15 +175,15 @@ export function createStageProjectEpoch(input: StageProjectEpochInput) {
 		if (tornDown) return;
 		// Replacement: validate first (the snapshot is already admitted), then the
 		// session atomically cancels writers, clears selection/task and swaps.
-		input.interruptInput();
+		input.lifecycle().interruptForReplacement();
 		input.session.replace(snapshot);
 		// A Preview run and the lens focus name identities from the replaced source;
 		// the warm surface cannot describe the new one. Drop both (the chunk stays
 		// cached) rather than keeping another project's scene alive behind the editor.
 		input.preview().reset();
 		services = null;
-		input.resetFocus();
-		input.resetPresentationBeforeSwap();
+		input.lifecycle().resetFocus();
+		input.lifecycle().resetPresentationBeforeSwap();
 		// The previous facade's listeners are dropped before its replacement exists,
 		// so a disposal-time notification cannot write through the new facade.
 		unsubscribeContributions?.();
@@ -206,9 +192,9 @@ export function createStageProjectEpoch(input: StageProjectEpochInput) {
 		acceptance?.dispose();
 		const nextFacade = input.createFacade(snapshot);
 		facade = nextFacade;
-		input.onFacadeMounted(nextFacade);
+		input.lifecycle().facadeMounted(nextFacade);
 		unsubscribeContributions = nextFacade.onAdaptersChanged(() => {
-			input.onAdaptersChanged();
+			input.lifecycle().adaptersChanged();
 		});
 		// The host owns one inspection output; every viewing intent presents this
 		// claim's ticket, so a replaced or rebased output cannot keep writing.
@@ -244,13 +230,13 @@ export function createStageProjectEpoch(input: StageProjectEpochInput) {
 		const createdServices = createServices(
 			nextFacade,
 			mounted,
-			input.finishes,
+			input.ports?.finishCard,
 			materialProofs,
 			input.targetSources
 		);
-		const inspection = input.lightInspection?.() ?? null;
-		const studio = input.objectStudio?.() ?? null;
-		const openSpaceCreated = input.openSpaceCreated;
+		const inspection = input.ports?.lightInspection?.() ?? null;
+		const studio = input.ports?.objectStudio?.() ?? null;
+		const openSpaceCreated = input.ports?.openSpaceCreated?.();
 		const mountedServices = {
 			...createdServices,
 			...(inspection === null ? {} : { lightInspection: inspection }),
@@ -282,18 +268,18 @@ export function createStageProjectEpoch(input: StageProjectEpochInput) {
 				// A newly placed (or removed) model changes the pins this epoch holds.
 				void input.assets.resolve(facade.snapshot());
 			}
-			input.onAccepted();
+			input.lifecycle().accepted();
 		});
 		// The adapters read the epoch's services, not a second value: the Light Card's
 		// inspection port is session state the route owns, so every adapter mount
 		// must see the same value.
 		for (const factory of input.adapterFactories)
-			mountAdapter(nextFacade, mounted, factory, input.finishes, mountedServices);
+			mountAdapter(nextFacade, mounted, factory, input.ports?.finishCard, mountedServices);
 		// The previous epoch's controller belongs to its disposed coordinator; this
 		// epoch gets exactly one state machine over the new one.
 		projectSession.mountSave(mounted, snapshot);
 		history = mounted.history();
-		input.resetPresentation();
+		input.lifecycle().resetPresentation();
 	}
 
 	/**
@@ -313,7 +299,7 @@ export function createStageProjectEpoch(input: StageProjectEpochInput) {
 			// The restored state installed through the same facade path an accept uses:
 			// the view stays, the selection was requalified against the restored
 			// correspondence, and the caller refreshes the plan/markers from it.
-			input.onHistoryInstalled(outcome);
+			input.lifecycle().historyInstalled(outcome);
 		} else if (outcome.kind === 'unavailable') {
 			input.onNotice(
 				outcome.reason === 'live-proposal'

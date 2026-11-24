@@ -341,7 +341,12 @@ export function composedSpatialHost(): { file: string; code: string }[] {
 		[path.join(EDITOR_LIB, 'authoring/stage/route/stage-experience-binding.svelte.ts'), 'createStageExperienceBinding'],
 		[path.join(EDITOR_LIB, 'authoring/stage/route/stage-shell-state.svelte.ts'), 'createStageShellState'],
 		[path.join(EDITOR_LIB, 'authoring/stage/route/stage-shell-commands.ts'), 'createStageShellCommands'],
-		[path.join(EDITOR_LIB, 'authoring/stage/route/stage-selection-view.ts'), 'createStageSelectionView']
+		[path.join(EDITOR_LIB, 'authoring/stage/route/stage-selection-view.ts'), 'createStageSelectionView'],
+		[path.join(EDITOR_LIB, 'authoring/stage/route/stage-viewing.ts'), 'createStageViewing'],
+		[path.join(EDITOR_LIB, 'authoring/stage/route/stage-history-command.ts'), 'createStageHistoryCommand'],
+		[path.join(EDITOR_LIB, 'authoring/stage/route/stage-window-listeners.ts'), 'createStageWindowListeners'],
+		[path.join(EDITOR_LIB, 'authoring/stage/route/core-lifecycle-steps.svelte.ts'), 'createCoreLifecycleSteps'],
+		[path.join(EDITOR_LIB, 'authoring/stage/route/core-region-views.ts'), 'createCoreRegionViews']
 	] as const;
 	for (const [file, factory] of constructed) {
 		if (!reachable.has(file)) throw new Error(`Route must import ${factory} from ${file}`);

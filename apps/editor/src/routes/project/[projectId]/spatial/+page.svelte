@@ -18,8 +18,9 @@
 	 * EditorHead/Index/Card, Unfold, Artwork, Experience lens/controller, drafting
 	 * and the Height Sheet remain exactly where they were.
 	 */
-	import { onDestroy, onMount, tick, untrack } from 'svelte';
+	import { onDestroy, tick, untrack } from 'svelte';
 	import { createFeatureLifecycle } from '$lib/authoring/workspace/lifecycle-runner';
+	import { late, type FeatureLifecycle } from '$lib/authoring/workspace/protocol';
 	import { page } from '$app/state';
 	import { goto, replaceState } from '$app/navigation';
 	import { env } from '$env/dynamic/public';
@@ -29,9 +30,7 @@
 	import type { ProjectEnvelope } from '@portfolio/project-model/units';
 	import type { ArtworkLibraryEntry, SceneArtworkEntity } from '@portfolio/project-model';
 	import { primaryEntry, sameReference, type StageSelectionEntry } from '$lib/authoring/stage/semantic-selection';
-	import { bootIntentFromSearch, type BootIntent } from '$lib/authoring/stage/boot-state';
 	import type { StageDomainRead } from '$lib/authoring/stage/source-admission';
-	import { STARTER_TEMPLATES } from '$lib/authoring/stage/starter-gallery';
 	import { createStageSession } from '$lib/authoring/stage/stage-session';
 	import {
 		createLightLookThrough,
@@ -41,10 +40,23 @@
 	import {
 		createStageFacade,
 		type StageFacade,
-		type StageIntentResult,
 		type StageCardActionRecord,
 		type StageCardWriterRecord
 	} from '$lib/authoring/stage/stage-facade';
+	import { createCoreRegionViews } from '$lib/authoring/stage/route/core-region-views';
+	import type { RegionProps } from '$lib/authoring/workspace/region-ownership';
+	import { createRouteInput } from '$lib/authoring/stage/route/route-input.svelte';
+	import { createProjectReadyPort } from '$lib/authoring/stage/route/project-ready-port.svelte';
+	import { createStageViewing } from '$lib/authoring/stage/route/stage-viewing';
+	import { createStageContentBounds, readStageContentBounds } from '$lib/authoring/stage/route/stage-content-bounds.svelte';
+	import { installLookThroughFrame } from '$lib/authoring/stage/route/look-through-frame.svelte';
+	import { createStageHistoryCommand } from '$lib/authoring/stage/route/stage-history-command';
+	import { createStageWindowListeners } from '$lib/authoring/stage/route/stage-window-listeners';
+	import { createBootRepair } from '$lib/authoring/stage/route/boot-repair.svelte';
+	import StageBootPanels from '$lib/authoring/stage/shell/StageBootPanels.svelte';
+	import StageReplaceDialog from '$lib/authoring/stage/shell/StageReplaceDialog.svelte';
+	import { readStageCursor } from '$lib/authoring/stage/route/stage-cursor';
+	import { createCoreLifecycleSteps, installLeaveProject, installStageMount } from '$lib/authoring/stage/route/core-lifecycle-steps.svelte';
 	import { createStageViewport } from '$lib/authoring/stage/route/stage-viewport.svelte';
 	import { createStageArtworkInteraction } from '$lib/authoring/stage/route/stage-artwork-interaction.svelte';
 	import { createStageUnfoldGestures, selectedCurvedWallOf } from '$lib/authoring/stage/route/stage-unfold-gestures.svelte';
@@ -66,13 +78,11 @@
 	import {
 		developmentPointAtStationFromBuffers,
 		overheadSourcesOf,
-		LAYOUT_DIMENSION_LIMIT_MESSAGE,
 		type PlanEvaluation
 	} from '@portfolio/layout-core';
 	import {
 		eyeOfInspectionPose,
 		fovYDegreesOf,
-		type ViewingIntent,
 		type ViewportEvaluation,
 		type ViewportRect
 	} from '@portfolio/camera-core';
@@ -105,7 +115,7 @@
 		stageKeyFromControl,
 		stageKeyFromTextEntry
 	} from '$lib/authoring/stage/stage-input';
-	import { installStageInterruptions, type StageInterruptionReason } from '$lib/authoring/stage/stage-interruption';
+	import type { StageInterruptionReason } from '$lib/authoring/stage/stage-interruption';
 	import '$lib/authoring/stage/shell/shell-roles.css';
 	import '$lib/authoring/stage/shell/cursors.css';
 	import EditorHead from '$lib/authoring/stage/shell/EditorHead.svelte';
@@ -131,17 +141,12 @@
 	import { aimThroughWindows } from '$lib/authoring/look/aim-through-windows';
 	import { createLookAuthoring } from '$lib/authoring/look/look-authoring.svelte';
 	import { createScenePickSource } from '$lib/authoring/scene/scene-pick-source';
-	import { isPaperPlanVisible, PAPER_TONES } from '$lib/authoring/stage/paper-plan';
+	import { isPaperPlanVisible } from '$lib/authoring/stage/paper-plan';
 	import { WORLD_ENVIRONMENT_GROUND_RADIUS_METERS } from '$lib/render/world-environment';
 	import { experienceFocus } from '$lib/authoring/experience/focus.svelte';
 	import { experienceProblems, loweringProblem, type ExperienceProblem } from '$lib/authoring/experience/experience-problems';
 	import { createExperiencePreview } from '$lib/authoring/experience/experience-preview.svelte';
 	import { isAllowedShippedTextureUri } from '$lib/visitor/shipped-static-registry';
-	import {
-		scaleDetentIntent,
-		type StageDraftingPatch
-	} from '$lib/authoring/stage/stage-drafting';
-	import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	import { createProjectSession } from '$lib/authoring/project-session/project-session.svelte';
 	import { createProjectApi, createProjectAuth, type ProjectApi } from '$lib/platform/project-persistence';
 	import { acceptedSceneRoomMembership } from '$lib/authoring/adapters/scene/room-membership';
@@ -194,8 +199,9 @@
 	} from '$lib/authoring/stage/route/stage-experience-binding.svelte';
 	import type { ExperienceController } from '$lib/authoring/experience/experience-controller.svelte';
 	import type { StageLightInspection, StageObjectStudio } from '$lib/authoring/stage/stage-adapter-host';
-	import { isStudioOperation, studioAdmitsCardAction } from '$lib/authoring/studio/studio-model';
+	import { isStudioOperation, isStudioWorldTool, studioAdmitsCardAction } from '$lib/authoring/studio/studio-model';
 	import { createStudioController, type StudioController } from '$lib/authoring/studio/studio-controller.svelte';
+	import { armedLightKind } from '$lib/authoring/look/light-tool.svelte';
 	import StudioScopeStrip from '$lib/authoring/studio/StudioScopeStrip.svelte';
 	import StudioTransferStrip from '$lib/authoring/studio/StudioTransferStrip.svelte';
 	import StudioRootPanel from '$lib/authoring/studio/StudioRootPanel.svelte';
@@ -206,8 +212,6 @@
 		STUDIO_ENTRY_VALUE,
 		STUDIO_OBJECT_PARAM,
 		PLACE_COPY_PARAM,
-		placeCopyFromSearch,
-		studioEntryFromSearch,
 		studioProjectUrl
 	} from '$lib/platform/studio-entry';
 	import { requestFormCopyIntake } from '$lib/authoring/adapters/scene/library/intake';
@@ -216,12 +220,8 @@
 
 	installPerfWorkObserver();
 
-	const projectId = decodeURIComponent(page.params.projectId ?? '');
-	const intent: BootIntent = bootIntentFromSearch(page.url.searchParams);
-	/** Object Studio is a posture named by `entry=studio`; it is never source. */
-	const studioEntry = studioEntryFromSearch(page.url.searchParams);
-	/** A My Objects item to arm for placing in this project's World (Place copy in World). */
-	const placeCopyItem = placeCopyFromSearch(page.url.searchParams);
+	const routeInput = createRouteInput(() => page);
+	const { projectId, intent, studioEntry, placeCopyItem } = routeInput;
 	const subjectScope = createSubjectScope();
 
 	const api: ProjectApi | null = createProjectApi({ apiOrigin: env.PUBLIC_API_ORIGIN });
@@ -294,21 +294,27 @@
 			}
 	};
 
+	function openSpaceCreated(reference: Parameters<typeof sameReference>[0]): void {
+		const stage = facade;
+		if (stage === null) return;
+		const selected = primaryEntry(stage.selectionState());
+		if (selected === null || !sameReference(selected.reference, reference)) return;
+		commands.armWorldTool('select');
+		commands.syncPrimarySelection(selected);
+		shell.requestCardRename(reference);
+	}
+
+	const lifecycleCell = late<FeatureLifecycle>();
+
 	const stageEpoch = createStageProjectEpoch({
 		session,
 		assets: stageAssets,
 		materialProofs,
-		finishes: () => finishes,
-		lightInspection: () => lightInspectionPort,
-		objectStudio: () => objectStudioPort,
-		openSpaceCreated: (reference) => {
-			const stage = facade;
-			if (stage === null) return;
-			const selected = primaryEntry(stage.selectionState());
-			if (selected === null || !sameReference(selected.reference, reference)) return;
-			commands.armWorldTool('select');
-			commands.syncPrimarySelection(selected);
-			shell.requestCardRename(reference);
+		ports: {
+			finishCard: () => finishes,
+			lightInspection: () => lightInspectionPort,
+			objectStudio: () => objectStudioPort,
+			openSpaceCreated: () => openSpaceCreated
 		},
 		projectSession: () => projectSession,
 		preview: () => previewController,
@@ -322,14 +328,7 @@
 		}),
 		adapterFactories: stageAdapterFactories,
 		targetSources: { models: modelAnalyses.provider },
-		interruptInput: () => lifecycle.interruptForReplacement(),
-		resetFocus: () => lifecycle.resetFocus(),
-		resetPresentationBeforeSwap: () => lifecycle.resetPresentationBeforeSwap(),
-		resetPresentation: () => lifecycle.resetPresentation(),
-		onFacadeMounted: (next) => lifecycle.facadeMounted(next),
-		onAdaptersChanged: () => lifecycle.adaptersChanged(),
-		onAccepted: () => lifecycle.accepted(),
-		onHistoryInstalled: (outcome) => lifecycle.historyInstalled(outcome),
+		lifecycle: lifecycleCell.get,
 		onNotice: (message) => shell.setNotice(message),
 		refresh: () => refresh(),
 		isActiveProject: () => boot.status === 'ready' || boot.status === 'empty'
@@ -337,14 +336,7 @@
 
 	const projectSession = createProjectSession({
 		projectId, intent, api, auth, session, images: verifiedImages, materialProofs,
-		// Shallow `replaceState` (Studio mirrors its root into the address) does not move
-		// `page.url`; the session rewrites this address when a Save consumes `create=1`, so it
-		// must start from the address actually shown or it would erase the mirrored root.
-		url: () => {
-			if (typeof window === 'undefined') return page.url;
-			const shown = new URL(window.location.href);
-			return shown.pathname === page.url.pathname ? shown : page.url;
-		},
+		url: routeInput.url,
 		acceptance: () => stageEpoch.acceptance,
 		tornDown: () => stageEpoch.tornDown,
 		activate: (snapshot) => stageEpoch.activate(snapshot),
@@ -352,6 +344,7 @@
 		set notice(value) { shell.setNotice(value); }
 	});
 	const boot = $derived(projectSession.boot);
+	const ready = createProjectReadyPort(() => boot);
 	const headSave = $derived(projectSession.headSave);
 	const resumeOffer = $derived(projectSession.resumeOffer);
 	const pendingReplacement = $derived(projectSession.pendingReplacement);
@@ -510,6 +503,20 @@
 		stageElement: () => stageEl
 	});
 
+	const viewing = createStageViewing({
+		facade: () => facade,
+		rect: () => rect,
+		stageInput: () => stageInput,
+		shell,
+		session,
+		lifecycle: lifecycleCell.get,
+		refresh
+	});
+	const {
+		submit, setReading, patchDrafting, requestScaleDetent, fit,
+		zoomIn, zoomOut, bringIntoView, zoom, pan, orbit
+	} = viewing;
+
 	const stageViewport = createStageViewport({
 		facade: () => facade,
 		stageElement: () => stageEl,
@@ -544,21 +551,16 @@
 	const roomLabels = $derived(stageViewport.roomLabels);
 	const marks = $derived(stageViewport.marks);
 	const tracePreview = $derived(stageViewport.tracePreview);
-	const currentEnvelope = $derived.by((): ProjectEnvelope | null =>
-		boot.status === 'ready' || boot.status === 'empty' ? stageEnvelope(boot.snapshot) : null
-	);
-	const experienceFloorDatum = $derived.by(() =>
-		boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain.datumMeters : 0
-	);
+	const currentEnvelope = $derived(ready.envelope());
+	const experienceFloorDatum = $derived(ready.datumMeters());
 	const activeLayer = $derived(
 		experience.posture ?? (lightInspection?.active() ? lightInspection.posture : null)
 	);
-	// `bind:this` lands after the first look-through refresh; measure it then.
-	$effect(() => {
-		const frame = throughFrameEl;
-		const currentView = experience.lookThroughSession();
-		const currentLight = lightInspection?.session() ?? null;
-		if (frame !== undefined && (currentView !== null || currentLight !== null)) untrack(() => refresh());
+	installLookThroughFrame({
+		frame: () => throughFrameEl,
+		viewSession: () => experience.lookThroughSession(),
+		lightSession: () => lightInspection?.session() ?? null,
+		refresh
 	});
 	// A lens switch and a Preview takeover both replace the Stage's posture; the
 	// Spot inspection must restore its entry before either can present another.
@@ -964,7 +966,12 @@
 			downloadSourceJson: () => downloadSourceJson()
 		},
 		showExperienceWelcome: () => experience.showWelcome(),
-		disarmSliceDraw: () => sliceDraw.disarm(),
+		levelSlice: () => {
+			sliceDraw.disarm();
+			sliceReading.level();
+		},
+		lightArmed: (id) => armedLightKind(id) !== null,
+		isStudioTool: isStudioWorldTool,
 		studioActive: () => studio?.active === true,
 		libraryReplaceQualified: () => finishes?.libraryTarget() != null,
 		runStudioEntry: (id) => {
@@ -1181,35 +1188,19 @@
 		}
 	});
 	let repairDrawerOpen = $state(false);
-	let bootRepairBusy = $state(false);
-	let bootRepairError = $state<string | null>(null);
-	let bootRepairInput = $state<HTMLInputElement>();
-
 	$effect(() => {
 		void projectId;
 		untrack(() => {
 			finishes.issues.reset();
 			repairDrawerOpen = false;
-			bootRepairError = null;
 		});
 	});
+	const bootRepair = createBootRepair({
+		boot: () => boot,
+		projectId: () => projectId,
+		repair: projectSession.repairBootImage
+	});
 
-	async function onBootRepairFileChosen(event: Event): Promise<void> {
-		const input = event.currentTarget as HTMLInputElement;
-		const file = input.files?.[0];
-		if (file === undefined || boot.status !== 'error' || boot.image === undefined) return;
-		bootRepairBusy = true;
-		bootRepairError = null;
-		try {
-			const bytes = new Uint8Array(await file.arrayBuffer());
-			const outcome = await projectSession.repairBootImage(boot.image, bytes);
-			if (!outcome.ok) bootRepairError = outcome.message;
-		} catch {
-			bootRepairError = 'Could not read that file.';
-		} finally {
-			bootRepairBusy = false;
-		}
-	}
 	/**
 	 * The Customise… draft lives in the Material editor while Paint is armed for
 	 * its Stage retarget; putting Paint down discards it. Only Apply writes.
@@ -1808,27 +1799,6 @@
 		shell.setNotice('Lift ended: the Space is gone.');
 	});
 
-	function readStageContentBounds(stage: StageFacade): {
-		readonly min: [number, number, number];
-		readonly max: [number, number, number];
-	} | null {
-		const layoutBounds = stage.snapshot().domain.geometry.bounds;
-		let min: [number, number, number] | null =
-			layoutBounds === null ? null : [layoutBounds.min[0], layoutBounds.min[1], layoutBounds.min[2]];
-		let max: [number, number, number] | null =
-			layoutBounds === null ? null : [layoutBounds.max[0], layoutBounds.max[1], layoutBounds.max[2]];
-		for (const entity of stage.snapshot().domain.scene.entities) {
-			const bounds = stage.sceneBounds(entity.id);
-			if (bounds === null) continue;
-			min = min === null
-				? [bounds.min[0], bounds.min[1], bounds.min[2]]
-				: [Math.min(min[0], bounds.min[0]), Math.min(min[1], bounds.min[1]), Math.min(min[2], bounds.min[2])];
-			max = max === null
-				? [bounds.max[0], bounds.max[1], bounds.max[2]]
-				: [Math.max(max[0], bounds.max[0]), Math.max(max[1], bounds.max[1]), Math.max(max[2], bounds.max[2])];
-		}
-		return min === null || max === null ? null : { min, max };
-	}
 
 	let renderRootsRevision = $state(0);
 	$effect(() => scenePick.onRenderRootsChanged(() => (renderRootsRevision += 1)));
@@ -1908,24 +1878,19 @@
 		if (shell.task !== null || shell.activeWorldTool === 'objects' || shell.libraryOpen) return;
 		untrack(() => studio.cancelCreation());
 	});
-	const stageContentBounds = $derived.by(() => {
-		void renderRootsRevision;
-		if (boot.status !== 'ready' && boot.status !== 'empty') return null;
-		return facade === null ? null : readStageContentBounds(facade);
+	const contentBounds = createStageContentBounds({
+		renderRootsRevision: () => renderRootsRevision,
+		snapshot: ready.snapshot,
+		facade: () => facade
 	});
-	const paperContentBounds = $derived.by((): GridRect | null => {
-		const bounds = stageContentBounds;
-		return bounds === null
-			? null
-			: { minX: bounds.min[0], maxX: bounds.max[0], minZ: bounds.min[2], maxZ: bounds.max[2] };
-	});
-	$effect(() => facade?.camera.setContentBounds(stageContentBounds));
+	const stageContentBounds = $derived(contentBounds.stage);
+	const paperContentBounds = $derived(contentBounds.paper);
 
 	function canPlaceArtwork(): boolean {
 		return experience.lensState === 'world' && preview === null && wallUnfold.state === null;
 	}
 
-	$effect(() => () => lifecycle.leaveProject());
+	installLeaveProject(lifecycleCell);
 	$effect(() => {
 		if (experience.lensState === 'world') return;
 		// The Slice reads the world Stage: leaving the lens ends it exactly as a replaced
@@ -2033,22 +1998,6 @@
 		setResolvedCutaway(null);
 	}
 
-	function resetSelectionAndShell(): void {
-		selection = null;
-		shell.setTask(null);
-		revealed = [];
-		shell.setNotice('');
-		shell.setPendingDelete(null);
-		shell.setArmedTool(null);
-		shell.setCardOpen(true);
-	}
-
-	function syncAcceptedTaskAndSelection(): void {
-		shell.setTask(facade?.session.task() ?? null);
-		commands.syncPrimarySelection(facade ? primaryEntry(facade.selectionState()) : null);
-		commands.syncContributedTask();
-	}
-
 	function endMaterialOperations(restoreCamera: boolean): boolean {
 		finishes?.card.cancel();
 		if (restoreCamera && finishes?.align.active && !finishes.align.putBack(false)) return false;
@@ -2060,15 +2009,6 @@
 		materialImport.cancel(false);
 		repairDrawerOpen = false;
 		return true;
-	}
-
-	function installHistorySelection(outcome: {
-		readonly selectionClearedReason: 'subject-retired' | 'no-correspondence' | null;
-	}): void {
-		selection = facade ? primaryEntry(facade.selectionState()) : null;
-		if (outcome.selectionClearedReason !== null) {
-			shell.setNotice('The selected subject no longer exists in the restored source.');
-		}
 	}
 
 	function nowSeconds(): number {
@@ -2103,82 +2043,6 @@
 
 	function interruptPress(reason: StageInterruptionReason): void {
 		stageInput.interrupt(reason);
-	}
-
-	function handleKey(event: KeyboardEvent): void {
-		stageKeyboard.handleKey(event);
-	}
-
-	function submit(intent: ViewingIntent, clockSeconds: number): StageIntentResult | null {
-		const stage = facade;
-		if (stage === null) return null;
-		if (stageInput.drag?.mode === 'adapter' && intent.kind !== 'set-reading') return null;
-		const first = stage.requestViewingIntent(intent, stage.inspectionTicket(), clockSeconds);
-		if (first.kind !== 'superseded') return first;
-		stage.acquireInspection('exclusive');
-		return stage.requestViewingIntent(intent, stage.inspectionTicket(), clockSeconds);
-	}
-
-	function setReading(reading: '3d' | 'plan'): void {
-		lifecycle.readingChange(reading);
-	}
-
-	function endPressForReading(): void {
-		if (stageInput.drag !== null && session.gesture() === null) {
-			if (stageInput.drag.mode === 'adapter' && facade !== null) {
-				const css: [number, number] = [stageInput.drag.x - (rect?.left ?? 0), stageInput.drag.y - (rect?.top ?? 0)];
-				refresh();
-				const id = facade.evaluationId();
-				if (id !== null) facade.pointerIntent({ phase: 'move', css, evaluationId: id });
-			}
-			interruptPress('reading-change');
-		}
-	}
-
-	function patchDrafting(patch: StageDraftingPatch): void {
-		shell.patchDrafting(patch);
-	}
-
-	function requestScaleDetent(ratio: number): void {
-		const stage = facade;
-		const viewport = rect;
-		if (stage === null || viewport === null || viewport.height <= 0) return;
-		const settledHeight = stage.camera.state().pose.targetPlaneHeightMeters;
-		const intent = scaleDetentIntent(ratio, settledHeight / viewport.height);
-		if (intent !== null) submit(intent, nowSeconds());
-	}
-
-	function fit(): void {
-		const stage = facade;
-		if (stage === null || rect === null) return;
-		const bounds = readStageContentBounds(stage);
-		if (bounds === null) return;
-		submit({ kind: 'fit', bounds: { min: bounds.min, max: bounds.max }, rect }, nowSeconds());
-	}
-
-	function zoomIn(): void {
-		zoom(1 / 1.25);
-	}
-
-	function zoomOut(): void {
-		zoom(1.25);
-	}
-
-	function bringIntoView(target: readonly [number, number, number]): void {
-		submit({ kind: 'bring-into-view', target: [target[0], target[1], target[2]] }, nowSeconds());
-	}
-
-	function zoom(scale: number): void {
-		submit({ kind: 'zoom', scale }, nowSeconds());
-	}
-
-	function pan(dx: number, dy: number): void {
-		if (rect === null) return;
-		submit({ kind: 'pan', deltaCss: [dx, dy], rect }, nowSeconds());
-	}
-
-	function orbit(dAzimuth: number, dElevation: number): void {
-		submit({ kind: 'orbit', deltaAzimuthRadians: dAzimuth, deltaElevationRadians: dElevation }, nowSeconds());
 	}
 
 	/**
@@ -2296,102 +2160,25 @@
 		return () => wallUnfold.setCameraExecutor(null);
 	});
 
-	function onKey(event: KeyboardEvent): void {
-		if (event.defaultPrevented) return;
-		if (event.altKey) shell.suspendSnap(true);
-		handleKey(event);
-	}
+	const history = createStageHistoryCommand({ epoch: stageEpoch, lifecycle: lifecycleCell.get });
+	const listeners = createStageWindowListeners({
+		keyboard: stageKeyboard,
+		suspendSnap: shell.suspendSnap,
+		lifecycle: lifecycleCell.get
+	});
+	installStageMount(lifecycleCell);
 
-	function onReleaseSnap(event: KeyboardEvent): void {
-		if (event.key === 'Alt') shell.suspendSnap(false);
-		stageKeyboard.handleKeyUp(event);
-	}
-
-	function onWindowBlur(): void {
-		lifecycle.windowBlur();
-	}
-
-	let removeInterruptions: () => void;
+	const core = createCoreLifecycleSteps({
+		projectId, intent, projectSession, stageEpoch, session,
+		facade: () => facade,
+		setSelection: (entry) => { selection = entry; },
+		clearRevealed: () => { revealed = []; },
+		assets: stageAssets,
+		shell, commands, stageInput, history, viewing, listeners,
+		viewport: stageViewport
+	});
 	const lifecycle = createFeatureLifecycle({
-		core: {
-			interruptForReplacement: {
-				'clear-hover': clearHover,
-				'interrupt-press': () => interruptPress('replacement')
-			},
-			resetPresentationBeforeSwap: {
-				'collapse-expanded-presentation': () => shell.setExpandedPresentationId(null)
-			},
-			resetPresentation: {
-				'reset-selection-and-shell': resetSelectionAndShell,
-				'reset-input': () => stageInput.reset(),
-				'reset-viewport': () => stageViewport.reset()
-			},
-			facadeMounted: { 'bind-facade': (next) => shell.bindFacade(next) },
-			adaptersChanged: {
-				'refresh-adapter-presentation': () => {
-					shell.bumpContributions();
-					syncAcceptedTaskAndSelection();
-				}
-			},
-			accepted: {
-				'sync-task-and-selection': syncAcceptedTaskAndSelection,
-				'invalidate-plan': () => stageViewport.invalidatePlan(),
-				refresh
-			},
-			historyInstalled: {
-				'install-selection': installHistorySelection,
-				'invalidate-plan': () => stageViewport.invalidatePlan()
-			},
-			historyStep: {
-				'run-history': (direction) => {
-					if (direction === 'undo') void stageEpoch.undo();
-					else void stageEpoch.redo();
-				}
-			},
-			readingChange: {
-				'submit-reading': (reading) => {
-					submit({ kind: 'set-reading', reading }, readingIntentClockSeconds(shell.reducedMotion, nowSeconds()));
-				},
-				'end-press-for-reading': endPressForReading
-			},
-			settlePending: {
-				'refuse-during-gesture': () => {
-					if (session.gesture() === null) return;
-					shell.setNotice('Finish or cancel the current gesture first.');
-					return false;
-				},
-				'arm-select': () => commands.armWorldTool('select')
-			},
-			windowBlur: { 'release-snap': () => shell.suspendSnap(false) },
-			leaveProject: { 'dispose-artwork-assets': () => stageAssets.disposeArtwork() },
-			start: {
-				'perf-mark': () => perfMark('stage:route-mounted'),
-				'start-shell': () => shell.start(),
-				'start-viewport': () => stageViewport.start(),
-				'install-listeners': () => {
-					window.addEventListener('keydown', onKey);
-					window.addEventListener('keyup', onReleaseSnap);
-					window.addEventListener('blur', onWindowBlur);
-				},
-				'install-interruptions': () => {
-					removeInterruptions = installStageInterruptions(window, document, interruptPress);
-				},
-				'load-project': () => { void projectSession.load(projectId, intent); }
-			},
-			dispose: {
-				'mark-torn-down': () => stageEpoch.markTornDown(),
-				'dispose-viewport': () => stageViewport.dispose(),
-				'dispose-shell': () => shell.dispose(),
-				'clear-hover': clearHover,
-				'remove-listeners': () => {
-					window.removeEventListener('keydown', onKey);
-					window.removeEventListener('keyup', onReleaseSnap);
-					window.removeEventListener('blur', onWindowBlur);
-				},
-				'remove-interruptions': () => removeInterruptions(),
-				'dispose-epoch': () => stageEpoch.dispose()
-			}
-		},
+		core,
 		features: [
 			{
 				id: 'light-inspection',
@@ -2478,10 +2265,7 @@
 		]
 	});
 
-	onMount(() => {
-		lifecycle.start();
-		return lifecycle.dispose;
-	});
+	lifecycleCell.set(lifecycle);
 
 	// The Stage input handlers are named once and passed as a group to the region.
 	const viewportInput = {
@@ -2527,56 +2311,60 @@
 	const dial = $derived(dialPlacement ? celestialDialModel(look.shownSky, dialPlacement) : null);
 	$effect(() => adapterServices ? bindSkySession(adapterServices.stage.session, { look, dial: () => dial }) : undefined);
 
+	const coreRegions = createCoreRegionViews({
+		projectId, heightSheet, project: projectSession, shell, history, scenePick, lightPreview,
+		facade: () => facade,
+		snapshot: ready.snapshot,
+		viewport: stageViewport,
+		stageInput,
+		commands,
+		historyState: () => historyState,
+		assets: stageAssets,
+		planAppearance: () => effectivePlanAppearance,
+		paperContentBounds: () => paperContentBounds,
+		snapshotBounds: () => stageContentBounds,
+		selection: () => selection,
+		studioSuppressesPlan: () => studio.active && studio.context === 'mat',
+		lookThroughActive: lookThroughActiveNow,
+		lens: () => experience.lensState,
+		previewing: () => preview !== null,
+		paperVisible: () => paperVisible,
+		cursor: () => stageCursor,
+		lookThrough: () => viewportLookThrough,
+		viewportInput,
+		canvas: () => canvas,
+		overlay: () => overlay,
+		downloadSource: downloadSourceJson,
+		locationLabel: () => selectionViewView.locationLabel,
+		findEntries: () => findView.entries,
+		projectActionsUnavailableReason: () => projectActionsUnavailableReason,
+		rects: () => skyRects,
+		index: () => indexRegion,
+		card: () => cardRegion,
+		inactiveTask: () => inactiveTaskRegion,
+		worldToolbar: () => worldRegion,
+		instrument: () => instrumentRegion,
+		show: () => showRegion
+	});
+
 	const canvas = $derived.by(() => {
-		if (boot.status !== 'ready' && boot.status !== 'empty') return null;
-		// Keep view updates from replaying the Canvas source and root-registration effects.
-		// StageViewportRegion spreads these props, so each getter tracks its own inputs.
-		return {
-			scenePick,
-			// A renderer recovery cancels the captured press through the viewport's
-			// own pointercancel seam, never a fabricated pointer id.
-			capturedPointers: () => stageInput.capturedPointers(),
+		const snapshot = ready.snapshot();
+		if (snapshot === null) return null;
+		const coreCanvas = coreRegions.canvas(snapshot);
+		const features = {
 			get dial() { return dial; },
-			lightPreview,
-			geometry: boot.snapshot.domain.geometry,
-			sourceContentId: boot.snapshot.sourceContentId,
-			layoutRevision: boot.snapshot.domain.unitRevisions.layout,
 			get scene() {
-				const accepted = boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain.scene : null;
-				if (accepted === null) return boot.snapshot.domain.scene;
-				return withFinishInstancePreview(accepted, libraryDraftPreview ?? finishes.card.preview);
+				const accepted = ready.snapshot()?.domain.scene;
+				return accepted === undefined ? snapshot.domain.scene : withFinishInstancePreview(accepted, libraryDraftPreview ?? finishes.card.preview);
 			},
-			get evaluation() { return evaluation; },
-			get ghosts() { return ghosts; },
-			get modelUrls() { return modelUrls; },
-			get textureScope() { return stageAssets.textureScope; },
-			get textureRevision() { return stageAssets.textureRevision; },
 			get artworkScope() { return stageAssets.artworkScope; },
 			get artworkGhost() { return artworkInteraction.resizeGhost ?? artworkInteraction.ghost; },
 			onArtworkError: (message: string) => shell.setNotice(message),
-			get plan() { return studio.active && studio.context === 'mat' ? null : planView; },
 			get studio() {
 				void studioRevision;
 				return studio.active ? { rootId: studio.rootId, context: studio.context } : null;
 			},
-			get planAppearance() { return effectivePlanAppearance; },
-			get paperInk2d() { return PAPER_TONES[shell.preferences.paperTone2d].ink; },
-			get paperInk3d() { return PAPER_TONES[shell.preferences.paperTone3d].ink; },
-			get drafting() { return shell.drafting; },
-			datumMeters: boot.snapshot.domain.datumMeters,
-			get contentBounds() { return paperContentBounds; },
-			get snapshotBounds() { return stageContentBounds; },
 			get sky() { return look.stageSky; },
-			get framedViewport() { return lookThroughActiveNow() ? throughViewport : null; },
-			get selection() { return selection; },
-			get hover() {
-				return shell.armedHostTool === 'erase'
-					? shell.eraseHover
-					: shell.armedHostTool === 'paint'
-						? shell.paintHover
-						: stageInput.hoverSelection;
-			},
-			get hoverTone() { return shell.armedHostTool === 'erase' ? 'erase' as const : shell.armedHostTool === 'paint' ? 'paint' as const : 'hover' as const; },
 			get proposals() { return finishes.card.proposalEntries(); },
 			get liftedRoomIds() { return liftedRoomIds; },
 			get liftedRegionIds() { return liftedRegionIds; },
@@ -2587,16 +2375,17 @@
 			onCutawayFailure: (wallIds: readonly string[]) => {
 				cutawayFailedIds = new Set([...cutawayFailedIds, ...wallIds]);
 			},
-			get heightMeters() { return experience.lensState === 'world' ? shell.heightMeters : null; },
 			get resolvedSlice() { return resolvedSlice; },
 			get sliceDraft() { return sliceDraftWorld; },
-			get heightPlaneVisible() { return experience.lensState === 'world' && shell.heightPlaneVisible; },
 			get unfoldPinHovered() { return unfoldGestures.pinHovered; },
 			get unfoldPinActive() { return unfoldGestures.sheetPinActive; },
 			unfoldAnchorPin: unfoldGestures.idlePin?.point ?? null,
 			onFinishOutcome: finishes.issues.recordOutcome,
 			get repairAffectedTargets() { return finishes.issues.hatchedTargets; }
 		};
+		// Assemble descriptors once per admitted source so Svelte reads each
+		// Canvas getter independently of the other regions and source props.
+		return Object.defineProperties(coreCanvas, Object.getOwnPropertyDescriptors(features)) as typeof coreCanvas & typeof features;
 	});
 
 	/**
@@ -2679,29 +2468,22 @@
 	});
 
 	const overlay = $derived({
+		...coreRegions.overlay,
 		celestial: dial && evaluation ? { dial, camera: evaluation, haze: look.shownSky.haze, owner: look.gesture.owner } : null,
-		markers,
-		marks: [...marks, ...look.stageMarks],
-		roomLabels,
-		guides,
-		candidates: [...candidatePreviews, ...(artworkInteraction.placementCandidate === null ? [] : [artworkInteraction.placementCandidate])],
-		viewportWidth: rect?.width ?? 0,
-		viewportHeight: rect?.height ?? 0,
-		tracePreview,
-		hostTools: shell.hostToolOverlay,
-		sliceDraft: sliceDraftOverlay,
-		lightGround: paperVisible || evaluation?.renderedReading === '3d'
+		marks: [...coreRegions.overlay.marks!, ...look.stageMarks],
+		candidates: [...coreRegions.overlay.candidates!, ...(artworkInteraction.placementCandidate === null ? [] : [artworkInteraction.placementCandidate])],
+		sliceDraft: sliceDraftOverlay
 	});
 
-	const stageCursor = $derived(
-		experience.viewEdit !== null ? (experience.viewEdit.kind === 'turn' ? 'turn' : 'grabbing')
-			: stageInput.drag?.mode === 'pan' || stageInput.drag?.mode === 'orbit' || (stageInput.drag?.mode === 'adapter' && shell.task === null) ? 'grabbing'
-				: lookThroughActiveNow() ? 'look'
-					: experience.experienceTool === 'place' ? 'place-view'
-						: stageInput.hoverMove ? 'move'
-							: shell.task?.kind === 'layout-ink' || shell.armedHostTool !== null ? 'draw'
-								: 'select'
-	);
+	const stageCursor = $derived(readStageCursor({
+		viewEditKind: () => experience.viewEdit?.kind ?? null,
+		dragMode: () => stageInput.drag?.mode ?? null,
+		taskKind: () => shell.task?.kind ?? null,
+		lookThroughActive: lookThroughActiveNow,
+		placingView: () => experience.experienceTool === 'place',
+		hoverMove: () => stageInput.hoverMove,
+		toolArmed: () => shell.armedHostTool !== null
+	}));
 
 	const viewportLookThrough = $derived.by(() => {
 		const controller = lightInspection;
@@ -2794,51 +2576,134 @@
 		};
 	});
 
+	const showRegion = $derived.by((): RegionProps['toolbars']['show'] => (preview === null && experience.lensState === 'experience'
+		? {
+			open: shell.showOpen,
+			mode: shell.showMode,
+			markers: shell.showMarkers,
+			frustums: shell.showFrustums,
+			paths: shell.showPaths,
+			labels: shell.showLabels,
+			offCount: shell.showOffCount,
+			hidden: lookThroughActiveNow(),
+			onToggle: () => shell.setShowOpen(!shell.showOpen),
+			onClose: () => shell.setShowOpen(false),
+			onMode: (mode) => shell.setShowMode(mode),
+			onMarkers: (value) => shell.setShowMarkers(value),
+			onFrustums: (value) => shell.setShowFrustums(value),
+			onPaths: (value) => shell.setShowPaths(value),
+			onLabels: (value) => shell.setShowLabels(value),
+			onShowAll: () => shell.showAll()
+		}
+		: null));
+	const worldRegion = $derived.by((): RegionProps['toolbars']['world'] => (preview === null && experience.lensState === 'world'
+		? {
+			studio: studio.active,
+			activeTool: shell.activeWorldTool,
+			libraryOpen: shell.libraryOpen,
+			plateOpen: shell.worldPlateOpen,
+			requestedCategory: shell.libraryCategoryRequest,
+			onPlateOpen: (open: boolean) => shell.setWorldPlateOpen(open),
+			onTool: (id) => commands.armWorldTool(id),
+			onLibrary: () => (shell.libraryOpen ? closeLibrary() : commands.toggleWorldLibrary('dock')),
+			furnishOpen: shell.furnishStripOpen,
+			onFurnish: () => commands.toggleFurnishStrip(),
+			onFurnishBrowse: () => commands.browseFurnish(),
+			onObjectPick: (assetId: string) => commands.pickWorldObject(assetId),
+			onMaterialPick: look.pickMaterial,
+			finishShelf,
+			onFinishPick: (ref) => {
+				// Library opened from the Paint tray: a pick arms Paint and hands back to the tray.
+				const fromPaint = shell.armedHostTool === 'paint';
+				void finishes.pickFinish(ref);
+				if (fromPaint && shell.libraryOpen) commands.armWorldTool('paint');
+			},
+			finishTileSource,
+			finishImage: finishes.image,
+			onFinishImageImport: (file: File) => void finishes.addFromImage(file),
+			onFinishImageCancel: () => finishes.cancelImage(),
+			onFinishImageRetry: () => void finishes.retryImageUpload(),
+			onFinishImageReset: () => finishes.resetImage(),
+			lookShelf: look.libraryShelf,
+			artworkShelf: selectionViewView.scenePayload === null ? null : selectionViewView.scenePayload.artworkLibrary ?? [],
+			onArtworkPick: (entry) => { commands.selectTool(); artworkInteraction.arm(entry); },
+			onArtworkImport: (files: File[]) => { commands.selectTool(); void artworkInteraction.importFiles(files); },
+			onLookPick: look.pickLibraryEntry,
+			trayOwnsPlate: shell.armedHostTool === 'paint' && preview === null && !shell.libraryOpen,
+			paintChip: paintTray.active === null ? null : { color: paintTray.active.color, shape: paintTray.active.kind === 'colour' ? 'colour' : 'material', source: paintTray.active.kind === 'finish' ? paintTileSource(paintTray.active.key, finishTileSource) : null },
+			plateKind: shell.activeWorldTool === 'walls' || shell.activeWorldTool === 'opening' || shell.activeWorldTool === 'room' || shell.activeWorldTool === 'terrace' || shell.activeWorldTool === 'roofline' ? 'ink' : shell.activeWorldTool === 'objects' ? 'objects' : shell.activeWorldTool === 'slice' ? 'slice' : null,
+			inkReading: shell.inkReading,
+			sliceMode: sliceReading.reading?.kind ?? null,
+			sliceDrawing: sliceDraw.armed,
+			onSliceLevel: () => { sliceDraw.disarm(); sliceReading.level(); },
+			onSliceDrawn: () => { sliceDraw.arm(); shell.setActiveWorldTool('slice'); },
+			onTogglePalette: () => shell.togglePalette()
+		}
+		: null));
+	const instrumentRegion = $derived.by((): RegionProps['toolbars']['instrument'] => (preview === null && contributedInstrument !== null && (contributedInstrument.presentation !== 'palette' || shell.paletteOpen)
+		? {
+			task: taskHost,
+			onClose: () => commands.closeTask(),
+			onCollapse: () => shell.setPaletteOpen(false),
+			instrument: contributedInstrument
+		}
+		: null));
+	const indexRegion = $derived.by((): RegionProps['panels']['index'] => ({
+		open: shell.indexOpen,
+		model: selectionViewView.worldIndex,
+		scope: selectionViewView.resolvedScope,
+		onScope: (scope) => shell.setWorldScope(scope),
+		onClose: () => shell.setIndexOpen(false),
+		selectionId: selectionViewView.selectedLocatorId,
+		query: shell.query,
+		onQuery: (next: string) => shell.setQuery(next),
+		onSelect: (sourceId: string) => commands.selectSource(sourceId),
+		onBringIntoView: (sourceId: string) => {
+			const target = selectionViewView.sourceWorldPoint(sourceId);
+			if (target !== null) bringIntoView(target);
+		},
+		onReveal: (id: string) => { if (id.startsWith('layout:')) toggleReveal(id.slice(id.indexOf(':', 7) + 1)); },
+		onRename: () => shell.requestCardRename(),
+		experience: experience.index
+	}));
+	const cardRegion = $derived.by((): RegionProps['panels']['card'] => ({
+		identity: preview === null && shell.cardOpen ? shownCard.identity : null,
+		facts: shownCard.facts,
+		nameWriter: shownCard.nameWriter,
+		renameRequest: shell.cardRenameTarget === null || (selection !== null && sameReference(selection.reference, shell.cardRenameTarget))
+			? shell.cardRenameRequest : 0,
+		onRenameRequestConsumed: shell.consumeCardRename,
+		writer: shownCard.writer as StageCardWriterRecord | null,
+		actions: shownCard.actions as readonly StageCardActionRecord[],
+		functions: shownCard.functions,
+		kindLink: shownCard.kindLink,
+		menu: shownCard.menu,
+		back: shownCard.back,
+		gesturing: shell.cardGesturing,
+		onClose: () => commands.closeCard(),
+		onBringIntoView: shownCard.bringIntoView,
+		onPaint: shownCard.identity !== null &&
+			!['wall', 'room', 'opening', 'light', 'artwork'].includes(
+				shownCard.identity.kind.toLowerCase()
+			)
+			? () => commands.armWorldTool('paint')
+			: null
+	}));
+	const inactiveTaskRegion = $derived.by((): RegionProps['panels']['inactiveTask'] => (preview === null && inactiveTask !== null ? { label: inactiveTask.label } : null));
+
 </script>
 
 <div class="editor-host" data-shell="living-draft">
 	{#if preview === null}
 		<EditorHead
-			{projectId}
-			projectName={boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain.name : 'Loading project'}
+			{...coreRegions.head}
 			lens={experience.lensState}
 			onLens={changeLens}
-			canDownloadSource={activeProject()}
-			onDownloadSource={downloadSourceJson}
-			onOpenSource={() => requestReplacement('source')}
-			historyUnavailableReason={historyState.undoUnavailableReason ?? 'Nothing to undo yet.'}
-			redoUnavailableReason={historyState.redoUnavailableReason ?? 'Nothing to redo.'}
-			canUndo={historyState.canUndo}
-			canRedo={historyState.canRedo}
-			onUndo={() => lifecycle.historyStep('undo')}
-			onRedo={() => lifecycle.historyStep('redo')}
-			save={headSave}
-			onReloadRemote={(offer) => void applyReloadOffer(offer)}
-			saveUnavailableReason="Conditional Save needs the cloud client; this session has none."
 			canPreview={previewAvailable}
 			onPreview={() => void previewController.open()}
 			previewUnavailableReason={currentEnvelope === null
 				? 'Preview needs an admitted project source.'
 				: 'Create an Experience in the Experience lens to Preview it.'}
-			indexOpen={shell.indexOpen}
-			onToggleIndex={() => shell.setIndexOpen(!shell.indexOpen)}
-			locationLabel={selectionViewView.locationLabel}
-			onOpenIndex={() => shell.setIndexOpen(true)}
-			{projectActionsUnavailableReason}
-			{projectActionBusy}
-			onPrepareRename={() => prepareProjectLifecycle(false)}
-			onRenameProject={renameCurrentProject}
-			onPrepareDelete={() => prepareProjectLifecycle(true)}
-			onDeleteProject={deleteCurrentProject}
-			onProjectActionComplete={finishCurrentProjectAction}
-			onProjectActionBusyChange={projectSession.setProjectActionBusy}
-			onRefreshRemoteProject={reloadLifecycleRemote}
-			find={{
-				query: shell.findQuery,
-				entries: findView.entries,
-				onQuery: (value: string) => shell.setFindQuery(value),
-				onRun: (entry: Pick<StageHeadFindEntry, 'id' | 'adapterId'>) => commands.runHeadFindEntry(entry)
-			}}
 			repairIssueCount={finishes.issues.count}
 			repairOpen={repairDrawerOpen}
 			onToggleRepair={() => (repairDrawerOpen = !repairDrawerOpen)}
@@ -2896,7 +2761,7 @@
 				onChoose={(id) => studio.chooseRoot(id)}
 				onOpenChooser={() => studio.openChooser()}
 				onNewObject={() => studio.newObjectHere()}
-				onUndo={() => lifecycle.historyStep('undo')}
+				onUndo={history.undo}
 				onBackToWorld={() => studio.backToWorld()}
 				onBackToProjects={() => studio.backToProjects()}
 				onOpenInWorld={() => studio.openInWorld()}
@@ -2905,9 +2770,8 @@
 		{/if}
 
 		<StageViewportRegion
+			{...coreRegions.viewport}
 			previewing={preview !== null}
-			{canvas}
-			{overlay}
 			experienceMarks={experience.lensState === 'experience' && evaluation !== null && !experience.lookThroughActive()
 				? {
 					evaluation,
@@ -2932,25 +2796,6 @@
 				: null}
 			lift={liftPill}
 			slice={slicePill}
-			scaleBar={experience.lensState === 'world' && evaluation?.projectionKind === 'plan-orthographic'
-				? { bar: shell.draftingScaleBar, quiet: paperVisible }
-				: null}
-			heightSheet={experience.lensState === 'world'
-				? {
-					heightMeters: shell.heightMeters,
-					ticks: shell.heightTicks,
-					pins: shell.heightPins,
-					snapIncrement: shell.heightSnapIncrement,
-					reducedMotion: shell.reducedMotion,
-					side: shell.heightSheetSide,
-					drawing: shell.task?.kind === 'layout-ink',
-					onSetHeight: shell.setHeight,
-					onAddPin: shell.addHeightPin,
-					onActiveChange: shell.setHeightPlaneActive,
-					onResetSubscribe: (onReset: () => void) => heightSheet.subscribeReset('height-sheet-control', onReset)
-				}
-				: null}
-			lookThrough={viewportLookThrough}
 			{lightCoverage}
 			pendingViewWrite={experience.pendingViewWrite}
 			onResolvePendingViewWrite={() => void experience.confirmPendingViewWrite()}
@@ -2971,27 +2816,19 @@
 					onStart: artworkInteraction.startResize
 				}
 				: null}
-			notice={experience.lensState !== 'experience' ? shell.notice : ''}
 			preview={viewportPreview}
 			previewLoading={preview !== null && viewportPreview === null}
-			{stageCursor}
-			styleCursor={stageInput.stageCursor}
-			{paperVisible}
 			homes={experience.lensState === 'experience' && adapterServices !== null && currentEnvelope !== null
 				? { services: adapterServices, snapshot: currentEnvelope }
 				: null}
-			onLaneWidth={(width) => shell.setSheetLaneWidth(width)}
 			onExperienceController={(controller: ExperienceController | null) => experience.setController(controller)}
-			onActivateDisclosure={(id) => {
-				if (facade?.activateDisclosure(id) === true) facade.notifySurfaceChange();
-			}}
-			input={viewportInput}
 			bind:stageElement={stageEl}
 			bind:throughFrameElement={throughFrameEl}
 		/>
 
 		{#snippet toolbars()}
 			<StageToolbars
+				{...coreRegions.toolbars}
 				previewing={preview !== null}
 				{paintLine}
 				viewLine={preview === null
@@ -3026,78 +2863,6 @@
 						}
 					}
 					: null}
-				show={preview === null && experience.lensState === 'experience'
-					? {
-						open: shell.showOpen,
-						mode: shell.showMode,
-						markers: shell.showMarkers,
-						frustums: shell.showFrustums,
-						paths: shell.showPaths,
-						labels: shell.showLabels,
-						offCount: shell.showOffCount,
-						hidden: lookThroughActiveNow(),
-						onToggle: () => shell.setShowOpen(!shell.showOpen),
-						onClose: () => shell.setShowOpen(false),
-						onMode: (mode) => shell.setShowMode(mode),
-						onMarkers: (value) => shell.setShowMarkers(value),
-						onFrustums: (value) => shell.setShowFrustums(value),
-						onPaths: (value) => shell.setShowPaths(value),
-						onLabels: (value) => shell.setShowLabels(value),
-						onShowAll: () => shell.showAll()
-					}
-					: null}
-				world={preview === null && experience.lensState === 'world'
-					? {
-						studio: studio.active,
-						activeTool: shell.activeWorldTool,
-						libraryOpen: shell.libraryOpen,
-						plateOpen: shell.worldPlateOpen,
-						requestedCategory: shell.libraryCategoryRequest,
-						onPlateOpen: (open: boolean) => shell.setWorldPlateOpen(open),
-						onTool: (id) => commands.armWorldTool(id),
-						onLibrary: () => (shell.libraryOpen ? closeLibrary() : commands.toggleWorldLibrary('dock')),
-						furnishOpen: shell.furnishStripOpen,
-						onFurnish: () => commands.toggleFurnishStrip(),
-						onFurnishBrowse: () => commands.browseFurnish(),
-						onObjectPick: (assetId: string) => commands.pickWorldObject(assetId),
-						onMaterialPick: look.pickMaterial,
-						finishShelf,
-						onFinishPick: (ref) => {
-							// Library opened from the Paint tray: a pick arms Paint and hands back to the tray.
-							const fromPaint = shell.armedHostTool === 'paint';
-							void finishes.pickFinish(ref);
-							if (fromPaint && shell.libraryOpen) commands.armWorldTool('paint');
-						},
-						finishTileSource,
-						finishImage: finishes.image,
-						onFinishImageImport: (file: File) => void finishes.addFromImage(file),
-						onFinishImageCancel: () => finishes.cancelImage(),
-						onFinishImageRetry: () => void finishes.retryImageUpload(),
-						onFinishImageReset: () => finishes.resetImage(),
-						lookShelf: look.libraryShelf,
-						artworkShelf: selectionViewView.scenePayload === null ? null : selectionViewView.scenePayload.artworkLibrary ?? [],
-						onArtworkPick: (entry) => { commands.selectTool(); artworkInteraction.arm(entry); },
-						onArtworkImport: (files: File[]) => { commands.selectTool(); void artworkInteraction.importFiles(files); },
-						onLookPick: look.pickLibraryEntry,
-						trayOwnsPlate: shell.armedHostTool === 'paint' && preview === null && !shell.libraryOpen,
-						paintChip: paintTray.active === null ? null : { color: paintTray.active.color, shape: paintTray.active.kind === 'colour' ? 'colour' : 'material', source: paintTray.active.kind === 'finish' ? paintTileSource(paintTray.active.key, finishTileSource) : null },
-						plateKind: shell.activeWorldTool === 'walls' || shell.activeWorldTool === 'opening' || shell.activeWorldTool === 'room' || shell.activeWorldTool === 'terrace' || shell.activeWorldTool === 'roofline' ? 'ink' : shell.activeWorldTool === 'objects' ? 'objects' : shell.activeWorldTool === 'slice' ? 'slice' : null,
-						inkReading: shell.inkReading,
-						sliceMode: sliceReading.reading?.kind ?? null,
-						sliceDrawing: sliceDraw.armed,
-						onSliceLevel: () => { sliceDraw.disarm(); sliceReading.level(); },
-						onSliceDrawn: () => { sliceDraw.arm(); shell.setActiveWorldTool('slice'); },
-						onTogglePalette: () => shell.togglePalette()
-					}
-					: null}
-				instrument={preview === null && contributedInstrument !== null && (contributedInstrument.presentation !== 'palette' || shell.paletteOpen)
-					? {
-						task: taskHost,
-						onClose: () => commands.closeTask(),
-						onCollapse: () => shell.setPaletteOpen(false),
-						instrument: contributedInstrument
-					}
-					: null}
 				experience={preview === null && experience.active !== null
 					? {
 						dock: {
@@ -3118,63 +2883,14 @@
 						guide: experience.guideOpen ? { onClose: () => experience.toggleGuide(), playback: experience.playback } : null
 					}
 					: null}
-				onLowerColumnHeight={(height) => shell.setLowerColumnHeight(height)}
 			/>
 		{/snippet}
 
 		<StagePanels
+			{...coreRegions.panels}
 			{toolbars}
-			rects={skyRects}
 			environment={adapterServices && experience.lensState === 'world' ? { look, fading: liveStageGesture || stageInput.drag?.mode === 'orbit' } : null}
 			previewing={preview !== null}
-			scrim={preview === null && shell.narrowShell && shell.indexOpen}
-			onCloseScrim={() => shell.setIndexOpen(false)}
-			index={{
-				open: shell.indexOpen,
-				model: selectionViewView.worldIndex,
-				scope: selectionViewView.resolvedScope,
-				onScope: (scope) => shell.setWorldScope(scope),
-				onClose: () => shell.setIndexOpen(false),
-				selectionId: selectionViewView.selectedLocatorId,
-				query: shell.query,
-				onQuery: (next: string) => shell.setQuery(next),
-				onSelect: (sourceId: string) => commands.selectSource(sourceId),
-				onBringIntoView: (sourceId: string) => {
-					const target = selectionViewView.sourceWorldPoint(sourceId);
-					if (target !== null) bringIntoView(target);
-				},
-				onReveal: (id: string) => { if (id.startsWith('layout:')) toggleReveal(id.slice(id.indexOf(':', 7) + 1)); },
-				onRename: () => shell.requestCardRename(),
-				experience: experience.index
-			}}
-			card={{
-				identity: preview === null && shell.cardOpen ? shownCard.identity : null,
-				facts: shownCard.facts,
-				nameWriter: shownCard.nameWriter,
-				renameRequest: shell.cardRenameTarget === null || (selection !== null && sameReference(selection.reference, shell.cardRenameTarget))
-					? shell.cardRenameRequest : 0,
-				onRenameRequestConsumed: shell.consumeCardRename,
-				writer: shownCard.writer as StageCardWriterRecord | null,
-				actions: shownCard.actions as readonly StageCardActionRecord[],
-				functions: shownCard.functions,
-				kindLink: shownCard.kindLink,
-				menu: shownCard.menu,
-				back: shownCard.back,
-				gesturing: shell.cardGesturing,
-				onClose: () => commands.closeCard(),
-				onBringIntoView: shownCard.bringIntoView,
-				onPaint: shownCard.identity !== null &&
-					!['wall', 'room', 'opening', 'light', 'artwork'].includes(
-						shownCard.identity.kind.toLowerCase()
-					)
-					? () => commands.armWorldTool('paint')
-					: null
-			}}
-			inactiveTask={preview === null && inactiveTask !== null ? { label: inactiveTask.label } : null}
-			onResumeTask={() => commands.resumeTask()}
-			onCloseTask={() => commands.closeTask()}
-			keysOpen={shell.keysOpen}
-			onCloseKeys={() => shell.setKeysOpen(false)}
 		/>
 
 		{#if shell.libraryOpen && preview === null && experience.lensState === 'world' && adapterServices !== null}
@@ -3417,98 +3133,9 @@
 
 	</div>
 
-	{#if boot.status === 'new'}
-		<div class="boot-panel" role="dialog" aria-label="Start a project">
-			<h1>Start this project</h1>
-			<p>Choose the canonical starter gallery, or begin genuinely empty.</p>
-			{#each STARTER_TEMPLATES as template (template.id)}
-				<button type="button" class="primary" onclick={() => void runReplacement('starter')}>{template.label}</button>
-			{/each}
-			<button type="button" onclick={() => void runReplacement('empty')}>Begin empty</button>
-		</div>
-	{:else if boot.status !== 'ready' && boot.status !== 'empty'}
-		<div class="boot-panel" role="status" aria-live="polite">
-			{#if boot.status === 'loading'}
-				<span class="boot-brand">Biskiq Editor</span>
-				<p class="boot-loading">Loading project…</p>
-			{:else if boot.status === 'missing'}
-				<h1>Project not found</h1>
-				<p>This project does not exist for your account.</p>
-			{:else if boot.status === 'forbidden'}
-				<h1>Sign-in required</h1>
-				<p>This project belongs to another session.</p>
-			{:else if boot.status === 'refused'}
-				<h1>Unsupported project source</h1>
-				<p>
-					{boot.reason === 'dimension-limit'
-						? LAYOUT_DIMENSION_LIMIT_MESSAGE
-						: boot.reason === 'invalid-json'
-							? 'The source JSON did not parse.'
-							: boot.reason === 'project-mismatch'
-								? 'That source belongs to another project.'
-								: 'The source is not the current document format.'}
-				</p>
-				<ul>
-					{#each boot.issues.slice(0, 5) as issue (issue.path + issue.code)}
-						<li>{issue.path}: {issue.message}</li>
-					{/each}
-				</ul>
-			{:else if boot.status === 'diagnostics'}
-				<h1>Canonical compile blocked</h1>
-				<p>The source validated, but its canonical compile has blocking issues.</p>
-				<ul>
-					{#each boot.issues.slice(0, 5) as issue (issue.path + issue.code)}
-						<li>{issue.path}: {issue.message}</li>
-					{/each}
-				</ul>
-			{:else if boot.status === 'error'}
-				<h1>Project unavailable</h1>
-				<p>{boot.message}</p>
-				{#if boot.image !== undefined && boot.image.expectedPin !== null && boot.image.savedBase !== null}
-					<input
-						bind:this={bootRepairInput}
-						type="file"
-						accept="image/*"
-						style="display:none"
-						onchange={(event) => void onBootRepairFileChosen(event)}
-					/>
-					<button
-						type="button"
-						class="primary"
-						disabled={bootRepairBusy}
-						data-boot-repair-image
-						onclick={() => {
-							if (bootRepairInput !== undefined) {
-								bootRepairInput.value = '';
-								bootRepairInput.click();
-							}
-						}}
-					>
-						{bootRepairBusy ? 'Repairing…' : 'Repair with the original file…'}
-					</button>
-					{#if bootRepairError !== null}
-						<p role="alert" data-boot-repair-error>{bootRepairError}</p>
-					{/if}
-				{/if}
-			{/if}
-			{#if transfer !== null && boot.status !== 'loading'}
-				<!-- A destination that will not load never strands the saved object. -->
-				<p>Your copy of <strong>{transfer.objectName}</strong> is saved in My Objects.</p>
-				<button type="button" onclick={() => window.location.reload()}>Try again</button>
-				<button type="button" class="primary" data-transfer-action="return" onclick={returnToObject}>Return to object</button>
-				<a href="/projects">Back to Projects</a>
-			{/if}
-		</div>
-	{/if}
+	<StageBootPanels {boot} repair={bootRepair} transferName={transfer?.objectName ?? null} {runReplacement} {returnToObject} />
+	<StageReplaceDialog {pendingReplacement} {runReplacement} cancelReplacement={projectSession.cancelReplacement} />
 
-	{#if pendingReplacement !== null}
-		<div class="boot-panel" role="alertdialog" aria-label="Replace project">
-			<h1>Replace the current project?</h1>
-			<p>This cancels pending work and clears selection and task before swapping to the new baseline.</p>
-			<button type="button" class="primary" onclick={() => void runReplacement(pendingReplacement!)}>Replace</button>
-			<button type="button" onclick={projectSession.cancelReplacement}>Cancel</button>
-		</div>
-	{/if}
 </div>
 
 <style>
@@ -3579,70 +3206,5 @@
 			--shell-touch-target: 44px;
 			--shell-head-height: 52px;
 		}
-	}
-	/* Boot, absence and replacement are dialogs, so they share the light Card
-	   surface and field grammar rather than the dark stage's forest panel. */
-	.boot-panel {
-		position: absolute;
-		z-index: 30;
-		top: 4rem;
-		left: 50%;
-		transform: translateX(-50%);
-		width: min(32rem, calc(100% - 2rem));
-		padding: 1.1rem 1.2rem 1.15rem;
-		border: 1px solid var(--shell-hairline-strong);
-		border-radius: 14px;
-		background: var(--shell-card);
-		color: var(--shell-ink);
-		box-shadow: var(--shell-shadow);
-		box-sizing: border-box;
-	}
-	.boot-brand {
-		color: var(--shell-forest-raised);
-		font-size: 0.68rem;
-		font-weight: 600;
-		letter-spacing: 0.1em;
-		text-transform: uppercase;
-	}
-	.boot-panel h1,
-	.boot-panel .boot-loading {
-		margin: 0 0 0.4rem;
-		color: var(--shell-ink);
-		font: 600 var(--shell-text-title) / 1.25 var(--shell-sans);
-		letter-spacing: -0.01em;
-	}
-	.boot-panel .boot-loading {
-		margin: 0.3rem 0 0;
-	}
-	.boot-panel p {
-		margin: 0 0 0.8rem;
-		color: var(--shell-ink-2);
-		font: var(--shell-text-body) / 1.45 var(--shell-sans);
-	}
-	.boot-panel button {
-		margin: 0 0.4rem 0.35rem 0;
-		min-height: 30px;
-		padding: 0 0.7rem;
-		border: 1px solid var(--shell-field-line-strong);
-		border-radius: 7px;
-		background: var(--shell-field);
-		color: var(--shell-ink);
-		font: 500 var(--shell-text-control) var(--shell-sans);
-		cursor: pointer;
-	}
-	.boot-panel button:hover {
-		background: var(--shell-hover);
-	}
-	.boot-panel button.primary {
-		border-color: transparent;
-		background: var(--shell-action);
-		color: var(--shell-on-action);
-	}
-	.boot-panel button.primary:hover {
-		background: var(--shell-forest-raised);
-	}
-	.boot-panel button:focus-visible {
-		outline: var(--shell-focus-ring-light);
-		outline-offset: 1px;
 	}
 </style>

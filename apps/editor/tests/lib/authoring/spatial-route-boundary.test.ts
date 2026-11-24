@@ -32,6 +32,10 @@ import {
 } from '../../helpers/import-closure';
 
 const ROUTE = path.join(EDITOR_SRC, 'routes/project/[projectId]/spatial/+page.svelte');
+const CORE_LIFECYCLE = path.join(EDITOR_LIB, 'authoring/stage/route/core-lifecycle-steps.svelte.ts');
+const CORE_REGIONS = path.join(EDITOR_LIB, 'authoring/stage/route/core-region-views.ts');
+const HISTORY = path.join(EDITOR_LIB, 'authoring/stage/route/stage-history-command.ts');
+const LISTENERS = path.join(EDITOR_LIB, 'authoring/stage/route/stage-window-listeners.ts');
 const EPOCH = path.join(EDITOR_LIB, 'authoring/stage/route/stage-project-epoch.svelte.ts');
 const ASSETS = path.join(EDITOR_LIB, 'authoring/stage/route/stage-asset-leases.svelte.ts');
 const INPUT = path.join(EDITOR_LIB, 'authoring/stage/route/stage-input.svelte.ts');
@@ -120,14 +124,21 @@ describe('spatial route composition boundary (X1)', () => {
 		expect(code).toContain('createStageProjectEpoch({');
 		expect(code).toContain('createStageAssetLeases({');
 		expect(code).toContain('stageEpoch.activate(snapshot)');
-		expect(code).toContain('stageEpoch.markTornDown()');
-		expect(code).toContain('stageEpoch.dispose()');
+		const core = stripComments(fs.readFileSync(CORE_LIFECYCLE, 'utf8'));
+		expect(core).toContain("'mark-torn-down': input.stageEpoch.markTornDown");
+		expect(core).toContain("'dispose-epoch': input.stageEpoch.dispose");
 		// U4 drops a live Finish Card gesture before delegating to the same epoch history owner.
-		expect(code).toMatch(/onUndo=\{\(\) => lifecycle\.historyStep\('undo'\)\}/);
-		expect(code).toMatch(/onRedo=\{\(\) => lifecycle\.historyStep\('redo'\)\}/);
+		const regions = stripComments(fs.readFileSync(CORE_REGIONS, 'utf8'));
+		expect(code).toContain('{...coreRegions.head}');
+		expect(regions).toContain('onUndo: input.history.undo');
+		expect(regions).toContain('onRedo: input.history.redo');
+		const history = stripComments(fs.readFileSync(HISTORY, 'utf8'));
+		expect(history).toContain("undo: () => input.lifecycle().historyStep('undo')");
+		expect(history).toContain("redo: () => input.lifecycle().historyStep('redo')");
 		expect(LIFECYCLE_ORDER.historyStep).toEqual(['appearance:cancel-card-gesture', 'core:run-history']);
 		expect(code).toMatch(/historyStep:\s*\{\s*'cancel-card-gesture': \(\) => \{ finishes\.card\.cancel\(\); \}/);
-		expect(code).toMatch(/'run-history': \(direction\) => \{\s*if \(direction === 'undo'\) void stageEpoch\.undo\(\);\s*else void stageEpoch\.redo\(\);/);
+		expect(core).toContain("'run-history': input.history.run");
+		expect(history).toMatch(/run\(direction:[\s\S]*?if \(direction === 'undo'\) void input\.epoch\.undo\(\);\s*else void input\.epoch\.redo\(\);/);
 		expect(code).toMatch(/get artworkScope\(\)\s*\{\s*return stageAssets\.artworkScope\s*;/);
 	});
 
@@ -148,7 +159,8 @@ describe('spatial route composition boundary (X1)', () => {
 		expect(code).toContain('pointerCancel: (event: PointerEvent) => stageInput.pointerCancel(event)');
 		expect(code).toContain('lostPointerCapture: (event: PointerEvent) => stageInput.lostPointerCapture(event)');
 		expect(code).toContain('wheel: (event: WheelEvent) => stageInput.wheel(event)');
-		expect(code).toContain('stageKeyboard.handleKey(event);');
+		expect(code).toMatch(/createStageWindowListeners\(\{\s*keyboard: stageKeyboard,/);
+		expect(stripComments(fs.readFileSync(LISTENERS, 'utf8'))).toContain('input.keyboard.handleKey(event);');
 	});
 
 	it('keeps no second pointer, keyboard, Unfold or Artwork gesture implementation', () => {
@@ -246,7 +258,7 @@ describe('spatial route composition boundary (X1)', () => {
 		expect(code).toContain('createStageSelectionView()');
 		expect(code).toContain('stageDockView({');
 		expect(code).toContain('stageFindView({');
-		expect(code).toContain('hostTools: shell.hostToolOverlay');
+		expect(stripComments(fs.readFileSync(CORE_REGIONS, 'utf8'))).toContain('get hostTools() { return shell.hostToolOverlay; }');
 		for (const region of ['StageProjectNotices', 'StageViewportRegion', 'StagePanels', 'StageToolbars']) {
 			expect(code.match(new RegExp(`<${region}\\b`, 'g')) ?? [], region).toHaveLength(1);
 		}

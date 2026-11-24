@@ -27,7 +27,6 @@ import {
 } from '../stage-eraser';
 import { STAGE_PAINT_TASK } from '../stage-painter';
 import { STAGE_MEASURE_TASK } from '../stage-measure';
-import { armedLightKind } from '$lib/authoring/look/light-tool.svelte';
 import type { WorldToolId } from '$lib/authoring/world-toolbar/registry';
 import type { ExperienceController } from '$lib/authoring/experience/experience-controller.svelte';
 import type { ExperienceLens } from '$lib/authoring/experience/experience-lens.svelte';
@@ -37,12 +36,10 @@ import {
 	type StageDockKey
 } from '../stage-contributions';
 import type { StageDockSlot } from '../stage-input';
-import { sliceReading } from '../slice/slice-reading.svelte';
 import type { StageShellState } from './stage-shell-state.svelte';
 import type { StageHeadFindEntry } from './stage-contribution-view';
 import { stageArmedDockId } from './stage-contribution-view';
 import type { WorldScope } from '../shell/world-index-model';
-import { isStudioWorldTool } from '../../studio/studio-model';
 
 export type StageShellCommandInput = {
 	readonly facade: () => StageFacade | null;
@@ -75,7 +72,9 @@ export type StageShellCommandInput = {
 	};
 	readonly showExperienceWelcome: () => void;
 	/** End a drawn gesture when Slice is re-armed as Level. */
-	readonly disarmSliceDraw?: () => void;
+	readonly levelSlice: () => void;
+	readonly lightArmed: (projectId: string) => boolean;
+	readonly isStudioTool: (id: WorldToolId) => boolean;
 	/**
 	 * Object Studio scopes the tools to Select, Measure, Eraser and Objects. Read live:
 	 * a refused arm says so in words and changes nothing, so a shortcut cannot reach a
@@ -415,8 +414,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 			shell.setLibraryOpen(false);
 			shell.setActiveWorldTool('slice');
 			shell.setPaletteOpen(false);
-			input.disarmSliceDraw?.();
-			sliceReading.level();
+			input.levelSlice();
 			input.notice('');
 			return;
 		}
@@ -453,7 +451,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 
 	/** The Living Draft row's one bridge into the existing dock/host controllers. */
 	function armWorldTool(id: WorldToolId): void {
-		if (studioRefuses(isStudioWorldTool(id))) return;
+		if (studioRefuses(input.isStudioTool(id))) return;
 		// One tool strip at a time: any tool press folds Furnish's quick strip.
 		shell.setFurnishStripOpen(false);
 		input.cancelArtwork();
@@ -522,8 +520,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 			closeTask();
 			shell.setActiveWorldTool('slice');
 			shell.setPaletteOpen(false);
-			input.disarmSliceDraw?.();
-			sliceReading.level();
+			input.levelSlice();
 			input.notice('');
 			return;
 		}
@@ -657,7 +654,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 		// The light arm is session fact in the adapter: it survives the install's
 		// task close, and is already cleared when a glyph selects and disarms.
 		const lightProjectId = stage.snapshot().acceptedRevision.projectId;
-		if (armed === null && armedLightKind(lightProjectId) !== null) {
+		if (armed === null && input.lightArmed(lightProjectId)) {
 			const lightTask = stage
 				.tasks()
 				.find((entry) => entry.id === 'light-place' && entry.adapterId === 'light');

@@ -35,7 +35,9 @@ describe('the reading ends with the project and with the lens', () => {
 		expect(route).toMatch(/function resetLayoutReadings\(\): void \{[\s\S]*?wallFace\.clear\(\);\s*clearProjectReadings\(\);/);
 		expect(route).toContain('resetPresentation: { reset: resetLayoutReadings }');
 		expect(route).toContain("leaveProject: { 'clear-readings': clearProjectReadings }");
-		expect(route).toContain('$effect(() => () => lifecycle.leaveProject())');
+		expect(route).toContain('installLeaveProject(lifecycleCell);');
+		const lifecycle = read('src/lib/authoring/stage/route/core-lifecycle-steps.svelte.ts');
+		expect(lifecycle).toContain('$effect(() => () => cell.get().leaveProject())');
 		expect(LIFECYCLE_ORDER.resetPresentation).toContain('layout-readings:reset');
 		expect(LIFECYCLE_ORDER.leaveProject).toContain('layout-readings:clear-readings');
 	});

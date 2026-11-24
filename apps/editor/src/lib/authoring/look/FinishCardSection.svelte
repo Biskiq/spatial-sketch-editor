@@ -72,9 +72,9 @@
 
 	$effect(() => services.stage.onAdaptersChanged(() => (revision += 1)));
 
-	const card = $derived(services.finishes?.current?.card ?? null);
-	const editor = $derived(services.finishes?.current?.editor ?? null);
-	const issues = $derived(services.finishes?.current?.issues ?? null);
+	const card = $derived(services.finishCard?.current?.card ?? null);
+	const editor = $derived(services.finishCard?.current?.editor ?? null);
+	const issues = $derived(services.finishCard?.current?.issues ?? null);
 	const partsKey = $derived(parts.map((part) => finishCardTargetKey(part.target)).join('|'));
 
 	let repairFileInput = $state<HTMLInputElement>();
@@ -93,7 +93,7 @@
 			}
 			return;
 		}
-		void services.finishes?.current?.runIssueAction(issue, kind, target);
+		void services.finishCard?.current?.runIssueAction(issue, kind, target);
 	}
 
 	async function onRepairFileChosen(event: Event): Promise<void> {
@@ -102,7 +102,7 @@
 		const pending = pendingFileAction;
 		pendingFileAction = null;
 		if (file === undefined || pending === null) return;
-		await services.finishes?.current?.runIssueAction(pending.issue, pending.kind, pending.target, file);
+		await services.finishCard?.current?.runIssueAction(pending.issue, pending.kind, pending.target, file);
 		revision += 1;
 	}
 
@@ -197,7 +197,7 @@
 			onAlign(openPart.target);
 			return;
 		}
-		const authoring = services.finishes?.current ?? null;
+		const authoring = services.finishCard?.current ?? null;
 		if (authoring === null) return;
 		const res = authoring.requestAlign(openPart.target, openPart.place, (event?.currentTarget as HTMLElement | null) ?? null);
 		if (!res.ok && res.message) {
@@ -262,7 +262,7 @@
 	 * Without a route Library (a harness) the inline picker stays the fallback.
 	 */
 	function openSwap(): void {
-		const authoring = services.finishes?.current ?? null;
+		const authoring = services.finishCard?.current ?? null;
 		if (authoring !== null && openPart !== null && authoring.requestLibrarySwap(openPart.target, openPart.place)) {
 			swapOpen = false;
 			return;

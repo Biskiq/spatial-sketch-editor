@@ -1,3 +1,4 @@
+import type { BootState } from '../stage/boot-state';
 import type { StageHistoryCommandOutcome } from '../stage/host-acceptance';
 import type { StageFacade } from '../stage/stage-facade';
 import type { StageLens } from '../stage/stage-session';
@@ -65,4 +66,38 @@ export type EscapeContext = {
 	armedHostTool: string | null;
 	toolbarFocus: boolean;
 	claimed: boolean;
+};
+
+/** Set once after the owners register their lifecycle steps. */
+export function late<Value>() {
+	let cell: { readonly value: Value } | undefined;
+	return {
+		get(): Value {
+			if (cell === undefined) throw new Error('Workspace lifecycle is not installed');
+			return cell.value;
+		},
+		set(value: Value): void {
+			if (cell !== undefined) throw new Error('Workspace lifecycle is already installed');
+			cell = { value };
+		}
+	};
+}
+
+
+export type StageBootPanelView = {
+	readonly boot: BootState;
+	readonly repair: {
+		readonly busy: boolean;
+		readonly error: string | null;
+		onFileChosen(event: Event): Promise<void>;
+	};
+	readonly transferName: string | null;
+	readonly runReplacement: (kind: 'starter' | 'empty') => Promise<void>;
+	readonly returnToObject: () => void;
+};
+
+export type StageReplaceDialogView = {
+	readonly pendingReplacement: 'starter' | 'empty' | 'source' | null;
+	readonly runReplacement: (kind: 'starter' | 'empty' | 'source') => Promise<void>;
+	readonly cancelReplacement: () => void;
 };

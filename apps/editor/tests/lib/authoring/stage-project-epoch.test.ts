@@ -213,17 +213,19 @@ function harness() {
 			return facade as unknown as StageFacade;
 		},
 		adapterFactories: [(() => ({})) as unknown as StageAdapterFactory],
-		interruptInput: () => log.push('interrupt'),
-		resetFocus: () => {
-			log.push('focus.reset');
-			log.push(`services:${controller?.services === null ? 'null' : 'set'}`);
-		},
-		resetPresentationBeforeSwap: () => log.push('presentation.before'),
-		resetPresentation: () => log.push('presentation.reset'),
-		onFacadeMounted: () => log.push('facade.bind'),
-		onAdaptersChanged: () => log.push('adapters.changed'),
-		onAccepted: () => log.push('accepted'),
-		onHistoryInstalled: (outcome) => log.push(`history.installed:${outcome.selectionClearedReason}`),
+		lifecycle: () => ({
+			interruptForReplacement: () => log.push('interrupt'),
+			resetFocus: () => {
+				log.push('focus.reset');
+				log.push(`services:${controller?.services === null ? 'null' : 'set'}`);
+			},
+			resetPresentationBeforeSwap: () => log.push('presentation.before'),
+			resetPresentation: () => log.push('presentation.reset'),
+			facadeMounted: () => log.push('facade.bind'),
+			adaptersChanged: () => log.push('adapters.changed'),
+			accepted: () => log.push('accepted'),
+			historyInstalled: (outcome) => log.push(`history.installed:${outcome.selectionClearedReason}`)
+		}),
 		onNotice: (message) => log.push(`notice:${message}`),
 		refresh: () => log.push('refresh'),
 		isActiveProject: () => true,
@@ -231,7 +233,7 @@ function harness() {
 			log.push(`acceptance${acceptances.length + 1}:create`);
 			return fakeAcceptance(acceptances.length + 1) as unknown as StageAcceptanceHost;
 		},
-		lightInspection: () => inspection,
+		ports: { lightInspection: () => inspection },
 		createServices: () => {
 			log.push('services.create');
 			return {
