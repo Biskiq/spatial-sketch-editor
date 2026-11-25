@@ -17,16 +17,9 @@
  * timing, no benchmark, no profiler.
  */
 import { describe, expect, it } from 'vitest';
-import {
-	createLayoutCompileSession,
-	createPlanRetainer,
-	evaluateLayoutPlan,
-	planFragmentOf,
-	planMembershipOf,
-	setWorkObserver,
-	type CompiledLayoutGeometry,
-	type PlanEvaluationResult
-} from '@portfolio/layout-core';
+import { createLayoutCompileSession, type CompiledLayoutGeometry } from '@portfolio/layout-core/geometry';
+import { createPlanRetainer, evaluateLayoutPlan, planFragmentOf, planMembershipOf, type PlanEvaluationResult } from '@portfolio/layout-core/world';
+import { setWorkObserver } from '@portfolio/layout-core/kernel';
 import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from './__fixtures__/layout-scale-fixtures';
 
 /** Run `work` with a counting observer, and return the counts it produced. */

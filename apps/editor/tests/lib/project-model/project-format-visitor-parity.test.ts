@@ -20,13 +20,14 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core/geometry';
 import { validateProjectEnvelope } from '@portfolio/project-model/units';
-import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core/wall';
 import { prepareUnitRuntime } from '@portfolio/project-model/units';
 import { composeColdReleaseBundle } from '$lib/visitor/visitor-cold-runtime';
-import { planFirstEnclosureCreation, planCreateCircularRoom } from '@portfolio/layout-core';
-import { LAYOUT_WALL_FIRST_FORMAT_VERSION } from '@portfolio/layout-core';
+import { planFirstEnclosureCreation } from '@portfolio/layout-core/wall';
+import { planCreateCircularRoom } from '@portfolio/layout-core/room';
+import { LAYOUT_WALL_FIRST_FORMAT_VERSION } from '@portfolio/layout-core/wall';
 import { createUnitProject } from '../authoring/__fixtures__/unit-envelope-fixtures';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 

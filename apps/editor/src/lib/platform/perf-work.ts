@@ -12,7 +12,7 @@
  * Without the harness flag `installPerfWorkObserver` returns immediately and no
  * observer exists, so the ordinary build does no counting.
  */
-import { setWorkObserver } from '@portfolio/layout-core';
+import { setWorkObserver } from '@portfolio/layout-core/kernel';
 
 import { perfMarksEnabled } from './perf-marks';
 

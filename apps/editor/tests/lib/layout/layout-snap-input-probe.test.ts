@@ -17,7 +17,8 @@
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { compileWallFirstLayoutGeometry, wallSnapIndex } from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core/geometry';
+import { wallSnapIndex } from '@portfolio/layout-core/plan';
 import { P23B_MATRIX_SPECS, buildP23BMatrixFixture } from './__fixtures__/p23b-fixtures';
 
 type ProbeGlobal = {

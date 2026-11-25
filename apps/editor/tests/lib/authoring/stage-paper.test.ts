@@ -31,22 +31,11 @@ import {
 } from 'three';
 import { LineSegments2 } from 'three/addons/lines/webgpu/LineSegments2.js';
 import { Line2NodeMaterial } from 'three/webgpu';
-import {
-	compileWallFirstLayoutGeometry,
-	createEmptyWallFirstLayoutDocument,
-	eligiblePlanFragments,
-	evaluateLayoutPlan,
-	planCreateWallFirstOpening,
-	planWallChain,
-	setWorkObserver,
-	type CompiledLayoutGeometry,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type PlanEvaluation,
-	type PlanFragment,
-	type PlanParameters
-} from '@portfolio/layout-core';
-import type { SceneDocument, SceneEntity } from '$lib/content/scene';
+import { compileWallFirstLayoutGeometry, type CompiledLayoutGeometry, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { createEmptyWallFirstLayoutDocument, planCreateWallFirstOpening, planWallChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import { eligiblePlanFragments, evaluateLayoutPlan, type PlanEvaluation, type PlanFragment, type PlanParameters } from '@portfolio/layout-core/world';
+import { setWorkObserver } from '@portfolio/layout-core/kernel';
+import type { SceneDocument, SceneEntity } from '@portfolio/project-model/scene';
 import {
 	buildPlanSceneFootprintProjection,
 	planSceneFootprintsFor,

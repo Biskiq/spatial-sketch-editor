@@ -20,17 +20,11 @@ import { readFile } from 'node:fs/promises';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { getAssetById } from '$lib/content/assets';
-import {
-	createEmptyWallFirstLayoutDocument,
-	nextLayoutPresetObjectId,
-	planCommitLayoutObjectPreset,
-	planCreateWallFirstOpening,
-	planWallChain,
-	type LayoutDocumentWallFirst
-} from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument, planCommitLayoutObjectPreset, planCreateWallFirstOpening, planWallChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import { nextLayoutPresetObjectId } from '@portfolio/layout-core/plan';
 import { creatorModelResourceEntry } from '@portfolio/project-model/scene-planning';
-import type { SceneEntity } from '@portfolio/project-model';
-import type { Vec3 } from '@portfolio/camera-core';
+import type { SceneEntity } from '@portfolio/project-model/scene';
+import type { Vec3 } from '@portfolio/camera-core/camera';
 import { admitSource } from '$lib/authoring/stage/source-admission';
 import { createStageSession } from '$lib/authoring/stage/stage-session';
 import { createStageFacade, type StageFacade } from '$lib/authoring/stage/stage-facade';

@@ -7,9 +7,9 @@
  * not as a post-filter that could discard a valid hit.
  */
 import { Plane, Ray, Vector3, type Object3D } from 'three';
-import { pointInPolygon, type LayoutVec2 } from '@portfolio/layout-core';
-import type { PointerRay } from '@portfolio/camera-core';
-import type { RuntimeScene } from '@portfolio/project-model';
+import { pointInPolygon, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import type { PointerRay } from '@portfolio/camera-core/viewport';
+import type { RuntimeScene } from '@portfolio/project-model/scene';
 import type { PickOptions, ScenePickSource, SceneRenderedHit } from '../../scene/scene-pick-source';
 import { sliceHides, type ResolvedSlice } from './slice-cut';
 import { cutawayHides } from '../cutaway/cutaway-pick';

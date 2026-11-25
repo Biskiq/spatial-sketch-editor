@@ -5,24 +5,9 @@
  * `layout-region-planners.test.ts`.
  */
 import { describe, expect, it } from 'vitest';
-import {
-	compileWallFirstLayoutGeometryFresh,
-	createEmptyWallFirstLayoutDocument,
-	floorSupportSnapshotOf,
-	overheadSourcesOf,
-	overheadSupportSnapshotOf,
-	planCreateRegion,
-	planMoveRegion,
-	planRemoveRegion,
-	planRoomMetadataUpdate,
-	planSetRegionElevation,
-	planWallChain,
-	queryFloorSupports,
-	queryOverheadSupports,
-	regionsOverSpace,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2
-} from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometryFresh, overheadSourcesOf, regionsOverSpace, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { createEmptyWallFirstLayoutDocument, planRoomMetadataUpdate, planWallChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import { floorSupportSnapshotOf, overheadSupportSnapshotOf, planCreateRegion, planMoveRegion, planRemoveRegion, planSetRegionElevation, queryFloorSupports, queryOverheadSupports } from '@portfolio/layout-core/room';
 import { captureFor, freshCapture } from './__fixtures__/layout-id-capture';
 
 const RECT: LayoutVec2[] = [[0, 0], [7, 0], [7, 6], [0, 6]];

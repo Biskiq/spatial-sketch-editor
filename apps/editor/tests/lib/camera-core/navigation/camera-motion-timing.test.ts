@@ -7,14 +7,7 @@
  * `camera-motion.test.ts`; the motion core stays there.
  */
 import { describe, expect, it } from 'vitest';
-import {
-  CAMERA_MOTION_TIMING,
-  cameraApplyEasing,
-  cameraInverseEasing,
-  createCameraMotion,
-  resolveCameraMotionDuration,
-  type CameraRoute
-} from '@portfolio/camera-core';
+import { CAMERA_MOTION_TIMING, cameraApplyEasing, cameraInverseEasing, createCameraMotion, resolveCameraMotionDuration, type CameraRoute } from '@portfolio/camera-core/camera';
 import { type CameraEasing } from '$lib/types/scene';
 
 describe('Phase 3.7 easing library', () => {

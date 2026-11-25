@@ -21,21 +21,9 @@
  * query runs against it.
  */
 import { describe, expect, it } from 'vitest';
-import {
-	FLOOR_SUPPORT_TOLERANCES,
-	FLOOR_SUPPORT_UP_NORMAL,
-	chooseFloorSupport,
-	compileWallFirstLayoutGeometry,
-	floorSupportSnapshotOf,
-	planWallChain,
-	polygonContainsWithTolerance,
-	queryFloorSupports,
-	type FloorSupportCandidate,
-	type FloorSupportQueryPolygon,
-	type FloorSupportSnapshot,
-	type FloorSupportWitness,
-	type LayoutDocumentWallFirst
-} from '@portfolio/layout-core';
+import { FLOOR_SUPPORT_TOLERANCES, FLOOR_SUPPORT_UP_NORMAL, chooseFloorSupport, floorSupportSnapshotOf, polygonContainsWithTolerance, queryFloorSupports, type FloorSupportCandidate, type FloorSupportQueryPolygon, type FloorSupportSnapshot, type FloorSupportWitness } from '@portfolio/layout-core/room';
+import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core/geometry';
+import { planWallChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 import { baseDocument, p } from '../../helpers/angled-plan-fixtures';
 import { freshCapture } from './__fixtures__/layout-id-capture';
 

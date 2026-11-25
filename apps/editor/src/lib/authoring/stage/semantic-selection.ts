@@ -1,6 +1,7 @@
 /** One domain-neutral, ordered selection value. Layout fragments are optional qualifications. */
-import { compareReferences, resolveReference, immutableF4Data, type ResolvedSubject, type SemanticReference } from '@portfolio/project-model';
-import type { PlanSourceRef } from '@portfolio/layout-core';
+import { compareReferences, resolveReference, type ResolvedSubject, type SemanticReference } from '@portfolio/project-model/references';
+import { immutableF4Data } from '@portfolio/project-model/f4';
+import type { PlanSourceRef } from '@portfolio/layout-core/world';
 import type { UnitDomain } from '@portfolio/project-model/units';
 import type { StageReadSnapshot } from './accepted-read';
 

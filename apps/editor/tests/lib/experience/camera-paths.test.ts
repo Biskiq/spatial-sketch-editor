@@ -14,13 +14,9 @@
  */
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-import {
-	compileWallFirstLayoutGeometry,
-	createEmptyWallFirstLayoutDocument,
-	planCreateWallFirstOpening,
-	planWallChain,
-	routeCrossesWall
-} from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core/geometry';
+import { createEmptyWallFirstLayoutDocument, planCreateWallFirstOpening, planWallChain } from '@portfolio/layout-core/wall';
+import { routeCrossesWall } from '@portfolio/layout-core/world';
 import {
 	computeEnvelopeSourceContentId,
 	createUnitAcceptanceProfile,
@@ -50,7 +46,7 @@ import {
 	resolvePathAnchorInsertion,
 	resolvePathOccurrence
 } from '$lib/authoring/experience/experience-paths';
-import type { CameraGraph } from '@portfolio/camera-core';
+import type { CameraGraph } from '@portfolio/camera-core/navigation';
 import { buildXFixture } from './__fixtures__/x-fixtures';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 

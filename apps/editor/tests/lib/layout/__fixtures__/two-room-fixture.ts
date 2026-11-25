@@ -5,14 +5,8 @@
  * from "everything", no door portal is mounted, and every Room floor is a plain
  * rectangle, so a point inside one is a point a person could stand at.
  */
-import {
-	compileWallFirstLayoutGeometry,
-	createEmptyWallFirstLayoutDocument,
-	planWallChain,
-	type CompiledLayoutGeometry,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2
-} from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry, type CompiledLayoutGeometry, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { createEmptyWallFirstLayoutDocument, planWallChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 
 import { captureFor } from './layout-id-capture';
 

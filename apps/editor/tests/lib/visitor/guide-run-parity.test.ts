@@ -10,7 +10,7 @@
  * the visitor-safe map says it does, and that the run ends at the map's total.
  */
 import { describe, expect, it } from 'vitest';
-import { buildGuideMovementMap } from '@portfolio/camera-core';
+import { buildGuideMovementMap } from '@portfolio/camera-core/navigation';
 import {
 	computeEnvelopeSourceContentId,
 	createExperienceRun,

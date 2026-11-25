@@ -6,7 +6,7 @@
  * type-only, dynamic and CSS imports — plus the repo's own aliases:
  *
  *   `$lib/…`                     → `apps/editor/src/lib/…`
- *   `@portfolio/<pkg>`           → `packages/<pkg>/src/index.ts`
+ *   `@portfolio/<pkg>/<family>`  → the family entry in the package's `exports`
  *
  * Bare package specifiers (`three`, `svelte`, `@threlte/…`, `$app/…`, …) are
  * externals and never enter the closure, which is what makes the closure a
@@ -28,12 +28,21 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { parse } from 'svelte/compiler';
 import ts from 'typescript';
 
-/** Repository root, derived from this file's own location (never cwd). */
-export const REPO_ROOT = fileURLToPath(new URL('../../../..', import.meta.url));
+/** Repository root, found from the working tree so root Vitest projects and lanes agree. */
+function findRepoRoot(start = process.cwd()): string {
+	let dir = path.resolve(start);
+	while (true) {
+		if (fs.existsSync(path.join(dir, 'apps/editor')) && fs.existsSync(path.join(dir, 'packages'))) return dir;
+		const parent = path.dirname(dir);
+		if (parent === dir) throw new Error(`repository root not found from ${start}`);
+		dir = parent;
+	}
+}
+
+export const REPO_ROOT = findRepoRoot();
 /** `apps/editor` */
 export const EDITOR_ROOT = path.join(REPO_ROOT, 'apps/editor');
 /** `apps/editor/src` */
@@ -113,8 +122,16 @@ export function resolveSpecifier(
 		return resolveFile(path.resolve(path.dirname(importer), target));
 	}
 	if (target.startsWith('@portfolio/')) {
-		const packageName = target.slice('@portfolio/'.length).split('/')[0] ?? '';
-		return resolveFile(path.join(packagesRoot, packageName, 'src/index.ts'));
+		const rest = target.slice('@portfolio/'.length);
+		const slash = rest.indexOf('/');
+		const packageName = slash === -1 ? rest : rest.slice(0, slash);
+		const subpath = slash === -1 ? '.' : `./${rest.slice(slash + 1)}`;
+		const manifest = JSON.parse(fs.readFileSync(path.join(packagesRoot, packageName, 'package.json'), 'utf8')) as {
+			exports?: Record<string, string | { types?: string; default?: string }>;
+		};
+		const entry = manifest.exports?.[subpath];
+		const relative = typeof entry === 'string' ? entry : entry?.types ?? entry?.default;
+		return relative ? resolveFile(path.join(packagesRoot, packageName, relative)) : null;
 	}
 	return null;
 }

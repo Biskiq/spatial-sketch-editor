@@ -15,7 +15,7 @@
 	import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 	import ShellIcon from '../stage/shell/ShellIcon.svelte';
 	import ExperienceSnapshot from './ExperienceSnapshot.svelte';
-	import { CAMERA_FOV } from '@portfolio/camera-core';
+	import { CAMERA_FOV } from '@portfolio/camera-core/camera';
 	import { viewTilt, type AdvancedViewFraming } from './experience-view-edit';
 	import { experienceHomes } from './experience-homes';
 	import { lensMillimetres } from './experience-model';

@@ -16,21 +16,14 @@
 import { describe, expect, it } from 'vitest';
 
 import { createAcceptanceCoordinator } from '$lib/authoring/f4/acceptance-coordinator';
-import {
-	createPlannerRegistry,
-	type AcceptanceSourceAdapter,
-	type AcceptedRevision,
-	type AcceptedSnapshot,
-	type AuthoringIntent,
-	type DomainPlanner,
-	type PlannerRegistry
-} from '@portfolio/project-model';
+import { createPlannerRegistry, type AcceptanceSourceAdapter, type AcceptedSnapshot, type AuthoringIntent, type DomainPlanner, type PlannerRegistry } from '@portfolio/project-model/f4';
+import type { AcceptedRevision } from '@portfolio/project-model/references';
 import {
 	createUnitPlannerRegistry,
 	prepareUnitIntent,
 	validateUnitTargets
 } from '@portfolio/project-model/f4/unit-acceptance';
-import type { ReferenceReadContext, SemanticReference } from '@portfolio/project-model';
+import type { ReferenceReadContext, SemanticReference } from '@portfolio/project-model/references';
 import { createUnitReadContext } from '@portfolio/project-model/references/unit-resolution';
 import {
 	CAMERA_UNIT_FORMAT_VERSION,

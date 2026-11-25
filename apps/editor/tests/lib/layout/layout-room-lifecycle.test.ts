@@ -25,21 +25,12 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { extractBoundaryCandidateFaces } from '@portfolio/layout-core';
-import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core';
-import { validateWallFirstLayoutDocument } from '@portfolio/layout-core';
-import type {
-	LayoutDocumentWallFirst,
-	LayoutWallFirstRoom
-} from '@portfolio/layout-core';
-import type { LayoutVec2 } from '@portfolio/layout-core';
-import {
-	planDeleteWall as planDeleteWallWithCapture,
-	planRemoveRoom as planRemoveRoomWithCapture,
-	planRoomMetadataUpdate,
-	roomExclusiveBoundaryWallIds,
-	type WallFirstOpPlan
-} from '@portfolio/layout-core';
+import { extractBoundaryCandidateFaces } from '@portfolio/layout-core/geometry';
+import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core/geometry';
+import { validateWallFirstLayoutDocument } from '@portfolio/layout-core/wall';
+import type { LayoutDocumentWallFirst, LayoutWallFirstRoom } from '@portfolio/layout-core/wall';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { planDeleteWall as planDeleteWallWithCapture, planRemoveRoom as planRemoveRoomWithCapture, planRoomMetadataUpdate, roomExclusiveBoundaryWallIds, type WallFirstOpPlan } from '@portfolio/layout-core/wall';
 import { freshCapture } from './__fixtures__/layout-id-capture';
 
 /** One captured Room removal: every call is a new edit with a new nonce. */

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { facePoseFromBounds } from '@portfolio/camera-core';
+import { facePoseFromBounds } from '@portfolio/camera-core/viewport';
 import {
 	ALIGN_CARD_COVER_PX,
 	ALIGN_INDEX_LANE_PX,

@@ -43,18 +43,8 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-	clearWallSamplingObserverForTest,
-	createWallSamplingDerivation,
-	preflightWallFirstArchitectureCandidate,
-	serializeWallFirstLayoutDocument,
-	setWallSamplingObserverForTest,
-	wallCenterlineSamples,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type SampledSegment,
-	type WallFirstArchitectureProposalIntent
-} from '@portfolio/layout-core';
+import { clearWallSamplingObserverForTest, createWallSamplingDerivation, preflightWallFirstArchitectureCandidate, serializeWallFirstLayoutDocument, setWallSamplingObserverForTest, wallCenterlineSamples, type LayoutDocumentWallFirst, type WallFirstArchitectureProposalIntent } from '@portfolio/layout-core/wall';
+import type { LayoutVec2, SampledSegment } from '@portfolio/layout-core/geometry';
 import {
 	buildP23BCorrectnessFixture,
 	buildP23BMatrixFixture,

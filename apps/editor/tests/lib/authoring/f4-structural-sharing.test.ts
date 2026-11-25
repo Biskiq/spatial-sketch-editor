@@ -22,7 +22,8 @@ import {
 	proofIntent,
 	sceneEntityReference
 } from './__fixtures__/f4-current-source-fixtures';
-import type { AcceptanceSourceAdapter, AcceptedRevision, DomainPlanner } from '@portfolio/project-model';
+import type { AcceptanceSourceAdapter, DomainPlanner } from '@portfolio/project-model/f4';
+import type { AcceptedRevision } from '@portfolio/project-model/references';
 import {
 	computeEnvelopeSourceContentId,
 	createUnitAcceptanceAdapter,

@@ -25,7 +25,7 @@
  * It is framework-free and makes no document, so the whole lifecycle can be
  * tested in the node environment.
  */
-import type { Vec3 } from '@portfolio/camera-core';
+import type { Vec3 } from '@portfolio/camera-core/camera';
 import type { StageResizeCursor } from './stage-glyphs';
 
 export type StageHandleKind = 'ray' | 'point' | 'ring' | 'track';

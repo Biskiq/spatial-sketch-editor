@@ -1,4 +1,4 @@
-import type { ViewportEvaluation } from '@portfolio/camera-core';
+import type { ViewportEvaluation } from '@portfolio/camera-core/viewport';
 /**
  * R217.S29 — reactive fake homes for the Stage path overlay (tests only).
  *
@@ -9,7 +9,7 @@ import type { ViewportEvaluation } from '@portfolio/camera-core';
  */
 import { vi } from 'vitest';
 import type { Experience, ExperienceGuide, ExperienceStop } from '@portfolio/project-model/units';
-import type { Vec3 } from '@portfolio/camera-core';
+import type { Vec3 } from '@portfolio/camera-core/camera';
 import type { ExperienceController } from '$lib/authoring/experience/experience-controller.svelte';
 import type { ExperienceHomes } from '$lib/authoring/experience/experience-homes';
 import type {

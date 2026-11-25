@@ -7,7 +7,7 @@
  * session, presenter and projection reads Lights through this one leaf; none of
  * it holds state, opens a lease or writes.
  */
-import type { SceneEntity, SceneLightEntity, Vec3 } from '@portfolio/project-model';
+import type { SceneEntity, SceneLightEntity, Vec3 } from '@portfolio/project-model/scene';
 import type {
 	StageAdapterContext,
 	StageReadSnapshot

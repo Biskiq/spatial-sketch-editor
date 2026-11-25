@@ -19,7 +19,7 @@ import {
 	formLibraryContentId,
 	type FormLibraryPayload
 } from '@portfolio/project-model/library';
-import type { SceneFormEntity } from '@portfolio/project-model';
+import type { SceneFormEntity } from '@portfolio/project-model/scene';
 
 import {
 	FormLibraryClientError,

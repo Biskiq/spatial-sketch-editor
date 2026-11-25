@@ -14,24 +14,8 @@
  * 4. a refusal writes nothing: every planner returns without a candidate.
  */
 import { describe, expect, it } from 'vitest';
-import {
-	MAX_LAYOUT_DIMENSION_METERS,
-	LAYOUT_DIMENSION_LIMIT_MESSAGE,
-	createEmptyWallFirstLayoutDocument,
-	planConvertWallToCurve,
-	planCreateWallFirstOpening,
-	planExactJunctionMove,
-	planExactRectangleDimensions,
-	planExactWallHeight,
-	planExactWallLength,
-	planExactWallThickness,
-	planMoveWallCurveKnot,
-	planUpdateWallFirstOpening,
-	planWallChain,
-	validateWallFirstLayoutDocument,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2
-} from '@portfolio/layout-core';
+import { MAX_LAYOUT_DIMENSION_METERS, LAYOUT_DIMENSION_LIMIT_MESSAGE, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { createEmptyWallFirstLayoutDocument, planConvertWallToCurve, planCreateWallFirstOpening, planExactJunctionMove, planExactRectangleDimensions, planExactWallHeight, planExactWallLength, planExactWallThickness, planMoveWallCurveKnot, planUpdateWallFirstOpening, planWallChain, validateWallFirstLayoutDocument, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 import { validateProjectEnvelope } from '@portfolio/project-model/units';
 import { admitSource } from '$lib/authoring/stage/source-admission';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';

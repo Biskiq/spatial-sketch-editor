@@ -16,7 +16,7 @@ import {
 } from '$lib/authoring/look/finish-editor.svelte';
 import { materialTreatmentFacts } from '$lib/content/material-presentation';
 import { getMaterial, materialById } from '$lib/content/materials';
-import type { MaterialId } from '@portfolio/project-model';
+import type { MaterialId } from '@portfolio/project-model/scene';
 
 const facts = materialTreatmentFacts((id: MaterialId) => (materialById.has(id) ? getMaterial(id).label : id));
 const emptyRecipes = new Map();

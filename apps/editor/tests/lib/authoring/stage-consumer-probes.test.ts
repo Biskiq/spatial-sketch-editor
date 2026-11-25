@@ -26,7 +26,7 @@
  * module.
  */
 import { describe, expect, it } from 'vitest';
-import { VIEWPORT_READING_TRANSITION_SECONDS, type ViewportRect } from '@portfolio/camera-core';
+import { VIEWPORT_READING_TRANSITION_SECONDS, type ViewportRect } from '@portfolio/camera-core/viewport';
 import {
 	admitSource,
 	type AdmissionContext,

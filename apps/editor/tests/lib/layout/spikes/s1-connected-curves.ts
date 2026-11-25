@@ -1,32 +1,8 @@
 /** S1 fixture operations. The Round fact and operation staging live only here. */
-import {
-	buildClosedWallCircleCenterline,
-	buildCorrespondenceComponents,
-	compileWallFirstLayoutGeometry,
-	createAuthoringRoomAllocator,
-	createEmptyWallFirstLayoutDocument,
-	extractBoundaryCandidateFaces,
-	hasBlockingLayoutIssues,
-	interiorWitness,
-	mintLayoutIdCapture,
-	planCreateCircularRoom,
-	planDeleteWall,
-	planWallChain,
-	planWallSplit,
-	reconcileRooms,
-	resolveWallCurveSplit,
-	roomBoundaryPolygon,
-	validateWallFirstLayoutDocument,
-	validateWallFirstOpeningSet,
-	validateWallFirstPortalRelations,
-	validateWallFirstTopology,
-	wallCenterlineCubics,
-	wallCubicChain,
-	type LayoutDocumentWallFirst as Layout,
-	type LayoutVec2,
-	type LayoutWall,
-	type OrientedWallRef
-} from '@portfolio/layout-core';
+import { buildClosedWallCircleCenterline, createAuthoringRoomAllocator, createEmptyWallFirstLayoutDocument, planDeleteWall, planWallChain, planWallSplit, resolveWallCurveSplit, validateWallFirstLayoutDocument, validateWallFirstOpeningSet, validateWallFirstPortalRelations, validateWallFirstTopology, wallCenterlineCubics, wallCubicChain, type LayoutDocumentWallFirst as Layout, type LayoutWall, type OrientedWallRef } from '@portfolio/layout-core/wall';
+import { buildCorrespondenceComponents, interiorWitness, planCreateCircularRoom, reconcileRooms, roomBoundaryPolygon } from '@portfolio/layout-core/room';
+import { compileWallFirstLayoutGeometry, extractBoundaryCandidateFaces, hasBlockingLayoutIssues, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { mintLayoutIdCapture } from '@portfolio/layout-core/plan';
 
 export type Round = { center: LayoutVec2; radius: number };
 export type State = { layout: Layout; roundByRoom: Record<string, Round> };

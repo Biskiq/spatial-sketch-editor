@@ -48,7 +48,7 @@
  * fake renderer.
  */
 
-import { countWork } from '@portfolio/layout-core';
+import { countWork } from '@portfolio/layout-core/kernel';
 
 /** The per-light shadow state r187's ShadowNode reads and clears. */
 export type ShadowStateLike = {

@@ -1,11 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import {
-	alignReferenceKey,
-	planLayoutObjectAlign,
-	type CompiledLayoutGeometry,
-	type CompiledLayoutObject,
-	type CompiledQuerySpan
-} from '@portfolio/layout-core';
+import { alignReferenceKey, planLayoutObjectAlign } from '@portfolio/layout-core/plan';
+import type { CompiledLayoutGeometry, CompiledLayoutObject, CompiledQuerySpan } from '@portfolio/layout-core/geometry';
 
 function emptyGeometry(): CompiledLayoutGeometry {
 	return {

@@ -8,33 +8,14 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-	canonicalBoundaryCycleKey,
-	deriveLayoutWallRole,
-	extractBoundaryCandidateFaces
-} from '@portfolio/layout-core';
-import {
-	connectedRoomIds,
-	resolveIsolatedRoomGroupSubgraph,
-	resolveIsolatedRoomSubgraph
-} from '@portfolio/layout-core';
-import {
-	planWallFirstRoomMove,
-	planWallFirstRoomRotation,
-	roomBoundaryCycleKey
-} from '@portfolio/layout-core';
-import { validateWallFirstLayoutDocument } from '@portfolio/layout-core';
-import {
-	LAYOUT_WALL_FIRST_FORMAT_VERSION,
-	type LayoutDocumentWallFirst,
-	type LayoutWallFirstRoom,
-	type LayoutWallOpening
-} from '@portfolio/layout-core';
-import type { LayoutVec2 } from '@portfolio/layout-core';
-import {
-	junctionsShareTopologyComponent,
-	wallsShareTopologyComponent
-} from '@portfolio/layout-core';
+import { canonicalBoundaryCycleKey, extractBoundaryCandidateFaces } from '@portfolio/layout-core/geometry';
+import { deriveLayoutWallRole } from '@portfolio/layout-core/wall';
+import { connectedRoomIds, resolveIsolatedRoomGroupSubgraph, resolveIsolatedRoomSubgraph } from '@portfolio/layout-core/room';
+import { planWallFirstRoomMove, planWallFirstRoomRotation, roomBoundaryCycleKey } from '@portfolio/layout-core/room';
+import { validateWallFirstLayoutDocument } from '@portfolio/layout-core/wall';
+import { LAYOUT_WALL_FIRST_FORMAT_VERSION, type LayoutDocumentWallFirst, type LayoutWallFirstRoom, type LayoutWallOpening } from '@portfolio/layout-core/wall';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { junctionsShareTopologyComponent, wallsShareTopologyComponent } from '@portfolio/layout-core/room';
 
 type WallSeed = {
 	id: string;

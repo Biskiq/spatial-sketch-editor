@@ -10,23 +10,10 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-	allocateCapturedId,
-	createEmptyWallFirstLayoutDocument,
-	parseWallFirstLayoutDocumentJson,
-	planSpaceOpenSideEndSlide,
-	planSpaceOpenSideOffset,
-	planWallSegment,
-	roomBoundaryPolygon,
-	serializeWallFirstLayoutDocument,
-	spaceOpenSideFrame,
-	spaceOpenSideFrames,
-	spaceOutlineSignedArea,
-	type LayoutDocumentWallFirst,
-	type LayoutIdCapture,
-	type LayoutVec2,
-	type NodingIdAllocator
-} from '@portfolio/layout-core';
+import { allocateCapturedId, type LayoutIdCapture } from '@portfolio/layout-core/plan';
+import { createEmptyWallFirstLayoutDocument, parseWallFirstLayoutDocumentJson, planSpaceOpenSideEndSlide, planSpaceOpenSideOffset, planWallSegment, serializeWallFirstLayoutDocument, type LayoutDocumentWallFirst, type NodingIdAllocator } from '@portfolio/layout-core/wall';
+import { roomBoundaryPolygon, spaceOpenSideFrame, spaceOpenSideFrames, spaceOutlineSignedArea } from '@portfolio/layout-core/room';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 import { captureFor } from './__fixtures__/layout-id-capture';
 

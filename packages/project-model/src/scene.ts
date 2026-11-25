@@ -1,10 +1,8 @@
-import {
-  SceneDocumentValidationError,
-  validateSceneDocument
-} from './scene-codec';
+import { SceneDocumentValidationError } from './scene-codec/types';
+import { validateSceneDocument } from './scene-codec/validate';
 import type { SceneValidationOptions } from './scene-validation';
 import type { ArtworkFrame } from './artwork-frame';
-import type { LayoutSurfaceRef } from '@portfolio/layout-core';
+import type { LayoutSurfaceRef } from '@portfolio/layout-core/plan';
 
 export type Vec3 = [number, number, number];
 export type AssetId = string;

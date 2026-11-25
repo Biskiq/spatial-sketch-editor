@@ -9,13 +9,8 @@
  * drift.
  */
 
-import {
-	getShippedMaterialById,
-	getShippedModelByAssetId,
-	isShippedFallback,
-	type SceneObjectFallback,
-	type SceneValidationOptions
-} from '@portfolio/project-model';
+import { getShippedMaterialById, getShippedModelByAssetId, isShippedFallback } from '@portfolio/project-model/package';
+import type { SceneObjectFallback, SceneValidationOptions } from '@portfolio/project-model/scene';
 
 export const REGISTRY_SCENE_OPTIONS: SceneValidationOptions = {
 	isKnownAssetId: (assetId: string) => getShippedModelByAssetId(assetId) !== undefined,

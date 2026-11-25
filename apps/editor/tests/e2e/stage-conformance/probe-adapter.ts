@@ -1,9 +1,9 @@
 import { stageEnvelope } from '$lib/authoring/stage/unit-stage-source';
 /** TEST-ONLY sentinel: STAGE_BROWSER_CONFORMANCE_WRITER. No production import. */
-import { planExactWallHeight } from '@portfolio/layout-core';
-import { resolveReference, type DomainPlanner,
-	type AuthoringIntent, type ScenePrimitiveEntity,
-	type SemanticReference } from '@portfolio/project-model';
+import { planExactWallHeight } from '@portfolio/layout-core/wall';
+import { resolveReference, type SemanticReference } from '@portfolio/project-model/references';
+import type { DomainPlanner, AuthoringIntent } from '@portfolio/project-model/f4';
+import type { ScenePrimitiveEntity } from '@portfolio/project-model/scene';
 import { replaceUnitData, UNIT_SOURCE_KIND, UNIT_SOURCE_VERSION,
 	type ProjectEnvelope } from '@portfolio/project-model/units';
 import type { StageAdapterFactory, StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';

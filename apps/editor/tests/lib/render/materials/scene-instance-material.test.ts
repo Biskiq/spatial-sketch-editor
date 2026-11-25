@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { resolveSceneMaterial } from '$lib/render/materials/scene-instance-material';
 import { CLAY_COLOR, CLAY_ROUGHNESS, FLAT_MIN_ROUGHNESS } from '$lib/render/materials/treatment';
 import type { LookSource } from '$lib/render/materials/scene-instance-material';
-import type { SceneDocument } from '$lib/content/scene';
+import type { SceneDocument } from '@portfolio/project-model/scene';
 
 const WALL_TEXTURE = { id: 'wall-detail', name: 'Wall Detail', uri: '/textures/wall-detail.webp' };
 const FLOOR_TEXTURE = { id: 'floor-grain', name: 'Floor Grain', uri: '/textures/floor-grain.png' };

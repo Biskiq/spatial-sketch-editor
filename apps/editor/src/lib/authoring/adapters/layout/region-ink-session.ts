@@ -7,7 +7,8 @@
  * document is planned per pointer move, and the release/Enter installs one
  * captured candidate through one F4 entry.
  */
-import { mintLayoutIdCapture, type LayoutIdCapture, type LayoutVec2 } from '@portfolio/layout-core';
+import { mintLayoutIdCapture, type LayoutIdCapture } from '@portfolio/layout-core/plan';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import type {
 	StageAdapterContext,
 	StageCandidatePreview,

@@ -13,13 +13,9 @@
  *   above 1.2 m with one.
  */
 import { describe, expect, it } from 'vitest';
-import {
-	createViewportCameraState,
-	evaluateViewport,
-	projectWorld,
-	type ViewportEvaluation
-} from '@portfolio/camera-core';
-import { evaluateLayoutPlan, type CompiledLayoutGeometry, type LayoutVec2, type PlanEvaluation, type PlanEvaluationResult } from '@portfolio/layout-core';
+import { createViewportCameraState, evaluateViewport, projectWorld, type ViewportEvaluation } from '@portfolio/camera-core/viewport';
+import { evaluateLayoutPlan, type PlanEvaluation, type PlanEvaluationResult } from '@portfolio/layout-core/world';
+import type { CompiledLayoutGeometry, LayoutVec2 } from '@portfolio/layout-core/geometry';
 import {
 	clampFaceToSlice,
 	clipSurfaceToSlice,

@@ -41,7 +41,7 @@
 	import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 	import { untrack } from 'svelte';
 	import { Line2NodeMaterial } from 'three/webgpu';
-	import type { CompiledLayoutGeometry } from '@portfolio/layout-core';
+	import type { CompiledLayoutGeometry } from '@portfolio/layout-core/geometry';
 	import { hasVisibleAncestor, type ScenePickSource } from '$lib/authoring/scene/scene-pick-source';
 	import { compiledOpeningFaceLoops, openingLoopSegments } from '../../layout/opening-faces';
 	import { useStageClip } from '../slice/stage-clip';

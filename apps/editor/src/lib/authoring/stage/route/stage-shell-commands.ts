@@ -17,7 +17,7 @@
  * callbacks it composes (view commands, replacement, download, Welcome).
  */
 import { inkSurface } from '../../adapters/layout/ink';
-import { planFragmentOf, type PlanEvaluation } from '@portfolio/layout-core';
+import { planFragmentOf, type PlanEvaluation } from '@portfolio/layout-core/world';
 import { planSourceKindOf } from './plan-source-kind';
 import type { StageCardActionRecord, StageFacade, StageSourceHit } from '../stage-facade';
 import type { StageSelection, StageSession, StageTask } from '../stage-session';

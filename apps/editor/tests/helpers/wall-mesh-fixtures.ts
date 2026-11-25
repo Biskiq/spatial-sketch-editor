@@ -5,14 +5,15 @@
  * document builders instead of duplicating them across lanes.
  */
 import { expect } from 'vitest';
-import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core/geometry';
 import { type IndexedWallMesh } from '$lib/layout/wall-mesh-builder';
 import {
 	g1DocumentWithRooms,
 	g1LineRectangleDocument,
 	g1RoomPolygon
 } from '../lib/layout/__fixtures__/layout-g1-fixtures';
-import type { CompiledRoom, CompiledWall, LayoutDocumentWallFirst } from '@portfolio/layout-core';
+import type { CompiledRoom, CompiledWall } from '@portfolio/layout-core/geometry';
+import type { LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 
 /**
  * Compile a wall-first fixture into its single Room **with its boundary Walls**,

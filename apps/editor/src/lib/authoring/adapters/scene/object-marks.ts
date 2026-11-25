@@ -16,13 +16,8 @@
  * the same refusal words.
  */
 import { angleDeltaLabel, planarDeltaLabel, signed } from '$lib/authoring/stage/stage-adapter-host';
-import type {
-	AuthoringIntent,
-	SceneEntity,
-	SceneFormEntity,
-	ScenePrimitiveEntity,
-	Vec3
-} from '@portfolio/project-model';
+import type { AuthoringIntent } from '@portfolio/project-model/f4';
+import type { SceneEntity, SceneFormEntity, ScenePrimitiveEntity, Vec3 } from '@portfolio/project-model/scene';
 import {
 	planPlaceOnFloor,
 	planResizeOnFloor,

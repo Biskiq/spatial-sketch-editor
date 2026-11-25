@@ -12,23 +12,9 @@
  * compiled Wall, enforces the scrub rules and states the unfolded edit policy in
  * one place so the Card, the Stage and the adapter cannot disagree.
  */
-import {
-	createWallDevelopmentBuffers,
-	createWallDevelopmentSheetBuffers,
-	cubicBezierArcLength,
-	evaluateWallDevelopment,
-	evaluateWallDevelopmentSheet,
-	prepareWallDevelopment,
-	wallCenterlineCubics,
-	type CompiledPhysicalWall,
-	type CurveSample,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type WallDevelopment,
-	type WallDevelopmentRefusal,
-	type WallDevelopmentSourceSpan
-} from '@portfolio/layout-core';
-import type { InspectionPose, ViewportReading } from '@portfolio/camera-core';
+import { createWallDevelopmentBuffers, createWallDevelopmentSheetBuffers, evaluateWallDevelopment, evaluateWallDevelopmentSheet, prepareWallDevelopment, wallCenterlineCubics, type LayoutDocumentWallFirst, type WallDevelopment, type WallDevelopmentRefusal, type WallDevelopmentSourceSpan } from '@portfolio/layout-core/wall';
+import { cubicBezierArcLength, type CompiledPhysicalWall, type CurveSample, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import type { InspectionPose, ViewportReading } from '@portfolio/camera-core/viewport';
 
 /** The drag distance that reaches `u = 1`, in CSS pixels (the plan's rule). */
 export const WALL_UNFOLD_DRAG_CSS = 260;

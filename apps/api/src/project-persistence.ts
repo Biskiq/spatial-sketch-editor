@@ -1,4 +1,4 @@
-import type { AcceptedRevision } from '@portfolio/project-model';
+import type { AcceptedRevision } from '@portfolio/project-model/references';
 import { UNIT_ENVELOPE_SOURCE_FORMAT } from '@portfolio/project-model/units';
 
 import type { DatabaseClient, DatabasePool, DatabaseQueryResult } from './database.js';

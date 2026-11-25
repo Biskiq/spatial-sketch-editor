@@ -6,14 +6,8 @@
  * from the accepted Scene snapshot, validates the correspondence, and prunes
  * refs whose Layout identity retired.
  */
-import {
-	normalizeLayoutSurfaceLineage,
-	resolveLayoutSurface,
-	surfaceKey,
-	type LayoutDocumentWallFirst,
-	type LayoutSurfaceLineage,
-	type LayoutSurfaceRef
-} from '@portfolio/layout-core';
+import { normalizeLayoutSurfaceLineage, resolveLayoutSurface, surfaceKey, type LayoutSurfaceLineage, type LayoutSurfaceRef } from '@portfolio/layout-core/plan';
+import type { LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 import type { CameraFreeSceneDocument } from './units/types';
 import type { SceneSurfaceFinish, SceneSurfaceRef } from './scene';
 

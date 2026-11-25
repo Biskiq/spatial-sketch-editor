@@ -13,7 +13,7 @@ import { isAllowedShippedTextureUri } from '$lib/visitor/shipped-static-registry
  * keys it contributes, read from the binding and the host. They stay values (not
  * props of a spread) so the StageCanvas prop-update path is the base one.
  */
-import type { ViewportEvaluation } from '@portfolio/camera-core';
+import type { ViewportEvaluation } from '@portfolio/camera-core/viewport';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
 import type { RegionProps } from '../workspace/region-ownership';
 import type { StageAdapterServices } from '../stage/stage-adapter-host';

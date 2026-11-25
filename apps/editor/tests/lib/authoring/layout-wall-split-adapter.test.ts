@@ -15,17 +15,11 @@
  *    accepted split round-trips through Save/Load unchanged.
  */
 import { describe, expect, it } from 'vitest';
-import {
-	createEmptyWallFirstLayoutDocument,
-	planCreateCircularRoom,
-	planCreateWallFirstOpening,
-	planWallChain,
-	surfaceKey,
-	wallFirstWallLength,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type PlanSourceRef
-} from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument, planCreateWallFirstOpening, planWallChain, wallFirstWallLength, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import { planCreateCircularRoom } from '@portfolio/layout-core/room';
+import { surfaceKey } from '@portfolio/layout-core/plan';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
+import type { PlanSourceRef } from '@portfolio/layout-core/world';
 import type { ProjectEnvelope, CameraFreeSceneDocument } from '@portfolio/project-model/units';
 import { captureUnitSave, readUnitEnvelopeForSave, SCENE_UNIT_FORMAT_VERSION } from '@portfolio/project-model/units';
 

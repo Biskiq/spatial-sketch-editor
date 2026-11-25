@@ -34,8 +34,8 @@
 	 */
 	import { onDestroy } from 'svelte';
 	import { useThrelte } from '@threlte/core';
-	import type { CompiledLayoutGeometry } from '@portfolio/layout-core';
-	import type { RuntimeScene } from '@portfolio/project-model';
+	import type { CompiledLayoutGeometry } from '@portfolio/layout-core/geometry';
+	import type { RuntimeScene } from '@portfolio/project-model/scene';
 	import { canonicalUnitJson } from '@portfolio/project-model/units';
 	import type { StageLightPreview } from '../stage-light-preview.svelte';
 

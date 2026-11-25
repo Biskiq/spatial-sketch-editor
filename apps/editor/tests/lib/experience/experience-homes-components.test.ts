@@ -43,7 +43,7 @@ import type {
 	ExperiencePresentation,
 	ExperienceStop
 } from '@portfolio/project-model/units';
-import { createViewportCameraState, evaluateViewport } from '@portfolio/camera-core';
+import { createViewportCameraState, evaluateViewport } from '@portfolio/camera-core/viewport';
 
 import ExperienceHomesProbe from './fixtures/ExperienceHomesProbe.svelte';
 import { createExperiencePlayback } from '$lib/authoring/experience/playback.svelte';

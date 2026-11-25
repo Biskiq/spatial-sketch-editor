@@ -19,24 +19,8 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-	compileWallFirstLayoutGeometry,
-	createEmptyWallFirstLayoutDocument,
-	deriveChainSpans,
-	pointAlongSamples,
-	sampleSegment,
-	validateWallFirstOpeningSet,
-	wallCenterlineSamples,
-	wallCenterlineSegment,
-	wallCubicChain,
-	wallFirstWallSpan,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type LayoutWall,
-	type LayoutWallCenterline,
-	type LayoutWallCurveKnot,
-	type SampleableSegment
-} from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry, deriveChainSpans, pointAlongSamples, sampleSegment, type LayoutVec2, type SampleableSegment } from '@portfolio/layout-core/geometry';
+import { createEmptyWallFirstLayoutDocument, validateWallFirstOpeningSet, wallCenterlineSamples, wallCenterlineSegment, wallCubicChain, wallFirstWallSpan, type LayoutDocumentWallFirst, type LayoutWall, type LayoutWallCenterline, type LayoutWallCurveKnot } from '@portfolio/layout-core/wall';
 
 const CHORD = 6;
 const EPSILON = 1e-9;

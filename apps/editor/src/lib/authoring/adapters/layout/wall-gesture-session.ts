@@ -1,15 +1,7 @@
 import { sizeDeltaLabel } from '$lib/authoring/stage/stage-adapter-host';
 import { axisTravelFromRay } from '$lib/authoring/stage/stage-adapter-host';
-import {
-	proposeWallFirstArchitectureGeometry,
-	type WallFirstArchitectureProposalWall,
-	planExactWallHeight,
-	planExactWallThickness,
-	planUpdateWallFirstOpening,
-	type FixedWallEndpoint,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2
-} from '@portfolio/layout-core';
+import { proposeWallFirstArchitectureGeometry, type WallFirstArchitectureProposalWall, planExactWallHeight, planExactWallThickness, planUpdateWallFirstOpening, type FixedWallEndpoint, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 import {
 	type StageAdapterContext,

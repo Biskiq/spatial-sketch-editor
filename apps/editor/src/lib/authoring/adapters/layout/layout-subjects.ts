@@ -1,12 +1,7 @@
 import { roomLabelFacts } from '$lib/authoring/stage/stage-adapter-host';
-import {
-	readClosedWallCircle,
-	isClosedWall,
-	type LayoutDocumentWallFirst,
-	type LayoutRegion,
-	type LayoutVec2,
-	type CompiledRegion
-} from '@portfolio/layout-core';
+import { readClosedWallCircle } from '@portfolio/layout-core/room';
+import { isClosedWall, type LayoutDocumentWallFirst, type LayoutRegion } from '@portfolio/layout-core/wall';
+import type { LayoutVec2, CompiledRegion } from '@portfolio/layout-core/geometry';
 
 import { type StageAdapterContext } from '$lib/authoring/stage/stage-adapter-host';
 import { stageLayout } from '$lib/authoring/stage/stage-adapter-host';

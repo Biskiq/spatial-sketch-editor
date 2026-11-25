@@ -22,21 +22,9 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-	deriveChainSpans,
-	LAYOUT_WALL_FIRST_FORMAT_VERSION,
-	proposeWallFirstArchitectureGeometry,
-	wallCubicChain,
-	wallFirstArchitectureAffectedExtent,
-	wallsShareTopologyComponent,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type LayoutWall,
-	type LayoutWallCenterline,
-	type LayoutWallCurveKnot,
-	type LayoutWallFirstRoom,
-	type WallFirstArchitectureProposalIntent
-} from '@portfolio/layout-core';
+import { deriveChainSpans, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { LAYOUT_WALL_FIRST_FORMAT_VERSION, proposeWallFirstArchitectureGeometry, wallCubicChain, wallFirstArchitectureAffectedExtent, type LayoutDocumentWallFirst, type LayoutWall, type LayoutWallCenterline, type LayoutWallCurveKnot, type LayoutWallFirstRoom, type WallFirstArchitectureProposalIntent } from '@portfolio/layout-core/wall';
+import { wallsShareTopologyComponent } from '@portfolio/layout-core/room';
 
 const LINE: LayoutWallCenterline = { kind: 'line' };
 

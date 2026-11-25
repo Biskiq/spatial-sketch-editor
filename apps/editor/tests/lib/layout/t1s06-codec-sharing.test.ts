@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { setWorkObserver, validateWallFirstLayoutDocument } from '@portfolio/layout-core';
-import { freezeF4Data, immutableF4Data } from '@portfolio/project-model';
+import { setWorkObserver } from '@portfolio/layout-core/kernel';
+import { validateWallFirstLayoutDocument } from '@portfolio/layout-core/wall';
+import { freezeF4Data, immutableF4Data } from '@portfolio/project-model/f4';
 import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from './__fixtures__/layout-scale-fixtures';
 
 describe('immutable normalized Layout elements', () => {

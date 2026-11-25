@@ -19,14 +19,15 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 import { flushSync, mount, tick, unmount } from 'svelte';
 import type { Camera, InterleavedBufferAttribute } from 'three';
 import { LineSegments2 } from 'three/addons/lines/webgpu/LineSegments2.js';
-import { evaluateLayoutPlan, type LayoutVec2, type PlanEvaluation } from '@portfolio/layout-core';
+import { evaluateLayoutPlan, type PlanEvaluation } from '@portfolio/layout-core/world';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import { prepareUnitRuntime } from '@portfolio/project-model/units';
-import type { RuntimeScene } from '@portfolio/project-model';
+import type { RuntimeScene } from '@portfolio/project-model/scene';
 import { buildPaperPlan } from '$lib/authoring/stage/paper-plan';
 import { createCameraSession } from '$lib/authoring/stage/camera-session';
 import { createPaperScene } from '$lib/authoring/stage/paper-scene';
 import { buildCompiledLayoutCandidatePaper } from '$lib/authoring/adapters/layout/candidate-preview';
-import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core/geometry';
 import { createShadowInvalidation } from '$lib/render/shadow-invalidation';
 import { countSurfaceFrames, type RendererSurface } from '$lib/render/renderer-backend';
 import { perfRenderer } from '$lib/platform/perf-marks';
@@ -56,6 +57,7 @@ import {
 	COUNTING_GRID,
 	type CountingSceneFixture
 } from './__fixtures__/counting-scene';
+import { EDITOR_ROOT } from '../../helpers/import-closure';
 
 vi.mock('three', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('three')>();
@@ -201,7 +203,7 @@ describe('E0 work counters through their production callers', () => {
 			textures: 1
 		});
 		// The production factory is the one that wraps: no second seam can be born.
-		const factory = readFileSync(resolve(process.cwd(), 'src/lib/render/renderer-backend.ts'), 'utf8');
+		const factory = readFileSync(resolve(EDITOR_ROOT, 'src/lib/render/renderer-backend.ts'), 'utf8');
 		expect(factory).toContain('perfRenderer(renderer, surface)');
 		expect(factory).toContain('countSurfaceFrames(');
 	});

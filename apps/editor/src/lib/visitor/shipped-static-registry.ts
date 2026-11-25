@@ -29,6 +29,6 @@ export {
 	type ShippedMaterialEntry,
 	type ShippedModelEntry,
 	type ShippedTextureEntry
-} from '@portfolio/project-model';
+} from '@portfolio/project-model/package';
 
 export const SHIPPED_STATIC_REGISTRY_VERSION = 1;

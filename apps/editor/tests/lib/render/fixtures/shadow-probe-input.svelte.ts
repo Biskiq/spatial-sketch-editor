@@ -3,8 +3,8 @@
  * resources the probe provides. A test changes them to model a Scene edit, a
  * model arrival or a camera-only frame.
  */
-import type { CompiledLayoutGeometry } from '@portfolio/layout-core';
-import type { RuntimeScene } from '@portfolio/project-model';
+import type { CompiledLayoutGeometry } from '@portfolio/layout-core/geometry';
+import type { RuntimeScene } from '@portfolio/project-model/scene';
 import type { RenderResources } from '$lib/render/resources/render-resources';
 
 export type ShadowProbeInput = {

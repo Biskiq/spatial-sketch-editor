@@ -52,7 +52,7 @@
  * genuinely near — never in unrelated project size. Nothing here reads a camera: the
  * caller supplies `project`, so the one evaluation stays the only projection.
  */
-import { countWork } from '@portfolio/layout-core';
+import { countWork } from '@portfolio/layout-core/kernel';
 
 /** An inclusive world-space box, in project-world meters. */
 export type PlanPickBox = {

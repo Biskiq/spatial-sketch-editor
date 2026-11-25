@@ -1,12 +1,9 @@
 import { previewOpeningRepeat } from './opening-repeat';
 import { openingRepeatProposal } from './opening-repeat-proposal';
 import type { LayoutCandidatePresenter } from './candidate-presenter';
-import {
-	mintLayoutIdCapture,
-	planUpdateWallFirstOpening,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2
-} from '@portfolio/layout-core';
+import { mintLayoutIdCapture } from '@portfolio/layout-core/plan';
+import { planUpdateWallFirstOpening, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 import {
 	type StageAdapterContext,
@@ -26,7 +23,7 @@ import {
 	type OpeningResizePayload
 } from './opening-planners';
 import { pointerDatumPoint } from './stage-pointer';
-import type { SemanticReference } from '@portfolio/project-model';
+import type { SemanticReference } from '@portfolio/project-model/references';
 import {
 	planNumericEntrySubmit,
 	planNumericFields,

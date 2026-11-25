@@ -39,7 +39,7 @@
  *   the live view.
  */
 
-import type { AcceptedRevision } from '@portfolio/project-model';
+import type { AcceptedRevision } from '@portfolio/project-model/references';
 import type { SaveWorkInstrumentation } from '@portfolio/project-model/units';
 import {
 	UNIT_SOURCE_KIND,

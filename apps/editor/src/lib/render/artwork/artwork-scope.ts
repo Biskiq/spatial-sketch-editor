@@ -1,5 +1,5 @@
 import { SRGBColorSpace, TextureLoader, type Texture } from 'three';
-import { probeArtworkImage, type ArtworkImage } from '@portfolio/project-model';
+import { probeArtworkImage, type ArtworkImage } from '@portfolio/project-model/artwork';
 
 export type ArtworkBytes = { bytes: Uint8Array; mime: string };
 type Loaded = { texture: Texture; transparent: boolean };

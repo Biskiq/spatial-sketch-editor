@@ -11,7 +11,7 @@
  * is adopted. It clears with the next accepted binding, because the binding is
  * rebuilt from the document that no longer overlaps.
  */
-import { independentWallOverlaps, type LayoutDocumentWallFirst } from '@portfolio/layout-core';
+import { independentWallOverlaps, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 import type { StageGuideContribution } from '$lib/authoring/stage/stage-adapter-host';
 
 /** The cue's one sentence, shared by the guide label and the tests. */

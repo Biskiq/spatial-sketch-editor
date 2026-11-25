@@ -16,11 +16,8 @@
  *    be mounted as a replacement.
  */
 import { describe, expect, it } from 'vitest';
-import {
-	createEmptyWallFirstLayoutDocument,
-	planWallChain,
-	type LayoutVec2
-} from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core/wall';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';

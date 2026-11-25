@@ -19,7 +19,7 @@ import {
 	catalogueMaterials,
 	catalogueRenderFacts
 } from '@portfolio/project-model/materials';
-import { listShippedTextureUris } from '@portfolio/project-model';
+import { listShippedTextureUris } from '@portfolio/project-model/package';
 import { legacyMaterials, materials as editorCatalogue } from '$lib/content/materials';
 import type { MaterialTextureSlot } from '$lib/types/materials';
 

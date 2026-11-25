@@ -17,13 +17,9 @@
  * - catalogue-implied texture dependencies (fallback/base materials) are
  *   included in the reference set.
  */
-import {
-	hasBlockingLayoutIssues,
-	artworkAssetUri, probeArtworkImage, type ArtworkImage,
-	type CompiledLayoutGeometry,
-	type NavigationGraph,
-	type RuntimeScene
-} from '@portfolio/project-model';
+import { hasBlockingLayoutIssues, type CompiledLayoutGeometry } from '@portfolio/layout-core/geometry';
+import { artworkAssetUri, probeArtworkImage, type ArtworkImage } from '@portfolio/project-model/artwork';
+import type { NavigationGraph, RuntimeScene } from '@portfolio/project-model/scene';
 import { prepareUnitRuntime } from '@portfolio/project-model/units';
 import {
 	MATERIAL_NEUTRAL_BASE_ID,
@@ -36,7 +32,7 @@ import {
 	type MaterialDeliverySubject,
 	type MaterialRuntimeIndex
 } from '@portfolio/project-model/materials';
-import { surfaceKey } from '@portfolio/layout-core';
+import { surfaceKey } from '@portfolio/layout-core/plan';
 import {
 	getShippedMaterialById,
 	getShippedModelByAssetId,

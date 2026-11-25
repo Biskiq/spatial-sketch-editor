@@ -11,7 +11,8 @@ import { createScenePickSource } from '$lib/authoring/scene/scene-pick-source';
 import { pickThroughSlice } from '$lib/authoring/stage/slice/stage-slice-pick';
 import { resolveSlice, type ResolvedSlice } from '$lib/authoring/stage/slice/slice-cut';
 
-import { compileWallFirstLayoutGeometryFresh, createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometryFresh } from '@portfolio/layout-core/geometry';
+import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core/wall';
 import { buildRegionMeshGeometry } from '$lib/render/layout/region-mesh-builder';
 import { tagRenderIdentity } from '$lib/render/render-identity';
 
@@ -118,7 +119,7 @@ describe('the Stage pick through a Slice', () => {
 		resolved = resolveSlice({
 			kind: 'drawn', start: [-0.5, 0], end: [0.5, 0], hidden: 'right', depthMeters: 0.5
 		}, { sheetHeight: 1.2, datumMeters: 0 });
-		const drawnRay = { origin: [0, -0.2, 2], direction: [0, 0, -1] } satisfies import('@portfolio/camera-core').PointerRay;
+		const drawnRay = { origin: [0, -0.2, 2], direction: [0, 0, -1] } satisfies import('@portfolio/camera-core/viewport').PointerRay;
 		const drawnHit = pick(drawnRay, data);
 		expect(drawnHit?.region).toEqual({ kind: 'region-face', regionId: 'terrace', face: 'edge' });
 		expect(drawnHit?.worldPoint[2]).toBeCloseTo(-0.0001, 8);

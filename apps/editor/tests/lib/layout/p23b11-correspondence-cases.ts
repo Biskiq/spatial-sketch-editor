@@ -74,30 +74,10 @@
  * NO VALUE HERE IS A THRESHOLD, and nothing here writes anything.
  */
 import { createHash } from 'node:crypto';
-import {
-	buildCorrespondenceComponents,
-	correspondenceAuthorization,
-	createAuthoringRoomAllocator,
-	createEmptyWallFirstLayoutDocument,
-	extractBoundaryCandidateFaces,
-	interiorWitness,
-	planDeleteWall,
-	planDissolveJunction,
-	planExactJunctionMove,
-	planRemoveRoom,
-	planWallChain,
-	planWallSegment,
-	reconcileRooms,
-	roomBoundaryPolygon,
-	wallCenterlineSamples,
-	type ComponentLineage,
-	type DerivedCandidateFace,
-	type LayoutDocumentWallFirst,
-	type LayoutIdCapture,
-	type LayoutVec2,
-	type LayoutWallCenterline,
-	type ReconciliationResult
-} from '@portfolio/layout-core';
+import { buildCorrespondenceComponents, correspondenceAuthorization, interiorWitness, reconcileRooms, roomBoundaryPolygon, type ComponentLineage, type ReconciliationResult } from '@portfolio/layout-core/room';
+import { createAuthoringRoomAllocator, createEmptyWallFirstLayoutDocument, planDeleteWall, planDissolveJunction, planExactJunctionMove, planRemoveRoom, planWallChain, planWallSegment, wallCenterlineSamples, type LayoutDocumentWallFirst, type LayoutWallCenterline } from '@portfolio/layout-core/wall';
+import { extractBoundaryCandidateFaces, type DerivedCandidateFace, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import type { LayoutIdCapture } from '@portfolio/layout-core/plan';
 import {
 	buildP23BCorrectnessFixture,
 	buildP23BMatrixFixture,

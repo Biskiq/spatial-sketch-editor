@@ -1,8 +1,13 @@
 import type { SubjectScope } from '../subject-scope';
 import type { Component, Snippet } from 'svelte';
-import type { PointerRay, Vec3, ViewingIntent, ViewingIntentResult, ViewportCameraState, ViewportEvaluation, WorkingPlane, WorkingPlaneHit } from '@portfolio/camera-core';
-import type { LayoutSurfaceRef, PlanSourceKind, PlanSourceRef, PlanStream, PlanSubRef, SpaceSurfaceExclusion } from '@portfolio/layout-core';
-import type { CameraOutputRefusal, F4JsonValue, SceneFormSource, SemanticReference } from '@portfolio/project-model';
+import type { PointerRay, ViewingIntent, ViewingIntentResult, ViewportCameraState, ViewportEvaluation, WorkingPlane, WorkingPlaneHit } from '@portfolio/camera-core/viewport';
+import type { Vec3 } from '@portfolio/camera-core/camera';
+import type { LayoutSurfaceRef, SpaceSurfaceExclusion } from '@portfolio/layout-core/plan';
+import type { PlanSourceKind, PlanSourceRef, PlanStream, PlanSubRef } from '@portfolio/layout-core/world';
+import type { CameraOutputRefusal } from '@portfolio/project-model/channels';
+import type { F4JsonValue } from '@portfolio/project-model/f4';
+import type { SceneFormSource } from '@portfolio/project-model/scene';
+import type { SemanticReference } from '@portfolio/project-model/references';
 import type { SceneRenderedHit } from '$lib/authoring/scene/scene-pick-source';
 import type { StageReadSnapshot } from '../accepted-read';
 import type { StageAdapterServices } from '../stage-adapter-host';

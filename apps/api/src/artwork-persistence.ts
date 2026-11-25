@@ -13,7 +13,7 @@
  * probes and exact pin comparison under the existing lock order.
  */
 import { createHash } from 'node:crypto';
-import { ARTWORK_MAX_BYTES, probeArtworkImage } from '@portfolio/project-model';
+import { ARTWORK_MAX_BYTES, probeArtworkImage } from '@portfolio/project-model/artwork';
 import {
 	collectEnvelopeImageRequirements,
 	collectSceneImageRequirements,

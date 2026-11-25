@@ -1,16 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import type { LayoutVec2 } from '@portfolio/layout-core';
-import {
-	extractBoundaryCandidateFaces,
-	faceArea,
-	polygonIntersectionArea,
-	type DerivedCandidateFace
-} from '@portfolio/layout-core';
-import {
-	LAYOUT_WALL_FIRST_FORMAT_VERSION,
-	type LayoutDocumentWallFirst
-} from '@portfolio/layout-core';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { extractBoundaryCandidateFaces, faceArea, polygonIntersectionArea, type DerivedCandidateFace } from '@portfolio/layout-core/geometry';
+import { LAYOUT_WALL_FIRST_FORMAT_VERSION, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 
 type WallSeed = {
 	id: string;

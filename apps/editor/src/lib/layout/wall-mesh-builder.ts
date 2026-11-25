@@ -1,30 +1,10 @@
-import type { LayoutVec2, LayoutWallSide } from '@portfolio/layout-core';
-import type {
-	CompiledEndpointBand,
-	CompiledJunctionBand,
-	CompiledLegJoin,
-	CompiledOpening,
-	CompiledPhysicalWall,
-	CompiledRoom,
-	CompiledWall,
-	CompiledWallSection,
-	LayoutBounds3,
-	LayoutGeometryIssue
-} from '@portfolio/layout-core';
-import { archProfileTopAt, LAYOUT_GEOMETRY_EPSILON } from '@portfolio/layout-core';
-import { type CurveSample } from '@portfolio/layout-core';
-import {
-	p2311Measure,
-	resolveSharedCornerSide,
-	WALL_CLEARANCE_INSUFFICIENT_CODE,
-	WALL_OFFSET_FOLD_CODE,
-	WALL_OFFSET_FOLD_MESSAGE,
-	WALL_OFFSET_OVERLAP_CODE,
-	WALL_OFFSET_OVERLAP_MESSAGE,
-	wallEndsSeamFailure,
-	wallOffsetClearanceFailure,
-	wallPairClearanceOverlap
-} from '@portfolio/layout-core';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
+import type { LayoutWallSide } from '@portfolio/layout-core/plan';
+import type { CompiledEndpointBand, CompiledJunctionBand, CompiledLegJoin, CompiledOpening, CompiledPhysicalWall, CompiledRoom, CompiledWall, CompiledWallSection, LayoutBounds3, LayoutGeometryIssue } from '@portfolio/layout-core/geometry';
+import { archProfileTopAt, LAYOUT_GEOMETRY_EPSILON } from '@portfolio/layout-core/geometry';
+import type { CurveSample } from '@portfolio/layout-core/geometry';
+import { p2311Measure } from '@portfolio/layout-core/kernel';
+import { resolveSharedCornerSide, WALL_CLEARANCE_INSUFFICIENT_CODE, WALL_OFFSET_FOLD_CODE, WALL_OFFSET_FOLD_MESSAGE, WALL_OFFSET_OVERLAP_CODE, WALL_OFFSET_OVERLAP_MESSAGE, wallEndsSeamFailure, wallOffsetClearanceFailure, wallPairClearanceOverlap } from '@portfolio/layout-core/wall';
 
 /**
  * Pure, renderer-neutral indexed wall mesh for one room. Positions/normals are

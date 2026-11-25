@@ -12,7 +12,7 @@ import {
 	extrudeProfile,
 	formMeshDigest
 } from '@portfolio/geometry-core';
-import type { SceneFormSource } from '@portfolio/project-model';
+import type { SceneFormSource } from '@portfolio/project-model/scene';
 import {
 	FORM_EVALUATION_CACHE_LIMIT,
 	clearFormEvaluationCache,

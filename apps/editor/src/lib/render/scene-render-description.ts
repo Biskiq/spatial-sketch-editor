@@ -22,24 +22,13 @@
  * cache) so the geometry store can build its one buffer without an evaluator of
  * its own; when the lazy form kernel has not arrived yet, form items are omitted.
  */
-import {
-	isSceneFormEntity,
-	isSceneModelEntity,
-	isScenePrimitiveEntity
-} from '$lib/content/scene';
+import { isSceneFormEntity, isSceneModelEntity, isScenePrimitiveEntity } from '@portfolio/project-model/scene';
 import { getAssetById } from '$lib/content/assets';
 import { getMaterial } from '$lib/content/materials';
 import { fallbackDimensionsFor, fallbackKindFor, type AssetFallbackKind } from '$lib/render/assets/fallbacks';
 import { fallbackPartsFor, type FallbackPart } from '$lib/render/assets/fallback-shapes';
-import { artworkFrameLayout, artworkHeight } from '@portfolio/project-model';
-import type {
-	RuntimeScene,
-	SceneArtworkEntity,
-	SceneFormEntity,
-	SceneFormSource,
-	SceneModelEntity,
-	ScenePrimitiveEntity
-} from '@portfolio/project-model';
+import { artworkFrameLayout, artworkHeight } from '@portfolio/project-model/artwork';
+import type { RuntimeScene, SceneArtworkEntity, SceneFormEntity, SceneFormSource, SceneModelEntity, ScenePrimitiveEntity } from '@portfolio/project-model/scene';
 import type { FormMesh } from '@portfolio/geometry-core';
 import { materialKey } from './resources/material-descriptor';
 import {

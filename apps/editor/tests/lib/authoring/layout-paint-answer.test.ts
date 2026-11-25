@@ -7,12 +7,9 @@
  * lid is named from its Stage-only `room-lid` hit.
  */
 import { describe, expect, it } from 'vitest';
-import {
-	compileWallFirstLayoutGeometry,
-	surfaceKey,
-	surfacesOfSpace,
-	type LayoutDocumentWallFirst
-} from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core/geometry';
+import { surfaceKey, surfacesOfSpace } from '@portfolio/layout-core/plan';
+import type { LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 import type { StageSourceHit } from '$lib/authoring/stage/stage-facade';
 import { createLayoutContributions } from '$lib/authoring/adapters/layout/layout-contributions';
 import { g1DocumentWithRooms, g1RoomPolygon } from '../layout/__fixtures__/layout-g1-fixtures';

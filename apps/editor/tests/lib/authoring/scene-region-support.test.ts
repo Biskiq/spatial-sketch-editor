@@ -14,25 +14,11 @@
  *   contact count follows the geometry.
  */
 import { describe, expect, it } from 'vitest';
-import type { SceneEntity, Vec3 } from '@portfolio/project-model';
-import {
-	FLOOR_SUPPORT_TOLERANCES,
-	compileWallFirstLayoutGeometry,
-	createEmptyWallFirstLayoutDocument,
-	floorSupportSnapshotOf,
-	overheadSupportSnapshotOf,
-	planCreateRegion,
-	planMoveRegion,
-	planRemoveRegion,
-	planRoomMetadataUpdate,
-	planSetRegionElevation,
-	planWallChain,
-	queryFloorSupports,
-	queryOverheadSupports,
-	resolveLayoutSurfaceReference,
-	type CompiledLayoutGeometry,
-	type LayoutDocumentWallFirst
-} from '@portfolio/layout-core';
+import type { SceneEntity, Vec3 } from '@portfolio/project-model/scene';
+import { FLOOR_SUPPORT_TOLERANCES, floorSupportSnapshotOf, overheadSupportSnapshotOf, planCreateRegion, planMoveRegion, planRemoveRegion, planSetRegionElevation, queryFloorSupports, queryOverheadSupports } from '@portfolio/layout-core/room';
+import { compileWallFirstLayoutGeometry, type CompiledLayoutGeometry } from '@portfolio/layout-core/geometry';
+import { createEmptyWallFirstLayoutDocument, planRoomMetadataUpdate, planWallChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import { resolveLayoutSurfaceReference } from '@portfolio/layout-core/plan';
 import {
 	preparePlaceObjectCandidate,
 	type LocalInputFrame,

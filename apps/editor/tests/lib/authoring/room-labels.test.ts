@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { pointInPolygon, type CompiledLayoutGeometry } from '@portfolio/layout-core';
+import { pointInPolygon, type CompiledLayoutGeometry } from '@portfolio/layout-core/geometry';
 import { roomLabelFacts, projectRoomLabels } from '$lib/authoring/stage/room-labels';
 
 it('uses usable compiled area and a strict interior position on a concave floor, then declutters labels', () => {

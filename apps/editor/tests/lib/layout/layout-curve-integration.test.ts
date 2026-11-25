@@ -22,27 +22,8 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-	deriveLayoutWallRole,
-	compileWallFirstLayoutGeometry,
-	createEmptyWallFirstLayoutDocument,
-	deriveChainSpans,
-	parseWallFirstLayoutDocumentJson,
-	planWallSplit,
-	sampleSegment,
-	serializeWallFirstLayoutDocument,
-	wallCubicChain,
-	wallCurveChainLength,
-	wallFirstWallSpan,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type LayoutWall,
-	type LayoutWallCenterline,
-	type LayoutWallCurveKnot,
-	type LayoutWallCubicSpan,
-	type NodingIdAllocator,
-	type NodingPlan
-} from '@portfolio/layout-core';
+import { deriveLayoutWallRole, createEmptyWallFirstLayoutDocument, parseWallFirstLayoutDocumentJson, planWallSplit, serializeWallFirstLayoutDocument, wallCubicChain, wallCurveChainLength, wallFirstWallSpan, type LayoutDocumentWallFirst, type LayoutWall, type LayoutWallCenterline, type LayoutWallCurveKnot, type LayoutWallCubicSpan, type NodingIdAllocator, type NodingPlan } from '@portfolio/layout-core/wall';
+import { compileWallFirstLayoutGeometry, deriveChainSpans, sampleSegment, type LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 // ---------------------------------------------------------------------------
 // fixtures

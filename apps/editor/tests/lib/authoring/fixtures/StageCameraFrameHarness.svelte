@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import { Canvas } from '@threlte/core';
-	import type { ViewportEvaluation } from '@portfolio/camera-core';
+	import type { ViewportEvaluation } from '@portfolio/camera-core/viewport';
 	import StageCamera from '$lib/authoring/stage/shell/StageCamera.svelte';
 	import { provideCanvasRendererState } from '$lib/render/renderer-context';
 	import { countSurfaceFrames } from '$lib/render/renderer-backend';

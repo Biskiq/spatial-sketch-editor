@@ -7,7 +7,7 @@
  * rows, a row that has no meaning for the selected kind is not rendered, and
  * every row contributes to its group's one-line summary.
  */
-import type { Vec3 } from '@portfolio/project-model';
+import type { Vec3 } from '@portfolio/project-model/scene';
 import { formatMultiplier } from '$lib/authoring/look/light-presentation';
 import {
 	brightnessForSlider,

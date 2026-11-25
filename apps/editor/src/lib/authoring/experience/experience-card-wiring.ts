@@ -11,7 +11,7 @@ import type { ExperienceController } from './experience-controller.svelte';
 import { NAME_NEEDED } from './experience-controller.svelte';
 import type { ExperienceRemovalTarget } from './experience-removal';
 import type { ExperienceSubject } from './experience-model';
-import type { SemanticReference } from '@portfolio/project-model';
+import type { SemanticReference } from '@portfolio/project-model/references';
 
 export type ExperienceCardMenuItem = NonNullable<ComponentProps<typeof EditorCard>['menu']>[number];
 

@@ -12,7 +12,8 @@ import test, { after, before } from 'node:test';
 
 import { createApp } from '../dist/app.js';
 import { runMigrations } from '../dist/migrate.js';
-import { mintLayoutIdCapture, planWallChain } from '@portfolio/layout-core';
+import { mintLayoutIdCapture } from '@portfolio/layout-core/plan';
+import { planWallChain } from '@portfolio/layout-core/wall';
 import { canonicalUnitJson } from '@portfolio/project-model/units';
 
 import { SESSION_KEY, projectDocument, saveRequestBody, sessionCookie } from './test-support.mjs';

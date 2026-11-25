@@ -1,0 +1,175 @@
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { describe, expect, it } from 'vitest';
+import * as packageModel from '@portfolio/project-model/package';
+import { derivePackageId, sha256Bytes } from '@portfolio/project-model/package';
+import * as units from '@portfolio/project-model/units';
+import * as materials from '@portfolio/project-model/materials';
+import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core/wall';
+
+const testDir = dirname(fileURLToPath(import.meta.url));
+const packageSrc = resolve(testDir, '../../../../packages/project-model/src');
+
+function sourceFiles(root: string): string[] {
+	const files: string[] = [];
+	const pending = [root];
+	while (pending.length > 0) {
+		const entry = pending.pop()!;
+		const stat = statSync(entry);
+		if (stat.isDirectory()) {
+			for (const child of readdirSync(entry)) pending.push(resolve(entry, child));
+		} else if (entry.endsWith('.ts')) {
+			files.push(entry);
+		}
+	}
+	return files;
+}
+
+describe('[cap:project.envelope core] project-model package boundary', () => {
+	it('exposes the portable package primitives directly', async () => {
+		expect(await sha256Bytes(new Uint8Array())).toMatch(/^sha256-[0-9a-f]{64}$/);
+		expect(await derivePackageId([])).toMatch(/^package-[0-9a-f]{12}$/);
+	});
+
+	it('has no package root barrel', () => {
+		const manifest = JSON.parse(readFileSync(resolve(packageSrc, '../package.json'), 'utf8')) as {
+			exports: Record<string, unknown>;
+		};
+		expect(existsSync(resolve(packageSrc, 'index.ts'))).toBe(false);
+		expect(manifest.exports['.']).toBeUndefined();
+	});
+
+	it('keeps the live F.2 source on the explicit units subpath, never the root barrel', async () => {
+		// T3.P01.S04 retired the current-source reader, so the root barrel has no
+		// project validator and no unit-envelope constructors. The one live source
+		// entry is `@portfolio/project-model/units`.
+		expect('validateProject' in packageModel).toBe(false);
+		expect('validateProjectEnvelope' in packageModel).toBe(false);
+		expect('createUnitProject' in packageModel).toBe(false);
+		expect(typeof units.validateProjectEnvelope).toBe('function');
+		expect(typeof units.prepareUnitRuntime).toBe('function');
+
+		const envelope = await units.createProjectEnvelope({
+			id: 'project',
+			name: 'Project',
+			acceptedRevision: { projectId: 'project', revisionId: 'revision-1' },
+			dependencyLock: { formatVersion: 1, entries: [] },
+			layout: { unitId: 'project:layout', data: createEmptyWallFirstLayoutDocument() },
+			scene: {
+				unitId: 'project:scene',
+				data: { formatVersion: units.SCENE_UNIT_FORMAT_VERSION, textures: [], materials: [], entities: [] }
+			},
+			camera: { unitId: 'project:camera', data: { formatVersion: 1, views: [], connections: [] } },
+			experience: {
+				unitId: 'project:experience',
+				data: { formatVersion: 4, experiences: [] }
+			},
+			resources: { unitId: 'project:resources', data: { formatVersion: units.RESOURCE_UNIT_FORMAT_VERSION, resources: [] } }
+		});
+		expect(units.validateProjectEnvelope(envelope).success).toBe(true);
+	});
+
+	it('keeps the extracted leaf independent from app/editor/rendering code', () => {
+		for (const path of sourceFiles(packageSrc)) {
+			const source = readFileSync(path, 'utf8');
+			expect(source, path).not.toMatch(
+				/from\s*['"][^'"]*(\$lib|\/editor\/|svelte|@threlte|three|node:)/
+			);
+		}
+	});
+
+	it('exposes the portable material contract on its own runtime-safe subpath', () => {
+		// The contract is read by the editor, the API and the visitor. It must not
+		// reach a renderer, an editor path or a Node builtin: the same subpath has
+		// to load in a browser Worker and a package reader.
+		expect(typeof materials.readRecipe).toBe('function');
+		expect(typeof materials.resolveFinish).toBe('function');
+		expect(typeof materials.bindFinish).toBe('function');
+		expect(materials.NEUTRAL_RECIPE_HASH).toMatch(/^sha256-[0-9a-f]{64}$/);
+		expect(materials.CATALOGUE_MATERIAL_IDS).toHaveLength(21);
+		expect(materials.LEGACY_MATERIAL_IDS).toHaveLength(6);
+		for (const id of [...materials.CATALOGUE_MATERIAL_IDS, ...materials.LEGACY_MATERIAL_IDS]) {
+			expect(materials.catalogueRecipe(id), id).toBeDefined();
+		}
+
+		const materialFiles = sourceFiles(resolve(packageSrc, 'materials'));
+		expect(materialFiles.length).toBeGreaterThan(0);
+		for (const path of materialFiles) {
+			const source = readFileSync(path, 'utf8');
+			expect(source, path).not.toMatch(/from\s*['"]node:/);
+			expect(source, path).not.toMatch(/from\s*['"][^'"]*(three|@threlte|\$lib)/);
+		}
+	});
+
+	it('keeps the runtime Scene Camera-free and navigation Camera-owned', async () => {
+		// Hard rule 2 at runtime (E2/I4): a Camera view resolves into the navigation
+		// value, and the Scene value carries no navigation field at all. A re-merged
+		// projection — the pre-cutover shape — fails here even if every render test
+		// still passes, because this asserts the prepared value the renderers receive.
+		const envelope = await units.createProjectEnvelope({
+			id: 'project',
+			name: 'Project',
+			acceptedRevision: { projectId: 'project', revisionId: 'revision-1' },
+			dependencyLock: { formatVersion: 1, entries: [] },
+			layout: { unitId: 'project:layout', data: createEmptyWallFirstLayoutDocument() },
+			scene: {
+				unitId: 'project:scene',
+				data: {
+					formatVersion: units.SCENE_UNIT_FORMAT_VERSION,
+					textures: [],
+					materials: [],
+					entities: [
+						{
+							kind: 'primitive',
+							id: 'box',
+							name: 'Box',
+							primitive: 'box',
+							position: [0, 0, 0],
+							rotation: [0, 0, 0],
+							dimensions: { width: 1, height: 1, depth: 1 },
+							materialId: 'plaster-warm',
+							castShadow: true,
+							receiveShadow: true
+						}
+					]
+				}
+			},
+			camera: {
+				unitId: 'project:camera',
+				data: {
+					formatVersion: 1,
+					views: [
+						{ id: 'view-1', label: 'Entrance', eye: [0, 1, 0], target: [0, 1, 1], fov: 60, connectedViewIds: [] }
+					],
+					connections: []
+				}
+			},
+			experience: { unitId: 'project:experience', data: { formatVersion: 4, experiences: [] } },
+			resources: { unitId: 'project:resources', data: { formatVersion: units.RESOURCE_UNIT_FORMAT_VERSION, resources: [] } }
+		});
+
+		const prepared = units.prepareUnitRuntime(envelope);
+		expect(prepared.kind).toBe('ready');
+		if (prepared.kind !== 'ready') return;
+		expect(Object.keys(prepared.runtimeScene)).not.toContain('navigationNodes');
+		expect(Object.keys(prepared.runtimeScene)).not.toContain('connections');
+		expect(prepared.runtimeScene.entities.map((entity) => entity.id)).toEqual(['box']);
+		expect(prepared.graph.navigationNodes.map((node) => node.id)).toEqual(['view-1']);
+	});
+
+	it('leaves no app-side re-export facade between callers and the package', () => {
+		// PR #115 removed the `$lib/content/package-format.ts` and
+		// `$lib/editor/helpers/package-sha.ts` re-export facades (§5.1: "thin
+		// facades are not domain algorithms; callers import packages directly").
+		// The guarantee they carried — callers reach `@portfolio/project-model`
+		// without an app-local copy of its logic — is now the absence of the
+		// facade, so this asserts the removal rather than a re-export shape.
+		for (const removed of [
+			'../../src/lib/content/package-format.ts',
+			'../../src/lib/editor/helpers/package-sha.ts'
+		]) {
+			expect(existsSync(resolve(testDir, removed)), removed).toBe(false);
+		}
+	});
+});

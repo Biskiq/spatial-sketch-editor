@@ -12,7 +12,7 @@
  * as a beam. Nothing here reads a Camera.
  */
 import { Euler, Quaternion, Vector3 } from 'three';
-import type { Vec3 } from '@portfolio/project-model';
+import type { Vec3 } from '@portfolio/project-model/scene';
 import {
 	drawableSpotHalfAngle,
 	LIGHT_GUIDE_MAX_HALF_ANGLE_DEGREES,

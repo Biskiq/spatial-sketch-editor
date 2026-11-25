@@ -34,7 +34,7 @@
  * light store, so one Scene entity is never drawn twice.
  */
 import { Group, Mesh, type Object3D } from 'three';
-import { countWork } from '@portfolio/layout-core';
+import { countWork } from '@portfolio/layout-core/kernel';
 import type { MaterialLease, MaterialStore, MaterialTextureMaps } from './resources/material-store';
 import type { GeometryLease, GeometryStore } from './resources/geometry-store';
 import {

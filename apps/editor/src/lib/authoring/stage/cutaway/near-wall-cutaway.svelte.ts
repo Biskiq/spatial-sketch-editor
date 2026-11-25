@@ -17,7 +17,7 @@
  * a deselected Wall stays whole (`sticky`) until the next pose change: re-cutting
  * on Escape at rest would read as flicker.
  */
-import type { CompiledPhysicalWall, CompiledRoom } from '@portfolio/layout-core';
+import type { CompiledPhysicalWall, CompiledRoom } from '@portfolio/layout-core/geometry';
 import {
 	classifyNearWalls,
 	type NearWallClassification

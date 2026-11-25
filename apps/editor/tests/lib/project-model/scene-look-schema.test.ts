@@ -18,7 +18,7 @@ import {
 	type ProjectEnvelope,
 	type SceneEnvironment
 } from '@portfolio/project-model/units';
-import type { AcceptedSnapshot, AuthoringIntent } from '@portfolio/project-model';
+import type { AcceptedSnapshot, AuthoringIntent } from '@portfolio/project-model/f4';
 import { validateCameraFreeScenePayload } from '@portfolio/project-model/units';
 import {
 	admitUnitProject,

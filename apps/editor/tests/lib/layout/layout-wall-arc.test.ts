@@ -17,17 +17,8 @@
  *    baseline is never mutated.
  */
 import { describe, expect, it } from 'vitest';
-import {
-	createEmptyWallFirstLayoutDocument,
-	measureWallArc,
-	MIN_WALL_ARC_RISE,
-	planWallChain,
-	wallCenterlineSamples,
-	wallFirstWallLength,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type WallChainArc
-} from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument, measureWallArc, MIN_WALL_ARC_RISE, planWallChain, wallCenterlineSamples, wallFirstWallLength, type LayoutDocumentWallFirst, type WallChainArc } from '@portfolio/layout-core/wall';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import { freshCapture } from './__fixtures__/layout-id-capture';
 
 const ELEVATION = 0.5;

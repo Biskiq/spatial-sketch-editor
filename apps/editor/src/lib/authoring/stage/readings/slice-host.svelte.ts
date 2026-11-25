@@ -1,4 +1,4 @@
-import type { ViewportEvaluation } from '@portfolio/camera-core';
+import type { ViewportEvaluation } from '@portfolio/camera-core/viewport';
 import { contribution } from '../../workspace/region-ownership';
 import type { StageReadSnapshot } from '../accepted-read';
 import type { StageLens } from '../stage-session';

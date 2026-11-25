@@ -18,26 +18,8 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-	createEmptyWallFirstLayoutDocument,
-	deriveChainSpans,
-	LAYOUT_WALL_FIRST_FORMAT_VERSION,
-	planConvertWallToCurve,
-	planDeleteWallCurveKnot,
-	planInsertWallCurveKnot,
-	planMoveWallCurveKnot,
-	proposeWallFirstArchitectureGeometry,
-	proposeWallCurveShape,
-	sampleSegment,
-	wallCubicChain,
-	wallFirstWallSpan,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type LayoutWall,
-	type LayoutWallCenterline,
-	type LayoutWallCubicSpan,
-	type LayoutWallCurveKnot
-} from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument, LAYOUT_WALL_FIRST_FORMAT_VERSION, planConvertWallToCurve, planDeleteWallCurveKnot, planInsertWallCurveKnot, planMoveWallCurveKnot, proposeWallFirstArchitectureGeometry, proposeWallCurveShape, wallCubicChain, wallFirstWallSpan, type LayoutDocumentWallFirst, type LayoutWall, type LayoutWallCenterline, type LayoutWallCubicSpan, type LayoutWallCurveKnot } from '@portfolio/layout-core/wall';
+import { deriveChainSpans, sampleSegment, type LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 const LINE = { kind: 'line' } as const;
 const CHORD = 12;

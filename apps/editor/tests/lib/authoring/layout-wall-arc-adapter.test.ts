@@ -12,11 +12,7 @@
  * 6. an Arc that closes an open shell reconciles an ordinary Room.
  */
 import { describe, expect, it } from 'vitest';
-import {
-	createEmptyWallFirstLayoutDocument,
-	planWallChain,
-	type LayoutDocumentWallFirst
-} from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument, planWallChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
 import { captureUnitSave, readUnitEnvelopeForSave } from '@portfolio/project-model/units';
 

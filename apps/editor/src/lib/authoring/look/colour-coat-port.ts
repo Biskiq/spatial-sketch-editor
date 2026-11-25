@@ -14,7 +14,8 @@ import {
 	planColourCoats,
 	type CoatTarget
 } from '@portfolio/project-model/scene-planning';
-import type { MaterialId, SceneColor, SceneSurfaceRef, SemanticReference } from '@portfolio/project-model';
+import type { MaterialId, SceneColor, SceneSurfaceRef } from '@portfolio/project-model/scene';
+import type { SemanticReference } from '@portfolio/project-model/references';
 import type { Recipe } from '@portfolio/project-model/materials';
 import type { StageAdapterServices } from '../stage/stage-adapter-host';
 import type { PaintColour } from './paint-pick';

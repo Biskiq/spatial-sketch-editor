@@ -16,27 +16,9 @@
  * already holds its derived ids refuses instead of suffixing.
  */
 import { describe, expect, it } from 'vitest';
-import {
-	createEmptyWallFirstLayoutDocument,
-	layoutCapturedId,
-	nextLayoutPresetObjectId,
-	planCommitLayoutObjectPreset,
-	planCommitLayoutObjectPresetWithId,
-	planCreateWallFirstOpening,
-	planDeleteWall,
-	planDeleteWallFirstOpening,
-	planDissolveJunction,
-	planDuplicateIsolatedRoom,
-	planFirstEnclosureCreation,
-	planRemoveRoom,
-	planRepeatLayoutObject,
-	planRepeatWallOpening,
-	planWallChain,
-	planWallSegment,
-	type LayoutDocumentWallFirst,
-	type LayoutIdCapture,
-	type LayoutVec2
-} from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument, planCommitLayoutObjectPreset, planCreateWallFirstOpening, planDeleteWall, planDeleteWallFirstOpening, planDissolveJunction, planFirstEnclosureCreation, planRemoveRoom, planWallChain, planWallSegment, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import { layoutCapturedId, nextLayoutPresetObjectId, planCommitLayoutObjectPresetWithId, planDuplicateIsolatedRoom, planRepeatLayoutObject, planRepeatWallOpening, type LayoutIdCapture } from '@portfolio/layout-core/plan';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import { captureFor, capturedId, freshCapture } from './__fixtures__/layout-id-capture';
 
 const RECT: readonly LayoutVec2[] = [

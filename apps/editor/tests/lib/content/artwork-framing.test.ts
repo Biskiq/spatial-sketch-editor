@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Vector3 } from 'three';
-import {
-	ARTWORK_FLOAT_BACKING_COLOR, ARTWORK_MAT_COLOR, artworkFrameLayout,
-	type ArtworkFrame, type SceneArtworkEntity, type Vec3
-} from '@portfolio/project-model';
+import { ARTWORK_FLOAT_BACKING_COLOR, ARTWORK_MAT_COLOR, artworkFrameLayout, type ArtworkFrame } from '@portfolio/project-model/artwork';
+import type { SceneArtworkEntity, Vec3 } from '@portfolio/project-model/scene';
 import { SCENE_UNIT_FORMAT_VERSION, validateCameraFreeScenePayload, type CameraFreeSceneDocument } from '@portfolio/project-model/units';
 import { artworkHandlePoint, artworkCornerPoint, resizeArtworkAtRay } from '$lib/authoring/artwork/artwork-resize';
 import {

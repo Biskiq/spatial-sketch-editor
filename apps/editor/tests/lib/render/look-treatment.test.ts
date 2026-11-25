@@ -23,12 +23,8 @@ import { createVisitorWallMaterialFactory } from '$lib/render/layout/wall-materi
 import { createWallRepresentation } from '$lib/render/layout-wall-representation';
 import { createRoomRepresentation } from '$lib/render/layout-room-representation';
 import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from '../layout/__fixtures__/layout-scale-fixtures';
-import {
-	compileWallFirstLayoutGeometry,
-	createLayoutCompileSession,
-	planRigidWallMove,
-	withLayoutCompileSession
-} from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry, createLayoutCompileSession, withLayoutCompileSession } from '@portfolio/layout-core/geometry';
+import { planRigidWallMove } from '@portfolio/layout-core/wall';
 
 const identity = (over: Partial<ImportedMaterialDescriptor> = {}): ImportedMaterialDescriptor => ({
 	kind: 'imported',

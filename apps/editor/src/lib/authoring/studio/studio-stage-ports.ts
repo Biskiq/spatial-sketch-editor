@@ -1,5 +1,5 @@
 import { goto, replaceState } from '$app/navigation';
-import { eyeOfInspectionPose, fovYDegreesOf, type ViewportRect } from '@portfolio/camera-core';
+import { eyeOfInspectionPose, fovYDegreesOf, type ViewportRect } from '@portfolio/camera-core/viewport';
 import {
 	PLACE_COPY_PARAM,
 	STUDIO_ENTRY_PARAM,

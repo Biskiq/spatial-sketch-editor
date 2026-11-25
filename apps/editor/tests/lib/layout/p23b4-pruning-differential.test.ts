@@ -1,24 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-	classifyWallIntersection,
-	createEmptyWallFirstLayoutDocument,
-	deriveChainSpans,
-	detectWallCurveTopologyCrossings,
-	sampledWallExtentsOverlap,
-	sampledWallSelfIntersects,
-	sampledWallsCross,
-	topologyComponentKeyByWallId,
-	validateWallFirstTopology,
-	wallCenterlineSamples,
-	wallCubicChain,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type SampledTopologyWall,
-	type TopologySegment,
-	type WallCurveTopologyCrossing,
-	type LayoutWallCenterline
-} from '@portfolio/layout-core';
+import { classifyWallIntersection, createEmptyWallFirstLayoutDocument, detectWallCurveTopologyCrossings, sampledWallExtentsOverlap, sampledWallSelfIntersects, sampledWallsCross, validateWallFirstTopology, wallCenterlineSamples, wallCubicChain, type LayoutDocumentWallFirst, type SampledTopologyWall, type TopologySegment, type WallCurveTopologyCrossing, type LayoutWallCenterline } from '@portfolio/layout-core/wall';
+import { deriveChainSpans, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { topologyComponentKeyByWallId } from '@portfolio/layout-core/room';
 import {
 	buildP23BCorrectnessFixture,
 	buildP23BMatrixFixture,

@@ -12,30 +12,8 @@
  * (when the point lies in an Opening band) that Opening's identity. The result
  * is the input the existing canonical planners take; unfolding adds no writer.
  */
-import {
-	buildDevelopedWallMesh,
-	createWallDevelopmentBuffers,
-	spanForStation,
-	createWallDevelopmentSheetBuffers,
-	developmentInversePoint,
-	developmentOpeningFragments,
-	developmentOpeningIdentity,
-	developmentPointAtSheetFromBuffers,
-	developmentPointAtStationFromBuffers,
-	developmentSheetCoordinate,
-	evaluateWallDevelopment,
-	evaluateWallDevelopmentSheet,
-	isWallDevelopmentRefusal,
-	type CompiledPhysicalWall,
-	type LayoutVec2,
-	type WallDevelopment,
-	type WallDevelopmentBuffers,
-	type WallDevelopmentMesh,
-	type WallDevelopmentMeshHole,
-	type WallDevelopmentOpeningBand,
-	type WallDevelopmentSheetBuffers,
-	type WallDevelopmentSourceSpan
-} from '@portfolio/layout-core';
+import { buildDevelopedWallMesh, createWallDevelopmentBuffers, spanForStation, createWallDevelopmentSheetBuffers, developmentInversePoint, developmentOpeningFragments, developmentOpeningIdentity, developmentPointAtSheetFromBuffers, developmentPointAtStationFromBuffers, developmentSheetCoordinate, evaluateWallDevelopment, evaluateWallDevelopmentSheet, isWallDevelopmentRefusal, type WallDevelopment, type WallDevelopmentBuffers, type WallDevelopmentMesh, type WallDevelopmentMeshHole, type WallDevelopmentOpeningBand, type WallDevelopmentSheetBuffers, type WallDevelopmentSourceSpan } from '@portfolio/layout-core/wall';
+import type { CompiledPhysicalWall, LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 import {
 	prepareWallUnfoldDevelopment,

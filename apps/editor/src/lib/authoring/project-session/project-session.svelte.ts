@@ -11,7 +11,7 @@ import {
 	type ProjectImageDiagnostic
 } from '$lib/authoring/artwork/project-artwork';
 import type { VerifiedProjectImageCache } from '$lib/authoring/artwork/project-image-cache';
-import { LAYOUT_DIMENSION_LIMIT_MESSAGE } from '@portfolio/layout-core';
+import { LAYOUT_DIMENSION_LIMIT_MESSAGE } from '@portfolio/layout-core/geometry';
 import { bootEmpty, bootFromLoadOutcome, bootFromSourceJson, bootStarterGallery, initialBootState, type BootIntent, type BootLoadOutcome, type BootState } from '$lib/authoring/stage/boot-state';
 import type { AdmissionContext, StageReadSnapshot } from '$lib/authoring/stage/source-admission';
 import { runBoundLoad, type ReplacementEpochToken, type StageSession } from '$lib/authoring/stage/stage-session';

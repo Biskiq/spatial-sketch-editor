@@ -190,10 +190,10 @@ npm run check   # svelte-check — picks up tests/ via the generated tsconfig
 
 ### Lanes
 
-The suite is split into lanes by **configuration, not by file moves** — the
-mirrored tree and every `import.meta.url` boundary root stay put. Membership
-lives in `apps/editor/test-lanes.ts`; the scripts are in
-`apps/editor/package.json`:
+The suite is split into lanes by **filename** — the mirrored tree and every
+`import.meta.url` boundary root stay put. `*.arch.test.ts` and
+`*.heavy.test.ts` belong to their lanes; everything else is fast. The scripts
+are in `apps/editor/package.json`:
 
 ```bash
 npm run test:fast    # inner loop: everything EXCEPT arch + heavy
@@ -202,13 +202,11 @@ npm run test:heavy   # expensive correctness/property/stress work
 npm run test:full    # the same effective suite as `npm test`
 ```
 
-Membership is a curated list in `test-lanes.ts`, so `test:fast` excludes exactly
-those files and infers nothing from a filename or a file's size. That list is
-itself proved rather than trusted: `tests/config/lane-membership.test.ts` reads
-the tree, asserts every curated entry exists and is unique, that arch and heavy
-are disjoint, and that their union is exactly the curated set — with
-missing-entry, overlap, duplicate and dropped-file controls, so a renamed suite
-or a file that runs in no lane fails instead of reporting green.
+The suffix is the whole membership rule, so a renamed or relocated suite keeps
+its lane without a registry edit. A test file that sits outside every Vitest
+project fails `tooling-tests/test-projects.test.ts` instead of running nowhere;
+a lane that collects zero files fails the Vitest run and the merge-gate suite
+runner.
 
 The arch lane also carries one **repo-wide documentation gate**
 (`tests/docs/documentation-references.test.ts`): every Markdown document the
@@ -239,7 +237,7 @@ as contract evidence; they are not permission.
 `npm test` still runs the complete suite and is never narrowed. The arch lane
 is never path-gated: a Plan or store change can break a camera drawer or
 visitor boundary through shared code. Membership is executable fact in
-`apps/editor/test-lanes.ts`; the rules for *placing* a test are under
+the filename suffix; the rules for *placing* a test are under
 [Test design rules](#test-design-rules) above. The retired harvest held the
 original lane model and the final measurements
 (`git show e90a5822:docs/operations/test-suite-harvest-2026-09-19.md`).
@@ -264,7 +262,7 @@ static checks. `npm test` remains the complete local suite. See
 | A `heavy` test or its fixtures | The affected heavy contract **including its exhaustive cases**; no `-t` narrowing, and `npm run test:heavy` when the lane is the contract |
 | An `arch` boundary test | The **whole arch lane** at the applicable review gate: `npm run test:arch` |
 | Production code a heavy correctness invariant exercises | The relevant heavy contract during verification, alongside the affected fast contract |
-| Shared test setup (`tests/helpers/**`, `tests/docs/**`), `test-lanes.ts`, `vitest.shared.ts` or a `vitest.*.config.ts` | Every lane the change reaches **and** the full suite at acceptance (`npm test`) |
+| Shared test setup (`tests/helpers/**`, `tests/docs/**`), `vitest.shared.ts` or a `vitest.*.config.ts` | Every lane the change reaches **and** the full suite at acceptance (`npm test`) |
 | Production code (ordinary) | The affected contract, then the §7.7 escalation for its subsystem, call sites and package type checks |
 | `apps/api` code, its tests or fixtures | `npm run check:api` and the DB-backed `npm run test:api` with **zero skips** (a reachable `DATABASE_URL`; the run's DB target is recorded at a checkpoint — `npm run test:api:stack` targets the local Compose database that `npm run stack:up` starts). Root `check`, `build` and `test` cover the editor only and never sub for an API run |
 

@@ -9,12 +9,7 @@
  * retained planners rather than a hand-built centerline.
  */
 import { describe, expect, it } from 'vitest';
-import {
-	createEmptyWallFirstLayoutDocument,
-	planBendWallCurveKnot,
-	planWallChain,
-	type LayoutDocumentWallFirst
-} from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument, planBendWallCurveKnot, planWallChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 
 import {
 	LAYOUT_WALL_BEND_KIND,

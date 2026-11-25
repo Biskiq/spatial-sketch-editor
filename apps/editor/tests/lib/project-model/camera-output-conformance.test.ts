@@ -18,21 +18,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-	MAX_CAMERA_OUTPUT_RUN_EPOCH,
-	acquireCameraOutput,
-	cancelCameraOutput,
-	createCameraOutputState,
-	rebaseCameraOutputSource,
-	replaceCameraOutput,
-	requestCameraOutput,
-	returnCameraOutput,
-	validateCameraOutputTicket,
-	type CameraOutputDecision,
-	type CameraOutputPolicy,
-	type CameraOutputState,
-	type CameraOutputTicket
-} from '@portfolio/project-model';
+import { MAX_CAMERA_OUTPUT_RUN_EPOCH, acquireCameraOutput, cancelCameraOutput, createCameraOutputState, rebaseCameraOutputSource, replaceCameraOutput, requestCameraOutput, returnCameraOutput, validateCameraOutputTicket, type CameraOutputDecision, type CameraOutputPolicy, type CameraOutputState, type CameraOutputTicket } from '@portfolio/project-model/channels';
 
 const R1 = 'sha256-source-1';
 const R2 = 'sha256-source-2';

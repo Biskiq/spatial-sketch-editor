@@ -27,15 +27,9 @@ import {
 	creatorModelResourceEntry,
 	creatorModelResourcePayload
 } from '@portfolio/project-model/scene-planning';
-import {
-	type AuthoringIntent,
-	type DomainPlanner,
-	type SceneDocument,
-	type SceneEntity,
-	type ScenePrimitiveEntity,
-	type SemanticReference,
-	type Vec3
-} from '@portfolio/project-model';
+import type { AuthoringIntent, DomainPlanner } from '@portfolio/project-model/f4';
+import type { SceneDocument, SceneEntity, ScenePrimitiveEntity, Vec3 } from '@portfolio/project-model/scene';
+import type { SemanticReference } from '@portfolio/project-model/references';
 import {
 	replaceUnitData,
 	serializeProjectEnvelope,
@@ -50,13 +44,8 @@ import {
 	formLibraryPayloadFromEntity,
 	readFormLibraryBytes
 } from '@portfolio/project-model/library';
-import {
-	createEmptyWallFirstLayoutDocument,
-	nextLayoutPresetObjectId,
-	planCommitLayoutObjectPreset,
-	planWallChain,
-	type LayoutDocumentWallFirst
-} from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument, planCommitLayoutObjectPreset, planWallChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import { nextLayoutPresetObjectId } from '@portfolio/layout-core/plan';
 import { nativePlacementDefinition } from '$lib/authoring/scene/object-definition-policy';
 import type { AcceptanceCoordinator } from '$lib/authoring/f4/acceptance-coordinator';
 import {

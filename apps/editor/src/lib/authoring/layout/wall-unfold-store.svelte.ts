@@ -9,8 +9,8 @@
  * Session state survives an accepted edit's adapter rebind; it is cleared only
  * by Put back, subject removal or a replaced document.
  */
-import type { CompiledPhysicalWall } from '@portfolio/layout-core';
-import type { InspectionPose, ViewportReading } from '@portfolio/camera-core';
+import type { CompiledPhysicalWall } from '@portfolio/layout-core/geometry';
+import type { InspectionPose, ViewportReading } from '@portfolio/camera-core/viewport';
 
 import {
 	createWallUnfoldState,

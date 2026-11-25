@@ -1,5 +1,5 @@
 import { sameSky, SCENE_SKY_DEFAULT } from './sky-presets';
-import { hasOwnedFrozenJsonProof, rememberOwnedFrozenJson } from '../json-immutability';
+import { hasImmutableJsonProof as hasOwnedFrozenJsonProof, rememberImmutableJsonNode as rememberOwnedFrozenJson } from '@portfolio/layout-core/kernel';
 /**
  * Strict validation for F.2 `unit-envelope-v1` (AM-2).
  *
@@ -24,14 +24,10 @@ import { hasOwnedFrozenJsonProof, rememberOwnedFrozenJson } from '../json-immuta
  */
 
 import { dependencyLockKey } from './identity';
-import {
-	countWork,
-	linkClonedCowCandidate,
-	p2311Measure,
-	resolveLayoutSurface,
-	surfaceKey,
-	validateWallFirstLayoutDocument
-} from '@portfolio/layout-core';
+import { countWork, p2311Measure } from '@portfolio/layout-core/kernel';
+import { linkClonedCowCandidate } from '@portfolio/layout-core/world';
+import { resolveLayoutSurface, surfaceKey } from '@portfolio/layout-core/plan';
+import { validateWallFirstLayoutDocument } from '@portfolio/layout-core/wall';
 import { ShapeReader, type ShapeIssue, type ShapeValidation } from '../strict-shape';
 import { validateAcceptedRevision, validateSemanticReference } from '../references/validate';
 import { REFERENCE_FAILURE_CODES, isReferenceDomain } from '../references/types';
@@ -42,7 +38,7 @@ import { shippedImage } from '../materials/catalogue';
 import { MATERIAL_CAPABILITY, MATERIAL_MAP_ROLES } from '../materials/types';
 import { withSceneValidationOptions } from '../scene-validation';
 import type { SceneSurfaceFinish, SceneSurfaceRef } from '../scene';
-import { validateArtworkLibrary, validateSceneDocument } from '../scene-codec';
+import { validateArtworkLibrary, validateSceneDocument } from '../scene-codec/validate';
 import { CAMERA_UNIT_SCENE_VALIDATION } from './camera-connectivity';
 import {
 	ADMITTED_UNIT_VERSIONS,

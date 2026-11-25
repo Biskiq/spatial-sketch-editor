@@ -9,7 +9,7 @@
 	 * controller. It never owns document state.
 	 */
 	import { onMount, untrack } from 'svelte';
-	import { WALL_OPENING_DEFAULTS } from '@portfolio/layout-core';
+	import { WALL_OPENING_DEFAULTS } from '@portfolio/layout-core/wall';
 	import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 	import { parseMeasureInput } from './precision';
 	import { inkSurface, type InkOpeningSnapshot } from './ink';

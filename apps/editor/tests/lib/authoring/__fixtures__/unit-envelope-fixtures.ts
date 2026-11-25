@@ -12,12 +12,10 @@
  * into the Camera-free Scene unit and the Camera unit exactly as migration 005
  * does, and the resulting envelope has no navigation graph in its Scene.
  */
-import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core';
-import type {
-	AcceptedRevision,
-	DomainPlanner
-} from '@portfolio/project-model';
-import type { SceneDocument } from '@portfolio/project-model';
+import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core/wall';
+import type { AcceptedRevision } from '@portfolio/project-model/references';
+import type { DomainPlanner } from '@portfolio/project-model/f4';
+import type { SceneDocument } from '@portfolio/project-model/scene';
 import {
 	CAMERA_UNIT_FORMAT_VERSION,
 	SCENE_UNIT_FORMAT_VERSION,

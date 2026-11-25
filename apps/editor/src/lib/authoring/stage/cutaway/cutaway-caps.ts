@@ -13,7 +13,7 @@
  * geometry revision, stub height), so a stationary Camera and an unchanged cut set
  * rebuild nothing, and a cut-set change re-runs only the affected components.
  */
-import type { CompiledJunction, CompiledPhysicalWall } from '@portfolio/layout-core';
+import type { CompiledJunction, CompiledPhysicalWall } from '@portfolio/layout-core/geometry';
 import {
 	sectionMeshes,
 	type CapAssemblyIssue,

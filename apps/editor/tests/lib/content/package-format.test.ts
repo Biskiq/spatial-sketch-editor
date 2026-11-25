@@ -1,17 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-	PACKAGE_MANIFEST_FORMAT_VERSION,
-	REWRITE_URI_PREFIX,
-	buildPackageManifest,
-	collisionSuffix,
-	derivePackageId,
-	extensionForMime,
-	isSupportedMime,
-	packageFilenameFor,
-	sanitizeFilename,
-	type PackageManifest,
-	type PackageManifestTextureEntry
-} from '@portfolio/project-model';
+import { PACKAGE_MANIFEST_FORMAT_VERSION, REWRITE_URI_PREFIX, buildPackageManifest, collisionSuffix, derivePackageId, extensionForMime, isSupportedMime, packageFilenameFor, sanitizeFilename, type PackageManifest, type PackageManifestTextureEntry } from '@portfolio/project-model/package';
 
 describe('package-format', () => {
 	describe('derivePackageId', () => {

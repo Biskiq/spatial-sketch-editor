@@ -11,7 +11,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core/wall';
 import {
 	CAMERA_UNIT_FORMAT_VERSION,
 	EXPERIENCE_UNIT_FORMAT_VERSION,

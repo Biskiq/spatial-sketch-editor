@@ -71,7 +71,8 @@ import {
 	type ExperiencePathOccurrence,
 	type ExperiencePathRead
 } from './experience-paths';
-import type { OperationChange, ScenePathAnchor } from '@portfolio/project-model';
+import type { OperationChange } from '@portfolio/project-model/f4';
+import type { ScenePathAnchor } from '@portfolio/project-model/scene';
 import {
 	cameraConnectionCreateIntent,
 	cameraConnectionUpdateIntent,

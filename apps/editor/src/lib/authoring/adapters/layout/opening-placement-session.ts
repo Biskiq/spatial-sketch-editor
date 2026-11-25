@@ -22,12 +22,9 @@
  * the id acceptance writes; a refused acceptance keeps it for the retry and a
  * settled placement never reuses it.
  */
-import {
-	mintLayoutIdCapture,
-	planCreateWallFirstOpening,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2
-} from '@portfolio/layout-core';
+import { mintLayoutIdCapture } from '@portfolio/layout-core/plan';
+import { planCreateWallFirstOpening, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 import {
 	stageUnitRevision,

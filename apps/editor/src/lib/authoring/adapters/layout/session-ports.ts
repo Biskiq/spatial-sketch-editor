@@ -9,7 +9,7 @@
  * the controllers themselves and ends with their binding. Nothing here is
  * serialized.
  */
-import type { LayoutDocumentWallFirst } from '@portfolio/layout-core';
+import type { LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 
 import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 

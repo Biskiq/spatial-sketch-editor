@@ -1,19 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-	detectWallCurveTopologyCrossings,
-	sampledWallExtentsOverlap,
-	sampledWallSelfIntersects,
-	sampledWallsCross,
-	topologyComponentKeyByWallId,
-	validateWallFirstTopology,
-	wallCenterlineSamples,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type SampledTopologyWall,
-	type TopologySegment,
-	type WallCurveTopologyCrossing
-} from '@portfolio/layout-core';
+import { detectWallCurveTopologyCrossings, sampledWallExtentsOverlap, sampledWallSelfIntersects, sampledWallsCross, validateWallFirstTopology, wallCenterlineSamples, type LayoutDocumentWallFirst, type SampledTopologyWall, type TopologySegment, type WallCurveTopologyCrossing } from '@portfolio/layout-core/wall';
+import { topologyComponentKeyByWallId } from '@portfolio/layout-core/room';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import {
 	buildP23BCorrectnessFixture,
 	buildP23BMatrixFixture,

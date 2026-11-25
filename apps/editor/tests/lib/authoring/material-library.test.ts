@@ -8,7 +8,7 @@
  * bytes.
  */
 import { describe, expect, test } from 'vitest';
-import type { AuthoringIntent } from '@portfolio/project-model';
+import type { AuthoringIntent } from '@portfolio/project-model/f4';
 import {
 	createEmptyCameraPayload,
 	createEmptyExperiencePayload,
@@ -17,7 +17,7 @@ import {
 	createProjectEnvelope,
 	type ProjectEnvelope
 } from '@portfolio/project-model/units';
-import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core/wall';
 import { serializeProjectEnvelope } from '@portfolio/project-model/units';
 import {
 	MaterialLibraryClientError,

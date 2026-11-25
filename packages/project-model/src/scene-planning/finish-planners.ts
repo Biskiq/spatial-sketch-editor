@@ -22,12 +22,9 @@
  * active Scene unit format are checked once, on the candidate the adapter will
  * admit.
  */
-import type { DomainPlanner, PlannerOutcome, PlannerRequest } from '../f4';
-import {
-	resolveLayoutSurface,
-	surfaceKey,
-	type LayoutDocumentWallFirst,
-} from '@portfolio/layout-core';
+import type { DomainPlanner, PlannerOutcome, PlannerRequest } from '../f4/types';
+import { resolveLayoutSurface, surfaceKey } from '@portfolio/layout-core/plan';
+import type { LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 import type {
 	MaterialId,
 	SceneColor,

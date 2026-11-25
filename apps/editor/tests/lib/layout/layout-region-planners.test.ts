@@ -7,36 +7,9 @@
  * beside their owning contracts in `layout-region-queries.test.ts`.
  */
 import { describe, expect, it } from 'vitest';
-import {
-	compileWallFirstLayoutGeometryFresh,
-	createEmptyWallFirstLayoutDocument,
-	planCreateCircularRoom,
-	planCreateRegion,
-	planCreateWallFirstOpening,
-	planDuplicateRegion,
-	planExactWallHeight,
-	planExactWallThickness,
-	planFitRegionEdgeToWall,
-	planFitRegionToSpace,
-	planFitRegionToWalls,
-	planFitWallsToRegion,
-	planMoveRegion,
-	planRemoveRegion,
-	planRenameRegion,
-	planRotateRegion,
-	planSetRegionElevation,
-	planSetRegionFootprint,
-	planSetRegionIntendedGap,
-	planSetRegionThickness,
-	planWallChain,
-	regionWallPlanClass,
-	regionWallRelations,
-	validateWallFirstLayoutDocument,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type LayoutWall,
-	type RegionPlan
-} from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometryFresh, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { createEmptyWallFirstLayoutDocument, planCreateWallFirstOpening, planExactWallHeight, planExactWallThickness, planWallChain, validateWallFirstLayoutDocument, type LayoutDocumentWallFirst, type LayoutWall } from '@portfolio/layout-core/wall';
+import { planCreateCircularRoom, planCreateRegion, planDuplicateRegion, planFitRegionEdgeToWall, planFitRegionToSpace, planFitRegionToWalls, planFitWallsToRegion, planMoveRegion, planRemoveRegion, planRenameRegion, planRotateRegion, planSetRegionElevation, planSetRegionFootprint, planSetRegionIntendedGap, planSetRegionThickness, regionWallPlanClass, regionWallRelations, type RegionPlan } from '@portfolio/layout-core/room';
 import { captureFor, freshCapture } from './__fixtures__/layout-id-capture';
 
 const RECT: LayoutVec2[] = [[0, 0], [8, 0], [8, 6], [0, 6]];

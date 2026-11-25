@@ -1,4 +1,4 @@
-import type { SemanticReference } from '@portfolio/project-model';
+import type { SemanticReference } from '@portfolio/project-model/references';
 import { stageEnvelope, type StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 
 export function artworkReference(services: StageAdapterServices, id: string): SemanticReference {

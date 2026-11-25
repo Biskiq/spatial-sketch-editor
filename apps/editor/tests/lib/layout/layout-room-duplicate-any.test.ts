@@ -17,15 +17,9 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-	extractBoundaryCandidateFaces,
-	LAYOUT_WALL_FIRST_FORMAT_VERSION,
-	planDuplicateIsolatedRoom,
-	planDuplicateRoom,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type LayoutWallFirstRoom
-} from '@portfolio/layout-core';
+import { extractBoundaryCandidateFaces, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { LAYOUT_WALL_FIRST_FORMAT_VERSION, type LayoutDocumentWallFirst, type LayoutWallFirstRoom } from '@portfolio/layout-core/wall';
+import { planDuplicateIsolatedRoom, planDuplicateRoom } from '@portfolio/layout-core/plan';
 
 import { capturedId, freshCapture } from './__fixtures__/layout-id-capture';
 

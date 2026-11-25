@@ -30,7 +30,7 @@ import type {
 	SceneWaypoint
 } from '../scene';
 import { finishTextureBindings } from '../materials/read';
-import type { SceneDocumentIssue } from './index';
+import type { SceneDocumentIssue } from './types';
 import type { ResolvedSceneValidationOptions } from '../scene-validation';
 import type { JsonRecord } from './readers';
 import {

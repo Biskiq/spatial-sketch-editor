@@ -6,14 +6,7 @@
  * `camera-motion.test.ts`; the motion core stays there.
  */
 import { describe, expect, it } from 'vitest';
-import {
-  createCameraMotion,
-  createCameraMotionSample,
-  readCameraFramingGuardStatus,
-  sampleCameraMotion,
-  type CameraFramingGuardStatus,
-  type CameraRoute
-} from '@portfolio/camera-core';
+import { createCameraMotion, createCameraMotionSample, readCameraFramingGuardStatus, sampleCameraMotion, type CameraFramingGuardStatus, type CameraRoute } from '@portfolio/camera-core/camera';
 
 describe('P1.6 framing guard-status accessor (F3)', () => {
   function guardRoute(options: {

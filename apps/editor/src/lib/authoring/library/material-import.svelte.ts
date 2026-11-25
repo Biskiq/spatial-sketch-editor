@@ -16,7 +16,8 @@ import {
 	type SetProposal
 } from '@portfolio/project-model/material-authoring';
 import type { MapRole, NormalConvention } from '@portfolio/project-model/materials';
-import type { AcceptedRevision, SceneSurfaceRef } from '@portfolio/project-model';
+import type { AcceptedRevision } from '@portfolio/project-model/references';
+import type { SceneSurfaceRef } from '@portfolio/project-model/scene';
 import {
 	acceptDraft,
 	prepareDraft,

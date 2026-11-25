@@ -1,5 +1,5 @@
-import { countWork } from '@portfolio/layout-core';
-import { hasOwnedFrozenJsonProof, rememberOwnedFrozenJson } from '../json-immutability';
+import { countWork } from '@portfolio/layout-core/kernel';
+import { hasImmutableJsonProof as hasOwnedFrozenJsonProof, rememberImmutableJsonNode as rememberOwnedFrozenJson } from '@portfolio/layout-core/kernel';
 
 // A private proof of capture, not Object.isFrozen (which is only shallow).
 // Only plain JSON graphs produced by this boundary qualify. In particular a

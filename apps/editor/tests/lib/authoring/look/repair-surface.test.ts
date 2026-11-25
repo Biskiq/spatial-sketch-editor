@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BufferGeometry, Float32BufferAttribute, Group, Mesh, MeshBasicMaterial } from 'three';
-import { surfaceKey } from '@portfolio/layout-core';
+import { surfaceKey } from '@portfolio/layout-core/plan';
 import { tagRenderIdentity } from '$lib/render/render-identity';
 import { repairSurfaceGeometry } from '$lib/authoring/stage/shell/stage-selection-source';
 import { repairSurfaceRef } from '$lib/authoring/look/appearance-issues.svelte';

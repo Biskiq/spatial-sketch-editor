@@ -9,13 +9,9 @@
  * actually runs.
  */
 import { describe, expect, it } from 'vitest';
-import {
-	createEmptyWallFirstLayoutDocument,
-	findSpaceCreationOutline,
-	planCreateOpenSpace,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2
-} from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import { findSpaceCreationOutline, planCreateOpenSpace } from '@portfolio/layout-core/room';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
 
 import { createPlanPickProvider } from '$lib/authoring/layout/plan-pick-provider';

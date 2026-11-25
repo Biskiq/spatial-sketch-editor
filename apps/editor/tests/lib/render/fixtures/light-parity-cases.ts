@@ -8,7 +8,7 @@
  * pre-E10 components; the parity test replays the same steps through the
  * resolved-light store and must read the identical snapshot at every step.
  */
-import type { RuntimeScene, SceneLightEntity } from '@portfolio/project-model';
+import type { RuntimeScene, SceneLightEntity } from '@portfolio/project-model/scene';
 import { skyFromPreset } from '@portfolio/project-model/units';
 
 type PointEntity = Extract<SceneLightEntity, { light: 'point' }>;

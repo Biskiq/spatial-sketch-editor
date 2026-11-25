@@ -13,24 +13,12 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core';
-import {
-	LAYOUT_ARCHITECTURAL_PRESETS,
-	layoutArchitecturalPreset,
-	layoutPresetPlacement,
-	nextLayoutPresetObjectId,
-	planCommitLayoutObjectPreset,
-	planDeleteLayoutObject,
-	planExactLayoutObjectTransform,
-	type LayoutArchitecturalPresetId,
-	type LayoutDocumentWallFirst
-} from '@portfolio/layout-core';
-import {
-	parseWallFirstLayoutDocumentJson,
-	serializeWallFirstLayoutDocument
-} from '@portfolio/layout-core';
-import { LAYOUT_WALL_FIRST_FORMAT_VERSION } from '@portfolio/layout-core';
-import type { LayoutVec2 } from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core/geometry';
+import { LAYOUT_ARCHITECTURAL_PRESETS, layoutArchitecturalPreset, layoutPresetPlacement, planCommitLayoutObjectPreset, planDeleteLayoutObject, planExactLayoutObjectTransform, type LayoutArchitecturalPresetId, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import { nextLayoutPresetObjectId } from '@portfolio/layout-core/plan';
+import { parseWallFirstLayoutDocumentJson, serializeWallFirstLayoutDocument } from '@portfolio/layout-core/wall';
+import { LAYOUT_WALL_FIRST_FORMAT_VERSION } from '@portfolio/layout-core/wall';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import { freshCapture } from './__fixtures__/layout-id-capture';
 
 function emptyDocument(elevation = 0): LayoutDocumentWallFirst {

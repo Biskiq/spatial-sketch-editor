@@ -7,11 +7,8 @@
  * one captured environment. Each is one change record, so each is one Undo.
  */
 import { describe, expect, it } from 'vitest';
-import type {
-	AcceptedSnapshot,
-	AuthoringIntent,
-	SceneMaterialInstance
-} from '@portfolio/project-model';
+import type { AcceptedSnapshot, AuthoringIntent } from '@portfolio/project-model/f4';
+import type { SceneMaterialInstance } from '@portfolio/project-model/scene';
 import {
 	SCENE_LOOK_APPLY_KIND,
 	SCENE_LOOK_RESTORE_KIND,

@@ -1,45 +1,389 @@
-/**
- * `@portfolio/project-model/units` — the F.2 `unit-envelope-v1` provider
- * (AM-2), reached only through this explicit subpath.
- *
- * Nothing here is exported from the package's root barrel, and the subpath is
- * explicit. It is live: the API read/Save boundary and the
- * visitor runtime import this entry, and the unit Save handler is the live
- * writer. In particular this entry is *not* the delivery-only program entry —
- * `./program` keeps its own closure.
- *
- * Exports: the envelope/unit/header/lock/payload shapes, strict validation,
- * canonical bytes, unit content revisions and the envelope source-content digest.
- *
- * `./acceptance-staging` is the F.2-dependent half of
- * `unit-acceptance-v1`: staging needs the envelope's resource registry, so it
- * belongs behind this subpath rather than in `f4/**` (whose closure the
- * architecture gate keeps free of the F.2 entries).
- */
+export {
+	createUnitPlannerRegistry,
+	createUnitTargetInspector,
+	prepareUnitIntent,
+	validateUnitTargets,
+} from '../f4/unit-acceptance';
 
-export * from './types';
-export * from './sky-presets';
-export * from './look-presets';
-export * from './source';
-export * from './canonical';
-export * from './envelope';
-export * from './runtime';
-export * from './camera-connectivity';
-export * from './validate';
-export * from './material-index';
-export * from './material-digests';
-export * from './acceptance-staging';
-export * from './planning';
-export * from './experience-structure';
-export * from './acceptance';
-export * from './save';
-// The F.4-facing half of the same capability (the wider registry and the
-// dispatcher entry) is re-exported here so a host that opts into F.2 reaches one
-// unit-acceptance entry. It imports no unit module, so this stays acyclic.
-export { createUnitPlannerRegistry, createUnitTargetInspector, prepareUnitIntent, validateUnitTargets } from '../f4/unit-acceptance';
-// The shared Experience lowering, interpreter and semantic
-// companion. Appended: they read the same inactive envelope and activate with it.
-export * from './experience';
-// Type-only: an editor that executes a lowered program names its type without
-// pulling the program's validation closure into a source module.
-export type { ExecutionProgram, ProgramInvocation } from '../program/types';
+export type {
+	ExecutionProgram,
+	ProgramInvocation,
+} from '../program/types';
+
+export {
+	SCENE_PALETTE_MAX_SLOTS,
+	SCENE_SKY_PRESETS,
+	SCENE_TREATMENTS,
+} from '../scene';
+
+export type {
+	SceneColor,
+	SceneEnvironment,
+	ScenePaletteSlot,
+	SceneSky,
+	SceneSkyPreset,
+	SceneTreatment,
+} from '../scene';
+
+export {
+	createUnitAcceptanceAdapter,
+	createUnitAcceptancePreparation,
+	normalizeUnitEnvelope,
+	UNIT_ACCEPTANCE_SCOPE,
+	UNIT_ENVELOPE_SOURCE_FORMAT,
+	UNIT_ENVELOPE_SOURCE_KIND,
+	UNIT_ENVELOPE_SOURCE_VERSION,
+	verifyUnitDependencyLocks,
+} from './acceptance';
+
+export type {
+	UnitAcceptanceAdapterOptions,
+	UnitAcceptancePreparationOptions,
+	VerifyDependencyLocksOptions,
+} from './acceptance';
+
+export {
+	stageUnitResources,
+} from './acceptance-staging';
+
+export type {
+	StagedUnitResource,
+	UnitResourceStaging,
+} from './acceptance-staging';
+
+export {
+	CAMERA_UNIT_SCENE_VALIDATION,
+} from './camera-connectivity';
+
+export {
+	canonicalUnitBytes,
+	canonicalUnitJson,
+	computeEnvelopeSourceContentId,
+	computeUnitContentRevision,
+	createDomainUnit,
+	createProjectEnvelope,
+	createUnitHeader,
+	envelopeSourceCore,
+	verifyUnitContentRevisions,
+} from './canonical';
+
+export type {
+	ContentRevisionMismatch,
+	ProjectEnvelopeInput,
+	SaveWorkInstrumentation,
+} from './canonical';
+
+export {
+	cameraUnit,
+	createEmptyCameraPayload,
+	createEmptyExperiencePayload,
+	createEmptyResourcePayload,
+	createEmptyUnitEnvelope,
+	createEmptyUnitSceneDocument,
+	experienceUnit,
+	layoutUnit,
+	replaceUnitData,
+	resourceUnit,
+	sceneUnit,
+	serializeUnitEnvelope,
+} from './envelope';
+
+export {
+	GUIDE_KEEPS_A_STOP_REASON,
+	normalizeTransitions,
+	planGuideRemoval,
+	planPresentationRemoval,
+	planPresentationViewRemoval,
+	planStopRemoval,
+	PRESENTATION_KEEPS_A_VIEW_REASON,
+	requiredTravelPairs,
+	travelPairs,
+	unlinkSceneSubject,
+	unlinkSceneSubjects,
+} from './experience-structure';
+
+export type {
+	ExperienceNormalisedCut,
+	ExperienceRemovalConsequence,
+	ExperienceRemovalPlan,
+	ExperienceRemovalRefusalCode,
+	ExperienceTravelPair,
+} from './experience-structure';
+
+export {
+	buildExperienceCompanion,
+} from './experience/companion';
+
+export type {
+	CompanionDestination,
+	ExperienceCompanion,
+} from './experience/companion';
+
+export {
+	createExperienceInterpreter,
+	createExperienceRun,
+	EXPERIENCE_RESUME_LEAD_IN_MS,
+	isExploring,
+	reduceExperience,
+	replayExperience,
+} from './experience/interpreter';
+
+export type {
+	ExperienceDetourPolicy,
+	ExperienceEffect,
+	ExperienceEvent,
+	ExperienceInterpreterOptions,
+	ExperiencePanel,
+	ExperienceReduceOutcome,
+	ExperienceReduceResult,
+	ExperienceRunPhase,
+	ExperienceRunState,
+	ExperienceSuspendedVisit,
+	ExperienceTransition,
+	ExperienceVisit,
+} from './experience/interpreter';
+
+export {
+	lowerExperienceProgram,
+} from './experience/lowering';
+
+export type {
+	ExperienceLoweringAction,
+	ExperienceLoweringOptions,
+	ExperienceLoweringRefusal,
+	ExperienceLoweringResult,
+	ExperienceProgramTransition,
+} from './experience/lowering';
+
+export {
+	deriveExperienceRuntimePolicy,
+} from './experience/policy';
+
+export type {
+	ExperienceRuntimePolicy,
+	ExperienceRuntimePolicyResult,
+} from './experience/policy';
+
+export {
+	sameSkyIgnoringHeading,
+	SCENE_LOOK_IDS,
+	SCENE_LOOK_STARTS,
+	sceneLookOf,
+	sceneLookPaletteSlots,
+	sceneLookStart,
+} from './look-presets';
+
+export type {
+	SceneLookId,
+	SceneLookPaletteEntry,
+	SceneLookStart,
+} from './look-presets';
+
+export {
+	checkEnvelopeMaterialProof,
+	verifyEnvelopeMaterialDigests,
+} from './material-digests';
+
+export type {
+	EnvelopeMaterialProofResult,
+} from './material-digests';
+
+export {
+	materialRuntimeIndexOf,
+} from './material-index';
+
+export {
+	CAMERA_CONNECTION_CREATE_KIND,
+	CAMERA_CONNECTION_DEFAULT_CLEARANCE,
+	CAMERA_CONNECTION_UPDATE_KIND,
+	CAMERA_VIEW_UPDATE_KIND,
+	createCameraConnectionCreatePlanner,
+	createCameraConnectionUpdatePlanner,
+	createCameraViewUpdatePlanner,
+	createCaptureBindPlanner,
+	createExperienceCreatePlanner,
+	createExperienceGuideCreatePlanner,
+	createExperienceGuideOrderPlanner,
+	createExperienceGuideRemovePlanner,
+	createExperienceGuideUpdatePlanner,
+	createExperiencePresentationRemovePlanner,
+	createExperiencePresentationUpdatePlanner,
+	createExperiencePresentationViewRemovePlanner,
+	createExperienceStopCreatePlanner,
+	createExperienceStopRemovePlanner,
+	createExperienceStopUpdatePlanner,
+	createExperienceUpdatePlanner,
+	createSceneEnvironmentSetPlanner,
+	createSceneLookApplyPlanner,
+	createSceneLookRestorePlanner,
+	createSceneSkyUpdatePlanner,
+	createSceneTreatmentSetPlanner,
+	createUnitAcceptanceProfile,
+	createUnitCandidatePlanners,
+	EXPERIENCE_CAPTURE_BIND_KIND,
+	EXPERIENCE_CREATE_KIND,
+	EXPERIENCE_GUIDE_CREATE_KIND,
+	EXPERIENCE_GUIDE_ORDER_KIND,
+	EXPERIENCE_GUIDE_REMOVE_KIND,
+	EXPERIENCE_GUIDE_UPDATE_KIND,
+	EXPERIENCE_PRESENTATION_REMOVE_KIND,
+	EXPERIENCE_PRESENTATION_UPDATE_KIND,
+	EXPERIENCE_PRESENTATION_VIEW_REMOVE_KIND,
+	EXPERIENCE_STOP_CREATE_KIND,
+	EXPERIENCE_STOP_REMOVE_KIND,
+	EXPERIENCE_STOP_UPDATE_KIND,
+	EXPERIENCE_UPDATE_KIND,
+	SCENE_ENVIRONMENT_CHOICES,
+	SCENE_ENVIRONMENT_SET_KIND,
+	SCENE_LOOK_APPLY_KIND,
+	SCENE_LOOK_RESTORE_KIND,
+	SCENE_SKY_UPDATE_KIND,
+	SCENE_TREATMENT_SET_KIND,
+	STAGED_RESOURCES_INPUT,
+	stagedResourcesAsTyped,
+} from './planning';
+
+export type {
+	CaptureBindOptions,
+	SceneLookApplyPayload,
+	SceneLookRestorePayload,
+	SceneSkyUpdatePayload,
+	SceneTreatmentSetPayload,
+	UnitAcceptanceProfile,
+	UnitAcceptanceProfileOptions,
+} from './planning';
+
+export {
+	prepareUnitRuntime,
+	prepareValidatedUnitRuntime,
+} from './runtime';
+
+export type {
+	RetainedUnitRuntime,
+	UnitRuntimePreparation,
+	UnitRuntimeReady,
+	UnitRuntimeRejection,
+	ValidatedProjectEnvelope,
+} from './runtime';
+
+export {
+	captureUnitSave,
+	createUnitSaveHandler,
+	readUnitEnvelopeForSave,
+	UNIT_SAVE_SCOPE,
+	UNIT_SAVE_SOURCE_KIND,
+	UNIT_SAVE_SOURCE_VERSION,
+} from './save';
+
+export type {
+	UnitSaveCapture,
+	UnitSaveRefusal,
+} from './save';
+
+export {
+	sameSky,
+	SCENE_SKY_DEFAULT,
+	SCENE_SKY_PRESET_STARTS,
+	skyFromPreset,
+	skyIsEdited,
+	sunShadowRadius,
+} from './sky-presets';
+
+export {
+	UNIT_SOURCE_KIND,
+	UNIT_SOURCE_VERSION,
+} from './source';
+
+export {
+	ADMITTED_UNIT_VERSIONS,
+	CAMERA_UNIT_FORMAT_VERSION,
+	EXPERIENCE_GUIDE_PACINGS,
+	EXPERIENCE_INVITATION_PROMPT_MAX_LENGTH,
+	EXPERIENCE_STAY_DEFAULT_SECONDS,
+	EXPERIENCE_STAY_MIN_SECONDS,
+	EXPERIENCE_TEXT_KINDS,
+	EXPERIENCE_TEXT_MAX_LENGTH,
+	EXPERIENCE_TRANSITIONS,
+	EXPERIENCE_UNIT_FORMAT_VERSION,
+	EXPERIENCE_WELCOME_MAX_LENGTH,
+	LAYOUT_UNIT_FORMAT_VERSION,
+	MODEL_DERIVATIVE_MAX_BYTES,
+	MODEL_RESOURCE_MIME,
+	MODEL_SOURCE_SET_MAX_BYTES,
+	presentationDefaultViewId,
+	presentationDisplayName,
+	presentationViewIds,
+	RESOURCE_KINDS,
+	RESOURCE_UNIT_FORMAT_VERSION,
+	SCENE_UNIT_FORMAT_VERSION,
+	stopEntryViewId,
+	UNIT_DOMAINS,
+	UNIT_ENVELOPE_FORMAT_VERSION,
+} from './types';
+
+export type {
+	CameraFreeSceneDocument,
+	CameraUnitPayload,
+	CameraView,
+	DependencyLock,
+	DependencyLockEntry,
+	DomainUnit,
+	Experience,
+	ExperienceDetour,
+	ExperienceGuide,
+	ExperienceGuidePacing,
+	ExperienceInvitation,
+	ExperiencePresentation,
+	ExperiencePresentationText,
+	ExperiencePresentationView,
+	ExperienceStop,
+	ExperienceTransitionKind,
+	ExperienceUnitPayload,
+	LayoutUnitPayload,
+	MaterialResourceDetail,
+	MaterialResourceImage,
+	ModelPlacement,
+	ModelRefineRecipe,
+	ModelResourceDetail,
+	ModelSourcePin,
+	PayloadOf,
+	ProjectEnvelope,
+	ProjectUnits,
+	RequiredCapability,
+	ResourceKind,
+	ResourcePin,
+	ResourceUnitPayload,
+	SceneEnvironmentChoice,
+	TypedResource,
+	UnitDomain,
+	UnitHeader,
+	UnitPayload,
+	UnresolvedBinding,
+} from './types';
+
+export {
+	freezePlainJsonSubgraph,
+	isDeeplyFrozenPlainJson,
+	readExperienceText,
+	readInvitation,
+	readPresentationViews,
+	readStaySeconds,
+	serializeProjectEnvelope,
+	serializeValidatedProjectEnvelope,
+	validateCameraFreeScenePayload,
+	validateCameraPayload,
+	validateDependencyLock,
+	validateExperiencePayload,
+	validateLayoutPayload,
+	validateProjectEnvelope,
+	validateResourcePayload,
+	validateSceneSky,
+	validateUnitPayload,
+	validateUnresolvedBinding,
+} from './validate';
+
+export type {
+	EnvelopeClosureFinding,
+	EnvelopeDiagnostic,
+	EnvelopeValidation,
+} from './validate';

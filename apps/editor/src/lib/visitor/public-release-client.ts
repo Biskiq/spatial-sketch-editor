@@ -19,7 +19,7 @@ import {
 	type ColdReleaseBundle
 } from './visitor-cold-runtime';
 
-import { artworkAssetUri } from '@portfolio/project-model';
+import { artworkAssetUri } from '@portfolio/project-model/artwork';
 import { validateProjectEnvelope, verifyEnvelopeMaterialDigests } from '@portfolio/project-model/units';
 import { verifyArtworkDecode } from '$lib/render/artwork/artwork-decode';
 import { imageSha256 } from '$lib/render/artwork/image-digest';

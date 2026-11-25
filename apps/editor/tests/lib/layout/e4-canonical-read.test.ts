@@ -9,15 +9,8 @@
  * seam.
  */
 import { afterEach, describe, expect, it } from 'vitest';
-import {
-	clearWallSamplingObserverForTest,
-	compileWallFirstLayoutGeometry,
-	compileWallFirstLayoutGeometryFresh,
-	createLayoutCompileSession,
-	readPassiveCompiledGeometry,
-	setWallSamplingObserverForTest,
-	type LayoutDocumentWallFirst
-} from '@portfolio/layout-core';
+import { clearWallSamplingObserverForTest, setWallSamplingObserverForTest, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import { compileWallFirstLayoutGeometry, compileWallFirstLayoutGeometryFresh, createLayoutCompileSession, readPassiveCompiledGeometry } from '@portfolio/layout-core/geometry';
 
 import { addOpenings, buildGrid, sequentialCaptures } from '../../../perf/lib/workloads/grid';
 import { startStageCounting, type StageCounting } from '../../helpers/stage-counts';

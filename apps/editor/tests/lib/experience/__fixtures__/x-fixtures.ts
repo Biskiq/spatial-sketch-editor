@@ -16,12 +16,9 @@
  * x-paths (Camera connections) arrives with R217.S29, and x-salon's three-View Stop with
  * R217.S27; neither exists before its slice's format and planners.
  */
-import {
-	createEmptyWallFirstLayoutDocument,
-	planCreateWallFirstOpening,
-	planWallChain
-} from '@portfolio/layout-core';
-import type { AuthoringIntent, ScenePrimitiveEntity } from '@portfolio/project-model';
+import { createEmptyWallFirstLayoutDocument, planCreateWallFirstOpening, planWallChain } from '@portfolio/layout-core/wall';
+import type { AuthoringIntent } from '@portfolio/project-model/f4';
+import type { ScenePrimitiveEntity } from '@portfolio/project-model/scene';
 import {
 	computeEnvelopeSourceContentId,
 	createUnitAcceptanceProfile,

@@ -285,7 +285,7 @@ Report it through the router's triage; do not fix product code here.**
     (lines 70–85) reads `readPendingCloudSave` after `/auth?next=/`, but `writePendingCloudSave` has
     **zero production callers**, carries the legacy `{ name, layout, scene }` shape rather than the v2
     unit envelope, and is forbidden on `/project/:id/spatial` by
-    [`editor-host-no-write.test.ts`](../apps/editor/tests/lib/authoring/editor-host-no-write.test.ts).
+    [`editor-host-no-write.arch.test.ts`](../apps/editor/tests/lib/authoring/editor-host-no-write.arch.test.ts).
   - **What the reference and roadmap documents actually state:**
     [`persistence.md`](../docs/reference/components/persistence.md) (`P19`) specifies authenticated owned
     Save (`POST /api/projects` / `PUT /api/projects/:id`, `401` when unauthenticated) and does **not**

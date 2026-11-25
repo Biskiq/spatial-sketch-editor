@@ -6,7 +6,8 @@
  * Layout surface a Finish writer already understands, and resolves an
  * inspected user list back to one selection — never to a write.
  */
-import type { SceneSurfaceRef, SemanticReference } from '@portfolio/project-model';
+import type { SceneSurfaceRef } from '@portfolio/project-model/scene';
+import type { SemanticReference } from '@portfolio/project-model/references';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
 import {
 	finishKeyOfSurface,
@@ -15,7 +16,7 @@ import {
 	surfaceFinishFor,
 	type FinishKey
 } from '@portfolio/project-model/scene-planning';
-import { resolveLayoutSurface, surfaceKey } from '@portfolio/layout-core';
+import { resolveLayoutSurface, surfaceKey } from '@portfolio/layout-core/plan';
 import type { StageAdapterServices } from '../stage/stage-adapter-host';
 import type { StageSelectionEntry } from '$lib/authoring/stage/semantic-selection';
 import { layoutSurfaceTarget, sceneEntityTarget } from '../look/colour-coat-port';

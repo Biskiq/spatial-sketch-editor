@@ -39,7 +39,7 @@ import {
 import { Line2NodeMaterial } from 'three/webgpu';
 import { Line2 } from 'three/addons/lines/webgpu/Line2.js';
 import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
-import type { LayoutVec2 } from '@portfolio/layout-core';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import { sameReference, type StageSelectionEntry } from './semantic-selection';
 import { STAGE_ERASE_INK } from './stage-eraser';
 import { SPATIAL_PAINT_ROLES } from '$lib/design/spatial-paint';

@@ -40,7 +40,14 @@ import { MAX_LAYOUT_REGION_POINTS } from './layout-region-validation';
 import { validateWallFirstLayoutDocument } from './layout-wall-first-codec';
 import type { LayoutDocumentWallFirst, LayoutRegion } from './layout-wall-first-types';
 
-export * from './layout-region-validation';
+export {
+	MAX_LAYOUT_REGION_POINTS,
+	LAYOUT_SLICE_CONTACT_METERS,
+	regionVerticalBand,
+	regionFootprintBounds,
+	regionGeometryIssues,
+	carryRegionWallIntents,
+} from './layout-region-validation';
 
 export type RegionPlannerOperation =
 	| 'region-create'

@@ -22,13 +22,8 @@
  * move the other).
  */
 import { describe, expect, it } from 'vitest';
-import {
-	VIEWPORT_READING_TRANSITION_SECONDS,
-	createViewportCameraState,
-	evaluateViewport,
-	requestViewingIntent
-} from '@portfolio/camera-core';
-import type { ViewportRect } from '@portfolio/camera-core';
+import { VIEWPORT_READING_TRANSITION_SECONDS, createViewportCameraState, evaluateViewport, requestViewingIntent } from '@portfolio/camera-core/viewport';
+import type { ViewportRect } from '@portfolio/camera-core/viewport';
 import {
 	STAGE_CLICK_TOLERANCE_CSS_PX,
 	createStagePressTracker,

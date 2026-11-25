@@ -12,7 +12,7 @@
  * half-width around the inspection target; the host only supplies the value when a
  * producer actually asks for a bounded plan.
  */
-import type { PlanParameters, PlanSourceKind } from '@portfolio/layout-core';
+import type { PlanParameters, PlanSourceKind } from '@portfolio/layout-core/world';
 
 /** The calibrated default cut height above the level datum, in meters. */
 export const PLAN_DEFAULT_CUT_HEIGHT_METERS = 1.2;

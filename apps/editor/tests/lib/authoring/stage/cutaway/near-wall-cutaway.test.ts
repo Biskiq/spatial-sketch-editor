@@ -6,7 +6,7 @@
  * until the next pose change), D2's hold mask and D11's Plan clearing.
  */
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { CompiledPhysicalWall, CompiledRoom, LayoutVec2 } from '@portfolio/layout-core';
+import type { CompiledPhysicalWall, CompiledRoom, LayoutVec2 } from '@portfolio/layout-core/geometry';
 import { nearWallCutaway } from '$lib/authoring/stage/cutaway/near-wall-cutaway.svelte';
 import type { NearWallEvaluation } from '$lib/authoring/stage/cutaway/near-wall-cutaway.svelte';
 

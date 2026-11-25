@@ -30,7 +30,7 @@ vi.mock('@threlte/core', async (importOriginal) => {
 
 import { flushSync, mount, tick, unmount } from 'svelte';
 import { BoxGeometry, Group, Mesh, MeshStandardMaterial, Scene, type Object3D } from 'three';
-import type { RuntimeScene, SceneModelEntity } from '@portfolio/project-model';
+import type { RuntimeScene, SceneModelEntity } from '@portfolio/project-model/scene';
 import Harness, { type WorldHarnessHandle } from './fixtures/ArtworkWorldHarness.svelte';
 import { createScenePickSource } from '$lib/authoring/scene/scene-pick-source';
 import { createModelTemplateLoader, sceneModelSupport } from '$lib/render/models/scene-model-support';

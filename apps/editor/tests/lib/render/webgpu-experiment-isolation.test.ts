@@ -10,8 +10,9 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { EDITOR_ROOT } from '../../helpers/import-closure';
 
-const APP = process.cwd();
+const APP = EDITOR_ROOT;
 
 function walk(directory: string, output: string[] = []): string[] {
 	for (const entry of readdirSync(directory)) {

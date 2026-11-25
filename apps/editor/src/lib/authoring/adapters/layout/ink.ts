@@ -15,7 +15,7 @@
  *    as the paused-proposal store does. Nothing here owns document state: the
  *    buffer it reports is the adapter's draft.
  */
-import type { LayoutVec2 } from '@portfolio/layout-core';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 /** The dock tool's contributed task and Find-entry id. */
 export const LAYOUT_INK_TASK = 'layout-ink';

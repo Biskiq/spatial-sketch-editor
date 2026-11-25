@@ -1,9 +1,5 @@
 import { expect, it } from 'vitest';
-import {
-	type CompiledLayoutGeometry,
-	type CompiledOpening,
-	type LayoutVec2
-} from '@portfolio/layout-core';
+import type { CompiledLayoutGeometry, CompiledOpening, LayoutVec2 } from '@portfolio/layout-core/geometry';
 import { prepareUnitRuntime } from '@portfolio/project-model/units';
 import { aimThroughWindows } from '$lib/authoring/look/aim-through-windows';
 import { DEFAULT_STARTER_TEMPLATE } from '$lib/authoring/stage/starter-gallery';

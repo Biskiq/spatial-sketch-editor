@@ -23,7 +23,7 @@ import {
 	type SheenStepId
 } from '@portfolio/project-model/scene-planning';
 import { pruneOverrides, type Recipe } from '@portfolio/project-model/materials';
-import type { SceneMaterialInstance } from '@portfolio/project-model';
+import type { SceneMaterialInstance } from '@portfolio/project-model/scene';
 import type { LibraryFinishEntry } from './library-catalogue';
 
 export const SHEEN_STEP_ORDER: readonly SheenStepId[] = ['matte', 'satin', 'gloss'];

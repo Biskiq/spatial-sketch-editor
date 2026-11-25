@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import {
- compileWallFirstLayoutGeometryFresh, createWallSamplingDerivation, createLayoutCompileSession, ensureLayoutWorldIndex, indexedCompiledWall,
- planRigidWallMove, sealCompiledLayoutSnapshot, setWorkObserver, withLayoutCompileSession
-} from '@portfolio/layout-core';
-import { immutableF4Data } from '@portfolio/project-model';
+import { compileWallFirstLayoutGeometryFresh, createLayoutCompileSession, indexedCompiledWall, sealCompiledLayoutSnapshot, withLayoutCompileSession } from '@portfolio/layout-core/geometry';
+import { createWallSamplingDerivation, planRigidWallMove } from '@portfolio/layout-core/wall';
+import { ensureLayoutWorldIndex } from '@portfolio/layout-core/world';
+import { setWorkObserver } from '@portfolio/layout-core/kernel';
+import { immutableF4Data } from '@portfolio/project-model/f4';
 import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from './__fixtures__/layout-scale-fixtures';
 
 describe('Stage sealing of persistent generated snapshots', () => {

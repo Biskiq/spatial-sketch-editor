@@ -40,7 +40,7 @@
  * items, support, URLs and texture scope are all unchanged does nothing at all.
  */
 import { Group, Mesh, type Box3, type Object3D } from 'three';
-import { countWork } from '@portfolio/layout-core';
+import { countWork } from '@portfolio/layout-core/kernel';
 import type { CasterChannel } from './resources/caster-channel';
 import type { GeometryLease, GeometryStore } from './resources/geometry-store';
 import type { MaterialLease, MaterialStore } from './resources/material-store';

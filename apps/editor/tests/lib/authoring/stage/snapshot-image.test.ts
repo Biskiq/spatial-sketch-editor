@@ -18,10 +18,11 @@ import {
 	encodeSnapshotPixels,
 	linearByteToSrgbByte
 } from '$lib/authoring/stage/snapshot-image';
+import { EDITOR_ROOT } from '../../../helpers/import-closure';
 
 /** The vitest root is `apps/editor`; the same read the render guards use. */
 function source(path: string): string {
-	return readFileSync(resolve(process.cwd(), path), 'utf8');
+	return readFileSync(resolve(EDITOR_ROOT, path), 'utf8');
 }
 
 describe('linear readback to sRGB', () => {

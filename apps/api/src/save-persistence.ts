@@ -15,7 +15,8 @@
  * status reads, or the publication OCC revision.
  */
 
-import type { AcceptedRevision, ProjectIssue } from '@portfolio/project-model';
+import type { AcceptedRevision } from '@portfolio/project-model/references';
+import type { ProjectIssue } from '@portfolio/project-model/package';
 import {
 	createUnitSaveHandler,
 	UNIT_ENVELOPE_SOURCE_FORMAT,

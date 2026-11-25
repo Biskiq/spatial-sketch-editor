@@ -13,7 +13,7 @@
  * session view state that lives until the next measurement, Escape or disarm, and
  * never reaches source, history, dirty state or Save.
  */
-import type { Vec3 } from '@portfolio/camera-core';
+import type { Vec3 } from '@portfolio/camera-core/camera';
 import { formatMeters, snapDraftingPoint } from './stage-drafting';
 import type { StageFacade } from './stage-facade';
 import type { GestureAcquisition } from './stage-session';

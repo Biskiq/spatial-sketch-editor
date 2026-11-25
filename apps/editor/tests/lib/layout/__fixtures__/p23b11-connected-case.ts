@@ -27,14 +27,8 @@
  * the SAME record for both cells, which is what makes the Rooms adjacent rather
  * than coincident.
  */
-import {
-	createEmptyWallFirstLayoutDocument,
-	deriveChainSpans,
-	wallCubicChain,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type LayoutWallCenterline
-} from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument, wallCubicChain, type LayoutDocumentWallFirst, type LayoutWallCenterline } from '@portfolio/layout-core/wall';
+import { deriveChainSpans, type LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 /** Harness/test identity of the generated connected case. Never recorded. */
 export const P23B11_CONNECTED_CASE_ID = 'connected-curved-grid-v1';

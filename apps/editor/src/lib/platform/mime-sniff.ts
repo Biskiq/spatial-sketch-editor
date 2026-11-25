@@ -13,7 +13,7 @@
  * the manifest's `mime` matches the actual bytes (image-format trust).
  */
 
-import type { SupportedMime } from '@portfolio/project-model';
+import type { SupportedMime } from '@portfolio/project-model/package';
 
 export const PROJECT_ASSET_MAX_BYTES = 25 * 1024 * 1024;
 

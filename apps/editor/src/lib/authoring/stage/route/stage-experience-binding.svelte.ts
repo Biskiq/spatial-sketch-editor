@@ -16,7 +16,7 @@
  * The binding disposes only its own lens subscriptions/restores (the lens's own
  * idempotent `dispose`); the route still runs one ordered teardown.
  */
-import type { ViewportEvaluation, ViewportRect } from '@portfolio/camera-core';
+import type { ViewportEvaluation, ViewportRect } from '@portfolio/camera-core/viewport';
 import { untrack } from 'svelte';
 import { experienceFocus } from '$lib/authoring/experience/focus.svelte';
 import {

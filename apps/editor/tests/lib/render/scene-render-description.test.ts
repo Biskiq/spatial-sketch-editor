@@ -7,8 +7,8 @@
  * relies on to do nothing when nothing changed, so they are tested directly.
  */
 import { describe, expect, it } from 'vitest';
-import type { SceneEntity, SceneTextureAsset, SceneMaterialInstance } from '@portfolio/project-model';
-import type { RuntimeScene } from '$lib/content/scene';
+import type { SceneEntity, SceneTextureAsset, SceneMaterialInstance } from '@portfolio/project-model/scene';
+import type { RuntimeScene } from '@portfolio/project-model/scene';
 import { materialKey } from '$lib/render/resources/material-descriptor';
 import { describeSceneRender, type SceneFormSupport } from '$lib/render/scene-render-description';
 import { evaluateFormMesh } from '$lib/content/form-evaluation';

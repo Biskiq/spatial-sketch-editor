@@ -7,8 +7,9 @@
  * removes without a write.
  */
 import { describe, expect, it } from 'vitest';
-import type { SceneEntity, SceneMaterialInstance } from '@portfolio/project-model';
-import { createEmptyWallFirstLayoutDocument, type LayoutSurfaceRef } from '@portfolio/layout-core';
+import type { SceneEntity, SceneMaterialInstance } from '@portfolio/project-model/scene';
+import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core/wall';
+import type { LayoutSurfaceRef } from '@portfolio/layout-core/plan';
 import { SCENE_UNIT_FORMAT_VERSION, type ScenePaletteSlot } from '@portfolio/project-model/units';
 import { createFinishPlanners } from '@portfolio/project-model/scene-planning';
 import { createFinishCard, finishCardTargetKey, finishWritePlan, roleImageBinding, type FinishCardTarget } from '$lib/authoring/look/finish-card.svelte';

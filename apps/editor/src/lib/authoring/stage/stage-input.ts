@@ -9,7 +9,7 @@
  * to its declared endpoint, is otherwise only visible in a browser. The route
  * realizes the returned action through the seam and owns no second map.
  */
-import { VIEWPORT_READING_TRANSITION_SECONDS } from '@portfolio/camera-core';
+import { VIEWPORT_READING_TRANSITION_SECONDS } from '@portfolio/camera-core/viewport';
 
 /** The dock's fixed keys, in dock order. */
 export type StageDockSlot = 'select' | 'ink' | 'paint' | 'slice' | 'measure' | 'erase' | 'library';

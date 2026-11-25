@@ -15,11 +15,8 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-	resolveJunctionGeometry,
-	type CompiledJunctionLeg,
-	type LayoutVec2
-} from '@portfolio/layout-core';
+import { resolveJunctionGeometry } from '@portfolio/layout-core/wall';
+import type { CompiledJunctionLeg, LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 function normalize(v: LayoutVec2): LayoutVec2 {
 	const length = Math.hypot(v[0], v[1]) || 1;

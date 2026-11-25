@@ -16,8 +16,9 @@
  * while a replacement moves both.
  */
 import { describe, expect, it } from 'vitest';
-import { projectWorld, VIEWPORT_READING_TRANSITION_SECONDS } from '@portfolio/camera-core';
-import { createEmptyWallFirstLayoutDocument, planWallChain, type LayoutVec2 } from '@portfolio/layout-core';
+import { projectWorld, VIEWPORT_READING_TRANSITION_SECONDS } from '@portfolio/camera-core/viewport';
+import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core/wall';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
 import { stageLayout } from '$lib/authoring/stage/unit-stage-source';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';

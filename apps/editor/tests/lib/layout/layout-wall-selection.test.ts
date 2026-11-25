@@ -17,13 +17,8 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-	compileWallFirstLayoutGeometry,
-	createEmptyWallFirstLayoutDocument,
-	deriveLayoutWallRole,
-	planWallChain,
-	type LayoutDocumentWallFirst
-} from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core/geometry';
+import { createEmptyWallFirstLayoutDocument, deriveLayoutWallRole, planWallChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 import { resolvePlanHit } from '$lib/authoring/layout/plan-hit';
 import { freshCapture } from './__fixtures__/layout-id-capture';
 

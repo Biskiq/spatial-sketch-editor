@@ -25,18 +25,9 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-	LAYOUT_WALL_FIRST_FORMAT_VERSION,
-	planDuplicateIsolatedRoom as planDuplicateIsolatedRoomRaw,
-	planWallChain as planWallChainRaw,
-	planWallSegment as planWallSegmentRaw,
-	resolveWallBirthHeight,
-	uniqueIncidentWallHeight,
-	WALL_AUTHORING_DEFAULT_HEIGHT,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type WallChainPlanOptions
-} from '@portfolio/layout-core';
+import { LAYOUT_WALL_FIRST_FORMAT_VERSION, planWallChain as planWallChainRaw, planWallSegment as planWallSegmentRaw, resolveWallBirthHeight, uniqueIncidentWallHeight, WALL_AUTHORING_DEFAULT_HEIGHT, type LayoutDocumentWallFirst, type WallChainPlanOptions } from '@portfolio/layout-core/wall';
+import { planDuplicateIsolatedRoom as planDuplicateIsolatedRoomRaw } from '@portfolio/layout-core/plan';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import { freshCapture } from './__fixtures__/layout-id-capture';
 
 /** T1.P02.S01 §1 — every simulated operation casts its own captured nonce. */

@@ -1,9 +1,9 @@
 import { defaultArtworkWidth, isArtworkWidth } from '../artwork';
 import { readArtworkFrame, type ArtworkFrame } from '../artwork-frame';
-import type { DomainPlanner, PlannerOutcome, PlannerRequest } from '../f4';
+import type { DomainPlanner, PlannerOutcome, PlannerRequest } from '../f4/types';
 import type { SemanticReference } from '../references/types';
 import type { SceneArtworkEntity } from '../scene';
-import { validateArtworkLibrary } from '../scene-codec';
+import { validateArtworkLibrary } from '../scene-codec/validate';
 import { ShapeReader } from '../strict-shape';
 import { replaceUnitData } from '../units/envelope';
 import { UNIT_SOURCE_KIND, UNIT_SOURCE_VERSION } from '../units/source';

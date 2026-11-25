@@ -9,7 +9,7 @@
  * its pairs were never visited.
  */
 import { describe, expect, it } from 'vitest';
-import { createPlanBoxIndex, type PlanBox } from '@portfolio/layout-core';
+import { createPlanBoxIndex, type PlanBox } from '@portfolio/layout-core/world';
 
 const box = (minX: number, minZ: number, maxX: number, maxZ: number): PlanBox => ({ minX, minZ, maxX, maxZ });
 

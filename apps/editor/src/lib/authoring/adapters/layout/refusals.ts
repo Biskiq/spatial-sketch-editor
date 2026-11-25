@@ -8,14 +8,9 @@
  * unhandled branch. Both surfaces import this one map: the Stage's tag and the
  * Card's field error must say the same thing.
  */
-import {
-	LAYOUT_DIMENSION_LIMIT_MESSAGE,
-	wallFirstWallLength,
-	type LayoutDocumentWallFirst,
-	type LayoutWallOpening,
-	type RoomCopyDroppedRelation,
-	type WallOpeningRejection
-} from '@portfolio/layout-core';
+import { LAYOUT_DIMENSION_LIMIT_MESSAGE } from '@portfolio/layout-core/geometry';
+import { wallFirstWallLength, type LayoutDocumentWallFirst, type LayoutWallOpening, type WallOpeningRejection } from '@portfolio/layout-core/wall';
+import type { RoomCopyDroppedRelation } from '@portfolio/layout-core/room';
 
 const CLOSED_WALL_CONTACT_WORDS = 'This would touch or cross a circular Wall. Move it clear of the circle.';
 

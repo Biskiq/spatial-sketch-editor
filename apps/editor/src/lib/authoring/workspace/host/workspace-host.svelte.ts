@@ -47,7 +47,7 @@ import {
 } from '$lib/render/materials/model-derivative-analysis';
 import { createVerifiedProjectImageCache } from '$lib/authoring/artwork/project-image-cache';
 import { wireStageProjectEpoch } from '$lib/authoring/workspace/host/wiring/stage-project-epoch';
-import { eyeOfInspectionPose } from '@portfolio/camera-core';
+import { eyeOfInspectionPose } from '@portfolio/camera-core/viewport';
 import { pickThroughSlice } from '$lib/authoring/stage/slice/stage-slice-pick';
 import { createStagePressTracker } from '$lib/authoring/stage/stage-input';
 import type { StageInterruptionReason } from '$lib/authoring/stage/stage-interruption';

@@ -19,6 +19,7 @@ import {
 	reportCapIssues,
 	resetCapIssueReporting
 } from '$lib/authoring/stage/slice/slice-diagnostics';
+import { EDITOR_ROOT } from '../../../../helpers/import-closure';
 
 /** A single triangle straddling the cut: an open group, so it cannot balance. */
 const OPEN: SectionInput = {
@@ -87,7 +88,7 @@ describe('reportCapIssues: an open group is reported, once per revision', () => 
 
 	it('is wired into the Slice layer, not merely available', () => {
 		const layer = readFileSync(
-			path.join(process.cwd(), 'src/lib/authoring/stage/shell/StageSliceLayer.svelte'),
+			path.join(EDITOR_ROOT, 'src/lib/authoring/stage/shell/StageSliceLayer.svelte'),
 			'utf8'
 		);
 		expect(layer).toContain('reportCapIssues(result.issues, revision)');

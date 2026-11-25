@@ -18,7 +18,8 @@
  * Views), normal, and dim. Labels are capped at 12 strong markers and frustums
  * at 24 Views, with the selected View first.
  */
-import { projectWorld, type Vec3, type ViewportEvaluation } from '@portfolio/camera-core';
+import { projectWorld, type ViewportEvaluation } from '@portfolio/camera-core/viewport';
+import type { Vec3 } from '@portfolio/camera-core/camera';
 import type { CameraView, Experience, ExperienceGuide } from '@portfolio/project-model/units';
 
 import { experiencePathOccurrences, occurrenceKey, resolvePathOccurrence, type ExperiencePathOccurrence } from './experience-paths';

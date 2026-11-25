@@ -13,7 +13,7 @@
  * Mark edits of an existing light are the gesture session's; this session reads
  * whether one is captured only to leave the hover ghost off while it drags.
  */
-import type { Vec3 } from '@portfolio/project-model';
+import type { Vec3 } from '@portfolio/project-model/scene';
 import type {
 	StageAdapterContext,
 	StageAdapterServices,

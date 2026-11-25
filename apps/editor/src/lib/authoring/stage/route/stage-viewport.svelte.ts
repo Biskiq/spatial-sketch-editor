@@ -25,8 +25,8 @@
  * typed reads/callbacks only; it never imports the route, acceptance, history or
  * a domain planner.
  */
-import type { ViewportEvaluation, ViewportRect } from '@portfolio/camera-core';
-import type { PlanEvaluation } from '@portfolio/layout-core';
+import type { ViewportEvaluation, ViewportRect } from '@portfolio/camera-core/viewport';
+import type { PlanEvaluation } from '@portfolio/layout-core/world';
 import {
 	perfMark,
 	perfMarksEnabled,

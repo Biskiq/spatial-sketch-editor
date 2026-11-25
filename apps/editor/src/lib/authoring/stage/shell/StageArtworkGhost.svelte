@@ -6,7 +6,7 @@
 	 * renderer; it registers no pick root, as the component it replaces did not.
 	 */
 	import { T, useThrelte } from '@threlte/core';
-	import type { SceneArtworkEntity } from '@portfolio/project-model';
+	import type { SceneArtworkEntity } from '@portfolio/project-model/scene';
 	import type { ArtworkScope } from '$lib/render/artwork/artwork-scope';
 	import { useRenderResources } from '$lib/render/resources/render-resources';
 	import { createSceneArtworkRepresentation } from '$lib/render/scene-artwork-representation';

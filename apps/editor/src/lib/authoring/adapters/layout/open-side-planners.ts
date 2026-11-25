@@ -17,22 +17,11 @@
  * creator previewed and the document that lands describe the same ids, and
  * Undo/Redo replays them.
  */
-import {
-	allocateCapturedId,
-	layoutIdCaptureInput,
-	layoutWorkingLevelInput,
-	materializeLayoutSourceForCapture,
-	planSpaceOpenSideEndSlide,
-	planSpaceOpenSideOffset,
-	readLayoutIdCapture,
-	readLayoutWorkingLevel,
-	recordPreparedCowCandidate,
-	type LayoutDocumentWallFirst,
-	type LayoutIdCapture,
-	type LayoutVec2,
-	type LayoutSurfaceLineage,
-	type NodingIdAllocator
-} from '@portfolio/layout-core';
+import { allocateCapturedId, layoutIdCaptureInput, layoutWorkingLevelInput, readLayoutIdCapture, readLayoutWorkingLevel, type LayoutIdCapture, type LayoutSurfaceLineage } from '@portfolio/layout-core/plan';
+import { materializeLayoutSourceForCapture } from '@portfolio/layout-core/kernel';
+import { planSpaceOpenSideEndSlide, planSpaceOpenSideOffset, type LayoutDocumentWallFirst, type NodingIdAllocator } from '@portfolio/layout-core/wall';
+import { recordPreparedCowCandidate } from '@portfolio/layout-core/world';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import {
 	canonicalUnitJson,
 	replaceUnitData,
@@ -40,13 +29,7 @@ import {
 	UNIT_SOURCE_VERSION,
 	type ProjectEnvelope
 } from '@portfolio/project-model/units';
-import type {
-	AuthoringIntent,
-	DomainPlanner,
-	PlannerOutcome,
-	PlannerRequest,
-	PreparedCandidate
-} from '@portfolio/project-model';
+import type { AuthoringIntent, DomainPlanner, PlannerOutcome, PlannerRequest, PreparedCandidate } from '@portfolio/project-model/f4';
 
 import { layoutSubjectReference } from './drawing-planners';
 import { addressedSubject, layoutPlanner, layoutReference, registerLayoutSurfaceLineage, wallStationFrame } from './precision';

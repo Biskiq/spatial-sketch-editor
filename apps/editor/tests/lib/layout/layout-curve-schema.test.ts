@@ -14,31 +14,8 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-	LAYOUT_WALL_FIRST_FORMAT_VERSION,
-	cloneWallCenterline,
-	compileAutoBezierAnchors,
-	createEmptyWallFirstLayoutDocument,
-	deriveChainSpans,
-	nextWallCurveKnotId,
-	parseWallFirstLayoutDocumentJson,
-	planConvertWallToCurve,
-	planWallSplit,
-	serializeWallFirstLayoutDocument,
-	sampleSegment,
-	translateWallCenterline,
-	validateWallFirstLayoutDocument,
-	wallCenterlineSamples,
-	wallCenterlineSegment,
-	wallCubicChain,
-	wallFirstWallSpan,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type LayoutWall,
-	type LayoutWallCenterline,
-	type LayoutWallCurveKnot,
-	type NodingIdAllocator
-} from '@portfolio/layout-core';
+import { LAYOUT_WALL_FIRST_FORMAT_VERSION, cloneWallCenterline, createEmptyWallFirstLayoutDocument, nextWallCurveKnotId, parseWallFirstLayoutDocumentJson, planConvertWallToCurve, planWallSplit, serializeWallFirstLayoutDocument, translateWallCenterline, validateWallFirstLayoutDocument, wallCenterlineSamples, wallCenterlineSegment, wallCubicChain, wallFirstWallSpan, type LayoutDocumentWallFirst, type LayoutWall, type LayoutWallCenterline, type LayoutWallCurveKnot, type NodingIdAllocator } from '@portfolio/layout-core/wall';
+import { compileAutoBezierAnchors, deriveChainSpans, sampleSegment, type LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 // ---------------------------------------------------------------------------
 // fixtures

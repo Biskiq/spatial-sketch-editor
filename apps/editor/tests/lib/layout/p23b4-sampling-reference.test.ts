@@ -1,20 +1,8 @@
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 
-import {
-	deriveLayoutWallRole,
-	compileWallFirstLayoutGeometry,
-	extractBoundaryCandidateFaces,
-	sampleSegment,
-	validateWallFirstOpeningSet,
-	validateWallFirstTopology,
-	wallCenterlineSamples,
-	wallCenterlineSegment,
-	wallFirstWallSpan,
-	type CompiledLegJoin,
-	type LayoutDocumentWallFirst,
-	type LayoutWall
-} from '@portfolio/layout-core';
+import { deriveLayoutWallRole, validateWallFirstOpeningSet, validateWallFirstTopology, wallCenterlineSamples, wallCenterlineSegment, wallFirstWallSpan, type LayoutDocumentWallFirst, type LayoutWall } from '@portfolio/layout-core/wall';
+import { compileWallFirstLayoutGeometry, extractBoundaryCandidateFaces, sampleSegment, type CompiledLegJoin } from '@portfolio/layout-core/geometry';
 import {
 	buildP23BCorrectnessFixture,
 	buildP23BMatrixFixture,

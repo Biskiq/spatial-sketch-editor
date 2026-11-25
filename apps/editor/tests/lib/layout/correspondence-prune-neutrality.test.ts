@@ -44,20 +44,9 @@
  */
 import { afterEach, describe, expect, it } from 'vitest';
 
-import {
-	buildCorrespondenceComponents,
-	clearCorrespondenceObserverForTest,
-	disableCorrespondenceShortCircuitsForTest,
-	setCorrespondenceObserverForTest,
-	type ComponentLineage,
-	type CorrespondenceObservation,
-	type DerivedCandidateFace,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type LayoutWall,
-	type LayoutWallFirstRoom,
-	type OrientedWallRef
-} from '@portfolio/layout-core';
+import { buildCorrespondenceComponents, clearCorrespondenceObserverForTest, disableCorrespondenceShortCircuitsForTest, setCorrespondenceObserverForTest, type ComponentLineage, type CorrespondenceObservation } from '@portfolio/layout-core/room';
+import type { DerivedCandidateFace, LayoutVec2 } from '@portfolio/layout-core/geometry';
+import type { LayoutDocumentWallFirst, LayoutWall, LayoutWallFirstRoom, OrientedWallRef } from '@portfolio/layout-core/wall';
 
 afterEach(() => {
 	clearCorrespondenceObserverForTest();

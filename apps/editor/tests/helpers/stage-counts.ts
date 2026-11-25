@@ -13,7 +13,7 @@
  * renderer the product registered; a headless surface without `info` reports
  * `null` rather than an inferred number.
  */
-import { setWorkObserver } from '@portfolio/layout-core';
+import { setWorkObserver } from '@portfolio/layout-core/kernel';
 
 export type RendererInfo = {
 	readonly calls: number | null;

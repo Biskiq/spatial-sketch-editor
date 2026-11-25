@@ -1,4 +1,4 @@
-import { faceArea, type CompiledLayoutGeometry, type LayoutVec2 } from '@portfolio/layout-core';
+import { faceArea, type CompiledLayoutGeometry, type LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 /** Presentation over the compiler's usable floor. No Room is inferred from a draft. */
 export function roomLabelFacts(geometry: CompiledLayoutGeometry, rooms: readonly { id: string; name: string }[]) {

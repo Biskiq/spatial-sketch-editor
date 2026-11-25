@@ -1,4 +1,4 @@
-import type { ViewingIntent, ViewportRect } from '@portfolio/camera-core';
+import type { ViewingIntent, ViewportRect } from '@portfolio/camera-core/viewport';
 import type { FeatureLifecycle } from '../../workspace/protocol';
 import { scaleDetentIntent, type StageDraftingPatch } from '../stage-drafting';
 import type { StageFacade, StageIntentResult } from '../stage-facade';

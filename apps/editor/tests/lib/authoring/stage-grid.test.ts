@@ -11,16 +11,12 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { composedSpatialHost } from '../../helpers/import-closure';
+import { EDITOR_ROOT, composedSpatialHost } from '../../helpers/import-closure';
 import { LineSegments } from 'three';
 import { MeshBasicNodeMaterial } from 'three/webgpu';
-import {
-	VIEWPORT_NEAR_FLOOR_METERS,
-	type InspectionPose,
-	type Vec3,
-	type ViewportEvaluation
-} from '@portfolio/camera-core';
-import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core';
+import { VIEWPORT_NEAR_FLOOR_METERS, type InspectionPose, type ViewportEvaluation } from '@portfolio/camera-core/viewport';
+import type { Vec3 } from '@portfolio/camera-core/camera';
+import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core/wall';
 import { createCameraSession, initialInspectionPose, sceneRadiusOf } from '$lib/authoring/stage/camera-session';
 import { admitSource, type StageReadSnapshot } from '$lib/authoring/stage/source-admission';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
@@ -62,7 +58,7 @@ const PAPER_BASE = {
 
 describe('the mat keeps its depth away from a floor on the datum', () => {
 	it('subdivides the mat and pushes it back in depth steps', () => {
-		const source = readFileSync(resolve(process.cwd(), 'src/lib/authoring/stage/shell/StageMatGround.svelte'), 'utf8');
+		const source = readFileSync(resolve(EDITOR_ROOT, 'src/lib/authoring/stage/shell/StageMatGround.svelte'), 'utf8');
 		const mat = source.slice(source.indexOf('<T.Mesh'), source.indexOf('{#if gridVisible}'));
 		expect(mat).toContain('args={[1, 1, MAT_GRID_SEGMENTS, MAT_GRID_SEGMENTS]}');
 		const { material } = createMatGroundMaterial();
@@ -107,7 +103,7 @@ describe('the Paper plate around the work', () => {
 		expect('uMatMinorInk' in grid.uniforms).toBe(false);
 		expect(grid.material.colorNode).toBeTruthy();
 		grid.material.dispose();
-		const stage = readFileSync(resolve(process.cwd(), 'src/lib/authoring/stage/shell/stage-mat-grid.ts'), 'utf8');
+		const stage = readFileSync(resolve(EDITOR_ROOT, 'src/lib/authoring/stage/shell/stage-mat-grid.ts'), 'utf8');
 		// Both levels are multiplied by the plate coverage: plain mat outside it.
 		expect(stage).toContain('minorLine.mul(uPlateMinorOpacity).mul(plate)');
 		expect(stage).toContain('majorLine.mul(uPlateMajorOpacity).mul(plate)');
@@ -115,7 +111,7 @@ describe('the Paper plate around the work', () => {
 	});
 
 	it('takes its bounds from the work alone, never the Camera', () => {
-		const source = readFileSync(resolve(process.cwd(), 'src/lib/authoring/stage/shell/StageMatGround.svelte'), 'utf8');
+		const source = readFileSync(resolve(EDITOR_ROOT, 'src/lib/authoring/stage/shell/StageMatGround.svelte'), 'utf8');
 		expect(source).toContain('workspaceRectFor(contentBounds)');
 		expect(workspaceRectFor.length).toBe(1);
 	});
@@ -142,7 +138,7 @@ describe('the Paper plate around the work', () => {
 		expect(ground.material.colorNode).toBeTruthy();
 		expect(ground.material.toneMapped).toBe(false);
 		ground.material.dispose();
-		const source = readFileSync(resolve(process.cwd(), 'src/lib/authoring/stage/shell/StageMatGround.svelte'), 'utf8');
+		const source = readFileSync(resolve(EDITOR_ROOT, 'src/lib/authoring/stage/shell/StageMatGround.svelte'), 'utf8');
 		expect(source).not.toContain('MeshStandardMaterial');
 		expect(source).toContain('workspaceRectFor(contentBounds)');
 	});
@@ -386,16 +382,16 @@ describe('R217.S13 — Paper’s bounded sheet', () => {
 describe('the workspace reads committed geometry only', () => {
 	it('takes no candidate input on either surface', () => {
 		for (const file of ['StageMatGround.svelte', 'StageGrid.svelte', 'StageCanvas.svelte']) {
-			const source = readFileSync(resolve(process.cwd(), `src/lib/authoring/stage/shell/${file}`), 'utf8');
+			const source = readFileSync(resolve(EDITOR_ROOT, `src/lib/authoring/stage/shell/${file}`), 'utf8');
 			expect(source).not.toContain('candidateBounds');
 		}
 		const host = composedSpatialHost();
 		for (const { file, code } of host) expect(code, file).not.toContain('candidateBounds');
 		// StageCanvas is a shell slot owned by the composition root, not the lens.
 		const root = 'src/lib/authoring/';
-		const route = readFileSync(resolve(process.cwd(), root, 'workspace/host/workspace-host.svelte.ts'), 'utf8');
-		const contentBounds = readFileSync(resolve(process.cwd(), root, 'stage/route/stage-content-bounds.svelte.ts'), 'utf8');
-		const views = readFileSync(resolve(process.cwd(), 'src/lib/authoring/stage/route/core-region-views.ts'), 'utf8');
+		const route = readFileSync(resolve(EDITOR_ROOT, root, 'workspace/host/workspace-host.svelte.ts'), 'utf8');
+		const contentBounds = readFileSync(resolve(EDITOR_ROOT, root, 'stage/route/stage-content-bounds.svelte.ts'), 'utf8');
+		const views = readFileSync(resolve(EDITOR_ROOT, 'src/lib/authoring/stage/route/core-region-views.ts'), 'utf8');
 		expect(views).toMatch(/get contentBounds\(\)\s*\{\s*return input\.paperContentBounds\(\)\s*;/);
 		expect(route).toContain('paperContentBounds: () => contentBounds.paper');
 		expect(contentBounds).toContain('get paper() { return paperContentBounds; }');
@@ -412,7 +408,7 @@ describe('the workspace reads committed geometry only', () => {
 
 describe('R217.S05 — surfaces, visibility and the mat footprint', () => {
 	it('wires the Grid toggle to both the Paper and mat renderers', () => {
-		const canvas = readFileSync(resolve(process.cwd(), 'src/lib/authoring/stage/shell/StageCanvas.svelte'), 'utf8');
+		const canvas = readFileSync(resolve(EDITOR_ROOT, 'src/lib/authoring/stage/shell/StageCanvas.svelte'), 'utf8');
 		expect(canvas).toContain('$derived(drafting.grid && framedViewport === null)');
 		expect(canvas).toMatch(/<StageMatGround\b[^>]*\{gridVisible\}/);
 		expect(canvas).toMatch(/\{#if paperReveal !== null && gridVisible\}\s*<StageGrid\b/);
@@ -434,7 +430,7 @@ describe('R217.S05 — surfaces, visibility and the mat footprint', () => {
 		// Under the height plane's tint (order 1) and every other Stage mark.
 		expect(MAT_GRID_RENDER_ORDER).toBeLessThan(1);
 		// The grammar's thresholds and the fixed levels are the graph's own.
-		const graph = readFileSync(resolve(process.cwd(), 'src/lib/authoring/stage/shell/stage-mat-grid.ts'), 'utf8');
+		const graph = readFileSync(resolve(EDITOR_ROOT, 'src/lib/authoring/stage/shell/stage-mat-grid.ts'), 'utf8');
 		for (const literal of ['GRID_SUPPRESS_SPACING_CSS_PX', 'GRID_FULL_SPACING_CSS_PX', 'GRID_MINOR_METERS', 'GRID_MAJOR_METERS', 'GRID_COARSE_METERS']) {
 			expect(graph).toContain(literal);
 		}

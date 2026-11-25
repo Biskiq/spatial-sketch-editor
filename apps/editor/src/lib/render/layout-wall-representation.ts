@@ -28,14 +28,9 @@
  * (`layout-room-representation.ts`), door portals and Scene entities.
  */
 import { BoxGeometry, Group, Mesh, type Material, type Object3D } from 'three';
-import {
-	legJoinsByWall,
-	diffCompiledWalls,
-	countWork,
-	type CompiledLayoutGeometry,
-	type CompiledPhysicalWall,
-	type LayoutBounds3
-} from '@portfolio/layout-core';
+import { legJoinsByWall } from '@portfolio/layout-core/wall';
+import { diffCompiledWalls, type CompiledLayoutGeometry, type CompiledPhysicalWall, type LayoutBounds3 } from '@portfolio/layout-core/geometry';
+import { countWork } from '@portfolio/layout-core/kernel';
 
 import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-builder';
 import { toWallBufferGeometry, type WallMeshMaterialFactory } from '$lib/render/wall-geometry-adapter';

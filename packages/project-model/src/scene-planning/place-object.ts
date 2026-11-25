@@ -28,9 +28,11 @@
  * query's code), then staleness (`stale-generation`). Snapshot/frame qualification
  * is checked with captured inputs; stale support query refusals keep their code.
  */
-import { DATUM_SUPPORT_ORDER_KEY, FLOOR_SUPPORT_TOLERANCES, type FloorSupportCandidate, type LayoutVec2 } from '@portfolio/layout-core';
+import { DATUM_SUPPORT_ORDER_KEY, FLOOR_SUPPORT_TOLERANCES, type FloorSupportCandidate } from '@portfolio/layout-core/room';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import { validateCameraFreeScenePayload } from '../units/validate';
-import { validateFrameReference, validateSnapshotIdentity, type DerivedSourceRef, type FrameReference, type SnapshotIdentity } from '../references';
+import { validateFrameReference, validateSnapshotIdentity } from '../references/validate';
+import type { DerivedSourceRef, FrameReference, SnapshotIdentity } from '../references/types';
 import { isSimplePlacementFootprint } from './footprint';
 import type {
 	SceneBoxDimensions,

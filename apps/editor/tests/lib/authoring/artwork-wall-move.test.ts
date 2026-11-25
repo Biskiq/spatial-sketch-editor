@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { PointerRay } from '@portfolio/camera-core';
-import type { Vec3 } from '@portfolio/project-model';
+import type { PointerRay } from '@portfolio/camera-core/viewport';
+import type { Vec3 } from '@portfolio/project-model/scene';
 import type { SceneRenderedHit } from '$lib/authoring/scene/scene-pick-source';
 import {
 	artworkFaceNormal,

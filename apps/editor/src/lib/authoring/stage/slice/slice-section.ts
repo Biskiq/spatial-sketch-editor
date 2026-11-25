@@ -12,7 +12,7 @@
  * second cut, and SL3's analytic Section is out of scope. The primary cut plane is
  * capped exactly once, from the same drawn meshes SL1 uses.
  */
-import { LAYOUT_SLICE_CONTACT_METERS } from '@portfolio/layout-core';
+import { LAYOUT_SLICE_CONTACT_METERS } from '@portfolio/layout-core/room';
 import {
 	sectionMeshes,
 	type CapAssemblyIssue,

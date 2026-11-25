@@ -7,7 +7,7 @@
  * and Wall) and the exclusions (interior content, low Walls, no Room).
  */
 import { describe, expect, it } from 'vitest';
-import { pointInPolygon, type CompiledPhysicalWall, type CompiledRoom, type LayoutVec2 } from '@portfolio/layout-core';
+import { pointInPolygon, type CompiledPhysicalWall, type CompiledRoom, type LayoutVec2 } from '@portfolio/layout-core/geometry';
 import {
 	classifyNearWalls,
 	inspectedSpace,

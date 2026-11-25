@@ -1,5 +1,5 @@
-import type { ViewportEvaluation } from '@portfolio/camera-core';
-import { pointInPolygon } from '@portfolio/layout-core';
+import type { ViewportEvaluation } from '@portfolio/camera-core/viewport';
+import { pointInPolygon } from '@portfolio/layout-core/geometry';
 import { sunMarkAnchor, WORLD_ENVIRONMENT_GROUND_RADIUS_METERS } from '$lib/render/world-environment';
 import { createStagePanelRects } from '../../stage/shell/stage-panel-rects.svelte';
 import type { StageAdapterServices } from '../../stage/stage-adapter-host';

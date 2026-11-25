@@ -34,7 +34,7 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { PassThrough, Readable } from 'node:stream';
 
-import { ARTWORK_MAX_BYTES, probeArtworkImage } from '@portfolio/project-model';
+import { ARTWORK_MAX_BYTES, probeArtworkImage } from '@portfolio/project-model/artwork';
 import {
 	collectEnvelopeImageRequirements,
 	type ProjectImagePin

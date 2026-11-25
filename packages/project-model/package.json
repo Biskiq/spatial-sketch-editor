@@ -4,10 +4,6 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": {
-      "types": "./src/index.ts",
-      "default": "./src/index.ts"
-    },
     "./project-images": {
       "types": "./src/project-images.ts",
       "default": "./src/project-images.ts"
@@ -59,13 +55,42 @@
     "./units/validate": {
       "types": "./src/units/validate.ts",
       "default": "./src/units/validate.ts"
+    },
+    "./artwork": {
+      "types": "./src/artwork/index.ts",
+      "default": "./src/artwork/index.ts"
+    },
+    "./package": {
+      "types": "./src/package/index.ts",
+      "default": "./src/package/index.ts"
+    },
+    "./scene": {
+      "types": "./src/scene/index.ts",
+      "default": "./src/scene/index.ts"
+    },
+    "./channels": {
+      "types": "./src/channels/index.ts",
+      "default": "./src/channels/index.ts"
+    },
+    "./f4": {
+      "types": "./src/f4/index.ts",
+      "default": "./src/f4/index.ts"
+    },
+    "./references": {
+      "types": "./src/references/index.ts",
+      "default": "./src/references/index.ts"
+    },
+    "./scene-codec": {
+      "types": "./src/scene-codec/index.ts",
+      "default": "./src/scene-codec/index.ts"
     }
   },
   "files": [
     "src"
   ],
   "scripts": {
-    "check": "tsc -p tsconfig.json --noEmit"
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@portfolio/camera-core": "*",

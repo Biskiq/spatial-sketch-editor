@@ -17,27 +17,8 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-	CURVE_ARC_LENGTH_TOLERANCE,
-	cubicBezierArcLengthAt,
-	cubicBezierPoint,
-	deleteWallCurveKnot,
-	deriveChainSpans,
-	insertWallCurveKnot,
-	resolveWallCurveSplit,
-	resolveWallCurveSplitAtKnot,
-	sampleSegment,
-	subdivideWallCubicSpan,
-	wallCurveChainCubics,
-	wallCurveChainLength,
-	wallCurveChainSatisfiesInvariant,
-	wallCurveKnotArcDistance,
-	wallCubicChain,
-	type LayoutVec2,
-	type LayoutWallCubicSpan,
-	type LayoutWallCurveKnot,
-	type WallCurveChain
-} from '@portfolio/layout-core';
+import { CURVE_ARC_LENGTH_TOLERANCE, cubicBezierArcLengthAt, cubicBezierPoint, deriveChainSpans, sampleSegment, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { deleteWallCurveKnot, insertWallCurveKnot, resolveWallCurveSplit, resolveWallCurveSplitAtKnot, subdivideWallCubicSpan, wallCurveChainCubics, wallCurveChainLength, wallCurveChainSatisfiesInvariant, wallCurveKnotArcDistance, wallCubicChain, type LayoutWallCubicSpan, type LayoutWallCurveKnot, type WallCurveChain } from '@portfolio/layout-core/wall';
 
 const LINE = { kind: 'line' } as const;
 

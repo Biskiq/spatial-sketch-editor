@@ -20,7 +20,7 @@
  * `slice-ghost.ts` treats exactly. SL3's analytic Section is not part of this
  * contract.
  */
-import { LAYOUT_SLICE_CONTACT_METERS } from '@portfolio/layout-core';
+import { LAYOUT_SLICE_CONTACT_METERS } from '@portfolio/layout-core/room';
 import type { PlanParameterOverrides } from '../plan-parameters';
 import { PLAN_DEFAULT_DEPTH_METERS } from '../plan-parameters';
 import type { StageHeightTick } from '../stage-height-sheet';

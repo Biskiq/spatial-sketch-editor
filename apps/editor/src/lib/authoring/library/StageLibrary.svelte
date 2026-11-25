@@ -22,7 +22,8 @@
 	 * editor, which owns the draft.
 	 */
 	import { onMount, untrack } from 'svelte';
-	import type { ArtworkLibraryEntry, MaterialId } from '@portfolio/project-model';
+	import type { ArtworkLibraryEntry } from '@portfolio/project-model/artwork';
+	import type { MaterialId } from '@portfolio/project-model/scene';
 	import FinishTile from '$lib/authoring/look/FinishTile.svelte';
 	import type { FinishTileSource } from '$lib/render/materials/finish-tiles.svelte';
 	import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte';

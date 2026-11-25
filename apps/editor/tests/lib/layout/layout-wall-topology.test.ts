@@ -1,11 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import { orientXZ } from '@portfolio/layout-core';
-import {
-	classifyWallIntersection,
-	type TopologySegment
-} from '@portfolio/layout-core';
-import type { LayoutVec2 } from '@portfolio/layout-core';
+import { orientXZ } from '@portfolio/layout-core/geometry';
+import { classifyWallIntersection, type TopologySegment } from '@portfolio/layout-core/wall';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 function segment(id: string, start: LayoutVec2, end: LayoutVec2): TopologySegment {
 	return { id, start, end };

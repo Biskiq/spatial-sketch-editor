@@ -6,8 +6,8 @@
  * without touching a single golden byte: the parity proof is that the recorded
  * descriptors still match.
  */
-import type { MaterialId } from '@portfolio/project-model';
-import type { SceneDocument } from '$lib/content/scene';
+import type { MaterialId } from '@portfolio/project-model/scene';
+import type { SceneDocument } from '@portfolio/project-model/scene';
 import type { LookSource } from '$lib/render/materials/scene-finish';
 import {
 	skyFromPreset,

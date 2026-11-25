@@ -16,21 +16,8 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-	compileWallFirstLayoutGeometry,
-	joinSeamFailure,
-	junctionSeamFailureOf,
-	legJoinsByWall,
-	resolveJunctionGeometry,
-	wallEndsSeamFailure,
-	type CompiledJunctionSurface,
-	type CompiledJunctionLeg,
-	type CompiledJunctionResolution,
-	type CompiledLegJoin,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type LayoutWall
-} from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry, type CompiledJunctionSurface, type CompiledJunctionLeg, type CompiledJunctionResolution, type CompiledLegJoin, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { joinSeamFailure, junctionSeamFailureOf, legJoinsByWall, resolveJunctionGeometry, wallEndsSeamFailure, type LayoutDocumentWallFirst, type LayoutWall } from '@portfolio/layout-core/wall';
 import { buildStandaloneWallMesh as buildEditorWallMesh } from '$lib/layout/wall-mesh-builder';
 import { buildStandaloneWallMesh as buildMuseumWallMesh } from '$lib/layout/wall-mesh-builder';
 

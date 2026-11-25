@@ -21,7 +21,7 @@
  * The grid is display-only. It is never a pick source, never delays navigation
  * and never writes a pose, source, history or Save entry.
  */
-import { viewportGroundReachMeters, type ViewportEvaluation } from '@portfolio/camera-core';
+import { viewportGroundReachMeters, type ViewportEvaluation } from '@portfolio/camera-core/viewport';
 import { SPATIAL_PAINT_ROLES } from '$lib/design/spatial-paint';
 import { GRID_MAJOR_METERS, GRID_MINOR_METERS } from './stage-drafting';
 

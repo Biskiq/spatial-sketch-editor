@@ -15,19 +15,10 @@
 import { evaluateFormMesh, formEvaluationKey } from '$lib/content/form-evaluation';
 import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-builder';
 import { buildRegionMeshGeometry } from '$lib/render/layout/region-mesh-builder';
-import {
-	legJoinsByWall,
-	type CompiledLayoutGeometry,
-	type CompiledRegion,
-	type LayoutSurfaceRef
-} from '@portfolio/layout-core';
-import type {
-	RuntimeScene,
-	SceneEntity,
-	SceneFormEntity,
-	ScenePrimitiveEntity,
-	SceneSurfaceRef
-} from '@portfolio/project-model';
+import { legJoinsByWall } from '@portfolio/layout-core/wall';
+import type { CompiledLayoutGeometry, CompiledRegion } from '@portfolio/layout-core/geometry';
+import type { LayoutSurfaceRef } from '@portfolio/layout-core/plan';
+import type { RuntimeScene, SceneEntity, SceneFormEntity, ScenePrimitiveEntity, SceneSurfaceRef } from '@portfolio/project-model/scene';
 import {
 	summarizeDrawGeometry,
 	type DrawGeometry,

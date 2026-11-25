@@ -1,4 +1,4 @@
-import type { CompiledLayoutGeometry, CompiledRegion } from '@portfolio/layout-core';
+import type { CompiledLayoutGeometry, CompiledRegion } from '@portfolio/layout-core/geometry';
 import { Group, Mesh, type Material } from 'three';
 import { buildRegionMeshGeometry } from '$lib/render/layout/region-mesh-builder';
 import { createSceneSurfaceMaterials } from '$lib/render/layout/scene-surface-materials';

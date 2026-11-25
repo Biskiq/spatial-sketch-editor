@@ -1,14 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-	LAYOUT_WALL_FIRST_FORMAT_VERSION,
-	type LayoutDocumentWallFirst
-} from '@portfolio/layout-core';
-import {
-	planWallCrossing,
-	planWallSplit,
-	type NodingIdAllocator
-} from '@portfolio/layout-core';
+import { LAYOUT_WALL_FIRST_FORMAT_VERSION, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import { planWallCrossing, planWallSplit, type NodingIdAllocator } from '@portfolio/layout-core/wall';
 
 /** Deterministic allocator: seed-derived IDs with collision avoidance. */
 function nodingAllocator(): NodingIdAllocator {

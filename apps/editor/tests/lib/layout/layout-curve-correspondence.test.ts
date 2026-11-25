@@ -1,13 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import {
-	buildCorrespondenceComponents,
-	extractBoundaryCandidateFaces,
-	interiorWitness,
-	parseWallFirstLayoutDocumentJson,
-	planWallChain,
-	roomBoundaryPolygon,
-	type LayoutDocumentWallFirst
-} from '@portfolio/layout-core';
+import { buildCorrespondenceComponents, interiorWitness, roomBoundaryPolygon } from '@portfolio/layout-core/room';
+import { extractBoundaryCandidateFaces } from '@portfolio/layout-core/geometry';
+import { parseWallFirstLayoutDocumentJson, planWallChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 import repro from './fixtures/curved-correspondence-repro.json';
 import { hostWallAtSpan } from '../../helpers/angled-plan-fixtures';
 import { freshCapture } from './__fixtures__/layout-id-capture';

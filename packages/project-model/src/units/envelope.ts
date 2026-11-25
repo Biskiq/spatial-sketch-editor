@@ -14,7 +14,7 @@
  * Runtime-safe: no editor, renderer, Svelte or Three import.
  */
 
-import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core/wall';
 import { createProjectEnvelope } from './canonical';
 import { serializeProjectEnvelope } from './validate';
 import {

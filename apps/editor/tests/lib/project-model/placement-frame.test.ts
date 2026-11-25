@@ -7,7 +7,7 @@
  * elevation, because a frame at the origin with yaw 0 cannot fail.
  */
 import { describe, expect, it } from 'vitest';
-import type { Vec3 } from '@portfolio/project-model';
+import type { Vec3 } from '@portfolio/project-model/scene';
 import {
 	frameDirectionFromWorld,
 	frameDirectionToWorld,

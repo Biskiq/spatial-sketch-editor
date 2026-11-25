@@ -20,11 +20,12 @@
  * against the live epoch: a prior-epoch load, ray, gesture or Camera completion
  * that resolves after the swap is refused rather than installed.
  */
-import { immutableF4Data, resolveReference, type SemanticReference, type F4JsonValue, type AcceptedRevision } from '@portfolio/project-model';
+import { immutableF4Data, type F4JsonValue } from '@portfolio/project-model/f4';
+import { resolveReference, type SemanticReference, type AcceptedRevision } from '@portfolio/project-model/references';
 
 import { createStageSessionLens } from './stage-session-lens.svelte';
 import type { EntryRequalification } from './selection-requalification';
-import type { PlanSourceKind, PlanSourceRef } from '@portfolio/layout-core';
+import type { PlanSourceKind, PlanSourceRef } from '@portfolio/layout-core/world';
 import type { StageReadSnapshot } from './accepted-read';
 import { EMPTY_SELECTION, admitSelection, primaryEntry, layoutSelectionReference, sameReference, type StageSelectionState, type StageSelectionChange, type StageSelectionEntry } from './semantic-selection';
 import {

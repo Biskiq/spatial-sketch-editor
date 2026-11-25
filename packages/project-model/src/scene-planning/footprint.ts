@@ -1,4 +1,4 @@
-import { orientXZ, type LayoutVec2 } from '@portfolio/layout-core';
+import { orientXZ, type LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 /** Exact finite simple-polygon admission; no compiler tolerance is changed. */
 export function isSimplePlacementFootprint(points: readonly LayoutVec2[]): boolean {

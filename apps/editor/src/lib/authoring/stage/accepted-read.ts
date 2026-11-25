@@ -1,6 +1,7 @@
 /** Common accepted Stage read boundary. No current-format source dependency. */
-import type { CompiledLayoutGeometry, LayoutGeometryIssue } from '@portfolio/layout-core';
-import type { AcceptedRevision, ReferenceReadContext, RuntimeScene, NavigationGraph } from '@portfolio/project-model';
+import type { CompiledLayoutGeometry, LayoutGeometryIssue } from '@portfolio/layout-core/geometry';
+import type { AcceptedRevision, ReferenceReadContext } from '@portfolio/project-model/references';
+import type { RuntimeScene, NavigationGraph } from '@portfolio/project-model/scene';
 import type { EnvelopeClosureFinding, EnvelopeDiagnostic, UnitDomain } from '@portfolio/project-model/units';
 
 /** The domain read access a Stage snapshot publishes. Immutable by construction. */

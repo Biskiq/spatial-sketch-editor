@@ -14,7 +14,7 @@
 	 * an approved model permanently invisible.
 	 */
 	import type { ScenePickSource } from '$lib/authoring/scene/scene-pick-source';
-	import type { RuntimeScene } from '$lib/content/scene';
+	import type { RuntimeScene } from '@portfolio/project-model/scene';
 	import type { ArtworkScope } from '$lib/render/artwork/artwork-scope';
 	import type { SceneModelSupport } from '$lib/render/scene-model-representation';
 	import type { TextureLoadScope } from '$lib/render/resources/texture-store';

@@ -1,11 +1,41 @@
-/**
- * Manual material composition and correctable set import (T2.S8 E5).
- *
- * Authoring-only: the editor and agents import this subpath; visitor, release
- * and cold-runtime code never does (the preview/public surface boundary
- * forbids it). Runtime-safe material contracts stay on
- * `@portfolio/project-model/materials`.
- */
-export * from './types';
-export * from './proposal';
-export * from './draft';
+export {
+	composeDraft,
+	displayNameOfStem,
+	DRAFT_NAME_MAX_LENGTH,
+	draftFromCandidate,
+	normalizeDraftMapping,
+} from './draft';
+
+export {
+	normalizeSetFileName,
+	parseSetFileName,
+	proposeMaterialSet,
+} from './proposal';
+
+export type {
+	ParsedSetName,
+} from './proposal';
+
+export type {
+	CandidateCorrections,
+	ComposedDraft,
+	ComposeResult,
+	DraftEdits,
+	DraftFactors,
+	DraftIssue,
+	DraftIssueCode,
+	DraftRoleEdit,
+	ProposalConflict,
+	ProposalConflictCode,
+	ProposalSource,
+	ProposalWarning,
+	ProposalWarningCode,
+	RoleAdmission,
+	RoleChoice,
+	SetCandidate,
+	SetFileFact,
+	SetImageMime,
+	SetProposal,
+	UnassignedFile,
+	UnassignedReason,
+} from './types';

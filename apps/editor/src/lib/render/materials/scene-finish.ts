@@ -36,13 +36,13 @@ import {
 	type TargetFacts
 } from '@portfolio/project-model/materials';
 import { computeTextureRepeat, materialById } from '$lib/content/materials';
-import { countWork } from '@portfolio/layout-core';
+import { countWork } from '@portfolio/layout-core/kernel';
 import type {
 	MaterialDefinition,
 	MaterialId,
 	MaterialTextureSlot
 } from '$lib/types/materials';
-import type { RuntimeScene, SceneTextureAsset } from '$lib/content/scene';
+import type { RuntimeScene, SceneTextureAsset } from '@portfolio/project-model/scene';
 import type {
 	FinishSamplingPlanEntry as DescriptorPlanEntry,
 	StandardFinishPlan,

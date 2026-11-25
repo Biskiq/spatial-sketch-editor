@@ -1,11 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import type { SceneDocument } from '$lib/content/scene';
-import { createCameraPositionPath } from '@portfolio/camera-core';
-import {
-	parseSceneDocumentJson,
-	serializeSceneDocument,
-	validateSceneDocument
-} from '@portfolio/project-model';
+import type { SceneDocument } from '@portfolio/project-model/scene';
+import { createCameraPositionPath } from '@portfolio/camera-core/camera';
+import { parseSceneDocumentJson, serializeSceneDocument, validateSceneDocument } from '@portfolio/project-model/scene-codec';
 import { cloneFixtureDocument } from './__fixtures__/load-fixture-scene';
 
 // PR #115 (WP3) — the `tour-minimal` fixture is a current-format (world-local)

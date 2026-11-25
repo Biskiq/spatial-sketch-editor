@@ -20,12 +20,8 @@
  *   survive a rebind; the captured chain, press and candidate do not.
  */
 import { describe, expect, it, vi } from 'vitest';
-import {
-	createEmptyWallFirstLayoutDocument,
-	planWallChain,
-	type LayoutDocumentWallFirst
-} from '@portfolio/layout-core';
-import type { AuthoringIntent } from '@portfolio/project-model';
+import { createEmptyWallFirstLayoutDocument, planWallChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import type { AuthoringIntent } from '@portfolio/project-model/f4';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
 
 import { admitSource } from '$lib/authoring/stage/source-admission';

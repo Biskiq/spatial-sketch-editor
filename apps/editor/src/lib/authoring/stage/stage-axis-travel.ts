@@ -8,7 +8,7 @@
  *
  * This is session arithmetic, never stored geometry.
  */
-import type { Vec3 } from '@portfolio/camera-core';
+import type { Vec3 } from '@portfolio/camera-core/camera';
 
 /**
  * The signed distance along `direction` from `origin` to the point closest to

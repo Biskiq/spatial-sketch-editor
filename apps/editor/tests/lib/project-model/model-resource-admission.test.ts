@@ -15,8 +15,8 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { createEmptyWallFirstLayoutDocument } from '@portfolio/project-model';
-import type { PlannerAdmission } from '@portfolio/project-model';
+import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core/wall';
+import type { PlannerAdmission } from '@portfolio/project-model/f4';
 import {
 	creatorModelDefinition,
 	creatorModelResourceEntry,

@@ -24,7 +24,10 @@
  * project-epoch compile context. Not a cache authority: a cold rebuild is equal,
  * which the memo-bypass seam below lets a test prove.
  */
-import { countWork, type CompiledLayoutGeometry, type LayoutDocumentWallFirst, type PlanEvaluation } from '@portfolio/layout-core';
+import { countWork } from '@portfolio/layout-core/kernel';
+import type { CompiledLayoutGeometry } from '@portfolio/layout-core/geometry';
+import type { LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import type { PlanEvaluation } from '@portfolio/layout-core/world';
 
 import type { LayoutCompileContext } from './compile-context';
 import {

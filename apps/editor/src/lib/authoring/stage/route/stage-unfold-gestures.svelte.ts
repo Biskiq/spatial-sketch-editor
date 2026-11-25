@@ -21,13 +21,9 @@
  * typed reads/callbacks only; it never imports the route, the acceptance host or
  * a renderer.
  */
-import {
-	pointerRay,
-	type ViewportEvaluation,
-	type ViewportRect
-} from '@portfolio/camera-core';
-import type { CompiledPhysicalWall } from '@portfolio/layout-core';
-import type { AuthoringIntent } from '@portfolio/project-model';
+import { pointerRay, type ViewportEvaluation, type ViewportRect } from '@portfolio/camera-core/viewport';
+import type { CompiledPhysicalWall } from '@portfolio/layout-core/geometry';
+import type { AuthoringIntent } from '@portfolio/project-model/f4';
 import type { LayoutUnitPayload } from '@portfolio/project-model/units';
 import {
 	isStraightCompiledWall,

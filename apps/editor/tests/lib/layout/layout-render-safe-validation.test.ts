@@ -20,24 +20,8 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-	compileWallFirstLayoutGeometry,
-	createEmptyWallFirstLayoutDocument,
-	deriveChainSpans,
-	planBendWallCurveKnot,
-	planMoveWallCurveKnot,
-	sampleSegment,
-	wallCenterlineSegment,
-	wallCubicChain,
-	wallCurveKnotArcDistance,
-	wallOffsetClearanceFailure,
-	legJoinsByWall,
-	LAYOUT_WALL_FIRST_FORMAT_VERSION,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type LayoutWall,
-	type LayoutWallCurveKnot
-} from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry, deriveChainSpans, sampleSegment, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { createEmptyWallFirstLayoutDocument, planBendWallCurveKnot, planMoveWallCurveKnot, wallCenterlineSegment, wallCubicChain, wallCurveKnotArcDistance, wallOffsetClearanceFailure, legJoinsByWall, LAYOUT_WALL_FIRST_FORMAT_VERSION, type LayoutDocumentWallFirst, type LayoutWall, type LayoutWallCurveKnot } from '@portfolio/layout-core/wall';
 import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-builder';
 
 const CHORD = 6;

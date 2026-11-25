@@ -9,14 +9,8 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-	independentWallOverlaps,
-	LAYOUT_WALL_FIRST_FORMAT_VERSION,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type LayoutWall,
-	type LayoutWallOverlapObservation
-} from '@portfolio/layout-core';
+import { independentWallOverlaps, LAYOUT_WALL_FIRST_FORMAT_VERSION, type LayoutDocumentWallFirst, type LayoutWall, type LayoutWallOverlapObservation } from '@portfolio/layout-core/wall';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 function documentWith(
 	junctions: Record<string, LayoutVec2>,

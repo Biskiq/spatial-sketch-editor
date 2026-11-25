@@ -37,6 +37,7 @@
     "test:arch": "npm run test:arch -w @portfolio/editor",
     "test:heavy": "npm run test:heavy -w @portfolio/editor",
     "test:full": "npm run test:full -w @portfolio/editor",
+    "test:projects": "vitest run --config vitest.config.ts",
     "test:api": "npm run test -w @biskiq/api",
     "test:local-dev": "node --test tools/local-dev/stack.test.mjs",
     "status": "node tools/harness/status.mjs",

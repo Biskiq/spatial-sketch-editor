@@ -18,11 +18,7 @@
  *
  * Editor machinery is absent: no Svelte, no Three, no DOM.
  */
-import {
-	MAX_CAMERA_OUTPUT_RUN_EPOCH,
-	type CameraOutputState,
-	type CameraOutputTicket
-} from '@portfolio/project-model';
+import { MAX_CAMERA_OUTPUT_RUN_EPOCH, type CameraOutputState, type CameraOutputTicket } from '@portfolio/project-model/channels';
 
 import type { CameraSession } from '../stage/camera-session';
 

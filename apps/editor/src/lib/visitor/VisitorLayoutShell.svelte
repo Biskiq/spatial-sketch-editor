@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import { T, useThrelte } from '@threlte/core';
-	import type { CompiledLayoutGeometry } from '@portfolio/layout-core';
+	import type { CompiledLayoutGeometry } from '@portfolio/layout-core/geometry';
 	import { resolveSceneSurfaceLook } from '$lib/render/layout/scene-surface-look';
 	import type { SceneSurfaceLookResolver } from '$lib/render/layout/surface-look';
 	import type { FinishOutcomeSink } from '$lib/render/resources/finish-outcome-sink';
@@ -14,7 +14,8 @@
 	import { tryUseCanvasRendererState } from '$lib/render/renderer-context';
 	import type { LayoutIdentityIndex } from '$lib/render/render-identity';
 	import type { TextureLoadScope } from '$lib/render/resources/texture-store';
-	import type { RuntimeScene, SceneTreatment } from '$lib/content/scene';
+	import type { RuntimeScene } from '@portfolio/project-model/scene';
+	import type { SceneTreatment } from '@portfolio/project-model/units';
 	import RoomPortal from '$lib/render/layout/RoomPortal.svelte';
 	import GroundPlinth from '$lib/render/layout/GroundPlinth.svelte';
 

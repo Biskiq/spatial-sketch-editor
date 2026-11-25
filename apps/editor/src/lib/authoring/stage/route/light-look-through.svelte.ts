@@ -15,7 +15,8 @@
  * that facade, so a late completion or a stale UI read can never end, aim or write
  * through the replacement's Camera.
  */
-import { fovYDegreesOf, type PointerRay, type Vec3 } from '@portfolio/camera-core';
+import { fovYDegreesOf, type PointerRay } from '@portfolio/camera-core/viewport';
+import type { Vec3 } from '@portfolio/camera-core/camera';
 import type { StageAdapterServices } from '../stage-adapter-host';
 import type { StageFacade } from '../stage-facade';
 import { acceptFormCommand } from '../../adapters/scene/form-card-command';

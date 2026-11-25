@@ -20,7 +20,7 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mount, tick, unmount } from 'svelte';
-import type { SceneEntity, Vec3 } from '@portfolio/project-model';
+import type { SceneEntity, Vec3 } from '@portfolio/project-model/scene';
 import {
 	computeEnvelopeSourceContentId,
 	createUnitSaveHandler,
@@ -28,7 +28,7 @@ import {
 	type ProjectEnvelope
 } from '@portfolio/project-model/units';
 import type { SaveAcknowledgement, SaveRequest } from '@portfolio/project-model/save';
-import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core/wall';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 

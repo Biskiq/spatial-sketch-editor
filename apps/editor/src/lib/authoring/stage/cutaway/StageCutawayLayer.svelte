@@ -35,7 +35,8 @@
 	import { LineSegments2 } from 'three/addons/lines/webgpu/LineSegments2.js';
 	import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 	import { Line2NodeMaterial } from 'three/webgpu';
-	import { countWork, type CompiledJunction, type CompiledPhysicalWall } from '@portfolio/layout-core';
+	import { countWork } from '@portfolio/layout-core/kernel';
+	import type { CompiledJunction, CompiledPhysicalWall } from '@portfolio/layout-core/geometry';
 	import { STAGE_OVERLAY_LAYER } from '../paper-plan';
 	import { SLICE_INK } from '../slice/slice-ink';
 	import { STAGE_PAINT } from '../shell/stage-paint';

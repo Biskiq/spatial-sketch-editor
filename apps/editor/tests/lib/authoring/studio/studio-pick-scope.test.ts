@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BoxGeometry, Group, Mesh, MeshBasicMaterial } from 'three';
-import type { RuntimeScene } from '@portfolio/project-model';
+import type { RuntimeScene } from '@portfolio/project-model/scene';
 import { createScenePickSource } from '../../../../src/lib/authoring/scene/scene-pick-source';
 import { pickThroughSlice } from '../../../../src/lib/authoring/stage/slice/stage-slice-pick';
 import { resolveStagePick } from '../../../../src/lib/authoring/stage/stage-pick';

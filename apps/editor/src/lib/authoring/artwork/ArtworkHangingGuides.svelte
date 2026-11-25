@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { ViewportEvaluation } from '@portfolio/camera-core';
+	import type { ViewportEvaluation } from '@portfolio/camera-core/viewport';
 	import type { StageFacade } from '$lib/authoring/stage/stage-facade';
 	import type { ArtworkHangGuide } from './artwork-hanging';
 

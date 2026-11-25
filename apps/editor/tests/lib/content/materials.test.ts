@@ -9,7 +9,7 @@
  * `catalogue-pins.test.ts`; here they are checked as the creator shelf.
  */
 import { describe, expect, it } from 'vitest';
-import { SHIPPED_MATERIALS } from '@portfolio/project-model';
+import { SHIPPED_MATERIALS } from '@portfolio/project-model/package';
 import { CATALOGUE_MATERIAL_IDS } from '@portfolio/project-model/materials';
 import { getMaterial, isMaterialId, legacyMaterials, materials } from '$lib/content/materials';
 import type { MaterialDefinition } from '$lib/types/materials';

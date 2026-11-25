@@ -14,6 +14,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { SLICE_PRESS_REFUSAL, slicePressRefusal } from '$lib/authoring/stage/stage-input';
+import { EDITOR_ROOT } from '../../../../helpers/import-closure';
 
 describe('slicePressRefusal', () => {
 	it('refuses while the Slice tool is armed', () => {
@@ -33,11 +34,11 @@ describe('slicePressRefusal', () => {
 
 describe('the arbiter asks about the tool, not the reading', () => {
 	const input = readFileSync(
-		path.join(process.cwd(), 'src/lib/authoring/stage/route/stage-input.svelte.ts'),
+		path.join(EDITOR_ROOT, 'src/lib/authoring/stage/route/stage-input.svelte.ts'),
 		'utf8'
 	);
 	const route = readFileSync(
-		path.join(process.cwd(), 'src/lib/authoring/workspace/host/wiring/stage-input.ts'),
+		path.join(EDITOR_ROOT, 'src/lib/authoring/workspace/host/wiring/stage-input.ts'),
 		'utf8'
 	);
 

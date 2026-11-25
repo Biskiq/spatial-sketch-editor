@@ -51,7 +51,7 @@ import {
 	STARTER_TEMPLATES,
 	buildStarterEnclosureLayout
 } from '$lib/authoring/stage/starter-gallery';
-import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core/geometry';
 import { FIXTURE_PROJECT_ID, buildFoldedPartitionProject } from './__fixtures__/f4-current-source-fixtures';
 
 /**

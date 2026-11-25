@@ -17,12 +17,9 @@
  * A refusal at any step leaves the accepted project unchanged. Uploaded P20
  * bytes stay under ordinary retention when a later step is cancelled.
  */
-import {
-	probeArtworkImage,
-	type AcceptedRevision,
-	type AuthoringIntent,
-	type SemanticReference
-} from '@portfolio/project-model';
+import { probeArtworkImage } from '@portfolio/project-model/artwork';
+import type { AcceptedRevision, SemanticReference } from '@portfolio/project-model/references';
+import type { AuthoringIntent } from '@portfolio/project-model/f4';
 import {
 	composeDraft,
 	type DraftEdits,
@@ -33,7 +30,7 @@ import {
 import type { Hash, Recipe, TargetAnalysis } from '@portfolio/project-model/materials';
 import { SCENE_FINISH_REGISTER, isFinishTarget } from '@portfolio/project-model/scene-planning';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
-import { resolveLayoutSurface, surfaceKey, type LayoutSurfaceRef } from '@portfolio/layout-core';
+import { resolveLayoutSurface, surfaceKey, type LayoutSurfaceRef } from '@portfolio/layout-core/plan';
 import type { ProjectApi } from '$lib/platform/project-persistence';
 import { imageSha256 } from '$lib/render/artwork/image-digest';
 import { probeRawImage } from '$lib/render/resources/image-encoding';

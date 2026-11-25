@@ -1,13 +1,53 @@
-/**
- * The shared Experience runtime preparation (AM-6), behind the same
- * `./units` subpath as the F.2 envelope it reads.
- *
- * Lowering, the one interpreter and the semantic companion are runtime-safe and
- * have no editor, renderer, Svelte or Three dependency. Nothing here activates a
- * source or runtime: the editor and Preview callers do.
- */
+export {
+	buildExperienceCompanion,
+} from './companion';
 
-export * from './lowering';
-export * from './interpreter';
-export * from './companion';
-export * from './policy';
+export type {
+	CompanionDestination,
+	ExperienceCompanion,
+} from './companion';
+
+export {
+	createExperienceInterpreter,
+	createExperienceRun,
+	EXPERIENCE_RESUME_LEAD_IN_MS,
+	isExploring,
+	reduceExperience,
+	replayExperience,
+} from './interpreter';
+
+export type {
+	ExperienceDetourPolicy,
+	ExperienceEffect,
+	ExperienceEvent,
+	ExperienceInterpreterOptions,
+	ExperiencePanel,
+	ExperienceReduceOutcome,
+	ExperienceReduceResult,
+	ExperienceRunPhase,
+	ExperienceRunState,
+	ExperienceSuspendedVisit,
+	ExperienceTransition,
+	ExperienceVisit,
+} from './interpreter';
+
+export {
+	lowerExperienceProgram,
+} from './lowering';
+
+export type {
+	ExperienceLoweringAction,
+	ExperienceLoweringOptions,
+	ExperienceLoweringRefusal,
+	ExperienceLoweringResult,
+	ExperienceProgramTransition,
+} from './lowering';
+
+export {
+	deriveExperienceRuntimePolicy,
+} from './policy';
+
+export type {
+	ExperienceRuntimePolicy,
+	ExperienceRuntimePolicyResult,
+} from './policy';

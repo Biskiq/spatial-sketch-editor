@@ -18,7 +18,7 @@
  *   the host. Asynchronously loaded mesh bounds are never an unrecorded
  *   placement input, so nothing here is derived from a live bounding box.
  */
-import type { LayoutVec2 } from '@portfolio/layout-core';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import type {
 	AssetId,
 	MaterialId,

@@ -1,16 +1,7 @@
 import { planarDeltaLabel } from '$lib/authoring/stage/stage-adapter-host';
-import {
-	mintLayoutIdCapture,
-	planDissolveJunction,
-	proposeWallFirstArchitectureGeometry,
-	type LayoutSurfaceLineage,
-	type WallFirstArchitectureProposalWall,
-	type FixedWallEndpoint,
-	type LayoutDocumentWallFirst,
-	type LayoutIdCapture,
-	type LayoutVec2,
-	wallCenterlinePoints
-} from '@portfolio/layout-core';
+import { mintLayoutIdCapture, type LayoutSurfaceLineage, type LayoutIdCapture } from '@portfolio/layout-core/plan';
+import { planDissolveJunction, proposeWallFirstArchitectureGeometry, type WallFirstArchitectureProposalWall, type FixedWallEndpoint, type LayoutDocumentWallFirst, wallCenterlinePoints } from '@portfolio/layout-core/wall';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 import {
 	type StageAdapterContext,

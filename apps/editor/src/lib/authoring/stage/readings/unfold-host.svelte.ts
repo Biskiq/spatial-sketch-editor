@@ -1,4 +1,4 @@
-import { eyeOfInspectionPose, fovYDegreesOf } from '@portfolio/camera-core';
+import { eyeOfInspectionPose, fovYDegreesOf } from '@portfolio/camera-core/viewport';
 import { wallUnfoldShouldReturn, wallUnfoldViewCentreStation } from '$lib/layout/wall-unfold';
 import { wallUnfold } from '../../layout/wall-unfold-store.svelte';
 import { contribution } from '../../workspace/region-ownership';

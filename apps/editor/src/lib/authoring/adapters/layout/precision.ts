@@ -28,58 +28,14 @@
  * looks writable.
  */
 
-import {
-	composeSpaceBoundary,
-	materializeLayoutSourceForCapture,
-	deriveLayoutWallRole,
-	isClosedWall,
-	readClosedWallCircle,
-	layoutIdCaptureInput,
-	layoutWorkingLevelInput,
-	lookupIndexedJunction,
-	lookupIndexedObject,
-	lookupIndexedOpening,
-	lookupIndexedWall,
-	nextLayoutPresetObjectId,
-	planBendWallCurveKnot,
-	planCommitLayoutObjectPresetWithId,
-	planConvertWallToLine,
-	planDeleteWallCurveKnot,
-	readLayoutIdCapture,
-	readLayoutWorkingLevel,
-	recordPreparedCowCandidate,
-	planExactJunctionMove,
-	planExactWallAngle,
-	planExactWallHeight,
-	planExactWallLength,
-	planExactWallThickness,
-	planOpeningMetadataUpdate,
-	planRemoveSpace,
-	planRigidWallMove,
-	planWallFirstRoomMove,
-	planUpdateWallFirstOpening,
-	planRoomMetadataUpdate,
-	planWallMetadataUpdate,
-	projectPointToWallCenterline,
-	regionsOverSpace,
-	wallCenterlineSamples,
-	faceArea,
-	type CompiledLayoutGeometry,
-	type FixedWallEndpoint,
-	type LayoutDocumentWallFirst,
-	type LayoutIdCapture,
-	type LayoutVec2,
-	type LayoutSurfaceLineage,
-	surfaceKey
-} from '@portfolio/layout-core';
-import type {
-	AuthoringIntent,
-	DomainPlanner,
-	PlannerOutcome,
-	PlannerRequest,
-	PreparedCandidate,
-	SemanticReference
-} from '@portfolio/project-model';
+import { composeSpaceBoundary, readClosedWallCircle, planWallFirstRoomMove } from '@portfolio/layout-core/room';
+import { materializeLayoutSourceForCapture } from '@portfolio/layout-core/kernel';
+import { deriveLayoutWallRole, isClosedWall, planBendWallCurveKnot, planConvertWallToLine, planDeleteWallCurveKnot, planExactJunctionMove, planExactWallAngle, planExactWallHeight, planExactWallLength, planExactWallThickness, planOpeningMetadataUpdate, planRemoveSpace, planRigidWallMove, planUpdateWallFirstOpening, planRoomMetadataUpdate, planWallMetadataUpdate, projectPointToWallCenterline, wallCenterlineSamples, type FixedWallEndpoint, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import { layoutIdCaptureInput, layoutWorkingLevelInput, nextLayoutPresetObjectId, planCommitLayoutObjectPresetWithId, readLayoutIdCapture, readLayoutWorkingLevel, type LayoutIdCapture, type LayoutSurfaceLineage, surfaceKey } from '@portfolio/layout-core/plan';
+import { lookupIndexedJunction, lookupIndexedObject, lookupIndexedOpening, lookupIndexedWall, recordPreparedCowCandidate } from '@portfolio/layout-core/world';
+import { regionsOverSpace, faceArea, type CompiledLayoutGeometry, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import type { AuthoringIntent, DomainPlanner, PlannerOutcome, PlannerRequest, PreparedCandidate } from '@portfolio/project-model/f4';
+import type { SemanticReference } from '@portfolio/project-model/references';
 import {
 	applySurfaceLineage,
 	newlyRetiredSurfaceReferenceKeys,

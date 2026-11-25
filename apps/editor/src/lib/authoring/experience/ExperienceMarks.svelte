@@ -10,7 +10,7 @@
 	 * gesture lease.
 	 */
 	import { onMount } from 'svelte';
-	import { projectWorld, type ViewportEvaluation } from '@portfolio/camera-core';
+	import { projectWorld, type ViewportEvaluation } from '@portfolio/camera-core/viewport';
 	import {
 		experienceMarkModel,
 		relatedToSelection,

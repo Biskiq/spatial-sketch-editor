@@ -8,9 +8,9 @@
  * spans the shared wall-mesh builder draws plus the resolved Scene's primitives.
  */
 import { describe, expect, it } from 'vitest';
-import type { SceneEntity, Vec3 } from '@portfolio/project-model';
+import type { SceneEntity, Vec3 } from '@portfolio/project-model/scene';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
-import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core/wall';
 
 import { floorSupport, supportOccluders } from '$lib/authoring/adapters/scene/support-occlusion';
 import { snapFreePlacement } from '$lib/authoring/adapters/scene/placement';

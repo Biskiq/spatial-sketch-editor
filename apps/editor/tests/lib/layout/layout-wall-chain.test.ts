@@ -1,18 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import {
-	deriveChainSpans,
-	deriveLayoutWallRole,
-	compileWallFirstLayoutGeometry,
-	createEmptyWallFirstLayoutDocument,
-	planWallChain as planWallChainRaw,
-	wallCubicChain,
-	planWallSegment as planWallSegmentRaw,
-	validateWallFirstTopology,
-	wallsShareTopologyComponent,
-	type LayoutDocumentWallFirst,
-	type LayoutIdCapture,
-	type WallChainPlanOptions
-} from '@portfolio/layout-core';
+import { deriveChainSpans, compileWallFirstLayoutGeometry } from '@portfolio/layout-core/geometry';
+import { deriveLayoutWallRole, createEmptyWallFirstLayoutDocument, planWallChain as planWallChainRaw, wallCubicChain, planWallSegment as planWallSegmentRaw, validateWallFirstTopology, type LayoutDocumentWallFirst, type WallChainPlanOptions } from '@portfolio/layout-core/wall';
+import { wallsShareTopologyComponent } from '@portfolio/layout-core/room';
+import type { LayoutIdCapture } from '@portfolio/layout-core/plan';
 import { captureFor, freshCapture } from './__fixtures__/layout-id-capture';
 
 /**

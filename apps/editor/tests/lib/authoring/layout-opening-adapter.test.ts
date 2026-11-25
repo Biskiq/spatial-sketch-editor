@@ -16,11 +16,7 @@
  * 5. a reading switch cannot hide a live Wall chain.
  */
 import { describe, expect, it, vi } from 'vitest';
-import {
-	createEmptyWallFirstLayoutDocument,
-	planWallChain,
-	type LayoutDocumentWallFirst
-} from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument, planWallChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 import {
 	captureUnitSave,
 	readUnitEnvelopeForSave,

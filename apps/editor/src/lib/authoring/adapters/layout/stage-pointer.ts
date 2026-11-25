@@ -6,7 +6,8 @@
  * Layout document, the compiled geometry and the live projection. They own no
  * state, mint no identity and write nothing.
  */
-import type { LayoutDocumentWallFirst, LayoutVec2 } from '@portfolio/layout-core';
+import type { LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 import { datumWorkingPlane, type StageAdapterContext } from '$lib/authoring/stage/stage-adapter-host';
 

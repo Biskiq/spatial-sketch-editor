@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { validateWallFirstLayoutDocument } from '@portfolio/layout-core';
+import { validateWallFirstLayoutDocument } from '@portfolio/layout-core/wall';
 import {
 	buildScaleFixture,
 	SCALE_FIXTURE_SEEDS,

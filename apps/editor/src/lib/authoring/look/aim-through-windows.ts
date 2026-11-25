@@ -1,4 +1,4 @@
-import { pointInPolygon, type CompiledLayoutGeometry } from '@portfolio/layout-core';
+import { pointInPolygon, type CompiledLayoutGeometry } from '@portfolio/layout-core/geometry';
 import { wrap360 } from '$lib/render/sky-time';
 
 export function aimThroughWindows(geometry: CompiledLayoutGeometry): number | null {

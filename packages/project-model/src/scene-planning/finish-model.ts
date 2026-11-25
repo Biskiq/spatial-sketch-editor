@@ -34,8 +34,8 @@ import type {
 } from '../materials/types';
 import { resolveSceneSurfaceFinish } from '../scene-surface-reference';
 import type { SceneSurfaceFinish, SceneSurfaceRef } from '../scene';
-import { resolveLayoutSurface, surfaceKey } from '@portfolio/layout-core';
-import type { LayoutDocumentWallFirst } from '@portfolio/layout-core';
+import { resolveLayoutSurface, surfaceKey } from '@portfolio/layout-core/plan';
+import type { LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 import { sameSceneValues } from './record-scope';
 
 /** One Finish, as a payload names it. */

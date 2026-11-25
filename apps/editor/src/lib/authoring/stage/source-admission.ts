@@ -1,5 +1,6 @@
-import { areEquivalentLayoutClones, type CompiledLayoutGeometryResult } from '@portfolio/layout-core';
-import { sealCompiledLayoutSnapshot } from '@portfolio/layout-core';
+import { areEquivalentLayoutClones } from '@portfolio/layout-core/world';
+import type { CompiledLayoutGeometryResult } from '@portfolio/layout-core/geometry';
+import { sealCompiledLayoutSnapshot } from '@portfolio/layout-core/geometry';
 /**
  * Source admission — **admission equals runtime preparation**.
  *
@@ -27,21 +28,12 @@ import { sealCompiledLayoutSnapshot } from '@portfolio/layout-core';
  * Runtime-safe, pure and read-only: nothing here writes a project, calls
  * `saveProject`, or mutates the supplied payload.
  */
-import {
-	hasBlockingLayoutIssues,
-	layoutDatumElevation,
-	measureWorkAsync,
-	p2311Measure,
-	type CompiledLayoutGeometry,
-	type LayoutCompileSession,
-	type LayoutGeometryIssue
-} from '@portfolio/layout-core';
-import {
-	freezeF4Data,
-	type AcceptedRevision,
-	type ProjectIssue,
-	type ShapeIssue
-} from '@portfolio/project-model';
+import { hasBlockingLayoutIssues, type CompiledLayoutGeometry, type LayoutCompileSession, type LayoutGeometryIssue } from '@portfolio/layout-core/geometry';
+import { layoutDatumElevation } from '@portfolio/layout-core/room';
+import { measureWorkAsync, p2311Measure } from '@portfolio/layout-core/kernel';
+import { freezeF4Data } from '@portfolio/project-model/f4';
+import type { AcceptedRevision } from '@portfolio/project-model/references';
+import type { ProjectIssue, ShapeIssue } from '@portfolio/project-model/package';
 import { createUnitReadContext } from '@portfolio/project-model/references/unit-resolution';
 import {
 	computeEnvelopeSourceContentId,

@@ -20,25 +20,8 @@
  *   identity and hosted Opening offsets.
  */
 import { describe, expect, it } from 'vitest';
-import {
-	cubicBezierPoint,
-	deriveChainSpans,
-	planConvertWallToCurve,
-	planDissolveJunction as planDissolveJunctionWithCapture,
-	planWallSplit,
-	orientedWallChainKnotsAndSpans,
-	wallCubicChain,
-	wallCenterlineCubics,
-	wallCurveChainLength,
-	wallCurveKnotArcDistance,
-	LAYOUT_WALL_FIRST_FORMAT_VERSION,
-	type CubicBezierShape,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type LayoutWallCenterline,
-	type LayoutWallCurveKnot,
-	type NodingIdAllocator
-} from '@portfolio/layout-core';
+import { cubicBezierPoint, deriveChainSpans, type CubicBezierShape, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { planConvertWallToCurve, planDissolveJunction as planDissolveJunctionWithCapture, planWallSplit, orientedWallChainKnotsAndSpans, wallCubicChain, wallCenterlineCubics, wallCurveChainLength, wallCurveKnotArcDistance, LAYOUT_WALL_FIRST_FORMAT_VERSION, type LayoutDocumentWallFirst, type LayoutWallCenterline, type LayoutWallCurveKnot, type NodingIdAllocator } from '@portfolio/layout-core/wall';
 import { captureFor, capturedId, freshCapture } from './__fixtures__/layout-id-capture';
 
 /** One captured dissolve operation: every call is a new edit with a new nonce. */
@@ -508,7 +491,7 @@ describe('curve dissolve', () => {
 
 describe('oriented chain helper', () => {
 	it('exposes the single reverse-orientation implementation', async () => {
-		const { orientedWallChainKnotsAndSpans } = await import('@portfolio/layout-core');
+		const { orientedWallChainKnotsAndSpans } = await import('@portfolio/layout-core/wall');
 		const wall = curvedWall('w', 'J', 'E2', [
 			['k1', point(1, 0.5)],
 			['k2', point(2, 0.2)]
@@ -528,7 +511,7 @@ describe('oriented chain helper', () => {
 	});
 
 	it('yields empty chains for straight walls', async () => {
-		const { orientedWallChainKnotsAndSpans } = await import('@portfolio/layout-core');
+		const { orientedWallChainKnotsAndSpans } = await import('@portfolio/layout-core/wall');
 		const line: LayoutWallCenterline = { kind: 'line' };
 		expect(orientedWallChainKnotsAndSpans(line, 'forward')).toEqual({ knots: [], spans: [] });
 		expect(orientedWallChainKnotsAndSpans(line, 'reverse')).toEqual({ knots: [], spans: [] });

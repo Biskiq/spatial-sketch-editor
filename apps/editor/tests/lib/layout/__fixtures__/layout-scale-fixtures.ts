@@ -17,16 +17,8 @@
  * samples, bounds) are committed under the T1.P02.S05 slice's `observations/`
  * directory at the trusted base so the re-fixturing is reviewable.
  */
-import {
-	createEmptyWallFirstLayoutDocument,
-	deriveChainSpans,
-	wallCubicChain,
-	type DraftPath,
-	type LayoutDocumentWallFirst,
-	type LayoutObject,
-	type LayoutVec2,
-	type LayoutWallOpening
-} from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument, wallCubicChain, type LayoutDocumentWallFirst, type LayoutObject, type LayoutWallOpening } from '@portfolio/layout-core/wall';
+import { deriveChainSpans, type DraftPath, type LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 export type ScaleFixtureTier = 'small' | 'medium' | 'large';
 

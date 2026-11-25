@@ -6,17 +6,10 @@
  * is the only shape mark a closed Wall publishes; no bend point is offered.
  */
 import { describe, expect, it } from 'vitest';
-import {
-	createEmptyWallFirstLayoutDocument,
-	isClosedWall,
-	mintLayoutIdCapture,
-	planCreateCircularRoom,
-	planCreateWallFirstOpening,
-	readClosedWallCircle,
-	wallFirstWallLength,
-	type LayoutDocumentWallFirst,
-	type PlanSourceRef
-} from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument, isClosedWall, planCreateWallFirstOpening, wallFirstWallLength, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import { mintLayoutIdCapture } from '@portfolio/layout-core/plan';
+import { planCreateCircularRoom, readClosedWallCircle } from '@portfolio/layout-core/room';
+import type { PlanSourceRef } from '@portfolio/layout-core/world';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
 
 import { admitSource } from '$lib/authoring/stage/source-admission';

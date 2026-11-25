@@ -12,8 +12,9 @@
  * likewise only ever a permutation of its authored Views.
  */
 
-import type { AuthoringIntent } from '@portfolio/project-model';
-import type { ScenePathAnchor, SemanticReference } from '@portfolio/project-model';
+import type { AuthoringIntent } from '@portfolio/project-model/f4';
+import type { ScenePathAnchor } from '@portfolio/project-model/scene';
+import type { SemanticReference } from '@portfolio/project-model/references';
 import type {
 	Experience,
 	ExperienceGuidePacing,

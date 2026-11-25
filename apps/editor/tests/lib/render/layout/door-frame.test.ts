@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { DOOR_FRAME_FACE_INSET_METERS, doorFrameBoxes } from '$lib/render/layout/door-frame';
+import { EDITOR_ROOT } from '../../../helpers/import-closure';
 
 const CASES = [
 	{ width: 1, height: 2.1, wallThickness: 0.2 },
@@ -29,7 +30,7 @@ describe('a door frame stays inside its Opening', () => {
 	});
 
 	it('frames only rectangular doors, at their sill, from the Wall they sit in', () => {
-		const shell = readFileSync(resolve(process.cwd(), 'src/lib/visitor/VisitorLayoutShell.svelte'), 'utf8');
+		const shell = readFileSync(resolve(EDITOR_ROOT, 'src/lib/visitor/VisitorLayoutShell.svelte'), 'utf8');
 		expect(shell).toContain("opening.kind === 'door' && opening.profile === 'rectangular'");
 		// One portal loop remains: the Room-owned wall path (a second loop) is retired.
 		expect(shell.match(/wallThickness=\{wall\.thickness\}/g)).toHaveLength(1);

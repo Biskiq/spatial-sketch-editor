@@ -85,7 +85,7 @@ planner and `layout-room-move` policies are untouched.
 - `packages/layout-core/src/layout-room-isolation.ts` — `resolveRoomCopyEnclosure`.
 - `packages/layout-core/src/layout-wall-overlap.ts` *(new)* — independent-Wall coincidence
   query.
-- `packages/layout-core/src/index.ts` — export the new module.
+- `packages/layout-core/src/plan/index.ts` — export the new module.
 - `apps/editor/src/lib/authoring/adapters/layout/room-duplicate-planners.ts` — general planner,
   lineage doc, dropped relations in the candidate.
 - `apps/editor/src/lib/authoring/adapters/layout/room-gesture-session.ts` — enclosure scope,

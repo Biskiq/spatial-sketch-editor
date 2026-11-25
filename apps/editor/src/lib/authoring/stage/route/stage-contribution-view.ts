@@ -8,7 +8,7 @@
  * `stage-shell-commands.ts`, and no record here can open a task, accept a
  * source or allocate a renderer object.
  */
-import type { ViewportRect } from '@portfolio/camera-core';
+import type { ViewportRect } from '@portfolio/camera-core/viewport';
 import {
 	layoutSelectionReference,
 	sameReference,

@@ -1,13 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-	createEmptyWallFirstLayoutDocument,
-	parseWallFirstLayoutDocumentJson,
-	serializeWallFirstLayoutDocument,
-	validateWallFirstLayoutDocument
-} from '@portfolio/layout-core';
-import { LAYOUT_WALL_FIRST_FORMAT_VERSION } from '@portfolio/layout-core';
-import type { LayoutDocumentWallFirst } from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument, parseWallFirstLayoutDocumentJson, serializeWallFirstLayoutDocument, validateWallFirstLayoutDocument } from '@portfolio/layout-core/wall';
+import { LAYOUT_WALL_FIRST_FORMAT_VERSION } from '@portfolio/layout-core/wall';
+import type { LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 
 /** Rectangle room expressed in the new wall-first schema. */
 function wallFirstDocument(): LayoutDocumentWallFirst {

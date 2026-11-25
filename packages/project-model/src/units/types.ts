@@ -23,8 +23,8 @@
  * station hold is never a second Camera motion timeline.
  */
 
-import { LAYOUT_WALL_FIRST_FORMAT_VERSION } from '@portfolio/layout-core';
-import type { LayoutDocumentWallFirst } from '@portfolio/layout-core';
+import { LAYOUT_WALL_FIRST_FORMAT_VERSION } from '@portfolio/layout-core/wall';
+import type { LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 import type {
 	AcceptedRevision,
 	ReferenceDomain,

@@ -15,7 +15,7 @@
 	 * the open + Stop menu, and the drag in progress.
 	 */
 	import { tick, untrack } from 'svelte';
-	import { formatGuideTime } from '@portfolio/camera-core';
+	import { formatGuideTime } from '@portfolio/camera-core/navigation';
 	import ShellIcon from '../stage/shell/ShellIcon.svelte';
 	import ExperienceSnapshot from './ExperienceSnapshot.svelte';
 	import { experienceHomes } from './experience-homes';

@@ -16,7 +16,7 @@ import {
 	prepareUnitRuntime,
 	type ExecutionProgram
 } from '@portfolio/project-model/units';
-import { formatGuideTime, type CameraGraph } from '@portfolio/camera-core';
+import { formatGuideTime, type CameraGraph } from '@portfolio/camera-core/navigation';
 import { EXPERIENCE, experienceEnvelope, LOWERING_OPTIONS } from './fixtures';
 import {
 	createExperiencePlayback,

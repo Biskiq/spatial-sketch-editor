@@ -6,7 +6,7 @@
  * `attachUnitStageSource` is called by admission only, and `stageEnvelope` is the
  * only reader, so a second source slot cannot be introduced by accident.
  */
-import { freezeF4Data } from '@portfolio/project-model';
+import { freezeF4Data } from '@portfolio/project-model/f4';
 import {
 	UNIT_SOURCE_KIND,
 	UNIT_SOURCE_VERSION,

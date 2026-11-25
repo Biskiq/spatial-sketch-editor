@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { CameraGraph, CameraGraphConnection, CameraGraphNode } from '@portfolio/camera-core';
+import type { CameraGraph } from '@portfolio/camera-core/navigation';
+import type { CameraGraphConnection, CameraGraphNode } from '@portfolio/camera-core/camera';
 import { resolveVisitorCameraRoute } from '$lib/visitor/visitor-camera-route';
 
 const NODES: CameraGraphNode[] = [

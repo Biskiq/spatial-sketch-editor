@@ -1,7 +1,7 @@
 <script lang="ts">
 	/** Test host: the Canvas resources the Stage provides, around the shadow wiring. */
-	import type { CompiledLayoutGeometry } from '@portfolio/layout-core';
-	import type { RuntimeScene } from '@portfolio/project-model';
+	import type { CompiledLayoutGeometry } from '@portfolio/layout-core/geometry';
+	import type { RuntimeScene } from '@portfolio/project-model/scene';
 	import StageShadowTriggers from '$lib/authoring/stage/shell/StageShadowTriggers.svelte';
 	import { provideRenderResources } from '$lib/render/resources/render-resources';
 	import { provideCanvasRendererState } from '$lib/render/renderer-context';

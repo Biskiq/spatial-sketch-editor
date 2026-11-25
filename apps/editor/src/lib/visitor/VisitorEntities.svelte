@@ -4,7 +4,7 @@
 	 * model support (glTF loader and realization). The public preview and the visitor path import this module,
 	 * so its closure stays exactly what the preview boundary expects.
 	 */
-	import type { RuntimeScene } from '$lib/content/scene';
+	import type { RuntimeScene } from '@portfolio/project-model/scene';
 	import type { TextureLoadScope } from '$lib/render/resources/texture-store';
 	import { sceneModelSupport } from '$lib/render/models/scene-model-support';
 	import type { ArtworkScope } from '$lib/render/artwork/artwork-scope';

@@ -21,22 +21,10 @@ import { drawingRefusalWords } from './refusals';
  * coordinates happen to coincide with an existing Junction stays free, which is
  * exactly the planner's declared-vs-inferred rule.
  */
-import {
-	coincidesAsJunction,
-	detectUnsupportedChainConnections,
-	faceArea,
-	JUNCTION_COINCIDENCE_EPSILON,
-	planWallChain,
-	roomBoundaryPolygon,
-	wallCenterlineCarriesPoint,
-	type LayoutDocumentWallFirst,
-	type LayoutIdCapture,
-	type LayoutVec2,
-	type WallChainArc,
-	type WallChainPlan,
-	type WallEndpointHostSnap,
-	type WallEndpointJunctionSnap
-} from '@portfolio/layout-core';
+import { coincidesAsJunction, detectUnsupportedChainConnections, JUNCTION_COINCIDENCE_EPSILON, planWallChain, wallCenterlineCarriesPoint, type LayoutDocumentWallFirst, type WallChainArc, type WallChainPlan, type WallEndpointHostSnap, type WallEndpointJunctionSnap } from '@portfolio/layout-core/wall';
+import { faceArea, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { roomBoundaryPolygon } from '@portfolio/layout-core/room';
+import type { LayoutIdCapture } from '@portfolio/layout-core/plan';
 
 /** What one draft point deliberately names, if anything. */
 export type ChainPointTarget =

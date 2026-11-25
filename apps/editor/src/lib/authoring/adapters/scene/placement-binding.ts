@@ -20,7 +20,7 @@
  * stores, so they survive a rebind; this binding only reads and writes them.
  */
 
-import type { ViewportEvaluation } from '@portfolio/camera-core';
+import type { ViewportEvaluation } from '@portfolio/camera-core/viewport';
 import type {
 	StageAdapterContext,
 	StageAdapterServices,
@@ -34,7 +34,7 @@ import {
 	evaluationIdOf,
 	stageEnvelope
 } from '$lib/authoring/stage/stage-adapter-host';
-import type { SceneEntity, Vec3 } from '@portfolio/project-model';
+import type { SceneEntity, Vec3 } from '@portfolio/project-model/scene';
 import { creatorModelDefinition, approvedModelResources } from '@portfolio/project-model/scene-planning';
 import { createObjectDrawSession, type DrawPreview, type ObjectDrawSession } from './shape/draw-session';
 import { armTile, armedTile, setObjectsPanelCompact } from './shape/armed-tile';

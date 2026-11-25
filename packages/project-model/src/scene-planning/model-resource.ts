@@ -18,7 +18,7 @@
  * is degenerate yields no definition, so an unplaceable import cannot be put on
  * the floor by a fallback.
  */
-import type { LayoutVec2 } from '@portfolio/layout-core';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import type { ProjectEnvelope, TypedResource } from '../units/types';
 import type { DependencyLockEntry } from '../units/types';
 import { definitionMetadataContentId } from './metadata-identity';

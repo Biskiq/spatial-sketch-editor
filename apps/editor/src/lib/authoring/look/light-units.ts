@@ -7,7 +7,7 @@
  * accepted Brightness stops and exact values under More, and the Stage draws
  * angle guides in degrees without ever writing degrees to the document.
  */
-import type { SceneLightEntity } from '@portfolio/project-model';
+import type { SceneLightEntity } from '@portfolio/project-model/scene';
 
 /** Gate A's point-light reference intensity, in candela. */
 export const LIGHT_INTENSITY_REFERENCE = Math.PI;

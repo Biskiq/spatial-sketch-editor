@@ -6,13 +6,8 @@
  * creator sees a derived Room instead of an internal admission error.
  */
 import { describe, expect, it } from 'vitest';
-import {
-	createEmptyWallFirstLayoutDocument,
-	deriveChainSpans,
-	planWallChain,
-	wallCubicChain,
-	type LayoutDocumentWallFirst
-} from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument, planWallChain, wallCubicChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import { deriveChainSpans } from '@portfolio/layout-core/geometry';
 
 import { admitSource } from '$lib/authoring/stage/source-admission';
 import { refusedChainPreview } from '$lib/authoring/adapters/layout/chain';

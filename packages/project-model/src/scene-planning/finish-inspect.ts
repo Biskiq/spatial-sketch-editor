@@ -11,7 +11,8 @@
  * Treatment is a render-layer rule; the caller may pass `treat` to obtain the
  * treated reading beside the untreated one. This module never imports it.
  */
-import { resolveLayoutSurface, surfaceKey, type LayoutDocumentWallFirst } from '@portfolio/layout-core';
+import { resolveLayoutSurface, surfaceKey } from '@portfolio/layout-core/plan';
+import type { LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 import type { SceneEntity, SceneMaterialInstance, SceneSurfaceRef } from '../scene';
 import { qualifyAcrossTargets } from '../materials/bind';
 import { catalogueRecipe } from '../materials/catalogue';

@@ -14,20 +14,9 @@
  * `PAPER_LAYER.sceneFootprint`; `resolveStagePick` therefore arbitrates with the
  * drawing's own order.
  */
-import {
-	eligiblePlanFragments,
-	createPlanBoxIndex,
-	indexedCompiledWall,
-	countWork,
-	openingPlanSymbol,
-	type CompiledLayoutGeometry,
-	type CompiledPhysicalWall,
-	type LayoutVec2,
-	type PlanBox,
-	type PlanEvaluation,
-	type PlanFragment,
-	type PlanStream
-} from '@portfolio/layout-core';
+import { eligiblePlanFragments, createPlanBoxIndex, openingPlanSymbol, type PlanBox, type PlanEvaluation, type PlanFragment, type PlanStream } from '@portfolio/layout-core/world';
+import { indexedCompiledWall, type CompiledLayoutGeometry, type CompiledPhysicalWall, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { countWork } from '@portfolio/layout-core/kernel';
 import type { PlanSceneProjection } from '$lib/authoring/scene/plan-scene-footprint';
 import { SPATIAL_PAINT_ROLES } from '$lib/design/spatial-paint';
 

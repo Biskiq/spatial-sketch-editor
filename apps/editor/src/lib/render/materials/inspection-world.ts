@@ -19,7 +19,7 @@
  * light a swatch with a second light model.
  */
 import { AmbientLight, DirectionalLight, Group, HemisphereLight } from 'three';
-import type { RuntimeScene, SceneTreatment } from '@portfolio/project-model';
+import type { RuntimeScene, SceneTreatment } from '@portfolio/project-model/scene';
 import type { SceneSky } from '@portfolio/project-model/units';
 import {
 	colorHex,

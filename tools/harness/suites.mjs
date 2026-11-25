@@ -6,13 +6,13 @@
  * Adding a suite here makes it required: a run that misses its provenance is
  * rejected instead of reading green.
  *
- * The editor Vitest population is split into three disjoint lanes and CI runs
- * those lanes instead of `npm test` plus the lanes again. Their union is the
- * complete `npm test` population, proved by
- * `apps/editor/tests/config/lane-membership.test.ts`; `npm test` stays the
- * complete local suite and is never narrowed. Running the full suite in the
- * matrix as well would execute every arch and heavy test a second time without
- * adding coverage.
+ * The editor Vitest population is split into three disjoint lanes by filename
+ * and CI runs those lanes instead of `npm test` plus the lanes again. Every
+ * `*.arch.test.ts` and `*.heavy.test.ts` belongs to its lane and everything else
+ * is fast, so a relocated suite is collected without a registry edit. `npm test`
+ * stays the complete local suite and is never narrowed. Running the full suite
+ * in the matrix as well would execute every arch and heavy test a second time
+ * without adding coverage.
  *
  * `kind` decides how completion is proven:
  *

@@ -17,14 +17,8 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-	compileWallFirstLayoutGeometry,
-	legJoinsByWall,
-	type CompiledPhysicalWall,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type LayoutWall
-} from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry, type CompiledPhysicalWall, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { legJoinsByWall, type LayoutDocumentWallFirst, type LayoutWall } from '@portfolio/layout-core/wall';
 import { buildStandaloneWallMesh, type IndexedWallMesh } from '$lib/layout/wall-mesh-builder';
 
 function wall(

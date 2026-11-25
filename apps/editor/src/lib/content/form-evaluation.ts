@@ -15,7 +15,7 @@
  * reachable from visitor-facing code without pulling editor machinery in.
  */
 import { GEOMETRY_CORE_EVALUATOR_VERSION, type FormMesh } from '@portfolio/geometry-core';
-import type { SceneFormSource } from '@portfolio/project-model';
+import type { SceneFormSource } from '@portfolio/project-model/scene';
 import { evaluateSceneForm } from '@portfolio/project-model/form';
 
 /** Highest number of evaluated forms retained before the oldest is evicted. */

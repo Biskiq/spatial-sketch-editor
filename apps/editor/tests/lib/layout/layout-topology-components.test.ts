@@ -20,26 +20,9 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-	connectedRoomIds,
-	createEmptyWallFirstLayoutDocument,
-	deriveChainSpans,
-	junctionsShareTopologyComponent,
-	LAYOUT_WALL_FIRST_FORMAT_VERSION,
-	roomIdsConnectedByTopology,
-	topologyComponentKeyByJunctionId,
-	topologyComponentKeyByRoomId,
-	topologyComponentKeyByWallId,
-	UNATTACHED_JUNCTION_COMPONENT,
-	wallCubicChain,
-	wallIdsConnectedTo,
-	wallJunctionComponents,
-	wallsShareTopologyComponent,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type LayoutWall,
-	type LayoutWallCenterline
-} from '@portfolio/layout-core';
+import { connectedRoomIds, junctionsShareTopologyComponent, roomIdsConnectedByTopology, topologyComponentKeyByJunctionId, topologyComponentKeyByRoomId, topologyComponentKeyByWallId, UNATTACHED_JUNCTION_COMPONENT, wallIdsConnectedTo, wallJunctionComponents, wallsShareTopologyComponent } from '@portfolio/layout-core/room';
+import { createEmptyWallFirstLayoutDocument, LAYOUT_WALL_FIRST_FORMAT_VERSION, wallCubicChain, type LayoutDocumentWallFirst, type LayoutWall, type LayoutWallCenterline } from '@portfolio/layout-core/wall';
+import { deriveChainSpans, type LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 const LINE: LayoutWallCenterline = { kind: 'line' };
 

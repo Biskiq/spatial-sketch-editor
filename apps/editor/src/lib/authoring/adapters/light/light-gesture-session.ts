@@ -13,7 +13,7 @@
  * The geometry of what a drag means is the pure arithmetic in `light-math` and
  * the Light presentation helpers; the session only decides which one applies.
  */
-import type { Vec3 } from '@portfolio/project-model';
+import type { Vec3 } from '@portfolio/project-model/scene';
 import type {
 	StageAdapterContext,
 	StageAdapterServices,

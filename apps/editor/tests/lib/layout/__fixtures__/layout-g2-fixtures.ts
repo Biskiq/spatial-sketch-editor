@@ -1,14 +1,7 @@
-import type { NavigationGraph } from '$lib/content/scene';
+import type { NavigationGraph } from '@portfolio/project-model/scene';
 import type { RuntimeConnection, NavigationNodeData, Vec3 } from '$lib/types/scene';
-import type { LayoutVec2 } from '@portfolio/layout-core';
-import {
-	compileWallFirstLayoutGeometry,
-	findPolygonContaining,
-	geometryId,
-	projectPointToSpans,
-	type CompiledLayoutGeometry,
-	type CompiledQuerySpan
-} from '@portfolio/layout-core';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { compileWallFirstLayoutGeometry, findPolygonContaining, geometryId, projectPointToSpans, type CompiledLayoutGeometry, type CompiledQuerySpan } from '@portfolio/layout-core/geometry';
 import {
 	g1AutoBezierDocument,
 	g1ElevatedFloorDocument,

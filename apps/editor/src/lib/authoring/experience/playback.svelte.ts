@@ -12,16 +12,7 @@
  * A wait is zero elapsed seconds and its own addressable occurrence: playback
  * stops on the first wait crossed, and a fresh Play moves past that wait.
  */
-import {
-	formatGuideTime,
-	guideTimeCursorAt,
-	nextGuideTimeSegment,
-	normalizeGuideTimeCursor,
-	sampleGuideTime,
-	type CameraGraph,
-	type GuideTimeCursor,
-	type GuideTimeMap
-} from '@portfolio/camera-core';
+import { formatGuideTime, guideTimeCursorAt, nextGuideTimeSegment, normalizeGuideTimeCursor, sampleGuideTime, type CameraGraph, type GuideTimeCursor, type GuideTimeMap } from '@portfolio/camera-core/navigation';
 import type {
 	ExecutionProgram,
 	ExperienceProgramTransition

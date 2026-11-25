@@ -7,19 +7,11 @@
  * (never a literal version).
  */
 import { describe, expect, it } from 'vitest';
-import type {
-	AuthoringIntent,
-	SemanticReference,
-	SceneEntity,
-	SceneMaterialInstance
-} from '@portfolio/project-model';
-import {
-	createEmptyWallFirstLayoutDocument,
-	surfaceKey,
-	surfacesOfSpace,
-	type LayoutDocumentWallFirst,
-	type LayoutSurfaceRef
-} from '@portfolio/layout-core';
+import type { AuthoringIntent } from '@portfolio/project-model/f4';
+import type { SemanticReference } from '@portfolio/project-model/references';
+import type { SceneEntity, SceneMaterialInstance } from '@portfolio/project-model/scene';
+import { createEmptyWallFirstLayoutDocument, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import { surfaceKey, surfacesOfSpace, type LayoutSurfaceRef } from '@portfolio/layout-core/plan';
 import {
 	RESOURCE_UNIT_FORMAT_VERSION,
 	SCENE_UNIT_FORMAT_VERSION,

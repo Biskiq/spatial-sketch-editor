@@ -24,20 +24,9 @@
  * already pins.
  */
 
-import {
-	type AuthoringIntent,
-	type CapturedInput,
-	type DomainPlanner,
-	type F4JsonValue,
-	type SceneDocument,
-	type SceneEntity,
-	type SceneModelEntity,
-	type ScenePrimitiveEntity,
-	type SceneValidationOptions,
-	type SemanticDomain,
-	type SemanticReference,
-	type Vec3
-} from '@portfolio/project-model';
+import type { AuthoringIntent, CapturedInput, DomainPlanner, F4JsonValue } from '@portfolio/project-model/f4';
+import type { SceneDocument, SceneEntity, SceneModelEntity, ScenePrimitiveEntity, SceneValidationOptions, Vec3 } from '@portfolio/project-model/scene';
+import type { SemanticDomain, SemanticReference } from '@portfolio/project-model/references';
 import {
 	replaceUnitData,
 	UNIT_SOURCE_KIND,
@@ -46,17 +35,9 @@ import {
 } from '@portfolio/project-model/units';
 import { createUnitProject } from './unit-envelope-fixtures';
 import { freshCapture } from '../../layout/__fixtures__/layout-id-capture';
-import {
-	createEmptyWallFirstLayoutDocument,
-	deriveChainSpans,
-	nextLayoutPresetObjectId,
-	planCommitLayoutObjectPreset,
-	planExactLayoutObjectTransform,
-	wallCubicChain,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type LayoutWallCurveKnot
-} from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument, planCommitLayoutObjectPreset, planExactLayoutObjectTransform, wallCubicChain, type LayoutDocumentWallFirst, type LayoutWallCurveKnot } from '@portfolio/layout-core/wall';
+import { deriveChainSpans, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { nextLayoutPresetObjectId } from '@portfolio/layout-core/plan';
 
 /** Two distinct proof operation kinds; no production operation kind is named. */
 export const PROOF_LAYOUT_TRANSFORM_KIND = 'conformance-layout-object-transform';

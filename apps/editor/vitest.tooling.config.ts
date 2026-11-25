@@ -11,6 +11,7 @@ export default defineConfig({
 	...svelteTestSetup,
 	test: {
 		include: ['tooling-tests/**/*.test.ts'],
+		setupFiles: ['./tests/helpers/editor-cwd.ts'],
 		environment: 'node'
 	}
 });

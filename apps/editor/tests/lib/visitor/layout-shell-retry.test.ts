@@ -31,7 +31,7 @@ vi.mock('$lib/render/layout/GroundPlinth.svelte', () => ({ default: () => {} }))
 
 import { flushSync, mount, unmount } from 'svelte';
 import { fromStore, writable } from 'svelte/store';
-import type { CompiledLayoutGeometry } from '@portfolio/layout-core';
+import type { CompiledLayoutGeometry } from '@portfolio/layout-core/geometry';
 import VisitorLayoutShell from '$lib/visitor/VisitorLayoutShell.svelte';
 
 it('reloads once per Retry, and neither on mount nor on a compile', async () => {

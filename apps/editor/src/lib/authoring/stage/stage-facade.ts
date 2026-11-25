@@ -1,5 +1,6 @@
-import { intersectWorkingPlane, pointerRay, projectWorld, type PointerRay, type Vec3 } from '@portfolio/camera-core';
-import { requestCameraOutput } from '@portfolio/project-model';
+import { intersectWorkingPlane, pointerRay, projectWorld, type PointerRay } from '@portfolio/camera-core/viewport';
+import type { Vec3 } from '@portfolio/camera-core/camera';
+import { requestCameraOutput } from '@portfolio/project-model/channels';
 import type { SceneRenderedHit } from '$lib/authoring/scene/scene-pick-source';
 import type { StageReadSnapshot } from './accepted-read';
 import { createCameraSession, evaluationIdOf } from './camera-session';

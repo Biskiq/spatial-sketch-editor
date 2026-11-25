@@ -16,11 +16,8 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-	createEmptyWallFirstLayoutDocument,
-	resolveReference,
-	type SemanticReference
-} from '@portfolio/project-model';
+import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core/wall';
+import { resolveReference, type SemanticReference } from '@portfolio/project-model/references';
 import {
 	createDependencyLockReader,
 	createUnitReadContext,

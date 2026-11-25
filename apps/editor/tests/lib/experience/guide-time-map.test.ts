@@ -7,15 +7,7 @@
  * settles to the destination without changing the displayed seconds.
  */
 import { describe, expect, it } from 'vitest';
-import {
-	buildGuideTimeMap,
-	formatGuideTotal,
-	formatGuideWaits,
-	guideTimeCursorAt,
-	nextGuideTimeSegment,
-	sampleGuideTime,
-	type GuideTimeOccurrenceInput
-} from '@portfolio/camera-core';
+import { buildGuideTimeMap, formatGuideTotal, formatGuideWaits, guideTimeCursorAt, nextGuideTimeSegment, sampleGuideTime, type GuideTimeOccurrenceInput } from '@portfolio/camera-core/navigation';
 import {
 	computeEnvelopeSourceContentId,
 	lowerExperienceProgram,

@@ -9,7 +9,7 @@
  * parsers read them.
  */
 import type { Vec3 } from '../scene';
-import type { SceneDocumentIssue } from './index';
+import type { SceneDocumentIssue } from './types';
 
 // Internal record type shared by every parser. Lives here (the leaf module)
 // so `parse-entities` / `parse-document` can import it alongside the readers.

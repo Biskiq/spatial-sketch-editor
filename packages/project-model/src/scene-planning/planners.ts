@@ -16,13 +16,7 @@
  * Every admitted operation is single-domain Scene with `compound`, `units` and
  * `resources` false; the landed registry refuses anything wider.
  */
-import type {
-	DomainPlanner,
-	PlannerAdmission,
-	PlannerOutcome,
-	PlannerRequest,
-	PreparedCandidate
-} from '../f4';
+import type { DomainPlanner, PlannerAdmission, PlannerOutcome, PlannerRequest, PreparedCandidate } from '../f4/types';
 import { ShapeReader, type ShapeIssue } from '../strict-shape';
 import { replaceUnitData } from '../units/envelope';
 import { unlinkSceneSubjects } from '../units/experience-structure';

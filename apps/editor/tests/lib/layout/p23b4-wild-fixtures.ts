@@ -9,14 +9,8 @@
  * REAL Openings on curved Walls, admitted by the shipped validator with clean
  * compile and successful planner runs.
  */
-import {
-	createEmptyWallFirstLayoutDocument,
-	deriveChainSpans,
-	wallCubicChain,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type LayoutWallCenterline
-} from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument, wallCubicChain, type LayoutDocumentWallFirst, type LayoutWallCenterline } from '@portfolio/layout-core/wall';
+import { deriveChainSpans, type LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 function curve(start: LayoutVec2, end: LayoutVec2, knot: LayoutVec2, knotId: string): LayoutWallCenterline {
 	return wallCubicChain([{ id: knotId, point: knot }], deriveChainSpans([start, knot, end]));

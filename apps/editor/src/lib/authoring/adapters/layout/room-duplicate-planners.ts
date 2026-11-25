@@ -41,23 +41,11 @@
  * Layout contract states; the derived **overlaps, not joined** cue reports it
  * and nothing is welded.
  */
-import {
-	layoutIdCaptureInput,
-	layoutWorkingLevelInput,
-	materializeLayoutSourceForCapture,
-	planDuplicateRoom,
-	readLayoutIdCapture,
-	readLayoutWorkingLevel,
-	recordPreparedCowCandidate,
-	type LayoutIdCapture,
-	type LayoutVec2
-} from '@portfolio/layout-core';
-import type {
-	AuthoringIntent,
-	DomainPlanner,
-	PlannerOutcome,
-	PreparedCandidate
-} from '@portfolio/project-model';
+import { layoutIdCaptureInput, layoutWorkingLevelInput, planDuplicateRoom, readLayoutIdCapture, readLayoutWorkingLevel, type LayoutIdCapture } from '@portfolio/layout-core/plan';
+import { materializeLayoutSourceForCapture } from '@portfolio/layout-core/kernel';
+import { recordPreparedCowCandidate } from '@portfolio/layout-core/world';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
+import type { AuthoringIntent, DomainPlanner, PlannerOutcome, PreparedCandidate } from '@portfolio/project-model/f4';
 import {
 	canonicalUnitJson,
 	replaceUnitData,

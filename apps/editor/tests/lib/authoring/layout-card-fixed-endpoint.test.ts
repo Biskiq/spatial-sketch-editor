@@ -14,7 +14,7 @@ import { mount, tick, unmount } from 'svelte';
 import LayoutCardFields from '$lib/authoring/adapters/layout/LayoutCardFields.svelte';
 import { createCardFieldsInstrument } from '$lib/authoring/adapters/layout/adapter-support';
 import type { LayoutFieldState, LayoutInstrument } from '$lib/authoring/adapters/layout/instrument';
-import type { FixedWallEndpoint } from '@portfolio/layout-core';
+import type { FixedWallEndpoint } from '@portfolio/layout-core/wall';
 import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 import { reactiveCell } from './__fixtures__/reactive-cell.svelte';
 

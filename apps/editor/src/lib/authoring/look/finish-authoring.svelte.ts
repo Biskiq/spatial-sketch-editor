@@ -43,15 +43,9 @@ import {
 	type FinishKey,
 	type SceneFinishRef
 } from '@portfolio/project-model/scene-planning';
-import type {
-	AcceptedRevision,
-	MaterialId,
-	SceneEntity,
-	SceneMaterialInstance,
-	SceneSurfaceRef,
-	SemanticReference
-} from '@portfolio/project-model';
-import { surfaceKey } from '@portfolio/layout-core';
+import type { AcceptedRevision, SemanticReference } from '@portfolio/project-model/references';
+import type { MaterialId, SceneEntity, SceneMaterialInstance, SceneSurfaceRef } from '@portfolio/project-model/scene';
+import { surfaceKey } from '@portfolio/layout-core/plan';
 type PaintableSurface = SceneSurfaceRef;
 
 /** The F.1 subject one surface identity names; the component carries the face. */

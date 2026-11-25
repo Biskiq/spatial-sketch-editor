@@ -1,5 +1,6 @@
-import type { PointerRay } from '@portfolio/camera-core';
-import type { CompiledLayoutGeometry, Vec3 } from '@portfolio/project-model';
+import type { PointerRay } from '@portfolio/camera-core/viewport';
+import type { CompiledLayoutGeometry } from '@portfolio/layout-core/geometry';
+import type { Vec3 } from '@portfolio/project-model/scene';
 import type { SceneRenderedHit } from '../scene/scene-pick-source';
 
 export type ArtworkPose = { position: Vec3; rotation: Vec3 };

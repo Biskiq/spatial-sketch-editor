@@ -31,8 +31,8 @@ vi.mock('@threlte/core', async (importOriginal) => {
 
 import { flushSync, mount, unmount, tick } from 'svelte';
 import { Mesh, MeshLambertMaterial, MeshStandardMaterial, Scene, Texture, type Object3D } from 'three';
-import type { RuntimeScene, SceneArtworkEntity } from '@portfolio/project-model';
-import type { ArtworkImage } from '@portfolio/project-model';
+import type { RuntimeScene, SceneArtworkEntity } from '@portfolio/project-model/scene';
+import type { ArtworkImage } from '@portfolio/project-model/artwork';
 import type { ArtworkScope } from '$lib/render/artwork/artwork-scope';
 import Harness, { type WorldHarnessHandle } from './fixtures/ArtworkWorldHarness.svelte';
 

@@ -13,19 +13,12 @@ import { describe, expect, it } from 'vitest';
 
 import { experienceUpdateIntent, presentationUpdateIntent, stopUpdateIntent } from '$lib/authoring/experience/commands';
 import { createAcceptanceCoordinator } from '$lib/authoring/f4/acceptance-coordinator';
-import {
-	createEmptyWallFirstLayoutDocument,
-	nextLayoutPresetObjectId,
-	planCommitLayoutObjectPreset
-} from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument, planCommitLayoutObjectPreset } from '@portfolio/layout-core/wall';
+import { nextLayoutPresetObjectId } from '@portfolio/layout-core/plan';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
-import {
-	resolveReference,
-	type AcceptedRevision,
-	type AuthoringIntent,
-	type SemanticReference,
-	type SceneSurfaceFinish
-} from '@portfolio/project-model';
+import { resolveReference, type AcceptedRevision, type SemanticReference } from '@portfolio/project-model/references';
+import type { AuthoringIntent } from '@portfolio/project-model/f4';
+import type { SceneSurfaceFinish } from '@portfolio/project-model/scene';
 import {
 	CAMERA_UNIT_FORMAT_VERSION,
 	EXPERIENCE_UNIT_FORMAT_VERSION,

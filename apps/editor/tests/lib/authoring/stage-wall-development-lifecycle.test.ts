@@ -19,14 +19,8 @@ import { mount, tick, unmount } from 'svelte';
 import type { Object3D } from 'three';
 import type { Mesh } from 'three';
 
-import {
-	compileWallFirstLayoutGeometry,
-	createEmptyWallFirstLayoutDocument,
-	LAYOUT_WALL_FIRST_FORMAT_VERSION,
-	type CompiledLayoutGeometry,
-	type LayoutDocumentWallFirst,
-	type LayoutWall
-} from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry, type CompiledLayoutGeometry } from '@portfolio/layout-core/geometry';
+import { createEmptyWallFirstLayoutDocument, LAYOUT_WALL_FIRST_FORMAT_VERSION, type LayoutDocumentWallFirst, type LayoutWall } from '@portfolio/layout-core/wall';
 
 import StageWallDevelopment from '$lib/authoring/stage/shell/StageWallDevelopment.svelte';
 import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';

@@ -14,11 +14,11 @@
  * own plane and converts the hit to local source coordinates.
  */
 import { Euler, Quaternion, Vector3 } from 'three';
-import type { WorkingPlane } from '@portfolio/camera-core';
+import type { WorkingPlane } from '@portfolio/camera-core/viewport';
 import { evaluateFormMesh } from '$lib/content/form-evaluation';
 import { readAppPreferences } from '$lib/platform/app-preferences';
 import { PROFILE_LIMITS } from '@portfolio/geometry-core';
-import type { SceneFormEntity, Vec3 } from '@portfolio/project-model';
+import type { SceneFormEntity, Vec3 } from '@portfolio/project-model/scene';
 import {
 	planSetFormProfile,
 	type SceneOperationContext

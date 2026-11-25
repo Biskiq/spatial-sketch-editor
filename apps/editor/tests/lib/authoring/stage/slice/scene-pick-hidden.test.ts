@@ -11,7 +11,8 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { BoxGeometry, Mesh, MeshBasicMaterial } from 'three';
 import { createScenePickSource } from '$lib/authoring/scene/scene-pick-source';
-import type { PointerRay } from '@portfolio/camera-core';
+import type { PointerRay } from '@portfolio/camera-core/viewport';
+import { EDITOR_ROOT } from '../../../../helpers/import-closure';
 
 function scene() {
 	const source = createScenePickSource();
@@ -79,11 +80,11 @@ describe('the face ray — artwork placement aims at what is drawn', () => {
 
 	it('is the predicate the Artwork owner gives placement', () => {
 		const route = readFileSync(
-			path.join(process.cwd(), 'src/lib/authoring/workspace/host/workspace-host.svelte.ts'),
+			path.join(EDITOR_ROOT, 'src/lib/authoring/workspace/host/workspace-host.svelte.ts'),
 			'utf8'
 		);
-		const host = readFileSync(path.join(process.cwd(), 'src/lib/authoring/artwork/artwork-host.svelte.ts'), 'utf8');
-		const entry = readFileSync(path.join(process.cwd(), 'src/lib/authoring/artwork/artwork-feature.svelte.ts'), 'utf8');
+		const host = readFileSync(path.join(EDITOR_ROOT, 'src/lib/authoring/artwork/artwork-host.svelte.ts'), 'utf8');
+		const entry = readFileSync(path.join(EDITOR_ROOT, 'src/lib/authoring/artwork/artwork-feature.svelte.ts'), 'utf8');
 		expect(route).toContain('resolvedSlice: () => readings.ports.resolvedSlice()');
 		expect(host).toContain('pickVisibleFace: pickVisibleFaceThroughSlice(input.scenePick, input.resolvedSlice)');
 		expect(entry).toContain('pickVisibleFace: host.pickVisibleFace');

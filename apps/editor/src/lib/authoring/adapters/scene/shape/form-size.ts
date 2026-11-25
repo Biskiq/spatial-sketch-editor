@@ -17,8 +17,8 @@ import {
 	planSetFormSize,
 	type SceneOperationResult
 } from '@portfolio/project-model/scene-planning';
-import type { SceneFormEntity } from '@portfolio/project-model';
-import type { Vec3 } from '@portfolio/camera-core';
+import type { SceneFormEntity } from '@portfolio/project-model/scene';
+import type { Vec3 } from '@portfolio/camera-core/camera';
 import { evaluateFormMesh } from '$lib/content/form-evaluation';
 import type { StageHandleDescriptor } from '$lib/authoring/stage/stage-adapter-host';
 import { axisTravelFromRay } from '$lib/authoring/stage/stage-adapter-host';

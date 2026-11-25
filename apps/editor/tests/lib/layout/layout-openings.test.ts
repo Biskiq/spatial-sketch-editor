@@ -1,39 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
-import { extractBoundaryCandidateFaces } from '@portfolio/layout-core';
-import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core';
-import { validateWallFirstLayoutDocument } from '@portfolio/layout-core';
-import { planExactWallLength, planWallSubdivision } from '@portfolio/layout-core';
-import { planWallSplit } from '@portfolio/layout-core';
-import {
-	validateWallFirstPortalRelations,
-	wallFirstAdjacentRooms
-} from '@portfolio/layout-core';
-import {
-	resolveOpeningDragEdgeSnap,
-	resolveOpeningDragRawValidity,
-	resolveOpeningDragSnap,
-	resolveOpeningDragSnapUseMode
-} from '@portfolio/layout-core';
-import {
-	LAYOUT_WALL_FIRST_FORMAT_VERSION,
-	type LayoutDocumentWallFirst,
-	type LayoutWallFirstRoom
-} from '@portfolio/layout-core';
-import {
-	planCenterWallFirstOpening,
-	planCreateWallFirstOpening,
-	planDeleteWallFirstOpening,
-	planMoveWallFirstOpening,
-	planUpdateWallFirstOpening,
-	validateWallFirstOpeningSet,
-	wallFirstOffsetFromEndDistance,
-	wallFirstOffsetFromStartDistance,
-	wallFirstOpeningClearances,
-	wallFirstOpeningMetrics,
-	wallFirstWallLength
-} from '@portfolio/layout-core';
-import type { LayoutVec2 } from '@portfolio/layout-core';
+import { extractBoundaryCandidateFaces } from '@portfolio/layout-core/geometry';
+import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core/geometry';
+import { validateWallFirstLayoutDocument } from '@portfolio/layout-core/wall';
+import { planExactWallLength, planWallSubdivision } from '@portfolio/layout-core/wall';
+import { planWallSplit } from '@portfolio/layout-core/wall';
+import { validateWallFirstPortalRelations, wallFirstAdjacentRooms } from '@portfolio/layout-core/wall';
+import { resolveOpeningDragEdgeSnap, resolveOpeningDragRawValidity, resolveOpeningDragSnap, resolveOpeningDragSnapUseMode } from '@portfolio/layout-core/plan';
+import { LAYOUT_WALL_FIRST_FORMAT_VERSION, type LayoutDocumentWallFirst, type LayoutWallFirstRoom } from '@portfolio/layout-core/wall';
+import { planCenterWallFirstOpening, planCreateWallFirstOpening, planDeleteWallFirstOpening, planMoveWallFirstOpening, planUpdateWallFirstOpening, validateWallFirstOpeningSet, wallFirstOffsetFromEndDistance, wallFirstOffsetFromStartDistance, wallFirstOpeningClearances, wallFirstOpeningMetrics, wallFirstWallLength } from '@portfolio/layout-core/wall';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import { captureFor, capturedId, freshCapture } from './__fixtures__/layout-id-capture';
 
 type WallSeed = {

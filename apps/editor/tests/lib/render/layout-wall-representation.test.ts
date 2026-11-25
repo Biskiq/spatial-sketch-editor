@@ -14,22 +14,16 @@
  */
 import { describe, expect, it, vi } from 'vitest';
 import { BufferGeometry } from 'three';
-import {
-	compileWallFirstLayoutGeometry,
-	createLayoutCompileSession,
-	ensureLayoutWorldIndex,
-	planRigidWallMove,
-	withLayoutCompileSession,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2
-} from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry, createLayoutCompileSession, withLayoutCompileSession, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { ensureLayoutWorldIndex } from '@portfolio/layout-core/world';
+import { planRigidWallMove, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 
-import { immutableF4Data } from '@portfolio/project-model';
+import { immutableF4Data } from '@portfolio/project-model/f4';
 import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from '../layout/__fixtures__/layout-scale-fixtures';
 import { createWallRepresentation } from '$lib/render/layout-wall-representation';
 import { createMaterialStore } from '$lib/render/resources/material-store';
 import { resolveSceneSurfaceLook } from '$lib/render/layout/scene-surface-look';
-import type { RuntimeScene } from '$lib/content/scene';
+import type { RuntimeScene } from '@portfolio/project-model/scene';
 import { renderIdentityOf } from '$lib/render/render-identity';
 import { startStageCounting } from '../../helpers/stage-counts';
 

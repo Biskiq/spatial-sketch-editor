@@ -1,10 +1,6 @@
-import type { PointerRay } from '@portfolio/camera-core';
-import {
-	artworkFrameLayout,
-	artworkHeight,
-	type SceneArtworkEntity,
-	type Vec3
-} from '@portfolio/project-model';
+import type { PointerRay } from '@portfolio/camera-core/viewport';
+import { artworkFrameLayout, artworkHeight } from '@portfolio/project-model/artwork';
+import type { SceneArtworkEntity, Vec3 } from '@portfolio/project-model/scene';
 import type { SceneRenderedHit } from '../scene/scene-pick-source';
 
 export type ArtworkWallRayPicker = (ray: PointerRay) => SceneRenderedHit | null;

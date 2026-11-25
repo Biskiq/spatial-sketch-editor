@@ -30,7 +30,7 @@ import type { WebGPURenderer } from 'three/webgpu';
 import { Line2NodeMaterial } from 'three/webgpu';
 import { Line2 } from 'three/addons/lines/webgpu/Line2.js';
 import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
-import { compileWallFirstLayoutGeometry, type CompiledLayoutGeometry } from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry, type CompiledLayoutGeometry } from '@portfolio/layout-core/geometry';
 
 import { renderStageSnapshot } from '$lib/authoring/stage/shell/StageSnapshotRenderer.svelte';
 import { STAGE_LIFTED_LAYER, STAGE_OVERLAY_LAYER, STAGE_WORLD_LAYER } from '$lib/authoring/stage/paper-plan';

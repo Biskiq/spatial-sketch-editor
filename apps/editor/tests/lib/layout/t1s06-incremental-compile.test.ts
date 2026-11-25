@@ -18,22 +18,10 @@
  * openings change) — because each is a separate arm of the retention proof.
  */
 import { describe, expect, it } from 'vitest';
-import {
-	compileWallFirstLayoutGeometryFresh,
-	createLayoutCompileSession,
-	cowCreateObject,
-	cowDeleteObject,
-	cowMoveJunctions,
-	cowMoveRigidWall,
-	cowSetWallScalar,
-	cowUpdateObject,
-	cowUpdateOpening,
-	ensureLayoutWorldIndex,
-	linkClonedCowCandidate,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2
-} from '@portfolio/layout-core';
-import { immutableF4Data } from '@portfolio/project-model';
+import { compileWallFirstLayoutGeometryFresh, createLayoutCompileSession, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { cowCreateObject, cowDeleteObject, cowMoveJunctions, cowMoveRigidWall, cowSetWallScalar, cowUpdateObject, cowUpdateOpening, ensureLayoutWorldIndex, linkClonedCowCandidate } from '@portfolio/layout-core/world';
+import type { LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import { immutableF4Data } from '@portfolio/project-model/f4';
 
 import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from './__fixtures__/layout-scale-fixtures';
 

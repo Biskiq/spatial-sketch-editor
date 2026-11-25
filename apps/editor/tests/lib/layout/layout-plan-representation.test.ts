@@ -21,23 +21,9 @@
  * output.
  */
 import { describe, expect, it } from 'vitest';
-import {
-	compileWallFirstLayoutGeometry,
-	eligiblePlanFragments,
-	evaluateLayoutPlan,
-	LAYOUT_WALL_FIRST_FORMAT_VERSION,
-	planDependsOnTarget,
-	planFragmentOf,
-	planMembershipOf,
-	planTargetsLiveView,
-	WALL_AUTHORING_DEFAULT_HEIGHT,
-	type CompiledLayoutGeometry,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type PlanEvaluation,
-	type PlanParameters,
-	type PlanSourceContext
-} from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry, type CompiledLayoutGeometry, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { eligiblePlanFragments, evaluateLayoutPlan, planDependsOnTarget, planFragmentOf, planMembershipOf, planTargetsLiveView, type PlanEvaluation, type PlanParameters, type PlanSourceContext } from '@portfolio/layout-core/world';
+import { LAYOUT_WALL_FIRST_FORMAT_VERSION, WALL_AUTHORING_DEFAULT_HEIGHT, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 
 /**
  * One closed rectangular Room (4×3 m) with four boundary Walls — the same

@@ -1,24 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import {
-	compileWallFirstLayoutGeometry,
-	createEmptyWallFirstLayoutDocument,
-	duplicateRegionSurfaceLineage,
-	duplicateRoomSurfaceLineage,
-	joinWallSurfaceLineage,
-	normalizeLayoutSurfaceLineage,
-	planDuplicateIsolatedRoom,
-	roomSurfaceLineage,
-	splitWallSurfaceLineage,
-	spaceOfSurface,
-	surfaceKey,
-	surfacesOfSpace,
-	wallSideAt,
-	planWallChain,
-	resolveLayoutSurface,
-	type LayoutDocumentWallFirst,
-	type LayoutRegion,
-	type LayoutSurfaceRef
-} from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core/geometry';
+import { createEmptyWallFirstLayoutDocument, planWallChain, type LayoutDocumentWallFirst, type LayoutRegion } from '@portfolio/layout-core/wall';
+import { duplicateRegionSurfaceLineage, duplicateRoomSurfaceLineage, joinWallSurfaceLineage, normalizeLayoutSurfaceLineage, planDuplicateIsolatedRoom, roomSurfaceLineage, splitWallSurfaceLineage, spaceOfSurface, surfaceKey, surfacesOfSpace, wallSideAt, resolveLayoutSurface, type LayoutSurfaceRef } from '@portfolio/layout-core/plan';
 import {
 	applySurfaceLineage,
 	newlyRetiredSurfaceReferenceKeys,

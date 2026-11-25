@@ -12,7 +12,7 @@
  * turns that into the one shared buffer.
  */
 import { evaluateFormMesh, formEvaluationKey } from '$lib/content/form-evaluation';
-import type { SceneFormSource } from '@portfolio/project-model';
+import type { SceneFormSource } from '@portfolio/project-model/scene';
 import type { SceneFormGeometry, SceneFormSupport } from './scene-render-description';
 
 export const sceneFormSupport: SceneFormSupport = {

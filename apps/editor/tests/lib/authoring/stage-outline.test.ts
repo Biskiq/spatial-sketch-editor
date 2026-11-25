@@ -6,12 +6,8 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { BufferAttribute, BufferGeometry, EdgesGeometry } from 'three';
 import { describe, expect, it } from 'vitest';
-import {
-	compileWallFirstLayoutGeometry,
-	legJoinsByWall,
-	type LayoutDocumentWallFirst,
-	type LayoutWall, type LayoutWallOpening
-} from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core/geometry';
+import { legJoinsByWall, type LayoutDocumentWallFirst, type LayoutWall, type LayoutWallOpening } from '@portfolio/layout-core/wall';
 import {
 	contourPolylines,
 	mergeStraightEdgeRuns,
@@ -22,6 +18,7 @@ import {
 	OUTLINE_DEPTH_BIAS
 } from '$lib/authoring/stage/shell/stage-outline';
 import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-builder';
+import { EDITOR_ROOT } from '../../helpers/import-closure';
 
 function bodyOf(points: Record<string, [number, number]>, walls: LayoutWall[], wallId: string, openings: LayoutWallOpening[] = []): BufferGeometry {
 	const document = {
@@ -125,7 +122,7 @@ describe('straight outline runs', () => {
 });
 
 describe('the outline in the Stage', () => {
-	const source = readFileSync(resolve(process.cwd(), 'src/lib/authoring/stage/shell/StageSelectionLayer.svelte'), 'utf8');
+	const source = readFileSync(resolve(EDITOR_ROOT, 'src/lib/authoring/stage/shell/StageSelectionLayer.svelte'), 'utf8');
 
 	it('draws selection, hover and erase through one merged, biased pair of lines', () => {
 		expect(source).toContain('visibleIdentityContour(positions, eye)');

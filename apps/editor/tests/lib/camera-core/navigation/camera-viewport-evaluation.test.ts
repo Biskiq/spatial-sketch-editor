@@ -20,35 +20,8 @@
  *    pose exactly or refuses with a typed reason.
  */
 import { describe, expect, it } from 'vitest';
-import {
-	addVec3,
-	advanceViewport,
-	createViewportCameraState,
-	crossVec3,
-	dotVec3,
-	evaluateViewport,
-	intersectWorkingPlane,
-	multiplyMatrices,
-	nearestQuarterTurn,
-	normalizeVec3,
-	pointerRay,
-	projectWorld,
-	rebaseViewportSource,
-	requestViewingIntent,
-	scaleVec3,
-	subtractVec3,
-	transformPoint,
-	VIEWPORT_ELEVATION_LIMIT_RADIANS,
-	VIEWPORT_READING_TRANSITION_SECONDS,
-	VIEWPORT_TARGET_PLANE_MAX_METERS,
-	VIEWPORT_TARGET_PLANE_MIN_METERS,
-	viewportGroundReachMeters,
-	type ViewportCameraState,
-	type ViewportEvaluation,
-	type ViewportRect,
-	type Vec3,
-	type WorkingPlane
-} from '@portfolio/camera-core';
+import { addVec3, advanceViewport, createViewportCameraState, crossVec3, dotVec3, evaluateViewport, intersectWorkingPlane, multiplyMatrices, nearestQuarterTurn, normalizeVec3, pointerRay, projectWorld, rebaseViewportSource, requestViewingIntent, scaleVec3, subtractVec3, transformPoint, VIEWPORT_ELEVATION_LIMIT_RADIANS, VIEWPORT_READING_TRANSITION_SECONDS, VIEWPORT_TARGET_PLANE_MAX_METERS, VIEWPORT_TARGET_PLANE_MIN_METERS, viewportGroundReachMeters, type ViewportCameraState, type ViewportEvaluation, type ViewportRect, type WorkingPlane } from '@portfolio/camera-core/viewport';
+import type { Vec3 } from '@portfolio/camera-core/camera';
 
 const RECT: ViewportRect = { left: 0, top: 0, width: 800, height: 600, devicePixelRatio: 2 };
 

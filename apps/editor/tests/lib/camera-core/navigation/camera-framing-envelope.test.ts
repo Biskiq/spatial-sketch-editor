@@ -7,16 +7,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { Vector3 } from 'three';
-import {
-  CAMERA_FRAMING_GUARD_POLICY,
-  VISITOR_CAMERA_PROJECTION,
-  createCameraMotion,
-  createCameraMotionSample,
-  sampleCameraMotion,
-  sampleFramingEnvelopeWeight,
-  smootherstepRamp,
-  type CameraRoute
-} from '@portfolio/camera-core';
+import { CAMERA_FRAMING_GUARD_POLICY, VISITOR_CAMERA_PROJECTION, createCameraMotion, createCameraMotionSample, sampleCameraMotion, sampleFramingEnvelopeWeight, smootherstepRamp, type CameraRoute } from '@portfolio/camera-core/camera';
 import { expectVectorClose, sampleFull } from '../../../helpers/camera-motion-fixtures';
 
 describe('P1.3 framing envelope sampler and guards', () => {

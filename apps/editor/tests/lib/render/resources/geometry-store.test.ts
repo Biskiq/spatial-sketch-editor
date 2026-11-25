@@ -15,7 +15,7 @@ import {
 } from 'three';
 import { createGeometryStore } from '$lib/render/resources/geometry-store';
 import { evaluateFormMesh } from '$lib/content/form-evaluation';
-import type { SceneFormSource } from '@portfolio/project-model';
+import type { SceneFormSource } from '@portfolio/project-model/scene';
 
 const FORM_SOURCE: SceneFormSource = {
 	generator: {

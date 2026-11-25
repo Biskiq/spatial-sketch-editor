@@ -8,7 +8,7 @@
 	 */
 	import { T } from '@threlte/core';
 	import { EdgesGeometry } from 'three';
-	import type { SceneFormSource } from '@portfolio/project-model';
+	import type { SceneFormSource } from '@portfolio/project-model/scene';
 	import { evaluateFormMesh, formEvaluationKey } from '$lib/content/form-evaluation';
 	import { buildFormGeometry } from '$lib/render/entities/form-geometry';
 

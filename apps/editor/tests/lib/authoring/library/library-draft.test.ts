@@ -8,7 +8,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import type { FinishSheenReading } from '@portfolio/project-model/scene-planning';
-import type { SceneMaterialInstance } from '@portfolio/project-model';
+import type { SceneMaterialInstance } from '@portfolio/project-model/scene';
 import {
 	beginLibraryDraft,
 	libraryDraftChanged,

@@ -1,17 +1,32 @@
-/**
- * `@portfolio/project-model/program` — the standalone `ExecutionProgram@3`
- * codec (AM-6).
- *
- * This entry's import closure is delivery validation only: `./types`, `./validate`
- * and the shared `strict-shape` primitive. It deliberately does not reach the
- * package root barrel, a source codec, the Layout compiler, any Camera evaluator
- * or Three, so a prepared release can import the program codec without pulling
- * authored-source machinery into the delivery path. The closure is proved by a
- * module-graph test rather than by review.
- *
- * The F5 program slots import this entry. Nothing here is exported
- * from the package's root barrel.
- */
+export {
+	EXECUTION_PROGRAM_FORMAT_VERSION,
+	EXECUTION_PROGRAM_KIND,
+	PROGRAM_EVENTS,
+} from './types';
 
-export * from './types';
-export * from './validate';
+export type {
+	ExecutionProgram,
+	ProgramAction,
+	ProgramCapability,
+	ProgramChannelPolicy,
+	ProgramContentRecord,
+	ProgramContinuation,
+	ProgramEvent,
+	ProgramGuard,
+	ProgramInvitation,
+	ProgramInvocation,
+	ProgramLifecycleAction,
+	ProgramLocalTime,
+	ProgramPacing,
+	ProgramPresentation,
+	ProgramProfile,
+	ProgramStateDeclaration,
+	ProgramStop,
+} from './types';
+
+export {
+	parseExecutionProgram,
+	serializeExecutionProgram,
+	unsupportedRequiredCapabilities,
+	validateExecutionProgram,
+} from './validate';

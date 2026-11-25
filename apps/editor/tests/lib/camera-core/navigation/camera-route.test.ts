@@ -1,22 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import {
-  createNavigationGraph
-} from '$lib/content/scene';
+import { createNavigationGraph } from '@portfolio/project-model/scene';
 import type {
   RuntimeConnection,
   NavigationNodeData,
   Vec3
 } from '$lib/types/scene';
-import {
-  CAMERA_MOTION_TIMING,
-  createCameraMotion,
-  createCameraMotionSample,
-  sampleCameraMotion
-} from '@portfolio/camera-core';
-import {
-  getCameraConnectionRoute,
-  getCameraRoute,
-} from '@portfolio/camera-core';
+import { CAMERA_MOTION_TIMING, createCameraMotion, createCameraMotionSample, sampleCameraMotion } from '@portfolio/camera-core/camera';
+import { getCameraConnectionRoute, getCameraRoute } from '@portfolio/camera-core/camera';
 
 // PR #115 (§7.2 A′ / §3.7): the fixture-graph cases in this file drove
 // `loadFixtureScene()`'s legacy room-local resolution through Chopin Room

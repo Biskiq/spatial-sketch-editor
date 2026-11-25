@@ -13,19 +13,8 @@
  *    inventing a pose.
  */
 import { describe, expect, it } from 'vitest';
-import {
-	advanceViewport,
-	createViewportCameraState,
-	evaluateViewport,
-	facePoseFromBounds,
-	projectWorld,
-	requestViewingIntent,
-	VIEWPORT_READING_TRANSITION_SECONDS,
-	type InspectionPose,
-	type Vec3,
-	type ViewportCameraState,
-	type ViewportRect
-} from '@portfolio/camera-core';
+import { advanceViewport, createViewportCameraState, evaluateViewport, facePoseFromBounds, projectWorld, requestViewingIntent, VIEWPORT_READING_TRANSITION_SECONDS, type InspectionPose, type ViewportCameraState, type ViewportRect } from '@portfolio/camera-core/viewport';
+import type { Vec3 } from '@portfolio/camera-core/camera';
 
 const RECT: ViewportRect = { left: 0, top: 0, width: 900, height: 600, devicePixelRatio: 1 };
 const IDENTITY = { outputId: 'output-face', sessionEpoch: 'session-face', sourceRevision: 'content-face' };

@@ -30,13 +30,8 @@ import {
 	proofIntent,
 	sceneEntityReference
 } from './__fixtures__/f4-current-source-fixtures';
-import {
-	validateAuthoringIntent,
-	type DomainPlanner,
-	type PlannerRegistry,
-	type AcceptanceSourceAdapter,
-	type AcceptedRevision
-} from '@portfolio/project-model';
+import { validateAuthoringIntent, type DomainPlanner, type PlannerRegistry, type AcceptanceSourceAdapter } from '@portfolio/project-model/f4';
+import type { AcceptedRevision } from '@portfolio/project-model/references';
 import {
 	createUnitAcceptanceAdapter,
 	createUnitAcceptancePreparation,

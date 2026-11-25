@@ -1,5 +1,6 @@
-import type { LayoutVec2 } from '@portfolio/layout-core';
-import type { PointerRay, Vec3 } from '@portfolio/camera-core';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
+import type { PointerRay } from '@portfolio/camera-core/viewport';
+import type { Vec3 } from '@portfolio/camera-core/camera';
 import type { SceneRenderedHit } from './scene-pick-source';
 import type { PlanSceneFootprint } from './plan-scene-footprint';
 

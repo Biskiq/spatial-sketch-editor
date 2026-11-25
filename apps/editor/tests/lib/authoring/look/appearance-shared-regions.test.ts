@@ -12,6 +12,7 @@ import { flushSync, mount, unmount } from 'svelte';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import AppearanceSharedRegions from '$lib/authoring/look/AppearanceSharedRegions.svelte';
+import { EDITOR_ROOT } from '../../../helpers/import-closure';
 
 let host: HTMLElement | null = null;
 let component: ReturnType<typeof mount> | null = null;
@@ -46,7 +47,7 @@ describe('Appearance shared regions', () => {
 
 	it('is wired to the Preview state, not to the absence of a preview', () => {
 		const source = readFileSync(
-			join(process.cwd(), 'src/lib/authoring/workspace/host/WorkspaceHost.svelte'),
+			join(EDITOR_ROOT, 'src/lib/authoring/workspace/host/WorkspaceHost.svelte'),
 			'utf8'
 		);
 		expect(source).toContain('<AppearanceSharedRegions previewing={preview !== null}');

@@ -1,16 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-	planExactJunctionMove,
-	planExactRectangleDimensions,
-	planExactWallAngle,
-	planExactWallLength,
-	planRigidWallMove,
-	planWallSubdivision,
-	LAYOUT_WALL_FIRST_FORMAT_VERSION,
-	type LayoutDocumentWallFirst,
-	type LayoutWall,
-	type NodingIdAllocator
-} from '@portfolio/layout-core';
+import { planExactJunctionMove, planExactRectangleDimensions, planExactWallAngle, planExactWallLength, planRigidWallMove, planWallSubdivision, LAYOUT_WALL_FIRST_FORMAT_VERSION, type LayoutDocumentWallFirst, type LayoutWall, type NodingIdAllocator } from '@portfolio/layout-core/wall';
 
 const allocator: NodingIdAllocator = {
 	nextWallId: (_document, seed) => `${seed}-new`,

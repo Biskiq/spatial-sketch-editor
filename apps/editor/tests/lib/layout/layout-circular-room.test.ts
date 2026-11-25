@@ -8,26 +8,10 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-	compileWallFirstLayoutGeometry,
-	hasBlockingLayoutIssues,
-	mintLayoutIdCapture,
-	parseWallFirstLayoutDocumentJson,
-	planBendWallCurveKnot,
-	planCreateCircularRoom,
-	planCreateWallFirstOpening,
-	planResizeClosedWallRadius,
-	planTranslateClosedWall,
-	planWallFirstRoomMove,
-	planUpdateWallFirstOpening,
-	planWallChain,
-	readClosedWallCircle,
-	serializeWallFirstLayoutDocument,
-	validateWallFirstLayoutDocument,
-	validateWallFirstOpeningSet,
-	wallFirstWallLength,
-	type LayoutDocumentWallFirst
-} from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry, hasBlockingLayoutIssues } from '@portfolio/layout-core/geometry';
+import { mintLayoutIdCapture } from '@portfolio/layout-core/plan';
+import { parseWallFirstLayoutDocumentJson, planBendWallCurveKnot, planCreateWallFirstOpening, planUpdateWallFirstOpening, planWallChain, serializeWallFirstLayoutDocument, validateWallFirstLayoutDocument, validateWallFirstOpeningSet, wallFirstWallLength, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import { planCreateCircularRoom, planResizeClosedWallRadius, planTranslateClosedWall, planWallFirstRoomMove, readClosedWallCircle } from '@portfolio/layout-core/room';
 
 const CENTER = [0, 0] as const;
 const RIM = [5, 0] as const;

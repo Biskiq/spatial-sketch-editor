@@ -17,12 +17,7 @@
  *    acceptance, deletes the Opening in the same undo step, and Undo restores both.
  */
 import { describe, expect, it, vi } from 'vitest';
-import {
-	createEmptyWallFirstLayoutDocument,
-	planCreateWallFirstOpening,
-	planWallChain,
-	type LayoutDocumentWallFirst
-} from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument, planCreateWallFirstOpening, planWallChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 import type { ProjectEnvelope, CameraFreeSceneDocument } from '@portfolio/project-model/units';
 import { SCENE_UNIT_FORMAT_VERSION } from '@portfolio/project-model/units';
 

@@ -1,24 +1,8 @@
-import { createPlannerRegistry, prepareIntent, sameRevision, immutableF4Data, freezeF4Data, validateAuthoringIntent, validateAcceptedRevision } from '@portfolio/project-model';
-import type {
-	AcceptanceRejection,
-	AcceptanceRejectionCode,
-	AcceptanceResult,
-	AcceptanceSourceAdapter,
-	AcceptedRevision,
-	AcceptedSnapshot,
-	AdmissionIssue,
-	AdmittedSource,
-	AuthoringIntent,
-	CapturedInput,
-	CorrespondenceEntry,
-	DomainPlanner,
-	RegistrationOutcome,
-	SessionEpoch,
-	ShapeIssue,
-	SourceAdmission,
-	PlannerRegistry,
-	PrepareResult
-} from '@portfolio/project-model';
+import { createPlannerRegistry, prepareIntent, sameRevision, immutableF4Data, freezeF4Data, validateAuthoringIntent } from '@portfolio/project-model/f4';
+import { validateAcceptedRevision } from '@portfolio/project-model/references';
+import type { AcceptanceRejection, AcceptanceRejectionCode, AcceptanceResult, AcceptanceSourceAdapter, AcceptedSnapshot, AdmissionIssue, AdmittedSource, AuthoringIntent, CapturedInput, CorrespondenceEntry, DomainPlanner, RegistrationOutcome, SourceAdmission, PlannerRegistry, PrepareResult } from '@portfolio/project-model/f4';
+import type { AcceptedRevision, SessionEpoch } from '@portfolio/project-model/references';
+import type { ShapeIssue } from '@portfolio/project-model/package';
 import { AUTHORING_HISTORY_LIMIT, AuthoringHistory, type HistoryState } from './history';
 
 /** One admitted source the coordinator starts from, or replaces with. */

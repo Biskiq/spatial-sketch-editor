@@ -31,17 +31,9 @@ import {
 	sceneSupportGenerationId,
 	type NormalizedPlacementDefinition
 } from '@portfolio/project-model/scene-planning';
-import {
-	type AcceptedSnapshot,
-	type AuthoringIntent,
-	type DomainPlanner,
-	type SceneEntity,
-	type SceneFormEntity,
-	type SceneObjectCluster,
-	type ScenePrimitiveEntity,
-	type SemanticReference,
-	type Vec3
-} from '@portfolio/project-model';
+import type { AcceptedSnapshot, AuthoringIntent, DomainPlanner } from '@portfolio/project-model/f4';
+import type { SceneEntity, SceneFormEntity, SceneObjectCluster, ScenePrimitiveEntity, Vec3 } from '@portfolio/project-model/scene';
+import type { SemanticReference } from '@portfolio/project-model/references';
 import {
 	EXPERIENCE_UNIT_FORMAT_VERSION,
 	SCENE_UNIT_FORMAT_VERSION,
@@ -56,16 +48,9 @@ import {
 	createUnitProject
 } from '../authoring/__fixtures__/unit-envelope-fixtures';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
-import {
-	createEmptyWallFirstLayoutDocument,
-	floorSupportSnapshotOf,
-	compileWallFirstLayoutGeometry,
-	queryFloorSupports,
-	planCreateRegion,
-	planWallChain,
-	type FloorSupportCandidate,
-	type LayoutDocumentWallFirst
-} from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument, planWallChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import { floorSupportSnapshotOf, queryFloorSupports, planCreateRegion, type FloorSupportCandidate } from '@portfolio/layout-core/room';
+import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core/geometry';
 
 const ELEVATION = 2.5;
 const GENERATION = sceneSupportGenerationId('content-1');
@@ -2388,7 +2373,7 @@ describe('scene operation planners — native forms', () => {
 describe('scene support — the explicit datum (R217.S17A)', () => {
 	it('resolves the datum only where no Room floor covers the point', async () => {
 		const { resolveSceneSupport } = await import('@portfolio/project-model/scene-planning');
-		const { createEmptyWallFirstLayoutDocument } = await import('@portfolio/layout-core');
+		const { createEmptyWallFirstLayoutDocument } = await import('@portfolio/layout-core/wall');
 		const empty = createEmptyWallFirstLayoutDocument();
 		empty.floor.elevation = 1.25;
 		const open = resolveSceneSupport({ layout: empty, sourceContentId: 'c', point: [9, 9], requiredElevation: null });

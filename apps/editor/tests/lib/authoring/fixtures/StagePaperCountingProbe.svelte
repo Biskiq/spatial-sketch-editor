@@ -8,7 +8,8 @@
 	 * Every setter changes a prop of the production component, so a test asserts
 	 * the counters at the component boundary rather than calling a builder itself.
 	 */
-	import type { CompiledLayoutGeometry, PlanEvaluation } from '@portfolio/layout-core';
+	import type { CompiledLayoutGeometry } from '@portfolio/layout-core/geometry';
+	import type { PlanEvaluation } from '@portfolio/layout-core/world';
 	import type { PlanSceneProjection } from '$lib/authoring/scene/plan-scene-footprint';
 	import type { PaperReveal } from '$lib/authoring/stage/paper-plan';
 	import type { StageSelectionEntry } from '$lib/authoring/stage/semantic-selection';

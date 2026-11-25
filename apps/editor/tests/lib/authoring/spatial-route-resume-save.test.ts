@@ -121,7 +121,7 @@ vi.mock('$lib/authoring/stage/boot-state', async (importOriginal) => {
 });
 
 import { mount, tick, unmount } from 'svelte';
-import type { AcceptedRevision } from '@portfolio/project-model';
+import type { AcceptedRevision } from '@portfolio/project-model/references';
 import {
 	SCENE_UNIT_FORMAT_VERSION,
 	computeEnvelopeSourceContentId,

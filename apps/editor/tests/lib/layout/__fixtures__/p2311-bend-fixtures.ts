@@ -1,10 +1,5 @@
-import {
-	createEmptyWallFirstLayoutDocument,
-	deriveChainSpans,
-	wallCubicChain,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2
-} from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument, wallCubicChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import { deriveChainSpans, type LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 export type BendFixtureSpec = {
 	id: string;

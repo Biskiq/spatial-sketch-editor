@@ -20,12 +20,8 @@
 		Mesh,
 		MeshBasicMaterial
 	} from 'three';
-	import {
-		developmentSheetCoordinate,
-		developmentSheetToStation,
-		type CompiledLayoutGeometry,
-		type WallDevelopmentMesh
-	} from '@portfolio/layout-core';
+	import { developmentSheetCoordinate, developmentSheetToStation, type WallDevelopmentMesh } from '@portfolio/layout-core/wall';
+	import type { CompiledLayoutGeometry } from '@portfolio/layout-core/geometry';
 
 	import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
 	import { wallUnfoldTopPoint } from '$lib/layout/wall-unfold';

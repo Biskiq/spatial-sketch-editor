@@ -17,12 +17,8 @@
  * multi-selection produces one shared light rather than one light per object.
  */
 import { Euler, Vector3 } from 'three';
-import {
-	artworkFrameLayout,
-	artworkHeight,
-	type SceneArtworkEntity,
-	type Vec3
-} from '@portfolio/project-model';
+import { artworkFrameLayout, artworkHeight } from '@portfolio/project-model/artwork';
+import type { SceneArtworkEntity, Vec3 } from '@portfolio/project-model/scene';
 import { rotationForLightDirection } from './light-aim';
 import { LIGHT_INTENSITY_REFERENCE, spotCutoffForTargetDistance } from './light-units';
 

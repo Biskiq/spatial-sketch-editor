@@ -16,7 +16,8 @@
  */
 
 import { angleDeltaLabel, planarDeltaLabel, sizeDeltaLabel } from '$lib/authoring/stage/stage-adapter-host';
-import type { FixedWallEndpoint, LayoutVec2 } from '@portfolio/layout-core';
+import type { FixedWallEndpoint } from '@portfolio/layout-core/wall';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 import {
 	wallAngleFromPointer,

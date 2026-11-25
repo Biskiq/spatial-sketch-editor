@@ -1,4 +1,4 @@
-import type { CameraFramingEnvelope } from '$lib/content/scene';
+import type { CameraFramingEnvelope } from '@portfolio/camera-core/camera';
 
 /**
  * P1.4 — pure auto-managed/manual framing-envelope editor policy.

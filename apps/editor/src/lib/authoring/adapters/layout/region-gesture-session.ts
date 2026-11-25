@@ -40,7 +40,7 @@ import {
 } from '$lib/authoring/stage/stage-adapter-host';
 import { stageUnitRevision } from '$lib/authoring/stage/stage-adapter-host';
 import type { GestureAcquisition } from '$lib/authoring/stage/stage-adapter-host';
-import type { LayoutVec2 } from '@portfolio/layout-core';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 /** The bend-point removal zone, reused verbatim for a footprint corner. */
 const REMOVE_ENTER_METERS = 0.12;

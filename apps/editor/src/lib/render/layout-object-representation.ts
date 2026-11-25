@@ -27,7 +27,8 @@ import { reconcileHidden, tagRenderIdentity } from '$lib/render/render-identity'
 import type { MaterialStore } from '$lib/render/resources/material-store';
 import type { StandardMaterialDescriptor } from '$lib/render/resources/material-descriptor';
 import type { GeometryLease, GeometryStore } from '$lib/render/resources/geometry-store';
-import { countWork, sphereRenderScale, type CompiledLayoutGeometry, type CompiledLayoutObject } from '@portfolio/layout-core';
+import { countWork } from '@portfolio/layout-core/kernel';
+import { sphereRenderScale, type CompiledLayoutGeometry, type CompiledLayoutObject } from '@portfolio/layout-core/geometry';
 
 /** The neutral Layout-object surface the shell has always drawn (`#e7e4dd`). */
 const OBJECT_SURFACE: StandardMaterialDescriptor = {

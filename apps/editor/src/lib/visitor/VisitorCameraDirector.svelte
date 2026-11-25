@@ -4,20 +4,12 @@
 	import { OrbitControls } from '@threlte/extras';
 	import { MathUtils, Spherical, Vector3 } from 'three';
 	import type { PerspectiveCamera } from 'three';
-	import {
-		getNode,
-		getCameraMotionOptions,
-		createCameraMotion,
-		createCameraMotionSample,
-		sampleCameraMotion,
-		VISITOR_CAMERA_PROJECTION,
-		CAMERA_FOV_UPDATE_EPSILON,
-		type CameraMotion
-	} from '@portfolio/camera-core';
-	import type { NavigationGraph } from '@portfolio/project-model';
+	import { getNode } from '@portfolio/camera-core/navigation';
+	import { getCameraMotionOptions, createCameraMotion, createCameraMotionSample, sampleCameraMotion, VISITOR_CAMERA_PROJECTION, CAMERA_FOV_UPDATE_EPSILON, type CameraMotion } from '@portfolio/camera-core/camera';
+	import type { NavigationGraph } from '@portfolio/project-model/scene';
 	import type { VisitorRuntimeState, VisitorTickMotion } from './visitor-runtime-state.svelte';
 	import { resolveVisitorCameraRoute } from './visitor-camera-route';
-	import type { LayoutBounds3 } from '@portfolio/layout-core';
+	import type { LayoutBounds3 } from '@portfolio/layout-core/geometry';
 
 	let {
 		graph,

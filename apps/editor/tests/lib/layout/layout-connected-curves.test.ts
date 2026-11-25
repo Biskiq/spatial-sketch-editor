@@ -8,73 +8,11 @@
  * intent carry, and Layout interior coverage.
  */
 import { describe, expect, it } from 'vitest';
-import {
-	CLOSED_WALL_CIRCLE_ACCURACY,
-	ROUND_ROOM_MEMBER_EDIT_MESSAGE,
-	certifyRoundRoom,
-	compileWallFirstLayoutGeometry,
-	createEmptyWallFirstLayoutDocument,
-	createWallFirstArchitectureVerdictScope,
-	createWallSamplingDerivation,
-	cubicBezierArcLength,
-	cubicBezierPoint,
-	hasBlockingLayoutIssues,
-	isClosedWall,
-	mintLayoutIdCapture,
-	orientedWallChainKnotsAndSpans,
-	parseWallFirstLayoutDocumentJson,
-	planBendWallCurveKnot,
-	planConvertWallToLine,
-	planCreateCircularRoom,
-	planCreateRegion,
-	planCreateWallFirstOpening,
-	planDeleteWall,
-	planDeleteWallCurveKnot,
-	planDissolveJunction,
-	planDuplicateIsolatedRoom,
-	planDuplicateRoom,
-	planWallFirstRoomMove,
-	roomUnitMoveCandidate,
-	resolveIsolatedRoomGroupSubgraph,
-	planExactJunctionMove,
-	planExactRectangleDimensions,
-	planExactWallAngle,
-	planExactWallHeight,
-	planExactWallLength,
-	planExactWallThickness,
-	planInsertWallCurveKnot,
-	planMoveWallCurveKnot,
-	planReleaseRoundRoom,
-	planRemoveRoom,
-	planRemoveSpace,
-	planResizeRoundRoomRadius,
-	planRigidWallMove,
-	planSpaceOpenSideEndSlide,
-	planSpaceOpenSideOffset,
-	planWallChain,
-	planWallMetadataUpdate,
-	planWallSegment,
-	planWallSplit,
-	planWallSubdivision,
-	preflightWallFirstArchitectureCandidate,
-	proposeWallFirstArchitectureGeometry,
-	proposeWallKnotRemoval,
-	readWallFirstDragProposal,
-	resolveLayoutRoomInterior,
-	resolveProposedCurveChain,
-	roundRoomSeamJunctionId,
-	serializeWallFirstLayoutDocument,
-	validateWallFirstLayoutDocument,
-	validateWallFirstTopology,
-	verifySweptBoundsGeometryDelta,
-	wallCenterlineCubics,
-	wallCubicChain,
-	wallFirstWallLength,
-	type CubicBezierShape,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type LayoutWall
-} from '@portfolio/layout-core';
+import { CLOSED_WALL_CIRCLE_ACCURACY, createEmptyWallFirstLayoutDocument, createWallFirstArchitectureVerdictScope, createWallSamplingDerivation, isClosedWall, orientedWallChainKnotsAndSpans, parseWallFirstLayoutDocumentJson, planBendWallCurveKnot, planConvertWallToLine, planCreateWallFirstOpening, planDeleteWall, planDeleteWallCurveKnot, planDissolveJunction, planExactJunctionMove, planExactRectangleDimensions, planExactWallAngle, planExactWallHeight, planExactWallLength, planExactWallThickness, planInsertWallCurveKnot, planMoveWallCurveKnot, planRemoveRoom, planRemoveSpace, planRigidWallMove, planSpaceOpenSideEndSlide, planSpaceOpenSideOffset, planWallChain, planWallMetadataUpdate, planWallSegment, planWallSplit, planWallSubdivision, preflightWallFirstArchitectureCandidate, proposeWallFirstArchitectureGeometry, proposeWallKnotRemoval, readWallFirstDragProposal, resolveProposedCurveChain, serializeWallFirstLayoutDocument, validateWallFirstLayoutDocument, validateWallFirstTopology, wallCenterlineCubics, wallCubicChain, wallFirstWallLength, type LayoutDocumentWallFirst, type LayoutWall } from '@portfolio/layout-core/wall';
+import { ROUND_ROOM_MEMBER_EDIT_MESSAGE, certifyRoundRoom, planCreateCircularRoom, planCreateRegion, planWallFirstRoomMove, roomUnitMoveCandidate, resolveIsolatedRoomGroupSubgraph, planReleaseRoundRoom, planResizeRoundRoomRadius, roundRoomSeamJunctionId } from '@portfolio/layout-core/room';
+import { compileWallFirstLayoutGeometry, cubicBezierArcLength, cubicBezierPoint, hasBlockingLayoutIssues, resolveLayoutRoomInterior, type CubicBezierShape, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { mintLayoutIdCapture, planDuplicateIsolatedRoom, planDuplicateRoom } from '@portfolio/layout-core/plan';
+import { verifySweptBoundsGeometryDelta } from '@portfolio/layout-core/world';
 
 const BIG_SHIFT: LayoutVec2 = [2 ** 32, -(2 ** 32)];
 const cap = (seed: string) => mintLayoutIdCapture(() => seed.padEnd(8, '-0'));

@@ -4,42 +4,10 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-	CLOSED_WALL_CIRCLE_SPAN_COUNT,
-	LAYOUT_WALL_FIRST_FORMAT_VERSION,
-	certifyRoundRoom,
-	compileWallFirstLayoutGeometry,
-	createEmptyWallFirstLayoutDocument,
-	hasBlockingLayoutIssues,
-	mintLayoutIdCapture,
-	parseWallFirstLayoutDocumentJson,
-	planCreateCircularRoom,
-	planCreateWallFirstOpening,
-	planDuplicateIsolatedRoom,
-	planDuplicateRoom,
-	planResizeClosedWallRadius,
-	planResizeRoundRoomRadius,
-	planTranslateClosedWall,
-	planWallChain,
-	planWallFirstRoomMove,
-	planWallFirstRoomRotation,
-	planWallSplit,
-	readClosedWallCircle,
-	resolveJunctionGeometry,
-	resolveIsolatedRoomGroupSubgraph,
-	roomUnitMoveCandidate,
-	rotateBoundaryToSeam,
-	roundRoomSeamJunctionId,
-	serializeWallFirstLayoutDocument,
-	subdivideWallCubicSpan,
-	validateWallFirstLayoutDocument,
-	wallCenterlineCubics,
-	wallCubicChain,
-	wallFirstWallLength,
-	type CompiledJunctionLeg,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2
-} from '@portfolio/layout-core';
+import { CLOSED_WALL_CIRCLE_SPAN_COUNT, LAYOUT_WALL_FIRST_FORMAT_VERSION, createEmptyWallFirstLayoutDocument, parseWallFirstLayoutDocumentJson, planCreateWallFirstOpening, planWallChain, planWallSplit, resolveJunctionGeometry, serializeWallFirstLayoutDocument, subdivideWallCubicSpan, validateWallFirstLayoutDocument, wallCenterlineCubics, wallCubicChain, wallFirstWallLength, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import { certifyRoundRoom, planCreateCircularRoom, planResizeClosedWallRadius, planResizeRoundRoomRadius, planTranslateClosedWall, planWallFirstRoomMove, planWallFirstRoomRotation, readClosedWallCircle, resolveIsolatedRoomGroupSubgraph, roomUnitMoveCandidate, rotateBoundaryToSeam, roundRoomSeamJunctionId } from '@portfolio/layout-core/room';
+import { compileWallFirstLayoutGeometry, hasBlockingLayoutIssues, type CompiledJunctionLeg, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { mintLayoutIdCapture, planDuplicateIsolatedRoom, planDuplicateRoom } from '@portfolio/layout-core/plan';
 import {
 	LAYOUT_UNIT_FORMAT_VERSION,
 	serializeProjectEnvelope,

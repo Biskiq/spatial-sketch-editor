@@ -11,7 +11,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import test, { after, before } from 'node:test';
 
-import { LAYOUT_DIMENSION_LIMIT_MESSAGE } from '@portfolio/layout-core';
+import { LAYOUT_DIMENSION_LIMIT_MESSAGE } from '@portfolio/layout-core/geometry';
 import { canonicalUnitJson } from '@portfolio/project-model/units';
 
 import { createApp } from '../dist/app.js';

@@ -1,4 +1,4 @@
-import type { SceneDocument } from '$lib/content/scene';
+import type { SceneDocument } from '@portfolio/project-model/scene';
 
 export type NodeConnectionBucket = 'outgoing' | 'incoming';
 

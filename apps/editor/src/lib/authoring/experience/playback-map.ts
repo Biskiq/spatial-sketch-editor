@@ -8,12 +8,7 @@
  *
  * Pure: no editor state, no renderer, no writes.
  */
-import {
-	buildGuideMovementMap,
-	type CameraGraph,
-	type GuideTimeInvocation,
-	type GuideTimeMapResult
-} from '@portfolio/camera-core';
+import { buildGuideMovementMap, type CameraGraph, type GuideTimeInvocation, type GuideTimeMapResult } from '@portfolio/camera-core/navigation';
 import type {
 	ExecutionProgram,
 	ExperienceProgramTransition,

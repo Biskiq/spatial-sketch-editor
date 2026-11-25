@@ -1,5 +1,6 @@
 <script lang="ts">
-	import type { ArtworkLibraryEntry, MaterialId } from '@portfolio/project-model';
+	import type { ArtworkLibraryEntry } from '@portfolio/project-model/artwork';
+	import type { MaterialId } from '@portfolio/project-model/scene';
 	/**
 	 * The Living Draft World toolbar: the prototype's plate and dock.
 	 *

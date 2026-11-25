@@ -1,4 +1,4 @@
-import type { ViewportEvaluation } from '@portfolio/camera-core';
+import type { ViewportEvaluation } from '@portfolio/camera-core/viewport';
 import { lightById, type Light } from '../../adapters/light/light-subjects';
 import type { StageFacade } from '../../stage/stage-facade';
 import type { LightLookThroughCone, LightLookThroughSession } from '../../stage/route/light-look-through.svelte';

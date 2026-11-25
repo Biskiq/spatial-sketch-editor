@@ -21,14 +21,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { flushSync, mount, unmount } from 'svelte';
 import type { Mesh } from 'three';
-import {
-	compileWallFirstLayoutGeometry,
-	legJoinsByWall,
-	setWorkObserver,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type LayoutWall
-} from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { legJoinsByWall, type LayoutDocumentWallFirst, type LayoutWall } from '@portfolio/layout-core/wall';
+import { setWorkObserver } from '@portfolio/layout-core/kernel';
 import { createMaterialStore } from '$lib/render/resources/material-store';
 import { createWallRepresentation } from '$lib/render/layout-wall-representation';
 import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-builder';

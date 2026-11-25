@@ -11,7 +11,8 @@
  * each ask, and only the first restore happens.
  */
 import { tick, untrack } from 'svelte';
-import { CAMERA_FOV, frameSubjectPose, viewPlacementPose, type ViewportCameraState } from '@portfolio/camera-core';
+import { CAMERA_FOV } from '@portfolio/camera-core/camera';
+import { frameSubjectPose, viewPlacementPose, type ViewportCameraState } from '@portfolio/camera-core/viewport';
 import { CAMERA_FRUSTUM_FAR_METRES, CAMERA_LENS_OFFSET_METRES } from './experience-marks';
 import { createEditorCameraFramingBasis, createEditorCameraFovDragBasis, evaluateEditorCameraFovDrag } from '../camera/editor-camera-framing';
 import { axisTravelFromRay } from '../stage/stage-axis-travel';

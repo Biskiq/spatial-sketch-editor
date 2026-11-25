@@ -22,8 +22,9 @@
  * a conservative frame, not an exact elevation: an exact developed elevation is
  * Section's job, not Face's.
  */
-import type { CompiledPhysicalWall } from '@portfolio/layout-core';
-import { eyeOfInspectionPose, type Vec3, type ViewportCameraState } from '@portfolio/camera-core';
+import type { CompiledPhysicalWall } from '@portfolio/layout-core/geometry';
+import { eyeOfInspectionPose, type ViewportCameraState } from '@portfolio/camera-core/viewport';
+import type { Vec3 } from '@portfolio/camera-core/camera';
 
 import {
 	buildWallUnfoldDisplay,

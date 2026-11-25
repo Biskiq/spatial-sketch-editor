@@ -13,13 +13,8 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount, tick, unmount } from 'svelte';
-import {
-	createViewportCameraState,
-	evaluateViewport,
-	projectWorld,
-	type Vec3,
-	type ViewportEvaluation
-} from '@portfolio/camera-core';
+import { createViewportCameraState, evaluateViewport, projectWorld, type ViewportEvaluation } from '@portfolio/camera-core/viewport';
+import type { Vec3 } from '@portfolio/camera-core/camera';
 import ExperiencePaths from '$lib/authoring/experience/ExperiencePaths.svelte';
 import ExperienceHomesProbe from './fixtures/ExperienceHomesProbe.svelte';
 import {

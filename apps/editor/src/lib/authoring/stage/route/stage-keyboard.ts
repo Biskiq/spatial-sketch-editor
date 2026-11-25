@@ -30,7 +30,7 @@ import {
 	type StageDockSlot
 } from '../stage-input';
 import type { StageInterruptionReason } from '../stage-interruption';
-import type { ViewingIntent } from '@portfolio/camera-core';
+import type { ViewingIntent } from '@portfolio/camera-core/viewport';
 import { compileEscapeLadder, type BuiltInEscapeRung, type FeatureEscapeRegistration } from '../../workspace/escape-ladder';
 import type { EscapeContext, EscapeResult } from '../../workspace/protocol';
 

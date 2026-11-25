@@ -12,12 +12,8 @@
  * it does not add a second count. A lifted root's base is above the support and
  * does not count; an overhead region always counts zero.
  */
-import {
-	FLOOR_SUPPORT_TOLERANCES,
-	floorSupportSnapshotOf,
-	queryFloorSupports,
-	type CompiledLayoutGeometry
-} from '@portfolio/layout-core';
+import { FLOOR_SUPPORT_TOLERANCES, floorSupportSnapshotOf, queryFloorSupports } from '@portfolio/layout-core/room';
+import type { CompiledLayoutGeometry } from '@portfolio/layout-core/geometry';
 import type { SceneEntity, ScenePrimitiveEntity } from '../scene';
 import { sceneFormContactMinY } from '../form';
 

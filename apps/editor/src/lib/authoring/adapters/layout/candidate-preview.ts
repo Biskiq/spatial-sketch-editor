@@ -11,19 +11,10 @@
  * It emits **world coordinates**. The Stage facade is the one boundary that
  * projects them, exactly as it does every overlay mark.
  */
-import {
-	evaluateLayoutPlan,
-	buildArchProfile,
-	countWork,
-	type LayoutDocumentWallFirst,
-	type LayoutWallOpening,
-	type LayoutVec2,
-	type PlanEvaluation,
-	type CompiledLayoutGeometry,
-	wallCenterlineSamples,
-	openingAttemptSymbolSource,
-	openingPlanSymbol
-} from '@portfolio/layout-core';
+import { evaluateLayoutPlan, type PlanEvaluation, openingAttemptSymbolSource, openingPlanSymbol } from '@portfolio/layout-core/world';
+import { buildArchProfile, type LayoutVec2, type CompiledLayoutGeometry } from '@portfolio/layout-core/geometry';
+import { countWork } from '@portfolio/layout-core/kernel';
+import { type LayoutDocumentWallFirst, type LayoutWallOpening, wallCenterlineSamples } from '@portfolio/layout-core/wall';
 
 import { compiledOpeningFaceLoops, openingFaceLoops, openingLoopSegments } from '../../layout/opening-faces';
 import { buildPaperPlan, unionOutline } from '$lib/authoring/stage/stage-adapter-host';

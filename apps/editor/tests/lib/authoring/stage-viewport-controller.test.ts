@@ -9,7 +9,7 @@
  * cancels the loop.
  */
 import { describe, expect, it, vi } from 'vitest';
-import type { ViewportEvaluation } from '@portfolio/camera-core';
+import type { ViewportEvaluation } from '@portfolio/camera-core/viewport';
 import type { StageFacade } from '$lib/authoring/stage/stage-facade';
 import { createStageViewport } from '$lib/authoring/stage/route/stage-viewport.svelte';
 

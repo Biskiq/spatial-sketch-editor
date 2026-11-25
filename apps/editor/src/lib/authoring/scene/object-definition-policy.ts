@@ -39,7 +39,7 @@ import {
 	validateAssetFootprint
 } from '$lib/content/assets';
 import type { Asset } from '$lib/types/assets';
-import type { LayoutVec2 } from '@portfolio/layout-core';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 /** The native primitives admitted for upright floor placement. */
 export const NATIVE_PLACEMENT_PRIMITIVES = ['box', 'cylinder', 'sphere'] as const;

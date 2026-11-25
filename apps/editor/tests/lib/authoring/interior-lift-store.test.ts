@@ -13,7 +13,7 @@
  * entry.
  */
 import { describe, expect, it } from 'vitest';
-import { pointInPolygon } from '@portfolio/layout-core';
+import { pointInPolygon } from '@portfolio/layout-core/geometry';
 
 import {
 	initialLiftScope,

@@ -20,17 +20,8 @@
  *    contract this slice does not change (see the A2 plan's Stage dependency).
  */
 import { describe, expect, it } from 'vitest';
-import {
-	createEmptyWallFirstLayoutDocument,
-	planCreateWallFirstOpening,
-	planDissolveJunction,
-	planWallChain,
-	planWallSplit,
-	wallFirstWallLength,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type NodingIdAllocator
-} from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument, planCreateWallFirstOpening, planDissolveJunction, planWallChain, planWallSplit, wallFirstWallLength, type LayoutDocumentWallFirst, type NodingIdAllocator } from '@portfolio/layout-core/wall';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
 import type { CameraFreeSceneDocument } from '@portfolio/project-model/units';
 import { SCENE_UNIT_FORMAT_VERSION } from '@portfolio/project-model/units';
