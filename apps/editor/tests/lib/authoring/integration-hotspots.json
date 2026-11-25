@@ -394,5 +394,23 @@
     "effects": 0,
     "functions": 5,
     "arrows": 37
+  },
+  "src/lib/authoring/experience/experience-lens.svelte.ts": {
+    "lines": 1016,
+    "imports": 13,
+    "state": 10,
+    "derived": 4,
+    "effects": 10,
+    "functions": 43,
+    "arrows": 95
+  },
+  "src/lib/authoring/experience/experience-view-edit-session.svelte.ts": {
+    "lines": 334,
+    "imports": 7,
+    "state": 2,
+    "derived": 0,
+    "effects": 1,
+    "functions": 7,
+    "arrows": 14
   }
 }

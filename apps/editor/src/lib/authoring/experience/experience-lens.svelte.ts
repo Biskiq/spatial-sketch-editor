@@ -13,25 +13,8 @@
 import { tick, untrack } from 'svelte';
 import { CAMERA_FOV } from '@portfolio/camera-core/camera';
 import { frameSubjectPose, viewPlacementPose, type ViewportCameraState } from '@portfolio/camera-core/viewport';
-import { CAMERA_FRUSTUM_FAR_METRES } from './experience-marks';
-import { CAMERA_LENS_OFFSET_METRES } from './experience-camera-mesh';
-import { createEditorCameraFramingBasis, createEditorCameraFovDragBasis, evaluateEditorCameraFovDrag } from '../camera/editor-camera-framing';
-import { axisTravelFromRay } from '../stage/stage-axis-travel';
+import { createExperienceViewEditSession } from './experience-view-edit-session.svelte';
 import { EYE_HEIGHT_STEPS, LENS_STEPS } from './look-through';
-import {
-	angleDelta,
-	frameView,
-	moveViewOnFloor,
-	planLensFromDrag,
-	snapViewDrag,
-	turnViewAboutEye,
-	viewEditMoved,
-	viewTilt,
-	yawFromEye,
-	type AdvancedViewFraming,
-	type AuthoredViewPose,
-	type ViewEditKind
-} from './experience-view-edit';
 import { isStageDrag } from '../stage/stage-input';
 import type { StageFacade } from '../stage/stage-facade';
 import type { StagePostureClaim, StagePostureLayer, StagePostureMark } from '../stage/stage-adapter-host';
@@ -120,35 +103,11 @@ export function createExperienceLens(host: ExperienceLensHost) {
 			playback.status === 'idle' && !host.previewOpen() && !host.previewBusy()
 			? host.activeController()?.selectedView?.id ?? null : null
 	);
-	type ViewEditSession = {
-		readonly viewId: string;
-		readonly presentationId: string;
-		readonly kind: ViewEditKind;
-		readonly pointerId: number;
-		readonly capture: Element;
-		readonly start: AuthoredViewPose;
-		eye: StageTriple;
-		target: StageTriple;
-		fov: number;
-		readonly advanced: boolean;
-		readonly sourceRevision: string;
-		readonly handleId: string;
-		readonly origin: readonly [number, number];
-		readonly lease: { readonly active: boolean; release(): void };
-		readonly resolve: (event: PointerEvent, id: string) => AuthoredViewPose | null;
-		pointer: readonly [number, number];
-		moved: boolean;
-	};
-	/** A live marker drag: the authored View is untouched until release. */
-	let viewEdit = $state<ViewEditSession | null>(null);
-	/** A marker edit that changes a View another Presentation also lists, awaiting confirmation. */
-	let pendingViewWrite = $state<{
-		readonly viewId: string;
-		readonly presentationId: string;
-		readonly pose: AuthoredViewPose;
-		readonly alsoIn: readonly string[];
-		readonly sourceRevision: string;
-	} | null>(null);
+
+	const viewEditSession = createExperienceViewEditSession({
+		host,
+		advancedViewId: () => advancedViewId
+	});
 
 	/** Playback is a Guide instrument: any takeover or armed tool ends it. */
 	const suppressed = $derived(
@@ -281,7 +240,7 @@ export function createExperienceLens(host: ExperienceLensHost) {
 	/** Register the lens's lifecycle effects during route initialisation. */
 	/** Press precedence after pinch: a live edit, then Look through, place, a View glyph. */
 	function pointerDown(event: PointerEvent, mark: StagePostureMark | null): boolean {
-		if (viewEdit !== null) return true;
+		if (viewEditSession.active !== null) return true;
 		if (lookThroughSession !== null) {
 			beginReaim(event);
 			return true;
@@ -294,7 +253,7 @@ export function createExperienceLens(host: ExperienceLensHost) {
 			(!event.shiftKey || mark.viewId === advancedViewId)) {
 			if (mark.kind === 'eye' || mark.kind === 'move' || mark.kind === 'turn' ||
 				mark.kind === 'lift' || mark.kind === 'tilt' || mark.kind === 'lens') {
-				beginViewEdit(event, mark.viewId, mark.kind === 'eye' ? 'move' : mark.kind, mark.mark);
+				viewEditSession.begin(event, mark.viewId, mark.kind === 'eye' ? 'move' : mark.kind, mark.mark);
 			}
 			// A 3D glyph is a click entry, not navigation: never claim the Stage
 			// pointer lease or capture on the Stage ancestor.
@@ -311,8 +270,8 @@ export function createExperienceLens(host: ExperienceLensHost) {
 
 	/** Move precedence after pinch: a marker edit, then re-aim, then placement. */
 	function pointerMove(event: PointerEvent): boolean {
-		if (viewEdit !== null) {
-			updateViewEdit(event);
+		if (viewEditSession.active !== null) {
+			viewEditSession.update(event);
 			return true;
 		}
 		if (lookThroughSession !== null) {
@@ -327,11 +286,11 @@ export function createExperienceLens(host: ExperienceLensHost) {
 	}
 
 	function pointerUp(event: PointerEvent): boolean {
-		const edit = viewEdit;
+		const edit = viewEditSession.active;
 		if (edit !== null) {
 			if (edit.pointerId === event.pointerId) {
-				updateViewEdit(event);
-				void endViewEdit();
+				viewEditSession.update(event);
+				void viewEditSession.end();
 			}
 			return true;
 		}
@@ -347,8 +306,8 @@ export function createExperienceLens(host: ExperienceLensHost) {
 	}
 
 	function pointerCancel(event: PointerEvent): boolean {
-		if (viewEdit !== null) {
-			if (viewEdit.pointerId === event.pointerId) cancelViewEdit();
+		if (viewEditSession.active !== null) {
+			if (viewEditSession.active.pointerId === event.pointerId) viewEditSession.cancel();
 			return true;
 		}
 		if (lookThroughSession !== null) {
@@ -363,8 +322,8 @@ export function createExperienceLens(host: ExperienceLensHost) {
 	}
 
 	function lostCapture(event: PointerEvent): boolean {
-		if (viewEdit?.pointerId === event.pointerId) {
-			cancelViewEdit();
+		if (viewEditSession.active?.pointerId === event.pointerId) {
+			viewEditSession.cancel();
 			return true;
 		}
 		if (lookThroughPointers.has(event.pointerId)) {
@@ -380,12 +339,12 @@ export function createExperienceLens(host: ExperienceLensHost) {
 
 	/** Escape precedence: provisional write, marker edit, place, then Look through. */
 	function escape(): boolean {
-		if (pendingViewWrite !== null) {
-			pendingViewWrite = null;
+		if (viewEditSession.pending !== null) {
+			viewEditSession.clearPending();
 			return true;
 		}
-		if (viewEdit !== null) {
-			cancelViewEdit();
+		if (viewEditSession.active !== null) {
+			viewEditSession.cancel();
 			return true;
 		}
 		if (host.tool() === 'place') {
@@ -449,13 +408,13 @@ export function createExperienceLens(host: ExperienceLensHost) {
 			host.notice('');
 		}
 		if (lookThroughSession !== null) exitLookThrough();
-		if (pendingViewWrite !== null) pendingViewWrite = null;
-		if (viewEdit !== null) cancelViewEdit();
+		if (viewEditSession.pending !== null) viewEditSession.clearPending();
+		if (viewEditSession.active !== null) viewEditSession.cancel();
 	}
 
 	/** Look through owns the wheel: a drag turns the provisional view, never the Stage. */
 	function wheelZoom(event: WheelEvent, viewportHeight: number): boolean {
-		if (viewEdit !== null) return true;
+		if (viewEditSession.active !== null) return true;
 		if (lookThroughSession === null) return false;
 		const now = performance.now();
 		advanceLookThroughZoom(now);
@@ -488,12 +447,12 @@ export function createExperienceLens(host: ExperienceLensHost) {
 				on: () => advancedCamera,
 				set: (on) => { advancedCamera = on; },
 				eligible: (viewId) => advancedViewId === viewId,
-				busy: () => viewEdit !== null || pendingViewWrite !== null,
+				busy: () => viewEditSession.active !== null || viewEditSession.pending !== null,
 				pose: (viewId) => {
-					const edit = viewEdit;
+					const edit = viewEditSession.active;
 					return edit?.advanced && edit.viewId === viewId && edit.moved ? edit : null;
 				},
-				write: setAdvancedViewFraming
+				write: viewEditSession.setAdvancedFraming
 			},
 			lookThroughViewId: () => lookThroughSession?.viewId ?? null,
 			lookThroughMoved: () => lookThroughMoved,
@@ -726,7 +685,7 @@ export function createExperienceLens(host: ExperienceLensHost) {
 	}
 
 	function togglePlaceView(): void {
-		if (host.lens() !== 'experience' || viewEdit !== null) return;
+		if (host.lens() !== 'experience' || viewEditSession.active !== null) return;
 		if (host.tool() === 'place') {
 			host.setTool('select');
 			placementAim = null;
@@ -802,7 +761,7 @@ export function createExperienceLens(host: ExperienceLensHost) {
 	}
 
 	function lookThroughView(viewId: string, presentationId?: string | null): void {
-		if (viewEdit !== null) return;
+		if (viewEditSession.active !== null) return;
 		const stage = host.stage();
 		const controller = host.activeController();
 		if (stage === null || controller === null) return;
@@ -952,243 +911,6 @@ export function createExperienceLens(host: ExperienceLensHost) {
 		if (host.lens() !== 'experience' && lookThroughSession !== null) untrack(exitLookThrough);
 	});
 
-	function viewEditResolver(event: PointerEvent, pose: AuthoredViewPose, kind: ViewEditKind, mark: Element, id: string, advanced: boolean): ViewEditSession['resolve'] | null {
-		const stage = host.stage();
-		if (stage === null) return null;
-		const origin = host.absoluteCss(event);
-		const datum = host.floorDatum();
-		const framed = (frameKind: AdvancedViewFraming['kind'], value: number, next: PointerEvent) =>
-			frameView(pose, { kind: frameKind, value: snapViewDrag(frameKind, value, next) }, datum);
-		if (kind === 'move') {
-			const grab = host.pathAnchorPoint(origin, datum);
-			if (grab === null) return null;
-			return (next) => {
-				const point = host.pathAnchorPoint(host.absoluteCss(next), datum);
-				if (point === null) return null;
-				const x = pose.eye[0] + point[0] - grab[0];
-				const z = pose.eye[2] + point[2] - grab[2];
-				return moveViewOnFloor(pose, [advanced ? snapViewDrag('move', x, next) : x, datum,
-					advanced ? snapViewDrag('move', z, next) : z]);
-			};
-		}
-		if (kind === 'turn') {
-			// Plan is orthographic. The datum gives the same X/Z even when the
-			// authored eye is above Plan's depth range (including an empty World).
-			const point = host.pathAnchorPoint(origin, datum);
-			const grab = point === null ? null : yawFromEye(pose, point);
-			if (grab === null) return null;
-			return (next) => {
-				const hit = host.pathAnchorPoint(host.absoluteCss(next), datum);
-				const yaw = hit === null ? null : yawFromEye(pose, hit);
-				if (yaw === null) return null;
-				const degrees = angleDelta(yaw, grab) * 180 / Math.PI;
-				return turnViewAboutEye(pose, snapViewDrag('turn', degrees, next) * Math.PI / 180);
-			};
-		}
-		if (kind === 'lift') {
-			const travel = (next: PointerEvent, evaluationId: string) => {
-				const result = stage.pointerRay(host.absoluteCss(next), evaluationId);
-				return result.kind !== 'ray' ? null : axisTravelFromRay({
-					origin: [...pose.eye], direction: [0, 1, 0], rayOrigin: result.ray.origin, rayDirection: result.ray.direction
-				});
-			};
-			const grab = travel(event, id);
-			if (grab === null) return null;
-			return (next, evaluationId) => {
-				const distance = travel(next, evaluationId);
-				return distance === null ? null : framed('lift', pose.eye[1] - datum + distance - grab, next);
-			};
-		}
-		if (kind === 'tilt') {
-			const tilt = viewTilt(pose);
-			return (next) => framed('tilt', tilt - (next.clientY - origin[1]) * 0.45, next);
-		}
-
-		const side = mark.getAttribute('data-side') === '-1' ? -1 : 1;
-		const apexX = mark.getAttribute('data-apex-x');
-		const apexY = mark.getAttribute('data-apex-y');
-		if (apexX !== null && apexY !== null) {
-			const angle = (next: PointerEvent) => {
-				const x = next.clientX - Number(apexX);
-				const y = next.clientY - Number(apexY);
-				return Math.hypot(x, y) < 4 ? null : Math.atan2(y, x);
-			};
-			const grab = angle(event);
-			if (grab === null) return null;
-			return (next) => {
-				const current = angle(next);
-				return current === null ? null : framed('lens', planLensFromDrag(pose.fov, grab, current, side), next);
-			};
-		}
-		const initialRay = stage.pointerRay(origin, id);
-		if (initialRay.kind !== 'ray' || Math.hypot(...pose.target.map((v, i) => v - pose.eye[i]!)) <= 1e-6) return null;
-		const basis = createEditorCameraFramingBasis([...pose.eye], [...pose.target]);
-		const forward: StageTriple = [basis.forward.x, basis.forward.y, basis.forward.z];
-		const up: StageTriple = [basis.up.x, basis.up.y, basis.up.z];
-		const depth = CAMERA_FRUSTUM_FAR_METRES;
-		const center = basis.eye.clone().addScaledVector(basis.forward, CAMERA_LENS_OFFSET_METRES + depth);
-		const plane = {
-			originMeters: [center.x, center.y, center.z] as StageTriple,
-			normal: forward,
-			yawRadians: Math.atan2(forward[0], forward[2]) + Math.PI / 2,
-			datumMeters: null,
-			supportedLocalExtent: null
-		};
-		const grab = stage.intersectWorkingPlane(initialRay.ray, plane, id);
-		const dragBasis = createEditorCameraFovDragBasis({
-			eye: [...pose.eye], forward, up, depth, fov0: pose.fov,
-			side: side === 1 ? 'top' : 'bottom',
-			rayDirection: initialRay.ray.direction,
-			p0: grab.kind === 'intersected' ? grab.worldPoint : null,
-			startClientY: event.clientY
-		});
-		return (next, evaluationId) => {
-			const ray = stage.pointerRay(host.absoluteCss(next), evaluationId);
-			if (ray.kind !== 'ray') return null;
-			const hit = stage.intersectWorkingPlane(ray.ray, plane, evaluationId);
-			return framed('lens', evaluateEditorCameraFovDrag(
-				dragBasis, hit.kind === 'intersected' ? hit.worldPoint : null,
-				side === -1 && dragBasis.useSlider ? origin[1] * 2 - next.clientY : next.clientY,
-				ray.ray.direction
-			), next);
-		};
-	}
-
-	function beginViewEdit(event: PointerEvent, viewId: string, kind: ViewEditKind, mark: Element): void {
-		const stage = host.stage();
-		const controller = host.activeController();
-		const id = stage?.evaluationId() ?? null;
-		const advanced = viewId === advancedViewId;
-		const handleId = mark.getAttribute('data-advanced-handle');
-		if (event.button !== 0 || (!advanced && event.shiftKey) || viewEdit !== null || pendingViewWrite !== null) return;
-		if (stage === null || controller === null || controller.busy || id === null || host.evaluation() === null) return;
-		if (handleId !== null && !advanced) return;
-		if (!advanced && kind === 'move' && host.evaluation()?.projectionKind !== 'plan-orthographic') return;
-		const facts = controller.viewFacts(viewId);
-		const pose = controller.viewPose(viewId);
-		if (facts === null || pose === null) return;
-		const resolve = viewEditResolver(event, pose, kind, mark, id, advanced);
-		if (resolve === null) return;
-		const acquisition = stage.acquireGesture({ owner: 'experience-view-edit', evaluationId: id, policy: 'cancel-on-reading-change' });
-		if (acquisition.kind !== 'granted') {
-			host.notice(`The ${acquisition.owner} gesture owns the pointer; finish or cancel it first.`);
-			return;
-		}
-		// Advanced handles may go out of frame while held. Capture on the stable Stage.
-		const capture = handleId !== null ? host.stageElement() ?? null : event.target instanceof Element ? event.target : null;
-		if (capture === null || !host.capturePointer(capture, event.pointerId)) {
-			acquisition.lease.release();
-			return;
-		}
-		if (handleId !== null) host.refusePress(event.pointerId);
-		host.clearHover();
-		viewEdit = {
-			viewId,
-			presentationId: controller.selectedView?.id === viewId ? controller.selectedView.presentationId : facts.presentationId,
-			kind,
-			pointerId: event.pointerId,
-			capture,
-			start: pose,
-			eye: [...pose.eye],
-			target: [...pose.target],
-			fov: pose.fov,
-			advanced,
-			handleId: handleId ?? '',
-			origin: host.absoluteCss(event),
-			pointer: host.stageCss(event),
-			sourceRevision: controller.sourceRevision,
-			lease: acquisition.lease,
-			resolve,
-			moved: false
-		};
-	}
-
-	function updateViewEdit(event: PointerEvent): void {
-		const edit = viewEdit;
-		const id = host.stage()?.evaluationId() ?? null;
-		if (edit === null || id === null || event.pointerId !== edit.pointerId) return;
-		const distance = Math.hypot(event.clientX - edit.origin[0], event.clientY - edit.origin[1]);
-		const pose = distance < 2 ? edit.start : edit.resolve(event, id);
-		if (pose === null) return;
-		viewEdit = { ...edit, eye: [...pose.eye], target: [...pose.target], fov: pose.fov,
-			pointer: host.stageCss(event), moved: viewEditMoved(edit.kind, edit.start, pose) };
-	}
-
-	function releaseViewEditPointer(edit: ViewEditSession): void {
-		if (edit.capture.hasPointerCapture?.(edit.pointerId)) edit.capture.releasePointerCapture(edit.pointerId);
-		edit.lease.release();
-	}
-
-	function viewEditIsCurrent(edit: ViewEditSession): boolean {
-		return host.stage() !== null && edit.lease.active && host.gestureActive() &&
-			host.activeController()?.sourceRevision === edit.sourceRevision &&
-			(!edit.advanced || (advancedViewId === edit.viewId && host.showMarkers() &&
-				(host.showFrustums() || (edit.kind !== 'tilt' && edit.kind !== 'lens'))));
-	}
-
-	// Reading/source/selection changes cancel provisional work before it can become a write.
-	$effect(() => {
-		const edit = viewEdit;
-		if (edit === null) return;
-		void host.evaluationGeneration();
-		if (!viewEditIsCurrent(edit)) untrack(cancelViewEdit);
-	});
-
-	function cancelViewEdit(): void {
-		const edit = viewEdit;
-		viewEdit = null;
-		if (edit !== null) releaseViewEditPointer(edit);
-	}
-
-	async function endViewEdit(): Promise<void> {
-		const edit = viewEdit;
-		if (edit === null) return;
-		const current = viewEditIsCurrent(edit);
-		cancelViewEdit();
-		if (current && edit.moved) await writeViewEdit(edit.viewId, edit.presentationId, edit, edit.sourceRevision);
-	}
-
-	async function writeViewEdit(viewId: string, presentationId: string, pose: AuthoredViewPose, sourceRevision: string): Promise<void> {
-		const controller = host.activeController();
-		if (controller === null || controller.sourceRevision !== sourceRevision || controller.busy) return;
-		// Keep only the Camera payload, never the captured pointer or its live gesture.
-		const next = { eye: pose.eye, target: pose.target, fov: pose.fov };
-		const outcome = await controller.updateViewPose(viewId, next, presentationId);
-		if (outcome.kind === 'needs-confirmation') {
-			pendingViewWrite = { viewId, presentationId, pose: next, alsoIn: outcome.alsoIn, sourceRevision };
-		} else if (outcome.kind === 'updated') {
-			host.refresh();
-		} else {
-			host.notice(outcome.message);
-		}
-	}
-
-	async function setAdvancedViewFraming(viewId: string, edit: AdvancedViewFraming): Promise<void> {
-		const controller = host.activeController();
-		if (controller === null || viewId !== advancedViewId || viewEdit !== null || pendingViewWrite !== null) return;
-		const facts = controller.viewFacts(viewId);
-		const start = controller.viewPose(viewId);
-		if (facts === null || start === null) return;
-		const pose = frameView(start, edit, host.floorDatum());
-		if (viewEditMoved(edit.kind, start, pose)) await writeViewEdit(viewId, controller.selectedView?.presentationId ?? facts.presentationId, pose, controller.sourceRevision);
-	}
-
-	async function confirmPendingViewWrite(): Promise<void> {
-		const pending = pendingViewWrite;
-		pendingViewWrite = null;
-		if (pending === null) return;
-		const controller = host.activeController();
-		if (controller === null || controller.sourceRevision !== pending.sourceRevision) return;
-		const outcome = await controller.updateViewPose(pending.viewId, pending.pose, pending.presentationId, {
-			confirmShared: true
-		});
-		if (outcome.kind === 'updated') {
-			host.refresh();
-		} else if (outcome.kind === 'refused') {
-			host.notice(outcome.message);
-		}
-	}
-
 	const posture: StagePostureLayer = {
 		id: 'experience-lens',
 		pointerDown: (event, mark) => (pointerDown(event, mark) ? 'claimed' : 'pass'),
@@ -1200,8 +922,8 @@ export function createExperienceLens(host: ExperienceLensHost) {
 		click: (_event, overMark) => (ownsClick(overMark) ? 'claimed' : 'pass'),
 		wheel: (event, viewportHeight) => (wheelZoom(event, viewportHeight) ? 'claimed' : 'pass'),
 		interrupt: () => {
-			if (viewEdit === null) return 'pass';
-			cancelViewEdit();
+			if (viewEditSession.active === null) return 'pass';
+			viewEditSession.cancel();
 			return 'claimed';
 		},
 		key,
@@ -1275,15 +997,15 @@ export function createExperienceLens(host: ExperienceLensHost) {
 		advancedCamera: () => advancedCamera,
 		setAdvancedCamera: (on: boolean) => { advancedCamera = on; },
 		advancedViewId: () => advancedViewId,
-		viewEdit: () => viewEdit,
-		pendingViewWrite: () => pendingViewWrite,
-		clearPendingViewWrite: () => { pendingViewWrite = null; },
-		beginViewEdit,
-		updateViewEdit,
-		cancelViewEdit,
-		endViewEdit,
-		setAdvancedViewFraming,
-		confirmPendingViewWrite,
+		viewEdit: () => viewEditSession.active,
+		pendingViewWrite: () => viewEditSession.pending,
+		clearPendingViewWrite: () => { viewEditSession.clearPending(); },
+		beginViewEdit: viewEditSession.begin,
+		updateViewEdit: viewEditSession.update,
+		cancelViewEdit: viewEditSession.cancel,
+		endViewEdit: viewEditSession.end,
+		setAdvancedViewFraming: viewEditSession.setAdvancedFraming,
+		confirmPendingViewWrite: viewEditSession.confirmPending,
 		advancePlayback,
 		stopAndRestore,
 		dispose

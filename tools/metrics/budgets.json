@@ -4,7 +4,7 @@
     "filesOver600": 103,
     "filesOver1000": 16,
     "filesOver1500": 1,
-    "functionsOver200": 79,
+    "functionsOver200": 80,
     "exportStars": 0,
     "crossPackageReexports": 0,
     "seams": 8
@@ -33,11 +33,6 @@
     {
       "path": "apps/editor/src/lib/authoring/stage/shell/EditorIndex.svelte",
       "lines": 1317,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
-      "path": "apps/editor/src/lib/authoring/experience/experience-lens.svelte.ts",
-      "lines": 1293,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -88,6 +83,11 @@
     {
       "path": "apps/editor/src/lib/authoring/stage/shell/StageViewportRegion.svelte",
       "lines": 1020,
+      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+    },
+    {
+      "path": "apps/editor/src/lib/authoring/experience/experience-lens.svelte.ts",
+      "lines": 1015,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -537,9 +537,9 @@
     {
       "file": "apps/editor/src/lib/authoring/experience/experience-lens.svelte.ts",
       "name": "createExperienceLens",
-      "line": 96,
-      "lines": 1196,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+      "line": 79,
+      "lines": 935,
+      "reason": "One lens host: posture, placement, look-through and the remaining session wiring share one effect tree; the View-edit session is extracted."
     },
     {
       "file": "apps/editor/src/lib/authoring/workspace/host/workspace-host.svelte.ts",
@@ -869,6 +869,13 @@
       "line": 114,
       "lines": 296,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+    },
+    {
+      "file": "apps/editor/src/lib/authoring/experience/experience-view-edit-session.svelte.ts",
+      "name": "createExperienceViewEditSession",
+      "line": 48,
+      "lines": 286,
+      "reason": "One View-edit session: the live drag, its gesture lease, the invalidation effect and the one provisional write path share one state owner."
     },
     {
       "file": "packages/layout-core/src/geometry/delta/seed.ts",
