@@ -115,7 +115,8 @@ export function perfInitScript(options: HarnessOptions): void {
 		render(scene: unknown, camera: unknown): void;
 		renderBufferDirect(camera: unknown, scene: unknown, geometry: DrawGeometry, material: DrawMaterial, object: unknown, group: unknown): void;
 		info: RenderInfo;
-		shadowMap: { render(...args: unknown[]): void };
+		/** WebGL exposes `render`; WebGPU's `shadowMap` is a config object. */
+		shadowMap?: { render?: (...args: unknown[]) => void };
 		properties: { get(material: object): { currentProgram?: { cacheKey?: string } } };
 		getContext(): WebGL2RenderingContext;
 	};
@@ -196,10 +197,13 @@ export function perfInitScript(options: HarnessOptions): void {
 			}
 		};
 		const shadowMap = renderer.shadowMap;
-		const shadowRender = shadowMap.render.bind(shadowMap);
+		// WebGPURenderer r187 exposes `shadowMap` as `{ enabled, transmitted, type }`;
+		// its node-based shadow pass has no `render` hook, so shadow draw attribution
+		// stays unavailable (the counters remain zero) rather than aborting the mount.
+		const shadowRender = typeof shadowMap?.render === 'function' ? shadowMap.render.bind(shadowMap) : null;
 		let shadowCallsThisFrame = 0;
 		let inShadowPass = false;
-		shadowMap.render = (...args: unknown[]) => {
+		if (shadowRender !== null) shadowMap!.render = (...args: unknown[]) => {
 			const before = renderer.info.render.calls;
 			inShadowPass = true;
 			try {
@@ -245,9 +249,10 @@ export function perfInitScript(options: HarnessOptions): void {
 				instanceBins: instance.size
 			};
 		};
-		// The managed renderer reassigns `render` after its lookup discovery and at
-		// dispose; an accessor keeps this wrapper outermost across reassignment.
-		let inner = renderer.render;
+		// Keep the base method in the closure. A `render` accessor here would feed
+		// the product's own wrapper back in as `inner` (the product captures the
+		// current `render` when it counts frames), recursing until the stack dies.
+		const inner = renderer.render;
 		const counted = (scene: unknown, camera: unknown) => {
 			const paused = (target as unknown as Record<string, unknown>).__BISKIQ_PERF_RENDER_PAUSED__ === true;
 			shadowCallsThisFrame = 0;
@@ -305,13 +310,7 @@ export function perfInitScript(options: HarnessOptions): void {
 			counters.geometries = info.memory.geometries;
 			counters.textures = info.memory.textures;
 		};
-		Object.defineProperty(renderer, 'render', {
-			configurable: true,
-			get: () => counted,
-			set: (next: HookedRenderer['render']) => {
-				inner = next;
-			}
-		});
+		renderer.render = counted;
 	};
 
 	try {

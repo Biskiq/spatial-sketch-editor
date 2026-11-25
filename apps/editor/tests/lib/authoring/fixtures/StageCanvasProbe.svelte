@@ -11,6 +11,7 @@
 		hover = null,
 		hoverTone = 'hover',
 		startMode = null,
+		proposals = [],
 		...rest
 	}: {
 		heightMeters?: number | null;
@@ -18,6 +19,7 @@
 		hover?: { readonly reference: { readonly subject: { readonly id: string } } } | null;
 		hoverTone?: 'hover' | 'erase';
 		startMode?: string | null;
+		proposals?: readonly unknown[];
 	} = $props();
 	// Referencing the received props keeps this double honest about accepting the
 	// real component's surface without claiming any of its behaviour.
@@ -32,4 +34,5 @@
 	data-hover-id={hover?.reference.subject.id ?? 'none'}
 	data-hover-tone={hoverTone}
 	data-start-mode={startMode}
+	data-proposals={proposals.length}
 ></div>

@@ -398,8 +398,10 @@ reading-change policy per lease. Its `registerProposal` and `liveProposal` expos
 proposals to the Undo availability reason. F4 owns the one chronological history
 (`apps/editor/src/lib/authoring/f4/history.ts`). See
 `apps/editor/src/lib/authoring/stage/stage-session.ts` and
-`apps/editor/src/lib/authoring/stage/stage-facade.ts`. See also
-[Extending Stage authoring](./components/authoring-extensions.md).
+`apps/editor/src/lib/authoring/stage/stage-facade.ts`. Escape precedence is the ordered
+`ESCAPE_LADDER` table in `apps/editor/src/lib/authoring/workspace/escape-ladder.ts`; each rung
+names its owning feature, and the keyboard iterates the table rather than hard-coding positions.
+See also [Extending Stage authoring](./components/authoring-extensions.md).
 
 `StageFacade` is a coordinator over owner leaves in `stage/facade/`: type-only contracts
 (`adapter-contract.ts`, `view-contract.ts`) and executable owners for adapter bindings,
@@ -410,7 +412,7 @@ executable dependencies and never the facade, another owner or authoring and ren
 and Artwork gestures, the viewport, shell state, shell commands, the Experience binding and the
 selection and contribution views. The route keeps no second epoch, history, asset-lease, pointer
 or keyboard owner, and no controller imports the route (`spatial-route-boundary`,
-`authoring-controller-boundary`).
+`integration-ownership`).
 
 `StageFacade.resolvePick` delegates cross-domain arbitration to
 [`stage-pick.ts`](../../apps/editor/src/lib/authoring/stage/stage-pick.ts). Layout chooses

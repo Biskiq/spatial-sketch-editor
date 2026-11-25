@@ -297,38 +297,64 @@ export function constructsImportedOwner(importer: string, source: string, owner:
 		return ts.isCallExpression(expression) && !expression.questionDotToken && ts.isIdentifier(expression.expression) &&
 			factories.has(checker.getSymbolAtLocation(expression.expression)!);
 	}
-	for (const [index, statement] of tree.statements.entries()) {
-		if (!ts.isVariableStatement(statement)) continue;
-		for (const declaration of statement.declarationList.declarations) {
-			if (!ts.isIdentifier(declaration.name) || !declaration.initializer || !callsFactory(declaration.initializer)) continue;
-			const symbol = checker.getSymbolAtLocation(declaration.name);
-			if (!symbol) continue;
-			// A property read inside an unused callback, a conditional branch, or a
-			// short circuit is not evidence the controller is invoked. Accept only a
-			// direct top-level method call after the controller was constructed.
-			for (const later of tree.statements.slice(index + 1)) {
-				if (!ts.isExpressionStatement(later) || !ts.isCallExpression(later.expression) || later.expression.questionDotToken) continue;
-				const method = later.expression.expression;
-				if (!ts.isPropertyAccessExpression(method) || method.questionDotToken || !ts.isIdentifier(method.expression)) continue;
-				if (checker.getSymbolAtLocation(method.expression) === symbol) return true;
+	// The composition root is the module's top level (a route script), the body of
+	// the workspace host factory, or one `wire*` function in the wiring layer.
+	const scopes: readonly ts.NodeArray<ts.Statement>[] = [
+		tree.statements,
+		...tree.statements.flatMap((statement) =>
+			ts.isFunctionDeclaration(statement) && statement.body &&
+			(statement.name?.text === 'createWorkspaceHost' || statement.name?.text.startsWith('wire'))
+				? [statement.body.statements]
+				: []
+		)
+	];
+	const constructs = (statements: readonly ts.Statement[]): boolean => {
+		// A wiring function's shape is `return createOwner({...})`: the construction
+		// and its hand-off are one statement.
+		if (statements.some((statement) =>
+			ts.isReturnStatement(statement) && statement.expression !== undefined && callsFactory(statement.expression)
+		)) return true;
+		for (const [index, statement] of statements.entries()) {
+			if (!ts.isVariableStatement(statement)) continue;
+			for (const declaration of statement.declarationList.declarations) {
+				if (!ts.isIdentifier(declaration.name) || !declaration.initializer || !callsFactory(declaration.initializer)) continue;
+				const symbol = checker.getSymbolAtLocation(declaration.name);
+				if (!symbol) continue;
+				// A property read inside an unused callback, a conditional branch, or a
+				// short circuit is not evidence the controller is invoked. Accept only a
+				// direct top-level method call after the controller was constructed.
+				for (const later of statements.slice(index + 1)) {
+					if (!ts.isExpressionStatement(later) || !ts.isCallExpression(later.expression) || later.expression.questionDotToken) continue;
+					const method = later.expression.expression;
+					if (!ts.isPropertyAccessExpression(method) || method.questionDotToken || !ts.isIdentifier(method.expression)) continue;
+					if (checker.getSymbolAtLocation(method.expression) === symbol) return true;
+				}
 			}
 		}
-	}
-	return false;
+		return false;
+	};
+	return scopes.some(constructs);
 }
 
 /** Spatial route and its explicitly constructed extracted controllers. */
 export function composedSpatialHost(): { file: string; code: string }[] {
-	const route = path.join(EDITOR_SRC, 'routes/project/[projectId]/spatial/+page.svelte');
+	const route = path.join(EDITOR_LIB, 'authoring/workspace/host/workspace-host.svelte.ts');
 	const code = fs.readFileSync(route, 'utf8');
 	const reachable = importClosure([route]);
+	// X9's wiring layer is part of the composition root: a factory literal lives in
+	// `workspace/host/wiring`, one function per factory, and the host calls it.
+	const wiringRoot = `${path.join(EDITOR_LIB, 'authoring/workspace/host/wiring')}${path.sep}`;
+	const wiring = [...reachable].filter((file) => file.startsWith(wiringRoot) && file.endsWith('.ts'));
+	const constructsInLayer = (file: string, factory: string): boolean =>
+		constructsImportedOwner(route, code, file, factory) ||
+		wiring.some((source) => constructsImportedOwner(source, fs.readFileSync(source, 'utf8'), file, factory));
 	const controllers = [
 		[path.join(EDITOR_LIB, 'authoring/project-session/project-session.svelte.ts'), 'createProjectSession']
 	] as const;
 	const sources = [{ file: route, code }];
 	for (const [file, factory] of controllers) {
 		if (!reachable.has(file)) continue;
-		if (!constructsImportedOwner(route, code, file, factory)) throw new Error(`Route must construct ${factory} from ${file}`);
+		if (!constructsInLayer(file, factory)) throw new Error(`Route must construct ${factory} from ${file}`);
 		sources.push({ file, code: fs.readFileSync(file, 'utf8') });
 	}
 	// X1's controllers are constructed as typed owners and passed into the
@@ -341,11 +367,20 @@ export function composedSpatialHost(): { file: string; code: string }[] {
 		[path.join(EDITOR_LIB, 'authoring/stage/route/stage-experience-binding.svelte.ts'), 'createStageExperienceBinding'],
 		[path.join(EDITOR_LIB, 'authoring/stage/route/stage-shell-state.svelte.ts'), 'createStageShellState'],
 		[path.join(EDITOR_LIB, 'authoring/stage/route/stage-shell-commands.ts'), 'createStageShellCommands'],
-		[path.join(EDITOR_LIB, 'authoring/stage/route/stage-selection-view.ts'), 'createStageSelectionView']
+		[path.join(EDITOR_LIB, 'authoring/stage/route/stage-selection-presentation.svelte.ts'), 'createStageSelectionReadout'],
+		[path.join(EDITOR_LIB, 'authoring/stage/route/stage-viewport.svelte.ts'), 'createStageViewport'],
+		[path.join(EDITOR_LIB, 'authoring/stage/route/stage-viewing.ts'), 'createStageViewing'],
+		[path.join(EDITOR_LIB, 'authoring/stage/route/stage-history-command.ts'), 'createStageHistoryCommand'],
+		[path.join(EDITOR_LIB, 'authoring/stage/route/stage-window-listeners.ts'), 'createStageWindowListeners'],
+		[path.join(EDITOR_LIB, 'authoring/stage/route/core-lifecycle-steps.svelte.ts'), 'createCoreLifecycleSteps'],
+		[path.join(EDITOR_LIB, 'authoring/stage/route/core-region-views.ts'), 'createCoreRegionViews']
 	] as const;
 	for (const [file, factory] of constructed) {
 		if (!reachable.has(file)) throw new Error(`Route must import ${factory} from ${file}`);
-		if (!new RegExp(`(?:(?:const|let|var)\\s+[\\w$]+|^\\s*[\\w$]+)\\s*=\\s*${factory}\\s*\\(`, 'm').test(code)) {
+		const layerCode = [code, ...wiring.map((source) => fs.readFileSync(source, 'utf8'))].join('\n');
+		const constructs = new RegExp(`(?:(?:const|let|var)\\s+[\\w$]+|^\\s*[\\w$]+)\\s*=\\s*${factory}\\s*\\(`, 'm').test(layerCode) ||
+			constructsInLayer(file, factory);
+		if (!constructs) {
 			throw new Error(`Route must construct ${factory} from ${file}`);
 		}
 		if (!sources.some((source) => source.file === file)) {
@@ -362,6 +397,11 @@ export function composedSpatialHost(): { file: string; code: string }[] {
 	for (const file of reachable) {
 		if (ownerDirs.some((dir) => file.startsWith(`${dir}${path.sep}`)) && /\.(svelte|ts)$/.test(file) &&
 			!sources.some((source) => source.file === file)) {
+			sources.push({ file, code: fs.readFileSync(file, 'utf8') });
+		}
+	}
+	for (const file of wiring) {
+		if (!sources.some((source) => source.file === file)) {
 			sources.push({ file, code: fs.readFileSync(file, 'utf8') });
 		}
 	}
@@ -445,7 +485,7 @@ export type ModuleBindingEdge =
 	| { readonly kind: 'dynamic'; readonly specifier: string };
 
 /** The script of a `.svelte` file (instance and module), or the source of a TS module. */
-function scriptSources(file: string, source: string): string[] {
+export function scriptSources(file: string, source: string): string[] {
 	if (!file.endsWith('.svelte')) return [source];
 	const parsed = parse(source, { modern: true });
 	const scripts: string[] = [];
@@ -495,6 +535,15 @@ export function moduleBindingEdges(file: string, source: string): ModuleBindingE
 						if (specifier === null) edges.push({ kind: 'export-local', local: imported, exported: element.name.text });
 						else edges.push({ kind: 'export-named', specifier, imported, exported: element.name.text, typeOnly: node.isTypeOnly || element.isTypeOnly });
 					}
+				}
+			} else if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument) &&
+				ts.isStringLiteralLike(node.argument.literal)) {
+				const specifier = node.argument.literal.text;
+				const qualifier = node.qualifier?.getText(tree).split('.')[0];
+				if (qualifier) {
+					edges.push({ kind: 'import-named', specifier, imported: qualifier, local: '', typeOnly: true });
+				} else {
+					edges.push({ kind: 'import-namespace', specifier, local: '', typeOnly: true });
 				}
 			} else if (
 				ts.isCallExpression(node) &&

@@ -22,7 +22,7 @@
  * shell is mountable only in a browser. It belongs to the arch lane for the same
  * reason `wall-mesh-shell-boundary` does — it guards a boundary, not a behaviour.
  */
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
@@ -43,16 +43,24 @@ import {
 
 const STAGE_DIR = join(EDITOR_SRC, 'lib', 'authoring', 'stage');
 const SHELL_DIR = join(STAGE_DIR, 'shell');
-const ROUTE = join(EDITOR_SRC, 'routes', 'project', '[projectId]', 'spatial', '+page.svelte');
+const ROUTE = join(EDITOR_SRC, 'lib', 'authoring', 'workspace', 'host', 'workspace-host.svelte.ts');
+const ROUTE_COMPONENT = join(EDITOR_SRC, 'lib', 'authoring', 'workspace', 'host', 'WorkspaceHost.svelte');
+const WIRING = join(EDITOR_SRC, 'lib', 'authoring', 'workspace', 'host', 'wiring');
 const PROJECT_SESSION_DIR = join(EDITOR_SRC, 'lib', 'authoring', 'project-session');
 const EXPERIENCE_LENS = join(EDITOR_SRC, 'lib', 'authoring', 'experience', 'experience-lens.svelte.ts');
 const EXPERIENCE_BINDING = join(STAGE_DIR, 'route', 'stage-experience-binding.svelte.ts');
+const CORE_REGION_VIEWS = join(STAGE_DIR, 'route', 'core-region-views.ts');
+const STAGE_VIEWING = join(STAGE_DIR, 'route', 'stage-viewing.ts');
 const SHELL_STATE = join(STAGE_DIR, 'route', 'stage-shell-state.svelte.ts');
 const ROUTE_VIEWPORT = join(SHELL_DIR, 'StageViewportRegion.svelte');
 const ROUTE_PANELS = join(SHELL_DIR, 'StagePanels.svelte');
 const ROUTE_TOOLBARS = join(SHELL_DIR, 'StageToolbars.svelte');
 const X2_INPUT_FILE = join(STAGE_DIR, 'route', 'stage-input.svelte.ts');
+const READINGS_ENTRY = join(STAGE_DIR, 'readings', 'layout-readings-feature.svelte.ts');
+const UNFOLD_OWNER = join(STAGE_DIR, 'readings', 'unfold-host.svelte.ts');
 const X2_UNFOLD_FILE = join(STAGE_DIR, 'route', 'stage-unfold-gestures.svelte.ts');
+const ARTWORK_ENTRY = join(EDITOR_SRC, 'lib', 'authoring', 'artwork', 'artwork-feature.svelte.ts');
+const ARTWORK_HOST = join(EDITOR_SRC, 'lib', 'authoring', 'artwork', 'artwork-host.svelte.ts');
 const X2_ARTWORK_FILE = join(STAGE_DIR, 'route', 'stage-artwork-interaction.svelte.ts');
 const X2_INPUT = relativeToRepo(X2_INPUT_FILE);
 const X2_ARTWORK = relativeToRepo(X2_ARTWORK_FILE);
@@ -95,24 +103,23 @@ const HEIGHT_SHEET_RAIL_READ = 'track?.getBoundingClientRect()';
 /** The route and the controllers it constructs, never all dependencies. */
 function postureSources(): { file: string; code: string }[] {
 	const route = readFileSync(ROUTE, 'utf8');
-	const files = [ROUTE, SHELL_STATE];
+	expect(composedSpatialHost().some(({ file }) => file === STAGE_VIEWING)).toBe(true);
+	const files = [ROUTE, SHELL_STATE, STAGE_VIEWING, join(STAGE_DIR, 'route/stage-viewport.svelte.ts')];
 	if (importClosure([ROUTE]).has(EXPERIENCE_LENS)) {
 		expect(route).toContain('createStageExperienceBinding({');
 		expect(readFileSync(EXPERIENCE_BINDING, 'utf8')).toContain('createExperienceLens({');
 		files.push(EXPERIENCE_BINDING, EXPERIENCE_LENS);
 	}
-	// X2's input owners are constructed by the route and own its handler bodies.
-	const x2 = [
-		[X2_INPUT_FILE, 'createStageInputArbiter'],
-		[X2_UNFOLD_FILE, 'createStageUnfoldGestures'],
-		[X2_ARTWORK_FILE, 'createStageArtworkInteraction']
-	] as const;
-	for (const [file, factory] of x2) {
-		// These owners are consumed by template handlers and named route commands,
-		// so their construction is the top-level composition fact to prove.
-		expect(route, file).toContain(`${factory}({`);
-		files.push(file);
-	}
+	// The route composes one input arbiter and the Artwork feature owns its controller.
+	expect([route, ...readdirSync(WIRING).filter((file) => file.endsWith('.ts')).map((file) => readFileSync(join(WIRING, file), 'utf8'))].join('\n'))
+		.toContain('createStageInputArbiter({');
+	expect(route).toContain('createArtworkFeature({');
+	expect(readFileSync(ARTWORK_ENTRY, 'utf8')).toContain('createStageArtworkInteraction({');
+	files.push(X2_INPUT_FILE, ARTWORK_ENTRY, ARTWORK_HOST, X2_ARTWORK_FILE);
+	expect(route).toContain('createLayoutReadingsFeature({');
+	expect(readFileSync(READINGS_ENTRY, 'utf8')).toContain('createUnfoldHost(deps.unfold)');
+	expect(readFileSync(UNFOLD_OWNER, 'utf8')).toContain('createStageUnfoldGestures({');
+	files.push(READINGS_ENTRY, UNFOLD_OWNER, X2_UNFOLD_FILE);
 	return files.map((file) => ({ file, code: stripComments(readFileSync(file, 'utf8')) }));
 }
 
@@ -138,7 +145,21 @@ describe('Stage shell composition', () => {
 		const futureConsumers = ['studio', 'extensions'].flatMap((name) =>
 			listSourceFiles(join(EDITOR_SRC, 'lib', 'authoring', name)).filter((file) => /\.(ts|svelte)$/.test(file))
 		);
+		// This Studio-owned bridge is the Stage consumer of these ports. The
+		// copy journey still crosses the adapter seam at exactly this site.
+		const studioBridge = join(EDITOR_SRC, 'lib/authoring/studio/studio-stage-ports.ts');
+		const reviewedStudioStageImports = new Set([
+			'../stage/route/stage-content-bounds.svelte',
+			'../stage/route/stage-shell-commands',
+			'../stage/route/stage-shell-state.svelte',
+			'../stage/route/stage-viewing',
+			'../stage/semantic-selection',
+			'../stage/stage-facade',
+			'../stage/stage-input',
+			'../stage/subject-scope'
+		]);
 		const offenders = [...files, ...futureConsumers].flatMap((file) => imports(file, readFileSync(file, 'utf8'))
+			.filter((specifier) => file !== studioBridge || !reviewedStudioStageImports.has(specifier))
 			.map((specifier) => `${relativeToRepo(file)}: ${specifier}`));
 		expect(offenders).toEqual([]);
 	});
@@ -147,7 +168,7 @@ describe('Stage shell composition', () => {
 		const owner = join(EDITOR_SRC, 'lib', 'authoring', 'experience', 'playback.svelte.ts');
 		const source = (script: string) => `<script lang="ts">${script}</script>`;
 		const specifier = '$lib/authoring/experience/playback.svelte';
-		const check = (script: string) => constructsImportedOwner(ROUTE, source(script), owner, 'createExperiencePlayback');
+		const check = (script: string) => constructsImportedOwner(ROUTE_COMPONENT, source(script), owner, 'createExperiencePlayback');
 		expect(check(`import { createExperiencePlayback } from '${specifier}'; const playback = createExperiencePlayback(); playback.play();`)).toBe(true);
 		expect(check(`import { createExperiencePlayback as make } from '${specifier}'; const playback = make(); playback.play();`)).toBe(true);
 		expect(check(`import { createExperiencePlayback } from '${specifier}';`)).toBe(false);
@@ -161,8 +182,8 @@ describe('Stage shell composition', () => {
 		expect(check(`import { createExperiencePlayback } from '${specifier}'; const playback = createExperiencePlayback(); playback.play;`)).toBe(false);
 		expect(check(`import { createExperiencePlayback } from '${specifier}'; const playback = createExperiencePlayback(); playback.play?.();`)).toBe(false);
 		expect(check(`import { createExperiencePlayback } from '${specifier}'; playback.play(); const playback = createExperiencePlayback();`)).toBe(false);
-		expect(constructsImportedOwner(ROUTE, `<script module lang="ts">import { createExperiencePlayback } from '${specifier}'; const playback = createExperiencePlayback(); playback.play();</script>`, owner, 'createExperiencePlayback')).toBe(false);
-		expect(constructsImportedOwner(ROUTE, `<script context="module" lang="ts">import { createExperiencePlayback } from '${specifier}'; const playback = createExperiencePlayback(); playback.play();</script>`, owner, 'createExperiencePlayback')).toBe(false);
+		expect(constructsImportedOwner(ROUTE_COMPONENT, `<script module lang="ts">import { createExperiencePlayback } from '${specifier}'; const playback = createExperiencePlayback(); playback.play();</script>`, owner, 'createExperiencePlayback')).toBe(false);
+		expect(constructsImportedOwner(ROUTE_COMPONENT, `<script context="module" lang="ts">import { createExperiencePlayback } from '${specifier}'; const playback = createExperiencePlayback(); playback.play();</script>`, owner, 'createExperiencePlayback')).toBe(false);
 		expect(check(`import { createExperiencePlayback } from '${specifier}'; // createExperiencePlayback();`)).toBe(false);
 		expect(check(`import { createExperiencePlayback } from '${specifier}'; function unused() { createExperiencePlayback(); }`)).toBe(false);
 		expect(check(`import { createExperiencePlayback } from '${specifier}'; if (false) createExperiencePlayback();`)).toBe(false);
@@ -375,7 +396,7 @@ describe('Stage shell composition', () => {
 		// membership, never as a second renderer, a clipped geometry copy or a 2D
 		// transform of the same mesh. A defect here is invisible in a lane report: the
 		// drawing would simply disagree with what the hit path calls selectable.
-		const route = stripComments(readFileSync(ROUTE, 'utf8'));
+		const region = stripComments(readFileSync(CORE_REGION_VIEWS, 'utf8'));
 		const canvas = codeOf(CANVAS_FILE);
 
 		// One geometry set: the Canvas takes the compiled domain geometry and the
@@ -384,7 +405,7 @@ describe('Stage shell composition', () => {
 		// fragment, groups streams or builds plan geometry.
 		expect(canvas).toContain('geometry: CompiledLayoutGeometry');
 		expect(readSource(relativeToRepo(ROUTE_VIEWPORT))).toContain('<StageCanvas');
-		expect(route).toContain('geometry: boot.snapshot.domain.geometry');
+		expect(region).toContain('geometry: snapshot.domain.geometry');
 		expect(canvas).toContain('plan?: PlanEvaluation | null');
 		expect(canvas).toContain("from './StagePaper.svelte'");
 		expect(canvas).not.toMatch(/PlanFragment|planParameters|buildPaperPlan/);
@@ -420,7 +441,10 @@ describe('Stage shell composition', () => {
 		expect(owners).toHaveLength(1);
 		const owner = owners[0]!.code;
 		if (owners[0]!.file !== ROUTE) {
-			expect(constructsImportedOwner(ROUTE, readFileSync(ROUTE, 'utf8'), owners[0]!.file, 'createProjectSession')).toBe(true);
+			const layer = [ROUTE, ...readdirSync(WIRING).filter((file) => file.endsWith('.ts')).map((file) => join(WIRING, file))];
+			expect(layer.some((file) =>
+				constructsImportedOwner(file, readFileSync(file, 'utf8'), owners[0]!.file, 'createProjectSession')
+			)).toBe(true);
 		}
 		expect(owner).toContain('runBoundLoad(session,');
 		expect(owner).toContain('session.isCurrent(token)');
@@ -447,8 +471,9 @@ describe('Stage shell composition', () => {
 		// A reading change must end the route press after the lease policy runs.
 		// The mounted spatial-route-gesture suite also proves the adapter receives
 		// the interruption first and preserves its exact Resume/Discard proposal.
-		const reading = route.slice(route.indexOf('function setReading('), route.indexOf('function fit('));
-		expect(reading).toMatch(/if \(stageInput\.drag !== null && session\.gesture\(\) === null\) \{[\s\S]*interruptPress\('reading-change'\);/);
+		const viewing = stripComments(readFileSync(STAGE_VIEWING, 'utf8'));
+		const reading = viewing.slice(viewing.indexOf('function endPressForReading('), viewing.indexOf('function patchDrafting('));
+		expect(reading).toMatch(/if \(stageInput\.drag !== null && session\.gesture\(\) === null\) \{[\s\S]*stageInput\.interrupt\('reading-change'\);/);
 		// One ending, used by every path, so a policy-released lease is not released
 		// twice and no ending is forgotten.
 		expect((input.match(/function endGesture\(\)/g) ?? []).length).toBe(1);
@@ -645,7 +670,8 @@ describe('Stage shell lanes and the Card (R217.S22)', () => {
 		expect(owners).toHaveLength(1);
 		expect(owners[0]!.code).toMatch(/const cameraEdit =\s*lease !== null &&\s*\(lease\.owner === 'experience-view-edit' \|\| lease\.owner === 'experience-path-point'\);/);
 		expect(owners[0]!.code).toContain('const gesturing = lease !== null && lease.navigation !== true && !cameraEdit;');
-		expect(route).toContain('gesturing: shell.cardGesturing');
+		const regionModels = stripComments(readFileSync(join(EDITOR_SRC, 'lib', 'authoring', 'workspace', 'host', 'wiring', 'stage-region-models.svelte.ts'), 'utf8'));
+		expect(regionModels).toContain('gesturing: input.shell.cardGesturing');
 	});
 
 	it('states no plain "Nothing selectable there." for an ordinary empty click, but keeps the excluded-subjects reason', () => {
@@ -657,10 +683,11 @@ describe('Stage shell lanes and the Card (R217.S22)', () => {
 	it('keeps pin creation and jumps while leaving pin removal unexposed', () => {
 		const route = stripComments(readFileSync(ROUTE, 'utf8'));
 		expect(route).not.toContain('pinHintSeen');
-		expect(route).toContain('shell.addHeightPin');
-		expect(route).toContain('onAddPin: shell.addHeightPin');
-		expect(route).not.toContain('removeHeightPin');
-		expect(route).not.toContain('onRemovePin');
+		const region = stripComments(readFileSync(CORE_REGION_VIEWS, 'utf8'));
+		expect(region).toContain('shell.addHeightPin');
+		expect(region).toContain('onAddPin: shell.addHeightPin');
+		expect(route + region).not.toContain('removeHeightPin');
+		expect(route + region).not.toContain('onRemovePin');
 		const sheet = codeOf(HEIGHT_SHEET);
 		expect(sheet).not.toContain('PIN_HINT_MS');
 		expect(sheet).not.toContain('pin-context');
@@ -755,7 +782,7 @@ describe('Ink row, constrained Index and scrim (R217.S23)', () => {
 	});
 
 	it('ends the constrained Index above the lower column and drops the viewport-sized shadow', () => {
-		const route = stripComments(readFileSync(ROUTE, 'utf8'));
+		const route = stripComments(readFileSync(ROUTE_COMPONENT, 'utf8'));
 		const panels = stripComments(readFileSync(ROUTE_PANELS, 'utf8'));
 		// Extracted Experience markup cannot reintroduce the viewport-sized shadow.
 		for (const { file, code } of composedSpatialHost()) expect(stripComments(code), file).not.toContain('100vmax');

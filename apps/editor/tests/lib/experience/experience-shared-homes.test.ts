@@ -12,7 +12,7 @@ import { describe, expect, it } from 'vitest';
 
 import { EDITOR_LIB, EDITOR_SRC, importClosure, listSourceFiles, relativeToRepo, stripComments } from '../../helpers/import-closure';
 
-const ROUTE = path.join(EDITOR_LIB, '..', 'routes', 'project', '[projectId]', 'spatial', '+page.svelte');
+const ROUTE = path.join(EDITOR_LIB, 'authoring', 'workspace', 'host', 'workspace-host.svelte.ts');
 const EXPERIENCE_DIR = path.join(EDITOR_LIB, 'authoring', 'experience');
 const SHELL_DIR = path.join(EDITOR_LIB, 'authoring', 'stage', 'shell');
 const STAGE_ROUTE_DIR = path.join(EDITOR_LIB, 'authoring', 'stage', 'route');

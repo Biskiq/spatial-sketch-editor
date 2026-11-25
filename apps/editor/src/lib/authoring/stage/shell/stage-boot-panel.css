@@ -1,0 +1,65 @@
+/* Boot, absence and replacement are dialogs, so they share the light Card
+   surface and field grammar rather than the dark stage's forest panel. */
+.boot-panel {
+	position: absolute;
+	z-index: 30;
+	top: 4rem;
+	left: 50%;
+	transform: translateX(-50%);
+	width: min(32rem, calc(100% - 2rem));
+	padding: 1.1rem 1.2rem 1.15rem;
+	border: 1px solid var(--shell-hairline-strong);
+	border-radius: 14px;
+	background: var(--shell-card);
+	color: var(--shell-ink);
+	box-shadow: var(--shell-shadow);
+	box-sizing: border-box;
+}
+.boot-panel .boot-brand {
+	color: var(--shell-forest-raised);
+	font-size: 0.68rem;
+	font-weight: 600;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+}
+.boot-panel h1,
+.boot-panel .boot-loading {
+	margin: 0 0 0.4rem;
+	color: var(--shell-ink);
+	font: 600 var(--shell-text-title) / 1.25 var(--shell-sans);
+	letter-spacing: -0.01em;
+}
+.boot-panel .boot-loading {
+	margin: 0.3rem 0 0;
+}
+.boot-panel p {
+	margin: 0 0 0.8rem;
+	color: var(--shell-ink-2);
+	font: var(--shell-text-body) / 1.45 var(--shell-sans);
+}
+.boot-panel button {
+	margin: 0 0.4rem 0.35rem 0;
+	min-height: 30px;
+	padding: 0 0.7rem;
+	border: 1px solid var(--shell-field-line-strong);
+	border-radius: 7px;
+	background: var(--shell-field);
+	color: var(--shell-ink);
+	font: 500 var(--shell-text-control) var(--shell-sans);
+	cursor: pointer;
+}
+.boot-panel button:hover {
+	background: var(--shell-hover);
+}
+.boot-panel button.primary {
+	border-color: transparent;
+	background: var(--shell-action);
+	color: var(--shell-on-action);
+}
+.boot-panel button.primary:hover {
+	background: var(--shell-forest-raised);
+}
+.boot-panel button:focus-visible {
+	outline: var(--shell-focus-ring-light);
+	outline-offset: 1px;
+}

@@ -1,0 +1,97 @@
+import type { LifecycleEvent, WorkspaceOwner } from './protocol';
+
+export const REFUSAL_EVENTS = ['settlePending', 'leaveLens'] as const;
+
+export const LIFECYCLE_ORDER = {
+	interruptForReplacement: [
+		'light-inspection:cancel',
+		'core:clear-hover',
+		'core:interrupt-press',
+		'appearance:end-operations-no-camera',
+		'appearance:reset-issues',
+	],
+	resetFocus: ['experience:reset-focus'],
+	resetPresentationBeforeSwap: ['core:collapse-expanded-presentation'],
+	resetPresentation: [
+		'light-inspection:cancel',
+		'studio:end',
+		'layout-readings:reset',
+		'core:reset-selection-and-shell',
+		'artwork:cancel',
+		'core:reset-input',
+		'core:reset-viewport',
+	],
+	facadeMounted: ['core:bind-facade'],
+	adaptersChanged: ['core:refresh-adapter-presentation'],
+	accepted: [
+		'light-inspection:reconcile',
+		'core:sync-task-and-selection',
+		'core:invalidate-plan',
+		'studio:reconcile',
+		'studio:settle-transfer',
+		'core:refresh',
+	],
+	historyInstalled: [
+		'core:install-selection',
+		'light-inspection:reconcile',
+		'core:invalidate-plan',
+		'studio:reconcile',
+	],
+	historyStep: [
+		'appearance:cancel-card-gesture',
+		'core:run-history',
+	],
+	readingChange: [
+		'appearance:cancel-card-gesture',
+		'core:submit-reading',
+		'core:end-press-for-reading',
+	],
+	settlePending: [
+		'core:refuse-during-gesture',
+		'appearance:cancel-card-gesture',
+		'artwork:cancel',
+		'core:arm-select',
+	],
+	leaveLens: [
+		'studio:leave-for-lens',
+		'appearance:end-operations-restore-camera',
+		'light-inspection:cancel',
+		'experience:change-lens',
+	],
+	windowBlur: [
+		'core:release-snap',
+		'layout-readings:release-hold',
+		'appearance:cancel-card-gesture',
+	],
+	leaveProject: [
+		'layout-readings:clear-readings',
+		'appearance:cancel-image',
+		'artwork:dispose',
+		'core:dispose-artwork-assets',
+	],
+	start: [
+		'core:perf-mark',
+		'experience:start',
+		'core:start-shell',
+		'core:start-viewport',
+		'core:install-listeners',
+		'core:install-interruptions',
+		'core:load-project',
+	],
+	dispose: [
+		'appearance:end-operations-no-camera',
+		'appearance:reset-issues',
+		'layout-readings:dispose-unfold',
+		'light-inspection:dispose',
+		'experience:dispose',
+		'core:mark-torn-down',
+		'core:dispose-viewport',
+		'core:dispose-shell',
+		'core:clear-hover',
+		'core:remove-listeners',
+		'layout-readings:release-hold',
+		'layout-readings:clear-cutaway-mirror',
+		'core:remove-interruptions',
+		'core:dispose-epoch',
+	],
+} as const satisfies Record<LifecycleEvent, readonly `${WorkspaceOwner}:${string}`[]>;

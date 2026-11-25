@@ -90,7 +90,6 @@ export function createWorldIndexModel() {
 		return { contexts, rows };
 	};
 }
-export const worldIndexModel = createWorldIndexModel();
 export function resolveWorldScope(model: WorldIndexModel, scope: WorldScope): WorldScope {
 	return model.contexts.some((c) => c.id === scope)
 		? scope

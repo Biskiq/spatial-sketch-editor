@@ -147,8 +147,14 @@ export async function dragSamples(page: Page, tier: SpotTier, refreshMs: number)
 	const end = await handlePoint(page, 'Wall end');
 	const length = Math.hypot(end.x - startHandle.x, end.y - startHandle.y) || 1;
 	const direction = { x: (end.x - startHandle.x) / length, y: (end.y - startHandle.y) / length };
-	const ledgerBefore = (await readLedger(page)).records.length;
+	// Four moves over about 20% of the projected wall, capped at 24 px. A fixed
+	// 24 px is 40% of the dense L wall and refuses on the last move before
+	// release. The Stage treats a move of <= 4 px as a click, so the first move
+	// is at least 5 px; an exact 4 px first move recorded no drag preview on L.
+	const first = Math.min(7, Math.max(5, length * 0.05));
+	const step = Math.min(6, length * 0.04);
 	await page.mouse.move(end.x, end.y);
+	const ledgerBefore = (await readLedger(page)).records.length;
 	// Evidence for a stalled drag: what the browser hit-tests at the press point.
 	const pressTarget = await page.evaluate(describeHitTarget, end);
 	const pressedAt = await pageNow(page);
@@ -158,8 +164,12 @@ export async function dragSamples(page: Page, tier: SpotTier, refreshMs: number)
 		observations = await collectGesture(tier, refreshMs, async (index) => {
 			const before = (await readLedger(page)).records.length;
 			const dispatched = await pageNow(page);
-			await page.mouse.move(end.x + direction.x * 6 * (index + 1), end.y + direction.y * 6 * (index + 1));
-			await page.waitForTimeout(32);
+			const distance = first + step * index;
+			await page.mouse.move(end.x + direction.x * distance, end.y + direction.y * distance);
+			// Two frames was not enough for the dense L project's first preview to
+			// install before the next move superseded it; four frames still samples
+			// the same gesture, and the timestamps stay in-page.
+			await page.waitForTimeout(64);
 			const ledger = await readLedger(page);
 			const inputs = correlateInputs(ledger.records.slice(before), ledger.ticks);
 			const sample = inputs.length === 1 ? inputs[0] : undefined;

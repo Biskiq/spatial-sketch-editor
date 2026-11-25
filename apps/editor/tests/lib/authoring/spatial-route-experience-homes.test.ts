@@ -1489,11 +1489,12 @@ describe('R217.S25 — Preview and Undo (D-harvest "Kept")', () => {
 		expect(head.match(/data-head-preview=""/g)).toHaveLength(1);
 		expect(head.match(/data-head-preview-button/g)).toHaveLength(2);
 
-		const route = readFileSync('src/routes/project/[projectId]/spatial/+page.svelte', 'utf8');
-		const headMounts = [...route.matchAll(/<EditorHead\b[\s\S]*?\/>/g)];
+		// The mount site moved to the workspace host; the guarantee is unchanged.
+		const host = readFileSync('src/lib/authoring/workspace/host/WorkspaceHost.svelte', 'utf8');
+		const headMounts = [...host.matchAll(/<EditorHead\b[\s\S]*?\/>/g)];
 		expect(headMounts).toHaveLength(1);
 		expect(headMounts[0]![0].match(/onPreview=\{/g)).toHaveLength(1);
-		expect(route.match(/onPreview=\{/g)).toHaveLength(1);
+		expect(host.match(/onPreview=\{/g)).toHaveLength(1);
 
 		const homes = [
 			'src/lib/authoring/experience/ExperienceDock.svelte',

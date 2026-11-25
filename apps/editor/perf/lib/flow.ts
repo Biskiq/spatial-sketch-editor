@@ -271,6 +271,16 @@ export async function waitForStageSettled(page: Page, timeoutMs = LARGE_TIER_WAI
 	let previous: number | null = null;
 	while (Date.now() - started < timeoutMs) {
 		const triangles = await page.evaluate(() => {
+			// WebGPURenderer resets `info` after a frame, so a late sample reads 0.
+			// The harness records each stage frame's triangles at render time; use the
+			// last one. Flows without the harness fall back to the live info.
+			const frames = (window as unknown as { __BISKIQ_PERF_RENDER_FRAMES__?: { surface: string; start: number; triangles: number }[] }).__BISKIQ_PERF_RENDER_FRAMES__;
+			const records = (window as unknown as { __BISKIQ_PERF_RECORDS__?: { name: string; time: number }[] }).__BISKIQ_PERF_RECORDS__;
+			// Ignore a frame rendered before the latest admitted source: settling the empty
+			// project's last frame would return before the loaded Stage has drawn.
+			const ready = records?.findLast((record) => record.name === 'stage:source-ready')?.time ?? 0;
+			const last = frames?.findLast((frame) => frame.surface === 'stage' && frame.start >= ready);
+			if (last !== undefined) return last.triangles;
 			const refs = (window as unknown as { __BISKIQ_PERF_RENDER_REFS__?: Record<string, { renderer: { info: { render: { triangles: number } } } }> }).__BISKIQ_PERF_RENDER_REFS__;
 			return refs?.stage?.renderer.info.render.triangles ?? -1;
 		});

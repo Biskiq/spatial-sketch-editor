@@ -19,6 +19,7 @@ function harness(overrides: Partial<StageKeyboardInput> = {}) {
 		notifySurfaceChange: vi.fn()
 	} as unknown as StageFacade;
 	const input: StageKeyboardInput = {
+		featureEscape: [{ id: 'sky', escapeRungs: { sky: () => 'pass' } }],
 		artworkEscape: () => false,
 		previewActive: () => false,
 		closePreview: () => calls.push('close-preview'),

@@ -3,7 +3,9 @@ import type { DomainPlanner, RegistrationOutcome, SemanticReference } from '@por
 import type { StageAcceptanceHost } from './host-acceptance';
 import type { StageAdapter, StageAdapterRegistration, StageFacade } from './stage-facade';
 import type { StageSession } from './stage-session';
-import type { FinishAuthoring } from '../look/finish-authoring.svelte';
+import type { AppearanceIssue, AppearanceIssueActionKind, AppearanceIssuesService } from '../look/appearance-issues.svelte';
+import type { FinishCard, FinishCardTarget } from '../look/finish-card.svelte';
+import type { FinishEditor } from '../look/finish-editor.svelte';
 import { createMaterialProofRegistry } from '../material-proof';
 import {
 	createSceneTargetAnalysis,
@@ -73,6 +75,22 @@ export type StageLightInspection = {
 		| { readonly kind: 'refused'; readonly message: string };
 };
 
+/** The shared Finish section consumes this narrow view of the Appearance session. */
+export type StageFinishCardPort = {
+	readonly card: Pick<FinishCard,
+		'cancel' | 'clearRequest' | 'focus' | 'giveOwnCopy' | 'previewColour' | 'refusalFor' |
+		'rename' | 'requested' | 'resetToOriginal' | 'selectAllUsers' | 'setColour' | 'setColourMode' |
+		'setReach' | 'setSheen' | 'stepPattern' | 'swap' | 'toggleFavourite' | 'turnPattern' | 'view'
+	>;
+	readonly editor: Pick<FinishEditor, 'openFor'>;
+	readonly issues: Pick<AppearanceIssuesService, 'hasIssuesForTarget' | 'issuesForTarget' | 'refusalFor'>;
+	requestAlign(target: FinishCardTarget, place: string, invoker?: HTMLElement | null): {
+		readonly ok: boolean; readonly message?: string;
+	};
+	requestLibrarySwap(target: FinishCardTarget, place: string): boolean;
+	runIssueAction(issue: AppearanceIssue, kind: AppearanceIssueActionKind, target: FinishCardTarget, file?: File): Promise<boolean>;
+};
+
 export type StageAdapterServices = {
 	readonly stage: StageAdapterPort;
 	/** The route session's content-addressed material proofs. */
@@ -97,12 +115,8 @@ export type StageAdapterServices = {
 	 * Absent in tests and hosts that offer no Studio, so the Card simply omits it.
 	 */
 	readonly objectStudio?: StageObjectStudio;
-	/**
-	 * The route's Finish service, filled once the route has built it. A port keeps
-	 * the service and the adapter epoch from depending on each other's creation
-	 * order; the Card reads `current` at render time.
-	 */
-	readonly finishes?: { readonly current: FinishAuthoring | null };
+	/** Lazy because the adapter services bind the admitted epoch to the Card. */
+	readonly finishCard?: { readonly current: StageFinishCardPort | null };
 };
 
 export type StageAdapterFactory = (services: StageAdapterServices) => StageAdapter;
@@ -163,7 +177,7 @@ export type StagePostureLayer = {
 export function createStageAdapterServices(
 	stage: StageFacade,
 	host: StageAcceptanceHost,
-	finishes?: () => FinishAuthoring | null,
+	finishCard?: () => StageFinishCardPort | null,
 	materialProofs?: import('$lib/authoring/material-proof').MaterialProofRegistry,
 	targetSources?: StageTargetSources
 ): StageAdapterServices {
@@ -195,9 +209,9 @@ export function createStageAdapterServices(
 			},
 			...(targetSources?.models === undefined ? {} : { models: targetSources.models })
 		}),
-		finishes: {
+		finishCard: {
 			get current() {
-				return finishes?.() ?? null;
+				return finishCard?.() ?? null;
 			}
 		},
 		authoring: {
@@ -212,7 +226,7 @@ export function mountStageAdapter(
 	stage: StageFacade,
 	host: StageAcceptanceHost,
 	factory: StageAdapterFactory,
-	finishes?: () => FinishAuthoring | null,
+	finishCard?: () => StageFinishCardPort | null,
 	/**
 	 * The epoch's one services value, when the caller already composed it (the
 	 * route fills `lightInspection` there). A fresh value is only for a direct
@@ -223,6 +237,6 @@ export function mountStageAdapter(
 	targetSources?: StageTargetSources
 ): StageAdapterRegistration {
 	return stage.registerStageAdapter(
-		factory(services ?? createStageAdapterServices(stage, host, finishes, undefined, targetSources))
+		factory(services ?? createStageAdapterServices(stage, host, finishCard, undefined, targetSources))
 	);
 }

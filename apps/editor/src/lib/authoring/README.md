@@ -10,7 +10,8 @@ The spatial route composes the Stage, its adapters and the Experience authoring 
 - `camera/`, `layout/` and `scene/` contain editor-side authoring logic for their
   respective domains; shared domain semantics belong in the corresponding packages.
 - `f4/` owns editor acceptance and history; authored edits pass through that authority.
-- `studio/` is Object Studio: a session-only posture over the same Stage, Camera, selection, history
+- `studio/` is Object Studio, an independent feature (`studio/studio-feature.svelte.ts`) that the
+  World workspace mounts. It is a session-only posture over the same Stage, Camera, selection, history
   and Save. It owns no source, Camera, history or document and serializes nothing. Entry is
   `…/spatial?entry=studio&object=<id>` (`lib/platform/studio-entry.ts`, import-free so `/`, `/projects`
   and `/studio` stay Three-free). Rules that hold for every Studio change:

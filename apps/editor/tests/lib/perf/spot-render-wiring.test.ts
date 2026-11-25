@@ -5,7 +5,40 @@ import { perfMark, perfRenderer } from '$lib/platform/perf-marks';
 import { openTiming } from '../../../perf/lib/spot-measurement';
 import type { Page } from '@playwright/test';
 
-afterEach(() => { vi.unstubAllGlobals(); });
+afterEach(() => {
+	vi.unstubAllGlobals();
+	const target = window as unknown as Window & Record<string, unknown>;
+	delete target.__BISKIQ_PERF__;
+	delete target.__BISKIQ_PERF_RECORDS__;
+	delete target.__BISKIQ_PERF_TICKS__;
+	delete target.__BISKIQ_PERF_RENDER_FRAMES__;
+	delete target.__BISKIQ_PERF_LONG_TASKS__;
+	delete target.__BISKIQ_PERF_EVENTS__;
+});
+
+it('accepts a WebGPU config-only shadow map and a product frame wrapper without recursing', () => {
+	vi.stubGlobal('requestAnimationFrame', () => 1);
+	perfInitScript({});
+	const base = vi.fn();
+	const renderer: { render: (...args: unknown[]) => unknown; shadowMap: { enabled: boolean; transmitted: boolean; type: number };
+		info: { render: { calls: number; triangles: number }; memory: { geometries: number; textures: number }; programs: unknown[] };
+		getContext: () => { getExtension: () => null }; properties: { get: () => object } } = {
+		render: base,
+		// Three r187's WebGPURenderer shape: config only, no render hook.
+		shadowMap: { enabled: false, transmitted: false, type: 1 },
+		info: { render: { calls: 1, triangles: 12 }, memory: { geometries: 1, textures: 0 }, programs: [] },
+		getContext: () => ({ getExtension: () => null }),
+		properties: { get: () => ({}) }
+	};
+	perfRenderer(renderer, 'stage');
+	// The product's countSurfaceFrames wrapper captures and re-enters the hook.
+	const counted = renderer.render.bind(renderer);
+	renderer.render = () => counted();
+	renderer.render();
+	const frames = (window as Window & { __BISKIQ_PERF_RENDER_FRAMES__?: RenderFrame[] }).__BISKIQ_PERF_RENDER_FRAMES__;
+	expect(frames).toHaveLength(1);
+	expect(base).toHaveBeenCalledTimes(1);
+});
 
 it('observes only real render calls and pairs open with the submitted source and later frame clock', async () => {
 	const callbacks: FrameRequestCallback[] = [];

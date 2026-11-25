@@ -21,28 +21,24 @@ import { planFragmentOf, type PlanEvaluation } from '@portfolio/layout-core';
 import { planSourceKindOf } from './plan-source-kind';
 import type { StageCardActionRecord, StageFacade, StageSourceHit } from '../stage-facade';
 import type { StageSelection, StageSession, StageTask } from '../stage-session';
-import { primaryEntry, type StageSelectionEntry } from '../semantic-selection';
+import { primaryEntry, sameReference, type StageSelectionEntry } from '../semantic-selection';
 import {
 	STAGE_ERASER_TASK
 } from '../stage-eraser';
 import { STAGE_PAINT_TASK } from '../stage-painter';
 import { STAGE_MEASURE_TASK } from '../stage-measure';
-import { armedLightKind } from '$lib/authoring/look/light-tool.svelte';
 import type { WorldToolId } from '$lib/authoring/world-toolbar/registry';
 import type { ExperienceController } from '$lib/authoring/experience/experience-controller.svelte';
 import type { ExperienceLens } from '$lib/authoring/experience/experience-lens.svelte';
-import type { ExperienceSubject } from '$lib/authoring/experience/experience-model';
 import {
 	STAGE_HOST_ADAPTER_ID,
 	type StageDockKey
 } from '../stage-contributions';
 import type { StageDockSlot } from '../stage-input';
-import { sliceReading } from '../slice/slice-reading.svelte';
 import type { StageShellState } from './stage-shell-state.svelte';
 import type { StageHeadFindEntry } from './stage-contribution-view';
 import { stageArmedDockId } from './stage-contribution-view';
 import type { WorldScope } from '../shell/world-index-model';
-import { isStudioWorldTool } from '../../studio/studio-model';
 
 export type StageShellCommandInput = {
 	readonly facade: () => StageFacade | null;
@@ -51,9 +47,7 @@ export type StageShellCommandInput = {
 	readonly shell: StageShellState;
 	readonly selection: () => StageSelectionEntry | null;
 	readonly setSelection: (entry: StageSelectionEntry | null) => void;
-	readonly focus: {
-		select(subject: ExperienceSubject | null): void;
-	};
+	readonly clearExperienceFocus: () => void;
 	readonly experience: {
 		readonly lens: ExperienceLens;
 		readonly active: () => ExperienceController | null;
@@ -75,7 +69,9 @@ export type StageShellCommandInput = {
 	};
 	readonly showExperienceWelcome: () => void;
 	/** End a drawn gesture when Slice is re-armed as Level. */
-	readonly disarmSliceDraw?: () => void;
+	readonly levelSlice: () => void;
+	readonly lightArmed: (projectId: string) => boolean;
+	readonly isStudioTool: (id: WorldToolId) => boolean;
 	/**
 	 * Object Studio scopes the tools to Select, Measure, Eraser and Objects. Read live:
 	 * a refused arm says so in words and changes nothing, so a shortcut cannot reach a
@@ -142,7 +138,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 		const key = keyOf(next);
 		input.setSelection(next);
 		if (key !== '' && key !== previous) {
-			input.focus.select(null);
+			input.clearExperienceFocus();
 			shell.setCardOpen(true);
 		}
 	}
@@ -169,7 +165,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 		if (hit.reference !== undefined) {
 			stage.setSelection({ ordered: [{ reference: hit.reference }], primary: hit.reference });
 			input.setSelection(primaryEntry(stage.selectionState()));
-			input.focus.select(null);
+			input.clearExperienceFocus();
 			shell.setCardOpen(true);
 			return;
 		}
@@ -187,7 +183,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 		};
 		stage.select(selected);
 		input.setSelection(primaryEntry(stage.selectionState()));
-		input.focus.select(null);
+		input.clearExperienceFocus();
 		shell.setCardOpen(true);
 	}
 
@@ -204,7 +200,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 			});
 			if (change.kind === 'selected') {
 				input.setSelection(primaryEntry(stage.selectionState()));
-				input.focus.select(null);
+				input.clearExperienceFocus();
 				shell.setCardOpen(true);
 				return;
 			}
@@ -221,7 +217,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 			ref: fragment.ref
 		});
 		input.setSelection(primaryEntry(stage.selectionState()));
-		input.focus.select(null);
+		input.clearExperienceFocus();
 		shell.setCardOpen(true);
 	}
 
@@ -237,7 +233,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 				primary: subject.reference
 			});
 			input.setSelection(primaryEntry(stage.selectionState()));
-			input.focus.select(null);
+			input.clearExperienceFocus();
 			return;
 		}
 		const layoutId = sourceId.startsWith('layout:')
@@ -252,7 +248,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 			ref: fragment.ref
 		});
 		input.setSelection(primaryEntry(stage.selectionState()));
-		input.focus.select(null);
+		input.clearExperienceFocus();
 	}
 
 	/** Stage-select a subject from an Experience Card link. */
@@ -262,7 +258,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 		const change = stage.setSelection({ ordered: [{ reference }], primary: reference });
 		if (change.kind === 'refused') return;
 		input.setSelection(primaryEntry(stage.selectionState()));
-		input.focus.select(null);
+		input.clearExperienceFocus();
 		shell.setCardOpen(true);
 	}
 
@@ -270,11 +266,21 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 	function closeSelection(): void {
 		input.facade()?.select(null);
 		input.setSelection(null);
-		input.focus.select(null);
+		input.clearExperienceFocus();
 		shell.setCardOpen(true);
 	}
 
 	/** The Card is an overlay: hiding it is not a selection change. */
+	function openSpaceCreated(reference: Parameters<typeof sameReference>[0]): void {
+		const stage = input.facade();
+		if (stage === null) return;
+		const selected = primaryEntry(stage.selectionState());
+		if (selected === null || !sameReference(selected.reference, reference)) return;
+		armWorldTool('select');
+		syncPrimarySelection(selected);
+		shell.requestCardRename(reference);
+	}
+
 	function closeCard(): void {
 		shell.setCardOpen(false);
 	}
@@ -415,8 +421,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 			shell.setLibraryOpen(false);
 			shell.setActiveWorldTool('slice');
 			shell.setPaletteOpen(false);
-			input.disarmSliceDraw?.();
-			sliceReading.level();
+			input.levelSlice();
 			input.notice('');
 			return;
 		}
@@ -453,7 +458,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 
 	/** The Living Draft row's one bridge into the existing dock/host controllers. */
 	function armWorldTool(id: WorldToolId): void {
-		if (studioRefuses(isStudioWorldTool(id))) return;
+		if (studioRefuses(input.isStudioTool(id))) return;
 		// One tool strip at a time: any tool press folds Furnish's quick strip.
 		shell.setFurnishStripOpen(false);
 		input.cancelArtwork();
@@ -522,8 +527,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 			closeTask();
 			shell.setActiveWorldTool('slice');
 			shell.setPaletteOpen(false);
-			input.disarmSliceDraw?.();
-			sliceReading.level();
+			input.levelSlice();
 			input.notice('');
 			return;
 		}
@@ -657,7 +661,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 		// The light arm is session fact in the adapter: it survives the install's
 		// task close, and is already cleared when a glyph selects and disarms.
 		const lightProjectId = stage.snapshot().acceptedRevision.projectId;
-		if (armed === null && armedLightKind(lightProjectId) !== null) {
+		if (armed === null && input.lightArmed(lightProjectId)) {
 			const lightTask = stage
 				.tasks()
 				.find((entry) => entry.id === 'light-place' && entry.adapterId === 'light');
@@ -838,6 +842,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 
 	return {
 		syncPrimarySelection,
+		openSpaceCreated,
 		selectHit,
 		selectUnfoldedSubject,
 		selectSource,

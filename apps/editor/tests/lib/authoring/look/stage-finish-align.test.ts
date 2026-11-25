@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { mount, tick, unmount } from 'svelte';
+import { mount, tick, unmount, type ComponentProps } from 'svelte';
+import { createSubscriber } from 'svelte/reactivity';
+import AppearanceWorldRegions from '$lib/authoring/look/AppearanceWorldRegions.svelte';
 import StageFinishAlign from '$lib/authoring/stage/shell/StageFinishAlign.svelte';
 import { floorChart } from '$lib/authoring/look/align-chart';
 
@@ -21,36 +23,42 @@ function pointer(type: string, x: number, y: number): Event {
 }
 
 describe('Align gesture cancellation', () => {
-	it.each(['pointercancel', 'lostpointercapture', 'blur', 'Escape', 'unmount'])(
+	it.each(['pointercancel', 'lostpointercapture', 'blur', 'Escape', 'unmount', 'withdrawn contribution'])(
 		'discards a preview on %s without committing',
 		async (reason) => {
 			const preview = vi.fn();
 			const cancel = vi.fn();
 			const commit = vi.fn();
-			mounted = mount(StageFinishAlign, {
-				target: document.body,
-				props: {
-					align: {
-						target: { kind: 'surface', surface: { kind: 'room-floor', roomId: 'r' } },
-						surface: 'floor',
-						place: 'Floor',
-						widthMeters: 4,
-						heightMeters: 3,
-						invoker: null,
-						chart: floorChart({ floorY: 0, minX: 0, maxX: 4, minZ: 0, maxZ: 3 }),
-						corners: [[0, 0, 0], [4, 0, 0], [4, 0, -3], [0, 0, -3]],
-						toward: [0, 1, 0],
-						occluders: []
-					},
-					project: planProject,
-					source: { base: { catalogue: 'wood-oak-veneer' } },
-					recipes: new Map(),
-					onMaterialPreview: preview,
-					onCancelPreview: cancel,
-					onCommit: commit,
-					onPutBack: vi.fn()
-				}
-			});
+			const props: ComponentProps<typeof StageFinishAlign> = {
+				align: {
+					target: { kind: 'surface', surface: { kind: 'room-floor', roomId: 'r' } },
+					surface: 'floor',
+					place: 'Floor',
+					widthMeters: 4,
+					heightMeters: 3,
+					invoker: null,
+					chart: floorChart({ floorY: 0, minX: 0, maxX: 4, minZ: 0, maxZ: 3 }),
+					corners: [[0, 0, 0], [4, 0, 0], [4, 0, -3], [0, 0, -3]],
+					toward: [0, 1, 0],
+					occluders: []
+				},
+				project: planProject,
+				source: { base: { catalogue: 'wood-oak-veneer' } },
+				recipes: new Map(),
+				onMaterialPreview: preview,
+				onCancelPreview: cancel,
+				onCommit: commit,
+				onPutBack: vi.fn()
+			};
+			let align: typeof props | null = props;
+			let invalidate: () => void;
+			const subscribe = createSubscriber((update) => { invalidate = update; });
+			mounted = reason === 'withdrawn contribution'
+				? mount(AppearanceWorldRegions, {
+					target: document.body,
+					props: { get align() { subscribe(); return align; } }
+				})
+				: mount(StageFinishAlign, { target: document.body, props });
 			await tick();
 			const handle = document.querySelector('[data-align-handle-offset]')!;
 			Object.defineProperty(handle, 'setPointerCapture', { value: vi.fn() });
@@ -61,7 +69,12 @@ describe('Align gesture cancellation', () => {
 			if (reason === 'blur') window.dispatchEvent(new Event('blur'));
 			else if (reason === 'Escape') window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
 			else if (reason === 'unmount') { unmount(mounted); mounted = null; }
-			else handle.dispatchEvent(pointer(reason, 140, 100));
+			else if (reason === 'withdrawn contribution') {
+				align = null;
+				invalidate!();
+				await tick();
+				expect(document.querySelector('[data-finish-align]')).toBeNull();
+			} else handle.dispatchEvent(pointer(reason, 140, 100));
 			handle.dispatchEvent(pointer('pointerup', 140, 100));
 			expect(cancel).toHaveBeenCalled();
 			expect(commit).not.toHaveBeenCalled();

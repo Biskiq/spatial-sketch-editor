@@ -77,11 +77,15 @@ describe('the face ray — artwork placement aims at what is drawn', () => {
 		dispose();
 	});
 
-	it('is the predicate the route gives artwork placement', () => {
+	it('is the predicate the Artwork owner gives placement', () => {
 		const route = readFileSync(
-			path.join(process.cwd(), 'src/routes/project/[projectId]/spatial/+page.svelte'),
+			path.join(process.cwd(), 'src/lib/authoring/workspace/host/workspace-host.svelte.ts'),
 			'utf8'
 		);
-		expect(route).toContain('pickVisibleFace: pickVisibleFaceThroughSlice(scenePick, () => resolvedSlice)');
+		const host = readFileSync(path.join(process.cwd(), 'src/lib/authoring/artwork/artwork-host.svelte.ts'), 'utf8');
+		const entry = readFileSync(path.join(process.cwd(), 'src/lib/authoring/artwork/artwork-feature.svelte.ts'), 'utf8');
+		expect(route).toContain('resolvedSlice: () => readings.ports.resolvedSlice()');
+		expect(host).toContain('pickVisibleFace: pickVisibleFaceThroughSlice(input.scenePick, input.resolvedSlice)');
+		expect(entry).toContain('pickVisibleFace: host.pickVisibleFace');
 	});
 });

@@ -772,3 +772,60 @@ evidence of a regression from E12's comment and documentation commits.
 
 **Owner ruling (E12 close-out):** the E12 result stays unmeasured. There are no further `perf:spot`
 runs for E12. Diagnosing the 300 s accepted-result timeout is deferred to a focused follow-up PR.
+
+## X9 — integration ownership recovery M/L checkpoint
+
+**Date:** 2026-11-25. **Measured head:** `02042285d` (29 commits from base `41814cd91`); the only later commit records this closeout.
+
+One `SPOT_REQUIRE_VERIFIED=1 npm run perf:spot` per revision, from clean committed trees, against
+`npm run preview` on `http://127.0.0.1:4173`, in branded Chrome 158.0.8127.88 on the same Apple M2.
+The head run used the corrected WebGPU harness at `02042285d`. The base run grafted that same
+harness onto the base production tree as the temporary commit `fb3d4c4d` (production files
+byte-identical to `41814cd91`; the graft was not merged). Both reports are `verified`: runner and
+preview revisions match, and the runner tree is clean. Workload digests match across revisions
+(`grid-M` `sha256-cce80f…`, `grid-L` `sha256-e57f28…`); each tier ran one session with four drag
+and four pan samples. No run was retried.
+
+Editor time and presentation are separate columns. Values are milliseconds; medians are over the
+session's samples, with the preserved maximum in parentheses where the harness reports one.
+
+| Interaction | M base | M head | Δ | L base | L head | Δ |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Open, editor through render | 231.8 | 220.7 | −4.8% | 572.2 | 549.2 | −4.0% |
+| Open, presented | 251.6 | 237.0 | −5.8% | 575.2 | 558.6 | −2.9% |
+| Drag, editor median (max) | 1.45 (3.4) | 1.75 (3.7) | +20.7% | 3.30 (6.6) | 3.30 (7.1) | 0% |
+| Drag, presented median (max) | 15.65 (16.2) | 15.20 (16.2) | −2.9% | 15.65 (15.7) | 15.30 (15.4) | −2.2% |
+| Pan, editor median | 0.94 | 0.88 | −6.1% | 1.25 | 1.01 | −19.4% |
+| Pan, presented median | 15.50 | 15.50 | 0% | 15.85 | 15.80 | −0.3% |
+| Typed Length commit, editor | 23.1 | 23.1 | 0% | 82.2 | 87.5 | +6.4% |
+| Typed Length commit, presented | 84.6 | 85.7 | +1.3% | 284.6 | 283.9 | −0.2% |
+| Pick, before / after | 5.6 / 2.5 | 6.1 / 2.7 | +8.9% / +8.0% | 15.2 / 6.0 | 15.6 / 6.3 | +2.6% / +5.0% |
+| Undo, editor | not required | not required | — | 71.6 | 72.8 | +1.7% |
+| Frame interval, median | 16.7 | 16.7 | 0% | 16.7 | 16.7 | 0% |
+
+**Relative gate (§9).** Every M presentation median is flat or lower, and the typed Length editor
+time is identical. The one M median above +10% is the drag editor window: 1.45 → 1.75 ms
+(+0.30 ms), which is 1.8% of a 16.7 ms frame. Across the spot runs recorded on this branch that median ranged 1.35–1.75 ms and its first sample was 3.4–3.8 ms in every run, so the
+shift is sampling noise rather than a demonstrated material regression. The head run also sampled
+under the heavier one-minute load (7.24 vs 4.84). No L interaction regressed above 10%; every L
+interaction completed correctly (4/4 drag and pan samples, `supersededFraction=0`, the typed Length
+accepted, Undo installed, no failures, exit 0). The gate passes; no stop condition was triggered.
+
+Both absolute labels remain `not-smooth` (M) and `not-usable` (L) at both revisions. They are
+threshold misses, not incomplete samples, and were not used for the gate.
+
+**Commit-presentation debt.** The commit-presentation endpoint is unchanged by X9: M 84.6 →
+85.7 ms (+1.3%, limit 41.6 ms) and L 284.6 → 283.9 ms (−0.2%, limit 200 ms). The head trace
+attributes the wait to the product's main-thread pipeline (71.0 ms and 269.0 ms long tasks across
+acceptance and source preparation, with no Stage frame between `accepted-result` and the first
+frame that draws the new geometry), not to harness tagging. The latency predates the change and is
+recorded as performance debt; pipeline optimization is not part of this pull request.
+
+The other §9 evidence is unchanged and green: eager spatial closure 1,438.264 KiB gzip at 74 files
+(+0.67% from 1,428.718), lazy closure 133.524 KiB (+0.002%), first-load and publication exclusions
+pass; five lens switches measured a 4.7 → 4.5 ms median update; browser parity at 1280 × 800 and
+1024 × 768; and CI on `02042285d` passed merge gate, guards, Linux, editor, package, API, fast,
+architecture, heavy, check and build jobs.
+
+The temporary integration ownership plan is deleted; this section and the pull request carry the
+acceptance record.

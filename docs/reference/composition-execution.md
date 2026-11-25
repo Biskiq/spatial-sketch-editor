@@ -581,12 +581,29 @@ One persistent Threlte Canvas/Stage serves all readings and lenses; renderer Cam
 realize evaluated output only. Editor mounting contracts stay editor-only and must not pull
 selection/history/runes/DOM into shared packages.
 
-### Route as composition root
+### Workspace host and feature modules
 
-The spatial route mounts the Stage, constructs controllers, routes raw DOM events in one fixed
-order and renders shell slots. A new posture or capability adds a module and a wiring line, not
-route branches; no line budget applies. The fixed order is pinch/second pointer → active posture
-layer → adapter intents → navigation, so a posture claims a gesture before adapters see it.
+The spatial route creates one workspace host and mounts one `WorkspaceHost`. The Stage session
+owns the reactive lens and its refusal-capable writer. The shell and Experience binding observe
+that same lens. The Head requests the ordered lifecycle transition. Contextual Show commands use
+the Experience binding for the underlying transition. Preview is constructed once and its
+operations are read lazily by callbacks that run after construction.
+
+An integration feature has one entry, cohesive sub-owners and its region components. It owns its
+state, effects and presentation getters. The shared lifecycle runner and keyboard arbiter own
+cross-feature ordering. Region assembly preserves live getters and combines explicitly ordered
+list contributions. A region may read several owners to assemble a shared view. Those reads
+belong to the region or its presenter.
+
+Admitting a feature uses declared lifecycle steps, ordered Escape rungs, region keys and
+explicit construction ports. The registration points are
+`workspace/lifecycle-order.ts`, `workspace/escape-ladder.ts`, `workspace/region-ownership.ts`
+and the feature manifest. The architecture lane runs the integration ownership and earlier
+boundary suites together.
+
+The fixed input order is unchanged: pinch/second pointer → active posture layer → adapter intents →
+navigation, so a posture claims a gesture before adapters see it. Escape precedence is the data
+table in `workspace/escape-ladder.ts`, not a second list of keyboard branches.
 
 ### Posture layer
 
