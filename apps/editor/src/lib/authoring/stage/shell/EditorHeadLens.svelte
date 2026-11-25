@@ -21,22 +21,20 @@
 	const tabIndex = (index: number, selected: number) => (index === selected ? 0 : -1);
 </script>
 
-<div class="lens" role="group" aria-label="Product lens">
-	{#each entries as entry, index (entry.id)}
-		<button
-			type="button"
-			class="lens-button"
-			class:active={lens === entry.id}
-			aria-pressed={lens === entry.id}
-			tabindex={tabIndex(index, selectedIndex)}
-			use:buttonRef
-			onclick={() => onLens(entry.id)}
-			onkeydown={(event) => onKeydown(event, index)}
-		>
-			{entry.label}
-		</button>
-	{/each}
-</div>
+{#each entries as entry, index (entry.id)}
+	<button
+		type="button"
+		class="lens-button"
+		class:active={lens === entry.id}
+		aria-pressed={lens === entry.id}
+		tabindex={tabIndex(index, selectedIndex)}
+		use:buttonRef
+		onclick={() => onLens(entry.id)}
+		onkeydown={(event) => onKeydown(event, index)}
+	>
+		{entry.label}
+	</button>
+{/each}
 
 <style>
 	button {
@@ -55,14 +53,6 @@
 	}
 	button:hover {
 		background: var(--shell-hover);
-	}
-	.lens {
-		display: flex;
-		flex: none;
-		gap: 0;
-		padding: 2px;
-		background: rgb(0 0 0 / 0.25);
-		border-radius: 8px;
 	}
 	.lens-button {
 		height: 26px;
@@ -84,9 +74,6 @@
 		button {
 			min-width: 44px;
 			min-height: 44px;
-		}
-		.lens {
-			padding: 0;
 		}
 	}
 </style>

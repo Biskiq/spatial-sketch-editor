@@ -176,6 +176,11 @@
       "reason": "The World toolbar root: plate, dock and mode rows share one lens, one selection and one command surface."
     },
     {
+      "path": "apps/editor/src/lib/authoring/stage/shell/EditorHead.svelte",
+      "lines": 793,
+      "reason": "The Head root: project, lens, Find, history and Save share one row and one disclosure state."
+    },
+    {
       "path": "apps/editor/src/lib/authoring/stage/stage-handles.ts",
       "lines": 789,
       "reason": "The Stage mark vocabulary: descriptors, admission and projected hit areas share one mark contract."
@@ -189,11 +194,6 @@
       "path": "packages/project-model/src/scene-codec/parse-document.ts",
       "lines": 782,
       "reason": "One Scene document parser: the field walk, reference resolution and refusal order are the codec contract."
-    },
-    {
-      "path": "apps/editor/src/lib/authoring/stage/shell/EditorHead.svelte",
-      "lines": 780,
-      "reason": "The Head root: project, lens, Find, history and Save share one row and one disclosure state."
     },
     {
       "path": "apps/editor/src/lib/authoring/stage/shell/StageSliceLayer.svelte",

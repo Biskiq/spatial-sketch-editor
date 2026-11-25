@@ -207,13 +207,13 @@
     "arrows": 25
   },
   "src/lib/authoring/stage/shell/EditorHead.svelte": {
-    "lines": 1111,
-    "imports": 9,
-    "state": 6,
+    "lines": 794,
+    "imports": 12,
+    "state": 5,
     "derived": 9,
     "effects": 1,
     "functions": 14,
-    "arrows": 53
+    "arrows": 48
   },
   "src/lib/authoring/stage/shell/StageToolbars.svelte": {
     "lines": 553,

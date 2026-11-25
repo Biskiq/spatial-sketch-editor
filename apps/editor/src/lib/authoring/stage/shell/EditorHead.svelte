@@ -415,14 +415,16 @@
 		<EditorHeadLocation label={locationLabel} onOpen={onOpenIndex} />
 	{/if}
 
-	<EditorHeadLens
-		entries={LENSES}
-		{lens}
-		selectedIndex={selectedLensIndex}
-		{onLens}
-		onKeydown={onLensKeydown}
-		buttonRef={lensButtonRef}
-	/>
+	<div class="lens" role="group" aria-label="Product lens">
+		<EditorHeadLens
+			entries={LENSES}
+			{lens}
+			selectedIndex={selectedLensIndex}
+			{onLens}
+			onKeydown={onLensKeydown}
+			buttonRef={lensButtonRef}
+		/>
+	</div>
 
 	<div class="actions">
 		{#if find !== null}
@@ -646,6 +648,14 @@
 	.brand-word {
 		white-space: nowrap;
 	}
+	.lens {
+		display: flex;
+		flex: none;
+		gap: 0;
+		padding: 2px;
+		background: rgb(0 0 0 / 0.25);
+		border-radius: 8px;
+	}
 	.actions {
 		order: 2;
 		display: flex;
@@ -745,6 +755,9 @@
 		.action:not(.primary) {
 			min-width: 44px;
 			min-height: 44px;
+		}
+		.lens {
+			padding: 0;
 		}
 	}
 	.head-repair-pill {
