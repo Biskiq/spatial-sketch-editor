@@ -1,9 +1,9 @@
 {
-  "generatedFrom": "LOC-0 baseline; shrink-only from here",
+  "generatedFrom": "LOC-8; shrink-only from here",
   "counts": {
-    "filesOver600": 107,
-    "filesOver1000": 24,
-    "filesOver1500": 8,
+    "filesOver600": 105,
+    "filesOver1000": 20,
+    "filesOver1500": 4,
     "functionsOver200": 73,
     "exportStars": 0,
     "crossPackageReexports": 0,
@@ -31,28 +31,8 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
-      "path": "apps/editor/src/lib/authoring/adapters/layout/precision.ts",
-      "lines": 1814,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
-      "path": "apps/editor/src/lib/authoring/adapters/layout/layout-contributions.ts",
-      "lines": 1705,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
-      "path": "apps/editor/src/lib/authoring/adapters/scene/placement.ts",
-      "lines": 1652,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
-      "path": "apps/editor/src/lib/authoring/adapters/layout/ink-session.ts",
-      "lines": 1579,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
       "path": "apps/editor/src/lib/authoring/adapters/layout/wall-gesture-session.ts",
-      "lines": 1398,
+      "lines": 1390,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -131,6 +111,11 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
+      "path": "apps/editor/src/lib/authoring/adapters/layout/ink-session.ts",
+      "lines": 985,
+      "reason": "One Ink pointer/chain state machine: press, drag, Circle and Box drafts share the live lease, capture and proposal, so the remaining orchestration stays cohesive."
+    },
+    {
       "path": "packages/project-model/src/materials/catalogue.ts",
       "lines": 982,
       "reason": "One frozen shipped-material catalogue: ids, images and legacy aliases are one data table and must stay in one read order."
@@ -141,8 +126,13 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
+      "path": "apps/editor/src/lib/authoring/adapters/scene/scene-session.ts",
+      "lines": 954,
+      "reason": "One Scene gesture state machine: mode, lease, candidate and accepted install share one cancel/commit path; reads and accept intents live in separate sub-owners."
+    },
+    {
       "path": "apps/editor/src/lib/authoring/adapters/layout/curve-gesture-session.ts",
-      "lines": 956,
+      "lines": 949,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -316,13 +306,13 @@
       "reason": "One project lifecycle: rename, delete, cleanup and their preconditions share the same project-write lease rules."
     },
     {
-      "path": "apps/editor/src/lib/authoring/adapters/layout/opening-placement-session.ts",
+      "path": "apps/editor/src/lib/layout/wall-unfold.ts",
       "lines": 737,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
-      "path": "apps/editor/src/lib/layout/wall-unfold.ts",
-      "lines": 737,
+      "path": "apps/editor/src/lib/authoring/adapters/layout/opening-placement-session.ts",
+      "lines": 734,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -371,18 +361,18 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
-      "path": "apps/editor/src/lib/authoring/adapters/layout/opening-gesture-session.ts",
-      "lines": 699,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
       "path": "apps/editor/src/lib/authoring/stage/shell/StageCanvas.svelte",
       "lines": 698,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
       "path": "apps/editor/src/lib/authoring/adapters/layout/junction-gesture-session.ts",
-      "lines": 694,
+      "lines": 695,
+      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+    },
+    {
+      "path": "apps/editor/src/lib/authoring/adapters/layout/opening-gesture-session.ts",
+      "lines": 693,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -431,11 +421,6 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
-      "path": "apps/editor/src/lib/authoring/adapters/layout/instrument.ts",
-      "lines": 656,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
       "path": "packages/layout-core/src/room/space-create.ts",
       "lines": 655,
       "reason": "One space-creation outline: cycle screening, evidence and refusal share one anchor/span walk."
@@ -461,13 +446,18 @@
       "reason": "One compiled-geometry type vocabulary; the types must stay together so no consumer imports half a contract."
     },
     {
+      "path": "apps/editor/src/lib/authoring/adapters/layout/instrument.ts",
+      "lines": 642,
+      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+    },
+    {
       "path": "apps/editor/src/lib/authoring/adapters/layout/room-gesture-session.ts",
       "lines": 640,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
       "path": "apps/editor/src/lib/authoring/adapters/layout.adapter.ts",
-      "lines": 638,
+      "lines": 639,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -620,7 +610,7 @@
     {
       "file": "apps/editor/src/lib/authoring/adapters/layout/opening-placement-session.ts",
       "name": "createOpeningPlacementSession",
-      "line": 119,
+      "line": 116,
       "lines": 619,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
@@ -641,7 +631,7 @@
     {
       "file": "apps/editor/src/lib/authoring/adapters/layout.adapter.ts",
       "name": "createAdapter",
-      "line": 62,
+      "line": 63,
       "lines": 577,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
@@ -690,7 +680,7 @@
     {
       "file": "apps/editor/src/lib/authoring/adapters/layout/instrument.ts",
       "name": "createLayoutInstrument",
-      "line": 176,
+      "line": 162,
       "lines": 481,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },

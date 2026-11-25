@@ -11,13 +11,10 @@
 import { describe, expect, it } from 'vitest';
 import { createEmptyWallFirstLayoutDocument, planBendWallCurveKnot, planWallChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 
-import {
-	LAYOUT_WALL_BEND_KIND,
-	createLayoutPlanners,
-	curvedWallFrame,
-	curvedWallPointAt,
-	wallBendIntent
-} from '$lib/authoring/adapters/layout/precision';
+import { curvedWallFrame, curvedWallPointAt } from '$lib/authoring/adapters/layout/precision-frames';
+import { createLayoutPlanners } from '$lib/authoring/adapters/layout/precision-planners';
+import { LAYOUT_WALL_BEND_KIND } from '$lib/authoring/adapters/layout/precision';
+import { wallBendIntent } from '$lib/authoring/adapters/layout/precision-intents';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 
 function straightWall(): { document: LayoutDocumentWallFirst; wallId: string } {

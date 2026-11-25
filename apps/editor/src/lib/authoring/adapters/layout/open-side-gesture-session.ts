@@ -50,7 +50,7 @@ import {
 import { pointerDatumPoint } from './stage-pointer';
 import { candidatePreviewOf } from './candidate-preview';
 import { resolvePlanarDragSnap, type LayoutSnapWinner } from './snap';
-import { wallStationFrame, type WallStationFrame } from './precision';
+import { wallStationFrame, type WallStationFrame } from './precision-frames';
 
 const MID_PREFIX = 'layout-open-side-mid|';
 const END_PREFIX = 'layout-open-side-end|';

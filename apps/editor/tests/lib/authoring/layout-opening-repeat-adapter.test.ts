@@ -33,7 +33,7 @@ import { mountStageAdapter, type StageAdapterServices } from '$lib/authoring/sta
 import { stageEnvelope } from '$lib/authoring/stage/unit-stage-source';
 import { createAdapter } from '$lib/authoring/adapters/layout.adapter';
 import { openingFacePaper } from '$lib/authoring/adapters/layout/candidate-preview';
-import { wallStationFrame } from '$lib/authoring/adapters/layout/precision';
+import { wallStationFrame } from '$lib/authoring/adapters/layout/precision-frames';
 import {
 	openingRepeatIntent,
 	previewOpeningRepeat

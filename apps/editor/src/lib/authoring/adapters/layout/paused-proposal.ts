@@ -15,7 +15,7 @@
 
 import type { FixedWallEndpoint } from '@portfolio/layout-core/wall';
 
-import type { WallManipulationRequest } from './precision';
+import type { WallManipulationRequest } from './precision-frames';
 
 export type PausedWallProposal = {
 	/** The accepted source the parameter was solved against. */

@@ -17,7 +17,7 @@ import {
 import { candidatePreviewOf } from './candidate-preview';
 import { layoutSubjectReference } from './drawing-planners';
 import { closestOnPolyline, INK_JUNCTION_HIT_CSS_PX, INK_WALL_HIT_CSS_PX, LAYOUT_INK_TASK, projectedWallPathCss, type RoomInkSnapshot } from './ink';
-import { openWallFrame, wallStationAtPoint } from './precision';
+import { openWallFrame, wallStationAtPoint } from './precision-frames';
 import type { LayoutSessionPorts } from './session-ports';
 import { resolveJunctionPointSnap } from './snap';
 import { spaceCreateIntent } from './space-create-planners';

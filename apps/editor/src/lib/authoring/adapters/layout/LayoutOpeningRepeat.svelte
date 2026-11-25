@@ -18,7 +18,7 @@ import { onDestroy, onMount } from 'svelte';
 import { mintLayoutIdCapture } from '@portfolio/layout-core/plan';
 import { stageLayout, type StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 import { parseExactNumber } from '$lib/authoring/layout/layout-exact-input';
-import { wallStationFrame } from './precision';
+import { wallStationFrame } from './precision-frames';
 import { previewOpeningRepeat, openingRepeatIntent, LAYOUT_OPENING_REPEAT_KIND } from './opening-repeat';
 import {
 	clearOpeningRepeatProposal,

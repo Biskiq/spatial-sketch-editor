@@ -30,7 +30,8 @@ import {
 	type ProjectEnvelope
 } from '@portfolio/project-model/units';
 
-import { layoutPlanner, registerLayoutSurfaceLineage, wallStationFrame } from './precision';
+import { wallStationFrame } from './precision-frames';
+import { layoutPlanner, registerLayoutSurfaceLineage } from './precision';
 import { layoutSubjectReference } from './drawing-planners';
 import { wallSplitRefusalWords } from './refusals';
 

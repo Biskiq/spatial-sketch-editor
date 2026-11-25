@@ -82,7 +82,7 @@ const STARTER_WALL_2 = layoutCapturedId(STARTER_TEMPLATE_ID_CAPTURE, 'wall-chain
 import { armedLightKind, armLight, clearArmedLight } from '$lib/authoring/look/light-tool.svelte';
 import { sliceReading } from '$lib/authoring/stage/slice/slice-reading.svelte';
 import { pausedWallProposal } from '$lib/authoring/adapters/layout/paused-proposal';
-import { wallStationFrame } from '$lib/authoring/adapters/layout/precision';
+import { wallStationFrame } from '$lib/authoring/adapters/layout/precision-frames';
 import { sceneEntityReference } from '$lib/authoring/adapters/scene/placement';
 import {
 	draftingSnapIncrementMeters,

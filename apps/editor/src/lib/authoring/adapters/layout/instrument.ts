@@ -33,24 +33,10 @@ import {
 	pausedWallProposal,
 	type PausedWallProposal
 } from './paused-proposal';
-import {
-	LAYOUT_ENTITY_NAME_KIND,
-	LAYOUT_OPENING_MEASURE_KIND,
-	LAYOUT_PLINTH_PLACE_KIND,
-	LAYOUT_WALL_HEIGHT_KIND,
-	LAYOUT_WALL_THICKNESS_KIND,
-	buildLayoutIntent,
-	isLayoutOpeningField,
-	layoutFacts,
-	layoutWritableFacts,
-	parseMeasureInput,
-	parsePlacementXZ,
-	wallFrame,
-	wallManipulationIntent,
-	type LayoutSubject,
-	type LayoutWritableFact,
-	type WallManipulationRequest
-} from './precision';
+import { wallFrame, type WallManipulationRequest } from './precision-frames';
+import { layoutFacts, layoutWritableFacts, type LayoutWritableFact } from './precision-facts';
+import { LAYOUT_ENTITY_NAME_KIND, LAYOUT_OPENING_MEASURE_KIND, LAYOUT_PLINTH_PLACE_KIND, LAYOUT_WALL_HEIGHT_KIND, LAYOUT_WALL_THICKNESS_KIND, buildLayoutIntent, isLayoutOpeningField, parseMeasureInput, parsePlacementXZ, type LayoutSubject } from './precision';
+import { wallManipulationIntent } from './precision-intents';
 import { wallRefusalWords } from './refusals';
 import { circleRadiusIntent } from './drawing-planners';
 

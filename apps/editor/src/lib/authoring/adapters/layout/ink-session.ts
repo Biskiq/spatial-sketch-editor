@@ -24,9 +24,8 @@
  * A refused acceptance leaves the chain editable with its capture kept for the
  * retry; a settled chain never donates its capture to the next one.
  */
-import { MIN_WALL_ARC_RISE, measureWallArc, type WallChainArc } from '@portfolio/layout-core/wall';
+import { type WallChainArc } from '@portfolio/layout-core/wall';
 import { mintLayoutIdCapture } from '@portfolio/layout-core/plan';
-import { planCreateCircularRoom, proposeCreateCircularWall } from '@portfolio/layout-core/room';
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 import {
@@ -42,7 +41,7 @@ import {
 	type StagePointerIntent
 } from '$lib/authoring/stage/stage-adapter-host';
 
-import { candidatePreviewOf, type CandidatePaperGeometry } from './candidate-preview';
+import { type CandidatePaperGeometry } from './candidate-preview';
 import {
 	EMPTY_CHAIN_DRAFT,
 	appendChainPoint,
@@ -52,35 +51,44 @@ import {
 	classifyTypedChainPoint,
 	closeChainDraft,
 	isDraftStart,
-	pendingLegFacts,
 	planChainDraft,
 	type ChainDraft,
 	type ChainDraftPoint,
 	type ChainPlanPreview
 } from './chain';
-import { circleRoomCreateIntent, wallChainCommitIntent } from './drawing-planners';
+import { wallChainCommitIntent } from './drawing-planners';
 import {
-	INK_JUNCTION_HIT_CSS_PX,
 	LAYOUT_INK_ENTRY,
 	LAYOUT_INK_TASK,
-	classifyInkPointerTarget,
-	pointOnWallCenterline,
 	publishInkSurface,
 	type InkController,
-	type InkPaletteReading,
-	type InkPaletteSnapshot,
 	type InkPointerTarget,
 	type InkWallMode
 } from './ink';
 import type { OpeningPlacementSession } from './opening-placement-session';
-import { openWallFrame, parsePlacementXZ } from './precision';
+import { parsePlacementXZ } from './precision';
 import type { LayoutSessionPorts } from './session-ports';
 import type { createSpaceCreateSession } from './space-create-session';
-import { resolveInkPointSnap, type LayoutSnapWinner } from './snap';
-import { pointerDatumPoint, projectedScene } from './stage-pointer';
+import { type LayoutSnapWinner } from './snap';
+import { pointerDatumPoint, } from './stage-pointer';
 import { createRegionInkSession } from './region-ink-session';
+import { createContributedInkReader } from './ink-contributed';
+import { previews as previewsOf } from './ink-previews';
+import { paletteReadings as paletteReadingsOf, snapshotForPalette as snapshotForPaletteOf } from './ink-palette';
+import { circleDraftPreview as circleDraftPreviewOf, planCircleDraft as planCircleDraftOf } from './ink-circle';
+import { inkTargetAt as inkTargetAtOf } from './ink-targeting';
+import { commitCircle as commitCircleOf } from './ink-circle-commit';
+import {
+	arcApexAt as arcApexAtOf,
+	boxAnchor as boxAnchorOf,
+	boxPreviewDraft as boxPreviewDraftOf,
+	circlePreviewPoints as circlePreviewPointsOf,
+	linePreviewBase as linePreviewBaseOf,
+	linePreviewDraft as linePreviewDraftOf,
+	planInkDraft as planInkDraftOf
+} from './ink-preview';
 
-const EMPTY_CANDIDATE_GEOMETRY: CandidatePaperGeometry = { polygons: [], segments: [] };
+const _EMPTY_CANDIDATE_GEOMETRY: CandidatePaperGeometry = { polygons: [], segments: [] };
 
 /** The Ink task as the binding drives it, across every reading it carries. */
 export type InkSession = {
@@ -118,6 +126,10 @@ export function createInkSession(
 	ports: Omit<LayoutSessionPorts, 'publish'> & { readonly opening: OpeningPlacementSession; readonly room: ReturnType<typeof createSpaceCreateSession> }
 ): InkSession {
 	const { services, document, levelId, presenter, memory, opening, room } = ports;
+	const contributed = createContributedInkReader({ services, readingId: () => memory.reading });
+	const contributedReading = contributed.reading;
+	const endContributedSession = contributed.end;
+	const ensureContributedSession = contributed.ensure;
 	/** V1c — the one Pen's Terrace and Flat Roof drawing, over Box/Line. */
 	const region = createRegionInkSession({
 		services,
@@ -129,15 +141,6 @@ export function createInkSession(
 		publish: () => publish(),
 		select: ports.select
 	});
-
-	/**
-	 * The contributed reading this binding is carrying, if any. Ink stays one
-	 * task: this session receives the same pointer/key phases the Wall reading
-	 * does, and publishes its own palette view. It is binding-scoped, so a
-	 * content install replaces it exactly as it replaces every other binding
-	 * fact; the reading selection itself is adapter memory.
-	 */
-	let contributedSession: { readonly readingId: string; readonly session: StageInkReadingSession } | null = null;
 	/** The live chain draft, its hover target and its planner preview. */
 	let draft: ChainDraft = EMPTY_CHAIN_DRAFT;
 	/** A3 — the decided bulge apex and the raw plane point currently shaping it. */
@@ -174,176 +177,93 @@ export function createInkSession(
 		hover: InkPointerTarget;
 		dragging: boolean;
 	} | null = null;
+	const linePreviewBase = (): ChainDraft => linePreviewBaseOf(draft, inkPress);
+	const linePreviewDraft = (): ChainDraft => linePreviewDraftOf(draft, inkPress, inkHover);
+	const planInkDraft = (target: ChainDraft, arc?: WallChainArc): ChainPlanPreview =>
+		planInkDraftOf(document, target, chainCapture, levelId, memory, arc);
+	const arcApexAt = (point: LayoutVec2): LayoutVec2 | null => arcApexAtOf(point, draft);
+	const circlePreviewPoints = () => circlePreviewPointsOf(draft, inkPress, inkHover);
+	const boxAnchor = () => boxAnchorOf(draft, inkPress);
+	const boxPreviewDraft = () => boxPreviewDraftOf(document, draft, inkPress, inkHover);
 
-	/** The contributed reading currently selected, or `null` for a built-in. */
-	function contributedReading(): StageInkReadingRecord | null {
-		if (
-			memory.reading === 'wall' ||
-			memory.reading === 'opening' ||
-			memory.reading === 'room' ||
-			memory.reading === 'terrace' ||
-			memory.reading === 'roof'
-		) return null;
-		return (
-			services.stage.inkReadings().find((reading) => reading.id === memory.reading) ?? null
-		);
-	}
+	const circlePlanInput = {
+		document: () => document,
+		capture: () => chainCapture,
+		memory,
+		presenter,
+		levelId
+	};
+	const circleDraftPreview = (circle: { center: ChainDraftPoint; rim: ChainDraftPoint }) =>
+		circleDraftPreviewOf(circlePlanInput, circle);
+	const planCircleDraft = (
+		center: ChainDraftPoint,
+		rim: ChainDraftPoint,
+		planCircle?: Parameters<typeof planCircleDraftOf>[3]
+	) => planCircleDraftOf(circlePlanInput, center, rim, planCircle);
+	const previewState = {
+		memory,
+		draft: () => draft,
+		inkHover: () => inkHover,
+		inkSnapWinner: () => inkSnapWinner,
+		inkArcApex: () => inkArcApex,
+		inkPreview: () => inkPreview,
+		linePreviewBase,
+		linePreviewDraft,
+		boxPreviewDraft,
+		boxAnchor,
+		circlePreviewPoints,
+		circleDraftPreview,
+		room,
+		region,
+		opening,
+		ports
+	};
+	const previews = (adapterContext: StageAdapterContext, y: number) =>
+		previewsOf(previewState, adapterContext, y);
 
-	/**
-	 * End the live contributed reading with no commit. The session is owned by the
-	 * contributing binding, never by this one; cancelling is the only operation
-	 * this adapter performs on it.
-	 */
-	function endContributedSession(): void {
-		const current = contributedSession;
-		contributedSession = null;
-		current?.session.cancel();
-	}
+	const paletteState = {
+		get memory() { return memory; },
+		get draft() { return draft; },
+		inkHover: () => inkHover,
+		inkArcApex: () => inkArcApex,
+		inkPreview: () => inkPreview,
+		inkNotice: () => inkNotice,
+		linePreviewBase,
+		linePreviewDraft,
+		boxPreviewDraft,
+		boxAnchor,
+		region,
+		opening,
+		room,
+		contributedReadings: () => services.stage.inkReadings()
+	};
+	const paletteReadings = () => paletteReadingsOf(services.stage.inkReadings());
+	const snapshotForPalette = () => snapshotForPaletteOf(paletteState);
 
-	/** The live contributed session, opened lazily against the current binding. */
-	function ensureContributedSession(): StageInkReadingSession | null {
-		const reading = contributedReading();
-		if (reading === null) return null;
-		if (contributedSession?.readingId === reading.id) return contributedSession.session;
-		endContributedSession();
-		const opened = services.stage.openInkReading(reading.id, reading.adapterId);
-		if (opened === null) return null;
-		contributedSession = { readingId: opened.reading.id, session: opened.session };
-		return opened.session;
-	}
+	const targetState = {
+		memory,
+		draft: () => draft,
+		document,
+		linePreviewBase,
+		setSnap: (winner: LayoutSnapWinner | null) => { inkSnapWinner = winner; }
+	};
+	const inkTargetAt = (adapterContext: StageAdapterContext, css: readonly [number, number]) =>
+		inkTargetAtOf(targetState, adapterContext, css);
 
-	/**
-	 * Whether rounding a free point would land it on an existing Junction or
-	 * Wall centerline.
-	 *
-	 * A free target that silently becomes a contact is an undeclared
-	 * connection: the chain policy refuses `unconnected_interior_contact` (or a
-	 * crossing) even though the creator aimed at open floor. The deliberate
-	 * target must stay the creator's aim, so such a point keeps its raw
-	 * coordinate rather than inventing a connection the drawing did not name.
-	 */
-	function freePointWouldCreateContact(
-		point: readonly [number, number],
-		projected: ReturnType<typeof projectedScene>
-	): boolean {
-		const tolerance = 1e-6;
-		if (
-			projected.junctions.some(
-				(junction) =>
-					Math.hypot(junction.point[0] - point[0], junction.point[1] - point[1]) <=
-					tolerance
-			)
-		) {
-			return true;
-		}
-		return projected.walls.some((wall) => {
-			const onCenterline = pointOnWallCenterline(wall, [point[0], point[1]]);
-			return (
-				Math.hypot(onCenterline[0] - point[0], onCenterline[1] - point[1]) <=
-				tolerance
-			);
-		});
-	}
-
-	/**
-	 * The deliberate target one Stage-local pointer position names, in world
-	 * coordinates. `null` when the working plane cannot be resolved there.
-	 */
-	function inkTargetAt(
-		adapterContext: StageAdapterContext,
-		css: readonly [number, number]
-	): InkPointerTarget | null {
-		const start = memory.wallMode === 'line' && draft.points.length >= 3 ? draft.points[0] : undefined;
-		if (start !== undefined) {
-			const { left, top } = adapterContext.evaluation.rect;
-			const projected = adapterContext.project([start.point[0], adapterContext.snapshot.domain.datumMeters, start.point[1]]);
-			if (projected !== null && Math.hypot(css[0] + left - projected[0], css[1] + top - projected[1]) <= INK_JUNCTION_HIT_CSS_PX) {
-				inkSnapWinner = { point: start.point, kind: 'junction', name: 'Junction' };
-				return { ...start, css };
-			}
-		}
-		const projected = projectedScene(document, adapterContext);
-		const hit = classifyInkPointerTarget({ css, junctions: projected.junctions, walls: projected.walls });
-		if (hit?.kind === 'junction') {
-			const junction = projected.junctions.find((candidate) => candidate.id === hit.junctionId);
-			if (junction === undefined) return null;
-			inkSnapWinner = { point: junction.point, kind: 'junction', name: 'Junction' };
-			return { target: hit, point: junction.point, css };
-		}
-		const point = pointerDatumPoint(adapterContext, css);
-		if (point === null) return null;
-		if (hit?.kind === 'host') {
-			const wall = projected.walls.find((candidate) => candidate.id === hit.wallId);
-			if (wall === undefined) return null;
-			// The split lands where the creator aimed: the pointer projected onto
-			// that Wall's centerline, never the cursor's raw plane point.
-			const split = pointOnWallCenterline(wall, [point[0], point[1]]);
-			inkSnapWinner = { point: split, kind: 'wall-span', name: 'Wall', wallId: wall.id };
-			return { target: hit, point: split, css };
-		}
-		// Free placement asks the one Layout snap resolver. Junction and host
-		// targets above keep precedence, so snap can never move a connection off
-		// the subject the creator deliberately aimed at. The inverse is guarded
-		// too: a grid point that would land on an existing Junction or Wall keeps
-		// the creator's raw aim instead of authoring an undeclared contact.
-		const drafting = adapterContext.drafting();
-		const winner = resolveInkPointSnap({
-			geometry: adapterContext.snapshot.domain.geometry,
-			point: [point[0], point[1]],
-			pixelsPerMeter: 1 / adapterContext.evaluation.targetPlaneMetersPerCssPixel,
-			anchor: linePreviewBase().points.at(-1)?.point ?? null,
-			drafting
-		});
-		if (winner !== null) {
-			if (winner.kind === 'junction') {
-				const junction = projected.junctions.find(
-					(candidate) =>
-						Math.hypot(candidate.point[0] - winner.point[0], candidate.point[1] - winner.point[1]) <= 1e-9
-				);
-				if (junction !== undefined) {
-					inkSnapWinner = winner;
-					return { target: { kind: 'junction', junctionId: junction.id }, point: junction.point, css };
-				}
-			}
-			if (winner.kind === 'wall-span' && winner.wallId !== undefined) {
-				const wall = projected.walls.find((candidate) => candidate.id === winner.wallId);
-				if (wall !== undefined) {
-					inkSnapWinner = winner;
-					return { target: { kind: 'host', wallId: wall.id }, point: winner.point, css };
-				}
-			}
-			if (freePointWouldCreateContact(winner.point, projected)) {
-				inkSnapWinner = null;
-				return { target: { kind: 'free' }, point: [point[0], point[1]], css };
-			}
-			inkSnapWinner = winner;
-			return { target: { kind: 'free' }, point: winner.point, css };
-		}
-		inkSnapWinner = null;
-		return { target: { kind: 'free' }, point: [point[0], point[1]], css };
-	}
-
-	/** The transient press anchor follows the same start rule as dragInkWall.
-	 * It never appends to the deliberate click chain before release. */
-	function linePreviewBase(): ChainDraft {
-		if (!inkPress?.dragging) return draft;
-		const pressed = inkPress.pressTarget;
-		const start: ChainDraftPoint = { point: pressed.point, target: pressed.target };
-		const tip = draft.points.at(-1);
-		if (tip?.point[0] === start.point[0] && tip?.point[1] === start.point[1]) return draft;
-		if (draft.points.length === 0) return { points: [start], closed: false };
-		if (isDraftStart(draft, start.point, 1e-9) && draft.points.length >= 2) return { points: draft.points, closed: true };
-		const begun = appendChainPoint(draft, start);
-		return 'points' in begun ? begun : draft;
-	}
-
-	function linePreviewDraft(): ChainDraft {
-		const base = linePreviewBase();
-		if (base.closed || inkHover === null) return base;
-		if (base.points.length >= 2 && isDraftStart(base, inkHover.point, 1e-9)) return { ...base, closed: true };
-		const extended = appendChainPoint(base, { point: inkHover.point, target: inkHover.target });
-		return 'points' in extended ? extended : base;
-	}
+	const circleCommitInput = {
+		services,
+		memory,
+		levelId,
+		inFlight: () => chainCommitInFlight,
+		setInFlight: (value: boolean) => { chainCommitInFlight = value; },
+		capture: () => chainCapture,
+		planCircleDraft,
+		setNotice: (message: string) => { inkNotice = message; },
+		publish,
+		clearChain
+	};
+	const commitCircle = (center: ChainDraftPoint, rim: ChainDraftPoint) =>
+		commitCircleOf(circleCommitInput, center, rim);
 
 	/** Re-plan the draft (with the hover point, when there is one). */
 	function refreshInkPreview(): void {
@@ -403,118 +323,6 @@ export function createInkSession(
 			inkPreview.kind === 'refused' && points.points.length >= 2 ? inkPreview.message : null;
 	}
 
-	/** One planner pass over a draft at the remembered thickness and height. */
-	function planInkDraft(target: ChainDraft, arc?: WallChainArc): ChainPlanPreview {
-		return planChainDraft({
-			document,
-			draft: target,
-			capture: chainCapture ?? mintLayoutIdCapture(),
-			levelId,
-			...(memory.thickness === null ? {} : { thickness: memory.thickness }),
-			...(memory.height === null ? {} : { height: memory.height }),
-			...(arc === undefined ? {} : { arc })
-		});
-	}
-
-	/**
-	 * The bulge apex under a raw working-plane point. Only the perpendicular
-	 * rise is kept; a bulge past the semicircle is passed through as drawn so
-	 * the canonical planner can refuse it, never silently clamped.
-	 */
-	function arcApexAt(point: LayoutVec2): LayoutVec2 | null {
-		const start = draft.points[0];
-		const end = draft.points[1];
-		if (start === undefined || end === undefined) return null;
-		const measured = measureWallArc(start.point, end.point, point);
-		if (measured === null) return null;
-		const magnitude = Math.abs(measured.rise);
-		if (!(magnitude > 0)) return null;
-		const sign = measured.rise < 0 ? -1 : 1;
-		const dx = end.point[0] - start.point[0];
-		const dz = end.point[1] - start.point[1];
-		const mx = (start.point[0] + end.point[0]) / 2;
-		const mz = (start.point[1] + end.point[1]) / 2;
-		return [mx - (dz / measured.chord) * magnitude * sign, mz + (dx / measured.chord) * magnitude * sign];
-	}
-
-	/**
-	 * Circle's two authored points: a centre tap (or the live press) and the
-	 * rim under the pointer. The rim is the canonical seam; no separate circle geometry is inferred later.
-	 */
-	function circlePreviewPoints(): { center: ChainDraftPoint; rim: ChainDraftPoint } | null {
-		const placed = draft.points[0];
-		const pressed = inkPress?.pressTarget;
-		const center = placed ?? (pressed === undefined ? null : { point: pressed.point, target: pressed.target });
-		if (center === null || inkHover === null) return null;
-		if (Math.hypot(inkHover.point[0] - center.point[0], inkHover.point[1] - center.point[1]) < 1e-9) return null;
-		return { center, rim: { point: inkHover.point, target: inkHover.target } };
-	}
-
-	/**
-	 * The live Circle proposal, once per distinct centre → rim, size and capture.
-	 */
-	function circleDraftPreview(circle: { center: ChainDraftPoint; rim: ChainDraftPoint }): ChainPlanPreview {
-		return presenter.proposal(
-			[
-				'circle', document, chainCapture, memory.thickness, memory.height,
-				circle.center.point[0], circle.center.point[1], circle.rim.point[0], circle.rim.point[1]
-			],
-			() => planCircleDraft(circle.center, circle.rim, proposeCreateCircularWall)
-		);
-	}
-
-	/** One retained circular-Room plan over the live centre → rim pair. */
-	function planCircleDraft(
-		center: ChainDraftPoint,
-		rim: ChainDraftPoint,
-		planCircle = planCreateCircularRoom
-	): ChainPlanPreview {
-		const plan = planCircle({
-			baseline: document,
-			center: [center.point[0], center.point[1]],
-			rim: [rim.point[0], rim.point[1]],
-			capture: chainCapture ?? mintLayoutIdCapture(),
-			levelId,
-			roomNamePrefix: 'Room',
-			...(memory.thickness === null ? {} : { thickness: memory.thickness }),
-			...(memory.height === null ? {} : { height: memory.height })
-		});
-		if (plan.kind === 'rejected') {
-			return { kind: 'refused', code: plan.rejection.code, message: plan.rejection.message };
-		}
-		return {
-			kind: 'planned',
-			document: plan.document,
-			authoredWallIds: [plan.wallId],
-			createdWallIds: [plan.wallId],
-			createdJunctionIds: [plan.junctionId],
-			splitWallIds: [],
-			createdRoomIds: [...plan.createdRoomIds],
-			retiredRoomIds: [],
-			absorbedRoomIds: [],
-			consequence: { kind: 'encloses', summary: 'Creates one circular Room on finish.' }
-		};
-	}
-
-	/**
-	 * Box's first corner: the one a tap already placed, or the corner the live
-	 * press landed on (press-drag-release names both corners in one gesture).
-	 */
-	function boxAnchor(): ChainDraftPoint | null {
-		const placed = draft.points[0];
-		if (placed !== undefined) return placed;
-		const pressed = inkPress?.pressTarget;
-		return pressed === undefined ? null : { point: pressed.point, target: pressed.target };
-	}
-
-	/** The closed four-Wall ring the anchor and the pointer name, or `null`. */
-	function boxPreviewDraft(): ChainDraft | null {
-		const anchor = boxAnchor();
-		if (anchor === null || inkHover === null) return null;
-		const box = boxChainDraft(document, anchor, { point: inkHover.point, target: inkHover.target });
-		return 'points' in box ? box : null;
-	}
-
 	/**
 	 * Commit one Box through the same Wall-chain acceptance four Lines use. A
 	 * degenerate box refuses in words and writes nothing; a tapped first corner
@@ -527,174 +335,6 @@ export function createInkSession(
 			return;
 		}
 		void commitChain(box);
-	}
-
-	/**
-	 * Accept one Circle as one captured closed-Wall intent. The preview and
-	 * the commit use the same capture and the same centre/rim points, so the
-	 * seam is exactly the authored rim and a replay reproduces both ids.
-	 */
-	async function commitCircle(center: ChainDraftPoint, rim: ChainDraftPoint): Promise<void> {
-		if (chainCommitInFlight) return;
-		const capture = chainCapture ?? mintLayoutIdCapture();
-		const planned = planCircleDraft(center, rim);
-		if (planned.kind === 'refused') {
-			inkNotice = planned.message;
-			publish();
-			return;
-		}
-		chainCommitInFlight = true;
-		try {
-			const snapshot = services.stage.snapshot();
-			const outcome = await services.authoring.accept(
-				circleRoomCreateIntent({
-					payload: {
-						center: [center.point[0], center.point[1]],
-						rim: [rim.point[0], rim.point[1]],
-						thickness: memory.thickness,
-						height: memory.height
-					},
-					capture,
-					operationId: globalThis.crypto.randomUUID(),
-					projectId: snapshot.acceptedRevision.projectId,
-					revisionId: services.authoring.acceptedRevision().revisionId,
-					contentRevision: stageUnitRevision(snapshot, 'layout'),
-					levelId
-				})
-			);
-			if (outcome.kind === 'refused') {
-				inkNotice = outcome.message;
-				publish();
-				return;
-			}
-			const wallId = planned.authoredWallIds[0] ?? null;
-			clearChain();
-			const fresh = services.stage.snapshot();
-			if (wallId !== null) {
-				services.stage.select({
-					sourceId: wallId,
-					sourceKind: 'wall',
-					generationId: fresh.compileGeneration,
-					ref: {
-						sourceId: wallId,
-						sourceKind: 'wall',
-						generationId: fresh.compileGeneration,
-						stream: 'projected',
-						subRef: null
-					}
-				});
-			}
-			services.stage.openContributedTask(LAYOUT_INK_ENTRY, 'layout');
-			services.stage.notifySurfaceChange();
-		} finally {
-			chainCommitInFlight = false;
-		}
-	}
-
-	/** Layout's built-in readings, then every contributed reading in host order. */
-	function paletteReadings(): readonly InkPaletteReading[] {
-		return [
-			{ id: 'wall', label: 'Wall', summary: 'Straight Wall chain.' },
-			{
-				id: 'opening',
-				label: 'Opening',
-				summary: 'A straight door or window on one Wall face.'
-			},
-			{ id: 'room', label: 'Room', summary: 'Create an Open Space from partial Walls.' },
-			{ id: 'terrace', label: 'Terrace', summary: 'A raised floor region, drawn as a Box or a Line.' },
-			{ id: 'roof', label: 'Roof › Flat', summary: 'Flat Roof › Flat overhead region, drawn as a Box or a Line.' },
-			...services.stage.inkReadings().map((reading) => ({
-				id: reading.id,
-				label: reading.label,
-				summary: reading.summary
-			}))
-		];
-	}
-
-	function snapshotForPalette(): InkPaletteSnapshot {
-		if (memory.reading === 'terrace' || memory.reading === 'roof') {
-			const view = region.snapshot();
-			return {
-				reading: memory.reading,
-				wallMode: memory.wallMode,
-				arc: null,
-				box: null,
-				readings: paletteReadings(),
-				opening: null,
-				region: {
-					role: view.role,
-					mode: view.mode,
-					points: view.points,
-					elevation: view.elevation,
-					thickness: view.thickness,
-					hint: view.hint,
-					refusal: view.refusal
-				},
-				points: view.points,
-				closed: false,
-				canFinish: view.mode === 'line' && view.points.length >= 3,
-				canClose: false,
-				canBacktrack: view.points.length > 0,
-				consequence: null,
-				pending: null,
-				refusal: view.refusal
-			};
-		}
-		const boxMode = memory.reading === 'wall' && memory.wallMode === 'box';
-		const circleMode = memory.reading === 'wall' && memory.wallMode === 'circle';
-		const arcMode = memory.reading === 'wall' && memory.wallMode === 'arc';
-		const withHover = circleMode || arcMode ? draft : linePreviewDraft();
-		const effective = boxMode ? (boxPreviewDraft() ?? draft)
-			: 'points' in withHover ? withHover : draft;
-		const pending =
-			inkHover === null || boxMode || circleMode || arcMode
-				? null
-				: pendingLegFacts(linePreviewBase(), inkHover.point);
-		const anchor = boxMode ? boxAnchor() : null;
-		const box =
-			anchor === null || inkHover === null
-				? null
-				: {
-						width: Math.abs(inkHover.point[0] - anchor.point[0]),
-						depth: Math.abs(inkHover.point[1] - anchor.point[1])
-					};
-		const arc =
-			arcMode && draft.points.length >= 2 && inkArcApex !== null
-				? (() => {
-						const measured = measureWallArc(draft.points[0]!.point, draft.points[1]!.point, inkArcApex!);
-						return measured === null
-							? null
-							: {
-									chord: measured.chord,
-									rise: measured.rise,
-									radius: measured.radius,
-									belowMinimum: Math.abs(measured.rise) < MIN_WALL_ARC_RISE
-								};
-					})()
-				: null;
-		return {
-			options: { thickness: memory.thickness, height: memory.height },
-			reading: memory.reading,
-			wallMode: memory.wallMode,
-			arc,
-			box,
-			readings: paletteReadings(),
-			opening: memory.reading === 'opening' ? opening.paletteView() : null,
-			...(memory.reading === 'room' ? { room: room.paletteView() } : {}),
-			points: effective.points.map((entry) => [entry.point[0], entry.point[1]] as LayoutVec2),
-			closed: effective.closed,
-			canFinish: !boxMode && !circleMode && !arcMode && draft.points.length >= 2,
-			canClose: !boxMode && !circleMode && !arcMode && draft.points.length >= 3 && !draft.closed,
-			canBacktrack: draft.points.length > 0,
-			consequence:
-				inkPreview !== null &&
-				inkPreview.kind === 'planned' &&
-				(circleMode || arcMode || effective.points.length >= 2)
-					? inkPreview.consequence.summary
-					: null,
-			pending,
-			refusal: inkNotice
-		};
 	}
 
 	/** Begin the live chain: one capture and one proposal lease per operation. */
@@ -771,7 +411,7 @@ export function createInkSession(
 				}
 				// A contributed reading owns live input too; a switch must not
 				// silently throw away a half-drawn outline or a chosen depth.
-				if (contributedSession?.session.hasWork?.() === true) {
+				if (contributed.current()?.hasWork?.() === true) {
 					inkNotice = 'Finish or cancel the live reading before switching readings.';
 					publish();
 					return;
@@ -1222,240 +862,6 @@ export function createInkSession(
 		return true;
 	}
 
-	/**
-	 * The Wall reading's live candidate: the ring, Arc, Circle or cursor the creator
-	 * is aiming, from the planner's own candidate document through the existing
-	 * compile + Paper path. A refusal contributes only its words. Nothing is persisted.
-	 */
-	function previews(adapterContext: StageAdapterContext, y: number): readonly StageCandidatePreview[] {
-		const world = (point: readonly [number, number], elevation = y): [number, number, number] => [point[0], elevation, point[1]];
-		const snapOf = (winner: LayoutSnapWinner | null) =>
-			winner === null ? undefined : { world: world(winner.point), name: winner.name };
-		if (memory.reading === 'room') return room.previews(adapterContext, y);
-		if (memory.reading === 'terrace' || memory.reading === 'roof')
-			return region.previews(adapterContext, y);
-		if (memory.reading === 'opening') return opening.previews(adapterContext, y);
-
-		// A3 — Arc's preview is the canonical cubic the third activation commits.
-		// Until the bulge is named, the chord and its length stand in; a straight
-		// fallback says so in words before the creator accepts it.
-		if (memory.reading === 'wall' && memory.wallMode === 'arc') {
-			const start = draft.points[0];
-			const end = draft.points[1];
-			if (start === undefined) {
-				return [];
-			}
-			if (end === undefined) {
-				if (inkHover === null) return [];
-				const length = Math.hypot(
-					inkHover.point[0] - start.point[0],
-					inkHover.point[1] - start.point[1]
-				);
-				return [candidatePreviewOf({
-					id: 'layout-candidate-arc-cursor',
-					role: 'subject',
-					drawing: true,
-					geometry: { polygons: [], segments: [[world(start.point), world(inkHover.point)]] },
-					labels: [{ world: world(inkHover.point), text: `${length.toFixed(2)} m` }],
-					snap: snapOf(inkSnapWinner)
-				})];
-			}
-			const chord = Math.hypot(end.point[0] - start.point[0], end.point[1] - start.point[1]);
-			const midpoint: [number, number] = [
-				(start.point[0] + end.point[0]) / 2,
-				(start.point[1] + end.point[1]) / 2
-			];
-			if (inkArcApex === null) {
-				return [candidatePreviewOf({
-					id: 'layout-candidate-arc',
-					role: 'subject',
-					drawing: true,
-					geometry: { polygons: [], segments: [[world(start.point), world(end.point)]] },
-					labels: [{ world: world(midpoint), text: `${chord.toFixed(2)} m · pull the bulge` }]
-				})];
-			}
-			const measured = measureWallArc(start.point, end.point, inkArcApex);
-			const fallback = measured !== null && Math.abs(measured.rise) < MIN_WALL_ARC_RISE;
-			const facts =
-				measured === null
-					? null
-					: fallback
-						? `Line · rise under ${MIN_WALL_ARC_RISE.toFixed(2)} m`
-						: `Rise ${Math.abs(measured.rise).toFixed(2)} m · R ${Number.isFinite(measured.radius) ? measured.radius.toFixed(2) : '∞'} m`;
-			if (inkPreview?.kind === 'planned') {
-				const wallId = inkPreview.authoredWallIds[0];
-				const frame = wallId === undefined ? null : openWallFrame(inkPreview.document, wallId);
-				const segments =
-					frame === null
-						? ([[world(start.point), world(end.point)]] as const)
-						: frame.samples
-								.slice(1)
-								.map((sample, index) => [world(frame.samples[index]!.point), world(sample.point)] as const);
-				const closesRoom = inkPreview.createdRoomIds.length > 0;
-				const built = closesRoom
-					? ports.candidatePaper(inkPreview.document, y, new Set(inkPreview.createdRoomIds), new Set())
-					: null;
-				const labels: { world: [number, number, number]; text: string }[] = [];
-				if (facts !== null) labels.push({ world: world(inkArcApex), text: facts });
-				if (closesRoom) {
-					labels.push({
-						world: world(start.point),
-						text: inkPreview.createdRoomIds.length === 1 ? 'Creates 1 Room' : `Creates ${inkPreview.createdRoomIds.length} Rooms`
-					});
-				}
-				return [candidatePreviewOf({
-					id: 'layout-candidate-arc',
-					role: 'subject',
-					drawing: true,
-					geometry: { polygons: built?.paper.subject.polygons ?? [], segments },
-					labels
-				})];
-			}
-			if (inkPreview?.kind === 'refused') {
-				return [candidatePreviewOf({
-					id: 'layout-candidate-arc-refused',
-					role: 'refused',
-					geometry: { polygons: [], segments: [[world(start.point), world(end.point)]] },
-					labels: [{ world: world(inkArcApex), text: inkPreview.message }]
-				})];
-			}
-			return [];
-		}
-
-		// Circle is one authored closed-Wall intent, so its live preview is the
-		// authored ring itself. The radius leg stays a measurement label; it is
-		// never the primary shape the creator sees while aiming.
-		if (memory.reading === 'wall' && memory.wallMode === 'circle') {
-			const circle = circlePreviewPoints();
-			if (circle === null) return [];
-			const radius = Math.hypot(
-				circle.rim.point[0] - circle.center.point[0],
-				circle.rim.point[1] - circle.center.point[1]
-			);
-			if (!(radius > 0)) return [];
-			const planned = circleDraftPreview(circle);
-			const segments: [[number, number, number], [number, number, number]][] = [];
-			const steps = 64;
-			for (let index = 0; index < steps; index += 1) {
-				const from = (index / steps) * Math.PI * 2;
-				const to = ((index + 1) / steps) * Math.PI * 2;
-				segments.push([
-					[
-						circle.center.point[0] + Math.cos(from) * radius,
-						y,
-						circle.center.point[1] + Math.sin(from) * radius
-					],
-					[
-						circle.center.point[0] + Math.cos(to) * radius,
-						y,
-						circle.center.point[1] + Math.sin(to) * radius
-					]
-				]);
-			}
-			const facts = `r ${radius.toFixed(2)} m · ⌀ ${(radius * 2).toFixed(2)} m`;
-			return [candidatePreviewOf({
-				id: 'layout-candidate-circle',
-				role: planned.kind === 'refused' ? 'refused' : 'subject',
-				geometry: { polygons: [], segments },
-				labels: [{ world: world(circle.center.point), text: planned.kind === 'refused' ? `${facts} — ${planned.message}` : facts }],
-				snap: snapOf(inkSnapWinner)
-			})];
-		}
-
-		// Wall chain / Box, including the cursor point before a plan exists.
-		const boxMode = memory.wallMode === 'box';
-		const live = boxMode
-			? (boxPreviewDraft() ?? draft)
-			: linePreviewDraft();
-		const points = 'points' in live ? live.points : draft.points;
-		if (inkPreview?.kind === 'planned') {
-			const closesRoom = !boxMode && live.closed && inkPreview.createdRoomIds.length > 0;
-			const subjectIds = new Set([
-				...(closesRoom ? inkPreview.createdRoomIds : []),
-				...inkPreview.absorbedRoomIds
-			]);
-			const affectedIds = new Set(inkPreview.splitWallIds);
-			const built = subjectIds.size > 0 || affectedIds.size > 0
-				? ports.candidatePaper(inkPreview.document, y, subjectIds, affectedIds)
-				: null;
-			const geometry = {
-				polygons: built?.paper.subject.polygons ?? [],
-				segments: [
-					...points.slice(1).map((point, i) => [world(points[i]!.point), world(point.point)] as const),
-					...(live.closed && points.length > 2 ? [[world(points.at(-1)!.point), world(points[0]!.point)] as const] : [])
-				]
-			};
-			const labels: { world: [number, number, number]; text: string }[] = [];
-			if (closesRoom) {
-				const count = inkPreview.createdRoomIds.length;
-				labels.push({ world: world(points[0]!.point), text: count === 1 ? 'Creates 1 Room' : `Creates ${count} Rooms` });
-			} else if (inkHover !== null && !boxMode) {
-				const pending = pendingLegFacts(linePreviewBase(), inkHover.point);
-				if (pending !== null) labels.push({ world: world(inkHover.point), text: `${pending.length.toFixed(2)} m` });
-			}
-			if (boxMode && inkHover !== null) {
-				const anchor = boxAnchor();
-				if (anchor !== null) {
-					labels.push({
-						world: world(inkHover.point),
-						text: `${Math.abs(inkHover.point[0] - anchor.point[0]).toFixed(2)} × ${Math.abs(inkHover.point[1] - anchor.point[1]).toFixed(2)} m`
-					});
-				}
-
-			}
-			return [
-				candidatePreviewOf({
-					id: 'layout-candidate-chain', role: 'subject', drawing: true, geometry, labels,
-					snap: closesRoom ? { world: world(points[0]!.point), name: 'Close Room' } : snapOf(inkSnapWinner)
-				}),
-				...(built === null || (built.paper.affected.polygons.length === 0 && built.paper.affected.segments.length === 0)
-					? []
-					: [candidatePreviewOf({ id: 'layout-candidate-chain-affected', role: 'affected', geometry: built.paper.affected })])
-			];
-		}
-		if (inkPreview?.kind === 'refused' && points.length >= 2) {
-			// The placed legs stay drawn: only the live leg is refused (review
-			// pass 2 §3). They are the same ink line the creator already drew.
-			const placed = live.closed ? points : points.slice(0, -1);
-			const from = live.closed ? points.at(-1)! : points.at(-2)!;
-			const to = live.closed ? points[0]! : points.at(-1)!;
-			return [...(placed.length < 2 ? [] : [candidatePreviewOf({
-				id: 'layout-candidate-chain',
-				role: 'subject',
-				drawing: true,
-				geometry: { polygons: [], segments: placed.slice(1).map((point, i) => [world(placed[i]!.point), world(point.point)] as const) }
-			})]), candidatePreviewOf({
-				id: 'layout-candidate-chain-refused',
-				role: 'refused',
-				// A dashed cursor reach names the refused input, never a Wall band.
-				geometry: { polygons: [], segments: [[world(from.point), world(to.point)]] },
-				labels: [{ world: world(to.point), text: inkPreview.message }]
-			})];
-		}
-		if (inkHover !== null && linePreviewBase().points.length > 0) {
-			const last = linePreviewBase().points.at(-1)!.point;
-			const pending = pendingLegFacts(linePreviewBase(), inkHover.point);
-			return [candidatePreviewOf({
-				id: 'layout-candidate-cursor',
-				role: 'subject',
-				drawing: true,
-				geometry: { polygons: [], segments: [[world(last), world(inkHover.point)]] },
-				labels: pending === null ? [] : [{ world: world(inkHover.point), text: `${pending.length.toFixed(2)} m` }],
-				snap: snapOf(inkSnapWinner)
-			})];
-		}
-		if (inkHover !== null && inkSnapWinner !== null) {
-			return [candidatePreviewOf({
-				id: 'layout-candidate-cursor',
-				role: 'subject',
-				drawing: true,
-				geometry: EMPTY_CANDIDATE_GEOMETRY,
-				snap: snapOf(inkSnapWinner)
-			})];
-		}
-		return [];
-	}
-
 	/** The Ink hover: a contributed reading's, the Opening's, or the live chain's. */
 	function hover(intent: StagePointerIntent, adapterContext: StageAdapterContext): boolean {
 		if (memory.reading === 'terrace' || memory.reading === 'roof') return region.hover(intent, adapterContext);
@@ -1537,7 +943,7 @@ export function createInkSession(
 	function overlay(adapterContext: StageAdapterContext): ReturnType<NonNullable<StageAdapterBinding['overlay']>> {
 		if (memory.reading === 'room') { return []; }
 		if (memory.reading !== 'wall' && memory.reading !== 'opening') {
-			return contributedSession?.session.overlay?.(adapterContext) ?? [];
+			return contributed.current()?.overlay?.(adapterContext) ?? [];
 		}
 		if (memory.reading === 'opening') return opening.overlay(adapterContext);
 		// The Wall reading's marks are the Stage's own candidate geometry, never a
@@ -1553,7 +959,7 @@ export function createInkSession(
 			memory.reading === 'terrace' ||
 			memory.reading === 'roof'
 		) return [];
-		return contributedSession?.session.ghosts?.(adapterContext) ?? [];
+		return contributed.current()?.ghosts?.(adapterContext) ?? [];
 	}
 
 	return {

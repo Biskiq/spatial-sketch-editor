@@ -26,17 +26,9 @@ import {
 	type PlanNumericField,
 	type PlanNumericHost
 } from '$lib/authoring/layout/plan-numeric-entry';
-import {
-	LAYOUT_OPENING_MEASURE_KIND,
-	LAYOUT_WALL_HEIGHT_KIND,
-	LAYOUT_WALL_THICKNESS_KIND,
-	buildLayoutIntent,
-	wallManipulationIntent,
-	curvedWallPointAt,
-	type WallFrame,
-	type WallManipulationRequest,
-	type WallNeighbourPreview
-} from './precision';
+import { curvedWallPointAt, type WallFrame, type WallManipulationRequest, type WallNeighbourPreview } from './precision-frames';
+import { LAYOUT_OPENING_MEASURE_KIND, LAYOUT_WALL_HEIGHT_KIND, LAYOUT_WALL_THICKNESS_KIND, buildLayoutIntent } from './precision';
+import { wallManipulationIntent } from './precision-intents';
 import {
 	pointerWallRequest,
 	wallRequestExactLabel,

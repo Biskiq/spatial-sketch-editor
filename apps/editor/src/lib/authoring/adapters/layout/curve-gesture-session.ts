@@ -15,15 +15,8 @@ import { WALL_UNFOLD_SHAPE_REFUSAL } from '$lib/layout/wall-unfold';
 import { wallRefusalWords } from './refusals';
 import { circleRadiusIntent, circleTranslateIntent } from './drawing-planners';
 import { pointerDatumPoint } from './stage-pointer';
-import {
-	curvedWallPointAt,
-	previewWallKnotDelete,
-	wallBendIntent,
-	wallKnotDeleteIntent,
-	wallStationAtPoint,
-	wallStationNearPoint,
-	type OpenWallFrame
-} from './precision';
+import { curvedWallPointAt, previewWallKnotDelete, wallStationAtPoint, wallStationNearPoint, type OpenWallFrame } from './precision-frames';
+import { wallBendIntent, wallKnotDeleteIntent } from './precision-intents';
 import { candidatePreviewOf } from './candidate-preview';
 import { selectedClosedWall, selectedOpenWall, selectedCurvedWall } from './layout-subjects';
 import {

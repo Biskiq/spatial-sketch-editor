@@ -34,7 +34,7 @@ import { createStageAcceptanceHost, type StageAcceptanceHost } from '$lib/author
 import { mountStageAdapter, type StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 import { stageEnvelope } from '$lib/authoring/stage/unit-stage-source';
 import { createAdapter } from '$lib/authoring/adapters/layout.adapter';
-import { wallStationFrame } from '$lib/authoring/adapters/layout/precision';
+import { wallStationFrame } from '$lib/authoring/adapters/layout/precision-frames';
 import { wallJoinRefusalWords } from '$lib/authoring/adapters/layout/refusals';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';

@@ -28,7 +28,7 @@ import {
 } from '$lib/authoring/stage/stage-contributions';
 import { createAdapter } from '$lib/authoring/adapters/layout.adapter';
 import { inkSurface } from '$lib/authoring/adapters/layout/ink';
-import { layoutRoomFacts } from '$lib/authoring/adapters/layout/precision';
+import { layoutRoomFacts } from '$lib/authoring/adapters/layout/precision-facts';
 import { restingObjectsOnFloorRegion } from '$lib/authoring/adapters/layout/region-resting';
 import {
 	LAYOUT_REGION_THICKNESS_KIND,

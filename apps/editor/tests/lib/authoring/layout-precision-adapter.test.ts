@@ -47,12 +47,8 @@ import { stageEnvelope } from '$lib/authoring/stage/unit-stage-source';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import { createAdapter } from '$lib/authoring/adapters/layout.adapter';
 import { createLayoutInstrument } from '$lib/authoring/adapters/layout/instrument';
-import {
-	createLayoutPlanners,
-	layoutPlanner,
-	layoutSubjectOf,
-	registerLayoutSurfaceLineage
-} from '$lib/authoring/adapters/layout/precision';
+import { createLayoutPlanners } from '$lib/authoring/adapters/layout/precision-planners';
+import { layoutPlanner, layoutSubjectOf, registerLayoutSurfaceLineage } from '$lib/authoring/adapters/layout/precision';
 import {
 	createDrawingPlanners,
 	LAYOUT_CIRCLE_RADIUS_KIND,

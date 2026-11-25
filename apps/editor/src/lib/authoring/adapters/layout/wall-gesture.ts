@@ -19,12 +19,7 @@ import { angleDeltaLabel, planarDeltaLabel, sizeDeltaLabel } from '$lib/authorin
 import type { FixedWallEndpoint } from '@portfolio/layout-core/wall';
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 
-import {
-	wallAngleFromPointer,
-	wallLengthFromPointer,
-	type WallFrame,
-	type WallManipulationRequest
-} from './precision';
+import { wallAngleFromPointer, wallLengthFromPointer, type WallFrame, type WallManipulationRequest } from './precision-frames';
 
 export type WallHandle = 'start' | 'end' | 'body';
 

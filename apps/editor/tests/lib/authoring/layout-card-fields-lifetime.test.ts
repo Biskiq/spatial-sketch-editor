@@ -12,7 +12,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mount, tick, unmount } from 'svelte';
 import LayoutCardFields from '$lib/authoring/adapters/layout/LayoutCardFields.svelte';
 import { buildStarterEnclosureLayout } from '$lib/authoring/stage/starter-gallery';
-import { layoutCardFieldIds, layoutFacts } from '$lib/authoring/adapters/layout/precision';
+import { layoutCardFieldIds, layoutFacts } from '$lib/authoring/adapters/layout/precision-facts';
 import CardFieldsLifetimeProbe from './fixtures/CardFieldsLifetimeProbe.svelte';
 import { createCardFieldsInstrument } from '$lib/authoring/adapters/layout/adapter-support';
 import type { LayoutInstrument, LayoutInstrumentOutcome } from '$lib/authoring/adapters/layout/instrument';

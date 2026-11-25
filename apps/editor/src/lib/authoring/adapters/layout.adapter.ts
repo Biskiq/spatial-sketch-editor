@@ -38,7 +38,8 @@ import {
 	planNumericEntryOpen,
 	planNumericEntryTab
 } from '$lib/authoring/layout/plan-numeric-entry';
-import { LAYOUT_PLINTH_PLACE_KIND, createLayoutPlanners } from './layout/precision';
+import { createLayoutPlanners } from './layout/precision-planners';
+import { LAYOUT_PLINTH_PLACE_KIND } from './layout/precision';
 import { type CandidatePaperGeometry, type LayoutCandidatePaper } from './layout/candidate-preview';
 import { createOpeningRepeatPlanners } from './layout/opening-repeat';
 import {
