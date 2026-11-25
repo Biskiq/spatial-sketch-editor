@@ -10,8 +10,7 @@ import type { AdapterContextHandle, BoundAdapter } from './adapter-bindings';
 import { tasksOf, inkReadingsOf, findEntriesOf } from './contribution-view-entries';
 import type {
 	StageAdapterContext, StageCardAction, StageCardActionRecord, StageCardFact, StageCardFactRecord,
-	StageCardNameTarget, StageFindEntryRecord, StageGhostMesh, StageInkReadingRecord,
-	StageInstrumentContent, StageOverlayContribution, StageSubject, StageTaskEntry
+	StageCardNameTarget, StageGhostMesh, StageInstrumentContent, StageOverlayContribution, StageSubject
 } from './adapter-contract';
 import type { StageCandidatePreviewView, StageFacade, StageGuideView } from './view-contract';
 

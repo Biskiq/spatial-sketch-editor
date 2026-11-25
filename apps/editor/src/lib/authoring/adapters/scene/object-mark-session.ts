@@ -26,7 +26,6 @@ import type {
 	StagePointerIntent
 } from '$lib/authoring/stage/stage-adapter-host';
 import {
-	datumWorkingPlane,
 	draftingSnapIncrementMeters,
 	snapDraftingPlacement,
 	stageScene
@@ -69,14 +68,11 @@ import {
 	pointerPlanePoint
 } from './pointer-support';
 import {
-	SCENE_FORM_MARK,
 	axisTravelFromRay,
 	formSizeMeasurement,
-	formSizeScaleFromTravel,
 	formWorldAxis,
 	formWorldPoint,
 	isSceneFormRayMarkId,
-	previewFormSize,
 	type FormSizeHandle,
 	type FormSizeMeasurement
 } from './shape/form-size';

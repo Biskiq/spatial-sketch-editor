@@ -346,13 +346,13 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
-      "path": "apps/editor/src/lib/authoring/stage/route/stage-unfold-gestures.svelte.ts",
-      "lines": 692,
+      "path": "apps/editor/src/lib/authoring/adapters/scene/import/ingest.ts",
+      "lines": 691,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
-      "path": "apps/editor/src/lib/authoring/adapters/scene/import/ingest.ts",
-      "lines": 691,
+      "path": "apps/editor/src/lib/authoring/stage/route/stage-unfold-gestures.svelte.ts",
+      "lines": 690,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -382,7 +382,7 @@
     },
     {
       "path": "apps/editor/src/lib/authoring/adapters/scene/object-mark-session.ts",
-      "lines": 686,
+      "lines": 682,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -595,7 +595,7 @@
     {
       "file": "apps/editor/src/lib/authoring/adapters/scene/object-mark-session.ts",
       "name": "createObjectMarkSession",
-      "line": 101,
+      "line": 97,
       "lines": 586,
       "reason": "One no-task object-mark gesture: press, preview and release share one lease, one captured baseline and one refusal record across object, form and opening marks."
     },
@@ -609,7 +609,7 @@
     {
       "file": "apps/editor/src/lib/authoring/stage/facade/contribution-view.ts",
       "name": "createContributionView",
-      "line": 35,
+      "line": 34,
       "lines": 555,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
@@ -623,7 +623,7 @@
     {
       "file": "apps/editor/src/lib/authoring/stage/route/stage-unfold-gestures.svelte.ts",
       "name": "createStageUnfoldGestures",
-      "line": 141,
+      "line": 139,
       "lines": 529,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
@@ -875,7 +875,7 @@
     {
       "file": "apps/editor/src/lib/authoring/experience/experience-view-edit-session.svelte.ts",
       "name": "createExperienceViewEditSession",
-      "line": 48,
+      "line": 29,
       "lines": 286,
       "reason": "One View-edit session: the live drag, its gesture lease, the invalidation effect and the one provisional write path share one state owner."
     },

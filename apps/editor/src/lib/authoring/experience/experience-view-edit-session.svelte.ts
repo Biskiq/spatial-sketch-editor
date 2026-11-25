@@ -20,25 +20,6 @@ import {
 import type { ExperienceLensHost } from './experience-lens.svelte';
 
 type StageTriple = [number, number, number];
-type ViewEditSession = {
-	readonly viewId: string;
-	readonly presentationId: string;
-	readonly kind: ViewEditKind;
-	readonly pointerId: number;
-	readonly capture: Element;
-	readonly start: AuthoredViewPose;
-	eye: StageTriple;
-	target: StageTriple;
-	fov: number;
-	readonly advanced: boolean;
-	readonly sourceRevision: string;
-	readonly handleId: string;
-	readonly origin: readonly [number, number];
-	readonly lease: { readonly active: boolean; release(): void };
-	readonly resolve: (event: PointerEvent, id: string) => AuthoredViewPose | null;
-	pointer: readonly [number, number];
-	moved: boolean;
-};
 
 export type ExperienceViewEditPorts = {
 	readonly host: ExperienceLensHost;

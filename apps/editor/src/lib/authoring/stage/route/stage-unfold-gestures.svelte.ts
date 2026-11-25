@@ -28,7 +28,6 @@ import type { LayoutUnitPayload } from '@portfolio/project-model/units';
 import {
 	isStraightCompiledWall,
 	wallUnfoldAnchor,
-	wallUnfoldFreeEdgeStation,
 	wallUnfoldSourceSpans,
 	wallUnfoldTopPoint,
 	chooseUnfoldAmount,
@@ -41,7 +40,6 @@ import {
 } from '$lib/layout/wall-unfold';
 import {
 	buildWallUnfoldDisplay,
-	evaluateWallUnfoldDisplay,
 	pickWallUnfold,
 	unfoldDisplayPointAtStation
 } from '$lib/layout/wall-unfold-pick';
