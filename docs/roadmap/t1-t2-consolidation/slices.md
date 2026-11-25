@@ -29,7 +29,7 @@ Planning used hand calculation only. Execution measures inside the slice:
 
 Instruments, in order of preference:
 
-- **Counts** through `countWork` (`packages/layout-core/src/p2311-perf.ts`), representation stats,
+- **Counts** through `countWork` (`packages/layout-core/src/kernel/work-observer.ts`), representation stats,
   and `renderer.info` (calls, geometries, textures) read at the mounted boundary. Deterministic;
   safe in the fast and heavy lanes; never a timing gate (tests rule 11).
 - **One trace** of one named flow, where a slice asks for a duration split. Evidence in the pull
@@ -202,7 +202,7 @@ because the session-less entry writes the passive record and never reads it.
    acceptance module and the Layout adapter's compile seam may import a compile function; every
    other module receives compiled geometry.
 
-**Touchpoints.** `packages/layout-core/src/layout-geometry.ts`,
+**Touchpoints.** `packages/layout-core/src/geometry/compiler.ts`,
 `packages/layout-core/src/layout-geometry-delta.ts`,
 `packages/project-model/src/scene-planning/support.ts`,
 `apps/editor/src/lib/authoring/adapters/layout/precision.ts`,
@@ -285,7 +285,7 @@ tests, stop and report the list before editing.
 `layout-plan-representation.ts` as the same function the accepted Plan uses, taking an opening
 description. `openingAttemptPlanPaper` calls it.
 
-**Touchpoints.** `packages/layout-core/src/layout-plan-representation.ts`,
+**Touchpoints.** `packages/layout-core/src/plan/plan-representation.ts`,
 `apps/editor/src/lib/authoring/adapters/layout/candidate-preview.ts`,
 `apps/editor/tests/lib/authoring/layout-candidate-preview.test.ts`.
 

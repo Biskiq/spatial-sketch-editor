@@ -36,7 +36,7 @@ Entry points:
 ```text
 implementation  apps/editor/src/lib/authoring/adapters/scene/SceneTransformInstrument.svelte
                 apps/editor/src/lib/authoring/adapters/scene/placement.ts
-                packages/project-model/src/scene-planning/operations.ts
+                packages/project-model/src/scene-planning/operations/index.ts
 regressions     apps/editor/tests/lib/authoring/scene-composition-loop.test.ts
                 apps/editor/tests/lib/authoring/scene-compose-instrument.test.ts
                 apps/editor/tests/lib/authoring/scene-proposal-lifetime.test.ts

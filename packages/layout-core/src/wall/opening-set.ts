@@ -1,0 +1,344 @@
+/**
+ * `layout-opening-set.ts` — canonical wall-first Opening-set validator.
+ *
+ * ONE validator owns whole-hosting-Wall opening fit for the wall-first schema,
+ * consumed by both the precise wall-edit gates and the opening
+ * create/edit/drag/resize path:
+ *
+ * ```text
+ * canonical opening-set validator
+ *         ↑
+ * precise wall edits
+ * opening create/edit/drag/resize
+ * ```
+ *
+ * Scope: the hosting-geometry semantics the wall-first codec cannot see —
+ * host Wall resolvability, interval fit against the canonical Wall length,
+ * vertical fit against the **hosting Wall's authoritative height**,
+ * same-Wall interval overlap, and profile/width/height compatibility. Field
+ * shape (finite/non-negative/positive numbers, enum values), reference
+ * existence, and door-only portal relations stay the codec's job; nothing here
+ * is re-implemented twice.
+ *
+ * **No clamping.** This validator never repairs a candidate: an out-of-fit
+ * interval, overlap, or vertical mismatch is an issue the caller must reject.
+ * A clamped offset may never be laundered into validity through this module.
+ */
+import { buildArchProfile, LAYOUT_GEOMETRY_EPSILON } from '../geometry/openings';
+import { wallCenterlineSamples, type WallSamplingDerivation } from './centerline';
+import type { LayoutDocumentWallFirst, LayoutWall, LayoutWallOpening } from './types';
+import type { LayoutVec2 } from '../geometry/coordinates';
+import { countWork } from '../kernel/work-observer';
+import { isClosedWall } from './closed-wall';
+
+/** Fit tolerance shared with the precision gates (unchanged semantics). */
+export const OPENING_SET_EPSILON = LAYOUT_GEOMETRY_EPSILON;
+
+export type OpeningSetIssueCode =
+	| 'opening_host_wall_unresolved'
+	| 'opening_offset_invalid'
+	| 'opening_dimensions_invalid'
+	| 'opening_exceeds_wall'
+	/**
+	 * The Opening's vertical extent exceeds its **hosting Wall's**
+	 * authoritative `height`. Renamed from `opening_exceeds_floor_height`: the
+	 * Floor envelope bounds Wall height, not Opening-top directly.
+	 */
+	| 'opening_exceeds_wall_height'
+	| 'opening_overlap'
+	| 'opening_profile_invalid';
+
+export type OpeningSetIssue = {
+	openingId: string;
+	wallId: string;
+	/** Document path of the offending record/field. */
+	path: string;
+	code: OpeningSetIssueCode;
+	message: string;
+};
+
+/**
+ * Identity indexes over one document.
+ *
+ * `wallFirstWallSpan` resolves two Junction ids per call. A caller that resolves
+ * many Walls — the whole-hosting-Wall Opening set, which used to scan the
+ * Junction list twice per Opening (34.6 M `lookup:junctions` per grid-L drag
+ * run in Bench 1) — builds this once and passes it, so a lookup is an identity
+ * map read and the count oracle reports two visits instead of the document size.
+ */
+export type WallFirstWallIndex = {
+	readonly wallById: ReadonlyMap<string, LayoutWall>;
+	readonly pointById: ReadonlyMap<string, LayoutVec2>;
+};
+
+/** Build the identity indexes for one document. */
+export function wallFirstWallIndex(document: LayoutDocumentWallFirst): WallFirstWallIndex {
+	return {
+		wallById: new Map(document.walls.map((wall) => [wall.id, wall] as const)),
+		pointById: new Map(document.junctions.map((junction) => [junction.id, junction.point] as const))
+	};
+}
+
+/**
+ * Canonical Wall span in document X/Z space (meters).
+ *
+ * `length` is the **sampled arc length** of the Wall's canonical
+ * centerline, so curved Walls report their true physical length (a straight
+ * Wall's arc length equals its chord exactly, keeping prior behavior).
+ * `start`/`end` remain the resolved endpoint Junction coordinates.
+ */
+export function wallFirstWallSpan(
+	document: LayoutDocumentWallFirst,
+	wall: LayoutWall,
+	sampling?: WallSamplingDerivation,
+	index?: WallFirstWallIndex
+): { start: LayoutVec2; end: LayoutVec2; length: number } | undefined {
+	let start: LayoutVec2 | undefined;
+	let end: LayoutVec2 | undefined;
+	if (index) {
+		// Two identity lookups; the index removes the linear scan.
+		countWork('lookup:junctions', 2);
+		start = index.pointById.get(wall.startJunctionId);
+		end = index.pointById.get(wall.endJunctionId);
+	} else {
+		// Work count (inert without an observer): two linear Junction
+		// lookups per call, an upper bound on the visits.
+		countWork('lookup:junctions', 2 * document.junctions.length);
+		start = document.junctions.find(
+			(junction) => junction.id === wall.startJunctionId
+		)?.point;
+		end = document.junctions.find(
+			(junction) => junction.id === wall.endJunctionId
+		)?.point;
+	}
+	if (!start || !end) return undefined;
+	const sampled = sampling
+		? sampling.samples(wall, start, end, 'forward')
+		: wallCenterlineSamples(wall, start, end, 'forward');
+	if (!sampled) return undefined;
+	return { start, end, length: sampled.length };
+}
+
+/** Canonical Wall length in meters, or `undefined` when the span is unresolved. */
+export function wallFirstWallLength(
+	document: LayoutDocumentWallFirst,
+	wallId: string,
+	index?: WallFirstWallIndex
+): number | undefined {
+	const wall = index ? index.wallById.get(wallId) : document.walls.find((candidate) => candidate.id === wallId);
+	if (!wall) return undefined;
+	return wallFirstWallSpan(document, wall, undefined, index)?.length;
+}
+
+/**
+ * Validate every authored Opening in the document against its hosting Wall
+ * set. Returns all issues in deterministic document order (opening order for
+ * per-opening fit, then Wall groups in first-appearance order for overlap).
+ */
+export function validateWallFirstOpeningSet(
+	document: LayoutDocumentWallFirst,
+	sampling?: WallSamplingDerivation
+): OpeningSetIssue[] {
+	if (document.openings.length === 0) return [];
+	return validateIndexedOpeningRecords(
+		document,
+		document.openings.map((opening, index) => ({ opening, index })),
+		wallFirstWallIndex(document),
+		sampling
+	);
+}
+
+/**
+ * Validate only the Openings hosted on a bounded subset of Walls, preserving
+ * exact document-order paths (`$.openings[<index>]`) and same-Wall overlap
+ * checks. Shared with the canonical validator so no rule is implemented twice.
+ */
+export function validateWallFirstOpeningSubset(
+	document: LayoutDocumentWallFirst,
+	entries: ReadonlyArray<{ readonly opening: LayoutWallOpening; readonly index: number }>,
+	walls: WallFirstWallIndex,
+	sampling?: WallSamplingDerivation
+): OpeningSetIssue[] {
+	if (entries.length === 0) return [];
+	return validateIndexedOpeningRecords(document, entries, walls, sampling);
+}
+
+function validateIndexedOpeningRecords(
+	document: LayoutDocumentWallFirst,
+	entries: ReadonlyArray<{ readonly opening: LayoutWallOpening; readonly index: number }>,
+	walls: WallFirstWallIndex,
+	sampling?: WallSamplingDerivation
+): OpeningSetIssue[] {
+	const issues: OpeningSetIssue[] = [];
+	const wallById = walls.wallById;
+	const openingsByWall = new Map<string, LayoutWallOpening[]>();
+	// One span per hosting Wall: the periodic overlap pass must reuse the span
+	// the fit pass already resolved. Recomputing it doubles every consumer
+	// kernel/wall call on documents with many hosted Openings.
+	const spanByWall = new Map<string, ReturnType<typeof wallFirstWallSpan>>();
+
+	for (const { opening, index } of entries) {
+		const path = `$.openings[${index}]`;
+		const wall = wallById.get(opening.wallId);
+		// Keep the historical per-record span call (P23B.4 freezes its count); the
+		// cached value is only so the periodic overlap pass below does not repeat it.
+		const span = wall ? wallFirstWallSpan(document, wall, sampling, walls) : undefined;
+		if (wall !== undefined) spanByWall.set(opening.wallId, span);
+		if (!wall || !span || !(span.length > OPENING_SET_EPSILON)) {
+			issues.push({
+				openingId: opening.id,
+				wallId: opening.wallId,
+				path: `${path}.wallId`,
+				code: 'opening_host_wall_unresolved',
+				message: `Opening '${opening.id}' must be hosted by a Wall with a resolved non-zero span`
+			});
+			continue;
+		}
+		// A closed Wall is logically periodic: its seam is both 0 and the full
+		// circumference. Authored offsets stay in `[0, circumference)`, so the
+		// circumference itself is not a second spelling of the seam.
+		const closedHost = isClosedWall(wall);
+		if (!Number.isFinite(opening.offset) || opening.offset < 0) {
+			issues.push({
+				openingId: opening.id,
+				wallId: opening.wallId,
+				path: `${path}.offset`,
+				code: 'opening_offset_invalid',
+				message: `Opening '${opening.id}' offset must be finite and non-negative`
+			});
+		} else if (closedHost && opening.offset >= span.length - OPENING_SET_EPSILON) {
+			issues.push({
+				openingId: opening.id,
+				wallId: opening.wallId,
+				path: `${path}.offset`,
+				code: 'opening_offset_invalid',
+				message: `Opening '${opening.id}' offset must be less than the closed Wall circumference (${span.length} m)`
+			});
+		}
+		if (
+			!Number.isFinite(opening.width) ||
+			opening.width <= 0 ||
+			!Number.isFinite(opening.height) ||
+			opening.height <= 0 ||
+			!Number.isFinite(opening.sillHeight) ||
+			opening.sillHeight < 0
+		) {
+			issues.push({
+				openingId: opening.id,
+				wallId: opening.wallId,
+				path,
+				code: 'opening_dimensions_invalid',
+				message: `Opening '${opening.id}' must have a finite positive width/height and a finite non-negative sill`
+			});
+		}
+		// A closed Wall is logically periodic: an interval that starts before the
+		// seam and ends after it wraps through distance 0 instead of being refused,
+		// and an interval whose width is the whole circumference is not a valid
+		// Opening (it would erase the Wall). Every other host keeps the strict
+		// linear fit rule.
+		if (closedHost ? opening.width >= span.length - OPENING_SET_EPSILON : opening.offset + opening.width > span.length + OPENING_SET_EPSILON) {
+			issues.push({
+				openingId: opening.id,
+				wallId: opening.wallId,
+				path,
+				code: 'opening_exceeds_wall',
+				message: `Opening '${opening.id}' does not fit on Wall '${opening.wallId}'`
+			});
+		}
+		// Vertical fit is measured against the hosting Wall, not the
+		// Floor: a partial-height Wall legitimately caps its own Openings while a
+		// full-height Wall keeps the historical Floor-envelope behavior.
+		if (
+			opening.sillHeight + opening.height >
+			wall.height + OPENING_SET_EPSILON
+		) {
+			issues.push({
+				openingId: opening.id,
+				wallId: opening.wallId,
+				path,
+				code: 'opening_exceeds_wall_height',
+				message: `Opening '${opening.id}' (sill ${opening.sillHeight} m + height ${opening.height} m) does not fit Wall '${wall.id}' height ${wall.height} m`
+			});
+		}
+		const profileResult = buildArchProfile(
+			opening.profile,
+			opening.width,
+			opening.height
+		);
+		for (const profileIssue of profileResult.issues) {
+			issues.push({
+				openingId: opening.id,
+				wallId: opening.wallId,
+				path: `${path}.profile`,
+				code: 'opening_profile_invalid',
+				message: `Opening '${opening.id}' ${profileIssue.message}`
+			});
+		}
+		const group = openingsByWall.get(opening.wallId) ?? [];
+		group.push(opening);
+		openingsByWall.set(opening.wallId, group);
+	}
+
+	// Same-Wall interval overlap over the complete hosting-Wall set (never the
+	// edited record in isolation). A closed host's intervals are compared modulo
+	// its circumference, so a wrapped Opening overlaps the Opening just after
+	// the seam exactly as it overlaps one in the middle of the Wall.
+	for (const [wallId, openings] of openingsByWall) {
+		const wall = wallById.get(wallId);
+		const span = spanByWall.get(wallId);
+		const closedHost = wall !== undefined && isClosedWall(wall);
+		const sorted = [...openings].sort(
+			(a, b) => a.offset - b.offset || a.id.localeCompare(b.id)
+		);
+		if (!closedHost || span === undefined) {
+			for (let index = 1; index < sorted.length; index += 1) {
+				const previous = sorted[index - 1]!;
+				const current = sorted[index]!;
+				if (current.offset < previous.offset + previous.width - OPENING_SET_EPSILON) {
+					issues.push({
+						openingId: current.id,
+						wallId,
+						path: `$.openings`,
+						code: 'opening_overlap',
+						message: `Openings '${previous.id}' and '${current.id}' overlap on Wall '${wallId}'`
+					});
+				}
+			}
+			continue;
+		}
+		const intervals = sorted.map((opening) => {
+			const start = ((opening.offset % span.length) + span.length) % span.length;
+			const end = start + opening.width;
+			return end <= span.length
+				? [{ start, end }]
+				: [{ start, end: span.length }, { start: 0, end: end - span.length }];
+		});
+		for (let first = 0; first < intervals.length; first += 1) {
+			for (let second = first + 1; second < intervals.length; second += 1) {
+				const overlaps = intervals[first]!.some((a) =>
+					intervals[second]!.some(
+						(b) => Math.min(a.end, b.end) - Math.max(a.start, b.start) > OPENING_SET_EPSILON
+					)
+				);
+				if (overlaps) {
+					issues.push({
+						openingId: sorted[second]!.id,
+						wallId,
+						path: `$.openings`,
+						code: 'opening_overlap',
+						message: `Openings '${sorted[first]!.id}' and '${sorted[second]!.id}' overlap on Wall '${wallId}'`
+					});
+				}
+			}
+		}
+	}
+
+	return issues;
+}
+
+/** Convenience predicate: does the hosting-Wall opening set validate cleanly? */
+export function wallFirstOpeningSetIsValid(
+	document: LayoutDocumentWallFirst
+): boolean {
+	return validateWallFirstOpeningSet(document).length === 0;
+}

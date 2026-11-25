@@ -15,14 +15,8 @@ import {
 	guideCreateIntent,
 	stopCreateIntent
 } from '$lib/authoring/experience/commands';
-import {
-	EXPERIENCE_UNIT_FORMAT_VERSION,
-	computeEnvelopeSourceContentId,
-	createUnitAcceptanceProfile,
-	serializeProjectEnvelope,
-	type ExperienceUnitPayload,
-	type ProjectEnvelope
-} from '@portfolio/project-model/units';
+import { EXPERIENCE_UNIT_FORMAT_VERSION, computeEnvelopeSourceContentId, serializeProjectEnvelope, type ExperienceUnitPayload, type ProjectEnvelope } from '@portfolio/project-model/units';
+import { createUnitAcceptanceProfile } from '@portfolio/project-model/units/planning';
 
 import { EXPERIENCE, VIEWS, experienceEnvelope } from './fixtures';
 

@@ -18,9 +18,9 @@ ANCHOR:    `closed/T3.P02.S01` → `11bd77b958978e82436a62ca65601f06cb301481`
 
 ```text
 ENTRY POINTS
-unit codec      packages/project-model/src/units/types.ts · packages/project-model/src/units/validate.ts
+unit codec      packages/project-model/src/units/types.ts · packages/project-model/src/units/validate/index.ts
 program codec   packages/project-model/src/program/types.ts · packages/project-model/src/program/validate.ts
 runtime         packages/project-model/src/units/experience/lowering.ts · interpreter.ts
 regressions     apps/editor/tests/lib/experience/experience-runtime.test.ts ·
-                apps/editor/tests/lib/project-model/units-conformance.test.ts
+                packages/project-model/tests/units-conformance.test.ts
 ```

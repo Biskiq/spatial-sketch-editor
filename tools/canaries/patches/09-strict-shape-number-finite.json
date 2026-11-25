@@ -3,7 +3,7 @@
   "area": "layout",
   "citation": "hard rule 2 — Layout owns architecture",
   "title": "Plan grid snapping outranks every semantic feature",
-  "file": "packages/layout-core/src/layout-snap.ts",
+  "file": "packages/layout-core/src/plan/snap/types.ts",
   "find": "\t'extension-guide': 8,\n\tgrid: 9",
   "replace": "\t'extension-guide': 8,\n\tgrid: 0",
   "tests": [

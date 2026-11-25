@@ -136,7 +136,7 @@ filtering, canonical read/refusal and exact transfer triple plus recipe revalida
 - **Browser gate transport is in-memory**, not a live API server, so the gate proves the editor
   journey and destination independence while the API tests prove HTTP, Postgres, ownership and
   bytes. The gate's lit equality is structural (descriptor with pinned hashes), not pixel identity.
-- `apps/api/src/form-library.ts` keeps its filename as the generalized library dispatcher; form
+- `apps/api/src/form-library/index.ts` keeps its filename as the generalized library dispatcher; form
   format 1, its ETag and form-only listing remain unchanged.
 - F's catalogue harvest is not used. The frozen shipped manifest is the only shipped source.
 - Docker was unavailable on this workstation; API tests ran against the local Postgres database

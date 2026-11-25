@@ -1,4 +1,4 @@
-import { SCENE_SKY_UPDATE_KIND } from '@portfolio/project-model/units';
+import { SCENE_SKY_UPDATE_KIND } from '@portfolio/project-model/units/planning';
 import type { StageHandleDescriptor } from '$lib/authoring/stage/stage-adapter-host';
 import type { CelestialDialModel } from '$lib/authoring/look/celestial-dial';
 

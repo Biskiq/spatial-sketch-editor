@@ -76,8 +76,11 @@ function restore(canary) {
 }
 
 function runVitest(canary) {
+	// Package-pure suites live outside the editor project; the root workspace
+	// configuration collects them without the Svelte plugin.
+	const cwd = canary.root === 'repo' ? REPO_ROOT : EDITOR_ROOT;
 	const result = spawnSync('npx', ['vitest', 'run', ...canary.tests], {
-		cwd: EDITOR_ROOT,
+		cwd,
 		encoding: 'utf8',
 		env: { ...process.env, CI: '1' },
 		timeout: 180_000

@@ -20,16 +20,8 @@ import {
 	stopCreateIntent,
 	stopUpdateIntent
 } from '$lib/authoring/experience/commands';
-import {
-	EXPERIENCE_UNIT_FORMAT_VERSION,
-	computeEnvelopeSourceContentId,
-	createUnitAcceptanceProfile,
-	lowerExperienceProgram,
-	serializeProjectEnvelope,
-	type Experience,
-	type ExperienceUnitPayload,
-	type ProjectEnvelope
-} from '@portfolio/project-model/units';
+import { EXPERIENCE_UNIT_FORMAT_VERSION, computeEnvelopeSourceContentId, lowerExperienceProgram, serializeProjectEnvelope, type Experience, type ExperienceUnitPayload, type ProjectEnvelope } from '@portfolio/project-model/units';
+import { createUnitAcceptanceProfile } from '@portfolio/project-model/units/planning';
 
 import { experienceEnvelope } from './fixtures';
 

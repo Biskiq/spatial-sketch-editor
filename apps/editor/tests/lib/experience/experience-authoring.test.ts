@@ -25,13 +25,8 @@ import {
 	previewEntryFor,
 	type ExperienceFocus
 } from '$lib/authoring/experience/preview-entry';
-import {
-	CAMERA_UNIT_FORMAT_VERSION,
-	computeEnvelopeSourceContentId,
-	createUnitAcceptanceProfile,
-	serializeProjectEnvelope,
-	type ProjectEnvelope
-} from '@portfolio/project-model/units';
+import { CAMERA_UNIT_FORMAT_VERSION, computeEnvelopeSourceContentId, serializeProjectEnvelope, type ProjectEnvelope } from '@portfolio/project-model/units';
+import { createUnitAcceptanceProfile } from '@portfolio/project-model/units/planning';
 
 import { EXPERIENCE, VIEWS, experienceEnvelope } from './fixtures';
 

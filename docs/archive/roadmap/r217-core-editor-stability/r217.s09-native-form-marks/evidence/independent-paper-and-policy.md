@@ -29,7 +29,7 @@ support contact, and exactly one history entry.
 
 ## Existing size policy
 
-No range or planner policy was changed. `packages/project-model/src/scene-planning/operations.ts`
+No range or planner policy was changed. `packages/project-model/src/scene-planning/operations/index.ts`
 rejects any scale axis outside `PROFILE_LIMITS.minScale = 0.01` and
 `PROFILE_LIMITS.maxScale = 100`. The profile evaluator separately restricts scaled dimensions to
 `0.001–100 m`. The existing `shape-reading-adapter.test.ts` contract exercises the invalid extent

@@ -35,7 +35,7 @@ export {
 	planColourCoats,
 	sameCoatRecipe,
 	UNASSIGNED_SURFACE_COAT_BASE,
-} from './colour-coat';
+} from './finish/colour-coat';
 
 export type {
 	CoatAssignment,
@@ -44,7 +44,7 @@ export type {
 	CoatSource,
 	CoatTarget,
 	ColourCoatPlan,
-} from './colour-coat';
+} from './finish/colour-coat';
 
 export {
 	analysisRequestOf,
@@ -58,14 +58,14 @@ export {
 	qualifyFinishUsers,
 	resolveEnvelopeFinish,
 	surfaceUserKey,
-} from './finish-inspect';
+} from './finish/inspect';
 
 export type {
 	FinishInspection,
 	FinishOperation,
 	FinishUserKey,
 	InspectedFinishUser,
-} from './finish-inspect';
+} from './finish/inspect';
 
 export {
 	applyFinishEdit,
@@ -101,7 +101,7 @@ export {
 	surfaceFinishFor,
 	usersOfFinish,
 	withFinishInstancePreview,
-} from './finish-model';
+} from './finish/model';
 
 export type {
 	FinishEntity,
@@ -113,14 +113,14 @@ export type {
 	MetalReading,
 	SceneFinishEdit,
 	SceneFinishRef,
-} from './finish-model';
+} from './finish/model';
 
 export {
 	applyFinishPatch,
 	baseRecipeOf,
 	FINISH_PATCH_FACTOR_FIELDS,
 	FINISH_PATCH_FIELDS,
-} from './finish-patch';
+} from './finish/patch';
 
 export type {
 	FinishPatchEdit,
@@ -129,7 +129,7 @@ export type {
 	FinishPatchMapField,
 	FinishPatchProblem,
 	FinishPatchResult,
-} from './finish-patch';
+} from './finish/patch';
 
 export {
 	createFinishPlanners,
@@ -148,13 +148,13 @@ export {
 	SCENE_PALETTE_SLOT_RENAME,
 	SCENE_PALETTE_SLOT_SET,
 	SCENE_SURFACE_FINISH_ASSIGN,
-} from './finish-planners';
+} from './finish';
 
 export type {
 	FinishAssignDerive,
 	FinishPlanDiagnostic,
 	FinishPlannerOptions,
-} from './finish-planners';
+} from './finish';
 
 export {
 	baseTileMeters,
@@ -177,7 +177,7 @@ export {
 	swapEdits,
 	swapOverrides,
 	uniqueFinishName,
-} from './finish-treatment';
+} from './finish/treatment';
 
 export type {
 	FinishColourMode,
@@ -189,7 +189,7 @@ export type {
 	FinishTreatmentFacts,
 	SheenStepId,
 	SheenTargets,
-} from './finish-treatment';
+} from './finish/treatment';
 
 export {
 	frameDirectionFromWorld,

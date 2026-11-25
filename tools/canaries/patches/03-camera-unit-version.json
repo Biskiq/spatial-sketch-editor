@@ -7,6 +7,7 @@
   "find": "\tcamera: CAMERA_UNIT_FORMAT_VERSION,",
   "replace": "\tcamera: CAMERA_UNIT_FORMAT_VERSION + 1,",
   "tests": [
-    "tests/lib/project-model/units-conformance.test.ts"
-  ]
+    "packages/project-model/tests/units-conformance.test.ts"
+  ],
+  "root": "repo"
 }

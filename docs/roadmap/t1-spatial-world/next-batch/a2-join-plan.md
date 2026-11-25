@@ -103,9 +103,9 @@ endpoints.
 
 ## Files
 
-- `packages/layout-core/src/layout-wall-dissolve.ts` — capture-derived knot id + local catch;
+- `packages/layout-core/src/wall/dissolve.ts` — capture-derived knot id + local catch;
   tangency gate + new rejection code; header doc.
-- `packages/layout-core/src/layout-wall-centerline.ts` — doc comment only.
+- `packages/layout-core/src/wall/centerline.ts` — doc comment only.
 - `apps/editor/src/lib/authoring/adapters/layout/join-planners.ts` *(new)* —
   `LAYOUT_WALL_JOIN_KIND`, payload `{junctionId}`, capture + level, `planDissolveJunction`,
   lineage, `wallJoinIntent`.

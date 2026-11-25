@@ -382,7 +382,7 @@ Change means SP1a unless marked.
 | `world-index-model.ts:37` | Rooms group | Kind and open-side count (SP1c) |
 | `LayoutCardFields.svelte:209`, `split-planners.ts:162` | Membership by `wallId` | None |
 | `drawing-planners.ts` `planWallDeletion`, `chain.ts:233` | Summary knows created and retired | Add kept-open, closed and merged (SP1c) |
-| `project-model/src/units/validate.ts` | Validates Layout with the same codec | Inherits format 8; release test |
+| `project-model/src/units/validate/index.ts` | Validates Layout with the same codec | Inherits format 8; release test |
 
 ## 11. Index, Card, Paint scope, selection, visitor
 
@@ -472,7 +472,7 @@ states "Unit payload versions are Layout 6" under the envelope and `formatVersio
 | Find where the F2 envelope declares or checks a Layout unit version, separate from `LAYOUT_WALL_FIRST_FORMAT_VERSION` | The PR states which holds: (a) one number, the Layout `formatVersion`; or (b) a distinct envelope unit version |
 | Case (a) | Persistence names one number, 8, in both places. No envelope change |
 | Case (b) | The PR states whether the unit version moves with this bump and why. Persistence names both numbers and what each governs |
-| Either case: an envelope carrying a format-7 Layout unit, loaded through `project-model/src/units/validate.ts` and through the visitor's release path | Refused with `unsupported_format_version`; no partial load, no reinterpretation |
+| Either case: an envelope carrying a format-7 Layout unit, loaded through `project-model/src/units/validate/index.ts` and through the visitor's release path | Refused with `unsupported_format_version`; no partial load, no reinterpretation |
 | Either case: Save of a format-8 document, then Load | Round-trips byte-identically at the stated version or versions |
 
 SP1a fails acceptance if persistence still states two unreconciled Layout numbers, or if either

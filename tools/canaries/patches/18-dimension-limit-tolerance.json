@@ -3,7 +3,7 @@
   "area": "layout",
   "citation": "section 3 — canonical invariants",
   "title": "The supported geometry envelope is silently widened tenfold",
-  "file": "packages/layout-core/src/layout-geometry-limits.ts",
+  "file": "packages/layout-core/src/geometry/limits.ts",
   "find": "return Number.isFinite(value) && value > MAX_LAYOUT_DIMENSION_METERS + DIMENSION_LIMIT_TOLERANCE_METERS;",
   "replace": "return Number.isFinite(value) && value > MAX_LAYOUT_DIMENSION_METERS * 10;",
   "tests": [

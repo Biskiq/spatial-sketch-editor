@@ -66,7 +66,7 @@ implementation  packages/geometry-core/src
                 packages/project-model/src/scene*.ts, scene-codec, scene-planning
                 apps/editor/src/lib/authoring/adapters/scene
                 apps/editor/src/lib/authoring/adapters/scene/library
-                apps/api/src/form-library.ts
+                apps/api/src/form-library/index.ts
 regressions     apps/editor/tests/lib/visitor/visitor-cold-runtime.test.ts
                 apps/editor/tests/lib/content/form-evaluation.test.ts
                 apps/editor/tests/lib/geometry-core/**

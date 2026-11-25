@@ -28,7 +28,7 @@ evidence       check 1825 files 0/0 · complete editor suite 185 files, 2403/240
                DB-backed API 12 suites / 95 tests / 0 skips · 6 integrated browser journeys
                (49.2 s) · focused first-Guide 12 and visitor-director 9. The gate ran at that
                revision; this close validated the record and re-ran nothing.
-entry points   implementation  packages/project-model/src/units/planning.ts
+entry points   implementation  packages/project-model/src/units/planning/index.ts
                                apps/editor/src/lib/authoring/stage/camera-session.ts
                                apps/editor/src/lib/visitor/VisitorPreviewSurface.svelte (surface)
                validation      apps/editor/tests/lib/experience/first-guide.test.ts

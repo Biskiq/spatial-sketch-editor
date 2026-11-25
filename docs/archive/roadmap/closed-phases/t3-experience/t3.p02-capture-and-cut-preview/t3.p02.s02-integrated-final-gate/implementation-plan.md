@@ -20,7 +20,7 @@ EVIDENCE:  ./acceptance.md#verification-record — type check 1825 files 0 error
            passed; test:api 95 passed, 0 skipped; integrated journeys 6 passed; focused 12 + 9 passed.
            Performance rows are starter-workload pre-flight at f6de016d, deferred by owner ruling.
 ENTRY POINTS:
-  implementation  packages/project-model/src/units/planning.ts
+  implementation  packages/project-model/src/units/planning/index.ts
                   apps/editor/src/lib/authoring/experience/commands.ts
                   apps/editor/src/lib/authoring/experience/preview-handover.ts
                   apps/editor/src/lib/authoring/experience/ExperienceSurface.svelte

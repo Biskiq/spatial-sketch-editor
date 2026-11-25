@@ -16,7 +16,7 @@
 
 import type { StageAdapterFactory } from '../stage/stage-adapter-host';
 import type { StageAdapter } from '$lib/authoring/stage/stage-adapter-host';
-import { createUnitCandidatePlanners } from '@portfolio/project-model/units';
+import { createUnitCandidatePlanners } from '@portfolio/project-model/units/planning';
 
 /** The one contributed task; the Experience lens is its authoring surface. */
 const EXPERIENCE_TASK = 'experience-edit';

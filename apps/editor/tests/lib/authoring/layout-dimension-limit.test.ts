@@ -2,7 +2,7 @@
  * The supported authored-geometry envelope.
  *
  * One measured limit (`MAX_LAYOUT_DIMENSION_METERS`, see
- * `packages/layout-core/src/layout-geometry-limits.ts`) refuses oversized
+ * `packages/layout-core/src/geometry/limits.ts`) refuses oversized
  * dimensions and Wall spans at every authoring entry point and at import:
  *
  * 1. the exact-length, Junction, chain and curve-knot planners refuse just over

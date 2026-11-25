@@ -11,21 +11,8 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import {
-	EXPERIENCE_CAPTURE_BIND_KIND,
-	EXPERIENCE_GUIDE_CREATE_KIND,
-	EXPERIENCE_GUIDE_ORDER_KIND,
-	EXPERIENCE_GUIDE_UPDATE_KIND,
-	EXPERIENCE_STOP_REMOVE_KIND,
-	EXPERIENCE_UPDATE_KIND,
-	EXPERIENCE_PRESENTATION_UPDATE_KIND,
-	EXPERIENCE_STOP_CREATE_KIND,
-	EXPERIENCE_STOP_UPDATE_KIND,
-	type Experience,
-	type ExperiencePresentation,
-	type ExperienceUnitPayload,
-	type ProjectEnvelope
-} from '@portfolio/project-model/units';
+import { type Experience, type ExperiencePresentation, type ExperienceUnitPayload, type ProjectEnvelope } from '@portfolio/project-model/units';
+import { EXPERIENCE_CAPTURE_BIND_KIND, EXPERIENCE_GUIDE_CREATE_KIND, EXPERIENCE_GUIDE_ORDER_KIND, EXPERIENCE_GUIDE_UPDATE_KIND, EXPERIENCE_STOP_REMOVE_KIND, EXPERIENCE_UPDATE_KIND, EXPERIENCE_PRESENTATION_UPDATE_KIND, EXPERIENCE_STOP_CREATE_KIND, EXPERIENCE_STOP_UPDATE_KIND } from '@portfolio/project-model/units/planning';
 import { experienceFocus } from '$lib/authoring/experience/focus.svelte';
 import {
 	captureBindIntent,

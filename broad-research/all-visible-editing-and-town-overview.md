@@ -583,7 +583,7 @@ OCCT and PostGIS are design references, not candidates under S06's full-permissi
 [architecture]: ../docs/reference/architecture.md
 [stage-canvas]: ../apps/editor/src/lib/authoring/stage/shell/StageCanvas.svelte
 [stage-camera]: ../apps/editor/src/lib/authoring/stage/shell/StageCamera.svelte
-[plan-eval]: ../packages/layout-core/src/layout-plan-representation.ts
+[plan-eval]: ../packages/layout-core/src/plan/plan-representation.ts
 [plan-params]: ../apps/editor/src/lib/authoring/stage/plan-parameters.ts
 [facade]: ../apps/editor/src/lib/authoring/stage/stage-facade.ts
 [layout-shell]: ../apps/editor/src/lib/visitor/VisitorLayoutShell.svelte
@@ -627,8 +627,8 @@ OCCT and PostGIS are design references, not candidates under S06's full-permissi
 [experiment-proposal]: ../docs/archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/scale-measurement-proposal.md
 [f4-immutable]: ../packages/project-model/src/f4/immutable.ts
 [unit-canonical]: ../packages/project-model/src/units/canonical.ts
-[wall-precision]: ../packages/layout-core/src/layout-wall-first-precision.ts
-[face-extraction]: ../packages/layout-core/src/layout-face-extraction.ts
+[wall-precision]: ../packages/layout-core/src/precision/index.ts
+[face-extraction]: ../packages/layout-core/src/geometry/face-extraction.ts
 [rust-incremental]: https://rustc-dev-guide.rust-lang.org/queries/incremental-compilation.html
 [rust-fingerprints]: https://rustc-dev-guide.rust-lang.org/queries/incremental-compilation-in-detail.html
 [arrangements]: https://timelydataflow.github.io/differential-dataflow/chapter_5/chapter_5.html

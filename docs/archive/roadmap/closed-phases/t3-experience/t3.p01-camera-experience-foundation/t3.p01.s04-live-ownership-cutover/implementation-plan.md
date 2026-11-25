@@ -12,7 +12,7 @@ VERIFICATION: exhaustive
 
 **Contract:** [AM-9 Shared Camera and Experience cutover](../../../../../../reference/composition-execution.md#am-9-shared-camera-and-experience-cutover).
 **Entry points:** `packages/project-model/src/units/`; `apps/api/src/`; `apps/editor/src/lib/visitor/`.
-**Validation:** `apps/editor/tests/lib/project-model/units-conformance.test.ts`; `apps/editor/tests/lib/experience/experience-runtime.test.ts`; `apps/editor/tests/lib/visitor/visitor-cold-runtime.test.ts`; `apps/api/tests/migration-fence.test.mjs`.
+**Validation:** `packages/project-model/tests/units-conformance.test.ts`; `apps/editor/tests/lib/experience/experience-runtime.test.ts`; `apps/editor/tests/lib/visitor/visitor-cold-runtime.test.ts`; `apps/api/tests/migration-fence.test.mjs`.
 **Residuals:** T4 public reader; T2 catalogue/resource verification; owner-run post-merge activation (unexecuted). This plan stays a closed stub; the phase closure is recorded in the phase README's PHASE CLOSE block.
 
 ## Prerequisite

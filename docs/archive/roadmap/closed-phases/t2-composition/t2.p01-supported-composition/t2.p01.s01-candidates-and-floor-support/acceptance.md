@@ -23,7 +23,7 @@ refusals. No capability gate was created.
 - Manual-owed rows: 0. API/DB and browser journeys are not required for this affected-subsystem
   slice; the complete repository merge gate remains required against then-current `main`.
 
-**Entry points:** implementation `packages/layout-core/src/layout-floor-support.ts`,
+**Entry points:** implementation `packages/layout-core/src/room/floor-support.ts`,
 `packages/project-model/src/scene-planning/`; regressions `apps/editor/tests/lib/layout/` and
 `apps/editor/tests/lib/project-model/`.
 

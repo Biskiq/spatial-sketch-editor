@@ -123,7 +123,7 @@ only.
 
 | Concern | Owner | Module |
 |---|---|---|
-| Which overheads exist, their outline and elevation | layout-core (pure) | `packages/layout-core/src/layout-geometry-queries.ts` → `overheadSourcesOf` |
+| Which overheads exist, their outline and elevation | layout-core (pure) | `packages/layout-core/src/geometry/queries.ts` → `overheadSourcesOf` |
 | The reading: on/off and scope | shell session (Layout lane) | new `interior-lift-store.svelte.ts` |
 | Drawing the lid lifted (gone from view and rays) | Layout representation | `render/layout-room-representation.ts` → `setLifted` |
 | The lifted layer number | render | new `render-layers.ts` |
@@ -139,7 +139,7 @@ only.
 **Approved:** take the overhead set from one function, `overheadSourcesOf`, lids now and regions
 after V1b; until V1b, X1 computes lids itself behind that name.
 
-**Decided.** Add to `packages/layout-core/src/layout-geometry-queries.ts` (already exported from
+**Decided.** Add to `packages/layout-core/src/geometry/queries.ts` (already exported from
 `index.ts`):
 
 ```ts
@@ -479,7 +479,7 @@ New: the six files in [Proposed new files](#proposed-new-files).
 
 Edited (all exist on `main`):
 
-- `packages/layout-core/src/layout-geometry-queries.ts` — `overheadSourcesOf` and its types.
+- `packages/layout-core/src/geometry/queries.ts` — `overheadSourcesOf` and its types.
 - `apps/editor/src/lib/render/layout-room-representation.ts` — `setLifted` (returns whether a
   layer changed).
 - `apps/editor/src/lib/visitor/VisitorLayoutShell.svelte` — `liftedRoomIds` prop, lift effect,

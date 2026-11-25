@@ -17,7 +17,7 @@ no second identity, planner family or rendering pipeline.
 
 | Area | Landed mechanism | Reused for S5b |
 | --- | --- | --- |
-| Identity | `packages/layout-core/src/layout-surface-reference.ts`: tagged `LayoutSurfaceRef`, `surfaceKey`, `resolveLayoutSurface` lifecycle, `resolveLayoutSurfaceReference` geometry | Unchanged vocabulary; Region faces already exist |
+| Identity | `packages/layout-core/src/plan/surface-reference.ts`: tagged `LayoutSurfaceRef`, `surfaceKey`, `resolveLayoutSurface` lifecycle, `resolveLayoutSurfaceReference` geometry | Unchanged vocabulary; Region faces already exist |
 | Space scope | `surfacesOfSpace` already returns boundary Wall sides, floor, a `present` lid and wholly-contained Region faces (`top` for floor Regions, `underside` for overhead); straddling Regions are `excluded: spans-spaces` | Do not rewrite; extend `spaceOfSurface` to the same members |
 | Storage | `CameraFreeSceneDocument.surfaceFinishes` and `SceneSurfaceFinish`, Scene unit 10, strict codec normal form | Same record; Scene 11 only widens the admitted reference union |
 | Assignment | `scene-surface-finish-assign` Scene planner, `resolveSceneSurfaceFinish`, `finalizeSceneCandidate` scope grants | Same planner and record-scope grant; widen the surface payload and target qualification |

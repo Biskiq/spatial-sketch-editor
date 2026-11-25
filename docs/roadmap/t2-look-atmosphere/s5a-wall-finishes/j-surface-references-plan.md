@@ -61,7 +61,7 @@ base. The explicit V1d API reconciliation and current implementation status foll
 
 ## 2. Contract C1: surface identity
 
-Layout-owned in `packages/layout-core/src/layout-surface-reference.ts`, the canonical
+Layout-owned in `packages/layout-core/src/plan/surface-reference.ts`, the canonical
 surface-reference module introduced by T1 V1d:
 
 ```ts

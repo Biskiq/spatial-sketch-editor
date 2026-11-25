@@ -510,7 +510,7 @@ them (`p2311*`, `__P2311_PERF__`, `p2311:` performance-mark namespace). They are
 the shared package root, and later slices reuse the slice-named API instead of a durable name.
 
 **Occurrences.**
-- **`6b71f53` (#51 P23.11, 09-15)** adds `packages/layout-core/src/p2311-perf.ts`, which:
+- **`6b71f53` (#51 P23.11, 09-15)** adds `packages/layout-core/src/kernel/work-observer.ts`, which:
   - exports `p2311Measure` and is re-exported by `layout-core/src/index.ts`;
   - reads `globalThis.__P2311_PERF__` and `import.meta.env.DEV`;
   - emits `p2311:<name>` marks.

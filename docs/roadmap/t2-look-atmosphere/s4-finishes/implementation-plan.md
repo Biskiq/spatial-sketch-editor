@@ -364,7 +364,7 @@ allocated ids, since ids are allocated in the intent (`allocatedIds`).
 ### 6.1 Where they live
 
 The planners go in a new file,
-`packages/project-model/src/scene-planning/finish-planners.ts`, modelled on `artwork-planners.ts`:
+`packages/project-model/src/scene-planning/finish/index.ts`, modelled on `artwork-planners.ts`:
 
 - `prepare()` returns
   `{kind:'prepared', candidate:{…, source: replaceUnitData(envelope,'scene',…)}}`;
@@ -648,12 +648,12 @@ background. Its source is the lease's object URL, the same bytes the Stage uses,
 
 **`packages/project-model`**
 
-1. `src/scene-planning/finish-model.ts`: `finishOf`, `usersOf`, `isPristine`, the normal-form
+1. `src/scene-planning/finish/model.ts`: `finishOf`, `usersOf`, `isPristine`, the normal-form
    assignment, `nextFinishName`, and the Sheen and Metal constants and readings (pure). The editor
    imports these readings, so the Card and the planner cannot disagree.
 2. `src/scene-planning/record-scope.ts`: the `materials` and `palette` grants (§6.1). Tests cover
    granted, ungranted, reordered, appended and removed records.
-3. `src/scene-planning/finish-planners.ts`: `scene-finish-assign`, `scene-finish-edit` and
+3. `src/scene-planning/finish/index.ts`: `scene-finish-assign`, `scene-finish-edit` and
    `scene-palette-slot-add/set/rename/remove`, with payload readers following `intent-payload.ts`.
 4. `src/scene-planning/index.ts`: register and export them.
 5. Tests in `finish-planners.test.ts`, covering each §5 row, each refusal, garbage collection,
@@ -704,7 +704,7 @@ background. Its source is the lease's object URL, the same bytes the Stage uses,
 ### S4b
 
 1. `project-model/src/scene-planning/record-scope.ts`: the `textures` grant.
-2. `project-model/src/scene-planning/finish-planners.ts`: `scene-finish-from-image` with
+2. `project-model/src/scene-planning/finish/index.ts`: `scene-finish-from-image` with
    `resources: true`. Add a texture resource helper, `texture-resource.ts`, following
    `model-resource.ts`, which validates the pin and appends the resource. Texture resources have no
    dependency-lock entry unless the validator demands one, which is verified in its first test.
@@ -820,7 +820,7 @@ branch.
 
 | Shared seam | S2's likely change | S4's rule |
 | --- | --- | --- |
-| `project-model/src/units/planning.ts` (`scene-environment-set`) | the Sky and Haze writer | **S4 does not touch it.** Finish planners live in `scene-planning/finish-planners.ts`. |
+| `project-model/src/units/planning/index.ts` (`scene-environment-set`) | the Sky and Haze writer | **S4 does not touch it.** Finish planners live in `scene-planning/finish-planners.ts`. |
 | `scene-planning/record-scope.ts` | possibly none (environment goes through the unit planner) | S4 adds optional grants. An ungranted `environment` stays refused by S4's planners. |
 | `authoring/look/look-authoring.svelte.ts` | Sky dials state | S4 only rewires `pickMaterial` and deletes the notice constant. The Finish service is a separate file. |
 | `routes/project/[projectId]/spatial/+page.svelte` | Sky control wiring | S4 adds one service construction and its props in one block. Whichever PR lands second rebases. |

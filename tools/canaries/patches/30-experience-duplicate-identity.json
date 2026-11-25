@@ -3,7 +3,7 @@
   "area": "experience",
   "citation": "section 3 — Experience lowering",
   "title": "Experience creation refuses every identity except the one it must refuse",
-  "file": "packages/project-model/src/units/planning.ts",
+  "file": "packages/project-model/src/units/planning/experience/capture-bind.ts",
   "find": "\t\t\t\tif (id === experience.id) return refuse('duplicate-identity', 'the new Experience and its first View or Presentation must have distinct identities');",
   "replace": "\t\t\t\tif (id !== experience.id) return refuse('duplicate-identity', 'the new Experience and its first View or Presentation must have distinct identities');",
   "tests": [

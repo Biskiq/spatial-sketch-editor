@@ -6,18 +6,8 @@
  * Treatment, plus the one environment writer that installs a preset start.
  */
 import { describe, expect, it } from 'vitest';
-import {
-	SCENE_ENVIRONMENT_SET_KIND,
-	SCENE_SKY_UPDATE_KIND,
-	SCENE_SKY_DEFAULT,
-	createSceneSkyUpdatePlanner,
-	skyFromPreset,
-	SCENE_UNIT_FORMAT_VERSION,
-	createSceneEnvironmentSetPlanner,
-	type CameraFreeSceneDocument,
-	type ProjectEnvelope,
-	type SceneEnvironment
-} from '@portfolio/project-model/units';
+import { SCENE_SKY_DEFAULT, skyFromPreset, SCENE_UNIT_FORMAT_VERSION, type CameraFreeSceneDocument, type ProjectEnvelope, type SceneEnvironment } from '@portfolio/project-model/units';
+import { SCENE_ENVIRONMENT_SET_KIND, SCENE_SKY_UPDATE_KIND, createSceneSkyUpdatePlanner, createSceneEnvironmentSetPlanner } from '@portfolio/project-model/units/planning';
 import type { AcceptedSnapshot, AuthoringIntent } from '@portfolio/project-model/f4';
 import { validateCameraFreeScenePayload } from '@portfolio/project-model/units';
 import {

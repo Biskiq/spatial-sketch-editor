@@ -2,68 +2,73 @@
   {
     "id": "01-envelope-version",
     "area": "codec",
-    "citation": "section 7 rule 7 — one refusal per format family",
+    "citation": "section 7 rule 7 \u2014 one refusal per format family",
     "title": "Envelope reader accepts a newer format version",
-    "file": "packages/project-model/src/units/validate.ts",
+    "file": "packages/project-model/src/units/validate/envelope.ts",
     "find": "const record = reader.object(input, '$', ENVELOPE_KEYS);\n\tif (record === null) return { success: false, issues: reader.issues };\n\tif (record.formatVersion !== UNIT_ENVELOPE_FORMAT_VERSION) {",
     "replace": "if (record.formatVersion < UNIT_ENVELOPE_FORMAT_VERSION) {",
     "tests": [
-      "tests/lib/project-model/units-conformance.test.ts"
-    ]
+      "packages/project-model/tests/units-conformance.test.ts"
+    ],
+    "root": "repo"
   },
   {
     "id": "02-scene-unit-version",
     "area": "codec",
-    "citation": "section 7 rule 7 — one refusal per format family",
+    "citation": "section 7 rule 7 \u2014 one refusal per format family",
     "title": "Scene unit reader accepts a newer payload version",
-    "file": "packages/project-model/src/units/validate.ts",
+    "file": "packages/project-model/src/units/validate/scene.ts",
     "find": "if (record.formatVersion !== SCENE_UNIT_FORMAT_VERSION) {",
     "replace": "if (record.formatVersion < SCENE_UNIT_FORMAT_VERSION) {",
     "tests": [
       "tests/lib/project-model/scene-look-schema.test.ts",
-      "tests/lib/project-model/units-conformance.test.ts"
-    ]
+      "packages/project-model/tests/units-conformance.test.ts"
+    ],
+    "root": "repo"
   },
   {
     "id": "03-camera-unit-version",
     "area": "codec",
-    "citation": "section 7 rule 7 — one refusal per format family",
+    "citation": "section 7 rule 7 \u2014 one refusal per format family",
     "title": "The admitted Camera unit version drifts from its codec",
     "file": "packages/project-model/src/units/types.ts",
     "find": "\tcamera: CAMERA_UNIT_FORMAT_VERSION,",
     "replace": "\tcamera: CAMERA_UNIT_FORMAT_VERSION + 1,",
     "tests": [
-      "tests/lib/project-model/units-conformance.test.ts"
-    ]
+      "packages/project-model/tests/units-conformance.test.ts"
+    ],
+    "root": "repo"
   },
   {
     "id": "04-experience-unit-version",
     "area": "codec",
-    "citation": "section 7 rule 7 — one refusal per format family",
+    "citation": "section 7 rule 7 \u2014 one refusal per format family",
     "title": "The admitted Experience unit version drifts from its codec",
     "file": "packages/project-model/src/units/types.ts",
     "find": "\texperience: EXPERIENCE_UNIT_FORMAT_VERSION,",
     "replace": "\texperience: EXPERIENCE_UNIT_FORMAT_VERSION + 1,",
     "tests": [
-      "tests/lib/project-model/units-conformance.test.ts"
-    ]
+      "packages/project-model/tests/units-conformance.test.ts"
+    ],
+    "root": "repo"
   },
   {
     "id": "05-resource-unit-version",
     "area": "codec",
-    "citation": "section 7 rule 7 — one refusal per format family",
+    "citation": "section 7 rule 7 \u2014 one refusal per format family",
     "title": "The admitted Resource unit version drifts from its codec",
     "file": "packages/project-model/src/units/types.ts",
     "find": "\tresources: RESOURCE_UNIT_FORMAT_VERSION",
     "replace": "\tresources: RESOURCE_UNIT_FORMAT_VERSION + 1",
     "tests": [
-      "tests/lib/project-model/units-conformance.test.ts"
-    ]
+      "packages/project-model/tests/units-conformance.test.ts"
+    ],
+    "root": "repo"
   },
   {
     "id": "06-strict-shape-unknown-key",
     "area": "codec",
-    "citation": "section 7 rule 6 — contract names; section 5 rule 7 — comments state the current contract",
+    "citation": "section 7 rule 6 \u2014 contract names; section 5 rule 7 \u2014 comments state the current contract",
     "title": "Strict reader silently tolerates unknown keys instead of refusing them",
     "file": "packages/project-model/src/strict-shape.ts",
     "find": "if (!allowedKeys.includes(key)) this.problem(",
@@ -75,7 +80,7 @@
   {
     "id": "07-strict-shape-exclusive-bound",
     "area": "selection",
-    "citation": "section 3 — selection",
+    "citation": "section 3 \u2014 selection",
     "title": "A domain-scoped tool is routed to the wrong provider",
     "file": "apps/editor/src/lib/authoring/stage/stage-pick.ts",
     "find": "if (query.tool.scope === 'domain' && adapterId !== toolOwner) continue;",
@@ -87,7 +92,7 @@
   {
     "id": "08-strict-shape-identity-space",
     "area": "codec",
-    "citation": "section 5 rule 7 — comments state the current contract",
+    "citation": "section 5 rule 7 \u2014 comments state the current contract",
     "title": "Opaque identity check only refuses control whitespace, not a space in an id",
     "file": "packages/project-model/src/strict-shape.ts",
     "find": "if (value !== null && /\\s/.test(value)) {",
@@ -99,9 +104,9 @@
   {
     "id": "09-strict-shape-number-finite",
     "area": "layout",
-    "citation": "hard rule 2 — Layout owns architecture",
+    "citation": "hard rule 2 \u2014 Layout owns architecture",
     "title": "Plan grid snapping outranks every semantic feature",
-    "file": "packages/layout-core/src/layout-snap.ts",
+    "file": "packages/layout-core/src/plan/snap/types.ts",
     "find": "\t'extension-guide': 8,\n\tgrid: 9",
     "replace": "\t'extension-guide': 8,\n\tgrid: 0",
     "tests": [
@@ -111,7 +116,7 @@
   {
     "id": "10-strict-shape-empty-string",
     "area": "codec",
-    "citation": "section 5 rule 7 — comments state the current contract",
+    "citation": "section 5 rule 7 \u2014 comments state the current contract",
     "title": "String reader admits an empty or whitespace-only value",
     "file": "packages/project-model/src/strict-shape.ts",
     "find": "if (typeof input !== 'string' || input.trim() === '') {",
@@ -123,7 +128,7 @@
   {
     "id": "11-orientation-sign",
     "area": "geometry",
-    "citation": "hard rule 6 — one canonical architectural compiler",
+    "citation": "hard rule 6 \u2014 one canonical architectural compiler",
     "title": "The package orientation seam flips its sign convention",
     "file": "packages/geometry-core/src/predicates.ts",
     "find": "const sign = -orient2d(ax, ay, bx, by, cx, cy);",
@@ -135,7 +140,7 @@
   {
     "id": "12-mesh-digest-multiplier",
     "area": "geometry",
-    "citation": "section 7 rule 2 — goldens remain where bytes are the contract",
+    "citation": "section 7 rule 2 \u2014 goldens remain where bytes are the contract",
     "title": "The canonical mesh digest mixes the wrong FNV multiplier",
     "file": "packages/geometry-core/src/digest.ts",
     "find": "hash = Math.imul(hash, 0x01000193) >>> 0;",
@@ -147,9 +152,9 @@
   {
     "id": "13-snap-junction-rank",
     "area": "layout",
-    "citation": "hard rule 2 — Layout owns architecture",
+    "citation": "hard rule 2 \u2014 Layout owns architecture",
     "title": "Snapping ranks a wall midpoint above a shared junction",
-    "file": "packages/layout-core/src/layout-snap.ts",
+    "file": "packages/layout-core/src/plan/snap/types.ts",
     "find": "const SEMANTIC_RANK: Record<SnapFeatureKind, number> = {\n\tjunction: 0,",
     "replace": "junction: 2,",
     "tests": [
@@ -159,9 +164,9 @@
   {
     "id": "14-snap-radius",
     "area": "layout",
-    "citation": "hard rule 2 — Layout owns architecture",
+    "citation": "hard rule 2 \u2014 Layout owns architecture",
     "title": "Pointer acquisition radius is no longer screen-stable",
-    "file": "packages/layout-core/src/layout-snap.ts",
+    "file": "packages/layout-core/src/plan/snap/types.ts",
     "find": "export const LAYOUT_PLAN_SNAP_RADIUS_CSS_PX = 8;",
     "replace": "export const LAYOUT_PLAN_SNAP_RADIUS_CSS_PX = 18;",
     "tests": [
@@ -171,9 +176,9 @@
   {
     "id": "15-snap-grid-step",
     "area": "layout",
-    "citation": "hard rule 2 — Layout owns architecture",
+    "citation": "hard rule 2 \u2014 Layout owns architecture",
     "title": "Plan grid snapping uses a doubled step",
-    "file": "packages/layout-core/src/layout-snap.ts",
+    "file": "packages/layout-core/src/plan/snap/types.ts",
     "find": "export const LAYOUT_PLAN_GRID_STEP = 0.25;",
     "replace": "export const LAYOUT_PLAN_GRID_STEP = 0.5;",
     "tests": [
@@ -183,7 +188,7 @@
   {
     "id": "16-opening-full-circumference",
     "area": "authoring",
-    "citation": "section 3 — selection",
+    "citation": "section 3 \u2014 selection",
     "title": "The recent-paint list keeps duplicate entries",
     "file": "apps/editor/src/lib/authoring/look/paint-pick.ts",
     "find": "return [key, ...list.filter((entry) => entry !== key)].slice(0, limit);",
@@ -195,7 +200,7 @@
   {
     "id": "17-wall-thickness-limit",
     "area": "conditional-save",
-    "citation": "section 3 — conditional Save",
+    "citation": "section 3 \u2014 conditional Save",
     "title": "A Save capture is reused even after its source changed",
     "file": "apps/editor/src/lib/authoring/save/save-state.ts",
     "find": "return sameSource ? pending : null;",
@@ -207,9 +212,9 @@
   {
     "id": "18-dimension-limit-tolerance",
     "area": "layout",
-    "citation": "section 3 — canonical invariants",
+    "citation": "section 3 \u2014 canonical invariants",
     "title": "The supported geometry envelope is silently widened tenfold",
-    "file": "packages/layout-core/src/layout-geometry-limits.ts",
+    "file": "packages/layout-core/src/geometry/limits.ts",
     "find": "return Number.isFinite(value) && value > MAX_LAYOUT_DIMENSION_METERS + DIMENSION_LIMIT_TOLERANCE_METERS;",
     "replace": "return Number.isFinite(value) && value > MAX_LAYOUT_DIMENSION_METERS * 10;",
     "tests": [
@@ -219,9 +224,9 @@
   {
     "id": "19-region-edge-limit",
     "area": "layout",
-    "citation": "hard rule 2 — Layout owns architecture",
+    "citation": "hard rule 2 \u2014 Layout owns architecture",
     "title": "Region footprints accept edges beyond the geometry envelope",
-    "file": "packages/layout-core/src/layout-region-validation.ts",
+    "file": "packages/layout-core/src/room/region-validation.ts",
     "find": "if (lengths.some((length) => length > MAX_LAYOUT_DIMENSION_METERS)) {",
     "replace": "if (lengths.some((length) => length > MAX_LAYOUT_DIMENSION_METERS * 10)) {",
     "tests": [
@@ -231,9 +236,9 @@
   {
     "id": "20-shared-junction-priority",
     "area": "layout",
-    "citation": "hard rule 2 — Layout owns architecture",
+    "citation": "hard rule 2 \u2014 Layout owns architecture",
     "title": "A wall span outranks a shared junction at equal distance",
-    "file": "packages/layout-core/src/layout-snap.ts",
+    "file": "packages/layout-core/src/plan/snap/types.ts",
     "find": "'wall-span': 4,",
     "replace": "'wall-span': 0,",
     "tests": [
@@ -243,7 +248,7 @@
   {
     "id": "21-snap-opening-rank",
     "area": "conditional-save",
-    "citation": "section 3 — conditional Save",
+    "citation": "section 3 \u2014 conditional Save",
     "title": "Save reports a saved project as dirty after a successful write",
     "file": "apps/editor/src/lib/authoring/save/save-state.ts",
     "find": "currentCanonical() === prepared.sourceCanonicalJson ? 'saved' : 'dirty'",
@@ -255,9 +260,9 @@
   {
     "id": "22-reference-space-bound",
     "area": "room-identity",
-    "citation": "section 3 — Room identity",
+    "citation": "section 3 \u2014 Room identity",
     "title": "Reference allocation accepts one index past the allocation space",
-    "file": "packages/layout-core/src/layout-identity.ts",
+    "file": "packages/layout-core/src/plan/identity.ts",
     "find": "if (!Number.isInteger(index) || index < 0 || index >= LAYOUT_REFERENCE_SPACE) {",
     "replace": "if (!Number.isInteger(index) || index < 0 || index > LAYOUT_REFERENCE_SPACE) {",
     "tests": [
@@ -267,7 +272,7 @@
   {
     "id": "23-stage-pick-distance",
     "area": "selection",
-    "citation": "section 7 rule 3 — independent oracles stay",
+    "citation": "section 7 rule 3 \u2014 independent oracles stay",
     "title": "Stage pick returns the worst-ranked candidate instead of the best",
     "file": "apps/editor/src/lib/authoring/stage/stage-pick.ts",
     "find": "return tied[0] ?? null;",
@@ -279,7 +284,7 @@
   {
     "id": "24-stage-pick-plan-layer",
     "area": "selection",
-    "citation": "section 7 rule 3 — independent oracles stay",
+    "citation": "section 7 rule 3 \u2014 independent oracles stay",
     "title": "Plan picks favour the backmost layer instead of the frontmost",
     "file": "apps/editor/src/lib/authoring/stage/stage-pick.ts",
     "find": "? Math.max(...ranked.map(({ pick }) => pick.planLayer ?? -Infinity))",
@@ -291,7 +296,7 @@
   {
     "id": "25-save-precondition-match",
     "area": "conditional-save",
-    "citation": "section 3 — conditional Save",
+    "citation": "section 3 \u2014 conditional Save",
     "title": "A retained Save capture is never reused",
     "file": "apps/editor/src/lib/authoring/save/save-state.ts",
     "find": "function retainedCapture(current: SaveSourceState): PendingCapture | null {\n\t\tif (!pending) return null;",
@@ -303,7 +308,7 @@
   {
     "id": "26-save-precondition-kind",
     "area": "conditional-save",
-    "citation": "section 3 — conditional Save",
+    "citation": "section 3 \u2014 conditional Save",
     "title": "The Save precondition is inverted: a saved project claims create-only",
     "file": "apps/editor/src/lib/authoring/save/save-state.ts",
     "find": "return baseline.savedBaseToken === null\n\t\t\t? { kind: 'create-only' }\n\t\t\t: { kind: 'expected-saved-base', token: baseline.savedBaseToken };",
@@ -315,7 +320,7 @@
   {
     "id": "27-api-origin-guard",
     "area": "api-ownership",
-    "citation": "section 2 — preserved security hooks",
+    "citation": "section 2 \u2014 preserved security hooks",
     "title": "The API accepts an unsafe browser mutation from a foreign Origin",
     "file": "apps/api/src/app.ts",
     "find": "if (unsafeBrowserRequest && expectedBrowserOrigin && origin !== expectedBrowserOrigin) {",
@@ -328,7 +333,7 @@
   {
     "id": "28-api-cors-guard",
     "area": "api-ownership",
-    "citation": "section 2 — preserved security hooks",
+    "citation": "section 2 \u2014 preserved security hooks",
     "title": "CORS preflight accepts a mismatched Origin",
     "file": "apps/api/src/app.ts",
     "find": "if (!origin || origin !== expectedBrowserOrigin) {",
@@ -341,9 +346,9 @@
   {
     "id": "29-api-material-owner",
     "area": "api-ownership",
-    "citation": "section 2 — preserved authentication and ownership",
+    "citation": "section 2 \u2014 preserved authentication and ownership",
     "title": "The material read compares the owner id into the uuid column",
-    "file": "apps/api/src/form-library.ts",
+    "file": "apps/api/src/form-library/items.ts",
     "find": "export async function readLibraryItem(\n  pool: DatabasePool,\n  ownerId: string,\n  id: string\n): Promise<{ readonly summary: LibraryItemSummary; readonly bytes: Uint8Array }> {\n  const rows = await queryRows<LibraryRow>(\n    pool,\n    `SELECT ${MATERIAL_SUMMARY_COLUMNS}, canonical_bytes AS \"canonicalBytes\"\n\t\t FROM form_library_items\n\t\t WHERE owner_id = $1 AND id = $2::uuid`,\n    [ownerId, id]",
     "replace": "export async function readLibraryItem(\n  pool: DatabasePool,\n  ownerId: string,\n  id: string\n): Promise<{ readonly summary: LibraryItemSummary; readonly bytes: Uint8Array }> {\n  const rows = await queryRows<LibraryRow>(\n    pool,\n    `SELECT ${MATERIAL_SUMMARY_COLUMNS}, canonical_bytes AS \"canonicalBytes\"\n\t\t FROM form_library_items\n\t\t WHERE owner_id = $1 AND id = $2::uuid`,\n    [id, id]",
     "tests": [
@@ -354,9 +359,9 @@
   {
     "id": "30-experience-duplicate-identity",
     "area": "experience",
-    "citation": "section 3 — Experience lowering",
+    "citation": "section 3 \u2014 Experience lowering",
     "title": "Experience creation refuses every identity except the one it must refuse",
-    "file": "packages/project-model/src/units/planning.ts",
+    "file": "packages/project-model/src/units/planning/experience/capture-bind.ts",
     "find": "\t\t\t\tif (id === experience.id) return refuse('duplicate-identity', 'the new Experience and its first View or Presentation must have distinct identities');",
     "replace": "\t\t\t\tif (id !== experience.id) return refuse('duplicate-identity', 'the new Experience and its first View or Presentation must have distinct identities');",
     "tests": [
@@ -366,7 +371,7 @@
   {
     "id": "31-experience-stay-default",
     "area": "experience",
-    "citation": "section 3 — Experience lowering",
+    "citation": "section 3 \u2014 Experience lowering",
     "title": "A Stop without a stay defaults to zero seconds",
     "file": "packages/project-model/src/units/types.ts",
     "find": "export const EXPERIENCE_STAY_DEFAULT_SECONDS = 5;",
@@ -378,9 +383,9 @@
   {
     "id": "32-camera-ramp-clamp",
     "area": "camera",
-    "citation": "hard rule 1 — one Camera authority",
+    "citation": "hard rule 1 \u2014 one Camera authority",
     "title": "The camera pose epsilon is widened a hundredfold",
-    "file": "packages/camera-core/src/camera-motion.ts",
+    "file": "packages/camera-core/src/camera/motion.ts",
     "find": "export const CAMERA_POSE_EPSILON = 1e-6;",
     "replace": "export const CAMERA_POSE_EPSILON = 1e-2;",
     "tests": [
@@ -390,9 +395,9 @@
   {
     "id": "33-camera-enter-exit-weight",
     "area": "camera",
-    "citation": "hard rule 1 — one Camera authority",
+    "citation": "hard rule 1 \u2014 one Camera authority",
     "title": "The camera angular sample bound is widened sixfold",
-    "file": "packages/camera-core/src/camera-motion.ts",
+    "file": "packages/camera-core/src/camera/motion.ts",
     "find": "maxSampleAngularDeltaRadians: Math.PI / 36,",
     "replace": "maxSampleAngularDeltaRadians: Math.PI / 6,",
     "tests": [
@@ -402,7 +407,7 @@
   {
     "id": "34-paint-recent-limit",
     "area": "authoring",
-    "citation": "section 3 — Undo grouping, selection",
+    "citation": "section 3 \u2014 Undo grouping, selection",
     "title": "The recent-paint list exceeds its bound",
     "file": "apps/editor/src/lib/authoring/look/paint-pick.ts",
     "find": "return [key, ...list.filter((entry) => entry !== key)].slice(0, limit);",
@@ -414,7 +419,7 @@
   {
     "id": "35-paint-favourite-toggle",
     "area": "authoring",
-    "citation": "section 3 — selection",
+    "citation": "section 3 \u2014 selection",
     "title": "Toggling a favourite adds a duplicate instead of removing it",
     "file": "apps/editor/src/lib/authoring/look/paint-pick.ts",
     "find": "return list.includes(key) ? list.filter((entry) => entry !== key) : [...list, key].slice(0, limit);",
@@ -426,7 +431,7 @@
   {
     "id": "36-library-source-filter",
     "area": "authoring",
-    "citation": "hard rule 2 — distinct authorities; catalogue is its own catalogue",
+    "citation": "hard rule 2 \u2014 distinct authorities; catalogue is its own catalogue",
     "title": "The library browse ignores its material filters",
     "file": "apps/editor/src/lib/authoring/library/library-catalogue.ts",
     "find": "for (const filter of state.filters) if (!matchesFilter(card.entry, filter)) return false;",
@@ -438,7 +443,7 @@
   {
     "id": "37-library-search-trim",
     "area": "authoring",
-    "citation": "hard rule 2 — distinct authorities",
+    "citation": "hard rule 2 \u2014 distinct authorities",
     "title": "An empty library query hides every card",
     "file": "apps/editor/src/lib/authoring/library/library-catalogue.ts",
     "find": "\tif (needle.length === 0) return true;",
@@ -450,9 +455,9 @@
   {
     "id": "38-palette-duplicate-code",
     "area": "codec",
-    "citation": "section 5 rule 7 — comments state the current contract",
+    "citation": "section 5 rule 7 \u2014 comments state the current contract",
     "title": "A duplicate palette slot reports the wrong refusal code",
-    "file": "packages/project-model/src/units/validate.ts",
+    "file": "packages/project-model/src/units/validate/scene.ts",
     "find": "reader.problem(`${path}.id`, 'duplicate_id', `Duplicate palette slot id: ${id}`);",
     "replace": "reader.problem(`${path}.id`, 'duplicate-identity', `Duplicate palette slot id: ${id}`);",
     "tests": [
@@ -462,7 +467,7 @@
   {
     "id": "39-visitor-editor-import",
     "area": "visitor-isolation",
-    "citation": "hard rules 4 and 5 — visitor isolation",
+    "citation": "hard rules 4 and 5 \u2014 visitor isolation",
     "title": "The Preview surface root imports editor authoring machinery",
     "file": "apps/editor/src/lib/visitor/VisitorPreviewSurface.svelte",
     "find": "<script lang=\"ts\">",
@@ -474,7 +479,7 @@
   {
     "id": "40-stage-second-camera-authority",
     "area": "camera",
-    "citation": "hard rule 1 — one Camera authority",
+    "citation": "hard rule 1 \u2014 one Camera authority",
     "title": "The Stage shell imports an independent orbit controller",
     "file": "apps/editor/src/lib/authoring/stage/shell/StageCanvas.svelte",
     "find": "\timport { T } from '@threlte/core';",
@@ -486,9 +491,9 @@
   {
     "id": "41-envelope-generated-field",
     "area": "codec",
-    "citation": "hard rule 3 — authored truth excludes generated state",
+    "citation": "hard rule 3 \u2014 authored truth excludes generated state",
     "title": "Serialization writes a session timestamp into the authored envelope",
-    "file": "packages/project-model/src/units/validate.ts",
+    "file": "packages/project-model/src/units/validate/serialize.ts",
     "find": "const json = JSON.stringify(envelope, null, 2) + '\\n';",
     "replace": "const json = JSON.stringify({ ...envelope, generatedAt: 'now' }, null, 2) + '\\n';",
     "tests": [
@@ -498,9 +503,9 @@
   {
     "id": "42-snap-midpoint-rank",
     "area": "layout",
-    "citation": "hard rule 2 — Layout owns architecture",
+    "citation": "hard rule 2 \u2014 Layout owns architecture",
     "title": "A wall midpoint outranks a junction at equal distance",
-    "file": "packages/layout-core/src/layout-snap.ts",
+    "file": "packages/layout-core/src/plan/snap/types.ts",
     "find": "'wall-intersection': 1,\n\t'wall-midpoint': 2,",
     "replace": "'wall-midpoint': 0,",
     "tests": [
@@ -510,9 +515,9 @@
   {
     "id": "43-surface-finish-duplicate",
     "area": "codec",
-    "citation": "section 5 rule 7 — comments state the current contract",
+    "citation": "section 5 rule 7 \u2014 comments state the current contract",
     "title": "Two Finish assignments for one surface are silently accepted",
-    "file": "packages/project-model/src/units/validate.ts",
+    "file": "packages/project-model/src/units/validate/scene.ts",
     "find": "reader.problem(`${path}.surface`, 'duplicate_surface_finish', `Surface \"${key}\" has more than one Finish assignment`);",
     "replace": "reader.problem(`${path}.surface`, 'duplicate-identity', `Surface \"${key}\" has more than one Finish assignment`);",
     "tests": [
@@ -522,7 +527,7 @@
   {
     "id": "44-paint-normalise-hex",
     "area": "authoring",
-    "citation": "section 3 — conditional Save and authoring state",
+    "citation": "section 3 \u2014 conditional Save and authoring state",
     "title": "A three-digit hex colour expands to one repeated channel",
     "file": "apps/editor/src/lib/authoring/look/paint-pick.ts",
     "find": "${text[1]}${text[1]}${text[2]}${text[2]}${text[3]}${text[3]}",
@@ -535,9 +540,9 @@
   {
     "id": "45-opening-set-invalid-code",
     "area": "layout",
-    "citation": "section 5 rule 7 — comments state the current contract",
+    "citation": "section 5 rule 7 \u2014 comments state the current contract",
     "title": "An invalid opening set reports a different refusal code",
-    "file": "packages/layout-core/src/layout-opening-set.ts",
+    "file": "packages/layout-core/src/wall/opening-set.ts",
     "find": "\t\t\t\tcode: 'opening_exceeds_wall',",
     "replace": "\t\t\t\tcode: 'opening_exceeds_wall_height',",
     "tests": [
@@ -547,9 +552,9 @@
   {
     "id": "46-room-duplicate-guard",
     "area": "layout",
-    "citation": "section 3 — Room identity",
+    "citation": "section 3 \u2014 Room identity",
     "title": "Room duplication no longer refuses a duplicate room id",
-    "file": "packages/layout-core/src/layout-identity.ts",
+    "file": "packages/layout-core/src/plan/identity.ts",
     "find": "return typeof token === 'string' && LAYOUT_REFERENCE_PATTERN.test(token);",
     "replace": "return typeof token === 'string' && token.length > 0;",
     "tests": [

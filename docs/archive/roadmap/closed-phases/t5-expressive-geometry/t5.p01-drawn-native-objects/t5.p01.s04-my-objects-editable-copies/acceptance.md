@@ -45,10 +45,10 @@ Save path, owner-scoped caching and cross-project evidence.
 
 ```text
 implementation  packages/project-model/src/library/form-library.ts
-                packages/project-model/src/scene-planning/intent-payload.ts
-                packages/project-model/src/scene-planning/operations.ts
+                packages/project-model/src/scene-planning/intent-payload/index.ts
+                packages/project-model/src/scene-planning/operations/index.ts
                 packages/project-model/src/scene-planning/planners.ts
-                apps/api/src/form-library.ts
+                apps/api/src/form-library/index.ts
                 apps/api/migrations/008-form-library.sql
                 apps/editor/src/lib/authoring/adapters/scene/library/
                 apps/editor/src/lib/authoring/adapters/scene/FormCardFields.svelte

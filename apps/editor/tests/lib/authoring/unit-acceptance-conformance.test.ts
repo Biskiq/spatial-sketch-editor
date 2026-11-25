@@ -19,27 +19,8 @@ import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 import { resolveReference, type AcceptedRevision, type SemanticReference } from '@portfolio/project-model/references';
 import type { AuthoringIntent } from '@portfolio/project-model/f4';
 import type { SceneSurfaceFinish } from '@portfolio/project-model/scene';
-import {
-	CAMERA_UNIT_FORMAT_VERSION,
-	EXPERIENCE_UNIT_FORMAT_VERSION,
-	RESOURCE_UNIT_FORMAT_VERSION,
-	SCENE_UNIT_FORMAT_VERSION,
-	STAGED_RESOURCES_INPUT,
-	UNIT_ENVELOPE_SOURCE_KIND,
-	UNIT_ENVELOPE_SOURCE_VERSION,
-	UNIT_SAVE_SOURCE_KIND,
-	captureUnitSave,
-	computeEnvelopeSourceContentId,
-	createCaptureBindPlanner,
-	createUnitAcceptanceAdapter,
-	createUnitAcceptanceProfile,
-	normalizeUnitEnvelope,
-	replaceUnitData,
-	serializeProjectEnvelope,
-	stageUnitResources,
-	type ProjectEnvelope,
-	type StagedUnitResource
-} from '@portfolio/project-model/units';
+import { CAMERA_UNIT_FORMAT_VERSION, EXPERIENCE_UNIT_FORMAT_VERSION, RESOURCE_UNIT_FORMAT_VERSION, SCENE_UNIT_FORMAT_VERSION, UNIT_ENVELOPE_SOURCE_KIND, UNIT_ENVELOPE_SOURCE_VERSION, UNIT_SAVE_SOURCE_KIND, captureUnitSave, computeEnvelopeSourceContentId, createUnitAcceptanceAdapter, normalizeUnitEnvelope, replaceUnitData, serializeProjectEnvelope, stageUnitResources, type ProjectEnvelope, type StagedUnitResource } from '@portfolio/project-model/units';
+import { STAGED_RESOURCES_INPUT, createCaptureBindPlanner, createUnitAcceptanceProfile } from '@portfolio/project-model/units/planning';
 import { createUnitReadContext } from '@portfolio/project-model/references/unit-resolution';
 
 const REVISION: AcceptedRevision = { projectId: 'project-s05', revisionId: 'revision-1' };

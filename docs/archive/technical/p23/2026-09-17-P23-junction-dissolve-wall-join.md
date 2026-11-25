@@ -295,9 +295,9 @@ of a dissolved document.
 
 | File | Change | Risk |
 |---|---|---|
-| NEW `packages/layout-core/src/layout-wall-dissolve.ts` | `planDissolveJunction` + `DissolvePlan`/`DissolveRejection` types + dissolve identity assert; calls shared `reconcileRooms`, `validateWallFirstOpeningSet`, `validateWallFirstPortalRelations`, generic `validateAndCompile<DissolvePlan>` — no pair-rewriter, no manual room rewrite | None — new file, call-only deps |
+| NEW `packages/layout-core/src/wall/dissolve.ts` | `planDissolveJunction` + `DissolvePlan`/`DissolveRejection` types + dissolve identity assert; calls shared `reconcileRooms`, `validateWallFirstOpeningSet`, `validateWallFirstPortalRelations`, generic `validateAndCompile<DissolvePlan>` — no pair-rewriter, no manual room rewrite | None — new file, call-only deps |
 | `packages/layout-core/src/layout-wall-topology-ops.ts` | Generalize private `validateAndCompile` (`:211`) to `validateAndCompile<T>` per §6, export it — existing callers instantiate `T = WallFirstOpPlan`, behavior unchanged | Minimal; the generic is the only review-mandated refactor in shared code |
-| `packages/layout-core/src/layout-wall-centerline.ts` | ONE traversal-orientation helper sharing `wallCenterlineCubics` mirror logic (§5) | Low — additive, adjacent to the logic it shares; no behavior change to existing callers |
+| `packages/layout-core/src/wall/centerline.ts` | ONE traversal-orientation helper sharing `wallCenterlineCubics` mirror logic (§5) | Low — additive, adjacent to the logic it shares; no behavior change to existing callers |
 | NEW `packages/layout-core/src/*dissolve*.test.ts` | suites | None |
 | `packages/layout-core/src/index.ts` | export lines | Trivial |
 | `apps/editor/.../layout/layout-preview-state.svelte.ts` (`:1768` area) | append-only adapter | Low |

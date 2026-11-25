@@ -174,7 +174,7 @@ describe('[cap:layout.canonical-compiler core] G1 geometry boundary', () => {
 		// dependency, quarantined to exactly the one `orientXZ` adapter module;
 		// every other layout-core file must be dependency-free.
 		const approvedExternalByFile = new Map<string, ReadonlySet<string>>([
-			['layout-robust-orientation.ts', new Set(['robust-predicates'])]
+			['geometry/robust-orientation.ts', new Set(['robust-predicates'])]
 		]);
 		for (const file of PACKAGE_SOURCE_FILES) {
 			const fileName = file.slice(layoutDir.length + 1);
@@ -193,13 +193,15 @@ describe('[cap:layout.canonical-compiler core] G1 geometry boundary', () => {
 	});
 
 	it('defines each geometry kernel exactly once, under layout-core', () => {
-		expect(packageFilesDefining('export function sampleSegment')).toEqual(['layout-geometry-curve.ts']);
-		expect(packageFilesDefining('export function compileWallFirstLayoutGeometry')).toEqual(['layout-geometry.ts']);
+				expect(packageFilesDefining('export function sampleSegment(')).toEqual([
+			'geometry/curve/samples.ts'
+		]);
+		expect(packageFilesDefining('export function compileWallFirstLayoutGeometry')).toEqual(['geometry/compiler.ts']);
 		// One compiler entry, one compiler source: the legacy adapter is gone.
-		expect(packageFilesDefining('export function compileLayoutGeometrySource')).toEqual(['layout-geometry.ts']);
-		expect(packageFilesDefining('export function splitWallAroundOpenings')).toEqual(['layout-geometry-openings.ts']);
-		expect(packageFilesDefining('export function splitSampledWallAroundOpenings')).toEqual(['layout-geometry-openings.ts']);
-		expect(packageFilesDefining('export function buildArchProfile')).toEqual(['layout-geometry-openings.ts']);
+		expect(packageFilesDefining('export function compileLayoutGeometrySource')).toEqual(['geometry/compiler.ts']);
+		expect(packageFilesDefining('export function splitWallAroundOpenings')).toEqual(['geometry/openings.ts']);
+		expect(packageFilesDefining('export function splitSampledWallAroundOpenings')).toEqual(['geometry/openings.ts']);
+		expect(packageFilesDefining('export function buildArchProfile')).toEqual(['geometry/openings.ts']);
 	});
 
 	it('keeps one adaptive flattening core and one Wall-centerline read seam (P23.11 slice 2)', () => {
@@ -211,9 +213,11 @@ describe('[cap:layout.canonical-compiler core] G1 geometry boundary', () => {
 		// version of it; re-asserting a call-site count here would be a second
 		// pattern for one invariant.
 		expect(packageFilesDefining('function adaptiveParameters(')).toEqual([
-			'layout-geometry-curve.ts'
+			'geometry/curve/bezier.ts'
 		]);
-		const compilerSource = sourceOf(resolve(layoutDir, 'layout-geometry.ts'));
+		const compilerSource = ['compiler.ts', 'rooms.ts', 'physical-walls.ts', 'delta-builders.ts']
+			.map((name) => sourceOf(resolve(layoutDir, 'geometry', name)))
+			.join('\n');
 		// The compiler reads Wall centerline geometry through the one adapter and
 		// never compiles a curve itself: a second sampler here is the defect.
 		expect(compilerSource).toContain('wallCenterlineSegment(');
@@ -283,12 +287,15 @@ describe('[cap:layout.canonical-compiler core] G1 geometry boundary', () => {
 	});
 
 	it('keeps duplicate topology at the canonical gate and codec ingestion structural (P23B.3a S8)', () => {
-		const duplicateSource = sourceOf(resolve(layoutDir, 'layout-duplicate.ts'));
+		const duplicateSource = sourceOf(resolve(layoutDir, 'plan/duplicate/objects.ts'));
 		expect(duplicateSource).toContain('validateWallFirstTopology(structural.document');
 		expect(duplicateSource).not.toContain('classifyWallIntersection(');
 		expect(duplicateSource).not.toContain('validateBatchWallTopology');
 
-		const codecSource = sourceOf(resolve(layoutDir, 'layout-wall-first-codec.ts'));
+		const codecSource = readdirSync(resolve(layoutDir, 'wall/codec'))
+			.filter((name) => name.endsWith('.ts'))
+			.map((name) => sourceOf(resolve(layoutDir, 'wall/codec', name)))
+			.join('\n');
 		expect(importSpecifiers(codecSource)).not.toContain('./layout-wall-first-precision');
 		expect(codecSource).not.toMatch(
 			/\b(?:validateWallFirstTopology|detectWallCurveTopologyCrossings|classifyWallIntersection)\s*\(/

@@ -13,7 +13,7 @@ topology rewrite, no format change (format 7 stays).
 
 ## Duplicate: copy enclosure
 
-- **Planner.** New `planDuplicateRoom` in `packages/layout-core/src/layout-duplicate.ts`,
+- **Planner.** New `planDuplicateRoom` in `packages/layout-core/src/plan/duplicate.ts`,
   beside the retained `planDuplicateIsolatedRoom` (A4's certified isolated path, still used by
   tests and the connected-curve plan). Both share one clone/remap core, so their per-element
   copying cannot drift.
@@ -47,7 +47,7 @@ topology rewrite, no format change (format 7 stays).
 ## Overlap cue: derived editor state
 
 - **Query.** New `independentWallOverlaps` in
-  `packages/layout-core/src/layout-wall-overlap.ts`: for every pair of Walls in different
+  `packages/layout-core/src/wall/overlap.ts`: for every pair of Walls in different
   topology components (the existing Junction-identity components), find positive-length
   collinear centerline stretches using the canonical centerline samples. Same-component pairs
   are excluded by construction (their overlap already refuses). Returned stretches are
@@ -80,10 +80,10 @@ planner and `layout-room-move` policies are untouched.
 
 ## Files
 
-- `packages/layout-core/src/layout-duplicate.ts` — shared clone core, `planDuplicateRoom`,
+- `packages/layout-core/src/plan/duplicate.ts` — shared clone core, `planDuplicateRoom`,
   `droppedRoomRelations` on the plan.
-- `packages/layout-core/src/layout-room-isolation.ts` — `resolveRoomCopyEnclosure`.
-- `packages/layout-core/src/layout-wall-overlap.ts` *(new)* — independent-Wall coincidence
+- `packages/layout-core/src/room/isolation.ts` — `resolveRoomCopyEnclosure`.
+- `packages/layout-core/src/wall/overlap.ts` *(new)* — independent-Wall coincidence
   query.
 - `packages/layout-core/src/plan/index.ts` — export the new module.
 - `apps/editor/src/lib/authoring/adapters/layout/room-duplicate-planners.ts` — general planner,

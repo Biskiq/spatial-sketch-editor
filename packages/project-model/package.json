@@ -12,6 +12,10 @@
       "types": "./src/units/index.ts",
       "default": "./src/units/index.ts"
     },
+    "./units/planning": {
+      "types": "./src/units/planning/index.ts",
+      "default": "./src/units/planning/index.ts"
+    },
     "./materials": {
       "types": "./src/materials/index.ts",
       "default": "./src/materials/index.ts"
@@ -53,8 +57,8 @@
       "default": "./src/f4/unit-acceptance.ts"
     },
     "./units/validate": {
-      "types": "./src/units/validate.ts",
-      "default": "./src/units/validate.ts"
+      "types": "./src/units/validate/index.ts",
+      "default": "./src/units/validate/index.ts"
     },
     "./artwork": {
       "types": "./src/artwork/index.ts",

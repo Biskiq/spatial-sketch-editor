@@ -17,20 +17,11 @@ import { readFileSync } from 'node:fs';
 import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core/geometry';
 import { createEmptyWallFirstLayoutDocument, planCreateWallFirstOpening, planWallChain } from '@portfolio/layout-core/wall';
 import { routeCrossesWall } from '@portfolio/layout-core/world';
-import {
-	computeEnvelopeSourceContentId,
-	createUnitAcceptanceProfile,
-	lowerExperienceProgram,
-	prepareUnitRuntime,
-	readUnitEnvelopeForSave,
-	serializeProjectEnvelope,
-	type ProjectEnvelope
-} from '@portfolio/project-model/units';
+import { computeEnvelopeSourceContentId, lowerExperienceProgram, prepareUnitRuntime, readUnitEnvelopeForSave, serializeProjectEnvelope, type ProjectEnvelope } from '@portfolio/project-model/units';
+import { createUnitAcceptanceProfile } from '@portfolio/project-model/units/planning';
 import { createAcceptanceCoordinator } from '$lib/authoring/f4/acceptance-coordinator';
-import {
-	SCENE_ENVIRONMENT_SET_KIND,
-	skyFromPreset
-} from '@portfolio/project-model/units';
+import { skyFromPreset } from '@portfolio/project-model/units';
+import { SCENE_ENVIRONMENT_SET_KIND } from '@portfolio/project-model/units/planning';
 import {
 	cameraConnectionCreateIntent,
 	cameraConnectionUpdateIntent,

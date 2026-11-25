@@ -3,7 +3,7 @@
   "area": "layout",
   "citation": "hard rule 2 — Layout owns architecture",
   "title": "Region footprints accept edges beyond the geometry envelope",
-  "file": "packages/layout-core/src/layout-region-validation.ts",
+  "file": "packages/layout-core/src/room/region-validation.ts",
   "find": "if (lengths.some((length) => length > MAX_LAYOUT_DIMENSION_METERS)) {",
   "replace": "if (lengths.some((length) => length > MAX_LAYOUT_DIMENSION_METERS * 10)) {",
   "tests": [

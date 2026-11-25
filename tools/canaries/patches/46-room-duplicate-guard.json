@@ -3,7 +3,7 @@
   "area": "layout",
   "citation": "section 3 — Room identity",
   "title": "Room duplication no longer refuses a duplicate room id",
-  "file": "packages/layout-core/src/layout-identity.ts",
+  "file": "packages/layout-core/src/plan/identity.ts",
   "find": "return typeof token === 'string' && LAYOUT_REFERENCE_PATTERN.test(token);",
   "replace": "return typeof token === 'string' && token.length > 0;",
   "tests": [

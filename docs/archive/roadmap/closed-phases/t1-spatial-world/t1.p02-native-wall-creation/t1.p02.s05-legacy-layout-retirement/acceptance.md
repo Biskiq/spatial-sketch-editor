@@ -151,7 +151,7 @@ implementation  packages/layout-core/src/layout-coordinates.ts
                 packages/layout-core/src/layout-issue.ts
                 packages/layout-core/src/layout-wall-portals.ts
                 packages/layout-core/src/layout-geometry.ts
-                packages/layout-core/src/layout-geometry-types.ts
+                packages/layout-core/src/geometry/types.ts
                 packages/layout-core/src/layout-geometry-validation.ts
                 packages/project-model/src/project-layout-semantics.ts
                 packages/project-model/src/scene-planning/frame.ts

@@ -1,13 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import {
-	SCENE_ENVIRONMENT_SET_KIND,
-	SCENE_LOOK_APPLY_KIND,
-	SCENE_LOOK_RESTORE_KIND,
-	SCENE_TREATMENT_SET_KIND,
-	skyFromPreset,
-	type SceneEnvironment,
-	type SceneSky
-} from '@portfolio/project-model/units';
+import { skyFromPreset, type SceneEnvironment, type SceneSky } from '@portfolio/project-model/units';
+import { SCENE_ENVIRONMENT_SET_KIND, SCENE_LOOK_APPLY_KIND, SCENE_LOOK_RESTORE_KIND, SCENE_TREATMENT_SET_KIND } from '@portfolio/project-model/units/planning';
 import { SCENE_PALETTE_ADOPT } from '@portfolio/project-model/scene-planning';
 import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 import {

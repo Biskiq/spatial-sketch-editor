@@ -138,7 +138,7 @@ a three-step ladder:
 | --- | --- | --- | --- | --- | --- |
 | Layout precision edits (Wall height and thickness, Openings, plinth) | Wall-first v5 | F.4 `local-single-domain-v1`; five planners in [precision.ts](../apps/editor/src/lib/authoring/adapters/layout/precision.ts) | T1.P01.S04, live | Undo/Redo and Head Save, live | **End-to-end** |
 | Layout creation (walls, rooms, openings) | Kernel planners tested | Not exposed | No product caller | — | Accepted-inactive; K3 is unplanned |
-| Scene placement and editing | Seven planners in [scene-planning](../packages/project-model/src/scene-planning/operations.ts) | Floor support needs a Room floor | Wiring is in open PR #147 (T2.P01.S03, authorized, not merged) | Correspondence covers created, preserved and retired | Accepted-inactive |
+| Scene placement and editing | Seven planners in [scene-planning](../packages/project-model/src/scene-planning/operations/index.ts) | Floor support needs a Room floor | Wiring is in open PR #147 (T2.P01.S03, authorized, not merged) | Correspondence covers created, preserved and retired | Accepted-inactive |
 | Own content | The asset API stores PNG, WebP or JPEG ([asset-persistence.ts](../apps/api/src/asset-persistence.ts)). No GLB path. `TypedResource` has kinds `texture` and `asset`, and no scale, pivot or provenance fields. | — | No editor caller | — | Images server-only; GLB conceptual (K1) |
 | Images and text as content | A textured `plane` primitive is the only image form, with no text entity ([scene.ts](../packages/project-model/src/scene.ts)). Program content is text-only. | Presentation text has no authored home (S06 residual) | — | — | Conceptual |
 | Experience source (Presentations, Stops, Guides) | Experience@1 codec and validation (T3.P01.S01) | Unit acceptance (S05) | No product importer of `units` or `program` | Cutover pending (T3.P01.S04) | Accepted-inactive |
@@ -210,10 +210,10 @@ capabilities are mostly wiring over tested kernels, plus a few small, missing se
 
 **Composition requires a Room (Fact).**
 
-- [`layout-floor-support.ts`](../packages/layout-core/src/layout-floor-support.ts) considers only
+- [`layout-floor-support.ts`](../packages/layout-core/src/room/floor-support.ts) considers only
   derived `room-floor` polygons (`polygon.kind !== 'room-floor'` is skipped). Outside one, the result
   is `none`.
-- `place-object` in [`operations.ts`](../packages/project-model/src/scene-planning/operations.ts) then
+- `place-object` in [`operations.ts`](../packages/project-model/src/scene-planning/operations/index.ts) then
   refuses `'floor-supported'` placement and movement with `no-support`.
 - T2.P01 chose this boundary deliberately: "Genuinely empty Layout … Place refuses and offers Start
   gallery … Neither a datum nor T1's plinth is support"
@@ -322,7 +322,7 @@ discharge them automatically.
 
 | Obligation | What E2 showed | What exists in code | Status |
 | --- | --- | --- | --- |
-| **1. Identity integrity** | Canonical wall IDs **can be re-minted**. `defaultChainAllocator` in [`layout-wall-chain.ts`](../packages/layout-core/src/layout-wall-chain.ts) avoids collisions only against `document.walls` in the *current* document, so after `wS-b` is deleted, a later split mints `wS-b` again for an unrelated span. Both ID-only readings then silently re-hosted content. | No rule forbids canonical ID reuse. `LayoutIdentityLedger` ([`layout-wall-first-types.ts`](../packages/layout-core/src/layout-wall-first-types.ts)) uses a monotonic `cursor` for presentation references (`W1`, `W2`) only, not canonical `wall.id`. | **A T1 finding independent of hosting.** It affects any future persisted cross-domain reference to a Layout subject. |
+| **1. Identity integrity** | Canonical wall IDs **can be re-minted**. `defaultChainAllocator` in [`layout-wall-chain.ts`](../packages/layout-core/src/wall/wall-chain.ts) avoids collisions only against `document.walls` in the *current* document, so after `wS-b` is deleted, a later split mints `wS-b` again for an unrelated span. Both ID-only readings then silently re-hosted content. | No rule forbids canonical ID reuse. `LayoutIdentityLedger` ([`layout-wall-first-types.ts`](../packages/layout-core/src/wall/types.ts)) uses a monotonic `cursor` for presentation references (`W1`, `W2`) only, not canonical `wall.id`. | **A T1 finding independent of hosting.** It affects any future persisted cross-domain reference to a Layout subject. |
 | **2. Parametric correspondence** (split, reversal, merge) | Arc length is exact (within 4.6e-13 m on curves). A dissolve can keep the survivor's ID while flipping its orientation, and only the dissolve's traversal data maps it. Room merges need the lineage that `reconcileRooms` already computes. | Computed inside the planners; published only as IDs. | Feasible; not exposed |
 | **3. Availability across revisions and Save/reload** | An `inferred` resolver matched 19/19 adjacent pairs, but only by re-implementing Layout's rules, which would make it a second authority. | Correspondence is held for each in-session history state, never across Save/reload, and never for non-adjacent revisions. | Missing |
 | **4. Domain relationship evaluation** | A test-only face classifier. It needs a face-intrinsic frame (or a reversed survivor mirrors content), centerline (not face) arc length, the exact evaluator rather than compiled samples (which drift 6.4e-4 m), and out-of-range errors instead of clamping. | No Scene host schema, evaluator or F.1 face component. | Missing; design inputs known |
@@ -498,7 +498,7 @@ the owning T2 phase plan.
      keep the free world-local pose).
 5. **T1 canonical ID non-reuse is necessary for `A1`, not a substitute for correspondence.**
    - Non-reuse (for example via a monotonic entity-ID cursor alongside `LayoutIdentityLedger` in
-     [`layout-wall-first-types.ts`](../packages/layout-core/src/layout-wall-first-types.ts)) is **required**
+     [`layout-wall-first-types.ts`](../packages/layout-core/src/wall/types.ts)) is **required**
      so a deleted `wS-b` is never re-minted for a different wall and mistaken for `present`.
    - With ID non-reuse alone, `A1` handles single-wall move, thickness, height, shorten and delete
      conservatively, while topological splits, dissolves and Room merges degrade safely to `Needs Review`

@@ -1,15 +1,15 @@
 /** A local sign certificate must agree with the canonical face sum despite
  * accumulated delta error and cancellation at large world coordinates. */
 import { describe, expect, it } from 'vitest';
-import { clearTopologyGateObserverForTest, planRigidWallMove, setTopologyGateObserverForTest, type LayoutDocumentWallFirst, type PrecisionPlan } from '@portfolio/layout-core/wall';
+import { clearWallSamplingObserverForTest, planRigidWallMove, setWallSamplingObserverForTest, type LayoutDocumentWallFirst, type PrecisionPlan } from '@portfolio/layout-core/wall';
 import { compileWallFirstLayoutGeometryFresh, createLayoutCompileSession, withLayoutCompileSession } from '@portfolio/layout-core/geometry';
 import { ensureLayoutWorldIndex } from '@portfolio/layout-core/world';
 import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from './__fixtures__/layout-scale-fixtures';
 
 function coldPlan(document: LayoutDocumentWallFirst, wallId: string, delta: number): PrecisionPlan {
- setTopologyGateObserverForTest(() => {});
+ setWallSamplingObserverForTest(() => undefined);
  try { return planRigidWallMove(document, { wallId, delta: [0, delta] }); }
- finally { clearTopologyGateObserverForTest(); }
+ finally { clearWallSamplingObserverForTest(); }
 }
 
 describe('topology area sign certification', () => {

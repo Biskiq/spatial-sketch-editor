@@ -34,7 +34,7 @@ implementation  packages/layout-core/src/layout-id-capture.ts
                 packages/layout-core/src/layout-wall-first-types.ts
                 packages/layout-core/src/layout-wall-first-codec.ts
                 packages/layout-core/src/layout-wall-role.ts
-                packages/project-model/src/units/validate.ts
+                packages/project-model/src/units/validate/index.ts
 validation      packages/layout-core/src/layout-wall-first-validation.ts
 regressions     apps/editor/tests/lib/layout/layout-identity-capture.test.ts
                 apps/editor/tests/lib/layout/t1s01-format6-differential.test.ts

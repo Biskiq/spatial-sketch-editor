@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { SceneSkyUpdatePayload } from '@portfolio/project-model/units';
+	import type { SceneSkyUpdatePayload } from '@portfolio/project-model/units/planning';
 	import { WORLD_ENVIRONMENT_CHOICES, WORLD_ENVIRONMENT_PRESENTATIONS } from '$lib/render/world-environment';
 	import { adjacentPhaseStart, hhmm, phaseName, skyBodyAt, snapTime, wrap360, SUNRISE, SUNSET } from '$lib/render/sky-time';
 	import type { LookAuthoring } from '../look/look-authoring.svelte';

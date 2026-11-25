@@ -16,6 +16,14 @@
       "types": "./src/wall/index.ts",
       "default": "./src/wall/index.ts"
     },
+    "./precision": {
+      "types": "./src/precision/index.ts",
+      "default": "./src/precision/index.ts"
+    },
+    "./topology": {
+      "types": "./src/topology/index.ts",
+      "default": "./src/topology/index.ts"
+    },
     "./room": {
       "types": "./src/room/index.ts",
       "default": "./src/room/index.ts"

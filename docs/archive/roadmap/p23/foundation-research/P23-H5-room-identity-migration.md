@@ -145,7 +145,7 @@ Current Room deletion demonstrates the consequence. The editor first rejects del
 
 Relevant current file:
 
-- `packages/layout-core/src/layout-geometry-types.ts`
+- `packages/layout-core/src/geometry/types.ts`
 
 Current compiled types encode legacy ownership directly:
 

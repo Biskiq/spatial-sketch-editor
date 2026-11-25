@@ -3,7 +3,7 @@
   "area": "codec",
   "citation": "section 5 rule 7 — comments state the current contract",
   "title": "Two Finish assignments for one surface are silently accepted",
-  "file": "packages/project-model/src/units/validate.ts",
+  "file": "packages/project-model/src/units/validate/scene.ts",
   "find": "reader.problem(`${path}.surface`, 'duplicate_surface_finish', `Surface \"${key}\" has more than one Finish assignment`);",
   "replace": "reader.problem(`${path}.surface`, 'duplicate-identity', `Surface \"${key}\" has more than one Finish assignment`);",
   "tests": [

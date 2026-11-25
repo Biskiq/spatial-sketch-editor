@@ -19,16 +19,8 @@
 import { createEmptyWallFirstLayoutDocument, planCreateWallFirstOpening, planWallChain } from '@portfolio/layout-core/wall';
 import type { AuthoringIntent } from '@portfolio/project-model/f4';
 import type { ScenePrimitiveEntity } from '@portfolio/project-model/scene';
-import {
-	computeEnvelopeSourceContentId,
-	createUnitAcceptanceProfile,
-	SCENE_UNIT_FORMAT_VERSION,
-	serializeProjectEnvelope,
-	validateProjectEnvelope,
-	type	ExperienceTransitionKind,
-	type ExperiencePresentationView,
-	type ProjectEnvelope
-} from '@portfolio/project-model/units';
+import { computeEnvelopeSourceContentId, SCENE_UNIT_FORMAT_VERSION, serializeProjectEnvelope, validateProjectEnvelope, type	ExperienceTransitionKind, type ExperiencePresentationView, type ProjectEnvelope } from '@portfolio/project-model/units';
+import { createUnitAcceptanceProfile } from '@portfolio/project-model/units/planning';
 import { createAcceptanceCoordinator } from '$lib/authoring/f4/acceptance-coordinator';	import {
 	cameraConnectionCreateIntent,
 	cameraConnectionUpdateIntent,

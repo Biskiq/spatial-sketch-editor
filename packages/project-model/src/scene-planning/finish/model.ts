@@ -1,0 +1,627 @@
+/**
+ * The Finish model: identity, users, the assignment normal form and the two
+ * Card readings (Sheen and Metal).
+ *
+ * Finish identity is derived, never stored:
+ *
+ * - a primitive or Form with no instance has `curated:<entity.materialId>`;
+ * - a model with no instance has `model-own`;
+ * - an instance with only `id`, `name` and a catalogue `base` is *pristine* and
+ *   means the curated Finish it names, so the Library never lists it;
+ * - any other instance is a project Finish, `project:<id>`.
+ *
+ * The editor imports these readings, so the Card and the planner cannot
+ * disagree about what a Finish is or what a Sheen stop means.
+ */
+import {
+	SCENE_PALETTE_MAX_SLOTS,
+	type MaterialId,
+	type SceneColor,
+	type SceneEntity,
+	type SceneMaterialInstance,
+	type ScenePaletteSlot
+} from '../../scene';
+import { catalogueRecipe } from '../../materials/catalogue';
+import { pruneOverrides } from '../../materials/read';
+import { NEUTRAL_RECIPE } from '../../materials/recipe';
+import { MATERIAL_NEUTRAL_BASE_ID } from '../../materials/types';
+import type {
+	Finish,
+	FinishOverrides,
+	Mapping,
+	Metric,
+	Recipe
+} from '../../materials/types';
+import { resolveSceneSurfaceFinish } from '../../scene-surface-reference';
+import type { SceneSurfaceFinish, SceneSurfaceRef } from '../../scene';
+import { resolveLayoutSurface, surfaceKey } from '@portfolio/layout-core/plan';
+import type { LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import { sameSceneValues } from '../record-scope';
+
+/** One Finish, as a payload names it. */
+export type SceneFinishRef =
+	| { readonly curated: MaterialId }
+	| { readonly project: string }
+	| 'model-own';
+
+/** The stable string identity of a Finish. It is never persisted. */
+export type FinishKey = string;
+
+export const FINISH_MODEL_OWN: FinishKey = 'model-own';
+
+/** The longest palette slot name, matching the Scene unit validator. */
+export const PALETTE_NAME_MAX_LENGTH = 40;
+/** The longest palette slot id, matching the Scene unit validator. */
+export const PALETTE_ID_MAX_LENGTH = 64;
+/** The most project Finishes a name allocation will probe before giving up. */
+const NAME_ALLOCATION_LIMIT = 10_000;
+
+export type FinishEntity = SceneEntity & {
+	readonly materialInstanceId?: string;
+	readonly materialId?: MaterialId;
+};
+
+/** A Scene document narrowed to the records a Finish write can touch. */
+export type FinishScene = {
+	readonly materials: readonly SceneMaterialInstance[];
+	readonly entities: readonly SceneEntity[];
+	readonly surfaceFinishes?: readonly SceneSurfaceFinish[];
+	readonly palette?: readonly ScenePaletteSlot[];
+};
+
+export type FinishUser =
+	| { readonly kind: 'entity'; readonly id: string; readonly entity: SceneEntity }
+	| { readonly kind: 'surface'; readonly key: string; readonly assignment: SceneSurfaceFinish };
+
+export type FinishTargetKind = 'primitive' | 'form' | 'model';
+
+/** Whether a Finish can be assigned to this entity at all. */
+export function isFinishPaintable(entity: SceneEntity): entity is FinishEntity {
+	return entity.kind === 'primitive' || entity.kind === 'form' || entity.kind === 'model';
+}
+
+export function finishKeyOfRef(ref: SceneFinishRef): FinishKey {
+	if (ref === 'model-own') return FINISH_MODEL_OWN;
+	if ('curated' in ref) return `curated:${ref.curated}`;
+	return `project:${ref.project}`;
+}
+
+export function finishRefOfKey(key: FinishKey): SceneFinishRef | null {
+	if (key === FINISH_MODEL_OWN) return 'model-own';
+	if (key.startsWith('curated:')) {
+		return { curated: key.slice('curated:'.length) as MaterialId };
+	}
+	if (key.startsWith('project:')) {
+		return { project: key.slice('project:'.length) };
+	}
+	return null;
+}
+
+/** A pristine instance renders exactly as its catalogue base and is never listed. */
+export function isPristineInstance(instance: SceneMaterialInstance): boolean {
+	return 'catalogue' in instance.base && instance.overrides === undefined;
+}
+
+/**
+ * Find the first non-pristine project Finish in document order with an
+ * identical base and pruned overrides (canonical value equality, name ignored).
+ * Shared by the assign planners and the editor's allocation prediction so the
+ * two cannot disagree.
+ */
+export function findIdenticalFinish(
+	materials: readonly SceneMaterialInstance[],
+	base: SceneMaterialInstance['base'],
+	overrides: FinishOverrides | undefined
+): SceneMaterialInstance | null {
+	const pruned = pruneOverrides(overrides);
+	const target = { base, ...(pruned === undefined ? {} : { overrides: pruned }) };
+	for (const instance of materials) {
+		if (isPristineInstance(instance)) continue;
+		const candidatePruned = pruneOverrides(instance.overrides);
+		const candidate = { base: instance.base, ...(candidatePruned === undefined ? {} : { overrides: candidatePruned }) };
+		if (sameSceneValues(candidate, target)) return instance;
+	}
+	return null;
+}
+
+/** The catalogue base a Finish names, or null for a resource-backed definition. */
+export function catalogueBaseOf(instance: SceneMaterialInstance): MaterialId | null {
+	return 'catalogue' in instance.base ? (instance.base.catalogue as MaterialId) : null;
+}
+
+/** The resource digest a Finish names, or null for a catalogue base. */
+export function materialBaseOf(instance: SceneMaterialInstance): string | null {
+	return 'material' in instance.base ? instance.base.material : null;
+}
+
+function baseMappingOf(instance: SceneMaterialInstance, baseRecipe?: Recipe): Mapping {
+	const catalogue = catalogueBaseOf(instance);
+	const recipe = baseRecipe ?? (catalogue === null ? undefined : catalogueRecipe(catalogue));
+	return recipe?.mapping ?? NEUTRAL_RECIPE.mapping;
+}
+
+function sameMetric(a: Metric, b: Metric): boolean {
+	return (
+		a.tileMeters[0] === b.tileMeters[0] &&
+		a.tileMeters[1] === b.tileMeters[1] &&
+		a.rotation === b.rotation &&
+		a.offset[0] === b.offset[0] &&
+		a.offset[1] === b.offset[1]
+	);
+}
+
+function sameMapping(a: Mapping, b: Mapping): boolean {
+	if (a.kind !== b.kind) return false;
+	if (a.kind === 'uv' && b.kind === 'uv') {
+		return (
+			a.set === b.set &&
+			a.repeat[0] === b.repeat[0] &&
+			a.repeat[1] === b.repeat[1] &&
+			a.rotation === b.rotation &&
+			a.offset[0] === b.offset[0] &&
+			a.offset[1] === b.offset[1]
+		);
+	}
+	if (a.kind !== 'uv' && b.kind !== 'uv') {
+		return sameMetric(a.metric, b.metric);
+	}
+	return false;
+}
+
+/**
+ * The base metric of one Finish, used when an edit authors only part of it.
+ * A `uv` base's repeat is not a metre size: an edit that starts authoring metres
+ * must begin from the neutral metric rather than silently reinterpret it.
+ */
+function baseMetricOf(instance: SceneMaterialInstance, baseRecipe?: Recipe): Metric {
+	const mapping = baseMappingOf(instance, baseRecipe);
+	return mapping.kind === 'uv'
+		? { tileMeters: [1, 1], rotation: 0, offset: [0, 0] }
+		: mapping.metric;
+}
+
+export function materialInstanceById(
+	materials: readonly SceneMaterialInstance[],
+	id: string | undefined
+): SceneMaterialInstance | undefined {
+	if (id === undefined) return undefined;
+	return materials.find((instance) => instance.id === id);
+}
+
+/**
+ * The effective Finish of one entity. `null` for a subject S4 cannot paint
+ * (a light or Artwork); none of those ever reaches a Finish writer.
+ */
+export function finishOf(
+	entity: SceneEntity,
+	materials: readonly SceneMaterialInstance[]
+): FinishKey | null {
+	if (!isFinishPaintable(entity)) return null;
+	const instance = materialInstanceById(materials, entity.materialInstanceId);
+	if (instance !== undefined) {
+		const catalogue = catalogueBaseOf(instance);
+		return isPristineInstance(instance) && catalogue !== null
+			? `curated:${catalogue}`
+			: `project:${instance.id}`;
+	}
+	if (entity.kind === 'model') return FINISH_MODEL_OWN;
+	return `curated:${entity.materialId}`;
+}
+
+/** One authored wall/Space Finish assignment, or null when it is unassigned. */
+export function surfaceFinishFor(
+	scene: Pick<FinishScene, 'surfaceFinishes'>,
+	reference: SceneSurfaceRef
+): SceneSurfaceFinish | null {
+	return resolveSceneSurfaceFinish(scene, reference);
+}
+
+export function finishKeyOfSurface(scene: FinishScene, assignment: SceneSurfaceFinish): FinishKey {
+	const finish = assignment.finish;
+	if ('materialId' in finish) return `curated:${finish.materialId}`;
+	const instance = materialInstanceById(scene.materials, finish.materialInstanceId);
+	const catalogue = instance === undefined ? null : catalogueBaseOf(instance);
+	return instance !== undefined && isPristineInstance(instance) && catalogue !== null
+		? `curated:${catalogue}`
+		: `project:${finish.materialInstanceId}`;
+}
+
+/** Every Scene entity and Layout surface using a Finish, in stable source order. */
+export function usersOfFinish(
+	scene: FinishScene,
+	key: FinishKey,
+	layout?: LayoutDocumentWallFirst
+): FinishUser[] {
+	return [
+		...scene.entities
+			.filter((entity) => finishOf(entity, scene.materials) === key)
+			.map((entity): FinishUser => ({ kind: 'entity', id: entity.id, entity })),
+		...(scene.surfaceFinishes ?? [])
+			.filter((assignment) =>
+				finishKeyOfSurface(scene, assignment) === key &&
+				(layout === undefined || resolveLayoutSurface(layout, assignment.surface) !== 'retired')
+			)
+			.map((assignment): FinishUser => ({
+				kind: 'surface', key: surfaceKey(assignment.surface), assignment
+			}))
+	];
+}
+
+/** The catalogue Finish a curated key names. */
+export function curatedIdOf(key: FinishKey): MaterialId | null {
+	const ref = finishRefOfKey(key);
+	return ref !== null && ref !== 'model-own' && 'curated' in ref ? ref.curated : null;
+}
+
+/** The project Finish a project key names. */
+export function projectIdOf(key: FinishKey): string | null {
+	const ref = finishRefOfKey(key);
+	return ref !== null && ref !== 'model-own' && 'project' in ref ? ref.project : null;
+}
+
+/** The catalogue base an entity renders from: its instance's base, or its own. */
+export function baseMaterialIdOf(
+	entity: SceneEntity,
+	materials: readonly SceneMaterialInstance[]
+): MaterialId | null {
+	const instance = materialInstanceById(
+		materials,
+		(entity as FinishEntity).materialInstanceId
+	);
+	if (instance !== undefined) {
+		const catalogue = catalogueBaseOf(instance);
+		if (catalogue !== null) return catalogue;
+		// A resource-backed Finish still has a catalogue fallback for the host's
+		// materialId contract; its authored signals come from the definition.
+		return MATERIAL_NEUTRAL_BASE_ID;
+	}
+	return isFinishPaintable(entity) && entity.kind !== 'model'
+		? ((entity as FinishEntity).materialId ?? null)
+		: null;
+}
+
+/**
+ * The first free `<base> <n>` name, starting at 2. Names are display-only;
+ * identity is the instance id.
+ */
+export function nextFinishName(
+	base: string,
+	materials: readonly SceneMaterialInstance[]
+): string {
+	const used = new Set(materials.map((material) => material.name));
+	for (let ordinal = 2; ordinal < NAME_ALLOCATION_LIMIT; ordinal += 1) {
+		const name = `${base} ${ordinal}`;
+		if (!used.has(name)) return name;
+	}
+	return `${base} ${NAME_ALLOCATION_LIMIT}`;
+}
+
+/** `Colour n`, where n is the first number not already used by such a name. */
+export function nextPaletteName(
+	palette: readonly ScenePaletteSlot[] | undefined
+): string {
+	const used = new Set((palette ?? []).map((slot) => slot.name));
+	for (let ordinal = 1; ordinal < NAME_ALLOCATION_LIMIT; ordinal += 1) {
+		const name = `Colour ${ordinal}`;
+		if (!used.has(name)) return name;
+	}
+	return `Colour ${NAME_ALLOCATION_LIMIT}`;
+}
+
+/** Whether another palette slot fits. */
+export function paletteHasRoom(palette: readonly ScenePaletteSlot[] | undefined): boolean {
+	return (palette?.length ?? 0) < SCENE_PALETTE_MAX_SLOTS;
+}
+
+/** The authored literal of an instance colour, or `null` for an inherited one. */
+export function literalColorOf(
+	entity: SceneEntity,
+	materials: readonly SceneMaterialInstance[]
+): string | null {
+	const instance = materialInstanceById(materials, (entity as FinishEntity).materialInstanceId);
+	const color = instance?.overrides?.color;
+	return color !== undefined && typeof color === 'string' ? color : null;
+}
+
+/** The palette slot an instance colour follows, or `null` for a literal/inherited colour. */
+export function followerSlotOf(
+	entity: SceneEntity,
+	materials: readonly SceneMaterialInstance[]
+): string | null {
+	const instance = materialInstanceById(materials, (entity as FinishEntity).materialInstanceId);
+	const color = instance?.overrides?.color;
+	return color !== undefined && typeof color !== 'string' ? color.slot : null;
+}
+
+/** The effective colour an entity's Finish resolves to, for the dropper and swatches. */
+export function effectiveColorOf(
+	entity: SceneEntity,
+	scene: FinishScene,
+	fallbackColor: (base: MaterialId) => string
+): string | null {
+	const key = finishOf(entity, scene.materials);
+	if (key === null) return null;
+	const instance = materialInstanceById(
+		scene.materials,
+		(entity as FinishEntity).materialInstanceId
+	);
+	const instanceColor = instance?.overrides?.color;
+	if (instanceColor !== undefined) {
+		if (typeof instanceColor === 'string') return instanceColor;
+		const slot = scene.palette?.find((entry) => entry.id === instanceColor.slot);
+		if (slot !== undefined) return slot.color;
+	}
+	const base = baseMaterialIdOf(entity, scene.materials);
+	return base === null ? null : fallbackColor(base);
+}
+
+export type MetalReading = {
+	readonly on: boolean;
+	readonly caption: string;
+	readonly metalness: number;
+};
+
+/** Metal is on at or above 0.5; a partly-metal base states its exact value. */
+export function metalReading(effectiveMetalness: number): MetalReading {
+	const on = effectiveMetalness >= 0.5;
+	const rounded = Math.round(effectiveMetalness * 100) / 100;
+	const caption =
+		effectiveMetalness > 0 && effectiveMetalness < 1
+			? `Partly metal (${rounded.toFixed(2)})`
+			: on
+				? 'Metal'
+				: 'Not metal';
+	return { on, caption, metalness: rounded };
+}
+
+/**
+ * The value form one `scene-finish-edit` changes.
+ *
+ * S4a owned colour, Sheen and Metal. S4b adds the image and its mapping:
+ * `colorMap` names a `scene.textures` record (or `null` to remove the image),
+ * `tileMeters` is one tile's real size and `rotation` is radians about the UV
+ * origin. `null` deletes the key, so a Finish can return to its base's rule.
+ */
+export type SceneFinishEdit = {
+	readonly color?: SceneColor | null;
+	readonly roughness?: number | null;
+	readonly metalness?: 0 | 1 | null;
+	readonly colorMap?: string | null;
+	readonly tileMeters?: readonly [number, number] | null;
+	readonly rotation?: number | null;
+};
+
+/**
+ * Apply one validated edit to an instance copy; `null` deletes a key.
+ *
+ * Removing the colour image also removes the white tint S4b wrote to keep the
+ * image untinted, **when the image was the Finish's only map**: the base's own
+ * colour rule then applies again. If another map remains the tint is kept,
+ * because it still multiplies that map exactly as before.
+ */
+export function applyFinishEdit(
+	instance: SceneMaterialInstance,
+	edit: SceneFinishEdit,
+	/** The definition recipe for a `{material}` base, when one is available. */
+	baseRecipe?: Recipe
+): SceneMaterialInstance {
+	const overrides = JSON.parse(
+		JSON.stringify(instance.overrides ?? {})
+	) as Record<string, unknown>;
+	if ('color' in edit) {
+		if (edit.color === null) delete overrides.color;
+		else overrides.color = edit.color;
+	}
+	if ('roughness' in edit) {
+		if (edit.roughness === null) delete overrides.roughness;
+		else overrides.roughness = edit.roughness;
+	}
+	if ('metalness' in edit) {
+		if (edit.metalness === null) delete overrides.metalness;
+		else overrides.metalness = edit.metalness;
+	}
+	if ('colorMap' in edit) {
+		const maps: Record<string, unknown> = { ...((overrides.maps as Record<string, unknown> | undefined) ?? {}) };
+		const colorMap = edit.colorMap;
+		if (colorMap === null || colorMap === undefined) delete maps.color;
+		else maps.color = { image: { textureId: colorMap } };
+		if (Object.keys(maps).length === 0) delete overrides.maps;
+		else overrides.maps = maps;
+		if (
+			(colorMap === null || colorMap === undefined) &&
+			overrides.maps === undefined &&
+			overrides.color === '#ffffff'
+		) {
+			delete overrides.color;
+		}
+	}
+	if ('tileMeters' in edit || 'rotation' in edit) {
+		const baseMapping = baseMappingOf(instance, baseRecipe);
+		const base = baseMetricOf(instance, baseRecipe);
+		const existing = overrides.mapping as Mapping | undefined;
+		const effective = existing ?? baseMapping;
+		const tileEdit = edit.tileMeters;
+		const rotationEdit = edit.rotation;
+		const hasNonNullTileEdit = tileEdit !== undefined && tileEdit !== null;
+		const hasNonNullRotationEdit = rotationEdit !== undefined && rotationEdit !== null;
+		const hasNonNullEdit = hasNonNullTileEdit || hasNonNullRotationEdit;
+
+		let nextMapping: Mapping;
+		if (effective.kind === 'uv' && !hasNonNullTileEdit) {
+			const baseUvRotation = baseMapping.kind === 'uv' ? baseMapping.rotation : base.rotation;
+			const nextRotation = rotationEdit === null ? baseUvRotation : (rotationEdit ?? effective.rotation);
+			nextMapping = {
+				kind: 'uv',
+				repeat: effective.repeat,
+				set: effective.set,
+				rotation: nextRotation,
+				offset: effective.offset
+			};
+		} else {
+			const existingMetric = existing === undefined
+				? undefined
+				: existing.kind === 'uv'
+					? { tileMeters: base.tileMeters, rotation: existing.rotation, offset: existing.offset }
+					: existing.metric;
+			const metric: Metric = effective.kind === 'uv'
+				? {
+					tileMeters: existingMetric?.tileMeters ?? base.tileMeters,
+					rotation: existingMetric?.rotation ?? base.rotation,
+					offset: existingMetric?.offset ?? base.offset
+				}
+				: effective.metric;
+			const nextTile = tileEdit === null ? base.tileMeters : (tileEdit ?? metric.tileMeters);
+			const nextRotation = rotationEdit === null ? base.rotation : (rotationEdit ?? metric.rotation);
+			nextMapping = {
+				kind: effective.kind === 'surface' ? 'surface' : 'target',
+				metric: {
+					tileMeters: [nextTile[0], nextTile[1]],
+					rotation: nextRotation,
+					offset: metric.offset
+				}
+			};
+		}
+
+		const matchesBase =
+			sameMapping(nextMapping, baseMapping) ||
+			(nextMapping.kind === 'target' && baseMapping.kind === 'uv' && sameMetric(nextMapping.metric, base));
+		if (!hasNonNullEdit && matchesBase) {
+			delete overrides.mapping;
+		} else {
+			overrides.mapping = nextMapping;
+		}
+	}
+	const pruned = pruneOverrides(overrides as FinishOverrides);
+	return {
+		id: instance.id,
+		name: instance.name,
+		base: instance.base,
+		...(pruned === undefined ? {} : { overrides: pruned })
+	} as Finish;
+}
+
+/** The colour-map texture id a Finish binds, or `null` for no colour image. */
+export function colorMapOf(instance: SceneMaterialInstance | undefined): string | null {
+	const binding = instance?.overrides?.maps?.color;
+	if (binding === undefined || binding === null) return null;
+	return 'textureId' in binding.image ? binding.image.textureId : null;
+}
+
+/** Whether an edit would change nothing on the given instance. */
+export function finishEditIsNoop(
+	instance: SceneMaterialInstance,
+	edit: SceneFinishEdit,
+	baseRecipe?: Recipe
+): boolean {
+	return sameSceneValues(applyFinishEdit(instance, edit, baseRecipe), instance);
+}
+
+/** Every material whose colour follows one palette slot. */
+export function paletteFollowers(
+	materials: readonly SceneMaterialInstance[],
+	slotId: string
+): SceneMaterialInstance[] {
+	return materials.filter(
+		(instance) =>
+			instance.overrides?.color !== undefined &&
+			typeof instance.overrides.color !== 'string' &&
+			instance.overrides.color.slot === slotId
+	);
+}
+
+/** Convert a slot's followers to that slot's literal colour. */
+export function literalizePaletteFollowers(
+	materials: readonly SceneMaterialInstance[],
+	slotId: string,
+	color: string
+): SceneMaterialInstance[] {
+	return materials.map((instance) => {
+		const override = instance.overrides?.color;
+		if (override === undefined || typeof override === 'string' || override.slot !== slotId) {
+			return instance;
+		}
+		return {
+			...instance,
+			overrides: { ...instance.overrides, color }
+		} as SceneMaterialInstance;
+	});
+}
+
+/**
+ * A render-only Finish preview: every listed user — objects and Layout
+ * surfaces alike — draws one synthetic instance. It never mutates the accepted Scene, never enters Undo, and removing it restores
+ * the accepted bytes exactly.
+ */
+export type FinishInstancePreview = {
+	/** `entity:<id>` / `surface:<surfaceKey>` user keys. */
+	readonly users: readonly string[];
+	readonly instance: SceneMaterialInstance;
+};
+
+export const FINISH_PREVIEW_INSTANCE_ID = 'preview-finish-card';
+
+export function withFinishInstancePreview<TS extends FinishScene>(
+	scene: TS,
+	preview: FinishInstancePreview | null
+): TS {
+	if (preview === null || preview.users.length === 0) return scene;
+	const users = new Set(preview.users);
+	const id = FINISH_PREVIEW_INSTANCE_ID;
+	const materials = [...scene.materials.filter((material) => material.id !== id), { ...preview.instance, id }];
+	const entities = scene.entities.map((entity) =>
+		users.has(`entity:${entity.id}`) && isFinishPaintable(entity)
+			? ({ ...entity, materialInstanceId: id } as SceneEntity)
+			: entity
+	);
+	const assigned = new Set<string>();
+	const replaced = (scene.surfaceFinishes ?? []).map((assignment) => {
+		const key = `surface:${surfaceKey(assignment.surface)}`;
+		assigned.add(key);
+		return users.has(key) ? { ...assignment, finish: { materialInstanceId: id } } : assignment;
+	});
+	// A face with no accepted Finish yet previews its first assignment too.
+	const first: SceneSurfaceFinish[] = [];
+	for (const user of preview.users) {
+		if (!user.startsWith('surface:') || assigned.has(user)) continue;
+		const surface = surfaceRefFromKey(user.slice('surface:'.length));
+		if (surface !== null) first.push({ surface, finish: { materialInstanceId: id } });
+	}
+	const surfaceFinishes = first.length === 0 ? scene.surfaceFinishes : [...replaced, ...first];
+	return {
+		...scene,
+		materials,
+		entities,
+		...(surfaceFinishes === undefined ? {} : { surfaceFinishes })
+	} as TS;
+}
+
+/** The surface a `surfaceKey` names, or null when the key is not one. */
+function surfaceRefFromKey(key: string): SceneSurfaceRef | null {
+	let parts: unknown;
+	try {
+		parts = JSON.parse(key);
+	} catch {
+		return null;
+	}
+	if (!Array.isArray(parts) || !parts.every((part) => typeof part === 'string')) return null;
+	const [kind, a, b] = parts as string[];
+	const ref: SceneSurfaceRef | null =
+		kind === 'wall-side' && a !== undefined && (b === 'left' || b === 'right')
+			? { kind, wallId: a, side: b }
+			: kind === 'room-floor' && a !== undefined
+				? { kind, roomId: a }
+				: kind === 'room-lid' && a !== undefined
+					? { kind, roomId: a }
+					: kind === 'region-face' && a !== undefined && (b === 'top' || b === 'underside' || b === 'edge')
+						? { kind, regionId: a, face: b }
+						: null;
+	return ref !== null && surfaceKey(ref) === key ? ref : null;
+}
+
+/** A stable, readable label for a Finish key when no catalogue is at hand. */
+export function fallbackFinishLabel(key: FinishKey, scene: FinishScene): string {
+	if (key === FINISH_MODEL_OWN) return "Model's own";
+	if (key.startsWith('curated:')) return key.slice('curated:'.length);
+	const id = key.slice('project:'.length);
+	return scene.materials.find((material) => material.id === id)?.name ?? id;
+}
