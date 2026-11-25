@@ -475,5 +475,41 @@
     "effects": 0,
     "functions": 6,
     "arrows": 2
+  },
+  "src/lib/authoring/stage/facade/contribution-view.ts": {
+    "lines": 590,
+    "imports": 12,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 15,
+    "arrows": 53
+  },
+  "src/lib/authoring/stage/facade/contribution-view-entries.ts": {
+    "lines": 54,
+    "imports": 2,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 4,
+    "arrows": 6
+  },
+  "src/lib/authoring/stage/route/stage-unfold-gestures.svelte.ts": {
+    "lines": 693,
+    "imports": 17,
+    "state": 4,
+    "derived": 1,
+    "effects": 0,
+    "functions": 19,
+    "arrows": 29
+  },
+  "src/lib/authoring/stage/route/stage-unfold-pick-geometry.ts": {
+    "lines": 71,
+    "imports": 5,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 2,
+    "arrows": 0
   }
 }

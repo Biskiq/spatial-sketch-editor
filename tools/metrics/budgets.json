@@ -1,7 +1,7 @@
 {
   "generatedFrom": "LOC-0 baseline; shrink-only from here",
   "counts": {
-    "filesOver600": 103,
+    "filesOver600": 102,
     "filesOver1000": 15,
     "filesOver1500": 1,
     "functionsOver200": 81,
@@ -241,11 +241,6 @@
       "reason": "One guide time map: hold/wait/cut/travel segments and the invocation clock are solved from one segment table."
     },
     {
-      "path": "apps/editor/src/lib/authoring/stage/route/stage-unfold-gestures.svelte.ts",
-      "lines": 754,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
       "path": "apps/editor/src/lib/authoring/stage/host-acceptance.ts",
       "lines": 753,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
@@ -351,6 +346,11 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
+      "path": "apps/editor/src/lib/authoring/stage/route/stage-unfold-gestures.svelte.ts",
+      "lines": 692,
+      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+    },
+    {
       "path": "apps/editor/src/lib/authoring/adapters/scene/import/ingest.ts",
       "lines": 691,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
@@ -443,11 +443,6 @@
     {
       "path": "apps/editor/src/lib/authoring/adapters/layout.adapter.ts",
       "lines": 639,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
-      "path": "apps/editor/src/lib/authoring/stage/facade/contribution-view.ts",
-      "lines": 636,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -591,25 +586,11 @@
       "reason": "One lens host: posture, placement, look-through and the remaining session wiring share one effect tree; the View-edit session is extracted."
     },
     {
-      "file": "apps/editor/src/lib/authoring/stage/facade/contribution-view.ts",
-      "name": "createContributionView",
-      "line": 34,
-      "lines": 603,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
       "file": "apps/editor/src/lib/authoring/stage/route/stage-shell-commands.ts",
       "name": "createStageShellCommands",
       "line": 90,
       "lines": 598,
       "reason": "One command surface: the armed dock/world tool, contributed tasks and their instrument share the shell state; selection delegates to its own factory."
-    },
-    {
-      "file": "apps/editor/src/lib/authoring/stage/route/stage-unfold-gestures.svelte.ts",
-      "name": "createStageUnfoldGestures",
-      "line": 140,
-      "lines": 592,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
       "file": "apps/editor/src/lib/authoring/adapters/scene/object-mark-session.ts",
@@ -626,11 +607,25 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
+      "file": "apps/editor/src/lib/authoring/stage/facade/contribution-view.ts",
+      "name": "createContributionView",
+      "line": 35,
+      "lines": 555,
+      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+    },
+    {
       "file": "apps/editor/src/lib/authoring/experience/experience-controller.svelte.ts",
       "name": "createExperienceController",
       "line": 295,
       "lines": 530,
       "reason": "One Experience composition root: one accepted snapshot, one command runner and the sub-owner wiring; removal readings, Views and Stops are extracted."
+    },
+    {
+      "file": "apps/editor/src/lib/authoring/stage/route/stage-unfold-gestures.svelte.ts",
+      "name": "createStageUnfoldGestures",
+      "line": 141,
+      "lines": 529,
+      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
       "file": "apps/editor/src/lib/authoring/library/material-import.svelte.ts",

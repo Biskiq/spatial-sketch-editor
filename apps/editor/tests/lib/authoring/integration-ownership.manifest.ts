@@ -199,6 +199,7 @@ export const SINGLETONS = [
 			[layoutAdapter + 'layout-contributions.ts']: ['isActive', 'state', 'presentationAngle'],
 			[layoutAdapter + 'layout-marks.ts']: ['isActive'],
 			[layoutAdapter + 'layout-card-actions.ts']: ['isActive', 'state', 'presentationAngle'],
+			[core + 'stage-unfold-pick-geometry.ts']: ['presentationAngle', 'state'],
 			[core + 'stage-unfold-gestures.svelte.ts']: [
 				'anchorForWall', 'pinnedOpeningId', 'presentationAngle', 'previewOpening', 'recordPick',
 				'setAnchor', 'setOpeningPreview', 'setU', 'state'
