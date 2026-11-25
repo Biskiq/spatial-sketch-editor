@@ -1,10 +1,30 @@
 # T2.S8 PR D — format cutover and the vertical material slice
 
 **Status:** implementation complete on `t2/s8-pr-d-format-cutover`, based on
-`main@d4598f79`; this follow-up starts from `38a40729`. Review-ready; not merged.
+`main@d4598f79`; the final independent review started from `38a40729`. The PR
+merged to `main` as `8d2b79b21` (squash of `86a52eeb` and `f91e40b5a`).
 **The format migration is not activated.** No saved head, pending capture or
 release was converted. The earlier five follow-up findings and the final four
 independent-review findings are addressed below.
+
+## Final independent review and corrective pass
+
+The final independent review, against `38a40729`, returned **NOT ACCEPTED**
+with four required findings:
+
+| # | Severity | Finding | Resolution |
+| --- | --- | --- | --- |
+| 1 | P1 | Production target analysis omitted approved-model and compiled Layout sources, so legitimate Wall and GLB registrations ended at `target-pending`. | `86a52eeb` connects the host-owned compiled Layout geometry and digest-bound approved derivative to `createStageAdapterServices`; production-wiring tests cover Wall, Form, approved GLB, UV1 absence, changed derivative and stale Layout revision. |
+| 2 | P1 | The browser gate measured first draw, warm edits and motion before the representation was mounted. | `86a52eeb` mounts `DGateMount` before timing and keeps the screenshot comparison. |
+| 3 | D exit | Detached Preview was not exercised through the real product shell. | `86a52eeb` records the resource-backed Finish → Save → cold Load → detached Preview journey, including teardown and reopen. |
+| 4 | P2 | The gate recorded failures but could still exit successfully. | `86a52eeb` exits nonzero on a missing backend, uncaptured image, page error or pixel threshold breach; the evidence records the actual acceptance verdict. |
+
+`f91e40b5a` followed with the Scene 12 mapping-edit, Region target-analysis
+and palette-adoption corrections. The merged tree contains both commits.
+The corrective pass was verified by the focused suites, gate and journey below;
+CI was green for `86a52eeb` (Merge gate `44921832848`) and for the merged PR
+head `f91e40b5a` (Merge gate `44926156380`). No subsequent independent review
+verdict was recorded, so this report does not claim one.
 
 ## Cutover
 
