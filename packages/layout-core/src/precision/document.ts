@@ -1,11 +1,12 @@
-import { layoutLength } from '../layout-source-collections';
-import { countWork } from '../p2311-perf';
-import type { LayoutDocumentWallFirst, LayoutWall } from '../layout-wall-first-types';
-import { cloneWallCenterline } from '../layout-wall-centerline';
-import type { CurveSample } from '../layout-geometry-curve';
-import type { PlanBox } from '../layout-plan-box-index';
-import type { TopologySegment } from '../layout-wall-topology';
-import type { LayoutVec2 } from '../layout-coordinates';
+import { layoutLength } from '../kernel/source-collections';
+import { countWork } from '../kernel/work-observer';
+import type { LayoutDocumentWallFirst } from '../wall/types';
+import type { LayoutWall } from '../wall/types';
+import { cloneWallCenterline } from '../wall/centerline';
+import type { CurveSample } from '../geometry/curve';
+import type { PlanBox } from '../world/plan-box-index';
+import type { TopologySegment } from '../wall/topology';
+import type { LayoutVec2 } from '../geometry/coordinates';
 import type { WallFirstArchitectureProposalIntent } from './types';
 import { distance } from '../vec2';
 

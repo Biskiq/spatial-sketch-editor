@@ -1,11 +1,14 @@
-import { cowCreateObject, cowDeleteObject, cowMoveJunctions, cowUpdateObject, ensureLayoutWorldIndex, peekLayoutWorldIndex } from '../layout-world-index';
-import { layoutWorkingLevelIssue } from '../layout-id-capture';
-import type { LayoutDocumentWallFirst, LayoutJunction, LayoutObject } from '../layout-wall-first-types';
-import { ROUND_ROOM_MEMBER_EDIT_MESSAGE, guardRoundRoomMemberGeometryEdit } from '../layout-round-room';
-import { coincidesAsJunction } from '../layout-junction-identity';
-import type { LayoutVec2 } from '../layout-coordinates';
+import { cowCreateObject, cowDeleteObject, cowMoveJunctions, cowUpdateObject } from '../world/cow'
+import { ensureLayoutWorldIndex, peekLayoutWorldIndex } from '../world/lookups';
+import { layoutWorkingLevelIssue } from '../plan/id-capture';
+import type { LayoutDocumentWallFirst } from '../wall/types';
+import type { LayoutJunction } from '../wall/types';
+import type { LayoutObject } from '../wall/types';
+import { ROUND_ROOM_MEMBER_EDIT_MESSAGE, guardRoundRoomMemberGeometryEdit } from '../room/round-room';
+import { coincidesAsJunction } from '../wall/junction-identity';
+import type { LayoutVec2 } from '../geometry/coordinates';
 import type { LayoutArchitecturalPreset, LayoutArchitecturalPresetId, LayoutObjectTransformPatch, PrecisionPlan, RectangleResizeOptions, RectangleResolution } from './types';
-import type { Vec3 } from '../types';
+import type { Vec3 } from '../kernel/types';
 import { POINT_EPSILON, add, distance, dot, normalize, scale, subtract, vectorEqual } from '../vec2';
 import { currentJunctionPoint } from './document';
 import { finalizeCandidate, finalizeWallGeometryCandidate, hasAnyTestObserverInPrecision } from './finalization';

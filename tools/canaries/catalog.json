@@ -101,7 +101,7 @@
     "area": "layout",
     "citation": "hard rule 2 — Layout owns architecture",
     "title": "Plan grid snapping outranks every semantic feature",
-    "file": "packages/layout-core/src/layout-snap.ts",
+    "file": "packages/layout-core/src/plan/snap.ts",
     "find": "\t'extension-guide': 8,\n\tgrid: 9",
     "replace": "\t'extension-guide': 8,\n\tgrid: 0",
     "tests": [
@@ -149,7 +149,7 @@
     "area": "layout",
     "citation": "hard rule 2 — Layout owns architecture",
     "title": "Snapping ranks a wall midpoint above a shared junction",
-    "file": "packages/layout-core/src/layout-snap.ts",
+    "file": "packages/layout-core/src/plan/snap.ts",
     "find": "const SEMANTIC_RANK: Record<SnapFeatureKind, number> = {\n\tjunction: 0,",
     "replace": "junction: 2,",
     "tests": [
@@ -161,7 +161,7 @@
     "area": "layout",
     "citation": "hard rule 2 — Layout owns architecture",
     "title": "Pointer acquisition radius is no longer screen-stable",
-    "file": "packages/layout-core/src/layout-snap.ts",
+    "file": "packages/layout-core/src/plan/snap.ts",
     "find": "export const LAYOUT_PLAN_SNAP_RADIUS_CSS_PX = 8;",
     "replace": "export const LAYOUT_PLAN_SNAP_RADIUS_CSS_PX = 18;",
     "tests": [
@@ -173,7 +173,7 @@
     "area": "layout",
     "citation": "hard rule 2 — Layout owns architecture",
     "title": "Plan grid snapping uses a doubled step",
-    "file": "packages/layout-core/src/layout-snap.ts",
+    "file": "packages/layout-core/src/plan/snap.ts",
     "find": "export const LAYOUT_PLAN_GRID_STEP = 0.25;",
     "replace": "export const LAYOUT_PLAN_GRID_STEP = 0.5;",
     "tests": [
@@ -221,7 +221,7 @@
     "area": "layout",
     "citation": "hard rule 2 — Layout owns architecture",
     "title": "Region footprints accept edges beyond the geometry envelope",
-    "file": "packages/layout-core/src/layout-region-validation.ts",
+    "file": "packages/layout-core/src/room/region-validation.ts",
     "find": "if (lengths.some((length) => length > MAX_LAYOUT_DIMENSION_METERS)) {",
     "replace": "if (lengths.some((length) => length > MAX_LAYOUT_DIMENSION_METERS * 10)) {",
     "tests": [
@@ -233,7 +233,7 @@
     "area": "layout",
     "citation": "hard rule 2 — Layout owns architecture",
     "title": "A wall span outranks a shared junction at equal distance",
-    "file": "packages/layout-core/src/layout-snap.ts",
+    "file": "packages/layout-core/src/plan/snap.ts",
     "find": "'wall-span': 4,",
     "replace": "'wall-span': 0,",
     "tests": [
@@ -257,7 +257,7 @@
     "area": "room-identity",
     "citation": "section 3 — Room identity",
     "title": "Reference allocation accepts one index past the allocation space",
-    "file": "packages/layout-core/src/layout-identity.ts",
+    "file": "packages/layout-core/src/plan/identity.ts",
     "find": "if (!Number.isInteger(index) || index < 0 || index >= LAYOUT_REFERENCE_SPACE) {",
     "replace": "if (!Number.isInteger(index) || index < 0 || index > LAYOUT_REFERENCE_SPACE) {",
     "tests": [
@@ -500,7 +500,7 @@
     "area": "layout",
     "citation": "hard rule 2 — Layout owns architecture",
     "title": "A wall midpoint outranks a junction at equal distance",
-    "file": "packages/layout-core/src/layout-snap.ts",
+    "file": "packages/layout-core/src/plan/snap.ts",
     "find": "'wall-intersection': 1,\n\t'wall-midpoint': 2,",
     "replace": "'wall-midpoint': 0,",
     "tests": [
@@ -537,7 +537,7 @@
     "area": "layout",
     "citation": "section 5 rule 7 — comments state the current contract",
     "title": "An invalid opening set reports a different refusal code",
-    "file": "packages/layout-core/src/layout-opening-set.ts",
+    "file": "packages/layout-core/src/wall/opening-set.ts",
     "find": "\t\t\t\tcode: 'opening_exceeds_wall',",
     "replace": "\t\t\t\tcode: 'opening_exceeds_wall_height',",
     "tests": [
@@ -549,7 +549,7 @@
     "area": "layout",
     "citation": "section 3 — Room identity",
     "title": "Room duplication no longer refuses a duplicate room id",
-    "file": "packages/layout-core/src/layout-identity.ts",
+    "file": "packages/layout-core/src/plan/identity.ts",
     "find": "return typeof token === 'string' && LAYOUT_REFERENCE_PATTERN.test(token);",
     "replace": "return typeof token === 'string' && token.length > 0;",
     "tests": [

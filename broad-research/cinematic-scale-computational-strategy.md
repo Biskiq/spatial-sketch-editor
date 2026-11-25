@@ -215,7 +215,7 @@ it exactly:
 
 - Rooms are cells, Openings are portals and Walls are occluders. Each Opening joins the two Rooms
   adjacent to its host Wall, and a door already carries an authored, validated `connectsRoomIds`
-  pair (`packages/layout-core/src/layout-wall-portals.ts`).
+  pair (`packages/layout-core/src/wall/portals.ts`).
 - Rooms are the natural volumes for light lists, reflection probes and irradiance probes.
 - Authored Camera Views, connections and Experience Stops are a demand forecast.
 

@@ -1,5 +1,5 @@
-import { LAYOUT_GEOMETRY_EPSILON } from './layout-geometry-openings';
-import type { LayoutVec2 } from './layout-coordinates';
+import { LAYOUT_GEOMETRY_EPSILON } from './geometry/openings';
+import type { LayoutVec2 } from './geometry/coordinates';
 
 export const POINT_EPSILON = LAYOUT_GEOMETRY_EPSILON;
 

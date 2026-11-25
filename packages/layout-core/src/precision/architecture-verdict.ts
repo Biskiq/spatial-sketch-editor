@@ -1,9 +1,9 @@
-import { p2311Measure } from '../p2311-perf';
-import type { LayoutGeometryIssue } from '../layout-geometry-types';
-import type { LayoutDocumentWallFirst } from '../layout-wall-first-types';
-import type { WallSamplingDerivation } from '../layout-wall-centerline';
-import { createWallSamplingDerivation } from '../layout-wall-centerline';
-import { topologyComponentKeyByJunctionId, topologyComponentKeyByWallId } from '../layout-topology-components';
+import { p2311Measure } from '../kernel/work-observer';
+import type { LayoutGeometryIssue } from '../geometry/types';
+import type { LayoutDocumentWallFirst } from '../wall/types';
+import type { WallSamplingDerivation } from '../wall/centerline';
+import { createWallSamplingDerivation } from '../wall/centerline';
+import { topologyComponentKeyByJunctionId, topologyComponentKeyByWallId } from '../room/topology-components';
 import type { ArchitectureCandidatePatch, WallFirstArchitectureAffectedExtent, WallFirstArchitectureCandidatePair, WallFirstArchitecturePreflightFailure, WallFirstArchitectureProposalIntent, WallFirstArchitectureVerdictScope, WallFirstArchitectureVerdictScopeStats } from './types';
 import { validateWallFirstTopology, validateWallFirstTopologyPass } from '../topology/wall-first';
 import { architectureCandidatePatch, spliceWallFirstArchitectureCandidate } from './architecture-proposals';

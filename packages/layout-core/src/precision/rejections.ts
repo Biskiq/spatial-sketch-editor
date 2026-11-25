@@ -1,8 +1,8 @@
-import type { LayoutDocumentIssue } from '../layout-issue';
-import type { LayoutGeometryIssue } from '../layout-geometry-types';
-import type { ReconciliationFailure, ReconciliationResult } from '../layout-room-reconciliation';
-import type { RoundRoomMemberGuardHit } from '../layout-round-room';
-import type { LayoutVec2 } from '../layout-coordinates';
+import type { LayoutDocumentIssue } from '../plan/issue';
+import type { LayoutGeometryIssue } from '../geometry/types';
+import type { ReconciliationFailure, ReconciliationResult } from '../room/reconciliation-types';
+import type { RoundRoomMemberGuardHit } from '../room/round-room';
+import type { LayoutVec2 } from '../geometry/coordinates';
 import type { FixedWallEndpoint, PrecisionPlan, PrecisionRejection } from './types';
 import { POINT_EPSILON } from '../vec2';
 

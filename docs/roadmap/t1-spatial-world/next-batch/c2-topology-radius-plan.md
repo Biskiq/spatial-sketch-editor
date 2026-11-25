@@ -37,15 +37,15 @@ C2 reuses C1's centre-local binary64 uncertainty-aware certification and templat
 
 - `certifyRoundRoom`, `buildRoundRoomGeometryFromCertified`, `rotateBoundaryToSeam`,
   `roundRoomSeamJunctionId`, and `findEnclosingRoundRoomForWall` in
-  [layout-round-room.ts](../../../../packages/layout-core/src/layout-round-room.ts).
+  [layout-round-room.ts](../../../../packages/layout-core/src/room/round-room.ts).
 - `UNIT_TEMPLATE_SCALARS` and `unitToWorldPoint` in
-  [layout-round-template.ts](../../../../packages/layout-core/src/layout-round-template.ts).
+  [layout-round-template.ts](../../../../packages/layout-core/src/room/round-template.ts).
 - `buildClosedWallCircleCenterlineFromRay` in
-  [layout-closed-wall.ts](../../../../packages/layout-core/src/layout-closed-wall.ts).
+  [layout-closed-wall.ts](../../../../packages/layout-core/src/wall/closed-wall.ts).
 - Outward-rounded interval arithmetic in
-  [layout-binary64-interval.ts](../../../../packages/layout-core/src/layout-binary64-interval.ts)
+  [layout-binary64-interval.ts](../../../../packages/layout-core/src/geometry/binary64-interval.ts)
   and `tangentAnchorsAllowContinuation` in
-  [layout-junction-resolution.ts](../../../../packages/layout-core/src/layout-junction-resolution.ts).
+  [layout-junction-resolution.ts](../../../../packages/layout-core/src/wall/junction-resolution.ts).
 
 To keep connected-ring splits, evaluations, and tangent joins exact at `[2**32, -(2**32)]` without
 altering near-origin frozen digests, `cubicBezierPoint` (`layout-geometry-curve.ts`) and
@@ -59,7 +59,7 @@ start-shifted local coordinates when `|coord| > 1e6`, and `planDissolveJunction`
 and SP1 open Spaces. C2 reconciles directly against the landed code without a separate cross-track PR:
 
 - **S5a surface references and lineage
-  ([layout-surface-reference.ts](../../../../packages/layout-core/src/layout-surface-reference.ts)):**
+  ([layout-surface-reference.ts](../../../../packages/layout-core/src/plan/surface-reference.ts)):**
   - `repackWallSurfaceLineage` maps all oriented ring Wall sides (seam survivor first per Q17,
     flipping `left`/`right` on `reverse` members) onto the canonical repacked closed Wall.
   - Closed-to-ring attach, Release, and detach/repack emit `LayoutSurfaceLineage` normalized via
@@ -67,11 +67,11 @@ and SP1 open Spaces. C2 reconciles directly against the landed code without a se
   - `resolveLayoutRoomInterior` returns canonical S5a `LayoutWallSideSurfaceRef` entries alongside
     `CompiledPhysicalWall`.
 - **V1 horizontal regions
-  ([layout-region-validation.ts](../../../../packages/layout-core/src/layout-region-validation.ts)):**
+  ([layout-region-validation.ts](../../../../packages/layout-core/src/room/region-validation.ts)):**
   - Closed-to-ring attach, `planWallChain` noding, Release, and automatic repack propagate
     `document.regions[].intendedGaps` through `carryRegionWallIntents`.
 - **SP1 open Spaces and B1 erase policy
-  ([layout-room-reconciliation.ts](../../../../packages/layout-core/src/layout-room-reconciliation.ts)):**
+  ([layout-room-reconciliation.ts](../../../../packages/layout-core/src/room/reconciliation.ts)):**
   - Exterior arc erase rides `planWallRemovalSet` (`invalidOutline: 'retire'`) and clears `round`.
   - Non-erase edits (`planResizeRoundRoomRadius`, `planWallChain`, `planReleaseRoundRoom`) refuse
     invalid Space outlines or SP overlap/containment atomically without retiring any Space.

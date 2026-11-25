@@ -607,9 +607,9 @@ Non-browser verification at the implementation head: `npm run check --workspace 
 | `apps/editor/src/lib/authoring/stage/stage-facade.ts` | `StagePointerIntent` L305 (currently only `shift`) | Add `metaKey`/`ctrlKey` (or `alternateShape`) transport; keep it stable across phases. |
 | `apps/editor/src/routes/project/[projectId]/spatial/+page.svelte` | pointer intent construction L2280 (`shift: event.shiftKey`) | Pass platform modifiers at pointer-down and through move/up/cancel. |
 | `apps/editor/src/lib/authoring/adapters/layout/precision.ts` | `LAYOUT_WALL_MOVE_KIND` L101, `wallMovePlanner` L473 | Reuse the canonical move planner for curved body drag; do not write knots in the adapter. |
-| `packages/layout-core/src/layout-wall-first-precision.ts` | `planRigidWallMove` L353 | Existing curved-chain translation; characterize and test, no schema change. |
-| `apps/editor/tests/lib/layout/layout-curve-planners.test.ts` | rigid movement L752 | Curved translation preserves knots, span controls, shape and length. |
-| `apps/editor/tests/lib/layout/layout-curve-proposals.test.ts` | curved proposal L185 | Whole-chain preview and reshaped neighbours. |
+| `packages/layout-core/src/precision/index.ts` | `planRigidWallMove` L353 | Existing curved-chain translation; characterize and test, no schema change. |
+| `packages/layout-core/tests/precision/curve-planners.test.ts` | rigid movement L752 | Curved translation preserves knots, span controls, shape and length. |
+| `packages/layout-core/tests/precision/curve-proposals.test.ts` | curved proposal L185 | Whole-chain preview and reshaped neighbours. |
 
 ## Appendix B — Prototype map
 

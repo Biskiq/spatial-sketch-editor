@@ -1,12 +1,13 @@
-import { LAYOUT_DIMENSION_LIMIT_MESSAGE, exceedsLayoutDimension } from '../layout-geometry-limits';
-import { cowMoveJunctions, cowMoveRigidWall, cowSetWallScalar, ensureLayoutWorldIndex, peekLayoutWorldIndex } from '../layout-world-index';
-import type { LayoutDocumentWallFirst } from '../layout-wall-first-types';
-import type { RoundRoomMemberGuardHit } from '../layout-round-room';
-import { guardRoundRoomMemberGeometryEdit } from '../layout-round-room';
-import type { NodingIdAllocator, NodingPlan } from '../layout-wall-noding';
-import { planWallSplit } from '../layout-wall-noding';
-import { coincidesAsJunction } from '../layout-junction-identity';
-import type { LayoutVec2 } from '../layout-coordinates';
+import { LAYOUT_DIMENSION_LIMIT_MESSAGE, exceedsLayoutDimension } from '../geometry/limits';
+import { cowMoveJunctions, cowMoveRigidWall, cowSetWallScalar } from '../world/cow'
+import { ensureLayoutWorldIndex, peekLayoutWorldIndex } from '../world/lookups';
+import type { LayoutDocumentWallFirst } from '../wall/types';
+import type { RoundRoomMemberGuardHit } from '../room/round-room';
+import { guardRoundRoomMemberGeometryEdit } from '../room/round-room';
+import type { NodingIdAllocator, NodingPlan } from '../wall/noding';
+import { planWallSplit } from '../wall/noding';
+import { coincidesAsJunction } from '../wall/junction-identity';
+import type { LayoutVec2 } from '../geometry/coordinates';
 import type { FixedWallEndpoint, PrecisionPlan, WallAngleIntent, WallFirstArchitectureProposalIntent, WallLengthIntent, WallMoveIntent } from './types';
 import { POINT_EPSILON } from '../vec2';
 import { rejectCurvedWall } from './curve-edits';

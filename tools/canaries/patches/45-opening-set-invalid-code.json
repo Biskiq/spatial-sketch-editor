@@ -3,7 +3,7 @@
   "area": "layout",
   "citation": "section 5 rule 7 — comments state the current contract",
   "title": "An invalid opening set reports a different refusal code",
-  "file": "packages/layout-core/src/layout-opening-set.ts",
+  "file": "packages/layout-core/src/wall/opening-set.ts",
   "find": "\t\t\t\tcode: 'opening_exceeds_wall',",
   "replace": "\t\t\t\tcode: 'opening_exceeds_wall_height',",
   "tests": [

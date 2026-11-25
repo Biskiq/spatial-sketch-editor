@@ -1,12 +1,13 @@
-import { cowMoveJunctions, ensureLayoutWorldIndex, peekLayoutWorldIndex } from '../layout-world-index';
-import { wallFirstWallLength } from '../layout-opening-set';
-import { spacePlacementIssues } from '../layout-space-placement';
-import { spaceOpenSideFrame } from '../layout-space-open-side';
-import type { LayoutDocumentWallFirst } from '../layout-wall-first-types';
-import { guardRoundRoomMemberGeometryEdit } from '../layout-round-room';
-import type { NodingIdAllocator } from '../layout-wall-noding';
-import { planWallSplitAtPoint } from '../layout-wall-noding';
-import type { LayoutVec2 } from '../layout-coordinates';
+import { cowMoveJunctions } from '../world/cow'
+import { ensureLayoutWorldIndex, peekLayoutWorldIndex } from '../world/lookups';
+import { wallFirstWallLength } from '../wall/opening-set';
+import { spacePlacementIssues } from '../room/space-placement';
+import { spaceOpenSideFrame } from '../room/space-open-side';
+import type { LayoutDocumentWallFirst } from '../wall/types';
+import { guardRoundRoomMemberGeometryEdit } from '../room/round-room';
+import type { NodingIdAllocator } from '../wall/noding';
+import { planWallSplitAtPoint } from '../wall/noding';
+import type { LayoutVec2 } from '../geometry/coordinates';
 import type { PrecisionOperation, PrecisionPlan, PrecisionRejection, SpaceOpenSideSlidePlan } from './types';
 import { POINT_EPSILON } from '../vec2';
 import { wallEndpoints } from './document';

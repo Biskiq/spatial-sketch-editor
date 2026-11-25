@@ -230,7 +230,7 @@ either end or at an oblique angle.
 
 **Proven path:**
 
-1. `terminalJoin` in `packages/layout-core/src/layout-junction-resolution.ts:493` publishes no surfaces.
+1. `terminalJoin` in `packages/layout-core/src/wall/junction-resolution.ts:493` publishes no surfaces.
 2. `buildSectionFaces` in `apps/editor/src/lib/layout/wall-mesh-builder.ts:870` emits front, back, top and
    bottom only.
 3. `squareEndCorner` at `wall-mesh-builder.ts:444` only places corner points, and

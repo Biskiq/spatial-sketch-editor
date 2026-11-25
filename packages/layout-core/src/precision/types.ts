@@ -1,10 +1,10 @@
-import type { LayoutDocumentIssue } from '../layout-issue';
-import type { CompiledLayoutGeometryResult, LayoutGeometryIssue } from '../layout-geometry-types';
-import type { LayoutDocumentWallFirst, LayoutJunction, LayoutObject, LayoutWallCenterline } from '../layout-wall-first-types';
-import type { WallSamplingDerivation } from '../layout-wall-centerline';
-import type { LayoutVec2 } from '../layout-coordinates';
-import type { Vec3 } from '../types';
-import type { LayoutSurfaceLineage } from '../layout-surface-reference';
+import type { LayoutDocumentIssue } from '../plan/issue';
+import type { CompiledLayoutGeometryResult, LayoutGeometryIssue } from '../geometry/types';
+import type { LayoutDocumentWallFirst, LayoutJunction, LayoutObject, LayoutWallCenterline } from '../wall/types';
+import type { WallSamplingDerivation } from '../wall/centerline';
+import type { LayoutVec2 } from '../geometry/coordinates';
+import type { Vec3 } from '../kernel/types';
+import type { LayoutSurfaceLineage } from '../plan/surface-reference';
 
 /**
  * Maximum number of bend points a **new** insertion may produce.

@@ -1,17 +1,20 @@
-import { layoutLength } from '../layout-source-collections';
-import { canonicalBoundaryCycleKey, extractBoundaryCandidateFaces } from '../layout-face-extraction';
-import { activeLayoutCompileSession, compileWallFirstLayoutGeometry } from '../layout-geometry';
-import { p2311Measure } from '../p2311-perf';
-import { hasBlockingLayoutIssues } from '../layout-geometry-validation';
-import { LAYOUT_DIMENSION_LIMIT_MESSAGE } from '../layout-geometry-limits';
-import { serializeWallFirstLayoutDocument, validateWallFirstLayoutDocument } from '../layout-wall-first-codec';
-import { exceedsLayoutWallSpan, getCowDocumentDelta, hasAnySamplingTestObserver, verifyScalarOrObjectDelta, verifySweptBoundsGeometryDelta } from '../layout-world-index';
-import { validateWallFirstOpeningSet } from '../layout-opening-set';
-import { validateWallFirstPortalRelations } from '../layout-wall-portals';
-import type { ComponentLineage, ReconciliationResult, RoomIdAllocator } from '../layout-room-reconciliation';
-import { reconcileRooms } from '../layout-room-reconciliation';
-import type { LayoutDocumentWallFirst } from '../layout-wall-first-types';
-import { createWallSamplingDerivation } from '../layout-wall-centerline';
+import { layoutLength } from '../kernel/source-collections';
+import { canonicalBoundaryCycleKey, extractBoundaryCandidateFaces } from '../geometry/face-extraction';
+import { activeLayoutCompileSession } from '../geometry/session'
+import { compileWallFirstLayoutGeometry } from '../geometry/compiler';
+import { p2311Measure } from '../kernel/work-observer';
+import { hasBlockingLayoutIssues } from '../geometry/validation';
+import { LAYOUT_DIMENSION_LIMIT_MESSAGE } from '../geometry/limits';
+import { serializeWallFirstLayoutDocument, validateWallFirstLayoutDocument } from '../wall/codec';
+import { exceedsLayoutWallSpan, hasAnySamplingTestObserver } from '../world/lookups'
+import { getCowDocumentDelta } from '../world/cow'
+import { verifyScalarOrObjectDelta, verifySweptBoundsGeometryDelta } from '../world/verify';
+import { validateWallFirstOpeningSet } from '../wall/opening-set';
+import { validateWallFirstPortalRelations } from '../wall/portals';
+import type { ComponentLineage, ReconciliationResult, RoomIdAllocator } from '../room/reconciliation-types';
+import { reconcileRooms } from '../room/reconciliation';
+import type { LayoutDocumentWallFirst } from '../wall/types';
+import { createWallSamplingDerivation } from '../wall/centerline';
 import type { PrecisionOperation, PrecisionPlan, PrecisionRejection } from './types';
 import { validateWallFirstTopology } from '../topology/wall-first';
 import { isReconciliationFailure, reject } from './rejections';

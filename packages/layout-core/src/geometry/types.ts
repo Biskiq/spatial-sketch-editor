@@ -1,0 +1,649 @@
+import type { Vec3 } from '../kernel/types';
+import type { LayoutVec2 } from './coordinates';
+import type { LayoutObject, LayoutDerivedWallRole } from '../wall/types';
+import type { SampleableSegment, SampledSegment } from './curve';
+
+/**
+ * The compiler's room-boundary segment list: wide enough to carry the
+ * canonical Wall adapter's `cubic-chain` output, which is derived geometry
+ * rather than an authored `DraftSegment`.
+ */
+export type CompilerBoundarySource = {
+	closed: true;
+	segments: SampleableSegment[];
+};
+
+/**
+ * Structured geometry issue. This is the single shared contract between the
+ * compiler, geometry validation, and every consumer (editor + visitor).
+ */
+export type LayoutGeometryIssue = {
+	path: string;
+	code: string;
+	message: string;
+	targetId?: string;
+	severity?: 'warning' | 'error';
+};
+
+export type LayoutBounds2 = { min: LayoutVec2; max: LayoutVec2 };
+export type LayoutBounds3 = { min: Vec3; max: Vec3 };
+
+/** Deterministic relevant-input identity shared by compiled entities and query records. */
+export type CompiledIdentity = {
+	/** Qualified semantic identity (stable, collision-safe). */
+	id: string;
+	/** Deterministic identity of the authored inputs that produced this record. */
+	cacheKey: string;
+};
+
+export type CompiledCurveSample = {
+	point: LayoutVec2;
+	distance: number;
+	t: number;
+	tangent: LayoutVec2;
+	normal: LayoutVec2;
+};
+
+// ---------------------------------------------------------------------------
+// Compiler input
+//
+// These records are the one accepted input of `compileLayoutGeometrySource`.
+// They are owned here, not borrowed from a document type, so the compiler stays
+// decoupled from any document generation: the compiler input is its own contract, and
+// `compileWallFirstLayoutGeometry` is its only adapter.
+// ---------------------------------------------------------------------------
+
+/**
+ * Opening shape accepted by the compiler source, hosted by a boundary segment.
+ *
+ * Wall-first Openings are mapped onto it with `segmentId = wallId`, so the one
+ * geometry compiler/output model reads a Wall-hosted Opening exactly as
+ * it reads any segment-hosted one. `offset` is metres from that segment's start
+ * and is the only horizontal authority the compiler reads.
+ */
+export type CompilerOpening = {
+	id: string;
+	segmentId: string;
+	kind: 'door' | 'window';
+	offset: number;
+	width: number;
+	height: number;
+	sillHeight: number;
+	profile: 'rectangular' | 'rounded' | 'pointed';
+	connectsRoomIds?: [string, string];
+};
+
+/**
+ * Compiler-source floor frame: the datum plus an optional storey scalar.
+ *
+ * `height` survives only as the shared core's fallback vertical extent for a
+ * source that supplies no per-Room derived ceiling. Format 6 has no storey
+ * height at all, so `compileWallFirstLayoutGeometry` never sets it and no
+ * persisted document can define one; only a direct caller of
+ * `compileLayoutGeometrySource` can pass it.
+ */
+export type CompilerFloorSource = {
+	id: string;
+	elevation: number;
+	height?: number;
+};
+
+/** Room shell the shared compile core reads: identity plus Room-owned surfaces. */
+export type CompilerRoomShell = {
+	id: string;
+	wallThickness: number;
+
+
+	/** Authored overhead intent; absent keeps the closed lid. */
+	overhead?: 'closed' | 'open-to-sky';
+};
+
+/** One Room's worth of compiler input: shell, boundary chain and its Openings. */
+export type CompilerRoomSource = {
+	room: CompilerRoomShell;
+	boundary: CompilerBoundarySource;
+	openings: readonly CompilerOpening[];
+	/**
+	 * Boundary segment ids that are stated virtual edges, not Walls. Their
+	 * segments contribute to the outline, floor polygon and area, but never to
+	 * compiled `walls`, Wall bounds, Openings or Wall query records.
+	 */
+	virtualSegmentIds?: readonly string[];
+	/**
+	 * Per-wall thickness override keyed by boundary segment id (wall
+	 * thickness is Wall-owned in the wall-first schema). Absent keeps the
+	 * room-uniform fallback.
+	 */
+	wallThicknessBySegmentId?: Readonly<Record<string, number>>;
+	/**
+	 * Per-wall Opening vertical limit keyed by boundary segment id
+	 * (the wall-first adapter supplies each Wall's authoritative `height`).
+	 * Absent keeps the `floor.height` rule.
+	 */
+	openingHeightLimitBySegmentId?: Readonly<Record<string, number>>;
+	/**
+	 * Explicit derived Room ceiling elevation (wall-first), computed once
+	 * by the adapter as `floor.elevation + max(boundary Wall heights)`. Absent means
+	 * the Floor-derived ceiling.
+	 */
+	ceilingElevation?: number;
+	/**
+	 * Pre-sampled room-boundary segments keyed by segment object
+	 * identity, derived through the chain-scoped sampling derivation at the
+	 * adapter (where Wall + traversal authority are known). The shared core
+	 * serves a mapped segment instead of re-sampling it.
+	 */
+	preSampled?: ReadonlyMap<SampleableSegment, SampledSegment>;
+};
+
+/** One floor's worth of compiler input: the floor frame plus its rooms. */
+export type CompilerFloorEntry = {
+	floor: CompilerFloorSource;
+	rooms: readonly CompilerRoomSource[];
+};
+
+/** Everything `compileLayoutGeometrySource` accepts. */
+export type CompilerSource = {
+	/** One entry per floor, in document order. */
+	floors: readonly CompilerFloorEntry[];
+	objects: readonly LayoutObject[];
+};
+
+export type ArchProfileKind = CompilerOpening['profile'];
+
+/** Compiled elevation profile of an opening's top boundary. */
+export type CompiledArchProfile = {
+	kind: ArchProfileKind;
+	width: number;
+	height: number;
+	rise: number;
+	/** Ordered x/y points describing the opening's top boundary in local elevation space. */
+	topBoundary: LayoutVec2[];
+};
+
+/** Renderer-neutral solid region along a wall: side wall, opening sill, or lintel. */
+export type CompiledWallSection = {
+	kind: 'side' | 'lintel';
+	startDistance: number;
+	endDistance: number;
+	bottomY: number;
+	topY: number;
+	openingId?: string;
+	profile?: CompiledArchProfile;
+	profileBaseY?: number;
+};
+
+/** Clipped chord span ready for the existing chord-box adapters. */
+export type CompiledSolidSpan = {
+	sectionIndex: number;
+	startDistance: number;
+	endDistance: number;
+	start: LayoutVec2;
+	end: LayoutVec2;
+	bottomY: number;
+	topY: number;
+};
+
+export type CompiledOpeningCenter = {
+	openingId: string;
+	point: LayoutVec2;
+	distance: number;
+	tangent: LayoutVec2;
+	normal: LayoutVec2;
+	/** Three.js positive-Y yaw derived from the tangent (world `-atan2(dz, dx)`). */
+	yaw: number;
+};
+
+export type CompiledOpening = CompiledIdentity & {
+	openingId: string;
+	segmentId: string;
+	kind: CompilerOpening['kind'];
+	/** Offset in meters along the compiled sampled arc. */
+	offset: number;
+	width: number;
+	height: number;
+	sillHeight: number;
+	profile: ArchProfileKind;
+	profileShape?: CompiledArchProfile;
+	center: CompiledOpeningCenter;
+	/** Sampled opening centerline along the wall arc (precomputed for Plan overlay). */
+	centerPolyline: LayoutVec2[];
+	bounds2: LayoutBounds2;
+	connectsRoomIds?: [string, string];
+};
+
+export type CompiledWall = CompiledIdentity & {
+	segmentId: string;
+	thickness: number;
+	length: number;
+	samples: CompiledCurveSample[];
+	sections: CompiledWallSection[];
+	solidSpans: CompiledSolidSpan[];
+	openings: CompiledOpening[];
+	/** Opening-free centerline polylines for the Plan wall strokes. */
+	solidCenterlinePolylines: LayoutVec2[][];
+	bounds2: LayoutBounds2;
+	bounds3: LayoutBounds3;
+};
+
+/** One stated open side of a Space, in composer order. Never a subject, never connectivity. */
+export type CompiledSpaceEdge = {
+	start: LayoutVec2;
+	end: LayoutVec2;
+};
+
+export type CompiledRoom = CompiledIdentity & {
+	roomId: string;
+	/** Authored overhead intent of this Space. */
+	overhead: 'closed' | 'open-to-sky';
+	/**
+	 * The Space's stated open sides. They contribute to the outline and area but
+	 * are never Walls, never pick targets and never visitor geometry; an editor
+	 * surface reads them for its dashed open-side ink. Absent on an enclosed Room
+	 * so its compiled reading keeps the pre-SP1c shape.
+	 */
+	openSides?: CompiledSpaceEdge[];
+	floorElevation: number;
+	ceilingElevation: number;
+
+
+	wallThickness: number;
+	floorPolygon: LayoutVec2[];
+	ceilingPolygon: LayoutVec2[];
+	walls: CompiledWall[];
+	openings: CompiledOpening[];
+	bounds2: LayoutBounds2;
+	bounds3: LayoutBounds3;
+};
+
+/**
+ * Compiled Floor.
+ *
+ * Carries **no vertical extent**. `height` was a copy of the legacy
+ * storey scalar, and the wall-first model defines the enclosure by its Walls
+ * (`CompiledPhysicalWall.height`) with Room ceilings derived per Room
+ * (`CompiledRoom.ceilingElevation`). It is deliberately not replaced by another
+ * Floor scalar: `floor.elevation` is the datum, `bounds3` is the aggregate spatial
+ * extent (which includes physical Walls no Room references), and a
+ * `max(Room envelopes)` envelope would under-report real architecture because
+ * wall-first permits Walls without Rooms.
+ */
+export type CompiledFloor = CompiledIdentity & {
+	floorId: string;
+	elevation: number;
+	roomIds: readonly string[];
+	bounds3: LayoutBounds3 | null;
+};
+
+export type CompiledLayoutObject = CompiledIdentity & {
+	objectId: string;
+	kind: LayoutObjectKind;
+	position: Vec3;
+	rotation: Vec3;
+	dimensions: Vec3;
+	roomId?: string;
+	readonly: boolean;
+	worldAabb: { min: Vec3; max: Vec3 };
+	planFootprint: LayoutVec2[];
+};
+
+export type LayoutObjectKind = 'box' | 'plane' | 'cylinder' | 'sphere' | 'profile';
+
+export type CompiledQueryPoint = CompiledIdentity & {
+	kind: 'vertex' | 'interior-anchor';
+	point: LayoutVec2;
+	aabb: LayoutBounds2;
+	sourceId: string;
+	floorId: string;
+	/** Owning Room for room-derived records; absent for roomless physical Walls (never faked). */
+	roomId?: string;
+	segmentId: string;
+	sourceIndex: number;
+	/**
+	 * Collision-safe wall identity of the owning segment — same contract as
+	 * `CompiledQuerySpan.wallKey` (document-global for wall-first, length-
+	 * prefixed floor+room+segment for legacy). Used for moving-target
+	 * ownership of junction candidates.
+	 */
+	wallKey?: string;
+};
+export type CompiledQuerySpan = CompiledIdentity & {
+	kind: 'wall' | 'opening' | 'solid';
+	start: LayoutVec2;
+	end: LayoutVec2;
+	startDistance: number;
+	endDistance: number;
+	startT?: number;
+	endT?: number;
+	aabb: LayoutBounds2;
+	sourceId: string;
+	floorId: string;
+	/** Owning Room for room-derived records; absent for roomless physical Walls (never faked). */
+	roomId?: string;
+	segmentId: string;
+	openingId?: string;
+	/**
+	 * Collision-safe wall identity for wall-bound spans. Wall-first segment
+	 * ids are document-global, so `wallKey` is the bare `segmentId`; legacy
+	 * segment ids are only unique inside their room, so `wallKey` is the
+	 * length-prefixed `geometryId([floorId, roomId, segmentId])` — plain
+	 * delimiter joining would collide because `:` is legal inside ids.
+	 * Snap/align consumers must group and match walls by `wallKey` (falling
+	 * back to `segmentId` for hand-built records), never by `segmentId`
+	 * alone.
+	 */
+	wallKey?: string;
+};
+export type CompiledQueryPolygon = CompiledIdentity & {
+	kind: 'room-floor' | 'object-footprint' | 'region-top' | 'region-underside';
+	elevation?: number;
+	polygon: LayoutVec2[];
+	aabb: LayoutBounds2;
+	sourceId: string;
+	floorId?: string;
+	roomId?: string;
+	objectId?: string;
+};
+export type CompiledQueryAabb = CompiledIdentity & {
+	kind: 'room' | 'wall' | 'opening' | 'object' | 'floor' | 'document' | 'region';
+	floorId?: string;
+	bounds3?: LayoutBounds3;
+	aabb: LayoutBounds2;
+	sourceId: string;
+};
+
+export type CompiledLayoutQueryGeometry = {
+	points: CompiledQueryPoint[];
+	spans: CompiledQuerySpan[];
+	polygons: CompiledQueryPolygon[];
+	aabbs: CompiledQueryAabb[];
+};
+
+export type CompiledPhysicalWall = CompiledIdentity & {
+	wallId: string;
+	/**
+	 * The derived Wall role (format 6): `bounding` = one Room boundary references it,
+	 * `dividing` = two or more do, `free-standing` = none. Derived from the reconciled
+	 * Rooms, never authored, and therefore the same vocabulary `deriveLayoutWallRole`
+	 * returns. Every Wall participates in face extraction regardless of this value.
+	 */
+	role: LayoutDerivedWallRole;
+	floorId: string;
+	thickness: number;
+	/**
+	 * The Wall's authoritative physical height in meters, carried into
+	 * compiled output so downstream consumers (mesh builders, Inspector, Plan)
+	 * never have to re-read `LayoutDocument`. Vertical extent is
+	 * `[floor.elevation, floor.elevation + height]`.
+	 */
+	height: number;
+	length: number;
+	samples: CompiledCurveSample[];
+	sections: CompiledWallSection[];
+	solidSpans: CompiledSolidSpan[];
+	openings: CompiledOpening[];
+	/** Opening-free centerline polylines for the Plan wall strokes. */
+	solidCenterlinePolylines: LayoutVec2[][];
+	bounds2: LayoutBounds2;
+	bounds3: LayoutBounds3;
+	/**
+	 * The canonical Junction at each Wall end, carried into compiled
+	 * output so renderers and visitors can see a Wall's neighbours without ever
+	 * receiving `LayoutDocument`. Optional so hand-built/legacy compiled Walls
+	 * (and test fixtures) stay valid; wall-first compilation always sets them.
+	 */
+	startJunctionId?: string;
+	endJunctionId?: string;
+};
+
+/**
+ * One vertical band of a Wall endpoint's cross-section. `solid` is
+ * true where the Wall body exists at that band; an Opening reaching the
+ * endpoint makes the band `solid: false` and names the Opening. Compiled, not
+ * re-read from the document (Decision 10).
+ */
+export type CompiledEndpointBand = {
+	bottomY: number;
+	topY: number;
+	solid: boolean;
+	openingId?: string;
+};
+
+/**
+ * One canonical incident Wall leg at a Junction, with the facts a
+ * Junction-local solve needs. `tangentOut`/`normalOut` point **outward from the
+ * Junction into the Wall** (the Junction-local frame that removes the canonical
+ * orientation ambiguity). `outwardAngle` exists only for deterministic cyclic
+ * adjacency; it must never decide physical ownership.
+ */
+export type CompiledJunctionLeg = {
+	wallId: string;
+	end: 'start' | 'end';
+	tangentOut: LayoutVec2;
+	normalOut: LayoutVec2;
+	/** CCW angle of `tangentOut` from +X — cyclic ordering only. */
+	outwardAngle: number;
+	thickness: number;
+	halfThickness: number;
+	bottomY: number;
+	topY: number;
+	role: LayoutDerivedWallRole;
+	/** True when a hosted Opening reaches this exact Wall endpoint. */
+	endpointOpen: boolean;
+	endpointSolidBands: CompiledEndpointBand[];
+};
+
+/** One side of a resolved Junction corner (renderer-neutral miter/bevel fact). */
+export type CompiledCornerSide =
+	| { kind: 'miter'; apex: LayoutVec2 }
+	| { kind: 'bevel'; a0: LayoutVec2; b0: LayoutVec2 };
+
+export type CompiledEndCorner = { front: CompiledCornerSide; back: CompiledCornerSide };
+
+/** How an incident leg's Junction end is resolved. */
+export type CompiledLegJoinKind = 'terminal' | 'suppressed' | 'miter' | 'bevel' | 'trim';
+
+/**
+ * One vertical band of a resolved Junction surface/interface.
+ * Per-band resolution is what makes exposure Opening-aware: a branch that
+ * covers a difference step in plan below its own top does not cover it above.
+ */
+export type CompiledJunctionBand = { bottomY: number; topY: number };
+
+/**
+ * One resolved, Wall-attributed physical surface at a Junction.
+ *
+ * `layout-core` decides **what physical surface exists and who owns it**; a
+ * builder only turns this into vertices/indices. No builder decides thickness
+ * order, band exposure, step existence or difference ownership.
+ *
+ * The surface is a vertical planar quad: the plan segment `from` → `to`
+ * extruded over each vertical band, wound so its geometric normal points along
+ * `normal` (away from the owning Wall's material).
+ */
+export type CompiledJunctionSurface = {
+	ownerWallId: string;
+	end: 'start' | 'end';
+	kind:
+		| 'continuation-thickness-step'
+		| 'continuation-height-step'
+		| 'branch-trim'
+		| 'junction-keel'
+		| 'terminal-cap'
+		| 'corner-exposed-end';
+	from: LayoutVec2;
+	to: LayoutVec2;
+	/** Outward plan normal (unit) pointing away from the owning Wall's material. */
+	normal: LayoutVec2;
+	bands: CompiledJunctionBand[];
+};
+
+/**
+ * An internal interface: another incident Wall's material rests on
+ * this Wall's own offset face here, so that region of the face is interior to
+ * the resolved Junction material and must not be painted.
+ *
+ * `normal` is the outward plan normal of the Wall's own face the interface
+ * lies on (a builder matches its face normal against it, never a `front`/`back`
+ * convention). `fromDistance`/`toDistance` are signed along-axis distances from
+ * this Junction end (+ = into the Wall).
+ */
+export type CompiledJunctionInterface = {
+	wallId: string;
+	end: 'start' | 'end';
+	normal: LayoutVec2;
+	fromDistance: number;
+	toDistance: number;
+	bands: CompiledJunctionBand[];
+};
+
+/** Counterparty leg facts a Wall end needs to close a seam without its neighbour's mesh. */
+export type CompiledJunctionNeighbor = {
+	wallId: string;
+	tangentOut: LayoutVec2;
+	normalOut: LayoutVec2;
+	halfThickness: number;
+	endpointOpen: boolean;
+	endpointSolidBands: CompiledEndpointBand[];
+};
+
+export type CompiledLegJoin = {
+	wallId: string;
+	end: 'start' | 'end';
+	kind: CompiledLegJoinKind;
+	/** Resolved footprint boundary for this leg end, in plan XZ. */
+	endBoundary: LayoutVec2[];
+	/** Internal interface suppressed (tangent continuation / buried T / X through). */
+	interfaceSuppressed: boolean;
+	/**
+	 * The sector this leg owns when a wedge is emitted, or `null` when the leg
+	 * owns none. Ownership is branch-cut-independent (Decision 4).
+	 */
+	ownedSeam: { sector: number; polygon: LayoutVec2[] } | null;
+	/** Resolved vertical bands this end spans (union of incident tops + Opening sill/spring). */
+	bands: Array<{ bottomY: number; topY: number }>;
+	/** Resolved start/end corner geometry, or `null` when terminal/suppressed. */
+	corner: CompiledEndCorner | null;
+	/** The leg's canonical `prev`/`cur` role in the shared corner (present when `corner` is set). */
+	canonicalRole?: 'prev' | 'cur';
+	/** The shared corner in canonical `(a0 = prev, b0 = cur)` orientation (for bridges). */
+	canonicalCorner?: CompiledEndCorner | null;
+	/** The counterparty leg, so a beam/step can be closed without the neighbour's mesh. */
+	neighbor?: CompiledJunctionNeighbor;
+	/**
+	 * Set when this join is a fold: two incident legs point the same way, so
+	 * their offset regions overlap. Carried on the join so a Wall-level builder
+	 * can refuse the same configuration (same code) without the Junction.
+	 */
+	fold?: true;
+	/**
+	 * The resolved, Wall-attributed surfaces this end owns: tangent
+	 * continuation difference steps and exposed branch trims. Emitted by
+	 * `layout-core`; a builder only triangulates them.
+	 */
+	surfaces?: CompiledJunctionSurface[];
+	/**
+	 * Internal interfaces resting on **this** Wall's own faces: the
+	 * region of the face that is interior to the resolved Junction material.
+	 */
+	interfaces?: CompiledJunctionInterface[];
+	/**
+	 * Along-distance from this Junction end where the Wall's material
+	 * begins (0 = the Junction plane). A trimmed branch carries the distance at
+	 * which it leaves the resolved Junction material; its sections/reveals are
+	 * clipped there and its end cross-section is **not** painted, because that
+	 * interface belongs to the resolved Junction material instead.
+	 */
+	clipDistance?: number;
+	/**
+	 * The resolved Junction-local **keel** of a degree >= 3 sector
+	 * partition: the plan region of Junction material this Wall owns between its
+	 * own cap line and the two partition beams that bound its sector.
+	 *
+	 * It is the piece of the local partition a Wall-owned strip cannot express on
+	 * its own (a strip is a swept band; a sector narrows toward the Junction), so
+	 * `layout-core` publishes it as resolved solid regions instead of leaving it
+	 * to interpenetration. Every region is convex and wound CCW in plan (so the
+	 * normal of its top face is `+Y`); `bands` are the vertical bands this Wall
+	 * actually has material in. A builder only extrudes them (top/bottom faces per
+	 * band); the vertical sides they expose are carried as `surfaces` of kind
+	 * `junction-keel`, so no builder decides which side of a keel is interior.
+	 * This shape contract is validated at canonical acceptance (`joinSeamFailure`):
+	 * a region that is not a real convex CCW polygon, or a band with no vertical
+	 * span, fails closed instead of reaching a builder.
+	 */
+	keel?: { regions: LayoutVec2[][]; bands: CompiledJunctionBand[] };
+};
+
+/** The local, renderer-neutral solve result for one Junction. */
+export type CompiledJunctionResolution = {
+	junctionId: string;
+	legOrder: Array<{ wallId: string; end: 'start' | 'end' }>;
+	joins: CompiledLegJoin[];
+	bounds2: LayoutBounds2;
+};
+
+/** Compiled Junction topology: canonical identity + incident legs + local solve. */
+export type CompiledJunction = CompiledIdentity & {
+	junctionId: string;
+	point: LayoutVec2;
+	legs: CompiledJunctionLeg[];
+	resolution: CompiledJunctionResolution;
+	bounds3: LayoutBounds3;
+};
+
+export type CompiledRegion = CompiledIdentity & {
+	regionId: string;
+	role: 'floor' | 'overhead';
+	footprint: LayoutVec2[];
+	bottomY: number;
+	topY: number;
+	faces: { surface: 'top' | 'underside' | 'edge'; polygon: Vec3[]; normal: Vec3 }[];
+	bounds2: LayoutBounds2;
+	bounds3: LayoutBounds3;
+};
+
+export type CompiledLayoutGeometry = {
+	regions: CompiledRegion[];
+	floors: CompiledFloor[];
+	rooms: CompiledRoom[];
+	/**
+	 * Canonical physical Walls independent of Room ownership (wall-first
+	 * only; empty for legacy). Each document-global Wall appears exactly
+	 * once, keyed by `wallId` — including Walls referenced by Rooms.
+	 * Wall-first Rooms keep identity + floor/ceiling semantics + floor
+	 * polygons with empty `walls`/`openings`; Plan/3D/query consumers read
+	 * physical Walls here, never per-Room duplicates. Never invent fake
+	 * `roomId` ownership for these records — query spans/points for
+	 * physical Walls carry no `roomId`.
+	 */
+	walls: CompiledPhysicalWall[];
+	/**
+	 * Compiled Junction topology (wall-first only; empty/absent for
+	 * legacy). Each canonical Junction with at least one incident Wall appears
+	 * once, carrying its incident legs and Junction-local resolution. The
+	 * renderer consumes these facts and never solves topology. Optional so
+	 * hand-built/legacy geometry literals stay valid.
+	 */
+	junctions?: CompiledJunction[];
+	objects: CompiledLayoutObject[];
+	queries: CompiledLayoutQueryGeometry;
+	bounds: LayoutBounds3 | null;
+};
+
+export type CompiledLayoutGeometryResult = {
+	geometry: CompiledLayoutGeometry;
+	issues: LayoutGeometryIssue[];
+};
+
+/**
+ * Collision-safe tuple serialization for identity keys. Unlike delimiter
+ * parsing, every tuple element is length-prefixed so values cannot collide.
+ */
+export function geometryId(parts: readonly string[]): string {
+	let _length = 0;
+	for (const part of parts) _length += part.length;
+	let output = `${parts.length}:`;
+	for (const part of parts) output += `${part.length}:${part}`;
+	return output;
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PersistentMap, PersistentVector } from '../../../../../packages/layout-core/src/persistent-store';
+import { PersistentMap, PersistentVector } from '../../../../../packages/layout-core/src/kernel/persistent-store';
 import { freezeF4Data, immutableF4Data } from '@portfolio/project-model/f4';
 import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from './__fixtures__/layout-scale-fixtures';
 import { setWorkObserver, rememberImmutableJsonNode } from '@portfolio/layout-core/kernel';

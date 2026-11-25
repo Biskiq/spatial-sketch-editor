@@ -404,7 +404,7 @@ export const CONTROLLER_FORBIDDEN_PREFIXES = [
 ] as const;
 
 export const CONTROLLER_FORBIDDEN_PACKAGES = [
-	'packages/layout-core/src/index.ts',
+	'packages/layout-core/src/kernel/index.ts',
 	'packages/project-model/src/index.ts'
 ] as const;
 

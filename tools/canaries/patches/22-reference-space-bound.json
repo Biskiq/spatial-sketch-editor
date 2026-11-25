@@ -3,7 +3,7 @@
   "area": "room-identity",
   "citation": "section 3 — Room identity",
   "title": "Reference allocation accepts one index past the allocation space",
-  "file": "packages/layout-core/src/layout-identity.ts",
+  "file": "packages/layout-core/src/plan/identity.ts",
   "find": "if (!Number.isInteger(index) || index < 0 || index >= LAYOUT_REFERENCE_SPACE) {",
   "replace": "if (!Number.isInteger(index) || index < 0 || index > LAYOUT_REFERENCE_SPACE) {",
   "tests": [
