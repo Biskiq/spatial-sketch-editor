@@ -2,7 +2,7 @@
   "generatedFrom": "LOC-0 baseline; shrink-only from here",
   "counts": {
     "filesOver600": 99,
-    "filesOver1000": 14,
+    "filesOver1000": 13,
     "filesOver1500": 1,
     "functionsOver200": 81,
     "exportStars": 0,
@@ -54,11 +54,6 @@
       "path": "apps/editor/src/lib/render/resources/texture-store.ts",
       "lines": 1174,
       "reason": "The texture-resource store: source cache, variant pool and reference counts share one disposal protocol."
-    },
-    {
-      "path": "apps/editor/src/lib/authoring/world-toolbar/WorldToolbar.svelte",
-      "lines": 1173,
-      "reason": "The World toolbar root: plate, dock and mode rows share one lens, one selection and one command surface."
     },
     {
       "path": "apps/editor/src/lib/authoring/project-session/project-session.svelte.ts",
@@ -179,6 +174,11 @@
       "path": "packages/layout-core/src/plan/representation/retainer.ts",
       "lines": 797,
       "reason": "One incremental Plan retainer: reuse, proven deltas, assembly and stamps share one retained source index."
+    },
+    {
+      "path": "apps/editor/src/lib/authoring/world-toolbar/WorldToolbar.svelte",
+      "lines": 796,
+      "reason": "The World toolbar root: plate, dock and mode rows share one lens, one selection and one command surface."
     },
     {
       "path": "apps/editor/src/lib/authoring/experience/ExperienceViewRail.svelte",
