@@ -33,9 +33,9 @@ import {
 	stageEnvelope,
 	stageScene
 } from '$lib/authoring/stage/stage-adapter-host';
-import type { SceneEntity, Vec3 } from '@portfolio/project-model';
+import type { SceneEntity, Vec3 } from '@portfolio/project-model/scene';
 import { sceneEntityLift } from '@portfolio/project-model/scene-planning';
-import type { SceneFormEntity } from '$lib/content/scene';
+import type { SceneFormEntity } from '@portfolio/project-model/scene';
 import { evaluateFormMesh } from '$lib/content/form-evaluation';
 import { planSceneFootprintsFor } from '$lib/authoring/scene/plan-scene-footprint';
 import { pickPlanSceneSubject } from '$lib/authoring/scene/plan-scene-hit';

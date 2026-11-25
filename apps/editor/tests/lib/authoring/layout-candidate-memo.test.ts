@@ -16,12 +16,8 @@
  * released, with nothing retained, when the project closes.
  */
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
-import {
-	activeLayoutCompileSession,
-	compileWallFirstLayoutGeometryFresh,
-	readPassiveCompiledGeometry,
-	type LayoutDocumentWallFirst
-} from '@portfolio/layout-core';
+import { activeLayoutCompileSession, compileWallFirstLayoutGeometryFresh, readPassiveCompiledGeometry } from '@portfolio/layout-core/geometry';
+import type { LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
 
 import { admitSource } from '$lib/authoring/stage/source-admission';

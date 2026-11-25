@@ -14,13 +14,9 @@ import { describe, expect, it } from 'vitest';
 import { composedSpatialHost } from '../../helpers/import-closure';
 import { LineSegments } from 'three';
 import { MeshBasicNodeMaterial } from 'three/webgpu';
-import {
-	VIEWPORT_NEAR_FLOOR_METERS,
-	type InspectionPose,
-	type Vec3,
-	type ViewportEvaluation
-} from '@portfolio/camera-core';
-import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core';
+import { VIEWPORT_NEAR_FLOOR_METERS, type InspectionPose, type ViewportEvaluation } from '@portfolio/camera-core/viewport';
+import type { Vec3 } from '@portfolio/camera-core/camera';
+import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core/wall';
 import { createCameraSession, initialInspectionPose, sceneRadiusOf } from '$lib/authoring/stage/camera-session';
 import { admitSource, type StageReadSnapshot } from '$lib/authoring/stage/source-admission';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';

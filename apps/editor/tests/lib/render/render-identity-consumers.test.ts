@@ -12,7 +12,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { BoxGeometry, Group, Mesh, MeshBasicMaterial, Scene } from 'three';
 import { parse } from 'svelte/compiler';
-import type { RuntimeScene } from '@portfolio/project-model';
+import type { RuntimeScene } from '@portfolio/project-model/scene';
 import { createScenePickSource } from '$lib/authoring/scene/scene-pick-source';
 import { tagRenderIdentity, type LayoutIdentityIndex } from '$lib/render/render-identity';
 import { EDITOR_SRC } from '../../helpers/import-closure';

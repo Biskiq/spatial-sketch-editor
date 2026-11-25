@@ -27,17 +27,14 @@ import {
 	type FormLibraryPayload
 } from '@portfolio/project-model/library';
 import { formMeshDigest } from '@portfolio/geometry-core';
-import {
-	createEmptyWallFirstLayoutDocument,
-	mintLayoutIdCapture,
-	planWallChain
-} from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core/wall';
+import { mintLayoutIdCapture } from '@portfolio/layout-core/plan';
 import {
 	evaluateSceneForm,
 	planPlaceFormCopy,
 	type SceneOperationContext
 } from '@portfolio/project-model/scene-planning';
-import type { SceneFormEntity, SceneFormSource } from '@portfolio/project-model';
+import type { SceneFormEntity, SceneFormSource } from '@portfolio/project-model/scene';
 import { SCENE_UNIT_FORMAT_VERSION } from '@portfolio/project-model/units';
 
 const FORM: SceneFormSource = {

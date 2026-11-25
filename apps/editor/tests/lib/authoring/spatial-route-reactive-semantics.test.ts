@@ -2,7 +2,7 @@
 import { mount, tick, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { CAMERA_UNIT_FORMAT_VERSION, computeEnvelopeSourceContentId, createEmptyUnitSceneDocument, type ProjectEnvelope } from '@portfolio/project-model/units';
-import { createClosedWallCircleDocument } from '@portfolio/layout-core';
+import { createClosedWallCircleDocument } from '@portfolio/layout-core/wall';
 import { BoxGeometry, Mesh, MeshBasicMaterial } from 'three';
 import { layoutSubjectReference } from '$lib/authoring/adapters/layout/drawing-planners';
 import { sceneEntityReference } from '$lib/authoring/adapters/scene/placement';

@@ -9,20 +9,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-	acquireCameraOutput,
-	beginExperienceNavigation,
-	cancelCameraHandoff,
-	cleanupCameraHandoff,
-	createCameraOutputState,
-	endExperienceNavigation,
-	handoffCameraOutput,
-	pendingCameraHandoff,
-	returnCameraHandoff,
-	requestCameraOutput,
-	type CameraOutputState,
-	type CameraOutputTicket
-} from '@portfolio/project-model';
+import { acquireCameraOutput, beginExperienceNavigation, cancelCameraHandoff, cleanupCameraHandoff, createCameraOutputState, endExperienceNavigation, handoffCameraOutput, pendingCameraHandoff, returnCameraHandoff, requestCameraOutput, type CameraOutputState, type CameraOutputTicket } from '@portfolio/project-model/channels';
 
 const OUTPUT = 'output:session-1:0';
 const SOURCE = 'source-1';

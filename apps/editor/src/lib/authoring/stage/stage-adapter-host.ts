@@ -1,5 +1,6 @@
 /** Public editor-only composition seam. Domain factories never receive host internals. */
-import type { DomainPlanner, RegistrationOutcome, SemanticReference } from '@portfolio/project-model';
+import type { DomainPlanner, RegistrationOutcome } from '@portfolio/project-model/f4';
+import type { SemanticReference } from '@portfolio/project-model/references';
 import type { StageAcceptanceHost } from './host-acceptance';
 import type { StageAdapter, StageAdapterRegistration, StageFacade } from './stage-facade';
 import type { StageSession } from './stage-session';

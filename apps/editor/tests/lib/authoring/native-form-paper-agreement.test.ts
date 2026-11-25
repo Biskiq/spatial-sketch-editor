@@ -4,14 +4,11 @@
  */
 import { SCENE_OBJECT_MARK } from '$lib/authoring/adapters/scene/object-marks';
 import { describe, expect, it } from 'vitest';
-import {
-	compileWallFirstLayoutGeometry,
-	createEmptyWallFirstLayoutDocument,
-	evaluateLayoutPlan,
-	planWallChain
-} from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core/geometry';
+import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core/wall';
+import { evaluateLayoutPlan } from '@portfolio/layout-core/world';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
-import type { SceneFormEntity } from '$lib/content/scene';
+import type { SceneFormEntity } from '@portfolio/project-model/scene';
 import { evaluateFormMesh } from '$lib/content/form-evaluation';
 import { planSceneFootprintsFor } from '$lib/authoring/scene/plan-scene-footprint';
 import { buildPaperPlan } from '$lib/authoring/stage/paper-plan';

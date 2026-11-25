@@ -15,27 +15,22 @@
  *
  * Pure: no editor state, no renderer, no writes.
  */
-import {
-	createCameraMotion,
-	getCameraConnectionRoute,
-	getCameraMotionOptions,
-	type CameraGraph,
-	type CameraMotion,
-	type CameraMotionOptions
-} from '@portfolio/camera-core';
+import { createCameraMotion, getCameraConnectionRoute, getCameraMotionOptions, type CameraMotion, type CameraMotionOptions } from '@portfolio/camera-core/camera';
+import type { CameraGraph } from '@portfolio/camera-core/navigation';
 import type {
 	Experience,
 	ExperienceGuide,
 	ExperienceStop,
 	ExperienceTransitionKind,
 } from '@portfolio/project-model/units';
-import type { NavigationGraph, SceneConnection } from '@portfolio/project-model';
-import { routeCrossesWall, type CompiledLayoutGeometry, type RouteWallRead } from '@portfolio/layout-core';
+import type { NavigationGraph, SceneConnection } from '@portfolio/project-model/scene';
+import { routeCrossesWall, type RouteWallRead } from '@portfolio/layout-core/world';
+import type { CompiledLayoutGeometry } from '@portfolio/layout-core/geometry';
 import { resolveContinuation, guideStopsOf, stopEntryViewId, stopExitViewId } from './experience-model';
 import {
 	findNearestCurveProgress
 } from '../camera/editor-camera-path';
-import type { Vec3 } from '@portfolio/camera-core';
+import type { Vec3 } from '@portfolio/camera-core/camera';
 
 /** One Guided move, addressed by authored identity only. */
 export type ExperiencePathOccurrence =

@@ -16,7 +16,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import test, { after, before } from 'node:test';
 
-import { createEmptyWallFirstLayoutDocument } from '@portfolio/project-model';
+import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core/wall';
 import {
 	CAMERA_UNIT_FORMAT_VERSION,
 	EXPERIENCE_UNIT_FORMAT_VERSION,

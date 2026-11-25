@@ -12,15 +12,8 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-	canonicalBoundaryCycleKey,
-	createEmptyWallFirstLayoutDocument,
-	planDeleteWall,
-	planDissolveJunction,
-	planWallChain,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2
-} from '@portfolio/layout-core';
+import { canonicalBoundaryCycleKey, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { createEmptyWallFirstLayoutDocument, planDeleteWall, planDissolveJunction, planWallChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 import { freshCapture } from './__fixtures__/layout-id-capture';
 
 const SEED = 0x23b80001;

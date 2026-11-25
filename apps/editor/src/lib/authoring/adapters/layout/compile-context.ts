@@ -25,17 +25,9 @@
  * session bound and the store stays empty, so a late planner step of a closed
  * project cannot hold that project's units.
  */
-import {
-	compileWallFirstLayoutGeometry,
-	compileWallFirstLayoutGeometryFresh,
-	createLayoutCompileSession,
-	withLayoutCompileSession,
-	type CompiledLayoutGeometry,
-	type CompiledLayoutGeometryResult,
-	type LayoutCompileSession,
-	type LayoutDocumentWallFirst
-} from '@portfolio/layout-core';
-import type { DomainPlanner } from '@portfolio/project-model';
+import { compileWallFirstLayoutGeometry, compileWallFirstLayoutGeometryFresh, createLayoutCompileSession, withLayoutCompileSession, type CompiledLayoutGeometry, type CompiledLayoutGeometryResult, type LayoutCompileSession } from '@portfolio/layout-core/geometry';
+import type { LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import type { DomainPlanner } from '@portfolio/project-model/f4';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
 
 export type LayoutCompileContext = {

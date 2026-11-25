@@ -25,11 +25,8 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-	planWallChain,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2
-} from '@portfolio/layout-core';
+import { planWallChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import {
 	p,
 	baseDocument,

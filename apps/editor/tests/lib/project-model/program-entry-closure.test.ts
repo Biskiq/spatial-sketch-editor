@@ -35,18 +35,7 @@ import {
 
 const PROJECT_MODEL_SRC = path.join(PACKAGES_ROOT, 'project-model/src');
 
-const SUBPATH_ONLY_MODULES = [
-	path.join(PROJECT_MODEL_SRC, 'units/index.ts'),
-	path.join(PROJECT_MODEL_SRC, 'units/types.ts'),
-	path.join(PROJECT_MODEL_SRC, 'units/identity.ts'),
-	path.join(PROJECT_MODEL_SRC, 'units/canonical.ts'),
-	path.join(PROJECT_MODEL_SRC, 'units/validate.ts'),
-	path.join(PROJECT_MODEL_SRC, 'program/index.ts'),
-	path.join(PROJECT_MODEL_SRC, 'program/types.ts'),
-	path.join(PROJECT_MODEL_SRC, 'program/validate.ts'),
-	path.join(PROJECT_MODEL_SRC, 'references/unit-resolution.ts'),
-	path.join(PROJECT_MODEL_SRC, 'scene-planning/index.ts')
-];
+
 
 function closureOf(entry: string): string[] {
 	return [...importClosure([entry])].map(relativeToRepo).sort();
@@ -93,11 +82,12 @@ describe('the retired converter and the active source entry', () => {
 		}
 	});
 
-	it('keeps the unit envelope off the package root barrel', () => {
-		const closure = importClosure([path.join(PROJECT_MODEL_SRC, 'index.ts')]);
-		for (const module of SUBPATH_ONLY_MODULES) {
-			expect(closure.has(module), relativeToRepo(module)).toBe(false);
-		}
+	it('has no package root barrel for the unit envelope to leak through', () => {
+		const manifest = JSON.parse(readFileSync(path.join(PACKAGES_ROOT, 'project-model/package.json'), 'utf8')) as {
+			exports: Record<string, unknown>;
+		};
+		expect(existsSync(path.join(PROJECT_MODEL_SRC, 'index.ts'))).toBe(false);
+		expect(Object.keys(manifest.exports)).not.toContain('.');
 	});
 
 	it('exposes the active source through an explicit package subpath', () => {
@@ -105,12 +95,13 @@ describe('the retired converter and the active source entry', () => {
 			exports: Record<string, unknown>;
 		};
 		for (const subpath of [
-			'.',
 			'./units',
 			'./program',
 			'./references/unit-resolution',
 			'./save',
-			'./scene-planning'
+			'./scene-planning',
+			'./package',
+			'./scene'
 		]) {
 			expect(Object.keys(manifest.exports), subpath).toContain(subpath);
 		}

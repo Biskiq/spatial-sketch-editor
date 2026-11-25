@@ -1,25 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import {
-	LAYOUT_PLAN_GRID_STEP,
-	LAYOUT_PLAN_SNAP_RADIUS_CSS_PX,
-	dedupeWallSpans,
-	geometryId,
-	objectBoundsSnapCandidates,
-	openingEdgeSnapCandidates,
-	orthogonalGuideCandidates,
-	pickSnapWinner,
-	resolveLayoutSnap,
-	resolveOpeningDragSnap,
-	snapAcquisitionRadiusWorld,
-	snapOwnerKey,
-	snapToGridStep,
-	spanSnapCandidates,
-	wallIntersectionSnapCandidates,
-	wallOwnerKey,
-	type CompiledLayoutGeometry,
-	type CompiledQuerySpan,
-	type SnapCandidate
-} from '@portfolio/layout-core';
+import { LAYOUT_PLAN_GRID_STEP, LAYOUT_PLAN_SNAP_RADIUS_CSS_PX, dedupeWallSpans, objectBoundsSnapCandidates, openingEdgeSnapCandidates, orthogonalGuideCandidates, pickSnapWinner, resolveLayoutSnap, resolveOpeningDragSnap, snapAcquisitionRadiusWorld, snapOwnerKey, snapToGridStep, spanSnapCandidates, wallIntersectionSnapCandidates, wallOwnerKey, type SnapCandidate } from '@portfolio/layout-core/plan';
+import { geometryId, type CompiledLayoutGeometry, type CompiledQuerySpan } from '@portfolio/layout-core/geometry';
 
 function emptyGeometry(): CompiledLayoutGeometry {
 	return {

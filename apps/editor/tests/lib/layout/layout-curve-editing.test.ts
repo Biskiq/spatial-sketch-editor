@@ -12,27 +12,8 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-	createEmptyWallFirstLayoutDocument,
-	deriveChainSpans,
-	LAYOUT_WALL_FIRST_FORMAT_VERSION,
-	moveWallCurveKnot,
-	planBendWallCurveKnot,
-	planInsertWallCurveKnot,
-	projectPointToWallCenterline,
-	planMoveWallCurveKnot,
-	planWallSplit,
-	sampleSegment,
-	wallCubicChain,
-	wallCurveChainLength,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type LayoutWall,
-	type LayoutWallCenterline,
-	type LayoutWallCubicSpan,
-	type LayoutWallCurveKnot,
-	type NodingIdAllocator
-} from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument, LAYOUT_WALL_FIRST_FORMAT_VERSION, moveWallCurveKnot, planBendWallCurveKnot, planInsertWallCurveKnot, projectPointToWallCenterline, planMoveWallCurveKnot, planWallSplit, wallCubicChain, wallCurveChainLength, type LayoutDocumentWallFirst, type LayoutWall, type LayoutWallCenterline, type LayoutWallCubicSpan, type LayoutWallCurveKnot, type NodingIdAllocator } from '@portfolio/layout-core/wall';
+import { deriveChainSpans, sampleSegment, type LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 const CHORD = 12;
 

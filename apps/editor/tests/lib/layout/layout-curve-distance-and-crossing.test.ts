@@ -22,31 +22,9 @@
 import { describe, expect, it } from 'vitest';
 
 import { freshCapture } from './__fixtures__/layout-id-capture';
-import {
-	compileWallFirstLayoutGeometry,
-	createEmptyWallFirstLayoutDocument,
-	CURVE_FLATNESS_TOLERANCE,
-	deriveChainSpans,
-	LAYOUT_WALL_FIRST_FORMAT_VERSION,
-	planBendWallCurveKnot,
-	planWallChain,
-	planWallSegment,
-	planWallSplit,
-	sampleSegment,
-	validateWallFirstTopology,
-	wallCubicChain,
-	wallCurveChainLength,
-	wallCurveKnotArcDistance,
-	wallFirstWallSpan,
-	wallsShareTopologyComponent,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type LayoutWall,
-	type LayoutWallCenterline,
-	type LayoutWallCubicSpan,
-	type LayoutWallCurveKnot,
-	type NodingIdAllocator
-} from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry, CURVE_FLATNESS_TOLERANCE, deriveChainSpans, sampleSegment, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { createEmptyWallFirstLayoutDocument, LAYOUT_WALL_FIRST_FORMAT_VERSION, planBendWallCurveKnot, planWallChain, planWallSegment, planWallSplit, validateWallFirstTopology, wallCubicChain, wallCurveChainLength, wallCurveKnotArcDistance, wallFirstWallSpan, type LayoutDocumentWallFirst, type LayoutWall, type LayoutWallCenterline, type LayoutWallCubicSpan, type LayoutWallCurveKnot, type NodingIdAllocator } from '@portfolio/layout-core/wall';
+import { wallsShareTopologyComponent } from '@portfolio/layout-core/room';
 
 const LINE = { kind: 'line' } as const;
 const CHORD = 12;

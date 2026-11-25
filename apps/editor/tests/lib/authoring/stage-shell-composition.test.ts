@@ -26,7 +26,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
-import { createViewportCameraState, evaluateViewport } from '@portfolio/camera-core';
+import { createViewportCameraState, evaluateViewport } from '@portfolio/camera-core/viewport';
 
 import {
 	EDITOR_SRC,

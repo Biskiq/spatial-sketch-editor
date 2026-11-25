@@ -1,5 +1,6 @@
 import { expect, it } from 'vitest';
-import { createViewportCameraState, evaluateViewport, type Vec3 } from '@portfolio/camera-core';
+import { createViewportCameraState, evaluateViewport } from '@portfolio/camera-core/viewport';
+import type { Vec3 } from '@portfolio/camera-core/camera';
 import { skyFromPreset } from '@portfolio/project-model/units';
 import { celestialDialModel, dialProject, dialRing, dialStagePoint, nearestT, placeCelestialDial } from '$lib/authoring/look/celestial-dial';
 import { skyBodyAt } from '$lib/render/sky-time';

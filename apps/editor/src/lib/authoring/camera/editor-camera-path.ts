@@ -1,15 +1,7 @@
 
-import type {
-	SceneDocument,
-	SceneConnection,
-	ScenePathAnchor
-} from '$lib/content/scene';
-import type { LayoutVec2 } from '@portfolio/layout-core';
-import {
-	createCameraPositionPath,
-	type CameraPositionPathPart,
-	type Vector3Like
-} from '@portfolio/camera-core';
+import type { SceneDocument, SceneConnection, ScenePathAnchor } from '@portfolio/project-model/scene';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { createCameraPositionPath, type CameraPositionPathPart, type Vector3Like } from '@portfolio/camera-core/camera';
 import type { Vec3 } from '$lib/types/scene';
 import type { CameraConnectionDirection } from '$lib/types/scene';
 import { CurvePath, MathUtils, Vector3 } from 'three';

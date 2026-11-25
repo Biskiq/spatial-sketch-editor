@@ -7,7 +7,7 @@
  * Plan hit path would then select space the body does not occupy.
  */
 import { describe, expect, it } from 'vitest';
-import type { SceneDocument, SceneFormEntity } from '$lib/content/scene';
+import type { SceneDocument, SceneFormEntity } from '@portfolio/project-model/scene';
 import { buildPlanSceneFootprintProjection } from '$lib/authoring/scene/plan-scene-footprint';
 import { resolvePlanSceneHit } from '$lib/authoring/scene/plan-scene-hit';
 

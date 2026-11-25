@@ -16,28 +16,9 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-	compileWallFirstLayoutGeometry,
-	createClosedWallCircleDocument,
-	createEmptyWallFirstLayoutDocument,
-	deriveChainSpans,
-	LAYOUT_WALL_FIRST_FORMAT_VERSION,
-	wallCubicChain,
-	type CompiledPhysicalWall,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type LayoutWall,
-	type LayoutWallCubicSpan
-} from '@portfolio/layout-core';
-import {
-	createViewportCameraState,
-	evaluateViewport,
-	facePoseFromBounds,
-	projectWorld,
-	type InspectionPose,
-	type ViewportCameraState,
-	type ViewportRect
-} from '@portfolio/camera-core';
+import { compileWallFirstLayoutGeometry, deriveChainSpans, type CompiledPhysicalWall, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { createClosedWallCircleDocument, createEmptyWallFirstLayoutDocument, LAYOUT_WALL_FIRST_FORMAT_VERSION, wallCubicChain, type LayoutDocumentWallFirst, type LayoutWall, type LayoutWallCubicSpan } from '@portfolio/layout-core/wall';
+import { createViewportCameraState, evaluateViewport, facePoseFromBounds, projectWorld, type InspectionPose, type ViewportCameraState, type ViewportRect } from '@portfolio/camera-core/viewport';
 
 import { wallFaceFrame, wallFaceSide, wallSheetFaceFrame, type WallFaceFrame } from '$lib/layout/wall-face';
 import {

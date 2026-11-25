@@ -54,16 +54,9 @@ import {
 	type SceneFinishRef,
 	type SheenStepId
 } from '@portfolio/project-model/scene-planning';
-import type {
-	MaterialId,
-	SceneColor,
-	SceneEntity,
-	SceneMaterialInstance,
-	ScenePaletteSlot,
-	SceneSurfaceRef
-} from '@portfolio/project-model';
+import type { MaterialId, SceneColor, SceneEntity, SceneMaterialInstance, ScenePaletteSlot, SceneSurfaceRef } from '@portfolio/project-model/scene';
 import type { MapRole, Mapping, Recipe } from '@portfolio/project-model/materials';
-import { surfaceKey } from '@portfolio/layout-core';
+import { surfaceKey } from '@portfolio/layout-core/plan';
 import { stageEnvelope, type StageAdapterServices } from '../stage/stage-adapter-host';
 import type { StageSelectionEntry } from '../stage/semantic-selection';
 import { layoutSurfaceTarget } from './colour-coat-port';

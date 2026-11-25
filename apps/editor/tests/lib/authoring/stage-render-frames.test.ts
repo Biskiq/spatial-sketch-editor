@@ -11,7 +11,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { flushSync, mount, tick, unmount } from 'svelte';
-import { createViewportCameraState, evaluateViewport, type ViewportEvaluation } from '@portfolio/camera-core';
+import { createViewportCameraState, evaluateViewport, type ViewportEvaluation } from '@portfolio/camera-core/viewport';
 import { startStageCounting, type StageCounting } from '../../helpers/stage-counts';
 import StageCameraFrameHarness from './fixtures/StageCameraFrameHarness.svelte';
 

@@ -11,7 +11,7 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { setObjectsPanelCompact } from '$lib/authoring/adapters/scene/shape/armed-tile';
 import { mount, tick, unmount } from 'svelte';
-import type { ViewportEvaluation } from '@portfolio/camera-core';
+import type { ViewportEvaluation } from '@portfolio/camera-core/viewport';
 import {
 	SCENE_UNIT_FORMAT_VERSION,
 	UNIT_SOURCE_KIND,

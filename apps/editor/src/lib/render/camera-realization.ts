@@ -16,7 +16,7 @@
  *
  * Authored evaluation, X/Y and near/far are never modified.
  */
-import type { ViewportEvaluation } from '@portfolio/camera-core';
+import type { ViewportEvaluation } from '@portfolio/camera-core/viewport';
 import type { Camera } from 'three/webgpu';
 
 type RealizedCamera = Camera & { near: number; far: number };

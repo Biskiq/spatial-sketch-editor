@@ -9,19 +9,9 @@
  * at its raw, unclamped position.
  */
 import { describe, expect, it } from 'vitest';
-import {
-	compileWallFirstLayoutGeometryFresh,
-	createClosedWallCircleDocument,
-	createEmptyWallFirstLayoutDocument,
-	deriveChainSpans,
-	openingAttemptSymbolSource,
-	openingPlanSymbol,
-	planCreateWallFirstOpening,
-	wallCubicChain,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type LayoutWall
-} from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometryFresh, deriveChainSpans, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { createClosedWallCircleDocument, createEmptyWallFirstLayoutDocument, planCreateWallFirstOpening, wallCubicChain, type LayoutDocumentWallFirst, type LayoutWall } from '@portfolio/layout-core/wall';
+import { openingAttemptSymbolSource, openingPlanSymbol } from '@portfolio/layout-core/world';
 
 import { openingAttemptPlanPaper } from '$lib/authoring/adapters/layout/candidate-preview';
 import { sequentialCaptures } from '../../../perf/lib/workloads/grid';

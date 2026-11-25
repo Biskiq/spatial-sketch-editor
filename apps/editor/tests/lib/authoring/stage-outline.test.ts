@@ -6,12 +6,8 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { BufferAttribute, BufferGeometry, EdgesGeometry } from 'three';
 import { describe, expect, it } from 'vitest';
-import {
-	compileWallFirstLayoutGeometry,
-	legJoinsByWall,
-	type LayoutDocumentWallFirst,
-	type LayoutWall, type LayoutWallOpening
-} from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core/geometry';
+import { legJoinsByWall, type LayoutDocumentWallFirst, type LayoutWall, type LayoutWallOpening } from '@portfolio/layout-core/wall';
 import {
 	contourPolylines,
 	mergeStraightEdgeRuns,

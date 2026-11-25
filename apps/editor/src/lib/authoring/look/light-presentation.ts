@@ -6,7 +6,7 @@
  * stand-off table and the number formats. Stored fields remain the Scene's; none
  * of these values is ever authored.
  */
-import type { Vec3 } from '@portfolio/project-model';
+import type { Vec3 } from '@portfolio/project-model/scene';
 import { lightForward } from './light-aim';
 
 /** A new Point light sits this far in front of a wall or ceiling. */

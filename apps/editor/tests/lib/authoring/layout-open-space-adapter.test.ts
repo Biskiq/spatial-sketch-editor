@@ -8,17 +8,10 @@
  * exact Undo/Redo through the accepted source.
  */
 import { describe, expect, it, vi } from 'vitest';
-import {
-	createEmptyWallFirstLayoutDocument,
-	findSpaceCreationOutline,
-	mintLayoutIdCapture,
-	layoutWorkingLevelInput,
-	parseWallFirstLayoutDocumentJson,
-	serializeWallFirstLayoutDocument,
-	surfaceKey,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2
-} from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument, parseWallFirstLayoutDocumentJson, serializeWallFirstLayoutDocument, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import { findSpaceCreationOutline } from '@portfolio/layout-core/room';
+import { mintLayoutIdCapture, layoutWorkingLevelInput, surfaceKey } from '@portfolio/layout-core/plan';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import {
 	SCENE_UNIT_FORMAT_VERSION,
 	type CameraFreeSceneDocument,

@@ -1,4 +1,4 @@
-import { createLayoutCompileSession } from '@portfolio/layout-core';
+import { createLayoutCompileSession } from '@portfolio/layout-core/geometry';
 /**
  * T1.P01.S02 — source admission: **admission equals runtime preparation**.
  *
@@ -36,7 +36,8 @@ import {
 	type ExperienceUnitPayload,
 	type ProjectEnvelope
 } from '@portfolio/project-model/units';
-import { compileWallFirstLayoutGeometryFresh, LAYOUT_WALL_FIRST_FORMAT_VERSION } from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometryFresh } from '@portfolio/layout-core/geometry';
+import { LAYOUT_WALL_FIRST_FORMAT_VERSION } from '@portfolio/layout-core/wall';
 import { stageEnvelope, stageLayout } from '$lib/authoring/stage/unit-stage-source';
 import { DEFAULT_STARTER_TEMPLATE } from '$lib/authoring/stage/starter-gallery';
 import {

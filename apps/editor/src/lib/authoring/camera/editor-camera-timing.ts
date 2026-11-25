@@ -1,4 +1,4 @@
-import type { NavigationGraph } from '$lib/content/scene';
+import type { NavigationGraph } from '@portfolio/project-model/scene';
 import type { CameraConnectionDirection } from '$lib/types/scene';
 import { resolveDirectedEdgeMotionByDirection } from './editor-directed-edge-motion';
 

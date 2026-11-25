@@ -1,5 +1,6 @@
 import { resolveSceneSurfaceFinish } from '@portfolio/project-model/scene-surface-reference';
-import type { RuntimeScene, SceneTreatment } from '$lib/content/scene';
+import type { RuntimeScene } from '@portfolio/project-model/scene';
+import type { SceneTreatment } from '@portfolio/project-model/units';
 import { sceneFinishFor } from '$lib/render/materials/scene-instance-material';
 import type { SceneSurfaceLook, SceneSurfaceRef } from './surface-look';
 

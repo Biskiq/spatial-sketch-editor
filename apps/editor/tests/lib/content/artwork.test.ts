@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { artworkHeight, defaultArtworkWidth, probeArtworkImage, type CompiledLayoutGeometry, type SceneArtworkEntity } from '@portfolio/project-model';
+import { artworkHeight, defaultArtworkWidth, probeArtworkImage } from '@portfolio/project-model/artwork';
+import type { CompiledLayoutGeometry } from '@portfolio/layout-core/geometry';
+import type { SceneArtworkEntity } from '@portfolio/project-model/scene';
 import { SCENE_UNIT_FORMAT_VERSION, validateCameraFreeScenePayload } from '@portfolio/project-model/units';
 import { artworkPlacement, isArtworkWallFace } from '$lib/authoring/artwork/artwork-placement';
 import type { SceneRenderedHit } from '$lib/authoring/scene/scene-pick-source';

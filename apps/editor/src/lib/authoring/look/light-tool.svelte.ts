@@ -6,7 +6,7 @@
  * intent that crosses that rebuild: which light kind the creator picked, for
  * which project. It writes no source and survives no project replacement.
  */
-import type { SceneLightEntity } from '@portfolio/project-model';
+import type { SceneLightEntity } from '@portfolio/project-model/scene';
 
 export type ArmedLightKind = SceneLightEntity['light'];
 

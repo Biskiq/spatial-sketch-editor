@@ -8,15 +8,8 @@
  * contribute its id and room, never a different origin.
  */
 import { describe, expect, it } from 'vitest';
-import {
-	compileWallFirstLayoutGeometry,
-	createEmptyWallFirstLayoutDocument,
-	planCreateWallFirstOpening,
-	planWallChain,
-	type CompiledLayoutGeometry,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2
-} from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry, type CompiledLayoutGeometry, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { createEmptyWallFirstLayoutDocument, planCreateWallFirstOpening, planWallChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 
 import { layoutSnapName, resolveOpeningSlideSnap } from '$lib/authoring/adapters/layout/snap';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';

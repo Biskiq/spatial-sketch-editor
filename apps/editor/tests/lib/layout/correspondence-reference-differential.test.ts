@@ -45,13 +45,7 @@
  */
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 
-import {
-	clearCorrespondenceObserverForTest,
-	disableCorrespondenceShortCircuitsForTest,
-	setCorrespondenceObserverForTest,
-	type ComponentLineage,
-	type CorrespondenceObservation
-} from '@portfolio/layout-core';
+import { clearCorrespondenceObserverForTest, disableCorrespondenceShortCircuitsForTest, setCorrespondenceObserverForTest, type ComponentLineage, type CorrespondenceObservation } from '@portfolio/layout-core/room';
 
 import {
 	analyzeCorrespondenceCase,

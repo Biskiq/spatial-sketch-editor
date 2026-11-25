@@ -7,7 +7,7 @@
  * this neutral authoring module avoids a Layout → Scene-adapter dependency
  * while leaving one authority for the metadata.
  */
-import type { SceneEntity } from '@portfolio/project-model';
+import type { SceneEntity } from '@portfolio/project-model/scene';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
 import { catalogueModelContactMinY } from '$lib/authoring/scene/object-definition-policy';
 

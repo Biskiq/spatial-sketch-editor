@@ -16,45 +16,10 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-  buildDevelopedWallMesh,
-  compileWallFirstLayoutGeometry,
-  createClosedWallCircleDocument,
-  createEmptyWallFirstLayoutDocument,
-  cubicBezierArcLength,
-  deriveChainSpans,
-  developmentOpeningFragments,
-  developmentOverlap,
-  developmentPointAtStationFromBuffers,
-  developmentSheetCoordinate,
-  developmentSheetToStation,
-  developmentStationDistanceFromAnchor,
-  evaluateWallDevelopment,
-  LAYOUT_WALL_FIRST_FORMAT_VERSION,
-  mapAttributedVertices,
-  mintLayoutIdCapture,
-  planCreateWallFirstOpening,
-  pointAtDistance,
-  prepareWallDevelopment,
-  setWorkObserver,
-  type CurveSample,
-  validateDevelopedMesh,
-  validateWallDevelopment,
-  wallCenterlineCubics,
-  wallCenterlineSamples,
-  wallCubicChain,
-  wallDevelopmentFaceLengths,
-  createWallDevelopmentBuffers,
-  createWallDevelopmentSheetBuffers,
-  evaluateWallDevelopmentSheet,
-  type LayoutDocumentWallFirst,
-  type LayoutVec2,
-  type LayoutWall,
-  type LayoutWallCubicSpan,
-  type LayoutWallCurveKnot,
-  type WallDevelopment,
-  type WallDevelopmentSourceSpan
-} from '@portfolio/layout-core';
+import { buildDevelopedWallMesh, createClosedWallCircleDocument, createEmptyWallFirstLayoutDocument, developmentOpeningFragments, developmentOverlap, developmentPointAtStationFromBuffers, developmentSheetCoordinate, developmentSheetToStation, developmentStationDistanceFromAnchor, evaluateWallDevelopment, LAYOUT_WALL_FIRST_FORMAT_VERSION, mapAttributedVertices, planCreateWallFirstOpening, prepareWallDevelopment, validateDevelopedMesh, validateWallDevelopment, wallCenterlineCubics, wallCenterlineSamples, wallCubicChain, wallDevelopmentFaceLengths, createWallDevelopmentBuffers, createWallDevelopmentSheetBuffers, evaluateWallDevelopmentSheet, type LayoutDocumentWallFirst, type LayoutWall, type LayoutWallCubicSpan, type LayoutWallCurveKnot, type WallDevelopment, type WallDevelopmentSourceSpan } from '@portfolio/layout-core/wall';
+import { compileWallFirstLayoutGeometry, cubicBezierArcLength, deriveChainSpans, pointAtDistance, type CurveSample, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { mintLayoutIdCapture } from '@portfolio/layout-core/plan';
+import { setWorkObserver } from '@portfolio/layout-core/kernel';
 import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-builder';
 
 type Fixture = {

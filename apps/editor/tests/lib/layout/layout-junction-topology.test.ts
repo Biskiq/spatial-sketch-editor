@@ -11,12 +11,8 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-	compileWallFirstLayoutGeometry,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type LayoutWall
-} from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import type { LayoutDocumentWallFirst, LayoutWall } from '@portfolio/layout-core/wall';
 
 function wall(
 	id: string,

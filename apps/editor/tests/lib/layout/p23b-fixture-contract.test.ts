@@ -16,13 +16,8 @@
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 
-import {
-	compileWallFirstLayoutGeometry,
-	planDeleteWall,
-	serializeWallFirstLayoutDocument,
-	validateWallFirstLayoutDocument,
-	validateWallFirstTopology
-} from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core/geometry';
+import { planDeleteWall, serializeWallFirstLayoutDocument, validateWallFirstLayoutDocument, validateWallFirstTopology } from '@portfolio/layout-core/wall';
 import {
 	buildP23BCorrectnessFixture,
 	buildP23BMatrixFixture,

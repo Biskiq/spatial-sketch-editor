@@ -5,7 +5,8 @@
  * frame arithmetic stays for a future face-frame reading; no Stage control
  * reaches it.
  */
-import type { Vec3, WorkingPlane } from '@portfolio/camera-core';
+import type { Vec3 } from '@portfolio/camera-core/camera';
+import type { WorkingPlane } from '@portfolio/camera-core/viewport';
 import { datumWorkingPlane } from '$lib/authoring/stage/stage-adapter-host';
 import type { ShapeOutlineAnchor, ShapePoint } from './outline';
 

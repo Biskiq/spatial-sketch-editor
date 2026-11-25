@@ -1,7 +1,9 @@
 import { Box3, Ray, Vector3 } from 'three';
 import { compiledOpeningFaceLoops } from './opening-faces';
-import { projectWorld, pointerRay, intersectWorkingPlane, type Vec3, type ViewportEvaluation, type ViewportEvaluationToken, type PointerRay } from '@portfolio/camera-core';
-import { indexedCompiledWall, eligiblePlanFragments, pointInPolygon, type CompiledLayoutGeometry, type LayoutVec2, type OverheadSource, type PlanEvaluation, type PlanFragment, type PlanFragmentGeometry, type PlanSubRef } from '@portfolio/layout-core';
+import { projectWorld, pointerRay, intersectWorkingPlane, type ViewportEvaluation, type ViewportEvaluationToken, type PointerRay } from '@portfolio/camera-core/viewport';
+import type { Vec3 } from '@portfolio/camera-core/camera';
+import { indexedCompiledWall, pointInPolygon, type CompiledLayoutGeometry, type LayoutVec2, type OverheadSource } from '@portfolio/layout-core/geometry';
+import { eligiblePlanFragments, type PlanEvaluation, type PlanFragment, type PlanFragmentGeometry, type PlanSubRef } from '@portfolio/layout-core/world';
 import { createPlanPickIndex, type PlanPickBox, type PlanPickIndex } from './plan-pick-index';
 import { LIFT_OUTLINE_DEPTH_BAND_METERS, LIFT_OUTLINE_DROP_METERS } from '../stage/lift-ink';
 import type { StageAdapterContext, StageDomainPick, StageHitSourceKind, StagePickQuery } from '../stage/stage-facade';
@@ -18,7 +20,7 @@ import {
 	resolvedCutawayNow,
 	type ResolvedCutaway
 } from '../stage/cutaway/cutaway-resolved';
-import type { PlanEvaluationResult } from '@portfolio/layout-core';
+import type { PlanEvaluationResult } from '@portfolio/layout-core/world';
 
 /** The aperture faces and the reveals between them are pickable, but never drawn. */
 function openingRayHit(ray: Ray, faces: readonly Vector3[][]): Vector3 | null {

@@ -7,15 +7,11 @@
  * and the Lift list that now includes authored slabs.
  */
 import { afterEach, describe, expect, it } from 'vitest';
-import {
-	compileWallFirstLayoutGeometryFresh,
-	createEmptyWallFirstLayoutDocument,
-	planCreateRegion,
-	planWallChain,
-	regionWallRelations,
-	type LayoutDocumentWallFirst
-} from '@portfolio/layout-core';
-import type { AuthoringIntent, SceneEntity } from '@portfolio/project-model';
+import { compileWallFirstLayoutGeometryFresh } from '@portfolio/layout-core/geometry';
+import { createEmptyWallFirstLayoutDocument, planWallChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import { planCreateRegion, regionWallRelations } from '@portfolio/layout-core/room';
+import type { AuthoringIntent } from '@portfolio/project-model/f4';
+import type { SceneEntity } from '@portfolio/project-model/scene';
 import { creatorModelResourceEntry } from '@portfolio/project-model/scene-planning';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
 

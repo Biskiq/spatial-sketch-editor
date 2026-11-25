@@ -27,7 +27,7 @@ import {
 	type ProgramInvocation
 } from '@portfolio/project-model/units';
 
-import type { GuideTimeCursor, GuideTimeMap } from '@portfolio/camera-core';
+import type { GuideTimeCursor, GuideTimeMap } from '@portfolio/camera-core/navigation';
 import { seekGuideRun } from './guide-seek';
 
 /** One Camera move the interpreter advanced through inside a single tick. */

@@ -5,12 +5,8 @@
  * return. Entry, scrub and face changes must issue no request at all.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import {
-	compileWallFirstLayoutGeometry,
-	createEmptyWallFirstLayoutDocument,
-	planWallChain,
-	type CompiledPhysicalWall
-} from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry, type CompiledPhysicalWall } from '@portfolio/layout-core/geometry';
+import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core/wall';
 
 import {
 	wallUnfold,

@@ -1,11 +1,5 @@
-import {
-	createWallFirstArchitectureVerdictScope,
-	createWallSamplingDerivation,
-	readWallFirstDragProposal,
-	type WallFirstArchitectureProposalWall,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2
-} from '@portfolio/layout-core';
+import { createWallFirstArchitectureVerdictScope, createWallSamplingDerivation, readWallFirstDragProposal, type WallFirstArchitectureProposalWall, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 import { type StageAdapterContext } from '$lib/authoring/stage/stage-adapter-host';
 import { isStageDrag } from '$lib/authoring/stage/stage-adapter-host';

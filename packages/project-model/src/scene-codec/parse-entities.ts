@@ -46,7 +46,7 @@ import type {
 	Vec3
 } from '../scene';
 import type { ResolvedSceneValidationOptions } from '../scene-validation';
-import type { SceneDocumentIssue } from './index';
+import type { SceneDocumentIssue } from './types';
 import type { JsonRecord } from './readers';
 import {
 	HEX_COLOR_PATTERN,

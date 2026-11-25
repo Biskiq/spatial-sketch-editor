@@ -1,20 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-	deriveLayoutWallRole,
-	compileWallFirstLayoutGeometry,
-	createEmptyWallFirstLayoutDocument,
-	createWallSamplingDerivation,
-	deriveChainSpans,
-	extractBoundaryCandidateFaces,
-	validateWallFirstOpeningSet,
-	validateWallFirstTopology,
-	wallCenterlineSamples,
-	wallFirstWallSpan,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	wallCubicChain
-} from '@portfolio/layout-core';
+import { deriveLayoutWallRole, createEmptyWallFirstLayoutDocument, createWallSamplingDerivation, validateWallFirstOpeningSet, validateWallFirstTopology, wallCenterlineSamples, wallFirstWallSpan, type LayoutDocumentWallFirst, wallCubicChain } from '@portfolio/layout-core/wall';
+import { compileWallFirstLayoutGeometry, deriveChainSpans, extractBoundaryCandidateFaces, type LayoutVec2 } from '@portfolio/layout-core/geometry';
 import {
 	buildP23BCorrectnessFixture,
 	buildP23BMatrixFixture,

@@ -20,17 +20,12 @@
  *   retained preset planner must agree with it or the placement is refused.
  */
 
-import {
-	exceedsLayoutDimension,
-	exceedsLayoutWallSpanAfterJunctionMove,
-	LAYOUT_DIMENSION_LIMIT_MESSAGE,
-	mintLayoutIdCapture,
-	nextLayoutPresetObjectId,
-	type FixedWallEndpoint,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2
-} from '@portfolio/layout-core';
-import type { AuthoringIntent, SemanticReference } from '@portfolio/project-model';
+import { exceedsLayoutDimension, LAYOUT_DIMENSION_LIMIT_MESSAGE, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { exceedsLayoutWallSpanAfterJunctionMove } from '@portfolio/layout-core/world';
+import { mintLayoutIdCapture, nextLayoutPresetObjectId } from '@portfolio/layout-core/plan';
+import type { FixedWallEndpoint, LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import type { AuthoringIntent } from '@portfolio/project-model/f4';
+import type { SemanticReference } from '@portfolio/project-model/references';
 import { perfMark } from '$lib/platform/perf-marks';
 
 import {

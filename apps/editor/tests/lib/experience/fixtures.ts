@@ -9,7 +9,7 @@
  * invitation, the Guide's pacing, and the Cut/Travel choice on the continuation edge. There is
  * no host-supplied binding or content list to add beside it.
  */
-import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core/wall';
 import {
 	CAMERA_UNIT_FORMAT_VERSION,
 	EXPERIENCE_UNIT_FORMAT_VERSION,

@@ -11,27 +11,10 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import {
-	compileWallFirstLayoutGeometryFresh,
-	createDynamicBvh,
-	createLayoutCompileSession,
-	createPlanBoxIndex,
-	planExactJunctionMove,
-	planExactLayoutObjectTransform,
-	planExactWallAngle,
-	planExactWallHeight,
-	planExactWallLength,
-	planExactWallThickness,
-	planRigidWallMove,
-	planUpdateWallFirstOpening,
-	planWallSplit,
-	setWorkObserver,
-	withLayoutCompileSession,
-	type DynamicBvh,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type PlanBox
-} from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometryFresh, createLayoutCompileSession, withLayoutCompileSession, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { createDynamicBvh, createPlanBoxIndex, type DynamicBvh, type PlanBox } from '@portfolio/layout-core/world';
+import { planExactJunctionMove, planExactLayoutObjectTransform, planExactWallAngle, planExactWallHeight, planExactWallLength, planExactWallThickness, planRigidWallMove, planUpdateWallFirstOpening, planWallSplit, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import { setWorkObserver } from '@portfolio/layout-core/kernel';
 import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from './__fixtures__/layout-scale-fixtures';
 
 const box = (minX: number, minZ: number, maxX: number, maxZ: number): PlanBox => ({

@@ -31,11 +31,11 @@
  * seam does not ray-test model geometry or add imported-mesh intersection.
  */
 
-import type { CompiledLayoutGeometry, LayoutVec2 } from '@portfolio/layout-core';
-import { polygonContainsWithTolerance } from '@portfolio/layout-core';
-import type { PointerRay } from '@portfolio/camera-core';
+import type { CompiledLayoutGeometry, LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { polygonContainsWithTolerance } from '@portfolio/layout-core/room';
+import type { PointerRay } from '@portfolio/camera-core/viewport';
 import type { FormMesh } from '@portfolio/geometry-core';
-import type { RuntimeScene, SceneEntity, Vec3 } from '@portfolio/project-model';
+import type { RuntimeScene, SceneEntity, Vec3 } from '@portfolio/project-model/scene';
 import { evaluateFormMesh } from '$lib/content/form-evaluation';
 
 const EPSILON = 1e-6;

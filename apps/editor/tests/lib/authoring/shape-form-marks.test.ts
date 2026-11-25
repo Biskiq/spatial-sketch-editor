@@ -10,13 +10,9 @@
 import { SCENE_OBJECT_MARK } from '$lib/authoring/adapters/scene/object-marks';
 import { describe, expect, it } from 'vitest';
 import { sceneEntityReference } from '$lib/authoring/adapters/scene/placement';
-import {
-	createEmptyWallFirstLayoutDocument,
-	planWallChain,
-	type LayoutDocumentWallFirst
-} from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument, planWallChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
-import type { SceneFormEntity } from '@portfolio/project-model';
+import type { SceneFormEntity } from '@portfolio/project-model/scene';
 
 import { admitSource } from '$lib/authoring/stage/source-admission';
 import { createStageSession, type StageSession } from '$lib/authoring/stage/stage-session';

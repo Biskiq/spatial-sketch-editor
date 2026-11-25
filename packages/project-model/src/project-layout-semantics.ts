@@ -10,7 +10,7 @@
  * own: an authored camera view keyframe must not sit on top of the eye position
  * the connection's own path produces for it.
  */
-import { createCameraPositionPath } from '@portfolio/camera-core';
+import { createCameraPositionPath } from '@portfolio/camera-core/camera';
 import type { SceneDocument, Vec3 } from './scene';
 import type { ProjectIssue } from './project-types';
 

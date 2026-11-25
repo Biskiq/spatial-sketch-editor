@@ -37,15 +37,8 @@
 import { describe, expect, it } from 'vitest';
 
 import { freshCapture } from './__fixtures__/layout-id-capture';
-import {
-	coincidesAsJunction,
-	createEmptyWallFirstLayoutDocument,
-	JUNCTION_COINCIDENCE_EPSILON,
-	planWallChain,
-	planWallSegment,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2
-} from '@portfolio/layout-core';
+import { coincidesAsJunction, createEmptyWallFirstLayoutDocument, JUNCTION_COINCIDENCE_EPSILON, planWallChain, planWallSegment, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 const p = (x: number, z: number): LayoutVec2 => [x, z];
 

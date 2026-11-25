@@ -1,12 +1,8 @@
 import { selectedRoomLabel } from './layout-subjects';
 import { planarDeltaLabel } from '$lib/authoring/stage/stage-adapter-host';
-import {
-	mintLayoutIdCapture,
-	resolveIsolatedRoomGroupSubgraph,
-	resolveRoomCopyEnclosure,
-	type LayoutIdCapture,
-	type LayoutVec2
-} from '@portfolio/layout-core';
+import { mintLayoutIdCapture, type LayoutIdCapture } from '@portfolio/layout-core/plan';
+import { resolveIsolatedRoomGroupSubgraph, resolveRoomCopyEnclosure } from '@portfolio/layout-core/room';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 import {
 	type StageAdapterContext,

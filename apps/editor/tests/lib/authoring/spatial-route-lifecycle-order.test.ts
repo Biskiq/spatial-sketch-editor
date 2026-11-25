@@ -7,7 +7,7 @@ import {
 	createEmptyUnitSceneDocument,
 	type ProjectEnvelope
 } from '@portfolio/project-model/units';
-import type { AuthoringIntent } from '@portfolio/project-model';
+import type { AuthoringIntent } from '@portfolio/project-model/f4';
 import { sceneEntityReference } from '$lib/authoring/adapters/scene/placement';
 import { experienceFocus } from '$lib/authoring/experience/focus.svelte';
 import { interiorLift } from '$lib/authoring/layout/interior-lift-store.svelte';

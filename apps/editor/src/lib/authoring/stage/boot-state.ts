@@ -28,8 +28,8 @@
  * no IO of its own, and every source it admits goes through the one admission
  * path.
  */
-import type { LayoutGeometryIssue } from '@portfolio/layout-core';
-import type { ProjectIssue } from '@portfolio/project-model';
+import type { LayoutGeometryIssue } from '@portfolio/layout-core/geometry';
+import type { ProjectIssue } from '@portfolio/project-model/package';
 import type { ProjectImageDiagnostic } from '$lib/authoring/artwork/project-artwork';
 import { createEmptyUnitEnvelope } from '@portfolio/project-model/units';
 

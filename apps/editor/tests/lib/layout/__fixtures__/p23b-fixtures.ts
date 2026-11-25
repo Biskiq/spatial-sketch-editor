@@ -1,11 +1,5 @@
-import {
-	createEmptyWallFirstLayoutDocument,
-	deriveChainSpans,
-	wallCubicChain,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type LayoutWallCenterline
-} from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument, wallCubicChain, type LayoutDocumentWallFirst, type LayoutWallCenterline } from '@portfolio/layout-core/wall';
+import { deriveChainSpans, type LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 export type P23BSemanticClass = 2 | 3 | 4 | 5;
 export type P23BMatrixSize = '12-wall' | '40-wall';

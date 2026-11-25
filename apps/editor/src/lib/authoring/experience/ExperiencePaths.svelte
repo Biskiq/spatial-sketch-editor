@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
-	import { projectWorld, type Vec3, type ViewportEvaluation, type ViewportEvaluationToken } from '@portfolio/camera-core';
+	import { projectWorld, type ViewportEvaluation, type ViewportEvaluationToken } from '@portfolio/camera-core/viewport';
+	import type { Vec3 } from '@portfolio/camera-core/camera';
 	import { experienceHomes } from './experience-homes';
 	import {
 		experiencePathOccurrences,

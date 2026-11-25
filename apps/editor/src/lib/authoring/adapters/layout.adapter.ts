@@ -1,5 +1,5 @@
 import type { SettledLayoutRefusal } from './layout/manipulation-support';
-import { type LayoutDocumentWallFirst } from '@portfolio/layout-core';
+import type { LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 
 import { createPlanPickProvider } from '$lib/authoring/layout/plan-pick-provider';
 import type { StageAdapterFactory } from '$lib/authoring/stage/stage-adapter-host';

@@ -9,13 +9,10 @@
  */
 import { describe, expect, it, vi } from 'vitest';
 import { Euler, Vector3 } from 'three';
-import {
-	compileWallFirstLayoutGeometry,
-	createEmptyWallFirstLayoutDocument,
-	evaluateLayoutPlan,
-	planWallChain
-} from '@portfolio/layout-core';
-import type { SceneEntity, Vec3 } from '@portfolio/project-model';
+import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core/geometry';
+import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core/wall';
+import { evaluateLayoutPlan } from '@portfolio/layout-core/world';
+import type { SceneEntity, Vec3 } from '@portfolio/project-model/scene';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
 
 import { createAdapter } from '$lib/authoring/adapters/scene.adapter';

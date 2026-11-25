@@ -7,13 +7,8 @@
  * Plan-cut consumer changes the actual Paper drawing set.
  */
 import { describe, expect, it } from 'vitest';
-import {
-	createEmptyWallFirstLayoutDocument,
-	planCommitLayoutObjectPreset,
-	planWallChain,
-	type LayoutDocumentWallFirst
-} from '@portfolio/layout-core';
-import type { SceneEntity } from '@portfolio/project-model';
+import { createEmptyWallFirstLayoutDocument, planCommitLayoutObjectPreset, planWallChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import type { SceneEntity } from '@portfolio/project-model/scene';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
 
 import { createAdapter as createLayoutAdapter } from '$lib/authoring/adapters/layout.adapter';

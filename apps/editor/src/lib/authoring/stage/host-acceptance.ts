@@ -15,16 +15,8 @@
  * It owns no history of its own: the coordinator's bounded authoring history is the
  * single stack, and this module never interprets an accepted source.
  */
-import {
-	freezeF4Data,
-	type AcceptedRevision,
-	type AcceptedSnapshot,
-	type AuthoringIntent,
-	type CorrespondenceEntry,
-	type DomainPlanner,
-	type OperationChange,
-	type RegistrationOutcome
-} from '@portfolio/project-model';
+import { freezeF4Data, type AcceptedSnapshot, type AuthoringIntent, type CorrespondenceEntry, type DomainPlanner, type OperationChange, type RegistrationOutcome } from '@portfolio/project-model/f4';
+import type { AcceptedRevision } from '@portfolio/project-model/references';
 import { createUnitReadContext } from '@portfolio/project-model/references/unit-resolution';
 import {
 	createUnitAcceptanceAdapter,
@@ -36,14 +28,8 @@ import {
 	type ProjectEnvelope,
 	type RetainedUnitRuntime
 } from '@portfolio/project-model/units';
-import {
-	consumePreparedCowCandidate,
-	createLayoutCompileSession,
-	ensureLayoutWorldIndex,
-	linkClonedCowCandidate,
-	readPassiveCompiledGeometry,
-	recordPassiveCompiledGeometry
-} from '@portfolio/layout-core';
+import { consumePreparedCowCandidate, ensureLayoutWorldIndex, linkClonedCowCandidate } from '@portfolio/layout-core/world';
+import { createLayoutCompileSession, readPassiveCompiledGeometry, recordPassiveCompiledGeometry } from '@portfolio/layout-core/geometry';
 
 import {
 	createAcceptanceCoordinator,

@@ -1,4 +1,4 @@
-import type { ViewportEvaluation, WorkingPlane } from '@portfolio/camera-core';
+import type { ViewportEvaluation, WorkingPlane } from '@portfolio/camera-core/viewport';
 import { perfMark, perfMarksEnabled } from '$lib/platform/perf-marks';
 import { sameReference, type StageSelectionEntry } from '../semantic-selection';
 import { hitStageMark, type StageMarkView } from '../stage-handles';

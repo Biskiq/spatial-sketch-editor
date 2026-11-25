@@ -14,7 +14,7 @@
  * changes stay the store's single writers. A press acquires a non-authoring lease,
  * exactly as Measure does: editing the cut is never history and never blocks Undo.
  */
-import type { Vec3 } from '@portfolio/camera-core';
+import type { Vec3 } from '@portfolio/camera-core/camera';
 import { formatMeters } from '../stage-drafting';
 import type { StageFacade } from '../stage-facade';
 import { resolveMeasureEndpoint } from '../stage-measure';

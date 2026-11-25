@@ -12,10 +12,10 @@
  * `worldIndexModel` memo (one per mounted route) rather than re-creating its
  * relation index on every frame.
  */
-import type { PlanEvaluation, PlanMembershipReason } from '@portfolio/layout-core';
-import { planFragmentOf, planMembershipOf } from '@portfolio/layout-core';
+import type { PlanEvaluation, PlanMembershipReason } from '@portfolio/layout-core/world';
+import { planFragmentOf, planMembershipOf } from '@portfolio/layout-core/world';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
-import type { SceneArtworkEntity } from '@portfolio/project-model';
+import type { SceneArtworkEntity } from '@portfolio/project-model/scene';
 import type { StageReadSnapshot } from '../accepted-read';
 import type {
 	StageCardActionRecord,

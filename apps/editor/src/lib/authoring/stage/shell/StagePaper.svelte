@@ -17,7 +17,8 @@
 	import { clipPlanRegionFragments } from '../../layout/plan-pick-provider';
 	import type { ResolvedSlice } from '../slice/slice-cut';
 	import { useThrelte } from '@threlte/core';
-	import type { CompiledLayoutGeometry, PlanEvaluation } from '@portfolio/layout-core';
+	import type { CompiledLayoutGeometry } from '@portfolio/layout-core/geometry';
+	import type { PlanEvaluation } from '@portfolio/layout-core/world';
 	import type { PlanSceneProjection } from '$lib/authoring/scene/plan-scene-footprint';
 	import type { StageSelectionEntry } from '../semantic-selection';
 	import { buildPaperPlan, type PaperReveal } from '../paper-plan';

@@ -1,4 +1,4 @@
-import type { ViewportEvaluation } from '@portfolio/camera-core';
+import type { ViewportEvaluation } from '@portfolio/camera-core/viewport';
 import {
 	createLightLookThrough,
 	lookThroughCone,

@@ -22,7 +22,7 @@
  * when the Wall blocks, negative when the sight line passes above it. A Wall that
  * no sight line crosses has no margin (`-Infinity`) and is never cut.
  */
-import { pointInPolygon, type CompiledPhysicalWall, type CompiledRoom, type LayoutVec2 } from '@portfolio/layout-core';
+import { pointInPolygon, type CompiledPhysicalWall, type CompiledRoom, type LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 /** The stub height above the inspected Space's floor. One height for every cut Wall. */
 export const STUB_HEIGHT_METERS = 1.0;

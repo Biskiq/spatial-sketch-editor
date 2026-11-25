@@ -1,12 +1,7 @@
-import {
-	isSpaceCreationCycle,
-	layoutIdCaptureInput,
-	layoutWorkingLevelInput,
-	planCreateOpenSpace,
-	type LayoutIdCapture,
-	type SpaceCreationCycle
-} from '@portfolio/layout-core';
-import type { AuthoringIntent, DomainPlanner, SemanticReference } from '@portfolio/project-model';
+import { isSpaceCreationCycle, planCreateOpenSpace, type SpaceCreationCycle } from '@portfolio/layout-core/room';
+import { layoutIdCaptureInput, layoutWorkingLevelInput, type LayoutIdCapture } from '@portfolio/layout-core/plan';
+import type { AuthoringIntent, DomainPlanner } from '@portfolio/project-model/f4';
+import type { SemanticReference } from '@portfolio/project-model/references';
 import { canonicalUnitJson, type ProjectEnvelope } from '@portfolio/project-model/units';
 
 import { layoutSubjectReference, readCapturedOperation } from './drawing-planners';

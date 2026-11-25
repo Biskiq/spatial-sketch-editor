@@ -9,8 +9,8 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mount, tick, unmount } from 'svelte';
-import type { ViewportEvaluation } from '@portfolio/camera-core';
-import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core';
+import type { ViewportEvaluation } from '@portfolio/camera-core/viewport';
+import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core/wall';
 import {
 	SCENE_UNIT_FORMAT_VERSION,
 	UNIT_SOURCE_KIND,

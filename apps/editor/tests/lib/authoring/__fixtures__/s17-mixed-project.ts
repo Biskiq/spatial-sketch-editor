@@ -10,14 +10,9 @@ import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import {
-	createEmptyWallFirstLayoutDocument,
-	nextLayoutPresetObjectId,
-	planCommitLayoutObjectPreset,
-	planCreateWallFirstOpening,
-	planWallChain
-} from '@portfolio/layout-core';
-import type { SceneEntity, SceneFormEntity, ScenePrimitiveEntity } from '@portfolio/project-model';
+import { createEmptyWallFirstLayoutDocument, planCommitLayoutObjectPreset, planCreateWallFirstOpening, planWallChain } from '@portfolio/layout-core/wall';
+import { nextLayoutPresetObjectId } from '@portfolio/layout-core/plan';
+import type { SceneEntity, SceneFormEntity, ScenePrimitiveEntity } from '@portfolio/project-model/scene';
 import {
 	creatorModelResourceEntry
 } from '@portfolio/project-model/scene-planning';

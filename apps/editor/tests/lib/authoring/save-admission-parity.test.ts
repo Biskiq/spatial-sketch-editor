@@ -13,7 +13,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import type { AcceptedRevision } from '@portfolio/project-model';
+import type { AcceptedRevision } from '@portfolio/project-model/references';
 import {
 	SCENE_UNIT_FORMAT_VERSION,
 	computeEnvelopeSourceContentId,

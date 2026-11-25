@@ -29,12 +29,7 @@ import {
 	type Mapping,
 	type Recipe
 } from '@portfolio/project-model/materials';
-import type {
-	MaterialId,
-	SceneColor,
-	SceneMaterialInstance,
-	ScenePaletteSlot
-} from '@portfolio/project-model';
+import type { MaterialId, SceneColor, SceneMaterialInstance, ScenePaletteSlot } from '@portfolio/project-model/scene';
 import type { FinishCard, FinishCardTarget, FinishReachChoice } from './finish-card.svelte';
 
 export type EditorDisplayMode = 'lit' | 'unlit-color' | 'normal' | 'roughness' | 'metalness' | 'occlusion';

@@ -11,7 +11,7 @@
  * reduced-motion rule, so the reading never invents a transition time and the
  * domain module above never reaches the Camera authority directly.
  */
-import type { ViewportCameraState } from '@portfolio/camera-core';
+import type { ViewportCameraState } from '@portfolio/camera-core/viewport';
 
 import type { WallFaceFrame } from '$lib/layout/wall-face';
 

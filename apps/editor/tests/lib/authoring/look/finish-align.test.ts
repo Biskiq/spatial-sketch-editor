@@ -10,7 +10,7 @@ import {
 } from '$lib/authoring/look/finish-align.svelte';
 import { wallSideFaceFrame } from '$lib/layout/wall-face';
 import { wallFace } from '$lib/authoring/layout/wall-face-store';
-import type { CompiledPhysicalWall } from '@portfolio/layout-core';
+import type { CompiledPhysicalWall } from '@portfolio/layout-core/geometry';
 
 const emptyRecipes = new Map();
 

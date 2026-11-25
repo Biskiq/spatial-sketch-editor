@@ -8,13 +8,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-	createFreeController,
-	createGuidedController,
-	createReducedMotionController,
-	type CameraGraph,
-	type ExperienceControlProgram
-} from '@portfolio/camera-core';
+import { createFreeController, createGuidedController, createReducedMotionController, type CameraGraph, type ExperienceControlProgram } from '@portfolio/camera-core/navigation';
 import { CONNECTIONS, VIEWS } from './fixtures';
 
 const NODES = VIEWS.map((view) => ({

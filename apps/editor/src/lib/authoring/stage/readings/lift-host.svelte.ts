@@ -1,5 +1,5 @@
-import { eyeOfInspectionPose, type ViewportEvaluation } from '@portfolio/camera-core';
-import { overheadSourcesOf } from '@portfolio/layout-core';
+import { eyeOfInspectionPose, type ViewportEvaluation } from '@portfolio/camera-core/viewport';
+import { overheadSourcesOf } from '@portfolio/layout-core/geometry';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
 import { initialLiftScope, interiorLift } from '../../layout/interior-lift-store.svelte';
 import { contribution } from '../../workspace/region-ownership';

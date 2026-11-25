@@ -25,7 +25,7 @@ import {
 	readRequiredBoolean,
 	readRequiredString
 } from '../scene-codec/readers';
-import type { SceneDocumentIssue } from '../scene-codec';
+import type { SceneDocumentIssue } from '../scene-codec/types';
 import { withSceneValidationOptions } from '../scene-validation';
 import { sha256Bytes } from '../package-sha';
 

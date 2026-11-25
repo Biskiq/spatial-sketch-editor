@@ -193,7 +193,8 @@ vi.mock('$lib/authoring/stage/boot-state', async (importOriginal) => {
 });
 
 import { mount, tick, unmount } from 'svelte';
-import { LAYOUT_DIMENSION_LIMIT_MESSAGE, type LayoutDocumentWallFirst } from '@portfolio/layout-core';
+import { LAYOUT_DIMENSION_LIMIT_MESSAGE } from '@portfolio/layout-core/geometry';
+import type { LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 import { createEmptyUnitSceneDocument, serializeProjectEnvelope, type ProjectEnvelope } from '@portfolio/project-model/units';
 import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 import type { ReloadOffer } from '$lib/authoring/save/save-state';

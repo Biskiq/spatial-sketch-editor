@@ -22,7 +22,7 @@ import {
   type Texture as ThreeTexture
 } from 'three';
 import type { MaterialDefinition, MaterialTextureSlot } from '$lib/types/materials';
-import { countWork } from '@portfolio/layout-core';
+import { countWork } from '@portfolio/layout-core/kernel';
 import { probeRawImage } from './image-encoding';
 import { ImageLoadFailure, isImageLoadFailure } from './image-load-failure';
 import type { TextureVariantSource } from './texture-variant';

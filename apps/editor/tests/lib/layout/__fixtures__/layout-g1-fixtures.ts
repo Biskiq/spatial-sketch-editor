@@ -17,17 +17,8 @@
  * readable from its id. Junctions are `${roomId}:j${n}` and are deduplicated by
  * coordinate **within a Room**, because Junction identity *is* connectivity.
  */
-import {
-	createEmptyWallFirstLayoutDocument,
-	deriveChainSpans,
-	wallCubicChain,
-	type DraftPath,
-	type LayoutDocumentWallFirst,
-	type LayoutObject,
-	type LayoutVec2,
-	type LayoutWallCenterline,
-	type LayoutWallOpening
-} from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument, wallCubicChain, type LayoutDocumentWallFirst, type LayoutObject, type LayoutWallCenterline, type LayoutWallOpening } from '@portfolio/layout-core/wall';
+import { deriveChainSpans, type DraftPath, type LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 /** One authored Wall edge of a fixture Room, in boundary-traversal order. */
 export type G1Edge = {

@@ -16,7 +16,7 @@
  * Only Point and Spot exist: the authored Directional kind is retired
  * (Scene format 7) and the Sky owns the only Sun (`resolveSkySun`).
  */
-import { isSceneLightEntity, type RuntimeScene, type SceneLightEntity } from '@portfolio/project-model';
+import { isSceneLightEntity, type RuntimeScene, type SceneLightEntity } from '@portfolio/project-model/scene';
 import {
 	lightKey,
 	PHYSICAL_LIGHT_DECAY,

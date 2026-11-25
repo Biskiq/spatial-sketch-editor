@@ -14,13 +14,9 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-	planWallSegment,
-	polygonsShareInteriorArea,
-	roomBoundaryPolygon,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2
-} from '@portfolio/layout-core';
+import { planWallSegment, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import { polygonsShareInteriorArea, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { roomBoundaryPolygon } from '@portfolio/layout-core/room';
 import { freshCapture } from './__fixtures__/layout-id-capture';
 
 const p = (x: number, z: number): LayoutVec2 => [x, z];

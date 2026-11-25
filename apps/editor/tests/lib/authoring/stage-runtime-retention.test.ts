@@ -21,8 +21,8 @@
  * never asserted from a test-only counter call.
  */
 import { beforeAll, describe, expect, it } from 'vitest';
-import { createLayoutCompileSession } from '@portfolio/layout-core';
-import type { DomainPlanner } from '@portfolio/project-model';
+import { createLayoutCompileSession } from '@portfolio/layout-core/geometry';
+import type { DomainPlanner } from '@portfolio/project-model/f4';
 import {
 	computeUnitContentRevision,
 	EXPERIENCE_UNIT_FORMAT_VERSION,

@@ -91,7 +91,7 @@ import {
 	resolveTestAuthUserId,
 	type TestAuthOptions
 } from './test-auth.js';
-import { LAYOUT_DIMENSION_LIMIT_MESSAGE } from '@portfolio/layout-core';
+import { LAYOUT_DIMENSION_LIMIT_MESSAGE } from '@portfolio/layout-core/geometry';
 import { readSaveRequest } from '@portfolio/project-model/save';
 import { MODEL_SOURCE_SET_MAX_BYTES, validateProjectEnvelope } from '@portfolio/project-model/units';
 

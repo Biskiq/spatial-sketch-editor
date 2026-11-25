@@ -37,7 +37,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { planWallChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core';
+import { planWallChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 import {
 	p,
 	baseDocument,

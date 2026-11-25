@@ -25,20 +25,9 @@
  * filters and resolves by identity/elevation, so reordering the query's polygon
  * records cannot change the answer.
  */
-import {
-	FLOOR_SUPPORT_TOLERANCES,
-	chooseFloorSupport,
-	compileWallFirstLayoutGeometry,
-	datumSupportCandidate,
-	floorSupportSnapshotOf,
-	layoutDatumElevation,
-	queryFloorSupports,
-	type FloorSupportCandidate,
-	type FloorSupportQueryResult,
-	type CompiledLayoutGeometry,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2
-} from '@portfolio/layout-core';
+import { FLOOR_SUPPORT_TOLERANCES, chooseFloorSupport, datumSupportCandidate, floorSupportSnapshotOf, layoutDatumElevation, queryFloorSupports, type FloorSupportCandidate, type FloorSupportQueryResult } from '@portfolio/layout-core/room';
+import { compileWallFirstLayoutGeometry, type CompiledLayoutGeometry, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import type { LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 
 /** The compile/support generation of one accepted snapshot. */
 export function sceneSupportGenerationId(sourceContentId: string): string {

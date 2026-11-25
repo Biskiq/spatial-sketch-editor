@@ -1,5 +1,5 @@
 /** A read-only adapter consumer with no source document or decoder dependency. */
-import { resolveReference, type SemanticReference } from '@portfolio/project-model';
+import { resolveReference, type SemanticReference } from '@portfolio/project-model/references';
 import type { StageReadSnapshot } from '$lib/authoring/stage/accepted-read';
 import type { StageFacade } from '$lib/authoring/stage/stage-facade';
 

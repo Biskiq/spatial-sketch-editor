@@ -1,5 +1,6 @@
-import { projectWorld, type Vec3, type ViewportEvaluation } from '@portfolio/camera-core';
-import type { SemanticReference } from '@portfolio/project-model';
+import { projectWorld, type ViewportEvaluation } from '@portfolio/camera-core/viewport';
+import type { Vec3 } from '@portfolio/camera-core/camera';
+import type { SemanticReference } from '@portfolio/project-model/references';
 import type { StageReadSnapshot } from '../accepted-read';
 import { primaryEntry, sameReference, type StageSelectionEntry, type StageSelectionState } from '../semantic-selection';
 import { admitStageHandles, projectStageHandles, type StageHandleDescriptor, type StageHandleDiagnostic, type StageMarkView } from '../stage-handles';

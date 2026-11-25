@@ -3,11 +3,8 @@ import { dirname, extname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { stripComments } from '../../helpers/import-closure';
-import {
-	compileWallFirstLayoutGeometry,
-	createEmptyWallFirstLayoutDocument,
-	validateWallFirstLayoutDocument
-} from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core/geometry';
+import { createEmptyWallFirstLayoutDocument, validateWallFirstLayoutDocument } from '@portfolio/layout-core/wall';
 
 const srcRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../../src');
 const libRoot = resolve(srcRoot, 'lib');
@@ -147,7 +144,7 @@ describe('[cap:layout.canonical-compiler core] G1 geometry boundary', () => {
 			for (const file of walk(root)) {
 				if (!['.ts', '.svelte'].includes(extname(file))) continue;
 				// This gate names every retired symbol by construction.
-				if (file.endsWith('layout-geometry-boundary.test.ts')) continue;
+				if (file.endsWith('layout-geometry-boundary.arch.test.ts')) continue;
 				const mentions = retiredMentions(sourceOf(file));
 				if (mentions.length > 0) offenders.push(`${file}: ${[...new Set(mentions)].join(', ')}`);
 			}

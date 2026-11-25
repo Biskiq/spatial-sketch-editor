@@ -1,5 +1,5 @@
-import { hasOwnedFrozenJsonProof } from '../json-immutability';
-import { countWork } from '@portfolio/layout-core';
+import { hasImmutableJsonProof as hasOwnedFrozenJsonProof } from '@portfolio/layout-core/kernel';
+import { countWork } from '@portfolio/layout-core/kernel';
 /**
  * F.2 `unit-envelope-v1` canonical bytes and content identities (AM-2).
  *

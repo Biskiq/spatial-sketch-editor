@@ -43,7 +43,8 @@ import {
 	planPaletteAdoption,
 	type PaletteAdoptionPlan
 } from '@portfolio/project-model/scene-planning';
-import type { AcceptedRevision, AuthoringIntent } from '@portfolio/project-model';
+import type { AcceptedRevision } from '@portfolio/project-model/references';
+import type { AuthoringIntent } from '@portfolio/project-model/f4';
 import { SCENE_PALETTE_ADOPT } from '@portfolio/project-model/scene-planning';
 import { createSkyGesture } from './sky-gesture.svelte';
 import type { StageAdapterServices } from '../stage/stage-adapter-host';

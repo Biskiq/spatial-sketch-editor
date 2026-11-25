@@ -17,22 +17,9 @@
  */
 import { describe, expect, it } from 'vitest';
 import { PerspectiveCamera } from 'three';
-import {
-	createViewportCameraState,
-	evaluateViewport,
-	eyeOfInspectionPose,
-	projectWorld,
-	pointerRay,
-	type ViewportEvaluation
-} from '@portfolio/camera-core';
-import {
-	evaluateLayoutPlan,
-	overheadSourcesOf,
-	type CompiledLayoutGeometry,
-	type LayoutVec2,
-	type PlanEvaluation,
-	type PlanEvaluationResult
-} from '@portfolio/layout-core';
+import { createViewportCameraState, evaluateViewport, eyeOfInspectionPose, projectWorld, pointerRay, type ViewportEvaluation } from '@portfolio/camera-core/viewport';
+import { evaluateLayoutPlan, type PlanEvaluation, type PlanEvaluationResult } from '@portfolio/layout-core/world';
+import { overheadSourcesOf, type CompiledLayoutGeometry, type LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 import { createPlanPickProvider } from '$lib/authoring/layout/plan-pick-provider';
 import type { StageAdapterContext, StageDomainPick, StagePickQuery } from '$lib/authoring/stage/stage-facade';

@@ -7,8 +7,8 @@
  * accepted Sky write. Cancel paths must release the lease and write nothing.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core';
-import type { Vec3 } from '@portfolio/camera-core';
+import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core/wall';
+import type { Vec3 } from '@portfolio/camera-core/camera';
 import { createEmptyUnitSceneDocument, skyFromPreset, type SceneSky } from '@portfolio/project-model/units';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 import { createAdapter as createExperienceAdapter } from '$lib/authoring/adapters/experience.adapter';

@@ -1,13 +1,11 @@
 /** Count and differential falsifiers for complete retained edit operations.
  * Timing lives in the bounded Node comparison, never in assertions here. */
 import { describe, expect, it } from 'vitest';
-import {
- compileWallFirstLayoutGeometryFresh, createLayoutCompileSession, ensureLayoutWorldIndex,
- planExactWallLength, planRigidWallMove, withLayoutCompileSession, setWorkObserver,
- indexedCompiledWall, indexedCompiledWallQueries, linkClonedCowCandidate,
- type LayoutDocumentWallFirst, type CompiledLayoutGeometry
-} from '@portfolio/layout-core';
-import { immutableF4Data } from '@portfolio/project-model';
+import { compileWallFirstLayoutGeometryFresh, createLayoutCompileSession, withLayoutCompileSession, indexedCompiledWall, indexedCompiledWallQueries, type CompiledLayoutGeometry } from '@portfolio/layout-core/geometry';
+import { ensureLayoutWorldIndex, linkClonedCowCandidate } from '@portfolio/layout-core/world';
+import { planExactWallLength, planRigidWallMove, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import { setWorkObserver } from '@portfolio/layout-core/kernel';
+import { immutableF4Data } from '@portfolio/project-model/f4';
 import { createWallRepresentation } from '$lib/render/layout-wall-representation';
 import { createObjectRepresentation } from '$lib/render/layout-object-representation';
 import { createMaterialStore } from '$lib/render/resources/material-store';

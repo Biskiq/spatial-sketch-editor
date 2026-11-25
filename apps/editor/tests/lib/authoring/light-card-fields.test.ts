@@ -8,8 +8,8 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createRawSnippet, mount, tick, unmount, type Snippet } from 'svelte';
-import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core';
-import type { SceneLightEntity } from '@portfolio/project-model';
+import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core/wall';
+import type { SceneLightEntity } from '@portfolio/project-model/scene';
 import {
 	SCENE_UNIT_FORMAT_VERSION,
 	UNIT_SOURCE_KIND,

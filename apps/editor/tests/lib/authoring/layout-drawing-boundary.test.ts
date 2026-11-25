@@ -127,10 +127,14 @@ const moduleEdgesOf = (file: string, source = read(file)) =>
 	edgesOf(file, source).flatMap((edge) => (edge.kind === 'export-local' ? [] : [edge]));
 const wordIn = (source: string, word: string) => new RegExp(`\\b${word}\\b`).test(stripComments(source));
 
+/** Package family subpaths keep the package-level allowance exactly as broad. */
+const packageOf = (specifier: string) =>
+	specifier.replace(/^(@portfolio\/(?:layout-core|project-model|camera-core))\/.*$/, '$1');
+
 /** Every edge, executable or type-only, that names a module outside the allowance. */
 function disallowedImports(file: string, source: string, allowed: ReadonlySet<string>): string[] {
 	return moduleEdgesOf(file, source)
-		.filter((edge) => !allowed.has(edge.specifier))
+		.filter((edge) => !allowed.has(packageOf(edge.specifier)))
 		.map((edge) => `${edge.kind} '${edge.specifier}'`);
 }
 

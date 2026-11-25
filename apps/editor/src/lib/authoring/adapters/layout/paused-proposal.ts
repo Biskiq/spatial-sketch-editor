@@ -13,7 +13,7 @@
  * resume/discard) clears.
  */
 
-import type { FixedWallEndpoint } from '@portfolio/layout-core';
+import type { FixedWallEndpoint } from '@portfolio/layout-core/wall';
 
 import type { WallManipulationRequest } from './precision';
 

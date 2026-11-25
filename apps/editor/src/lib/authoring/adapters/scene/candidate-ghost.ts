@@ -8,7 +8,7 @@
  * footprint-based proxy; models without confirmed bounds stay hidden.
  */
 
-import type { SceneEntity } from '@portfolio/project-model';
+import type { SceneEntity } from '@portfolio/project-model/scene';
 import type { StageGhostMesh } from '$lib/authoring/stage/stage-adapter-host';
 import { NATIVE_PLACEMENT_DIMENSIONS, type NativePlacementPrimitive } from '../../scene/object-definition-policy';
 

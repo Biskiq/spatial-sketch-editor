@@ -13,8 +13,8 @@ import { describe, expect, it } from 'vitest';
 import { LineSegments2 } from 'three/addons/lines/webgpu/LineSegments2.js';
 import { Line2NodeMaterial } from 'three/webgpu';
 import { Mesh, MeshBasicMaterial, type Group } from 'three';
-import type { SemanticReference } from '@portfolio/project-model';
-import type { LayoutVec2 } from '@portfolio/layout-core';
+import type { SemanticReference } from '@portfolio/project-model/references';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import type { StageSelectionEntry } from '$lib/authoring/stage/semantic-selection';
 import {
 	PAPER_MARK_LAYER,

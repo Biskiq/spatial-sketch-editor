@@ -16,33 +16,8 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-	LAYOUT_IDENTITY_CURSOR_BEHIND_REFERENCE,
-	LAYOUT_IDENTITY_EXHAUSTED_CODE,
-	LAYOUT_REFERENCE_ALPHABET,
-	LAYOUT_REFERENCE_INVERSE_MULTIPLIER,
-	LAYOUT_REFERENCE_MULTIPLIER,
-	LAYOUT_REFERENCE_OFFSET,
-	LAYOUT_REFERENCE_SPACE,
-	LayoutIdentityExhaustedError,
-	createEmptyWallFirstLayoutDocument,
-	emptyLayoutIdentityLedger,
-	formatLayoutReference,
-	indexOfReference,
-	isLayoutReference,
-	layoutAuthoredCanonicalJson,
-	layoutIdentityCursor,
-	layoutIdentityCursorIssues,
-	layoutIdentityIsComplete,
-	parseLayoutReference,
-	promoteLayoutIdentity,
-	referenceFor,
-	repairLayoutIdentityCursor,
-	serializeWallFirstLayoutDocument,
-	validateWallFirstLayoutDocument,
-	withLayoutIdentity,
-	type LayoutDocumentWallFirst
-} from '@portfolio/layout-core';
+import { LAYOUT_IDENTITY_CURSOR_BEHIND_REFERENCE, LAYOUT_IDENTITY_EXHAUSTED_CODE, LAYOUT_REFERENCE_ALPHABET, LAYOUT_REFERENCE_INVERSE_MULTIPLIER, LAYOUT_REFERENCE_MULTIPLIER, LAYOUT_REFERENCE_OFFSET, LAYOUT_REFERENCE_SPACE, LayoutIdentityExhaustedError, emptyLayoutIdentityLedger, formatLayoutReference, indexOfReference, isLayoutReference, layoutAuthoredCanonicalJson, layoutIdentityCursor, layoutIdentityCursorIssues, layoutIdentityIsComplete, parseLayoutReference, promoteLayoutIdentity, referenceFor, repairLayoutIdentityCursor, withLayoutIdentity } from '@portfolio/layout-core/plan';
+import { createEmptyWallFirstLayoutDocument, serializeWallFirstLayoutDocument, validateWallFirstLayoutDocument, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 
 function documentWithRooms(count: number): LayoutDocumentWallFirst {
 	const document = createEmptyWallFirstLayoutDocument();

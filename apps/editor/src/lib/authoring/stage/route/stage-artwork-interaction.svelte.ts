@@ -21,13 +21,9 @@
  * a renderer.
  */
 import { Vector3 } from 'three';
-import {
-	pointerRay,
-	type PointerRay,
-	type ViewportEvaluation,
-	type ViewportRect
-} from '@portfolio/camera-core';
-import type { ArtworkLibraryEntry, SceneArtworkEntity } from '@portfolio/project-model';
+import { pointerRay, type PointerRay, type ViewportEvaluation, type ViewportRect } from '@portfolio/camera-core/viewport';
+import type { ArtworkLibraryEntry } from '@portfolio/project-model/artwork';
+import type { SceneArtworkEntity } from '@portfolio/project-model/scene';
 import { ARTWORK_TRANSFORM } from '@portfolio/project-model/scene-planning';
 import { artworkPlanePoint, resizeArtworkAtRay, type ArtworkCorner } from '$lib/authoring/artwork/artwork-resize';
 import { artworkHangingGuides, snapArtworkHeight } from '$lib/authoring/artwork/artwork-hanging';

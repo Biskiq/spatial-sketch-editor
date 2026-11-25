@@ -37,7 +37,7 @@
  * is host metadata captured with the intent, exactly as the object-definition
  * policy treats verified model contact.
  */
-import type { LayoutVec2 } from '@portfolio/layout-core';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import {
 	canonicalizeWinding,
 	evaluateProfile,
@@ -154,7 +154,7 @@ export type SceneOperationResult = SceneOperationCandidate | SceneOperationRefus
  * never writes it, which is why it is a payload rather than a source object.
  */
 export type SceneOperationContext = {
-	readonly layout: import('@portfolio/layout-core').LayoutDocumentWallFirst;
+	readonly layout: import('@portfolio/layout-core/wall').LayoutDocumentWallFirst;
 	readonly scene: SceneDocument;
 	readonly sourceContentId: string;
 };

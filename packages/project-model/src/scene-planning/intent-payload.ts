@@ -14,7 +14,7 @@
  *   revision, in the canonical Scene location. A target that resolves elsewhere
  *   is a refusal, not a planner guess.
  */
-import type { LayoutVec2 } from '@portfolio/layout-core';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import type { ShapeIssue } from '../strict-shape';
 import { ShapeReader } from '../strict-shape';
 import { validateFrameReference } from '../references/validate';

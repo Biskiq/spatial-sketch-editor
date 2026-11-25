@@ -1,10 +1,4 @@
-import {
-	ARTWORK_MAX_BYTES,
-	ARTWORK_MAX_IMAGE_EDGE,
-	probeArtworkImage,
-	type ArtworkImage,
-	type ArtworkLibraryEntry
-} from '@portfolio/project-model';
+import { ARTWORK_MAX_BYTES, ARTWORK_MAX_IMAGE_EDGE, probeArtworkImage, type ArtworkImage, type ArtworkLibraryEntry } from '@portfolio/project-model/artwork';
 import {
 	collectEnvelopeImageRequirements,
 	type ProjectImagePin,

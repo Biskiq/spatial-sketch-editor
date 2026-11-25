@@ -30,7 +30,7 @@
 		type Scene
 	} from 'three';
 	import type { WebGPURenderer } from 'three/webgpu';
-	import { createViewportCameraState, evaluateViewport, inspectionPoseFromView } from '@portfolio/camera-core';
+	import { createViewportCameraState, evaluateViewport, inspectionPoseFromView } from '@portfolio/camera-core/viewport';
 	import { PAPER_GROUND_INK, STAGE_LIFTED_LAYER, STAGE_WORLD_LAYER } from '../paper-plan';
 	import type { SnapshotRequest } from '../stage-snapshots';
 	import { realizeEvaluatedCamera } from '$lib/render/camera-realization';

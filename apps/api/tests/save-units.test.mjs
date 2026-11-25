@@ -15,7 +15,7 @@ import { Readable } from 'node:stream';
 import { Pool } from 'pg';
 import test, { after, before } from 'node:test';
 
-import { createEmptyWallFirstLayoutDocument } from '@portfolio/project-model';
+import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core/wall';
 import { collectEnvelopeImageRequirements } from '@portfolio/project-model/project-images';
 import { readRecipe, recipeHash } from '@portfolio/project-model/materials';
 import { SAVE_CONTENT_IDENTITY_SCHEME, readSaveRequest } from '@portfolio/project-model/save';

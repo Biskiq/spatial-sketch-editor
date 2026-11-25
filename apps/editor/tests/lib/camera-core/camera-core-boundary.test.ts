@@ -3,14 +3,8 @@ import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { stripComments } from '../../helpers/import-closure';
-import {
-  CAMERA_EASING,
-  CAMERA_FOV,
-  createCameraMotionSample,
-  getNode,
-  type CameraGraph,
-  type CameraGraphNode
-} from '@portfolio/camera-core';
+import { CAMERA_EASING, CAMERA_FOV, createCameraMotionSample, type CameraGraphNode } from '@portfolio/camera-core/camera';
+import { getNode, type CameraGraph } from '@portfolio/camera-core/navigation';
 
 const appSrc = resolve(dirname(fileURLToPath(import.meta.url)), '../../../src');
 const packageSrc = resolve(appSrc, '../../../packages/camera-core/src');
@@ -116,7 +110,9 @@ describe('camera-core package boundary', () => {
     // same headless/import-direction proof as the rest of the package: an additive
     // assertion, never a weaker one.
     const files = [
-      'index.ts',
+      'camera/index.ts',
+      'navigation/index.ts',
+      'viewport/index.ts',
       'camera-motion.ts',
       'camera-route.ts',
       'navigation.ts',

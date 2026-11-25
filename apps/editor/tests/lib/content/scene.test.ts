@@ -6,17 +6,9 @@ import { describe, expect, it } from 'vitest';
 // the fixture itself current-format, so resolution is identity and no frame source
 // is passed. What remains asserts the retained module validation and rejection
 // boundaries. Resolution coverage returns with the T2/T3 Scene unit.
-import {
-	modelEntityToPlacement,
-	resolveNavigationDocument,
-	resolveSceneDocument,
-	type SceneDocument,
-	type SceneModelEntity
-} from '$lib/content/scene';
-import {
-	serializeSceneDocument,
-	validateSceneDocument
-} from '@portfolio/project-model';
+import { modelEntityToPlacement, resolveNavigationDocument, type SceneDocument, type SceneModelEntity } from '@portfolio/project-model/scene';
+import { resolveSceneDocument } from '$lib/content/scene';
+import { serializeSceneDocument, validateSceneDocument } from '@portfolio/project-model/scene-codec';
 import {
 	cloneFixtureDocument,
 	loadFixtureScene

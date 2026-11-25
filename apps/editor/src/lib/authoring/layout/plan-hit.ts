@@ -1,6 +1,6 @@
-import type { LayoutVec2 } from '@portfolio/layout-core';
-import type { CompiledLayoutQueryGeometry, CompiledQuerySpan } from '@portfolio/layout-core';
-import { findPolygonContaining, pointInPolygon, projectPointToSpans } from '@portfolio/layout-core';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
+import type { CompiledLayoutQueryGeometry, CompiledQuerySpan } from '@portfolio/layout-core/geometry';
+import { findPolygonContaining, pointInPolygon, projectPointToSpans } from '@portfolio/layout-core/geometry';
 
 /**
  * Pure Plan hit resolution. Resolves a world-space plan point against the

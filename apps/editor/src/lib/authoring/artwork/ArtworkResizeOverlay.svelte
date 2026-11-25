@@ -1,11 +1,10 @@
 <script lang="ts">
-	import {
-		artworkFrameLayout, artworkHeight, type SceneArtworkEntity
-	} from '@portfolio/project-model';
+	import { artworkFrameLayout, artworkHeight } from '@portfolio/project-model/artwork';
+	import type { SceneArtworkEntity } from '@portfolio/project-model/scene';
 	import { ARTWORK_CORNERS, artworkHandlePoint, type ArtworkCorner } from './artwork-resize';
 	import { artworkSelectionGeometry } from './artwork-overlay';
 	import type { StageFacade } from '$lib/authoring/stage/stage-facade';
-	import type { ViewportEvaluation } from '@portfolio/camera-core';
+	import type { ViewportEvaluation } from '@portfolio/camera-core/viewport';
 
 	type Manipulation = ArtworkCorner | 'move' | 'turn';
 	let { entity, stage, evaluation, resizing, blocked = false, canTurn = true, onStart }: {

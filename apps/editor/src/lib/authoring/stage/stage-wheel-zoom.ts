@@ -1,5 +1,5 @@
-import { pointerRay, projectWorld, type ViewingIntent, type ViewportEvaluation } from '@portfolio/camera-core';
-import type { RuntimeScene } from '@portfolio/project-model';
+import { pointerRay, projectWorld, type ViewingIntent, type ViewportEvaluation } from '@portfolio/camera-core/viewport';
+import type { RuntimeScene } from '@portfolio/project-model/scene';
 import type { ScenePickSource } from '../scene/scene-pick-source';
 
 /** Resolve the nearest drawn surface before asking whether it can anchor zoom. */

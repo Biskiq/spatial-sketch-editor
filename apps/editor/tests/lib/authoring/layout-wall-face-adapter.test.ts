@@ -16,27 +16,11 @@
  */
 import { afterEach, describe, expect, it } from 'vitest';
 
-import {
-	createEmptyWallFirstLayoutDocument,
-	deriveChainSpans,
-	LAYOUT_WALL_FIRST_FORMAT_VERSION,
-	wallCubicChain,
-	type CompiledPhysicalWall,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type LayoutWall,
-	type PlanSourceRef
-} from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument, LAYOUT_WALL_FIRST_FORMAT_VERSION, wallCubicChain, type LayoutDocumentWallFirst, type LayoutWall } from '@portfolio/layout-core/wall';
+import { deriveChainSpans, type CompiledPhysicalWall, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import type { PlanSourceRef } from '@portfolio/layout-core/world';
 import { SCENE_UNIT_FORMAT_VERSION, type CameraFreeSceneDocument, type ProjectEnvelope } from '@portfolio/project-model/units';
-import {
-	evaluateViewport,
-	facePoseFromBounds,
-	projectWorld,
-	VIEWPORT_READING_TRANSITION_SECONDS,
-	type ViewingIntent,
-	type ViewportCameraState,
-	type ViewportRect
-} from '@portfolio/camera-core';
+import { evaluateViewport, facePoseFromBounds, projectWorld, VIEWPORT_READING_TRANSITION_SECONDS, type ViewingIntent, type ViewportCameraState, type ViewportRect } from '@portfolio/camera-core/viewport';
 
 import { admitSource } from '$lib/authoring/stage/source-admission';
 import { createStageSession, type StageSession } from '$lib/authoring/stage/stage-session';

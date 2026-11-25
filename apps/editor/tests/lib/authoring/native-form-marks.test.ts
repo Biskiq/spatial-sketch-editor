@@ -9,8 +9,8 @@
  * adapter and host tests.
  */
 import { describe, expect, it } from 'vitest';
-import type { Vec3 } from '@portfolio/camera-core';
-import type { SceneFormEntity } from '$lib/content/scene';
+import type { Vec3 } from '@portfolio/camera-core/camera';
+import type { SceneFormEntity } from '@portfolio/project-model/scene';
 import {
 	hitStageMark,
 	projectStageHandles,

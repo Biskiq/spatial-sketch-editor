@@ -25,7 +25,7 @@
  * can replace a newer map, and the discarded result is disposed by the attempt
  * that acquired it — exactly once.
  */
-import type { ArtworkImage } from '@portfolio/project-model';
+import type { ArtworkImage } from '@portfolio/project-model/artwork';
 
 import {
 	approvedModelPins,

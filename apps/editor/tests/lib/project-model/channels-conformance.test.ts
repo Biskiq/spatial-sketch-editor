@@ -21,43 +21,9 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-	CAMERA_OUTPUT_ROLES,
-	CAMERA_SESSION_INSPECTION_FAMILY,
-	DEFAULT_CHANNEL_FAMILIES,
-	EMPTY_CHANNEL_STATE,
-	LAYOUT_PLAN_FAMILY,
-	acquireCameraOutput,
-	channelFamilySatisfaction,
-	compareReferences,
-	createCameraOutputState,
-	createChannelHost,
-	createEmptyWallFirstLayoutDocument,
-	declaredProperty,
-	familyProblems,
-	negotiateChannelContribution,
-	pruneChannelState,
-	readChannelProperty,
-	rebaseCameraOutputSource,
-	replaceCameraOutput,
-	resolveChannelPropertyScope,
-	returnCameraOutput,
-	validateChannelAddress,
-	validateChannelContribution,
-	validateChannelDescriptor,
-	validateChannelValue,
-	withdrawChannelContribution,
-	type CameraOutputState,
-	type ChannelAddress,
-	type ChannelEvaluationContext,
-	type ChannelFamily,
-	type ChannelNegotiationOutcome,
-	type ChannelPropertyScope,
-	type ChannelState,
-	type DependencyLockReader,
-	type SemanticReference,
-	type SnapshotIdentity
-} from '@portfolio/project-model';
+import { CAMERA_OUTPUT_ROLES, CAMERA_SESSION_INSPECTION_FAMILY, DEFAULT_CHANNEL_FAMILIES, EMPTY_CHANNEL_STATE, LAYOUT_PLAN_FAMILY, acquireCameraOutput, channelFamilySatisfaction, createCameraOutputState, createChannelHost, declaredProperty, familyProblems, negotiateChannelContribution, pruneChannelState, readChannelProperty, rebaseCameraOutputSource, replaceCameraOutput, resolveChannelPropertyScope, returnCameraOutput, validateChannelAddress, validateChannelContribution, validateChannelDescriptor, validateChannelValue, withdrawChannelContribution, type CameraOutputState, type ChannelAddress, type ChannelEvaluationContext, type ChannelFamily, type ChannelNegotiationOutcome, type ChannelPropertyScope, type ChannelState } from '@portfolio/project-model/channels';
+import { compareReferences, type DependencyLockReader, type SemanticReference, type SnapshotIdentity } from '@portfolio/project-model/references';
+import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core/wall';
 import { createUnitReadContext } from '@portfolio/project-model/references/unit-resolution';
 import { createUnitProject } from '../authoring/__fixtures__/unit-envelope-fixtures';
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { LAYOUT_DIMENSION_LIMIT_MESSAGE } from '@portfolio/layout-core';
+	import { LAYOUT_DIMENSION_LIMIT_MESSAGE } from '@portfolio/layout-core/geometry';
 	import { STARTER_TEMPLATES } from '../starter-gallery';
 	import type { StageBootPanelView } from '../../workspace/protocol';
 	import './stage-boot-panel.css';

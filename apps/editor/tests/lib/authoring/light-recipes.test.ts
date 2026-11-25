@@ -9,13 +9,8 @@
  * radial cutoff, because fitting the direction alone can still clip a corner.
  */
 import { describe, expect, it } from 'vitest';
-import {
-	artworkFrameLayout,
-	artworkHeight,
-	type ArtworkFrame,
-	type SceneArtworkEntity,
-	type Vec3
-} from '@portfolio/project-model';
+import { artworkFrameLayout, artworkHeight, type ArtworkFrame } from '@portfolio/project-model/artwork';
+import type { SceneArtworkEntity, Vec3 } from '@portfolio/project-model/scene';
 import {
 	artworkLightBounds,
 	artworkLightRectangle,

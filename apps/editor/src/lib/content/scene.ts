@@ -1,10 +1,6 @@
-import {
-	resolveSceneDocument as resolveCore,
-	type RuntimeScene
-} from '@portfolio/project-model';
+import { resolveSceneDocument as resolveCore, type RuntimeScene } from '@portfolio/project-model/scene';
 import { CATALOGUE_SCENE_VALIDATION_OPTIONS } from './scene-validation';
 
-export * from '@portfolio/project-model';
 
 /**
  * App-side resolution seam.

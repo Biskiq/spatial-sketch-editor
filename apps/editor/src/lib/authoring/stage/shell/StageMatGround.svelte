@@ -18,7 +18,7 @@
 	import { onDestroy } from 'svelte';
 	import { T, useThrelte } from '@threlte/core';
 	import type { Color, Mesh } from 'three';
-	import type { ViewportEvaluation } from '@portfolio/camera-core';
+	import type { ViewportEvaluation } from '@portfolio/camera-core/viewport';
 	import { PAPER_GROUND_INK, STAGE_OVERLAY_LAYER } from '../paper-plan';
 	import { matGroundFor, workspaceRectFor, type GridRect } from '../stage-grid';
 	import {

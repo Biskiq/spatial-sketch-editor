@@ -13,8 +13,8 @@
  *   completion cannot write through a stale session.
  */
 import { describe, expect, it, vi } from 'vitest';
-import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core';
-import type { SceneEntity, SceneLightEntity, Vec3 } from '@portfolio/project-model';
+import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core/wall';
+import type { SceneEntity, SceneLightEntity, Vec3 } from '@portfolio/project-model/scene';
 import { rotationForLightDirection } from '$lib/authoring/look/light-aim';
 import { LIGHT_GUIDE_MAX_ANGLE } from '$lib/authoring/look/light-presentation';
 import { acceptFormCommand } from '$lib/authoring/adapters/scene/form-card-command';

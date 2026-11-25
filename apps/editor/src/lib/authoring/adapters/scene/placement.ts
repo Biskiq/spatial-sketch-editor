@@ -40,14 +40,15 @@ import {
 	type SceneOperationResult,
 	type SceneSupportChoice
 } from '@portfolio/project-model/scene-planning';
-import type { AuthoringIntent, SceneEntity, SceneFormSource, Vec3 } from '@portfolio/project-model';
+import type { AuthoringIntent } from '@portfolio/project-model/f4';
+import type { SceneEntity, SceneFormSource, Vec3 } from '@portfolio/project-model/scene';
 import type { FormLibraryPayload } from '@portfolio/project-model/library';
 import type {
 	CameraFreeSceneDocument,
 	LayoutUnitPayload,
 } from '@portfolio/project-model/units';
-import type { FrameReference, SemanticReference } from '@portfolio/project-model';
-import type { ViewportEvaluation } from '@portfolio/camera-core';
+import type { FrameReference, SemanticReference } from '@portfolio/project-model/references';
+import type { ViewportEvaluation } from '@portfolio/camera-core/viewport';
 import { evaluateFormMesh } from '$lib/content/form-evaluation';
 import type { GestureAcquisition } from '$lib/authoring/stage/stage-adapter-host';
 import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';

@@ -1,5 +1,5 @@
 /** Rebuild a Preview playhead through the Experience reducer; Camera keeps timing and sampling. */
-import type { GuideTimeCursor, GuideTimeMap, GuideTimeSegment } from '@portfolio/camera-core';
+import type { GuideTimeCursor, GuideTimeMap, GuideTimeSegment } from '@portfolio/camera-core/navigation';
 import {
 	createExperienceRun, reduceExperience,
 	type ExecutionProgram, type ExperienceInterpreterOptions

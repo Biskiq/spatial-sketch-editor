@@ -22,25 +22,12 @@
 import { tagRenderIdentity } from '$lib/render/render-identity';
 import { describe, expect, it } from 'vitest';
 import { BoxGeometry, Group, Layers, Mesh, MeshBasicMaterial, PerspectiveCamera, Scene } from 'three';
-import {
-	createViewportCameraState,
-	evaluateViewport,
-	pointerRay,
-	projectWorld,
-	type ViewportEvaluation
-} from '@portfolio/camera-core';
-import {
-	compileWallFirstLayoutGeometry,
-	createEmptyWallFirstLayoutDocument,
-	evaluateLayoutPlan,
-	eligiblePlanFragments,
-	planWallChain,
-	type CompiledLayoutGeometry,
-	type LayoutVec2,
-	type PlanEvaluation
-} from '@portfolio/layout-core';
-import type { RuntimeScene } from '@portfolio/project-model';
-import type { SceneDocument, SceneEntity } from '$lib/content/scene';
+import { createViewportCameraState, evaluateViewport, pointerRay, projectWorld, type ViewportEvaluation } from '@portfolio/camera-core/viewport';
+import { compileWallFirstLayoutGeometry, type CompiledLayoutGeometry, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core/wall';
+import { evaluateLayoutPlan, eligiblePlanFragments, type PlanEvaluation } from '@portfolio/layout-core/world';
+import type { RuntimeScene } from '@portfolio/project-model/scene';
+import type { SceneDocument, SceneEntity } from '@portfolio/project-model/scene';
 import { createPlanPickProvider } from '$lib/authoring/layout/plan-pick-provider';
 import { planSceneFootprintsFor } from '$lib/authoring/scene/plan-scene-footprint';
 import { pickPlanSceneSubject } from '$lib/authoring/scene/plan-scene-hit';

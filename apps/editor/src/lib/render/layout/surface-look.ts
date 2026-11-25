@@ -1,4 +1,4 @@
-import type { LayoutSurfaceRef } from '@portfolio/layout-core';
+import type { LayoutSurfaceRef } from '@portfolio/layout-core/plan';
 import type { SceneTextureSpec } from '$lib/render/resources/scene-render-item';
 import type { StandardMaterialDescriptor } from '$lib/render/resources/material-descriptor';
 

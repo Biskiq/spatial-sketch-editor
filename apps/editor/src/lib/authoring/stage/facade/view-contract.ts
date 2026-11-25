@@ -1,6 +1,7 @@
-import type { InspectionPose, PointerRay, PointerRayResult, ProjectWorldResult, Vec3, ViewingIntent, ViewportEvaluation, WorkingPlane, WorkingPlaneHit } from '@portfolio/camera-core';
-import type { PlanEvaluationResult, PlanFragment } from '@portfolio/layout-core';
-import type { CameraOutputClaim, CameraOutputDecision, CameraOutputPolicy, CameraOutputTicket } from '@portfolio/project-model';
+import type { InspectionPose, PointerRay, PointerRayResult, ProjectWorldResult, ViewingIntent, ViewportEvaluation, WorkingPlane, WorkingPlaneHit } from '@portfolio/camera-core/viewport';
+import type { Vec3 } from '@portfolio/camera-core/camera';
+import type { PlanEvaluationResult, PlanFragment } from '@portfolio/layout-core/world';
+import type { CameraOutputClaim, CameraOutputDecision, CameraOutputPolicy, CameraOutputTicket } from '@portfolio/project-model/channels';
 import type { StageReadSnapshot } from '../accepted-read';
 import type { CameraSession } from '../camera-session';
 import type { PlanParameterOverrides } from '../plan-parameters';

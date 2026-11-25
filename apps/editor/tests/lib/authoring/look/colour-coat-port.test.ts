@@ -4,8 +4,9 @@
  * `isAlready` writes nothing, and a model's own materials are skipped by name.
  */
 import { describe, expect, it } from 'vitest';
-import type { SceneEntity } from '@portfolio/project-model';
-import { createEmptyWallFirstLayoutDocument, type LayoutSurfaceRef } from '@portfolio/layout-core';
+import type { SceneEntity } from '@portfolio/project-model/scene';
+import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core/wall';
+import type { LayoutSurfaceRef } from '@portfolio/layout-core/plan';
 import { SCENE_UNIT_FORMAT_VERSION, type ScenePaletteSlot } from '@portfolio/project-model/units';
 import { createFinishPlanners } from '@portfolio/project-model/scene-planning';
 import { createColourCoatPort } from '$lib/authoring/look/colour-coat-port';

@@ -10,12 +10,8 @@
  * running it while Lift is on with Everything narrows to this Space.
  */
 import { afterEach, describe, expect, it } from 'vitest';
-import {
-	createEmptyWallFirstLayoutDocument,
-	resolveLayoutSurface,
-	planWallChain,
-	type LayoutDocumentWallFirst
-} from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument, planWallChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import { resolveLayoutSurface } from '@portfolio/layout-core/plan';
 import {
 	SCENE_UNIT_FORMAT_VERSION,
 	type CameraFreeSceneDocument,

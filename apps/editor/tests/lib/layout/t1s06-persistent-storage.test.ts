@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { PersistentMap, PersistentVector } from '../../../../../packages/layout-core/src/persistent-store';
-import { freezeF4Data, immutableF4Data } from '@portfolio/project-model';
+import { freezeF4Data, immutableF4Data } from '@portfolio/project-model/f4';
 import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from './__fixtures__/layout-scale-fixtures';
-import { setWorkObserver, cowCreateObject, cowSetWallScalar, recordPreparedCowCandidate, consumePreparedCowCandidate, rememberImmutableJsonNode, createLayoutCompileSession, withLayoutCompileSession, planRigidWallMove, linkClonedCowCandidate } from '@portfolio/layout-core';
+import { setWorkObserver, rememberImmutableJsonNode } from '@portfolio/layout-core/kernel';
+import { cowCreateObject, cowSetWallScalar, recordPreparedCowCandidate, consumePreparedCowCandidate, linkClonedCowCandidate } from '@portfolio/layout-core/world';
+import { createLayoutCompileSession, withLayoutCompileSession } from '@portfolio/layout-core/geometry';
+import { planRigidWallMove } from '@portfolio/layout-core/wall';
 
 function counted<T>(run: () => T) {
  const counts = new Map<string, number>();

@@ -1,21 +1,7 @@
-import {
-	createSpaceCreationOutlineQuery,
-	findSpaceCreationReturn,
-	mintLayoutIdCapture,
-	planCreateOpenSpace,
-	spaceCreationAnchorKey,
-	spaceCreationAnchorPoint,
-	spaceCreationWallChoices,
-	spaceOutlineSignedArea,
-	type LayoutIdCapture,
-	type LayoutVec2,
-	type PlannedSpaceCreation,
-	type SpaceCreationAnchor,
-	type SpaceCreationCycle,
-	type SpaceCreationEvidence,
-	type SpaceCreationSpan
-} from '@portfolio/layout-core';
-import type { AuthoringIntent } from '@portfolio/project-model';
+import { createSpaceCreationOutlineQuery, findSpaceCreationReturn, planCreateOpenSpace, spaceCreationAnchorKey, spaceCreationAnchorPoint, spaceCreationWallChoices, spaceOutlineSignedArea, type PlannedSpaceCreation, type SpaceCreationAnchor, type SpaceCreationCycle, type SpaceCreationEvidence, type SpaceCreationSpan } from '@portfolio/layout-core/room';
+import { mintLayoutIdCapture, type LayoutIdCapture } from '@portfolio/layout-core/plan';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
+import type { AuthoringIntent } from '@portfolio/project-model/f4';
 import {
 	isStageDrag,
 	sameSubject,

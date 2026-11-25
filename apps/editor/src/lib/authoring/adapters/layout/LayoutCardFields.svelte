@@ -15,7 +15,7 @@
 	 * the DOM never turns an empty field into zero.
 	 */
 	import { onDestroy, untrack, type Snippet } from 'svelte';
-	import type { FixedWallEndpoint } from '@portfolio/layout-core';
+	import type { FixedWallEndpoint } from '@portfolio/layout-core/wall';
 	import { compactMeasure, indexLabels, stageLayout } from '$lib/authoring/stage/stage-adapter-host';
 	import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 	import type { LayoutFieldState, LayoutInstrument } from './instrument';

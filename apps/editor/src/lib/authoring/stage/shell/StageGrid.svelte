@@ -13,7 +13,7 @@
 	import { untrack } from 'svelte';
 	import { T, useThrelte } from '@threlte/core';
 	import { Group } from 'three';
-	import type { ViewportEvaluation } from '@portfolio/camera-core';
+	import type { ViewportEvaluation } from '@portfolio/camera-core/viewport';
 	import { gridPlanFor, type GridRect } from '../stage-grid';
 	import { createGridScene, type GridSceneResources } from './stage-grid-scene';
 

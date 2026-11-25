@@ -6,7 +6,7 @@
  * monolithic adapter; the Light planners remain the only authority on what a
  * result means.
  */
-import type { Vec3 } from '@portfolio/project-model';
+import type { Vec3 } from '@portfolio/project-model/scene';
 
 /** A ray as the Stage host publishes it. */
 export type LightRay = { readonly origin: Vec3; readonly direction: Vec3 };

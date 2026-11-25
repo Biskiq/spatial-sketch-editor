@@ -1,18 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-	planDeleteLayoutObject,
-	planExactJunctionMove,
-	planExactLayoutObjectTransform,
-	planExactRectangleDimensions,
-	planExactWallAngle,
-	planExactWallLength,
-	planExactWallThickness,
-	planWallSubdivision,
-	resolveRectangle,
-	LAYOUT_WALL_FIRST_FORMAT_VERSION,
-	type LayoutDocumentWallFirst,
-	type NodingIdAllocator
-} from '@portfolio/layout-core';
+import { planDeleteLayoutObject, planExactJunctionMove, planExactLayoutObjectTransform, planExactRectangleDimensions, planExactWallAngle, planExactWallLength, planExactWallThickness, planWallSubdivision, resolveRectangle, LAYOUT_WALL_FIRST_FORMAT_VERSION, type LayoutDocumentWallFirst, type NodingIdAllocator } from '@portfolio/layout-core/wall';
 
 function squareDocument(): LayoutDocumentWallFirst {
 	return {

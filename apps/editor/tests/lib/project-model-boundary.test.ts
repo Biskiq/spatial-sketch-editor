@@ -2,11 +2,11 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import * as projectModel from '@portfolio/project-model';
-import { derivePackageId, sha256Bytes } from '@portfolio/project-model';
+import * as packageModel from '@portfolio/project-model/package';
+import { derivePackageId, sha256Bytes } from '@portfolio/project-model/package';
 import * as units from '@portfolio/project-model/units';
 import * as materials from '@portfolio/project-model/materials';
-import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core/wall';
 
 const testDir = dirname(fileURLToPath(import.meta.url));
 const packageSrc = resolve(testDir, '../../../../packages/project-model/src');
@@ -32,13 +32,21 @@ describe('[cap:project.envelope core] project-model package boundary', () => {
 		expect(await derivePackageId([])).toMatch(/^package-[0-9a-f]{12}$/);
 	});
 
+	it('has no package root barrel', () => {
+		const manifest = JSON.parse(readFileSync(resolve(packageSrc, '../package.json'), 'utf8')) as {
+			exports: Record<string, unknown>;
+		};
+		expect(existsSync(resolve(packageSrc, 'index.ts'))).toBe(false);
+		expect(manifest.exports['.']).toBeUndefined();
+	});
+
 	it('keeps the live F.2 source on the explicit units subpath, never the root barrel', async () => {
 		// T3.P01.S04 retired the current-source reader, so the root barrel has no
 		// project validator and no unit-envelope constructors. The one live source
 		// entry is `@portfolio/project-model/units`.
-		expect('validateProject' in projectModel).toBe(false);
-		expect('validateProjectEnvelope' in projectModel).toBe(false);
-		expect('createUnitProject' in projectModel).toBe(false);
+		expect('validateProject' in packageModel).toBe(false);
+		expect('validateProjectEnvelope' in packageModel).toBe(false);
+		expect('createUnitProject' in packageModel).toBe(false);
 		expect(typeof units.validateProjectEnvelope).toBe('function');
 		expect(typeof units.prepareUnitRuntime).toBe('function');
 

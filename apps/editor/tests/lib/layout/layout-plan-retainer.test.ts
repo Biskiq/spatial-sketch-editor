@@ -20,23 +20,9 @@
  * projection preserves that order.
  */
 import { describe, expect, it } from 'vitest';
-import {
-	compileWallFirstLayoutGeometry,
-	createPlanRetainer,
-	eligiblePlanFragments,
-	evaluateLayoutPlan,
-	LAYOUT_WALL_FIRST_FORMAT_VERSION,
-	planFragmentOf,
-	WALL_AUTHORING_DEFAULT_HEIGHT,
-	type CompiledLayoutGeometry,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type PlanEvaluation,
-	type PlanEvaluationResult,
-	type PlanFragment,
-	type PlanParameters,
-	type PlanSourceContext
-} from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry, type CompiledLayoutGeometry, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { createPlanRetainer, eligiblePlanFragments, evaluateLayoutPlan, planFragmentOf, type PlanEvaluation, type PlanEvaluationResult, type PlanFragment, type PlanParameters, type PlanSourceContext } from '@portfolio/layout-core/world';
+import { LAYOUT_WALL_FIRST_FORMAT_VERSION, WALL_AUTHORING_DEFAULT_HEIGHT, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 
 /* ------------------------------------------------------------------ fixtures */
 

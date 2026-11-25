@@ -8,7 +8,7 @@
  * opens a lease, holds a gesture or edits the Scene itself, so a command cannot
  * strand a capture. The recipes themselves stay in `look/light-recipes`.
  */
-import type { SceneEntity } from '@portfolio/project-model';
+import type { SceneEntity } from '@portfolio/project-model/scene';
 import type {
 	StageAdapterBinding,
 	StageAdapterServices,

@@ -10,36 +10,11 @@
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 
-import {
-	LAYOUT_WALL_FIRST_FORMAT_VERSION,
-	compileWallFirstLayoutGeometry,
-	composeSpaceBoundary,
-	cowMoveJunctions,
-	createEmptyWallFirstLayoutDocument,
-	ensureLayoutWorldIndex,
-	findPolygonContaining,
-	findSpaceCreationOutline,
-	hasBlockingLayoutIssues,
-	isOpenSpace,
-	mintLayoutIdCapture,
-	parseWallFirstLayoutDocumentJson,
-	planCreateCircularRoom,
-	planCreateOpenSpace,
-	planWallChain,
-	polygonContainsPolygon,
-	roomBoundaryPolygon,
-	serializeWallFirstLayoutDocument,
-	spaceAtPoint,
-	spaceBoundaryCycleKey,
-	spaceBoundaryPolygonFromEdges,
-	spaceOpenSideCount,
-	spaceOutlineSelfIntersects,
-	spaceOutlineSignedArea,
-	spacePlacementIssues,
-	validateWallFirstLayoutDocument,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2
-} from '@portfolio/layout-core';
+import { LAYOUT_WALL_FIRST_FORMAT_VERSION, createEmptyWallFirstLayoutDocument, parseWallFirstLayoutDocumentJson, planWallChain, serializeWallFirstLayoutDocument, validateWallFirstLayoutDocument, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import { compileWallFirstLayoutGeometry, findPolygonContaining, hasBlockingLayoutIssues, spaceAtPoint, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { composeSpaceBoundary, findSpaceCreationOutline, isOpenSpace, planCreateCircularRoom, planCreateOpenSpace, polygonContainsPolygon, roomBoundaryPolygon, spaceBoundaryCycleKey, spaceBoundaryPolygonFromEdges, spaceOpenSideCount, spaceOutlineSelfIntersects, spaceOutlineSignedArea, spacePlacementIssues } from '@portfolio/layout-core/room';
+import { cowMoveJunctions, ensureLayoutWorldIndex } from '@portfolio/layout-core/world';
+import { mintLayoutIdCapture } from '@portfolio/layout-core/plan';
 import {
 	LAYOUT_UNIT_FORMAT_VERSION,
 	validateLayoutPayload,

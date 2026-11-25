@@ -9,7 +9,7 @@
 	 */
 	import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
 	import { snapWallUnfoldAmount } from '$lib/layout/wall-unfold';
-	import type { CompiledPhysicalWall } from '@portfolio/layout-core';
+	import type { CompiledPhysicalWall } from '@portfolio/layout-core/geometry';
 
 	let {
 		wall,

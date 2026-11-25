@@ -10,18 +10,9 @@
  */
 
 import { expect } from 'vitest';
-import {
-	buildCorrespondenceComponents,
-	createEmptyWallFirstLayoutDocument,
-	extractBoundaryCandidateFaces,
-	interiorWitness,
-	JUNCTION_COINCIDENCE_EPSILON,
-	planWallChain,
-	planWallSegment,
-	roomBoundaryPolygon,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2
-} from '@portfolio/layout-core';
+import { buildCorrespondenceComponents, interiorWitness, roomBoundaryPolygon } from '@portfolio/layout-core/room';
+import { createEmptyWallFirstLayoutDocument, JUNCTION_COINCIDENCE_EPSILON, planWallChain, planWallSegment, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import { extractBoundaryCandidateFaces, type LayoutVec2 } from '@portfolio/layout-core/geometry';
 import { freshCapture } from '../lib/layout/__fixtures__/layout-id-capture';
 
 /**

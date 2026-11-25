@@ -20,7 +20,7 @@ import { spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { availableParallelism } from 'node:os';
 
-import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core/geometry';
 import { serializeProjectEnvelope, type ProjectEnvelope } from '@portfolio/project-model/units';
 
 import { admitSourceJson } from '$lib/authoring/stage/source-admission';

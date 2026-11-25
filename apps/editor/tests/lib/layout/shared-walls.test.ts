@@ -1,11 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from './__fixtures__/layout-scale-fixtures';
-import { sampleSegment, wallCenterlineSegment } from '@portfolio/layout-core';
-import type {
-	LayoutDocumentWallFirst,
-	LayoutVec2,
-	SampleableSegment
-} from '@portfolio/layout-core';
+import { sampleSegment } from '@portfolio/layout-core/geometry';
+import { wallCenterlineSegment } from '@portfolio/layout-core/wall';
+import type { LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import type { LayoutVec2, SampleableSegment } from '@portfolio/layout-core/geometry';
 
 /**
  * Deterministic guard for the "no coincident Walls" claim.

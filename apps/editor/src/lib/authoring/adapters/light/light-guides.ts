@@ -6,7 +6,7 @@
  * opens a lease, reads the gesture or writes. The Light planners stay the only
  * authority on what a guide means.
  */
-import type { Vec3 } from '@portfolio/project-model';
+import type { Vec3 } from '@portfolio/project-model/scene';
 import type { StageAdapterContext } from '$lib/authoring/stage/stage-adapter-host';
 import { lightForward } from '../../look/light-aim';
 import {

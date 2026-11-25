@@ -1,22 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { P2311_FIXTURES, p2311Fixture } from './__fixtures__/p2311-bend-fixtures';
-import {
-	compileWallFirstLayoutGeometry,
-	dedupeWallSpans,
-	geometryId,
-	pickSnapWinner,
-	resolveLayoutSnap,
-	snapOwnerKey,
-	spanSnapCandidates,
-	type CompiledLayoutGeometry,
-	type CompiledQuerySpan,
-	type LayoutVec2,
-	type MergedWallSpan,
-	type SnapFeatureKind,
-	type SnapInputContext,
-	type SnapQueryContext,
-	wallSnapIndex
-} from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry, geometryId, type CompiledLayoutGeometry, type CompiledQuerySpan, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { dedupeWallSpans, pickSnapWinner, resolveLayoutSnap, snapOwnerKey, spanSnapCandidates, type MergedWallSpan, type SnapFeatureKind, type SnapInputContext, type SnapQueryContext, wallSnapIndex } from '@portfolio/layout-core/plan';
 
 /**
  * P23.11 live Snap gate — the Wall extent merge was made O(k) and memoized per

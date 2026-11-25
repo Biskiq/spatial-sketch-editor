@@ -20,14 +20,11 @@
  * replacement (an empty boot, a create-only entry, or the creator-confirmed
  * replacement guard).
  */
-import {
-	createEmptyWallFirstLayoutDocument,
-	planWallChain,
-	type LayoutDocumentWallFirst,
-	type LayoutIdCapture,
-	type LayoutVec2
-} from '@portfolio/layout-core';
-import type { AcceptedRevision, ScenePaletteSlot } from '@portfolio/project-model';
+import { createEmptyWallFirstLayoutDocument, planWallChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import type { LayoutIdCapture } from '@portfolio/layout-core/plan';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
+import type { AcceptedRevision } from '@portfolio/project-model/references';
+import type { ScenePaletteSlot } from '@portfolio/project-model/scene';
 import {
 	createEmptyUnitEnvelope,
 	createEmptyUnitSceneDocument,

@@ -21,13 +21,7 @@
  *
  * Pure: no editor state, no renderer, no writes, no editor import.
  */
-import {
-	buildGuideTimeMap,
-	type CameraGraph,
-	type GuideTimeInvocation,
-	type GuideTimeMapResult,
-	type GuideTimeOccurrenceInput
-} from '@portfolio/camera-core';
+import { buildGuideTimeMap, type CameraGraph, type GuideTimeInvocation, type GuideTimeMapResult, type GuideTimeOccurrenceInput } from '@portfolio/camera-core/navigation';
 import type {
 	ExecutionProgram,
 	ExperienceProgramTransition,

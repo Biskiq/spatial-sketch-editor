@@ -19,17 +19,8 @@
  * planner owns no history.
  */
 import { describe, expect, it } from 'vitest';
-import {
-	planDissolveJunction as planDissolveJunctionWithCapture,
-	planWallSplit,
-	validateWallFirstLayoutDocument,
-	LAYOUT_WALL_FIRST_FORMAT_VERSION,
-	type DissolvePlan,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type LayoutWall,
-	type NodingIdAllocator
-} from '@portfolio/layout-core';
+import { planDissolveJunction as planDissolveJunctionWithCapture, planWallSplit, validateWallFirstLayoutDocument, LAYOUT_WALL_FIRST_FORMAT_VERSION, type DissolvePlan, type LayoutDocumentWallFirst, type LayoutWall, type NodingIdAllocator } from '@portfolio/layout-core/wall';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import { freshCapture } from './__fixtures__/layout-id-capture';
 
 /** One captured dissolve operation: every call is a new edit with a new nonce. */

@@ -17,8 +17,9 @@
 
 import { datumWorkingPlane, isStageDrag } from '$lib/authoring/stage/stage-adapter-host';
 import type { StageAdapterContext } from '$lib/authoring/stage/stage-adapter-host';
-import { DATUM_SUPPORT_ORDER_KEY, type CompiledLayoutGeometry } from '@portfolio/layout-core';
-import type { Vec3 } from '@portfolio/project-model';
+import { DATUM_SUPPORT_ORDER_KEY } from '@portfolio/layout-core/room';
+import type { CompiledLayoutGeometry } from '@portfolio/layout-core/geometry';
+import type { Vec3 } from '@portfolio/project-model/scene';
 import {
 	resolveSceneSupportOnGeometry,
 	sceneSupportGenerationId,

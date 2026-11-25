@@ -332,7 +332,7 @@ function assetIdForFinishRole(
 }
 
 /** Decode the canonical Layout surface key used in Finish issue targets. */
-export function repairSurfaceRef(targetKey: string): import('@portfolio/layout-core').LayoutSurfaceRef | null {
+export function repairSurfaceRef(targetKey: string): import('@portfolio/layout-core/plan').LayoutSurfaceRef | null {
 	if (!targetKey.startsWith('surface:')) return null;
 	try {
 		const parts: unknown = JSON.parse(targetKey.slice('surface:'.length));

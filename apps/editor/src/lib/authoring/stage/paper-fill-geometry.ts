@@ -5,7 +5,7 @@
  * be tinted twice. */
 import { Path, Shape, ShapeGeometry, type BufferGeometry } from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import type { LayoutVec2 } from '@portfolio/layout-core';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import { unionOutline } from './paper-plan';
 
 /** The only parts of a Paper fill the renderer reads; identity stays with the caller. */

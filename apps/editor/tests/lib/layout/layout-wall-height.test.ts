@@ -29,25 +29,12 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import * as layoutCore from '@portfolio/layout-core';
+import * as layoutCore from '@portfolio/layout-core/wall';
+import { createEmptyWallFirstLayoutDocument, KNOWN_LAYOUT_FORMAT_VERSIONS } from '@portfolio/layout-core/wall';
 import { freshCapture } from './__fixtures__/layout-id-capture';
-import {
-	compileWallFirstLayoutGeometry,
-	deriveLayoutWallRole,
-	LAYOUT_WALL_FIRST_FORMAT_VERSION,
-	planDuplicateIsolatedRoom,
-	planExactWallHeight,
-	planWallChain,
-	planWallSegment,
-	planWallSubdivision,
-	serializeWallFirstLayoutDocument,
-	validateWallFirstLayoutDocument,
-	validateWallFirstWallHeights,
-	wallFirstCanonicalFormatVersionIssue,
-	WALL_AUTHORING_DEFAULT_HEIGHT,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2
-} from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { deriveLayoutWallRole, LAYOUT_WALL_FIRST_FORMAT_VERSION, planExactWallHeight, planWallChain, planWallSegment, planWallSubdivision, serializeWallFirstLayoutDocument, validateWallFirstLayoutDocument, validateWallFirstWallHeights, wallFirstCanonicalFormatVersionIssue, WALL_AUTHORING_DEFAULT_HEIGHT, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import { planDuplicateIsolatedRoom } from '@portfolio/layout-core/plan';
 
 /** Deterministic noding allocator (test-local; mirrors the editor's shape). */
 const testAllocator = {
@@ -342,7 +329,7 @@ describe('P23.6I pre-baseline policy — the wall-first `4` generation is not mi
 		expect(current.issues.map((issue) => issue.code)).toContain('unknown_key');
 		expect(current.issues.map((issue) => issue.path)).toContain('$.floor.height');
 		// The fixture every writer emits is the same shape.
-		expect('height' in layoutCore.createEmptyWallFirstLayoutDocument().floor).toBe(false);
+		expect('height' in createEmptyWallFirstLayoutDocument().floor).toBe(false);
 	});
 
 	it('rejects a Wall that still carries the retired authored role', () => {
@@ -373,7 +360,7 @@ describe('P23.6I pre-baseline policy — the wall-first `4` generation is not mi
 		const exported = Object.keys(layoutCore);
 		expect(exported).not.toContain('normalizePreHWallFirstLayoutV4');
 		expect(exported).not.toContain('LAYOUT_PRE_AUTHORITATIVE_WALL_HEIGHT_FORMAT_VERSION');
-		expect(layoutCore.KNOWN_LAYOUT_FORMAT_VERSIONS).toEqual([LAYOUT_WALL_FIRST_FORMAT_VERSION]);
+		expect(KNOWN_LAYOUT_FORMAT_VERSIONS).toEqual([LAYOUT_WALL_FIRST_FORMAT_VERSION]);
 	});
 
 	it('canonical writers reject a format-4 payload fail-closed', () => {

@@ -1,4 +1,4 @@
-import type { ViewportRect } from '@portfolio/camera-core';
+import type { ViewportRect } from '@portfolio/camera-core/viewport';
 import { wallFace, type WallFaceFit } from '../../layout/wall-face-store';
 import { faceBoundsOf, faceScreenAxes, planFitBoundsOf, planScreenAxes, type regionFraming } from '../../look/align-chart';
 import type { StageFacade } from '../stage-facade';

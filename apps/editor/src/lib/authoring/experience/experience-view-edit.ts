@@ -1,5 +1,6 @@
 /** Pure Camera View edit candidates for the Stage gesture and the Card. */
-import { CAMERA_FOV, VIEWPORT_ELEVATION_LIMIT_RADIANS, type Vec3 } from '@portfolio/camera-core';
+import { CAMERA_FOV, type Vec3 } from '@portfolio/camera-core/camera';
+import { VIEWPORT_ELEVATION_LIMIT_RADIANS } from '@portfolio/camera-core/viewport';
 import { EYE_HEIGHT_STEPS, LENS_STEPS } from './look-through';
 
 export type AuthoredViewPose = {

@@ -25,7 +25,7 @@
  * rebuilding the Scene.
  */
 import { Texture as ThreeTextureClass, TextureLoader, type Texture as ThreeTexture } from 'three';
-import { probeArtworkImage } from '@portfolio/project-model';
+import { probeArtworkImage } from '@portfolio/project-model/artwork';
 import {
 	invalidateScopedMaterialLoads,
 	invalidateTextureSource,

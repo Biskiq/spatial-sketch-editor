@@ -1,5 +1,5 @@
 import type { SubjectScope } from '../subject-scope';
-import { intersectWorkingPlane, pointerRay, projectWorld, type ViewportEvaluation } from '@portfolio/camera-core';
+import { intersectWorkingPlane, pointerRay, projectWorld, type ViewportEvaluation } from '@portfolio/camera-core/viewport';
 import type { StageReadSnapshot } from '../accepted-read';
 import { EMPTY_SELECTION } from '../semantic-selection';
 import { STAGE_DRAFTING_DEFAULTS } from '../stage-drafting';

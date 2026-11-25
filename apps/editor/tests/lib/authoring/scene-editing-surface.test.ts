@@ -20,20 +20,12 @@ import { createScenePickSource } from '$lib/authoring/scene/scene-pick-source';
 import { evaluateFormMesh } from '$lib/content/form-evaluation';
 import { buildFormGeometry } from '$lib/render/entities/form-geometry';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-	type AuthoringIntent,
-	type SceneDocument,
-	type SceneEntity,
-	type ScenePrimitiveEntity,
-	type Vec3
-} from '@portfolio/project-model';
+import type { AuthoringIntent } from '@portfolio/project-model/f4';
+import type { SceneDocument, SceneEntity, ScenePrimitiveEntity, Vec3 } from '@portfolio/project-model/scene';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
-import {
-	createEmptyWallFirstLayoutDocument,
-	planCreateRegion,
-	planWallChain
-} from '@portfolio/layout-core';
-import type { ViewportEvaluation } from '@portfolio/camera-core';
+import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core/wall';
+import { planCreateRegion } from '@portfolio/layout-core/room';
+import type { ViewportEvaluation } from '@portfolio/camera-core/viewport';
 
 import {
 	createSceneSession,

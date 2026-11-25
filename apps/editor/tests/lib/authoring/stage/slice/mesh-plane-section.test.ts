@@ -20,14 +20,9 @@
  * not a restatement of the builder.
  */
 import { describe, expect, it } from 'vitest';
-import { deriveChainSpans } from '@portfolio/layout-core';
-import {
-	compileWallFirstLayoutGeometry,
-	legJoinsByWall,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type LayoutWall
-} from '@portfolio/layout-core';
+import { deriveChainSpans } from '@portfolio/layout-core/geometry';
+import { compileWallFirstLayoutGeometry, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { legJoinsByWall, type LayoutDocumentWallFirst, type LayoutWall } from '@portfolio/layout-core/wall';
 import { buildStandaloneWallMesh, type WallMeshOptions } from '$lib/layout/wall-mesh-builder';
 import {
 	sectionMeshes,

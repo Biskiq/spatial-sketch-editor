@@ -6,7 +6,7 @@
  * type-only, dynamic and CSS imports — plus the repo's own aliases:
  *
  *   `$lib/…`                     → `apps/editor/src/lib/…`
- *   `@portfolio/<pkg>`           → `packages/<pkg>/src/index.ts`
+ *   `@portfolio/<pkg>/<family>`  → the family entry in the package's `exports`
  *
  * Bare package specifiers (`three`, `svelte`, `@threlte/…`, `$app/…`, …) are
  * externals and never enter the closure, which is what makes the closure a
@@ -113,8 +113,16 @@ export function resolveSpecifier(
 		return resolveFile(path.resolve(path.dirname(importer), target));
 	}
 	if (target.startsWith('@portfolio/')) {
-		const packageName = target.slice('@portfolio/'.length).split('/')[0] ?? '';
-		return resolveFile(path.join(packagesRoot, packageName, 'src/index.ts'));
+		const rest = target.slice('@portfolio/'.length);
+		const slash = rest.indexOf('/');
+		const packageName = slash === -1 ? rest : rest.slice(0, slash);
+		const subpath = slash === -1 ? '.' : `./${rest.slice(slash + 1)}`;
+		const manifest = JSON.parse(fs.readFileSync(path.join(packagesRoot, packageName, 'package.json'), 'utf8')) as {
+			exports?: Record<string, string | { types?: string; default?: string }>;
+		};
+		const entry = manifest.exports?.[subpath];
+		const relative = typeof entry === 'string' ? entry : entry?.types ?? entry?.default;
+		return relative ? resolveFile(path.join(packagesRoot, packageName, relative)) : null;
 	}
 	return null;
 }

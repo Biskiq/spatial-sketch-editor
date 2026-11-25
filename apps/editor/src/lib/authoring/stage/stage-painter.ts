@@ -28,7 +28,7 @@
  * controller only translates a press.
  */
 import type { StageFacade, StageSourceHit } from './stage-facade';
-import { surfaceKey, type LayoutSurfaceRef, type SpaceSurfaceExclusion } from '@portfolio/layout-core';
+import { surfaceKey, type LayoutSurfaceRef, type SpaceSurfaceExclusion } from '@portfolio/layout-core/plan';
 import type { StagePaintSpaceScope } from './stage-facade';
 import type { GestureAcquisition } from './stage-session';
 import type { PaintRadius } from '../look/paint-pick';

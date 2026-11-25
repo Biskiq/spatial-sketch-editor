@@ -33,7 +33,7 @@
 import { NoToneMapping, SRGBColorSpace, WebGLCoordinateSystem, WebGPUCoordinateSystem } from 'three';
 import type { Camera, Matrix4, WebGPURenderer } from 'three/webgpu';
 import { WebGPURenderer as ThreeWebGPURenderer } from 'three/webgpu';
-import { countWork } from '@portfolio/layout-core';
+import { countWork } from '@portfolio/layout-core/kernel';
 import { perfRenderer } from '$lib/platform/perf-marks';
 
 /** An observed, initialized backend. */

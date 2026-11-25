@@ -1,4 +1,5 @@
-import type { CompiledRegion, LayoutRegionSurfaceRef } from '@portfolio/layout-core';
+import type { CompiledRegion } from '@portfolio/layout-core/geometry';
+import type { LayoutRegionSurfaceRef } from '@portfolio/layout-core/plan';
 import { BufferGeometry, Float32BufferAttribute, ShapeUtils, Vector2 } from 'three';
 
 type RegionSurface = LayoutRegionSurfaceRef['face'];

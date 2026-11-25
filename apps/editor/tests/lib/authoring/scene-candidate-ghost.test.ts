@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { SceneEntity } from '@portfolio/project-model';
+import type { SceneEntity } from '@portfolio/project-model/scene';
 import { candidateGhost } from '$lib/authoring/adapters/scene/candidate-ghost';
 import type { SceneCandidate } from '$lib/authoring/adapters/scene/placement';
 

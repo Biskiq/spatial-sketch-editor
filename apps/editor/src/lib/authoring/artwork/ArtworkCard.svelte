@@ -1,10 +1,7 @@
 <script lang="ts">
 	import { onMount, type Snippet } from 'svelte';
-	import {
-		ARTWORK_FRAME_COLORS, ARTWORK_FRAME_OPTIONS, ARTWORK_MAT_METERS,
-		artworkFrameColorLabel, artworkFrameLayout, artworkFrameStyleLabel,
-		artworkHeight, type ArtworkFrame, type ArtworkFrameStyle, type SceneArtworkEntity
-	} from '@portfolio/project-model';
+	import { ARTWORK_FRAME_COLORS, ARTWORK_FRAME_OPTIONS, ARTWORK_MAT_METERS, artworkFrameColorLabel, artworkFrameLayout, artworkFrameStyleLabel, artworkHeight, type ArtworkFrame, type ArtworkFrameStyle } from '@portfolio/project-model/artwork';
+	import type { SceneArtworkEntity } from '@portfolio/project-model/scene';
 	import { ARTWORK_TRANSFORM } from '@portfolio/project-model/scene-planning';
 	import { stageScene, type StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 	import type { StageCardActionRecord } from '$lib/authoring/stage/stage-facade';

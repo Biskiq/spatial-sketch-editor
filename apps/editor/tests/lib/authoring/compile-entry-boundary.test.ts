@@ -38,7 +38,7 @@ const COMPILE_FUNCTIONS = [
 ] as const;
 const RECORD_FUNCTIONS = ['recordPassiveCompiledGeometry', 'readPassiveCompiledGeometry'] as const;
 
-const LAYOUT_CORE = path.join(PACKAGES_ROOT, 'layout-core/src/index.ts');
+const LAYOUT_CORE = path.join(PACKAGES_ROOT, 'layout-core/src/geometry/index.ts');
 const AUTHORING = path.join(EDITOR_LIB, 'authoring');
 const EDITOR_SRC_ROOT = path.dirname(EDITOR_LIB);
 
@@ -156,9 +156,9 @@ function syntheticGraph(sources: Record<string, string>): Graph {
 	const files = Object.keys(sources);
 	return {
 		files,
-		origins: new Set(['@portfolio/layout-core']),
+		origins: new Set(['@portfolio/layout-core/geometry']),
 		resolve(importer, specifier) {
-			if (specifier === '@portfolio/layout-core') return specifier;
+			if (specifier === '@portfolio/layout-core/geometry') return specifier;
 			const target = path.posix.join(path.posix.dirname(importer), specifier) + '.ts';
 			return target in sources ? target : null;
 		},
@@ -194,17 +194,17 @@ describe('compile-entry-boundary', { timeout: 60_000 }, () => {
 
 	it('fails an aliased import, a local barrel, export *, a namespace and a dynamic import', () => {
 		const graph = syntheticGraph({
-			'a/alias.ts': "import { compileWallFirstLayoutGeometry as compile } from '@portfolio/layout-core';\nexport const x = compile;",
-			'a/barrel.ts': "export { createLayoutCompileSession as session } from '@portfolio/layout-core';",
+			'a/alias.ts': "import { compileWallFirstLayoutGeometry as compile } from '@portfolio/layout-core/geometry';\nexport const x = compile;",
+			'a/barrel.ts': "export { createLayoutCompileSession as session } from '@portfolio/layout-core/geometry';",
 			'a/via-barrel.ts': "import { session } from './barrel';\nsession();",
 			'a/star.ts': "export * from './barrel';",
 			'a/via-star.ts': "import { session as s } from './star';\ns();",
-			'a/local-reexport.ts': "import { withLayoutCompileSession } from '@portfolio/layout-core';\nexport { withLayoutCompileSession as bound };",
+			'a/local-reexport.ts': "import { withLayoutCompileSession } from '@portfolio/layout-core/geometry';\nexport { withLayoutCompileSession as bound };",
 			'a/via-local.ts': "import { bound } from './local-reexport';\nbound(undefined, () => 0);",
-			'a/namespace.ts': "import * as core from '@portfolio/layout-core';\ncore.evaluateLayoutPlan;",
-			'a/dynamic.ts': "export async function load() { return import('@portfolio/layout-core'); }",
-			'a/type-only.ts': "import type { compileWallFirstLayoutGeometry } from '@portfolio/layout-core';\nexport type T = typeof compileWallFirstLayoutGeometry;",
-			'a/unrelated.ts': "import { evaluateLayoutPlan } from '@portfolio/layout-core';\nevaluateLayoutPlan;"
+			'a/namespace.ts': "import * as core from '@portfolio/layout-core/geometry';\ncore.evaluateLayoutPlan;",
+			'a/dynamic.ts': "export async function load() { return import('@portfolio/layout-core/geometry'); }",
+			'a/type-only.ts': "import type { compileWallFirstLayoutGeometry } from '@portfolio/layout-core/geometry';\nexport type T = typeof compileWallFirstLayoutGeometry;",
+			'a/unrelated.ts': "import { evaluateLayoutPlan } from '@portfolio/layout-core/geometry';\nevaluateLayoutPlan;"
 		});
 		const reached = [...compileReaches(graph, () => true).keys()].sort();
 		expect(reached).toEqual([

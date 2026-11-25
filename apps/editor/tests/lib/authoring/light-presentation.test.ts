@@ -6,7 +6,7 @@
  * ring and the approved placement stand-off table.
  */
 import { describe, expect, it } from 'vitest';
-import type { Vec3 } from '@portfolio/project-model';
+import type { Vec3 } from '@portfolio/project-model/scene';
 import { rotationForLightDirection } from '$lib/authoring/look/light-aim';
 import {
 	formatDegrees,

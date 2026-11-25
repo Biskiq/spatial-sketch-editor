@@ -6,8 +6,8 @@
  * a Room floor and on the Stage datum alike.
  */
 import { afterEach, describe, expect, it } from 'vitest';
-import { createEmptyWallFirstLayoutDocument, planWallChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core';
-import type { SceneFormEntity } from '@portfolio/project-model';
+import { createEmptyWallFirstLayoutDocument, planWallChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import type { SceneFormEntity } from '@portfolio/project-model/scene';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';

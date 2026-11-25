@@ -20,17 +20,10 @@
 import { describe, expect, it } from 'vitest';
 import { cloneFixtureDocument } from '../content/__fixtures__/load-fixture-scene';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
-import {
-	FLOOR_SUPPORT_TOLERANCES,
-	createEmptyWallFirstLayoutDocument,
-	planWallChain,
-	compileWallFirstLayoutGeometry,
-	floorSupportSnapshotOf,
-	queryFloorSupports,
-	chooseFloorSupport,
-	validateDerivedSourceRef,
-	type FloorSupportCandidate
-} from '@portfolio/project-model';
+import { FLOOR_SUPPORT_TOLERANCES, floorSupportSnapshotOf, queryFloorSupports, chooseFloorSupport, type FloorSupportCandidate } from '@portfolio/layout-core/room';
+import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core/wall';
+import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core/geometry';
+import { validateDerivedSourceRef } from '@portfolio/project-model/references';
 import {
 	framePointToWorld,
 	preparePlaceObjectCandidate,

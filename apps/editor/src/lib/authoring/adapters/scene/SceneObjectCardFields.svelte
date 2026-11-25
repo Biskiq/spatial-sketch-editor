@@ -24,7 +24,7 @@
 		type SceneObjectCardFieldId
 	} from './object-marks';
 	import { stageScene } from '$lib/authoring/stage/stage-adapter-host';
-	import type { SceneEntity } from '@portfolio/project-model';
+	import type { SceneEntity } from '@portfolio/project-model/scene';
 	import FinishCardSection, { type FinishCardPart } from '$lib/authoring/look/FinishCardSection.svelte';
 
 	let {

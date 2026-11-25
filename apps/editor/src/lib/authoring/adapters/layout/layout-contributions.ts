@@ -1,23 +1,14 @@
 import { selectedRegion, selectedRoomLabel } from './layout-subjects';
 import { previewCoordinates, type SettledLayoutRefusal } from './manipulation-support';
-import { regionWallRelations } from '@portfolio/layout-core';
+import { regionWallRelations } from '@portfolio/layout-core/room';
 import { candidatePreviewOf } from './candidate-preview';
 import { restingObjectsOnFloorRegion } from './region-resting';
 import type { StageCandidatePreview } from '$lib/authoring/stage/stage-adapter-host';
 import { sizeDeltaLabel } from '$lib/authoring/stage/stage-adapter-host';
-import {
-	mintLayoutIdCapture,
-	planDeleteWallFirstOpening,
-	resolveRoomCopyEnclosure,
-	isClosedWall,
-	resolveLayoutSurface,
-	spacePaintReading,
-	wallSideAt,
-	type LayoutSurfaceRef,
-	type FixedWallEndpoint,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2
-} from '@portfolio/layout-core';
+import { mintLayoutIdCapture, resolveLayoutSurface, spacePaintReading, wallSideAt, type LayoutSurfaceRef } from '@portfolio/layout-core/plan';
+import { planDeleteWallFirstOpening, isClosedWall, type FixedWallEndpoint, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import { resolveRoomCopyEnclosure } from '@portfolio/layout-core/room';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 import {
 	type StageAdapterBinding,

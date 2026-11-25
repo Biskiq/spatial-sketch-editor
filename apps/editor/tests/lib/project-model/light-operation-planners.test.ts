@@ -16,13 +16,9 @@ import {
 	SCENE_NAME_LIMIT,
 	type SceneOperationContext
 } from '@portfolio/project-model/scene-planning';
-import {
-	type AcceptedSnapshot,
-	type AuthoringIntent,
-	type SceneEntity,
-	type SceneLightEntity,
-	type SemanticReference
-} from '@portfolio/project-model';
+import type { AcceptedSnapshot, AuthoringIntent } from '@portfolio/project-model/f4';
+import type { SceneEntity, SceneLightEntity } from '@portfolio/project-model/scene';
+import type { SemanticReference } from '@portfolio/project-model/references';
 import {
 	SCENE_UNIT_FORMAT_VERSION,
 	type CameraFreeSceneDocument,

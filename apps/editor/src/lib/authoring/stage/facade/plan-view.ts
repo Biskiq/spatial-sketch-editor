@@ -1,8 +1,6 @@
-import type { Vec3 } from '@portfolio/camera-core';
-import {
-	createPlanRetainer, eligiblePlanFragments, planDependsOnTarget, planTargetsLiveView,
-	type LayoutVec2, type PlanEvaluationResult, type PlanFragment, type PlanParameters
-} from '@portfolio/layout-core';
+import type { Vec3 } from '@portfolio/camera-core/camera';
+import { createPlanRetainer, eligiblePlanFragments, planDependsOnTarget, planTargetsLiveView, type PlanEvaluationResult, type PlanFragment, type PlanParameters } from '@portfolio/layout-core/world';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import type { StageReadSnapshot } from '../accepted-read';
 import { planParameters, type PlanParameterOverrides } from '../plan-parameters';
 

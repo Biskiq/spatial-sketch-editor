@@ -9,7 +9,8 @@
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import type { AuthoringIntent, SceneEntity, SceneMaterialInstance } from '@portfolio/project-model';
+import type { AuthoringIntent } from '@portfolio/project-model/f4';
+import type { SceneEntity, SceneMaterialInstance } from '@portfolio/project-model/scene';
 import { SCENE_UNIT_FORMAT_VERSION, type ScenePaletteSlot } from '@portfolio/project-model/units';
 import { catalogueRecipe, type FinishOverrides } from '@portfolio/project-model/materials';
 import {

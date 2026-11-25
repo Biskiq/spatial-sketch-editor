@@ -1,9 +1,35 @@
-/**
- * `@portfolio/project-model/save` — the conditional Save protocol
- * (`SaveAcceptedSource@1`). Kept off the root barrel: the public route's module
- * graph has no reason to reach Save, and the subpath makes the dependency
- * explicit for the API and the editor client.
- */
+export {
+	resolveSaveSourceHandler,
+} from './admission';
 
-export * from './protocol';
-export * from './admission';
+export type {
+	PreparedSaveSource,
+	SaveSourceAdmissionInput,
+	SaveSourceDatabase,
+	SaveSourceHandler,
+	SaveSourcePreparation,
+	SaveSourceRefusal,
+} from './admission';
+
+export {
+	createSavedBaseToken,
+	fullSourceHash,
+	isSavedBaseToken,
+	readSaveRequest,
+	sameAcceptedRevision,
+	samePrecondition,
+	SAVE_ACCEPTED_SOURCE_VERSION,
+	SAVE_CONTENT_IDENTITY_SCHEME,
+	SAVED_BASE_TOKEN_PREFIX,
+} from './protocol';
+
+export type {
+	SaveAcceptedSource,
+	SaveAcknowledgement,
+	SavePrecondition,
+	SaveReceipt,
+	SaveRefusal,
+	SaveRefusalCode,
+	SaveRequest,
+	SaveRequestValidation,
+} from './protocol';

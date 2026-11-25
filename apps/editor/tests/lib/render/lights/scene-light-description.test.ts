@@ -3,7 +3,7 @@
  * per Scene identity, and the Sky resolves its one Sun from the preset and frame.
  */
 import { describe, expect, it } from 'vitest';
-import type { SceneLightEntity } from '@portfolio/project-model';
+import type { SceneLightEntity } from '@portfolio/project-model/scene';
 import { describeSceneLights, resolveSceneLight } from '$lib/render/scene-light-description';
 import { skyFromPreset } from '@portfolio/project-model/units';
 import { colorHex, resolveSkySun, worldEnvironmentLook } from '$lib/render/world-environment';

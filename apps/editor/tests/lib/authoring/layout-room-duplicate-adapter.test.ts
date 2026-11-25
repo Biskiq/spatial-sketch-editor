@@ -28,18 +28,10 @@
  * plan and authorized by the PR's `owner-approved-guard-change` label.
  */
 import { describe, expect, it } from 'vitest';
-import {
-	createEmptyWallFirstLayoutDocument,
-	extractBoundaryCandidateFaces,
-	planCreateCircularRoom,
-	planCreateWallFirstOpening,
-	planWallChain,
-	planWallFirstRoomMove,
-	setWorkObserver,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type LayoutWallFirstRoom
-} from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument, planCreateWallFirstOpening, planWallChain, type LayoutDocumentWallFirst, type LayoutWallFirstRoom } from '@portfolio/layout-core/wall';
+import { extractBoundaryCandidateFaces, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { planCreateCircularRoom, planWallFirstRoomMove } from '@portfolio/layout-core/room';
+import { setWorkObserver } from '@portfolio/layout-core/kernel';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
 import { captureUnitSave, readUnitEnvelopeForSave } from '@portfolio/project-model/units';
 

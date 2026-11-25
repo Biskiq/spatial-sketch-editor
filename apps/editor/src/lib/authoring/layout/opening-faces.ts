@@ -1,5 +1,5 @@
-import { type CompiledOpening, type CompiledPhysicalWall,
-	type LayoutVec2, type LayoutWallOpening } from '@portfolio/layout-core';
+import type { CompiledOpening, CompiledPhysicalWall, LayoutVec2 } from '@portfolio/layout-core/geometry';
+import type { LayoutWallOpening } from '@portfolio/layout-core/wall';
 
 type Vec3 = [number, number, number];
 

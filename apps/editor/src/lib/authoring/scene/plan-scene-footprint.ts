@@ -1,11 +1,11 @@
 import { Euler, Vector3 } from 'three';
 import { getAssetById, normalizeAssetFootprintOutline, validateAssetFootprint } from '$lib/content/assets';
-import type { SceneDocument, SceneEntity, SceneFormEntity, ScenePrimitiveEntity } from '$lib/content/scene';
+import type { SceneDocument, SceneEntity, SceneFormEntity, ScenePrimitiveEntity } from '@portfolio/project-model/scene';
 import { evaluateFormMesh } from '$lib/content/form-evaluation';
 import type { Asset } from '$lib/types/assets';
 import type { Vec3 } from '$lib/types/scene';
-import type { LayoutVec2 } from '@portfolio/layout-core';
-import { geometryId } from '@portfolio/layout-core';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { geometryId } from '@portfolio/layout-core/geometry';
 
 const CIRCLE_STEPS = 32;
 

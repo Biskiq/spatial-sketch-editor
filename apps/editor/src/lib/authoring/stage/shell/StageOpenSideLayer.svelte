@@ -13,7 +13,7 @@
 	import { Line2 } from 'three/addons/lines/webgpu/Line2.js';
 	import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 	import { Line2NodeMaterial } from 'three/webgpu';
-	import type { CompiledSpaceEdge } from '@portfolio/layout-core';
+	import type { CompiledSpaceEdge } from '@portfolio/layout-core/geometry';
 	import { STAGE_OVERLAY_LAYER } from '../paper-plan';
 	import { OUTLINE_DEPTH_BIAS } from './stage-outline';
 	import { STAGE_PAINT } from './stage-paint';

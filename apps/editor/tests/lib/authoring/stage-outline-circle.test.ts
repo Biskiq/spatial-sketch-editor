@@ -1,10 +1,7 @@
 import { BufferAttribute, BufferGeometry } from 'three';
 import { describe, expect, it } from 'vitest';
-import {
-	compileWallFirstLayoutGeometry,
-	createClosedWallCircleDocument,
-	legJoinsByWall
-} from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core/geometry';
+import { createClosedWallCircleDocument, legJoinsByWall } from '@portfolio/layout-core/wall';
 import {
 	contourPolylines,
 	visibleIdentityContour

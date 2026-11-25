@@ -5,11 +5,11 @@
 	import { provideRenderResources } from '$lib/render/resources/render-resources';
 import type { ArtworkScope } from '$lib/render/artwork/artwork-scope';
 	import { T } from '@threlte/core';
-	import type { RuntimeScene } from '$lib/content/scene';
-	import type { NavigationGraph } from '@portfolio/project-model';
-	import type { CompiledLayoutGeometry } from '@portfolio/layout-core';
+	import type { RuntimeScene } from '@portfolio/project-model/scene';
+	import type { NavigationGraph } from '@portfolio/project-model/scene';
+	import type { CompiledLayoutGeometry } from '@portfolio/layout-core/geometry';
 	import type { ExecutionProgram, ExperienceInterpreterOptions } from '@portfolio/project-model/units';
-	import { formatGuideTime } from '@portfolio/camera-core';
+	import { formatGuideTime } from '@portfolio/camera-core/navigation';
 	import { createVisitorRuntimeState } from './visitor-runtime-state.svelte';
 	import { visitorProgressFor } from './visitor-progress';
 	import { guideRunFromProgram, guideTimeMapForProgram } from './guide-run-map';

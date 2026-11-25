@@ -16,7 +16,7 @@
  * `commit` submits one F4 intent, `cancel` restores and `blur` never commits.
  * Nothing here takes a gesture lease — an exact field has no pointer to own.
  */
-import type { AuthoringIntent } from '@portfolio/project-model';
+import type { AuthoringIntent } from '@portfolio/project-model/f4';
 import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 import { stageEnvelope, stageScene } from '$lib/authoring/stage/stage-adapter-host';
 import { sceneEntityLift, type SceneOperationContext } from '@portfolio/project-model/scene-planning';

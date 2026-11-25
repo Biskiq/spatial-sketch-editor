@@ -7,12 +7,11 @@
  * allocation contract, palette following, Undo/Redo and save/reopen.
  */
 import { describe, expect, it } from 'vitest';
-import type { AuthoringIntent, SceneEntity, SceneMaterialInstance, SemanticReference } from '@portfolio/project-model';
-import {
-	createEmptyWallFirstLayoutDocument,
-	type LayoutDocumentWallFirst,
-	type LayoutSurfaceRef
-} from '@portfolio/layout-core';
+import type { AuthoringIntent } from '@portfolio/project-model/f4';
+import type { SceneEntity, SceneMaterialInstance } from '@portfolio/project-model/scene';
+import type { SemanticReference } from '@portfolio/project-model/references';
+import { createEmptyWallFirstLayoutDocument, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import type { LayoutSurfaceRef } from '@portfolio/layout-core/plan';
 import {
 	SCENE_UNIT_FORMAT_VERSION,
 	UNIT_SOURCE_KIND,

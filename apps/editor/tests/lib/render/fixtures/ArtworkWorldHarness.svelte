@@ -1,6 +1,6 @@
 <script module lang="ts">
 	import type { Group as RootGroup } from 'three';
-	import type { RuntimeScene } from '@portfolio/project-model';
+	import type { RuntimeScene } from '@portfolio/project-model/scene';
 	import type { ArtworkScope } from '$lib/render/artwork/artwork-scope';
 	import type { RenderResources } from '$lib/render/resources/render-resources';
 	import type { SceneModelSupport } from '$lib/render/scene-model-representation';

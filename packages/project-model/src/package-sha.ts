@@ -4,7 +4,7 @@
  * Uses the Web Crypto API exposed by Node 20+ and modern browsers so the
  * package has one cross-runtime implementation and no editor dependency.
  */
-import { countWork } from '@portfolio/layout-core';
+import { countWork } from '@portfolio/layout-core/kernel';
 
 export type SynchronousWorkMeasure = <T>(phase: string, work: () => T) => T;
 

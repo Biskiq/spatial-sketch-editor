@@ -26,44 +26,12 @@
  *
  * Editor machinery is absent: no Svelte, no Three, no DOM.
  */
-import {
-	advanceViewport,
-	aimPoseAlongRay,
-	createViewportCameraState,
-	evaluateViewport,
-	eyeOfInspectionPose,
-	fovYDegreesOf,
-	rebaseViewportSource,
-	requestViewingIntent,
-	type InspectionPose,
-	type PointerRay,
-	type ViewingIntent,
-	type ViewingIntentResult,
-	type ViewportCameraState,
-	type ViewportEvaluation,
-	type ViewportEvaluationResult,
-	type ViewportRect,
-	type ViewportSourceRebase
-} from '@portfolio/camera-core';
-import type { Vec3 } from '@portfolio/camera-core';
-import {
-	acquireCameraOutput,
-	cancelCameraOutput,
-	createCameraOutputState,
-	rebaseCameraOutputSource,
-	replaceCameraOutput,
-	returnCameraOutput,
-	type CameraOutputCancelDecision,
-	type CameraOutputDecision,
-	type CameraOutputPolicy,
-	type CameraOutputRebaseDecision,
-	type CameraOutputReturnDecision,
-	type CameraOutputState,
-	type CameraOutputTicket
-} from '@portfolio/project-model';
+import { advanceViewport, aimPoseAlongRay, createViewportCameraState, evaluateViewport, eyeOfInspectionPose, fovYDegreesOf, rebaseViewportSource, requestViewingIntent, type InspectionPose, type PointerRay, type ViewingIntent, type ViewingIntentResult, type ViewportCameraState, type ViewportEvaluation, type ViewportEvaluationResult, type ViewportRect, type ViewportSourceRebase } from '@portfolio/camera-core/viewport';
+import type { Vec3 } from '@portfolio/camera-core/camera';
+import { acquireCameraOutput, cancelCameraOutput, createCameraOutputState, rebaseCameraOutputSource, replaceCameraOutput, returnCameraOutput, type CameraOutputCancelDecision, type CameraOutputDecision, type CameraOutputPolicy, type CameraOutputRebaseDecision, type CameraOutputReturnDecision, type CameraOutputState, type CameraOutputTicket } from '@portfolio/project-model/channels';
 
 import type { StageReadSnapshot } from './accepted-read';
-import { countWork } from '@portfolio/layout-core';
+import { countWork } from '@portfolio/layout-core/kernel';
 
 /** The default inspection framing of a project, from its compiled bounds. */
 export function initialInspectionPose(bounds: { min: Vec3; max: Vec3 } | null): InspectionPose {

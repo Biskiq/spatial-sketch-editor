@@ -31,8 +31,8 @@ import {
 	snapDraftingPlacement,
 	stageScene
 } from '$lib/authoring/stage/stage-adapter-host';
-import type { SceneFormEntity } from '$lib/content/scene';
-import type { Vec3 } from '@portfolio/project-model';
+import type { SceneFormEntity } from '@portfolio/project-model/scene';
+import type { Vec3 } from '@portfolio/project-model/scene';
 import {
 	sceneEntityLift,
 	sceneSupportGenerationId,

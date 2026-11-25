@@ -11,7 +11,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { BoxGeometry, Mesh, MeshBasicMaterial } from 'three';
 import { createScenePickSource } from '$lib/authoring/scene/scene-pick-source';
-import type { PointerRay } from '@portfolio/camera-core';
+import type { PointerRay } from '@portfolio/camera-core/viewport';
 
 function scene() {
 	const source = createScenePickSource();

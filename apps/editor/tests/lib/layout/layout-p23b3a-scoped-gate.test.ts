@@ -51,27 +51,9 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-	deriveChainSpans,
-	detectWallCurveTopologyCrossings,
-	junctionsShareTopologyComponent,
-	planExactJunctionMove,
-	planWallChain,
-	LAYOUT_WALL_FIRST_FORMAT_VERSION,
-	topologyComponentKeyByJunctionId,
-	UNATTACHED_JUNCTION_COMPONENT,
-	validateWallFirstLayoutDocument,
-	validateWallFirstTopology,
-	wallCubicChain,
-	wallsShareTopologyComponent,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type LayoutWall,
-	type LayoutWallCenterline,
-	type LayoutWallCurveKnot,
-	type LayoutWallFirstRoom,
-	type TopologySegment
-} from '@portfolio/layout-core';
+import { deriveChainSpans, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { detectWallCurveTopologyCrossings, planExactJunctionMove, planWallChain, LAYOUT_WALL_FIRST_FORMAT_VERSION, validateWallFirstLayoutDocument, validateWallFirstTopology, wallCubicChain, type LayoutDocumentWallFirst, type LayoutWall, type LayoutWallCenterline, type LayoutWallCurveKnot, type LayoutWallFirstRoom, type TopologySegment } from '@portfolio/layout-core/wall';
+import { junctionsShareTopologyComponent, topologyComponentKeyByJunctionId, UNATTACHED_JUNCTION_COMPONENT, wallsShareTopologyComponent } from '@portfolio/layout-core/room';
 import { freshCapture } from './__fixtures__/layout-id-capture';
 
 const LINE: LayoutWallCenterline = { kind: 'line' };

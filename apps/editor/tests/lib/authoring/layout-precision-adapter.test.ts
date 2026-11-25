@@ -18,17 +18,11 @@
  *    retired Dimensions task contributes nothing and opens nothing.
  */
 import { describe, expect, it } from 'vitest';
-import {
-	createEmptyWallFirstLayoutDocument,
-	nextLayoutPresetObjectId,
-	planCreateWallFirstOpening,
-	planWallChain,
-	surfaceKey,
-	setWorkObserver,
-	type LayoutDocumentWallFirst,
-	type PlanSourceRef
-} from '@portfolio/layout-core';
-import type { PlannerRequest, PreparedCandidate } from '@portfolio/project-model';
+import { createEmptyWallFirstLayoutDocument, planCreateWallFirstOpening, planWallChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import { nextLayoutPresetObjectId, surfaceKey } from '@portfolio/layout-core/plan';
+import { setWorkObserver } from '@portfolio/layout-core/kernel';
+import type { PlanSourceRef } from '@portfolio/layout-core/world';
+import type { PlannerRequest, PreparedCandidate } from '@portfolio/project-model/f4';
 import {
 	UNIT_SOURCE_KIND,
 	UNIT_SOURCE_VERSION,

@@ -21,11 +21,7 @@ import { readdirSync, statSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import {
-	validateWallFirstLayoutDocument,
-	serializeWallFirstLayoutDocument,
-	type LayoutDocumentWallFirst
-} from '@portfolio/layout-core';
+import { validateWallFirstLayoutDocument, serializeWallFirstLayoutDocument, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 
 const LINE = { kind: 'line' } as const;
 

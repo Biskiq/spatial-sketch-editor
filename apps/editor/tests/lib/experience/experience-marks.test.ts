@@ -3,14 +3,7 @@
  * Views through the current evaluation, with the plan's label and frustum caps.
  */
 import { describe, expect, it } from 'vitest';
-import {
-	createViewportCameraState,
-	evaluateViewport,
-	inspectionPoseFromView,
-	projectWorld,
-	type InspectionPose,
-	type ViewportEvaluation
-} from '@portfolio/camera-core';
+import { createViewportCameraState, evaluateViewport, inspectionPoseFromView, projectWorld, type InspectionPose, type ViewportEvaluation } from '@portfolio/camera-core/viewport';
 import type { CameraView, Experience } from '@portfolio/project-model/units';
 import { EXPERIENCE_MARK_CAPS, experienceMarkModel, relatedToSelection } from '$lib/authoring/experience/experience-marks';
 

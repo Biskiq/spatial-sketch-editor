@@ -32,7 +32,7 @@ vi.mock('@threlte/core', async (importOriginal) => {
 
 import { flushSync, mount, unmount } from 'svelte';
 import { DirectionalLight, Light, PointLight, Scene, SpotLight, type Object3D } from 'three';
-import type { RuntimeScene, ScenePrimitiveEntity } from '@portfolio/project-model';
+import type { RuntimeScene, ScenePrimitiveEntity } from '@portfolio/project-model/scene';
 import Harness, { type LightWorldHandle, type LightWorldProps } from '../fixtures/LightWorldHarness.svelte';
 import { skyFromPreset } from '@portfolio/project-model/units';
 import { POINT_OPEN, POINT_RANGED, SPOT_AIMED, runtimeScene } from '../fixtures/light-parity-cases';

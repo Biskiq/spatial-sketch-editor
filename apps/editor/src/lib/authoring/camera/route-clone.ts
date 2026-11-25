@@ -5,8 +5,8 @@
  * `cloneRoutePoint` copies one route point, tuple or object form, into a fresh
  * tuple.
  */
-import type { Vector3Like } from '@portfolio/camera-core';
-import type { ResolvedCameraRoute } from '@portfolio/camera-core';
+import type { Vector3Like } from '@portfolio/camera-core/camera';
+import type { ResolvedCameraRoute } from '@portfolio/camera-core/camera';
 import type { Vec3 } from '$lib/types/scene';
 
 /** Tuple check — `Vector3Like` is either `{x,y,z}` or `[x,y,z]`. */

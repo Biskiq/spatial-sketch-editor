@@ -19,24 +19,11 @@
  * creator saw and the document that lands carry the same Junction and stub
  * Wall ids.
  */
-import {
-	allocateCapturedId,
-	mintLayoutIdCapture,
-	planSpaceOpenSideEndSlide,
-	planSpaceOpenSideOffset,
-	proposeSpaceOpenSideOffset,
-	roomBoundaryPolygon,
-	spaceOpenSideFrames,
-	spaceOutlineSelfIntersects,
-	spaceOutlineSignedArea,
-	spacePlacementIssues,
-	type LayoutDocumentWallFirst,
-	type LayoutIdCapture,
-	type LayoutVec2,
-	type NodingIdAllocator,
-	type SpaceOpenSideFrame
-} from '@portfolio/layout-core';
-import type { Vec3 } from '@portfolio/camera-core';
+import { allocateCapturedId, mintLayoutIdCapture, type LayoutIdCapture } from '@portfolio/layout-core/plan';
+import { planSpaceOpenSideEndSlide, planSpaceOpenSideOffset, type LayoutDocumentWallFirst, type NodingIdAllocator } from '@portfolio/layout-core/wall';
+import { proposeSpaceOpenSideOffset, roomBoundaryPolygon, spaceOpenSideFrames, spaceOutlineSelfIntersects, spaceOutlineSignedArea, spacePlacementIssues, type SpaceOpenSideFrame } from '@portfolio/layout-core/room';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
+import type { Vec3 } from '@portfolio/camera-core/camera';
 
 import {
 	type StageAdapterContext,

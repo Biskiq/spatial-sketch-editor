@@ -12,7 +12,7 @@
  * through the one surviving entry (`compileWallFirstLayoutGeometry`).
  */
 import { describe, expect, it } from 'vitest';
-import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core/geometry';
 import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from './__fixtures__/layout-scale-fixtures';
 
 describe('layout-scale-fixtures', () => {

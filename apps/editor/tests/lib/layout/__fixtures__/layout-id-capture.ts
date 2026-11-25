@@ -7,7 +7,7 @@
  * `capturedId()` is how an expectation expresses the new contract instead of a
  * literal allocation-order id.
  */
-import { layoutCapturedId, mintLayoutIdCapture, type LayoutIdCapture } from '@portfolio/layout-core';
+import { layoutCapturedId, mintLayoutIdCapture, type LayoutIdCapture } from '@portfolio/layout-core/plan';
 
 /** One fresh capture. The nonce is opaque and never parsed by production code. */
 export function freshCapture(): LayoutIdCapture {

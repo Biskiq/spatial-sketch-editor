@@ -11,12 +11,9 @@
  * semantics it proved are recorded as a T3 F.4 acceptance obligation.
  */
 import { describe, expect, it } from 'vitest';
-import {
-	createEmptyWallFirstLayoutDocument,
-	planDissolveJunction as planDissolveJunctionWithCapture,
-	validateWallFirstLayoutDocument
-} from '@portfolio/layout-core';
-import type { LayoutDocumentWallFirst, LayoutVec2 } from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument, planDissolveJunction as planDissolveJunctionWithCapture, validateWallFirstLayoutDocument } from '@portfolio/layout-core/wall';
+import type { LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import { freshCapture } from './__fixtures__/layout-id-capture';
 
 /** One captured dissolve operation: every call is a new edit with a new nonce. */

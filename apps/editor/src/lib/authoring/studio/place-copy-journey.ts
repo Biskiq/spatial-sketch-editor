@@ -15,7 +15,7 @@
  * The journey reads the accepted root again after the Save, so the copy carries what
  * was saved, not what was selected a moment earlier.
  */
-import type { SceneFormEntity } from '@portfolio/project-model';
+import type { SceneFormEntity } from '@portfolio/project-model/scene';
 
 export type PlaceCopyPorts<Entity = SceneFormEntity> = {
 	/** The accepted form for this root right now, or `null`. */

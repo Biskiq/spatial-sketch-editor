@@ -17,27 +17,11 @@
  * stores new session state. The allocation is captured before evaluation, so
  * Undo/Redo replays the same generated Opening ids.
  */
-import {
-	layoutIdCaptureInput,
-	layoutWorkingLevelInput,
-	mintLayoutIdCapture,
-	planRepeatWallOpening,
-	readLayoutIdCapture,
-	readLayoutWorkingLevel,
-	recordPreparedCowCandidate,
-	materializeLayoutSourceForCapture,
-	wallFirstWallLength,
-	type DuplicateRejection,
-	type LayoutDocumentWallFirst,
-	type LayoutIdCapture,
-	type LayoutWallOpening
-} from '@portfolio/layout-core';
-import type {
-	AuthoringIntent,
-	DomainPlanner,
-	PlannerOutcome,
-	PreparedCandidate
-} from '@portfolio/project-model';
+import { layoutIdCaptureInput, layoutWorkingLevelInput, mintLayoutIdCapture, planRepeatWallOpening, readLayoutIdCapture, readLayoutWorkingLevel, type DuplicateRejection, type LayoutIdCapture } from '@portfolio/layout-core/plan';
+import { recordPreparedCowCandidate } from '@portfolio/layout-core/world';
+import { materializeLayoutSourceForCapture } from '@portfolio/layout-core/kernel';
+import { wallFirstWallLength, type LayoutDocumentWallFirst, type LayoutWallOpening } from '@portfolio/layout-core/wall';
+import type { AuthoringIntent, DomainPlanner, PlannerOutcome, PreparedCandidate } from '@portfolio/project-model/f4';
 import {
 	canonicalUnitJson,
 	replaceUnitData,

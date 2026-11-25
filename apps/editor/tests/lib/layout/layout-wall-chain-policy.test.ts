@@ -17,18 +17,8 @@
  * a second, stricter rule of its own.
  */
 import { describe, expect, it } from 'vitest';
-import {
-	classifyWallIntersection,
-	createEmptyWallFirstLayoutDocument,
-	detectUnsupportedChainConnections,
-	planInsertWallCurveKnot,
-	planMoveWallCurveKnot,
-	planWallChain,
-	wallCenterlineSamples,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type WallEndpointJunctionSnap
-} from '@portfolio/layout-core';
+import { classifyWallIntersection, createEmptyWallFirstLayoutDocument, detectUnsupportedChainConnections, planInsertWallCurveKnot, planMoveWallCurveKnot, planWallChain, wallCenterlineSamples, type LayoutDocumentWallFirst, type WallEndpointJunctionSnap } from '@portfolio/layout-core/wall';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import { freshCapture } from './__fixtures__/layout-id-capture';
 
 const p = (x: number, z: number): LayoutVec2 => [x, z];

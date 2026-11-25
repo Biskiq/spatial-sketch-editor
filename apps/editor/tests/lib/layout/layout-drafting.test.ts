@@ -22,14 +22,8 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-	compileWallFirstLayoutGeometry,
-	createEmptyWallFirstLayoutDocument,
-	planExactWallLength,
-	planExactWallThickness,
-	planWallChain,
-	type LayoutDocumentWallFirst
-} from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core/geometry';
+import { createEmptyWallFirstLayoutDocument, planExactWallLength, planExactWallThickness, planWallChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 import { freshCapture } from './__fixtures__/layout-id-capture';
 import {
 	formatDegrees,

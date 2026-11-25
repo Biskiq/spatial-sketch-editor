@@ -1,6 +1,7 @@
 /** Adversarial maintenance and query accounting, including legitimate linear cases. */
 import { describe, expect, it } from 'vitest';
-import { createDynamicBvh, setWorkObserver, type PlanBox } from '@portfolio/layout-core';
+import { createDynamicBvh, type PlanBox } from '@portfolio/layout-core/world';
+import { setWorkObserver } from '@portfolio/layout-core/kernel';
 const box = (x: number, z: number, w = 1, h = 1): PlanBox => ({ minX: x, minZ: z, maxX: x + w, maxZ: z + h });
 const overlap = (a: PlanBox, b: PlanBox) => !(a.maxX < b.minX || a.minX > b.maxX || a.maxZ < b.minZ || a.minZ > b.maxZ);
 function counted<T>(run: () => T) {

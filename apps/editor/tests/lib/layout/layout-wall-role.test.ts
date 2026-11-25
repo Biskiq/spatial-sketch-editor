@@ -1,15 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-	compileWallFirstLayoutGeometry,
-	createEmptyWallFirstLayoutDocument,
-	deriveLayoutWallRole,
-	deriveLayoutWallRoles,
-	extractBoundaryCandidateFaces,
-	layoutWallRoomMemberships,
-	type LayoutDocumentWallFirst,
-	type LayoutWall
-} from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry, extractBoundaryCandidateFaces } from '@portfolio/layout-core/geometry';
+import { createEmptyWallFirstLayoutDocument, deriveLayoutWallRole, deriveLayoutWallRoles, layoutWallRoomMemberships, type LayoutDocumentWallFirst, type LayoutWall } from '@portfolio/layout-core/wall';
 
 const p = (x: number, z: number): [number, number] => [x, z];
 

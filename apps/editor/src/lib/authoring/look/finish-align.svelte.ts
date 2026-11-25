@@ -17,7 +17,8 @@ import {
 	type Mapping,
 	type Recipe
 } from '@portfolio/project-model/materials';
-import type { CompiledLayoutGeometry, LayoutDocumentWallFirst } from '@portfolio/layout-core';
+import type { CompiledLayoutGeometry } from '@portfolio/layout-core/geometry';
+import type { LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 import { wallSideFaceFrame, type WallFaceFrame } from '$lib/layout/wall-face';
 import { wallFace } from '$lib/authoring/layout/wall-face-store';
 import type { FinishCardTarget } from './finish-card.svelte';

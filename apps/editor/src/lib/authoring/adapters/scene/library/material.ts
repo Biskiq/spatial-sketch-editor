@@ -9,8 +9,9 @@
  * stale editor refuses only the registration, leaving the vendored P20 rows for
  * a later insert.
  */
-import { resolveLayoutSurface } from '@portfolio/layout-core';
-import type { AcceptedRevision, AuthoringIntent, SemanticReference } from '@portfolio/project-model';
+import { resolveLayoutSurface } from '@portfolio/layout-core/plan';
+import type { AcceptedRevision, SemanticReference } from '@portfolio/project-model/references';
+import type { AuthoringIntent } from '@portfolio/project-model/f4';
 import {
 	finishLibraryDraftFromScene,
 	MATERIAL_LIBRARY_MAX_THUMBNAIL_EDGE,

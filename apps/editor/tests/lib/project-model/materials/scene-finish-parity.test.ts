@@ -24,7 +24,8 @@ import {
 	type ResolveTarget
 } from '$lib/render/materials/scene-instance-material';
 import type { MaterialTextureSlot } from '$lib/types/materials';
-import type { SceneColor, SceneTextureAsset } from '$lib/content/scene';
+import type { SceneColor } from '@portfolio/project-model/units';
+import type { SceneTextureAsset } from '@portfolio/project-model/scene';
 import { contentHash } from './fixtures';
 
 const TEXTURES: SceneTextureAsset[] = [

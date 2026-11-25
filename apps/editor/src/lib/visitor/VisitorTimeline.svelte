@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { guideTimeCursorAt, formatGuideTime, type GuideTimeMap, type GuideTimeCursor } from '@portfolio/camera-core';
+	import { guideTimeCursorAt, formatGuideTime, type GuideTimeMap, type GuideTimeCursor } from '@portfolio/camera-core/navigation';
 	import type { VisitorRuntimeState } from './visitor-runtime-state.svelte';
 	import type { VisitorProgress } from './visitor-progress';
 

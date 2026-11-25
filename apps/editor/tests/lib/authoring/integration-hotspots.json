@@ -180,8 +180,8 @@
 		"arrows": 18
 	},
 	"src/lib/authoring/stage/stage-adapter-host.ts": {
-		"lines": 243,
-		"imports": 10,
+		"lines": 244,
+		"imports": 11,
 		"state": 0,
 		"derived": 0,
 		"effects": 0,
@@ -198,8 +198,8 @@
 		"arrows": 75
 	},
 	"src/lib/authoring/stage/shell/StageCanvas.svelte": {
-		"lines": 698,
-		"imports": 56,
+		"lines": 699,
+		"imports": 57,
 		"state": 4,
 		"derived": 23,
 		"effects": 2,
@@ -243,8 +243,8 @@
 		"arrows": 17
 	},
 	"src/lib/authoring/look/finish-authoring.svelte.ts": {
-		"lines": 2290,
-		"imports": 23,
+		"lines": 2284,
+		"imports": 24,
 		"state": 10,
 		"derived": 0,
 		"effects": 0,

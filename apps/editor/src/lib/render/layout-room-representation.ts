@@ -24,12 +24,8 @@
  * Paint can name `room-lid`; selection still resolves a Room through its floor.
  */
 import { Group, Mesh, Shape, ShapeGeometry, type BufferGeometry, type Object3D } from 'three';
-import {
-	countWork,
-	type CompiledLayoutGeometry,
-	type CompiledRoom,
-	type LayoutVec2
-} from '@portfolio/layout-core';
+import { countWork } from '@portfolio/layout-core/kernel';
+import type { CompiledLayoutGeometry, CompiledRoom, LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 import { getMaterial } from '$lib/content/materials';
 import { LIFTED_RENDER_LAYER } from '$lib/render/render-layers';

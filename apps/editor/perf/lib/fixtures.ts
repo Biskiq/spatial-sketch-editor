@@ -7,8 +7,8 @@
  * setup cost the new method removes.
  */
 
-import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core';
-import type { AcceptedRevision } from '@portfolio/project-model';
+import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core/geometry';
+import type { AcceptedRevision } from '@portfolio/project-model/references';
 import {
 	createEmptyUnitEnvelope,
 	serializeProjectEnvelope,

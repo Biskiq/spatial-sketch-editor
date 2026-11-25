@@ -19,18 +19,14 @@
  * current-format documents rather than on hand-written shapes.
  */
 import { describe, expect, it, vi } from 'vitest';
-import { VIEWPORT_READING_TRANSITION_SECONDS } from '@portfolio/camera-core';
+import { VIEWPORT_READING_TRANSITION_SECONDS } from '@portfolio/camera-core/viewport';
 import { sceneEntityReference } from '$lib/authoring/adapters/scene/placement';
 import { createPlanPickProvider } from '$lib/authoring/layout/plan-pick-provider';
 import { resolveStagePick } from '$lib/authoring/stage/stage-pick';
 import type { StageAdapterContext } from '$lib/authoring/stage/stage-facade';
-import {
-	createEmptyWallFirstLayoutDocument,
-	planCreateWallFirstOpening,
-	planFragmentOf,
-	planWallChain,
-	type LayoutVec2
-} from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument, planCreateWallFirstOpening, planWallChain } from '@portfolio/layout-core/wall';
+import { planFragmentOf } from '@portfolio/layout-core/world';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import {

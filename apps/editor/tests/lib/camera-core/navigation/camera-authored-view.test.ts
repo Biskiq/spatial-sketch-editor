@@ -7,21 +7,7 @@
  * fixed-eye operations the Stage gestures use.
  */
 import { describe, expect, it } from 'vitest';
-import {
-	aimPoseAlongRay,
-	aimPoseAtTarget,
-	createViewportCameraState,
-	evaluateViewport,
-	eyeOfInspectionPose,
-	fovYDegreesOf,
-	inspectionPoseFromView,
-	liftPose,
-	requestViewingIntent,
-	setPoseLens,
-	viewPlacementPose,
-	type InspectionPose,
-	type PointerRay
-} from '@portfolio/camera-core';
+import { aimPoseAlongRay, aimPoseAtTarget, createViewportCameraState, evaluateViewport, eyeOfInspectionPose, fovYDegreesOf, inspectionPoseFromView, liftPose, requestViewingIntent, setPoseLens, viewPlacementPose, type InspectionPose, type PointerRay } from '@portfolio/camera-core/viewport';
 
 const RECT = { left: 0, top: 0, width: 1280, height: 800, devicePixelRatio: 1 } as const;
 

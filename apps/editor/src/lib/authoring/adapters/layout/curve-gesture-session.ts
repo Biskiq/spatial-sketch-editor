@@ -1,13 +1,6 @@
-import {
-	prepareClosedCircleProposal,
-	prepareWallBend,
-	proposeWallKnotRemoval,
-	validateWallFirstOpeningSubset,
-	type LayoutWallCenterline,
-	wallCenterlineSamples,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2
-} from '@portfolio/layout-core';
+import { prepareClosedCircleProposal } from '@portfolio/layout-core/room';
+import { prepareWallBend, proposeWallKnotRemoval, validateWallFirstOpeningSubset, type LayoutWallCenterline, wallCenterlineSamples, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 import {
 	type StageAdapterContext,

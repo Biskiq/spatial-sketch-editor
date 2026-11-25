@@ -100,9 +100,9 @@ describe('F.4 editor-only isolation', () => {
 
 		const reached = [...importClosure([SAVE_STATE])].map(relativeToRepo);
 		expect(reached).toContain('apps/editor/src/lib/authoring/save/save-state.ts');
-		// The closure helper resolves a package subpath to the package root entry;
-		// the runtime import is still the shared package, not a local copy.
-		expect(reached).toContain('packages/project-model/src/index.ts');
+		// The closure helper resolves a package subpath to its family entry; the
+		// runtime import is still the shared package, not a local copy.
+		expect(reached).toContain('packages/project-model/src/save/index.ts');
 		// No Svelte runes, no host/Stage/route module, no visitor state: the state
 		// machine takes explicit inputs and commands only.
 		expect(
@@ -126,11 +126,12 @@ describe('F.4 editor-only isolation', () => {
 
 	it('consumes the shared contract package rather than a second copy of it', () => {
 		const reached = [...importClosure([COORDINATOR])].map(relativeToRepo);
-		// The coordinator reaches the shared AM-4 contract through the package's one
-		// root export and adds no local re-implementation: the two editor files are
+		// The coordinator reaches the shared AM-4 contract through its family
+		// subpaths and adds no local re-implementation: the two editor files are
 		// the coordinator and the history, and nothing else in `lib/authoring/f4/`.
-		expect(reached).toContain('packages/project-model/src/index.ts');
 		expect(reached).toContain('packages/project-model/src/f4/index.ts');
+		expect(reached).toContain('packages/project-model/src/references/index.ts');
+		expect(reached).toContain('packages/project-model/src/package/index.ts');
 		expect(reached.filter((file) => file.startsWith('apps/editor/src/lib/authoring/f4/')).sort()).toEqual([
 			'apps/editor/src/lib/authoring/f4/acceptance-coordinator.ts',
 			'apps/editor/src/lib/authoring/f4/history.ts'

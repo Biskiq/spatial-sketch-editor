@@ -1,4 +1,5 @@
-import { defaultArtworkWidth, type ArtworkLibraryEntry, type SceneArtworkEntity } from '@portfolio/project-model';
+import { defaultArtworkWidth, type ArtworkLibraryEntry } from '@portfolio/project-model/artwork';
+import type { SceneArtworkEntity } from '@portfolio/project-model/scene';
 import { ARTWORK_DUPLICATE, ARTWORK_IMPORT, ARTWORK_PLACE, ARTWORK_REPLACE } from '@portfolio/project-model/scene-planning';
 import type { ProjectApi } from '$lib/platform/project-persistence';
 import { stageScene, type StageAdapterServices, type StageCardActionOutcome } from '$lib/authoring/stage/stage-adapter-host';

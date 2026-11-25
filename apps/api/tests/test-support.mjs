@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
 
-import { createEmptyWallFirstLayoutDocument } from '@portfolio/project-model';
+import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core/wall';
 import { SAVE_CONTENT_IDENTITY_SCHEME } from '@portfolio/project-model/save';
 import {
 	CAMERA_UNIT_FORMAT_VERSION,

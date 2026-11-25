@@ -14,12 +14,7 @@
  *   geometry every other reader shares.
  */
 import { describe, expect, it } from 'vitest';
-import {
-	compileWallFirstLayoutGeometry,
-	overheadSourcesOf,
-	type CompiledLayoutGeometry,
-	type OverheadSource
-} from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry, overheadSourcesOf, type CompiledLayoutGeometry, type OverheadSource } from '@portfolio/layout-core/geometry';
 
 function lidRoomId(source: OverheadSource): string {
 	if (source.key.kind !== 'room-lid') throw new Error('expected a Room lid');

@@ -18,23 +18,10 @@
  * terms with a repair, composed from the planner's own rejection — the editor
  * never re-derives fit or overlap.
  */
-import {
-	layoutIdCaptureInput,
-	layoutWorkingLevelInput,
-	planCreateWallFirstOpening,
-	planDeleteWallFirstOpening,
-	planUpdateWallFirstOpening,
-	recordPreparedCowCandidate,
-	type LayoutIdCapture,
-	type LayoutWallOpening,
-	type WallOpeningPatch,
-} from '@portfolio/layout-core';
-import type {
-	AuthoringIntent,
-	DomainPlanner,
-	PlannerOutcome,
-	PreparedCandidate
-} from '@portfolio/project-model';
+import { layoutIdCaptureInput, layoutWorkingLevelInput, type LayoutIdCapture } from '@portfolio/layout-core/plan';
+import { planCreateWallFirstOpening, planDeleteWallFirstOpening, planUpdateWallFirstOpening, type LayoutWallOpening, type WallOpeningPatch } from '@portfolio/layout-core/wall';
+import { recordPreparedCowCandidate } from '@portfolio/layout-core/world';
+import type { AuthoringIntent, DomainPlanner, PlannerOutcome, PreparedCandidate } from '@portfolio/project-model/f4';
 import {
 	canonicalUnitJson,
 	replaceUnitData,

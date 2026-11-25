@@ -153,7 +153,7 @@ describe('render-layer-boundary: stores read no authoring layer', () => {
 	it('the texture store’s module set is exact and holds no content-layer edge', () => {
 		expect(importsOf(TEXTURE_STORE).sort()).toEqual(
 			[
-				'@portfolio/layout-core',
+				'@portfolio/layout-core/kernel',
 				'$lib/types/materials',
 				'three',
 				'./image-encoding',

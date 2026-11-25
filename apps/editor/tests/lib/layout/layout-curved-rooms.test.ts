@@ -19,26 +19,9 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-	buildCorrespondenceComponents,
-	compileWallFirstLayoutGeometry,
-	createEmptyWallFirstLayoutDocument,
-	deriveChainSpans,
-	extractBoundaryCandidateFaces,
-	hasBlockingLayoutIssues,
-	interiorWitness,
-	planConvertWallToCurve,
-	planMoveWallCurveKnot,
-	roomBoundaryPolygon,
-	validateWallFirstLayoutDocument,
-	validateWallFirstTopology,
-	wallCenterlineSamples,
-	wallCubicChain,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type LayoutWall,
-	type LayoutWallCurveKnot
-} from '@portfolio/layout-core';
+import { buildCorrespondenceComponents, interiorWitness, roomBoundaryPolygon } from '@portfolio/layout-core/room';
+import { compileWallFirstLayoutGeometry, deriveChainSpans, extractBoundaryCandidateFaces, hasBlockingLayoutIssues, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { createEmptyWallFirstLayoutDocument, planConvertWallToCurve, planMoveWallCurveKnot, validateWallFirstLayoutDocument, validateWallFirstTopology, wallCenterlineSamples, wallCubicChain, type LayoutDocumentWallFirst, type LayoutWall, type LayoutWallCurveKnot } from '@portfolio/layout-core/wall';
 
 const LINE = { kind: 'line' } as const;
 

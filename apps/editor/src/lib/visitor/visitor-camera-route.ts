@@ -18,13 +18,8 @@
  * requested destination, and reports the origin it actually used. It never
  * accepts an arbitrary endpoint, finishes the stale Travel first, or pathfinds.
  */
-import {
-	getCameraConnectionRoute,
-	getCameraRoute,
-	type CameraConnectionDirection,
-	type CameraGraph,
-	type ResolvedCameraRoute
-} from '@portfolio/camera-core';
+import { getCameraConnectionRoute, getCameraRoute, type CameraConnectionDirection, type ResolvedCameraRoute } from '@portfolio/camera-core/camera';
+import type { CameraGraph } from '@portfolio/camera-core/navigation';
 import type { ProgramInvocation } from '@portfolio/project-model/units';
 
 export type VisitorCameraRoute =

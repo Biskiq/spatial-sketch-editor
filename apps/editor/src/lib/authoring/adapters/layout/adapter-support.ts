@@ -10,8 +10,8 @@ import { stageLayout } from '$lib/authoring/stage/stage-adapter-host';
 import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 import type { StageAcceptOutcome } from '$lib/authoring/stage/stage-adapter-host';
 import type { GestureAcquisition } from '$lib/authoring/stage/stage-adapter-host';
-import type { LayoutDocumentWallFirst } from '@portfolio/layout-core';
-import type { AuthoringIntent } from '@portfolio/project-model';
+import type { LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import type { AuthoringIntent } from '@portfolio/project-model/f4';
 
 import {
 	createLayoutInstrument,

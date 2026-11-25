@@ -18,19 +18,10 @@
  */
 import { afterEach, describe, expect, it } from 'vitest';
 import { mount, tick, unmount } from 'svelte';
-import {
-	createEmptyWallFirstLayoutDocument,
-	layoutCapturedId,
-	mintLayoutIdCapture,
-	planCreateWallFirstOpening,
-	planWallChain,
-	validateWallFirstLayoutDocument,
-	wallFirstWallLength,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type PlanSourceRef,
-	compileWallFirstLayoutGeometry
-} from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument, planCreateWallFirstOpening, planWallChain, validateWallFirstLayoutDocument, wallFirstWallLength, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import { layoutCapturedId, mintLayoutIdCapture } from '@portfolio/layout-core/plan';
+import { type LayoutVec2, compileWallFirstLayoutGeometry } from '@portfolio/layout-core/geometry';
+import type { PlanSourceRef } from '@portfolio/layout-core/world';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
 import { captureUnitSave, readUnitEnvelopeForSave } from '@portfolio/project-model/units';
 

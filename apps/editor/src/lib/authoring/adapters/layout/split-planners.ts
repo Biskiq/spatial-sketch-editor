@@ -16,27 +16,12 @@
  * straight and curved Walls). The allocation is captured before evaluation:
  * Undo/Redo replays the same Wall and Junction ids.
  */
-import {
-	allocateCapturedId,
-	isClosedWall,
-	layoutIdCaptureInput,
-	layoutWorkingLevelInput,
-	materializeLayoutSourceForCapture,
-	planWallSplitAtPoint,
-	readLayoutIdCapture,
-	readLayoutWorkingLevel,
-	recordPreparedCowCandidate,
-	type LayoutDocumentWallFirst,
-	type LayoutIdCapture,
-	type LayoutVec2,
-	type NodingIdAllocator
-} from '@portfolio/layout-core';
-import type {
-	AuthoringIntent,
-	DomainPlanner,
-	PlannerOutcome,
-	PreparedCandidate
-} from '@portfolio/project-model';
+import { allocateCapturedId, layoutIdCaptureInput, layoutWorkingLevelInput, readLayoutIdCapture, readLayoutWorkingLevel, type LayoutIdCapture } from '@portfolio/layout-core/plan';
+import { isClosedWall, planWallSplitAtPoint, type LayoutDocumentWallFirst, type NodingIdAllocator } from '@portfolio/layout-core/wall';
+import { materializeLayoutSourceForCapture } from '@portfolio/layout-core/kernel';
+import { recordPreparedCowCandidate } from '@portfolio/layout-core/world';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
+import type { AuthoringIntent, DomainPlanner, PlannerOutcome, PreparedCandidate } from '@portfolio/project-model/f4';
 import {
 	canonicalUnitJson,
 	replaceUnitData,

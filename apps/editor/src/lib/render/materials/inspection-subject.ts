@@ -27,7 +27,7 @@ import type {
 	MaterialIssue,
 	Recipe
 } from '@portfolio/project-model/materials';
-import type { SceneTreatment } from '@portfolio/project-model';
+import type { SceneTreatment } from '@portfolio/project-model/scene';
 import type { MaterialId } from '$lib/types/materials';
 import type {
 	FinishSamplingPlanEntry,

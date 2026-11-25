@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createViewportCameraState, evaluateViewport } from '@portfolio/camera-core';
-import type { RuntimeScene } from '@portfolio/project-model';
+import { createViewportCameraState, evaluateViewport } from '@portfolio/camera-core/viewport';
+import type { RuntimeScene } from '@portfolio/project-model/scene';
 import type { SceneRenderedHit } from '$lib/authoring/scene/scene-pick-source';
 import { stageWheelZoom } from '$lib/authoring/stage/stage-wheel-zoom';
 

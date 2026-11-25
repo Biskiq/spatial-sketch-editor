@@ -4,9 +4,29 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": {
-      "types": "./src/index.ts",
-      "default": "./src/index.ts"
+    "./geometry": {
+      "types": "./src/geometry/index.ts",
+      "default": "./src/geometry/index.ts"
+    },
+    "./world": {
+      "types": "./src/world/index.ts",
+      "default": "./src/world/index.ts"
+    },
+    "./wall": {
+      "types": "./src/wall/index.ts",
+      "default": "./src/wall/index.ts"
+    },
+    "./room": {
+      "types": "./src/room/index.ts",
+      "default": "./src/room/index.ts"
+    },
+    "./plan": {
+      "types": "./src/plan/index.ts",
+      "default": "./src/plan/index.ts"
+    },
+    "./kernel": {
+      "types": "./src/kernel/index.ts",
+      "default": "./src/kernel/index.ts"
     }
   },
   "files": [

@@ -1,5 +1,5 @@
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
-import { roomBoundaryPolygon } from '@portfolio/layout-core';
+import { roomBoundaryPolygon } from '@portfolio/layout-core/room';
 import { resolveSceneSupport, sceneSupportGenerationId } from '@portfolio/project-model/scene-planning';
 import { localContactMinY, sceneModelContactMinY, sceneComposeSupport } from './placement';
 

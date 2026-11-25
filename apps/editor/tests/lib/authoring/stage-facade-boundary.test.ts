@@ -53,7 +53,13 @@ const allowed = new Map<string, Record<string, readonly string[]>>([
 const contracts = [owner('adapter-contract'), owner('view-contract')];
 const leafFiles = () => listSourceFiles(owners).filter((file) => /\.(?:ts|js|svelte)$/.test(file));
 const read = (file: string) => readFileSync(file, 'utf8');
-const moduleTarget = (file: string, specifier: string) => resolveSpecifier(file, specifier) ?? specifier;
+/** Package family subpaths keep the package-level allowance exactly as broad. */
+const packageOf = (specifier: string) =>
+	specifier.replace(/^(@portfolio\/(?:layout-core|project-model|camera-core))\/.*$/, '$1');
+const moduleTarget = (file: string, raw: string) => {
+	const specifier = packageOf(raw);
+	return resolveSpecifier(file, specifier) ?? specifier;
+};
 
 function executableEdges(file: string, source: string) {
 	return moduleBindingEdges(file, source).flatMap((edge) => {

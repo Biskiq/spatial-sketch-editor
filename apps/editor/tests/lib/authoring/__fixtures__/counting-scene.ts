@@ -15,28 +15,15 @@
  * and no counting behaviour lives here. Every id is deterministic so a count can
  * cite the same fixture twice.
  */
-import {
-	compileWallFirstLayoutGeometry,
-	evaluateLayoutPlan,
-	type CompiledLayoutGeometry,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type PlanEvaluation
-} from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry, type CompiledLayoutGeometry, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { evaluateLayoutPlan, type PlanEvaluation } from '@portfolio/layout-core/world';
+import type { LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 import {
 	SCENE_UNIT_FORMAT_VERSION,
 	type CameraFreeSceneDocument,
 	type ProjectEnvelope
 } from '@portfolio/project-model/units';
-import type {
-	SceneArtworkEntity,
-	SceneEntity,
-	SceneFormEntity,
-	SceneMaterialInstance,
-	SceneModelEntity,
-	ScenePrimitiveEntity,
-	SceneTextureAsset
-} from '@portfolio/project-model';
+import type { SceneArtworkEntity, SceneEntity, SceneFormEntity, SceneMaterialInstance, SceneModelEntity, ScenePrimitiveEntity, SceneTextureAsset } from '@portfolio/project-model/scene';
 
 import { addOpenings, buildGrid, CELL_METERS, sequentialCaptures } from '../../../../perf/lib/workloads/grid';
 import {

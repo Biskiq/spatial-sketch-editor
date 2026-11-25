@@ -8,7 +8,7 @@
  */
 
 import { CAMERA_FOV } from '$lib/types/scene';
-import type { CameraFramingEnvelope } from '$lib/content/scene';
+import type { CameraFramingEnvelope } from '@portfolio/camera-core/camera';
 
 // ---------------------------------------------------------------------------
 // Focus-timing presets

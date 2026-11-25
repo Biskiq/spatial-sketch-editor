@@ -1,15 +1,67 @@
-/**
- * F.1 `references-v1` — the shared reference/resolution provider (AM-1).
- *
- * Exports: shapes, strict validation, the resolver host and resolution, frame
- * resolution and generation-qualified correspondence. The bounded current-domain
- * read adapters are retired with the current source; the live unit-backed read
- * context and resolvers are the explicit `./unit-resolution` subpath.
- * Runtime-safe: no editor, renderer, Svelte or Three import reaches this module,
- * so a visitor runtime and an editor adapter resolve the same identity through
- * the same code.
- */
+export {
+	compareReferences,
+	createReferenceResolverHost,
+	matchesGeneration,
+	REFERENCE_INTERFACE_VERSION,
+	resolveDerivedSourceRef,
+	resolveFrame,
+	resolveReference,
+} from './resolve';
 
-export * from './types';
-export * from './validate';
-export * from './resolve';
+export type {
+	ReferenceResolverHost,
+} from './resolve';
+
+export {
+	isReferenceDomain,
+	isResourceDomain,
+	REFERENCE_DOMAINS,
+	REFERENCE_FAILURE_CODES,
+	REFERENCES_VERSION,
+} from './types';
+
+export type {
+	AcceptedRevision,
+	DependencyLockReader,
+	DerivedSourceRef,
+	DerivedSourceResolution,
+	DerivedSubRef,
+	FrameOwner,
+	FramePlacement,
+	FrameReference,
+	FrameResolution,
+	FrameResolutionFailureCode,
+	FrameResolver,
+	FrameResolverOutcome,
+	ReferenceDomain,
+	ReferenceExtension,
+	ReferenceFailureCode,
+	ReferenceLocation,
+	ReferenceReadContext,
+	ReferenceReadRequest,
+	ReferenceRepairAction,
+	ReferenceResolution,
+	ReferenceResolver,
+	ReferenceResolverOutcome,
+	ReferenceRevision,
+	ReferenceSubject,
+	ResolvedSubject,
+	ResourceDomain,
+	SemanticDomain,
+	SemanticReference,
+	SessionEpoch,
+	SnapshotIdentity,
+} from './types';
+
+export {
+	validateAcceptedRevision,
+	validateDerivedSourceRef,
+	validateFrameReference,
+	validateSemanticReference,
+	validateSnapshotIdentity,
+} from './validate';
+
+export type {
+	ReferenceValidation,
+	ReferenceValidationOptions,
+} from './validate';

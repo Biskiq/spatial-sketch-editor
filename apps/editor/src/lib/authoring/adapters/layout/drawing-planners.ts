@@ -19,36 +19,14 @@ import { drawingRefusalWords } from './refusals';
  * immutable input, and a cancel consumes no authored state because nothing is
  * written until acceptance.
  */
-import {
-	detectUnsupportedChainConnections,
-	faceArea,
-	layoutIdCaptureInput,
-	layoutWorkingLevelInput,
-	materializeLayoutSourceForCapture,
-	planCreateCircularRoom,
-	planDeleteWall,
-	planResizeClosedWallRadius,
-	planTranslateClosedWall,
-	planWallChain,
-	readLayoutIdCapture,
-	readLayoutWorkingLevel,
-	recordPreparedCowCandidate,
-	roomBoundaryPolygon,
-	type LayoutDocumentWallFirst,
-	type LayoutIdCapture,
-	type LayoutVec2,
-	type LayoutSurfaceLineage,
-	type WallChainArc,
-	type WallFirstOpPlan
-} from '@portfolio/layout-core';
-import type {
-	AuthoringIntent,
-	DomainPlanner,
-	PlannerOutcome,
-	PlannerRequest,
-	PreparedCandidate,
-	SemanticReference
-} from '@portfolio/project-model';
+import { detectUnsupportedChainConnections, planDeleteWall, planWallChain, type LayoutDocumentWallFirst, type WallChainArc, type WallFirstOpPlan } from '@portfolio/layout-core/wall';
+import { faceArea, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { layoutIdCaptureInput, layoutWorkingLevelInput, readLayoutIdCapture, readLayoutWorkingLevel, type LayoutIdCapture, type LayoutSurfaceLineage } from '@portfolio/layout-core/plan';
+import { materializeLayoutSourceForCapture } from '@portfolio/layout-core/kernel';
+import { planCreateCircularRoom, planResizeClosedWallRadius, planTranslateClosedWall, roomBoundaryPolygon } from '@portfolio/layout-core/room';
+import { recordPreparedCowCandidate } from '@portfolio/layout-core/world';
+import type { AuthoringIntent, DomainPlanner, PlannerOutcome, PlannerRequest, PreparedCandidate } from '@portfolio/project-model/f4';
+import type { SemanticReference } from '@portfolio/project-model/references';
 import {
 	canonicalUnitJson,
 	replaceUnitData,

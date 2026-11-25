@@ -29,7 +29,8 @@
  * (`requalifySelectionEntry`) matches the **complete** F.1 address and is the one the
  * host uses for the ordered selection. Neither retargets by id alone.
  */
-import { resolveReference, type CorrespondenceEntry, type SemanticReference } from '@portfolio/project-model';
+import { resolveReference, type SemanticReference } from '@portfolio/project-model/references';
+import type { CorrespondenceEntry } from '@portfolio/project-model/f4';
 import type { UnitDomain } from '@portfolio/project-model/units';
 
 import type { StageReadSnapshot } from './accepted-read';

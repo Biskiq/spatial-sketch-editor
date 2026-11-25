@@ -33,7 +33,7 @@
 import { validateCameraFreeScenePayload } from '../units/validate';
 import type { ShapeIssue } from '../strict-shape';
 import type { CameraFreeSceneDocument as SceneDocument } from '../units/types';
-import { surfaceKey } from '@portfolio/layout-core';
+import { surfaceKey } from '@portfolio/layout-core/plan';
 
 /**
  * The records one operation may touch. `changedEntityFields` is the value-level

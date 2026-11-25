@@ -1,12 +1,5 @@
-import {
-	createNavigationGraph,
-	resolveNavigationDocument,
-	resolveSceneDocument,
-	type SceneDocument,
-	type NavigationGraph,
-	type RuntimeScene
-} from '$lib/content/scene';
-import { validateSceneDocument } from '@portfolio/project-model';
+import { createNavigationGraph, resolveNavigationDocument, resolveSceneDocument, type SceneDocument, type NavigationGraph, type RuntimeScene } from '@portfolio/project-model/scene';
+import { validateSceneDocument } from '@portfolio/project-model/scene-codec';
 import tourMinimalRaw from './tour-minimal.json';
 
 export type FixtureSceneName = 'tour-minimal';

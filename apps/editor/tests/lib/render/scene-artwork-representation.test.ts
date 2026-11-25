@@ -20,7 +20,8 @@ import {
 	Vector3,
 	type Object3D
 } from 'three';
-import type { ArtworkFrame, RuntimeScene, SceneArtworkEntity } from '@portfolio/project-model';
+import type { ArtworkFrame } from '@portfolio/project-model/artwork';
+import type { RuntimeScene, SceneArtworkEntity } from '@portfolio/project-model/scene';
 import { createMaterialStore } from '$lib/render/resources/material-store';
 import { createGeometryStore } from '$lib/render/resources/geometry-store';
 import type { SceneArtworkImage, SceneArtworkItem } from '$lib/render/resources/scene-render-item';

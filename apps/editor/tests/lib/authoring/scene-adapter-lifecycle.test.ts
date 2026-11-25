@@ -15,13 +15,10 @@
  *  - the canonical selection keeps its identity unless the gesture is a creation.
  */
 import { describe, expect, it } from 'vitest';
-import {
-	createEmptyWallFirstLayoutDocument,
-	planCreateRegion,
-	planWallChain,
-	type LayoutDocumentWallFirst
-} from '@portfolio/layout-core';
-import type { AuthoringIntent, SceneEntity, Vec3 } from '@portfolio/project-model';
+import { createEmptyWallFirstLayoutDocument, planWallChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import { planCreateRegion } from '@portfolio/layout-core/room';
+import type { AuthoringIntent } from '@portfolio/project-model/f4';
+import type { SceneEntity, Vec3 } from '@portfolio/project-model/scene';
 import {
 	creatorModelDefinition,
 	creatorModelResourceEntry,

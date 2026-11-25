@@ -1,4 +1,4 @@
-import { pointerRay } from '@portfolio/camera-core';
+import { pointerRay } from '@portfolio/camera-core/viewport';
 import { wrap360 } from '$lib/render/sky-time';
 import { nearestT, type DialGrip } from '$lib/authoring/look/celestial-dial';
 import { skySession } from '$lib/authoring/look/sky-session.svelte';

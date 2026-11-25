@@ -1,5 +1,6 @@
 <script lang="ts">
-	import type { Vec3, ViewportEvaluation } from '@portfolio/camera-core';
+	import type { Vec3 } from '@portfolio/camera-core/camera';
+	import type { ViewportEvaluation } from '@portfolio/camera-core/viewport';
 	import { skyKind } from '$lib/render/sky-time';
 	import { dialStagePoint, type CelestialDialModel } from '../../look/celestial-dial';
 	import { skyGlyph } from '../../environment/sky-glyphs';

@@ -1,7 +1,7 @@
-import { countWork } from '@portfolio/layout-core';
+import { countWork } from '@portfolio/layout-core/kernel';
 import { BufferAttribute, BufferGeometry, Float32BufferAttribute, type Material } from 'three';
 import type { IndexedWallMesh, WallMeshSurfaceKey } from '$lib/layout/wall-mesh-builder';
-import type { LayoutWallSide } from '@portfolio/layout-core';
+import type { LayoutWallSide } from '@portfolio/layout-core/plan';
 
 /**
  * A material the adapter holds for one surface class. `material` is used as-is

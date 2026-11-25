@@ -6,7 +6,7 @@ import { createVisitorWallMaterialFactory } from '$lib/render/layout/wall-materi
 import { createMaterialStore } from '$lib/render/resources/material-store';
 import { PAPER_GROUND_INK } from '$lib/authoring/stage/paper-plan';
 import { DEFAULT_FLOOR_COLOR, DEFAULT_WALL_COLOR, DEFAULT_WALL_UNLIT_SHARE } from '$lib/visitor/room-presentation';
-import type { RuntimeScene } from '$lib/content/scene';
+import type { RuntimeScene } from '@portfolio/project-model/scene';
 import { resolveSceneSurfaceLook } from '$lib/render/layout/scene-surface-look';
 
 const source = (path: string): string => readFileSync(resolve(process.cwd(), path), 'utf8');

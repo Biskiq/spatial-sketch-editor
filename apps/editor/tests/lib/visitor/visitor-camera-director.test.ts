@@ -45,8 +45,8 @@ vi.mock('@threlte/extras', async () => {
 	return { OrbitControls };
 });
 
-vi.mock('@portfolio/camera-core', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('@portfolio/camera-core')>();
+vi.mock('@portfolio/camera-core/camera', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@portfolio/camera-core/camera')>();
 	return {
 		...actual,
 		createCameraMotion: (...args: Parameters<typeof actual.createCameraMotion>) => {
@@ -61,7 +61,7 @@ import type {
 	ExecutionProgram,
 	ExperienceInterpreterOptions
 } from '@portfolio/project-model/units';
-import type { NavigationGraph, NavigationNodeData } from '@portfolio/project-model';
+import type { NavigationGraph, NavigationNodeData } from '@portfolio/project-model/scene';
 import VisitorCameraDirector from '$lib/visitor/VisitorCameraDirector.svelte';
 import { createVisitorRuntimeState, type VisitorRuntimeState } from '$lib/visitor/visitor-runtime-state.svelte';
 import { guideTimeMapForProgram } from '$lib/visitor/guide-run-map';

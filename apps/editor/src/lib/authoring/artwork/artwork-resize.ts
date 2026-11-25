@@ -1,8 +1,7 @@
 import { Euler, Vector3 } from 'three';
-import type { PointerRay } from '@portfolio/camera-core';
-import {
-	ARTWORK_MIN_METERS, ARTWORK_MAX_METERS, artworkFrameBorderMeters, artworkHeight, type SceneArtworkEntity
-} from '@portfolio/project-model';
+import type { PointerRay } from '@portfolio/camera-core/viewport';
+import { ARTWORK_MIN_METERS, ARTWORK_MAX_METERS, artworkFrameBorderMeters, artworkHeight } from '@portfolio/project-model/artwork';
+import type { SceneArtworkEntity } from '@portfolio/project-model/scene';
 
 export type ArtworkCorner = readonly [x: -1 | 1, y: -1 | 1];
 export const ARTWORK_CORNERS: readonly ArtworkCorner[] = [[-1, -1], [-1, 1], [1, 1], [1, -1]];

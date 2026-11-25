@@ -18,26 +18,8 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-	compareReferences,
-	createEmptyWallFirstLayoutDocument,
-	createReferenceResolverHost,
-	matchesGeneration,
-	resolveDerivedSourceRef,
-	resolveFrame,
-	resolveReference,
-	validateAcceptedRevision,
-	validateDerivedSourceRef,
-	validateFrameReference,
-	validateSemanticReference,
-	validateSnapshotIdentity,
-	type DependencyLockReader,
-	type FrameResolver,
-	type ReferenceReadContext,
-	type ReferenceResolver,
-	type SemanticReference,
-	type SnapshotIdentity
-} from '@portfolio/project-model';
+import { compareReferences, createReferenceResolverHost, matchesGeneration, resolveDerivedSourceRef, resolveFrame, resolveReference, validateAcceptedRevision, validateDerivedSourceRef, validateFrameReference, validateSemanticReference, validateSnapshotIdentity, type DependencyLockReader, type FrameResolver, type ReferenceReadContext, type ReferenceResolver, type SemanticReference, type SnapshotIdentity } from '@portfolio/project-model/references';
+import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core/wall';
 import {
 	SCENE_UNIT_FORMAT_VERSION,
 	type LayoutUnitPayload

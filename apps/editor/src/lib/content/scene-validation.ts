@@ -1,4 +1,4 @@
-import type { SceneValidationOptions } from '@portfolio/project-model';
+import type { SceneValidationOptions } from '@portfolio/project-model/scene';
 import { getAssetById, isSceneObjectFallback } from './assets';
 import { isMaterialId } from './materials';
 import { isSafeTextureUri } from './texture-uri';

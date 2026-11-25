@@ -1,5 +1,5 @@
 /** Runtime-safe lookup for Scene-owned Finish assignments by canonical Layout identity. */
-import { surfaceKey } from '@portfolio/layout-core';
+import { surfaceKey } from '@portfolio/layout-core/plan';
 import type { RuntimeScene, SceneSurfaceFinish, SceneSurfaceRef } from './scene';
 
 export function resolveSceneSurfaceFinish(

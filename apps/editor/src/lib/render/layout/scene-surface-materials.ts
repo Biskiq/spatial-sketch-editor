@@ -7,7 +7,7 @@ import {
 	releaseEffectiveVariant
 } from '$lib/render/resources/texture-store';
 import type { MaterialTextureSlotKey, StandardMaterialDescriptor } from '$lib/render/resources/material-descriptor';
-import { surfaceKey } from '@portfolio/layout-core';
+import { surfaceKey } from '@portfolio/layout-core/plan';
 import {
 	acquireFinishViews,
 	type FinishViewGeneration,

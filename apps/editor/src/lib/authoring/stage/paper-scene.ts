@@ -28,7 +28,7 @@ import { LineSegments2 } from 'three/addons/lines/webgpu/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 import { createPaperFillGeometry } from './paper-fill-geometry';
 import { paperSourceRuns, type PaperSourceRun } from './paper-selection';
-import { countWork } from '@portfolio/layout-core';
+import { countWork } from '@portfolio/layout-core/kernel';
 import {
 	PAPER_FILL_INK,
 	PAPER_GROUND_INK,

@@ -6,7 +6,7 @@
  * accepted Scene, and clearing returns the exact accepted object.
  */
 import { describe, expect, it } from 'vitest';
-import type { RuntimeScene, SceneLightEntity } from '@portfolio/project-model';
+import type { RuntimeScene, SceneLightEntity } from '@portfolio/project-model/scene';
 import {
 	createStageLightPreview,
 	LIGHT_PREVIEW_CANDIDATE_ID,

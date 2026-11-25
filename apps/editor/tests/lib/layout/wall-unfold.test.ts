@@ -19,40 +19,10 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-	compileWallFirstLayoutGeometry,
-	createClosedWallCircleDocument,
-	createEmptyWallFirstLayoutDocument,
-	cubicBezierArcLength,
-	deriveChainSpans,
-	developmentOpeningIdentity,
-	developmentPointAtStationFromBuffers,
-	createWallDevelopmentBuffers,
-	createWallDevelopmentSheetBuffers,
-	evaluateWallDevelopment,
-	evaluateWallDevelopmentSheet,
-	isClosedWall,
-	LAYOUT_WALL_FIRST_FORMAT_VERSION,
-	mintLayoutIdCapture,
-	parseWallFirstLayoutDocumentJson,
-	planCreateWallFirstOpening,
-	planMoveWallFirstOpening,
-	planUpdateWallFirstOpening,
-	pointAtDistance,
-	serializeWallFirstLayoutDocument,
-	spanForStation,
-	wallCenterlineCubics,
-	wallCenterlineSamples,
-	wallCubicChain,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type LayoutWall,
-	type LayoutWallCubicSpan,
-	type LayoutWallCurveKnot,
-	type WallDevelopment,
-	type WallDevelopmentSourceSpan
-} from '@portfolio/layout-core';
-import type { InspectionPose } from '@portfolio/camera-core';
+import { compileWallFirstLayoutGeometry, cubicBezierArcLength, deriveChainSpans, pointAtDistance, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { createClosedWallCircleDocument, createEmptyWallFirstLayoutDocument, developmentOpeningIdentity, developmentPointAtStationFromBuffers, createWallDevelopmentBuffers, createWallDevelopmentSheetBuffers, evaluateWallDevelopment, evaluateWallDevelopmentSheet, isClosedWall, LAYOUT_WALL_FIRST_FORMAT_VERSION, parseWallFirstLayoutDocumentJson, planCreateWallFirstOpening, planMoveWallFirstOpening, planUpdateWallFirstOpening, serializeWallFirstLayoutDocument, spanForStation, wallCenterlineCubics, wallCenterlineSamples, wallCubicChain, type LayoutDocumentWallFirst, type LayoutWall, type LayoutWallCubicSpan, type LayoutWallCurveKnot, type WallDevelopment, type WallDevelopmentSourceSpan } from '@portfolio/layout-core/wall';
+import { mintLayoutIdCapture } from '@portfolio/layout-core/plan';
+import type { InspectionPose } from '@portfolio/camera-core/viewport';
 
 import {
 	chooseUnfoldAmount,

@@ -41,21 +41,9 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-	compileWallFirstLayoutGeometry,
-	planWallFirstRoomMove,
-	planWallFirstRoomRotation,
-	proposeWallFirstRoomUnitGeometry,
-	proposeWallFirstRoomUnitRotation,
-	resolveIsolatedRoomGroupSubgraph,
-	rotateRoomUnitMoveCandidate,
-	validateWallFirstLayoutDocument,
-	type CompiledLayoutGeometry,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type RoomUnitMoveProposalWall,
-	type RoomUnitMoveSubgraph
-} from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry, type CompiledLayoutGeometry, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { planWallFirstRoomMove, planWallFirstRoomRotation, proposeWallFirstRoomUnitGeometry, proposeWallFirstRoomUnitRotation, resolveIsolatedRoomGroupSubgraph, rotateRoomUnitMoveCandidate, type RoomUnitMoveProposalWall, type RoomUnitMoveSubgraph } from '@portfolio/layout-core/room';
+import { validateWallFirstLayoutDocument, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 
 import { P23B_MATRIX_SPECS, buildP23BMatrixFixture } from './__fixtures__/p23b-fixtures';
 

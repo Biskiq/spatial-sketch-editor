@@ -33,7 +33,7 @@ import {
 } from 'three';
 import { SRGBColorSpace } from 'three';
 import type { WebGPURenderer } from 'three/webgpu';
-import { createViewportCameraState, evaluateViewport, inspectionPoseFromView } from '@portfolio/camera-core';
+import { createViewportCameraState, evaluateViewport, inspectionPoseFromView } from '@portfolio/camera-core/viewport';
 import { realizeEvaluatedCamera } from '$lib/render/camera-realization';
 import { rendererBackendOf } from '$lib/render/renderer-backend';
 import type {

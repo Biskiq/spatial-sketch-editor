@@ -1,5 +1,5 @@
-import { eyeOfInspectionPose, type ViewportEvaluation } from '@portfolio/camera-core';
-import type { SceneArtworkEntity } from '@portfolio/project-model';
+import { eyeOfInspectionPose, type ViewportEvaluation } from '@portfolio/camera-core/viewport';
+import type { SceneArtworkEntity } from '@portfolio/project-model/scene';
 import { artworkBackWallHit } from '../../artwork/artwork-wall-move';
 import { isArtworkWallFace } from '../../artwork/artwork-placement';
 import { wallUnfold } from '../../layout/wall-unfold-store.svelte';

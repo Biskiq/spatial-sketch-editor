@@ -11,14 +11,8 @@
  * Runtime-safe: no editor, renderer, Svelte or Three import.
  */
 
-import {
-	compileWallFirstLayoutGeometry,
-	countWork,
-	p2311Measure,
-	type CompiledLayoutGeometry,
-	type LayoutCompileSession,
-	type LayoutGeometryIssue
-} from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry, type CompiledLayoutGeometry, type LayoutCompileSession, type LayoutGeometryIssue } from '@portfolio/layout-core/geometry';
+import { countWork, p2311Measure } from '@portfolio/layout-core/kernel';
 import {
 	createNavigationGraph,
 	resolveNavigationDocument,
@@ -29,7 +23,7 @@ import {
 	type SceneConnection,
 	type SceneDocument
 } from '../scene';
-import type { SceneValidationOptions } from '../scene-codec';
+import type { SceneValidationOptions } from '../scene-validation';
 import type { ShapeIssue } from '../strict-shape';
 import { CAMERA_UNIT_SCENE_VALIDATION } from './camera-connectivity';
 import type {

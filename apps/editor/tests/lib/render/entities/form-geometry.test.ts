@@ -13,7 +13,7 @@ import {
 	type FormMesh
 } from '@portfolio/geometry-core';
 import { buildFormGeometry } from '$lib/render/entities/form-geometry';
-import type { SceneFormPlane } from '$lib/content/scene';
+import type { SceneFormPlane } from '@portfolio/project-model/scene';
 
 function unitSquareMesh(plane: SceneFormPlane, extent = 1): FormMesh {
 	const outline = [

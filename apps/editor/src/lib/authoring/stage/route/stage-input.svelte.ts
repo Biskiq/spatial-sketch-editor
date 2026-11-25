@@ -28,8 +28,8 @@
  * typed reads/callbacks only; it never imports the route, the acceptance host or
  * a domain planner.
  */
-import type { ViewingIntent, ViewportEvaluation, ViewportRect } from '@portfolio/camera-core';
-import type { PlanEvaluation } from '@portfolio/layout-core';
+import type { ViewingIntent, ViewportEvaluation, ViewportRect } from '@portfolio/camera-core/viewport';
+import type { PlanEvaluation } from '@portfolio/layout-core/world';
 import {
 	perfInput,
 	perfMark,

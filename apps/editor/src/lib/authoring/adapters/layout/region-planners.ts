@@ -10,41 +10,11 @@
  * same intents from this module, so one gesture is one intent and one history
  * entry on the one F4 path.
  */
-import {
-	allocateCapturedId,
-	duplicateRegionSurfaceLineage,
-	layoutIdCaptureInput,
-	layoutWorkingLevelInput,
-	readLayoutIdCapture,
-	readLayoutWorkingLevel,
-	planCreateRegion,
-	planDuplicateRegion,
-	planFitRegionEdgeToWall,
-	planFitRegionToSpace,
-	planFitRegionToWalls,
-	planFitWallsToRegion,
-	planMoveRegion,
-	planRemoveRegion,
-	planRenameRegion,
-	planRotateRegion,
-	planSetRegionElevation,
-	planSetRegionFootprint,
-	planSetRegionIntendedGap,
-	planSetRegionThickness,
-	regionWallRelations,
-	type LayoutDocumentWallFirst,
-	type LayoutIdCapture,
-	type LayoutRegion,
-	type LayoutSurfaceLineage,
-	type LayoutVec2,
-	type RegionPlan
-} from '@portfolio/layout-core';
-import type {
-	AuthoringIntent,
-	DomainPlanner,
-	PlannerOutcome,
-	PlannerRequest
-} from '@portfolio/project-model';
+import { allocateCapturedId, duplicateRegionSurfaceLineage, layoutIdCaptureInput, layoutWorkingLevelInput, readLayoutIdCapture, readLayoutWorkingLevel, type LayoutIdCapture, type LayoutSurfaceLineage } from '@portfolio/layout-core/plan';
+import { planCreateRegion, planDuplicateRegion, planFitRegionEdgeToWall, planFitRegionToSpace, planFitRegionToWalls, planFitWallsToRegion, planMoveRegion, planRemoveRegion, planRenameRegion, planRotateRegion, planSetRegionElevation, planSetRegionFootprint, planSetRegionIntendedGap, planSetRegionThickness, regionWallRelations, type RegionPlan } from '@portfolio/layout-core/room';
+import type { LayoutDocumentWallFirst, LayoutRegion } from '@portfolio/layout-core/wall';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
+import type { AuthoringIntent, DomainPlanner, PlannerOutcome, PlannerRequest } from '@portfolio/project-model/f4';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
 
 import { stageLayout, type StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';

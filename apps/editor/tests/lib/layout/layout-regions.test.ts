@@ -1,21 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import {
-	compileWallFirstLayoutGeometryFresh,
-	createEmptyWallFirstLayoutDocument,
-	createLayoutCompileSession,
-	createPlanRetainer,
-	evaluateLayoutPlan,
-	planDeleteWall,
-	planDissolveJunction,
-	planExactJunctionMove,
-	planWallChain,
-	planWallSplit,
-	validateWallFirstLayoutDocument,
-	withLayoutIdentity,
-	type LayoutRegion,
-	type LayoutVec2,
-	type PlanParameters
-} from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometryFresh, createLayoutCompileSession, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { createEmptyWallFirstLayoutDocument, planDeleteWall, planDissolveJunction, planExactJunctionMove, planWallChain, planWallSplit, validateWallFirstLayoutDocument, type LayoutRegion } from '@portfolio/layout-core/wall';
+import { createPlanRetainer, evaluateLayoutPlan, type PlanParameters } from '@portfolio/layout-core/world';
+import { withLayoutIdentity } from '@portfolio/layout-core/plan';
 import outgoingLayout from './fixtures/layout-8-outgoing.json';
 import { buildStarterEnclosureLayout } from '$lib/authoring/stage/starter-gallery';
 import { buildRegionMeshGeometry, regionSurfaceOf } from '$lib/render/layout/region-mesh-builder';

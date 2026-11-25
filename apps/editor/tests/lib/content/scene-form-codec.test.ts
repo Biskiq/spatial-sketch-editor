@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { validateSceneDocument } from '@portfolio/project-model';
+import { validateSceneDocument } from '@portfolio/project-model/scene-codec';
 import { evaluateSceneForm } from '@portfolio/project-model/scene-planning';
 import {
   SCENE_UNIT_FORMAT_VERSION,

@@ -16,7 +16,7 @@
  * Scene placement consume the increment. Nothing in this module reads a project
  * source, history or Save.
  */
-import type { ViewingIntent } from '@portfolio/camera-core';
+import type { ViewingIntent } from '@portfolio/camera-core/viewport';
 
 /** The one Grid/Snap view state. Grid and Snap are independent facts. */
 export type StageDraftingState = {

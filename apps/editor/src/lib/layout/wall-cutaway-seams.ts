@@ -24,12 +24,7 @@
  * horizontal cap section close; it is drawn double-sided paper, so the visual face
  * is unaffected by that winding.
  */
-import type {
-	CompiledJunction,
-	CompiledLegJoin,
-	CompiledPhysicalWall,
-	LayoutVec2
-} from '@portfolio/layout-core';
+import type { CompiledJunction, CompiledLegJoin, CompiledPhysicalWall, LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 /** One vertical seam face, one per vertical band. */
 export type CutawaySeam = {

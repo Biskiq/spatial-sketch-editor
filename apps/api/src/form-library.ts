@@ -43,7 +43,8 @@ import {
   readMaterialLibraryPayload,
   readMaterialLibraryBytes
 } from '@portfolio/project-model/library';
-import { probeArtworkImage, sha256Bytes } from '@portfolio/project-model';
+import { probeArtworkImage } from '@portfolio/project-model/artwork';
+import { sha256Bytes } from '@portfolio/project-model/package';
 import { recipeHash, shippedImage } from '@portfolio/project-model/materials';
 import { canonicalUnitJson, UNIT_ENVELOPE_SOURCE_FORMAT } from '@portfolio/project-model/units';
 

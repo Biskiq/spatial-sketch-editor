@@ -10,7 +10,7 @@
  * yields `null` rather than a guess (the missing-model fallback is "withhold").
  */
 
-import type { SceneEntity } from '@portfolio/project-model';
+import type { SceneEntity } from '@portfolio/project-model/scene';
 import type { StageAdapterContext, StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 import { stageEnvelope, stageScene } from '$lib/authoring/stage/stage-adapter-host';
 import { getAssetById } from '$lib/content/assets';

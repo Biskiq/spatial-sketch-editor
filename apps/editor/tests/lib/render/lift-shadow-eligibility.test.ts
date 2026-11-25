@@ -33,11 +33,7 @@ import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { Group, Mesh, PerspectiveCamera, type Camera, type Light, type Object3D } from 'three';
-import {
-	compileWallFirstLayoutGeometry,
-	overheadSourcesOf,
-	type CompiledLayoutGeometry
-} from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry, overheadSourcesOf, type CompiledLayoutGeometry } from '@portfolio/layout-core/geometry';
 
 import { stageCameraLayerMask } from '$lib/authoring/stage/paper-plan';
 import { LIFTED_RENDER_LAYER } from '$lib/render/render-layers';

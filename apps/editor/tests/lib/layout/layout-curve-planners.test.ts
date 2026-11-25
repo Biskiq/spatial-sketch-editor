@@ -14,36 +14,8 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-	deriveLayoutWallRole,
-	compileWallFirstLayoutGeometry,
-	createEmptyWallFirstLayoutDocument,
-	deriveChainSpans,
-	planBendWallCurveKnot,
-	planConvertWallToCurve,
-	planConvertWallToLine,
-	planDeleteWallCurveKnot,
-	planExactWallAngle,
-	planExactWallLength,
-	planInsertWallCurveKnot,
-	planMoveWallCurveKnot,
-	planRigidWallMove,
-	planWallCrossing,
-	planWallSplit,
-	planWallSubdivision,
-	sampleSegment,
-	wallCubicChain,
-	wallCurveChainLength,
-	wallCurveKnotArcDistance,
-	wallFirstWallSpan,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type LayoutWall,
-	type LayoutWallCenterline,
-	type LayoutWallCubicSpan,
-	type LayoutWallCurveKnot,
-	type NodingIdAllocator
-} from '@portfolio/layout-core';
+import { deriveLayoutWallRole, createEmptyWallFirstLayoutDocument, planBendWallCurveKnot, planConvertWallToCurve, planConvertWallToLine, planDeleteWallCurveKnot, planExactWallAngle, planExactWallLength, planInsertWallCurveKnot, planMoveWallCurveKnot, planRigidWallMove, planWallCrossing, planWallSplit, planWallSubdivision, wallCubicChain, wallCurveChainLength, wallCurveKnotArcDistance, wallFirstWallSpan, type LayoutDocumentWallFirst, type LayoutWall, type LayoutWallCenterline, type LayoutWallCubicSpan, type LayoutWallCurveKnot, type NodingIdAllocator } from '@portfolio/layout-core/wall';
+import { compileWallFirstLayoutGeometry, deriveChainSpans, sampleSegment, type LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 const LINE = { kind: 'line' } as const;
 const CHORD = 12;

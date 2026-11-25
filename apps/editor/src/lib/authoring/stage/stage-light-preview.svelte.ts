@@ -8,7 +8,7 @@
  * never in history and never in a release payload; the editor Stage shell merges
  * it, and no visitor chunk imports it.
  */
-import type { RuntimeScene, SceneLightEntity } from '@portfolio/project-model';
+import type { RuntimeScene, SceneLightEntity } from '@portfolio/project-model/scene';
 
 /** The reserved id a placement candidate renders under. Never persisted. */
 export const LIGHT_PREVIEW_CANDIDATE_ID = 'stage-light-preview:candidate';

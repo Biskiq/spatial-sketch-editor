@@ -1,27 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import {
-	CLOSED_WALL_CIRCLE_ACCURACY,
-	cubicBezierArcLength,
-	cubicBezierPoint,
-	isClosedWall,
-	orientedWallChainKnotsAndSpans,
-	parseWallFirstLayoutDocumentJson,
-	planCreateWallFirstOpening,
-	planDeleteWall,
-	planDuplicateIsolatedRoom,
-	planMoveWallFirstOpening,
-	planResizeClosedWallRadius,
-	planWallChain,
-	planWallFirstRoomMove,
-	planWallSplit,
-	readClosedWallCircle,
-	serializeWallFirstLayoutDocument,
-	validateWallFirstLayoutDocument,
-	wallCubicChain,
-	wallFirstWallLength,
-	type CubicBezierShape,
-	type LayoutVec2
-} from '@portfolio/layout-core';
+import { CLOSED_WALL_CIRCLE_ACCURACY, isClosedWall, orientedWallChainKnotsAndSpans, parseWallFirstLayoutDocumentJson, planCreateWallFirstOpening, planDeleteWall, planMoveWallFirstOpening, planWallChain, planWallSplit, serializeWallFirstLayoutDocument, validateWallFirstLayoutDocument, wallCubicChain, wallFirstWallLength } from '@portfolio/layout-core/wall';
+import { cubicBezierArcLength, cubicBezierPoint, type CubicBezierShape, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { planDuplicateIsolatedRoom } from '@portfolio/layout-core/plan';
+import { planResizeClosedWallRadius, planWallFirstRoomMove, readClosedWallCircle } from '@portfolio/layout-core/room';
 import { AuthoringHistory, type HistoryState } from '$lib/authoring/f4/history';
 import {
 	accepted, attach, attachmentDistances, boundary, capture, circle, clearRound, cubics, gate,

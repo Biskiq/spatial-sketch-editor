@@ -1,10 +1,11 @@
 /** Mounted Scene geometry is data for the Stage hit provider, never a selection authority. */
 import { Box3, Matrix3, Mesh, Raycaster, type Intersection, type Object3D } from 'three';
-import { LAYOUT_SLICE_CONTACT_METERS, type LayoutRegionSurfaceRef } from '@portfolio/layout-core';
+import { LAYOUT_SLICE_CONTACT_METERS } from '@portfolio/layout-core/room';
+import type { LayoutRegionSurfaceRef } from '@portfolio/layout-core/plan';
 import { regionSurfaceOf } from '$lib/render/layout/region-mesh-builder';
-import type { PointerRay } from '@portfolio/camera-core';
+import type { PointerRay } from '@portfolio/camera-core/viewport';
 import type { Layout3dPickRange } from '$lib/layout/wall-mesh-builder';
-import type { RuntimeScene } from '@portfolio/project-model';
+import type { RuntimeScene } from '@portfolio/project-model/scene';
 import { renderIdentityOf, type LayoutIdentityIndex } from '$lib/render/render-identity';
 
 /**

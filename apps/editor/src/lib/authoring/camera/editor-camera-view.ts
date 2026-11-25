@@ -1,14 +1,10 @@
 
-import type {
-	SceneDocument,
-	SceneCameraViewKeyframe,
-	SceneConnection
-} from '$lib/content/scene';
+import type { SceneDocument, SceneCameraViewKeyframe, SceneConnection } from '@portfolio/project-model/scene';
 import type {
 	CameraConnectionDirection,
 	Vec3
 } from '$lib/types/scene';
-import type { Vector3Like } from '@portfolio/camera-core';
+import type { Vector3Like } from '@portfolio/camera-core/camera';
 import { createDraftConnectionPositionPath } from './editor-camera-path';
 
 export const EDITOR_CAMERA_VIEW_PROGRESS_EPSILON = 1e-6;

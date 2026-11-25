@@ -20,22 +20,11 @@
  * mints one interior knot whose id comes from the captured nonce, so Undo/Redo
  * replay the same id.
  */
-import {
-	layoutIdCaptureInput,
-	layoutWorkingLevelInput,
-	materializeLayoutSourceForCapture,
-	planDissolveJunction,
-	readLayoutIdCapture,
-	readLayoutWorkingLevel,
-	recordPreparedCowCandidate,
-	type LayoutIdCapture
-} from '@portfolio/layout-core';
-import type {
-	AuthoringIntent,
-	DomainPlanner,
-	PlannerOutcome,
-	PreparedCandidate
-} from '@portfolio/project-model';
+import { layoutIdCaptureInput, layoutWorkingLevelInput, readLayoutIdCapture, readLayoutWorkingLevel, type LayoutIdCapture } from '@portfolio/layout-core/plan';
+import { materializeLayoutSourceForCapture } from '@portfolio/layout-core/kernel';
+import { planDissolveJunction } from '@portfolio/layout-core/wall';
+import { recordPreparedCowCandidate } from '@portfolio/layout-core/world';
+import type { AuthoringIntent, DomainPlanner, PlannerOutcome, PreparedCandidate } from '@portfolio/project-model/f4';
 import {
 	canonicalUnitJson,
 	replaceUnitData,

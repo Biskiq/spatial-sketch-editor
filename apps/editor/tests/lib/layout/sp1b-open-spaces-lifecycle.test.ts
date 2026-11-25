@@ -5,34 +5,10 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-	buildCorrespondenceComponents,
-	compileWallFirstLayoutGeometry,
-	createEmptyWallFirstLayoutDocument,
-	deriveChainSpans,
-	extractBoundaryCandidateFaces,
-	interiorWitness,
-	planDeleteWall,
-	planDeleteWalls,
-	planDissolveJunction,
-	planDuplicateIsolatedRoom,
-	planExactJunctionMove,
-	planExactRectangleDimensions,
-	planRemoveRoom,
-	planRemoveSpace,
-	planRoomMetadataUpdate,
-	planWallChain,
-	planWallFirstRoomMove,
-	planWallFirstRoomRotation,
-	planWallSubdivision,
-	reconcileRooms,
-	roomBoundaryPolygon,
-	serializeWallFirstLayoutDocument,
-	wallCubicChain,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type NodingIdAllocator
-} from '@portfolio/layout-core';
+import { buildCorrespondenceComponents, interiorWitness, planWallFirstRoomMove, planWallFirstRoomRotation, reconcileRooms, roomBoundaryPolygon } from '@portfolio/layout-core/room';
+import { compileWallFirstLayoutGeometry, deriveChainSpans, extractBoundaryCandidateFaces, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { createEmptyWallFirstLayoutDocument, planDeleteWall, planDeleteWalls, planDissolveJunction, planExactJunctionMove, planExactRectangleDimensions, planRemoveRoom, planRemoveSpace, planRoomMetadataUpdate, planWallChain, planWallSubdivision, serializeWallFirstLayoutDocument, wallCubicChain, type LayoutDocumentWallFirst, type NodingIdAllocator } from '@portfolio/layout-core/wall';
+import { planDuplicateIsolatedRoom } from '@portfolio/layout-core/plan';
 import { AuthoringHistory, type HistoryState } from '$lib/authoring/f4/history';
 import { captureFor } from './__fixtures__/layout-id-capture';
 import { twoRoomDocument } from './__fixtures__/two-room-fixture';

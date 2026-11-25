@@ -17,20 +17,11 @@
  * 5. inactive helpers cannot pick.
  */
 import { describe, expect, it, vi } from 'vitest';
-import {
-	createEmptyWallFirstLayoutDocument,
-	LAYOUT_DIMENSION_LIMIT_MESSAGE,
-	MAX_LAYOUT_DIMENSION_METERS,
-	planCreateCircularRoom,
-	planCreateWallFirstOpening,
-	planExactJunctionMove,
-	planWallChain,
-	wallFirstWallLength,
-	setWorkObserver,
-	type LayoutDocumentWallFirst,
-	type LayoutWall,
-	type PlanSourceRef
-} from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument, planCreateWallFirstOpening, planExactJunctionMove, planWallChain, wallFirstWallLength, type LayoutDocumentWallFirst, type LayoutWall } from '@portfolio/layout-core/wall';
+import { LAYOUT_DIMENSION_LIMIT_MESSAGE, MAX_LAYOUT_DIMENSION_METERS } from '@portfolio/layout-core/geometry';
+import { planCreateCircularRoom } from '@portfolio/layout-core/room';
+import { setWorkObserver } from '@portfolio/layout-core/kernel';
+import type { PlanSourceRef } from '@portfolio/layout-core/world';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
 import { captureUnitSave, readUnitEnvelopeForSave } from '@portfolio/project-model/units';
 

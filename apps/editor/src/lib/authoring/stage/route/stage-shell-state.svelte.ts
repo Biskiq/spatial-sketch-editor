@@ -16,8 +16,8 @@
  * `start()` installs the browser media listeners once and `dispose()` removes
  * them exactly once, so the route keeps one ordered teardown.
  */
-import type { SemanticReference } from '@portfolio/project-model';
-import type { ViewportEvaluation, ViewportRect } from '@portfolio/camera-core';
+import type { SemanticReference } from '@portfolio/project-model/references';
+import type { ViewportEvaluation, ViewportRect } from '@portfolio/camera-core/viewport';
 import {
 	DEFAULT_APP_PREFERENCES,
 	readAppPreferences,

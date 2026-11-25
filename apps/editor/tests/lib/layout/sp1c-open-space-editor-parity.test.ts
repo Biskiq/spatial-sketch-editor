@@ -9,18 +9,8 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-	compileWallFirstLayoutGeometry,
-	createEmptyWallFirstLayoutDocument,
-	faceArea,
-	parseWallFirstLayoutDocumentJson,
-	planDeleteWall,
-	planRemoveSpace,
-	serializeWallFirstLayoutDocument,
-	type CompiledLayoutQueryGeometry,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2
-} from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry, faceArea, type CompiledLayoutQueryGeometry, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { createEmptyWallFirstLayoutDocument, parseWallFirstLayoutDocumentJson, planDeleteWall, planRemoveSpace, serializeWallFirstLayoutDocument, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 
 import { planChainDraft } from '$lib/authoring/adapters/layout/chain';
 import { planWallDeletion } from '$lib/authoring/adapters/layout/drawing-planners';

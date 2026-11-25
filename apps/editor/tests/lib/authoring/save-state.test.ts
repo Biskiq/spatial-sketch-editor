@@ -8,7 +8,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import type { AcceptedRevision } from '@portfolio/project-model';
+import type { AcceptedRevision } from '@portfolio/project-model/references';
 import { createUnitSaveHandler, type ProjectEnvelope } from '@portfolio/project-model/units';
 import type { SaveRequest } from '@portfolio/project-model/save';
 

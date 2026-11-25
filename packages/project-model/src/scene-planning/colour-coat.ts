@@ -14,8 +14,8 @@
  * same `planColourCoats`, so the number of Finish ids the editor allocates and
  * the number the planner consumes cannot disagree.
  */
-import type { LayoutSurfaceRef } from '@portfolio/layout-core';
-import { surfaceKey } from '@portfolio/layout-core';
+import type { LayoutSurfaceRef } from '@portfolio/layout-core/plan';
+import { surfaceKey } from '@portfolio/layout-core/plan';
 import type { MaterialId, SceneColor, SceneMaterialInstance } from '../scene';
 import { catalogueRecipe } from '../materials/catalogue';
 import { pruneOverrides } from '../materials/read';

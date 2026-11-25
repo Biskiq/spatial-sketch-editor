@@ -1,12 +1,12 @@
 {
   "generatedFrom": "LOC-0 baseline; shrink-only from here",
   "counts": {
-    "filesOver600": 139,
+    "filesOver600": 137,
     "filesOver1000": 50,
     "filesOver1500": 24,
     "functionsOver200": 70,
-    "exportStars": 152,
-    "crossPackageReexports": 1,
+    "exportStars": 0,
+    "crossPackageReexports": 0,
     "seams": 16
   },
   "files": [
@@ -22,7 +22,7 @@
     },
     {
       "path": "packages/project-model/src/scene-planning/finish-planners.ts",
-      "lines": 3023,
+      "lines": 3020,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -37,7 +37,7 @@
     },
     {
       "path": "apps/editor/src/lib/authoring/look/finish-authoring.svelte.ts",
-      "lines": 2289,
+      "lines": 2283,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -47,7 +47,7 @@
     },
     {
       "path": "apps/editor/src/lib/layout/wall-mesh-builder.ts",
-      "lines": 2139,
+      "lines": 2119,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -57,7 +57,7 @@
     },
     {
       "path": "packages/project-model/src/units/validate.ts",
-      "lines": 2062,
+      "lines": 2058,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -67,17 +67,12 @@
     },
     {
       "path": "apps/editor/src/lib/authoring/experience/experience-controller.svelte.ts",
-      "lines": 2053,
+      "lines": 2054,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
       "path": "apps/editor/src/lib/authoring/experience/ExperienceGuide.svelte",
       "lines": 1983,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
-      "path": "apps/editor/src/lib/authoring/adapters/layout/precision.ts",
-      "lines": 1858,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -87,7 +82,12 @@
     },
     {
       "path": "apps/api/src/form-library.ts",
-      "lines": 1830,
+      "lines": 1831,
+      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+    },
+    {
+      "path": "apps/editor/src/lib/authoring/adapters/layout/precision.ts",
+      "lines": 1814,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -102,7 +102,7 @@
     },
     {
       "path": "apps/editor/src/lib/authoring/adapters/layout/layout-contributions.ts",
-      "lines": 1714,
+      "lines": 1705,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -112,12 +112,12 @@
     },
     {
       "path": "apps/editor/src/lib/authoring/adapters/scene/placement.ts",
-      "lines": 1651,
+      "lines": 1652,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
       "path": "apps/editor/src/lib/authoring/adapters/layout/ink-session.ts",
-      "lines": 1584,
+      "lines": 1579,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -147,7 +147,7 @@
     },
     {
       "path": "apps/editor/src/lib/authoring/adapters/layout/wall-gesture-session.ts",
-      "lines": 1406,
+      "lines": 1398,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -172,12 +172,12 @@
     },
     {
       "path": "apps/editor/src/lib/authoring/experience/experience-lens.svelte.ts",
-      "lines": 1291,
+      "lines": 1292,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
       "path": "apps/editor/src/lib/authoring/library/StageLibrary.svelte",
-      "lines": 1291,
+      "lines": 1292,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -207,11 +207,11 @@
     },
     {
       "path": "apps/editor/src/lib/authoring/world-toolbar/WorldToolbar.svelte",
-      "lines": 1172,
+      "lines": 1173,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
-      "path": "apps/editor/src/lib/authoring/look/finish-card.svelte.ts",
+      "path": "apps/editor/src/lib/authoring/layout/plan-pick-provider.ts",
       "lines": 1125,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
@@ -221,8 +221,8 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
-      "path": "apps/editor/src/lib/authoring/layout/plan-pick-provider.ts",
-      "lines": 1123,
+      "path": "apps/editor/src/lib/authoring/look/finish-card.svelte.ts",
+      "lines": 1118,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -276,18 +276,18 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
-      "path": "apps/editor/src/lib/authoring/adapters/layout/drawing-planners.ts",
-      "lines": 970,
+      "path": "packages/layout-core/src/layout-region.ts",
+      "lines": 966,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
       "path": "apps/editor/src/lib/authoring/adapters/layout/curve-gesture-session.ts",
-      "lines": 963,
+      "lines": 956,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
-      "path": "packages/layout-core/src/layout-region.ts",
-      "lines": 959,
+      "path": "apps/editor/src/lib/authoring/adapters/layout/drawing-planners.ts",
+      "lines": 948,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -302,7 +302,7 @@
     },
     {
       "path": "packages/project-model/src/scene-planning/planners.ts",
-      "lines": 927,
+      "lines": 921,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -317,17 +317,17 @@
     },
     {
       "path": "packages/project-model/src/scene.ts",
-      "lines": 902,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
-      "path": "apps/editor/src/lib/authoring/stage/paper-plan.ts",
-      "lines": 897,
+      "lines": 900,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
       "path": "packages/project-model/src/scene-codec/parse-entities.ts",
       "lines": 888,
+      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+    },
+    {
+      "path": "apps/editor/src/lib/authoring/stage/paper-plan.ts",
+      "lines": 886,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -337,7 +337,7 @@
     },
     {
       "path": "apps/editor/src/lib/authoring/stage/stage-session.ts",
-      "lines": 878,
+      "lines": 879,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -366,8 +366,8 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
-      "path": "apps/editor/src/lib/authoring/look/finish-editor.svelte.ts",
-      "lines": 844,
+      "path": "apps/editor/src/lib/authoring/stage/stage-facade.ts",
+      "lines": 841,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -376,8 +376,8 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
-      "path": "apps/editor/src/lib/authoring/stage/stage-facade.ts",
-      "lines": 840,
+      "path": "apps/editor/src/lib/authoring/look/finish-editor.svelte.ts",
+      "lines": 839,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -407,7 +407,7 @@
     },
     {
       "path": "apps/editor/src/lib/authoring/adapters/layout/open-side-gesture-session.ts",
-      "lines": 816,
+      "lines": 803,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -436,18 +436,8 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
-      "path": "apps/editor/src/lib/authoring/adapters/layout/region-planners.ts",
-      "lines": 773,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
       "path": "apps/editor/src/lib/authoring/stage/shell/StageSliceLayer.svelte",
       "lines": 770,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
-      "path": "apps/editor/src/lib/authoring/stage/host-acceptance.ts",
-      "lines": 767,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -456,18 +446,18 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
-      "path": "apps/editor/src/lib/authoring/stage/route/stage-unfold-gestures.svelte.ts",
-      "lines": 758,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
       "path": "packages/camera-core/src/guide-time-map.ts",
       "lines": 758,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
-      "path": "apps/editor/src/lib/layout/wall-unfold.ts",
-      "lines": 751,
+      "path": "apps/editor/src/lib/authoring/stage/route/stage-unfold-gestures.svelte.ts",
+      "lines": 754,
+      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+    },
+    {
+      "path": "apps/editor/src/lib/authoring/stage/host-acceptance.ts",
+      "lines": 753,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -486,18 +476,28 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
+      "path": "apps/editor/src/lib/authoring/adapters/layout/region-planners.ts",
+      "lines": 743,
+      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+    },
+    {
       "path": "apps/api/src/project-lifecycle.ts",
       "lines": 742,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
       "path": "apps/editor/src/lib/authoring/adapters/layout/opening-placement-session.ts",
-      "lines": 740,
+      "lines": 737,
+      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+    },
+    {
+      "path": "apps/editor/src/lib/layout/wall-unfold.ts",
+      "lines": 737,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
       "path": "apps/editor/src/lib/authoring/adapters/scene/object-marks.ts",
-      "lines": 737,
+      "lines": 732,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -522,7 +522,7 @@
     },
     {
       "path": "apps/editor/src/lib/authoring/experience/experience-marks.ts",
-      "lines": 719,
+      "lines": 720,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -536,23 +536,23 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
-      "path": "apps/editor/src/lib/authoring/adapters/layout/junction-gesture-session.ts",
-      "lines": 703,
+      "path": "apps/editor/src/lib/authoring/stage/facade/adapter-contract.ts",
+      "lines": 707,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
       "path": "apps/editor/src/lib/authoring/adapters/layout/opening-gesture-session.ts",
-      "lines": 702,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
-      "path": "apps/editor/src/lib/authoring/stage/facade/adapter-contract.ts",
-      "lines": 702,
+      "lines": 699,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
       "path": "apps/editor/src/lib/authoring/stage/shell/StageCanvas.svelte",
-      "lines": 697,
+      "lines": 698,
+      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+    },
+    {
+      "path": "apps/editor/src/lib/authoring/adapters/layout/junction-gesture-session.ts",
+      "lines": 694,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -587,17 +587,12 @@
     },
     {
       "path": "apps/editor/src/lib/authoring/experience/commands.ts",
-      "lines": 669,
+      "lines": 670,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
       "path": "apps/editor/src/lib/authoring/adapters/scene/support-occlusion.ts",
       "lines": 663,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
-      "path": "apps/editor/src/lib/authoring/adapters/layout/instrument.ts",
-      "lines": 661,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -611,17 +606,17 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
+      "path": "apps/editor/src/lib/authoring/adapters/layout/instrument.ts",
+      "lines": 656,
+      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+    },
+    {
       "path": "packages/layout-core/src/layout-geometry-types.ts",
       "lines": 649,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
       "path": "apps/editor/src/lib/authoring/adapters/layout/room-gesture-session.ts",
-      "lines": 644,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
-      "path": "apps/editor/src/lib/visitor/VisitorCameraDirector.svelte",
       "lines": 640,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
@@ -637,12 +632,17 @@
     },
     {
       "path": "apps/editor/src/lib/authoring/stage/facade/contribution-view.ts",
-      "lines": 635,
+      "lines": 636,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
       "path": "packages/project-model/src/program/validate.ts",
       "lines": 634,
+      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+    },
+    {
+      "path": "apps/editor/src/lib/visitor/VisitorCameraDirector.svelte",
+      "lines": 632,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -656,18 +656,18 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
+      "path": "apps/editor/src/lib/authoring/stage/route/light-look-through.svelte.ts",
+      "lines": 618,
+      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+    },
+    {
       "path": "apps/api/src/asset-persistence.ts",
       "lines": 617,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
-      "path": "apps/editor/src/lib/authoring/stage/route/light-look-through.svelte.ts",
-      "lines": 617,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
-      "path": "apps/editor/src/lib/render/scene-render-description.ts",
-      "lines": 617,
+      "path": "apps/editor/src/lib/authoring/experience/ExperiencePaths.svelte",
+      "lines": 608,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -676,28 +676,18 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
-      "path": "apps/editor/src/lib/authoring/experience/ExperiencePaths.svelte",
-      "lines": 607,
+      "path": "apps/editor/src/lib/render/scene-render-description.ts",
+      "lines": 606,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
       "path": "apps/editor/src/lib/authoring/library/material-import.svelte.ts",
-      "lines": 604,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
-      "path": "apps/editor/src/lib/authoring/stage/camera-session.ts",
-      "lines": 603,
+      "lines": 605,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
       "path": "packages/project-model/src/units/acceptance.ts",
       "lines": 603,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
-      "path": "apps/editor/src/lib/authoring/adapters/layout/LayoutRegionCard.svelte",
-      "lines": 602,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -710,28 +700,28 @@
     {
       "file": "apps/editor/src/lib/authoring/look/finish-authoring.svelte.ts",
       "name": "createFinishAuthoring",
-      "line": 334,
+      "line": 328,
       "lines": 1954,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
       "file": "packages/project-model/src/scene-planning/finish-planners.ts",
       "name": "prepare",
-      "line": 1182,
+      "line": 1179,
       "lines": 1808,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
       "file": "apps/editor/src/lib/authoring/experience/experience-controller.svelte.ts",
       "name": "createExperienceController",
-      "line": 339,
+      "line": 340,
       "lines": 1715,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
       "file": "apps/editor/src/lib/authoring/experience/experience-lens.svelte.ts",
       "name": "createExperienceLens",
-      "line": 94,
+      "line": 95,
       "lines": 1196,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
@@ -745,7 +735,7 @@
     {
       "file": "apps/editor/src/lib/authoring/look/finish-card.svelte.ts",
       "name": "createFinishCard",
-      "line": 322,
+      "line": 315,
       "lines": 802,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
@@ -787,21 +777,21 @@
     {
       "file": "apps/editor/src/lib/authoring/adapters/layout/opening-placement-session.ts",
       "name": "createOpeningPlacementSession",
-      "line": 122,
+      "line": 119,
       "lines": 619,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
       "file": "apps/editor/src/lib/authoring/stage/facade/contribution-view.ts",
       "name": "createContributionView",
-      "line": 33,
+      "line": 34,
       "lines": 603,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
       "file": "apps/editor/src/lib/authoring/stage/route/stage-unfold-gestures.svelte.ts",
       "name": "createStageUnfoldGestures",
-      "line": 144,
+      "line": 140,
       "lines": 592,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
@@ -815,7 +805,7 @@
     {
       "file": "apps/editor/src/lib/authoring/library/material-import.svelte.ts",
       "name": "createMaterialImportSession",
-      "line": 79,
+      "line": 80,
       "lines": 524,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
@@ -829,7 +819,7 @@
     {
       "file": "apps/editor/src/lib/authoring/layout/plan-pick-provider.ts",
       "name": "createPlanPickProvider",
-      "line": 625,
+      "line": 627,
       "lines": 499,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
@@ -857,7 +847,7 @@
     {
       "file": "apps/editor/src/lib/authoring/adapters/layout/instrument.ts",
       "name": "createLayoutInstrument",
-      "line": 181,
+      "line": 176,
       "lines": 481,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
@@ -885,7 +875,7 @@
     {
       "file": "apps/editor/src/lib/authoring/experience/playback.svelte.ts",
       "name": "createExperiencePlayback",
-      "line": 60,
+      "line": 51,
       "lines": 417,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
@@ -906,7 +896,7 @@
     {
       "file": "apps/editor/src/lib/authoring/stage/route/light-look-through.svelte.ts",
       "name": "createLightLookThrough",
-      "line": 214,
+      "line": 215,
       "lines": 404,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
@@ -941,7 +931,7 @@
     {
       "file": "apps/editor/src/lib/authoring/stage/camera-session.ts",
       "name": "createCameraSession",
-      "line": 236,
+      "line": 204,
       "lines": 368,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
@@ -969,7 +959,7 @@
     {
       "file": "apps/editor/src/lib/authoring/stage/route/stage-artwork-interaction.svelte.ts",
       "name": "createStageArtworkInteraction",
-      "line": 86,
+      "line": 82,
       "lines": 344,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
@@ -997,7 +987,7 @@
     {
       "file": "apps/editor/src/lib/authoring/scene/scene-pick-source.ts",
       "name": "createScenePickSource",
-      "line": 70,
+      "line": 71,
       "lines": 312,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
@@ -1053,14 +1043,14 @@
     {
       "file": "apps/editor/src/lib/authoring/look/look-authoring.svelte.ts",
       "name": "createLookAuthoring",
-      "line": 126,
+      "line": 127,
       "lines": 276,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
       "file": "apps/api/src/save-persistence.ts",
       "name": "saveAcceptedSourceWithHandlers",
-      "line": 126,
+      "line": 127,
       "lines": 275,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
@@ -1095,7 +1085,7 @@
     {
       "file": "packages/project-model/src/units/validate.ts",
       "name": "readExperience",
-      "line": 834,
+      "line": 830,
       "lines": 244,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
@@ -1109,7 +1099,7 @@
     {
       "file": "apps/editor/src/lib/authoring/f4/acceptance-coordinator.ts",
       "name": "createAcceptanceCoordinator",
-      "line": 132,
+      "line": 116,
       "lines": 238,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },

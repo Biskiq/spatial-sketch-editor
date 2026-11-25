@@ -13,16 +13,7 @@ import {
   MathUtils,
   Vector3
 } from 'three';
-import {
-  CAMERA_FRAMING_GUARD_POLICY,
-  VISITOR_CAMERA_PROJECTION,
-  cameraApplyEasing,
-  cameraMotionProgressAtEdgeProgress,
-  createCameraMotion,
-  createCameraMotionSample,
-  sampleFramingEnvelopeWeight,
-  type CameraRoute
-} from '@portfolio/camera-core';
+import { CAMERA_FRAMING_GUARD_POLICY, VISITOR_CAMERA_PROJECTION, cameraApplyEasing, cameraMotionProgressAtEdgeProgress, createCameraMotion, createCameraMotionSample, sampleFramingEnvelopeWeight, type CameraRoute } from '@portfolio/camera-core/camera';
 import {
   CAMERA_FOV,
   type CameraEasing,

@@ -1371,9 +1371,41 @@ const X2_CONTROLLERS = new Set([
 ]);
 const CONTROLLER_ROUTE = 'apps/editor/' + SPATIAL_ROUTE;
 const posixPath = (value: string) => value.split(/[\\/]/).join('/');
-const absolutePolicyPath = (entry: string): string => entry.startsWith('@portfolio/')
-	? join(ROOT, '..', '..', 'packages', entry.slice('@portfolio/'.length).split('/')[0]!, 'src/index.ts')
-	: entry.startsWith('packages/') ? join(ROOT, '..', '..', entry) : join(ROOT, entry);
+const repoRoot = join(ROOT, '..', '..');
+
+function packageExportPaths(packageName: string): string[] {
+	const dir = join(repoRoot, 'packages', packageName);
+	const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')) as {
+		exports?: Record<string, string | { types?: string; default?: string }>;
+	};
+	const entries = Object.values(manifest.exports ?? {}).flatMap((entry) =>
+		typeof entry === 'string' ? [entry] : entry?.types ? [entry.types] : entry?.default ? [entry.default] : []
+	);
+	return [...new Set(entries)].map((entry) => join(dir, entry));
+}
+
+function absolutePolicyPaths(entry: string): string[] {
+	if (entry.startsWith('@portfolio/')) {
+		const rest = entry.slice('@portfolio/'.length);
+		const slash = rest.indexOf('/');
+		const packageName = slash === -1 ? rest : rest.slice(0, slash);
+		if (slash === -1) return packageExportPaths(packageName);
+		const dir = join(repoRoot, 'packages', packageName);
+		const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')) as {
+			exports?: Record<string, string | { types?: string; default?: string }>;
+		};
+		const exported = manifest.exports?.[`./${rest.slice(slash + 1)}`];
+		const relative = typeof exported === 'string' ? exported : exported?.types ?? exported?.default;
+		return relative ? [join(dir, relative)] : [];
+	}
+	if (entry.startsWith('packages/')) {
+		const sourceRoot = join(repoRoot, entry);
+		const match = /^packages\/([^/]+)\/src\/index\.ts$/.exec(entry);
+		if (match && !existsSync(sourceRoot)) return packageExportPaths(match[1]!);
+		return [sourceRoot];
+	}
+	return [join(ROOT, entry)];
+}
 
 function controllerTargets(controller: string, approved: ReadonlySet<string>): string[] {
 	const root = join(ROOT, controller);
@@ -1435,7 +1467,7 @@ function reaches(sources: Record<string, string>, root: string, forbidden: strin
 describe('controller boundaries (Appendix B.1/B.2)', () => {
 	it('keeps every extracted controller on its approved owner set', { timeout: 30_000 }, () => {
 		for (const { controller, approved } of CONTROLLER_BOUNDARIES) {
-			const allowed = new Set(approved.map(absolutePolicyPath));
+			const allowed = new Set(approved.flatMap(absolutePolicyPaths));
 			for (const path of allowed) expect(existsSync(path), path).toBe(true);
 			expect(controllerTargets(controller, allowed).filter((target) =>
 				forbiddenControllerEdge(controller, target)), controller).toEqual([]);

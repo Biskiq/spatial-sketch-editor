@@ -1,4 +1,5 @@
-import { projectWorld, type Vec3, type ViewportEvaluation } from '@portfolio/camera-core';
+import { projectWorld, type ViewportEvaluation } from '@portfolio/camera-core/viewport';
+import type { Vec3 } from '@portfolio/camera-core/camera';
 import type { SceneSky } from '@portfolio/project-model/units';
 import { hhmm, skyBodyAt, skyDirection, snapTime, wrap24, DAWN_START, NIGHT_START, SUNRISE, SUNSET } from '$lib/render/sky-time';
 

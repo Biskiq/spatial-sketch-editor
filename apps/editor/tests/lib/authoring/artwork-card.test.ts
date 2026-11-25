@@ -6,8 +6,8 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mount, tick, unmount } from 'svelte';
-import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core';
-import type { SceneArtworkEntity } from '@portfolio/project-model';
+import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core/wall';
+import type { SceneArtworkEntity } from '@portfolio/project-model/scene';
 import {
 	SCENE_UNIT_FORMAT_VERSION,
 	UNIT_SOURCE_KIND,

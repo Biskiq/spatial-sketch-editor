@@ -24,15 +24,10 @@
  * A refused acceptance leaves the chain editable with its capture kept for the
  * retry; a settled chain never donates its capture to the next one.
  */
-import {
-	MIN_WALL_ARC_RISE,
-	measureWallArc,
-	mintLayoutIdCapture,
-	planCreateCircularRoom,
-	proposeCreateCircularWall,
-	type LayoutVec2,
-	type WallChainArc
-} from '@portfolio/layout-core';
+import { MIN_WALL_ARC_RISE, measureWallArc, type WallChainArc } from '@portfolio/layout-core/wall';
+import { mintLayoutIdCapture } from '@portfolio/layout-core/plan';
+import { planCreateCircularRoom, proposeCreateCircularWall } from '@portfolio/layout-core/room';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 import {
 	stageUnitRevision,

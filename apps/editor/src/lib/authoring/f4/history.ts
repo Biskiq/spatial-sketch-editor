@@ -20,7 +20,7 @@
  * leaving old states reachable.
  */
 
-import type { AdmissionIssue, CorrespondenceEntry } from '@portfolio/project-model';
+import type { AdmissionIssue, CorrespondenceEntry } from '@portfolio/project-model/f4';
 
 /** AM-4's bounded depth. Not a tuning knob: the acceptance record names it. */
 export const AUTHORING_HISTORY_LIMIT = 100;

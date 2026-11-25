@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { compileLayoutGeometrySource, compileWallFirstLayoutGeometry } from '@portfolio/layout-core';
-import { geometryId } from '@portfolio/layout-core';
-import { LAYOUT_WALL_FIRST_FORMAT_VERSION } from '@portfolio/layout-core';
-import type { CompilerRoomSource, CompilerSource, LayoutDocumentWallFirst, LayoutVec2 } from '@portfolio/layout-core';
+import { compileLayoutGeometrySource, compileWallFirstLayoutGeometry } from '@portfolio/layout-core/geometry';
+import { geometryId } from '@portfolio/layout-core/geometry';
+import { LAYOUT_WALL_FIRST_FORMAT_VERSION } from '@portfolio/layout-core/wall';
+import type { CompilerRoomSource, CompilerSource, LayoutVec2 } from '@portfolio/layout-core/geometry';
+import type { LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 import {
 	g1AutoBezierDocument,
 	g1DocumentWithRooms,

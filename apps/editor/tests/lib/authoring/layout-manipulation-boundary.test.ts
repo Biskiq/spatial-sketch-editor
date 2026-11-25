@@ -213,6 +213,9 @@ const allowed = new Map<string, readonly string[]>([
 ]);
 
 const read = (file: string) => fs.readFileSync(file, 'utf8');
+/** Package family subpaths keep the package-level allowance exactly as broad. */
+const packageOf = (specifier: string) =>
+	specifier.replace(/^(@portfolio\/(?:layout-core|project-model|camera-core))\/.*$/, '$1');
 function forbiddenEdges(file: string, source = read(file)): string[] {
 	const allowedTargets = new Set(
 		allowed.get(file)!.map((specifier) => resolveSpecifier(file, specifier) ?? specifier)
@@ -221,9 +224,10 @@ function forbiddenEdges(file: string, source = read(file)): string[] {
 	for (const edge of moduleBindingEdges(file, source)) {
 		if (edge.kind !== 'export-local') specifiers.add(edge.specifier);
 	}
-	return [...specifiers].filter(
-		(specifier) => !allowedTargets.has(resolveSpecifier(file, specifier) ?? specifier)
-	);
+	return [...specifiers].filter((raw) => {
+		const specifier = packageOf(raw);
+		return !allowedTargets.has(resolveSpecifier(file, specifier) ?? specifier);
+	});
 }
 
 function declarations(source: string): Set<string> {

@@ -6,7 +6,7 @@
  */
 import { expect } from 'vitest';
 import { Vector3 } from 'three';
-import { createCameraMotion, createCameraMotionSample, sampleCameraMotion } from '@portfolio/camera-core';
+import { createCameraMotion, createCameraMotionSample, sampleCameraMotion } from '@portfolio/camera-core/camera';
 
 export function sample(motion: ReturnType<typeof createCameraMotion>, progress: number) {
   const output = createCameraMotionSample();

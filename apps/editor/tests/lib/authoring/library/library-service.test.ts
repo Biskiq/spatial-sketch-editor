@@ -8,8 +8,9 @@
  * Finish refuses in place and preserves the draft.
  */
 import { describe, expect, it } from 'vitest';
-import type { SceneEntity, SceneMaterialInstance, SceneSurfaceRef, SemanticReference } from '@portfolio/project-model';
-import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core';
+import type { SceneEntity, SceneMaterialInstance, SceneSurfaceRef } from '@portfolio/project-model/scene';
+import type { SemanticReference } from '@portfolio/project-model/references';
+import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core/wall';
 import { SCENE_UNIT_FORMAT_VERSION } from '@portfolio/project-model/units';
 import { createFinishPlanners } from '@portfolio/project-model/scene-planning';
 import { createFinishAuthoring } from '$lib/authoring/look/finish-authoring.svelte';

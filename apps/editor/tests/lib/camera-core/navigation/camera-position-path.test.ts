@@ -8,12 +8,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { CubicBezierCurve3, LineCurve3, Vector3 } from 'three';
-import {
-  compileCameraPositionPath,
-  createCameraMotion,
-  createCameraPositionPath,
-  type CameraRoute
-} from '@portfolio/camera-core';
+import { compileCameraPositionPath, createCameraMotion, createCameraPositionPath, type CameraRoute } from '@portfolio/camera-core/camera';
 import { expectVectorClose } from '../../../helpers/camera-motion-fixtures';
 
 describe('createCameraPositionPath', () => {

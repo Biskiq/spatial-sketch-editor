@@ -11,16 +11,9 @@
  * contract's historical representative workloads. The spot check generates M and L.
  */
 
-import {
-	createEmptyWallFirstLayoutDocument,
-	deriveLayoutWallRole,
-	mintLayoutIdCapture,
-	planCreateWallFirstOpening,
-	planWallChain,
-	type LayoutDocumentWallFirst,
-	type LayoutIdCapture,
-	type LayoutVec2
-} from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument, deriveLayoutWallRole, planCreateWallFirstOpening, planWallChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import { mintLayoutIdCapture, type LayoutIdCapture } from '@portfolio/layout-core/plan';
+import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 /** Supplies each operation's captured identity; a sequence makes a workload reproducible. */
 export type CaptureSource = () => LayoutIdCapture;

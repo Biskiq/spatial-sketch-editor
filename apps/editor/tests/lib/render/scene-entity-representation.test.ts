@@ -13,7 +13,7 @@ import {
 	Texture,
 	type Object3D
 } from 'three';
-import type { RuntimeScene } from '$lib/content/scene';
+import type { RuntimeScene } from '@portfolio/project-model/scene';
 import { createScenePickSource } from '$lib/authoring/scene/scene-pick-source';
 import { createMaterialStore } from '$lib/render/resources/material-store';
 import { createGeometryStore } from '$lib/render/resources/geometry-store';

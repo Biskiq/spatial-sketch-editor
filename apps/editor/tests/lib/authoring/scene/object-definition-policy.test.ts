@@ -12,7 +12,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { preparePlaceObjectCandidate } from '@portfolio/project-model/scene-planning';
-import type { FloorSupportCandidate } from '@portfolio/project-model';
+import type { FloorSupportCandidate } from '@portfolio/layout-core/room';
 import { SCENE_UNIT_FORMAT_VERSION } from '@portfolio/project-model/units';
 import { assets, getAssetById } from '$lib/content/assets';
 import { buildPlanSceneFootprintProjection } from '$lib/authoring/scene/plan-scene-footprint';

@@ -13,13 +13,10 @@
  * No test here writes Layout: every accepted intent is a Scene operation.
  */
 import { describe, expect, it } from 'vitest';
-import {
-	type AuthoringIntent,
-	type SceneEntity,
-	type Vec3
-} from '@portfolio/project-model';
+import type { AuthoringIntent } from '@portfolio/project-model/f4';
+import type { SceneEntity, Vec3 } from '@portfolio/project-model/scene';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
-import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core/wall';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 
 import {

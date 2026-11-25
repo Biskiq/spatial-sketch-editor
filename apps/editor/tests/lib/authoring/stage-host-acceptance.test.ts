@@ -25,9 +25,9 @@ import { mountStageAdapter, type StageAdapterServices } from '$lib/authoring/sta
 import { createDomainConsumer, consumerMove, consumerSceneEdit } from './__fixtures__/stage-domain-consumer';
 import { describe, expect, it } from 'vitest';
 import type { Component } from 'svelte';
-import { planDeleteLayoutObject } from '@portfolio/layout-core';
-import type { PlanSourceRef } from '@portfolio/layout-core';
-import type { PlannerRequest } from '@portfolio/project-model';
+import { planDeleteLayoutObject } from '@portfolio/layout-core/wall';
+import type { PlanSourceRef } from '@portfolio/layout-core/world';
+import type { PlannerRequest } from '@portfolio/project-model/f4';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
 import { stageEnvelope } from '$lib/authoring/stage/unit-stage-source';
 

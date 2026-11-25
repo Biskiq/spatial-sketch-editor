@@ -77,28 +77,10 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-	classifyWallIntersection,
-	connectedRoomIds,
-	deriveChainSpans,
-	extractBoundaryCandidateFaces,
-	LAYOUT_WALL_FIRST_FORMAT_VERSION,
-	planDuplicateIsolatedRoom,
-	planWallChain,
-	planWallFirstRoomMove,
-	resolveIsolatedRoomGroupSubgraph,
-	serializeWallFirstLayoutDocument,
-	validateWallFirstLayoutDocument,
-	validateWallFirstTopology,
-	wallCubicChain,
-	wallsShareTopologyComponent,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type LayoutWall,
-	type LayoutWallCenterline,
-	type LayoutWallCurveKnot,
-	type LayoutWallFirstRoom
-} from '@portfolio/layout-core';
+import { classifyWallIntersection, LAYOUT_WALL_FIRST_FORMAT_VERSION, planWallChain, serializeWallFirstLayoutDocument, validateWallFirstLayoutDocument, validateWallFirstTopology, wallCubicChain, type LayoutDocumentWallFirst, type LayoutWall, type LayoutWallCenterline, type LayoutWallCurveKnot, type LayoutWallFirstRoom } from '@portfolio/layout-core/wall';
+import { connectedRoomIds, planWallFirstRoomMove, resolveIsolatedRoomGroupSubgraph, wallsShareTopologyComponent } from '@portfolio/layout-core/room';
+import { deriveChainSpans, extractBoundaryCandidateFaces, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { planDuplicateIsolatedRoom } from '@portfolio/layout-core/plan';
 import { captureFor, capturedId } from './__fixtures__/layout-id-capture';
 
 /** One deterministic capture for this reference file's simulated operations. */

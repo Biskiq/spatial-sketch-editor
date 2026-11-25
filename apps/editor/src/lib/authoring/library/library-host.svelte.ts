@@ -2,7 +2,7 @@ import { tick } from 'svelte';
 import { assets } from '$lib/content/assets';
 import type { FinishTileSource } from '$lib/render/materials/finish-tiles.svelte';
 import type { CameraFreeSceneDocument } from '@portfolio/project-model/units';
-import type { ArtworkLibraryEntry } from '@portfolio/project-model';
+import type { ArtworkLibraryEntry } from '@portfolio/project-model/artwork';
 import type { LibraryFinishEntry } from './library-catalogue';
 import type { StageShellCommands } from '../stage/route/stage-shell-commands';
 import type { StageShellState } from '../stage/route/stage-shell-state.svelte';

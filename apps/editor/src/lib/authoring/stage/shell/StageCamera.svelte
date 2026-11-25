@@ -10,7 +10,7 @@
 	 */
 	import { T, useTask, useThrelte } from '@threlte/core';
 	import { Color, Vector2, type PerspectiveCamera } from 'three';
-	import type { ViewportEvaluation } from '@portfolio/camera-core';
+	import type { ViewportEvaluation } from '@portfolio/camera-core/viewport';
 	import { MAT_BACKGROUND_INK, PAPER_GROUND_INK, STAGE_WORLD_LAYER, stageCameraLayerMask } from '../paper-plan';
 	import { stageFrameScissor } from './frame-scissor';
 	import { realizeEvaluatedCamera } from '$lib/render/camera-realization';

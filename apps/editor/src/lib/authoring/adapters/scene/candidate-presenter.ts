@@ -20,7 +20,7 @@ import type {
 	StageOverlayContribution
 } from '$lib/authoring/stage/stage-adapter-host';
 import { stageScene } from '$lib/authoring/stage/stage-adapter-host';
-import type { SceneEntity, Vec3 } from '@portfolio/project-model';
+import type { SceneEntity, Vec3 } from '@portfolio/project-model/scene';
 import { NATIVE_PLACEMENT_DIMENSIONS } from '$lib/authoring/scene/object-definition-policy';
 import { buildPlanSceneFootprintProjection } from '$lib/authoring/scene/plan-scene-footprint';
 import { candidateGhost } from './candidate-ghost';

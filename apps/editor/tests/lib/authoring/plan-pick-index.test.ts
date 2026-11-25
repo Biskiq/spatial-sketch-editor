@@ -21,7 +21,7 @@
  * corners* and what makes a box cross the camera plane.
  */
 import { describe, expect, it } from 'vitest';
-import { setWorkObserver, type WorkObserver } from '@portfolio/layout-core';
+import { setWorkObserver, type WorkObserver } from '@portfolio/layout-core/kernel';
 import {
 	createPlanPickIndex,
 	type PlanPickBox,

@@ -30,10 +30,7 @@ import {
 	STAGE_SCALE_GLYPH,
 	stageResizeCursorCss
 } from '$lib/authoring/stage/stage-glyphs';
-import {
-	createEmptyWallFirstLayoutDocument,
-	planWallChain
-} from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core/wall';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
 import { admitSource, type StageReadSnapshot } from '$lib/authoring/stage/source-admission';
 import { createStageSession } from '$lib/authoring/stage/stage-session';

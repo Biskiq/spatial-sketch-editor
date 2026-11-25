@@ -31,7 +31,7 @@
 	import { Line2 } from 'three/addons/lines/webgpu/Line2.js';
 	import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 	import { Line2NodeMaterial } from 'three/webgpu';
-	import type { OverheadSource } from '@portfolio/layout-core';
+	import type { OverheadSource } from '@portfolio/layout-core/geometry';
 	import { LIFT_OUTLINE_DROP_METERS } from '../lift-ink';
 	import { STAGE_OVERLAY_LAYER } from '../paper-plan';
 	import { useStageClip } from '../slice/stage-clip';

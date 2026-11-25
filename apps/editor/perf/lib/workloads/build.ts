@@ -2,7 +2,7 @@
  * Build one grid workload envelope. Captured identities come from a fixed
  * sequence, so the same inputs give byte-identical canonical JSON.
  */
-import type { LayoutDocumentWallFirst } from '@portfolio/layout-core';
+import type { LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 import { createEmptyUnitEnvelope, type ProjectEnvelope } from '@portfolio/project-model/units';
 
 import { addOpenings, buildGrid, sequentialCaptures } from './grid';

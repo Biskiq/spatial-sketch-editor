@@ -21,12 +21,12 @@
  *
  * Nothing here is document state, a second selection, history or writer.
  */
-import type { Vec3 } from '@portfolio/camera-core';
+import type { Vec3 } from '@portfolio/camera-core/camera';
 import {
 	planCreateForm,
 	type SceneOperationResult
 } from '@portfolio/project-model/scene-planning';
-import type { SceneFormEntity } from '@portfolio/project-model';
+import type { SceneFormEntity } from '@portfolio/project-model/scene';
 import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 import {
 	datumWorkingPlane,

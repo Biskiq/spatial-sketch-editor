@@ -18,8 +18,8 @@
 	 */
 	import type { Object3D } from 'three';
 	import { T, useThrelte } from '@threlte/core';
-	import type { RuntimeScene } from '$lib/content/scene';
-	import { isSceneFormEntity } from '$lib/content/scene';
+	import type { RuntimeScene } from '@portfolio/project-model/scene';
+	import { isSceneFormEntity } from '@portfolio/project-model/scene';
 	import type { TextureLoadScope } from '$lib/render/resources/texture-store';
 	import type { FinishOutcomeSink } from '$lib/render/resources/finish-outcome-sink';
 	import { useRenderResources } from '$lib/render/resources/render-resources';

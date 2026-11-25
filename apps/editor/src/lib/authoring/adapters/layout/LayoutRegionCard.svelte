@@ -8,12 +8,10 @@
 	 * gap row offers its one-shot fit and Mark intended.
 	 */
 	import { type Snippet } from 'svelte';
-	import {
-		mintLayoutIdCapture,
-		regionWallRelations,
-		type LayoutRegion,
-		type LayoutVec2
-	} from '@portfolio/layout-core';
+	import { mintLayoutIdCapture } from '@portfolio/layout-core/plan';
+	import { regionWallRelations } from '@portfolio/layout-core/room';
+	import type { LayoutRegion } from '@portfolio/layout-core/wall';
+	import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 	import { restingObjectsOnFloorRegion } from './region-resting';
 	import {
 		compactMeasure,

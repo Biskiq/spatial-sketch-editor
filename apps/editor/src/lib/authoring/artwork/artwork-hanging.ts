@@ -1,9 +1,5 @@
-import {
-	artworkFrameBorderMeters,
-	type SceneArtworkEntity,
-	type SceneEntity,
-	type Vec3
-} from '@portfolio/project-model';
+import { artworkFrameBorderMeters } from '@portfolio/project-model/artwork';
+import type { SceneArtworkEntity, SceneEntity, Vec3 } from '@portfolio/project-model/scene';
 
 export const ARTWORK_EYE_LINE_METERS = 1.5;
 export const ARTWORK_HANG_SNAP_METERS = 0.06;

@@ -9,31 +9,10 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-	CLOSED_WALL_CIRCLE_ACCURACY,
-	CLOSED_WALL_CIRCLE_KNOT_COUNT,
-	CLOSED_WALL_CIRCLE_SPAN_COUNT,
-	LAYOUT_WALL_FIRST_FORMAT_VERSION,
-	buildClosedWallCircleCenterline,
-	compileWallFirstLayoutGeometry,
-	createClosedWallCircleDocument,
-	extractBoundaryCandidateFaces,
-	hasBlockingLayoutIssues,
-	mintLayoutIdCapture,
-	parseWallFirstLayoutDocumentJson,
-	planCreateCircularRoom,
-	planDissolveJunction,
-	planWallSplit,
-	roomBoundaryPolygon,
-	serializeWallFirstLayoutDocument,
-	validateWallFirstLayoutDocument,
-	validateWallFirstTopology,
-	wallCurveChainLength,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type LayoutWall,
-	type NodingIdAllocator
-} from '@portfolio/layout-core';
+import { CLOSED_WALL_CIRCLE_ACCURACY, CLOSED_WALL_CIRCLE_KNOT_COUNT, CLOSED_WALL_CIRCLE_SPAN_COUNT, LAYOUT_WALL_FIRST_FORMAT_VERSION, buildClosedWallCircleCenterline, createClosedWallCircleDocument, parseWallFirstLayoutDocumentJson, planDissolveJunction, planWallSplit, serializeWallFirstLayoutDocument, validateWallFirstLayoutDocument, validateWallFirstTopology, wallCurveChainLength, type LayoutDocumentWallFirst, type LayoutWall, type NodingIdAllocator } from '@portfolio/layout-core/wall';
+import { compileWallFirstLayoutGeometry, extractBoundaryCandidateFaces, hasBlockingLayoutIssues, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { mintLayoutIdCapture } from '@portfolio/layout-core/plan';
+import { planCreateCircularRoom, roomBoundaryPolygon } from '@portfolio/layout-core/room';
 
 const CENTER: LayoutVec2 = [0, 0];
 const RIM: LayoutVec2 = [5, 0];

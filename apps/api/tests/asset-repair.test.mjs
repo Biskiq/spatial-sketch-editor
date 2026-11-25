@@ -13,7 +13,7 @@ import { Readable } from 'node:stream';
 import { Pool } from 'pg';
 import test, { after, before } from 'node:test';
 
-import { createEmptyWallFirstLayoutDocument } from '@portfolio/project-model';
+import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core/wall';
 import { SAVE_CONTENT_IDENTITY_SCHEME } from '@portfolio/project-model/save';
 import {
 	CAMERA_UNIT_FORMAT_VERSION,

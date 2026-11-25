@@ -17,7 +17,7 @@
  *   rebuild; every buffer is disposed exactly once.
  */
 import { describe, expect, it, vi } from 'vitest';
-import type { RuntimeScene } from '@portfolio/project-model';
+import type { RuntimeScene } from '@portfolio/project-model/scene';
 import {
 	BufferGeometry,
 	Group,
@@ -31,13 +31,8 @@ import {
 	Vector3,
 	type Material
 } from 'three';
-import {
-	compileWallFirstLayoutGeometry,
-	type CompiledLayoutGeometry,
-	type CompiledRoom,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2
-} from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry, type CompiledLayoutGeometry, type CompiledRoom, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import type { LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 
 import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from '../layout/__fixtures__/layout-scale-fixtures';
 import { createRoomRepresentation } from '$lib/render/layout-room-representation';

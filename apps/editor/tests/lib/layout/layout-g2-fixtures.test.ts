@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from './__fixtures__/layout-scale-fixtures';
-import { getCameraMotionOptions } from '@portfolio/camera-core';
-import type { Vector3Like } from '@portfolio/camera-core';
+import { getCameraMotionOptions } from '@portfolio/camera-core/camera';
+import type { Vector3Like } from '@portfolio/camera-core/camera';
 
 function vectorToTuple(point: Vector3Like): [number, number, number] {
 	return 'x' in point ? [point.x, point.y, point.z] : [point[0], point[1], point[2]];
 }
-import { geometryId } from '@portfolio/layout-core';
-import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core';
+import { geometryId } from '@portfolio/layout-core/geometry';
+import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core/geometry';
 import { resolvePlanHit } from '$lib/authoring/layout/plan-hit';
 import {
 	buildG2ReferencePlanModel,

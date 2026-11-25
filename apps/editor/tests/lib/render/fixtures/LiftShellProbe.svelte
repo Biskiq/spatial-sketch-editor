@@ -7,7 +7,7 @@
 	 * testing a state the product never creates. `provideRenderResources` here is
 	 * the same call `StageCanvas` makes.
 	 */
-	import type { CompiledLayoutGeometry } from '@portfolio/layout-core';
+	import type { CompiledLayoutGeometry } from '@portfolio/layout-core/geometry';
 	import VisitorLayoutShell from '$lib/visitor/VisitorLayoutShell.svelte';
 	import { provideRenderResources } from '$lib/render/resources/render-resources';
 

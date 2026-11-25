@@ -20,13 +20,8 @@
  * drafting state, so this module never invents a second Snap switch.
  */
 
-import {
-	resolveLayoutSnap,
-	resolveOpeningDragSnapUseMode,
-	type CompiledLayoutGeometry,
-	type LayoutVec2,
-	type SnapFeatureKind
-} from '@portfolio/layout-core';
+import { resolveLayoutSnap, resolveOpeningDragSnapUseMode, type SnapFeatureKind } from '@portfolio/layout-core/plan';
+import type { CompiledLayoutGeometry, LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 import { DRAFTING_SNAP_METERS, draftingSnapIncrementMeters } from '$lib/authoring/stage/stage-adapter-host';
 

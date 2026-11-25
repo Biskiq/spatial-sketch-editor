@@ -1,27 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import {
-	compileWallFirstLayoutGeometry,
-	createEmptyWallFirstLayoutDocument,
-	createSpaceCreationOutlineQuery,
-	ensureLayoutWorldIndex,
-	findSpaceCreationOutline,
-	findSpaceCreationReturn,
-	hasBlockingLayoutIssues,
-	planCreateOpenSpace,
-	planDeleteWall,
-	planSpaceOpenSideOffset,
-	planWallChain,
-	roomBoundaryPolygon,
-	spaceAtPoint,
-	spaceCreationWallChoices,
-	spaceOutlineSelfIntersects,
-	spaceOutlineSignedArea,
-	validateWallFirstLayoutDocument,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2,
-	type SpaceCreationAnchor,
-	type SpaceCreationCycle
-} from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry, hasBlockingLayoutIssues, spaceAtPoint, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { createEmptyWallFirstLayoutDocument, planDeleteWall, planSpaceOpenSideOffset, planWallChain, validateWallFirstLayoutDocument, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import { createSpaceCreationOutlineQuery, findSpaceCreationOutline, findSpaceCreationReturn, planCreateOpenSpace, roomBoundaryPolygon, spaceCreationWallChoices, spaceOutlineSelfIntersects, spaceOutlineSignedArea, type SpaceCreationAnchor, type SpaceCreationCycle } from '@portfolio/layout-core/room';
+import { ensureLayoutWorldIndex } from '@portfolio/layout-core/world';
 
 import { captureFor } from './__fixtures__/layout-id-capture';
 

@@ -7,11 +7,8 @@
  * slot colour before it moves a follower.
  */
 import { describe, expect, it } from 'vitest';
-import type {
-	AcceptedSnapshot,
-	AuthoringIntent,
-	SceneMaterialInstance
-} from '@portfolio/project-model';
+import type { AcceptedSnapshot, AuthoringIntent } from '@portfolio/project-model/f4';
+import type { SceneMaterialInstance } from '@portfolio/project-model/scene';
 import {
 	SCENE_UNIT_FORMAT_VERSION,
 	UNIT_SOURCE_KIND,
