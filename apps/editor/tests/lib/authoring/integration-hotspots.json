@@ -189,13 +189,13 @@
     "arrows": 9
   },
   "src/lib/authoring/stage/shell/StageViewportRegion.svelte": {
-    "lines": 1021,
-    "imports": 12,
-    "state": 4,
+    "lines": 561,
+    "imports": 14,
+    "state": 2,
     "derived": 0,
     "effects": 2,
-    "functions": 2,
-    "arrows": 75
+    "functions": 0,
+    "arrows": 51
   },
   "src/lib/authoring/stage/shell/StageCanvas.svelte": {
     "lines": 699,
@@ -405,13 +405,13 @@
     "arrows": 91
   },
   "src/lib/authoring/experience/experience-view-edit-session.svelte.ts": {
-    "lines": 334,
+    "lines": 315,
     "imports": 7,
     "state": 2,
     "derived": 0,
     "effects": 1,
     "functions": 7,
-    "arrows": 14
+    "arrows": 13
   },
   "src/lib/authoring/experience/experience-lens-tools.svelte.ts": {
     "lines": 404,
@@ -459,7 +459,7 @@
     "arrows": 2
   },
   "src/lib/authoring/adapters/scene/object-mark-session.ts": {
-    "lines": 687,
+    "lines": 683,
     "imports": 15,
     "state": 0,
     "derived": 0,
@@ -477,7 +477,7 @@
     "arrows": 2
   },
   "src/lib/authoring/stage/facade/contribution-view.ts": {
-    "lines": 590,
+    "lines": 589,
     "imports": 12,
     "state": 0,
     "derived": 0,
@@ -495,7 +495,7 @@
     "arrows": 6
   },
   "src/lib/authoring/stage/route/stage-unfold-gestures.svelte.ts": {
-    "lines": 693,
+    "lines": 691,
     "imports": 17,
     "state": 4,
     "derived": 1,
