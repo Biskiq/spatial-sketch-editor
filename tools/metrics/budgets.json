@@ -3,7 +3,7 @@
   "counts": {
     "filesOver600": 103,
     "filesOver1000": 17,
-    "filesOver1500": 2,
+    "filesOver1500": 1,
     "functionsOver200": 76,
     "exportStars": 0,
     "crossPackageReexports": 0,
@@ -17,8 +17,8 @@
     },
     {
       "path": "apps/editor/src/lib/authoring/experience/experience-controller.svelte.ts",
-      "lines": 1674,
-      "reason": "One Experience authoring entry: the shared accepted snapshot, focus reads, one command runner and the sub-owners compose the lens; removal readings live in their own module."
+      "lines": 1499,
+      "reason": "One Experience composition root: the accepted snapshot, focus reads, one command runner and the sub-owner wiring (removal, Views, Stops) compose the lens; each extracted cluster owns its own module."
     },
     {
       "path": "apps/editor/src/lib/authoring/look/finish-authoring.svelte.ts",
@@ -528,18 +528,18 @@
   ],
   "functions": [
     {
-      "file": "apps/editor/src/lib/authoring/experience/experience-controller.svelte.ts",
-      "name": "createExperienceController",
-      "line": 306,
-      "lines": 1369,
-      "reason": "One Experience composition root: one accepted snapshot, one command runner and the sub-owner wiring; the removal readings are extracted."
-    },
-    {
       "file": "apps/editor/src/lib/authoring/look/finish-authoring.svelte.ts",
       "name": "createFinishAuthoring",
       "line": 123,
       "lines": 1355,
       "reason": "One Paint composition root: the active pick, dropper, palette writes, surface painting and the sub-owner wiring share one accepted revision and one busy gate."
+    },
+    {
+      "file": "apps/editor/src/lib/authoring/experience/experience-controller.svelte.ts",
+      "name": "createExperienceController",
+      "line": 304,
+      "lines": 1196,
+      "reason": "One Experience composition root: one accepted snapshot, one command runner and the sub-owner wiring; removal readings, Views and Stops are extracted."
     },
     {
       "file": "apps/editor/src/lib/authoring/experience/experience-lens.svelte.ts",
@@ -910,7 +910,7 @@
       "name": "createExperienceViewAuthoring",
       "line": 50,
       "lines": 256,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+      "reason": "One View authoring path: step, capture and placement share the same accepted-change plumbing and focus hand-off; splitting them would duplicate that path."
     },
     {
       "file": "apps/editor/src/lib/authoring/stage/paper-scene.ts",

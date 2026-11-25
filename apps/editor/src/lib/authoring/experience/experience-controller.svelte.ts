@@ -26,7 +26,6 @@ import { perfMark } from '$lib/platform/perf-marks';
 import type { StageAdapterServices } from '../stage/stage-adapter-host';
 import { stageEnvelope } from '../stage/unit-stage-source';
 import {
-	EXPERIENCE_STAY_MIN_SECONDS,
 	lowerExperienceProgram,
 	presentationDisplayName as displayPresentationName,
 } from '@portfolio/project-model/units';
@@ -35,11 +34,9 @@ import type {
 	Experience,
 	ExperienceGuide,
 	ExperienceGuidePacing,
-	ExperienceInvitation,
 	ExperiencePresentationView,
 	ExperiencePresentation,
 	ExperienceStop,
-	ExperienceTransitionKind,
 	ProjectEnvelope
 } from '@portfolio/project-model/units';
 import { experienceFocus } from './focus.svelte';
@@ -69,7 +66,7 @@ import {
 import type { OperationChange } from '@portfolio/project-model/f4';
 import type { ScenePathAnchor } from '@portfolio/project-model/scene';
 import { cameraConnectionCreateIntent, cameraConnectionUpdateIntent, guideUpdateIntent, removeIntent, viewRemoveIntent, viewRenameIntent, } from './commands-presentation';
-import { createExperienceIntent, experienceUpdateIntent, guideCreateIntent, guideOrderIntent, presentationUpdateIntent, stopCreateIntent, stopUpdateIntent } from './commands-structure';
+import { createExperienceIntent, experienceUpdateIntent, guideCreateIntent, presentationUpdateIntent, stopCreateIntent, } from './commands-structure';
 import { sceneEntitySubject } from './commands-references';
 import {
 	type ExperienceRemovalPreview,
@@ -83,6 +80,7 @@ import {
 	type ExperienceViewPose,
 	type ExperienceViewUpdate
 } from './experience-view-authoring';
+import { createExperienceStopAuthoring } from './experience-stop-authoring';
 
 type Submission = Parameters<StageAdapterServices['authoring']['accept']>[0];
 
@@ -628,103 +626,6 @@ export function createExperienceController(
 		return views.captureNewPresentation(entityId, null);
 	}
 
-	async function addStop(
-		presentationId: string,
-		options: { readonly afterStopId?: string; readonly entryViewId?: string | null } = {}
-	): Promise<boolean> {
-		if (current === null) return false;
-		const experience = current;
-		if (!experience.presentations.some((entry) => entry.id === presentationId)) {
-			say('refusal', 'That Presentation is not in this Experience.');
-			return false;
-		}
-		const stopId = newId();
-		if (experience.guides.length === 0) {
-			// D-9: the first Stop creates the first Guide, named Tour, with no prompt.
-			const guideId = newId();
-			const accepted = await run(() =>
-				guideCreateIntent({
-					envelope: snapshot,
-					revision: revision(),
-					ids: { operation: newId(), guide: guideId, stop: stopId, connections: connectionPool() },
-					experienceId: experience.id,
-					presentationId,
-					label: 'Tour',
-					entryViewId: options.entryViewId ?? null,
-					staySeconds: null,
-					transition: 'cut'
-				})
-			);
-			if (accepted) {
-				experienceFocus.openGuide(guideId);
-				experienceFocus.select({ kind: 'stop', stopId });
-			}
-			return accepted;
-		}
-		const guide =
-			currentGuide ??
-			experience.guides.find((entry) => entry.id === experience.entryGuideId) ??
-			experience.guides[0]!;
-		const afterStopId =
-			options.afterStopId !== undefined
-				? options.afterStopId
-				: selectedStop !== null && guide.stopIds.includes(selectedStop.id)
-					? selectedStop.id
-					: null;
-		const accepted = await run(() =>
-			stopCreateIntent({
-				envelope: snapshot,
-				revision: revision(),
-				ids: { operation: newId(), stop: stopId, connections: connectionPool() },
-				experienceId: experience.id,
-				presentationId,
-				guideId: guide.id,
-				afterStopId,
-				entryViewId: options.entryViewId ?? null,
-				staySeconds: null,
-				transition: 'cut'
-			})
-		);
-		// A refused insert must not select a Stop the accepted source does not carry.
-		if (accepted) {
-			experienceFocus.openGuide(guide.id);
-			experienceFocus.select({ kind: 'stop', stopId });
-		}
-		return accepted;
-	}
-
-	/** Reorders target the same Guide the instrument reads: the active one, else the entry Guide. */
-	async function moveStopTo(stopId: string, index: number): Promise<boolean> {
-		const guide = currentGuide ?? contextGuide;
-		if (current === null || guide === null) return false;
-		const experience = current;
-		const at = guide.stopIds.indexOf(stopId);
-		if (at === -1) return false;
-		const order = guide.stopIds.filter((entry) => entry !== stopId);
-		const to = Math.max(0, Math.min(Math.trunc(index), order.length));
-		order.splice(to, 0, stopId);
-		if (order.every((entry, position) => entry === guide.stopIds[position])) return false;
-		return run(() =>
-			guideOrderIntent({
-				envelope: snapshot,
-				revision: revision(),
-				ids: { operation: newId(), connections: connectionPool() },
-				experienceId: experience.id,
-				guideId: guide.id,
-				stopIds: order
-			})
-		);
-	}
-
-	async function moveStop(stopId: string, direction: -1 | 1): Promise<boolean> {
-		const guide = currentGuide ?? contextGuide;
-		if (guide === null) return false;
-		const at = guide.stopIds.indexOf(stopId);
-		const to = at + direction;
-		if (at === -1 || to < 0 || to >= guide.stopIds.length) return false;
-		return moveStopTo(stopId, to);
-	}
-
 	/** One captured connection id per Travel use in the Experience, plus one. */
 	function connectionPool(): string[] {
 		const experience = current;
@@ -738,95 +639,19 @@ export function createExperienceController(
 		return Array.from({ length: travels + 1 }, () => newId());
 	}
 
-	/**
-	 * One Stop edit that sends only the changed field: planning keeps every omitted field
-	 * and clears one with an explicit null.
-	 */
-	async function updateStop(
-		stopId: string,
-		fields: {
-			readonly entryViewId?: string | null;
-			readonly staySeconds?: number;
-			readonly invitation?: ExperienceInvitation | null;
-			readonly transition?: ExperienceTransitionKind | null;
-		}
-	): Promise<boolean> {
-		if (current === null) return false;
-		const experience = current;
-		if (!experience.stops.some((entry) => entry.id === stopId)) return false;
-		return run(
-			() =>
-				stopUpdateIntent({
-					envelope: snapshot,
-					revision: revision(),
-					ids: { operation: newId(), connections: connectionPool() },
-					experienceId: experience.id,
-					stopId,
-					...fields
-				}),
-			() => ''
-		);
-	}
-
-	/* --- One Card field per setting (sheet §32) ------------------------------- */
-
-	/** Guide Card · Pacing: Automatic plays on after each stay; Manual waits for Next. */
-	async function setGuidePacing(guideId: string, pacing: ExperienceGuidePacing): Promise<boolean> {
-		if (current === null) return false;
-		const experience = current;
-		const guide = experience.guides.find((entry) => entry.id === guideId);
-		if (guide === undefined || guide.pacing === pacing) return false;
-		return run(
-			() =>
-				guideUpdateIntent({
-					envelope: snapshot,
-					revision: revision(),
-					ids: { operation: newId() },
-					experienceId: experience.id,
-					guideId,
-					pacing
-				}),
-			() =>
-				pacing === 'manual'
-					? 'Manual: every Stop now waits for Next. Each Stop keeps its time, unused, for switching back.'
-					: 'Automatic: each Stop stays for its time, then the tour moves on by itself.'
-		);
-	}
-
-	/** Stop Card · Enter at: one of its Presentation's Views; the Default follows View 1. */
-	async function setStopEntry(stopId: string, viewId: string | null): Promise<boolean> {
-		const stop = current?.stops.find((entry) => entry.id === stopId);
-		const presentation = current?.presentations.find((entry) => entry.id === stop?.presentationId);
-		if (stop === undefined || presentation === undefined) return false;
-		const entry = viewId;
-		if (entry === stop.entryViewId) return false;
-		if (entry !== null && !presentation.views.some((view) => view.viewId === entry)) return false;
-		return updateStop(stopId, { entryViewId: entry });
-	}
-
-	/** Stop Card · Stay: finite seconds, at least 1 s. */
-	async function setStopStay(stopId: string, seconds: number): Promise<boolean> {
-		const stop = current?.stops.find((entry) => entry.id === stopId);
-		if (stop === undefined) return false;
-		if (!Number.isFinite(seconds) || seconds < EXPERIENCE_STAY_MIN_SECONDS) {
-			say('refusal', `A stay is at least ${EXPERIENCE_STAY_MIN_SECONDS} s.`);
-			return false;
-		}
-		const rounded = Math.round(seconds * 2) / 2;
-		if (rounded === stop.staySeconds) return false;
-		return updateStop(stopId, { staySeconds: rounded });
-	}
-
-	/** Stop Card · Invite to explore: `null` is off; an empty prompt is the default wording. */
-	async function setStopInvitation(stopId: string, invitation: { readonly prompt: string | null } | null): Promise<boolean> {
-		const stop = current?.stops.find((entry) => entry.id === stopId);
-		if (stop === undefined) return false;
-		const normalized = invitation === null
-			? null
-			: { prompt: invitation.prompt === null || invitation.prompt.trim() === '' ? null : invitation.prompt.trim() };
-		if (JSON.stringify(normalized) === JSON.stringify(stop.invitation)) return false;
-		return updateStop(stopId, { invitation: normalized });
-	}
+	const stops = createExperienceStopAuthoring({
+		snapshot: () => snapshot,
+		current: () => current,
+		currentGuide: () => currentGuide,
+		contextGuide: () => contextGuide,
+		selectedStop: () => selectedStop,
+		say: (kind, text) => say(kind, text),
+		newId,
+		revision,
+		run,
+		connectionPool,
+		focus: experienceFocus
+	});
 
 	/** Write one Presentation's whole View list (order and steps) as one accepted change. */
 	async function writePresentationViews(
@@ -920,7 +745,7 @@ export function createExperienceController(
 			? resolvePathOccurrence(current, guide, { kind: 'transition', stopId })
 			: null;
 		if (transition === 'travel' && (resolved === null || resolved.fromViewId === resolved.toViewId)) return false;
-		return updateStop(stopId, { transition });
+		return stops.updateStop(stopId, { transition });
 	}
 
 	/**
@@ -1618,13 +1443,13 @@ export function createExperienceController(
 		},
 		capture: views.capture,
 		presentThis,
-		addStop,
-		moveStopTo,
-		moveStop,
-		setGuidePacing,
-		setStopEntry,
-		setStopStay,
-		setStopInvitation,
+		addStop: stops.addStop,
+		moveStopTo: stops.moveStopTo,
+		moveStop: stops.moveStop,
+		setGuidePacing: stops.setGuidePacing,
+		setStopEntry: stops.setStopEntry,
+		setStopStay: stops.setStopStay,
+		setStopInvitation: stops.setStopInvitation,
 		setPresentationStep,
 		movePresentationView,
 		setExplorable,

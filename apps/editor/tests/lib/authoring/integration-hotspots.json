@@ -288,13 +288,13 @@
     "arrows": 24
   },
   "src/lib/authoring/experience/experience-controller.svelte.ts": {
-    "lines": 1675,
-    "imports": 19,
+    "lines": 1500,
+    "imports": 20,
     "state": 7,
     "derived": 24,
     "effects": 3,
     "functions": 22,
-    "arrows": 172
+    "arrows": 160
   },
   "src/lib/authoring/experience/experience-removal-readings.ts": {
     "lines": 166,
@@ -358,5 +358,14 @@
     "effects": 0,
     "functions": 4,
     "arrows": 33
+  },
+  "src/lib/authoring/experience/experience-stop-authoring.ts": {
+    "lines": 228,
+    "imports": 7,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 1,
+    "arrows": 32
   }
 }
