@@ -1,7 +1,7 @@
 {
   "generatedFrom": "LOC-0 baseline; shrink-only from here",
   "counts": {
-    "filesOver600": 104,
+    "filesOver600": 103,
     "filesOver1000": 17,
     "filesOver1500": 2,
     "functionsOver200": 75,
@@ -42,7 +42,7 @@
     },
     {
       "path": "apps/editor/src/lib/authoring/experience/experience-lens.svelte.ts",
-      "lines": 1292,
+      "lines": 1293,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -326,11 +326,6 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
-      "path": "apps/editor/src/lib/authoring/experience/experience-marks.ts",
-      "lines": 720,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
       "path": "apps/editor/src/lib/authoring/look/finish-library.svelte.ts",
       "lines": 716,
       "reason": "One Library draft session: browse, draft fields, target requalification, refusal and the swap hand-off share one draft and one Apply path."
@@ -549,7 +544,7 @@
     {
       "file": "apps/editor/src/lib/authoring/experience/experience-lens.svelte.ts",
       "name": "createExperienceLens",
-      "line": 95,
+      "line": 96,
       "lines": 1196,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },

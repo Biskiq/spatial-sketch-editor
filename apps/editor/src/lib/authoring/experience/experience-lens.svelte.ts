@@ -13,7 +13,8 @@
 import { tick, untrack } from 'svelte';
 import { CAMERA_FOV } from '@portfolio/camera-core/camera';
 import { frameSubjectPose, viewPlacementPose, type ViewportCameraState } from '@portfolio/camera-core/viewport';
-import { CAMERA_FRUSTUM_FAR_METRES, CAMERA_LENS_OFFSET_METRES } from './experience-marks';
+import { CAMERA_FRUSTUM_FAR_METRES } from './experience-marks';
+import { CAMERA_LENS_OFFSET_METRES } from './experience-camera-mesh';
 import { createEditorCameraFramingBasis, createEditorCameraFovDragBasis, evaluateEditorCameraFovDrag } from '../camera/editor-camera-framing';
 import { axisTravelFromRay } from '../stage/stage-axis-travel';
 import { EYE_HEIGHT_STEPS, LENS_STEPS } from './look-through';

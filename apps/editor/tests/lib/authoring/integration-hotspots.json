@@ -331,5 +331,23 @@
     "effects": 0,
     "functions": 7,
     "arrows": 3
+  },
+  "src/lib/authoring/experience/experience-marks.ts": {
+    "lines": 566,
+    "imports": 6,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 12,
+    "arrows": 16
+  },
+  "src/lib/authoring/experience/experience-camera-mesh.ts": {
+    "lines": 172,
+    "imports": 0,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 8,
+    "arrows": 12
   }
 }
