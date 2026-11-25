@@ -26,6 +26,7 @@ import {
 } from '$lib/platform/app-preferences';
 import { createEditorMotionClock } from '$lib/platform/editor-motion-clock';
 import { createStageHeightState } from './stage-height-state.svelte';
+import { createStageShellStatus } from './stage-shell-status.svelte';
 import { untrack } from 'svelte';
 import type { StageSelectionEntry } from '../semantic-selection';
 import type { StageFacade } from '../stage-facade';
@@ -122,10 +123,11 @@ export function createStageShellState(input: StageShellStateInput) {
 	const heightSheet = input.session.heightSheet();
 	const motionClock = createEditorMotionClock();
 
-	/** Session status words; every owner writes through these methods. */
-	let notice = $state('');
-	/** The last Preview lowering refusal, worded like a source problem. */
-	let previewProblem = $state<unknown | null>(null);
+	const status = createStageShellStatus({
+		openCard: () => {
+			cardOpen = true;
+		}
+	});
 
 	/** Measured lanes beside the Stage (the lower column and the Sheet). */
 	let lowerColumnHeight = $state(0);
@@ -160,12 +162,6 @@ export function createStageShellState(input: StageShellStateInput) {
 	/** The contextual Card's disclosure; closing it never clears selection. */
 	let cardOpen = $state(true);
 	/** One pending request to open the Card name editor, optionally qualified by selection. */
-	let cardRenameRequest = $state(0);
-	let cardRenameSequence = 0;
-	let cardRenameTarget = $state.raw<SemanticReference | null>(null);
-	/** True while an authored (non-navigation) gesture holds the Stage: the Card fades. */
-	let cardGesturing = $state(false);
-	let stageGesturing = $state(false);
 
 	/** Whether the armed tool's palette is open above the dock. */
 	let paletteOpen = $state(true);
@@ -286,7 +282,7 @@ export function createStageShellState(input: StageShellStateInput) {
 		untrack(() => {
 			if (pendingDelete === null || pendingDelete.subjectKey === key) return;
 			pendingDelete = null;
-			notice = '';
+			status.setNotice('');
 		});
 	});
 
@@ -346,17 +342,16 @@ export function createStageShellState(input: StageShellStateInput) {
 		writeAppPreferences(next);
 	}
 
-	function setNotice(message: string): void {
-		notice = message;
-	}
-
-	/** Clear a notice only when it is still the one that scheduled the clear. */
-	function clearNotice(shown: string): void {
-		if (notice === shown) notice = '';
-	}
-
 	function bumpContributions(): void {
 		contributionsVersion += 1;
+	}
+
+	function _setTask(next: StageTask | null): void {
+		task = next;
+	}
+
+	function _setContributedTask(next: { id: string; adapterId: string } | null): void {
+		contributedTaskId = next;
 	}
 
 	function setTask(next: StageTask | null): void {
@@ -371,16 +366,21 @@ export function createStageShellState(input: StageShellStateInput) {
 		pendingDelete = next;
 	}
 
+	function setNotice(message: string): void {
+		status.setNotice(message);
+	}
+
+	/** Clear a notice only when it is still the one that scheduled the clear. */
+	function clearNotice(shown: string): void {
+		status.clearNotice(shown);
+	}
+
 	function requestCardRename(target: SemanticReference | null = null): void {
-		cardOpen = true;
-		cardRenameTarget = target;
-		cardRenameRequest = ++cardRenameSequence;
+		status.requestCardRename(target);
 	}
 
 	function consumeCardRename(request: number): void {
-		if (cardRenameRequest !== request) return;
-		cardRenameRequest = 0;
-		cardRenameTarget = null;
+		status.consumeCardRename(request);
 	}
 
 	/** The new facade exists: bind the host tools and re-read session view state. */
@@ -469,17 +469,8 @@ export function createStageShellState(input: StageShellStateInput) {
 		hostToolOverlay = null;
 	}
 
-	/** Mirror the one session lease into the Card's gesture fade. */
-	function syncGestureFade(lease: {
-		readonly navigation?: boolean;
-		readonly owner: string;
-	} | null): void {
-		stageGesturing = lease !== null;
-		const cameraEdit =
-			lease !== null &&
-			(lease.owner === 'experience-view-edit' || lease.owner === 'experience-path-point');
-		const gesturing = lease !== null && lease.navigation !== true && !cameraEdit;
-		if (gesturing !== cardGesturing) cardGesturing = gesturing;
+	function syncGestureFade(lease: { readonly navigation?: boolean; readonly owner: string } | null): void {
+		status.syncGestureFade(lease);
 	}
 
 	/**
@@ -524,13 +515,13 @@ export function createStageShellState(input: StageShellStateInput) {
 
 	return {
 		get notice() {
-			return notice;
+			return status.notice;
 		},
 		get previewProblem() {
-			return previewProblem;
+			return status.previewProblem;
 		},
 		setPreviewProblem(value: unknown | null) {
-			previewProblem = value;
+			status.setPreviewProblem(value);
 		},
 		get lowerColumnHeight() {
 			return lowerColumnHeight;
@@ -649,14 +640,14 @@ export function createStageShellState(input: StageShellStateInput) {
 			cardOpen = value;
 		},
 		get cardRenameRequest() {
-			return cardRenameRequest;
+			return status.cardRenameRequest;
 		},
-		get cardRenameTarget() { return cardRenameTarget; },
+		get cardRenameTarget() { return status.cardRenameTarget; },
 		requestCardRename,
 		consumeCardRename,
-		get stageGesturing() { return stageGesturing; },
+		get stageGesturing() { return status.stageGesturing; },
 		get cardGesturing() {
-			return cardGesturing;
+			return status.cardGesturing;
 		},
 		get paletteOpen() {
 			return paletteOpen;

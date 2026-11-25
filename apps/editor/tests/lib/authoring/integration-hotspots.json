@@ -144,13 +144,13 @@
     "arrows": 23
   },
   "src/lib/authoring/stage/route/stage-shell-state.svelte.ts": {
-    "lines": 846,
-    "imports": 26,
-    "state": 50,
+    "lines": 837,
+    "imports": 27,
+    "state": 44,
     "derived": 10,
     "effects": 3,
-    "functions": 23,
-    "arrows": 39
+    "functions": 25,
+    "arrows": 40
   },
   "src/lib/authoring/stage/route/stage-shell-commands.ts": {
     "lines": 690,
@@ -430,5 +430,14 @@
     "effects": 3,
     "functions": 7,
     "arrows": 10
+  },
+  "src/lib/authoring/stage/route/stage-shell-status.svelte.ts": {
+    "lines": 79,
+    "imports": 1,
+    "state": 6,
+    "derived": 0,
+    "effects": 0,
+    "functions": 7,
+    "arrows": 1
   }
 }

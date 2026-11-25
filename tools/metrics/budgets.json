@@ -151,11 +151,6 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
-      "path": "apps/editor/src/lib/authoring/stage/route/stage-shell-state.svelte.ts",
-      "lines": 845,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
       "path": "apps/editor/src/lib/authoring/adapters/scene/object-mark-session.ts",
       "lines": 844,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
@@ -172,6 +167,11 @@
     },
     {
       "path": "apps/editor/src/lib/authoring/adapters/layout/region-gesture-session.ts",
+      "lines": 836,
+      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+    },
+    {
+      "path": "apps/editor/src/lib/authoring/stage/route/stage-shell-state.svelte.ts",
       "lines": 836,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
@@ -565,9 +565,9 @@
     {
       "file": "apps/editor/src/lib/authoring/stage/route/stage-shell-state.svelte.ts",
       "name": "createStageShellState",
-      "line": 121,
-      "lines": 723,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+      "line": 122,
+      "lines": 713,
+      "reason": "Composition root for the mounted shell: one store of disjoint disclosure, drafting, status and tool state whose getters are the route contract."
     },
     {
       "file": "apps/editor/src/lib/authoring/look/finish-library.svelte.ts",
