@@ -25,10 +25,6 @@ import { untrack } from 'svelte';
 import { perfMark } from '$lib/platform/perf-marks';
 import type { StageAdapterServices } from '../stage/stage-adapter-host';
 import { stageEnvelope } from '../stage/unit-stage-source';
-import {
-	lowerExperienceProgram,
-	presentationDisplayName as displayPresentationName,
-} from '@portfolio/project-model/units';
 import type {
 	CameraView,
 	Experience,
@@ -60,9 +56,6 @@ import {
 	type ExperiencePathRead
 } from './experience-paths';
 import type { OperationChange } from '@portfolio/project-model/f4';
-import { removeIntent, viewRemoveIntent, } from './commands-presentation';
-import { createExperienceIntent, presentationUpdateIntent, } from './commands-structure';
-import { sceneEntitySubject } from './commands-references';
 import {
 	type ExperienceRemovalPreview,
 	type ExperienceRemovalTarget,
@@ -78,6 +71,7 @@ import {
 import { createExperienceStopAuthoring } from './experience-stop-authoring';
 import { createExperienceCameraSession } from './experience-camera-session.svelte';
 import { createExperiencePresentationAuthoring } from './experience-presentation-authoring';
+import { createExperienceLevelAuthoring } from './experience-level-authoring.svelte';
 
 type Submission = Parameters<StageAdapterServices['authoring']['accept']>[0];
 
@@ -393,28 +387,22 @@ export function createExperienceController(
 		run
 	});
 
-	function lowerPlaybackSource(guideId: string): PlaybackSource | null {
-		if (current === null || acceptedGraph === null) return null;
-		const guide = current.guides.find((entry) => entry.id === guideId);
-		if (guide === undefined) return null;
-		const read = readServices().stage.snapshot();
-		const lowered = lowerExperienceProgram(snapshot, {
-			experienceId: current.id,
-			sourceContentId: read.sourceContentId,
-			sessionEpoch: read.sessionEpoch,
-			guideId: guide.id
-		});
-		if (lowered.kind !== 'lowered') return null;
-		return {
-			program: lowered.program,
-			transitions: lowered.transitions,
-			graph: acceptedGraph,
-			entryStopId: guide.stopIds[0]!
-		};
-	}
-	const playbackSource = $derived.by((): PlaybackSource | null =>
-		contextGuide === null ? null : lowerPlaybackSource(contextGuide.id)
-	);
+	const level = createExperienceLevelAuthoring({
+		snapshot: () => snapshot,
+		current: () => current,
+		contextGuide: () => contextGuide,
+		graph: () => acceptedGraph,
+		experiences: () => experiences,
+		readServices,
+		say: (kind, text) => say(kind, text),
+		newId,
+		revision,
+		run,
+		focus: experienceFocus,
+		connectionPool,
+		removals: () => removals,
+		captureNewPresentation: (entityId, label) => views.captureNewPresentation(entityId, label)
+	});
 
 	let query = $state('');
 	const viewsOf = $derived.by(() => {
@@ -438,7 +426,7 @@ export function createExperienceController(
 		if (needle === '') return current.presentations;
 		return current.presentations.filter(
 			(entry) =>
-				presentationDisplayName(entry.id).toLowerCase().includes(needle) ||
+				level.presentationDisplayName(entry.id).toLowerCase().includes(needle) ||
 				(viewsOf.get(entry.id) ?? []).some((view) => view.label.toLowerCase().includes(needle))
 		);
 	});
@@ -561,22 +549,6 @@ export function createExperienceController(
 		}
 	}
 
-	async function createExperience(label?: string): Promise<boolean> {
-		const experienceId = newId();
-		const named = label?.trim() || `Experience ${experiences.length + 1}`;
-		const accepted = await run(() =>
-			createExperienceIntent({
-				revision: revision(),
-				ids: { operation: newId(), experience: experienceId },
-				label: named
-			})
-		);
-		// Focus never names an identity the source does not carry: a refused create
-		// must not point Preview at a non-existent Experience.
-		if (accepted) experienceFocus.openExperience(experienceId);
-		return accepted;
-	}
-
 	/**
 	 * The Experience a first step joins: the current one, or the ready draft, which
 	 * that same accepted change creates under `draftLabel`.
@@ -597,12 +569,8 @@ export function createExperienceController(
 		readServices,
 		perfMark,
 		alsoIn: (viewId, presentationId) => presentation.alsoIn(viewId, presentationId),
-		presentationDisplayName
+		presentationDisplayName: (id) => level.presentationDisplayName(id)
 	});
-
-	async function presentThis(entityId: string, _label?: string): Promise<boolean> {
-		return views.captureNewPresentation(entityId, null);
-	}
 
 	/** One captured connection id per Travel use in the Experience, plus one. */
 	function connectionPool(): string[] {
@@ -645,8 +613,8 @@ export function createExperienceController(
 		connectionPool,
 		updateStop: (stopId, fields) => stops.updateStop(stopId, fields),
 		focus: experienceFocus,
-		presentationDisplayName,
-		presentationLabel
+		presentationDisplayName: (id) => level.presentationDisplayName(id),
+		presentationLabel: (id) => level.presentationLabel(id)
 	});
 
 
@@ -655,64 +623,9 @@ export function createExperienceController(
 		experience: () => current,
 		contextGuide: () => contextGuide,
 		envelope: () => snapshot,
-		presentationLabel,
-		presentationDisplayName
+		presentationLabel: (id) => level.presentationLabel(id),
+		presentationDisplayName: (id) => level.presentationDisplayName(id)
 	});
-
-	async function remove(target: ExperienceRemovalTarget): Promise<boolean> {
-		const experience = current;
-		if (experience === null) return false;
-		const preview = removals.removalPreview(target);
-		if (preview.kind === 'refused') {
-			say('refusal', preview.reason);
-			return false;
-		}
-		if (!preview.runnable) {
-			say('refusal', 'Choose the new Default View first.');
-			return false;
-		}
-		const plan = removals.planOf(target);
-		if (plan === null || plan.kind !== 'planned') return false;
-		const after = plan.experience;
-		const parent = removals.parentOf(target);
-		// Read before the install: the route clears a subject that stops resolving.
-		const selectsParent = removals.removes(target, experienceFocus.subject);
-		const removedName =
-			target.kind === 'stop'
-				? removals.names.stop(target.stopId)
-				: target.kind === 'guide'
-					? removals.names.guide(target.guideId)
-					: target.kind === 'presentation'
-						? removals.names.presentation(target.presentationId)
-						: removals.names.view(target.viewId);
-		const ok = await run(
-			() =>
-				target.kind === 'view'
-					? viewRemoveIntent({
-							envelope: snapshot,
-							revision: revision(),
-							ids: { operation: newId(), connections: connectionPool() },
-							experienceId: experience.id,
-							presentationId: target.presentationId,
-							viewId: target.viewId,
-							defaultViewId: target.newDefaultViewId ?? null
-						})
-					: removeIntent({
-							envelope: snapshot,
-							revision: revision(),
-							ids: { operation: newId(), connections: connectionPool() },
-							experienceId: experience.id,
-							subject: target.kind,
-							id: target.kind === 'stop' ? target.stopId : target.kind === 'guide' ? target.guideId : target.presentationId
-						}),
-			() => `${removedName} removed. ${removals.remaining(target, after)}`.trim()
-		);
-		if (ok) {
-			if (selectsParent) experienceFocus.select(parent);
-			if (target.kind === 'guide' && experienceFocus.guideId === target.guideId) experienceFocus.openGuide(null);
-		}
-		return ok;
-	}
 
 	const backTarget = $derived.by(() => {
 		void subject;
@@ -720,82 +633,6 @@ export function createExperienceController(
 	});
 
 
-
-	function presentationSubjectName(presentationId: string): string | null {
-		const reference = current?.presentations.find((entry) => entry.id === presentationId)?.subject ?? null;
-		if (reference === null || reference.domain !== 'scene' || reference.subject.kind !== 'entity') return null;
-		return snapshot.units.scene.data.entities.find((entity) => entity.id === reference.subject.id)?.name ?? null;
-	}
-
-	function presentationDisplayName(presentationId: string): string {
-		const presentation = current?.presentations.find((entry) => entry.id === presentationId) ?? null;
-		if (presentation === null) return presentationId;
-		return displayPresentationName(presentation, presentationSubjectName(presentationId));
-	}
-
-	function presentationLabel(presentationId: string): string {
-		return presentationDisplayName(presentationId);
-	}
-
-	const linkCandidates = $derived(
-		snapshot.units.scene.data.entities.map((entity) => ({ id: entity.id, label: entity.name }))
-	);
-
-	async function linkPresentation(presentationId: string, entityId: string): Promise<boolean> {
-		const experience = current;
-		if (experience === null) return false;
-		if (!snapshot.units.scene.data.entities.some((entity) => entity.id === entityId)) return false;
-		return run(
-			() =>
-				presentationUpdateIntent({
-					envelope: snapshot,
-					revision: revision(),
-					ids: { operation: newId() },
-					experienceId: experience.id,
-					presentationId,
-					subject: sceneEntitySubject(snapshot, entityId),
-					label: null
-				}),
-			() => `Linked to ${snapshot.units.scene.data.entities.find((entity) => entity.id === entityId)?.name ?? 'the object'}.`
-		);
-	}
-
-	async function unlinkPresentation(presentationId: string): Promise<boolean> {
-		const experience = current;
-		const presentation = experience?.presentations.find((entry) => entry.id === presentationId);
-		if (experience === null || presentation === undefined || presentation.subject === null) return false;
-		return run(
-			() =>
-				presentationUpdateIntent({
-					envelope: snapshot,
-					revision: revision(),
-					ids: { operation: newId() },
-					experienceId: experience.id,
-					presentationId,
-					subject: null,
-					label: presentationDisplayName(presentationId)
-				}),
-			() => 'Unlinked from its object.'
-		);
-	}
-
-	async function followPresentation(presentationId: string): Promise<boolean> {
-		const experience = current;
-		const presentation = experience?.presentations.find((entry) => entry.id === presentationId);
-		if (experience === null || presentation === undefined || presentation.subject === null || presentation.label === null) return false;
-		return run(
-			() =>
-				presentationUpdateIntent({
-					envelope: snapshot,
-					revision: revision(),
-					ids: { operation: newId() },
-					experienceId: experience.id,
-					presentationId,
-					label: null
-				}),
-			() => 'Following the object\'s name.'
-		);
-	}
 
 	function openGuide(guideId: string): void {
 		// Focus never names a Guide the source does not carry.
@@ -869,15 +706,15 @@ export function createExperienceController(
 		set query(next: string) {
 			query = next;
 		},
-		presentationLabel,
-		presentationDisplayName,
-		presentationSubjectName,
+		presentationLabel: level.presentationLabel,
+		presentationDisplayName: level.presentationDisplayName,
+		presentationSubjectName: level.presentationSubjectName,
 		get linkCandidates() {
-			return linkCandidates;
+			return level.linkCandidates;
 		},
-		linkPresentation,
-		unlinkPresentation,
-		followPresentation,
+		linkPresentation: level.linkPresentation,
+		unlinkPresentation: level.unlinkPresentation,
+		followPresentation: level.followPresentation,
 		get cameraViews() {
 			return snapshot.units.camera.data.views;
 		},
@@ -886,10 +723,10 @@ export function createExperienceController(
 			return readServices().stage.snapshot().sourceContentId;
 		},
 		get playbackSource() {
-			return playbackSource;
+			return level.playbackSource;
 		},
 		playbackSourceFor(guideId: string) {
-			return lowerPlaybackSource(guideId);
+			return level.playbackSourceFor(guideId);
 		},
 		guideForStop(stopId: string) {
 			const containing = (current?.guides ?? []).filter((guide) => guide.stopIds.includes(stopId));
@@ -925,12 +762,12 @@ export function createExperienceController(
 			current === null
 				? { presentations: 0, views: 0, freePresentations: 0, freeViews: 0, viewsOnlyFree: 0, hiddenViews: 0 }
 				: reachSummary(current, guide),
-		createExperience,
+		createExperience: level.createExperience,
 		get draftLabel() {
 			return draftLabel;
 		},
 		capture: views.capture,
-		presentThis,
+		presentThis: level.presentThis,
 		addStop: stops.addStop,
 		moveStopTo: stops.moveStopTo,
 		moveStop: stops.moveStop,
@@ -977,7 +814,7 @@ export function createExperienceController(
 		moveViewTo: presentation.moveViewTo,
 		moveView: presentation.moveView,
 		removalPreview: removals.removalPreview,
-		remove,
+		remove: level.remove,
 		get backTarget() {
 			return backTarget;
 		},
