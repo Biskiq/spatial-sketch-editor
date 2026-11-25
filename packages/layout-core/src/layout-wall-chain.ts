@@ -467,8 +467,8 @@ function cloneWallFirstDocument(document: LayoutDocumentWallFirst): LayoutDocume
  * names, so the wall-chain release splits into plan, topology gate, face
  * extraction, correspondence, room reconciliation and the final canonical
  * gates — in node and in the browser, through the shipped containment harness.
- * The marks ride the existing opt-in gate (`DEV` + `globalThis.__P2311_PERF__`),
- * so they are inert in production and add no telemetry.
+ * They are inert unless a measurement harness installs a work observer, so
+ * they add no telemetry to a product build.
  */
 export type WallChainPlanOptions = {
 	/** Naming policy for newly allocated Rooms only; existing authored names are retained. */

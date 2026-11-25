@@ -4,9 +4,8 @@
  * The probe is the instrument that made the slice's D5 result measurable, so the
  * contract to pin is exact and small:
  *
- * - it is INERT unless `globalThis.__P2311_SNAP_INPUT_PROBE__` is set — and,
- *   critically, it is NOT enabled by `__P2311_PERF__`, so a recorded capture can
- *   never switch it on;
+ * - it is INERT unless `globalThis.__P2311_SNAP_INPUT_PROBE__` is set, so a
+ *   recorded capture can never switch it on;
  * - one entry per CACHE MISS, never per call: the memoized index means a
  *   repeated `wallSnapIndex` on the same geometry records nothing more;
  * - the entry states the input shape (spans, walls, endpoints per wall) and both
@@ -22,7 +21,6 @@ import { compileWallFirstLayoutGeometry, wallSnapIndex } from '@portfolio/layout
 import { P23B_MATRIX_SPECS, buildP23BMatrixFixture } from './__fixtures__/p23b-fixtures';
 
 type ProbeGlobal = {
-	__P2311_PERF__?: boolean;
 	__P2311_SNAP_INPUT_PROBE__?: boolean;
 	__P2311_SNAP_INPUT_LOG__?: unknown[];
 };
@@ -38,26 +36,16 @@ function curvedGeometry() {
 }
 
 beforeEach(() => {
-	delete gate.__P2311_PERF__;
 	delete gate.__P2311_SNAP_INPUT_PROBE__;
 	delete gate.__P2311_SNAP_INPUT_LOG__;
 });
 
 afterEach(() => {
-	delete gate.__P2311_PERF__;
 	delete gate.__P2311_SNAP_INPUT_PROBE__;
 	delete gate.__P2311_SNAP_INPUT_LOG__;
 });
 
 describe('P23B snap-input probe', () => {
-	it('is inert by default, even with the perf gate on', () => {
-		gate.__P2311_PERF__ = true;
-		const geometry = curvedGeometry();
-		wallSnapIndex(geometry);
-		wallSnapIndex(geometry);
-		expect(gate.__P2311_SNAP_INPUT_LOG__).toBeUndefined();
-	});
-
 	it('records one entry per cache miss, with the input shape and both arms', () => {
 		gate.__P2311_SNAP_INPUT_PROBE__ = true;
 		const geometry = curvedGeometry();
