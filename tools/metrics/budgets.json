@@ -2,9 +2,9 @@
   "generatedFrom": "LOC-0 baseline; shrink-only from here",
   "counts": {
     "filesOver600": 103,
-    "filesOver1000": 16,
+    "filesOver1000": 15,
     "filesOver1500": 1,
-    "functionsOver200": 80,
+    "functionsOver200": 81,
     "exportStars": 0,
     "crossPackageReexports": 0,
     "seams": 8
@@ -83,11 +83,6 @@
     {
       "path": "apps/editor/src/lib/authoring/stage/shell/StageViewportRegion.svelte",
       "lines": 1020,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
-      "path": "apps/editor/src/lib/authoring/experience/experience-lens.svelte.ts",
-      "lines": 1015,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -376,6 +371,11 @@
       "reason": "One star partition: beam selection, sector clipping and keel ownership share the same beams and cyclic leg order."
     },
     {
+      "path": "apps/editor/src/lib/authoring/experience/experience-lens.svelte.ts",
+      "lines": 688,
+      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+    },
+    {
       "path": "apps/editor/src/lib/authoring/stage/shell/StageFinishAlign.svelte",
       "lines": 687,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
@@ -535,13 +535,6 @@
       "reason": "One Paint composition root: the active pick, dropper, palette writes, surface painting and the sub-owner wiring share one accepted revision and one busy gate."
     },
     {
-      "file": "apps/editor/src/lib/authoring/experience/experience-lens.svelte.ts",
-      "name": "createExperienceLens",
-      "line": 79,
-      "lines": 935,
-      "reason": "One lens host: posture, placement, look-through and the remaining session wiring share one effect tree; the View-edit session is extracted."
-    },
-    {
       "file": "apps/editor/src/lib/authoring/workspace/host/workspace-host.svelte.ts",
       "name": "createWorkspaceHost",
       "line": 87,
@@ -596,6 +589,13 @@
       "line": 116,
       "lines": 619,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+    },
+    {
+      "file": "apps/editor/src/lib/authoring/experience/experience-lens.svelte.ts",
+      "name": "createExperienceLens",
+      "line": 77,
+      "lines": 610,
+      "reason": "One lens host: posture, placement, look-through and the remaining session wiring share one effect tree; the View-edit session is extracted."
     },
     {
       "file": "apps/editor/src/lib/authoring/stage/facade/contribution-view.ts",
@@ -729,6 +729,13 @@
       "line": 215,
       "lines": 404,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+    },
+    {
+      "file": "apps/editor/src/lib/authoring/experience/experience-lens-tools.svelte.ts",
+      "name": "createExperienceLensTools",
+      "line": 16,
+      "lines": 388,
+      "reason": "One lens tools session: placement and look-through share the same provisional Camera posture and pointer bookkeeping."
     },
     {
       "file": "apps/editor/src/lib/authoring/adapters/scene/profile-revision.ts",
