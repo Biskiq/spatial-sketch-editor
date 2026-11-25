@@ -378,8 +378,8 @@ export function check(measurement: Measurement, budgets: Budgets): BudgetFailure
 const READ_SET_MODULES = [
 	'packages/layout-core/src/precision/scalar-edits.ts',
 	'packages/project-model/src/scene-planning/finish/index.ts',
-	'packages/project-model/src/units/validate.ts',
-	'packages/project-model/src/units/planning.ts',
+	'packages/project-model/src/units/validate/camera.ts',
+	'packages/project-model/src/units/planning/experience/stop.ts',
 	'apps/editor/src/lib/authoring/look/finish-authoring.svelte.ts',
 	'apps/editor/src/lib/authoring/adapters/layout/precision.ts',
 	'apps/api/src/app.ts'

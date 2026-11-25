@@ -1,9 +1,9 @@
 {
   "generatedFrom": "LOC-0 baseline; shrink-only from here",
   "counts": {
-    "filesOver600": 128,
-    "filesOver1000": 41,
-    "filesOver1500": 14,
+    "filesOver600": 127,
+    "filesOver1000": 40,
+    "filesOver1500": 13,
     "functionsOver200": 73,
     "exportStars": 0,
     "crossPackageReexports": 0,
@@ -18,11 +18,6 @@
     {
       "path": "apps/editor/src/lib/layout/wall-mesh-builder.ts",
       "lines": 2119,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
-      "path": "packages/project-model/src/units/validate.ts",
-      "lines": 2058,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -1045,11 +1040,11 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
-      "file": "packages/project-model/src/units/validate.ts",
+      "file": "packages/project-model/src/units/validate/experience.ts",
       "name": "readExperience",
-      "line": 830,
+      "line": 121,
       "lines": 244,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+      "reason": "One Experience payload read: the shared stop and view identity sets make each nested record depend on the others."
     },
     {
       "file": "apps/editor/src/lib/authoring/stage/route/stage-project-epoch.svelte.ts",

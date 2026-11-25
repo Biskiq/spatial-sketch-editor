@@ -1,10 +1,9 @@
 /**
- * F.2 `unit-envelope-v1` conformance — the `T3.P01.S01` provider for
- * `F2.unit-envelope@1`.
+ * F.2 `unit-envelope-v1` conformance for `F2.unit-envelope@1`.
  *
  * AM-2's required conformance set (empty and two-Experience round trips,
  * required-kind/version refusal, reference/lock diagnostics, genuine resource
- * pins) plus the S01 acceptance rows: the strict refusal matrix, the header /
+ * pins) plus the acceptance rows: the strict refusal matrix, the header /
  * payload version rule, the duplicate-and-conflicting lock pin rules and the
  * separation of structural failure from executable closure.
  *
