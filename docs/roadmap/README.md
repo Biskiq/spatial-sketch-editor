@@ -12,6 +12,7 @@ owns claims/review; [focus](../../focus.md) owns current priority.
 | --- | --- |
 | T1 next batch: fundamentals, Spaces, Interior Reveal, Slice, connected curves, verticality (proposal, revision 3) | [Proposal](./t1-spatial-world/next-batch/README.md) |
 | T1/T2 architecture and performance consolidation: invariant remediation, the joint renderer refactor and editing-path optimisation (planning baseline for owner review) | [Plan](./t1-t2-consolidation/README.md), [audit](./t1-t2-consolidation/audit.md), [slices](./t1-t2-consolidation/slices.md) |
+| Locality and lean verification: modularization for agent context locality, test/CI subtraction and versioning hardening (owner-approved plan; five wave pull requests) | [Plan](./locality-verification/README.md) |
 | Prepared visitor publication | [Release and delivery](./t4-release/README.md) |
 | Look & Atmosphere: Artwork, Sky, Finishes and Lights (approved planning baseline; authorises the direction and batch, not any slice's implementation) | [Direction and batch](./t2-look-atmosphere/README.md), [review page](./t2-look-atmosphere/review.html) |
 | Native geometric depth / Object Studio | [T5 umbrella and first capability](./t5-expressive-geometry/README.md) |
