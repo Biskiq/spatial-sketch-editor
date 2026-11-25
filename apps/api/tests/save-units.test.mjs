@@ -338,9 +338,9 @@ test('the live entry selects the unit handler and no current-source handler surv
 	const persistence = await readFile(new URL('../src/save-persistence.ts', import.meta.url), 'utf8');
 	assert.match(persistence, /createUnitSaveHandler\(\)/);
 	assert.match(persistence, /\[UNIT_SAVE_HANDLER\]/);
-	const app = await readFile(new URL('../src/app.ts', import.meta.url), 'utf8');
-	assert.match(app, /saveAcceptedSource\b/);
-	assert.doesNotMatch(app, /saveAcceptedSourceWithHandler|saveAcceptedSourceWithHandlers/);
+	const saveRoutes = await readFile(new URL('../src/routes/saves.ts', import.meta.url), 'utf8');
+	assert.match(saveRoutes, /saveAcceptedSource\b/);
+	assert.doesNotMatch(saveRoutes, /saveAcceptedSourceWithHandler|saveAcceptedSourceWithHandlers/);
 	assert.equal(UNIT_ENVELOPE_SOURCE_KIND, 'unit-envelope');
 });
 

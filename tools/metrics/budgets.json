@@ -1,10 +1,10 @@
 {
   "generatedFrom": "LOC-0 baseline; shrink-only from here",
   "counts": {
-    "filesOver600": 125,
-    "filesOver1000": 38,
+    "filesOver600": 124,
+    "filesOver1000": 37,
     "filesOver1500": 12,
-    "functionsOver200": 73,
+    "functionsOver200": 74,
     "exportStars": 0,
     "crossPackageReexports": 0,
     "seams": 14
@@ -103,11 +103,6 @@
     {
       "path": "apps/editor/src/lib/authoring/library/LibraryMaterialEditor.svelte",
       "lines": 1359,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
-      "path": "apps/api/src/app.ts",
-      "lines": 1329,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -1133,6 +1128,13 @@
       "line": 163,
       "lines": 215,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+    },
+    {
+      "file": "apps/api/src/routes/library.ts",
+      "name": "registerLibraryRoutes",
+      "line": 11,
+      "lines": 208,
+      "reason": "Registration wrapper for the seven independent library handlers, not a single algorithm; splitting it would scatter one route family."
     },
     {
       "file": "packages/layout-core/src/geometry/face-extraction.ts",
