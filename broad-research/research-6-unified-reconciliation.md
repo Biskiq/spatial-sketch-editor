@@ -138,7 +138,7 @@ a three-step ladder:
 | --- | --- | --- | --- | --- | --- |
 | Layout precision edits (Wall height and thickness, Openings, plinth) | Wall-first v5 | F.4 `local-single-domain-v1`; five planners in [precision.ts](../apps/editor/src/lib/authoring/adapters/layout/precision.ts) | T1.P01.S04, live | Undo/Redo and Head Save, live | **End-to-end** |
 | Layout creation (walls, rooms, openings) | Kernel planners tested | Not exposed | No product caller | — | Accepted-inactive; K3 is unplanned |
-| Scene placement and editing | Seven planners in [scene-planning](../packages/project-model/src/scene-planning/operations.ts) | Floor support needs a Room floor | Wiring is in open PR #147 (T2.P01.S03, authorized, not merged) | Correspondence covers created, preserved and retired | Accepted-inactive |
+| Scene placement and editing | Seven planners in [scene-planning](../packages/project-model/src/scene-planning/operations/index.ts) | Floor support needs a Room floor | Wiring is in open PR #147 (T2.P01.S03, authorized, not merged) | Correspondence covers created, preserved and retired | Accepted-inactive |
 | Own content | The asset API stores PNG, WebP or JPEG ([asset-persistence.ts](../apps/api/src/asset-persistence.ts)). No GLB path. `TypedResource` has kinds `texture` and `asset`, and no scale, pivot or provenance fields. | — | No editor caller | — | Images server-only; GLB conceptual (K1) |
 | Images and text as content | A textured `plane` primitive is the only image form, with no text entity ([scene.ts](../packages/project-model/src/scene.ts)). Program content is text-only. | Presentation text has no authored home (S06 residual) | — | — | Conceptual |
 | Experience source (Presentations, Stops, Guides) | Experience@1 codec and validation (T3.P01.S01) | Unit acceptance (S05) | No product importer of `units` or `program` | Cutover pending (T3.P01.S04) | Accepted-inactive |
@@ -213,7 +213,7 @@ capabilities are mostly wiring over tested kernels, plus a few small, missing se
 - [`layout-floor-support.ts`](../packages/layout-core/src/room/floor-support.ts) considers only
   derived `room-floor` polygons (`polygon.kind !== 'room-floor'` is skipped). Outside one, the result
   is `none`.
-- `place-object` in [`operations.ts`](../packages/project-model/src/scene-planning/operations.ts) then
+- `place-object` in [`operations.ts`](../packages/project-model/src/scene-planning/operations/index.ts) then
   refuses `'floor-supported'` placement and movement with `no-support`.
 - T2.P01 chose this boundary deliberately: "Genuinely empty Layout … Place refuses and offers Start
   gallery … Neither a datum nor T1's plinth is support"

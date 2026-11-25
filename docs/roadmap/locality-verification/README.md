@@ -114,12 +114,12 @@ so LOC-0 measures each row again after LOC-1 and after each split.
 | Task: module | Own | Direct definers | Closure → barrels resolved | Read-set target |
 | --- | ---: | ---: | ---: | ---: |
 | Wall length edit: `packages/layout-core/src/precision/index.ts` | 3,931 | 31 files, 18,745 | 30,837 → 30,837 | ≤ 6,000 |
-| Finish operation: `packages/project-model/src/scene-planning/finish-planners.ts` | 3,025 | 25 files, 10,148 | 77,507 → 49,465 | ≤ 4,000 |
-| Camera payload validation: `packages/project-model/src/units/validate.ts` | 2,064 | 20 files, 9,319 | 64,605 → 34,162 | ≤ 3,000 |
-| Experience Stop planner: `packages/project-model/src/units/planning.ts` | 2,950 | 16 files, 7,091 | 71,540 → 41,097 | ≤ 4,000 |
+| Finish operation: `packages/project-model/src/scene-planning/finish/index.ts` | 3,025 | 25 files, 10,148 | 77,507 → 49,465 | ≤ 4,000 |
+| Camera payload validation: `packages/project-model/src/units/validate/index.ts` | 2,064 | 20 files, 9,319 | 64,605 → 34,162 | ≤ 3,000 |
+| Experience Stop planner: `packages/project-model/src/units/planning/index.ts` | 2,950 | 16 files, 7,091 | 71,540 → 41,097 | ≤ 4,000 |
 | Paint tray state: `apps/editor/src/lib/authoring/look/finish-authoring.svelte.ts` | 2,293 | 27 files, 11,576 | 125,850 → 92,549 | ≤ 5,000 |
 | Wall frame helper: `apps/editor/src/lib/authoring/adapters/layout/precision.ts` | 1,859 | 27 files, 18,056 | 94,383 → 47,905 | ≤ 3,000 |
-| Library route: `apps/api/src/app.ts` with `apps/api/src/form-library.ts` | 3,160 | 13 local files, 5,189 | — | ≤ 2,500 |
+| Library route: `apps/api/src/app.ts` with `apps/api/src/form-library/index.ts` | 3,160 | 13 local files, 5,189 | — | ≤ 2,500 |
 
 **Verification.**
 
@@ -196,7 +196,7 @@ holds:
 - seven route families: health, auth with the test-auth seam, projects, publication, models,
   library and assets.
 
-`apps/api/src/form-library.ts` (1,831) is the library dispatcher for forms and material Finishes.
+`apps/api/src/form-library/index.ts` (1,831) is the library dispatcher for forms and material Finishes.
 It mixes shared storage with the operations themselves:
 
 - shared storage: idempotency receipts, staging rows, object keys, image sniffing, copying and

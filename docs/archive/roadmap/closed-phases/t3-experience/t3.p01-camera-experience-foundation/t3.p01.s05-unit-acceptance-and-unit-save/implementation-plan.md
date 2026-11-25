@@ -46,7 +46,7 @@ duplicated here.
 ## Entry points
 
 ```text
-implementation   packages/project-model/src/units/planning.ts
+implementation   packages/project-model/src/units/planning/index.ts
                  packages/project-model/src/units/acceptance.ts
                  packages/project-model/src/units/acceptance-staging.ts
                  packages/project-model/src/units/save.ts

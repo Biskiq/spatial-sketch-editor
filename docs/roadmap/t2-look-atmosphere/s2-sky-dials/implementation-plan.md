@@ -606,7 +606,7 @@ A gesture is one of:
 
 ## Writes
 
-Both planners live in `packages/project-model/src/units/planning.ts`. S4 leaves this file to S2.
+Both planners live in `packages/project-model/src/units/planning/index.ts`. S4 leaves this file to S2.
 Both validate the **merged** Sky with the exported Sky validator (`validateSceneSky`, from
 `units/validate.ts`), because `prepared()` does not run payload validation. Both emit
 `scene.environment.updated` and leave `treatment` untouched. The canonical rule drops a Sky equal to

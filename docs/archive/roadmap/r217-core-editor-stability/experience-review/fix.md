@@ -206,7 +206,7 @@ These were the open tradeoffs of revision 2 (T-1 to T-8). Each is now a rule, an
 
 **Test families:**
 - Admissions: `apps/editor/tests/lib/authoring/unit-acceptance-conformance.test.ts` and `stage-source-admission.test.ts`, including the new Scene compound.
-- Project model: `apps/editor/tests/lib/project-model/units-conformance.test.ts`, `program-conformance.test.ts`, `units-canonical-form.test.ts`, `references-conformance.test.ts`.
+- Project model: `packages/project-model/tests/units-conformance.test.ts`, `program-conformance.test.ts`, `units-canonical-form.test.ts`, `references-conformance.test.ts`.
 - Experience: in `apps/editor/tests/lib/experience/`:
   - `experience-structure.test.ts`, `experience-controller.test.ts`, `experience-authoring.test.ts`, `first-guide.test.ts`
   - `camera-paths.test.ts`, `travel-gap.test.ts` (which becomes the problems test), `timeline-scrub.test.ts`, `playback.test.ts`
