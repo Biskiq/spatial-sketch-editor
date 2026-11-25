@@ -1,9 +1,9 @@
 {
   "generatedFrom": "LOC-0 baseline; shrink-only from here",
   "counts": {
-    "filesOver600": 132,
-    "filesOver1000": 45,
-    "filesOver1500": 18,
+    "filesOver600": 130,
+    "filesOver1000": 43,
+    "filesOver1500": 16,
     "functionsOver200": 70,
     "exportStars": 0,
     "crossPackageReexports": 0,
@@ -28,11 +28,6 @@
     {
       "path": "apps/editor/src/lib/layout/wall-mesh-builder.ts",
       "lines": 2119,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
-      "path": "packages/camera-core/src/camera-motion.ts",
-      "lines": 2082,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -68,11 +63,6 @@
     {
       "path": "packages/layout-core/src/wall/junction-resolution.ts",
       "lines": 1790,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
-      "path": "packages/camera-core/src/viewport.ts",
-      "lines": 1773,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -981,11 +971,11 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
-      "file": "packages/camera-core/src/viewport.ts",
+      "file": "packages/camera-core/src/viewport/intent.ts",
       "name": "requestViewingIntent",
-      "line": 1260,
+      "line": 17,
       "lines": 299,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+      "reason": "One viewing-intent evaluation: every reading shares the pose, lens and ground-reach state it resolves."
     },
     {
       "file": "apps/editor/src/lib/authoring/stage/route/stage-viewport.svelte.ts",
