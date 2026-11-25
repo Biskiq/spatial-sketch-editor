@@ -21,9 +21,9 @@
 		PLAN_SELECTED_SCALE,
 		type ExperienceCameraFrustum,
 		type ExperienceFrustum,
-		type StageBox,
-		type StagePoint
+		type StageBox
 	} from './experience-marks';
+	import type { StagePoint } from './experience-camera-mesh';
 	import StageSticker from '../stage/shell/StageSticker.svelte';
 	import { viewEditTag, type AuthoredViewPose, type ViewEditKind } from './experience-view-edit';
 	import { experienceHomes } from './experience-homes';
