@@ -38,6 +38,7 @@ const domainToCore: readonly [source: string, targets: readonly string[]][] = [
 
 	// Shared Material Editor wheel, and the current Library browse-view and selection contracts.
 	['library/LibraryMaterialEditor.svelte', ['shell/StagePaintWheel.svelte']],
+	['library/LibraryMaterialEditorFields.svelte', ['shell/StagePaintWheel.svelte']],
 	['library/StageLibrary.svelte', ['route/stage-shell-state.svelte.ts (type)']],
 	['library/library-target.ts', ['semantic-selection.ts (type)']],
 	// Existing Look runtimes consume selection identities and accepted facade types.

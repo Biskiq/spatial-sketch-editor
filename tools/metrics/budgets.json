@@ -1,8 +1,8 @@
 {
   "generatedFrom": "LOC-0 baseline; shrink-only from here",
   "counts": {
-    "filesOver600": 101,
-    "filesOver1000": 8,
+    "filesOver600": 102,
+    "filesOver1000": 7,
     "filesOver1500": 1,
     "functionsOver200": 81,
     "exportStars": 0,
@@ -24,11 +24,6 @@
       "path": "apps/editor/src/lib/authoring/adapters/layout/wall-gesture-session.ts",
       "lines": 1390,
       "reason": "One claimed wall gesture: press, preview and release share the captured Wall, station map and one lease."
-    },
-    {
-      "path": "apps/editor/src/lib/authoring/library/LibraryMaterialEditor.svelte",
-      "lines": 1359,
-      "reason": "One Material editor: Finish and material modes share the open material, compare state and one accepted write path."
     },
     {
       "path": "apps/editor/src/lib/authoring/stage/shell/EditorIndex.svelte",
@@ -206,6 +201,11 @@
       "reason": "One guide time map: hold/wait/cut/travel segments and the invocation clock are solved from one segment table."
     },
     {
+      "path": "apps/editor/src/lib/authoring/library/LibraryMaterialEditor.svelte",
+      "lines": 757,
+      "reason": "One Material editor: Finish and material modes share the open material, compare state and one accepted write path."
+    },
+    {
       "path": "apps/editor/src/lib/authoring/library/StageLibraryBody.svelte",
       "lines": 754,
       "reason": "The Library body: rail, grouped grid and detail pane share one browse result, one selection and the one card action."
@@ -379,6 +379,11 @@
       "path": "packages/project-model/src/units/experience/interpreter/session.ts",
       "lines": 681,
       "reason": "One interpreter session: every transition reads and rewrites the same run, visit and hold state in one table."
+    },
+    {
+      "path": "apps/editor/src/lib/authoring/library/LibraryMaterialEditorFields.svelte",
+      "lines": 680,
+      "reason": "The exact Finish fields own the shared colour, surface and mapping controls and their live slider previews; the shell keeps maps, target and one write foot."
     },
     {
       "path": "packages/project-model/src/scene-planning/record-scope.ts",
