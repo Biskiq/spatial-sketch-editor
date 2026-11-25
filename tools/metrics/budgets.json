@@ -1,7 +1,7 @@
 {
   "generatedFrom": "LOC-0 baseline; shrink-only from here",
   "counts": {
-    "filesOver600": 105,
+    "filesOver600": 104,
     "filesOver1000": 17,
     "filesOver1500": 2,
     "functionsOver200": 75,
@@ -17,7 +17,7 @@
     },
     {
       "path": "apps/editor/src/lib/authoring/experience/experience-controller.svelte.ts",
-      "lines": 1923,
+      "lines": 1906,
       "reason": "One Experience authoring entry: the shared accepted snapshot, focus reads, one command runner and the sub-owners compose the lens; removal readings live in their own module."
     },
     {
@@ -426,11 +426,6 @@
       "reason": "One room isolation search: the subgraph, group and rejection rules are decided against the same room graph."
     },
     {
-      "path": "apps/editor/src/lib/authoring/experience/commands.ts",
-      "lines": 652,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
       "path": "packages/layout-core/src/wall/dissolve.ts",
       "lines": 651,
       "reason": "One dissolve planner: the candidate, port remap and checks share one mutable candidate document."
@@ -540,7 +535,7 @@
     {
       "file": "apps/editor/src/lib/authoring/experience/experience-controller.svelte.ts",
       "name": "createExperienceController",
-      "line": 334,
+      "line": 317,
       "lines": 1590,
       "reason": "One Experience composition root: one accepted snapshot, one command runner and the sub-owner wiring; the removal readings are extracted."
     },

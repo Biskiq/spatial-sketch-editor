@@ -13,13 +13,8 @@
 import { describe, expect, it } from 'vitest';
 
 import { createAcceptanceCoordinator } from '$lib/authoring/f4/acceptance-coordinator';
-import {
-	guideOrderIntent,
-	presentationUpdateIntent,
-	removeIntent,
-	stopCreateIntent,
-	stopUpdateIntent
-} from '$lib/authoring/experience/commands';
+import { guideOrderIntent, presentationUpdateIntent, stopCreateIntent, stopUpdateIntent } from '$lib/authoring/experience/commands-structure';
+import { removeIntent } from '$lib/authoring/experience/commands-presentation';
 import { EXPERIENCE_UNIT_FORMAT_VERSION, computeEnvelopeSourceContentId, lowerExperienceProgram, serializeProjectEnvelope, type Experience, type ExperienceUnitPayload, type ProjectEnvelope } from '@portfolio/project-model/units';
 import { createUnitAcceptanceProfile } from '@portfolio/project-model/units/planning';
 

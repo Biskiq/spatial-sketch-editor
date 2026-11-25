@@ -14,20 +14,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type Experience, type ExperiencePresentation, type ExperienceUnitPayload, type ProjectEnvelope } from '@portfolio/project-model/units';
 import { EXPERIENCE_CAPTURE_BIND_KIND, EXPERIENCE_GUIDE_CREATE_KIND, EXPERIENCE_GUIDE_ORDER_KIND, EXPERIENCE_GUIDE_UPDATE_KIND, EXPERIENCE_STOP_REMOVE_KIND, EXPERIENCE_UPDATE_KIND, EXPERIENCE_PRESENTATION_UPDATE_KIND, EXPERIENCE_STOP_CREATE_KIND, EXPERIENCE_STOP_UPDATE_KIND } from '@portfolio/project-model/units/planning';
 import { experienceFocus } from '$lib/authoring/experience/focus.svelte';
-import {
-	captureBindIntent,
-	capturedFovDegrees,
-	capturedViewPose,
-	createExperienceIntent,
-	guideCreateIntent,
-	guideOrderIntent,
-	guideUpdateIntent,
-	presentationUpdateIntent,
-	removeIntent,
-	stopCreateIntent,
-	stopUpdateIntent,
-	viewRenameIntent
-} from '$lib/authoring/experience/commands';
+import { captureBindIntent, createExperienceIntent, guideCreateIntent, guideOrderIntent, presentationUpdateIntent, stopCreateIntent, stopUpdateIntent } from '$lib/authoring/experience/commands-structure';
+import { capturedFovDegrees, capturedViewPose } from '$lib/authoring/experience/commands-references';
+import { guideUpdateIntent, removeIntent, viewRenameIntent } from '$lib/authoring/experience/commands-presentation';
 import { travelGapMessages } from '$lib/authoring/experience/experience-problems';
 import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 import { mountExperienceController, snapshotCell } from './__fixtures__/experience-controller-root.svelte';

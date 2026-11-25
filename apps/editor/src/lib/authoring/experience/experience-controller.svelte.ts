@@ -68,27 +68,10 @@ import {
 } from './experience-paths';
 import type { OperationChange } from '@portfolio/project-model/f4';
 import type { ScenePathAnchor } from '@portfolio/project-model/scene';
-import {
-	cameraConnectionCreateIntent,
-	cameraConnectionUpdateIntent,
-	captureBindIntent,
-	capturedFovDegrees,
-	capturedViewPose,
-	createExperienceIntent,
-	type CapturedViewPose,
-	experienceUpdateIntent,
-	guideCreateIntent,
-	guideOrderIntent,
-	guideUpdateIntent,
-	presentationUpdateIntent,
-	removeIntent,
-	sceneEntitySubject,
-	stopCreateIntent,
-	stopUpdateIntent,
-	viewRemoveIntent,
-	viewRenameIntent,
-	viewUpdateIntent
-} from './commands';
+import { cameraConnectionCreateIntent, cameraConnectionUpdateIntent, guideUpdateIntent, removeIntent, viewRemoveIntent, viewRenameIntent, viewUpdateIntent } from './commands-presentation';
+import { captureBindIntent, createExperienceIntent, experienceUpdateIntent, guideCreateIntent, guideOrderIntent, presentationUpdateIntent, stopCreateIntent, stopUpdateIntent } from './commands-structure';
+import { capturedFovDegrees, capturedViewPose, sceneEntitySubject } from './commands-references';
+import type { CapturedViewPose } from './commands-references';
 import {
 	type ExperienceRemovalPreview,
 	type ExperienceRemovalTarget,

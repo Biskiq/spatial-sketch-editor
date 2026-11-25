@@ -11,7 +11,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { experienceUpdateIntent, presentationUpdateIntent, stopUpdateIntent } from '$lib/authoring/experience/commands';
+import { experienceUpdateIntent, presentationUpdateIntent, stopUpdateIntent } from '$lib/authoring/experience/commands-structure';
 import { createAcceptanceCoordinator } from '$lib/authoring/f4/acceptance-coordinator';
 import { createEmptyWallFirstLayoutDocument, planCommitLayoutObjectPreset } from '@portfolio/layout-core/wall';
 import { nextLayoutPresetObjectId } from '@portfolio/layout-core/plan';

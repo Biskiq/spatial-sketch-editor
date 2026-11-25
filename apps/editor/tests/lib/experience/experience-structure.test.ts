@@ -10,16 +10,8 @@
 import { describe, expect, it } from 'vitest';
 
 import { createAcceptanceCoordinator } from '$lib/authoring/f4/acceptance-coordinator';
-import {
-	experienceUpdateIntent,
-	guideCreateIntent,
-	guideOrderIntent,
-	guideUpdateIntent,
-	presentationUpdateIntent,
-	removeIntent,
-	viewRemoveIntent,
-	viewRenameIntent
-} from '$lib/authoring/experience/commands';
+import { experienceUpdateIntent, guideCreateIntent, guideOrderIntent, presentationUpdateIntent } from '$lib/authoring/experience/commands-structure';
+import { guideUpdateIntent, removeIntent, viewRemoveIntent, viewRenameIntent } from '$lib/authoring/experience/commands-presentation';
 import { computeEnvelopeSourceContentId, planStopRemoval, presentationDisplayName, serializeProjectEnvelope, unlinkSceneSubject, unlinkSceneSubjects, validateProjectEnvelope, type Experience, type ExperienceUnitPayload, type ProjectEnvelope } from '@portfolio/project-model/units';
 import { EXPERIENCE_GUIDE_REMOVE_KIND, EXPERIENCE_GUIDE_UPDATE_KIND, EXPERIENCE_PRESENTATION_REMOVE_KIND, EXPERIENCE_PRESENTATION_VIEW_REMOVE_KIND, EXPERIENCE_STOP_REMOVE_KIND, EXPERIENCE_UPDATE_KIND, createUnitAcceptanceProfile } from '@portfolio/project-model/units/planning';
 

@@ -288,8 +288,8 @@
     "arrows": 24
   },
   "src/lib/authoring/experience/experience-controller.svelte.ts": {
-    "lines": 1924,
-    "imports": 16,
+    "lines": 1907,
+    "imports": 19,
     "state": 7,
     "derived": 24,
     "effects": 3,
@@ -304,5 +304,32 @@
     "effects": 0,
     "functions": 8,
     "arrows": 22
+  },
+  "src/lib/authoring/experience/commands-references.ts": {
+    "lines": 171,
+    "imports": 3,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 8,
+    "arrows": 1
+  },
+  "src/lib/authoring/experience/commands-structure.ts": {
+    "lines": 300,
+    "imports": 5,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 8,
+    "arrows": 7
+  },
+  "src/lib/authoring/experience/commands-presentation.ts": {
+    "lines": 245,
+    "imports": 5,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 7,
+    "arrows": 3
   }
 }
