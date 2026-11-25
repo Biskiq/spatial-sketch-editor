@@ -19,6 +19,7 @@ const domainToCore: readonly [source: string, targets: readonly string[]][] = [
 	['experience/experience-card-model.ts', ['stage-facade.ts (type)']],
 	['experience/experience-index.ts', ['shell/experience-index-groups.ts (type)']],
 	['experience/experience-lens.svelte.ts', ['stage-axis-travel.ts', 'stage-input.ts', 'stage-facade.ts (type)']],
+	['experience/experience-view-edit-session.svelte.ts', ['stage-axis-travel.ts']],
 	['experience/experience-preview.svelte.ts', ['stage-facade.ts (type)']],
 	['experience/preview-handover.ts', ['camera-session.ts (type)']],
 
