@@ -1,7 +1,6 @@
 <script lang="ts">
 	import type { ArtworkLibraryEntry } from '@portfolio/project-model/artwork';
 	import type { MaterialId } from '@portfolio/project-model/scene';
-	import type { Snippet } from 'svelte';
 	import FinishTile from '$lib/authoring/look/FinishTile.svelte';
 	import type { FinishTileSource } from '$lib/render/materials/finish-tiles.svelte';
 	import { foldVariantCards, variantCardOf } from '$lib/content/material-presentation';

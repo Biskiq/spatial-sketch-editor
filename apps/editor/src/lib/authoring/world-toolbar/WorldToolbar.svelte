@@ -19,7 +19,6 @@
 	import WorldToolbarLibraryTabs from './WorldToolbarLibraryTabs.svelte';
 	import {
 		WORLD_FAMILIES,
-		WORLD_LIBRARY_CATEGORIES,
 		familyOf,
 		familyTools,
 		worldTool,
