@@ -1,9 +1,9 @@
 {
   "generatedFrom": "LOC-0 baseline; shrink-only from here",
   "counts": {
-    "filesOver600": 121,
-    "filesOver1000": 33,
-    "filesOver1500": 9,
+    "filesOver600": 120,
+    "filesOver1000": 32,
+    "filesOver1500": 8,
     "functionsOver200": 73,
     "exportStars": 0,
     "crossPackageReexports": 0,
@@ -38,11 +38,6 @@
     {
       "path": "apps/editor/src/lib/authoring/adapters/layout/layout-contributions.ts",
       "lines": 1705,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
-      "path": "packages/layout-core/src/wall/development.ts",
-      "lines": 1685,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
