@@ -1,5 +1,5 @@
 /**
- * Colour coats (T2.S8 U3, decision D3).
+ * Colour coats.
  *
  * A colour painted with Paint keeps what the target wears — relief, sheen and
  * tiling — and replaces only its colour. The result is a **derived Finish**:
@@ -16,25 +16,25 @@
  */
 import type { LayoutSurfaceRef } from '@portfolio/layout-core/plan';
 import { surfaceKey } from '@portfolio/layout-core/plan';
-import type { MaterialId, SceneColor, SceneMaterialInstance } from '../scene';
-import { catalogueRecipe } from '../materials/catalogue';
-import { pruneOverrides } from '../materials/read';
-import type { FinishBase, FinishOverrides, Recipe } from '../materials/types';
+import type { MaterialId, SceneColor, SceneMaterialInstance } from '../../scene';
+import { catalogueRecipe } from '../../materials/catalogue';
+import { pruneOverrides } from '../../materials/read';
+import type { FinishBase, FinishOverrides, Recipe } from '../../materials/types';
 import {
 	isFinishPaintable,
 	isPristineInstance,
 	materialInstanceById,
 	type FinishEntity,
 	type FinishScene
-} from './finish-model';
-import { sameSceneValues } from './record-scope';
+} from './model';
+import { sameSceneValues } from '../record-scope';
 import {
 	finishColourLabel,
 	finishMaterialLabel,
 	generatedFinishName,
 	uniqueFinishName,
 	type FinishTreatmentFacts
-} from './finish-treatment';
+} from './treatment';
 
 /**
  * The catalogue an unassigned Layout surface coats over: the one the Layout
@@ -200,7 +200,7 @@ export function planColourCoats(
 		readonly targets: readonly CoatTarget[];
 		readonly materialRecipes?: ReadonlyMap<string, Recipe>;
 		readonly labelForMaterial?: (id: MaterialId) => string;
-		/** U4 naming facts (sheen step words); labels come from `labelForMaterial`. */
+		/** Generated naming facts (sheen step words); labels come from `labelForMaterial`. */
 		readonly facts?: FinishTreatmentFacts;
 	}
 ): ColourCoatPlan {
@@ -230,7 +230,7 @@ export function planColourCoats(
 			assignments.push({ kind: 'create', index: pending });
 			continue;
 		}
-		// The U4 generated name (`<material> · <colour>[ · <sheen>]`), so a coat
+		// The generated name (`<material> · <colour>[ · <sheen>]`), so a coat
 		// keeps regenerating with its treatment until it is renamed.
 		const label = generatedFinishName(
 			{ ...recipe, name: source.name },

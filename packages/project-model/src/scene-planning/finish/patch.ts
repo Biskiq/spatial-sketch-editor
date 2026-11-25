@@ -1,5 +1,5 @@
 /**
- * The typed Finish patch (T2.S8 E4 "Edit, fork or reset").
+ * The typed Finish patch: edit, fork or reset.
  *
  * A patch is a list of field edits. Each names exactly one field and one of
  * three operations:
@@ -19,17 +19,17 @@
  *   keep an image untinted is removed with the image when no other map override
  *   remains and the patch does not itself author the colour.
  */
-import { normalizeOffset, normalizeRotation, pruneOverrides, readOverrides } from '../materials/read';
-import { catalogueRecipe } from '../materials/catalogue';
-import { NEUTRAL_RECIPE } from '../materials/neutral';
+import { normalizeOffset, normalizeRotation, pruneOverrides, readOverrides } from '../../materials/read';
+import { catalogueRecipe } from '../../materials/catalogue';
+import { NEUTRAL_RECIPE } from '../../materials/neutral';
 import {
 	MATERIAL_MAP_ROLES,
 	type FinishOverrides,
 	type MapRole,
 	type Mapping,
 	type Recipe
-} from '../materials/types';
-import type { SceneMaterialInstance } from '../scene';
+} from '../../materials/types';
+import type { SceneMaterialInstance } from '../../scene';
 
 export const FINISH_PATCH_FACTOR_FIELDS = [
 	'color',

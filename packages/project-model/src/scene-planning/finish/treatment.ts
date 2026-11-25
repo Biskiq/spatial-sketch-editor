@@ -1,5 +1,5 @@
 /**
- * The Finish Card's treatment vocabulary (T2.S8 U4; decisions D6, D8).
+ * The Finish Card's treatment vocabulary.
  *
  * A Finish is a Material plus a treatment. The Card edits that treatment in
  * the creator's words — a colour mode, a sheen step, a pattern size — and every
@@ -8,9 +8,9 @@
  * Finish did not already store.
  *
  * - **Colour modes.** Natural (no colour), Stained (a colour over the kept
- *   colour image) and Painted (a colour with the colour image disabled — a U3
+ *   colour image) and Painted (a colour with the colour image disabled — a
  *   coat). A base without a colour image offers Natural and Painted.
- * - **Sheen (D6).** Three targets on effective roughness, `factor × scanned
+ * - **Sheen.** Three targets on effective roughness, `factor × scanned
  *   mean` of the base's roughness image. A value within 0.05 of a target reads
  *   as that step, anything else as Custom; a step rougher than the capture
  *   (factor above 1) is disabled.
@@ -24,25 +24,25 @@
  * Runtime-safe and catalogue-agnostic: presentation facts (labels, families,
  * scanned means, per-family targets) arrive through `FinishTreatmentFacts`.
  */
-import type { MaterialId, SceneColor, SceneMaterialInstance, ScenePaletteSlot } from '../scene';
-import { catalogueRecipe } from '../materials/catalogue';
-import { pruneOverrides } from '../materials/read';
+import type { MaterialId, SceneColor, SceneMaterialInstance, ScenePaletteSlot } from '../../scene';
+import { catalogueRecipe } from '../../materials/catalogue';
+import { pruneOverrides } from '../../materials/read';
 import {
 	MATERIAL_MAP_ROLES,
 	type FinishBase,
 	type FinishOverrides,
 	type Mapping,
 	type Recipe
-} from '../materials/types';
-import type { FinishPatchEdit, FinishPatchFactorField } from './finish-patch';
-import { nextFinishName } from './finish-model';
+} from '../../materials/types';
+import type { FinishPatchEdit, FinishPatchFactorField } from './patch';
+import { nextFinishName } from './model';
 
 // ------------------------------------------------------------------ facts
 
 export type SheenStepId = 'matte' | 'satin' | 'gloss';
 export type SheenTargets = Readonly<Record<SheenStepId, number>>;
 
-/** D6: the default targets on effective roughness. */
+/** The default targets on effective roughness. */
 export const DEFAULT_SHEEN_TARGETS: SheenTargets = { matte: 0.8, satin: 0.5, gloss: 0.2 };
 /** A value within this distance of a target reads as that step. */
 export const SHEEN_STEP_TOLERANCE = 0.05;
@@ -139,7 +139,7 @@ function colourModeOverrides(
 }
 
 /**
- * The patch for a colour mode and colour. Painted equals the U3 coat of that
+ * The patch for a colour mode and colour. Painted equals the colour coat of that
  * colour; Stained keeps the colour image; Natural removes the colour and
  * restores a disabled base image. A mode a Finish cannot take (Stained without
  * an image) reads as Painted.
@@ -221,7 +221,7 @@ function stepAt(value: number, steps: readonly FinishSheenStep[]): FinishSheenSt
 	return steps.find((step) => Math.abs(step.target - value) <= SHEEN_STEP_TOLERANCE + 1e-9) ?? null;
 }
 
-/** D6: the three steps over effective roughness for one Finish. */
+/** The three steps over effective roughness for one Finish. */
 export function finishSheenReading(
 	source: FinishSource,
 	recipes: ReadonlyMap<string, Recipe> = new Map(),

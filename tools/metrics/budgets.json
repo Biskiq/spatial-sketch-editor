@@ -1,20 +1,15 @@
 {
   "generatedFrom": "LOC-0 baseline; shrink-only from here",
   "counts": {
-    "filesOver600": 130,
-    "filesOver1000": 43,
-    "filesOver1500": 16,
-    "functionsOver200": 70,
+    "filesOver600": 129,
+    "filesOver1000": 42,
+    "filesOver1500": 15,
+    "functionsOver200": 73,
     "exportStars": 0,
     "crossPackageReexports": 0,
     "seams": 14
   },
   "files": [
-    {
-      "path": "packages/project-model/src/scene-planning/finish-planners.ts",
-      "lines": 3020,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
     {
       "path": "packages/project-model/src/units/planning.ts",
       "lines": 2948,
@@ -606,9 +601,9 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
-      "path": "packages/project-model/src/scene-planning/finish-model.ts",
+      "path": "packages/project-model/src/scene-planning/finish/model.ts",
       "lines": 627,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+      "reason": "The Finish identity model: keys, users and the assignment normal form are one vocabulary."
     },
     {
       "path": "packages/layout-core/src/wall/centerline.ts",
@@ -667,13 +662,6 @@
       "name": "createFinishAuthoring",
       "line": 328,
       "lines": 1954,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
-      "file": "packages/project-model/src/scene-planning/finish-planners.ts",
-      "name": "prepare",
-      "line": 1179,
-      "lines": 1808,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -908,6 +896,13 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
+      "file": "packages/project-model/src/scene-planning/finish/plans/edit.ts",
+      "name": "planSceneFinishPatch",
+      "line": 78,
+      "lines": 354,
+      "reason": "One typed patch application: field edits, override pruning and naming resolve against one immutable base, in order."
+    },
+    {
       "file": "apps/editor/src/lib/authoring/stage/facade/adapter-bindings.ts",
       "name": "createAdapterBindings",
       "line": 56,
@@ -934,6 +929,13 @@
       "line": 128,
       "lines": 337,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+    },
+    {
+      "file": "packages/project-model/src/scene-planning/finish/plans/register.ts",
+      "name": "planSceneFinishRegister",
+      "line": 24,
+      "lines": 325,
+      "reason": "One registration transaction: image staging, target qualification and material proof must run in this order to leave no partial resource."
     },
     {
       "file": "apps/editor/src/lib/render/scene-entity-representation.ts",
@@ -1076,6 +1078,13 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
+      "file": "packages/project-model/src/scene-planning/finish/context.ts",
+      "name": "createFinishPlanContext",
+      "line": 26,
+      "lines": 234,
+      "reason": "One per-call context: the readers and record-scope closures share the exact before-state every plan validates against."
+    },
+    {
       "file": "apps/editor/src/lib/render/materials/scene-finish.ts",
       "name": "sceneFinishFor",
       "line": 347,
@@ -1109,6 +1118,13 @@
       "line": 238,
       "lines": 222,
       "reason": "One support query: the candidate walk and its tolerance filters share the query polygon."
+    },
+    {
+      "file": "packages/project-model/src/scene-planning/finish/plans/register.ts",
+      "name": "planSceneFinishFromImage",
+      "line": 350,
+      "lines": 220,
+      "reason": "One image-derived Finish: asset identity, texture pin and allocation are decided together."
     },
     {
       "file": "apps/editor/src/lib/render/resources/finish-views.ts",

@@ -1,5 +1,5 @@
 /**
- * T2.S6 — palette adoption.
+ * Palette adoption.
  *
  * One pure plan serves the preview and the writer: literal Finish colours map
  * to the nearest palette slot in CIE Lab, image tints and inherited colours are

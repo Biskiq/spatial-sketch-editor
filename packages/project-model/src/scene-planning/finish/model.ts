@@ -20,23 +20,23 @@ import {
 	type SceneEntity,
 	type SceneMaterialInstance,
 	type ScenePaletteSlot
-} from '../scene';
-import { catalogueRecipe } from '../materials/catalogue';
-import { pruneOverrides } from '../materials/read';
-import { NEUTRAL_RECIPE } from '../materials/recipe';
-import { MATERIAL_NEUTRAL_BASE_ID } from '../materials/types';
+} from '../../scene';
+import { catalogueRecipe } from '../../materials/catalogue';
+import { pruneOverrides } from '../../materials/read';
+import { NEUTRAL_RECIPE } from '../../materials/recipe';
+import { MATERIAL_NEUTRAL_BASE_ID } from '../../materials/types';
 import type {
 	Finish,
 	FinishOverrides,
 	Mapping,
 	Metric,
 	Recipe
-} from '../materials/types';
-import { resolveSceneSurfaceFinish } from '../scene-surface-reference';
-import type { SceneSurfaceFinish, SceneSurfaceRef } from '../scene';
+} from '../../materials/types';
+import { resolveSceneSurfaceFinish } from '../../scene-surface-reference';
+import type { SceneSurfaceFinish, SceneSurfaceRef } from '../../scene';
 import { resolveLayoutSurface, surfaceKey } from '@portfolio/layout-core/plan';
 import type { LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
-import { sameSceneValues } from './record-scope';
+import { sameSceneValues } from '../record-scope';
 
 /** One Finish, as a payload names it. */
 export type SceneFinishRef =
@@ -548,7 +548,7 @@ export function literalizePaletteFollowers(
 }
 
 /**
- * A render-only Finish preview (U4): every listed user — objects and Layout
+ * A render-only Finish preview: every listed user — objects and Layout
  * surfaces alike — draws one synthetic instance. It never mutates the accepted Scene, never enters Undo, and removing it restores
  * the accepted bytes exactly.
  */

@@ -1,6 +1,6 @@
 /**
- * `inspectFinish`: the one read the E4 operation surface answers from
- * (T2.S8 E4).
+ * `inspectFinish`: the one read the Finish operation surface answers from
+ *
  *
  * The editor UI and agents ask the same question and receive the same answer:
  * which definition revision a Finish names, where every effective value comes
@@ -13,10 +13,10 @@
  */
 import { resolveLayoutSurface, surfaceKey } from '@portfolio/layout-core/plan';
 import type { LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
-import type { SceneEntity, SceneMaterialInstance, SceneSurfaceRef } from '../scene';
-import { qualifyAcrossTargets } from '../materials/bind';
-import { catalogueRecipe } from '../materials/catalogue';
-import type { MaterialIssue } from '../materials/issues';
+import type { SceneEntity, SceneMaterialInstance, SceneSurfaceRef } from '../../scene';
+import { qualifyAcrossTargets } from '../../materials/bind';
+import { catalogueRecipe } from '../../materials/catalogue';
+import type { MaterialIssue } from '../../materials/issues';
 import {
 	createImageIndex,
 	materialImageIndex,
@@ -24,7 +24,7 @@ import {
 	resolveFinish,
 	shippedImageIndex,
 	type ImageIndex
-} from '../materials/resolve';
+} from '../../materials/resolve';
 import type {
 	BoundInputs,
 	FinishProvenance,
@@ -33,9 +33,9 @@ import type {
 	TargetAnalysis,
 	TargetAnalysisRequest,
 	TargetFacts
-} from '../materials/types';
-import type { ProjectEnvelope } from '../units/types';
-import { materialRuntimeIndexOf } from '../units/material-index';
+} from '../../materials/types';
+import type { ProjectEnvelope } from '../../units/types';
+import { materialRuntimeIndexOf } from '../../units/material-index';
 import {
 	finishKeyOfRef,
 	finishKeyOfSurface,
@@ -45,7 +45,7 @@ import {
 	materialInstanceById,
 	type FinishKey,
 	type SceneFinishRef
-} from './finish-model';
+} from './model';
 
 /** A user's stable key within one revision. Never persisted. */
 export type FinishUserKey = string;
@@ -293,7 +293,7 @@ export function inspectFinish(
 	const drawing = users.length;
 	const operations: FinishOperation[] = ['assign'];
 	if (curated) {
-		// An unassigned named Finish is allowed (plan E4), so materialize is always listed.
+		// An unassigned named Finish is allowed, so materialize is always listed.
 		operations.push('materialize');
 	} else {
 		operations.push('rename');
