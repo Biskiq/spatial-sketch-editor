@@ -91,11 +91,6 @@
       "reason": "One frozen shipped-material catalogue: ids, images and legacy aliases are one data table and must stay in one read order."
     },
     {
-      "path": "apps/editor/src/lib/authoring/adapters/light/LightCardFields.svelte",
-      "lines": 977,
-      "reason": "The Light Card: everyday and advanced rows share one selected light and one preview/commit path."
-    },
-    {
       "path": "apps/editor/src/lib/authoring/adapters/scene/scene-session.ts",
       "lines": 954,
       "reason": "One Scene gesture state machine: mode, lease, candidate and accepted install share one cancel/commit path; reads and accept intents live in separate sub-owners."
@@ -439,6 +434,11 @@
       "path": "apps/editor/src/lib/visitor/VisitorCameraDirector.svelte",
       "lines": 632,
       "reason": "The visitor camera director: free entry, Place and restart share one visitor run and one camera claim."
+    },
+    {
+      "path": "apps/editor/src/lib/authoring/adapters/light/LightAdvancedGroups.svelte",
+      "lines": 627,
+      "reason": "The Light Card Advanced groups: one open group, one preview/commit path and the colour dial share one selected light."
     },
     {
       "path": "packages/project-model/src/scene-planning/finish/model.ts",
