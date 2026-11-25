@@ -53,6 +53,7 @@ const EXPERIENCE_BINDING = join(STAGE_DIR, 'route', 'stage-experience-binding.sv
 const CORE_REGION_VIEWS = join(STAGE_DIR, 'route', 'core-region-views.ts');
 const STAGE_VIEWING = join(STAGE_DIR, 'route', 'stage-viewing.ts');
 const SHELL_STATE = join(STAGE_DIR, 'route', 'stage-shell-state.svelte.ts');
+const SHELL_STATUS = join(STAGE_DIR, 'route', 'stage-shell-status.svelte.ts');
 const ROUTE_VIEWPORT = join(SHELL_DIR, 'StageViewportRegion.svelte');
 const ROUTE_PANELS = join(SHELL_DIR, 'StagePanels.svelte');
 const ROUTE_TOOLBARS = join(SHELL_DIR, 'StageToolbars.svelte');
@@ -105,7 +106,7 @@ const HEIGHT_SHEET_RAIL_READ = 'track?.getBoundingClientRect()';
 function postureSources(): { file: string; code: string }[] {
 	const route = readFileSync(ROUTE, 'utf8');
 	expect(composedSpatialHost().some(({ file }) => file === STAGE_VIEWING)).toBe(true);
-	const files = [ROUTE, SHELL_STATE, STAGE_VIEWING, join(STAGE_DIR, 'route/stage-viewport.svelte.ts')];
+	const files = [ROUTE, SHELL_STATE, SHELL_STATUS, STAGE_VIEWING, join(STAGE_DIR, 'route/stage-viewport.svelte.ts')];
 	if (importClosure([ROUTE]).has(EXPERIENCE_LENS)) {
 		expect(route).toContain('createStageExperienceBinding({');
 		expect(readFileSync(EXPERIENCE_BINDING, 'utf8')).toContain('createExperienceLens({');
@@ -669,7 +670,7 @@ describe('Stage shell lanes and the Card (R217.S22)', () => {
 		const route = stripComments(readFileSync(ROUTE, 'utf8'));
 		// The flag is the live lease the session holds; a navigation press is excluded, and
 		// review round 3 (sheet §24, Card only) keeps the Card clear while a camera is edited.
-		const owners = postureSources().filter(({ code }) => code.includes('function syncGestureFade('));
+		const owners = postureSources().filter(({ code }) => code.includes('const cameraEdit ='));
 		expect(owners).toHaveLength(1);
 		expect(owners[0]!.code).toMatch(/const cameraEdit =\s*lease !== null &&\s*\(lease\.owner === 'experience-view-edit' \|\| lease\.owner === 'experience-path-point'\);/);
 		expect(owners[0]!.code).toContain('const gesturing = lease !== null && lease.navigation !== true && !cameraEdit;');
