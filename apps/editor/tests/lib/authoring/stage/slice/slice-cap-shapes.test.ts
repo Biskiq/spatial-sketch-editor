@@ -15,6 +15,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { capFillsOf } from '$lib/authoring/stage/slice/slice-cap-shapes';
 import type { SectionLoop, SectionPoint } from '$lib/authoring/stage/slice/mesh-plane-section';
+import { EDITOR_ROOT } from '../../../../helpers/import-closure';
 
 /** A closed loop of a rectangle, with its role and winding area. */
 function loop(role: 'outer' | 'hole', minX: number, minZ: number, maxX: number, maxZ: number): SectionLoop {
@@ -75,7 +76,7 @@ describe('capFillsOf: each outer keeps only its own holes', () => {
 
 	it('is the call the Slice layer makes, not a per-outer hole scan', () => {
 		const layer = readFileSync(
-			path.join(process.cwd(), 'src/lib/authoring/stage/shell/StageSliceLayer.svelte'),
+			path.join(EDITOR_ROOT, 'src/lib/authoring/stage/shell/StageSliceLayer.svelte'),
 			'utf8'
 		);
 		// The layer consumes the containment mapping ...

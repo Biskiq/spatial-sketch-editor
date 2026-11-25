@@ -6,8 +6,9 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { EDITOR_ROOT } from '../../helpers/import-closure';
 
-const ROOT = process.cwd();
+const ROOT = EDITOR_ROOT;
 const BASELINE = JSON.parse(readFileSync(join(ROOT, 'tests/lib/authoring/integration-hotspots.json'), 'utf8')) as Record<
 	string,
 	Record<string, number>

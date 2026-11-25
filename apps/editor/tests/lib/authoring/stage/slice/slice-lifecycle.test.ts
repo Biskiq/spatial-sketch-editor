@@ -15,9 +15,10 @@ import { LIFECYCLE_ORDER } from '$lib/authoring/workspace/lifecycle-order';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { EDITOR_ROOT } from '../../../../helpers/import-closure';
 
 const read = (relative: string): string =>
-	readFileSync(path.join(process.cwd(), relative), 'utf8');
+	readFileSync(path.join(EDITOR_ROOT, relative), 'utf8');
 const route = read('src/lib/authoring/workspace/host/workspace-host.svelte.ts');
 
 const readings = read('src/lib/authoring/stage/readings/layout-readings-feature.svelte.ts');

@@ -8,8 +8,9 @@ import { PAPER_GROUND_INK } from '$lib/authoring/stage/paper-plan';
 import { DEFAULT_FLOOR_COLOR, DEFAULT_WALL_COLOR, DEFAULT_WALL_UNLIT_SHARE } from '$lib/visitor/room-presentation';
 import type { RuntimeScene } from '@portfolio/project-model/scene';
 import { resolveSceneSurfaceLook } from '$lib/render/layout/scene-surface-look';
+import { EDITOR_ROOT } from '../../helpers/import-closure';
 
-const source = (path: string): string => readFileSync(resolve(process.cwd(), path), 'utf8');
+const source = (path: string): string => readFileSync(resolve(EDITOR_ROOT, path), 'utf8');
 
 describe('the default Wall surface', () => {
 	it('holds part of its colour unlit and untoned', () => {

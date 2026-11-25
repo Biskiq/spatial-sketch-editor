@@ -57,6 +57,7 @@ import {
 	COUNTING_GRID,
 	type CountingSceneFixture
 } from './__fixtures__/counting-scene';
+import { EDITOR_ROOT } from '../../helpers/import-closure';
 
 vi.mock('three', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('three')>();
@@ -202,7 +203,7 @@ describe('E0 work counters through their production callers', () => {
 			textures: 1
 		});
 		// The production factory is the one that wraps: no second seam can be born.
-		const factory = readFileSync(resolve(process.cwd(), 'src/lib/render/renderer-backend.ts'), 'utf8');
+		const factory = readFileSync(resolve(EDITOR_ROOT, 'src/lib/render/renderer-backend.ts'), 'utf8');
 		expect(factory).toContain('perfRenderer(renderer, surface)');
 		expect(factory).toContain('countSurfaceFrames(');
 	});

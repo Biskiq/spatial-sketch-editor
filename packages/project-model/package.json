@@ -89,7 +89,8 @@
     "src"
   ],
   "scripts": {
-    "check": "tsc -p tsconfig.json --noEmit"
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@portfolio/camera-core": "*",

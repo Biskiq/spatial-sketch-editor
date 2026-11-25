@@ -11,7 +11,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join, posix, relative } from 'node:path';
 import { parse as parseSvelte } from 'svelte/compiler';
 import { existsSync } from 'node:fs';
-import { importClosure, listSourceFiles, moduleBindingEdges, relativeToRepo, resolveSpecifier, scriptSources } from '../../helpers/import-closure';
+import { EDITOR_ROOT, importClosure, listSourceFiles, moduleBindingEdges, relativeToRepo, resolveSpecifier, scriptSources } from '../../helpers/import-closure';
 import { ESCAPE_LADDER } from '$lib/authoring/workspace/escape-ladder';
 import { LIFECYCLE_ORDER } from '$lib/authoring/workspace/lifecycle-order';
 import {
@@ -22,7 +22,7 @@ import {
 } from './integration-ownership.manifest';
 import { DOMAIN_TO_CORE } from './integration-domain-dependencies';
 
-const ROOT = process.cwd();
+const ROOT = EDITOR_ROOT;
 const HOST = 'src/lib/authoring/workspace/host/workspace-host.svelte.ts';
 const HOST_COMPONENT = WORKSPACE_COMPONENT;
 const HOST_INSTALLERS = new Set([

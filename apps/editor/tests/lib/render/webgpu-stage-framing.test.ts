@@ -13,6 +13,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { stageFrameScissor } from '$lib/authoring/stage/shell/frame-scissor';
+import { EDITOR_ROOT } from '../../helpers/import-closure';
 
 const SIZE = { x: 1280, y: 720 };
 
@@ -63,7 +64,7 @@ describe('Stage asymmetric frame scissor', () => {
 
 	it('keeps StageCamera on the extracted conversion', () => {
 		const source = readFileSync(
-			resolve(process.cwd(), 'src/lib/authoring/stage/shell/StageCamera.svelte'),
+			resolve(EDITOR_ROOT, 'src/lib/authoring/stage/shell/StageCamera.svelte'),
 			'utf8'
 		);
 		expect(source).toContain("import { stageFrameScissor } from './frame-scissor'");

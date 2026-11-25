@@ -117,7 +117,7 @@ The **spatial route** is `apps/editor/src/routes/project/[projectId]/spatial/+pa
 | Resource stores, descriptor and Scene representation contracts | E6 owns material/texture contracts; E7 owns geometry and family-dispatch contracts; E8/E9 consume them. E8 owns shared representation wiring first, then E9. A contract change serializes its caller PRs first |
 | `render/WorldEnvironment.svelte` | E9 material acquisition → E10 light acquisition; no concurrent writers |
 | `adapters/light.adapter.ts` | X8 only in this plan; serialize against the separate Directional-retirement claim. If that claim is active, X8 waits; otherwise retirement consumes the extracted API |
-| `apps/editor/test-lanes.ts`, shared import reader/test helper, reference docs | Each group carries its necessary registration/update. A short explicit file reservation serializes these edits; no permanent “integration PR” and no duplicate parser. E0 establishes reusable helpers; later groups extend them only if their invariant needs it |
+| `apps/editor/vitest.*.config.ts`, shared import reader/test helper, reference docs | Each group carries its necessary registration/update. A short explicit file reservation serializes these edits; no permanent “integration PR” and no duplicate parser. E0 establishes reusable helpers; later groups extend them only if their invariant needs it |
 | `docs/path-map.md` and all import paths changed by R8 | E12 last; it updates test roots/allowlists and documentation references atomically |
 
 When an inspection finds another required mutation, identify its owner and transfer that path in the
@@ -327,7 +327,7 @@ to the packet. This is packaging, not a new planning round. Never split by an ar
 Implement these in the packet that first transfers the responsibility; do not defer guards to a
 final cleanup PR. Extend an existing suite where it already owns the defect. New architecture suites
 use the existing `tests/helpers/import-closure.ts` parser/resolver, inspect Svelte script/template
-constructors where relevant, and register in `test-lanes.ts` in the same PR. Test direct, aliased,
+constructors where relevant, and give the suite the `.arch.test.ts` suffix in the same PR. Test direct, aliased,
 re-exported and dynamic import paths where the forbidden dependency could hide. No parallel regex
 grammar. Exceptions are exact site/symbol sets with an owning baseline reason; a new exception is
 not an automatic way to make a failing guard pass.

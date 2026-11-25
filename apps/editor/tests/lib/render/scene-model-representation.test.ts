@@ -50,6 +50,7 @@ import {
 } from '$lib/render/resources/texture-store';
 import { summarizeMeshes, type MeshSummary } from './fixtures/model-path-summary';
 import { invalidateFinishViewsForSource, resetFinishViewsForTests } from '$lib/render/resources/finish-views';
+import { EDITOR_ROOT } from '../../helpers/import-closure';
 
 // ---- a controllable template fetch ---------------------------------------------
 
@@ -244,7 +245,7 @@ afterEach(() => {
 // ---- parity -----------------------------------------------------------------------
 
 const BASELINE = JSON.parse(
-	readFileSync(resolve(process.cwd(), 'tests/lib/render/fixtures/model-path-baseline.json'), 'utf8')
+	readFileSync(resolve(EDITOR_ROOT, 'tests/lib/render/fixtures/model-path-baseline.json'), 'utf8')
 ) as Record<string, MeshSummary[]> & { modelStore: { live: number; created: number } };
 
 function expectParity(actual: MeshSummary[], expected: MeshSummary[]): void {

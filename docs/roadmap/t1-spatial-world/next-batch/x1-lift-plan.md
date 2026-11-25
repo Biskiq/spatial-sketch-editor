@@ -83,7 +83,7 @@ open-to-sky, any document-format change, any generalized visibility system.
     `stopPropagation`).
 13. **Editor ink.** `StageSelectionLayer.svelte` draws `Line2`/`LineMaterial` contours on layer 2
     with `OUTLINE_DEPTH_BIAS` (`stage-outline.ts`) and `STAGE_PAINT.hover` as the neutral tone.
-    `material-factory-boundary.test.ts` holds an exact per-file EDITOR_INK allowlist.
+    `material-factory-boundary.arch.test.ts` holds an exact per-file EDITOR_INK allowlist.
 14. **Name clash.** The route already has an Index "Reveal" (`revealed` / `toggleReveal`) for
     depth/crop. X1 never uses the word Reveal in code identifiers; it is `lift` throughout.
 15. **The Stage renders on demand.** Threlte's default scheduler draws a frame only when asked.
@@ -291,7 +291,7 @@ props `{ sources: readonly OverheadSource[]; selectedRoomId: string | null; hove
 - Rebuilds only when `sources` identity, the selected id, the hovered id, or the resolution change;
   disposes every geometry and material it made.
 - Add `'lib/authoring/stage/shell/StageLiftLayer.svelte': { count: N }` to the EDITOR_INK allowlist
-  in `material-factory-boundary.test.ts`, with `N` the exact number of material constructions in
+  in `material-factory-boundary.arch.test.ts`, with `N` the exact number of material constructions in
   the file (expected 2: one `LineMaterial`, one `MeshBasicMaterial`).
 
 **What "editable" means in X1.**
@@ -495,7 +495,7 @@ Edited (all exist on `main`):
 - `apps/editor/src/lib/authoring/stage/route/stage-keyboard.ts` — Escape rung.
 - `apps/editor/src/routes/project/[projectId]/spatial/+page.svelte` — wiring, `initialScope`,
   `resetViewContext` / teardown `clear()`, scoped-Room-gone effect.
-- `apps/editor/tests/lib/render/material-factory-boundary.test.ts` — allowlist entry.
+- `apps/editor/tests/lib/render/material-factory-boundary.arch.test.ts` — allowlist entry.
 - `docs/reference/components/rendering.md` — the one Layers sentence (the T2 integration trigger).
 - `docs/reference/components/layout.md` — one line under session readings: Lift is a Layout
   session reading, not persisted.

@@ -90,7 +90,7 @@ light-store shadow camera, and `lift-shadow-eligibility.test.ts` refuses it othe
 ## Rules and their guards
 
 Each rule is held by the named test under `apps/editor/tests/lib/`. Guards in the unconditional
-architecture lane are listed in `apps/editor/test-lanes.ts` (`ARCH_FILES`).
+architecture lane carry the `.arch.test.ts` filename suffix.
 
 ### Layer direction
 

@@ -16,9 +16,10 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { EDITOR_ROOT } from '../../../../helpers/import-closure';
 
 const source = (file: string): string =>
-	readFileSync(path.join(process.cwd(), `src/lib/authoring/stage/shell/${file}`), 'utf8');
+	readFileSync(path.join(EDITOR_ROOT, `src/lib/authoring/stage/shell/${file}`), 'utf8');
 
 describe('selection ink under a Slice', () => {
 	const layer = source('StageSelectionLayer.svelte');

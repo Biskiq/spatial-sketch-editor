@@ -16,6 +16,7 @@ import { tagRenderIdentity } from '$lib/render/render-identity';
 import { createScenePickSource } from '$lib/authoring/scene/scene-pick-source';
 import { sectionMeshes } from '$lib/authoring/stage/slice/mesh-plane-section';
 import { appendSectionEdges, sectionEdgeSegments, type SectionEdgeSegment } from '$lib/authoring/stage/slice/slice-edges';
+import { EDITOR_ROOT } from '../../../../helpers/import-closure';
 
 function boxAt(x: number): Mesh {
 	const mesh = new Mesh(new BoxGeometry(1, 3, 1));
@@ -108,7 +109,7 @@ describe('appendSectionEdges keeps every cap group', () => {
 
 describe('the layer renders segments with the segment class', () => {
 	const layer = readFileSync(
-		path.join(process.cwd(), 'src/lib/authoring/stage/shell/StageSliceLayer.svelte'),
+		path.join(EDITOR_ROOT, 'src/lib/authoring/stage/shell/StageSliceLayer.svelte'),
 		'utf8'
 	);
 

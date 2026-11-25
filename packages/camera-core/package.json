@@ -21,7 +21,8 @@
     "src"
   ],
   "scripts": {
-    "check": "tsc -p tsconfig.json --noEmit"
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
   },
   "peerDependencies": {
     "three": "^0.170.0 || ^0.171.0 || ^0.172.0 || ^0.173.0 || ^0.174.0 || ^0.175.0 || ^0.186.1 || ^0.187.0"

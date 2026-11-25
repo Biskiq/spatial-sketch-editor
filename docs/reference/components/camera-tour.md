@@ -147,7 +147,7 @@ They are exempt from the smooth-ramp rate assertion; they must still be
 deterministic, finite, non-degenerate, and exact on both sides of the bound.
 
 These invariants are held by the dense whole-transition sweeps in the `heavy`
-lane (`apps/editor/tests/lib/camera-core/navigation/camera-motion-dense-sweeps.test.ts`)
+lane (`apps/editor/tests/lib/camera-core/navigation/camera-motion-dense-sweeps.heavy.test.ts`)
 and the Camera suites beside them; see `apps/editor/tests/README.md` for lane
 triggers. Timing is asserted relatively on identical input, never as a wall-clock
 floor.
