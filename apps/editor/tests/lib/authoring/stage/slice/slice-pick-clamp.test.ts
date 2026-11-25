@@ -19,10 +19,10 @@ import type { CompiledLayoutGeometry, LayoutVec2 } from '@portfolio/layout-core/
 import {
 	clampFaceToSlice,
 	clipSurfaceToSlice,
-	createPlanPickProvider,
 	flatDrawn,
 	type StagePickSurface
-} from '$lib/authoring/layout/plan-pick-provider';
+} from '$lib/authoring/layout/plan-pick-geometry';
+import { createPlanPickProvider } from '$lib/authoring/layout/plan-pick-provider';
 import type { StageAdapterContext, StageDomainPick, StagePickQuery } from '$lib/authoring/stage/stage-facade';
 import { resolveSlice, sliceHides, type ResolvedSlice } from '$lib/authoring/stage/slice/slice-cut';
 import { twoRoomGeometry, FIRST_ROOM_STANDING_POINT } from '../../../layout/__fixtures__/two-room-fixture';

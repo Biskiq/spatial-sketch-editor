@@ -1,8 +1,8 @@
 {
-  "generatedFrom": "LOC-8; shrink-only from here",
+  "generatedFrom": "LOC-0 baseline; shrink-only from here",
   "counts": {
     "filesOver600": 105,
-    "filesOver1000": 20,
+    "filesOver1000": 19,
     "filesOver1500": 4,
     "functionsOver200": 73,
     "exportStars": 0,
@@ -73,11 +73,6 @@
     {
       "path": "apps/editor/src/lib/authoring/world-toolbar/WorldToolbar.svelte",
       "lines": 1173,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
-      "path": "apps/editor/src/lib/authoring/layout/plan-pick-provider.ts",
-      "lines": 1125,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -476,6 +471,11 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
+      "path": "apps/editor/src/lib/authoring/layout/plan-pick-geometry.ts",
+      "lines": 630,
+      "reason": "Plan pick geometry is one reading family: compiled surfaces, slice/cutaway clipping and screen-space distance share the same geometry and slice types."
+    },
+    {
       "path": "packages/project-model/src/scene-planning/finish/model.ts",
       "lines": 627,
       "reason": "The Finish identity model: keys, users and the assignment normal form are one vocabulary."
@@ -652,9 +652,9 @@
     {
       "file": "apps/editor/src/lib/authoring/layout/plan-pick-provider.ts",
       "name": "createPlanPickProvider",
-      "line": 627,
+      "line": 26,
       "lines": 499,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+      "reason": "One pick arbitration: broad phase, exact face tests, lifted outlines and slice/cutaway precedence share the retained index and the live readings."
     },
     {
       "file": "apps/editor/src/lib/render/scene-model-representation.ts",

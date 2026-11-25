@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 import { Mesh } from 'three';
 import { tagRenderIdentity } from '$lib/render/render-identity';
 import { cutawayHides, CUTAWAY_PICK_EPSILON_METERS } from '$lib/authoring/stage/cutaway/cutaway-pick';
-import { clipSurfaceToCutaway, type StagePickSurface } from '$lib/authoring/layout/plan-pick-provider';
+import { clipSurfaceToCutaway, type StagePickSurface } from '$lib/authoring/layout/plan-pick-geometry';
 import type { ResolvedCutaway } from '$lib/authoring/stage/cutaway/cutaway-resolved';
 
 const cutaway: ResolvedCutaway = { wallIds: new Set(['w1']), stubTopY: 1 };
