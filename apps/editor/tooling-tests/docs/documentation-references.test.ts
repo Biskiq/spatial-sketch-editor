@@ -7,9 +7,9 @@
  * insertion (so every `§5` pointer died) and a router path one directory level
  * short. Nothing compiles a `docs/` reference, so nothing else can catch them.
  *
- * Run whole (part of `npm run test:arch`, never path-gated), or alone:
+ * Run whole (part of `npm run test:tooling`, never path-gated), or alone:
  *
- *   cd apps/editor && npx vitest run --config vitest.arch.config.ts tests/docs
+ *   cd apps/editor && npx vitest run --config vitest.tooling.config.ts
  */
 
 import { existsSync, readFileSync } from 'node:fs';
@@ -34,7 +34,7 @@ import {
 	scanSectionNumbering,
 	slugify,
 	walkedLocalSkills
-} from '../helpers/docs-references';
+} from './docs-references';
 
 describe('documentation references', () => {
 	it('resolves every relative link, written path and section anchor in the tree', () => {

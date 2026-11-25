@@ -15,7 +15,7 @@ import {
 	spotExitCode,
 	undoRequired,
 	type InteractionInput
-} from '../../../perf/lib/spot-decision';
+} from '../../perf/lib/spot-decision';
 
 const REFRESH_60 = 1000 / 60;
 
@@ -178,10 +178,10 @@ describe('sessions and exit', () => {
 	});
 
 	it('keeps the retired suite off the npm commands', () => {
-		const editor = JSON.parse(readFileSync(new URL('../../../package.json', import.meta.url), 'utf8')) as { scripts: Record<string, string> };
-		const root = JSON.parse(readFileSync(new URL('../../../../../package.json', import.meta.url), 'utf8')) as { scripts: Record<string, string> };
+		const editor = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')) as { scripts: Record<string, string> };
+		const root = JSON.parse(readFileSync(new URL('../../../../package.json', import.meta.url), 'utf8')) as { scripts: Record<string, string> };
 		expect(editor.scripts['perf:spot']).toContain('perf/spot.ts');
-		expect(editor.scripts.perf).toContain('retired-suite');
+		expect(editor.scripts.perf).toBeUndefined();
 		expect(editor.scripts['perf:bench']).toBeUndefined();
 		expect(editor.scripts['perf:census']).toBeUndefined();
 		expect(editor.scripts['perf:scale']).toBeUndefined();

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { collectGesture, collectSessions, dragStall, openTiming, pickIdentity, sessionLabel, typedLengthTiming, previewProvenance } from '../../../perf/lib/spot-measurement';
-import type { LedgerRecord, PerfLedger } from '../../../perf/lib/ledger';
+import { collectGesture, collectSessions, dragStall, openTiming, pickIdentity, sessionLabel, typedLengthTiming, previewProvenance } from '../../perf/lib/spot-measurement';
+import type { LedgerRecord, PerfLedger } from '../../perf/lib/ledger';
 
 function record(name: string, time: number, detail: Record<string, unknown> = {}, kind: LedgerRecord['kind'] = 'mark'): LedgerRecord {
 	return { name, time, detail, kind, sequence: 0 };

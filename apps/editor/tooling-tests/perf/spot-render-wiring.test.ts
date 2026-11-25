@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from 'vitest';
-import { perfInitScript, readLedger, type LedgerRecord, type RenderFrame } from '../../../perf/lib/ledger';
+import { perfInitScript, readLedger, type LedgerRecord, type RenderFrame } from '../../perf/lib/ledger';
 import { perfMark, perfRenderer } from '$lib/platform/perf-marks';
-import { openTiming } from '../../../perf/lib/spot-measurement';
+import { openTiming } from '../../perf/lib/spot-measurement';
 import type { Page } from '@playwright/test';
 
 afterEach(() => {

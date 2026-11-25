@@ -50,10 +50,6 @@ export const ARCH_FILES: string[] = [
 	'tests/lib/visitor/visitor-runtime-state.test.ts',
 	'tests/vite/preview-surface-boundary-plugin.test.ts',
 	'tests/vite/public-surface-boundary-plugin.test.ts',
-	// Documentation cross-reference integrity. Durable and repo-wide: no product
-	// code imports a `docs/` link, so a moved file or a renamed section heading
-	// breaks a reader's route silently, in every lane and every build.
-	'tests/docs/documentation-references.test.ts',
 	// PR #115 frozen-project isolation: no product file imports, aliases or
 	// references `legacy/`. The frozen project was externalized (§3.7), so this
 	// is now the standing repository-side proof that nothing reintroduced it.

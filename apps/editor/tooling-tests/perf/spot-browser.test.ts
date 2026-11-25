@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from 'vitest';
 import type { Page } from '@playwright/test';
-vi.mock('../../../perf/lib/flow', () => ({
+vi.mock('../../perf/lib/flow', () => ({
 	selectWallById: vi.fn(),
 	handlePoint: async (_page: unknown, title: string) => title === 'Wall start' ? { x: 100, y: 100 } : { x: 200, y: 100 }
 }));
-import { clickPick, describeHitTarget, installPanObserver, requireDragCommit } from '../../../perf/lib/spot-browser';
-import type { LedgerRecord } from '../../../perf/lib/ledger';
+import { clickPick, describeHitTarget, installPanObserver, requireDragCommit } from '../../perf/lib/spot-browser';
+import type { LedgerRecord } from '../../perf/lib/ledger';
 
 afterEach(() => vi.restoreAllMocks());
 

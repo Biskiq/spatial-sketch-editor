@@ -47,7 +47,8 @@
     "perf:spot": "npm run perf:spot -w @portfolio/editor",
     "perf:bundle": "npm run perf:bundle -w @portfolio/editor",
     "lint": "biome lint .",
-    "lint:ci": "biome ci ."
+    "lint:ci": "biome ci .",
+    "test:tooling": "npm run test:tooling -w @portfolio/editor"
   },
   "engines": {
     "node": ">=20"
