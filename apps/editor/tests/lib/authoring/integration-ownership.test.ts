@@ -227,10 +227,12 @@ function bindingNames(
 function referenceName(expression: ts.Expression): string | undefined {
 	if (ts.isIdentifier(expression)) return expression.text;
 	if (ts.isPropertyAccessExpression(expression)) {
-		return `${referenceName(unwrap(expression.expression))}.${expression.name.text}`;
+		const object = referenceName(unwrap(expression.expression));
+		return object === undefined ? undefined : `${object}.${expression.name.text}`;
 	}
 	if (ts.isElementAccessExpression(expression) && ts.isStringLiteralLike(expression.argumentExpression)) {
-		return `${referenceName(unwrap(expression.expression))}.${expression.argumentExpression.text}`;
+		const object = referenceName(unwrap(expression.expression));
+		return object === undefined ? undefined : `${object}.${expression.argumentExpression.text}`;
 	}
 	return undefined;
 }
@@ -489,6 +491,43 @@ describe('construction boundaries', () => {
 	});
 });
 
+function rootScriptViolations(source: Source) {
+	const violations = new Set<string>();
+	const effectNames = new Set([
+		'window', 'document', 'untrack', 'queueMicrotask', 'setTimeout', 'setInterval', 'requestAnimationFrame'
+	]);
+	const props = new Set<ts.Node>();
+	for (const { statements } of source.scripts) {
+		for (const statement of statements) {
+			if (ts.isImportDeclaration(statement) || ts.isTypeAliasDeclaration(statement) || ts.isInterfaceDeclaration(statement)) continue;
+			if (ts.isVariableStatement(statement)) {
+				const { flags, declarations } = statement.declarationList;
+				if (flags & ts.NodeFlags.Const) continue;
+				const init = declarations.length === 1 ? declarations[0]!.initializer : undefined;
+				if (props.size === 0 && flags & ts.NodeFlags.Let && init && ts.isCallExpression(init) &&
+					ts.isIdentifier(init.expression) && init.expression.text === '$props' && init.arguments.length === 0) {
+					props.add(init.expression);
+					continue;
+				}
+			}
+			violations.add(`root statement ${ts.SyntaxKind[statement.kind]}`);
+		}
+	}
+	walkScripts(source, (node) => {
+		if (ts.isFunctionDeclaration(node)) violations.add('local function');
+		if (ts.isElementAccessExpression(node) && ts.isStringLiteralLike(node.argumentExpression) &&
+			referenceName(unwrap(node.expression)) === 'globalThis' && effectNames.has(node.argumentExpression.text)) {
+			violations.add(`root reference ${node.argumentExpression.text}`);
+		}
+		if (!ts.isIdentifier(node)) return;
+		if (effectNames.has(node.text) ||
+			(/^\$(?:state|derived|effect|props|inspect)$/.test(node.text) && !props.has(node))) {
+			violations.add(`root reference ${node.text}`);
+		}
+	});
+	return [...violations];
+}
+
 function markupViolations(source: Source, allowedMounts: ReadonlySet<string>) {
 	const divClasses = new Set<string>();
 	const violations: string[] = [];
@@ -497,6 +536,14 @@ function markupViolations(source: Source, allowedMounts: ReadonlySet<string>) {
 		const { start, end } = value as { start?: number; end?: number };
 		return typeof start === 'number' && typeof end === 'number'
 			? source.code.slice(start, end).trim() : '';
+	};
+	const isReference = (value: unknown) => /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*$/.test(expression(value));
+	const isDelegation = (value: Record<string, unknown>) => {
+		if (value.type !== 'ArrowFunctionExpression' || value.async) return false;
+		let body = value.body as Record<string, unknown>;
+		if (body.type === 'UnaryExpression' && body.operator === 'void') body = body.argument as Record<string, unknown>;
+		return body.type === 'CallExpression' && isReference(body.callee) &&
+			(body.arguments as Record<string, unknown>[]).every(({ type }) => type === 'Identifier' || type === 'Literal');
 	};
 	walkMarkup(source, (node) => {
 		if (node.type === 'RegularElement') {
@@ -518,15 +565,23 @@ function markupViolations(source: Source, allowedMounts: ReadonlySet<string>) {
 				violations.push(`compound condition ${condition}`);
 			}
 		}
-		if (node.type === 'EachBlock' || node.type === 'AwaitBlock' || node.type === 'SvelteComponent') {
+		if (node.type === 'EachBlock' || node.type === 'AwaitBlock' || node.type === 'SvelteComponent' ||
+			node.type === 'SvelteWindow' || node.type === 'SvelteDocument' || node.type === 'SvelteBody' ||
+			node.type === 'SvelteElement' || node.type === 'HtmlTag' || node.type === 'UseDirective') {
 			violations.push(`unexpected markup ${node.type}`);
 		}
-		if (node.type === 'Attribute' && (node.name === 'onUndo' || node.name === 'onRedo')) {
-			const value = node.value as { expression?: unknown };
-			if (expression(value.expression) !== (node.name === 'onUndo' ? 'history.undo' : 'history.redo')) {
+		if (node.type === 'Attribute' && typeof node.name === 'string' && /^on[A-Za-z]/.test(node.name)) {
+			const attr = (Array.isArray(node.value) && node.value.length === 1 ? node.value[0] : node.value) as
+				{ expression?: Record<string, unknown> } | undefined;
+			const value = attr?.expression;
+			if (node.name === 'onUndo' || node.name === 'onRedo') {
+				if (expression(value) === (node.name === 'onUndo' ? 'history.undo' : 'history.redo')) return;
 				violations.push(`unexpected history binding ${node.name}`);
+			} else if (value === undefined || (!isReference(value) && !isDelegation(value))) {
+				violations.push(`unexpected event binding ${node.name}`);
 			}
 		}
+		if (node.type === 'OnDirective') violations.push(`unexpected event directive ${node.name as string}`);
 	});
 	return violations;
 }
@@ -537,6 +592,26 @@ describe('root markup ownership', () => {
 		...FEATURES.flatMap(({ regions }) => regions.map((file) => file.split('/').at(-1)!.replace(/\.svelte$/, ''))),
 		'StageBootPanels', 'StageReplaceDialog', 'WorldLeading', 'WorldTrailing'
 	]);
+	it('limits route and placement scripts to composition (CR1 and CR2)', () => {
+		for (const file of [SPATIAL_ROUTE, HOST_COMPONENT,
+			authoringRoot + 'workspace/world/WorldLeading.svelte',
+			authoringRoot + 'workspace/world/WorldTrailing.svelte']) {
+			expect(rootScriptViolations(readSource(file)), file).toEqual([]);
+		}
+	});
+	it('rejects the former disclosure and gesture declarations under fresh names (CR1 and CR2 control)', () => {
+		const source = readSource(SPATIAL_ROUTE, `<script>
+			let current = false;
+			const tracked = $state(false);
+			function start() {}
+			const deferred = globalThis['queueMicrotask'];
+			window.addEventListener('blur', start);
+		</script>`);
+		expect(rootScriptViolations(source)).toEqual([
+			'root statement FirstStatement', 'root statement FunctionDeclaration', 'root statement ExpressionStatement',
+			'root reference $state', 'local function', 'root reference queueMicrotask', 'root reference window'
+		]);
+	});
 	it('limits shared roots to composition markup (CR5)', () => {
 		expect(markupViolations(readSource(SPATIAL_ROUTE), new Set(['WorkspaceHost']))).toEqual([]);
 		expect(markupViolations(readSource(HOST_COMPONENT), hostMounts)).toEqual([]);
@@ -552,6 +627,15 @@ describe('root markup ownership', () => {
 			expect(markupViolations(readSource(file, synthetic), mounts)).toHaveLength(8);
 		}
 	});
+	it('rejects fresh inline event policy and browser listeners in roots (CR5 control)', () => {
+		const source = readSource(HOST_COMPONENT, `
+			<EditorHead onUndo={() => history.undo()} onLens={(lens) => { choose(lens); reset(); }} />
+			<svelte:window onkeydown={handler} />
+		`);
+		expect(markupViolations(source, hostMounts)).toEqual([
+			'unexpected history binding onUndo', 'unexpected event binding onLens', 'unexpected markup SvelteWindow'
+		]);
+	});
 });
 
 const stage = authoringRoot + 'stage/';
@@ -562,6 +646,8 @@ const binding = stageRoute + 'stage-experience-binding.svelte.ts';
 const history = stageRoute + 'stage-history-command.ts';
 const keyboard = stageRoute + 'stage-keyboard.ts';
 const inputModule = stage + 'stage-input.ts';
+const artworkInteraction = stageRoute + 'stage-artwork-interaction.svelte.ts';
+const unfoldGestures = stageRoute + 'stage-unfold-gestures.svelte.ts';
 
 const functionOwners = [
 	['createStageAcceptanceHost', stage + 'host-acceptance.ts', [epoch]],
@@ -571,6 +657,13 @@ const functionOwners = [
 	['stageKeyAction', inputModule, [keyboard]],
 	['stageKeyFromTextEntry', inputModule, [keyboard]],
 	['stageKeyFromControl', inputModule, [keyboard]],
+	['resizeArtworkAtRay', authoringRoot + 'artwork/artwork-resize.ts', [artworkInteraction]],
+	['artworkPlanePoint', authoringRoot + 'artwork/artwork-resize.ts', [artworkInteraction]],
+	['artworkPlacement', authoringRoot + 'artwork/artwork-placement.ts', [artworkInteraction]],
+	['pickWallUnfold', 'src/lib/layout/wall-unfold-pick.ts', [unfoldGestures]],
+	['mapSheetOpeningDrag', 'src/lib/layout/wall-unfold-opening-drag.ts', [unfoldGestures]],
+	// The shell places the projected pin using the same pure geometry as the gesture owner.
+	['wallUnfoldTopPoint', 'src/lib/layout/wall-unfold.ts', [unfoldGestures, stage + 'shell/StageWallDevelopment.svelte']],
 	['setResolvedSlice', stage + 'slice/slice-resolved.ts', [stage + 'readings/slice-host.svelte.ts']],
 	['setResolvedCutaway', stage + 'cutaway/cutaway-resolved.ts', [stage + 'readings/cutaway-host.svelte.ts']]
 ] as const;
@@ -625,6 +718,20 @@ describe('call ownership', () => {
 			`${file}: input.session.replace`, `${file}: input.epoch.undo`,
 			`${file}: stage.requestViewingIntent`, `${file}: window.addEventListener`
 		]);
+	});
+	it('detects the former root gesture calls through renamed imports (Appendix B.2 control)', () => {
+		const source = readSource(SPATIAL_ROUTE, `<script>
+			import { stageKeyAction as key } from '$lib/authoring/stage/stage-input';
+			import { resizeArtworkAtRay as resize } from '$lib/authoring/artwork/artwork-resize';
+			import * as unfold from '$lib/layout/wall-unfold-opening-drag';
+			key(event.key, { pressing });
+			const candidate = resize(ray, artworkPlanePoint, drag);
+			unfold['mapSheetOpeningDrag'](source, grab, event);
+		</script>`);
+		for (const name of ['stageKeyAction', 'resizeArtworkAtRay', 'mapSheetOpeningDrag']) {
+			const [, owner] = functionOwners.find(([operation]) => operation === name)!;
+			expect(sites([source], owner, name, calls), name).toEqual([SPATIAL_ROUTE]);
+		}
 	});
 });
 

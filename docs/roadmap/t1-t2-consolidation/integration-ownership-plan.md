@@ -66,8 +66,9 @@ Two kinds of work stay outside X9 unless a demonstrated correctness blocker requ
 
 The uncommitted Quux probe added a reactive reading, a World button, a live overlay mark, a
 selection effect and owner callbacks for reset, lens leave, project leave and Escape. Type
-checking and the mounted selection, overlay, Escape and lens round-trip case passed. Lifecycle
-reset and project leave were registered in the probe and were outside that case's assertions.
+checking and the mounted selection, overlay, Escape and lens round-trip case passed. A second
+mounted case verified that admitted replacement and project teardown each reached the ordered
+owner callback while the reading was active, and that replacement reset the visible reading.
 
 | Shared file | Added / removed lines | Registration |
 | --- | ---: | --- |
@@ -132,8 +133,9 @@ files respectively, with each gzip change below 0.02%. The provenance-backed fir
 publication authoring exclusions passed. The Vite walk from the reported eager file sets
 measured 133.526 → 133.524 KiB lazy gzip, with 32 JS and 18 CSS in both builds. The original
 baseline table reports 19 lazy CSS files. Comparing the current pair, dynamic entry names
-match after normalizing the package path and the content hash for Form evaluation. Neither
-changed its eager/lazy classification.
+match after normalizing the package path and the content hash for Form evaluation. Their
+eager/lazy classifications match. The production tree at `00d9b2b76` measured 1,438.304 KiB
+eager and 133.530 KiB lazy gzip with the same file counts and both exclusions still passing.
 
 Five instrumented switches on an empty production project at 1280 × 800 kept the same Stage
 Canvas and recorded one route mount on each build. The base control-update times in ms were
@@ -148,7 +150,9 @@ Preview at 1280 × 800 and 1024 × 768. The readings menu and Lift were checked 
 Repair was exercised at both sizes with a controlled texture request failure. Both builds opened
 the Project actions menu after startup. Desktop Library thumbnails were at different loading
 stages in the captures. Floor Align entry worked at both sizes and exposed the teardown error
-described above. The mounted UI case exercises the Finish/Draft round trip and focus restoration.
+described above. The clean build at `00d9b2b76` opened Floor Align and removed it on Escape at
+both sizes with an empty browser error log. The mounted UI cases cover live-gesture teardown,
+the Finish/Draft round trip and focus restoration.
 
 Both `SPOT_REQUIRE_VERIFIED=1` invocations, from clean base and production checkpoint trees,
 timed out on the Project actions menu before opening either grid. The partial ledgers contain
@@ -160,10 +164,13 @@ measurement flow remains unconfirmed. The spot runs were performed once per revi
 Appendix B replay is unfinished. The legacy controller and route assertions and their synthetic
 controls still run. The new markup guard replays eight of the old presentation placement
 controls at both roots. The ownership checks resolve static aliases, namespace members and
-barrels for named authorities. The domain rules record exact retained Stage edges and
-type-only bridges. Remaining enforcement work includes strict CR4 callback projections,
-complete CR5 attribute and EC2 return shapes, the remaining call ownership and singleton
-member classifications, and full equivalence replay before guard retirement.
+barrels for named authorities. They also cover the Artwork and Unfold gesture planners. The
+Unfold pin geometry is shared by the gesture owner and the shell's read-only pin projection.
+Root Svelte scripts and event bindings reject fresh local state, inline event policy and window
+listeners. The domain rules record exact retained Stage edges and type-only bridges. Remaining
+enforcement work includes strict CR4 callback projections, complete CR5 property and EC2 return
+shapes, the remaining call ownership and singleton member classifications, and full equivalence
+replay before guard retirement.
 
 ## 1. Evidence
 
