@@ -176,14 +176,14 @@
       "reason": "One incremental Plan retainer: reuse, proven deltas, assembly and stamps share one retained source index."
     },
     {
-      "path": "apps/editor/src/lib/authoring/world-toolbar/WorldToolbar.svelte",
-      "lines": 796,
-      "reason": "The World toolbar root: plate, dock and mode rows share one lens, one selection and one command surface."
-    },
-    {
       "path": "apps/editor/src/lib/authoring/experience/ExperienceViewRail.svelte",
       "lines": 795,
       "reason": "The View rail: rows, reorder and selection share one Presentation and one Guide membership."
+    },
+    {
+      "path": "apps/editor/src/lib/authoring/world-toolbar/WorldToolbar.svelte",
+      "lines": 795,
+      "reason": "The World toolbar root: plate, dock and mode rows share one lens, one selection and one command surface."
     },
     {
       "path": "apps/editor/src/lib/authoring/stage/stage-handles.ts",
