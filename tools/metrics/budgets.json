@@ -106,11 +106,6 @@
       "reason": "The drawing planners: both bounded operations share the F.4 request vocabulary and one canonical planner registry."
     },
     {
-      "path": "apps/editor/src/lib/authoring/stage/shell/EditorCard.svelte",
-      "lines": 927,
-      "reason": "The Card root: identity, writer, actions and one confirmation share one selected subject and one close/focus protocol."
-    },
-    {
       "path": "apps/editor/src/lib/authoring/workspace/host/workspace-host.svelte.ts",
       "lines": 920,
       "reason": "The route's one composition root: core factories, feature entries and the lifecycle run share one mount sequence."
@@ -174,6 +169,11 @@
       "path": "apps/editor/src/lib/authoring/adapters/layout/open-side-gesture-session.ts",
       "lines": 803,
       "reason": "One claimed open-side gesture: candidate, preview and release share the selected Space and one planner request."
+    },
+    {
+      "path": "apps/editor/src/lib/authoring/stage/shell/EditorCard.svelte",
+      "lines": 798,
+      "reason": "The Card root: identity, writer, actions and one confirmation share one selected subject and one close/focus protocol."
     },
     {
       "path": "packages/layout-core/src/plan/representation/retainer.ts",
