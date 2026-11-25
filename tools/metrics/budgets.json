@@ -2,7 +2,7 @@
   "generatedFrom": "LOC-0 baseline; shrink-only from here",
   "counts": {
     "filesOver600": 99,
-    "filesOver1000": 11,
+    "filesOver1000": 10,
     "filesOver1500": 1,
     "functionsOver200": 81,
     "exportStars": 0,
@@ -44,11 +44,6 @@
       "path": "apps/editor/src/lib/visitor/VisitorPreviewSurface.svelte",
       "lines": 1245,
       "reason": "One visitor run: surface, camera director and cards share the interpreter entry, guide state and one cleanup path."
-    },
-    {
-      "path": "apps/editor/src/lib/authoring/look/FinishCardSection.svelte",
-      "lines": 1183,
-      "reason": "The Finish Card body: every row writes one target through the one Finish Card adapter and shares its reach and refusal state."
     },
     {
       "path": "apps/editor/src/lib/render/resources/texture-store.ts",
@@ -279,6 +274,11 @@
       "path": "apps/editor/src/lib/authoring/adapters/scene/profile-revision.ts",
       "lines": 727,
       "reason": "One pending outline revision: generator candidate, preview and acceptance share one selected object."
+    },
+    {
+      "path": "apps/editor/src/lib/authoring/look/FinishCardSection.svelte",
+      "lines": 727,
+      "reason": "The Finish Card body: every row writes one target through the one Finish Card adapter and shares its reach and refusal state."
     },
     {
       "path": "apps/editor/src/lib/render/resources/finish-views.ts",
