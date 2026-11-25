@@ -1,20 +1,15 @@
 {
   "generatedFrom": "LOC-0 baseline; shrink-only from here",
   "counts": {
-    "filesOver600": 104,
+    "filesOver600": 105,
     "filesOver1000": 17,
-    "filesOver1500": 3,
-    "functionsOver200": 74,
+    "filesOver1500": 2,
+    "functionsOver200": 75,
     "exportStars": 0,
     "crossPackageReexports": 0,
     "seams": 8
   },
   "files": [
-    {
-      "path": "apps/editor/src/lib/authoring/look/finish-authoring.svelte.ts",
-      "lines": 2283,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
     {
       "path": "apps/editor/src/lib/authoring/experience/experience-controller.svelte.ts",
       "lines": 2054,
@@ -24,6 +19,11 @@
       "path": "apps/editor/src/lib/authoring/experience/ExperienceGuide.svelte",
       "lines": 1983,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+    },
+    {
+      "path": "apps/editor/src/lib/authoring/look/finish-authoring.svelte.ts",
+      "lines": 1479,
+      "reason": "The Paint entry composes the Card, editor, align and Library sub-owners and keeps one accepted-revision write path for the active pick, dropper, palette and surface painting."
     },
     {
       "path": "apps/editor/src/lib/authoring/adapters/layout/wall-gesture-session.ts",
@@ -331,6 +331,11 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
+      "path": "apps/editor/src/lib/authoring/look/finish-library.svelte.ts",
+      "lines": 716,
+      "reason": "One Library draft session: browse, draft fields, target requalification, refusal and the swap hand-off share one draft and one Apply path."
+    },
+    {
       "path": "apps/editor/src/lib/authoring/adapters/layout/LayoutCardFields.svelte",
       "lines": 714,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
@@ -533,18 +538,18 @@
   ],
   "functions": [
     {
-      "file": "apps/editor/src/lib/authoring/look/finish-authoring.svelte.ts",
-      "name": "createFinishAuthoring",
-      "line": 328,
-      "lines": 1954,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
       "file": "apps/editor/src/lib/authoring/experience/experience-controller.svelte.ts",
       "name": "createExperienceController",
       "line": 340,
       "lines": 1715,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+    },
+    {
+      "file": "apps/editor/src/lib/authoring/look/finish-authoring.svelte.ts",
+      "name": "createFinishAuthoring",
+      "line": 123,
+      "lines": 1355,
+      "reason": "One Paint composition root: the active pick, dropper, palette writes, surface painting and the sub-owner wiring share one accepted revision and one busy gate."
     },
     {
       "file": "apps/editor/src/lib/authoring/experience/experience-lens.svelte.ts",
@@ -587,6 +592,13 @@
       "line": 100,
       "lines": 745,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+    },
+    {
+      "file": "apps/editor/src/lib/authoring/look/finish-library.svelte.ts",
+      "name": "createFinishLibraryAuthoring",
+      "line": 68,
+      "lines": 648,
+      "reason": "One Library draft session: its runes, planning reads, target and swap share one draft state machine."
     },
     {
       "file": "apps/editor/src/lib/authoring/adapters/scene/placement-binding.ts",

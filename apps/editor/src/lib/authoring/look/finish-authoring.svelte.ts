@@ -25,12 +25,6 @@ import {
 	finishRefOfKey,
 	finishKeyOfRef,
 	finishKeyOfSurface,
-	finishSheenReading,
-	finishHasColourImage,
-	applyFinishPatch,
-	baseRecipeOf,
-	sheenStepEdits,
-	type FinishInstancePreview,
 	inspectFinish,
 	isFinishPaintable,
 	isPristineInstance,
@@ -40,34 +34,40 @@ import {
 	nextFinishName,
 	paletteHasRoom,
 	usersOfFinish,
-	type FinishKey,
 	type SceneFinishRef
 } from '@portfolio/project-model/scene-planning';
 import type { AcceptedRevision, SemanticReference } from '@portfolio/project-model/references';
 import type { MaterialId, SceneEntity, SceneMaterialInstance, SceneSurfaceRef } from '@portfolio/project-model/scene';
 import { surfaceKey } from '@portfolio/layout-core/plan';
-type PaintableSurface = SceneSurfaceRef;
+import {
+	entityReference,
+	newId,
+	surfaceTargetComponent,
+	surfaceTargetSubject,
+	type FinishAcceptInput,
+	type FinishAcceptOutcome,
+	type FinishAuthoringHost,
+	type FinishEntityView,
+	type FinishPaletteView,
+	type ImageWriteContext,
+	type PaintSwatch,
+	type PaintTrayView,
+	type PaintableSurface
+} from './finish-authoring-contract';
 
-/** The F.1 subject one surface identity names; the component carries the face. */
-function surfaceTargetSubject(surface: PaintableSurface): { kind: 'wall' | 'room' | 'region'; id: string } {
-	switch (surface.kind) {
-		case 'wall-side': return { kind: 'wall', id: surface.wallId };
-		case 'room-floor':
-		case 'room-lid': return { kind: 'room', id: surface.roomId };
-		case 'region-face': return { kind: 'region', id: surface.regionId };
-	}
-}
+export type {
+	FinishAuthoringHost,
+	FinishEntityView,
+	FinishPaletteView,
+	LibraryDraftPick,
+	LibrarySwapRequest,
+	PaintColourPort,
+	PaintSwatch,
+	PaintTrayView,
+	PaintableSurface
+} from './finish-authoring-contract';
 
-function surfaceTargetComponent(surface: PaintableSurface): string {
-	switch (surface.kind) {
-		case 'wall-side': return `side:${surface.side}`;
-		case 'room-floor': return 'floor';
-		case 'room-lid': return 'lid';
-		case 'region-face': return surface.face;
-	}
-}
-import { getMaterial, materialById, materials } from '$lib/content/materials';
-import type { ProjectApi } from '$lib/platform/project-persistence';
+import { getMaterial, materialById, } from '$lib/content/materials';
 import {
 	colourKey,
 	normaliseHex,
@@ -81,7 +81,6 @@ import {
 } from './paint-pick';
 import {
 	createDevicePaintPreferences,
-	type PaintPreferenceStore,
 	type PaintPreferences
 } from './paint-preferences';
 import { stageEnvelope, type StageAdapterServices } from '../stage/stage-adapter-host';
@@ -97,19 +96,15 @@ import type { ImportedProjectImage } from '../artwork/project-artwork';
 import type { CoatReading } from './colour-coat-port';
 import {
 	createFinishCard,
-	finishCardTargetKey,
 	type FinishCard,
 	type FinishCardTarget,
-	type FinishReachChoice
 } from './finish-card.svelte';
 import {
 	createFinishEditor,
-	buildFinishEditorFields,
-	mergeDraftEdits,
-	type EditorFieldsView,
 	type FinishEditor
 } from './finish-editor.svelte';
 import { createFinishAlign, type FinishAlign } from './finish-align.svelte';
+import { createFinishLibraryAuthoring } from './finish-library.svelte';
 import {
 	createAppearanceIssues,
 	repairSurfaceRef,
@@ -117,213 +112,13 @@ import {
 	type AppearanceIssueActionKind,
 	type AppearanceIssuesService
 } from './appearance-issues.svelte';
-import type { TargetAnalysis } from '@portfolio/project-model/materials';
-import type { FinishPatchEdit } from '@portfolio/project-model/scene-planning';
 import {
-	materialFamilyOf,
 	materialTreatmentFacts,
 } from '$lib/content/material-presentation';
-import { catalogueRecipe } from '@portfolio/project-model/materials';
+import { selectionEntriesOfFinishUsers, } from '../library/library-target';
 import {
-	libraryFamilyLabel,
-	type LibraryFinishEntry
-} from '../library/library-catalogue';
-import { libraryTargetOf, libraryTargetOfPick, selectionEntriesOfFinishUsers, type LibraryTarget } from '../library/library-target';
-import {
-	beginLibraryDraft,
-	libraryDraftChanged,
 	predictDerivedAssign,
-	type LibraryDraft
 } from '../library/library-draft';
-
-/** A Stage pick the draft editor retargets to. */
-export type LibraryDraftPick =
-	| { readonly kind: 'entity'; readonly entityId: string }
-	| { readonly kind: 'surface'; readonly surface: SceneSurfaceRef };
-
-export type LibrarySwapRequest = {
-	readonly target: FinishCardTarget;
-	readonly targetKey: string;
-	readonly place: string;
-	readonly finishName: string;
-	readonly materialLabel: string;
-	readonly currentId: MaterialId | null;
-	/** The reach the Card showed; null when there was nothing to choose. */
-	readonly reach: FinishReachChoice | null;
-	readonly reachLine: string;
-	readonly users: number;
-};
-
-export type FinishAuthoringHost = {
-	readonly services: () => StageAdapterServices | null;
-	readonly onNotice: (message: string) => void;
-	/** Open Library › Finishes, scrolled to the current tile. */
-	readonly openFinishes: () => void;
-	/** Open the Library on Materials in Swap mode for the request just captured. */
-	readonly openLibrarySwap?: () => void;
-	/** Arm the host Paint task, optionally in the Finish dropper. */
-	readonly armPaint: (mode: { readonly kind: 'paint' } | { readonly kind: 'dropper' }) => void;
-	/** Whether the host Paint tool is armed now; a Library pick then arms, never assigns. */
-	readonly isPaintArmed?: () => boolean;
-	/** Creator favourites and recents. Defaults to the device store. */
-	readonly preferences?: PaintPreferenceStore;
-	/** The colour-coat seam. U3's planner supplies it; until then Paint offers no
-	 * Colours tab, because a colour that keeps relief needs the coat dedupe rule
-	 * rather than an edit of a Finish other surfaces share.
-	 */
-	readonly colourCoat?: PaintColourPort;
-	/** Optional target analysis for static Finish diagnostics (UV / normal / metric basis). */
-	readonly targetAnalysis?: () => TargetAnalysis | undefined;
-	/** Exact-byte storage recovery for Relink… (zero history entries). */
-	readonly repairAsset?: (
-		assetId: string,
-		bytes: Uint8Array,
-		expectedPin: string,
-		signal?: AbortSignal
-	) => Promise<{ readonly ok: true } | { readonly ok: false; readonly message: string }>;
-	/** Invalidate cached GPU/store views for one project asset and reload Stage textures. */
-	readonly invalidateAndReloadAsset?: (assetId: string) => void;
-	/** Retry failed textures on Stage and inspection preview. */
-	readonly retryTextures?: () => void;
-	/**
-	 * S4b's creator-bytes seam. These are absent in a route with no cloud project;
-	 * *+ From image* then refuses with the same words Artwork uses.
-	 */
-	readonly api?: () => ProjectApi | null;
-	readonly projectId?: () => string | null;
-	readonly canEdit?: () => boolean;
-	readonly isSaved?: () => boolean;
-	/** Decoded width ÷ height of a project texture, or `null` until it loads. */
-	readonly imageAspect?: (textureId: string) => number | null;
-	/** Decoded pixel size, for the D3 low-resolution warning. */
-	readonly imageDimensions?: (textureId: string) => { readonly width: number; readonly height: number } | null;
-	/** The texture record's URI, if the image is a project texture. */
-	readonly textureUri?: (textureId: string) => string | null;
-	/** A retained, verified preview URL for that project texture (CSS only). */
-	readonly texturePreviewUri?: (textureId: string) => string | null;
-	readonly textureFailed?: (uri: string) => boolean;
-	/** Targeted Retry: drop one source failure and reload that image. */
-	readonly retryTexture?: (uri: string) => void;
-};
-
-export type FinishEntityView = {
-	readonly entityId: string;
-	readonly entityName: string;
-	readonly kind: 'primitive' | 'form' | 'model';
-	readonly key: FinishKey;
-	readonly ref: SceneFinishRef;
-	readonly label: string;
-	readonly users: number;
-	readonly editable: boolean;
-	readonly pristine: boolean;
-	readonly baseMaterialId: MaterialId | null;
-	readonly baseLabel: string;
-	readonly instance: SceneMaterialInstance | null;
-	readonly effectiveColor: string;
-	readonly literalColor: string | null;
-	readonly followerSlot: string | null;
-	readonly roughness: number;
-	readonly roughnessAuthored: boolean;
-	readonly metalOn: boolean;
-	readonly metalCaption: string;
-	readonly hasColorImage: boolean;
-	/** The colour map's texture id, or `null` when the image is the catalogue's. */
-	readonly colorMapId: string | null;
-	readonly colorMapUri: string | null;
-	readonly colorMapFailed: boolean;
-	readonly colorMapWarning: string | null;
-	readonly tileMeters: readonly [number, number] | null;
-	/** The catalogue's own tile size, the field's starting value before an edit. */
-	readonly defaultTileMeters: readonly [number, number];
-	readonly rotation: number;
-	/** Scale is offered only when the Finish has a map to scale (D18). */
-	readonly tileSizeAvailable: boolean;
-	readonly directionAvailable: boolean;
-	/** Scale/Direction are Floor/Form ideas; a model keeps its own UVs. */
-	readonly canEditMapping: boolean;
-	/** Box sides approximate their tiling with width × depth (existing rule). */
-	readonly scaleApproximate: boolean;
-	readonly canSaveToPalette: boolean;
-	readonly paletteRoom: boolean;
-	readonly originalWritesWhite: boolean;
-};
-
-export type FinishPaletteView = {
-	readonly slots: readonly {
-		readonly id: string;
-		readonly name: string;
-		readonly color: string;
-		readonly users: number;
-	}[];
-	readonly room: boolean;
-};
-
-/** The seam U3's colour-coat planner implements. Paint never edits a Finish. */
-export type PaintColourPort = {
-	/** One acceptance: coat these objects with the colour. */
-	readonly paintEntities: (entityIds: readonly string[], colour: PaintColour) => Promise<boolean>;
-	/** One acceptance: coat these Layout surfaces with the colour. */
-	readonly paintSurfaces: (surfaces: readonly SceneSurfaceRef[], colour: PaintColour) => Promise<boolean>;
-	/** Whether every target already wears this colour (no write, no history entry). */
-	readonly isAlready?: (
-		targets: { readonly entityIds: readonly string[]; readonly surfaces: readonly SceneSurfaceRef[] },
-		colour: PaintColour
-	) => boolean;
-	/** What a colour does to one target: refuse in place, or coat it keeping the named relief. */
-	readonly read?: (target: { readonly entityId: string } | { readonly surface: SceneSurfaceRef }) => CoatReading | null;
-};
-
-export type PaintSwatch = {
-	readonly kind: 'finish' | 'colour';
-	/** A Finish key, `slot:<id>` or `#rrggbb`: the stored reference. */
-	readonly key: string;
-	readonly label: string;
-	readonly color: string;
-	readonly favourite: boolean;
-	/** A project Finish's own colour image, multiplied over the swatch until its picture loads. */
-	readonly imageUri?: string | null;
-};
-
-/** Everything the Paint tray draws. Resolved here so the tray owns no Finish state. */
-export type PaintTrayView = {
-	/** False until a colour-coat port exists; the tray then has one tab. */
-	readonly colourEnabled: boolean;
-	readonly active: PaintSwatch | null;
-	readonly dropper: boolean;
-	readonly colours: {
-		readonly row: readonly PaintSwatch[];
-		readonly palette: readonly { readonly id: string; readonly name: string; readonly color: string }[];
-	};
-	readonly materials: {
-		readonly row: readonly PaintSwatch[];
-		readonly project: readonly PaintSwatch[];
-		readonly curated: readonly PaintSwatch[];
-	};
-};
-
-/** The Stage and revision an upload began in; a write may not outlive either. */
-type ImageWriteContext = {
-	readonly services: StageAdapterServices;
-	readonly acceptedRevision: AcceptedRevision;
-};
-
-function entityReference(services: StageAdapterServices, entityId: string) {
-	const snapshot = services.stage.snapshot();
-	return {
-		version: 1 as const,
-		domain: 'scene' as const,
-		revision: { kind: 'exact' as const, contentRevision: snapshot.domain.unitRevisions.scene },
-		subject: { kind: 'entity' as const, id: entityId },
-		instancePath: [],
-		location: { kind: 'project-root' as const },
-		componentId: null,
-		capabilityId: null
-	};
-}
-
-function newId(kind: string, id: string) {
-	return { kind, id };
-}
 
 export function createFinishAuthoring(host: FinishAuthoringHost) {
 	let activeKey = $state.raw<string | null>(null);
@@ -333,13 +128,6 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 	let prefs = $state.raw<PaintPreferences>(preferenceStore.load());
 	let dropper = $state(false);
 	let busy = $state(false);
-	/** The Library's Customise… draft; view state only until Apply. */
-	let libraryDraft = $state.raw<LibraryDraft | null>(null);
-	/** The draft editor's own target: a Stage pick, kept apart from the canonical selection. */
-	let libraryDraftPick = $state.raw<LibraryDraftPick | null>(null);
-	/** The draft's last refusal, shown in place until the next edit or retarget. */
-	let draftRefusal = $state<string | null>(null);
-
 	/** The one From-image flow: upload states, cancellation and retry. */
 	const imageFlow: FinishImageFlow = createFinishImageFlow({
 		api: () => host.api?.() ?? null,
@@ -578,643 +366,6 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		};
 	}
 
-	/** Library › Finishes: curated tiles, then the project's own Finishes. */
-	function libraryShelf(): {
-		readonly curated: readonly { readonly id: MaterialId; readonly label: string; readonly color: string }[];
-		readonly project: readonly {
-			readonly id: string;
-			readonly name: string;
-			readonly color: string;
-			readonly imageUri: string | null;
-			readonly warning: string | null;
-		}[];
-	} {
-		const current = scene();
-		return {
-			curated: materials.map((material) => ({
-				id: material.id,
-				label: material.label,
-				color: material.swatchColor ?? material.fallbackColor
-			})),
-			project: (current?.materials ?? [])
-				.filter((instance) => !isPristineInstance(instance))
-				.map((instance) => {
-					const colorMapId = textureIdFor(instance, 'color');
-					const dimensions = colorMapId === null ? null : (host.imageDimensions?.(colorMapId) ?? null);
-					const textureRecordUri = colorMapId === null ? null : (host.textureUri?.(colorMapId) ?? null);
-					return {
-						id: instance.id,
-						name: instance.name,
-						color: colorOfKey(`project:${instance.id}`),
-						imageUri:
-							colorMapId === null
-								? null
-								: textureRecordUri !== null && textureRecordUri.startsWith('/project-assets/')
-									? (host.texturePreviewUri?.(colorMapId) ?? null)
-									: textureRecordUri,
-						warning:
-							dimensions === null
-								? null
-								: finishImageWarning(dimensions.width, dimensions.height)
-					};
-				})
-		};
-	}
-
-	function libraryTileLabel(tile: readonly [number, number]): string {
-		const value = (number: number): string => `${Math.round(number * 100) / 100} m`;
-		return tile[0] === tile[1] ? value(tile[0]) : `${value(tile[0])} × ${value(tile[1])}`;
-	}
-
-	function finishChangeCount(instance: SceneMaterialInstance): number {
-		const overrides = instance.overrides;
-		if (overrides === undefined) return 0;
-		let count = 0;
-		for (const field of ['color', 'roughness', 'metalness', 'occlusionStrength', 'normalScale', 'mapping'] as const) {
-			if (overrides[field] !== undefined) count += 1;
-		}
-		count += Object.values(overrides.maps ?? {}).filter((map) => map !== undefined).length;
-		return count;
-	}
-
-	/**
-	 * Everything the Library browses: 21 curated entries (20 D1 cards) and
-	 * every named project Finish. It reads masters and preview names only; no
-	 * texture URI and no full-resolution catalogue image is fetched here.
-	 */
-	function libraryBrowse(): readonly LibraryFinishEntry[] {
-		const services = servicesNow();
-		const snapshot = services?.stage.snapshot();
-		const current = snapshot?.domain.scene;
-		if (snapshot === undefined || current === undefined) return [];
-		const envelope = stageEnvelope(snapshot);
-		const layout = envelope.units.layout.data;
-		const recipes = (current.materialIndex?.definitions ?? new Map()) as ReadonlyMap<
-			string,
-			import('@portfolio/project-model/materials').Recipe
-		>;
-		const facts = materialTreatmentFacts(catalogueLabel);
-		const favourite = new Set(prefs.favouriteMaterials);
-		const curated = materials.map((material): LibraryFinishEntry => {
-			const key = `curated:${material.id}`;
-			const source = { base: { catalogue: material.id } } as const;
-			const reading = finishSheenReading(source, recipes, facts);
-			const recipe = catalogueRecipe(material.id);
-			const family = materialFamilyOf(material.id);
-			const familyLabel = libraryFamilyLabel(family);
-			const mapping = recipe?.mapping;
-			const tile = mapping !== undefined && mapping.kind !== 'uv'
-				? mapping.metric.tileMeters
-				: (material.defaultTileSizeMeters ?? [1, 1]);
-			const users = usersOfFinish(current, key, layout);
-			return {
-				key,
-				source: 'curated',
-				ref: { curated: material.id },
-				name: material.label,
-				materialLabel: material.label,
-				family,
-				familyLabel,
-				subline: `${familyLabel} · ${libraryTileLabel(tile)}`,
-				color: material.swatchColor ?? material.fallbackColor,
-				imageUri: null,
-				curatedId: material.id,
-				projectId: null,
-				favourite: favourite.has(key),
-				usage: users.length,
-				userKeys: users.map((user) => (user.kind === 'entity' ? `entity:${user.id}` : `surface:${user.key}`)),
-				changes: 0,
-				reading,
-				sheen: reading.effective,
-				metalness: recipe?.metalness ?? material.metalness,
-				hasColourImage: finishHasColourImage(source, recipes),
-				warning: null
-			};
-		});
-		const project = current.materials
-			.filter((instance) => !isPristineInstance(instance))
-			.map((instance): LibraryFinishEntry => {
-				const key = `project:${instance.id}`;
-				const ref = { project: instance.id } as const;
-				const inspection = inspectFinish(envelope, ref, {
-					labelForMaterial: (id) => catalogueLabel(id as MaterialId)
-				});
-				const users = inspection?.users ?? [];
-				const definition = definitionOf(instance);
-				const baseId = catalogueBaseOf(instance);
-				const base = baseId === null ? null : catalogueRecipe(baseId);
-				const baseLabel = definition !== null
-					? 'Imported material'
-					: baseId !== null && materialById.has(baseId)
-						? getMaterial(baseId).label
-						: 'Imported material';
-				const family = baseId === null ? null : materialFamilyOf(baseId);
-				const changes = finishChangeCount(instance);
-				const source = { base: instance.base, overrides: instance.overrides } as const;
-				const reading = finishSheenReading(source, recipes, facts);
-				const colorMapId = textureIdFor(instance, 'color');
-				const dimensions = colorMapId === null ? null : (host.imageDimensions?.(colorMapId) ?? null);
-				const textureRecordUri = colorMapId === null ? null : (host.textureUri?.(colorMapId) ?? null);
-				return {
-					key,
-					source: 'project',
-					ref,
-					name: instance.name,
-					materialLabel: baseLabel,
-					family,
-					familyLabel: libraryFamilyLabel(family),
-					subline: changes === 0
-						? `from ${baseLabel}`
-						: `from ${baseLabel} · ${changes} change${changes === 1 ? '' : 's'}`,
-					color: colorOfKey(key),
-					/* Only the project's scoped preview; a catalogue map is never a Library picture. */
-				imageUri:
-					textureRecordUri !== null && textureRecordUri.startsWith('/project-assets/')
-						? (host.texturePreviewUri?.(colorMapId!) ?? null)
-						: null,
-					curatedId: null,
-					projectId: instance.id,
-					favourite: favourite.has(key),
-					usage: users.length,
-					userKeys: users.map((user) => user.key),
-					changes,
-					reading,
-					sheen: reading.effective,
-					metalness: instance.overrides?.metalness ?? definition?.metalness ?? base?.metalness ?? 0,
-					hasColourImage: finishHasColourImage(source, recipes),
-					warning: dimensions === null ? null : finishImageWarning(dimensions.width, dimensions.height)
-				};
-			});
-		return [...project, ...curated];
-	}
-
-	/** The Finish target the current Stage selection names, or null. */
-	function libraryTarget(): LibraryTarget | null {
-		const services = servicesNow();
-		if (services === null) return null;
-		const snapshot = services.stage.snapshot();
-		return libraryTargetOf(services.stage.selectionState().primary, stageEnvelope(snapshot));
-	}
-
-	/** Select every present user of a Finish: a selection, never a write. */
-	async function selectFinishUsers(ref: Exclude<SceneFinishRef, 'model-own'>): Promise<boolean> {
-		const services = servicesNow();
-		if (services === null) return false;
-		const snapshot = services.stage.snapshot();
-		const inspection = inspectFinish(stageEnvelope(snapshot), ref, {
-			labelForMaterial: (id) => catalogueLabel(id as MaterialId)
-		});
-		const label = labelOfKey(finishKeyOfRef(ref));
-		if (inspection === null || inspection.users.length === 0) {
-			host.onNotice(`No surfaces use ${label}.`);
-			return false;
-		}
-		const entries = selectionEntriesOfFinishUsers(inspection.users, snapshot);
-		if (entries.length === 0) {
-			host.onNotice(`Every user of ${label} is dormant or retired.`);
-			return false;
-		}
-		const result = services.stage.setSelection({ ordered: entries, primary: entries[0]!.reference });
-		if (result.kind === 'refused') {
-			host.onNotice(result.message);
-			return false;
-		}
-		host.onNotice(`${entries.length} user${entries.length === 1 ? '' : 's'} of ${label} selected.`);
-		return true;
-	}
-
-	/** Apply a browsed Finish to the selected object or surface: one Undo, no Card. */
-	async function applyLibraryFinish(ref: Exclude<SceneFinishRef, 'model-own'>): Promise<boolean> {
-		const target = libraryTarget();
-		if (target === null) {
-			host.onNotice('Select an object or surface first.');
-			return false;
-		}
-		const key = finishKeyOfRef(ref);
-		if (target.finishKey === key) {
-			host.onNotice(`${target.label} already wears ${labelOfKey(key)}.`);
-			return false;
-		}
-		if (target.kind === 'entity') {
-			const accepted = await assign([target.entityId], ref);
-			if (!accepted) return false;
-			noteUsed(key);
-			host.onNotice(`Applied ${labelOfKey(key)} to ${target.label}.`);
-			return true;
-		}
-		const accepted = await assignSurfaces([target.surface], ref);
-		if (!accepted) return false;
-		noteUsed(key);
-		host.onNotice(`Applied ${labelOfKey(key)} to ${target.label}.`);
-		return true;
-	}
-
-	/**
-	 * Open a Customise… draft. Draft state is view state: this call, every
-	 * field change and every retarget write nothing. Apply is the one write.
-	 * The draft target starts on the qualified selection and is never the
-	 * canonical selection afterwards.
-	 */
-	function openLibraryDraft(ref: Exclude<SceneFinishRef, 'model-own'>): boolean {
-		const key = finishKeyOfRef(ref);
-		const entry = libraryBrowse().find((candidate) => candidate.key === key);
-		if (entry === undefined) {
-			host.onNotice('That Finish is not in this project.');
-			return false;
-		}
-		libraryDraft = beginLibraryDraft(entry);
-		const target = libraryTarget();
-		libraryDraftPick = target === null
-			? null
-			: target.kind === 'entity'
-				? { kind: 'entity', entityId: target.entityId }
-				: { kind: 'surface', surface: target.surface };
-		draftRefusal = null;
-		return true;
-	}
-
-	function setLibraryDraftStep(step: LibraryDraft['step']): void {
-		if (libraryDraft === null) return;
-		const entry = libraryBrowse().find((candidate) => candidate.key === libraryDraft!.finishKey);
-		const reading = entry?.reading ?? libraryDraft.reading;
-		const stepEdits = sheenStepEdits(reading, step);
-		libraryDraft = {
-			...libraryDraft,
-			step,
-			edits: stepEdits.length === 0 ? libraryDraft.edits.filter((e) => e.field !== 'roughness') : mergeDraftEdits(libraryDraft.edits, stepEdits)
-		};
-		draftRefusal = null;
-	}
-
-	function patchLibraryDraft(incoming: readonly FinishPatchEdit[]): void {
-		if (libraryDraft === null || incoming.length === 0) return;
-		libraryDraft = {
-			...libraryDraft,
-			edits: mergeDraftEdits(libraryDraft.edits, incoming)
-		};
-		draftRefusal = null;
-	}
-
-	function setLibraryDraftEdits(edits: readonly FinishPatchEdit[]): void {
-		if (libraryDraft === null) return;
-		libraryDraft = { ...libraryDraft, edits: [...edits] };
-		draftRefusal = null;
-	}
-
-	/** Back to the Finish's own recipe: a local reset, no write. */
-	function resetLibraryDraftStep(): void {
-		if (libraryDraft === null) return;
-		const entry = libraryBrowse().find((candidate) => candidate.key === libraryDraft!.finishKey);
-		libraryDraft = beginLibraryDraft(entry ?? {
-			key: libraryDraft.finishKey,
-			ref: libraryDraft.ref,
-			name: libraryDraft.name,
-			materialLabel: libraryDraft.baseLabel,
-			source: libraryDraft.source,
-			reading: libraryDraft.reading,
-			userKeys: libraryDraft.users
-		});
-		draftRefusal = null;
-	}
-
-	function cancelLibraryDraft(): void {
-		libraryDraft = null;
-		libraryDraftPick = null;
-		draftRefusal = null;
-	}
-
-	/** The draft's target, requalified against the accepted Scene now. */
-	function libraryDraftTarget(): LibraryTarget | null {
-		const pick = libraryDraftPick;
-		const services = servicesNow();
-		if (pick === null || services === null) return null;
-		return libraryTargetOfPick(pick, stageEnvelope(services.stage.snapshot()));
-	}
-
-	/**
-	 * A Stage pick while the draft editor is open moves the cobalt proposal. An
-	 * ineligible pick leaves the proposal where it was and says why.
-	 */
-	function retargetLibraryDraft(pick: LibraryDraftPick): boolean {
-		const services = servicesNow();
-		if (libraryDraft === null || services === null) return false;
-		const next = libraryTargetOfPick(pick, stageEnvelope(services.stage.snapshot()));
-		if (next === null) {
-			const kept = libraryDraftTarget();
-			host.onNotice(kept === null
-				? 'That cannot take a Finish. Click a surface or object.'
-				: `That cannot take a Finish. The preview stays on ${kept.label}.`);
-			return false;
-		}
-		libraryDraftPick = pick;
-		draftRefusal = null;
-		host.onNotice(`Draft preview on ${next.label} · nothing is written`);
-		return true;
-	}
-
-	function draftSourceInstance(draft: LibraryDraft): SceneMaterialInstance | null {
-		const current = scene();
-		if (current === null) return null;
-		return 'curated' in draft.ref
-			? { id: `curated:${draft.ref.curated}`, name: draft.name, base: { catalogue: draft.ref.curated } }
-			: (materialInstanceById(current.materials, draft.ref.project) ?? null);
-	}
-
-	/** What the draft would write, as a plan or a reason; no host call. */
-	function draftPlanNow():
-		| { readonly kind: 'assign'; readonly target: LibraryTarget }
-		| { readonly kind: 'derive'; readonly target: LibraryTarget; readonly allocates: boolean; readonly existingKey: string | null }
-		| { readonly kind: 'refused'; readonly message: string } {
-		const draft = libraryDraft;
-		if (draft === null) return { kind: 'refused', message: 'No draft is open.' };
-		const target = libraryDraftTarget();
-		if (target === null) return { kind: 'refused', message: 'Click a surface or object to preview and apply.' };
-		const current = scene();
-		const source = draftSourceInstance(draft);
-		if (current === null || source === null) return { kind: 'refused', message: 'That Finish is no longer in this project.' };
-		if (!libraryDraftChanged(draft)) {
-			if (target.finishKey === draft.finishKey) {
-				return { kind: 'refused', message: `${target.label} already wears ${draft.name}. Change a field or pick another surface.` };
-			}
-			return { kind: 'assign', target };
-		}
-		const recipes = (current.materialIndex?.definitions ?? new Map()) as ReadonlyMap<string, import('@portfolio/project-model/materials').Recipe>;
-		const includesModel = target.kind === 'entity' && entityOf(target.entityId)?.kind === 'model';
-		const prediction = predictDerivedAssign({
-			materials: current.materials,
-			sourceInstance: source,
-			edits: draft.edits,
-			recipes,
-			includesModel
-		});
-		if (!prediction.ok) {
-			return { kind: 'refused', message: prediction.message };
-		}
-		if (prediction.existingKey !== null && target.finishKey === prediction.existingKey) {
-			return { kind: 'refused', message: `${target.label} already wears this.` };
-		}
-		return { kind: 'derive', target, allocates: prediction.allocates, existingKey: prediction.existingKey };
-	}
-
-	/** What Apply would do, for the editor footer; no host call. */
-	function libraryDraftStatus(): {
-		readonly active: boolean;
-		readonly canApply: boolean;
-		readonly changed: boolean;
-		readonly targetLabel: string | null;
-		readonly reason: string | null;
-		readonly canPaint: boolean;
-		readonly paintReason: string | null;
-	} {
-		const draft = libraryDraft;
-		if (draft === null) {
-			return { active: false, canApply: false, changed: false, targetLabel: null, reason: null, canPaint: false, paintReason: null };
-		}
-		const target = libraryDraftTarget();
-		const changed = libraryDraftChanged(draft);
-		const plan = draftPlanNow();
-		return {
-			active: true,
-			canApply: plan.kind !== 'refused' && !busy,
-			changed,
-			targetLabel: target?.label ?? null,
-			reason: draftRefusal ?? (plan.kind === 'refused' ? plan.message : null),
-			canPaint: !busy,
-			paintReason: null
-		};
-	}
-
-	/**
-	 * The render-only Stage projection of the draft on its target. Null when it
-	 * cannot project (no target, unresolved Finish): the editor then says so.
-	 */
-	function libraryDraftPreview(): FinishInstancePreview | null {
-		const draft = libraryDraft;
-		const target = libraryDraftTarget();
-		const current = scene();
-		if (draft === null || target === null || current === null) return null;
-		const instance = draftSourceInstance(draft);
-		if (instance === null) return null;
-		const recipes = (current.materialIndex?.definitions ?? new Map()) as ReadonlyMap<string, import('@portfolio/project-model/materials').Recipe>;
-		if (draft.edits.length === 0) {
-			return target.finishKey === draft.finishKey ? null : { users: [target.key], instance };
-		}
-		const result = applyFinishPatch(instance, draft.edits, baseRecipeOf(instance, recipes));
-		if (!result.ok) {
-			return result.problem.code === 'no-change' ? { users: [target.key], instance } : null;
-		}
-		return { users: [target.key], instance: result.instance };
-	}
-
-	/**
-	 * The draft's own Finish for inspection, independent of the target.
-	 */
-	function libraryDraftInstance():
-		| { readonly ok: true; readonly changed: boolean; readonly instance: SceneMaterialInstance }
-		| { readonly ok: false; readonly reason: string }
-		| null {
-		const draft = libraryDraft;
-		const current = scene();
-		if (draft === null || current === null) return null;
-		const instance = draftSourceInstance(draft);
-		if (instance === null) {
-			return { ok: false, reason: 'The Finish is no longer in the project.' };
-		}
-		const recipes = (current.materialIndex?.definitions ?? new Map()) as ReadonlyMap<string, import('@portfolio/project-model/materials').Recipe>;
-		if (draft.edits.length === 0) return { ok: true, changed: false, instance };
-		const result = applyFinishPatch(instance, draft.edits, baseRecipeOf(instance, recipes));
-		if (!result.ok) {
-			return result.problem.code === 'no-change'
-				? { ok: true, changed: false, instance }
-				: { ok: false, reason: result.problem.message };
-		}
-		return { ok: true, changed: true, instance: result.instance };
-	}
-
-	function libraryDraftFields(): EditorFieldsView | null {
-		const draft = libraryDraft;
-		const current = scene();
-		if (draft === null || current === null) return null;
-		const resolved = libraryDraftInstance();
-		if (resolved === null || !resolved.ok) return null;
-		const target = libraryDraftTarget();
-		const entityKind =
-			target !== null && target.kind === 'entity'
-				? ((entityOf(target.entityId)?.kind as 'primitive' | 'form' | 'model' | undefined) ?? null)
-				: null;
-		const recipes = (current.materialIndex?.definitions ?? new Map()) as ReadonlyMap<string, import('@portfolio/project-model/materials').Recipe>;
-		return buildFinishEditorFields({
-			source: { base: resolved.instance.base, overrides: resolved.instance.overrides },
-			recipes,
-			palette: current.palette ?? [],
-			entityKind,
-			facts: treatmentFacts,
-			materialLabel: draft.baseLabel,
-			curated: draft.source === 'curated'
-		});
-	}
-
-	/**
-	 * Apply the draft: one accepted assign, one Undo. An edited draft uses
-	 * `derive: { edits, identity: 'reuse' }` on the named target only, never
-	 * mutating any Finish definition or unrelated shared user.
-	 */
-	async function applyLibraryDraft(): Promise<boolean> {
-		const draft = libraryDraft;
-		if (draft === null || busy) return false;
-		const plan = draftPlanNow();
-		if (plan.kind === 'refused') {
-			draftRefusal = plan.message;
-			return false;
-		}
-		if (plan.kind === 'assign') {
-			const target = plan.target;
-			const accepted = target.kind === 'entity'
-				? await assign([target.entityId], draft.ref)
-				: await assignSurfaces([target.surface], draft.ref);
-			if (!accepted) {
-				draftRefusal = 'That change could not be made. Nothing changed.';
-				return false;
-			}
-			noteUsed(draft.finishKey);
-			host.onNotice(`Applied ${draft.name} to ${target.label} · one undo`);
-			cancelLibraryDraft();
-			return true;
-		}
-		const target = plan.target;
-		const services = servicesNow();
-		if (services === null) {
-			draftRefusal = 'The Stage is still opening.';
-			return false;
-		}
-		const allocatedId = plan.allocates ? `finish:${crypto.randomUUID()}` : null;
-		const snapshot = services.stage.snapshot();
-		busy = true;
-		try {
-			const isEntity = target.kind === 'entity';
-			const intentTargets: SemanticReference[] = isEntity
-				? [entityReference(services, target.entityId)]
-				: [{
-						version: 1,
-						domain: 'layout',
-						revision: { kind: 'exact', contentRevision: snapshot.domain.unitRevisions.layout },
-						subject: surfaceTargetSubject(target.surface as PaintableSurface),
-						instancePath: [],
-						location: { kind: 'layout-location', levelId: snapshot.domain.layoutLevelId, structureInstancePath: [] },
-						componentId: surfaceTargetComponent(target.surface as PaintableSurface),
-						capabilityId: null
-					}];
-			const outcome = await accept({
-				kind: isEntity ? 'scene-finish-assign' : 'scene-surface-finish-assign',
-				payload: isEntity
-					? { finish: draft.ref, entityIds: [target.entityId], derive: { edits: draft.edits, identity: 'reuse' } }
-					: { finish: draft.ref, surfaces: [target.surface], derive: { edits: draft.edits, identity: 'reuse' } },
-				targets: intentTargets,
-				allocatedIds: allocatedId === null ? [] : [newId('scene-finish', allocatedId)]
-			});
-			if (outcome.kind !== 'accepted') {
-				draftRefusal = 'That change could not be made. Nothing changed.';
-				return false;
-			}
-			const resultingKey = plan.existingKey ?? (allocatedId !== null ? `project:${allocatedId}` : draft.finishKey);
-			noteUsed(resultingKey);
-			host.onNotice(`Applied ${draft.name} to ${target.label} · one undo`);
-			cancelLibraryDraft();
-			return true;
-		} finally {
-			busy = false;
-		}
-	}
-
-	/** *Use for Paint* from the draft: arms its existing Finish (unchanged) or a draft pick (edited). */
-	function paintLibraryDraft(): boolean {
-		const draft = libraryDraft;
-		if (draft === null) return false;
-		if (!libraryDraftChanged(draft)) {
-			pickMaterialKey(draft.finishKey);
-			cancelLibraryDraft();
-			return true;
-		}
-		activeKey = null;
-		activeColour = null;
-		activeDraft = { kind: 'draft', ref: draft.ref, edits: draft.edits, name: draft.name };
-		dropper = false;
-		host.onNotice(`Paint · ${draft.name}`);
-		cancelLibraryDraft();
-		return true;
-	}
-
-	/**
-	 * The Card's *Swap…* hand-off (U5): the target, place and reach the Card showed,
-	 * captured once. The Library shows it before activation; Apply requalifies it.
-	 */
-	let librarySwap = $state.raw<LibrarySwapRequest | null>(null);
-
-	function requestLibrarySwap(target: FinishCardTarget, place: string): boolean {
-		const view = card.view(target, place);
-		if (view === null || view.kind !== 'finish' || !view.material.swappable) {
-			host.onNotice('This surface has no material to swap.');
-			return false;
-		}
-		librarySwap = {
-			target,
-			targetKey: finishCardTargetKey(target),
-			place,
-			finishName: view.name,
-			materialLabel: view.material.label,
-			currentId: view.material.catalogueId,
-			reach: view.reach.options === null ? null : view.reach.choice,
-			reachLine: view.reach.options === null
-				? view.reach.line
-				: view.reach.choice === 'all'
-					? view.reach.options.allLabel
-					: view.reach.options.thisLabel,
-			users: view.reach.users
-		};
-		if (host.openLibrarySwap === undefined) {
-			librarySwap = null;
-			return false;
-		}
-		host.openLibrarySwap();
-		return true;
-	}
-
-	function clearLibrarySwap(): void {
-		librarySwap = null;
-	}
-
-	/**
-	 * Swap the captured target to a curated material through the Card's
-	 * treatment-preserving command. A stale target or reach refuses in place.
-	 */
-	async function applyLibrarySwap(materialId: MaterialId): Promise<{ readonly ok: true } | { readonly ok: false; readonly message: string }> {
-		const request = librarySwap;
-		if (request === null) return { ok: false, message: 'Open Swap from a Finish Card first.' };
-		const view = card.view(request.target, request.place);
-		if (view === null || view.kind !== 'finish' || !view.material.swappable) {
-			return { ok: false, message: `${request.place} can no longer be swapped. Nothing changed.` };
-		}
-		if (view.reach.users !== request.users) {
-			return { ok: false, message: `Now used by ${view.reach.users} — reopen Swap from the Card. Nothing changed.` };
-		}
-		if (view.material.catalogueId === materialId) {
-			return { ok: false, message: `${request.place} is already ${view.material.label}.` };
-		}
-		if (request.reach !== null && view.reach.choice !== request.reach) card.setReach(request.target, request.reach);
-		busy = true;
-		try {
-			const accepted = await card.swap(request.target, materialId);
-			if (!accepted) {
-				return { ok: false, message: card.refusalFor(request.target) ?? 'That swap could not be made. Nothing changed.' };
-			}
-			host.onNotice(`Swapped ${request.place} to ${catalogueLabel(materialId)} — colour and sheen kept.`);
-			librarySwap = { ...request, currentId: materialId, materialLabel: catalogueLabel(materialId) };
-			return { ok: true };
-		} finally {
-			busy = false;
-		}
-	}
-
 	function paletteView(): FinishPaletteView {
 		const current = scene();
 		const slots = current?.palette ?? [];
@@ -1264,7 +415,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 	function paintTray(): PaintTrayView {
 		const favouriteMaterials = new Set(prefs.favouriteMaterials);
 		const favouriteColours = new Set(prefs.favouriteColours);
-		const shelf = libraryShelf();
+		const shelf = library.libraryShelf();
 		const projectImages = new Map(shelf.project.map((entry) => [`project:${entry.id}`, entry.imageUri]));
 		const finish = (key: string): PaintSwatch => ({
 			kind: 'finish',
@@ -1311,18 +462,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		return entityOf(selectionEntityId());
 	}
 
-	async function accept(input: {
-		kind: string;
-		payload: unknown;
-		entityIds?: readonly string[];
-		targets?: readonly SemanticReference[];
-		allocatedIds?: readonly { kind: string; id: string }[];
-	}, context?: ImageWriteContext): Promise<{
-		readonly kind: string;
-		readonly code?: string;
-		readonly reason?: string | null;
-		readonly message?: string;
-	}> {
+	async function accept(input: FinishAcceptInput, context?: ImageWriteContext): Promise<FinishAcceptOutcome> {
 		const services = context?.services ?? servicesNow();
 		if (services === null) return { kind: 'unavailable', message: 'The Stage is still opening.' };
 		if (context !== undefined && !imageWriteIsCurrent(context)) return { kind: 'no-op' };
@@ -1605,7 +745,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 	async function copyFrom(target: { readonly sourceId: string } | string): Promise<boolean> {
 		const targetId = typeof target === 'string' ? target : target.sourceId;
 		// The draft editor borrows the dropper's pick: a click moves its proposal.
-		if (libraryDraft !== null) return retargetLibraryDraft({ kind: 'entity', entityId: targetId });
+		if (library.draft !== null) return library.retargetLibraryDraft({ kind: 'entity', entityId: targetId });
 		const view = viewFor(targetId);
 		dropper = false;
 		if (view === null) {
@@ -1876,7 +1016,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 
 	/** Copy the authored Finish from a Layout surface; an unpainted surface has nothing to copy. */
 	async function copySurface(surface: PaintableSurface): Promise<boolean> {
-		if (libraryDraft !== null) return retargetLibraryDraft({ kind: 'surface', surface: surface as SceneSurfaceRef });
+		if (library.draft !== null) return library.retargetLibraryDraft({ kind: 'surface', surface: surface as SceneSurfaceRef });
 		const current = scene();
 		dropper = false;
 		if (current === null) {
@@ -1937,6 +1077,34 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		});
 	}
 
+	/** Select every present user of a Finish: a selection, never a write. */
+	async function selectFinishUsers(ref: Exclude<SceneFinishRef, 'model-own'>): Promise<boolean> {
+		const services = servicesNow();
+		if (services === null) return false;
+		const snapshot = services.stage.snapshot();
+		const inspection = inspectFinish(stageEnvelope(snapshot), ref, {
+			labelForMaterial: (id) => catalogueLabel(id as MaterialId)
+		});
+		const label = labelOfKey(finishKeyOfRef(ref));
+		if (inspection === null || inspection.users.length === 0) {
+			host.onNotice(`No surfaces use ${label}.`);
+			return false;
+		}
+		const entries = selectionEntriesOfFinishUsers(inspection.users, snapshot);
+		if (entries.length === 0) {
+			host.onNotice(`Every user of ${label} is dormant or retired.`);
+			return false;
+		}
+		const result = services.stage.setSelection({ ordered: entries, primary: entries[0]!.reference });
+		if (result.kind === 'refused') {
+			host.onNotice(result.message);
+			return false;
+		}
+		host.onNotice(`${entries.length} user${entries.length === 1 ? '' : 's'} of ${label} selected.`);
+		return true;
+	}
+
+
 	const catalogueLabel = (id: MaterialId): string => (materialById.has(id) ? getMaterial(id).label : id);
 	const treatmentFacts = materialTreatmentFacts(catalogueLabel);
 	const swatchOf = (id: MaterialId): string => {
@@ -1957,6 +1125,34 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		selectFinishUsers,
 		onOwnCopy: () => host.onNotice('This surface now has its own copy')
 	});
+	const library = createFinishLibraryAuthoring({
+		host,
+		services: servicesNow,
+		scene,
+		card,
+		busy: () => busy,
+		setBusy: (value) => {
+			busy = value;
+		},
+		favouriteMaterials: () => prefs.favouriteMaterials,
+		labelOfKey,
+		noteUsed,
+		assign,
+		assignSurfaces,
+		accept,
+		entityOf,
+		textureIdFor,
+		colorOfKey,
+		definitionOf,
+		pickMaterialKey,
+		armDraft: (draft) => {
+			activeKey = null;
+			activeColour = null;
+			activeDraft = draft;
+			dropper = false;
+		}
+	});
+
 	/** The Material editor facet (U6): Finish mode over the Card adapter. */
 	const editor: FinishEditor = createFinishEditor({
 		card: () => card,
@@ -2202,7 +1398,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		},
 		get dropperArmed() {
 			// An open draft editor picks its target through the dropper path.
-			return dropper || libraryDraft !== null;
+			return dropper || library.draft !== null;
 		},
 		get busy() {
 			return busy;
@@ -2215,34 +1411,34 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		align,
 		requestAlign,
 		noteUsedFinish: noteUsed,
-		libraryShelf,
-		libraryBrowse,
-		libraryTarget,
+		libraryShelf: library.libraryShelf,
+		libraryBrowse: library.libraryBrowse,
+		libraryTarget: library.libraryTarget,
 		selectFinishUsers,
-		applyLibraryFinish,
-		openLibraryDraft,
-		setLibraryDraftStep,
-		patchLibraryDraft,
-		setLibraryDraftEdits,
-		libraryDraftFields,
-		cancelLibraryDraft,
-		libraryDraftStatus,
-		applyLibraryDraft,
+		applyLibraryFinish: library.applyLibraryFinish,
+		openLibraryDraft: library.openLibraryDraft,
+		setLibraryDraftStep: library.setLibraryDraftStep,
+		patchLibraryDraft: library.patchLibraryDraft,
+		setLibraryDraftEdits: library.setLibraryDraftEdits,
+		libraryDraftFields: library.libraryDraftFields,
+		cancelLibraryDraft: library.cancelLibraryDraft,
+		libraryDraftStatus: library.libraryDraftStatus,
+		applyLibraryDraft: library.applyLibraryDraft,
 		get libraryDraft() {
-			return libraryDraft;
+			return library.draft;
 		},
-		libraryDraftTarget,
-		libraryDraftPreview,
-		libraryDraftInstance,
-		retargetLibraryDraft,
-		resetLibraryDraftStep,
-		paintLibraryDraft,
+		libraryDraftTarget: library.libraryDraftTarget,
+		libraryDraftPreview: library.libraryDraftPreview,
+		libraryDraftInstance: library.libraryDraftInstance,
+		retargetLibraryDraft: library.retargetLibraryDraft,
+		resetLibraryDraftStep: library.resetLibraryDraftStep,
+		paintLibraryDraft: library.paintLibraryDraft,
 		get librarySwap() {
-			return librarySwap;
+			return library.swap;
 		},
-		requestLibrarySwap,
-		clearLibrarySwap,
-		applyLibrarySwap,
+		requestLibrarySwap: library.requestLibrarySwap,
+		clearLibrarySwap: library.clearLibrarySwap,
+		applyLibrarySwap: library.applyLibrarySwap,
 		paletteView,
 		paintTray,
 		pickFinish,
