@@ -1,20 +1,15 @@
 {
   "generatedFrom": "LOC-0 baseline; shrink-only from here",
   "counts": {
-    "filesOver600": 129,
-    "filesOver1000": 42,
-    "filesOver1500": 15,
+    "filesOver600": 128,
+    "filesOver1000": 41,
+    "filesOver1500": 14,
     "functionsOver200": 73,
     "exportStars": 0,
     "crossPackageReexports": 0,
     "seams": 14
   },
   "files": [
-    {
-      "path": "packages/project-model/src/units/planning.ts",
-      "lines": 2948,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
     {
       "path": "apps/editor/src/lib/authoring/look/finish-authoring.svelte.ts",
       "lines": 2283,
