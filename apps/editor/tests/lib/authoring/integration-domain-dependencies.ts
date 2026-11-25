@@ -28,6 +28,11 @@ const domainToCore: readonly [source: string, targets: readonly string[]][] = [
 		'paper-plan.ts', 'paper-plan.ts (type)', 'slice/slice-clip-2d.ts', 'slice/slice-cut.ts',
 		'slice/slice-cut.ts (type)', 'slice/slice-resolved.ts', 'stage-facade.ts (type)'
 	]],
+	['layout/plan-pick-geometry.ts', [
+		'cutaway/cutaway-resolved.ts', 'cutaway/cutaway-resolved.ts (type)', 'lift-ink.ts',
+		'paper-plan.ts', 'paper-plan.ts (type)', 'slice/slice-clip-2d.ts', 'slice/slice-cut.ts',
+		'slice/slice-cut.ts (type)', 'slice/slice-resolved.ts', 'stage-facade.ts (type)'
+	]],
 
 	// Shared Material Editor wheel, and the current Library browse-view and selection contracts.
 	['library/LibraryMaterialEditor.svelte', ['shell/StagePaintWheel.svelte']],

@@ -153,13 +153,13 @@
 		"arrows": 45
 	},
 	"src/lib/authoring/stage/route/stage-shell-commands.ts": {
-		"lines": 876,
+		"lines": 690,
 		"imports": 18,
 		"state": 0,
 		"derived": 0,
 		"effects": 0,
-		"functions": 31,
-		"arrows": 36
+		"functions": 23,
+		"arrows": 33
 	},
 	"src/lib/authoring/stage/route/stage-keyboard.ts": {
 		"lines": 465,
