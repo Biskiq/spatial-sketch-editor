@@ -89,6 +89,10 @@ export const ARCH_FILES: string[] = [
 	// configuration rather than any product code, and no lane report can reveal a
 	// file that runs in no lane, so only the unconditional lane can own it.
 	'tests/config/lane-membership.test.ts',
+	// LOC-0: the locality budget ratchet. It polices file, function, barrel and
+	// seam sizes rather than any product behavior, and no lane report can reveal a
+	// new 700-line module, so only the unconditional lane can own it.
+	'tests/locality-budgets.arch.test.ts',
 	// T3.P01.S01: the F.2 entries' closure (AM-2/AM-6/AM-7). The delivery-only
 	// program closure and the active-source import guarantee are import-graph
 	// facts, which no lane, build or type check can see.
