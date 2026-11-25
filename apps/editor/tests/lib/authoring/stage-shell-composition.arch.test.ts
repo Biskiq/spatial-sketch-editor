@@ -48,6 +48,7 @@ const ROUTE_COMPONENT = join(EDITOR_SRC, 'lib', 'authoring', 'workspace', 'host'
 const WIRING = join(EDITOR_SRC, 'lib', 'authoring', 'workspace', 'host', 'wiring');
 const PROJECT_SESSION_DIR = join(EDITOR_SRC, 'lib', 'authoring', 'project-session');
 const EXPERIENCE_LENS = join(EDITOR_SRC, 'lib', 'authoring', 'experience', 'experience-lens.svelte.ts');
+const EXPERIENCE_VIEW_EDIT_SESSION = join(EDITOR_SRC, 'lib', 'authoring', 'experience', 'experience-view-edit-session.svelte.ts');
 const EXPERIENCE_BINDING = join(STAGE_DIR, 'route', 'stage-experience-binding.svelte.ts');
 const CORE_REGION_VIEWS = join(STAGE_DIR, 'route', 'core-region-views.ts');
 const STAGE_VIEWING = join(STAGE_DIR, 'route', 'stage-viewing.ts');
@@ -384,8 +385,10 @@ describe('Stage shell composition', () => {
 		expect(raw).toHaveLength(1);
 		expect(matches(/function capturePointer\([^)]*\): boolean \{\s*try \{\s*target\.setPointerCapture\(pointerId\);/)).toHaveLength(1);
 		expect(matches(/try \{ surface\.setPointerCapture\(event\.pointerId\); \} catch/)).toHaveLength(1);
-		const lens = stripComments(readFileSync(EXPERIENCE_LENS, 'utf8'));
-		expect(lens).toMatch(/capture === null \|\| !host\.capturePointer\(capture, event\.pointerId\)/);
+		const guarded = [EXPERIENCE_LENS, EXPERIENCE_VIEW_EDIT_SESSION]
+			.map((file) => stripComments(readFileSync(file, 'utf8')))
+			.filter((source) => /capture === null \|\| !(?:ports\.)?host\.capturePointer\(capture, event\.pointerId\)/.test(source));
+		expect(guarded).toHaveLength(1);
 	});
 
 	it('renders one geometry set and takes Plan eligibility from the representation, not a second renderer', () => {
