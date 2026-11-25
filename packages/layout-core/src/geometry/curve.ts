@@ -419,56 +419,7 @@ export function sampleSegment(
 		maxSamples?: number;
 	} = {}
 ): SampledSegment {
-	let result: SampledSegment;
-	try {
-		result = p2311Measure('curve-sampling', () => sampleSegmentUnmeasured(segment, options));
-	} catch (error) {
-		const observer = sampleSegmentObserverForTest;
-		if (observer) {
-			try {
-				observer({ segmentId: segment.id, kind: segment.kind, ok: false }, undefined);
-			} catch {
-				// A test observer must never break production sampling.
-			}
-		}
-		throw error;
-	}
-	const observer = sampleSegmentObserverForTest;
-	if (observer) {
-		try {
-			observer({ segmentId: segment.id, kind: segment.kind, ok: true }, result);
-		} catch {
-			// A test observer must never break production sampling.
-		}
-	}
-	return result;
-}
-
-/**
- * Test-only observation of actual kernel sampling.
- *
- * While set, every `sampleSegment` call reports its segment identity and result.
- * Covers the compile direct paths (`wallCenterlineSegment` + kernel) that bypass the
- * Wall seam. Unset is zero behavior change. Never retains; never set in production.
- */
-export type SampleSegmentCallObservation = {
-	segmentId: string;
-	kind: SampleableSegment['kind'];
-	ok: boolean;
-};
-let sampleSegmentObserverForTest:
-	| ((observation: SampleSegmentCallObservation, result: SampledSegment | undefined) => void)
-	| undefined;
-export function setSampleSegmentObserverForTest(
-	observer: ((observation: SampleSegmentCallObservation, result: SampledSegment | undefined) => void) | undefined
-): void {
-	sampleSegmentObserverForTest = observer;
-}
-export function clearSampleSegmentObserverForTest(): void {
-	sampleSegmentObserverForTest = undefined;
-}
-export function hasSampleSegmentObserverForTest(): boolean {
-	return sampleSegmentObserverForTest !== undefined;
+	return p2311Measure('curve-sampling', () => sampleSegmentUnmeasured(segment, options));
 }
 
 function sampleSegmentUnmeasured(

@@ -1,17 +1,17 @@
 export type { LayoutVec2 } from './coordinates';
 
-export { canonicalBoundaryCycleKey, clearFaceSamplingObserverForTest, extractBoundaryCandidateFaces, faceArea, hasFaceSamplingObserverForTest, ON_RING_TOLERANCE, pointStrictlyInsidePolygon, polygonIntersectionArea, polygonsShareInteriorArea, setFaceSamplingObserverForTest } from './face-extraction';
+export { canonicalBoundaryCycleKey, extractBoundaryCandidateFaces, faceArea, ON_RING_TOLERANCE, pointStrictlyInsidePolygon, polygonIntersectionArea, polygonsShareInteriorArea } from './face-extraction';
 
-export type { DerivedCandidateFace, FaceExtractionResult, FaceSamplingObservation, TopologyDiagnostic } from './face-extraction';
+export type { DerivedCandidateFace, FaceExtractionResult, TopologyDiagnostic } from './face-extraction';
 
 export { activeLayoutCompileSession, createLayoutCompileSession, withLayoutCompileSession } from './session'
 export { compileLayoutGeometrySource, compileWallFirstLayoutGeometry, compileWallFirstLayoutGeometryFresh } from './compiler';
 
 export type { LayoutCompileSession, LayoutGeometryCompileOptions } from './session';
 
-export { autoBezierAnchorPoints, clearSampleSegmentObserverForTest, compileAutoBezierAnchors, cubicBezierArcLength, cubicBezierArcLengthAt, cubicBezierArcLengthBetween, cubicBezierDerivative, cubicBezierPoint, CURVE_ARC_LENGTH_MAX_DEPTH, CURVE_ARC_LENGTH_TOLERANCE, CURVE_ENDPOINT_EPSILON, CURVE_FLATNESS_TOLERANCE, CURVE_MAX_SAMPLE_SPAN, CURVE_SELF_INTERSECTION_TOLERANCE, deriveChainSpans, deriveCubicSpanControls, hasSampleSegmentObserverForTest, LAYOUT_AUTO_BEZIER_ALPHA, LayoutGeometrySamplingError, legacyBezierToAutoBezier, MAX_CURVE_SAMPLES_PER_SEGMENT, nextInteriorAnchorId, OPENING_CENTER_EPSILON, openingCenterFrame, openingCenterPolyline, pointAlongSamples, pointAtDistance, projectPointToSampledSegment, sampledIsClosed, sampledPolylineIntersects, sampledPolylineSelfIntersects, samplePolylineInRange, sampleSegment, segmentLength, segmentPointAt, segmentTangentAt, segmentVertexPoints, setSampleSegmentObserverForTest, spansToCubics } from './curve';
+export { autoBezierAnchorPoints, compileAutoBezierAnchors, cubicBezierArcLength, cubicBezierArcLengthAt, cubicBezierArcLengthBetween, cubicBezierDerivative, cubicBezierPoint, CURVE_ARC_LENGTH_MAX_DEPTH, CURVE_ARC_LENGTH_TOLERANCE, CURVE_ENDPOINT_EPSILON, CURVE_FLATNESS_TOLERANCE, CURVE_MAX_SAMPLE_SPAN, CURVE_SELF_INTERSECTION_TOLERANCE, deriveChainSpans, deriveCubicSpanControls, LAYOUT_AUTO_BEZIER_ALPHA, LayoutGeometrySamplingError, legacyBezierToAutoBezier, MAX_CURVE_SAMPLES_PER_SEGMENT, nextInteriorAnchorId, OPENING_CENTER_EPSILON, openingCenterFrame, openingCenterPolyline, pointAlongSamples, pointAtDistance, projectPointToSampledSegment, sampledIsClosed, sampledPolylineIntersects, sampledPolylineSelfIntersects, samplePolylineInRange, sampleSegment, segmentLength, segmentPointAt, segmentTangentAt, segmentVertexPoints, spansToCubics } from './curve';
 
-export type { AutoBezierSegment, CubicBezierShape, CubicChainSegment, CubicSpanControls, CurveDistanceResult, CurvedSampleableSegment, CurveSample, LegacyBezierSegment, OpeningCenterMode, OpeningHostSamples, SampleableSegment, SampledSegment, SampleSegmentCallObservation } from './curve';
+export type { AutoBezierSegment, CubicBezierShape, CubicChainSegment, CubicSpanControls, CurveDistanceResult, CurvedSampleableSegment, CurveSample, LegacyBezierSegment, OpeningCenterMode, OpeningHostSamples, SampleableSegment, SampledSegment } from './curve';
 
 export { diffCompiledWalls, indexedCompiledWall, indexedCompiledWallQueries, readPassiveCompiledGeometry, recordPassiveCompiledGeometry, sealCompiledLayoutSnapshot } from './delta';
 

@@ -1,6 +1,4 @@
 import type { LayoutVec2 } from '../geometry/coordinates';
-import { hasSampleSegmentObserverForTest } from '../geometry/curve';
-import { hasFaceSamplingObserverForTest } from '../geometry/face-extraction';
 import { hasWallSamplingObserverForTest } from '../wall/centerline';
 import { exceedsLayoutDimension, layoutWallSpanMeters } from '../geometry/limits';
 import type { LayoutDerivedWallRole, LayoutDocumentWallFirst, LayoutJunction, LayoutObject, LayoutWall, LayoutWallOpening } from '../wall/types';
@@ -244,9 +242,5 @@ export function exceedsLayoutWallSpanAfterJunctionMove(
 
 /** True when any test-only curve/face/wall sampling observer is installed. */
 export function hasAnySamplingTestObserver(): boolean {
-	return (
-		hasWallSamplingObserverForTest() ||
-		hasFaceSamplingObserverForTest() ||
-		hasSampleSegmentObserverForTest()
-	);
+	return hasWallSamplingObserverForTest();
 }

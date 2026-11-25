@@ -4,10 +4,10 @@
     "filesOver600": 121,
     "filesOver1000": 35,
     "filesOver1500": 11,
-    "functionsOver200": 74,
+    "functionsOver200": 73,
     "exportStars": 0,
     "crossPackageReexports": 0,
-    "seams": 14
+    "seams": 8
   },
   "files": [
     {
@@ -116,13 +116,13 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
-      "path": "packages/layout-core/src/geometry/curve.ts",
-      "lines": 1251,
+      "path": "apps/editor/src/lib/visitor/VisitorPreviewSurface.svelte",
+      "lines": 1245,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
-      "path": "apps/editor/src/lib/visitor/VisitorPreviewSurface.svelte",
-      "lines": 1245,
+      "path": "packages/layout-core/src/geometry/curve.ts",
+      "lines": 1202,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -216,11 +216,6 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
-      "path": "packages/layout-core/src/geometry/face-extraction.ts",
-      "lines": 936,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
       "path": "apps/editor/src/lib/authoring/stage/shell/EditorCard.svelte",
       "lines": 927,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
@@ -243,6 +238,11 @@
     {
       "path": "packages/project-model/src/scene.ts",
       "lines": 900,
+      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+    },
+    {
+      "path": "packages/layout-core/src/geometry/face-extraction.ts",
+      "lines": 899,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -1122,13 +1122,6 @@
       "reason": "Registration wrapper for the seven independent library handlers, not a single algorithm; splitting it would scatter one route family."
     },
     {
-      "file": "packages/layout-core/src/geometry/face-extraction.ts",
-      "name": "extractBoundaryCandidateFaces",
-      "line": 109,
-      "lines": 205,
-      "reason": "One face extraction: the ring walk and its sampling share the boundary candidate."
-    },
-    {
       "file": "apps/editor/src/lib/authoring/adapters/scene.adapter.ts",
       "name": "catalogueLabel",
       "line": 76,
@@ -1137,12 +1130,6 @@
     }
   ],
   "seams": [
-    "packages/layout-core/src/geometry/curve.ts#clearSampleSegmentObserverForTest",
-    "packages/layout-core/src/geometry/curve.ts#hasSampleSegmentObserverForTest",
-    "packages/layout-core/src/geometry/curve.ts#setSampleSegmentObserverForTest",
-    "packages/layout-core/src/geometry/face-extraction.ts#clearFaceSamplingObserverForTest",
-    "packages/layout-core/src/geometry/face-extraction.ts#hasFaceSamplingObserverForTest",
-    "packages/layout-core/src/geometry/face-extraction.ts#setFaceSamplingObserverForTest",
     "packages/layout-core/src/room/reconciliation-observation.ts#clearCorrespondenceObserverForTest",
     "packages/layout-core/src/room/reconciliation-observation.ts#correspondenceObserverForTest",
     "packages/layout-core/src/room/reconciliation-observation.ts#correspondenceShortCircuitsDisabledForTest",
