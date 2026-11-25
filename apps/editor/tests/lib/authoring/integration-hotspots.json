@@ -286,5 +286,23 @@
     "effects": 0,
     "functions": 4,
     "arrows": 24
+  },
+  "src/lib/authoring/experience/experience-controller.svelte.ts": {
+    "lines": 1924,
+    "imports": 16,
+    "state": 7,
+    "derived": 24,
+    "effects": 3,
+    "functions": 25,
+    "arrows": 178
+  },
+  "src/lib/authoring/experience/experience-removal-readings.ts": {
+    "lines": 166,
+    "imports": 3,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 8,
+    "arrows": 22
   }
 }

@@ -11,14 +11,14 @@
   },
   "files": [
     {
-      "path": "apps/editor/src/lib/authoring/experience/experience-controller.svelte.ts",
-      "lines": 2054,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
       "path": "apps/editor/src/lib/authoring/experience/ExperienceGuide.svelte",
       "lines": 1983,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+    },
+    {
+      "path": "apps/editor/src/lib/authoring/experience/experience-controller.svelte.ts",
+      "lines": 1923,
+      "reason": "One Experience authoring entry: the shared accepted snapshot, focus reads, one command runner and the sub-owners compose the lens; removal readings live in their own module."
     },
     {
       "path": "apps/editor/src/lib/authoring/look/finish-authoring.svelte.ts",
@@ -540,9 +540,9 @@
     {
       "file": "apps/editor/src/lib/authoring/experience/experience-controller.svelte.ts",
       "name": "createExperienceController",
-      "line": 340,
-      "lines": 1715,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+      "line": 334,
+      "lines": 1590,
+      "reason": "One Experience composition root: one accepted snapshot, one command runner and the sub-owner wiring; the removal readings are extracted."
     },
     {
       "file": "apps/editor/src/lib/authoring/look/finish-authoring.svelte.ts",
