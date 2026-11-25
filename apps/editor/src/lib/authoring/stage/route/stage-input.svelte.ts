@@ -36,7 +36,7 @@ import {
 	perfMarksEnabled
 } from '$lib/platform/perf-marks';
 import type { StagePostureLayer, StagePostureMark } from '../stage-adapter-host';
-import { planSourceKindOf } from './plan-source-kind';
+import { createStageHover } from './stage-hover.svelte';
 import type {
 	StageFacade,
 	StageIntentResult,
@@ -47,11 +47,7 @@ import type { StageMeasureController } from '../stage-measure';
 import type { StageEraserController } from '../stage-eraser';
 import type { StagePaintController } from '../stage-painter';
 import type { SliceDrawController } from '../slice/slice-draw.svelte';
-import { stageResizeCursorCss } from '../stage-glyphs';
 import {
-	layoutSelectionReference,
-	primaryEntry,
-	sameReference,
 	type StageSelectionEntry
 } from '../semantic-selection';
 import { isStageDrag, slicePressRefusal, type StagePressTracker } from '../stage-input';
@@ -106,9 +102,11 @@ export type StageInputArbiter = ReturnType<typeof createStageInputArbiter>;
 
 export function createStageInputArbiter(input: StageInputArbiterInput) {
 	let drag = $state<{ x: number; y: number; mode: 'pan' | 'orbit' | 'adapter' | 'host' | 'slice-draw' } | null>(null);
-	let hoverSelection = $state<StageSelectionEntry | null>(null);
-	let hoverMove = $state(false);
-	let stageCursor = $state<string | null>(null);
+	const hover = createStageHover({
+		input,
+		dragging: () => drag !== null,
+		hostDragging: () => drag?.mode === 'host'
+	});
 
 	let adapterMarkPress = false;
 	let disclosurePress: { readonly id: string; readonly x: number; readonly y: number } | null = null;
@@ -126,8 +124,8 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 	 */
 	let adapterEvaluationId: string | null = null;
 	let pinch: Map<number, [number, number]> | null = null;
-	let hoverFrame: number | null = null;
-	let hoverSample: { css: [number, number]; shift: boolean; coarse: boolean } | null = null;
+	let _hoverFrame: number | null = null;
+	let _hoverSample: { css: [number, number]; shift: boolean; coarse: boolean } | null = null;
 
 	/**
 	 * End the live gesture exactly once.
@@ -171,150 +169,6 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 		endGesture();
 	}
 
-	function clearHover(clearAdapterHover = true): void {
-		if (clearAdapterHover && input.adapterTapOnly?.()) {
-			const stage = input.facade();
-			const evaluationId = stage?.evaluationId();
-			if (evaluationId != null) stage?.hoverIntent({ phase: 'cancel', css: [0, 0], evaluationId });
-		}
-		if (hoverFrame !== null) cancelAnimationFrame(hoverFrame);
-		hoverFrame = null;
-		hoverSample = null;
-		input.unfold.setPinHovered(false);
-		input.facade()?.setMarkHover(null);
-		stageCursor = null;
-		input.session.setHover(null);
-		hoverSelection = null;
-		hoverMove = false;
-		if (drag?.mode !== 'host') {
-			input.measureTool()?.hover(null);
-			input.eraserTool()?.hover(null);
-			input.paintTool()?.hover(null);
-			input.setEraseHover(null);
-			input.setPaintHover(null);
-		}
-	}
-
-	function resolveHover(): void {
-		hoverFrame = null;
-		const sample = hoverSample;
-		hoverSample = null;
-		const stage = input.facade();
-		const id = stage?.evaluationId() ?? null;
-		if (sample === null || stage === null || id === null || input.session.gesture() !== null || drag !== null) return;
-		stageCursor = null;
-		// An armed host tool previews its own winner (the Eraser's dashes, Measure's
-		// second point); the ordinary subject hover would compete with it.
-		const armedHostTool = input.armedHostTool();
-		if (armedHostTool !== null) {
-			stage.idleHoverIntent({ phase: 'cancel', css: sample.css, evaluationId: id, coarse: sample.coarse, shift: sample.shift });
-			const toolInput = { css: sample.css, evaluationId: id, coarse: sample.coarse };
-			if (armedHostTool === 'measure') input.measureTool()?.hover(toolInput);
-			else if (armedHostTool === 'erase') input.eraserTool()?.hover(toolInput);
-			else input.paintTool()?.hover({ ...toolInput, shift: sample.shift });
-			input.session.setHover(null);
-			hoverSelection = null;
-			hoverMove = false;
-			input.onRefreshHostTools();
-			return;
-		}
-		// The pin is the sheet's one display handle. It sits above the sheet pick
-		// so a tap can select its Opening and a drag can move the anchor without
-		// selecting the Wall body underneath.
-		if (input.unfold.pinAt(sample.css, sample.coarse, stage) !== null) {
-			stage.idleHoverIntent({ phase: 'cancel', css: sample.css, evaluationId: id, coarse: sample.coarse, shift: sample.shift });
-			stage.setMarkHover(null);
-			input.session.setHover(null);
-			hoverSelection = null;
-			hoverMove = false;
-			input.unfold.setPinHovered(true);
-			stageCursor = 'grab';
-			return;
-		}
-		input.unfold.setPinHovered(false);
-		// The mark tier is above world candidates: a hovered grip suppresses the
-		// subject tint underneath, so two emphases never compete for one pointer.
-		const mark = stage.hitMark({ css: sample.css, coarse: sample.coarse });
-		if (mark !== null) {
-			stage.idleHoverIntent({ phase: 'cancel', css: sample.css, evaluationId: id, coarse: sample.coarse, shift: sample.shift });
-			stage.setMarkHover({ adapterId: mark.adapterId, id: mark.id });
-			stageCursor = mark.mark.resizeCursor === undefined
-				? null
-				: stageResizeCursorCss(mark.mark.resizeCursor, mark.mark.direction);
-			input.session.setHover(null);
-			hoverSelection = null;
-			// A selected Wall's own grips are draggable; every other
-			// mark (an Opening's track, a disclosure) is not a body move.
-			const primary = primaryEntry(stage.selectionState());
-			hoverMove =
-				primary !== null &&
-				primary.reference.domain === 'layout' &&
-				primary.reference.subject.kind === 'wall' &&
-				mark.adapterId === 'layout' &&
-				mark.id.startsWith('layout-wall-') &&
-				mark.id !== 'layout-wall-preview';
-			return;
-		}
-		stage.setMarkHover(null);
-		stageCursor = null;
-		const idleMark = stage.idleHoverIntent({ phase: 'move', css: sample.css, evaluationId: id, coarse: sample.coarse, shift: sample.shift });
-		if (idleMark !== null) {
-			stage.setMarkHover({ adapterId: idleMark.adapterId, id: idleMark.id });
-			input.session.setHover(null);
-			hoverSelection = null;
-			hoverMove = true;
-			return;
-		}
-		stage.idleHoverIntent({ phase: 'cancel', css: sample.css, evaluationId: id, coarse: sample.coarse, shift: sample.shift });
-		if (stage.hoverIntent({ phase: 'move', css: sample.css, evaluationId: id, shift: sample.shift, coarse: sample.coarse })) {
-			input.session.setHover(null);
-			hoverSelection = null;
-			hoverMove = false;
-			return;
-		}
-		const result = stage.resolvePick({ css: sample.css, evaluationId: id, purpose: 'hover', tool: null });
-		if (result.kind !== 'resolved') {
-			input.session.setHover(null);
-			hoverSelection = null;
-			hoverMove = false;
-			return;
-		}
-		const hit = result.hit;
-		const planKind = hit.reference === undefined ? planSourceKindOf(hit.sourceKind) : null;
-		// The 3D Room lid is a Paint-only hit; selection and hover resolve a Room
-		// through its floor and never name the lid.
-		if (hit.reference === undefined && planKind === null) {
-			input.session.setHover(null);
-			hoverSelection = null;
-			hoverMove = false;
-			return;
-		}
-		const representation = hit.reference === undefined
-			? { sourceId: hit.sourceId, sourceKind: planKind!, generationId: hit.generationId, stream: hit.stream, subRef: hit.subRef }
-			: undefined;
-		const reference = hit.reference ?? layoutSelectionReference(representation!, stage.snapshot());
-		input.session.setHover({ reference });
-		const primary = primaryEntry(stage.selectionState());
-		// The pick winner is the selected Wall itself, so a press here
-		// would be claimed as its body drag. Select keeps the host Wall first here.
-		hoverMove =
-			primary !== null &&
-			primary.reference.domain === 'layout' &&
-			primary.reference.subject.kind === 'wall' &&
-			hit.sourceKind === 'wall' &&
-			hit.sourceId === primary.reference.subject.id;
-		const nextHover =
-			primary !== null && sameReference(primary.reference, reference)
-				? null
-				: representation === undefined
-					? { reference }
-					: { reference, representation };
-		// Identity, not object identity: a pointer moving within one subject must not
-		// rebuild the Stage's ink every frame.
-		if (nextHover === null) hoverSelection = null;
-		else if (hoverSelection === null || !sameReference(hoverSelection.reference, nextHover.reference)) hoverSelection = nextHover;
-	}
-
 	/**
 	 * The pointer ids the Stage currently holds: the press owner and every pinch
 	 * pointer. The Canvas host reads these immediately before it replaces a
@@ -333,9 +187,9 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 	function interrupt(reason: StageInterruptionReason): void {
 		if (input.unfold.interrupt()) return;
 		if (input.activeLayer()?.interrupt?.() === 'claimed') return;
-		if (pinch !== null) { endPinch(); clearHover(); return; }
+		if (pinch !== null) { endPinch(); hover.clear(); return; }
 		const pointerId = input.press.owner();
-		if (pointerId === null || drag === null) { clearHover(); return; }
+		if (pointerId === null || drag === null) { hover.clear(); return; }
 		perfMark('input:interruption', { reason });
 		if (drag.mode === 'adapter') {
 			const id = adapterEvaluationId ?? input.facade()?.evaluationId() ?? null;
@@ -351,7 +205,7 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 		}
 		if (drag.mode === 'slice-draw') input.sliceDraw()?.cancel();
 		abortGesture();
-		clearHover();
+		hover.clear();
 		const stageEl = input.stageElement();
 		if (reason !== 'second-pointer' && stageEl?.hasPointerCapture?.(pointerId)) stageEl.releasePointerCapture(pointerId);
 	}
@@ -359,7 +213,7 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 	function pointerDown(event: PointerEvent): void {
 		const stage = input.facade();
 		if (stage === null || input.evaluation() === null) return;
-		clearHover(false);
+		hover.clear(false);
 		const firstId = input.press.owner();
 		if (firstId !== null && firstId !== event.pointerId && drag !== null) {
 			if (input.activeLayer()?.pinch(event) === 'claimed') return;
@@ -577,9 +431,8 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 		}
 		if (input.activeLayer()?.pointerMove(event) === 'claimed') return;
 		if (drag === null) {
-			if (event.pointerType === 'touch' || input.session.gesture() !== null) { clearHover(); return; }
-			hoverSample = { css: input.stageCss(event) as [number, number], shift: event.shiftKey, coarse: event.pointerType !== 'mouse' };
-			if (hoverFrame === null) hoverFrame = requestAnimationFrame(resolveHover);
+			if (event.pointerType === 'touch' || input.session.gesture() !== null) { hover.clear(); return; }
+			hover.sample(input.stageCss(event) as [number, number], event.shiftKey, event.pointerType !== 'mouse');
 			return;
 		}
 		if (drag.mode === 'host') {
@@ -826,13 +679,13 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 			return drag;
 		},
 		get hoverSelection(): StageSelectionEntry | null {
-			return hoverSelection;
+			return hover.selection;
 		},
 		get hoverMove(): boolean {
-			return hoverMove;
+			return hover.move;
 		},
 		get stageCursor(): string | null {
-			return stageCursor;
+			return hover.cursor;
 		},
 		get pinchActive(): boolean {
 			return pinch !== null;
@@ -851,7 +704,7 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 		lostPointerCapture,
 		click,
 		wheel,
-		clearHover,
+		clearHover: hover.clear,
 		interrupt,
 		/** Drop host view state for a replaced epoch without touching a lease. */
 		reset(): void {
@@ -859,11 +712,11 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 			adapterEvaluationId = null;
 			adapterMarkPress = false;
 			disclosurePress = null;
-			hoverSelection = null;
+			hover.clearSelection();
 			input.press.abort();
 		},
 		dispose(): void {
-			clearHover();
+			hover.clear();
 		}
 	};
 }

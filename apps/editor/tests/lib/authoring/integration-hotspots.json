@@ -439,5 +439,23 @@
     "effects": 0,
     "functions": 7,
     "arrows": 1
+  },
+  "src/lib/authoring/stage/route/stage-input.svelte.ts": {
+    "lines": 723,
+    "imports": 18,
+    "state": 1,
+    "derived": 0,
+    "effects": 0,
+    "functions": 14,
+    "arrows": 36
+  },
+  "src/lib/authoring/stage/route/stage-hover.svelte.ts": {
+    "lines": 196,
+    "imports": 4,
+    "state": 3,
+    "derived": 0,
+    "effects": 0,
+    "functions": 4,
+    "arrows": 2
   }
 }

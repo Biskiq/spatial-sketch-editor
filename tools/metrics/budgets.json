@@ -146,11 +146,6 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
-      "path": "apps/editor/src/lib/authoring/stage/route/stage-input.svelte.ts",
-      "lines": 869,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
       "path": "apps/editor/src/lib/authoring/adapters/scene/object-mark-session.ts",
       "lines": 844,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
@@ -318,6 +313,11 @@
     {
       "path": "apps/editor/src/lib/render/resources/finish-views.ts",
       "lines": 724,
+      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+    },
+    {
+      "path": "apps/editor/src/lib/authoring/stage/route/stage-input.svelte.ts",
+      "lines": 722,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -549,13 +549,6 @@
       "reason": "One card session: focus, reach, preview and one-patch writes share the open target and the Card-local preview frame."
     },
     {
-      "file": "apps/editor/src/lib/authoring/stage/route/stage-input.svelte.ts",
-      "name": "createStageInputArbiter",
-      "line": 107,
-      "lines": 763,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
       "file": "apps/editor/src/lib/authoring/adapters/scene/object-mark-session.ts",
       "name": "createObjectMarkSession",
       "line": 100,
@@ -581,6 +574,13 @@
       "name": "createPlacementBinding",
       "line": 99,
       "lines": 633,
+      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+    },
+    {
+      "file": "apps/editor/src/lib/authoring/stage/route/stage-input.svelte.ts",
+      "name": "createStageInputArbiter",
+      "line": 103,
+      "lines": 620,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
