@@ -4,7 +4,7 @@
     "filesOver600": 105,
     "filesOver1000": 18,
     "filesOver1500": 4,
-    "functionsOver200": 73,
+    "functionsOver200": 74,
     "exportStars": 0,
     "crossPackageReexports": 0,
     "seams": 8
@@ -163,11 +163,6 @@
     {
       "path": "apps/editor/src/lib/authoring/stage/stage-session.ts",
       "lines": 879,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
-      "path": "apps/editor/src/lib/authoring/stage/route/stage-shell-commands.ts",
-      "lines": 875,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -376,6 +371,11 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
+      "path": "apps/editor/src/lib/authoring/stage/route/stage-shell-commands.ts",
+      "lines": 689,
+      "reason": "The shell command entry keeps tool arming and task lifecycle; hit/source selection and its card links live in stage-shell-selection."
+    },
+    {
       "path": "packages/layout-core/src/wall/junction/sectors.ts",
       "lines": 689,
       "reason": "One star partition: beam selection, sector clipping and keel ownership share the same beams and cyclic leg order."
@@ -573,13 +573,6 @@
       "reason": "One card session: focus, reach, preview and one-patch writes share the open target and the Card-local preview frame."
     },
     {
-      "file": "apps/editor/src/lib/authoring/stage/route/stage-shell-commands.ts",
-      "name": "createStageShellCommands",
-      "line": 90,
-      "lines": 784,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
       "file": "apps/editor/src/lib/authoring/stage/route/stage-shell-state.svelte.ts",
       "name": "createStageShellState",
       "line": 121,
@@ -620,6 +613,13 @@
       "line": 34,
       "lines": 603,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+    },
+    {
+      "file": "apps/editor/src/lib/authoring/stage/route/stage-shell-commands.ts",
+      "name": "createStageShellCommands",
+      "line": 90,
+      "lines": 598,
+      "reason": "One command surface: the armed dock/world tool, contributed tasks and their instrument share the shell state; selection delegates to its own factory."
     },
     {
       "file": "apps/editor/src/lib/authoring/stage/route/stage-unfold-gestures.svelte.ts",
@@ -1032,6 +1032,13 @@
       "name": "experienceShownCardFor",
       "line": 163,
       "lines": 215,
+      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+    },
+    {
+      "file": "apps/editor/src/lib/authoring/stage/route/stage-shell-selection.ts",
+      "name": "createStageShellSelection",
+      "line": 14,
+      "lines": 209,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
