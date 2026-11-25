@@ -323,14 +323,6 @@ function worldPoint(
 	];
 }
 
-type LocalTriangle = {
-	/** Plane-local (u, v) per vertex. */
-	readonly local: readonly [SectionPoint, SectionPoint, SectionPoint];
-	/** Signed distance per vertex: kept iff ≥ 0. */
-	readonly distance: readonly [number, number, number];
-	/** The triangle's outward geometric normal, in world space. */
-	readonly normal: SectionVec3;
-};
 
 export function sectionMeshes(
 	inputs: readonly SectionInput[],
@@ -422,8 +414,8 @@ export function sectionMeshes(
 
 				const crossings: SectionPoint[] = [];
 				for (let edge = 0; edge < 3; edge += 1) {
-					const first = edge;
-					const second = (edge + 1) % 3;
+					const _first = edge;
+					const _second = (edge + 1) % 3;
 					const dFirst = edge === 0 ? d0 : edge === 1 ? d1 : d2;
 					const dSecond = edge === 0 ? d1 : edge === 1 ? d2 : d0;
 					if (dFirst >= 0 && dSecond >= 0) continue;
@@ -619,7 +611,7 @@ function splitPass(
 	// computed twice per segment per split pass).
 	const segmentBounds = segments.map(cellsOfSegment);
 	const segmentCells = new Map<string, number[]>();
-	segments.forEach((segment, index) => {
+	segments.forEach((_segment, index) => {
 		const [x0, x1, z0, z1] = segmentBounds[index]!;
 		for (let x = x0; x <= x1; x += 1) {
 			for (let z = z0; z <= z1; z += 1) {

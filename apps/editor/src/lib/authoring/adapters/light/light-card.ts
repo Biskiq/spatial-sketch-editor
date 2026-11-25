@@ -1,13 +1,4 @@
-/**
- * The Light Card's read-only facts.
- *
- * What the Card says about a Light (kind, brightness, position, aim, reach, beam,
- * shadow) and what it says about an object a light
- * reaches ("Lit by"). Pure reads of the accepted snapshot and the binding's
- * camera-free scene pick: no lifetime, no lease, no write. The Card's field
- * writer stays `LightCardFields`; its commands stay in `light-actions`.
- */
-import type { SceneEntity, Vec3 } from '@portfolio/project-model';
+
 import type {
 	StageAdapterContext,
 	StageAdapterServices,

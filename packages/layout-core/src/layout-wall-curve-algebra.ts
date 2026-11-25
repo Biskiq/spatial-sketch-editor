@@ -34,7 +34,6 @@
 import type { LayoutVec2 } from './layout-coordinates';
 import type { LayoutWallCubicSpan, LayoutWallCurveKnot } from './layout-wall-first-types';
 import {
-	CURVE_ARC_LENGTH_TOLERANCE,
 	CURVE_ENDPOINT_EPSILON,
 	cubicBezierArcLength,
 	cubicBezierArcLengthAt,
@@ -43,7 +42,7 @@ import {
 	spansToCubics,
 	type CubicBezierShape
 } from './layout-geometry-curve';
-import { JUNCTION_COINCIDENCE_EPSILON, coincidesAsJunction } from './layout-junction-identity';
+import { coincidesAsJunction } from './layout-junction-identity';
 
 /** Bisection cap for arc-length inversion (a guard, not a resolution). */
 export const WALL_CURVE_SPLIT_MAX_BISECTIONS = 64;

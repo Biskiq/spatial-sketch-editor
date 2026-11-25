@@ -88,7 +88,6 @@ import {
 	type Experience,
 	type ExperienceGuide,
 	type ExperiencePresentation,
-	type ExperiencePresentationText,
 	type ExperienceStop,
 	type ExperienceTransitionKind,
 	type ProjectEnvelope,
@@ -230,7 +229,7 @@ function readViewPose(reader: ShapeReader, input: unknown, path: string): ViewPo
 	return { label, eye, target, fov };
 }
 
-const UPDATE_PAYLOAD_KEYS = VIEW_POSE_KEYS;
+const _UPDATE_PAYLOAD_KEYS = VIEW_POSE_KEYS;
 
 /**
  * Rewrite one existing Camera View's authored pose and label.
@@ -1700,7 +1699,7 @@ export function createExperienceStopUpdatePlanner(): DomainPlanner<ProjectEnvelo
  * existing pair.
  */
 function withStraightConnection(
-	envelope: ProjectEnvelope,
+	_envelope: ProjectEnvelope,
 	candidate: ProjectEnvelope,
 	pair: { readonly fromViewId: string; readonly toViewId: string },
 	connectionId: string | null

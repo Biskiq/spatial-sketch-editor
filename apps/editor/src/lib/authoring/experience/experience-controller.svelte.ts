@@ -64,7 +64,6 @@ import {
 } from './experience-model';
 import { travelGapMessagesByStop } from './experience-problems';
 import {
-	experiencePathOccurrences,
 	readExperiencePath,
 	previewPathSamples,
 	resolvePathAnchorInsertion,

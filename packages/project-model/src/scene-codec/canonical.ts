@@ -15,7 +15,6 @@ import type {
 	SceneCameraViewKeyframe,
 	SceneEntity,
 	SceneFormEntity,
-	SceneModelEntity,
 	ScenePrimitiveEntity,
 	SceneWaypoint
 } from '../scene';

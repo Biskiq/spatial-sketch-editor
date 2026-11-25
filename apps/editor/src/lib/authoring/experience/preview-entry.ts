@@ -78,7 +78,7 @@ export type PreviewEntry =
 /** An entry Preview can actually enter; the Head never stores an unavailable one. */
 export type EnterablePreviewEntry = Exclude<PreviewEntry, { readonly kind: 'unavailable' }>;
 
-function titleOf(envelope: ProjectEnvelope, experienceId: string): string {
+function _titleOf(envelope: ProjectEnvelope, experienceId: string): string {
 	const experience = envelope.units.experience.data.experiences.find((entry) => entry.id === experienceId);
 	return experience?.label ?? experienceId;
 }
@@ -153,7 +153,7 @@ export function previewEntryFor(input: {
 		return { kind: 'unavailable', message: `The source does not carry Experience "${experienceId}".` };
 	}
 	const runId = `${input.sessionEpoch}:preview:${input.epoch}`;
-	const options = (program: ExecutionProgram, transitions: readonly ExperienceProgramTransition[]): ExperienceInterpreterOptions => ({
+	const options = (_program: ExecutionProgram, transitions: readonly ExperienceProgramTransition[]): ExperienceInterpreterOptions => ({
 		runId,
 		runEpoch: input.epoch,
 		sourceContentId: input.sourceContentId,

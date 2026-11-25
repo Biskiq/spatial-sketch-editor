@@ -102,7 +102,6 @@ import {
 import {
 	coincidesAsJunction,
 	coincidentJunctionPairs,
-	JUNCTION_COINCIDENCE_EPSILON
 } from './layout-junction-identity';
 import { createPlanBoxIndex, type PlanBox } from './layout-plan-box-index';
 import { CURVE_SELF_INTERSECTION_TOLERANCE } from './layout-geometry-curve';
@@ -3800,7 +3799,7 @@ function currentJunctionPoint(document: LayoutDocumentWallFirst, junctionId: str
 	return document.junctions.find((junction) => junction.id === junctionId)!.point;
 }
 
-function moveJunction(document: LayoutDocumentWallFirst, junctionId: string, point: LayoutVec2): LayoutDocumentWallFirst {
+function _moveJunction(document: LayoutDocumentWallFirst, junctionId: string, point: LayoutVec2): LayoutDocumentWallFirst {
 	const candidate = cloneDocument(document);
 	candidate.junctions.find((junction) => junction.id === junctionId)!.point = [point[0], point[1]];
 	return candidate;

@@ -16,7 +16,7 @@
 	import { env } from '$env/dynamic/public';
 
 	import type { StageAdapterServices } from '../../../stage/stage-adapter-host';
-	import { UNIT_SOURCE_KIND, type TypedResource } from '@portfolio/project-model/units';
+	import { type TypedResource } from '@portfolio/project-model/units';
 	import { creatorModelDefinition, approvedModelResources } from '@portfolio/project-model/scene-planning';
 	import { stageEnvelope } from '$lib/authoring/stage/stage-adapter-host';
 

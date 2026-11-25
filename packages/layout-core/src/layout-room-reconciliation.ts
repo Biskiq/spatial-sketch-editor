@@ -53,7 +53,6 @@ import {
 	canonicalBoundaryCycleKey,
 	type DerivedCandidateFace,
 	type FaceExtractionResult,
-	faceArea,
 	ON_RING_TOLERANCE,
 	polygonIntersectionArea,
 	polygonsShareInteriorArea,

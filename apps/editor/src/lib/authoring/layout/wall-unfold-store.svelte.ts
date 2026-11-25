@@ -175,7 +175,7 @@ class WallUnfoldStore {
 		this.previewOpening = preview;
 	}
 
-	setU(wall: CompiledPhysicalWall, amount: number): void {
+	setU(_wall: CompiledPhysicalWall, amount: number): void {
 		if (this.state === null) return;
 		// A scrub is deliberate input: stop an entry/exit fold where it is so the
 		// sheet follows the hand instead of fighting the animation.
@@ -280,7 +280,7 @@ class WallUnfoldStore {
 	}
 
 	/** Cancel exactly to the canonical mesh without leaving the context. */
-	cancelScrub(wall: CompiledPhysicalWall): void {
+	cancelScrub(_wall: CompiledPhysicalWall): void {
 		if (this.state === null) return;
 		this.#cancelFrame();
 		this.state = refoldWallUnfold(this.state);

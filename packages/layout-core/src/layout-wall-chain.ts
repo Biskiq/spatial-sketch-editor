@@ -70,7 +70,6 @@ import {
 } from './layout-geometry-curve';
 import {
 	extractBoundaryCandidateFaces,
-	type DerivedCandidateFace,
 	type TopologyDiagnostic
 } from './layout-face-extraction';
 import {
@@ -80,7 +79,6 @@ import {
 	interiorWitness,
 	reconcileRooms,
 	roomBoundaryPolygon,
-	type ComponentLineage,
 	type SpaceBoundaryEdge
 } from './layout-room-reconciliation';
 import { createAuthoringRoomAllocator } from './layout-wall-topology-ops';
@@ -1131,14 +1129,14 @@ function executeWallChainCandidate(
 
 	// Allocate one junction per distinct unresolved chain point (resolved
 	// entries carry the IDs forward; legs read them directly).
-	resolved.forEach((entry) => {
-		if (entry.junctionId) return entry.junctionId;
+	for (const entry of resolved) {
+		if (entry.junctionId) continue;
 		const taken = new Set(candidate.junctions.map((junction) => junction.id));
 		const id = allocator.nextJunctionId(taken, `junction-chain-${createdJunctionIds.length + 1}`);
 		candidate.junctions.push({ id, point: entry.point });
 		createdJunctionIds.push(id);
 		entry.junctionId = id;
-	});
+	}
 
 	for (const [index] of legEndpoints.entries()) {
 		const startId = resolved[close ? index % resolved.length : index]!.junctionId!;
@@ -2368,7 +2366,7 @@ function validateChainTopology(document: LayoutDocumentWallFirst): WallChainReje
 
 /** Oriented boundary polygon of a wall-first room (junction traversal order). */
 /** Adapt the chain allocator to the noding allocator contract. */
-function nodingAllocatorAdapter(allocator: WallChainIdAllocator, document: LayoutDocumentWallFirst): NodingIdAllocator {
+function nodingAllocatorAdapter(allocator: WallChainIdAllocator, _document: LayoutDocumentWallFirst): NodingIdAllocator {
 	return {
 		nextWallId(baseDocument, seed) {
 			return allocator.nextWallId(new Set(baseDocument.walls.map((wall) => wall.id)), seed);

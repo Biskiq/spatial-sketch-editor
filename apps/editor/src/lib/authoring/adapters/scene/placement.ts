@@ -45,7 +45,6 @@ import type { FormLibraryPayload } from '@portfolio/project-model/library';
 import type {
 	CameraFreeSceneDocument,
 	LayoutUnitPayload,
-	ProjectEnvelope
 } from '@portfolio/project-model/units';
 import type { FrameReference, SemanticReference } from '@portfolio/project-model';
 import type { ViewportEvaluation } from '@portfolio/camera-core';

@@ -71,7 +71,7 @@ export function sameAuthored(left: unknown, right: unknown): boolean {
 	const rightKeys = Object.keys(right);
 	if (leftKeys.length !== rightKeys.length) return false;
 	for (const key of leftKeys) {
-		if (!Object.prototype.hasOwnProperty.call(right, key)) return false;
+		if (!Object.hasOwn(right, key)) return false;
 		if (!sameAuthored((left as Record<string, unknown>)[key], (right as Record<string, unknown>)[key])) return false;
 	}
 	return true;

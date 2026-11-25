@@ -116,11 +116,6 @@ type ProjectLockRow = {
 	latestVersion: unknown;
 };
 
-type SavedHeadSnapshot = {
-	readonly envelope: ProjectEnvelope;
-	readonly savedBaseToken: string;
-	readonly latestVersion: number;
-};
 
 async function lockProject(
 	db: Pick<DatabasePool, 'query'>,

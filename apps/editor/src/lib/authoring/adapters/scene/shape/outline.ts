@@ -18,7 +18,6 @@ import {
 	PROFILE_LIMITS,
 	canonicalizeWinding,
 	validateProfile,
-	type ProfileAnchor,
 	type ProfileIssue
 } from '@portfolio/geometry-core';
 

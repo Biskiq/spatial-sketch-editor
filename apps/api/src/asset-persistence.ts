@@ -115,7 +115,7 @@ export function readAssetNameBody(value: unknown): string {
 		value === null ||
 		Array.isArray(value) ||
 		Object.keys(value).length !== 1 ||
-		!Object.prototype.hasOwnProperty.call(value, 'name')
+		!Object.hasOwn(value, 'name')
 	) {
 		throw new AssetInputError('invalid_asset', 400, 'Expected a name body');
 	}

@@ -9,7 +9,7 @@
  * product's. The gate reports no library call after the destination is built.
  */
 import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core';
-import type { AuthoringIntent, RuntimeScene, SemanticReference } from '@portfolio/project-model';
+import type { AuthoringIntent, SemanticReference } from '@portfolio/project-model';
 import { SCENE_FINISH_PATCH, SCENE_PALETTE_SLOT_ADD } from '@portfolio/project-model/scene-planning';
 import {
 	createEmptyCameraPayload,

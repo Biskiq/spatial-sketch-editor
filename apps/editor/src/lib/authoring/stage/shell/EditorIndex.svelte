@@ -17,7 +17,6 @@
 		query,
 		onQuery,
 		onSelect,
-		onBringIntoView,
 		onReveal,
 		onRename = () => {},
 		experience = null

@@ -24,14 +24,11 @@ import type { ProjectEnvelope } from '@portfolio/project-model/units';
 import {
 	analysisSubjectOf,
 	catalogueBaseOf,
-	entityUserKey,
-	finishKeyOfRef,
 	finishKeyOfSurface,
 	finishRefOfKey,
 	inspectFinish,
 	isFinishPaintable,
 	isPristineInstance,
-	surfaceUserKey,
 	type FinishKey,
 	type InspectedFinishUser
 } from '@portfolio/project-model/scene-planning';

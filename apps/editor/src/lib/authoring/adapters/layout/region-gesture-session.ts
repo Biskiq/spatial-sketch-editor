@@ -46,7 +46,7 @@ import type { LayoutVec2 } from '@portfolio/layout-core';
 const REMOVE_ENTER_METERS = 0.12;
 const REMOVE_LEAVE_METERS = 0.3;
 /** A corner press that never travels this far is a click, not a drag. */
-const CORNER_CLICK_METERS = 0.02;
+const _CORNER_CLICK_METERS = 0.02;
 
 const BODY_MARK = 'layout-region-move-mark';
 const TURN_MARK = 'layout-region-turn-mark';
@@ -203,7 +203,7 @@ export function createRegionGestureSession(
 					? translate(region.footprint.points, live.delta)
 					: region.footprint.points;
 		const elevation = live?.mode === 'height' ? live.elevation : region.elevation;
-		const marked = region.intendedGaps;
+		const _marked = region.intendedGaps;
 		const marks: StageHandleDescriptor[] = [];
 		points.forEach((point, index) => {
 			const cornerActive = live?.mode === 'corner' && live.index === index;
@@ -778,7 +778,7 @@ export function createRegionGestureSession(
 	}
 
 	/** The live proposal: the candidate footprint, with its adopted snap named. */
-	function previews(ctx: StageAdapterContext, y: number): readonly StageCandidatePreview[] | null {
+	function previews(_ctx: StageAdapterContext, y: number): readonly StageCandidatePreview[] | null {
 		const current = gesture;
 		// Null, not empty: an idle region gesture must fall through to Ink's own
 		// candidate instead of suppressing every other preview source.

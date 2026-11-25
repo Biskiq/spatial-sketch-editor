@@ -33,9 +33,7 @@ import type {
 	CompiledLegJoin,
 	CompiledPhysicalWall,
 	CompiledQueryAabb,
-	CompiledQueryPoint,
 	CompiledQueryPolygon,
-	CompiledQuerySpan,
 	CompiledRoom,
 	CompilerRoomSource,
 	LayoutBounds2,
@@ -43,7 +41,6 @@ import type {
 	LayoutGeometryIssue
 } from './layout-geometry-types';
 import {
-	noQueryRecords,
 	sameAuthored,
 	type LayoutCompileReuse,
 	type RetainedQueryRecords

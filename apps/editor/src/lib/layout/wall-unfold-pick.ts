@@ -26,7 +26,6 @@ import {
 	evaluateWallDevelopment,
 	evaluateWallDevelopmentSheet,
 	isWallDevelopmentRefusal,
-	prepareWallDevelopment,
 	type CompiledPhysicalWall,
 	type LayoutVec2,
 	type WallDevelopment,

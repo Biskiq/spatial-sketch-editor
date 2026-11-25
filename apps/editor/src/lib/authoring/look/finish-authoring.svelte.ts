@@ -79,7 +79,6 @@ import {
 	normaliseHex,
 	paintRow,
 	parseColourKey,
-	pickKey,
 	toggleFavourite as toggleFavouriteKey,
 	touchRecent,
 	type PaintColour,
@@ -127,10 +126,8 @@ import {
 import type { TargetAnalysis } from '@portfolio/project-model/materials';
 import type { FinishPatchEdit } from '@portfolio/project-model/scene-planning';
 import {
-	materialFamilies,
 	materialFamilyOf,
 	materialTreatmentFacts,
-	type MaterialFamilyId
 } from '$lib/content/material-presentation';
 import { catalogueRecipe } from '@portfolio/project-model/materials';
 import {
@@ -1687,7 +1684,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 				return 'already';
 			}
 			const allocatedId = prediction.allocates ? `finish:${crypto.randomUUID()}` : null;
-			const snapshot = services.stage.snapshot();
+			const _snapshot = services.stage.snapshot();
 			busy = true;
 			try {
 				const outcome = await accept({

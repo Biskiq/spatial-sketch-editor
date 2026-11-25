@@ -1,14 +1,4 @@
-/**
- * The Light mark descriptors.
- *
- * One pure function turns the effective Light (the dragged copy during a
- * gesture, otherwise the selected one) into the ordered edit marks the Stage
- * hit-tests: body, height, aim, reach, beam and soft edge for Point and Spot.
- * It reads the live context a caller supplies; it holds no lifetime and never
- * writes. The host admits, projects and hit-tests the descriptors, and every gesture they start
- * is owned by the gesture session.
- */
-import type { Vec3 } from '@portfolio/project-model';
+
 import type {
 	StageAdapterContext,
 	StageHandleDescriptor

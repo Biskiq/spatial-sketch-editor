@@ -87,7 +87,6 @@ type PreparedCircleProposal = Extract<ReturnType<typeof prepareClosedCirclePropo
 export function createCurveGestureSession({
 	services,
 	document,
-	levelId,
 	contentRevision,
 	publishRefusal,
 	settleRefusal,

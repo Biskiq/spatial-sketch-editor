@@ -65,6 +65,23 @@ jobs:
         if: steps.plan.outputs.profile == 'full'
         run: echo "matrix=$(node tools/harness/matrix.mjs)" >> "$GITHUB_OUTPUT"
 
+  lint:
+    name: biome ci
+    needs: prepare
+    if: needs.prepare.outputs.profile != 'minimal'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx biome ci .
+
   suite:
     name: ${{ matrix.job }}
     needs: prepare
@@ -262,7 +279,7 @@ jobs:
   gate:
     name: merge gate
     if: always()
-    needs: [prepare, suite, focused, api, guards, goldens]
+    needs: [prepare, lint, suite, focused, api, guards, goldens]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:

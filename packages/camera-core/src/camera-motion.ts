@@ -7,7 +7,6 @@ import {
   Vector3
 } from 'three';
 import {
-  CAMERA_EASING,
   CAMERA_FOV,
   type CameraConnectionDirection,
   type CameraEasing,

@@ -16,7 +16,7 @@
 		form,
 		position,
 		yaw,
-		treatment = 'subject', metersPerCssPixel = 0.01
+		metersPerCssPixel = 0.01
 	}: {
 		form: SceneFormSource;
 		position: readonly [number, number, number];

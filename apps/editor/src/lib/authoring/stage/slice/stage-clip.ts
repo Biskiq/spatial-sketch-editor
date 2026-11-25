@@ -221,7 +221,9 @@ export function createStageClip(): StageClip {
 			if (depth === 0) {
 				savedPlanes = planes.map((plane) => plane.clone());
 				savedMask = snapshotSliceClipUniforms(sliceUniforms);
-				planes.forEach((plane) => plane.copy(keepAll()));
+				planes.forEach((plane) => {
+					plane.copy(keepAll());
+				});
 				sliceUniforms.mode.value = 0;
 				// X2's cutaway is a viewing state too: a snapshot is the world as built.
 				sliceUniforms.cutawayTopY.value = NEVER_CUT_TOP_Y;

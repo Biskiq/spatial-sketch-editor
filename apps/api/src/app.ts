@@ -1294,7 +1294,7 @@ function isUnconditionedDocumentBody(value: unknown): value is { document: unkno
 		value !== null &&
 		!Array.isArray(value) &&
 		Object.keys(value).length === 1 &&
-		Object.prototype.hasOwnProperty.call(value, 'document')
+		Object.hasOwn(value, 'document')
 	);
 }
 

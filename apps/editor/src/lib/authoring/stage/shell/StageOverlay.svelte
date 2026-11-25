@@ -169,7 +169,7 @@
 	}
 
 	/** One projected polygon as an SVG path, in the overlay's CSS space. */
-	function polygonPath(points: readonly (readonly [number, number])[]): string {
+	function _polygonPath(points: readonly (readonly [number, number])[]): string {
 		return `${points.map((point, index) => `${index === 0 ? 'M' : 'L'}${point[0]},${point[1]}`).join(' ')} Z`;
 	}
 

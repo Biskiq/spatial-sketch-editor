@@ -8,7 +8,7 @@
  * `SCENE_LIGHT_KINDS`, `HEX_COLOR_PATTERN`) live here because the entity/light
  * parsers read them.
  */
-import type { MaterialId, Vec3 } from '../scene';
+import type { Vec3 } from '../scene';
 import type { SceneDocumentIssue } from './index';
 
 // Internal record type shared by every parser. Lives here (the leaf module)

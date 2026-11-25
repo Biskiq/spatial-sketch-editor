@@ -44,7 +44,6 @@ import type {
 } from '$lib/types/materials';
 import type { RuntimeScene, SceneTextureAsset } from '$lib/content/scene';
 import type {
-	FinishMapRole,
 	FinishSamplingPlanEntry as DescriptorPlanEntry,
 	StandardFinishPlan,
 	StandardMaterialDescriptor

@@ -72,7 +72,7 @@ type WallPolyline = {
  * unresolved or unsampleable Wall yields `null` and contributes no cue.
  */
 function wallPolyline(
-	document: LayoutDocumentWallFirst,
+	_document: LayoutDocumentWallFirst,
 	wall: LayoutWall,
 	componentKey: string,
 	junctionPointById: ReadonlyMap<string, LayoutVec2>

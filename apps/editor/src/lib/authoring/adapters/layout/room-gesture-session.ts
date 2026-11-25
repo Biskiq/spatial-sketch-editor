@@ -46,7 +46,6 @@ export function createRoomGestureSession({
 	document,
 	levelId,
 	contentRevision,
-	publishRefusal,
 	settleRefusal
 }: LayoutManipulationPorts) {
 	type RoomMoveGesture = {

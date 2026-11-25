@@ -14,12 +14,10 @@ import {
 	catalogueRecipe,
 	readRecipe,
 	recipeHash,
-	type Recipe
 } from '@portfolio/project-model/materials';
 import { finishTextureResource } from '@portfolio/project-model/scene-planning';
 import {
 	RESOURCE_UNIT_FORMAT_VERSION,
-	SCENE_UNIT_FORMAT_VERSION,
 	createEmptyCameraPayload,
 	createEmptyExperiencePayload,
 	createEmptyUnitSceneDocument,

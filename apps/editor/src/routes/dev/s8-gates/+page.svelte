@@ -25,15 +25,11 @@
 	import { onDestroy } from 'svelte';
 	import { T } from '@threlte/core';
 	import {
-		Color,
 		DataTexture,
-		HalfFloatType,
 		LinearFilter,
 		LinearMipmapLinearFilter,
-		LinearSRGBColorSpace,
 		NoColorSpace,
 		PerspectiveCamera,
-		RenderTarget,
 		RGBAFormat,
 		Scene,
 		UnsignedByteType,

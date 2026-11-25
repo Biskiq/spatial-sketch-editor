@@ -32,7 +32,6 @@
 		MeshBasicMaterial,
 		NotEqualStencilFunc,
 		ReplaceStencilOp,
-		Vector2,
 		Vector3,
 		type Material,
 		type Object3D,

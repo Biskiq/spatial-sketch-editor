@@ -544,7 +544,7 @@ function loadSource(
 function loadViaTextureLoader(
   key: string,
   url: string,
-  slot: MaterialTextureSlot,
+  _slot: MaterialTextureSlot,
   materialId: string,
   entry: SourceEntry,
   policy: TextureDecodePolicy,

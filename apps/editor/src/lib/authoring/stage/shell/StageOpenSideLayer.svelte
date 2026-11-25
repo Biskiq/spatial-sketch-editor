@@ -9,7 +9,7 @@
 	 * overlay layer, never a pick root and never part of a snapshot.
 	 */
 	import { T, useThrelte } from '@threlte/core';
-	import { Group, Vector2, type Object3D } from 'three';
+	import { Group, type Object3D } from 'three';
 	import { Line2 } from 'three/addons/lines/webgpu/Line2.js';
 	import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 	import { Line2NodeMaterial } from 'three/webgpu';

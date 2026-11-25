@@ -24,7 +24,6 @@
 		MeshBasicMaterial,
 		Shape,
 		ShapeGeometry,
-		Vector2,
 		type Material,
 		type Object3D,
 		type Plane

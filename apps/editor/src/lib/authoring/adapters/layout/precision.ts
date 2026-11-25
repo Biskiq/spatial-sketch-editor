@@ -219,7 +219,7 @@ export function isLayoutOpeningField(value: unknown): value is LayoutOpeningFiel
 
 /** An exact F.1 reference to one Layout subject in the current level. */
 export function layoutReference(
-	snapshot: PlannerRequest<ProjectEnvelope>['snapshot'],
+	_snapshot: PlannerRequest<ProjectEnvelope>['snapshot'],
 	subject: LayoutSubject | LayoutRoomSubject,
 	contentRevision: string,
 	/** The working level, supplied by the caller as an explicit input. */

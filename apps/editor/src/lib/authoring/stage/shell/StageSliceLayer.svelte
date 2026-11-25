@@ -32,7 +32,6 @@
 		PlaneGeometry,
 		Shape,
 		ShapeGeometry,
-		Vector2,
 		Vector3,
 		MeshBasicMaterial,
 		LineDashedMaterial,
@@ -66,7 +65,6 @@
 		revision = 0,
 		ghostSelection = null,
 		selectedIdentity = null,
-		width = 0,
 		height = 0,
 		draft = null,
 		onIssues
@@ -355,7 +353,9 @@
 				dispose: () => {
 					const mesh = object as Mesh;
 					mesh.geometry.dispose();
-					if (Array.isArray(mesh.material)) mesh.material.forEach((material) => material.dispose());
+					if (Array.isArray(mesh.material)) mesh.material.forEach((material) => {
+						material.dispose();
+					});
 					else mesh.material.dispose();
 				}
 			}))

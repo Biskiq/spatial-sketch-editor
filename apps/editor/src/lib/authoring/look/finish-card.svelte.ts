@@ -527,7 +527,7 @@ export function createFinishCard(host: FinishCardHost) {
 		const pattern = patternOf(found);
 		const mapping = mappingOf(source, found.recipes);
 		const effectiveMetal = source.overrides?.metalness ?? recipeOfSource(source, found.recipes)?.metalness ?? 0;
-		const users = found.users.length;
+		const _users = found.users.length;
 		const resetCount = curated ? 0 : editsToward(source.overrides, undefined).length;
 		return {
 			kind: 'finish',

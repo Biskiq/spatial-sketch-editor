@@ -641,8 +641,8 @@ export type CompiledLayoutGeometryResult = {
  * parsing, every tuple element is length-prefixed so values cannot collide.
  */
 export function geometryId(parts: readonly string[]): string {
-	let length = 0;
-	for (const part of parts) length += part.length;
+	let _length = 0;
+	for (const part of parts) _length += part.length;
 	let output = `${parts.length}:`;
 	for (const part of parts) output += `${part.length}:${part}`;
 	return output;

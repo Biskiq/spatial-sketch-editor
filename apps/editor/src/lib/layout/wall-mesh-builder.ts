@@ -1882,7 +1882,7 @@ function quadNormal(a: V3, b: V3, c: V3): V3 {
 function emitMesh(
 	roomId: string,
 	wallsFaces: WallFaces[],
-	classify: (ref: WallMeshSectionRef) => WallMeshSurfaceKey,
+	_classify: (ref: WallMeshSectionRef) => WallMeshSurfaceKey,
 	weldTolerance: number,
 	attributionEnabled = false
 ): IndexedWallMesh {

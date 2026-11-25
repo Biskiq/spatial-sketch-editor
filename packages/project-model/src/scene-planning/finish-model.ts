@@ -30,7 +30,6 @@ import type {
 	FinishOverrides,
 	Mapping,
 	Metric,
-	OverrideMaps,
 	Recipe
 } from '../materials/types';
 import { resolveSceneSurfaceFinish } from '../scene-surface-reference';

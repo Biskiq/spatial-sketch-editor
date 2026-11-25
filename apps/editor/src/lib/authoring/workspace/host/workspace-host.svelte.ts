@@ -9,7 +9,6 @@
 import { onDestroy } from 'svelte';
 import { createFeatureLifecycle } from '$lib/authoring/workspace/lifecycle-runner';
 import { late, type FeatureLifecycle } from '$lib/authoring/workspace/protocol';
-import { page } from '$app/state';
 import { goto } from '$app/navigation';
 import { env } from '$env/dynamic/public';
 import { aimThroughWindows } from '$lib/authoring/look/aim-through-windows';
@@ -348,7 +347,7 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		refresh
 	});
 	const {
-		submit, setReading, patchDrafting, requestScaleDetent, fit,
+		submit, setReading, requestScaleDetent, fit,
 		zoomIn, zoomOut, bringIntoView, zoom, pan, orbit
 	} = viewing;
 

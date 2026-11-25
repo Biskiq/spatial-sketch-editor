@@ -33,8 +33,6 @@
 		plan,
 		compiled,
 		footprints,
-		width,
-		height,
 		reveal,
 		isFootprintMounted = () => true,
 		resolvedSlice = null,

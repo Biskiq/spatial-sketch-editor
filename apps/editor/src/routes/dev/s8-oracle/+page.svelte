@@ -23,7 +23,6 @@
 	import { sceneFormSupport } from '$lib/render/scene-form-support';
 	import { sceneModelSupport } from '$lib/render/models/scene-model-support';
 	import type { RuntimeScene, SceneEntity, SceneMaterialInstance, SceneTextureAsset } from '$lib/content/scene';
-	import type { Object3D } from 'three';
 	import OracleMount from './OracleMount.svelte';
 
 	const SWATCH: SceneTextureAsset = {

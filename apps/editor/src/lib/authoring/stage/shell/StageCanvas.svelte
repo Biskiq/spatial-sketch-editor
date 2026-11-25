@@ -79,7 +79,7 @@ import StageMatGround from './StageMatGround.svelte';
 		type StageLightPreview
 	} from '../stage-light-preview.svelte';
 
-	function ignoreRaycast(): void {}
+	function _ignoreRaycast(): void {}
 
 
 	let {

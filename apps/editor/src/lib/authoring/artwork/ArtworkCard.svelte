@@ -46,7 +46,7 @@
 	const duplicateAction = $derived(actions.find((action) => action.id === 'artwork-duplicate') ?? null);
 	const deleteAction = $derived(actions.find((action) => action.id === 'artwork-delete') ?? null);
 	const datum = $derived(services.stage.snapshot().domain.datumMeters);
-	const framed = $derived.by(() => {
+	const _framed = $derived.by(() => {
 		if (entity === null) return null;
 		return artworkFrameLayout(
 			entity.widthMeters,

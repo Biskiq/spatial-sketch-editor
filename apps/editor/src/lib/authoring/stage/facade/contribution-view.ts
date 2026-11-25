@@ -594,7 +594,7 @@ export function createContributionView(input: ContributionViewPort) {
 				// A contributor that throws contributes no tick; the rest still count.
 			}
 		}
-		const merged = mergeStageHeightTicks(declared);
+		const _merged = mergeStageHeightTicks(declared);
 		return mergeStageHeightTicks(declared);
 	}
 

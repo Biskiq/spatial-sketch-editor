@@ -35,7 +35,6 @@
 	import {
 		admittedCatalogueModelAssets,
 		catalogueModelDefinition,
-		NATIVE_PLACEMENT_PRIMITIVES,
 		type NativePlacementPrimitive
 	} from '../../scene/object-definition-policy';
 	import {

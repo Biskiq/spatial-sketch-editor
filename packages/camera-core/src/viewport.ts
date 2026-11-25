@@ -550,7 +550,7 @@ function poseDirection(pose: InspectionPose): Vec3 {
 }
 
 /** The half-FOV an authored pose evaluates at; the reference FOV when it authored none. */
-function poseHalfFovRadians(pose: InspectionPose): number {
+function _poseHalfFovRadians(pose: InspectionPose): number {
 	return pose.fovYDegrees === undefined
 		? VIEWPORT_REFERENCE_FOV_Y_RADIANS / 2
 		: (pose.fovYDegrees * Math.PI) / 360;

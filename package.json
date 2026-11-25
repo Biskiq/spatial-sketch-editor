@@ -45,9 +45,14 @@
     "gate:guards": "node tools/harness/guards.mjs",
     "perf": "npm run perf -w @portfolio/editor",
     "perf:spot": "npm run perf:spot -w @portfolio/editor",
-    "perf:bundle": "npm run perf:bundle -w @portfolio/editor"
+    "perf:bundle": "npm run perf:bundle -w @portfolio/editor",
+    "lint": "biome lint .",
+    "lint:ci": "biome ci ."
   },
   "engines": {
     "node": ">=20"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.6.9"
   }
 }

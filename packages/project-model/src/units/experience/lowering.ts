@@ -34,7 +34,6 @@ import type {
 	ProgramAction,
 	ProgramCapability,
 	ProgramChannelPolicy,
-	ProgramContinuation,
 	ProgramLocalTime,
 	ProgramInvocation,
 	ProgramLifecycleAction,
