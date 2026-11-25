@@ -2,7 +2,7 @@
   "generatedFrom": "LOC-0 baseline; shrink-only from here",
   "counts": {
     "filesOver600": 115,
-    "filesOver1000": 26,
+    "filesOver1000": 25,
     "filesOver1500": 8,
     "functionsOver200": 73,
     "exportStars": 0,
@@ -128,11 +128,6 @@
     {
       "path": "apps/editor/src/lib/authoring/adapters/scene/SceneTransformInstrument.svelte",
       "lines": 1046,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
-      "path": "packages/layout-core/src/room/round-ops.ts",
-      "lines": 1033,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -554,6 +549,11 @@
       "path": "apps/api/src/asset-persistence.ts",
       "lines": 617,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+    },
+    {
+      "path": "packages/layout-core/src/room/round-ops/release.ts",
+      "lines": 616,
+      "reason": "One release planner: split inference, seam reconciliation and refusal ordering share one candidate graph."
     },
     {
       "path": "apps/editor/src/lib/authoring/experience/ExperiencePaths.svelte",
