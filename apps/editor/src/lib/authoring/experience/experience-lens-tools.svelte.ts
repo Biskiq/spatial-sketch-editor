@@ -120,7 +120,7 @@ export function createExperienceLensTools(ports: ExperienceLensToolsPorts) {
 	}
 
 	function togglePlaceView(): void {
-		if (ports.host.lens() !== 'experience' || ports.viewEditActive() !== null) return;
+		if (ports.host.lens() !== 'experience' || ports.viewEditActive()) return;
 		if (ports.host.tool() === 'place') {
 			ports.host.setTool('select');
 			placementAim = null;
@@ -196,7 +196,7 @@ export function createExperienceLensTools(ports: ExperienceLensToolsPorts) {
 	}
 
 	function lookThroughView(viewId: string, presentationId?: string | null): void {
-		if (ports.viewEditActive() !== null) return;
+		if (ports.viewEditActive()) return;
 		const stage = ports.host.stage();
 		const controller = ports.host.activeController();
 		if (stage === null || controller === null) return;
