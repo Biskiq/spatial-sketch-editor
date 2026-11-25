@@ -156,11 +156,6 @@
       "reason": "The shell's presentation state: disclosures, browser preferences and responsive facts share one mounted shell."
     },
     {
-      "path": "apps/editor/src/lib/authoring/experience/ExperienceMarks.svelte",
-      "lines": 829,
-      "reason": "The View-mark overlay: projected marks, ghosts and advanced handles share one evaluation and one selection."
-    },
-    {
       "path": "apps/editor/src/lib/authoring/layout/plan-numeric-entry.ts",
       "lines": 829,
       "reason": "The numeric-entry lifecycle: every gesture's type-to-enter shares one editor, draft and commit protocol."
@@ -214,6 +209,11 @@
       "path": "packages/project-model/src/channels/negotiate.ts",
       "lines": 765,
       "reason": "One channel negotiation: scope resolution, staleness and contribution merge all read the same property-scope comparison."
+    },
+    {
+      "path": "apps/editor/src/lib/authoring/experience/ExperienceMarks.svelte",
+      "lines": 763,
+      "reason": "The View-mark overlay: projected marks, ghosts and advanced handles share one evaluation and one selection."
     },
     {
       "path": "packages/camera-core/src/guide-time-map.ts",
