@@ -1,16 +1,17 @@
 # Locality and lean verification: audit and plan
 
-**Status:** plan for owner review; nothing here changes code, tests or CI. **Base:** `main` at
+**Status:** owner-approved 2026-11-24 (D1–D4 and Biome, section 2); nothing here changes code,
+tests or CI. **Base:** `main` at
 `6b62f7241` (X9, PR #413). **Evidence:** this tree, Merge gate run `45529863261` (X9's last full
 run) and a Biome 2.6.9 trial on a copy of the tree (section 7). Every figure is measured or
 counted; Appendix A gives the method. **Tier:** 2 for the plan. Each packet carries its own tier.
 
 This is multi-PR work under the [workflow](../../workflow.md). Section 9 gives the order:
 
-1. This pull request merges once the owner approves it.
-2. Packets are claimed as draft pull requests named by packet id and merge one by one.
-3. The closeout pull request promotes the rules of sections 5 and 7 into the routed contracts and
-   deletes this directory.
+1. This pull request merges the approved plan.
+2. Five wave pull requests carry the packets, one commit per packet.
+3. The closeout commit, last in the fifth, promotes the rules of sections 5 and 7 into the routed
+   contracts and deletes this directory.
 
 ## 1. Summary
 
@@ -70,14 +71,14 @@ fixes for the defects in section 8.
 - the X9 composition contract;
 - the `perf:spot` and bundle reports.
 
-**Material owner decisions:**
+**Owner decisions, approved 2026-11-24:**
 
-| # | Decision | Recommendation |
+| # | Decision | Ruling |
 | --- | --- | --- |
 | D1 | The capability evidence harness: maturity and health computation, provenance artifacts, check guards and issue guards | Retire it. `npm run status` keeps focus, holds, flags, claims and the latest `main` gate result. `capabilities.json` keeps ids, anchors and surfaces as the journey inventory. The required contexts become `merge gate` alone |
-| D2 | Merge-queue activation (owner action, with the prepared ruleset) | Activate it after VER-9 merges. Pull requests switch to the lean set only once the queue's own runs are confirmed (VER-9b) |
-| D3 | Adopting the squashed migration baseline on existing databases | Approve the non-destructive adoption in section 7. Any reset of a non-disposable database needs separate authorization |
-| D4 | Check removal, which is Tier 2 | Approve section 7's deletion rules once, so a deletion that cites them merges after normal review |
+| D2 | Merge-queue activation (owner action, with the prepared ruleset) | The owner activates it after PR 1 merges. Pull requests stay on Full until VER-9b, in PR 5, confirms that the queue runs cleanly |
+| D3 | Adopting the squashed migration baseline on existing databases | Adopt it non-destructively after a read-only schema comparison (section 7). No destructive write to a non-disposable database without the owner's explicit sign-off |
+| D4 | Check removal, which is Tier 2 | Section 7's deletion rules are approved once. A deletion that cites them, backed by VER-0 canaries and successor proof, merges after normal review |
 
 **Minor decisions, resolved here:**
 
@@ -88,7 +89,8 @@ fixes for the defects in section 8.
   while tests of product WebGPU code stay.
 - The budget ratchet stays (section 5).
 - The weekly scheduled Full run ends once the queue is active; manual dispatch remains.
-- Biome is adopted on the trial evidence (section 7).
+- Biome alone is adopted on the trial evidence (section 7); the owner confirmed it. ESLint is added
+  only if a second rune-typed defect of the same class appears.
 
 ## 3. Baseline
 
@@ -367,7 +369,7 @@ Decision: adopt Biome for linting and formatting, with `tsc` and `svelte-check` 
 
 - **Rules.** The recommended correctness and suspicious rules apply. The style group, Svelte
   accessibility (owned by `svelte-check`), CSS specificity and the `types` domain are off.
-- **Findings.** The adoption pull request fixes true positives and turns noisy rules off; it does
+- **Findings.** The LNT-1 commit fixes true positives and turns noisy rules off; it does
   not add suppression comments.
 - **Formatting.** The formatter lands last, as one commit recorded in `.git-blame-ignore-revs`.
 - **No ESLint.** A type-aware ESLint would close the rune gap, but one instance is not a material
@@ -378,7 +380,7 @@ Decision: adopt Biome for linting and formatting, with `tsc` and `svelte-check` 
 A change bumps the number, and readers refuse every other version with
 `unsupported_format_version`. There is no migration, converter, dual reader, optional-on-read field
 for older documents, compatibility fixture or historical differential. Fixtures are regenerated in
-the same pull request.
+the same commit.
 
 The database is handled in two distinct ways:
 
@@ -398,58 +400,75 @@ failing test and gets its own focused fix, never a silent change inside a move.
 
 | Location | Defect | Effect |
 | --- | --- | --- |
-| `finish-authoring.svelte.ts:1300` | `dropper: dropper !== null` on a boolean `$state` is always true | the Paint tray's dropper button always reports `aria-pressed` |
-| `layout-wall-first-precision.ts:850–859`, `921–930`, `2209–2212` | `planExactWallLength`, `planExactWallAngle` and `proposeWallKnotRemoval` each call `guardRoundRoomMemberGeometryEdit` twice with identical arguments | redundant work; the second call may have been meant to guard a different subject, so check the intent before deduplicating |
+| `finish-authoring.svelte.ts:1300` ([#415](https://github.com/Biskiq/spatial-sketch-editor/issues/415)) | `dropper: dropper !== null` on a boolean `$state` is always true | the Paint tray's dropper button always reports `aria-pressed` |
+| `layout-wall-first-precision.ts:850–859`, `921–930`, `2209–2212` ([#416](https://github.com/Biskiq/spatial-sketch-editor/issues/416)) | `planExactWallLength`, `planExactWallAngle` and `proposeWallKnotRemoval` each call `guardRoundRoomMemberGeometryEdit` twice with identical arguments | redundant work; the second call may have been meant to guard a different subject, so check the intent before deduplicating |
 | `apps/editor/src/routes/dev` | S8 gate and material tools are served by production builds | development surface on the product deployment (LOC-11 removes or gates it) |
 
 Implementers append further discoveries here or in issues; nothing is fixed in passing.
 
 ## 9. Execution
 
-Each packet is one pull request unless it says "per family" or "per feature". A path is reserved by
-exactly one open packet. A packet that moves a file also does three other things for that file:
+The packets land in five wave pull requests, one clean commit per packet, in the order below. LOC-3
+and LOC-13 take one commit per family or file, and LOC-8 and LOC-9 one per feature. A packet that
+moves a file also does three other things for that file in the same commit:
 
 - strips its roadmap comments (rule 7);
 - removes its test seams;
 - relocates its tests.
 
-That keeps one owner per path.
+Within a wave, each path belongs to one packet commit, so a commit reverts on its own. Where a later
+commit builds on an earlier one (LNT-1's static step under VER-9, VER-1a on LOC-1, LOC-9 on LOC-8,
+each feature on VER-7's kit), the later one reverts first. Each wave pull request gets one
+fresh-context review. Its description lists every commit with its tier. For each deletion it also
+lists the removed files, the rule cited and the canary result. PR 1 and PR 5 carry the Tier 2
+packets that the section 2 approvals cover. Any Tier 2 change beyond those approvals waits for the
+owner.
 
-| Wave | Packets, parallel unless noted | Reserves |
+Packet commits stay on `main`. PR 1 merges with a merge commit, and VER-9 sets the prepared
+ruleset's queue `merge_method` to `MERGE`, so the queue does the same for PRs 2 to 5. A squash would
+collapse a wave into one commit and leave LNT-2's blame-ignore entry pointing at nothing. Returning
+to `SQUASH` after the closeout is the owner's call.
+
+| PR | Packet commits, in order | Touches |
 | --- | --- | --- |
-| 0 | **VER-0** canaries, journey map, baselines | new `tools/canaries` |
-| 0 | **LOC-0** metrics and budget check | new `tools/metrics`, one new arch test |
-| 0 | **LNT-1** Biome lint (Tier 2: new dependency) | `biome.json`, root `package.json` and lockfile, the static step of `merge-gate.yml` |
+| 1 | **VER-0** canaries, journey map, baselines | new `tools/canaries` |
+| 1 | **LOC-0** metrics and budget check | new `tools/metrics`, one new arch test |
+| 1 | **LNT-1** Biome lint (new dependency, approved) | `biome.json`, root `package.json` and lockfile, the static step of `merge-gate.yml` |
+| 1 | **HYG-1** `.ignore`, `.gitignore`, orphaned asset, local log and empty directory | those paths |
+| 1 | **LOC-10** work observer: spans and counts limited to what `perf:spot` and retained oracles read; `__P2311_PERF__` removed | `p2311-perf.ts` and its call sites |
+| 1 | **LOC-11** development routes, slice-era perf flows, S8 scripts, WebGPU harness tests | `src/routes/dev`, `perf/`, `scripts/`, `tests/lib/dev`, harness-only WebGPU tests, editor `package.json` scripts |
 | 1 | **VER-3** retirement and historical subtraction | the B1 files, `t1s01-format6-differential`, the duplicating S8 suites under `tests/lib/project-model` and `tests/lib/render` |
 | 1 | **VER-4** P23B and S06 consolidation | `tests/lib/layout/{p23b*,t1s06*}`, their fixtures |
 | 1 | **VER-6** source-shape conversion | the B4 files that VER-3 does not delete (source assertions only) |
 | 1 | **VER-8** documentation and perf tooling tests out of the editor lanes | `tests/docs`, `tests/helpers/docs-references.ts`, `tests/lib/perf`, `tools/harness/check-docs.mjs` |
-| 1 | **VER-9** CI gate, Full on pull requests, harness under D1 | `.github/`, `tools/harness/**` except `check-docs`, `tests/harness`, `capabilities.json` |
-| 1 | **VER-10** API runner and migration baseline (D3 for live databases) | `apps/api/tests`, `apps/api/migrations`, the API `test` script |
-| 1 | **LOC-10** work observer: spans and counts limited to what `perf:spot` and retained oracles read; `__P2311_PERF__` removed | `p2311-perf.ts` and its call sites |
-| 1 | **LOC-11** development routes, slice-era perf flows, S8 scripts, WebGPU harness tests | `src/routes/dev`, `perf/`, `scripts/`, `tests/lib/dev`, harness-only WebGPU tests, editor `package.json` scripts |
-| 1 | **HYG-1** `.ignore`, `.gitignore`, orphaned asset, local log and empty directory | those paths |
-| 2 | **LOC-1** family entry points and import codemod (alone) | every importer |
-| 2b | **VER-1a** lanes by filename, root Vitest projects, package configs; deletes `test-lanes.ts` and its meta-test (after LOC-1) | lane configs, arch and heavy file renames |
+| 1 | **VER-9** CI gate, Full on pull requests, harness retired (D1), queue `merge_method` | `.github/`, `tools/harness/**` except `check-docs`, `tests/harness`, `capabilities.json`, `docs/operations/ci-merge-automation.md` |
+| 1 | **VER-10** API runner and migration baseline (D3 for existing databases) | `apps/api/tests`, `apps/api/migrations`, the API `test` script |
+| — | *PR 1 merges. The owner activates the merge queue (D2) before PR 2 merges.* | |
+| 2 | **LOC-1** family entry points and import codemod | every importer |
+| 2 | **VER-1a** lanes by filename, root Vitest projects, package configs; deletes `test-lanes.ts` and its meta-test | lane configs, arch and heavy file renames |
 | 3 | **LOC-2** Wall precision and topology | `layout-wall-first-precision.ts` and its tests |
-| 3 | **LOC-3** `layout-core` families, per family: compile, world index, wall chain, Room reconciliation, the rest | each source file and its tests |
+| 3 | **LOC-3** `layout-core` families, one commit each: compile, world index, wall chain, Room reconciliation, the rest | each source file and its tests |
 | 3 | **LOC-3c** `camera-core` (moves only; hard rule 1) | `camera-motion.ts`, `viewport.ts` |
 | 3 | **LOC-4** Finish planners | `scene-planning/finish*`, `colour-coat.ts` and their tests |
 | 3 | **LOC-5** unit planning by authority | `units/planning.ts` and its tests |
 | 3 | **LOC-6** unit validation by domain | `units/validate.ts` and its tests |
 | 3 | **LOC-7** Scene operations | `scene-planning/operations.ts`, `intent-payload.ts` and their tests |
-| 3 | **LOC-13** API, per file: `app.ts`, `form-library.ts`, `model-persistence.ts`, `image-repair.ts` | those files |
-| 4 | **VER-7** test kit, new files only (first in the wave) | new `tests/kit` |
-| 4 | **LOC-8** editor adapter hubs, then **LOC-9** factories and large components, per feature. Each feature packet also reorganizes its own suites into contract suites (VER-5) and adopts the kit | one feature folder and its tests |
-| 5 | **VER-1c** remaining package-test moves; **VER-2** arch source index; **VER-11** versioning hardening | remaining tests; arch files; codecs and their suites |
-| 5 | **VER-9b** lean pull-request profile (after D2 is confirmed) | `merge-gate.yml` |
-| 5 | **LNT-2** Biome formatter, one reformat commit (last code change) | every source file |
-| 5 | **Closeout:** bootstrap documents rewritten, rules promoted, remaining comment sweep, plan deleted | documents |
+| 3 | **LOC-13** API, one commit per file: `app.ts`, `form-library.ts`, `model-persistence.ts`, `image-repair.ts` | those files and their tests |
+| 4 | **VER-7** test kit, new files only | new `tests/kit` |
+| 4 | **LOC-8** editor adapter hubs, then **LOC-9** factories and large components, one commit per feature. Each feature commit also reorganizes its own suites into contract suites (VER-5) and adopts the kit | one feature folder and its tests |
+| 5 | **VER-1c** remaining package-test moves | remaining tests |
+| 5 | **VER-2** arch source index | arch files |
+| 5 | **VER-11** versioning hardening | codecs and their suites |
+| 5 | **VER-9b** lean pull-request profile, once the queue's runs on PRs 2 to 4 are confirmed clean (D2) | `merge-gate.yml` |
+| 5 | **LNT-2** Biome formatter: one isolated reformat commit, the last code change | every source file |
+| 5 | **Closeout:** LNT-2's SHA in `.git-blame-ignore-revs`, bootstrap documents rewritten, rules promoted, remaining comment sweep, plan deleted | `.git-blame-ignore-revs`, documents |
 
-**Rollback.** A pull request reverts cleanly until a later packet builds on its files. After that,
-the fix goes forward. LOC-1 is the main point past which revert is no longer cheap, so it lands
-alone and quickly. A deletion pull request lists each removed file, the rule it cites and its canary
-result.
+PR 5 is not rebased after LNT-2, so the recorded SHA stays the one that reaches `main`.
+
+**Rollback.** In an open wave pull request, a bad packet is fixed or reverted by its own commit.
+After a merge, a wave reverts as a whole only until the next wave builds on it, and after that the
+fix goes forward. LOC-1 in PR 2 is the main point past which revert is no longer cheap, which is why
+PR 2 holds only LOC-1 and VER-1a and should merge quickly.
 
 ### Packet notes
 
@@ -540,6 +559,7 @@ result.
   contract files, with an old-to-new assertion map as in X9. Target: arch ≤ 20 s.
 - **VER-9.**
   - The gate fails closed (section 7). Pull requests stay Full.
+  - The prepared ruleset's queue `merge_method` becomes `MERGE` (section 9).
   - Under D1, delete the aggregator, report, discovery, producer, guards, event context, issue
     rules and response, linked fixes, the ledger module, the maturity half of `status` and the
     issue-guards workflow.
@@ -593,13 +613,13 @@ figures are ambitions.
 
 **Risks.**
 
-- **Codemod conflicts.** LOC-1 lands alone.
+- **Codemod conflicts.** LOC-1 shares PR 2 only with VER-1a, which builds on it.
 - **Rune semantics.** Moving a closure must not turn a live reference into a copy; the mounted
   tests catch this.
 - **Over-fragmentation.** Rule 3 and the allowlist reasons check it in review.
 - **Lost proof.** Rules 1–4, independent oracles and canaries protect against it.
 - **Reformat churn.** LNT-2 lands last, as one commit.
-- **Delayed queue activation.** Pull requests stay Full until the queue is active.
+- **Delayed queue activation.** Pull requests stay Full until VER-9b confirms clean queue runs.
 
 ## Appendix A. Measurement method
 
