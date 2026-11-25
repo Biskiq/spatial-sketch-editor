@@ -20,7 +20,10 @@ function measure(source: string) {
 		state: source.match(/\$state\b/g)?.length ?? 0,
 		derived: source.match(/\$derived\b/g)?.length ?? 0,
 		effects: source.match(/\$effect\b/g)?.length ?? 0,
-		functions: source.match(/^\s*(?:export\s+)?function\s/gm)?.length ?? 0
+		functions: source.match(/^\s*(?:export\s+)?function\s/gm)?.length ?? 0,
+		// Callback/projection arrows: the host and its wiring may adapt owners,
+		// but every new inline projection is a reviewed growth signal.
+		arrows: source.match(/=>/g)?.length ?? 0
 	};
 }
 
@@ -34,5 +37,6 @@ describe('integration hotspot ratchet', () => {
 	it('detects growth in a fresh module (negative control)', () => {
 		expect(measure('let n = $state(0);\n')).toMatchObject({ state: 1, lines: 2 });
 		expect(measure('export function make() {}\n')).toMatchObject({ functions: 1 });
+		expect(measure('const read = () => shell.value;\n')).toMatchObject({ arrows: 1 });
 	});
 });

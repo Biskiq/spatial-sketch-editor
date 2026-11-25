@@ -1,22 +1,15 @@
 /**
- * X1/X2 / schedule guarantee — route composes; controllers own effects.
+ * Spatial route composition — the route constructs its owners and shell.
  *
- * X1 removes the route's project-epoch and approved-asset ownership; X2 removes
- * its input, keyboard, Unfold-sheet and Artwork gesture ownership. This guard
- * proves the responsibilities are actually gone rather than shadowed by a
- * second implementation:
+ * The retired X1–X3 route blacklists now live in the manifest-driven
+ * `integration-ownership.test.ts` (Appendix B replay + controller fold), so this
+ * file keeps the positive construction and import checks only:
  *
- * - the route constructs the epoch, asset and X2 controllers;
+ * - the route constructs the epoch, asset, input, keyboard, Artwork and
+ *   Experience controllers;
  * - one press tracker is created and injected into the three input owners;
- * - no acceptance host, adapter mount loop, model lease map, route Undo/Redo
- *   implementation or replacement call remains in the route;
- * - no pointer/keyboard/Unfold/Artwork handler map or planner call remains in
- *   the route, and the camera/artwork/Unfold owners are no longer imported;
  * - the route has no direct host-acceptance import and no executable
  *   stage-adapter-host import; those belong to the epoch controller.
- *
- * The negative control applies the same predicate to a synthetic source, so a
- * pattern that can no longer detect the old defect fails here.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -61,66 +54,6 @@ const EXPERIENCE_LENS = path.join(EDITOR_LIB, 'authoring/experience/experience-l
 const STAGE_FACADE = path.join(EDITOR_LIB, 'authoring/stage/stage-facade.ts');
 const PROJECT_SESSION = path.join(EDITOR_LIB, 'authoring/project-session/project-session.svelte.ts');
 
-const OWNERSHIP_SITES = [
-	{ id: 'acceptance-host', pattern: /\bcreateStageAcceptanceHost\s*\(/ },
-	{ id: 'adapter-mount', pattern: /\bmountStageAdapter\s*\(/ },
-	{ id: 'adapter-services', pattern: /\bcreateStageAdapterServices\s*\(/ },
-	{ id: 'replacement', pattern: /\bsession\.replace\s*\(/ },
-	{ id: 'model-resolution', pattern: /\b(async function resolveModels|modelPinSignature|modelResolution|approvedModelPins|resolveApprovedModels)\b/ },
-	{ id: 'route-history', pattern: /\basync function (undo|redo)\s*\(/ },
-	{ id: 'artwork-lease', pattern: /\bstageArtworkScope\b/ },
-	{ id: 'subscriptions', pattern: /\bunsubscribe(Contributions|Acceptance)\b/ },
-	{ id: 'adapter-loop', pattern: /\bfor \(const factory of stageAdapterFactories\)/ }
-] as const;
-
-function ownershipSites(source: string): string[] {
-	return OWNERSHIP_SITES.filter(({ pattern }) => pattern.test(source)).map(({ id }) => id);
-}
-
-/**
- * X2's old route-owned implementations. These are names and calls, not generic
- * words: a template handler that delegates to `stageInput` must still pass.
- */
-const X2_OWNERSHIP_SITES = [
-	{ id: 'route-pointer-handler', pattern: /\bfunction onPointer(Down|Move|Up|Cancel)\s*\(/ },
-	{ id: 'route-lost-capture', pattern: /\bfunction (onLostPointerCapture|lostPointerCapture)\s*\(/ },
-	{ id: 'route-wheel-handler', pattern: /\bfunction (onWheel|wheel)\s*\(/ },
-	{ id: 'route-keyboard-map', pattern: /\bstage(KeyAction|KeyFromTextEntry|KeyFromControl)\s*\(/ },
-	{ id: 'route-artwork-gesture', pattern: /\b(startArtworkResize|readArtworkResize|finishArtworkResize|cancelArtworkResize|artworkResize)\b/ },
-	{ id: 'route-artwork-planner', pattern: /\b(resizeArtworkAtRay|artworkPlanePoint|artworkPlacement)\s*\(/ },
-	{ id: 'route-unfold-drag', pattern: /\b(sheetPinDrag|sheetEdgeDrag|sheetOpeningDrag)\b/ },
-	{ id: 'route-unfold-planner', pattern: /\b(pickWallUnfold|mapSheetOpeningDrag|sheetOpeningDragWidth|wallUnfoldTopPoint)\s*\(/ }
-] as const;
-
-function x2OwnershipSites(source: string): string[] {
-	return X2_OWNERSHIP_SITES.filter(({ pattern }) => pattern.test(source)).map(({ id }) => id);
-}
-
-/**
- * X3's old route-owned presentation. These are the state declarations, DOM
- * regions and Experience wiring that moved to the approved controllers and
- * shell components; naming their new owners is not an ownership site.
- */
-const X3_OWNERSHIP_SITES = [
-	{ id: 'route-lens-construction', pattern: /\bcreateExperienceLens\s*\(/ },
-	{ id: 'route-lens-install', pattern: /\bexperienceLens\.install\s*\(/ },
-	{ id: 'route-disclosure-state', pattern: /\blet (indexOpen|narrowShell|coarsePointer|showMarkers|showFrustums|showPaths|showLabels|showMode|paletteOpen|keysOpen|viewLine|lowerColumnHeight)\b/ },
-	{ id: 'route-task-state', pattern: /\blet (task|eraseHover|heightMeters|heightSheetOpen|notice|previewProblem)\b/ },
-	{ id: 'route-selection-projection', pattern: /\b(function|const) (cardForSelection|selectionCard|indexRowsFor|selectedEntry|sourceLocatorFor)\b/ },
-	{ id: 'route-contribution-projection', pattern: /\b(function|const) (dockEntriesFor|findEntriesFor|hostToolEntries|contributedInstrumentFor)\b/ },
-	{ id: 'route-shell-frame', pattern: /class="(stage-frame|lower-column|index-scrim)"/ },
-	{ id: 'route-index-markup', pattern: /<EditorIndex\b/ },
-	{ id: 'route-card-markup', pattern: /<EditorCard\b/ },
-	{ id: 'route-guide-markup', pattern: /<ExperienceGuide\b/ },
-	{ id: 'route-dock-markup', pattern: /<ExperienceDock\b/ },
-	{ id: 'route-drafting-markup', pattern: /<StageDraftingControl\b/ },
-	{ id: 'route-scale-markup', pattern: /<StageScaleBar\b/ },
-	{ id: 'route-height-sheet-markup', pattern: /<StageHeightSheet\b/ }
-] as const;
-
-function x3OwnershipSites(source: string): string[] {
-	return X3_OWNERSHIP_SITES.filter(({ pattern }) => pattern.test(source)).map(({ id }) => id);
-}
 
 const COMPONENT = path.join(EDITOR_LIB, 'authoring/workspace/host/WorkspaceHost.svelte');
 const WIRING = path.join(EDITOR_LIB, 'authoring/workspace/host/wiring');
@@ -168,10 +101,6 @@ describe('spatial route composition boundary (X1)', () => {
 		expect(stripComments(fs.readFileSync(CANVAS_VIEWS, 'utf8'))).toContain('Object.getOwnPropertyDescriptors(input.artwork.regions.canvas)');
 	});
 
-	it('keeps no second epoch, history or asset-lease owner in the route', () => {
-		expect(ownershipSites(code)).toEqual([]);
-	});
-
 	it('constructs the one input arbiter, keyboard leaf, Unfold and Artwork owners', () => {
 		expect(code + wiringCode).toContain('createStageInputArbiter({');
 		expect(code + wiringCode).toContain('createStageKeyboard({');
@@ -190,10 +119,6 @@ describe('spatial route composition boundary (X1)', () => {
 		expect(stripComments(fs.readFileSync(CORE_REGIONS, 'utf8'))).toContain('wheel: (event: WheelEvent) => stageInput.wheel(event)');
 		expect(code).toMatch(/createStageWindowListeners\(\{\s*keyboard: stageKeyboard,/);
 		expect(stripComments(fs.readFileSync(LISTENERS, 'utf8'))).toContain('input.keyboard.handleKey(event);');
-	});
-
-	it('keeps no second pointer, keyboard, Unfold or Artwork gesture implementation', () => {
-		expect(x2OwnershipSites(code)).toEqual([]);
 	});
 
 	it('imports the controllers directly and stops importing their owners', () => {
@@ -236,59 +161,6 @@ describe('spatial route composition boundary (X1)', () => {
 		expect(facadeCreates).toHaveLength(1);
 	});
 
-	it('detects every old ownership site in a synthetic route source', () => {
-		const synthetic = [
-			"import { createStageAcceptanceHost } from '$lib/authoring/stage/host-acceptance';",
-			'const mounted = createStageAcceptanceHost({});',
-			'mountStageAdapter(facade, mounted, factory);',
-			'createStageAdapterServices(facade, mounted);',
-			'session.replace(snapshot);',
-			'async function resolveModels(snapshot) { return modelPinSignature; }',
-			'async function undo() {}',
-			'async function redo() {}',
-			'stageArtworkScope.dispose();',
-			'unsubscribeContributions?.();',
-			'for (const factory of stageAdapterFactories) {}'
-		].join('\n');
-		expect(ownershipSites(stripComments(synthetic))).toEqual([
-			'acceptance-host',
-			'adapter-mount',
-			'adapter-services',
-			'replacement',
-			'model-resolution',
-			'route-history',
-			'artwork-lease',
-			'subscriptions',
-			'adapter-loop'
-		]);
-	});
-
-	it('detects every old X2 ownership site in a synthetic route source', () => {
-		const synthetic = [
-			'function onPointerDown(event) { artworkResize = null; }',
-			'function onPointerMove(event) {}',
-			'function onLostPointerCapture(event) {}',
-			'function onWheel(event) {}',
-			'const action = stageKeyAction(event.key, { pressing });',
-			'if (stageKeyFromTextEntry(event.target)) return;',
-			'function startArtworkResize(event) {}',
-			'const candidate = resizeArtworkAtRay(ray, artworkPlanePoint, drag);',
-			'function unfoldedPointerPress(event) { sheetOpeningDrag = null; }',
-			'if (sheetPinDrag !== null) return pickWallUnfold(wall, state, point);',
-			'mapSheetOpeningDrag(source, grab, event);'
-		].join('\n');
-		expect(x2OwnershipSites(stripComments(synthetic))).toEqual([
-			'route-pointer-handler',
-			'route-lost-capture',
-			'route-wheel-handler',
-			'route-keyboard-map',
-			'route-artwork-gesture',
-			'route-artwork-planner',
-			'route-unfold-drag',
-			'route-unfold-planner'
-		]);
-	});
-
 	it('composes the X3 presentation controllers and shell regions', () => {
 		expect(code).toContain('createStageExperienceBinding({');
 		expect(code + wiringCode).toContain('createStageShellState({');
@@ -301,45 +173,6 @@ describe('spatial route composition boundary (X1)', () => {
 		for (const region of ['StageProjectNotices', 'StageViewportRegion', 'StagePanels', 'StageToolbars']) {
 			expect(markup.match(new RegExp(`<${region}\\b`, 'g')) ?? [], region).toHaveLength(1);
 		}
-	});
-
-	it('keeps no old X3 presentation ownership in the route', () => {
-		expect(x3OwnershipSites(code)).toEqual([]);
-	});
-
-	it('detects every old X3 ownership site in a synthetic route source', () => {
-		const synthetic = [
-			'const lens = createExperienceLens({});',
-			'experienceLens.install();',
-			'let indexOpen = false;',
-			'let task = null;',
-			'const cardForSelection = options.selection;',
-			'const dockEntriesFor = () => [];',
-			'<div class="stage-frame"></div>',
-			'<EditorIndex {...index} />',
-			'<EditorCard {...card} />',
-			'<ExperienceGuide {...guide} />',
-			'<ExperienceDock {...dock} />',
-			'<StageDraftingControl {...drafting} />',
-			'<StageScaleBar {...bar} />',
-			'<StageHeightSheet {...sheet} />'
-		].join('\n');
-		expect(x3OwnershipSites(stripComments(synthetic))).toEqual([
-			'route-lens-construction',
-			'route-lens-install',
-			'route-disclosure-state',
-			'route-task-state',
-			'route-selection-projection',
-			'route-contribution-projection',
-			'route-shell-frame',
-			'route-index-markup',
-			'route-card-markup',
-			'route-guide-markup',
-			'route-dock-markup',
-			'route-drafting-markup',
-			'route-scale-markup',
-			'route-height-sheet-markup'
-		]);
 	});
 
 	it('imports the X3 controllers and regions directly, and no region reaches a route owner', () => {

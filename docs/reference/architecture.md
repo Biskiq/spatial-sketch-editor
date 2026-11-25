@@ -412,7 +412,7 @@ executable dependencies and never the facade, another owner or authoring and ren
 and Artwork gestures, the viewport, shell state, shell commands, the Experience binding and the
 selection and contribution views. The route keeps no second epoch, history, asset-lease, pointer
 or keyboard owner, and no controller imports the route (`spatial-route-boundary`,
-`authoring-controller-boundary`).
+`integration-ownership`).
 
 `StageFacade.resolvePick` delegates cross-domain arbitration to
 [`stage-pick.ts`](../../apps/editor/src/lib/authoring/stage/stage-pick.ts). Layout chooses

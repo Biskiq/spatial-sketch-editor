@@ -120,6 +120,8 @@ const shell = stage + 'shell/';
 const workspace = authoring + 'workspace/';
 const host = workspace + 'host/';
 const wiring = host + 'wiring/';
+const facade = stage + 'stage-facade.ts';
+const binding = core + 'stage-experience-binding.svelte.ts';
 
 export const SPATIAL_ROUTE = 'src/routes/project/[projectId]/spatial/+page.svelte';
 export const WORKSPACE_HOST = host + 'workspace-host.svelte.ts';
@@ -233,3 +235,224 @@ export const REGION_MOUNTS = [
 	['StageScaleBar', shell + 'StageScaleBar.svelte', shell + 'StageViewportRegion.svelte'],
 	['StageHeightSheet', shell + 'StageHeightSheet.svelte', shell + 'StageViewportRegion.svelte']
 ] as const;
+
+/**
+ * The only dependency edges that bypass the D1/D9 layer rules, each with the
+ * review reason it was admitted. An exception that no longer matches a live
+ * edge fails the guard, so a resolved edge cannot leave a permanent hole.
+ */
+export const DEPENDENCY_EXCEPTIONS = [
+	{
+		from: 'stage/route/stage-input.svelte.ts',
+		to: 'stage/route/stage-artwork-interaction.svelte.ts',
+		typeOnly: true,
+		why: 'The input arbiter reads the Artwork gesture port and never constructs it.'
+	},
+	{
+		from: 'stage/route/look-through-frame.svelte.ts',
+		to: 'stage/route/stage-experience-binding.svelte.ts',
+		typeOnly: true,
+		why: 'The frame arbitrates two inspection views and reads only the binding View methods it calls.'
+	}
+] as const;
+
+/** Imports only the route may make (D5). */
+export const ROOT_IMPORTS: Readonly<Record<string, readonly string[]>> = {
+	[SPATIAL_ROUTE]: [
+		'$app/state',
+		'$lib/authoring/workspace/host/workspace-host.svelte',
+		'$lib/authoring/workspace/host/WorkspaceHost.svelte'
+	]
+};
+
+/**
+ * The only elements a composition root may hold, with their allowed attributes.
+ * A root otherwise composes components; a new element is a reviewed change.
+ */
+export const STRUCTURAL_ELEMENTS = {
+	[SPATIAL_ROUTE]: [],
+	[WORKSPACE_COMPONENT]: [
+		{
+			element: 'div',
+			classes: ['editor-host', 'editor-body'],
+			attributes: ['data-shell', 'data-index-open', 'data-library-open', 'style']
+		}
+	],
+	[authoring + 'workspace/world/WorldLeading.svelte']: [],
+	[authoring + 'workspace/world/WorldTrailing.svelte']: []
+} as const satisfies Record<string, readonly {
+	readonly element: string;
+	readonly classes: readonly string[];
+	readonly attributes: readonly string[];
+}[]>;
+
+/** Two-way bindings a root may expose; every target is a host member chain. */
+export const ROOT_BINDINGS: Readonly<Record<string, readonly string[]>> = {
+	[WORKSPACE_COMPONENT]: ['stageElement', 'throughFrameElement']
+};
+
+/**
+ * Call ownership (CO). Each named operation is constructed or called only from
+ * the listed modules. The list is generated from today's call sites and is
+ * shrink-only: a new caller is a reviewed manifest change.
+ */
+export const CALL_OWNERS = [
+	['createStageAcceptanceHost', stage + 'host-acceptance.ts', [core + 'stage-project-epoch.svelte.ts']],
+	['mountStageAdapter', stage + 'stage-adapter-host.ts', [core + 'stage-project-epoch.svelte.ts']],
+	['createStageAdapterServices', stage + 'stage-adapter-host.ts', [core + 'stage-project-epoch.svelte.ts', stage + 'stage-adapter-host.ts']],
+	['resolveApprovedModels', authoring + 'scene/model-bytes.ts', [core + 'stage-asset-leases.svelte.ts']],
+	['stageKeyAction', stage + 'stage-input.ts', [core + 'stage-keyboard.ts']],
+	['stageKeyFromTextEntry', stage + 'stage-input.ts', [core + 'stage-keyboard.ts']],
+	['stageKeyFromControl', stage + 'stage-input.ts', [core + 'stage-keyboard.ts']],
+	['resizeArtworkAtRay', authoring + 'artwork/artwork-resize.ts', [core + 'stage-artwork-interaction.svelte.ts']],
+	['artworkPlanePoint', authoring + 'artwork/artwork-resize.ts', [core + 'stage-artwork-interaction.svelte.ts']],
+	['artworkPlacement', authoring + 'artwork/artwork-placement.ts', [core + 'stage-artwork-interaction.svelte.ts']],
+	['pickWallUnfold', 'src/lib/layout/wall-unfold-pick.ts', [core + 'stage-unfold-gestures.svelte.ts']],
+	['mapSheetOpeningDrag', 'src/lib/layout/wall-unfold-opening-drag.ts', [core + 'stage-unfold-gestures.svelte.ts']],
+	// The shell places the projected pin using the same pure geometry as the gesture owner.
+	['wallUnfoldTopPoint', 'src/lib/layout/wall-unfold.ts', [core + 'stage-unfold-gestures.svelte.ts', shell + 'StageWallDevelopment.svelte']],
+	['setResolvedSlice', stage + 'slice/slice-resolved.ts', [readings + 'slice-host.svelte.ts']],
+	['setResolvedCutaway', stage + 'cutaway/cutaway-resolved.ts', [readings + 'cutaway-host.svelte.ts']]
+] as const;
+
+/** Member-form call ownership (CO), matched on the call name and its object. */
+export const MEMBER_CALL_OWNERS = [
+	{ member: 'changeLens', callers: [facade, binding] },
+	{ member: 'session.replace', callers: [core + 'stage-project-epoch.svelte.ts'] },
+	{ member: 'leaveLens', callers: [WORKSPACE_HOST] },
+	{ member: 'epoch.undo', callers: [core + 'stage-history-command.ts'] },
+	{ member: 'epoch.redo', callers: [core + 'stage-history-command.ts'] },
+	{ member: 'stageEpoch.undo', callers: [core + 'stage-history-command.ts'] },
+	{ member: 'stageEpoch.redo', callers: [core + 'stage-history-command.ts'] },
+	{ member: 'requestViewingIntent', callers: [
+		facade, core + 'stage-viewing.ts', stage + 'camera-session.ts',
+		readings + 'unfold-host.svelte.ts', authoring + 'experience/experience-lens.svelte.ts'
+	] },
+	{ member: 'experienceLens.install', callers: [binding] },
+	{ member: 'artworkScope.dispose', callers: [
+		core + 'stage-asset-leases.svelte.ts', 'src/lib/visitor/visitor-cold-runtime.ts',
+		authoring + 'experience/experience-preview.svelte.ts'
+	] },
+	// The host adapts the project session's one acceptance port; the session invokes it.
+	{ member: 'stageEpoch.activate', callers: [WORKSPACE_HOST, authoring + 'project-session/project-session.svelte.ts', core + 'stage-project-epoch.svelte.ts'] }
+] as const;
+
+/** Reactive cross-feature presenters, distinct from the construction wiring modules. */
+export const WIRING_PRESENTERS = [
+	wiring + 'stage-canvas-views.svelte.ts',
+	wiring + 'stage-region-models.svelte.ts'
+] as const;
+
+/** Named bindings whose imports stay with one owner (CO for values, not calls). */
+export const IMPORT_OWNERS = [
+	{ name: 'stageAdapterFactories', owner: authoring + 'adapters/catalog.ts', callers: [WORKSPACE_HOST] }
+] as const;
+
+/**
+ * The controller guarantee folded in from the retired
+ * `authoring-controller-boundary` test: an extracted
+ * controller may reach only the owner modules its contract names. The walk is
+ * opaque at each approved boundary, exactly as the retired test applied it.
+ */
+export const CONTROLLER_BOUNDARIES = [
+	{
+		controller: core + 'stage-project-epoch.svelte.ts',
+		approved: [
+			stage + 'stage-adapter-host.ts', stage + 'stage-facade.ts', stage + 'host-acceptance.ts',
+			stage + 'stage-session.ts', stage + 'unit-stage-source.ts', 'src/lib/platform/perf-marks.ts'
+		]
+	},
+	{
+		controller: core + 'stage-asset-leases.svelte.ts',
+		approved: [
+			authoring + 'scene/model-bytes.ts', 'src/lib/render/artwork/artwork-scope.ts',
+			'src/lib/render/resources/project-texture-scope.ts', stage + 'stage-session.ts',
+			stage + 'unit-stage-source.ts', stage + 'accepted-read.ts'
+		]
+	},
+	{
+		controller: core + 'stage-input.svelte.ts',
+		approved: [
+			stage + 'stage-input.ts', stage + 'stage-wheel-zoom.ts', stage + 'stage-glyphs.ts',
+			stage + 'semantic-selection.ts', 'src/lib/platform/perf-marks.ts', '@portfolio/camera-core'
+		]
+	},
+	{ controller: core + 'stage-keyboard.ts', approved: [stage + 'stage-input.ts'] },
+	{
+		controller: core + 'stage-unfold-gestures.svelte.ts',
+		approved: [
+			'src/lib/layout/wall-unfold.ts', 'src/lib/layout/wall-unfold-pick.ts',
+			'src/lib/layout/wall-unfold-opening-drag.ts', authoring + 'layout/wall-unfold-store.svelte.ts',
+			authoring + 'adapters/layout/precision.ts', authoring + 'adapters/layout/opening-planners.ts',
+			stage + 'unit-stage-source.ts', '@portfolio/camera-core'
+		]
+	},
+	{
+		controller: core + 'stage-artwork-interaction.svelte.ts',
+		approved: [
+			authoring + 'artwork/artwork-resize.ts', authoring + 'artwork/artwork-hanging.ts',
+			authoring + 'artwork/artwork-command.ts', authoring + 'artwork/artwork-placement.ts',
+			authoring + 'artwork/artwork-wall-move.ts', authoring + 'artwork/artwork-authoring.svelte.ts',
+			'packages/project-model/src/index.ts', '@portfolio/camera-core'
+		]
+	}
+] as const;
+
+export const CONTROLLER_FORBIDDEN_PREFIXES = [
+	'src/lib/authoring/adapters/',
+	'src/lib/authoring/f4/'
+] as const;
+
+export const CONTROLLER_FORBIDDEN_PACKAGES = [
+	'packages/layout-core/src/index.ts',
+	'packages/project-model/src/index.ts'
+] as const;
+
+/**
+ * Shared-reading-state member classification (§4.3.1). Every member a module
+ * touches must appear here. Only the lifetime owner may call lifecycle and sync
+ * members; intent members are owner-only or declared consumers; reads are open.
+ */
+export const SINGLETON_MEMBERS = {
+	experienceFocus: {
+		lifecycle: ['reset'],
+		sync: [],
+		intent: ['openExperience', 'openGuide', 'select', 'previous', 'back'],
+		read: ['stopId', 'presentationId', 'read', 'subject', 'experienceId', 'guideId']
+	},
+	interiorLift: {
+		lifecycle: ['clear'],
+		sync: ['setScope'],
+		intent: ['lift', 'putBack'],
+		read: ['reading', 'isActive']
+	},
+	wallFace: {
+		lifecycle: ['clear', 'setCameraPort'],
+		sync: [],
+		intent: ['face', 'faceFloor', 'reframe', 'putBack'],
+		read: ['reading', 'isActive']
+	},
+	wallUnfold: {
+		lifecycle: ['setCameraExecutor'],
+		sync: ['ensureAnchor', 'forgetAnchor', 'recordSettled'],
+		intent: ['enter', 'exit', 'flip', 'setU', 'setAnchor', 'recordPick', 'setOpeningPreview', 'refold', 'cancelScrub'],
+		read: ['state', 'presentationAngle', 'previewOpening', 'pinnedOpeningId', 'anchorForWall', 'isActive', 'lastPick', 'anchorsByWall']
+	},
+	sliceReading: {
+		lifecycle: ['clear'],
+		sync: [],
+		intent: ['set', 'level', 'drawn', 'setDepth', 'flipDrawn', 'setDrawnDepth', 'setDrawnSegment', 'putBack'],
+		read: ['reading', 'isActive']
+	},
+	nearWallCutaway: {
+		lifecycle: ['reset'],
+		sync: ['setHeld', 'evaluate', 'setSelectionHosts'],
+		intent: ['setMode'],
+		read: ['mode', 'held', 'decision', 'stubTopY', 'spaceId', 'classified', 'sticky', 'effective']
+	}
+} as const satisfies Record<(typeof SINGLETONS)[number]['name'], {
+	readonly lifecycle: readonly string[];
+	readonly sync: readonly string[];
+	readonly intent: readonly string[];
+	readonly read: readonly string[];
+}>;

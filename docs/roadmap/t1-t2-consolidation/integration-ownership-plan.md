@@ -2,7 +2,10 @@
 
 **Status.** Implementation and acceptance evidence are tracked in draft PR #413. This is Tier 2
 because it changes architecture checks and restructures the shared shell. The owner approved
-the direction on 2026-11-24 with these amendments.
+the direction on 2026-11-24 with these amendments. Guard contracts, Appendix B replay and the
+legacy-controller fold are complete (`integration-ownership.test.ts`, 47 cases; arch lane 395
+tests). The M/L performance gate is still unmeasured and awaits an owner ruling, so this plan is
+retained until that ruling and is deleted before merge.
 
 - **R1:** nested URLs are deferred. X9 is component-level World/Experience decomposition. It keeps a
   future navigation seam and independent Studio ownership (§3, §8).
@@ -1053,8 +1056,8 @@ Rules for every step:
 | 11 | `experience` feature. After it, the route keeps no feature logic. |
 | 12 | **Workspaces and host.**<br>- Add `WorldWorkspace`, `ExperienceWorkspace`, `WorkspaceHost.svelte`, `createWorkspaceHost` and the wiring modules.<br>- The route becomes §4.7, and styles move.<br>- Compare re-render counts of the StageCanvas props, base versus branch. |
 | 13 | **Remove compatibility phases.**<br>- Collapse one phase at a time into its feature factory, then run the mounted suites and the step 1 suites.<br>- Keep a phase only when a named mounted case fails without it. Record that case beside the phase in `COMPAT_PHASES`.<br>- For each surviving phase, open a follow-up issue to replace the order dependency with an explicit event or derivation. That replacement is not done in X9.<br>- The pull request lists each phase and its outcome. |
-| 14 | **Guards.**<br>- Add the manifest and these guards, all enforcing: D1–D10, AU, CO, RM, CR1–CR5, EC, admission, singleton and Card policy, the hotspot ratchet, and the negative controls.<br>- Execute Appendix B: retarget or replace every listed assertion, then replay every old synthetic control against the new guards. Each must fail.<br>- Then delete the blacklist sections and `authoring-controller-boundary.test.ts`.<br>- Update `test-lanes.ts`. |
-| 15 | **Promotion.** Make the reference and `AGENTS.md` edits of §5.7. Run the admission demo (§5.4) and record it. Delete this plan. |
+| 14 | **Guards.** ✅ Manifest and guards enforce D1–D10, AU, CO, RM, CR1–CR5, EC, admission, singleton and Card policy, the hotspot ratchet (now including projection arrows), and the negative controls. Appendix B replay is green and every old control fails under the new guards. The X1–X3 blacklist sections and `authoring-controller-boundary.test.ts` are deleted; `test-lanes.ts` is updated. |
+| 15 | **Promotion.** ✅ Reference and `AGENTS.md` edits are in. The §5.4 admission demo is a review ritual on this head; it is not committed. Plan deletion waits for the owner's M/L ruling and happens before merge. |
 
 ## 7. Scope
 

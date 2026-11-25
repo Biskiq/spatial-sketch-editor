@@ -128,7 +128,6 @@ export const ARCH_FILES: string[] = [
 	// X1: the route composes the extracted project-epoch and asset-lease
 	// controllers, and those controllers keep their named dependency direction.
 	'tests/lib/authoring/spatial-route-boundary.test.ts',
-	'tests/lib/authoring/authoring-controller-boundary.test.ts',
 	'tests/lib/authoring/integration-ownership.test.ts',
 	'tests/lib/authoring/integration-hotspots.test.ts',
 	// X7: the Scene adapter composes its placement, mark-gesture, contribution and

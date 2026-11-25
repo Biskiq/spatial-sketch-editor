@@ -5,7 +5,8 @@
 		"state": 0,
 		"derived": 0,
 		"effects": 0,
-		"functions": 1
+		"functions": 1,
+		"arrows": 311
 	},
 	"src/lib/authoring/workspace/host/wiring/project-session.ts": {
 		"lines": 38,
@@ -13,7 +14,8 @@
 		"state": 0,
 		"derived": 0,
 		"effects": 0,
-		"functions": 1
+		"functions": 1,
+		"arrows": 2
 	},
 	"src/lib/authoring/workspace/host/wiring/stage-input.ts": {
 		"lines": 72,
@@ -21,7 +23,8 @@
 		"state": 0,
 		"derived": 0,
 		"effects": 0,
-		"functions": 1
+		"functions": 1,
+		"arrows": 13
 	},
 	"src/lib/authoring/workspace/host/wiring/stage-keyboard.ts": {
 		"lines": 122,
@@ -29,7 +32,8 @@
 		"state": 0,
 		"derived": 0,
 		"effects": 0,
-		"functions": 1
+		"functions": 1,
+		"arrows": 19
 	},
 	"src/lib/authoring/workspace/host/wiring/stage-project-epoch.ts": {
 		"lines": 43,
@@ -37,7 +41,8 @@
 		"state": 0,
 		"derived": 0,
 		"effects": 0,
-		"functions": 1
+		"functions": 1,
+		"arrows": 0
 	},
 	"src/lib/authoring/workspace/host/wiring/stage-shell-commands.ts": {
 		"lines": 60,
@@ -45,7 +50,8 @@
 		"state": 0,
 		"derived": 0,
 		"effects": 0,
-		"functions": 1
+		"functions": 1,
+		"arrows": 0
 	},
 	"src/lib/authoring/workspace/host/wiring/stage-shell-state.ts": {
 		"lines": 38,
@@ -53,7 +59,8 @@
 		"state": 0,
 		"derived": 0,
 		"effects": 0,
-		"functions": 1
+		"functions": 1,
+		"arrows": 2
 	},
 	"src/lib/authoring/workspace/host/wiring/stage-viewport.ts": {
 		"lines": 46,
@@ -61,7 +68,8 @@
 		"state": 0,
 		"derived": 0,
 		"effects": 0,
-		"functions": 1
+		"functions": 1,
+		"arrows": 13
 	},
 	"src/lib/authoring/look/appearance-feature.svelte.ts": {
 		"lines": 118,
@@ -69,7 +77,8 @@
 		"state": 0,
 		"derived": 0,
 		"effects": 0,
-		"functions": 1
+		"functions": 1,
+		"arrows": 11
 	},
 	"src/lib/authoring/artwork/artwork-feature.svelte.ts": {
 		"lines": 34,
@@ -77,7 +86,8 @@
 		"state": 0,
 		"derived": 0,
 		"effects": 0,
-		"functions": 1
+		"functions": 1,
+		"arrows": 0
 	},
 	"src/lib/authoring/experience/experience-feature.svelte.ts": {
 		"lines": 61,
@@ -85,7 +95,8 @@
 		"state": 0,
 		"derived": 0,
 		"effects": 0,
-		"functions": 1
+		"functions": 1,
+		"arrows": 2
 	},
 	"src/lib/authoring/library/library-feature.svelte.ts": {
 		"lines": 14,
@@ -93,7 +104,8 @@
 		"state": 0,
 		"derived": 0,
 		"effects": 0,
-		"functions": 1
+		"functions": 1,
+		"arrows": 0
 	},
 	"src/lib/authoring/look/light-inspection-feature.svelte.ts": {
 		"lines": 51,
@@ -101,7 +113,8 @@
 		"state": 0,
 		"derived": 0,
 		"effects": 0,
-		"functions": 1
+		"functions": 1,
+		"arrows": 2
 	},
 	"src/lib/authoring/look/sky-feature.svelte.ts": {
 		"lines": 22,
@@ -109,7 +122,8 @@
 		"state": 0,
 		"derived": 0,
 		"effects": 0,
-		"functions": 1
+		"functions": 1,
+		"arrows": 0
 	},
 	"src/lib/authoring/stage/readings/layout-readings-feature.svelte.ts": {
 		"lines": 79,
@@ -117,7 +131,8 @@
 		"state": 0,
 		"derived": 0,
 		"effects": 0,
-		"functions": 1
+		"functions": 1,
+		"arrows": 0
 	},
 	"src/lib/authoring/studio/studio-feature.svelte.ts": {
 		"lines": 112,
@@ -125,7 +140,8 @@
 		"state": 0,
 		"derived": 0,
 		"effects": 0,
-		"functions": 1
+		"functions": 1,
+		"arrows": 23
 	},
 	"src/lib/authoring/stage/route/stage-shell-state.svelte.ts": {
 		"lines": 905,
@@ -133,7 +149,8 @@
 		"state": 55,
 		"derived": 10,
 		"effects": 6,
-		"functions": 23
+		"functions": 23,
+		"arrows": 45
 	},
 	"src/lib/authoring/stage/route/stage-shell-commands.ts": {
 		"lines": 876,
@@ -141,7 +158,8 @@
 		"state": 0,
 		"derived": 0,
 		"effects": 0,
-		"functions": 31
+		"functions": 31,
+		"arrows": 36
 	},
 	"src/lib/authoring/stage/route/stage-keyboard.ts": {
 		"lines": 465,
@@ -149,7 +167,8 @@
 		"state": 0,
 		"derived": 0,
 		"effects": 0,
-		"functions": 6
+		"functions": 6,
+		"arrows": 87
 	},
 	"src/lib/authoring/stage/route/stage-project-epoch.svelte.ts": {
 		"lines": 372,
@@ -157,7 +176,8 @@
 		"state": 4,
 		"derived": 0,
 		"effects": 0,
-		"functions": 7
+		"functions": 7,
+		"arrows": 18
 	},
 	"src/lib/authoring/stage/stage-adapter-host.ts": {
 		"lines": 243,
@@ -165,7 +185,8 @@
 		"state": 0,
 		"derived": 0,
 		"effects": 0,
-		"functions": 2
+		"functions": 2,
+		"arrows": 9
 	},
 	"src/lib/authoring/stage/shell/StageViewportRegion.svelte": {
 		"lines": 1021,
@@ -173,7 +194,8 @@
 		"state": 4,
 		"derived": 0,
 		"effects": 2,
-		"functions": 2
+		"functions": 2,
+		"arrows": 75
 	},
 	"src/lib/authoring/stage/shell/StageCanvas.svelte": {
 		"lines": 698,
@@ -181,7 +203,8 @@
 		"state": 4,
 		"derived": 23,
 		"effects": 2,
-		"functions": 4
+		"functions": 4,
+		"arrows": 25
 	},
 	"src/lib/authoring/stage/shell/EditorHead.svelte": {
 		"lines": 1111,
@@ -189,7 +212,8 @@
 		"state": 6,
 		"derived": 9,
 		"effects": 1,
-		"functions": 14
+		"functions": 14,
+		"arrows": 53
 	},
 	"src/lib/authoring/stage/shell/StageToolbars.svelte": {
 		"lines": 553,
@@ -197,7 +221,8 @@
 		"state": 1,
 		"derived": 0,
 		"effects": 1,
-		"functions": 1
+		"functions": 1,
+		"arrows": 32
 	},
 	"src/lib/authoring/stage/shell/StagePanels.svelte": {
 		"lines": 263,
@@ -205,7 +230,8 @@
 		"state": 0,
 		"derived": 0,
 		"effects": 0,
-		"functions": 1
+		"functions": 1,
+		"arrows": 13
 	},
 	"src/lib/authoring/project-session/project-session.svelte.ts": {
 		"lines": 1125,
@@ -213,7 +239,8 @@
 		"state": 8,
 		"derived": 0,
 		"effects": 0,
-		"functions": 23
+		"functions": 23,
+		"arrows": 17
 	},
 	"src/lib/authoring/look/finish-authoring.svelte.ts": {
 		"lines": 2293,
@@ -221,7 +248,8 @@
 		"state": 10,
 		"derived": 0,
 		"effects": 0,
-		"functions": 74
+		"functions": 74,
+		"arrows": 119
 	},
 	"src/lib/authoring/workspace/host/wiring/stage-canvas-views.svelte.ts": {
 		"lines": 75,
@@ -229,7 +257,8 @@
 		"state": 0,
 		"derived": 2,
 		"effects": 0,
-		"functions": 1
+		"functions": 1,
+		"arrows": 2
 	},
 	"src/lib/authoring/workspace/host/wiring/stage-region-models.svelte.ts": {
 		"lines": 220,
@@ -237,6 +266,7 @@
 		"state": 0,
 		"derived": 9,
 		"effects": 0,
-		"functions": 2
+		"functions": 2,
+		"arrows": 53
 	}
 }
