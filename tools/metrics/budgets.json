@@ -1,8 +1,8 @@
 {
   "generatedFrom": "LOC-0 baseline; shrink-only from here",
   "counts": {
-    "filesOver600": 117,
-    "filesOver1000": 28,
+    "filesOver600": 116,
+    "filesOver1000": 27,
     "filesOver1500": 8,
     "functionsOver200": 73,
     "exportStars": 0,
@@ -53,11 +53,6 @@
     {
       "path": "apps/editor/src/lib/authoring/adapters/layout/wall-gesture-session.ts",
       "lines": 1398,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
-      "path": "packages/layout-core/src/wall/topology-ops.ts",
-      "lines": 1361,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
