@@ -2,8 +2,8 @@
   "generatedFrom": "LOC-0 baseline; shrink-only from here",
   "counts": {
     "filesOver600": 121,
-    "filesOver1000": 35,
-    "filesOver1500": 11,
+    "filesOver1000": 34,
+    "filesOver1500": 10,
     "functionsOver200": 73,
     "exportStars": 0,
     "crossPackageReexports": 0,
@@ -28,11 +28,6 @@
     {
       "path": "apps/editor/src/lib/authoring/experience/ExperienceGuide.svelte",
       "lines": 1983,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
-      "path": "packages/layout-core/src/plan/plan-representation.ts",
-      "lines": 1828,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -334,6 +329,11 @@
       "path": "apps/editor/src/lib/authoring/stage/shell/StageDraftingControl.svelte",
       "lines": 803,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+    },
+    {
+      "path": "packages/layout-core/src/plan/representation/retainer.ts",
+      "lines": 797,
+      "reason": "One incremental Plan retainer: reuse, proven deltas, assembly and stamps share one retained source index."
     },
     {
       "path": "apps/editor/src/lib/authoring/experience/ExperienceViewRail.svelte",
@@ -751,11 +751,11 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
-      "file": "packages/layout-core/src/plan/plan-representation.ts",
+      "file": "packages/layout-core/src/plan/representation/retainer.ts",
       "name": "createPlanRetainer",
-      "line": 1244,
+      "line": 311,
       "lines": 487,
-      "reason": "One retained-plan builder: its phases share the compiled fragments and the retainer state."
+      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
       "file": "apps/editor/src/lib/authoring/adapters/layout/instrument.ts",
