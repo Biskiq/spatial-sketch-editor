@@ -805,8 +805,7 @@ session's samples, with the preserved maximum in parentheses where the harness r
 
 **Relative gate (§9).** Every M presentation median is flat or lower, and the typed Length editor
 time is identical. The one M median above +10% is the drag editor window: 1.45 → 1.75 ms
-(+0.30 ms), which is 1.8% of a 16.7 ms frame. Across the seven corrected-harness spot runs on this
-branch that median ranged 1.35–1.75 ms and its first sample was 3.4–3.8 ms in every run, so the
+(+0.30 ms), which is 1.8% of a 16.7 ms frame. Across the spot runs recorded on this branch that median ranged 1.35–1.75 ms and its first sample was 3.4–3.8 ms in every run, so the
 shift is sampling noise rather than a demonstrated material regression. The head run also sampled
 under the heavier one-minute load (7.24 vs 4.84). No L interaction regressed above 10%; every L
 interaction completed correctly (4/4 drag and pan samples, `supersededFraction=0`, the typed Length
