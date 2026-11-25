@@ -28,8 +28,6 @@ The report (machine, provenance, workload digest, raw observations, timings, lab
 under `PERF_RESULTS_DIR` or `$TMPDIR/biskiq-spot`. Missing workloads are generated first; that
 setup time is reported separately from the measurement.
 
-`npm run perf` refuses. The former multi-hour suite is not runnable.
-
 ## What one run does
 
 For M, then L, in one fresh unthrottled context each:

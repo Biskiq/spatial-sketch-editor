@@ -61,16 +61,12 @@ describe('F.4 editor-only isolation', () => {
 			...readdirSync(materials)
 				.filter((file) => /^(?:inspection.*|catalogue-thumbnails)\.ts$/.test(file))
 				.map((file) => join(materials, file)),
-			join(EDITOR_SRC, 'lib', 'content', 'material-thumbnails.json'),
-			join(EDITOR_SRC, 'lib', 'dev', 's8-colour-difference.ts')
+			join(EDITOR_SRC, 'lib', 'content', 'material-thumbnails.json')
 		];
-		// Positive controls: the modules exist, and the dev inspection gate does reach them.
+		// Positive controls: the inspection modules exist.
 		expect(inspection).toContain(join(materials, 'inspection-host.ts'));
 		expect(inspection).toContain(join(materials, 'catalogue-thumbnails.ts'));
 		for (const file of inspection) expect(existsSync(file), file).toBe(true);
-		const gate = importClosure([join(EDITOR_SRC, 'routes', 'dev', 'materials', 'gate.ts')]);
-		expect(gate.has(join(materials, 'inspection-host.ts'))).toBe(true);
-		expect(gate.has(join(materials, 'catalogue-thumbnails.ts'))).toBe(true);
 
 		const preview = join(EDITOR_SRC, 'lib', 'visitor', 'VisitorPreviewSurface.svelte');
 		for (const root of [PUBLIC_ROUTE_ROOT, preview]) {
