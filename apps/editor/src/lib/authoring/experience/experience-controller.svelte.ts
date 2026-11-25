@@ -34,7 +34,6 @@ import type {
 	Experience,
 	ExperienceGuide,
 	ExperienceGuidePacing,
-	ExperiencePresentationView,
 	ExperiencePresentation,
 	ExperienceStop,
 	ProjectEnvelope
@@ -57,13 +56,12 @@ import {
 import { travelGapMessagesByStop } from './experience-problems';
 import {
 	readExperiencePath,
-	resolvePathOccurrence,
 	type ExperiencePathOccurrence,
 	type ExperiencePathRead
 } from './experience-paths';
 import type { OperationChange } from '@portfolio/project-model/f4';
-import { guideUpdateIntent, removeIntent, viewRemoveIntent, viewRenameIntent, } from './commands-presentation';
-import { createExperienceIntent, experienceUpdateIntent, guideCreateIntent, presentationUpdateIntent, stopCreateIntent, } from './commands-structure';
+import { removeIntent, viewRemoveIntent, } from './commands-presentation';
+import { createExperienceIntent, presentationUpdateIntent, } from './commands-structure';
 import { sceneEntitySubject } from './commands-references';
 import {
 	type ExperienceRemovalPreview,
@@ -79,6 +77,7 @@ import {
 } from './experience-view-authoring';
 import { createExperienceStopAuthoring } from './experience-stop-authoring';
 import { createExperienceCameraSession } from './experience-camera-session.svelte';
+import { createExperiencePresentationAuthoring } from './experience-presentation-authoring';
 
 type Submission = Parameters<StageAdapterServices['authoring']['accept']>[0];
 
@@ -597,7 +596,7 @@ export function createExperienceController(
 		focus: experienceFocus,
 		readServices,
 		perfMark,
-		alsoIn,
+		alsoIn: (viewId, presentationId) => presentation.alsoIn(viewId, presentationId),
 		presentationDisplayName
 	});
 
@@ -632,329 +631,26 @@ export function createExperienceController(
 		focus: experienceFocus
 	});
 
+	const presentation = createExperiencePresentationAuthoring({
+		snapshot: () => snapshot,
+		current: () => current,
+		contextGuide: () => contextGuide,
+		feedback: () => feedback?.text ?? '',
+		setDraftLabel: (label) => (draftLabel = label),
+		nameNeeded: NAME_NEEDED,
+		say: (kind, text) => say(kind, text),
+		newId,
+		revision,
+		run,
+		connectionPool,
+		updateStop: (stopId, fields) => stops.updateStop(stopId, fields),
+		focus: experienceFocus,
+		presentationDisplayName,
+		presentationLabel
+	});
+
+
 	/** Write one Presentation's whole View list (order and steps) as one accepted change. */
-	async function writePresentationViews(
-		presentationId: string,
-		views: readonly ExperiencePresentationView[],
-		message: () => string = () => ''
-	): Promise<boolean> {
-		if (current === null) return false;
-		const experience = current;
-		const presentation = experience.presentations.find((entry) => entry.id === presentationId);
-		if (presentation === undefined) return false;
-		// A step belongs to the View it leaves (A-1), and the last View has none (D-12).
-		const normalize = (list: readonly ExperiencePresentationView[]) =>
-			list.map((view, index) =>
-				index === list.length - 1 || view.transition === undefined
-					? { viewId: view.viewId }
-					: { viewId: view.viewId, transition: view.transition }
-			);
-		const normalized = normalize(views);
-		if (JSON.stringify(normalized) === JSON.stringify(normalize(presentation.views))) {
-			return false;
-		}
-		return run(
-			() =>
-				presentationUpdateIntent({
-					envelope: snapshot,
-					revision: revision(),
-					ids: { operation: newId(), connections: connectionPool() },
-					experienceId: experience.id,
-					presentationId,
-					views: normalized
-				}),
-			message
-		);
-	}
-
-	/** Set one outgoing step; reconciliation adds any required Camera path atomically. */
-	async function setPresentationStep(
-		presentationId: string,
-		toIndex: number,
-		kind: 'cut' | 'travel'
-	): Promise<boolean> {
-		const presentation = current?.presentations.find((entry) => entry.id === presentationId);
-		if (presentation === undefined || !Number.isInteger(toIndex) || toIndex <= 0 || toIndex >= presentation.views.length) return false;
-		const views = presentation.views.map((view, index) =>
-			index === toIndex - 1 ? { viewId: view.viewId, transition: kind } : view
-		);
-		return writePresentationViews(presentationId, views, () =>
-			`${kind === 'travel' ? 'Travel' : 'Cut'}. Exploring adds no Guide time.`
-		);
-	}
-
-	/**
-	 * Presentation Card · reorder (drag, or Alt+↑↓). Each View keeps the Cut/Travel
-	 * it leaves by; moving a View to the top makes it the Default, and Stops without
-	 * their own entry follow it.
-	 */
-	async function movePresentationView(presentationId: string, viewId: string, index: number): Promise<boolean> {
-		const presentation = current?.presentations.find((entry) => entry.id === presentationId);
-		if (presentation === undefined || !Number.isInteger(index) || index < 0 || index >= presentation.views.length) return false;
-		const from = presentation.views.findIndex((view) => view.viewId === viewId);
-		if (from === -1 || from === index) return false;
-		const order = [...presentation.views];
-		const [moved] = order.splice(from, 1);
-		order.splice(index, 0, moved!);
-		const label = (id: string) => snapshot.units.camera.data.views.find((view) => view.id === id)?.label ?? id;
-		return writePresentationViews(presentationId, order, () =>
-			index === 0
-				? `${label(viewId)} is now View 1, the Default. Stops without their own entry follow it.`
-				: from === 0
-					? `${label(viewId)} moves to ${index + 1}; ${label(order[0]!.viewId)} becomes the Default.`
-					: `${label(viewId)} moves to ${index + 1}. New neighbours keep their Cut or Travel.`
-		);
-	}
-
-	/**
-	 * Cut or Travel to the next Stop in the context Guide. The last Stop has no next
-	 * Stop, so it has no outgoing step at all (D-12); a Travel between two Stops that
-	 * enter the same View is refused and stays a Cut (D-7).
-	 */
-	async function setTransition(stopId: string, transition: 'cut' | 'travel'): Promise<boolean> {
-		const stop = current?.stops.find((entry) => entry.id === stopId);
-		const guide = contextGuide;
-		if (current === null || stop === undefined || guide === null) return false;
-		const at = guide.stopIds.indexOf(stopId);
-		if (at === -1 || at === guide.stopIds.length - 1) return false;
-		if ((stop.transition ?? 'cut') === transition) return false;
-		// A Travel between two Stops that enter the same View stays a Cut, and a
-		// Travel's straight path is added by reconciliation in the same change.
-		const resolved = transition === 'travel'
-			? resolvePathOccurrence(current, guide, { kind: 'transition', stopId })
-			: null;
-		if (transition === 'travel' && (resolved === null || resolved.fromViewId === resolved.toViewId)) return false;
-		return stops.updateStop(stopId, { transition });
-	}
-
-	/**
-	 * The Card's inline rename of a Presentation: one label edit through the same
-	 * acceptance port every edit uses, so the rename is one accepted result.
-	 */
-	function renamePresentation(presentationId: string, label: string): Promise<ExperienceRenameOutcome> {
-		if (current === null) return Promise.resolve({ kind: 'refused', message: 'There is no Experience to rename a Presentation in.' });
-		const experience = current;
-		const presentation = experience.presentations.find((entry) => entry.id === presentationId) ?? null;
-		return rename(label, presentation === null ? null : presentationDisplayName(presentationId), (trimmed) =>
-			presentationUpdateIntent({
-				envelope: snapshot,
-				revision: revision(),
-				ids: { operation: newId() },
-				experienceId: experience.id,
-				presentationId,
-				label: trimmed
-			})
-		);
-	}
-
-	async function updatePresentationText(presentationId: string, body: string): Promise<boolean> {
-		if (current === null) return false;
-		const experience = current;
-		return run(() =>
-			presentationUpdateIntent({
-				envelope: snapshot,
-				revision: revision(),
-				ids: { operation: newId() },
-				experienceId: experience.id,
-				presentationId,
-				text: body === '' ? null : { kind: 'plain', body }
-			})
-		);
-	}
-
-	async function setExplorable(presentationId: string, explorable: boolean): Promise<boolean> {
-		const experience = current;
-		const presentation = experience?.presentations.find((entry) => entry.id === presentationId);
-		if (experience === null || presentation === undefined || presentation.explorable === explorable) return false;
-		return run(() =>
-			presentationUpdateIntent({
-				envelope: snapshot,
-				revision: revision(),
-				ids: { operation: newId() },
-				experienceId: experience.id,
-				presentationId,
-				explorable
-			})
-		);
-	}
-
-	async function setWelcome(body: string): Promise<boolean> {
-		const experience = current;
-		const welcome = body.trim() === '' ? null : { kind: 'plain' as const, body };
-		if (experience === null || (experience.welcome?.body ?? null) === (welcome?.body ?? null)) return false;
-		return run(() =>
-			experienceUpdateIntent({
-				envelope: snapshot,
-				revision: revision(),
-				ids: { operation: newId() },
-				experienceId: experience.id,
-				welcome
-			})
-		);
-	}
-
-	/** Make default moves the View to the top of the list: View 1 is the Default. */
-	async function setDefaultView(presentationId: string, viewId: string): Promise<void> {
-		await movePresentationView(presentationId, viewId, 0);
-	}
-
-	/* --- Structure -------------------------------------------------------------- */
-
-	async function rename(
-		label: string,
-		previous: string | null,
-		builder: (trimmed: string) => Submission
-	): Promise<ExperienceRenameOutcome> {
-		const trimmed = label.trim();
-		if (trimmed === '') return { kind: 'refused', message: NAME_NEEDED };
-		if (previous === null) return { kind: 'refused', message: 'That subject is no longer in this Experience.' };
-		// An unchanged name is no edit, so it adds no history entry.
-		if (trimmed === previous) return { kind: 'accepted' };
-		const ok = await run(() => builder(trimmed), () => '');
-		return ok ? { kind: 'accepted' } : { kind: 'refused', message: feedback?.text ?? "That change didn't go through." };
-	}
-
-	function renameExperience(label: string): Promise<ExperienceRenameOutcome> {
-		const experience = current;
-		// The draft is not saved yet: its name is kept here until the first step creates it.
-		if (experience === null) {
-			const trimmed = label.trim();
-			if (trimmed === '') return Promise.resolve({ kind: 'refused', message: 'A name cannot be empty.' });
-			draftLabel = trimmed;
-			return Promise.resolve({ kind: 'accepted' });
-		}
-		return rename(label, experience?.label ?? null, (trimmed) =>
-			experienceUpdateIntent({
-				envelope: snapshot,
-				revision: revision(),
-				ids: { operation: newId() },
-				experienceId: experience!.id,
-				label: trimmed
-			})
-		);
-	}
-
-	function renameGuide(guideId: string, label: string): Promise<ExperienceRenameOutcome> {
-		const experience = current;
-		const guide = experience?.guides.find((entry) => entry.id === guideId) ?? null;
-		return rename(label, guide?.label ?? null, (trimmed) =>
-			guideUpdateIntent({
-				envelope: snapshot,
-				revision: revision(),
-				ids: { operation: newId() },
-				experienceId: experience!.id,
-				guideId,
-				label: trimmed
-			})
-		);
-	}
-
-	function renameView(viewId: string, label: string): Promise<ExperienceRenameOutcome> {
-		const view = snapshot.units.camera.data.views.find((entry) => entry.id === viewId) ?? null;
-		return rename(label, view?.label ?? null, (trimmed) =>
-			viewRenameIntent({ envelope: snapshot, revision: revision(), ids: { operation: newId() }, view: view!, label: trimmed })
-		);
-	}
-
-	async function makeOpeningGuide(guideId: string): Promise<boolean> {
-		const experience = current;
-		const guide = experience?.guides.find((entry) => entry.id === guideId);
-		if (experience == null || guide === undefined || experience.entryGuideId === guideId) return false;
-		return run(
-			() =>
-				experienceUpdateIntent({
-					envelope: snapshot,
-					revision: revision(),
-					ids: { operation: newId() },
-					experienceId: experience.id,
-					entryGuideId: guideId
-				}),
-			() => `The Experience now opens on ${guide.label}.`
-		);
-	}
-
-	async function addToGuide(presentationId: string, guideId: string, entryViewId: string | null = null): Promise<boolean> {
-		const experience = current;
-		const guide = experience?.guides.find((entry) => entry.id === guideId);
-		if (experience == null || guide === undefined) return false;
-		const stopId = newId();
-		const ok = await run(
-			() =>
-				stopCreateIntent({
-					envelope: snapshot,
-					revision: revision(),
-					ids: { operation: newId(), stop: stopId },
-					experienceId: experience.id,
-					presentationId,
-					guideId,
-					afterStopId: null,
-					entryViewId,
-					staySeconds: null,
-					transition: 'cut'
-				}),
-			() => `Added as Stop ${guide.stopIds.length + 1} of ${guide.label}.`
-		);
-		if (ok) {
-			experienceFocus.openGuide(guideId);
-			experienceFocus.select({ kind: 'stop', stopId });
-		}
-		return ok;
-	}
-
-	async function createGuide(presentationId: string, entryViewId: string | null = null): Promise<boolean> {
-		const experience = current;
-		if (experience === null) return false;
-		const used = new Set(experience.guides.map((guide) => guide.label.trim().toLowerCase()));
-		let n = experience.guides.length + 1;
-		let label = n === 1 ? 'Tour' : `Tour ${n}`;
-		while (used.has(label.toLowerCase())) {
-			n += 1;
-			label = `Tour ${n}`;
-		}
-		const guideId = newId();
-		const stopId = newId();
-		const ok = await run(
-			() =>
-				guideCreateIntent({
-					envelope: snapshot,
-					revision: revision(),
-					ids: { operation: newId(), guide: guideId, stop: stopId, connections: connectionPool() },
-					experienceId: experience.id,
-					presentationId,
-					label,
-					entryViewId,
-					staySeconds: null,
-					transition: 'cut'
-				}),
-			() => `${label} created with ${presentationLabel(presentationId)} as Stop 1.`
-		);
-		if (ok) {
-			experienceFocus.openGuide(guideId);
-			experienceFocus.select({ kind: 'stop', stopId });
-		}
-		return ok;
-	}
-
-	function alsoIn(viewId: string, presentationId: string): readonly ExperiencePresentation[] {
-		return current?.presentations.filter((entry) => entry.id !== presentationId && entry.views.some((view) => view.viewId === viewId)) ?? [];
-	}
-
-	async function moveViewTo(presentationId: string, viewId: string, index: number): Promise<boolean> {
-		const presentation = current?.presentations.find((entry) => entry.id === presentationId);
-		if (presentation === undefined) return false;
-		const to = Math.max(0, Math.min(Math.trunc(index), presentation.views.length - 1));
-		return movePresentationView(presentationId, viewId, to);
-	}
-
-	async function moveView(presentationId: string, viewId: string, direction: -1 | 1): Promise<boolean> {
-		const presentation = current?.presentations.find((entry) => entry.id === presentationId);
-		if (presentation === undefined) return false;
-		const at = presentation.views.findIndex((view) => view.viewId === viewId);
-		const to = at + direction;
-		if (at === -1 || to < 0 || to >= presentation.views.length) return false;
-		return movePresentationView(presentationId, viewId, to);
-	}
-
 	/** Names as the creator reads them: Stops by their position in the context Guide. */	const removals = createExperienceRemovalReadings({
 		experience: () => current,
 		contextGuide: () => contextGuide,
@@ -1242,11 +938,11 @@ export function createExperienceController(
 		setStopEntry: stops.setStopEntry,
 		setStopStay: stops.setStopStay,
 		setStopInvitation: stops.setStopInvitation,
-		setPresentationStep,
-		movePresentationView,
-		setExplorable,
-		setWelcome,
-		setTransition,
+		setPresentationStep: presentation.setPresentationStep,
+		movePresentationView: presentation.movePresentationView,
+		setExplorable: presentation.setExplorable,
+		setWelcome: presentation.setWelcome,
+		setTransition: presentation.setTransition,
 		pathFor: (occurrence: ExperiencePathOccurrence) =>
 			current === null
 				? null
@@ -1268,18 +964,18 @@ export function createExperienceController(
 		removePathAnchor: paths.removePathAnchor,
 		straightenPath: paths.straightenPath,
 		setPathDuration: paths.setPathDuration,
-		renamePresentation,
-		updatePresentationText,
-		setDefaultView,
-		renameExperience,
-		renameGuide,
-		renameView,
-		makeOpeningGuide,
-		addToGuide,
-		createGuide,
-		alsoIn,
-		moveViewTo,
-		moveView,
+		renamePresentation: presentation.renamePresentation,
+		updatePresentationText: presentation.updatePresentationText,
+		setDefaultView: presentation.setDefaultView,
+		renameExperience: presentation.renameExperience,
+		renameGuide: presentation.renameGuide,
+		renameView: presentation.renameView,
+		makeOpeningGuide: presentation.makeOpeningGuide,
+		addToGuide: presentation.addToGuide,
+		createGuide: presentation.createGuide,
+		alsoIn: presentation.alsoIn,
+		moveViewTo: presentation.moveViewTo,
+		moveView: presentation.moveView,
 		removalPreview: removals.removalPreview,
 		remove,
 		get backTarget() {
