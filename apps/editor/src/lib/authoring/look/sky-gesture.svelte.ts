@@ -1,4 +1,5 @@
-import { sameSky, type SceneSky, type SceneSkyUpdatePayload } from '@portfolio/project-model/units';
+import { sameSky, type SceneSky } from '@portfolio/project-model/units';
+import type { SceneSkyUpdatePayload } from '@portfolio/project-model/units/planning';
 import type { AcceptedRevision } from '@portfolio/project-model/references';
 
 type Host = {

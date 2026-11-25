@@ -20,25 +20,8 @@ import {
 	viewRemoveIntent,
 	viewRenameIntent
 } from '$lib/authoring/experience/commands';
-import {
-	EXPERIENCE_GUIDE_REMOVE_KIND,
-	EXPERIENCE_GUIDE_UPDATE_KIND,
-	EXPERIENCE_PRESENTATION_REMOVE_KIND,
-	EXPERIENCE_PRESENTATION_VIEW_REMOVE_KIND,
-	EXPERIENCE_STOP_REMOVE_KIND,
-	EXPERIENCE_UPDATE_KIND,
-	computeEnvelopeSourceContentId,
-	createUnitAcceptanceProfile,
-	planStopRemoval,
-	presentationDisplayName,
-	serializeProjectEnvelope,
-	unlinkSceneSubject,
-	unlinkSceneSubjects,
-	validateProjectEnvelope,
-	type Experience,
-	type ExperienceUnitPayload,
-	type ProjectEnvelope
-} from '@portfolio/project-model/units';
+import { computeEnvelopeSourceContentId, planStopRemoval, presentationDisplayName, serializeProjectEnvelope, unlinkSceneSubject, unlinkSceneSubjects, validateProjectEnvelope, type Experience, type ExperienceUnitPayload, type ProjectEnvelope } from '@portfolio/project-model/units';
+import { EXPERIENCE_GUIDE_REMOVE_KIND, EXPERIENCE_GUIDE_UPDATE_KIND, EXPERIENCE_PRESENTATION_REMOVE_KIND, EXPERIENCE_PRESENTATION_VIEW_REMOVE_KIND, EXPERIENCE_STOP_REMOVE_KIND, EXPERIENCE_UPDATE_KIND, createUnitAcceptanceProfile } from '@portfolio/project-model/units/planning';
 
 import { buildXFixture } from './__fixtures__/x-fixtures';
 import { EXPERIENCE, experienceEnvelope } from './fixtures';

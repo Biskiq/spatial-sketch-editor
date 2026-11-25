@@ -501,11 +501,6 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
-      "path": "apps/editor/src/lib/authoring/experience/commands.ts",
-      "lines": 670,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
       "path": "apps/editor/src/lib/authoring/adapters/scene/support-occlusion.ts",
       "lines": 663,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
@@ -523,6 +518,11 @@
     {
       "path": "packages/layout-core/src/room/isolation.ts",
       "lines": 653,
+      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+    },
+    {
+      "path": "apps/editor/src/lib/authoring/experience/commands.ts",
+      "lines": 652,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -970,7 +970,7 @@
     {
       "file": "apps/editor/src/lib/authoring/look/look-authoring.svelte.ts",
       "name": "createLookAuthoring",
-      "line": 127,
+      "line": 112,
       "lines": 276,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },

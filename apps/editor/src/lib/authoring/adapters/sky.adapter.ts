@@ -1,4 +1,4 @@
-import { SCENE_SKY_UPDATE_KIND } from '@portfolio/project-model/units';
+import { SCENE_SKY_UPDATE_KIND } from '@portfolio/project-model/units/planning';
 import type { StageAdapterFactory } from '$lib/authoring/stage/stage-adapter-host';
 import { skySession } from '$lib/authoring/look/sky-session.svelte';
 import { skyHandles } from './sky/sky-contributions';

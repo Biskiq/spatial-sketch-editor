@@ -9,22 +9,8 @@
 import { describe, expect, it } from 'vitest';
 import type { AcceptedSnapshot, AuthoringIntent } from '@portfolio/project-model/f4';
 import type { SceneMaterialInstance } from '@portfolio/project-model/scene';
-import {
-	SCENE_LOOK_APPLY_KIND,
-	SCENE_LOOK_RESTORE_KIND,
-	SCENE_TREATMENT_SET_KIND,
-	SCENE_UNIT_FORMAT_VERSION,
-	SCENE_SKY_DEFAULT,
-	UNIT_SOURCE_KIND,
-	UNIT_SOURCE_VERSION,
-	createSceneLookApplyPlanner,
-	createSceneLookRestorePlanner,
-	createSceneTreatmentSetPlanner,
-	skyFromPreset,
-	type CameraFreeSceneDocument,
-	type ProjectEnvelope,
-	type SceneEnvironment
-} from '@portfolio/project-model/units';
+import { SCENE_UNIT_FORMAT_VERSION, SCENE_SKY_DEFAULT, UNIT_SOURCE_KIND, UNIT_SOURCE_VERSION, skyFromPreset, type CameraFreeSceneDocument, type ProjectEnvelope, type SceneEnvironment } from '@portfolio/project-model/units';
+import { SCENE_LOOK_APPLY_KIND, SCENE_LOOK_RESTORE_KIND, SCENE_TREATMENT_SET_KIND, createSceneLookApplyPlanner, createSceneLookRestorePlanner, createSceneTreatmentSetPlanner } from '@portfolio/project-model/units/planning';
 import { createUnitProject } from '../authoring/__fixtures__/unit-envelope-fixtures';
 
 const MATERIAL: SceneMaterialInstance = { id: 'finish-1', name: 'Coral paint', base: { catalogue: 'plaster-warm' }, overrides: { color: '#ee6c4d', roughness: 0.8 } };
