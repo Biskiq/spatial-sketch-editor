@@ -4,7 +4,7 @@
     "filesOver600": 103,
     "filesOver1000": 17,
     "filesOver1500": 1,
-    "functionsOver200": 76,
+    "functionsOver200": 77,
     "exportStars": 0,
     "crossPackageReexports": 0,
     "seams": 8
@@ -14,11 +14,6 @@
       "path": "apps/editor/src/lib/authoring/experience/ExperienceGuide.svelte",
       "lines": 1983,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
-      "path": "apps/editor/src/lib/authoring/experience/experience-controller.svelte.ts",
-      "lines": 1499,
-      "reason": "One Experience composition root: the accepted snapshot, focus reads, one command runner and the sub-owner wiring (removal, Views, Stops) compose the lens; each extracted cluster owns its own module."
     },
     {
       "path": "apps/editor/src/lib/authoring/look/finish-authoring.svelte.ts",
@@ -49,6 +44,11 @@
       "path": "apps/editor/src/lib/authoring/library/StageLibrary.svelte",
       "lines": 1292,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+    },
+    {
+      "path": "apps/editor/src/lib/authoring/experience/experience-controller.svelte.ts",
+      "lines": 1291,
+      "reason": "One Experience composition root: the accepted snapshot, focus reads, one command runner and the sub-owner wiring (removal, Views, Stops, Camera paths) compose the lens; each extracted cluster owns its module."
     },
     {
       "path": "apps/editor/src/lib/visitor/VisitorPreviewSurface.svelte",
@@ -535,18 +535,18 @@
       "reason": "One Paint composition root: the active pick, dropper, palette writes, surface painting and the sub-owner wiring share one accepted revision and one busy gate."
     },
     {
-      "file": "apps/editor/src/lib/authoring/experience/experience-controller.svelte.ts",
-      "name": "createExperienceController",
-      "line": 304,
-      "lines": 1196,
-      "reason": "One Experience composition root: one accepted snapshot, one command runner and the sub-owner wiring; removal readings, Views and Stops are extracted."
-    },
-    {
       "file": "apps/editor/src/lib/authoring/experience/experience-lens.svelte.ts",
       "name": "createExperienceLens",
       "line": 96,
       "lines": 1196,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+    },
+    {
+      "file": "apps/editor/src/lib/authoring/experience/experience-controller.svelte.ts",
+      "name": "createExperienceController",
+      "line": 302,
+      "lines": 990,
+      "reason": "One Experience composition root: one accepted snapshot, one command runner and the sub-owner wiring; removal readings, Views and Stops are extracted."
     },
     {
       "file": "apps/editor/src/lib/authoring/workspace/host/workspace-host.svelte.ts",
@@ -911,6 +911,13 @@
       "line": 50,
       "lines": 256,
       "reason": "One View authoring path: step, capture and placement share the same accepted-change plumbing and focus hand-off; splitting them would duplicate that path."
+    },
+    {
+      "file": "apps/editor/src/lib/authoring/experience/experience-camera-session.svelte.ts",
+      "name": "createExperienceCameraSession",
+      "line": 32,
+      "lines": 255,
+      "reason": "One Camera-path session: the occurrence, its one derived read and the invalidation effect must stay one reactive owner; every path command shares that read and anchor target."
     },
     {
       "file": "apps/editor/src/lib/authoring/stage/paper-scene.ts",

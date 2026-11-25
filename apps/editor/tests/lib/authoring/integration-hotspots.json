@@ -288,13 +288,13 @@
     "arrows": 24
   },
   "src/lib/authoring/experience/experience-controller.svelte.ts": {
-    "lines": 1500,
+    "lines": 1292,
     "imports": 20,
-    "state": 7,
-    "derived": 24,
-    "effects": 3,
-    "functions": 22,
-    "arrows": 160
+    "state": 5,
+    "derived": 23,
+    "effects": 2,
+    "functions": 17,
+    "arrows": 143
   },
   "src/lib/authoring/experience/experience-removal-readings.ts": {
     "lines": 166,
@@ -367,5 +367,14 @@
     "effects": 0,
     "functions": 1,
     "arrows": 32
+  },
+  "src/lib/authoring/experience/experience-camera-session.svelte.ts": {
+    "lines": 287,
+    "imports": 7,
+    "state": 2,
+    "derived": 1,
+    "effects": 1,
+    "functions": 7,
+    "arrows": 34
   }
 }
