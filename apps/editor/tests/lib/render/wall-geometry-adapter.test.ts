@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { MeshBasicMaterial, type Material } from 'three';
 import { buildRoomWallMesh } from '$lib/layout/wall-mesh-room';
-import type { type IndexedWallMesh } from '$lib/layout/wall-mesh-types';
+import type { IndexedWallMesh } from '$lib/layout/wall-mesh-types';
 import {
 	buildWallHighlightMesh,
 	matchOpeningRanges,

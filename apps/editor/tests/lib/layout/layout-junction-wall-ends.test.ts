@@ -20,7 +20,7 @@ import { describe, expect, it } from 'vitest';
 import { compileWallFirstLayoutGeometry, type CompiledPhysicalWall, type LayoutVec2 } from '@portfolio/layout-core/geometry';
 import { legJoinsByWall, type LayoutDocumentWallFirst, type LayoutWall } from '@portfolio/layout-core/wall';
 import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-standalone';
-import type { type IndexedWallMesh } from '$lib/layout/wall-mesh-types';
+import type { IndexedWallMesh } from '$lib/layout/wall-mesh-types';
 
 function wall(
 	id: string,

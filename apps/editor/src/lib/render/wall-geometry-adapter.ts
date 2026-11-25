@@ -1,6 +1,6 @@
 import { countWork } from '@portfolio/layout-core/kernel';
 import { BufferAttribute, BufferGeometry, Float32BufferAttribute, type Material } from 'three';
-import type { type IndexedWallMesh, type WallMeshSurfaceKey } from '$lib/layout/wall-mesh-types';
+import type { IndexedWallMesh, WallMeshSurfaceKey } from '$lib/layout/wall-mesh-types';
 import type { LayoutWallSide } from '@portfolio/layout-core/plan';
 
 /**

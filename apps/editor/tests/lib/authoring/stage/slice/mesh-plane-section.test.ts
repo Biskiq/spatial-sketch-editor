@@ -24,7 +24,7 @@ import { deriveChainSpans } from '@portfolio/layout-core/geometry';
 import { compileWallFirstLayoutGeometry, type LayoutVec2 } from '@portfolio/layout-core/geometry';
 import { legJoinsByWall, type LayoutDocumentWallFirst, type LayoutWall } from '@portfolio/layout-core/wall';
 import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-standalone';
-import type { type WallMeshOptions } from '$lib/layout/wall-mesh-types';
+import type { WallMeshOptions } from '$lib/layout/wall-mesh-types';
 import {
 	sectionMeshes,
 	loopsToPolygons,

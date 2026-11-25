@@ -16,7 +16,7 @@ import type {
 	StandardMaterialDescriptor
 } from '$lib/render/resources/material-descriptor';
 import { surfaceKey, type LayoutWallSide } from '@portfolio/layout-core/plan';
-import type { type IndexedWallMesh } from '$lib/layout/wall-mesh-types';
+import type { IndexedWallMesh } from '$lib/layout/wall-mesh-types';
 import {
 	acquireFinishViews,
 	type FinishViewGeneration,
