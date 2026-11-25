@@ -1,5 +1,5 @@
 import { AssetInputError } from '../asset-persistence.js';
-import { FormLibraryInputError, FormLibraryNotFoundError, expireAbandonedLibraryStaging, listLibraryItems, readLibraryItem, readMaterialLibraryThumbnail, removeFormLibraryItem, saveFormLibraryItem, saveMaterialLibraryItem, saveMaterialLibraryThumbnail, transferMaterialLibraryItem } from '../form-library.js';
+import { FormLibraryInputError, FormLibraryNotFoundError, expireAbandonedLibraryStaging, listLibraryItems, readLibraryItem, readMaterialLibraryThumbnail, removeFormLibraryItem, saveFormLibraryItem, saveMaterialLibraryItem, saveMaterialLibraryThumbnail, transferMaterialLibraryItem } from '../form-library/index.js';
 import { ProjectNotFoundError } from '../project-persistence.js';
 import { ProjectWriteAbortedError } from '../project-write-lease.js';
 import { type FastifyInstance as FastifyInstance, type FastifyReply as FastifyReply, type FastifyRequest as FastifyRequest } from 'fastify';

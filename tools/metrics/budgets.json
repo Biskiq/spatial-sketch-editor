@@ -1,9 +1,9 @@
 {
   "generatedFrom": "LOC-0 baseline; shrink-only from here",
   "counts": {
-    "filesOver600": 124,
-    "filesOver1000": 37,
-    "filesOver1500": 12,
+    "filesOver600": 121,
+    "filesOver1000": 35,
+    "filesOver1500": 11,
     "functionsOver200": 74,
     "exportStars": 0,
     "crossPackageReexports": 0,
@@ -28,11 +28,6 @@
     {
       "path": "apps/editor/src/lib/authoring/experience/ExperienceGuide.svelte",
       "lines": 1983,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
-      "path": "apps/api/src/form-library.ts",
-      "lines": 1831,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -118,11 +113,6 @@
     {
       "path": "apps/editor/src/lib/authoring/library/StageLibrary.svelte",
       "lines": 1292,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
-      "path": "apps/api/src/model-persistence.ts",
-      "lines": 1287,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -298,11 +288,6 @@
     {
       "path": "apps/editor/src/lib/authoring/stage/stage-facade.ts",
       "lines": 841,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
-      "path": "apps/api/src/image-repair.ts",
-      "lines": 840,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
