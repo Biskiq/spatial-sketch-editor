@@ -1,8 +1,8 @@
 {
   "generatedFrom": "LOC-0 baseline; shrink-only from here",
   "counts": {
-    "filesOver600": 100,
-    "filesOver1000": 15,
+    "filesOver600": 99,
+    "filesOver1000": 14,
     "filesOver1500": 1,
     "functionsOver200": 81,
     "exportStars": 0,
@@ -78,11 +78,6 @@
     {
       "path": "apps/editor/src/lib/authoring/adapters/scene/SceneTransformInstrument.svelte",
       "lines": 1046,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
-      "path": "apps/editor/src/lib/authoring/stage/shell/StageViewportRegion.svelte",
-      "lines": 1020,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
