@@ -1,9 +1,9 @@
 {
   "generatedFrom": "LOC-0 baseline; shrink-only from here",
   "counts": {
-    "filesOver600": 127,
-    "filesOver1000": 40,
-    "filesOver1500": 13,
+    "filesOver600": 125,
+    "filesOver1000": 38,
+    "filesOver1500": 12,
     "functionsOver200": 73,
     "exportStars": 0,
     "crossPackageReexports": 0,
@@ -68,11 +68,6 @@
     {
       "path": "apps/editor/src/lib/authoring/adapters/layout/ink-session.ts",
       "lines": 1579,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
-      "path": "packages/project-model/src/scene-planning/operations.ts",
-      "lines": 1577,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -188,11 +183,6 @@
     {
       "path": "packages/project-model/src/units/experience/interpreter.ts",
       "lines": 1108,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
-      "path": "packages/project-model/src/scene-planning/intent-payload.ts",
-      "lines": 1074,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
