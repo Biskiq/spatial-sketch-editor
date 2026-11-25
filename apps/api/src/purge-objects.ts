@@ -8,7 +8,7 @@ import { purgeUnreferencedObjects, R2PurgeRefusal } from './r2-purge.js';
 
 /**
  * Owner-run activation step: purge object bytes left unreferenced by migration
- * 005. It refuses unless migration 005 is active, every listed key sits inside
+ * baseline. It refuses unless the schema baseline is active, every listed key sits inside
  * this deployment's `R2_OBJECT_NAMESPACE`, and no release row remains.
  */
 export async function main(): Promise<void> {

@@ -1,7 +1,7 @@
 /**
- * API contract: migration 005's clean-source-epoch fence.
+ * API contract: the clean-source-epoch fence in the schema baseline.
  *
- * Runs against real Postgres in a throwaway schema so the destructive reset
+ * Runs against real Postgres in a throwaway schema so the throwaway schema
  * cannot touch the surrounding test database. Proves the fence is structural:
  * a pre-epoch writer and a pre-epoch document are refused by the schema itself,
  * whatever the deployment order, and a declared F.2 envelope is admitted.
@@ -124,7 +124,7 @@ test('two concurrent migration runners serialize and both finish cleanly', async
 			['fulfilled', 'fulfilled']
 		);
 		const versions = await left.query('SELECT version FROM schema_migrations ORDER BY version');
-		assert.deepEqual(versions.rows.map((row) => row.version), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+		assert.deepEqual(versions.rows.map((row) => row.version), [1]);
 		const fence = await left.query(
 			"SELECT is_nullable FROM information_schema.columns WHERE table_schema = $1 AND table_name = 'project_versions' AND column_name = 'source_format'",
 			[schema]

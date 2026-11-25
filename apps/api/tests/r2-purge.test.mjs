@@ -1,6 +1,6 @@
 /**
  * The epoch R2 purge (AM-9). The purge may only delete unreferenced keys inside
- * the deployment's configured namespace after migration 005 is active. These
+ * the deployment's configured namespace after the schema baseline is active. These
  * tests use a scripted store, so no R2 credentials or network are involved.
  */
 import assert from 'node:assert/strict';
@@ -51,11 +51,11 @@ test('deletes only unreferenced namespaced keys and is idempotent', async () => 
 	assert.deepEqual(r2.deleted, [KEY_B]);
 });
 
-test('refuses before migration 005 is active and deletes nothing', async () => {
+test('refuses before the schema baseline is active and deletes nothing', async () => {
 	const r2 = store([KEY_A, KEY_B]);
 	await assert.rejects(
 		() => purgeUnreferencedObjects(pool([], { migrations: [] }), r2, options),
-		(error) => error instanceof R2PurgeRefusal && /migration 5/.test(error.message)
+		(error) => error instanceof R2PurgeRefusal && /schema baseline/.test(error.message)
 	);
 	assert.deepEqual(r2.deleted, []);
 });
@@ -80,7 +80,7 @@ test('refuses a shared bucket holding another deployment namespace and deletes n
 });
 
 test('refuses pre-namespace legacy keys and deletes nothing', async () => {
-	// Keys written before the namespace cutover keep the old shape. Migration 005
+	// Keys written before the namespace cutover keep the old shape. The clean-source epoch
 	// clears the rows that named them, but the purge still cannot prove the bucket
 	// belongs to this deployment, so it must refuse the whole bucket.
 	const legacyKey = `projects/project:one/assets/33333333-3333-4333-8333-333333333333/${'d'.repeat(32)}`;
