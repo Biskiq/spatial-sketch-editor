@@ -68,16 +68,21 @@ import {
 } from './experience-paths';
 import type { OperationChange } from '@portfolio/project-model/f4';
 import type { ScenePathAnchor } from '@portfolio/project-model/scene';
-import { cameraConnectionCreateIntent, cameraConnectionUpdateIntent, guideUpdateIntent, removeIntent, viewRemoveIntent, viewRenameIntent, viewUpdateIntent } from './commands-presentation';
-import { captureBindIntent, createExperienceIntent, experienceUpdateIntent, guideCreateIntent, guideOrderIntent, presentationUpdateIntent, stopCreateIntent, stopUpdateIntent } from './commands-structure';
-import { capturedFovDegrees, capturedViewPose, sceneEntitySubject } from './commands-references';
-import type { CapturedViewPose } from './commands-references';
+import { cameraConnectionCreateIntent, cameraConnectionUpdateIntent, guideUpdateIntent, removeIntent, viewRemoveIntent, viewRenameIntent, } from './commands-presentation';
+import { createExperienceIntent, experienceUpdateIntent, guideCreateIntent, guideOrderIntent, presentationUpdateIntent, stopCreateIntent, stopUpdateIntent } from './commands-structure';
+import { sceneEntitySubject } from './commands-references';
 import {
 	type ExperienceRemovalPreview,
 	type ExperienceRemovalTarget,
 } from './experience-removal';
 import type { PlaybackSource } from './playback.svelte';
 import { createExperienceRemovalReadings } from './experience-removal-readings';
+import {
+	createExperienceViewAuthoring,
+	type ExperiencePlacement,
+	type ExperienceViewPose,
+	type ExperienceViewUpdate
+} from './experience-view-authoring';
 
 type Submission = Parameters<StageAdapterServices['authoring']['accept']>[0];
 
@@ -96,22 +101,6 @@ export type ExperienceFeedback = { readonly kind: ExperienceFeedbackKind; readon
 export const DRAFT_EXPERIENCE_LABEL = 'Untitled experience';
 
 export type ExperienceRenameOutcome = { readonly kind: 'accepted' | 'refused'; readonly message?: string };
-
-/** One exact authored View pose, as the Stage's Camera reads it. */
-export type ExperienceViewPose = {
-	readonly eye: [number, number, number];
-	readonly target: [number, number, number];
-	readonly fov: number;
-};
-
-export type ExperiencePlacement =
-	| { readonly kind: 'placed'; readonly presentationId: string; readonly viewId: string; readonly createdPresentation: boolean }
-	| { readonly kind: 'refused'; readonly message: string };
-
-export type ExperienceViewUpdate =
-	| { readonly kind: 'updated' }
-	| { readonly kind: 'needs-confirmation'; readonly alsoIn: readonly string[] }
-	| { readonly kind: 'refused'; readonly message: string };
 
 /** The creator-facing refusal for an empty name (every Experience rename field). */
 export const NAME_NEEDED = 'A name is needed';
@@ -616,248 +605,27 @@ export function createExperienceController(
 	 * The Experience a first step joins: the current one, or the ready draft, which
 	 * that same accepted change creates under `draftLabel`.
 	 */
-	function stepExperience(): { readonly id: string; readonly presentations: number; readonly newLabel: string | null } {
-		return current === null
-			? { id: newId(), presentations: 0, newLabel: draftLabel }
-			: { id: current.id, presentations: current.presentations.length, newLabel: null };
-	}
-
-	function currentCapturePose() {
-		const evaluation = readServices().stage.evaluation();
-		if (evaluation === null) {
-			say('refusal', 'The Stage has not evaluated a reading yet; wait for the reading to settle.');
-			return null;
-		}
-		// Plan is orthographic: its eye/target would record a perspective View the
-		// creator never saw. Capture is a 3D-reading action.
-		if (evaluation.projectionKind !== 'perspective-3d') {
-			say('refusal', 'Capture needs the 3D reading: switch to 3D, frame the View, then capture.');
-			return null;
-		}
-		const fov = capturedFovDegrees(evaluation.projectionMatrix);
-		if (fov === null) {
-			say('refusal', 'The Stage projection is degenerate; frame the View again.');
-			return null;
-		}
-		return capturedViewPose({
-			label: `View ${snapshot.units.camera.data.views.length + 1}`,
-			eye: evaluation.eye,
-			target: evaluation.target,
-			fov
-		});
-	}
-
-	/**
-	 * A new Presentation from the current 3D framing: View + Presentation in one accepted
-	 * install. It binds the given Scene entity or none, and never a Guide or a Stop.
-	 */
-	async function captureNewPresentation(
-		subjectEntityId: string | null,
-		presentationLabelText: string | null,
-		exactPose: CapturedViewPose | null = null
-	): Promise<boolean> {
-		const view = exactPose ?? currentCapturePose();
-		if (view === null) return false;
-		const experience = stepExperience();
-		const presentationId = newId();
-		const accepted = await run(() =>
-			captureBindIntent({
-				envelope: snapshot,
-				revision: revision(),
-				ids: { operation: newId(), view: newId(), presentation: presentationId },
-				experienceId: experience.id,
-				view,
-				presentationLabel:
-					presentationLabelText ??
-					(subjectEntityId === null ? `Presentation ${experience.presentations + 1}` : null),
-				subjectEntityId,
-				text: null,
-				guideId: null,
-				afterStopId: null,
-				newExperienceLabel: experience.newLabel
-			})
-		);
-		if (accepted) {
-			if (experience.newLabel !== null) {
-				experienceFocus.openExperience(experience.id);
-				draftLabel = DRAFT_EXPERIENCE_LABEL;
-			}
-			experienceFocus.select({ kind: 'presentation', presentationId });
-			// Measurement anchor for the capture/bind → Preview entry row.
-			perfMark('experience:capture-accepted', { firstGuide: false });
-		}
-		return accepted;
-	}
-
-	/**
-	 * Dock Capture. Into the visibly selected Presentation (or the one a selected
-	 * View belongs to) when there is one: the new View is appended, joined by a Cut, and
-	 * the Default (View 1) is unchanged. A Presentation with no View takes it as its
-	 * Default, and the message says so. Otherwise a new standpoint Presentation with no
-	 * subject and no Stop.
-	 */
-	async function captureView(view: CapturedViewPose): Promise<boolean> {
-		const target = selectedPresentation;
-		if (current === null || target === null) return captureNewPresentation(null, null, view);
-		const experience = current;
-		const hadDefault = target.views.length > 0;
-		const accepted = await run(() =>
-			presentationUpdateIntent({
-				envelope: snapshot,
-				revision: revision(),
-				ids: { operation: newId(), view: newId() },
-				experienceId: experience.id,
-				presentationId: target.id,
-				view
-			})
-		);
-		if (accepted && !hadDefault) {
-			say('info', `${target.label} had no Default View, so this View is now its Default.`);
-		}
-		return accepted;
-	}
-
-	async function capture(): Promise<boolean> {
-		const view = currentCapturePose();
-		if (view === null) return false;
-		return captureView(view);
-	}
-
-	function viewLabel(): string {
-		return `View ${snapshot.units.camera.data.views.length + 1}`;
-	}
-
-	async function capturePose(pose: { readonly eye: readonly [number, number, number]; readonly target: readonly [number, number, number]; readonly fov: number }): Promise<boolean> {
-		return captureView(capturedViewPose({ label: viewLabel(), eye: pose.eye, target: pose.target, fov: pose.fov }));
-	}
-
-	async function presentThisFramed(
-		entityId: string,
-		_label: string,
-		pose: { readonly eye: readonly [number, number, number]; readonly target: readonly [number, number, number]; readonly fov: number }
-	): Promise<boolean> {
-		// G24: the Presentation follows the object's live name; the copied label is gone.
-		return captureNewPresentation(
-			entityId,
-			null,
-			capturedViewPose({ label: viewLabel(), eye: pose.eye, target: pose.target, fov: pose.fov })
-		);
-	}
-
-	async function placeView(pose: { readonly eye: readonly [number, number, number]; readonly target: readonly [number, number, number]; readonly fov: number }): Promise<ExperiencePlacement> {
-		const viewId = newId();
-		const view = capturedViewPose({ label: viewLabel(), eye: pose.eye, target: pose.target, fov: pose.fov });
-		const target = selectedPresentation;
-		if (current !== null && target !== null) {
-			const experience = current;
-			const accepted = await run(
-				() =>
-					presentationUpdateIntent({
-						envelope: snapshot,
-						revision: revision(),
-						ids: { operation: newId(), view: viewId },
-						experienceId: experience.id,
-						presentationId: target.id,
-						view
-					}),
-				() => ''
-			);
-			if (!accepted) return { kind: 'refused', message: feedback?.text ?? '' };
-			experienceFocus.select({ kind: 'view', viewId, presentationId: target.id });
-			return { kind: 'placed', presentationId: target.id, viewId, createdPresentation: false };
-		}
-		const presentationId = newId();
-		const experience = stepExperience();
-		const accepted = await run(
-			() =>
-				captureBindIntent({
-					envelope: snapshot,
-					revision: revision(),
-					ids: { operation: newId(), view: viewId, presentation: presentationId },
-					experienceId: experience.id,
-					view,
-					presentationLabel: `Presentation ${experience.presentations + 1}`,
-					subjectEntityId: null,
-					text: null,
-					guideId: null,
-					afterStopId: null,
-					newExperienceLabel: experience.newLabel
-				}),
-			() => ''
-		);
-		if (!accepted) return { kind: 'refused', message: feedback?.text ?? '' };
-		if (experience.newLabel !== null) {
-			experienceFocus.openExperience(experience.id);
-			draftLabel = DRAFT_EXPERIENCE_LABEL;
-		}
-		experienceFocus.select({ kind: 'presentation', presentationId });
-		return { kind: 'placed', presentationId, viewId, createdPresentation: true };
-	}
-
-	async function updateViewPose(
-		viewId: string,
-		pose: { readonly eye: readonly [number, number, number]; readonly target: readonly [number, number, number]; readonly fov: number },
-		presentationId: string,
-		options: { readonly confirmShared?: boolean } = {}
-	): Promise<ExperienceViewUpdate> {
-		const view = snapshot.units.camera.data.views.find((candidate) => candidate.id === viewId);
-		if (view === undefined) return { kind: 'refused', message: 'That View is not in this project' };
-		const shared = alsoIn(viewId, presentationId);
-		if (shared.length > 0 && options.confirmShared !== true) {
-			return { kind: 'needs-confirmation', alsoIn: shared.map((presentation) => presentationDisplayName(presentation.id)) };
-		}
-		const accepted = await run(
-			() =>
-				viewUpdateIntent({
-					envelope: snapshot,
-					revision: revision(),
-					ids: { operation: newId() },
-					view,
-					eye: pose.eye,
-					target: pose.target,
-					fov: pose.fov
-				}),
-			() => shared.length > 0 ? `View updated; it also changes ${shared.map((entry) => entry.label).join(', ')}.` : ''
-		);
-		return accepted ? { kind: 'updated' } : { kind: 'refused', message: feedback?.text ?? '' };
-	}
-
-	async function setViewFraming(
-		viewId: string,
-		framing: { readonly fov?: number; readonly eyeHeightMetres?: number }
-	): Promise<boolean> {
-		const view = snapshot.units.camera.data.views.find((candidate) => candidate.id === viewId);
-		if (view === undefined) {
-			say('refusal', 'That View is not in this project.');
-			return false;
-		}
-		const eye: [number, number, number] = [view.eye[0], view.eye[1], view.eye[2]];
-		const target: [number, number, number] = [view.target[0], view.target[1], view.target[2]];
-		let fov = view.fov;
-		if (framing.fov !== undefined) {
-			if (!Number.isFinite(framing.fov) || framing.fov <= 0 || framing.fov >= 180) {
-				say('refusal', 'That lens is not a supported field of view.');
-				return false;
-			}
-			fov = framing.fov;
-		}
-		if (framing.eyeHeightMetres !== undefined) {
-			if (!Number.isFinite(framing.eyeHeightMetres)) {
-				say('refusal', 'That eye height is not a number.');
-				return false;
-			}
-			const delta = datumMeters + framing.eyeHeightMetres - view.eye[1];
-			eye[1] += delta;
-			target[1] += delta;
-		}
-		return run(
-			() => viewUpdateIntent({ envelope: snapshot, revision: revision(), ids: { operation: newId() }, view, eye, target, fov }),
-			() => ''
-		);
-	}
+	const views = createExperienceViewAuthoring({
+		snapshot: () => snapshot,
+		current: () => current,
+		selectedPresentation: () => selectedPresentation,
+		datumMeters: () => datumMeters,
+		draftLabel: () => draftLabel,
+		resetDraftLabel: () => (draftLabel = DRAFT_EXPERIENCE_LABEL),
+		feedback: () => feedback?.text ?? '',
+		say: (kind, text) => say(kind, text),
+		newId,
+		revision,
+		run,
+		focus: experienceFocus,
+		readServices,
+		perfMark,
+		alsoIn,
+		presentationDisplayName
+	});
 
 	async function presentThis(entityId: string, _label?: string): Promise<boolean> {
-		return captureNewPresentation(entityId, null);
+		return views.captureNewPresentation(entityId, null);
 	}
 
 	async function addStop(
@@ -1818,11 +1586,11 @@ export function createExperienceController(
 				? null
 				: { eye: [view.eye[0], view.eye[1], view.eye[2]], target: [view.target[0], view.target[1], view.target[2]], fov: view.fov };
 		},
-		setViewFraming,
-		placeView,
-		updateViewPose,
-		capturePose,
-		presentThisFramed,
+		setViewFraming: views.setViewFraming,
+		placeView: views.placeView,
+		updateViewPose: views.updateViewPose,
+		capturePose: views.capturePose,
+		presentThisFramed: views.presentThisFramed,
 		select: (next: ExperienceSubject | null) => {
 			experienceFocus.select(next);
 			// A transition owns its path occurrence; any other subject clears the Path reading.
@@ -1848,7 +1616,7 @@ export function createExperienceController(
 		get draftLabel() {
 			return draftLabel;
 		},
-		capture,
+		capture: views.capture,
 		presentThis,
 		addStop,
 		moveStopTo,

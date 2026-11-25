@@ -4,7 +4,7 @@
     "filesOver600": 103,
     "filesOver1000": 17,
     "filesOver1500": 2,
-    "functionsOver200": 75,
+    "functionsOver200": 76,
     "exportStars": 0,
     "crossPackageReexports": 0,
     "seams": 8
@@ -17,7 +17,7 @@
     },
     {
       "path": "apps/editor/src/lib/authoring/experience/experience-controller.svelte.ts",
-      "lines": 1906,
+      "lines": 1674,
       "reason": "One Experience authoring entry: the shared accepted snapshot, focus reads, one command runner and the sub-owners compose the lens; removal readings live in their own module."
     },
     {
@@ -530,8 +530,8 @@
     {
       "file": "apps/editor/src/lib/authoring/experience/experience-controller.svelte.ts",
       "name": "createExperienceController",
-      "line": 317,
-      "lines": 1590,
+      "line": 306,
+      "lines": 1369,
       "reason": "One Experience composition root: one accepted snapshot, one command runner and the sub-owner wiring; the removal readings are extracted."
     },
     {
@@ -904,6 +904,13 @@
       "line": 13,
       "lines": 275,
       "reason": "One wall document parser: the field walk and refusal order are the codec contract."
+    },
+    {
+      "file": "apps/editor/src/lib/authoring/experience/experience-view-authoring.ts",
+      "name": "createExperienceViewAuthoring",
+      "line": 50,
+      "lines": 256,
+      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
       "file": "apps/editor/src/lib/authoring/stage/paper-scene.ts",
