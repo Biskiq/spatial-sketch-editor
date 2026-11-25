@@ -1,8 +1,8 @@
 {
   "generatedFrom": "LOC-0 baseline; shrink-only from here",
   "counts": {
-    "filesOver600": 99,
-    "filesOver1000": 10,
+    "filesOver600": 101,
+    "filesOver1000": 8,
     "filesOver1500": 1,
     "functionsOver200": 81,
     "exportStars": 0,
@@ -34,16 +34,6 @@
       "path": "apps/editor/src/lib/authoring/stage/shell/EditorIndex.svelte",
       "lines": 1317,
       "reason": "The Index root: scope rows, selection and Camera requests share one accepted source and one ephemeral locator."
-    },
-    {
-      "path": "apps/editor/src/lib/authoring/library/StageLibrary.svelte",
-      "lines": 1292,
-      "reason": "The Library sheet root: search, filters and selection share one sheet session and one route into the Material editor."
-    },
-    {
-      "path": "apps/editor/src/lib/visitor/VisitorPreviewSurface.svelte",
-      "lines": 1245,
-      "reason": "One visitor run: surface, camera director and cards share the interpreter entry, guide state and one cleanup path."
     },
     {
       "path": "apps/editor/src/lib/render/resources/texture-store.ts",
@@ -216,6 +206,11 @@
       "reason": "One guide time map: hold/wait/cut/travel segments and the invocation clock are solved from one segment table."
     },
     {
+      "path": "apps/editor/src/lib/authoring/library/StageLibraryBody.svelte",
+      "lines": 754,
+      "reason": "The Library body: rail, grouped grid and detail pane share one browse result, one selection and the one card action."
+    },
+    {
       "path": "apps/editor/src/lib/authoring/stage/host-acceptance.ts",
       "lines": 753,
       "reason": "The host to F4 wiring: one coordinator per epoch owns every acceptance route and its outcome."
@@ -254,6 +249,16 @@
       "path": "apps/editor/src/lib/authoring/adapters/layout/opening-placement-session.ts",
       "lines": 734,
       "reason": "One Opening placement controller: preference, candidate and commit share one captured pointer or typed intent."
+    },
+    {
+      "path": "apps/editor/src/lib/authoring/library/StageLibrary.svelte",
+      "lines": 734,
+      "reason": "The Library sheet root: search, filters and selection share one sheet session and one route into the Material editor."
+    },
+    {
+      "path": "apps/editor/src/lib/visitor/VisitorOverlay.svelte",
+      "lines": 734,
+      "reason": "The Visitor overlay: welcome, guided HUD, Places, free exploration and end card share the live run state and one entry route."
     },
     {
       "path": "apps/editor/src/lib/authoring/adapters/scene/object-marks.ts",
@@ -389,6 +394,11 @@
       "path": "apps/editor/src/lib/authoring/adapters/scene/support-occlusion.ts",
       "lines": 663,
       "reason": "Floor support resolution: ray, floor plane and occluders share the same drawn geometry."
+    },
+    {
+      "path": "apps/editor/src/lib/visitor/VisitorPreviewSurface.svelte",
+      "lines": 659,
+      "reason": "One visitor run: surface, camera director and cards share the interpreter entry, guide state and one cleanup path."
     },
     {
       "path": "packages/layout-core/src/room/space-create.ts",
