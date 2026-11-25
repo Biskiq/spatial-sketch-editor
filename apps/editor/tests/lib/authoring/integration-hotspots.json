@@ -457,5 +457,23 @@
     "effects": 0,
     "functions": 4,
     "arrows": 2
+  },
+  "src/lib/authoring/adapters/scene/object-mark-session.ts": {
+    "lines": 687,
+    "imports": 15,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 7,
+    "arrows": 5
+  },
+  "src/lib/authoring/adapters/scene/object-mark-form-geometry.ts": {
+    "lines": 192,
+    "imports": 7,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 6,
+    "arrows": 2
   }
 }

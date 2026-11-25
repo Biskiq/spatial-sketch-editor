@@ -146,11 +146,6 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
-      "path": "apps/editor/src/lib/authoring/adapters/scene/object-mark-session.ts",
-      "lines": 844,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
       "path": "apps/editor/src/lib/authoring/stage/stage-facade.ts",
       "lines": 841,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
@@ -386,6 +381,11 @@
       "reason": "One round-room certification: the witness search, interval proof and seam proof share one boundary walk and span table."
     },
     {
+      "path": "apps/editor/src/lib/authoring/adapters/scene/object-mark-session.ts",
+      "lines": 686,
+      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+    },
+    {
       "path": "apps/editor/src/lib/render/materials/scene-finish.ts",
       "lines": 682,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
@@ -549,13 +549,6 @@
       "reason": "One card session: focus, reach, preview and one-patch writes share the open target and the Card-local preview frame."
     },
     {
-      "file": "apps/editor/src/lib/authoring/adapters/scene/object-mark-session.ts",
-      "name": "createObjectMarkSession",
-      "line": 100,
-      "lines": 745,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
       "file": "apps/editor/src/lib/authoring/stage/route/stage-shell-state.svelte.ts",
       "name": "createStageShellState",
       "line": 122,
@@ -617,6 +610,13 @@
       "line": 140,
       "lines": 592,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+    },
+    {
+      "file": "apps/editor/src/lib/authoring/adapters/scene/object-mark-session.ts",
+      "name": "createObjectMarkSession",
+      "line": 101,
+      "lines": 586,
+      "reason": "One no-task object-mark gesture: press, preview and release share one lease, one captured baseline and one refusal record across object, form and opening marks."
     },
     {
       "file": "apps/editor/src/lib/authoring/adapters/layout.adapter.ts",
