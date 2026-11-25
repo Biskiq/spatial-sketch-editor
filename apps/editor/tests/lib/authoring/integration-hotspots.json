@@ -483,7 +483,7 @@
     "derived": 0,
     "effects": 0,
     "functions": 15,
-    "arrows": 53
+    "arrows": 56
   },
   "src/lib/authoring/stage/facade/contribution-view-entries.ts": {
     "lines": 54,
