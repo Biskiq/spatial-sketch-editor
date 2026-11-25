@@ -1,7 +1,7 @@
 {
   "generatedFrom": "LOC-0 baseline; shrink-only from here",
   "counts": {
-    "filesOver600": 101,
+    "filesOver600": 100,
     "filesOver1000": 15,
     "filesOver1500": 1,
     "functionsOver200": 81,
@@ -184,11 +184,6 @@
       "path": "apps/editor/src/lib/authoring/experience/experience-controller.svelte.ts",
       "lines": 824,
       "reason": "One Experience composition root: accepted snapshot, focus reads, one command runner and the sub-owner wiring (removal, Views, Stops, Camera paths, Presentation/Card, Experience level) compose the lens."
-    },
-    {
-      "path": "apps/editor/src/lib/authoring/stage/shell/StagePaintTray.svelte",
-      "lines": 818,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
       "path": "apps/editor/src/lib/authoring/adapters/layout/open-side-gesture-session.ts",
