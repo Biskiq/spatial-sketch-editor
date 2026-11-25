@@ -17,7 +17,7 @@ import {
 	WALL_SILHOUETTE_METRES,
 	OUTLINE_DEPTH_BIAS
 } from '$lib/authoring/stage/shell/stage-outline';
-import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-builder';
+import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-standalone';
 import { EDITOR_ROOT } from '../../helpers/import-closure';
 
 function bodyOf(points: Record<string, [number, number]>, walls: LayoutWall[], wallId: string, openings: LayoutWallOpening[] = []): BufferGeometry {

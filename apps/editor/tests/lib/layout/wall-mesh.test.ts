@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { assertWindingAgreesWithNormals, buildRoomWallMesh, type IndexedWallMesh } from '$lib/layout/wall-mesh-builder';
+import { assertWindingAgreesWithNormals } from '$lib/layout/wall-mesh-emit';
+import { buildRoomWallMesh } from '$lib/layout/wall-mesh-room';
+import type { IndexedWallMesh } from '$lib/layout/wall-mesh-types';
 import {
 	g1DocumentWithRooms,
 	g1LShapedDocument,

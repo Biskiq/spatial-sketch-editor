@@ -26,7 +26,7 @@ import { legJoinsByWall, type LayoutDocumentWallFirst, type LayoutWall } from '@
 import { setWorkObserver } from '@portfolio/layout-core/kernel';
 import { createMaterialStore } from '$lib/render/resources/material-store';
 import { createWallRepresentation } from '$lib/render/layout-wall-representation';
-import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-builder';
+import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-standalone';
 import StageCutawayLayer from '$lib/authoring/stage/cutaway/StageCutawayLayer.svelte';
 import { reactiveCell } from '../../__fixtures__/reactive-cell.svelte';
 

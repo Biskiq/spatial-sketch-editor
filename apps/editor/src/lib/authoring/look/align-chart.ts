@@ -11,7 +11,7 @@
  *
  * Layout surfaces are metre charts (`uvMeters` [1, 1]):
  * - a wall side's `u` is arc length from the wall's start on both sides and `v`
- *   is height above the wall's floor (`layout/wall-mesh-builder.ts`);
+ *   is height above the wall's floor (the Layout wall mesh);
  * - a room floor's `u` is world `x` and `v` is world `−z`
  *   (`render/layout-room-representation.ts` `polygonShape`).
  *

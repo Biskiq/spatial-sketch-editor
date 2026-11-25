@@ -13,7 +13,7 @@
  */
 import { Box3, BufferAttribute, BufferGeometry, Mesh, Vector3, type Object3D } from 'three';
 import type { LayoutSurfaceRef } from '@portfolio/layout-core/plan';
-import type { Layout3dPickRange } from '$lib/layout/wall-mesh-builder';
+import type { Layout3dPickRange } from '$lib/layout/wall-mesh-types';
 import { renderIdentityOf } from '$lib/render/render-identity';
 import type { ScenePickSource } from '../../scene/scene-pick-source';
 import { hasVisibleAncestor } from '../../scene/scene-pick-source';

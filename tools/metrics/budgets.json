@@ -1,9 +1,9 @@
 {
   "generatedFrom": "LOC-0 baseline; shrink-only from here",
   "counts": {
-    "filesOver600": 105,
-    "filesOver1000": 18,
-    "filesOver1500": 4,
+    "filesOver600": 104,
+    "filesOver1000": 17,
+    "filesOver1500": 3,
     "functionsOver200": 74,
     "exportStars": 0,
     "crossPackageReexports": 0,
@@ -13,11 +13,6 @@
     {
       "path": "apps/editor/src/lib/authoring/look/finish-authoring.svelte.ts",
       "lines": 2283,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
-      "path": "apps/editor/src/lib/layout/wall-mesh-builder.ts",
-      "lines": 2119,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {

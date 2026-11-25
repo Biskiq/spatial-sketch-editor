@@ -1,12 +1,10 @@
 /**
- * Wall-mesh test toolkit — extracted by T4 so the watertight-matrix suite
- * (`wall-mesh-watertight-matrices.test.ts`) and the single-case suite
- * (`wall-mesh-builder.test.ts`) share one owner for the mesh assertions and
- * document builders instead of duplicating them across lanes.
+ * Wall-mesh test toolkit: the watertight-matrix suite and the single-case
+ * suite share one owner for the mesh assertions and document builders.
  */
 import { expect } from 'vitest';
 import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core/geometry';
-import { type IndexedWallMesh } from '$lib/layout/wall-mesh-builder';
+import type { IndexedWallMesh } from '$lib/layout/wall-mesh-types';
 import {
 	g1DocumentWithRooms,
 	g1LineRectangleDocument,

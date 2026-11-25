@@ -226,22 +226,24 @@ describe('[cap:layout.canonical-compiler core] G1 geometry boundary', () => {
 	});
 
 	it('keeps every $lib/layout module free of renderer, editor, and browser coupling', () => {
-		// T4 absorbed the single-module pin that used to live in
-		// `wall-mesh-builder.test.ts` and widened it to the whole layer. PR #115
-		// (§5.1) then removed the 31 `$lib/layout/*` re-export facades, so the
-		// layer is still tiny: the shared mesh builder, C3's three pure unfold
-		// modules (development preparation, inverse picking and sheet Opening
-		// drag mapping) and A6's pure face frame. The browser-facing session stores
-		// deliberately live
-		// under `$lib/authoring/layout` so this boundary keeps forbidding
-		// animation/browser APIs.
+		// The layer holds only pure geometry: the mesh builder's phase modules,
+		// the three unfold modules (development preparation, inverse picking and
+		// sheet Opening drag mapping) and the face frame. Browser-facing session
+		// stores live under `$lib/authoring/layout`, so this boundary keeps
+		// forbidding animation and browser APIs.
 		const layoutFiles = ALL_SOURCE_FILES.filter((file) => file.startsWith(`${libRoot}/layout/`));
 		expect(layoutFiles.map((file) => file.slice(libRoot.length + 1))).toEqual([
 			// X2's pure Junction seam derivation: compiled geometry in, seam faces out.
 			// No renderer, editor state or browser API.
 			'layout/wall-cutaway-seams.ts',
 			'layout/wall-face.ts',
-			'layout/wall-mesh-builder.ts',
+			'layout/wall-mesh-corners.ts',
+			'layout/wall-mesh-emit.ts',
+			'layout/wall-mesh-geometry.ts',
+			'layout/wall-mesh-room.ts',
+			'layout/wall-mesh-sections.ts',
+			'layout/wall-mesh-standalone.ts',
+			'layout/wall-mesh-types.ts',
 			'layout/wall-unfold-opening-drag.ts',
 			'layout/wall-unfold-pick.ts',
 			'layout/wall-unfold.ts'

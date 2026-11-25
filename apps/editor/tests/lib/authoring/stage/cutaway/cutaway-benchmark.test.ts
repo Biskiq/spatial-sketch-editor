@@ -14,7 +14,7 @@
 import { describe, expect, it } from 'vitest';
 import { compileWallFirstLayoutGeometry, type LayoutVec2 } from '@portfolio/layout-core/geometry';
 import { createEmptyWallFirstLayoutDocument, legJoinsByWall, type LayoutDocumentWallFirst, type LayoutWall } from '@portfolio/layout-core/wall';
-import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-builder';
+import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-standalone';
 import { classifyNearWalls } from '$lib/authoring/stage/cutaway/near-wall-classify';
 import { assembleCutawayCaps } from '$lib/authoring/stage/cutaway/cutaway-caps';
 

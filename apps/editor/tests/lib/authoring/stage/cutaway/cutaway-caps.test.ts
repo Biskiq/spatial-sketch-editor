@@ -23,7 +23,7 @@
 import { describe, expect, it } from 'vitest';
 import { compileWallFirstLayoutGeometry, deriveChainSpans, type LayoutVec2 } from '@portfolio/layout-core/geometry';
 import { legJoinsByWall, wallCubicChain, type LayoutDocumentWallFirst, type LayoutWall, type LayoutWallCurveKnot } from '@portfolio/layout-core/wall';
-import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-builder';
+import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-standalone';
 import { assembleCutawayCaps, type CutawayComponent } from '$lib/authoring/stage/cutaway/cutaway-caps';
 import { capFillsOf } from '$lib/authoring/stage/slice/slice-cap-shapes';
 

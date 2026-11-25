@@ -13,7 +13,7 @@
  * host with the editor Canvas closed derives the same facts.
  */
 import { evaluateFormMesh, formEvaluationKey } from '$lib/content/form-evaluation';
-import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-builder';
+import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-standalone';
 import { buildRegionMeshGeometry } from '$lib/render/layout/region-mesh-builder';
 import { legJoinsByWall } from '@portfolio/layout-core/wall';
 import type { CompiledLayoutGeometry, CompiledRegion } from '@portfolio/layout-core/geometry';
