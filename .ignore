@@ -1,1 +1,9 @@
 docs/archive/
+node_modules/
+dist/
+build/
+.svelte-kit/
+.freebuff/
+.harness/
+.local/
+.claude/
