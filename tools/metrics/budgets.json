@@ -574,7 +574,7 @@
       "name": "createStageInputArbiter",
       "line": 103,
       "lines": 620,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+      "reason": "The one mounted Stage dispatcher: press, move, release, hover and interruption share a single precedence order and press tracker; extracting a phase would duplicate the ordering contract."
     },
     {
       "file": "apps/editor/src/lib/authoring/adapters/layout/opening-placement-session.ts",
