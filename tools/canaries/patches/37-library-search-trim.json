@@ -1,0 +1,12 @@
+{
+  "id": "37-library-search-trim",
+  "area": "authoring",
+  "citation": "hard rule 2 — distinct authorities",
+  "title": "An empty library query hides every card",
+  "file": "apps/editor/src/lib/authoring/library/library-catalogue.ts",
+  "find": "\tif (needle.length === 0) return true;",
+  "replace": "\tif (needle.length === 0) return false;",
+  "tests": [
+    "tests/lib/authoring/library/library-catalogue.test.ts"
+  ]
+}

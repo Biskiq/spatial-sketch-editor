@@ -1,0 +1,12 @@
+{
+  "id": "35-paint-favourite-toggle",
+  "area": "authoring",
+  "citation": "section 3 — selection",
+  "title": "Toggling a favourite adds a duplicate instead of removing it",
+  "file": "apps/editor/src/lib/authoring/look/paint-pick.ts",
+  "find": "return list.includes(key) ? list.filter((entry) => entry !== key) : [...list, key].slice(0, limit);",
+  "replace": "return list.includes(key) ? [...list, key].slice(0, limit) : list.filter((entry) => entry !== key);",
+  "tests": [
+    "tests/lib/authoring/look/paint-pick.test.ts"
+  ]
+}

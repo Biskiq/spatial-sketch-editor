@@ -1,0 +1,12 @@
+{
+  "id": "25-save-precondition-match",
+  "area": "conditional-save",
+  "citation": "section 3 — conditional Save",
+  "title": "A retained Save capture is never reused",
+  "file": "apps/editor/src/lib/authoring/save/save-state.ts",
+  "find": "function retainedCapture(current: SaveSourceState): PendingCapture | null {\n\t\tif (!pending) return null;",
+  "replace": "function retainedCapture(current: SaveSourceState): PendingCapture | null {\n\t\tif (pending) return null;",
+  "tests": [
+    "tests/lib/authoring/save-state.test.ts"
+  ]
+}

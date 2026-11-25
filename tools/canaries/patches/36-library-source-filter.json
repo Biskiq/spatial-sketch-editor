@@ -1,0 +1,12 @@
+{
+  "id": "36-library-source-filter",
+  "area": "authoring",
+  "citation": "hard rule 2 — distinct authorities; catalogue is its own catalogue",
+  "title": "The library browse ignores its material filters",
+  "file": "apps/editor/src/lib/authoring/library/library-catalogue.ts",
+  "find": "for (const filter of state.filters) if (!matchesFilter(card.entry, filter)) return false;",
+  "replace": "for (const filter of state.filters) if (filter === 'none') return false;",
+  "tests": [
+    "tests/lib/authoring/library/library-catalogue.test.ts"
+  ]
+}

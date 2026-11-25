@@ -1,0 +1,12 @@
+{
+  "id": "24-stage-pick-plan-layer",
+  "area": "selection",
+  "citation": "section 7 rule 3 — independent oracles stay",
+  "title": "Plan picks favour the backmost layer instead of the frontmost",
+  "file": "apps/editor/src/lib/authoring/stage/stage-pick.ts",
+  "find": "? Math.max(...ranked.map(({ pick }) => pick.planLayer ?? -Infinity))",
+  "replace": "? Math.min(...ranked.map(({ pick }) => pick.planLayer ?? -Infinity))",
+  "tests": [
+    "tests/lib/authoring/stage-pick-differential.test.ts"
+  ]
+}

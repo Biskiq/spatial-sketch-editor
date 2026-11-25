@@ -1,0 +1,12 @@
+{
+  "id": "10-strict-shape-empty-string",
+  "area": "codec",
+  "citation": "section 5 rule 7 — comments state the current contract",
+  "title": "String reader admits an empty or whitespace-only value",
+  "file": "packages/project-model/src/strict-shape.ts",
+  "find": "if (typeof input !== 'string' || input.trim() === '') {",
+  "replace": "if (typeof input !== 'string') {",
+  "tests": [
+    "tests/lib/project-model/references-conformance.test.ts"
+  ]
+}

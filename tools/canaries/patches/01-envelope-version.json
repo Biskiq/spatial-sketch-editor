@@ -1,0 +1,12 @@
+{
+  "id": "01-envelope-version",
+  "area": "codec",
+  "citation": "section 7 rule 7 — one refusal per format family",
+  "title": "Envelope reader accepts a newer format version",
+  "file": "packages/project-model/src/units/validate.ts",
+  "find": "const record = reader.object(input, '$', ENVELOPE_KEYS);\n\tif (record === null) return { success: false, issues: reader.issues };\n\tif (record.formatVersion !== UNIT_ENVELOPE_FORMAT_VERSION) {",
+  "replace": "if (record.formatVersion < UNIT_ENVELOPE_FORMAT_VERSION) {",
+  "tests": [
+    "tests/lib/project-model/units-conformance.test.ts"
+  ]
+}

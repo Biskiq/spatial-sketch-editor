@@ -1,0 +1,12 @@
+{
+  "id": "07-strict-shape-exclusive-bound",
+  "area": "selection",
+  "citation": "section 3 — selection",
+  "title": "A domain-scoped tool is routed to the wrong provider",
+  "file": "apps/editor/src/lib/authoring/stage/stage-pick.ts",
+  "find": "if (query.tool.scope === 'domain' && adapterId !== toolOwner) continue;",
+  "replace": "if (query.tool.scope === 'domain' && adapterId === toolOwner) continue;",
+  "tests": [
+    "tests/lib/authoring/stage-pick.test.ts"
+  ]
+}

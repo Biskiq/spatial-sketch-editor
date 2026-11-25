@@ -1,0 +1,12 @@
+{
+  "id": "20-shared-junction-priority",
+  "area": "layout",
+  "citation": "hard rule 2 — Layout owns architecture",
+  "title": "A wall span outranks a shared junction at equal distance",
+  "file": "packages/layout-core/src/layout-snap.ts",
+  "find": "'wall-span': 4,",
+  "replace": "'wall-span': 0,",
+  "tests": [
+    "tests/lib/layout/layout-snap.test.ts"
+  ]
+}

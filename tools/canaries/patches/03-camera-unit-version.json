@@ -1,0 +1,12 @@
+{
+  "id": "03-camera-unit-version",
+  "area": "codec",
+  "citation": "section 7 rule 7 — one refusal per format family",
+  "title": "The admitted Camera unit version drifts from its codec",
+  "file": "packages/project-model/src/units/types.ts",
+  "find": "\tcamera: CAMERA_UNIT_FORMAT_VERSION,",
+  "replace": "\tcamera: CAMERA_UNIT_FORMAT_VERSION + 1,",
+  "tests": [
+    "tests/lib/project-model/units-conformance.test.ts"
+  ]
+}

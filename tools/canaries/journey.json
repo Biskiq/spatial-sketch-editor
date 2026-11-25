@@ -1,0 +1,115 @@
+{
+  "schemaVersion": 1,
+  "source": "capabilities.json",
+  "capabilities": {
+    "layout.wall-draw-close": [
+      "tests/lib/layout/layout-closed-wall.test.ts",
+      "tests/lib/authoring/layout-drawing-adapter.test.ts"
+    ],
+    "layout.opening-hosted": [
+      "tests/lib/layout/layout-openings.test.ts",
+      "tests/lib/authoring/layout-opening-adapter.test.ts"
+    ],
+    "layout.opening-repeat": [
+      "tests/lib/authoring/layout-opening-repeat-adapter.test.ts"
+    ],
+    "layout.wall-split": [
+      "tests/lib/authoring/layout-wall-manipulation.test.ts"
+    ],
+    "layout.wall-join": [
+      "tests/lib/authoring/layout-wall-join-adapter.test.ts"
+    ],
+    "layout.room-duplicate": [
+      "tests/lib/authoring/layout-room-duplicate-adapter.test.ts",
+      "tests/lib/layout/layout-room-duplicate-any.test.ts"
+    ],
+    "layout.wall-face": [
+      "tests/lib/authoring/layout-wall-face-adapter.test.ts",
+      "tests/lib/layout/layout-face-extraction.test.ts"
+    ],
+    "layout.wall-arc": [
+      "tests/lib/authoring/layout-wall-arc-adapter.test.ts",
+      "tests/lib/layout/layout-wall-arc.test.ts"
+    ],
+    "layout.wall-curve-edit": [
+      "tests/lib/layout/layout-curve-editing.test.ts"
+    ],
+    "layout.circular-room": [
+      "tests/lib/layout/layout-circular-room.test.ts",
+      "tests/lib/layout/layout-round-room.test.ts"
+    ],
+    "layout.wall-unfold": [
+      "tests/lib/authoring/layout-wall-manipulation.test.ts"
+    ],
+    "layout.interior-reveal": [
+      "tests/lib/authoring/stage/slice/slice-cut.test.ts"
+    ],
+    "layout.canonical-compiler": [
+      "tests/lib/layout/layout-geometry.test.ts"
+    ],
+    "layout.multi-level": [
+      "tests/lib/layout/layout-floor-support.test.ts"
+    ],
+    "scene.place-transform": [
+      "tests/lib/project-model/place-object-candidate.test.ts"
+    ],
+    "scene.model-import": [
+      "tests/lib/render/materials/model-derivative-analysis.test.ts"
+    ],
+    "scene.object-definition": [
+      "tests/lib/authoring/scene/object-definition-model-verification.test.ts"
+    ],
+    "camera.one-authority": [
+      "tests/lib/camera-core/camera-core-boundary.test.ts",
+      "tests/lib/camera-core/navigation/camera-motion.test.ts"
+    ],
+    "experience.format4-program": [
+      "tests/lib/experience/experience-runtime.test.ts"
+    ],
+    "experience.atomic-acceptance": [
+      "tests/lib/authoring/head-save.test.ts"
+    ],
+    "project.envelope": [
+      "tests/lib/project-model/units-conformance.test.ts"
+    ],
+    "project.cloud-save": [
+      "tests/lib/authoring/head-save-journey.test.ts"
+    ],
+    "release.visitor-isolation": [
+      "tests/lib/visitor/visitor-cold-runtime.test.ts"
+    ],
+    "release.prepared-package": [
+      "tests/lib/project-model/project-format-visitor-parity.test.ts"
+    ],
+    "studio.dual-entry": [
+      "tests/lib/authoring/studio/studio-facade-scope.test.ts"
+    ],
+    "studio.profile-revision": [
+      "tests/lib/authoring/studio/studio-controller.test.ts"
+    ],
+    "studio.assembly-reuse": [
+      "tests/lib/authoring/studio/place-copy-journey.test.ts"
+    ],
+    "studio.parametric-assembly": [
+      "tests/lib/authoring/studio/studio-model.test.ts"
+    ],
+    "scene.definition-instances": [
+      "tests/lib/render/scene-model-representation.test.ts"
+    ],
+    "studio.control-surface": [
+      "tests/lib/authoring/studio/studio-pick-scope.test.ts"
+    ],
+    "studio.profile-holes": [
+      "tests/lib/authoring/studio/studio-model.test.ts"
+    ],
+    "studio.stretch": [
+      "tests/lib/authoring/studio/studio-controller.test.ts"
+    ],
+    "studio.geometry-research": [
+      "tests/lib/project-model/object-definition-metadata.test.ts"
+    ],
+    "studio.solid-combine": [
+      "tests/lib/project-model/scene-operation-planners.test.ts"
+    ]
+  }
+}

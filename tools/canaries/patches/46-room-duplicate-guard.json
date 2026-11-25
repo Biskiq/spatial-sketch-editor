@@ -1,0 +1,12 @@
+{
+  "id": "46-room-duplicate-guard",
+  "area": "layout",
+  "citation": "section 3 — Room identity",
+  "title": "Room duplication no longer refuses a duplicate room id",
+  "file": "packages/layout-core/src/layout-identity.ts",
+  "find": "return typeof token === 'string' && LAYOUT_REFERENCE_PATTERN.test(token);",
+  "replace": "return typeof token === 'string' && token.length > 0;",
+  "tests": [
+    "tests/lib/layout/layout-identity.test.ts"
+  ]
+}
