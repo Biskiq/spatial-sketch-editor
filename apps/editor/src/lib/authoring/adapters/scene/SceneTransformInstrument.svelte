@@ -1,28 +1,19 @@
 <script lang="ts">
 	/**
-	 * The Scene editing instrument.
+	 * The Scene editing instrument, mounted by `StageInstrumentHost` for this
+	 * adapter's tasks and given only the public `StageAdapterServices`.
 	 *
-	 * It is mounted by `StageInstrumentHost` for this adapter's tasks
-	 * (`place-object`, `scene-compose`, `import-model`) and receives only the public
-	 * `StageAdapterServices`, so it reads no host internals and edits no shell.
-	 *
-	 * A selected object's exact Position, Yaw and Size are the Card writer, while this panel keeps Place and the
-	 * bounded Compose commands. Presentation is deliberately plain; it shows the
-	 * planner's captured candidate and refusal reason, and never commits on blur.
-	 * Esc/Close and unmount both run the session's one `cancel()`.
+	 * The Card writes Position, Yaw and Size; this panel keeps Place and Compose.
+	 * It shows the planner's captured candidate and never commits on blur; Esc,
+	 * Close and unmount run the session's one `cancel()`.
 	 */
 	import { onDestroy, tick, untrack } from 'svelte';
-	import { ShellIcon } from '$lib/authoring/stage/stage-adapter-host';
-
-	import { UNIT_SOURCE_KIND } from '@portfolio/project-model/units';
 
 	import type { StageAdapterServices } from '../../stage/stage-adapter-host';
 	import { stageEnvelope } from '$lib/authoring/stage/stage-adapter-host';
 	import { draftingSnapIncrementMeters } from '$lib/authoring/stage/stage-adapter-host';
 	import { choosePrimitive, clearArmedModel, rememberArmedModel, peekArmedModel } from './import/definitions';
-	import MyObjectsSectionLazy from './library/MyObjectsSectionLazy.svelte';
 	import { peekFormCopyIntake, takeFormCopyIntake } from './library/intake';
-	import { SHAPE_KINDS } from './shape/outline';
 	import {
 		armTile,
 		armedTile,
@@ -33,7 +24,6 @@
 	} from './shape/armed-tile';
 	import { objectDrawSession, subscribeObjectDraw } from './shape/draw-surface';
 	import {
-		admittedCatalogueModelAssets,
 		catalogueModelDefinition,
 		type NativePlacementPrimitive
 	} from '../../scene/object-definition-policy';
@@ -51,6 +41,8 @@
 		type SceneSurface,
 		type SceneSessionOutcome
 	} from './placement';
+	import { visibleCatalogueModels } from './catalogue-models';
+	import SceneTransformBody from './SceneTransformBody.svelte';
 
 	let { services }: { services: StageAdapterServices } = $props();
 
@@ -77,11 +69,6 @@
 	let placementChoice = $state('native:box');
 	let catalogueArmRequest = 0;
 	function projectIdNow():string { return services.stage.snapshot().acceptedRevision.projectId; }
-	const OBJECT_TILES: readonly { readonly id: ObjectTile; readonly label: string; readonly summary: string;
-	}[] = [
-		...SHAPE_KINDS,
-		{ id: 'sphere', label: 'Sphere', summary: 'Click to place a sphere.' }
-	];
 	let activeTile = $state<ObjectTile>(untrack(() => armedTile(projectIdNow())) ?? 'box');
 	let compact = $state(untrack(() => objectsPanelCompact(projectIdNow())));
 	let drawCanFinish = $state(false);
@@ -139,15 +126,7 @@
 			inStudio = services.stage.postureScoped();
 		});
 	});
-	const catalogueModels = $derived.by(() => {
-		if (inStudio) return [];
-		const snapshot = services.stage.snapshot();
-		if (snapshot.sourceKind !== UNIT_SOURCE_KIND) return admittedCatalogueModelAssets();
-		const held = stageEnvelope(snapshot).units.resources.data.resources;
-		return admittedCatalogueModelAssets().filter((asset) =>
-			held.some((resource) => resource.kind === 'asset' && resource.id === asset.id && resource.unresolved === null)
-		);
-	});
+	const catalogueModels = $derived(visibleCatalogueModels(services.stage.snapshot(), inStudio));
 	let candidate = $state<SceneCandidate | null>(null);
 	let message = $state('');
 
@@ -185,15 +164,6 @@
 	 * pending approval is applied to whenever Place opens.
 	 */
 	let armedModelPresent = $state(false);
-	/** The name a model or saved copy shows while it, not a shape, is armed. */
-	const armedName = $derived.by(() => {
-		if (armedFormCopy !== null) return armedFormCopy.item.name;
-		if (!armedModelPresent) return null;
-		const assetId = placementChoice.startsWith('catalogue:') ? placementChoice.slice('catalogue:'.length) : null;
-		return (
-			catalogueModels.find((asset) => asset.id === assetId)?.name ?? 'Imported model'
-		);
-	});
 	/**
 	 * The My Objects copy armed for this Place session, mirrored for its panel.
 	 * `$state.raw` keeps the session's own handle identity: a deep proxy would
@@ -550,7 +520,7 @@
 		}
 		const drafting = services.stage.drafting();
 		const appliedSnap = draftingSnapIncrementMeters(drafting);
-		if (armedName === null && (activeTile === 'box' || activeTile === 'round')) {
+		if (armedFormCopy === null && !armedModelPresent && (activeTile === 'box' || activeTile === 'round')) {
 			const created = await objectDrawSession()?.placeAt(Number(x), Number(z));
 			if (created != null) message = `Placed one ${activeTile}.`;
 			return;
@@ -786,261 +756,42 @@
 	});
 </script>
 
-<section class="scene-instrument" aria-label="Scene transform">
-	{#if composeTask}
-		<div class="editing" onfocusout={onFocusOut}>
-			<div class="row">
-				<span class="subject"
-					>Compose <code>{composeActive ? (composeSubjectId ?? 'no entity')
-							: (composeSubject?.id ?? 'no entity')}</code></span
-				>
-				{#if composeActive}<button type="button" class="quiet" onclick={cancel}>Cancel</button>{/if}
-			</div>
-			{#if composeActive}
-				<div class="fields">
-					<label>
-						<span>Scale (uniform)</span>
-						<input
-							bind:this={scaleInput}
-							type="text"
-							inputmode="decimal"
-							value={composeScaleText}
-							onkeydown={onKeydown}
-							oninput={(event) => updateScale(event.currentTarget.value)}
-						/>
-					</label>
-					<button type="button" onclick={commitResize} disabled={candidate?.kind !== 'resize'}>Resize</button>
-				</div>
-			{:else}
-				<div class="row">
-					<button
-						type="button"
-						onmousedown={(event) => event.preventDefault()}
-						onclick={beginResize}
-						disabled={composeSupport === null || !composeSupport.resize}
-					>
-						Resize…
-					</button>
-				</div>
-			{/if}
-			<div class="row">
-				<button type="button" onclick={duplicateSelected} disabled={composeSupport === null || !composeSupport.duplicate}>Duplicate</button>
-				<button type="button" onclick={deleteSelected} disabled={composeSubject === null}>Delete</button>
-			</div>
-
-			{#if composeSupport?.reason}
-				<p class="hint">{composeSupport.reason}</p>
-			{/if}
-		</div>
-	{:else}
-		<div class="objects-tiles" role="group" aria-label="Shapes">
-			{#each OBJECT_TILES as tile (tile.id)}
-				<button
-					type="button"
-					aria-pressed={armedName === null && activeTile === tile.id}
-					title={tile.summary}
-					onclick={() => chooseTile(tile.id)}
-				><ShellIcon
-						name={tile.id === 'sphere'
-							? 'round'
-							: tile.id === 'box'
-								? 'view3d'
-								: 'shape'}
-						size={26}
-					/><span>{tile.label}</span></button>
-			{/each}
-			{#if armedName !== null}<span class="armed-name">{armedName}</span>{/if}
-			{#if drawCanFinish}<button type="button" onclick={finishDraw}>Finish</button>{/if}
-			{#if compact}<button type="button" class="quiet" onclick={() => setCompact(false)}>All</button>{/if}
-		</div>
-		{#if !compact}
-			{#if catalogueModels.length > 0}
-				<div class="objects-section">
-					<h4>Models</h4>
-					<ul class="objects-models">
-						{#each catalogueModels as asset (asset.id)}
-							<li>
-								<button
-									type="button"
-									aria-pressed={placementChoice === `catalogue:${asset.id}`}
-									onclick={() => chooseCatalogueModel(asset.id)}
-								><ShellIcon name="object" size={26} /><span>{asset.name}</span
-									></button>
-							</li>
-						{/each}
-					</ul>
-				</div>
-			{/if}
-			{#if placeTask && !inStudio}
-				<MyObjectsSectionLazy
-					armedCopy={armedFormCopy}
-					onArm={armFormCopy}
-					onClear={clearFormCopy}
-				/>
-				<button type="button" onclick={openImport}>Import model…</button>
-			{/if}
-			{#if precisionOpen}
-				<div class="row place" role="group" aria-label="Exact position">
-					<span>Exact position</span>
-					<label>
-						<span>X (m)</span>
-						<input type="text" inputmode="decimal" value={x} oninput={(event) => (x = event.currentTarget.value)} />
-					</label>
-					<label>
-						<span>Z (m)</span>
-						<input type="text" inputmode="decimal" value={z} oninput={(event) => (z = event.currentTarget.value)} />
-					</label>
-					<button type="button" onclick={place}>Place</button>
-				</div>
-			{/if}
-		{/if}
-	{/if}
-
-	<p class="feedback" hidden={!message} aria-live="polite">{message}</p>
-</section>
-
-<style>
-	.objects-tiles {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
-		gap: 6px;
-	}
-
-	.objects-section h4 {
-		margin: 0 0 0.25rem;
-		font-size: inherit;
-		font-weight: 600;
-	}
-
-	.objects-models {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.25rem;
-		margin: 0;
-		padding: 0;
-		list-style: none;
-	}
-
-	.armed-name {
-		padding: 0 0.25rem;
-	}
-
-	.scene-instrument {
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
-		font-size: 0.78rem;
-	}
-
-	.row {
-		display: flex;
-		align-items: flex-end;
-		gap: 0.5rem;
-		flex-wrap: wrap;
-	}
-
-	.fields {
-		display: flex;
-		gap: 0.5rem;
-		flex-wrap: wrap;
-	}
-
-	.editing {
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
-	}
-
-	label {
-		display: flex;
-		flex-direction: column;
-		gap: 0.15rem;
-	}
-
-	label > span {
-		color: var(--shell-ink-quiet);
-		font-size: 0.65rem;
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
-	}
-
-	input,
-	button {
-		font: inherit;
-		padding: 0.2rem 0.4rem;
-		border: 1px solid var(--shell-ink-quiet);
-		border-radius: 0.3rem;
-		background: var(--shell-forest-raised);
-		color: inherit;
-	}
-
-	input {
-		width: 6.5rem;
-	}
-
-	button {
-		cursor: pointer;
-	}
-
-	button:disabled {
-		cursor: default;
-		opacity: 0.5;
-	}
-
-	button.quiet {
-		background: transparent;
-	}
-
-	.subject code {
-		color: var(--shell-gold);
-	}
-
-	.hint {
-		color: var(--shell-ink-quiet);
-	}
-
-	.feedback {
-		margin: 0;
-		min-height: 1.1rem;
-		color: var(--shell-ink-light);
-	}
-	.objects-tiles button,
-	.objects-models button {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		gap: 4px;
-		padding: 6px;
-		min-height: 62px;
-		width: 100%;
-		border: 2px solid transparent;
-		border-radius: 8px;
-		background: var(--shell-forest-raised);
-		color: var(--shell-ink-light);
-		font: 600 11px var(--shell-sans);
-	}
-	.objects-tiles button[aria-pressed='true'],
-	.objects-models button[aria-pressed='true'] {
-		border-color: var(--shell-gold);
-		background: color-mix(in srgb, var(--shell-gold) 18%, transparent);
-		color: var(--shell-ink-light);
-	}
-	.objects-models {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
-		gap: 6px;
-	}
-	.row.place {
-		padding-top: 8px;
-		border-top: 1px solid var(--shell-line-on-forest);
-		font-size: 11px;
-	}
-	@media (pointer: coarse) {
-		button,
-		input {
-			min-width: 44px;
-			min-height: 44px;
-		}
-	}
-</style>
+<SceneTransformBody
+	{composeTask}
+	{composeActive}
+	{composeSubjectId}
+	{composeSubject}
+	{composeSupport}
+	{candidate}
+	{onFocusOut}
+	{cancel}
+	{composeScaleText}
+	bind:scaleInput
+	{onKeydown}
+	{updateScale}
+	{commitResize}
+	{beginResize}
+	{duplicateSelected}
+	{deleteSelected}
+	{armedModelPresent}
+	{activeTile}
+	{chooseTile}
+	{drawCanFinish}
+	{finishDraw}
+	{compact}
+	{setCompact}
+	{catalogueModels}
+	{placementChoice}
+	{chooseCatalogueModel}
+	{placeTask}
+	{inStudio}
+	{armedFormCopy}
+	{armFormCopy}
+	{clearFormCopy}
+	{openImport}
+	{precisionOpen}
+	bind:x
+	bind:z
+	{place}
+	{message}
+/>

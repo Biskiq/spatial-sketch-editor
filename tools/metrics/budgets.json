@@ -2,7 +2,7 @@
   "generatedFrom": "LOC-0 baseline; shrink-only from here",
   "counts": {
     "filesOver600": 99,
-    "filesOver1000": 13,
+    "filesOver1000": 11,
     "filesOver1500": 1,
     "functionsOver200": 81,
     "exportStars": 0,
@@ -64,16 +64,6 @@
       "path": "apps/editor/src/lib/render/materials/inspection-host.ts",
       "lines": 1117,
       "reason": "The inspection host: subject resolution, claim and teardown share one editor renderer and one ticket lifecycle."
-    },
-    {
-      "path": "apps/editor/src/lib/authoring/stage/shell/EditorHead.svelte",
-      "lines": 1110,
-      "reason": "The Head root: project, lens, Find, history and Save share one row and one disclosure state."
-    },
-    {
-      "path": "apps/editor/src/lib/authoring/adapters/scene/SceneTransformInstrument.svelte",
-      "lines": 1046,
-      "reason": "The Scene instrument: place, compose and import tasks share one selected object, draft and accepted write path."
     },
     {
       "path": "apps/editor/src/lib/authoring/adapters/layout/ink-session.ts",
@@ -171,6 +161,11 @@
       "reason": "The Card root: identity, writer, actions and one confirmation share one selected subject and one close/focus protocol."
     },
     {
+      "path": "apps/editor/src/lib/authoring/adapters/scene/SceneTransformInstrument.svelte",
+      "lines": 797,
+      "reason": "The Scene instrument: place, compose and import tasks share one selected object, draft and accepted write path."
+    },
+    {
       "path": "packages/layout-core/src/plan/representation/retainer.ts",
       "lines": 797,
       "reason": "One incremental Plan retainer: reuse, proven deltas, assembly and stamps share one retained source index."
@@ -199,6 +194,11 @@
       "path": "packages/project-model/src/scene-codec/parse-document.ts",
       "lines": 782,
       "reason": "One Scene document parser: the field walk, reference resolution and refusal order are the codec contract."
+    },
+    {
+      "path": "apps/editor/src/lib/authoring/stage/shell/EditorHead.svelte",
+      "lines": 780,
+      "reason": "The Head root: project, lens, Find, history and Save share one row and one disclosure state."
     },
     {
       "path": "apps/editor/src/lib/authoring/stage/shell/StageSliceLayer.svelte",
