@@ -2,7 +2,7 @@
   "generatedFrom": "LOC-0 baseline; shrink-only from here",
   "counts": {
     "filesOver600": 105,
-    "filesOver1000": 19,
+    "filesOver1000": 18,
     "filesOver1500": 4,
     "functionsOver200": 73,
     "exportStars": 0,
@@ -81,11 +81,6 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
-      "path": "apps/editor/src/lib/authoring/look/finish-card.svelte.ts",
-      "lines": 1118,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
       "path": "apps/editor/src/lib/render/materials/inspection-host.ts",
       "lines": 1117,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
@@ -144,6 +139,11 @@
       "path": "apps/editor/src/lib/authoring/workspace/host/workspace-host.svelte.ts",
       "lines": 920,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+    },
+    {
+      "path": "apps/editor/src/lib/authoring/look/finish-card.svelte.ts",
+      "lines": 910,
+      "reason": "The Finish Card entry keeps one open target, preview frame and reach choice; contract types and treatment readings live in the contract module."
     },
     {
       "path": "apps/editor/src/lib/authoring/stage/route/stage-shell-state.svelte.ts",
@@ -471,11 +471,6 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
-      "path": "apps/editor/src/lib/authoring/layout/plan-pick-geometry.ts",
-      "lines": 630,
-      "reason": "Plan pick geometry is one reading family: compiled surfaces, slice/cutaway clipping and screen-space distance share the same geometry and slice types."
-    },
-    {
       "path": "packages/project-model/src/scene-planning/finish/model.ts",
       "lines": 627,
       "reason": "The Finish identity model: keys, users and the assignment normal form are one vocabulary."
@@ -484,6 +479,11 @@
       "path": "packages/layout-core/src/wall/centerline.ts",
       "lines": 626,
       "reason": "One wall-centreline algebra: cloning, sampling, translation and knot identity are one curve contract."
+    },
+    {
+      "path": "apps/editor/src/lib/authoring/layout/plan-pick-geometry.ts",
+      "lines": 624,
+      "reason": "Plan pick geometry is one reading family: compiled surfaces, slice/cutaway clipping and screen-space distance share the same geometry and slice types."
     },
     {
       "path": "packages/project-model/src/library/material-library.ts",
@@ -568,9 +568,9 @@
     {
       "file": "apps/editor/src/lib/authoring/look/finish-card.svelte.ts",
       "name": "createFinishCard",
-      "line": 315,
+      "line": 107,
       "lines": 802,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+      "reason": "One card session: focus, reach, preview and one-patch writes share the open target and the Card-local preview frame."
     },
     {
       "file": "apps/editor/src/lib/authoring/stage/route/stage-shell-commands.ts",
@@ -652,7 +652,7 @@
     {
       "file": "apps/editor/src/lib/authoring/layout/plan-pick-provider.ts",
       "name": "createPlanPickProvider",
-      "line": 26,
+      "line": 20,
       "lines": 499,
       "reason": "One pick arbitration: broad phase, exact face tests, lifted outlines and slice/cutaway precedence share the retained index and the live readings."
     },
