@@ -2,7 +2,7 @@
   "generatedFrom": "LOC-0 baseline; shrink-only from here",
   "counts": {
     "filesOver600": 115,
-    "filesOver1000": 25,
+    "filesOver1000": 24,
     "filesOver1500": 8,
     "functionsOver200": 73,
     "exportStars": 0,
@@ -118,11 +118,6 @@
     {
       "path": "apps/editor/src/lib/authoring/stage/shell/EditorHead.svelte",
       "lines": 1110,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
-      "path": "packages/project-model/src/units/experience/interpreter.ts",
-      "lines": 1108,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -454,6 +449,11 @@
       "path": "apps/editor/src/lib/render/materials/scene-finish.ts",
       "lines": 682,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+    },
+    {
+      "path": "packages/project-model/src/units/experience/interpreter/session.ts",
+      "lines": 681,
+      "reason": "One interpreter session: every transition reads and rewrites the same run, visit and hold state in one table."
     },
     {
       "path": "packages/project-model/src/scene-planning/record-scope.ts",
