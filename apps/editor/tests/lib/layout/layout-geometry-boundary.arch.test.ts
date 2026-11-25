@@ -193,7 +193,9 @@ describe('[cap:layout.canonical-compiler core] G1 geometry boundary', () => {
 	});
 
 	it('defines each geometry kernel exactly once, under layout-core', () => {
-		expect(packageFilesDefining('export function sampleSegment(')).toEqual(['geometry/curve.ts']);
+				expect(packageFilesDefining('export function sampleSegment(')).toEqual([
+			'geometry/curve/samples.ts'
+		]);
 		expect(packageFilesDefining('export function compileWallFirstLayoutGeometry')).toEqual(['geometry/compiler.ts']);
 		// One compiler entry, one compiler source: the legacy adapter is gone.
 		expect(packageFilesDefining('export function compileLayoutGeometrySource')).toEqual(['geometry/compiler.ts']);
@@ -211,7 +213,7 @@ describe('[cap:layout.canonical-compiler core] G1 geometry boundary', () => {
 		// version of it; re-asserting a call-site count here would be a second
 		// pattern for one invariant.
 		expect(packageFilesDefining('function adaptiveParameters(')).toEqual([
-			'geometry/curve.ts'
+			'geometry/curve/bezier.ts'
 		]);
 		const compilerSource = ['compiler.ts', 'rooms.ts', 'physical-walls.ts', 'delta-builders.ts']
 			.map((name) => sourceOf(resolve(layoutDir, 'geometry', name)))
@@ -285,12 +287,15 @@ describe('[cap:layout.canonical-compiler core] G1 geometry boundary', () => {
 	});
 
 	it('keeps duplicate topology at the canonical gate and codec ingestion structural (P23B.3a S8)', () => {
-		const duplicateSource = sourceOf(resolve(layoutDir, 'plan/duplicate.ts'));
+		const duplicateSource = sourceOf(resolve(layoutDir, 'plan/duplicate/objects.ts'));
 		expect(duplicateSource).toContain('validateWallFirstTopology(structural.document');
 		expect(duplicateSource).not.toContain('classifyWallIntersection(');
 		expect(duplicateSource).not.toContain('validateBatchWallTopology');
 
-		const codecSource = sourceOf(resolve(layoutDir, 'wall/codec.ts'));
+		const codecSource = readdirSync(resolve(layoutDir, 'wall/codec'))
+			.filter((name) => name.endsWith('.ts'))
+			.map((name) => sourceOf(resolve(layoutDir, 'wall/codec', name)))
+			.join('\n');
 		expect(importSpecifiers(codecSource)).not.toContain('./layout-wall-first-precision');
 		expect(codecSource).not.toMatch(
 			/\b(?:validateWallFirstTopology|detectWallCurveTopologyCrossings|classifyWallIntersection)\s*\(/
