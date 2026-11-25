@@ -1,8 +1,8 @@
 {
   "generatedFrom": "LOC-0 baseline; shrink-only from here",
   "counts": {
-    "filesOver600": 120,
-    "filesOver1000": 32,
+    "filesOver600": 119,
+    "filesOver1000": 31,
     "filesOver1500": 8,
     "functionsOver200": 73,
     "exportStars": 0,
@@ -48,11 +48,6 @@
     {
       "path": "apps/editor/src/lib/authoring/adapters/layout/ink-session.ts",
       "lines": 1579,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
-      "path": "packages/layout-core/src/geometry/delta.ts",
-      "lines": 1495,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -830,11 +825,11 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
-      "file": "packages/layout-core/src/geometry/delta.ts",
+      "file": "packages/layout-core/src/geometry/delta/retained.ts",
       "name": "tryCompileWallFirstLayoutGeometryDelta",
-      "line": 839,
+      "line": 19,
       "lines": 376,
-      "reason": "One delta attempt: the pass/candidate comparison and commit share the delta memo."
+      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
       "file": "apps/editor/src/lib/authoring/stage/camera-session.ts",
@@ -942,11 +937,11 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
-      "file": "packages/layout-core/src/geometry/delta.ts",
+      "file": "packages/layout-core/src/geometry/delta/seed.ts",
       "name": "seedReuseFromPassiveCompile",
-      "line": 435,
+      "line": 22,
       "lines": 283,
-      "reason": "One reuse seed: each record kind feeds the same reuse tables."
+      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
       "file": "packages/layout-core/src/topology/wall-first.ts",
