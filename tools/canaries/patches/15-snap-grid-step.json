@@ -3,7 +3,7 @@
   "area": "layout",
   "citation": "hard rule 2 — Layout owns architecture",
   "title": "Plan grid snapping uses a doubled step",
-  "file": "packages/layout-core/src/plan/snap.ts",
+  "file": "packages/layout-core/src/plan/snap/types.ts",
   "find": "export const LAYOUT_PLAN_GRID_STEP = 0.25;",
   "replace": "export const LAYOUT_PLAN_GRID_STEP = 0.5;",
   "tests": [

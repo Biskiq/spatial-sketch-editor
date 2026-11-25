@@ -1,7 +1,7 @@
 {
   "generatedFrom": "LOC-0 baseline; shrink-only from here",
   "counts": {
-    "filesOver600": 115,
+    "filesOver600": 107,
     "filesOver1000": 24,
     "filesOver1500": 8,
     "functionsOver200": 73,
@@ -133,16 +133,11 @@
     {
       "path": "packages/project-model/src/materials/catalogue.ts",
       "lines": 982,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+      "reason": "One frozen shipped-material catalogue: ids, images and legacy aliases are one data table and must stay in one read order."
     },
     {
       "path": "apps/editor/src/lib/authoring/adapters/light/LightCardFields.svelte",
       "lines": 977,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
-      "path": "packages/layout-core/src/room/floor-support.ts",
-      "lines": 965,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -156,18 +151,8 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
-      "path": "packages/layout-core/src/room/region.ts",
-      "lines": 946,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
       "path": "apps/editor/src/lib/authoring/stage/shell/EditorCard.svelte",
       "lines": 927,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
-      "path": "packages/project-model/src/scene-planning/planners.ts",
-      "lines": 921,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -178,21 +163,6 @@
     {
       "path": "apps/editor/src/lib/authoring/stage/route/stage-shell-state.svelte.ts",
       "lines": 904,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
-      "path": "packages/project-model/src/scene.ts",
-      "lines": 900,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
-      "path": "packages/layout-core/src/geometry/face-extraction.ts",
-      "lines": 899,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
-      "path": "packages/project-model/src/scene-codec/parse-entities.ts",
-      "lines": 888,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -221,11 +191,6 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
-      "path": "packages/layout-core/src/room/move.ts",
-      "lines": 856,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
       "path": "apps/editor/src/lib/authoring/adapters/scene/object-mark-session.ts",
       "lines": 844,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
@@ -243,11 +208,6 @@
     {
       "path": "apps/editor/src/lib/authoring/adapters/layout/region-gesture-session.ts",
       "lines": 836,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
-      "path": "packages/layout-core/src/plan/duplicate.ts",
-      "lines": 834,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -303,7 +263,7 @@
     {
       "path": "packages/project-model/src/scene-codec/parse-document.ts",
       "lines": 782,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+      "reason": "One Scene document parser: the field walk, reference resolution and refusal order are the codec contract."
     },
     {
       "path": "apps/editor/src/lib/authoring/stage/shell/StageSliceLayer.svelte",
@@ -313,12 +273,12 @@
     {
       "path": "packages/project-model/src/channels/negotiate.ts",
       "lines": 765,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+      "reason": "One channel negotiation: scope resolution, staleness and contribution merge all read the same property-scope comparison."
     },
     {
       "path": "packages/camera-core/src/guide-time-map.ts",
       "lines": 758,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+      "reason": "One guide time map: hold/wait/cut/travel segments and the invocation clock are solved from one segment table."
     },
     {
       "path": "apps/editor/src/lib/authoring/stage/route/stage-unfold-gestures.svelte.ts",
@@ -343,7 +303,7 @@
     {
       "path": "packages/project-model/src/materials/read.ts",
       "lines": 745,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+      "reason": "One material read vocabulary: recipe, overrides and finish readers share the same hash, colour and rotation validation."
     },
     {
       "path": "apps/editor/src/lib/authoring/adapters/layout/region-planners.ts",
@@ -353,7 +313,7 @@
     {
       "path": "apps/api/src/project-lifecycle.ts",
       "lines": 742,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+      "reason": "One project lifecycle: rename, delete, cleanup and their preconditions share the same project-write lease rules."
     },
     {
       "path": "apps/editor/src/lib/authoring/adapters/layout/opening-placement-session.ts",
@@ -378,7 +338,7 @@
     {
       "path": "packages/geometry-core/src/profile.ts",
       "lines": 729,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+      "reason": "One profile evaluator: its limits, anchors, bounds and issue vocabulary are a single geometry contract."
     },
     {
       "path": "apps/editor/src/lib/authoring/adapters/scene/profile-revision.ts",
@@ -458,7 +418,7 @@
     {
       "path": "packages/project-model/src/scene-planning/record-scope.ts",
       "lines": 678,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+      "reason": "One Scene record-scope check: candidate finalization and scope comparison walk the same record graph."
     },
     {
       "path": "apps/editor/src/lib/authoring/adapters/scene/scene-contributions.ts",
@@ -478,12 +438,12 @@
     {
       "path": "packages/layout-core/src/room/space-create.ts",
       "lines": 655,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+      "reason": "One space-creation outline: cycle screening, evidence and refusal share one anchor/span walk."
     },
     {
       "path": "packages/layout-core/src/room/isolation.ts",
       "lines": 653,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+      "reason": "One room isolation search: the subgraph, group and rejection rules are decided against the same room graph."
     },
     {
       "path": "apps/editor/src/lib/authoring/experience/commands.ts",
@@ -493,12 +453,12 @@
     {
       "path": "packages/layout-core/src/wall/dissolve.ts",
       "lines": 651,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+      "reason": "One dissolve planner: the candidate, port remap and checks share one mutable candidate document."
     },
     {
       "path": "packages/layout-core/src/geometry/types.ts",
       "lines": 649,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+      "reason": "One compiled-geometry type vocabulary; the types must stay together so no consumer imports half a contract."
     },
     {
       "path": "apps/editor/src/lib/authoring/adapters/layout/room-gesture-session.ts",
@@ -518,7 +478,7 @@
     {
       "path": "packages/project-model/src/program/validate.ts",
       "lines": 634,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+      "reason": "One execution-program validator: the field walk and its refusal order are the program contract."
     },
     {
       "path": "apps/editor/src/lib/visitor/VisitorCameraDirector.svelte",
@@ -533,12 +493,12 @@
     {
       "path": "packages/layout-core/src/wall/centerline.ts",
       "lines": 626,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+      "reason": "One wall-centreline algebra: cloning, sampling, translation and knot identity are one curve contract."
     },
     {
       "path": "packages/project-model/src/library/material-library.ts",
       "lines": 623,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+      "reason": "One material-library envelope: its size limits, payload validation and image rules form one contract."
     },
     {
       "path": "apps/editor/src/lib/authoring/stage/route/light-look-through.svelte.ts",
@@ -548,7 +508,7 @@
     {
       "path": "apps/api/src/asset-persistence.ts",
       "lines": 617,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+      "reason": "One asset persistence module: metadata, streaming upload, hashing and lease-scoped rows share one asset contract."
     },
     {
       "path": "packages/layout-core/src/room/round-ops/release.ts",
@@ -573,12 +533,12 @@
     {
       "path": "packages/layout-core/src/room/region-relations.ts",
       "lines": 604,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+      "reason": "One region-wall relation reading: plan class, gap and reach are measured from one footprint/segment pair."
     },
     {
       "path": "packages/project-model/src/units/acceptance.ts",
       "lines": 603,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+      "reason": "One unit acceptance adapter: scope, source identity and envelope capture are one acceptance contract."
     },
     {
       "path": "apps/editor/src/lib/authoring/stage/shell/StageHeightSheet.svelte",
@@ -725,7 +685,7 @@
       "name": "createPlanRetainer",
       "line": 311,
       "lines": 487,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+      "reason": "One retained Plan evaluator: reuse, deltas, assembly and stamps share one retained source index."
     },
     {
       "file": "apps/editor/src/lib/authoring/adapters/layout/instrument.ts",
@@ -809,7 +769,7 @@
       "name": "tryCompileWallFirstLayoutGeometryDelta",
       "line": 19,
       "lines": 376,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+      "reason": "One retained compile pass: delta validation, reuse and rebuild share one candidate world."
     },
     {
       "file": "apps/editor/src/lib/authoring/stage/camera-session.ts",
@@ -879,7 +839,7 @@
       "name": "lowerExperienceProgram",
       "line": 173,
       "lines": 314,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+      "reason": "One expectation lowering pass: stops, views and timing links are resolved against one program pass."
     },
     {
       "file": "apps/editor/src/lib/authoring/scene/scene-pick-source.ts",
@@ -921,7 +881,7 @@
       "name": "seedReuseFromPassiveCompile",
       "line": 22,
       "lines": 283,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+      "reason": "One passive reuse seed: dirty ids, joins and compiled chunks are derived from one passive snapshot."
     },
     {
       "file": "packages/layout-core/src/topology/wall-first.ts",
@@ -949,14 +909,14 @@
       "name": "saveAcceptedSourceWithHandlers",
       "line": 127,
       "lines": 275,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+      "reason": "One accepted-save transaction: precondition, material proof and source write must commit once."
     },
     {
       "file": "packages/layout-core/src/wall/codec/parse-document.ts",
       "name": "parseDocument",
       "line": 13,
       "lines": 275,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+      "reason": "One wall document parser: the field walk and refusal order are the codec contract."
     },
     {
       "file": "apps/editor/src/lib/authoring/stage/paper-scene.ts",
@@ -970,7 +930,7 @@
       "name": "collectSceneImageRequirements",
       "line": 131,
       "lines": 248,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+      "reason": "One recursive Scene walk: image requirements are collected from the same record graph the renderer reads."
     },
     {
       "file": "apps/editor/src/lib/authoring/stage/route/stage-selection-view.ts",
@@ -1036,18 +996,18 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
-      "file": "packages/layout-core/src/room/floor-support.ts",
+      "file": "packages/layout-core/src/room/floor-support/overhead.ts",
       "name": "queryOverheadSupports",
-      "line": 534,
+      "line": 90,
       "lines": 224,
-      "reason": "One support query: the candidate walk and its tolerance filters share the query polygon."
+      "reason": "One overhead support query: witness collection, ordering and refusal share one candidate set."
     },
     {
-      "file": "packages/layout-core/src/room/floor-support.ts",
+      "file": "packages/layout-core/src/room/floor-support/floor.ts",
       "name": "queryFloorSupports",
-      "line": 238,
+      "line": 74,
       "lines": 222,
-      "reason": "One support query: the candidate walk and its tolerance filters share the query polygon."
+      "reason": "One floor support query: witness collection, ordering and refusal share one candidate set."
     },
     {
       "file": "packages/project-model/src/scene-planning/finish/plans/register.ts",
@@ -1075,7 +1035,7 @@
       "name": "negotiateChannelContribution",
       "line": 435,
       "lines": 216,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+      "reason": "One channel merge: contribution, staleness and scope are resolved in one negotiation pass."
     },
     {
       "file": "apps/editor/src/lib/authoring/experience/experience-card-wiring.ts",

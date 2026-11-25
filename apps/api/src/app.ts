@@ -1,7 +1,6 @@
 import secureSession from '@fastify/secure-session';
 import Fastify, {
 	type FastifyInstance,
-	type FastifyReply,
 	type FastifyRequest,
 	type FastifyServerOptions
 } from 'fastify';

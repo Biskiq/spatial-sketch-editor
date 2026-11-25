@@ -2,7 +2,6 @@ import { reclaimIfUnreferenced, expireAbandonedLibraryStaging } from './items.js
 import { recordStaging, consumeStagingRows, discardStaged } from './shared.js';
 import { probeArtworkImage } from '@portfolio/project-model/artwork';
 import { MATERIAL_LIBRARY_MAX_THUMBNAIL_BYTES, MATERIAL_LIBRARY_MAX_THUMBNAIL_EDGE } from '@portfolio/project-model/library';
-import { recipeHash } from '@portfolio/project-model/materials';
 import { sha256Bytes } from '@portfolio/project-model/package';
 import { type DatabasePool } from '../database.js';
 import { FormLibraryInputError, FormLibraryNotFoundError, type ThumbnailRow, readString, readNullableString, readSafeInteger, thumbnailKey } from './shared';

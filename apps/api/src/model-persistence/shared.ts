@@ -1,5 +1,4 @@
 import { type ModelPlacement } from '@portfolio/project-model/units';
-import { sha256 } from './storage';
 
 /** Unapproved staging is deleted after 24 hours, bytes included. */
 export const MODEL_STAGING_TTL_MS = 24 * 60 * 60 * 1000;

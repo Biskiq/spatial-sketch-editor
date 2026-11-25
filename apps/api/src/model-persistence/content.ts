@@ -1,6 +1,6 @@
 import { type DatabasePool } from '../database.js';
 import { SHA256_PATTERN, ModelNotFoundError, ModelInputError, type RevisionRow, REVISION_COLUMNS, readString, readSafeInteger } from './shared';
-import { toBuffer, sha256 } from './storage';
+import { toBuffer } from './storage';
 import { type ObjectStore } from '../object-store.js';
 import { queryRows } from '../project-persistence.js';
 import { createHash } from 'node:crypto';

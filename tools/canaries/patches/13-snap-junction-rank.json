@@ -3,7 +3,7 @@
   "area": "layout",
   "citation": "hard rule 2 — Layout owns architecture",
   "title": "Snapping ranks a wall midpoint above a shared junction",
-  "file": "packages/layout-core/src/plan/snap.ts",
+  "file": "packages/layout-core/src/plan/snap/types.ts",
   "find": "const SEMANTIC_RANK: Record<SnapFeatureKind, number> = {\n\tjunction: 0,",
   "replace": "junction: 2,",
   "tests": [

@@ -1,5 +1,4 @@
 import { type FormLibraryItemSummary, type MaterialLibraryItemSummary } from '@portfolio/project-model/library';
-import { recipeHash } from '@portfolio/project-model/materials';
 import { sha256Bytes } from '@portfolio/project-model/package';
 import { canonicalUnitJson } from '@portfolio/project-model/units';
 import { type DatabasePool } from '../database.js';
