@@ -154,19 +154,11 @@ export async function dragSamples(page: Page, tier: SpotTier, refreshMs: number)
 	const first = Math.min(7, Math.max(5, length * 0.05));
 	const step = Math.min(6, length * 0.04);
 	await page.mouse.move(end.x, end.y);
-	// Let the hover move land before the press. Otherwise it is still queued when
-	// the first drag sample starts, has no install, and is counted as a
-	// superseded drag input (the dense L project hit this every time).
-	await page.waitForTimeout(50);
 	const ledgerBefore = (await readLedger(page)).records.length;
 	// Evidence for a stalled drag: what the browser hit-tests at the press point.
 	const pressTarget = await page.evaluate(describeHitTarget, end);
 	const pressedAt = await pageNow(page);
 	await page.mouse.down();
-	// Let the press task run before the first move. Otherwise the move is treated
-	// as hover, records no wall preview, and the first sample is unresolved.
-	await page.evaluate(() => new Promise<void>((resolvePress) =>
-		requestAnimationFrame(() => requestAnimationFrame(() => resolvePress()))));
 	let observations: GestureObservation[];
 	try {
 		observations = await collectGesture(tier, refreshMs, async (index) => {
