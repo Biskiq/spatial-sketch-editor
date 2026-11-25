@@ -4,8 +4,8 @@ import { planDeleteLayoutObject, planExactJunctionMove, planExactLayoutObjectTra
 function squareDocument(): LayoutDocumentWallFirst {
 	return {
 		units: 'meters',
-		// Canonical-current fixture: the pre-H `4` literal belongs only to
-		// historical compatibility fixtures (P23.6H H4 audit).
+		// Canonical-current fixture: the `4` literal belongs only to historical
+		// compatibility fixtures.
 		formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
 		floor: { id: 'floor', name: 'Floor', elevation: 0 },
 		junctions: [
@@ -44,7 +44,7 @@ const allocator: NodingIdAllocator = {
 	nextJunctionId: (_document, seed) => `${seed}-junction`
 };
 
-describe('P23.1 wall-first precise semantic operations', () => {
+describe('wall-first precise semantic operations', () => {
 	it('moves one Junction and preserves the canonical graph IDs', () => {
 		const baseline = squareDocument();
 		const result = planExactJunctionMove(baseline, 'A', [-1, 0]);

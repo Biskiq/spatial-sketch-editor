@@ -1,5 +1,5 @@
 /**
- * P23.11 follow-up proposals, fix 4 and fix 5 — the transient proposal seam.
+ * The transient proposal seam.
  *
  * The properties pinned here:
  *
@@ -14,7 +14,7 @@
  *   proposal never mutates the baseline document.
  *
  * Split by behavioural seam out of `layout-curve-regressions.test.ts`
- * (PR #115 WP3T, plan §7.6 area 2).
+ *
  */
 import { describe, expect, it } from 'vitest';
 
@@ -149,7 +149,7 @@ function curvedBoundaryHostDocument(): LayoutDocumentWallFirst {
 // Direct-edit proposal follow-up — invalid geometry stays visually live
 // ===========================================================================
 
-describe('P23.11 follow-up — direct-edit geometry proposals', () => {
+describe('direct-edit geometry proposals', () => {
 	it('moves a Junction and returns complete affected Wall centerlines', () => {
 		const baseline = curvedBoundaryHostDocument();
 		const proposal = proposeWallFirstArchitectureGeometry(baseline, {
@@ -186,7 +186,7 @@ describe('P23.11 follow-up — direct-edit geometry proposals', () => {
 // Fix 4 — visible "Add bend point here" works on a straight Wall
 // ===========================================================================
 
-describe('P23.11 fix 4 — Add Bend Point on a straight Wall', () => {
+describe('Add Bend Point on a straight Wall', () => {
 	it('converts and inserts atomically with the geometry visually unchanged', () => {
 		const baseline = documentOf(LINE);
 		const before = wallFirstWallSpan(baseline, wallOf(baseline, 'wall-a'))!;
@@ -204,7 +204,7 @@ describe('P23.11 fix 4 — Add Bend Point on a straight Wall', () => {
 		expect(wallOf(baseline, 'wall-a').centerline).toEqual({ kind: 'line' });
 	});
 
-	// PR #115 removed the editor Inspector (§5.1), so the "Add Bend Point stays
+	// The editor Inspector is gone, so the "Add Bend Point stays
 	// visible without an existing knot" source pin went with it. The kernel half
 	// of the same guarantee — that a knot-less cubic chain still hosts a bend
 	// point — is asserted by the case below against the plan API directly.
@@ -229,7 +229,7 @@ describe('P23.11 fix 4 — Add Bend Point on a straight Wall', () => {
 // Fix 5 — the pure curve proposal seam (invalid drag keeps following)
 // ===========================================================================
 
-describe('P23.11 fix 5 — the proposal is separate from acceptance', () => {
+describe('the proposal is separate from acceptance', () => {
 	it('proposes the attempted Wall shape while the canonical planner rejects it', () => {
 		// Thick Wall whose bend would fold the offset: acceptance refuses it, but
 		// the transient proposal still describes the attempted geometry so the

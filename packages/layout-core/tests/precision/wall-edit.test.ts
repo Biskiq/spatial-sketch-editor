@@ -123,7 +123,7 @@ function partitionCrossingDocument(): LayoutDocumentWallFirst {
 /**
  * Square plus a partition ATTACHED to it at its own Junction `C` (w5: C → P). A
  * crossing this partition creates is therefore INSIDE one connected group — the
- * case P23B.3a S4 leaves refused — while `partitionCrossingDocument`'s partition
+ * case the component scope leaves refused — while `partitionCrossingDocument`'s partition
  * is graph-independent of the square and its crossings are permitted geometry.
  */
 function attachedPartitionCrossingDocument(): LayoutDocumentWallFirst {
@@ -140,7 +140,7 @@ function attachedPartitionCrossingDocument(): LayoutDocumentWallFirst {
 	return document;
 }
 
-describe('P23.10 — canonical Junction coordinate edits', () => {
+describe('canonical Junction coordinate edits', () => {
 	it('moves one Junction exactly and preserves every canonical ID', () => {
 		const baseline = squareDocument();
 		const snapshot = JSON.stringify(baseline);
@@ -195,7 +195,7 @@ describe('P23.10 — canonical Junction coordinate edits', () => {
 		});
 
 		// Moving the INDEPENDENT partition's end onto the square's `w2` span crosses
-		// it. The PRE-POLICY verdict was `topology_invalid`; P23B.3a S4 scoped the
+		// it. The pre-scope verdict was `topology_invalid`; the component scope
 		// gate's subject to the connected component, and this partition shares no
 		// Junction id with the square, so its crossing is permitted geometry (F4).
 		const crossing = partitionCrossingDocument();
@@ -306,7 +306,7 @@ describe('P23.10 — canonical Junction coordinate edits', () => {
 	});
 });
 
-describe('P23.10 — rigid straight-Wall translation', () => {
+describe('rigid straight-Wall translation', () => {
 	it('translates both endpoints by one identical delta and preserves the Wall exactly', () => {
 		const baseline = squareDocument();
 		const snapshot = JSON.stringify(baseline);
@@ -384,7 +384,7 @@ describe('P23.10 — rigid straight-Wall translation', () => {
 	});
 });
 
-describe('P23.10 — reshape parity across the numeric and direct paths', () => {
+describe('reshape parity across the numeric and direct paths', () => {
 	it('produces the identical document for an endpoint drag and an exact Junction move', () => {
 		const baseline = squareDocument();
 		const viaLength = planExactWallLength(baseline, 'w1', 6, 'start');
@@ -415,7 +415,7 @@ function viaLengthDocument(plan: { document: LayoutDocumentWallFirst }): LayoutD
 	return plan.document;
 }
 
-describe('P23.10 — rectangle and subdivision reach the complete geometry seam', () => {
+describe('rectangle and subdivision reach the complete geometry seam', () => {
 	it('resizes a rectangle while preserving Room identity and metadata', () => {
 		const baseline = squareDocument();
 		const result = planExactRectangleDimensions(baseline, 'room', 6, 2, {

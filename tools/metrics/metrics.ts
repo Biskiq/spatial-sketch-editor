@@ -376,7 +376,7 @@ export function check(measurement: Measurement, budgets: Budgets): BudgetFailure
 // Representative read sets
 
 const READ_SET_MODULES = [
-	'packages/layout-core/src/layout-wall-first-precision.ts',
+	'packages/layout-core/src/precision/scalar-edits.ts',
 	'packages/project-model/src/scene-planning/finish-planners.ts',
 	'packages/project-model/src/units/validate.ts',
 	'packages/project-model/src/units/planning.ts',

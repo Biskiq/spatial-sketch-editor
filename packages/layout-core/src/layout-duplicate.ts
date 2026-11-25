@@ -33,7 +33,7 @@ import { activeLayoutCompileSession, compileWallFirstLayoutGeometry } from './la
 import { hasBlockingLayoutIssues } from './layout-geometry-validation';
 import { validateWallFirstOpeningSet, type OpeningSetIssue } from './layout-opening-set';
 import { validateWallFirstPortalRelations } from './layout-wall-portals';
-import { validateWallFirstTopology } from './layout-wall-first-precision';
+import { validateWallFirstTopology } from './topology/wall-first';
 import { translateWallCenterline } from './layout-wall-centerline';
 import { buildRoundRoomGeometryFromCertified, certifyRoundRoom } from './layout-round-room';
 import { validateWallFirstLayoutDocument } from './layout-wall-first-codec';

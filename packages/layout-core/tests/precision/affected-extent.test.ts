@@ -1,24 +1,22 @@
 /**
- * P23B.7 S3 — the AFFECTED EXTENT of one direct-edit intent.
+ * The AFFECTED EXTENT of one direct-edit intent.
  *
- * S3 derives, from the intent's patch (`architectureCandidatePatch`), which Walls and
- * Junctions the move can change — conservatively (INV-2), never tightly — plus the
+ * The extent derives, from the intent's patch (`architectureCandidatePatch`), which Walls
+ * and Junctions the move can change — conservatively, never tightly — plus the
  * conservative candidate-pair sets the canonical gate's own order admits for that move.
  * This file pins that rule on hand-built two-component documents: the exact extent per
  * intent kind, the component scoping, the gate ordering, the underivable rows, and the
- * per-move re-derivation the plan's scaling clause needs (a LATER move entering walls an
- * earlier move's extent did not contain).
+ * per-move re-derivation (a later move entering walls an earlier move's extent did not
+ * contain).
  *
  * WHAT THIS FILE DOES NOT CLAIM. It is not the equivalence oracle: the scoped gate's
- * verdict equivalence (OR-3, versus S2's frozen whole-document reference) belongs to the
- * step that introduces the scoped path (S4), in that step's own commit — the plan's
- * REFERENCE-FIRST RULE. Here the rule is proven as a rule: every Wall the intent cannot
- * move keeps the baseline's own records through the shallow splice, so its predicates
- * keep the verdict the baseline produced.
+ * verdict equivalence, against the frozen whole-document reference, belongs to the scoped
+ * path itself. Here the rule is proven as a rule: every Wall the intent cannot move keeps
+ * the baseline's own records through the shallow splice, so its predicates keep the
+ * verdict the baseline produced.
  *
- * The cases the plan names for S3 are all present: junction move, wall move, bend insert,
- * knot move — and knot delete/insert is pinned as NOT having a transient extent at all
- * (it is a command, not a pointermove), with an unknown knot refused rather than guessed.
+ * Knot delete and knot insert are pinned as NOT having a transient extent at all: they
+ * are commands, not pointer moves, and an unknown knot is refused rather than guessed.
  */
 import { describe, expect, it } from 'vitest';
 
@@ -132,7 +130,7 @@ const junctionMove = (junctionId: string, point: LayoutVec2): WallFirstArchitect
 	point
 });
 
-describe('P23B.7 S3 — the extent is the Walls and Junctions the intent can move', () => {
+describe('the extent is the Walls and Junctions the intent can move', () => {
 	it('junction move: the moved Junction and its incident Walls only', () => {
 		const document = twoComponentDocument();
 		const extent = extentOf(document, junctionMove('b', [6, -1]));
@@ -214,7 +212,7 @@ describe('P23B.7 S3 — the extent is the Walls and Junctions the intent can mov
 	});
 });
 
-describe('P23B.7 S3 — the rule is conservative, scoped and ordered', () => {
+describe('the rule is conservative, scoped and ordered', () => {
 	it('never admits a pair across components, and never a pair with neither member affected', () => {
 		const document = twoComponentDocument();
 		for (const intent of [
@@ -295,7 +293,7 @@ describe('P23B.7 S3 — the rule is conservative, scoped and ordered', () => {
 	});
 });
 
-describe('P23B.7 S3 — the underivable rows are refused, never guessed', () => {
+describe('the underivable rows are refused, never guessed', () => {
 	it('returns undefined when the intent cannot be derived at all', () => {
 		const document = twoComponentDocument();
 		expect(wallFirstArchitectureAffectedExtent(document, junctionMove('nope', [0, 0]))).toBeUndefined();

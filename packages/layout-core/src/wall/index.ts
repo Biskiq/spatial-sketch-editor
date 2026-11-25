@@ -245,10 +245,7 @@ export type {
 } from '../layout-wall-first-codec';
 
 export {
-	clearTopologyGateObserverForTest,
-	clearWallFirstTopologyEvaluationObserverForTest,
 	createWallFirstArchitectureVerdictScope,
-	detectWallCurveTopologyCrossings,
 	LAYOUT_ARCHITECTURAL_PRESETS,
 	layoutArchitecturalPreset,
 	layoutPresetPlacement,
@@ -281,12 +278,14 @@ export {
 	readWallFirstDragProposal,
 	resolveProposedCurveChain,
 	resolveRectangle,
-	setTopologyGateObserverForTest,
-	setWallFirstTopologyEvaluationObserverForTest,
+	wallFirstArchitectureAffectedExtent,
+} from '../precision';
+
+export {
+	detectWallCurveTopologyCrossings,
 	validateClosedWallContacts,
 	validateWallFirstTopology,
-	wallFirstArchitectureAffectedExtent,
-} from '../layout-wall-first-precision';
+} from '../topology';
 
 export type {
 	FixedWallEndpoint,
@@ -300,12 +299,9 @@ export type {
 	RectangleResolution,
 	ResolvedRectangle,
 	SpaceOpenSideSlidePlan,
-	TopologyGateObservation,
 	WallAngleIntent,
 	WallBendIntent,
 	WallCurveProposeIntent,
-	WallCurveTopologyCrossing,
-	WallCurveTopologyCrossingSubject,
 	WallFirstAcceptanceCompile,
 	WallFirstArchitectureAffectedExtent,
 	WallFirstArchitectureCandidatePair,
@@ -314,11 +310,15 @@ export type {
 	WallFirstArchitectureProposalWall,
 	WallFirstArchitectureVerdictScope,
 	WallFirstArchitectureVerdictScopeStats,
-	WallFirstTopologyEvaluation,
-	WallFirstTopologyOptions,
 	WallLengthIntent,
 	WallMoveIntent,
-} from '../layout-wall-first-precision';
+} from '../precision';
+
+export type {
+	WallCurveTopologyCrossing,
+	WallCurveTopologyCrossingSubject,
+	WallFirstTopologyOptions,
+} from '../topology';
 
 export type {
 	LayoutDerivedWallRole,

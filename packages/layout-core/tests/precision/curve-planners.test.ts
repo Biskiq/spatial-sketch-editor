@@ -1,6 +1,5 @@
 /**
- * P23.11 Slice 5 — canonical mutation planners, curved split, Openings and rigid
- * movement.
+ * Canonical mutation planners, curved split, Openings and rigid movement.
  *
  * Every case goes through a real planner on a real wall-first document and
  * asserts the canonical result: identities, stored cubic data and the samples
@@ -235,7 +234,7 @@ function wallLengthOf(document: LayoutDocumentWallFirst, wallId: string): number
 }
 
 /**
- * Narrow any plan union (the noding plan or the P23.1 precision plan) to its
+ * Narrow any plan union (the noding plan or the precision plan) to its
  * success branch. Both carry `kind: 'success'` and a complete candidate
  * document, so one helper covers every planner this file exercises.
  */
@@ -248,7 +247,7 @@ function expectSuccess<T extends { kind: string }>(plan: T): Extract<T, { kind: 
 // convert
 // ---------------------------------------------------------------------------
 
-describe('P23.11 slice 5 — straight ↔ curve conversion', () => {
+describe('straight ↔ curve conversion', () => {
 	it('converts a straight Wall to a chain with no geometric change', () => {
 		const document = documentOf();
 		const plan = expectSuccess(planConvertWallToCurve(document, 'wall-a'));
@@ -288,7 +287,7 @@ describe('P23.11 slice 5 — straight ↔ curve conversion', () => {
 // insert / move / delete
 // ---------------------------------------------------------------------------
 
-describe('P23.11 slice 5 — bend point planners', () => {
+describe('bend point planners', () => {
 	it('inserts a bend point at a physical arc distance without moving the Wall', () => {
 		const document = curvedDocument();
 		const baseline = samplePointsOf(document, 'wall-a');
@@ -434,7 +433,7 @@ describe('P23.11 slice 5 — bend point planners', () => {
 // the Bend gesture planner
 // ---------------------------------------------------------------------------
 
-describe('P23.11 slice 5 — the composite Bend planner', () => {
+describe('the composite Bend planner', () => {
 	it('curves a straight Wall in one candidate, one operation', () => {
 		const document = documentOf();
 		const plan = expectSuccess(planBendWallCurveKnot(document, 'wall-a', { distance: 4, point: [4, 1.5] }, { knotId: 'wall-a:knot:1' }));
@@ -524,7 +523,7 @@ describe('P23.11 slice 5 — the composite Bend planner', () => {
 // curved split
 // ---------------------------------------------------------------------------
 
-describe('P23.11 slice 5 — exact curved-Wall split', () => {
+describe('exact curved-Wall split', () => {
 	it('splits a curved Wall into two Walls whose sampled geometry is the original', () => {
 		const document = curvedDocument();
 		const baseline = samplePointsOf(document, 'wall-a');
@@ -690,7 +689,7 @@ describe('P23.11 slice 5 — exact curved-Wall split', () => {
 		const document = curvedDocument();
 		const plan = expectSuccess(planWallSubdivision(document, 'wall-a', 5, allocator()));
 		expect(plan.operation).toBe('wall-subdivision');
-		// Add Junction returns the P23.1 precision plan, which folds the created
+		// Add Junction returns the precision plan, which folds the created
 		// fragment into `changedWallIds`; the fragment's own ID stays the
 		// allocator's deterministic `X → B` name, read from the candidate.
 		expect(plan.changedWallIds).toContain('wall-a-b-1');
@@ -719,7 +718,7 @@ describe('P23.11 slice 5 — exact curved-Wall split', () => {
 // rigid movement
 // ---------------------------------------------------------------------------
 
-describe('P23.11 slice 5 — rigid movement carries the whole chain', () => {
+describe('rigid movement carries the whole chain', () => {
 	it('translates a curved Wall without changing its shape', () => {
 		const document = curvedDocument();
 		const before = chainViewOf(document, 'wall-a');

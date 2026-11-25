@@ -1,5 +1,5 @@
 /**
- * P23.11 fix 1 — local reshape authority for a curved Wall.
+ * Local reshape authority for a curved Wall.
  *
  * The property pinned here: moving (or inserting) one bend point never
  * re-derives the whole chain, so spans created by an exact de Casteljau split
@@ -7,7 +7,7 @@
  * drag is ONE canonical operation rather than an insert plus an unrelated move.
  *
  * Split by behavioural seam out of `layout-curve-regressions.test.ts`
- * (PR #115 WP3T, plan §7.6 area 2): the distance/crossing, proposal and
+ * The distance/crossing, proposal and
  * clearance contracts live in their own sibling suites.
  */
 import { describe, expect, it } from 'vitest';
@@ -166,7 +166,7 @@ function fourKnotDocument(): LayoutDocumentWallFirst {
 // Fix 1 — a knot move must preserve stored split-derived spans
 // ===========================================================================
 
-describe('P23.11 fix 1 — local knot move preserves persisted spans', () => {
+describe('local knot move preserves persisted spans', () => {
 	it('keeps every interior join smooth when the middle knot moves', () => {
 		const baseline = fourKnotDocument();
 		const before = chainViewOf(baseline, 'wall-a');
@@ -281,7 +281,7 @@ describe('P23.11 fix 1 — local knot move preserves persisted spans', () => {
 	});
 });
 
-describe('P23.11 fix 1 — insertion followed by movement', () => {
+describe('insertion followed by movement', () => {
 	it('keeps every interior join smooth after identity-preserving knot insertion', () => {
 		const baseline = fourKnotDocument();
 		const total = wallCurveChainLength(chainViewOf(baseline, 'wall-a'));
@@ -322,7 +322,7 @@ describe('P23.11 fix 1 — insertion followed by movement', () => {
 	});
 });
 
-describe('P23.11 fix 1 — one Bend drag is one canonical operation', () => {
+describe('one Bend drag is one canonical operation', () => {
 	it('plans one candidate with one operation on an existing curve', () => {
 		const document = documentOf(chainOf([0, 0], [CHORD, 0], [3, 2], [8, -1]));
 		const total = wallCurveChainLength(chainViewOf(document, 'wall-a'));

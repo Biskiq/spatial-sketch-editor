@@ -1,4 +1,4 @@
-import { validateClosedWallContacts } from './layout-wall-first-precision';
+import { validateClosedWallContacts } from './topology/wall-first';
 /**
  * `layout-circular-room.ts` — product planners for the canonical closed Wall.
  *

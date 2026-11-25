@@ -51,7 +51,7 @@ import {
 	wallCurveChainLength,
 } from './layout-wall-curve-algebra';
 import { validateWallFirstLayoutDocument } from './layout-wall-first-codec';
-import { validateWallFirstTopology } from './layout-wall-first-precision';
+import { validateWallFirstTopology } from './topology/wall-first';
 import type {
 	LayoutDocumentWallFirst,
 	LayoutJunction,

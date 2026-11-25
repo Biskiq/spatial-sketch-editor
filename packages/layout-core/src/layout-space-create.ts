@@ -15,7 +15,7 @@ import { wallJunctionComponents } from './layout-topology-components';
 import { createWallSamplingDerivation, type WallSamplingDerivation } from './layout-wall-centerline';
 import { resolveWallCurveSplit } from './layout-wall-curve-algebra';
 import { validateWallFirstLayoutDocument } from './layout-wall-first-codec';
-import { validateWallFirstTopology } from './layout-wall-first-precision';
+import { validateWallFirstTopology } from './topology/wall-first';
 import type { LayoutDocumentWallFirst, LayoutWall, LayoutWallFirstRoom } from './layout-wall-first-types';
 import { planWallSplit } from './layout-wall-noding';
 import { classifyWallIntersection } from './layout-wall-topology';

@@ -1,20 +1,15 @@
 {
   "generatedFrom": "LOC-0 baseline; shrink-only from here",
   "counts": {
-    "filesOver600": 137,
-    "filesOver1000": 50,
-    "filesOver1500": 24,
+    "filesOver600": 136,
+    "filesOver1000": 49,
+    "filesOver1500": 23,
     "functionsOver200": 70,
     "exportStars": 0,
     "crossPackageReexports": 0,
-    "seams": 16
+    "seams": 12
   },
   "files": [
-    {
-      "path": "packages/layout-core/src/layout-wall-first-precision.ts",
-      "lines": 3929,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
     {
       "path": "packages/layout-core/src/layout-geometry.ts",
       "lines": 3084,
@@ -32,7 +27,7 @@
     },
     {
       "path": "packages/layout-core/src/layout-wall-chain.ts",
-      "lines": 2631,
+      "lines": 2632,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -882,7 +877,7 @@
     {
       "file": "packages/layout-core/src/layout-wall-chain.ts",
       "name": "planWallChainInternal",
-      "line": 546,
+      "line": 547,
       "lines": 411,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
@@ -1027,11 +1022,11 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
-      "file": "packages/layout-core/src/layout-wall-first-precision.ts",
+      "file": "packages/layout-core/src/topology/wall-first.ts",
       "name": "validateWallFirstTopologyPass",
-      "line": 3171,
-      "lines": 282,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+      "line": 210,
+      "lines": 278,
+      "reason": "One whole-document topology pass: its phases share the junction and wall indexes and the first-failure order; splitting would forward them."
     },
     {
       "file": "packages/layout-core/src/layout-world-index.ts",
@@ -1153,11 +1148,11 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
-      "file": "packages/layout-core/src/layout-wall-first-precision.ts",
+      "file": "packages/layout-core/src/precision/open-side.ts",
       "name": "planSpaceOpenSideEndSlide",
-      "line": 563,
+      "line": 98,
       "lines": 216,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+      "reason": "One open-side slide search: the candidate walk and its first valid station share the slide frame and sampler."
     },
     {
       "file": "packages/project-model/src/channels/negotiate.ts",
@@ -1200,10 +1195,6 @@
     "packages/layout-core/src/layout-room-reconciliation.ts#setCorrespondenceObserverForTest",
     "packages/layout-core/src/layout-wall-centerline.ts#clearWallSamplingObserverForTest",
     "packages/layout-core/src/layout-wall-centerline.ts#hasWallSamplingObserverForTest",
-    "packages/layout-core/src/layout-wall-centerline.ts#setWallSamplingObserverForTest",
-    "packages/layout-core/src/layout-wall-first-precision.ts#clearTopologyGateObserverForTest",
-    "packages/layout-core/src/layout-wall-first-precision.ts#clearWallFirstTopologyEvaluationObserverForTest",
-    "packages/layout-core/src/layout-wall-first-precision.ts#setTopologyGateObserverForTest",
-    "packages/layout-core/src/layout-wall-first-precision.ts#setWallFirstTopologyEvaluationObserverForTest"
+    "packages/layout-core/src/layout-wall-centerline.ts#setWallSamplingObserverForTest"
   ]
 }

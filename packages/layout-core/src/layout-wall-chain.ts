@@ -62,7 +62,7 @@ import { validateWallFirstLayoutDocument } from './layout-wall-first-codec';
 import { compileWallFirstLayoutGeometry } from './layout-geometry';
 import { exceedsLayoutDimension, LAYOUT_DIMENSION_LIMIT_MESSAGE } from './layout-geometry-limits';
 import { hasBlockingLayoutIssues } from './layout-geometry-validation';
-import type { WallFirstAcceptanceCompile } from './layout-wall-first-precision';
+import type { WallFirstAcceptanceCompile } from './precision/types';
 import {
 	CURVE_ARC_LENGTH_TOLERANCE,
 	cubicBezierPoint,
@@ -91,7 +91,8 @@ import {
 	type LayoutIdCapture
 } from './layout-id-capture';
 import { classifyWallIntersection, type TopologySegment } from './layout-wall-topology';
-import { detectWallCurveTopologyCrossings, validateClosedWallContacts } from './layout-wall-first-precision';
+import { detectWallCurveTopologyCrossings } from './topology/curve-crossings'
+import { validateClosedWallContacts } from './topology/wall-first';
 import {
 	topologyComponentKeyByJunctionId,
 	topologyComponentKeyByWallId,

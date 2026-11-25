@@ -57,7 +57,7 @@ import {
 	type RoomIdAllocator
 } from './layout-room-reconciliation';
 import { validateWallFirstLayoutDocument } from './layout-wall-first-codec';
-import { validateWallFirstTopology } from './layout-wall-first-precision';
+import { validateWallFirstTopology } from './topology/wall-first';
 import { translateWallCenterline, wallCenterlineSamples } from './layout-wall-centerline';
 import { buildRoundRoomGeometryFromCertified, certifyRoundRoom } from './layout-round-room';
 import type {

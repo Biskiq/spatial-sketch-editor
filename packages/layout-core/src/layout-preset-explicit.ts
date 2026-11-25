@@ -20,7 +20,7 @@ import {
 	planCommitLayoutObjectPreset,
 	type LayoutArchitecturalPresetId,
 	type PrecisionPlan
-} from './layout-wall-first-precision.js';
+} from './precision/index.js';
 import type { LayoutDocumentWallFirst } from './layout-wall-first-types.js';
 import { layoutCapturedId, layoutWorkingLevelIssue, type LayoutIdCapture } from './layout-id-capture.js';
 
