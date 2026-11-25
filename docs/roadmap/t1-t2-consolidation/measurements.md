@@ -775,7 +775,7 @@ runs for E12. Diagnosing the 300 s accepted-result timeout is deferred to a focu
 
 ## X9 — integration ownership recovery M/L checkpoint
 
-**Date:** 2026-11-25. **Head:** `02042285d`, 29 commits from base `41814cd91`.
+**Date:** 2026-11-25. **Measured head:** `02042285d` (29 commits from base `41814cd91`); the only later commit records this closeout.
 
 One `SPOT_REQUIRE_VERIFIED=1 npm run perf:spot` per revision, from clean committed trees, against
 `npm run preview` on `http://127.0.0.1:4173`, in branded Chrome 158.0.8127.88 on the same Apple M2.
