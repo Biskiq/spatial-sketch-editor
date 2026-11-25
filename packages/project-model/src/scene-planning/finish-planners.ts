@@ -27,7 +27,6 @@ import {
 	resolveLayoutSurface,
 	surfaceKey,
 	type LayoutDocumentWallFirst,
-	type LayoutSurfaceRef
 } from '@portfolio/layout-core';
 import type {
 	MaterialId,
@@ -40,7 +39,7 @@ import type {
 	SceneTextureAsset
 } from '../scene';
 import { pruneOverrides, readRecipe } from '../materials/read';
-import { readMaterialDefinition, type MaterialResourceImage } from '../materials/definition';
+import { readMaterialDefinition, } from '../materials/definition';
 import { EMPTY_MATERIAL_PROOF, verifyMaterialDigest, type MaterialDigestProof } from '../materials/proof';
 import { createImageIndex, resolveFinish, mergeImageIndexes, shippedImageIndex, materialImageIndex } from '../materials/resolve';
 import { qualifyAcrossTargets } from '../materials/bind';

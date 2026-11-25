@@ -387,14 +387,14 @@ function checkTextureScope(
 			issues.push({
 				path: `$.scene.textures.${id}`,
 				code: 'record-scope-violation',
-				message: `Added texture \"${id}\" already exists in the accepted source`
+				message: `Added texture "${id}" already exists in the accepted source`
 			});
 		}
 		if (!afterById.has(id)) {
 			issues.push({
 				path: `$.scene.textures.${id}`,
 				code: 'record-scope-violation',
-				message: `Granted texture \"${id}\" was not added`
+				message: `Granted texture "${id}" was not added`
 			});
 		}
 	}
@@ -405,7 +405,7 @@ function checkTextureScope(
 			issues.push({
 				path: `$.scene.textures.${texture.id}`,
 				code: 'record-scope-violation',
-				message: `Texture \"${texture.id}\" is new but was not granted by the operation`
+				message: `Texture "${texture.id}" is new but was not granted by the operation`
 			});
 			continue;
 		}
@@ -413,7 +413,7 @@ function checkTextureScope(
 			issues.push({
 				path: `$.scene.textures.${texture.id}`,
 				code: 'record-scope-violation',
-				message: `Texture \"${texture.id}\" is outside the ${scope.operationKind} operation's texture grant but was modified`
+				message: `Texture "${texture.id}" is outside the ${scope.operationKind} operation's texture grant but was modified`
 			});
 		}
 	}
@@ -422,7 +422,7 @@ function checkTextureScope(
 		issues.push({
 			path: `$.scene.textures.${texture.id}`,
 			code: 'record-scope-violation',
-			message: `Texture \"${texture.id}\" may not be removed by the ${scope.operationKind} operation`
+			message: `Texture "${texture.id}" may not be removed by the ${scope.operationKind} operation`
 		});
 	}
 	return issues;

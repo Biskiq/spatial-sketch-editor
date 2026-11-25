@@ -273,7 +273,9 @@ export function validateChannelValue(
 	if (valueKind === 'vector3') {
 		const vector = reader.vector3(kind.value, '$.value');
 		if (vector === null) return { success: false, issues: reader.issues, rangeViolation };
-		vector.forEach((component, index) => inRange(component, `$.value[${index}]`));
+		vector.forEach((component, index) => {
+			inRange(component, `$.value[${index}]`);
+		});
 		if (reader.issues.length > 0) return { success: false, issues: reader.issues, rangeViolation };
 		return { success: true, value: { kind: 'vector3', value: vector }, ignoredOptionalExtensions: [], rangeViolation };
 	}

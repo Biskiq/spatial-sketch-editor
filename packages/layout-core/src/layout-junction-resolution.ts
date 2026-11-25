@@ -850,7 +850,7 @@ function junctionPointOwner(
  * a hole — the shape a Wall-owned band can actually be extruded from. Order is
  * stable: the cutter's own edges are walked in order.
  */
-function subtractConvexPolygon(polygon: readonly LayoutVec2[], cutter: readonly LayoutVec2[]): LayoutVec2[][] {
+function _subtractConvexPolygon(polygon: readonly LayoutVec2[], cutter: readonly LayoutVec2[]): LayoutVec2[][] {
 	if (polygon.length < 3) return [];
 	if (cutter.length < 3) return [[...polygon]];
 	const outward = polygonArea(cutter) > 0 ? cutter : [...cutter].reverse();

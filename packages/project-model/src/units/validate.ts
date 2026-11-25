@@ -39,7 +39,6 @@ import { validateProjectSceneCameraPoses } from '../project-layout-semantics';
 import { SCENE_WORLD_LOCAL_FORMAT_VERSION } from '../scene';
 import { readMaterialDefinition } from '../materials/definition';
 import { shippedImage } from '../materials/catalogue';
-import { finishTextureBindings } from '../materials/read';
 import { MATERIAL_CAPABILITY, MATERIAL_MAP_ROLES } from '../materials/types';
 import { withSceneValidationOptions } from '../scene-validation';
 import type { SceneSurfaceFinish, SceneSurfaceRef } from '../scene';

@@ -107,7 +107,7 @@ cache from the exact model bytes observed during `resolveApprovedModels`.
 Registration therefore reaches the real `scene-finish-register` planner for a
 Wall, a Form and an approved GLB instead of ending at `target-pending`.
 
-`apps/editor/tests/lib/project-model/s8-pr-d-production-targets.test.ts` drives
+apps/editor/tests/lib/project-model/s8-pr-d-production-targets.test.ts drives
 the production composition (`createStageAdapterServices` plus the real Scene and
 Layout adapters) for all three target kinds. It also pins the strict edges:
 UV1 on a UV0-only GLB refuses with `missing-uv`, a changed approved pin cannot
@@ -256,8 +256,8 @@ API, not the standalone gate route:
 [`evidence/s8-d-product-journey.json`](./evidence/s8-d-product-journey.json)
 records the Save capture facts, asset IDs, cold-load responses, preview
 screenshot evidence and teardown results. The journey script is
-`apps/editor/scripts/run-s8-d-journey.mjs`; its one-time local seed is
-`apps/editor/scripts/seed-s8-d-journey.ts`. Neither is imported by application
+apps/editor/scripts/run-s8-d-journey.mjs; its one-time local seed is
+apps/editor/scripts/seed-s8-d-journey.ts. Neither is imported by application
 source.
 
 ## Migration evidence
@@ -285,7 +285,7 @@ it removes the native Form as required by the existing P20 public refusal.
 
 ## Exit fixture
 
-`apps/editor/tests/lib/project-model/s8-pr-d-acceptance.test.ts`:
+apps/editor/tests/lib/project-model/s8-pr-d-acceptance.test.ts:
 
 1. registers a three-image brushed metal recipe (colour, packed ORM,
    NormalDX `-Y`) on a primitive and a Wall;

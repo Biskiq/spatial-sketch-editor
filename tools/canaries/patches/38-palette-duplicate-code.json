@@ -1,0 +1,12 @@
+{
+  "id": "38-palette-duplicate-code",
+  "area": "codec",
+  "citation": "section 5 rule 7 — comments state the current contract",
+  "title": "A duplicate palette slot reports the wrong refusal code",
+  "file": "packages/project-model/src/units/validate.ts",
+  "find": "reader.problem(`${path}.id`, 'duplicate_id', `Duplicate palette slot id: ${id}`);",
+  "replace": "reader.problem(`${path}.id`, 'duplicate-identity', `Duplicate palette slot id: ${id}`);",
+  "tests": [
+    "tests/lib/project-model/scene-look-schema.test.ts"
+  ]
+}

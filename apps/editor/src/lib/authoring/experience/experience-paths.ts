@@ -24,12 +24,10 @@ import {
 	type CameraMotionOptions
 } from '@portfolio/camera-core';
 import type {
-	CameraView,
 	Experience,
 	ExperienceGuide,
 	ExperienceStop,
 	ExperienceTransitionKind,
-	ProjectEnvelope
 } from '@portfolio/project-model/units';
 import type { NavigationGraph, SceneConnection } from '@portfolio/project-model';
 import { routeCrossesWall, type CompiledLayoutGeometry, type RouteWallRead } from '@portfolio/layout-core';

@@ -26,7 +26,7 @@ export type InspectionGeometryFacts = {
 	readonly surfaceMeters: readonly [number, number];
 };
 
-const BLOCK_HALF = 0.5;
+const _BLOCK_HALF = 0.5;
 const BLOCK_INNER = 0.42;
 const BLOCK_RADIUS = 0.08;
 const BLOCK_GRID = 24;

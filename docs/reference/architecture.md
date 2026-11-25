@@ -76,7 +76,7 @@ hashes, secure app-owned sessions and stable owner IDs. A test-only session issu
 absent unless configured and must never be enabled in production. Asset metadata lives in
 Postgres and bytes in private R2, reached only through the API.
 The live source is `ProjectEnvelope`, with five distinct codec-bounded units, accepted-revision
-provenance and a dependency lock. Migration 005's F2 schema fence rejects pre-epoch writers;
+provenance and a dependency lock. The baseline's F2 schema fence rejects pre-epoch writers;
 applying that destructive migration to the deployed environment is a separate owner-run action.
 The P22 delivery path is retired: public reads are unavailable until T4's prepared reader.
 

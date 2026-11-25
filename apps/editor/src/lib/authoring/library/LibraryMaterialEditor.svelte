@@ -13,7 +13,7 @@
 	 */
 	import { onMount } from 'svelte';
 	import type { FinishColourMode, FinishPatchEdit, FinishSource } from '@portfolio/project-model/scene-planning';
-	import type { MaterialId, SceneColor, ScenePaletteSlot } from '@portfolio/project-model';
+	import type { SceneColor, ScenePaletteSlot } from '@portfolio/project-model';
 	import type { Recipe } from '@portfolio/project-model/materials';
 	import type { FinishTileSource } from '$lib/render/materials/finish-tiles.svelte';
 	import type { WorldLightSample } from '$lib/render/materials/inspection-world';

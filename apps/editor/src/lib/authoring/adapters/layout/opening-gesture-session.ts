@@ -104,8 +104,6 @@ type OpeningGesturePorts = LayoutManipulationPorts &
 export function createOpeningGestureSession({
 	services,
 	document,
-	levelId,
-	contentRevision,
 	publishRefusal,
 	settleRefusal,
 	candidatePaper,

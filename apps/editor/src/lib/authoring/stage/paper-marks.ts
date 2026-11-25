@@ -305,7 +305,7 @@ function linePositions(geometry: PaperMarkGeometry): number[][] {
  */
 export function createPaperMarkScene(
 	marks: PaperMarkSet,
-	resolution: readonly [number, number]
+	_resolution: readonly [number, number]
 ): PaperMarkSceneResources {
 	const group = new Group();
 	group.name = 'StagePaperMarks';

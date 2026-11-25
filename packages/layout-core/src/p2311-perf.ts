@@ -1,19 +1,15 @@
 /**
  * Opt-in work observation.
  *
- * Two inert-by-default consumers share these call sites:
+ * A {@link WorkObserver} is installed only by a measurement harness or a
+ * deterministic census. It receives every measured span's duration and every
+ * named work count, so per-stage time and count oracles read the same
+ * boundaries. It works in production builds, because the owner-run benches
+ * measure the production build.
  *
- * - the diagnostic marks, which the editor enables only in dev builds
- *   through `__P2311_PERF__`;
- * - a {@link WorkObserver}, installed only by a measurement
- *   harness or a deterministic census. It receives every measured span's
- *   duration and every named work count, so per-stage time and count oracles
- *   read the same boundaries. It works in production builds, because the
- *   owner-run benches measure the production build.
- *
- * With no observer and no dev flag, `p2311Measure` is one null check plus the
- * work itself and `countWork` is one null check. An observer never changes a
- * result: it only receives names and numbers.
+ * With no observer, `p2311Measure` is one null check plus the work itself and
+ * `countWork` is one null check. An observer never changes a result: it only
+ * receives names and numbers.
  */
 
 /** Receives measured spans and deterministic work counts. */
@@ -28,7 +24,6 @@ export type WorkObserver = {
 };
 
 let observer: WorkObserver | null = null;
-let sequence = 0;
 
 /** Install (or with `null`, remove) the one observer; returns the previous one. */
 export function setWorkObserver(next: WorkObserver | null): WorkObserver | null {
@@ -52,19 +47,7 @@ export function p2311Measure<T>(name: string, work: () => T): T {
 			active.span(name, performance.now() - begin);
 		}
 	}
-	const viteDev = (import.meta as ImportMeta & { env?: { DEV?: boolean } }).env?.DEV;
-	if (viteDev === false || !(globalThis as { __P2311_PERF__?: boolean }).__P2311_PERF__) return work();
-	const start = `p2311:${name}:start:${sequence++}`;
-	const end = `${start}:end`;
-	performance.mark(start);
-	try {
-		return work();
-	} finally {
-		performance.mark(end);
-		performance.measure(`p2311:${name}`, start, end);
-		performance.clearMarks(start);
-		performance.clearMarks(end);
-	}
+	return work();
 }
 
 /**

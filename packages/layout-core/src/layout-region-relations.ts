@@ -544,7 +544,7 @@ function pointNearBoundary(footprint: readonly LayoutVec2[], point: LayoutVec2, 
 	return false;
 }
 
-function segmentsIntersect(a: LayoutVec2, b: LayoutVec2, c: LayoutVec2, d: LayoutVec2): boolean {
+function _segmentsIntersect(a: LayoutVec2, b: LayoutVec2, c: LayoutVec2, d: LayoutVec2): boolean {
 	const r: LayoutVec2 = [b[0] - a[0], b[1] - a[1]];
 	const s: LayoutVec2 = [d[0] - c[0], d[1] - c[1]];
 	const denominator = cross(r, s);

@@ -5,6 +5,8 @@ import { pathToFileURL } from 'node:url';
 const SHA = /^[0-9a-f]{40}$/;
 const EDITOR = 'apps/editor/';
 const PROFILES = ['minimal', 'focused', 'full'];
+// Pull requests stay on Full until the merge queue has run cleanly (D2).
+const PR_FULL_UNTIL_D2 = true;
 const PROTECTED_TEST = /\.(?:test\.(?:ts|mjs|js)|spec\.(?:ts|js))$/;
 const CONFIG = /(?:^|\/)(?:\.[^/]+|[^/]*config[^/]*|package(?:-lock)?\.json|Dockerfile[^/]*)$/i;
 const CRITICAL = /(?:^|[\/.-])(?:auth|security|login|session|persist\w*|serializ\w*|schema|contract|kernel|geometry|topology|native-form|boundary|release|publication|save)(?=[\/.-]|$)/i;
@@ -81,7 +83,8 @@ export function createPlan(eventName, event, head) {
 			(side, file) => git('show', `${side === 'base' ? base : head}:${file}`));
 		changes.push({ path, profile });
 	}
-	const profile = PROFILES.findLast((level) => changes.some((change) => change.profile === level)) ?? 'minimal';
+	let profile = PROFILES.findLast((level) => changes.some((change) => change.profile === level)) ?? 'minimal';
+	if (PR_FULL_UNTIL_D2 && profile === 'focused') profile = 'full';
 	return { profile, head, base, changes };
 }
 

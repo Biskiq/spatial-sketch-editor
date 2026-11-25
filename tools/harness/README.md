@@ -1,55 +1,21 @@
-# Capability evidence harness
+# Merge-gate tooling
 
-`npm run status` reports capability maturity and health against the actual remote `main` head,
-plus live capability-linked flags and claims. It prints tested revision, source, timestamp and
-suite completeness. Missing, stale or incomplete evidence is unknown; owner acceptance of a
-product milestone is independent of automated evidence availability.
+The classifier and the gate are the only contract here.
 
-## Definitions and evidence
+- `plan.mjs` classifies the tested delta and prints the profile. It fails on an
+  unknown event, a checkout that does not match the tested SHA, an unreachable
+  base or an unreadable delta. Pull requests run Full until the queue has run
+  cleanly (D2); only a documentation/CSS-only delta stays Minimal.
+- `matrix.mjs` derives the suite matrix from `suites.mjs`. A suite runs through
+  `run-suite.mjs`, which fails on a non-zero exit and on a Vitest lane that
+  collects zero files or zero tests.
+- `gate.mjs` requires `success` from every job the profile implies. A missing,
+  skipped, cancelled or failed job fails; a merge group must be Full.
+- `check-docs.mjs` resolves documentation links and written paths.
+- `focused.mjs` selects the focused-lane files when the classifier emits that
+  profile (kept for the post-D2 lean profile).
+- `status.mjs` prints the commit, the suite contract and the canary baseline.
 
-`capabilities.json` defines stable capability ids, North Star anchors and scoped surface paths.
-Tests carry `<capability-id> <core|edge>` tags. Core checks establish a useful journey; edge checks
-exercise additional cases. A capability needs a nonempty passing core set to become working.
-Maturity and health are independent: an open confirmed defect can degrade a working capability,
-and a core-blocking defect is explicit through `blocks-core`. Skips are not passes. Expected-failure
-reproducers remain linked to their bug and cannot manufacture a healthy result.
-
-Owner design review can establish polished maturity only with reviewed implementation and design
-identity. Changes in the declared surface invalidate review; unrelated changes do not. Regression
-comparison uses complete ancestor reports, not arbitrary local snapshots. Historical issue snapshots
-remain historical while current flags and claims are fetched live.
-
-## Gate and commands
-
-The Merge gate workflow selects a verification profile from the tested delta. Full verification
-executes the complete suite contract, and the gate validates the applicable evidence for every profile. The editor population is split
-into three disjoint lanes (`test:fast`, `test:arch`, `test:heavy`); their union is the complete
-`npm test` suite, proved by
-[`lane-membership.test.ts`](../../apps/editor/tests/config/lane-membership.test.ts), so CI never
-reruns the full suite on top of them. The [test contract](../../apps/editor/tests/README.md) owns
-required commands; root editor commands do not substitute for API or package checks.
-
-- `npm run status`: inspect current evidence, claims, flags, focus and holds.
-- `npm run gate:produce -- --suite <command> --artifact-dir <directory>`: run one declared suite and
-  capture its tested revision and result.
-- `npm run gate:aggregate`: aggregate suite evidence; see the CLI's required arguments in
-  `aggregate.mjs` and the workflow invocation.
-- `npm run gate:guards`: enforce check identities and confirmed bug-state protections.
-
-The default-branch ruleset requires the stable `merge gate`, `check guards` and `linux-x64`
-contexts. The same workflows also run on `merge_group`; the queue's synthetic commit is the tested
-commit in the provenance. The guards job derives the base branch from `merge_group.base_ref`,
-enumerates the batch's PRs from the synthetic commit's first-parent chain, and checks each entry with
-its own labels against its own queue delta; the first delta starts at the event's exact `base_sha`.
-Status uses successful scheduled and manual full reports on main and historical push reports. See
-[CI and merge automation](../../docs/operations/ci-merge-automation.md). Until a complete report
-exists for the actual main head, status remains unknown. Issue guards activate from the default
-branch. No live incident, review or claim demonstration should be fabricated to improve a report.
-
-## Work
-
-The [workflow](../../docs/workflow.md) owns claims, flags, risk tiers and review. Claim by a draft PR
-or self-assigned issue naming the capability, checking collisions before and immediately after.
-A flag uses a capability label and its appropriate bug/decision/UX/research/ambiguity label.
-The owner starts work by prompt; no scheduled agent is implied. Tests and code own harness
-mechanics; this guide is usage documentation, not a second status store.
+The retired capability-evidence pipeline (aggregate, report, discovery,
+producer, guards, event context, issue rules/response, linked fixes, ledger)
+is gone. `capabilities.json` remains the journey map's capability ledger.

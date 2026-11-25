@@ -17,7 +17,7 @@
 	 * commands from the composition root, and its local state is only the lane
 	 * measurement and the homes host's ephemeral controller slot.
 	 */
-	import type { Component, ComponentProps } from 'svelte';
+	import type { ComponentProps } from 'svelte';
 	import ArtworkHangingGuides from '$lib/authoring/artwork/ArtworkHangingGuides.svelte';
 	import ArtworkResizeOverlay from '$lib/authoring/artwork/ArtworkResizeOverlay.svelte';
 	import ExperienceHomesHost from '$lib/authoring/experience/ExperienceHomesHost.svelte';

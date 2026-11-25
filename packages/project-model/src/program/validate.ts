@@ -591,7 +591,9 @@ function checkStateValue(reader: ShapeReader, state: ProgramStateDeclaration | u
 
 function checkGuard(reader: ShapeReader, guard: ProgramGuard, path: string, stateById: ReadonlyMap<string, ProgramStateDeclaration>): void {
 	if (guard.kind === 'conjunction') {
-		guard.guards.forEach((child, index) => checkGuard(reader, child, `${path}.guards[${index}]`, stateById));
+		guard.guards.forEach((child, index) => {
+			checkGuard(reader, child, `${path}.guards[${index}]`, stateById);
+		});
 	} else if (guard.kind === 'state' || guard.kind === 'equals') {
 		const state = stateById.get(guard.stateId);
 		if (state === undefined) reader.problem(`${path}.stateId`, 'missing-state', `the guard reads undeclared state "${guard.stateId}"`);

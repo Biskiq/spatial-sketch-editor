@@ -573,7 +573,7 @@ export function queryOverheadSupports(
 
 	const point: LayoutVec2 = [input.x, input.z];
 	const floorByFloorId = new Map(snapshot.floors.map((floor) => [floor.floorId, floor]));
-	const roomById = new Map(snapshot.rooms.map((room) => [room.roomId, room]));
+	const _roomById = new Map(snapshot.rooms.map((room) => [room.roomId, room]));
 	const regionById = new Map(snapshot.regions.map((region) => [region.regionId, region]));
 	const elevationBySource = new Map<string, number>();
 	const witnessByKey = new Map<string, OverheadSupportWitness>();

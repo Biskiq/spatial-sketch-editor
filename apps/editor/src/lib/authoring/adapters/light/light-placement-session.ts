@@ -376,7 +376,7 @@ export function createLightPlacementSession(deps: LightPlacementDeps): LightPlac
 				);
 			}
 		},
-		finish(intent, adapterContext) {
+		finish(_intent, adapterContext) {
 			const pending = placement;
 			if (pending === null) return false;
 			placement = null;

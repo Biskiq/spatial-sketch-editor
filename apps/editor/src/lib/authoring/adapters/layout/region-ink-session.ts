@@ -325,7 +325,7 @@ export function createRegionInkSession(
 		};
 	}
 
-	function previews(ctx: StageAdapterContext, y: number): readonly StageCandidatePreview[] {
+	function previews(_ctx: StageAdapterContext, y: number): readonly StageCandidatePreview[] {
 		const ring = workRing();
 		if (ring.length < 2) return [];
 		const { world } = previewCoordinates(y);

@@ -467,7 +467,7 @@ The review pass also caught a defect in this record itself: the root-gates bulle
 fixture *path* in prose outside the declared `EVIDENCE-PATHS` region, which the repository's
 documentation-reference gate reads as a claim about a file that does not exist. The path is named once,
 inside that region, and nowhere else; the gate is green at this revision (22/22 in
-`apps/editor/tests/docs/documentation-references.test.ts`). The finding was invisible to the earlier
+`apps/editor/tooling-tests/docs/documentation-references.test.ts`). The finding was invisible to the earlier
 arch run because that run read the tree before the edit landed, so this record does not claim the
 earlier revision passed it.
 
@@ -752,7 +752,7 @@ Re-run at the repaired intermediate stage before commit `056ae3f9`; these histor
   `return-clock` obligation was rewritten to drop the `remainingFrom` rebase instead of round 1's
   zeroing.
 - `npm run test:arch` (root) — **276/276 pass, rc=0**, which includes the documentation-reference gate
-  `apps/editor/tests/docs/documentation-references.test.ts` at **22/22**.
+  `apps/editor/tooling-tests/docs/documentation-references.test.ts` at **22/22**.
 - `git diff --check` (whitespace) — rc=0.
 
 Two load-dependent harness races surfaced while re-running the whole driver, and only under the full
@@ -779,7 +779,7 @@ plus its reverted candidate finding), not read from the earlier pass:
   `PASS: <domain> rejects <kind> regression; unrelated control stays green` lines). The one new kind
   is `rejoin-held-cue`; each rejection reintroduces its named defect in a disposable copy and is
   caught by its named protected assertion while its control stays green.
-- Documentation-reference gate `apps/editor/tests/docs/documentation-references.test.ts` — **22/22**.
+- Documentation-reference gate `apps/editor/tooling-tests/docs/documentation-references.test.ts` — **22/22**.
 
 The root repository gates remain red on the same pre-existing missing P23B fixture reported below
 and in the checkpoint record; nothing in this pass changes that, and it is not hidden here.

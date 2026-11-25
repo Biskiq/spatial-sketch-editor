@@ -152,9 +152,9 @@ export function planUpdateLight(input: {
 		);
 	}
 	const update = input.update;
-	const hasRange = Object.prototype.hasOwnProperty.call(update, 'range');
-	const hasAngle = Object.prototype.hasOwnProperty.call(update, 'angle');
-	const hasPenumbra = Object.prototype.hasOwnProperty.call(update, 'penumbra');
+	const hasRange = Object.hasOwn(update, 'range');
+	const hasAngle = Object.hasOwn(update, 'angle');
+	const hasPenumbra = Object.hasOwn(update, 'penumbra');
 	if (existing.light === 'point' && (hasAngle || hasPenumbra)) {
 		return invalid('Point lights do not use angle or penumbra.', ['angle', 'penumbra']);
 	}

@@ -11,7 +11,6 @@ import {
 	proposeMaterialSet,
 	type DraftEdits,
 	type DraftRoleEdit,
-	type ProposalConflict,
 	type SetCandidate,
 	type SetFileFact,
 	type SetProposal

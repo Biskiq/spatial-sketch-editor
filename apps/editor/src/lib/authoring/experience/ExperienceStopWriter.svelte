@@ -8,7 +8,6 @@
 	} from '@portfolio/project-model/units';
 	import ShellIcon from '../stage/shell/ShellIcon.svelte';
 	import ExperienceSnapshot from './ExperienceSnapshot.svelte';
-	import type { ExperienceController } from './experience-controller.svelte';
 	import { experienceHomes } from './experience-homes';
 	import { formatPathSeconds } from './experience-paths';
 

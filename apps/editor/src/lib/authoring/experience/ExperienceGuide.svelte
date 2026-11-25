@@ -165,7 +165,7 @@
 		return { id: `hold:${segment.stopId}`, pct: stopProgress(segment.stopId) };
 	});
 	/** Each hold is one View's span; its own label/time stays readable on the bar. */
-	const timelineSegments = $derived.by(() => {
+	const _timelineSegments = $derived.by(() => {
 		const map = playback.map;
 		if (map === null) return [];
 		// Each drawn hold is one View's span. A Stop's first drawn hold carries its
@@ -664,7 +664,7 @@
 	});
 
 	/** The cards scrolled into view, as first and last index; null when they all show. */
-	let inView = $state<{ first: number; last: number } | null>(null);
+	let _inView = $state<{ first: number; last: number } | null>(null);
 
 	/** Review round 3: the strip has no visible scrollbar; arrows show only on a side with more. */
 	let more = $state<{ left: boolean; right: boolean }>({ left: false, right: false });
@@ -693,7 +693,7 @@
 			if (left !== more.left || right !== more.right) more = { left, right };
 		}
 		if (scroller === null || els.length === 0) {
-			inView = null;
+			_inView = null;
 			return;
 		}
 		const from = scroller.scrollLeft;
@@ -707,7 +707,7 @@
 				last = index;
 			}
 		});
-		inView = first < 0 || (first === 0 && last === els.length - 1) ? null : { first, last };
+		_inView = first < 0 || (first === 0 && last === els.length - 1) ? null : { first, last };
 	}
 
 	$effect(() => {
@@ -715,7 +715,7 @@
 		const row = rowEl;
 		void stops;
 		if (scroller === null || row === null) {
-			inView = null;
+			_inView = null;
 			return;
 		}
 		measureView();
@@ -763,7 +763,7 @@
 
 	/** The caret's place in the card row, and on the bar, as the gap it stands in. */
 	let caretPx = $state<number | null>(null);
-	let barCaretPct = $state<number | null>(null);
+	let _barCaretPct = $state<number | null>(null);
 	/** An empty Guide's drop zone is hovered by a Presentation. */
 	let emptyOver = $state(false);
 
@@ -800,7 +800,7 @@
 
 	function clearCaret(): void {
 		caretPx = null;
-		barCaretPct = null;
+		_barCaretPct = null;
 		emptyOver = false;
 	}
 
@@ -835,9 +835,9 @@
 		}
 		if (onBar) {
 			caretPx = null;
-			barCaretPct = ((to > from ? to + 1 : to) / stops.length) * 100;
+			_barCaretPct = ((to > from ? to + 1 : to) / stops.length) * 100;
 		} else {
-			barCaretPct = null;
+			_barCaretPct = null;
 			caretPx = gapX(to > from ? to + 1 : to);
 		}
 	}
@@ -945,14 +945,14 @@
 		if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
 		if (target.kind === 'first') {
 			caretPx = null;
-			barCaretPct = null;
+			_barCaretPct = null;
 			emptyOver = true;
 		} else if (target.onBar) {
 			caretPx = null;
 			emptyOver = false;
-			barCaretPct = (target.at / stops.length) * 100;
+			_barCaretPct = (target.at / stops.length) * 100;
 		} else {
-			barCaretPct = null;
+			_barCaretPct = null;
 			emptyOver = false;
 			caretPx = gapX(target.at);
 		}

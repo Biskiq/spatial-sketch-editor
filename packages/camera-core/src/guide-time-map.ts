@@ -27,7 +27,6 @@ import {
 	createCameraMotionSample,
 	sampleCameraMotion,
 	type CameraMotion,
-	type CameraMotionSample
 } from './camera-motion';
 import { getNode, type CameraGraph } from './navigation';
 import type { CameraConnectionDirection, Vec3 } from './scene-types';

@@ -1,6 +1,5 @@
 import type { LayoutVec2 } from './layout-coordinates';
 import type { CompilerOpening } from './layout-geometry-types';
-import type { DraftSegment } from './layout-path';
 import type { CompiledArchProfile, CompiledWallSection } from './layout-geometry-types';
 import {
 	pointAlongSamples,

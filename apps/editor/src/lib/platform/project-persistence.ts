@@ -541,7 +541,7 @@ function responseError(status: number, body: unknown): ProjectPersistenceError {
 	);
 }
 
-function readSession(value: unknown): ProjectSession {
+function _readSession(value: unknown): ProjectSession {
 	if (!isRecord(value) || typeof value.authenticated !== 'boolean') throw invalidResponse();
 	if (!value.authenticated) return { authenticated: false };
 	if (!isRecord(value.user)) throw invalidResponse();
@@ -584,7 +584,7 @@ function readAssetMetadata(value: unknown): ProjectAssetMetadata {
 	if (
 		!isRecord(value) ||
 		Object.keys(value).length !== PROJECT_ASSET_METADATA_KEYS.length ||
-		PROJECT_ASSET_METADATA_KEYS.some((key) => !Object.prototype.hasOwnProperty.call(value, key))
+		PROJECT_ASSET_METADATA_KEYS.some((key) => !Object.hasOwn(value, key))
 	) {
 		throw invalidResponse();
 	}
@@ -642,9 +642,9 @@ function readImageRepairAcknowledgement(value: unknown): ImageRepairAcknowledgem
 	}
 	if (
 		Object.keys(value.pin).length !== 3 ||
-		!Object.prototype.hasOwnProperty.call(value.pin, 'hash') ||
-		!Object.prototype.hasOwnProperty.call(value.pin, 'mime') ||
-		!Object.prototype.hasOwnProperty.call(value.pin, 'size') ||
+		!Object.hasOwn(value.pin, 'hash') ||
+		!Object.hasOwn(value.pin, 'mime') ||
+		!Object.hasOwn(value.pin, 'size') ||
 		typeof value.replaced !== 'boolean'
 	) {
 		throw invalidResponse();
@@ -662,7 +662,7 @@ function readImageRepairAcknowledgement(value: unknown): ImageRepairAcknowledgem
 }
 
 function readLoadedProject(value: unknown): LoadedProject {
-	if (!isRecord(value) || !Object.prototype.hasOwnProperty.call(value, 'document')) {
+	if (!isRecord(value) || !Object.hasOwn(value, 'document')) {
 		throw invalidResponse();
 	}
 	return {

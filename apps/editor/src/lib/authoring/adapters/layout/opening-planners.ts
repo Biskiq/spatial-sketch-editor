@@ -19,19 +19,15 @@
  * never re-derives fit or overlap.
  */
 import {
-	LAYOUT_DIMENSION_LIMIT_MESSAGE,
 	layoutIdCaptureInput,
 	layoutWorkingLevelInput,
 	planCreateWallFirstOpening,
 	planDeleteWallFirstOpening,
 	planUpdateWallFirstOpening,
 	recordPreparedCowCandidate,
-	wallFirstWallLength,
-	type LayoutDocumentWallFirst,
 	type LayoutIdCapture,
 	type LayoutWallOpening,
 	type WallOpeningPatch,
-	type WallOpeningRejection
 } from '@portfolio/layout-core';
 import type {
 	AuthoringIntent,

@@ -957,7 +957,7 @@ function finish(
 	program: ExecutionProgram,
 	state: ExperienceRunState,
 	event: 'complete' | 'cancel',
-	options: ExperienceInterpreterOptions,
+	_options: ExperienceInterpreterOptions,
 	effects: ExperienceEffect[] = []
 ): ExperienceReduceResult {
 	// Defence in depth for any internal caller: an ended run never runs another

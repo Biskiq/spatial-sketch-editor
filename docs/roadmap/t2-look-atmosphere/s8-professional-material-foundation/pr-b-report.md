@@ -175,8 +175,8 @@ counter counts every transition to zero references, so a reused view counts agai
 
 ## Gate harness
 
-The dev-only route is `apps/editor/src/routes/dev/s8-gates/+page.svelte`, and the runner is
-`apps/editor/scripts/run-s8-gates.mjs`. Start a dev server for this checkout on port 5199, then run
+The dev-only route is apps/editor/src/routes/dev/s8-gates/+page.svelte, and the runner is
+apps/editor/scripts/run-s8-gates.mjs. Start a dev server for this checkout on port 5199, then run
 from the repository root:
 
 ```bash

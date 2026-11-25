@@ -25,7 +25,6 @@ import {
 	resolveSceneDocument,
 	SCENE_WORLD_LOCAL_FORMAT_VERSION,
 	type NavigationGraph,
-	type RuntimeNavigation,
 	type RuntimeScene,
 	type SceneConnection,
 	type SceneDocument

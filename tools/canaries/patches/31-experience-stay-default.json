@@ -1,0 +1,12 @@
+{
+  "id": "31-experience-stay-default",
+  "area": "experience",
+  "citation": "section 3 — Experience lowering",
+  "title": "A Stop without a stay defaults to zero seconds",
+  "file": "packages/project-model/src/units/types.ts",
+  "find": "export const EXPERIENCE_STAY_DEFAULT_SECONDS = 5;",
+  "replace": "export const EXPERIENCE_STAY_DEFAULT_SECONDS = 0;",
+  "tests": [
+    "tests/lib/experience/experience-authoring.test.ts"
+  ]
+}

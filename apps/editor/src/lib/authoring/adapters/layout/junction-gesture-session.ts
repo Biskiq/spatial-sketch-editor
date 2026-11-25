@@ -172,8 +172,6 @@ type IdleJunctionHover = {
 export function createJunctionGestureSession({
 	services,
 	document,
-	levelId,
-	contentRevision,
 	publishRefusal,
 	settleRefusal,
 	commit

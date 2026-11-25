@@ -25,7 +25,6 @@ import { coincidesAsJunction } from './layout-junction-identity';
 import { validateWallFirstOpeningSet } from './layout-opening-set';
 import { carryRegionWallIntents } from './layout-region-validation';
 import {
-	buildCorrespondenceComponents,
 	reconcileRooms,
 	type ComponentLineage,
 	type RoomIdAllocator
@@ -50,7 +49,6 @@ import { wallCenterlineCubics, wallCubicChain } from './layout-wall-centerline';
 import {
 	resolveWallCurveSplit,
 	wallCurveChainLength,
-	type ResolvedWallSplitResult
 } from './layout-wall-curve-algebra';
 import { validateWallFirstLayoutDocument } from './layout-wall-first-codec';
 import { validateWallFirstTopology } from './layout-wall-first-precision';
@@ -58,7 +56,6 @@ import type {
 	LayoutDocumentWallFirst,
 	LayoutJunction,
 	LayoutWall,
-	LayoutWallFirstRoom,
 	LayoutWallOpening
 } from './layout-wall-first-types';
 import { validateWallFirstPortalRelations } from './layout-wall-portals';

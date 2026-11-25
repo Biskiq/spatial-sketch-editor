@@ -37,7 +37,6 @@ import {
 	addIssue,
 	assertAllowedKeys,
 	isRecord,
-	readOptionalString,
 	readRequiredNumber,
 	readRequiredString,
 	rejectRoomId,

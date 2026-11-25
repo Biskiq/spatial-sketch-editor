@@ -1,0 +1,12 @@
+{
+  "id": "26-save-precondition-kind",
+  "area": "conditional-save",
+  "citation": "section 3 — conditional Save",
+  "title": "The Save precondition is inverted: a saved project claims create-only",
+  "file": "apps/editor/src/lib/authoring/save/save-state.ts",
+  "find": "return baseline.savedBaseToken === null\n\t\t\t? { kind: 'create-only' }\n\t\t\t: { kind: 'expected-saved-base', token: baseline.savedBaseToken };",
+  "replace": "return baseline.savedBaseToken !== null\n\t\t\t? { kind: 'create-only' }\n\t\t\t: { kind: 'expected-saved-base', token: baseline.savedBaseToken };",
+  "tests": [
+    "tests/lib/authoring/save-state.test.ts"
+  ]
+}

@@ -34,7 +34,6 @@ import type {
 	SceneFormSource,
 	SceneLightEntity,
 	SceneLightKind,
-	MaterialId,
 	SceneColor,
 	SceneModelEntity,
 	SceneMaterialInstance,
@@ -63,7 +62,6 @@ import {
 	readRequiredString,
 	rejectRoomId,
 	readStringArray,
-	readUnitInterval,
 	readVec3
 } from './readers';
 

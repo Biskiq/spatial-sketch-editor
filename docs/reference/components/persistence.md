@@ -7,7 +7,7 @@
 **Read when:** scene/layout/project codecs, cloud Save/Load, asset durability, publication,
 release delivery, fidelity.
 **Last reviewed:** 2026-11-20 (project image pin verification and exact-byte repair). The code contract below describes
-the F2 cutover tree. Deployment and migration 005 remain owner-controlled after merge; it does not
+the F2 cutover tree. Deployment and schema baseline remains owner-controlled after merge; it does not
 claim production activation.
 
 ---
@@ -272,7 +272,7 @@ Successful authentication uses the existing `@fastify/secure-session` cookie: Ht
 SameSite=Lax, seven-day expiry; browser-origin checks remain required for unsafe requests. The
 test-only issuer remains isolated from production and creates the same app session.
 
-**Clean epoch.** Migration 005 removes authored rows in one transaction and installs the
+**Clean epoch.** The retired clean-source epoch migration removed authored rows in one transaction and installed the
 `unit-envelope-v1` schema fence, retaining users and migration history. The runner holds a session
 advisory lock; rerun is a no-op and pre-epoch writers refuse. Namespace-owned R2 purge is a separate
 owner action after the epoch; unknown or foreign keys refuse the purge. No production data reset
@@ -349,7 +349,7 @@ explicit unresolved decision; no baseline is declared by this documentation cons
 ## Source epoch activation safeguards
 
 Deployment activation is an owner-controlled action, not a permission granted by documentation.
-Migration 005 fences pre-epoch writers and is serialized, transactional and idempotent. A failed
+The baseline carries that fence as initial schema. The runner is serialized, transactional and idempotent. A failed
 transaction changes nothing; post-activation recovery rolls forward without a reverse serializer.
 Byte cleanup happens only after the epoch is recorded, only in the configured namespace and only
 for keys the API wrote. Shared buckets, foreign namespaces and unknown provenance refuse cleanup.

@@ -36,7 +36,6 @@
 		onToggleReducedMotion = () => {},
 		motionSpeed = 'normal',
 		onMotionSpeed = () => {},
-		paperTone2d = 'current',
 		paperTone3d = 'current',
 		onViewPreference = () => {},
 		lift = null,

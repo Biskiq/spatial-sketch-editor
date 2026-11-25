@@ -231,9 +231,11 @@
 				const topEdge: StagePoint = [(left[0] + right[0]) / 2, (left[1] + right[1]) / 2];
 				candidates.push({ id: 'tilt', kind: 'tilt', glyph: 'two', angle: 90, stem: topEdge,
 					at: [topEdge[0], topEdge[1] - (hitRadius + 11)] });
-				wire.corners.forEach((at, index) => candidates.push({
-					id: `lens-${index}`, kind: 'lens', at, glyph: 'corner', side: index < 2 ? 1 : -1
-				}));
+				wire.corners.forEach((at, index) => {
+					candidates.push({
+						id: `lens-${index}`, kind: 'lens', at, glyph: 'corner', side: index < 2 ? 1 : -1
+					});
+				});
 			}
 		}
 

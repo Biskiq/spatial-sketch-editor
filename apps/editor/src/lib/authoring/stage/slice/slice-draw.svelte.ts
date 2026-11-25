@@ -212,7 +212,7 @@ export function createSliceDraw(input: {
 		return null;
 	}
 
-	function commit(inputValue: SliceDrawInput): void {
+	function commit(_inputValue: SliceDrawInput): void {
 		const start = draft === null ? null : planar(draft.start);
 		const end = draft === null ? null : planar(draft.end);
 		if (start === null || end === null) return;

@@ -29,7 +29,6 @@
 
 	let {
 		services,
-		detailOpen = false,
 		footer, secondary, more
 	}: {
 		services: StageAdapterServices;

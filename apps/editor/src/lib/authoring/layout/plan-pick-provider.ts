@@ -1,7 +1,7 @@
 import { Box3, Ray, Vector3 } from 'three';
 import { compiledOpeningFaceLoops } from './opening-faces';
 import { projectWorld, pointerRay, intersectWorkingPlane, type Vec3, type ViewportEvaluation, type ViewportEvaluationToken, type PointerRay } from '@portfolio/camera-core';
-import { indexedCompiledWall, eligiblePlanFragments, pointInPolygon, type CompiledLayoutGeometry, type LayoutVec2, type OverheadSource, type PlanEvaluation, type PlanFragment, type PlanFragmentGeometry, type PlanSourceKind, type PlanSubRef } from '@portfolio/layout-core';
+import { indexedCompiledWall, eligiblePlanFragments, pointInPolygon, type CompiledLayoutGeometry, type LayoutVec2, type OverheadSource, type PlanEvaluation, type PlanFragment, type PlanFragmentGeometry, type PlanSubRef } from '@portfolio/layout-core';
 import { createPlanPickIndex, type PlanPickBox, type PlanPickIndex } from './plan-pick-index';
 import { LIFT_OUTLINE_DEPTH_BAND_METERS, LIFT_OUTLINE_DROP_METERS } from '../stage/lift-ink';
 import type { StageAdapterContext, StageDomainPick, StageHitSourceKind, StagePickQuery } from '../stage/stage-facade';

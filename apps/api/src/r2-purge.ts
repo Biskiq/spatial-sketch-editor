@@ -1,19 +1,20 @@
 /**
  * Idempotent epoch cleanup for unreferenced R2 object bytes (AM-9).
  *
- * The reset migration removes every authored row, including `assets`. This
- * module then removes the bytes those rows pointed at, under five guards:
+ * The clean-source epoch removed every authored row, including `assets`. This
+ * module removes bytes that no remaining row references, under five guards:
  *
  * 1. the store must expose listing and deletion (a read-only store refuses);
- * 2. migration 005 must be recorded as applied: the purge is a post-epoch step,
- *    and a pre-epoch database may still have rows a release manifest references;
+ * 2. the schema baseline must be recorded as applied: the purge is a post-epoch
+ *    step, and a pre-epoch database may still have rows a release manifest
+ *    references;
  * 3. every listed key must sit under this deployment's configured namespace,
  *    `projects/<namespace>/<project>/assets/<uuid>/<hex32>`. A bucket shared with
  *    another deployment therefore refuses instead of deleting the other
  *    deployment's app-shaped keys;
  * 4. no `releases` row may remain: a release manifest also pins object keys, so
- *    a purge before migration 005 refuses rather than deleting live published
- *    bytes that only `releases` references;
+ *    a purge before the schema baseline refuses rather than deleting live
+ *    published bytes that only `releases` references;
  * 5. only keys no remaining `assets` row references are deleted, and the
  *    namespace prefix and key shape are re-checked at every delete.
  *
@@ -24,7 +25,7 @@ import type { DatabasePool } from './database.js';
 import type { ObjectStore } from './object-store.js';
 
 /** Migration whose application activates the clean source epoch. */
-export const CLEAN_SOURCE_EPOCH_MIGRATION = 5;
+export const SCHEMA_BASELINE_MIGRATION = 1;
 
 export const APPLICATION_OBJECT_PREFIX = 'projects/';
 export const APPLICATION_OBJECT_NAMESPACE_PATTERN = /^[a-z0-9][a-z0-9-]{0,31}$/;
@@ -107,15 +108,15 @@ export async function purgeUnreferencedObjects(
 	const pattern = applicationObjectKeyPattern(namespace);
 
 	const epoch = (await pool.query('SELECT 1 FROM schema_migrations WHERE version = $1 LIMIT 1', [
-		CLEAN_SOURCE_EPOCH_MIGRATION
+		SCHEMA_BASELINE_MIGRATION
 	])) as { rows?: unknown[] };
 	if ((epoch.rows ?? []).length === 0) {
 		throw new R2PurgeRefusal(
-			`R2 purge requires migration ${CLEAN_SOURCE_EPOCH_MIGRATION}, which activates the clean source epoch`
+			`R2 purge requires migration ${SCHEMA_BASELINE_MIGRATION}, the current schema baseline`
 		);
 	}
 
-	// AM-9 activation order: migration 005 removes every release row before this
+	// AM-9 activation order: the schema baseline removes every release row before this
 	// runs. A release manifest also pins object keys, so refusing here keeps the
 	// command safe when an operator runs it before the reset.
 	const releases = (await pool.query('SELECT 1 FROM releases LIMIT 1')) as { rows?: unknown[] };

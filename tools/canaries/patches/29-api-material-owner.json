@@ -1,0 +1,13 @@
+{
+  "id": "29-api-material-owner",
+  "area": "api-ownership",
+  "citation": "section 2 — preserved authentication and ownership",
+  "title": "The material read compares the owner id into the uuid column",
+  "file": "apps/api/src/form-library.ts",
+  "find": "export async function readLibraryItem(\n  pool: DatabasePool,\n  ownerId: string,\n  id: string\n): Promise<{ readonly summary: LibraryItemSummary; readonly bytes: Uint8Array }> {\n  const rows = await queryRows<LibraryRow>(\n    pool,\n    `SELECT ${MATERIAL_SUMMARY_COLUMNS}, canonical_bytes AS \"canonicalBytes\"\n\t\t FROM form_library_items\n\t\t WHERE owner_id = $1 AND id = $2::uuid`,\n    [ownerId, id]",
+  "replace": "export async function readLibraryItem(\n  pool: DatabasePool,\n  ownerId: string,\n  id: string\n): Promise<{ readonly summary: LibraryItemSummary; readonly bytes: Uint8Array }> {\n  const rows = await queryRows<LibraryRow>(\n    pool,\n    `SELECT ${MATERIAL_SUMMARY_COLUMNS}, canonical_bytes AS \"canonicalBytes\"\n\t\t FROM form_library_items\n\t\t WHERE owner_id = $1 AND id = $2::uuid`,\n    [id, id]",
+  "tests": [
+    "material-library.test.mjs"
+  ],
+  "kind": "api"
+}

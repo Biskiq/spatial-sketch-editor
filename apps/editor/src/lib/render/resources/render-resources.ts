@@ -21,7 +21,6 @@
  * anything still held. No lease can free a resource another Canvas owns.
  */
 import { getContext, setContext } from 'svelte';
-import type { Plane } from 'three';
 import { createGeometryStore, type GeometryStore } from './geometry-store';
 import { createMaterialStore, type MaterialStore, type MaterialStoreOptions } from './material-store';
 import { createCasterChannel, type CasterChannel } from './caster-channel';

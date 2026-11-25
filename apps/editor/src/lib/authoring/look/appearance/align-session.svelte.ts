@@ -6,7 +6,6 @@ import type { AlignCutawayRequest } from '../../stage/cutaway/align-cutaway-requ
 import type { StageReadSnapshot } from '../../stage/accepted-read';
 import type { StageShellState } from '../../stage/route/stage-shell-state.svelte';
 import type { StageLens } from '../../stage/stage-session';
-import { contribution } from '../../workspace/region-ownership';
 import type { AlignProps } from '../appearance-view';
 import type { FinishAuthoring } from '../finish-authoring.svelte';
 

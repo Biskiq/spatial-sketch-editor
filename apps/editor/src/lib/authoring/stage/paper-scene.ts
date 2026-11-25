@@ -103,7 +103,7 @@ function linePositions(lines: readonly PaperLineDraw[]): Float32Array {
 
 export function createPaperScene(
 	drawing: PaperPlanDrawing,
-	resolution: readonly [number, number],
+	_resolution: readonly [number, number],
 	datumMeters = 0
 ): PaperSceneResources {
 	countWork('paper:scene-build');

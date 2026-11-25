@@ -10,7 +10,6 @@
  * realizes the returned action through the seam and owns no second map.
  */
 import { VIEWPORT_READING_TRANSITION_SECONDS } from '@portfolio/camera-core';
-import type { ViewingIntent } from '@portfolio/camera-core';
 
 /** The dock's fixed keys, in dock order. */
 export type StageDockSlot = 'select' | 'ink' | 'paint' | 'slice' | 'measure' | 'erase' | 'library';

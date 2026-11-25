@@ -70,7 +70,7 @@ the visitor closure rejects it.
 
 ## Acceptance (E exit)
 
-`apps/editor/tests/lib/project-model/s8-pr-e-acceptance.test.ts` (15 tests) drives the real adapter,
+apps/editor/tests/lib/project-model/s8-pr-e-acceptance.test.ts (15 tests) drives the real adapter,
 target analysis and unit coordinator:
 
 | E exit item | Result |

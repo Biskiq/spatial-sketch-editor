@@ -26,7 +26,6 @@ import { PassThrough } from 'node:stream';
 
 import {
   FORM_LIBRARY_MAX_ITEMS,
-  canonicalFormLibraryBytes,
   readFormLibraryPayload,
   type FormLibraryItemSummary,
   type FormLibraryPayload,
@@ -49,7 +48,7 @@ import { recipeHash, shippedImage } from '@portfolio/project-model/materials';
 import { canonicalUnitJson, UNIT_ENVELOPE_SOURCE_FORMAT } from '@portfolio/project-model/units';
 
 import type { DatabasePool } from './database.js';
-import { ProjectNotFoundError, queryRows, withTransaction } from './project-persistence.js';
+import { queryRows, withTransaction } from './project-persistence.js';
 import {
   DEFAULT_PROJECT_LIFECYCLE_POLICY,
   withProjectWriteLease,

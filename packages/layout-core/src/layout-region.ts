@@ -19,7 +19,6 @@ import { LAYOUT_GEOMETRY_EPSILON } from './layout-geometry-openings';
 import type {
 	CompiledLayoutGeometry,
 	CompiledPhysicalWall,
-	CompiledRegion,
 	LayoutGeometryIssue
 } from './layout-geometry-types';
 import { hasBlockingLayoutIssues } from './layout-geometry-validation';

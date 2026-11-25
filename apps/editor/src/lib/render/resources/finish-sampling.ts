@@ -38,7 +38,6 @@ import {
 	dFdy,
 	float,
 	normalView,
-	normalize,
 	positionView,
 	select,
 	tangentView,

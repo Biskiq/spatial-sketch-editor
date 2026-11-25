@@ -1,0 +1,13 @@
+{
+  "id": "02-scene-unit-version",
+  "area": "codec",
+  "citation": "section 7 rule 7 — one refusal per format family",
+  "title": "Scene unit reader accepts a newer payload version",
+  "file": "packages/project-model/src/units/validate.ts",
+  "find": "if (record.formatVersion !== SCENE_UNIT_FORMAT_VERSION) {",
+  "replace": "if (record.formatVersion < SCENE_UNIT_FORMAT_VERSION) {",
+  "tests": [
+    "tests/lib/project-model/scene-look-schema.test.ts",
+    "tests/lib/project-model/units-conformance.test.ts"
+  ]
+}

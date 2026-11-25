@@ -1,6 +1,5 @@
 import {
 	artworkFrameBorderMeters,
-	type ArtworkFrame,
 	type SceneArtworkEntity,
 	type SceneEntity,
 	type Vec3

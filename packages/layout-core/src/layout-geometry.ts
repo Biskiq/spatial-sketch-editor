@@ -5,7 +5,6 @@ import { layoutItem, layoutLength } from './layout-source-collections';
 import type { Vec3 } from './types';
 import type { LayoutVec2 } from './layout-coordinates';
 import type {
-	LayoutDerivedWallRole,
 	LayoutDocumentWallFirst,
 	LayoutJunction,
 	LayoutObject,
@@ -20,7 +19,6 @@ import {
 	spacePlacementIssues
 } from './layout-space-placement';
 import type {
-	CompilerFloorEntry,
 	CompilerFloorSource,
 	CompilerOpening,
 	CompilerRoomSource,
@@ -67,11 +65,7 @@ import {
 	sameAuthored,
 	type LayoutCompileReuse,
 	type LayoutCompileStats,
-	type RetainedJunction,
-	type RetainedObject,
 	type RetainedQueryRecords,
-	type RetainedRoom,
-	type RetainedWall
 } from './layout-geometry-reuse';
 import {
 	pointAlongSamples,
@@ -1366,7 +1360,7 @@ function wallEndExpansion(joins: readonly CompiledLegJoin[] | undefined): { min:
 }
 
 /** Expand a compiled `LayoutBounds2` in place. */
-function includeBounds2(bounds: LayoutBounds2, min: LayoutVec2, max: LayoutVec2): void {
+function _includeBounds2(bounds: LayoutBounds2, min: LayoutVec2, max: LayoutVec2): void {
 	bounds.min[0] = Math.min(bounds.min[0], min[0]);
 	bounds.min[1] = Math.min(bounds.min[1], min[1]);
 	bounds.max[0] = Math.max(bounds.max[0], max[0]);

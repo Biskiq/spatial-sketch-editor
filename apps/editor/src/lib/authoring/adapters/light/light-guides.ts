@@ -18,7 +18,7 @@ import {
 	spotInnerRadius
 } from '../../look/light-presentation';
 import { add, cross, dot, normalize, scale, sub } from './light-math';
-import { isLight, lightRange, spotTargetFor, type Light } from './light-subjects';
+import { lightRange, spotTargetFor, type Light } from './light-subjects';
 
 export type LightGuide = {
 	readonly segments: readonly (readonly [Vec3, Vec3])[];

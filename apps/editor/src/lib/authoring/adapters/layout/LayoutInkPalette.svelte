@@ -21,7 +21,7 @@
 	 * second writer of the chain. Keyboard parity: Enter finishes, Backspace
 	 * backtracks, Escape cancels (the host owns those keys on the Stage).
 	 */
-	import { untrack, type Component } from 'svelte';
+	import { type Component } from 'svelte';
 	import { ShellIcon } from '$lib/authoring/stage/stage-adapter-host';
 	import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 	import { parseMeasureInput, parsePlacementXZ } from './precision';
@@ -70,7 +70,7 @@
 	let snapshot = $state<InkPaletteSnapshot>(emptySnapshot);
 	/** The contributed reading's own palette controls, when one is active. */
 	let readingView = $state<Component | null>(null);
-	const activeReading = $derived(
+	const _activeReading = $derived(
 		snapshot.readings.find((reading) => reading.id === snapshot.reading) ?? null
 	);
 
@@ -153,21 +153,21 @@
 		inkSurface()?.controller.typePoint(pointX, pointZ);
 	}
 
-	const pendingText = $derived(
+	const _pendingText = $derived(
 		snapshot.pending === null
 			? null
 			: `${snapshot.pending.length.toFixed(3)} m · ${snapshot.pending.angleDegrees.toFixed(1)}°`
 	);
-	const wallHint =
+	const _wallHint =
 		'Click the Stage to place points; click the start point to close the ring. Drag to draw one Wall and finish.';
-	const boxHint =
+	const _boxHint =
 		'Press one corner and drag to the opposite corner, or click two opposite corners. The four Walls close a Room.';
 	/** The Opening reading shows its refusal in its own panel while that panel is open. */
 	const refusalShown = $derived(
 		snapshot.refusal !== null && !(snapshot.reading === 'opening' && disclosed === 'options')
 	);
 	/** The planner's consequence, read on the live facts rather than drawn as a line of its own. */
-	const consequenceText = $derived(
+	const _consequenceText = $derived(
 		`On finish: ${snapshot.consequence ?? 'Name at least two points to see the planner’s consequence.'}`
 	);
 	const arcFactsText = $derived(

@@ -1,0 +1,12 @@
+{
+  "id": "06-strict-shape-unknown-key",
+  "area": "codec",
+  "citation": "section 7 rule 6 — contract names; section 5 rule 7 — comments state the current contract",
+  "title": "Strict reader silently tolerates unknown keys instead of refusing them",
+  "file": "packages/project-model/src/strict-shape.ts",
+  "find": "if (!allowedKeys.includes(key)) this.problem(",
+  "replace": "if (!allowedKeys.includes(key) && allowedKeys.length === 0) this.problem(",
+  "tests": [
+    "tests/lib/project-model/references-conformance.test.ts"
+  ]
+}

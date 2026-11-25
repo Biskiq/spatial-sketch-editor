@@ -43,7 +43,7 @@
 	const moreEntries = $derived(entries.length - shownEntries.length);
 	const explorable = $derived(controller?.selectedPresentation?.explorable ?? false);
 	const ordinals = new Intl.PluralRules('en', { type: 'ordinal' });
-	function positionLabel(index: number): string {
+	function _positionLabel(index: number): string {
 		if (index === 0) return 'entry';
 		const position = index + 1;
 		const suffix = { one: 'st', two: 'nd', few: 'rd' }[ordinals.select(position) as 'one' | 'two' | 'few'] ?? 'th';

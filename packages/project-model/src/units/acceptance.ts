@@ -56,7 +56,6 @@ import { newlyRetiredSurfaceReferenceKeys } from '../surface-lineage';
 import {
 	computeEnvelopeSourceContentId,
 	computeUnitContentRevision,
-	verifyUnitContentRevisions,
 	type SaveWorkInstrumentation
 } from './canonical';
 import { dependencyLockKey } from './identity';

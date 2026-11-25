@@ -2,7 +2,6 @@ import { getNode, type CameraGraph } from './navigation';
 import type {
   CameraConnectionDirection,
   CameraGraphConnection,
-  CameraGraphNode,
   Vec3
 } from './scene-types';
 export type { CameraConnectionDirection } from './scene-types';
@@ -119,7 +118,7 @@ function findDirectConnectionSafe(
   return { connection, fromNodeId, toNodeId, reversed };
 }
 
-function findDirectConnection(
+function _findDirectConnection(
   fromNodeId: string,
   toNodeId: string,
   graph: CameraGraph

@@ -47,7 +47,6 @@ import {
 	buildWallUnfoldDisplay,
 	evaluateWallUnfoldDisplay,
 	pickWallUnfold,
-	type WallUnfoldPick,
 	unfoldDisplayPointAtStation
 } from '$lib/layout/wall-unfold-pick';
 import {

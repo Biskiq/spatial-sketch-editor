@@ -24,13 +24,13 @@ test('migration runner records a migration once and reapplying is a no-op', asyn
 	};
 	const pool = { connect: async () => client, end: async () => {} };
 	await runMigrations(pool);
-	const firstSqlCount = transactions.filter(({ text }) => text.includes('CREATE TABLE IF NOT EXISTS users')).length;
-	const firstAssetSqlCount = transactions.filter(({ text }) => text.includes('CREATE TABLE IF NOT EXISTS assets')).length;
+	const firstSqlCount = transactions.filter(({ text }) => text.includes('CREATE TABLE users')).length;
+	const firstAssetSqlCount = transactions.filter(({ text }) => text.includes('CREATE TABLE assets')).length;
 	await runMigrations(pool);
 	assert.equal(firstSqlCount, 1);
 	assert.equal(firstAssetSqlCount, 1);
-	assert.equal(transactions.filter(({ text }) => text.includes('CREATE TABLE IF NOT EXISTS users')).length, 1);
-	assert.equal(transactions.filter(({ text }) => text.includes('CREATE TABLE IF NOT EXISTS assets')).length, 1);
+	assert.equal(transactions.filter(({ text }) => text.includes('CREATE TABLE users')).length, 1);
+	assert.equal(transactions.filter(({ text }) => text.includes('CREATE TABLE assets')).length, 1);
 	// TD-6: the advisory lock is taken before `schema_migrations` is read and
 	// released on the same session, so two runners cannot race.
 	const lockIndex = transactions.findIndex(({ text }) => text.startsWith('SELECT pg_try_advisory_lock'));
