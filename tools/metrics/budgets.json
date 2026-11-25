@@ -1,8 +1,8 @@
 {
   "generatedFrom": "LOC-0 baseline; shrink-only from here",
   "counts": {
-    "filesOver600": 119,
-    "filesOver1000": 31,
+    "filesOver600": 118,
+    "filesOver1000": 30,
     "filesOver1500": 8,
     "functionsOver200": 73,
     "exportStars": 0,
@@ -48,11 +48,6 @@
     {
       "path": "apps/editor/src/lib/authoring/adapters/layout/ink-session.ts",
       "lines": 1579,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
-      "path": "packages/layout-core/src/plan/snap.ts",
-      "lines": 1489,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
