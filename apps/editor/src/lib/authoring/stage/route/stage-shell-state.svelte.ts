@@ -25,11 +25,11 @@ import {
 	type AppPreferences
 } from '$lib/platform/app-preferences';
 import { createEditorMotionClock } from '$lib/platform/editor-motion-clock';
+import { createStageHeightState } from './stage-height-state.svelte';
 import { untrack } from 'svelte';
 import type { StageSelectionEntry } from '../semantic-selection';
 import type { StageFacade } from '../stage-facade';
 import type { StageSession, StageTask } from '../stage-session';
-import type { StageHeightTick } from '../stage-height-sheet';
 import type { StageMeasureController } from '../stage-measure';
 import { createStageMeasure } from '../stage-measure';
 import { STAGE_MEASURE_TASK } from '../stage-measure';
@@ -225,14 +225,12 @@ export function createStageShellState(input: StageShellStateInput) {
 	/** Paint's winner, drawn with the paint treatment in place of hover. */
 	let paintHover = $state.raw<StageSelectionEntry | null>(null);
 
-	let heightMeters = $state(heightSheet.height());
-	let heightTicks = $state<readonly StageHeightTick[]>([]);
-	let heightPins = $state<readonly number[]>(heightSheet.pins());
-	let heightSheetSide = $state<'left' | 'right'>('right');
-	let heightPlaneVisible = $state(false);
-	let heightPlaneTimer: ReturnType<typeof setTimeout> | null = null;
+	const height = createStageHeightState({
+		sheet: heightSheet,
+		lensWorld: () => input.lens() === 'world',
+		reducedMotion: () => reducedMotion
+	});
 
-	/** The Head's bounded Find query; discovery state, never a subject search. */
 	let findQuery = $state('');
 
 	/** The one Grid/Snap view state, mirrored from the session. */
@@ -244,43 +242,12 @@ export function createStageShellState(input: StageShellStateInput) {
 	let disposed = false;
 
 	$effect(() => {
-		heightMeters = heightSheet.height();
-		heightPins = heightSheet.pins();
-		const unsubscribeHeight = heightSheet.subscribe('route-height-sheet', (height) => {
-			heightMeters = height;
-		});
-		const unsubscribePins = heightSheet.subscribePins('route-height-sheet-pins', (pins) => {
-			heightPins = pins;
-		});
-		return () => {
-			unsubscribeHeight();
-			unsubscribePins();
-		};
-	});
-
-	$effect(() => {
 		// A binding rebuild can add or remove owner surfaces, and a viewport output
 		// is needed before the binding exists; read the merged set for both.
 		void input.evaluation();
 		void contributionsVersion;
 		const stage = input.facade();
-		heightTicks = stage === null ? [] : stage.heightTicks();
-	});
-
-	$effect(() => () => {
-		if (heightPlaneTimer !== null) clearTimeout(heightPlaneTimer);
-	});
-
-	$effect(() => {
-		// A lens switch can happen after the Sheet already went inactive (for
-		// example focus moved to the lens button first), so cancel any live tail
-		// on the lens change itself rather than relying on the unmount callback.
-		if (input.lens() === 'world') return;
-		if (heightPlaneTimer !== null) {
-			clearTimeout(heightPlaneTimer);
-			heightPlaneTimer = null;
-		}
-		heightPlaneVisible = false;
+		height.setTicks(stage === null ? [] : stage.heightTicks());
 	});
 
 	$effect(() => {
@@ -369,10 +336,7 @@ export function createStageShellState(input: StageShellStateInput) {
 		disposed = true;
 		cleanups?.();
 		cleanups = null;
-		if (heightPlaneTimer !== null) {
-			clearTimeout(heightPlaneTimer);
-			heightPlaneTimer = null;
-		}
+		height.cancelPlane();
 	}
 
 	function updatePreferences(next: AppPreferences): void {
@@ -457,8 +421,8 @@ export function createStageShellState(input: StageShellStateInput) {
 	const showOffCount = $derived(
 		[showMarkers, showFrustums, showPaths, showLabels].filter((on) => !on).length
 	);
-	const sheetLaneRight = $derived(heightSheetSide === 'right' ? sheetLaneWidth : 0);
-	const sheetLaneLeft = $derived(heightSheetSide === 'left' ? sheetLaneWidth : 0);
+	const sheetLaneRight = $derived(height.side === 'right' ? sheetLaneWidth : 0);
+	const sheetLaneLeft = $derived(height.side === 'left' ? sheetLaneWidth : 0);
 	const draftingReading: 'plan' | '3d' = $derived(
 		input.evaluation()?.settledReading === 'plan' ? 'plan' : '3d'
 	);
@@ -541,39 +505,16 @@ export function createStageShellState(input: StageShellStateInput) {
 	}
 
 	function setHeight(heightMetersValue: number, cause: 'drag' | 'key' | 'tick'): void {
-		heightSheet.set(heightMetersValue, cause);
-		heightMeters = heightSheet.height();
+		height.setHeight(heightMetersValue, cause);
 	}
 
 	/** Session-only pin creation; pin removal is intentionally unexposed. */
 	function addHeightPin(): void {
-		heightSheet.addPin(heightMeters);
-		heightPins = heightSheet.pins();
+		height.addPin();
 	}
 
 	function setHeightPlaneActive(active: boolean): void {
-		if (heightPlaneTimer !== null) {
-			clearTimeout(heightPlaneTimer);
-			heightPlaneTimer = null;
-		}
-		// The Sheet is World-lens chrome. Its teardown on a lens switch is not a
-		// pointer release: do not leave a tail running behind the Experience lens.
-		if (input.lens() !== 'world') {
-			heightPlaneVisible = false;
-			return;
-		}
-		if (active) {
-			heightPlaneVisible = true;
-			return;
-		}
-		if (reducedMotion) {
-			heightPlaneVisible = false;
-			return;
-		}
-		heightPlaneTimer = setTimeout(() => {
-			heightPlaneVisible = false;
-			heightPlaneTimer = null;
-		}, 1000);
+		height.setPlaneActive(active);
 	}
 
 	function toggleReducedMotion(): void {
@@ -851,22 +792,22 @@ export function createStageShellState(input: StageShellStateInput) {
 		refreshHostTools,
 		clearHostTools,
 		get heightMeters() {
-			return heightMeters;
+			return height.meters;
 		},
 		get heightTicks() {
-			return heightTicks;
+			return height.ticks;
 		},
 		get heightPins() {
-			return heightPins;
+			return height.pins;
 		},
 		get heightSheetSide() {
-			return heightSheetSide;
+			return height.side;
 		},
 		setHeightSheetSide(value: 'left' | 'right') {
-			heightSheetSide = value;
+			height.setSide(value);
 		},
 		get heightPlaneVisible() {
-			return heightPlaneVisible;
+			return height.planeVisible;
 		},
 		get heightSnapIncrement() {
 			return heightSnapIncrement;

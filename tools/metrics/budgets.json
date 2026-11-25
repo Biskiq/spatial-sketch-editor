@@ -131,11 +131,6 @@
       "reason": "The Finish Card entry keeps one open target, preview frame and reach choice; contract types and treatment readings live in the contract module."
     },
     {
-      "path": "apps/editor/src/lib/authoring/stage/route/stage-shell-state.svelte.ts",
-      "lines": 904,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
       "path": "apps/editor/src/lib/authoring/stage/paper-plan.ts",
       "lines": 886,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
@@ -153,6 +148,11 @@
     {
       "path": "apps/editor/src/lib/authoring/stage/route/stage-input.svelte.ts",
       "lines": 869,
+      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+    },
+    {
+      "path": "apps/editor/src/lib/authoring/stage/route/stage-shell-state.svelte.ts",
+      "lines": 845,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -549,13 +549,6 @@
       "reason": "One card session: focus, reach, preview and one-patch writes share the open target and the Card-local preview frame."
     },
     {
-      "file": "apps/editor/src/lib/authoring/stage/route/stage-shell-state.svelte.ts",
-      "name": "createStageShellState",
-      "line": 121,
-      "lines": 782,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
       "file": "apps/editor/src/lib/authoring/stage/route/stage-input.svelte.ts",
       "name": "createStageInputArbiter",
       "line": 107,
@@ -567,6 +560,13 @@
       "name": "createObjectMarkSession",
       "line": 100,
       "lines": 745,
+      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+    },
+    {
+      "file": "apps/editor/src/lib/authoring/stage/route/stage-shell-state.svelte.ts",
+      "name": "createStageShellState",
+      "line": 121,
+      "lines": 723,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
