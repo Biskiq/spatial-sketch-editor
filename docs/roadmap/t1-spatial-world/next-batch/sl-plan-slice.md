@@ -593,8 +593,8 @@ moving or flipping (renderer `info.programs` count stable), and shadows identica
 | `apps/editor/src/lib/authoring/stage/slice/mesh-plane-section.ts` | Pure plane–mesh section and the §2.2 seven-step assembly, with `CapAssemblyIssue` |
 | `apps/editor/src/lib/authoring/stage/slice/slice-ghost.ts` | Pure wholly-hidden classification (§2.4) |
 | `apps/editor/src/lib/authoring/stage/shell/StageSliceLayer.svelte` | Yellow plane, depth outline, caps, ghost (editor ink) |
-| `apps/editor/perf/regressions/stage-clip-entry.ts` | Browser-only rendered fixture for test 14 (pattern of `renderer-lifetime-entry.ts`) |
-| `apps/editor/perf/flows/stage-clip.spec.ts` | Test 14, registered in `perf/playwright.config.ts` `testMatch` |
+| apps/editor/perf/regressions/stage-clip-entry.ts | Browser-only rendered fixture for test 14 (pattern of `renderer-lifetime-entry.ts`) |
+| apps/editor/perf/flows/stage-clip.spec.ts | Test 14, registered in `perf/playwright.config.ts` `testMatch` |
 
 ### Edited files
 

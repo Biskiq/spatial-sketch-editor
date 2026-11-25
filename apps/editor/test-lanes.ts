@@ -62,7 +62,6 @@ export const ARCH_FILES: string[] = [
 	// router's live routes, the focus file, archived retired-process routes and the on-demand skills.
 	// Its subject is repository routing, which no build or type check can see, so only the
 	// unconditional lane can hold it.
-	'tests/docs/workflow-cutover.test.ts',
 	// Presentation-token ownership: one source for shared design roles, no drift
 	// copies of a role value and no unreachable fallback. Rendered output cannot see
 	// a second copy while both values agree, so only the unconditional lane can
@@ -109,6 +108,13 @@ export const ARCH_FILES: string[] = [
 	// the shell is mountable only in a browser, so only the unconditional lane can
 	// own the guarantee.
 	'tests/lib/authoring/stage-shell-composition.test.ts',
+	// Source-shape suites: they assert wiring text, so they live in the arch lane.
+	'tests/lib/authoring/spatial-route-experience-homes.test.ts',
+	'tests/lib/authoring/stage/slice/slice-ink-wiring.test.ts',
+	'tests/lib/experience/experience-controller-boundary.test.ts',
+	'tests/lib/experience/experience-shared-homes.test.ts',
+	'tests/lib/experience/experience-structure-tokens.test.ts',
+	'tests/lib/render/canvas-tone-mapping.test.ts',
 	'tests/lib/authoring/stage-facade-boundary.test.ts',
 	// T1.P02.S01 §1: the two occupancy-derived identity allocators stay
 	// unreachable from production code. Their exclusion is only legitimate while
@@ -196,13 +202,11 @@ export const HEAVY_FILES: string[] = [
 	// correspondence differential there is no cheap subset to retain — every row
 	// has the same cost shape — so the whole file moves rather than splitting
 	// into an arbitrary "representative" fast half.
-	'tests/lib/layout/p23b11-conditional-gate.test.ts',
 	// T1.P02.S01 acceptance criterion 2: the format 5 → 6 whole-table differential
 	// over the six CLASS 5 all-boundary kernels, against digests recorded from the
 	// base revision's compiler. A whole-table kernel differential, not a timing
 	// benchmark; it belongs here so no focused edit pays for the base-revision
 	// comparison and the acceptance gate runs it every time.
-	'tests/lib/layout/t1s01-format6-differential.test.ts'
 ];
 
 /** Everything the fast lane excludes (`test:fast` = full − these). */

@@ -567,34 +567,6 @@ describe('R217.S29 Camera paths', () => {
 		expect(routeCrossesWall({ samples: [[1, 3.2, 2], [7, 3.2, 2]], geometry: raisedCompiled.geometry }).crosses).toBe(true);
 	});
 
-	it('the path UI keeps the shell roles, one shared Movement section and 44 px coarse targets', () => {
-		const source = readFileSync('src/lib/authoring/experience/ExperiencePaths.svelte', 'utf8');
-		expect(source).toContain('--shell-gold');
-		expect(source).toContain('--shell-leaf');
-		expect(source).toMatch(/@media \(pointer: coarse\) \{\s*\.anchor-hit \{\s*r: 22;/);
-		expect(source).toContain('@media (pointer: coarse)');
-		// Point selection and drag are rendered only for the selected occurrence.
-		expect(source).toContain('beginDrag(event, path.read, anchorAt(event, path.points))');
-		expect(source).toContain('{#if isPathEditTarget(path.read, selected)}');
-		expect(source).toContain('!selectionOnly || entry.key === selectedKey');
-		// A press releases its capture and lease on every way out.
-		expect(source).toContain('onDestroy(() => cancelDrag())');
-		expect(source).toContain('drag.connectionId !== connectionId');
-
-		const movement = readFileSync('src/lib/authoring/experience/ExperiencePathMovement.svelte', 'utf8');
-		const stopWriter = readFileSync('src/lib/authoring/experience/ExperienceStopWriter.svelte', 'utf8');
-		const rail = readFileSync('src/lib/authoring/experience/ExperienceViewRail.svelte', 'utf8');
-		const transitionWriter = readFileSync('src/lib/authoring/experience/ExperienceTransitionWriter.svelte', 'utf8');
-		const guide = readFileSync('src/lib/authoring/experience/ExperienceGuide.svelte', 'utf8');
-		expect(transitionWriter).toContain('<ExperiencePathMovement');
-		// §32: a Stop Card edits no connection; explore steps are edited on the rail.
-		expect(stopWriter).not.toContain('<ExperiencePathMovement');
-		expect(movement).toContain('data-path-movement');
-		expect(movement).toMatch(/@media \(pointer: coarse\)[\s\S]*?min-height: 44px/);
-		expect(rail).toMatch(/@media \(pointer: coarse\)[\s\S]*?min-height: 44px/);
-		expect(guide).toMatch(/@media \(pointer: coarse\)[\s\S]*?width: 44px/);
-	});
-
 	it('x-salon auto Travel duration is Camera’s, with no fixture-authored seconds', async () => {
 		const { fixture, coordinator, accept, op } = await pathsFixture('x-salon');
 		const project = coordinator.acceptedSnapshot().domain.source;

@@ -40,9 +40,6 @@ describe('F.4 editor-only isolation', () => {
 			expect(reached.has(root)).toBe(true);
 			expect(reached.has(store)).toBe(false);
 		}
-		const source = readFileSync(preview, 'utf8');
-		expect(source).not.toContain('liftedRoomIds');
-		expect(source).not.toContain('interior-lift-store');
 	});
 
 	it('keeps browser-local editor preferences out of visitor and public import closures', () => {

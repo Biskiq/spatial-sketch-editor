@@ -1,10 +1,10 @@
 {
   "generatedFrom": "LOC-0 baseline; shrink-only from here",
   "counts": {
-    "filesOver600": 140,
+    "filesOver600": 139,
     "filesOver1000": 50,
     "filesOver1500": 24,
-    "functionsOver200": 74,
+    "functionsOver200": 70,
     "exportStars": 152,
     "crossPackageReexports": 1,
     "seams": 16
@@ -496,11 +496,6 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
-      "path": "apps/editor/src/routes/dev/materials/gate.ts",
-      "lines": 740,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
       "path": "apps/editor/src/lib/authoring/adapters/scene/object-marks.ts",
       "lines": 737,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
@@ -818,13 +813,6 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
-      "file": "apps/editor/src/routes/dev/materials/gate.ts",
-      "name": "runE7Gate",
-      "line": 214,
-      "lines": 527,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
       "file": "apps/editor/src/lib/authoring/library/material-import.svelte.ts",
       "name": "createMaterialImportSession",
       "line": 79,
@@ -1084,13 +1072,6 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
-      "file": "apps/editor/src/routes/dev/materials/fixture.ts",
-      "name": "buildInspectionFixture",
-      "line": 97,
-      "lines": 266,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
       "file": "apps/editor/src/lib/authoring/stage/paper-scene.ts",
       "name": "createPaperScene",
       "line": 104,
@@ -1154,13 +1135,6 @@
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
-      "file": "apps/editor/src/routes/dev/s8-g/fixture.ts",
-      "name": "buildGGate",
-      "line": 276,
-      "lines": 227,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
       "file": "apps/editor/src/lib/render/scene-artwork-representation.ts",
       "name": "createSceneArtworkRepresentation",
       "line": 123,
@@ -1207,13 +1181,6 @@
       "name": "experienceShownCardFor",
       "line": 163,
       "lines": 215,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
-      "file": "apps/editor/src/routes/dev/s8-e/fixture.ts",
-      "name": "buildEGate",
-      "line": 145,
-      "lines": 211,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {

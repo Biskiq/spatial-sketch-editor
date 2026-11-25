@@ -1,7 +1,7 @@
 {
 	"src/lib/authoring/workspace/host/workspace-host.svelte.ts": {
-		"lines": 922,
-		"imports": 71,
+		"lines": 921,
+		"imports": 70,
 		"state": 0,
 		"derived": 0,
 		"effects": 0,
@@ -243,7 +243,7 @@
 		"arrows": 17
 	},
 	"src/lib/authoring/look/finish-authoring.svelte.ts": {
-		"lines": 2293,
+		"lines": 2290,
 		"imports": 23,
 		"state": 10,
 		"derived": 0,
