@@ -2,8 +2,8 @@
   "generatedFrom": "LOC-0 baseline; shrink-only from here",
   "counts": {
     "filesOver600": 121,
-    "filesOver1000": 34,
-    "filesOver1500": 10,
+    "filesOver1000": 33,
+    "filesOver1500": 9,
     "functionsOver200": 73,
     "exportStars": 0,
     "crossPackageReexports": 0,
@@ -33,11 +33,6 @@
     {
       "path": "apps/editor/src/lib/authoring/adapters/layout/precision.ts",
       "lines": 1814,
-      "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
-    },
-    {
-      "path": "packages/layout-core/src/wall/junction-resolution.ts",
-      "lines": 1790,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
     },
     {
@@ -479,6 +474,11 @@
       "path": "apps/editor/src/lib/authoring/adapters/scene/import/ingest.ts",
       "lines": 691,
       "reason": "Baseline exception recorded by LOC-0; the owning split packet removes this entry."
+    },
+    {
+      "path": "packages/layout-core/src/wall/junction/sectors.ts",
+      "lines": 689,
+      "reason": "One star partition: beam selection, sector clipping and keel ownership share the same beams and cyclic leg order."
     },
     {
       "path": "apps/editor/src/lib/authoring/stage/shell/StageFinishAlign.svelte",
