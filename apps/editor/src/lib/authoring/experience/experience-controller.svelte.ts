@@ -25,26 +25,13 @@ import { untrack } from 'svelte';
 import { perfMark } from '$lib/platform/perf-marks';
 import type { StageAdapterServices } from '../stage/stage-adapter-host';
 import { stageEnvelope } from '../stage/unit-stage-source';
-import {
-	EXPERIENCE_STAY_MIN_SECONDS,
-	lowerExperienceProgram,
-	presentationDisplayName as displayPresentationName,
-	planGuideRemoval,
-	planPresentationRemoval,
-	planPresentationViewRemoval,
-	planStopRemoval,
-	type ExperienceRemovalPlan
-} from '@portfolio/project-model/units';
 import type {
 	CameraView,
 	Experience,
 	ExperienceGuide,
 	ExperienceGuidePacing,
-	ExperienceInvitation,
-	ExperiencePresentationView,
 	ExperiencePresentation,
 	ExperienceStop,
-	ExperienceTransitionKind,
 	ProjectEnvelope
 } from '@portfolio/project-model/units';
 import { experienceFocus } from './focus.svelte';
@@ -65,42 +52,26 @@ import {
 import { travelGapMessagesByStop } from './experience-problems';
 import {
 	readExperiencePath,
-	previewPathSamples,
-	resolvePathAnchorInsertion,
-	resolvePathOccurrence,
 	type ExperiencePathOccurrence,
 	type ExperiencePathRead
 } from './experience-paths';
 import type { OperationChange } from '@portfolio/project-model/f4';
-import type { ScenePathAnchor } from '@portfolio/project-model/scene';
 import {
-	cameraConnectionCreateIntent,
-	cameraConnectionUpdateIntent,
-	captureBindIntent,
-	capturedFovDegrees,
-	capturedViewPose,
-	createExperienceIntent,
-	type CapturedViewPose,
-	experienceUpdateIntent,
-	guideCreateIntent,
-	guideOrderIntent,
-	guideUpdateIntent,
-	presentationUpdateIntent,
-	removeIntent,
-	sceneEntitySubject,
-	stopCreateIntent,
-	stopUpdateIntent,
-	viewRemoveIntent,
-	viewRenameIntent,
-	viewUpdateIntent
-} from './commands';
-import {
-	removalLines,
 	type ExperienceRemovalPreview,
 	type ExperienceRemovalTarget,
-	type RemovalNames
 } from './experience-removal';
 import type { PlaybackSource } from './playback.svelte';
+import { createExperienceRemovalReadings } from './experience-removal-readings';
+import {
+	createExperienceViewAuthoring,
+	type ExperiencePlacement,
+	type ExperienceViewPose,
+	type ExperienceViewUpdate
+} from './experience-view-authoring';
+import { createExperienceStopAuthoring } from './experience-stop-authoring';
+import { createExperienceCameraSession } from './experience-camera-session.svelte';
+import { createExperiencePresentationAuthoring } from './experience-presentation-authoring';
+import { createExperienceLevelAuthoring } from './experience-level-authoring.svelte';
 
 type Submission = Parameters<StageAdapterServices['authoring']['accept']>[0];
 
@@ -119,22 +90,6 @@ export type ExperienceFeedback = { readonly kind: ExperienceFeedbackKind; readon
 export const DRAFT_EXPERIENCE_LABEL = 'Untitled experience';
 
 export type ExperienceRenameOutcome = { readonly kind: 'accepted' | 'refused'; readonly message?: string };
-
-/** One exact authored View pose, as the Stage's Camera reads it. */
-export type ExperienceViewPose = {
-	readonly eye: [number, number, number];
-	readonly target: [number, number, number];
-	readonly fov: number;
-};
-
-export type ExperiencePlacement =
-	| { readonly kind: 'placed'; readonly presentationId: string; readonly viewId: string; readonly createdPresentation: boolean }
-	| { readonly kind: 'refused'; readonly message: string };
-
-export type ExperienceViewUpdate =
-	| { readonly kind: 'updated' }
-	| { readonly kind: 'needs-confirmation'; readonly alsoIn: readonly string[] }
-	| { readonly kind: 'refused'; readonly message: string };
 
 /** The creator-facing refusal for an empty name (every Experience rename field). */
 export const NAME_NEEDED = 'A name is needed';
@@ -410,8 +365,6 @@ export function createExperienceController(
 	const guideStops = $derived(current === null ? [] : guideStopsOf(current, contextGuide));
 	// The Path action's occurrence and its one derived Camera read. The
 	// occurrence is a selection *within* the Card subject, never a second authority.
-	let pathOccurrence = $state<ExperiencePathOccurrence | null>(null);
-	let selectedAnchorId = $state<string | null>(null);
 	// One accepted read supplies both the canonical Camera graph and the compiled
 	// Layout geometry; never rebuild either for a derived path.
 	const acceptedDomain = $derived.by(() => {
@@ -422,49 +375,33 @@ export function createExperienceController(
 	const acceptedGraph = $derived(acceptedDomain?.graph ?? null);
 	// The one lowered program the timeline/playback reads. It is the
 	// same lowering Preview and the visitor use, never a second topology.
-	function lowerPlaybackSource(guideId: string): PlaybackSource | null {
-		if (current === null || acceptedGraph === null) return null;
-		const guide = current.guides.find((entry) => entry.id === guideId);
-		if (guide === undefined) return null;
-		const read = readServices().stage.snapshot();
-		const lowered = lowerExperienceProgram(snapshot, {
-			experienceId: current.id,
-			sourceContentId: read.sourceContentId,
-			sessionEpoch: read.sessionEpoch,
-			guideId: guide.id
-		});
-		if (lowered.kind !== 'lowered') return null;
-		return {
-			program: lowered.program,
-			transitions: lowered.transitions,
-			graph: acceptedGraph,
-			entryStopId: guide.stopIds[0]!
-		};
-	}
-	const playbackSource = $derived.by((): PlaybackSource | null =>
-		contextGuide === null ? null : lowerPlaybackSource(contextGuide.id)
-	);
-	const selectedPath = $derived.by((): ExperiencePathRead | null => {
-		if (current === null || pathOccurrence === null || acceptedGraph === null) return null;
-		return readExperiencePath({
-			experience: current,
-			guide: contextGuide,
-			graph: acceptedGraph,
-			occurrence: pathOccurrence,
-			geometry: acceptedGeometry
-		});
+	const paths = createExperienceCameraSession({
+		experience: () => current,
+		guide: () => contextGuide,
+		graph: () => acceptedGraph,
+		geometry: () => acceptedGeometry,
+		envelope: () => snapshot,
+		say: (kind, text) => say(kind, text),
+		newId,
+		revision,
+		run
 	});
-	// An Undo, a reorder or a removed occurrence invalidates the session's point
-	// and edit target; never leave a stale writer aimed at the old path.
-	$effect(() => {
-		const read = selectedPath;
-		if (read === null) {
-			selectedAnchorId = null;
-			return;
-		}
-		if (selectedAnchorId !== null && !read.anchors.some((anchor) => anchor.id === selectedAnchorId)) {
-			selectedAnchorId = null;
-		}
+
+	const level = createExperienceLevelAuthoring({
+		snapshot: () => snapshot,
+		current: () => current,
+		contextGuide: () => contextGuide,
+		graph: () => acceptedGraph,
+		experiences: () => experiences,
+		readServices,
+		say: (kind, text) => say(kind, text),
+		newId,
+		revision,
+		run,
+		focus: experienceFocus,
+		connectionPool,
+		removals: () => removals,
+		captureNewPresentation: (entityId, label) => views.captureNewPresentation(entityId, label)
 	});
 
 	let query = $state('');
@@ -489,7 +426,7 @@ export function createExperienceController(
 		if (needle === '') return current.presentations;
 		return current.presentations.filter(
 			(entry) =>
-				presentationDisplayName(entry.id).toLowerCase().includes(needle) ||
+				level.presentationDisplayName(entry.id).toLowerCase().includes(needle) ||
 				(viewsOf.get(entry.id) ?? []).some((view) => view.label.toLowerCase().includes(needle))
 		);
 	});
@@ -528,13 +465,6 @@ export function createExperienceController(
 	}
 
 	/** The retained Camera authoring convention, kept local so the controller imports no Camera module. */
-	function nextAnchorId(connectionId: string, existing: readonly string[]): string {
-		const occupied = new Set(existing);
-		for (let index = 1; ; index += 1) {
-			const candidate = `${connectionId}-anchor-${String(index).padStart(2, '0')}`;
-			if (!occupied.has(candidate)) return candidate;
-		}
-	}
 
 	function revision() {
 		return readServices().stage.snapshot().acceptedRevision;
@@ -619,366 +549,28 @@ export function createExperienceController(
 		}
 	}
 
-	async function createExperience(label?: string): Promise<boolean> {
-		const experienceId = newId();
-		const named = label?.trim() || `Experience ${experiences.length + 1}`;
-		const accepted = await run(() =>
-			createExperienceIntent({
-				revision: revision(),
-				ids: { operation: newId(), experience: experienceId },
-				label: named
-			})
-		);
-		// Focus never names an identity the source does not carry: a refused create
-		// must not point Preview at a non-existent Experience.
-		if (accepted) experienceFocus.openExperience(experienceId);
-		return accepted;
-	}
-
 	/**
 	 * The Experience a first step joins: the current one, or the ready draft, which
 	 * that same accepted change creates under `draftLabel`.
 	 */
-	function stepExperience(): { readonly id: string; readonly presentations: number; readonly newLabel: string | null } {
-		return current === null
-			? { id: newId(), presentations: 0, newLabel: draftLabel }
-			: { id: current.id, presentations: current.presentations.length, newLabel: null };
-	}
-
-	function currentCapturePose() {
-		const evaluation = readServices().stage.evaluation();
-		if (evaluation === null) {
-			say('refusal', 'The Stage has not evaluated a reading yet; wait for the reading to settle.');
-			return null;
-		}
-		// Plan is orthographic: its eye/target would record a perspective View the
-		// creator never saw. Capture is a 3D-reading action.
-		if (evaluation.projectionKind !== 'perspective-3d') {
-			say('refusal', 'Capture needs the 3D reading: switch to 3D, frame the View, then capture.');
-			return null;
-		}
-		const fov = capturedFovDegrees(evaluation.projectionMatrix);
-		if (fov === null) {
-			say('refusal', 'The Stage projection is degenerate; frame the View again.');
-			return null;
-		}
-		return capturedViewPose({
-			label: `View ${snapshot.units.camera.data.views.length + 1}`,
-			eye: evaluation.eye,
-			target: evaluation.target,
-			fov
-		});
-	}
-
-	/**
-	 * A new Presentation from the current 3D framing: View + Presentation in one accepted
-	 * install. It binds the given Scene entity or none, and never a Guide or a Stop.
-	 */
-	async function captureNewPresentation(
-		subjectEntityId: string | null,
-		presentationLabelText: string | null,
-		exactPose: CapturedViewPose | null = null
-	): Promise<boolean> {
-		const view = exactPose ?? currentCapturePose();
-		if (view === null) return false;
-		const experience = stepExperience();
-		const presentationId = newId();
-		const accepted = await run(() =>
-			captureBindIntent({
-				envelope: snapshot,
-				revision: revision(),
-				ids: { operation: newId(), view: newId(), presentation: presentationId },
-				experienceId: experience.id,
-				view,
-				presentationLabel:
-					presentationLabelText ??
-					(subjectEntityId === null ? `Presentation ${experience.presentations + 1}` : null),
-				subjectEntityId,
-				text: null,
-				guideId: null,
-				afterStopId: null,
-				newExperienceLabel: experience.newLabel
-			})
-		);
-		if (accepted) {
-			if (experience.newLabel !== null) {
-				experienceFocus.openExperience(experience.id);
-				draftLabel = DRAFT_EXPERIENCE_LABEL;
-			}
-			experienceFocus.select({ kind: 'presentation', presentationId });
-			// Measurement anchor for the capture/bind → Preview entry row.
-			perfMark('experience:capture-accepted', { firstGuide: false });
-		}
-		return accepted;
-	}
-
-	/**
-	 * Dock Capture. Into the visibly selected Presentation (or the one a selected
-	 * View belongs to) when there is one: the new View is appended, joined by a Cut, and
-	 * the Default (View 1) is unchanged. A Presentation with no View takes it as its
-	 * Default, and the message says so. Otherwise a new standpoint Presentation with no
-	 * subject and no Stop.
-	 */
-	async function captureView(view: CapturedViewPose): Promise<boolean> {
-		const target = selectedPresentation;
-		if (current === null || target === null) return captureNewPresentation(null, null, view);
-		const experience = current;
-		const hadDefault = target.views.length > 0;
-		const accepted = await run(() =>
-			presentationUpdateIntent({
-				envelope: snapshot,
-				revision: revision(),
-				ids: { operation: newId(), view: newId() },
-				experienceId: experience.id,
-				presentationId: target.id,
-				view
-			})
-		);
-		if (accepted && !hadDefault) {
-			say('info', `${target.label} had no Default View, so this View is now its Default.`);
-		}
-		return accepted;
-	}
-
-	async function capture(): Promise<boolean> {
-		const view = currentCapturePose();
-		if (view === null) return false;
-		return captureView(view);
-	}
-
-	function viewLabel(): string {
-		return `View ${snapshot.units.camera.data.views.length + 1}`;
-	}
-
-	async function capturePose(pose: { readonly eye: readonly [number, number, number]; readonly target: readonly [number, number, number]; readonly fov: number }): Promise<boolean> {
-		return captureView(capturedViewPose({ label: viewLabel(), eye: pose.eye, target: pose.target, fov: pose.fov }));
-	}
-
-	async function presentThisFramed(
-		entityId: string,
-		_label: string,
-		pose: { readonly eye: readonly [number, number, number]; readonly target: readonly [number, number, number]; readonly fov: number }
-	): Promise<boolean> {
-		// G24: the Presentation follows the object's live name; the copied label is gone.
-		return captureNewPresentation(
-			entityId,
-			null,
-			capturedViewPose({ label: viewLabel(), eye: pose.eye, target: pose.target, fov: pose.fov })
-		);
-	}
-
-	async function placeView(pose: { readonly eye: readonly [number, number, number]; readonly target: readonly [number, number, number]; readonly fov: number }): Promise<ExperiencePlacement> {
-		const viewId = newId();
-		const view = capturedViewPose({ label: viewLabel(), eye: pose.eye, target: pose.target, fov: pose.fov });
-		const target = selectedPresentation;
-		if (current !== null && target !== null) {
-			const experience = current;
-			const accepted = await run(
-				() =>
-					presentationUpdateIntent({
-						envelope: snapshot,
-						revision: revision(),
-						ids: { operation: newId(), view: viewId },
-						experienceId: experience.id,
-						presentationId: target.id,
-						view
-					}),
-				() => ''
-			);
-			if (!accepted) return { kind: 'refused', message: feedback?.text ?? '' };
-			experienceFocus.select({ kind: 'view', viewId, presentationId: target.id });
-			return { kind: 'placed', presentationId: target.id, viewId, createdPresentation: false };
-		}
-		const presentationId = newId();
-		const experience = stepExperience();
-		const accepted = await run(
-			() =>
-				captureBindIntent({
-					envelope: snapshot,
-					revision: revision(),
-					ids: { operation: newId(), view: viewId, presentation: presentationId },
-					experienceId: experience.id,
-					view,
-					presentationLabel: `Presentation ${experience.presentations + 1}`,
-					subjectEntityId: null,
-					text: null,
-					guideId: null,
-					afterStopId: null,
-					newExperienceLabel: experience.newLabel
-				}),
-			() => ''
-		);
-		if (!accepted) return { kind: 'refused', message: feedback?.text ?? '' };
-		if (experience.newLabel !== null) {
-			experienceFocus.openExperience(experience.id);
-			draftLabel = DRAFT_EXPERIENCE_LABEL;
-		}
-		experienceFocus.select({ kind: 'presentation', presentationId });
-		return { kind: 'placed', presentationId, viewId, createdPresentation: true };
-	}
-
-	async function updateViewPose(
-		viewId: string,
-		pose: { readonly eye: readonly [number, number, number]; readonly target: readonly [number, number, number]; readonly fov: number },
-		presentationId: string,
-		options: { readonly confirmShared?: boolean } = {}
-	): Promise<ExperienceViewUpdate> {
-		const view = snapshot.units.camera.data.views.find((candidate) => candidate.id === viewId);
-		if (view === undefined) return { kind: 'refused', message: 'That View is not in this project' };
-		const shared = alsoIn(viewId, presentationId);
-		if (shared.length > 0 && options.confirmShared !== true) {
-			return { kind: 'needs-confirmation', alsoIn: shared.map((presentation) => presentationDisplayName(presentation.id)) };
-		}
-		const accepted = await run(
-			() =>
-				viewUpdateIntent({
-					envelope: snapshot,
-					revision: revision(),
-					ids: { operation: newId() },
-					view,
-					eye: pose.eye,
-					target: pose.target,
-					fov: pose.fov
-				}),
-			() => shared.length > 0 ? `View updated; it also changes ${shared.map((entry) => entry.label).join(', ')}.` : ''
-		);
-		return accepted ? { kind: 'updated' } : { kind: 'refused', message: feedback?.text ?? '' };
-	}
-
-	async function setViewFraming(
-		viewId: string,
-		framing: { readonly fov?: number; readonly eyeHeightMetres?: number }
-	): Promise<boolean> {
-		const view = snapshot.units.camera.data.views.find((candidate) => candidate.id === viewId);
-		if (view === undefined) {
-			say('refusal', 'That View is not in this project.');
-			return false;
-		}
-		const eye: [number, number, number] = [view.eye[0], view.eye[1], view.eye[2]];
-		const target: [number, number, number] = [view.target[0], view.target[1], view.target[2]];
-		let fov = view.fov;
-		if (framing.fov !== undefined) {
-			if (!Number.isFinite(framing.fov) || framing.fov <= 0 || framing.fov >= 180) {
-				say('refusal', 'That lens is not a supported field of view.');
-				return false;
-			}
-			fov = framing.fov;
-		}
-		if (framing.eyeHeightMetres !== undefined) {
-			if (!Number.isFinite(framing.eyeHeightMetres)) {
-				say('refusal', 'That eye height is not a number.');
-				return false;
-			}
-			const delta = datumMeters + framing.eyeHeightMetres - view.eye[1];
-			eye[1] += delta;
-			target[1] += delta;
-		}
-		return run(
-			() => viewUpdateIntent({ envelope: snapshot, revision: revision(), ids: { operation: newId() }, view, eye, target, fov }),
-			() => ''
-		);
-	}
-
-	async function presentThis(entityId: string, _label?: string): Promise<boolean> {
-		return captureNewPresentation(entityId, null);
-	}
-
-	async function addStop(
-		presentationId: string,
-		options: { readonly afterStopId?: string; readonly entryViewId?: string | null } = {}
-	): Promise<boolean> {
-		if (current === null) return false;
-		const experience = current;
-		if (!experience.presentations.some((entry) => entry.id === presentationId)) {
-			say('refusal', 'That Presentation is not in this Experience.');
-			return false;
-		}
-		const stopId = newId();
-		if (experience.guides.length === 0) {
-			// D-9: the first Stop creates the first Guide, named Tour, with no prompt.
-			const guideId = newId();
-			const accepted = await run(() =>
-				guideCreateIntent({
-					envelope: snapshot,
-					revision: revision(),
-					ids: { operation: newId(), guide: guideId, stop: stopId, connections: connectionPool() },
-					experienceId: experience.id,
-					presentationId,
-					label: 'Tour',
-					entryViewId: options.entryViewId ?? null,
-					staySeconds: null,
-					transition: 'cut'
-				})
-			);
-			if (accepted) {
-				experienceFocus.openGuide(guideId);
-				experienceFocus.select({ kind: 'stop', stopId });
-			}
-			return accepted;
-		}
-		const guide =
-			currentGuide ??
-			experience.guides.find((entry) => entry.id === experience.entryGuideId) ??
-			experience.guides[0]!;
-		const afterStopId =
-			options.afterStopId !== undefined
-				? options.afterStopId
-				: selectedStop !== null && guide.stopIds.includes(selectedStop.id)
-					? selectedStop.id
-					: null;
-		const accepted = await run(() =>
-			stopCreateIntent({
-				envelope: snapshot,
-				revision: revision(),
-				ids: { operation: newId(), stop: stopId, connections: connectionPool() },
-				experienceId: experience.id,
-				presentationId,
-				guideId: guide.id,
-				afterStopId,
-				entryViewId: options.entryViewId ?? null,
-				staySeconds: null,
-				transition: 'cut'
-			})
-		);
-		// A refused insert must not select a Stop the accepted source does not carry.
-		if (accepted) {
-			experienceFocus.openGuide(guide.id);
-			experienceFocus.select({ kind: 'stop', stopId });
-		}
-		return accepted;
-	}
-
-	/** Reorders target the same Guide the instrument reads: the active one, else the entry Guide. */
-	async function moveStopTo(stopId: string, index: number): Promise<boolean> {
-		const guide = currentGuide ?? contextGuide;
-		if (current === null || guide === null) return false;
-		const experience = current;
-		const at = guide.stopIds.indexOf(stopId);
-		if (at === -1) return false;
-		const order = guide.stopIds.filter((entry) => entry !== stopId);
-		const to = Math.max(0, Math.min(Math.trunc(index), order.length));
-		order.splice(to, 0, stopId);
-		if (order.every((entry, position) => entry === guide.stopIds[position])) return false;
-		return run(() =>
-			guideOrderIntent({
-				envelope: snapshot,
-				revision: revision(),
-				ids: { operation: newId(), connections: connectionPool() },
-				experienceId: experience.id,
-				guideId: guide.id,
-				stopIds: order
-			})
-		);
-	}
-
-	async function moveStop(stopId: string, direction: -1 | 1): Promise<boolean> {
-		const guide = currentGuide ?? contextGuide;
-		if (guide === null) return false;
-		const at = guide.stopIds.indexOf(stopId);
-		const to = at + direction;
-		if (at === -1 || to < 0 || to >= guide.stopIds.length) return false;
-		return moveStopTo(stopId, to);
-	}
+	const views = createExperienceViewAuthoring({
+		snapshot: () => snapshot,
+		current: () => current,
+		selectedPresentation: () => selectedPresentation,
+		datumMeters: () => datumMeters,
+		draftLabel: () => draftLabel,
+		resetDraftLabel: () => (draftLabel = DRAFT_EXPERIENCE_LABEL),
+		feedback: () => feedback?.text ?? '',
+		say: (kind, text) => say(kind, text),
+		newId,
+		revision,
+		run,
+		focus: experienceFocus,
+		readServices,
+		perfMark,
+		alsoIn: (viewId, presentationId) => presentation.alsoIn(viewId, presentationId),
+		presentationDisplayName: (id) => level.presentationDisplayName(id)
+	});
 
 	/** One captured connection id per Travel use in the Experience, plus one. */
 	function connectionPool(): string[] {
@@ -993,874 +585,54 @@ export function createExperienceController(
 		return Array.from({ length: travels + 1 }, () => newId());
 	}
 
-	/**
-	 * One Stop edit that sends only the changed field: planning keeps every omitted field
-	 * and clears one with an explicit null.
-	 */
-	async function updateStop(
-		stopId: string,
-		fields: {
-			readonly entryViewId?: string | null;
-			readonly staySeconds?: number;
-			readonly invitation?: ExperienceInvitation | null;
-			readonly transition?: ExperienceTransitionKind | null;
-		}
-	): Promise<boolean> {
-		if (current === null) return false;
-		const experience = current;
-		if (!experience.stops.some((entry) => entry.id === stopId)) return false;
-		return run(
-			() =>
-				stopUpdateIntent({
-					envelope: snapshot,
-					revision: revision(),
-					ids: { operation: newId(), connections: connectionPool() },
-					experienceId: experience.id,
-					stopId,
-					...fields
-				}),
-			() => ''
-		);
-	}
+	const stops = createExperienceStopAuthoring({
+		snapshot: () => snapshot,
+		current: () => current,
+		currentGuide: () => currentGuide,
+		contextGuide: () => contextGuide,
+		selectedStop: () => selectedStop,
+		say: (kind, text) => say(kind, text),
+		newId,
+		revision,
+		run,
+		connectionPool,
+		focus: experienceFocus
+	});
 
-	/* --- One Card field per setting (sheet §32) ------------------------------- */
+	const presentation = createExperiencePresentationAuthoring({
+		snapshot: () => snapshot,
+		current: () => current,
+		contextGuide: () => contextGuide,
+		feedback: () => feedback?.text ?? '',
+		setDraftLabel: (label) => (draftLabel = label),
+		nameNeeded: NAME_NEEDED,
+		say: (kind, text) => say(kind, text),
+		newId,
+		revision,
+		run,
+		connectionPool,
+		updateStop: (stopId, fields) => stops.updateStop(stopId, fields),
+		focus: experienceFocus,
+		presentationDisplayName: (id) => level.presentationDisplayName(id),
+		presentationLabel: (id) => level.presentationLabel(id)
+	});
 
-	/** Guide Card · Pacing: Automatic plays on after each stay; Manual waits for Next. */
-	async function setGuidePacing(guideId: string, pacing: ExperienceGuidePacing): Promise<boolean> {
-		if (current === null) return false;
-		const experience = current;
-		const guide = experience.guides.find((entry) => entry.id === guideId);
-		if (guide === undefined || guide.pacing === pacing) return false;
-		return run(
-			() =>
-				guideUpdateIntent({
-					envelope: snapshot,
-					revision: revision(),
-					ids: { operation: newId() },
-					experienceId: experience.id,
-					guideId,
-					pacing
-				}),
-			() =>
-				pacing === 'manual'
-					? 'Manual: every Stop now waits for Next. Each Stop keeps its time, unused, for switching back.'
-					: 'Automatic: each Stop stays for its time, then the tour moves on by itself.'
-		);
-	}
-
-	/** Stop Card · Enter at: one of its Presentation's Views; the Default follows View 1. */
-	async function setStopEntry(stopId: string, viewId: string | null): Promise<boolean> {
-		const stop = current?.stops.find((entry) => entry.id === stopId);
-		const presentation = current?.presentations.find((entry) => entry.id === stop?.presentationId);
-		if (stop === undefined || presentation === undefined) return false;
-		const entry = viewId;
-		if (entry === stop.entryViewId) return false;
-		if (entry !== null && !presentation.views.some((view) => view.viewId === entry)) return false;
-		return updateStop(stopId, { entryViewId: entry });
-	}
-
-	/** Stop Card · Stay: finite seconds, at least 1 s. */
-	async function setStopStay(stopId: string, seconds: number): Promise<boolean> {
-		const stop = current?.stops.find((entry) => entry.id === stopId);
-		if (stop === undefined) return false;
-		if (!Number.isFinite(seconds) || seconds < EXPERIENCE_STAY_MIN_SECONDS) {
-			say('refusal', `A stay is at least ${EXPERIENCE_STAY_MIN_SECONDS} s.`);
-			return false;
-		}
-		const rounded = Math.round(seconds * 2) / 2;
-		if (rounded === stop.staySeconds) return false;
-		return updateStop(stopId, { staySeconds: rounded });
-	}
-
-	/** Stop Card · Invite to explore: `null` is off; an empty prompt is the default wording. */
-	async function setStopInvitation(stopId: string, invitation: { readonly prompt: string | null } | null): Promise<boolean> {
-		const stop = current?.stops.find((entry) => entry.id === stopId);
-		if (stop === undefined) return false;
-		const normalized = invitation === null
-			? null
-			: { prompt: invitation.prompt === null || invitation.prompt.trim() === '' ? null : invitation.prompt.trim() };
-		if (JSON.stringify(normalized) === JSON.stringify(stop.invitation)) return false;
-		return updateStop(stopId, { invitation: normalized });
-	}
 
 	/** Write one Presentation's whole View list (order and steps) as one accepted change. */
-	async function writePresentationViews(
-		presentationId: string,
-		views: readonly ExperiencePresentationView[],
-		message: () => string = () => ''
-	): Promise<boolean> {
-		if (current === null) return false;
-		const experience = current;
-		const presentation = experience.presentations.find((entry) => entry.id === presentationId);
-		if (presentation === undefined) return false;
-		// A step belongs to the View it leaves (A-1), and the last View has none (D-12).
-		const normalize = (list: readonly ExperiencePresentationView[]) =>
-			list.map((view, index) =>
-				index === list.length - 1 || view.transition === undefined
-					? { viewId: view.viewId }
-					: { viewId: view.viewId, transition: view.transition }
-			);
-		const normalized = normalize(views);
-		if (JSON.stringify(normalized) === JSON.stringify(normalize(presentation.views))) {
-			return false;
-		}
-		return run(
-			() =>
-				presentationUpdateIntent({
-					envelope: snapshot,
-					revision: revision(),
-					ids: { operation: newId(), connections: connectionPool() },
-					experienceId: experience.id,
-					presentationId,
-					views: normalized
-				}),
-			message
-		);
-	}
-
-	/** Set one outgoing step; reconciliation adds any required Camera path atomically. */
-	async function setPresentationStep(
-		presentationId: string,
-		toIndex: number,
-		kind: 'cut' | 'travel'
-	): Promise<boolean> {
-		const presentation = current?.presentations.find((entry) => entry.id === presentationId);
-		if (presentation === undefined || !Number.isInteger(toIndex) || toIndex <= 0 || toIndex >= presentation.views.length) return false;
-		const views = presentation.views.map((view, index) =>
-			index === toIndex - 1 ? { viewId: view.viewId, transition: kind } : view
-		);
-		return writePresentationViews(presentationId, views, () =>
-			`${kind === 'travel' ? 'Travel' : 'Cut'}. Exploring adds no Guide time.`
-		);
-	}
-
-	/**
-	 * Presentation Card · reorder (drag, or Alt+↑↓). Each View keeps the Cut/Travel
-	 * it leaves by; moving a View to the top makes it the Default, and Stops without
-	 * their own entry follow it.
-	 */
-	async function movePresentationView(presentationId: string, viewId: string, index: number): Promise<boolean> {
-		const presentation = current?.presentations.find((entry) => entry.id === presentationId);
-		if (presentation === undefined || !Number.isInteger(index) || index < 0 || index >= presentation.views.length) return false;
-		const from = presentation.views.findIndex((view) => view.viewId === viewId);
-		if (from === -1 || from === index) return false;
-		const order = [...presentation.views];
-		const [moved] = order.splice(from, 1);
-		order.splice(index, 0, moved!);
-		const label = (id: string) => snapshot.units.camera.data.views.find((view) => view.id === id)?.label ?? id;
-		return writePresentationViews(presentationId, order, () =>
-			index === 0
-				? `${label(viewId)} is now View 1, the Default. Stops without their own entry follow it.`
-				: from === 0
-					? `${label(viewId)} moves to ${index + 1}; ${label(order[0]!.viewId)} becomes the Default.`
-					: `${label(viewId)} moves to ${index + 1}. New neighbours keep their Cut or Travel.`
-		);
-	}
-
-	/**
-	 * Cut or Travel to the next Stop in the context Guide. The last Stop has no next
-	 * Stop, so it has no outgoing step at all (D-12); a Travel between two Stops that
-	 * enter the same View is refused and stays a Cut (D-7).
-	 */
-	async function setTransition(stopId: string, transition: 'cut' | 'travel'): Promise<boolean> {
-		const stop = current?.stops.find((entry) => entry.id === stopId);
-		const guide = contextGuide;
-		if (current === null || stop === undefined || guide === null) return false;
-		const at = guide.stopIds.indexOf(stopId);
-		if (at === -1 || at === guide.stopIds.length - 1) return false;
-		if ((stop.transition ?? 'cut') === transition) return false;
-		// A Travel between two Stops that enter the same View stays a Cut, and a
-		// Travel's straight path is added by reconciliation in the same change.
-		const resolved = transition === 'travel'
-			? resolvePathOccurrence(current, guide, { kind: 'transition', stopId })
-			: null;
-		if (transition === 'travel' && (resolved === null || resolved.fromViewId === resolved.toViewId)) return false;
-		return updateStop(stopId, { transition });
-	}
-
-	/**
-	 * The Card's inline rename of a Presentation: one label edit through the same
-	 * acceptance port every edit uses, so the rename is one accepted result.
-	 */
-	function renamePresentation(presentationId: string, label: string): Promise<ExperienceRenameOutcome> {
-		if (current === null) return Promise.resolve({ kind: 'refused', message: 'There is no Experience to rename a Presentation in.' });
-		const experience = current;
-		const presentation = experience.presentations.find((entry) => entry.id === presentationId) ?? null;
-		return rename(label, presentation === null ? null : presentationDisplayName(presentationId), (trimmed) =>
-			presentationUpdateIntent({
-				envelope: snapshot,
-				revision: revision(),
-				ids: { operation: newId() },
-				experienceId: experience.id,
-				presentationId,
-				label: trimmed
-			})
-		);
-	}
-
-	async function updatePresentationText(presentationId: string, body: string): Promise<boolean> {
-		if (current === null) return false;
-		const experience = current;
-		return run(() =>
-			presentationUpdateIntent({
-				envelope: snapshot,
-				revision: revision(),
-				ids: { operation: newId() },
-				experienceId: experience.id,
-				presentationId,
-				text: body === '' ? null : { kind: 'plain', body }
-			})
-		);
-	}
-
-	async function setExplorable(presentationId: string, explorable: boolean): Promise<boolean> {
-		const experience = current;
-		const presentation = experience?.presentations.find((entry) => entry.id === presentationId);
-		if (experience === null || presentation === undefined || presentation.explorable === explorable) return false;
-		return run(() =>
-			presentationUpdateIntent({
-				envelope: snapshot,
-				revision: revision(),
-				ids: { operation: newId() },
-				experienceId: experience.id,
-				presentationId,
-				explorable
-			})
-		);
-	}
-
-	async function setWelcome(body: string): Promise<boolean> {
-		const experience = current;
-		const welcome = body.trim() === '' ? null : { kind: 'plain' as const, body };
-		if (experience === null || (experience.welcome?.body ?? null) === (welcome?.body ?? null)) return false;
-		return run(() =>
-			experienceUpdateIntent({
-				envelope: snapshot,
-				revision: revision(),
-				ids: { operation: newId() },
-				experienceId: experience.id,
-				welcome
-			})
-		);
-	}
-
-	/** Make default moves the View to the top of the list: View 1 is the Default. */
-	async function setDefaultView(presentationId: string, viewId: string): Promise<void> {
-		await movePresentationView(presentationId, viewId, 0);
-	}
-
-	/* --- Structure -------------------------------------------------------------- */
-
-	async function rename(
-		label: string,
-		previous: string | null,
-		builder: (trimmed: string) => Submission
-	): Promise<ExperienceRenameOutcome> {
-		const trimmed = label.trim();
-		if (trimmed === '') return { kind: 'refused', message: NAME_NEEDED };
-		if (previous === null) return { kind: 'refused', message: 'That subject is no longer in this Experience.' };
-		// An unchanged name is no edit, so it adds no history entry.
-		if (trimmed === previous) return { kind: 'accepted' };
-		const ok = await run(() => builder(trimmed), () => '');
-		return ok ? { kind: 'accepted' } : { kind: 'refused', message: feedback?.text ?? "That change didn't go through." };
-	}
-
-	function renameExperience(label: string): Promise<ExperienceRenameOutcome> {
-		const experience = current;
-		// The draft is not saved yet: its name is kept here until the first step creates it.
-		if (experience === null) {
-			const trimmed = label.trim();
-			if (trimmed === '') return Promise.resolve({ kind: 'refused', message: 'A name cannot be empty.' });
-			draftLabel = trimmed;
-			return Promise.resolve({ kind: 'accepted' });
-		}
-		return rename(label, experience?.label ?? null, (trimmed) =>
-			experienceUpdateIntent({
-				envelope: snapshot,
-				revision: revision(),
-				ids: { operation: newId() },
-				experienceId: experience!.id,
-				label: trimmed
-			})
-		);
-	}
-
-	function renameGuide(guideId: string, label: string): Promise<ExperienceRenameOutcome> {
-		const experience = current;
-		const guide = experience?.guides.find((entry) => entry.id === guideId) ?? null;
-		return rename(label, guide?.label ?? null, (trimmed) =>
-			guideUpdateIntent({
-				envelope: snapshot,
-				revision: revision(),
-				ids: { operation: newId() },
-				experienceId: experience!.id,
-				guideId,
-				label: trimmed
-			})
-		);
-	}
-
-	function renameView(viewId: string, label: string): Promise<ExperienceRenameOutcome> {
-		const view = snapshot.units.camera.data.views.find((entry) => entry.id === viewId) ?? null;
-		return rename(label, view?.label ?? null, (trimmed) =>
-			viewRenameIntent({ envelope: snapshot, revision: revision(), ids: { operation: newId() }, view: view!, label: trimmed })
-		);
-	}
-
-	async function makeOpeningGuide(guideId: string): Promise<boolean> {
-		const experience = current;
-		const guide = experience?.guides.find((entry) => entry.id === guideId);
-		if (experience == null || guide === undefined || experience.entryGuideId === guideId) return false;
-		return run(
-			() =>
-				experienceUpdateIntent({
-					envelope: snapshot,
-					revision: revision(),
-					ids: { operation: newId() },
-					experienceId: experience.id,
-					entryGuideId: guideId
-				}),
-			() => `The Experience now opens on ${guide.label}.`
-		);
-	}
-
-	async function addToGuide(presentationId: string, guideId: string, entryViewId: string | null = null): Promise<boolean> {
-		const experience = current;
-		const guide = experience?.guides.find((entry) => entry.id === guideId);
-		if (experience == null || guide === undefined) return false;
-		const stopId = newId();
-		const ok = await run(
-			() =>
-				stopCreateIntent({
-					envelope: snapshot,
-					revision: revision(),
-					ids: { operation: newId(), stop: stopId },
-					experienceId: experience.id,
-					presentationId,
-					guideId,
-					afterStopId: null,
-					entryViewId,
-					staySeconds: null,
-					transition: 'cut'
-				}),
-			() => `Added as Stop ${guide.stopIds.length + 1} of ${guide.label}.`
-		);
-		if (ok) {
-			experienceFocus.openGuide(guideId);
-			experienceFocus.select({ kind: 'stop', stopId });
-		}
-		return ok;
-	}
-
-	async function createGuide(presentationId: string, entryViewId: string | null = null): Promise<boolean> {
-		const experience = current;
-		if (experience === null) return false;
-		const used = new Set(experience.guides.map((guide) => guide.label.trim().toLowerCase()));
-		let n = experience.guides.length + 1;
-		let label = n === 1 ? 'Tour' : `Tour ${n}`;
-		while (used.has(label.toLowerCase())) {
-			n += 1;
-			label = `Tour ${n}`;
-		}
-		const guideId = newId();
-		const stopId = newId();
-		const ok = await run(
-			() =>
-				guideCreateIntent({
-					envelope: snapshot,
-					revision: revision(),
-					ids: { operation: newId(), guide: guideId, stop: stopId, connections: connectionPool() },
-					experienceId: experience.id,
-					presentationId,
-					label,
-					entryViewId,
-					staySeconds: null,
-					transition: 'cut'
-				}),
-			() => `${label} created with ${presentationLabel(presentationId)} as Stop 1.`
-		);
-		if (ok) {
-			experienceFocus.openGuide(guideId);
-			experienceFocus.select({ kind: 'stop', stopId });
-		}
-		return ok;
-	}
-
-	function alsoIn(viewId: string, presentationId: string): readonly ExperiencePresentation[] {
-		return current?.presentations.filter((entry) => entry.id !== presentationId && entry.views.some((view) => view.viewId === viewId)) ?? [];
-	}
-
-	async function moveViewTo(presentationId: string, viewId: string, index: number): Promise<boolean> {
-		const presentation = current?.presentations.find((entry) => entry.id === presentationId);
-		if (presentation === undefined) return false;
-		const to = Math.max(0, Math.min(Math.trunc(index), presentation.views.length - 1));
-		return movePresentationView(presentationId, viewId, to);
-	}
-
-	async function moveView(presentationId: string, viewId: string, direction: -1 | 1): Promise<boolean> {
-		const presentation = current?.presentations.find((entry) => entry.id === presentationId);
-		if (presentation === undefined) return false;
-		const at = presentation.views.findIndex((view) => view.viewId === viewId);
-		const to = at + direction;
-		if (at === -1 || to < 0 || to >= presentation.views.length) return false;
-		return movePresentationView(presentationId, viewId, to);
-	}
-
-	/** Names as the creator reads them: Stops by their position in the context Guide. */
-	const names: RemovalNames = {
-		stop: (stopId) => {
-			const at = contextGuide?.stopIds.indexOf(stopId) ?? -1;
-			if (at !== -1) return `Stop ${at + 1}`;
-			const stop = current?.stops.find((entry) => entry.id === stopId);
-			return stop === undefined ? 'a Stop' : `a Stop of ${presentationLabel(stop.presentationId)}`;
-		},
-		presentation: (presentationId) => presentationLabel(presentationId),
-		view: (viewId) => snapshot.units.camera.data.views.find((entry) => entry.id === viewId)?.label ?? viewId,
-		guide: (guideId) => current?.guides.find((entry) => entry.id === guideId)?.label ?? 'the Guide'
-	};
-
-	function planOf(target: ExperienceRemovalTarget): ExperienceRemovalPlan | null {
-		const experience = current;
-		if (experience === null) return null;
-		const experiencesNow = snapshot.units.experience.data.experiences;
-		const camera = snapshot.units.camera.data;
-		switch (target.kind) {
-			case 'stop':
-				return planStopRemoval(experience, target.stopId);
-			case 'guide':
-				return planGuideRemoval(experience, target.guideId);
-			case 'presentation':
-				return planPresentationRemoval(experiencesNow, camera, experience.id, target.presentationId);
-			case 'view':
-				return planPresentationViewRemoval(
-					experiencesNow,
-					camera,
-					experience.id,
-					target.presentationId,
-					target.viewId,
-					target.newDefaultViewId ?? null
-				);
-		}
-	}
-
-	function removalPreview(target: ExperienceRemovalTarget): ExperienceRemovalPreview {
-		const plan = planOf(target);
-		if (plan === null) return { kind: 'refused', reason: 'There is no Experience to remove from.' };
-		if (plan.kind === 'refused') return { kind: 'refused', reason: plan.reason };
-		const isDefault =
-			target.kind === 'view' &&
-			current?.presentations.find((entry) => entry.id === target.presentationId)?.views[0]?.viewId === target.viewId;
-		return {
-			kind: 'ready',
-			lines: removalLines(target, plan.consequences, names),
-			chooseDefault:
-				isDefault && target.kind === 'view'
-					? (current?.presentations.find((entry) => entry.id === target.presentationId)?.views ?? [])
-							.filter((view) => view.viewId !== target.viewId)
-							.map((view) => ({ id: view.viewId, label: names.view(view.viewId) }))
-					: null,
-			runnable: true
-		};
-	}
-
-	/** The parent a removal selects: removing the selected subject selects its parent. */
-	function parentOf(target: ExperienceRemovalTarget): ExperienceSubject | null {
-		if (target.kind === 'view') return { kind: 'presentation', presentationId: target.presentationId };
-		// A Stop's parent is the Guide instrument, which is not a Card subject (D-2).
-		return null;
-	}
-
-	/** Whether the subject is (or hangs from) what a removal takes away. */
-	function removes(target: ExperienceRemovalTarget, subject: ExperienceSubject | null): boolean {
-		if (subject === null) return false;
-		switch (target.kind) {
-			case 'stop':
-				return (subject.kind === 'stop' || subject.kind === 'transition') && subject.stopId === target.stopId;
-			case 'guide':
-				return false;
-			case 'presentation':
-				return (subject.kind === 'presentation' || subject.kind === 'view') && subject.presentationId === target.presentationId;
-			case 'view':
-				return subject.kind === 'view' && subject.viewId === target.viewId && subject.presentationId === target.presentationId;
-		}
-	}
-
-	async function remove(target: ExperienceRemovalTarget): Promise<boolean> {
-		const experience = current;
-		if (experience === null) return false;
-		const preview = removalPreview(target);
-		if (preview.kind === 'refused') {
-			say('refusal', preview.reason);
-			return false;
-		}
-		if (!preview.runnable) {
-			say('refusal', 'Choose the new Default View first.');
-			return false;
-		}
-		const plan = planOf(target);
-		if (plan === null || plan.kind !== 'planned') return false;
-		const after = plan.experience;
-		const parent = parentOf(target);
-		// Read before the install: the route clears a subject that stops resolving.
-		const selectsParent = removes(target, experienceFocus.subject);
-		const removedName =
-			target.kind === 'stop'
-				? names.stop(target.stopId)
-				: target.kind === 'guide'
-					? names.guide(target.guideId)
-					: target.kind === 'presentation'
-						? names.presentation(target.presentationId)
-						: names.view(target.viewId);
-		const ok = await run(
-			() =>
-				target.kind === 'view'
-					? viewRemoveIntent({
-							envelope: snapshot,
-							revision: revision(),
-							ids: { operation: newId(), connections: connectionPool() },
-							experienceId: experience.id,
-							presentationId: target.presentationId,
-							viewId: target.viewId,
-							defaultViewId: target.newDefaultViewId ?? null
-						})
-					: removeIntent({
-							envelope: snapshot,
-							revision: revision(),
-							ids: { operation: newId(), connections: connectionPool() },
-							experienceId: experience.id,
-							subject: target.kind,
-							id: target.kind === 'stop' ? target.stopId : target.kind === 'guide' ? target.guideId : target.presentationId
-						}),
-			() => `${removedName} removed. ${remaining(target, after)}`.trim()
-		);
-		if (ok) {
-			if (selectsParent) experienceFocus.select(parent);
-			if (target.kind === 'guide' && experienceFocus.guideId === target.guideId) experienceFocus.openGuide(null);
-		}
-		return ok;
-	}
-
-	/** What remains after a removal, read from the plan the planner installs. */
-	function remaining(target: ExperienceRemovalTarget, after: Experience): string {
-		switch (target.kind) {
-			case 'stop': {
-				const guide = after.guides.find((entry) => entry.id === contextGuide?.id);
-				return guide === undefined ? '' : `${guide.label} has ${guide.stopIds.length} ${guide.stopIds.length === 1 ? 'Stop' : 'Stops'}.`;
-			}
-			case 'guide':
-				return after.guides.length === 0
-					? 'No Guide yet.'
-					: `${after.guides.length} ${after.guides.length === 1 ? 'Guide remains' : 'Guides remain'}.`;
-			case 'presentation':
-				return `${after.presentations.length} ${after.presentations.length === 1 ? 'Presentation remains' : 'Presentations remain'}.`;
-			case 'view': {
-				const presentation = after.presentations.find((entry) => entry.id === target.presentationId);
-				return presentation === undefined
-					? ''
-					: `${presentationDisplayName(presentation.id)} has ${presentation.views.length} ${presentation.views.length === 1 ? 'View' : 'Views'}.`;
-			}
-		}
-	}
-
-	/** Whether a subject still names something in the current Experience. */
-	function resolves(candidate: ExperienceSubject): boolean {
-		const experience = current;
-		if (experience === null) return false;
-		switch (candidate.kind) {
-			case 'presentation':
-				return experience.presentations.some((entry) => entry.id === candidate.presentationId);
-			case 'view':
-				return experience.presentations.some(
-					(entry) => entry.id === candidate.presentationId && entry.views.some((view) => view.viewId === candidate.viewId)
-				);
-			case 'stop':
-			case 'transition':
-				return experience.stops.some((entry) => entry.id === candidate.stopId);
-			case 'experience':
-				return true;
-		}
-	}
+	/** Names as the creator reads them: Stops by their position in the context Guide. */	const removals = createExperienceRemovalReadings({
+		experience: () => current,
+		contextGuide: () => contextGuide,
+		envelope: () => snapshot,
+		presentationLabel: (id) => level.presentationLabel(id),
+		presentationDisplayName: (id) => level.presentationDisplayName(id)
+	});
 
 	const backTarget = $derived.by(() => {
 		void subject;
-		return experienceFocus.previous(resolves);
+		return experienceFocus.previous(removals.resolves);
 	});
 
-	function subjectName(candidate: ExperienceSubject): string {
-		switch (candidate.kind) {
-			case 'presentation':
-				return names.presentation(candidate.presentationId);
-			case 'view':
-				return names.view(candidate.viewId);
-			case 'stop':
-				return names.stop(candidate.stopId);
-			case 'transition':
-				return `${names.stop(candidate.stopId)} onward`;
-			case 'experience':
-				return current?.label ?? 'Experience';
-		}
-	}
 
-	// ---- Camera paths ----
-
-	function selectPath(occurrence: ExperiencePathOccurrence | null): void {
-		pathOccurrence = occurrence;
-		selectedAnchorId = null;
-	}
-
-
-	function selectAnchor(anchorId: string | null): void {
-		selectedAnchorId = anchorId;
-	}
-
-	async function createPath(occurrence: ExperiencePathOccurrence): Promise<boolean> {
-		if (current === null) return false;
-		const resolved = resolvePathOccurrence(current, contextGuide, occurrence);
-		if (resolved === null) {
-			say('refusal', 'This move has no destination to travel to.');
-			return false;
-		}
-		if (resolved.transition !== 'travel') {
-			say('refusal', 'A Cut has no travel path. Choose Travel first.');
-			return false;
-		}
-		const fromView = snapshot.units.camera.data.views.find((view) => view.id === resolved.fromViewId);
-		const toView = snapshot.units.camera.data.views.find((view) => view.id === resolved.toViewId);
-		if (fromView === undefined || toView === undefined) {
-			say('refusal', 'A View this move needs is missing.');
-			return false;
-		}
-		const accepted = await run(
-			() =>
-				cameraConnectionCreateIntent({
-					envelope: snapshot,
-					revision: revision(),
-					ids: { operation: newId(), connection: newId() },
-					fromView,
-					toView
-				}),
-			() => 'Camera path added'
-		);
-		if (accepted) selectPath(occurrence);
-		return accepted;
-	}
-
-	/** One accepted write per anchor edit; every other connection field survives. */
-	async function writePathAnchors(
-		read: ExperiencePathRead,
-		anchors: readonly ScenePathAnchor[]
-	): Promise<boolean> {
-		if (read.connectionId === null) return false;
-		const connection = snapshot.units.camera.data.connections.find((entry) => entry.id === read.connectionId);
-		if (connection === undefined) return false;
-		return run(
-			() =>
-				cameraConnectionUpdateIntent({
-					envelope: snapshot,
-					revision: revision(),
-					ids: { operation: newId() },
-					connectionId: connection.id,
-					anchors
-				})
-		);
-	}
-
-	function proposedPathAnchors(
-		read: ExperiencePathRead,
-		anchorId: string | null,
-		point: readonly [number, number, number],
-		slot?: number,
-		near?: readonly [number, number, number]
-	): readonly ScenePathAnchor[] | null {
-		const connection = snapshot.units.camera.data.connections.find((entry) => entry.id === read.connectionId);
-		if (connection === undefined || read.direction === null || acceptedGraph === null) return null;
-		const anchors = connection.positionPath.anchors;
-		if (anchorId !== null) {
-			const previous = anchors.find((anchor) => anchor.id === anchorId);
-			if (previous === undefined || previous.position.every((value, index) => value === point[index])) return null;
-			return anchors.map((anchor) => anchor.id === anchorId ? { ...anchor, position: [...point] } : anchor);
-		}
-		const insertion = slot === undefined
-			? resolvePathAnchorInsertion({ connection, direction: read.direction, graph: acceptedGraph, point: [...(near ?? point)] })
-			: Number.isInteger(slot) ? { index: slot, position: point } : null;
-		if (insertion === null || insertion.index < 0 || insertion.index > anchors.length) return null;
-		const anchor: ScenePathAnchor = {
-			id: nextAnchorId(connection.id, anchors.map((entry) => entry.id)),
-			position: [...(near === undefined ? insertion.position : point)]
-		};
-		return [...anchors.slice(0, insertion.index), anchor, ...anchors.slice(insertion.index)];
-	}
-
-	function previewPathDrag(
-		anchorId: string | null,
-		point: readonly [number, number, number],
-		origin: readonly [number, number, number]
-	): ExperiencePathRead['samples'] | null {
-		const read = selectedPath;
-		if (read === null || read.direction === null || acceptedGraph === null) return null;
-		if (read.connectionId === null) return null;
-		try {
-			const anchors = proposedPathAnchors(read, anchorId, point, undefined, origin);
-			return anchors === null ? null : previewPathSamples(read.connectionId, read.direction, acceptedGraph, anchors);
-		} catch {
-			// An intermediate point may fail Camera evaluation. Keep the accepted route visible.
-			return null;
-		}
-	}
-
-	async function addPathAnchor(
-		point: readonly [number, number, number],
-		slot?: number,
-		near?: readonly [number, number, number]
-	): Promise<boolean> {
-		const read = selectedPath;
-		if (read === null || read.connectionId === null || read.direction === null) return false;
-		const anchors = proposedPathAnchors(read, null, point, slot, near);
-		if (anchors === null) {
-			say('refusal', 'Insert a point on the selected Camera path.');
-			return false;
-		}
-		const accepted = await writePathAnchors(read, anchors);
-		if (accepted) {
-			const existing = new Set(read.anchors.map((anchor) => anchor.id));
-			selectedAnchorId = anchors.find((anchor) => !existing.has(anchor.id))?.id ?? null;
-		}
-		return accepted;
-	}
-
-	async function movePathAnchor(anchorId: string, point: readonly [number, number, number]): Promise<boolean> {
-		const read = selectedPath;
-		if (read === null) return false;
-		const anchors = proposedPathAnchors(read, anchorId, point);
-		return anchors !== null && writePathAnchors(read, anchors);
-	}
-
-	async function removePathAnchor(anchorId: string): Promise<boolean> {
-		const read = selectedPath;
-		if (read === null || read.connectionId === null) return false;
-		const connection = snapshot.units.camera.data.connections.find((entry) => entry.id === read.connectionId);
-		if (connection === undefined || !connection.positionPath.anchors.some((entry) => entry.id === anchorId)) {
-			return false;
-		}
-		const accepted = await writePathAnchors(
-			read,
-			connection.positionPath.anchors.filter((entry) => entry.id !== anchorId)
-		);
-		if (accepted) selectedAnchorId = null;
-		return accepted;
-	}
-
-	async function straightenPath(): Promise<boolean> {
-		const read = selectedPath;
-		if (read === null || read.connectionId === null) return false;
-		const connection = snapshot.units.camera.data.connections.find((entry) => entry.id === read.connectionId);
-		if (connection === undefined) return false;
-		if (connection.positionPath.anchors.length === 0) {
-			say('info', 'The Camera path is already straight.');
-			return false;
-		}
-		const accepted = await writePathAnchors(read, []);
-		if (accepted) selectedAnchorId = null;
-		return accepted;
-	}
-
-	async function setPathDuration(seconds: number | null): Promise<boolean> {
-		const read = selectedPath;
-		if (read === null || read.connectionId === null || read.direction === null) return false;
-		if (seconds !== null && (!Number.isFinite(seconds) || seconds <= 0)) {
-			say('refusal', 'A duration is a positive number of seconds, or Auto.');
-			return false;
-		}
-		const connection = snapshot.units.camera.data.connections.find((entry) => entry.id === read.connectionId);
-		if (connection === undefined) return false;
-		return run(
-			() =>
-				cameraConnectionUpdateIntent({
-					envelope: snapshot,
-					revision: revision(),
-					ids: { operation: newId() },
-					connectionId: connection.id,
-					timing: { [read.direction!]: { durationSeconds: seconds } }
-				}),
-			() => (seconds === null ? 'Automatic duration restored' : 'Camera path duration changed')
-		);
-	}
-
-	function presentationSubjectName(presentationId: string): string | null {
-		const reference = current?.presentations.find((entry) => entry.id === presentationId)?.subject ?? null;
-		if (reference === null || reference.domain !== 'scene' || reference.subject.kind !== 'entity') return null;
-		return snapshot.units.scene.data.entities.find((entity) => entity.id === reference.subject.id)?.name ?? null;
-	}
-
-	function presentationDisplayName(presentationId: string): string {
-		const presentation = current?.presentations.find((entry) => entry.id === presentationId) ?? null;
-		if (presentation === null) return presentationId;
-		return displayPresentationName(presentation, presentationSubjectName(presentationId));
-	}
-
-	function presentationLabel(presentationId: string): string {
-		return presentationDisplayName(presentationId);
-	}
-
-	const linkCandidates = $derived(
-		snapshot.units.scene.data.entities.map((entity) => ({ id: entity.id, label: entity.name }))
-	);
-
-	async function linkPresentation(presentationId: string, entityId: string): Promise<boolean> {
-		const experience = current;
-		if (experience === null) return false;
-		if (!snapshot.units.scene.data.entities.some((entity) => entity.id === entityId)) return false;
-		return run(
-			() =>
-				presentationUpdateIntent({
-					envelope: snapshot,
-					revision: revision(),
-					ids: { operation: newId() },
-					experienceId: experience.id,
-					presentationId,
-					subject: sceneEntitySubject(snapshot, entityId),
-					label: null
-				}),
-			() => `Linked to ${snapshot.units.scene.data.entities.find((entity) => entity.id === entityId)?.name ?? 'the object'}.`
-		);
-	}
-
-	async function unlinkPresentation(presentationId: string): Promise<boolean> {
-		const experience = current;
-		const presentation = experience?.presentations.find((entry) => entry.id === presentationId);
-		if (experience === null || presentation === undefined || presentation.subject === null) return false;
-		return run(
-			() =>
-				presentationUpdateIntent({
-					envelope: snapshot,
-					revision: revision(),
-					ids: { operation: newId() },
-					experienceId: experience.id,
-					presentationId,
-					subject: null,
-					label: presentationDisplayName(presentationId)
-				}),
-			() => 'Unlinked from its object.'
-		);
-	}
-
-	async function followPresentation(presentationId: string): Promise<boolean> {
-		const experience = current;
-		const presentation = experience?.presentations.find((entry) => entry.id === presentationId);
-		if (experience === null || presentation === undefined || presentation.subject === null || presentation.label === null) return false;
-		return run(
-			() =>
-				presentationUpdateIntent({
-					envelope: snapshot,
-					revision: revision(),
-					ids: { operation: newId() },
-					experienceId: experience.id,
-					presentationId,
-					label: null
-				}),
-			() => 'Following the object\'s name.'
-		);
-	}
 
 	function openGuide(guideId: string): void {
 		// Focus never names a Guide the source does not carry.
@@ -1902,13 +674,13 @@ export function createExperienceController(
 			return travelGapsByStop;
 		},
 		get pathOccurrence() {
-			return pathOccurrence;
+			return paths.occurrence;
 		},
 		get selectedPath() {
-			return selectedPath;
+			return paths.read;
 		},
 		get selectedAnchorId() {
-			return selectedAnchorId;
+			return paths.anchorId;
 		},
 		get stopUsage() {
 			return stopUsage;
@@ -1934,15 +706,15 @@ export function createExperienceController(
 		set query(next: string) {
 			query = next;
 		},
-		presentationLabel,
-		presentationDisplayName,
-		presentationSubjectName,
+		presentationLabel: level.presentationLabel,
+		presentationDisplayName: level.presentationDisplayName,
+		presentationSubjectName: level.presentationSubjectName,
 		get linkCandidates() {
-			return linkCandidates;
+			return level.linkCandidates;
 		},
-		linkPresentation,
-		unlinkPresentation,
-		followPresentation,
+		linkPresentation: level.linkPresentation,
+		unlinkPresentation: level.unlinkPresentation,
+		followPresentation: level.followPresentation,
 		get cameraViews() {
 			return snapshot.units.camera.data.views;
 		},
@@ -1951,10 +723,10 @@ export function createExperienceController(
 			return readServices().stage.snapshot().sourceContentId;
 		},
 		get playbackSource() {
-			return playbackSource;
+			return level.playbackSource;
 		},
 		playbackSourceFor(guideId: string) {
-			return lowerPlaybackSource(guideId);
+			return level.playbackSourceFor(guideId);
 		},
 		guideForStop(stopId: string) {
 			const containing = (current?.guides ?? []).filter((guide) => guide.stopIds.includes(stopId));
@@ -1966,16 +738,14 @@ export function createExperienceController(
 				? null
 				: { eye: [view.eye[0], view.eye[1], view.eye[2]], target: [view.target[0], view.target[1], view.target[2]], fov: view.fov };
 		},
-		setViewFraming,
-		placeView,
-		updateViewPose,
-		capturePose,
-		presentThisFramed,
+		setViewFraming: views.setViewFraming,
+		placeView: views.placeView,
+		updateViewPose: views.updateViewPose,
+		capturePose: views.capturePose,
+		presentThisFramed: views.presentThisFramed,
 		select: (next: ExperienceSubject | null) => {
 			experienceFocus.select(next);
-			// A transition owns its path occurrence; any other subject clears the Path reading.
-			pathOccurrence = next?.kind === 'transition' ? { kind: 'transition', stopId: next.stopId } : null;
-			selectedAnchorId = null;
+			paths.selectSubject(next);
 		},
 		openExperience: (experienceId: string) => experienceFocus.openExperience(experienceId),
 		openGuide,
@@ -1992,24 +762,24 @@ export function createExperienceController(
 			current === null
 				? { presentations: 0, views: 0, freePresentations: 0, freeViews: 0, viewsOnlyFree: 0, hiddenViews: 0 }
 				: reachSummary(current, guide),
-		createExperience,
+		createExperience: level.createExperience,
 		get draftLabel() {
 			return draftLabel;
 		},
-		capture,
-		presentThis,
-		addStop,
-		moveStopTo,
-		moveStop,
-		setGuidePacing,
-		setStopEntry,
-		setStopStay,
-		setStopInvitation,
-		setPresentationStep,
-		movePresentationView,
-		setExplorable,
-		setWelcome,
-		setTransition,
+		capture: views.capture,
+		presentThis: level.presentThis,
+		addStop: stops.addStop,
+		moveStopTo: stops.moveStopTo,
+		moveStop: stops.moveStop,
+		setGuidePacing: stops.setGuidePacing,
+		setStopEntry: stops.setStopEntry,
+		setStopStay: stops.setStopStay,
+		setStopInvitation: stops.setStopInvitation,
+		setPresentationStep: presentation.setPresentationStep,
+		movePresentationView: presentation.movePresentationView,
+		setExplorable: presentation.setExplorable,
+		setWelcome: presentation.setWelcome,
+		setTransition: presentation.setTransition,
 		pathFor: (occurrence: ExperiencePathOccurrence) =>
 			current === null
 				? null
@@ -2022,33 +792,33 @@ export function createExperienceController(
 							occurrence,
 							geometry: acceptedGeometry
 						}),
-		selectPath,
-		selectAnchor,
-		createPath,
-		previewPathDrag,
-		addPathAnchor,
-		movePathAnchor,
-		removePathAnchor,
-		straightenPath,
-		setPathDuration,
-		renamePresentation,
-		updatePresentationText,
-		setDefaultView,
-		renameExperience,
-		renameGuide,
-		renameView,
-		makeOpeningGuide,
-		addToGuide,
-		createGuide,
-		alsoIn,
-		moveViewTo,
-		moveView,
-		removalPreview,
-		remove,
+		selectPath: paths.select,
+		selectAnchor: paths.selectAnchor,
+		createPath: paths.createPath,
+		previewPathDrag: paths.previewPathDrag,
+		addPathAnchor: paths.addPathAnchor,
+		movePathAnchor: paths.movePathAnchor,
+		removePathAnchor: paths.removePathAnchor,
+		straightenPath: paths.straightenPath,
+		setPathDuration: paths.setPathDuration,
+		renamePresentation: presentation.renamePresentation,
+		updatePresentationText: presentation.updatePresentationText,
+		setDefaultView: presentation.setDefaultView,
+		renameExperience: presentation.renameExperience,
+		renameGuide: presentation.renameGuide,
+		renameView: presentation.renameView,
+		makeOpeningGuide: presentation.makeOpeningGuide,
+		addToGuide: presentation.addToGuide,
+		createGuide: presentation.createGuide,
+		alsoIn: presentation.alsoIn,
+		moveViewTo: presentation.moveViewTo,
+		moveView: presentation.moveView,
+		removalPreview: removals.removalPreview,
+		remove: level.remove,
 		get backTarget() {
 			return backTarget;
 		},
-		back: () => experienceFocus.back(resolves),
-		subjectName
+		back: () => experienceFocus.back(removals.resolves),
+		subjectName: removals.subjectName
 	};
 }

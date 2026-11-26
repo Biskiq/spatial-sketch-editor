@@ -14,7 +14,7 @@
 	 * drawing rather than a second Plan. The drawing stays stable across selection: the scene hides the selected Opening's
 	 * instance runs instead of Paper rebuilding a filtered copy.
 	 */
-	import { clipPlanRegionFragments } from '../../layout/plan-pick-provider';
+	import { clipPlanRegionFragments } from '../../layout/plan-pick-geometry';
 	import type { ResolvedSlice } from '../slice/slice-cut';
 	import { useThrelte } from '@threlte/core';
 	import type { CompiledLayoutGeometry } from '@portfolio/layout-core/geometry';

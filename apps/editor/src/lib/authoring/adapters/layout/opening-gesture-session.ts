@@ -31,14 +31,8 @@ import {
 	type PlanNumericField,
 	type PlanNumericHost
 } from '$lib/authoring/layout/plan-numeric-entry';
-import {
-	LAYOUT_OPENING_MEASURE_KIND,
-	buildLayoutIntent,
-	wallStationAtPoint,
-	wallStationNearPoint,
-	type WallFrame,
-	type WallStationFrame
-} from './precision';
+import { wallStationAtPoint, wallStationNearPoint, type WallFrame, type WallStationFrame } from './precision-frames';
+import { LAYOUT_OPENING_MEASURE_KIND, buildLayoutIntent } from './precision';
 import { resolveOpeningSlideSnap, resolveOpeningWidthSnap, type LayoutSnapWinner } from './snap';
 import { candidatePreviewOf } from './candidate-preview';
 import { selectedOpening, wallDirection, type OpeningMarkSubject } from './layout-subjects';

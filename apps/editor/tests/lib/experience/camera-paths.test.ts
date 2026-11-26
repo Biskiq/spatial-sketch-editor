@@ -22,13 +22,9 @@ import { createUnitAcceptanceProfile } from '@portfolio/project-model/units/plan
 import { createAcceptanceCoordinator } from '$lib/authoring/f4/acceptance-coordinator';
 import { skyFromPreset } from '@portfolio/project-model/units';
 import { SCENE_ENVIRONMENT_SET_KIND } from '@portfolio/project-model/units/planning';
-import {
-	cameraConnectionCreateIntent,
-	cameraConnectionUpdateIntent,
-	captureBindIntent,
-	capturedViewPose,
-	stopUpdateIntent
-} from '$lib/authoring/experience/commands';
+import { cameraConnectionCreateIntent, cameraConnectionUpdateIntent } from '$lib/authoring/experience/commands-presentation';
+import { captureBindIntent, stopUpdateIntent } from '$lib/authoring/experience/commands-structure';
+import { capturedViewPose } from '$lib/authoring/experience/commands-references';
 import {
 	experiencePathOccurrences,
 	isPathEditTarget,

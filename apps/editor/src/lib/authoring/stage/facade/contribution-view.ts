@@ -7,10 +7,10 @@ import { admitStageHandles, projectStageHandles, type StageHandleDescriptor, typ
 import { mergeStageHeightTicks, type StageHeightTick } from '../stage-height-sheet';
 import type { StageSession, StageLens, StageTask } from '../stage-session';
 import type { AdapterContextHandle, BoundAdapter } from './adapter-bindings';
+import { tasksOf, inkReadingsOf, findEntriesOf } from './contribution-view-entries';
 import type {
 	StageAdapterContext, StageCardAction, StageCardActionRecord, StageCardFact, StageCardFactRecord,
-	StageCardNameTarget, StageFindEntryRecord, StageGhostMesh, StageInkReadingRecord,
-	StageInstrumentContent, StageOverlayContribution, StageSubject, StageTaskEntry
+	StageCardNameTarget, StageGhostMesh, StageInstrumentContent, StageOverlayContribution, StageSubject
 } from './adapter-contract';
 import type { StageCandidatePreviewView, StageFacade, StageGuideView } from './view-contract';
 
@@ -221,7 +221,7 @@ export function createContributionView(input: ContributionViewPort) {
 		const owner = input.taskOwner();
 		if (owner === null) return null;
 		ensureBindings();
-		const task = tasksOf().find(
+		const task = tasksOf(adapters).find(
 			(entry) =>
 				entry.adapterId === owner.adapterId &&
 				entry.id === owner.taskId &&
@@ -230,54 +230,6 @@ export function createContributionView(input: ContributionViewPort) {
 		return task?.adapterId ?? null;
 	}
 
-	/** Deterministic order: explicit `order`, then owning adapter ID, then entry ID. */
-	function compareEntries(
-		a: { readonly adapterId: string; readonly order: number; readonly id: string },
-		b: { readonly adapterId: string; readonly order: number; readonly id: string }
-	): number {
-		if (a.order !== b.order) return a.order - b.order;
-		if (a.adapterId !== b.adapterId) return a.adapterId < b.adapterId ? -1 : 1;
-		return a.id === b.id ? 0 : a.id < b.id ? -1 : 1;
-	}
-
-	function tasksOf(): readonly StageTaskEntry[] {
-		return [...adapters.entries()]
-			.flatMap(([adapterId, entry]) =>
-				(entry.contributions.tasks ?? []).map((task) => ({
-					...task,
-					adapterId,
-					order: task.order ?? 0
-				}))
-			)
-			.sort(compareEntries);
-	}
-
-	function inkReadingsOf(): readonly StageInkReadingRecord[] {
-		return [...adapters.entries()]
-			.flatMap(([adapterId, entry]) =>
-				(entry.contributions.readings ?? []).map((reading) => ({
-					id: reading.id,
-					label: reading.label,
-					summary: reading.summary,
-					order: reading.order ?? 0,
-					adapterId,
-					...(reading.view === undefined ? {} : { view: reading.view })
-				}))
-			)
-			.sort(compareEntries);
-	}
-
-	function findEntriesOf(): readonly StageFindEntryRecord[] {
-		return [...adapters.entries()]
-			.flatMap(([adapterId, entry]) =>
-				(entry.contributions.findEntries ?? []).map((findEntry) => ({
-					...findEntry,
-					adapterId,
-					order: findEntry.order ?? 0
-				}))
-			)
-			.sort(compareEntries);
-	}
 	const marks: StageFacade['marks'] = () => {
 		if (!isLive()) return [];
 		ensureBindings();
@@ -474,11 +426,11 @@ export function createContributionView(input: ContributionViewPort) {
 	};
 	const tasks: StageFacade['tasks'] = () => {
 		ensureBindings();
-		return tasksOf();
+		return tasksOf(adapters);
 	};
 	const inkReadings: StageFacade['inkReadings'] = () => {
 		ensureBindings();
-		return inkReadingsOf();
+		return inkReadingsOf(adapters);
 	};
 	const subjects: StageFacade['subjects'] = () => {
 		ensureBindings();
@@ -489,7 +441,7 @@ export function createContributionView(input: ContributionViewPort) {
 	};
 	const findEntries: StageFacade['findEntries'] = () => {
 		ensureBindings();
-		return findEntriesOf();
+		return findEntriesOf(adapters);
 	};
 	const cardFacts: StageFacade['cardFacts'] = (subject) => {
 		ensureBindings();
@@ -620,12 +572,12 @@ export function createContributionView(input: ContributionViewPort) {
 		ghosts,
 		heightTicks,
 		tasks,
-		tasksOf,
+		tasksOf: () => tasksOf(adapters),
 		inkReadings,
-		inkReadingsOf,
+		inkReadingsOf: () => inkReadingsOf(adapters),
 		subjects,
 		findEntries,
-		findEntriesOf,
+		findEntriesOf: () => findEntriesOf(adapters),
 		cardFacts,
 		cardWriter,
 		cardActions,

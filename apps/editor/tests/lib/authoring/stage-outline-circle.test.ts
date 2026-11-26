@@ -6,7 +6,7 @@ import {
 	contourPolylines,
 	visibleIdentityContour
 } from '$lib/authoring/stage/shell/stage-outline';
-import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-builder';
+import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-standalone';
 
 function circularBody(): BufferGeometry {
 	const created = createClosedWallCircleDocument({

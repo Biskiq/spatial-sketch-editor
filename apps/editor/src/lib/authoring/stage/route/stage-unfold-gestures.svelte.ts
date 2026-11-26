@@ -28,7 +28,6 @@ import type { LayoutUnitPayload } from '@portfolio/project-model/units';
 import {
 	isStraightCompiledWall,
 	wallUnfoldAnchor,
-	wallUnfoldFreeEdgeStation,
 	wallUnfoldSourceSpans,
 	wallUnfoldTopPoint,
 	chooseUnfoldAmount,
@@ -41,7 +40,6 @@ import {
 } from '$lib/layout/wall-unfold';
 import {
 	buildWallUnfoldDisplay,
-	evaluateWallUnfoldDisplay,
 	pickWallUnfold,
 	unfoldDisplayPointAtStation
 } from '$lib/layout/wall-unfold-pick';
@@ -54,6 +52,7 @@ import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
 import { buildLayoutIntent, LAYOUT_OPENING_MEASURE_KIND } from '$lib/authoring/adapters/layout/precision';
 import { LAYOUT_OPENING_RESIZE_KIND } from '$lib/authoring/adapters/layout/opening-planners';
 import { stageUnitRevision } from '../unit-stage-source';
+import { edgeCandidates, wallStationAtPointer } from './stage-unfold-pick-geometry';
 import type { StageAdapterServices } from '../stage-adapter-host';
 import type { StageFacade } from '../stage-facade';
 import type { StageAcceptOutcome } from '../host-acceptance';
@@ -221,41 +220,6 @@ export function createStageUnfoldGestures(input: StageUnfoldGesturesInput) {
 	}
 
 	/** Map a pointer sample onto the as-built centreline, for a pin drag. */
-	function wallStationAtPointer(
-		wall: CompiledPhysicalWall,
-		datum: number,
-		stage: StageFacade,
-		event: PointerEvent
-	): number | null {
-		const projectionId = stage.evaluationId();
-		if (projectionId === null || wall.samples.length < 2) return null;
-		const height = datum + wall.height + 0.09;
-		let nearest: number | null = null;
-		let nearestDistance = Number.POSITIVE_INFINITY;
-		for (let index = 0; index < wall.samples.length - 1; index += 1) {
-			const from = wall.samples[index]!;
-			const to = wall.samples[index + 1]!;
-			const a = stage.projectWorld([from.point[0], height, from.point[1]], projectionId);
-			const b = stage.projectWorld([to.point[0], height, to.point[1]], projectionId);
-			if (a.kind !== 'projected' || b.kind !== 'projected') continue;
-			const dx = b.css[0] - a.css[0];
-			const dy = b.css[1] - a.css[1];
-			const lengthSq = dx * dx + dy * dy;
-			const t = lengthSq <= 1e-9
-				? 0
-				: Math.min(1, Math.max(0, ((event.clientX - a.css[0]) * dx + (event.clientY - a.css[1]) * dy) / lengthSq));
-			const distance = Math.hypot(
-				event.clientX - (a.css[0] + dx * t),
-				event.clientY - (a.css[1] + dy * t)
-			);
-			if (distance < nearestDistance) {
-				nearestDistance = distance;
-				nearest = from.distance + (to.distance - from.distance) * t;
-			}
-		}
-		return nearest;
-	}
-
 	/**
 	 * The live unfolded press.
 	 *
@@ -406,34 +370,6 @@ export function createStageUnfoldGestures(input: StageUnfoldGesturesInput) {
 		// The press is consumed: its release must not run the canonical Stage pick.
 		input.press.refuse(event.pointerId);
 		return true;
-	}
-
-	/** Sample the free edge across the peel range, then restore the live display. */
-	function edgeCandidates(
-		display: ReturnType<typeof buildWallUnfoldDisplay>,
-		state: NonNullable<typeof wallUnfold.state>,
-		wall: CompiledPhysicalWall,
-		stage: StageFacade
-	): WallUnfoldEdgeCandidate[] {
-		if (display === null) return [];
-		const projectionId = stage.evaluationId();
-		if (projectionId === null) return [];
-		const station = wallUnfoldFreeEdgeStation(state, wall.length);
-		const candidates: WallUnfoldEdgeCandidate[] = [];
-		for (let step = 0; step <= 40; step += 1) {
-			const u = step / 40;
-			evaluateWallUnfoldDisplay(display, { ...state, u }, wallUnfold.presentationAngle);
-			const at = unfoldDisplayPointAtStation(display, station, wallUnfold.presentationAngle);
-			const projected = stage.projectWorld(
-				[at.point[0], display.floorY + display.height / 2, at.point[1]],
-				projectionId
-			);
-			if (projected.kind === 'projected') {
-				candidates.push({ u, css: [projected.css[0], projected.css[1]] });
-			}
-		}
-		evaluateWallUnfoldDisplay(display, state, wallUnfold.presentationAngle);
-		return candidates;
 	}
 
 	function sheetEdgeMove(event: PointerEvent): void {

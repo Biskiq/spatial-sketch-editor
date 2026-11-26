@@ -20,7 +20,7 @@ import { buildDevelopedWallMesh, createClosedWallCircleDocument, createEmptyWall
 import { compileWallFirstLayoutGeometry, cubicBezierArcLength, deriveChainSpans, pointAtDistance, type CurveSample, type LayoutVec2 } from '@portfolio/layout-core/geometry';
 import { mintLayoutIdCapture } from '@portfolio/layout-core/plan';
 import { setWorkObserver } from '@portfolio/layout-core/kernel';
-import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-builder';
+import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-standalone';
 
 type Fixture = {
   label: string;

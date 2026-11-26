@@ -3,10 +3,13 @@
 	import { tick, untrack } from 'svelte';
 	import ShellIcon from './ShellIcon.svelte';
 	import WorldMark from './WorldMark.svelte';
-	import { resolveRovingIndex, tablistTabIndex } from '$lib/authoring/a11y/roving-focus';
+	import EditorHeadFind from './EditorHeadFind.svelte';
+	import EditorHeadProject from './EditorHeadProject.svelte';
+	import EditorHeadLens from './EditorHeadLens.svelte';
+	import EditorHeadLocation from './EditorHeadLocation.svelte';
+	import { resolveRovingIndex } from '$lib/authoring/a11y/roving-focus';
 	import type { HeadSave } from '$lib/authoring/save/head-save';
 	import type { ReloadOffer } from '$lib/authoring/save/save-state';
-	import ProjectLifecycleActions from '$lib/platform/ProjectLifecycleActions.svelte';
 	import { perfMeasureSync } from '$lib/platform/perf-marks';
 	import type {
 		PreparedProjectLifecycle,
@@ -181,7 +184,6 @@
 	let selectedLensIndex = $derived(LENSES.findIndex((entry) => entry.id === lens));
 	const lensButtons: HTMLButtonElement[] = [];
 	let findOpen = $state(false);
-	let findIndex = $state(0);
 	let findInput = $state<HTMLInputElement>();
 	let projectTrigger: HTMLButtonElement | undefined;
 	/** The project procedures' own dialog, reached from the menu or from Find. */
@@ -382,185 +384,59 @@
 		Escape closes the project menu from any control inside it. The group only
 		carries that key route; its focus targets are the name and the menu's buttons.
 	-->
-	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-	<div
-		class="identity"
-		role="group"
-		aria-label="Project"
-		data-head-project-owner
-		onkeydown={onProjectKeydown}
-	>
-		<h1 class="project-title">
-			<button
-				type="button"
-				class="project-name"
-				data-head-project
-				bind:this={projectTrigger}
-				aria-expanded={projectMenuOpen}
-				aria-controls={projectMenuId}
-				title={projectName}
-				onclick={toggleProjectMenu}
-			>
-				<span class="project-text">{projectName}</span>
-				<span class="chevron" aria-hidden="true">{projectMenuOpen ? '▴' : '▾'}</span>
-			</button>
-		</h1>
-		<div
-			id={projectMenuId}
-			class="project-menu"
-			role="group"
-			aria-label="Project actions"
-			data-head-project-menu
-			hidden={!projectMenuOpen}
-		>
-			<ProjectLifecycleActions
-				bind:this={lifecycle}
-				{projectId}
-				{projectName}
-				variant="head"
-				disabledReason={projectActionsUnavailableReason}
-				{onPrepareRename}
-				onRename={onRenameProject}
-				{onPrepareDelete}
-				onDelete={onDeleteProject}
-				onComplete={onProjectActionComplete}
-				onBusyChange={onProjectActionBusyChange}
-				onRefreshRemote={onRefreshRemoteProject}
-			/>
-			<button
-				type="button"
-				class="menu-action"
-				data-head-download
-				disabled={!canDownloadSource}
-				onclick={onDownloadSource}
-			>
-				Download source JSON
-			</button>
-			<button type="button" class="menu-action" data-head-source onclick={onOpenSource}>
-				Open source JSON
-			</button>
-			<p class="project-id">Project id <code>{projectId}</code></p>
-		</div>
-	</div>
+	<EditorHeadProject
+		{projectId}
+		{projectName}
+		open={projectMenuOpen}
+		menuId={projectMenuId}
+		onTrigger={(trigger) => (projectTrigger = trigger)}
+		onLifecycle={(next) => (lifecycle = next)}
+		onToggle={toggleProjectMenu}
+		onKeydown={onProjectKeydown}
+		{canDownloadSource}
+		{onDownloadSource}
+		{onOpenSource}
+		lifecycleProps={{
+			projectId,
+			projectName,
+			variant: 'head',
+			disabledReason: projectActionsUnavailableReason,
+			onPrepareRename,
+			onRename: onRenameProject,
+			onPrepareDelete,
+			onDelete: onDeleteProject,
+			onComplete: onProjectActionComplete,
+			onBusyChange: onProjectActionBusyChange,
+			onRefreshRemote: onRefreshRemoteProject
+		}}
+	/>
 
 	{#if !indexOpen && locationLabel !== null}
-		<button
-			type="button"
-			class="location"
-			data-head-location
-			title={locationLabel}
-			onclick={onOpenIndex}>{locationLabel}</button
-		>
+		<EditorHeadLocation label={locationLabel} onOpen={onOpenIndex} />
 	{/if}
 
 	<div class="lens" role="group" aria-label="Product lens">
-		{#each LENSES as entry, index (entry.id)}
-			<button
-				type="button"
-				class="lens-button"
-				class:active={lens === entry.id}
-				aria-pressed={lens === entry.id}
-				tabindex={tablistTabIndex(index, selectedLensIndex)}
-				use:lensButtonRef
-				onclick={() => onLens(entry.id)}
-				onkeydown={(event) => onLensKeydown(event, index)}
-			>
-				{entry.label}
-			</button>
-		{/each}
+		<EditorHeadLens
+			entries={LENSES}
+			{lens}
+			selectedIndex={selectedLensIndex}
+			{onLens}
+			onKeydown={onLensKeydown}
+			buttonRef={lensButtonRef}
+		/>
 	</div>
 
 	<div class="actions">
 		{#if find !== null}
-			<div class="find" class:open={findOpen} data-head-find>
-				<ShellIcon name="search" size={15} />
-				<input
-					bind:this={findInput}
-					type="search"
-					role="combobox"
-					aria-label="Find a subject, tool or operation"
-					aria-expanded={findOpen}
-					aria-controls={`${uid}-find-results`}
-					aria-autocomplete="list"
-					aria-activedescendant={findOpen && findResults[findIndex]
-						? `${uid}-find-${findIndex}`
-						: undefined}
-					placeholder="Find tools, actions, places…"
-					value={find.query}
-					onfocus={() => {
-						findOpen = true;
-						findIndex = 0;
-					}}
-					oninput={(event) => {
-						find?.onQuery(event.currentTarget.value);
-						findIndex = 0;
-						findOpen = true;
-					}}
-					onkeydown={(event) => {
-						if (event.key === 'Escape') {
-							event.preventDefault();
-							event.stopPropagation();
-							findOpen = false;
-							findInput?.focus();
-						} else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-							event.preventDefault();
-							findOpen = true;
-							findIndex =
-								(findIndex + (event.key === 'ArrowDown' ? 1 : -1) + findResults.length) %
-								Math.max(1, findResults.length);
-							document
-								.getElementById(`${uid}-find-${findIndex}`)
-								?.scrollIntoView({ block: 'nearest' });
-						} else if (event.key === 'Enter' && findOpen && findResults[findIndex]) {
-							event.preventDefault();
-							void runFind(findResults[findIndex]!);
-						}
-					}}
-				/>
-				<kbd>⌘K</kbd>
-				<div class="find-body" hidden={!findOpen}>
-					<ul
-						class="find-results"
-						id={`${uid}-find-results`}
-						role="listbox"
-						aria-label="Find results"
-					>
-						{#each findResults as entry, index (`${entry.adapterId}:${entry.id}`)}
-							{#if index === 0 || findGroup(findResults[index - 1]!) !== findGroup(entry)}<li
-									role="presentation"
-									class="find-group"
-								>
-									{findGroup(entry)}
-								</li>{/if}
-							<li role="option" id={`${uid}-find-${index}`} aria-selected={index === findIndex}>
-								<button
-									type="button"
-									tabindex="-1"
-									data-find-id={entry.id}
-									data-find-adapter={entry.adapterId}
-									onpointerdown={(event) => event.preventDefault()}
-									onclick={() => void runFind(entry)}
-								>
-									<ShellIcon
-										name={entry.verb === 'Select'
-											? 'select'
-											: entry.verb === 'Go to'
-												? 'layers'
-												: entry.verb === 'Arm'
-													? 'ink'
-													: 'find'}
-										size={15}
-									/>
-									<span class="find-verb">{entry.verb}</span>{' '}<span>{entry.label}</span>
-								</button>
-							</li>
-						{/each}
-					</ul>
-					{#if find.entries.length === 0}<p class="find-empty">No matching results</p>{/if}
-				</div>
-			</div>
+			<EditorHeadFind
+				{find}
+				{findResults}
+				bind:open={findOpen}
+				bind:input={findInput}
+				{uid}
+				onRun={runFind}
+			/>
 		{/if}
-
 		<div
 			class="history"
 			data-editor-history
@@ -772,56 +648,6 @@
 	.brand-word {
 		white-space: nowrap;
 	}
-	.identity {
-		position: relative;
-		min-width: 0;
-		flex: 0 1 auto;
-	}
-	.project-title {
-		margin: 0;
-		font: inherit;
-	}
-	.project-name {
-		max-width: 180px;
-		color: var(--shell-ink-light);
-		padding: 0 4px;
-		font: 500 var(--shell-text-identity) var(--shell-sans);
-	}
-	.project-text {
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-	.chevron {
-		font: var(--shell-text-label) var(--shell-sans);
-		color: var(--shell-ink-quiet);
-	}
-	.project-menu {
-		position: absolute;
-		z-index: 30;
-		top: 35px;
-		left: 0;
-		display: grid;
-		gap: 6px;
-		width: 288px;
-		padding: 10px;
-		border: 1px solid var(--shell-line-on-forest);
-		border-radius: 10px;
-		background: var(--shell-popup-dark);
-		box-shadow: var(--shell-shadow);
-	}
-	.project-menu[hidden] {
-		display: none;
-	}
-	.menu-action {
-		justify-content: flex-start;
-	}
-	.project-id {
-		margin: 0;
-		color: var(--shell-ink-quiet);
-		font-size: var(--shell-text-label);
-		overflow-wrap: anywhere;
-	}
 	.lens {
 		display: flex;
 		flex: none;
@@ -829,27 +655,6 @@
 		padding: 2px;
 		background: rgb(0 0 0 / 0.25);
 		border-radius: 8px;
-	}
-	.lens-button {
-		height: 26px;
-		padding: 0 11px;
-		border-radius: 6px;
-		color: var(--shell-ink-quiet);
-		font-size: var(--shell-text-control);
-	}
-	/* Weight never changes; the shared engaged fill carries the state. */
-	.lens-button.active {
-		background: var(--shell-mode-active-bg);
-		color: var(--shell-mode-active-ink);
-	}
-	.location {
-		order: 1;
-		height: 28px;
-		max-width: 320px;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		font-size: var(--shell-text-utility);
-		background: var(--shell-on-forest-wash);
 	}
 	.actions {
 		order: 2;
@@ -896,98 +701,6 @@
 	.reason-line {
 		display: block;
 	}
-	.find {
-		position: relative;
-		display: flex;
-		align-items: center;
-		gap: 6px;
-		width: 250px;
-		height: var(--shell-control-height);
-		padding: 0 8px;
-		border-radius: 8px;
-		background: var(--shell-on-forest-wash-strong);
-		color: var(--shell-ink-quiet);
-	}
-	.find.open {
-		width: 330px;
-		background: var(--shell-field-focus);
-		color: var(--shell-ink-3);
-	}
-	.find input {
-		width: 100%;
-		min-width: 0;
-		border: 0;
-		outline: none;
-		padding: 0;
-		background: transparent;
-		color: inherit;
-		font: var(--shell-text-body) var(--shell-sans);
-	}
-	.find input::placeholder {
-		color: var(--shell-ink-quiet);
-	}
-	.find.open input {
-		color: var(--shell-ink);
-	}
-	kbd {
-		color: var(--shell-ink-quiet);
-		font: var(--shell-text-meta) var(--shell-mono);
-		white-space: nowrap;
-	}
-	.find-body {
-		position: absolute;
-		z-index: 40;
-		top: 36px;
-		right: 0;
-		width: 330px;
-		padding: 4px;
-		border: 1px solid var(--shell-hairline);
-		border-radius: 10px;
-		background: var(--shell-popover);
-		color: var(--shell-ink);
-		box-shadow: var(--shell-shadow);
-	}
-	.find-body[hidden] {
-		display: none;
-	}
-	.find-results {
-		margin: 0;
-		padding: 0;
-		list-style: none;
-		max-height: 420px;
-		overflow: auto;
-	}
-	.find-results button {
-		justify-content: flex-start;
-		width: 100%;
-		height: auto;
-		min-height: var(--shell-control-height);
-		padding: 5px 8px;
-		text-align: left;
-		white-space: normal;
-		border-radius: 6px;
-	}
-	.find-results [aria-selected='true'],
-	.find-results button:hover {
-		background: var(--shell-hover);
-		border-radius: 6px;
-	}
-	.find-verb {
-		flex: none;
-		font-size: var(--shell-text-label);
-		color: var(--shell-ink-3);
-	}
-	.find-group {
-		padding: 6px 8px 2px;
-		color: var(--shell-ink-3);
-		font-size: var(--shell-text-meta);
-		text-transform: uppercase;
-		letter-spacing: 0.07em;
-	}
-	.find-empty {
-		margin: 8px;
-		font-size: var(--shell-text-utility);
-	}
 	/* The row's one filled action uses the same light key as an engaged mode. */
 	.primary {
 		padding: 0 11px;
@@ -1002,15 +715,6 @@
 	button[aria-disabled='true'] {
 		opacity: var(--shell-control-disabled-opacity);
 		cursor: default;
-	}
-	@media (max-width: 1100px) {
-		.location {
-			max-width: 180px;
-		}
-		.find,
-		.find.open {
-			width: 210px;
-		}
 	}
 	@media (max-width: 560px) {
 		/* Keep every Head action reachable without letting the row widen the page. */
@@ -1030,32 +734,15 @@
 		.brand {
 			padding-right: 0;
 		}
-		.preview-label,
-		kbd {
+		.preview-label {
 			display: none;
 		}
 		.primary {
 			width: 30px;
 			padding: 0;
 		}
-		.location {
-			flex: 0 1 130px;
-		}
 		.actions {
 			gap: 4px;
-		}
-		.project-name {
-			max-width: 130px;
-		}
-		.find,
-		.find.open {
-			width: 150px;
-		}
-		.location {
-			max-width: 130px;
-		}
-		.lens-button {
-			padding: 0 8px;
 		}
 	}
 	@media (pointer: coarse) {
@@ -1065,16 +752,12 @@
 
 		button,
 		.head-index,
-		.action:not(.primary),
-		.lens-button {
+		.action:not(.primary) {
 			min-width: 44px;
 			min-height: 44px;
 		}
 		.lens {
 			padding: 0;
-		}
-		.find {
-			min-height: 44px;
 		}
 	}
 	.head-repair-pill {

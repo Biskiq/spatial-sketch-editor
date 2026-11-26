@@ -31,7 +31,7 @@ import { mountStageAdapter, type StageAdapterServices } from '$lib/authoring/sta
 import { stageEnvelope } from '$lib/authoring/stage/unit-stage-source';
 import { stageCardActions } from '$lib/authoring/stage/stage-contributions';
 import { createAdapter } from '$lib/authoring/adapters/layout.adapter';
-import { curvedWallFrame, wallStationFrame } from '$lib/authoring/adapters/layout/precision';
+import { curvedWallFrame, wallStationFrame } from '$lib/authoring/adapters/layout/precision-frames';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 

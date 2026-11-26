@@ -32,7 +32,8 @@ import {
 import type { AuthoringIntent, DomainPlanner, PlannerOutcome, PlannerRequest, PreparedCandidate } from '@portfolio/project-model/f4';
 
 import { layoutSubjectReference } from './drawing-planners';
-import { addressedSubject, layoutPlanner, layoutReference, registerLayoutSurfaceLineage, wallStationFrame } from './precision';
+import { wallStationFrame } from './precision-frames';
+import { addressedSubject, layoutPlanner, layoutReference, registerLayoutSurfaceLineage } from './precision';
 
 export const LAYOUT_OPEN_SIDE_OFFSET_KIND = 'layout-open-side-offset';
 export const LAYOUT_OPEN_SIDE_SLIDE_KIND = 'layout-open-side-slide';

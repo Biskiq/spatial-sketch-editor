@@ -1,27 +1,32 @@
 <script lang="ts">
 	import { guideTimeCursorAt, formatGuideTime, type GuideTimeMap, type GuideTimeCursor } from '@portfolio/camera-core/navigation';
-	import type { VisitorRuntimeState } from './visitor-runtime-state.svelte';
 	import type { VisitorProgress } from './visitor-progress';
 
-	let { map, visitor, progress, interactive = false }: {
+	let { map, stopId, traveling, paused, pacing, progress, interactive = false, onSeek, onPlay, onTogglePause }: {
 		map: GuideTimeMap;
-		visitor: VisitorRuntimeState;
+		stopId: string | null;
+		traveling: boolean;
+		paused: boolean;
+		pacing: 'manual' | 'automatic';
 		progress: VisitorProgress;
 		interactive?: boolean;
+		onSeek: (map: GuideTimeMap, cursor: GuideTimeCursor) => void;
+		onPlay: () => void;
+		onTogglePause: () => void;
 	} = $props();
 	const segments = $derived(map.segments.filter((segment, index) => index > 0 || segment.kind !== 'cut'));
 	function fillFor(segment: GuideTimeMap['segments'][number]): number {
 		const stop = progress.segments.find((entry) => entry.stopId === segment.stopId);
 		return segment.kind === 'travel' ? stop?.travelFill ?? 0 : stop?.fill ?? 0;
 	}
-	const current = $derived(segments.find((segment) => segment.stopId === visitor.state.stopId &&
-		(visitor.traveling ? segment.kind === 'travel' : segment.kind === 'hold' || segment.kind === 'wait')));
+	const current = $derived(segments.find((segment) => segment.stopId === stopId &&
+		(traveling ? segment.kind === 'travel' : segment.kind === 'hold' || segment.kind === 'wait')));
 	const seconds = $derived(current ? current.startSeconds + current.durationSeconds * fillFor(current) : 0);
 	let pointer: number | null = null;
 	let resumeAfterDrag = false;
 
 	function seek(cursor: GuideTimeCursor): void {
-		visitor.seek(map, cursor);
+		onSeek(map, cursor);
 	}
 	function seekAt(event: PointerEvent): void {
 		const host = event.currentTarget as HTMLElement;
@@ -45,7 +50,7 @@
 		const host = event.currentTarget as HTMLElement;
 		host.focus();
 		pointer = event.pointerId;
-		resumeAfterDrag = !visitor.paused && (visitor.pacing === 'automatic' || visitor.traveling);
+		resumeAfterDrag = !paused && (pacing === 'automatic' || traveling);
 		host.setPointerCapture(event.pointerId);
 		seekAt(event);
 	}
@@ -55,7 +60,7 @@
 	function up(event: PointerEvent): void {
 		if (pointer !== event.pointerId) return;
 		pointer = null;
-		if (resumeAfterDrag) visitor.play();
+		if (resumeAfterDrag) onPlay();
 	}
 	function keydown(event: KeyboardEvent): void {
 		if (!interactive || event.altKey || event.ctrlKey || event.metaKey) return;
@@ -64,14 +69,14 @@
 		if (event.key === 'Home') target = { segmentId: segments[0]!.id, elapsedSeconds: 0 };
 		else if (event.key === 'End') target = { segmentId: segments.at(-1)!.id, elapsedSeconds: segments.at(-1)!.durationSeconds };
 		else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
-			if (visitor.pacing === 'manual') {
+			if (pacing === 'manual') {
 				const at = segments.findIndex((segment) => segment.id === current?.id);
 				const segment = segments[Math.max(0, Math.min(segments.length - 1, at + (event.key === 'ArrowRight' ? 1 : -1)))]!;
 				target = { segmentId: segment.id, elapsedSeconds: 0 };
 			} else target = guideTimeCursorAt(map, seconds + (event.key === 'ArrowRight' ? step : -step));
 		} else if (event.key === ' ') {
 			event.preventDefault();
-			visitor.togglePause();
+			onTogglePause();
 			return;
 		} else return;
 		event.preventDefault();
@@ -93,14 +98,14 @@
 {/snippet}
 
 {#if interactive}
-	<div class="timeline interactive" class:frozen={visitor.paused} role="slider" tabindex="0"
+	<div class="timeline interactive" class:frozen={paused} role="slider" tabindex="0"
 		aria-label="Tour timeline" aria-valuemin={0} aria-valuemax={map.totalSeconds} aria-valuenow={seconds}
-		aria-valuetext={`${formatGuideTime(seconds)} of ${formatGuideTime(map.totalSeconds)}${visitor.pacing === 'manual' ? ', waits for Next' : ''}`}
+		aria-valuetext={`${formatGuideTime(seconds)} of ${formatGuideTime(map.totalSeconds)}${pacing === 'manual' ? ', waits for Next' : ''}`}
 		onpointerdown={down} onpointermove={move} onpointerup={up} onpointercancel={up} onkeydown={keydown}>
 		{@render track()}
 	</div>
 {:else}
-	<div class="timeline" class:frozen={visitor.paused} role="progressbar" aria-label="Tour progress"
+	<div class="timeline" class:frozen={paused} role="progressbar" aria-label="Tour progress"
 		aria-valuemin={0} aria-valuemax={map.totalSeconds} aria-valuenow={seconds}>
 		{@render track()}
 	</div>

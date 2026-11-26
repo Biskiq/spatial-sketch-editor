@@ -6,6 +6,9 @@
 	 */
 	import { untrack, tick, type Snippet } from 'svelte';
 	import ShellIcon from './ShellIcon.svelte';
+	import EditorCardFooter from './EditorCardFooter.svelte';
+	import EditorCardMore from './EditorCardMore.svelte';
+	import EditorCardBody from './EditorCardBody.svelte';
 	import type {
 		StageCardActionRecord,
 		StageCardFact,
@@ -440,47 +443,22 @@
 <svelte:window onpointerdowncapture={onOutside} />
 
 {#snippet footer(advanced?: string)}
-	<div class="footer">
-		<div class="footer-lead">
-			{#if onBringIntoView}<button type="button" aria-label="Bring into view" title="Bring into view" onclick={() => onBringIntoView?.()}><ShellIcon name="fit" size={15} /></button>{/if}
-			<button type="button" class="more" aria-expanded={moreOpen} data-card-more onclick={toggleMore}
-				title={advanced === undefined ? 'Advanced' : `Advanced: ${advanced}`}
-				><span>Advanced</span>{#if advanced}<span class="more-summary">{advanced}</span>{/if}<span class="chev" class:open={moreOpen} aria-hidden="true">⌄</span></button>
-		</div>
-		{#if footerActions.length > 0}
-			<div class="footer-actions">
-				{#each footerActions as action (`${action.adapterId}:${action.id}`)}
-					<button type="button" class="footer-action" class:danger={action.destructive === true}
-						data-card-footer-action={action.id} disabled={actionBusy}
-						title={action.detail}
-						onclick={(event) => void runAction(action, event.currentTarget)}>{action.compactLabel ?? action.label}</button>
-				{/each}
-			</div>
-		{/if}
-	</div>
-	{#if footerConfirmingAction !== null}
-		<div class="footer-confirm" role="group" aria-label={`${footerConfirmingAction.compactLabel ?? footerConfirmingAction.label}?`}>
-			<p>{actionMessage ?? footerConfirmingAction.detail ?? 'This action cannot be undone.'}</p>
-			<div class="footer-confirm-actions">
-				<button type="button" class="remove" disabled={actionBusy} data-card-footer-confirm onclick={() => void runAction(footerConfirmingAction!)}>Remove</button>
-				<button type="button" data-card-footer-cancel onclick={cancelInlineAction}>Cancel</button>
-			</div>
-		</div>
-	{/if}
+	<EditorCardFooter
+		{advanced}
+		{moreOpen}
+		onToggleMore={toggleMore}
+		onBringIntoView={onBringIntoView ?? undefined}
+		{footerActions}
+		{actionBusy}
+		onRunAction={(action, trigger) => void runAction(action, trigger)}
+		{footerConfirmingAction}
+		{actionMessage}
+		onCancel={cancelInlineAction}
+	/>
 {/snippet}
 
 {#snippet more(content?: Snippet)}
-	{#if moreOpen}
-		<section class="more-section" aria-label="Advanced details" data-card-more-section>
-			{#if content}<div class="more-dims">{@render content()}</div>{/if}
-			{#if relationFacts.length > 0}
-				<h3>Relations</h3>
-				<dl class="facts">
-					{#each relationFacts as fact (fact.label)}<dt>{fact.label}</dt><dd>{#if fact.select}<button type="button" class="fact-select" onclick={fact.select.onSelect}>{fact.value}</button>{:else}{fact.value}{/if}</dd>{/each}
-				</dl>
-			{/if}
-		</section>
-	{/if}
+	<EditorCardMore {moreOpen} {relationFacts} {content} />
 {/snippet}
 
 {#snippet secondary(content?: Snippet)}
@@ -615,15 +593,7 @@
 					actions={actions} onAction={runWriterAction} />
 			</div>
 		{:else}
-			{#if ordinaryFacts.length > 0}<dl class="facts">
-					{#each ordinaryFacts.filter((fact) => fact.label
-							.toLowerCase()
-							.includes('area')) as fact (fact.label)}<dt>{fact.label}</dt>
-						<dd>{fact.value}</dd>{/each}
-				</dl>{/if}
-			{@render footer()}
-			{@render more()}
-			{@render secondary()}
+			<EditorCardBody {ordinaryFacts} {footer} {more} {secondary} />
 		{/if}
 
 	</aside>
@@ -720,8 +690,7 @@
 	button:hover {
 		background: var(--shell-hover);
 	}
-	.head-actions button,
-	.footer button:not(.more):not(.footer-action) {
+	.head-actions button {
 		width: 24px;
 		padding: 0;
 	}
@@ -740,95 +709,6 @@
 		text-overflow: ellipsis;
 		white-space: nowrap;
 		text-align: left;
-	}
-	.footer {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 4px;
-		padding: 4px 8px 8px 10px;
-		border-top: 1px solid var(--shell-hairline);
-	}
-	.footer-lead {
-		display: flex;
-		align-items: center;
-		gap: 4px;
-		min-width: 0;
-		flex: 1;
-	}
-	.footer .more {
-		min-width: 0;
-		flex: 1;
-		justify-content: flex-start;
-		overflow: hidden;
-	}
-	.more-summary {
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-		color: var(--shell-ink-2);
-		font-size: var(--shell-text-label);
-	}
-	.footer-actions {
-		display: flex;
-		align-items: center;
-		gap: 2px;
-		flex: none;
-	}
-	.footer .footer-action {
-		width: auto;
-		padding: 0 5px;
-		font-size: var(--shell-text-utility);
-		color: var(--shell-ink);
-	}
-	.footer .footer-action.danger {
-		color: var(--shell-refuse);
-	}
-	.footer-confirm {
-		display: grid;
-		gap: 4px;
-		padding: 6px 10px 8px;
-		border-top: 1px solid var(--shell-hairline);
-		background: var(--shell-refuse-bg);
-	}
-	.footer-confirm p {
-		margin: 0;
-		font-size: var(--shell-text-label);
-		color: var(--shell-ink-2);
-	}
-	.footer-confirm-actions {
-		display: flex;
-		justify-content: flex-end;
-		gap: 6px;
-	}
-	.footer-confirm-actions button {
-		min-height: 26px;
-		padding: 0 9px;
-		border: 1px solid var(--shell-hairline-strong);
-		font-size: var(--shell-text-utility);
-	}
-	.footer-confirm-actions .remove {
-		border-color: var(--shell-refuse);
-		background: var(--shell-refuse);
-		color: var(--shell-on-action);
-	}
-
-	.facts {
-		display: grid;
-		grid-template-columns: auto 1fr;
-		gap: 3px 8px;
-		margin: 0;
-		padding: 8px 12px;
-		font-size: var(--shell-text-control);
-	}
-
-	dt {
-		color: var(--shell-ink-2);
-	}
-
-	dd {
-		margin: 0;
-		overflow-wrap: anywhere;
 	}
 
 	.subject-actions {
@@ -864,7 +744,6 @@
 	@media (pointer: coarse) {
 		button,
 		.head-actions button,
-		.footer button,
 		.rename-input {
 			min-width: 44px;
 			min-height: 44px;
@@ -896,14 +775,6 @@
 	.menu-item:disabled:hover { background: transparent; }
 	.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 	.soon-cue { margin-left: auto; padding: 0 5px; border-radius: 4px; background: var(--shell-surface-sunken); font-size: var(--shell-text-meta); letter-spacing: .02em; }
-	.footer .more { gap: 3px; font-size: var(--shell-text-utility); color: var(--shell-ink-2); }
-	.chev { display: inline-block; transition: transform 120ms; }
-	.chev.open { transform: rotate(180deg); }
-	.more-section { padding: 6px 0 4px; border-top: 1px solid var(--shell-hairline); }
-	.more-section h3 { margin: 4px 12px 0; font: 600 var(--shell-text-label)/1.2 var(--shell-sans); color: var(--shell-ink-2); letter-spacing: .06em; text-transform: uppercase; }
-	.more-section .facts { padding-top: 4px; }
-	.fact-select { padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; text-decoration: underline; text-decoration-color: var(--shell-hairline-strong); text-underline-offset: 2px; cursor: pointer; }
-	.fact-select:hover { text-decoration-color: currentColor; }
 	.rename-input { box-sizing: border-box; width: 100%; min-width: 0; padding: 3px 5px; border: 1px solid var(--shell-field-line); border-radius: 5px; background: var(--shell-field); color: inherit; font: inherit; }
 	.menu-item.danger { color: var(--shell-refuse); }
 	.menu-item.danger:disabled { color: var(--shell-ink-2); }

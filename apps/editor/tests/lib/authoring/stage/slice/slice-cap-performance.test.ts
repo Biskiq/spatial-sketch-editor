@@ -23,7 +23,7 @@
 import { describe, expect, it } from 'vitest';
 import { compileWallFirstLayoutGeometry, type LayoutVec2 } from '@portfolio/layout-core/geometry';
 import { legJoinsByWall, type LayoutDocumentWallFirst, type LayoutWall } from '@portfolio/layout-core/wall';
-import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-builder';
+import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-standalone';
 import { LAYOUT_STRUCTURE_GROUP } from '$lib/authoring/scene/scene-pick-source';
 import { sectionMeshes, type SectionInput } from '$lib/authoring/stage/slice/mesh-plane-section';
 import { sectionForSlice } from '$lib/authoring/stage/slice/slice-section';

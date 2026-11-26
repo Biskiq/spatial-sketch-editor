@@ -140,6 +140,7 @@ const SHELL_SURFACES = [
 	'lib/authoring/stage/shell/EditorHead.svelte',
 	'lib/authoring/stage/shell/EditorCard.svelte',
 	'lib/authoring/stage/shell/EditorIndex.svelte',
+	'lib/authoring/stage/shell/editor-index.css',
 	'lib/authoring/adapters/layout/LayoutOpeningPalette.svelte',
 	'lib/authoring/experience/ExperienceDock.svelte',
 	'lib/authoring/experience/ExperienceGuide.svelte',

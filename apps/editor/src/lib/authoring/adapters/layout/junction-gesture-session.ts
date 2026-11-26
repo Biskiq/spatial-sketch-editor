@@ -20,7 +20,8 @@ import {
 	planNumericFields,
 	type PlanNumericEntryState
 } from '$lib/authoring/layout/plan-numeric-entry';
-import { LAYOUT_JUNCTION_MOVE_KIND, layoutSurfaceLineageConsequence, type WallManipulationRequest } from './precision';
+import type { WallManipulationRequest } from './precision-frames';
+import { LAYOUT_JUNCTION_MOVE_KIND, layoutSurfaceLineageConsequence } from './precision';
 import { DRAG_GRID_SNAP_CSS_PX, type LayoutSnapWinner } from './snap';
 import {
 	DRAFTING_SNAP_METERS,

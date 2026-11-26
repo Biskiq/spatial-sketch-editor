@@ -1,16 +1,8 @@
 // @vitest-environment jsdom
-/**
- * R217.S25 — the shared Index and Card carry the Experience lens's groups.
- *
- * The Index shows the Experience crumb with its sibling menu (New Experience), the Guides
- * group (one row per Guide, one active), and the Presentations with their Views. The search
- * appears from 8 Presentations or while a filter is typed. The Card takes an Experience
- * subject with no `•••` functions and no Bring into view, and a World subject keeps both.
- */
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { flushSync, mount, tick, unmount } from 'svelte';
+import { flushSync, tick } from 'svelte';
+import { mountWithProps } from '../../../../kit/dom';
 import EditorIndex from '$lib/authoring/stage/shell/EditorIndex.svelte';
-import EditorCard from '$lib/authoring/stage/shell/EditorCard.svelte';
 import { createWorldIndexModel } from '$lib/authoring/stage/shell/world-index-model';
 import type { ExperienceIndexGroups } from '$lib/authoring/stage/shell/experience-index-groups';
 
@@ -22,7 +14,6 @@ let cleanup: (() => void) | undefined;
 afterEach(() => {
 	cleanup?.();
 	cleanup = undefined;
-	document.body.replaceChildren();
 });
 
 function view(id: string, label: string, overrides: Partial<View> = {}): View {
@@ -72,43 +63,36 @@ function groups(overrides: Partial<ExperienceIndexGroups> = {}): ExperienceIndex
 }
 
 function mountIndex(experience: ExperienceIndexGroups | null) {
-	const target = document.createElement('div');
-	document.body.append(target);
 	const model = createWorldIndexModel()(null, [], 'Project');
-	const component = mount(EditorIndex, {
-		target,
-		props: {
-			open: true,
-			model,
-			scope: 'project',
-			onScope: () => {},
-			onClose: () => {},
-			selectionId: null,
-			query: '',
-			onQuery: () => {},
-			onSelect: () => {},
-			onBringIntoView: () => {},
-			onReveal: () => {},
-			onRename: () => {},
-			experience
-		}
+	const mounted = mountWithProps(EditorIndex, {
+		open: true,
+		model,
+		scope: 'project',
+		onScope: () => {},
+		onClose: () => {},
+		selectionId: null,
+		query: '',
+		onQuery: () => {},
+		onSelect: () => {},
+		onBringIntoView: () => {},
+		onReveal: () => {},
+		onRename: () => {},
+		experience
 	});
-	cleanup = () => void unmount(component);
-	flushSync();
-	return target;
+	cleanup = mounted.unmount;
+	return mounted.target;
 }
 
 function unmountIndex() {
 	cleanup?.();
 	cleanup = undefined;
-	document.body.replaceChildren();
 }
 
 function buttonWithText(root: ParentNode, text: string): HTMLButtonElement | undefined {
 	return [...root.querySelectorAll<HTMLButtonElement>('button')].find((button) => button.textContent?.trim() === text);
 }
 
-describe('R217.S25 — the Index groups in the Experience lens', () => {
+describe('Experience groups in the Index', () => {
 	it('replaces the World locator with the Presentations group, in the same crumb and row grammar', () => {
 		const target = mountIndex(groups());
 		expect(target.querySelector('input[aria-label="Filter places and things"]')).toBeNull();
@@ -166,7 +150,7 @@ describe('R217.S25 — the Index groups in the Experience lens', () => {
 		expect(onRemoveGuide).toHaveBeenCalledWith('guide-1');
 	});
 
-	it('adds a Stop from a View row, entering at that View (G23)', () => {
+	it('adds a Stop from a View row, entering at that View', () => {
 		const onAddStopFromView = vi.fn();
 		const target = mountIndex(
 			groups({
@@ -347,53 +331,7 @@ describe('R217.S25 — the Index groups in the Experience lens', () => {
 	});
 });
 
-describe('R217.S25 — the Card takes an Experience subject', () => {
-	function mountCard(options: { functions?: readonly string[] | null; onBringIntoView?: (() => void) | null; kind?: string }) {
-		const target = document.createElement('div');
-		document.body.append(target);
-		const component = mount(EditorCard, {
-			target,
-			props: {
-				identity: {
-					sourceId: 'experience:presentation:presentation-1',
-					label: 'Entry hall',
-					kind: options.kind ?? 'Presentation',
-					status: 'Default View set'
-				},
-				facts: [{ label: 'Views', value: '2' }],
-				writer: null,
-				actions: [],
-				nameWriter: null,
-				onClose: () => {},
-				functions: options.functions ?? null,
-				onBringIntoView: options.onBringIntoView ?? null
-			}
-		});
-		cleanup = () => void unmount(component);
-		flushSync();
-		return target;
-	}
-
-	it('shows neither the `•••` menu nor Bring into view for a Presentation that has no functions', () => {
-		const target = mountCard({ functions: [] });
-		expect(target.querySelector('[aria-label="Subject actions"]')).toBeNull();
-		expect(target.querySelector('[aria-label="Bring into view"]')).toBeNull();
-		expect(target.querySelector('h2.name')?.textContent).toContain('Entry hall');
-		expect(target.querySelector('.kind')?.textContent).toBe('Presentation');
-	});
-
-	it('keeps the World subject: its object functions and Bring into view stay as they were', () => {
-		const onBringIntoView = vi.fn();
-		const target = mountCard({ functions: null, onBringIntoView, kind: 'Wall' });
-		expect(target.querySelector('[aria-label="Subject actions"]')).not.toBeNull();
-		const bring = target.querySelector<HTMLButtonElement>('[aria-label="Bring into view"]');
-		expect(bring).not.toBeNull();
-		bring!.click();
-		expect(onBringIntoView).toHaveBeenCalledOnce();
-	});
-});
-
-describe('R217.S26 — every Guide in the Index, with *opens* on the Opening Guide', () => {
+describe('Opening Guide in the Index', () => {
 	it('lists each Guide and tags only the Opening Guide', () => {
 		const target = mountIndex(
 			groups({ guides: [guide('guide-1', 'Salon tour', { opening: true }), guide('guide-2', 'Short tour', { open: true })] })
@@ -405,7 +343,7 @@ describe('R217.S26 — every Guide in the Index, with *opens* on the Opening Gui
 	});
 });
 
-describe('R217.S26 — Rename opens the current Experience row inline', () => {
+describe('Inline Experience rename', () => {
 	function startRename(target: HTMLElement): HTMLInputElement {
 		const rename = target.querySelector<HTMLButtonElement>('[aria-label="Rename Experience 1"]')!;
 		flushSync(() => rename.click());

@@ -1,15 +1,12 @@
 /**
- * Heavy lane (T4): the wall-mesh watertight matrices.
+ * Heavy lane: the wall-mesh watertight matrices.
  *
- * Moved verbatim out of `wall-mesh-builder.test.ts`, which keeps the cheap
- * single-case representatives in `test:fast` (plain rectangle manifold,
- * L-shaped weld, lintel/reveal surfaces, UVs, winding guard, rejections,
- * pickRanges). Every `it` here sweeps a family of corner, arch and opening
- * profiles and asserts watertightness across the whole family — the matrix is
- * the invariant, so the section belongs in `test:heavy`. The `describe` title
- * is retained so the full test names are unchanged.
+ * Every `it` sweeps a family of corner, arch and opening profiles and asserts
+ * watertightness across the whole family — the matrix is the invariant, so the
+ * section belongs in `test:heavy`. `wall-mesh.test.ts` keeps the cheap
+ * single-case representatives.
  */import { describe, expect, it } from 'vitest';
-import { buildRoomWallMesh } from '$lib/layout/wall-mesh-builder';
+import { buildRoomWallMesh } from '$lib/layout/wall-mesh-room';
 import {
 	g1DocumentWithRooms,
 	g1LShapedDocument,

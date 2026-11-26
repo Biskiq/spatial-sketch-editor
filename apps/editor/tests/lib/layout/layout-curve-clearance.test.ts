@@ -19,7 +19,7 @@ import { describe, expect, it } from 'vitest';
 
 import { compileWallFirstLayoutGeometry, CURVE_SELF_INTERSECTION_TOLERANCE, deriveChainSpans, LAYOUT_GEOMETRY_EPSILON, sampleSegment, type CurveSample, type LayoutVec2 } from '@portfolio/layout-core/geometry';
 import { createEmptyWallFirstLayoutDocument, LAYOUT_WALL_FIRST_FORMAT_VERSION, legJoinsByWall, wallCenterlineSegment, wallCubicChain, wallOffsetClearanceFailure, type LayoutDocumentWallFirst, type LayoutWall, type LayoutWallCubicSpan, type LayoutWallCurveKnot } from '@portfolio/layout-core/wall';
-import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-builder';
+import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-standalone';
 
 const LINE = { kind: 'line' } as const;
 

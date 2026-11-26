@@ -13,6 +13,8 @@ import { describe, expect, it } from 'vitest';
 import { EDITOR_LIB, parseModuleSpecifiers, stripComments } from '../../helpers/import-closure';
 
 const MODULE = path.join(EDITOR_LIB, 'authoring/experience/experience-controller.svelte.ts');
+const SESSION = path.join(EDITOR_LIB, 'authoring/experience/experience-camera-session.svelte.ts');
+const CAMERA_MODULE = /camera|three|threlte/i;
 
 describe('experience-controller module boundary', () => {
 	it('names no DOM global or element type', () => {
@@ -22,6 +24,17 @@ describe('experience-controller module boundary', () => {
 
 	it('imports no Camera or renderer module, so it holds no second Camera state', () => {
 		const specifiers = parseModuleSpecifiers(readFileSync(MODULE, 'utf8'));
-		expect(specifiers.filter((specifier) => /camera|three|threlte/i.test(specifier))).toEqual([]);
+		// The Camera-path session is first-party Experience state (occurrence and anchors),
+		// not a Camera import; its own boundary is checked below.
+		expect(
+			specifiers.filter(
+				(specifier) => CAMERA_MODULE.test(specifier) && specifier !== './experience-camera-session.svelte'
+			)
+		).toEqual([]);
+	});
+
+	it('keeps the Camera-path session free of Camera and renderer imports', () => {
+		const specifiers = parseModuleSpecifiers(readFileSync(SESSION, 'utf8'));
+		expect(specifiers.filter((specifier) => CAMERA_MODULE.test(specifier))).toEqual([]);
 	});
 });

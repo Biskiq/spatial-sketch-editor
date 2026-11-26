@@ -33,6 +33,10 @@ const HOME_FILES = [
 	path.join(EXPERIENCE_DIR, 'experience-homes.ts'),
 	path.join(SHELL_DIR, 'experience-index-groups.ts'),
 	path.join(SHELL_DIR, 'EditorIndex.svelte'),
+	path.join(SHELL_DIR, 'EditorIndexExperiences.svelte'),
+	path.join(SHELL_DIR, 'EditorIndexPresentations.svelte'),
+	path.join(SHELL_DIR, 'EditorIndexGuides.svelte'),
+	path.join(SHELL_DIR, 'EditorIndexWorld.svelte'),
 	path.join(SHELL_DIR, 'EditorCard.svelte')
 ];
 
@@ -125,7 +129,7 @@ describe('R217.S25 — the Experience home map', () => {
 
 	it('names each Experience action in one home: New Experience in the Index crumb menu, Capture on the dock', () => {
 		const homes: Record<string, { pattern: RegExp; home: string }> = {
-			'New Experience': { pattern: /New Experience/, home: 'EditorIndex.svelte' },
+			'New Experience': { pattern: /New Experience/, home: 'EditorIndexExperiences.svelte' },
 			'Capture control': { pattern: /aria-label="Capture"/, home: 'ExperienceDock.svelte' }
 		};
 		const sources = authoringSources();

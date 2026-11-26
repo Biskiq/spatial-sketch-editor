@@ -6,14 +6,7 @@ import type { LayoutVec2, CompiledRegion } from '@portfolio/layout-core/geometry
 import { type StageAdapterContext } from '$lib/authoring/stage/stage-adapter-host';
 import { stageLayout } from '$lib/authoring/stage/stage-adapter-host';
 
-import {
-	wallFrame,
-	openWallFrame,
-	wallStationFrame,
-	type OpenWallFrame,
-	type WallFrame,
-	type WallStationFrame
-} from './precision';
+import { wallFrame, openWallFrame, wallStationFrame, type OpenWallFrame, type WallFrame, type WallStationFrame } from './precision-frames';
 import { type WallHandlePoints } from './wall-gesture';
 
 export type OpeningMarkSubject = {

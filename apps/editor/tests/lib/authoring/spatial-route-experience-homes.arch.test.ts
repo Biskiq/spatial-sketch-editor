@@ -1506,6 +1506,10 @@ describe('R217.S25 — Preview and Undo (D-harvest "Kept")', () => {
 			'src/lib/authoring/experience/ExperienceExperienceWriter.svelte',
 			'src/lib/authoring/experience/ExperienceSubjectWriter.svelte',
 			'src/lib/authoring/stage/shell/EditorIndex.svelte',
+			'src/lib/authoring/stage/shell/EditorIndexExperiences.svelte',
+			'src/lib/authoring/stage/shell/EditorIndexPresentations.svelte',
+			'src/lib/authoring/stage/shell/EditorIndexGuides.svelte',
+			'src/lib/authoring/stage/shell/EditorIndexWorld.svelte',
 			'src/lib/authoring/stage/shell/EditorCard.svelte'
 		];
 		for (const file of homes) {

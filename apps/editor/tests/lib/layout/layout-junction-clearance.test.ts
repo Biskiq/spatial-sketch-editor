@@ -18,8 +18,8 @@ import { describe, expect, it } from 'vitest';
 
 import { compileWallFirstLayoutGeometry, type CompiledJunctionSurface, type CompiledJunctionLeg, type CompiledJunctionResolution, type CompiledLegJoin, type LayoutVec2 } from '@portfolio/layout-core/geometry';
 import { joinSeamFailure, junctionSeamFailureOf, legJoinsByWall, resolveJunctionGeometry, wallEndsSeamFailure, type LayoutDocumentWallFirst, type LayoutWall } from '@portfolio/layout-core/wall';
-import { buildStandaloneWallMesh as buildEditorWallMesh } from '$lib/layout/wall-mesh-builder';
-import { buildStandaloneWallMesh as buildMuseumWallMesh } from '$lib/layout/wall-mesh-builder';
+import { buildStandaloneWallMesh as buildEditorWallMesh } from '$lib/layout/wall-mesh-standalone';
+import { buildStandaloneWallMesh as buildMuseumWallMesh } from '$lib/layout/wall-mesh-standalone';
 
 function wall(id: string, startJunctionId: string, endJunctionId: string): LayoutWall {
 	return {

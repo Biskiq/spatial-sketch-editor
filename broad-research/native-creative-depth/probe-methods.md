@@ -46,7 +46,7 @@ The first revision of this package compared a 40-opening wall built as a Manifol
 
 **Validity.** Vertices are welded by position rounded to 10⁻⁵ m. A directed edge with no opposite partner counts as an *open edge*. Zero open edges means a closed two-manifold without T-junctions. The signed volume is compared with 14.4 m³.
 
-**Production path.** A one-wall document is compiled with `compileWallFirstLayoutGeometry` and meshed with `buildStandaloneWallMesh` from [`apps/editor/src/lib/layout/wall-mesh-builder.ts`](../../apps/editor/src/lib/layout/wall-mesh-builder.ts). There are four variants:
+**Production path.** A one-wall document is compiled with `compileWallFirstLayoutGeometry` and meshed with `buildStandaloneWallMesh` from [`apps/editor/src/lib/layout/wall-mesh-standalone.ts`](../../apps/editor/src/lib/layout/wall-mesh-standalone.ts). There are four variants:
 
 - a straight wall, or a curved one-knot cubic chain with a 20 m chord and 2 m sagitta;
 - rectangular or rounded opening heads.
@@ -295,7 +295,7 @@ import {
 	type LayoutWall,
 	type LayoutWallCenterline
 } from '@portfolio/layout-core';
-import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-builder';
+import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-standalone';
 
 const N = 40, W = 20, OW = 0.3, OH = 1, SILL = 1;
 

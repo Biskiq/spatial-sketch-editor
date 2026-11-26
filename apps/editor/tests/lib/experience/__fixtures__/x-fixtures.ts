@@ -21,17 +21,9 @@ import type { AuthoringIntent } from '@portfolio/project-model/f4';
 import type { ScenePrimitiveEntity } from '@portfolio/project-model/scene';
 import { computeEnvelopeSourceContentId, SCENE_UNIT_FORMAT_VERSION, serializeProjectEnvelope, validateProjectEnvelope, type	ExperienceTransitionKind, type ExperiencePresentationView, type ProjectEnvelope } from '@portfolio/project-model/units';
 import { createUnitAcceptanceProfile } from '@portfolio/project-model/units/planning';
-import { createAcceptanceCoordinator } from '$lib/authoring/f4/acceptance-coordinator';	import {
-	cameraConnectionCreateIntent,
-	cameraConnectionUpdateIntent,
-	captureBindIntent,
-	capturedViewPose,
-	createExperienceIntent,
-	guideCreateIntent,
-	presentationUpdateIntent,
-	stopCreateIntent,
-	stopUpdateIntent
-} from '$lib/authoring/experience/commands';
+import { createAcceptanceCoordinator } from '$lib/authoring/f4/acceptance-coordinator';	import { cameraConnectionCreateIntent, cameraConnectionUpdateIntent } from '$lib/authoring/experience/commands-presentation';
+import { captureBindIntent, createExperienceIntent, guideCreateIntent, presentationUpdateIntent, stopCreateIntent, stopUpdateIntent } from '$lib/authoring/experience/commands-structure';
+import { capturedViewPose } from '$lib/authoring/experience/commands-references';
 import { createUnitProject } from '../../authoring/__fixtures__/unit-envelope-fixtures';
 import { freshCapture } from '../../layout/__fixtures__/layout-id-capture';
 

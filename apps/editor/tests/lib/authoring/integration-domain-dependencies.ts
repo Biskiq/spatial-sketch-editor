@@ -7,6 +7,7 @@ const domainToCore: readonly [source: string, targets: readonly string[]][] = [
 
 	// Experience components share the editor's glyphs and snapshot handoff.
 	['experience/ExperienceMarks.svelte', ['shell/StageSticker.svelte']],
+	['experience/ExperienceGuideHeader.svelte', ['shell/ShellIcon.svelte']],
 	['experience/ExperiencePathMovement.svelte', ['shell/ShellIcon.svelte']],
 	['experience/ExperiencePresentationWriter.svelte', ['shell/ShellIcon.svelte']],
 	['experience/ExperienceSnapshot.svelte', ['shell/ShellIcon.svelte', 'stage-snapshots.ts']],
@@ -19,6 +20,8 @@ const domainToCore: readonly [source: string, targets: readonly string[]][] = [
 	['experience/experience-card-model.ts', ['stage-facade.ts (type)']],
 	['experience/experience-index.ts', ['shell/experience-index-groups.ts (type)']],
 	['experience/experience-lens.svelte.ts', ['stage-axis-travel.ts', 'stage-input.ts', 'stage-facade.ts (type)']],
+	['experience/experience-lens-tools.svelte.ts', ['stage-input.ts']],
+	['experience/experience-view-edit-session.svelte.ts', ['stage-axis-travel.ts']],
 	['experience/experience-preview.svelte.ts', ['stage-facade.ts (type)']],
 	['experience/preview-handover.ts', ['camera-session.ts (type)']],
 
@@ -28,9 +31,15 @@ const domainToCore: readonly [source: string, targets: readonly string[]][] = [
 		'paper-plan.ts', 'paper-plan.ts (type)', 'slice/slice-clip-2d.ts', 'slice/slice-cut.ts',
 		'slice/slice-cut.ts (type)', 'slice/slice-resolved.ts', 'stage-facade.ts (type)'
 	]],
+	['layout/plan-pick-geometry.ts', [
+		'cutaway/cutaway-resolved.ts', 'cutaway/cutaway-resolved.ts (type)', 'lift-ink.ts',
+		'paper-plan.ts', 'paper-plan.ts (type)', 'slice/slice-clip-2d.ts', 'slice/slice-cut.ts',
+		'slice/slice-cut.ts (type)', 'slice/slice-resolved.ts', 'stage-facade.ts (type)'
+	]],
 
 	// Shared Material Editor wheel, and the current Library browse-view and selection contracts.
 	['library/LibraryMaterialEditor.svelte', ['shell/StagePaintWheel.svelte']],
+	['library/LibraryMaterialEditorFields.svelte', ['shell/StagePaintWheel.svelte']],
 	['library/StageLibrary.svelte', ['route/stage-shell-state.svelte.ts (type)']],
 	['library/library-target.ts', ['semantic-selection.ts (type)']],
 	// Existing Look runtimes consume selection identities and accepted facade types.

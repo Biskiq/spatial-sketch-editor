@@ -50,11 +50,8 @@ import {
 	openingRefusalWords,
 	type OpeningCreatePayload
 } from './opening-planners';
-import {
-	parseMeasureInput,
-	wallStationFrame,
-	wallStationNearPoint
-} from './precision';
+import { wallStationFrame, wallStationNearPoint } from './precision-frames';
+import { parseMeasureInput } from './precision';
 import type { LayoutSessionPorts } from './session-ports';
 import { pointerDatumPoint, projectedScene } from './stage-pointer';
 import { openingSpanOf } from './layout-subjects';

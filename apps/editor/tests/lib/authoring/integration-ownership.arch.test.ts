@@ -528,6 +528,7 @@ const presentations = new Set([
 	...REGION_MOUNTS.map(([, file]) => file),
 	...FEATURES.flatMap(({ regions }) => regions),
 	authoringRoot + 'look/FinishCardSection.svelte',
+	authoringRoot + 'look/FinishCardRows.svelte',
 	authoringRoot + 'workspace/world/WorldLeading.svelte',
 	authoringRoot + 'workspace/world/WorldTrailing.svelte'
 ]);

@@ -43,17 +43,9 @@ import {
 	createCardFieldsInstrument,
 	layoutCardFieldsInput
 } from '$lib/authoring/adapters/layout/adapter-support';
-import {
-	LAYOUT_WALL_ANGLE_KIND,
-	LAYOUT_WALL_HEIGHT_KIND,
-	LAYOUT_WALL_LENGTH_KIND,
-	LAYOUT_WALL_MOVE_KIND,
-	LAYOUT_WALL_THICKNESS_KIND,
-	curvedWallFrame,
-	curvedWallPointAt,
-	wallFrame,
-	wallManipulationIntent
-} from '$lib/authoring/adapters/layout/precision';
+import { curvedWallFrame, curvedWallPointAt, wallFrame } from '$lib/authoring/adapters/layout/precision-frames';
+import { LAYOUT_WALL_ANGLE_KIND, LAYOUT_WALL_HEIGHT_KIND, LAYOUT_WALL_LENGTH_KIND, LAYOUT_WALL_MOVE_KIND, LAYOUT_WALL_THICKNESS_KIND } from '$lib/authoring/adapters/layout/precision';
+import { wallManipulationIntent } from '$lib/authoring/adapters/layout/precision-intents';
 import { typedLengthTiming } from '../../../perf/lib/spot-measurement';
 import type { PerfRecord } from '$lib/platform/perf-marks';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';

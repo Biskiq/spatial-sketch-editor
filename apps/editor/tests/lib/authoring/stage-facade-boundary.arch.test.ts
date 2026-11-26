@@ -40,7 +40,8 @@ const allowed = new Map<string, Record<string, readonly string[]>>([
 		[camera]: ['projectWorld'],
 		'../semantic-selection': ['primaryEntry', 'sameReference'],
 		'../stage-handles': ['admitStageHandles', 'projectStageHandles'],
-		'../stage-height-sheet': ['mergeStageHeightTicks']
+		'../stage-height-sheet': ['mergeStageHeightTicks'],
+		'./contribution-view-entries': ['findEntriesOf', 'inkReadingsOf', 'tasksOf']
 	}],
 	[owner('selection-pick'), {
 		'$lib/platform/perf-marks': ['perfMark', 'perfMarksEnabled'],
@@ -87,8 +88,9 @@ const kernelEntries = new Set([
 ].map((specifier) => moduleTarget(facade, specifier)));
 const sharedHelpers = new Set([
 	'../plan-parameters', '../semantic-selection', '../stage-drafting', '../stage-handles',
-	'../stage-height-sheet', '../stage-pick', '$lib/platform/perf-marks'
+	'../stage-height-sheet', '../stage-pick', '$lib/platform/perf-marks',
 ].map((specifier) => moduleTarget(owner('selection-pick'), specifier)));
+sharedHelpers.add(moduleTarget(owner('contribution-view.ts'), './contribution-view-entries.ts'));
 
 function forbiddenClosure(root: string, sourceOf = read): string[] {
 	const seen = new Set([root]);

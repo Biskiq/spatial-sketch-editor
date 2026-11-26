@@ -1,272 +1,515 @@
 {
-	"src/lib/authoring/workspace/host/workspace-host.svelte.ts": {
-		"lines": 921,
-		"imports": 70,
-		"state": 0,
-		"derived": 0,
-		"effects": 0,
-		"functions": 1,
-		"arrows": 311
-	},
-	"src/lib/authoring/workspace/host/wiring/project-session.ts": {
-		"lines": 38,
-		"imports": 1,
-		"state": 0,
-		"derived": 0,
-		"effects": 0,
-		"functions": 1,
-		"arrows": 2
-	},
-	"src/lib/authoring/workspace/host/wiring/stage-input.ts": {
-		"lines": 72,
-		"imports": 2,
-		"state": 0,
-		"derived": 0,
-		"effects": 0,
-		"functions": 1,
-		"arrows": 13
-	},
-	"src/lib/authoring/workspace/host/wiring/stage-keyboard.ts": {
-		"lines": 122,
-		"imports": 2,
-		"state": 0,
-		"derived": 0,
-		"effects": 0,
-		"functions": 1,
-		"arrows": 19
-	},
-	"src/lib/authoring/workspace/host/wiring/stage-project-epoch.ts": {
-		"lines": 43,
-		"imports": 1,
-		"state": 0,
-		"derived": 0,
-		"effects": 0,
-		"functions": 1,
-		"arrows": 0
-	},
-	"src/lib/authoring/workspace/host/wiring/stage-shell-commands.ts": {
-		"lines": 60,
-		"imports": 1,
-		"state": 0,
-		"derived": 0,
-		"effects": 0,
-		"functions": 1,
-		"arrows": 0
-	},
-	"src/lib/authoring/workspace/host/wiring/stage-shell-state.ts": {
-		"lines": 38,
-		"imports": 1,
-		"state": 0,
-		"derived": 0,
-		"effects": 0,
-		"functions": 1,
-		"arrows": 2
-	},
-	"src/lib/authoring/workspace/host/wiring/stage-viewport.ts": {
-		"lines": 46,
-		"imports": 3,
-		"state": 0,
-		"derived": 0,
-		"effects": 0,
-		"functions": 1,
-		"arrows": 13
-	},
-	"src/lib/authoring/look/appearance-feature.svelte.ts": {
-		"lines": 118,
-		"imports": 10,
-		"state": 0,
-		"derived": 0,
-		"effects": 0,
-		"functions": 1,
-		"arrows": 11
-	},
-	"src/lib/authoring/artwork/artwork-feature.svelte.ts": {
-		"lines": 34,
-		"imports": 2,
-		"state": 0,
-		"derived": 0,
-		"effects": 0,
-		"functions": 1,
-		"arrows": 0
-	},
-	"src/lib/authoring/experience/experience-feature.svelte.ts": {
-		"lines": 61,
-		"imports": 5,
-		"state": 0,
-		"derived": 0,
-		"effects": 0,
-		"functions": 1,
-		"arrows": 2
-	},
-	"src/lib/authoring/library/library-feature.svelte.ts": {
-		"lines": 14,
-		"imports": 1,
-		"state": 0,
-		"derived": 0,
-		"effects": 0,
-		"functions": 1,
-		"arrows": 0
-	},
-	"src/lib/authoring/look/light-inspection-feature.svelte.ts": {
-		"lines": 51,
-		"imports": 4,
-		"state": 0,
-		"derived": 0,
-		"effects": 0,
-		"functions": 1,
-		"arrows": 2
-	},
-	"src/lib/authoring/look/sky-feature.svelte.ts": {
-		"lines": 22,
-		"imports": 1,
-		"state": 0,
-		"derived": 0,
-		"effects": 0,
-		"functions": 1,
-		"arrows": 0
-	},
-	"src/lib/authoring/stage/readings/layout-readings-feature.svelte.ts": {
-		"lines": 79,
-		"imports": 7,
-		"state": 0,
-		"derived": 0,
-		"effects": 0,
-		"functions": 1,
-		"arrows": 0
-	},
-	"src/lib/authoring/studio/studio-feature.svelte.ts": {
-		"lines": 112,
-		"imports": 6,
-		"state": 0,
-		"derived": 0,
-		"effects": 0,
-		"functions": 1,
-		"arrows": 23
-	},
-	"src/lib/authoring/stage/route/stage-shell-state.svelte.ts": {
-		"lines": 905,
-		"imports": 26,
-		"state": 55,
-		"derived": 10,
-		"effects": 6,
-		"functions": 23,
-		"arrows": 45
-	},
-	"src/lib/authoring/stage/route/stage-shell-commands.ts": {
-		"lines": 876,
-		"imports": 18,
-		"state": 0,
-		"derived": 0,
-		"effects": 0,
-		"functions": 31,
-		"arrows": 36
-	},
-	"src/lib/authoring/stage/route/stage-keyboard.ts": {
-		"lines": 465,
-		"imports": 11,
-		"state": 0,
-		"derived": 0,
-		"effects": 0,
-		"functions": 6,
-		"arrows": 87
-	},
-	"src/lib/authoring/stage/route/stage-project-epoch.svelte.ts": {
-		"lines": 372,
-		"imports": 12,
-		"state": 4,
-		"derived": 0,
-		"effects": 0,
-		"functions": 7,
-		"arrows": 18
-	},
-	"src/lib/authoring/stage/stage-adapter-host.ts": {
-		"lines": 244,
-		"imports": 11,
-		"state": 0,
-		"derived": 0,
-		"effects": 0,
-		"functions": 2,
-		"arrows": 9
-	},
-	"src/lib/authoring/stage/shell/StageViewportRegion.svelte": {
-		"lines": 1021,
-		"imports": 12,
-		"state": 4,
-		"derived": 0,
-		"effects": 2,
-		"functions": 2,
-		"arrows": 75
-	},
-	"src/lib/authoring/stage/shell/StageCanvas.svelte": {
-		"lines": 699,
-		"imports": 57,
-		"state": 4,
-		"derived": 23,
-		"effects": 2,
-		"functions": 4,
-		"arrows": 25
-	},
-	"src/lib/authoring/stage/shell/EditorHead.svelte": {
-		"lines": 1111,
-		"imports": 9,
-		"state": 6,
-		"derived": 9,
-		"effects": 1,
-		"functions": 14,
-		"arrows": 53
-	},
-	"src/lib/authoring/stage/shell/StageToolbars.svelte": {
-		"lines": 553,
-		"imports": 10,
-		"state": 1,
-		"derived": 0,
-		"effects": 1,
-		"functions": 1,
-		"arrows": 32
-	},
-	"src/lib/authoring/stage/shell/StagePanels.svelte": {
-		"lines": 263,
-		"imports": 6,
-		"state": 0,
-		"derived": 0,
-		"effects": 0,
-		"functions": 1,
-		"arrows": 13
-	},
-	"src/lib/authoring/project-session/project-session.svelte.ts": {
-		"lines": 1125,
-		"imports": 15,
-		"state": 8,
-		"derived": 0,
-		"effects": 0,
-		"functions": 23,
-		"arrows": 17
-	},
-	"src/lib/authoring/look/finish-authoring.svelte.ts": {
-		"lines": 2284,
-		"imports": 24,
-		"state": 10,
-		"derived": 0,
-		"effects": 0,
-		"functions": 74,
-		"arrows": 119
-	},
-	"src/lib/authoring/workspace/host/wiring/stage-canvas-views.svelte.ts": {
-		"lines": 75,
-		"imports": 8,
-		"state": 0,
-		"derived": 2,
-		"effects": 0,
-		"functions": 1,
-		"arrows": 2
-	},
-	"src/lib/authoring/workspace/host/wiring/stage-region-models.svelte.ts": {
-		"lines": 220,
-		"imports": 15,
-		"state": 0,
-		"derived": 9,
-		"effects": 0,
-		"functions": 2,
-		"arrows": 53
-	}
+  "src/lib/authoring/workspace/host/workspace-host.svelte.ts": {
+    "lines": 921,
+    "imports": 70,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 1,
+    "arrows": 311
+  },
+  "src/lib/authoring/workspace/host/wiring/project-session.ts": {
+    "lines": 38,
+    "imports": 1,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 1,
+    "arrows": 2
+  },
+  "src/lib/authoring/workspace/host/wiring/stage-input.ts": {
+    "lines": 72,
+    "imports": 2,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 1,
+    "arrows": 13
+  },
+  "src/lib/authoring/workspace/host/wiring/stage-keyboard.ts": {
+    "lines": 122,
+    "imports": 2,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 1,
+    "arrows": 19
+  },
+  "src/lib/authoring/workspace/host/wiring/stage-project-epoch.ts": {
+    "lines": 43,
+    "imports": 1,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 1,
+    "arrows": 0
+  },
+  "src/lib/authoring/workspace/host/wiring/stage-shell-commands.ts": {
+    "lines": 60,
+    "imports": 1,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 1,
+    "arrows": 0
+  },
+  "src/lib/authoring/workspace/host/wiring/stage-shell-state.ts": {
+    "lines": 38,
+    "imports": 1,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 1,
+    "arrows": 2
+  },
+  "src/lib/authoring/workspace/host/wiring/stage-viewport.ts": {
+    "lines": 46,
+    "imports": 3,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 1,
+    "arrows": 13
+  },
+  "src/lib/authoring/look/appearance-feature.svelte.ts": {
+    "lines": 118,
+    "imports": 10,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 1,
+    "arrows": 11
+  },
+  "src/lib/authoring/artwork/artwork-feature.svelte.ts": {
+    "lines": 34,
+    "imports": 2,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 1,
+    "arrows": 0
+  },
+  "src/lib/authoring/experience/experience-feature.svelte.ts": {
+    "lines": 61,
+    "imports": 5,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 1,
+    "arrows": 2
+  },
+  "src/lib/authoring/library/library-feature.svelte.ts": {
+    "lines": 14,
+    "imports": 1,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 1,
+    "arrows": 0
+  },
+  "src/lib/authoring/look/light-inspection-feature.svelte.ts": {
+    "lines": 51,
+    "imports": 4,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 1,
+    "arrows": 2
+  },
+  "src/lib/authoring/look/sky-feature.svelte.ts": {
+    "lines": 22,
+    "imports": 1,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 1,
+    "arrows": 0
+  },
+  "src/lib/authoring/stage/readings/layout-readings-feature.svelte.ts": {
+    "lines": 79,
+    "imports": 7,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 1,
+    "arrows": 0
+  },
+  "src/lib/authoring/studio/studio-feature.svelte.ts": {
+    "lines": 112,
+    "imports": 6,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 1,
+    "arrows": 23
+  },
+  "src/lib/authoring/stage/route/stage-shell-state.svelte.ts": {
+    "lines": 837,
+    "imports": 27,
+    "state": 44,
+    "derived": 10,
+    "effects": 3,
+    "functions": 25,
+    "arrows": 40
+  },
+  "src/lib/authoring/stage/route/stage-shell-commands.ts": {
+    "lines": 690,
+    "imports": 18,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 23,
+    "arrows": 33
+  },
+  "src/lib/authoring/stage/route/stage-keyboard.ts": {
+    "lines": 465,
+    "imports": 11,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 6,
+    "arrows": 87
+  },
+  "src/lib/authoring/stage/route/stage-project-epoch.svelte.ts": {
+    "lines": 372,
+    "imports": 12,
+    "state": 4,
+    "derived": 0,
+    "effects": 0,
+    "functions": 7,
+    "arrows": 18
+  },
+  "src/lib/authoring/stage/stage-adapter-host.ts": {
+    "lines": 244,
+    "imports": 11,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 2,
+    "arrows": 9
+  },
+  "src/lib/authoring/stage/shell/StageViewportRegion.svelte": {
+    "lines": 561,
+    "imports": 14,
+    "state": 2,
+    "derived": 0,
+    "effects": 2,
+    "functions": 0,
+    "arrows": 51
+  },
+  "src/lib/authoring/stage/shell/StageCanvas.svelte": {
+    "lines": 699,
+    "imports": 57,
+    "state": 4,
+    "derived": 23,
+    "effects": 2,
+    "functions": 4,
+    "arrows": 25
+  },
+  "src/lib/authoring/stage/shell/EditorHead.svelte": {
+    "lines": 794,
+    "imports": 12,
+    "state": 5,
+    "derived": 9,
+    "effects": 1,
+    "functions": 14,
+    "arrows": 48
+  },
+  "src/lib/authoring/stage/shell/StageToolbars.svelte": {
+    "lines": 553,
+    "imports": 10,
+    "state": 1,
+    "derived": 0,
+    "effects": 1,
+    "functions": 1,
+    "arrows": 32
+  },
+  "src/lib/authoring/stage/shell/StagePanels.svelte": {
+    "lines": 263,
+    "imports": 6,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 1,
+    "arrows": 13
+  },
+  "src/lib/authoring/project-session/project-session.svelte.ts": {
+    "lines": 1125,
+    "imports": 15,
+    "state": 8,
+    "derived": 0,
+    "effects": 0,
+    "functions": 23,
+    "arrows": 17
+  },
+  "src/lib/authoring/look/finish-authoring.svelte.ts": {
+    "lines": 1253,
+    "imports": 21,
+    "state": 6,
+    "derived": 0,
+    "effects": 0,
+    "functions": 39,
+    "arrows": 71
+  },
+  "src/lib/authoring/workspace/host/wiring/stage-canvas-views.svelte.ts": {
+    "lines": 75,
+    "imports": 8,
+    "state": 0,
+    "derived": 2,
+    "effects": 0,
+    "functions": 1,
+    "arrows": 2
+  },
+  "src/lib/authoring/workspace/host/wiring/stage-region-models.svelte.ts": {
+    "lines": 220,
+    "imports": 15,
+    "state": 0,
+    "derived": 9,
+    "effects": 0,
+    "functions": 2,
+    "arrows": 53
+  },
+  "src/lib/authoring/look/finish-library.svelte.ts": {
+    "lines": 717,
+    "imports": 19,
+    "state": 4,
+    "derived": 0,
+    "effects": 0,
+    "functions": 23,
+    "arrows": 32
+  },
+  "src/lib/authoring/look/finish-authoring-contract.ts": {
+    "lines": 237,
+    "imports": 10,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 4,
+    "arrows": 24
+  },
+  "src/lib/authoring/experience/experience-controller.svelte.ts": {
+    "lines": 825,
+    "imports": 18,
+    "state": 5,
+    "derived": 21,
+    "effects": 2,
+    "functions": 8,
+    "arrows": 102
+  },
+  "src/lib/authoring/experience/experience-removal-readings.ts": {
+    "lines": 166,
+    "imports": 3,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 8,
+    "arrows": 22
+  },
+  "src/lib/authoring/experience/commands-references.ts": {
+    "lines": 171,
+    "imports": 3,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 8,
+    "arrows": 1
+  },
+  "src/lib/authoring/experience/commands-structure.ts": {
+    "lines": 300,
+    "imports": 5,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 8,
+    "arrows": 7
+  },
+  "src/lib/authoring/experience/commands-presentation.ts": {
+    "lines": 245,
+    "imports": 5,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 7,
+    "arrows": 3
+  },
+  "src/lib/authoring/experience/experience-marks.ts": {
+    "lines": 566,
+    "imports": 6,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 12,
+    "arrows": 16
+  },
+  "src/lib/authoring/experience/experience-camera-mesh.ts": {
+    "lines": 172,
+    "imports": 0,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 8,
+    "arrows": 12
+  },
+  "src/lib/authoring/experience/experience-view-authoring.ts": {
+    "lines": 306,
+    "imports": 7,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 4,
+    "arrows": 33
+  },
+  "src/lib/authoring/experience/experience-stop-authoring.ts": {
+    "lines": 228,
+    "imports": 7,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 1,
+    "arrows": 32
+  },
+  "src/lib/authoring/experience/experience-camera-session.svelte.ts": {
+    "lines": 287,
+    "imports": 7,
+    "state": 2,
+    "derived": 1,
+    "effects": 1,
+    "functions": 7,
+    "arrows": 34
+  },
+  "src/lib/authoring/experience/experience-presentation-authoring.ts": {
+    "lines": 386,
+    "imports": 7,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 6,
+    "arrows": 60
+  },
+  "src/lib/authoring/experience/experience-level-authoring.svelte.ts": {
+    "lines": 242,
+    "imports": 12,
+    "state": 0,
+    "derived": 2,
+    "effects": 0,
+    "functions": 5,
+    "arrows": 37
+  },
+  "src/lib/authoring/experience/experience-lens.svelte.ts": {
+    "lines": 689,
+    "imports": 11,
+    "state": 4,
+    "derived": 2,
+    "effects": 9,
+    "functions": 25,
+    "arrows": 91
+  },
+  "src/lib/authoring/experience/experience-view-edit-session.svelte.ts": {
+    "lines": 315,
+    "imports": 7,
+    "state": 2,
+    "derived": 0,
+    "effects": 1,
+    "functions": 7,
+    "arrows": 13
+  },
+  "src/lib/authoring/experience/experience-lens-tools.svelte.ts": {
+    "lines": 404,
+    "imports": 6,
+    "state": 6,
+    "derived": 2,
+    "effects": 1,
+    "functions": 19,
+    "arrows": 6
+  },
+  "src/lib/authoring/stage/route/stage-height-state.svelte.ts": {
+    "lines": 120,
+    "imports": 1,
+    "state": 5,
+    "derived": 0,
+    "effects": 3,
+    "functions": 7,
+    "arrows": 10
+  },
+  "src/lib/authoring/stage/route/stage-shell-status.svelte.ts": {
+    "lines": 79,
+    "imports": 1,
+    "state": 6,
+    "derived": 0,
+    "effects": 0,
+    "functions": 7,
+    "arrows": 1
+  },
+  "src/lib/authoring/stage/route/stage-input.svelte.ts": {
+    "lines": 723,
+    "imports": 18,
+    "state": 1,
+    "derived": 0,
+    "effects": 0,
+    "functions": 14,
+    "arrows": 36
+  },
+  "src/lib/authoring/stage/route/stage-hover.svelte.ts": {
+    "lines": 196,
+    "imports": 4,
+    "state": 3,
+    "derived": 0,
+    "effects": 0,
+    "functions": 4,
+    "arrows": 2
+  },
+  "src/lib/authoring/adapters/scene/object-mark-session.ts": {
+    "lines": 683,
+    "imports": 15,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 7,
+    "arrows": 5
+  },
+  "src/lib/authoring/adapters/scene/object-mark-form-geometry.ts": {
+    "lines": 192,
+    "imports": 7,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 6,
+    "arrows": 2
+  },
+  "src/lib/authoring/stage/facade/contribution-view.ts": {
+    "lines": 589,
+    "imports": 12,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 15,
+    "arrows": 56
+  },
+  "src/lib/authoring/stage/facade/contribution-view-entries.ts": {
+    "lines": 54,
+    "imports": 2,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 4,
+    "arrows": 6
+  },
+  "src/lib/authoring/stage/route/stage-unfold-gestures.svelte.ts": {
+    "lines": 691,
+    "imports": 17,
+    "state": 4,
+    "derived": 1,
+    "effects": 0,
+    "functions": 19,
+    "arrows": 29
+  },
+  "src/lib/authoring/stage/route/stage-unfold-pick-geometry.ts": {
+    "lines": 71,
+    "imports": 5,
+    "state": 0,
+    "derived": 0,
+    "effects": 0,
+    "functions": 2,
+    "arrows": 0
+  }
 }

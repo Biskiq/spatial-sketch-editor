@@ -10,14 +10,15 @@
 	 */
 	import type { Snippet } from 'svelte';
 	import WorldIcon from './WorldIcon.svelte';
-	import { assets } from '$lib/content/assets';
-	import { materials } from '$lib/content/materials';
-	import { foldVariantCards, variantCardOf } from '$lib/content/material-presentation';
 	import FinishTile from '$lib/authoring/look/FinishTile.svelte';
 	import type { FinishTileSource } from '$lib/render/materials/finish-tiles.svelte';
+	import { assets } from '$lib/content/assets';
+	import WorldToolbarLibrary from './WorldToolbarLibrary.svelte';
+	import { materials } from '$lib/content/materials';
+	import WorldFurnishStrip from './WorldFurnishStrip.svelte';
+	import WorldToolbarLibraryTabs from './WorldToolbarLibraryTabs.svelte';
 	import {
 		WORLD_FAMILIES,
-		WORLD_LIBRARY_CATEGORIES,
 		familyOf,
 		familyTools,
 		worldTool,
@@ -114,22 +115,7 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 		onFurnishBrowse?: () => void;
 	} = $props();
 
-	/**
-	 * D1: a variant card shows one entry and a chip row for the rest. The
-	 * creator's choice is a view state of the shelf, never authored.
-	 */
-	let variantChoice = $state<Record<string, string>>({});
-	const curatedCards = $derived(
-		finishShelf === null
-			? []
-			: foldVariantCards(finishShelf.curated, (primary) => variantChoice[primary] as MaterialId | undefined).map(
-				(card) => ({ ...card, label: card.cardLabel ?? card.label })
-			)
-	);
-
 	const plateId = $props.id();
-	let artworkFileInput = $state<HTMLInputElement>();
-	let finishFileInput = $state<HTMLInputElement>();
 	let libraryCategory = $state<WorldLibraryCategory | 'look' | 'artwork'>('objects');
 	let remembered = $state<Record<WorldFamily['id'], WorldToolId>>({
 		build: 'walls',
@@ -231,48 +217,19 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 	>
 		<!-- The external Library sheet owns the plate while it is open; the dock stays. -->
 		{#if furnishOpen && !libraryOpen && !studio}
-			<!-- Furnish's quick strip: placeholder state; quick picks arrive with Furnish customisation. -->
-			<div class="tier furnish-strip" id={plateId} data-world-strip="furnish" role="group" aria-label="Furnish">
-				<div class="row furnish-row">
-					<div class="strip">
-						<span class="pn">
-							<b>Furnish</b>
-							<span>Quick picks will live here. Browse the Library for objects, artwork and lights.</span>
-						</span>
-						<button type="button" class="pill-browse" data-furnish-browse onclick={onFurnishBrowse}>
-							<WorldIcon name="library" size={16} />
-							Browse all
-						</button>
-					</div>
-				</div>
-			</div>
+			<WorldFurnishStrip {plateId} onBrowse={onFurnishBrowse} />
 		{:else if activeTool !== 'select' && !trayOwnsPlate && !libraryOpen}
 		<div class="tier" id={plateId} hidden={!plateOpen} data-world-strip={activeFamily?.id ?? activeTool}>
 		<div class="row words">
 			<div class="strip words-strip">
 				{#if libraryOpen}
-					{#each WORLD_LIBRARY_CATEGORIES as category (category.id)}
-						<button
-							type="button"
-							class="sub"
-							class:on={libraryCategory === category.id}
-							aria-pressed={libraryCategory === category.id}
-							onclick={() => (libraryCategory = category.id)}
-						>{category.label}</button>
-					{/each}
-					{#if artworkShelf !== null}
-						<button type="button" class="sub" class:on={libraryCategory === 'artwork'}
-							aria-pressed={libraryCategory === 'artwork'} onclick={() => (libraryCategory = 'artwork')}>Artwork</button>
-					{/if}
-					{#if lookShelf !== null && lookShelf.entries.length > 0}
-						<button
-							type="button"
-							class="sub"
-							class:on={libraryCategory === 'look'}
-							aria-pressed={libraryCategory === 'look'}
-							onclick={() => (libraryCategory = 'look')}
-						>{lookShelf.label}</button>
-					{/if}
+					<WorldToolbarLibraryTabs
+						category={libraryCategory}
+						onCategory={(next) => (libraryCategory = next)}
+						{artworkShelf}
+						{lookShelf}
+						onClose={onLibrary}
+					/>
 				{:else if activeFamily !== null && !studio}
 					<div class="subs" aria-label={`${activeFamily.label} tools`}>
 						{#each activeFamilyTools as tool (tool.id)}
@@ -298,185 +255,32 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 						<span>{activeToolData.summary}</span>
 					</span>
 				{/if}
-				{#if libraryOpen}
-					<button type="button" class="close-word" aria-label="Close Library" onclick={onLibrary}>Close</button>
-				{/if}
 			</div>
 		</div>
 
 		<div class="row picks">
 			<div class="strip">
 				{#if libraryOpen}
-					{#if libraryCategory === 'artwork' && artworkShelf !== null}
-						<div class="librow" aria-label="Artwork in this project">
-							<input type="file" accept="image/png,image/jpeg,image/webp" multiple hidden bind:this={artworkFileInput}
-								onchange={() => { onArtworkImport(Array.from(artworkFileInput?.files ?? [])); if (artworkFileInput) artworkFileInput.value = ''; }} />
-							<button class="tile" type="button" onclick={() => artworkFileInput?.click()}>Import</button>
-							{#each artworkShelf as entry (entry.assetId)}
-								<button class="tile" type="button" title={entry.name} onclick={() => onArtworkPick(entry)}>{entry.name}</button>
-							{/each}
-						</div>
-					{:else if libraryCategory === 'look' && lookShelf !== null}
-						<div class="librow" aria-label={lookShelf.label}>
-							{#each lookShelf.entries as entry (entry.id)}
-								<button type="button" class="tile" title={entry.summary ?? entry.label} onclick={() => onLookPick(entry.id)}>
-									<span class="tile-glyph"><WorldIcon name="sun" size={20} /></span>
-									<span class="tile-label">{entry.label}</span>
-								</button>
-							{/each}
-						</div>
-					{:else if libraryCategory === 'objects'}
-						<div class="librow" aria-label="Approved objects">
-							{#each approvedAssets as asset (asset.id)}
-								<button type="button" class="tile" title={asset.name} onclick={() => onObjectPick(asset.id)}>
-									<span class="tile-glyph"><WorldIcon name="object" size={20} /></span>
-									<span class="tile-label">{asset.name}</span>
-								</button>
-							{/each}
-						</div>
-					{:else if libraryCategory === 'materials'}
-						<div class="librow" aria-label="Finishes">
-							{#if finishShelf === null}
-								{#each visibleMaterials as material (material.id)}
-									<button type="button" class="tile" title={material.label} onclick={() => onMaterialPick(material.id)}>
-										<i class="material" style:background={material.swatchColor ?? material.fallbackColor}></i>
-										<span class="tile-label">{material.label}</span>
-									</button>
-								{/each}
-							{:else}
-								{#each curatedCards as finish (finish.variants.length > 0 ? `card:${finish.label}` : finish.id)}
-									<div class="finish-card" class:variants={finish.variants.length > 0}>
-										<button
-											type="button"
-											class="tile"
-											title={finish.variants.length > 0
-												? `${finish.label}, ${finish.variants.find((v) => v.id === finish.id)?.label ?? ''}`
-												: finish.label}
-											data-finish-tile={`curated:${finish.id}`}
-											onclick={() => onFinishPick({ curated: finish.id })}
-										>
-											<FinishTile
-												source={{ kind: 'catalogue', id: finish.id }}
-												color={finish.color}
-												size={32}
-											/>
-											<span class="tile-label">{finish.label}</span>
-										</button>
-										{#if finish.variants.length > 0}
-											<div class="variant-chip" role="group" aria-label={`${finish.label} finish`}>
-												{#each finish.variants as variant (variant.id)}
-													<button
-														type="button"
-														class:on={variant.id === finish.id}
-														aria-pressed={variant.id === finish.id}
-														data-finish-variant={variant.id}
-														onclick={() => {
-															const group = variantCardOf(variant.id);
-															if (group !== undefined) variantChoice[group.primary] = variant.id;
-														}}>{variant.label}</button
-													>
-												{/each}
-											</div>
-										{/if}
-									</div>
-								{/each}
-								{#each finishShelf.project as finish (finish.id)}
-									<button
-										type="button"
-										class="tile"
-										title={finish.warning ?? finish.name}
-										data-finish-tile={`project:${finish.id}`}
-										onclick={() => onFinishPick({ project: finish.id })}
-									>
-										<FinishTile
-											source={finishTileSource(finish.id)}
-											color={finish.color}
-											imageUri={finish.imageUri}
-											size={32}
-										/>
-										<span class="tile-label">{finish.name}</span>
-									</button>
-								{/each}
-								<input
-									type="file"
-									accept="image/png,image/jpeg,image/webp"
-									hidden
-									bind:this={finishFileInput}
-									onchange={() => {
-										const file = finishFileInput?.files?.[0] ?? null;
-										if (finishFileInput) finishFileInput.value = '';
-										if (file !== null) onFinishImageImport(file);
-								}}
-								/>
-								{#if finishImage !== null && finishImage.phase !== 'idle'}
-									<div class="finish-image-state" data-finish-image-phase={finishImage.phase}>
-										{#if finishImage.phase === 'checking' || finishImage.phase === 'uploading'}
-											<span class="spinner" aria-hidden="true"></span>
-											<span>{finishImage.phase === 'checking' ? 'Checking' : 'Uploading'} {finishImage.fileName}…</span>
-											<button type="button" class="act" data-finish-image-cancel onclick={onFinishImageCancel}>Cancel</button>
-										{:else if finishImage.phase === 'saving'}
-											<span class="spinner" aria-hidden="true"></span>
-											<span>Saving {finishImage.fileName}…</span>
-										{:else if finishImage.phase === 'failed'}
-											<span class="finish-image-message">{finishImage.message ?? 'Upload failed.'}</span>
-											{#if finishImage.message !== null && finishImage.fileName !== null}
-												<button type="button" class="act" data-finish-image-retry onclick={onFinishImageRetry}>Try again</button>
-											{/if}
-											<button type="button" class="act" onclick={onFinishImageReset}>Dismiss</button>
-										{:else if finishImage.phase === 'refused'}
-											<span class="finish-image-message">{finishImage.message}</span>
-											<button type="button" class="act" onclick={onFinishImageReset}>Dismiss</button>
-										{:else}
-											<span class="finish-image-message">Image added.</span>
-											<button type="button" class="act" onclick={onFinishImageReset}>Dismiss</button>
-										{/if}
-										{#if finishImage.warning !== null}
-											<span class="finish-image-warning">{finishImage.warning}</span>
-										{/if}
-									</div>
-								{:else}
-									<button
-										type="button"
-										class="tile"
-										title="Make a Finish from a PNG, JPEG or WebP"
-										data-finish-image-add
-										onclick={() => finishFileInput?.click()}
-									>
-										<i class="material from-image" aria-hidden="true">+</i>
-										<span class="tile-label">From image</span>
-									</button>
-								{/if}
-							{/if}
-							<button
-								type="button"
-								class="tile"
-								title="Model's own restores a model's imported material"
-								data-finish-tile="model-own"
-								onclick={() => onFinishPick('model-own')}
-							>
-								<i class="material model-own"></i>
-								<span class="tile-label">Model's own</span>
-							</button>
-						</div>
-					{:else if libraryCategory === 'my-objects'}
-						<div class="note">
-							<strong>My objects</strong>
-							<span>Your own uploads and saved combinations will live here.</span>
-							<button type="button" class="act" onclick={() => onObjectPick('')}>Open the Objects panel</button>
-						</div>
-					{:else}
-						<div class="librow planned-row">
-							{#each (libraryCategory === 'plants' ? ['Bed', 'Shrub', 'Hedge', 'Tree'] : ['House', 'Annex', 'Shed']) as label (label)}
-								<button type="button" class="tile planned-tile" disabled>
-									<span class="tile-glyph">
-										<WorldIcon name={libraryCategory === 'plants' ? 'plants' : 'building'} size={20} />
-									</span>
-									<span class="tile-label">{label}</span>
-									<small>Planned · T{libraryCategory === 'buildings' ? '5' : '2'}</small>
-								</button>
-							{/each}
-						</div>
-					{/if}
+					<WorldToolbarLibrary
+						category={libraryCategory}
+						{artworkShelf}
+						{lookShelf}
+						{approvedAssets}
+						{visibleMaterials}
+						{finishShelf}
+						{finishTileSource}
+						{finishImage}
+						onFinishPick={onFinishPick}
+						onMaterialPick={onMaterialPick}
+						onObjectPick={onObjectPick}
+						onArtworkPick={onArtworkPick}
+						onArtworkImport={onArtworkImport}
+						onLookPick={onLookPick}
+						onFinishImageImport={onFinishImageImport}
+						onFinishImageCancel={onFinishImageCancel}
+						onFinishImageRetry={onFinishImageRetry}
+						onFinishImageReset={onFinishImageReset}
+					/>
 				{:else if activeToolData.stage === 'planned'}
 					<div class="planned-options">
 						{#each activeToolData.options ?? [] as group (group.label)}
@@ -632,34 +436,6 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 	.detached .dock {
 		border-radius: var(--shell-instrument-radius);
 		box-shadow: var(--shell-dock-shadow);
-	}
-	.furnish-row {
-		height: 48px;
-	}
-	.furnish-row .strip {
-		gap: 10px;
-	}
-	.furnish-row .pn {
-		flex: 1;
-	}
-	.pill-browse {
-		display: inline-flex;
-		flex: none;
-		align-items: center;
-		gap: 6px;
-		height: 32px;
-		padding: 0 12px;
-		border: 1px solid var(--shell-hairline);
-		border-radius: 999px;
-		background: var(--shell-white);
-		color: var(--shell-forest);
-		font: 500 var(--shell-text-utility)/1 var(--shell-sans);
-		white-space: nowrap;
-		cursor: pointer;
-	}
-	.pill-browse:hover {
-		border-color: var(--shell-leaf);
-		background: var(--shell-leaf-tint);
 	}
 	/* The menu is the same off-white key as the selected dock control. */
 	.tier {
@@ -883,159 +659,6 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 		font: var(--shell-text-meta)/1.35 var(--shell-sans);
 		white-space: normal;
 	}
-	.librow {
-		display: flex;
-		align-items: stretch;
-		gap: 4px;
-		height: 100%;
-		min-width: max-content;
-		padding: 4px 0;
-		box-sizing: border-box;
-	}
-	.tile {
-		display: grid;
-		grid-template-rows: 1fr auto;
-		gap: 2px;
-		place-items: center;
-		flex: none;
-		width: 78px;
-		height: 100%;
-		padding: 3px;
-		border: 0;
-		border-radius: 7px;
-		background: transparent;
-		color: var(--shell-ink);
-		font: 9.5px/1.1 var(--shell-sans);
-		text-align: center;
-		cursor: pointer;
-	}
-	.tile:hover {
-		background: var(--shell-hover);
-	}
-	.tile-glyph {
-		display: grid;
-		place-items: center;
-		width: 100%;
-		height: 28px;
-		border-radius: 4px;
-		background: var(--shell-surface-sunken);
-		color: var(--shell-ink-2);
-	}
-	.tile-label {
-		max-width: 100%;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-	.finish-card {
-		position: relative;
-		flex: none;
-		display: flex;
-		align-items: center;
-		height: 100%;
-	}
-	/* D1: the chip sits beside the picture, never over it. */
-	.variant-chip {
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
-		margin: 0 4px 0 -6px;
-		padding: 2px;
-		border-radius: 7px;
-		background: color-mix(in srgb, var(--shell-ink, #000) 8%, transparent);
-	}
-	.variant-chip button {
-		padding: 2px 5px;
-		border: 0;
-		border-radius: 5px;
-		background: transparent;
-		color: var(--shell-ink-2, inherit);
-		font: 8px/1.2 var(--shell-sans);
-		text-align: left;
-		cursor: pointer;
-	}
-	.variant-chip button.on {
-		background: var(--shell-ink, #222);
-		color: var(--shell-surface, #fff);
-	}
-	.material.image {
-		background-position: center;
-		background-size: cover;
-		background-blend-mode: multiply;
-	}
-	.material.from-image {
-		display: grid;
-		place-items: center;
-		color: var(--shell-ink-quiet);
-		font-size: 1rem;
-	}
-	.finish-image-state {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		gap: 0.35rem;
-		padding: 0.35rem;
-		border: 1px solid var(--shell-hairline);
-		border-radius: 0.35rem;
-		font-size: var(--shell-text-utility);
-	}
-	.finish-image-message {
-		max-width: 14rem;
-	}
-	.finish-image-warning {
-		flex-basis: 100%;
-		color: var(--shell-ink-quiet);
-	}
-	.spinner {
-		width: 0.75rem;
-		height: 0.75rem;
-		border: 2px solid var(--shell-hairline);
-		border-top-color: var(--stage-selection);
-		border-radius: 50%;
-		animation: finish-image-spin 0.8s linear infinite;
-	}
-	@keyframes finish-image-spin {
-		to {
-			transform: rotate(360deg);
-		}
-	}
-	.material {
-		width: 100%;
-		height: 28px;
-		border-radius: 4px;
-		box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--shell-ink) 12%, transparent);
-	}
-	.material.model-own {
-		background: repeating-linear-gradient(
-			135deg,
-			var(--shell-hairline) 0 4px,
-			var(--shell-ink-light) 4px 8px
-		);
-	}
-	.planned-tile:disabled {
-		opacity: 0.58;
-		cursor: default;
-	}
-	.planned-tile small {
-		color: var(--shell-ink-3);
-		font: 8px/1 var(--shell-mono);
-	}
-	.note {
-		display: flex;
-		align-items: center;
-		gap: 10px;
-		width: 100%;
-		color: var(--shell-ink-3);
-		font: var(--shell-text-label)/1.3 var(--shell-sans);
-	}
-	.note strong {
-		flex: none;
-		color: var(--shell-ink);
-		font: 600 var(--shell-text-control)/1 var(--shell-sans);
-	}
-	.note .act {
-		margin-left: auto;
-	}
 	/* The shared dock anatomy (--shell-dock-*): inset rounded keys centred on a 56 px forest bar. */
 	.dock {
 		flex: none;
@@ -1165,8 +788,7 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 	}
 	@media (pointer: coarse) {
 		.sub,
-		.key,
-		.pill-browse {
+		.key {
 			min-height: 44px;
 		}
 	}

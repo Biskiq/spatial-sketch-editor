@@ -9,17 +9,8 @@
 import { describe, expect, it } from 'vitest';
 
 import { createAcceptanceCoordinator } from '$lib/authoring/f4/acceptance-coordinator';
-import {
-	captureBindIntent,
-	capturedFovDegrees,
-	capturedViewPose,
-	experienceUpdateIntent,
-	guideOrderIntent,
-	guideCreateIntent,
-	stopCreateIntent,
-	presentationUpdateIntent,
-	stopUpdateIntent
-} from '$lib/authoring/experience/commands';
+import { captureBindIntent, experienceUpdateIntent, guideOrderIntent, guideCreateIntent, stopCreateIntent, presentationUpdateIntent, stopUpdateIntent } from '$lib/authoring/experience/commands-structure';
+import { capturedFovDegrees, capturedViewPose } from '$lib/authoring/experience/commands-references';
 import {
 	EMPTY_EXPERIENCE_FOCUS,
 	previewEntryFor,

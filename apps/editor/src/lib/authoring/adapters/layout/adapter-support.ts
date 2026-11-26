@@ -20,12 +20,7 @@ import {
 	type LayoutInstrumentOptions,
 	type LayoutWriteOutcome
 } from './instrument';
-import {
-	LAYOUT_ENTITY_NAME_KIND,
-	buildLayoutIntent,
-	layoutSubjectOf,
-	type LayoutSubject
-} from './precision';
+import { LAYOUT_ENTITY_NAME_KIND, buildLayoutIntent, layoutSubjectOf, type LayoutSubject } from './precision';
 import { layoutSubjectReference } from './drawing-planners';
 
 function writeOutcome(outcome: StageAcceptOutcome): LayoutWriteOutcome {

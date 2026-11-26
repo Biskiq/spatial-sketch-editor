@@ -48,10 +48,12 @@ const ROUTE_COMPONENT = join(EDITOR_SRC, 'lib', 'authoring', 'workspace', 'host'
 const WIRING = join(EDITOR_SRC, 'lib', 'authoring', 'workspace', 'host', 'wiring');
 const PROJECT_SESSION_DIR = join(EDITOR_SRC, 'lib', 'authoring', 'project-session');
 const EXPERIENCE_LENS = join(EDITOR_SRC, 'lib', 'authoring', 'experience', 'experience-lens.svelte.ts');
+const EXPERIENCE_VIEW_EDIT_SESSION = join(EDITOR_SRC, 'lib', 'authoring', 'experience', 'experience-view-edit-session.svelte.ts');
 const EXPERIENCE_BINDING = join(STAGE_DIR, 'route', 'stage-experience-binding.svelte.ts');
 const CORE_REGION_VIEWS = join(STAGE_DIR, 'route', 'core-region-views.ts');
 const STAGE_VIEWING = join(STAGE_DIR, 'route', 'stage-viewing.ts');
 const SHELL_STATE = join(STAGE_DIR, 'route', 'stage-shell-state.svelte.ts');
+const SHELL_STATUS = join(STAGE_DIR, 'route', 'stage-shell-status.svelte.ts');
 const ROUTE_VIEWPORT = join(SHELL_DIR, 'StageViewportRegion.svelte');
 const ROUTE_PANELS = join(SHELL_DIR, 'StagePanels.svelte');
 const ROUTE_TOOLBARS = join(SHELL_DIR, 'StageToolbars.svelte');
@@ -104,7 +106,7 @@ const HEIGHT_SHEET_RAIL_READ = 'track?.getBoundingClientRect()';
 function postureSources(): { file: string; code: string }[] {
 	const route = readFileSync(ROUTE, 'utf8');
 	expect(composedSpatialHost().some(({ file }) => file === STAGE_VIEWING)).toBe(true);
-	const files = [ROUTE, SHELL_STATE, STAGE_VIEWING, join(STAGE_DIR, 'route/stage-viewport.svelte.ts')];
+	const files = [ROUTE, SHELL_STATE, SHELL_STATUS, STAGE_VIEWING, join(STAGE_DIR, 'route/stage-viewport.svelte.ts')];
 	if (importClosure([ROUTE]).has(EXPERIENCE_LENS)) {
 		expect(route).toContain('createStageExperienceBinding({');
 		expect(readFileSync(EXPERIENCE_BINDING, 'utf8')).toContain('createExperienceLens({');
@@ -367,7 +369,7 @@ describe('Stage shell composition', () => {
 		// every other composed component so extracting route markup cannot hide a
 		// new, unguarded Stage capture in the lens layer.
 		const pathsFile = join(EDITOR_SRC, 'lib', 'authoring', 'experience', 'ExperiencePaths.svelte');
-		const guideFile = join(EDITOR_SRC, 'lib', 'authoring', 'experience', 'ExperienceGuide.svelte');
+		const guideFile = join(EDITOR_SRC, 'lib', 'authoring', 'experience', 'ExperienceGuideTrack.svelte');
 		const host = composedSpatialHost().map(({ file, code }) => ({ file, code: stripComments(code) }));
 		const paths = host.filter(({ file }) => file === pathsFile);
 		expect(paths).toHaveLength(1);
@@ -384,8 +386,10 @@ describe('Stage shell composition', () => {
 		expect(raw).toHaveLength(1);
 		expect(matches(/function capturePointer\([^)]*\): boolean \{\s*try \{\s*target\.setPointerCapture\(pointerId\);/)).toHaveLength(1);
 		expect(matches(/try \{ surface\.setPointerCapture\(event\.pointerId\); \} catch/)).toHaveLength(1);
-		const lens = stripComments(readFileSync(EXPERIENCE_LENS, 'utf8'));
-		expect(lens).toMatch(/capture === null \|\| !host\.capturePointer\(capture, event\.pointerId\)/);
+		const guarded = [EXPERIENCE_LENS, EXPERIENCE_VIEW_EDIT_SESSION]
+			.map((file) => stripComments(readFileSync(file, 'utf8')))
+			.filter((source) => /capture === null \|\| !(?:ports\.)?host\.capturePointer\(capture, event\.pointerId\)/.test(source));
+		expect(guarded).toHaveLength(1);
 	});
 
 	it('renders one geometry set and takes Plan eligibility from the representation, not a second renderer', () => {
@@ -542,14 +546,18 @@ describe('Stage shell composition', () => {
 		// component so moving the lens markup cannot hide a new Stage measurement.
 		const experienceDir = join(EDITOR_SRC, 'lib', 'authoring', 'experience');
 		const allowed: Record<string, readonly (readonly [string, number])[]> = {
-			'ExperienceGuide.svelte': [
-				['element.getBoundingClientRect()', 1],
-				['(rowEl ?? barEl).getBoundingClientRect()', 1],
-				['barEl.getBoundingClientRect()', 2],
+			'ExperienceGuide.svelte': [],
+			'ExperienceGuideCards.svelte': [
+				['barEl.getBoundingClientRect()', 1],
 				['els[index]!.getBoundingClientRect()', 1],
 				['scroller.getBoundingClientRect()', 1],
-				['scroller.clientWidth', 6],
+				['scroller.clientWidth', 5],
 				[' scale(.9)', 1]
+			],
+			'ExperienceGuideTrack.svelte': [
+				['element.getBoundingClientRect()', 1],
+				['(row ?? barEl).getBoundingClientRect()', 1],
+				['barEl.getBoundingClientRect()', 1]
 			],
 			'ExperienceViewRail.svelte': [['(event.currentTarget as HTMLElement).getBoundingClientRect()', 1]],
 			'ExperienceMarks.svelte': [[' scale(${scale})', 1]]
@@ -666,7 +674,7 @@ describe('Stage shell lanes and the Card (R217.S22)', () => {
 		const route = stripComments(readFileSync(ROUTE, 'utf8'));
 		// The flag is the live lease the session holds; a navigation press is excluded, and
 		// review round 3 (sheet §24, Card only) keeps the Card clear while a camera is edited.
-		const owners = postureSources().filter(({ code }) => code.includes('function syncGestureFade('));
+		const owners = postureSources().filter(({ code }) => code.includes('const cameraEdit ='));
 		expect(owners).toHaveLength(1);
 		expect(owners[0]!.code).toMatch(/const cameraEdit =\s*lease !== null &&\s*\(lease\.owner === 'experience-view-edit' \|\| lease\.owner === 'experience-path-point'\);/);
 		expect(owners[0]!.code).toContain('const gesturing = lease !== null && lease.navigation !== true && !cameraEdit;');

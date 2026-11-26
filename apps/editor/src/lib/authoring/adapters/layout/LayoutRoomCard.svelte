@@ -8,7 +8,7 @@
 	import { indexLabels, stageLayout, type StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 	import { resolveLayoutSurface } from '@portfolio/layout-core/plan';
 	import FinishCardSection, { type FinishCardPart } from '$lib/authoring/look/FinishCardSection.svelte';
-	import { layoutRoomFacts } from './precision';
+	import { layoutRoomFacts } from './precision-facts';
 
 	let {
 		services,

@@ -9,12 +9,8 @@
 import { describe, expect, it } from 'vitest';
 
 import { createAcceptanceCoordinator } from '$lib/authoring/f4/acceptance-coordinator';
-import {
-	captureBindIntent,
-	capturedViewPose,
-	guideCreateIntent,
-	stopCreateIntent
-} from '$lib/authoring/experience/commands';
+import { captureBindIntent, guideCreateIntent, stopCreateIntent } from '$lib/authoring/experience/commands-structure';
+import { capturedViewPose } from '$lib/authoring/experience/commands-references';
 import { EXPERIENCE_UNIT_FORMAT_VERSION, computeEnvelopeSourceContentId, serializeProjectEnvelope, type ExperienceUnitPayload, type ProjectEnvelope } from '@portfolio/project-model/units';
 import { createUnitAcceptanceProfile } from '@portfolio/project-model/units/planning';
 

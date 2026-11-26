@@ -14,7 +14,7 @@ import { createEmptyWallFirstLayoutDocument, parseWallFirstLayoutDocumentJson, p
 
 import { planChainDraft } from '$lib/authoring/adapters/layout/chain';
 import { planWallDeletion } from '$lib/authoring/adapters/layout/drawing-planners';
-import { layoutRoomFacts } from '$lib/authoring/adapters/layout/precision';
+import { layoutRoomFacts } from '$lib/authoring/adapters/layout/precision-facts';
 import { findPlanHitRoom } from '$lib/authoring/layout/plan-hit';
 import { innermostRoomId } from '$lib/authoring/adapters/scene/room-membership';
 import { layoutKindWord } from '$lib/authoring/stage/shell/index-labels';

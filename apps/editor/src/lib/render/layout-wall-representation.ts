@@ -32,7 +32,7 @@ import { legJoinsByWall } from '@portfolio/layout-core/wall';
 import { diffCompiledWalls, type CompiledLayoutGeometry, type CompiledPhysicalWall, type LayoutBounds3 } from '@portfolio/layout-core/geometry';
 import { countWork } from '@portfolio/layout-core/kernel';
 
-import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-builder';
+import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-standalone';
 import { toWallBufferGeometry, type WallMeshMaterialFactory } from '$lib/render/wall-geometry-adapter';
 import { createVisitorWallMaterialFactory } from '$lib/render/layout/wall-material-factory';
 import { DEFAULT_WALL_COLOR, DEFAULT_WALL_UNLIT_SHARE } from '$lib/visitor/room-presentation';

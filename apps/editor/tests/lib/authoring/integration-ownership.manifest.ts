@@ -175,13 +175,17 @@ export const SINGLETONS = [
 	{
 		name: 'interiorLift', module: layout + 'interior-lift-store.svelte.ts',
 		constructor: 'InteriorLiftStore', owners: [readings + 'lift-host.svelte.ts'],
-		consumers: { [layoutAdapter + 'layout-contributions.ts']: ['reading', 'lift', 'putBack'] }
+		consumers: {
+			[layoutAdapter + 'layout-contributions.ts']: ['reading', 'lift', 'putBack'],
+			[layoutAdapter + 'layout-card-actions.ts']: ['reading', 'lift', 'putBack']
+		}
 	},
 	{
 		name: 'wallFace', module: layout + 'wall-face-store.ts',
 		constructor: 'WallFaceStore', owners: [readings + 'wall-face-host.svelte.ts'],
 		consumers: {
 			[layoutAdapter + 'layout-contributions.ts']: ['isActive', 'face', 'putBack'],
+			[layoutAdapter + 'layout-card-actions.ts']: ['isActive', 'face', 'putBack'],
 			[authoring + 'look/finish-align.svelte.ts']: ['face', 'faceFloor', 'reframe', 'putBack']
 		}
 	},
@@ -193,6 +197,9 @@ export const SINGLETONS = [
 			[layoutAdapter + 'LayoutWallUnfold.svelte']: ['state', 'setU', 'flip', 'exit'],
 			[layoutAdapter + 'curve-gesture-session.ts']: ['isActive'],
 			[layoutAdapter + 'layout-contributions.ts']: ['isActive', 'state', 'presentationAngle'],
+			[layoutAdapter + 'layout-marks.ts']: ['isActive'],
+			[layoutAdapter + 'layout-card-actions.ts']: ['isActive', 'state', 'presentationAngle'],
+			[core + 'stage-unfold-pick-geometry.ts']: ['presentationAngle', 'state'],
 			[core + 'stage-unfold-gestures.svelte.ts']: [
 				'anchorForWall', 'pinnedOpeningId', 'presentationAngle', 'previewOpening', 'recordPick',
 				'setAnchor', 'setOpeningPreview', 'setU', 'state'
