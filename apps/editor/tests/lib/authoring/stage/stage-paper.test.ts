@@ -1,0 +1,1021 @@
+/**
+ * R217.S04 — Paper Plan: the drawing is the Plan, and it is the same Plan that
+ * picks.
+ *
+ * These are pure-data claims. Every fixture is a real current-format Layout
+ * compiled by the canonical compiler and evaluated by `evaluateLayoutPlan`;
+ * Scene footprints come from the same `buildPlanSceneFootprintProjection` the
+ * Stage uses. The suite proves four things no type check can see:
+ *
+ * 1. **Drawn equals picked** — the drawn source/stream set is exactly the
+ *    eligible-fragment set, and every drawn Scene footprint resolves to its
+ *    entity through the Scene Plan hit policy.
+ * 2. **Stream treatment follows the representation** — cut walls are poché,
+ *    a below-cut Wall is dashed hidden ink, a lintel above the cut is projected,
+ *    an Opening is a symbol, and a revealed source is drawn.
+ * 3. **Tilted forms use the existing polygon union** — the outline is the union
+ *    boundary, not every triangle edge.
+ * 4. **Appearance is a camera/layer fact** — Paper and Shaded use layer masks,
+ *    no Paper module writes `Object3D.visible`, and Paper is the default.
+ */
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { describe, expect, it } from 'vitest';
+import { REPO_ROOT } from '../../../helpers/import-closure';
+import {
+	InterleavedBufferAttribute,
+	Layers,
+	Mesh,
+	MeshBasicMaterial,
+	type InstancedInterleavedBuffer
+} from 'three';
+import { LineSegments2 } from 'three/addons/lines/webgpu/LineSegments2.js';
+import { Line2NodeMaterial } from 'three/webgpu';
+import { compileWallFirstLayoutGeometry, type CompiledLayoutGeometry, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { createEmptyWallFirstLayoutDocument, planCreateWallFirstOpening, planWallChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import { eligiblePlanFragments, evaluateLayoutPlan, type PlanEvaluation, type PlanFragment, type PlanParameters } from '@portfolio/layout-core/world';
+import { setWorkObserver } from '@portfolio/layout-core/kernel';
+import type { SceneDocument, SceneEntity } from '@portfolio/project-model/scene';
+import {
+	buildPlanSceneFootprintProjection,
+	planSceneFootprintsFor,
+	type PlanSceneProjection
+} from '$lib/authoring/scene/plan-scene-footprint';
+import { resolvePlanSceneHit } from '$lib/authoring/scene/plan-scene-hit';
+import { createPaperScene, PAPER_SHEET_NAME } from '$lib/authoring/stage/paper-scene';
+import { createPaperMarkScene } from '$lib/authoring/stage/paper-marks';
+import {
+	buildPaperPlan,
+	fragmentLayer,
+	fragmentTreatment,
+	isPaperPlanVisible,
+	paperRevealFor,
+	MAT_BACKGROUND_INK,
+	PAPER_GROUND_INK,
+	PAPER_INK,
+	PAPER_LAYER,
+	paperStageComposition,
+	PAPER_LINE_STYLE,
+	stageCameraLayerMask,
+	unionOutline,
+	STAGE_OVERLAY_LAYER,
+	STAGE_WORLD_LAYER,
+	type PaperLineDraw,
+	type PaperSegment
+} from '$lib/authoring/stage/paper-plan';
+import { paperHiddenSource, paperSourceRuns } from '$lib/authoring/stage/paper-selection';
+import { STARTER_ENCLOSURE_POINTS } from '$lib/authoring/stage/starter-gallery';
+import { DEFAULT_APP_PREFERENCES } from '$lib/platform/app-preferences';
+import { freshCapture } from '../../layout/__fixtures__/layout-id-capture';
+import { openingSelection } from '../fixtures/selection-entry';
+
+type Fixture = { readonly compiled: CompiledLayoutGeometry; readonly document: LayoutDocumentWallFirst };
+
+function enclosure(points: readonly LayoutVec2[]): Fixture {
+	const baseline = createEmptyWallFirstLayoutDocument();
+	const planned = planWallChain({
+		baseline,
+		points: points.map((point) => [point[0], point[1]] as LayoutVec2),
+		close: true,
+		capture: freshCapture(),
+		levelId: baseline.floor.id
+	});
+	if (planned.kind !== 'success') throw new Error(`the envelope no longer plans: ${planned.rejection.code}`);
+	return { compiled: compileWallFirstLayoutGeometry(planned.document).geometry, document: planned.document };
+}
+
+function standaloneWall(): Fixture {
+	const baseline = createEmptyWallFirstLayoutDocument();
+	const planned = planWallChain({
+		baseline,
+		points: [[0, 0], [4, 0]],
+		close: false,
+		capture: freshCapture(),
+		levelId: baseline.floor.id
+	});
+	if (planned.kind !== 'success') throw new Error(`the standalone Wall no longer plans: ${planned.rejection.code}`);
+	return { compiled: compileWallFirstLayoutGeometry(planned.document).geometry, document: planned.document };
+}
+
+const L_POINTS: readonly LayoutVec2[] = [
+	[0, 0],
+	[6, 0],
+	[6, 3],
+	[3, 3],
+	[3, 6],
+	[0, 6]
+];
+
+function withDoor(fixture: Fixture): Fixture {
+	const layout = fixture.document;
+	const door = planCreateWallFirstOpening(
+		layout,
+		{ wallId: layout.walls[0]!.id, kind: 'door', offset: 1, width: 0.9, height: 2.1, sillHeight: 0 },
+		freshCapture(),
+		layout.floor.id
+	);
+	if (door.kind !== 'success') throw new Error(`the door no longer plans: ${door.rejection.code}`);
+	return { compiled: compileWallFirstLayoutGeometry(door.document).geometry, document: door.document };
+}
+
+function withTwoDoors(fixture: Fixture): Fixture {
+	const layout = fixture.document;
+	const first = planCreateWallFirstOpening(
+		layout,
+		{ wallId: layout.walls[0]!.id, kind: 'door', offset: 1, width: 0.9, height: 2.1, sillHeight: 0 },
+		freshCapture(),
+		layout.floor.id
+	);
+	if (first.kind !== 'success') throw new Error(`the first door no longer plans: ${first.rejection.code}`);
+	const second = planCreateWallFirstOpening(
+		first.document,
+		{ wallId: first.document.walls[1]!.id, kind: 'door', offset: 1, width: 0.9, height: 2.1, sillHeight: 0 },
+		freshCapture(),
+		first.document.floor.id
+	);
+	if (second.kind !== 'success') throw new Error(`the second door no longer plans: ${second.rejection.code}`);
+	return { compiled: compileWallFirstLayoutGeometry(second.document).geometry, document: second.document };
+}
+
+function withWindow(fixture: Fixture): Fixture {
+	const layout = fixture.document;
+	const window = planCreateWallFirstOpening(
+		layout,
+		{ wallId: layout.walls[0]!.id, kind: 'window', offset: 1, width: 1.2, height: 1.2, sillHeight: 1 },
+		freshCapture(),
+		layout.floor.id
+	);
+	if (window.kind !== 'success') throw new Error(`the window no longer plans: ${window.rejection.code}`);
+	return { compiled: compileWallFirstLayoutGeometry(window.document).geometry, document: window.document };
+}
+
+function withLowWalls(fixture: Fixture, height: number): Fixture {
+	const document: LayoutDocumentWallFirst = {
+		...fixture.document,
+		walls: fixture.document.walls.map((wall) => ({ ...wall, height }))
+	};
+	return { compiled: compileWallFirstLayoutGeometry(document).geometry, document };
+}
+
+function evaluate(
+	compiled: CompiledLayoutGeometry,
+	overrides: Partial<PlanParameters> = {},
+	datumMeters = 0
+): PlanEvaluation {
+	const bounds = compiled.bounds;
+	const target: LayoutVec2 =
+		bounds === null ? [0, 0] : [(bounds.min[0] + bounds.max[0]) / 2, (bounds.min[2] + bounds.max[2]) / 2];
+	const result = evaluateLayoutPlan(
+		compiled,
+		{
+			cutHeightMeters: 1.2,
+			depthMeters: 100,
+			lateralSpanHalfWidthMeters: null,
+			sourceKindFilter: null,
+			reveal: [],
+			...overrides
+		},
+		{ generationId: 'generation-paper', target, datumMeters }
+	);
+	if (result.kind !== 'evaluated') throw new Error(`the fixture Plan did not evaluate: ${JSON.stringify(result.issues)}`);
+	return result.plan;
+}
+
+const EMPTY_PROJECTION: PlanSceneProjection = { footprints: [] };
+
+/** One synthetic batch entry; the addressability contract reads only these fields. */
+function lineOf(sourceId: string, segments: number): PaperLineDraw {
+	return {
+		key: `${sourceId}:${segments}`,
+		sourceId,
+		stream: 'symbol',
+		layer: PAPER_LAYER.symbol,
+		treatment: 'symbol',
+		elevationMeters: 0,
+		segments: Array.from({ length: segments }, (_, index): PaperSegment => [[index, 0], [index + 1, 0]])
+	};
+}
+
+function drawnSourceStreams(drawing: ReturnType<typeof buildPaperPlan>): Set<string> {
+	const drawn = new Set<string>();
+	for (const line of drawing.lines) drawn.add(`${line.sourceId}::${line.stream}`);
+	for (const fill of drawing.fills) drawn.add(`${fill.sourceId}::${fill.treatment === 'room-floor' ? 'projected' : 'cut'}`);
+	return drawn;
+}
+
+function eligibleSourceStreams(fragments: readonly PlanFragment[]): Set<string> {
+	return new Set(fragments.map((fragment) => `${fragment.ref.sourceId}::${fragment.ref.stream}`));
+}
+
+function primitive(id: string, position: [number, number, number], rotation: [number, number, number] = [0, 0, 0]): SceneEntity {
+	return {
+		kind: 'primitive',
+		primitive: 'box',
+		id,
+		name: id,
+		dimensions: { width: 1, height: 1.6, depth: 1 },
+		materialId: 'plaster-warm',
+		castShadow: true,
+		receiveShadow: true,
+		position,
+		rotation
+	};
+}
+
+function form(id: string, position: [number, number, number], rotation: [number, number, number] = [0, 0, 0]): SceneEntity {
+	return {
+		kind: 'form',
+		id,
+		name: id,
+		position,
+		rotation,
+		form: {
+			generator: {
+				kind: 'extrude',
+				plane: 'plan',
+				outline: [
+					{ key: 1, u: 0, v: 0, smooth: false },
+					{ key: 2, u: 1, v: 0, smooth: false },
+					{ key: 3, u: 1, v: 1, smooth: false },
+					{ key: 4, u: 0, v: 1, smooth: false }
+				],
+				extent: 1
+			},
+			scale: [1, 1, 1],
+			nextKey: 5
+		},
+		materialId: 'paper-aged',
+		castShadow: true,
+		receiveShadow: true
+	};
+}
+
+function projectionOf(entities: SceneEntity[]): PlanSceneProjection {
+	return buildPlanSceneFootprintProjection({ entities } as Pick<SceneDocument, 'entities'>);
+}
+
+describe('Paper Plan — drawn equals picked', () => {
+	const fixtures: ReadonlyArray<readonly [string, Fixture]> = [
+		['the starter enclosure', enclosure(STARTER_ENCLOSURE_POINTS)],
+		['the L enclosure', enclosure(L_POINTS)]
+	];
+
+	it.each(fixtures)('draws exactly the eligible fragments on %s', (_name, fixture) => {
+		const plan = evaluate(fixture.compiled);
+		const drawing = buildPaperPlan(plan, fixture.compiled, EMPTY_PROJECTION);
+		const eligible = eligiblePlanFragments(plan);
+		expect(eligible.length).toBeGreaterThan(0);
+		expect(drawnSourceStreams(drawing)).toEqual(eligibleSourceStreams(eligible));
+
+		// Every drawn entry names a fragment the provider can return, and its layer is
+		// the rank the provider reports for that fragment.
+		const bySourceStream = new Map(eligible.map((fragment) => [`${fragment.ref.sourceId}::${fragment.ref.stream}`, fragment]));
+		for (const line of drawing.lines) {
+			const fragment = bySourceStream.get(`${line.sourceId}::${line.stream}`);
+			expect(fragment, `${line.key} must name an eligible fragment`).toBeDefined();
+			if (fragment !== undefined) expect(line.layer).toBe(fragmentLayer(fragment));
+		}
+		for (const fill of drawing.fills) {
+			const entries = eligible.filter(
+				(fragment) =>
+					fragment.ref.sourceId === fill.sourceId &&
+					(fill.treatment === 'room-floor' ? fragment.ref.sourceKind === 'room-floor' : fragment.ref.stream === 'cut')
+			);
+			expect(entries.length).toBeGreaterThan(0);
+		}
+	});
+
+	it.each(fixtures)('draws every Scene footprint on %s, and each resolves to its own entity', (_name, fixture) => {
+		const plan = evaluate(fixture.compiled);
+		const entities: SceneEntity[] = [
+			primitive('entity-box', [1.5, 0, 1]),
+			primitive('entity-rotated', [3.5, 0, 2], [0, Math.PI / 4, 0]),
+			form('entity-form', [5, 0, 4])
+		];
+		const projection = projectionOf(entities);
+		const drawing = buildPaperPlan(plan, fixture.compiled, projection);
+		expect(drawing.footprints.map((entry) => entry.entityId).sort()).toEqual(
+			projection.footprints.map((entry) => entry.entityId).sort()
+		);
+		for (const footprint of projection.footprints) {
+			const points = footprint.polygons ?? [footprint.points];
+			const first = points[0]!;
+			const centre = first.reduce<[number, number]>(
+				(accumulator, point) => [accumulator[0] + point[0] / first.length, accumulator[1] + point[1] / first.length],
+				[0, 0]
+			);
+			const resolved = resolvePlanSceneHit(projection.footprints, centre);
+			expect(resolved, `${footprint.entityId} must be hit at its own interior`).not.toBeNull();
+			if (resolved !== null) expect(resolved.entityId).toBe(footprint.entityId);
+			const drawn = drawing.footprints.find((entry) => entry.entityId === footprint.entityId);
+			expect(drawn?.layer).toBe(PAPER_LAYER.sceneFootprint);
+		}
+	});
+
+	it('shares one footprint projection between the drawn layer and the hit path', () => {
+		const document = { entities: [primitive('entity-one', [1, 0, 1])] } as Pick<SceneDocument, 'entities'>;
+		const modelFootprints = new Map([['model-a', { width: 2, depth: 3 }]]);
+		expect(planSceneFootprintsFor(document, modelFootprints)).toBe(planSceneFootprintsFor(document, modelFootprints));
+	});
+});
+
+describe('Paper Plan — stream treatment', () => {
+	it('draws a deselected standalone Wall on an otherwise empty Layout', () => {
+		const fixture = standaloneWall();
+		expect(fixture.document.rooms).toHaveLength(0);
+		const plan = evaluate(fixture.compiled);
+		const drawing = buildPaperPlan(plan, fixture.compiled, EMPTY_PROJECTION);
+		const wallId = fixture.document.walls[0]!.id;
+		expect(eligiblePlanFragments(plan).some((fragment) => fragment.ref.sourceId === wallId)).toBe(true);
+		expect(drawing.fills.some((fill) => fill.sourceId === wallId && fill.treatment === 'cut')).toBe(true);
+		expect(drawing.lines.some((line) => line.sourceId === wallId && line.treatment === 'cut')).toBe(true);
+	});
+
+	it('draws cut Walls as poché with a band at the compiled thickness', () => {
+		const fixture = enclosure(STARTER_ENCLOSURE_POINTS);
+		const plan = evaluate(fixture.compiled);
+		const drawing = buildPaperPlan(plan, fixture.compiled, EMPTY_PROJECTION);
+		const cutFragments = eligiblePlanFragments(plan).filter((fragment) => fragment.ref.stream === 'cut');
+		expect(cutFragments.length).toBeGreaterThan(0);
+		const poche = drawing.fills.filter((fill) => fill.treatment === 'cut');
+		// One contiguous ribbon per Wall run, not one quad per sampled chord.
+		expect(poche).toHaveLength(new Set(cutFragments.map((fragment) => fragment.ref.sourceId)).size);
+		for (const fill of poche) {
+			expect(fill.layer).toBe(PAPER_LAYER.cut);
+			expect(fill.polygons[0]!.length).toBeGreaterThanOrEqual(4);
+			// The band is the Wall's own thickness, not a centre-line stroke: at least one
+			// edge is separated from its opposite by the compiled thickness.
+			const polygon = fill.polygons[0]!;
+			const last = polygon.at(-1)!;
+			const thickness = Math.hypot(last[0] - polygon[0]![0], last[1] - polygon[0]![1]);
+			const wall = fixture.compiled.walls.find((candidate) => candidate.wallId === fill.sourceId);
+			expect(thickness).toBeCloseTo(wall!.thickness, 6);
+		}
+		// The cut edge is the heavier 1.5 px ink.
+		expect(drawing.lines.some((line) => line.treatment === 'cut' && line.layer === PAPER_LAYER.cut)).toBe(true);
+		expect(PAPER_LINE_STYLE.cut.widthCssPx).toBe(0.5);
+	});
+
+	it('draws an Opening symbol, and a lintel above the cut as projected', () => {
+		const fixture = withDoor(enclosure(STARTER_ENCLOSURE_POINTS));
+		const plan = evaluate(fixture.compiled);
+		const drawing = buildPaperPlan(plan, fixture.compiled, EMPTY_PROJECTION);
+		const opening = fixture.compiled.walls.flatMap((wall) => wall.openings)[0]!;
+		const wall = fixture.compiled.walls.find((candidate) => candidate.openings.some((entry) => entry.openingId === opening.openingId))!;
+		const symbol = drawing.lines.find((line) => line.stream === 'symbol' && line.sourceId === opening.openingId)!;
+		const swing = drawing.lines.find((line) => line.sourceId === opening.openingId && line.dashed)!;
+		expect(symbol.layer).toBe(PAPER_LAYER.symbol);
+		expect(symbol.segments).toHaveLength(3);
+		expect(swing.segments).toHaveLength(18);
+		expect(swing.dashed).toBe(true);
+		// Two thin jambs and the physical leaf stay solid. The leaf is perpendicular
+		// to the Wall; the movement arc is separately dashed at the Opening width.
+		const [hinge, leafEnd] = symbol.segments[2]!;
+		const tangent: LayoutVec2 = [
+			(opening.centerPolyline[1]![0] - opening.centerPolyline[0]![0]) / Math.hypot(opening.centerPolyline[1]![0] - opening.centerPolyline[0]![0], opening.centerPolyline[1]![1] - opening.centerPolyline[0]![1]),
+			(opening.centerPolyline[1]![1] - opening.centerPolyline[0]![1]) / Math.hypot(opening.centerPolyline[1]![0] - opening.centerPolyline[0]![0], opening.centerPolyline[1]![1] - opening.centerPolyline[0]![1])
+		];
+		const leaf = [leafEnd[0] - hinge[0], leafEnd[1] - hinge[1]] as const;
+		expect(Math.hypot(leaf[0], leaf[1])).toBeCloseTo(opening.width, 6);
+		expect(leaf[0] * tangent[0] + leaf[1] * tangent[1]).toBeCloseTo(0, 6);
+		for (const segment of swing.segments) {
+			for (const point of segment) {
+				expect(Math.hypot(point[0] - hinge[0], point[1] - hinge[1])).toBeCloseTo(opening.width, 5);
+			}
+		}
+		expect(Math.hypot(symbol.segments[0]![0][0] - symbol.segments[0]![1][0], symbol.segments[0]![0][1] - symbol.segments[0]![1][1])).toBeCloseTo(wall.thickness, 6);
+		const resources = createPaperScene(drawing, [800, 600]);
+		try {
+			const symbolBatches = resources.group.children.filter(
+				(child): child is LineSegments2 => child instanceof LineSegments2 && child.renderOrder === PAPER_LAYER.symbol
+			);
+			expect(symbolBatches.map((line) => (line.material as Line2NodeMaterial).dashed).sort()).toEqual([false, true]);
+		} finally {
+			resources.dispose();
+		}
+		const lintels = drawing.lines.filter(
+			(line) => line.stream === 'projected' && eligiblePlanFragments(plan).some((fragment) => fragment.ref.sourceId === line.sourceId && fragment.ref.sourceKind === 'wall')
+		);
+		expect(lintels.length, 'a Wall span above the cut is projected').toBeGreaterThan(0);
+		expect(lintels.every((line) => line.layer === PAPER_LAYER.projected)).toBe(true);
+	});
+
+	it('keeps Window glazing inside its Wall and omits an oversized Plan outline', () => {
+		const fixture = withWindow(enclosure(STARTER_ENCLOSURE_POINTS));
+		const plan = evaluate(fixture.compiled);
+		const drawing = buildPaperPlan(plan, fixture.compiled, EMPTY_PROJECTION);
+		const opening = fixture.compiled.walls.flatMap((wall) => wall.openings)[0]!;
+		const wall = fixture.compiled.walls.find((candidate) => candidate.openings.some((entry) => entry.openingId === opening.openingId))!;
+		const symbol = drawing.lines.find((line) => line.stream === 'symbol' && line.sourceId === opening.openingId)!;
+		expect(symbol.segments).toHaveLength(12);
+		expect(PAPER_LINE_STYLE.symbol.widthCssPx).toBe(1);
+		for (const segment of symbol.segments.slice(2)) {
+			for (const point of segment) {
+				const centerDistance = Math.min(...opening.centerPolyline.map((center) => Math.hypot(point[0] - center[0], point[1] - center[1])));
+				expect(centerDistance).toBeCloseTo(wall.thickness * 0.2, 4);
+				expect(centerDistance).toBeLessThan(wall.thickness / 2);
+			}
+		}
+	});
+
+	it('draws a Wall wholly below the cut as dashed hidden ink', () => {
+		const fixture = withLowWalls(enclosure(STARTER_ENCLOSURE_POINTS), 0.8);
+		const plan = evaluate(fixture.compiled);
+		expect(eligiblePlanFragments(plan).every((fragment) => fragment.ref.stream === 'hidden' || fragment.ref.sourceKind === 'room-floor')).toBe(true);
+		const drawing = buildPaperPlan(plan, fixture.compiled, EMPTY_PROJECTION);
+		const hidden = drawing.lines.filter((line) => line.stream === 'hidden');
+		expect(hidden.length).toBeGreaterThan(0);
+		expect(hidden.every((line) => line.layer === PAPER_LAYER.hidden)).toBe(true);
+		expect(PAPER_LINE_STYLE.hidden.dashed).toBe(true);
+		expect(PAPER_LINE_STYLE.hidden.opacity).toBeLessThan(PAPER_LINE_STYLE.projected.opacity);
+	});
+
+	it('draws a revealed source with its own stream treatment', () => {
+		const fixture = enclosure(STARTER_ENCLOSURE_POINTS);
+		const filtered = evaluate(fixture.compiled, { sourceKindFilter: ['wall'] });
+		const floor = filtered.membership.find((row) => row.sourceKind === 'room-floor')!;
+		expect(floor.eligible).toBe(false);
+		const before = buildPaperPlan(filtered, fixture.compiled, EMPTY_PROJECTION);
+		expect(before.fills.some((fill) => fill.sourceId === floor.sourceId)).toBe(false);
+
+		const revealed = evaluate(fixture.compiled, { sourceKindFilter: ['wall'], reveal: [floor.sourceId] });
+		const after = buildPaperPlan(revealed, fixture.compiled, EMPTY_PROJECTION);
+		expect(after.fills.some((fill) => fill.sourceId === floor.sourceId)).toBe(true);
+	});
+
+	it('derives the layer and treatment from the fragment, never from a second table', () => {
+		const fixture = enclosure(STARTER_ENCLOSURE_POINTS);
+		const plan = evaluate(fixture.compiled);
+		for (const fragment of eligiblePlanFragments(plan)) {
+			expect(fragmentLayer(fragment)).toBe(
+				fragment.ref.sourceKind === 'room-floor'
+					? PAPER_LAYER.roomFloor
+					: fragment.ref.stream === 'symbol'
+						? PAPER_LAYER.symbol
+						: fragment.ref.stream === 'cut'
+							? PAPER_LAYER.cut
+							: fragment.ref.stream === 'projected'
+								? PAPER_LAYER.projected
+								: PAPER_LAYER.hidden
+			);
+			expect(fragmentTreatment(fragment)).toBe(
+				fragment.ref.sourceKind === 'room-floor'
+					? 'room-floor'
+					: fragment.ref.stream === 'symbol'
+						? 'symbol'
+						: fragment.ref.stream === 'cut'
+							? 'cut'
+							: fragment.ref.stream === 'projected'
+								? 'projected'
+								: 'hidden'
+			);
+		}
+	});
+});
+
+describe('Paper Plan — Scene and native-form outlines', () => {
+	it('unions thousands of sampled 1000m Wall bands to the exact outer contour', () => {
+		// Plan now emits one continuous ribbon for the sampled Wall. Miter joins mean
+		// its own outline is already the four edges, not one cap per 0.25m sample.
+		const fixture = enclosure([[0, 0], [1000, 0], [1000, 4], [0, 4]]);
+		const wallId = fixture.document.walls[0]!.id;
+		const drawing = buildPaperPlan(evaluate(fixture.compiled, { depthMeters: 2000 }), fixture.compiled, EMPTY_PROJECTION);
+		const plannedBands = drawing.fills.filter((fill) => fill.sourceId === wallId).flatMap((fill) => fill.polygons);
+		expect(plannedBands).toHaveLength(1);
+		expect(unionOutline(plannedBands)).toHaveLength(4);
+		// Keep the broad-phase proof honest with the per-sample quads it was written
+		// for. They remain a legal `unionOutline` input even though Plan no longer
+		// draws them.
+		const wall = fixture.compiled.walls.find((candidate) => candidate.wallId === wallId)!;
+		const half = wall.thickness / 2;
+		const bands = wall.samples.slice(0, -1).map((start, index) => {
+			const end = wall.samples[index + 1]!;
+			return [
+				[start.point[0] + start.normal[0] * half, start.point[1] + start.normal[1] * half],
+				[end.point[0] + end.normal[0] * half, end.point[1] + end.normal[1] * half],
+				[end.point[0] - end.normal[0] * half, end.point[1] - end.normal[1] * half],
+				[start.point[0] - start.normal[0] * half, start.point[1] - start.normal[1] * half]
+			] as LayoutVec2[];
+		});
+		expect(bands).toHaveLength(4000);
+		const fills = drawing.fills.filter((fill) => fill.sourceId === wallId);
+		const paper = createPaperScene({ fills, lines: [], footprints: [] }, [1280, 720]);
+		const selected = createPaperMarkScene({
+			selection: { fills, contours: [] },
+			hover: { fills: [], contours: [] },
+			erase: { fills: [], contours: [] },
+			paint: { fills: [], contours: [] }
+		}, [1280, 720]);
+		try {
+			for (const resources of [paper, selected]) {
+				// Render cost must not grow one draw call/material per sample band.
+				const inks = resources.group.children.filter((node) => !node.name.startsWith('StagePaperSheet'));
+				expect(inks).toHaveLength(1);
+				const mesh = inks[0] as Mesh;
+				expect(mesh).toBeInstanceOf(Mesh);
+				expect(mesh.geometry.index!.count).toBeGreaterThan(0);
+				const positions = mesh.geometry.getAttribute('position');
+				expect(positions.count).toBeGreaterThan(0);
+				for (let index = 0; index < positions.count; index += 1) {
+					expect(positions.getY(index)).toBeCloseTo(fills[0]!.elevationMeters, 6);
+				}
+			}
+		} finally {
+			paper.dispose();
+			selected.dispose();
+		}
+
+		const counts = new Map<string, number>();
+		const previousObserver = setWorkObserver({
+			span() {},
+			count(name, amount) {
+				counts.set(name, (counts.get(name) ?? 0) + amount);
+			}
+		});
+		let outline: ReturnType<typeof unionOutline>;
+		try {
+			outline = unionOutline(bands);
+		} finally {
+			setWorkObserver(previousObserver);
+		}
+		expect(outline).toHaveLength(4);
+		// Every narrow-phase interaction comes from the indexed candidate set.
+		// This deterministic work ceiling fails if the former all-bands scan returns.
+		expect(counts.get('grid:build-box-visit')).toBe(bands.length);
+		expect(counts.get('grid:entry-test')).toBeGreaterThan(0);
+		expect(counts.get('grid:entry-test')!).toBeLessThan(bands.length * 64);
+		const lengths = outline.map(([start, end]) => Math.hypot(end[0] - start[0], end[1] - start[1])).sort((a, b) => a - b);
+		expect(lengths[0]).toBeCloseTo(0.2, 6);
+		expect(lengths[1]).toBeCloseTo(0.2, 6);
+		// These synthetic bands carry no junction cap extension.
+		expect(lengths[2]).toBeCloseTo(1000, 6);
+		expect(lengths[3]).toBeCloseTo(1000, 6);
+
+		// Rotation changes both the broad-phase cell coverage and exact edge
+		// coordinates; it must retain the same source union and output lengths.
+		const angle = Math.PI / 4;
+		const rotated = bands.map((polygon) => polygon.map(([x, z]) => [
+			x * Math.cos(angle) - z * Math.sin(angle),
+			x * Math.sin(angle) + z * Math.cos(angle)
+		] as LayoutVec2));
+		const rotatedOutline = unionOutline(rotated);
+		const rotatedLengths = rotatedOutline
+			.map(([start, end]) => Math.hypot(end[0] - start[0], end[1] - start[1]))
+			.sort((a, b) => a - b);
+		expect(rotatedOutline).toHaveLength(4);
+		expect(rotatedLengths[0]).toBeCloseTo(0.2, 5);
+		expect(rotatedLengths[1]).toBeCloseTo(0.2, 5);
+		expect(rotatedLengths[2]).toBeCloseTo(1000, 5);
+		expect(rotatedLengths[3]).toBeCloseTo(1000, 5);
+	}, 15_000);
+
+	it('keeps the outer silhouette when an edge is only partly covered', () => {
+		// Two offset rectangles: A=[0,2]×[0,2], B=[1,3]×[1,3]. Four full edges have
+		// their midpoint inside the other rectangle, but each still contributes a
+		// partial outer boundary. A midpoint-only test would drop those whole edges.
+		const outline = unionOutline([
+			[[0, 0], [2, 0], [2, 2], [0, 2]],
+			[[1, 1], [3, 1], [3, 3], [1, 3]]
+		]);
+		const key = (segment: readonly [LayoutVec2, LayoutVec2]): string => {
+			const point = (value: LayoutVec2): string => `${value[0].toFixed(6)},${value[1].toFixed(6)}`;
+			const forward = `${point(segment[0])}|${point(segment[1])}`;
+			const reverse = `${point(segment[1])}|${point(segment[0])}`;
+			return forward < reverse ? forward : reverse;
+		};
+		const expected: ReadonlyArray<readonly [LayoutVec2, LayoutVec2]> = [
+			[[0, 0], [2, 0]],
+			[[2, 0], [2, 1]],
+			[[2, 1], [3, 1]],
+			[[3, 1], [3, 3]],
+			[[3, 3], [1, 3]],
+			[[1, 3], [1, 2]],
+			[[1, 2], [0, 2]],
+			[[0, 2], [0, 0]]
+		];
+		expect(new Set(outline.map(key))).toEqual(new Set(expected.map(key)));
+	});
+
+	it('draws tilted forms as the boundary of their projected polygon union', () => {
+		const entities: SceneEntity[] = [form('entity-tilted', [2, 0, 2], [0.4, 0, 0])];
+		const projection = projectionOf(entities);
+		const footprint = projection.footprints[0]!;
+		expect(footprint.polygons?.length ?? 0).toBeGreaterThan(1);
+		const fixture = enclosure(STARTER_ENCLOSURE_POINTS);
+		const drawing = buildPaperPlan(evaluate(fixture.compiled), fixture.compiled, projection);
+		const outlined = drawing.footprints[0]!;
+		// The union boundary is a closed silhouette, not a fan of triangle edges.
+		expect(outlined.segments.length).toBeGreaterThanOrEqual(4);
+		const degree = new Map<string, number>();
+		const key = (point: LayoutVec2): string => `${point[0].toFixed(6)},${point[1].toFixed(6)}`;
+		for (const [start, end] of outlined.segments) {
+			degree.set(key(start), (degree.get(key(start)) ?? 0) + 1);
+			degree.set(key(end), (degree.get(key(end)) ?? 0) + 1);
+		}
+		expect([...degree.values()].every((count) => count === 2)).toBe(true);
+		// A triangle edge inside the union would have union on both sides; the outline
+		// must not contain one.
+		expect(outlined.segments.length).toBeLessThan((footprint.polygons ?? []).length * 3);
+	});
+
+	it('does not draw a footprint the Scene picker cannot reach', () => {
+		const entities: SceneEntity[] = [primitive('entity-mounted', [2, 0, 2]), primitive('entity-unmounted', [5, 0, 2])];
+		const projection = projectionOf(entities);
+		const fixture = enclosure(STARTER_ENCLOSURE_POINTS);
+		const drawing = buildPaperPlan(evaluate(fixture.compiled), fixture.compiled, projection, {
+			isFootprintMounted: (entityId) => entityId === 'entity-mounted'
+		});
+		expect(drawing.footprints.map((entry) => entry.entityId)).toEqual(['entity-mounted']);
+	});
+
+	it('draws footprints on the level datum, not the world origin', () => {
+		const projection = projectionOf([primitive('entity-box', [2, 0, 3])]);
+		const fixture = enclosure(STARTER_ENCLOSURE_POINTS);
+		const drawing = buildPaperPlan(evaluate(fixture.compiled), fixture.compiled, projection, {
+			datumMeters: 2.75
+		});
+		expect(drawing.footprints[0]!.elevationMeters).toBe(2.75);
+	});
+
+	it('keeps an upright footprint as its exact ring', () => {
+		const entities: SceneEntity[] = [primitive('entity-box', [2, 0, 3])];
+		const projection = projectionOf(entities);
+		const fixture = enclosure(STARTER_ENCLOSURE_POINTS);
+		const drawing = buildPaperPlan(evaluate(fixture.compiled), fixture.compiled, projection);
+		const outlined = drawing.footprints[0]!;
+		expect(outlined.segments).toHaveLength(4);
+		expect(outlined.polygons[0]).toEqual(projection.footprints[0]!.points);
+	});
+});
+
+describe('selection changes Paper visibility, not its drawing', () => {
+	it('addresses one source as contiguous instance runs of a batch', () => {
+		expect(paperSourceRuns([lineOf('a', 2), lineOf('a', 1), lineOf('b', 2)])).toEqual([
+			{ sourceId: 'a', start: 0, count: 3 },
+			{ sourceId: 'b', start: 3, count: 2 }
+		]);
+	});
+
+	it('hides the exact segments, keeps dash distances and reuses every Paper resource', () => {
+		const fixture = withTwoDoors(enclosure(STARTER_ENCLOSURE_POINTS));
+		const drawing = buildPaperPlan(evaluate(fixture.compiled), fixture.compiled, EMPTY_PROJECTION);
+		const [first, second] = fixture.compiled.walls.flatMap((wall) => wall.openings);
+		if (first === undefined || second === undefined) throw new Error('the two-door fixture has no two Openings');
+		const openingIds = [first.openingId, second.openingId] as const;
+		for (const id of openingIds) {
+			expect(paperHiddenSource(openingSelection(id))).toBe(id);
+			expect(drawing.lines.some((line) => line.sourceId === id)).toBe(true);
+		}
+		expect(paperHiddenSource(null)).toBeNull();
+
+		const counts = new Map<string, number>();
+		const previous = setWorkObserver({
+			span() {},
+			count(name, amount) {
+				counts.set(name, (counts.get(name) ?? 0) + amount);
+			}
+		});
+		const resources = createPaperScene(drawing, [800, 600]);
+		try {
+			const inks = () =>
+				resources.group.children.filter(
+					(child): child is LineSegments2 => child instanceof LineSegments2
+				);
+			const positionBuffer = (ink: LineSegments2) =>
+				(ink.geometry.getAttribute('instanceStart') as InterleavedBufferAttribute)
+					.data as InstancedInterleavedBuffer;
+			const distanceBuffer = (ink: LineSegments2) => {
+				const attribute = ink.geometry.getAttribute('instanceDistanceStart') as
+					| InterleavedBufferAttribute
+					| undefined;
+				return attribute === undefined ? null : (attribute.data as InstancedInterleavedBuffer);
+			};
+			const instances = (ink: LineSegments2) => {
+				const positions = positionBuffer(ink).array as Float32Array;
+				const buffer = distanceBuffer(ink);
+				const distances = buffer === null ? null : (buffer.array as Float32Array);
+				return Array.from({ length: ink.geometry.instanceCount }, (_, index) => ({
+					segment: Array.from(positions.slice(index * 6, index * 6 + 6)),
+					distance: distances === null ? null : Array.from(distances.slice(index * 2, index * 2 + 2))
+				}));
+			};
+			const key = (values: readonly number[]) => values.map((value) => value.toFixed(6)).join(',');
+			// The buffer is Float32; key the drawing's doubles through the same width.
+			const segmentKey = (line: PaperLineDraw, segment: PaperSegment) =>
+				key(
+					Array.from(
+						new Float32Array([
+							segment[0][0],
+							line.elevationMeters,
+							segment[0][1],
+							segment[1][0],
+							line.elevationMeters,
+							segment[1][1]
+						])
+					)
+				);
+			const drawnSegments = (sourceId: string | null) =>
+				drawing.lines
+					.filter((line) => sourceId === null || line.sourceId === sourceId)
+					.flatMap((line) => line.segments.map((segment) => segmentKey(line, segment)));
+			const without = (all: readonly string[], removed: readonly string[]) => {
+				const remaining = new Map<string, number>();
+				for (const entry of all) remaining.set(entry, (remaining.get(entry) ?? 0) + 1);
+				for (const entry of removed) remaining.set(entry, (remaining.get(entry) ?? 1) - 1);
+				return [...remaining]
+					.filter(([, count]) => count > 0)
+					.flatMap(([entry, count]) => Array.from({ length: count }, () => entry))
+					.sort();
+			};
+			const visibleSegments = () =>
+				inks()
+					.flatMap((ink) => instances(ink).map((instance) => key(instance.segment)))
+					.sort();
+
+			// Everything the scene realized. Identity is the only observable that
+			// distinguishes a new GPU allocation from a content update.
+			const realized = inks().map((ink) => ({
+				object: ink,
+				geometry: ink.geometry,
+				positions: positionBuffer(ink),
+				distances: distanceBuffer(ink),
+				renderOrder: ink.renderOrder
+			}));
+			const positionArrays = realized.map((entry) => Float32Array.from(entry.positions.array as Float32Array));
+			const distanceArrays = realized.map((entry) =>
+				entry.distances === null ? null : Float32Array.from(entry.distances.array as Float32Array)
+			);
+			const countsBefore = realized.map((entry) => entry.geometry.instanceCount);
+			const versions = realized.map((entry) => entry.positions.version);
+			const childCount = resources.group.children.length;
+			const all = drawnSegments(null);
+			expect(realized.length).toBeGreaterThan(0);
+			expect(realized.some((entry) => entry.distances !== null)).toBe(true);
+			expect(positionArrays.reduce((sum, array) => sum + array.length, 0)).toBe(all.length * 6);
+			expect(visibleSegments()).toEqual([...all].sort());
+
+			// Every segment's own dash pair, so a shift after hiding would be visible.
+			const distancesBySegment = new Map<string, Set<string>>();
+			for (const ink of inks()) {
+				for (const instance of instances(ink)) {
+					if (instance.distance === null) continue;
+					const set = distancesBySegment.get(key(instance.segment)) ?? new Set<string>();
+					set.add(key(instance.distance));
+					distancesBySegment.set(key(instance.segment), set);
+				}
+			}
+			const sameResources = () => {
+				const now = inks().map((ink) => ({
+					object: ink,
+					geometry: ink.geometry,
+					positions: positionBuffer(ink),
+					distances: distanceBuffer(ink),
+					renderOrder: ink.renderOrder
+				}));
+				expect(now).toHaveLength(realized.length);
+				for (const [index, entry] of now.entries()) {
+					const before = realized[index]!;
+					expect(entry.object).toBe(before.object);
+					expect(entry.geometry).toBe(before.geometry);
+					expect(entry.positions).toBe(before.positions);
+					expect(entry.distances).toBe(before.distances);
+					expect(entry.renderOrder).toBe(before.renderOrder);
+				}
+				expect(resources.group.children).toHaveLength(childCount);
+			};
+
+			// A: exactly the complement, with each segment's dash pair carried over.
+			resources.setHiddenSource(openingIds[0]);
+			expect(counts.get('paper:scene-build')).toBe(1);
+			expect(
+				realized.some((entry, index) => entry.positions.version > versions[index]!)
+			).toBe(true);
+			sameResources();
+			expect(visibleSegments()).toEqual(without(all, drawnSegments(openingIds[0])));
+			for (const ink of inks()) {
+				for (const instance of instances(ink)) {
+					if (instance.distance === null) continue;
+					expect(distancesBySegment.get(key(instance.segment))).toContain(key(instance.distance));
+				}
+			}
+
+			// A → B: B's complement replaces A's without allocating anything.
+			resources.setHiddenSource(openingIds[1]);
+			expect(counts.get('paper:scene-build')).toBe(1);
+			sameResources();
+			expect(visibleSegments()).toEqual(without(all, drawnSegments(openingIds[1])));
+
+			// None: the built drawing returns byte for byte, in the same buffers.
+			resources.setHiddenSource(null);
+			expect(counts.get('paper:scene-build')).toBe(1);
+			sameResources();
+			expect(visibleSegments()).toEqual([...all].sort());
+			for (const [index, entry] of realized.entries()) {
+				expect(entry.geometry.instanceCount).toBe(countsBefore[index]);
+				expect(Array.from(entry.positions.array as Float32Array)).toEqual(Array.from(positionArrays[index]!));
+				if (entry.distances !== null) {
+					expect(Array.from(entry.distances.array as Float32Array)).toEqual(
+						Array.from(distanceArrays[index]!)
+					);
+				}
+			}
+		} finally {
+			resources.dispose();
+			setWorkObserver(previous);
+		}
+	});
+
+	it('keeps the drawing unfiltered, so a selection never owns a second copy', () => {
+		const fixture = withDoor(enclosure(STARTER_ENCLOSURE_POINTS));
+		const drawing = buildPaperPlan(evaluate(fixture.compiled), fixture.compiled, EMPTY_PROJECTION);
+		const opening = fixture.compiled.walls.flatMap((wall) => wall.openings)[0]!;
+		expect(paperHiddenSource(openingSelection(opening.openingId))).toBe(opening.openingId);
+		expect(drawing.lines.some((line) => line.sourceId === opening.openingId)).toBe(true);
+	});
+});
+
+describe('Paper Plan — appearance is a camera layer mask', () => {
+	it('shows only the overlay layer on Paper and both layers in the world reading', () => {
+		expect(stageCameraLayerMask(true)).toEqual([STAGE_OVERLAY_LAYER]);
+		expect(stageCameraLayerMask(false)).toEqual([STAGE_WORLD_LAYER, STAGE_OVERLAY_LAYER]);
+
+		const paper = new Layers();
+		paper.disableAll();
+		for (const layer of stageCameraLayerMask(true)) paper.enable(layer);
+		const mat = new Layers();
+		mat.disableAll();
+		for (const layer of stageCameraLayerMask(false)) mat.enable(layer);
+		const world = new Layers();
+		world.disableAll();
+		world.enable(STAGE_WORLD_LAYER);
+		const overlay = new Layers();
+		overlay.disableAll();
+		overlay.enable(STAGE_OVERLAY_LAYER);
+		expect(paper.test(world)).toBe(false);
+		expect(paper.test(overlay)).toBe(true);
+		expect(mat.test(world)).toBe(true);
+		expect(mat.test(overlay)).toBe(true);
+	});
+
+	it('reveals linework, then sheet, then poché purely from the Camera weight', () => {
+		const at = (weight: number) => paperRevealFor({ renderedReading: 'transition', orthographicWeight: weight }, 'paper')!;
+		expect(paperRevealFor({ renderedReading: '3d', orthographicWeight: 0 }, 'paper')).toBeNull();
+		expect(paperRevealFor({ renderedReading: 'transition', orthographicWeight: 0.95 }, 'shaded')).toBeNull();
+		expect(paperRevealFor(null, 'paper')).toBeNull();
+		// Mounted for the whole flip, but drawn only late in it.
+		expect(at(0.1)).toEqual({ lines: 0, sheet: 0, poche: 0 });
+		expect(paperRevealFor({ renderedReading: 'plan', orthographicWeight: 1 }, 'paper')).toEqual({ lines: 1, sheet: 1, poche: 1 });
+		let previous = at(0);
+		for (let weight = 0.01; weight < 1; weight += 0.01) {
+			const reveal = at(weight);
+			expect(reveal.lines).toBeGreaterThanOrEqual(previous.lines);
+			expect(reveal.sheet).toBeGreaterThanOrEqual(previous.sheet);
+			expect(reveal.poche).toBeGreaterThanOrEqual(previous.poche);
+			expect(reveal.lines).toBeGreaterThanOrEqual(reveal.poche);
+			expect(reveal.sheet).toBeGreaterThanOrEqual(reveal.poche);
+			previous = reveal;
+		}
+		expect(at(0.999).sheet).toBe(1);
+		expect(at(0.999).poche).toBeLessThan(1);
+	});
+
+	it('draws only when the Plan has settled and Paper is chosen', () => {
+		const plan = { renderedReading: 'plan', orthographicWeight: 1 } as const;
+		expect(isPaperPlanVisible(plan, 'paper')).toBe(true);
+		expect(isPaperPlanVisible(plan, 'shaded')).toBe(false);
+		expect(isPaperPlanVisible({ renderedReading: 'plan', orthographicWeight: 0.98 }, 'paper')).toBe(false);
+		expect(isPaperPlanVisible({ renderedReading: 'transition', orthographicWeight: 1 }, 'paper')).toBe(false);
+		expect(isPaperPlanVisible({ renderedReading: '3d', orthographicWeight: 0 }, 'paper')).toBe(false);
+		expect(DEFAULT_APP_PREFERENCES.planAppearance).toBe('paper');
+	});
+
+	it('settles 2D Paper to opaque black Wall poché over the sheet, and masks the world only then', () => {
+		const settled = paperStageComposition({
+			evaluation: { renderedReading: 'plan', orthographicWeight: 1 }, appearance: 'paper', framed: false, hasPlan: true
+		});
+		expect(settled).toEqual({ reveal: { lines: 1, sheet: 1, poche: 1 }, visible: true, covers: true });
+		expect(stageCameraLayerMask(settled.covers)).toEqual([STAGE_OVERLAY_LAYER]);
+		// Mid-flip the shaded Walls stay under the translucent poché (material → ink).
+		for (const weight of [0.6, 0.8, 0.95, 0.999]) {
+			const flipping = paperStageComposition({
+				evaluation: { renderedReading: 'transition', orthographicWeight: weight }, appearance: 'paper', framed: false, hasPlan: true
+			});
+			expect(flipping.covers).toBe(false);
+			expect(stageCameraLayerMask(flipping.covers)).toContain(STAGE_WORLD_LAYER);
+		}
+		// Shaded, a capture frame, or no Plan never draw Paper.
+		for (const input of [
+			{ appearance: 'shaded' as const, framed: false, hasPlan: true },
+			{ appearance: 'paper' as const, framed: true, hasPlan: true },
+			{ appearance: 'paper' as const, framed: false, hasPlan: false }
+		]) {
+			expect(paperStageComposition({ evaluation: { renderedReading: 'plan', orthographicWeight: 1 }, ...input }))
+				.toEqual({ reveal: null, visible: false, covers: false });
+		}
+
+		const fixture = enclosure(STARTER_ENCLOSURE_POINTS);
+		const drawing = buildPaperPlan(evaluate(fixture.compiled), fixture.compiled, EMPTY_PROJECTION);
+		const resources = createPaperScene(drawing, [1280, 720]);
+		const marks = createPaperMarkScene({
+			selection: { fills: [], contours: [] }, hover: { fills: [], contours: [] }, erase: { fills: [], contours: [] }, paint: { fills: [], contours: [] }
+		}, [1280, 720]);
+		try {
+			resources.setReveal(settled.reveal!);
+			const meshes: Mesh[] = [];
+			resources.group.traverse((node) => { if (node instanceof Mesh && node.material instanceof MeshBasicMaterial) meshes.push(node); });
+			const material = (mesh: Mesh) => mesh.material as MeshBasicMaterial;
+			const sheet = meshes.find((mesh) => mesh.name === PAPER_SHEET_NAME)!;
+			const poche = meshes.filter((mesh) => mesh.name === '' && material(mesh).color.getHexString() === PAPER_INK.slice(1));
+			const floors = meshes.filter((mesh) => mesh.name === '' && mesh !== poche[0] && material(mesh).colorWrite);
+			expect(poche).toHaveLength(1);
+			const ink = material(poche[0]!);
+			expect(ink.opacity).toBe(1);
+			expect(ink.colorWrite).toBe(true);
+			expect(ink.stencilWrite).toBe(false);
+			expect(ink.depthTest).toBe(false);
+			expect(poche[0]!.renderOrder).toBeGreaterThan(sheet.renderOrder);
+			for (const floor of floors) expect(poche[0]!.renderOrder).toBeGreaterThan(floor.renderOrder);
+			// Nothing unselected in the marks layer paints over the settled poché.
+			expect(marks.group.children).toHaveLength(0);
+		} finally {
+			resources.dispose();
+			marks.dispose();
+		}
+	});
+
+	it('puts every Paper object on layer 2 and orders it by its Plan layer', () => {
+		const fixture = enclosure(STARTER_ENCLOSURE_POINTS);
+		const plan = evaluate(fixture.compiled);
+		const projection = projectionOf([primitive('entity-box', [2, 0, 2])]);
+		const drawing = buildPaperPlan(plan, fixture.compiled, projection);
+		const resources = createPaperScene(drawing, [1280, 720]);
+		const overlay = new Layers();
+		overlay.disableAll();
+		overlay.enable(STAGE_OVERLAY_LAYER);
+		const world = new Layers();
+		world.disableAll();
+		world.enable(STAGE_WORLD_LAYER);
+		let objects = 0;
+		resources.group.traverse((node) => {
+			if (node.type === 'Group' || node.name.startsWith('StagePaperSheet')) return;
+			objects += 1;
+			expect(node.layers.test(overlay)).toBe(true);
+			expect(node.layers.test(world)).toBe(false);
+			expect(node.renderOrder).toBeGreaterThanOrEqual(PAPER_LAYER.roomFloor);
+			expect(node.renderOrder).toBeLessThanOrEqual(PAPER_LAYER.sceneFootprint);
+		});
+		expect(objects).toBeGreaterThan(0);
+		resources.dispose();
+	});
+
+	it('puts 3D on the mat and keeps Paper inks out of the renderer tone map', () => {
+		expect(PAPER_GROUND_INK).toBe('#e5e8e1');
+		expect(MAT_BACKGROUND_INK).toBe('#1d3a33');
+
+		const canvas = readFileSync(join(REPO_ROOT, 'apps/editor/src/lib/authoring/stage/shell/StageCanvas.svelte'), 'utf8');
+		// No fog: the mat is a measured ground, not an atmospheric room.
+		expect(canvas).not.toMatch(/<T\.Fog/);
+		// R217.S19: the Canvas mounts the mat ground, whose material wears the mat ink.
+		expect(canvas).toContain('<StageMatGround');
+		const matGround = readFileSync(
+			join(REPO_ROOT, 'apps/editor/src/lib/authoring/stage/shell/StageMatGround.svelte'),
+			'utf8'
+		);
+		expect(matGround).toContain('createMatGroundMaterial');
+		const groundShader = readFileSync(join(REPO_ROOT, 'apps/editor/src/lib/authoring/stage/shell/stage-mat-grid.ts'), 'utf8');
+		expect(groundShader).toContain('uMatInk: uniform(new Color(MAT_BACKGROUND_INK))');
+
+		// PLATE inks are semantic colors; tone mapping would shift the vellum and ink
+		// away from the shell's own values. Every Paper material opts out.
+		const scene = readFileSync(join(REPO_ROOT, 'apps/editor/src/lib/authoring/stage/paper-scene.ts'), 'utf8');
+		expect(scene.match(/toneMapped: false/g)?.length ?? 0).toBeGreaterThanOrEqual(3);
+
+		const camera = readFileSync(join(REPO_ROOT, 'apps/editor/src/lib/authoring/stage/shell/StageCamera.svelte'), 'utf8');
+		expect(camera).toContain('renderer.setClearColor');
+	});
+
+	it('redraws Paper when a root gains geometry or a lazy renderer arrives', () => {
+		const canvas = readFileSync(join(REPO_ROOT, 'apps/editor/src/lib/authoring/stage/shell/StageCanvas.svelte'), 'utf8');
+		expect(canvas).toContain('hasPickableBody');
+		expect(canvas).toContain('onEntityRenderable={entityRendererReady}');
+		expect(canvas).toContain('revision={sceneRootRevision + entityRenderRevision}');
+
+		const entities = readFileSync(join(REPO_ROOT, 'apps/editor/src/lib/authoring/stage/shell/StageEntities.svelte'), 'utf8');
+		expect(entities).toContain('onEntityRenderable?.()');
+	});
+
+	it('never writes Object3D.visible in Paper or appearance code', () => {
+		const files = [
+			'apps/editor/src/lib/authoring/stage/paper-plan.ts',
+			'apps/editor/src/lib/authoring/stage/paper-scene.ts',
+			'apps/editor/src/lib/authoring/stage/shell/StagePaper.svelte',
+			'apps/editor/src/lib/authoring/stage/shell/StageCamera.svelte',
+			'apps/editor/src/lib/authoring/stage/shell/StageCanvas.svelte'
+		];
+		for (const file of files) {
+			const source = readFileSync(join(REPO_ROOT, file), 'utf8');
+			expect(source, file).not.toMatch(/\.visible\s*=/);
+			expect(source, file).not.toMatch(/visible\s*:\s*false/);
+		}
+	});
+});

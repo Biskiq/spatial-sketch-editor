@@ -88,7 +88,7 @@ function lookTile(root: HTMLElement, label: string): HTMLButtonElement {
 	return tile;
 }
 
-describe('T2.S6 — the Looks tab', () => {
+describe('the Looks tab', () => {
 	it('applies the pressed Look and every other Look tile', async () => {
 		const look = fake({ activeLook: RISO });
 		const root = render(look);
