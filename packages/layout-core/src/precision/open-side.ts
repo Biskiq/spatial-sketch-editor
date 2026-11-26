@@ -11,7 +11,7 @@ import type { LayoutVec2 } from '../geometry/coordinates';
 import type { PrecisionOperation, PrecisionPlan, PrecisionRejection, SpaceOpenSideSlidePlan } from './types';
 import { POINT_EPSILON } from '../vec2';
 import { wallEndpoints } from './document';
-import { finalizeWallGeometryCandidate, hasAnyTestObserverInPrecision } from './finalization';
+import { finalizeWallGeometryCandidate } from './finalization';
 import { reject, rejectRoundMember } from './rejections';
 
 /**
@@ -53,7 +53,7 @@ export function planSpaceOpenSideOffset(
 		junctionIds: [frame.startJunctionId, frame.endJunctionId]
 	});
 	if (roundHit) return rejectRoundMember(roundHit);
-	const worldIndex = !hasAnyTestObserverInPrecision() ? ensureLayoutWorldIndex(document) : peekLayoutWorldIndex(document);
+	const worldIndex = ensureLayoutWorldIndex(document);
 	const junctionById = new Map(document.junctions.map((junction) => [junction.id, junction]));
 	const start = junctionById.get(frame.startJunctionId);
 	const end = junctionById.get(frame.endJunctionId);

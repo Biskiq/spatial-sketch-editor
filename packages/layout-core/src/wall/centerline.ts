@@ -311,7 +311,8 @@ export function wallCenterlineSamples(
 	wall: Pick<LayoutWall, 'id' | 'centerline'>,
 	startPoint: LayoutVec2,
 	endPoint: LayoutVec2,
-	traversal: WallCenterlineTraversal
+	traversal: WallCenterlineTraversal,
+	options: WallSamplingOptions = {}
 ): SampledSegment | undefined {
 	let result: SampledSegment | undefined;
 	try {
@@ -319,7 +320,7 @@ export function wallCenterlineSamples(
 	} catch {
 		result = undefined;
 	}
-	const observer = wallSamplingObserverForTest;
+	const observer = options.observer;
 	if (observer) {
 		try {
 			observer(
@@ -341,15 +342,14 @@ export function wallCenterlineSamples(
 }
 
 /**
- * Test-only observation of actual consumer sampling calls.
+ * Observation of actual consumer sampling calls.
  *
- * While set, every `wallCenterlineSamples` invocation reports its inputs and result.
- * Unset (the production default) is zero behavior change beyond one undefined check.
- * The hook never retains: the observer runs synchronously and production stores
- * nothing, so no document lifetime is extended (RL-1). The observer must not mutate
- * its arguments and must copy synchronously if it needs the data. Never set in
- * production code; tests set/clear around a single real-consumer invocation to key
- * observations by consumer/site/traversal/resolved endpoints.
+ * A caller that supplies `observer` receives every `wallCenterlineSamples`
+ * invocation's inputs and result; omitting it (the production default) is zero
+ * behavior change beyond one undefined check. The hook never retains: the
+ * observer runs synchronously and production stores nothing, so no document
+ * lifetime is extended (RL-1). The observer must not mutate its arguments and
+ * must copy synchronously if it needs the data.
  */
 export type WallSamplingCallObservation = {
 	wallId: string;
@@ -366,20 +366,15 @@ export type WallSamplingCallObservation = {
 	 */
 	centerline: LayoutWallCenterline;
 };
-let wallSamplingObserverForTest:
-	| ((observation: WallSamplingCallObservation, result: SampledSegment | undefined) => void)
-	| undefined;
-export function setWallSamplingObserverForTest(
-	observer: ((observation: WallSamplingCallObservation, result: SampledSegment | undefined) => void) | undefined
-): void {
-	wallSamplingObserverForTest = observer;
-}
-export function clearWallSamplingObserverForTest(): void {
-	wallSamplingObserverForTest = undefined;
-}
-export function hasWallSamplingObserverForTest(): boolean {
-	return wallSamplingObserverForTest !== undefined;
-}
+export type WallSamplingObserver = (
+	observation: WallSamplingCallObservation,
+	result: SampledSegment | undefined
+) => void;
+
+/** The optional observation a caller threads through one sampling request. */
+export type WallSamplingOptions = {
+	observer?: WallSamplingObserver;
+};
 
 /**
  * P23B.4 M-1 — one explicitly-threaded sampled-centerline derivation per acceptance chain.
@@ -490,7 +485,9 @@ const CANONICAL_SAMPLING = new WeakMap<WallSamplingDerivation, WallSamplingDeriv
 export function isCanonicalWallSampling(sampling: WallSamplingDerivation | undefined): boolean {
  return sampling === undefined || CANONICAL_SAMPLING.get(sampling) === sampling.samples;
 }
-export function createWallSamplingDerivation(): WallSamplingDerivation {
+export function createWallSamplingDerivation(
+	options: WallSamplingOptions = {}
+): WallSamplingDerivation {
 	const cache = new Map<LayoutWallCenterline, Map<string, SampledSegment | undefined>>();
 	/**
 	 * One small record per Wall this scope has served, used only to attribute a
@@ -542,7 +539,7 @@ export function createWallSamplingDerivation(): WallSamplingDerivation {
 			} else {
 				stats.coldMisses += 1;
 			}
-			const derived = wallCenterlineSamples(wall, startPoint, endPoint, traversal);
+			const derived = wallCenterlineSamples(wall, startPoint, endPoint, traversal, options);
 			if (derived === undefined) stats.failedDerivations += 1;
 			byKey.set(key, derived);
 			stats.entries += 1;
@@ -561,7 +558,9 @@ export function createWallSamplingDerivation(): WallSamplingDerivation {
 			stats.entries = 0;
 		}
 	};
-	CANONICAL_SAMPLING.set(derivation, derivation.samples);
+	// Only an unobserved derivation is interchangeable with canonical sampling:
+	// an observed one must keep every cache and recorded compile bypassed.
+	if (options.observer === undefined) CANONICAL_SAMPLING.set(derivation, derivation.samples);
 	return derivation;
 }
 

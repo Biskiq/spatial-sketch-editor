@@ -11,7 +11,7 @@ import type { LayoutArchitecturalPreset, LayoutArchitecturalPresetId, LayoutObje
 import type { Vec3 } from '../kernel/types';
 import { POINT_EPSILON, add, distance, dot, normalize, scale, subtract, vectorEqual } from '../vec2';
 import { currentJunctionPoint } from './document';
-import { finalizeCandidate, finalizeWallGeometryCandidate, hasAnyTestObserverInPrecision } from './finalization';
+import { finalizeCandidate, finalizeWallGeometryCandidate } from './finalization';
 import { finitePoint, finitePositive, finiteVector, makeRejection, reject, rejectRoundMember } from './rejections';
 
 /** Resize a four-edge straight Room boundary into an exact rectangle. */
@@ -80,7 +80,7 @@ export function planExactRectangleDimensions(
 	}
 
 	const changedWallIds = [...new Set([...roomWallIds, widthWallId, depthWallId])];
-	const worldIndex = !hasAnyTestObserverInPrecision() ? ensureLayoutWorldIndex(document) : peekLayoutWorldIndex(document);
+	const worldIndex = ensureLayoutWorldIndex(document);
 	const candidate = cowMoveJunctions(document, targetPoints, changedWallIds, worldIndex);
 	return finalizeWallGeometryCandidate({
 		baseline: document,
@@ -161,7 +161,7 @@ export function planCommitLayoutObjectPreset(
 	if (typeof capturedObjectId !== 'string' || capturedObjectId.length === 0) {
 		return reject('invalid_value', 'Preset creation requires a captured object id', [presetId]);
 	}
-	const worldIndex = !hasAnyTestObserverInPrecision() ? ensureLayoutWorldIndex(document) : peekLayoutWorldIndex(document);
+	const worldIndex = ensureLayoutWorldIndex(document);
 	const alreadyExists = worldIndex
 		? worldIndex.objectById.has(capturedObjectId)
 		: document.objects.some((object) => object.id === capturedObjectId);
@@ -188,7 +188,7 @@ export function planExactLayoutObjectTransform(
 	objectId: string,
 	patch: LayoutObjectTransformPatch
 ): PrecisionPlan {
-	const worldIndex = !hasAnyTestObserverInPrecision() ? ensureLayoutWorldIndex(document) : peekLayoutWorldIndex(document);
+	const worldIndex = ensureLayoutWorldIndex(document);
 	const object = worldIndex
 		? worldIndex.objectById.get(objectId)
 		: document.objects.find((candidate) => candidate.id === objectId);
@@ -245,7 +245,7 @@ export function planDeleteLayoutObject(
 	document: LayoutDocumentWallFirst,
 	objectId: string
 ): PrecisionPlan {
-	const worldIndex = !hasAnyTestObserverInPrecision() ? ensureLayoutWorldIndex(document) : peekLayoutWorldIndex(document);
+	const worldIndex = ensureLayoutWorldIndex(document);
 	const object = worldIndex
 		? worldIndex.objectById.get(objectId)
 		: document.objects.find((candidate) => candidate.id === objectId);

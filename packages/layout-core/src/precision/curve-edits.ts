@@ -15,7 +15,7 @@ import type { PrecisionOperation, PrecisionPlan, PrecisionRejection } from './ty
 import { MAX_WALL_CURVE_KNOTS } from './types';
 import { POINT_EPSILON } from '../vec2';
 import { wallEndpoints } from './document';
-import { finalizeWallGeometryCandidate, hasAnyTestObserverInPrecision } from './finalization';
+import { finalizeWallGeometryCandidate } from './finalization';
 import { finitePoint, reject, rejectRoundMember } from './rejections';
 import { proposeWallKnotRemoval } from './wall-bends';
 
@@ -174,7 +174,7 @@ export function withWallCenterline(
 	wallId: string,
 	centerline: LayoutWall['centerline']
 ): LayoutDocumentWallFirst {
-	const worldIndex = !hasAnyTestObserverInPrecision() ? ensureLayoutWorldIndex(document) : peekLayoutWorldIndex(document);
+	const worldIndex = ensureLayoutWorldIndex(document);
 	return cowSetWallCenterline(document, wallId, centerline, worldIndex);
 }
 

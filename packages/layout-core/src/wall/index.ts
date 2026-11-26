@@ -16,9 +16,9 @@ export { OPENING_SET_EPSILON, validateWallFirstOpeningSet, validateWallFirstOpen
 
 export type { OpeningSetIssue, OpeningSetIssueCode, WallFirstWallIndex } from './opening-set';
 
-export { clearWallSamplingObserverForTest, cloneWallCenterline, cloneWallCubicSpan, cloneWallCurveKnot, createWallSamplingDerivation, hasWallSamplingObserverForTest, isCanonicalWallSampling, nextWallCurveKnotId, orientedWallChainKnotsAndSpans, projectPointToWallCenterline, setWallSamplingObserverForTest, translateWallCenterline, wallCenterlineCarriesPoint, wallCenterlineCubics, wallCenterlinePoints, wallCenterlineSamples, wallCenterlineSegment, wallCubicChain } from './centerline';
+export { cloneWallCenterline, cloneWallCubicSpan, cloneWallCurveKnot, createWallSamplingDerivation, isCanonicalWallSampling, nextWallCurveKnotId, orientedWallChainKnotsAndSpans, projectPointToWallCenterline, translateWallCenterline, wallCenterlineCarriesPoint, wallCenterlineCubics, wallCenterlinePoints, wallCenterlineSamples, wallCenterlineSegment, wallCubicChain } from './centerline';
 
-export type { WallCenterlineSegment, WallCenterlineTraversal, WallSamplingCallObservation, WallSamplingDerivation } from './centerline';
+export type { WallCenterlineSegment, WallCenterlineTraversal, WallSamplingCallObservation, WallSamplingDerivation, WallSamplingObserver, WallSamplingOptions } from './centerline';
 
 export { createCapturedWallChainAllocator, measureWallArc, MIN_WALL_ARC_RISE, planWallChain, planWallSegment, WALL_CHAIN_DEFAULTS } from './wall-chain';
 

@@ -4,7 +4,7 @@ import { countWork } from '../kernel/work-observer';
 import { topologyComponentKeyByWallId } from './topology-components';
 import type { DerivedCandidateFace } from '../geometry/face-extraction';
 import { ON_RING_TOLERANCE, canonicalBoundaryCycleKey, pointStrictlyInsidePolygon, polygonsShareInteriorArea } from '../geometry/face-extraction';
-import { correspondenceObserverForTest, correspondencePairClassOf, correspondenceShortCircuitsDisabledForTest, emptyCorrespondenceObservation, recordInsideCall, recordObservationPairClass, recordOverlapCall } from './reconciliation-observation';
+import { correspondencePairClassOf, emptyCorrespondenceObservation, recordInsideCall, recordObservationPairClass, recordOverlapCall, type CorrespondenceObserver } from './reconciliation-observation';
 import type { ComponentLineage } from './reconciliation-types';
 
 /**
@@ -237,6 +237,13 @@ export function buildCorrespondenceComponents(options: {
 	candidateDocument: Pick<LayoutDocumentWallFirst, 'walls' | 'junctions'>;
 	/** Predecessor Rooms whose surviving boundary Walls anchor their identity. */
 	baselineRooms: readonly LayoutWallFirstRoom[];
+	/** Optional per-pass report; production callers omit it. */
+	observer?: CorrespondenceObserver;
+	/**
+	 * Optional exhaustive evaluation: both predicates for every pair, geometry
+	 * before authorization, no pruning. Production callers omit it.
+	 */
+	exhaustive?: boolean;
 }): ComponentLineage[] {
 	const { faces, predecessorRoomIds, predecessorWitnesses, predecessorPolygons } = options;
 	const authorization = correspondenceAuthorization({
@@ -262,7 +269,7 @@ export function buildCorrespondenceComponents(options: {
 		const rootB = find(b);
 		if (rootA !== rootB) parent[rootB] = rootA;
 	};
-	const exhaustive = correspondenceShortCircuitsDisabledForTest;
+	const exhaustive = options.exhaustive === true;
 	const observation = emptyCorrespondenceObservation(exhaustive ? 'exhaustive' : 'short-circuit');
 	// M-1(b): the coarse phase's boxes, computed ONCE per pass — never per pair — and
 	// only while the short-circuits are live: the exhaustive path is today's loop
@@ -421,7 +428,7 @@ export function buildCorrespondenceComponents(options: {
 		});
 	});
 	// OR-6: the pass is over — report it ONCE, to a test-only observer if one is set.
-	correspondenceObserverForTest?.(observation);
+	options.observer?.(observation);
 	const groups = new Map<number, { faces: string[]; predecessors: string[] }>();
 	faces.forEach((face, faceIndex) => {
 		const root = find(predecessorCount + faceIndex);

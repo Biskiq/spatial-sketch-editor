@@ -74,7 +74,7 @@
  * NO VALUE HERE IS A THRESHOLD, and nothing here writes anything.
  */
 import { createHash } from 'node:crypto';
-import { buildCorrespondenceComponents, correspondenceAuthorization, interiorWitness, reconcileRooms, roomBoundaryPolygon, type ComponentLineage, type ReconciliationResult } from '@portfolio/layout-core/room';
+import { buildCorrespondenceComponents, correspondenceAuthorization, interiorWitness, reconcileRooms, roomBoundaryPolygon, type ComponentLineage, type CorrespondencePassOptions, type ReconciliationResult } from '@portfolio/layout-core/room';
 import { createAuthoringRoomAllocator, createEmptyWallFirstLayoutDocument, planDeleteWall, planDissolveJunction, planExactJunctionMove, planRemoveRoom, planWallChain, planWallSegment, wallCenterlineSamples, type LayoutDocumentWallFirst, type LayoutWallCenterline } from '@portfolio/layout-core/wall';
 import { extractBoundaryCandidateFaces, type DerivedCandidateFace, type LayoutVec2 } from '@portfolio/layout-core/geometry';
 import type { LayoutIdCapture } from '@portfolio/layout-core/plan';
@@ -619,7 +619,8 @@ export function analyzeCorrespondenceCase(
 	// pass another capture to prove that only identity-bearing content depends on
 	// it (the nonce-locality property in the freeze test).
 	capture: LayoutIdCapture = captureFor(`p23b11-${entry.id}`),
-	spacePolicy: P23B11SpacePolicy = 'historical-retire'
+	spacePolicy: P23B11SpacePolicy = 'historical-retire',
+	passOptions: CorrespondencePassOptions = {}
 ): P23B11PassAnalysis {
 	const baseline = entry.baseline();
 	let operation: P23B11PassAnalysis['operation'] = {
@@ -688,7 +689,8 @@ export function analyzeCorrespondenceCase(
 		predecessorWitnesses,
 		predecessorPolygons,
 		candidateDocument: candidate,
-		baselineRooms: baseline.rooms
+		baselineRooms: baseline.rooms,
+		...passOptions
 	});
 	const pairs = classifyPairs({ baseline, candidate, faces: extraction.faces });
 	const result: ReconciliationResult = reconcileRooms({

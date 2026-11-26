@@ -4,7 +4,6 @@ import type { CompiledJunctionLeg, CompiledLayoutGeometryResult } from '../types
 import type { LayoutCompileReuse } from '../reuse';
 import { sameAuthored } from '../reuse';
 import type { LayoutDocumentWallFirst } from '../../wall/types';
-import { hasAnySamplingTestObserver } from '../../world/lookups';
 import { layoutItem, layoutLength } from '../../kernel/source-collections';
 import { collectJoinsForWall, resolveCowDirtyIds } from './seed';
 import { compileSnapshot } from './snapshots';
@@ -22,7 +21,7 @@ export function tryCompileWallFirstLayoutGeometryDelta(
 	reuse: LayoutCompileReuse,
 	builders: CanonicalDeltaBuilders
 ): CompiledLayoutGeometryResult | null {
-	if (hasAnySamplingTestObserver() || !isCanonicalWallSampling(sampling)) return null;
+	if (!isCanonicalWallSampling(sampling)) return null;
 	let world = reuse.world as RetainedCompileWorld | null;
 	if (!world) return null;
 	if (document.regions !== world.document.regions &&

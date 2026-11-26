@@ -29,10 +29,9 @@
  * self-contained adversarial rows that need no table at all, and the two halves
  * read the same freeze.
  *
- * WHY THE GLOBAL FLAG IS SAFE HERE. `disableCorrespondenceShortCircuitsForTest`
- * and the observer are the P23B.4 pattern: opt-in, test-only, never persisted,
- * and unset changes nothing at all. Vitest isolates test files, so the module
- * state below is this file's own; `afterEach` clears it anyway.
+ * WHY PER-CALL OPTIONS ARE SAFE HERE. `analyzeCorrespondenceCase` forwards the
+ * `exhaustive` and `observer` options to this one pass: opt-in, never persisted,
+ * and omitted by every production caller, so the shipped path is unchanged.
  *
  * WHAT "EQUAL" MEANS, and why the frozen counts still match. The freeze carries
  * `insideEvaluations`/`overlapEvaluations` = pairs — the number TODAY's loop
@@ -43,9 +42,9 @@
  * that actually moved are asserted separately from the observer. That is why the
  * S2 test stays green after S3: it is one half of this differential.
  */
-import { afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 
-import { clearCorrespondenceObserverForTest, disableCorrespondenceShortCircuitsForTest, setCorrespondenceObserverForTest, type ComponentLineage, type CorrespondenceObservation } from '@portfolio/layout-core/room';
+import type { ComponentLineage, CorrespondenceObservation } from '@portfolio/layout-core/room';
 
 import {
 	analyzeCorrespondenceCase,
@@ -69,20 +68,17 @@ type TableRun = {
 function runTable(mode: CorrespondenceObservation['mode']): TableRun {
 	const rows: P23B11FrozenCase[] = [];
 	const observations: CorrespondenceObservation[][] = [];
-	disableCorrespondenceShortCircuitsForTest(mode === 'exhaustive');
-	try {
-		for (const entry of P23B11_CORRESPONDENCE_CASES) {
-			const collected: CorrespondenceObservation[] = [];
-			setCorrespondenceObserverForTest((observation) => collected.push(observation));
-			try {
-				rows.push(freezeAnalysis(analyzeCorrespondenceCase(entry)));
-			} finally {
-				clearCorrespondenceObserverForTest();
-			}
-			observations.push(collected);
-		}
-	} finally {
-		disableCorrespondenceShortCircuitsForTest(false);
+	for (const entry of P23B11_CORRESPONDENCE_CASES) {
+		const collected: CorrespondenceObservation[] = [];
+		rows.push(
+			freezeAnalysis(
+				analyzeCorrespondenceCase(entry, undefined, undefined, {
+					exhaustive: mode === 'exhaustive',
+					observer: (observation) => collected.push(observation)
+				})
+			)
+		);
+		observations.push(collected);
 	}
 	return {
 		mode,
@@ -99,11 +95,6 @@ beforeAll(() => {
 	shipped = runTable('short-circuit');
 	exhaustive = runTable('exhaustive');
 }, 300000);
-
-afterEach(() => {
-	clearCorrespondenceObserverForTest();
-	disableCorrespondenceShortCircuitsForTest(false);
-});
 
 /** Component membership only — the pair decisions, independent of ordering. */
 function componentKeyset(components: readonly ComponentLineage[]): string[] {

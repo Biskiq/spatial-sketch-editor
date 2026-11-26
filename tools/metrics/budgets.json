@@ -7,7 +7,7 @@
     "functionsOver200": 81,
     "exportStars": 0,
     "crossPackageReexports": 0,
-    "seams": 8
+    "seams": 0
   },
   "files": [
     {
@@ -452,7 +452,7 @@
     },
     {
       "path": "packages/layout-core/src/wall/centerline.ts",
-      "lines": 626,
+      "lines": 625,
       "reason": "One wall-centreline algebra: cloning, sampling, translation and knot identity are one curve contract."
     },
     {
@@ -746,7 +746,7 @@
     {
       "file": "packages/layout-core/src/geometry/delta/retained.ts",
       "name": "tryCompileWallFirstLayoutGeometryDelta",
-      "line": 19,
+      "line": 18,
       "lines": 376,
       "reason": "One retained compile pass: delta validation, reuse and rebuild share one candidate world."
     },
@@ -1080,14 +1080,5 @@
       "reason": "One Experience-level surface: creation, scene linkage, playback lowering, naming and the removal write path share the same accepted-run and focus hand-off."
     }
   ],
-  "seams": [
-    "packages/layout-core/src/room/reconciliation-observation.ts#clearCorrespondenceObserverForTest",
-    "packages/layout-core/src/room/reconciliation-observation.ts#correspondenceObserverForTest",
-    "packages/layout-core/src/room/reconciliation-observation.ts#correspondenceShortCircuitsDisabledForTest",
-    "packages/layout-core/src/room/reconciliation-observation.ts#disableCorrespondenceShortCircuitsForTest",
-    "packages/layout-core/src/room/reconciliation-observation.ts#setCorrespondenceObserverForTest",
-    "packages/layout-core/src/wall/centerline.ts#clearWallSamplingObserverForTest",
-    "packages/layout-core/src/wall/centerline.ts#hasWallSamplingObserverForTest",
-    "packages/layout-core/src/wall/centerline.ts#setWallSamplingObserverForTest"
-  ]
+  "seams": []
 }

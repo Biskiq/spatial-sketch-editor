@@ -6,7 +6,7 @@ import { p2311Measure } from '../kernel/work-observer';
 import { hasBlockingLayoutIssues } from '../geometry/validation';
 import { LAYOUT_DIMENSION_LIMIT_MESSAGE } from '../geometry/limits';
 import { serializeWallFirstLayoutDocument, validateWallFirstLayoutDocument } from '../wall/codec';
-import { exceedsLayoutWallSpan, hasAnySamplingTestObserver } from '../world/lookups'
+import { exceedsLayoutWallSpan } from '../world/lookups'
 import { getCowDocumentDelta } from '../world/cow'
 import { verifyScalarOrObjectDelta, verifySweptBoundsGeometryDelta } from '../world/verify';
 import { validateWallFirstOpeningSet } from '../wall/opening-set';
@@ -19,11 +19,6 @@ import type { PrecisionOperation, PrecisionPlan, PrecisionRejection } from './ty
 import { validateWallFirstTopology } from '../topology/wall-first';
 import { isReconciliationFailure, reject } from './rejections';
 
-export function hasAnyTestObserverInPrecision(): boolean {
-	return hasAnySamplingTestObserver();
-}
-
-
 export function finalizeCandidate(
 	candidate: LayoutDocumentWallFirst,
 	operation: PrecisionOperation,
@@ -32,7 +27,7 @@ export function finalizeCandidate(
 	changedObjectIds?: readonly string[],
 	createdWallIds?: readonly string[]
 ): PrecisionPlan {
-	const cowDelta = !hasAnyTestObserverInPrecision() ? getCowDocumentDelta(candidate) : undefined;
+	const cowDelta = getCowDocumentDelta(candidate);
 	if (
 		cowDelta &&
 		!createdWallIds?.length &&
@@ -155,7 +150,7 @@ export function finalizeWallGeometryCandidate(options: {
 		return reject('dimension_out_of_range', LAYOUT_DIMENSION_LIMIT_MESSAGE, [...changedWallIds]);
 	}
 
-	if (!hasAnyTestObserverInPrecision() && !options.createdWallIds?.length) {
+	if (!options.createdWallIds?.length) {
 		const cowDelta = getCowDocumentDelta(candidate);
 		if (cowDelta && cowDelta.baseline === baseline) {
 			const fastSampling = createWallSamplingDerivation();

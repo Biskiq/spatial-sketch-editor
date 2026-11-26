@@ -13,7 +13,6 @@ import { beginLayoutCompile, finishLayoutCompile, noQueryRecords, sameAuthored }
 import type { SampleableSegment, SampledSegment } from './curve';
 import { hasBlockingLayoutIssues, prepareLayoutRoomSegments, validatePreparedLayoutRoomGeometry } from './validation';
 import { createQueryGeometryBuilder } from './queries';
-import { hasAnySamplingTestObserver } from '../world/lookups';
 import { DELTA_BUILDERS } from './delta-builders';
 import { compileWallFirstWithPhysicalWalls, floorElevationOf } from './physical-walls';
 import { aabbRecord, emitBoundsAabb, finiteBounds3, includeBounds3, pushRetainedRecords } from './query-records';
@@ -85,7 +84,7 @@ export function compileWallFirstLayoutGeometry(
 		// The one session-less read. A document that was already frozen
 		// when its result was recorded cannot have changed since, so that record
 		// is its compile; an unfrozen document always compiles.
-		const canonical = !hasAnySamplingTestObserver() && isCanonicalWallSampling(sampling);
+		const canonical = isCanonicalWallSampling(sampling);
 		if (canonical) {
 			const record = readPassiveCompiledGeometry(document);
 			if (record?.sealed === true) {
@@ -121,7 +120,7 @@ export function compileWallFirstLayoutGeometry(
 	} else {
 		if (!cold) beginLayoutCompile(reuse);
 		result = p2311Measure('compile', () => compileWallFirstLayoutGeometryOnce(document, sampling, reuse));
-		if (!hasAnySamplingTestObserver() && isCanonicalWallSampling(sampling) && result.issues.length === 0) {
+		if (isCanonicalWallSampling(sampling) && result.issues.length === 0) {
 			recordPassiveCompiledGeometry(document, result.geometry, result.issues);
 			reuse.world = null;
 			seedReuseFromPassiveCompile(document, reuse, DELTA_BUILDERS, true);

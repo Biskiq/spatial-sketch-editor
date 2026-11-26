@@ -12,7 +12,7 @@ import type { FixedWallEndpoint, PrecisionPlan, WallAngleIntent, WallFirstArchit
 import { POINT_EPSILON } from '../vec2';
 import { rejectCurvedWall } from './curve-edits';
 import { currentJunctionPoint, incidentWallIds, wallEndpoints } from './document';
-import { finalizeCandidate, finalizeWallGeometryCandidate, hasAnyTestObserverInPrecision } from './finalization';
+import { finalizeCandidate, finalizeWallGeometryCandidate } from './finalization';
 import { finitePoint, finitePositive, reject, rejectRoundMember, validFixedEndpoint } from './rejections';
 
 export function guardRoundRoomIntent(
@@ -40,7 +40,7 @@ export function planExactJunctionMove(
 	junctionId: string,
 	point: LayoutVec2
 ): PrecisionPlan {
-	const worldIndex = !hasAnyTestObserverInPrecision() ? ensureLayoutWorldIndex(document) : peekLayoutWorldIndex(document);
+	const worldIndex = ensureLayoutWorldIndex(document);
 	const junction = worldIndex
 		? worldIndex.junctionById.get(junctionId)
 		: document.junctions.find((candidate) => candidate.id === junctionId);
@@ -88,7 +88,7 @@ export function planRigidWallMove(
 	const intent: WallMoveIntent = typeof wallOrIntent === 'string'
 		? { wallId: wallOrIntent, delta: (deltaArgument ?? [0, 0]) as LayoutVec2 }
 		: { wallId: wallOrIntent.wallId, delta: wallOrIntent.delta };
-	const worldIndex = !hasAnyTestObserverInPrecision() ? ensureLayoutWorldIndex(document) : peekLayoutWorldIndex(document);
+	const worldIndex = ensureLayoutWorldIndex(document);
 	const wall = worldIndex
 		? worldIndex.wallById.get(intent.wallId)
 		: document.walls.find((candidate) => candidate.id === intent.wallId);
@@ -152,7 +152,7 @@ export function planExactWallLength(
 				length: wallOrIntent.length,
 				fixed: wallOrIntent.fixedEndpoint ?? wallOrIntent.fixed ?? 'start'
 			};
-	const worldIndex = !hasAnyTestObserverInPrecision() ? ensureLayoutWorldIndex(document) : peekLayoutWorldIndex(document);
+	const worldIndex = ensureLayoutWorldIndex(document);
 	const wall = worldIndex
 		? worldIndex.wallById.get(intent.wallId)
 		: document.walls.find((candidate) => candidate.id === intent.wallId);
@@ -224,7 +224,7 @@ export function planExactWallAngle(
 				angle: wallOrIntent.angle,
 				fixed: wallOrIntent.fixedEndpoint ?? wallOrIntent.fixed ?? 'start'
 			};
-	const worldIndex = !hasAnyTestObserverInPrecision() ? ensureLayoutWorldIndex(document) : peekLayoutWorldIndex(document);
+	const worldIndex = ensureLayoutWorldIndex(document);
 	const wall = worldIndex
 		? worldIndex.wallById.get(intent.wallId)
 		: document.walls.find((candidate) => candidate.id === intent.wallId);
@@ -283,7 +283,7 @@ export function planExactWallThickness(
 	wallId: string,
 	thickness: number
 ): PrecisionPlan {
-	const worldIndex = !hasAnyTestObserverInPrecision() ? ensureLayoutWorldIndex(document) : peekLayoutWorldIndex(document);
+	const worldIndex = ensureLayoutWorldIndex(document);
 	const wall = worldIndex
 		? worldIndex.wallById.get(wallId)
 		: document.walls.find((candidate) => candidate.id === wallId);
@@ -315,7 +315,7 @@ export function planExactWallHeight(
 	wallId: string,
 	height: number
 ): PrecisionPlan {
-	const worldIndex = !hasAnyTestObserverInPrecision() ? ensureLayoutWorldIndex(document) : peekLayoutWorldIndex(document);
+	const worldIndex = ensureLayoutWorldIndex(document);
 	const wall = worldIndex
 		? worldIndex.wallById.get(wallId)
 		: document.walls.find((candidate) => candidate.id === wallId);

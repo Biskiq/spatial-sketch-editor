@@ -23,9 +23,8 @@
  * `correspondence-reference-differential.test.ts`. Both halves read the same
  * `./p23b11-correspondence-reference` freeze.
  *
- * WHY THE GLOBAL FLAG IS SAFE HERE. `disableCorrespondenceShortCircuitsForTest`
- * and the observer are the P23B.4 pattern: opt-in, test-only, never persisted,
- * and unset changes nothing at all. Vitest isolates test files, so the module
+ * WHY PER-CALL OPTIONS ARE SAFE HERE. `exhaustive` and `observer` are opt-in,
+ * never persisted, and omitted by every production caller. Vitest isolates test files, so the module
  * state below is this file's own; `afterEach` clears it anyway.
  *
  * THE ADVERSARIAL ROWS each isolate one boundary case: a touching edge, an edge
@@ -42,16 +41,11 @@
  * component output, and that a skipped call or pruned pair was a TRUE NEGATIVE
  * in the exhaustive run — the exact statement of INV-4.
  */
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-import { buildCorrespondenceComponents, clearCorrespondenceObserverForTest, disableCorrespondenceShortCircuitsForTest, setCorrespondenceObserverForTest, type ComponentLineage, type CorrespondenceObservation } from '@portfolio/layout-core/room';
+import { buildCorrespondenceComponents, type ComponentLineage, type CorrespondenceObservation } from '@portfolio/layout-core/room';
 import type { DerivedCandidateFace, LayoutVec2 } from '@portfolio/layout-core/geometry';
 import type { LayoutDocumentWallFirst, LayoutWall, LayoutWallFirstRoom, OrientedWallRef } from '@portfolio/layout-core/wall';
-
-afterEach(() => {
-	clearCorrespondenceObserverForTest();
-	disableCorrespondenceShortCircuitsForTest(false);
-});
 
 /** Component membership only — the pair decisions, independent of ordering. */
 function componentKeyset(components: readonly ComponentLineage[]): string[] {
@@ -488,22 +482,16 @@ function runSynthetic(
 		junctions: []
 	};
 	const observations: CorrespondenceObservation[] = [];
-	disableCorrespondenceShortCircuitsForTest(mode === 'exhaustive');
-	setCorrespondenceObserverForTest((observation) => observations.push(observation));
-	let components: ComponentLineage[] = [];
-	try {
-		components = buildCorrespondenceComponents({
-			faces,
-			predecessorRoomIds: [roomId],
-			predecessorWitnesses,
-			predecessorPolygons,
-			candidateDocument,
-			baselineRooms
-		});
-	} finally {
-		clearCorrespondenceObserverForTest();
-		disableCorrespondenceShortCircuitsForTest(false);
-	}
+	const components: ComponentLineage[] = buildCorrespondenceComponents({
+		faces,
+		predecessorRoomIds: [roomId],
+		predecessorWitnesses,
+		predecessorPolygons,
+		candidateDocument,
+		baselineRooms,
+		exhaustive: mode === 'exhaustive',
+		observer: (observation) => observations.push(observation)
+	});
 	expect(observations.length).toBe(1);
 	return { components, observation: observations[0]!, faceKey, roomId };
 }

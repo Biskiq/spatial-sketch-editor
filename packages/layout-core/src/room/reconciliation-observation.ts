@@ -1,8 +1,8 @@
 import type { CorrespondenceAuthorization, CorrespondencePairClass } from './reconciliation-correspondence';
 
 /**
- * One `buildCorrespondenceComponents` pass, as the test-only observer
- * sees it (opt-in, never retains, unset changes nothing at all).
+ * One `buildCorrespondenceComponents` pass, as an optional observer sees it
+ * (opt-in, never retained, omitting it changes nothing at all).
  *
  * ACCOUNTING, per mode:
  *
@@ -95,33 +95,19 @@ export type CorrespondenceObservation = {
 };
 
 
-export let correspondenceObserverForTest: ((observation: CorrespondenceObservation) => void) | undefined;
-
-export let correspondenceShortCircuitsDisabledForTest = false;
-
-
-/** Report every correspondence pass to `observer` until cleared. Unset is zero change. */
-export function setCorrespondenceObserverForTest(
-	observer: ((observation: CorrespondenceObservation) => void) | undefined
-): void {
-	correspondenceObserverForTest = observer;
-}
-
-
-export function clearCorrespondenceObserverForTest(): void {
-	correspondenceObserverForTest = undefined;
-}
+/** One pass's report sink; omitted by production callers. */
+export type CorrespondenceObserver = (observation: CorrespondenceObservation) => void;
 
 
 /**
- * OR-2's exhaustive side: while disabled, `buildCorrespondenceComponents` runs the
- * PRE-M-1 loop verbatim — both predicates for every pair, geometry before
- * authorization, no pruning — so the differential always has today's evaluation
- * order to compare against. Test-only; never set in production.
+ * Optional per-pass controls. `exhaustive` runs the PRE-M-1 loop verbatim — both
+ * predicates for every pair, geometry before authorization, no pruning — so a
+ * differential always has today's evaluation order to compare against.
  */
-export function disableCorrespondenceShortCircuitsForTest(disabled: boolean): void {
-	correspondenceShortCircuitsDisabledForTest = disabled;
-}
+export type CorrespondencePassOptions = {
+	observer?: CorrespondenceObserver;
+	exhaustive?: boolean;
+};
 
 
 export function emptyCorrespondenceObservation(

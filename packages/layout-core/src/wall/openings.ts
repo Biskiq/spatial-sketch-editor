@@ -24,7 +24,7 @@ import { validateWallFirstPortalRelations } from './portals';
 import { validateWallFirstLayoutDocument } from './codec';
 import { exceedsLayoutDimension, LAYOUT_DIMENSION_LIMIT_MESSAGE } from '../geometry/limits';
 import { cowUpdateOpening, getCowDocumentDelta } from '../world/cow'
-import { ensureLayoutWorldIndex, hasAnySamplingTestObserver, lookupIndexedOpening, peekLayoutWorldIndex } from '../world/lookups'
+import { ensureLayoutWorldIndex, lookupIndexedOpening, peekLayoutWorldIndex } from '../world/lookups'
 import { verifyOpeningUpdateDelta } from '../world/verify';
 import { allocateCapturedId, layoutWorkingLevelIssue, LayoutIdCollisionError, type LayoutIdCapture } from '../plan/id-capture';
 import type { LayoutDocumentWallFirst, LayoutWallOpening } from './types';
@@ -264,9 +264,7 @@ export function planUpdateWallFirstOpening(
 	openingId: string,
 	patch: WallOpeningPatch
 ): WallOpeningPlan {
-	const worldIndex = !hasAnySamplingTestObserver()
-		? ensureLayoutWorldIndex(document)
-		: peekLayoutWorldIndex(document);
+	const worldIndex = ensureLayoutWorldIndex(document);
 	const current = lookupIndexedOpening(document, openingId);
 	if (!current) {
 		return reject('unknown_opening', `Unknown Opening '${openingId}'`, [openingId]);
@@ -390,7 +388,7 @@ function finalize(
 	changedWallIds: readonly string[]
 ): WallOpeningPlan {
 	const cowDelta =
-		operation === 'opening-update' && !hasAnySamplingTestObserver()
+		operation === 'opening-update'
 			? getCowDocumentDelta(candidate)
 			: undefined;
 	if (cowDelta && changedOpeningIds.length === 1 && changedWallIds.length === 1) {

@@ -15,7 +15,7 @@ export { routeCrossesWall } from './route-wall-read';
 export type { RouteWallRead, RouteWallReadInput } from './route-wall-read';
 
 export { areEquivalentLayoutClones, consumePreparedCowCandidate, cowCreateObject, cowDeleteObject, cowMoveJunctions, cowMoveRigidWall, cowSetWallCenterline, cowSetWallScalar, cowUpdateObject, cowUpdateOpening, getCowDocumentDelta, linkClonedCowCandidate, recordPreparedCowCandidate, registerCowDocumentDelta } from './cow'
-export { deriveIndexedWallRole, ensureLayoutWorldIndex, exceedsLayoutWallSpan, exceedsLayoutWallSpanAfterJunctionMove, hasAnySamplingTestObserver, lookupIncidentWallsOrdered, lookupIndexedJunction, lookupIndexedObject, lookupIndexedOpening, lookupIndexedWall, peekLayoutWorldIndex } from './lookups'
+export { deriveIndexedWallRole, ensureLayoutWorldIndex, exceedsLayoutWallSpan, exceedsLayoutWallSpanAfterJunctionMove, lookupIncidentWallsOrdered, lookupIndexedJunction, lookupIndexedObject, lookupIndexedOpening, lookupIndexedWall, peekLayoutWorldIndex } from './lookups'
 export { verifyOpeningUpdateDelta, verifyScalarOrObjectDelta, verifySweptBoundsGeometryDelta } from './verify';
 
 export type { CowDocumentDelta, IndexedOpeningEntry } from './cow'

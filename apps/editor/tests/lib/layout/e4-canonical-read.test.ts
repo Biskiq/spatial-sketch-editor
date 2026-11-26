@@ -9,7 +9,7 @@
  * seam.
  */
 import { afterEach, describe, expect, it } from 'vitest';
-import { clearWallSamplingObserverForTest, setWallSamplingObserverForTest, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import { createWallSamplingDerivation, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 import { compileWallFirstLayoutGeometry, compileWallFirstLayoutGeometryFresh, createLayoutCompileSession, readPassiveCompiledGeometry } from '@portfolio/layout-core/geometry';
 
 import { addOpenings, buildGrid, sequentialCaptures } from '../../../perf/lib/workloads/grid';
@@ -19,7 +19,6 @@ let counting: StageCounting | null = null;
 afterEach(() => {
 	counting?.stop();
 	counting = null;
-	clearWallSamplingObserverForTest();
 });
 
 function grid(prefix: string): LayoutDocumentWallFirst {
@@ -124,12 +123,14 @@ describe('E4/I2 — canonical session-less read', () => {
 		expect(session.retained().walls).toBe(0);
 	});
 
-	it('a sampling test observer bypasses the record', () => {
+	it('a non-canonical sampling derivation bypasses the record', () => {
 		const document = deepFreeze(grid('e4-read-observer'));
 		compileWallFirstLayoutGeometry(document);
-		setWallSamplingObserverForTest(() => undefined);
+		// An observed derivation is not interchangeable with canonical sampling, so
+		// the read never serves the recorded result to it.
+		const observed = createWallSamplingDerivation({ observer: () => undefined });
 		counting = startStageCounting();
-		compileWallFirstLayoutGeometry(document);
+		compileWallFirstLayoutGeometry(document, observed);
 		expect(counting.count('compile:walls')).toBe(document.walls.length);
 		expect(counting.count('compile:passive-read')).toBe(0);
 	});

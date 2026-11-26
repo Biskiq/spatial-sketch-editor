@@ -25,14 +25,13 @@ export { planWallFirstRoomMove, planWallFirstRoomRotation, proposeWallFirstRoomU
 export type { RoomMovePlan, RoomMoveRejection, RoomMoveRejectionCode, RoomUnitMoveProposalWall, RoomUnitMoveSubgraph } from './move';
 
 export { buildCorrespondenceComponents, correspondenceAuthorization } from './reconciliation-correspondence'
-export { clearCorrespondenceObserverForTest, disableCorrespondenceShortCircuitsForTest, setCorrespondenceObserverForTest } from './reconciliation-observation'
 export { composeSpaceBoundary, createRoomBoundaryLookup, interiorWitness, roomBoundaryPolygon, spaceBoundaryCycleKey, spaceBoundaryPolygonFromEdges, spaceOpenSideCount } from './reconciliation-boundary'
 export { reconcileRooms, reconcileRoomsWithGeometry } from './reconciliation'
 export { wallRef } from './reconciliation-survivors';
 
 export type { ComponentLineage, ReconciliationFailure, ReconciliationRejection, ReconciliationResult, RoomIdAllocator, RoomLineageRecord, RoomReconciliation, SpaceLifecyclePolicy, SpaceRetirement, SpaceRetirementReason } from './reconciliation-types'
 export type { CorrespondenceAuthorization, CorrespondencePairClass } from './reconciliation-correspondence'
-export type { CorrespondenceObservation } from './reconciliation-observation'
+export type { CorrespondenceObservation, CorrespondenceObserver, CorrespondencePassOptions } from './reconciliation-observation'
 export type { RoomBoundaryLookup, SpaceBoundaryEdge, SpaceBoundaryIssue, SpaceBoundaryIssueCode, SpaceBoundaryResult } from './reconciliation-boundary';
 
 export { planReleaseRoundRoom, planResizeRoundRoomRadius } from './round-ops';

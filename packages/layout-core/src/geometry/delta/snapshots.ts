@@ -3,7 +3,6 @@ import type { CompiledLayoutGeometry, CompiledLayoutGeometryResult } from '../ty
 import type { LayoutCompileReuse } from '../reuse';
 import type { LayoutDocumentWallFirst } from '../../wall/types';
 import { getCowDocumentDelta } from '../../world/cow';
-import { hasAnySamplingTestObserver } from '../../world/lookups';
 import { countWork } from '../../kernel/work-observer';
 import { recordPassiveCompiledGeometry } from './passive';
 import type { CanonicalDeltaBuilders, RetainedCompileWorld } from './units';
@@ -83,7 +82,7 @@ export function registerCompileSnapshot(document: LayoutDocumentWallFirst, world
 
 /** Only proven immutable sources may restore a cached root without inspection. */
 export function restoreImmutableCompileSnapshot(document: LayoutDocumentWallFirst, reuse: LayoutCompileReuse): CompiledLayoutGeometryResult | null {
- if (!Object.isFrozen(document) || hasAnySamplingTestObserver()) return null;
+ if (!Object.isFrozen(document)) return null;
  const snapshot = reuse.snapshots.get(document) as CompileSnapshot | undefined;
  const current = reuse.world as RetainedCompileWorld | null;
  if (!snapshot?.immutable || !current) return null;

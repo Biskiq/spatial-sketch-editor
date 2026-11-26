@@ -36,14 +36,14 @@
  *   that stated a kernel invariant rather than a count is the straight control,
  *   which is kept below.
  *
- * The test-only observer fires inside `wallCenterlineSamples`, so an observation
+ * The scope's observer fires inside `wallCenterlineSamples`, so an observation
  * is a FRESH derive: a hit is invisible to it by construction. Every count below
  * therefore reconciles (proposal calls + preflight misses) against the scope's own
  * `derivations`/`hits`, never against the observer alone.
  */
 import { describe, expect, it } from 'vitest';
 
-import { clearWallSamplingObserverForTest, createWallSamplingDerivation, preflightWallFirstArchitectureCandidate, serializeWallFirstLayoutDocument, setWallSamplingObserverForTest, wallCenterlineSamples, type LayoutDocumentWallFirst, type WallFirstArchitectureProposalIntent } from '@portfolio/layout-core/wall';
+import { createWallSamplingDerivation, preflightWallFirstArchitectureCandidate, serializeWallFirstLayoutDocument, wallCenterlineSamples, type LayoutDocumentWallFirst, type WallFirstArchitectureProposalIntent, type WallSamplingDerivation } from '@portfolio/layout-core/wall';
 import type { LayoutVec2, SampledSegment } from '@portfolio/layout-core/geometry';
 import {
 	buildP23BCorrectnessFixture,
@@ -102,26 +102,34 @@ function samplingBucket(centerline: object): number {
 	return assigned;
 }
 
-/** Observe the real `wallCenterlineSamples` calls one stage makes. */
-function record(work: () => void): RecordedCall[] {
+const callsByScope = new WeakMap<WallSamplingDerivation, RecordedCall[]>();
+
+/** One derivation scope that reports the real `wallCenterlineSamples` calls it derives. */
+function observedScope(): WallSamplingDerivation {
 	const calls: RecordedCall[] = [];
-	setWallSamplingObserverForTest((observation, result) => {
-		calls.push({
-			wallId: observation.wallId,
-			traversal: observation.traversal,
-			start: [observation.start[0], observation.start[1]] as LayoutVec2,
-			end: [observation.end[0], observation.end[1]] as LayoutVec2,
-			ok: observation.ok,
-			digest: digest(result),
-			bucket: samplingBucket(observation.centerline)
-		});
+	const scope = createWallSamplingDerivation({
+		observer: (observation, result) => {
+			calls.push({
+				wallId: observation.wallId,
+				traversal: observation.traversal,
+				start: [observation.start[0], observation.start[1]] as LayoutVec2,
+				end: [observation.end[0], observation.end[1]] as LayoutVec2,
+				ok: observation.ok,
+				digest: digest(result),
+				bucket: samplingBucket(observation.centerline)
+			});
+		}
 	});
-	try {
-		work();
-	} finally {
-		clearWallSamplingObserverForTest();
-	}
-	return calls;
+	callsByScope.set(scope, calls);
+	return scope;
+}
+
+/** The fresh derivations one stage made through `scope`. */
+function record(scope: WallSamplingDerivation, work: () => void): RecordedCall[] {
+	const calls = callsByScope.get(scope)!;
+	const before = calls.length;
+	work();
+	return calls.slice(before);
 }
 
 function keyOf(call: RecordedCall): string {
@@ -215,13 +223,13 @@ describe('P23B.5 S2 — shared-preflight equivalence and refusal', () => {
 				.filter((wall) => wall.startJunctionId === junctionId || wall.endJunctionId === junctionId)
 				.map((wall) => wall.id)
 		);
-		const scope = createWallSamplingDerivation();
-		const firstMisses = record(() => preflightWallFirstArchitectureCandidate(doc, junctionMoveIntent(doc, 0.05), scope));
+		const scope = observedScope();
+		const firstMisses = record(scope, () => preflightWallFirstArchitectureCandidate(doc, junctionMoveIntent(doc, 0.05), scope));
 		const expectedFreshPerCall = firstMisses.length;
 		expect(expectedFreshPerCall, 'a curved fixture derives its walls').toBeGreaterThan(0);
 		const afterFirst = { ...scope.stats };
 
-		const secondMisses = record(() => preflightWallFirstArchitectureCandidate(doc, junctionMoveIntent(doc, 0.1), scope));
+		const secondMisses = record(scope, () => preflightWallFirstArchitectureCandidate(doc, junctionMoveIntent(doc, 0.1), scope));
 		// Only the walls whose resolved endpoints actually moved are refused; the
 		// refused set is a subset of the incident set, never empty of reuse.
 		expect(secondMisses.length, 'a moved endpoint is a miss').toBeGreaterThan(0);
@@ -283,13 +291,13 @@ describe('P23B.5 S3 — bounded lifetime, reset and immutability', () => {
 
 	it('a scope is one gesture: reset between drags, and the second drag re-derives everything', () => {
 		const doc = matrixFixture('p23b-40-wall-all-curved-v1');
-		const scope = createWallSamplingDerivation();
+		const scope = observedScope();
 		for (const dx of [0.05, 0.1]) preflightWallFirstArchitectureCandidate(doc, junctionMoveIntent(doc, dx), scope);
 		expect(scope.stats.hits, 'the first drag reused').toBeGreaterThan(0);
 
 		scope.reset();
 		const secondDrag = [0.3, 0.35].map((dx) => {
-			const misses = record(() => preflightWallFirstArchitectureCandidate(doc, junctionMoveIntent(doc, dx), scope));
+			const misses = record(scope, () => preflightWallFirstArchitectureCandidate(doc, junctionMoveIntent(doc, dx), scope));
 			return misses.length;
 		});
 		// Cross-gesture reuse is not the approved scope: after the reset the first
@@ -300,10 +308,10 @@ describe('P23B.5 S3 — bounded lifetime, reset and immutability', () => {
 
 	it('every sampled input is still byte-identical after a full drag (the S0 P6 mutation bind)', () => {
 		const doc = matrixFixture('p23b-40-wall-all-curved-v1');
-		const scope = createWallSamplingDerivation();
+		const scope = observedScope();
 		const observed = new Map<string, RecordedCall>();
 		for (const dx of [0.05, 0.1, 0.15, 0.2]) {
-			for (const call of record(() => preflightWallFirstArchitectureCandidate(doc, junctionMoveIntent(doc, dx), scope))) {
+			for (const call of record(scope, () => preflightWallFirstArchitectureCandidate(doc, junctionMoveIntent(doc, dx), scope))) {
 				if (!observed.has(keyOf(call))) observed.set(keyOf(call), call);
 			}
 		}
@@ -337,8 +345,8 @@ describe('P23B.5 S3 — bounded lifetime, reset and immutability', () => {
 describe('P23B.5 S5 — the straight control', () => {
 	it('a straight-only fixture short-circuits the gate: zero sampling requests, nothing to reuse', () => {
 		const straight = matrixFixture('p23b-40-wall-straight-v1');
-		const straightScope = createWallSamplingDerivation();
-		const straightCalls = record(() =>
+		const straightScope = observedScope();
+		const straightCalls = record(straightScope, () =>
 			preflightWallFirstArchitectureCandidate(straight, junctionMoveIntent(straight, 0.05), straightScope)
 		).length;
 		// The straight control has nothing to reuse: a line short-circuits the gate.
