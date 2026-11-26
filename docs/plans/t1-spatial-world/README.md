@@ -451,7 +451,7 @@ Slice's Section, an opened Room before a pavilion, a flat canopy before a gable.
 | SL1 Level cut | **Ready for implementation.** Interaction is settled; cap generation is the implementer's | Its PR |
 | Spaces | **Ready for implementation once S2 reports.** Concept and rules are settled; the encoding is not, on purpose | SP-plan, then PR |
 | Verticality | **Ready for implementation.** Order, datum and intent are settled | V-plan, then PR |
-| Connected curves | **Not ready for a plan.** Waits for S1 | S1 |
+| Connected curves | **Landed (`C1–C4`).** The C-plan is retired after acceptance | – |
 | Section (SL3), SP3, V2, V3 | **Sequenced, not planned.** Each follows a slice that will inform it | Later |
 
 Overall: the proposal is ready to drive implementation of the fundamentals and implementation

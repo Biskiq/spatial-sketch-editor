@@ -141,7 +141,7 @@ Core only, on fixtures, no editor change.
 | **V1** | `layout.horizontal-region` | Flat overhead and floor regions; meets / gap / intended readout; one-shot fit | V-plan, X1, after SP1 |
 | **V2** | `layout.wall-top-profile` | Slope and gable Wall tops, edited on the Unroll sheet | V-plan; after V1 by order |
 | **V3** | `layout.horizontal-region` | Shed and gable forms; Edit shape; fit both ways | V1, V2 |
-| **C** | `layout.connected-curve` *new* | Connected circles on the arc-ring model with the Room as carrier. Own plan | S1 |
+| **C** | `layout.connected-curve` *new* | Connected circles on the arc-ring model with the Room as carrier. Landed as `C1–C4`; the C-plan is retired after acceptance | S1 |
 | **R** | `layout.room-unroll` *new* | **Unroll the room** as one strip, starting at the selected Wall, clockwise from inside. Own plan | – |
 | **J** | – | Surface references and lineage, with #289's S5a | A1, A2 lineage rules |
 

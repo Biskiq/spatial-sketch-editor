@@ -1,7 +1,8 @@
 /**
  * T1 Wave 4 · C2 — Topology and Radius Core behavioral & numerical contract suite.
  *
- * Exercises production planners directly against c-plan-connected-curves.md §3–§7:
+ * Exercises production planners directly against the Layout contract and the
+ * retired C-plan §3–§7 acceptance:
  * closed-to-ring attach, detach/repack, divide/merge/open/B1 clear, Release
  * round (unoccupied & occupied seam), whole-radius resize, member edit guards,
  * [2**32, -(2**32)] ring numerical consistency, S5a surface lineage, V1 region
