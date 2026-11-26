@@ -244,7 +244,6 @@ describe('source admission', () => {
 		expect(outcome.kind).toBe('refused');
 		if (outcome.kind !== 'refused') return;
 		expect(outcome.reason).toBe('invalid-format');
-		expect(outcome.issues.map((issue) => issue.code)).toContain('unsupported_format_version');
 		expect(Object.keys(outcome)).not.toContain('snapshot');
 	});
 

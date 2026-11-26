@@ -48,10 +48,12 @@ lock. Boot, starter, empty, Open, Download and Save use that envelope exclusivel
   shared-session snapshots live outside authored source, anchored by public
   semantic address and release context, with their own retention/privacy rules
   (see [`../architecture.md`](../architecture.md) §Semantic authorities).
-- **Source-trial migrations:** before the Source Baseline, accepted trial
-  projects receive bounded, scripted migrations as named pre-baseline
-  exceptions; merging a development schema does not create permanent
-  compatibility.
+- **One version per format:** until the owner declares beta, each persisted
+  format admits exactly one version. A change bumps the number, and readers
+  refuse every other version with `unsupported_format_version`. There is no
+  migration, converter, dual reader, optional-on-read field for older documents,
+  compatibility fixture or historical differential. Fixtures are regenerated in
+  the same commit that bumps the number.
 
 **Further changes:** collaboration/history alternatives and future codec meanings require
 versioned F amendments. Camera and Experience already have distinct codec-bounded units
@@ -434,13 +436,18 @@ on its PR. A retained project, promised editable file or durable publication req
 preservation and recovery plan before cutover. Reassess this policy before accepting the first
 retained trial project or promising durable delivery.
 
-**Before the Source Baseline**, development formats may change without
-accumulating historical readers. Real trial creators' accepted projects receive
-bounded, scripted migrations as named pre-baseline exceptions with covered data,
-validation, recovery and retirement criteria — they are not disposable fixtures.
-Merging a development schema does not itself create permanent compatibility;
-strict canonical validation remains required. Any earlier explicit durability
-promise still needs its own documented cutover treatment.
+**Before the Source Baseline**, each persisted format has exactly one admitted
+version. A format change bumps the number and every reader refuses the other
+versions; there is no migration, converter, dual reader, optional-on-read field
+or compatibility fixture. A database is handled in one of two ways. A
+disposable database — local Compose, CI services, test schemas — is rebuilt from
+the baseline freely. An existing database adopts the baseline without writes:
+the baseline replaces migration `001` with the full current schema, the runner
+skips recorded versions and ignores extra ones, and adoption happens only after a
+read-only schema comparison shows it matches. Dropping, resetting or rewriting a
+non-disposable database, including `schema_migrations`, needs the owner's
+explicit authorization. Later schema changes are new numbered migrations;
+documents are refused, never converted.
 
 ```text
 pre-baseline development data → no compatibility guarantee
