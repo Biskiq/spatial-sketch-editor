@@ -8,7 +8,7 @@ import { parseModuleSpecifiers, stripComments } from '../../helpers/import-closu
 const testDir = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolve(testDir, '../../../../../packages/geometry-core');
 const sourceRoot = resolve(packageRoot, 'src');
-const fixtureRoot = resolve(testDir, '__fixtures__');
+const fixtureRoot = resolve(packageRoot, 'tests/__fixtures__');
 
 /**
  * Transcendental and exponentiation operations whose results ECMAScript does

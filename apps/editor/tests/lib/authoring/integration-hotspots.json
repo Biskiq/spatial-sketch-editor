@@ -279,7 +279,7 @@
 		"arrows": 32
 	},
 	"src/lib/authoring/look/finish-authoring-contract.ts": {
-		"lines": 263,
+		"lines": 262,
 		"imports": 10,
 		"state": 0,
 		"derived": 0,
