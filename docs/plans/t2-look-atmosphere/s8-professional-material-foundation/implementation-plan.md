@@ -248,6 +248,23 @@ Extend the existing library listing and kind dispatch, preserving form format 1,
 
 **G exit.** In two owned projects save a palette-following three-file ORM Finish, insert twice, edit one instance, delete the item and source project and cold-open the destination. Assert one local definition, independent Finish IDs, identical image hashes and lit result, and zero runtime calls to a library URL. Cover other-owner reads/transfers, quota, unsupported format, missing derivative, item removal during copy, lost response after commit, same operation ID with different body, upload failure before metadata commit and concurrent inserts. Cross-project access always derives ownership from the authenticated session. Preserve form-only library behavior and isolation. [Library API tests](../../../../apps/api/tests/form-library.test.mjs)
 
+### Saved-item Customise: deferred to Creator Experience Convergence (2026-11-26)
+
+U7 review found that a saved item has no **Customise…** action. G's format-1 payload carries a portable recipe but no Scene ref or base identity, so opening the existing Material-editor draft would need a transfer-derived draft architecture. The owner deferred that work to Creator Experience Convergence rather than adding it to U7. Save, browse, insert, apply and remove remain complete. The existing draft contract is unchanged: a draft previews and edits without writing a project, and Apply is its one write. The return of saved-item Customise is tracked in [#405](https://github.com/Biskiq/spatial-sketch-editor/issues/405); U7 adds no library payload, project format, dependency or testing-framework change for it.
+
+### U6 acceptance remains open after plan retirement
+
+U6's in-flight plan file was retired on merge as its own status required. Retirement removes the plan, not its acceptance rule. Full visual, interaction and functional parity with the approved #399 design at desktop, 1024 and narrow/coarse-pointer viewports remains an outstanding U6 acceptance obligation, tracked through [#405](https://github.com/Biskiq/spatial-sketch-editor/issues/405). Passing functional tests alone did not accept U6, and any known U6 parity gap stays with U6 rather than moving to a later recovery PR.
+
+### Outstanding S8 acceptance obligations (2026-11-26)
+
+The owner conditionally accepted U7 and confirmed that these obligations stay open for S8; U7 does not claim them as delivered. Each is tracked through [#405](https://github.com/Biskiq/spatial-sketch-editor/issues/405).
+
+- **Creator-uploaded texture transfer.** G's exit asks for a palette-following three-file ORM Finish saved from one owned project and inserted into another. U7 Task 3 exercised the shipped Oak Veneer material because the current UI does not expose a three-file custom ORM set within reasonable scope, so the creator-uploaded path is unproven end to end even though the transfer mechanism itself is exercised.
+- **Coarse-pointer QA.** The `@media (pointer: coarse)` rules were not exercised on a real coarse-pointer device; the narrow 720 px state and the extracted source switch were verified, but touch targets, gestures and the narrow bottom-sheet states still need a coarse-pointer pass.
+- **U6 parity.** Full visual, interaction and functional parity with the approved #399 design at desktop, 1024 and narrow/coarse-pointer viewports remains outstanding, as stated above.
+- **Catalogue distinctness.** F's deferred catalogue-distinctness revalidation remains outstanding, as recorded in the owner-approved deferral above; F's catalogue intake is not fully accepted.
+
 ## Integrated acceptance and handoff
 
 Compare each observed backend with its A baseline. Use the #385 current-world and fixed-gallery fixtures plus one material-heavy variant (32 uses of one Finish, eight distinct Core sets at their qualified resolutions). Record build, machine/browser, DPR 1/1.5, cold fetch/parse/init/first **correct** draw, warm edit latency, p95 motion interval, graph/pipeline count, source/decode/view/sample counts, CPU/GPU estimated peaks and leases after close. Use the migration's fixed-gallery cold p90 ≤1 s, Finish edit p90 ≤150 ms first use / ≤100 ms warm, and active-motion p95 ≤2 display periods. Keep the heavy payload reported separately. Require no per-user texture uploads or recompilation on a uniform-only change. Time the renderer mark and independently inspect reference pixels. Report unavailable device rows as unmeasured. If a gate misses, profile the failing adapter and retry one targeted correction on both backends. Hold that PR if it still fails. Run affected package, editor and API checks and the architecture lane, with focused manual observation for visual changes. `git show 2ca766335:docs/roadmap/t2-look-atmosphere/webgpu-renderer-migration/implementation-plan.md` · [Performance contract](../../../reference/rendering.md)
@@ -303,7 +320,9 @@ responsive board, with the scope recorded in the [prototype catalogue](../../../
 - **Delivery.** U1 (#400), U2 (#401), U8 (#402), U3 (#403), U4 (#404) and U5 (#406) landed.
   U5's functionality is accepted. Correct Library design gaps forward on that foundation using
   [#405](https://github.com/Biskiq/spatial-sketch-editor/issues/405) and the `git show 2ca766335:docs/roadmap/t2-look-atmosphere/s8-professional-material-foundation/u-prototype-production-parity-harvest.md`.
-  U6 (the full Material editor, Align, import and repair; [plan](./u6-editor-align-import-repair-plan.md)) and U7 (private-library transfer) remain.
+  U6 (the full Material editor, Align, import and repair) landed in #411; U7 (private-library transfer) is
+  delivered in this PR. The remaining S8 work is F's deferred catalogue distinctness revalidation and the G1/D8 tracks named in
+  [the plans index](../../README.md).
 - **Swatch treatment (U1).** A flat, lit sample tile framed on a physical window. One stored 256 px master per Finish under a new thumbnail recipe version; XS, S and M derive from it, and the L detail and the editor preview render on demand through the E7 host. Framing hints live outside the recipe. The revalidation list above still applies.
 - **Similar materials (D1).** Smooth and Polished concrete become one card with a *Matte / Polished* variant chip; F's rule is applied between cards.
 - **G slot (D4).** A scoped change to 256 px: PNG, at most 256 KiB, a new thumbnail recipe key; 192 px items stay valid until regenerated.

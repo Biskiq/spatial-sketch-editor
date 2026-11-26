@@ -19,7 +19,7 @@ import {
 	type MaterialFamilyId,
 } from '$lib/content/material-presentation';
 
-export type LibrarySource = 'all' | 'curated' | 'project';
+export type LibrarySource = 'all' | 'curated' | 'project' | 'mine';
 
 export type LibraryFilter =
 	| 'favourites'
@@ -34,10 +34,11 @@ export type LibraryCategory = MaterialFamilyId | 'other' | 'all';
 
 /** One Finish the Library can show. Curated entries are raw materials; project entries are Finishes. */
 export type LibraryFinishEntry = {
-	/** `curated:<MaterialId>` or `project:<FinishId>`. */
+	/** `curated:<MaterialId>`, `project:<FinishId>` or `mine:<ItemId>`. */
 	readonly key: string;
-	readonly source: 'curated' | 'project';
-	readonly ref: Exclude<SceneFinishRef, 'model-own'>;
+	readonly source: 'curated' | 'project' | 'mine';
+	/** Null for a private-library item: it is not in this project yet. */
+	readonly ref: Exclude<SceneFinishRef, 'model-own'> | null;
 	readonly name: string;
 	/** The base material's label, or `Imported material`. */
 	readonly materialLabel: string;
@@ -60,6 +61,14 @@ export type LibraryFinishEntry = {
 	readonly metalness: number;
 	readonly hasColourImage: boolean;
 	readonly warning: string | null;
+	/** The saved item facts, present only for a My library entry. */
+	readonly libraryItem?: {
+		readonly id: string;
+		readonly savedAt: string;
+		readonly savedFrom: string;
+		readonly flattened: readonly string[];
+		readonly imageCount: number;
+	};
 };
 
 /** One grid card. A D1 card keeps a stable key while its variant changes. */
@@ -88,6 +97,7 @@ export const LIBRARY_SOURCES: readonly { readonly id: LibrarySource; readonly la
 	{ id: 'all', label: 'All' },
 	{ id: 'curated', label: 'Curated' },
 	{ id: 'project', label: 'This project' },
+	{ id: 'mine', label: 'My library' },
 ];
 
 export const LIBRARY_FILTERS: readonly { readonly id: LibraryFilter; readonly label: string }[] = [
@@ -195,9 +205,14 @@ function projectCard(entry: LibraryFinishEntry): LibraryCard {
 	};
 }
 
+function entriesOfSource(entries: readonly LibraryFinishEntry[], source: 'project' | 'mine') {
+	return entries.filter((entry) => entry.source === source).map(projectCard);
+}
+
 /**
- * Filter and group the Library grid. `all` reads as one project shelf followed
- * by the curated shelf; a single source reads as one unlabelled group.
+ * Filter and group the Library grid. `all` reads as the project shelf, the
+ * private My library shelf, then the curated shelf; a single source reads as
+ * one unlabelled group.
  */
 export function browseLibrary(
 	entries: readonly LibraryFinishEntry[],
@@ -211,18 +226,23 @@ export function browseLibrary(
 		return true;
 	};
 	const curated =
-		state.source === 'project' ? [] : curatedLibraryCards(entries, variantChoice).filter(keep);
-	const project =
-		state.source === 'curated'
+		state.source === 'project' || state.source === 'mine'
 			? []
-			: entries
-					.filter((entry) => entry.source === 'project')
-					.map(projectCard)
-					.filter(keep);
+			: curatedLibraryCards(entries, variantChoice).filter(keep);
+	const project =
+		state.source === 'curated' || state.source === 'mine'
+			? []
+			: entriesOfSource(entries, 'project').filter(keep);
+	const mine =
+		state.source === 'curated' || state.source === 'project'
+			? []
+			: entriesOfSource(entries, 'mine').filter(keep);
 	if (state.source === 'curated') return [{ label: null, cards: curated }];
 	if (state.source === 'project') return [{ label: null, cards: project }];
+	if (state.source === 'mine') return [{ label: null, cards: mine }];
 	return [
 		{ label: 'This project', cards: project },
+		{ label: 'My library', cards: mine },
 		{ label: 'Curated', cards: curated },
 	].filter((group) => group.cards.length > 0);
 }
@@ -240,8 +260,10 @@ export function librarySourceCount(
 ): number {
 	if (source === 'curated') return curatedLibraryCards(entries, variantChoice).length;
 	if (source === 'project') return entries.filter((entry) => entry.source === 'project').length;
+	if (source === 'mine') return entries.filter((entry) => entry.source === 'mine').length;
 	return (
 		entries.filter((entry) => entry.source === 'project').length +
+		entries.filter((entry) => entry.source === 'mine').length +
 		curatedLibraryCards(entries, variantChoice).length
 	);
 }

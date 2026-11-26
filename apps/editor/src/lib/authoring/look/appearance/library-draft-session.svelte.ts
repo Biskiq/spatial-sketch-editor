@@ -9,6 +9,7 @@ import type { StageShellState } from '../../stage/route/stage-shell-state.svelte
 import type { StageSelectionEntry } from '../../stage/semantic-selection';
 import type { MaterialEditorProps } from '../appearance-view';
 import type { FinishAuthoring } from '../finish-authoring.svelte';
+import type { PrivateLibrarySession } from '../../library/private-library.svelte';
 
 type TextureScope = NonNullable<Extract<FinishTileSource, { kind: 'finish' }>['subject']>['scope'];
 
@@ -20,6 +21,7 @@ export function createLibraryDraftSession(input: {
 	readonly shell: StageShellState;
 	readonly canShowEditor: () => boolean;
 	readonly entries: () => readonly LibraryFinishEntry[];
+	readonly privateLibrary: PrivateLibrarySession;
 	readonly tileSource: (entry: LibraryFinishEntry) => FinishTileSource | null;
 	readonly armWorldTool: (tool: 'select' | 'paint') => void;
 }) {
@@ -236,6 +238,12 @@ export function createLibraryDraftSession(input: {
 			},
 			onPaintDraft: finishes.paintLibraryDraft,
 			onCancelDraft: endLibraryDraft,
+			onSaveDraft: () =>
+				input.privateLibrary.saveDraft({
+					name: draft.name,
+					instance: instance.instance,
+					tileSource: libraryDraftRender.source ?? original,
+				}),
 		};
 	}
 

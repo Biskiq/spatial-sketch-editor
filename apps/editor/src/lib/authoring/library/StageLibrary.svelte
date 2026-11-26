@@ -45,6 +45,8 @@
 	import type { LibraryTarget } from './library-target';
 	import StageLibraryBody from './StageLibraryBody.svelte';
 	import StageLibraryDetail from './StageLibraryDetail.svelte';
+	import StageLibrarySources from './StageLibrarySources.svelte';
+	import { tryUsePrivateLibrary } from './private-library-provider';
 
 	type LibraryKind = StageLibraryView['kind'];
 	type Intent = 'browse' | 'paint' | 'replace' | 'swap';
@@ -114,6 +116,7 @@
 
 	const FILTER_IDS = new Set<string>(LIBRARY_FILTERS.map((option) => option.id));
 	const SOURCE_IDS = new Set<string>(LIBRARY_SOURCES.map((option) => option.id));
+	const privateLibrary = tryUsePrivateLibrary();
 
 	// The sheet opens on the remembered view; an invocation may name its kind.
 	const start = untrack(() => view);
@@ -152,16 +155,32 @@
 
 	/** Replace writes to the target the sheet opened with, or refuses. */
 	const capturedTarget = untrack(() => (intent === 'replace' ? target : null));
+	const targetChanged = 'The selection changed since the Library opened. Nothing changed.';
+	function capturedTargetRefusal(next: LibraryTarget | null): string | null {
+		return capturedTarget === null || target === null || next === null ||
+			target.key !== capturedTarget.key || next.key !== capturedTarget.key
+			? targetChanged
+			: null;
+	}
 
-	const groups = $derived(browseLibrary(entries, { source, category, filters, query }, variantChoice));
+	const privateEntries = $derived(privateLibrary?.entries() ?? []);
+	const allEntries = $derived([...entries, ...privateEntries]);
+	const groups = $derived(browseLibrary(allEntries, { source, category, filters, query }, variantChoice));
 	const cards = $derived(libraryCardsOf(groups));
 	const selectedCard = $derived(cards.find((card) => card.key === selectedKey) ?? null);
-	const categories = $derived(libraryCategoryOptions(entries, source));
-	const curatedCount = $derived(librarySourceCount(entries, 'curated', variantChoice));
-	const projectCount = $derived(librarySourceCount(entries, 'project'));
-	const allCount = $derived(librarySourceCount(entries, 'all', variantChoice));
-	const hasProject = $derived(entries.some((entry) => entry.source === 'project'));
+	const categories = $derived(libraryCategoryOptions(allEntries, source));
+	const curatedCount = $derived(librarySourceCount(allEntries, 'curated', variantChoice));
+	const projectCount = $derived(librarySourceCount(allEntries, 'project'));
+	const mineCount = $derived(librarySourceCount(allEntries, 'mine'));
+	const allCount = $derived(librarySourceCount(allEntries, 'all', variantChoice));
+	const hasProject = $derived(allEntries.some((entry) => entry.source === 'project'));
+	const hasMine = $derived(mineCount > 0);
+	const mineStatus = $derived(privateLibrary?.status ?? 'offline');
 	const keepable = $derived(intent !== 'browse');
+
+	$effect(() => {
+		if (source === 'all' || source === 'mine') privateLibrary?.ensureLoaded();
+	});
 
 	// The browse view outlives the sheet (session state), detail does not.
 	$effect(() => {
@@ -266,12 +285,22 @@
 			return;
 		}
 		if (intent === 'replace') {
-			const stale = capturedTarget === null || target === null || target.key !== capturedTarget.key;
-			if (stale) {
-				refusal = 'The selection changed since the Library opened. Nothing changed.';
+			const stale = capturedTargetRefusal(capturedTarget);
+			if (stale !== null) {
+				refusal = stale;
 				return;
 			}
+			if (entry.source === 'mine')
+				return void run(() => insertMine(entry, capturedTarget, keep)).then(() => {
+					if (keep && refusal === null) note = `${entry.name} · Library stays open`;
+				});
 			void run(() => onReplace(entry, keep)).then(() => {
+				if (keep && refusal === null) note = `${entry.name} · Library stays open`;
+			});
+			return;
+		}
+		if (entry.source === 'mine') {
+			void run(() => insertMine(entry, null, keep)).then(() => {
 				if (keep && refusal === null) note = `${entry.name} · Library stays open`;
 			});
 			return;
@@ -284,11 +313,46 @@
 		onPaint(entry, keep);
 		if (keep) note = `${entry.name} · Library stays open`;
 	}
-
+	/** Inserting a saved item is one G transfer and one independent F4 Finish. */
+	async function insertMine(
+		entry: LibraryFinishEntry,
+		mineTarget: LibraryTarget | null,
+		keep: boolean,
+	): Promise<Outcome> {
+		if (intent === 'replace' && mineTarget !== null) {
+			const stale = capturedTargetRefusal(mineTarget);
+			if (stale !== null) return { ok: false, message: stale };
+		}
+		if (privateLibrary === null) return { ok: false, message: 'My library is unavailable here.' };
+		const outcome = await privateLibrary.insert(
+			entry.key,
+			mineTarget,
+			mineTarget === null ? 'paint' : 'apply',
+		);
+		if (!outcome.ok) return { ok: false, message: outcome.message };
+		if (!keep) onClose();
+		return { ok: true };
+	}
+	async function saveMine(entry: LibraryFinishEntry): Promise<Outcome> {
+		if (privateLibrary === null) return { ok: false, message: 'My library is unavailable here.' };
+		const outcome = await privateLibrary.saveFinish({
+			finishKey: entry.key,
+			name: entry.name,
+			tileSource: tileSource(entry),
+		});
+		return outcome.ok ? { ok: true } : { ok: false, message: outcome.message };
+	}
+	async function removeMine(entry: LibraryFinishEntry): Promise<Outcome> {
+		if (privateLibrary === null || entry.libraryItem === undefined)
+			return { ok: false, message: 'My library is unavailable here.' };
+		const outcome = await privateLibrary.remove(entry.libraryItem.id);
+		if (!outcome.ok) return { ok: false, message: outcome.message };
+		selectedKey = null;
+		return { ok: true };
+	}
 	async function selectUsers(entry: LibraryFinishEntry): Promise<void> {
 		await run(async () => ((await onSelectUsers(entry)) ? { ok: true } : { ok: false, message: `No present surface uses ${entry.name}.` }));
 	}
-
 	function chooseArtwork(files: FileList | null): void {
 		if (files === null || files.length === 0) return;
 		onArtworkImport(Array.from(files));
@@ -371,32 +435,14 @@
 			{/if}
 		</label>
 		{#if kind === 'materials'}
-			<div class="sources" role="group" aria-label="Material sources">
-				{#each LIBRARY_SOURCES as option (option.id)}
-					<button
-						type="button"
-						class:on={source === option.id}
-						aria-pressed={source === option.id}
-						data-library-source={option.id}
-						onclick={() => { source = option.id; selectedKey = null; }}
-					>
-						{option.label}
-						<span>{option.id === 'all' ? allCount : option.id === 'curated' ? curatedCount : projectCount}</span>
-					</button>
-				{/each}
-			</div>
-			<label class="sources-menu">
-				<span class="sr">Material source</span>
-				<select
-					value={source}
-					data-library-source-menu
-					onchange={(event) => { source = event.currentTarget.value as LibrarySource; selectedKey = null; }}
-				>
-					{#each LIBRARY_SOURCES as option (option.id)}
-						<option value={option.id}>{option.label} · {option.id === 'all' ? allCount : option.id === 'curated' ? curatedCount : projectCount}</option>
-					{/each}
-				</select>
-			</label>
+				<StageLibrarySources
+					{source}
+					{allCount}
+					{curatedCount}
+					{projectCount}
+					{mineCount}
+					onSelect={(next) => { source = next; selectedKey = null; }}
+				/>
 			{#if onMaterialImport}
 				<input
 					type="file"
@@ -481,8 +527,20 @@
 				{selectUsers}
 				{onCustomise}
 				{onToggleFavourite}
-				onUseForPaint={(entry) => onPaint(entry, false)}
-				onApplyToTarget={(entry) => void run(() => onReplace(entry, false))}
+				onUseForPaint={(entry) =>
+					entry.source === 'mine'
+						? void run(() => insertMine(entry, null, false))
+						: onPaint(entry, false)}
+				onApplyToTarget={(entry) =>
+					entry.source === 'mine'
+						? void run(() => insertMine(entry, capturedTarget ?? target, false))
+						: void run(() => onReplace(entry, false))}
+				onInsertMine={(entry, mineTarget) => void run(() => insertMine(entry, mineTarget, false))}
+				onSaveMine={(entry) => void run(() => saveMine(entry))}
+				onRemoveMine={(entry) => void run(() => removeMine(entry))}
+				onRetryMine={() => void privateLibrary?.load(true)}
+				{mineStatus}
+				privateError={privateLibrary?.error ?? null}
 			/>
 		{/if}
 	{/snippet}
@@ -497,6 +555,8 @@
 		{working}
 		{busy}
 		{hasProject}
+		{hasMine}
+		{mineStatus}
 		{groups}
 		{cards}
 		{categories}
@@ -519,6 +579,7 @@
 		onLook={onLook}
 		detail={selectedCard !== null && kind === 'materials' ? materialDetail : undefined}
 		onShowProject={() => { source = 'project'; selectedKey = null; }}
+		onShowMine={() => { source = 'mine'; selectedKey = null; }}
 		onBrowseCurated={() => (source = 'curated')}
 		onClearSearch={() => (query = '')}
 		openArtworkImport={() => artworkInput?.click()}
@@ -554,18 +615,15 @@
 	}
 	.library {
 		--lib-w: min(900px, calc(100% - var(--lane-l) - var(--lane-r) - 24px));
-		position: absolute;
-		z-index: 51;
+		position: absolute; z-index: 51;
 		width: var(--lib-w);
 		height: min(560px, calc(100% - var(--lane-b) - 12px - 96px));
 		left: calc(var(--lane-l) + (100% - var(--lane-l) - var(--lane-r) - var(--lib-w)) / 2);
 		bottom: calc(var(--lane-b) + 12px);
-		box-sizing: border-box;
-		display: grid;
+		box-sizing: border-box; display: grid;
 		grid-template-rows: auto auto auto minmax(0, 1fr);
 		min-height: 0;
-		color: var(--shell-ink);
-		background: var(--shell-card);
+		color: var(--shell-ink); background: var(--shell-card);
 		border: 1px solid var(--shell-hairline-strong);
 		border-radius: 14px;
 		box-shadow: 0 14px 40px color-mix(in srgb, var(--shell-forest) 26%, transparent);
@@ -574,8 +632,7 @@
 	}
 	.library:focus { outline: none; }
 	.lb-h {
-		display: flex;
-		align-items: center;
+		display: flex; align-items: center;
 		gap: 8px;
 		padding: 10px 12px 8px;
 		min-width: 0;
@@ -583,8 +640,7 @@
 	.lb-t { margin: 0; font-size: 14px; white-space: nowrap; }
 	.search { position: relative; flex: 1; min-width: 120px; }
 	.search input {
-		width: 100%;
-		box-sizing: border-box;
+		width: 100%; box-sizing: border-box;
 		padding: 7px 28px 7px 12px;
 		border: 1px solid var(--shell-hairline-strong);
 		border-radius: 999px;
@@ -605,48 +661,10 @@
 		font-size: 16px;
 		cursor: pointer;
 	}
-	.sources {
-		display: inline-flex;
-		flex: none;
-		border: 1px solid var(--shell-hairline-strong);
-		border-radius: 8px;
-		overflow: hidden;
-	}
-	.sources button {
-		border: 0;
-		border-right: 1px solid var(--shell-hairline);
-		background: transparent;
-		color: var(--shell-ink-2);
-		font: inherit;
-		font-size: 12px;
-		padding: 6px 10px;
-		cursor: pointer;
-		white-space: nowrap;
-		min-height: 30px;
-	}
-	.sources button:last-child { border-right: 0; }
-	.sources button span { margin-left: 5px; font-size: 10px; opacity: 0.65; }
-	.sources button.on { background: var(--shell-forest); color: var(--shell-ivory); }
-	.sources-menu { display: none; flex: none; }
-	.sources-menu select {
-		font: inherit;
-		font-size: 12px;
-		min-height: 30px;
-		padding: 4px 8px;
-		border: 1px solid var(--shell-hairline-strong);
-		border-radius: 8px;
-		background: var(--shell-card);
-		color: var(--shell-ink);
-	}
-	.sources-menu select:focus-visible { outline: 2px solid var(--shell-forest); }
 	.lb-x {
-		border: 0;
-		background: transparent;
-		color: var(--shell-ink);
+		border: 0; background: transparent; color: var(--shell-ink);
 		font-size: 20px;
-		line-height: 1;
-		width: 30px;
-		height: 30px;
+		line-height: 1; width: 30px; height: 30px;
 		border-radius: 8px;
 		cursor: pointer;
 		flex: none;
@@ -686,9 +704,7 @@
 		color: var(--shell-ink);
 		border-radius: 7px;
 		padding: 6px 11px;
-		font: inherit;
-		font-size: 12px;
-		min-height: 30px;
+		font: inherit; font-size: 12px; min-height: 30px;
 		cursor: pointer;
 	}
 	.btn.sm { padding: 5px 9px; font-size: 11px; white-space: nowrap; }
@@ -697,11 +713,6 @@
 
 	.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
-	/* Not room for rail, grid and inspector: the rail folds into a row and the sources into a menu. */
-	@container library (width < 780px) {
-		.sources { display: none; }
-		.sources-menu { display: block; }
-	}
 	/*
 		Not room for grid and inspector side by side: detail becomes an in-panel view
 		with Back over the same bounds; the browse behind it leaves the Tab order.
@@ -721,7 +732,7 @@
 		.search { order: 3; flex-basis: 100%; }
 	}
 	@media (pointer: coarse) {
-		.fchip, .sources button, .btn { min-height: 44px; }
+		.fchip, .btn { min-height: 44px; }
 		.lb-x { width: 44px; height: 44px; }
 	}
 </style>

@@ -20,7 +20,7 @@ import {
 	type MaterialLibraryItemSummary,
 	type MaterialLibraryTransfer,
 } from '@portfolio/project-model/library';
-import type { Recipe } from '@portfolio/project-model/materials';
+import type { Finish, Recipe } from '@portfolio/project-model/materials';
 import { isFinishTarget, SCENE_FINISH_REGISTER } from '@portfolio/project-model/scene-planning';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
 import { draftFinishId, type DraftTargets } from '../../../materials/material-set';
@@ -64,14 +64,16 @@ export function finishLibraryImages(source: ProjectEnvelope, materialId?: string
  */
 export async function saveFinishToLibrary(input: {
 	readonly source: ProjectEnvelope;
-	readonly finishId: string;
+	readonly finishId?: string;
+	/** A curated or draft Finish that is not a Scene material instance yet. */
+	readonly finish?: Finish;
 	readonly operationId: string;
 	readonly client: MaterialLibraryClient;
 	readonly signal?: AbortSignal;
 }): Promise<FinishLibrarySaveResult> {
-	const finish = input.source.units.scene.data.materials.find(
-		(entry) => entry.id === input.finishId,
-	);
+	const finish =
+		input.finish ??
+		input.source.units.scene.data.materials.find((entry) => entry.id === input.finishId);
 	if (finish === undefined) {
 		return {
 			ok: false,
@@ -136,6 +138,19 @@ export async function uploadFinishThumbnail(input: {
 	if (bytes.byteLength > 256 * 1024) return false;
 	input.signal?.throwIfAborted();
 	await input.client.putThumbnail(input.item, bytes, input.signal);
+	return true;
+}
+
+/** Install an already-encoded 256×256 PNG; the API enforces the edge and bytes. */
+export async function uploadFinishThumbnailBytes(input: {
+	readonly item: Pick<MaterialLibraryItemSummary, 'id' | 'contentId' | 'recipeHash'>;
+	readonly bytes: Uint8Array;
+	readonly client: MaterialLibraryClient;
+	readonly signal?: AbortSignal;
+}): Promise<boolean> {
+	if (input.bytes.byteLength > 256 * 1024) return false;
+	input.signal?.throwIfAborted();
+	await input.client.putThumbnail(input.item, input.bytes, input.signal);
 	return true;
 }
 
@@ -343,7 +358,7 @@ export async function insertFinishFromLibrary(input: {
 		capturedInputs: [],
 		allocatedIds: [{ kind: 'scene-finish', id: transfer.finishId }],
 	} as AuthoringIntent);
-	if (outcome.kind !== 'accepted') {
+	if (outcome.kind !== 'accepted' && outcome.kind !== 'installed') {
 		const reason = outcome.reason ?? outcome.code ?? outcome.kind;
 		const code: InsertFinishRefusal =
 			reason === 'target-pending'

@@ -5,8 +5,7 @@ import type {
 	SceneMaterialInstance,
 	SceneSurfaceRef,
 } from '@portfolio/project-model/scene';
-import type { SceneFinishRef } from '@portfolio/project-model/scene-planning';
-import type { FinishPatchEdit } from '@portfolio/project-model/scene-planning';
+import type { FinishPatchEdit, SceneFinishRef } from '@portfolio/project-model/scene-planning';
 import {
 	applyFinishPatch,
 	baseRecipeOf,
@@ -41,6 +40,7 @@ import {
 } from '../library/library-target';
 import {
 	beginLibraryDraft,
+	draftEntryOf,
 	libraryDraftChanged,
 	predictDerivedAssign,
 	type LibraryDraft,
@@ -331,8 +331,8 @@ export function createFinishLibraryAuthoring(ports: FinishLibraryPorts) {
 	 */
 	function openLibraryDraft(ref: Exclude<SceneFinishRef, 'model-own'>): boolean {
 		const key = finishKeyOfRef(ref);
-		const entry = libraryBrowse().find((candidate) => candidate.key === key);
-		if (entry === undefined) {
+		const entry = draftEntryOf(libraryBrowse().find((candidate) => candidate.key === key));
+		if (entry === null) {
 			ports.host.onNotice('That Finish is not in this project.');
 			return false;
 		}
@@ -382,7 +382,9 @@ export function createFinishLibraryAuthoring(ports: FinishLibraryPorts) {
 	/** Back to the Finish's own recipe: a local reset, no write. */
 	function resetLibraryDraftStep(): void {
 		if (libraryDraft === null) return;
-		const entry = libraryBrowse().find((candidate) => candidate.key === libraryDraft!.finishKey);
+		const entry = draftEntryOf(
+			libraryBrowse().find((candidate) => candidate.key === libraryDraft!.finishKey),
+		);
 		libraryDraft = beginLibraryDraft(
 			entry ?? {
 				key: libraryDraft.finishKey,

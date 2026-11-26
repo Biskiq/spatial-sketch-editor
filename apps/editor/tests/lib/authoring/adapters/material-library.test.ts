@@ -224,6 +224,60 @@ describe('insertFinishFromLibrary', () => {
 		expect(payload.images[0]!.texture?.pin.hash).toBe(`sha256-${'c'.repeat(64)}`);
 	});
 
+	test('accepts the Stage installed outcome for a targetless insertion', async () => {
+		const destination = await envelope(createEmptyUnitSceneDocument());
+		const recipe = {
+			profile: 'pbr-metallic-roughness/v1' as const,
+			color: '#ffffff',
+			roughness: 0.5,
+			metalness: 0,
+			occlusionStrength: 1,
+			normalScale: 1,
+			mapping: { kind: 'uv' as const, set: 0 as const, repeat: [1, 1] as const, rotation: 0, offset: [0, 0] as const },
+			maps: {}
+		};
+		const pinned = await recipeHash(recipe);
+		let accepted = false;
+		const result = await insertFinishFromLibrary({
+			item: { id: 'item-installed', contentId: `sha256-${'a'.repeat(64)}`, recipeHash: pinned },
+			destinationProjectId: PROJECT,
+			operationId: 'insert-installed',
+			targets: { entityIds: [], surfaces: [] },
+			client: {
+				async transfer() {
+					return {
+						itemId: 'item-installed',
+						contentId: `sha256-${'a'.repeat(64)}`,
+						finishId: 'finish-insert-installed',
+						name: 'Plain',
+						recipe,
+						recipeHash: pinned,
+						images: [],
+						savedBase: null
+					};
+				}
+			} as unknown as MaterialLibraryClient,
+			signal: new AbortController().signal,
+			host: {
+				current: () => ({ source: destination, revision: destination.acceptedRevision }),
+				accept: async () => {
+					accepted = true;
+					return { kind: 'installed' };
+				},
+				entityReference: () => {
+					throw new Error('not used');
+				},
+				surfaceReference: () => {
+					throw new Error('not used');
+				},
+				materialProofs: createMaterialProofRegistry()
+			}
+		});
+		expect(result.ok).toBe(true);
+		expect(accepted).toBe(true);
+		if (result.ok) expect(result.finishId).toBe('finish-insert-installed');
+	});
+
 	test('does not call F4 when the transfer is refused', async () => {
 		const destination = await envelope(createEmptyUnitSceneDocument());
 		const client = {

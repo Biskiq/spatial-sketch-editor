@@ -352,7 +352,7 @@ it('remounts the Material Editor when switching between Finish and Library Draft
 
 	owner('commands').armWorldTool('paint');
 	const entry = finishes.libraryBrowse().find(({ source }) => source === 'curated');
-	if (entry === undefined) throw new Error('Expected a curated Finish');
+	if (entry === undefined || entry.ref === null) throw new Error('Expected a curated Finish');
 	expect(finishes.openLibraryDraft(entry.ref)).toBe(true);
 	await tick();
 	const draft = target.querySelector('[data-material-editor-mode="draft"]');
@@ -401,7 +401,8 @@ it('drops the Paint tray expansion and the draft when Paint is put down', async 
 	paintTray.toggleExpanded();
 	paintTray.setWheelOpen(true);
 	const entry = finishes.libraryBrowse().find(({ source }) => source === 'curated');
-	if (entry === undefined) throw new Error('Expected the Finish Library to list a curated Finish');
+	if (entry === undefined || entry.ref === null)
+		throw new Error('Expected the Finish Library to list a curated Finish');
 	expect(finishes.openLibraryDraft(entry.ref)).toBe(true);
 	await tick();
 	expect(finishes.libraryDraft).not.toBeNull();

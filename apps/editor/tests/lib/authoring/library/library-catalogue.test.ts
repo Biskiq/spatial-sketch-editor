@@ -92,6 +92,27 @@ function project(id: string, patch: Partial<LibraryFinishEntry> = {}): LibraryFi
 	};
 }
 
+function mine(id: string, patch: Partial<LibraryFinishEntry> = {}): LibraryFinishEntry {
+	return {
+		...project(id),
+		key: `mine:${id}`,
+		source: 'mine',
+		ref: null,
+		name: 'Saved oak',
+		materialLabel: 'Saved Finish',
+		family: null,
+		familyLabel: 'Other',
+		subline: 'Saved Finish · 2 images',
+		curatedId: null,
+		projectId: null,
+		usage: 0,
+		userKeys: [],
+		changes: 0,
+		libraryItem: { id, savedAt: '2026-11-01', savedFrom: '', flattened: [], imageCount: 2 },
+		...patch
+	};
+}
+
 const catalogue = materials.map((material) => curated(material.id));
 const state = {
 	source: 'all' as const,
@@ -196,7 +217,20 @@ describe('T2.S8 U5 — Library catalogue', () => {
 	it('counts a source the way its grid reads: D1 is 20 curated cards', () => {
 		expect(librarySourceCount(catalogue, 'curated')).toBe(20);
 		expect(librarySourceCount([project('oak')], 'project')).toBe(1);
-		expect(librarySourceCount([project('oak'), ...catalogue], 'all')).toBe(21);
+		expect(librarySourceCount([mine('saved')], 'mine')).toBe(1);
+		expect(librarySourceCount([project('oak'), mine('saved'), ...catalogue], 'all')).toBe(22);
+	});
+
+	it('keeps My library as its own shelf and source', () => {
+		const saved = mine('saved');
+		const groups = browseLibrary([project('oak'), saved, ...catalogue], state);
+		expect(groups.map((group) => group.label)).toEqual(['This project', 'My library', 'Curated']);
+		expect(groups[1]?.cards.map((card) => card.key)).toEqual(['mine:saved']);
+		expect(browseLibrary([saved], { ...state, source: 'mine' })[0]?.label).toBeNull();
+		expect(libraryCategoryOptions([saved], 'mine')).toEqual([
+			{ id: 'all', label: 'All materials' },
+			{ id: 'other', label: 'Other' }
+		]);
 	});
 
 	it('does not mutate the entries it reads', () => {

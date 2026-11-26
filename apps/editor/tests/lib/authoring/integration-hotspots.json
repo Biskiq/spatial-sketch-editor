@@ -1,7 +1,7 @@
 {
 	"src/lib/authoring/workspace/host/workspace-host.svelte.ts": {
-		"lines": 994,
-		"imports": 70,
+		"lines": 993,
+		"imports": 71,
 		"state": 0,
 		"derived": 0,
 		"effects": 0,
@@ -72,13 +72,13 @@
 		"arrows": 13
 	},
 	"src/lib/authoring/look/appearance-feature.svelte.ts": {
-		"lines": 146,
-		"imports": 10,
+		"lines": 165,
+		"imports": 12,
 		"state": 0,
 		"derived": 0,
 		"effects": 0,
 		"functions": 1,
-		"arrows": 11
+		"arrows": 15
 	},
 	"src/lib/authoring/artwork/artwork-feature.svelte.ts": {
 		"lines": 34,
@@ -270,8 +270,8 @@
 		"arrows": 53
 	},
 	"src/lib/authoring/look/finish-library.svelte.ts": {
-		"lines": 842,
-		"imports": 23,
+		"lines": 844,
+		"imports": 22,
 		"state": 4,
 		"derived": 0,
 		"effects": 0,
