@@ -1,9 +1,8 @@
 # Implementation slices
 
-Part of the [T1 next-batch proposal](./README.md), revision 3. Tiers follow
-[`docs/README.md`](../../README.md#planning-non-trivial-work). Capability
-ids marked *new* are proposed names; each implementing PR adds its own ledger row and claims it in
-its title. This document claims nothing and fixes no schema, type name or format number.
+Part of the [T1 next-batch proposal](./README.md), revision 3. Capability ids marked *new* are
+proposed planner names, not a registration or permission gate. This document fixes no schema, type
+name or format number.
 
 Every slice inherits these acceptance rules and does not repeat them: one gesture is one history
 entry; Undo and Redo replay captured ids; a refusal has words and writes nothing; session readings
@@ -15,17 +14,17 @@ migration.
 
 Small, independently mergeable. Done when journeys J1–J5 pass.
 
-| Slice | Capability | Delivers | Boundary | Needs | Tier |
-| --- | --- | --- | --- | --- | --- |
-| **A0** | – | Promote #287's enduring rules into the Layout contract; delete the completed expressive-walls plan and its roadmap row | Docs only | – | 1 |
-| **A1** | `layout.wall-split` *new* | **Split wall here** in the scoped list (Card `•••`, context menu, Find) | One intent over `planWallSplitAtPoint`. No new mark, no armed mode | – | 0 |
-| **A2** | `layout.wall-join` *new* | Join at a two-Wall joint: drag the joint onto the line between its neighbours (**Remove joint**), or Eraser on the joint | One intent over `planDissolveJunction`. One sentence added to the grammar's Wall row | – | 1 |
-| **A3** | `layout.wall-arc` *new* | Walls plate **Arc**: start, end, bulge | `InkWallMode` gains `'arc'`. No new centerline kind | – | 0 |
-| **A4** | `layout.room-duplicate` *new* | **Duplicate** for an isolated Room; the copy follows the pointer as one proposal | One intent over `planDuplicateIsolatedRoom` | – | 0 |
-| **A8** | `layout.opening-repeat` *new* | **Repeat** on an Opening: count and spacing | One intent over `planRepeatWallOpening`. Spacing only | – | 0 |
-| **A5** | `layout.room-duplicate` | Duplicate any Room as a free island; the **overlaps, not joined** cue | New copy-enclosure planner beside the isolated one. The cue is derived editor state. No weld. Short plan first | A4 | 1 |
-| **A6** | `layout.wall-face` *new* | **Face this wall**; Put back returns to the entry pose | One `face` viewing intent in camera-core. Layout supplies bounds and a direction, never a pose. Short plan first | – | 1 |
-| **A7** | existing ids | Pointed Opening profile; fixed-end choice on Card Length; length mark on curved Walls. One PR each | Each is one control over one planner; drop any that needs a design | – | 0 |
+| Slice | Capability | Delivers | Boundary | Needs |
+| --- | --- | --- | --- | --- |
+| **A0** | – | Promote #287's enduring rules into the Layout contract; delete the completed expressive-walls plan and its programme entry | Docs only | – |
+| **A1** | `layout.wall-split` *new* | **Split wall here** in the scoped list (Card `•••`, context menu, Find) | One intent over `planWallSplitAtPoint`. No new mark, no armed mode | – |
+| **A2** | `layout.wall-join` *new* | Join at a two-Wall joint: drag the joint onto the line between its neighbours (**Remove joint**), or Eraser on the joint | One intent over `planDissolveJunction`. One sentence added to the grammar's Wall row | – |
+| **A3** | `layout.wall-arc` *new* | Walls plate **Arc**: start, end, bulge | `InkWallMode` gains `'arc'`. No new centerline kind | – |
+| **A4** | `layout.room-duplicate` *new* | **Duplicate** for an isolated Room; the copy follows the pointer as one proposal | One intent over `planDuplicateIsolatedRoom` | – |
+| **A8** | `layout.opening-repeat` *new* | **Repeat** on an Opening: count and spacing | One intent over `planRepeatWallOpening`. Spacing only | – |
+| **A5** | `layout.room-duplicate` | Duplicate any Room as a free island; the **overlaps, not joined** cue | New copy-enclosure planner beside the isolated one. The cue is derived editor state. No weld. | A4 |
+| **A6** | `layout.wall-face` *new* | **Face this wall**; Put back returns to the entry pose | One `face` viewing intent in camera-core. Layout supplies bounds and a direction, never a pose. | – |
+| **A7** | existing ids | Pointed Opening profile; fixed-end choice on Card Length; length mark on curved Walls. One PR each | Each is one control over one planner; drop any that needs a design | – |
 
 **Acceptance.**
 
@@ -57,7 +56,7 @@ are created from which source.
 
 ## Lane S: spikes with a decision as their exit
 
-Core only, on fixtures, no editor change. Tier 0.
+Core only, on fixtures, no editor change.
 
 | Slice | Question | Exit |
 | --- | --- | --- |
@@ -68,11 +67,11 @@ Core only, on fixtures, no editor change. Tier 0.
 
 `layout.interior-reveal` *new*. Layout owns the representation; the shell owns the reading.
 
-| Slice | Delivers | Boundary | Needs | Tier |
-| --- | --- | --- | --- | --- |
-| **X0** | A written account, with screenshots, of what the Stage shows for a closed Room from outside and from above, and whether any near-wall cutaway exists. PLATE's sentence made true or corrected | Inspection and a focused browser check; a docs fix at most | – | 0 |
-| **X1** | **Lift**, with its pill and Put back | Session state beside the Unroll session. Short plan first: `git show archive/pre-pr6:docs/roadmap/t1-spatial-world/next-batch/x1-lift-plan.md` | X0 | 1 |
-| **X2** | **Near walls: Cut \| Whole**, and hold-to-see-whole. Builds the automatic cutaway if X0 found none | A pure function of Camera pose and compiled geometry. No pill, no pinning. Short plan first: `git show archive/pre-pr6:docs/roadmap/t1-spatial-world/next-batch/x2-near-wall-cutaway-plan.md` | X1, SL1 | 1 |
+| Slice | Delivers | Boundary | Needs |
+| --- | --- | --- | --- |
+| **X0** | A written account, with screenshots, of what the Stage shows for a closed Room from outside and from above, and whether any near-wall cutaway exists. PLATE's sentence made true or corrected | Inspection and a focused browser check; a docs fix at most | – |
+| **X1** | **Lift**, with its pill and Put back | Session state beside the Unroll session. Plan precedent: `git show 2ca766335:docs/roadmap/t1-spatial-world/next-batch/x1-lift-plan.md` | X0 |
+| **X2** | **Near walls: Cut \| Whole**, and hold-to-see-whole. Builds the automatic cutaway if X0 found none | A pure function of Camera pose and compiled geometry. No pill, no pinning. Plan precedent: `git show 2ca766335:docs/roadmap/t1-spatial-world/next-batch/x2-near-wall-cutaway-plan.md` | X1, SL1 |
 
 **Acceptance.**
 
@@ -90,11 +89,11 @@ Core only, on fixtures, no editor change. Tier 0.
 
 `layout.slice` *new*. In this batch's planning scope; outside its immediate implementation batch.
 
-| Slice | Delivers | Boundary | Needs | Tier |
-| --- | --- | --- | --- | --- |
-| **SL1** | **Level cut** at the Height Sheet's height, with its pill, depth and Put back. Aligns the toolbar stub with PLATE | Session state. Cap generation is the implementer's choice. Plan first: [sl-plan-slice.md](sl-plan-slice.md) (integrated SL1–SL3 architecture) | – | 1 |
-| **SL2** | **Drawn cut**: segment, depth ray, Flip, Put back | Same session; one Slice at a time | SL1 | 1 |
-| **SL3** | **Face the cut** and **Section** | Face reuses A6's intent. Section consumes Layout's typed cut and projected streams. Own plan | SL2, A6 | 2 |
+| Slice | Delivers | Boundary | Needs |
+| --- | --- | --- | --- |
+| **SL1** | **Level cut** at the Height Sheet's height, with its pill, depth and Put back. Aligns the toolbar stub with PLATE | Session state. Cap generation is the implementer's choice. Architecture: [sl-plan-slice.md](sl-plan-slice.md) (integrated SL1–SL3 architecture) | – |
+| **SL2** | **Drawn cut**: segment, depth ray, Flip, Put back | Same session; one Slice at a time | SL1 |
+| **SL3** | **Face the cut** and **Section** | Face reuses A6's intent. Section consumes Layout's typed cut and projected streams. Own plan | SL2, A6 |
 
 **Acceptance.**
 
@@ -110,14 +109,14 @@ Core only, on fixtures, no editor change. Tier 0.
 
 ## Lane SP: Spaces
 
-`layout.space` *new*. One plan (Tier 2) written on S2's report, then phased.
+`layout.space` *new*. Encoding planned on S2's report, then phased.
 
-| Slice | Delivers | Needs | Tier |
-| --- | --- | --- | --- |
-| **SP-plan** | Encoding of a boundary with Wall-side and virtual edges; the stated overhead intent; reconciliation changes; the non-overlap gate; Index, Card and Paint-scope consequences; visitor parity | S2 | 2 |
-| **SP1** | An opened Room stays the same Space. Virtual edges drawn, moved and replaced by Walls. **Overhead: Closed \| Open to sky**. **Remove space** | SP-plan | 2 |
-| **SP2** | **Room** tool: make a Space from partial Walls, with a proposed closure and a drawn open side | SP1 | 1 |
-| **SP3** | A Space that follows a floor region (Terrace tool) | SP1, V1 | 1 |
+| Slice | Delivers | Needs |
+| --- | --- | --- |
+| **SP-plan** | Encoding of a boundary with Wall-side and virtual edges; the stated overhead intent; reconciliation changes; the non-overlap gate; Index, Card and Paint-scope consequences; visitor parity | S2 |
+| **SP1** | An opened Room stays the same Space. Virtual edges drawn, moved and replaced by Walls. **Overhead: Closed \| Open to sky**. **Remove space** | SP-plan |
+| **SP2** | **Room** tool: make a Space from partial Walls, with a proposed closure and a drawn open side | SP1 |
+| **SP3** | A Space that follows a floor region (Terrace tool) | SP1, V1 |
 
 **Acceptance.**
 
@@ -136,15 +135,15 @@ Core only, on fixtures, no editor change. Tier 0.
 
 ## Lane D: depth
 
-| Slice | Capability | Delivers | Needs | Tier |
-| --- | --- | --- | --- | --- |
-| **V-plan** | `layout.horizontal-region`, `layout.wall-top-profile` *new* | One plan for V1–V3: region encoding (one kind with a role, or two); Floor-relative heights; relation derivation; surface references and support queries; Wall top definition; compiler, mesh and visitor consumption; what becomes of the Space's thickness fields | – | 2 |
-| **V1** | `layout.horizontal-region` | Flat overhead and floor regions; meets / gap / intended readout; one-shot fit | V-plan, X1, after SP1 | 2 |
-| **V2** | `layout.wall-top-profile` | Slope and gable Wall tops, edited on the Unroll sheet | V-plan; after V1 by order | 2 |
-| **V3** | `layout.horizontal-region` | Shed and gable forms; Edit shape; fit both ways | V1, V2 | 2 |
-| **C** | `layout.connected-curve` *new* | Connected circles on the arc-ring model with the Room as carrier. Own plan | S1 | 2 |
-| **R** | `layout.room-unroll` *new* | **Unroll the room** as one strip, starting at the selected Wall, clockwise from inside. Own plan | – | 1–2 |
-| **J** | – | Surface references and lineage, as the first commit of #289's S5a draft PR | A1, A2 lineage rules | 2 |
+| Slice | Capability | Delivers | Needs |
+| --- | --- | --- | --- |
+| **V-plan** | `layout.horizontal-region`, `layout.wall-top-profile` *new* | One plan for V1–V3: region encoding (one kind with a role, or two); Floor-relative heights; relation derivation; surface references and support queries; Wall top definition; compiler, mesh and visitor consumption; what becomes of the Space's thickness fields | – |
+| **V1** | `layout.horizontal-region` | Flat overhead and floor regions; meets / gap / intended readout; one-shot fit | V-plan, X1, after SP1 |
+| **V2** | `layout.wall-top-profile` | Slope and gable Wall tops, edited on the Unroll sheet | V-plan; after V1 by order |
+| **V3** | `layout.horizontal-region` | Shed and gable forms; Edit shape; fit both ways | V1, V2 |
+| **C** | `layout.connected-curve` *new* | Connected circles on the arc-ring model with the Room as carrier. Own plan | S1 |
+| **R** | `layout.room-unroll` *new* | **Unroll the room** as one strip, starting at the selected Wall, clockwise from inside. Own plan | – |
+| **J** | – | Surface references and lineage, with #289's S5a | A1, A2 lineage rules |
 
 **Acceptance.**
 
@@ -189,14 +188,14 @@ is awaiting approval.
 | Q8 | Open-to-sky is an **intent stated on the Space**; overhead regions are physical geometry and carry no intent. An intended gap is a flag on a region's relation to a Wall | Revision 2 put open intent on a closure region, which made intent depend on geometry existing. Reversed |
 | Q9 | V1 before V2, as product order | A flat canopy looks finished over today's Walls |
 | Q10 | Levels, stairs and terrain are outside this batch | No journey evidence; a suspended region is the probe |
-| Q11 | A0 lands as a docs-only Tier 1 PR | The promotion was owed |
+| Q11 | A0 lands as a docs-only PR | The promotion was owed |
 | Q12 | The Room carries a connected rotunda's identity; Round is a stated fact of the Room | Subject to S1 proving whole-object editing and inspectable components |
 | Q13 | An opened Room stays the same Space with a virtual edge; a Space exists while a Wall bounds it or a floor lies under it | Predictable, reversible, and it ends a silent data loss |
 | Q14 | Spaces do not overlap on the same surface; an open space may sit wholly inside a Room; the World is not partitioned; Zones are reserved for broader scopes | Containment in one direction covers booths in a hall without a priority rule |
 | Q15 | Interior Reveal is an editor-session reading; Layout owns the representation, the shell owns the reading | Same split as Unroll |
 | Q16 | Floor and overhead regions are one family in the verticality plan | The same geometry, mirrored |
 | Q17 | On Join the survivor's finish wins, with a visible consequence and Undo | Join always works; nothing is lost silently |
-| Q18 | The joint T1–T2 plan is the first commit of #289's S5a | One place, two reviewers |
+| Q18 | The joint T1–T2 plan is reviewed with #289's S5a | One place, two reviewers |
 | r3 | Level cut ships before the automatic cutaway | Deterministic before heuristic; see the comparison in the proposal |
 | r3 | The cutaway has a switch and a hold key, no pinning | A deliberate cut is Slice's job |
 | r3 | Edits that would break a round Room refuse; **Release round** is the workaround | A radius that never silently stops working |

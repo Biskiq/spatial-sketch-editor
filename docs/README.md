@@ -84,8 +84,9 @@ These are distilled from T1, T2 and S8; they are guidance, not a process gate.
   not wait for a visual decision, and a visual target does not promise an unimplemented operation.
 4. **Keep multi-PR blueprints only while active.** Plans live in `docs/plans/<programme>/` with their
   remaining scope and deletion condition; single-PR plans, closeout reports and screenshots live on
-  the GitHub PR. Delete a finished programme folder in its closing PR. Approved *unbuilt* designs
-  (T4 release, T5 Object Studio) stay until the capability lands or the owner retires it.
+  the GitHub PR. Keep enduring design authorities in `docs/design-system/`, not in a programme
+  folder: T1's interaction sketches and T5's Object Studio journeys live there. T4's unbuilt release
+  design stays with its active programme until the capability lands or the owner retires it.
 5. **Preserve the non-obvious.** When consolidating, keep tolerances, rationale, named exceptions and
   open seams even when the implementation detail moves. A contract that merely restates a destination
   essay or a format integer duplicates code and will drift.

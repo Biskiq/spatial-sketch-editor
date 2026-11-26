@@ -1,9 +1,8 @@
 # Architecture — ownership and boundaries
 
 **Owns:** semantic authorities, source/unit boundaries, product routes, platform responsibilities,
-shared composition (F.1–F.4) and the Stage adapter seam. Product ambition is the
-[harvested North Star](../../broad-research/north-star-2026-11.md). Approved visual targets own
-their feature UX; this contract owns cross-feature technical authority.
+shared composition (F.1–F.4) and the Stage adapter seam. Approved visual targets own their feature
+UX; this contract owns cross-feature technical authority.
 
 ## Product and frozen lanes
 
@@ -112,7 +111,7 @@ World creation, composition and Object Studio refinement operate on the same dom
 through the shared Stage, selection, F4 acceptance/history and Save path. Object Studio is a
 focused editing scope, not another Scene, persisted domain or renderer. Its dual entry and profile
 revision are implemented; later journeys follow the
-[T5 Studio specification](../plans/t5-expressive-geometry/object-studio-design.md).
+[T5 Studio specification](../design-system/object-studio.md).
 
 Admitted form edits retain sufficient authored controls, meaningful dependencies, binding policies
 and source resources to support the promised revision. Evaluated presentation geometry stays

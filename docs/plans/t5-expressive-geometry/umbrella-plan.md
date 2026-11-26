@@ -3,7 +3,7 @@
 **PR #266 · planning only · reviewed against main `cda02e61` (2026-11-07).**
 This is the single proposed T5 direction. It replaces the earlier native-form/Object Focus plan
 and the research proposal's C1–C6 experimental promotion sequence. The
-[Studio journeys](./object-studio-design.md) specify its UX. The
+[Studio journeys](../../design-system/object-studio.md) specify its UX. The
 [evidence note](../../../broad-research/native-modeling-freedom/PROPOSAL.md) retains the alternatives;
 research and prototype designs are supporting evidence, not competing implementation instructions.
 Nothing here records an owner approval, changes a codec, admits a dependency or activates production.
@@ -54,11 +54,10 @@ creative and revision need; implementation ease is not the selection criterion.
 | [Host acceptance](../../../apps/editor/src/lib/authoring/stage/host-acceptance.ts), [Camera session](../../../apps/editor/src/lib/authoring/stage/camera-session.ts) | Reuse unit F4 and the one Camera-output protocol. Source changes invalidate old inspection tickets; return after editing needs a revalidated Camera intent, not replay of a stale ticket. |
 | [Acceptance coordinator](../../../apps/editor/src/lib/authoring/f4/acceptance-coordinator.ts), [unit preparation](../../../packages/project-model/src/units/acceptance.ts) | Planner preparation currently returns a synchronous `PrepareResult`. The async host install does not make expensive worker-backed preparation an implemented capability. |
 | [Renderer](../../../apps/editor/src/lib/render/entities/form-geometry.ts), [Scene contract](../../reference/scene.md) | Stage and visitor Preview render native forms. Public release still refuses them. The renderer infers cap/side layout from extrusion buffers; arbitrary meshes cannot simply be passed through it. |
-| [Workflow](../../README.md), [test contract](../../../apps/editor/tests/README.md) | Capability PRs and risk tiers replace phase authorization. No hold is inferred from old research. Documentation/architecture gates apply here; implementation PRs retain the full repository merge contract. |
+| [Planning guidance](../../README.md), [test contract](../../../apps/editor/tests/README.md) | Implementation PRs retain the full repository merge contract. No hold is inferred from old research; documentation and architecture gates apply here. |
 
-The live status read matched main `cda02e61` with a complete report and no failing gate checks;
-the Studio rows had no tagged checks or claims. This is baseline evidence, not a stored maturity
-declaration. Issue [#272](https://github.com/Biskiq/spatial-sketch-editor/issues/272) remains relevant
+The baseline inspection matched main `cda02e61` with a complete report and no failing gate checks.
+This is baseline evidence, not a stored maturity declaration. Issue [#272](https://github.com/Biskiq/spatial-sketch-editor/issues/272) remains relevant
 to metadata scope enforcement. Every new planner must prove unchanged envelope metadata as well as
 unchanged foreign units; it must not depend on that gap. Issues
 [#274](https://github.com/Biskiq/spatial-sketch-editor/issues/274) (focus restoration) and
@@ -452,14 +451,12 @@ wait for a solid kernel. The first result-seam consumer owns that integration PR
 by representation family (evaluation, footprint/bounds for pick and Paper, one renderer entry
 shared by Stage and visitor), not a plugin registry; later consumers
 extend its declared capabilities, not a competing geometry pipeline. Format/dependency review follows
-the normal workflow at the actual consuming PR, with the dispositions at the end of this plan.
+the normal review at the actual consuming PR, with the dispositions at the end of this plan.
 
-Definitions in [the capability ledger](../../../tools/metrics/budgets.json) are planning coverage, with no
-owner implementation review or maturity assigned. Existing `studio.dual-entry` and
+Capability ids are planning identifiers, not a registration step. Existing `studio.dual-entry` and
 `studio.geometry-research` keep their identities. The old engine/experimental/demo/promotion rows
-are replaced by creator outcomes; there are no tagged checks or live claims to reassign for them
-at this baseline. A demonstration is evidence for these capabilities, not a separate capability
-that makes all prior work count as accepted.
+are retired. A demonstration is evidence for these capabilities, not a separate capability that
+makes all prior work count as accepted.
 `studio.geometry-research` remains the evidence identifier for the retained solid-route question;
 it does not require a separate research program/PR before every geometry capability. Resolve the
 bounded question in the consuming solid capability draft. Headless evidence does not count as a
@@ -482,7 +479,7 @@ new project, and a cancelled placement, a destination that fails to load or a re
 as a frozen session payload with no library item. The landed capability carries it through a My
 Objects item (the existing verified payload, codec and Place path) because that reuses the form
 library instead of adding a second transport. This is recorded as an explicit temporary deviation
-from `object-studio-design.md`, with these ruled bounds:
+from `docs/design-system/object-studio.md`, with these ruled bounds:
 
 - Each **Place copy in World creates one durable My Objects item**, removable from My Objects.
 - **Session-only transfer** (the way-back record and armed insertion) is **later cleanup, not a
@@ -493,7 +490,7 @@ from `object-studio-design.md`, with these ruled bounds:
 The way back, cancel, refresh and "not one transaction" contract are unchanged — only the carrier
 differs.
 
-The [journey specification](./object-studio-design.md) fixes visible actions, pending-edit policy,
+The [journey specification](../../design-system/object-studio.md) fixes visible actions, pending-edit policy,
 same-project and cross-project placement, direct URL behavior, scope and responsive acceptance.
 Do not create a schema field saying a project “is Studio.” Every project remains discoverable in
 Projects; `Open in Studio` chooses a posture. No persisted primary-object guess or mutable draft
@@ -945,11 +942,11 @@ review or an owner UX approval. #266 stays unmerged.
 
 This plan specifies the architectural and initial UX choices. **No separate foundation/UX approval
 cycle or T5 authorization stage is added before implementation.** The PR remains a proposed,
-unmerged plan, not a ledger record of shipped/approved UX. After its merge, the first implementation
+unmerged plan, not a record of shipped/approved UX. After its merge, the first implementation
 starts from `studio.dual-entry` and the journey spec.
 
 No foundational owner choice is left blocking that first capability. Two decisions remain local to
-future consuming PRs under the existing workflow, not a request for approval of this revision:
+future consuming PRs under the existing review path, not a request for approval of this revision:
 
 | Consumer decision | Disposition fixed here | What remains specific to that PR |
 | --- | --- | --- |
@@ -957,6 +954,6 @@ future consuming PRs under the existing workflow, not a request for approval of 
 | Optional kernel/dependency | First Studio/profile/assembly/control-net tools use existing dependencies. Admit a new artifact only for a named capability with pinned build, licence/distribution review and correctness evidence | The artifact and any owner-required licence/dependency decision; solid-route evidence may admit, narrow or reject it. No Manifold, Clipper2 or OCCT installation is authorized by this document. |
 
 Promote enduring rules into the existing owning references with implementation, replacing superseded
-text. Do not add a decision-record tier, phase registry, acceptance document or closeout PR. Check
-live claims and continue through capability implementation PRs. This revision does not merge #266,
+text. Do not add a decision record, phase registry, acceptance document or closeout PR. Continue
+through capability implementation PRs. This revision does not merge #266,
 run a separate research effort, or start production implementation.

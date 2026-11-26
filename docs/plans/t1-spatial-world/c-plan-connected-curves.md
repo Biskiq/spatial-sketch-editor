@@ -1,11 +1,11 @@
 # T1 C-plan — Connected Curves
 
-**Tier 2 · Model B and slices C1–C4 approved, subject to final review of this plan.**
+**Model B and slices C1–C4 approved, subject to final review of this plan.**
 Model B keeps the Room as the whole and ordinary Walls as its components. A connected rotunda has an all-Wall arc ring, with Junction
 ID equality as the only connectivity rule. C delivers the architecture and authoring parts of J6.
 R owns the whole-room sheet. J/S5a owns durable finish bindings and is paused with T2.
 
-Authority and evidence. [Approved T1 roadmap, #290](https://github.com/Biskiq/spatial-sketch-editor/pull/290) ·
+Authority and evidence. [Approved T1 plan, #290](https://github.com/Biskiq/spatial-sketch-editor/pull/290) ·
 [Connected curved architecture](./README.md#connected-curved-architecture) ·
 [C acceptance](./implementation-prs.md#lane-d-depth) ·
 [J6](./creator-journeys.md#j6-a-rotunda-at-the-end-of-a-gallery) ·
@@ -382,7 +382,7 @@ and repo CI merge gate for each slice. The format PR also runs DB-backed API tes
 version refusal, Save/Load and unchanged publication gating. C4 uses a focused manual J6 walkthrough
 and the existing visitor boundary tests.
 
-## 8. Decisions for Tier 2 review
+## 8. Decisions for implementation review
 
 | Risk or decision | Recommended resolution |
 | --- | --- |

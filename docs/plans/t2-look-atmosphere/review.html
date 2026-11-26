@@ -401,29 +401,29 @@ code{font:12px var(--mono);background:var(--card);border:1px solid var(--hair);b
     <tr><td>One Scene bump for everything (my own D2)</td><td><span class="tag go">reversed</span></td><td>Coupling the look schema to T1's open questions costs more than a second cheap bump</td></tr>
   </table></div>
   <h3>Decisions</h3>
-  <p class="note">Direction and first milestone are approved. Rows marked Final were closed in revision 4. Tier 2 rows are approved as direction and are still decided, with evidence, in the PR of the slice that carries them.</p>
+  <p class="note">Direction and first milestone are approved. Rows marked Final were closed in revision 4. Open rows are approved as direction and are still decided, with evidence, in the PR of the slice that carries them.</p>
   <div class="tablewrap"><table>
-    <tr><th></th><th>Question</th><th>Recommendation</th><th>Tier</th></tr>
-    <tr><td>D1</td><td>Who stores a surface finish?</td><td>Scene, keyed by a Layout-published surface identity; Layout stays appearance-free</td><td><span class="tag t2">Tier 2</span></td></tr>
-    <tr><td>D2</td><td>Scene format</td><td>One bump per slice that needs one, in landing order: Artwork, look schema, surface finishes</td><td><span class="tag t2">Tier 2</span></td></tr>
-    <tr><td>D3</td><td>Paint: T2 or T5?</td><td>T2 lands object / wall face / Space; T5 adds per-face on forms</td><td><span class="tag">owner</span></td></tr>
-    <tr><td>D4</td><td>Reflections on Paper</td><td>Neutral studio reflection, decided from S0 images</td><td><span class="tag t2">Tier 2</span></td></tr>
-    <tr><td>D8</td><td>Curated assets</td><td>~14 finishes and a few fixture models, CC0 only; creator images through P20</td><td><span class="tag t2">Tier 2</span></td></tr>
-    <tr><td>D10</td><td>Seams slice first?</td><td>Yes, P0: one behaviour-neutral PR</td><td><span class="tag">Tier 0–1</span></td></tr>
-    <tr><td>D11</td><td>Treatment as authored presentation</td><td>Yes, in Scene 6, resolve-time only</td><td><span class="tag t2">with D2</span></td></tr>
-    <tr><td>D12</td><td>Groups, fixtures, rigs</td><td><b>Final.</b> A group is one unit. Light it never groups with its subject; grouping is one optional tap; a multi-light recipe groups its own lights</td><td><span class="tag">Tier 1</span></td></tr>
-    <tr><td>D13</td><td>Artwork</td><td><b>Final on identity.</b> A first-class entity in its own slice; drawn as a textured quad, never authored as a plane with a shared Finish</td><td><span class="tag t2">Tier 2</span></td></tr>
-    <tr><td>D14</td><td>Image identity</td><td>One stored image may back an Artwork and a Finish; the two never share identity</td><td><span class="tag">Tier 1</span></td></tr>
-    <tr><td>D15</td><td>Light placement</td><td>Free in space, camera-style; Look through realised through Camera</td><td><span class="tag">Tier 1</span></td></tr>
-    <tr><td>D17–19</td><td>Guide versus light · no inert controls · PBR maps</td><td><b>Final.</b> Line-only guides; nothing shown before it works; one image in S4, manual slots then automatic import in S8</td><td><span class="tag">Tier 1</span></td></tr>
-    <tr><td>D16</td><td>Artwork response to light</td><td>Lit and matte, no sky reflection; fidelity proven in S0</td><td><span class="tag">with S0</span></td></tr>
+    <tr><th></th><th>Question</th><th>Recommendation</th></tr>
+    <tr><td>D1</td><td>Who stores a surface finish?</td><td>Scene, keyed by a Layout-published surface identity; Layout stays appearance-free</td></tr>
+    <tr><td>D2</td><td>Scene format</td><td>One bump per slice that needs one, in landing order: Artwork, look schema, surface finishes</td></tr>
+    <tr><td>D3</td><td>Paint: T2 or T5?</td><td>T2 lands object / wall face / Space; T5 adds per-face on forms</td></tr>
+    <tr><td>D4</td><td>Reflections on Paper</td><td>Neutral studio reflection, decided from S0 images</td></tr>
+    <tr><td>D8</td><td>Curated assets</td><td>~14 finishes and a few fixture models, CC0 only; creator images through P20</td></tr>
+    <tr><td>D10</td><td>Seams slice first?</td><td>Yes, P0: one behaviour-neutral PR</td></tr>
+    <tr><td>D11</td><td>Treatment as authored presentation</td><td>Yes, in Scene 6, resolve-time only</td></tr>
+    <tr><td>D12</td><td>Groups, fixtures, rigs</td><td><b>Final.</b> A group is one unit. Light it never groups with its subject; grouping is one optional tap; a multi-light recipe groups its own lights</td></tr>
+    <tr><td>D13</td><td>Artwork</td><td><b>Final on identity.</b> A first-class entity in its own slice; drawn as a textured quad, never authored as a plane with a shared Finish</td></tr>
+    <tr><td>D14</td><td>Image identity</td><td>One stored image may back an Artwork and a Finish; the two never share identity</td></tr>
+    <tr><td>D15</td><td>Light placement</td><td>Free in space, camera-style; Look through realised through Camera</td></tr>
+    <tr><td>D17–19</td><td>Guide versus light · no inert controls · PBR maps</td><td><b>Final.</b> Line-only guides; nothing shown before it works; one image in S4, manual slots then automatic import in S8</td></tr>
+    <tr><td>D16</td><td>Artwork response to light</td><td>Lit and matte, no sky reflection; fidelity proven in S0</td></tr>
   </table></div>
   <p class="note">D5 (light units), D6 (warmth), D7 (Sky is not a Card subject) and D9 (shadow budget, set by S0) are unchanged and in the README.</p>
 </section>
 
 <section id="batch">
   <h2>A realistic batch</h2>
-  <p class="lede">Capability slices, not implementation plans. Two things start now; Lights and Artwork form the first milestone; group behaviour follows it as its own slice. A plan is written only where the workflow asks for one.</p>
+  <p class="lede">Capability slices, not implementation plans. Two things start now; Lights and Artwork form the first milestone; group behaviour follows it as its own slice. Slices that carry format, release, shell-wide or invention decisions state them in the implementing PR.</p>
   <figure>
     <svg viewBox="0 0 960 420" role="img" aria-label="Slice dependency diagram in three tracks">
       <rect width="960" height="420" fill="#fff"/>
@@ -443,13 +443,13 @@ code{font:12px var(--mono);background:var(--card);border:1px solid var(--hair);b
         <text x="238" y="240" fill="#79817b" font-size="10.5" letter-spacing="1">SURFACE AND SKY TRACK</text>
         <g><rect x="20" y="50" width="160" height="56" rx="10" fill="#11291f"/><text x="32" y="74" fill="#f4f5f1" font-weight="600">P0 Look seams</text><text x="32" y="92" fill="#9fb2a5" font-size="10.5">one PR · behaviour-neutral</text></g>
         <g><rect x="20" y="270" width="160" height="56" rx="10" fill="#11291f"/><text x="32" y="294" fill="#f4f5f1" font-weight="600">S0 Rendering gate</text><text x="32" y="312" fill="#9fb2a5" font-size="10.5">report, then land</text></g>
-        <g><rect x="238" y="50" width="154" height="56" rx="10" fill="#e7f1ea" stroke="#4f8f6c"/><text x="250" y="74" font-weight="600">S3 Lights</text><text x="250" y="92" fill="#4a524c" font-size="10.5">free · frustum · plan first</text></g>
+        <g><rect x="238" y="50" width="154" height="56" rx="10" fill="#e7f1ea" stroke="#4f8f6c"/><text x="250" y="74" font-weight="600">S3 Lights</text><text x="250" y="92" fill="#4a524c" font-size="10.5">free · frustum · grammar</text></g>
         <g><rect x="450" y="50" width="154" height="56" rx="10" fill="#e7f1ea" stroke="#4f8f6c"/><text x="462" y="74" font-weight="600">S7 Light it</text><text x="462" y="92" fill="#4a524c" font-size="10.5">fitted to the frame</text></g>
-        <g><rect x="238" y="140" width="154" height="56" rx="10" fill="#f8efd6" stroke="#d4ad45"/><text x="250" y="164" font-weight="600">A1 Artwork</text><text x="250" y="182" fill="#4a524c" font-size="10.5">object · own bump · plan</text></g>
-        <g><rect x="662" y="56" width="138" height="44" rx="10" fill="#f8f8f5" stroke="#cdd2ca"/><text x="674" y="76" font-weight="600">G1 Groups</text><text x="674" y="91" fill="#4a524c" font-size="10.5">one unit · plan first</text></g>
+        <g><rect x="238" y="140" width="154" height="56" rx="10" fill="#f8efd6" stroke="#d4ad45"/><text x="250" y="164" font-weight="600">A1 Artwork</text><text x="250" y="182" fill="#4a524c" font-size="10.5">object · own bump</text></g>
+        <g><rect x="662" y="56" width="138" height="44" rx="10" fill="#f8f8f5" stroke="#cdd2ca"/><text x="674" y="76" font-weight="600">G1 Groups</text><text x="674" y="91" fill="#4a524c" font-size="10.5">one unit · selection</text></g>
         <path d="M604 78 H656" fill="none" stroke="#79817b" stroke-width="1.3" marker-end="url(#ar)"/>
         <g><rect x="450" y="140" width="154" height="56" rx="10" fill="#e7f1ea" stroke="#4f8f6c"/><text x="462" y="164" font-weight="600">A2 Framing, hanging</text><text x="462" y="182" fill="#4a524c" font-size="10.5">frames · mat · eye line</text></g>
-        <g><rect x="238" y="270" width="154" height="56" rx="10" fill="#f8efd6" stroke="#d4ad45"/><text x="250" y="294" font-weight="600">S1 Look schema</text><text x="250" y="312" fill="#4a524c" font-size="10.5">Tier 2 · plan first</text></g>
+        <g><rect x="238" y="270" width="154" height="56" rx="10" fill="#f8efd6" stroke="#d4ad45"/><text x="250" y="294" font-weight="600">S1 Look schema</text><text x="250" y="312" fill="#4a524c" font-size="10.5">format · design depth</text></g>
         <g><rect x="450" y="232" width="154" height="44" rx="10" fill="#f8f8f5" stroke="#cdd2ca"/><text x="462" y="259" font-weight="600">S2 Sky dials</text></g>
         <g><rect x="450" y="312" width="154" height="56" rx="10" fill="#f8f8f5" stroke="#cdd2ca"/><text x="462" y="336" font-weight="600">S4 Finish</text><text x="462" y="354" fill="#4a524c" font-size="10.5">colour · image · mapping</text></g>
         <g><rect x="662" y="276" width="138" height="44" rx="10" fill="#f8f8f5" stroke="#cdd2ca"/><text x="674" y="303" font-weight="600">S6 Looks</text></g>
@@ -464,11 +464,11 @@ code{font:12px var(--mono);background:var(--card);border:1px solid var(--hair);b
   </figure>
   <div class="grid g2" style="margin-top:12px">
     <div class="panel"><h3>P0, bounded</h3><p>The spatial route is 5,901 lines with 97 imports and every look slice would edit it. P0 leaves one construction of a look module and four mount points (Card stratum, Stage mark layer, Library shelf, Sky popover), and proves the seam by moving the Sky and material-pick wiring that exist today. It is not a route refactor.</p></div>
-    <div class="panel"><h3>Handoff to implementation planning</h3><p>Plan first: <b>S0</b> (invention risk), <b>S3</b> (interaction grammar, Camera), <b>A1</b> (format bump and release pinning), <b>G1</b> (shell-wide selection), <b>S1</b> and <b>S5a</b> (Tier 2 format), <b>S8</b> (licence). Everything else is a Tier 0–1 PR described in its own description. Open schema questions for the S1 plan are listed in the README; none is decided here.</p></div>
+    <div class="panel"><h3>Handoff to implementation planning</h3><p><b>S0</b> (invention risk), <b>S3</b> (interaction grammar, Camera), <b>A1</b> (format bump and release pinning), <b>G1</b> (shell-wide selection), <b>S1</b> and <b>S5a</b> (format) and <b>S8</b> (licence) state their design and verification in the PR that implements them. Open schema questions for S1 are listed in the README; none is decided here.</p></div>
   </div>
 </section>
 
-<footer>Approved planning baseline. It authorises the direction and batch; each slice is still claimed, planned and reviewed on its own. References and code remain authority. Sketches approximate the shell; they are not pixel specifications.</footer>
+<footer>Approved planning baseline. It authorises the direction and batch; each slice is still reviewed and decided in its own PR. References and code remain authority. Sketches approximate the shell; they are not pixel specifications.</footer>
 </main>
 
 <script>

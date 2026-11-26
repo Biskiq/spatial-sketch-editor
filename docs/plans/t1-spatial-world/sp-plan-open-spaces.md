@@ -5,8 +5,8 @@ use Layout 9, and open and enclosed merges apply the existing survivor and overh
 rules with the current Room fields. See the [Layout contract](../../reference/layout.md).
 
 
-**Status:** owner-approved architecture, Tier 2. Decisions B1–B4 and the extended merge rule are
-ratified (§15). Planning only: no production code, schema, fixture or approved-roadmap edit is in
+**Status:** owner-approved architecture. Decisions B1–B4 and the extended merge rule are
+ratified (§15). Planning only: no production code, schema, fixture or approved-plan edit is in
 this PR, and nothing here is production acceptance. Each slice still opens its own PR.
 
 **Capability:** `layout.space` *new*. **Base:** `main` at `06f0d0df`.
@@ -420,14 +420,14 @@ Change means SP1a unless marked.
 SP1's approved acceptance is unchanged; it lands as four PRs so the format bump is isolated and the
 reconciliation change is reviewable alone. One format-changing slice is in flight at a time.
 
-| Slice | Delivers | Needs | Tier |
-| --- | --- | --- | --- |
-| **SP1a** Format and compile | §3.1–3.3, §4, §6 (data and compile only), §7, §8, the SP1a rows of §10. No planner produces an open Space yet | This plan approved | 2 |
-| **SP1b** Lifecycle | §5 in full at the lifecycle level; the editor still retires an opened Space until SP1c wires the surfaces | SP1a | 2 |
-| **SP1c** Editor and visitor parity | Flips to `keep` and **deletes the option**; §11; consequence lines; **Remove space**; Overhead control | SP1b | 1 |
-| **SP1d** Open-side handles | Mid-grip, end knobs, **Stops at *name***, red-dash refusal, partial-Wall absorption. An end that slides along a Wall splits that Wall at release (B2) | SP1c | 1 |
-| **SP2** Room tool | Space from partial Walls. Reuses the composer, I1–I8 and the overlap gate. Must decide how a booth uses a hall's own Wall side (I6 forbids sharing it) and may revisit whether dividing an open Space yields two Spaces (B3 settles SP1 only) | SP1d | 1 |
-| **SP3** Space from a floor | Relaxes I1 to "or follows a region"; the outline is then the region's, not stored edges | SP1, V1 | 1 |
+| Slice | Delivers | Needs |
+| --- | --- | --- |
+| **SP1a** Format and compile | §3.1–3.3, §4, §6 (data and compile only), §7, §8, the SP1a rows of §10. No planner produces an open Space yet | This plan approved |
+| **SP1b** Lifecycle | §5 in full at the lifecycle level; the editor still retires an opened Space until SP1c wires the surfaces | SP1a |
+| **SP1c** Editor and visitor parity | Flips to `keep` and **deletes the option**; §11; consequence lines; **Remove space**; Overhead control | SP1b |
+| **SP1d** Open-side handles | Mid-grip, end knobs, **Stops at *name***, red-dash refusal, partial-Wall absorption. An end that slides along a Wall splits that Wall at release (B2) | SP1c |
+| **SP2** Room tool | Space from partial Walls. Reuses the composer, I1–I8 and the overlap gate. Must decide how a booth uses a hall's own Wall side (I6 forbids sharing it) and may revisit whether dividing an open Space yields two Spaces (B3 settles SP1 only) | SP1d |
+| **SP3** Space from a floor | Relaxes I1 to "or follows a region"; the outline is then the region's, not stored edges | SP1, V1 |
 
 **Acceptance.**
 

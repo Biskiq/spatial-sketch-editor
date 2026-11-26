@@ -94,7 +94,7 @@ export const REQUIRED_WALKED_DOCUMENTS = [
 	'docs/reference/persistence.md',
 	'docs/plans/README.md',
 	'docs/plans/t4-release/prepared-release-design.md',
-	'docs/plans/t5-expressive-geometry/object-studio-design.md',
+	'docs/design-system/object-studio.md',
 	'prototypes/README.md',
 	'apps/editor/tests/README.md',
 	'tools/harness/README.md'

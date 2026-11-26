@@ -121,10 +121,10 @@ authoring actions per control and 25 bend actions on the curved control; its
 pan/zoom round trips restored each view within 0.0000 px. Setup/retry/reset
 counts remain in the raw report; they are not substituted for accepted samples.
 
-The unmodified `git show archive/pre-pr6:docs/archive/roadmap/p25-experience/p25-unified-design/p23b-browser-report.json`
+The unmodified `git show 2ca766335:docs/archive/roadmap/p25-experience/p25-unified-design/p23b-browser-report.json`
 is **73,217 bytes**, SHA-256
 `b352f1fccd410791de63fa6e2fab893d747fd13fa7b1c8159a67b70f6b82fb73`.
-`git show archive/pre-pr6:docs/archive/roadmap/p25-experience/p25-unified-design/p23b-validation-result.json`
+`git show 2ca766335:docs/archive/roadmap/p25-experience/p25-unified-design/p23b-validation-result.json`
 record direct calls to `validateP23BBrowserReport(report, { requireCleanHead: true })`:
 the six workloads/two controls pass; relabelling a workload or control as
 `owner-40-curved-v1` and sharing capture sessions each fail. `validateBaseline`

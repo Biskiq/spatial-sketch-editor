@@ -2,8 +2,9 @@
 
 **Owns:** design philosophy, shared shell landmarks and invariants, surface coexistence, and the
 semantic grammar of Stage marks. Feature layout, controls and responsive states live in the approved
-visual targets routed by [prototypes/README.md](../prototypes/README.md). Domain ownership, single
-selection, one Undo and visitor isolation remain binding everywhere.
+visual targets routed by [prototypes/README.md](../prototypes/README.md); T1 interaction design and
+the Object Studio journey specification are also owned here. Domain ownership, single selection,
+one Undo and visitor isolation remain binding everywhere.
 
 ## Authority and precedence
 
@@ -11,10 +12,11 @@ Authority is **by concern**, not a ranking that puts design above domain truth.
 
 | Concern | Authority |
 | --- | --- |
-| Product ambition and creative philosophy | [North Star](../broad-research/north-star-2026-11.md) |
+| Design philosophy and creative principles | This document (below) |
 | Domain meaning, identity, validity, evaluation, persistence | [docs router](./README.md) → `reference/` contracts |
 | Shared landmarks, coexistence, focus, return, mark species | This document |
 | Feature composition, controls, actions, responsive states | The approved target for that surface in [prototypes/README.md](../prototypes/README.md) |
+| T1 interaction design and Object Studio journeys | [T1 sketches](./design-system/t1-interaction-sketches.html) · [Object Studio](./design-system/object-studio.md) |
 | Shared common shapes (identity, units, acceptance, release) | [architecture](./reference/architecture.md) |
 
 A later explicit approval supersedes older details **within its scope**; it never silently narrows a
@@ -23,11 +25,15 @@ landed behavior; an approved design establishes desired behavior. When they diff
 or build toward the design — do not reinterpret the design to match the code.
 
 ```text
-docs/design-system.md              philosophy · shell · coexistence · mark grammar
-docs/design-system/*.html          ratified interaction specimens (World, Experience)
-prototypes/README.md               surface → approved visual target
-docs/reference/*.md                semantic authority and invariants
+docs/design-system.md                 philosophy · shell · coexistence · mark grammar
+docs/design-system/*.html             authoritative interaction specimens (World, Experience, T1)
+docs/design-system/object-studio.md   Object Studio journeys and interaction specification
+prototypes/README.md                  surface → approved visual target
+docs/reference/*.md                   semantic authority and invariants
 ```
+
+Programme folders under `docs/plans/` carry delivery scope. These design authorities live here and
+survive programme retirement.
 
 ## Design philosophy
 

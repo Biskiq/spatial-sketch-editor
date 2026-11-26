@@ -3,7 +3,7 @@
 **Status:** substantive future delivery proposal; not a shipped capability or an activated public reader.
 Core Product Stability is accepted at PR #271 (`ce4e232c`). Its accepted visitor Preview is distinct
 from public publication. F and the owning domain contracts govern this proposal; concrete release
-interfaces and activation remain owner decisions under the [workflow](../../README.md).
+interfaces and activation remain owner decisions under the [documentation guidance](../../README.md).
 
 Build from accepted F2 source, selected Experiences and a delivery profile using the shared
 Experience lowering/interpreter and canonical Camera authority. Current public reads remain
@@ -228,7 +228,7 @@ real `/p/` root so the public-surface build gate cannot pass vacuously. Also pro
 read separation; visitor chunk isolation alone does not catch server-side source revalidation.
 
 The [test contract](../../../apps/editor/tests/README.md#what-a-change-requires) owns commands and
-tier details. Documentation/planning verification is docs + architecture gates. Implementation
+test selection. Documentation/planning verification is docs + architecture gates. Implementation
 integration must include editor fast/arch/heavy correctness, editor build/check, affected shared
 package checks, and separate API check/build/test with reachable Postgres and **zero skips**;
 record the DB target and exact tested revision/diff. Implementation requires fresh DB-backed evidence. Browser evidence covers a cold public link, error/retry,

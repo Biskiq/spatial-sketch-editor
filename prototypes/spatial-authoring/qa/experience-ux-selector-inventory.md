@@ -9,10 +9,10 @@ Useful functional assertions remain evidence, not current shell acceptance.
 
 > **Historical coupling inventory:** counts belong to UX0's recorded source,
 > not today's selectors. Reuse as a discovery map; the active unratified work
-> proposal/plan is `git show archive/pre-pr6:docs/archive/prototypes/experience-ux-v3/design/README.md`.
+> proposal/plan is `git show 2ca766335:docs/archive/prototypes/experience-ux-v3/design/README.md`.
 > No old selector or surface assertion mandates V3 exposure.
 
-**Role:** the UX0 inventory required by the [#114 plan]`git show archive/pre-pr6:docs/archive/prototypes/spatial-authoring/plans/unified-design-reconciliation/implementation-plan.md` §5. It records every QA string and
+**Role:** the UX0 inventory required by the [#114 plan]`git show 2ca766335:docs/archive/prototypes/spatial-authoring/plans/unified-design-reconciliation/implementation-plan.md` §5. It records every QA string and
 selector coupled to the vocabulary #114 retires or moves — Peek, Overview, the unordered Set, the Seam,
 beat, Expand/L2, the coordination strip and the Deck's posture tokens — so each slice re-points the
 recipe that owns a moved control **in the slice that moves it**, instead of an assertion quietly

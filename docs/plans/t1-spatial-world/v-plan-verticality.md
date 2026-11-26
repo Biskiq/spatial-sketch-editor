@@ -1,8 +1,7 @@
 # T1 V-plan — Architectural Volume and Verticality
 
-**Status:** V1a implementation plan, first commit of the `layout.horizontal-region` draft PR,
-for owner review before code. V1b–V1d are separate implementation slices. V2/V3 remain planned
-extensions. Production cutover is subject to §9.
+**Status:** V1a implementation plan for owner review before code. V1b–V1d are separate
+implementation slices. V2/V3 remain planned extensions. Production cutover is subject to §9.
 
 **Capabilities:** `layout.horizontal-region` (V1, V3), `layout.wall-top-profile` (V2).
 **Base audited:** `main` at `d251445c` (SP2, #377).
@@ -748,7 +747,7 @@ authored bytes and assignments, preserving the existing cursor high-water semant
 leave source and history intact. Ownership and code entry points are in §10. Tests use the
 existing repository lanes and colocate with the suites named below.
 
-### V1a · format, compile and read-only selection (Tier 2)
+### V1a · format, compile and read-only selection
 
 - **Dependency and result.** SP1/SP2 have landed. Carry the next Layout version on this draft once
   the owner reviews the plan. Deliver §§3.1–3.2, 5.1–5.2, the admitted-source lineage from §5.5,
@@ -769,7 +768,7 @@ existing repository lanes and colocate with the suites named below.
   Existing Room/Wall editing remains available on region-bearing source. C1, SP3 and V2/V3
   producer and schema work stay in their own changes.
 
-### V1b · planners and queries (Tier 1)
+### V1b · planners and queries
 
 - **Dependency and result.** After V1a. Implement §5.3, the relation/fit planners in §§5.4–5.5,
   and the Layout-owned queries of §5.6. Use the current level Wall fields through a small
@@ -787,7 +786,7 @@ existing repository lanes and colocate with the suites named below.
 - **Exclusions.** Creator tool/gesture wiring, Scene elevation selection, finish keys and
   Scene mutation, persistent follow, Wall top profiles, roof forms.
 
-### V1c · authoring, Lift and Stage parity (Tier 1)
+### V1c · authoring, Lift and Stage parity
 
 - **Dependency and result.** After V1b and the V1d support/contact seam. X1 and Slice already
   exist on `main`. Implement §5.9. Region candidate creation, exact edits, move, rotate,
@@ -803,7 +802,7 @@ existing repository lanes and colocate with the suites named below.
 - **Exclusions.** Ink reading chips, new control grammar, multi-level/stair behavior, T2 finish
   or light UI and region attachments.
 
-### V1d · Scene support and reference seam (Tier 1)
+### V1d · Scene support and reference seam
 
 - **Dependency and result.** After V1b, can be implemented independently of V1c's UI. Land before
   V1c exposes authoring. Wire §5.6 into production Scene Place (preview and commit) and qualify

@@ -9,7 +9,7 @@ contracts.
 
 Unique measurements, falsified hypotheses, spikes and strategic records kept verbatim
 from earlier trees. Recover anything else by its pre-refactor path with
-`git show archive/pre-pr6:<path>`.
+`git show 2ca766335:<path>`.
 
 | Record | Path |
 | --- | --- |
@@ -115,7 +115,7 @@ verbatim report untouched.
 - **T5 Object Studio and modeling reconciliation (PR #266):** [evidence and alternatives](./native-modeling-freedom/PROPOSAL.md) support the single [T5 umbrella](../docs/plans/t5-expressive-geometry/umbrella-plan.md). The umbrella replaces the earlier C1–C6 experimental promotion sequence with canonical Studio, profile revision, procedural and reusable assemblies, controlled surfaces and bounded refinement capabilities. Research remains evidence; the plan identifies owner decisions and does not claim shipped behavior.
 - **Native object creation UX (revised 2026-11-01):** [proposal](./native-object-creation-ux/PROPOSAL.md) and [connected PNG storyboard](./native-object-creation-ux/STORYBOARD.md) — World-first and standalone creation converge on Object Focus, with explicit refinement, whole/part selection, return, save/reopen and placement. Distinguishes shipped S17A/P01 behavior, planned P02 and proposed workspace UX; retains chair/piano ceiling illustrations without specifying geometry tools or component storage. Retained PR #244 research and artwork; its implementation proposal is superseded by the T5 umbrella, with no retrospective UX approval implied.
 - **Coordinated roadmaps:** [`post-p01-roadmaps/`](./post-p01-roadmaps/README.md) — [engineering foundations](./post-p01-roadmaps/engineering-authorization-roadmap.md), the [original creative briefs](./post-p01-roadmaps/prototype-roadmap.md), one capability disposition ledger and focused research triggers. Live registers retain operational state; these proposals register, authorize and ratify nothing.
-- **P1–P3 convergence (scope revised 2026-10-22):** `git show archive/pre-pr6:docs/archive/roadmap/coordination-2026-10/product-convergence-2026-10-21.md`
+- **P1–P3 convergence (scope revised 2026-10-22):** `git show 2ca766335:docs/archive/roadmap/coordination-2026-10/product-convergence-2026-10-21.md`
   and three executable research commissions, routed from the coordinated roadmaps above. The owner
   accepted Guide-free Presentation, Smart Wall manipulation/revision and Vellum sketching; P4 is now
   deferred. PR #173 includes research, owning-contract reconciliation and the canonical roadmap/DAG

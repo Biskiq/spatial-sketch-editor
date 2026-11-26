@@ -5,7 +5,7 @@ geometric refinement for sophisticated spatial experiences.
 Basic shape creation, direct manipulation and independent My Objects copies are already landed.
 
 **One direction:** the [umbrella plan](./umbrella-plan.md) replaces the earlier native-form plan
-and PR #266's experimental C1–C6 sequence. Its [Studio journey specification](./object-studio-design.md)
+and PR #266's experimental C1–C6 sequence. Its [Studio journey specification](../../design-system/object-studio.md)
 is the UX part of that same plan, not an alternative architecture.
 
 **Start after #266 merges:** `studio.dual-entry` — World-origin and standalone Studio over
@@ -15,15 +15,14 @@ source format are not prerequisites for this first capability. The same plan def
 assemblies, linked instances and controlled surfaces as concrete extensions; ordered generator
 operations are one representation family, not the creative ceiling.
 
-This is planned work, not a claim of implementation or owner acceptance. The plan's
+This is planned work, not evidence of implementation or owner acceptance. The plan's
 [owner decisions](./umbrella-plan.md#owner-decisions) distinguish the settled planning direction
-from compatibility/dependency choices needed only by later consumers. Claims, flags and review follow the
-[workflow](../../README.md); maturity and health come from `npm run status`.
+from compatibility/dependency choices needed only by later consumers. Verification follows the
+[test contract](../../../apps/editor/tests/README.md).
 
-Durable authority remains in the [North Star](../../../broad-research/north-star-2026-11.md),
-[architecture](../../reference/architecture.md), [composition interfaces](../../reference/architecture.md),
-[Scene](../../reference/scene.md), [assets](../../reference/resources.md),
-[persistence](../../reference/persistence.md) and
+Durable authority remains in [architecture](../../reference/architecture.md),
+[Scene](../../reference/scene.md), [resources](../../reference/resources.md),
+[persistence](../../reference/persistence.md) and the
 [approved shell](../../design-system.md).
 Implementation promotes enduring rules into those references and removes completed planning text;
 it does not create another authority or a closeout document.

@@ -1,11 +1,11 @@
 # Object Studio — journeys and interaction specification
 
-**UX part of the [T5 umbrella](./umbrella-plan.md) in PR #266.**
-This replaces this file's earlier competing architecture. Approved
-[shell](../../design-system.md) and
-[spatial grammar](../../design-system.md) remain authority;
-this text specifies the proposed implementation target without claiming Studio is already shipped
-or recording a separate owner-acceptance event. No additional T5 UX approval checkpoint is introduced.
+**UX part of the [T5 umbrella](../plans/t5-expressive-geometry/umbrella-plan.md) in PR #266.**
+This replaces this file's earlier competing architecture. The approved
+[shell](../design-system.md) and
+[spatial grammar](../design-system.md) remain authority;
+this text specifies the implementation target without implying Studio is already shipped or
+recording a separate owner-acceptance event. No additional T5 UX approval checkpoint is introduced.
 Existing shell limitations are implementation work, not permission to remove
 an entry journey or reduce modeling power.
 
@@ -230,10 +230,10 @@ approved shell's information ownership, not incidental limitations of its curren
 Wherever Studio exposes appearance, it reaches the same Scene appearance capability as World
 through a qualified adapter: the same Finish model, Library, *Just this / All* planners and
 inspection. Studio adds no material model, store or history
-([appearance authoring](../../reference/architecture.md#appearance-authoring)).
+([appearance authoring](../reference/architecture.md#appearance-authoring)).
 Per-part, per-region or painted appearance on native forms waits for the surface identity,
 correspondence and parameterization named under the umbrella's
-[later depth](./umbrella-plan.md#later-depth-with-bounded-next-decisions).
+[later depth](../plans/t5-expressive-geometry/umbrella-plan.md#later-depth-with-bounded-next-decisions).
 
 ## Responsive and accessibility acceptance
 
@@ -257,7 +257,7 @@ honest return/copy placement. Later Parts, Parameters/Repeat, linked edit reach,
 and Refinements are specified with their consuming capabilities; no empty tool surface lands early.
 This creates no semantic authority, kernel dependency or private animation infrastructure.
 
-The [umbrella acceptance cases](./umbrella-plan.md#first-capability-studiodual-entry) define completion.
+The [umbrella acceptance cases](../plans/t5-expressive-geometry/umbrella-plan.md#first-capability-studiodual-entry) define completion.
 Existing shell implementation gaps are integration work; they do not justify World-only Studio,
 forced project separation or an unsaved experiment. A genuine hard-rule conflict is reported through
-the existing workflow. There is no extra UX decision round before starting from the merged plan.
+the existing review path. There is no extra UX decision round before starting from the merged plan.

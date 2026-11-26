@@ -2,8 +2,8 @@
 
 Multi-PR programmes and approved unbuilt designs only. A programme folder exists while it has
 unshipped scope and is deleted in its closing PR; single-PR plans and closeout evidence live on their
-GitHub PR. Product direction is the [North Star](../../broad-research/north-star-2026-11.md);
-semantic authority is [docs/reference](../reference/architecture.md).
+GitHub PR. Semantic authority is [docs/reference](../reference/architecture.md); enduring design
+authority is [docs/design-system](../design-system.md).
 
 | Programme | Remaining scope | Deletion condition |
 | --- | --- | --- |
@@ -15,3 +15,7 @@ semantic authority is [docs/reference](../reference/architecture.md).
 A blueprint states technical design and unresolved choices; it grants no implementation permission
 beyond its approved slices and creates no second authority beside the contracts. Research and
 [prototype donors](../../prototypes/README.md) are opt-in inputs.
+
+Design authorities that outlive a programme live in [docs/design-system](../design-system.md), not
+in a programme folder. T1's interaction sketches and T5's Object Studio journeys are already there;
+closing a programme never deletes them.

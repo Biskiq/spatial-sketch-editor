@@ -3,8 +3,8 @@
 **Status:** **approved planning baseline** (owner approval of the direction and first milestone,
 2026-11-11; revision 4 closes the last five questions under delegated design authority). It
 authorises the direction and the batch, **not** the implementation of any slice: each slice is
-claimed, planned where §12 says so, and reviewed on its own, and every Tier 2 item is still decided
-in that slice's PR. It is not a reference contract; §12 lists the contracts each slice must amend. **Review page:** [`review.html`](./review.html)
+reviewed and decided in its own PR. It is not a reference contract; §12 lists the contracts each
+slice must amend. **Review page:** [`review.html`](./review.html)
 (open directly in a browser; SVG sketches and five small interactive studies).
 
 > **UX authority (13 November 2026).** For lighting presentation, the Light Cards, the Environment
@@ -20,7 +20,7 @@ in that slice's PR. It is not a reference contract; §12 lists the contracts eac
 **Read against:** [Shell / PLATE](../../design-system.md),
 [Scene content](../../reference/scene.md) (§ Material and light semantic gaps),
 [Assets](../../reference/resources.md) (§ Current asset system, P20),
-`git show archive/pre-pr6:docs/roadmap/world-toolbar-shell-cutover/implementation-plan.md`,
+`git show 2ca766335:docs/roadmap/world-toolbar-shell-cutover/implementation-plan.md`,
 [T5 umbrella](../t5-expressive-geometry/umbrella-plan.md), the T1 next-batch proposal in PR #290,
 and the [look-development research](../../../broad-research/creative-scene-composition-ux.md) as
 input only.
@@ -321,7 +321,7 @@ filters and photo retouching are a different product and stay out.
 
 ## 8. Rendering truth: S0 is a gate, not a foundation we assume
 
-The `git show archive/pre-pr6:docs/roadmap/t2-look-atmosphere/webgpu-renderer-migration/implementation-plan.md`
+The `git show 2ca766335:docs/roadmap/t2-look-atmosphere/webgpu-renderer-migration/implementation-plan.md`
 supersede the earlier two-renderer trial direction below. The product uses native WebGL until the
 complete Stage, Preview and published cutover clears both backend gates. The cutover precedes S8.
 
@@ -445,52 +445,52 @@ Counts are creator interactions after the geometry exists; each is on the review
 ### Decisions
 
 The direction and first milestone are approved. Rows marked **final** were closed in revision 4
-under delegated design authority. Tier 2 rows are approved as direction and are still decided, with
+under delegated design authority. Open rows are approved as direction and are still decided, with
 evidence, in the PR of the slice that carries them.
 
-| # | Decision | Recommendation | Tier |
-| --- | --- | --- | --- |
-| D1 | Who stores a surface finish? | **Scene**, keyed by a Layout-published surface identity (§10). Layout stays appearance-free | 2 |
-| D2 | Scene format | **One bump per slice that needs one**, numbered in landing order: Artwork, the look schema (sky, finish, palette, treatment), then surface finishes once T1's identity settles. Pre-beta a bump is strict-refuse and cheap; coupling slices to each other is not | 2 |
-| D3 | Paint: T2 or T5? | T2 lands object / wall face / Space; T5 adds per-face on forms | owner |
-| D4 | Reflections on Paper | Neutral studio reflection, no added light — **decided from S0 images**, not now | 2 |
-| D5 | Light units | Keep physical stored units; Brightness stops are a UI mapping fixed by the S0 audit | 1 |
-| D6 | Warmth | Store colour only; Warmth is a reading of it | 0 |
-| D7 | Is the Sky a Card subject? | No. One popover writer; retire the unmounted environment panel | 1 |
-| D8 | Curated assets | ~14 curated finishes and a few fixture models, CC0 only. Creator images go through P20 unchanged | 2 |
-| D9 | Shadow budget | Set by S0 item 4; refuse in words beyond it | 1 |
-| D10 | Seams slice first | Yes: P0 below, one behaviour-neutral PR | 0–1 |
-| D11 | Treatment as authored presentation | Yes, in Scene 6, resolve-time only | with D2 |
-| D12 | Groups, fixtures and rigs | **Final.** A group behaves as one unit (§5). *Light it* never groups a light with its subject; *Group with …* is one optional action; a multi-light recipe groups its own lights; several selected works get one shared light | 1 |
-| D13 | Artwork | **Final on identity.** A first-class Scene entity kind in its own slice (A1). Drawn as a textured quad; never authored as a plane with a shared Finish | 2 |
-| D14 | Image identity | One P20 image may back an Artwork and a Finish; the two never share identity. *Use as Finish* is explicit and later | 1 |
-| D15 | Light placement | Free in space, camera-style, with *Look through* realised through Camera; surfaces are magnets only | 1 |
-| D17 | Guide versus light | **Final.** Guides are line-only marks that never imitate illumination; the rendered result is the only light (§5) | 1 |
-| D18 | No inert controls | **Final.** Nothing is shown before it works; future capabilities are seams in the model and wiring only | 1 |
-| D19 | PBR maps | **Final.** S4 one colour image; then, in S8 E, manual role assignment followed by automatic set import as a correctable proposal through the same operation (originally S8a/S8b) | 1 |
-| D16 | Artwork response to light | Lit and matte, no sky reflection, fidelity proven by S0 item 7. An always-full-brightness option waits | with S0 |
+| # | Decision | Recommendation |
+| --- | --- | --- |
+| D1 | Who stores a surface finish? | **Scene**, keyed by a Layout-published surface identity (§10). Layout stays appearance-free |
+| D2 | Scene format | **One bump per slice that needs one**, numbered in landing order: Artwork, the look schema (sky, finish, palette, treatment), then surface finishes once T1's identity settles. Pre-beta a bump is strict-refuse and cheap; coupling slices to each other is not |
+| D3 | Paint: T2 or T5? | T2 lands object / wall face / Space; T5 adds per-face on forms |
+| D4 | Reflections on Paper | Neutral studio reflection, no added light — **decided from S0 images**, not now |
+| D5 | Light units | Keep physical stored units; Brightness stops are a UI mapping fixed by the S0 audit |
+| D6 | Warmth | Store colour only; Warmth is a reading of it |
+| D7 | Is the Sky a Card subject? | No. One popover writer; retire the unmounted environment panel |
+| D8 | Curated assets | ~14 curated finishes and a few fixture models, CC0 only. Creator images go through P20 unchanged |
+| D9 | Shadow budget | Set by S0 item 4; refuse in words beyond it |
+| D10 | Seams slice first | Yes: P0 below, one behaviour-neutral PR |
+| D11 | Treatment as authored presentation | Yes, in Scene 6, resolve-time only |
+| D12 | Groups, fixtures and rigs | **Final.** A group behaves as one unit (§5). *Light it* never groups a light with its subject; *Group with …* is one optional action; a multi-light recipe groups its own lights; several selected works get one shared light |
+| D13 | Artwork | **Final on identity.** A first-class Scene entity kind in its own slice (A1). Drawn as a textured quad; never authored as a plane with a shared Finish |
+| D14 | Image identity | One P20 image may back an Artwork and a Finish; the two never share identity. *Use as Finish* is explicit and later |
+| D15 | Light placement | Free in space, camera-style, with *Look through* realised through Camera; surfaces are magnets only |
+| D17 | Guide versus light | **Final.** Guides are line-only marks that never imitate illumination; the rendered result is the only light (§5) |
+| D18 | No inert controls | **Final.** Nothing is shown before it works; future capabilities are seams in the model and wiring only |
+| D19 | PBR maps | **Final.** S4 one colour image; then, in S8 E, manual role assignment followed by automatic set import as a correctable proposal through the same operation (originally S8a/S8b) |
+| D16 | Artwork response to light | Lit and matte, no sky reflection, fidelity proven by S0 item 7. An always-full-brightness option waits |
 
 ### Capability slices
 
-These are **capability slices**, not implementation plans. Per the workflow, a plan is written only
-for multi-PR, Tier 2 or invention-risking work, as the first commit of that work's own draft PR.
+These are **capability slices**, not implementation plans. Each slice carries its own design and
+verification in the PR that implements it; the technical boundaries below are the planning input.
 
-| Slice | Delivers | Needs | Format | Plan first? |
-| --- | --- | --- | --- | --- |
-| **P0 Look seams** | A `look` authoring module; mount points for a Card stratum, a Stage mark layer and a Library shelf; the existing Sky and material-pick wiring moved out of the route. No behaviour change | — | — | No. One PR |
-| **S0 Rendering gate** | The §8 report, then sky-lit rendering landed to the level it proved | — | — | **Yes** (invention risk) |
-| **S3 Lights** | Emitters of all three kinds: free placement, frustum guides and handles, guide-only state on Paper, Index group, Card stratum, *Lit by*. *Look through* as a second PR | P0 · S0 item 1 | — | **Yes** (interaction grammar; *Look through* touches the Camera authority) |
-| **A1 Artwork** | Import, the Artwork object, wall magnet and free placement, real-unit sizing, transparency, Visitor Preview, save and reopen, release pinning | P0 · S0 items 1 and 7 | **bump** | **Yes** (Tier 2: format, release) |
-| **A2 Framing and hanging** | Four frame styles, Mat, frame colour; eye-line and neighbour guides; Replace image | A1 | — | No |
-| **S7 Light it** | Picture spot and Wash aimed at the selection, frustum fitted to an artwork's frame, one light for a multi-selection, one undo | S3 (richer with A1) | — | No |
-| **G1 Groups** | Group as one unit for every object kind: click group then member, rigid actions, group Card, *Group with …*; the Showcase rig | S3 | — | **Yes** (shell-wide selection behaviour) |
-| **S1 Look schema** | Types, codec, validation for §4 and §6 fields | D2, D11 · S0 report | **bump** | **Yes** (Tier 2) |
-| **S2 Sky dials** | Environment control, Sky panel, Celestial Dial, edited / Reset | P0 · S0 · S1 | Scene 9 | No |
-| **S4 Finish** | Card row, free colour, Sheen, Paint for objects (S4a, landed); From image, Scale, Direction, creator-image delivery (S4b, in review) | P0 · S0 · S1 | — | No; two PRs |
-| **S6 Looks** | Atmosphere + Treatment for any World; palette, followers, Adopt palette | S2 · S4 | — | No |
-| **S5a Wall-face finishes** | Paint with Face and Space scope on Walls | S4 · D1 | **bump** | **Yes** (Tier 2, shared with T1) |
-| **S5b Floors and overheads** | The same for T1's floor and overhead surfaces | S5a · T1 identity | Scene 11 | With T1 |
-| **S8 Catalogue and depth** | Original milestone covers manual maps, set import, catalogue depth and gated optics. The [professional material foundation plan](./s8-professional-material-foundation/implementation-plan.md) (#386) delivers revisioned material assets, channel-aware sampling, mapping, reusable libraries and inspection. A–D have landed; E is next. | S4 · S5/S6 integration · merged WebGPU/WebGL2 cutover · D8 for assets · G1 on the separate fixture/rig track | Scene 12 / resources 3 (D, #390) | **Yes** (format and licence) |
+| Slice | Delivers | Needs | Format |
+| --- | --- | --- | --- |
+| **P0 Look seams** | A `look` authoring module; mount points for a Card stratum, a Stage mark layer and a Library shelf; the existing Sky and material-pick wiring moved out of the route. No behaviour change | — | — |
+| **S0 Rendering gate** | The §8 report, then sky-lit rendering landed to the level it proved | — | — |
+| **S3 Lights** | Emitters of all three kinds: free placement, frustum guides and handles, guide-only state on Paper, Index group, Card stratum, *Lit by*. *Look through* as a second PR | P0 · S0 item 1 | — |
+| **A1 Artwork** | Import, the Artwork object, wall magnet and free placement, real-unit sizing, transparency, Visitor Preview, save and reopen, release pinning | P0 · S0 items 1 and 7 | **bump** |
+| **A2 Framing and hanging** | Four frame styles, Mat, frame colour; eye-line and neighbour guides; Replace image | A1 | — |
+| **S7 Light it** | Picture spot and Wash aimed at the selection, frustum fitted to an artwork's frame, one light for a multi-selection, one undo | S3 (richer with A1) | — |
+| **G1 Groups** | Group as one unit for every object kind: click group then member, rigid actions, group Card, *Group with …*; the Showcase rig | S3 | — |
+| **S1 Look schema** | Types, codec, validation for §4 and §6 fields | D2, D11 · S0 report | **bump** |
+| **S2 Sky dials** | Environment control, Sky panel, Celestial Dial, edited / Reset | P0 · S0 · S1 | Scene 9 |
+| **S4 Finish** | Card row, free colour, Sheen, Paint for objects (S4a, landed); From image, Scale, Direction, creator-image delivery (S4b, in review) | P0 · S0 · S1 | — |
+| **S6 Looks** | Atmosphere + Treatment for any World; palette, followers, Adopt palette | S2 · S4 | — |
+| **S5a Wall-face finishes** | Paint with Face and Space scope on Walls | S4 · D1 | **bump** |
+| **S5b Floors and overheads** | The same for T1's floor and overhead surfaces | S5a · T1 identity | Scene 11 |
+| **S8 Catalogue and depth** | Original milestone covers manual maps, set import, catalogue depth and gated optics. The [professional material foundation plan](./s8-professional-material-foundation/implementation-plan.md) (#386) delivers revisioned material assets, channel-aware sampling, mapping, reusable libraries and inspection. A–D have landed; E is next. | S4 · S5/S6 integration · merged WebGPU/WebGL2 cutover · D8 for assets · G1 on the separate fixture/rig track | Scene 12 / resources 3 (D, #390) |
 
 ```text
 now      P0 seams ─┬─▶ S3 Lights ──┬─▶ S7 Light it ─▶ G1 Groups   (no format change)

@@ -14,7 +14,7 @@ UX3/V3, UX0–UX7 and PA0–PA12 are inactive; #115 owns parallel-track planning
 Useful functional assertions remain evidence, not current shell acceptance.
 
 Prototype evidence only; no production contract cutover or phase closure.
-Execution authority: `git show archive/pre-pr6:docs/archive/prototypes/spatial-authoring/plans/experience-v2-prototype/implementation-plan.md`.
+Execution authority: `git show 2ca766335:docs/archive/prototypes/spatial-authoring/plans/experience-v2-prototype/implementation-plan.md`.
 Status (2026-10-03): S0–S9 implemented and self-reviewed. Required prototype proof
 passes; repository-wide final gates and closeout remain blocked by the missing
 P23B fixture described below. This record does not claim merge readiness.

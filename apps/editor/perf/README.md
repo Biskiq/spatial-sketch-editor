@@ -120,7 +120,7 @@ trace collection as a requirement of the performance run, and the `perf:bench`, 
 `perf:scale` commands.
 
 Historical results of those runs stay in the
-`git show archive/pre-pr6:docs/archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md`
+`git show 2ca766335:docs/archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md`
 and the [performance contract](../../../docs/reference/rendering.md). Deleting the
 runner does not change those results, and it does not turn an unmeasured row into a pass.
 

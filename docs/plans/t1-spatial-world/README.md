@@ -5,9 +5,9 @@ history; this folder contains only the remaining slices. Each plan file deletes 
 
 **Status:** revision 3, 2026-11-10, final for implementation planning. Owner decisions are approved
 and recorded in [implementation-prs.md](./implementation-prs.md#decision-record); none remain open
-in this document. Authorises no production change by itself: each slice still opens its own PR, and
-Tier 2 slices their own plan. **Base:** `main` at `97e208d7` (#287 merged). Coordinated with the T2
-Look & Atmosphere proposal (#289), which this PR does not edit.
+in this document. Authorises no production change by itself: each slice still opens its own PR.
+**Base:** `main` at `97e208d7` (#287 merged). Coordinated with the T2 Look & Atmosphere proposal
+(#289), which this PR does not edit.
 
 **Evidence limit.** Statements about current behaviour come from reading code, tests and contracts
 at that commit. Nothing was exercised in the running editor. The UX proposals are static sketches
@@ -18,7 +18,7 @@ that have not been tried by a creator. What still needs a check is listed once, 
 | --- | --- |
 | This file | Verdict, findings, the designs in words, execution sequence, readiness, accepted risks |
 | [Creator journeys](./creator-journeys.md) | Where ordinary work stops today, and what each slice must make pass |
-| [UX proposals](./interaction-sketches.html) | Step-by-step interaction designs for the eleven consequential questions |
+| [UX proposals](../../design-system/t1-interaction-sketches.html) | Step-by-step interaction designs for the eleven consequential questions |
 | [Implementation slices](./implementation-prs.md) | Slice boundaries, dependencies, acceptance criteria, decision record |
 
 ## Verdict
@@ -86,7 +86,7 @@ shape. The shell has promised most of this batch by name.
 
 The expressive-walls plan was to be deleted and its rules promoted before merge. A0 is that closeout:
 the enduring rules now live in the [Layout contract](../../reference/layout.md), the
-completed plan is retired and the roadmap no longer lists it. Before A0, the plan was still listed
+completed plan is retired and the programme index no longer lists it. Before A0, the plan was still listed
 and the Layout contract described format 6 while code was at format 7.
 
 ## Positions taken, and why
@@ -395,7 +395,7 @@ relight. Agreed. T1's side, as approved:
 4. **Floor and overhead finishes** key to the Space's generated surfaces or to a region. T2's S5b
    waits for V1's regions; a Room floor can be finished as soon as S5a's plan defines the
    reference.
-5. **The joint plan** is the first commit of #289's S5a draft PR, reviewed from both tracks. It
+5. **The joint plan** is reviewed with #289's S5a draft PR, from both tracks. It
    also settles what an unresolved reference does and how one history entry spans Layout and
    Scene.
 
@@ -442,12 +442,12 @@ Slice's Section, an opened Room before a pavilion, a flat canopy before a gable.
 | Part | State | What starts next |
 | --- | --- | --- |
 | A0, A1–A4, A8 | **Ready to implement.** Planners exist; boundaries and acceptance are written | PRs |
-| A5, A6, A7 | **Ready**, each with a short plan as its first commit | PRs after wave 1 |
+| A5, A6, A7 | **Ready**, each with its design in the implementing PR | PRs after wave 1 |
 | S1, S2, X0 | **Ready to run.** Exits are stated | Fixtures and a browser check |
-| X1 Lift, X2 cutaway switch | **Ready for a short plan**, pending X0 | After X0 |
-| SL1 Level cut | **Ready for its plan.** Interaction is settled; cap generation is the implementer's | Plan |
-| Spaces | **Ready for its plan once S2 reports.** Concept and rules are settled; the encoding is not, on purpose | SP-plan |
-| Verticality | **Ready for its plan.** Order, datum and intent are settled | V-plan |
+| X1 Lift, X2 cutaway switch | **Ready for implementation**, pending X0 | After X0 |
+| SL1 Level cut | **Ready for implementation.** Interaction is settled; cap generation is the implementer's | Its PR |
+| Spaces | **Ready for implementation once S2 reports.** Concept and rules are settled; the encoding is not, on purpose | SP-plan, then PR |
+| Verticality | **Ready for implementation.** Order, datum and intent are settled | V-plan, then PR |
 | Connected curves | **Not ready for a plan.** Waits for S1 | S1 |
 | Section (SL3), SP3, V2, V3 | **Sequenced, not planned.** Each follows a slice that will inform it | Later |
 

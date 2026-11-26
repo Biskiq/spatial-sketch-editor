@@ -4,7 +4,7 @@
 
 **Prototype evidence.** Product planning now follows the
 [T5 umbrella](../../docs/plans/t5-expressive-geometry/umbrella-plan.md) and its
-[Studio journeys](../../docs/plans/t5-expressive-geometry/object-studio-design.md). This prototype's
+[Studio journeys](../../docs/design-system/object-studio.md). This prototype's
 mandatory section split, creation gestures and single-contour shaping restriction are not product
 requirements. Its geometric obligations and refusal examples remain supporting evidence.
 

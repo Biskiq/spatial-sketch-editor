@@ -814,12 +814,12 @@ td.pass{color:var(--moss-ink)} td.fail{color:var(--refuse)} td.warn{color:#8a5d0
     <tr><td>Four everyday Card rows: log Brightness with out-of-range preservation; Colour with the White | Colour view and the radial picker; Beam dual-scrub with its live diagram (Spot) or Reach with ∞ (Point); Shadow switch; the Card overflow fix</td><td><span class="tag now">now</span></td><td>Existing fields; the <code>range ≤ 0</code> refusal (§7.2)</td></tr>
     <tr><td>Environment control at the Stage's bottom-right with the Sky panel in its placeholder state (preset tiles live)</td><td><span class="tag now">now</span></td><td>Shared popover primitive with the Card-yield rule (§8). Time, Haze and direction stay placeholders until S1</td></tr>
     <tr><td>Explicit tone mapping, so Brightness stops mean what the Card says</td><td><span class="tag t2">S0</span></td><td>Gate for retuning stops; stored values are unaffected</td></tr>
-    <tr><td><code>time</code>, <code>heading</code>, <code>arcHeight</code> and the other Sky fields</td><td><span class="tag t2">S1</span></td><td>Format bump; Tier 2</td></tr>
+    <tr><td><code>time</code>, <code>heading</code>, <code>arcHeight</code> and the other Sky fields</td><td><span class="tag t2">S1</span></td><td>Format bump</td></tr>
     <tr><td>Sky panel dials, the Celestial Dial, presets with edited and Reset</td><td><span class="tag t2">S2</span></td><td>P0 · S0 · S1</td></tr>
     <tr><td>Light it, Look through</td><td><span class="tag t2">S7 · S3</span></td><td>As the T2 README states</td></tr>
     <tr><td>Light groups: reuse Scene grouping; a non-destructive group Brightness multiplier that preserves each light's own values</td><td><span class="tag t2">G1</span></td><td>The grouping slice</td></tr>
     <tr><td>Physical fixtures</td><td><span class="tag t2">S8</span></td><td>Licence</td></tr>
-    <tr><td>Volumetrics (World atmospheric scattering; per-Spot Visible Beam and scattering contribution), cascaded shadow maps, IES profiles</td><td><span class="tag gpu">WebGPU</span></td><td>After the renderer refactor, behind S0. North Star L430 is unchanged</td></tr>
+    <tr><td>Volumetrics (World atmospheric scattering; per-Spot Visible Beam and scattering contribution), cascaded shadow maps, IES profiles</td><td><span class="tag gpu">WebGPU</span></td><td>After the renderer refactor, behind S0. The strategic renderer direction is unchanged</td></tr>
   </table></div>
   <h3>7.2 · Contract changes this design requires (not edited here)</h3>
   <div class="tw"><table>
@@ -837,7 +837,7 @@ td.pass{color:var(--moss-ink)} td.fail{color:var(--refuse)} td.warn{color:#8a5d0
     <tr><td>Light model, Aim</td><td>Aim writes <code>rotation</code>; no target field is added. Shadow softness stays a World (Sky) value, never per light</td><td>S3</td></tr>
   </table></div>
   <h3>7.3 · Directional retirement: a separate future slice</h3>
-  <p class="note"><b>Accepted by the owner on 13 November 2026.</b> It is not part of the design task and lands as its own small Tier 2 PR, specified here. It follows the rule that there are no versioned-data obligations before beta: bump and refuse strictly, with no migration.</p>
+  <p class="note"><b>Accepted by the owner on 13 November 2026.</b> It is not part of the design task and lands as its own small PR, specified here. It follows the rule that there are no versioned-data obligations before beta: bump and refuse strictly, with no migration.</p>
   <div class="tw"><table>
     <tr><th>Area</th><th>Change</th><th>Sites</th></tr>
     <tr><td>Format</td><td>Bump <code>SCENE_UNIT_FORMAT_VERSION</code> 6 → 7</td><td><code>packages/project-model/src/units/types.ts:47</code></td></tr>
@@ -875,7 +875,7 @@ td.pass{color:var(--moss-ink)} td.fail{color:var(--refuse)} td.warn{color:#8a5d0
         <li>Put the Environment control at the Stage's bottom-right now, with the placeholder panel and live preset tiles, so S2 adds dials without moving anything.</li>
         <li>Run S0's tone-mapping decision before tuning Brightness stops. The stops are a UI mapping, so stored values survive.</li>
         <li>Build the Celestial Dial in S2 as one localized instrument with constant screen size; keep it out of selection, the Card and the visitor runtime.</li>
-        <li>Pick up the Directional retirement as its own small Tier 2 PR.</li>
+        <li>Pick up the Directional retirement as its own small PR.</li>
       </ol>
     </div>
     <div class="box">
@@ -910,7 +910,7 @@ td.pass{color:var(--moss-ink)} td.fail{color:var(--refuse)} td.warn{color:#8a5d0
     <tr><td>Volumetrics</td><td>Post-WebGPU slice</td><td>Atmospheric scattering is a World (Sky) field; Visible Beam and its scattering contribution are Spot fields. Nothing is added before WebGPU</td></tr>
     <tr><td>Light groups</td><td>Grouping slice</td><td>Reuse Scene grouping; the group Brightness multiplier is non-destructive and never rewrites each light's <code>intensity</code></td></tr>
     <tr><td><i>Show influence</i></td><td>Viewing preferences (⚙)</td><td>An editor viewing preference, never serialized into the Scene or any light; it never reaches the visitor runtime</td></tr>
-    <tr><td>Directional retirement</td><td>§7.3</td><td>Accepted; one Tier 2 PR with the format bump and strict refusal, no migration</td></tr>
+    <tr><td>Directional retirement</td><td>§7.3</td><td>Accepted; one PR with the format bump and strict refusal, no migration</td></tr>
 </table></div>
 </section>
 

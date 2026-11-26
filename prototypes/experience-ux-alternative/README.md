@@ -91,6 +91,6 @@ then clears the selection, then closes the Guide.
 
 Evidence consulted: round 1 — the existing application behaviour as described in
 [`../spatial-authoring/README.md`](../spatial-authoring/README.md) and the earlier
-`git show archive/pre-pr6:docs/archive/prototypes/integrated-experience-authoring/Design-QAs/README.md`. Round 2 — the
-`git show archive/pre-pr6:docs/archive/prototypes/experience-ux-v3/README.md` and its shell/visual specification, and the accepted
-`git show archive/pre-pr6:docs/archive/prototypes/world-experience-shell-round/design/design-synthesis.md`.
+`git show 2ca766335:docs/archive/prototypes/integrated-experience-authoring/Design-QAs/README.md`. Round 2 — the
+`git show 2ca766335:docs/archive/prototypes/experience-ux-v3/README.md` and its shell/visual specification, and the accepted
+`git show 2ca766335:docs/archive/prototypes/world-experience-shell-round/design/design-synthesis.md`.

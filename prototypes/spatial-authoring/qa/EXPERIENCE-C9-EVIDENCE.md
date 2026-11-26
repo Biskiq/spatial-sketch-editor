@@ -185,7 +185,7 @@ and shared structural seams. No acceptance, merge, phase closure or production c
     `docs/operations/checkpoints/pr113-experience-v2.md`,
     `docs/roadmap/p25-experience/README.md`,
     EVIDENCE-PATHS: end
-    `git show archive/pre-pr6:docs/archive/prototypes/spatial-authoring/plans/experience-v2-prototype/authoring-completeness-plan.md`
+    `git show 2ca766335:docs/archive/prototypes/spatial-authoring/plans/experience-v2-prototype/authoring-completeness-plan.md`
     (first pass; the second pass updates the last three plus this record)
 
 ## Product work covered

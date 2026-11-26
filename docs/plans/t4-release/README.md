@@ -7,4 +7,4 @@ is not public publishing. Production activation is owner-controlled.
   closure, rollback and verification proposal.
 - [F](../../reference/architecture.md): shared release-envelope obligations.
 - [Persistence](../../reference/persistence.md): current storage and refusal boundaries.
-- [Workflow](../../README.md): capability claims and implementation review.
+- [Documentation router](../../README.md): ownership and planning guidance.

@@ -7,9 +7,9 @@ authority: [design system](../../design-system.md)
 [Stage mark grammar](../../design-system.md#spatial-mark-grammar)
 (Slice row: end points, line, depth ray). Domain contract:
 [layout.md](../../reference/layout.md) (typed cut / projected / hidden streams with
-source correspondence). Precedents followed, not re-derived: `git show archive/pre-pr6:docs/roadmap/t1-spatial-world/next-batch/x1-lift-plan.md`
+source correspondence). Precedents followed, not re-derived: `git show 2ca766335:docs/roadmap/t1-spatial-world/next-batch/x1-lift-plan.md`
 (session reading, pill, Escape, snapshot seam, T2 boundary) and
-`git show archive/pre-pr6:docs/roadmap/t1-spatial-world/next-batch/a6-wall-face-plan.md` (Face through the one Camera authority).
+`git show 2ca766335:docs/roadmap/t1-spatial-world/next-batch/a6-wall-face-plan.md` (Face through the one Camera authority).
 
 This is the **integrated** architecture for the whole Slice lane and the **detailed** SL1 plan. SL2
 and SL3 open their own PRs and inherit §1–§6 without repeating the research; each keeps a short
@@ -464,7 +464,7 @@ at runtime). X2 stubs keep paper + ink edge; yellow stays Slice's.
 | Eraser, Measure, Ink | Use the same pick, so they never target a removed part. |
 | Focus height | Under Focus the Sheet's plane becomes an outline (PLATE); the Slice plane follows that rule. |
 
-## 4. SL3 — Section and Face (architecture fixed now; own plan, Tier 2)
+## 4. SL3 — Section and Face (architecture fixed now; own plan)
 
 **Decided.**
 
@@ -495,7 +495,7 @@ at runtime). X2 stubs keep paper + ink edge; yellow stays Slice's.
 and dimension marks, and whether `layout.section@1` shares a `layout-core` module with plan
 evaluation or sits beside it.
 
-## 5. SL2 — Drawn cut (bounded outline; own short plan, Tier 1)
+## 5. SL2 — Drawn cut (bounded outline; own plan)
 
 **Decided.**
 
