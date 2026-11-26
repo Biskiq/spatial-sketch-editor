@@ -74,9 +74,9 @@ field.
 - `apps/editor/src/lib/authoring/adapters/layout/layout-contributions.ts` — the curved chip's value.
 - `apps/editor/src/lib/authoring/stage/shell/StageOverlay.svelte` — a valued disclosure's tag and
   accessible name.
-- `apps/editor/tests/lib/authoring/layout-wall-manipulation.test.ts` — arc-versus-chord, Plan/3D,
+- `../../../../apps/editor/tests/lib/authoring/adapters` — arc-versus-chord, Plan/3D,
   Bend/Split, selection and no-write acceptance on the real host.
-- `apps/editor/tests/lib/authoring/stage-overlay-disclosure.test.ts` — the tag's presence, text,
+- `../../../../apps/editor/tests/lib/authoring/stage/stage-overlay-disclosure.test.ts` — the tag's presence, text,
   open state and accessibility.
 - `docs/reference/design-system/spatial-instrument-grammar.md` — the Wall row's curved case.
 - This plan.

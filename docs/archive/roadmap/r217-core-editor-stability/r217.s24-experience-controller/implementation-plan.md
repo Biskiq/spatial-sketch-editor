@@ -29,7 +29,7 @@ entry points    implementation apps/editor/src/lib/authoring/experience/experien
                                 apps/editor/src/routes/project/[projectId]/spatial/+page.svelte
                 regressions     apps/editor/tests/lib/experience/experience-controller.test.ts
                                 apps/editor/tests/lib/experience/experience-controller-boundary.test.ts
-                                apps/editor/tests/lib/authoring/spatial-route-gesture.test.ts
+                                ../../../../../apps/editor/tests/lib/authoring/stage
 residuals       Generated View and Stop identities differ between runs, so the states that display them can
                 never be byte-identical; the 1180×820 comparison has no run-to-run control of its own. The
                 journey did not exercise Save Presentation's text, a travel transition, the Plan-reading capture

@@ -106,7 +106,7 @@ implementation  packages/layout-core/src/layout-wall-chain-policy.ts
 validation      apps/editor/perf/flows/t1-s02-browser-acceptance.spec.ts
 regressions     apps/editor/tests/lib/layout/layout-drawing-adapter.test.ts
                 apps/editor/tests/lib/layout/layout-wall-chain-policy.test.ts
-                apps/editor/tests/lib/authoring/spatial-route-gesture.test.ts
+                ../../../../../../../apps/editor/tests/lib/authoring/stage
                 apps/editor/tests/lib/authoring/editor-card-confirmation.test.ts
 ```
 

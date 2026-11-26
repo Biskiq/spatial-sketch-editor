@@ -70,7 +70,7 @@ implementation   packages/project-model/src/units/planning/index.ts
                  packages/project-model/src/f4/unit-acceptance.ts
                  packages/project-model/src/references/unit-resolution.ts
                  apps/api/src/save-persistence.ts
-validation       apps/editor/tests/lib/authoring/unit-acceptance-conformance.test.ts
+validation       ../../../../../../../apps/editor/tests/lib/authoring/experience
                  apps/editor/tests/lib/authoring/f4-unit-acceptance.test.ts
                  apps/editor/tests/lib/project-model/unit-resolution-conformance.test.ts
                  apps/api/tests/save-units.test.mjs

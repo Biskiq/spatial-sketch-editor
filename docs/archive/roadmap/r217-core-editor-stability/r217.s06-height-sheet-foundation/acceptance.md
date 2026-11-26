@@ -19,7 +19,7 @@ finding remains.
   `apps/editor/src/lib/authoring/adapters/scene.adapter.ts`,
   `apps/editor/src/routes/project/[projectId]/spatial/+page.svelte`; regressions
   `apps/editor/tests/lib/authoring/stage-height-owner-integration.test.ts`,
-  `apps/editor/tests/lib/authoring/spatial-route-gesture.test.ts`.
+  `../../../../../apps/editor/tests/lib/authoring/stage`.
 - **Residuals:** P3 one-time hint flag is module-scoped and may span separate Stage sessions; hint
   repetition only, owned by T1 follow-up TD-15. Grid, Wall ghost, direct-manipulation and general UX
   convergence remain outside this slice. S11 retains its integrated journey and final-gate work.

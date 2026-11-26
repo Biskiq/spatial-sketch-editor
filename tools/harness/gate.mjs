@@ -8,15 +8,16 @@
  * artifacts: the job results are the evidence, so an upload failure cannot
  * turn an unverified run green.
  *
- * Pull requests stay on Full until the queue has run cleanly (D2); the
- * classifier upgrades Focused to Full, and the gate refuses a merge group that
- * is not Full.
+ * A code pull request runs the lean profile; heavy and API are then required
+ * only when the classifier marked their paths. The gate refuses a merge group
+ * that is not Full.
  */
-const EVENTS = new Set(['pull_request', 'merge_group', 'workflow_dispatch', 'schedule']);
+const EVENTS = new Set(['pull_request', 'merge_group', 'workflow_dispatch']);
 const EXPECTED = {
 	minimal: ['prepare'],
 	focused: ['prepare', 'lint', 'focused'],
-	full: ['prepare', 'lint', 'suite', 'api', 'goldens']
+	lean: ['prepare', 'lint', 'suite', 'checks', 'build'],
+	full: ['prepare', 'lint', 'suite', 'api', 'goldens', 'checks', 'build']
 };
 
 function fail(message) {
@@ -39,7 +40,10 @@ const profile = jobs?.prepare?.outputs?.profile ?? process.env.PROFILE ?? '';
 if (!(profile in EXPECTED)) fail(`unknown profile ${JSON.stringify(profile)}`);
 if (event === 'merge_group' && profile !== 'full') fail('a merge group must run the Full profile');
 
-const expected = EXPECTED[profile];
+const outputs = jobs?.prepare?.outputs ?? {};
+const expected = [...EXPECTED[profile]];
+if (profile === 'lean' && (outputs.heavy ?? process.env.HEAVY) === '1') expected.push('heavy');
+if (profile === 'lean' && (outputs.api ?? process.env.API) === '1') expected.push('api');
 for (const id of expected) {
 	const job = jobs[id];
 	if (!job) fail(`expected job ${id} is missing`);

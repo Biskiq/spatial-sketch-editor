@@ -6,8 +6,6 @@ on:
   pull_request:
   merge_group:
     types: [checks_requested]
-  schedule:
-    - cron: "17 7 * * 0"
   workflow_dispatch:
 permissions:
   contents: read
@@ -26,6 +24,8 @@ jobs:
     outputs:
       profile: ${{ steps.plan.outputs.profile }}
       base: ${{ steps.plan.outputs.base }}
+      heavy: ${{ steps.plan.outputs.heavy }}
+      api: ${{ steps.plan.outputs.api }}
       matrix: ${{ steps.suites.outputs.matrix }}
     steps:
       - uses: actions/checkout@v4
@@ -62,8 +62,10 @@ jobs:
             node tools/harness/check-docs.mjs
           fi
       - id: suites
-        if: steps.plan.outputs.profile == 'full'
-        run: echo "matrix=$(node tools/harness/matrix.mjs)" >> "$GITHUB_OUTPUT"
+        if: steps.plan.outputs.profile == 'full' || steps.plan.outputs.profile == 'lean'
+        env:
+          LEAN: ${{ steps.plan.outputs.profile == 'lean' && '--lean' || '' }}
+        run: echo "matrix=$(node tools/harness/matrix.mjs $LEAN)" >> "$GITHUB_OUTPUT"
 
   lint:
     name: static checks
@@ -86,7 +88,7 @@ jobs:
   suite:
     name: ${{ matrix.job }}
     needs: prepare
-    if: needs.prepare.outputs.profile == 'full'
+    if: needs.prepare.outputs.profile == 'full' || needs.prepare.outputs.profile == 'lean'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     strategy:
@@ -119,6 +121,7 @@ jobs:
       - name: Run the suites
         env:
           SUITES: ${{ join(matrix.suites, '|') }}
+          MATRIX_SHARD: ${{ matrix.shard }}
         run: |
           failed=0
           IFS='|' read -ra suites <<< "$SUITES"
@@ -148,10 +151,66 @@ jobs:
       - run: node tools/harness/run-suite.mjs --suite "npm run check"
       - run: node tools/harness/run-suite.mjs --suite "editor focused tests"
 
+  heavy:
+    name: npm run test:heavy
+    needs: prepare
+    if: needs.prepare.outputs.profile == 'lean' && needs.prepare.outputs.heavy == '1'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Generate SvelteKit types
+        run: npm exec -w @portfolio/editor -- svelte-kit sync
+      - env:
+          MATRIX_SHARD: ''
+        run: node tools/harness/run-suite.mjs --suite "npm run test:heavy"
+
+  checks:
+    name: editor and package checks
+    needs: prepare
+    if: needs.prepare.outputs.profile == 'lean'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Generate SvelteKit types
+        run: npm exec -w @portfolio/editor -- svelte-kit sync
+      - run: node tools/harness/run-suite.mjs --suite "npm run check"
+      - run: node tools/harness/run-suite.mjs --suite "npm run check:api"
+      - run: npm run check:camera-core
+      - run: npm run check:layout-core
+      - run: npm run check:geometry-core
+      - run: npm run check:project-model
+
+  build:
+    name: npm run build
+    needs: prepare
+    if: needs.prepare.outputs.profile == 'lean'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: node tools/harness/run-suite.mjs --suite "npm run build"
+
   api:
     name: npm run test:api
     needs: prepare
-    if: needs.prepare.outputs.profile == 'full'
+    if: needs.prepare.outputs.profile == 'full' || (needs.prepare.outputs.profile == 'lean' && needs.prepare.outputs.api == '1')
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     services:
@@ -203,7 +262,7 @@ jobs:
   gate:
     name: merge gate
     if: always()
-    needs: [prepare, lint, suite, focused, api, goldens]
+    needs: [prepare, lint, suite, focused, api, goldens, heavy, checks, build]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -219,5 +278,7 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           PROFILE: ${{ needs.prepare.outputs.profile }}
+          HEAVY: ${{ needs.prepare.outputs.heavy }}
+          API: ${{ needs.prepare.outputs.api }}
           CI_GATE_JOBS: ${{ toJSON(needs) }}
         run: node tools/harness/gate.mjs

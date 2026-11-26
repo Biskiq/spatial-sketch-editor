@@ -74,7 +74,7 @@ session state beyond the single reading, or any format change (format 7 stays).
 - `apps/editor/src/lib/authoring/stage/shell/EditorCard.svelte` — remove the Wall Face placeholder.
 - `apps/editor/src/routes/project/[projectId]/spatial/+page.svelte` — install the camera port,
   clear on replacement.
-- `apps/editor/tests/lib/authoring/layout-manipulation-boundary.arch.test.ts` — the two new Layout
+- `../../../../apps/editor/tests/lib/authoring/layout/layout-manipulation-boundary.arch.case.ts` — the two new Layout
   edges.
 - `capabilities.json`, `docs/reference/components/layout.md`,
   `docs/reference/design-system/editor-shell-and-visual-system.md` — ledger and the enduring rule.

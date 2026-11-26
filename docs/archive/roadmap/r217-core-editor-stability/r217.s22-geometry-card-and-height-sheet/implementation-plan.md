@@ -26,7 +26,7 @@ entry points    implementation apps/editor/src/lib/authoring/stage/shell/EditorC
                                 apps/editor/src/routes/project/[projectId]/spatial/+page.svelte
                 regressions     apps/editor/tests/lib/authoring/stage-shell-composition.test.ts
                                 apps/editor/tests/lib/authoring/stage-height-sheet.test.ts
-                                apps/editor/tests/lib/authoring/spatial-route-gesture.test.ts
+                                ../../../../../apps/editor/tests/lib/authoring/stage
                                 apps/editor/tests/lib/authoring/fixtures/HeightSheetProbe.svelte
 residuals       The expanded Card overflows its max-height at 1440×900 (every control reachable by scrolling). The
                 plinth top and the 0.75 m ticks await S11 J4. Focus after Cancel on a destructive Card confirmation

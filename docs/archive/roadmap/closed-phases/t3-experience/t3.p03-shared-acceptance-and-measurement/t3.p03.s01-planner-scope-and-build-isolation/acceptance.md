@@ -49,7 +49,7 @@ implementation  packages/project-model/src/units/acceptance.ts            (valid
                 apps/editor/src/lib/visitor/preview-surface-boundary.ts   (shared forbidden predicate)
 regressions     apps/editor/tests/lib/authoring/f4-acceptance.test.ts     (RR-4 + Layout/Scene controls)
                 apps/editor/tests/lib/authoring/f4-unit-acceptance.test.ts
-                apps/editor/tests/lib/authoring/unit-acceptance-conformance.test.ts
+                ../../../../../../../apps/editor/tests/lib/authoring/experience
                 apps/editor/tests/vite/public-surface-boundary-plugin.test.ts
                 apps/editor/tests/vite/preview-surface-boundary-plugin.test.ts
                 apps/editor/tests/lib/visitor/preview-surface-closure.test.ts

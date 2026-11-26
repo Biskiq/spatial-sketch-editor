@@ -64,9 +64,9 @@ it.each([
 	['docs/design/example.md', 'minimal'],
 	['broad-research/notes.md', 'minimal'],
 	['apps/editor/src/lib/design/layout.css', 'minimal'],
-	['apps/editor/src/lib/authoring/Panel.svelte', 'full'],
-	['apps/editor/src/lib/authoring/camera/dial.ts', 'full'],
-	['apps/editor/src/lib/unknown.extension', 'full'],
+	['apps/editor/src/lib/authoring/Panel.svelte', 'lean'],
+	['apps/editor/src/lib/authoring/camera/dial.ts', 'lean'],
+	['apps/editor/src/lib/unknown.extension', 'lean'],
 	['apps/editor/src/lib/layout/new-kernel.ts', 'full'],
 	['packages/geometry-core/src/core.ts', 'full'],
 	['apps/editor/src/routes/p/[id]/+page.ts', 'full'],
@@ -93,7 +93,7 @@ it('keeps ordinary CSS edits Minimal when existing resource references are uncha
 	fixture.commit({ [path]: css.replace('blue', 'red') });
 	expect(JSON.parse(fixture.run(PLAN, { baseSha }).stdout).profile).toBe('minimal');
 	fixture.commit({ [path]: css.replace('/fonts/ui.ttf', '/fonts/new.ttf') });
-	expect(JSON.parse(fixture.run(PLAN, { baseSha }).stdout).profile).toBe('full');
+	expect(JSON.parse(fixture.run(PLAN, { baseSha }).stdout).profile).toBe('lean');
 });
 
 it('requires identical non-CSS bytes and a plain terminal Svelte style block', () => {
@@ -104,7 +104,7 @@ it('requires identical non-CSS bytes and a plain terminal Svelte style block', (
 	fixture.commit({ [path]: component.replace('blue', 'red') });
 	expect(JSON.parse(fixture.run(PLAN, { baseSha }).stdout).profile).toBe('minimal');
 	fixture.commit({ [path]: component.replace('Close', 'Open') });
-	expect(JSON.parse(fixture.run(PLAN, { baseSha }).stdout).profile).toBe('full');
+	expect(JSON.parse(fixture.run(PLAN, { baseSha }).stdout).profile).toBe('lean');
 });
 
 it('fails closed on an unavailable comparison', () => {
@@ -127,6 +127,29 @@ it('certifies Minimal only with a successful prepare job', () => {
 	expect(fixture.run(GATE, { jobs: { ...jobs, lint: { result: 'success' } } }).status).toBe(0);
 });
 
+it('runs the lean profile for a code pull request and expands on its paths', () => {
+	const fixture = repo();
+	fixture.commit({ 'apps/editor/src/lib/authoring/camera/dial.ts': 'export const dial = 1;' });
+	const lean = {
+		prepare: { result: 'success', outputs: { profile: 'lean', heavy: '1', api: '0' } },
+		lint: { result: 'success' },
+		suite: { result: 'success' },
+		checks: { result: 'success' },
+		build: { result: 'success' },
+		heavy: { result: 'success' },
+		focused: { result: 'skipped' },
+		api: { result: 'skipped' },
+		goldens: { result: 'skipped' }
+	};
+	expect(fixture.run(GATE, { jobs: lean }).status).toBe(0);
+	expect(fixture.run(GATE, { jobs: { ...lean, heavy: { result: 'skipped' } } }).status).toBe(1);
+	expect(
+		fixture.run(GATE, {
+			jobs: { ...lean, prepare: { result: 'success', outputs: { profile: 'lean', heavy: '0', api: '0' } }, heavy: { result: 'skipped' } }
+		}).status
+	).toBe(0);
+});
+
 it('requires every Full job and refuses a non-Full merge group', () => {
 	const fixture = repo();
 	const full = {
@@ -134,7 +157,9 @@ it('requires every Full job and refuses a non-Full merge group', () => {
 		lint: { result: 'success' },
 		suite: { result: 'success' },
 		api: { result: 'success' },
-		goldens: { result: 'success' }
+		goldens: { result: 'success' },
+		checks: { result: 'success' },
+		build: { result: 'success' }
 	};
 	expect(fixture.run(GATE, { jobs: full }).status).toBe(1);
 	expect(

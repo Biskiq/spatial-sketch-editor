@@ -24,7 +24,7 @@ entry points    implementation apps/editor/src/lib/authoring/adapters/layout/Lay
                                 apps/editor/src/lib/authoring/stage/shell/EditorIndex.svelte
                                 apps/editor/src/routes/project/[projectId]/spatial/+page.svelte
                 regressions     apps/editor/tests/lib/authoring/stage-shell-composition.test.ts
-                                apps/editor/tests/lib/authoring/spatial-route-gesture.test.ts
+                                ../../../../../apps/editor/tests/lib/authoring/stage
                                 apps/editor/tests/lib/authoring/stage-instrument-host.test.ts
                                 apps/editor/tests/lib/authoring/stage-shell-coarse-targets.test.ts
                                 apps/editor/tests/lib/authoring/objects-panel-guard.test.ts

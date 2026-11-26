@@ -28,7 +28,7 @@ and discards its candidate.
   `apps/editor/src/routes/project/[projectId]/spatial/+page.svelte`;
   regressions `apps/editor/tests/lib/authoring/stage-pick.test.ts`,
   `apps/editor/tests/lib/authoring/stage-pick-differential.test.ts`,
-  `apps/editor/tests/lib/authoring/spatial-route-gesture.test.ts`,
+  `../../../../../apps/editor/tests/lib/authoring/stage`,
   `apps/editor/tests/lib/authoring/stage-facade.test.ts`,
   `apps/editor/tests/lib/authoring/stage-interruption.test.ts`,
   `apps/editor/tests/lib/authoring/shape-form-marks.test.ts`.

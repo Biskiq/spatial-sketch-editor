@@ -30,7 +30,7 @@ entry points    implementation apps/editor/src/lib/authoring/stage/shell/EditorI
                                 apps/editor/src/routes/project/[projectId]/spatial/+page.svelte
                 regressions     apps/editor/tests/lib/authoring/stage-index-labels.test.ts
                                 apps/editor/tests/lib/authoring/editor-card-facts.test.ts
-                                apps/editor/tests/lib/authoring/spatial-route-gesture.test.ts
+                                ../../../../../apps/editor/tests/lib/authoring/stage
                                 apps/editor/tests/lib/authoring/stage-shell-coarse-targets.test.ts
                                 apps/editor/tests/lib/authoring/scene-editing-surface.test.ts
 residuals       Constrained-width Index is a sheet over the Stage (S23). The destructive and refusal colours and the

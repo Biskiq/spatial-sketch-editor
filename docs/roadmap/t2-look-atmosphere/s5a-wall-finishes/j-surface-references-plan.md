@@ -384,13 +384,13 @@ surfaces, and anything that changes V1–V3, SP or C planning.
 
 | # | Evidence on this PR |
 | --- | --- |
-| T1 | `apps/editor/tests/lib/authoring/layout-wall-split-adapter.test.ts` — a painted two-sided Wall split carries both assignments and the test verifies the accepted envelope through Undo/Redo. |
+| T1 | `../../../../apps/editor/tests/lib/authoring/stage/layout-wall-split-adapter.test.ts` — a painted two-sided Wall split carries both assignments and the test verifies the accepted envelope through Undo/Redo. |
 | T2 | `apps/editor/tests/lib/project-model/surface-lineage.test.ts` — the real Room-divide plan exercises boundary noding and checks the resulting fragment assignment. |
 | T3 | `apps/editor/tests/lib/project-model/surface-lineage.test.ts` — competing reversed Join assignments report the replacement; the OD-J1 regression separately carries an absorbed Finish into an unpainted survivor side. |
-| T4 | `apps/editor/tests/lib/authoring/layout-wall-join-adapter.test.ts` — the reversed survivor’s preview and committed orientation agree, with one byte-exact Undo/Redo entry. `layout-junction-wall-ends.test.ts` checks bridge/bevel face tags map through the canonical corner role and owned end. |
+| T4 | `../../../../apps/editor/tests/lib/authoring/stage/layout-wall-join-adapter.test.ts` — the reversed survivor’s preview and committed orientation agree, with one byte-exact Undo/Redo entry. `layout-junction-wall-ends.test.ts` checks bridge/bevel face tags map through the canonical corner role and owned end. |
 | T5 | `apps/editor/tests/lib/project-model/surface-lineage.test.ts` — Room duplication preserves Finish identity; `finish-planners.test.ts` counts present and dormant reach, excludes retired loaded refs, and safely converts surface assignments when a shared Finish returns to pristine. |
 | T6 | `apps/editor/tests/lib/project-model/surface-lineage.test.ts` — an actual divide carries floor and lid, carries the noded boundary, and leaves both divider sides unassigned. |
-| T7 | `apps/editor/tests/lib/authoring/layout-drawing-adapter.test.ts` — Erase prunes the Wall assignments with the accepted topology operation and exact Undo/Redo. `layout-open-space-adapter.test.ts` checks the Room-merge disclosure names competing floor/lid Finishes and the survivor records remain. |
+| T7 | `../../../../apps/editor/tests/lib/authoring/stage/layout-drawing-adapter.test.ts` — Erase prunes the Wall assignments with the accepted topology operation and exact Undo/Redo. `layout-open-space-adapter.test.ts` checks the Room-merge disclosure names competing floor/lid Finishes and the survivor records remain. |
 | T8 | `apps/editor/tests/lib/project-model/surface-lineage.test.ts` — the same-size old/new orphan case returns the new identity key; both the lineage wrapper and final F4 `validateChange` gate reject newly retired identity sets. |
 | T9 | `layout-room-lift-action.test.ts` checks Lift/Level reads against painted Scene bytes and history; `layout-wall-face-adapter.test.ts` checks Face/Put back likewise. |
 | T10 | `apps/editor/tests/lib/project-model/surface-lineage.test.ts` — L-shaped shared-boundary membership includes only the Space’s oriented side, floor and lid; a concave-outline regression excludes a Region crossing the notch even when its vertices are inside. |

@@ -15,7 +15,7 @@ provenance      PR #232; independently reviewed CLEAN at 71c058e0; P1 merge.
 
 evidence        apps/editor/tests/lib/authoring/stage-drafting.test.ts
                 apps/editor/tests/lib/authoring/stage-grid.test.ts
-                apps/editor/tests/lib/authoring/spatial-route-gesture.test.ts
+                ../../../../../apps/editor/tests/lib/authoring/stage
                 npm test 248 files / 3,189 tests; test:arch 23 / 194; check 0/0.
                 Browser: 14 captures at 1440x900, 1280x800, 1180x820 and 820x1180,
                 archived under docs/archive/roadmap/r217-core-editor-stability/
@@ -29,7 +29,7 @@ entry points   implementation  apps/editor/src/lib/authoring/stage/stage-draftin
                                 apps/editor/src/routes/project/[projectId]/spatial/+page.svelte
                 validation      apps/editor/tests/lib/authoring/stage-drafting.test.ts
                                 apps/editor/tests/lib/authoring/stage-grid.test.ts
-                                apps/editor/tests/lib/authoring/spatial-route-gesture.test.ts
+                                ../../../../../apps/editor/tests/lib/authoring/stage
                 regressions     apps/editor/tests/lib/authoring/stage-session.test.ts
                                 apps/editor/tests/lib/authoring/layout-drawing-adapter.test.ts
                                 apps/editor/tests/lib/authoring/scene-editing-surface.test.ts

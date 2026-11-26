@@ -21,11 +21,11 @@ contract        post-s10-convergence/target-specification.md#wall-direct-manipul
 
 provenance      PR #234; independently reviewed CLEAN at d3932ca8; P1 merge.
 
-evidence        apps/editor/tests/lib/authoring/layout-wall-manipulation.test.ts
+evidence        ../../../../../apps/editor/tests/lib/authoring/adapters
                 apps/editor/tests/lib/authoring/layout-precision-adapter.test.ts
                 apps/editor/tests/lib/authoring/layout-candidate-preview.test.ts
                 apps/editor/tests/lib/authoring/layout-card-junction-fields.test.ts
-                apps/editor/tests/lib/authoring/spatial-route-gesture.test.ts
+                ../../../../../apps/editor/tests/lib/authoring/stage
                 npm test 251 files / 3,233 tests; test:arch 23 / 194; check 0/0;
                 build passed.
                 Browser: 21 captures at 1440x900, 1280x800, 1180x820 and 820x1180,
@@ -41,9 +41,9 @@ entry points   implementation  apps/editor/src/lib/authoring/adapters/layout.ada
                                 apps/editor/src/lib/authoring/adapters/layout/LayoutCardFields.svelte
                                 apps/editor/src/lib/authoring/layout/plan-numeric-entry.ts
                                 apps/editor/src/routes/project/[projectId]/spatial/+page.svelte
-                validation      apps/editor/tests/lib/authoring/layout-wall-manipulation.test.ts
+                validation      ../../../../../apps/editor/tests/lib/authoring/adapters
                                 apps/editor/tests/lib/authoring/layout-precision-adapter.test.ts
-                                apps/editor/tests/lib/authoring/spatial-route-gesture.test.ts
+                                ../../../../../apps/editor/tests/lib/authoring/stage
 
 residuals       Owner Wall-feel check after merge (O2, datum-footprint preview). Coarse pointer,
                 native touch, Safari and integrated journeys stay S11's. Opening-over-host selection,

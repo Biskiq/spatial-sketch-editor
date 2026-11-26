@@ -29,8 +29,9 @@ try {
 
 const directory = mkdtempSync(join(tmpdir(), 'biskiq-suite-'));
 const report = join(directory, 'report.json');
+const shard = process.env.MATRIX_SHARD;
 const command = suite.kind === 'vitest'
-	? [...suite.args, '--reporter=default', '--reporter=json', `--outputFile.json=${report}`]
+	? [...suite.args, ...(shard ? [`--shard=${shard}`] : []), '--reporter=default', '--reporter=json', `--outputFile.json=${report}`]
 	: ['npm', 'run', suite.script];
 
 console.log(`run-suite: ${command.join(' ')}`);

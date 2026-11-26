@@ -4,9 +4,10 @@ import { pathToFileURL } from 'node:url';
 
 const SHA = /^[0-9a-f]{40}$/;
 const EDITOR = 'apps/editor/';
-const PROFILES = ['minimal', 'focused', 'full'];
-// Pull requests stay on Full until the merge queue has run cleanly (D2).
-const PR_FULL_UNTIL_D2 = true;
+const PROFILES = ['minimal', 'focused', 'lean', 'full'];
+// Heavy and API suites follow their own paths on a pull request.
+const HEAVY_PATHS = /^(?:packages\/|apps\/editor\/src\/lib\/(?:layout|render|authoring)\/)/;
+const API_PATHS = /^(?:apps\/api\/|packages\/)/;
 const PROTECTED_TEST = /\.(?:test\.(?:ts|mjs|js)|spec\.(?:ts|js))$/;
 const CONFIG = /(?:^|\/)(?:\.[^/]+|[^/]*config[^/]*|package(?:-lock)?\.json|Dockerfile[^/]*)$/i;
 const CRITICAL = /(?:^|[\/.-])(?:auth|security|login|session|persist\w*|serializ\w*|schema|contract|kernel|geometry|topology|native-form|boundary|release|publication|save)(?=[\/.-]|$)/i;
@@ -84,8 +85,12 @@ export function createPlan(eventName, event, head) {
 		changes.push({ path, profile });
 	}
 	let profile = PROFILES.findLast((level) => changes.some((change) => change.profile === level)) ?? 'minimal';
-	if (PR_FULL_UNTIL_D2 && profile === 'focused') profile = 'full';
-	return { profile, head, base, changes };
+	// A code pull request runs the lean profile; the merge queue and manual
+	// dispatch keep the Full profile unconditionally.
+	if (profile === 'focused') profile = 'lean';
+	const heavy = changes.some((change) => change.profile !== 'deleted' && HEAVY_PATHS.test(change.path));
+	const api = changes.some((change) => API_PATHS.test(change.path));
+	return { profile, head, base, heavy, api, changes };
 }
 
 export function eventPlan() {
