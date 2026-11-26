@@ -32,4 +32,4 @@ node tools/canaries/generate.mjs --check   # CI-safe validation, writes nothing
 
 Each patch must match exactly once in its file, so a patch cannot silently decay
 when the production file moves. `journey.json` maps all 34 capabilities in
-`capabilities.json` to the behavioural tests that exercise them.
+`capabilities.json` to repository-relative test paths.
