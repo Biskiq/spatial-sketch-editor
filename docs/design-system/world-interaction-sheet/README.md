@@ -16,7 +16,7 @@ bundle together.
 From the repository root:
 
 ```sh
-node -e "require('esbuild').buildSync({entryPoints:['docs/reference/design-system/world-interaction-sheet/opening.js'],bundle:true,minify:true,format:'iife',define:{'import.meta.env.DEV':'false'},outfile:'docs/reference/design-system/world-interaction-sheet/opening.bundle.js'})"
+node -e "require('esbuild').buildSync({entryPoints:['docs/design-system/world-interaction-sheet/opening.js'],bundle:true,minify:true,format:'iife',define:{'import.meta.env.DEV':'false'},outfile:'docs/design-system/world-interaction-sheet/opening.bundle.js'})"
 ```
 
 Verify the bundle builds, then exercise initialization, Door/Window creation, overlap/bounds refusals,

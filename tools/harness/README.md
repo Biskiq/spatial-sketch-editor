@@ -17,13 +17,16 @@ The classifier and the gate are the only contract here.
 
 ## Profiles
 
-Minimal covers Markdown in the documentation and research roots and root
-guides, regular CSS edits and additions, and Svelte edits proven style-only.
-Lean runs static checks (Biome, tooling tests), two fast shards, arch, editor
-and package checks, and the build. Heavy joins Lean for `packages/**` or
+Minimal covers Markdown in `docs/` (except `docs/README.md`), `broad-research/`
+and `README.md`, regular CSS edits and additions, and Svelte edits proven
+style-only. Lean runs static checks (Biome, tooling tests), two fast shards,
+arch, editor and package checks, and the build; edits to `AGENTS.md`,
+`apps/api/AGENTS.md` and `docs/README.md` run Lean so the full tooling and arch
+gates cover routing changes. Heavy joins Lean for `packages/**` or
 `apps/editor/src/lib/{layout,render,authoring}/**`. API joins Lean for
-`apps/api/**` or `packages/**`. Full runs at merge group or manual dispatch.
-The highest applicable profile wins, and a merge group must be Full.
+`apps/api/**` (excluding `apps/api/AGENTS.md`) or `packages/**`. Full runs at
+merge group or manual dispatch. The highest applicable profile wins, and a merge
+group must be Full.
 
 ## Merge queue
 

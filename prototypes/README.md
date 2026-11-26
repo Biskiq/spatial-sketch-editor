@@ -7,15 +7,16 @@ workspaces; **production code never imports `prototypes/`**. Start with the
 
 ## Approved production visual targets (by surface)
 
-These own feature layout, controls, actions and responsive states for their scope. A later explicit
-approval supersedes an older detail within that scope; domain ownership, single selection, one Undo
-and visitor isolation always remain binding.
+These own feature layout, controls, actions and responsive states for their scope. Feature-specific
+amendments update the approved specimen directly; cross-surface shell rulings live once in
+[docs/design-system.md](../docs/design-system.md) rather than accumulating as parallel prose
+overrides. Domain ownership, single selection, one Undo and visitor isolation always remain binding.
 
 | Surface | Approved target | Scope |
 | --- | --- | --- |
 | **Shared shell & dock** | [design system](../docs/design-system.md) + [D12 dock in Appearance UX](./appearance-ux/index.html#decisions) ([#399](https://github.com/Biskiq/spatial-sketch-editor/pull/399), [#402](https://github.com/Biskiq/spatial-sketch-editor/pull/402)) + [Round 2 shell atlas](./production-shell-wireframe/README.md) | Head, zero-width Index, dominant Stage, Card, lower working edge, dock chassis and armed-key treatment. The atlas is historical visual evidence; later approvals win. |
 | **World & Layout spatial interactions** | [World interaction sheet](../docs/design-system/world-interaction-sheet.html) + [T1 interaction sketches](../docs/design-system/t1-interaction-sketches.html) | Stage marks, direct manipulation and reading behavior for World; the T1 sketches cover the remaining T1 slices. |
-| **Appearance, Paint, Finish Card, Library & Material editor** | [Appearance UX](./appearance-ux/README.md): [recommended app](./appearance-ux/app.html), [responsive board](./appearance-ux/board.html), [decisions](./appearance-ux/index.html#decisions) | Approved [#399](https://github.com/Biskiq/spatial-sketch-editor/pull/399) with the [#408](https://github.com/Biskiq/spatial-sketch-editor/pull/408) **1024 px Index coexistence amendment**: with the Index open, Library and draft editors yield the left lane so both Index filter and Library controls stay clickable. Index and Guide, prototype scaffold, alternatives and future ladder features sit outside the approval. |
+| **Appearance, Paint, Finish Card, Library & Material editor** | [Appearance UX](./appearance-ux/README.md): [recommended app](./appearance-ux/app.html), [responsive board](./appearance-ux/board.html), [decisions](./appearance-ux/index.html#decisions) | Approved [#399](https://github.com/Biskiq/spatial-sketch-editor/pull/399); 1024 px Index coexistence follows the shared [#408 rule](../docs/design-system.md#binding-shell-invariants). Index and Guide, prototype scaffold, alternatives and future ladder features sit outside the approval. |
 | **Lights, Environment & Sky** | [Light & Sky UX](./light-and-sky-ux/index.html) ([notes](./light-and-sky-ux/README.md)) | Light Cards, Environment/Sky controls and shell placement (owner ruling, 2026-11-13). |
 | **Experience & Guide** | [Experience interaction sheet](../docs/design-system/experience-interaction-sheet.html) | Guide context, Stop composition, Cut/Travel, path work and playback. Editorial semantics stay with the [Experience contract](../docs/reference/experience.md). |
 | **Object Studio** | [T5 Studio specification](../docs/design-system/object-studio.md) | Focused object-editing scope, entry/return and per-axis form work. |

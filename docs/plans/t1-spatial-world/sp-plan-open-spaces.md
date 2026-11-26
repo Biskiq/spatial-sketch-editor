@@ -193,10 +193,9 @@ endpoints). That single change fixes F1 at all eight call sites.
   (`layout-geometry-validation.ts:148`) remains for a composed outline that fails to chain.
 - **Fixtures:** every format-7 fixture is regenerated (twenty files declare the version today).
   The S2 harness is deleted in SP1b once its cases are production tests.
-- **Docs promoted at SP1a merge, not here:** the Layout contract's "Current contract" paragraph,
-  persistence's Layout paragraph, and the glossary entry for Space. Persistence line 87 says "Unit
-  payload versions are Layout 6" while line 111 says format 7; SP1a resolves this under R-2
-  (§13.1).
+- **Contract promotion (landed with SP1a–SP2):** the open-Space contract and format admission are now
+  recorded in [`docs/reference/layout.md`](../../reference/layout.md) and
+  [`docs/reference/persistence.md`](../../reference/persistence.md); only `SP3` remains unshipped.
 
 ## 5. Lifecycle
 

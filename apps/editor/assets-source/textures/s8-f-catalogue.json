@@ -3366,6 +3366,7 @@
 			"Terrazzo reads as a warm-grey aggregate, true to the source; it is not recoloured.",
 			"Herringbone parquet holds block edges at 2K; linen weave and leather grain resolve at 0.9 m."
 		],
+		"screenshotsRevision": "2ca766335",
 		"screenshots": [
 			{
 				"file": "docs/roadmap/t2-look-atmosphere/s8-professional-material-foundation/evidence/s8-f-webgl2-board-studio.jpg",

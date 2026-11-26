@@ -76,8 +76,9 @@ export const NON_DOCUMENTATION_PREFIXES = ['broad-research/'] as const;
  * The files the walk must still find, so a silently narrowed walk fails here
  * instead of passing vacuously. The set covers the root agent context, the API
  * traps, the design and activity routes, every authority-aligned contract, the
- * unbuilt programme designs, the prototype index, the test lanes and the
- * harness reference.
+ * active plans index, enduring design authorities, the prototype index, the
+ * test lanes and the harness reference. Lifecycle-bound programme plans are
+ * intentionally omitted so closing a programme never breaks the gate.
  */
 export const REQUIRED_WALKED_DOCUMENTS = [
 	'AGENTS.md',
@@ -93,7 +94,6 @@ export const REQUIRED_WALKED_DOCUMENTS = [
 	'docs/reference/rendering.md',
 	'docs/reference/persistence.md',
 	'docs/plans/README.md',
-	'docs/plans/t4-release/prepared-release-design.md',
 	'docs/design-system/object-studio.md',
 	'prototypes/README.md',
 	'apps/editor/tests/README.md',

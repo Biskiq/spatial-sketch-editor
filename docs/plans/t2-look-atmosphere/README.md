@@ -10,16 +10,16 @@ slice must amend. **Review page:** [`review.html`](./review.html)
 > **UX authority (13 November 2026).** For lighting presentation, the Light Cards, the Environment
 > control (Time and Sky) and the shell placement of these controls, the finalized
 > [`light-and-sky-ux/index.html`](../../../prototypes/light-and-sky-ux/index.html) (revision 4) is the
-> **authoritative T2 UX reference for subsequent implementation**. It wins where it disagrees with
-> the `fix.md` sections its §0 lists; everywhere else `fix.md` remains the contract. PR #314
-> implements that `fix.md` recovery and stays open for review. The newer design is delivered in
-> **separate follow-up PRs**, with functional seams and visual presentation separated. Nothing here
-> brings a deferred capability forward: Directional retirement, stored Sky fields, grouping,
-> volumetrics and WebGPU work stay gated by their own slices.
+> **authoritative T2 UX reference for subsequent implementation**, alongside shared shell rules in
+> [`docs/design-system.md`](../../design-system.md). PR #314 already merged the earlier gallery UX
+> recovery (`git show 2ca766335:review/pr287/fix.md` is retained in Git for provenance only, not as an
+> active contract). The newer design is delivered in **separate follow-up PRs**, with functional seams
+> and visual presentation separated. Nothing here brings a deferred capability forward: Directional
+> retirement, stored Sky fields, grouping, volumetrics and WebGPU work stay gated by their own slices.
 
 **Read against:** [Shell / PLATE](../../design-system.md),
 [Scene content](../../reference/scene.md) (§ Material and light semantic gaps),
-[Assets](../../reference/resources.md) (§ Current asset system, P20),
+[Resources](../../reference/resources.md) (§ Typed resource system, § Images),
 `git show 2ca766335:docs/roadmap/world-toolbar-shell-cutover/implementation-plan.md`,
 [T5 umbrella](../t5-expressive-geometry/umbrella-plan.md), the T1 next-batch proposal in PR #290,
 and the [look-development research](../../../broad-research/creative-scene-composition-ux.md) as

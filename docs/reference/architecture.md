@@ -398,11 +398,19 @@ Publish/Update return `prepared-reader-required`; public reads return an honest 
 
 ## Shared Stage seam
 
-`WorkspaceHost` is the one owner of the mounted Stage session and its lifecycle; surfaces acquire
-and release the session through it rather than constructing a second Stage. `StageSession` owns the
-canonical selection and one gesture lease at a time, with
-reading-change policy per lease. `registerProposal` and `liveProposal` expose live proposals to the
-Undo availability reason. F4 owns the one chronological history. Escape precedence is the ordered
+The spatial route composes the workspace through `createWorkspaceHost` and `<WorkspaceHost>`, which
+is the one owner of the mounted Stage session and its lifecycle; surfaces acquire and release the
+session through it rather than constructing a second Stage. Capabilities live in feature entries
+(`create<Feature>Feature`) whose sub-owners stay isolated from sibling runtime imports, and declare
+their shared composition in `apps/editor/tests/lib/authoring/integration-ownership.manifest.ts`
+alongside the workspace protocol tables (`LIFECYCLE_ORDER`, `ESCAPE_LADDER`, `REGION_KEY_OWNER`
+under `apps/editor/src/lib/authoring/workspace/`). `npm run test:arch`
+(`apps/editor/tests/arch/authoring-integration.arch.test.ts`) enforces entry shape, single-owner
+authority/region mounts and dependency direction; see
+[the authoring README](../../apps/editor/src/lib/authoring/README.md) for the directory layout.
+`StageSession` owns the canonical selection and one gesture lease at a time, with reading-change
+policy per lease. `registerProposal` and `liveProposal` expose live proposals to the Undo
+availability reason. F4 owns the one chronological history. Escape precedence is the ordered
 `ESCAPE_LADDER` table; each rung names its owning feature, and the keyboard iterates the table.
 
 `StageFacade` is a coordinator over owner leaves under `stage/facade/`: type-only contracts

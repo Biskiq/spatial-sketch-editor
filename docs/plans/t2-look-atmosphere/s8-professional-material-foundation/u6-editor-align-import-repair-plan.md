@@ -1,6 +1,6 @@
 # T2.S8 U6 · Material editor, Align, import and repair
 
-**Status** Plan for review. Implementation has not started. Base: `main` at `693bbb3f4`, which includes the
+**Status** In-flight pre-PR6 plan grandfathered in `docs/plans/` until U6 merges (delete on merge; new single-PR plans live on their GitHub PR). Implementation has not started. Base: `main` at `693bbb3f4`, which includes the
 U1–U5 parity recovery ([#408](https://github.com/Biskiq/spatial-sketch-editor/pull/408)). The owner ruled on R1 and R2 on
 2026-11-23 (see [Owner rulings](#owner-rulings-2026-11-23)), so no decision remains open. #408 is the accepted baseline, and U6 must not regress it.
 
@@ -14,12 +14,12 @@ U1–U5 parity recovery ([#408](https://github.com/Biskiq/spatial-sketch-editor/
 Parity, subject only to the [approved deviations](#authority-and-resolved-conflicts), is a same-PR acceptance requirement. Passing functional tests alone does not accept U6, and no known U6 gap moves to a later recovery PR.
 
 **Authorities, in order:**
-1. The latest explicit owner rulings, including the #408 Index decision and the
+1. The latest explicit owner rulings, including the shared [#408 Index coexistence rule](../../../design-system.md#binding-shell-invariants) and the
    [2026-11-22 implementation rules](./implementation-plan.md#owner-rulings-on-the-u-design-2026-11-22).
 2. The approved design: the [decision sheet](../../../../prototypes/appearance-ux/index.html), the
    [runnable prototype](../../../../prototypes/appearance-ux/app.html) and the
    [responsive board](../../../../prototypes/appearance-ux/board.html).
-3. Shell guidance, where it is compatible.
+3. Shared shell guidance in [`docs/design-system.md`](../../../design-system.md).
 4. Production conventions.
 
 Architectural and ownership contracts stay authoritative throughout: the AGENTS hard rules, E4, E5, E7, contract C and Camera. The

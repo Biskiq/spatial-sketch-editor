@@ -6,12 +6,12 @@ const SHA = /^[0-9a-f]{40}$/;
 const EDITOR = 'apps/editor/';
 // Heavy and API suites follow their own paths on a pull request.
 const HEAVY_PATHS = /^(?:packages\/|apps\/editor\/src\/lib\/(?:layout|render|authoring)\/)/;
-const API_PATHS = /^(?:apps\/api\/|packages\/)/;
+const API_PATHS = /^(?:apps\/api\/(?!AGENTS\.md$)|packages\/)/;
 const PROTECTED_TEST = /\.(?:test\.(?:ts|mjs|js)|spec\.(?:ts|js))$/;
 const CONFIG = /(?:^|\/)(?:\.[^/]+|[^/]*config[^/]*|package(?:-lock)?\.json|Dockerfile[^/]*)$/i;
 const CRITICAL =
 	/(?:^|[\/.-])(?:auth|security|login|session|persist\w*|serializ\w*|schema|contract|kernel|geometry|topology|native-form|boundary|release|publication|save)(?=[\/.-]|$)/i;
-const DOCS = /^(?:(?:docs|broad-research|Repo-Audit)\/.*\.md|(?:README|CONTRIBUTING)\.md)$/i;
+const DOCS = /^(?:(?:docs|broad-research)\/.*\.md|README\.md)$/i;
 
 function git(...args) {
 	return execFileSync('git', args, { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
@@ -55,7 +55,7 @@ function fileProfile({ path, status, oldMode, newMode }, read) {
 	if (
 		PROTECTED_TEST.test(path) ||
 		CONFIG.test(path) ||
-		/^(?:docs\/(?:README|workflow)\.md|focus\.md|AGENTS\.md)$/i.test(path)
+		/^(?:docs\/README\.md|AGENTS\.md|apps\/api\/AGENTS\.md)$/i.test(path)
 	)
 		return 'full';
 	if (DOCS.test(path)) return 'minimal';

@@ -2,7 +2,7 @@
   "schema": "s8-f-acquisition-manifest/2",
   "status": "approved 2026-11-21; Core harvested 2026-11-21 (see apps/editor/assets-source/textures/records)",
   "retrieved": "2026-11-21",
-  "plan": "f-catalogue-acquisition-plan.md",
+  "plan": "git show 2ca766335:docs/roadmap/t2-look-atmosphere/s8-professional-material-foundation/f-catalogue-acquisition-plan.md",
   "licenceEvidence": {
     "polyhaven": {
       "url": "https://polyhaven.com/license",

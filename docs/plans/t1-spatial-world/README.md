@@ -23,9 +23,12 @@ that have not been tried by a creator. What still needs a check is listed once, 
 
 ## Verdict
 
-**T1 has a wiring gap, not a design gap, in its fundamentals.** Split, join, isolated Room
-duplicate and Opening Repeat exist as tested layout-core planners that no editor intent reaches.
-Arc is a disabled option on the Walls plate. These ship first as six small PRs.
+**At planning time (`97e208d7`), T1 had a wiring gap, not a design gap, in its fundamentals.** Split,
+join, isolated Room duplicate and Opening Repeat existed as tested layout-core planners that no editor
+intent reached, and Arc was disabled on the Walls plate. Those initial wiring slices (`A0–A8`), along
+with `X0–X2`, `SL1–SL2`, `SP1–SP2`, `C1–C3` and `V1a–V1d`, have since landed; the sections below keep
+the planning baseline and design rationale intact for the remaining unshipped slices (`C4`, `SL3`,
+`SP3`, `V2`, `V3` and `R`).
 
 Behind them sit five pieces of real design, now resolved to the level a plan can start from:
 
@@ -40,7 +43,7 @@ Behind them sit five pieces of real design, now resolved to the level a plan can
   bounded spike proves it before any plan.
 - **Verticality.** Flat horizontal regions, then Wall top profiles, then shed and gable forms.
 
-## What inspection found
+## What inspection found (planning baseline, `97e208d7`)
 
 ### 1. Built and unreachable
 

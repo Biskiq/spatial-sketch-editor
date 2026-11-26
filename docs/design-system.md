@@ -20,9 +20,11 @@ Authority is **by concern**, not a ranking that puts design above domain truth.
 | Shared common shapes (identity, units, acceptance, release) | [architecture](./reference/architecture.md) |
 
 A later explicit approval supersedes older details **within its scope**; it never silently narrows a
-domain contract, the one Camera authority, one compiler or one history. Code and tests establish
-landed behavior; an approved design establishes desired behavior. When they differ, expose the gap
-or build toward the design — do not reinterpret the design to match the code.
+domain contract, the one Camera authority, one compiler or one history. **Feature-specific
+amendments update the approved specimen directly; cross-surface shell rulings update this
+document** — avoid parallel specifications. Code and tests establish landed behavior; an approved
+design establishes desired behavior. When they differ, expose the gap or build toward the design —
+do not reinterpret the design to match the code.
 
 ```text
 docs/design-system.md                 philosophy · shell · coexistence · mark grammar

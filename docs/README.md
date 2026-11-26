@@ -17,7 +17,7 @@ approved visual target. [plans/README.md](./plans/README.md) holds active multi-
 | `packages/geometry-core` Forms, P20 images, material resources, libraries, licensing | [resources.md](./reference/resources.md) |
 | `apps/editor/src/lib/render`, `lib/visitor`, renderer and frame work | [rendering.md](./reference/rendering.md) |
 | `apps/api`, codecs, Save/Load, source admission, release baselines | [persistence.md](./reference/persistence.md) |
-| `apps/editor/src/lib/authoring`, Stage route, adapters | [architecture.md](./reference/architecture.md#shared-stage-seam) |
+| `apps/editor/src/lib/authoring`, Stage route, workspace composition, adapters | [architecture.md](./reference/architecture.md#shared-stage-seam) · [authoring README](../apps/editor/src/lib/authoring/README.md) |
 | UI surfaces and responsive states | [prototypes/README.md](../prototypes/README.md) |
 | Shared shell, coexistence, marks | [design-system.md](./design-system.md) |
 | T1/T2/T4/T5 remaining work | [plans/README.md](./plans/README.md) |
