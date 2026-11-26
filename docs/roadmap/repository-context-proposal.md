@@ -75,10 +75,16 @@ Use an ordinary catalogue entry and implementation PR. The **approved revision p
 
 | Worked handoff for Library | What the implementer and reviewer use |
 | --- | --- |
-| Target and scope | At #399, open the recommended app in the walnut preset with Materials, Paint-pick intent and Oak detail. Use the responsive board for desktop and iPad portrait. Use the subsequent #408 ruling for coexistence with an open Index at 1024 px. Index redesign, alternate concepts and the future brush stay outside this change. [Approved app and state parameters](../../prototypes/appearance-ux/README.md) · [Board](../../prototypes/appearance-ux/board.html) · [Scoped amendment](https://github.com/Biskiq/spatial-sketch-editor/pull/408) |
+| Target and scope | Serve the approved #399 tree using the study README. Open the walnut scene in Paint-pick mode with Curated Materials and Oak detail, using the relative URL below. Use the responsive board in the same tree for desktop and iPad portrait. Apply the later #408 ruling for the 1024 px Index. The Index redesign, alternate concepts and future brush sit outside this change. [Approved specimen and server instructions](https://github.com/Biskiq/spatial-sketch-editor/tree/343112640ed9ed7cb49c37a81c29e056f4f5e0c8/prototypes/appearance-ux) · [Approved board](https://github.com/Biskiq/spatial-sketch-editor/blob/343112640ed9ed7cb49c37a81c29e056f4f5e0c8/prototypes/appearance-ux/board.html) · [Index amendment at merge](https://github.com/Biskiq/spatial-sketch-editor/commit/6cea9dd2cdc6ee657a6868f84f9a92a61d1e2618) |
 | Target a visible failure before polishing | Place the same Library invocation beside its running implementation, with a comparable selection, detail, viewport and pointer. Compare position against the Stage and dock, nested families, sample shape, information hierarchy and availability of a separate detail action. Use actual visual evidence in the PR. An overlay, pair of pictures or brief recording is enough to expose the specific difference. |
 | Exercise the interaction | Activate the card in Paint, then separately activate detail. Observe the armed choice and unchanged project/history. Exercise Shift-keep-open and keyboard activation. For a draft, cancel back to the invoking control, then apply an eligible edit and Undo once. Use the real Stage and write path. Compare material appearance under a named lighting setup only when that appearance is at issue. |
 | Resolve disagreement in the owning PR | If the Index blocks a click at 1024 px, show that state, describe whose action becomes unavailable, and apply the existing scoped ruling. Adapt the implementation freely to respect it. A new, material departure needs an owner decision with the picture and consequence attached. A nonvisual patch to a satisfied writer uses its ordinary behavioral tests. |
+
+From the study server, open this state.
+
+```text
+/prototypes/appearance-ux/app.html?scene=walnut&tool=paint&lib=curated&kind=materials&intent=pick&detail=cat%3Awood-oak-veneer
+```
 
 Core parity belongs to the implementation that claims to deliver the surface. A reviewer should be able to fail an attractive screenshot whose card performs the wrong action, and fail a passing interaction test whose sheet hides the Index. The owner retains final manual acceptance. Matching a design proves fidelity to the decision. When ease of use is the open question, let a creator try the task from a cold start and observe where they hesitate or choose the wrong target. That result can reopen the design. A new approval replaces the applicable catalogue pointer and obsolete design details in the same change. Keep past targets reachable by revision for comparison. There is no need to transcribe the board into a pixel table or generate a second target from production.
 
@@ -114,17 +120,43 @@ Separate the engineering and final-design decisions **when their uncertainties d
 
 The owner decides on the policy in this draft. Subsequent changes can be reviewed and reverted independently. There is no product or format migration in this proposal.
 
-| Order and owner | Authorized work **if adopted** | Exit evidence and safe reversal |
-| --- | --- | --- |
-| **1 · Pilot author and reviewer** | Keep current gates. On scratch copies, use the proposed short root and a single surface-first entry for Appearance. Point to the approved revision and #408 amendment. Compare with the current tree using the trials below. Run the present docs/architecture checks independently of any proposed retirements. | Record the outcomes in one PR comment. Preserve a missing rule or repair an ineffective route before expansion. Discard the pilot copies if the new route is worse. |
-| **2 · Design owner and feature maintainer** | If the pilot passes, have the existing catalogue route Appearance, Light & Sky and the ratified shell/World/Experience specimens. Mark donors, amendments and omitted states explicitly. Update the **affected** shared-shell and path-map entries in that change. Ship the first real visual change against that route. | A fresh reader reaches the intended state and ruling from the task, exercises a material interaction and recognizes the nearest donor as optional. The owner can review matched evidence. Restore the old router from the parent if a necessary target is lost. |
-| **3 · Harness and area maintainers** | Replace stale status consumers, simplify bootstrap and scoped files and disposition the seven skills. Move holds/claims to their designated live owner before removing a duplicate. Retire the always-required double claim check, per-capability title, filed issue for every nonblocking review comment and routine Tier 1 recap. For contested parallel work, use the existing live claim. For material risk, keep the decision in the PR. Retain fresh review and normal CI. A documented hard-boundary change, destructive migration, security/production activation, licence/dependency decision or check downgrade still gets owner review. Preserve approval for previously accepted design scope. | From root, an API contributor finds the DB gate, a visitor change finds import isolation, and a contributor can identify an active hold without a private chat. Check the actual invoked docs entry point, CI profile, test roots and selectors. Revert one area independently if an approval or safety boundary becomes ambiguous. |
-| **4 · Each domain maintainer, in small independent diffs** | Start with the closed S8 and T1 packets. For each mixed report, move only the unique evidence to an experiment or domain reference and give unresolved work a live home. Delete old chronology, duplicate maps and unused fields after tracing callers and links. Replace file-presence assertions atomically with equivalent live-root traversal and a control that fails when the walk misses a protected artifact. Keep seeded architectural regressions and canary successors in their execution lanes. | Demonstrate one retained experiment from its documented entry with inputs available, verify a mathematical counterexample/expected failure, and recover one deleted plan by Git revision. Rerun checked-in consumers, links and appropriate test lanes. Keep mixed evidence in place if independence or reproduction is uncertain. A revert restores the historical layout. |
-| **5 · Owner closes the pilot on the next real work** | Sample the next ordinary fix and next visible change during their usual reviews. Compare interventions, effort and accepted outcomes to the pilot. Remove the transition plan once adopted rules and any remaining tasks have homes. | Accept, narrow or revert the policy using the observed failures. Introduce a durable check only for a recurring failure that a cheaper artifact or review cannot catch. No scheduled garden, scoreboard or release blocker is needed to run this comparison. |
+### 1 · Pilot author and reviewer
+
+Keep current gates. On scratch copies, use the proposed short root and a single surface-first entry for Appearance. Point to the approved revision and #408 amendment. Compare with the current tree using the trials below. Run the present docs/architecture checks independently of any proposed retirements.
+
+Record the outcomes in one PR comment. Preserve a missing rule or repair an ineffective route before expansion. Discard the pilot copies if the new route is worse.
+
+### 2 · Design owner and feature maintainer
+
+If the pilot passes, have the existing catalogue route Appearance, Light & Sky and the ratified shell/World/Experience specimens. Mark donors, amendments and omitted states explicitly. Update the **affected** shared-shell and path-map entries in that change. Ship the first real visual change against that route.
+
+A fresh reader reaches the intended state and ruling from the task, exercises a material interaction and recognizes the nearest donor as optional. The owner can review matched evidence. Restore the old router from the parent if a necessary target is lost.
+
+### 3 · Harness and area maintainers
+
+Replace stale status consumers, simplify bootstrap and scoped files and disposition the seven skills. Move holds/claims to their designated live owner before removing a duplicate. Retire the always-required double claim check, per-capability title, filed issue for every nonblocking review comment and routine Tier 1 recap. For contested parallel work, use the existing live claim. For material risk, keep the decision in the PR. Retain fresh review and normal CI. A documented hard-boundary change, destructive migration, security/production activation, licence/dependency decision or check downgrade still gets owner review. Preserve approval for previously accepted design scope.
+
+From root, an API contributor finds the DB gate, a visitor change finds import isolation, and a contributor can identify an active hold without a private chat. Check the actual invoked docs entry point, CI profile, test roots and selectors. Revert one area independently if an approval or safety boundary becomes ambiguous.
+
+### 4 · Each domain maintainer, in small independent diffs
+
+Start with the closed S8 and T1 packets. For each mixed report, move only the unique evidence to an experiment or domain reference and give unresolved work a live home. Delete old chronology, duplicate maps and unused fields after tracing callers and links. Replace file-presence assertions atomically with equivalent live-root traversal and a control that fails when the walk misses a protected artifact. Keep seeded architectural regressions and canary successors in their execution lanes.
+
+Demonstrate one retained experiment from its documented entry with inputs available, verify a mathematical counterexample/expected failure, and recover one deleted plan by Git revision. Rerun checked-in consumers, links and appropriate test lanes. Keep mixed evidence in place if independence or reproduction is uncertain. A revert restores the historical layout.
+
+### 5 · Owner closes the pilot on the next real work
+
+Sample the next ordinary fix and next visible change during their usual reviews. Compare interventions, effort and accepted outcomes to the pilot. Remove the transition plan once adopted rules and any remaining tasks have homes.
+
+Accept, narrow or revert the policy using the observed failures. Introduce a durable check only for a recurring failure that a cheaper artifact or review cannot catch. No scheduled garden, scoreboard or release blocker is needed to run this comparison.
 
 ### A bounded test of the recommendation
 
-Use three task prompts, two fresh runs per prompt, six runs total. Keep the model/version, harness, tool permissions, base code, fixture and task wording identical within each pair. Run the current guides in one copy and pilot guidance in the other. Alternate order. Give both agents the same access to approved evidence. Give the runners the problem and allowed source artifacts. Keep answer-bearing issue text, historical patches, scoring notes, prior chats and the other run out of their brief. Use identical isolated checkouts without remote or commit-history lookup for replays, and record any solution already visible in the supplied tree. Use disposable worktrees and no production accounts. These runs are proposed experiments. The audit's repository probes are the baseline observations available today.
+Use three task prompts, two fresh runs per prompt, six runs total. Keep the model/version, harness, tool permissions, base code, fixture and task wording identical within each pair. Run the current guides in one copy and pilot guidance in the other. Alternate order.
+
+For the visual pair, before isolating the runs, make the approved #399 tree available locally with its shipped texture assets and server. Give both runs the same local amendment. At 1024 px with the Index open, the Library and draft editor yield its left lane, and the Index filter and Library controls must both remain clickable. Supply the corresponding #408 capture with that ruling. The two sets of instructions differ in how they route agents to these common inputs.
+
+Give the runners the problem and allowed source artifacts. Keep answer-bearing issue text, historical patches, scoring notes, prior chats and the other run out of their brief. For the scored tasks, unpack the same source export into disposable directories. If a tool needs Git, initialize each copy with a single fixture commit and no remote. Linked worktrees share the object database and expose the historical solution. Record any answer already visible in the supplied source. Use disposable local accounts where a journey needs identity. These runs are proposed experiments. The audit's repository probes are the baseline observations available today.
 
 | Task | Outcome scored by a reviewer who did not implement it |
 | --- | --- |
