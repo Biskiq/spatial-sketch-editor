@@ -1,0 +1,19 @@
+{
+  "build": "manifold-3d@3.5.4",
+  "fixtures": {
+    "vitrine": "f0b406e51168faf8819cefbf8e7f6b9ea0e06b5946c0173083d041cf041e1cb7",
+    "ordered-cut-add": "63225645aa8e1a725f3c568582bff25cd90aa9d2873939c9c1825a3132b0c886",
+    "ordered-add-cut": "0d5960bfac69c74c3ebfacc959a81bf1ee1413a742f38f7b1e224c4b3b17cdd2",
+    "overlapping-add": "648b8d8b664d007294d0285caeeb47e39e5e378e26b0aeb795aa1727a6018fa8",
+    "through-cut": "e22b453d8afb218543c1f8bc5758aae9346dc5ad8a8504287bee8161d5b8ad4f",
+    "open-sided-rebate": "b9d163510704fd67f467e78926dfdd64dc132d8281e702992c8c15f8ed7d6865",
+    "thin-back-1mm": "b888dcc2269471882fa7fa674368cef156e121c5b84a3fd256e64507c47dbb48",
+    "role-split-trench": "01e837e0cb0049b80a83bcd29eda4bc817efba2d11c92e9258feadeba5383dcc",
+    "role-vanished-top": "39235d78a39edfb5a6c99f33c7041a31f11582ad4894d4cadcbd2da2819f4562",
+    "offset-thin-back-margin": "553b41e2a25756d2bafcda1fee92c1870e594f7cae6a5d872ca5ad881b650b64",
+    "eight-cuts": "b08b27d3463b669488734bb226e76d240931934cc4fa631bf78aabf6d5c5f537"
+  },
+  "stress": "287a289fa042cb1862365fc74b7fcfb6a43ab2ef7ead3cf48d70a5c2b73ff599",
+  "revisions": "2cff1a64e22095be585066f899fa93943302d7ce5f518d5d7ed608aa5f520562",
+  "authored": "7683e8fe5107336f602d8199c8be39fe88bece9d6d678463205856b7be163f3e"
+}
