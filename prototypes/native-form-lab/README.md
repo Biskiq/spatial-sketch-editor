@@ -87,6 +87,6 @@ especially [P3, profile families](../../broad-research/native-creative-depth/pro
 and [P5, identity through revision](../../broad-research/native-creative-depth/proof-agenda.md#p5-identity-through-ordinary-revision).
 It is separate from [Vellum (P3)](../p3-vellum/README.md), which is broader
 spatial-authoring evidence. The production World authoring destination remains
-[PLATE §0.8.4](../../docs/reference/design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination);
+[PLATE §0.8.4](../../docs/design-system.md);
 this lab supplies no product or shell authority. See
 [FINDINGS.md](./FINDINGS.md) for current evidence and open experiments.

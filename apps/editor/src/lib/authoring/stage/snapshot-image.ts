@@ -13,7 +13,7 @@
  * reads bottom-up) before anything reaches the writer.
  *
  * Gate A recorded the mismatch as F5 and refused to use snapshots as evidence
- * (see `docs/roadmap/t2-look-atmosphere/s0-rendering-gate/pipeline.md`); Gate B
+ * (see `broad-research/t2-s0-rendering-gate/pipeline.md`); Gate B
  * E6 fixed it here. Before: a 50% grey surface rendered 128 on the Stage and
  * 55 in a snapshot. After: both 128.
  *

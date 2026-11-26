@@ -6,10 +6,10 @@ Delivered one ratified shell/Experience destination, reconciled Paper depth,
 retained specialized prototype evidence, retired obsolete execution routing and
 the deliberately removed benchmark workload, and handed #115 its S0-first mandate.
 
-**Contract:** [PLATE](../../../docs/reference/design-system/editor-shell-and-visual-system.md)
+**Contract:** [PLATE](../../../docs/design-system.md)
 owns the accepted design, including the non-blocking 3D Scene interface gap.
 Current domain implementations retain their own authorities until explicit cutover.
-[The #115 handoff](../../../docs/roadmap/README.md) owns future
+[The #115 handoff](../../../docs/plans/README.md) owns future
 S0/T-track planning; no assessment, track plan, production UI or new prototype is
 implemented here. Accepted Conservatory revision:
 `426698573e883bc3a16b265ff9efc5be744c5fec`.
@@ -121,10 +121,10 @@ authoring actions per control and 25 bend actions on the curved control; its
 pan/zoom round trips restored each view within 0.0000 px. Setup/retry/reset
 counts remain in the raw report; they are not substituted for accepted samples.
 
-The unmodified [fresh export](../../../docs/archive/roadmap/p25-experience/p25-unified-design/p23b-browser-report.json)
+The unmodified `git show archive/pre-pr6:docs/archive/roadmap/p25-experience/p25-unified-design/p23b-browser-report.json`
 is **73,217 bytes**, SHA-256
 `b352f1fccd410791de63fa6e2fab893d747fd13fa7b1c8159a67b70f6b82fb73`.
-[Validation results](../../../docs/archive/roadmap/p25-experience/p25-unified-design/p23b-validation-result.json)
+`git show archive/pre-pr6:docs/archive/roadmap/p25-experience/p25-unified-design/p23b-validation-result.json`
 record direct calls to `validateP23BBrowserReport(report, { requireCleanHead: true })`:
 the six workloads/two controls pass; relabelling a workload or control as
 `owner-40-curved-v1` and sharing capture sessions each fail. `validateBaseline`
@@ -195,10 +195,10 @@ files. Closeout changes three additional Markdown files and adds the two
 measurement records; it changes no implementation code.
 
 ```text
-docs/reference/design-system/editor-shell-and-visual-system.md
-docs/roadmap/README.md
+docs/design-system.md
+docs/plans/README.md
 docs/roadmap/p25-experience/README.md
-docs/workflow.md
+docs/README.md
 prototypes/spatial-authoring/qa/EXPERIENCE-UX-EVIDENCE.md
 docs/archive/roadmap/p25-experience/p25-unified-design/p23b-browser-report.json
 docs/archive/roadmap/p25-experience/p25-unified-design/p23b-validation-result.json

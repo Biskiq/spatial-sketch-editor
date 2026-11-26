@@ -46,22 +46,21 @@ describe('documentation references', () => {
 	it('walks the documents the gate exists to protect', () => {
 		// A silent zero-file walk would make the assertion above vacuous, so the
 		// walk is held to named coverage rather than to a file count: the count
-		// measures the size of the tree, not the reach of the gate, and PR #115
-		// narrows the tree by design. The router, AGENTS, both design contracts,
-		// the global roadmap, every track roadmap, the R115 phase README, the
-		// operations root and the baton, `tests/README`, a protected-prototype
-		// specimen and local skills must all be reached.
+		// measures the size of the tree, not the reach of the gate. The router,
+		// root and API agent context, the shared design system, every authority
+		// contract, the active programme indexes, `tests/README`, the prototype
+		// index, the harness reference, a protected prototype specimen and local
+		// skills must all be reached.
 		const walked = markdownFiles();
 		expect(missingWalkedDocuments(walked)).toEqual([]);
 		expect(walkedLocalSkills(walked)).toBe(true);
 	});
 
-	it('carries no exclusion beyond the permanent archive and audit prefixes', () => {
-		// WP4 removed the temporary `ARCHIVAL_RECORD_PREFIXES` list together with
-		// the closed records it covered, so the walk's whole scope is now the
-		// permanent pair below plus git tracking. A new exclusion has to be added
-		// here deliberately, or the full-tree assertion above grows a blind spot.
-		expect([...NON_DOCUMENTATION_PREFIXES]).toEqual(['docs/archive/', 'Repo-Audit/']);
+	it('carries no exclusion beyond quarantined research', () => {
+		// Quarantined research is the only prefix outside the documentation walk.
+		// A new exclusion has to be added here deliberately, or the full-tree
+		// assertion above grows a blind spot.
+		expect([...NON_DOCUMENTATION_PREFIXES]).toEqual(['broad-research/']);
 	});
 
 	it('fails when the walk silently returns nothing', () => {
@@ -82,7 +81,7 @@ describe('documentation references', () => {
 		const narrowed = [resolve(REPO_ROOT, 'docs/README.md')];
 		const missing = missingWalkedDocuments(narrowed);
 		expect(missing).toContain('AGENTS.md');
-		expect(missing).toContain('docs/reference/components/experience.md');
+		expect(missing).toContain('docs/reference/experience.md');
 		expect(missing).toContain('apps/editor/tests/README.md');
 		expect(walkedLocalSkills(narrowed)).toBe(false);
 	});
@@ -108,11 +107,7 @@ describe('documentation references', () => {
 	});
 
 	it('cannot silently lose the documents it exists to protect', () => {
-		for (const path of [
-			'docs/README.md',
-			'AGENTS.md',
-			'docs/reference/design-system/editor-shell-and-visual-system.md'
-		]) {
+		for (const path of ['docs/README.md', 'AGENTS.md', 'docs/design-system.md', 'docs/reference/experience.md']) {
 			expect(existsSync(resolve(REPO_ROOT, path))).toBe(true);
 		}
 	});

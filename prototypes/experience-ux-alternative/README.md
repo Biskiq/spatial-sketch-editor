@@ -8,11 +8,11 @@ revision: `426698573e883bc3a16b265ff9efc5be744c5fec`, including subsequent Index
 highlight CSS changes at `41a4c4dd` and `42669857`; interaction code is unchanged
 since Round 2.
 
-> **Superseded for shell chrome (2026-10-23).** [Production shell Round 2](../../docs/reference/design-system/editor-shell-and-visual-system.md) replaces this prototype's shell composition, rail, material and visual treatment. This prototype remains evidence for Experience semantics (Presentation, View, Guide, Stop, Cut/Travel) and reproducible scenario fixtures; "minimum UX/visual direction" above is historical.
+> **Superseded for shell chrome (2026-10-23).** [Production shell Round 2](../../docs/design-system.md) replaces this prototype's shell composition, rail, material and visual treatment. This prototype remains evidence for Experience semantics (Presentation, View, Guide, Stop, Cut/Travel) and reproducible scenario fixtures; "minimum UX/visual direction" above is historical.
 
-The promoted [PLATE contract](../../docs/reference/design-system/editor-shell-and-visual-system.md)
+The promoted [PLATE contract](../../docs/design-system.md)
 owns accepted principles, shell treatment, Experience authoring and
-[UX acceptance](../../docs/reference/design-system/editor-shell-and-visual-system.md#experience-design-acceptance).
+[UX acceptance](../../docs/design-system.md).
 This remains a coded visual prototype with mock data.
 Not an application, not a runtime, not a persisted format, not implementation authority.
 Round 1 was designed without reading Experience UX3; round 2 studied UX3 and adopted parts of
@@ -23,7 +23,7 @@ visibility edge cases and Selection-only behavior. Guide scrolling/overview,
 Card positioning, responsive density and aesthetics may improve in production;
 they are not unfinished design gates and are not being fixed in #114. One active
 Guide context may remain open during related Presentation/View work. World's
-mock is representative shell evidence; [Paper §0.8.4](../../docs/reference/design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination)
+mock is representative shell evidence; [Paper §0.8.4](../../docs/design-system.md)
 and [V2 World spatial behavior](../spatial-authoring/README.md) retain deep authoring.
 
 ```sh
@@ -91,6 +91,6 @@ then clears the selection, then closes the Guide.
 
 Evidence consulted: round 1 — the existing application behaviour as described in
 [`../spatial-authoring/README.md`](../spatial-authoring/README.md) and the earlier
-[Design-QA boards](../../docs/archive/prototypes/integrated-experience-authoring/Design-QAs/README.md). Round 2 — the
-[UX3 boards](../../docs/archive/prototypes/experience-ux-v3/README.md) and its shell/visual specification, and the accepted
-[World shell synthesis](../../docs/archive/prototypes/world-experience-shell-round/design/design-synthesis.md).
+`git show archive/pre-pr6:docs/archive/prototypes/integrated-experience-authoring/Design-QAs/README.md`. Round 2 — the
+`git show archive/pre-pr6:docs/archive/prototypes/experience-ux-v3/README.md` and its shell/visual specification, and the accepted
+`git show archive/pre-pr6:docs/archive/prototypes/world-experience-shell-round/design/design-synthesis.md`.

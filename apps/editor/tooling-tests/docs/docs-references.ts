@@ -35,11 +35,9 @@ export const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..
  * `.gitignore` on purpose — this walk must behave identically in a working tree
  * and in a fresh clone, and must not depend on git being installed.
  *
- * PR #115's WP4 removed the temporary `ARCHIVAL_RECORD_PREFIXES` list this walk
- * used to carry while the closed P23/P23B/P24/P25/P26 records awaited their
- * relocation: the records are now archived under `docs/archive/` (covered by
- * `NON_DOCUMENTATION_PREFIXES`) or deleted. There are no exclusions beyond the
- * two prefixes below.
+ * Historical records and strategic research are quarantined under
+ * `broad-research/` (covered by `NON_DOCUMENTATION_PREFIXES`). There are no
+ * other authored-document exclusions.
  */
 const SKIP_DIRECTORIES = new Set([
 	'.git',
@@ -64,41 +62,42 @@ const SKIP_DIRECTORIES = new Set([
  * Markdown the repository carries but does not author as documentation, so a
  * reader never routes through it:
  *
- * - `docs/archive/` is history by contract (see `docs/README.md`): its relative
- *   paths were written against layouts that no longer exist, they are the record
- *   of what was true then, and rewriting them would falsify that record.
- * - `Repo-Audit/` is a captured agent-harness audit log whose paths were
- *   relative to the audited checkout, not to this one.
+ * - `broad-research/` holds quarantined research, historical spikes and
+ *   strategic records. It is external-memory material: its relative paths were
+ *   written against layouts that no longer exist, and rewriting them would
+ *   falsify the record.
  *
  * Excluded by prefix, explicitly, so the coverage of the gate is readable here
  * rather than implied by where it happens to pass.
  */
-export const NON_DOCUMENTATION_PREFIXES = ['docs/archive/', 'Repo-Audit/'] as const;
+export const NON_DOCUMENTATION_PREFIXES = ['broad-research/'] as const;
 
 /**
  * The files the walk must still find, so a silently narrowed walk fails here
- * instead of passing vacuously. This replaces a bare `> 100 files` count, which
- * measured the size of the tree rather than the coverage of the gate
- * (`implementation-plan.md` §7.3/§10.3). WP5 added the operations root and
- * `current.md`; WP6 completed §12's set with every track roadmap and the R115
- * phase README, the register the baton routes current work through.
+ * instead of passing vacuously. The set covers the root agent context, the API
+ * traps, the design and activity routes, every authority-aligned contract, the
+ * unbuilt programme designs, the prototype index, the test lanes and the
+ * harness reference.
  */
 export const REQUIRED_WALKED_DOCUMENTS = [
-	'docs/README.md',
 	'AGENTS.md',
-	'focus.md',
-	'docs/workflow.md',
+	'apps/api/AGENTS.md',
+	'docs/README.md',
+	'docs/design-system.md',
 	'docs/reference/architecture.md',
-	'docs/reference/composition-execution.md',
-	'docs/reference/design-system/editor-shell-and-visual-system.md',
-	'docs/reference/design-system/spatial-instrument-grammar.md',
-	'docs/reference/north-star.md',
-	'docs/reference/components/experience.md',
-	'docs/roadmap/t4-release/prepared-release-design.md',
-	'docs/roadmap/t5-expressive-geometry/object-studio-design.md',
-	'docs/operations/README.md',
-	'docs/roadmap/README.md',
-	'apps/editor/tests/README.md'
+	'docs/reference/layout.md',
+	'docs/reference/scene.md',
+	'docs/reference/camera.md',
+	'docs/reference/experience.md',
+	'docs/reference/resources.md',
+	'docs/reference/rendering.md',
+	'docs/reference/persistence.md',
+	'docs/plans/README.md',
+	'docs/plans/t4-release/prepared-release-design.md',
+	'docs/plans/t5-expressive-geometry/object-studio-design.md',
+	'prototypes/README.md',
+	'apps/editor/tests/README.md',
+	'tools/harness/README.md'
 ] as const;
 
 /** A protected prototype evidence file (§8.3): the walk must reach it. */

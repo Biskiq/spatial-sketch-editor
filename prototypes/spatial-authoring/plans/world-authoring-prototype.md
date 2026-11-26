@@ -8,7 +8,7 @@ spatial manipulation, numerical/refusal truth, nested/trail return and separate 
 Lens crossing parks inactive World work; explicit validated Resume starts from the current
 standpoint. Experience remains a read-only continuity fixture.
 
-Contract: [PLATE §0.8](../../../docs/reference/design-system/editor-shell-and-visual-system.md#08-accepted-destination-shell--unified-world--experience-direction-2026-10-01-pr-111)
+Contract: [PLATE §0.8](../../../docs/design-system.md)
 for destination shell laws; [current prototype mechanics](../IMPLEMENTER-REFERENCE.md)
 are evidence, never production interfaces.
 

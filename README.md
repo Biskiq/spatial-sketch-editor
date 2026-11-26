@@ -98,7 +98,7 @@ readiness.
 - [Local development](docs/local-development.md)
 - [Documentation](docs/README.md)
 - [Tests](apps/editor/tests/README.md)
-- [Roadmap](docs/roadmap/README.md)
-- [Contributing](CONTRIBUTING.MD)
+- [Active blueprints](docs/plans/README.md)
+- [Agent context](AGENTS.md)
 
 Production code lives in `apps/` and `packages/`. The demos live in `prototypes/`.

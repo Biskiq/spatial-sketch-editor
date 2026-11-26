@@ -9,7 +9,7 @@ not current blockers or instructions to restore the file.
 **Historical functionality/provenance after #114 (2026-10-13).** The source,
 checks, former plan/board gates and Paper handoff below describe their stated
 revision. Current accepted UX → [Conservatory](../../experience-ux-alternative/README.md)
-and [PLATE](../../../docs/reference/design-system/editor-shell-and-visual-system.md).
+and [PLATE](../../../docs/design-system.md).
 UX3/V3, UX0–UX7 and PA0–PA12 are inactive; #115 owns parallel-track planning.
 Useful functional assertions remain evidence, not current shell acceptance.
 
@@ -179,13 +179,13 @@ and shared structural seams. No acceptance, merge, phase closure or production c
     `EXPERIENCE-ACCEPTANCE.md` (declares the deleted fixture path per the documented
     `EVIDENCE-PATHS` convention), new `composition-check.sh`, `creator-check.sh`,
     `composition-mutation-check.sh`, new `EXPERIENCE-C9-EVIDENCE.md` (this record)
-  - docs: `docs/workflow.md`,
+  - docs: `docs/README.md`,
     EVIDENCE-PATHS: start — files this 2026-10-11 pass touched, as written then; the checkpoint
     was retired at #113 closeout (status → P25 README, recipes → PR #114 plan §9)
     `docs/operations/checkpoints/pr113-experience-v2.md`,
     `docs/roadmap/p25-experience/README.md`,
     EVIDENCE-PATHS: end
-    `../../../docs/archive/prototypes/spatial-authoring/plans/experience-v2-prototype/authoring-completeness-plan.md`
+    `git show archive/pre-pr6:docs/archive/prototypes/spatial-authoring/plans/experience-v2-prototype/authoring-completeness-plan.md`
     (first pass; the second pass updates the last three plus this record)
 
 ## Product work covered
@@ -1192,7 +1192,6 @@ EVIDENCE-PATHS: end
 - C9.6 now supports bounded View/Presentation removal and repair. Automatic offer execution remains excluded, and parent pause/bookmark policies remain experimental.
 - No merge, phase closure, production acceptance or Paper work is claimed or performed. The six-QA reconciliation is a docs/design lock only; the executable still shows the earlier expression.
 
-[plan]: ../../../docs/archive/prototypes/spatial-authoring/plans/experience-v2-prototype/authoring-completeness-plan.md
 [c8]: ./EXPERIENCE-CONFORMANCE-ACCEPTANCE.md
 
 ## Closeout preservation — #113 (2026-10-11)

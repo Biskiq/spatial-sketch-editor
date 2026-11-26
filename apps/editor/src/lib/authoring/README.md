@@ -39,7 +39,6 @@ The spatial route composes the Stage, its adapters and the Experience authoring 
     being edited is never duplicated or deleted from inside its own Studio.
 
 Editor machinery must not enter visitor or public chunks. See
-[`docs/reference/architecture.md`](../../../../../docs/reference/architecture.md) and
-[`docs/reference/composition-execution.md`](../../../../../docs/reference/composition-execution.md)
+[`docs/reference/architecture.md`](../../../../../docs/reference/architecture.md)
 for the ownership and composition boundaries. The test contract is
 [`apps/editor/tests/README.md`](../../../tests/README.md).

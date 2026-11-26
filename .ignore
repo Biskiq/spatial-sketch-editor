@@ -1,4 +1,5 @@
-docs/archive/
+broad-research/
+prototypes/**/node_modules/
 node_modules/
 dist/
 build/

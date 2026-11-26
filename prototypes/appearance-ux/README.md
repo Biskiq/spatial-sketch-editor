@@ -5,7 +5,10 @@ merged S8 material foundation, in the Light & Sky language. Competing directions
 end-to-end instrument, a thumbnail lab measured with E7's method, and a responsive board.
 
 **Status:** Approved production UX target ([#399](https://github.com/Biskiq/spatial-sketch-editor/pull/399),
-2026-11-22, D1–D12). See the [catalogue scope](../README.md) and [owner decisions](./index.html#decisions).
+2026-11-22, D1–D12). The [#408](https://github.com/Biskiq/spatial-sketch-editor/pull/408) amendment
+adds the 1024 px Index coexistence rule: with the Index open, Library and draft editors yield the
+left lane. See the [catalogue scope](../README.md) and [owner decisions](./index.html#decisions).
+Visual language: [Light & Sky](../light-and-sky-ux/index.html).
 
 ## Open it
 
@@ -90,8 +93,8 @@ passes before saving evidence. The repository's documentation links are checked 
 
 ## Design inputs
 
-[S8 plan § First deliverable of U](../../docs/roadmap/t2-look-atmosphere/s8-professional-material-foundation/implementation-plan.md#first-deliverable-of-u-swatch-treatment)
-and [E7 report](../../docs/roadmap/t2-look-atmosphere/s8-professional-material-foundation/pr-e7-report.md)
-set the questions; the [Light & Sky design](../../docs/roadmap/t2-look-atmosphere/gallery-ux-recovery/ux-design.html)
+[S8 plan § First deliverable of U](../../docs/plans/t2-look-atmosphere/s8-professional-material-foundation/implementation-plan.md)
+and [E7 report](../../broad-research/t2-s8-e7-material-inspection.md)
+set the questions; the [Light & Sky design](../light-and-sky-ux/index.html)
 is the visual foundation. Production contracts and design review are routed by
-[Workflow](../../docs/workflow.md#design-and-reference-maintenance).
+[Workflow](../../docs/README.md).

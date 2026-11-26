@@ -1,7 +1,7 @@
 # V2 World spatial interaction and historical Experience QA
 
 > **#114 ratification (2026-10-13):** [Conservatory](../../experience-ux-alternative/README.md)
-> supplies primary Experience UX scenarios; [PLATE](../../../docs/reference/design-system/editor-shell-and-visual-system.md)
+> supplies primary Experience UX scenarios; [PLATE](../../../docs/design-system.md)
 > owns accepted destination design. V2 World A–F and its Camera/selection/history
 > checks remain usable behavioral evidence. Experience axes/captures test the
 > retained historical executable; obsolete surface/PNG assertions are not current
@@ -133,9 +133,9 @@ What the harness knows about keys, measured rather than assumed:
 - B7–B9 preserve the originally unselected Section subject as null; only these three expectations changed during S8, independently protected by correctness parking checks.
 - Raster equality is not a contract. **The written visual conformance review is a blocking acceptance
   gate**, and the active contract is the one the current PR is held to:
-  - the locked design — [PLATE §0.8.1](../../../docs/reference/design-system/editor-shell-and-visual-system.md#081-finalized-experience-shell-expression)
+  - the locked design — [PLATE §0.8.1](../../../docs/design-system.md)
     — owns the finalized Experience shell expression: visual roles, hierarchy and density;
-  - the [#114 plan](../../../docs/archive/prototypes/spatial-authoring/plans/unified-design-reconciliation/implementation-plan.md)
+  - the `git show archive/pre-pr6:docs/archive/prototypes/spatial-authoring/plans/unified-design-reconciliation/implementation-plan.md`
     §7 boards own this PR's written acceptance, slice by slice (QA 1–6, Camera precision and Global),
     and each shipped slice's evidence record ([EXPERIENCE-UX-EVIDENCE.md](./EXPERIENCE-UX-EVIDENCE.md))
     records the readings that carry its exit gate. Owner visual acceptance remains the PR's gate.

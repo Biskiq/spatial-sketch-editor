@@ -2,10 +2,10 @@
 
 **Status: Round 2 ratified by the owner (2026-10-23); accepted visual and behavioral evidence.**
 The promoted design is in
-[PLATE](../../docs/reference/design-system/editor-shell-and-visual-system.md) and the
-[spatial-instrument grammar](../../docs/reference/design-system/spatial-instrument-grammar.md);
+[PLATE](../../docs/design-system.md) and the
+[spatial-instrument grammar](../../docs/design-system.md);
 dispositions of D1–D16 (D3 and D5 withdrawn) are in the
-[ratification record](../../docs/reference/design-system/editor-shell-and-visual-system.md).
+[ratification record](../../docs/design-system.md).
 This note is historical reasoning, not authority: where it differs from `docs/`, `docs/` wins,
 and its wording of "proposed" below records the proposal as reviewed. Prototype shortcuts
 (§8) are not promoted. How to run the

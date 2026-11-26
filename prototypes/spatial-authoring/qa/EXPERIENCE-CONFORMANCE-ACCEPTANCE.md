@@ -9,7 +9,7 @@ not current blockers or instructions to restore the file.
 **Historical functionality/provenance after #114 (2026-10-13).** The source,
 checks, former plan/board gates and Paper handoff below describe their stated
 revision. Current accepted UX → [Conservatory](../../experience-ux-alternative/README.md)
-and [PLATE](../../../docs/reference/design-system/editor-shell-and-visual-system.md).
+and [PLATE](../../../docs/design-system.md).
 UX3/V3, UX0–UX7 and PA0–PA12 are inactive; #115 owns parallel-track planning.
 Useful functional assertions remain evidence, not current shell acceptance.
 
@@ -17,7 +17,7 @@ Useful functional assertions remain evidence, not current shell acceptance.
 The original repository failures below are historical. This was review-ready
 prototype evidence, with no merge-readiness, PR closure or major-phase closure claim.
 
-The [C1–C8 replacement contract](../../../docs/archive/prototypes/spatial-authoring/plans/experience-v2-prototype/conformance-plan.md)
+The `git show archive/pre-pr6:docs/archive/prototypes/spatial-authoring/plans/experience-v2-prototype/conformance-plan.md`
 owns this record. [S0–S9 acceptance](./EXPERIENCE-ACCEPTANCE.md), its plan and specimens remain
 unchanged historical evidence. This prototype establishes no production format or cutover.
 
@@ -264,7 +264,7 @@ or orbit control is fabricated merely to resemble the board.
 ## Companion and transition review
 
 All companion captures were inspected at full-window scale on the frozen executable.
-The [World ordinary specimen](../../../docs/archive/prototypes/world-experience-shell-round/QA-package/01-world-ordinary-piano.png)
+The `git show archive/pre-pr6:docs/archive/prototypes/world-experience-shell-round/QA-package/01-world-ordinary-piano.png`
 calibrates shared Head, locator, dominant Stage and quiet canonical Card; its richer Scene
 geometry and World task semantics do not redefine Experience. The fresh [World capture](../screens/experience-conformance/world-current.png) is reached by
 selecting North wall in the actual Index, preserving standpoint. Retained World shell/continuity

@@ -23,10 +23,7 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(HERE, '../../../..');
-const MANIFEST = join(
-	REPO,
-	'docs/roadmap/t2-look-atmosphere/s8-professional-material-foundation/f-acquisition-manifest.json'
-);
+const MANIFEST = join(HERE, 'f-acquisition-manifest.json');
 export const SOURCES_ROOT = resolve(
 	process.env.BISKIQ_MATERIAL_SOURCES ?? join(REPO, '..', 'biskiq-material-sources')
 );

@@ -46,10 +46,7 @@ import { SOURCES_ROOT, type HarvestRecord } from './harvest.ts';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const EDITOR = resolve(HERE, '../..');
 const REPO = resolve(EDITOR, '../..');
-const MANIFEST = join(
-	REPO,
-	'docs/roadmap/t2-look-atmosphere/s8-professional-material-foundation/f-acquisition-manifest.json'
-);
+const MANIFEST = join(HERE, 'f-acquisition-manifest.json');
 const RECORDS = join(HERE, 'records');
 const QUALIFICATION = join(HERE, 'qualification.json');
 const STATIC_TEXTURES = join(EDITOR, 'static/textures');

@@ -2,7 +2,7 @@
 
 Focused affected tests are the local inner loop. The merge gate certifies the integration delta.
 Scope limits edits and leaves repository-level verification intact. See
-[CI and merge automation](../../../docs/operations/ci-merge-automation.md) for profile selection.
+[harness profiles and CI](../../../tools/harness/README.md) for profile selection.
 
 ## Ownership and test kit
 
@@ -90,7 +90,8 @@ Confirm the selection is nonempty. To focus an API test, build once in `apps/api
 
 Exercise affected visual and interaction behavior with focused manual browser QA. Inspect
 rendering and console errors and capture targeted evidence. Keep the non-browser gates and
-leave final manual acceptance to the owner. Full Playwright capture, automated journey replay
+leave final manual acceptance to the owner. One browser owner per task and cleanup of only
+agent-owned sessions follow [browser hygiene](../../../.agents/skills/browser-hygiene/SKILL.md). Full Playwright capture, automated journey replay
 and bulk recording require explicit owner authorization. For authorized automation, use
 `tests/e2e/test-auth.ts` with a local `E2E_TEST_AUTH_SECRET` from
 [the environment example](../../../.env.example), an allowlisted automation identity and the
@@ -102,5 +103,5 @@ Heavy correctness includes deterministic operation counts, geometric sweeps and 
 Keep wall-clock performance thresholds out of the correctness lanes. The owner initiates
 runtime benchmarking based on an observed slowdown. The comprehensive benchmark matrix is
 suspended. Use the authorized `perf:spot` triggers in the
-[performance contract](../../../docs/reference/components/performance.md). Bundle provenance
+[rendering contract](../../../docs/reference/rendering.md#measurement-policy). Bundle provenance
 and functional browser flow tooling sit outside the Vitest lanes.

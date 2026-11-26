@@ -6,9 +6,8 @@
 // `npm test` runs the COMPLETE suite (all lanes). Lane configs
 // (`vitest.fast.config.ts`, `vitest.arch.config.ts`, `vitest.heavy.config.ts`)
 // select subsets by filename for the inner loop and the pre-PR/acceptance gate;
-// see `tests/README.md` for the change-impact policy, and `docs/operations/`
-// `test-suite-harvest-2026-09-19.md` §F for the original lane model. (PR #115
-// removed the PERF lane with its `vitest.perf.config.ts`.)
+// see `tests/README.md` for the change-impact policy and the lane model, and
+// `tools/harness/README.md` for the CI profile that runs each lane.
 //
 // The Svelte plugin + `$lib` alias live in `vitest.shared.ts` so every lane
 // uses the same module graph.
