@@ -20,10 +20,10 @@ export function createLibraryHost(input: {
 		readonly busy: boolean;
 		clearLibrarySwap(): void;
 		pickMaterialKey(key: string): void;
-		applyLibraryFinish(ref: LibraryFinishEntry['ref']): Promise<boolean>;
+		applyLibraryFinish(ref: NonNullable<LibraryFinishEntry['ref']>): Promise<boolean>;
 		applyLibrarySwap(id: Parameters<LibraryProps['onSwap']>[0]): ReturnType<LibraryProps['onSwap']>;
-		selectFinishUsers(ref: LibraryFinishEntry['ref']): Promise<boolean>;
-		openLibraryDraft(ref: LibraryFinishEntry['ref']): boolean;
+		selectFinishUsers(ref: NonNullable<LibraryFinishEntry['ref']>): Promise<boolean>;
+		openLibraryDraft(ref: NonNullable<LibraryFinishEntry['ref']>): boolean;
 		toggleFavouriteMaterial(key: string): void;
 	};
 	readonly commands: () => Pick<
@@ -133,12 +133,14 @@ export function createLibraryHost(input: {
 		onView: shell.setLibraryView,
 		onClose: closeLibrary,
 		onPaint(entry, keepOpen) {
+			if (entry.ref === null) return;
 			input.finishes().pickMaterialKey(entry.key);
 			if (keepOpen) return;
 			if (shell.libraryOpen) input.commands().toggleWorldLibrary();
 			input.commands().armWorldTool('paint');
 		},
 		async onReplace(entry, keepOpen) {
+			if (entry.ref === null) return { ok: false, message: 'Saved items are inserted, not replaced.' };
 			const accepted = await input.finishes().applyLibraryFinish(entry.ref);
 			if (!accepted) {
 				return {
@@ -160,11 +162,13 @@ export function createLibraryHost(input: {
 			return outcome;
 		},
 		async onSelectUsers(entry) {
+			if (entry.ref === null) return false;
 			const selected = await input.finishes().selectFinishUsers(entry.ref);
 			if (selected) closeLibrary();
 			return selected;
 		},
 		onCustomise(entry) {
+			if (entry.ref === null) return;
 			closeLibrary(false);
 			if (input.finishes().openLibraryDraft(entry.ref)) input.commands().armWorldTool('paint');
 		},

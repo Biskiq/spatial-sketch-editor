@@ -303,7 +303,9 @@ responsive board, with the scope recorded in the [prototype catalogue](../../../
 - **Delivery.** U1 (#400), U2 (#401), U8 (#402), U3 (#403), U4 (#404) and U5 (#406) landed.
   U5's functionality is accepted. Correct Library design gaps forward on that foundation using
   [#405](https://github.com/Biskiq/spatial-sketch-editor/issues/405) and the `git show 2ca766335:docs/roadmap/t2-look-atmosphere/s8-professional-material-foundation/u-prototype-production-parity-harvest.md`.
-  U6 (the full Material editor, Align, import and repair; [plan](./u6-editor-align-import-repair-plan.md)) and U7 (private-library transfer) remain.
+  U6 (the full Material editor, Align, import and repair) landed in #411; U7 (private-library transfer) is
+  delivered in this PR. The remaining S8 work is F's deferred catalogue distinctness revalidation and the G1/D8 tracks named in
+  [the plans index](../../README.md).
 - **Swatch treatment (U1).** A flat, lit sample tile framed on a physical window. One stored 256 px master per Finish under a new thumbnail recipe version; XS, S and M derive from it, and the L detail and the editor preview render on demand through the E7 host. Framing hints live outside the recipe. The revalidation list above still applies.
 - **Similar materials (D1).** Smooth and Polished concrete become one card with a *Matte / Polished* variant chip; F's rule is applied between cards.
 - **G slot (D4).** A scoped change to 256 px: PNG, at most 256 KiB, a new thumbnail recipe key; 192 px items stay valid until regenerated.

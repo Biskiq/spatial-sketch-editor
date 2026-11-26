@@ -25,6 +25,8 @@
 		working,
 		busy,
 		hasProject,
+		hasMine,
+		mineStatus,
 		groups,
 		cards,
 		categories,
@@ -47,6 +49,7 @@
 		onLook,
 		openArtworkImport,
 		onShowProject,
+		onShowMine,
 		onBrowseCurated,
 		onClearSearch,
 		query,
@@ -60,6 +63,8 @@
 		working: boolean;
 		busy: boolean;
 		hasProject: boolean;
+		hasMine: boolean;
+		mineStatus: 'idle' | 'loading' | 'ready' | 'offline';
 		groups: ReturnType<typeof import('./library-catalogue').browseLibrary>;
 		cards: readonly LibraryCard[];
 		categories: readonly { readonly id: LibraryCategory; readonly label: string }[];
@@ -82,6 +87,7 @@
 		onLook: (id: string) => void;
 		openArtworkImport: () => void;
 		onShowProject: () => void;
+		onShowMine: () => void;
 		onBrowseCurated: () => void;
 		onClearSearch: () => void;
 		query: string;
@@ -109,7 +115,7 @@
 {#snippet card(item: LibraryCard, shelf: boolean)}
 	{@const entry = item.entry}
 	{@const blocked = swapMode && (entry.source !== 'curated' || entry.curatedId === null)}
-	<article class="mc" class:open={selectedKey === item.key} class:blocked data-library-card={item.key} data-library-shelf={shelf ? 'project' : undefined}>
+	<article class="mc" class:open={selectedKey === item.key} class:blocked data-library-card={item.key} data-library-shelf={shelf ? entry.source : undefined}>
 		<button
 			type="button"
 			class="choose"
@@ -132,7 +138,7 @@
 				<span class="ms">{entry.subline}</span>
 			</span>
 		</button>
-		<button
+		{#if entry.ref !== null}<button
 			type="button"
 			class="star"
 			class:on={entry.favourite}
@@ -141,7 +147,7 @@
 			aria-pressed={entry.favourite}
 			data-library-favourite={item.key}
 			onclick={() => onToggleFavourite(entry.key)}
-		>★</button>
+		>★</button>{/if}
 		<button
 			type="button"
 			class="xp"
@@ -245,7 +251,10 @@
 			{#if kind === 'materials'}
 				{#if cards.length === 0}
 					<div class="lb-empty">
-						{#if !hasProject && source === 'project'}
+						{#if source === 'mine' && !hasMine}
+							<strong>{mineStatus === 'loading' ? 'Reading My library…' : mineStatus === 'offline' ? 'My library is offline.' : 'Nothing saved yet.'}</strong>
+							<span>{mineStatus === 'loading' ? 'One moment.' : mineStatus === 'offline' ? 'Retry when the connection is back; saved copies already in projects stay.' : 'Save to My library from any Finish Card — it travels to every project.'}</span>
+						{:else if !hasProject && source === 'project'}
 							<strong>No project Finishes yet.</strong>
 							<span>Paint a material onto a surface, then customise it here.</span>
 							<button type="button" onclick={onBrowseCurated}>Browse curated materials</button>
@@ -258,12 +267,12 @@
 				{:else}
 					<div class="lb-grid">
 						{#each groups as group (group.label ?? 'all')}
-							{@const shelf = source === 'all' && needle === '' && group.label === 'This project'}
+							{@const shelf = source === 'all' && needle === '' && (group.label === 'This project' || group.label === 'My library')}
 							{#if group.label !== null}
 								<h3 class="lb-g">
 									{group.label}<span>{group.cards.length}</span>
 									{#if shelf && group.cards.length > 1}
-										<button type="button" class="see" class:overflowing={group.cards.length > SHELF_MAX} data-library-see-all="project" onclick={onShowProject}>See all {group.cards.length} ›</button>
+										<button type="button" class="see" class:overflowing={group.cards.length > SHELF_MAX} data-library-see-all={group.label === 'My library' ? 'mine' : 'project'} onclick={group.label === 'My library' ? onShowMine : onShowProject}>See all {group.cards.length} ›</button>
 									{/if}
 								</h3>
 							{/if}

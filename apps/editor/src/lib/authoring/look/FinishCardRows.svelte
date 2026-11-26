@@ -5,6 +5,7 @@
 	import FinishTile from './FinishTile.svelte';
 	import FinishSwapPicker from './FinishSwapPicker.svelte';
 	import StagePaintWheel from '$lib/authoring/stage/shell/StagePaintWheel.svelte';
+	import PrivateLibrarySaveButton from '$lib/authoring/library/PrivateLibrarySaveButton.svelte';
 	import type { PaintColour } from './paint-pick';
 
 	type FinishView = Extract<FinishCardView, { kind: 'finish' }>;
@@ -224,13 +225,11 @@
 						data-finish-favourite
 						onclick={toggleFavourite}
 					>★</button>
-					<button
-						type="button"
-						class="foot-text"
-						disabled
-						title="Saving a private copy arrives with My library (U7)."
-						data-finish-save-library
-					>Save to My library</button>
+					<PrivateLibrarySaveButton
+						finishKey={view.finishKey}
+						name={view.name}
+						tileSource={view.tile.source}
+					/>
 					<button
 						type="button"
 						class="foot-text"

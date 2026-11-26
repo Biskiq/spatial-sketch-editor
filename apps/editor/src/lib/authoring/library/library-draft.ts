@@ -28,10 +28,27 @@ import type { LibraryFinishEntry } from './library-catalogue';
 
 export const SHEEN_STEP_ORDER: readonly SheenStepId[] = ['matte', 'satin', 'gloss'];
 
-export type LibraryDraftEntry = Pick<
+export type LibraryDraftEntry = Omit<Pick<
 	LibraryFinishEntry,
 	'key' | 'ref' | 'name' | 'materialLabel' | 'source' | 'reading' | 'userKeys'
->;
+>, 'ref' | 'source'> & {
+	readonly ref: Exclude<SceneFinishRef, 'model-own'>;
+	readonly source: 'curated' | 'project';
+};
+
+/** A browse entry that can open a draft; saved items have no Scene ref yet. */
+export function draftEntryOf(entry: LibraryFinishEntry | undefined): LibraryDraftEntry | null {
+	if (entry === undefined || entry.ref === null || entry.source === 'mine') return null;
+	return {
+		key: entry.key,
+		ref: entry.ref,
+		name: entry.name,
+		materialLabel: entry.materialLabel,
+		source: entry.source,
+		reading: entry.reading,
+		userKeys: entry.userKeys,
+	};
+}
 
 export type LibraryDraft = {
 	readonly finishKey: string;

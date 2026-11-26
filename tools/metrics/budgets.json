@@ -72,7 +72,7 @@
 		},
 		{
 			"path": "apps/editor/src/lib/authoring/workspace/host/workspace-host.svelte.ts",
-			"lines": 993,
+			"lines": 992,
 			"reason": "The route's one composition root: core factories, feature entries and the lifecycle run share one mount sequence."
 		},
 		{
@@ -157,7 +157,7 @@
 		},
 		{
 			"path": "apps/editor/src/lib/authoring/look/finish-library.svelte.ts",
-			"lines": 841,
+			"lines": 837,
 			"reason": "One Library draft session: browse, draft fields, target requalification, refusal and the swap hand-off share one draft and one Apply path."
 		},
 		{
@@ -302,7 +302,7 @@
 		},
 		{
 			"path": "apps/editor/src/lib/authoring/library/LibraryMaterialEditor.svelte",
-			"lines": 756,
+			"lines": 754,
 			"reason": "One Material editor: Finish and material modes share the open material, compare state and one accepted write path."
 		},
 		{
@@ -332,7 +332,7 @@
 		},
 		{
 			"path": "apps/editor/src/lib/authoring/library/StageLibrary.svelte",
-			"lines": 727,
+			"lines": 723,
 			"reason": "The Library sheet root: search, filters and selection share one sheet session and one route into the Material editor."
 		},
 		{
@@ -670,7 +670,7 @@
 			"file": "apps/editor/src/lib/authoring/workspace/host/workspace-host.svelte.ts",
 			"name": "createWorkspaceHost",
 			"line": 105,
-			"lines": 887,
+			"lines": 885,
 			"reason": "The route's one composition root: core factories, feature entries and the lifecycle run share one mount sequence."
 		},
 		{

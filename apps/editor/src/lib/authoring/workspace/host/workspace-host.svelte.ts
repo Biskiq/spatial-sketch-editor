@@ -51,6 +51,7 @@ import { createStageLightPreview } from '$lib/authoring/stage/stage-light-previe
 import { stageAdapterFactories } from '$lib/authoring/adapters/catalog';
 import { createStageAssetLeases } from '$lib/authoring/stage/route/stage-asset-leases.svelte';
 import { provideFinishTiles } from '$lib/authoring/look/finish-tiles-provider';
+import { providePrivateLibrary } from '$lib/authoring/library/private-library-provider';
 import {
 	analyzeModelDerivativeBytes,
 	createModelAnalysisCache,
@@ -206,9 +207,7 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		navigate: (href) => void goto(href),
 	});
 	const studio = studioFeature.controller;
-
 	const lifecycleCell = late<FeatureLifecycle>();
-
 	const stageEpoch = wireStageProjectEpoch({
 		session,
 		assets: stageAssets,
@@ -391,7 +390,6 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		pan,
 		orbit,
 	} = viewing;
-
 	const stageViewport = wireStageViewport({
 		facade: () => stageEpoch.facade,
 		throughFrameElement: () => lookThrough.element ?? null,
@@ -410,7 +408,6 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		onAfterRefresh: () => shell.refreshHostTools(),
 	});
 	const sourceViews = createExperienceSourceViews(ready, experience, () => stageEpoch.services);
-
 	const lookThrough = createLookThroughFrame({
 		view: experience,
 		light: () => lightInspection.frame,
@@ -418,8 +415,8 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		lightSession: lightInspection.ports.session,
 		refresh,
 	});
-
 	const appearance = createAppearanceFeature({
+		thumbnailBytes: finishTiles.masterBytes,
 		finishes: {
 			services: () => stageEpoch.services,
 			api: () => api,
@@ -507,6 +504,8 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 			projectId,
 		},
 	});
+	const privateLibrary = providePrivateLibrary(appearance.ports.privateLibrary());
+	onDestroy(privateLibrary.dispose);
 	const selectionView = createStageSelectionReadout({
 		ready,
 		envelope: ready.envelope,

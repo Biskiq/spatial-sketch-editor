@@ -7,6 +7,8 @@ import { createRepairSession } from './appearance/repair-session.svelte';
 import { createAppearanceOperations } from './appearance/operations';
 import { createAppearanceFinishAuthority } from './appearance/finish-authority';
 import { createAppearanceCanvasRegion } from './appearance/canvas-region';
+import { createPrivateLibrarySession } from '../library/private-library.svelte';
+import type { FinishTileSource } from '$lib/render/materials/finish-tiles.svelte';
 
 /**
  * Appearance: Finish Card and Paint, Import and the Library Draft, Align,
@@ -23,7 +25,7 @@ export type AppearanceDependencies = {
 	/** Appearance's one Finish authority; the entry constructs it. */
 	readonly finishes: Omit<FinishesInput, 'retryTextures'>;
 	readonly card: Omit<Parameters<typeof createCardSession>[0], 'draftPreview' | 'finishes'>;
-	readonly draft: Omit<Parameters<typeof createLibraryDraftSession>[0], 'finishes'>;
+	readonly draft: Omit<Parameters<typeof createLibraryDraftSession>[0], 'finishes' | 'privateLibrary'>;
 	readonly materialImport: Omit<
 		Parameters<typeof createAppearanceImportSession>[0],
 		'previewing' | 'lens' | 'finishes'
@@ -34,10 +36,19 @@ export type AppearanceDependencies = {
 	>;
 	readonly align: Omit<Parameters<typeof createAlignSession>[0], 'finishes'>;
 	readonly repair: Omit<Parameters<typeof createRepairSession>[0], 'finishes'>;
+	/** My library's one host-owned picture seam; Save installs a 256 px thumbnail. */
+	readonly thumbnailBytes?: (source: FinishTileSource) => Promise<Blob | null>;
 };
 
 export function createAppearanceFeature(deps: AppearanceDependencies) {
 	const finishes = createAppearanceFinishAuthority(deps.finishes);
+	const privateLibrary = createPrivateLibrarySession({
+		services: deps.finishes.services,
+		onNotice: deps.finishes.onNotice,
+		onInserted: (key) => finishes.noteUsedFinish(key),
+		armPaint: () => deps.finishes.armPaint({ kind: 'paint' }),
+		...(deps.thumbnailBytes === undefined ? {} : { thumbnailBytes: deps.thumbnailBytes }),
+	});
 	const card = createCardSession({
 		...deps.card,
 		finishes: () => finishes,
@@ -49,7 +60,11 @@ export function createAppearanceFeature(deps: AppearanceDependencies) {
 		finishTileSource: (id) => draft.finishTileSource(id),
 		endLibraryDraft: () => draft.endLibraryDraft(),
 	});
-	const draft = createLibraryDraftSession({ ...deps.draft, finishes: () => finishes });
+	const draft = createLibraryDraftSession({
+		...deps.draft,
+		finishes: () => finishes,
+		privateLibrary,
+	});
 	const materialImport = createAppearanceImportSession({
 		...deps.materialImport,
 		finishes: () => finishes,
@@ -94,6 +109,7 @@ export function createAppearanceFeature(deps: AppearanceDependencies) {
 		},
 		ports: {
 			finishes: () => finishes,
+			privateLibrary: () => privateLibrary,
 			adapter: card.adapter,
 			finishTileSource: draft.finishTileSource,
 			dismissMaterialEditor: draft.dismissMaterialEditor,

@@ -467,6 +467,11 @@ export function createFinishTiles(
 			if (lease === null) reap(entry);
 			return lease;
 		},
+		/** The 256 px master PNG, for installing a saved item's thumbnail. */
+		async masterBytes(source: FinishTileSource, signal?: AbortSignal): Promise<Blob | null> {
+			const master = await masterOf(source, signal ?? new AbortController().signal);
+			return master?.bytes ?? null;
+		},
 		/** Reload the live inspection request's failed images and redraw. */
 		retry(): void {
 			inspector?.retry?.();

@@ -27,6 +27,8 @@
 	import type { FinishTreatmentFacts } from '@portfolio/project-model/scene-planning';
 	import LibraryMaterialEditorFields from './LibraryMaterialEditorFields.svelte';
 	import FinishInspectionView from './FinishInspectionView.svelte';
+	import PrivateLibrarySaveButton from './PrivateLibrarySaveButton.svelte';
+	import type { PrivateLibraryOutcome } from './private-library.svelte';
 	import { LIBRARY_INSPECTION_DEFAULT, type LibraryInspectionSettings } from './library-inspection';
 
 	export type DraftFooterStatus = {
@@ -82,7 +84,8 @@
 		busy = false,
 		onApplyDraft,
 		onPaintDraft,
-		onCancelDraft
+		onCancelDraft,
+		onSaveDraft
 	}: {
 		mode: 'finish' | 'draft';
 		name: string;
@@ -128,6 +131,7 @@
 		onApplyDraft?: () => Promise<boolean>;
 		onPaintDraft?: () => void;
 		onCancelDraft?: () => void;
+		onSaveDraft?: () => Promise<PrivateLibraryOutcome>;
 	} = $props();
 
 
@@ -418,13 +422,7 @@
 			{/if}
 			<div class="actions">
 				<button type="button" class="foot-btn" data-material-editor-cancel onclick={close}>Cancel</button>
-				<button
-					type="button"
-					class="foot-btn push"
-					disabled
-					title="Saving a private copy arrives with My library (U7)."
-					data-material-editor-save
-				>Save to My library</button>
+				<PrivateLibrarySaveButton className="foot-btn push" save={onSaveDraft ?? null} disabled={busy} />
 				<button
 					type="button"
 					class="foot-btn"
