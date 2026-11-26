@@ -43,10 +43,10 @@ threshold or speed claim was accepted.
 implementation  apps/editor/src/routes/project/[projectId]/spatial/+page.svelte
                 apps/editor/src/lib/authoring/stage/stage-facade.ts
                 apps/editor/src/lib/authoring/adapters/layout/
-validation      apps/editor/tests/lib/authoring/spatial-route-gesture.test.ts
+validation      ../../../../../../../apps/editor/tests/lib/authoring/stage
                 apps/editor/tests/lib/authoring/spatial-route-source-replacement.test.ts
                 apps/editor/tests/lib/authoring/stage-facade.test.ts
-                apps/editor/tests/lib/authoring/layout-wall-manipulation.test.ts
+                ../../../../../../../apps/editor/tests/lib/authoring/adapters
 ```
 
 ## Residuals

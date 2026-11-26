@@ -2,7 +2,7 @@
 .visitor-preview .overline {
 	margin: 0 0 8px;
 	color: var(--visitor-gold);
-	font: 700 11px/1.2 var(--visitor-sans);
+	font: 700 11px / 1.2 var(--visitor-sans);
 	letter-spacing: 0.14em;
 	text-transform: uppercase;
 }

@@ -1,4 +1,4 @@
-import { cowSetWallCenterline } from '../world/cow'
+import { cowSetWallCenterline } from '../world/cow';
 import { ensureLayoutWorldIndex, peekLayoutWorldIndex } from '../world/lookups';
 import type { LayoutDocumentWallFirst } from '../wall/types';
 import type { LayoutWall } from '../wall/types';
@@ -15,7 +15,7 @@ import type { PrecisionOperation, PrecisionPlan, PrecisionRejection } from './ty
 import { MAX_WALL_CURVE_KNOTS } from './types';
 import { POINT_EPSILON } from '../vec2';
 import { wallEndpoints } from './document';
-import { finalizeWallGeometryCandidate, hasAnyTestObserverInPrecision } from './finalization';
+import { finalizeWallGeometryCandidate } from './finalization';
 import { finitePoint, reject, rejectRoundMember } from './rejections';
 import { proposeWallKnotRemoval } from './wall-bends';
 
@@ -38,10 +38,9 @@ export function rejectCurvedWall(operation: string, wallId: string): PrecisionPl
 	return reject(
 		'curved_wall_unsupported',
 		`Wall '${wallId}' is curved; ${operation} is supported for straight Walls only`,
-		[wallId]
+		[wallId],
 	);
 }
-
 
 /**
  * Resolved inputs shared by the bend-point planners.
@@ -54,7 +53,7 @@ export function rejectCurvedWall(operation: string, wallId: string): PrecisionPl
 export function resolveCurveTarget(
 	document: LayoutDocumentWallFirst,
 	wallId: string,
-	options: { allowStraight?: boolean } = {}
+	options: { allowStraight?: boolean } = {},
 ):
 	| { plan: PrecisionPlan }
 	| {
@@ -71,7 +70,9 @@ export function resolveCurveTarget(
 	const endpoints = wallEndpoints(document, wall, worldIndex?.pointById);
 	if (!endpoints) {
 		return {
-			plan: reject('unsupported_geometry', `Wall '${wallId}' has unresolved junction geometry`, [wallId])
+			plan: reject('unsupported_geometry', `Wall '${wallId}' has unresolved junction geometry`, [
+				wallId,
+			]),
 		};
 	}
 	if (wall.centerline.kind !== 'cubic-chain') {
@@ -80,8 +81,8 @@ export function resolveCurveTarget(
 				plan: reject(
 					'unsupported_geometry',
 					`Wall '${wallId}' is straight; convert it to a curve before editing its bend points`,
-					[wallId]
-				)
+					[wallId],
+				),
 			};
 		}
 		return {
@@ -92,8 +93,8 @@ export function resolveCurveTarget(
 				startPoint: endpoints.start,
 				endPoint: endpoints.end,
 				knots: [],
-				spans: deriveChainSpans([endpoints.start, endpoints.end])
-			}
+				spans: deriveChainSpans([endpoints.start, endpoints.end]),
+			},
 		};
 	}
 	return {
@@ -104,11 +105,10 @@ export function resolveCurveTarget(
 			startPoint: endpoints.start,
 			endPoint: endpoints.end,
 			knots: wall.centerline.knots,
-			spans: wall.centerline.spans
-		}
+			spans: wall.centerline.spans,
+		},
 	};
 }
-
 
 /**
  * Map the shared curve-algebra rejections onto this module's stable codes. A
@@ -132,7 +132,6 @@ export function curveEditRejection(code: WallCurveEditRejection): PrecisionRejec
 	}
 }
 
-
 /**
  * Rebuild one Wall's cubic chain from a new bend-point list.
  *
@@ -144,40 +143,37 @@ export function curveEditRejection(code: WallCurveEditRejection): PrecisionRejec
 function chainFromKnots(
 	knots: readonly LayoutWallCurveKnot[],
 	start: LayoutVec2,
-	end: LayoutVec2
+	end: LayoutVec2,
 ): LayoutWallCenterline {
 	const points: LayoutVec2[] = [start, ...knots.map((knot) => knot.point), end];
 	return wallCubicChain(knots, deriveChainSpans(points));
 }
-
 
 /** Commit a candidate that only reshaped one Wall's own centerline. */
 export function finalizeCurveCandidate(
 	baseline: LayoutDocumentWallFirst,
 	candidate: LayoutDocumentWallFirst,
 	operation: PrecisionOperation,
-	wallId: string
+	wallId: string,
 ): PrecisionPlan {
 	return finalizeWallGeometryCandidate({
 		baseline,
 		candidate,
 		operation,
 		changedJunctionIds: [],
-		changedWallIds: [wallId]
+		changedWallIds: [wallId],
 	});
 }
-
 
 /** Write one Wall's centerline into a fresh candidate document. */
 export function withWallCenterline(
 	document: LayoutDocumentWallFirst,
 	wallId: string,
-	centerline: LayoutWall['centerline']
+	centerline: LayoutWall['centerline'],
 ): LayoutDocumentWallFirst {
-	const worldIndex = !hasAnyTestObserverInPrecision() ? ensureLayoutWorldIndex(document) : peekLayoutWorldIndex(document);
+	const worldIndex = ensureLayoutWorldIndex(document);
 	return cowSetWallCenterline(document, wallId, centerline, worldIndex);
 }
-
 
 /**
  * Convert one straight Wall into a curved one, keeping every authored ID.
@@ -189,7 +185,7 @@ export function withWallCenterline(
  */
 export function planConvertWallToCurve(
 	document: LayoutDocumentWallFirst,
-	wallId: string
+	wallId: string,
 ): PrecisionPlan {
 	const worldIndex = peekLayoutWorldIndex(document);
 	const wall = worldIndex
@@ -203,27 +199,28 @@ export function planConvertWallToCurve(
 	}
 	const endpoints = wallEndpoints(document, wall, worldIndex?.pointById);
 	if (!endpoints) {
-		return reject('unsupported_geometry', `Wall '${wallId}' has unresolved junction geometry`, [wallId]);
+		return reject('unsupported_geometry', `Wall '${wallId}' has unresolved junction geometry`, [
+			wallId,
+		]);
 	}
 	if (!(endpoints.length > POINT_EPSILON)) {
 		return reject('unsupported_geometry', `Wall '${wallId}' has zero effective length`, [wallId]);
 	}
 	const midpoint: LayoutVec2 = [
 		(endpoints.start[0] + endpoints.end[0]) / 2,
-		(endpoints.start[1] + endpoints.end[1]) / 2
+		(endpoints.start[1] + endpoints.end[1]) / 2,
 	];
 	const knot: LayoutWallCurveKnot = {
 		id: nextWallCurveKnotId(wallId, []),
-		point: midpoint
+		point: midpoint,
 	};
 	const candidate = withWallCenterline(
 		document,
 		wallId,
-		chainFromKnots([knot], endpoints.start, endpoints.end)
+		chainFromKnots([knot], endpoints.start, endpoints.end),
 	);
 	return finalizeCurveCandidate(document, candidate, 'wall-convert-to-curve', wallId);
 }
-
 
 /**
  * Convert one curved Wall back to a straight one, keeping every authored ID.
@@ -234,7 +231,7 @@ export function planConvertWallToCurve(
  */
 export function planConvertWallToLine(
 	document: LayoutDocumentWallFirst,
-	wallId: string
+	wallId: string,
 ): PrecisionPlan {
 	const worldIndex = peekLayoutWorldIndex(document);
 	const wall = worldIndex
@@ -249,7 +246,6 @@ export function planConvertWallToLine(
 	const candidate = withWallCenterline(document, wallId, { kind: 'line' });
 	return finalizeCurveCandidate(document, candidate, 'wall-convert-to-line', wallId);
 }
-
 
 /**
  * Insert one bend point at a physical arc distance **without moving the curve**.
@@ -272,7 +268,7 @@ export function planInsertWallCurveKnot(
 	document: LayoutDocumentWallFirst,
 	wallId: string,
 	distance: number,
-	options: { knotId?: string } = {}
+	options: { knotId?: string } = {},
 ): PrecisionPlan {
 	const target = resolveCurveTarget(document, wallId, { allowStraight: true });
 	if ('plan' in target) return target.plan;
@@ -280,19 +276,21 @@ export function planInsertWallCurveKnot(
 	if (insertRoundHit) return rejectRoundMember(insertRoundHit);
 	const { chain } = target;
 	if (!Number.isFinite(distance)) {
-		return reject('invalid_value', 'Bend point distance must be a finite number of meters', [wallId]);
+		return reject('invalid_value', 'Bend point distance must be a finite number of meters', [
+			wallId,
+		]);
 	}
 	if (chain.knots.length >= MAX_WALL_CURVE_KNOTS) {
 		return reject(
 			'curve_knot_limit',
 			`Wall '${wallId}' already has ${MAX_WALL_CURVE_KNOTS} bend points, the maximum a new insertion may produce`,
-			[wallId]
+			[wallId],
 		);
 	}
 	const insertion = insertWallCurveKnot(
 		chain,
 		distance,
-		options.knotId ?? nextWallCurveKnotId(wallId, chain.knots)
+		options.knotId ?? nextWallCurveKnotId(wallId, chain.knots),
 	);
 	if (insertion.kind === 'rejected') {
 		return reject(curveEditRejection(insertion.code), insertion.message, [wallId]);
@@ -300,11 +298,10 @@ export function planInsertWallCurveKnot(
 	const candidate = withWallCenterline(
 		document,
 		wallId,
-		wallCubicChain(insertion.knots, insertion.spans)
+		wallCubicChain(insertion.knots, insertion.spans),
 	);
 	return finalizeCurveCandidate(document, candidate, 'wall-curve-knot-insert', wallId);
 }
-
 
 /**
  * Move exactly one bend point, preserving its ID and every other knot position.
@@ -318,7 +315,7 @@ export function planMoveWallCurveKnot(
 	document: LayoutDocumentWallFirst,
 	wallId: string,
 	knotId: string,
-	point: LayoutVec2
+	point: LayoutVec2,
 ): PrecisionPlan {
 	const target = resolveCurveTarget(document, wallId);
 	if ('plan' in target) return target.plan;
@@ -327,9 +324,13 @@ export function planMoveWallCurveKnot(
 	const { chain } = target;
 	const existing = chain.knots.find((knot) => knot.id === knotId);
 	if (!existing) {
-		return reject('unknown_curve_anchor', `Wall '${wallId}' has no bend point '${knotId}'`, [wallId, knotId]);
+		return reject('unknown_curve_anchor', `Wall '${wallId}' has no bend point '${knotId}'`, [
+			wallId,
+			knotId,
+		]);
 	}
-	if (!finitePoint(point)) return reject('invalid_value', 'Bend point X/Z must be finite', [wallId, knotId]);
+	if (!finitePoint(point))
+		return reject('invalid_value', 'Bend point X/Z must be finite', [wallId, knotId]);
 	if (coincidesAsJunction(existing.point, point)) {
 		return reject('no_op', `Bend point '${knotId}' is already at that point`, [wallId, knotId]);
 	}
@@ -346,7 +347,6 @@ export function planMoveWallCurveKnot(
 	return finalizeCurveCandidate(document, candidate, 'wall-curve-knot-move', wallId);
 }
 
-
 /**
  * Delete one bend point by merging its two adjacent cubics.
  *
@@ -359,14 +359,10 @@ export function planMoveWallCurveKnot(
 export function planDeleteWallCurveKnot(
 	document: LayoutDocumentWallFirst,
 	wallId: string,
-	knotId: string
+	knotId: string,
 ): PrecisionPlan {
 	const removal = proposeWallKnotRemoval(document, wallId, knotId);
 	if (removal.kind !== 'proposed') return removal;
-	const candidate = withWallCenterline(
-		document,
-		wallId,
-		removal.centerline
-	);
+	const candidate = withWallCenterline(document, wallId, removal.centerline);
 	return finalizeCurveCandidate(document, candidate, 'wall-curve-knot-delete', wallId);
 }

@@ -19,20 +19,45 @@ import { drawingRefusalWords } from './refusals';
  * immutable input, and a cancel consumes no authored state because nothing is
  * written until acceptance.
  */
-import { detectUnsupportedChainConnections, planDeleteWall, planWallChain, type LayoutDocumentWallFirst, type WallChainArc, type WallFirstOpPlan } from '@portfolio/layout-core/wall';
+import {
+	detectUnsupportedChainConnections,
+	planDeleteWall,
+	planWallChain,
+	type LayoutDocumentWallFirst,
+	type WallChainArc,
+	type WallFirstOpPlan,
+} from '@portfolio/layout-core/wall';
 import { faceArea, type LayoutVec2 } from '@portfolio/layout-core/geometry';
-import { layoutIdCaptureInput, layoutWorkingLevelInput, readLayoutIdCapture, readLayoutWorkingLevel, type LayoutIdCapture, type LayoutSurfaceLineage } from '@portfolio/layout-core/plan';
+import {
+	layoutIdCaptureInput,
+	layoutWorkingLevelInput,
+	readLayoutIdCapture,
+	readLayoutWorkingLevel,
+	type LayoutIdCapture,
+	type LayoutSurfaceLineage,
+} from '@portfolio/layout-core/plan';
 import { materializeLayoutSourceForCapture } from '@portfolio/layout-core/kernel';
-import { planCreateCircularRoom, planResizeClosedWallRadius, planTranslateClosedWall, roomBoundaryPolygon } from '@portfolio/layout-core/room';
+import {
+	planCreateCircularRoom,
+	planResizeClosedWallRadius,
+	planTranslateClosedWall,
+	roomBoundaryPolygon,
+} from '@portfolio/layout-core/room';
 import { recordPreparedCowCandidate } from '@portfolio/layout-core/world';
-import type { AuthoringIntent, DomainPlanner, PlannerOutcome, PlannerRequest, PreparedCandidate } from '@portfolio/project-model/f4';
+import type {
+	AuthoringIntent,
+	DomainPlanner,
+	PlannerOutcome,
+	PlannerRequest,
+	PreparedCandidate,
+} from '@portfolio/project-model/f4';
 import type { SemanticReference } from '@portfolio/project-model/references';
 import {
 	canonicalUnitJson,
 	replaceUnitData,
 	UNIT_SOURCE_KIND,
 	UNIT_SOURCE_VERSION,
-	type ProjectEnvelope
+	type ProjectEnvelope,
 } from '@portfolio/project-model/units';
 
 import { layoutPlanner, preparedLayoutCandidate, registerLayoutSurfaceLineage } from './precision';
@@ -86,27 +111,35 @@ function readChainPayload(payload: unknown): WallChainCommitPayload | { readonly
 	const expected = ['points', 'close', 'junctionSnaps', 'hostSnaps', 'thickness', 'height', 'arc'];
 	const required = ['points', 'close', 'junctionSnaps', 'hostSnaps', 'thickness', 'height'];
 	const unknown = Object.keys(payload).filter((key) => !expected.includes(key));
-	if (unknown.length > 0) return { message: `The chain commit payload cannot carry ${unknown.join(', ')}.` };
+	if (unknown.length > 0)
+		return { message: `The chain commit payload cannot carry ${unknown.join(', ')}.` };
 	for (const key of required) {
 		if (!(key in payload)) return { message: `The chain commit payload is missing "${key}".` };
 	}
-	if (!Array.isArray(payload.points)) return { message: 'The chain commit payload needs a points array.' };
+	if (!Array.isArray(payload.points))
+		return { message: 'The chain commit payload needs a points array.' };
 	const points: WallChainCommitPoint[] = [];
 	for (const entry of payload.points) {
 		if (!Array.isArray(entry) || entry.length !== 2) {
 			return { message: 'Every chain point must be a [x, z] pair.' };
 		}
 		const [x, z] = entry as unknown[];
-		if (typeof x !== 'number' || typeof z !== 'number' || !Number.isFinite(x) || !Number.isFinite(z)) {
+		if (
+			typeof x !== 'number' ||
+			typeof z !== 'number' ||
+			!Number.isFinite(x) ||
+			!Number.isFinite(z)
+		) {
 			return { message: 'Every chain point must carry two finite numbers.' };
 		}
 		points.push([x, z]);
 	}
-	if (typeof payload.close !== 'boolean') return { message: 'The chain commit payload needs a boolean close.' };
+	if (typeof payload.close !== 'boolean')
+		return { message: 'The chain commit payload needs a boolean close.' };
 	const readSnaps = <T>(
 		value: unknown,
 		key: string,
-		read: (record: Record<string, unknown>) => T | null
+		read: (record: Record<string, unknown>) => T | null,
 	): readonly T[] | { readonly message: string } => {
 		if (!Array.isArray(value)) return { message: `The chain commit payload needs a ${key} array.` };
 		const snaps: T[] = [];
@@ -120,13 +153,14 @@ function readChainPayload(payload: unknown): WallChainCommitPayload | { readonly
 	};
 	const readPointTarget = (
 		record: Record<string, unknown>,
-		idKey: string
+		idKey: string,
 	): { pointIndex: number; id: string } | null => {
 		const keys = Object.keys(record);
 		if (keys.length !== 2 || !keys.includes('pointIndex') || !keys.includes(idKey)) return null;
 		const pointIndex = record.pointIndex;
 		const id = record[idKey];
-		if (typeof pointIndex !== 'number' || !Number.isInteger(pointIndex) || pointIndex < 0) return null;
+		if (typeof pointIndex !== 'number' || !Number.isInteger(pointIndex) || pointIndex < 0)
+			return null;
 		if (typeof id !== 'string' || id.length === 0) return null;
 		return { pointIndex, id };
 	};
@@ -147,8 +181,10 @@ function readChainPayload(payload: unknown): WallChainCommitPayload | { readonly
 	};
 	const thickness = optionalNumber(payload.thickness);
 	const height = optionalNumber(payload.height);
-	if (thickness === undefined) return { message: 'Chain thickness must be null or a finite positive number.' };
-	if (height === undefined) return { message: 'Chain height must be null or a finite positive number.' };
+	if (thickness === undefined)
+		return { message: 'Chain thickness must be null or a finite positive number.' };
+	if (height === undefined)
+		return { message: 'Chain height must be null or a finite positive number.' };
 	const readArc = (value: unknown): WallChainArc | null | { readonly message: string } => {
 		if (value === null) return null;
 		if (!isRecord(value)) return { message: 'A chain arc must be an object or null.' };
@@ -160,10 +196,16 @@ function readChainPayload(payload: unknown): WallChainCommitPayload | { readonly
 		if (typeof pointIndex !== 'number' || !Number.isInteger(pointIndex) || pointIndex < 0) {
 			return { message: 'A chain arc needs a non-negative integer leg index.' };
 		}
-		const apex = Array.isArray(value.apex) && value.apex.length === 2 ? (value.apex as unknown[]) : null;
+		const apex =
+			Array.isArray(value.apex) && value.apex.length === 2 ? (value.apex as unknown[]) : null;
 		if (apex === null) return { message: 'An arc apex must be a [x, z] pair.' };
 		const [x, z] = apex;
-		if (typeof x !== 'number' || typeof z !== 'number' || !Number.isFinite(x) || !Number.isFinite(z)) {
+		if (
+			typeof x !== 'number' ||
+			typeof z !== 'number' ||
+			!Number.isFinite(x) ||
+			!Number.isFinite(z)
+		) {
 			return { message: 'An arc apex must carry two finite numbers.' };
 		}
 		return { pointIndex, apex: [x, z] };
@@ -177,7 +219,7 @@ function readChainPayload(payload: unknown): WallChainCommitPayload | { readonly
 		hostSnaps: hostSnaps as readonly { pointIndex: number; wallId: string }[],
 		thickness,
 		height,
-		arc
+		arc,
 	};
 }
 
@@ -201,7 +243,7 @@ export function layoutSubjectReference(input: {
 		instancePath: [],
 		location: { kind: 'layout-location', levelId: input.levelId, structureInstancePath: [] },
 		componentId: null,
-		capabilityId: null
+		capabilityId: null,
 	};
 }
 
@@ -214,8 +256,10 @@ export function layoutSubjectReference(input: {
  * identity and level contract as every other Layout F.4 planner.
  */
 export function readCapturedOperation(
-	request: PlannerRequest<ProjectEnvelope>
-): { readonly capture: LayoutIdCapture; readonly levelId: string } | PlannerOutcome<ProjectEnvelope> {
+	request: PlannerRequest<ProjectEnvelope>,
+):
+	| { readonly capture: LayoutIdCapture; readonly levelId: string }
+	| PlannerOutcome<ProjectEnvelope> {
 	const capture = readLayoutIdCapture(request.capturedInputs);
 	if (capture === null) {
 		return refused('The operation must capture its Layout identity before evaluation.');
@@ -253,7 +297,7 @@ function wallChainCommitPlanner(): DomainPlanner<ProjectEnvelope> {
 			points: payload.points,
 			close: payload.close,
 			endpointJunctionSnaps: payload.junctionSnaps,
-			endpointHostSnaps: payload.hostSnaps
+			endpointHostSnaps: payload.hostSnaps,
 		});
 		if (policy !== null) return refused(drawingRefusalWords(policy.code));
 		const plan = planWallChain({
@@ -267,19 +311,23 @@ function wallChainCommitPlanner(): DomainPlanner<ProjectEnvelope> {
 			endpointHostSnaps: payload.hostSnaps,
 			...(payload.thickness === null ? {} : { thickness: payload.thickness }),
 			...(payload.height === null ? {} : { height: payload.height }),
-			...(payload.arc === null || payload.arc === undefined ? {} : { arc: payload.arc })
+			...(payload.arc === null || payload.arc === undefined ? {} : { arc: payload.arc }),
 		});
 		if (plan.kind === 'rejected') {
 			return {
 				kind: 'rejected',
 				code: plan.rejection.code,
 				message: plan.rejection.message,
-				diagnostics: []
+				diagnostics: [],
 			};
 		}
 		const contentRevision = request.snapshot.domain.source.units.layout.header.contentRevision;
 		const document = plan.document;
-		recordPreparedCowCandidate(request.intent.operationId, document, canonicalUnitJson(request.intent));
+		recordPreparedCowCandidate(
+			request.intent.operationId,
+			document,
+			canonicalUnitJson(request.intent),
+		);
 		materializeLayoutSourceForCapture(document);
 		const createdRoomIds = plan.lineage.map((record) => record.roomId);
 		const candidate: PreparedCandidate<ProjectEnvelope> = {
@@ -291,37 +339,42 @@ function wallChainCommitPlanner(): DomainPlanner<ProjectEnvelope> {
 				{
 					kind: LAYOUT_WALL_CHAIN_COMMIT_KIND,
 					subjectIds: [...plan.createdWallIds, ...plan.absorbedRoomIds],
-					fields: ['walls', 'junctions', 'rooms']
-				}
+					fields: ['walls', 'junctions', 'rooms'],
+				},
 			],
 			correspondence: [
 				...plan.createdWallIds.map((wallId) => ({
 					relation: 'created' as const,
 					before: null,
-					after: layoutSubjectReference({ kind: 'wall', id: wallId, contentRevision, levelId })
+					after: layoutSubjectReference({ kind: 'wall', id: wallId, contentRevision, levelId }),
 				})),
 				...plan.createdJunctionIds.map((junctionId) => ({
 					relation: 'created' as const,
 					before: null,
-					after: layoutSubjectReference({ kind: 'junction', id: junctionId, contentRevision, levelId })
+					after: layoutSubjectReference({
+						kind: 'junction',
+						id: junctionId,
+						contentRevision,
+						levelId,
+					}),
 				})),
 				...createdRoomIds.map((roomId) => ({
 					relation: 'created' as const,
 					before: null,
-					after: layoutSubjectReference({ kind: 'room', id: roomId, contentRevision, levelId })
+					after: layoutSubjectReference({ kind: 'room', id: roomId, contentRevision, levelId }),
 				})),
 				...plan.absorbedRoomIds.map((roomId) => ({
 					relation: 'preserved' as const,
 					before: layoutSubjectReference({ kind: 'room', id: roomId, contentRevision, levelId }),
-					after: layoutSubjectReference({ kind: 'room', id: roomId, contentRevision, levelId })
+					after: layoutSubjectReference({ kind: 'room', id: roomId, contentRevision, levelId }),
 				})),
 				...plan.retiredRoomIds.map((roomId) => ({
 					relation: 'retired' as const,
 					before: layoutSubjectReference({ kind: 'room', id: roomId, contentRevision, levelId }),
-					after: null
-				}))
+					after: null,
+				})),
 			],
-			diagnostics: []
+			diagnostics: [],
 		};
 		registerLayoutSurfaceLineage(candidate, plan.surfaceLineage);
 		return { kind: 'prepared', candidate };
@@ -355,7 +408,11 @@ export type WallDeletionSummary = {
 };
 
 export type WallDeletionPreview =
-	| ({ readonly kind: 'planned'; readonly document: LayoutDocumentWallFirst; readonly surfaceLineage: LayoutSurfaceLineage } & WallDeletionSummary)
+	| ({
+			readonly kind: 'planned';
+			readonly document: LayoutDocumentWallFirst;
+			readonly surfaceLineage: LayoutSurfaceLineage;
+	  } & WallDeletionSummary)
 	| { readonly kind: 'refused'; readonly code: string; readonly message: string };
 
 /**
@@ -371,7 +428,12 @@ export function planWallDeletion(options: {
 	readonly capture: LayoutIdCapture;
 	readonly levelId: string;
 }): WallDeletionPreview {
-	const plan: WallFirstOpPlan = planDeleteWall(options.document, options.wallId, options.capture, options.levelId);
+	const plan: WallFirstOpPlan = planDeleteWall(
+		options.document,
+		options.wallId,
+		options.capture,
+		options.levelId,
+	);
 	if (plan.kind === 'rejected') {
 		return { kind: 'refused', code: plan.rejection.code, message: plan.rejection.message };
 	}
@@ -382,16 +444,21 @@ export function planWallDeletion(options: {
 	const baselineRoomById = new Map(options.document.rooms.map((room) => [room.id, room] as const));
 	const resultRoomById = new Map(plan.document.rooms.map((room) => [room.id, room] as const));
 	const openedRoomIds = options.document.rooms
-		.filter((room) => room.virtualEdges.length === 0 && (resultRoomById.get(room.id)?.virtualEdges.length ?? 0) > 0)
+		.filter(
+			(room) =>
+				room.virtualEdges.length === 0 &&
+				(resultRoomById.get(room.id)?.virtualEdges.length ?? 0) > 0,
+		)
 		.map((room) => room.id);
 	const keptOpenRoomIds = options.document.rooms
 		.filter((room) => room.virtualEdges.length > 0 && resultRoomById.has(room.id))
 		.map((room) => room.id);
 	const spaceNotes = (plan.spaceRetirements ?? []).map((retirement) => {
 		const merged = baselineRoomById.get(retirement.roomId);
-		const successor = retirement.successorRoomId === undefined
-			? undefined
-			: baselineRoomById.get(retirement.successorRoomId);
+		const successor =
+			retirement.successorRoomId === undefined
+				? undefined
+				: baselineRoomById.get(retirement.successorRoomId);
 		return {
 			roomId: retirement.roomId,
 			name: merged?.name ?? retirement.roomId,
@@ -400,17 +467,17 @@ export function planWallDeletion(options: {
 				? {}
 				: {
 						otherNames: retirement.otherRoomIds.map(
-							(roomId) => baselineRoomById.get(roomId)?.name ?? roomId
-						)
+							(roomId) => baselineRoomById.get(roomId)?.name ?? roomId,
+						),
 					}),
 			...(retirement.successorRoomId === undefined
 				? {}
 				: {
-						successorName: successor?.name ?? retirement.successorRoomId
+						successorName: successor?.name ?? retirement.successorRoomId,
 					}),
 			...(merged !== undefined && successor !== undefined && merged.overhead !== successor.overhead
 				? { successorOverhead: successor.overhead }
-				: {})
+				: {}),
 		};
 	});
 	const areaOf = (document: LayoutDocumentWallFirst, roomId: string): number | null => {
@@ -421,23 +488,23 @@ export function planWallDeletion(options: {
 		const before = areaOf(options.document, roomId);
 		const after = areaOf(plan.document, roomId);
 		if (before === null || after === null || Math.abs(after - before) <= 0.005) return [];
-		return [{
-			name: baselineRoomById.get(roomId)?.name ?? roomId,
-			areaAfter: after
-		}];
+		return [
+			{
+				name: baselineRoomById.get(roomId)?.name ?? roomId,
+				areaAfter: after,
+			},
+		];
 	});
 	const summary = wallDeletionSummary({
 		hostedOpeningIds,
 		createdRoomIds,
 		retiredRoomIds: plan.retiredRoomIds,
-		openedRoomNames: openedRoomIds.map(
-			(roomId) => baselineRoomById.get(roomId)?.name ?? roomId
-		),
+		openedRoomNames: openedRoomIds.map((roomId) => baselineRoomById.get(roomId)?.name ?? roomId),
 		keptOpenRoomNames: keptOpenRoomIds.map(
-			(roomId) => baselineRoomById.get(roomId)?.name ?? roomId
+			(roomId) => baselineRoomById.get(roomId)?.name ?? roomId,
 		),
 		spaceNotes,
-		areaChanges
+		areaChanges,
 	});
 	return {
 		kind: 'planned',
@@ -450,7 +517,7 @@ export function planWallDeletion(options: {
 		openedRoomIds,
 		keptOpenRoomIds,
 		spaceNotes,
-		summary
+		summary,
 	};
 }
 
@@ -478,23 +545,26 @@ export function wallDeletionSummary(input: {
 }): string {
 	const removals = ['the Wall'];
 	if (input.hostedOpeningIds.length > 0) {
-		removals.push(`${counted(input.hostedOpeningIds.length, 'hosted Opening')} in the same undo step`);
+		removals.push(
+			`${counted(input.hostedOpeningIds.length, 'hosted Opening')} in the same undo step`,
+		);
 	}
 	const spaceSentences: string[] = [];
 	if ((input.openedRoomNames ?? []).length > 0) {
 		spaceSentences.push(
-			`It opens ${[...new Set(input.openedRoomNames)].join(' and ')}; one side is now open.`
+			`It opens ${[...new Set(input.openedRoomNames)].join(' and ')}; one side is now open.`,
 		);
 	}
 	for (const note of input.spaceNotes ?? []) {
 		if (note.reason === 'merged') {
-			const overhead = note.successorOverhead === undefined
-				? ''
-				: `; ${note.successorName ?? 'the survivor'}'s ${note.successorOverhead === 'open-to-sky' ? 'Open to sky' : 'Closed'} overhead wins`;
+			const overhead =
+				note.successorOverhead === undefined
+					? ''
+					: `; ${note.successorName ?? 'the survivor'}'s ${note.successorOverhead === 'open-to-sky' ? 'Open to sky' : 'Closed'} overhead wins`;
 			spaceSentences.push(
 				note.successorName === undefined
 					? `It merges ${note.name}${overhead}.`
-					: `It merges ${note.name} into ${note.successorName}${overhead}.`
+					: `It merges ${note.name} into ${note.successorName}${overhead}.`,
 			);
 			continue;
 		}
@@ -519,7 +589,7 @@ export function wallDeletionSummary(input: {
 	const areaChanges = input.areaChanges ?? [];
 	for (const change of areaChanges) {
 		spaceSentences.push(
-			`${areaChanges.length === 1 ? 'Its' : `${change.name}'s`} area is now ${change.areaAfter.toFixed(2)} m².`
+			`${areaChanges.length === 1 ? 'Its' : `${change.name}'s`} area is now ${change.areaAfter.toFixed(2)} m².`,
 		);
 	}
 	const rooms =
@@ -547,7 +617,11 @@ export function wallDeletionSummary(input: {
 function wallDeletePlanner(): DomainPlanner<ProjectEnvelope> {
 	return layoutPlanner(LAYOUT_WALL_DELETE_KIND, (request) => {
 		const payload = request.intent.payload;
-		if (!isRecord(payload) || Object.keys(payload).length !== 1 || typeof payload.wallId !== 'string') {
+		if (
+			!isRecord(payload) ||
+			Object.keys(payload).length !== 1 ||
+			typeof payload.wallId !== 'string'
+		) {
 			return refused('A Wall deletion payload is exactly { wallId }.');
 		}
 		const wallId = payload.wallId;
@@ -560,7 +634,11 @@ function wallDeletePlanner(): DomainPlanner<ProjectEnvelope> {
 			return refused('A Wall deletion addresses exactly one Wall.');
 		}
 		const target = request.intent.targets[0]!;
-		if (target.domain !== 'layout' || target.subject.kind !== 'wall' || target.subject.id !== wallId) {
+		if (
+			target.domain !== 'layout' ||
+			target.subject.kind !== 'wall' ||
+			target.subject.id !== wallId
+		) {
 			return refused(`The intent must address the Wall "${wallId}" it deletes.`);
 		}
 		const plan = planWallDeletion({ document: baseline, wallId, capture, levelId });
@@ -568,7 +646,11 @@ function wallDeletePlanner(): DomainPlanner<ProjectEnvelope> {
 			return { kind: 'rejected', code: plan.code, message: plan.message, diagnostics: [] };
 		}
 		const contentRevision = request.snapshot.domain.source.units.layout.header.contentRevision;
-		recordPreparedCowCandidate(request.intent.operationId, plan.document, canonicalUnitJson(request.intent));
+		recordPreparedCowCandidate(
+			request.intent.operationId,
+			plan.document,
+			canonicalUnitJson(request.intent),
+		);
 		materializeLayoutSourceForCapture(plan.document);
 		const candidate: PreparedCandidate<ProjectEnvelope> = {
 			operationId: request.intent.operationId,
@@ -579,32 +661,37 @@ function wallDeletePlanner(): DomainPlanner<ProjectEnvelope> {
 				{
 					kind: LAYOUT_WALL_DELETE_KIND,
 					subjectIds: [wallId, ...plan.hostedOpeningIds],
-					fields: ['walls', 'openings', 'junctions', 'rooms']
-				}
+					fields: ['walls', 'openings', 'junctions', 'rooms'],
+				},
 			],
 			correspondence: [
 				{
 					relation: 'retired',
 					before: layoutSubjectReference({ kind: 'wall', id: wallId, contentRevision, levelId }),
-					after: null
+					after: null,
 				},
 				...plan.hostedOpeningIds.map((openingId) => ({
 					relation: 'retired' as const,
-					before: layoutSubjectReference({ kind: 'opening', id: openingId, contentRevision, levelId }),
-					after: null
+					before: layoutSubjectReference({
+						kind: 'opening',
+						id: openingId,
+						contentRevision,
+						levelId,
+					}),
+					after: null,
 				})),
 				...plan.createdRoomIds.map((roomId) => ({
 					relation: 'created' as const,
 					before: null,
-					after: layoutSubjectReference({ kind: 'room', id: roomId, contentRevision, levelId })
+					after: layoutSubjectReference({ kind: 'room', id: roomId, contentRevision, levelId }),
 				})),
 				...plan.retiredRoomIds.map((roomId) => ({
 					relation: 'retired' as const,
 					before: layoutSubjectReference({ kind: 'room', id: roomId, contentRevision, levelId }),
-					after: null
-				}))
+					after: null,
+				})),
 			],
-			diagnostics: []
+			diagnostics: [],
 		};
 		registerLayoutSurfaceLineage(candidate, plan.surfaceLineage);
 		return { kind: 'prepared', candidate };
@@ -620,25 +707,30 @@ export type CircleRoomCreatePayload = {
 };
 
 function readCircleRoomPayload(
-	payload: unknown
+	payload: unknown,
 ): CircleRoomCreatePayload | { readonly message: string } {
 	if (!isRecord(payload)) return { message: 'The Circle payload must be an object.' };
 	const expected = ['center', 'rim', 'thickness', 'height'];
 	const unknown = Object.keys(payload).filter((key) => !expected.includes(key));
-	if (unknown.length > 0) return { message: `The Circle payload cannot carry ${unknown.join(', ')}.` };
+	if (unknown.length > 0)
+		return { message: `The Circle payload cannot carry ${unknown.join(', ')}.` };
 	for (const key of expected) {
 		if (!(key in payload)) return { message: `The Circle payload is missing "${key}".` };
 	}
 	const point = (value: unknown): LayoutVec2 | null => {
 		if (!Array.isArray(value) || value.length !== 2) return null;
 		const [x, z] = value as unknown[];
-		return typeof x === 'number' && typeof z === 'number' && Number.isFinite(x) && Number.isFinite(z)
+		return typeof x === 'number' &&
+			typeof z === 'number' &&
+			Number.isFinite(x) &&
+			Number.isFinite(z)
 			? [x, z]
 			: null;
 	};
 	const center = point(payload.center);
 	const rim = point(payload.rim);
-	if (center === null || rim === null) return { message: 'A Circle needs finite centre and rim [x, z] points.' };
+	if (center === null || rim === null)
+		return { message: 'A Circle needs finite centre and rim [x, z] points.' };
 	const optional = (value: unknown): number | null | undefined => {
 		if (value === null) return null;
 		if (typeof value === 'number' && Number.isFinite(value) && value > 0) return value;
@@ -646,8 +738,10 @@ function readCircleRoomPayload(
 	};
 	const thickness = optional(payload.thickness);
 	const height = optional(payload.height);
-	if (thickness === undefined) return { message: 'Circle thickness must be null or a finite positive number.' };
-	if (height === undefined) return { message: 'Circle height must be null or a finite positive number.' };
+	if (thickness === undefined)
+		return { message: 'Circle thickness must be null or a finite positive number.' };
+	if (height === undefined)
+		return { message: 'Circle height must be null or a finite positive number.' };
 	return { center, rim, thickness, height };
 }
 
@@ -667,13 +761,22 @@ function circleRoomCreatePlanner(): DomainPlanner<ProjectEnvelope> {
 			levelId,
 			roomNamePrefix: 'Room',
 			...(payload.thickness === null ? {} : { thickness: payload.thickness }),
-			...(payload.height === null ? {} : { height: payload.height })
+			...(payload.height === null ? {} : { height: payload.height }),
 		});
 		if (plan.kind === 'rejected') {
-			return { kind: 'rejected', code: plan.rejection.code, message: plan.rejection.message, diagnostics: [] };
+			return {
+				kind: 'rejected',
+				code: plan.rejection.code,
+				message: plan.rejection.message,
+				diagnostics: [],
+			};
 		}
 		const contentRevision = request.snapshot.domain.source.units.layout.header.contentRevision;
-		recordPreparedCowCandidate(request.intent.operationId, plan.document, canonicalUnitJson(request.intent));
+		recordPreparedCowCandidate(
+			request.intent.operationId,
+			plan.document,
+			canonicalUnitJson(request.intent),
+		);
 		materializeLayoutSourceForCapture(plan.document);
 		const candidate: PreparedCandidate<ProjectEnvelope> = {
 			operationId: request.intent.operationId,
@@ -684,27 +787,37 @@ function circleRoomCreatePlanner(): DomainPlanner<ProjectEnvelope> {
 				{
 					kind: LAYOUT_CIRCLE_ROOM_CREATE_KIND,
 					subjectIds: [plan.wallId],
-					fields: ['walls', 'junctions', 'rooms']
-				}
+					fields: ['walls', 'junctions', 'rooms'],
+				},
 			],
 			correspondence: [
 				{
 					relation: 'created',
 					before: null,
-					after: layoutSubjectReference({ kind: 'wall', id: plan.wallId, contentRevision, levelId })
+					after: layoutSubjectReference({
+						kind: 'wall',
+						id: plan.wallId,
+						contentRevision,
+						levelId,
+					}),
 				},
 				{
 					relation: 'created',
 					before: null,
-					after: layoutSubjectReference({ kind: 'junction', id: plan.junctionId, contentRevision, levelId })
+					after: layoutSubjectReference({
+						kind: 'junction',
+						id: plan.junctionId,
+						contentRevision,
+						levelId,
+					}),
 				},
 				...plan.createdRoomIds.map((roomId) => ({
 					relation: 'created' as const,
 					before: null,
-					after: layoutSubjectReference({ kind: 'room', id: roomId, contentRevision, levelId })
-				}))
+					after: layoutSubjectReference({ kind: 'room', id: roomId, contentRevision, levelId }),
+				})),
 			],
-			diagnostics: []
+			diagnostics: [],
 		};
 		registerLayoutSurfaceLineage(candidate, plan.surfaceLineage);
 		return { kind: 'prepared', candidate };
@@ -719,17 +832,23 @@ function circleRadiusPlanner(): DomainPlanner<ProjectEnvelope> {
 			return refused('A radius edit payload is exactly { wallId, radius }.');
 		}
 		const { wallId, radius } = payload;
-		if (typeof wallId !== 'string' || wallId.length === 0) return refused('A radius edit needs one wall id.');
+		if (typeof wallId !== 'string' || wallId.length === 0)
+			return refused('A radius edit needs one wall id.');
 		if (typeof radius !== 'number' || !Number.isFinite(radius) || radius <= 0) {
 			return refused('A radius must be one finite positive number of meters.');
 		}
 		const plan = planResizeClosedWallRadius({
 			document: request.snapshot.domain.source.units.layout.data,
 			wallId,
-			radius
+			radius,
 		});
 		if (plan.kind === 'rejected') {
-			return { kind: 'rejected', code: plan.rejection.code, message: plan.rejection.message, diagnostics: [] };
+			return {
+				kind: 'rejected',
+				code: plan.rejection.code,
+				message: plan.rejection.message,
+				diagnostics: [],
+			};
 		}
 		return preparedLayoutCandidate(
 			request,
@@ -737,7 +856,7 @@ function circleRadiusPlanner(): DomainPlanner<ProjectEnvelope> {
 			{ kind: 'wall', id: wallId },
 			plan.document,
 			['radius', 'diameter'],
-			{ surfaceLineage: plan.surfaceLineage }
+			{ surfaceLineage: plan.surfaceLineage },
 		);
 	});
 }
@@ -747,11 +866,15 @@ function circleTranslatePlanner(): DomainPlanner<ProjectEnvelope> {
 		const payload = request.intent.payload;
 		if (!isRecord(payload)) return refused('The Circle move payload must be an object.');
 		const expected = ['wallId', 'deltaX', 'deltaZ'];
-		if (Object.keys(payload).length !== expected.length || expected.some((key) => !(key in payload))) {
+		if (
+			Object.keys(payload).length !== expected.length ||
+			expected.some((key) => !(key in payload))
+		) {
 			return refused('A Circle move payload is exactly { wallId, deltaX, deltaZ }.');
 		}
 		const { wallId, deltaX, deltaZ } = payload;
-		if (typeof wallId !== 'string' || wallId.length === 0) return refused('A Circle move needs one wall id.');
+		if (typeof wallId !== 'string' || wallId.length === 0)
+			return refused('A Circle move needs one wall id.');
 		if (
 			typeof deltaX !== 'number' ||
 			!Number.isFinite(deltaX) ||
@@ -763,10 +886,15 @@ function circleTranslatePlanner(): DomainPlanner<ProjectEnvelope> {
 		const plan = planTranslateClosedWall({
 			document: request.snapshot.domain.source.units.layout.data,
 			wallId,
-			delta: [deltaX, deltaZ]
+			delta: [deltaX, deltaZ],
 		});
 		if (plan.kind === 'rejected') {
-			return { kind: 'rejected', code: plan.rejection.code, message: plan.rejection.message, diagnostics: [] };
+			return {
+				kind: 'rejected',
+				code: plan.rejection.code,
+				message: plan.rejection.message,
+				diagnostics: [],
+			};
 		}
 		return preparedLayoutCandidate(
 			request,
@@ -774,7 +902,7 @@ function circleTranslatePlanner(): DomainPlanner<ProjectEnvelope> {
 			{ kind: 'wall', id: wallId },
 			plan.document,
 			['position'],
-			{ surfaceLineage: plan.surfaceLineage }
+			{ surfaceLineage: plan.surfaceLineage },
 		);
 	});
 }
@@ -786,7 +914,7 @@ export function createDrawingPlanners(): readonly DomainPlanner<ProjectEnvelope>
 		wallDeletePlanner(),
 		circleRoomCreatePlanner(),
 		circleRadiusPlanner(),
-		circleTranslatePlanner()
+		circleTranslatePlanner(),
 	];
 }
 
@@ -810,10 +938,10 @@ export function circleRoomCreateIntent(input: {
 			center: [input.payload.center[0], input.payload.center[1]],
 			rim: [input.payload.rim[0], input.payload.rim[1]],
 			thickness: input.payload.thickness,
-			height: input.payload.height
+			height: input.payload.height,
 		},
 		capturedInputs: [layoutWorkingLevelInput(input.levelId), layoutIdCaptureInput(input.capture)],
-		allocatedIds: []
+		allocatedIds: [],
 	};
 }
 
@@ -837,12 +965,12 @@ export function circleRadiusIntent(input: {
 				kind: 'wall',
 				id: input.wallId,
 				contentRevision: input.contentRevision,
-				levelId: input.levelId
-			})
+				levelId: input.levelId,
+			}),
 		],
 		payload: { wallId: input.wallId, radius: input.radius },
 		capturedInputs: [layoutWorkingLevelInput(input.levelId)],
-		allocatedIds: []
+		allocatedIds: [],
 	};
 }
 
@@ -866,12 +994,12 @@ export function circleTranslateIntent(input: {
 				kind: 'wall',
 				id: input.wallId,
 				contentRevision: input.contentRevision,
-				levelId: input.levelId
-			})
+				levelId: input.levelId,
+			}),
 		],
 		payload: { wallId: input.wallId, deltaX: input.delta[0], deltaZ: input.delta[1] },
 		capturedInputs: [layoutWorkingLevelInput(input.levelId)],
-		allocatedIds: []
+		allocatedIds: [],
 	};
 }
 
@@ -896,9 +1024,12 @@ export function wallChainCommitIntent(input: {
 			close: input.payload.close,
 			junctionSnaps: input.payload.junctionSnaps.map((snap) => ({
 				pointIndex: snap.pointIndex,
-				junctionId: snap.junctionId
+				junctionId: snap.junctionId,
 			})),
-			hostSnaps: input.payload.hostSnaps.map((snap) => ({ pointIndex: snap.pointIndex, wallId: snap.wallId })),
+			hostSnaps: input.payload.hostSnaps.map((snap) => ({
+				pointIndex: snap.pointIndex,
+				wallId: snap.wallId,
+			})),
 			thickness: input.payload.thickness,
 			height: input.payload.height,
 			...(input.payload.arc === null || input.payload.arc === undefined
@@ -906,15 +1037,15 @@ export function wallChainCommitIntent(input: {
 				: {
 						arc: {
 							pointIndex: input.payload.arc.pointIndex,
-							apex: [input.payload.arc.apex[0], input.payload.arc.apex[1]]
-						}
-					})
+							apex: [input.payload.arc.apex[0], input.payload.arc.apex[1]],
+						},
+					}),
 		},
 		// The capture and the working level are the **canonical** captured inputs, not a
 		// phase-local encoding: the planner reads them through the same readers every
 		// other Layout operation uses, so a replay reproduces the same ids.
 		capturedInputs: [layoutWorkingLevelInput(input.levelId), layoutIdCaptureInput(input.capture)],
-		allocatedIds: []
+		allocatedIds: [],
 	};
 }
 
@@ -938,11 +1069,11 @@ export function wallDeleteIntent(input: {
 				kind: 'wall',
 				id: input.wallId,
 				contentRevision: input.contentRevision,
-				levelId: input.levelId
-			})
+				levelId: input.levelId,
+			}),
 		],
 		payload: { wallId: input.wallId },
 		capturedInputs: [layoutWorkingLevelInput(input.levelId), layoutIdCaptureInput(input.capture)],
-		allocatedIds: []
+		allocatedIds: [],
 	};
 }

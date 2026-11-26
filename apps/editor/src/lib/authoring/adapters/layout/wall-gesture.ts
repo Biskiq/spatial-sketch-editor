@@ -15,11 +15,20 @@
  * second authority over the Wall.
  */
 
-import { angleDeltaLabel, planarDeltaLabel, sizeDeltaLabel } from '$lib/authoring/stage/stage-adapter-host';
+import {
+	angleDeltaLabel,
+	planarDeltaLabel,
+	sizeDeltaLabel,
+} from '$lib/authoring/stage/stage-adapter-host';
 import type { FixedWallEndpoint } from '@portfolio/layout-core/wall';
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 
-import { wallAngleFromPointer, wallLengthFromPointer, type WallFrame, type WallManipulationRequest } from './precision-frames';
+import {
+	wallAngleFromPointer,
+	wallLengthFromPointer,
+	type WallFrame,
+	type WallManipulationRequest,
+} from './precision-frames';
 
 export type WallHandle = 'start' | 'end' | 'body';
 
@@ -50,8 +59,9 @@ export function pointerWallRequest(input: {
 	if (input.mode === 'junction') {
 		return {
 			kind: 'junction',
-			junctionId: input.handle === 'start' ? input.frame.startJunctionId : input.frame.endJunctionId,
-			point: [input.point[0], input.point[1]]
+			junctionId:
+				input.handle === 'start' ? input.frame.startJunctionId : input.frame.endJunctionId,
+			point: [input.point[0], input.point[1]],
 		};
 	}
 	if (input.handle === 'body' || input.mode === 'move') {
@@ -66,14 +76,17 @@ export function pointerWallRequest(input: {
 	}
 	const fixedPoint = input.fixed === 'start' ? input.frame.start : input.frame.end;
 	if (input.mode === 'angle') {
-		return { kind: 'angle', angleRadians: wallAngleFromPointer(fixedPoint, input.point, input.fixed) };
+		return {
+			kind: 'angle',
+			angleRadians: wallAngleFromPointer(fixedPoint, input.point, input.fixed),
+		};
 	}
 	return { kind: 'length', length: wallLengthFromPointer(input.frame, input.fixed, input.point) };
 }
 
 /** The Wall's canonical 0–360° angle, with a whole degree written without `.0`. */
 export function wallAngleWords(frame: WallFrame): string {
-	const degrees = (((frame.angleRadians * 180) / Math.PI) % 360 + 360) % 360;
+	const degrees = ((((frame.angleRadians * 180) / Math.PI) % 360) + 360) % 360;
 	return `${degrees.toFixed(1).replace(/\.0$/, '')}°`;
 }
 
@@ -88,15 +101,22 @@ export function wallAngleWords(frame: WallFrame): string {
 export function wallRequestLabel(
 	request: WallManipulationRequest,
 	fixed: FixedWallEndpoint,
-	context?: { readonly frame?: WallFrame; readonly baseline?: WallFrame; readonly incidentWalls?: number }
+	context?: {
+		readonly frame?: WallFrame;
+		readonly baseline?: WallFrame;
+		readonly incidentWalls?: number;
+	},
 ): string {
 	const baseline = context?.baseline;
 	if (request.kind === 'junction') {
-		const origin = baseline === undefined ? request.point : fixed === 'start' ? baseline.end : baseline.start;
+		const origin =
+			baseline === undefined ? request.point : fixed === 'start' ? baseline.end : baseline.start;
 		return planarDeltaLabel(request.point[0] - origin[0], request.point[1] - origin[1]);
 	}
-	if (request.kind === 'length') return sizeDeltaLabel(request.length, baseline?.length ?? request.length);
-	if (request.kind === 'angle') return angleDeltaLabel(request.angleRadians, baseline?.angleRadians ?? request.angleRadians);
+	if (request.kind === 'length')
+		return sizeDeltaLabel(request.length, baseline?.length ?? request.length);
+	if (request.kind === 'angle')
+		return angleDeltaLabel(request.angleRadians, baseline?.angleRadians ?? request.angleRadians);
 	return planarDeltaLabel(request.delta[0], request.delta[1]);
 }
 
@@ -108,7 +128,7 @@ export function wallRequestLabel(
  */
 export function wallRequestExactLabel(
 	request: WallManipulationRequest,
-	fixed: FixedWallEndpoint
+	fixed: FixedWallEndpoint,
 ): string {
 	if (request.kind === 'length') {
 		return `${request.length} m · fixed ${fixed}`;

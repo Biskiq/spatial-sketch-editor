@@ -2,9 +2,6 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-/** Root Vitest projects. A relocated package test is collected without a registry edit. */
-export const VITEST_PROJECTS = ['apps/editor', 'packages/*/vitest.config.ts'];
-
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 
 /**

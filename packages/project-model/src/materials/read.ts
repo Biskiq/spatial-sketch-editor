@@ -4,10 +4,10 @@
  * The reader never throws, never clamps and never coerces:
  *
  * - unknown keys, wrong role selectors and unsupported profiles are recorded
- *   rather than ignored;
+ *  rather than ignored;
  * - a non-finite or out-of-domain dimension is refused; only authored angles
- *   and offsets are wrapped (modulo a full turn or one tile), because wrapping
- *   is a valid way to spell the same authored intent;
+ *  and offsets are wrapped (modulo a full turn or one tile), because wrapping
+ *  is a valid way to spell the same authored intent;
  * - `null` is a map binding's explicit disable, never an absent factor.
  *
  * Every successful value is deeply frozen: a definition's bytes and its
@@ -37,7 +37,7 @@ import {
 	type Recipe,
 	type Scalar,
 	type ScalarComponent,
-	type UvMapping
+	type UvMapping,
 } from './types';
 
 const RECIPE_KEYS = [
@@ -48,7 +48,7 @@ const RECIPE_KEYS = [
 	'occlusionStrength',
 	'normalScale',
 	'mapping',
-	'maps'
+	'maps',
 ] as const;
 
 const OVERRIDE_KEYS = [
@@ -58,7 +58,7 @@ const OVERRIDE_KEYS = [
 	'occlusionStrength',
 	'normalScale',
 	'mapping',
-	'maps'
+	'maps',
 ] as const;
 
 const FINISH_KEYS = ['id', 'name', 'base', 'overrides'] as const;
@@ -129,13 +129,13 @@ class MaterialReader {
 		path: string,
 		code: MaterialIssue['code'],
 		action?: string,
-		role: MapRole | undefined = this.defaultRole
+		role: MapRole | undefined = this.defaultRole,
 	): void {
 		this.issues.push({
 			code,
 			path,
 			...(role === undefined ? {} : { role }),
-			...(action === undefined ? {} : { action })
+			...(action === undefined ? {} : { action }),
 		});
 	}
 
@@ -151,7 +151,7 @@ class MaterialReader {
 		record: Record<string, unknown>,
 		path: string,
 		allowed: readonly string[],
-		deferRoleSelectors = false
+		deferRoleSelectors = false,
 	): void {
 		for (const key of Object.keys(record)) {
 			if (allowed.includes(key)) continue;
@@ -162,11 +162,7 @@ class MaterialReader {
 		}
 	}
 
-	required(
-		record: Record<string, unknown>,
-		path: string,
-		key: string
-	): unknown | undefined {
+	required(record: Record<string, unknown>, path: string, key: string): unknown | undefined {
 		if (!(key in record) || record[key] === undefined) {
 			this.problem(`${path}.${key}`, 'missing-field', `Provide ${key}.`);
 			return undefined;
@@ -266,7 +262,12 @@ function resultIssues(reader: MaterialReader): readonly MaterialIssue[] {
 	return dedupeMaterialIssues(reader.issues);
 }
 
-function readMapping(reader: MaterialReader, input: unknown, path: string, role?: MapRole): Mapping | null {
+function readMapping(
+	reader: MaterialReader,
+	input: unknown,
+	path: string,
+	role?: MapRole,
+): Mapping | null {
 	const record = reader.object(input, path);
 	if (record === null) return null;
 	const kind = record.kind;
@@ -280,7 +281,12 @@ function readMapping(reader: MaterialReader, input: unknown, path: string, role?
 		const repeatValue = reader.required(record, path, 'repeat');
 		const rotationValue = reader.required(record, path, 'rotation');
 		const offsetValue = reader.required(record, path, 'offset');
-		if (setValue === undefined || repeatValue === undefined || rotationValue === undefined || offsetValue === undefined) {
+		if (
+			setValue === undefined ||
+			repeatValue === undefined ||
+			rotationValue === undefined ||
+			offsetValue === undefined
+		) {
 			return null;
 		}
 		if (setValue !== 0 && setValue !== 1) {
@@ -295,7 +301,7 @@ function readMapping(reader: MaterialReader, input: unknown, path: string, role?
 					`${path}.repeat[${index}]`,
 					'out-of-range',
 					'Use a repeat in [1/1024, 1024].',
-					role
+					role,
 				);
 				return null;
 			}
@@ -308,7 +314,7 @@ function readMapping(reader: MaterialReader, input: unknown, path: string, role?
 			set: setValue,
 			repeat: [repeat[0], repeat[1]],
 			rotation: normalizeRotation(rotation),
-			offset: [normalizeOffset(offset[0]), normalizeOffset(offset[1])]
+			offset: [normalizeOffset(offset[0]), normalizeOffset(offset[1])],
 		};
 		return mapping;
 	}
@@ -333,7 +339,7 @@ function readMapping(reader: MaterialReader, input: unknown, path: string, role?
 				`${path}.metric.tileMeters[${index}]`,
 				'out-of-range',
 				'Use a tile edge in [0.01, 100] metres.',
-				role
+				role,
 			);
 			return null;
 		}
@@ -344,12 +350,17 @@ function readMapping(reader: MaterialReader, input: unknown, path: string, role?
 	const metric: Metric = {
 		tileMeters: [tileMeters[0], tileMeters[1]],
 		rotation: normalizeRotation(rotation),
-		offset: [normalizeOffset(offset[0]), normalizeOffset(offset[1])]
+		offset: [normalizeOffset(offset[0]), normalizeOffset(offset[1])],
 	};
 	return { kind, metric };
 }
 
-function readLocalImage(reader: MaterialReader, input: unknown, path: string, role: MapRole): LocalImage | null {
+function readLocalImage(
+	reader: MaterialReader,
+	input: unknown,
+	path: string,
+	role: MapRole,
+): LocalImage | null {
 	const record = reader.object(input, path);
 	if (record === null) return null;
 	reader.keys(record, path, ['textureId', 'shipped']);
@@ -366,7 +377,12 @@ function readLocalImage(reader: MaterialReader, input: unknown, path: string, ro
 	const shipped = reader.string(record.shipped, `${path}.shipped`);
 	if (shipped === null) return null;
 	if (!shipped.startsWith('/') || /\s/.test(shipped)) {
-		reader.problem(`${path}.shipped`, 'invalid-value', 'Use an absolute allowlisted shipped URI.', role);
+		reader.problem(
+			`${path}.shipped`,
+			'invalid-value',
+			'Use an absolute allowlisted shipped URI.',
+			role,
+		);
 		return null;
 	}
 	return { shipped };
@@ -377,12 +393,17 @@ function roleSelectorProblem(
 	record: Record<string, unknown>,
 	path: string,
 	allowed: readonly string[],
-	role: MapRole
+	role: MapRole,
 ): void {
 	for (const key of Object.keys(record)) {
 		if (allowed.includes(key)) continue;
 		if ((ROLE_SELECTORS as readonly string[]).includes(key)) {
-			reader.problem(`${path}.${key}`, 'wrong-role-selector', `Remove ${key} from the ${role} binding.`, role);
+			reader.problem(
+				`${path}.${key}`,
+				'wrong-role-selector',
+				`Remove ${key} from the ${role} binding.`,
+				role,
+			);
 		}
 	}
 }
@@ -392,7 +413,7 @@ function readColour<I>(
 	input: unknown,
 	path: string,
 	image: (input: unknown, path: string, role: MapRole) => I | null,
-	role: MapRole
+	role: MapRole,
 ): Colour<I> | null {
 	const record = reader.object(input, path);
 	if (record === null) return null;
@@ -416,7 +437,7 @@ function readNormal<I>(
 	input: unknown,
 	path: string,
 	image: (input: unknown, path: string, role: MapRole) => I | null,
-	role: MapRole
+	role: MapRole,
 ): Normal<I> | null {
 	const record = reader.object(input, path);
 	if (record === null) return null;
@@ -427,7 +448,10 @@ function readNormal<I>(
 	if (imageValue === undefined || conventionValue === undefined) return null;
 	const resolvedImage = image(imageValue, `${path}.image`, role);
 	if (resolvedImage === null) return null;
-	const convention = reader.tag<NormalConvention>(conventionValue, `${path}.convention`, ['+Y', '-Y']);
+	const convention = reader.tag<NormalConvention>(conventionValue, `${path}.convention`, [
+		'+Y',
+		'-Y',
+	]);
 	if (convention === null) return null;
 	let mapping: Mapping | undefined;
 	if (record.mapping !== undefined) {
@@ -443,7 +467,7 @@ function readScalar<I>(
 	input: unknown,
 	path: string,
 	image: (input: unknown, path: string, role: MapRole) => I | null,
-	role: MapRole
+	role: MapRole,
 ): Scalar<I> | null {
 	const record = reader.object(input, path);
 	if (record === null) return null;
@@ -452,10 +476,15 @@ function readScalar<I>(
 	const imageValue = reader.required(record, path, 'image');
 	const componentValue = reader.required(record, path, 'component');
 	const invertValue = reader.required(record, path, 'invert');
-	if (imageValue === undefined || componentValue === undefined || invertValue === undefined) return null;
+	if (imageValue === undefined || componentValue === undefined || invertValue === undefined)
+		return null;
 	const resolvedImage = image(imageValue, `${path}.image`, role);
 	if (resolvedImage === null) return null;
-	const component = reader.tag<ScalarComponent>(componentValue, `${path}.component`, SCALAR_COMPONENTS);
+	const component = reader.tag<ScalarComponent>(
+		componentValue,
+		`${path}.component`,
+		SCALAR_COMPONENTS,
+	);
 	const invert = reader.boolean(invertValue, `${path}.invert`);
 	if (component === null || invert === null) return null;
 	let mapping: Mapping | undefined;
@@ -481,7 +510,7 @@ function readMaps(
 	reader: MaterialReader,
 	input: unknown,
 	path: string,
-	image: (input: unknown, path: string, role: MapRole) => string | null
+	image: (input: unknown, path: string, role: MapRole) => string | null,
 ): Maps<string> | null {
 	const record = reader.object(input, path);
 	if (record === null) return null;
@@ -508,7 +537,7 @@ function readMaps(
 function readOverrideMaps(
 	reader: MaterialReader,
 	input: unknown,
-	path: string
+	path: string,
 ): OverrideMaps | null {
 	const record = reader.object(input, path);
 	if (record === null) return null;
@@ -549,18 +578,24 @@ export function readRecipe(input: unknown): RecipeReadResult {
 		reader.problem('$.profile', 'unknown-profile', `Use ${MATERIAL_PROFILE}.`);
 	}
 	const color = record.color === undefined ? null : reader.colour(record.color, '$.color');
-	const roughness = record.roughness === undefined ? null : reader.unit(record.roughness, '$.roughness');
-	const metalness = record.metalness === undefined ? null : reader.unit(record.metalness, '$.metalness');
+	const roughness =
+		record.roughness === undefined ? null : reader.unit(record.roughness, '$.roughness');
+	const metalness =
+		record.metalness === undefined ? null : reader.unit(record.metalness, '$.metalness');
 	const occlusionStrength =
 		record.occlusionStrength === undefined
 			? null
 			: reader.unit(record.occlusionStrength, '$.occlusionStrength');
 	const normalScale =
-		record.normalScale === undefined ? null : reader.normalScale(record.normalScale, '$.normalScale');
+		record.normalScale === undefined
+			? null
+			: reader.normalScale(record.normalScale, '$.normalScale');
 	const mapping =
 		record.mapping === undefined ? null : readMapping(reader, record.mapping, '$.mapping');
 	const maps =
-		record.maps === undefined ? null : readMaps(reader, record.maps, '$.maps', hashImageReader(reader));
+		record.maps === undefined
+			? null
+			: readMaps(reader, record.maps, '$.maps', hashImageReader(reader));
 
 	if (reader.issues.length > 0) return { success: false, issues: resultIssues(reader) };
 	const recipe: Recipe = {
@@ -571,7 +606,7 @@ export function readRecipe(input: unknown): RecipeReadResult {
 		occlusionStrength: occlusionStrength!,
 		normalScale: normalScale!,
 		mapping: mapping!,
-		maps: maps as Maps<Hash>
+		maps: maps as Maps<Hash>,
 	};
 	return { success: true, recipe: deepFreeze(recipe) };
 }
@@ -594,7 +629,8 @@ export function readOverrides(input: unknown): OverridesReadResult {
 	if (record === null) return { success: false, issues: resultIssues(reader) };
 	reader.keys(record, '$', OVERRIDE_KEYS);
 
-	const color = record.color === undefined ? undefined : readFinishColor(reader, record.color, '$.color');
+	const color =
+		record.color === undefined ? undefined : readFinishColor(reader, record.color, '$.color');
 	const roughness =
 		record.roughness === undefined ? undefined : reader.unit(record.roughness, '$.roughness');
 	const metalness =
@@ -609,23 +645,28 @@ export function readOverrides(input: unknown): OverridesReadResult {
 			: reader.normalScale(record.normalScale, '$.normalScale');
 	const mapping =
 		record.mapping === undefined ? undefined : readMapping(reader, record.mapping, '$.mapping');
-	const maps = record.maps === undefined ? undefined : readOverrideMaps(reader, record.maps, '$.maps');
+	const maps =
+		record.maps === undefined ? undefined : readOverrideMaps(reader, record.maps, '$.maps');
 
 	if (reader.issues.length > 0) return { success: false, issues: resultIssues(reader) };
 	const overrides: FinishOverrides = {
-		...(typeof color === 'string' || (color !== null && typeof color === 'object') ? { color } : {}),
+		...(typeof color === 'string' || (color !== null && typeof color === 'object')
+			? { color }
+			: {}),
 		...(typeof roughness === 'number' ? { roughness } : {}),
 		...(typeof metalness === 'number' ? { metalness } : {}),
 		...(typeof occlusionStrength === 'number' ? { occlusionStrength } : {}),
 		...(typeof normalScale === 'number' ? { normalScale } : {}),
 		...(mapping !== null && mapping !== undefined ? { mapping } : {}),
-		...(maps !== null && maps !== undefined ? { maps } : {})
+		...(maps !== null && maps !== undefined ? { maps } : {}),
 	};
 	return { success: true, overrides: deepFreeze(overrides) };
 }
 
 /** Drop empty override containers; `undefined` means "no overrides authored". */
-export function pruneOverrides(overrides: FinishOverrides | undefined): FinishOverrides | undefined {
+export function pruneOverrides(
+	overrides: FinishOverrides | undefined,
+): FinishOverrides | undefined {
 	if (overrides === undefined) return undefined;
 	const next: Record<string, unknown> = {};
 	for (const key of OVERRIDE_KEYS) {
@@ -692,8 +733,8 @@ export function readFinish(input: unknown): FinishReadResult {
 						reader.issues.push(
 							...read.issues.map((issue) => ({
 								...issue,
-								path: issue.path === '$' ? '$.overrides' : `$.overrides${issue.path.slice(1)}`
-							}))
+								path: issue.path === '$' ? '$.overrides' : `$.overrides${issue.path.slice(1)}`,
+							})),
 						);
 						return undefined;
 					}
@@ -707,7 +748,7 @@ export function readFinish(input: unknown): FinishReadResult {
 		id,
 		name,
 		base,
-		...(overrides === undefined ? {} : { overrides })
+		...(overrides === undefined ? {} : { overrides }),
 	};
 	return { success: true, finish: deepFreeze(finish) };
 }
@@ -718,7 +759,7 @@ export function readFinish(input: unknown): FinishReadResult {
  * enumerator; a definition's digest bindings are a separate list.
  */
 export function finishTextureBindings(
-	finish: Finish
+	finish: Finish,
 ): readonly { readonly role: MapRole; readonly textureId: string }[] {
 	const bindings: { role: MapRole; textureId: string }[] = [];
 	for (const role of MATERIAL_MAP_ROLES) {

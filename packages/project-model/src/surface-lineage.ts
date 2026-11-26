@@ -6,7 +6,13 @@
  * from the accepted Scene snapshot, validates the correspondence, and prunes
  * refs whose Layout identity retired.
  */
-import { normalizeLayoutSurfaceLineage, resolveLayoutSurface, surfaceKey, type LayoutSurfaceLineage, type LayoutSurfaceRef } from '@portfolio/layout-core/plan';
+import {
+	normalizeLayoutSurfaceLineage,
+	resolveLayoutSurface,
+	surfaceKey,
+	type LayoutSurfaceLineage,
+	type LayoutSurfaceRef,
+} from '@portfolio/layout-core/plan';
 import type { LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 import type { CameraFreeSceneDocument } from './units/types';
 import type { SceneSurfaceFinish, SceneSurfaceRef } from './scene';
@@ -23,28 +29,39 @@ export type SurfaceLineageReport = {
 
 function surfaceLabel(surface: LayoutSurfaceRef): string {
 	switch (surface.kind) {
-		case 'wall-side': return `Wall ${surface.wallId} ${surface.side}`;
-		case 'room-floor': return `Space ${surface.roomId} floor`;
-		case 'room-lid': return `Space ${surface.roomId} lid`;
-		case 'region-face': return `Region ${surface.regionId} ${surface.face}`;
+		case 'wall-side':
+			return `Wall ${surface.wallId} ${surface.side}`;
+		case 'room-floor':
+			return `Space ${surface.roomId} floor`;
+		case 'room-lid':
+			return `Space ${surface.roomId} lid`;
+		case 'region-face':
+			return `Region ${surface.regionId} ${surface.face}`;
 	}
 }
 
 /** One deterministic preview line derived from the report the commit uses. */
 export function surfaceLineageConsequence(report: SurfaceLineageReport): string {
 	if (report.replaced.length === 0) return 'No competing surface Finishes.';
-	return report.replaced.map(({ target, winner, losing }) =>
-		`On ${surfaceLabel(target)}, keep the Finish from ${surfaceLabel(winner)}; replace the Finish from ${surfaceLabel(losing)}.`
-	).join(' ');
+	return report.replaced
+		.map(
+			({ target, winner, losing }) =>
+				`On ${surfaceLabel(target)}, keep the Finish from ${surfaceLabel(winner)}; replace the Finish from ${surfaceLabel(losing)}.`,
+		)
+		.join(' ');
 }
 
 export type SurfaceLineageResult =
-	| { readonly kind: 'ready'; readonly scene: CameraFreeSceneDocument; readonly report: SurfaceLineageReport }
+	| {
+			readonly kind: 'ready';
+			readonly scene: CameraFreeSceneDocument;
+			readonly report: SurfaceLineageReport;
+	  }
 	| {
 			readonly kind: 'rejected';
 			readonly code: 'surface_lineage_invalid' | 'surface_reference_orphaned';
 			readonly message: string;
-		  };
+	  };
 
 /**
  * Apply one Layout topology operation's correspondence to the baseline Scene.
@@ -58,7 +75,9 @@ export function applySurfaceLineage(input: {
 	readonly lineage: LayoutSurfaceLineage;
 }): SurfaceLineageResult {
 	const before = input.beforeScene.surfaceFinishes ?? [];
-	const beforeByKey = new Map(before.map((assignment) => [surfaceKey(assignment.surface), assignment]));
+	const beforeByKey = new Map(
+		before.map((assignment) => [surfaceKey(assignment.surface), assignment]),
+	);
 	for (const entry of input.lineage) {
 		for (const source of entry.from) {
 			if (
@@ -68,7 +87,7 @@ export function applySurfaceLineage(input: {
 				return {
 					kind: 'rejected',
 					code: 'surface_lineage_invalid',
-					message: `Surface lineage source "${surfaceKey(source)}" is retired in the accepted Layout.`
+					message: `Surface lineage source "${surfaceKey(source)}" is retired in the accepted Layout.`,
 				};
 			}
 		}
@@ -76,7 +95,7 @@ export function applySurfaceLineage(input: {
 	const normalized = normalizeLayoutSurfaceLineage({
 		beforeLayout: input.beforeLayout,
 		afterLayout: input.afterLayout,
-		lineage: input.lineage
+		lineage: input.lineage,
 	});
 	if (normalized.kind === 'rejected') {
 		return { kind: 'rejected', code: 'surface_lineage_invalid', message: normalized.message };
@@ -85,15 +104,27 @@ export function applySurfaceLineage(input: {
 	for (const entry of normalized.lineage) {
 		const targetKey = surfaceKey(entry.to);
 		if (seenTargets.has(targetKey)) {
-			return { kind: 'rejected', code: 'surface_lineage_invalid', message: `Surface lineage has duplicate target "${targetKey}".` };
+			return {
+				kind: 'rejected',
+				code: 'surface_lineage_invalid',
+				message: `Surface lineage has duplicate target "${targetKey}".`,
+			};
 		}
 		seenTargets.add(targetKey);
 		if (resolveLayoutSurface(input.afterLayout, entry.to) === 'retired') {
-			return { kind: 'rejected', code: 'surface_lineage_invalid', message: `Surface lineage target "${targetKey}" is retired in the candidate Layout.` };
+			return {
+				kind: 'rejected',
+				code: 'surface_lineage_invalid',
+				message: `Surface lineage target "${targetKey}" is retired in the candidate Layout.`,
+			};
 		}
 		for (const source of entry.from) {
 			if (resolveLayoutSurface(input.beforeLayout, source) === 'retired') {
-				return { kind: 'rejected', code: 'surface_lineage_invalid', message: `Surface lineage source "${surfaceKey(source)}" is retired in the accepted Layout.` };
+				return {
+					kind: 'rejected',
+					code: 'surface_lineage_invalid',
+					message: `Surface lineage source "${surfaceKey(source)}" is retired in the accepted Layout.`,
+				};
 			}
 		}
 	}
@@ -135,9 +166,10 @@ export function applySurfaceLineage(input: {
 	}
 
 	const dropped = before
-		.filter((assignment) =>
-			resolveLayoutSurface(input.afterLayout, assignment.surface) === 'retired' &&
-			!movedFrom.has(surfaceKey(assignment.surface))
+		.filter(
+			(assignment) =>
+				resolveLayoutSurface(input.afterLayout, assignment.surface) === 'retired' &&
+				!movedFrom.has(surfaceKey(assignment.surface)),
 		)
 		.map((assignment) => assignment.surface);
 	const surfaceFinishes = [...assignments.values()].sort((a, b) => {
@@ -146,7 +178,8 @@ export function applySurfaceLineage(input: {
 		return left < right ? -1 : left > right ? 1 : 0;
 	});
 	const scene: CameraFreeSceneDocument = { ...input.beforeScene };
-	if (surfaceFinishes.length === 0) delete (scene as { surfaceFinishes?: readonly SceneSurfaceFinish[] }).surfaceFinishes;
+	if (surfaceFinishes.length === 0)
+		delete (scene as { surfaceFinishes?: readonly SceneSurfaceFinish[] }).surfaceFinishes;
 	else scene.surfaceFinishes = surfaceFinishes;
 	return { kind: 'ready', scene, report: { replaced, dropped, pruned } };
 }
@@ -154,11 +187,13 @@ export function applySurfaceLineage(input: {
 /** Identity set of assignments that are already retired in the given Layout. */
 export function retiredSurfaceReferenceKeys(
 	scene: Pick<CameraFreeSceneDocument, 'surfaceFinishes'>,
-	layout: LayoutDocumentWallFirst
+	layout: LayoutDocumentWallFirst,
 ): ReadonlySet<string> {
-	return new Set((scene.surfaceFinishes ?? [])
-		.filter((assignment) => resolveLayoutSurface(layout, assignment.surface) === 'retired')
-		.map((assignment) => surfaceKey(assignment.surface)));
+	return new Set(
+		(scene.surfaceFinishes ?? [])
+			.filter((assignment) => resolveLayoutSurface(layout, assignment.surface) === 'retired')
+			.map((assignment) => surfaceKey(assignment.surface)),
+	);
 }
 
 /** Find retired refs introduced by a candidate, by stable identity set. */

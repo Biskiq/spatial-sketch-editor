@@ -1,31 +1,31 @@
 /**
- * The curated catalogue's presentation side table (T2.S8 U1).
+ * The curated catalogue's presentation side table.
  *
  * Everything here is presentation, never recipe: it sits outside a Finish's
  * canonical identity, so changing it never changes a Finish digest. It joins
  * `materials` by id.
  *
  * - **Framing hints**: the physical window the sample-tile thumbnail shows, in
- *   metres, and where its centre sits on the tile (tile fractions). A hint
- *   frames a piece of the material (a few boards, a brick course, a few linen
- *   threads), never a repeat count. An entry without a hint, and every project
- *   or imported Finish, derives its window from its tile size
- *   (`defaultSampleTileFraming`).
+ *  metres, and where its centre sits on the tile (tile fractions). A hint
+ *  frames a piece of the material (a few boards, a brick course, a few linen
+ *  threads), never a repeat count. An entry without a hint, and every project
+ *  or imported Finish, derives its window from its tile size
+ *  (`defaultSampleTileFraming`).
  * - **Variants** (D1): two catalogue entries that differ only by a Finish
- *   factor on one image set present as ONE card with a variant chip. F's
- *   distinctness rule applies between cards, never between a card's variants.
+ *  factor on one image set present as ONE card with a variant chip. F's
+ *  distinctness rule applies between cards, never between a card's variants.
  */
 import type { MaterialId } from '$lib/types/materials';
 import type { SampleTileFraming } from '$lib/render/materials/sample-tile';
 import {
 	DEFAULT_SHEEN_TARGETS,
 	type FinishTreatmentFacts,
-	type SheenTargets
+	type SheenTargets,
 } from '@portfolio/project-model/scene-planning';
 
 const frame = (windowMeters: number, cx = 0.5, cy = 0.5): SampleTileFraming => ({
 	windowMeters,
-	centre: [cx, cy]
+	centre: [cx, cy],
 });
 
 export const materialThumbnailFraming: Readonly<Partial<Record<MaterialId, SampleTileFraming>>> = {
@@ -49,7 +49,7 @@ export const materialThumbnailFraming: Readonly<Partial<Record<MaterialId, Sampl
 	'textile-linen': frame(0.09),
 	'textile-carpet-loop': frame(0.24),
 	'leather-cognac': frame(0.16),
-	'synthetic-plastic-matte': frame(0.22)
+	'synthetic-plastic-matte': frame(0.22),
 };
 
 export type MaterialVariantCard = {
@@ -67,13 +67,13 @@ export const materialVariantCards: readonly MaterialVariantCard[] = [
 		label: 'Concrete',
 		variants: [
 			{ id: 'concrete-smooth', label: 'Matte' },
-			{ id: 'concrete-polished', label: 'Polished' }
-		]
-	}
+			{ id: 'concrete-polished', label: 'Polished' },
+		],
+	},
 ];
 
 const variantPrimary = new Map<MaterialId, MaterialId>(
-	materialVariantCards.flatMap((card) => card.variants.map((v) => [v.id, card.primary] as const))
+	materialVariantCards.flatMap((card) => card.variants.map((v) => [v.id, card.primary] as const)),
 );
 
 export function variantCardOf(id: MaterialId): MaterialVariantCard | undefined {
@@ -95,7 +95,7 @@ export type FoldedCuratedCard<T extends { readonly id: MaterialId }> = T & {
  */
 export function foldVariantCards<T extends { readonly id: MaterialId }>(
 	entries: readonly T[],
-	shown: (primary: MaterialId) => MaterialId | undefined = () => undefined
+	shown: (primary: MaterialId) => MaterialId | undefined = () => undefined,
 ): FoldedCuratedCard<T>[] {
 	const cards: FoldedCuratedCard<T>[] = [];
 	for (const entry of entries) {
@@ -107,7 +107,10 @@ export function foldVariantCards<T extends { readonly id: MaterialId }>(
 		if (entry.id !== group.primary) continue;
 		// A choice outside this card (another card's pick) never changes what it shows.
 		const wanted = shown(group.primary);
-		const chosen = wanted !== undefined && group.variants.some((variant) => variant.id === wanted) ? wanted : group.primary;
+		const chosen =
+			wanted !== undefined && group.variants.some((variant) => variant.id === wanted)
+				? wanted
+				: group.primary;
 		const pick = entries.find((candidate) => candidate.id === chosen) ?? entry;
 		cards.push({ ...pick, cardLabel: group.label, variants: group.variants });
 	}
@@ -124,7 +127,7 @@ export const materialFamilies = [
 	{ id: 'metal', label: 'Metal' },
 	{ id: 'textile', label: 'Textile' },
 	{ id: 'leather', label: 'Leather' },
-	{ id: 'synthetic-paper', label: 'Synthetic & Paper' }
+	{ id: 'synthetic-paper', label: 'Synthetic & Paper' },
 ] as const;
 
 export type MaterialFamilyId = (typeof materialFamilies)[number]['id'];
@@ -140,7 +143,7 @@ const familyByPrefix: Readonly<Record<string, MaterialFamilyId>> = {
 	textile: 'textile',
 	leather: 'leather',
 	synthetic: 'synthetic-paper',
-	paper: 'synthetic-paper'
+	paper: 'synthetic-paper',
 };
 
 /** A curated entry's family, read from its id's leading word; null for an entry outside the taxonomy. */
@@ -150,18 +153,22 @@ export function materialFamilyOf(id: MaterialId): MaterialFamilyId | null {
 
 /** Entries grouped by family in taxonomy order, each group in catalogue order; an unknown family closes the list as "Other". */
 export function groupByMaterialFamily<T extends { readonly id: MaterialId }>(
-	entries: readonly T[]
-): { readonly id: MaterialFamilyId | 'other'; readonly label: string; readonly entries: readonly T[] }[] {
+	entries: readonly T[],
+): {
+	readonly id: MaterialFamilyId | 'other';
+	readonly label: string;
+	readonly entries: readonly T[];
+}[] {
 	const groups = [...materialFamilies, { id: 'other', label: 'Other' } as const].map((family) => ({
 		id: family.id,
 		label: family.label,
-		entries: entries.filter((entry) => (materialFamilyOf(entry.id) ?? 'other') === family.id)
+		entries: entries.filter((entry) => (materialFamilyOf(entry.id) ?? 'other') === family.id),
 	}));
 	return groups.filter((group) => group.entries.length > 0);
 }
 
 /**
- * D6 sheen facts (T2.S8 U4). The scanned mean of each curated entry's roughness
+ * D6 sheen facts. The scanned mean of each curated entry's roughness
  * image, from F's qualified catalogue evidence
  * (`docs/roadmap/t2-look-atmosphere/s8-professional-material-foundation/evidence/s8-f-catalogue.json`,
  * `sets[].measurements.qualified.roughnessMean`), keyed by catalogue id: entries
@@ -189,7 +196,7 @@ export const materialRoughnessMean: Readonly<Partial<Record<MaterialId, number>>
 	'textile-linen': 0.6593,
 	'textile-carpet-loop': 0.6481,
 	'leather-cognac': 0.6171,
-	'synthetic-plastic-matte': 0.4007
+	'synthetic-plastic-matte': 0.4007,
 };
 
 /** D6: the sheen targets on effective roughness, one row per family. */
@@ -202,14 +209,22 @@ export const sheenTargetsByFamily: Readonly<Record<MaterialFamilyId, SheenTarget
 	metal: DEFAULT_SHEEN_TARGETS,
 	textile: DEFAULT_SHEEN_TARGETS,
 	leather: DEFAULT_SHEEN_TARGETS,
-	'synthetic-paper': DEFAULT_SHEEN_TARGETS
+	'synthetic-paper': DEFAULT_SHEEN_TARGETS,
 };
 
 /** Families whose colour reads as a stain by default: grain and pattern stay. */
-const stainFamilies: ReadonlySet<MaterialFamilyId> = new Set(['wood', 'stone', 'masonry', 'leather', 'textile']);
+const stainFamilies: ReadonlySet<MaterialFamilyId> = new Set([
+	'wood',
+	'stone',
+	'masonry',
+	'leather',
+	'textile',
+]);
 
 /** The presentation facts the Finish treatment words read (labels come from the catalogue). */
-export function materialTreatmentFacts(labelForMaterial: (id: MaterialId) => string): FinishTreatmentFacts {
+export function materialTreatmentFacts(
+	labelForMaterial: (id: MaterialId) => string,
+): FinishTreatmentFacts {
 	return {
 		labelForMaterial,
 		stainsByDefault: (id) => {
@@ -220,6 +235,6 @@ export function materialTreatmentFacts(labelForMaterial: (id: MaterialId) => str
 		sheenTargetsOf: (id) => {
 			const family = materialFamilyOf(id);
 			return family === null ? DEFAULT_SHEEN_TARGETS : sheenTargetsByFamily[family];
-		}
+		},
 	};
 }

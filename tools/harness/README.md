@@ -2,10 +2,10 @@
 
 The classifier and the gate are the only contract here.
 
-- `plan.mjs` classifies the tested delta and prints the profile. It fails on an
-  unknown event, a checkout that does not match the tested SHA, an unreachable
-  base or an unreadable delta. Pull requests run Full until the queue has run
-  cleanly (D2); only a documentation/CSS-only delta stays Minimal.
+- `plan.mjs` classifies the tested delta and publishes the profile and job flags.
+  Code pull requests run Lean with heavy and API verification for their affected
+  paths. Eligible Markdown and styles run Minimal. Merge groups and manual
+  dispatch run Full. Invalid events, checkouts and deltas fail the gate.
 - `matrix.mjs` derives the suite matrix from `suites.mjs`. A suite runs through
   `run-suite.mjs`, which fails on a non-zero exit and on a Vitest lane that
   collects zero files or zero tests.

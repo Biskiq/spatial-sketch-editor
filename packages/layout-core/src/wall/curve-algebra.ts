@@ -8,32 +8,40 @@
  * here is exact:
  *
  * - {@link subdivideWallCubicSpan} is de Casteljau — the two halves together
- *   are the original cubic, point for point;
+ *  are the original cubic, point for point;
  * - {@link resolveWallCurveSplit} is the ONE split-distance authority: it
- *   converts a physical arc distance into a span index, a parameter, a point,
- *   a resolved distance and the two fragment partitions. Junction placement,
- *   Opening rebasing, fragment metrics and diagnostics all consume that one
- *   result and never recompute a distance, a parameter or a range;
+ *  converts a physical arc distance into a span index, a parameter, a point,
+ *  a resolved distance and the two fragment partitions. Junction placement,
+ *  Opening rebasing, fragment metrics and diagnostics all consume that one
+ *  result and never recompute a distance, a parameter or a range;
  * - {@link insertWallCurveKnot} is that same subdivision with the seam kept as
- *   an interior knot, so inserting a knot without moving it cannot change the
- *   sampled centerline;
+ *  an interior knot, so inserting a knot without moving it cannot change the
+ *  sampled centerline;
  * - {@link deleteWallCurveKnot} merges the two adjacent cubics with no refit
- *   and never falls back to `line`.
+ *  and never falls back to `line`.
  *
  * Two tolerances are explicit and deliberately separate:
  *
  * - {@link CURVE_ARC_LENGTH_TOLERANCE} bounds how faithfully a distance maps to
- *   a parameter (quadrature and bisection only — subdivision stays exact);
+ *  a parameter (quadrature and bisection only — subdivision stays exact);
  * - {@link JUNCTION_COINCIDENCE_EPSILON} is the canonical **knot-identity**
- *   tolerance: a request resolving onto an existing knot promotes it instead of
- *   subdividing, and a request resolving onto an endpoint Junction rejects.
- *   A caller that already knows it hit a knot (a knot handle, a wall-split at a
- *   knot) uses {@link resolveWallCurveSplitAtKnot}, which needs no tolerance at
- *   all.
+ *  tolerance: a request resolving onto an existing knot promotes it instead of
+ *  subdividing, and a request resolving onto an endpoint Junction rejects.
+ *  A caller that already knows it hit a knot (a knot handle, a wall-split at a
+ *  knot) uses {@link resolveWallCurveSplitAtKnot}, which needs no tolerance at
+ *  all.
  */
 import type { LayoutVec2 } from '../geometry/coordinates';
 import type { LayoutWallCubicSpan, LayoutWallCurveKnot } from './types';
-import { CURVE_ENDPOINT_EPSILON, cubicBezierArcLength, cubicBezierArcLengthAt, cubicBezierPoint, deriveCubicSpanControls, spansToCubics, type CubicBezierShape } from '../geometry/curve';
+import {
+	CURVE_ENDPOINT_EPSILON,
+	cubicBezierArcLength,
+	cubicBezierArcLengthAt,
+	cubicBezierPoint,
+	deriveCubicSpanControls,
+	spansToCubics,
+	type CubicBezierShape,
+} from '../geometry/curve';
 import { coincidesAsJunction } from './junction-identity';
 
 /** Bisection cap for arc-length inversion (a guard, not a resolution). */
@@ -57,7 +65,7 @@ export function wallCurveChainPoints(chain: WallCurveChain): LayoutVec2[] {
 	return [
 		[chain.startPoint[0], chain.startPoint[1]] as LayoutVec2,
 		...chain.knots.map((knot) => [knot.point[0], knot.point[1]] as LayoutVec2),
-		[chain.endPoint[0], chain.endPoint[1]] as LayoutVec2
+		[chain.endPoint[0], chain.endPoint[1]] as LayoutVec2,
 	];
 }
 
@@ -93,7 +101,7 @@ export function wallCurveKnotDistanceAt(chain: WallCurveChain, index: number): n
 /** Exact arc distance of the knot with this ID, or `undefined`. */
 export function wallCurveKnotArcDistance(
 	chain: WallCurveChain,
-	knotId: string
+	knotId: string,
 ): number | undefined {
 	const index = chain.knots.findIndex((knot) => knot.id === knotId);
 	return index < 0 ? undefined : wallCurveKnotDistanceAt(chain, index);
@@ -109,7 +117,7 @@ export function subdivideWallCubicSpan(
 	span: LayoutWallCubicSpan,
 	startPoint: LayoutVec2,
 	endPoint: LayoutVec2,
-	t: number
+	t: number,
 ): { left: LayoutWallCubicSpan; right: LayoutWallCubicSpan; point: LayoutVec2 } {
 	const amount = Math.min(1, Math.max(0, t));
 	if (Math.abs(startPoint[0]) > 1e6 || Math.abs(startPoint[1]) > 1e6) {
@@ -126,9 +134,15 @@ export function subdivideWallCubicSpan(
 		const rightHandleOut = lerp(middle, last, amount);
 		const localPoint = lerp(leftHandleIn, rightHandleOut, amount);
 		return {
-			left: { handleOut: [ox + first[0], oz + first[1]], handleIn: [ox + leftHandleIn[0], oz + leftHandleIn[1]] },
-			right: { handleOut: [ox + rightHandleOut[0], oz + rightHandleOut[1]], handleIn: [ox + last[0], oz + last[1]] },
-			point: [ox + localPoint[0], oz + localPoint[1]]
+			left: {
+				handleOut: [ox + first[0], oz + first[1]],
+				handleIn: [ox + leftHandleIn[0], oz + leftHandleIn[1]],
+			},
+			right: {
+				handleOut: [ox + rightHandleOut[0], oz + rightHandleOut[1]],
+				handleIn: [ox + last[0], oz + last[1]],
+			},
+			point: [ox + localPoint[0], oz + localPoint[1]],
 		};
 	}
 	const first = lerp(startPoint, span.handleOut, amount);
@@ -140,7 +154,7 @@ export function subdivideWallCubicSpan(
 	return {
 		left: { handleOut: first, handleIn: leftHandleIn },
 		right: { handleOut: rightHandleOut, handleIn: last },
-		point
+		point,
 	};
 }
 
@@ -175,10 +189,7 @@ export type ResolvedWallSplitResult = ResolvedWallSplit & {
 };
 
 /** Why a split request cannot be resolved. */
-export type WallSplitRejection =
-	| 'degenerate_chain'
-	| 'split_out_of_range'
-	| 'split_at_endpoint';
+export type WallSplitRejection = 'degenerate_chain' | 'split_out_of_range' | 'split_at_endpoint';
 
 export type WallSplitResolution =
 	| { kind: 'resolved'; result: ResolvedWallSplitResult }
@@ -198,7 +209,7 @@ function partitionWallCurveChain(
 	chain: WallCurveChain,
 	totalLength: number,
 	resolved: ResolvedWallSplit,
-	knotIndex: number | undefined
+	knotIndex: number | undefined,
 ): { a: WallCurveFragment; b: WallCurveFragment } {
 	const { spanIndex, t, distance } = resolved;
 	if (knotIndex !== undefined) {
@@ -208,13 +219,13 @@ function partitionWallCurveChain(
 			a: {
 				knots: chain.knots.slice(0, knotIndex).map(cloneKnot),
 				spans: chain.spans.slice(0, knotIndex + 1).map(cloneSpan),
-				length: distance
+				length: distance,
 			},
 			b: {
 				knots: chain.knots.slice(knotIndex + 1).map(cloneKnot),
 				spans: chain.spans.slice(knotIndex + 1).map(cloneSpan),
-				length: totalLength - distance
-			}
+				length: totalLength - distance,
+			},
 		};
 	}
 	const points = wallCurveChainPoints(chain);
@@ -222,19 +233,19 @@ function partitionWallCurveChain(
 		chain.spans[spanIndex]!,
 		points[spanIndex]!,
 		points[spanIndex + 1]!,
-		t
+		t,
 	);
 	return {
 		a: {
 			knots: chain.knots.slice(0, spanIndex).map(cloneKnot),
 			spans: [...chain.spans.slice(0, spanIndex).map(cloneSpan), left],
-			length: distance
+			length: distance,
 		},
 		b: {
 			knots: chain.knots.slice(spanIndex).map(cloneKnot),
 			spans: [right, ...chain.spans.slice(spanIndex + 1).map(cloneSpan)],
-			length: totalLength - distance
-		}
+			length: totalLength - distance,
+		},
 	};
 }
 
@@ -249,7 +260,7 @@ function partitionWallCurveChain(
  */
 export function resolveWallCurveSplit(
 	chain: WallCurveChain,
-	distance: number
+	distance: number,
 ): WallSplitResolution {
 	if (!wallCurveChainSatisfiesInvariant(chain) || chain.spans.length === 0) {
 		return reject('degenerate_chain', 'Wall centerline has no cubic span to split.');
@@ -262,15 +273,15 @@ export function resolveWallCurveSplit(
 	if (!Number.isFinite(distance) || distance < 0 || distance > totalLength) {
 		return reject(
 			'split_out_of_range',
-			`Split distance ${distance} is outside the open interval (0, ${totalLength}).`
+			`Split distance ${distance} is outside the open interval (0, ${totalLength}).`,
 		);
 	}
 	// A request exactly at either end names an existing endpoint rather than a
-	// distance error, so callers keep reporting the P23.8 endpoint code.
+	// distance error, so callers keep reporting the endpoint code.
 	if (distance === 0 || distance === totalLength) {
 		return reject(
 			'split_at_endpoint',
-			`Split distance ${distance} is an endpoint of the Wall centerline.`
+			`Split distance ${distance} is an endpoint of the Wall centerline.`,
 		);
 	}
 
@@ -302,7 +313,7 @@ export function resolveWallCurveSplit(
 				chain.spans[spanIndex]!,
 				wallCurveChainPoints(chain)[spanIndex]!,
 				wallCurveChainPoints(chain)[spanIndex + 1]!,
-				t
+				t,
 			).point
 		: cubicBezierPoint(cubic, t);
 	const resolvedDistance = cumulative + cubicBezierArcLengthAt(cubic, t);
@@ -318,15 +329,15 @@ export function resolveWallCurveSplit(
 			t: 1,
 			point: [knot.point[0], knot.point[1]] as LayoutVec2,
 			distance: knotDistance,
-			promotedKnotId: knot.id
+			promotedKnotId: knot.id,
 		};
 		return {
 			kind: 'resolved',
 			result: {
 				...resolved,
 				totalLength,
-				fragments: partitionWallCurveChain(chain, totalLength, resolved, knotIndex)
-			}
+				fragments: partitionWallCurveChain(chain, totalLength, resolved, knotIndex),
+			},
 		};
 	}
 	if (
@@ -336,7 +347,7 @@ export function resolveWallCurveSplit(
 	) {
 		return reject(
 			'split_at_endpoint',
-			`Split distance ${distance} resolves onto an endpoint Junction.`
+			`Split distance ${distance} resolves onto an endpoint Junction.`,
 		);
 	}
 
@@ -346,8 +357,8 @@ export function resolveWallCurveSplit(
 		result: {
 			...resolved,
 			totalLength,
-			fragments: partitionWallCurveChain(chain, totalLength, resolved, undefined)
-		}
+			fragments: partitionWallCurveChain(chain, totalLength, resolved, undefined),
+		},
 	};
 }
 
@@ -357,7 +368,7 @@ export function resolveWallCurveSplit(
  */
 export function resolveWallCurveSplitAtKnot(
 	chain: WallCurveChain,
-	knotId: string
+	knotId: string,
 ): WallSplitResolution {
 	const knotIndex = chain.knots.findIndex((knot) => knot.id === knotId);
 	if (knotIndex < 0) {
@@ -373,15 +384,15 @@ export function resolveWallCurveSplitAtKnot(
 		spanIndex: knotIndex,
 		t: 1,
 		point: [knot.point[0], knot.point[1]] as LayoutVec2,
-		promotedKnotId: knot.id
+		promotedKnotId: knot.id,
 	};
 	return {
 		kind: 'resolved',
 		result: {
 			...resolved,
 			totalLength,
-			fragments: partitionWallCurveChain(chain, totalLength, resolved, knotIndex)
-		}
+			fragments: partitionWallCurveChain(chain, totalLength, resolved, knotIndex),
+		},
 	};
 }
 
@@ -394,7 +405,7 @@ export type WallCurveEditRejection =
 
 /**
  * Move exactly one bend point, preserving every stored span the moved knot
- * does not semantically touch (P23.11 blocker 1).
+ * does not semantically touch (blocker 1).
  *
  * The stored chain — not a re-derivation from the remaining points — is the
  * geometry authority. The two controls that face the moved knot are derived
@@ -413,7 +424,7 @@ export type WallCurveEditRejection =
 export function moveWallCurveKnot(
 	chain: WallCurveChain,
 	knotId: string,
-	point: LayoutVec2
+	point: LayoutVec2,
 ):
 	| { kind: 'moved'; knots: LayoutWallCurveKnot[]; spans: LayoutWallCubicSpan[] }
 	| { kind: 'rejected'; code: WallCurveEditRejection; message: string } {
@@ -422,7 +433,7 @@ export function moveWallCurveKnot(
 		return {
 			kind: 'rejected',
 			code: 'knot_not_found',
-			message: `Wall centerline has no knot '${knotId}'.`
+			message: `Wall centerline has no knot '${knotId}'.`,
 		};
 	}
 	if (!point.every((value) => Number.isFinite(value))) {
@@ -432,7 +443,7 @@ export function moveWallCurveKnot(
 		return {
 			kind: 'rejected',
 			code: 'degenerate_chain',
-			message: 'Wall centerline has no span pair around the knot.'
+			message: 'Wall centerline has no span pair around the knot.',
 		};
 	}
 	// Chain vertices `start, …knots, end`: the moved knot is `pointIndex`.
@@ -452,7 +463,7 @@ export function moveWallCurveKnot(
 	const knots = chain.knots.map((knot, index) =>
 		index === knotIndex
 			? ({ id: knot.id, point: [point[0], point[1]] as LayoutVec2 } satisfies LayoutWallCurveKnot)
-			: cloneKnot(knot)
+			: cloneKnot(knot),
 	);
 	return { kind: 'moved', knots, spans };
 }
@@ -468,20 +479,26 @@ export function moveWallCurveKnot(
 export function insertWallCurveKnot(
 	chain: WallCurveChain,
 	distance: number,
-	knotId: string
+	knotId: string,
 ):
-	| { kind: 'inserted'; resolution: ResolvedWallSplitResult; knots: LayoutWallCurveKnot[]; spans: LayoutWallCubicSpan[]; knot: LayoutWallCurveKnot }
+	| {
+			kind: 'inserted';
+			resolution: ResolvedWallSplitResult;
+			knots: LayoutWallCurveKnot[];
+			spans: LayoutWallCubicSpan[];
+			knot: LayoutWallCurveKnot;
+	  }
 	| { kind: 'rejected'; code: WallCurveEditRejection; message: string } {
 	const resolution = resolveWallCurveSplit(chain, distance);
 	if (resolution.kind === 'rejected') return resolution;
 	const {
-		result: { fragments, point }
+		result: { fragments, point },
 	} = resolution;
 	if (resolution.result.promotedKnotId !== undefined) {
 		return {
 			kind: 'rejected',
 			code: 'knot_already_exists',
-			message: `A bend point already sits at the requested distance.`
+			message: `A bend point already sits at the requested distance.`,
 		};
 	}
 	const knot: LayoutWallCurveKnot = { id: knotId, point: [point[0], point[1]] as LayoutVec2 };
@@ -490,7 +507,7 @@ export function insertWallCurveKnot(
 		resolution: resolution.result,
 		knots: [...fragments.a.knots, knot, ...fragments.b.knots],
 		spans: [...fragments.a.spans, ...fragments.b.spans],
-		knot
+		knot,
 	};
 }
 
@@ -505,7 +522,7 @@ export function insertWallCurveKnot(
  */
 export function deleteWallCurveKnot(
 	chain: WallCurveChain,
-	knotId: string
+	knotId: string,
 ):
 	| { kind: 'deleted'; knots: LayoutWallCurveKnot[]; spans: LayoutWallCubicSpan[] }
 	| { kind: 'rejected'; code: WallCurveEditRejection; message: string } {
@@ -514,26 +531,26 @@ export function deleteWallCurveKnot(
 		return {
 			kind: 'rejected',
 			code: 'knot_not_found',
-			message: `Wall centerline has no knot '${knotId}'.`
+			message: `Wall centerline has no knot '${knotId}'.`,
 		};
 	}
 	const before = chain.spans[index]!;
 	const after = chain.spans[index + 1]!;
 	const merged: LayoutWallCubicSpan = {
 		handleOut: [before.handleOut[0], before.handleOut[1]] as LayoutVec2,
-		handleIn: [after.handleIn[0], after.handleIn[1]] as LayoutVec2
+		handleIn: [after.handleIn[0], after.handleIn[1]] as LayoutVec2,
 	};
 	return {
 		kind: 'deleted',
 		knots: [
 			...chain.knots.slice(0, index).map(cloneKnot),
-			...chain.knots.slice(index + 1).map(cloneKnot)
+			...chain.knots.slice(index + 1).map(cloneKnot),
 		],
 		spans: [
 			...chain.spans.slice(0, index).map(cloneSpan),
 			merged,
-			...chain.spans.slice(index + 2).map(cloneSpan)
-		]
+			...chain.spans.slice(index + 2).map(cloneSpan),
+		],
 	};
 }
 
@@ -556,7 +573,7 @@ function clonePoint(point: LayoutVec2): LayoutVec2 {
 function cloneSpan(span: LayoutWallCubicSpan): LayoutWallCubicSpan {
 	return {
 		handleOut: [span.handleOut[0], span.handleOut[1]] as LayoutVec2,
-		handleIn: [span.handleIn[0], span.handleIn[1]] as LayoutVec2
+		handleIn: [span.handleIn[0], span.handleIn[1]] as LayoutVec2,
 	};
 }
 

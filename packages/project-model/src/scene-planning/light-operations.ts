@@ -21,7 +21,7 @@ import { DUPLICATE_OFFSET_METERS, SCENE_NAME_LIMIT } from './operations';
 import type {
 	SceneOperationCandidate,
 	SceneOperationContext,
-	SceneOperationResult
+	SceneOperationResult,
 } from './operations';
 
 const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
@@ -44,10 +44,10 @@ export function planCreateLight(input: {
 }): SceneOperationResult {
 	const scene = input.context.scene;
 	if (scene.entities.some((entity) => entity.id === input.entityId)) {
-		return invalid(`Captured light id "${input.entityId}" is already used by the accepted source.`, [
-			'entityId',
-			'duplicate-entity-id'
-		]);
+		return invalid(
+			`Captured light id "${input.entityId}" is already used by the accepted source.`,
+			['entityId', 'duplicate-entity-id'],
+		);
 	}
 	const name = readLightName(input.name);
 	if (name.kind === 'rejected') return name;
@@ -57,12 +57,15 @@ export function planCreateLight(input: {
 	if (!Number.isFinite(input.intensity) || input.intensity < 0) {
 		return invalid('A light intensity must be a finite number ≥ 0.', ['intensity']);
 	}
-	if (!finiteVec3(input.position)) return invalid('A light needs a finite world position.', ['position']);
+	if (!finiteVec3(input.position))
+		return invalid('A light needs a finite world position.', ['position']);
 	if (!finiteVec3(input.rotation)) return invalid('A light needs a finite rotation.', ['rotation']);
 
 	if (input.light !== 'point' && input.light !== 'spot') {
 		// Directional was retired (the Sky owns the only Sun); no other kind exists.
-		return invalid(`Unsupported light kind "${String(input.light)}"; lights are Point or Spot.`, ['light']);
+		return invalid(`Unsupported light kind "${String(input.light)}"; lights are Point or Spot.`, [
+			'light',
+		]);
 	}
 	if (input.light === 'point') {
 		if (input.angle !== undefined || input.penumbra !== undefined) {
@@ -96,7 +99,7 @@ export function planCreateLight(input: {
 		intensity: input.intensity,
 		castShadow: input.castShadow,
 		position: [...input.position] as Vec3,
-		rotation: [...input.rotation] as Vec3
+		rotation: [...input.rotation] as Vec3,
 	};
 	const entity: SceneLightEntity =
 		input.light === 'spot'
@@ -105,18 +108,18 @@ export function planCreateLight(input: {
 					light: 'spot',
 					angle: input.angle!,
 					...(input.range === undefined ? {} : { range: input.range }),
-					...(input.penumbra === undefined ? {} : { penumbra: input.penumbra })
+					...(input.penumbra === undefined ? {} : { penumbra: input.penumbra }),
 				}
 			: {
 					...base,
 					light: 'point',
-					...(input.range === undefined ? {} : { range: input.range })
+					...(input.range === undefined ? {} : { range: input.range }),
 				};
 
 	return finalizeCreatedLight({
 		context: input.context,
 		operationKind: 'create-light',
-		entity
+		entity,
 	});
 }
 
@@ -140,15 +143,17 @@ export function planUpdateLight(input: {
 }): SceneOperationResult {
 	const existing = input.context.scene.entities.find((entity) => entity.id === input.entityId);
 	if (existing === undefined) {
-		return refusal('missing-target', `No Scene entity "${input.entityId}" exists in the accepted source.`, [
-			input.entityId
-		]);
+		return refusal(
+			'missing-target',
+			`No Scene entity "${input.entityId}" exists in the accepted source.`,
+			[input.entityId],
+		);
 	}
 	if (existing.kind !== 'light') {
 		return refusal(
 			'unsupported-transform',
 			`Entity "${input.entityId}" is not a light; only lights are updated by this operation.`,
-			[input.entityId]
+			[input.entityId],
 		);
 	}
 	const update = input.update;
@@ -167,13 +172,19 @@ export function planUpdateLight(input: {
 	if (update.color !== undefined && !HEX_COLOR_PATTERN.test(update.color)) {
 		return invalid('A light colour must be a #rrggbb string.', ['color']);
 	}
-	if (update.intensity !== undefined && (!Number.isFinite(update.intensity) || update.intensity < 0)) {
+	if (
+		update.intensity !== undefined &&
+		(!Number.isFinite(update.intensity) || update.intensity < 0)
+	) {
 		return invalid('A light intensity must be a finite number ≥ 0.', ['intensity']);
 	}
 	if (hasRange && update.range !== null && !(Number.isFinite(update.range) && update.range! > 0)) {
 		return invalid('A light range must be a finite number greater than zero.', ['range']);
 	}
-	if (hasAngle && !(Number.isFinite(update.angle) && update.angle! > 0 && update.angle! <= Math.PI)) {
+	if (
+		hasAngle &&
+		!(Number.isFinite(update.angle) && update.angle! > 0 && update.angle! <= Math.PI)
+	) {
 		return invalid('A spot angle must be in (0, π] radians.', ['angle']);
 	}
 	if (
@@ -239,7 +250,7 @@ export function planUpdateLight(input: {
 		context: input.context,
 		operationKind: 'update-light',
 		entity: next,
-		fields
+		fields,
 	});
 }
 
@@ -251,34 +262,36 @@ export function planDuplicateLight(input: {
 	const scene = input.context.scene;
 	const existing = scene.entities.find((entity) => entity.id === input.entityId);
 	if (existing === undefined) {
-		return refusal('missing-target', `No Scene entity "${input.entityId}" exists in the accepted source.`, [
-			input.entityId
-		]);
+		return refusal(
+			'missing-target',
+			`No Scene entity "${input.entityId}" exists in the accepted source.`,
+			[input.entityId],
+		);
 	}
 	if (existing.kind !== 'light') {
 		return refusal(
 			'unsupported-transform',
 			`Entity "${input.entityId}" is not a light; only lights are duplicated by this operation.`,
-			[input.entityId]
+			[input.entityId],
 		);
 	}
 	if (typeof input.newEntityId !== 'string' || input.newEntityId.trim().length === 0) {
 		return invalid('Duplicate needs a captured new entity id.', ['newEntityId']);
 	}
 	if (scene.entities.some((entity) => entity.id === input.newEntityId)) {
-		return invalid(`Captured duplicate id "${input.newEntityId}" is already used by the accepted source.`, [
-			'newEntityId',
-			'duplicate-entity-id'
-		]);
+		return invalid(
+			`Captured duplicate id "${input.newEntityId}" is already used by the accepted source.`,
+			['newEntityId', 'duplicate-entity-id'],
+		);
 	}
 	const cluster = (scene.clusters ?? []).find((candidate) =>
-		candidate.memberIds.includes(input.entityId)
+		candidate.memberIds.includes(input.entityId),
 	);
 	if (cluster !== undefined) {
 		return refusal(
 			'unsupported-set',
 			`Light "${input.entityId}" belongs to cluster "${cluster.id}". Grouping owns duplication; this operation will not silently change cluster membership.`,
-			[cluster.id]
+			[cluster.id],
 		);
 	}
 	const copy = {
@@ -287,14 +300,14 @@ export function planDuplicateLight(input: {
 		position: [
 			existing.position[0] + DUPLICATE_OFFSET_METERS,
 			existing.position[1],
-			existing.position[2] + DUPLICATE_OFFSET_METERS
+			existing.position[2] + DUPLICATE_OFFSET_METERS,
 		] as Vec3,
-		rotation: [...existing.rotation] as Vec3
+		rotation: [...existing.rotation] as Vec3,
 	} as SceneLightEntity;
 	return finalizeCreatedLight({
 		context: input.context,
 		operationKind: 'duplicate-light',
-		entity: copy
+		entity: copy,
 	});
 }
 
@@ -311,7 +324,7 @@ function finalizeCreatedLight(input: {
 		changedEntityFields: [],
 		createdEntityIds: [input.entity.id],
 		removedEntityIds: [],
-		allowClusterCleanup: false
+		allowClusterCleanup: false,
 	};
 	const finalized = finalizeSceneCandidate({ before, after, scope });
 	if (finalized.kind === 'rejected') {
@@ -319,7 +332,7 @@ function finalizeCreatedLight(input: {
 			kind: 'rejected',
 			code: finalized.code,
 			message: finalized.message,
-			diagnostics: finalized.diagnostics
+			diagnostics: finalized.diagnostics,
 		};
 	}
 	const candidate: SceneOperationCandidate = {
@@ -332,9 +345,9 @@ function finalizeCreatedLight(input: {
 		worldPose: {
 			position: [...input.entity.position],
 			rotation: [...input.entity.rotation],
-			scale: input.entity.scale ?? 1
+			scale: input.entity.scale ?? 1,
 		},
-		diagnostics: []
+		diagnostics: [],
 	};
 	return candidate;
 }
@@ -349,8 +362,8 @@ function finalizeUpdatedLight(input: {
 	const after: SceneDocument = {
 		...before,
 		entities: before.entities.map((entity) =>
-			entity.id === input.entity.id ? input.entity : entity
-		)
+			entity.id === input.entity.id ? input.entity : entity,
+		),
 	};
 	const scope: SceneRecordScope = {
 		operationKind: input.operationKind,
@@ -358,7 +371,7 @@ function finalizeUpdatedLight(input: {
 		changedEntityFields: input.fields,
 		createdEntityIds: [],
 		removedEntityIds: [],
-		allowClusterCleanup: false
+		allowClusterCleanup: false,
 	};
 	const finalized = finalizeSceneCandidate({ before, after, scope });
 	if (finalized.kind === 'rejected') {
@@ -366,7 +379,7 @@ function finalizeUpdatedLight(input: {
 			kind: 'rejected',
 			code: finalized.code,
 			message: finalized.message,
-			diagnostics: finalized.diagnostics
+			diagnostics: finalized.diagnostics,
 		};
 	}
 	return {
@@ -379,14 +392,14 @@ function finalizeUpdatedLight(input: {
 		worldPose: {
 			position: [...input.entity.position],
 			rotation: [...input.entity.rotation],
-			scale: input.entity.scale ?? 1
+			scale: input.entity.scale ?? 1,
 		},
-		diagnostics: []
+		diagnostics: [],
 	};
 }
 
 function readLightName(
-	name: string
+	name: string,
 ): { readonly kind: 'value'; readonly value: string } | ReturnType<typeof invalid> {
 	const trimmed = typeof name === 'string' ? name.trim() : '';
 	if (trimmed.length === 0) return invalid('A name can’t be empty.', ['name']);
@@ -402,7 +415,7 @@ function finiteVec3(value: Vec3): boolean {
 
 function invalid(
 	message: string,
-	diagnostics: readonly string[]
+	diagnostics: readonly string[],
 ): Extract<SceneOperationResult, { kind: 'rejected' }> {
 	return refusal('invalid-value', message, diagnostics);
 }
@@ -410,7 +423,7 @@ function invalid(
 function refusal(
 	code: Extract<SceneOperationResult, { kind: 'rejected' }>['code'],
 	message: string,
-	diagnostics: readonly string[]
+	diagnostics: readonly string[],
 ): Extract<SceneOperationResult, { kind: 'rejected' }> {
 	return {
 		kind: 'rejected',
@@ -419,7 +432,7 @@ function refusal(
 		diagnostics: diagnostics.map((entry) => ({
 			path: '$.payload',
 			code: 'operation-refusal',
-			message: entry
-		}))
+			message: entry,
+		})),
 	};
 }

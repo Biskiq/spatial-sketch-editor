@@ -1,5 +1,5 @@
 /**
- * The F.4 planner registry and `prepareIntent` (AM-4).
+ * The F.4 planner registry and `prepareIntent`.
  *
  * `local-single-domain-v1` is one **registration seam**: a domain planner
  * declares what it needs, the registry admits or refuses it, and one pure
@@ -27,7 +27,7 @@ import type {
 	CapturedInput,
 	DomainPlanner,
 	PlannerRegistration,
-	PreparedCandidate
+	PreparedCandidate,
 } from './types';
 
 export type { PlannerRegistration };
@@ -105,7 +105,7 @@ export const SINGLE_DOMAIN_ADMISSION: Readonly<PlannerAdmissionProfile> = Object
 	domains: SINGLE_DOMAIN_DOMAINS,
 	compound: false,
 	units: false,
-	resources: false
+	resources: false,
 });
 
 /**
@@ -122,14 +122,14 @@ export const SINGLE_DOMAIN_ADMISSION: Readonly<PlannerAdmissionProfile> = Object
  * reads that same profile, so registration and dispatch cannot disagree.
  */
 export function createPlannerRegistry<Source>(
-	options: PlannerRegistryAdmission = {}
+	options: PlannerRegistryAdmission = {},
 ): PlannerRegistry<Source> {
 	const admission: Readonly<PlannerAdmissionProfile> = Object.freeze({
 		// A frozen copy: a granted profile must not share a mutable array with its caller.
 		domains: Object.freeze([...(options.domains ?? SINGLE_DOMAIN_DOMAINS)]),
 		compound: options.compound === true,
 		units: options.units === true,
-		resources: options.resources === true
+		resources: options.resources === true,
 	});
 	// `declared` is the one fact that separates the landed registry from a widened
 	// one: the profile is only published when the caller asked for one. It is
@@ -158,7 +158,7 @@ export function createPlannerRegistry<Source>(
 					'unsupported-domain',
 					wider
 						? `this admission profile admits ${admission.domains.join(', ')} planners; "${planner.admission.domain}" is not one`
-						: 'local-single-domain-v1 admits Layout and Scene planners only'
+						: 'local-single-domain-v1 admits Layout and Scene planners only',
 				);
 			}
 			if (planner.admission.compound && !admission.compound) {
@@ -166,7 +166,7 @@ export function createPlannerRegistry<Source>(
 					'compound-acceptance',
 					wider
 						? `planner "${planner.id}" needs compound acceptance, which this admission profile does not provide`
-						: `planner "${planner.id}" needs compound acceptance, which local-single-domain-v1 does not provide (T3.P01.S03's unit-acceptance-v1 owns it)`
+						: `planner "${planner.id}" needs compound acceptance, which local-single-domain-v1 does not provide (unit-acceptance-v1 owns it)`,
 				);
 			}
 			if (planner.admission.compound && (planner.admission.writes ?? []).length === 0) {
@@ -177,7 +177,7 @@ export function createPlannerRegistry<Source>(
 				// a planner that writes only its own domain is single-domain.
 				return registrationRefusal(
 					'compound-write-set',
-					`planner "${planner.id}" declares compound acceptance and must declare the other unit domains it writes (\`writes\`, at least one)`
+					`planner "${planner.id}" declares compound acceptance and must declare the other unit domains it writes (\`writes\`, at least one)`,
 				);
 			}
 			const referenceDomains = planner.admission.referenceDomains ?? [];
@@ -185,12 +185,12 @@ export function createPlannerRegistry<Source>(
 				(domain, index) =>
 					domain === planner.admission.domain ||
 					referenceDomains.indexOf(domain) !== index ||
-					!(admission.domains as readonly string[]).includes(domain)
+					!(admission.domains as readonly string[]).includes(domain),
 			);
 			if (invalidReferenceDomain !== undefined) {
 				return registrationRefusal(
 					'unsupported-domain',
-					`planner "${planner.id}" declares reference domain "${invalidReferenceDomain}", which must be distinct from "${planner.admission.domain}" and admitted by this profile (${admission.domains.join(', ')})`
+					`planner "${planner.id}" declares reference domain "${invalidReferenceDomain}", which must be distinct from "${planner.admission.domain}" and admitted by this profile (${admission.domains.join(', ')})`,
 				);
 			}
 			const writes = planner.admission.writes ?? [];
@@ -198,7 +198,7 @@ export function createPlannerRegistry<Source>(
 				(write, index) =>
 					write === planner.admission.domain ||
 					writes.indexOf(write) !== index ||
-					!(admission.domains as readonly string[]).includes(write)
+					!(admission.domains as readonly string[]).includes(write),
 			);
 			if (invalidWrite !== undefined) {
 				// Registration and acceptance must not disagree: a write domain the
@@ -206,7 +206,7 @@ export function createPlannerRegistry<Source>(
 				// declaration acceptance could only refuse later, on every operation.
 				return registrationRefusal(
 					'compound-write-set',
-					`planner "${planner.id}" declares write domain "${invalidWrite}", which must be a distinct domain other than "${planner.admission.domain}" that this profile admits (${admission.domains.join(', ')})`
+					`planner "${planner.id}" declares write domain "${invalidWrite}", which must be a distinct domain other than "${planner.admission.domain}" that this profile admits (${admission.domains.join(', ')})`,
 				);
 			}
 			if (!planner.admission.compound && planner.admission.writes !== undefined) {
@@ -215,7 +215,7 @@ export function createPlannerRegistry<Source>(
 				// declaration its author believed was enforced.
 				return registrationRefusal(
 					'compound-write-set',
-					`planner "${planner.id}" declares a write set without compound acceptance; a single-domain planner writes only its own domain`
+					`planner "${planner.id}" declares a write set without compound acceptance; a single-domain planner writes only its own domain`,
 				);
 			}
 			if (planner.admission.units && !admission.units) {
@@ -223,7 +223,7 @@ export function createPlannerRegistry<Source>(
 					'unit-acceptance',
 					wider
 						? `planner "${planner.id}" needs F.2 unit acceptance, which this admission profile does not provide`
-						: `planner "${planner.id}" needs F.2 unit acceptance, which local-single-domain-v1 does not provide (T3.P01.S03's unit-acceptance-v1 owns it)`
+						: `planner "${planner.id}" needs F.2 unit acceptance, which local-single-domain-v1 does not provide (unit-acceptance-v1 owns it)`,
 				);
 			}
 			if (planner.admission.resources && !admission.resources) {
@@ -231,28 +231,32 @@ export function createPlannerRegistry<Source>(
 					'resource-admission',
 					wider
 						? `planner "${planner.id}" needs resource staging, which this admission profile does not provide`
-						: `planner "${planner.id}" needs resource staging, which this current-source adapter never performs (AM-4: no resource/lock mutation)`
+						: `planner "${planner.id}" needs resource staging, which this current-source adapter never performs (no resource/lock mutation)`,
 				);
 			}
 			if (planner.sourceVersions.length === 0 || planner.sourceKinds.length === 0) {
 				return registrationRefusal(
 					'invalid-registration',
-					`planner "${planner.id}" declares no admitted source kind/version, so no intent could ever be admitted for it`
+					`planner "${planner.id}" declares no admitted source kind/version, so no intent could ever be admitted for it`,
 				);
 			}
 			if (byKind.has(planner.kind)) {
 				return registrationRefusal(
 					'duplicate-kind',
-					`operation kind "${planner.kind}" is already registered by another planner; one operation kind has one planner`
+					`operation kind "${planner.kind}" is already registered by another planner; one operation kind has one planner`,
 				);
 			}
-			byKind.set(planner.kind, Object.freeze({ ...planner,
-				admission: immutableF4Data(planner.admission),
-				sourceKinds: immutableF4Data(planner.sourceKinds),
-				sourceVersions: immutableF4Data(planner.sourceVersions)
-			}));
+			byKind.set(
+				planner.kind,
+				Object.freeze({
+					...planner,
+					admission: immutableF4Data(planner.admission),
+					sourceKinds: immutableF4Data(planner.sourceKinds),
+					sourceVersions: immutableF4Data(planner.sourceVersions),
+				}),
+			);
 			return { kind: 'registered' };
-		}
+		},
 	};
 }
 
@@ -283,7 +287,7 @@ export type PrepareResult<Source> =
 export type PrepareAdmission<Source> = {
 	inspectTargets?(
 		intent: AuthoringIntent,
-		snapshot: AcceptedSnapshot<Source>
+		snapshot: AcceptedSnapshot<Source>,
 	): readonly ShapeIssue[];
 };
 
@@ -308,16 +312,27 @@ export function prepareIntent<Source>(
 	intent: AuthoringIntent,
 	capturedInputs?: readonly CapturedInput[],
 	options: IntentValidationOptions = {},
-	admission: PrepareAdmission<Source> = {}
+	admission: PrepareAdmission<Source> = {},
 ): PrepareResult<Source> {
 	const validated = validateAuthoringIntent(intent, options);
 	if (!validated.success) {
-		return refusal('invalid-intent', null, 'The intent is not a valid, deterministic AuthoringIntent@1', validated.issues);
+		return refusal(
+			'invalid-intent',
+			null,
+			'The intent is not a valid, deterministic AuthoringIntent@1',
+			validated.issues,
+		);
 	}
 	let valid = validated.value;
 	if (capturedInputs !== undefined) {
 		const captured = validateAuthoringIntent({ ...valid, capturedInputs }, options);
-		if (!captured.success) return refusal('invalid-intent', null, 'Captured inputs must be deterministic data', captured.issues);
+		if (!captured.success)
+			return refusal(
+				'invalid-intent',
+				null,
+				'Captured inputs must be deterministic data',
+				captured.issues,
+			);
 		valid = captured.value;
 	}
 	const scope = intentScope(valid);
@@ -333,7 +348,7 @@ export function prepareIntent<Source>(
 			widened
 				? `this admission profile admits no typed-resource operation (requested: ${scope.resourceKinds.join(', ')})`
 				: `local-single-domain-v1 admits no typed-resource operation (requested: ${scope.resourceKinds.join(', ')})`,
-			[]
+			[],
 		);
 	}
 	if (scope.domains.length > 1 && granted.compound !== true) {
@@ -343,12 +358,17 @@ export function prepareIntent<Source>(
 			widened
 				? `this admission profile addresses one domain per accepted operation; this intent spans ${scope.domains.join(' + ')}`
 				: `one accepted operation addresses one domain; this intent spans ${scope.domains.join(' + ')}`,
-			[]
+			[],
 		);
 	}
 	const planner = registry.plannerFor(valid.kind);
 	if (planner === null) {
-		return refusal('unsupported-operation', null, `No planner is registered for operation kind "${valid.kind}"`, []);
+		return refusal(
+			'unsupported-operation',
+			null,
+			`No planner is registered for operation kind "${valid.kind}"`,
+			[],
+		);
 	}
 	const plannerDomain: SemanticDomain = planner.admission.domain;
 	if (
@@ -362,7 +382,7 @@ export function prepareIntent<Source>(
 			'unsupported-operation',
 			null,
 			`planner "${planner.id}" is registered for domain "${plannerDomain}" and the intent addresses "${scope.domains[0]}"`,
-			[]
+			[],
 		);
 	}
 	// The planner's own declaration is the second, independent gate: a compound or
@@ -373,7 +393,7 @@ export function prepareIntent<Source>(
 			'unsupported-compound',
 			'compound-acceptance',
 			`planner "${planner.id}" does not declare compound acceptance, and the intent spans ${scope.domains.join(' + ')}`,
-			[]
+			[],
 		);
 	}
 	if (scope.resourceKinds.length > 0 && planner.admission.resources !== true) {
@@ -381,7 +401,7 @@ export function prepareIntent<Source>(
 			'unsupported-resource',
 			'resource-admission',
 			`planner "${planner.id}" does not declare typed-resource acceptance (requested: ${scope.resourceKinds.join(', ')})`,
-			[]
+			[],
 		);
 	}
 	// A planner that declares unit or resource acceptance is refused by a
@@ -391,7 +411,7 @@ export function prepareIntent<Source>(
 			'unsupported-unit',
 			'unit-acceptance',
 			`planner "${planner.id}" needs F.2 unit acceptance, which this preparation does not provide`,
-			[]
+			[],
 		);
 	}
 	if (planner.admission.resources && granted.resources !== true) {
@@ -399,15 +419,18 @@ export function prepareIntent<Source>(
 			'unsupported-resource',
 			'resource-admission',
 			`planner "${planner.id}" needs resource staging, which this preparation does not provide`,
-			[]
+			[],
 		);
 	}
-	if (!planner.sourceKinds.includes(snapshot.sourceKind) || !planner.sourceVersions.includes(snapshot.sourceVersion)) {
+	if (
+		!planner.sourceKinds.includes(snapshot.sourceKind) ||
+		!planner.sourceVersions.includes(snapshot.sourceVersion)
+	) {
 		return refusal(
 			'unsupported-operation',
 			null,
 			`planner "${planner.id}" admits source kinds ${planner.sourceKinds.join(', ')} and this snapshot is "${snapshot.sourceKind}"`,
-			[]
+			[],
 		);
 	}
 	if (!sameRevision(valid.expectedRevision, snapshot.acceptedRevision)) {
@@ -415,7 +438,7 @@ export function prepareIntent<Source>(
 			'stale-revision',
 			null,
 			`the intent answers revision "${valid.expectedRevision.revisionId}" and the accepted revision is "${snapshot.acceptedRevision.revisionId}"`,
-			[]
+			[],
 		);
 	}
 
@@ -425,18 +448,25 @@ export function prepareIntent<Source>(
 			'unsupported-operation',
 			'unresolved-target',
 			'The intent addresses subjects this snapshot does not resolve',
-			targetIssues
+			targetIssues,
 		);
 	}
 
 	let outcome;
-	try { outcome = planner.prepare({
-		snapshot,
-		intent: valid,
-		capturedInputs: valid.capturedInputs,
-		allocatedIds: valid.allocatedIds
-	}); } catch (error) {
-		return refusal('planner-rejected', 'planner-failed', error instanceof Error ? error.message : 'Planner failed', []);
+	try {
+		outcome = planner.prepare({
+			snapshot,
+			intent: valid,
+			capturedInputs: valid.capturedInputs,
+			allocatedIds: valid.allocatedIds,
+		});
+	} catch (error) {
+		return refusal(
+			'planner-rejected',
+			'planner-failed',
+			error instanceof Error ? error.message : 'Planner failed',
+			[],
+		);
 	}
 	if (outcome.kind === 'rejected') {
 		return refusal('planner-rejected', outcome.code, outcome.message, outcome.diagnostics);
@@ -450,19 +480,29 @@ export function prepareIntent<Source>(
 			'invalid-intent',
 			null,
 			`planner "${planner.id}" prepared operation "${candidate.operationId}" for intent "${valid.operationId}"`,
-			[]
+			[],
 		);
 	}
-	if (candidate.sourceKind !== snapshot.sourceKind || candidate.sourceVersion !== snapshot.sourceVersion) {
+	if (
+		candidate.sourceKind !== snapshot.sourceKind ||
+		candidate.sourceVersion !== snapshot.sourceVersion
+	) {
 		return refusal(
 			'unsupported-operation',
 			null,
 			`planner "${planner.id}" prepared source "${candidate.sourceKind}"@${candidate.sourceVersion} instead of "${snapshot.sourceKind}"@${snapshot.sourceVersion}`,
-			[]
+			[],
 		);
 	}
-	try { return { kind: 'prepared', candidate: immutableF4Data(candidate) }; } catch {
-		return refusal('planner-rejected', 'invalid-candidate', 'Candidate must be capturable data', []);
+	try {
+		return { kind: 'prepared', candidate: immutableF4Data(candidate) };
+	} catch {
+		return refusal(
+			'planner-rejected',
+			'invalid-candidate',
+			'Candidate must be capturable data',
+			[],
+		);
 	}
 }
 
@@ -470,7 +510,7 @@ function refusal(
 	code: AcceptanceRejectionCode,
 	reason: string | null,
 	message: string,
-	diagnostics: readonly ShapeIssue[]
+	diagnostics: readonly ShapeIssue[],
 ): PrepareFailure {
 	return { kind: 'refused', code, reason, message, diagnostics };
 }
@@ -478,7 +518,7 @@ function refusal(
 /** Opaque accepted-revision equality: identity only, never a currency inference. */
 export function sameRevision(
 	left: { readonly projectId: string; readonly revisionId: string },
-	right: { readonly projectId: string; readonly revisionId: string }
+	right: { readonly projectId: string; readonly revisionId: string },
 ): boolean {
 	return left.projectId === right.projectId && left.revisionId === right.revisionId;
 }

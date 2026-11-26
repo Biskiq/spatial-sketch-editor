@@ -1,7 +1,4 @@
-import type {
-	CompiledRoom,
-	CompiledWall,
-} from '@portfolio/layout-core/geometry';
+import type { CompiledRoom, CompiledWall } from '@portfolio/layout-core/geometry';
 import { LAYOUT_GEOMETRY_EPSILON } from '@portfolio/layout-core/geometry';
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import type {
@@ -12,14 +9,14 @@ import type {
 	V3,
 	Vertex,
 	WallMeshSectionRef,
-	WallMeshSurfaceKey
+	WallMeshSurfaceKey,
 } from './wall-mesh-types';
 import {
 	backMiterApex,
 	endpointProfileIntervals,
 	profileCovers,
 	wallOpensAtEnd,
-	wallOpensAtStart
+	wallOpensAtStart,
 } from './wall-mesh-geometry';
 import { quadNormal } from './wall-mesh-geometry';
 import { vertex } from './wall-mesh-emit';
@@ -29,10 +26,10 @@ import { vertex } from './wall-mesh-emit';
  * Pure-miter corners emit nothing (zero-width). The bridge is a loft between
  * the two endpoint cross-sections, driven by the band state table:
  *
- *   both solid    → side quads over the beveled wedge edges
- *   previous only → cap the previous wall's end at its own offset plane
- *   current only  → cap the current wall's end at its own offset plane
- *   both open     → nothing (the corner void is part of the opening)
+ *  both solid → side quads over the beveled wedge edges
+ *  previous only → cap the previous wall's end at its own offset plane
+ *  current only → cap the current wall's end at its own offset plane
+ *  both open → nothing (the corner void is part of the opening)
  *
  * plus horizontal wedge faces where the both-solid volume begins (−Y) or ends
  * (+Y), closing lintel/sill transitions without blocking doorway voids.
@@ -47,7 +44,7 @@ export function buildStartBridgeFaces(
 	corner: Corner,
 	wallHeight: number,
 	roomBreakpoints: readonly number[],
-	classify: (ref: WallMeshSectionRef) => WallMeshSurfaceKey
+	classify: (ref: WallMeshSectionRef) => WallMeshSurfaceKey,
 ): BridgeFaces | null {
 	const front = corner.front;
 	const back = corner.back;
@@ -78,7 +75,12 @@ export function buildStartBridgeFaces(
 		const lo = sorted[i - 1]!;
 		const hi = sorted[i]!;
 		if (hi - lo <= LAYOUT_GEOMETRY_EPSILON) continue;
-		bands.push({ lo, hi, solidA: profileCovers(prevProfile, lo, hi), solidB: profileCovers(curProfile, lo, hi) });
+		bands.push({
+			lo,
+			hi,
+			solidA: profileCovers(prevProfile, lo, hi),
+			solidB: profileCovers(curProfile, lo, hi),
+		});
 	}
 	if (bands.length === 0) return null;
 
@@ -106,7 +108,8 @@ export function buildStartBridgeFaces(
 			// the back, the exterior void's two exposed faces (the walls' back-face
 			// continuations) meet at `outer`. Never a full-height quad here: that
 			// would block an endpoint doorway.
-			if (front.kind === 'bevel') pushBridgeSide(faces, frontA, frontB, yLo, yHi, band.lo, band.hi, nA, nB, 1);
+			if (front.kind === 'bevel')
+				pushBridgeSide(faces, frontA, frontB, yLo, yHi, band.lo, band.hi, nA, nB, 1);
 			if (back.kind === 'bevel' && outer) {
 				pushBridgeCap(faces, backA, outer, yLo, yHi, band.lo, band.hi, nA, -1);
 				pushBridgeCap(faces, backB, outer, yLo, yHi, band.lo, band.hi, nB, -1);
@@ -129,8 +132,30 @@ export function buildStartBridgeFaces(
 		const solid = band.solidA && band.solidB;
 		const belowSolid = i > 0 ? bands[i - 1]!.solidA && bands[i - 1]!.solidB : false;
 		const aboveSolid = i < bands.length - 1 ? bands[i + 1]!.solidA && bands[i + 1]!.solidB : false;
-		if (solid && !belowSolid) pushWedgeCaps(faces, frontA, frontB, backA, backB, outer, room.floorElevation + band.lo, band.lo, [0, -1, 0]);
-		if (solid && !aboveSolid) pushWedgeCaps(faces, frontA, frontB, backA, backB, outer, room.floorElevation + band.hi, band.hi, [0, 1, 0]);
+		if (solid && !belowSolid)
+			pushWedgeCaps(
+				faces,
+				frontA,
+				frontB,
+				backA,
+				backB,
+				outer,
+				room.floorElevation + band.lo,
+				band.lo,
+				[0, -1, 0],
+			);
+		if (solid && !aboveSolid)
+			pushWedgeCaps(
+				faces,
+				frontA,
+				frontB,
+				backA,
+				backB,
+				outer,
+				room.floorElevation + band.hi,
+				band.hi,
+				[0, 1, 0],
+			);
 	}
 
 	if (faces.length === 0) return null;
@@ -138,11 +163,10 @@ export function buildStartBridgeFaces(
 		roomId: room.roomId,
 		segmentId: wall.segmentId, // owner = current/start wall (deterministic ref)
 		sectionIndex: -1,
-		kind: 'side'
+		kind: 'side',
 	});
 	return { neighborSegmentId: prevWall.segmentId, surfaceKey, faces };
 }
-
 
 /**
  * every corner-bridge face is pick-owned by the current/start wall
@@ -164,7 +188,7 @@ export function pushBridgeSide(
 	nA: LayoutVec2,
 	nB: LayoutVec2,
 	sign: 1 | -1,
-	pick: FacePick = BRIDGE_PICK
+	pick: FacePick = BRIDGE_PICK,
 ): void {
 	const bx = nA[0] + nB[0];
 	const bz = nA[1] + nB[1];
@@ -176,12 +200,10 @@ export function pushBridgeSide(
 			vertex(p[0], yHi, p[1], 0, 0, 0, 0, bandHi),
 			vertex(q[0], yHi, q[1], 0, 0, 0, span, bandHi),
 			vertex(q[0], yLo, q[1], 0, 0, 0, span, bandLo),
-			vertex(p[0], yLo, p[1], 0, 0, 0, 0, bandLo)
+			vertex(p[0], yLo, p[1], 0, 0, 0, 0, bandLo),
 		],
 		[sign * (bx / magnitude), 0, sign * (bz / magnitude)],
-		pick.paintSide === undefined
-			? { ...pick, paintSide: sign > 0 ? 'left' : 'right' }
-			: pick
+		pick.paintSide === undefined ? { ...pick, paintSide: sign > 0 ? 'left' : 'right' } : pick,
 	);
 }
 
@@ -196,7 +218,7 @@ export function pushBridgeCap(
 	bandHi: number,
 	dir: LayoutVec2,
 	sign: 1 | -1,
-	pick: FacePick = BRIDGE_PICK
+	pick: FacePick = BRIDGE_PICK,
 ): void {
 	const span = Math.hypot(q[0] - p[0], q[1] - p[1]);
 	pushOrientedFace(
@@ -205,10 +227,10 @@ export function pushBridgeCap(
 			vertex(p[0], yHi, p[1], 0, 0, 0, 0, bandHi),
 			vertex(p[0], yLo, p[1], 0, 0, 0, 0, bandLo),
 			vertex(q[0], yLo, q[1], 0, 0, 0, span, bandLo),
-			vertex(q[0], yHi, q[1], 0, 0, 0, span, bandHi)
+			vertex(q[0], yHi, q[1], 0, 0, 0, span, bandHi),
 		],
 		[sign * dir[0], 0, sign * dir[1]],
-		pick
+		pick,
 	);
 }
 
@@ -220,9 +242,21 @@ export function pushBridgeCap(
  * closes its outer corner. Triangles with coincident vertices (miter side) are
  * skipped, so single-sided bevels emit only what is non-degenerate.
  */
-export function pushWedgeCaps(faces: Face[], frontA: LayoutVec2, frontB: LayoutVec2, backA: LayoutVec2, backB: LayoutVec2, outer: LayoutVec2 | null, y: number, bandY: number, normalY: V3, pick: FacePick = BRIDGE_PICK): void {
+export function pushWedgeCaps(
+	faces: Face[],
+	frontA: LayoutVec2,
+	frontB: LayoutVec2,
+	backA: LayoutVec2,
+	backB: LayoutVec2,
+	outer: LayoutVec2 | null,
+	y: number,
+	bandY: number,
+	normalY: V3,
+	pick: FacePick = BRIDGE_PICK,
+): void {
 	const v = (p: LayoutVec2) => vertex(p[0], y, p[1], 0, 0, 0, 0, bandY);
-	const distinct = (a: LayoutVec2, b: LayoutVec2) => Math.hypot(a[0] - b[0], a[1] - b[1]) > LAYOUT_GEOMETRY_EPSILON;
+	const distinct = (a: LayoutVec2, b: LayoutVec2) =>
+		Math.hypot(a[0] - b[0], a[1] - b[1]) > LAYOUT_GEOMETRY_EPSILON;
 	if (distinct(frontA, frontB) && distinct(frontA, backA) && distinct(frontB, backA)) {
 		pushOrientedFace(faces, [v(frontA), v(frontB), v(backA)], normalY, pick);
 	}
@@ -239,7 +273,12 @@ export function pushWedgeCaps(faces: Face[], frontA: LayoutVec2, frontB: LayoutV
  * `desiredNormal` (winding flipped if needed); the stored vertex normal is the
  * oriented geometric normal so the winding guard always agrees.
  */
-export function pushOrientedFace(faces: Face[], verts: Vertex[], desiredNormal: V3, pick?: FacePick): void {
+export function pushOrientedFace(
+	faces: Face[],
+	verts: Vertex[],
+	desiredNormal: V3,
+	pick?: FacePick,
+): void {
 	const first = verts[0]!;
 	const second = verts[1]!;
 	const third = verts[2]!;
@@ -254,4 +293,3 @@ export function flipWinding(verts: Vertex[]): Vertex[] {
 	if (verts.length === 3) return [verts[0]!, verts[2]!, verts[1]!];
 	return [verts[0]!, verts[3]!, verts[2]!, verts[1]!];
 }
-

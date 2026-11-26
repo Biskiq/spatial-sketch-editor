@@ -27,7 +27,7 @@ export const ARTWORK_SIZE_TAG_GAP_PX = 14;
 function pushOutward(
 	point: ArtworkScreenPoint,
 	center: ArtworkScreenPoint,
-	distance: number
+	distance: number,
 ): ArtworkScreenPoint {
 	const dx = point.x - center.x;
 	const dy = point.y - center.y;
@@ -50,14 +50,15 @@ export function artworkSelectionGeometry(
 		readonly framedHeightCm: number;
 	},
 	resizing: boolean,
-	standoff = ARTWORK_SELECTION_STANDOFF_PX
+	standoff = ARTWORK_SELECTION_STANDOFF_PX,
 ): ArtworkSelectionGeometry {
-	const center = points.length === 0
-		? { x: 0, y: 0 }
-		: {
-				x: points.reduce((sum, point) => sum + point.x, 0) / points.length,
-				y: points.reduce((sum, point) => sum + point.y, 0) / points.length
-			};
+	const center =
+		points.length === 0
+			? { x: 0, y: 0 }
+			: {
+					x: points.reduce((sum, point) => sum + point.x, 0) / points.length,
+					y: points.reduce((sum, point) => sum + point.y, 0) / points.length,
+				};
 	const corners = points.map((point) => pushOutward(point, center, standoff));
 	const polygon = corners.map((point) => `${point.x} ${point.y}`).join(' ');
 	if (corners.length !== 4) return { corners, polygon, tags: [] };
@@ -74,15 +75,15 @@ export function artworkSelectionGeometry(
 			y: bottom + ARTWORK_SIZE_TAG_GAP_PX,
 			text: resizing
 				? `${width} × ${height} cm · framed ${sizes.framedWidthCm.toFixed(1)} × ${sizes.framedHeightCm.toFixed(1)}`
-				: `${width} cm`
-		}
+				: `${width} cm`,
+		},
 	];
 	if (!resizing) {
 		tags.push({
 			id: 'right',
 			x: right + ARTWORK_SIZE_TAG_GAP_PX,
 			y: (top + bottom) / 2,
-			text: `${height} cm`
+			text: `${height} cm`,
 		});
 	}
 	return { corners, polygon, tags };

@@ -20,7 +20,7 @@ export const LIGHT_WARMTH_STOPS: readonly WarmthStop[] = [
 	{ w: -50, label: 'Warm', color: '#ffd6a5' },
 	{ w: 0, label: 'Neutral', color: '#ffffff' },
 	{ w: 50, label: 'Cool', color: '#dbe9ff' },
-	{ w: 100, label: 'Sky', color: '#b8d0ff' }
+	{ w: 100, label: 'Sky', color: '#b8d0ff' },
 ];
 
 type Rgb = { readonly r: number; readonly g: number; readonly b: number };
@@ -31,7 +31,7 @@ export function hexToRgb(color: string): Rgb | null {
 	return {
 		r: Number.parseInt(match[1]!, 16),
 		g: Number.parseInt(match[2]!, 16),
-		b: Number.parseInt(match[3]!, 16)
+		b: Number.parseInt(match[3]!, 16),
 	};
 }
 
@@ -60,7 +60,7 @@ export function warmthColorAt(w: number): string {
 		return rgbToHex({
 			r: Math.round(interpolate(a.r, b.r, amount)),
 			g: Math.round(interpolate(a.g, b.g, amount)),
-			b: Math.round(interpolate(a.b, b.b, amount))
+			b: Math.round(interpolate(a.b, b.b, amount)),
 		});
 	}
 	return LIGHT_WARMTH_STOPS.at(-1)!.color;
@@ -85,9 +85,7 @@ export function nearestWarmth(color: string): { w: number; exact: boolean } {
 	for (let w = -100; w <= 100; w += 1) {
 		const candidate = hexToRgb(warmthColorAt(w))!;
 		const distance =
-			(candidate.r - target.r) ** 2 +
-			(candidate.g - target.g) ** 2 +
-			(candidate.b - target.b) ** 2;
+			(candidate.r - target.r) ** 2 + (candidate.g - target.g) ** 2 + (candidate.b - target.b) ** 2;
 		if (distance < bestDistance) {
 			bestDistance = distance;
 			bestW = w;

@@ -21,7 +21,7 @@ const REFUSAL_CODES: readonly SaveRefusalCode[] = [
 	'conflict',
 	'collision',
 	'not-found',
-	'invalid-project'
+	'invalid-project',
 ];
 
 export function createApiSaveTransport(api: ProjectApi): SaveTransport {
@@ -34,7 +34,7 @@ export function createApiSaveTransport(api: ProjectApi): SaveTransport {
 			if (perfMarksEnabled()) {
 				perfMark('save:receipt', {
 					projectId: request.capture.projectId,
-					operationId: request.capture.operationId
+					operationId: request.capture.operationId,
 				});
 			}
 			return { kind: 'saved', acknowledgement };
@@ -43,7 +43,7 @@ export function createApiSaveTransport(api: ProjectApi): SaveTransport {
 				return {
 					kind: 'error',
 					message: failure instanceof Error ? failure.message : 'Save failed',
-					retryable: false
+					retryable: false,
 				};
 			}
 			switch (failure.code) {
@@ -59,7 +59,8 @@ export function createApiSaveTransport(api: ProjectApi): SaveTransport {
 				case 'server':
 					return { kind: 'error', message: failure.message, retryable: true };
 				default: {
-					const code = REFUSAL_CODES.find((candidate) => candidate === failure.serverCode) ?? 'invalid';
+					const code =
+						REFUSAL_CODES.find((candidate) => candidate === failure.serverCode) ?? 'invalid';
 					return { kind: 'refused', code, message: failure.message, issues: failure.issues };
 				}
 			}

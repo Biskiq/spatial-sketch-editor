@@ -47,7 +47,11 @@
  * input document.
  */
 import type { LayoutDocumentIssue } from './issue';
-import type { LayoutDocumentWallFirst, LayoutIdentityFamily, LayoutIdentityLedger } from '../wall/types';
+import type {
+	LayoutDocumentWallFirst,
+	LayoutIdentityFamily,
+	LayoutIdentityLedger,
+} from '../wall/types';
 import { LAYOUT_IDENTITY_FAMILIES } from '../wall/types';
 
 /** Unambiguous 31-character suffix alphabet — `0 O 1 I L` are excluded. */
@@ -57,7 +61,8 @@ export const LAYOUT_REFERENCE_ALPHABET = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
 export const LAYOUT_REFERENCE_SUFFIX_LENGTH = 4;
 
 /** Size of the allocation index space: `31⁴ = 923 521`. */
-export const LAYOUT_REFERENCE_SPACE = LAYOUT_REFERENCE_ALPHABET.length ** LAYOUT_REFERENCE_SUFFIX_LENGTH;
+export const LAYOUT_REFERENCE_SPACE =
+	LAYOUT_REFERENCE_ALPHABET.length ** LAYOUT_REFERENCE_SUFFIX_LENGTH;
 
 /** `1 000 003 mod 923 521` — coprime with the space, so the map steps bijectively. */
 export const LAYOUT_REFERENCE_MULTIPLIER = 1000003 % LAYOUT_REFERENCE_SPACE;
@@ -74,7 +79,7 @@ export const LAYOUT_REFERENCE_PREFIX: Record<LayoutIdentityFamily, string> = {
 	junctions: 'J',
 	walls: 'W',
 	openings: 'O',
-	regions: 'H'
+	regions: 'H',
 };
 
 /** One reference: family prefix, `-`, four unambiguous characters. */
@@ -111,7 +116,7 @@ const FAMILY_BY_PREFIX: Record<string, LayoutIdentityFamily> = {
 	J: 'junctions',
 	W: 'walls',
 	O: 'openings',
-	H: 'regions'
+	H: 'regions',
 };
 
 /**
@@ -124,10 +129,11 @@ const FAMILY_BY_PREFIX: Record<string, LayoutIdentityFamily> = {
 export function formatLayoutReference(family: LayoutIdentityFamily, index: number): string {
 	if (!Number.isInteger(index) || index < 0 || index >= LAYOUT_REFERENCE_SPACE) {
 		throw new RangeError(
-			`Reference index ${String(index)} is outside the allocation space [0, ${LAYOUT_REFERENCE_SPACE})`
+			`Reference index ${String(index)} is outside the allocation space [0, ${LAYOUT_REFERENCE_SPACE})`,
 		);
 	}
-	let remaining = (index * LAYOUT_REFERENCE_MULTIPLIER + LAYOUT_REFERENCE_OFFSET) % LAYOUT_REFERENCE_SPACE;
+	let remaining =
+		(index * LAYOUT_REFERENCE_MULTIPLIER + LAYOUT_REFERENCE_OFFSET) % LAYOUT_REFERENCE_SPACE;
 	let suffix = '';
 	for (let position = 0; position < LAYOUT_REFERENCE_SUFFIX_LENGTH; position += 1) {
 		suffix = LAYOUT_REFERENCE_ALPHABET[remaining % LAYOUT_REFERENCE_ALPHABET.length]! + suffix;
@@ -169,7 +175,8 @@ export function indexOfReference(token: string): number | undefined {
 		suffixIndex = suffixIndex * LAYOUT_REFERENCE_ALPHABET.length + digit;
 	}
 	const shifted = suffixIndex - LAYOUT_REFERENCE_OFFSET;
-	const normalised = ((shifted % LAYOUT_REFERENCE_SPACE) + LAYOUT_REFERENCE_SPACE) % LAYOUT_REFERENCE_SPACE;
+	const normalised =
+		((shifted % LAYOUT_REFERENCE_SPACE) + LAYOUT_REFERENCE_SPACE) % LAYOUT_REFERENCE_SPACE;
 	return (normalised * LAYOUT_REFERENCE_INVERSE_MULTIPLIER) % LAYOUT_REFERENCE_SPACE;
 }
 
@@ -195,20 +202,20 @@ export function layoutIdentityHighWater(document: LayoutDocumentWallFirst): numb
 export function referenceFor(
 	document: LayoutDocumentWallFirst,
 	family: LayoutIdentityFamily,
-	id: string
+	id: string,
 ): string | undefined {
 	return document.identity?.[family]?.[id];
 }
 
 function liveIdsByFamily(
-	document: LayoutDocumentWallFirst
+	document: LayoutDocumentWallFirst,
 ): Record<LayoutIdentityFamily, string[]> {
 	return {
 		rooms: document.rooms.map((room) => room.id),
 		junctions: document.junctions.map((junction) => junction.id),
 		walls: document.walls.map((wall) => wall.id),
 		openings: document.openings.map((opening) => opening.id),
-		regions: document.regions.map((region) => region.id)
+		regions: document.regions.map((region) => region.id),
 	};
 }
 
@@ -244,7 +251,9 @@ export function layoutIdentityIsComplete(document: LayoutDocumentWallFirst): boo
  * could hand a live assignment to a different canonical ID — the one way a
  * hand-edited or stale payload could break the never-reassigned guarantee.
  */
-export function layoutIdentityCursorIssues(document: LayoutDocumentWallFirst): LayoutDocumentIssue[] {
+export function layoutIdentityCursorIssues(
+	document: LayoutDocumentWallFirst,
+): LayoutDocumentIssue[] {
 	const ledger = document.identity;
 	if (!ledger) return [];
 	const issues: LayoutDocumentIssue[] = [];
@@ -256,7 +265,7 @@ export function layoutIdentityCursorIssues(document: LayoutDocumentWallFirst): L
 				issues.push({
 					path: `$.identity.${family}.${id}`,
 					code: LAYOUT_IDENTITY_MALFORMED_REFERENCE,
-					message: `'${String(token)}' is not a well-formed ${LAYOUT_REFERENCE_PREFIX[family]} reference`
+					message: `'${String(token)}' is not a well-formed ${LAYOUT_REFERENCE_PREFIX[family]} reference`,
 				});
 				continue;
 			}
@@ -264,7 +273,7 @@ export function layoutIdentityCursorIssues(document: LayoutDocumentWallFirst): L
 				issues.push({
 					path: `$.identity.${family}.${id}`,
 					code: LAYOUT_IDENTITY_MALFORMED_REFERENCE,
-					message: `'${token}' is a ${LAYOUT_REFERENCE_PREFIX[parsed.family]} reference stored in the ${family} ledger`
+					message: `'${token}' is a ${LAYOUT_REFERENCE_PREFIX[parsed.family]} reference stored in the ${family} ledger`,
 				});
 				continue;
 			}
@@ -272,7 +281,7 @@ export function layoutIdentityCursorIssues(document: LayoutDocumentWallFirst): L
 				issues.push({
 					path: `$.identity.cursor`,
 					code: LAYOUT_IDENTITY_CURSOR_BEHIND_REFERENCE,
-					message: `Cursor ${ledger.cursor} is not above the allocation index ${parsed.index} of '${token}' (${family}.${id})`
+					message: `Cursor ${ledger.cursor} is not above the allocation index ${parsed.index} of '${token}' (${family}.${id})`,
 				});
 			}
 		}
@@ -300,7 +309,7 @@ function highestAllocatedIndex(ledger: LayoutIdentityLedger): number {
  * geometry, and the authored fingerprint ignores the cursor entirely.
  */
 export function repairLayoutIdentityCursor(
-	document: LayoutDocumentWallFirst
+	document: LayoutDocumentWallFirst,
 ): LayoutDocumentWallFirst {
 	const ledger = document.identity;
 	if (!ledger) return document;
@@ -329,7 +338,7 @@ type MintOptions = {
  */
 function resolveLayoutIdentity(
 	document: LayoutDocumentWallFirst,
-	options: MintOptions
+	options: MintOptions,
 ): LayoutDocumentWallFirst {
 	const ledger = document.identity;
 	const base = Math.max(options.base ?? ledger?.cursor ?? 0, ledger?.cursor ?? 0);
@@ -348,7 +357,7 @@ function resolveLayoutIdentity(
 			}
 			if (next >= LAYOUT_REFERENCE_SPACE) {
 				throw new LayoutIdentityExhaustedError(
-					`Layout ${family} exhausted the reference space (${LAYOUT_REFERENCE_SPACE} lifetime allocations)`
+					`Layout ${family} exhausted the reference space (${LAYOUT_REFERENCE_SPACE} lifetime allocations)`,
 				);
 			}
 			nextByFamily[family][id] = formatLayoutReference(family, next);
@@ -379,7 +388,7 @@ function resolveLayoutIdentity(
  */
 export function withLayoutIdentity(
 	document: LayoutDocumentWallFirst,
-	options: MintOptions = {}
+	options: MintOptions = {},
 ): LayoutDocumentWallFirst {
 	return resolveLayoutIdentity(document, options);
 }
@@ -396,7 +405,7 @@ export function withLayoutIdentity(
  */
 export function promoteLayoutIdentity(
 	document: LayoutDocumentWallFirst,
-	options: MintOptions = {}
+	options: MintOptions = {},
 ): { document: LayoutDocumentWallFirst; cursor: number } {
 	const resolved = resolveLayoutIdentity(document, options);
 	return { document: resolved, cursor: layoutIdentityCursor(resolved) };

@@ -17,11 +17,11 @@
  * things follow, and both are tested:
  *
  * - **Order-independent.** The key is built from named fields in a fixed order,
- *   so two descriptors with the same values in a different property order are
- *   the same key.
+ *  so two descriptors with the same values in a different property order are
+ *  the same key.
  * - **Default-equivalent.** `toneMapped` absent and `toneMapped: true` are the
- *   same key, because they are the same material. A key that told them apart
- *   would hand one look two instances, which is the defect this store removes.
+ *  same key, because they are the same material. A key that told them apart
+ *  would hand one look two instances, which is the defect this store removes.
  *
  * Colours are normalised to lowercase `#rrggbb`. A numeric `0xff2fd4` and the
  * string `'#ff2fd4'` produce one key for the same colour. Only those two forms
@@ -63,7 +63,7 @@ export const MATERIAL_TEXTURE_SLOTS: readonly MaterialTextureSlotKey[] = [
 	'normalMap',
 	'roughnessMap',
 	'aoMap',
-	'metalnessMap'
+	'metalnessMap',
 ];
 
 /**
@@ -149,7 +149,7 @@ export type StandardMaterialDescriptor = {
 	 */
 	readonly clip?: false;
 	/**
-	 * The descriptor of X2's **cutaway twin**: the same surface, driven by the
+	 * The descriptor of the **cutaway twin**: the same surface, driven by the
 	 * StageClip's live cutaway top instead of the constant never-cut value.
 	 *
 	 * The flag participates in the canonical key exactly like `clip: false`, so a
@@ -177,7 +177,7 @@ export type BasicMaterialDescriptor = {
 	 * Absent means the surface is clipped like every other world surface.
 	 */
 	readonly clip?: false;
-	/** The X2 cutaway twin (see `StandardMaterialDescriptor.cutaway`). */
+	/** The cutaway twin (see `StandardMaterialDescriptor.cutaway`). */
 	readonly cutaway?: true;
 };
 
@@ -207,7 +207,7 @@ export type LambertMaterialDescriptor = {
 	readonly fog?: false;
 	/** `false` exempts the surface from the Canvas's slice clipping planes. */
 	readonly clip?: false;
-	/** The X2 cutaway twin (see `StandardMaterialDescriptor.cutaway`). */
+	/** The cutaway twin (see `StandardMaterialDescriptor.cutaway`). */
 	readonly cutaway?: true;
 	/**
 	 * The alpha threshold of this surface's **cast shadow** silhouette.
@@ -288,7 +288,9 @@ export function canonicalColor(color: MaterialColor): string {
 		throw new Error(`material descriptor colour "${color}" is not #rgb or #rrggbb`);
 	}
 	const digits = match[1]!.toLowerCase();
-	return digits.length === 3 ? `#${digits[0]!}${digits[0]!}${digits[1]!}${digits[1]!}${digits[2]!}${digits[2]!}` : `#${digits}`;
+	return digits.length === 3
+		? `#${digits[0]!}${digits[0]!}${digits[1]!}${digits[1]!}${digits[2]!}${digits[2]!}`
+		: `#${digits}`;
 }
 
 /** A number as its canonical key text; `-0` and `0` are the same value to Three. */
@@ -310,7 +312,7 @@ function bool(value: boolean | undefined, fallback: boolean): string {
 function finishEntryKey(entry: FinishSamplingPlanEntry): string {
 	return [
 		entry.role,
-	encodeURIComponent(entry.view),
+		encodeURIComponent(entry.view),
 		entry.uvSet,
 		entry.origin,
 		entry.repeat.map(num).join(','),
@@ -318,13 +320,19 @@ function finishEntryKey(entry: FinishSamplingPlanEntry): string {
 		entry.offset.map(num).join(','),
 		entry.convention ?? '-',
 		entry.component ?? '-',
-		entry.invert === true ? '1' : '0'
+		entry.invert === true ? '1' : '0',
 	].join(':');
 }
 
 /** The canonical text of a sampled plan, sorted by role. */
 function finishKey(plan: StandardFinishPlan): string {
-	const order: readonly FinishMapRole[] = ['color', 'normal', 'roughness', 'metalness', 'occlusion'];
+	const order: readonly FinishMapRole[] = [
+		'color',
+		'normal',
+		'roughness',
+		'metalness',
+		'occlusion',
+	];
 	return [
 		plan.profile,
 		`ao=${num(plan.occlusionStrength)}`,
@@ -332,7 +340,7 @@ function finishKey(plan: StandardFinishPlan): string {
 		[...plan.entries]
 			.sort((left, right) => order.indexOf(left.role) - order.indexOf(right.role))
 			.map(finishEntryKey)
-			.join(';')
+			.join(';'),
 	].join('|');
 }
 
@@ -355,12 +363,12 @@ export function materialKey(descriptor: MaterialDescriptor): string {
 				`toneMapped=${bool(descriptor.toneMapped, true)}`,
 				`wireframe=${bool(descriptor.wireframe, false)}`,
 				`normalScale=${num(descriptor.normalScale?.[0] ?? 1)},${num(
-					descriptor.normalScale?.[1] ?? 1
+					descriptor.normalScale?.[1] ?? 1,
 				)}`,
 				// Fixed slot order, `-` for an unbound slot: the key is a function of
 				// which variants are bound, not of how the record was spelled.
 				`textures=${MATERIAL_TEXTURE_SLOTS.map(
-					(slot) => `${slot}:${descriptor.textures?.[slot] ?? '-'}`
+					(slot) => `${slot}:${descriptor.textures?.[slot] ?? '-'}`,
 				).join(';')}`,
 				// Appended only when sampled: an untextured descriptor keeps its exact
 				// pre-S8 key, and a sampled one can never share it.
@@ -368,8 +376,10 @@ export function materialKey(descriptor: MaterialDescriptor): string {
 				// Absent keeps the normal surface's key exactly; a twin is a distinct
 				// lease, never a second use of the same instance.
 				...(descriptor.clip === false ? ['clip=0'] : []),
-				...(descriptor.polygonOffset ? [`polygonOffset=${descriptor.polygonOffset.map(num).join(',')}`] : []),
-				...(descriptor.cutaway === true ? ['cutaway=1'] : [])
+				...(descriptor.polygonOffset
+					? [`polygonOffset=${descriptor.polygonOffset.map(num).join(',')}`]
+					: []),
+				...(descriptor.cutaway === true ? ['cutaway=1'] : []),
 			].join('|');
 		case 'basic':
 			return [
@@ -381,7 +391,7 @@ export function materialKey(descriptor: MaterialDescriptor): string {
 				`depthWrite=${bool(descriptor.depthWrite, true)}`,
 				// Absent keeps today's key exactly; `clip: false` is a distinct surface.
 				...(descriptor.clip === false ? ['clip=0'] : []),
-				...(descriptor.cutaway === true ? ['cutaway=1'] : [])
+				...(descriptor.cutaway === true ? ['cutaway=1'] : []),
 			].join('|');
 		case 'lambert':
 			return [
@@ -399,7 +409,7 @@ export function materialKey(descriptor: MaterialDescriptor): string {
 					: [`shadowAlpha=${num(descriptor.shadowAlpha)}`]),
 				...(descriptor.fog === false ? ['fog=0'] : []),
 				...(descriptor.clip === false ? ['clip=0'] : []),
-				...(descriptor.cutaway === true ? ['cutaway=1'] : [])
+				...(descriptor.cutaway === true ? ['cutaway=1'] : []),
 			].join('|');
 		case 'imported': {
 			// The asset is an approved URL: encoded so no character of it can be
@@ -417,7 +427,7 @@ export function materialKey(descriptor: MaterialDescriptor): string {
 				// Appended only when present: a Natural imported surface keeps the
 				// exact pre-S6 canonical key.
 				...(descriptor.treatment === undefined ? [] : [`treatment=${descriptor.treatment}`]),
-				`remap=${remap}`
+				`remap=${remap}`,
 			].join('|');
 		}
 		case 'shadow': {
@@ -430,7 +440,7 @@ export function materialKey(descriptor: MaterialDescriptor): string {
 				// The factor and units are read only when the offset is on; normalising
 				// them to zero keeps an off descriptor one key however it is spelled.
 				`polygonOffsetFactor=${num(offset ? (descriptor.polygonOffsetFactor ?? 0) : 0)}`,
-				`polygonOffsetUnits=${num(offset ? (descriptor.polygonOffsetUnits ?? 0) : 0)}`
+				`polygonOffsetUnits=${num(offset ? (descriptor.polygonOffsetUnits ?? 0) : 0)}`,
 			].join('|');
 		}
 	}

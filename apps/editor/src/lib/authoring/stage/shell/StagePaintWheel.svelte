@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * *Paint colour* (T2.S8 U2, #405): a compact floating picker anchored above
+	 * *Paint colour*: a compact floating picker anchored above
 	 * the tray's *Custom colour* key. Hue around and saturation outward on a
 	 * prominent wheel, a Lightness ramp, the project palette as linked chips, a
 	 * compact labelled Hex field, close, and a compact action row. The header's

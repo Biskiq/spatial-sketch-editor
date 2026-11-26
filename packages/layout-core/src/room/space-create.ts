@@ -2,12 +2,28 @@ import type { LayoutVec2 } from '../geometry/coordinates';
 import { pointStrictlyInsidePolygon } from '../geometry/face-extraction';
 import { compileWallFirstLayoutGeometry } from '../geometry/compiler';
 import { hasBlockingLayoutIssues } from '../geometry/validation';
-import { allocateCapturedId, isLayoutIdCapture, LayoutIdCollisionError, type LayoutIdCapture } from '../plan/id-capture';
+import {
+	allocateCapturedId,
+	isLayoutIdCapture,
+	LayoutIdCollisionError,
+	type LayoutIdCapture,
+} from '../plan/id-capture';
 import { coincidesAsJunction, JUNCTION_COINCIDENCE_EPSILON } from '../wall/junction-identity';
 import { createPlanBoxIndex, type PlanBox } from '../world/plan-box-index';
 import { orientXZ } from '../geometry/robust-orientation';
-import { composeSpaceBoundary, createRoomBoundaryLookup, roomBoundaryPolygon, spaceBoundaryCycleKey, spaceBoundaryPolygonFromEdges } from './reconciliation-boundary';
-import { pointOnRing, spaceOutlineSelfIntersects, spaceOutlineSignedArea, spacePairIssue } from './space-outline';
+import {
+	composeSpaceBoundary,
+	createRoomBoundaryLookup,
+	roomBoundaryPolygon,
+	spaceBoundaryCycleKey,
+	spaceBoundaryPolygonFromEdges,
+} from './reconciliation-boundary';
+import {
+	pointOnRing,
+	spaceOutlineSelfIntersects,
+	spaceOutlineSignedArea,
+	spacePairIssue,
+} from './space-outline';
 import { wallJunctionComponents } from './topology-components';
 import { createWallSamplingDerivation, type WallSamplingDerivation } from '../wall/centerline';
 import { resolveWallCurveSplit } from '../wall/curve-algebra';
@@ -34,9 +50,21 @@ export type SpaceCreationEvidence = {
 	walls: readonly (readonly LayoutVec2[])[];
 	virtual: readonly (readonly [LayoutVec2, LayoutVec2])[];
 };
-type RefusalCode = 'invalid-cycle' | 'degenerate' | 'self-intersection' | 'wall-contact' |
-	'wall-side-owned' | 'space_overlap' | 'space_contains_space' | 'invalid-level' |
-	'invalid-capture' | 'split' | 'id-collision' | 'invalid-document' | 'topology' | 'compile';
+type RefusalCode =
+	| 'invalid-cycle'
+	| 'degenerate'
+	| 'self-intersection'
+	| 'wall-contact'
+	| 'wall-side-owned'
+	| 'space_overlap'
+	| 'space_contains_space'
+	| 'invalid-level'
+	| 'invalid-capture'
+	| 'split'
+	| 'id-collision'
+	| 'invalid-document'
+	| 'topology'
+	| 'compile';
 export type SpaceCreationRefusal = {
 	kind: 'refused';
 	code: RefusalCode;
@@ -50,26 +78,53 @@ type ScreenedSpace = {
 	evidence: SpaceCreationEvidence;
 	cycleKey: string;
 };
-export type SpaceCreationOutline = ScreenedSpace | SpaceCreationRefusal |
-	{ kind: 'none' } | { kind: 'ambiguous' | 'indeterminate'; message: string };
+export type SpaceCreationOutline =
+	| ScreenedSpace
+	| SpaceCreationRefusal
+	| { kind: 'none' }
+	| { kind: 'ambiguous' | 'indeterminate'; message: string };
 const SEARCH_LIMIT = 4096;
-const INDETERMINATE = { kind: 'indeterminate', message: "Couldn't find one outline · Draw open side" } as const;
+const INDETERMINATE = {
+	kind: 'indeterminate',
+	message: "Couldn't find one outline · Draw open side",
+} as const;
 const AMBIGUOUS = { kind: 'ambiguous', message: 'More than one outline · Draw open side' } as const;
 
-function refuse(code: RefusalCode, message: string, subjectIds: readonly string[] = [], evidence?: SpaceCreationEvidence): SpaceCreationRefusal {
-	return { kind: 'refused', code, message, subjectIds, ...(evidence === undefined ? {} : { evidence }) };
+function refuse(
+	code: RefusalCode,
+	message: string,
+	subjectIds: readonly string[] = [],
+	evidence?: SpaceCreationEvidence,
+): SpaceCreationRefusal {
+	return {
+		kind: 'refused',
+		code,
+		message,
+		subjectIds,
+		...(evidence === undefined ? {} : { evidence }),
+	};
 }
 
 export function spaceCreationAnchorKey(anchor: SpaceCreationAnchor): string {
 	switch (anchor.kind) {
-		case 'junction': return JSON.stringify(['junction', anchor.id]);
-		case 'wall-station': return JSON.stringify(['station', anchor.wallId, anchor.station]);
-		case 'corner': return JSON.stringify(['corner', anchor.key]);
+		case 'junction':
+			return JSON.stringify(['junction', anchor.id]);
+		case 'wall-station':
+			return JSON.stringify(['station', anchor.wallId, anchor.station]);
+		case 'corner':
+			return JSON.stringify(['corner', anchor.key]);
 	}
 }
 
-const junction = (id: string): Extract<SpaceCreationAnchor, { kind: 'junction' }> => ({ kind: 'junction', id });
-const reverseSpan = (span: SpaceCreationSpan): SpaceCreationSpan => ({ ...span, from: span.to, to: span.from });
+const junction = (id: string): Extract<SpaceCreationAnchor, { kind: 'junction' }> => ({
+	kind: 'junction',
+	id,
+});
+const reverseSpan = (span: SpaceCreationSpan): SpaceCreationSpan => ({
+	...span,
+	from: span.to,
+	to: span.from,
+});
 
 function planBox(points: readonly LayoutVec2[]): PlanBox {
 	const box = { minX: Infinity, minZ: Infinity, maxX: -Infinity, maxZ: -Infinity };
@@ -87,10 +142,16 @@ function inBox(box: PlanBox, [x, z]: LayoutVec2): boolean {
 }
 
 export function spaceCreationContains(evidence: SpaceCreationEvidence, point: LayoutVec2): boolean {
-	return !pointOnRing(evidence.polygon, point) && pointStrictlyInsidePolygon(evidence.polygon, point);
+	return (
+		!pointOnRing(evidence.polygon, point) && pointStrictlyInsidePolygon(evidence.polygon, point)
+	);
 }
 
-function wallPaths(document: LayoutDocumentWallFirst, lookup: ReturnType<typeof createRoomBoundaryLookup>, sampling: WallSamplingDerivation) {
+function wallPaths(
+	document: LayoutDocumentWallFirst,
+	lookup: ReturnType<typeof createRoomBoundaryLookup>,
+	sampling: WallSamplingDerivation,
+) {
 	return document.walls.flatMap((wall) => {
 		const start = lookup.junctionById.get(wall.startJunctionId)?.point;
 		const end = lookup.junctionById.get(wall.endJunctionId)?.point;
@@ -115,18 +176,32 @@ function screening(document: LayoutDocumentWallFirst) {
 	for (const { room } of rooms) {
 		for (const ref of room.boundary) owners.set(JSON.stringify([ref.wallId, ref.direction]), room);
 	}
-	return { lookup, paths, boxes, rooms, roomBoxes, owners, sampling, pathsById: new Map(paths.map(({ wall, points }) => [wall.id, points])) };
+	return {
+		lookup,
+		paths,
+		boxes,
+		rooms,
+		roomBoxes,
+		owners,
+		sampling,
+		pathsById: new Map(paths.map(({ wall, points }) => [wall.id, points])),
+	};
 }
 type Screening = ReturnType<typeof screening>;
 
 function inspectCycle(
 	document: LayoutDocumentWallFirst,
 	room: LayoutWallFirstRoom,
-	read: Screening
+	read: Screening,
 ): { evidence: SpaceCreationEvidence; area: number } | SpaceCreationRefusal {
 	const composed = composeSpaceBoundary(document, room, read.lookup);
 	if (composed.kind === 'failed') return refuse('invalid-cycle', composed.issue.message);
-	const polygon = spaceBoundaryPolygonFromEdges(composed.edges, document, read.lookup, read.sampling);
+	const polygon = spaceBoundaryPolygonFromEdges(
+		composed.edges,
+		document,
+		read.lookup,
+		read.sampling,
+	);
 	if (!polygon) return refuse('degenerate', 'This outline needs at least three points');
 	const walls: LayoutVec2[][] = [];
 	const virtual: [LayoutVec2, LayoutVec2][] = [];
@@ -146,39 +221,54 @@ function inspectCycle(
 function screenPlacement(
 	room: LayoutWallFirstRoom,
 	read: Screening,
-	evidence: SpaceCreationEvidence
+	evidence: SpaceCreationEvidence,
 ): SpaceCreationRefusal | null {
 	if (spaceOutlineSelfIntersects(evidence.polygon)) {
 		return refuse('self-intersection', 'This outline crosses itself', [], evidence);
 	}
 	for (const ref of room.boundary) {
 		const owner = read.owners.get(JSON.stringify([ref.wallId, ref.direction]));
-		if (owner) return refuse('wall-side-owned', `${owner.name} already uses this Wall side`, [owner.id, ref.wallId], evidence);
+		if (owner)
+			return refuse(
+				'wall-side-owned',
+				`${owner.name} already uses this Wall side`,
+				[owner.id, ref.wallId],
+				evidence,
+			);
 	}
 	for (const [index, edge] of room.virtualEdges.entries()) {
 		const [start, end] = evidence.virtual[index]!;
-		if (coincidesAsJunction(start, end)) return refuse('degenerate', 'This open side is too short', [], evidence);
+		if (coincidesAsJunction(start, end))
+			return refuse('degenerate', 'This open side is too short', [], evidence);
 		const box = planBox([start, end]);
 		const epsilon = JUNCTION_COINCIDENCE_EPSILON;
 		for (const wallIndex of read.boxes.overlaps({
-			minX: box.minX - epsilon, minZ: box.minZ - epsilon,
-			maxX: box.maxX + epsilon, maxZ: box.maxZ + epsilon
+			minX: box.minX - epsilon,
+			minZ: box.minZ - epsilon,
+			maxX: box.maxX + epsilon,
+			maxZ: box.maxZ + epsilon,
 		})) {
 			const { wall, points } = read.paths[wallIndex]!;
 			for (let i = 1; i < points.length; i += 1) {
 				const a = points[i - 1]!;
 				const b = points[i]!;
-				const result = classifyWallIntersection({ id: 'virtual', start, end }, { id: wall.id, start: a, end: b });
+				const result = classifyWallIntersection(
+					{ id: 'virtual', start, end },
+					{ id: wall.id, start: a, end: b },
+				);
 				const endpoints = [
 					{ id: i === 1 ? wall.startJunctionId : null, point: a },
-					{ id: i === points.length - 1 ? wall.endJunctionId : null, point: b }
+					{ id: i === points.length - 1 ? wall.endJunctionId : null, point: b },
 				];
 				const touches = endpoints.flatMap(({ id, point }) => [
 					...(coincidesAsJunction(point, start) ? [id === edge.startJunctionId] : []),
-					...(coincidesAsJunction(point, end) ? [id === edge.endJunctionId] : [])
+					...(coincidesAsJunction(point, end) ? [id === edge.endJunctionId] : []),
 				]);
-				if (touches.includes(false) || (result.kind !== 'none' &&
-					!(result.kind === 'collinear-endpoint-touch' && touches.includes(true)))) {
+				if (
+					touches.includes(false) ||
+					(result.kind !== 'none' &&
+						!(result.kind === 'collinear-endpoint-touch' && touches.includes(true)))
+				) {
 					return refuse('wall-contact', 'An open side crosses a Wall', [wall.id], evidence);
 				}
 			}
@@ -186,9 +276,21 @@ function screenPlacement(
 	}
 	for (const index of read.roomBoxes.overlaps(planBox(evidence.polygon))) {
 		const other = read.rooms[index]!;
-		const issue = spacePairIssue(evidence.polygon, other.polygon, true, other.room.virtualEdges.length > 0);
-		if (issue) return refuse(issue, issue === 'space_overlap' ? `Overlaps ${other.room.name}` :
-			`This outline would contain or be contained by ${other.room.name}`, [other.room.id], evidence);
+		const issue = spacePairIssue(
+			evidence.polygon,
+			other.polygon,
+			true,
+			other.room.virtualEdges.length > 0,
+		);
+		if (issue)
+			return refuse(
+				issue,
+				issue === 'space_overlap'
+					? `Overlaps ${other.room.name}`
+					: `This outline would contain or be contained by ${other.room.name}`,
+				[other.room.id],
+				evidence,
+			);
 	}
 	return null;
 }
@@ -198,12 +300,16 @@ function roomFromSpans(
 	endpoint: (anchor: SpaceCreationAnchor) => string,
 	fragments: (span: Extract<SpaceCreationSpan, { kind: 'wall' }>) => LayoutWall[] | null,
 	id: string,
-	name: string
+	name: string,
 ): LayoutWallFirstRoom | SpaceCreationRefusal {
 	const firstWall = cycle.findIndex((span) => span.kind === 'wall');
 	if (firstWall < 0) return refuse('invalid-cycle', 'Start on a Wall');
 	const room: LayoutWallFirstRoom = {
-		id, name, overhead: 'open-to-sky', boundary: [], virtualEdges: []
+		id,
+		name,
+		overhead: 'open-to-sky',
+		boundary: [],
+		virtualEdges: [],
 	};
 	const used = new Set<string>();
 	const ordered = [...cycle.slice(firstWall), ...cycle.slice(0, firstWall)];
@@ -218,25 +324,38 @@ function roomFromSpans(
 			continue;
 		}
 		const run = fragments(span);
-		if (!run?.length) return refuse('invalid-cycle', 'This span does not follow its Wall', [span.wallId]);
+		if (!run?.length)
+			return refuse('invalid-cycle', 'This span does not follow its Wall', [span.wallId]);
 		let cursor = start;
 		for (const wall of run) {
-			const direction = wall.startJunctionId === cursor ? 'forward' : wall.endJunctionId === cursor ? 'reverse' : null;
-			if (direction === null || used.has(wall.id)) return refuse('invalid-cycle', 'This outline repeats or leaves a Wall', [wall.id]);
+			const direction =
+				wall.startJunctionId === cursor
+					? 'forward'
+					: wall.endJunctionId === cursor
+						? 'reverse'
+						: null;
+			if (direction === null || used.has(wall.id))
+				return refuse('invalid-cycle', 'This outline repeats or leaves a Wall', [wall.id]);
 			room.boundary.push({ wallId: wall.id, direction });
 			used.add(wall.id);
 			cursor = direction === 'forward' ? wall.endJunctionId : wall.startJunctionId;
 		}
-		if (cursor !== end) return refuse('invalid-cycle', 'This span does not end on its Wall', [span.wallId]);
+		if (cursor !== end)
+			return refuse('invalid-cycle', 'This span does not end on its Wall', [span.wallId]);
 	}
 	return room.virtualEdges.length ? room : refuse('invalid-cycle', 'Draw an open side');
 }
 
-export function spaceCreationAnchorPoint(document: LayoutDocumentWallFirst, anchor: SpaceCreationAnchor): LayoutVec2 | null {
+export function spaceCreationAnchorPoint(
+	document: LayoutDocumentWallFirst,
+	anchor: SpaceCreationAnchor,
+): LayoutVec2 | null {
 	if (anchor.kind === 'corner') return anchor.point;
-	if (anchor.kind === 'junction') return document.junctions.find(({ id }) => id === anchor.id)?.point ?? null;
+	if (anchor.kind === 'junction')
+		return document.junctions.find(({ id }) => id === anchor.id)?.point ?? null;
 	const wall = document.walls.find(({ id }) => id === anchor.wallId);
-	if (!wall || wall.startJunctionId === wall.endJunctionId || !Number.isFinite(anchor.station)) return null;
+	if (!wall || wall.startJunctionId === wall.endJunctionId || !Number.isFinite(anchor.station))
+		return null;
 	const start = document.junctions.find(({ id }) => id === wall.startJunctionId)?.point;
 	const end = document.junctions.find(({ id }) => id === wall.endJunctionId)?.point;
 	if (!start || !end) return null;
@@ -247,11 +366,18 @@ export function spaceCreationAnchorPoint(document: LayoutDocumentWallFirst, anch
 		return [start[0] + t * (end[0] - start[0]), start[1] + t * (end[1] - start[1])];
 	}
 	if (wall.centerline.kind !== 'cubic-chain') return null;
-	const split = resolveWallCurveSplit({ startPoint: start, endPoint: end, ...wall.centerline }, anchor.station);
+	const split = resolveWallCurveSplit(
+		{ startPoint: start, endPoint: end, ...wall.centerline },
+		anchor.station,
+	);
 	return split.kind === 'resolved' ? split.result.point : null;
 }
 
-function stageCycle(baseline: LayoutDocumentWallFirst, capture: LayoutIdCapture, cycle: SpaceCreationCycle) {
+function stageCycle(
+	baseline: LayoutDocumentWallFirst,
+	capture: LayoutIdCapture,
+	cycle: SpaceCreationCycle,
+) {
 	let document = baseline;
 	const createdJunctionIds: string[] = [];
 	const createdWallIds: string[] = [];
@@ -282,8 +408,14 @@ function stageCycle(baseline: LayoutDocumentWallFirst, capture: LayoutIdCapture,
 			}
 		}
 	}
-	for (const [index, [key, point]] of [...corners].sort(([a], [b]) => a.localeCompare(b)).entries()) {
-		const id = allocateCapturedId(new Set(document.junctions.map((node) => node.id)), `junction.open-space.${index}`, capture);
+	for (const [index, [key, point]] of [...corners]
+		.sort(([a], [b]) => a.localeCompare(b))
+		.entries()) {
+		const id = allocateCapturedId(
+			new Set(document.junctions.map((node) => node.id)),
+			`junction.open-space.${index}`,
+			capture,
+		);
 		document = { ...document, junctions: [...document.junctions, { id, point: [...point] }] };
 		nodeIds.set(key, id);
 		createdJunctionIds.push(id);
@@ -294,18 +426,33 @@ function stageCycle(baseline: LayoutDocumentWallFirst, capture: LayoutIdCapture,
 		for (const [index, [station, expected]] of ordered.entries()) {
 			const seed = `open-space.${wallId}.${index}`;
 			const split = planWallSplit(document, wallId, station, {
-				nextWallId: (source) => allocateCapturedId(new Set(source.walls.map((wall) => wall.id)), `wall.${seed}`, capture),
-				nextJunctionId: (source) => allocateCapturedId(new Set(source.junctions.map((node) => node.id)), `junction.${seed}`, capture)
+				nextWallId: (source) =>
+					allocateCapturedId(new Set(source.walls.map((wall) => wall.id)), `wall.${seed}`, capture),
+				nextJunctionId: (source) =>
+					allocateCapturedId(
+						new Set(source.junctions.map((node) => node.id)),
+						`junction.${seed}`,
+						capture,
+					),
 			});
 			if (split.kind === 'rejected') {
-				return refuse('split', split.rejection.code === 'split_through_opening_interior' ?
-					'The split crosses an Opening' : split.rejection.message, [wallId]);
+				return refuse(
+					'split',
+					split.rejection.code === 'split_through_opening_interior'
+						? 'The split crosses an Opening'
+						: split.rejection.message,
+					[wallId],
+				);
 			}
 			const actual = split.document.junctions.find(({ id }) => id === split.junctionId)!.point;
-			if (!coincidesAsJunction(expected, actual)) return refuse('split', 'The split would move the Wall anchor', [wallId]);
+			if (!coincidesAsJunction(expected, actual))
+				return refuse('split', 'The split would move the Wall anchor', [wallId]);
 			document = split.document;
 			surfaceLineage.push(...split.surfaceLineage);
-			nodeIds.set(spaceCreationAnchorKey({ kind: 'wall-station', wallId, station }), split.junctionId);
+			nodeIds.set(
+				spaceCreationAnchorKey({ kind: 'wall-station', wallId, station }),
+				split.junctionId,
+			);
 			createdJunctionIds.push(split.junctionId);
 			createdWallIds.push(...split.createdWallIds);
 			fragments.splice(1, 0, ...split.createdWallIds);
@@ -314,7 +461,8 @@ function stageCycle(baseline: LayoutDocumentWallFirst, capture: LayoutIdCapture,
 		fragmentIds.set(wallId, fragments);
 	}
 	const read = screening(document);
-	const endpoint = (anchor: SpaceCreationAnchor) => anchor.kind === 'junction' ? anchor.id : nodeIds.get(spaceCreationAnchorKey(anchor))!;
+	const endpoint = (anchor: SpaceCreationAnchor) =>
+		anchor.kind === 'junction' ? anchor.id : nodeIds.get(spaceCreationAnchorKey(anchor))!;
 	function fragments(span: Extract<SpaceCreationSpan, { kind: 'wall' }>) {
 		const ids = fragmentIds.get(span.wallId) ?? [span.wallId];
 		const run = ids.map((id) => read.lookup.wallById.get(id));
@@ -327,8 +475,14 @@ function stageCycle(baseline: LayoutDocumentWallFirst, capture: LayoutIdCapture,
 		const between = walls.slice(Math.min(from, to), Math.max(from, to));
 		return from < to ? between : between.reverse();
 	}
-	const roomId = allocateCapturedId(new Set(document.rooms.map(({ id }) => id)), 'room.open-space', capture);
-	const name = createAuthoringRoomAllocator(capture, 'Open Space').nextRoomName(document.rooms.map(({ name }) => name));
+	const roomId = allocateCapturedId(
+		new Set(document.rooms.map(({ id }) => id)),
+		'room.open-space',
+		capture,
+	);
+	const name = createAuthoringRoomAllocator(capture, 'Open Space').nextRoomName(
+		document.rooms.map(({ name }) => name),
+	);
 	let room = roomFromSpans(cycle, endpoint, fragments, roomId, name);
 	if ('kind' in room) return room;
 	let outline = inspectCycle(document, room, read);
@@ -343,65 +497,114 @@ function stageCycle(baseline: LayoutDocumentWallFirst, capture: LayoutIdCapture,
 	if (placement) return placement;
 	if (!(outline.area > 0)) return refuse('degenerate', 'This outline has no area');
 	return {
-		kind: 'staged' as const, document: { ...document, rooms: [...document.rooms, room] },
-		roomId, createdJunctionIds, createdWallIds, splitWallIds, surfaceLineage, evidence: outline.evidence,
-		cycleKey: spaceBoundaryCycleKey(document, room, read.lookup)!
+		kind: 'staged' as const,
+		document: { ...document, rooms: [...document.rooms, room] },
+		roomId,
+		createdJunctionIds,
+		createdWallIds,
+		splitWallIds,
+		surfaceLineage,
+		evidence: outline.evidence,
+		cycleKey: spaceBoundaryCycleKey(document, room, read.lookup)!,
 	};
 }
 
 export function planCreateOpenSpace(input: {
-	baseline: LayoutDocumentWallFirst; levelId: string; capture: LayoutIdCapture; cycle: SpaceCreationCycle;
+	baseline: LayoutDocumentWallFirst;
+	levelId: string;
+	capture: LayoutIdCapture;
+	cycle: SpaceCreationCycle;
 }) {
 	const { baseline, levelId, capture, cycle } = input;
 	if (levelId !== baseline.floor.id) return refuse('invalid-level', 'The working floor changed');
-	if (!isLayoutIdCapture(capture)) return refuse('invalid-capture', 'The outline is missing its identity capture');
+	if (!isLayoutIdCapture(capture))
+		return refuse('invalid-capture', 'The outline is missing its identity capture');
 	if (!isSpaceCreationCycle(cycle)) return refuse('invalid-cycle', 'The outline is invalid');
 	try {
 		const staged = stageCycle(baseline, capture, cycle);
 		if (staged.kind === 'refused') return staged;
 		const structural = validateWallFirstLayoutDocument(staged.document);
-		if (!structural.success) return refuse('invalid-document', structural.issues[0]!.message, [], staged.evidence);
+		if (!structural.success)
+			return refuse('invalid-document', structural.issues[0]!.message, [], staged.evidence);
 		if (staged.createdJunctionIds.length > 0) {
 			const issue = validateWallFirstTopology(structural.document);
 			if (issue) return refuse('topology', issue.message, [], staged.evidence);
 		}
 		const compiled = compileWallFirstLayoutGeometry(structural.document);
 		if (hasBlockingLayoutIssues(compiled.issues)) {
-			return refuse('compile', compiled.issues.find((issue) => issue.severity !== 'warning')!.message, [], staged.evidence);
+			return refuse(
+				'compile',
+				compiled.issues.find((issue) => issue.severity !== 'warning')!.message,
+				[],
+				staged.evidence,
+			);
 		}
 		return { ...staged, kind: 'planned' as const, document: structural.document, compiled };
 	} catch (error) {
-		if (error instanceof LayoutIdCollisionError) return refuse('id-collision', error.message, [error.id]);
+		if (error instanceof LayoutIdCollisionError)
+			return refuse('id-collision', error.message, [error.id]);
 		throw error;
 	}
 }
 
-export type PlannedSpaceCreation = Extract<ReturnType<typeof planCreateOpenSpace>, { kind: 'planned' }>;
+export type PlannedSpaceCreation = Extract<
+	ReturnType<typeof planCreateOpenSpace>,
+	{ kind: 'planned' }
+>;
 
 function shape(value: unknown, ...keys: string[]): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && Object.keys(value).length === keys.length &&
-		keys.every((key) => Object.hasOwn(value, key));
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		Object.keys(value).length === keys.length &&
+		keys.every((key) => Object.hasOwn(value, key))
+	);
 }
 const id = (value: unknown): value is string => typeof value === 'string' && value.length > 0;
-const finite = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
+const finite = (value: unknown): value is number =>
+	typeof value === 'number' && Number.isFinite(value);
 function isAnchor(value: unknown): value is SpaceCreationAnchor {
 	if (shape(value, 'kind', 'id')) return value.kind === 'junction' && id(value.id);
-	if (shape(value, 'kind', 'wallId', 'station')) return value.kind === 'wall-station' && id(value.wallId) && finite(value.station) && value.station > 0;
-	return shape(value, 'kind', 'key', 'point') && value.kind === 'corner' && id(value.key) &&
-		Array.isArray(value.point) && value.point.length === 2 && finite(value.point[0]) && finite(value.point[1]);
+	if (shape(value, 'kind', 'wallId', 'station'))
+		return (
+			value.kind === 'wall-station' &&
+			id(value.wallId) &&
+			finite(value.station) &&
+			value.station > 0
+		);
+	return (
+		shape(value, 'kind', 'key', 'point') &&
+		value.kind === 'corner' &&
+		id(value.key) &&
+		Array.isArray(value.point) &&
+		value.point.length === 2 &&
+		finite(value.point[0]) &&
+		finite(value.point[1])
+	);
 }
 
 export function isSpaceCreationCycle(value: unknown): value is SpaceCreationCycle {
-	return Array.isArray(value) && value.length >= 2 && Array.from(value).every((span) =>
-		((shape(span, 'kind', 'from', 'to') && span.kind === 'virtual') ||
-			(shape(span, 'kind', 'wallId', 'from', 'to') && span.kind === 'wall' && id(span.wallId))) &&
-		isAnchor(span.from) && isAnchor(span.to)
+	return (
+		Array.isArray(value) &&
+		value.length >= 2 &&
+		Array.from(value).every(
+			(span) =>
+				((shape(span, 'kind', 'from', 'to') && span.kind === 'virtual') ||
+					(shape(span, 'kind', 'wallId', 'from', 'to') &&
+						span.kind === 'wall' &&
+						id(span.wallId))) &&
+				isAnchor(span.from) &&
+				isAnchor(span.to),
+		)
 	);
 }
 
 type WallSpan = Extract<SpaceCreationSpan, { kind: 'wall' }>;
 type Graph = Map<string, WallSpan[]>;
-function wallGraph(document: LayoutDocumentWallFirst, anchors: readonly SpaceCreationAnchor[] = []): Graph {
+function wallGraph(
+	document: LayoutDocumentWallFirst,
+	anchors: readonly SpaceCreationAnchor[] = [],
+): Graph {
 	const graph: Graph = new Map();
 	const byWall = new Map<string, Extract<SpaceCreationAnchor, { kind: 'wall-station' }>[]>();
 	for (const anchor of anchors) {
@@ -414,7 +617,7 @@ function wallGraph(document: LayoutDocumentWallFirst, anchors: readonly SpaceCre
 		const vertices = [
 			junction(wall.startJunctionId),
 			...(byWall.get(wall.id) ?? []).sort((a, b) => a.station - b.station),
-			junction(wall.endJunctionId)
+			junction(wall.endJunctionId),
 		];
 		for (let i = 1; i < vertices.length; i += 1) {
 			const from = vertices[i - 1]!;
@@ -432,7 +635,12 @@ function wallGraph(document: LayoutDocumentWallFirst, anchors: readonly SpaceCre
 }
 
 /** Each yield counts one attempted continuation, including rejected branches. */
-function* walk(graph: Graph, start: SpaceCreationAnchor, end: SpaceCreationAnchor, reserved = new Set<string>()): Generator<WallSpan[] | null> {
+function* walk(
+	graph: Graph,
+	start: SpaceCreationAnchor,
+	end: SpaceCreationAnchor,
+	reserved = new Set<string>(),
+): Generator<WallSpan[] | null> {
 	const startKey = spaceCreationAnchorKey(start);
 	const endKey = spaceCreationAnchorKey(end);
 	const visited = new Set([...reserved, startKey]);
@@ -466,8 +674,11 @@ function capForRun(run: WallSpan[], read: Screening): SpaceCreationCycle {
 	const start = first.from;
 	const end = last.to;
 	const straight = { kind: 'virtual' as const, from: end, to: start };
-	if (read.lookup.wallById.get(first.wallId)?.centerline.kind !== 'line' ||
-		read.lookup.wallById.get(last.wallId)?.centerline.kind !== 'line') return [...run, straight];
+	if (
+		read.lookup.wallById.get(first.wallId)?.centerline.kind !== 'line' ||
+		read.lookup.wallById.get(last.wallId)?.centerline.kind !== 'line'
+	)
+		return [...run, straight];
 	const point = (anchor: SpaceCreationAnchor) =>
 		anchor.kind === 'junction' ? read.lookup.junctionById.get(anchor.id)?.point : undefined;
 	const a = point(start);
@@ -477,17 +688,23 @@ function capForRun(run: WallSpan[], read: Screening): SpaceCreationCycle {
 	if (!a || !b || !innerA || !innerB) return [...run, straight];
 	const axis: LayoutVec2 = [a[0] - innerA[0], a[1] - innerA[1]];
 	const other: LayoutVec2 = [b[0] - innerB[0], b[1] - innerB[1]];
-	if (orientXZ([0, 0], axis, other) !== 0 || axis[0] * other[0] + axis[1] * other[1] <= 0) return [...run, straight];
+	if (orientXZ([0, 0], axis, other) !== 0 || axis[0] * other[0] + axis[1] * other[1] <= 0)
+		return [...run, straight];
 	const length = Math.hypot(...axis);
 	const unit: LayoutVec2 = [axis[0] / length, axis[1] / length];
 	const advance = (a[0] - b[0]) * unit[0] + (a[1] - b[1]) * unit[1];
 	if (Math.abs(advance) <= JUNCTION_COINCIDENCE_EPSILON) return [...run, straight];
 	const near = advance > 0 ? b : a;
 	const corner: SpaceCreationAnchor = {
-		kind: 'corner', key: 'cap-corner',
-		point: [near[0] + Math.abs(advance) * unit[0], near[1] + Math.abs(advance) * unit[1]]
+		kind: 'corner',
+		key: 'cap-corner',
+		point: [near[0] + Math.abs(advance) * unit[0], near[1] + Math.abs(advance) * unit[1]],
 	};
-	return [...run, { kind: 'virtual', from: end, to: corner }, { kind: 'virtual', from: corner, to: start }];
+	return [
+		...run,
+		{ kind: 'virtual', from: end, to: corner },
+		{ kind: 'virtual', from: corner, to: start },
+	];
 }
 
 function screenAuto(baseline: LayoutDocumentWallFirst, run: WallSpan[], source: Screening) {
@@ -496,15 +713,20 @@ function screenAuto(baseline: LayoutDocumentWallFirst, run: WallSpan[], source: 
 	let cornerId = 'room-tool.cap-corner';
 	let read = source;
 	if (corner?.kind === 'corner') {
-		const nodes = new Map(run.flatMap(({ from, to }) => [from, to]).flatMap((anchor) => {
-			const node = anchor.kind === 'junction' && source.lookup.junctionById.get(anchor.id);
-			return node ? [[node.id, node] as const] : [];
-		}));
+		const nodes = new Map(
+			run
+				.flatMap(({ from, to }) => [from, to])
+				.flatMap((anchor) => {
+					const node = anchor.kind === 'junction' && source.lookup.junctionById.get(anchor.id);
+					return node ? [[node.id, node] as const] : [];
+				}),
+		);
 		while (nodes.has(cornerId)) cornerId += '.corner';
 		nodes.set(cornerId, { id: cornerId, point: corner.point });
 		read = { ...source, lookup: { ...source.lookup, junctionById: nodes } };
 	}
-	const endpoint = (anchor: SpaceCreationAnchor) => anchor.kind === 'junction' ? anchor.id : cornerId;
+	const endpoint = (anchor: SpaceCreationAnchor) =>
+		anchor.kind === 'junction' ? anchor.id : cornerId;
 	const fragments = ({ wallId }: WallSpan) => [read.lookup.wallById.get(wallId)!];
 	let room = roomFromSpans(cycle, endpoint, fragments, '', '');
 	if ('kind' in room) return room;
@@ -521,15 +743,23 @@ function screenAuto(baseline: LayoutDocumentWallFirst, run: WallSpan[], source: 
 		return refuse('degenerate', 'This outline has no area');
 	}
 	const rejected = screenPlacement(room, read, outline.evidence);
-	return rejected ?? {
-		kind: 'outline' as const, cycle, evidence: outline.evidence,
-		cycleKey: spaceBoundaryCycleKey(baseline, room, read.lookup)!
-	};
+	return (
+		rejected ?? {
+			kind: 'outline' as const,
+			cycle,
+			evidence: outline.evidence,
+			cycleKey: spaceBoundaryCycleKey(baseline, room, read.lookup)!,
+		}
+	);
 }
 
 type WalkResult = { outcome: ScreenedSpace | SpaceCreationRefusal; bounds?: PlanBox } | null;
 
-function* componentWalk(graph: Graph, tips: SpaceCreationAnchor[], screen: (run: WallSpan[]) => ScreenedSpace | SpaceCreationRefusal): Generator<WalkResult> {
+function* componentWalk(
+	graph: Graph,
+	tips: SpaceCreationAnchor[],
+	screen: (run: WallSpan[]) => ScreenedSpace | SpaceCreationRefusal,
+): Generator<WalkResult> {
 	for (let i = 0; i < tips.length; i += 1) {
 		for (let j = i + 1; j < tips.length; j += 1) {
 			yield null; // Visiting the pair costs work even if it has no path.
@@ -539,7 +769,10 @@ function* componentWalk(graph: Graph, tips: SpaceCreationAnchor[], screen: (run:
 					continue;
 				}
 				const outcome = screen(run);
-				yield { outcome, ...(outcome.evidence ? { bounds: planBox(outcome.evidence.polygon) } : {}) };
+				yield {
+					outcome,
+					...(outcome.evidence ? { bounds: planBox(outcome.evidence.polygon) } : {}),
+				};
 			}
 		}
 	}
@@ -549,25 +782,36 @@ function createOutlineQuery(baseline: LayoutDocumentWallFirst) {
 	const graph = wallGraph(baseline);
 	const read = screening(baseline);
 	const wallBounds = new Map(read.paths.map(({ wall, box }) => [wall.id, box]));
-	const components = wallJunctionComponents(baseline).sort((a, b) => a.key.localeCompare(b.key)).flatMap((component) => {
-		const tips = [...component.junctionIds].sort().map(junction).filter((anchor) =>
-			graph.get(spaceCreationAnchorKey(anchor))?.length === 1
-		);
-		if (tips.length < 2) return [];
-		const points: LayoutVec2[] = [];
-		for (const wallId of component.wallIds) {
-			const box = wallBounds.get(wallId);
-			if (box) points.push([box.minX, box.minZ], [box.maxX, box.maxZ]);
-		}
-		const bounds = planBox(points);
-		const d = Math.hypot(bounds.maxX - bounds.minX, bounds.maxZ - bounds.minZ);
-		const region = { minX: bounds.minX - d, minZ: bounds.minZ - d, maxX: bounds.maxX + d, maxZ: bounds.maxZ + d };
-		return [{
-			bounds, region,
-			walk: componentWalk(graph, tips, (run) => screenAuto(baseline, run, read)),
-			cache: [] as WalkResult[]
-		}];
-	});
+	const components = wallJunctionComponents(baseline)
+		.sort((a, b) => a.key.localeCompare(b.key))
+		.flatMap((component) => {
+			const tips = [...component.junctionIds]
+				.sort()
+				.map(junction)
+				.filter((anchor) => graph.get(spaceCreationAnchorKey(anchor))?.length === 1);
+			if (tips.length < 2) return [];
+			const points: LayoutVec2[] = [];
+			for (const wallId of component.wallIds) {
+				const box = wallBounds.get(wallId);
+				if (box) points.push([box.minX, box.minZ], [box.maxX, box.maxZ]);
+			}
+			const bounds = planBox(points);
+			const d = Math.hypot(bounds.maxX - bounds.minX, bounds.maxZ - bounds.minZ);
+			const region = {
+				minX: bounds.minX - d,
+				minZ: bounds.minZ - d,
+				maxX: bounds.maxX + d,
+				maxZ: bounds.maxZ + d,
+			};
+			return [
+				{
+					bounds,
+					region,
+					walk: componentWalk(graph, tips, (run) => screenAuto(baseline, run, read)),
+					cache: [] as WalkResult[],
+				},
+			];
+		});
 	return (point: LayoutVec2): SpaceCreationOutline => {
 		let work = 0;
 		const viable = new Map<string, ScreenedSpace>();
@@ -577,7 +821,8 @@ function createOutlineQuery(baseline: LayoutDocumentWallFirst) {
 			if (!inBox(component.region, point)) continue;
 			relevant ||= inBox(component.bounds, point);
 			for (let i = 0; ; i += 1) {
-				if (work === SEARCH_LIMIT) return relevant || viable.size || rejected.size ? INDETERMINATE : { kind: 'none' };
+				if (work === SEARCH_LIMIT)
+					return relevant || viable.size || rejected.size ? INDETERMINATE : { kind: 'none' };
 				if (i === component.cache.length) {
 					const next = component.walk.next();
 					if (next.done) break;
@@ -585,20 +830,34 @@ function createOutlineQuery(baseline: LayoutDocumentWallFirst) {
 				}
 				work += 1;
 				const entry = component.cache[i];
-				if (!entry?.bounds || !inBox(entry.bounds, point) || !spaceCreationContains(entry.outcome.evidence!, point)) continue;
+				if (
+					!entry?.bounds ||
+					!inBox(entry.bounds, point) ||
+					!spaceCreationContains(entry.outcome.evidence!, point)
+				)
+					continue;
 				if (entry.outcome.kind === 'outline') {
 					viable.set(entry.outcome.cycleKey, entry.outcome);
 					if (viable.size === 2) return AMBIGUOUS;
 				} else rejected.add(entry.outcome);
 			}
 		}
-		return viable.values().next().value ?? (rejected.size === 1 ? rejected.values().next().value! :
-			rejected.size > 1 ? refuse('invalid-cycle', "Couldn't find one outline · Draw open side") : { kind: 'none' });
+		return (
+			viable.values().next().value ??
+			(rejected.size === 1
+				? rejected.values().next().value!
+				: rejected.size > 1
+					? refuse('invalid-cycle', "Couldn't find one outline · Draw open side")
+					: { kind: 'none' })
+		);
 	};
 }
 
 /** One binding's lazy reading of one accepted source. Cached work counts on every lookup. */
-export function createSpaceCreationOutlineQuery(baseline: LayoutDocumentWallFirst, levelId: string) {
+export function createSpaceCreationOutlineQuery(
+	baseline: LayoutDocumentWallFirst,
+	levelId: string,
+) {
 	let query: ReturnType<typeof createOutlineQuery> | undefined;
 	return (point: LayoutVec2): SpaceCreationOutline => {
 		if (levelId !== baseline.floor.id || !point.every(Number.isFinite)) return { kind: 'none' };
@@ -607,24 +866,34 @@ export function createSpaceCreationOutlineQuery(baseline: LayoutDocumentWallFirs
 	};
 }
 
-export function findSpaceCreationOutline(baseline: LayoutDocumentWallFirst, levelId: string, point: LayoutVec2): SpaceCreationOutline {
+export function findSpaceCreationOutline(
+	baseline: LayoutDocumentWallFirst,
+	levelId: string,
+	point: LayoutVec2,
+): SpaceCreationOutline {
 	return createSpaceCreationOutlineQuery(baseline, levelId)(point);
 }
 
 export function spaceCreationWallChoices(
-	baseline: LayoutDocumentWallFirst, from: SpaceCreationAnchor, draft: SpaceCreationCycle,
-	start: SpaceCreationAnchor
+	baseline: LayoutDocumentWallFirst,
+	from: SpaceCreationAnchor,
+	draft: SpaceCreationCycle,
+	start: SpaceCreationAnchor,
 ): readonly WallSpan[] {
 	const graph = wallGraph(baseline, [from, start, ...draft.flatMap(({ from, to }) => [from, to])]);
 	const visited = new Set(draft.slice(1).map(({ from }) => spaceCreationAnchorKey(from)));
-	return (graph.get(spaceCreationAnchorKey(from)) ?? []).filter(({ to }) =>
-		spaceCreationAnchorKey(to) !== spaceCreationAnchorKey(from) && !visited.has(spaceCreationAnchorKey(to))
+	return (graph.get(spaceCreationAnchorKey(from)) ?? []).filter(
+		({ to }) =>
+			spaceCreationAnchorKey(to) !== spaceCreationAnchorKey(from) &&
+			!visited.has(spaceCreationAnchorKey(to)),
 	);
 }
 
 /** Try completing the stated draft with a physical return path. */
 export function findSpaceCreationReturn(
-	baseline: LayoutDocumentWallFirst, capture: LayoutIdCapture, draft: SpaceCreationCycle
+	baseline: LayoutDocumentWallFirst,
+	capture: LayoutIdCapture,
+	draft: SpaceCreationCycle,
 ): (ScreenedSpace & { plan: PlannedSpaceCreation }) | Exclude<SpaceCreationOutline, ScreenedSpace> {
 	const start = draft[0]?.from;
 	const end = draft.at(-1)?.to;
@@ -632,7 +901,9 @@ export function findSpaceCreationReturn(
 	const anchors = draft.map(({ from }) => from);
 	const closed = spaceCreationAnchorKey(start) === spaceCreationAnchorKey(end);
 	const graph = wallGraph(baseline, [...anchors, end]);
-	const returns = closed ? [[]] : walk(graph, end, start, new Set(anchors.slice(1).map(spaceCreationAnchorKey)));
+	const returns = closed
+		? [[]]
+		: walk(graph, end, start, new Set(anchors.slice(1).map(spaceCreationAnchorKey)));
 	let work = 0;
 	let viable: (ScreenedSpace & { plan: PlannedSpaceCreation }) | null = null;
 	let rejected: SpaceCreationRefusal | null = null;
@@ -649,7 +920,13 @@ export function findSpaceCreationReturn(
 			continue;
 		}
 		if (viable && viable.cycleKey !== result.cycleKey) return AMBIGUOUS;
-		viable = { kind: 'outline', cycle, evidence: result.evidence, cycleKey: result.cycleKey, plan: result };
+		viable = {
+			kind: 'outline',
+			cycle,
+			evidence: result.evidence,
+			cycleKey: result.cycleKey,
+			plan: result,
+		};
 	}
 	return viable ?? (rejectionCount === 1 ? rejected! : { kind: 'none' });
 }

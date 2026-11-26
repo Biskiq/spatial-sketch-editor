@@ -50,7 +50,7 @@ export function experienceAdvancedHandles(input: {
 		datum,
 		hitRadius,
 		handleOffset,
-		heldHandleId
+		heldHandleId,
 	} = input;
 	if (!advanced || !showMarkers || pose === null) return [];
 	const mark = marks.find((item) => item.viewId === selectedId && item.kind !== 'turn');
@@ -60,20 +60,38 @@ export function experienceAdvancedHandles(input: {
 		const wedge = showFrustums ? frustums.find((item) => item.viewId === selectedId) : undefined;
 		if (wedge) {
 			candidates.push(
-				{ id: 'lens-left', kind: 'lens', at: wedge.left, glyph: 'corner', apex: wedge.eye, side: -1 },
-				{ id: 'lens-right', kind: 'lens', at: wedge.right, glyph: 'corner', apex: wedge.eye, side: 1 }
+				{
+					id: 'lens-left',
+					kind: 'lens',
+					at: wedge.left,
+					glyph: 'corner',
+					apex: wedge.eye,
+					side: -1,
+				},
+				{
+					id: 'lens-right',
+					kind: 'lens',
+					at: wedge.right,
+					glyph: 'corner',
+					apex: wedge.eye,
+					side: 1,
+				},
 			);
 		}
 	} else if (mark.camera) {
 		const foot = mark.camera.floor;
 		if (foot) {
 			candidates.push({ id: 'move', kind: 'move', at: foot, glyph: 'move' });
-			const floorAim = projectWorld([pose.target[0], datum, pose.target[2]], evaluation, evaluation.token);
+			const floorAim = projectWorld(
+				[pose.target[0], datum, pose.target[2]],
+				evaluation,
+				evaluation.token,
+			);
 			const direction =
 				floorAim.kind === 'projected'
 					? [
 							floorAim.css[0] - evaluation.rect.left - foot[0],
-							floorAim.css[1] - evaluation.rect.top - foot[1]
+							floorAim.css[1] - evaluation.rect.top - foot[1],
 						]
 					: [0, 0];
 			const span = Math.hypot(direction[0]!, direction[1]!);
@@ -84,13 +102,17 @@ export function experienceAdvancedHandles(input: {
 					glyph: 'curved',
 					at: [
 						foot[0] - (direction[0]! * handleOffset) / span,
-						foot[1] - (direction[1]! * handleOffset) / span
+						foot[1] - (direction[1]! * handleOffset) / span,
 					],
-					angle: (Math.atan2(direction[1]!, direction[0]!) * 180) / Math.PI - 90
+					angle: (Math.atan2(direction[1]!, direction[0]!) * 180) / Math.PI - 90,
 				});
 			}
 		}
-		const top = projectWorld([pose.eye[0], pose.eye[1] + 1, pose.eye[2]], evaluation, evaluation.token);
+		const top = projectWorld(
+			[pose.eye[0], pose.eye[1] + 1, pose.eye[2]],
+			evaluation,
+			evaluation.token,
+		);
 		if (top.kind === 'projected') {
 			const dx = top.css[0] - evaluation.rect.left - mark.css[0];
 			const dy = top.css[1] - evaluation.rect.top - mark.css[1];
@@ -105,13 +127,16 @@ export function experienceAdvancedHandles(input: {
 						? -1
 						: 1;
 				const offset = (hitRadius + 12) * lensSide;
-				const stem: StagePoint = [mark.css[0] + offset * across[0]!, mark.css[1] + offset * across[1]!];
+				const stem: StagePoint = [
+					mark.css[0] + offset * across[0]!,
+					mark.css[1] + offset * across[1]!,
+				];
 				candidates.push({
 					id: 'lift',
 					kind: 'lift',
 					glyph: 'hex',
 					stem,
-					at: [stem[0]! + handleOffset * 0.7 * axis[0]!, stem[1]! + handleOffset * 0.7 * axis[1]!]
+					at: [stem[0]! + handleOffset * 0.7 * axis[0]!, stem[1]! + handleOffset * 0.7 * axis[1]!],
 				});
 			}
 		}
@@ -125,7 +150,7 @@ export function experienceAdvancedHandles(input: {
 				glyph: 'two',
 				angle: 90,
 				stem: topEdge,
-				at: [topEdge[0], topEdge[1] - (hitRadius + 11)]
+				at: [topEdge[0], topEdge[1] - (hitRadius + 11)],
 			});
 			wire.corners.forEach((at, index) => {
 				candidates.push({
@@ -133,7 +158,7 @@ export function experienceAdvancedHandles(input: {
 					kind: 'lens',
 					at,
 					glyph: 'corner',
-					side: index < 2 ? 1 : -1
+					side: index < 2 ? 1 : -1,
 				});
 			});
 		}
@@ -152,13 +177,14 @@ export function experienceAdvancedHandles(input: {
 		) {
 			continue;
 		}
-		if (admitted.some((other) => Math.hypot(other.at[0] - x, other.at[1] - y) < hitRadius * 2)) continue;
+		if (admitted.some((other) => Math.hypot(other.at[0] - x, other.at[1] - y) < hitRadius * 2))
+			continue;
 		if (
 			marks.some(
 				(other) =>
 					other.kind !== 'turn' &&
 					other.viewId !== selectedId &&
-					Math.hypot(other.css[0] - x, other.css[1] - y) < 22 + hitRadius
+					Math.hypot(other.css[0] - x, other.css[1] - y) < 22 + hitRadius,
 			)
 		) {
 			continue;

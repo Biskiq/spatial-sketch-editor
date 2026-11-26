@@ -13,7 +13,7 @@ import type {
 	StageAdapterContext,
 	StageCandidatePreview,
 	StageKeyboardIntent,
-	StagePointerIntent
+	StagePointerIntent,
 } from '$lib/authoring/stage/stage-adapter-host';
 import { isStageDrag, stageUnitRevision } from '$lib/authoring/stage/stage-adapter-host';
 
@@ -26,7 +26,7 @@ import {
 	LAYOUT_REGION_CREATE_KIND,
 	regionCreateIntent,
 	regionIdFromCapture,
-	type RegionRole
+	type RegionRole,
 } from './region-planners';
 
 /** A born region's physical thickness; the Card edits it afterwards. */
@@ -61,7 +61,7 @@ export function createRegionInkSession(
 		readonly publish: () => void;
 		readonly select: (sourceKind: 'region', sourceId: string) => void;
 		readonly mode: () => RegionInkMode;
-	}
+	},
 ) {
 	const { services, document, levelId } = ports;
 	let points: LayoutVec2[] = [];
@@ -123,7 +123,7 @@ export function createRegionInkSession(
 			[x0, z0],
 			[x1, z0],
 			[x1, z1],
-			[x0, z1]
+			[x0, z1],
 		]);
 	}
 
@@ -133,7 +133,10 @@ export function createRegionInkSession(
 		const projected = ctx.project([first[0], ctx.snapshot.domain.datumMeters, first[1]]);
 		if (projected === null) return false;
 		const { left, top } = ctx.evaluation.rect;
-		return Math.hypot(css[0] + left - projected[0], css[1] + top - projected[1]) <= REGION_CLOSE_HIT_CSS_PX;
+		return (
+			Math.hypot(css[0] + left - projected[0], css[1] + top - projected[1]) <=
+			REGION_CLOSE_HIT_CSS_PX
+		);
 	}
 
 	function workRing(): LayoutVec2[] {
@@ -153,9 +156,10 @@ export function createRegionInkSession(
 	async function commit(ring: readonly LayoutVec2[]): Promise<void> {
 		if (committing) return;
 		if (ring.length < 3) {
-			refusal = ports.role() === 'floor'
-				? 'A Terrace needs at least three corners.'
-				: 'A Flat Roof needs at least three corners.';
+			refusal =
+				ports.role() === 'floor'
+					? 'A Terrace needs at least three corners.'
+					: 'A Flat Roof needs at least three corners.';
 			publish();
 			return;
 		}
@@ -178,8 +182,8 @@ export function createRegionInkSession(
 					projectId: snapshot.acceptedRevision.projectId,
 					revisionId: services.authoring.acceptedRevision().revisionId,
 					contentRevision,
-					levelId
-				})
+					levelId,
+				}),
 			);
 			if (outcome.kind === 'refused') {
 				refusal = outcome.message;
@@ -220,7 +224,7 @@ export function createRegionInkSession(
 			const acquisition = services.stage.acquireGesture({
 				owner: 'layout-region-draw',
 				evaluationId: intent.evaluationId,
-				policy: 'cancel-on-reading-change'
+				policy: 'cancel-on-reading-change',
 			});
 			if (acquisition.kind !== 'granted') {
 				refusal = `The ${acquisition.owner} gesture owns the pointer; finish or cancel it first.`;
@@ -233,7 +237,12 @@ export function createRegionInkSession(
 			if (ports.mode() === 'box') {
 				if (points.length === 0) {
 					points = [[point[0], point[1]]];
-					press = { evaluationId: intent.evaluationId, css: intent.css, point: [point[0], point[1]], dragging: false };
+					press = {
+						evaluationId: intent.evaluationId,
+						css: intent.css,
+						point: [point[0], point[1]],
+						dragging: false,
+					};
 					hoverPoint = [point[0], point[1]];
 				} else {
 					void commit(boxRing(points[0]!, [point[0], point[1]]));
@@ -246,7 +255,12 @@ export function createRegionInkSession(
 				return true;
 			}
 			points = [...points, [point[0], point[1]]];
-			press = { evaluationId: intent.evaluationId, css: intent.css, point: [point[0], point[1]], dragging: false };
+			press = {
+				evaluationId: intent.evaluationId,
+				css: intent.css,
+				point: [point[0], point[1]],
+				dragging: false,
+			};
 			publish();
 			return true;
 		}
@@ -256,10 +270,7 @@ export function createRegionInkSession(
 			if (press !== null && intent.evaluationId === press.evaluationId) {
 				press.dragging =
 					press.dragging ||
-					isStageDrag(
-						{ x: press.css[0], y: press.css[1] },
-						{ x: intent.css[0], y: intent.css[1] }
-					);
+					isStageDrag({ x: press.css[0], y: press.css[1] }, { x: intent.css[0], y: intent.css[1] });
 			}
 			publish();
 			return true;
@@ -322,7 +333,7 @@ export function createRegionInkSession(
 				ports.mode() === 'box'
 					? 'Press one corner and drag to the opposite corner, or click two opposite corners.'
 					: 'Click the corners; click the first corner again or press Enter to close the ring.',
-			refusal
+			refusal,
 		};
 	}
 
@@ -343,10 +354,10 @@ export function createRegionInkSession(
 				role: 'subject',
 				geometry: {
 					polygons: ring.length >= 3 ? [ring.map((point) => world(point, elevation))] : [],
-					segments: [[world(last, elevation), world(first, elevation)]]
+					segments: [[world(last, elevation), world(first, elevation)]],
 				},
-				labels: [{ world: world(first, elevation), text: label }]
-			})
+				labels: [{ world: world(first, elevation), text: label }],
+			}),
 		];
 	}
 

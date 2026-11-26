@@ -1,12 +1,11 @@
 {
-  "id": "41-envelope-generated-field",
-  "area": "codec",
-  "citation": "hard rule 3 — authored truth excludes generated state",
-  "title": "Serialization writes a session timestamp into the authored envelope",
-  "file": "packages/project-model/src/units/validate/serialize.ts",
-  "find": "const json = JSON.stringify(envelope, null, 2) + '\\n';",
-  "replace": "const json = JSON.stringify({ ...envelope, generatedAt: 'now' }, null, 2) + '\\n';",
-  "tests": [
-    "tests/lib/project-model/units-canonical-form.test.ts"
-  ]
+	"id": "41-envelope-generated-field",
+	"area": "codec",
+	"citation": "hard rule 3 \u2014 authored truth excludes generated state",
+	"title": "Serialization writes a session timestamp into the authored envelope",
+	"file": "packages/project-model/src/units/validate/serialize.ts",
+	"find": "const json = JSON.stringify(envelope, null, 2) + '\\n';",
+	"replace": "const json = JSON.stringify({ ...envelope, generatedAt: 'now' }, null, 2) + '\\n';",
+	"tests": ["packages/project-model/tests/units-canonical-form.test.ts"],
+	"root": "repo"
 }

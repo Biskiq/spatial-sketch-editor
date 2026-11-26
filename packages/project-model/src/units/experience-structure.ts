@@ -9,16 +9,16 @@
  * disagree. Nothing here is replaced silently:
  *
  * - the Detours that name a removed Stop (or a Stops a removed Guide took) go in
- *   the same change, named (A-6);
+ *  the same change, named (A-6);
  * - a Stop that entered at a removed View enters at its Presentation's Default
- *   (`entryViewId: null`), named;
+ *  (`entryViewId: null`), named;
  * - removing a Presentation's first View makes the next View the Default, named;
- *   the Views either side of a removed View become neighbours and keep their
- *   Cut/Travel;
+ *  the Views either side of a removed View become neighbours and keep their
+ *  Cut/Travel;
  * - a Camera View is deleted with its connections only when no other
- *   Presentation lists it; otherwise it is kept and its other users are named;
+ *  Presentation lists it; otherwise it is kept and its other users are named;
  * - removing the Opening Guide makes the next Guide the Opening Guide, named, or
- *   leaves `entryGuideId` null when none is left.
+ *  leaves `entryGuideId` null when none is left.
  *
  * Runtime-safe: no editor, renderer, Svelte or Three import. No id is allocated,
  * no clock is read.
@@ -31,7 +31,7 @@ import {
 	type Experience,
 	type ExperienceGuide,
 	type ExperiencePresentationView,
-	type ExperienceStop
+	type ExperienceStop,
 } from './types';
 
 /** One named effect of a removal, in the order the removal applies it. */
@@ -39,12 +39,25 @@ export type ExperienceRemovalConsequence =
 	| { readonly kind: 'stop-removed'; readonly stopId: string; readonly presentationId: string }
 	| { readonly kind: 'detour-removed'; readonly detourId: string }
 	| { readonly kind: 'stop-entry-fallback'; readonly stopId: string; readonly viewId: string }
-	| { readonly kind: 'default-changed'; readonly presentationId: string; readonly fromViewId: string; readonly toViewId: string }
+	| {
+			readonly kind: 'default-changed';
+			readonly presentationId: string;
+			readonly fromViewId: string;
+			readonly toViewId: string;
+	  }
 	| { readonly kind: 'view-deleted'; readonly viewId: string }
-	| { readonly kind: 'view-kept'; readonly viewId: string; readonly usedByPresentationIds: readonly string[] }
+	| {
+			readonly kind: 'view-kept';
+			readonly viewId: string;
+			readonly usedByPresentationIds: readonly string[];
+	  }
 	| { readonly kind: 'connection-deleted'; readonly connectionId: string }
 	| { readonly kind: 'guide-removed'; readonly guideId: string }
-	| { readonly kind: 'opening-guide-moved'; readonly fromGuideId: string; readonly toGuideId: string | null }
+	| {
+			readonly kind: 'opening-guide-moved';
+			readonly fromGuideId: string;
+			readonly toGuideId: string | null;
+	  }
 	| { readonly kind: 'presentation-removed'; readonly presentationId: string }
 	| { readonly kind: 'view-removed'; readonly presentationId: string; readonly viewId: string };
 
@@ -56,7 +69,11 @@ export type ExperienceRemovalRefusalCode =
 	| 'invalid-default';
 
 export type ExperienceRemovalPlan =
-	| { readonly kind: 'refused'; readonly code: ExperienceRemovalRefusalCode; readonly reason: string }
+	| {
+			readonly kind: 'refused';
+			readonly code: ExperienceRemovalRefusalCode;
+			readonly reason: string;
+	  }
 	| {
 			readonly kind: 'planned';
 			readonly experience: Experience;
@@ -72,9 +89,11 @@ function refused(code: ExperienceRemovalRefusalCode, reason: string): Refusal {
 }
 
 /** The creator-facing words for a Guide that a removal would leave empty. */
-export const GUIDE_KEEPS_A_STOP_REASON = 'A Guide keeps at least one Stop — remove the Guide instead';
+export const GUIDE_KEEPS_A_STOP_REASON =
+	'A Guide keeps at least one Stop — remove the Guide instead';
 /** The creator-facing words for a Presentation's last View. */
-export const PRESENTATION_KEEPS_A_VIEW_REASON = 'A Presentation keeps at least one View — remove the Presentation instead';
+export const PRESENTATION_KEEPS_A_VIEW_REASON =
+	'A Presentation keeps at least one View — remove the Presentation instead';
 
 /**
  * Remove a set of Stops from one Experience under the Stop rules. `removedGuideIds`
@@ -84,12 +103,15 @@ function removeStops(
 	experience: Experience,
 	stopIds: ReadonlySet<string>,
 	removedGuideIds: ReadonlySet<string>,
-	consequences: ExperienceRemovalConsequence[]
+	consequences: ExperienceRemovalConsequence[],
 ): Experience | Refusal {
 	if (stopIds.size === 0) return experience;
 	// A-6 — a Detour that names a removed Stop goes with it, in the same change.
 	const detours = experience.detours.filter((entry) => {
-		const uses = stopIds.has(entry.fromStopId) || stopIds.has(entry.toStopId) || stopIds.has(entry.returnToStopId);
+		const uses =
+			stopIds.has(entry.fromStopId) ||
+			stopIds.has(entry.toStopId) ||
+			stopIds.has(entry.returnToStopId);
 		if (uses) consequences.push({ kind: 'detour-removed', detourId: entry.id });
 		return !uses;
 	});
@@ -110,7 +132,11 @@ function removeStops(
 	const stops: ExperienceStop[] = [];
 	for (const stop of experience.stops) {
 		if (stopIds.has(stop.id)) {
-			consequences.push({ kind: 'stop-removed', stopId: stop.id, presentationId: stop.presentationId });
+			consequences.push({
+				kind: 'stop-removed',
+				stopId: stop.id,
+				presentationId: stop.presentationId,
+			});
 			continue;
 		}
 		stops.push(stop);
@@ -126,13 +152,15 @@ function releaseViews(
 	camera: Pick<CameraUnitPayload, 'views' | 'connections'>,
 	experiences: readonly Experience[],
 	candidateViewIds: readonly string[],
-	consequences: ExperienceRemovalConsequence[]
+	consequences: ExperienceRemovalConsequence[],
 ): Pick<CameraUnitPayload, 'views' | 'connections'> | null {
 	const deleted = new Set<string>();
 	for (const viewId of candidateViewIds) {
 		if (deleted.has(viewId)) continue;
 		const usedBy = experiences.flatMap((entry) =>
-			entry.presentations.filter((presentation) => presentation.views.some((view) => view.viewId === viewId)).map((presentation) => presentation.id)
+			entry.presentations
+				.filter((presentation) => presentation.views.some((view) => view.viewId === viewId))
+				.map((presentation) => presentation.id),
 		);
 		if (usedBy.length > 0) {
 			consequences.push({ kind: 'view-kept', viewId, usedByPresentationIds: usedBy });
@@ -153,7 +181,7 @@ function releaseViews(
 		.map((view) =>
 			view.connectedViewIds.some((id) => deleted.has(id))
 				? { ...view, connectedViewIds: view.connectedViewIds.filter((id) => !deleted.has(id)) }
-				: view
+				: view,
 		);
 	return { views, connections };
 }
@@ -165,7 +193,11 @@ function replaceExperience(experiences: readonly Experience[], next: Experience)
 /** One Travel a normalisation turned into a Cut, for the creator's feedback line. */
 export type ExperienceNormalisedCut =
 	| { readonly kind: 'stop'; readonly stopId: string; readonly nextStopId?: string }
-	| { readonly kind: 'presentation-view'; readonly presentationId: string; readonly viewId: string };
+	| {
+			readonly kind: 'presentation-view';
+			readonly presentationId: string;
+			readonly viewId: string;
+	  };
 
 /**
  * A-2 / D-12 — write a Cut wherever a Travel can no longer mean anything: on a
@@ -182,13 +214,16 @@ export function normalizeTransitions(experience: Experience): {
 } {
 	const cuts: ExperienceNormalisedCut[] = [];
 	const stopById = new Map(experience.stops.map((stop) => [stop.id, stop]));
-	const presentationById = new Map(experience.presentations.map((presentation) => [presentation.id, presentation]));
+	const presentationById = new Map(
+		experience.presentations.map((presentation) => [presentation.id, presentation]),
+	);
 	const entryViewOf = (stop: ExperienceStop): string | null =>
 		stopEntryViewId(stop, presentationById.get(stop.presentationId));
 	const cleared = new Set<string>();
 	for (const guide of experience.guides) {
 		const lastStopId = guide.stopIds.at(-1);
-		if (lastStopId !== undefined && stopById.get(lastStopId)?.transition === 'travel') cleared.add(lastStopId);
+		if (lastStopId !== undefined && stopById.get(lastStopId)?.transition === 'travel')
+			cleared.add(lastStopId);
 		for (let index = 0; index + 1 < guide.stopIds.length; index += 1) {
 			const from = stopById.get(guide.stopIds[index]!);
 			const to = stopById.get(guide.stopIds[index + 1]!);
@@ -203,7 +238,9 @@ export function normalizeTransitions(experience: Experience): {
 		for (const [index, stopId] of guide.stopIds.entries()) {
 			if (!cleared.has(stopId)) continue;
 			const nextStopId = guide.stopIds[index + 1];
-			cuts.push(nextStopId === undefined ? { kind: 'stop', stopId } : { kind: 'stop', stopId, nextStopId });
+			cuts.push(
+				nextStopId === undefined ? { kind: 'stop', stopId } : { kind: 'stop', stopId, nextStopId },
+			);
 		}
 	}
 	const presentations = experience.presentations.map((presentation) => {
@@ -211,7 +248,11 @@ export function normalizeTransitions(experience: Experience): {
 		const last = views.length - 1;
 		if (last >= 0 && views[last]!.transition === 'travel') {
 			delete views[last]!.transition;
-			cuts.push({ kind: 'presentation-view', presentationId: presentation.id, viewId: views[last]!.viewId });
+			cuts.push({
+				kind: 'presentation-view',
+				presentationId: presentation.id,
+				viewId: views[last]!.viewId,
+			});
 		}
 		return { ...presentation, views };
 	});
@@ -228,9 +269,14 @@ export function normalizeTransitions(experience: Experience): {
 function plannedRemoval(
 	experience: Experience,
 	camera: Pick<CameraUnitPayload, 'views' | 'connections'> | null,
-	consequences: ExperienceRemovalConsequence[]
+	consequences: ExperienceRemovalConsequence[],
 ): ExperienceRemovalPlan {
-	return { kind: 'planned', experience: normalizeTransitions(experience).experience, camera, consequences };
+	return {
+		kind: 'planned',
+		experience: normalizeTransitions(experience).experience,
+		camera,
+		consequences,
+	};
 }
 
 /** Remove one Stop from the Experience and from every Guide that orders it. */
@@ -251,9 +297,12 @@ export function planStopRemoval(experience: Experience, stopId: string): Experie
  */
 export function planGuideRemoval(experience: Experience, guideId: string): ExperienceRemovalPlan {
 	const at = experience.guides.findIndex((guide) => guide.id === guideId);
-	if (at === -1) return refused('missing-target', `guide "${guideId}" is not in experience "${experience.id}"`);
+	if (at === -1)
+		return refused('missing-target', `guide "${guideId}" is not in experience "${experience.id}"`);
 	const guide = experience.guides[at]!;
-	const elsewhere = new Set(experience.guides.filter((entry) => entry.id !== guideId).flatMap((entry) => entry.stopIds));
+	const elsewhere = new Set(
+		experience.guides.filter((entry) => entry.id !== guideId).flatMap((entry) => entry.stopIds),
+	);
 	const orphaned = new Set(guide.stopIds.filter((stopId) => !elsewhere.has(stopId)));
 	const consequences: ExperienceRemovalConsequence[] = [];
 	const next = removeStops(experience, orphaned, new Set([guideId]), consequences);
@@ -264,7 +313,11 @@ export function planGuideRemoval(experience: Experience, guideId: string): Exper
 	if (entryGuideId === guideId) {
 		const successor = experience.guides[at + 1] ?? experience.guides[at - 1] ?? null;
 		entryGuideId = successor?.id ?? null;
-		consequences.push({ kind: 'opening-guide-moved', fromGuideId: guideId, toGuideId: entryGuideId });
+		consequences.push({
+			kind: 'opening-guide-moved',
+			fromGuideId: guideId,
+			toGuideId: entryGuideId,
+		});
 	}
 	return plannedRemoval({ ...next, guides, entryGuideId }, null, consequences);
 }
@@ -278,23 +331,38 @@ export function planPresentationRemoval(
 	experiences: readonly Experience[],
 	camera: Pick<CameraUnitPayload, 'views' | 'connections'>,
 	experienceId: string,
-	presentationId: string
+	presentationId: string,
 ): ExperienceRemovalPlan {
 	const experience = experiences.find((entry) => entry.id === experienceId);
-	if (experience === undefined) return refused('missing-target', `experience "${experienceId}" is not in this envelope`);
+	if (experience === undefined)
+		return refused('missing-target', `experience "${experienceId}" is not in this envelope`);
 	const presentation = experience.presentations.find((entry) => entry.id === presentationId);
 	if (presentation === undefined) {
-		return refused('missing-target', `presentation "${presentationId}" is not in experience "${experience.id}"`);
+		return refused(
+			'missing-target',
+			`presentation "${presentationId}" is not in experience "${experience.id}"`,
+		);
 	}
-	const consequences: ExperienceRemovalConsequence[] = [{ kind: 'presentation-removed', presentationId }];
-	const stopIds = new Set(experience.stops.filter((stop) => stop.presentationId === presentationId).map((stop) => stop.id));
+	const consequences: ExperienceRemovalConsequence[] = [
+		{ kind: 'presentation-removed', presentationId },
+	];
+	const stopIds = new Set(
+		experience.stops
+			.filter((stop) => stop.presentationId === presentationId)
+			.map((stop) => stop.id),
+	);
 	const withoutStops = removeStops(experience, stopIds, new Set(), consequences);
 	if ('kind' in withoutStops) return withoutStops;
 	const next: Experience = {
 		...withoutStops,
-		presentations: withoutStops.presentations.filter((entry) => entry.id !== presentationId)
+		presentations: withoutStops.presentations.filter((entry) => entry.id !== presentationId),
 	};
-	const releasedCamera = releaseViews(camera, replaceExperience(experiences, next), presentationViewIds(presentation), consequences);
+	const releasedCamera = releaseViews(
+		camera,
+		replaceExperience(experiences, next),
+		presentationViewIds(presentation),
+		consequences,
+	);
 	return plannedRemoval(next, releasedCamera, consequences);
 }
 
@@ -312,21 +380,33 @@ export function planPresentationViewRemoval(
 	experienceId: string,
 	presentationId: string,
 	viewId: string,
-	newDefaultViewId: string | null = null
+	newDefaultViewId: string | null = null,
 ): ExperienceRemovalPlan {
 	const experience = experiences.find((entry) => entry.id === experienceId);
-	if (experience === undefined) return refused('missing-target', `experience "${experienceId}" is not in this envelope`);
+	if (experience === undefined)
+		return refused('missing-target', `experience "${experienceId}" is not in this envelope`);
 	const presentation = experience.presentations.find((entry) => entry.id === presentationId);
 	if (presentation === undefined) {
-		return refused('missing-target', `presentation "${presentationId}" is not in experience "${experience.id}"`);
+		return refused(
+			'missing-target',
+			`presentation "${presentationId}" is not in experience "${experience.id}"`,
+		);
 	}
 	const at = presentation.views.findIndex((view) => view.viewId === viewId);
 	if (at === -1) {
-		return refused('missing-target', `view "${viewId}" is not one of presentation "${presentation.id}"'s views`);
+		return refused(
+			'missing-target',
+			`view "${viewId}" is not one of presentation "${presentation.id}"'s views`,
+		);
 	}
-	if (presentation.views.length === 1) return refused('presentation-keeps-a-view', PRESENTATION_KEEPS_A_VIEW_REASON);
-	const consequences: ExperienceRemovalConsequence[] = [{ kind: 'view-removed', presentationId, viewId }];
-	let views: ExperiencePresentationView[] = presentation.views.filter((view) => view.viewId !== viewId);
+	if (presentation.views.length === 1)
+		return refused('presentation-keeps-a-view', PRESENTATION_KEEPS_A_VIEW_REASON);
+	const consequences: ExperienceRemovalConsequence[] = [
+		{ kind: 'view-removed', presentationId, viewId },
+	];
+	let views: ExperiencePresentationView[] = presentation.views.filter(
+		(view) => view.viewId !== viewId,
+	);
 	if (at === presentation.views.length - 1 && views.length > 0) {
 		// A step leaves the View it is authored on, so the new last View has none.
 		const { transition: _dropped, ...previous } = views[views.length - 1]!;
@@ -336,13 +416,24 @@ export function planPresentationViewRemoval(
 		const chosen = newDefaultViewId ?? views[0]!.viewId;
 		const chosenAt = views.findIndex((view) => view.viewId === chosen);
 		if (chosenAt === -1) {
-			return refused('invalid-default', `the new Default "${chosen}" is not one of the Presentation's other Views`);
+			return refused(
+				'invalid-default',
+				`the new Default "${chosen}" is not one of the Presentation's other Views`,
+			);
 		}
 		const { transition: _dropped, ...head } = views[chosenAt]!;
 		views = [head, ...views.filter((_, index) => index !== chosenAt)];
-		consequences.push({ kind: 'default-changed', presentationId, fromViewId: viewId, toViewId: chosen });
+		consequences.push({
+			kind: 'default-changed',
+			presentationId,
+			fromViewId: viewId,
+			toViewId: chosen,
+		});
 	} else if (newDefaultViewId !== null && newDefaultViewId !== presentation.views[0]!.viewId) {
-		return refused('invalid-default', 'A new Default is chosen only when the Default View is removed');
+		return refused(
+			'invalid-default',
+			'A new Default is chosen only when the Default View is removed',
+		);
 	}
 	const stops = experience.stops.map((stop) => {
 		if (stop.presentationId !== presentationId || stop.entryViewId !== viewId) return stop;
@@ -351,13 +442,19 @@ export function planPresentationViewRemoval(
 	});
 	const next: Experience = {
 		...experience,
-		presentations: experience.presentations.map((entry) => (entry.id === presentationId ? { ...entry, views } : entry)),
-		stops
+		presentations: experience.presentations.map((entry) =>
+			entry.id === presentationId ? { ...entry, views } : entry,
+		),
+		stops,
 	};
-	const releasedCamera = releaseViews(camera, replaceExperience(experiences, next), [viewId], consequences);
+	const releasedCamera = releaseViews(
+		camera,
+		replaceExperience(experiences, next),
+		[viewId],
+		consequences,
+	);
 	return plannedRemoval(next, releasedCamera, consequences);
 }
-
 
 /**
  * A-3 — a removed Scene object unlinks every Presentation about it. The
@@ -367,7 +464,7 @@ export function planPresentationViewRemoval(
 export function unlinkSceneSubject(
 	experience: Experience,
 	entityId: string,
-	effectiveName: string
+	effectiveName: string,
 ): Experience {
 	let changed = false;
 	const presentations = experience.presentations.map((presentation) => {
@@ -389,7 +486,7 @@ export function unlinkSceneSubject(
 /** Unlink every removed entity, preserving each Presentation's own name. */
 export function unlinkSceneSubjects(
 	experience: Experience,
-	removed: readonly { readonly entityId: string; readonly effectiveName: string }[]
+	removed: readonly { readonly entityId: string; readonly effectiveName: string }[],
 ): Experience {
 	let next = experience;
 	for (const entity of removed) {
@@ -417,7 +514,9 @@ export function travelPairs(experience: Experience): ExperienceTravelPair[] {
 		if (!pairs.has(key)) pairs.set(key, { fromViewId, toViewId });
 	};
 	const stopById = new Map(experience.stops.map((stop) => [stop.id, stop]));
-	const presentationById = new Map(experience.presentations.map((presentation) => [presentation.id, presentation]));
+	const presentationById = new Map(
+		experience.presentations.map((presentation) => [presentation.id, presentation]),
+	);
 	const entryViewOf = (stop: ExperienceStop): string | null =>
 		stopEntryViewId(stop, presentationById.get(stop.presentationId));
 	for (const guide of experience.guides) {
@@ -437,7 +536,9 @@ export function travelPairs(experience: Experience): ExperienceTravelPair[] {
 		}
 	}
 	return [...pairs.values()].sort((a, b) =>
-		a.fromViewId === b.fromViewId ? a.toViewId.localeCompare(b.toViewId) : a.fromViewId.localeCompare(b.fromViewId)
+		a.fromViewId === b.fromViewId
+			? a.toViewId.localeCompare(b.toViewId)
+			: a.fromViewId.localeCompare(b.fromViewId),
 	);
 }
 
@@ -447,8 +548,12 @@ export function travelPairs(experience: Experience): ExperienceTravelPair[] {
  */
 export function requiredTravelPairs(
 	experience: Experience,
-	connections: readonly { readonly fromNodeId: string; readonly toNodeId: string }[]
+	connections: readonly { readonly fromNodeId: string; readonly toNodeId: string }[],
 ): ExperienceTravelPair[] {
-	const joined = new Set(connections.map((connection) => travelPairKey(connection.fromNodeId, connection.toNodeId)));
-	return travelPairs(experience).filter((pair) => !joined.has(travelPairKey(pair.fromViewId, pair.toViewId)));
+	const joined = new Set(
+		connections.map((connection) => travelPairKey(connection.fromNodeId, connection.toNodeId)),
+	);
+	return travelPairs(experience).filter(
+		(pair) => !joined.has(travelPairKey(pair.fromViewId, pair.toViewId)),
+	);
 }

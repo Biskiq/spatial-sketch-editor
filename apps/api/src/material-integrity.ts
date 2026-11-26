@@ -12,7 +12,7 @@ import type { ProjectEnvelope } from '@portfolio/project-model/units';
 export type MaterialIntegrityIssue = { readonly path: string; readonly message: string };
 
 export async function verifyMaterialDefinitionHashes(
-	envelope: ProjectEnvelope
+	envelope: ProjectEnvelope,
 ): Promise<MaterialIntegrityIssue[]> {
 	const issues: MaterialIntegrityIssue[] = [];
 	for (const [index, resource] of envelope.units.resources.data.resources.entries()) {
@@ -21,7 +21,7 @@ export async function verifyMaterialDefinitionHashes(
 		if (computed !== resource.id || resource.contentRevision !== resource.id) {
 			issues.push({
 				path: `$.units.resources.data.resources[${index}]`,
-				message: `Material definition "${resource.id}" does not match its canonical recipe digest`
+				message: `Material definition "${resource.id}" does not match its canonical recipe digest`,
 			});
 		}
 	}

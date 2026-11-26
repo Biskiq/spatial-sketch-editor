@@ -1,5 +1,5 @@
 /**
- * The host's **generic consumption** of AM-5 adapter contributions.
+ * The host's **generic consumption** of adapter contributions.
  *
  * A domain adapter registers its tasks, Find entries, Card facts and instrument
  * content with the Stage facade. Nothing in the shell knows about a particular
@@ -20,7 +20,7 @@ import type {
 	StageCardFact,
 	StageCardSubject,
 	StageCardWriterRecord,
-	StageFacade
+	StageFacade,
 } from './stage-facade';
 
 /** One contributed operation row, ready to render. */
@@ -67,11 +67,16 @@ export type StageDockKey = {
 	readonly icon?: string;
 };
 
-const HOST_DOCK_KEYS: Readonly<Record<'select' | 'paint' | 'measure' | 'erase', { id: string; label: string; taskKind: string | null }>> = {
+const HOST_DOCK_KEYS: Readonly<
+	Record<
+		'select' | 'paint' | 'measure' | 'erase',
+		{ id: string; label: string; taskKind: string | null }
+	>
+> = {
 	select: { id: 'host-select', label: 'Select', taskKind: null },
 	paint: { id: STAGE_PAINT_TASK, label: 'Paint', taskKind: STAGE_PAINT_TASK },
 	measure: { id: STAGE_MEASURE_TASK, label: 'Measure', taskKind: STAGE_MEASURE_TASK },
-	erase: { id: STAGE_ERASER_TASK, label: 'Eraser', taskKind: STAGE_ERASER_TASK }
+	erase: { id: STAGE_ERASER_TASK, label: 'Eraser', taskKind: STAGE_ERASER_TASK },
 };
 
 /**
@@ -85,7 +90,7 @@ export function stageDockKeys(tools: readonly StageDockTool[]): readonly StageDo
 		shortcut: STAGE_DOCK_SHORTCUTS[slot] ?? null,
 		adapterId: STAGE_HOST_ADAPTER_ID,
 		palette: false,
-		separated: false
+		separated: false,
 	});
 	const contributed = (tool: StageDockTool, separated = false): StageDockKey => ({
 		id: tool.id,
@@ -95,7 +100,7 @@ export function stageDockKeys(tools: readonly StageDockTool[]): readonly StageDo
 		adapterId: tool.adapterId,
 		taskKind: tool.taskKind,
 		palette: true,
-		separated
+		separated,
 	});
 	const ink = tools.find((tool) => tool.slot === 'ink');
 	const library = tools.find((tool) => tool.slot === 'library');
@@ -115,12 +120,12 @@ export function stageDockKeys(tools: readonly StageDockTool[]): readonly StageDo
 			taskKind: null,
 			palette: true,
 			separated: false,
-			icon: 'slice'
+			icon: 'slice',
 		},
 		host('erase'),
 		host('measure'),
 		...others.map((tool) => contributed(tool)),
-		...(library === undefined ? [] : [contributed(library, true)])
+		...(library === undefined ? [] : [contributed(library, true)]),
 	];
 }
 
@@ -143,15 +148,20 @@ export function stageDockTools(facade: StageFacade | null): readonly StageDockTo
 			adapterId: entry.adapterId,
 			taskKind: entry.taskKind,
 			order: entry.order,
-			...(entry.slot === undefined ? {} : { slot: entry.slot })
+			...(entry.slot === undefined ? {} : { slot: entry.slot }),
 		}));
 }
 
 /** Every non-dock contribution remains reachable by Find. */
 export function stageFindEntries(facade: StageFacade | null): readonly StageContributionRow[] {
-	return (facade?.findEntries() ?? []).filter((entry) => entry.home !== 'dock').map((entry) => ({
-		id: entry.id, label: entry.label, adapterId: entry.adapterId, taskKind: entry.taskKind
-	}));
+	return (facade?.findEntries() ?? [])
+		.filter((entry) => entry.home !== 'dock')
+		.map((entry) => ({
+			id: entry.id,
+			label: entry.label,
+			adapterId: entry.adapterId,
+			taskKind: entry.taskKind,
+		}));
 }
 
 /**
@@ -165,7 +175,7 @@ export function stageFindEntries(facade: StageFacade | null): readonly StageCont
 export function stageCardFacts(
 	facade: StageFacade | null,
 	subject: StageCardSubject | null,
-	own: readonly StageCardFact[] = []
+	own: readonly StageCardFact[] = [],
 ): readonly StageCardFact[] {
 	const facts: StageCardFact[] = [...own];
 	if (facade === null || subject === null) return facts;
@@ -183,7 +193,7 @@ export function stageCardFacts(
 			label,
 			value: contributed.value,
 			...(contributed.fieldId === undefined ? {} : { fieldId: contributed.fieldId }),
-			...(contributed.select === undefined ? {} : { select: contributed.select })
+			...(contributed.select === undefined ? {} : { select: contributed.select }),
 		});
 	}
 	return facts;
@@ -198,7 +208,7 @@ export function stageCardFacts(
  */
 export function stageCardWriter(
 	facade: StageFacade | null,
-	subject: StageCardSubject | null
+	subject: StageCardSubject | null,
 ): StageCardWriterRecord | null {
 	if (facade === null || subject === null) return null;
 	return facade.cardWriter(subject);
@@ -207,7 +217,7 @@ export function stageCardWriter(
 /** The Card's scoped contributed actions for one subject, in deterministic order. */
 export function stageCardActions(
 	facade: StageFacade | null,
-	subject: StageCardSubject | null
+	subject: StageCardSubject | null,
 ): readonly StageCardActionRecord[] {
 	if (facade === null || subject === null) return [];
 	return facade.cardActions(subject);

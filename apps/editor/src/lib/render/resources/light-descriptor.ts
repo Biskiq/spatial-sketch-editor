@@ -123,7 +123,7 @@ export function lightKey(descriptor: LightDescriptor): string {
 				camera.top,
 				camera.bottom,
 				camera.near,
-				camera.far
+				camera.far,
 			].join('|');
 		}
 	}

@@ -33,13 +33,13 @@ export function wireStageViewport(deps: StageViewportWiring) {
 		lens: deps.lens,
 		roomLabels: () => ({
 			plan: deps.preferences().roomLabels2d,
-			threeD: deps.preferences().roomLabels3d
+			threeD: deps.preferences().roomLabels3d,
 		}),
 		groundReachMeters: deps.groundReachMeters,
 		nowSeconds: deps.nowSeconds,
 		advanceLookThroughZoom: deps.advanceLookThroughZoom,
 		advancePlayback: deps.advancePlayback,
 		onBeforeRefresh: deps.onBeforeRefresh,
-		onAfterRefresh: deps.onAfterRefresh
+		onAfterRefresh: deps.onAfterRefresh,
 	});
 }

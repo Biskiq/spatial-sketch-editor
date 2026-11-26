@@ -33,7 +33,7 @@ export function publishOpeningRepeatProposal(proposal: OpeningRepeatProposal): v
 
 export function openingRepeatProposal(
 	sourceContentId: string,
-	openingId: string
+	openingId: string,
 ): OpeningRepeatProposal | null {
 	return proposals.get(keyOf(sourceContentId, openingId)) ?? null;
 }

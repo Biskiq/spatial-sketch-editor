@@ -34,7 +34,7 @@ export function finalizeRoomUnitMotion(
 	 */
 	subgraph: RoomUnitMoveSubgraph & { roomIds: readonly string[] },
 	candidateDocument: LayoutDocumentWallFirst,
-	operation: 'room-move' | 'room-rotate'
+	operation: 'room-move' | 'room-rotate',
 ): RoomMovePlan {
 	// Wall records carry no moved field, so every authored `height`
 	// survives verbatim and no Floor-level quantity is ever consulted.
@@ -52,7 +52,7 @@ export function finalizeRoomUnitMotion(
 		.filter((room) => room.virtualEdges.length === 0)
 		.map((room) => ({
 			candidateFaceKeys: [roomBoundaryCycleKey(document, room)],
-			predecessorRoomIds: [room.id]
+			predecessorRoomIds: [room.id],
 		}));
 	const attemptedAllocation = { value: false };
 	const reconciliation = reconcileRooms({
@@ -62,18 +62,14 @@ export function finalizeRoomUnitMotion(
 		components,
 		// A rigid move preserves every existing Space.
 		candidateRooms: candidateDocument.rooms,
-		allocator: guardedAllocator(attemptedAllocation)
+		allocator: guardedAllocator(attemptedAllocation),
 	});
 	// `RoomReconciliation` has no `kind`, so narrow through an explicit
-	// predicate rather than a discriminated-union switch (P23.8 result shape).
+	// predicate rather than a discriminated-union switch (result shape).
 	if (isReconciliationFailure(reconciliation)) {
 		const { rejection } = reconciliation;
 		if (rejection.code === 'ambiguous_room_correspondence') {
-			return reject(
-				'ambiguous_room_correspondence',
-				rejection.message,
-				rejection.roomIds
-			);
+			return reject('ambiguous_room_correspondence', rejection.message, rejection.roomIds);
 		}
 		if (rejection.code === 'unresolved_portal_remap') {
 			return reject('portal_relation_invalid', rejection.message, rejection.roomIds);
@@ -84,7 +80,7 @@ export function finalizeRoomUnitMotion(
 	// --- global identity preservation, asserted ------------------------
 	const identityIssue = assertRoomIdentityPreserved(document, reconciliation, {
 		roomId,
-		allocationAttempted: attemptedAllocation.value
+		allocationAttempted: attemptedAllocation.value,
 	});
 	if (identityIssue) {
 		return reject(identityIssue.code, identityIssue.message, identityIssue.targetIds);
@@ -99,11 +95,12 @@ export function finalizeRoomUnitMotion(
 			'invalid_candidate_document',
 			`Candidate failed wall-first validation: ${structural.issues[0]?.message ?? 'unknown issue'}`,
 			undefined,
-			structural.issues
+			structural.issues,
 		);
 	}
 	const topologyIssue = validateWallFirstTopology(structural.document, {
-		openingSet: 'defer', closedContactWallIds: new Set(subgraph.wallIds)
+		openingSet: 'defer',
+		closedContactWallIds: new Set(subgraph.wallIds),
 	});
 	if (topologyIssue) {
 		// A rigid translation changes no Opening metric and no Wall height, so
@@ -115,7 +112,7 @@ export function finalizeRoomUnitMotion(
 				: 'topology_invalid',
 			topologyIssue.message,
 			topologyIssue.targetId ? [topologyIssue.targetId] : undefined,
-			[topologyIssue]
+			[topologyIssue],
 		);
 	}
 	const setIssues = validateWallFirstOpeningSet(structural.document);
@@ -125,7 +122,7 @@ export function finalizeRoomUnitMotion(
 			first.code === 'opening_exceeds_wall_height' ? 'opening_set_invalid' : 'topology_invalid',
 			first.message,
 			[first.openingId, first.wallId],
-			setIssues
+			setIssues,
 		);
 	}
 	const relationIssues = validateWallFirstPortalRelations(structural.document);
@@ -134,9 +131,11 @@ export function finalizeRoomUnitMotion(
 		return reject('portal_relation_invalid', first.message, [first.openingId], relationIssues);
 	}
 	const accepted = structural.document;
-	const sameRoomRecords = accepted.rooms.length === document.rooms.length && accepted.rooms.every(
-		(room, index) => JSON.stringify(room) === JSON.stringify(document.rooms[index])
-	);
+	const sameRoomRecords =
+		accepted.rooms.length === document.rooms.length &&
+		accepted.rooms.every(
+			(room, index) => JSON.stringify(room) === JSON.stringify(document.rooms[index]),
+		);
 	if (sameRoomRecords) {
 		registerCowDocumentDelta(accepted, {
 			baseline: document,
@@ -144,7 +143,7 @@ export function finalizeRoomUnitMotion(
 			changedWallIds: subgraph.wallIds,
 			changedOpeningIds: [],
 			changedRoomIds: [],
-			changedObjectIds: subgraph.associatedObjectIds ?? []
+			changedObjectIds: subgraph.associatedObjectIds ?? [],
 		});
 	}
 	const session = activeLayoutCompileSession();
@@ -154,7 +153,7 @@ export function finalizeRoomUnitMotion(
 			'candidate_does_not_compile',
 			`Candidate document does not compile: ${compiled.issues[0]?.message ?? 'unknown geometry issue'}`,
 			undefined,
-			compiled.issues
+			compiled.issues,
 		);
 	}
 
@@ -166,10 +165,9 @@ export function finalizeRoomUnitMotion(
 		movedRoomIds: [...subgraph.roomIds],
 		changedJunctionIds: [...subgraph.junctionIds],
 		changedWallIds: [...subgraph.wallIds],
-		changedObjectIds: [...(subgraph.associatedObjectIds ?? [])]
+		changedObjectIds: [...(subgraph.associatedObjectIds ?? [])],
 	};
 }
-
 
 /**
  * Prove the move preserved **global** Room identity: every predecessor Room
@@ -191,20 +189,20 @@ function assertRoomIdentityPreserved(
 		carriedRoomIds: readonly string[];
 		spaceRetirements: readonly { roomId: string }[];
 	},
-	options: { roomId: string; allocationAttempted: boolean }
+	options: { roomId: string; allocationAttempted: boolean },
 ): { code: RoomMoveRejectionCode; message: string; targetIds?: readonly string[] } | null {
 	if (options.allocationAttempted) {
 		return {
 			code: 'room_identity_lost',
 			message: 'Room move reached a Room allocation branch; a rigid move preserves identity',
-			targetIds: [options.roomId]
+			targetIds: [options.roomId],
 		};
 	}
 	if (reconciliation.retiredRoomIds.length > 0) {
 		return {
 			code: 'room_identity_lost',
 			message: `Room move retired Room(s) ${reconciliation.retiredRoomIds.join(', ')}`,
-			targetIds: [...reconciliation.retiredRoomIds]
+			targetIds: [...reconciliation.retiredRoomIds],
 		};
 	}
 	const carriedRoomIds = new Set(reconciliation.carriedRoomIds);
@@ -212,7 +210,7 @@ function assertRoomIdentityPreserved(
 		return {
 			code: 'room_identity_lost',
 			message: `Room move produced ${reconciliation.lineage.length} lineage record(s) and ${carriedRoomIds.size} carried Space(s) for ${baseline.rooms.length} Room(s)`,
-			targetIds: [options.roomId]
+			targetIds: [options.roomId],
 		};
 	}
 	for (const room of baseline.rooms) {
@@ -220,7 +218,7 @@ function assertRoomIdentityPreserved(
 			return {
 				code: 'room_identity_lost',
 				message: `Open Space '${room.id}' was not carried by the move`,
-				targetIds: [room.id]
+				targetIds: [room.id],
 			};
 		}
 	}
@@ -230,7 +228,7 @@ function assertRoomIdentityPreserved(
 			return {
 				code: 'room_identity_lost',
 				message: `Room move produced a '${record.kind}' lineage record for Room '${record.roomId}'`,
-				targetIds: [record.roomId]
+				targetIds: [record.roomId],
 			};
 		}
 	}
@@ -240,7 +238,7 @@ function assertRoomIdentityPreserved(
 			return {
 				code: 'room_identity_lost',
 				message: `Room '${room.id}' did not survive the move`,
-				targetIds: [room.id]
+				targetIds: [room.id],
 			};
 		}
 		const expectedKey = roomBoundaryCycleKey(baseline, room);
@@ -249,14 +247,14 @@ function assertRoomIdentityPreserved(
 			return {
 				code: 'room_identity_lost',
 				message: `Room '${room.id}' boundary lineage changed during the move`,
-				targetIds: [room.id]
+				targetIds: [room.id],
 			};
 		}
 		if (finalRoom.name !== room.name) {
 			return {
 				code: 'room_identity_lost',
 				message: `Room '${room.id}' name changed during the move`,
-				targetIds: [room.id]
+				targetIds: [room.id],
 			};
 		}
 	}
@@ -264,7 +262,7 @@ function assertRoomIdentityPreserved(
 		return {
 			code: 'room_identity_lost',
 			message: `Room count changed during the move (${baseline.rooms.length} → ${reconciliation.document.rooms.length})`,
-			targetIds: [options.roomId]
+			targetIds: [options.roomId],
 		};
 	}
 	return null;

@@ -37,10 +37,7 @@ export const LIFECYCLE_ORDER = {
 		'core:invalidate-plan',
 		'studio:reconcile',
 	],
-	historyStep: [
-		'appearance:cancel-card-gesture',
-		'core:run-history',
-	],
+	historyStep: ['appearance:cancel-card-gesture', 'core:run-history'],
 	readingChange: [
 		'appearance:cancel-card-gesture',
 		'core:submit-reading',

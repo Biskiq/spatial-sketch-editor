@@ -1,6 +1,4 @@
-export {
-	buildExperienceCompanion,
-} from './companion';
+export { buildExperienceCompanion } from './companion';
 
 export type {
 	CompanionDestination,
@@ -31,9 +29,7 @@ export type {
 	ExperienceVisit,
 } from './interpreter';
 
-export {
-	lowerExperienceProgram,
-} from './lowering';
+export { lowerExperienceProgram } from './lowering';
 
 export type {
 	ExperienceLoweringAction,
@@ -43,9 +39,7 @@ export type {
 	ExperienceProgramTransition,
 } from './lowering';
 
-export {
-	deriveExperienceRuntimePolicy,
-} from './policy';
+export { deriveExperienceRuntimePolicy } from './policy';
 
 export type {
 	ExperienceRuntimePolicy,

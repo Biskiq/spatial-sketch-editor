@@ -1,7 +1,14 @@
 import { cloneFormSource, type SceneEntity, type Vec3 } from '../../scene';
 import { refusal } from './refusals';
 import { entityScale } from './support';
-import { type SceneOperationKind, type SceneOperationRefusal, type SceneOperationCorrespondence, type SceneOperationSupportEvidence, type SceneOperationResult, type SceneOperationContext } from './types';
+import {
+	type SceneOperationKind,
+	type SceneOperationRefusal,
+	type SceneOperationCorrespondence,
+	type SceneOperationSupportEvidence,
+	type SceneOperationResult,
+	type SceneOperationContext,
+} from './types';
 import { finalizeSceneCandidate, sameSceneValues, type SceneRecordScope } from '../record-scope';
 import { type ShapeIssue } from '../../strict-shape';
 import { type CameraFreeSceneDocument as SceneDocument } from '../../units/types';
@@ -25,8 +32,8 @@ export function finalizePlacedEntity(input: {
 			changedEntityFields: [],
 			createdEntityIds: [input.entityId],
 			removedEntityIds: [],
-			allowClusterCleanup: false
-		}
+			allowClusterCleanup: false,
+		},
 	});
 	if (finalized.kind === 'rejected') return fromFinalization(finalized);
 	return {
@@ -36,7 +43,7 @@ export function finalizePlacedEntity(input: {
 		scene: finalized.scene,
 		fields: ['entities'],
 		correspondence: [{ relation: 'created', entityId: input.entityId }],
-		diagnostics: []
+		diagnostics: [],
 	};
 }
 
@@ -52,15 +59,19 @@ export function finalize(input: {
 	const before = input.context.scene;
 	const after: SceneDocument = {
 		...before,
-		entities: before.entities.map((entity) => (entity.id === input.next.id ? input.next : entity))
+		entities: before.entities.map((entity) => (entity.id === input.next.id ? input.next : entity)),
 	};
 	if (sameSceneValues(after, before)) {
-		return refusal('no_op', `The ${input.operationKind} operation leaves the accepted source unchanged.`, []);
+		return refusal(
+			'no_op',
+			`The ${input.operationKind} operation leaves the accepted source unchanged.`,
+			[],
+		);
 	}
 	const finalized = finalizeSceneCandidate({
 		before,
 		after,
-		scope: { operationKind: input.operationKind, ...input.scope }
+		scope: { operationKind: input.operationKind, ...input.scope },
 	});
 	if (finalized.kind === 'rejected') return fromFinalization(finalized);
 	return {
@@ -74,9 +85,9 @@ export function finalize(input: {
 		worldPose: {
 			position: [...input.next.position],
 			rotation: [...input.next.rotation],
-			scale: entityScale(input.next)
+			scale: entityScale(input.next),
 		},
-		diagnostics: []
+		diagnostics: [],
 	};
 }
 
@@ -87,7 +98,7 @@ export function cloneEntityWithId(entity: SceneEntity, id: string): SceneEntity 
 			id,
 			position: [...entity.position] as Vec3,
 			rotation: [...entity.rotation] as Vec3,
-			form: cloneFormSource(entity.form)
+			form: cloneFormSource(entity.form),
 		};
 	}
 	if (entity.kind === 'primitive') {
@@ -98,14 +109,14 @@ export function cloneEntityWithId(entity: SceneEntity, id: string): SceneEntity 
 			id,
 			position: [...entity.position] as Vec3,
 			rotation: [...entity.rotation] as Vec3,
-			dimensions: { ...entity.dimensions }
+			dimensions: { ...entity.dimensions },
 		} as SceneEntity;
 	}
 	return {
 		...entity,
 		id,
 		position: [...entity.position] as Vec3,
-		rotation: [...entity.rotation] as Vec3
+		rotation: [...entity.rotation] as Vec3,
 	};
 }
 
@@ -115,24 +126,24 @@ export function note(message: string): ShapeIssue {
 
 export function cleanupClusters(
 	clusters: SceneDocument['clusters'],
-	removedIds: readonly string[]
+	removedIds: readonly string[],
 ): SceneDocument['clusters'] {
 	if (clusters === undefined) return undefined;
 	return clusters
 		.map((cluster) => ({
 			...cluster,
-			memberIds: cluster.memberIds.filter((memberId) => !removedIds.includes(memberId))
+			memberIds: cluster.memberIds.filter((memberId) => !removedIds.includes(memberId)),
 		}))
 		.filter((cluster) => cluster.memberIds.length >= 2);
 }
 
 export function fromFinalization(
-	finalized: Extract<ReturnType<typeof finalizeSceneCandidate>, { kind: 'rejected' }>
+	finalized: Extract<ReturnType<typeof finalizeSceneCandidate>, { kind: 'rejected' }>,
 ): SceneOperationRefusal {
 	return {
 		kind: 'rejected',
 		code: finalized.code,
 		message: finalized.message,
-		diagnostics: finalized.diagnostics
+		diagnostics: finalized.diagnostics,
 	};
 }

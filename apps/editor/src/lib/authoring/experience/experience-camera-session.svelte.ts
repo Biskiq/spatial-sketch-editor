@@ -2,7 +2,10 @@ import type { OperationChange } from '@portfolio/project-model/f4';
 import type { ScenePathAnchor } from '@portfolio/project-model/scene';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
 import type { StageAdapterServices } from '../stage/stage-adapter-host';
-import { cameraConnectionCreateIntent, cameraConnectionUpdateIntent } from './commands-presentation';
+import {
+	cameraConnectionCreateIntent,
+	cameraConnectionUpdateIntent,
+} from './commands-presentation';
 import type { ExperienceSubject } from './experience-model';
 import {
 	previewPathSamples,
@@ -10,7 +13,7 @@ import {
 	resolvePathAnchorInsertion,
 	resolvePathOccurrence,
 	type ExperiencePathOccurrence,
-	type ExperiencePathRead
+	type ExperiencePathRead,
 } from './experience-paths';
 
 type Submission = Parameters<StageAdapterServices['authoring']['accept']>[0];
@@ -26,7 +29,10 @@ export type ExperienceCameraSessionPorts = {
 	readonly say: (kind: 'success' | 'info' | 'refusal', text: string) => void;
 	readonly newId: () => string;
 	readonly revision: () => Revision;
-	readonly run: (builder: () => Submission, success?: (changes: readonly OperationChange[]) => string) => Promise<boolean>;
+	readonly run: (
+		builder: () => Submission,
+		success?: (changes: readonly OperationChange[]) => string,
+	) => Promise<boolean>;
 };
 
 export function createExperienceCameraSession(ports: ExperienceCameraSessionPorts) {
@@ -42,7 +48,7 @@ export function createExperienceCameraSession(ports: ExperienceCameraSessionPort
 			guide: ports.guide(),
 			graph,
 			occurrence: pathOccurrence,
-			geometry: ports.geometry()
+			geometry: ports.geometry(),
 		});
 	});
 	// An Undo, a reorder or a removed occurrence invalidates the session's point
@@ -53,11 +59,13 @@ export function createExperienceCameraSession(ports: ExperienceCameraSessionPort
 			selectedAnchorId = null;
 			return;
 		}
-		if (selectedAnchorId !== null && !read.anchors.some((anchor) => anchor.id === selectedAnchorId)) {
+		if (
+			selectedAnchorId !== null &&
+			!read.anchors.some((anchor) => anchor.id === selectedAnchorId)
+		) {
 			selectedAnchorId = null;
 		}
 	});
-
 
 	function nextAnchorId(connectionId: string, existing: readonly string[]): string {
 		const occupied = new Set(existing);
@@ -73,7 +81,6 @@ export function createExperienceCameraSession(ports: ExperienceCameraSessionPort
 		pathOccurrence = occurrence;
 		selectedAnchorId = null;
 	}
-
 
 	function selectAnchor(anchorId: string | null): void {
 		selectedAnchorId = anchorId;
@@ -91,8 +98,12 @@ export function createExperienceCameraSession(ports: ExperienceCameraSessionPort
 			ports.say('refusal', 'A Cut has no travel path. Choose Travel first.');
 			return false;
 		}
-		const fromView = ports.envelope().units.camera.data.views.find((view) => view.id === resolved.fromViewId);
-		const toView = ports.envelope().units.camera.data.views.find((view) => view.id === resolved.toViewId);
+		const fromView = ports
+			.envelope()
+			.units.camera.data.views.find((view) => view.id === resolved.fromViewId);
+		const toView = ports
+			.envelope()
+			.units.camera.data.views.find((view) => view.id === resolved.toViewId);
 		if (fromView === undefined || toView === undefined) {
 			ports.say('refusal', 'A View this move needs is missing.');
 			return false;
@@ -104,9 +115,9 @@ export function createExperienceCameraSession(ports: ExperienceCameraSessionPort
 					revision: ports.revision(),
 					ids: { operation: ports.newId(), connection: ports.newId() },
 					fromView,
-					toView
+					toView,
 				}),
-			() => 'Camera path added'
+			() => 'Camera path added',
 		);
 		if (accepted) selectPath(occurrence);
 		return accepted;
@@ -115,20 +126,21 @@ export function createExperienceCameraSession(ports: ExperienceCameraSessionPort
 	/** One accepted write per anchor edit; every other connection field survives. */
 	async function writePathAnchors(
 		read: ExperiencePathRead,
-		anchors: readonly ScenePathAnchor[]
+		anchors: readonly ScenePathAnchor[],
 	): Promise<boolean> {
 		if (read.connectionId === null) return false;
-		const connection = ports.envelope().units.camera.data.connections.find((entry) => entry.id === read.connectionId);
+		const connection = ports
+			.envelope()
+			.units.camera.data.connections.find((entry) => entry.id === read.connectionId);
 		if (connection === undefined) return false;
-		return ports.run(
-			() =>
-				cameraConnectionUpdateIntent({
-					envelope: ports.envelope(),
-					revision: ports.revision(),
-					ids: { operation: ports.newId() },
-					connectionId: connection.id,
-					anchors
-				})
+		return ports.run(() =>
+			cameraConnectionUpdateIntent({
+				envelope: ports.envelope(),
+				revision: ports.revision(),
+				ids: { operation: ports.newId() },
+				connectionId: connection.id,
+				anchors,
+			}),
 		);
 	}
 
@@ -137,24 +149,43 @@ export function createExperienceCameraSession(ports: ExperienceCameraSessionPort
 		anchorId: string | null,
 		point: readonly [number, number, number],
 		slot?: number,
-		near?: readonly [number, number, number]
+		near?: readonly [number, number, number],
 	): readonly ScenePathAnchor[] | null {
-		const connection = ports.envelope().units.camera.data.connections.find((entry) => entry.id === read.connectionId);
+		const connection = ports
+			.envelope()
+			.units.camera.data.connections.find((entry) => entry.id === read.connectionId);
 		const graph = ports.graph();
 		if (connection === undefined || read.direction === null || graph === null) return null;
 		const anchors = connection.positionPath.anchors;
 		if (anchorId !== null) {
 			const previous = anchors.find((anchor) => anchor.id === anchorId);
-			if (previous === undefined || previous.position.every((value, index) => value === point[index])) return null;
-			return anchors.map((anchor) => anchor.id === anchorId ? { ...anchor, position: [...point] } : anchor);
+			if (
+				previous === undefined ||
+				previous.position.every((value, index) => value === point[index])
+			)
+				return null;
+			return anchors.map((anchor) =>
+				anchor.id === anchorId ? { ...anchor, position: [...point] } : anchor,
+			);
 		}
-		const insertion = slot === undefined
-			? resolvePathAnchorInsertion({ connection, direction: read.direction, graph, point: [...(near ?? point)] })
-			: Number.isInteger(slot) ? { index: slot, position: point } : null;
+		const insertion =
+			slot === undefined
+				? resolvePathAnchorInsertion({
+						connection,
+						direction: read.direction,
+						graph,
+						point: [...(near ?? point)],
+					})
+				: Number.isInteger(slot)
+					? { index: slot, position: point }
+					: null;
 		if (insertion === null || insertion.index < 0 || insertion.index > anchors.length) return null;
 		const anchor: ScenePathAnchor = {
-			id: nextAnchorId(connection.id, anchors.map((entry) => entry.id)),
-			position: [...(near === undefined ? insertion.position : point)]
+			id: nextAnchorId(
+				connection.id,
+				anchors.map((entry) => entry.id),
+			),
+			position: [...(near === undefined ? insertion.position : point)],
 		};
 		return [...anchors.slice(0, insertion.index), anchor, ...anchors.slice(insertion.index)];
 	}
@@ -162,7 +193,7 @@ export function createExperienceCameraSession(ports: ExperienceCameraSessionPort
 	function previewPathDrag(
 		anchorId: string | null,
 		point: readonly [number, number, number],
-		origin: readonly [number, number, number]
+		origin: readonly [number, number, number],
 	): ExperiencePathRead['samples'] | null {
 		const read = selectedPath;
 		const graph = ports.graph();
@@ -170,7 +201,9 @@ export function createExperienceCameraSession(ports: ExperienceCameraSessionPort
 		if (read.connectionId === null) return null;
 		try {
 			const anchors = proposedPathAnchors(read, anchorId, point, undefined, origin);
-			return anchors === null ? null : previewPathSamples(read.connectionId, read.direction, graph, anchors);
+			return anchors === null
+				? null
+				: previewPathSamples(read.connectionId, read.direction, graph, anchors);
 		} catch {
 			// An intermediate point may fail Camera evaluation. Keep the accepted route visible.
 			return null;
@@ -180,7 +213,7 @@ export function createExperienceCameraSession(ports: ExperienceCameraSessionPort
 	async function addPathAnchor(
 		point: readonly [number, number, number],
 		slot?: number,
-		near?: readonly [number, number, number]
+		near?: readonly [number, number, number],
 	): Promise<boolean> {
 		const read = selectedPath;
 		if (read === null || read.connectionId === null || read.direction === null) return false;
@@ -197,7 +230,10 @@ export function createExperienceCameraSession(ports: ExperienceCameraSessionPort
 		return accepted;
 	}
 
-	async function movePathAnchor(anchorId: string, point: readonly [number, number, number]): Promise<boolean> {
+	async function movePathAnchor(
+		anchorId: string,
+		point: readonly [number, number, number],
+	): Promise<boolean> {
 		const read = selectedPath;
 		if (read === null) return false;
 		const anchors = proposedPathAnchors(read, anchorId, point);
@@ -207,13 +243,18 @@ export function createExperienceCameraSession(ports: ExperienceCameraSessionPort
 	async function removePathAnchor(anchorId: string): Promise<boolean> {
 		const read = selectedPath;
 		if (read === null || read.connectionId === null) return false;
-		const connection = ports.envelope().units.camera.data.connections.find((entry) => entry.id === read.connectionId);
-		if (connection === undefined || !connection.positionPath.anchors.some((entry) => entry.id === anchorId)) {
+		const connection = ports
+			.envelope()
+			.units.camera.data.connections.find((entry) => entry.id === read.connectionId);
+		if (
+			connection === undefined ||
+			!connection.positionPath.anchors.some((entry) => entry.id === anchorId)
+		) {
 			return false;
 		}
 		const accepted = await writePathAnchors(
 			read,
-			connection.positionPath.anchors.filter((entry) => entry.id !== anchorId)
+			connection.positionPath.anchors.filter((entry) => entry.id !== anchorId),
 		);
 		if (accepted) selectedAnchorId = null;
 		return accepted;
@@ -222,7 +263,9 @@ export function createExperienceCameraSession(ports: ExperienceCameraSessionPort
 	async function straightenPath(): Promise<boolean> {
 		const read = selectedPath;
 		if (read === null || read.connectionId === null) return false;
-		const connection = ports.envelope().units.camera.data.connections.find((entry) => entry.id === read.connectionId);
+		const connection = ports
+			.envelope()
+			.units.camera.data.connections.find((entry) => entry.id === read.connectionId);
 		if (connection === undefined) return false;
 		if (connection.positionPath.anchors.length === 0) {
 			ports.say('info', 'The Camera path is already straight.');
@@ -240,7 +283,9 @@ export function createExperienceCameraSession(ports: ExperienceCameraSessionPort
 			ports.say('refusal', 'A duration is a positive number of seconds, or Auto.');
 			return false;
 		}
-		const connection = ports.envelope().units.camera.data.connections.find((entry) => entry.id === read.connectionId);
+		const connection = ports
+			.envelope()
+			.units.camera.data.connections.find((entry) => entry.id === read.connectionId);
 		if (connection === undefined) return false;
 		return ports.run(
 			() =>
@@ -249,16 +294,16 @@ export function createExperienceCameraSession(ports: ExperienceCameraSessionPort
 					revision: ports.revision(),
 					ids: { operation: ports.newId() },
 					connectionId: connection.id,
-					timing: { [read.direction!]: { durationSeconds: seconds } }
+					timing: { [read.direction!]: { durationSeconds: seconds } },
 				}),
-			() => (seconds === null ? 'Automatic duration restored' : 'Camera path duration changed')
+			() => (seconds === null ? 'Automatic duration restored' : 'Camera path duration changed'),
 		);
 	}
 
-
 	function selectSubject(next: ExperienceSubject | null): void {
 		// A transition owns its path occurrence; any other subject clears the Path reading.
-		pathOccurrence = next?.kind === 'transition' ? { kind: 'transition', stopId: next.stopId } : null;
+		pathOccurrence =
+			next?.kind === 'transition' ? { kind: 'transition', stopId: next.stopId } : null;
 		selectedAnchorId = null;
 	}
 
@@ -281,6 +326,6 @@ export function createExperienceCameraSession(ports: ExperienceCameraSessionPort
 		movePathAnchor,
 		removePathAnchor,
 		straightenPath,
-		setPathDuration
+		setPathDuration,
 	};
 }

@@ -1,31 +1,34 @@
-import type { CorrespondenceAuthorization, CorrespondencePairClass } from './reconciliation-correspondence';
+import type {
+	CorrespondenceAuthorization,
+	CorrespondencePairClass,
+} from './reconciliation-correspondence';
 
 /**
- * One `buildCorrespondenceComponents` pass, as the test-only observer
- * sees it (opt-in, never retains, unset changes nothing at all).
+ * One `buildCorrespondenceComponents` pass, as an optional observer sees it
+ * (opt-in, never retained, omitting it changes nothing at all).
  *
  * ACCOUNTING, per mode:
  *
  * ```text
- * short-circuit  pairs = identitySettled + authorizationSkips + absentEvidenceSkips
- *                       + boundsSkips + insideCalls + insideSkipsByBounds
- *                identitySettled = identityUnions + identityRefusals
- *                (every pair is accounted exactly once: settled by the identity
- *                 condition, denied by the D-12 labels, skipped for absent evidence,
- *                 pruned by the inflated boxes, skipped only for the containment CALL,
- *                 or VISITED by the containment step);
- *                insideCalls + insideSkipsByBounds = insideDecisions + overlapCalls
- *                (each pair that reached containment either decided the merge — and
- *                 never paid the overlap predicate — or fell through to it, as did
- *                 every pair whose containment CALL was bounds-skipped);
- *                insideDecisions <= insideCalls,
- * exhaustive     insideCalls = overlapCalls = pairs, both predicate STEPS run for
- *                 every pair exactly as the pre-M-1 loop did, and every skip
- *                 counter is zero — this is OR-2's comparison side, not a shipped
- *                 path. `insideDecisions`/`overlapDecisions` record the predicates'
- *                 own ADMISSIONS here (a pair inside-or-overlapping BEYOND the
- *                 authorization test this order runs afterwards), which is what
- *                 makes a D-12 denial checkable: geometry admits, identity denies.
+ * short-circuit pairs = identitySettled + authorizationSkips + absentEvidenceSkips
+ *  + boundsSkips + insideCalls + insideSkipsByBounds
+ *  identitySettled = identityUnions + identityRefusals
+ *  (every pair is accounted exactly once: settled by the identity
+ *  condition, denied by the D-12 labels, skipped for absent evidence,
+ *  pruned by the inflated boxes, skipped only for the containment CALL,
+ *  or VISITED by the containment step);
+ *  insideCalls + insideSkipsByBounds = insideDecisions + overlapCalls
+ *  (each pair that reached containment either decided the merge — and
+ *  never paid the overlap predicate — or fell through to it, as did
+ *  every pair whose containment CALL was bounds-skipped);
+ *  insideDecisions <= insideCalls,
+ * exhaustive insideCalls = overlapCalls = pairs, both predicate STEPS run for
+ *  every pair exactly as the pre-M-1 loop did, and every skip
+ *  counter is zero — this is OR-2's comparison side, not a shipped
+ *  path. `insideDecisions`/`overlapDecisions` record the predicates'
+ *  own ADMISSIONS here (a pair inside-or-overlapping BEYOND the
+ *  authorization test this order runs afterwards), which is what
+ *  makes a D-12 denial checkable: geometry admits, identity denies.
  * ```
  *
  * "CALL" IS A PAIR VISIT TO THE STEP: the step's own guard (`witness !== undefined` /
@@ -94,38 +97,21 @@ export type CorrespondenceObservation = {
 	overlapDecisions: number;
 };
 
-
-export let correspondenceObserverForTest: ((observation: CorrespondenceObservation) => void) | undefined;
-
-export let correspondenceShortCircuitsDisabledForTest = false;
-
-
-/** Report every correspondence pass to `observer` until cleared. Unset is zero change. */
-export function setCorrespondenceObserverForTest(
-	observer: ((observation: CorrespondenceObservation) => void) | undefined
-): void {
-	correspondenceObserverForTest = observer;
-}
-
-
-export function clearCorrespondenceObserverForTest(): void {
-	correspondenceObserverForTest = undefined;
-}
-
+/** One pass's report sink; omitted by production callers. */
+export type CorrespondenceObserver = (observation: CorrespondenceObservation) => void;
 
 /**
- * OR-2's exhaustive side: while disabled, `buildCorrespondenceComponents` runs the
- * PRE-M-1 loop verbatim — both predicates for every pair, geometry before
- * authorization, no pruning — so the differential always has today's evaluation
- * order to compare against. Test-only; never set in production.
+ * Optional per-pass controls. `exhaustive` runs the PRE-M-1 loop verbatim — both
+ * predicates for every pair, geometry before authorization, no pruning — so a
+ * differential always has today's evaluation order to compare against.
  */
-export function disableCorrespondenceShortCircuitsForTest(disabled: boolean): void {
-	correspondenceShortCircuitsDisabledForTest = disabled;
-}
-
+export type CorrespondencePassOptions = {
+	observer?: CorrespondenceObserver;
+	exhaustive?: boolean;
+};
 
 export function emptyCorrespondenceObservation(
-	mode: CorrespondenceObservation['mode']
+	mode: CorrespondenceObservation['mode'],
 ): CorrespondenceObservation {
 	return {
 		mode,
@@ -149,16 +135,15 @@ export function emptyCorrespondenceObservation(
 		overlapCallsSameGroup: 0,
 		overlapCallsCrossGroup: 0,
 		overlapCallsUndefined: 0,
-		overlapDecisions: 0
+		overlapDecisions: 0,
 	};
 }
-
 
 /** The pair's D-12 class as `unionAuthorized` reads it; counting only. */
 export function correspondencePairClassOf(
 	authorization: CorrespondenceAuthorization,
 	predecessorRoomId: string,
-	faceKey: string
+	faceKey: string,
 ): CorrespondencePairClass {
 	const predecessorKeys = authorization.predecessorComponentKeysByRoomId.get(predecessorRoomId);
 	const faceKeyValue = authorization.faceComponentKeyByKey.get(faceKey);
@@ -166,10 +151,9 @@ export function correspondencePairClassOf(
 	return predecessorKeys.has(faceKeyValue) ? 'same-group' : 'cross-group';
 }
 
-
 export function recordObservationPairClass(
 	observation: CorrespondenceObservation,
-	pairClass: CorrespondencePairClass
+	pairClass: CorrespondencePairClass,
 ): void {
 	observation.pairs += 1;
 	if (pairClass === 'same-group') observation.sameGroupPairs += 1;
@@ -177,10 +161,9 @@ export function recordObservationPairClass(
 	else observation.undefinedPairs += 1;
 }
 
-
 export function recordInsideCall(
 	observation: CorrespondenceObservation,
-	pairClass: CorrespondencePairClass
+	pairClass: CorrespondencePairClass,
 ): void {
 	observation.insideCalls += 1;
 	if (pairClass === 'same-group') observation.insideCallsSameGroup += 1;
@@ -188,10 +171,9 @@ export function recordInsideCall(
 	else observation.insideCallsUndefined += 1;
 }
 
-
 export function recordOverlapCall(
 	observation: CorrespondenceObservation,
-	pairClass: CorrespondencePairClass
+	pairClass: CorrespondencePairClass,
 ): void {
 	observation.overlapCalls += 1;
 	if (pairClass === 'same-group') observation.overlapCallsSameGroup += 1;

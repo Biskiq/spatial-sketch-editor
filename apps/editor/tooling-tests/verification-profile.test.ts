@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { afterEach, expect, it } from 'vitest';
@@ -57,26 +57,33 @@ function repo() {
 			}
 		});
 	};
-	return { root, base, commit, run };
+	return {
+		base,
+		commit,
+		run,
+		readOutputs: () => Object.fromEntries(
+			readFileSync(join(root, '.git', 'output'), 'utf8').trim().split('\n').map((line) => line.split('='))
+		)
+	};
 }
 
 it.each([
 	['docs/design/example.md', 'minimal'],
 	['broad-research/notes.md', 'minimal'],
 	['apps/editor/src/lib/design/layout.css', 'minimal'],
-	['apps/editor/src/lib/authoring/Panel.svelte', 'full'],
-	['apps/editor/src/lib/authoring/camera/dial.ts', 'full'],
-	['apps/editor/src/lib/unknown.extension', 'full'],
-	['apps/editor/src/lib/layout/new-kernel.ts', 'full'],
-	['packages/geometry-core/src/core.ts', 'full'],
-	['apps/editor/src/routes/p/[id]/+page.ts', 'full'],
-	['apps/editor/src/lib/authoring/save/payload.ts', 'full'],
-	['apps/editor/src/contract.json', 'full'],
-	['apps/editor/tests/lib/changed.test.ts', 'full'],
-	['.github/workflows/merge-gate.yml', 'full'],
-	['tools/harness/new.extension', 'full'],
-	['apps/editor/vitest.config.ts', 'full'],
-	['broad-research/probe.json', 'full']
+	['apps/editor/src/lib/authoring/Panel.svelte', 'lean'],
+	['apps/editor/src/lib/authoring/camera/dial.ts', 'lean'],
+	['apps/editor/src/lib/unknown.extension', 'lean'],
+	['apps/editor/src/lib/layout/new-kernel.ts', 'lean'],
+	['packages/geometry-core/src/core.ts', 'lean'],
+	['apps/editor/src/routes/p/[id]/+page.ts', 'lean'],
+	['apps/editor/src/lib/authoring/save/payload.ts', 'lean'],
+	['apps/editor/src/contract.json', 'lean'],
+	['apps/editor/tests/lib/changed.test.ts', 'lean'],
+	['.github/workflows/merge-gate.yml', 'lean'],
+	['tools/harness/new.extension', 'lean'],
+	['apps/editor/vitest.config.ts', 'lean'],
+	['broad-research/probe.json', 'lean']
 ])('classifies %s as %s', (path, profile) => {
 	const fixture = repo();
 	fixture.commit({ [path]: 'fixture' });
@@ -93,7 +100,7 @@ it('keeps ordinary CSS edits Minimal when existing resource references are uncha
 	fixture.commit({ [path]: css.replace('blue', 'red') });
 	expect(JSON.parse(fixture.run(PLAN, { baseSha }).stdout).profile).toBe('minimal');
 	fixture.commit({ [path]: css.replace('/fonts/ui.ttf', '/fonts/new.ttf') });
-	expect(JSON.parse(fixture.run(PLAN, { baseSha }).stdout).profile).toBe('full');
+	expect(JSON.parse(fixture.run(PLAN, { baseSha }).stdout).profile).toBe('lean');
 });
 
 it('requires identical non-CSS bytes and a plain terminal Svelte style block', () => {
@@ -104,7 +111,7 @@ it('requires identical non-CSS bytes and a plain terminal Svelte style block', (
 	fixture.commit({ [path]: component.replace('blue', 'red') });
 	expect(JSON.parse(fixture.run(PLAN, { baseSha }).stdout).profile).toBe('minimal');
 	fixture.commit({ [path]: component.replace('Close', 'Open') });
-	expect(JSON.parse(fixture.run(PLAN, { baseSha }).stdout).profile).toBe('full');
+	expect(JSON.parse(fixture.run(PLAN, { baseSha }).stdout).profile).toBe('lean');
 });
 
 it('fails closed on an unavailable comparison', () => {
@@ -127,6 +134,48 @@ it('certifies Minimal only with a successful prepare job', () => {
 	expect(fixture.run(GATE, { jobs: { ...jobs, lint: { result: 'success' } } }).status).toBe(0);
 });
 
+it('publishes the heavy and API flags for a Lean change touching a package', () => {
+	const fixture = repo();
+	fixture.commit({ 'packages/layout-core/src/wall/types.ts': 'export type Wall = { id: string };' });
+	expect(fixture.run(PLAN).status).toBe(0);
+	expect(fixture.readOutputs()).toMatchObject({ profile: 'lean', heavy: '1', api: '1' });
+});
+
+it('uses Full for a documentation-only merge group', () => {
+	const fixture = repo();
+	fixture.commit({ 'docs/note.md': 'notes' });
+	expect(fixture.run(PLAN, { event: 'merge_group' }).status).toBe(0);
+	expect(fixture.readOutputs()).toMatchObject({ profile: 'full', base: fixture.base });
+});
+
+it('runs the lean profile for a code pull request and expands on its paths', () => {
+	const fixture = repo();
+	fixture.commit({ 'apps/editor/src/lib/authoring/camera/dial.ts': 'export const dial = 1;' });
+	const lean = {
+		prepare: { result: 'success', outputs: { profile: 'lean', heavy: '1', api: '0' } },
+		lint: { result: 'success' },
+		suite: { result: 'success' },
+		checks: { result: 'success' },
+		build: { result: 'success' },
+		heavy: { result: 'success' },
+		focused: { result: 'skipped' },
+		api: { result: 'skipped' },
+		goldens: { result: 'skipped' }
+	};
+	expect(fixture.run(GATE, { jobs: lean }).status).toBe(0);
+	expect(fixture.run(GATE, { jobs: { ...lean, heavy: { result: 'skipped' } } }).status).toBe(1);
+	expect(
+		fixture.run(GATE, {
+			jobs: { ...lean, prepare: { result: 'success', outputs: { profile: 'lean', heavy: '1', api: '1' } } }
+		}).status
+	).toBe(1);
+	expect(
+		fixture.run(GATE, {
+			jobs: { ...lean, prepare: { result: 'success', outputs: { profile: 'lean', heavy: '0', api: '0' } }, heavy: { result: 'skipped' } }
+		}).status
+	).toBe(0);
+});
+
 it('requires every Full job and refuses a non-Full merge group', () => {
 	const fixture = repo();
 	const full = {
@@ -134,7 +183,9 @@ it('requires every Full job and refuses a non-Full merge group', () => {
 		lint: { result: 'success' },
 		suite: { result: 'success' },
 		api: { result: 'success' },
-		goldens: { result: 'success' }
+		goldens: { result: 'success' },
+		checks: { result: 'skipped' },
+		build: { result: 'skipped' }
 	};
 	expect(fixture.run(GATE, { jobs: full }).status).toBe(1);
 	expect(

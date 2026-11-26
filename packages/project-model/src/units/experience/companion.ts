@@ -1,5 +1,5 @@
 /**
- * The semantic DOM / Info Panel companion (AM-6).
+ * The semantic DOM / Info Panel companion.
  *
  * A framework-free view model over one program run: what a visitor can reach,
  * what is current, what the Info Panel shows and what should be announced. It
@@ -90,10 +90,12 @@ export type ExperienceCompanion = {
 export function buildExperienceCompanion(
 	program: ExecutionProgram,
 	state: ExperienceRunState,
-	gaps: ReadonlyMap<string, string> = new Map()
+	gaps: ReadonlyMap<string, string> = new Map(),
 ): ExperienceCompanion {
 	const stopIndex = new Map(program.stops.map((stop, index) => [stop.id, index]));
-	const presentationById = new Map(program.presentations.map((presentation) => [presentation.id, presentation]));
+	const presentationById = new Map(
+		program.presentations.map((presentation) => [presentation.id, presentation]),
+	);
 	const ended = state.phase === 'completed' || state.phase === 'cancelled';
 	const destinations: CompanionDestination[] = program.stops.map((stop) => {
 		const presentation = presentationById.get(stop.presentationId);
@@ -104,27 +106,30 @@ export function buildExperienceCompanion(
 			presentationId: stop.presentationId,
 			current: !ended && state.stopId === stop.id,
 			reachable: gap === null,
-			gap
+			gap,
 		};
 	});
-	const currentPresentation = state.presentationId === null ? undefined : presentationById.get(state.presentationId);
-	const current = ended || state.stopId === null || state.occurrenceId === null
-		? null
-		: {
-				stopId: state.stopId,
-				occurrenceId: state.occurrenceId,
-				label: currentPresentation?.label ?? state.stopId,
-				content: state.panel?.content ?? [],
-				ariaCurrent: 'step' as const
-			};
-	const panel = state.panel === null
-		? null
-		: {
-				title: state.panel.title,
-				content: state.panel.content,
-				focusOnOpen: 'content' as const,
-				escapeReturnsTo: 'canvas' as const
-			};
+	const currentPresentation =
+		state.presentationId === null ? undefined : presentationById.get(state.presentationId);
+	const current =
+		ended || state.stopId === null || state.occurrenceId === null
+			? null
+			: {
+					stopId: state.stopId,
+					occurrenceId: state.occurrenceId,
+					label: currentPresentation?.label ?? state.stopId,
+					content: state.panel?.content ?? [],
+					ariaCurrent: 'step' as const,
+				};
+	const panel =
+		state.panel === null
+			? null
+			: {
+					title: state.panel.title,
+					content: state.panel.content,
+					focusOnOpen: 'content' as const,
+					escapeReturnsTo: 'canvas' as const,
+				};
 	return {
 		experienceId: program.experienceId,
 		title: currentPresentation?.label ?? program.experienceId,
@@ -132,20 +137,24 @@ export function buildExperienceCompanion(
 		progress: {
 			// Progress counts distinct Stops reached, so a revisited Stop cannot push
 			// the count past the run's own size; `occurrences` keeps every visit.
-			visited: Math.min(new Set(state.visited.map((visit) => visit.stopId)).size, program.stops.length),
+			visited: Math.min(
+				new Set(state.visited.map((visit) => visit.stopId)).size,
+				program.stops.length,
+			),
 			total: program.stops.length,
-			index: current === null ? null : stopIndex.get(current.stopId) ?? null,
-			occurrences: state.visited.map((visit) => visit.occurrenceId)
+			index: current === null ? null : (stopIndex.get(current.stopId) ?? null),
+			occurrences: state.visited.map((visit) => visit.occurrenceId),
 		},
-		continueControl: current === null
-			? null
-			: {
-					available: true,
-					label: 'Next',
-					reason: null,
-					stopId: current.stopId,
-					occurrenceId: current.occurrenceId
-				},
+		continueControl:
+			current === null
+				? null
+				: {
+						available: true,
+						label: 'Next',
+						reason: null,
+						stopId: current.stopId,
+						occurrenceId: current.occurrenceId,
+					},
 		destinations,
 		presentations: program.presentations.map((presentation) => ({
 			presentationId: presentation.id,
@@ -154,15 +163,16 @@ export function buildExperienceCompanion(
 			defaultViewId: presentation.viewIds[0]!,
 			stopIds: program.stops
 				.filter((stop) => stop.presentationId === presentation.id)
-				.map((stop) => stop.id)
+				.map((stop) => stop.id),
 		})),
 		panel,
 		instructions: {
 			activate: 'Open this Stop',
-			navigation: 'Every destination is reachable by keyboard from the navigation list; the same Activate means the same thing on the canvas.'
+			navigation:
+				'Every destination is reachable by keyboard from the navigation list; the same Activate means the same thing on the canvas.',
 		},
 		announcements: announcements(program, state),
-		gaps: [...gaps].map(([stopId, message]) => ({ stopId, message }))
+		gaps: [...gaps].map(([stopId, message]) => ({ stopId, message })),
 	};
 }
 

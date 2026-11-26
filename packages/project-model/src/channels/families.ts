@@ -1,7 +1,7 @@
 /**
  * F.3 — the v1 channel families and the host that admits them.
  *
- * AM-3 admits exactly two families at version 1: Layout's ordinary Plan
+ *  admits exactly two families at version 1: Layout's ordinary Plan
  * inspection parameters and the Camera session inspection output. A family is a
  * declaration (properties, required properties, capability), not an evaluator:
  * Layout evaluates representation from its canonical output, and Camera evaluates
@@ -18,14 +18,14 @@ import {
 	INSPECTION_VERSION,
 	type ChannelDescriptor,
 	type ChannelFamily,
-	type ChannelFamilyId
+	type ChannelFamilyId,
 } from './types';
 
-/** Layout's ordinary Plan inspection parameters (AM-3, Layout ordinary Plan family). */
+/** Layout's ordinary Plan inspection parameters (, Layout ordinary Plan family). */
 export const LAYOUT_PLAN_FAMILY_ID: ChannelFamilyId = 'layout.plan@1';
 
 /**
- * Camera's session inspection output (AM-3, Camera session inspection family).
+ * Camera's session inspection output (, Camera session inspection family).
  *
  * Every property is `camera-output`-arbitrated and `output`-scoped: it belongs to
  * the run that holds the Camera output named by `scopeId`, and is admitted only
@@ -35,7 +35,7 @@ export const LAYOUT_PLAN_FAMILY_ID: ChannelFamilyId = 'layout.plan@1';
  * instead of running a second ordered-replacement path. The `controller` property
  * is the one resolved controller per output: its value must be the claim's role.
  *
- * No property declares generic interpolation (`none`): AM-3 forbids generic Camera
+ * No property declares generic interpolation (`none`): forbids generic Camera
  * pose/FOV interpolation, so target, azimuth, elevation and frame height change
  * only by a new contribution and are moved only by Camera's own evaluation. The
  * family is addressed to the project's Camera authority root (`camera`), because a
@@ -52,7 +52,13 @@ export const LAYOUT_PLAN_FAMILY_ID: ChannelFamilyId = 'layout.plan@1';
 export const CAMERA_SESSION_INSPECTION_FAMILY_ID: ChannelFamilyId = 'camera.session-inspection@1';
 
 const PLAN_INVALIDATION = ['accepted-revision', 'parameters', 'generation', 'frame'] as const;
-const CAMERA_INTENT_INVALIDATION = ['intent', 'clock', 'viewport-rect', 'source-extent', 'epoch'] as const;
+const CAMERA_INTENT_INVALIDATION = [
+	'intent',
+	'clock',
+	'viewport-rect',
+	'source-extent',
+	'epoch',
+] as const;
 
 function descriptor(descriptor: Omit<ChannelDescriptor, 'version'>): ChannelDescriptor {
 	return { version: INSPECTION_VERSION, ...descriptor };
@@ -64,7 +70,11 @@ export const LAYOUT_PLAN_FAMILY: ChannelFamily = {
 	capability: { id: 'layout.plan-inspection', required: true },
 	// Ordinary Plan inspection belongs to a Layout level (the current single floor), in
 	// project-world or a Layout-owned frame the owner resolves; no address qualification.
-	admission: { ownerSubjectKinds: ['level'], frameKinds: ['project-world', 'owner-frame'], qualifiedAddresses: false },
+	admission: {
+		ownerSubjectKinds: ['level'],
+		frameKinds: ['project-world', 'owner-frame'],
+		qualifiedAddresses: false,
+	},
 	requiredProperties: ['depth'],
 	controllerProperty: null,
 	properties: [
@@ -80,7 +90,7 @@ export const LAYOUT_PLAN_FAMILY: ChannelFamily = {
 			interpolation: 'none',
 			invalidation: [...PLAN_INVALIDATION],
 			capability: { id: 'layout.plan-inspection', required: true },
-			validator: 'layout.plan.cut-height@1'
+			validator: 'layout.plan.cut-height@1',
 		}),
 		descriptor({
 			family: LAYOUT_PLAN_FAMILY_ID,
@@ -94,7 +104,7 @@ export const LAYOUT_PLAN_FAMILY: ChannelFamily = {
 			interpolation: 'none',
 			invalidation: [...PLAN_INVALIDATION],
 			capability: { id: 'layout.plan-inspection', required: true },
-			validator: 'layout.plan.depth@1'
+			validator: 'layout.plan.depth@1',
 		}),
 		descriptor({
 			family: LAYOUT_PLAN_FAMILY_ID,
@@ -108,7 +118,7 @@ export const LAYOUT_PLAN_FAMILY: ChannelFamily = {
 			interpolation: 'none',
 			invalidation: [...PLAN_INVALIDATION],
 			capability: { id: 'layout.plan-inspection', required: true },
-			validator: 'layout.plan.lateral-span@1'
+			validator: 'layout.plan.lateral-span@1',
 		}),
 		descriptor({
 			family: LAYOUT_PLAN_FAMILY_ID,
@@ -122,7 +132,7 @@ export const LAYOUT_PLAN_FAMILY: ChannelFamily = {
 			interpolation: 'none',
 			invalidation: ['accepted-revision', 'parameters', 'source-kind-filter'],
 			capability: { id: 'layout.plan-inspection', required: true },
-			validator: 'layout.plan.source-kind-filter@1'
+			validator: 'layout.plan.source-kind-filter@1',
 		}),
 		descriptor({
 			family: LAYOUT_PLAN_FAMILY_ID,
@@ -138,9 +148,9 @@ export const LAYOUT_PLAN_FAMILY: ChannelFamily = {
 			interpolation: 'none',
 			invalidation: ['accepted-revision', 'reveal-set'],
 			capability: { id: 'layout.plan-inspection', required: true },
-			validator: 'layout.plan.reveal@1'
-		})
-	]
+			validator: 'layout.plan.reveal@1',
+		}),
+	],
 };
 
 export const CAMERA_SESSION_INSPECTION_FAMILY: ChannelFamily = {
@@ -150,7 +160,11 @@ export const CAMERA_SESSION_INSPECTION_FAMILY: ChannelFamily = {
 	// A session output is owned by a Camera view: the Camera unit authors views as
 	// its addressable authority subjects (there is no separate current-source
 	// camera root), and its target is project-world.
-	admission: { ownerSubjectKinds: ['view'], frameKinds: ['project-world'], qualifiedAddresses: false },
+	admission: {
+		ownerSubjectKinds: ['view'],
+		frameKinds: ['project-world'],
+		qualifiedAddresses: false,
+	},
 	requiredProperties: ['controller'],
 	controllerProperty: 'controller',
 	properties: [
@@ -166,7 +180,7 @@ export const CAMERA_SESSION_INSPECTION_FAMILY: ChannelFamily = {
 			interpolation: 'none',
 			invalidation: [...CAMERA_INTENT_INVALIDATION],
 			capability: { id: 'camera.session-inspection', required: true },
-			validator: 'camera.session.target@1'
+			validator: 'camera.session.target@1',
 		}),
 		descriptor({
 			family: CAMERA_SESSION_INSPECTION_FAMILY_ID,
@@ -180,7 +194,7 @@ export const CAMERA_SESSION_INSPECTION_FAMILY: ChannelFamily = {
 			interpolation: 'none',
 			invalidation: [...CAMERA_INTENT_INVALIDATION],
 			capability: { id: 'camera.session-inspection', required: true },
-			validator: 'camera.session.azimuth@1'
+			validator: 'camera.session.azimuth@1',
 		}),
 		descriptor({
 			family: CAMERA_SESSION_INSPECTION_FAMILY_ID,
@@ -194,7 +208,7 @@ export const CAMERA_SESSION_INSPECTION_FAMILY: ChannelFamily = {
 			interpolation: 'none',
 			invalidation: [...CAMERA_INTENT_INVALIDATION],
 			capability: { id: 'camera.session-inspection', required: true },
-			validator: 'camera.session.elevation@1'
+			validator: 'camera.session.elevation@1',
 		}),
 		descriptor({
 			family: CAMERA_SESSION_INSPECTION_FAMILY_ID,
@@ -208,7 +222,7 @@ export const CAMERA_SESSION_INSPECTION_FAMILY: ChannelFamily = {
 			interpolation: 'none',
 			invalidation: [...CAMERA_INTENT_INVALIDATION],
 			capability: { id: 'camera.session-inspection', required: true },
-			validator: 'camera.session.frame-height@1'
+			validator: 'camera.session.frame-height@1',
 		}),
 		descriptor({
 			family: CAMERA_SESSION_INSPECTION_FAMILY_ID,
@@ -223,7 +237,7 @@ export const CAMERA_SESSION_INSPECTION_FAMILY: ChannelFamily = {
 			interpolation: 'none',
 			invalidation: ['intent', 'epoch'],
 			capability: { id: 'camera.session-inspection', required: true },
-			validator: 'camera.session.controller@1'
+			validator: 'camera.session.controller@1',
 		}),
 		descriptor({
 			family: CAMERA_SESSION_INSPECTION_FAMILY_ID,
@@ -238,7 +252,7 @@ export const CAMERA_SESSION_INSPECTION_FAMILY: ChannelFamily = {
 			interpolation: 'none',
 			invalidation: [...CAMERA_INTENT_INVALIDATION],
 			capability: { id: 'camera.session-inspection', required: true },
-			validator: 'camera.session.reading-projection-policy@1'
+			validator: 'camera.session.reading-projection-policy@1',
 		}),
 		descriptor({
 			family: CAMERA_SESSION_INSPECTION_FAMILY_ID,
@@ -253,15 +267,15 @@ export const CAMERA_SESSION_INSPECTION_FAMILY: ChannelFamily = {
 			interpolation: 'none',
 			invalidation: [...CAMERA_INTENT_INVALIDATION],
 			capability: { id: 'camera.session-inspection', required: true },
-			validator: 'camera.session.motion-policy@1'
-		})
-	]
+			validator: 'camera.session.motion-policy@1',
+		}),
+	],
 };
 
 /** The v1 families this reader admits. */
 export const DEFAULT_CHANNEL_FAMILIES: readonly ChannelFamily[] = [
 	LAYOUT_PLAN_FAMILY,
-	CAMERA_SESSION_INSPECTION_FAMILY
+	CAMERA_SESSION_INSPECTION_FAMILY,
 ];
 
 export type ChannelHost = {
@@ -280,12 +294,15 @@ export function familyProblems(families: readonly ChannelFamily[]): string[] {
 	const problems: string[] = [];
 	const ids = new Set<string>();
 	for (const family of families) {
-		if (ids.has(family.id)) problems.push(`channel family "${family.id}" is declared more than once`);
+		if (ids.has(family.id))
+			problems.push(`channel family "${family.id}" is declared more than once`);
 		ids.add(family.id);
 		const propertyIds = new Set<string>();
 		for (const property of family.properties) {
 			if (property.family !== family.id) {
-				problems.push(`${family.id}: property "${property.propertyId}" declares family "${property.family}"`);
+				problems.push(
+					`${family.id}: property "${property.propertyId}" declares family "${property.family}"`,
+				);
 			}
 			if (propertyIds.has(property.propertyId)) {
 				problems.push(`${family.id}: property "${property.propertyId}" is declared more than once`);
@@ -293,42 +310,74 @@ export function familyProblems(families: readonly ChannelFamily[]): string[] {
 			propertyIds.add(property.propertyId);
 		}
 		for (const property of family.properties) {
-			if (property.arbitration === 'union' && property.valueKind !== 'identifier-set' && property.valueKind !== 'source-set') {
-				problems.push(`${family.id}: property "${property.propertyId}" unions declared identities and must hold a set value`);
+			if (
+				property.arbitration === 'union' &&
+				property.valueKind !== 'identifier-set' &&
+				property.valueKind !== 'source-set'
+			) {
+				problems.push(
+					`${family.id}: property "${property.propertyId}" unions declared identities and must hold a set value`,
+				);
 			}
-			if (property.arbitration === 'camera-output' && (family.domain !== 'camera' || property.scope !== 'output')) {
-				problems.push(`${family.id}: property "${property.propertyId}" reflects a Camera output and must be a Camera output-scoped property`);
+			if (
+				property.arbitration === 'camera-output' &&
+				(family.domain !== 'camera' || property.scope !== 'output')
+			) {
+				problems.push(
+					`${family.id}: property "${property.propertyId}" reflects a Camera output and must be a Camera output-scoped property`,
+				);
 			}
 			// Domain invariants bind after arbitration: no generic channel interpolates Camera pose/FOV.
 			if (family.domain === 'camera' && property.interpolation !== 'none') {
-				problems.push(`${family.id}: property "${property.propertyId}" may not declare generic interpolation; Camera evaluates pose and projection`);
+				problems.push(
+					`${family.id}: property "${property.propertyId}" may not declare generic interpolation; Camera evaluates pose and projection`,
+				);
 			}
 		}
 		if (family.controllerProperty !== null) {
-			const controller = family.properties.find((property) => property.propertyId === family.controllerProperty);
-			if (controller === undefined || controller.arbitration !== 'camera-output' || controller.valueKind !== 'identifier') {
-				problems.push(`${family.id}: controller property "${family.controllerProperty}" must be a declared camera-output identifier`);
+			const controller = family.properties.find(
+				(property) => property.propertyId === family.controllerProperty,
+			);
+			if (
+				controller === undefined ||
+				controller.arbitration !== 'camera-output' ||
+				controller.valueKind !== 'identifier'
+			) {
+				problems.push(
+					`${family.id}: controller property "${family.controllerProperty}" must be a declared camera-output identifier`,
+				);
 			}
 		}
-		if (family.admission.ownerSubjectKinds.length === 0 || family.admission.frameKinds.length === 0) {
-			problems.push(`${family.id}: a family admits at least one owner subject kind and one frame kind`);
+		if (
+			family.admission.ownerSubjectKinds.length === 0 ||
+			family.admission.frameKinds.length === 0
+		) {
+			problems.push(
+				`${family.id}: a family admits at least one owner subject kind and one frame kind`,
+			);
 		}
 		for (const required of family.requiredProperties) {
 			if (!propertyIds.has(required)) {
 				problems.push(`${family.id}: required property "${required}" is not declared`);
 			}
 		}
-		if (family.properties.length === 0) problems.push(`${family.id}: a family declares at least one property`);
+		if (family.properties.length === 0)
+			problems.push(`${family.id}: a family declares at least one property`);
 	}
 	return problems;
 }
 
 /** Build the host that admits a family set. */
-export function createChannelHost(families: readonly ChannelFamily[] = DEFAULT_CHANNEL_FAMILIES): ChannelHost {
+export function createChannelHost(
+	families: readonly ChannelFamily[] = DEFAULT_CHANNEL_FAMILIES,
+): ChannelHost {
 	return { families, problems: familyProblems(families) };
 }
 
 /** The declared property of a family, or `null` when the family does not publish it. */
-export function declaredProperty(family: ChannelFamily, propertyId: string): ChannelDescriptor | null {
+export function declaredProperty(
+	family: ChannelFamily,
+	propertyId: string,
+): ChannelDescriptor | null {
 	return family.properties.find((property) => property.propertyId === propertyId) ?? null;
 }

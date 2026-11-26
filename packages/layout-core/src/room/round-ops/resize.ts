@@ -1,5 +1,8 @@
 import { isClosedWall } from '../../wall/closed-wall';
-import { canonicalBoundaryCycleKey, extractBoundaryCandidateFaces } from '../../geometry/face-extraction';
+import {
+	canonicalBoundaryCycleKey,
+	extractBoundaryCandidateFaces,
+} from '../../geometry/face-extraction';
 import { compileWallFirstLayoutGeometry } from '../../geometry/compiler';
 import { CURVE_ARC_LENGTH_TOLERANCE } from '../../geometry/curve';
 import { LAYOUT_DIMENSION_LIMIT_MESSAGE, exceedsLayoutDimension } from '../../geometry/limits';
@@ -16,7 +19,12 @@ import type { LayoutSurfaceLineage } from '../../plan/surface-reference';
 import { wallCurveChainLength } from '../../wall/curve-algebra';
 import { validateWallFirstLayoutDocument } from '../../wall/codec';
 import { validateWallFirstTopology } from '../../topology/wall-first';
-import type { LayoutDocumentWallFirst, LayoutJunction, LayoutWall, LayoutWallOpening } from '../../wall/types';
+import type {
+	LayoutDocumentWallFirst,
+	LayoutJunction,
+	LayoutWall,
+	LayoutWallOpening,
+} from '../../wall/types';
 import { validateWallFirstPortalRelations } from '../../wall/portals';
 
 // ---------------------------------------------------------------------------
@@ -40,7 +48,6 @@ export type RoundRoomRadiusRejectionCode =
 	| 'invalid_candidate_document'
 	| 'candidate_does_not_compile';
 
-
 export type RoundRoomRadiusRejection = {
 	readonly code: RoundRoomRadiusRejectionCode;
 	readonly message: string;
@@ -50,7 +57,6 @@ export type RoundRoomRadiusRejection = {
 	readonly openingIds?: readonly string[];
 	readonly issues?: readonly (LayoutDocumentIssue | LayoutGeometryIssue)[];
 };
-
 
 export type RoundRoomRadiusPlan =
 	| {
@@ -67,15 +73,13 @@ export type RoundRoomRadiusPlan =
 			readonly rejection: RoundRoomRadiusRejection;
 	  };
 
-
 function rejectRadius(
 	code: RoundRoomRadiusRejectionCode,
 	message: string,
-	extra: Omit<RoundRoomRadiusRejection, 'code' | 'message'> = {}
+	extra: Omit<RoundRoomRadiusRejection, 'code' | 'message'> = {},
 ): RoundRoomRadiusPlan {
 	return { kind: 'rejected', rejection: { code, message, ...extra } };
 }
-
 
 function guardedRadiusAllocator(attempted: { value: boolean }): RoomIdAllocator {
 	return {
@@ -86,10 +90,9 @@ function guardedRadiusAllocator(attempted: { value: boolean }): RoomIdAllocator 
 		nextRoomName() {
 			attempted.value = true;
 			return 'Unreachable Round Radius';
-		}
+		},
 	};
 }
-
 
 /**
  * Resize a Round Room's radius (both isolated closed circles and connected
@@ -107,22 +110,26 @@ export function planResizeRoundRoomRadius(options: {
 	}
 	if (room.round === undefined) {
 		return rejectRadius('not_round_room', `Room '${roomId}' is not a Round Room`, {
-			roomIds: [roomId]
+			roomIds: [roomId],
 		});
 	}
 	if (!Number.isFinite(radius) || !(radius > 0)) {
-		return rejectRadius('invalid_radius', 'Round Room radius must be a finite positive number of meters', {
-			roomIds: [roomId]
-		});
+		return rejectRadius(
+			'invalid_radius',
+			'Round Room radius must be a finite positive number of meters',
+			{
+				roomIds: [roomId],
+			},
+		);
 	}
 	if (exceedsLayoutDimension(radius * 2)) {
 		return rejectRadius('dimension_out_of_range', LAYOUT_DIMENSION_LIMIT_MESSAGE, {
-			roomIds: [roomId]
+			roomIds: [roomId],
 		});
 	}
 	if (radius === room.round.radius) {
 		return rejectRadius('no_op', `Round Room '${roomId}' already has radius ${radius} m`, {
-			roomIds: [roomId]
+			roomIds: [roomId],
 		});
 	}
 
@@ -130,7 +137,7 @@ export function planResizeRoundRoomRadius(options: {
 	if (cert.kind === 'invalid') {
 		return rejectRadius('invalid_candidate_document', cert.issue.message, {
 			roomIds: [roomId],
-			issues: [cert.issue]
+			issues: [cert.issue],
 		});
 	}
 	const { certified } = cert;
@@ -142,16 +149,20 @@ export function planResizeRoundRoomRadius(options: {
 	for (const wallId of ringWallIds) {
 		const wall = wallById.get(wallId);
 		if (!wall) {
-			return rejectRadius('invalid_candidate_document', `Round Room '${roomId}' references unknown Wall '${wallId}'`, {
-				roomIds: [roomId],
-				wallIds: [wallId]
-			});
+			return rejectRadius(
+				'invalid_candidate_document',
+				`Round Room '${roomId}' references unknown Wall '${wallId}'`,
+				{
+					roomIds: [roomId],
+					wallIds: [wallId],
+				},
+			);
 		}
 		if (!(radius > wall.thickness * 0.5 + 1e-6)) {
 			return rejectRadius(
 				'invalid_radius',
 				`Radius ${radius} m is too small for Wall '${wall.id}' thickness ${wall.thickness} m`,
-				{ roomIds: [roomId], wallIds: [wall.id] }
+				{ roomIds: [roomId], wallIds: [wall.id] },
 			);
 		}
 		rimJunctionIds.add(wall.startJunctionId);
@@ -176,7 +187,7 @@ export function planResizeRoundRoomRadius(options: {
 			return rejectRadius(
 				'coupled_round_room',
 				`Resizing Round Room '${roomId}' would move rim Junction(s) shared with Round Room '${other.id}'`,
-				{ roomIds: [roomId, other.id], junctionIds: sharedRim }
+				{ roomIds: [roomId, other.id], junctionIds: sharedRim },
 			);
 		}
 	}
@@ -186,7 +197,7 @@ export function planResizeRoundRoomRadius(options: {
 			(w) =>
 				ringWallIds.has(w.id) ||
 				rimJunctionIds.has(w.startJunctionId) ||
-				rimJunctionIds.has(w.endJunctionId)
+				rimJunctionIds.has(w.endJunctionId),
 		)
 		.map((w) => w.id);
 
@@ -195,7 +206,7 @@ export function planResizeRoundRoomRadius(options: {
 		certified,
 		center: certified.center,
 		radius,
-		seamDirection: certified.seamDirection
+		seamDirection: certified.seamDirection,
 	});
 
 	const nextJunctions: LayoutJunction[] = document.junctions.map((j) => {
@@ -217,7 +228,7 @@ export function planResizeRoundRoomRadius(options: {
 		if (!start || !end) {
 			return rejectRadius('invalid_candidate_document', `Wall '${w.id}' has unresolved endpoints`, {
 				roomIds: [roomId],
-				wallIds: [w.id]
+				wallIds: [w.id],
 			});
 		}
 		const spanLength =
@@ -227,12 +238,12 @@ export function planResizeRoundRoomRadius(options: {
 						startPoint: start,
 						endPoint: end,
 						knots: w.centerline.knots,
-						spans: w.centerline.spans
+						spans: w.centerline.spans,
 					});
 		if (exceedsLayoutDimension(spanLength)) {
 			return rejectRadius('dimension_out_of_range', LAYOUT_DIMENSION_LIMIT_MESSAGE, {
 				roomIds: [roomId],
-				wallIds: [w.id]
+				wallIds: [w.id],
 			});
 		}
 	}
@@ -249,8 +260,8 @@ export function planResizeRoundRoomRadius(options: {
 					startPoint: pt,
 					endPoint: pt,
 					knots: w.centerline.knots,
-					spans: w.centerline.spans
-				})
+					spans: w.centerline.spans,
+				}),
 			);
 		}
 	}
@@ -267,13 +278,13 @@ export function planResizeRoundRoomRadius(options: {
 				return rejectRadius(
 					'opening_does_not_fit',
 					`Opening '${opening.id}' on Wall '${opening.wallId}' no longer fits at radius ${radius} m`,
-					{ roomIds: [roomId], wallIds: [opening.wallId], openingIds: [opening.id] }
+					{ roomIds: [roomId], wallIds: [opening.wallId], openingIds: [opening.id] },
 				);
 			}
-			const wrapped = ((opening.offset * ratio) % closedLen + closedLen) % closedLen;
+			const wrapped = (((opening.offset * ratio) % closedLen) + closedLen) % closedLen;
 			nextOpenings.push({
 				...opening,
-				offset: closedLen - wrapped <= CURVE_ARC_LENGTH_TOLERANCE ? 0 : wrapped
+				offset: closedLen - wrapped <= CURVE_ARC_LENGTH_TOLERANCE ? 0 : wrapped,
 			});
 		} else {
 			nextOpenings.push({ ...opening, offset: opening.offset * ratio });
@@ -285,9 +296,9 @@ export function planResizeRoundRoomRadius(options: {
 		junctions: nextJunctions,
 		walls: nextWalls,
 		rooms: document.rooms.map((entry) =>
-			entry.id === roomId ? { ...entry, round: rebuilt.round } : entry
+			entry.id === roomId ? { ...entry, round: rebuilt.round } : entry,
 		),
-		openings: nextOpenings
+		openings: nextOpenings,
 	};
 
 	// Canonical validation gates — whole-edit atomic refusal, never clamping or retiring Spaces.
@@ -296,7 +307,7 @@ export function planResizeRoundRoomRadius(options: {
 		const first = preStructural.issues[0]!;
 		return rejectRadius('invalid_candidate_document', first.message, {
 			roomIds: [roomId],
-			issues: preStructural.issues
+			issues: preStructural.issues,
 		});
 	}
 
@@ -305,7 +316,7 @@ export function planResizeRoundRoomRadius(options: {
 		return rejectRadius('topology_invalid', preTopology.message, {
 			roomIds: [roomId],
 			wallIds: preTopology.targetId ? [preTopology.targetId] : undefined,
-			issues: [preTopology]
+			issues: [preTopology],
 		});
 	}
 
@@ -315,7 +326,7 @@ export function planResizeRoundRoomRadius(options: {
 		return rejectRadius('opening_does_not_fit', first.message, {
 			roomIds: [roomId],
 			wallIds: [first.wallId],
-			openingIds: [first.openingId]
+			openingIds: [first.openingId],
 		});
 	}
 
@@ -324,7 +335,7 @@ export function planResizeRoundRoomRadius(options: {
 		const first = portalIssues[0]!;
 		return rejectRadius('portal_relation_invalid', first.message, {
 			roomIds: [roomId],
-			openingIds: [first.openingId]
+			openingIds: [first.openingId],
 		});
 	}
 
@@ -335,14 +346,18 @@ export function planResizeRoundRoomRadius(options: {
 	for (const baseRoom of document.rooms) {
 		const candRoom = candidateRoomById.get(baseRoom.id);
 		if (!candRoom) {
-			return rejectRadius('room_identity_lost', `Room '${baseRoom.id}' lost its candidate boundary`, {
-				roomIds: [baseRoom.id]
-			});
+			return rejectRadius(
+				'room_identity_lost',
+				`Room '${baseRoom.id}' lost its candidate boundary`,
+				{
+					roomIds: [baseRoom.id],
+				},
+			);
 		}
 		if (baseRoom.virtualEdges.length > 0 || candRoom.virtualEdges.length > 0) continue;
 		components.push({
 			candidateFaceKeys: [canonicalBoundaryCycleKey(candRoom.boundary)],
-			predecessorRoomIds: [baseRoom.id]
+			predecessorRoomIds: [baseRoom.id],
 		});
 	}
 	const allocationAttempted = { value: false };
@@ -352,7 +367,7 @@ export function planResizeRoundRoomRadius(options: {
 		extraction,
 		components,
 		candidateRooms: preStructural.document.rooms,
-		allocator: guardedRadiusAllocator(allocationAttempted)
+		allocator: guardedRadiusAllocator(allocationAttempted),
 	});
 	if ('rejection' in reconciliation) {
 		if (
@@ -364,13 +379,13 @@ export function planResizeRoundRoomRadius(options: {
 			const matched = spacePlacementIssues(preStructural.document).find(
 				(issue) =>
 					(issue.roomIds[0] === idA && issue.roomIds[1] === idB) ||
-					(issue.roomIds[0] === idB && issue.roomIds[1] === idA)
+					(issue.roomIds[0] === idB && issue.roomIds[1] === idA),
 			);
 			if (matched) {
 				return rejectRadius(
 					matched.code === 'space_contains_space' ? 'space_contains_space' : 'space_overlap',
 					matched.message,
-					{ roomIds: matched.roomIds }
+					{ roomIds: matched.roomIds },
 				);
 			}
 		}
@@ -379,7 +394,7 @@ export function planResizeRoundRoomRadius(options: {
 				? 'space_outline_invalid'
 				: 'room_identity_lost',
 			reconciliation.rejection.message,
-			{ roomIds: reconciliation.rejection.roomIds ?? [roomId] }
+			{ roomIds: reconciliation.rejection.roomIds ?? [roomId] },
 		);
 	}
 	if (
@@ -390,7 +405,7 @@ export function planResizeRoundRoomRadius(options: {
 		return rejectRadius(
 			'room_identity_lost',
 			`Resizing Round Room '${roomId}' would change Room topology or membership`,
-			{ roomIds: [roomId] }
+			{ roomIds: [roomId] },
 		);
 	}
 	const placementIssues = spacePlacementIssues(reconciliation.document);
@@ -399,7 +414,7 @@ export function planResizeRoundRoomRadius(options: {
 		return rejectRadius(
 			first.code === 'space_contains_space' ? 'space_contains_space' : 'space_overlap',
 			first.message,
-			{ roomIds: first.roomIds }
+			{ roomIds: first.roomIds },
 		);
 	}
 
@@ -408,7 +423,7 @@ export function planResizeRoundRoomRadius(options: {
 		return rejectRadius(
 			'invalid_candidate_document',
 			finalValidated.issues[0]?.message ?? 'Candidate document failed final validation',
-			{ roomIds: [roomId], issues: finalValidated.issues }
+			{ roomIds: [roomId], issues: finalValidated.issues },
 		);
 	}
 	const compiled = compileWallFirstLayoutGeometry(finalValidated.document);
@@ -416,7 +431,7 @@ export function planResizeRoundRoomRadius(options: {
 		return rejectRadius(
 			'candidate_does_not_compile',
 			compiled.issues[0]?.message ?? 'Candidate document does not compile',
-			{ roomIds: [roomId], issues: compiled.issues }
+			{ roomIds: [roomId], issues: compiled.issues },
 		);
 	}
 
@@ -431,7 +446,7 @@ export function planResizeRoundRoomRadius(options: {
 			rooms: [{ roomId, status: 'preserved' }],
 			walls: [],
 			junctions: [...rimJunctionIds].map((id) => ({ kind: 'preserved', junctionId: id })),
-			openings: []
-		}
+			openings: [],
+		},
 	};
 }

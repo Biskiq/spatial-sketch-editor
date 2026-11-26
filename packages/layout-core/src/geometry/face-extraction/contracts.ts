@@ -14,7 +14,6 @@ export type TopologyDiagnostic = {
 	faceKey?: string;
 };
 
-
 export type DerivedCandidateFace = {
 	/** Deterministic ephemeral topology key; never a Room ID. */
 	key: string;
@@ -23,7 +22,6 @@ export type DerivedCandidateFace = {
 	polygon: readonly LayoutVec2[];
 	signedArea: number;
 };
-
 
 export type FaceExtractionResult = {
 	faces: DerivedCandidateFace[];
@@ -34,7 +32,6 @@ export type FaceExtractionResult = {
 	cutEdgeWallIds: string[];
 };
 
-
 export type HalfEdge = {
 	/** Directed edge: from junction `fromId` to junction `toId`. */
 	fromId: string;
@@ -42,7 +39,6 @@ export type HalfEdge = {
 	wallId: string;
 	direction: 'forward' | 'reverse';
 };
-
 
 /**
  * The adjacency predicates' own slack, in metres. `polygonsShareInteriorArea`

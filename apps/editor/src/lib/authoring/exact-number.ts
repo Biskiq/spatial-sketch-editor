@@ -15,10 +15,11 @@ export type ExactNumberParse =
 export function parseExactNumber(
 	raw: string,
 	fallback: number,
-	format: (value: number) => string = String
+	format: (value: number) => string = String,
 ): ExactNumberParse {
 	if (!raw.trim()) return { ok: false, display: format(fallback), reason: 'blank' };
 	const value = Number(raw);
-	if (!Number.isFinite(value)) return { ok: false, display: format(fallback), reason: 'non-finite' };
+	if (!Number.isFinite(value))
+		return { ok: false, display: format(fallback), reason: 'non-finite' };
 	return { ok: true, value };
 }

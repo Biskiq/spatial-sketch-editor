@@ -4,7 +4,10 @@ import { wallUnfold } from '../../layout/wall-unfold-store.svelte';
 import { contribution } from '../../workspace/region-ownership';
 import type { StageReadSnapshot } from '../accepted-read';
 import type { StageSelectionEntry } from '../semantic-selection';
-import { createStageUnfoldGestures, selectedCurvedWallOf } from '../route/stage-unfold-gestures.svelte';
+import {
+	createStageUnfoldGestures,
+	selectedCurvedWallOf,
+} from '../route/stage-unfold-gestures.svelte';
 
 export function createUnfoldHost(input: {
 	readonly gestures: Omit<Parameters<typeof createStageUnfoldGestures>[0], 'selectedCurvedWall'>;
@@ -13,18 +16,20 @@ export function createUnfoldHost(input: {
 }) {
 	const selectedCurvedWall = $derived.by(() => {
 		const snapshot = input.snapshot();
-		return snapshot === null ? null : selectedCurvedWallOf(
-			input.selection(),
-			snapshot.domain.geometry,
-			snapshot.domain.datumMeters,
-			input.gestures.evaluation()?.pose.target ?? null,
-			wallUnfoldViewCentreStation
-		);
+		return snapshot === null
+			? null
+			: selectedCurvedWallOf(
+					input.selection(),
+					snapshot.domain.geometry,
+					snapshot.domain.datumMeters,
+					input.gestures.evaluation()?.pose.target ?? null,
+					wallUnfoldViewCentreStation,
+				);
 	});
 
 	const gestures = createStageUnfoldGestures({
 		...input.gestures,
-		selectedCurvedWall: () => selectedCurvedWall
+		selectedCurvedWall: () => selectedCurvedWall,
 	});
 
 	function attachAnchor(): void {
@@ -43,37 +48,51 @@ export function createUnfoldHost(input: {
 				const ticket = stage.inspectionTicket();
 				if (ticket === null) return false;
 				const camera = stage.camera.state();
-				if (!wallUnfoldShouldReturn({
-					entryAdjusted: request.entryAdjusted,
-					settled: request.settled,
-					current: { pose: camera.pose, reading: camera.reading }
-				})) return false;
-				return stage.requestViewingIntent(
-					{
-						kind: 'set-view',
-						eye: eyeOfInspectionPose(request.pose),
-						target: request.pose.target,
-						fovYDegrees: fovYDegreesOf(request.pose),
-						transition: true
-					},
-					ticket,
-					performance.now() / 1000
-				).kind === 'accepted';
+				if (
+					!wallUnfoldShouldReturn({
+						entryAdjusted: request.entryAdjusted,
+						settled: request.settled,
+						current: { pose: camera.pose, reading: camera.reading },
+					})
+				)
+					return false;
+				return (
+					stage.requestViewingIntent(
+						{
+							kind: 'set-view',
+							eye: eyeOfInspectionPose(request.pose),
+							target: request.pose.target,
+							fovYDegrees: fovYDegreesOf(request.pose),
+							transition: true,
+						},
+						ticket,
+						performance.now() / 1000,
+					).kind === 'accepted'
+				);
 			});
 			return () => wallUnfold.setCameraExecutor(null);
 		});
 	}
 
 	const canvas = contribution<'layout-readings', 'canvas'>()({
-		get unfoldPinHovered() { return gestures.pinHovered; },
-		get unfoldPinActive() { return gestures.sheetPinActive; },
-		get unfoldAnchorPin() { return gestures.idlePin?.point ?? null; }
+		get unfoldPinHovered() {
+			return gestures.pinHovered;
+		},
+		get unfoldPinActive() {
+			return gestures.sheetPinActive;
+		},
+		get unfoldAnchorPin() {
+			return gestures.idlePin?.point ?? null;
+		},
 	});
 
 	attachCameraPort();
 	return {
-		canvas, gestures, attachAnchor, attachCameraPort,
+		canvas,
+		gestures,
+		attachAnchor,
+		attachCameraPort,
 		active: () => wallUnfold.state !== null,
-		dispose: gestures.dispose
+		dispose: gestures.dispose,
 	};
 }

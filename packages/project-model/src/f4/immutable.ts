@@ -1,10 +1,12 @@
 import { countWork } from '@portfolio/layout-core/kernel';
-import { hasImmutableJsonProof as hasOwnedFrozenJsonProof, rememberImmutableJsonNode as rememberOwnedFrozenJson } from '@portfolio/layout-core/kernel';
+import {
+	hasImmutableJsonProof as hasOwnedFrozenJsonProof,
+	rememberImmutableJsonNode as rememberOwnedFrozenJson,
+} from '@portfolio/layout-core/kernel';
 
 // A private proof of capture, not Object.isFrozen (which is only shallow).
 // Only plain JSON graphs produced by this boundary qualify. In particular a
 // frozen Map/Date/typed array is never treated as an immutable captured graph.
-
 
 /** Capture owned data before it can cross an async boundary or be published. */
 export function immutableF4Data<T>(input: T): T {
@@ -30,7 +32,8 @@ function isPlain(input: object): boolean {
 }
 
 function canShareCapturedJson(input: unknown, seen: WeakSet<object>): boolean {
-	if (input === null || typeof input !== 'object') return typeof input !== 'function' && typeof input !== 'symbol';
+	if (input === null || typeof input !== 'object')
+		return typeof input !== 'function' && typeof input !== 'symbol';
 	if (hasOwnedFrozenJsonProof(input) || seen.has(input)) return true;
 	if (!isPlain(input)) return false;
 	seen.add(input);
@@ -44,13 +47,23 @@ function canShareCapturedJson(input: unknown, seen: WeakSet<object>): boolean {
 
 function cloneJson<T>(input: T, seen: WeakMap<object, unknown>): T {
 	if (input === null || typeof input !== 'object') return input;
-	if (hasOwnedFrozenJsonProof(input)) { countWork('f4:captured-subgraph-reused'); return input; }
+	if (hasOwnedFrozenJsonProof(input)) {
+		countWork('f4:captured-subgraph-reused');
+		return input;
+	}
 	const previous = seen.get(input);
 	if (previous) return previous as T;
-	const clone: Record<string, unknown> | unknown[] = Array.isArray(input) ? new Array(input.length) : {};
+	const clone: Record<string, unknown> | unknown[] = Array.isArray(input)
+		? new Array(input.length)
+		: {};
 	seen.set(input, clone);
 	for (const key of Object.keys(input)) {
-		Object.defineProperty(clone, key, { value: cloneJson((input as Record<string, unknown>)[key], seen), enumerable: true, configurable: true, writable: true });
+		Object.defineProperty(clone, key, {
+			value: cloneJson((input as Record<string, unknown>)[key], seen),
+			enumerable: true,
+			configurable: true,
+			writable: true,
+		});
 	}
 	return clone as T;
 }
@@ -79,8 +92,14 @@ export function freezeF4Data<T>(input: T): T {
 		Object.freeze(input);
 		// Only data properties whose object children have this private proof may
 		// become shared capture inputs. A shallow external freeze proves nothing.
-		if (isPlain(input) && values.every((value) => value === null || typeof value !== 'object' || hasOwnedFrozenJsonProof(value)) &&
-			Object.keys(input).every((key) => 'value' in Object.getOwnPropertyDescriptor(input, key)!)) rememberOwnedFrozenJson(input);
+		if (
+			isPlain(input) &&
+			values.every(
+				(value) => value === null || typeof value !== 'object' || hasOwnedFrozenJsonProof(value),
+			) &&
+			Object.keys(input).every((key) => 'value' in Object.getOwnPropertyDescriptor(input, key)!)
+		)
+			rememberOwnedFrozenJson(input);
 	}
 	return input;
 }

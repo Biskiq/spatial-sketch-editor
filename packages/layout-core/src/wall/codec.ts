@@ -1,10 +1,8 @@
-
-
 export type { WallFirstLayoutValidationResult } from './codec/schema';
 export {
 	createEmptyWallFirstLayoutDocument,
 	validateWallFirstLayoutDocument,
 	parseWallFirstLayoutDocumentJson,
 	wallFirstCanonicalFormatVersionIssue,
-	serializeWallFirstLayoutDocument
+	serializeWallFirstLayoutDocument,
 } from './codec/document';

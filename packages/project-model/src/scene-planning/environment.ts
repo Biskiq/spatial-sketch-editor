@@ -5,7 +5,11 @@ import { prepared } from '../units/planning/experience/update';
 import { refuse, envelopeOf } from '../units/planning/shared';
 import { sameSky, SCENE_SKY_DEFAULT, skyFromPreset } from '../units/sky-presets';
 import { UNIT_SOURCE_KIND, UNIT_SOURCE_VERSION } from '../units/source';
-import { SCENE_SKY_PRESETS, type SceneEnvironmentChoice, type ProjectEnvelope } from '../units/types';
+import {
+	SCENE_SKY_PRESETS,
+	type SceneEnvironmentChoice,
+	type ProjectEnvelope,
+} from '../units/types';
 import { validateSceneSky } from '../units/validate';
 
 export const SCENE_ENVIRONMENT_SET_KIND = 'scene-environment-set';
@@ -25,7 +29,7 @@ export function createSceneSkyUpdatePlanner(): DomainPlanner<ProjectEnvelope> {
 }
 
 export function createSkyPlanner(
-	kind: typeof SCENE_ENVIRONMENT_SET_KIND | typeof SCENE_SKY_UPDATE_KIND
+	kind: typeof SCENE_ENVIRONMENT_SET_KIND | typeof SCENE_SKY_UPDATE_KIND,
 ): DomainPlanner<ProjectEnvelope> {
 	const settingPreset = kind === SCENE_ENVIRONMENT_SET_KIND;
 	return {
@@ -43,9 +47,24 @@ export function createSkyPlanner(
 			const { environment, ...scene } = sceneUnit.data;
 			const previous = environment?.sky ?? SCENE_SKY_DEFAULT;
 			const reader = new ShapeReader();
-			const payload = reader.object(request.intent.payload, '$.payload', settingPreset
-				? ['preset']
-				: ['time', 'heading', 'arcHeight', 'haze', 'exposure', 'softness', 'sunShadows', 'moon', 'skyColor', 'groundColor']);
+			const payload = reader.object(
+				request.intent.payload,
+				'$.payload',
+				settingPreset
+					? ['preset']
+					: [
+							'time',
+							'heading',
+							'arcHeight',
+							'haze',
+							'exposure',
+							'softness',
+							'sunShadows',
+							'moon',
+							'skyColor',
+							'groundColor',
+						],
+			);
 			if (payload === null || Object.keys(payload).length === 0 || reader.issues.length !== 0) {
 				return refuse('invalid-payload', 'Choose a preset or supply a Sky change', reader.issues);
 			}
@@ -72,27 +91,39 @@ export function createSkyPlanner(
 
 			const result = validateSceneSky(next);
 			if (!result.success) return refuse('invalid-payload', 'Invalid Sky settings', result.issues);
-			if (sameSky(previous, result.value)) return refuse('no-change', 'The World already uses this Sky');
+			if (sameSky(previous, result.value))
+				return refuse('no-change', 'The World already uses this Sky');
 
 			const treatment = environment?.treatment;
 			const sky = sameSky(result.value, SCENE_SKY_DEFAULT) ? undefined : result.value;
 			const data = {
 				...scene,
-				...(sky === undefined && treatment === undefined ? {} : {
-					environment: {
-						...(sky === undefined ? {} : { sky }),
-						...(treatment === undefined ? {} : { treatment })
-					}
-				})
+				...(sky === undefined && treatment === undefined
+					? {}
+					: {
+							environment: {
+								...(sky === undefined ? {} : { sky }),
+								...(treatment === undefined ? {} : { treatment }),
+							},
+						}),
 			};
 			const candidate: ProjectEnvelope = {
 				...envelope,
-				units: { ...envelope.units, scene: { header: { ...sceneUnit.header }, data } }
+				units: { ...envelope.units, scene: { header: { ...sceneUnit.header }, data } },
 			};
-			return prepared(request, candidate, [{
-				kind: 'scene.environment.updated', subjectIds: [], fields: ['environment']
-			}], []);
-		}
+			return prepared(
+				request,
+				candidate,
+				[
+					{
+						kind: 'scene.environment.updated',
+						subjectIds: [],
+						fields: ['environment'],
+					},
+				],
+				[],
+			);
+		},
 	};
 }
 
@@ -100,19 +131,19 @@ export type SceneData = ProjectEnvelope['units']['scene']['data'];
 
 export function buildEnvironment(
 	sky: SceneSky | null,
-	treatment: SceneTreatment | undefined
+	treatment: SceneTreatment | undefined,
 ): SceneEnvironment | undefined {
 	if (sky === null && treatment === undefined) return undefined;
 	return {
 		...(sky === null ? {} : { sky }),
-		...(treatment === undefined ? {} : { treatment })
+		...(treatment === undefined ? {} : { treatment }),
 	};
 }
 
 export function sceneWithEnvironment(
 	scene: SceneData,
 	sky: SceneSky | null,
-	treatment: SceneTreatment | undefined
+	treatment: SceneTreatment | undefined,
 ): SceneData {
 	const data: SceneData = { ...scene };
 	delete (data as { environment?: unknown }).environment;
@@ -122,7 +153,7 @@ export function sceneWithEnvironment(
 
 export function sameEnvironment(
 	a: SceneEnvironment | undefined,
-	b: SceneEnvironment | undefined
+	b: SceneEnvironment | undefined,
 ): boolean {
 	if (a === undefined || b === undefined) return a === b;
 	if (a.treatment !== b.treatment) return false;
@@ -130,13 +161,16 @@ export function sameEnvironment(
 	return sameSky(a.sky, b.sky);
 }
 
-export function unitSceneCandidate(request: PlannerRequest<ProjectEnvelope>, data: SceneData): ProjectEnvelope {
+export function unitSceneCandidate(
+	request: PlannerRequest<ProjectEnvelope>,
+	data: SceneData,
+): ProjectEnvelope {
 	const envelope = envelopeOf(request);
 	return {
 		...envelope,
 		units: {
 			...envelope.units,
-			scene: { header: { ...envelope.units.scene.header }, data }
-		}
+			scene: { header: { ...envelope.units.scene.header }, data },
+		},
 	};
 }

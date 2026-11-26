@@ -1,8 +1,24 @@
 import type { LayoutVec2 } from '../../geometry/coordinates';
 import type { CompiledLayoutGeometry, CompiledQuerySpan } from '../../geometry/types';
 import { p2311Measure } from '../../kernel/work-observer';
-import { curvedSpanNearestCandidates, objectBoundsSnapCandidates, openingEdgeSnapCandidates, orthogonalGuideCandidates, pickSnapWinner, snapAcquisitionRadiusWorld, snapToGridStep, spanSnapCandidates, wallIntersectionSnapCandidates } from './features';
-import type { SnapCandidate, SnapGuide, SnapInputContext, SnapQueryContext, SnapResolution } from './types';
+import {
+	curvedSpanNearestCandidates,
+	objectBoundsSnapCandidates,
+	openingEdgeSnapCandidates,
+	orthogonalGuideCandidates,
+	pickSnapWinner,
+	snapAcquisitionRadiusWorld,
+	snapToGridStep,
+	spanSnapCandidates,
+	wallIntersectionSnapCandidates,
+} from './features';
+import type {
+	SnapCandidate,
+	SnapGuide,
+	SnapInputContext,
+	SnapQueryContext,
+	SnapResolution,
+} from './types';
 import { LAYOUT_PLAN_GRID_STEP, snapOwnerKey } from './types';
 import type { MergedWallSpan } from './walls';
 import { dedupeWallSpans } from './walls';
@@ -29,9 +45,7 @@ export type DerivedWallSnapIndex = {
 	walls: readonly MergedWallSpan[];
 };
 
-
 const derivedWallSnapIndex = new WeakMap<CompiledLayoutGeometry, DerivedWallSnapIndex>();
-
 
 /**
  * DEV-only input probe for the snap derivation: WHAT the derivation is handed,
@@ -41,8 +55,7 @@ const derivedWallSnapIndex = new WeakMap<CompiledLayoutGeometry, DerivedWallSnap
  * nothing else, so the same mark reading cannot say whether a large number is
  * large work on a large input or a small input read through something slow. The
  * editor resolves snaps against a frozen baseline geometry that is a Svelte
- * `$state` proxy, and every field read inside the merge then pays a trap — a
- * multiplier the P23B.6 S1a probe already measured for the Plan model. This probe
+ * `$state` proxy, and every field read inside the merge then pays a proxy trap. This probe
  * records the input shape (spans, walls, endpoints per wall) and runs the SAME
  * merge twice: once on the geometry as handed in, once on a JSON copy of the same
  * spans (plain objects, identical values). The difference between the two is the
@@ -66,9 +79,7 @@ export type P23B1SnapInputEntry = {
 	plainMs: number | null;
 };
 
-
 const SNAP_INPUT_LOG_LIMIT = 512;
-
 
 function snapInputProbeEnabled(): boolean {
 	const viteDev = (import.meta as ImportMeta & { env?: { DEV?: boolean } }).env?.DEV;
@@ -77,7 +88,6 @@ function snapInputProbeEnabled(): boolean {
 		(globalThis as { __P2311_SNAP_INPUT_PROBE__?: boolean }).__P2311_SNAP_INPUT_PROBE__ === true
 	);
 }
-
 
 function recordSnapInputProbe(spans: readonly CompiledQuerySpan[], givenMs: number): void {
 	const host = globalThis as { __P2311_SNAP_INPUT_LOG__?: P23B1SnapInputEntry[] };
@@ -104,10 +114,9 @@ function recordSnapInputProbe(spans: readonly CompiledQuerySpan[], givenMs: numb
 		maxEndpointsPerWall: endpoints[endpoints.length - 1] ?? 0,
 		endpointsP50: endpoints.length > 0 ? endpoints[Math.floor((endpoints.length - 1) / 2)]! : 0,
 		givenMs,
-		plainMs
+		plainMs,
 	});
 }
-
 
 /** The memoized Wall snap index of one compiled geometry. */
 export function wallSnapIndex(geometry: CompiledLayoutGeometry): DerivedWallSnapIndex {
@@ -117,19 +126,18 @@ export function wallSnapIndex(geometry: CompiledLayoutGeometry): DerivedWallSnap
 	const probeStarted = probing ? performance.now() : 0;
 	const derived: DerivedWallSnapIndex = {
 		walls: p2311Measure('snap-wall-index', () =>
-			dedupeWallSpans(geometry.queries.spans.filter((span) => span.kind === 'wall'))
-		)
+			dedupeWallSpans(geometry.queries.spans.filter((span) => span.kind === 'wall')),
+		),
 	};
 	if (probing) {
 		recordSnapInputProbe(
 			geometry.queries.spans.filter((span) => span.kind === 'wall'),
-			performance.now() - probeStarted
+			performance.now() - probeStarted,
 		);
 	}
 	derivedWallSnapIndex.set(geometry, derived);
 	return derived;
 }
-
 
 /**
  * Full resolution over the compiled query geometry: collect candidate
@@ -140,7 +148,7 @@ export function resolveLayoutSnap(
 	geometry: CompiledLayoutGeometry,
 	point: LayoutVec2,
 	context: SnapQueryContext,
-	input: SnapInputContext = {}
+	input: SnapInputContext = {},
 ): SnapResolution {
 	const radius = snapAcquisitionRadiusWorld(context);
 	if (radius <= 0) return { kind: 'none' };
@@ -153,7 +161,7 @@ export function resolveLayoutSnap(
 	// incident room boundary under one wall identity) collapse to one.
 	// Deduping by position alone would let whichever wall the compiler
 	// happened to emit first shadow the other's exclusion — query-array
-	// order must never decide the winner (P23.2 deterministic contract).
+	// order must never decide the winner (deterministic contract).
 	const seenPointOwners = new Set<string>();
 	for (const queryPoint of geometry.queries.points) {
 		const ownerId = snapOwnerKey({ kind: 'wall', id: queryPoint.wallKey ?? queryPoint.segmentId });
@@ -167,7 +175,7 @@ export function resolveLayoutSnap(
 			kind: 'junction',
 			sourceId: queryPoint.sourceId,
 			ownerId,
-			distance
+			distance,
 		});
 	}
 
@@ -176,7 +184,7 @@ export function resolveLayoutSnap(
 	// walls, not sample boundaries. Straight walls get the full family
 	// (endpoints/midpoint/nearest-point); curved walls keep their per-sample
 	// spans and only provide nearest-point candidates — a chord through a
-	// curve must never masquerade as the wall, and P23.2 midpoint semantics
+	// curve must never masquerade as the wall, and midpoint semantics
 	// are straight-wall-scoped.
 	const wallMerges = wallSnapIndex(geometry).walls;
 	const wallOwner = (key: string): string => snapOwnerKey({ kind: 'wall', id: key });
@@ -188,8 +196,8 @@ export function resolveLayoutSnap(
 					point,
 					radius,
 					wallOwner(merge.key),
-					merge.key
-				)
+					merge.key,
+				),
 			);
 			continue;
 		}
@@ -202,8 +210,8 @@ export function resolveLayoutSnap(
 					point,
 					radius,
 					wallOwner(merge.key),
-					merge.key
-				)
+					merge.key,
+				),
 			);
 		}
 	}
@@ -223,8 +231,8 @@ export function resolveLayoutSnap(
 			...openingEdgeSnapCandidates(
 				{ id: span.id, openingId: span.openingId, start: span.start, end: span.end },
 				point,
-				radius
-			)
+				radius,
+			),
 		);
 	}
 
@@ -233,7 +241,7 @@ export function resolveLayoutSnap(
 		if (polygon.kind !== 'object-footprint' || !polygon.objectId) continue;
 		footprintsById.set(
 			polygon.objectId,
-			polygon.polygon.map((vertex) => [vertex[0], vertex[1]] as LayoutVec2)
+			polygon.polygon.map((vertex) => [vertex[0], vertex[1]] as LayoutVec2),
 		);
 	}
 	for (const [objectId, footprint] of footprintsById) {
@@ -252,11 +260,11 @@ export function resolveLayoutSnap(
 			kind: 'grid',
 			sourceId: 'grid',
 			ownerId: 'grid',
-			distance: gridDistance
+			distance: gridDistance,
 		});
 	}
 
-	// The draft-anchor axis family (rank 7, ratified in P23.2 and
+	// The draft-anchor axis family (rank 7, ratified in and
 	// dormant until now because nothing produced it). It is emitted *after* the
 	// geometry candidates and *before* the winner is picked, so the family
 	// competes through the ratified rank order rather than being special-cased.
@@ -282,7 +290,6 @@ export function resolveLayoutSnap(
 	return { kind: 'snap', candidate: winner, guides: guidesForCandidate(winner, anchor ?? null) };
 }
 
-
 /**
  * The alignment line the winner is *about*: at most one, and never degenerate.
  *
@@ -296,7 +303,7 @@ export function resolveLayoutSnap(
  *
  * The `kind` names the **held** coordinate (`orthogonal-z` for a candidate that
  * holds Z and therefore runs its leg along X), matching the convention the
- * family has carried since P23.2. The paint layer draws `start`/`end` and does
+ * family has carried since. The paint layer draws `start`/`end` and does
  * not branch on `kind`; it is kept accurate for identification.
  */
 function guidesForCandidate(candidate: SnapCandidate, anchor: LayoutVec2 | null): SnapGuide[] {

@@ -41,10 +41,13 @@ export function createStageShellStatus(ports: StageShellStatusPorts) {
 	}
 
 	/** Mirror the one session lease into the Card's gesture fade. */
-	function syncGestureFade(lease: { readonly navigation?: boolean; readonly owner: string } | null): void {
+	function syncGestureFade(
+		lease: { readonly navigation?: boolean; readonly owner: string } | null,
+	): void {
 		stageGesturing = lease !== null;
 		const cameraEdit =
-			lease !== null && (lease.owner === 'experience-view-edit' || lease.owner === 'experience-path-point');
+			lease !== null &&
+			(lease.owner === 'experience-view-edit' || lease.owner === 'experience-path-point');
 		const gesturing = lease !== null && lease.navigation !== true && !cameraEdit;
 		if (gesturing !== cardGesturing) cardGesturing = gesturing;
 	}
@@ -73,6 +76,6 @@ export function createStageShellStatus(ports: StageShellStatusPorts) {
 		setPreviewProblem,
 		requestCardRename,
 		consumeCardRename,
-		syncGestureFade
+		syncGestureFade,
 	};
 }

@@ -8,9 +8,9 @@
  * - a failed Save stops with the work intact and nothing sent anywhere;
  * - a failed library write keeps the saved project and says so;
  * - once anything awaited, the creator may have moved on (another root, the World, the
- *   Experience lens). `current()` is asked after **every** await, and a transfer that is
- *   no longer current neither navigates nor speaks: the saved object is simply in My
- *   Objects, and a late failure must not appear over unrelated work.
+ *  Experience lens). `current` is asked after **every** await, and a transfer that is
+ *  no longer current neither navigates nor speaks: the saved object is simply in My
+ *  Objects, and a late failure must not appear over unrelated work.
  *
  * The journey reads the accepted root again after the Save, so the copy carries what
  * was saved, not what was selected a moment earlier.
@@ -23,7 +23,9 @@ export type PlaceCopyPorts<Entity = SceneFormEntity> = {
 	isDirty(): boolean;
 	/** The Head's own Save: `saved`, a worded `refused`/`error`, or anything else (blocked/unavailable). */
 	saveFirst(): Promise<{ readonly kind: string; readonly message?: string }>;
-	saveToLibrary(entity: Entity): Promise<
+	saveToLibrary(
+		entity: Entity,
+	): Promise<
 		| { readonly kind: 'saved'; readonly itemId: string; readonly name: string }
 		| { readonly kind: 'refused'; readonly message: string }
 	>;
@@ -39,7 +41,7 @@ export type PlaceCopyResult = 'navigated' | 'failed' | 'stale';
 export async function runPlaceCopy<Entity>(
 	rootId: string,
 	current: () => boolean,
-	ports: PlaceCopyPorts<Entity>
+	ports: PlaceCopyPorts<Entity>,
 ): Promise<PlaceCopyResult> {
 	if (ports.entity(rootId) === null) {
 		ports.notice('That object is no longer in the project; nothing was saved.');
@@ -52,7 +54,7 @@ export async function runPlaceCopy<Entity>(
 			ports.notice(
 				(saved.kind === 'refused' || saved.kind === 'error') && saved.message !== undefined
 					? `The project could not be saved: ${saved.message} Nothing was moved; you are still in Object Studio.`
-					: 'The project could not be saved, so nothing was moved. Save it from the Head and try again.'
+					: 'The project could not be saved, so nothing was moved. Save it from the Head and try again.',
 			);
 			return 'failed';
 		}

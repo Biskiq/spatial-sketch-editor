@@ -37,7 +37,7 @@ export function framePointToWorld(frame: LocalInputFrame, local: Vec3): Vec3 {
 	return [
 		frame.origin[0] + x * cos + z * sin,
 		frame.origin[1] + y,
-		frame.origin[2] - x * sin + z * cos
+		frame.origin[2] - x * sin + z * cos,
 	];
 }
 
@@ -46,11 +46,7 @@ export function framePointFromWorld(frame: LocalInputFrame, world: Vec3): Vec3 {
 	const deltaZ = world[2] - frame.origin[2];
 	const cos = Math.cos(frame.yaw);
 	const sin = Math.sin(frame.yaw);
-	return [
-		deltaX * cos - deltaZ * sin,
-		world[1] - frame.origin[1],
-		deltaX * sin + deltaZ * cos
-	];
+	return [deltaX * cos - deltaZ * sin, world[1] - frame.origin[1], deltaX * sin + deltaZ * cos];
 }
 
 /** Direction conversion: translation is excluded by construction. */
@@ -89,12 +85,12 @@ export function frameYawFromWorld(frame: LocalInputFrame, yaw: number): number {
  * normalize; its Walls carry explicit centerlines.
  */
 function normalizeFrameYaw(yaw: number): number {
-	const normalized = ((yaw + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
+	const normalized = ((((yaw + Math.PI) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)) - Math.PI;
 	return Object.is(normalized, -0) || Math.abs(normalized) <= Number.EPSILON ? 0 : normalized;
 }
 
 // Reduce with the same trig argument reduction as the point/direction matrix.
 // A floating remainder on huge finite radians can disagree with that matrix.
 function principalYaw(yaw: number): number {
- return Math.atan2(Math.sin(yaw), Math.cos(yaw));
+	return Math.atan2(Math.sin(yaw), Math.cos(yaw));
 }

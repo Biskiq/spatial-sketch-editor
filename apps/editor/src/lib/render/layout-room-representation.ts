@@ -6,16 +6,16 @@
  * representations, rather than mounted per Room through Svelte:
  *
  * - **Retained by the Room's own `cacheKey`.** A Room whose key did not move
- *   keeps its group, its geometries, its transforms and its meshes.
+ *  keeps its group, its geometries, its transforms and its meshes.
  * - **One or two geometries per Room.** One floor triangulation, shared by the
- *   floor and the floor-shadow mesh; a closed Room adds one ceiling
- *   triangulation, while `open-to-sky` has no lid mesh to build.
+ *  floor and the floor-shadow mesh; a closed Room adds one ceiling
+ *  triangulation, while `open-to-sky` has no lid mesh to build.
  * - **Three materials for every Room.** Acquired once from the Canvas's
- *   `MaterialStore`: the unlit ground-coloured floor, the shadow catcher and the
- *   dark plaster ceiling. Equal descriptors share one instance, so 196 Rooms draw
- *   three materials, not 588.
+ *  `MaterialStore`: the unlit ground-coloured floor, the shadow catcher and the
+ *  dark plaster ceiling. Equal descriptors share one instance, so 196 Rooms draw
+ *  three materials, not 588.
  * - **Released in the same update.** A Room that left the document, and every
- *   superseded buffer, is disposed there; the material leases go back at the end.
+ *  superseded buffer, is disposed there; the material leases go back at the end.
  *
  * Deliberately unchanged: the world placement of each surface (floor
  * `-π/2` at `floorElevation`, ceiling `+π/2` at `ceilingElevation`), the
@@ -25,7 +25,11 @@
  */
 import { Group, Mesh, Shape, ShapeGeometry, type BufferGeometry, type Object3D } from 'three';
 import { countWork } from '@portfolio/layout-core/kernel';
-import type { CompiledLayoutGeometry, CompiledRoom, LayoutVec2 } from '@portfolio/layout-core/geometry';
+import type {
+	CompiledLayoutGeometry,
+	CompiledRoom,
+	LayoutVec2,
+} from '@portfolio/layout-core/geometry';
 
 import { getMaterial } from '$lib/content/materials';
 import { LIFTED_RENDER_LAYER } from '$lib/render/render-layers';
@@ -33,7 +37,7 @@ import { reconcileHidden, tagRenderIdentity } from '$lib/render/render-identity'
 import type { MaterialStore } from '$lib/render/resources/material-store';
 import type {
 	MaterialDescriptor,
-	MaterialTreatment
+	MaterialTreatment,
 } from '$lib/render/resources/material-descriptor';
 import { applyTreatment } from '$lib/render/materials/treatment';
 import { DEFAULT_FLOOR_COLOR } from '$lib/visitor/room-presentation';
@@ -135,14 +139,14 @@ function roomDescriptors(treatment: MaterialTreatment | undefined): {
 		roughness: 1,
 		metalness: 0,
 		slotUris: {},
-		normalScale: null
+		normalScale: null,
 	});
 	const ceiling = applyTreatment(treatment, {
 		color: '#111018',
 		roughness: plaster.roughness,
 		metalness: plaster.metalness,
 		slotUris: {},
-		normalScale: null
+		normalScale: null,
 	});
 	return {
 		floor: { kind: 'basic', color: floor.color, toneMapped: false },
@@ -152,7 +156,7 @@ function roomDescriptors(treatment: MaterialTreatment | undefined): {
 			depthWrite: false,
 			polygonOffset: true,
 			polygonOffsetFactor: -1,
-			polygonOffsetUnits: -1
+			polygonOffsetUnits: -1,
 		},
 		ceiling: {
 			kind: 'standard',
@@ -161,8 +165,8 @@ function roomDescriptors(treatment: MaterialTreatment | undefined): {
 			metalness: ceiling.metalness,
 			// `CatalogueMaterial` defaults `receiveLighting`, and with `textures="off"`
 			// it draws a plain untoned-free standard surface: `toneMapped = true`.
-			toneMapped: true
-		}
+			toneMapped: true,
+		},
 	};
 }
 
@@ -174,7 +178,7 @@ export function createRoomRepresentation(
 	onMaterialChange: () => void = () => {},
 	resolveSurfaceLook?: SceneSurfaceLookResolver,
 	viewGeneration?: () => FinishViewGeneration | null,
-	onFinishOutcome?: FinishOutcomeSink
+	onFinishOutcome?: FinishOutcomeSink,
 ): RoomRepresentation {
 	const object3d = new Group();
 	object3d.name = 'VisitorLayoutRooms';
@@ -193,7 +197,7 @@ export function createRoomRepresentation(
 		onMaterialChange: refreshSurfaceMaterials,
 		resolveSurfaceLook,
 		viewGeneration,
-		onFinishOutcome
+		onFinishOutcome,
 	});
 	let hidden: ReadonlySet<string> = new Set();
 	/** The remembered reading: a Room built later is born lifted. */
@@ -204,7 +208,12 @@ export function createRoomRepresentation(
 
 	function updateMaterialKeys(): void {
 		materialKeys.clear();
-		for (const key of [floorLease.key, shadowLease.key, ceilingLease.key, ...surfaceMaterials.materialKeys()]) {
+		for (const key of [
+			floorLease.key,
+			shadowLease.key,
+			ceilingLease.key,
+			...surfaceMaterials.materialKeys(),
+		]) {
 			materialKeys.add(key);
 		}
 	}
@@ -212,9 +221,13 @@ export function createRoomRepresentation(
 	function refreshSurfaceMaterials(): void {
 		if (disposed) return;
 		for (const entry of retained.values()) {
-			entry.floor.material = surfaceMaterials.materialFor({ kind: 'room-floor', roomId: entry.roomId }) ?? floorLease.material;
+			entry.floor.material =
+				surfaceMaterials.materialFor({ kind: 'room-floor', roomId: entry.roomId }) ??
+				floorLease.material;
 			if (entry.ceiling !== null) {
-				entry.ceiling.material = surfaceMaterials.materialFor({ kind: 'room-lid', roomId: entry.roomId }) ?? ceilingLease.material;
+				entry.ceiling.material =
+					surfaceMaterials.materialFor({ kind: 'room-lid', roomId: entry.roomId }) ??
+					ceilingLease.material;
 			}
 		}
 		updateMaterialKeys();
@@ -228,7 +241,7 @@ export function createRoomRepresentation(
 			onMaterialChange: refreshSurfaceMaterials,
 			resolveSurfaceLook,
 			viewGeneration,
-			onFinishOutcome
+			onFinishOutcome,
 		});
 		const previous = surfaceMaterials;
 		surfaceMaterials = next;
@@ -240,8 +253,8 @@ export function createRoomRepresentation(
 	 * Attach `group` at `index`.
 	 *
 	 * three has no ordered insert, and assigning `parent.children[index]` directly
-	 * leaves `group.parent` unset — which silently disables `removeFromParent()` and
-	 * leaks the subtree. `add()` first, then move the child to its slot.
+	 * leaves `group.parent` unset — which silently disables `removeFromParent` and
+	 * leaks the subtree. `add` first, then move the child to its slot.
 	 */
 	function attachAt(parent: Group, group: Group, index: number): void {
 		parent.add(group);
@@ -265,7 +278,9 @@ export function createRoomRepresentation(
 		// catcher that keeps the floor eligible for an authored light's shadow.
 		const floorGeometry = new ShapeGeometry(polygonShape(room.floorPolygon));
 
-		const floorMaterial = surfaceMaterials.materialFor({ kind: 'room-floor', roomId: room.roomId }) ?? floorLease.material;
+		const floorMaterial =
+			surfaceMaterials.materialFor({ kind: 'room-floor', roomId: room.roomId }) ??
+			floorLease.material;
 		const floor = new Mesh(floorGeometry, floorMaterial);
 		floor.name = `VisitorFloor:${room.roomId}`;
 		tagRenderIdentity(floor, 'floor', room.roomId);
@@ -286,7 +301,9 @@ export function createRoomRepresentation(
 		let ceiling: Mesh | null = null;
 		if (room.overhead !== 'open-to-sky') {
 			const ceilingGeometry = new ShapeGeometry(polygonShape(room.ceilingPolygon, false));
-			const lidMaterial = surfaceMaterials.materialFor({ kind: 'room-lid', roomId: room.roomId }) ?? ceilingLease.material;
+			const lidMaterial =
+				surfaceMaterials.materialFor({ kind: 'room-lid', roomId: room.roomId }) ??
+				ceilingLease.material;
 			ceiling = new Mesh(ceilingGeometry, lidMaterial);
 			ceiling.name = `VisitorCeiling:${room.roomId}`;
 			tagRenderIdentity(ceiling, 'lid', room.roomId);
@@ -355,7 +372,7 @@ export function createRoomRepresentation(
 				retained: kept,
 				released,
 				triangulations,
-				materials: materialKeys.size
+				materials: materialKeys.size,
 			};
 		},
 
@@ -437,6 +454,6 @@ export function createRoomRepresentation(
 			floorLease.release();
 			shadowLease.release();
 			ceilingLease.release();
-		}
+		},
 	};
 }

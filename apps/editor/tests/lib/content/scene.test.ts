@@ -12,7 +12,7 @@ import { serializeSceneDocument, validateSceneDocument } from '@portfolio/projec
 import {
 	cloneFixtureDocument,
 	loadFixtureScene
-} from './__fixtures__/load-fixture-scene';
+} from '../../../../../packages/project-model/tests/__fixtures__/load-fixture-scene';
 
 function fixtureDocument(): SceneDocument {
 	return cloneFixtureDocument('tour-minimal');

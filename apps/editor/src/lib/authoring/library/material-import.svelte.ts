@@ -1,8 +1,8 @@
 /**
- * Material set import session over E5 (T2.S8 U6).
+ * Material set import session.
  *
- * Owns session-local file bytes, slow-read progress (after 300 ms), E5
- * proposal/conflict/normal-acknowledgement state, `prepareDraft` for live E7
+ * Owns session-local file bytes, slow-read progress (after 300 ms), set-recognition
+ * proposal/conflict/normal-acknowledgement state, `prepareDraft` for live inspection
  * previews, and `acceptDraft` (one undo, P20 upload retention). Cancelling or
  * closing aborts in-flight work and releases bytes; nothing is written until
  * Accept succeeds.
@@ -13,7 +13,7 @@ import {
 	type DraftRoleEdit,
 	type SetCandidate,
 	type SetFileFact,
-	type SetProposal
+	type SetProposal,
 } from '@portfolio/project-model/material-authoring';
 import type { MapRole, NormalConvention } from '@portfolio/project-model/materials';
 import type { AcceptedRevision } from '@portfolio/project-model/references';
@@ -25,7 +25,7 @@ import {
 	type AcceptDraftHost,
 	type AcceptDraftResult,
 	type PreparedFinishDraft,
-	type SetFileSession
+	type SetFileSession,
 } from '$lib/authoring/materials/material-set';
 import type { MaterialProofRegistry } from '$lib/authoring/material-proof';
 
@@ -61,7 +61,11 @@ export function titleCaseStem(stem: string): string {
 	return cleaned.replace(/\b\w/g, (ch) => ch.toUpperCase());
 }
 
-export function validateImportSize(raw: string): { readonly ok: true; readonly value: number } | { readonly ok: false; readonly message: string } {
+export function validateImportSize(
+	raw: string,
+):
+	| { readonly ok: true; readonly value: number }
+	| { readonly ok: false; readonly message: string } {
 	const v = Number.parseFloat(raw);
 	if (!Number.isFinite(v) || v < 0.05 || v > 20) {
 		return { ok: false, message: 'Physical size must be between 0.05 m and 20 m.' };
@@ -69,7 +73,11 @@ export function validateImportSize(raw: string): { readonly ok: true; readonly v
 	return { ok: true, value: Number(v.toFixed(4)) };
 }
 
-export function validateImportName(raw: string): { readonly ok: true; readonly value: string } | { readonly ok: false; readonly message: string } {
+export function validateImportName(
+	raw: string,
+):
+	| { readonly ok: true; readonly value: string }
+	| { readonly ok: false; readonly message: string } {
 	const trimmed = raw.trim();
 	if (trimmed.length < 1 || trimmed.length > 120) {
 		return { ok: false, message: 'Name must be 1–120 characters.' };
@@ -114,7 +122,12 @@ export function createMaterialImportSession(host: MaterialImportHost) {
 	}
 
 	function sameRevision(left: AcceptedRevision | null, right: AcceptedRevision | null): boolean {
-		return left !== null && right !== null && left.projectId === right.projectId && left.revisionId === right.revisionId;
+		return (
+			left !== null &&
+			right !== null &&
+			left.projectId === right.projectId &&
+			left.revisionId === right.revisionId
+		);
 	}
 
 	function invalidatePreparation(): void {
@@ -162,14 +175,14 @@ export function createMaterialImportSession(host: MaterialImportHost) {
 				roles.normal = {
 					role: 'normal',
 					file: choice.file,
-					convention: normalConvention
+					convention: normalConvention,
 				};
 			} else {
 				roles[choice.role] = {
 					role: choice.role,
 					file: choice.file,
 					component: choice.component ?? 'r',
-					invert: choice.invert === true
+					invert: choice.invert === true,
 				};
 			}
 		}
@@ -183,7 +196,7 @@ export function createMaterialImportSession(host: MaterialImportHost) {
 				roles.normal = {
 					role: 'normal',
 					file: pickedFile,
-					convention: normalConvention
+					convention: normalConvention,
 				};
 			} else {
 				const fact = fileSession.factsByKey().get(pickedFile);
@@ -201,7 +214,7 @@ export function createMaterialImportSession(host: MaterialImportHost) {
 					role: conflict.role,
 					file: pickedFile,
 					component,
-					invert: isGloss && conflict.role === 'roughness'
+					invert: isGloss && conflict.role === 'roughness',
 				};
 			}
 		}
@@ -212,9 +225,9 @@ export function createMaterialImportSession(host: MaterialImportHost) {
 			name: nameCheck.value,
 			mapping: {
 				kind: 'surface',
-				metric: { tileMeters: [sizeCheck.value, sizeCheck.value], rotation: 0, offset: [0, 0] }
+				metric: { tileMeters: [sizeCheck.value, sizeCheck.value], rotation: 0, offset: [0, 0] },
 			},
-			roles
+			roles,
 		};
 	}
 
@@ -228,9 +241,23 @@ export function createMaterialImportSession(host: MaterialImportHost) {
 		const proofs = host.materialProofs();
 		const sequence = preparationGeneration;
 		const session = generation;
-		if (run === null || files === null || edits === null || rev === null || proofs === null || !sameRevision(rev, revision)) return;
+		if (
+			run === null ||
+			files === null ||
+			edits === null ||
+			rev === null ||
+			proofs === null ||
+			!sameRevision(rev, revision)
+		)
+			return;
 		const res = await prepareDraft(edits, files, rev, run.signal, proofs);
-		if (run.signal.aborted || controller !== run || generation !== session || sequence !== preparationGeneration || !sameRevision(rev, host.expectedRevision())) {
+		if (
+			run.signal.aborted ||
+			controller !== run ||
+			generation !== session ||
+			sequence !== preparationGeneration ||
+			!sameRevision(rev, host.expectedRevision())
+		) {
 			if (res.ok) releasePrepared(res.draft);
 			return;
 		}
@@ -265,7 +292,7 @@ export function createMaterialImportSession(host: MaterialImportHost) {
 	async function start(
 		files: readonly File[],
 		initialTargets: readonly ImportTargetChoice[],
-		opener?: HTMLElement | null
+		opener?: HTMLElement | null,
 	): Promise<void> {
 		if (files.length === 0) return;
 		releaseSession();
@@ -311,7 +338,7 @@ export function createMaterialImportSession(host: MaterialImportHost) {
 				release() {
 					released = true;
 					bytes.clear();
-				}
+				},
 			};
 			fileSession = session;
 			const rev = sessionRevision?.revisionId ?? 'rev-0';
@@ -403,7 +430,9 @@ export function createMaterialImportSession(host: MaterialImportHost) {
 		const hasLayout = targets.some((t) => t.kind === 'surface');
 		const hasScene = targets.some((t) => t.kind === 'entity');
 		if (hasLayout && hasScene) {
-			return targets.filter((t) => (targetKind === 'layout' ? t.kind === 'surface' : t.kind === 'entity'));
+			return targets.filter((t) =>
+				targetKind === 'layout' ? t.kind === 'surface' : t.kind === 'entity',
+			);
 		}
 		return targets;
 	}
@@ -424,17 +453,27 @@ export function createMaterialImportSession(host: MaterialImportHost) {
 					readsAs: conflict.role,
 					note: conflict.action,
 					state: picked ? (picked === fact.key ? 'ok' : 'skip') : 'clash',
-					badge: picked ? (picked === fact.key ? `${conflict.role} source` : `${conflict.role} unused`) : 'collision'
+					badge: picked
+						? picked === fact.key
+							? `${conflict.role} source`
+							: `${conflict.role} unused`
+						: 'collision',
 				});
 			} else if (choice) {
 				const needsAck = choice.role === 'normal' && !normalDetected;
 				rows.push({
 					key: fact.key,
 					name: fact.name,
-					readsAs: choice.role === 'color' ? 'Colour' : choice.role === 'normal' ? 'Normal' : choice.role,
-					note: choice.source === 'packed-orm' ? 'packed R · G · B' : choice.invert ? 'gloss, inverted to roughness' : choice.source,
+					readsAs:
+						choice.role === 'color' ? 'Colour' : choice.role === 'normal' ? 'Normal' : choice.role,
+					note:
+						choice.source === 'packed-orm'
+							? 'packed R · G · B'
+							: choice.invert
+								? 'gloss, inverted to roughness'
+								: choice.source,
 					state: needsAck ? (normalAck ? 'ok' : 'ack') : 'ok',
-					badge: needsAck ? (normalAck ? `${normalConvention} confirmed` : 'check') : 'ready'
+					badge: needsAck ? (normalAck ? `${normalConvention} confirmed` : 'check') : 'ready',
 				});
 			} else if (unassigned) {
 				rows.push({
@@ -443,7 +482,7 @@ export function createMaterialImportSession(host: MaterialImportHost) {
 					readsAs: 'Not used',
 					note: unassigned.detail,
 					state: 'skip',
-					badge: 'ignored'
+					badge: 'ignored',
 				});
 			}
 		}
@@ -482,7 +521,12 @@ export function createMaterialImportSession(host: MaterialImportHost) {
 		const finishName = nameText.trim();
 		const write = new AbortController();
 		writingController = write;
-		const isCurrent = () => controller === run && !run.signal.aborted && !write.signal.aborted && generation === currentGeneration && preparationGeneration === currentPreparation;
+		const isCurrent = () =>
+			controller === run &&
+			!run.signal.aborted &&
+			!write.signal.aborted &&
+			generation === currentGeneration &&
+			preparationGeneration === currentPreparation;
 		phase = 'writing';
 		errorMessage = null;
 		let draft: PreparedFinishDraft | null = null;
@@ -498,14 +542,18 @@ export function createMaterialImportSession(host: MaterialImportHost) {
 				return false;
 			}
 			draft = prep.draft;
-			const entityIds = chosen.filter((t): t is Extract<ImportTargetChoice, { kind: 'entity' }> => t.kind === 'entity').map((t) => t.id);
-			const surfaces = chosen.filter((t): t is Extract<ImportTargetChoice, { kind: 'surface' }> => t.kind === 'surface').map((t) => t.surface);
+			const entityIds = chosen
+				.filter((t): t is Extract<ImportTargetChoice, { kind: 'entity' }> => t.kind === 'entity')
+				.map((t) => t.id);
+			const surfaces = chosen
+				.filter((t): t is Extract<ImportTargetChoice, { kind: 'surface' }> => t.kind === 'surface')
+				.map((t) => t.surface);
 			const result: AcceptDraftResult = await acceptDraft(
 				prep.draft,
 				{ entityIds, surfaces },
 				crypto.randomUUID(),
 				write.signal,
-				acceptHost
+				acceptHost,
 			);
 			if (!isCurrent()) return false;
 			if (result.ok) {
@@ -520,7 +568,7 @@ export function createMaterialImportSession(host: MaterialImportHost) {
 					name: finishName,
 					targetCount: chosen.length,
 					targetKind: kindUsed,
-					firstTarget
+					firstTarget,
 				});
 				if (chosen.length === 0 && returnTo && returnTo.isConnected) {
 					queueMicrotask(() => returnTo.focus());
@@ -565,25 +613,63 @@ export function createMaterialImportSession(host: MaterialImportHost) {
 	}
 
 	return {
-		get open() { return open; },
-		get phase() { return phase; },
-		get readCount() { return readCount; },
-		get totalCount() { return totalCount; },
-		get showSlowRead() { return showSlowRead; },
-		get candidate() { return candidate; },
-		get proposal() { return proposal; },
-		get prepared() { return prepared; },
-		get conflictChoices() { return conflictChoices; },
-		get normalConvention() { return normalConvention; },
-		get normalDetected() { return normalDetected; },
-		get normalDetectedDetail() { return normalDetectedDetail; },
-		get normalAck() { return normalAck; },
-		get sizeText() { return sizeText; },
-		get nameText() { return nameText; },
-		get targets() { return targets; },
-		get targetKind() { return targetKind; },
-		get errorMessage() { return errorMessage; },
-		get fileSession() { return fileSession; },
+		get open() {
+			return open;
+		},
+		get phase() {
+			return phase;
+		},
+		get readCount() {
+			return readCount;
+		},
+		get totalCount() {
+			return totalCount;
+		},
+		get showSlowRead() {
+			return showSlowRead;
+		},
+		get candidate() {
+			return candidate;
+		},
+		get proposal() {
+			return proposal;
+		},
+		get prepared() {
+			return prepared;
+		},
+		get conflictChoices() {
+			return conflictChoices;
+		},
+		get normalConvention() {
+			return normalConvention;
+		},
+		get normalDetected() {
+			return normalDetected;
+		},
+		get normalDetectedDetail() {
+			return normalDetectedDetail;
+		},
+		get normalAck() {
+			return normalAck;
+		},
+		get sizeText() {
+			return sizeText;
+		},
+		get nameText() {
+			return nameText;
+		},
+		get targets() {
+			return targets;
+		},
+		get targetKind() {
+			return targetKind;
+		},
+		get errorMessage() {
+			return errorMessage;
+		},
+		get fileSession() {
+			return fileSession;
+		},
 		blockingCount,
 		isReady,
 		selectedTargets,
@@ -598,7 +684,7 @@ export function createMaterialImportSession(host: MaterialImportHost) {
 		setName,
 		setTargetKind,
 		accept,
-		cancel
+		cancel,
 	};
 }
 

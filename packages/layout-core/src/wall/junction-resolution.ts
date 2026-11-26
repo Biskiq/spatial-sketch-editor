@@ -5,9 +5,9 @@
  *
  * ```text
  * CompiledJunction + incident compiled Wall endpoint facts
- *         ↓
+ *  ↓
  * CompiledJunctionResolution
- *         ↓
+ *  ↓
  * resolved Wall-end geometry for every incident Wall
  * ```
  *
@@ -18,13 +18,13 @@
  * Three conventions make this unambiguous:
  *
  * 1. **Outward frames.** Every leg's `tangentOut`/`normalOut` point from the
- *    Junction into the Wall, so canonical Wall orientation never leaks into the
- *    classification.
+ *  Junction into the Wall, so canonical Wall orientation never leaks into the
+ *  classification.
  * 2. **Continuity is a centerline relationship.** Degree-2 with outward rays
- *    ≈180° is a straight continuation (suppress the common interface); a real
- *    tangent break is a bend; outward rays ≈0° is a fold (invalid).
+ *  ≈180° is a straight continuation (suppress the common interface); a real
+ *  tangent break is a bend; outward rays ≈0° is a fold (invalid).
  * 3. **Ownership is branch-cut-independent.** Angular order is used for cyclic
- *    adjacency, never for physical ownership.
+ *  adjacency, never for physical ownership.
  *
  * No renderer, no Three.js, no editor/museum state, no second curve abstraction:
  * leg facts come from the incident `CompiledPhysicalWall` samples the curve
@@ -46,14 +46,14 @@ export {
 	tangentAnchorsAllowContinuation,
 	isFoldPair,
 	legEndBoundary,
-	joinsBounds2
+	joinsBounds2,
 } from './junction/geometry';
 export type { CornerSideResolution } from './junction/geometry';
 export {
 	endpointSolidBands,
 	resolveJunctionGeometry,
 	compiledJunctionId,
-	legJoinsByWall
+	legJoinsByWall,
 } from './junction/joins';
 export type { CompiledWallEnds } from './junction/joins';
 export { legSolidInBand } from './junction/surfaces';

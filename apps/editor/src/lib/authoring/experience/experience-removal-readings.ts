@@ -6,13 +6,13 @@ import {
 	type Experience,
 	type ExperienceGuide,
 	type ExperienceRemovalPlan,
-	type ProjectEnvelope
+	type ProjectEnvelope,
 } from '@portfolio/project-model/units';
 import {
 	removalLines,
 	type ExperienceRemovalPreview,
 	type ExperienceRemovalTarget,
-	type RemovalNames
+	type RemovalNames,
 } from './experience-removal';
 import type { ExperienceSubject } from './experience-model';
 
@@ -31,11 +31,16 @@ export function createExperienceRemovalReadings(ports: ExperienceRemovalReadings
 			const at = ports.contextGuide()?.stopIds.indexOf(stopId) ?? -1;
 			if (at !== -1) return `Stop ${at + 1}`;
 			const stop = ports.experience()?.stops.find((entry) => entry.id === stopId);
-			return stop === undefined ? 'a Stop' : `a Stop of ${ports.presentationLabel(stop.presentationId)}`;
+			return stop === undefined
+				? 'a Stop'
+				: `a Stop of ${ports.presentationLabel(stop.presentationId)}`;
 		},
 		presentation: (presentationId) => ports.presentationLabel(presentationId),
-		view: (viewId) => ports.envelope().units.camera.data.views.find((entry) => entry.id === viewId)?.label ?? viewId,
-		guide: (guideId) => ports.experience()?.guides.find((entry) => entry.id === guideId)?.label ?? 'the Guide'
+		view: (viewId) =>
+			ports.envelope().units.camera.data.views.find((entry) => entry.id === viewId)?.label ??
+			viewId,
+		guide: (guideId) =>
+			ports.experience()?.guides.find((entry) => entry.id === guideId)?.label ?? 'the Guide',
 	};
 
 	function planOf(target: ExperienceRemovalTarget): ExperienceRemovalPlan | null {
@@ -49,7 +54,12 @@ export function createExperienceRemovalReadings(ports: ExperienceRemovalReadings
 			case 'guide':
 				return planGuideRemoval(experience, target.guideId);
 			case 'presentation':
-				return planPresentationRemoval(experiencesNow, camera, experience.id, target.presentationId);
+				return planPresentationRemoval(
+					experiencesNow,
+					camera,
+					experience.id,
+					target.presentationId,
+				);
 			case 'view':
 				return planPresentationViewRemoval(
 					experiencesNow,
@@ -57,7 +67,7 @@ export function createExperienceRemovalReadings(ports: ExperienceRemovalReadings
 					experience.id,
 					target.presentationId,
 					target.viewId,
-					target.newDefaultViewId ?? null
+					target.newDefaultViewId ?? null,
 				);
 		}
 	}
@@ -68,23 +78,28 @@ export function createExperienceRemovalReadings(ports: ExperienceRemovalReadings
 		if (plan.kind === 'refused') return { kind: 'refused', reason: plan.reason };
 		const isDefault =
 			target.kind === 'view' &&
-			ports.experience()?.presentations.find((entry) => entry.id === target.presentationId)?.views[0]?.viewId === target.viewId;
+			ports.experience()?.presentations.find((entry) => entry.id === target.presentationId)
+				?.views[0]?.viewId === target.viewId;
 		return {
 			kind: 'ready',
 			lines: removalLines(target, plan.consequences, names),
 			chooseDefault:
 				isDefault && target.kind === 'view'
-					? (ports.experience()?.presentations.find((entry) => entry.id === target.presentationId)?.views ?? [])
+					? (
+							ports.experience()?.presentations.find((entry) => entry.id === target.presentationId)
+								?.views ?? []
+						)
 							.filter((view) => view.viewId !== target.viewId)
 							.map((view) => ({ id: view.viewId, label: names.view(view.viewId) }))
 					: null,
-			runnable: true
+			runnable: true,
 		};
 	}
 
 	/** The parent a removal selects: removing the selected subject selects its parent. */
 	function parentOf(target: ExperienceRemovalTarget): ExperienceSubject | null {
-		if (target.kind === 'view') return { kind: 'presentation', presentationId: target.presentationId };
+		if (target.kind === 'view')
+			return { kind: 'presentation', presentationId: target.presentationId };
 		// A Stop's parent is the Guide instrument, which is not a Card subject (D-2).
 		return null;
 	}
@@ -94,22 +109,33 @@ export function createExperienceRemovalReadings(ports: ExperienceRemovalReadings
 		if (subject === null) return false;
 		switch (target.kind) {
 			case 'stop':
-				return (subject.kind === 'stop' || subject.kind === 'transition') && subject.stopId === target.stopId;
+				return (
+					(subject.kind === 'stop' || subject.kind === 'transition') &&
+					subject.stopId === target.stopId
+				);
 			case 'guide':
 				return false;
 			case 'presentation':
-				return (subject.kind === 'presentation' || subject.kind === 'view') && subject.presentationId === target.presentationId;
+				return (
+					(subject.kind === 'presentation' || subject.kind === 'view') &&
+					subject.presentationId === target.presentationId
+				);
 			case 'view':
-				return subject.kind === 'view' && subject.viewId === target.viewId && subject.presentationId === target.presentationId;
+				return (
+					subject.kind === 'view' &&
+					subject.viewId === target.viewId &&
+					subject.presentationId === target.presentationId
+				);
 		}
 	}
-
 
 	function remaining(target: ExperienceRemovalTarget, after: Experience): string {
 		switch (target.kind) {
 			case 'stop': {
 				const guide = after.guides.find((entry) => entry.id === ports.contextGuide()?.id);
-				return guide === undefined ? '' : `${guide.label} has ${guide.stopIds.length} ${guide.stopIds.length === 1 ? 'Stop' : 'Stops'}.`;
+				return guide === undefined
+					? ''
+					: `${guide.label} has ${guide.stopIds.length} ${guide.stopIds.length === 1 ? 'Stop' : 'Stops'}.`;
 			}
 			case 'guide':
 				return after.guides.length === 0
@@ -118,7 +144,9 @@ export function createExperienceRemovalReadings(ports: ExperienceRemovalReadings
 			case 'presentation':
 				return `${after.presentations.length} ${after.presentations.length === 1 ? 'Presentation remains' : 'Presentations remain'}.`;
 			case 'view': {
-				const presentation = after.presentations.find((entry) => entry.id === target.presentationId);
+				const presentation = after.presentations.find(
+					(entry) => entry.id === target.presentationId,
+				);
 				return presentation === undefined
 					? ''
 					: `${ports.presentationDisplayName(presentation.id)} has ${presentation.views.length} ${presentation.views.length === 1 ? 'View' : 'Views'}.`;
@@ -126,7 +154,7 @@ export function createExperienceRemovalReadings(ports: ExperienceRemovalReadings
 		}
 	}
 
-	/** Whether a subject still names something in the ports.experience() Experience. */
+	/** Whether a subject still names something in the ports.experience Experience. */
 	function resolves(candidate: ExperienceSubject): boolean {
 		const experience = ports.experience();
 		if (experience === null) return false;
@@ -135,7 +163,9 @@ export function createExperienceRemovalReadings(ports: ExperienceRemovalReadings
 				return experience.presentations.some((entry) => entry.id === candidate.presentationId);
 			case 'view':
 				return experience.presentations.some(
-					(entry) => entry.id === candidate.presentationId && entry.views.some((view) => view.viewId === candidate.viewId)
+					(entry) =>
+						entry.id === candidate.presentationId &&
+						entry.views.some((view) => view.viewId === candidate.viewId),
 				);
 			case 'stop':
 			case 'transition':
@@ -144,7 +174,6 @@ export function createExperienceRemovalReadings(ports: ExperienceRemovalReadings
 				return true;
 		}
 	}
-
 
 	function subjectName(candidate: ExperienceSubject): string {
 		switch (candidate.kind) {

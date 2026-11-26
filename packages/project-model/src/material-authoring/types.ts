@@ -1,6 +1,5 @@
 /**
- * The authoring vocabulary for manual composition and correctable set import
- * (T2.S8 E5).
+ * The authoring vocabulary for manual composition and correctable set import.
  *
  * This module is authoring-only. It is deliberately **not** part of the
  * runtime-safe `@portfolio/project-model/materials` subpath: visitors, release
@@ -17,7 +16,7 @@ import type {
 	Mapping,
 	NormalConvention,
 	Recipe,
-	ScalarComponent
+	ScalarComponent,
 } from '../materials/types';
 
 /** An image MIME the S8 v1 set path admits. */
@@ -52,11 +51,7 @@ export type SetFileFact = {
 };
 
 /** The vocabulary a role alias proposes. */
-export type ProposalSource =
-	| 'alias'
-	| 'gloss'
-	| 'packed-orm'
-	| 'packed-rma';
+export type ProposalSource = 'alias' | 'gloss' | 'packed-orm' | 'packed-rma';
 
 /** One proposed binding: which file, which component and what conversion. */
 export type RoleChoice = {
@@ -75,9 +70,7 @@ export type RoleChoice = {
 	readonly acknowledge?: 'normal-convention';
 };
 
-export type ProposalConflictCode =
-	| 'duplicate-role'
-	| 'packed-loose-collision';
+export type ProposalConflictCode = 'duplicate-role' | 'packed-loose-collision';
 
 /** A blocking disagreement. The proposal never picks a winning file. */
 export type ProposalConflict = {

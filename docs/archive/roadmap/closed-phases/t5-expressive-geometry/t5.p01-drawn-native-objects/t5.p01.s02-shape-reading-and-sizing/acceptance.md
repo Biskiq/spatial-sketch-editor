@@ -37,7 +37,7 @@ validation      apps/editor/tests/lib/authoring/shape-outline.test.ts
                 apps/editor/tests/lib/authoring/shape-reading-adapter.test.ts
                 apps/editor/tests/lib/authoring/shape-palette.test.ts
 regressions     apps/editor/tests/lib/authoring/stage-facade.test.ts
-                apps/editor/tests/lib/authoring/stage-host-acceptance.test.ts
+                ../../../../../../../apps/editor/tests/lib/authoring/stage
                 apps/editor/tests/lib/authoring/stage-session.test.ts
 ```
 

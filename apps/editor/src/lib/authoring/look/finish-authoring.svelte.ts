@@ -4,12 +4,12 @@
  * One service owns the creator's Finish intent outside the Scene document:
  *
  * - the **active** pick Paint applies (a Finish, or a colour through the
- *   colour-coat seam) and the creator's favourites and recents;
- * - the Finish Card adapter (U4, `finish-card.svelte.ts`), which shows reach
- *   before an edit and owns the Card's preview;
+ *  colour-coat seam) and the creator's favourites and recents;
+ * - the Finish Card adapter, which shows reach
+ *  before an edit and owns the Card's preview;
  * - the project palette's own writes and the From-image flow;
  * - the semantic **dropper**, which copies an authored Finish or colour rather
- *   than rendered pixels.
+ *  than rendered pixels.
  *
  * Every write is one F.4 intent through the route's one acceptance host. The
  * service reads the live accepted snapshot each time, so the Card and the
@@ -28,10 +28,15 @@ import {
 	materialInstanceById,
 	nextFinishName,
 	paletteHasRoom,
-	type SceneFinishRef
+	type SceneFinishRef,
 } from '@portfolio/project-model/scene-planning';
 import type { AcceptedRevision, SemanticReference } from '@portfolio/project-model/references';
-import type { MaterialId, SceneEntity, SceneMaterialInstance, SceneSurfaceRef } from '@portfolio/project-model/scene';
+import type {
+	MaterialId,
+	SceneEntity,
+	SceneMaterialInstance,
+	SceneSurfaceRef,
+} from '@portfolio/project-model/scene';
 import { surfaceKey } from '@portfolio/layout-core/plan';
 import {
 	entityReference,
@@ -44,7 +49,7 @@ import {
 	type FinishEntityView,
 	type ImageWriteContext,
 	type PaintTrayView,
-	type PaintableSurface
+	type PaintableSurface,
 } from './finish-authoring-contract';
 
 export type {
@@ -56,10 +61,10 @@ export type {
 	PaintColourPort,
 	PaintSwatch,
 	PaintTrayView,
-	PaintableSurface
+	PaintableSurface,
 } from './finish-authoring-contract';
 
-import { getMaterial, materialById, } from '$lib/content/materials';
+import { getMaterial, materialById } from '$lib/content/materials';
 import {
 	colourKey,
 	normaliseHex,
@@ -67,31 +72,21 @@ import {
 	touchRecent,
 	type PaintColour,
 	type PaintDraftPick,
-	type PaintPick
+	type PaintPick,
 } from './paint-pick';
-import {
-	createDevicePaintPreferences,
-	type PaintPreferences
-} from './paint-preferences';
+import { createDevicePaintPreferences, type PaintPreferences } from './paint-preferences';
 import { stageEnvelope, type StageAdapterServices } from '../stage/stage-adapter-host';
 import {
 	createFinishImageFlow,
 	finishImagePin,
 	type FinishImageFlow,
 	type FinishImageOutcome,
-	type FinishImageState
+	type FinishImageState,
 } from './finish-image.svelte';
 import type { ImportedProjectImage } from '../artwork/project-artwork';
 import type { CoatReading } from './colour-coat-port';
-import {
-	createFinishCard,
-	type FinishCard,
-	type FinishCardTarget,
-} from './finish-card.svelte';
-import {
-	createFinishEditor,
-	type FinishEditor
-} from './finish-editor.svelte';
+import { createFinishCard, type FinishCard, type FinishCardTarget } from './finish-card.svelte';
+import { createFinishEditor, type FinishEditor } from './finish-editor.svelte';
 import { createFinishAlign, type FinishAlign } from './finish-align.svelte';
 import { createFinishLibraryAuthoring } from './finish-library.svelte';
 import {
@@ -104,22 +99,18 @@ import {
 	paintColourLabel,
 	readFinishEntity,
 	readFinishPalette,
-	readPaintTray
+	readPaintTray,
 } from './finish-readings';
 import {
 	createAppearanceIssues,
 	repairSurfaceRef,
 	type AppearanceIssue,
 	type AppearanceIssueActionKind,
-	type AppearanceIssuesService
+	type AppearanceIssuesService,
 } from './appearance-issues.svelte';
-import {
-	materialTreatmentFacts,
-} from '$lib/content/material-presentation';
-import { selectionEntriesOfFinishUsers, } from '../library/library-target';
-import {
-	predictDerivedAssign,
-} from '../library/library-draft';
+import { materialTreatmentFacts } from '$lib/content/material-presentation';
+import { selectionEntriesOfFinishUsers } from '../library/library-target';
+import { predictDerivedAssign } from '../library/library-draft';
 
 export function createFinishAuthoring(host: FinishAuthoringHost) {
 	let activeKey = $state.raw<string | null>(null);
@@ -135,7 +126,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		projectId: () => host.projectId?.() ?? null,
 		canEdit: () => host.canEdit?.() ?? true,
 		isSaved: () => host.isSaved?.() ?? true,
-		onNotice: (message) => host.onNotice(message)
+		onNotice: (message) => host.onNotice(message),
 	});
 
 	const servicesNow = (): StageAdapterServices | null => host.services();
@@ -159,7 +150,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		if (servicesNow() !== context.services) return false;
 		return sameAcceptedRevision(
 			context.services.stage.snapshot().acceptedRevision,
-			context.acceptedRevision
+			context.acceptedRevision,
 		);
 	}
 
@@ -202,9 +193,12 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 	}
 
 	const labelOfKey = (key: string) => finishLabel(scene(), key);
-	const definitionOf = (instance: SceneMaterialInstance | undefined) => finishDefinition(scene(), instance);
-	const textureIdFor = (instance: SceneMaterialInstance | undefined, role: Parameters<typeof finishTextureId>[2]) =>
-		finishTextureId(scene(), instance, role);
+	const definitionOf = (instance: SceneMaterialInstance | undefined) =>
+		finishDefinition(scene(), instance);
+	const textureIdFor = (
+		instance: SceneMaterialInstance | undefined,
+		role: Parameters<typeof finishTextureId>[2],
+	) => finishTextureId(scene(), instance, role);
 	const colorOfKey = (key: string) => finishColour(scene(), key);
 	const paletteView = () => readFinishPalette(scene());
 	const colourLabel = (colour: PaintColour) => paintColourLabel(scene(), colour);
@@ -221,21 +215,26 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 			activeKey,
 			activeColour,
 			colourEnabled: host.colourCoat !== undefined,
-			dropper: dropper !== null
+			dropper: dropper !== null,
 		});
 	}
 
 	function selectionEntityId(): string | null {
 		const services = servicesNow();
 		const primary = services?.stage.selectionState().primary;
-		return primary?.domain === 'scene' && primary.subject.kind === 'entity' ? primary.subject.id : null;
+		return primary?.domain === 'scene' && primary.subject.kind === 'entity'
+			? primary.subject.id
+			: null;
 	}
 
 	function selectionEntity(): SceneEntity | null {
 		return entityOf(selectionEntityId());
 	}
 
-	async function accept(input: FinishAcceptInput, context?: ImageWriteContext): Promise<FinishAcceptOutcome> {
+	async function accept(
+		input: FinishAcceptInput,
+		context?: ImageWriteContext,
+	): Promise<FinishAcceptOutcome> {
 		const services = context?.services ?? servicesNow();
 		if (services === null) return { kind: 'unavailable', message: 'The Stage is still opening.' };
 		if (context !== undefined && !imageWriteIsCurrent(context)) return { kind: 'no-op' };
@@ -247,9 +246,13 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 			targets: input.targets ?? (input.entityIds ?? []).map((id) => entityReference(services, id)),
 			payload: input.payload as never,
 			capturedInputs: [],
-			allocatedIds: input.allocatedIds ?? []
+			allocatedIds: input.allocatedIds ?? [],
 		});
-		if (outcome.kind === 'refused' && outcome.code !== 'no-change' && outcome.reason !== 'no-change') {
+		if (
+			outcome.kind === 'refused' &&
+			outcome.code !== 'no-change' &&
+			outcome.reason !== 'no-change'
+		) {
 			host.onNotice(outcome.message);
 		}
 		// The Stage reports a landed write as `installed`; every caller here asks
@@ -275,9 +278,13 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 			return false;
 		}
 		let allocations: { kind: string; id: string }[] = [];
-		if (typeof ref === 'object' && 'curated' in ref && paintable.some((entity) => entity.kind === 'model')) {
+		if (
+			typeof ref === 'object' &&
+			'curated' in ref &&
+			paintable.some((entity) => entity.kind === 'model')
+		) {
 			const reusable = current.materials.some(
-				(instance) => isPristineInstance(instance) && catalogueBaseOf(instance) === ref.curated
+				(instance) => isPristineInstance(instance) && catalogueBaseOf(instance) === ref.curated,
 			);
 			if (!reusable) allocations = [newId('scene-finish', crypto.randomUUID())];
 		}
@@ -287,13 +294,13 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 				kind: 'scene-finish-assign',
 				payload: { finish: ref, entityIds: paintable.map((entity) => entity.id) },
 				entityIds: paintable.map((entity) => entity.id),
-				allocatedIds: allocations
+				allocatedIds: allocations,
 			});
 			if (outcome.kind === 'accepted') {
 				if (notices.length > 0) {
 					host.onNotice(
 						`Painted ${paintable.length} object${paintable.length === 1 ? '' : 's'}; ` +
-							`${notices.length} subject${notices.length === 1 ? ' is' : 's are'} not painted.`
+							`${notices.length} subject${notices.length === 1 ? ' is' : 's are'} not painted.`,
 					);
 				}
 				return true;
@@ -304,13 +311,17 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		}
 	}
 
-
 	/**
 	 * A Library pick. With Paint armed, or with nothing selected, it arms Paint and
 	 * writes nothing; otherwise it is a Replace of the selection's Finish.
 	 */
 	async function pickFinish(ref: SceneFinishRef): Promise<void> {
-		const key = typeof ref === 'object' && 'curated' in ref ? `curated:${ref.curated}` : typeof ref === 'object' ? `project:${ref.project}` : 'model-own';
+		const key =
+			typeof ref === 'object' && 'curated' in ref
+				? `curated:${ref.curated}`
+				: typeof ref === 'object'
+					? `project:${ref.project}`
+					: 'model-own';
 		const armed = host.isPaintArmed?.() ?? false;
 		const selected = selectionEntity();
 		if (selected === null || armed) {
@@ -360,12 +371,20 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 
 	/** Star or unstar the active pick. */
 	function toggleActiveFavourite(): void {
-		const active = activeColour !== null ? { kind: 'colour' as const, key: colourKey(activeColour) } : activeKey !== null && finishKeyResolves(activeKey) ? { kind: 'finish' as const, key: activeKey } : null;
+		const active =
+			activeColour !== null
+				? { kind: 'colour' as const, key: colourKey(activeColour) }
+				: activeKey !== null && finishKeyResolves(activeKey)
+					? { kind: 'finish' as const, key: activeKey }
+					: null;
 		if (active === null) return;
 		setPrefs(
 			active.kind === 'colour'
 				? { ...prefs, favouriteColours: toggleFavouriteKey(prefs.favouriteColours, active.key) }
-				: { ...prefs, favouriteMaterials: toggleFavouriteKey(prefs.favouriteMaterials, active.key) }
+				: {
+						...prefs,
+						favouriteMaterials: toggleFavouriteKey(prefs.favouriteMaterials, active.key),
+					},
 		);
 	}
 
@@ -376,7 +395,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		reach: number,
 		mode: 'just-this' | 'all' | 'in-place',
 		warning: string | null,
-		context: ImageWriteContext
+		context: ImageWriteContext,
 	): Promise<FinishImageOutcome> {
 		if (!imageWriteIsCurrent(context)) return { kind: 'no-op' };
 		const view = viewFor(entityId);
@@ -386,17 +405,20 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		const needsNew = view.ref !== 'model-own' && ('curated' in view.ref || mode === 'just-this');
 		busy = true;
 		try {
-			const outcome = await accept({
-				kind: 'scene-finish-from-image',
-				payload: {
-					name: image.name,
-					texture: { assetId: image.assetId, pin: finishImagePin(image) },
-					entityIds: [],
-					replaceFinishOf: { entityId, reach, mode }
+			const outcome = await accept(
+				{
+					kind: 'scene-finish-from-image',
+					payload: {
+						name: image.name,
+						texture: { assetId: image.assetId, pin: finishImagePin(image) },
+						entityIds: [],
+						replaceFinishOf: { entityId, reach, mode },
+					},
+					entityIds: [entityId],
+					allocatedIds: needsNew ? [newId('scene-finish', crypto.randomUUID())] : [],
 				},
-				entityIds: [entityId],
-				allocatedIds: needsNew ? [newId('scene-finish', crypto.randomUUID())] : []
-			}, context);
+				context,
+			);
 			if (outcome.kind === 'accepted') {
 				if (warning !== null) host.onNotice(warning);
 				return { kind: 'accepted' };
@@ -432,41 +454,46 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 			host.onNotice(paintabilityNotice(selected));
 			return Promise.resolve();
 		}
-		return imageFlow.begin(file, async (image, warning, label) => {
-			if (!imageWriteIsCurrent(context)) return { kind: 'no-op' };
-			const current = context.services.stage.snapshot().domain.scene;
-			const entityIds = selected === null ? [] : [selected.id];
-			const finishId = crypto.randomUUID();
-			// The planner bounds a Finish name at 120; keep the suffix inside it.
-			const name = nextFinishName(label, current.materials).slice(0, 120);
-			const outcome = await accept({
-				kind: 'scene-finish-from-image',
-				payload: {
-					name,
-					texture: { assetId: image.assetId, pin: finishImagePin(image) },
-					entityIds
-				},
-				entityIds,
-				allocatedIds: [newId('scene-finish', finishId)]
-			}, context);
-			if (outcome.kind === 'accepted') {
-				activate(`project:${finishId}`);
-				if (entityIds.length > 0) noteUsed(`project:${finishId}`);
-				if (warning !== null) host.onNotice(warning);
-				if (entityIds.length === 0) host.armPaint({ kind: 'paint' });
-				return { kind: 'accepted' };
-			}
-			if (outcome.kind === 'refused') {
-				return { kind: 'refused', message: outcome.message ?? 'The image could not be saved.' };
-			}
-			return { kind: 'no-op' };
-		}).then(() => undefined);
+		return imageFlow
+			.begin(file, async (image, warning, label) => {
+				if (!imageWriteIsCurrent(context)) return { kind: 'no-op' };
+				const current = context.services.stage.snapshot().domain.scene;
+				const entityIds = selected === null ? [] : [selected.id];
+				const finishId = crypto.randomUUID();
+				// The planner bounds a Finish name at 120; keep the suffix inside it.
+				const name = nextFinishName(label, current.materials).slice(0, 120);
+				const outcome = await accept(
+					{
+						kind: 'scene-finish-from-image',
+						payload: {
+							name,
+							texture: { assetId: image.assetId, pin: finishImagePin(image) },
+							entityIds,
+						},
+						entityIds,
+						allocatedIds: [newId('scene-finish', finishId)],
+					},
+					context,
+				);
+				if (outcome.kind === 'accepted') {
+					activate(`project:${finishId}`);
+					if (entityIds.length > 0) noteUsed(`project:${finishId}`);
+					if (warning !== null) host.onNotice(warning);
+					if (entityIds.length === 0) host.armPaint({ kind: 'paint' });
+					return { kind: 'accepted' };
+				}
+				if (outcome.kind === 'refused') {
+					return { kind: 'refused', message: outcome.message ?? 'The image could not be saved.' };
+				}
+				return { kind: 'no-op' };
+			})
+			.then(() => undefined);
 	}
 
 	function setPaletteSlotColor(slotId: string, color: string): Promise<void> {
 		return accept({
 			kind: 'scene-palette-slot-set',
-			payload: { slotId, color }
+			payload: { slotId, color },
 		}).then(() => undefined);
 	}
 
@@ -478,7 +505,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		}
 		return accept({
 			kind: 'scene-palette-slot-rename',
-			payload: { slotId, name: trimmed }
+			payload: { slotId, name: trimmed },
 		}).then((outcome) => outcome.kind === 'accepted' || outcome.code === 'no-change');
 	}
 
@@ -492,7 +519,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		const outcome = await accept({
 			kind: 'scene-palette-slot-add',
 			payload: { color },
-			allocatedIds: [newId('scene-palette-slot', slotId)]
+			allocatedIds: [newId('scene-palette-slot', slotId)],
 		});
 		return outcome.kind === 'accepted' ? slotId : null;
 	}
@@ -518,7 +545,8 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 	async function copyFrom(target: { readonly sourceId: string } | string): Promise<boolean> {
 		const targetId = typeof target === 'string' ? target : target.sourceId;
 		// The draft editor borrows the dropper's pick: a click moves its proposal.
-		if (library.draft !== null) return library.retargetLibraryDraft({ kind: 'entity', entityId: targetId });
+		if (library.draft !== null)
+			return library.retargetLibraryDraft({ kind: 'entity', entityId: targetId });
 		const view = viewFor(targetId);
 		dropper = false;
 		if (view === null) {
@@ -537,10 +565,15 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 	 */
 	function armCoatColour(instance: SceneMaterialInstance | null | undefined): boolean {
 		if (host.colourCoat === undefined || instance === null || instance === undefined) return false;
-		const recipes = scene()?.materialIndex?.definitions as ReadonlyMap<string, import('@portfolio/project-model/materials').Recipe> | undefined;
+		const recipes = scene()?.materialIndex?.definitions as
+			| ReadonlyMap<string, import('@portfolio/project-model/materials').Recipe>
+			| undefined;
 		const colour = coatColourOf(instance, recipes);
 		if (colour === null) return false;
-		const pick: PaintColour = typeof colour === 'string' ? { kind: 'literal', hex: colour } : { kind: 'slot', slotId: colour.slot };
+		const pick: PaintColour =
+			typeof colour === 'string'
+				? { kind: 'literal', hex: colour }
+				: { kind: 'slot', slotId: colour.slot };
 		if (pick.kind === 'slot' && !colourKeyResolves(colourKey(pick))) return false;
 		activeColour = pick;
 		activeKey = null;
@@ -554,7 +587,9 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 	 * edits a Finish, so it never asks. Objects already wearing the pick are left
 	 * out of the write; when none is left the answer is `already`.
 	 */
-	async function paintEntities(entityIds: readonly string[]): Promise<'accepted' | 'already' | 'refused'> {
+	async function paintEntities(
+		entityIds: readonly string[],
+	): Promise<'accepted' | 'already' | 'refused'> {
 		if (activeDraft !== null) {
 			const draft = activeDraft;
 			const current = scene();
@@ -562,30 +597,42 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 			if (current === null || services === null) return 'refused';
 			const source: SceneMaterialInstance | null =
 				'curated' in draft.ref
-					? { id: `curated:${draft.ref.curated}`, name: draft.name, base: { catalogue: draft.ref.curated } }
+					? {
+							id: `curated:${draft.ref.curated}`,
+							name: draft.name,
+							base: { catalogue: draft.ref.curated },
+						}
 					: (materialInstanceById(current.materials, draft.ref.project) ?? null);
 			if (source === null) {
 				host.onNotice('That Finish no longer exists.');
 				return 'refused';
 			}
-			const views = entityIds.map((id) => viewFor(id)).filter((v): v is FinishEntityView => v !== null);
+			const views = entityIds
+				.map((id) => viewFor(id))
+				.filter((v): v is FinishEntityView => v !== null);
 			if (views.length === 0) {
 				host.onNotice(paintabilityNotice(entityOf(entityIds[0] ?? null)));
 				return 'refused';
 			}
-			const recipes = (current.materialIndex?.definitions ?? new Map()) as ReadonlyMap<string, import('@portfolio/project-model/materials').Recipe>;
+			const recipes = (current.materialIndex?.definitions ?? new Map()) as ReadonlyMap<
+				string,
+				import('@portfolio/project-model/materials').Recipe
+			>;
 			const prediction = predictDerivedAssign({
 				materials: current.materials,
 				sourceInstance: source,
 				edits: draft.edits,
 				recipes,
-				includesModel: views.some((v) => v.kind === 'model')
+				includesModel: views.some((v) => v.kind === 'model'),
 			});
 			if (!prediction.ok) {
 				host.onNotice(prediction.message);
 				return 'refused';
 			}
-			const fresh = prediction.existingKey === null ? views : views.filter((v) => v.key !== prediction.existingKey);
+			const fresh =
+				prediction.existingKey === null
+					? views
+					: views.filter((v) => v.key !== prediction.existingKey);
 			if (fresh.length === 0) {
 				host.onNotice(`Already ${draft.name}`);
 				return 'already';
@@ -596,9 +643,13 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 			try {
 				const outcome = await accept({
 					kind: 'scene-finish-assign',
-					payload: { finish: draft.ref, entityIds: fresh.map((v) => v.entityId), derive: { edits: draft.edits, identity: 'reuse' } },
+					payload: {
+						finish: draft.ref,
+						entityIds: fresh.map((v) => v.entityId),
+						derive: { edits: draft.edits, identity: 'reuse' },
+					},
 					targets: fresh.map((v) => entityReference(services, v.entityId)),
-					allocatedIds: allocatedId === null ? [] : [newId('scene-finish', allocatedId)]
+					allocatedIds: allocatedId === null ? [] : [newId('scene-finish', allocatedId)],
 				});
 				if (outcome.kind !== 'accepted') return 'refused';
 				const resultingKey = prediction.existingKey ?? `project:${allocatedId}`;
@@ -645,7 +696,10 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 			host.onNotice('That Finish no longer exists.');
 			return 'refused';
 		}
-		const accepted = await assign(targets.map((view) => view.entityId), ref);
+		const accepted = await assign(
+			targets.map((view) => view.entityId),
+			ref,
+		);
 		if (accepted) noteUsed(key);
 		return accepted ? 'accepted' : 'refused';
 	}
@@ -659,19 +713,26 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 			if (current === null || services === null || surfaces.length === 0) return false;
 			const source: SceneMaterialInstance | null =
 				'curated' in draft.ref
-					? { id: `curated:${draft.ref.curated}`, name: draft.name, base: { catalogue: draft.ref.curated } }
+					? {
+							id: `curated:${draft.ref.curated}`,
+							name: draft.name,
+							base: { catalogue: draft.ref.curated },
+						}
 					: (materialInstanceById(current.materials, draft.ref.project) ?? null);
 			if (source === null) {
 				host.onNotice('That Finish no longer exists.');
 				return false;
 			}
-			const recipes = (current.materialIndex?.definitions ?? new Map()) as ReadonlyMap<string, import('@portfolio/project-model/materials').Recipe>;
+			const recipes = (current.materialIndex?.definitions ?? new Map()) as ReadonlyMap<
+				string,
+				import('@portfolio/project-model/materials').Recipe
+			>;
 			const prediction = predictDerivedAssign({
 				materials: current.materials,
 				sourceInstance: source,
 				edits: draft.edits,
 				recipes,
-				includesModel: false
+				includesModel: false,
 			});
 			if (!prediction.ok) {
 				host.onNotice(prediction.message);
@@ -685,17 +746,25 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 				revision: { kind: 'exact', contentRevision: snapshot.domain.unitRevisions.layout },
 				subject: surfaceTargetSubject(surface),
 				instancePath: [],
-				location: { kind: 'layout-location', levelId: snapshot.domain.layoutLevelId, structureInstancePath: [] },
+				location: {
+					kind: 'layout-location',
+					levelId: snapshot.domain.layoutLevelId,
+					structureInstancePath: [],
+				},
 				componentId: surfaceTargetComponent(surface),
-				capabilityId: null
+				capabilityId: null,
 			}));
 			busy = true;
 			try {
 				const outcome = await accept({
 					kind: 'scene-surface-finish-assign',
-					payload: { finish: draft.ref, surfaces, derive: { edits: draft.edits, identity: 'reuse' } },
+					payload: {
+						finish: draft.ref,
+						surfaces,
+						derive: { edits: draft.edits, identity: 'reuse' },
+					},
 					targets,
-					allocatedIds: allocatedId === null ? [] : [newId('scene-finish', allocatedId)]
+					allocatedIds: allocatedId === null ? [] : [newId('scene-finish', allocatedId)],
 				});
 				if (outcome.kind !== 'accepted') return false;
 				const resultingKey = prediction.existingKey ?? `project:${allocatedId}`;
@@ -718,7 +787,10 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 			host.onNotice('Choose a Finish first.');
 			return false;
 		}
-		if (surfaces.length === 0 || surfaces.some((surface) => surface.kind === 'region-face' && surface.face === 'edge')) {
+		if (
+			surfaces.length === 0 ||
+			surfaces.some((surface) => surface.kind === 'region-face' && surface.face === 'edge')
+		) {
 			host.onNotice('Paint needs one or more paintable surfaces.');
 			return false;
 		}
@@ -739,7 +811,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 	/** Assign one Finish to Layout surfaces: one acceptance, one Undo. */
 	async function assignSurfaces(
 		surfaces: readonly PaintableSurface[],
-		ref: Exclude<SceneFinishRef, 'model-own'>
+		ref: Exclude<SceneFinishRef, 'model-own'>,
 	): Promise<boolean> {
 		if (surfaces.length === 0) {
 			host.onNotice('Paint needs one or more paintable surfaces.');
@@ -757,16 +829,20 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 			revision: { kind: 'exact', contentRevision: snapshot.domain.unitRevisions.layout },
 			subject: surfaceTargetSubject(surface),
 			instancePath: [],
-			location: { kind: 'layout-location', levelId: snapshot.domain.layoutLevelId, structureInstancePath: [] },
+			location: {
+				kind: 'layout-location',
+				levelId: snapshot.domain.layoutLevelId,
+				structureInstancePath: [],
+			},
 			componentId: surfaceTargetComponent(surface),
-			capabilityId: null
+			capabilityId: null,
 		}));
 		busy = true;
 		try {
 			const outcome = await accept({
 				kind: 'scene-surface-finish-assign',
 				payload: { finish: ref, surfaces },
-				targets
+				targets,
 			});
 			return outcome.kind === 'accepted';
 		} finally {
@@ -780,7 +856,12 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 			return host.colourCoat?.isAlready?.({ entityIds: [], surfaces }, activeColour) ?? false;
 		}
 		if (current === null || activeKey === null || surfaces.length === 0) return false;
-		const assignments = new Map((current.surfaceFinishes ?? []).map((assignment) => [surfaceKey(assignment.surface), assignment]));
+		const assignments = new Map(
+			(current.surfaceFinishes ?? []).map((assignment) => [
+				surfaceKey(assignment.surface),
+				assignment,
+			]),
+		);
 		return surfaces.every((surface) => {
 			const assignment = assignments.get(surfaceKey(surface));
 			return assignment !== undefined && finishKeyOfSurface(current, assignment) === activeKey;
@@ -789,20 +870,26 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 
 	/** Copy the authored Finish from a Layout surface; an unpainted surface has nothing to copy. */
 	async function copySurface(surface: PaintableSurface): Promise<boolean> {
-		if (library.draft !== null) return library.retargetLibraryDraft({ kind: 'surface', surface: surface as SceneSurfaceRef });
+		if (library.draft !== null)
+			return library.retargetLibraryDraft({ kind: 'surface', surface: surface as SceneSurfaceRef });
 		const current = scene();
 		dropper = false;
 		if (current === null) {
 			host.onNotice('That has no Finish colour.');
 			return false;
 		}
-		const assignment = current.surfaceFinishes?.find((entry) => surfaceKey(entry.surface) === surfaceKey(surface));
+		const assignment = current.surfaceFinishes?.find(
+			(entry) => surfaceKey(entry.surface) === surfaceKey(surface),
+		);
 		if (assignment === undefined) {
 			host.onNotice('That has no Finish colour.');
 			return false;
 		}
 		const key = finishKeyOfSurface(current, assignment);
-		if ('materialInstanceId' in assignment.finish && armCoatColour(materialInstanceById(current.materials, assignment.finish.materialInstanceId))) {
+		if (
+			'materialInstanceId' in assignment.finish &&
+			armCoatColour(materialInstanceById(current.materials, assignment.finish.materialInstanceId))
+		) {
 			return true;
 		}
 		activate(key);
@@ -811,15 +898,23 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 	}
 
 	/** The name of what a surface or object wears now (the consequence line); `null` when it has none. */
-	function wornLabel(target: { readonly surface: PaintableSurface } | { readonly entityId: string }): string | null {
+	function wornLabel(
+		target: { readonly surface: PaintableSurface } | { readonly entityId: string },
+	): string | null {
 		if ('entityId' in target) return viewFor(target.entityId)?.label ?? null;
 		const current = scene();
-		const assignment = current?.surfaceFinishes?.find((entry) => surfaceKey(entry.surface) === surfaceKey(target.surface));
-		return current === null || assignment === undefined ? null : labelOfKey(finishKeyOfSurface(current, assignment));
+		const assignment = current?.surfaceFinishes?.find(
+			(entry) => surfaceKey(entry.surface) === surfaceKey(target.surface),
+		);
+		return current === null || assignment === undefined
+			? null
+			: labelOfKey(finishKeyOfSurface(current, assignment));
 	}
 
 	/** What the active colour does to a target; `null` while the pick is a material. */
-	function coatReading(target: { readonly surface: PaintableSurface } | { readonly entityId: string }): CoatReading | null {
+	function coatReading(
+		target: { readonly surface: PaintableSurface } | { readonly entityId: string },
+	): CoatReading | null {
 		if (activeColour === null) return null;
 		return host.colourCoat?.read?.(target) ?? null;
 	}
@@ -834,7 +929,11 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 	}
 
 	/** The Card's More › Image › Replace: the reach was chosen before the edit (D2). */
-	function replaceImageFor(entityId: string, file: File, mode: 'just-this' | 'all' | 'in-place'): Promise<FinishImageOutcome> {
+	function replaceImageFor(
+		entityId: string,
+		file: File,
+		mode: 'just-this' | 'all' | 'in-place',
+	): Promise<FinishImageOutcome> {
 		const context = captureImageWrite();
 		if (context === null) {
 			host.onNotice('The Stage is still opening.');
@@ -844,7 +943,10 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 			if (!imageWriteIsCurrent(context)) return { kind: 'no-op' };
 			const latest = viewFor(entityId);
 			if (latest === null || !latest.editable) {
-				return { kind: 'refused', message: "A model's own materials take no edits. Paint a material first." };
+				return {
+					kind: 'refused',
+					message: "A model's own materials take no edits. Paint a material first.",
+				};
 			}
 			return applyImageReplace(entityId, image, latest.users, mode, warning, context);
 		});
@@ -856,7 +958,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		if (services === null) return false;
 		const snapshot = services.stage.snapshot();
 		const inspection = inspectFinish(stageEnvelope(snapshot), ref, {
-			labelForMaterial: (id) => catalogueLabel(id as MaterialId)
+			labelForMaterial: (id) => catalogueLabel(id as MaterialId),
 		});
 		const label = labelOfKey(finishKeyOfRef(ref));
 		if (inspection === null || inspection.users.length === 0) {
@@ -868,7 +970,10 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 			host.onNotice(`Every user of ${label} is dormant or retired.`);
 			return false;
 		}
-		const result = services.stage.setSelection({ ordered: entries, primary: entries[0]!.reference });
+		const result = services.stage.setSelection({
+			ordered: entries,
+			primary: entries[0]!.reference,
+		});
 		if (result.kind === 'refused') {
 			host.onNotice(result.message);
 			return false;
@@ -877,15 +982,15 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		return true;
 	}
 
-
-	const catalogueLabel = (id: MaterialId): string => (materialById.has(id) ? getMaterial(id).label : id);
+	const catalogueLabel = (id: MaterialId): string =>
+		materialById.has(id) ? getMaterial(id).label : id;
 	const treatmentFacts = materialTreatmentFacts(catalogueLabel);
 	const swatchOf = (id: MaterialId): string => {
 		if (!materialById.has(id)) return '#c4b4a0';
 		const material = getMaterial(id);
 		return material.swatchColor ?? material.fallbackColor;
 	};
-	/** The quick Finish on the Card (U4): its one adapter. */
+	/** The quick Finish on the Card: its one adapter. */
 	const card: FinishCard = createFinishCard({
 		services: servicesNow,
 		labelForMaterial: catalogueLabel,
@@ -896,7 +1001,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		replaceImage: replaceImageFor,
 		onAccepted: () => undefined,
 		selectFinishUsers,
-		onOwnCopy: () => host.onNotice('This surface now has its own copy')
+		onOwnCopy: () => host.onNotice('This surface now has its own copy'),
 	});
 	const library = createFinishLibraryAuthoring({
 		host,
@@ -923,20 +1028,20 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 			activeColour = null;
 			activeDraft = draft;
 			dropper = false;
-		}
+		},
 	});
 
-	/** The Material editor facet (U6): Finish mode over the Card adapter. */
+	/** The Material editor facet: Finish mode over the Card adapter. */
 	const editor: FinishEditor = createFinishEditor({
 		card: () => card,
 		facts: treatmentFacts,
 		labelForMaterial: catalogueLabel,
-		swatchOf
+		swatchOf,
 	});
-	/** Align on wall and floor session (U6). */
+	/** Align on wall and floor session. */
 	const align: FinishAlign = createFinishAlign();
 
-	/** Appearance issues service (U6): static + runtime merged for pill, drawer, strip & hatch. */
+	/** Appearance issues service: static + runtime merged for pill, drawer, strip & hatch. */
 	const issues: AppearanceIssuesService = createAppearanceIssues({
 		envelope: () => {
 			const services = servicesNow();
@@ -945,7 +1050,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		targetAnalysis: host.targetAnalysis,
 		repairAsset: host.repairAsset,
 		invalidateAndReloadAsset: host.invalidateAndReloadAsset,
-		retryTextures: host.retryTextures
+		retryTextures: host.retryTextures,
 	});
 
 	function targetFromKey(targetKey: string): FinishCardTarget | null {
@@ -984,7 +1089,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		issue: AppearanceIssue,
 		kind: AppearanceIssueActionKind,
 		target: FinishCardTarget,
-		file?: File
+		file?: File,
 	): Promise<boolean> {
 		if (kind === 'retry') {
 			issues.retry(issue);
@@ -1017,7 +1122,10 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 						if (warning !== null) host.onNotice(warning);
 						return { kind: 'accepted' };
 					}
-					return { kind: 'refused', message: card.refusalFor(target) ?? 'The image was not replaced.' };
+					return {
+						kind: 'refused',
+						message: card.refusalFor(target) ?? 'The image was not replaced.',
+					};
 				});
 			}
 			if (outcome.kind !== 'accepted') {
@@ -1030,7 +1138,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 				code: issue.code,
 				role: issue.role,
 				action: 'replaced image',
-				history: 'authored'
+				history: 'authored',
 			});
 			return true;
 		}
@@ -1049,14 +1157,18 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 					code: issue.code,
 					role: issue.role,
 					action: role === 'color' ? 'used colour instead' : `turned off ${role}`,
-					history: 'authored'
+					history: 'authored',
 				});
 			}
 			return ok;
 		}
 		if (kind === 'uv0') {
 			const ok = await card.edit(target, () => [
-				{ field: 'mapping', op: 'set', value: { kind: 'uv', set: 0, repeat: [1, 1], rotation: 0, offset: [0, 0] } }
+				{
+					field: 'mapping',
+					op: 'set',
+					value: { kind: 'uv', set: 0, repeat: [1, 1], rotation: 0, offset: [0, 0] },
+				},
 			]);
 			if (ok) {
 				issues.noteRepaired({
@@ -1065,25 +1177,22 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 					code: issue.code,
 					role: issue.role,
 					action: 'UV set 0',
-					history: 'authored'
+					history: 'authored',
 				});
 			}
 			return ok;
 		}
 		if (kind === 'surface-mapping') {
-			const ok = await card.edit(
-				target,
-				() => [
-					{
-						field: 'mapping',
-						op: 'set',
-						value: {
-							kind: 'surface',
-							metric: { tileMeters: [1, 1], offset: [0, 0], rotation: 0 }
-						}
-					}
-				]
-			);
+			const ok = await card.edit(target, () => [
+				{
+					field: 'mapping',
+					op: 'set',
+					value: {
+						kind: 'surface',
+						metric: { tileMeters: [1, 1], offset: [0, 0], rotation: 0 },
+					},
+				},
+			]);
 			if (ok) {
 				issues.noteRepaired({
 					finishKey: issue.finishKey,
@@ -1091,7 +1200,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 					code: issue.code,
 					role: issue.role,
 					action: 'surface mapping',
-					history: 'authored'
+					history: 'authored',
 				});
 			}
 			return ok;
@@ -1099,7 +1208,11 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		return false;
 	}
 
-	function requestAlign(target: FinishCardTarget, place: string, invoker?: HTMLElement | null): { readonly ok: boolean; readonly message?: string } {
+	function requestAlign(
+		target: FinishCardTarget,
+		place: string,
+		invoker?: HTMLElement | null,
+	): { readonly ok: boolean; readonly message?: string } {
 		const services = servicesNow();
 		if (services === null) return { ok: false, message: 'The Stage is still opening.' };
 		const shot = services.stage.snapshot();
@@ -1109,7 +1222,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 			place,
 			layout: stageEnvelope(shot).units.layout.data,
 			geometry: shot.domain.geometry,
-			invoker
+			invoker,
 		});
 		if (!res.ok) return { ok: false, message: res.message };
 		return { ok: true };
@@ -1245,7 +1358,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		openFinishes: () => host.openFinishes(),
 		issues,
 		runIssueAction,
-		focusIssueTarget
+		focusIssueTarget,
 	};
 }
 

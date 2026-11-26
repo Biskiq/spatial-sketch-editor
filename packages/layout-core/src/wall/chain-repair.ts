@@ -4,12 +4,20 @@ import { projectPointToSampledSegment } from '../geometry/curve';
 import type { TopologySegment } from './topology';
 import { classifyWallIntersection } from './topology';
 import { detectWallCurveTopologyCrossings } from '../topology/curve-crossings';
-import { topologyComponentKeyByJunctionId, topologyComponentKeyByWallId } from '../room/topology-components';
+import {
+	topologyComponentKeyByJunctionId,
+	topologyComponentKeyByWallId,
+} from '../room/topology-components';
 import { wallCenterlineSamples } from './centerline';
 import { resolveWallCurveSplit } from './curve-algebra';
 import { JUNCTION_COINCIDENCE_EPSILON, coincidesAsJunction } from './junction-identity';
 import type { WallChainRejection } from './chain-types';
-import { adoptableJunctionAt, duplicateJunctionsAt, teeThroughJunction, wallById } from './chain-noding';
+import {
+	adoptableJunctionAt,
+	duplicateJunctionsAt,
+	teeThroughJunction,
+	wallById,
+} from './chain-noding';
 
 export type NodingFix =
 	| { kind: 'crossing'; wallIds: [string, string]; point: LayoutVec2 }
@@ -24,8 +32,6 @@ export type NodingFix =
 	| { kind: 'adopt'; keepJunctionId: string; duplicateJunctionIds: string[] }
 	| { kind: 'reject'; rejection: WallChainRejection };
 
-
-
 /**
  * Find the next un-noded relationship this operation is AUTHORIZED to resolve: a
  * chain wall against a Wall it may acquire topology from — a DECLARED host, or a
@@ -37,7 +43,7 @@ export function nextNodingFix(
 	document: LayoutDocumentWallFirst,
 	chainDerivedWallIds: readonly string[],
 	operationOwnedJunctionIds: ReadonlySet<string>,
-	endpointHostWallIds: ReadonlyMap<string, ReadonlySet<string>>
+	endpointHostWallIds: ReadonlyMap<string, ReadonlySet<string>>,
 ): NodingFix | null {
 	const chainSet = new Set(chainDerivedWallIds);
 	// The operation's DECLARED scope. `declaredHostWallIds` are the
@@ -83,20 +89,24 @@ export function nextNodingFix(
 				continue;
 			}
 			const segmentB = segments.get(b.id)!;
-			const shared = a.startJunctionId === b.startJunctionId || a.startJunctionId === b.endJunctionId
-				? [a.startJunctionId]
-				: a.endJunctionId === b.startJunctionId || a.endJunctionId === b.endJunctionId
-					? [a.endJunctionId]
-					: [];
+			const shared =
+				a.startJunctionId === b.startJunctionId || a.startJunctionId === b.endJunctionId
+					? [a.startJunctionId]
+					: a.endJunctionId === b.startJunctionId || a.endJunctionId === b.endJunctionId
+						? [a.endJunctionId]
+						: [];
 			const classified = classifyWallIntersection(segmentA, segmentB, shared);
-			if (classified.kind === 'collinear-overlap' || classified.kind === 'collinear-endpoint-touch') {
+			if (
+				classified.kind === 'collinear-overlap' ||
+				classified.kind === 'collinear-endpoint-touch'
+			) {
 				return {
 					kind: 'reject',
 					rejection: {
 						code: 'collinear_overlap',
 						message: `Chain overlaps existing wall '${chainSet.has(a.id) ? b.id : a.id}' on one line; trim or redraw the overlapping span`,
-						wallIds: [a.id, b.id]
-					}
+						wallIds: [a.id, b.id],
+					},
 				};
 			}
 			// A wall-span snap is an ordinary floating-point projection. On an
@@ -115,7 +125,7 @@ export function nextNodingFix(
 				chainSet,
 				operationOwnedJunctionIds,
 				endpointHostWallIds,
-				shared
+				shared,
 			);
 			if (projectedTee) return projectedTee;
 			if (classified.kind === 'proper-crossing') {
@@ -127,7 +137,7 @@ export function nextNodingFix(
 					[a, b],
 					classified.point,
 					junctionComponentKeyById,
-					componentKeyByWallId
+					componentKeyByWallId,
 				);
 				if (existing) {
 					const throughJunction = teeThroughJunction([segmentA, segmentB], existing);
@@ -166,7 +176,7 @@ export function nextNodingFix(
 					[a, b],
 					classified.point,
 					junctionComponentKeyById,
-					componentKeyByWallId
+					componentKeyByWallId,
 				);
 				if (coincident) {
 					// `a`/`b` are the endpoint wall and the interior wall of this T.
@@ -174,31 +184,33 @@ export function nextNodingFix(
 						document,
 						[a, b],
 						classified.point,
-						coincident.id
+						coincident.id,
 					);
 					if (duplicates.length > 0) {
-						return { kind: 'adopt', keepJunctionId: coincident.id, duplicateJunctionIds: duplicates };
+						return {
+							kind: 'adopt',
+							keepJunctionId: coincident.id,
+							duplicateJunctionIds: duplicates,
+						};
 					}
 				}
 				const interiorStart = junctionById.get(interiorWall.startJunctionId)!.point;
 				const splitDistance = Math.hypot(
 					classified.point[0] - interiorStart[0],
-					classified.point[1] - interiorStart[1]
+					classified.point[1] - interiorStart[1],
 				);
 				return {
 					kind: 'tee',
 					interiorWallId: classified.interiorWallId,
 					endpointJunctionId,
 					splitDistance,
-					point: classified.point
+					point: classified.point,
 				};
 			}
 		}
 	}
 	return null;
 }
-
-
 
 /**
  * Recover the semantic T encoded by an authored endpoint projected onto a
@@ -222,7 +234,7 @@ function projectedAuthoredEndpointTee(
 	chainSet: ReadonlySet<string>,
 	operationOwnedJunctionIds: ReadonlySet<string>,
 	endpointHostWallIds: ReadonlyMap<string, ReadonlySet<string>>,
-	sharedJunctionIds: readonly string[]
+	sharedJunctionIds: readonly string[],
 ): NodingFix | undefined {
 	if (sharedJunctionIds.length > 0) return undefined;
 	const candidates: Array<{
@@ -232,15 +244,25 @@ function projectedAuthoredEndpointTee(
 		hostSegment: TopologySegment;
 	}> = [];
 	if (chainSet.has(a.id) && !chainSet.has(b.id)) {
-		candidates.push({ endpointWall: a, endpointSegment: segmentA, hostWall: b, hostSegment: segmentB });
+		candidates.push({
+			endpointWall: a,
+			endpointSegment: segmentA,
+			hostWall: b,
+			hostSegment: segmentB,
+		});
 	}
 	if (chainSet.has(b.id) && !chainSet.has(a.id)) {
-		candidates.push({ endpointWall: b, endpointSegment: segmentB, hostWall: a, hostSegment: segmentA });
+		candidates.push({
+			endpointWall: b,
+			endpointSegment: segmentB,
+			hostWall: a,
+			hostSegment: segmentA,
+		});
 	}
 	for (const { endpointWall, endpointSegment, hostWall, hostSegment } of candidates) {
 		const endpoints = [
 			{ junctionId: endpointWall.startJunctionId, point: endpointSegment.start },
-			{ junctionId: endpointWall.endJunctionId, point: endpointSegment.end }
+			{ junctionId: endpointWall.endJunctionId, point: endpointSegment.end },
 		];
 		for (const endpoint of endpoints) {
 			if (!operationOwnedJunctionIds.has(endpoint.junctionId)) continue;
@@ -248,19 +270,19 @@ function projectedAuthoredEndpointTee(
 			if (snappedHostWallIds !== undefined && !snappedHostWallIds.has(hostWall.id)) continue;
 			const hostEndpoints = [
 				{ junctionId: hostWall.startJunctionId, point: hostSegment.start },
-				{ junctionId: hostWall.endJunctionId, point: hostSegment.end }
+				{ junctionId: hostWall.endJunctionId, point: hostSegment.end },
 			];
 			// The editor normally resolves a Junction snap before this planner. Keep
 			// the same identity rule here for a direct/headless caller too: a host
 			// endpoint is adoption, never a tiny fragment.
 			const coincidentHostEndpoint = hostEndpoints.find((hostEndpoint) =>
-				coincidesAsJunction(endpoint.point, hostEndpoint.point)
+				coincidesAsJunction(endpoint.point, hostEndpoint.point),
 			);
 			if (coincidentHostEndpoint) {
 				return {
 					kind: 'adopt',
 					keepJunctionId: coincidentHostEndpoint.junctionId,
-					duplicateJunctionIds: [endpoint.junctionId]
+					duplicateJunctionIds: [endpoint.junctionId],
 				};
 			}
 
@@ -269,7 +291,7 @@ function projectedAuthoredEndpointTee(
 					hostWall,
 					hostSegment.start,
 					hostSegment.end,
-					'forward'
+					'forward',
 				);
 				if (!sampled) continue;
 				const projection = projectPointToSampledSegment(endpoint.point, sampled);
@@ -278,15 +300,16 @@ function projectedAuthoredEndpointTee(
 				// Junction coincidence tolerance; sampler flatness is normalization
 				// error and must not acquire topology by itself.
 				const hasExplicitHostIdentity = snappedHostWallIds?.has(hostWall.id) ?? false;
-				if (!hasExplicitHostIdentity && projection.distanceToPath > JUNCTION_COINCIDENCE_EPSILON) continue;
+				if (!hasExplicitHostIdentity && projection.distanceToPath > JUNCTION_COINCIDENCE_EPSILON)
+					continue;
 				const resolution = resolveWallCurveSplit(
 					{
 						startPoint: hostSegment.start,
 						endPoint: hostSegment.end,
 						knots: hostWall.centerline.knots,
-						spans: hostWall.centerline.spans
+						spans: hostWall.centerline.spans,
 					},
-					projection.distance
+					projection.distance,
 				);
 				if (resolution.kind === 'rejected') continue;
 				const resolved = resolution.result;
@@ -295,21 +318,19 @@ function projectedAuthoredEndpointTee(
 				// check above handles ordinary snapped endpoints; this also catches a
 				// clamped sampled projection whose arc distance is at the boundary.
 				const hostEndpointAtResolution = hostEndpoints.find((hostEndpoint) =>
-					coincidesAsJunction(resolved.point, hostEndpoint.point)
+					coincidesAsJunction(resolved.point, hostEndpoint.point),
 				);
 				if (hostEndpointAtResolution) {
 					return {
 						kind: 'adopt',
 						keepJunctionId: hostEndpointAtResolution.junctionId,
-						duplicateJunctionIds: [endpoint.junctionId]
+						duplicateJunctionIds: [endpoint.junctionId],
 					};
 				}
 				if (
 					!hasExplicitHostIdentity &&
-					Math.hypot(
-						endpoint.point[0] - resolved.point[0],
-						endpoint.point[1] - resolved.point[1]
-					) > JUNCTION_COINCIDENCE_EPSILON
+					Math.hypot(endpoint.point[0] - resolved.point[0], endpoint.point[1] - resolved.point[1]) >
+						JUNCTION_COINCIDENCE_EPSILON
 				) {
 					continue;
 				}
@@ -319,7 +340,7 @@ function projectedAuthoredEndpointTee(
 					endpointJunctionId: endpoint.junctionId,
 					splitDistance: resolved.distance,
 					point: [resolved.point[0], resolved.point[1]],
-					projectOwnedEndpoint: true
+					projectOwnedEndpoint: true,
 				};
 			}
 
@@ -334,10 +355,7 @@ function projectedAuthoredEndpointTee(
 			const length = Math.sqrt(lengthSquared);
 			const endpointMargin = JUNCTION_COINCIDENCE_EPSILON / length;
 			if (!(t > endpointMargin && t < 1 - endpointMargin)) continue;
-			const projected: LayoutVec2 = [
-				hostSegment.start[0] + dx * t,
-				hostSegment.start[1] + dz * t
-			];
+			const projected: LayoutVec2 = [hostSegment.start[0] + dx * t, hostSegment.start[1] + dz * t];
 			if (!coincidesAsJunction(endpoint.point, projected)) continue;
 			return {
 				kind: 'tee',
@@ -345,29 +363,28 @@ function projectedAuthoredEndpointTee(
 				endpointJunctionId: endpoint.junctionId,
 				splitDistance: t * length,
 				point: projected,
-				projectOwnedEndpoint: true
+				projectOwnedEndpoint: true,
 			};
 		}
 	}
 	return undefined;
 }
 
-
-
 /**
  * Final topology gate over the committed candidate: every wall pair IN ONE
  * CONNECTED COMPONENT must relate only through explicit shared junctions (or be
- * disjoint). This is the same bar `validateWallFirstTopology` holds the P23.1
- * precision and P23.6a Room-move candidates to — the P23.9 plan forbids un-noded
- * visual crossings in committed data — and, since P23B.3a S5, the same SUBJECT:
- * the connected component, not the document.
+ * disjoint). This is the same rule `validateWallFirstTopology` applies to precision
+ * and Room-move candidates. The connected component is the validation scope
+ * for unnoded visual crossings.
  *
  * Connectivity is the TRANSITIVE closure of explicit authored Junction identity,
  * never coordinates: two Walls with no Junction id in common can still be one
  * component through a third Wall, and two Walls whose endpoints merely coincide are
  * in different components. Labelling is the S2 general Wall/Junction test.
  */
-export function validateChainTopology(document: LayoutDocumentWallFirst): WallChainRejection | null {
+export function validateChainTopology(
+	document: LayoutDocumentWallFirst,
+): WallChainRejection | null {
 	const junctionById = new Map(document.junctions.map((junction) => [junction.id, junction]));
 	const entries: Array<{ wall: LayoutWall; segment: TopologySegment }> = [];
 	for (const wall of document.walls) {
@@ -395,22 +412,24 @@ export function validateChainTopology(document: LayoutDocumentWallFirst): WallCh
 	// normalization and `nextNodingFix` above/without touching this verdict.
 	const curveCrossing = detectWallCurveTopologyCrossings(
 		document,
-		new Map(entries.map((entry) => [entry.wall.id, entry.segment] as const))
+		new Map(entries.map((entry) => [entry.wall.id, entry.segment] as const)),
 	);
 	if (curveCrossing) {
 		return curveCrossing.kind === 'self'
 			? {
 					code: 'self_intersecting_chain',
 					message: `Wall '${curveCrossing.wallId}' centerline intersects itself`,
-					wallIds: [curveCrossing.wallId]
-			  }
+					wallIds: [curveCrossing.wallId],
+				}
 			: {
 					code: 'self_intersecting_chain',
 					message: `Walls '${curveCrossing.wallIds[0]}' and '${curveCrossing.wallIds[1]}' have unsupported ${
-						curveCrossing.sharedJunctionId ? 'crossing away from their shared Junction' : 'centerline crossing'
+						curveCrossing.sharedJunctionId
+							? 'crossing away from their shared Junction'
+							: 'centerline crossing'
 					}`,
-					wallIds: [...curveCrossing.wallIds]
-			  };
+					wallIds: [...curveCrossing.wallIds],
+				};
 	}
 	const segments = entries.map((entry) => entry.segment);
 	// The chord half takes the SAME subject as everything above it: a
@@ -424,11 +443,12 @@ export function validateChainTopology(document: LayoutDocumentWallFirst): WallCh
 			const a = entries[first]!.wall;
 			const b = entries[second]!.wall;
 			if (keyByWallId.get(a.id) !== keyByWallId.get(b.id)) continue;
-			const shared = a.startJunctionId === b.startJunctionId || a.startJunctionId === b.endJunctionId
-				? [a.startJunctionId]
-				: a.endJunctionId === b.startJunctionId || a.endJunctionId === b.endJunctionId
-					? [a.endJunctionId]
-					: [];
+			const shared =
+				a.startJunctionId === b.startJunctionId || a.startJunctionId === b.endJunctionId
+					? [a.startJunctionId]
+					: a.endJunctionId === b.startJunctionId || a.endJunctionId === b.endJunctionId
+						? [a.endJunctionId]
+						: [];
 			const classified = classifyWallIntersection(segments[first]!, segments[second]!, shared);
 			if (classified.kind === 'shared-explicit-junction') {
 				const geometric = classifyWallIntersection(segments[first]!, segments[second]!, []);
@@ -442,7 +462,7 @@ export function validateChainTopology(document: LayoutDocumentWallFirst): WallCh
 					return {
 						code: 'collinear_overlap',
 						message: `Walls '${a.id}' and '${b.id}' overlap beyond their explicit shared junction`,
-						wallIds: [a.id, b.id]
+						wallIds: [a.id, b.id],
 					};
 				}
 				continue;
@@ -451,7 +471,7 @@ export function validateChainTopology(document: LayoutDocumentWallFirst): WallCh
 				return {
 					code: 'self_intersecting_chain',
 					message: `Walls '${a.id}' and '${b.id}' have unsupported ${classified.kind}`,
-					wallIds: [a.id, b.id]
+					wallIds: [a.id, b.id],
 				};
 			}
 		}

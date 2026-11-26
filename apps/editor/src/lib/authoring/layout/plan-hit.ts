@@ -1,6 +1,13 @@
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
-import type { CompiledLayoutQueryGeometry, CompiledQuerySpan } from '@portfolio/layout-core/geometry';
-import { findPolygonContaining, pointInPolygon, projectPointToSpans } from '@portfolio/layout-core/geometry';
+import type {
+	CompiledLayoutQueryGeometry,
+	CompiledQuerySpan,
+} from '@portfolio/layout-core/geometry';
+import {
+	findPolygonContaining,
+	pointInPolygon,
+	projectPointToSpans,
+} from '@portfolio/layout-core/geometry';
 
 /**
  * Pure Plan hit resolution. Resolves a world-space plan point against the
@@ -18,7 +25,13 @@ import { findPolygonContaining, pointInPolygon, projectPointToSpans } from '@por
  * The resolver is this type's only consumer, so the type lives beside it.
  */
 export type PlanControlAuthority = {
-	kind: 'junction' | 'curve-control' | 'opening-edge' | 'opening-slide' | 'object-rotation' | 'room-rotation';
+	kind:
+		| 'junction'
+		| 'curve-control'
+		| 'opening-edge'
+		| 'opening-slide'
+		| 'object-rotation'
+		| 'room-rotation';
 	/** Canonical control identity (also the deterministic tie-break). */
 	id: string;
 	/** The entity that owns this control (Wall / Opening / object / Room). */
@@ -38,7 +51,13 @@ export type PlanWallProjection = {
 export type PlanHitResult =
 	| { kind: 'vertex'; roomId: string; segmentId: string; vertexIndex: number }
 	| { kind: 'interiorAnchor'; roomId: string; segmentId: string; anchorId: string }
-	| { kind: 'opening'; roomId: string; segmentId: string; openingId: string; projection: PlanWallProjection }
+	| {
+			kind: 'opening';
+			roomId: string;
+			segmentId: string;
+			openingId: string;
+			projection: PlanWallProjection;
+	  }
 	| { kind: 'object'; objectId: string }
 	| { kind: 'wall'; roomId: string; segmentId: string; projection: PlanWallProjection }
 	| { kind: 'room'; roomId: string }
@@ -87,9 +106,7 @@ type PhysicalWallSpans = {
  * `wallId`). Room-derived records are skipped: this index is the wall-first
  * hit path, not a legacy alias.
  */
-function physicalSpansByWall(
-	queries: CompiledLayoutQueryGeometry
-): Map<string, PhysicalWallSpans> {
+function physicalSpansByWall(queries: CompiledLayoutQueryGeometry): Map<string, PhysicalWallSpans> {
 	const byWall = new Map<string, PhysicalWallSpans>();
 	for (const span of queries.spans) {
 		if (span.roomId !== undefined) continue;
@@ -103,7 +120,9 @@ function physicalSpansByWall(
 	return byWall;
 }
 
-function wallSpansByRoomSegment(queries: CompiledLayoutQueryGeometry): Map<string, Map<string, CompiledQuerySpan[]>> {
+function wallSpansByRoomSegment(
+	queries: CompiledLayoutQueryGeometry,
+): Map<string, Map<string, CompiledQuerySpan[]>> {
 	const byRoom = new Map<string, Map<string, CompiledQuerySpan[]>>();
 	for (const span of queries.spans) {
 		if (span.kind !== 'wall') continue;
@@ -120,7 +139,9 @@ function wallSpansByRoomSegment(queries: CompiledLayoutQueryGeometry): Map<strin
 	return byRoom;
 }
 
-function openingSpansByRoom(queries: CompiledLayoutQueryGeometry): Map<string, CompiledQuerySpan[]> {
+function openingSpansByRoom(
+	queries: CompiledLayoutQueryGeometry,
+): Map<string, CompiledQuerySpan[]> {
 	const byRoom = new Map<string, CompiledQuerySpan[]>();
 	for (const span of queries.spans) {
 		if (span.kind !== 'opening') continue;
@@ -147,7 +168,7 @@ function nearestPointHit(
 	queries: CompiledLayoutQueryGeometry,
 	point: LayoutVec2,
 	tolerance: number,
-	kind: 'vertex' | 'interior-anchor'
+	kind: 'vertex' | 'interior-anchor',
 ): PlanHitResult {
 	let best: PlanHitResult = null;
 	let bestDistance = tolerance;
@@ -158,8 +179,18 @@ function nearestPointHit(
 		if (distance <= bestDistance) {
 			best =
 				kind === 'vertex'
-					? { kind: 'vertex', roomId: record.roomId, segmentId: record.segmentId, vertexIndex: record.sourceIndex }
-					: { kind: 'interiorAnchor', roomId: record.roomId, segmentId: record.segmentId, anchorId: record.sourceId };
+					? {
+							kind: 'vertex',
+							roomId: record.roomId,
+							segmentId: record.segmentId,
+							vertexIndex: record.sourceIndex,
+						}
+					: {
+							kind: 'interiorAnchor',
+							roomId: record.roomId,
+							segmentId: record.segmentId,
+							anchorId: record.sourceId,
+						};
 			bestDistance = distance;
 		}
 	}
@@ -170,7 +201,7 @@ function nearestPointHit(
 function nearestCanonicalEndpointHit(
 	queries: CompiledLayoutQueryGeometry,
 	point: LayoutVec2,
-	tolerance: number
+	tolerance: number,
 ): PlanHitResult {
 	let best: { wallId: string; endpoint: 0 | 1; at: LayoutVec2 } | null = null;
 	let bestDistance = tolerance;
@@ -183,18 +214,20 @@ function nearestCanonicalEndpointHit(
 			best = {
 				wallId: record.wallKey ?? record.segmentId,
 				endpoint: record.sourceIndex,
-				at: [...record.point] as LayoutVec2
+				at: [...record.point] as LayoutVec2,
 			};
 			bestDistance = distance;
 		}
 	}
-	return best ? { kind: 'wallEndpoint', wallId: best.wallId, endpoint: best.endpoint, point: best.at } : null;
+	return best
+		? { kind: 'wallEndpoint', wallId: best.wallId, endpoint: best.endpoint, point: best.at }
+		: null;
 }
 
 function nearestOpeningHit(
 	queries: CompiledLayoutQueryGeometry,
 	point: LayoutVec2,
-	tolerance: number
+	tolerance: number,
 ): PlanHitResult {
 	const wallSpans = wallSpansByRoomSegment(queries);
 	const openingSpans = openingSpansByRoom(queries);
@@ -212,7 +245,12 @@ function nearestOpeningHit(
 					roomId,
 					segmentId: opening.segmentId,
 					openingId: opening.openingId!,
-					projection: { point: projection.point, offset: projection.offset, distance: projection.distance, t: projection.t }
+					projection: {
+						point: projection.point,
+						offset: projection.offset,
+						distance: projection.distance,
+						t: projection.t,
+					},
 				};
 			}
 		}
@@ -224,7 +262,7 @@ function nearestOpeningHit(
 function canonicalOpeningHit(
 	queries: CompiledLayoutQueryGeometry,
 	point: LayoutVec2,
-	tolerance: number
+	tolerance: number,
 ): PlanHitResult {
 	for (const [wallId, group] of physicalSpansByWall(queries)) {
 		const projection = projectPointToSpans(point, group.wallSpans);
@@ -243,8 +281,8 @@ function canonicalOpeningHit(
 						point: projection.point,
 						offset: projection.offset,
 						distance: projection.distance,
-						t: projection.t
-					}
+						t: projection.t,
+					},
 				};
 			}
 		}
@@ -256,7 +294,7 @@ function canonicalOpeningHit(
 function canonicalWallHit(
 	queries: CompiledLayoutQueryGeometry,
 	point: LayoutVec2,
-	tolerance: number
+	tolerance: number,
 ): PlanHitResult {
 	let best: { wallId: string; projection: PlanWallProjection } | null = null;
 	for (const [wallId, group] of physicalSpansByWall(queries)) {
@@ -269,14 +307,12 @@ function canonicalWallHit(
 					point: projection.point,
 					offset: projection.offset,
 					distance: projection.distance,
-					t: projection.t
-				}
+					t: projection.t,
+				},
 			};
 		}
 	}
-	return best
-		? { kind: 'physicalWall', wallId: best.wallId, projection: best.projection }
-		: null;
+	return best ? { kind: 'physicalWall', wallId: best.wallId, projection: best.projection } : null;
 }
 
 /**
@@ -287,7 +323,7 @@ function canonicalWallHit(
 function nearestCurveControlHit(
 	controls: readonly PlanCurveControlCandidate[],
 	point: LayoutVec2,
-	tolerance: number
+	tolerance: number,
 ): PlanHitResult {
 	let best: { control: PlanCurveControlCandidate; distance: number } | null = null;
 	for (const control of controls) {
@@ -300,7 +336,7 @@ function nearestCurveControlHit(
 				kind: 'wallCurveControl',
 				wallId: best.control.wallId,
 				anchorId: best.control.anchorId,
-				point: [best.control.point[0], best.control.point[1]]
+				point: [best.control.point[0], best.control.point[1]],
 			}
 		: null;
 }
@@ -308,7 +344,7 @@ function nearestCurveControlHit(
 function nearestWallHit(
 	queries: CompiledLayoutQueryGeometry,
 	point: LayoutVec2,
-	tolerance: number
+	tolerance: number,
 ): PlanHitResult {
 	const wallSpans = wallSpansByRoomSegment(queries);
 	let best: { roomId: string; segmentId: string; projection: PlanWallProjection } | null = null;
@@ -320,7 +356,12 @@ function nearestWallHit(
 				best = {
 					roomId,
 					segmentId,
-					projection: { point: projection.point, offset: projection.offset, distance: projection.distance, t: projection.t }
+					projection: {
+						point: projection.point,
+						offset: projection.offset,
+						distance: projection.distance,
+						t: projection.t,
+					},
 				};
 			}
 		}
@@ -347,8 +388,8 @@ function nearestWallHit(
  *
  * The verdict reorders exactly two things, both required by §6:
  * - a curve control whose owner is the selected Wall outranks a co-located
- *   Junction/endpoint ("a curve point owned by the selected Wall beats an
- *   unrelated co-located Opening or Junction"), and
+ *  Junction/endpoint ("a curve point owned by the selected Wall beats an
+ *  unrelated co-located Opening or Junction"), and
  * - a Junction verdict keeps the default order, i.e. the endpoint still wins.
  */
 export function resolvePlanHit(
@@ -360,7 +401,7 @@ export function resolvePlanHit(
 		includeEndpoints?: boolean;
 		curveControls?: readonly PlanCurveControlCandidate[];
 		controlAuthority?: PlanControlAuthority | null;
-	}
+	},
 ): PlanHitResult {
 	const authority = options?.controlAuthority ?? null;
 	if (authority?.kind === 'curve-control') {
@@ -368,14 +409,14 @@ export function resolvePlanHit(
 		// already applied the 24/44 px acquisition radius that the tiny control
 		// hit tolerance does not cover, so re-measuring here would undo it.
 		const owned = (options?.curveControls ?? []).find(
-			(control) => control.wallId === authority.ownerId && control.anchorId === authority.id
+			(control) => control.wallId === authority.ownerId && control.anchorId === authority.id,
 		);
 		if (owned) {
 			return {
 				kind: 'wallCurveControl',
 				wallId: owned.wallId,
 				anchorId: owned.anchorId,
-				point: owned.point
+				point: owned.point,
 			};
 		}
 	}
@@ -408,7 +449,7 @@ export function resolvePlanHit(
 
 	const objectPolygon = findPolygonContaining(
 		point,
-		queries.polygons.filter((polygon) => polygon.kind === 'object-footprint')
+		queries.polygons.filter((polygon) => polygon.kind === 'object-footprint'),
 	);
 	if (objectPolygon?.objectId) {
 		return { kind: 'object', objectId: objectPolygon.objectId };
@@ -446,12 +487,13 @@ function ringArea(points: readonly LayoutVec2[]): number {
 export function findPlanHitRoom(
 	queries: CompiledLayoutQueryGeometry,
 	point: LayoutVec2,
-	options?: { allowedRoomIds?: ReadonlySet<string> }
+	options?: { allowedRoomIds?: ReadonlySet<string> },
 ): { roomId: string } | null {
 	let best: { roomId: string; area: number } | null = null;
 	for (const polygon of queries.polygons) {
 		if (polygon.kind !== 'room-floor' || polygon.roomId === undefined) continue;
-		if (options?.allowedRoomIds !== undefined && !options.allowedRoomIds.has(polygon.roomId)) continue;
+		if (options?.allowedRoomIds !== undefined && !options.allowedRoomIds.has(polygon.roomId))
+			continue;
 		if (!pointInPolygon(point, polygon.polygon)) continue;
 		const area = ringArea(polygon.polygon);
 		if (
@@ -473,19 +515,24 @@ export function findPlanHitRoom(
 export function projectPointToPhysicalWall(
 	queries: CompiledLayoutQueryGeometry,
 	wallId: string,
-	point: LayoutVec2
+	point: LayoutVec2,
 ): PlanWallProjection | null {
 	const spans = physicalSpansByWall(queries).get(wallId)?.wallSpans ?? [];
 	const projection = projectPointToSpans(point, spans);
 	return projection
-		? { point: projection.point, offset: projection.offset, distance: projection.distance, t: projection.t }
+		? {
+				point: projection.point,
+				offset: projection.offset,
+				distance: projection.distance,
+				t: projection.t,
+			}
 		: null;
 }
 
 /** Total compiled arc length of one canonical physical Wall. */
 export function compiledPhysicalWallLength(
 	queries: CompiledLayoutQueryGeometry,
-	wallId: string
+	wallId: string,
 ): number {
 	return physicalSpansByWall(queries).get(wallId)?.wallSpans.at(-1)?.endDistance ?? 0;
 }

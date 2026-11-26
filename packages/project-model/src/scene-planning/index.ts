@@ -229,9 +229,7 @@ export {
 	definitionMetadataContentId,
 } from './metadata-identity';
 
-export type {
-	DefinitionMetadataFacts,
-} from './metadata-identity';
+export type { DefinitionMetadataFacts } from './metadata-identity';
 
 export {
 	approvedModelResources,
@@ -297,9 +295,7 @@ export type {
 	PaletteAdoptionRow,
 } from './palette-adoption';
 
-export {
-	preparePlaceObjectCandidate,
-} from './place-object';
+export { preparePlaceObjectCandidate } from './place-object';
 
 export type {
 	PlacementSupportEvidence,
@@ -311,13 +307,9 @@ export type {
 	PlaceObjectWorldPose,
 } from './place-object';
 
-export {
-	createScenePlanners,
-} from './planners';
+export { createScenePlanners } from './planners';
 
-export type {
-	ScenePlannerOptions,
-} from './planners';
+export type { ScenePlannerOptions } from './planners';
 
 export {
 	checkSceneRecordScope,

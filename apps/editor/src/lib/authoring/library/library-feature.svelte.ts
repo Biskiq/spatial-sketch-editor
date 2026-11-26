@@ -8,6 +8,6 @@ export function createLibraryFeature(deps: LibraryDependencies) {
 		id: 'library' as const,
 		view: library.view,
 		ports: library.ports,
-		escape: library.escape
+		escape: library.escape,
 	};
 }

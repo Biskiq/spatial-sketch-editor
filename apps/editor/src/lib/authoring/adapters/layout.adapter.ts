@@ -7,7 +7,7 @@ import {
 	type StageAdapter,
 	type StageAdapterBinding,
 	type StageAdapterContext,
-	type StageCandidatePreview
+	type StageCandidatePreview,
 } from '$lib/authoring/stage/stage-adapter-host';
 import { stageLayout } from '$lib/authoring/stage/stage-adapter-host';
 
@@ -18,13 +18,13 @@ import {
 	bindLayoutCompileContext,
 	createLayoutCompileContext,
 	plannerInContext,
-	type LayoutAdapterLifetime
+	type LayoutAdapterLifetime,
 } from './layout/compile-context';
 import { createLayoutCandidatePresenter } from './layout/candidate-presenter';
 import { createJoinPlanners } from './layout/join-planners';
 import {
 	createRoomDuplicatePlanners,
-	LAYOUT_ROOM_DUPLICATE_KIND
+	LAYOUT_ROOM_DUPLICATE_KIND,
 } from './layout/room-duplicate-planners';
 import { LAYOUT_INK_TASK } from './layout/ink';
 import { createSpaceCreatePlanner } from './layout/space-create-planners';
@@ -36,7 +36,7 @@ import {
 	planNumericEntryInput,
 	planNumericEntryKey,
 	planNumericEntryOpen,
-	planNumericEntryTab
+	planNumericEntryTab,
 } from '$lib/authoring/layout/plan-numeric-entry';
 import { createLayoutPlanners } from './layout/precision-planners';
 import { LAYOUT_PLINTH_PLACE_KIND } from './layout/precision';
@@ -46,7 +46,7 @@ import {
 	selectedWall,
 	selectedCurvedWall,
 	selectedOpening,
-	bodyFrameForOpenWall
+	bodyFrameForOpenWall,
 } from './layout/layout-subjects';
 import { createWallGestureSession } from './layout/wall-gesture-session';
 import { createCurveGestureSession } from './layout/curve-gesture-session';
@@ -81,13 +81,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 		...createRegionPlanners(),
 		// Repeat is one retained planner beside the other Opening
 		// operations, on the same registry, admission and coordinator.
-		...createOpeningRepeatPlanners()
+		...createOpeningRepeatPlanners(),
 	].map((planner) => plannerInContext(compileContext, planner));
 	for (const planner of planners) {
 		const registration = services.authoring.registerPlanner(planner);
 		if (registration.kind !== 'registered') {
 			throw new Error(
-				`Layout adapter planner "${planner.kind}" was refused: ${registration.reason} — ${registration.message}`
+				`Layout adapter planner "${planner.kind}" was refused: ${registration.reason} — ${registration.message}`,
 			);
 		}
 	}
@@ -143,12 +143,12 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				levelId,
 				contentRevision,
 				publishRefusal,
-				settleRefusal
+				settleRefusal,
 			};
 			const wall = createWallGestureSession({
 				...manipulation,
 				candidatePaper,
-				junctionActive: (): boolean => junction.active
+				junctionActive: (): boolean => junction.active,
 			});
 			const junction = createJunctionGestureSession({ ...manipulation, commit: wall.commit });
 			const existingOpening = createOpeningGestureSession({
@@ -156,7 +156,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				candidatePaper,
 				openingFace,
 				presenter,
-				planCandidate: (plan) => compileContext.plan(document, plan)
+				planCandidate: (plan) => compileContext.plan(document, plan),
 			});
 			const curve = createCurveGestureSession({ ...manipulation, candidatePaper });
 			const room = createRoomGestureSession(manipulation);
@@ -179,7 +179,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				readActiveKnot: () => curve.activeKnot,
 				requestRoomDuplicate: room.requestDuplicate,
 				removeSelectedKnot: curve.removeSelectedKnot,
-				regionEdgePick
+				regionEdgePick,
 			});
 
 			function markDescriptors(adapterContext: StageAdapterContext) {
@@ -192,9 +192,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						wall: wall.markState(),
 						opening: existingOpening.markState(),
 						junctionActive: junction.active,
-						refusal
+						refusal,
 					},
-					openTaskKind !== null
+					openTaskKind !== null,
 				);
 			}
 
@@ -218,29 +218,29 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				memory: inkMemory,
 				inkTaskOpen: () => openTaskKind === LAYOUT_INK_TASK,
 				candidatePaper,
-				openingFace
+				openingFace,
 			};
 			const opening = createOpeningPlacementSession({
 				...sessionPorts,
 				publish: () => ink.publish(),
-				select: selectLayoutSubject
+				select: selectLayoutSubject,
 			});
 			const spaceCreate = createSpaceCreateSession({
 				...sessionPorts,
 				publish: () => ink.publish(),
-				planCandidate: (body) => compileContext.plan(document, body)
+				planCandidate: (body) => compileContext.plan(document, body),
 			});
 			const ink = createInkSession({
 				...sessionPorts,
 				opening,
 				room: spaceCreate,
-				select: selectLayoutSubject
+				select: selectLayoutSubject,
 			});
 
 			/** Install one created Opening as the selection, by id, on the fresh source. */
 			function selectLayoutSubject(
 				sourceKind: 'wall' | 'opening' | 'region',
-				sourceId: string
+				sourceId: string,
 			): void {
 				const fresh = services.stage.snapshot();
 				services.stage.select({
@@ -252,15 +252,16 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						sourceKind,
 						generationId: fresh.compileGeneration,
 						stream: 'projected',
-						subRef: null
-					}
+						subRef: null,
+					},
 				});
 			}
 
 			const binding: StageAdapterBinding = {
 				// Object Studio scopes picking to one Scene root; Layout's walls, surfaces and
 				// openings are the muted architectural context there, so it offers no candidate.
-				pick: (query, adapterContext) => (adapterContext.subjectScope?.() != null ? null : pick(query, adapterContext)),
+				pick: (query, adapterContext) =>
+					adapterContext.subjectScope?.() != null ? null : pick(query, adapterContext),
 				...contributions,
 				keyIntent(intent, adapterContext) {
 					if (openTaskKind === LAYOUT_INK_TASK) return ink.key(intent, adapterContext);
@@ -300,10 +301,10 @@ export const createAdapter: StageAdapterFactory = (services) => {
 								planNumericEntryInput(
 									planNumericEntryOpen(
 										{ host: target.host, fieldId: target.field.id, ownerId: target.ownerId },
-										target.candidates
+										target.candidates,
 									),
-									intent.key
-								)
+									intent.key,
+								),
 							);
 							refusal = null;
 						} else {
@@ -315,7 +316,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					} else if (intent.kind === 'backtrack') {
 						if (numeric === null) return false;
 						active.setNumeric(
-							numeric.text.length <= 1 ? null : planNumericEntryInput(numeric, numeric.text.slice(0, -1))
+							numeric.text.length <= 1
+								? null
+								: planNumericEntryInput(numeric, numeric.text.slice(0, -1)),
 						);
 					} else if (numeric !== null) {
 						active.setNumeric(null);
@@ -335,13 +338,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						...region.descriptors(adapterContext),
 						...room.roomMoveDescriptors(adapterContext),
 						...openSide.descriptors(adapterContext),
-						...wall.scalarDescriptors(adapterContext)
+						...wall.scalarDescriptors(adapterContext),
 					];
 				},
 				idleHandles(adapterContext) {
 					return [
 						...junction.idleJunctionHandles(adapterContext, openTaskKind !== null, refusal),
-						...region.edgeHandles(adapterContext)
+						...region.edgeHandles(adapterContext),
 					];
 				},
 				hoverIntent(intent, adapterContext) {
@@ -355,20 +358,27 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						curve.clearBendHint();
 						return true;
 					}
-					if (region.updateEdgeHover(intent, adapterContext, blocked || junction.active || wall.hasScalar)) {
+					if (
+						region.updateEdgeHover(
+							intent,
+							adapterContext,
+							blocked || junction.active || wall.hasScalar,
+						)
+					) {
 						curve.clearBendHint();
 						return true;
 					}
 					return curve.updateIdleBendHover(
 						intent,
 						adapterContext,
-						blocked || junction.active || wall.hasScalar
+						blocked || junction.active || wall.hasScalar,
 					);
 				},
 				pointerIntent(intent, adapterContext) {
 					if (openTaskKind === LAYOUT_ROOM_DUPLICATE_KIND)
 						return room.roomDuplicatePointer(intent, adapterContext);
-					if (intent.phase === 'down' && curve.clearBendHint()) services.stage.notifySurfaceChange();
+					if (intent.phase === 'down' && curve.clearBendHint())
+						services.stage.notifySurfaceChange();
 					if (openTaskKind === LAYOUT_INK_TASK) return ink.pointer(intent, adapterContext);
 					if (openTaskKind !== null) return false;
 					if (region.pointer(intent, adapterContext)) return true;
@@ -378,7 +388,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						curve.bendPointer(
 							intent,
 							adapterContext,
-							wall.active || junction.active || existingOpening.active
+							wall.active || junction.active || existingOpening.active,
 						)
 					)
 						return true;
@@ -408,7 +418,10 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							selectedStraight ??
 							(selectedCurved === null
 								? null
-								: { wallId: selectedCurved.wallId, frame: bodyFrameForOpenWall(selectedCurved.frame) });
+								: {
+										wallId: selectedCurved.wallId,
+										frame: bodyFrameForOpenWall(selectedCurved.frame),
+									});
 						const selectedOpeningSubject =
 							selected === null ? selectedOpening(document, adapterContext) : null;
 						if (selected === null && selectedOpeningSubject === null) return false;
@@ -418,7 +431,10 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						if (markId === undefined) {
 							// The host's resolver is the one mark-tier authority; a fallback press
 							// (an older caller, a test) uses the same admitted hit areas.
-							const hit = services.stage.hitMark({ css: intent.css, coarse: intent.coarse === true });
+							const hit = services.stage.hitMark({
+								css: intent.css,
+								coarse: intent.coarse === true,
+							});
 							if (hit !== null && hit.adapterId === 'layout' && hit.role === 'edit') {
 								markId = hit.id;
 							} else if (selected !== null) {
@@ -431,7 +447,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 									evaluationId: intent.evaluationId,
 									purpose: 'select',
 									tool: null,
-									...(intent.coarse === undefined ? {} : { coarse: intent.coarse })
+									...(intent.coarse === undefined ? {} : { coarse: intent.coarse }),
 								});
 								if (
 									picked.kind !== 'resolved' ||
@@ -450,7 +466,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 									evaluationId: intent.evaluationId,
 									purpose: 'select',
 									tool: null,
-									...(intent.coarse === undefined ? {} : { coarse: intent.coarse })
+									...(intent.coarse === undefined ? {} : { coarse: intent.coarse }),
 								});
 								if (
 									picked.kind !== 'resolved' ||
@@ -466,7 +482,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						const descriptor = bodyPress
 							? undefined
 							: descriptors.find((candidate) => candidate.id === markId);
-						if (!bodyPress && (descriptor === undefined || descriptor.role !== 'edit')) return false;
+						if (!bodyPress && (descriptor === undefined || descriptor.role !== 'edit'))
+							return false;
 
 						if (markId === undefined) return false;
 						if (selected !== null)
@@ -487,7 +504,11 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						services.stage.notifySurfaceChange();
 						return true;
 					}
-										if (wall.numeric !== null || junction.numeric !== null || existingOpening.numeric !== null) {
+					if (
+						wall.numeric !== null ||
+						junction.numeric !== null ||
+						existingOpening.numeric !== null
+					) {
 						if (intent.phase === 'up') services.stage.notifySurfaceChange();
 						return true;
 					}
@@ -497,7 +518,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						return wall.move(intent, adapterContext);
 					}
 					if (junction.active) return junction.release(adapterContext, refusal);
-					if (existingOpening.active) return existingOpening.release(intent, adapterContext, refusal);
+					if (existingOpening.active)
+						return existingOpening.release(intent, adapterContext, refusal);
 					return wall.release(intent, adapterContext, refusal);
 				},
 				candidatePreview(adapterContext) {
@@ -572,7 +594,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					room.endRoomDuplicate();
 					ink.release();
 					spaceCreate.dispose();
-				}
+				},
 			};
 			return binding;
 
@@ -581,11 +603,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				document: LayoutDocumentWallFirst,
 				datumMeters: number,
 				subjectIds: ReadonlySet<string>,
-				affectedIds: ReadonlySet<string>
+				affectedIds: ReadonlySet<string>,
 			): { readonly paper: LayoutCandidatePaper } | null {
 				const result = services.stage.plan();
 				if (result.kind !== 'evaluated') return null;
-				return { paper: presenter.paper(document, result.plan, datumMeters, subjectIds, affectedIds) };
+				return {
+					paper: presenter.paper(document, result.plan, datumMeters, subjectIds, affectedIds),
+				};
 			}
 
 			/**
@@ -596,13 +620,15 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			function openingFace(
 				document: LayoutDocumentWallFirst,
 				openingIds: ReadonlySet<string>,
-				datumMeters: number
+				datumMeters: number,
 			): CandidatePaperGeometry | null {
 				if (services.stage.plan().kind !== 'evaluated') return null;
 				return presenter.face(document, openingIds, datumMeters);
 			}
 
-			function candidatePreviews(adapterContext: StageAdapterContext): readonly StageCandidatePreview[] {
+			function candidatePreviews(
+				adapterContext: StageAdapterContext,
+			): readonly StageCandidatePreview[] {
 				const y = adapterContext.snapshot.domain.datumMeters;
 				const priority =
 					room.previews(adapterContext, y) ??
@@ -631,7 +657,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 
 				return existingOpening.repeatPreviews(adapterContext, y) ?? ink.previews(adapterContext, y);
 			}
-		}
+		},
 	};
 
 	bindLayoutCompileContext(adapter, lifetime);

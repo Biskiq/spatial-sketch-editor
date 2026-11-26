@@ -2,21 +2,43 @@ import { projectWorld, type ViewportEvaluation } from '@portfolio/camera-core/vi
 import type { Vec3 } from '@portfolio/camera-core/camera';
 import type { SemanticReference } from '@portfolio/project-model/references';
 import type { StageReadSnapshot } from '../accepted-read';
-import { primaryEntry, sameReference, type StageSelectionEntry, type StageSelectionState } from '../semantic-selection';
-import { admitStageHandles, projectStageHandles, type StageHandleDescriptor, type StageHandleDiagnostic, type StageMarkView } from '../stage-handles';
+import {
+	primaryEntry,
+	sameReference,
+	type StageSelectionEntry,
+	type StageSelectionState,
+} from '../semantic-selection';
+import {
+	admitStageHandles,
+	projectStageHandles,
+	type StageHandleDescriptor,
+	type StageHandleDiagnostic,
+	type StageMarkView,
+} from '../stage-handles';
 import { mergeStageHeightTicks, type StageHeightTick } from '../stage-height-sheet';
 import type { StageSession, StageLens, StageTask } from '../stage-session';
 import type { AdapterContextHandle, BoundAdapter } from './adapter-bindings';
 import { tasksOf, inkReadingsOf, findEntriesOf } from './contribution-view-entries';
 import type {
-	StageAdapterContext, StageCardAction, StageCardActionRecord, StageCardFact, StageCardFactRecord,
-	StageCardNameTarget, StageGhostMesh, StageInstrumentContent, StageOverlayContribution, StageSubject
+	StageAdapterContext,
+	StageCardAction,
+	StageCardActionRecord,
+	StageCardFact,
+	StageCardFactRecord,
+	StageCardNameTarget,
+	StageGhostMesh,
+	StageInstrumentContent,
+	StageOverlayContribution,
+	StageSubject,
 } from './adapter-contract';
 import type { StageCandidatePreviewView, StageFacade, StageGuideView } from './view-contract';
 
 type MarkAddress = { readonly adapterId: string; readonly id: string };
 
-type ContributionViewPort = Pick<StageSession, 'selectionState' | 'hover' | 'task' | 'lens' | 'resizeHandles' | 'setResizeHandles'> & {
+type ContributionViewPort = Pick<
+	StageSession,
+	'selectionState' | 'hover' | 'task' | 'lens' | 'resizeHandles' | 'setResizeHandles'
+> & {
 	readonly snapshot: () => StageReadSnapshot;
 	readonly evaluation: () => ViewportEvaluation | null;
 	readonly isLive: () => boolean;
@@ -56,7 +78,7 @@ export function createContributionView(input: ContributionViewPort) {
 			selection: input.selectionState(),
 			hover: input.hover(),
 			task: input.task(),
-			lens: input.lens()
+			lens: input.lens(),
 		};
 	}
 	function sameOutputInputs(left: OutputInputs, right: OutputInputs): boolean {
@@ -70,14 +92,19 @@ export function createContributionView(input: ContributionViewPort) {
 			left.lens === right.lens
 		);
 	}
-	let overlayOutput: { inputs: OutputInputs; value: readonly StageOverlayContribution[] } | null = null;
+	let overlayOutput: { inputs: OutputInputs; value: readonly StageOverlayContribution[] } | null =
+		null;
 	let guideOutput: { inputs: OutputInputs; value: readonly StageGuideView[] } | null = null;
-	let candidateOutput: { inputs: OutputInputs; value: readonly StageCandidatePreviewView[] } | null = null;
+	let candidateOutput: {
+		inputs: OutputInputs;
+		value: readonly StageCandidatePreviewView[];
+	} | null = null;
 	let ghostOutput: { inputs: OutputInputs; value: readonly StageGhostMesh[] } | null = null;
-	let markOutput: { inputs: OutputInputs; extra: string; value: readonly StageMarkView[] } | null = null;
+	let markOutput: { inputs: OutputInputs; extra: string; value: readonly StageMarkView[] } | null =
+		null;
 	/**
 	 * The last projected subject list. Adapter notifications also fire for
-	 * selection and task changes, so `subjects()` must not allocate a fresh array
+	 * selection and task changes, so `subjects` must not allocate a fresh array
 	 * for every one: the route keys its Index projection on this identity.
 	 */
 	let subjectsCache: readonly StageSubject[] | null = null;
@@ -103,7 +130,12 @@ export function createContributionView(input: ContributionViewPort) {
 		const next = entry?.reference ?? null;
 		// The full canonical address is the identity: a same-id subject at another
 		// instance path or revision is a different selection and closes the set.
-		if (next === null ? disclosureSelection === null : disclosureSelection !== null && sameReference(next, disclosureSelection)) return;
+		if (
+			next === null
+				? disclosureSelection === null
+				: disclosureSelection !== null && sameReference(next, disclosureSelection)
+		)
+			return;
 		disclosureSelection = next;
 		openDisclosures.clear();
 		markHover = null;
@@ -121,26 +153,33 @@ export function createContributionView(input: ContributionViewPort) {
 	function admittedMarks(
 		adapterEntry: NonNullable<ReturnType<typeof adapters.get>>,
 		descriptors: readonly StageHandleDescriptor[],
-		context: StageAdapterContext
+		context: StageAdapterContext,
 	): readonly StageMarkView[] {
 		if (descriptors.length === 0) return [];
 		const admission = admitStageHandles({
 			adapterId: adapterEntry.adapter.id,
 			descriptors,
 			plannerKinds: adapterEntry.adapter.plannerKinds ?? [],
-			alreadyReported: reportedHandleDiagnostics
+			alreadyReported: reportedHandleDiagnostics,
 		});
 		for (const diagnostic of admission.diagnostics) {
-			reportedHandleDiagnostics.add(`${diagnostic.adapterId}\u0000${diagnostic.handleId}\u0000${diagnostic.code}`);
+			reportedHandleDiagnostics.add(
+				`${diagnostic.adapterId}\u0000${diagnostic.handleId}\u0000${diagnostic.code}`,
+			);
 			handleDiagnostics.push(diagnostic);
 		}
 		const evaluation = context.evaluation;
 		return projectStageHandles({
 			adapterId: adapterEntry.adapter.id,
 			descriptors: admission.admitted,
-			openDisclosures: new Set([...openDisclosures, ...admission.admitted.filter(
-				(mark) => mark.role === 'disclose' && mark.intent === 'resize' && input.resizeHandles()
-			).map(mark => mark.id)]),
+			openDisclosures: new Set([
+				...openDisclosures,
+				...admission.admitted
+					.filter(
+						(mark) => mark.role === 'disclose' && mark.intent === 'resize' && input.resizeHandles(),
+					)
+					.map((mark) => mark.id),
+			]),
 			hoveredId: markHover?.adapterId === adapterEntry.adapter.id ? markHover.id : null,
 			activeId: activeMarkId,
 			project: (point) => {
@@ -152,7 +191,7 @@ export function createContributionView(input: ContributionViewPort) {
 					? projected.css
 					: null;
 			},
-			offset: [evaluation.rect.left, evaluation.rect.top]
+			offset: [evaluation.rect.left, evaluation.rect.top],
 		});
 	}
 
@@ -179,8 +218,11 @@ export function createContributionView(input: ContributionViewPort) {
 		const handle = adapterContext();
 		if (handle === null) return [];
 		let descriptors: readonly StageHandleDescriptor[] = [];
-		try { descriptors = adapterEntry.contributions.handles?.(handle.context) ?? []; }
-		catch { descriptors = []; }
+		try {
+			descriptors = adapterEntry.contributions.handles?.(handle.context) ?? [];
+		} catch {
+			descriptors = [];
+		}
 		try {
 			return admittedMarks(adapterEntry, descriptors, handle.context);
 		} finally {
@@ -197,8 +239,11 @@ export function createContributionView(input: ContributionViewPort) {
 		try {
 			for (const entry of adapters.values()) {
 				let descriptors: readonly StageHandleDescriptor[] = [];
-				try { descriptors = entry.contributions.idleHandles?.(handle.context) ?? []; }
-				catch { descriptors = []; }
+				try {
+					descriptors = entry.contributions.idleHandles?.(handle.context) ?? [];
+				} catch {
+					descriptors = [];
+				}
 				marks.push(...admittedMarks(entry, descriptors, handle.context));
 			}
 		} finally {
@@ -210,7 +255,6 @@ export function createContributionView(input: ContributionViewPort) {
 	function stageMarks(): readonly StageMarkView[] {
 		return [...selectionMarks(), ...idleMarks()];
 	}
-
 
 	/**
 	 * The adapter whose marks may stay visible under the open contributed task.
@@ -225,7 +269,7 @@ export function createContributionView(input: ContributionViewPort) {
 			(entry) =>
 				entry.adapterId === owner.adapterId &&
 				entry.id === owner.taskId &&
-				entry.marksWhileOpen === true
+				entry.marksWhileOpen === true,
 		);
 		return task?.adapterId ?? null;
 	}
@@ -246,7 +290,7 @@ export function createContributionView(input: ContributionViewPort) {
 			idleMarkHover?.id ?? '',
 			activeMarkId ?? '',
 			[...openDisclosures].sort().join(','),
-			input.resizeHandles() ? '1' : '0'
+			input.resizeHandles() ? '1' : '0',
 		].join('|');
 		if (
 			markOutput !== null &&
@@ -262,7 +306,11 @@ export function createContributionView(input: ContributionViewPort) {
 	const setMarkHover: StageFacade['setMarkHover'] = (mark) => {
 		if (!isLive()) return;
 		markHover = mark === null ? null : { adapterId: mark.adapterId, id: mark.id };
-		if (mark === null || mark.adapterId !== idleMarkHover?.adapterId || mark.id !== idleMarkHover.id) {
+		if (
+			mark === null ||
+			mark.adapterId !== idleMarkHover?.adapterId ||
+			mark.id !== idleMarkHover.id
+		) {
 			idleMarkHover = null;
 		}
 	};
@@ -300,9 +348,11 @@ export function createContributionView(input: ContributionViewPort) {
 			try {
 				return (entry.contributions.overlay?.(handle.context) ?? []).map((marker) => ({
 					...marker,
-					css: [marker.css[0] - left, marker.css[1] - top] as const
+					css: [marker.css[0] - left, marker.css[1] - top] as const,
 				}));
-			} catch { return []; }
+			} catch {
+				return [];
+			}
 		});
 		overlayOutput = { inputs, value };
 		return value;
@@ -322,7 +372,7 @@ export function createContributionView(input: ContributionViewPort) {
 			return projected === null ? null : [projected[0] - left, projected[1] - top];
 		};
 		const segmentsOf = (
-			segments: readonly (readonly [Vec3, Vec3])[]
+			segments: readonly (readonly [Vec3, Vec3])[],
 		): readonly (readonly [readonly [number, number], readonly [number, number]])[] =>
 			segments.flatMap(([from, to]) => {
 				const a = project(from);
@@ -339,7 +389,7 @@ export function createContributionView(input: ContributionViewPort) {
 					labels: (guide.labels ?? []).flatMap((label) => {
 						const point = project(label.world);
 						return point === null ? [] : [{ css: point, text: label.text }];
-					})
+					}),
 				}));
 			} catch {
 				return [];
@@ -384,20 +434,24 @@ export function createContributionView(input: ContributionViewPort) {
 							return point === null ? [] : [{ css: point, text: label.text }];
 						});
 						const snapPoint = candidate.snap === undefined ? null : css(candidate.snap.world);
-						return [{
-							id: candidate.id,
-							role: candidate.role,
-							drawing: candidate.drawing,
-							polygons,
-							segments,
-							labels,
-							...(snapPoint === null || candidate.snap === undefined
-								? {}
-								: { snap: { css: snapPoint, name: candidate.snap.name } })
-						}];
-					}
+						return [
+							{
+								id: candidate.id,
+								role: candidate.role,
+								drawing: candidate.drawing,
+								polygons,
+								segments,
+								labels,
+								...(snapPoint === null || candidate.snap === undefined
+									? {}
+									: { snap: { css: snapPoint, name: candidate.snap.name } }),
+							},
+						];
+					},
 				);
-			} catch { return []; }
+			} catch {
+				return [];
+			}
 		});
 		candidateOutput = { inputs, value };
 		return value;
@@ -407,7 +461,11 @@ export function createContributionView(input: ContributionViewPort) {
 		const handle = adapterContext();
 		if (handle === null) return [];
 		return [...adapters.values()].flatMap((entry) => {
-			try { return entry.contributions.graphics?.(handle.context) ?? []; } catch { return []; }
+			try {
+				return entry.contributions.graphics?.(handle.context) ?? [];
+			} catch {
+				return [];
+			}
 		});
 	};
 	const ghosts: StageFacade['ghosts'] = () => {
@@ -419,7 +477,11 @@ export function createContributionView(input: ContributionViewPort) {
 			return ghostOutput.value;
 		}
 		const value = [...adapters.values()].flatMap((entry) => {
-			try { return entry.contributions.ghosts?.(handle.context) ?? []; } catch { return []; }
+			try {
+				return entry.contributions.ghosts?.(handle.context) ?? [];
+			} catch {
+				return [];
+			}
 		});
 		ghostOutput = { inputs, value };
 		return value;
@@ -448,7 +510,11 @@ export function createContributionView(input: ContributionViewPort) {
 		const facts: StageCardFactRecord[] = [];
 		for (const [adapterId, entry] of adapters.entries()) {
 			let contributed: readonly StageCardFact[] = [];
-			try { contributed = entry.contributions.cardFacts?.(subject) ?? []; } catch { contributed = []; }
+			try {
+				contributed = entry.contributions.cardFacts?.(subject) ?? [];
+			} catch {
+				contributed = [];
+			}
 			for (const fact of contributed) facts.push({ ...fact, adapterId });
 		}
 		return facts.sort((a, b) => {
@@ -466,7 +532,11 @@ export function createContributionView(input: ContributionViewPort) {
 			const entry = adapters.get(adapterId);
 			if (entry?.contributions.cardWriter === undefined) continue;
 			let content: StageInstrumentContent | null = null;
-			try { content = entry.contributions.cardWriter(subject); } catch { content = null; }
+			try {
+				content = entry.contributions.cardWriter(subject);
+			} catch {
+				content = null;
+			}
 			if (content !== null) return { ...content, adapterId };
 		}
 		return null;
@@ -477,16 +547,25 @@ export function createContributionView(input: ContributionViewPort) {
 		const actions: StageCardActionRecord[] = [];
 		for (const [adapterId, entry] of adapters.entries()) {
 			let contributed: readonly StageCardAction[] = [];
-			try { contributed = entry.contributions.cardActions?.(subject) ?? []; } catch { contributed = []; }
+			try {
+				contributed = entry.contributions.cardActions?.(subject) ?? [];
+			} catch {
+				contributed = [];
+			}
 			for (const action of contributed) {
 				if (input.admitsCardAction?.(adapterId, subject.sourceId, action.id) === false) continue;
 				// A held record re-asks at run time: a stale button or key cannot outlive the scope.
 				actions.push({
 					...action,
 					adapterId,
-					run: async () => input.admitsCardAction?.(adapterId, subject.sourceId, action.id) === false
-						? { kind: 'refused', message: 'This is not offered here: the object being edited is protected while Object Studio is open.' }
-						: action.run()
+					run: async () =>
+						input.admitsCardAction?.(adapterId, subject.sourceId, action.id) === false
+							? {
+									kind: 'refused',
+									message:
+										'This is not offered here: the object being edited is protected while Object Studio is open.',
+								}
+							: action.run(),
 				});
 			}
 		}
@@ -505,7 +584,11 @@ export function createContributionView(input: ContributionViewPort) {
 			const entry = adapters.get(adapterId);
 			if (entry?.contributions.cardName === undefined) continue;
 			let target: StageCardNameTarget | null = null;
-			try { target = entry.contributions.cardName(subject); } catch { target = null; }
+			try {
+				target = entry.contributions.cardName(subject);
+			} catch {
+				target = null;
+			}
 			if (target !== null) return { ...target, adapterId };
 		}
 		return null;
@@ -529,7 +612,11 @@ export function createContributionView(input: ContributionViewPort) {
 			markHover = mark;
 			return;
 		}
-		if (idleMarkHover !== null && markHover?.adapterId === idleMarkHover.adapterId && markHover.id === idleMarkHover.id) {
+		if (
+			idleMarkHover !== null &&
+			markHover?.adapterId === idleMarkHover.adapterId &&
+			markHover.id === idleMarkHover.id
+		) {
 			markHover = null;
 		}
 		idleMarkHover = null;
@@ -550,7 +637,6 @@ export function createContributionView(input: ContributionViewPort) {
 		const _merged = mergeStageHeightTicks(declared);
 		return mergeStageHeightTicks(declared);
 	}
-
 
 	return {
 		syncDisclosureSelection,

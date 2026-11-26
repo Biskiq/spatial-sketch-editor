@@ -2,11 +2,23 @@ import type { LayoutVec2 } from '../geometry/coordinates';
 import { LAYOUT_GEOMETRY_EPSILON } from '../geometry/openings';
 import type { PlanBox } from './plan-box-index';
 import type { DynamicBvh } from './bvh';
-import type { LayoutDocumentWallFirst, LayoutJunction, LayoutObject, LayoutWall, LayoutWallFirstRoom, LayoutWallOpening } from '../wall/types';
+import type {
+	LayoutDocumentWallFirst,
+	LayoutJunction,
+	LayoutObject,
+	LayoutWall,
+	LayoutWallFirstRoom,
+	LayoutWallOpening,
+} from '../wall/types';
 import type { SampledTopologyWall } from '../wall/topology';
 import { PersistentVector } from '../kernel/persistent-store';
 import type { IndexedOpeningEntry } from './cow';
-import type { EdgeAreaContribution, HalfEdgeDesc, HalfEdgeWalkLink, WalkSummary } from './planar-map';
+import type {
+	EdgeAreaContribution,
+	HalfEdgeDesc,
+	HalfEdgeWalkLink,
+	WalkSummary,
+} from './planar-map';
 
 export type DocumentWorldIndex = {
 	readonly junctionsRef: readonly LayoutJunction[] | PersistentVector<LayoutJunction>;
@@ -45,7 +57,6 @@ export type DocumentWorldIndex = {
 	readonly halfEdgeWalkByKey: ReadonlyMap<string, HalfEdgeWalkLink>;
 };
 
-
 export type CertifiedWorldPatch = {
 	readonly parentDoc: LayoutDocumentWallFirst;
 	readonly changedJunctionIds: readonly string[];
@@ -57,7 +68,6 @@ export type CertifiedWorldPatch = {
 	readonly nextWalkSummaries?: ReadonlyMap<number, WalkSummary>;
 	readonly nextHalfEdgeContribs?: ReadonlyMap<string, EdgeAreaContribution>;
 };
-
 
 export const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]*$/;
 

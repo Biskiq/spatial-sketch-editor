@@ -57,7 +57,7 @@ export {
 	type TargetMapping,
 	type TargetMetricBasis,
 	type UvMapping,
-	type ValueSource
+	type ValueSource,
 } from './types';
 
 export {
@@ -66,7 +66,7 @@ export {
 	dedupeMaterialIssues,
 	sortMaterialIssues,
 	type MaterialIssue,
-	type MaterialIssueCode
+	type MaterialIssueCode,
 } from './issues';
 
 export {
@@ -83,7 +83,7 @@ export {
 	readRecipe,
 	type FinishReadResult,
 	type OverridesReadResult,
-	type RecipeReadResult
+	type RecipeReadResult,
 } from './read';
 
 export {
@@ -91,7 +91,7 @@ export {
 	recipeImageDigests,
 	type MaterialDefinition,
 	type MaterialDefinitionReadResult,
-	type MaterialResourceImage
+	type MaterialResourceImage,
 } from './definition';
 
 export {
@@ -100,7 +100,7 @@ export {
 	verifyMaterialDigest,
 	type MaterialDigestProof,
 	type MaterialDigestProofEntry,
-	type MaterialProofResult
+	type MaterialProofResult,
 } from './proof';
 
 export {
@@ -110,7 +110,7 @@ export {
 	type MaterialDeliveryInput,
 	type MaterialDeliveryMappingRequirement,
 	type MaterialDeliverySubject,
-	type MaterialDeliveryUse
+	type MaterialDeliveryUse,
 } from './delivery';
 
 export {
@@ -121,7 +121,7 @@ export {
 	mappingOfBinding,
 	materialMetricRepeat,
 	readRecipeWithHash,
-	recipeHash
+	recipeHash,
 } from './recipe';
 
 export {
@@ -141,7 +141,7 @@ export {
 	type CatalogueMaterial,
 	type CatalogueMaterialId,
 	type LegacyMaterialId,
-	type CatalogueRenderFacts
+	type CatalogueRenderFacts,
 } from './catalogue';
 
 export {
@@ -151,7 +151,7 @@ export {
 	resolveFinish,
 	shippedImageIndex,
 	type ImageIndex,
-	type ResolveBase
+	type ResolveBase,
 } from './resolve';
 
 export {
@@ -161,7 +161,7 @@ export {
 	rgba8MipChainBytes,
 	type FinishPlanOrigin,
 	type FinishSamplingPlan,
-	type FinishSamplingPlanEntry
+	type FinishSamplingPlanEntry,
 } from './plan';
 
 export {
@@ -169,12 +169,12 @@ export {
 	summarizeDrawGeometry,
 	targetHasDraws,
 	type AvailabilityIntersection,
-	type DrawGeometry
+	type DrawGeometry,
 } from './target';
 
 export {
 	bindFinish,
 	qualifyAcrossTargets,
 	type AcrossTargetsQualification,
-	type TargetQualification
+	type TargetQualification,
 } from './bind';

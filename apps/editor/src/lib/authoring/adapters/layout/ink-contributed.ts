@@ -4,7 +4,10 @@
  * The contributing binding owns its session; this sub-owner only resolves the
  * selected record and opens or cancels the session against the current binding.
  */
-import type { StageInkReadingRecord, StageInkReadingSession } from '$lib/authoring/stage/stage-adapter-host';
+import type {
+	StageInkReadingRecord,
+	StageInkReadingSession,
+} from '$lib/authoring/stage/stage-adapter-host';
 import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 
 export type ContributedInkReader = {
@@ -18,7 +21,8 @@ export function createContributedInkReader(input: {
 	readonly services: StageAdapterServices;
 	readonly readingId: () => string;
 }): ContributedInkReader {
-	let session: { readonly readingId: string; readonly session: StageInkReadingSession } | null = null;
+	let session: { readonly readingId: string; readonly session: StageInkReadingSession } | null =
+		null;
 	const reading = (): StageInkReadingRecord | null => {
 		const id = input.readingId();
 		if (id === 'wall' || id === 'opening' || id === 'room' || id === 'terrace' || id === 'roof') {

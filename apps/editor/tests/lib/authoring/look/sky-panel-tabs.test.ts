@@ -54,7 +54,7 @@ function press(node: HTMLElement, key: string): void {
 	node.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
 }
 
-describe('T2.S6 — Sky and Looks tabs', () => {
+describe('Sky and Looks tabs', () => {
 	it('moves to the other tab with an arrow key', async () => {
 		const look = fake();
 		mounted = mount(SkyPanel, { target: document.body, props: { look } });

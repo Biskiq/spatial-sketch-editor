@@ -4,7 +4,7 @@ import {
 	layoutSelectionReference,
 	primaryEntry,
 	sameReference,
-	type StageSelectionEntry
+	type StageSelectionEntry,
 } from '../semantic-selection';
 import { planSourceKindOf } from './plan-source-kind';
 
@@ -53,13 +53,26 @@ export function createStageHover(ports: StageHoverPorts) {
 		hoverSample = null;
 		const stage = input.facade();
 		const id = stage?.evaluationId() ?? null;
-		if (sample === null || stage === null || id === null || input.session.gesture() !== null || ports.dragging()) return;
+		if (
+			sample === null ||
+			stage === null ||
+			id === null ||
+			input.session.gesture() !== null ||
+			ports.dragging()
+		)
+			return;
 		stageCursor = null;
 		// An armed host tool previews its own winner (the Eraser's dashes, Measure's
 		// second point); the ordinary subject hover would compete with it.
 		const armedHostTool = input.armedHostTool();
 		if (armedHostTool !== null) {
-			stage.idleHoverIntent({ phase: 'cancel', css: sample.css, evaluationId: id, coarse: sample.coarse, shift: sample.shift });
+			stage.idleHoverIntent({
+				phase: 'cancel',
+				css: sample.css,
+				evaluationId: id,
+				coarse: sample.coarse,
+				shift: sample.shift,
+			});
 			const toolInput = { css: sample.css, evaluationId: id, coarse: sample.coarse };
 			if (armedHostTool === 'measure') input.measureTool()?.hover(toolInput);
 			else if (armedHostTool === 'erase') input.eraserTool()?.hover(toolInput);
@@ -74,7 +87,13 @@ export function createStageHover(ports: StageHoverPorts) {
 		// so a tap can select its Opening and a drag can move the anchor without
 		// selecting the Wall body underneath.
 		if (input.unfold.pinAt(sample.css, sample.coarse, stage) !== null) {
-			stage.idleHoverIntent({ phase: 'cancel', css: sample.css, evaluationId: id, coarse: sample.coarse, shift: sample.shift });
+			stage.idleHoverIntent({
+				phase: 'cancel',
+				css: sample.css,
+				evaluationId: id,
+				coarse: sample.coarse,
+				shift: sample.shift,
+			});
 			stage.setMarkHover(null);
 			input.session.setHover(null);
 			hoverSelection = null;
@@ -88,11 +107,18 @@ export function createStageHover(ports: StageHoverPorts) {
 		// subject tint underneath, so two emphases never compete for one pointer.
 		const mark = stage.hitMark({ css: sample.css, coarse: sample.coarse });
 		if (mark !== null) {
-			stage.idleHoverIntent({ phase: 'cancel', css: sample.css, evaluationId: id, coarse: sample.coarse, shift: sample.shift });
+			stage.idleHoverIntent({
+				phase: 'cancel',
+				css: sample.css,
+				evaluationId: id,
+				coarse: sample.coarse,
+				shift: sample.shift,
+			});
 			stage.setMarkHover({ adapterId: mark.adapterId, id: mark.id });
-			stageCursor = mark.mark.resizeCursor === undefined
-				? null
-				: stageResizeCursorCss(mark.mark.resizeCursor, mark.mark.direction);
+			stageCursor =
+				mark.mark.resizeCursor === undefined
+					? null
+					: stageResizeCursorCss(mark.mark.resizeCursor, mark.mark.direction);
 			input.session.setHover(null);
 			hoverSelection = null;
 			// A selected Wall's own grips are draggable; every other
@@ -109,7 +135,13 @@ export function createStageHover(ports: StageHoverPorts) {
 		}
 		stage.setMarkHover(null);
 		stageCursor = null;
-		const idleMark = stage.idleHoverIntent({ phase: 'move', css: sample.css, evaluationId: id, coarse: sample.coarse, shift: sample.shift });
+		const idleMark = stage.idleHoverIntent({
+			phase: 'move',
+			css: sample.css,
+			evaluationId: id,
+			coarse: sample.coarse,
+			shift: sample.shift,
+		});
 		if (idleMark !== null) {
 			stage.setMarkHover({ adapterId: idleMark.adapterId, id: idleMark.id });
 			input.session.setHover(null);
@@ -117,14 +149,33 @@ export function createStageHover(ports: StageHoverPorts) {
 			hoverMove = true;
 			return;
 		}
-		stage.idleHoverIntent({ phase: 'cancel', css: sample.css, evaluationId: id, coarse: sample.coarse, shift: sample.shift });
-		if (stage.hoverIntent({ phase: 'move', css: sample.css, evaluationId: id, shift: sample.shift, coarse: sample.coarse })) {
+		stage.idleHoverIntent({
+			phase: 'cancel',
+			css: sample.css,
+			evaluationId: id,
+			coarse: sample.coarse,
+			shift: sample.shift,
+		});
+		if (
+			stage.hoverIntent({
+				phase: 'move',
+				css: sample.css,
+				evaluationId: id,
+				shift: sample.shift,
+				coarse: sample.coarse,
+			})
+		) {
 			input.session.setHover(null);
 			hoverSelection = null;
 			hoverMove = false;
 			return;
 		}
-		const result = stage.resolvePick({ css: sample.css, evaluationId: id, purpose: 'hover', tool: null });
+		const result = stage.resolvePick({
+			css: sample.css,
+			evaluationId: id,
+			purpose: 'hover',
+			tool: null,
+		});
 		if (result.kind !== 'resolved') {
 			input.session.setHover(null);
 			hoverSelection = null;
@@ -141,9 +192,16 @@ export function createStageHover(ports: StageHoverPorts) {
 			hoverMove = false;
 			return;
 		}
-		const representation = hit.reference === undefined
-			? { sourceId: hit.sourceId, sourceKind: planKind!, generationId: hit.generationId, stream: hit.stream, subRef: hit.subRef }
-			: undefined;
+		const representation =
+			hit.reference === undefined
+				? {
+						sourceId: hit.sourceId,
+						sourceKind: planKind!,
+						generationId: hit.generationId,
+						stream: hit.stream,
+						subRef: hit.subRef,
+					}
+				: undefined;
 		const reference = hit.reference ?? layoutSelectionReference(representation!, stage.snapshot());
 		input.session.setHover({ reference });
 		const primary = primaryEntry(stage.selectionState());
@@ -164,7 +222,11 @@ export function createStageHover(ports: StageHoverPorts) {
 		// Identity, not object identity: a pointer moving within one subject must not
 		// rebuild the Stage's ink every frame.
 		if (nextHover === null) hoverSelection = null;
-		else if (hoverSelection === null || !sameReference(hoverSelection.reference, nextHover.reference)) hoverSelection = nextHover;
+		else if (
+			hoverSelection === null ||
+			!sameReference(hoverSelection.reference, nextHover.reference)
+		)
+			hoverSelection = nextHover;
 	}
 
 	function sample(css: [number, number], shift: boolean, coarse: boolean): void {
@@ -190,6 +252,6 @@ export function createStageHover(ports: StageHoverPorts) {
 		},
 		clearSelection() {
 			hoverSelection = null;
-		}
+		},
 	};
 }

@@ -28,7 +28,7 @@ export type SectionSource = {
 
 export type PickOptions = {
 	/**
-	 * Whether a world point is currently not drawn (a Slice or X2's cutaway hides it).
+	 * Whether a world point is currently not drawn (a Slice or The cutaway hides it).
 	 * A hidden hit is skipped and the ray continues, so a click reaches what is
 	 * visible behind it. `object` is the hit's own mesh, which lets the cutaway
 	 * answer per Wall rather than per point. Existing callers ignore it.
@@ -77,7 +77,11 @@ export function createScenePickSource() {
 	const listeners = new Set<() => void>();
 	function notify(): void {
 		for (const listener of [...listeners]) {
-			try { listener(); } catch { /* A render observer must not break the pick source. */ }
+			try {
+				listener();
+			} catch {
+				/* A render observer must not break the pick source. */
+			}
 		}
 	}
 	const raycaster = new Raycaster();
@@ -87,13 +91,22 @@ export function createScenePickSource() {
 		const stamp: number[] = [];
 		root.traverse((node) => {
 			stamp.push(node.id, ...node.matrixWorld.elements);
-			if (node instanceof Mesh) stamp.push(node.geometry.id, node.geometry.attributes.position?.version ?? 0);
+			if (node instanceof Mesh)
+				stamp.push(node.geometry.id, node.geometry.attributes.position?.version ?? 0);
 		});
 		const cached = boxes.get(root);
-		if (cached && cached.stamp.length === stamp.length && stamp.every((value, i) => value === cached.stamp[i])) return cached.bounds;
+		if (
+			cached &&
+			cached.stamp.length === stamp.length &&
+			stamp.every((value, i) => value === cached.stamp[i])
+		)
+			return cached.bounds;
 		// Three's Mesh.raycast otherwise builds these on the first pointer event.
 		root.traverse((node) => {
-			if (node instanceof Mesh) { node.geometry.computeBoundingBox(); node.geometry.computeBoundingSphere(); }
+			if (node instanceof Mesh) {
+				node.geometry.computeBoundingBox();
+				node.geometry.computeBoundingSphere();
+			}
 		});
 		const bounds = new Box3().setFromObject(root);
 		boxes.set(root, { stamp, bounds });
@@ -137,58 +150,96 @@ export function createScenePickSource() {
 		const object = hit.object as Mesh;
 		const triangleOffset = hit.faceIndex == null ? -1 : hit.faceIndex * 3;
 		const ranges = object.geometry.userData.pickRanges as readonly Layout3dPickRange[] | undefined;
-		const face = entityId === null ? ranges?.find((range) =>
-			triangleOffset >= range.start && triangleOffset < range.start + range.count) : undefined;
+		const face =
+			entityId === null
+				? ranges?.find(
+						(range) => triangleOffset >= range.start && triangleOffset < range.start + range.count,
+					)
+				: undefined;
 		const isWall = face?.kind === 'wall' && face.surface === 'side';
-		const normal = isWall && hit.face
-			? hit.face.normal.clone().applyNormalMatrix(new Matrix3().getNormalMatrix(object.matrixWorld))
-			: null;
+		const normal =
+			isWall && hit.face
+				? hit.face.normal
+						.clone()
+						.applyNormalMatrix(new Matrix3().getNormalMatrix(object.matrixWorld))
+				: null;
 		const faceNormal = hit.face
-			? hit.face.normal.clone().applyNormalMatrix(new Matrix3().getNormalMatrix(object.matrixWorld)).toArray() as [number, number, number]
+			? (hit.face.normal
+					.clone()
+					.applyNormalMatrix(new Matrix3().getNormalMatrix(object.matrixWorld))
+					.toArray() as [number, number, number])
 			: undefined;
 		const identity = renderIdentityOf(object);
-		const surface = identity?.kind === 'region' && hit.faceIndex != null
-			? regionSurfaceOf(object.geometry, hit.faceIndex) : undefined;
+		const surface =
+			identity?.kind === 'region' && hit.faceIndex != null
+				? regionSurfaceOf(object.geometry, hit.faceIndex)
+				: undefined;
 		return {
-			...(surface ? { region: { kind: 'region-face' as const, regionId: identity!.id, face: surface } } : {}),
+			...(surface
+				? { region: { kind: 'region-face' as const, regionId: identity!.id, face: surface } }
+				: {}),
 			...(identity === null ? {} : { layoutId: identity.id, layoutKind: identity.kind }),
-			...(face?.paintSide === undefined ? {} : { wallId: face.segmentId, wallSide: face.paintSide }),
+			...(face?.paintSide === undefined
+				? {}
+				: { wallId: face.segmentId, wallSide: face.paintSide }),
 			...(face?.kind === 'wall' && face.paintSide === undefined ? { wallId: face.segmentId } : {}),
 			...(normal === null ? {} : { wallNormal: normal.toArray() }),
 			...(faceNormal === undefined ? {} : { normal: faceNormal }),
 			entityId,
 			kind: entityId !== null ? 'entity' : identity?.kind === 'floor' ? 'floor' : 'layout',
 			distanceMeters: hit.distance,
-			worldPoint: hit.point.toArray()
+			worldPoint: hit.point.toArray(),
 		};
 	}
 	function prepare(ray: PointerRay, expected: RuntimeScene): boolean {
-		if (source !== expected || ![...ray.origin, ...ray.direction].every(Number.isFinite)) return false;
+		if (source !== expected || ![...ray.origin, ...ray.direction].every(Number.isFinite))
+			return false;
 		raycaster.ray.origin.set(...ray.origin);
 		raycaster.ray.direction.set(...ray.direction);
 		return true;
 	}
-	function targetsFor(expected: RuntimeScene, only?: string | null): Array<{ id: string | null; root: Object3D | undefined }> {
+	function targetsFor(
+		expected: RuntimeScene,
+		only?: string | null,
+	): Array<{ id: string | null; root: Object3D | undefined }> {
 		if (only !== undefined) {
-			const scoped = only === null ? undefined : expected.entities.find((entity) => entity.id === only);
-			return scoped === undefined ? [] : [{ id: scoped.id as string | null, root: roots.get(scoped.id) }];
+			const scoped =
+				only === null ? undefined : expected.entities.find((entity) => entity.id === only);
+			return scoped === undefined
+				? []
+				: [{ id: scoped.id as string | null, root: roots.get(scoped.id) }];
 		}
-		const targets = expected.entities.map((entity) => ({ id: entity.id as string | null, root: roots.get(entity.id) }));
+		const targets = expected.entities.map((entity) => ({
+			id: entity.id as string | null,
+			root: roots.get(entity.id),
+		}));
 		if (layoutRoot !== null) targets.push({ id: null, root: layoutRoot });
 		return targets;
 	}
-	function nearest(candidate: SceneRenderedHit, current: SceneRenderedHit | null): SceneRenderedHit {
+	function nearest(
+		candidate: SceneRenderedHit,
+		current: SceneRenderedHit | null,
+	): SceneRenderedHit {
 		if (current === null) return candidate;
-		if (Math.abs(candidate.distanceMeters - current.distanceMeters) <= LAYOUT_SLICE_CONTACT_METERS) {
+		if (
+			Math.abs(candidate.distanceMeters - current.distanceMeters) <= LAYOUT_SLICE_CONTACT_METERS
+		) {
 			if (candidate.region?.face === 'top' && current.kind === 'floor') return candidate;
 			if (current.region?.face === 'top' && candidate.kind === 'floor') return current;
 		}
 		if (candidate.distanceMeters < current.distanceMeters) return candidate;
-		if (candidate.distanceMeters === current.distanceMeters && (candidate.entityId ?? '') < (current.entityId ?? '')) return candidate;
+		if (
+			candidate.distanceMeters === current.distanceMeters &&
+			(candidate.entityId ?? '') < (current.entityId ?? '')
+		)
+			return candidate;
 		return current;
 	}
 	return {
-		setSource(next: RuntimeScene) { source = next; refresh(); },
+		setSource(next: RuntimeScene) {
+			source = next;
+			refresh();
+		},
 		/**
 		 * Whether this entity has a mounted, visible body the pick ray can reach.
 		 *
@@ -206,26 +257,47 @@ export function createScenePickSource() {
 			return hasRenderableMesh(root);
 		},
 		refresh,
-		bounds(id: string, expected: RuntimeScene): { min: [number, number, number]; max: [number, number, number] } | null {
+		bounds(
+			id: string,
+			expected: RuntimeScene,
+		): { min: [number, number, number]; max: [number, number, number] } | null {
 			const root = source === expected ? roots.get(id) : undefined;
 			if (root === undefined || !hasRenderableMesh(root)) return null;
 			const box = boundsOf(root);
 			return box.isEmpty() ? null : { min: box.min.toArray(), max: box.max.toArray() };
 		},
 		registerLayout(root: Object3D) {
-			layoutRoot = root; refresh();
-			return () => { if (layoutRoot === root) { layoutRoot = null; notify(); } };
+			layoutRoot = root;
+			refresh();
+			return () => {
+				if (layoutRoot === root) {
+					layoutRoot = null;
+					notify();
+				}
+			};
 		},
 		register(id: string, root: Object3D) {
-			roots.set(id, root); refresh();
-			return () => { if (roots.get(id) === root) { roots.delete(id); notify(); } };
+			roots.set(id, root);
+			refresh();
+			return () => {
+				if (roots.get(id) === root) {
+					roots.delete(id);
+					notify();
+				}
+			};
 		},
 		/** Register the Layout shell's owned identity index (see `VisitorLayoutShell`). */
 		registerLayoutIdentity(index: LayoutIdentityIndex) {
 			// Deferred like `registerLayout`: this runs inside the shell's mount effect, and a
 			// synchronous observer that writes state would loop that effect.
-			layoutIdentity = index; refresh();
-			return () => { if (layoutIdentity === index) { layoutIdentity = null; notify(); } };
+			layoutIdentity = index;
+			refresh();
+			return () => {
+				if (layoutIdentity === index) {
+					layoutIdentity = null;
+					notify();
+				}
+			};
 		},
 		/** The object that draws this Layout item, resolved through the owner's index. */
 		layoutObjectOf(kind: 'wall' | 'object' | 'floor' | 'region', id: string): Object3D | null {
@@ -237,12 +309,14 @@ export function createScenePickSource() {
 		/** Observe renderer registration/lifecycle; never used by the hit path. */
 		onRenderRootsChanged(listener: () => void): () => void {
 			listeners.add(listener);
-			return () => { listeners.delete(listener); };
+			return () => {
+				listeners.delete(listener);
+			};
 		},
 		pick(
 			ray: PointerRay,
 			expected: RuntimeScene,
-			options: PickOptions = {}
+			options: PickOptions = {},
 		): SceneRenderedHit | null {
 			if (!prepare(ray, expected)) return null;
 			let result: SceneRenderedHit | null = null;
@@ -258,7 +332,10 @@ export function createScenePickSource() {
 					if (!(hit.object instanceof Mesh)) continue;
 					let visible = true;
 					for (let node: Object3D | null = hit.object; node !== null; node = node.parent) {
-						if (!node.visible) { visible = false; break; }
+						if (!node.visible) {
+							visible = false;
+							break;
+						}
 					}
 					if (!visible) continue;
 					// A Slice's cut is display geometry, not a document change: the point is
@@ -286,18 +363,18 @@ export function createScenePickSource() {
 		 * **Scope is decided by identity, not by what happens to be mounted** (§2.2):
 		 *
 		 * - Scene models are clipped by the planes and **never capped** (owner A-2), so
-		 *   no Scene root is visited. An imported model must also never enter a Wall
-		 *   union: its triangles are open in arbitrary places and would either break the
-		 *   group's balance or fabricate a cap through it.
+		 *  no Scene root is visited. An imported model must also never enter a Wall
+		 *  union: its triangles are open in arbitrary places and would either break the
+		 *  group's balance or fabricate a cap through it.
 		 * - Walls and Wall failure surfaces share one structure group — together they
-		 *   are the closed solid the builder resolved.
+		 *  are the closed solid the builder resolved.
 		 * - **Each Layout object gets its own group.** Grouping every object as `object`
-		 *   unioned unrelated plinths, so one object's section could eat another's.
+		 *  unioned unrelated plinths, so one object's section could eat another's.
 		 * - A floor is not a cap candidate: it is a horizontal slab at the datum, and in
-		 *   the structure group it would weld into every Wall's bottom edge and close
-		 *   their boundaries where the builder had a real end.
+		 *  the structure group it would weld into every Wall's bottom edge and close
+		 *  their boundaries where the builder had a real end.
 		 * - An untagged mesh (a derived ceiling, the floor's shadow catcher) is not
-		 *   identified as a Layout cap source and is skipped rather than guessed at.
+		 *  identified as a Layout cap source and is skipped rather than guessed at.
 		 */
 		sectionSources(onlyRegions = false): SectionSource[] {
 			const sources: SectionSource[] = [];
@@ -319,10 +396,15 @@ export function createScenePickSource() {
 				if (identity.kind === 'wall-failure') return;
 				sources.push({
 					identity: `${identity.kind}:${identity.id}`,
-					group: identity.kind === 'region' ? `layout-region:${identity.id}` : identity.kind === 'object' ? `layout-object:${identity.id}` : LAYOUT_STRUCTURE_GROUP,
+					group:
+						identity.kind === 'region'
+							? `layout-region:${identity.id}`
+							: identity.kind === 'object'
+								? `layout-object:${identity.id}`
+								: LAYOUT_STRUCTURE_GROUP,
 					positions: position.array as ArrayLike<number>,
 					index: node.geometry.getIndex()?.array ?? null,
-					matrix: node.matrixWorld.elements
+					matrix: node.matrixWorld.elements,
 				});
 			};
 			if (onlyRegions) {
@@ -348,7 +430,7 @@ export function createScenePickSource() {
 			ray: PointerRay,
 			expected: RuntimeScene,
 			accept: (hit: SceneRenderedHit) => boolean,
-			options: PickOptions = {}
+			options: PickOptions = {},
 		): SceneRenderedHit | null {
 			if (!prepare(ray, expected)) return null;
 			let accepted: SceneRenderedHit | null = null;
@@ -361,7 +443,10 @@ export function createScenePickSource() {
 					if (!(hit.object instanceof Mesh)) continue;
 					let visible = true;
 					for (let node: Object3D | null = hit.object; node !== null; node = node.parent) {
-						if (!node.visible) { visible = false; break; }
+						if (!node.visible) {
+							visible = false;
+							break;
+						}
 					}
 					if (!visible) continue;
 					// Artwork placement and Layout's occlusion test aim where the creator
@@ -376,8 +461,10 @@ export function createScenePickSource() {
 					}
 				}
 			}
-			return accepted !== null && (blockedAt === null || accepted.distanceMeters <= blockedAt) ? accepted : null;
-		}
+			return accepted !== null && (blockedAt === null || accepted.distanceMeters <= blockedAt)
+				? accepted
+				: null;
+		},
 	};
 }
 export type ScenePickSource = ReturnType<typeof createScenePickSource>;

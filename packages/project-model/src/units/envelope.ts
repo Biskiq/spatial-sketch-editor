@@ -30,7 +30,7 @@ import {
 	type ProjectUnits,
 	type ResourceUnitPayload,
 	type UnitDomain,
-	type UnitPayload
+	type UnitPayload,
 } from './types';
 
 /** The empty Camera payload: no fabricated view, no connectivity. */
@@ -74,12 +74,12 @@ export async function createEmptyUnitEnvelope(input: {
 		dependencyLock: { formatVersion: 1, entries: [] },
 		layout: {
 			unitId: `${input.id}:layout`,
-			data: input.layout ?? createEmptyWallFirstLayoutDocument()
+			data: input.layout ?? createEmptyWallFirstLayoutDocument(),
 		},
 		scene: { unitId: `${input.id}:scene`, data: input.scene ?? createEmptyUnitSceneDocument() },
 		camera: { unitId: `${input.id}:camera`, data: createEmptyCameraPayload() },
 		experience: { unitId: `${input.id}:experience`, data: createEmptyExperiencePayload() },
-		resources: { unitId: `${input.id}:resources`, data: createEmptyResourcePayload() }
+		resources: { unitId: `${input.id}:resources`, data: createEmptyResourcePayload() },
 	});
 }
 
@@ -91,41 +91,41 @@ export async function createEmptyUnitEnvelope(input: {
 export function replaceUnitData(
 	envelope: ProjectEnvelope,
 	domain: 'layout',
-	data: LayoutUnitPayload
+	data: LayoutUnitPayload,
 ): ProjectEnvelope;
 export function replaceUnitData(
 	envelope: ProjectEnvelope,
 	domain: 'scene',
-	data: CameraFreeSceneDocument
+	data: CameraFreeSceneDocument,
 ): ProjectEnvelope;
 export function replaceUnitData(
 	envelope: ProjectEnvelope,
 	domain: 'camera',
-	data: CameraUnitPayload
+	data: CameraUnitPayload,
 ): ProjectEnvelope;
 export function replaceUnitData(
 	envelope: ProjectEnvelope,
 	domain: 'experience',
-	data: ExperienceUnitPayload
+	data: ExperienceUnitPayload,
 ): ProjectEnvelope;
 export function replaceUnitData(
 	envelope: ProjectEnvelope,
 	domain: 'resources',
-	data: ResourceUnitPayload
+	data: ResourceUnitPayload,
 ): ProjectEnvelope;
 export function replaceUnitData(
 	envelope: ProjectEnvelope,
 	domain: UnitDomain,
-	data: UnitPayload
+	data: UnitPayload,
 ): ProjectEnvelope;
 export function replaceUnitData(
 	envelope: ProjectEnvelope,
 	domain: UnitDomain,
-	data: UnitPayload
+	data: UnitPayload,
 ): ProjectEnvelope {
 	const units: ProjectUnits = {
 		...envelope.units,
-		[domain]: { header: { ...envelope.units[domain].header }, data }
+		[domain]: { header: { ...envelope.units[domain].header }, data },
 	} as ProjectUnits;
 	return { ...envelope, units };
 }

@@ -11,6 +11,6 @@ export function createEditorMotionClock() {
 			clockBase += (realSeconds - realBase) * factor;
 			realBase = realSeconds;
 			factor = speed === 'slow' ? 0.5 : speed === 'fast' ? 2 : 1;
-		}
+		},
 	};
 }

@@ -17,7 +17,6 @@ export type HalfEdgeDesc = {
 	readonly direction: 'forward' | 'reverse';
 };
 
-
 export type WalkSummary = {
 	readonly twiceSignedArea: number;
 	readonly wasPositive: boolean;
@@ -25,7 +24,6 @@ export type WalkSummary = {
 	readonly magnitude: number;
 	readonly accumulatedError: number;
 };
-
 
 export type HalfEdgeWalkLink = {
 	readonly walkIndex: number;
@@ -40,17 +38,18 @@ export type HalfEdgeWalkLink = {
  */
 export const WALK_AREA_GUARD_EPSILON = 1e-5;
 
-
 export function buildPlanarCombinatorialMap(
 	document: LayoutDocumentWallFirst,
 	pointById: ReadonlyMap<string, LayoutVec2>,
-	wallById: ReadonlyMap<string, LayoutWall>
-): {
-	faceGraphWallIdSet: ReadonlySet<string>;
-	starOrderByJunctionId: ReadonlyMap<string, readonly HalfEdgeDesc[]>;
-	walks: readonly WalkSummary[];
-	halfEdgeWalkByKey: ReadonlyMap<string, HalfEdgeWalkLink>;
-} | undefined {
+	wallById: ReadonlyMap<string, LayoutWall>,
+):
+	| {
+			faceGraphWallIdSet: ReadonlySet<string>;
+			starOrderByJunctionId: ReadonlyMap<string, readonly HalfEdgeDesc[]>;
+			walks: readonly WalkSummary[];
+			halfEdgeWalkByKey: ReadonlyMap<string, HalfEdgeWalkLink>;
+	  }
+	| undefined {
 	const faceGraphWalls = stripDanglesForIndex(document.walls);
 	const faceGraphWallIdSet = new Set(faceGraphWalls.map((w) => w.id));
 
@@ -60,13 +59,13 @@ export function buildPlanarCombinatorialMap(
 			fromId: w.startJunctionId,
 			toId: w.endJunctionId,
 			wallId: w.id,
-			direction: 'forward'
+			direction: 'forward',
 		});
 		halfEdges.push({
 			fromId: w.endJunctionId,
 			toId: w.startJunctionId,
 			wallId: w.id,
-			direction: 'reverse'
+			direction: 'reverse',
 		});
 	}
 
@@ -108,7 +107,7 @@ export function buildPlanarCombinatorialMap(
 			const star = outgoing.get(current.toId);
 			if (!star || star.length === 0) break;
 			const twinIdx = star.findIndex(
-				(cand) => cand.toId === current.fromId && cand.wallId === current.wallId
+				(cand) => cand.toId === current.fromId && cand.wallId === current.wallId,
 			);
 			if (twinIdx === -1) break;
 			const next = star[(twinIdx - 1 + star.length) % star.length]!;
@@ -122,21 +121,30 @@ export function buildPlanarCombinatorialMap(
 		if (!closed) return undefined;
 
 		const walkIndex = walks.length;
-		let twiceArea = 0, termCount = 0, magnitude = 0;
+		let twiceArea = 0,
+			termCount = 0,
+			magnitude = 0;
 		for (const half of ring) {
 			const w = wallById.get(half.wallId)!;
 			const start = pointById.get(w.startJunctionId)!;
 			const end = pointById.get(w.endJunctionId)!;
 			const contrib = computeHalfEdgeTwiceAreaContrib(w, start, end, half.direction);
 			if (contrib === null || !Number.isFinite(contrib.value)) return undefined;
-			twiceArea += contrib.value; termCount += contrib.termCount; magnitude = Math.max(magnitude, contrib.magnitude);
+			twiceArea += contrib.value;
+			termCount += contrib.termCount;
+			magnitude = Math.max(magnitude, contrib.magnitude);
 			halfEdgeWalkByKey.set(`${half.wallId}:${half.direction}`, {
 				walkIndex,
-				twiceEdgeContrib: contrib.value, termCount: contrib.termCount
+				twiceEdgeContrib: contrib.value,
+				termCount: contrib.termCount,
 			});
 		}
 		const accumulatedError = areaRoundingBound(termCount, magnitude);
-		if (!Number.isFinite(twiceArea) || !Number.isFinite(accumulatedError) || Math.abs(twiceArea) <= upperErrorSum(WALK_AREA_GUARD_EPSILON, 2 * accumulatedError)) {
+		if (
+			!Number.isFinite(twiceArea) ||
+			!Number.isFinite(accumulatedError) ||
+			Math.abs(twiceArea) <= upperErrorSum(WALK_AREA_GUARD_EPSILON, 2 * accumulatedError)
+		) {
 			return undefined;
 		}
 		const wasPositive = twiceArea > 0;
@@ -181,10 +189,9 @@ export function buildPlanarCombinatorialMap(
 		faceGraphWallIdSet,
 		starOrderByJunctionId: outgoing,
 		walks,
-		halfEdgeWalkByKey
+		halfEdgeWalkByKey,
 	};
 }
-
 
 function stripDanglesForIndex(walls: readonly LayoutWall[]): LayoutWall[] {
 	let current = [...walls];
@@ -195,7 +202,7 @@ function stripDanglesForIndex(walls: readonly LayoutWall[]): LayoutWall[] {
 			degree.set(w.endJunctionId, (degree.get(w.endJunctionId) ?? 0) + 1);
 		}
 		const kept = current.filter(
-			(w) => (degree.get(w.startJunctionId) ?? 0) > 1 && (degree.get(w.endJunctionId) ?? 0) > 1
+			(w) => (degree.get(w.startJunctionId) ?? 0) > 1 && (degree.get(w.endJunctionId) ?? 0) > 1,
 		);
 		if (kept.length === current.length) return current;
 		current = kept;
@@ -203,12 +210,11 @@ function stripDanglesForIndex(walls: readonly LayoutWall[]): LayoutWall[] {
 	return [];
 }
 
-
 export function compareHalfEdgesWithPoints(
 	pointOf: (id: string) => LayoutVec2 | undefined,
 	fromId: string,
 	a: HalfEdgeDesc,
-	b: HalfEdgeDesc
+	b: HalfEdgeDesc,
 ): number {
 	if (a.wallId === b.wallId && a.direction === b.direction) return 0;
 	const origin = pointOf(fromId)!;
@@ -224,7 +230,6 @@ export function compareHalfEdgesWithPoints(
 	return a.wallId < b.wallId ? -1 : a.wallId > b.wallId ? 1 : 0;
 }
 
-
 function quadrantOf(dx: number, dz: number): number {
 	if (dx > 0 && dz >= 0) return 0;
 	if (dx <= 0 && dz > 0) return 1;
@@ -232,10 +237,9 @@ function quadrantOf(dx: number, dz: number): number {
 	return 3;
 }
 
-
 export function sameCyclicHalfEdgeOrder(
 	a: readonly HalfEdgeDesc[],
-	b: readonly HalfEdgeDesc[]
+	b: readonly HalfEdgeDesc[],
 ): boolean {
 	if (a.length !== b.length) return false;
 	if (a.length <= 2) {
@@ -245,7 +249,7 @@ export function sameCyclicHalfEdgeOrder(
 	}
 	const first = a[0]!;
 	const offset = b.findIndex(
-		(cand) => cand.wallId === first.wallId && cand.direction === first.direction
+		(cand) => cand.wallId === first.wallId && cand.direction === first.direction,
 	);
 	if (offset === -1) return false;
 	for (let i = 0; i < a.length; i += 1) {
@@ -258,7 +262,6 @@ export function sameCyclicHalfEdgeOrder(
 	return true;
 }
 
-
 export type EdgeAreaContribution = { value: number; termCount: number; magnitude: number };
 
 /** Conservative forward-error envelope for <=2n sequential/grouped additions
@@ -266,39 +269,47 @@ export type EdgeAreaContribution = { value: number; termCount: number; magnitude
  * unit roundoff; 64 n² EPS M² also covers grouping, with subnormal slack.
  * This proves only a sign, never substitutes a canonical face/area value. */
 export function areaRoundingBound(terms: number, magnitude: number): number {
- if (!(terms > 0) || terms * Number.EPSILON > 1 / 1024) return Infinity;
- return 64 * Number.EPSILON * terms * terms * magnitude * magnitude + 64 * Number.MIN_VALUE * terms * terms;
+	if (!(terms > 0) || terms * Number.EPSILON > 1 / 1024) return Infinity;
+	return (
+		64 * Number.EPSILON * terms * terms * magnitude * magnitude +
+		64 * Number.MIN_VALUE * terms * terms
+	);
 }
 
 export function roundingAllowance(a: number, b: number): number {
- return 4 * Number.EPSILON * (Math.abs(a) + Math.abs(b)) + 4 * Number.MIN_VALUE;
+	return 4 * Number.EPSILON * (Math.abs(a) + Math.abs(b)) + 4 * Number.MIN_VALUE;
 }
 
 export function upperErrorSum(...values: number[]): number {
- let total = 0;
- for (const value of values) total = (total + value) * (1 + 8 * Number.EPSILON) + 4 * Number.MIN_VALUE;
- return total;
+	let total = 0;
+	for (const value of values)
+		total = (total + value) * (1 + 8 * Number.EPSILON) + 4 * Number.MIN_VALUE;
+	return total;
 }
-
 
 export function computeHalfEdgeTwiceAreaContrib(
 	wall: LayoutWall,
 	canonicalStart: LayoutVec2,
 	canonicalEnd: LayoutVec2,
 	direction: 'forward' | 'reverse',
-	sampling?: WallSamplingDerivation
+	sampling?: WallSamplingDerivation,
 ): EdgeAreaContribution | null {
 	const fromPt = direction === 'forward' ? canonicalStart : canonicalEnd;
 	const toPt = direction === 'forward' ? canonicalEnd : canonicalStart;
 	if (wall.centerline.kind === 'line') {
-		return { value: fromPt[0] * toPt[1] - toPt[0] * fromPt[1], termCount: 1, magnitude: Math.max(...fromPt.map(Math.abs), ...toPt.map(Math.abs)) };
+		return {
+			value: fromPt[0] * toPt[1] - toPt[0] * fromPt[1],
+			termCount: 1,
+			magnitude: Math.max(...fromPt.map(Math.abs), ...toPt.map(Math.abs)),
+		};
 	}
 	const sampled = sampling
 		? sampling.samples(wall, canonicalStart, canonicalEnd, direction)
 		: sampleSegmentQuietly(wall, canonicalStart, canonicalEnd, direction);
 	if (!sampled) return null;
 	const samples = sampled.samples;
-	let sum = 0, magnitude = Math.max(...fromPt.map(Math.abs), ...toPt.map(Math.abs));
+	let sum = 0,
+		magnitude = Math.max(...fromPt.map(Math.abs), ...toPt.map(Math.abs));
 	let prev = fromPt;
 	for (let i = 1; i < samples.length - 1; i += 1) {
 		const curr = samples[i]!.point;
@@ -310,21 +321,19 @@ export function computeHalfEdgeTwiceAreaContrib(
 	return { value: sum, termCount: Math.max(1, samples.length - 1), magnitude };
 }
 
-
 export function sampleSegmentQuietly(
 	wall: LayoutWall,
 	start: LayoutVec2,
 	end: LayoutVec2,
-	direction: 'forward' | 'reverse'
+	direction: 'forward' | 'reverse',
 ) {
 	return wallCenterlineSamples(wall, start, end, direction);
 }
 
-
 export function certifyOpeningsQuietly(
 	document: LayoutDocumentWallFirst,
 	wallById: ReadonlyMap<string, LayoutWall>,
-	pointById: ReadonlyMap<string, LayoutVec2>
+	pointById: ReadonlyMap<string, LayoutVec2>,
 ): boolean {
 	// Validate baseline openings without emitting per-edit lookup work counts.
 	const openingsByWall = new Map<string, LayoutWallOpening[]>();
@@ -364,9 +373,9 @@ export function certifyOpeningsQuietly(
 				walls: [wall],
 				junctions: [
 					{ id: wall.startJunctionId, point: start },
-					{ id: wall.endJunctionId, point: end }
+					{ id: wall.endJunctionId, point: end },
 				],
-				openings: [opening]
+				openings: [opening],
 			};
 			if (validateWallFirstOpeningSet(miniDoc).length > 0) return false;
 		}
@@ -386,10 +395,9 @@ export function certifyOpeningsQuietly(
 	return true;
 }
 
-
 export function chordSamples(segment: TopologySegment, length: number): CurveSample[] {
 	return [
 		{ point: segment.start, distance: 0, tangent: [1, 0], normal: [0, 1], t: 0 },
-		{ point: segment.end, distance: length, tangent: [1, 0], normal: [0, 1], t: 1 }
+		{ point: segment.end, distance: length, tangent: [1, 0], normal: [0, 1], t: 1 },
 	];
 }

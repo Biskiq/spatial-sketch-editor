@@ -1,5 +1,10 @@
 import type { LayoutVec2 } from '../../geometry/coordinates';
-import type { CompiledJunctionInterface, CompiledJunctionLeg, CompiledJunctionSurface, CompiledLegJoin } from '../../geometry/types';
+import type {
+	CompiledJunctionInterface,
+	CompiledJunctionLeg,
+	CompiledJunctionSurface,
+	CompiledLegJoin,
+} from '../../geometry/types';
 import { JUNCTION_BAND_EPSILON, JUNCTION_DET_EPSILON, outwardTangent } from './geometry';
 import { compareLegs, unionBands } from './joins';
 
@@ -15,7 +20,7 @@ export function trimJoin(
 	bands: Array<{ bottomY: number; topY: number }>,
 	point: LayoutVec2,
 	coverers: readonly CompiledJunctionLeg[],
-	allBands: Array<{ bottomY: number; topY: number }>
+	allBands: Array<{ bottomY: number; topY: number }>,
 ): CompiledLegJoin {
 	const trim = branchTrim(point, leg, coverers, allBands);
 	return {
@@ -29,10 +34,9 @@ export function trimJoin(
 		corner: null,
 		...(trim.clipDistance > JUNCTION_BAND_EPSILON ? { clipDistance: trim.clipDistance } : {}),
 		surfaces: trim.surfaces,
-		interfaces: trim.interfaces
+		interfaces: trim.interfaces,
 	};
 }
-
 
 /**
  * Does a tangent-continuation pair at a degree >= 3 Junction still expose a
@@ -41,16 +45,22 @@ export function trimJoin(
  * the surface is buried inside that leg's body and stays suppressed.
  */
 /** Is `point` inside the leg's own solid footprint (half-thickness band)? */
-function pointInLegFootprint(point: LayoutVec2, junction: LayoutVec2, leg: CompiledJunctionLeg): boolean {
+function pointInLegFootprint(
+	point: LayoutVec2,
+	junction: LayoutVec2,
+	leg: CompiledJunctionLeg,
+): boolean {
 	const t = outwardTangent(leg);
 	const n = leg.normalOut;
 	const dx = point[0] - junction[0];
 	const dy = point[1] - junction[1];
 	const along = dx * t[0] + dy * t[1];
 	const lateral = dx * n[0] + dy * n[1];
-	return along >= -JUNCTION_BAND_EPSILON && Math.abs(lateral) <= leg.halfThickness + JUNCTION_BAND_EPSILON;
+	return (
+		along >= -JUNCTION_BAND_EPSILON &&
+		Math.abs(lateral) <= leg.halfThickness + JUNCTION_BAND_EPSILON
+	);
 }
-
 
 /**
  * Is the leg's endpoint cross-section solid across the whole band `[lo, hi]`?
@@ -60,17 +70,22 @@ function pointInLegFootprint(point: LayoutVec2, junction: LayoutVec2, leg: Compi
 export function legSolidInBand(leg: CompiledJunctionLeg, lo: number, hi: number): boolean {
 	for (const band of leg.endpointSolidBands) {
 		if (!band.solid) continue;
-		if (lo >= band.bottomY - JUNCTION_BAND_EPSILON && hi <= band.topY + JUNCTION_BAND_EPSILON) return true;
+		if (lo >= band.bottomY - JUNCTION_BAND_EPSILON && hi <= band.topY + JUNCTION_BAND_EPSILON)
+			return true;
 	}
 	return false;
 }
 
-
 /** Does the leg have physical material at `point` for the whole band `[lo, hi]`? */
-function legMaterialAt(point: LayoutVec2, junction: LayoutVec2, leg: CompiledJunctionLeg, lo: number, hi: number): boolean {
+function legMaterialAt(
+	point: LayoutVec2,
+	junction: LayoutVec2,
+	leg: CompiledJunctionLeg,
+	lo: number,
+	hi: number,
+): boolean {
 	return legSolidInBand(leg, lo, hi) && pointInLegFootprint(point, junction, leg);
 }
-
 
 /**
  * The resolved difference surfaces of a tangent continuation, **solved here**.
@@ -87,8 +102,12 @@ export function continuationSurfaces(
 	junction: LayoutVec2,
 	a: CompiledJunctionLeg,
 	b: CompiledJunctionLeg,
-	coverers: readonly CompiledJunctionLeg[]
-): { surfaces: CompiledJunctionSurface[]; forA: CompiledJunctionSurface[]; forB: CompiledJunctionSurface[] } {
+	coverers: readonly CompiledJunctionLeg[],
+): {
+	surfaces: CompiledJunctionSurface[];
+	forA: CompiledJunctionSurface[];
+	forB: CompiledJunctionSurface[];
+} {
 	const surfaces: CompiledJunctionSurface[] = [];
 	const bands = unionBands([a, b, ...coverers]);
 	const reference = compareLegs(a, b) <= 0 ? a : b;
@@ -100,7 +119,6 @@ export function continuationSurfaces(
 	return { surfaces, forA, forB };
 }
 
-
 function surfaceBands(
 	surfaces: CompiledJunctionSurface[],
 	junction: LayoutVec2,
@@ -108,7 +126,7 @@ function surfaceBands(
 	b: CompiledJunctionLeg,
 	coverers: readonly CompiledJunctionLeg[],
 	bands: readonly { bottomY: number; topY: number }[],
-	lateral: LayoutVec2
+	lateral: LayoutVec2,
 ): void {
 	const thicknessStep = Math.abs(a.halfThickness - b.halfThickness) > JUNCTION_BAND_EPSILON;
 	const thicker = a.halfThickness >= b.halfThickness ? a : b;
@@ -122,7 +140,11 @@ function surfaceBands(
 			for (const sign of [1, -1] as const) {
 				const from = atOffset(junction, lateral, sign * thinner.halfThickness);
 				const to = atOffset(junction, lateral, sign * thicker.halfThickness);
-				const midpoint = atOffset(junction, lateral, sign * (thinner.halfThickness + thicker.halfThickness) / 2);
+				const midpoint = atOffset(
+					junction,
+					lateral,
+					(sign * (thinner.halfThickness + thicker.halfThickness)) / 2,
+				);
 				if (buriedBy(midpoint, junction, coverers, band)) continue;
 				surfaces.push({
 					ownerWallId: thicker.wallId,
@@ -131,7 +153,7 @@ function surfaceBands(
 					from,
 					to,
 					normal: outwardTangent(thinner),
-					bands: [{ bottomY: band.bottomY, topY: band.topY }]
+					bands: [{ bottomY: band.bottomY, topY: band.topY }],
 				});
 			}
 			continue;
@@ -139,7 +161,10 @@ function surfaceBands(
 		// Exactly one leg is solid: its own end cross-section is the exposed
 		// surface. Attribution follows the material, never a tie-break.
 		const solid = solidA ? a : b;
-		const cross = [atOffset(junction, solid.normalOut, solid.halfThickness), atOffset(junction, solid.normalOut, -solid.halfThickness)];
+		const cross = [
+			atOffset(junction, solid.normalOut, solid.halfThickness),
+			atOffset(junction, solid.normalOut, -solid.halfThickness),
+		];
 		const normal: LayoutVec2 = [-outwardTangent(solid)[0], -outwardTangent(solid)[1]];
 		for (const piece of exposedPieces(junction, cross[0]!, cross[1]!, band, coverers)) {
 			surfaces.push({
@@ -149,28 +174,25 @@ function surfaceBands(
 				from: piece.from,
 				to: piece.to,
 				normal,
-				bands: [{ bottomY: band.bottomY, topY: band.topY }]
+				bands: [{ bottomY: band.bottomY, topY: band.topY }],
 			});
 		}
 	}
 }
 
-
 function atOffset(junction: LayoutVec2, normal: LayoutVec2, distance: number): LayoutVec2 {
 	return [junction[0] + distance * normal[0], junction[1] + distance * normal[1]];
 }
-
 
 /** Does any covering leg's *material* occupy `point` for the whole band? */
 function buriedBy(
 	point: LayoutVec2,
 	junction: LayoutVec2,
 	coverers: readonly CompiledJunctionLeg[],
-	band: { bottomY: number; topY: number }
+	band: { bottomY: number; topY: number },
 ): boolean {
 	return coverers.some((leg) => legMaterialAt(point, junction, leg, band.bottomY, band.topY));
 }
-
 
 /**
  * Split a plan segment into the sub-intervals no covering leg's material spans,
@@ -184,7 +206,7 @@ function exposedPieces(
 	end: LayoutVec2,
 	band: { bottomY: number; topY: number },
 	coverers: readonly CompiledJunctionLeg[],
-	segments?: CompiledJunctionInterface[]
+	segments?: CompiledJunctionInterface[],
 ): Array<{ from: LayoutVec2; to: LayoutVec2 }> {
 	const dx = end[0] - start[0];
 	const dz = end[1] - start[1];
@@ -218,7 +240,9 @@ function exposedPieces(
 		const hi = sorted[index]!;
 		if (hi - lo <= JUNCTION_BAND_EPSILON) continue;
 		const midpoint = point((lo + hi) / 2);
-		const coverer = coverers.find((leg) => legMaterialAt(midpoint, junction, leg, band.bottomY, band.topY)) ?? null;
+		const coverer =
+			coverers.find((leg) => legMaterialAt(midpoint, junction, leg, band.bottomY, band.topY)) ??
+			null;
 		const last = runs.at(-1);
 		if (last && last.coverer === coverer) last.to = hi;
 		else runs.push({ from: lo, to: hi, coverer });
@@ -236,14 +260,17 @@ function exposedPieces(
 		// internal interface and must be suppressed there — per band.
 		const midpoint = point((run.from + run.to) / 2);
 		const lateralMid =
-			(midpoint[0] - junction[0]) * run.coverer.normalOut[0] + (midpoint[1] - junction[1]) * run.coverer.normalOut[1];
-		if (segments && Math.abs(Math.abs(lateralMid) - run.coverer.halfThickness) <= JUNCTION_BAND_EPSILON) {
+			(midpoint[0] - junction[0]) * run.coverer.normalOut[0] +
+			(midpoint[1] - junction[1]) * run.coverer.normalOut[1];
+		if (
+			segments &&
+			Math.abs(Math.abs(lateralMid) - run.coverer.halfThickness) <= JUNCTION_BAND_EPSILON
+		) {
 			segments.push(interfaceOn(run.coverer, from, to, junction, band));
 		}
 	}
 	return pieces;
 }
-
 
 /** An interface record for the coverer's own face the segment rests on (or `null`). */
 function interfaceOn(
@@ -251,12 +278,14 @@ function interfaceOn(
 	from: LayoutVec2,
 	to: LayoutVec2,
 	junction: LayoutVec2,
-	band: { bottomY: number; topY: number }
+	band: { bottomY: number; topY: number },
 ): CompiledJunctionInterface {
 	const n = coverer.normalOut;
 	const t = coverer.tangentOut;
-	const project = (point: LayoutVec2): number => (point[0] - junction[0]) * t[0] + (point[1] - junction[1]) * t[1];
-	const lateralMid = ((from[0] + to[0]) / 2 - junction[0]) * n[0] + ((from[1] + to[1]) / 2 - junction[1]) * n[1];
+	const project = (point: LayoutVec2): number =>
+		(point[0] - junction[0]) * t[0] + (point[1] - junction[1]) * t[1];
+	const lateralMid =
+		((from[0] + to[0]) / 2 - junction[0]) * n[0] + ((from[1] + to[1]) / 2 - junction[1]) * n[1];
 	const side: LayoutVec2 = lateralMid >= 0 ? [n[0], n[1]] : [-n[0], -n[1]];
 	const a = project(from);
 	const b = project(to);
@@ -266,10 +295,9 @@ function interfaceOn(
 		normal: side,
 		fromDistance: Math.min(a, b),
 		toDistance: Math.max(a, b),
-		bands: [{ bottomY: band.bottomY, topY: band.topY }]
+		bands: [{ bottomY: band.bottomY, topY: band.topY }],
 	};
 }
-
 
 /**
  * Trim one branch leg against the resolved core material.
@@ -285,7 +313,7 @@ function branchTrim(
 	junction: LayoutVec2,
 	leg: CompiledJunctionLeg,
 	coverers: readonly CompiledJunctionLeg[],
-	allBands: readonly { bottomY: number; topY: number }[]
+	allBands: readonly { bottomY: number; topY: number }[],
 ): {
 	clipDistance: number;
 	endBoundary: LayoutVec2[];
@@ -310,16 +338,22 @@ function branchTrim(
 				from: piece.from,
 				to: piece.to,
 				normal,
-				bands: [{ bottomY: band.bottomY, topY: band.topY }]
+				bands: [{ bottomY: band.bottomY, topY: band.topY }],
 			});
 		}
 	}
-	return { clipDistance, endBoundary: [front, back], surfaces, interfaces: mergeInterfaces(interfaces) };
+	return {
+		clipDistance,
+		endBoundary: [front, back],
+		surfaces,
+		interfaces: mergeInterfaces(interfaces),
+	};
 }
 
-
 /** Merge per-band interface records into one record per (face, interval). */
-function mergeInterfaces(records: readonly CompiledJunctionInterface[]): CompiledJunctionInterface[] {
+function mergeInterfaces(
+	records: readonly CompiledJunctionInterface[],
+): CompiledJunctionInterface[] {
 	const merged: CompiledJunctionInterface[] = [];
 	for (const record of records) {
 		const existing = merged.find(
@@ -329,14 +363,13 @@ function mergeInterfaces(records: readonly CompiledJunctionInterface[]): Compile
 				candidate.normal[0] === record.normal[0] &&
 				candidate.normal[1] === record.normal[1] &&
 				Math.abs(candidate.fromDistance - record.fromDistance) <= JUNCTION_BAND_EPSILON &&
-				Math.abs(candidate.toDistance - record.toDistance) <= JUNCTION_BAND_EPSILON
+				Math.abs(candidate.toDistance - record.toDistance) <= JUNCTION_BAND_EPSILON,
 		);
 		if (existing) existing.bands.push(...record.bands);
 		else merged.push({ ...record, bands: [...record.bands] });
 	}
 	return merged;
 }
-
 
 /**
  * The farthest along-distance the covering legs' material still reaches across
@@ -345,7 +378,11 @@ function mergeInterfaces(records: readonly CompiledJunctionInterface[]): Compile
  * valid window is at a window endpoint — never sampled, never iteration-order
  * dependent.
  */
-function coreTrimDistance(junction: LayoutVec2, leg: CompiledJunctionLeg, coverers: readonly CompiledJunctionLeg[]): number {
+function coreTrimDistance(
+	junction: LayoutVec2,
+	leg: CompiledJunctionLeg,
+	coverers: readonly CompiledJunctionLeg[],
+): number {
 	void junction;
 	const t = outwardTangent(leg);
 	const n = leg.normalOut;
@@ -382,12 +419,22 @@ function coreTrimDistance(junction: LayoutVec2, leg: CompiledJunctionLeg, covere
 		// End of the coverage interval that contains the branch's own start: the
 		// coverer's material is `band ∩ along ≥ 0`, so both windows bound it.
 		const prefixEnd = (lambda: number): number => {
-			if (Math.abs(aAlong) <= JUNCTION_DET_EPSILON && lambda * bAlong < -JUNCTION_DET_EPSILON) return 0;
-			const lower = Math.max(bandLower(lambda), 0, aAlong > JUNCTION_DET_EPSILON ? (-lambda * bAlong) / aAlong : Number.NEGATIVE_INFINITY);
+			if (Math.abs(aAlong) <= JUNCTION_DET_EPSILON && lambda * bAlong < -JUNCTION_DET_EPSILON)
+				return 0;
+			const lower = Math.max(
+				bandLower(lambda),
+				0,
+				aAlong > JUNCTION_DET_EPSILON ? (-lambda * bAlong) / aAlong : Number.NEGATIVE_INFINITY,
+			);
 			if (lower > JUNCTION_BAND_EPSILON) return 0;
 			const upper = Math.min(
-				Math.abs(aSide) <= JUNCTION_DET_EPSILON ? Number.POSITIVE_INFINITY : Math.max((coverer.halfThickness - lambda * bSide) / aSide, (-coverer.halfThickness - lambda * bSide) / aSide),
-				alongUpper(lambda)
+				Math.abs(aSide) <= JUNCTION_DET_EPSILON
+					? Number.POSITIVE_INFINITY
+					: Math.max(
+							(coverer.halfThickness - lambda * bSide) / aSide,
+							(-coverer.halfThickness - lambda * bSide) / aSide,
+						),
+				alongUpper(lambda),
 			);
 			return Number.isFinite(upper) ? Math.max(0, upper) : 0;
 		};
@@ -400,7 +447,8 @@ function coreTrimDistance(junction: LayoutVec2, leg: CompiledJunctionLeg, covere
 			if (Math.abs(denominator) > JUNCTION_DET_EPSILON) {
 				for (const sign of [1, -1] as const) {
 					const lambda = (aAlong * sign * coverer.halfThickness) / denominator;
-					if (lambda >= lo - JUNCTION_BAND_EPSILON && lambda <= hi + JUNCTION_BAND_EPSILON) candidates.push(lambda);
+					if (lambda >= lo - JUNCTION_BAND_EPSILON && lambda <= hi + JUNCTION_BAND_EPSILON)
+						candidates.push(lambda);
 				}
 			}
 		}

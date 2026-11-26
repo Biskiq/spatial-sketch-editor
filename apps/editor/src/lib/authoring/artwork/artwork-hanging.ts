@@ -7,7 +7,10 @@ export const ARTWORK_HANG_REACH_METERS = 5;
 export const ARTWORK_HANG_PLANE_TOLERANCE_METERS = 0.15;
 const PARALLEL_DOT = 0.995;
 
-export type ArtworkHangCandidate = Pick<SceneArtworkEntity, 'position' | 'rotation' | 'widthMeters' | 'frame'> & {
+export type ArtworkHangCandidate = Pick<
+	SceneArtworkEntity,
+	'position' | 'rotation' | 'widthMeters' | 'frame'
+> & {
 	readonly id: string;
 };
 
@@ -54,21 +57,23 @@ function halfLength(widthMeters: number): number {
 export function artworkHangingGuides(
 	scene: { readonly entities: readonly SceneEntity[] },
 	candidate: ArtworkHangCandidate,
-	datumMeters: number
+	datumMeters: number,
 ): readonly ArtworkHangGuide[] {
 	if (!yawOnly(candidate.rotation)) return [];
 	const [tx, tz] = tangent(candidate.rotation[1]);
 	const [fx, fz] = forward(candidate.rotation[1]);
 	const eyeY = datumMeters + ARTWORK_EYE_LINE_METERS;
 	const eyeHalf = halfLength(outerWidth(candidate));
-	const guides: ArtworkHangGuide[] = [{
-		id: 'artwork-eye-line',
-		kind: 'eye',
-		y: eyeY,
-		start: [candidate.position[0] - tx * eyeHalf, eyeY, candidate.position[2] - tz * eyeHalf],
-		end: [candidate.position[0] + tx * eyeHalf, eyeY, candidate.position[2] + tz * eyeHalf],
-		label: 'Eye line 1.50 m'
-	}];
+	const guides: ArtworkHangGuide[] = [
+		{
+			id: 'artwork-eye-line',
+			kind: 'eye',
+			y: eyeY,
+			start: [candidate.position[0] - tx * eyeHalf, eyeY, candidate.position[2] - tz * eyeHalf],
+			end: [candidate.position[0] + tx * eyeHalf, eyeY, candidate.position[2] + tz * eyeHalf],
+			label: 'Eye line 1.50 m',
+		},
+	];
 
 	const neighbours: { guide: ArtworkHangGuide; distance: number }[] = [];
 	for (const entity of scene.entities) {
@@ -90,13 +95,20 @@ export function artworkHangingGuides(
 				kind: 'neighbour',
 				subjectId: entity.id,
 				y: entity.position[1],
-				start: [entity.position[0] - ntx * half, entity.position[1], entity.position[2] - ntz * half],
+				start: [
+					entity.position[0] - ntx * half,
+					entity.position[1],
+					entity.position[2] - ntz * half,
+				],
 				end: [entity.position[0] + ntx * half, entity.position[1], entity.position[2] + ntz * half],
-				label: `${entity.name} · ${(entity.position[1] * 100).toFixed(0)} cm`
-			}
+				label: `${entity.name} · ${(entity.position[1] * 100).toFixed(0)} cm`,
+			},
 		});
 	}
-	neighbours.sort((a, b) => a.distance - b.distance || (a.guide.subjectId ?? '').localeCompare(b.guide.subjectId ?? ''));
+	neighbours.sort(
+		(a, b) =>
+			a.distance - b.distance || (a.guide.subjectId ?? '').localeCompare(b.guide.subjectId ?? ''),
+	);
 	guides.push(...neighbours.slice(0, 4).map((entry) => entry.guide));
 	return guides;
 }
@@ -105,7 +117,7 @@ export function artworkHangingGuides(
 export function snapArtworkHeight(
 	position: Vec3,
 	guides: readonly ArtworkHangGuide[],
-	toleranceMeters = ARTWORK_HANG_SNAP_METERS
+	toleranceMeters = ARTWORK_HANG_SNAP_METERS,
 ): ArtworkHangSnap {
 	let best: { guide: ArtworkHangGuide; distance: number } | null = null;
 	for (const guide of guides) {
@@ -119,7 +131,7 @@ export function snapArtworkHeight(
 
 export function activeArtworkHangGuide(
 	guides: readonly ArtworkHangGuide[],
-	centreY: number
+	centreY: number,
 ): string | null {
 	return guides.find((guide) => Math.abs(guide.y - centreY) < 1e-6)?.id ?? null;
 }

@@ -4,14 +4,31 @@ import { compileWallFirstLayoutGeometry } from '../../geometry/compiler';
 import { CURVE_ARC_LENGTH_TOLERANCE, cubicBezierPoint } from '../../geometry/curve';
 import { hasBlockingLayoutIssues } from '../../geometry/validation';
 import type { LayoutIdCapture } from '../../plan/id-capture';
-import { LayoutIdCollisionError, allocateCapturedId, isLayoutIdCapture, layoutWorkingLevelIssue } from '../../plan/id-capture';
+import {
+	LayoutIdCollisionError,
+	allocateCapturedId,
+	isLayoutIdCapture,
+	layoutWorkingLevelIssue,
+} from '../../plan/id-capture';
 import { coincidesAsJunction } from '../../wall/junction-identity';
 import { validateWallFirstOpeningSet } from '../../wall/opening-set';
 import { carryRegionWallIntents } from '../region-validation';
-import type { RoundOperationCorrespondence, RoundOperationJunctionCorrespondence, RoundOperationOpeningCorrespondence } from '../round-room';
-import { certifyRoundRoom, enumerateClosedWallSafeCutStations, partitionClosedWallChainAtStations, roundRoomSeamJunctionId } from '../round-room';
+import type {
+	RoundOperationCorrespondence,
+	RoundOperationJunctionCorrespondence,
+	RoundOperationOpeningCorrespondence,
+} from '../round-room';
+import {
+	certifyRoundRoom,
+	enumerateClosedWallSafeCutStations,
+	partitionClosedWallChainAtStations,
+	roundRoomSeamJunctionId,
+} from '../round-room';
 import type { LayoutSurfaceLineage } from '../../plan/surface-reference';
-import { normalizeLayoutSurfaceLineage, splitWallSurfaceLineage } from '../../plan/surface-reference';
+import {
+	normalizeLayoutSurfaceLineage,
+	splitWallSurfaceLineage,
+} from '../../plan/surface-reference';
 import { wallCenterlineCubics, wallCubicChain } from '../../wall/centerline';
 import { resolveWallCurveSplit, wallCurveChainLength } from '../../wall/curve-algebra';
 import { validateWallFirstLayoutDocument } from '../../wall/codec';
@@ -33,7 +50,6 @@ export type ReleaseRoundRoomRejectionCode =
 	| 'invalid_candidate_document'
 	| 'candidate_does_not_compile';
 
-
 export type ReleaseRoundRoomRejection = {
 	readonly code: ReleaseRoundRoomRejectionCode;
 	readonly message: string;
@@ -42,7 +58,6 @@ export type ReleaseRoundRoomRejection = {
 	readonly junctionIds?: readonly string[];
 	readonly openingIds?: readonly string[];
 };
-
 
 export type ReleaseRoundRoomPlan =
 	| {
@@ -62,32 +77,32 @@ export type ReleaseRoundRoomPlan =
 			readonly rejection: ReleaseRoundRoomRejection;
 	  };
 
-
 function rejectRelease(
 	code: ReleaseRoundRoomRejectionCode,
 	message: string,
-	extra: Omit<ReleaseRoundRoomRejection, 'code' | 'message'> = {}
+	extra: Omit<ReleaseRoundRoomRejection, 'code' | 'message'> = {},
 ): ReleaseRoundRoomPlan {
 	return { kind: 'rejected', rejection: { code, message, ...extra } };
 }
-
 
 function coordUlp(x: number): number {
 	return Math.max(1, Math.abs(x)) * Number.EPSILON;
 }
 
-
 function pointAtWallDistance(
 	wall: LayoutWall,
 	startPoint: LayoutVec2,
 	endPoint: LayoutVec2,
-	distance: number
+	distance: number,
 ): LayoutVec2 | null {
 	if (wall.centerline.kind === 'line') {
 		const len = Math.hypot(endPoint[0] - startPoint[0], endPoint[1] - startPoint[1]);
 		if (!(len > 0)) return null;
 		const t = distance / len;
-		return [startPoint[0] + (endPoint[0] - startPoint[0]) * t, startPoint[1] + (endPoint[1] - startPoint[1]) * t];
+		return [
+			startPoint[0] + (endPoint[0] - startPoint[0]) * t,
+			startPoint[1] + (endPoint[1] - startPoint[1]) * t,
+		];
 	}
 	const cubics = wallCenterlineCubics(wall.centerline, startPoint, endPoint, 'forward');
 	if (distance <= 0) return [startPoint[0], startPoint[1]];
@@ -95,17 +110,16 @@ function pointAtWallDistance(
 		startPoint,
 		endPoint,
 		knots: wall.centerline.knots,
-		spans: wall.centerline.spans
+		spans: wall.centerline.spans,
 	});
 	if (distance >= total) return [endPoint[0], endPoint[1]];
 	const res = resolveWallCurveSplit(
 		{ startPoint, endPoint, knots: wall.centerline.knots, spans: wall.centerline.spans },
-		distance
+		distance,
 	);
 	if (res.kind === 'resolved') return res.result.point;
 	return cubicBezierPoint(cubics[0]!, 0);
 }
-
 
 /**
  * Release a Round Room into ordinary open-arc Walls (or clear `round` on an
@@ -113,9 +127,9 @@ function pointAtWallDistance(
  *
  * - Multi-Wall ring: clears `room.round` only.
  * - Isolated closed circle: converts to two ordinary open arcs of the same
- *   locus and clears `room.round`, keeping the seam Junction when unoccupied or
- *   choosing two deterministic solid-gap cuts and retiring the old seam Junction
- *   explicitly when a periodic Opening spans the seam.
+ *  locus and clears `room.round`, keeping the seam Junction when unoccupied or
+ *  choosing two deterministic solid-gap cuts and retiring the old seam Junction
+ *  explicitly when a periodic Opening spans the seam.
  */
 export function planReleaseRoundRoom(options: {
 	readonly document: LayoutDocumentWallFirst;
@@ -130,7 +144,7 @@ export function planReleaseRoundRoom(options: {
 	}
 	if (!isLayoutIdCapture(capture)) {
 		return rejectRelease('invalid_value', 'Release round requires a valid identity capture', {
-			roomIds: [roomId]
+			roomIds: [roomId],
 		});
 	}
 	const room = document.rooms.find((candidate) => candidate.id === roomId);
@@ -139,7 +153,7 @@ export function planReleaseRoundRoom(options: {
 	}
 	if (room.round === undefined) {
 		return rejectRelease('not_round_room', `Room '${roomId}' is not a Round Room`, {
-			roomIds: [roomId]
+			roomIds: [roomId],
 		});
 	}
 
@@ -149,7 +163,7 @@ export function planReleaseRoundRoom(options: {
 		return rejectRelease(
 			'invalid_candidate_document',
 			`Round Room '${roomId}' has an unresolvable seam Junction`,
-			{ roomIds: [roomId] }
+			{ roomIds: [roomId] },
 		);
 	}
 
@@ -161,14 +175,14 @@ export function planReleaseRoundRoom(options: {
 				if (entry.id !== roomId) return entry;
 				const { round: _cleared, ...rest } = entry;
 				return rest;
-			})
+			}),
 		};
 		const validated = validateWallFirstLayoutDocument(candidate);
 		if (!validated.success) {
 			return rejectRelease(
 				'invalid_candidate_document',
 				validated.issues[0]?.message ?? 'Candidate document failed validation',
-				{ roomIds: [roomId] }
+				{ roomIds: [roomId] },
 			);
 		}
 		const compiled = compileWallFirstLayoutGeometry(validated.document);
@@ -176,7 +190,7 @@ export function planReleaseRoundRoom(options: {
 			return rejectRelease(
 				'candidate_does_not_compile',
 				compiled.issues[0]?.message ?? 'Candidate document does not compile',
-				{ roomIds: [roomId] }
+				{ roomIds: [roomId] },
 			);
 		}
 		const junctionIds = new Set<string>();
@@ -200,8 +214,8 @@ export function planReleaseRoundRoom(options: {
 				rooms: [{ roomId, status: 'cleared-round' }],
 				walls: [],
 				junctions: [...junctionIds].map((id) => ({ kind: 'preserved', junctionId: id })),
-				openings: []
-			}
+				openings: [],
+			},
 		};
 	}
 
@@ -212,17 +226,21 @@ export function planReleaseRoundRoom(options: {
 	}
 	const closedWall = wallById.get(room.boundary[0]!.wallId)!;
 	if (closedWall.centerline.kind !== 'cubic-chain') {
-		return rejectRelease('invalid_candidate_document', `Closed Wall '${closedWall.id}' must be a cubic-chain`, {
-			roomIds: [roomId],
-			wallIds: [closedWall.id]
-		});
+		return rejectRelease(
+			'invalid_candidate_document',
+			`Closed Wall '${closedWall.id}' must be a cubic-chain`,
+			{
+				roomIds: [roomId],
+				wallIds: [closedWall.id],
+			},
+		);
 	}
 	const seamPoint = cert.certified.seamPoint;
 	const closedChain = {
 		startPoint: seamPoint,
 		endPoint: seamPoint,
 		knots: closedWall.centerline.knots,
-		spans: closedWall.centerline.spans
+		spans: closedWall.centerline.spans,
 	};
 	const totalLength = wallCurveChainLength(closedChain);
 	const search = enumerateClosedWallSafeCutStations(document.openings, closedWall.id, totalLength);
@@ -236,7 +254,10 @@ export function planReleaseRoundRoom(options: {
 		secondWallId = allocateCapturedId(takenWallIds, `${closedWall.id}:release-wall:1`, capture);
 	} catch (error) {
 		if (error instanceof LayoutIdCollisionError) {
-			return rejectRelease('captured_id_in_use', error.message, { roomIds: [roomId], wallIds: [closedWall.id] });
+			return rejectRelease('captured_id_in_use', error.message, {
+				roomIds: [roomId],
+				wallIds: [closedWall.id],
+			});
 		}
 		throw error;
 	}
@@ -244,7 +265,9 @@ export function planReleaseRoundRoom(options: {
 	const hostOpenings = document.openings.filter((o) => o.wallId === closedWall.id);
 
 	// Helper to validate a candidate document through all canonical gates.
-	const tryValidateCandidate = (candidate: LayoutDocumentWallFirst): LayoutDocumentWallFirst | null => {
+	const tryValidateCandidate = (
+		candidate: LayoutDocumentWallFirst,
+	): LayoutDocumentWallFirst | null => {
 		if (validateWallFirstOpeningSet(candidate).length > 0) return null;
 		if (validateWallFirstPortalRelations(candidate).length > 0) return null;
 		if (validateWallFirstTopology(candidate, { openingSet: 'defer' }) !== undefined) return null;
@@ -259,7 +282,7 @@ export function planReleaseRoundRoom(options: {
 		const norm = normalizeLayoutSurfaceLineage({
 			beforeLayout: document,
 			afterLayout,
-			lineage: splitWallSurfaceLineage(closedWall.id, secondWallId)
+			lineage: splitWallSurfaceLineage(closedWall.id, secondWallId),
 		});
 		return norm.kind === 'ready' ? norm.lineage : null;
 	};
@@ -268,12 +291,16 @@ export function planReleaseRoundRoom(options: {
 	if (!search.seamOccupied) {
 		let cutJunctionId: string;
 		try {
-			cutJunctionId = allocateCapturedId(takenJunctionIds, `${closedWall.id}:release-junction:1`, capture);
+			cutJunctionId = allocateCapturedId(
+				takenJunctionIds,
+				`${closedWall.id}:release-junction:1`,
+				capture,
+			);
 		} catch (error) {
 			if (error instanceof LayoutIdCollisionError) {
 				return rejectRelease('captured_id_in_use', error.message, {
 					roomIds: [roomId],
-					wallIds: [closedWall.id]
+					wallIds: [closedWall.id],
 				});
 			}
 			throw error;
@@ -289,10 +316,10 @@ export function planReleaseRoundRoom(options: {
 				closedWall,
 				seamPoint,
 				totalLength,
-				stations: [split]
+				stations: [split],
 			});
 			if (segments.length !== 2) continue;
-			const [segA, segB] = segments as [typeof segments[0], typeof segments[1]];
+			const [segA, segB] = segments as [(typeof segments)[0], (typeof segments)[1]];
 
 			let openingBlocked = false;
 			const rehostedOpenings: LayoutWallOpening[] = [];
@@ -307,11 +334,19 @@ export function planReleaseRoundRoom(options: {
 				const end = start + opening.width;
 				if (end <= split.distance + CURVE_ARC_LENGTH_TOLERANCE) {
 					rehostedOpenings.push({ ...opening, wallId: closedWall.id, offset: start });
-					openingCorr.push({ openingId: opening.id, beforeWallId: closedWall.id, afterWallId: closedWall.id });
+					openingCorr.push({
+						openingId: opening.id,
+						beforeWallId: closedWall.id,
+						afterWallId: closedWall.id,
+					});
 				} else if (start >= split.distance - CURVE_ARC_LENGTH_TOLERANCE) {
 					const offset = Math.max(0, start - split.distance);
 					rehostedOpenings.push({ ...opening, wallId: secondWallId, offset });
-					openingCorr.push({ openingId: opening.id, beforeWallId: closedWall.id, afterWallId: secondWallId });
+					openingCorr.push({
+						openingId: opening.id,
+						beforeWallId: closedWall.id,
+						afterWallId: secondWallId,
+					});
 				} else {
 					openingBlocked = true;
 					break;
@@ -323,7 +358,7 @@ export function planReleaseRoundRoom(options: {
 				...closedWall,
 				startJunctionId: seamJunctionId,
 				endJunctionId: cutJunctionId,
-				centerline: wallCubicChain(segA.knots, segA.spans)
+				centerline: wallCubicChain(segA.knots, segA.spans),
 			};
 			const wallB: LayoutWall = {
 				id: secondWallId,
@@ -332,11 +367,14 @@ export function planReleaseRoundRoom(options: {
 				thickness: closedWall.thickness,
 				height: closedWall.height,
 				centerline: wallCubicChain(segB.knots, segB.spans),
-				...(closedWall.name !== undefined ? { name: closedWall.name } : {})
+				...(closedWall.name !== undefined ? { name: closedWall.name } : {}),
 			};
 			const candidate: LayoutDocumentWallFirst = {
 				...document,
-				junctions: [...document.junctions, { id: cutJunctionId, point: [split.point[0], split.point[1]] }],
+				junctions: [
+					...document.junctions,
+					{ id: cutJunctionId, point: [split.point[0], split.point[1]] },
+				],
 				walls: document.walls.flatMap((w) => (w.id === closedWall.id ? [wallA, wallB] : [w])),
 				rooms: document.rooms.map((r) => {
 					if (r.id !== roomId) return r;
@@ -345,15 +383,15 @@ export function planReleaseRoundRoom(options: {
 						...rest,
 						boundary: [
 							{ wallId: closedWall.id, direction: 'forward' },
-							{ wallId: secondWallId, direction: 'forward' }
-						]
+							{ wallId: secondWallId, direction: 'forward' },
+						],
 					};
 				}),
 				regions: carryRegionWallIntents(
 					document.regions,
-					new Map([[closedWall.id, [closedWall.id, secondWallId]]])
+					new Map([[closedWall.id, [closedWall.id, secondWallId]]]),
 				),
-				openings: rehostedOpenings
+				openings: rehostedOpenings,
 			};
 			const committed = tryValidateCandidate(candidate);
 			if (!committed) continue;
@@ -371,13 +409,24 @@ export function planReleaseRoundRoom(options: {
 				surfaceLineage,
 				correspondence: {
 					rooms: [{ roomId, status: 'cleared-round' }],
-					walls: [{ kind: 'subdivision', sourceWallId: closedWall.id, fragmentWallIds: [closedWall.id, secondWallId] }],
+					walls: [
+						{
+							kind: 'subdivision',
+							sourceWallId: closedWall.id,
+							fragmentWallIds: [closedWall.id, secondWallId],
+						},
+					],
 					junctions: [
 						{ kind: 'preserved', junctionId: seamJunctionId },
-						{ kind: 'born', junctionId: cutJunctionId, sourceWallId: closedWall.id, station: split.distance }
+						{
+							kind: 'born',
+							junctionId: cutJunctionId,
+							sourceWallId: closedWall.id,
+							station: split.distance,
+						},
 					],
-					openings: openingCorr
-				}
+					openings: openingCorr,
+				},
 			};
 		}
 	}
@@ -387,23 +436,25 @@ export function planReleaseRoundRoom(options: {
 	const externalWall = document.walls.find(
 		(w) =>
 			w.id !== closedWall.id &&
-			(w.startJunctionId === seamJunctionId || w.endJunctionId === seamJunctionId)
+			(w.startJunctionId === seamJunctionId || w.endJunctionId === seamJunctionId),
 	);
 	if (externalWall) {
 		return rejectRelease(
 			'seam_junction_referenced',
 			`Cannot retire seam Junction '${seamJunctionId}' because Wall '${externalWall.id}' still references it`,
-			{ roomIds: [roomId], wallIds: [externalWall.id], junctionIds: [seamJunctionId] }
+			{ roomIds: [roomId], wallIds: [externalWall.id], junctionIds: [seamJunctionId] },
 		);
 	}
 	const externalSpace = document.rooms.find((r) =>
-		r.virtualEdges.some((e) => e.startJunctionId === seamJunctionId || e.endJunctionId === seamJunctionId)
+		r.virtualEdges.some(
+			(e) => e.startJunctionId === seamJunctionId || e.endJunctionId === seamJunctionId,
+		),
 	);
 	if (externalSpace) {
 		return rejectRelease(
 			'seam_junction_referenced',
 			`Cannot retire seam Junction '${seamJunctionId}' because Space '${externalSpace.id}' virtual edge still references it`,
-			{ roomIds: [roomId, externalSpace.id], junctionIds: [seamJunctionId] }
+			{ roomIds: [roomId, externalSpace.id], junctionIds: [seamJunctionId] },
 		);
 	}
 
@@ -411,14 +462,22 @@ export function planReleaseRoundRoom(options: {
 	let junction2Id: string;
 	let seamKnotId: string;
 	try {
-		junction1Id = allocateCapturedId(takenJunctionIds, `${closedWall.id}:release-junction:1`, capture);
-		junction2Id = allocateCapturedId(takenJunctionIds, `${closedWall.id}:release-junction:2`, capture);
+		junction1Id = allocateCapturedId(
+			takenJunctionIds,
+			`${closedWall.id}:release-junction:1`,
+			capture,
+		);
+		junction2Id = allocateCapturedId(
+			takenJunctionIds,
+			`${closedWall.id}:release-junction:2`,
+			capture,
+		);
 		seamKnotId = allocateCapturedId(existingKnotIds, `${closedWall.id}:seam-knot`, capture);
 	} catch (error) {
 		if (error instanceof LayoutIdCollisionError) {
 			return rejectRelease('captured_id_in_use', error.message, {
 				roomIds: [roomId],
-				wallIds: [closedWall.id]
+				wallIds: [closedWall.id],
 			});
 		}
 		throw error;
@@ -447,27 +506,27 @@ export function planReleaseRoundRoom(options: {
 				closedWall,
 				seamPoint,
 				totalLength,
-				stations: [split1, split2]
+				stations: [split1, split2],
 			});
 			if (segments.length !== 3) continue;
 			const [seg0, seg1, seg2] = segments as [
-				typeof segments[0],
-				typeof segments[1],
-				typeof segments[2]
+				(typeof segments)[0],
+				(typeof segments)[1],
+				(typeof segments)[2],
 			];
 
 			// Fragment W_2: J_1 -> J_2 (seg1).
-			// Fragment W:   J_2 -> J_1 (seg2 + seamKnot + seg0), crossing old station 0.
+			// Fragment W: J_2 -> J_1 (seg2 + seamKnot + seg0), crossing old station 0.
 			const wall2Len = split2.distance - split1.distance;
-			const wall1Len = (totalLength - split2.distance) + split1.distance;
+			const wall1Len = totalLength - split2.distance + split1.distance;
 			const wall1: LayoutWall = {
 				...closedWall,
 				startJunctionId: junction2Id,
 				endJunctionId: junction1Id,
 				centerline: wallCubicChain(
 					[...seg2.knots, { id: seamKnotId, point: [seamPoint[0], seamPoint[1]] }, ...seg0.knots],
-					[...seg2.spans, ...seg0.spans]
-				)
+					[...seg2.spans, ...seg0.spans],
+				),
 			};
 			const wall2: LayoutWall = {
 				id: secondWallId,
@@ -476,15 +535,19 @@ export function planReleaseRoundRoom(options: {
 				thickness: closedWall.thickness,
 				height: closedWall.height,
 				centerline: wallCubicChain(seg1.knots, seg1.spans),
-				...(closedWall.name !== undefined ? { name: closedWall.name } : {})
+				...(closedWall.name !== undefined ? { name: closedWall.name } : {}),
 			};
 
 			let openingFailed = false;
 			const rehostedOpenings: LayoutWallOpening[] = [];
 			const openingCorr: RoundOperationOpeningCorrespondence[] = [];
 
-			const cutStrictlyInPeriodicInterval = (cut: number, oStart: number, oWidth: number): boolean => {
-				const d = ((cut - oStart) % totalLength + totalLength) % totalLength;
+			const cutStrictlyInPeriodicInterval = (
+				cut: number,
+				oStart: number,
+				oWidth: number,
+			): boolean => {
+				const d = (((cut - oStart) % totalLength) + totalLength) % totalLength;
 				return d > CURVE_ARC_LENGTH_TOLERANCE && d < oWidth - CURVE_ARC_LENGTH_TOLERANCE;
 			};
 
@@ -505,7 +568,8 @@ export function planReleaseRoundRoom(options: {
 				const mid = (oStart + opening.width * 0.5) % totalLength;
 				const onWall2 = mid > split1.distance && mid < split2.distance;
 				if (onWall2) {
-					const rawOffset = ((oStart - split1.distance) % totalLength + totalLength) % totalLength;
+					const rawOffset =
+						(((oStart - split1.distance) % totalLength) + totalLength) % totalLength;
 					const offset = totalLength - rawOffset <= CURVE_ARC_LENGTH_TOLERANCE ? 0 : rawOffset;
 					if (offset + opening.width > wall2Len + CURVE_ARC_LENGTH_TOLERANCE) {
 						openingFailed = true;
@@ -517,15 +581,24 @@ export function planReleaseRoundRoom(options: {
 						!origPt ||
 						!newPt ||
 						Math.hypot(origPt[0] - newPt[0], origPt[1] - newPt[1]) >
-							Math.max(CURVE_ARC_LENGTH_TOLERANCE, 32 * coordUlp(origPt[0]), 32 * coordUlp(origPt[1]))
+							Math.max(
+								CURVE_ARC_LENGTH_TOLERANCE,
+								32 * coordUlp(origPt[0]),
+								32 * coordUlp(origPt[1]),
+							)
 					) {
 						openingFailed = true;
 						break;
 					}
 					rehostedOpenings.push({ ...opening, wallId: secondWallId, offset });
-					openingCorr.push({ openingId: opening.id, beforeWallId: closedWall.id, afterWallId: secondWallId });
+					openingCorr.push({
+						openingId: opening.id,
+						beforeWallId: closedWall.id,
+						afterWallId: secondWallId,
+					});
 				} else {
-					const rawOffset = ((oStart - split2.distance) % totalLength + totalLength) % totalLength;
+					const rawOffset =
+						(((oStart - split2.distance) % totalLength) + totalLength) % totalLength;
 					const offset = totalLength - rawOffset <= CURVE_ARC_LENGTH_TOLERANCE ? 0 : rawOffset;
 					if (offset + opening.width > wall1Len + CURVE_ARC_LENGTH_TOLERANCE) {
 						openingFailed = true;
@@ -537,13 +610,21 @@ export function planReleaseRoundRoom(options: {
 						!origPt ||
 						!newPt ||
 						Math.hypot(origPt[0] - newPt[0], origPt[1] - newPt[1]) >
-							Math.max(CURVE_ARC_LENGTH_TOLERANCE, 32 * coordUlp(origPt[0]), 32 * coordUlp(origPt[1]))
+							Math.max(
+								CURVE_ARC_LENGTH_TOLERANCE,
+								32 * coordUlp(origPt[0]),
+								32 * coordUlp(origPt[1]),
+							)
 					) {
 						openingFailed = true;
 						break;
 					}
 					rehostedOpenings.push({ ...opening, wallId: closedWall.id, offset });
-					openingCorr.push({ openingId: opening.id, beforeWallId: closedWall.id, afterWallId: closedWall.id });
+					openingCorr.push({
+						openingId: opening.id,
+						beforeWallId: closedWall.id,
+						afterWallId: closedWall.id,
+					});
 				}
 			}
 			if (openingFailed) continue;
@@ -553,7 +634,7 @@ export function planReleaseRoundRoom(options: {
 				junctions: [
 					...document.junctions.filter((entry) => entry.id !== seamJunctionId),
 					{ id: junction1Id, point: [split1.point[0], split1.point[1]] },
-					{ id: junction2Id, point: [split2.point[0], split2.point[1]] }
+					{ id: junction2Id, point: [split2.point[0], split2.point[1]] },
 				],
 				walls: document.walls.flatMap((w) => (w.id === closedWall.id ? [wall1, wall2] : [w])),
 				rooms: document.rooms.map((r) => {
@@ -563,15 +644,15 @@ export function planReleaseRoundRoom(options: {
 						...rest,
 						boundary: [
 							{ wallId: closedWall.id, direction: 'forward' },
-							{ wallId: secondWallId, direction: 'forward' }
-						]
+							{ wallId: secondWallId, direction: 'forward' },
+						],
 					};
 				}),
 				regions: carryRegionWallIntents(
 					document.regions,
-					new Map([[closedWall.id, [closedWall.id, secondWallId]]])
+					new Map([[closedWall.id, [closedWall.id, secondWallId]]]),
 				),
-				openings: rehostedOpenings
+				openings: rehostedOpenings,
 			};
 			const committed = tryValidateCandidate(candidate);
 			if (!committed) continue;
@@ -580,8 +661,18 @@ export function planReleaseRoundRoom(options: {
 
 			const junctionCorr: RoundOperationJunctionCorrespondence[] = [
 				{ kind: 'retired', junctionId: seamJunctionId, after: null },
-				{ kind: 'born', junctionId: junction1Id, sourceWallId: closedWall.id, station: split1.distance },
-				{ kind: 'born', junctionId: junction2Id, sourceWallId: closedWall.id, station: split2.distance }
+				{
+					kind: 'born',
+					junctionId: junction1Id,
+					sourceWallId: closedWall.id,
+					station: split1.distance,
+				},
+				{
+					kind: 'born',
+					junctionId: junction2Id,
+					sourceWallId: closedWall.id,
+					station: split2.distance,
+				},
 			];
 
 			return {
@@ -596,10 +687,16 @@ export function planReleaseRoundRoom(options: {
 				surfaceLineage,
 				correspondence: {
 					rooms: [{ roomId, status: 'cleared-round' }],
-					walls: [{ kind: 'subdivision', sourceWallId: closedWall.id, fragmentWallIds: [closedWall.id, secondWallId] }],
+					walls: [
+						{
+							kind: 'subdivision',
+							sourceWallId: closedWall.id,
+							fragmentWallIds: [closedWall.id, secondWallId],
+						},
+					],
 					junctions: junctionCorr,
-					openings: openingCorr
-				}
+					openings: openingCorr,
+				},
 			};
 		}
 	}
@@ -610,7 +707,7 @@ export function planReleaseRoundRoom(options: {
 		{
 			roomIds: [roomId],
 			wallIds: [closedWall.id],
-			openingIds: hostOpenings.map((o) => o.id)
-		}
+			openingIds: hostOpenings.map((o) => o.id),
+		},
 	);
 }

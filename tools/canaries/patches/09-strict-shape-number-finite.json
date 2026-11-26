@@ -1,12 +1,11 @@
 {
-  "id": "09-strict-shape-number-finite",
-  "area": "layout",
-  "citation": "hard rule 2 — Layout owns architecture",
-  "title": "Plan grid snapping outranks every semantic feature",
-  "file": "packages/layout-core/src/plan/snap/types.ts",
-  "find": "\t'extension-guide': 8,\n\tgrid: 9",
-  "replace": "\t'extension-guide': 8,\n\tgrid: 0",
-  "tests": [
-    "tests/lib/layout/layout-snap.test.ts"
-  ]
+	"id": "09-strict-shape-number-finite",
+	"area": "layout",
+	"citation": "hard rule 2 \u2014 Layout owns architecture",
+	"title": "Plan grid snapping outranks every semantic feature",
+	"file": "packages/layout-core/src/plan/snap/types.ts",
+	"find": "\t'extension-guide': 8,\n\tgrid: 9",
+	"replace": "\t'extension-guide': 8,\n\tgrid: 0",
+	"tests": ["packages/layout-core/tests/layout-snap.test.ts"],
+	"root": "repo"
 }

@@ -13,5 +13,5 @@ import type { SceneValidationOptions } from '../scene-validation';
  * Scene document keeps the default `single-component` policy.
  */
 export const CAMERA_UNIT_SCENE_VALIDATION = {
-	connectivity: 'independent-components'
+	connectivity: 'independent-components',
 } as const satisfies SceneValidationOptions;

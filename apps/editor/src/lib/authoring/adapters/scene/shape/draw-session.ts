@@ -5,27 +5,24 @@
  * in its Place task. One gesture has one result:
  *
  * - **Box, Round:** a click creates the standard form; a drag creates the form its
- *   two corners span, on release.
+ *  two corners span, on release.
  * - **Free:** a click adds a corner, a drag adds a smooth run, and closing on the
- *   start, Enter or Finish creates the form.
+ *  start, Enter or Finish creates the form.
  *
  * Two rules keep the preview honest:
  *
  * - **One planner.** Preview and commit both run `create-form`'s `planCreateForm`,
- *   so the body shown is the candidate the planner would install, support and
- *   contact included. On a Room floor or on the explicit datum, the answer is the
- *   same one at both moments.
+ *  so the body shown is the candidate the planner would install, support and
+ *  contact included. On a Room floor or on the explicit datum, the answer is the
+ *  same one at both moments.
  * - **One validation.** Live validity is `validateProfile` over the converted
- *   outline, and a refusal is the kernel's own issue in words. A refused Free
- *   draft keeps every point.
+ *  outline, and a refusal is the kernel's own issue in words. A refused Free
+ *  draft keeps every point.
  *
  * Nothing here is document state, a second selection, history or writer.
  */
 import type { Vec3 } from '@portfolio/camera-core/camera';
-import {
-	planCreateForm,
-	type SceneOperationResult
-} from '@portfolio/project-model/scene-planning';
+import { planCreateForm, type SceneOperationResult } from '@portfolio/project-model/scene-planning';
 import type { SceneFormEntity } from '@portfolio/project-model/scene';
 import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 import {
@@ -34,7 +31,7 @@ import {
 	type StageGhostMesh,
 	type StageKeyboardIntent,
 	type StageOverlayContribution,
-	type StagePointerIntent
+	type StagePointerIntent,
 } from '$lib/authoring/stage/stage-adapter-host';
 import { snapDraftingPoint } from '$lib/authoring/stage/stage-adapter-host';
 import { stageEnvelope } from '$lib/authoring/stage/stage-adapter-host';
@@ -46,7 +43,7 @@ import {
 	type ShapeKind,
 	type ShapeOutlineAnchor,
 	type ShapeOutlineResult,
-	type ShapePoint
+	type ShapePoint,
 } from './outline';
 
 /** The material every native primitive is created with. */
@@ -86,7 +83,10 @@ type Plan = {
 export type ObjectDrawHooks = {
 	readonly tile: () => ShapeKind;
 	/** The words for a press the drawn geometry hides, or `null` when it lands. */
-	readonly pressRefusal: (context: StageAdapterContext, css: readonly [number, number]) => string | null;
+	readonly pressRefusal: (
+		context: StageAdapterContext,
+		css: readonly [number, number],
+	) => string | null;
 	/** Called at commit start; its result completes the install that follows. */
 	readonly beginCommit: () => (entityId: string) => void;
 	readonly drawingStarted: () => void;
@@ -125,7 +125,7 @@ function sharp(point: ShapePoint): ShapeOutlineAnchor {
 
 export function createObjectDrawSession(
 	services: StageAdapterServices,
-	hooks: ObjectDrawHooks
+	hooks: ObjectDrawHooks,
 ): ObjectDrawSession {
 	/** Free's clicked corners and drawn runs, in drawing order; Backspace removes one. */
 	let runs: (readonly ShapeOutlineAnchor[])[] = [];
@@ -142,8 +142,14 @@ export function createObjectDrawSession(
 		press = null;
 	}
 
-	function datumPoint(context: StageAdapterContext, css: readonly [number, number]): ShapePoint | null {
-		const ray = context.ray([css[0] + context.evaluation.rect.left, css[1] + context.evaluation.rect.top]);
+	function datumPoint(
+		context: StageAdapterContext,
+		css: readonly [number, number],
+	): ShapePoint | null {
+		const ray = context.ray([
+			css[0] + context.evaluation.rect.left,
+			css[1] + context.evaluation.rect.top,
+		]);
 		if (ray === null) return null;
 		const hit = context.intersect(ray, datumWorkingPlane(context.snapshot.domain.datumMeters));
 		return hit.kind === 'intersected' ? { u: hit.worldPoint[0], v: hit.worldPoint[2] } : null;
@@ -160,14 +166,15 @@ export function createObjectDrawSession(
 
 	/** The one planner answer for one outline; `plan` is what preview and commit read. */
 	function planFor(conversion: ShapeOutlineResult): Plan {
-		if (conversion.kind === 'refused') return { conversion, candidate: null, refusal: conversion.message };
+		if (conversion.kind === 'refused')
+			return { conversion, candidate: null, refusal: conversion.message };
 		const snapshot = services.stage.snapshot();
 		const envelope = stageEnvelope(snapshot);
 		const result = planCreateForm({
 			context: {
 				layout: envelope.units.layout.data,
 				scene: envelope.units.scene.data,
-				sourceContentId: snapshot.sourceContentId
+				sourceContentId: snapshot.sourceContentId,
 			},
 			entityId: PREVIEW_ENTITY_ID,
 			plane: 'plan',
@@ -176,7 +183,7 @@ export function createObjectDrawSession(
 			position: [0, 0, 0],
 			yaw: 0,
 			materialId: SHAPE_DEFAULT_MATERIAL,
-			name: SHAPE_DEFAULT_NAME
+			name: SHAPE_DEFAULT_NAME,
 		});
 		return result.kind === 'candidate'
 			? { conversion, candidate: result, refusal: null }
@@ -187,10 +194,13 @@ export function createObjectDrawSession(
 	function liveConversion(): ShapeOutlineResult | null {
 		const tile = hooks.tile();
 		if (tile === 'free') {
-			const drawn = press?.dragging && press.samples.length > 0
-				? [...runs, press.samples.map((sample) => ({ u: sample.u, v: sample.v, smooth: true }))]
-				: runs;
-			return drawn.flat().length >= 3 ? freeOutline(drawn, metersPerCssPixel * SIMPLIFY_CSS_PX) : null;
+			const drawn =
+				press?.dragging && press.samples.length > 0
+					? [...runs, press.samples.map((sample) => ({ u: sample.u, v: sample.v, smooth: true }))]
+					: runs;
+			return drawn.flat().length >= 3
+				? freeOutline(drawn, metersPerCssPixel * SIMPLIFY_CSS_PX)
+				: null;
 		}
 		if (pointer === null) return null;
 		if (press?.dragging) return shapeOutline(tile, press.start, pointer);
@@ -237,13 +247,14 @@ export function createObjectDrawSession(
 					position: [0, 0, 0],
 					yaw: 0,
 					materialId: SHAPE_DEFAULT_MATERIAL,
-					name: SHAPE_DEFAULT_NAME
+					name: SHAPE_DEFAULT_NAME,
 				},
 				capturedInputs: [],
-				allocatedIds: [{ kind: 'scene-entity', id: newId }]
+				allocatedIds: [{ kind: 'scene-entity', id: newId }],
 			});
 			if (outcome.kind !== 'installed') {
-				refused = outcome.kind === 'refused' ? outcome.message : 'The form was not installed; try again.';
+				refused =
+					outcome.kind === 'refused' ? outcome.message : 'The form was not installed; try again.';
 				hooks.changed();
 				services.stage.notifySurfaceChange();
 				return null;
@@ -266,7 +277,11 @@ export function createObjectDrawSession(
 	}
 
 	/** Whether a Stage-local point closes on the Free start. */
-	function nearStart(context: StageAdapterContext, css: readonly [number, number], coarse: boolean): boolean {
+	function nearStart(
+		context: StageAdapterContext,
+		css: readonly [number, number],
+		coarse: boolean,
+	): boolean {
 		const start = runs[0]?.[0];
 		if (start === undefined) return false;
 		const projected = context.project(worldOf(context, start));
@@ -276,7 +291,11 @@ export function createObjectDrawSession(
 		return Math.hypot(css[0] - x, css[1] - y) <= (coarse ? CLOSE_COARSE_CSS_PX : CLOSE_CSS_PX);
 	}
 
-	function release(intent: StagePointerIntent, context: StageAdapterContext, current: Press): boolean {
+	function release(
+		intent: StagePointerIntent,
+		context: StageAdapterContext,
+		current: Press,
+	): boolean {
 		const travel = Math.hypot(intent.css[0] - current.css[0], intent.css[1] - current.css[1]);
 		const raw = datumPoint(context, intent.css) ?? current.raw;
 		const end = snapped(context, raw);
@@ -284,13 +303,17 @@ export function createObjectDrawSession(
 		// Snapping can hold the start farther from the pointer than the close radius,
 		// so landing on the start's own snapped point closes too.
 		const first = runs[0]?.[0];
-		const closes = nearStart(context, intent.css, intent.coarse === true) ||
+		const closes =
+			nearStart(context, intent.css, intent.coarse === true) ||
 			(first !== undefined && end.u === first.u && end.v === first.v);
 		releasePress();
 		refused = null;
 		if (tile === 'free') {
 			if (travel > TAP_TRAVEL_CSS_PX) {
-				runs = [...runs, current.samples.map((sample) => ({ u: sample.u, v: sample.v, smooth: true }))];
+				runs = [
+					...runs,
+					current.samples.map((sample) => ({ u: sample.u, v: sample.v, smooth: true })),
+				];
 				if (closes) closeFree();
 				else refresh();
 				return true;
@@ -304,9 +327,10 @@ export function createObjectDrawSession(
 			refresh();
 			return true;
 		}
-		const conversion = travel > TAP_TRAVEL_CSS_PX
-			? shapeOutline(tile, current.start, end)
-			: standardOutline(tile, current.start);
+		const conversion =
+			travel > TAP_TRAVEL_CSS_PX
+				? shapeOutline(tile, current.start, end)
+				: standardOutline(tile, current.start);
 		void commit(conversion);
 		pointer = null;
 		refresh();
@@ -315,9 +339,10 @@ export function createObjectDrawSession(
 
 	return {
 		pointer(intent, context) {
-			metersPerCssPixel = context.evaluation.targetPlaneMetersPerCssPixel > 0
-				? context.evaluation.targetPlaneMetersPerCssPixel
-				: metersPerCssPixel;
+			metersPerCssPixel =
+				context.evaluation.targetPlaneMetersPerCssPixel > 0
+					? context.evaluation.targetPlaneMetersPerCssPixel
+					: metersPerCssPixel;
 			if (intent.phase === 'down') {
 				const occluded = hooks.pressRefusal(context, intent.css);
 				if (occluded !== null) {
@@ -336,7 +361,7 @@ export function createObjectDrawSession(
 				const lease = services.stage.acquireGesture({
 					owner: 'scene-draw',
 					evaluationId: intent.evaluationId,
-					policy: 'cancel-on-reading-change'
+					policy: 'cancel-on-reading-change',
 				});
 				if (lease.kind !== 'granted') {
 					refused = `The ${lease.owner} gesture owns the pointer; finish or cancel it first.`;
@@ -352,7 +377,7 @@ export function createObjectDrawSession(
 					start,
 					raw,
 					samples: [hooks.tile() === 'free' ? start : raw],
-					dragging: false
+					dragging: false,
 				};
 				pointer = start;
 				refused = null;
@@ -432,21 +457,25 @@ export function createObjectDrawSession(
 			return hooks.tile() === 'free' && runs.flat().length >= 3 && plan?.candidate != null;
 		},
 		overlay(context) {
-			const words = refused ?? (press !== null || runs.length > 0 ? plan?.refusal ?? null : null);
-			const at = pointer ?? (runs.flat().at(-1) ?? null);
+			const words = refused ?? (press !== null || runs.length > 0 ? (plan?.refusal ?? null) : null);
+			const at = pointer ?? runs.flat().at(-1) ?? null;
 			if (words === null || at === null) return [];
 			const css = context.project(worldOf(context, at));
 			return css === null ? [] : [{ id: 'scene-draw-refusal', css, label: words }];
 		},
 		ghosts() {
-			const entity = plan?.candidate?.scene.entities.find((entry) => entry.id === PREVIEW_ENTITY_ID);
+			const entity = plan?.candidate?.scene.entities.find(
+				(entry) => entry.id === PREVIEW_ENTITY_ID,
+			);
 			if (entity?.kind !== 'form') return [];
-			return [{
-				id: 'scene-draw-preview',
-				center: entity.position as Vec3,
-				yaw: entity.rotation[1],
-				shape: { kind: 'form', form: entity.form }
-			}];
+			return [
+				{
+					id: 'scene-draw-preview',
+					center: entity.position as Vec3,
+					yaw: entity.rotation[1],
+					shape: { kind: 'form', form: entity.form },
+				},
+			];
 		},
 		candidatePreview(context) {
 			const tile = hooks.tile();
@@ -467,17 +496,28 @@ export function createObjectDrawSession(
 					const length = Math.hypot(dx, dz);
 					if (length >= MIN_SHAPE_EDGE_METERS) {
 						const degrees = (Math.atan2(-dz, dx) * 180) / Math.PI;
-						label = { world: worldOf(context, pointer), text: `${length.toFixed(2)} m · ${degrees.toFixed(0)}°` };
+						label = {
+							world: worldOf(context, pointer),
+							text: `${length.toFixed(2)} m · ${degrees.toFixed(0)}°`,
+						};
 					}
 				}
 			} else if (press?.dragging && pointer !== null) {
 				const width = Math.abs(pointer.u - press.start.u);
 				const depth = Math.abs(pointer.v - press.start.v);
-				label = { world: worldOf(context, pointer), text: `${width.toFixed(2)} × ${depth.toFixed(2)} m` };
+				label = {
+					world: worldOf(context, pointer),
+					text: `${width.toFixed(2)} × ${depth.toFixed(2)} m`,
+				};
 			}
 			if (entity === null && segments.length === 0 && label === null) return null;
 			const invalid = plan !== null && plan.candidate === null;
-			if (invalid && plan?.refusal != null && pointer !== null && (press !== null || runs.length > 0)) {
+			if (
+				invalid &&
+				plan?.refusal != null &&
+				pointer !== null &&
+				(press !== null || runs.length > 0)
+			) {
 				label = { world: worldOf(context, pointer), text: plan.refusal };
 			}
 			return {
@@ -485,9 +525,10 @@ export function createObjectDrawSession(
 				refused: invalid,
 				segments,
 				label,
-				snap: pointer === null || context.drafting().snapSuspended || !context.drafting().snap
-					? null
-					: worldOf(context, pointer)
+				snap:
+					pointer === null || context.drafting().snapSuspended || !context.drafting().snap
+						? null
+						: worldOf(context, pointer),
 			};
 		},
 		hasWork() {
@@ -502,6 +543,6 @@ export function createObjectDrawSession(
 			pointer = null;
 			plan = null;
 			refused = null;
-		}
+		},
 	};
 }

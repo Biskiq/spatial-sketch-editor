@@ -1,31 +1,51 @@
-import type { LayoutDocumentWallFirst, LayoutWall, LayoutWallOpening, OrientedWallRef } from './types';
+import type {
+	LayoutDocumentWallFirst,
+	LayoutWall,
+	LayoutWallOpening,
+	OrientedWallRef,
+} from './types';
 import type { LayoutVec2 } from '../geometry/coordinates';
 import type { LayoutSurfaceLineage } from '../plan/surface-reference';
-import { normalizeLayoutSurfaceLineage, roomSurfaceLineage, splitWallSurfaceLineage } from '../plan/surface-reference';
+import {
+	normalizeLayoutSurfaceLineage,
+	roomSurfaceLineage,
+	splitWallSurfaceLineage,
+} from '../plan/surface-reference';
 import { p2311Measure } from '../kernel/work-observer';
 import { validateWallFirstLayoutDocument } from './codec';
 import { compileWallFirstLayoutGeometry } from '../geometry/compiler';
 import { hasBlockingLayoutIssues } from '../geometry/validation';
 import { CURVE_ARC_LENGTH_TOLERANCE } from '../geometry/curve';
 import { extractBoundaryCandidateFaces } from '../geometry/face-extraction';
-import { buildCorrespondenceComponents } from '../room/reconciliation-correspondence'
-import { createRoomBoundaryLookup, interiorWitness, roomBoundaryPolygon } from '../room/reconciliation-boundary'
+import { buildCorrespondenceComponents } from '../room/reconciliation-correspondence';
+import {
+	createRoomBoundaryLookup,
+	interiorWitness,
+	roomBoundaryPolygon,
+} from '../room/reconciliation-boundary';
 import { reconcileRooms } from '../room/reconciliation';
 import { createAuthoringRoomAllocator } from './topology-ops';
 import { allocateCapturedId } from '../plan/id-capture';
 import { validateClosedWallContacts } from '../topology/wall-first';
-import { topologyComponentKeyByJunctionId, topologyComponentKeyByWallId } from '../room/topology-components';
+import {
+	topologyComponentKeyByJunctionId,
+	topologyComponentKeyByWallId,
+} from '../room/topology-components';
 import { planWallCrossing, planWallSplitAtPoint } from './noding';
 import { wallCubicChain } from './centerline';
 import type { ResolvedWallSplitResult } from './curve-algebra';
-import type { RoundOperationCorrespondence, RoundOperationJunctionCorrespondence, RoundOperationOpeningCorrespondence } from '../room/round-room';
+import type {
+	RoundOperationCorrespondence,
+	RoundOperationJunctionCorrespondence,
+	RoundOperationOpeningCorrespondence,
+} from '../room/round-room';
 import { partitionClosedWallChainAtStations } from '../room/round-room';
 import { carryRegionWallIntents } from '../room/region-validation';
 import { coincidesAsJunction } from './junction-identity';
-import { nextNodingFix, validateChainTopology } from './chain-repair'
+import { nextNodingFix, validateChainTopology } from './chain-repair';
 import { nodingAllocatorAdapter } from './chain-noding';
 import type { WallChainPlan, WallChainPlanOptions, WallChainRejection } from './chain-types';
-import { cloneWallFirstDocument } from './chain-plan'
+import { cloneWallFirstDocument } from './chain-plan';
 import { createCapturedWallChainAllocator } from './chain-types';
 import { absorbPartialVirtualEdgeWalls } from './chain-virtual-edges';
 
@@ -37,27 +57,36 @@ export type ClosedToRingSpec = {
 	readonly stations: readonly ResolvedWallSplitResult[];
 	readonly snappedPoints: ReadonlyArray<
 		| { readonly pointIndex: number; readonly kind: 'seam' }
-		| { readonly pointIndex: number; readonly kind: 'interior'; readonly split: ResolvedWallSplitResult }
+		| {
+				readonly pointIndex: number;
+				readonly kind: 'interior';
+				readonly split: ResolvedWallSplitResult;
+		  }
 	>;
 };
-
 
 export function executeWallChainCandidate(
 	options: WallChainPlanOptions,
 	thickness: number,
 	height: number,
 	resolvedInput: ReadonlyArray<{ junctionId: string | null; point: LayoutVec2 }>,
-	legEndpoints: ReadonlyArray<{ start: { junctionId: string | null; point: LayoutVec2 }; end: { junctionId: string | null; point: LayoutVec2 } }>,
+	legEndpoints: ReadonlyArray<{
+		start: { junctionId: string | null; point: LayoutVec2 };
+		end: { junctionId: string | null; point: LayoutVec2 };
+	}>,
 	close: boolean,
 	arcLeg: { readonly pointIndex: number; readonly centerline: LayoutWall['centerline'] } | null,
 	declaredHostByPointIndexInput: ReadonlyMap<number, string>,
-	closedSpecs: readonly ClosedToRingSpec[]
+	closedSpecs: readonly ClosedToRingSpec[],
 ): WallChainPlan {
 	const allocator = createCapturedWallChainAllocator(options.capture);
-	const reject = (rejection: WallChainRejection): WallChainPlan => ({ kind: 'rejected', rejection });
+	const reject = (rejection: WallChainRejection): WallChainPlan => ({
+		kind: 'rejected',
+		rejection,
+	});
 	const resolved = resolvedInput.map((entry) => ({
 		junctionId: entry.junctionId,
-		point: [entry.point[0], entry.point[1]] as LayoutVec2
+		point: [entry.point[0], entry.point[1]] as LayoutVec2,
 	}));
 	const declaredHostByPointIndex = new Map(declaredHostByPointIndexInput);
 
@@ -74,13 +103,14 @@ export function executeWallChainCandidate(
 	const closedHostFragmentIds: string[] = [];
 
 	for (const closedSpec of closedSpecs) {
-		const { closedWall, roundRoomId, seamPoint, closedLength, stations, snappedPoints } = closedSpec;
+		const { closedWall, roundRoomId, seamPoint, closedLength, stations, snappedPoints } =
+			closedSpec;
 		const seamJunctionId = closedWall.startJunctionId;
 		const segments = partitionClosedWallChainAtStations({
 			closedWall,
 			seamPoint,
 			totalLength: closedLength,
-			stations
+			stations,
 		});
 		const rimJunctionIds: string[] = [];
 		for (let i = 0; i < stations.length; i += 1) {
@@ -93,7 +123,7 @@ export function executeWallChainCandidate(
 				kind: 'born',
 				junctionId: jId,
 				sourceWallId: closedWall.id,
-				station: stations[i]!.distance
+				station: stations[i]!.distance,
 			});
 		}
 
@@ -104,7 +134,10 @@ export function executeWallChainCandidate(
 			const startJ = i === 0 ? seamJunctionId : rimJunctionIds[i - 1]!;
 			const endJ = i === segments.length - 1 ? seamJunctionId : rimJunctionIds[i]!;
 			const takenW = new Set([...candidate.walls.map((w) => w.id), ...createdArcIds]);
-			const fragId = i === 0 ? closedWall.id : allocateCapturedId(takenW, `${closedWall.id}:arc:${i}`, options.capture);
+			const fragId =
+				i === 0
+					? closedWall.id
+					: allocateCapturedId(takenW, `${closedWall.id}:arc:${i}`, options.capture);
 			if (i > 0) {
 				createdArcIds.push(fragId);
 				createdWallIds.push(fragId);
@@ -117,7 +150,7 @@ export function executeWallChainCandidate(
 				thickness: closedWall.thickness,
 				height: closedWall.height,
 				centerline: wallCubicChain(seg.knots, seg.spans),
-				...(closedWall.name !== undefined ? { name: closedWall.name } : {})
+				...(closedWall.name !== undefined ? { name: closedWall.name } : {}),
 			});
 		}
 
@@ -139,7 +172,7 @@ export function executeWallChainCandidate(
 					return reject({
 						code: 'noding_rejected',
 						message: `Attachment cut on closed Wall '${closedWall.id}' passes through Opening '${opening.id}' interior`,
-						wallIds: [closedWall.id]
+						wallIds: [closedWall.id],
 					});
 				}
 			}
@@ -161,19 +194,23 @@ export function executeWallChainCandidate(
 			closedPartitionOpeningCorr.push({
 				openingId: opening.id,
 				beforeWallId: closedWall.id,
-				afterWallId: targetWall.id
+				afterWallId: targetWall.id,
 			});
 		}
 
-		candidate.walls = candidate.walls.flatMap((w) => (w.id === closedWall.id ? fragmentWalls : [w]));
+		candidate.walls = candidate.walls.flatMap((w) =>
+			w.id === closedWall.id ? fragmentWalls : [w],
+		);
 		candidate.openings = rebasedOpenings;
 		candidate.rooms = candidate.rooms.map((r) =>
 			r.id === roundRoomId
 				? {
 						...r,
-						boundary: fragmentWalls.map((w): OrientedWallRef => ({ wallId: w.id, direction: 'forward' }))
+						boundary: fragmentWalls.map(
+							(w): OrientedWallRef => ({ wallId: w.id, direction: 'forward' }),
+						),
 					}
-				: r
+				: r,
 		);
 		const allFragIds = fragmentWalls.map((w) => w.id);
 		regionWallSplits.set(closedWall.id, allFragIds);
@@ -182,13 +219,16 @@ export function executeWallChainCandidate(
 		closedPartitionWallCorrs.push({
 			kind: 'subdivision',
 			sourceWallId: closedWall.id,
-			fragmentWallIds: allFragIds
+			fragmentWallIds: allFragIds,
 		});
 
 		// Bind snapped draft points to the resolved rim Junctions and remove closed-Wall host declarations.
 		for (const snapped of snappedPoints) {
 			if (snapped.kind === 'seam') {
-				resolved[snapped.pointIndex] = { junctionId: seamJunctionId, point: [seamPoint[0], seamPoint[1]] };
+				resolved[snapped.pointIndex] = {
+					junctionId: seamJunctionId,
+					point: [seamPoint[0], seamPoint[1]],
+				};
 			} else {
 				const cutIdx = stations.findIndex((s) => coincidesAsJunction(s.point, snapped.split.point));
 				const jId = rimJunctionIds[cutIdx]!;
@@ -227,9 +267,8 @@ export function executeWallChainCandidate(
 			// Authored chain legs are straight; A3 is the one bounded
 			// exception: the drawn Arc's leg carries the canonical cubic-chain the
 			// curve planners already read, and every other leg stays `line`.
-			centerline: arcLeg !== null && index === arcLeg.pointIndex
-				? arcLeg.centerline
-				: { kind: 'line' }
+			centerline:
+				arcLeg !== null && index === arcLeg.pointIndex ? arcLeg.centerline : { kind: 'line' },
 		};
 		candidate.walls.push(wall);
 		createdWallIds.push(id);
@@ -237,7 +276,7 @@ export function executeWallChainCandidate(
 
 	// --- noding against the full candidate graph -----------------------------
 	// The chain may T into or cross pre-existing walls (and vice versa). Every
-	// un-noded relationship is resolved through the P23.8 noding plans until
+	// un-noded relationship is resolved through the noding plans until
 	// the graph is clean; distances are always recomputed against the current
 	// candidate so a wall already fragmented by an earlier fix stays correct.
 	//
@@ -248,7 +287,7 @@ export function executeWallChainCandidate(
 	// must not participate as authored walls in later noding passes.
 	const nodedJunctionIds = new Set<string>();
 	const authoredWallIds = new Set<string>(
-		createdWallIds.filter((id) => !closedHostFragmentIds.includes(id))
+		createdWallIds.filter((id) => !closedHostFragmentIds.includes(id)),
 	);
 	const operationOwnedJunctionIds = new Set<string>(createdJunctionIds);
 	// The validated declarations, re-keyed onto the Junction each declared point
@@ -289,7 +328,7 @@ export function executeWallChainCandidate(
 			candidate,
 			[...authoredWallIds],
 			operationOwnedJunctionIds,
-			endpointHostWallIds
+			endpointHostWallIds,
 		);
 		if (!fix) break;
 		if (fix.kind === 'reject') return reject(fix.rejection);
@@ -303,9 +342,7 @@ export function executeWallChainCandidate(
 				junctionIdRedirects.set(duplicateId, fix.keepJunctionId);
 				operationOwnedJunctionIds.delete(duplicateId);
 			}
-			candidate.junctions = candidate.junctions.filter(
-				(junction) => !duplicates.has(junction.id)
-			);
+			candidate.junctions = candidate.junctions.filter((junction) => !duplicates.has(junction.id));
 			candidate.walls = candidate.walls.map((wall) => {
 				const start = duplicates.has(wall.startJunctionId);
 				const end = duplicates.has(wall.endJunctionId);
@@ -313,7 +350,7 @@ export function executeWallChainCandidate(
 				return {
 					...wall,
 					startJunctionId: start ? fix.keepJunctionId : wall.startJunctionId,
-					endJunctionId: end ? fix.keepJunctionId : wall.endJunctionId
+					endJunctionId: end ? fix.keepJunctionId : wall.endJunctionId,
 				};
 			});
 			continue;
@@ -322,17 +359,33 @@ export function executeWallChainCandidate(
 			candidate.junctions = candidate.junctions.map((junction) =>
 				junction.id === fix.endpointJunctionId
 					? { ...junction, point: [fix.point[0], fix.point[1]] }
-					: junction
+					: junction,
 			);
 		}
 		const plan =
 			fix.kind === 'crossing'
-				? planWallCrossing(candidate, fix.wallIds, fix.point, nodingAllocatorAdapter(allocator, candidate))
-				: planWallSplitAtPoint(candidate, fix.interiorWallId, fix.splitDistance, fix.point, nodingAllocatorAdapter(allocator, candidate), {
-						existingJunctionId: fix.endpointJunctionId
-					});
+				? planWallCrossing(
+						candidate,
+						fix.wallIds,
+						fix.point,
+						nodingAllocatorAdapter(allocator, candidate),
+					)
+				: planWallSplitAtPoint(
+						candidate,
+						fix.interiorWallId,
+						fix.splitDistance,
+						fix.point,
+						nodingAllocatorAdapter(allocator, candidate),
+						{
+							existingJunctionId: fix.endpointJunctionId,
+						},
+					);
 		if (plan.kind === 'rejected') {
-			return reject({ code: 'noding_rejected', message: plan.rejection.message, wallIds: plan.rejection.wallId ? [plan.rejection.wallId] : undefined });
+			return reject({
+				code: 'noding_rejected',
+				message: plan.rejection.message,
+				wallIds: plan.rejection.wallId ? [plan.rejection.wallId] : undefined,
+			});
 		}
 		nodingSurfaceLineage.push(...plan.surfaceLineage);
 		const document = plan.document as LayoutDocumentWallFirst;
@@ -378,7 +431,7 @@ export function executeWallChainCandidate(
 		candidate.openings = document.openings;
 	}
 
-	// SP1d partial-Wall absorption: a newly drawn Wall that starts at one
+	// Partial-Wall absorption: a newly drawn Wall that starts at one
 	// virtual-edge Junction and ends on a proper subsegment of that edge replaces
 	// the covered part of the open side and joins the Space boundary. This runs
 	// before reconciliation so the carry rule sees the authored boundary; the
@@ -386,8 +439,12 @@ export function executeWallChainCandidate(
 	const absorbedRoomIds = absorbPartialVirtualEdgeWalls(candidate, authoredWallIds);
 
 	// --- topology gate: no un-noded crossing may survive ---------------------
-	const closedContact = validateClosedWallContacts(candidate, new Set([...createdWallIds, ...splitWallIds]));
-	if (closedContact) return reject({ code: 'closed_wall_isolated', message: closedContact.message });
+	const closedContact = validateClosedWallContacts(
+		candidate,
+		new Set([...createdWallIds, ...splitWallIds]),
+	);
+	if (closedContact)
+		return reject({ code: 'closed_wall_isolated', message: closedContact.message });
 	const topologyIssue = p2311Measure('chain-topology-gate', () => validateChainTopology(candidate));
 	if (topologyIssue) return reject(topologyIssue);
 
@@ -399,7 +456,9 @@ export function executeWallChainCandidate(
 	let surfaceLineage: LayoutSurfaceLineage = [];
 	let retiredRoomIds: string[] = [];
 	{
-		const extraction = p2311Measure('face-extraction', () => extractBoundaryCandidateFaces(candidate));
+		const extraction = p2311Measure('face-extraction', () =>
+			extractBoundaryCandidateFaces(candidate),
+		);
 		if (extraction.faces.length > 0 || options.baseline.rooms.length > 0) {
 			const predecessorPolygons = new Map<string, readonly LayoutVec2[]>();
 			const predecessorWitnesses = new Map<string, LayoutVec2>();
@@ -409,17 +468,17 @@ export function executeWallChainCandidate(
 				if (!polygon) {
 					return reject({
 						code: 'room_reconciliation_rejected',
-						message: `Predecessor room '${room.id}' has an unresolvable boundary`
+						message: `Predecessor room '${room.id}' has an unresolvable boundary`,
 					});
 				}
 				predecessorPolygons.set(room.id, polygon);
 				predecessorWitnesses.set(room.id, interiorWitness(polygon));
 			}
-			// True P23.8 correspondence components: connected components of
+			// True correspondence components: connected components of
 			// the bipartite predecessor-Room ↕ candidate-face graph. An edge
 			// exists when the predecessor witness lies strictly inside the
 			// face or the predecessor polygon overlaps the face with
-			// positive area — AND (P23B.3a D-12) authored identity puts both
+			// positive area, and authored identity puts both
 			// sides in the same connected component, so an authored Wall
 			// landing over an INDEPENDENT group can never claim its Rooms.
 			// Faces with no predecessor form independent 0→1 birth
@@ -431,8 +490,8 @@ export function executeWallChainCandidate(
 					predecessorWitnesses,
 					predecessorPolygons,
 					candidateDocument: candidate,
-					baselineRooms: options.baseline.rooms
-				})
+					baselineRooms: options.baseline.rooms,
+				}),
 			);
 			const result = p2311Measure('room-reconciliation', () =>
 				reconcileRooms({
@@ -445,17 +504,15 @@ export function executeWallChainCandidate(
 					// The chain is non-removal: an already-open Space is preserved,
 					// never retired by an unrelated stroke.
 					candidateRooms: candidate.rooms,
-					allocator: createAuthoringRoomAllocator(options.capture, options.roomNamePrefix)
-				})
+					allocator: createAuthoringRoomAllocator(options.capture, options.roomNamePrefix),
+				}),
 			);
 			if ('rejection' in result) {
 				return reject({
 					code: 'room_reconciliation_rejected',
 					message: result.rejection.message,
 					...(result.rejection.roomIds ? { wallIds: result.rejection.roomIds } : {}),
-					...(result.rejection.faceKey
-						? { topology: extraction.diagnostics }
-						: {})
+					...(result.rejection.faceKey ? { topology: extraction.diagnostics } : {}),
 				});
 			}
 			candidate.rooms = result.document.rooms;
@@ -463,7 +520,11 @@ export function executeWallChainCandidate(
 			candidate.openings = result.document.openings;
 			lineage = result.lineage
 				.filter((record) => record.kind === 'created')
-				.map((record) => ({ faceKey: record.faceKey, roomId: record.roomId, kind: 'created' as const }));
+				.map((record) => ({
+					faceKey: record.faceKey,
+					roomId: record.roomId,
+					kind: 'created' as const,
+				}));
 			retiredRoomIds = [...result.retiredRoomIds];
 			surfaceLineage = roomSurfaceLineage(result.lineage);
 		}
@@ -474,7 +535,7 @@ export function executeWallChainCandidate(
 		const validated = validateWallFirstLayoutDocument(candidate);
 		return {
 			validated,
-			compiled: validated.success ? compileWallFirstLayoutGeometry(validated.document) : null
+			compiled: validated.success ? compileWallFirstLayoutGeometry(validated.document) : null,
 		};
 	});
 	const validated = canonical.validated;
@@ -482,7 +543,7 @@ export function executeWallChainCandidate(
 		return reject({
 			code: 'invalid_candidate_document',
 			message: `Candidate failed wall-first validation: ${validated.issues[0]?.message ?? 'unknown issue'}`,
-			issues: validated.issues
+			issues: validated.issues,
 		});
 	}
 	const compiled = canonical.compiled!;
@@ -490,7 +551,7 @@ export function executeWallChainCandidate(
 		return reject({
 			code: 'candidate_does_not_compile',
 			message: `Candidate document does not compile: ${compiled.issues[0]?.message ?? 'unknown geometry issue'}`,
-			issues: compiled.issues
+			issues: compiled.issues,
 		});
 	}
 
@@ -503,14 +564,17 @@ export function executeWallChainCandidate(
 	const finalComponentKeyByWallId = topologyComponentKeyByWallId(validated.document);
 	const finalJunctionComponentKeyById = topologyComponentKeyByJunctionId(
 		validated.document,
-		finalComponentKeyByWallId
+		finalComponentKeyByWallId,
 	);
 	const authoredComponentKeys = new Set<string | symbol>(
 		[...authoredWallIds]
 			.map((wallId) => finalComponentKeyByWallId.get(wallId))
-			.filter((key): key is string => key !== undefined)
+			.filter((key): key is string => key !== undefined),
 	);
-	const resolveFinalJunctionId = (entry: { junctionId: string | null; point: LayoutVec2 }): string | null => {
+	const resolveFinalJunctionId = (entry: {
+		junctionId: string | null;
+		point: LayoutVec2;
+	}): string | null => {
 		if (!entry.junctionId) return null;
 		const redirectedId = resolveJunctionId(entry.junctionId);
 		if (finalJunctionIds.has(redirectedId)) return redirectedId;
@@ -523,23 +587,25 @@ export function executeWallChainCandidate(
 		);
 	};
 	const startJunctionId = resolveFinalJunctionId(resolved[0]!);
-	const endJunctionId = resolveFinalJunctionId(close ? resolved[0]! : resolved[resolved.length - 1]!);
+	const endJunctionId = resolveFinalJunctionId(
+		close ? resolved[0]! : resolved[resolved.length - 1]!,
+	);
 	if (!startJunctionId || !endJunctionId) {
 		return reject({
 			code: 'invalid_candidate_document',
-			message: 'Committed candidate lost a resolved Junction identity'
+			message: 'Committed candidate lost a resolved Junction identity',
 		});
 	}
 
 	const normalizedSurfaceLineage = normalizeLayoutSurfaceLineage({
 		beforeLayout: options.baseline,
 		afterLayout: validated.document,
-		lineage: [...closedPartitionSurfaceLineage, ...nodingSurfaceLineage, ...surfaceLineage]
+		lineage: [...closedPartitionSurfaceLineage, ...nodingSurfaceLineage, ...surfaceLineage],
 	});
 	if (normalizedSurfaceLineage.kind === 'rejected') {
 		return reject({
 			code: 'invalid_candidate_document',
-			message: normalizedSurfaceLineage.message
+			message: normalizedSurfaceLineage.message,
 		});
 	}
 
@@ -563,7 +629,7 @@ export function executeWallChainCandidate(
 					rooms: roundRoomCorr,
 					walls: closedPartitionWallCorrs,
 					junctions: closedPartitionJunctionCorr,
-					openings: closedPartitionOpeningCorr
+					openings: closedPartitionOpeningCorr,
 				}
 			: undefined;
 
@@ -572,8 +638,9 @@ export function executeWallChainCandidate(
 		document: validated.document,
 		createdWallIds: [...new Set(createdWallIds)],
 		authoredWallIds: [...authoredWallIds],
-		createdJunctionIds: [...new Set([...createdJunctionIds, ...nodedJunctionIds])]
-			.filter((junctionId) => finalJunctionIds.has(junctionId)),
+		createdJunctionIds: [...new Set([...createdJunctionIds, ...nodedJunctionIds])].filter(
+			(junctionId) => finalJunctionIds.has(junctionId),
+		),
 		splitWallIds: [...splitWallIds],
 		startJunctionId,
 		endJunctionId,
@@ -583,13 +650,13 @@ export function executeWallChainCandidate(
 		absorbedRoomIds,
 		...(clearedRoundRoomIds.length > 0 ? { clearedRoundRoomIds } : {}),
 		...(roundCorrespondence ? { roundCorrespondence } : {}),
-		// P23B.11 M-4 — the final canonical gate above is the ONLY compile
+		// The final canonical gate is the only compile
 		// authority; this carries its result so an installing caller does not pay
 		// for a second compile of the same accepted document.
 		acceptance: {
 			documentJson: validated.canonicalJson,
 			geometry: compiled.geometry,
-			issues: compiled.issues
-		}
+			issues: compiled.issues,
+		},
 	};
 }

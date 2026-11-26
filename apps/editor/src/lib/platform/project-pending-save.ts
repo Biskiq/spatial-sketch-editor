@@ -8,8 +8,15 @@
  * project API surface never loads the unit-envelope closure (and its Camera /
  * Three dependency) for a route that only lists or opens projects.
  */
-import { serializeProjectEnvelope, validateProjectEnvelope } from '@portfolio/project-model/units/validate';
-import { UNIT_ENVELOPE_FORMAT_VERSION, LAYOUT_UNIT_FORMAT_VERSION, type ProjectEnvelope } from '@portfolio/project-model/units';
+import {
+	serializeProjectEnvelope,
+	validateProjectEnvelope,
+} from '@portfolio/project-model/units/validate';
+import {
+	UNIT_ENVELOPE_FORMAT_VERSION,
+	LAYOUT_UNIT_FORMAT_VERSION,
+	type ProjectEnvelope,
+} from '@portfolio/project-model/units';
 import { readSaveRequest, type SaveRequest } from '@portfolio/project-model/save';
 import type { SessionStorageLike } from './project-persistence';
 
@@ -44,7 +51,7 @@ export type PendingCloudSaveResult =
  */
 function captureDescribesEnvelope(
 	capture: SaveRequest['capture'],
-	envelope: ProjectEnvelope
+	envelope: ProjectEnvelope,
 ): boolean {
 	if (envelope.id !== capture.projectId) return false;
 	if (
@@ -63,7 +70,7 @@ function captureDescribesEnvelope(
 export function writePendingCloudSave(
 	save: SaveRequest,
 	storage: SessionStorageLike | null = browserSessionStorage(),
-	createdAt = Date.now()
+	createdAt = Date.now(),
 ): boolean {
 	if (!storage || !Number.isFinite(createdAt)) return false;
 	// The draft is a capture, not a document: validate the protocol shape and the
@@ -84,7 +91,8 @@ export function writePendingCloudSave(
 	// resume a different write than the creator captured.
 	if (!captureDescribesEnvelope(parsed.request.capture, validation.envelope)) return false;
 	try {
-		if (inspectPendingCloudSave(storage, createdAt, false).status === 'incompatible-layout') return false;
+		if (inspectPendingCloudSave(storage, createdAt, false).status === 'incompatible-layout')
+			return false;
 		storage.setItem(PENDING_CLOUD_SAVE_KEY, JSON.stringify({ createdAt, save: parsed.request }));
 		return true;
 	} catch {
@@ -94,7 +102,7 @@ export function writePendingCloudSave(
 
 export function readPendingCloudSave(
 	storage: SessionStorageLike | null = browserSessionStorage(),
-	now = Date.now()
+	now = Date.now(),
 ): PendingCloudSaveResult {
 	return inspectPendingCloudSave(storage, now, true);
 }
@@ -102,7 +110,7 @@ export function readPendingCloudSave(
 function inspectPendingCloudSave(
 	storage: SessionStorageLike | null,
 	now: number,
-	cleanup: boolean
+	cleanup: boolean,
 ): PendingCloudSaveResult {
 	if (!storage) return { status: 'missing' };
 	let raw: string | null;
@@ -133,7 +141,8 @@ function inspectPendingCloudSave(
 		if (parsed.kind === 'invalid') throw new Error('invalid capture');
 		const capture = parsed.request.capture;
 		const envelope: unknown = JSON.parse(capture.canonicalJson);
-		if (typeof value.createdAt !== 'number' || !Number.isFinite(value.createdAt)) throw new Error('invalid timestamp');
+		if (typeof value.createdAt !== 'number' || !Number.isFinite(value.createdAt))
+			throw new Error('invalid timestamp');
 		if (describesIncompatibleLayout(envelope, capture)) {
 			return { status: 'incompatible-layout', projectId: capture.projectId, raw };
 		}
@@ -153,7 +162,7 @@ function inspectPendingCloudSave(
 		return {
 			status: 'ready',
 			project: validation.envelope,
-			save: parsed.request
+			save: parsed.request,
 		};
 	} catch {
 		if (cleanup) safeRemove(storage, PENDING_CLOUD_SAVE_KEY);
@@ -163,21 +172,30 @@ function inspectPendingCloudSave(
 
 /** Inspect only the wire stamps. The current reader cannot validate outgoing Layout data. */
 function describesIncompatibleLayout(envelope: unknown, capture: SaveRequest['capture']): boolean {
-	if (!isRecord(envelope) || envelope.formatVersion !== UNIT_ENVELOPE_FORMAT_VERSION ||
-		envelope.id !== capture.projectId || !isRecord(envelope.acceptedRevision) ||
+	if (
+		!isRecord(envelope) ||
+		envelope.formatVersion !== UNIT_ENVELOPE_FORMAT_VERSION ||
+		envelope.id !== capture.projectId ||
+		!isRecord(envelope.acceptedRevision) ||
 		envelope.acceptedRevision.projectId !== capture.acceptedRevision.projectId ||
 		envelope.acceptedRevision.revisionId !== capture.acceptedRevision.revisionId ||
-		!isRecord(envelope.units) || !isRecord(envelope.units.layout)) return false;
+		!isRecord(envelope.units) ||
+		!isRecord(envelope.units.layout)
+	)
+		return false;
 	const { header, data } = envelope.units.layout;
 	if (!isRecord(header) || header.domain !== 'layout' || !isRecord(data)) return false;
 	const stamps = [header.formatVersion, data.formatVersion];
-	return stamps.every(Number.isSafeInteger) && stamps.some((version) => version !== LAYOUT_UNIT_FORMAT_VERSION);
+	return (
+		stamps.every(Number.isSafeInteger) &&
+		stamps.some((version) => version !== LAYOUT_UNIT_FORMAT_VERSION)
+	);
 }
 
 /** Only the explicit recovery action may clear the exact incompatible capture it offered. */
 export function discardIncompatiblePendingCloudSave(
 	capture: IncompatiblePendingCloudSave,
-	storage: SessionStorageLike | null = browserSessionStorage()
+	storage: SessionStorageLike | null = browserSessionStorage(),
 ): boolean {
 	try {
 		if (!storage || storage.getItem(PENDING_CLOUD_SAVE_KEY) !== capture.raw) return false;
@@ -188,8 +206,11 @@ export function discardIncompatiblePendingCloudSave(
 	}
 }
 
-export function clearPendingCloudSave(storage: SessionStorageLike | null = browserSessionStorage()): void {
-	if (inspectPendingCloudSave(storage, Date.now(), false).status !== 'incompatible-layout') safeRemove(storage, PENDING_CLOUD_SAVE_KEY);
+export function clearPendingCloudSave(
+	storage: SessionStorageLike | null = browserSessionStorage(),
+): void {
+	if (inspectPendingCloudSave(storage, Date.now(), false).status !== 'incompatible-layout')
+		safeRemove(storage, PENDING_CLOUD_SAVE_KEY);
 	safeRemove(storage, LEGACY_PENDING_CLOUD_SAVE_KEY);
 }
 

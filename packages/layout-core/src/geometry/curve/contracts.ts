@@ -26,20 +26,20 @@ export const LAYOUT_AUTO_BEZIER_ALPHA = 0.5;
 
 export const MAX_CURVE_SAMPLES_PER_SEGMENT = 100_000;
 
-
 export class LayoutGeometrySamplingError extends Error {
 	constructor(
-		public readonly code: 'sampling_length_invalid' | 'sampling_budget_exceeded' | 'sampling_output_invalid',
-		message: string
+		public readonly code:
+			| 'sampling_length_invalid'
+			| 'sampling_budget_exceeded'
+			| 'sampling_output_invalid',
+		message: string,
 	) {
 		super(message);
 		this.name = 'LayoutGeometrySamplingError';
 	}
 }
 
-
 export type AutoBezierSegment = Extract<DraftSegment, { kind: 'auto-bezier' }>;
-
 
 export type CubicBezierShape = {
 	start: LayoutVec2;
@@ -47,7 +47,6 @@ export type CubicBezierShape = {
 	handleIn: LayoutVec2;
 	end: LayoutVec2;
 };
-
 
 /**
  * Control pair for exactly one cubic span: `handleOut` leaves the span's first
@@ -59,7 +58,6 @@ export type CubicSpanControls = {
 	handleOut: LayoutVec2;
 	handleIn: LayoutVec2;
 };
-
 
 /**
  * The canonical Wall adapter's transient segment shape: explicit
@@ -73,16 +71,11 @@ export type CubicChainSegment = {
 	cubics: CubicBezierShape[];
 };
 
-
 /** One non-straight segment shape the sampler understands. */
 export type CurvedSampleableSegment = AutoBezierSegment | CubicChainSegment;
 
-
 /** Every segment shape the one sampler understands. */
-export type SampleableSegment =
-	| Extract<DraftSegment, { kind: 'line' }>
-	| CurvedSampleableSegment;
-
+export type SampleableSegment = Extract<DraftSegment, { kind: 'line' }> | CurvedSampleableSegment;
 
 export type LegacyBezierSegment = {
 	id: string;
@@ -93,7 +86,6 @@ export type LegacyBezierSegment = {
 	end: LayoutVec2;
 };
 
-
 export type CurveSample = {
 	point: LayoutVec2;
 	distance: number;
@@ -102,7 +94,6 @@ export type CurveSample = {
 	t: number;
 };
 
-
 export type CurveDistanceResult = {
 	point: LayoutVec2;
 	distance: number;
@@ -110,7 +101,6 @@ export type CurveDistanceResult = {
 	normal: LayoutVec2;
 	t: number;
 };
-
 
 export type SampledSegment = {
 	segmentId: string;

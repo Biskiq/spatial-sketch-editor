@@ -8,10 +8,10 @@
  * with a self-delimiting, escape-free format:
  *
  * ```text
- * <tag><length>:<text>      one part
- *   s  string          n  number        b  boolean
- *   z  null            u  undefined     j  JSON value (objects and arrays)
- *   k  a nested cache key, embedded by reference
+ * <tag><length>:<text> one part
+ *  s string n number b boolean
+ *  z null u undefined j JSON value (objects and arrays)
+ *  k a nested cache key, embedded by reference
  * ```
  *
  * Because every part carries its own length, a nested key is embedded by

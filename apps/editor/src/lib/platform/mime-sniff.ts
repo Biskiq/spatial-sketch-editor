@@ -27,7 +27,16 @@ export function sniffImageMime(bytes: Uint8Array): SupportedMime | null {
 		const b5 = bytes[5];
 		const b6 = bytes[6];
 		const b7 = bytes[7];
-		if (b0 === 0x89 && b1 === 0x50 && b2 === 0x4e && b3 === 0x47 && b4 === 0x0d && b5 === 0x0a && b6 === 0x1a && b7 === 0x0a) {
+		if (
+			b0 === 0x89 &&
+			b1 === 0x50 &&
+			b2 === 0x4e &&
+			b3 === 0x47 &&
+			b4 === 0x0d &&
+			b5 === 0x0a &&
+			b6 === 0x1a &&
+			b7 === 0x0a
+		) {
 			return 'image/png';
 		}
 	}

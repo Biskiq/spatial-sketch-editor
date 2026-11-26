@@ -27,10 +27,10 @@ export function createWorldIndexModel() {
 		layout: LayoutUnitPayload | null,
 		items: readonly Omit<WorldIndexItem, 'relations' | 'context'>[],
 		projectName: string,
-		sceneRooms: ReadonlyMap<string, string> = new Map()
+		sceneRooms: ReadonlyMap<string, string> = new Map(),
 	) {
 		const contexts = [
-			{ id: 'project' as WorldScope, label: projectName, parent: null as WorldScope | null }
+			{ id: 'project' as WorldScope, label: projectName, parent: null as WorldScope | null },
 		];
 		if (layout) {
 			contexts.push({ id: 'free', label: 'Free objects', parent: 'project' });
@@ -38,7 +38,7 @@ export function createWorldIndexModel() {
 				contexts.push({
 					id: `room:${room.id}`,
 					label: room.name || (room.virtualEdges.length > 0 ? 'Open space' : 'Room'),
-					parent: 'project'
+					parent: 'project',
 				});
 		}
 		if (layout !== previous || relations === undefined) {
@@ -48,7 +48,7 @@ export function createWorldIndexModel() {
 					roomsByWall.set(ref.wallId, [...(roomsByWall.get(ref.wallId) ?? []), room.id]);
 			const openingHosts = new Map(layout?.openings.map((o) => [o.id, o.wallId]) ?? []);
 			const objectRooms = new Map(
-				layout?.objects.filter((o) => o.roomId).map((o) => [o.id, o.roomId!]) ?? []
+				layout?.objects.filter((o) => o.roomId).map((o) => [o.id, o.roomId!]) ?? [],
 			);
 			relations = { roomsByWall, openingHosts, objectRooms };
 			previous = layout;
@@ -75,14 +75,15 @@ export function createWorldIndexModel() {
 				}
 				if (kind === 'object') {
 					const roomId = objectRooms.get(id);
-					if (roomId && layout?.rooms.some(room => room.id === roomId)) relations.push(`room:${roomId}`);
+					if (roomId && layout?.rooms.some((room) => room.id === roomId))
+						relations.push(`room:${roomId}`);
 					else relations.push('free');
 				}
-
 			}
 			if (item.sourceId.startsWith('scene:entity:')) {
 				const room = sceneRooms.get(item.sourceId.slice('scene:entity:'.length));
-				if (room && layout?.rooms.some(candidate => candidate.id === room)) relations.push(`room:${room}`);
+				if (room && layout?.rooms.some((candidate) => candidate.id === room))
+					relations.push(`room:${room}`);
 				else relations.push('free');
 			}
 			return { ...item, context, relations };
@@ -91,23 +92,25 @@ export function createWorldIndexModel() {
 	};
 }
 export function resolveWorldScope(model: WorldIndexModel, scope: WorldScope): WorldScope {
-	return model.contexts.some((c) => c.id === scope)
-		? scope
-		: 'project';
+	return model.contexts.some((c) => c.id === scope) ? scope : 'project';
 }
 export function worldScopeRows(
 	model: WorldIndexModel,
 	scope: WorldScope,
 	facet: string,
 	query: string,
-	limit = 40
+	limit = 40,
 ) {
 	const needle = query.trim().toLowerCase();
 	const rows = model.rows.filter(
 		(row) =>
-			(scope === 'project' || row.relations.includes(scope)) && row.context !== scope &&
-			(facet === 'all' || row.group === facet || (facet === 'objects' && (row.group === 'object' || row.group === 'scene')) || (facet === 'lights' && row.group === 'light')) &&
-			(!needle || `${row.label} ${row.kind} ${row.sourceId}`.toLowerCase().includes(needle))
+			(scope === 'project' || row.relations.includes(scope)) &&
+			row.context !== scope &&
+			(facet === 'all' ||
+				row.group === facet ||
+				(facet === 'objects' && (row.group === 'object' || row.group === 'scene')) ||
+				(facet === 'lights' && row.group === 'light')) &&
+			(!needle || `${row.label} ${row.kind} ${row.sourceId}`.toLowerCase().includes(needle)),
 	);
 	// All at project/Floor shows Rooms and loose subjects; explicit facets flatten the scope.
 	const visible =

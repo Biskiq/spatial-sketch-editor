@@ -33,25 +33,31 @@ export type ExperienceRuntimePolicyResult =
  */
 export function deriveExperienceRuntimePolicy(
 	envelope: ProjectEnvelope,
-	experienceId: string
+	experienceId: string,
 ): ExperienceRuntimePolicyResult {
-	const experience = envelope.units.experience.data.experiences.find((candidate) => candidate.id === experienceId);
+	const experience = envelope.units.experience.data.experiences.find(
+		(candidate) => candidate.id === experienceId,
+	);
 	if (experience === undefined) {
 		return { kind: 'refused', message: `experience "${experienceId}" is not in this envelope` };
 	}
 	const stopIds = new Set(experience.stops.map((stop) => stop.id));
 	const detours: ExperienceDetourPolicy[] = [];
 	for (const detour of experience.detours) {
-		if (!stopIds.has(detour.fromStopId) || !stopIds.has(detour.toStopId) || !stopIds.has(detour.returnToStopId)) {
+		if (
+			!stopIds.has(detour.fromStopId) ||
+			!stopIds.has(detour.toStopId) ||
+			!stopIds.has(detour.returnToStopId)
+		) {
 			return {
 				kind: 'refused',
-				message: `Detour "${detour.id}" names a Stop this Experience does not carry`
+				message: `Detour "${detour.id}" names a Stop this Experience does not carry`,
 			};
 		}
 		detours.push({
 			fromStopId: detour.fromStopId,
 			toStopId: detour.toStopId,
-			returnToStopId: detour.returnToStopId
+			returnToStopId: detour.returnToStopId,
 		});
 	}
 	return { kind: 'derived', policy: { detours } };

@@ -23,7 +23,7 @@ import type { Vec3 } from '@portfolio/project-model/scene';
 import {
 	resolveSceneSupportOnGeometry,
 	sceneSupportGenerationId,
-	type SceneSupportChoice
+	type SceneSupportChoice,
 } from '@portfolio/project-model/scene-planning';
 import { snapFreePlacement, type SceneSessionOutcome } from './placement';
 import {
@@ -33,7 +33,7 @@ import {
 	type FloorSupport,
 	type FloorSupportSurface,
 	type SupportOccluder,
-	type UpwardSupportFace
+	type UpwardSupportFace,
 } from './support-occlusion';
 
 /**
@@ -51,11 +51,14 @@ const occludersBySnapshot = new WeakMap<
 	StageAdapterContext['snapshot'],
 	Map<string | null, readonly SupportOccluder[]>
 >();
-const facesBySnapshot = new WeakMap<StageAdapterContext['snapshot'], readonly UpwardSupportFace[]>();
+const facesBySnapshot = new WeakMap<
+	StageAdapterContext['snapshot'],
+	readonly UpwardSupportFace[]
+>();
 
 function snapshotOccluders(
 	context: StageAdapterContext,
-	exceptEntityId: string | null
+	exceptEntityId: string | null,
 ): readonly SupportOccluder[] {
 	let bySubject = occludersBySnapshot.get(context.snapshot);
 	if (bySubject === undefined) {
@@ -82,17 +85,20 @@ function snapshotSupportFaces(context: StageAdapterContext): readonly UpwardSupp
 export function pointerFloorSupport(
 	context: StageAdapterContext,
 	css: readonly [number, number],
-	exceptEntityId: string | null
+	exceptEntityId: string | null,
 ): FloorSupport {
 	// Stage pointer intents are local to the Stage surface; Camera rays use the
 	// viewport's CSS coordinate space, whose origin includes the surface offset.
-	const ray = context.ray([css[0] + context.evaluation.rect.left, css[1] + context.evaluation.rect.top]);
+	const ray = context.ray([
+		css[0] + context.evaluation.rect.left,
+		css[1] + context.evaluation.rect.top,
+	]);
 	if (ray === null) return { kind: 'none', reason: 'degenerate' };
 	return floorSupport(
 		ray,
 		context.snapshot.domain.datumMeters,
 		snapshotOccluders(context, exceptEntityId),
-		snapshotSupportFaces(context)
+		snapshotSupportFaces(context),
 	);
 }
 
@@ -107,10 +113,13 @@ export function pointerFloorSupport(
 export function pointerPlanePoint(
 	context: StageAdapterContext,
 	css: readonly [number, number],
-	elevationMeters: number
+	elevationMeters: number,
 ): Vec3 | null {
 	if (!Number.isFinite(elevationMeters)) return null;
-	const ray = context.ray([css[0] + context.evaluation.rect.left, css[1] + context.evaluation.rect.top]);
+	const ray = context.ray([
+		css[0] + context.evaluation.rect.left,
+		css[1] + context.evaluation.rect.top,
+	]);
 	if (ray === null || Math.abs(ray.direction[1]) < 1e-8) return null;
 	const hit = context.intersect(ray, datumWorkingPlane(elevationMeters));
 	if (hit.kind !== 'intersected' || !Number.isFinite(hit.distanceMeters)) return null;
@@ -121,7 +130,7 @@ export function pointerPlanePoint(
 /** The pointer ray's datum-plane point, even when support refuses it. */
 export function pointerDatumPoint(
 	context: StageAdapterContext,
-	css: readonly [number, number]
+	css: readonly [number, number],
 ): Vec3 | null {
 	return pointerPlanePoint(context, css, context.snapshot.domain.datumMeters);
 }
@@ -129,23 +138,28 @@ export function pointerDatumPoint(
 /** Apply the Stage's shared CSS-pixel click/drag boundary to a captured body press. */
 export function isStagePointerDrag(
 	origin: readonly [number, number],
-	point: readonly [number, number]
+	point: readonly [number, number],
 ): boolean {
 	return isStageDrag({ x: origin[0], y: origin[1] }, { x: point[0], y: point[1] });
 }
 
 export function moveSupportRefusal(
-	support: Exclude<ReturnType<typeof floorSupport>, { readonly kind: 'floor' }>
+	support: Exclude<ReturnType<typeof floorSupport>, { readonly kind: 'floor' }>,
 ): SceneSessionOutcome {
 	if (support.kind === 'occluded') {
-		return { kind: 'refused', code: 'occluded', message: `Floor support is obscured by ${support.occluderId}.` };
+		return {
+			kind: 'refused',
+			code: 'occluded',
+			message: `Floor support is obscured by ${support.occluderId}.`,
+		};
 	}
 	return {
 		kind: 'refused',
 		code: 'no-floor-support',
-		message: support.reason === 'degenerate'
-			? 'The pointer ray is unavailable for this reading.'
-			: `The pointer does not reach the Stage datum (${support.reason}).`
+		message:
+			support.reason === 'degenerate'
+				? 'The pointer ray is unavailable for this reading.'
+				: `The pointer does not reach the Stage datum (${support.reason}).`,
 	};
 }
 
@@ -182,7 +196,11 @@ export function snappedPlaceSupport(input: {
 	/** The exact support the preview stood on, qualified and pinned for commit. */
 	readonly choice: SceneSupportChoice;
 } | null {
-	if (!Number.isFinite(input.hitElevation) || !Number.isFinite(input.hitX) || !Number.isFinite(input.hitZ)) {
+	if (
+		!Number.isFinite(input.hitElevation) ||
+		!Number.isFinite(input.hitX) ||
+		!Number.isFinite(input.hitZ)
+	) {
 		return null;
 	}
 	const snapped = snapFreePlacement([input.hitX, input.hitZ], input.snapStep);
@@ -190,35 +208,45 @@ export function snappedPlaceSupport(input: {
 		geometry: input.geometry,
 		generationId: input.generationId,
 		point: [snapped.x, snapped.z],
-		requiredElevation: input.hitElevation
+		requiredElevation: input.hitElevation,
 	});
 	if (resolved.kind !== 'resolved') return null;
-	if (!hitSurfaceSurvives(input.hitSurface, resolved.support.witnesses, resolved.support.orderKey)) {
+	if (
+		!hitSurfaceSurvives(input.hitSurface, resolved.support.witnesses, resolved.support.orderKey)
+	) {
 		return null;
 	}
 	return {
 		x: snapped.x,
 		z: snapped.z,
 		elevation: resolved.support.elevation,
-		choice: { kind: 'elevation', elevation: resolved.support.elevation, generationId: input.generationId }
+		choice: {
+			kind: 'elevation',
+			elevation: resolved.support.elevation,
+			generationId: input.generationId,
+		},
 	};
 }
 
 /** Whether the support the creator actually saw is still one of the witnesses. */
 function hitSurfaceSurvives(
 	hitSurface: FloorSupportSurface,
-	witnesses: readonly { readonly source: { readonly kind: 'room'; readonly roomId: string } | { readonly kind: 'region'; readonly regionId: string } }[],
-	orderKey: string
+	witnesses: readonly {
+		readonly source:
+			| { readonly kind: 'room'; readonly roomId: string }
+			| { readonly kind: 'region'; readonly regionId: string };
+	}[],
+	orderKey: string,
 ): boolean {
 	switch (hitSurface.kind) {
 		case 'room-floor':
 			return witnesses.some(
-				(witness) => witness.source.kind === 'room' && witness.source.roomId === hitSurface.roomId
+				(witness) => witness.source.kind === 'room' && witness.source.roomId === hitSurface.roomId,
 			);
 		case 'region-top':
 			return witnesses.some(
 				(witness) =>
-					witness.source.kind === 'region' && witness.source.regionId === hitSurface.regionId
+					witness.source.kind === 'region' && witness.source.regionId === hitSurface.regionId,
 			);
 		case 'datum':
 			return witnesses.length === 0 && orderKey === DATUM_SUPPORT_ORDER_KEY;
@@ -238,7 +266,7 @@ function hitSurfaceSurvives(
 export function pointerPlaceSupport(
 	context: StageAdapterContext,
 	css: readonly [number, number],
-	snapStep: number | null
+	snapStep: number | null,
 ): {
 	readonly x: number;
 	readonly z: number;
@@ -254,6 +282,6 @@ export function pointerPlaceSupport(
 		hitX: visible.worldPoint[0],
 		hitZ: visible.worldPoint[2],
 		hitSurface: visible.surface,
-		snapStep
+		snapStep,
 	});
 }

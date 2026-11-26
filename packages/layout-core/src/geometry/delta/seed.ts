@@ -12,7 +12,13 @@ import type { Vec3 } from '../../kernel/types';
 import { layoutItem, layoutLength } from '../../kernel/source-collections';
 import { PASSIVE_COMPILE_BY_DOC } from './passive';
 import { registerCompileSnapshot, restoreImmutableCompileSnapshot } from './snapshots';
-import type { CanonicalDeltaBuilders, CompiledObjectsUnit, RetainedCompileWorld, RoomSlot, WallSlot } from './units';
+import type {
+	CanonicalDeltaBuilders,
+	CompiledObjectsUnit,
+	RetainedCompileWorld,
+	RoomSlot,
+	WallSlot,
+} from './units';
 import { buildRetainedCompileWorldFromPass, mergeBounds3Into } from './world';
 
 /**
@@ -23,7 +29,7 @@ export function seedReuseFromPassiveCompile(
 	document: LayoutDocumentWallFirst,
 	reuse: LayoutCompileReuse,
 	builders: CanonicalDeltaBuilders,
-	preserveExistingUnits = false
+	preserveExistingUnits = false,
 ): boolean {
 	if (restoreImmutableCompileSnapshot(document, reuse)) return true;
 	const existingWorld = reuse.world as RetainedCompileWorld | null;
@@ -64,7 +70,8 @@ export function seedReuseFromPassiveCompile(
 	const objCount = layoutLength(document, 'objects');
 	const roomCount = layoutLength(document, 'rooms');
 	if (geometry.queries.polygons.length < objCount + roomCount) return false;
-	if (geometry.queries.aabbs.length < objCount + roomCount + layoutLength(document, 'walls')) return false;
+	if (geometry.queries.aabbs.length < objCount + roomCount + layoutLength(document, 'walls'))
+		return false;
 
 	const documentRoomIds = new Set<string>();
 	for (let i = 0; i < roomCount; i += 1) documentRoomIds.add(layoutItem(document, 'rooms', i)!.id);
@@ -88,9 +95,9 @@ export function seedReuseFromPassiveCompile(
 				points: [],
 				spans: [],
 				polygons: [objPolygons[i]!],
-				aabbs: [objAabbs[i]!]
+				aabbs: [objAabbs[i]!],
 			},
-			issues: []
+			issues: [],
 		});
 	}
 	const objectUnit: CompiledObjectsUnit = {
@@ -99,7 +106,7 @@ export function seedReuseFromPassiveCompile(
 		aabbs: objAabbs,
 		issues: [],
 		bounds3: objBounds,
-		floorRoomBounds3: objFloorBounds
+		floorRoomBounds3: objFloorBounds,
 	};
 
 	// 2. Partition Room slots.
@@ -114,7 +121,7 @@ export function seedReuseFromPassiveCompile(
 			polygons: [geometry.queries.polygons[objCount + r]!],
 			aabbs: [geometry.queries.aabbs[objCount + r]!],
 			issues: [],
-			bounds3: stripped.bounds3
+			bounds3: stripped.bounds3,
 		};
 	}
 
@@ -127,7 +134,10 @@ export function seedReuseFromPassiveCompile(
 	const endLegByWallId = new Map<string, CompiledJunctionLeg>();
 	const pointById = new Map<string, LayoutVec2>();
 	for (let i = 0; i < layoutLength(document, 'junctions'); i += 1) {
-		pointById.set(layoutItem(document, 'junctions', i)!.id, layoutItem(document, 'junctions', i)!.point);
+		pointById.set(
+			layoutItem(document, 'junctions', i)!.id,
+			layoutItem(document, 'junctions', i)!.point,
+		);
 	}
 	for (let i = 0; i < junctions.length; i += 1) {
 		const cj = junctions[i]!;
@@ -139,7 +149,7 @@ export function seedReuseFromPassiveCompile(
 		reuse.junctions.set(cj.junctionId, {
 			authored: builders.junctionInputs(document, cj.point, cj.legs, wallById, pointById).authored,
 			compiled: cj,
-			issues: []
+			issues: [],
 		});
 	}
 
@@ -185,7 +195,7 @@ export function seedReuseFromPassiveCompile(
 
 		const { bounds2: baseBounds2, bounds3: baseBounds3 } = builders.computeWallBaseBounds(
 			compiled,
-			document.floor.elevation
+			document.floor.elevation,
 		);
 		const baseCompiled =
 			sameAuthored(compiled.bounds2, baseBounds2) && sameAuthored(compiled.bounds3, baseBounds3)
@@ -195,13 +205,13 @@ export function seedReuseFromPassiveCompile(
 		const endLeg = endLegByWallId.get(wall.id);
 		const legs = {
 			...(startLeg ? { start: startLeg } : {}),
-			...(endLeg ? { end: endLeg } : {})
+			...(endLeg ? { end: endLeg } : {}),
 		};
 		const baseRecords: RetainedQueryRecords = {
 			points: wallPoints,
 			spans: wallSpans,
 			polygons: [],
-			aabbs: opAabbs
+			aabbs: opAabbs,
 		};
 
 		wallSlots[wIdx] = {
@@ -214,7 +224,7 @@ export function seedReuseFromPassiveCompile(
 			legs,
 			baseRecords,
 			wallAabb,
-			issues: []
+			issues: [],
 		};
 
 		const startPt = pointById.get(wall.startJunctionId);
@@ -223,13 +233,22 @@ export function seedReuseFromPassiveCompile(
 			const hosted = openingsByHostWallId.get(wall.id) ?? [];
 			const role = derivedWallRoles.get(wall.id) ?? 'free-standing';
 			reuse.walls.set(wall.id, {
-				authored: [wall, startPt, endPt, document.floor.id, document.floor.elevation, hosted, role, false],
+				authored: [
+					wall,
+					startPt,
+					endPt,
+					document.floor.id,
+					document.floor.elevation,
+					hosted,
+					role,
+					false,
+				],
 				compiled,
 				baseBounds2,
 				baseBounds3,
 				legs,
 				records: { ...baseRecords, aabbs: [...opAabbs, wallAabb] },
-				issues: []
+				issues: [],
 			});
 		}
 	}
@@ -250,7 +269,7 @@ export function seedReuseFromPassiveCompile(
 		const roomIdsDep = extractFloorRoomIdsDependency(
 			compiledFloor.cacheKey,
 			document.floor.id,
-			compiledFloor.elevation
+			compiledFloor.elevation,
 		);
 		if (roomIdsDep) {
 			reuse.retainedFloor = {
@@ -260,7 +279,7 @@ export function seedReuseFromPassiveCompile(
 				roomIdsDep,
 				bounds3: compiledFloor.bounds3,
 				compiled: compiledFloor,
-				aabb: floorAabb
+				aabb: floorAabb,
 			};
 		}
 		reuse.retainedDocAabb = { bounds3: geometry.bounds, aabb: docAabb };
@@ -271,10 +290,18 @@ export function seedReuseFromPassiveCompile(
 	for (let i = 0; i < physicalWalls.length; i += 1) {
 		const w = physicalWalls[i]!;
 		if (w.samples.length < 2) continue;
-		if (w.startJunctionId && pointById.has(w.startJunctionId) && !junctionLegOrderById.has(w.startJunctionId)) {
+		if (
+			w.startJunctionId &&
+			pointById.has(w.startJunctionId) &&
+			!junctionLegOrderById.has(w.startJunctionId)
+		) {
 			junctionLegOrderById.set(w.startJunctionId, orderCounter++);
 		}
-		if (w.endJunctionId && pointById.has(w.endJunctionId) && !junctionLegOrderById.has(w.endJunctionId)) {
+		if (
+			w.endJunctionId &&
+			pointById.has(w.endJunctionId) &&
+			!junctionLegOrderById.has(w.endJunctionId)
+		) {
 			junctionLegOrderById.set(w.endJunctionId, orderCounter++);
 		}
 	}
@@ -293,21 +320,25 @@ export function seedReuseFromPassiveCompile(
 			polygons: geometry.queries.polygons.slice(objCount + roomCount),
 			aabbs: regionAabbs,
 			bounds3: regionUnitBounds(geometry.regions),
-			issues: []
+			issues: [],
 		},
-		derivedWallRoles
+		derivedWallRoles,
 	});
 	reuse.world = { ...built, hydratedWithoutSources: true };
-	registerCompileSnapshot(document, reuse.world as RetainedCompileWorld, { geometry, issues: [] }, reuse);
+	registerCompileSnapshot(
+		document,
+		reuse.world as RetainedCompileWorld,
+		{ geometry, issues: [] },
+		reuse,
+	);
 	reuse.lastPrunedDocument = document;
 	return true;
 }
 
-
 function extractFloorRoomIdsDependency(
 	floorCacheKey: string,
 	floorId: string,
-	elevation: number
+	elevation: number,
 ): CacheKeyDependency | null {
 	const elevationText = String(elevation);
 	const prefix = `s5:floors${floorId.length}:${floorId}n${elevationText.length}:${elevationText}k`;
@@ -321,7 +352,6 @@ function extractFloorRoomIdsDependency(
 	return cacheKeyDependency(floorCacheKey.slice(depStart, depStart + depLen));
 }
 
-
 type DirtyIdSuperset = {
 	readonly changedJunctionIds: readonly string[];
 	readonly changedWallIds: readonly string[];
@@ -329,7 +359,6 @@ type DirtyIdSuperset = {
 	readonly changedRoomIds: readonly string[];
 	readonly changedObjectIds: readonly string[];
 };
-
 
 function mergeStringLists(a: readonly string[], b: readonly string[]): readonly string[] {
 	if (a.length === 0) return b;
@@ -339,21 +368,19 @@ function mergeStringLists(a: readonly string[], b: readonly string[]): readonly 
 	return [...set];
 }
 
-
 function mergeDirtySupersets(a: DirtyIdSuperset, b: DirtyIdSuperset): DirtyIdSuperset {
 	return {
 		changedJunctionIds: mergeStringLists(a.changedJunctionIds, b.changedJunctionIds),
 		changedWallIds: mergeStringLists(a.changedWallIds, b.changedWallIds),
 		changedOpeningIds: mergeStringLists(a.changedOpeningIds, b.changedOpeningIds),
 		changedRoomIds: mergeStringLists(a.changedRoomIds, b.changedRoomIds),
-		changedObjectIds: mergeStringLists(a.changedObjectIds, b.changedObjectIds)
+		changedObjectIds: mergeStringLists(a.changedObjectIds, b.changedObjectIds),
 	};
 }
 
-
 export function resolveCowDirtyIds(
 	prevDoc: LayoutDocumentWallFirst,
-	nextDoc: LayoutDocumentWallFirst
+	nextDoc: LayoutDocumentWallFirst,
 ): DirtyIdSuperset | null {
 	if (areEquivalentLayoutClones(prevDoc, nextDoc)) {
 		return {
@@ -361,7 +388,7 @@ export function resolveCowDirtyIds(
 			changedWallIds: [],
 			changedOpeningIds: [],
 			changedRoomIds: [],
-			changedObjectIds: []
+			changedObjectIds: [],
 		};
 	}
 	const prevDelta = getCowDocumentDelta(prevDoc);
@@ -387,12 +414,11 @@ export function resolveCowDirtyIds(
 	return null;
 }
 
-
 export function collectJoinsForWall(
 	wallId: string,
 	startJunctionId: string,
 	endJunctionId: string,
-	world: RetainedCompileWorld
+	world: RetainedCompileWorld,
 ): CompiledLegJoin[] | undefined {
 	const firstId =
 		startJunctionId === endJunctionId

@@ -1,4 +1,10 @@
-import type { LayoutDocumentWallFirst, LayoutJunction, LayoutWall, LayoutWallFirstRoom, OrientedWallRef } from '../wall/types';
+import type {
+	LayoutDocumentWallFirst,
+	LayoutJunction,
+	LayoutWall,
+	LayoutWallFirstRoom,
+	OrientedWallRef,
+} from '../wall/types';
 import { geometryId } from '../geometry/types';
 import type { LayoutVec2 } from '../geometry/coordinates';
 import type { WallSamplingDerivation } from '../wall/centerline';
@@ -18,15 +24,13 @@ export type RoomBoundaryLookup = {
 	readonly wallById: ReadonlyMap<string, LayoutWall>;
 };
 
-
 export function createRoomBoundaryLookup(document: LayoutDocumentWallFirst): RoomBoundaryLookup {
 	return {
 		roomById: new Map(document.rooms.map((room) => [room.id, room])),
 		junctionById: new Map(document.junctions.map((junction) => [junction.id, junction])),
-		wallById: new Map(document.walls.map((wall) => [wall.id, wall]))
+		wallById: new Map(document.walls.map((wall) => [wall.id, wall])),
 	};
 }
-
 
 /**
  * One edge of a Space's composed boundary, in cycle order.
@@ -51,7 +55,6 @@ export type SpaceBoundaryEdge =
 			index: number;
 	  };
 
-
 /** Stable machine codes for a Space whose boundary cannot compose. */
 export type SpaceBoundaryIssueCode =
 	| 'room_boundary_empty'
@@ -61,7 +64,6 @@ export type SpaceBoundaryIssueCode =
 	| 'space_virtual_edge_degenerate'
 	| 'duplicate_virtual_edge_origin';
 
-
 export type SpaceBoundaryIssue = {
 	code: SpaceBoundaryIssueCode;
 	message: string;
@@ -69,11 +71,9 @@ export type SpaceBoundaryIssue = {
 	index?: number;
 };
 
-
 export type SpaceBoundaryResult =
 	| { kind: 'ok'; edges: readonly SpaceBoundaryEdge[] }
 	| { kind: 'failed'; issue: SpaceBoundaryIssue };
-
 
 /**
  * The one composer of a Space's mixed Wall/virtual boundary.
@@ -92,15 +92,24 @@ export type SpaceBoundaryResult =
 export function composeSpaceBoundary(
 	document: Pick<LayoutDocumentWallFirst, 'junctions' | 'walls'>,
 	room: Pick<LayoutWallFirstRoom, 'id' | 'boundary' | 'virtualEdges'>,
-	lookup?: Pick<RoomBoundaryLookup, 'junctionById' | 'wallById'>
+	lookup?: Pick<RoomBoundaryLookup, 'junctionById' | 'wallById'>,
 ): SpaceBoundaryResult {
-	const junctionById = lookup?.junctionById ?? new Map(document.junctions.map((junction) => [junction.id, junction]));
+	const junctionById =
+		lookup?.junctionById ?? new Map(document.junctions.map((junction) => [junction.id, junction]));
 	const wallById = lookup?.wallById ?? new Map(document.walls.map((wall) => [wall.id, wall]));
 	if (room.boundary.length === 0) {
-		return failure('room_boundary_empty', 'A canonical Room boundary must reference at least one Wall');
+		return failure(
+			'room_boundary_empty',
+			'A canonical Room boundary must reference at least one Wall',
+		);
 	}
 
-	const walls: Array<{ ref: OrientedWallRef; wall: LayoutWall; startJunctionId: string; endJunctionId: string }> = [];
+	const walls: Array<{
+		ref: OrientedWallRef;
+		wall: LayoutWall;
+		startJunctionId: string;
+		endJunctionId: string;
+	}> = [];
 	for (const [index, ref] of room.boundary.entries()) {
 		const wall = wallById.get(ref.wallId);
 		if (!wall) {
@@ -109,7 +118,11 @@ export function composeSpaceBoundary(
 		const startJunctionId = ref.direction === 'forward' ? wall.startJunctionId : wall.endJunctionId;
 		const endJunctionId = ref.direction === 'forward' ? wall.endJunctionId : wall.startJunctionId;
 		if (!junctionById.has(startJunctionId) || !junctionById.has(endJunctionId)) {
-			return failure('missing_reference', `Wall '${wall.id}' references an unknown Junction`, index);
+			return failure(
+				'missing_reference',
+				`Wall '${wall.id}' references an unknown Junction`,
+				index,
+			);
 		}
 		walls.push({ ref, wall, startJunctionId, endJunctionId });
 	}
@@ -117,19 +130,27 @@ export function composeSpaceBoundary(
 	const virtualStarts = new Set<string>();
 	for (const [index, edge] of room.virtualEdges.entries()) {
 		if (!junctionById.has(edge.startJunctionId)) {
-			return failure('missing_reference', `Unknown startJunctionId '${edge.startJunctionId}'`, index);
+			return failure(
+				'missing_reference',
+				`Unknown startJunctionId '${edge.startJunctionId}'`,
+				index,
+			);
 		}
 		if (!junctionById.has(edge.endJunctionId)) {
 			return failure('missing_reference', `Unknown endJunctionId '${edge.endJunctionId}'`, index);
 		}
 		if (edge.startJunctionId === edge.endJunctionId) {
-			return failure('space_virtual_edge_degenerate', 'An open side may not start and end at the same Junction', index);
+			return failure(
+				'space_virtual_edge_degenerate',
+				'An open side may not start and end at the same Junction',
+				index,
+			);
 		}
 		if (virtualStarts.has(edge.startJunctionId)) {
 			return failure(
 				'duplicate_virtual_edge_origin',
 				`Junction '${edge.startJunctionId}' is the start of more than one open side`,
-				index
+				index,
 			);
 		}
 		virtualStarts.add(edge.startJunctionId);
@@ -145,7 +166,7 @@ export function composeSpaceBoundary(
 			wallId: current.wall.id,
 			direction: current.ref.direction,
 			startJunctionId: current.startJunctionId,
-			endJunctionId: current.endJunctionId
+			endJunctionId: current.endJunctionId,
 		});
 		let cursor = current.endJunctionId;
 		while (cursor !== next.startJunctionId) {
@@ -154,21 +175,21 @@ export function composeSpaceBoundary(
 				return failure(
 					'space_boundary_open',
 					`The boundary does not connect Wall '${current.wall.id}' to Wall '${next.wall.id}'`,
-					wallIndex
+					wallIndex,
 				);
 			}
 			if (edge.startJunctionId !== cursor) {
 				return failure(
 					'space_boundary_open',
 					`Open side ${virtualIndex} starts at '${edge.startJunctionId}', not at '${cursor}'`,
-					wallIndex
+					wallIndex,
 				);
 			}
 			edges.push({
 				kind: 'virtual',
 				startJunctionId: edge.startJunctionId,
 				endJunctionId: edge.endJunctionId,
-				index: virtualIndex
+				index: virtualIndex,
 			});
 			cursor = edge.endJunctionId;
 			virtualIndex += 1;
@@ -178,16 +199,19 @@ export function composeSpaceBoundary(
 		return failure(
 			'space_virtual_edge_unconsumed',
 			`Open side ${virtualIndex} does not fall in a gap between boundary Walls`,
-			virtualIndex
+			virtualIndex,
 		);
 	}
 	return { kind: 'ok', edges };
 
-	function failure(code: SpaceBoundaryIssueCode, message: string, index?: number): SpaceBoundaryResult {
+	function failure(
+		code: SpaceBoundaryIssueCode,
+		message: string,
+		index?: number,
+	): SpaceBoundaryResult {
 		return { kind: 'failed', issue: { code, message, ...(index !== undefined ? { index } : {}) } };
 	}
 }
-
 
 /**
  * Canonical cycle key for an open or enclosed Space.
@@ -200,14 +224,14 @@ export function composeSpaceBoundary(
 export function spaceBoundaryCycleKey(
 	document: Pick<LayoutDocumentWallFirst, 'junctions' | 'walls'>,
 	room: Pick<LayoutWallFirstRoom, 'id' | 'boundary' | 'virtualEdges'>,
-	lookup?: Pick<RoomBoundaryLookup, 'junctionById' | 'wallById'>
+	lookup?: Pick<RoomBoundaryLookup, 'junctionById' | 'wallById'>,
 ): string | null {
 	const composed = composeSpaceBoundary(document, room, lookup);
 	if (composed.kind === 'failed') return null;
 	const tokens = composed.edges.map((edge) =>
 		edge.kind === 'wall'
 			? `${edge.wallId}~${edge.direction === 'forward' ? 'F' : 'R'}`
-			: `V~${edge.startJunctionId}~${edge.endJunctionId}`
+			: `V~${edge.startJunctionId}~${edge.endJunctionId}`,
 	);
 	let smallest = tokens;
 	for (let rotation = 1; rotation < tokens.length; rotation += 1) {
@@ -216,7 +240,6 @@ export function spaceBoundaryCycleKey(
 	}
 	return geometryId(['face', ...smallest]);
 }
-
 
 /**
  * The composed outline as ordered X/Z points: Wall samples plus each virtual
@@ -227,9 +250,10 @@ export function spaceBoundaryPolygonFromEdges(
 	edges: readonly SpaceBoundaryEdge[],
 	document: Pick<LayoutDocumentWallFirst, 'junctions' | 'walls'>,
 	lookup?: Pick<RoomBoundaryLookup, 'junctionById' | 'wallById'>,
-	sampling?: WallSamplingDerivation
+	sampling?: WallSamplingDerivation,
 ): readonly LayoutVec2[] | null {
-	const junctionById = lookup?.junctionById ?? new Map(document.junctions.map((junction) => [junction.id, junction]));
+	const junctionById =
+		lookup?.junctionById ?? new Map(document.junctions.map((junction) => [junction.id, junction]));
 	const wallById = lookup?.wallById ?? new Map(document.walls.map((wall) => [wall.id, wall]));
 	const polygon: LayoutVec2[] = [];
 	for (const edge of edges) {
@@ -256,9 +280,10 @@ export function spaceBoundaryPolygonFromEdges(
 		const canonicalStart = junctionById.get(wall.startJunctionId)?.point;
 		const canonicalEnd = junctionById.get(wall.endJunctionId)?.point;
 		if (!canonicalStart || !canonicalEnd) return null;
-		const sampled = sampling === undefined
-			? wallCenterlineSamples(wall, canonicalStart, canonicalEnd, edge.direction)
-			: sampling.samples(wall, canonicalStart, canonicalEnd, edge.direction);
+		const sampled =
+			sampling === undefined
+				? wallCenterlineSamples(wall, canonicalStart, canonicalEnd, edge.direction)
+				: sampling.samples(wall, canonicalStart, canonicalEnd, edge.direction);
 		if (!sampled) return null;
 		for (const sample of sampled.samples.slice(1, -1)) {
 			polygon.push([...sample.point] as LayoutVec2);
@@ -269,7 +294,6 @@ export function spaceBoundaryPolygonFromEdges(
 	// number of Wall refs.
 	return polygon.length >= 3 ? polygon : null;
 }
-
 
 /** Number of maximal runs of virtual edges around the cycle (0 when enclosed). */
 export function spaceOpenSideCount(edges: readonly SpaceBoundaryEdge[]): number {
@@ -283,7 +307,6 @@ export function spaceOpenSideCount(edges: readonly SpaceBoundaryEdge[]): number 
 	return runs;
 }
 
-
 /**
  * The composed outline of one Space, or `null` when its boundary cannot
  * compose. This is a thin wrapper over {@link composeSpaceBoundary}, so every
@@ -293,15 +316,16 @@ export function roomBoundaryPolygon(
 	document: LayoutDocumentWallFirst,
 	roomId: string,
 	lookup?: RoomBoundaryLookup,
-	sampling?: WallSamplingDerivation
+	sampling?: WallSamplingDerivation,
 ): readonly LayoutVec2[] | null {
-	const room = lookup ? lookup.roomById.get(roomId) : document.rooms.find((candidate) => candidate.id === roomId);
+	const room = lookup
+		? lookup.roomById.get(roomId)
+		: document.rooms.find((candidate) => candidate.id === roomId);
 	if (!room) return null;
 	const composed = composeSpaceBoundary(document, room, lookup);
 	if (composed.kind === 'failed') return null;
 	return spaceBoundaryPolygonFromEdges(composed.edges, document, lookup, sampling);
 }
-
 
 /**
  * Deterministic interior witness for a predecessor room. The raw centroid can
@@ -318,7 +342,7 @@ export function interiorWitness(polygon: readonly LayoutVec2[]): LayoutVec2 {
 			[epsilon, epsilon],
 			[-epsilon, epsilon],
 			[epsilon, -epsilon],
-			[-epsilon, -epsilon]
+			[-epsilon, -epsilon],
 		] as const) {
 			const candidate: LayoutVec2 = [centroid[0] + dx, centroid[1] + dz];
 			if (pointStrictlyInsidePolygon(polygon, candidate)) return candidate;
@@ -326,7 +350,6 @@ export function interiorWitness(polygon: readonly LayoutVec2[]): LayoutVec2 {
 	}
 	return centroid;
 }
-
 
 /** Signed-area polygon centroid (falls back to the vertex mean when degenerate). */
 function polygonCentroid(points: readonly LayoutVec2[]): LayoutVec2 {
@@ -344,7 +367,7 @@ function polygonCentroid(points: readonly LayoutVec2[]): LayoutVec2 {
 	if (Math.abs(twiceArea) <= 1e-12) {
 		return [
 			points.reduce((sum, point) => sum + point[0], 0) / points.length,
-			points.reduce((sum, point) => sum + point[1], 0) / points.length
+			points.reduce((sum, point) => sum + point[1], 0) / points.length,
 		];
 	}
 	return [x / (3 * twiceArea), z / (3 * twiceArea)];

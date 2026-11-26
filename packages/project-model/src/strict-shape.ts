@@ -36,14 +36,19 @@ export class ShapeReader {
 	}
 
 	/** A plain object (not an array, not null) with exactly the allowed keys. */
-	object(input: unknown, path: string, allowedKeys: readonly string[]): Record<string, unknown> | null {
+	object(
+		input: unknown,
+		path: string,
+		allowedKeys: readonly string[],
+	): Record<string, unknown> | null {
 		if (typeof input !== 'object' || input === null || Array.isArray(input)) {
 			this.problem(path, 'not-an-object', `${path} must be an object`);
 			return null;
 		}
 		const record = input as Record<string, unknown>;
 		for (const key of Object.keys(record)) {
-			if (!allowedKeys.includes(key)) this.problem(`${path}.${key}`, 'unknown-key', `${path}.${key} is not part of the format`);
+			if (!allowedKeys.includes(key))
+				this.problem(`${path}.${key}`, 'unknown-key', `${path}.${key} is not part of the format`);
 		}
 		return record;
 	}
@@ -94,7 +99,11 @@ export class ShapeReader {
 		const value = this.number(input, path);
 		if (value === null) return null;
 		if (exclusive ? value <= minimum : value < minimum) {
-			this.problem(path, 'out-of-range', `${path} must be ${exclusive ? 'greater than' : 'at least'} ${minimum}`);
+			this.problem(
+				path,
+				'out-of-range',
+				`${path} must be ${exclusive ? 'greater than' : 'at least'} ${minimum}`,
+			);
 			return null;
 		}
 		return value;

@@ -9,12 +9,15 @@ import { admittedCatalogueModelAssets } from '../../scene/object-definition-poli
  */
 export function visibleCatalogueModels(
 	snapshot: Parameters<typeof stageEnvelope>[0],
-	inStudio: boolean
+	inStudio: boolean,
 ): readonly { readonly id: string; readonly name: string }[] {
 	if (inStudio) return [];
 	if (snapshot.sourceKind !== UNIT_SOURCE_KIND) return admittedCatalogueModelAssets();
 	const held = stageEnvelope(snapshot).units.resources.data.resources;
 	return admittedCatalogueModelAssets().filter((asset) =>
-		held.some((resource) => resource.kind === 'asset' && resource.id === asset.id && resource.unresolved === null)
+		held.some(
+			(resource) =>
+				resource.kind === 'asset' && resource.id === asset.id && resource.unresolved === null,
+		),
 	);
 }

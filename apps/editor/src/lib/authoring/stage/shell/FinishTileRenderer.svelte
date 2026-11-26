@@ -1,8 +1,8 @@
 <script lang="ts">
 	/**
-	 * The Stage's Finish picture host (U1).
+	 * The Stage's Finish picture host.
 	 *
-	 * It gives the Finish picture service the E7 inspection host on the Stage's
+	 * It gives the Finish picture service the inspection host on the Stage's
 	 * **existing** renderer: no second GPU context. The host draws each sample
 	 * tile into its own offscreen target, one job at a time, and only when a
 	 * shelf or the active Library detail asks, so an idle Stage pays nothing. It is attached to the live

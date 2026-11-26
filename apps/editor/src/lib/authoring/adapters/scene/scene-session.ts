@@ -6,26 +6,26 @@
  * Stage's one gesture lease:
  *
  * - **Arming is session state only.** No document, history or view changes when
- *   Place/Move/Yaw is armed; Place stays armed after a success until Select or
- *   Esc disarms it.
+ *  Place/Move/Yaw is armed; Place stays armed after a success until Select or
+ *  Esc disarms it.
  * - **The displayed candidate is the committed candidate.** Preview and commit
- *   call the **same** pure planner with the same captured inputs; the last
- *   displayed pose is what the intent carries, so there is no post-preview Y
- *   correction.
+ *  call the **same** pure planner with the same captured inputs; the last
+ *  displayed pose is what the intent carries, so there is no post-preview Y
+ *  correction.
  * - **Snap is the shared Stage fact.** The session applies the increment its
- *   adapter supplies from `StageAdapterContext.drafting()`; it owns no switch
- *   and no default. The step is applied to the captured candidate and reported
- *   in feedback. It never becomes a hidden commit-time correction.
+ *  adapter supplies from `StageAdapterContext.drafting`; it owns no switch
+ *  and no default. The step is applied to the captured candidate and reported
+ *  in feedback. It never becomes a hidden commit-time correction.
  * - **One cancel path.** The lease policy is `cancel-on-reading-change`; Esc,
- *   blur, capture loss, replacement and adapter unmount all use `cancel()`,
- *   which restores the accepted baseline and releases the lease exactly once.
+ *  blur, capture loss, replacement and adapter unmount all use `cancel`,
+ *  which restores the accepted baseline and releases the lease exactly once.
  * - **Scene mutates Scene only.** Support is resolved by the retained planner
- *   from compiled Layout; this session never writes Layout.
+ *  from compiled Layout; this session never writes Layout.
  * - **Compose adds no second writer.** Resize, duplicate and delete all build the
- *   same F.4 intent shape the move/yaw paths use, and each previews through the
- *   same retained planner that commit calls. Resize resolves its contact on the
- *   entity's own accepted X/Z inside the planner, so the shown Y and the
- *   installed Y cannot disagree.
+ *  same F.4 intent shape the move/yaw paths use, and each previews through the
+ *  same retained planner that commit calls. Resize resolves its contact on the
+ *  entity's own accepted X/Z inside the planner, so the shown Y and the
+ *  installed Y cannot disagree.
  */
 
 /**
@@ -36,26 +36,26 @@
  * Stage's one gesture lease:
  *
  * - **Arming is session state only.** No document, history or view changes when
- *   Place/Move/Yaw is armed; Place stays armed after a success until Select or
- *   Esc disarms it.
+ *  Place/Move/Yaw is armed; Place stays armed after a success until Select or
+ *  Esc disarms it.
  * - **The displayed candidate is the committed candidate.** Preview and commit
- *   call the **same** pure planner with the same captured inputs; the last
- *   displayed pose is what the intent carries, so there is no post-preview Y
- *   correction.
+ *  call the **same** pure planner with the same captured inputs; the last
+ *  displayed pose is what the intent carries, so there is no post-preview Y
+ *  correction.
  * - **Snap is the shared Stage fact.** The session applies the increment its
- *   adapter supplies from `StageAdapterContext.drafting()`; it owns no switch
- *   and no default. The step is applied to the captured candidate and reported
- *   in feedback. It never becomes a hidden commit-time correction.
+ *  adapter supplies from `StageAdapterContext.drafting`; it owns no switch
+ *  and no default. The step is applied to the captured candidate and reported
+ *  in feedback. It never becomes a hidden commit-time correction.
  * - **One cancel path.** The lease policy is `cancel-on-reading-change`; Esc,
- *   blur, capture loss, replacement and adapter unmount all use `cancel()`,
- *   which restores the accepted baseline and releases the lease exactly once.
+ *  blur, capture loss, replacement and adapter unmount all use `cancel`,
+ *  which restores the accepted baseline and releases the lease exactly once.
  * - **Scene mutates Scene only.** Support is resolved by the retained planner
- *   from compiled Layout; this session never writes Layout.
+ *  from compiled Layout; this session never writes Layout.
  * - **Compose adds no second writer.** Resize, duplicate and delete all build the
- *   same F.4 intent shape the move/yaw paths use, and each previews through the
- *   same retained planner that commit calls. Resize resolves its contact on the
- *   entity's own accepted X/Z inside the planner, so the shown Y and the
- *   installed Y cannot disagree.
+ *  same F.4 intent shape the move/yaw paths use, and each previews through the
+ *  same retained planner that commit calls. Resize resolves its contact on the
+ *  entity's own accepted X/Z inside the planner, so the shown Y and the
+ *  installed Y cannot disagree.
  */
 
 import {
@@ -63,35 +63,33 @@ import {
 	planResizeOnFloor,
 	planSetYaw,
 	type SceneOperationResult,
-	type SceneSupportChoice
+	type SceneSupportChoice,
 } from '@portfolio/project-model/scene-planning';
 import type { AuthoringIntent } from '@portfolio/project-model/f4';
 import type { Vec3 } from '@portfolio/project-model/scene';
 import type { GestureAcquisition } from '$lib/authoring/stage/stage-adapter-host';
-import {
-	snapDraftingPlacement
-} from '$lib/authoring/stage/stage-adapter-host';
+import { snapDraftingPlacement } from '$lib/authoring/stage/stage-adapter-host';
 import {
 	nativePlacementContactMinY,
-	type NativePlacementPrimitive
+	type NativePlacementPrimitive,
 } from '../../scene/object-definition-policy';
 import {
 	candidateFrom as candidateFromOf,
 	createSceneSessionReads,
-	footprintOf
+	footprintOf,
 } from './scene-session-reads';
 import {
 	acceptFormCopyPlacement as acceptFormCopyPlacementOf,
 	acceptModelPlacement as acceptModelPlacementOf,
 	acceptOne as acceptOneOf,
-	acceptPlacement as acceptPlacementOf
+	acceptPlacement as acceptPlacementOf,
 } from './scene-session-accepts';
 import {
 	FRAME,
 	PROJECT_WORLD,
 	localContactMinY,
 	parseNumber,
-	sceneComposeSupport
+	sceneComposeSupport,
 } from './scene-placement-support';
 import type {
 	ArmedFormCopy,
@@ -100,10 +98,8 @@ import type {
 	SceneEditingSnapshot,
 	ScenePlacementSession,
 	SceneSessionOutcome,
-	SceneWritePort
+	SceneWritePort,
 } from './placement';
-
-
 
 /**
  * The one live Scene surface for one reading of one accepted source.
@@ -154,7 +150,7 @@ export function createSceneSession(input: {
 			placementCommitted = null;
 			return listener;
 		},
-		placedEntityId: () => lastPlacedEntityId
+		placedEntityId: () => lastPlacedEntityId,
 	});
 	const notifyPlacementCommitted = reads.notify;
 	const context = reads.context;
@@ -163,11 +159,14 @@ export function createSceneSession(input: {
 	const _scaleOf = reads.scaleOf;
 	const snapped = reads.snapped;
 	const candidateFrom = (result: SceneOperationResult, step: number | null) =>
-		candidateFromOf(result, step, contactOf, () => { candidate = null; });
+		candidateFromOf(result, step, contactOf, () => {
+			candidate = null;
+		});
 
 	/** One preview path for pointer drag and exact entry; `useSnap` is explicit. */
 	function moveCandidate(x: number, z: number, useSnap: boolean): SceneSessionOutcome {
-		if (entityId === null) return { kind: 'refused', code: 'no-subject', message: 'Choose a Scene entity first.' };
+		if (entityId === null)
+			return { kind: 'refused', code: 'no-subject', message: 'Choose a Scene entity first.' };
 		const entity = entityOf(entityId);
 		if (entity === null) {
 			candidate = null;
@@ -179,7 +178,7 @@ export function createSceneSession(input: {
 			return {
 				kind: 'refused',
 				code: 'missing-contact-metadata',
-				message: 'A model needs a verified contact before it can be moved on the floor.'
+				message: 'A model needs a verified contact before it can be moved on the floor.',
 			};
 		}
 		if (!Number.isFinite(x) || !Number.isFinite(z)) {
@@ -187,10 +186,13 @@ export function createSceneSession(input: {
 			return { kind: 'invalid', code: 'non-finite', message: 'X/Z must be finite meters.' };
 		}
 		const step = useSnap ? snap : null;
-		const worldXZ: [number, number] = [step === null ? x : snapped(x), step === null ? z : snapped(z)];
+		const worldXZ: [number, number] = [
+			step === null ? x : snapped(x),
+			step === null ? z : snapped(z),
+		];
 		const outcome = candidateFrom(
 			planMoveHorizontal({ context: context(), entityId, worldXZ, frame: FRAME, contactMinY }),
-			step
+			step,
 		);
 		if (outcome.kind === 'candidate') candidate = outcome.candidate;
 		return outcome;
@@ -205,7 +207,8 @@ export function createSceneSession(input: {
 	 * display a Y the install would correct.
 	 */
 	function resizeCandidate(scale: number): SceneSessionOutcome {
-		if (entityId === null) return { kind: 'refused', code: 'no-subject', message: 'Choose a Scene entity first.' };
+		if (entityId === null)
+			return { kind: 'refused', code: 'no-subject', message: 'Choose a Scene entity first.' };
 		if (!Number.isFinite(scale)) {
 			candidate = null;
 			return { kind: 'invalid', code: 'non-finite', message: 'Scale must be a finite number.' };
@@ -225,26 +228,27 @@ export function createSceneSession(input: {
 			return {
 				kind: 'refused',
 				code: 'missing-contact-metadata',
-				message: 'A model needs a verified contact before it can be resized on the floor.'
+				message: 'A model needs a verified contact before it can be resized on the floor.',
 			};
 		}
 		const outcome = candidateFrom(
 			planResizeOnFloor({ context: context(), entityId, scale, contactMinY }),
-			null
+			null,
 		);
 		if (outcome.kind === 'candidate') candidate = outcome.candidate;
 		return outcome;
 	}
 
 	function yawCandidate(radians: number): SceneSessionOutcome {
-		if (entityId === null) return { kind: 'refused', code: 'no-subject', message: 'Choose a Scene entity first.' };
+		if (entityId === null)
+			return { kind: 'refused', code: 'no-subject', message: 'Choose a Scene entity first.' };
 		if (!Number.isFinite(radians)) {
 			candidate = null;
 			return { kind: 'invalid', code: 'non-finite', message: 'The angle must be finite radians.' };
 		}
 		const outcome = candidateFrom(
 			planSetYaw({ context: context(), entityId, yaw: radians, frame: FRAME }),
-			null
+			null,
 		);
 		if (outcome.kind === 'candidate') candidate = outcome.candidate;
 		return outcome;
@@ -256,34 +260,37 @@ export function createSceneSession(input: {
 		options: {
 			readonly entityId?: string;
 			readonly allocatedIds?: AuthoringIntent['allocatedIds'];
-		} = {}
+		} = {},
 	): AuthoringIntent {
 		const addressedId = options.entityId ?? entityId;
 		const entity = addressedId === null ? null : entityOf(addressedId);
-		const reference = entity === null ? [] : [
-			{
-				version: 1 as const,
-				domain: 'scene' as const,
-				revision: { kind: 'exact' as const, contentRevision: input.snapshot.contentRevision },
-				subject: { kind: 'entity' as const, id: entity.id },
-				instancePath: [],
-				location: { kind: 'project-root' as const },
-				componentId: null,
-				capabilityId: null
-			}
-		];
+		const reference =
+			entity === null
+				? []
+				: [
+						{
+							version: 1 as const,
+							domain: 'scene' as const,
+							revision: { kind: 'exact' as const, contentRevision: input.snapshot.contentRevision },
+							subject: { kind: 'entity' as const, id: entity.id },
+							instancePath: [],
+							location: { kind: 'project-root' as const },
+							componentId: null,
+							capabilityId: null,
+						},
+					];
 		return {
 			version: 1,
 			kind,
 			operationId: mint(),
 			expectedRevision: {
 				projectId: input.snapshot.projectId,
-				revisionId: input.port.acceptedRevision().revisionId
+				revisionId: input.port.acceptedRevision().revisionId,
 			},
 			targets: reference,
 			payload,
 			capturedInputs: [],
-			allocatedIds: [...(options.allocatedIds ?? [])]
+			allocatedIds: [...(options.allocatedIds ?? [])],
 		};
 	}
 
@@ -318,11 +325,15 @@ export function createSceneSession(input: {
 		z: number,
 		supportElevation: number,
 		choice: SceneSupportChoice | undefined,
-		snappedStep: number | null
+		snappedStep: number | null,
 	): SceneSessionOutcome {
 		if (!Number.isFinite(x) || !Number.isFinite(z) || !Number.isFinite(supportElevation)) {
 			candidate = null;
-			return { kind: 'invalid', code: 'non-finite', message: 'X/Z and the support elevation must be finite meters.' };
+			return {
+				kind: 'invalid',
+				code: 'non-finite',
+				message: 'X/Z and the support elevation must be finite meters.',
+			};
 		}
 		// The caller already snapped and resolved floor support at this exact X/Z.
 		// Re-rounding here would move a supported pose off the floor whose
@@ -343,7 +354,7 @@ export function createSceneSession(input: {
 			worldXZ,
 			yaw: 0,
 			scale: 1,
-			snappedStep: step
+			snappedStep: step,
 		};
 		candidate = next;
 		return { kind: 'candidate', candidate: next };
@@ -360,13 +371,17 @@ export function createSceneSession(input: {
 		z: number,
 		supportElevation: number,
 		choice: SceneSupportChoice | undefined,
-		snappedStep: number | null
+		snappedStep: number | null,
 	): SceneSessionOutcome {
 		if (!Number.isFinite(x) || !Number.isFinite(z) || !Number.isFinite(supportElevation)) {
 			candidate = null;
 			candidateFormCopy = null;
 			candidateFormCopyChoice = null;
-			return { kind: 'invalid', code: 'non-finite', message: 'X/Z and the support elevation must be finite meters.' };
+			return {
+				kind: 'invalid',
+				code: 'non-finite',
+				message: 'X/Z and the support elevation must be finite meters.',
+			};
 		}
 		// One rounding layer: the caller's X/Z is the pose support was resolved
 		// against, and the pinned floor choice belongs to it.
@@ -385,7 +400,7 @@ export function createSceneSession(input: {
 			worldXZ,
 			yaw: 0,
 			scale: 1,
-			snappedStep: step
+			snappedStep: step,
 		};
 		candidate = next;
 		return { kind: 'candidate', candidate: next };
@@ -398,13 +413,17 @@ export function createSceneSession(input: {
 		z: number,
 		supportElevation: number,
 		choice: SceneSupportChoice | undefined,
-		snappedStep: number | null
+		snappedStep: number | null,
 	): SceneSessionOutcome {
 		if (!Number.isFinite(x) || !Number.isFinite(z) || !Number.isFinite(supportElevation)) {
 			candidate = null;
 			candidateModel = null;
 			candidatePlaceChoice = null;
-			return { kind: 'invalid', code: 'non-finite', message: 'X/Z and the support elevation must be finite meters.' };
+			return {
+				kind: 'invalid',
+				code: 'non-finite',
+				message: 'X/Z and the support elevation must be finite meters.',
+			};
 		}
 		// One rounding layer: the caller's X/Z is the pose support was resolved
 		// against, and the pinned floor choice belongs to it.
@@ -427,7 +446,7 @@ export function createSceneSession(input: {
 			modelContactMinY: model.definition.contactMinY,
 			...(model.definition.creationDefaults.kind === 'model'
 				? { modelAssetId: model.definition.creationDefaults.assetId }
-				: {})
+				: {}),
 		};
 		candidate = next;
 		candidateModel = model;
@@ -438,17 +457,30 @@ export function createSceneSession(input: {
 		snapshot: input.snapshot,
 		port: input.port,
 		mint,
-		placed: (entityId: string | null) => { lastPlacedEntityId = entityId; },
-		notify: notifyPlacementCommitted
+		placed: (entityId: string | null) => {
+			lastPlacedEntityId = entityId;
+		},
+		notify: notifyPlacementCommitted,
 	};
-	const acceptOne = (intentToAccept: Parameters<typeof acceptOneOf>[1], createdEntityId: Parameters<typeof acceptOneOf>[2]) =>
-		acceptOneOf(acceptContext, intentToAccept, createdEntityId);
-	const acceptPlacement = (primitive: Parameters<typeof acceptPlacementOf>[1], worldXZ: Parameters<typeof acceptPlacementOf>[2], choice?: Parameters<typeof acceptPlacementOf>[3]) =>
-		acceptPlacementOf(acceptContext, primitive, worldXZ, choice);
-	const acceptModelPlacement = (model: Parameters<typeof acceptModelPlacementOf>[1], worldXZ: Parameters<typeof acceptModelPlacementOf>[2], choice?: Parameters<typeof acceptModelPlacementOf>[3]) =>
-		acceptModelPlacementOf(acceptContext, model, worldXZ, choice);
-	const acceptFormCopyPlacement = (copy: Parameters<typeof acceptFormCopyPlacementOf>[1], worldXZ: Parameters<typeof acceptFormCopyPlacementOf>[2], choice?: Parameters<typeof acceptFormCopyPlacementOf>[3]) =>
-		acceptFormCopyPlacementOf(acceptContext, copy, worldXZ, choice);
+	const acceptOne = (
+		intentToAccept: Parameters<typeof acceptOneOf>[1],
+		createdEntityId: Parameters<typeof acceptOneOf>[2],
+	) => acceptOneOf(acceptContext, intentToAccept, createdEntityId);
+	const acceptPlacement = (
+		primitive: Parameters<typeof acceptPlacementOf>[1],
+		worldXZ: Parameters<typeof acceptPlacementOf>[2],
+		choice?: Parameters<typeof acceptPlacementOf>[3],
+	) => acceptPlacementOf(acceptContext, primitive, worldXZ, choice);
+	const acceptModelPlacement = (
+		model: Parameters<typeof acceptModelPlacementOf>[1],
+		worldXZ: Parameters<typeof acceptModelPlacementOf>[2],
+		choice?: Parameters<typeof acceptModelPlacementOf>[3],
+	) => acceptModelPlacementOf(acceptContext, model, worldXZ, choice);
+	const acceptFormCopyPlacement = (
+		copy: Parameters<typeof acceptFormCopyPlacementOf>[1],
+		worldXZ: Parameters<typeof acceptFormCopyPlacementOf>[2],
+		choice?: Parameters<typeof acceptFormCopyPlacementOf>[3],
+	) => acceptFormCopyPlacementOf(acceptContext, copy, worldXZ, choice);
 
 	const session: ScenePlacementSession = {
 		armed: () => mode,
@@ -471,26 +503,33 @@ export function createSceneSession(input: {
 				return {
 					kind: 'refused',
 					code: support.code ?? 'unsupported-transform',
-					message: support.reason ?? 'Resize is unavailable.'
+					message: support.reason ?? 'Resize is unavailable.',
 				};
 			}
 			release();
 			lease = input.port.acquireGesture({
 				owner: 'scene-compose',
 				evaluationId: evaluationIdNow(),
-				policy: 'cancel-on-reading-change'
+				policy: 'cancel-on-reading-change',
 			});
 			if (lease.kind === 'refused') {
 				return {
 					kind: 'refused',
 					code: lease.code,
-					message: lease.code === 'gesture-held' ? `Another ${lease.owner} gesture is live.` : 'This editing session is stale.'
+					message:
+						lease.code === 'gesture-held'
+							? `Another ${lease.owner} gesture is live.`
+							: 'This editing session is stale.',
 				};
 			}
 			mode = 'resize';
 			entityId = id;
 			baseline = { position: [...entity.position] as Vec3, rotation: [...entity.rotation] as Vec3 };
-			entry = { x: String(entity.position[0]), z: String(entity.position[2]), yaw: String(entity.rotation[1]) };
+			entry = {
+				x: String(entity.position[0]),
+				z: String(entity.position[2]),
+				yaw: String(entity.rotation[1]),
+			};
 			candidate = null;
 			candidatePlaceChoice = null;
 			return { kind: 'idle' };
@@ -511,7 +550,11 @@ export function createSceneSession(input: {
 		async commitResize() {
 			if (candidate === null || candidate.kind !== 'resize') {
 				release();
-				return { kind: 'refused', code: 'no-candidate', message: 'Preview a valid scale before committing.' };
+				return {
+					kind: 'refused',
+					code: 'no-candidate',
+					message: 'Preview a valid scale before committing.',
+				};
 			}
 			return session.commit();
 		},
@@ -525,20 +568,28 @@ export function createSceneSession(input: {
 				return {
 					kind: 'refused',
 					code: support.code ?? 'unsupported-transform',
-					message: support.reason ?? 'Duplicate is unavailable.'
+					message: support.reason ?? 'Duplicate is unavailable.',
 				};
 			}
 			const contactMinY = localContactMinY(entity, contactOf(entity));
 			if (contactMinY === null) {
-				return { kind: 'refused', code: 'missing-contact-metadata', message: 'The entity has no verified contact.' };
+				return {
+					kind: 'refused',
+					code: 'missing-contact-metadata',
+					message: 'The entity has no verified contact.',
+				};
 			}
 			const allocatedId = `entity-${mint()}`;
 			return acceptOne(
-				intent('duplicate-one', { entityId: id, contactMinY }, {
-					entityId: id,
-					allocatedIds: [{ kind: 'scene-entity', id: allocatedId }]
-				}),
-				allocatedId
+				intent(
+					'duplicate-one',
+					{ entityId: id, contactMinY },
+					{
+						entityId: id,
+						allocatedIds: [{ kind: 'scene-entity', id: allocatedId }],
+					},
+				),
+				allocatedId,
 			);
 		},
 		async remove(id) {
@@ -556,18 +607,25 @@ export function createSceneSession(input: {
 			lease = input.port.acquireGesture({
 				owner: 'scene-transform',
 				evaluationId: evaluationIdNow(),
-				policy: 'cancel-on-reading-change'
+				policy: 'cancel-on-reading-change',
 			});
 			if (lease.kind === 'refused') {
 				return {
 					kind: 'refused',
 					code: lease.code,
-					message: lease.code === 'gesture-held' ? `Another ${lease.owner} gesture is live.` : 'This editing session is stale.'
+					message:
+						lease.code === 'gesture-held'
+							? `Another ${lease.owner} gesture is live.`
+							: 'This editing session is stale.',
 				};
 			}
 			entityId = id;
 			baseline = { position: [...entity.position] as Vec3, rotation: [...entity.rotation] as Vec3 };
-			entry = { x: String(entity.position[0]), z: String(entity.position[2]), yaw: String(entity.rotation[1]) };
+			entry = {
+				x: String(entity.position[0]),
+				z: String(entity.position[2]),
+				yaw: String(entity.rotation[1]),
+			};
 			candidate = null;
 			candidatePlaceChoice = null;
 			return { kind: 'idle' };
@@ -585,13 +643,16 @@ export function createSceneSession(input: {
 			lease = input.port.acquireGesture({
 				owner: 'scene-transform',
 				evaluationId: evaluationIdNow(),
-				policy: 'cancel-on-reading-change'
+				policy: 'cancel-on-reading-change',
 			});
 			if (lease.kind === 'refused') {
 				return {
 					kind: 'refused',
 					code: lease.code,
-					message: lease.code === 'gesture-held' ? `Another ${lease.owner} gesture is live.` : 'This editing session is stale.'
+					message:
+						lease.code === 'gesture-held'
+							? `Another ${lease.owner} gesture is live.`
+							: 'This editing session is stale.',
 				};
 			}
 			mode = 'place';
@@ -612,7 +673,8 @@ export function createSceneSession(input: {
 				placePrimitive === primitive &&
 				armedModelPlacement === null &&
 				armedFormCopyPlacement === null
-			) return;
+			)
+				return;
 			placePrimitive = primitive;
 			// Choosing a native primitive is an explicit replacement of an armed model
 			// or saved copy.
@@ -751,7 +813,7 @@ export function createSceneSession(input: {
 				entry = {
 					x: String(captured.position[0]),
 					z: String(captured.position[2]),
-					yaw: String(captured.yaw)
+					yaw: String(captured.yaw),
 				};
 			}
 			return outcome;
@@ -761,13 +823,21 @@ export function createSceneSession(input: {
 				// Nothing is committable, so nothing may keep the gesture lease: a
 				// withdrawn candidate must not leave Undo reporting a live proposal.
 				release();
-				return { kind: 'refused', code: 'no-candidate', message: 'Preview a valid pose before committing.' };
+				return {
+					kind: 'refused',
+					code: 'no-candidate',
+					message: 'Preview a valid pose before committing.',
+				};
 			}
 			if (!leaseIsLive()) {
 				// The host ended the lease (a reading change): the shown pose is no longer
 				// this gesture's operation, so withdraw it rather than install it.
 				withdraw();
-				return { kind: 'refused', code: 'no-candidate', message: 'The preview was cancelled by a reading change.' };
+				return {
+					kind: 'refused',
+					code: 'no-candidate',
+					message: 'The preview was cancelled by a reading change.',
+				};
 			}
 			const entity = entityOf(entityId);
 			if (entity === null) {
@@ -777,7 +847,11 @@ export function createSceneSession(input: {
 			const contactMinY = localContactMinY(entity, contactOf(entity));
 			if (contactMinY === null) {
 				withdraw();
-				return { kind: 'refused', code: 'missing-contact-metadata', message: 'The entity has no verified contact.' };
+				return {
+					kind: 'refused',
+					code: 'missing-contact-metadata',
+					message: 'The entity has no verified contact.',
+				};
 			}
 			if (entryError !== null) {
 				withdraw();
@@ -794,20 +868,20 @@ export function createSceneSession(input: {
 							entityId,
 							yaw: committed.yaw,
 							frame: FRAME,
-							frameReference: PROJECT_WORLD
+							frameReference: PROJECT_WORLD,
 						})
 					: committed.kind === 'resize'
 						? intent('resize-on-floor', {
 								entityId,
 								scale: committed.scale,
-								contactMinY
+								contactMinY,
 							})
 						: intent('move-horizontal', {
 								entityId,
 								worldXZ: [committed.worldXZ[0], committed.worldXZ[1]],
 								frame: FRAME,
 								frameReference: PROJECT_WORLD,
-								contactMinY
+								contactMinY,
 							});
 			// A commit that does not install ends the proposal: whether acceptance
 			// refuses it, the transport throws, or the shown pose stopped being
@@ -822,7 +896,7 @@ export function createSceneSession(input: {
 				return {
 					kind: 'failed',
 					code: 'accept-failed',
-					message: error instanceof Error ? error.message : 'The accepted install failed.'
+					message: error instanceof Error ? error.message : 'The accepted install failed.',
 				};
 			}
 			if (outcome.kind === 'refused') {
@@ -832,7 +906,10 @@ export function createSceneSession(input: {
 			// The committed pose is exactly the displayed candidate; the lease ends and
 			// the accepted baseline is the new pose.
 			release();
-			baseline = { position: [...committed.position] as Vec3, rotation: [...committed.rotation] as Vec3 };
+			baseline = {
+				position: [...committed.position] as Vec3,
+				rotation: [...committed.rotation] as Vec3,
+			};
 			entityId = null;
 			candidate = null;
 			return { kind: 'committed' };
@@ -844,13 +921,21 @@ export function createSceneSession(input: {
 				(candidate.primitive === null && candidateModel === null && candidateFormCopy === null)
 			) {
 				release();
-				return { kind: 'refused', code: 'no-candidate', message: 'Preview a valid placement before committing.' };
+				return {
+					kind: 'refused',
+					code: 'no-candidate',
+					message: 'Preview a valid placement before committing.',
+				};
 			}
 			if (!leaseIsLive()) {
 				// The host ended the lease under the preview; the pose must stop being
 				// committable rather than installing behind a reading the creator left.
 				withdraw();
-				return { kind: 'refused', code: 'no-candidate', message: 'The preview was cancelled by a reading change.' };
+				return {
+					kind: 'refused',
+					code: 'no-candidate',
+					message: 'The preview was cancelled by a reading change.',
+				};
 			}
 			lastPlacedEntityId = null;
 			const worldXZ = candidate.worldXZ;
@@ -858,13 +943,18 @@ export function createSceneSession(input: {
 			const copy = candidateFormCopy;
 			const copyChoice = candidateFormCopyChoice ?? undefined;
 			const placeChoice = candidatePlaceChoice ?? undefined;
-			const outcome = copy !== null
-				? await acceptFormCopyPlacement(copy, worldXZ, copyChoice)
-				: model === null
-					? candidate.primitive === null
-						? { kind: 'refused' as const, code: 'no-candidate', message: 'Preview a valid placement before committing.' }
-						: await acceptPlacement(candidate.primitive, worldXZ, placeChoice)
-					: await acceptModelPlacement(model, worldXZ, placeChoice);
+			const outcome =
+				copy !== null
+					? await acceptFormCopyPlacement(copy, worldXZ, copyChoice)
+					: model === null
+						? candidate.primitive === null
+							? {
+									kind: 'refused' as const,
+									code: 'no-candidate',
+									message: 'Preview a valid placement before committing.',
+								}
+							: await acceptPlacement(candidate.primitive, worldXZ, placeChoice)
+						: await acceptModelPlacement(model, worldXZ, placeChoice);
 			if (outcome.kind !== 'committed') {
 				withdraw();
 				return outcome;
@@ -897,11 +987,12 @@ export function createSceneSession(input: {
 			}
 			const placement = snapDraftingPlacement([x, z], snap);
 			const worldXZ: [number, number] = [placement.x, placement.z];
-			const outcome = copy !== null
-				? await acceptFormCopyPlacement(copy, worldXZ)
-				: model === null
-					? await acceptPlacement(primitive, worldXZ)
-					: await acceptModelPlacement(model, worldXZ);
+			const outcome =
+				copy !== null
+					? await acceptFormCopyPlacement(copy, worldXZ)
+					: model === null
+						? await acceptPlacement(primitive, worldXZ)
+						: await acceptModelPlacement(model, worldXZ);
 			if (outcome.kind === 'committed') {
 				candidate = null;
 				candidatePlaceChoice = null;
@@ -948,7 +1039,10 @@ export function createSceneSession(input: {
 			armedModelPlacement = null;
 			armedFormCopyPlacement = null;
 		},
-		baseline: () => (baseline === null ? null : { position: [...baseline.position] as Vec3, rotation: [...baseline.rotation] as Vec3 })
+		baseline: () =>
+			baseline === null
+				? null
+				: { position: [...baseline.position] as Vec3, rotation: [...baseline.rotation] as Vec3 },
 	};
 	return session;
 }

@@ -4,16 +4,12 @@ import type { LayoutVec2 } from '../../geometry/coordinates';
 /** The four plan streams. Every emitted fragment belongs to exactly one. */
 export const PLAN_STREAMS = ['cut', 'projected', 'hidden', 'symbol'] as const;
 
-
 export type PlanStream = (typeof PLAN_STREAMS)[number];
-
 
 /** The source kinds this representation can place in a stream. */
 export const PLAN_SOURCE_KINDS = ['wall', 'opening', 'object', 'room-floor', 'region'] as const;
 
-
 export type PlanSourceKind = (typeof PLAN_SOURCE_KINDS)[number];
-
 
 /**
  * Membership reasons. `included` means the source passed every stage; each other
@@ -24,22 +20,18 @@ export const PLAN_MEMBERSHIP_REASONS = [
 	'filtered-type',
 	'outside-depth',
 	'outside-span',
-	'no-meaningful-projection'
+	'no-meaningful-projection',
 ] as const;
-
 
 export type PlanMembershipReason = (typeof PLAN_MEMBERSHIP_REASONS)[number];
 
-
 /** The landed sub-reference kinds, mirrored field for field. */
 export const PLAN_SUB_REF_KINDS = ['component', 'interval'] as const;
-
 
 export type PlanSubRef =
 	| { readonly kind: 'component'; readonly componentId: string }
 	/** A distance range in meters along the owning source's canonical sampled arc. */
 	| { readonly kind: 'interval'; readonly start: number; readonly end: number };
-
 
 /**
  * Layout-native correspondence for one plan fragment. Qualified into the landed
@@ -52,7 +44,6 @@ export type PlanSourceRef = {
 	readonly stream: PlanStream;
 	readonly subRef: PlanSubRef | null;
 };
-
 
 /** Parameters of one Plan evaluation (the landed `layout.plan@1` family values). */
 export type PlanParameters = {
@@ -70,7 +61,6 @@ export type PlanParameters = {
 	/** Declared source ids whose display/hit eligibility is temporarily widened. */
 	readonly reveal: readonly string[];
 };
-
 
 /** What the host supplies beside the parameters: identity, target and level datum. */
 export type PlanSourceContext = {
@@ -90,12 +80,10 @@ export type PlanSourceContext = {
 	readonly datumMeters: number;
 };
 
-
 export type PlanFragmentGeometry =
 	| { readonly kind: 'span'; readonly start: LayoutVec2; readonly end: LayoutVec2 }
 	| { readonly kind: 'polyline'; readonly polyline: readonly LayoutVec2[] }
 	| { readonly kind: 'polygon'; readonly polygon: readonly LayoutVec2[] };
-
 
 /** One placeable plan fragment. It always carries its source's declared membership. */
 export type PlanFragment = {
@@ -109,7 +97,6 @@ export type PlanFragment = {
 	 */
 	readonly membership: PlanMembershipReason;
 };
-
 
 /** One compiled source's membership in this evaluation. */
 export type PlanSourceMembership = {
@@ -126,14 +113,12 @@ export type PlanSourceMembership = {
 	readonly lateralDistanceMeters: number | null;
 };
 
-
 export type PlanStreams = {
 	readonly cut: readonly PlanFragment[];
 	readonly projected: readonly PlanFragment[];
 	readonly hidden: readonly PlanFragment[];
 	readonly symbol: readonly PlanFragment[];
 };
-
 
 export type PlanEvaluation = {
 	readonly generationId: string;
@@ -159,9 +144,7 @@ export type PlanEvaluation = {
 	readonly bounds: LayoutBounds2 | null;
 };
 
-
 export type PlanIssue = { path: string; code: string; message: string };
-
 
 export type PlanEvaluationResult =
 	| { readonly kind: 'evaluated'; readonly plan: PlanEvaluation }
@@ -171,18 +154,15 @@ export type PlanEvaluationResult =
 			readonly issues: readonly PlanIssue[];
 	  };
 
-
 export type SourceExtent = {
 	readonly minY: number;
 	readonly maxY: number;
 };
 
-
 export type SourcePlan =
 	| { readonly kind: 'span'; readonly start: LayoutVec2; readonly end: LayoutVec2 }
 	| { readonly kind: 'polyline'; readonly polyline: readonly LayoutVec2[] }
 	| { readonly kind: 'polygon'; readonly polygon: readonly LayoutVec2[] };
-
 
 export type Candidate = {
 	readonly sourceKind: PlanSourceKind;
@@ -195,7 +175,6 @@ export type Candidate = {
 	readonly regionRole?: CompiledRegion['role'];
 	readonly regionKey?: string;
 };
-
 
 /** One candidate after the membership stages: measurement plus the placement it earned. */
 export type Evaluated = {

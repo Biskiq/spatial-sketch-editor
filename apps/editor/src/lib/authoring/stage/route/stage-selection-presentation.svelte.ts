@@ -11,11 +11,13 @@ export function createStageSelectionPresentation() {
 	let selection = $state<StageSelectionEntry | null>(null);
 	return {
 		get: () => selection,
-		set: (entry: StageSelectionEntry | null) => { selection = entry; },
+		set: (entry: StageSelectionEntry | null) => {
+			selection = entry;
+		},
 		clear(stage: StageFacade | null) {
 			stage?.select(null);
 			selection = null;
-		}
+		},
 	};
 }
 
@@ -37,22 +39,27 @@ export function createStageSelectionReadout(input: {
 		void input.shell.contributionsVersion;
 		return input.facade()?.subjects() ?? [];
 	});
-	const readout = $derived(selectionView.read({
-		snapshot: input.ready.snapshot(),
-		envelope: input.envelope(),
-		sceneRooms,
-		selection: input.selection(),
-		planView: input.studioActive() ? null : input.viewport.planView,
-		subjects,
-		scope: input.shell.worldScope
-	}));
+	const readout = $derived(
+		selectionView.read({
+			snapshot: input.ready.snapshot(),
+			envelope: input.envelope(),
+			sceneRooms,
+			selection: input.selection(),
+			planView: input.studioActive() ? null : input.viewport.planView,
+			subjects,
+			scope: input.shell.worldScope,
+		}),
+	);
 	return () => readout;
 }
 
 export function installStageCardRenameGuard(input: {
 	readonly facade: () => StageFacade | null;
 	readonly selection: () => StageSelectionEntry | null;
-	readonly shell: Pick<StageShellState, 'cardRenameTarget' | 'cardRenameRequest' | 'consumeCardRename'>;
+	readonly shell: Pick<
+		StageShellState,
+		'cardRenameTarget' | 'cardRenameRequest' | 'consumeCardRename'
+	>;
 }): void {
 	$effect(() => {
 		const target = input.shell.cardRenameTarget;

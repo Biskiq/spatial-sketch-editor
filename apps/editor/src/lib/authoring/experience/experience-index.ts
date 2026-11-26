@@ -45,7 +45,7 @@ export function experienceIndexFor(input: ExperienceIndexInput): ExperienceIndex
 			onAddStopFromView: () => {},
 			onSelectPresentation: () => {},
 			onToggleExpand: () => {},
-			onSelectView: () => {}
+			onSelectView: () => {},
 		};
 	}
 	const current = controller.current;
@@ -55,7 +55,10 @@ export function experienceIndexFor(input: ExperienceIndexInput): ExperienceIndex
 	const activeGuideId = controller.currentGuide?.id ?? null;
 	const stopNumbers = new Map<string, number[]>();
 	controller.guideStops.forEach((stop, index) => {
-		stopNumbers.set(stop.presentationId, [...(stopNumbers.get(stop.presentationId) ?? []), index + 1]);
+		stopNumbers.set(stop.presentationId, [
+			...(stopNumbers.get(stop.presentationId) ?? []),
+			index + 1,
+		]);
 	});
 	return {
 		pending: false,
@@ -63,7 +66,7 @@ export function experienceIndexFor(input: ExperienceIndexInput): ExperienceIndex
 			id: entry.id,
 			label: entry.label,
 			stopCount: entry.stops.length,
-			presentationCount: entry.presentations.length
+			presentationCount: entry.presentations.length,
 		})),
 		draftLabel: controller.draftLabel,
 		current: current === null ? null : { id: current.id, label: current.label },
@@ -72,7 +75,7 @@ export function experienceIndexFor(input: ExperienceIndexInput): ExperienceIndex
 			label: guide.label,
 			stopCount: guide.stopIds.length,
 			open: input.guideOpen && guide.id === activeGuideId,
-			opening: current?.entryGuideId === guide.id
+			opening: current?.entryGuideId === guide.id,
 		})),
 		presentations: controller.filteredPresentations.map((entry) => ({
 			id: entry.id,
@@ -88,8 +91,10 @@ export function experienceIndexFor(input: ExperienceIndexInput): ExperienceIndex
 				onTour: controller.viewStops(view.id).length > 0,
 				isDefault: entry.views[0]?.viewId === view.id,
 				selected:
-					subject?.kind === 'view' && subject.viewId === view.id && subject.presentationId === entry.id
-			}))
+					subject?.kind === 'view' &&
+					subject.viewId === view.id &&
+					subject.presentationId === entry.id,
+			})),
 		})),
 		totalPresentations: current?.presentations.length ?? 0,
 		query: controller.query,
@@ -127,6 +132,6 @@ export function experienceIndexFor(input: ExperienceIndexInput): ExperienceIndex
 		},
 		onSelectView: (viewId: string, presentationId: string) => {
 			input.select({ kind: 'view', viewId, presentationId });
-		}
+		},
 	};
 }

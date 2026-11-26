@@ -2,7 +2,11 @@ import { pointerRay } from '@portfolio/camera-core/viewport';
 import { wrap360 } from '$lib/render/sky-time';
 import { nearestT, type DialGrip } from '$lib/authoring/look/celestial-dial';
 import { skySession } from '$lib/authoring/look/sky-session.svelte';
-import type { GestureLease, StageAdapterServices, StagePointerIntent } from '$lib/authoring/stage/stage-adapter-host';
+import type {
+	GestureLease,
+	StageAdapterServices,
+	StagePointerIntent,
+} from '$lib/authoring/stage/stage-adapter-host';
 
 export function createSkyDialSession({ stage }: StageAdapterServices) {
 	let drag: {
@@ -27,10 +31,15 @@ export function createSkyDialSession({ stage }: StageAdapterServices) {
 		if (intent.phase === 'down') {
 			const dial = session?.dial();
 			const grip = intent.handleId;
-			if (!session || !dial || (grip !== 'noon' && grip !== 'tip' && grip !== 'glyph')) return false;
+			if (!session || !dial || (grip !== 'noon' && grip !== 'tip' && grip !== 'glyph'))
+				return false;
 			const owner = grip === 'noon' ? 'dial-heading' : 'dial-time';
 			if (!session.look.gesture.begin(owner)) return false;
-			const acquired = stage.acquireGesture({ owner: 'sky', evaluationId: intent.evaluationId, policy: 'cancel-on-reading-change' });
+			const acquired = stage.acquireGesture({
+				owner: 'sky',
+				evaluationId: intent.evaluationId,
+				policy: 'cancel-on-reading-change',
+			});
 			if (acquired.kind !== 'granted') {
 				session.look.gesture.cancel();
 				return false;
@@ -39,24 +48,33 @@ export function createSkyDialSession({ stage }: StageAdapterServices) {
 			return true;
 		}
 		if (!drag) return false;
-		if (!drag.lease.active || intent.phase === 'cancel' || !session || !session.dial()) return cancel();
+		if (!drag.lease.active || intent.phase === 'cancel' || !session || !session.dial())
+			return cancel();
 		const camera = stage.evaluation();
 		if (!camera) return cancel();
 		const { grip, dial, gesture, owner, lease } = drag;
 		if (grip === 'noon') {
 			// Pointer intents are stage-local; the ray is cast from the viewport frame.
-			const ray = pointerRay([intent.css[0] + camera.rect.left, intent.css[1] + camera.rect.top], camera, camera.token);
+			const ray = pointerRay(
+				[intent.css[0] + camera.rect.left, intent.css[1] + camera.rect.top],
+				camera,
+				camera.token,
+			);
 			if (ray.kind === 'ray' && Math.abs(ray.ray.direction[1]) > 1e-6) {
 				const anchor = dial.placement.anchor;
 				const distance = (anchor[1] - ray.ray.origin[1]) / ray.ray.direction[1];
 				const x = ray.ray.origin[0] + distance * ray.ray.direction[0] - anchor[0];
 				const z = ray.ray.origin[2] + distance * ray.ray.direction[2] - anchor[2];
-				const bearing = Math.atan2(x, -z) * 180 / Math.PI - 180;
-				gesture.move(owner, { heading: wrap360(intent.altKey ? bearing : Math.round(bearing / 15) * 15) });
+				const bearing = (Math.atan2(x, -z) * 180) / Math.PI - 180;
+				gesture.move(owner, {
+					heading: wrap360(intent.altKey ? bearing : Math.round(bearing / 15) * 15),
+				});
 			}
 		} else if (dial.body.phase === 'day' || dial.body.phase === 'night') {
 			const sky = gesture.value;
-			gesture.move(owner, { time: nearestT(intent.css, sky.time, dial.body.phase, grip, dial.placement, camera, sky) });
+			gesture.move(owner, {
+				time: nearestT(intent.css, sky.time, dial.body.phase, grip, dial.placement, camera, sky),
+			});
 		}
 		if (intent.phase === 'up') {
 			drag = null;

@@ -3,7 +3,7 @@
  * boundary and the bounded authoring history it records.
  *
  * **Not** a package barrel and **not** reachable from the public route: the
- * shared AM-4 contracts and the current-source admission live in
+ * shared contracts and the current-source admission live in
  * `@portfolio/project-model` (which the public route's module graph includes),
  * while this coordinator and history are editor machinery. The isolation is
  * proved by `apps/editor/tests/lib/authoring/f4-public-isolation.test.ts`

@@ -15,7 +15,7 @@ import {
 	type ExperienceUnitPayload,
 	type LayoutUnitPayload,
 	type ProjectEnvelope,
-	type UnitDomain
+	type UnitDomain,
 } from '@portfolio/project-model/units';
 
 import type { StageReadSnapshot } from './accepted-read';
@@ -24,13 +24,22 @@ const unitSource = Symbol('unit-stage-source');
 type UnitStageRead = StageReadSnapshot & { readonly [unitSource]: ProjectEnvelope };
 
 /** Admission owns this immutable source; this is access, never another source slot. */
-export function attachUnitStageSource(snapshot: StageReadSnapshot, envelope: ProjectEnvelope): StageReadSnapshot {
+export function attachUnitStageSource(
+	snapshot: StageReadSnapshot,
+	envelope: ProjectEnvelope,
+): StageReadSnapshot {
 	return Object.freeze({ ...snapshot, [unitSource]: freezeF4Data(envelope) });
 }
 
 export function stageEnvelope(snapshot: StageReadSnapshot): ProjectEnvelope {
-	if (snapshot.sourceKind !== UNIT_SOURCE_KIND || snapshot.sourceVersion !== UNIT_SOURCE_VERSION || !(unitSource in snapshot)) {
-		throw new Error(`The Stage source adapter cannot read ${snapshot.sourceKind}@${snapshot.sourceVersion}`);
+	if (
+		snapshot.sourceKind !== UNIT_SOURCE_KIND ||
+		snapshot.sourceVersion !== UNIT_SOURCE_VERSION ||
+		!(unitSource in snapshot)
+	) {
+		throw new Error(
+			`The Stage source adapter cannot read ${snapshot.sourceKind}@${snapshot.sourceVersion}`,
+		);
 	}
 	return (snapshot as UnitStageRead)[unitSource];
 }

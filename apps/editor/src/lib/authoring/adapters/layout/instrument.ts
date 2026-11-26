@@ -7,20 +7,24 @@
  * behaviour the browser view renders is what the tests drive:
  *
  * - **Enter accepts**, **Esc cancels**, **blur does not commit**. Blur discards
- *   the pending text and restores the accepted value; it never sends an intent.
+ *  the pending text and restores the accepted value; it never sends an intent.
  * - **Exact typed values.** The committed value is the parsed number, not a
- *   rounded display value; the planner rejects non-finite and non-positive
- *   values and its own message is shown unchanged.
+ *  rounded display value; the planner rejects non-finite and non-positive
+ *  values and its own message is shown unchanged.
  * - **Blank is not zero.** A blank field is an `empty` state with a reason and
- *   sends nothing; it can never become a zero-metre edit.
+ *  sends nothing; it can never become a zero-metre edit.
  * - **One proposal at a time.** A second commit while a write is in flight is
- *   refused locally; the in-flight command owns the document revision.
+ *  refused locally; the in-flight command owns the document revision.
  * - **Placement captures identity first.** The new `layout-object` id is
- *   captured from the *pre-commit* document and passed as an allocation, so the
- *   retained preset planner must agree with it or the placement is refused.
+ *  captured from the *pre-commit* document and passed as an allocation, so the
+ *  retained preset planner must agree with it or the placement is refused.
  */
 
-import { exceedsLayoutDimension, LAYOUT_DIMENSION_LIMIT_MESSAGE, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import {
+	exceedsLayoutDimension,
+	LAYOUT_DIMENSION_LIMIT_MESSAGE,
+	type LayoutVec2,
+} from '@portfolio/layout-core/geometry';
 import { exceedsLayoutWallSpanAfterJunctionMove } from '@portfolio/layout-core/world';
 import { mintLayoutIdCapture, nextLayoutPresetObjectId } from '@portfolio/layout-core/plan';
 import type { FixedWallEndpoint, LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
@@ -31,11 +35,22 @@ import { perfMark } from '$lib/platform/perf-marks';
 import {
 	clearPausedProposal,
 	pausedWallProposal,
-	type PausedWallProposal
+	type PausedWallProposal,
 } from './paused-proposal';
 import { wallFrame, type WallManipulationRequest } from './precision-frames';
 import { layoutFacts, layoutWritableFacts, type LayoutWritableFact } from './precision-facts';
-import { LAYOUT_ENTITY_NAME_KIND, LAYOUT_OPENING_MEASURE_KIND, LAYOUT_PLINTH_PLACE_KIND, LAYOUT_WALL_HEIGHT_KIND, LAYOUT_WALL_THICKNESS_KIND, buildLayoutIntent, isLayoutOpeningField, parseMeasureInput, parsePlacementXZ, type LayoutSubject } from './precision';
+import {
+	LAYOUT_ENTITY_NAME_KIND,
+	LAYOUT_OPENING_MEASURE_KIND,
+	LAYOUT_PLINTH_PLACE_KIND,
+	LAYOUT_WALL_HEIGHT_KIND,
+	LAYOUT_WALL_THICKNESS_KIND,
+	buildLayoutIntent,
+	isLayoutOpeningField,
+	parseMeasureInput,
+	parsePlacementXZ,
+	type LayoutSubject,
+} from './precision';
 import { wallManipulationIntent } from './precision-intents';
 import { wallRefusalWords } from './refusals';
 import { circleRadiusIntent } from './drawing-planners';
@@ -53,7 +68,7 @@ export type LayoutWritePort = {
 /**
  * The host's one gesture lease, expressed as the two things a proposal needs.
  *
- * `acquire()` answers whether this proposal now owns the lease. A refused
+ * `acquire` answers whether this proposal now owns the lease. A refused
  * acquisition (another gesture is live, or the evaluation ended) leaves the
  * instrument usable but does not claim Undo is blocked.
  */
@@ -87,7 +102,11 @@ export type LayoutFieldState = {
 export type LayoutInstrumentOutcome =
 	| { readonly kind: 'accepted' }
 	| { readonly kind: 'refused'; readonly code: string; readonly message: string }
-	| { readonly kind: 'invalid'; readonly code: 'blank' | 'non-finite' | 'malformed'; readonly message: string }
+	| {
+			readonly kind: 'invalid';
+			readonly code: 'blank' | 'non-finite' | 'malformed';
+			readonly message: string;
+	  }
 	| { readonly kind: 'busy' }
 	| { readonly kind: 'unknown-field' }
 	| { readonly kind: 'unknown-subject' };
@@ -152,10 +171,10 @@ export function layoutSubjectReference(input: {
 		location: {
 			kind: 'layout-location',
 			levelId: input.levelId,
-			structureInstancePath: []
+			structureInstancePath: [],
 		},
 		componentId: null,
-		capabilityId: null
+		capabilityId: null,
 	};
 }
 
@@ -163,7 +182,10 @@ export function createLayoutInstrument(options: LayoutInstrumentOptions): Layout
 	const mint = options.mintOperationId ?? (() => globalThis.crypto.randomUUID());
 	const levelId = options.document.floor.id;
 	const accepted = new Map<string, string>(
-		layoutWritableFacts(options.document, options.subject).map((fact) => [fact.id, displayOf(fact)])
+		layoutWritableFacts(options.document, options.subject).map((fact) => [
+			fact.id,
+			displayOf(fact),
+		]),
 	);
 	const text = new Map<string, string>(accepted);
 	const errors = new Map<string, string>();
@@ -200,7 +222,9 @@ export function createLayoutInstrument(options: LayoutInstrumentOptions): Layout
 	}
 
 	function fieldState(id: string): LayoutFieldState | null {
-		const fact = layoutWritableFacts(options.document, options.subject).find((entry) => entry.id === id);
+		const fact = layoutWritableFacts(options.document, options.subject).find(
+			(entry) => entry.id === id,
+		);
 		if (fact === undefined) return null;
 		return {
 			id,
@@ -208,7 +232,7 @@ export function createLayoutInstrument(options: LayoutInstrumentOptions): Layout
 			unit: fact.unit,
 			value: accepted.get(id) ?? displayOf(fact),
 			text: text.get(id) ?? '',
-			error: errors.get(id) ?? null
+			error: errors.get(id) ?? null,
 		};
 	}
 
@@ -216,14 +240,18 @@ export function createLayoutInstrument(options: LayoutInstrumentOptions): Layout
 		return layoutSubjectReference({
 			subject: options.subject,
 			levelId,
-			contentRevision: options.contentRevision
+			contentRevision: options.contentRevision,
 		});
 	}
 
 	async function submit(intent: AuthoringIntent): Promise<LayoutInstrumentOutcome> {
 		// An explicit typed command starts here; the accepted result it
 		// produces is marked by the host's acceptance path.
-		perfMark('command:instrument', { taskKind: intent.kind, operationId: intent.operationId, wallId: options.subject.kind === 'wall' ? options.subject.id : null });
+		perfMark('command:instrument', {
+			taskKind: intent.kind,
+			operationId: intent.operationId,
+			wallId: options.subject.kind === 'wall' ? options.subject.id : null,
+		});
 		inFlight = true;
 		try {
 			const outcome = await options.port.accept(intent);
@@ -282,263 +310,281 @@ export function createLayoutInstrument(options: LayoutInstrumentOptions): Layout
 			}
 			errors.delete(id);
 			try {
-
-			if (current.unit === 'text') {
-				const name = current.text.trim();
-				if (name.length === 0) {
-					errors.set(id, 'Enter a name; an empty name is not a rename.');
-					return { kind: 'invalid', code: 'blank', message: errors.get(id)! };
+				if (current.unit === 'text') {
+					const name = current.text.trim();
+					if (name.length === 0) {
+						errors.set(id, 'Enter a name; an empty name is not a rename.');
+						return { kind: 'invalid', code: 'blank', message: errors.get(id)! };
+					}
+					if (options.subject.kind === 'object') {
+						return {
+							kind: 'refused',
+							code: 'read-only',
+							message:
+								'A Layout object keeps its identity as its name; only Walls and Openings are renameable.',
+						};
+					}
+					const outcome = await submit(
+						buildLayoutIntent({
+							kind: LAYOUT_ENTITY_NAME_KIND,
+							operationId: mint(),
+							projectId: options.projectId,
+							revisionId: options.port.acceptedRevision().revisionId,
+							contentRevision: options.contentRevision,
+							levelId,
+							targets: [reference()],
+							payload: { subjectKind: options.subject.kind, subjectId: options.subject.id, name },
+						}),
+					);
+					if (outcome.kind === 'refused') errors.set(id, outcome.message);
+					else if (outcome.kind === 'accepted') {
+						accepted.set(id, name);
+						releaseProposal();
+					}
+					return outcome;
 				}
-				if (options.subject.kind === 'object') {
+
+				const parsed = parseMeasureInput(current.text);
+				if (!parsed.ok) {
+					errors.set(id, parsed.reason);
+					return { kind: 'invalid', code: parsed.code, message: parsed.reason };
+				}
+
+				// Refuse an unsupported dimension before an intent exists. The planners
+				// enforce the same measured envelope, but the host reports a planner
+				// rejection as `planner-rejected`; checking here keeps the Card's words
+				// identical for every field and never takes the gesture lease for it.
+				const dimension =
+					id === 'length' ||
+					id === 'radius' ||
+					id === 'diameter' ||
+					id === 'height' ||
+					id === 'thickness' ||
+					isLayoutOpeningField(id);
+				if (dimension && exceedsLayoutDimension(parsed.value)) {
+					errors.set(id, LAYOUT_DIMENSION_LIMIT_MESSAGE);
 					return {
 						kind: 'refused',
-						code: 'read-only',
-						message: 'A Layout object keeps its identity as its name; only Walls and Openings are renameable.'
+						code: 'dimension_out_of_range',
+						message: LAYOUT_DIMENSION_LIMIT_MESSAGE,
 					};
 				}
-				const outcome = await submit(
-					buildLayoutIntent({
-						kind: LAYOUT_ENTITY_NAME_KIND,
+
+				// A closed Wall's radius and diameter are exact physical writes.
+				// Diameter is converted to radius here so one planner owns the semantics;
+				// the planner preserves every Opening's angular station and width, or
+				// refuses the edit without writing a clamped value.
+				if (options.subject.kind === 'wall' && (id === 'radius' || id === 'diameter')) {
+					const radius = id === 'diameter' ? parsed.value / 2 : parsed.value;
+					if (!(radius > 0)) {
+						const reason = 'Enter a radius or diameter greater than zero.';
+						errors.set(id, reason);
+						return { kind: 'invalid', code: 'malformed', message: reason };
+					}
+					const outcome = await submit(
+						circleRadiusIntent({
+							wallId: options.subject.id,
+							radius,
+							operationId: mint(),
+							projectId: options.projectId,
+							revisionId: options.port.acceptedRevision().revisionId,
+							contentRevision: options.contentRevision,
+							levelId,
+						}),
+					);
+					if (outcome.kind === 'refused') errors.set(id, outcome.message);
+					else if (outcome.kind === 'accepted') updateAccepted(id, parsed.value);
+					return outcome;
+				}
+
+				// **Existing straight-Wall manipulation.** Length and angle are
+				// exact solves with one explicit fixed endpoint; the rigid move takes both
+				// deltas so it is one intent and one history result. All three build the
+				// canonical planner's payload through one helper, so the typed path and the
+				// pointer path cannot disagree about identity, units or captured revision.
+				if (options.subject.kind === 'wall' && (id === 'length' || id === 'angle')) {
+					if (id === 'length' && parsed.value <= 0) {
+						const reason = 'Enter a length greater than zero.';
+						errors.set(id, reason);
+						return { kind: 'invalid', code: 'malformed', message: reason };
+					}
+					const request: WallManipulationRequest =
+						id === 'length'
+							? { kind: 'length', length: parsed.value }
+							: { kind: 'angle', angleRadians: (parsed.value * Math.PI) / 180 };
+					const outcome = await submit(
+						wallManipulationIntent({
+							request,
+							wallId: options.subject.id,
+							fixed: fixedEndpoint,
+							operationId: mint(),
+							projectId: options.projectId,
+							revisionId: options.port.acceptedRevision().revisionId,
+							contentRevision: options.contentRevision,
+							levelId,
+						}),
+					);
+					if (outcome.kind === 'refused') errors.set(id, outcome.message);
+					else if (outcome.kind === 'accepted') updateAccepted(id, parsed.value);
+					return outcome;
+				}
+				// The Card's disclosed Start/End X/Z use the same shared-Junction
+				// planner as the Stage's endpoint drag. The companion coordinate is the
+				// accepted one, so committing X never silently rewrites Z.
+				if (
+					options.subject.kind === 'wall' &&
+					(id === 'startX' || id === 'startZ' || id === 'endX' || id === 'endZ')
+				) {
+					const frame = wallFrame(options.document, options.subject.id);
+					if (frame === null) {
+						const reason = 'A curved Wall has no exact Junction X/Z writer.';
+						errors.set(id, reason);
+						return { kind: 'refused', code: 'unavailable', message: reason };
+					}
+					const start = id.startsWith('start');
+					const companion =
+						id === 'startX' || id === 'endX'
+							? start
+								? 'startZ'
+								: 'endZ'
+							: start
+								? 'startX'
+								: 'endX';
+					const other = Number(accepted.get(companion));
+					if (!Number.isFinite(other)) {
+						const reason = 'The other coordinate is not a finite number.';
+						errors.set(id, reason);
+						return { kind: 'invalid', code: 'malformed', message: reason };
+					}
+					const point: LayoutVec2 =
+						id === 'startX' || id === 'endX' ? [parsed.value, other] : [other, parsed.value];
+					// A Junction move can stretch the selected Wall or any incident
+					// neighbour. Refuse the unsupported span here, before the intent, with
+					// the same words every other dimension refusal uses.
+					const movedJunctionId = start ? frame.startJunctionId : frame.endJunctionId;
+					if (exceedsLayoutWallSpanAfterJunctionMove(options.document, movedJunctionId, point)) {
+						errors.set(id, LAYOUT_DIMENSION_LIMIT_MESSAGE);
+						return {
+							kind: 'refused',
+							code: 'dimension_out_of_range',
+							message: LAYOUT_DIMENSION_LIMIT_MESSAGE,
+						};
+					}
+					const outcome = await submit(
+						wallManipulationIntent({
+							request: {
+								kind: 'junction',
+								junctionId: start ? frame.startJunctionId : frame.endJunctionId,
+								point,
+							},
+							wallId: options.subject.id,
+							fixed: fixedEndpoint,
+							operationId: mint(),
+							projectId: options.projectId,
+							revisionId: options.port.acceptedRevision().revisionId,
+							contentRevision: options.contentRevision,
+							levelId,
+						}),
+					);
+					if (outcome.kind === 'refused') errors.set(id, wallRefusalWords(outcome.code));
+					else if (outcome.kind === 'accepted') updateAccepted(id, parsed.value);
+					return outcome;
+				}
+				if (options.subject.kind === 'wall' && (id === 'deltaX' || id === 'deltaZ')) {
+					const dx = parseMeasureInput(text.get('deltaX') ?? '0');
+					const dz = parseMeasureInput(text.get('deltaZ') ?? '0');
+					if (!dx.ok || !dz.ok) {
+						const failure = !dx.ok ? dx : dz;
+						const reason = failure.ok ? '' : failure.reason;
+						errors.set(id, reason);
+						return {
+							kind: 'invalid',
+							code: failure.ok ? 'malformed' : failure.code,
+							message: reason,
+						};
+					}
+					const outcome = await submit(
+						wallManipulationIntent({
+							request: { kind: 'move', delta: [dx.value, dz.value] },
+							wallId: options.subject.id,
+							fixed: fixedEndpoint,
+							operationId: mint(),
+							projectId: options.projectId,
+							revisionId: options.port.acceptedRevision().revisionId,
+							contentRevision: options.contentRevision,
+							levelId,
+						}),
+					);
+					if (outcome.kind === 'refused') errors.set(id, outcome.message);
+					else if (outcome.kind === 'accepted') {
+						// A rigid move consumes its deltas: the fields return to zero so the
+						// next Enter cannot silently move the Wall a second time.
+						errors.delete('deltaX');
+						errors.delete('deltaZ');
+						accepted.set('deltaX', '0');
+						accepted.set('deltaZ', '0');
+						text.set('deltaX', '0');
+						text.set('deltaZ', '0');
+					}
+					return outcome;
+				}
+
+				if (parsed.value < 0 || (parsed.value === 0 && id !== 'offset' && id !== 'sillHeight')) {
+					const reason =
+						id === 'offset' || id === 'sillHeight'
+							? 'Enter a value of zero or more.'
+							: 'Enter a value greater than zero.';
+					errors.set(id, reason);
+					return { kind: 'invalid', code: 'malformed', message: reason };
+				}
+
+				let intent: AuthoringIntent;
+				if (id === 'height' && options.subject.kind === 'wall') {
+					intent = buildLayoutIntent({
+						kind: LAYOUT_WALL_HEIGHT_KIND,
 						operationId: mint(),
 						projectId: options.projectId,
 						revisionId: options.port.acceptedRevision().revisionId,
 						contentRevision: options.contentRevision,
 						levelId,
 						targets: [reference()],
-						payload: { subjectKind: options.subject.kind, subjectId: options.subject.id, name }
-					})
-				);
-				if (outcome.kind === 'refused') errors.set(id, outcome.message);
-				else if (outcome.kind === 'accepted') {
-					accepted.set(id, name);
-					releaseProposal();
-				}
-				return outcome;
-			}
-
-			const parsed = parseMeasureInput(current.text);
-			if (!parsed.ok) {
-				errors.set(id, parsed.reason);
-				return { kind: 'invalid', code: parsed.code, message: parsed.reason };
-			}
-
-			// Refuse an unsupported dimension before an intent exists. The planners
-			// enforce the same measured envelope, but the host reports a planner
-			// rejection as `planner-rejected`; checking here keeps the Card's words
-			// identical for every field and never takes the gesture lease for it.
-			const dimension =
-				id === 'length' ||
-				id === 'radius' ||
-				id === 'diameter' ||
-				id === 'height' ||
-				id === 'thickness' ||
-				isLayoutOpeningField(id);
-			if (dimension && exceedsLayoutDimension(parsed.value)) {
-				errors.set(id, LAYOUT_DIMENSION_LIMIT_MESSAGE);
-				return { kind: 'refused', code: 'dimension_out_of_range', message: LAYOUT_DIMENSION_LIMIT_MESSAGE };
-			}
-
-			// A closed Wall's radius and diameter are exact physical writes.
-			// Diameter is converted to radius here so one planner owns the semantics;
-			// the planner preserves every Opening's angular station and width, or
-			// refuses the edit without writing a clamped value.
-			if (options.subject.kind === 'wall' && (id === 'radius' || id === 'diameter')) {
-				const radius = id === 'diameter' ? parsed.value / 2 : parsed.value;
-				if (!(radius > 0)) {
-					const reason = 'Enter a radius or diameter greater than zero.';
-					errors.set(id, reason);
-					return { kind: 'invalid', code: 'malformed', message: reason };
-				}
-				const outcome = await submit(
-					circleRadiusIntent({
-						wallId: options.subject.id,
-						radius,
+						payload: { wallId: options.subject.id, height: parsed.value },
+					});
+				} else if (id === 'thickness' && options.subject.kind === 'wall') {
+					intent = buildLayoutIntent({
+						kind: LAYOUT_WALL_THICKNESS_KIND,
 						operationId: mint(),
 						projectId: options.projectId,
 						revisionId: options.port.acceptedRevision().revisionId,
 						contentRevision: options.contentRevision,
-						levelId
-					})
-				);
-				if (outcome.kind === 'refused') errors.set(id, outcome.message);
-				else if (outcome.kind === 'accepted') updateAccepted(id, parsed.value);
-				return outcome;
-			}
-
-			// **Existing straight-Wall manipulation.** Length and angle are
-			// exact solves with one explicit fixed endpoint; the rigid move takes both
-			// deltas so it is one intent and one history result. All three build the
-			// canonical planner's payload through one helper, so the typed path and the
-			// pointer path cannot disagree about identity, units or captured revision.
-			if (options.subject.kind === 'wall' && (id === 'length' || id === 'angle')) {
-				if (id === 'length' && parsed.value <= 0) {
-					const reason = 'Enter a length greater than zero.';
-					errors.set(id, reason);
-					return { kind: 'invalid', code: 'malformed', message: reason };
-				}
-				const request: WallManipulationRequest =
-					id === 'length'
-						? { kind: 'length', length: parsed.value }
-						: { kind: 'angle', angleRadians: (parsed.value * Math.PI) / 180 };
-				const outcome = await submit(
-					wallManipulationIntent({
-						request,
-						wallId: options.subject.id,
-						fixed: fixedEndpoint,
+						levelId,
+						targets: [reference()],
+						payload: { wallId: options.subject.id, thickness: parsed.value },
+					});
+				} else if (options.subject.kind === 'opening' && isLayoutOpeningField(id)) {
+					intent = buildLayoutIntent({
+						kind: LAYOUT_OPENING_MEASURE_KIND,
 						operationId: mint(),
 						projectId: options.projectId,
 						revisionId: options.port.acceptedRevision().revisionId,
 						contentRevision: options.contentRevision,
-						levelId
-					})
-				);
-				if (outcome.kind === 'refused') errors.set(id, outcome.message);
-				else if (outcome.kind === 'accepted') updateAccepted(id, parsed.value);
-				return outcome;
-			}
-			// The Card's disclosed Start/End X/Z use the same shared-Junction
-			// planner as the Stage's endpoint drag. The companion coordinate is the
-			// accepted one, so committing X never silently rewrites Z.
-			if (
-				options.subject.kind === 'wall' &&
-				(id === 'startX' || id === 'startZ' || id === 'endX' || id === 'endZ')
-			) {
-				const frame = wallFrame(options.document, options.subject.id);
-				if (frame === null) {
-					const reason = 'A curved Wall has no exact Junction X/Z writer.';
+						levelId,
+						targets: [reference()],
+						payload: { openingId: options.subject.id, field: id, value: parsed.value },
+					});
+				} else {
+					const reason = `"${current.label}" has no supported writer on this subject.`;
 					errors.set(id, reason);
 					return { kind: 'refused', code: 'unavailable', message: reason };
 				}
-				const start = id.startsWith('start');
-				const companion = id === 'startX' || id === 'endX' ? (start ? 'startZ' : 'endZ') : start ? 'startX' : 'endX';
-				const other = Number(accepted.get(companion));
-				if (!Number.isFinite(other)) {
-					const reason = 'The other coordinate is not a finite number.';
-					errors.set(id, reason);
-					return { kind: 'invalid', code: 'malformed', message: reason };
-				}
-				const point: LayoutVec2 = id === 'startX' || id === 'endX'
-					? [parsed.value, other]
-					: [other, parsed.value];
-				// A Junction move can stretch the selected Wall or any incident
-				// neighbour. Refuse the unsupported span here, before the intent, with
-				// the same words every other dimension refusal uses.
-				const movedJunctionId = start ? frame.startJunctionId : frame.endJunctionId;
-				if (exceedsLayoutWallSpanAfterJunctionMove(options.document, movedJunctionId, point)) {
-					errors.set(id, LAYOUT_DIMENSION_LIMIT_MESSAGE);
-					return { kind: 'refused', code: 'dimension_out_of_range', message: LAYOUT_DIMENSION_LIMIT_MESSAGE };
-				}
-				const outcome = await submit(
-					wallManipulationIntent({
-						request: {
-							kind: 'junction',
-							junctionId: start ? frame.startJunctionId : frame.endJunctionId,
-							point
-						},
-						wallId: options.subject.id,
-						fixed: fixedEndpoint,
-						operationId: mint(),
-						projectId: options.projectId,
-						revisionId: options.port.acceptedRevision().revisionId,
-						contentRevision: options.contentRevision,
-						levelId
-					})
-				);
-				if (outcome.kind === 'refused') errors.set(id, wallRefusalWords(outcome.code));
-				else if (outcome.kind === 'accepted') updateAccepted(id, parsed.value);
-				return outcome;
-			}
-			if (options.subject.kind === 'wall' && (id === 'deltaX' || id === 'deltaZ')) {
-				const dx = parseMeasureInput(text.get('deltaX') ?? '0');
-				const dz = parseMeasureInput(text.get('deltaZ') ?? '0');
-				if (!dx.ok || !dz.ok) {
-					const failure = !dx.ok ? dx : dz;
-					const reason = failure.ok ? '' : failure.reason;
-					errors.set(id, reason);
-					return { kind: 'invalid', code: failure.ok ? 'malformed' : failure.code, message: reason };
-				}
-				const outcome = await submit(
-					wallManipulationIntent({
-						request: { kind: 'move', delta: [dx.value, dz.value] },
-						wallId: options.subject.id,
-						fixed: fixedEndpoint,
-						operationId: mint(),
-						projectId: options.projectId,
-						revisionId: options.port.acceptedRevision().revisionId,
-						contentRevision: options.contentRevision,
-						levelId
-					})
-				);
+
+				const outcome = await submit(intent);
 				if (outcome.kind === 'refused') errors.set(id, outcome.message);
 				else if (outcome.kind === 'accepted') {
-					// A rigid move consumes its deltas: the fields return to zero so the
-					// next Enter cannot silently move the Wall a second time.
-					errors.delete('deltaX');
-					errors.delete('deltaZ');
-					accepted.set('deltaX', '0');
-					accepted.set('deltaZ', '0');
-					text.set('deltaX', '0');
-					text.set('deltaZ', '0');
+					updateAccepted(id, parsed.value);
+					releaseProposal();
 				}
 				return outcome;
-			}
-
-			if (parsed.value < 0 || (parsed.value === 0 && id !== 'offset' && id !== 'sillHeight')) {
-				const reason =
-					id === 'offset' || id === 'sillHeight'
-						? 'Enter a value of zero or more.'
-						: 'Enter a value greater than zero.';
-				errors.set(id, reason);
-				return { kind: 'invalid', code: 'malformed', message: reason };
-			}
-
-			let intent: AuthoringIntent;
-			if (id === 'height' && options.subject.kind === 'wall') {
-				intent = buildLayoutIntent({
-					kind: LAYOUT_WALL_HEIGHT_KIND,
-					operationId: mint(),
-					projectId: options.projectId,
-					revisionId: options.port.acceptedRevision().revisionId,
-					contentRevision: options.contentRevision,
-					levelId,
-					targets: [reference()],
-					payload: { wallId: options.subject.id, height: parsed.value }
-				});
-			} else if (id === 'thickness' && options.subject.kind === 'wall') {
-				intent = buildLayoutIntent({
-					kind: LAYOUT_WALL_THICKNESS_KIND,
-					operationId: mint(),
-					projectId: options.projectId,
-					revisionId: options.port.acceptedRevision().revisionId,
-					contentRevision: options.contentRevision,
-					levelId,
-					targets: [reference()],
-					payload: { wallId: options.subject.id, thickness: parsed.value }
-				});
-			} else if (options.subject.kind === 'opening' && isLayoutOpeningField(id)) {
-				intent = buildLayoutIntent({
-					kind: LAYOUT_OPENING_MEASURE_KIND,
-					operationId: mint(),
-					projectId: options.projectId,
-					revisionId: options.port.acceptedRevision().revisionId,
-					contentRevision: options.contentRevision,
-					levelId,
-					targets: [reference()],
-					payload: { openingId: options.subject.id, field: id, value: parsed.value }
-				});
-			} else {
-				const reason = `"${current.label}" has no supported writer on this subject.`;
-				errors.set(id, reason);
-				return { kind: 'refused', code: 'unavailable', message: reason };
-			}
-
-			const outcome = await submit(intent);
-			if (outcome.kind === 'refused') errors.set(id, outcome.message);
-			else if (outcome.kind === 'accepted') {
-				updateAccepted(id, parsed.value);
-				releaseProposal();
-			}
-			return outcome;
 			} finally {
 				// A completed attempt — accepted, refused, invalid or thrown — ends the
 				// proposal. A lease must never outlive the value it was opened for.
@@ -589,11 +635,11 @@ export function createLayoutInstrument(options: LayoutInstrumentOptions): Layout
 						payload: {
 							point: [point[0], point[1]],
 							floorElevation: options.document.floor.elevation,
-							objectId
+							objectId,
 						},
 						capture,
-						allocatedIds: [{ kind: 'layout-object', id: objectId }]
-					})
+						allocatedIds: [{ kind: 'layout-object', id: objectId }],
+					}),
 				);
 				if (outcome.kind === 'refused') placement = { ...placement, error: outcome.message };
 				return outcome;
@@ -612,7 +658,11 @@ export function createLayoutInstrument(options: LayoutInstrumentOptions): Layout
 			if (inFlight) return { kind: 'busy' };
 			const paused = pausedFor();
 			if (paused === null || options.subject.kind !== 'wall') {
-				return { kind: 'refused', code: 'no-paused-proposal', message: 'There is no paused Wall proposal to resume.' };
+				return {
+					kind: 'refused',
+					code: 'no-paused-proposal',
+					message: 'There is no paused Wall proposal to resume.',
+				};
 			}
 			// The captured parameter is applied as-is: no display text is parsed and
 			// nothing is rounded. The F.4 planner revalidates it against the current
@@ -626,10 +676,11 @@ export function createLayoutInstrument(options: LayoutInstrumentOptions): Layout
 					projectId: options.projectId,
 					revisionId: options.port.acceptedRevision().revisionId,
 					contentRevision: options.contentRevision,
-					levelId
-				})
+					levelId,
+				}),
 			);
-			if (outcome.kind === 'accepted') clearPausedProposal(options.contentRevision, options.subject.id);
+			if (outcome.kind === 'accepted')
+				clearPausedProposal(options.contentRevision, options.subject.id);
 			return outcome;
 		},
 		discardPaused() {
@@ -637,6 +688,6 @@ export function createLayoutInstrument(options: LayoutInstrumentOptions): Layout
 			clearPausedProposal(options.contentRevision, options.subject.id);
 		},
 		proposalLive: () => proposal,
-		dispose: () => releaseProposal()
+		dispose: () => releaseProposal(),
 	};
 }

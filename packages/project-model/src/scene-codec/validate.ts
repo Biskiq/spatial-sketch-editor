@@ -2,7 +2,7 @@ import { SCENE_WORLD_LOCAL_FORMAT_VERSION, type SceneDocument } from '../scene';
 import {
 	withSceneValidationOptions,
 	type ResolvedSceneValidationOptions,
-	type SceneValidationOptions
+	type SceneValidationOptions,
 } from '../scene-validation';
 import { canonicalDocument } from './canonical';
 import {
@@ -10,7 +10,7 @@ import {
 	parseCluster,
 	parseEntity,
 	parseMaterialInstance,
-	parseTextureAsset
+	parseTextureAsset,
 } from './parse-entities';
 import { parseConnection, parseNode, validateSemantics } from './parse-document';
 import { addIssue, assertAllowedKeys, isRecord } from './readers';
@@ -18,7 +18,7 @@ import type { SceneDocumentIssue, SceneDocumentValidationResult } from './types'
 
 export function validateSceneDocument(
 	input: unknown,
-	options: SceneValidationOptions = {}
+	options: SceneValidationOptions = {},
 ): SceneDocumentValidationResult {
 	const validation: ResolvedSceneValidationOptions = withSceneValidationOptions(options);
 	const issues: SceneDocumentIssue[] = [];
@@ -41,7 +41,7 @@ export function validateSceneDocument(
 			issues,
 			'$.formatVersion',
 			'unsupported_format_version',
-			`Unsupported Scene formatVersion ${JSON.stringify(input.formatVersion)}; recognized value: ${SCENE_WORLD_LOCAL_FORMAT_VERSION}`
+			`Unsupported Scene formatVersion ${JSON.stringify(input.formatVersion)}; recognized value: ${SCENE_WORLD_LOCAL_FORMAT_VERSION}`,
 		);
 		return { success: false, issues };
 	}
@@ -52,10 +52,13 @@ export function validateSceneDocument(
 		'entities',
 		'clusters',
 		'navigationNodes',
-		'connections'
+		'connections',
 	] as const;
 	assertAllowedKeys(input, rootKeys, '$', issues);
-	const parseArray = <T>(key: string, parser: (value: unknown, path: string, target: SceneDocumentIssue[]) => T | undefined) => {
+	const parseArray = <T>(
+		key: string,
+		parser: (value: unknown, path: string, target: SceneDocumentIssue[]) => T | undefined,
+	) => {
 		const value = input[key];
 		if (!Array.isArray(value)) {
 			addIssue(issues, `$.${key}`, 'invalid_type', 'Expected an array');
@@ -65,22 +68,23 @@ export function validateSceneDocument(
 		return values.every((item): item is T => item !== undefined) ? values : undefined;
 	};
 	const textures = parseArray('textures', (value, path, target) =>
-		parseTextureAsset(value, path, target, validation)
+		parseTextureAsset(value, path, target, validation),
 	);
 	const materials = parseArray('materials', (value, path, target) =>
-		parseMaterialInstance(value, path, target, validation)
+		parseMaterialInstance(value, path, target, validation),
 	);
 	const entities = parseArray('entities', (value, path, target) =>
 		parseEntity(value, path, target, {
 			allowMaterialInstance: true,
-			...validation
-		})
+			...validation,
+		}),
 	);
-	const clusters = 'clusters' in input
-		? parseArray('clusters', (value, path, target) => parseCluster(value, path, target))
-		: undefined;
+	const clusters =
+		'clusters' in input
+			? parseArray('clusters', (value, path, target) => parseCluster(value, path, target))
+			: undefined;
 	const navigationNodes = parseArray('navigationNodes', (value, path, target) =>
-		parseNode(value, path, target)
+		parseNode(value, path, target),
 	);
 	const connections = parseArray('connections', parseConnection);
 	if (
@@ -105,12 +109,16 @@ export function validateSceneDocument(
 		entities,
 		...(clusters === undefined ? {} : { clusters }),
 		navigationNodes,
-		connections
+		connections,
 	};
 	validateSemantics(document, issues, validation);
 	if (issues.length) return { success: false, issues };
 	const normalized = canonicalDocument(document);
-	return { success: true, document: normalized, canonicalJson: JSON.stringify(normalized, null, 2) + '\n' };
+	return {
+		success: true,
+		document: normalized,
+		canonicalJson: JSON.stringify(normalized, null, 2) + '\n',
+	};
 }
 
 /** Artwork shelf admission belongs to the authored Scene unit. */
@@ -126,7 +134,12 @@ export function validateArtworkLibrary(input: unknown, entities: SceneDocument['
 				const entry = parseArtworkLibraryEntry(value, path, issues);
 				if (entry === undefined) continue;
 				if (entries.has(entry.assetId)) {
-					addIssue(issues, `${path}.assetId`, 'duplicate_asset_id', 'Artwork Library asset appears more than once');
+					addIssue(
+						issues,
+						`${path}.assetId`,
+						'duplicate_asset_id',
+						'Artwork Library asset appears more than once',
+					);
 				}
 				entries.set(entry.assetId, entry);
 			}
@@ -135,10 +148,20 @@ export function validateArtworkLibrary(input: unknown, entities: SceneDocument['
 	for (const [index, entity] of entities.entries()) {
 		if (entity.kind !== 'artwork') continue;
 		const entry = entries.get(entity.source.assetId);
-		if (entry?.pixelWidth !== entity.source.pixelWidth || entry.pixelHeight !== entity.source.pixelHeight) {
-			addIssue(issues, `$.entities[${index}].source`, 'artwork_library_mismatch', 'Artwork must match its project Library image');
+		if (
+			entry?.pixelWidth !== entity.source.pixelWidth ||
+			entry.pixelHeight !== entity.source.pixelHeight
+		) {
+			addIssue(
+				issues,
+				`$.entities[${index}].source`,
+				'artwork_library_mismatch',
+				'Artwork must match its project Library image',
+			);
 		}
 	}
-	const library = [...entries.values()].sort((a, b) => a.assetId < b.assetId ? -1 : a.assetId > b.assetId ? 1 : 0);
+	const library = [...entries.values()].sort((a, b) =>
+		a.assetId < b.assetId ? -1 : a.assetId > b.assetId ? 1 : 0,
+	);
 	return { library, issues };
 }

@@ -53,8 +53,8 @@ mark contract is owned by
   `apps/editor/src/routes/project/[projectId]/spatial/+page.svelte`; regressions
   `apps/editor/tests/lib/authoring/stage-handles.test.ts`,
   `apps/editor/tests/lib/authoring/paper-marks.test.ts`,
-  `apps/editor/tests/lib/authoring/layout-wall-manipulation.test.ts`,
-  `apps/editor/tests/lib/authoring/spatial-route-gesture.test.ts`,
+  `../../../../../apps/editor/tests/lib/authoring/adapters`,
+  `../../../../../apps/editor/tests/lib/authoring/stage`,
   `apps/editor/tests/lib/authoring/stage-shell-composition.test.ts`.
 - **Integration route:** [R217.S11](../r217.s11-integrated-final-gate/acceptance.md) owns the phase's
   integrated final gate and full-tree result.

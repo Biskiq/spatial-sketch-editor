@@ -43,16 +43,24 @@ export function createLightInspectionGuards(input: {
 			canUpdate: !inspection.busy(),
 			beam: inspection.beam(),
 			onUpdate: () => void inspection.finish(),
-			onExit: () => inspection.exit()
+			onExit: () => inspection.exit(),
 		};
 	});
 	const viewport = contribution<'light-inspection', 'viewport'>()({
-		get lightCoverage() { return coverage; }
+		get lightCoverage() {
+			return coverage;
+		},
 	});
 
 	attachGuards();
 	return {
-		card, cancel, lightArmed, attachGuards, viewport,
-		get frame() { return frame; }
+		card,
+		cancel,
+		lightArmed,
+		attachGuards,
+		viewport,
+		get frame() {
+			return frame;
+		},
 	};
 }

@@ -9,9 +9,9 @@
  * The policy follows the target specification's operation table:
  *
  * - Ink Wall point: existing Junction and host targets, an orthogonal guide
- *   from the previous point, then the fixed 0.5 m grid.
+ *  from the previous point, then the fixed 0.5 m grid.
  * - Opening slide: the Opening drag family's edge/centre targets, then the
- *   fixed 0.5 m grid.
+ *  fixed 0.5 m grid.
  * Wall length and body-move fallbacks live here: the
  * normal distance or the length rounds to the fixed 0.5 m grid, and neither
  * ever snaps a Wall onto another Wall or Junction.
@@ -20,10 +20,17 @@
  * drafting state, so this module never invents a second Snap switch.
  */
 
-import { resolveLayoutSnap, resolveOpeningDragSnapUseMode, type SnapFeatureKind } from '@portfolio/layout-core/plan';
+import {
+	resolveLayoutSnap,
+	resolveOpeningDragSnapUseMode,
+	type SnapFeatureKind,
+} from '@portfolio/layout-core/plan';
 import type { CompiledLayoutGeometry, LayoutVec2 } from '@portfolio/layout-core/geometry';
 
-import { DRAFTING_SNAP_METERS, draftingSnapIncrementMeters } from '$lib/authoring/stage/stage-adapter-host';
+import {
+	DRAFTING_SNAP_METERS,
+	draftingSnapIncrementMeters,
+} from '$lib/authoring/stage/stage-adapter-host';
 
 import type { StageDraftingState } from '$lib/authoring/stage/stage-adapter-host';
 
@@ -83,13 +90,13 @@ export function resolveInkPointSnap(input: {
 		{
 			pixelsPerMeter: input.pixelsPerMeter,
 			gridStep: DRAFTING_SNAP_METERS,
-			...(input.anchor === null ? {} : { anchor: input.anchor })
+			...(input.anchor === null ? {} : { anchor: input.anchor }),
 		},
 		// A chain point may connect to an existing Junction or split a host
 		// Wall. A Wall intersection is not a legal endpoint target (the chain
 		// policy refuses the undeclared contact), and an Opening edge is not a
 		// legal host for a new Wall point, so both are deliberately absent.
-		{ allowedKinds: ['junction', 'wall-span', 'orthogonal-guide', 'grid'] }
+		{ allowedKinds: ['junction', 'wall-span', 'orthogonal-guide', 'grid'] },
 	);
 	if (resolution.kind !== 'snap') return null;
 	const { candidate } = resolution;
@@ -97,7 +104,7 @@ export function resolveInkPointSnap(input: {
 		point: [cleanCoordinate(candidate.point[0]), cleanCoordinate(candidate.point[1])],
 		kind: candidate.kind,
 		name: layoutSnapName(candidate.kind),
-		...(candidate.wallId === undefined ? {} : { wallId: candidate.wallId })
+		...(candidate.wallId === undefined ? {} : { wallId: candidate.wallId }),
 	};
 }
 
@@ -115,7 +122,8 @@ export function resolveJunctionPointSnap(input: {
 	readonly distanceCss?: DragSnapDistance;
 }): LayoutSnapWinner | null {
 	if (draftingSnapIncrementMeters(input.drafting) === null) return null;
-	const distanceCss = input.distanceCss ?? ((a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]) * input.pixelsPerMeter);
+	const distanceCss =
+		input.distanceCss ?? ((a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]) * input.pixelsPerMeter);
 	const polar = resolvePlanarDragSnap(input.anchor, input.point, input.drafting, distanceCss);
 	if (polar.aligned && polar.winner !== null) return polar.winner;
 	const resolution = resolveLayoutSnap(
@@ -125,18 +133,23 @@ export function resolveJunctionPointSnap(input: {
 			pixelsPerMeter: input.pixelsPerMeter,
 			gridStep: DRAFTING_SNAP_METERS,
 			snapRadiusCssPx: DRAG_GRID_SNAP_CSS_PX,
-			anchor: input.anchor
+			anchor: input.anchor,
 		},
-		{ allowedKinds: ['orthogonal-guide', 'grid'] }
+		{ allowedKinds: ['orthogonal-guide', 'grid'] },
 	);
 	if (resolution.kind !== 'snap') return polar.winner;
 	const { candidate } = resolution;
-	if (candidate.kind === 'grid' && Math.hypot(candidate.point[0] - input.point[0], candidate.point[1] - input.point[1]) > DRAFTING_SNAP_METERS / 4) return polar.winner;
+	if (
+		candidate.kind === 'grid' &&
+		Math.hypot(candidate.point[0] - input.point[0], candidate.point[1] - input.point[1]) >
+			DRAFTING_SNAP_METERS / 4
+	)
+		return polar.winner;
 	if (distanceCss(candidate.point, input.point) > DRAG_GRID_SNAP_CSS_PX) return polar.winner;
 	return {
 		point: [cleanCoordinate(candidate.point[0]), cleanCoordinate(candidate.point[1])],
 		kind: candidate.kind,
-		name: layoutSnapName(candidate.kind)
+		name: layoutSnapName(candidate.kind),
 	};
 }
 
@@ -149,12 +162,14 @@ export function snapWallDrag(
 	value: number,
 	drafting: StageDraftingState,
 	distanceCss: (from: number, to: number) => number,
-	minimum = -Infinity
+	minimum = -Infinity,
 ): { readonly value: number; readonly snapped: boolean } {
 	const step = draftingSnapIncrementMeters(drafting);
 	if (step === null || value < minimum) return { value, snapped: false };
 	const nearest = cleanCoordinate(Math.round(value / step) * step);
-	return nearest !== 0 && nearest >= minimum && Math.abs(nearest - value) <= step / 4 &&
+	return nearest !== 0 &&
+		nearest >= minimum &&
+		Math.abs(nearest - value) <= step / 4 &&
 		distanceCss(nearest, value) <= DRAG_GRID_SNAP_CSS_PX
 		? { value: nearest, snapped: true }
 		: { value, snapped: false };
@@ -165,23 +180,31 @@ export function resolvePlanarDragSnap(
 	origin: Readonly<LayoutVec2>,
 	point: Readonly<LayoutVec2>,
 	drafting: StageDraftingState,
-	distanceCss: DragSnapDistance
-): { readonly point: Readonly<LayoutVec2>; readonly winner: LayoutSnapWinner | null; readonly aligned: boolean } {
+	distanceCss: DragSnapDistance,
+): {
+	readonly point: Readonly<LayoutVec2>;
+	readonly winner: LayoutSnapWinner | null;
+	readonly aligned: boolean;
+} {
 	const dx = point[0] - origin[0];
 	const dz = point[1] - origin[1];
 	const distance = Math.hypot(dx, dz);
-	if (distance === 0 || draftingSnapIncrementMeters(drafting) === null) return { point, winner: null, aligned: false };
+	if (distance === 0 || draftingSnapIncrementMeters(drafting) === null)
+		return { point, winner: null, aligned: false };
 	const angle = Math.atan2(dz, dx);
 	const headingStep = Math.PI / 4;
 	const heading = Math.round(angle / headingStep) * headingStep;
 	const at = (radius: number, direction: number): LayoutVec2 => [
 		cleanCoordinate(origin[0] + Math.cos(direction) * radius),
-		cleanCoordinate(origin[1] + Math.sin(direction) * radius)
+		cleanCoordinate(origin[1] + Math.sin(direction) * radius),
 	];
-	const aligned = Math.abs(heading - angle) <= Math.PI / 36 &&
+	const aligned =
+		Math.abs(heading - angle) <= Math.PI / 36 &&
 		distanceCss(point, at(distance, heading)) <= DRAG_GRID_SNAP_CSS_PX;
 	const direction = aligned ? heading : angle;
-	const length = snapWallDrag(distance, drafting, (target) => distanceCss(point, at(target, direction)));
+	const length = snapWallDrag(distance, drafting, (target) =>
+		distanceCss(point, at(target, direction)),
+	);
 	if (!aligned && !length.snapped) return { point, winner: null, aligned };
 	const snapped = at(length.value, direction);
 	return {
@@ -190,15 +213,19 @@ export function resolvePlanarDragSnap(
 		winner: {
 			point: snapped,
 			kind: length.snapped ? 'grid' : 'orthogonal-guide',
-			name: aligned && length.snapped ? 'Aligned · Grid' : aligned ? 'Aligned' : 'Grid'
-		}
+			name: aligned && length.snapped ? 'Aligned · Grid' : aligned ? 'Aligned' : 'Grid',
+		},
 	};
 }
 
 /** Resolve an Opening slide's start-edge offset, or the raw offset. */
 export function resolveOpeningSlideSnap(input: {
 	readonly geometry: CompiledLayoutGeometry;
-	readonly hostSpan: { readonly segmentId: string; readonly start: LayoutVec2; readonly end: LayoutVec2 };
+	readonly hostSpan: {
+		readonly segmentId: string;
+		readonly start: LayoutVec2;
+		readonly end: LayoutVec2;
+	};
 	readonly openingId: string;
 	readonly pointerCenterOffset: number;
 	readonly width: number;
@@ -216,12 +243,16 @@ export function resolveOpeningSlideSnap(input: {
 		input.pointerCenterOffset,
 		{
 			anchor: { kind: 'center', width: input.width },
-			context: { pixelsPerMeter: input.pixelsPerMeter, gridStep: DRAFTING_SNAP_METERS }
-		}
+			context: { pixelsPerMeter: input.pixelsPerMeter, gridStep: DRAFTING_SNAP_METERS },
+		},
 	);
 	// Never launder an out-of-fit raw candidate into a clamped snap win: the raw
 	// candidate stands and the planner owns the refusal.
-	if (!resolution.rawValid || resolution.snappedOffset === null || resolution.snappedKind === null) {
+	if (
+		!resolution.rawValid ||
+		resolution.snappedOffset === null ||
+		resolution.snappedKind === null
+	) {
 		return { offset: rawOffset, winner: null };
 	}
 	return {
@@ -229,15 +260,19 @@ export function resolveOpeningSlideSnap(input: {
 		winner: {
 			point: pointAtOffset(input.hostSpan, resolution.snappedOffset),
 			kind: resolution.snappedKind,
-			name: layoutSnapName(resolution.snappedKind)
-		}
+			name: layoutSnapName(resolution.snappedKind),
+		},
 	};
 }
 
 /** Resolve an Opening width edge's offset, or the raw edge offset. */
 export function resolveOpeningWidthSnap(input: {
 	readonly geometry: CompiledLayoutGeometry;
-	readonly hostSpan: { readonly segmentId: string; readonly start: LayoutVec2; readonly end: LayoutVec2 };
+	readonly hostSpan: {
+		readonly segmentId: string;
+		readonly start: LayoutVec2;
+		readonly end: LayoutVec2;
+	};
 	readonly openingId: string;
 	readonly pointerEdgeOffset: number;
 	readonly pixelsPerMeter: number;
@@ -254,10 +289,14 @@ export function resolveOpeningWidthSnap(input: {
 		{
 			anchor: { kind: 'edge' },
 			// A width is authored in 0.1 m steps, not the Wall-point 0.5 m grid.
-			context: { pixelsPerMeter: input.pixelsPerMeter, gridStep: 0.1 }
-		}
+			context: { pixelsPerMeter: input.pixelsPerMeter, gridStep: 0.1 },
+		},
 	);
-	if (!resolution.rawValid || resolution.snappedOffset === null || resolution.snappedKind === null) {
+	if (
+		!resolution.rawValid ||
+		resolution.snappedOffset === null ||
+		resolution.snappedKind === null
+	) {
 		return { edgeOffset: input.pointerEdgeOffset, winner: null };
 	}
 	return {
@@ -265,8 +304,8 @@ export function resolveOpeningWidthSnap(input: {
 		winner: {
 			point: pointAtOffset(input.hostSpan, resolution.snappedOffset),
 			kind: resolution.snappedKind,
-			name: layoutSnapName(resolution.snappedKind)
-		}
+			name: layoutSnapName(resolution.snappedKind),
+		},
 	};
 }
 
@@ -285,14 +324,19 @@ export function resolveOpeningWidthSnap(input: {
  */
 function compiledHostSpan(
 	geometry: CompiledLayoutGeometry,
-	hostSpan: { readonly segmentId: string; readonly start: LayoutVec2; readonly end: LayoutVec2 }
-): { readonly segmentId: string; readonly roomId?: string; readonly start: LayoutVec2; readonly end: LayoutVec2 } {
+	hostSpan: { readonly segmentId: string; readonly start: LayoutVec2; readonly end: LayoutVec2 },
+): {
+	readonly segmentId: string;
+	readonly roomId?: string;
+	readonly start: LayoutVec2;
+	readonly end: LayoutVec2;
+} {
 	const span = geometry.queries.spans.find(
 		(candidate) =>
 			candidate.kind === 'wall' &&
 			(candidate.segmentId === hostSpan.segmentId ||
 				candidate.wallKey === hostSpan.segmentId ||
-				candidate.sourceId === hostSpan.segmentId)
+				candidate.sourceId === hostSpan.segmentId),
 	);
 	return span === undefined
 		? hostSpan
@@ -300,7 +344,7 @@ function compiledHostSpan(
 				segmentId: span.segmentId,
 				...(span.roomId === undefined ? {} : { roomId: span.roomId }),
 				start: hostSpan.start,
-				end: hostSpan.end
+				end: hostSpan.end,
 			};
 }
 
@@ -313,7 +357,7 @@ function cleanCoordinate(value: number): number {
 /** A world point at one authored distance from a host span's start. */
 function pointAtOffset(
 	host: { readonly start: LayoutVec2; readonly end: LayoutVec2 },
-	offset: number
+	offset: number,
 ): LayoutVec2 {
 	const dx = host.end[0] - host.start[0];
 	const dz = host.end[1] - host.start[1];

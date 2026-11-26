@@ -45,9 +45,9 @@ function authoredNameOf(name: string | null): string | null {
  * The labels for one located list, keyed by canonical identity.
  *
  * - An authored name is the label. When two or more subjects of one kind share that
- *   name, each carries its `Kind n` as well, so repeated names stay distinguishable.
+ *  name, each carries its `Kind n` as well, so repeated names stay distinguishable.
  * - A subject with no authored name is `Kind n`, numbered by its sorted identity among
- *   every subject of its kind.
+ *  every subject of its kind.
  */
 export function indexLabels(inputs: readonly IndexLabelInput[]): ReadonlyMap<string, IndexLabel> {
 	const byKind = new Map<string, IndexLabelInput[]>();
@@ -89,11 +89,12 @@ export function indexLabels(inputs: readonly IndexLabelInput[]): ReadonlyMap<str
 export function layoutKindWord(
 	sourceKind: string,
 	openingKind?: 'door' | 'window',
-	openSpace = false
+	openSpace = false,
 ): string {
 	if (sourceKind === 'wall') return 'Wall';
 	if (sourceKind === 'opening') return openingKind === 'window' ? 'Window' : 'Door';
-	if (sourceKind === 'room-floor' || sourceKind === 'room') return openSpace ? 'Open space' : 'Room';
+	if (sourceKind === 'room-floor' || sourceKind === 'room')
+		return openSpace ? 'Open space' : 'Room';
 	if (sourceKind === 'object') return 'Object';
 	return sourceKind.charAt(0).toUpperCase() + sourceKind.slice(1);
 }
@@ -113,7 +114,7 @@ export const MEMBERSHIP_LABELS: Readonly<Record<string, string>> = {
 	'filtered-type': 'Hidden by the source-kind filter',
 	'outside-depth': 'Below the Plan depth',
 	'outside-span': 'Outside the Plan lateral span',
-	'no-meaningful-projection': 'No meaningful projection'
+	'no-meaningful-projection': 'No meaningful projection',
 };
 
 export function membershipLabel(membership: string): string {

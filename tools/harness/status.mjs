@@ -7,8 +7,8 @@
  * maturity: the gate proves a run, and the canary runner proves the corpus.
  *
  * Usage:
- *   npm run status
- *   node tools/harness/status.mjs --json
+ *  npm run status
+ *  node tools/harness/status.mjs --json
  */
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
@@ -34,8 +34,8 @@ const status = {
 	suites: REQUIRED_SUITES,
 	lanes: {
 		arch: readJson('tools/metrics/budgets.json').archFiles?.length ?? null,
-		canaries: readJson('tools/canaries/baseline.json')
-	}
+		canaries: readJson('tools/canaries/baseline.json'),
+	},
 };
 
 if (json) {

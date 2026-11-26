@@ -34,7 +34,7 @@ function atDatum(point: readonly [number, number], y: number): Point3 {
  */
 export function independentWallOverlapGuides(
 	document: LayoutDocumentWallFirst,
-	datumMeters: number
+	datumMeters: number,
 ): readonly StageGuideContribution[] {
 	// Just above the floor so the dashed stretch is not hidden by the Plan fill.
 	const y = datumMeters + 0.02;
@@ -42,10 +42,7 @@ export function independentWallOverlapGuides(
 		const derivedSegments: (readonly [Point3, Point3])[] = [];
 		for (const stretch of overlap.stretches) {
 			for (let index = 1; index < stretch.length; index += 1) {
-				derivedSegments.push([
-					atDatum(stretch[index - 1]!, y),
-					atDatum(stretch[index]!, y)
-				]);
+				derivedSegments.push([atDatum(stretch[index - 1]!, y), atDatum(stretch[index]!, y)]);
 			}
 		}
 		return {
@@ -53,7 +50,7 @@ export function independentWallOverlapGuides(
 			role: 'relation',
 			segments: [],
 			derivedSegments,
-			labels: [{ world: atDatum(overlap.labelAt, y), text: LAYOUT_WALL_OVERLAP_CUE_LABEL }]
+			labels: [{ world: atDatum(overlap.labelAt, y), text: LAYOUT_WALL_OVERLAP_CUE_LABEL }],
 		};
 	});
 }

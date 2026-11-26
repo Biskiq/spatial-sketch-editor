@@ -1,5 +1,5 @@
 /**
- * X2's seam faces: the vertical paper that closes a cut Wall where it met a Wall
+ * The seam faces: the vertical paper that closes a cut Wall where it met a Wall
  * that was **not** cut.
  *
  * A compiled per-Wall mesh is deliberately open at a Junction interface: the
@@ -12,19 +12,24 @@
  * builder and never from the drawn meshes:
  *
  * 1. **Interfaces.** Each `U.join.interfaces` entry whose `wallId` is the cut leg
- *    names the region of `U`'s own face the cut leg rested on. The face's plan
- *    line is `U`'s centreline at `[fromDistance, toDistance]` offset by half its
- *    thickness along the entry's own outward normal, over the entry's bands.
+ *  names the region of `U`'s own face the cut leg rested on. The face's plan
+ *  line is `U`'s centreline at `[fromDistance, toDistance]` offset by half its
+ *  thickness along the entry's own outward normal, over the entry's bands.
  * 2. **Shared boundary edges.** Where the two legs' end-region boundaries
- *    (`endBoundary`, `ownedSeam.polygon`, `keel.regions`) coincide — a mitered L,
- *    a tangent continuation, a keel partition — the overlap is the exposure.
+ *  (`endBoundary`, `ownedSeam.polygon`, `keel.regions`) coincide — a mitered L,
+ *  a tangent continuation, a keel partition — the overlap is the exposure.
  *
  * Two cut legs never get a seam and two uncut legs never get one. Each quad is
  * wound **outward from the cut Wall's remaining material**, which is what lets the
  * horizontal cap section close; it is drawn double-sided paper, so the visual face
  * is unaffected by that winding.
  */
-import type { CompiledJunction, CompiledLegJoin, CompiledPhysicalWall, LayoutVec2 } from '@portfolio/layout-core/geometry';
+import type {
+	CompiledJunction,
+	CompiledLegJoin,
+	CompiledPhysicalWall,
+	LayoutVec2,
+} from '@portfolio/layout-core/geometry';
 
 /** One vertical seam face, one per vertical band. */
 export type CutawaySeam = {
@@ -78,7 +83,10 @@ function pointAtDistance(wall: CompiledPhysicalWall, distance: number): LayoutVe
 		const span = end.distance - start.distance;
 		if (!(span > 1e-9)) return end.point;
 		const t = Math.min(1, Math.max(0, (distance - start.distance) / span));
-		return [start.point[0] + (end.point[0] - start.point[0]) * t, start.point[1] + (end.point[1] - start.point[1]) * t];
+		return [
+			start.point[0] + (end.point[0] - start.point[0]) * t,
+			start.point[1] + (end.point[1] - start.point[1]) * t,
+		];
 	}
 	return last.point;
 }
@@ -87,7 +95,12 @@ function wallTop(wall: CompiledPhysicalWall, elevation: number): number {
 	return elevation + wall.height;
 }
 
-function intersectBands(left: readonly Band[], right: readonly Band[], minY: number, maxY: number): Band[] {
+function intersectBands(
+	left: readonly Band[],
+	right: readonly Band[],
+	minY: number,
+	maxY: number,
+): Band[] {
 	const out: Band[] = [];
 	for (const a of left) {
 		for (const b of right) {
@@ -145,7 +158,7 @@ function tangentAt(wall: CompiledPhysicalWall, join: CompiledLegJoin): LayoutVec
 /** A plan-line intersection, or null when the lines are parallel. */
 function intersectLines(
 	a: { readonly point: LayoutVec2; readonly direction: LayoutVec2 },
-	b: { readonly point: LayoutVec2; readonly direction: LayoutVec2 }
+	b: { readonly point: LayoutVec2; readonly direction: LayoutVec2 },
 ): LayoutVec2 | null {
 	const cross = a.direction[0] * b.direction[1] - a.direction[1] * b.direction[0];
 	if (Math.abs(cross) < 1e-9) return null;
@@ -158,7 +171,7 @@ function intersectLines(
 /** The two side faces of a Wall at one of its ends, as infinite plan lines. */
 function sideLines(
 	wall: CompiledPhysicalWall,
-	join: CompiledLegJoin
+	join: CompiledLegJoin,
 ): readonly { point: LayoutVec2; direction: LayoutVec2 }[] {
 	const sample = join.end === 'start' ? wall.samples[0] : wall.samples.at(-1);
 	const tangent = tangentAt(wall, join);
@@ -168,7 +181,7 @@ function sideLines(
 	const nz = tangent[0];
 	return [
 		{ point: [sample.point[0] + nx * half, sample.point[1] + nz * half], direction: tangent },
-		{ point: [sample.point[0] - nx * half, sample.point[1] - nz * half], direction: tangent }
+		{ point: [sample.point[0] - nx * half, sample.point[1] - nz * half], direction: tangent },
 	];
 }
 
@@ -184,7 +197,7 @@ function miterFace(
 	cutWall: CompiledPhysicalWall,
 	cutJoin: CompiledLegJoin,
 	otherWall: CompiledPhysicalWall,
-	otherJoin: CompiledLegJoin
+	otherJoin: CompiledLegJoin,
 ): { from: LayoutVec2; to: LayoutVec2 } | null {
 	const cutTangent = tangentAt(cutWall, cutJoin);
 	const otherTangent = tangentAt(otherWall, otherJoin);
@@ -226,7 +239,10 @@ function miterFace(
 	return bestScore > 0.999 ? best : null;
 }
 
-function endCrossSection(wall: CompiledPhysicalWall, join: CompiledLegJoin): { from: LayoutVec2; to: LayoutVec2 } | null {
+function endCrossSection(
+	wall: CompiledPhysicalWall,
+	join: CompiledLegJoin,
+): { from: LayoutVec2; to: LayoutVec2 } | null {
 	const sample = join.end === 'start' ? wall.samples[0] : wall.samples.at(-1);
 	if (sample === undefined) return null;
 	const half = wall.thickness / 2;
@@ -237,7 +253,7 @@ function endCrossSection(wall: CompiledPhysicalWall, join: CompiledLegJoin): { f
 	const nz = tangent[0] / length;
 	return {
 		from: [sample.point[0] + nx * half, sample.point[1] + nz * half],
-		to: [sample.point[0] - nx * half, sample.point[1] - nz * half]
+		to: [sample.point[0] - nx * half, sample.point[1] - nz * half],
 	};
 }
 
@@ -250,7 +266,7 @@ function clipToWallBand(
 	from: LayoutVec2,
 	to: LayoutVec2,
 	wall: CompiledPhysicalWall,
-	join: CompiledLegJoin
+	join: CompiledLegJoin,
 ): { from: LayoutVec2; to: LayoutVec2 } | null {
 	const sample = join.end === 'start' ? wall.samples[0] : wall.samples.at(-1);
 	if (sample === undefined) return null;
@@ -289,7 +305,10 @@ function clipToWallBand(
 	const bodyStart = Math.max(0, join.clipDistance ?? 0);
 	if (!clip(a0, a1, bodyStart - 1e-9, wall.length + 1e-3)) return null;
 	if (hi - lo < 1e-6) return null;
-	const at = (t: number): LayoutVec2 => [from[0] + (to[0] - from[0]) * t, from[1] + (to[1] - from[1]) * t];
+	const at = (t: number): LayoutVec2 => [
+		from[0] + (to[0] - from[0]) * t,
+		from[1] + (to[1] - from[1]) * t,
+	];
 	return { from: at(lo), to: at(hi) };
 }
 
@@ -303,7 +322,7 @@ function oriented(
 	to: LayoutVec2,
 	cutWall: CompiledPhysicalWall,
 	cutJoin: CompiledLegJoin,
-	elevation: number
+	elevation: number,
 ): readonly [LayoutVec2, LayoutVec2] {
 	// The probe must be inside the Wall's **body**: a trimmed branch leg starts at
 	// `clipDistance`, so the naive 5 cm from the nominal end can sit in the
@@ -313,7 +332,7 @@ function oriented(
 	const inset = Math.min(0.05, bodyLength / 2);
 	const probe = pointAtDistance(
 		cutWall,
-		cutJoin.end === 'start' ? trim + inset : cutWall.length - trim - inset
+		cutJoin.end === 'start' ? trim + inset : cutWall.length - trim - inset,
 	);
 	if (probe === null) return [from, to];
 	// Outward is from the cut Wall's own material (the probe just inside its end)
@@ -351,7 +370,7 @@ export function cutawaySeams(input: {
 		otherWallId: string,
 		cutWall: CompiledPhysicalWall,
 		elevation: number,
-		closesStub: boolean
+		closesStub: boolean,
 	): boolean {
 		const [a, b] = oriented(from, to, cutWall, cutJoin, elevation);
 		let added = false;
@@ -367,7 +386,7 @@ export function cutawaySeams(input: {
 				to: b,
 				bottomY: band.bottomY,
 				topY: band.topY,
-				closesStub
+				closesStub,
 			});
 			added = true;
 		}
@@ -388,7 +407,7 @@ export function cutawaySeams(input: {
 		cutJoin: CompiledLegJoin,
 		otherWall: CompiledPhysicalWall,
 		otherJoin: CompiledLegJoin,
-		degree: number
+		degree: number,
 	): EndFace | null {
 		if (cutJoin.endBoundary.length >= 2) {
 			return { from: cutJoin.endBoundary[0]!, to: cutJoin.endBoundary[1]!, clip: true };
@@ -407,7 +426,7 @@ export function cutawaySeams(input: {
 		otherJoin: CompiledLegJoin,
 		cutWall: CompiledPhysicalWall,
 		cutJoin: CompiledLegJoin,
-		degree: number
+		degree: number,
 	): EndFace | null {
 		if (otherJoin.endBoundary.length >= 2) {
 			return { from: otherJoin.endBoundary[0]!, to: otherJoin.endBoundary[1]!, clip: true };
@@ -451,7 +470,16 @@ export function cutawaySeams(input: {
 					? clipToWallBand(face.from, face.to, otherWall, otherJoin)
 					: { from: face.from, to: face.to };
 				if (clipped === null) continue;
-				add(clipped.from, clipped.to, bands, cutJoin, otherJoin.wallId, cutWall, cutElevation, true);
+				add(
+					clipped.from,
+					clipped.to,
+					bands,
+					cutJoin,
+					otherJoin.wallId,
+					cutWall,
+					cutElevation,
+					true,
+				);
 			}
 		}
 
@@ -475,13 +503,23 @@ export function cutawaySeams(input: {
 				const bands = intersectBands(otherJoin.bands, cutJoin.bands, minY, maxY);
 				if (bands.length === 0) continue;
 				const face = otherEndFace(otherWall, otherJoin, cutWall, cutJoin, joins.length);
-				const clipped = face === null
-					? null
-					: face.clip
-						? clipToWallBand(face.from, face.to, cutWall, cutJoin)
-						: { from: face.from, to: face.to };
+				const clipped =
+					face === null
+						? null
+						: face.clip
+							? clipToWallBand(face.from, face.to, cutWall, cutJoin)
+							: { from: face.from, to: face.to };
 				if (clipped === null) continue;
-				add(clipped.from, clipped.to, bands, cutJoin, otherJoin.wallId, cutWall, cutElevation, false);
+				add(
+					clipped.from,
+					clipped.to,
+					bands,
+					cutJoin,
+					otherJoin.wallId,
+					cutWall,
+					cutElevation,
+					false,
+				);
 			}
 		}
 	}

@@ -3,19 +3,52 @@ import type { LayoutVec2 } from './coordinates';
 import type { LayoutDocumentWallFirst } from '../wall/types';
 import type { LayoutWall } from '../wall/types';
 import type { LayoutWallFirstRoom } from '../wall/types';
-import { composeSpaceBoundary, spaceBoundaryPolygonFromEdges } from '../room/reconciliation-boundary';
-import { spaceOutlineSelfIntersects, spaceOutlineSignedArea, spacePlacementIssues } from '../room/space-placement';
-import type { CompiledCurveSample, CompiledOpening, CompiledRoom, CompiledSolidSpan, CompiledSpaceEdge, CompiledWall, CompiledWallSection, CompilerBoundarySource, CompilerFloorSource, CompilerOpening, CompilerRoomSource, LayoutBounds2, LayoutBounds3, LayoutGeometryIssue } from './types';
+import {
+	composeSpaceBoundary,
+	spaceBoundaryPolygonFromEdges,
+} from '../room/reconciliation-boundary';
+import {
+	spaceOutlineSelfIntersects,
+	spaceOutlineSignedArea,
+	spacePlacementIssues,
+} from '../room/space-placement';
+import type {
+	CompiledCurveSample,
+	CompiledOpening,
+	CompiledRoom,
+	CompiledSolidSpan,
+	CompiledSpaceEdge,
+	CompiledWall,
+	CompiledWallSection,
+	CompilerBoundarySource,
+	CompilerFloorSource,
+	CompilerOpening,
+	CompilerRoomSource,
+	LayoutBounds2,
+	LayoutBounds3,
+	LayoutGeometryIssue,
+} from './types';
 import { geometryId } from './types';
 import { countWork } from '../kernel/work-observer';
 import type { CacheKeyDependency } from './keys';
 import { cacheKeyDependency, cacheKeyOf } from './keys';
 import type { SampleableSegment, SampledSegment } from './curve';
 import { openingCenterFrame, openingCenterPolyline, pointAlongSamples } from './curve';
-import { LAYOUT_GEOMETRY_EPSILON, archProfileTopAt, buildArchProfile, splitSampledWallAroundOpenings, wallPolylinesAroundOpenings } from './openings';
+import {
+	LAYOUT_GEOMETRY_EPSILON,
+	archProfileTopAt,
+	buildArchProfile,
+	splitSampledWallAroundOpenings,
+	wallPolylinesAroundOpenings,
+} from './openings';
 import type { QueryGeometryBuilder } from './queries';
 import { bounds2, polygonBounds2 } from './queries';
-import { roomBounds2FromWalls, roomBounds3FromParts, wallBounds2, wallBounds3 } from './query-records';
+import {
+	roomBounds2FromWalls,
+	roomBounds3FromParts,
+	wallBounds2,
+	wallBounds3,
+} from './query-records';
 import type { WallFirstRoomSourceMaps } from './room-objects';
 import { emitRoomQueryRecords, virtualBoundarySegmentId } from './room-objects';
 
@@ -31,11 +64,11 @@ import { emitRoomQueryRecords, virtualBoundarySegmentId } from './room-objects';
 export function buildWallFirstRoomSource(
 	document: LayoutDocumentWallFirst,
 	room: LayoutWallFirstRoom,
-	maps: WallFirstRoomSourceMaps
+	maps: WallFirstRoomSourceMaps,
 ): { source: CompilerRoomSource } | { issue: LayoutGeometryIssue } {
 	const composed = composeSpaceBoundary(document, room, {
 		junctionById: maps.junctionById,
-		wallById: maps.wallById
+		wallById: maps.wallById,
 	});
 	if (composed.kind === 'failed') {
 		return {
@@ -43,8 +76,8 @@ export function buildWallFirstRoomSource(
 				path: `rooms.${room.id}.${composed.issue.code === 'space_virtual_edge_unconsumed' || composed.issue.code === 'duplicate_virtual_edge_origin' ? 'virtualEdges' : 'boundary'}`,
 				code: composed.issue.code,
 				message: composed.issue.message,
-				targetId: room.id
-			}
+				targetId: room.id,
+			},
 		};
 	}
 
@@ -61,7 +94,12 @@ export function buildWallFirstRoomSource(
 			const end = maps.pointById.get(edge.endJunctionId);
 			if (!start || !end) continue; // reference integrity is the codec's job
 			const id = virtualBoundarySegmentId(room.id, edge.index);
-			segments.push({ id, kind: 'line', start: [...start] as LayoutVec2, end: [...end] as LayoutVec2 });
+			segments.push({
+				id,
+				kind: 'line',
+				start: [...start] as LayoutVec2,
+				end: [...end] as LayoutVec2,
+			});
 			virtualSegmentIds.push(id);
 			continue;
 		}
@@ -101,14 +139,14 @@ export function buildWallFirstRoomSource(
 			roomOpenings.push({
 				...opening,
 				segmentId: opening.wallId,
-				offset: length - (opening.offset + opening.width)
+				offset: length - (opening.offset + opening.width),
 			});
 		}
 	}
 	roomOpenings.sort(
 		(left, right) =>
 			(maps.openingOrderById.get(left.id) ?? Number.MAX_SAFE_INTEGER) -
-			(maps.openingOrderById.get(right.id) ?? Number.MAX_SAFE_INTEGER)
+			(maps.openingOrderById.get(right.id) ?? Number.MAX_SAFE_INTEGER),
 	);
 
 	const heights: number[] = [];
@@ -130,7 +168,7 @@ export function buildWallFirstRoomSource(
 				id: room.id,
 				wallThickness: maps.defaultWallThickness,
 
-				overhead: room.overhead
+				overhead: room.overhead,
 			},
 			boundary: { closed: true, segments },
 			openings: roomOpenings,
@@ -138,17 +176,15 @@ export function buildWallFirstRoomSource(
 			...(maps.sampling && maps.preSampled ? { preSampled: maps.preSampled } : {}),
 			wallThicknessBySegmentId: maps.wallThicknessBySegmentId,
 			openingHeightLimitBySegmentId: maps.openingHeightLimitBySegmentId,
-			...(derivedCeiling !== undefined ? { ceilingElevation: derivedCeiling } : {})
-		}
+			...(derivedCeiling !== undefined ? { ceilingElevation: derivedCeiling } : {}),
+		},
 	};
 }
-
-
 
 /** True when an enclosed Room's Wall references already form one closed chain. */
 function closedRoomBoundaryChains(
 	room: Pick<LayoutWallFirstRoom, 'boundary'>,
-	wallById: ReadonlyMap<string, LayoutWall>
+	wallById: ReadonlyMap<string, LayoutWall>,
 ): boolean {
 	if (room.boundary.length < 2) return false;
 	let firstStart: string | undefined;
@@ -164,8 +200,6 @@ function closedRoomBoundaryChains(
 	}
 	return previousEnd === firstStart;
 }
-
-
 
 /**
  * Blocking Space checks that run before the shared core: the composed outline
@@ -200,7 +234,7 @@ export function spacePreflight(document: LayoutDocumentWallFirst): {
 				path: `${path}.${code === 'space_virtual_edge_unconsumed' || code === 'duplicate_virtual_edge_origin' ? 'virtualEdges' : 'boundary'}`,
 				code,
 				message: composed.issue.message,
-				targetId: room.id
+				targetId: room.id,
 			});
 			invalidRoomIds.add(room.id);
 			return;
@@ -212,7 +246,7 @@ export function spacePreflight(document: LayoutDocumentWallFirst): {
 				path: `${path}.boundary`,
 				code: 'space_outline_not_positive',
 				message: `Space '${room.name}' must enclose positive area in the face orientation`,
-				targetId: room.id
+				targetId: room.id,
 			});
 			invalidRoomIds.add(room.id);
 			return;
@@ -222,13 +256,15 @@ export function spacePreflight(document: LayoutDocumentWallFirst): {
 				path: `${path}.boundary`,
 				code: 'space_outline_self_intersects',
 				message: `Space '${room.name}' has an outline that crosses itself`,
-				targetId: room.id
+				targetId: room.id,
 			});
 			invalidRoomIds.add(room.id);
 			return;
 		}
 		for (const [edgeIndex, edge] of room.virtualEdges.entries()) {
-			const start = document.junctions.find((junction) => junction.id === edge.startJunctionId)?.point;
+			const start = document.junctions.find(
+				(junction) => junction.id === edge.startJunctionId,
+			)?.point;
 			const end = document.junctions.find((junction) => junction.id === edge.endJunctionId)?.point;
 			if (!start || !end) continue;
 			if (Math.hypot(end[0] - start[0], end[1] - start[1]) <= LAYOUT_GEOMETRY_EPSILON) {
@@ -236,7 +272,7 @@ export function spacePreflight(document: LayoutDocumentWallFirst): {
 					path: `${path}.virtualEdges[${edgeIndex}]`,
 					code: 'space_virtual_edge_degenerate',
 					message: `Space '${room.name}' has an open side with no length`,
-					targetId: room.id
+					targetId: room.id,
 				});
 				invalidRoomIds.add(room.id);
 				return;
@@ -248,7 +284,7 @@ export function spacePreflight(document: LayoutDocumentWallFirst): {
 			path: `rooms.${placement.roomIds[0]}`,
 			code: placement.code,
 			message: placement.message,
-			targetId: placement.roomIds[0]
+			targetId: placement.roomIds[0],
 		});
 		invalidRoomIds.add(placement.roomIds[0]);
 		invalidRoomIds.add(placement.roomIds[1]);
@@ -256,15 +292,13 @@ export function spacePreflight(document: LayoutDocumentWallFirst): {
 	return { issues, invalidRoomIds };
 }
 
-
-
 /**
  * Group authored Openings by hosting Wall id, preserving document order inside
- * each group. T1.P02.S06 D.1: one grouping replaces the Room × Opening and
+ * each group. D.1: one grouping replaces the Room × Opening and
  * Wall × Opening scans (`find` / `filter` per Room and per Wall).
  */
 export function openingsGroupedByWallId<TOpening extends { readonly wallId: string }>(
-	openings: readonly TOpening[]
+	openings: readonly TOpening[],
 ): Map<string, TOpening[]> {
 	const byWallId = new Map<string, TOpening[]>();
 	for (const opening of openings) {
@@ -275,14 +309,12 @@ export function openingsGroupedByWallId<TOpening extends { readonly wallId: stri
 	return byWallId;
 }
 
-
-
 export function compileRoom(
 	roomSource: CompilerRoomSource,
 	floor: CompilerFloorSource,
 	sampledSegments: SampledSegment[],
 	queryBuilder: QueryGeometryBuilder,
-	recordMode: 'room' | 'physical-wall'
+	recordMode: 'room' | 'physical-wall',
 ): CompiledRoom {
 	const room = roomSource.room;
 	const floorElevation = floor.elevation;
@@ -295,17 +327,17 @@ export function compileRoom(
 			? [
 					{
 						start: [...segment.start] as LayoutVec2,
-						end: [...segment.end] as LayoutVec2
-					}
+						end: [...segment.end] as LayoutVec2,
+					},
 				]
-			: []
+			: [],
 	);
 	// Physical Wall segments only: a stated open side contributes to the
 	// outline, floor polygon and area, never to compiled Walls, Wall bounds,
 	// Openings or Wall query records.
 	const physicalBoundary: CompilerBoundarySource = {
 		closed: roomSource.boundary.closed,
-		segments: roomSource.boundary.segments.filter((segment) => !virtualSegmentIds.has(segment.id))
+		segments: roomSource.boundary.segments.filter((segment) => !virtualSegmentIds.has(segment.id)),
 	};
 	// A wall-first Room carries its derived ceiling (`floor.elevation +
 	// max(boundary Wall heights)`); a source that supplies no derived ceiling
@@ -341,7 +373,7 @@ export function compileRoom(
 			const wallThickness = roomSource.wallThicknessBySegmentId?.[segment.id] ?? room.wallThickness;
 			return {
 				bounds2: wallBounds2(sampled.samples, wallThickness),
-				bounds3: wallBounds3(sampled.samples, wallThickness, floorElevation, ceilingElevation)
+				bounds3: wallBounds3(sampled.samples, wallThickness, floorElevation, ceilingElevation),
 			};
 		});
 	} else {
@@ -364,20 +396,27 @@ export function compileRoom(
 			// The segment's dependency key is built once and
 			// embedded by reference in this Wall's key and in every hosted Opening's
 			// key, instead of being re-serialized and re-escaped at each level.
-			const segmentDependency = cacheKeyDependency(cacheKeyOf([
-				'segment-geometry',
-				floor.id,
-				room.id,
-				segment
-			]));
-			const sections = splitSampledWallAroundOpenings(sampled, segment, openings, roomVerticalExtent);
+			const segmentDependency = cacheKeyDependency(
+				cacheKeyOf(['segment-geometry', floor.id, room.id, segment]),
+			);
+			const sections = splitSampledWallAroundOpenings(
+				sampled,
+				segment,
+				openings,
+				roomVerticalExtent,
+			);
 			const compiledOpenings = openings.map((opening) =>
-				compileOpening(opening, sampled, floor.id, room.id, segmentDependency)
+				compileOpening(opening, sampled, floor.id, room.id, segmentDependency),
 			);
 			const solidSpans = buildSolidSpans(sampled.samples, sections);
 			const solidCenterlinePolylines = wallPolylinesAroundOpenings(sampled.samples, openings);
 			const wallBounds2Value = wallBounds2(sampled.samples, wallThickness);
-			const wallBounds3Value = wallBounds3(sampled.samples, wallThickness, floorElevation, ceilingElevation);
+			const wallBounds3Value = wallBounds3(
+				sampled.samples,
+				wallThickness,
+				floorElevation,
+				ceilingElevation,
+			);
 			return {
 				id: geometryId(['wall', floor.id, room.id, segment.id]),
 				cacheKey: cacheKeyOf([
@@ -386,7 +425,7 @@ export function compileRoom(
 					openings,
 					wallThickness,
 					floor.elevation,
-					floor.height ?? roomSource.ceilingElevation
+					floor.height ?? roomSource.ceilingElevation,
 				]),
 				segmentId: segment.id,
 				thickness: wallThickness,
@@ -397,7 +436,7 @@ export function compileRoom(
 				openings: compiledOpenings,
 				solidCenterlinePolylines,
 				bounds2: wallBounds2Value,
-				bounds3: wallBounds3Value
+				bounds3: wallBounds3Value,
 			};
 		});
 
@@ -413,7 +452,7 @@ export function compileRoom(
 		floorElevation,
 		ceilingElevation,
 
-		overhead
+		overhead,
 	);
 
 	emitRoomQueryRecords(
@@ -423,7 +462,7 @@ export function compileRoom(
 		walls,
 		floorPolygon,
 		roomBounds3,
-		recordMode
+		recordMode,
 	);
 
 	return {
@@ -449,8 +488,13 @@ export function compileRoom(
 			// boundary, so the key stays a deterministic function of the Room's own
 			// inputs (equal iff equal).
 			...(roomSource.wallThicknessBySegmentId
-				? [roomSource.boundary.segments.map((segment) => [segment.id, roomSource.wallThicknessBySegmentId?.[segment.id] ?? null] as const)]
-				: [])
+				? [
+						roomSource.boundary.segments.map(
+							(segment) =>
+								[segment.id, roomSource.wallThicknessBySegmentId?.[segment.id] ?? null] as const,
+						),
+					]
+				: []),
 		]),
 		roomId: room.id,
 		overhead,
@@ -464,32 +508,31 @@ export function compileRoom(
 		walls,
 		openings: roomOpenings,
 		bounds2: roomBounds2,
-		bounds3: roomBounds3
+		bounds3: roomBounds3,
 	};
 }
-
-
 
 export function compileOpening(
 	opening: CompilerOpening,
 	sampled: SampledSegment,
 	floorId: string,
 	roomId: string,
-	segmentDependency: CacheKeyDependency
+	segmentDependency: CacheKeyDependency,
 ): CompiledOpening {
 	// The centre frame and Plan polyline are the shared builders in
 	// `layout-geometry-curve.ts`; a closed Wall is periodic there.
 	const frame = openingCenterFrame(sampled, opening.offset, opening.width);
 	const { point, tangent, closedHost } = frame;
 	const centerDistance = frame.distance;
-	const profileShape = opening.profile === 'rectangular'
-		? undefined
-		: buildArchProfile(opening.profile, opening.width, opening.height).profile ?? undefined;
+	const profileShape =
+		opening.profile === 'rectangular'
+			? undefined
+			: (buildArchProfile(opening.profile, opening.width, opening.height).profile ?? undefined);
 	const centerPolyline = openingCenterPolyline(
 		sampled,
 		opening.offset,
 		opening.offset + opening.width,
-		closedHost
+		closedHost,
 	);
 	return {
 		id: geometryId(['opening', floorId, roomId, opening.id]),
@@ -509,17 +552,18 @@ export function compileOpening(
 			distance: centerDistance,
 			tangent,
 			normal: [-tangent[1], tangent[0]],
-			yaw: frame.yaw
+			yaw: frame.yaw,
 		},
 		centerPolyline,
 		bounds2: polygonBounds2(centerPolyline) ?? bounds2(point[0], point[1], point[0], point[1]),
-		...(opening.connectsRoomIds ? { connectsRoomIds: opening.connectsRoomIds } : {})
+		...(opening.connectsRoomIds ? { connectsRoomIds: opening.connectsRoomIds } : {}),
 	};
 }
 
-
-
-export function buildSolidSpans(samples: readonly CompiledCurveSample[], sections: readonly CompiledWallSection[]): CompiledSolidSpan[] {
+export function buildSolidSpans(
+	samples: readonly CompiledCurveSample[],
+	sections: readonly CompiledWallSection[],
+): CompiledSolidSpan[] {
 	const spans: CompiledSolidSpan[] = [];
 	for (const [sectionIndex, section] of sections.entries()) {
 		for (let sampleIndex = 1; sampleIndex < samples.length; sampleIndex += 1) {
@@ -530,19 +574,31 @@ export function buildSolidSpans(samples: readonly CompiledCurveSample[], section
 			if (clippedEnd <= clippedStart + 1e-6) continue;
 			const start = pointAlongSamples(samples, clippedStart);
 			const end = pointAlongSamples(samples, clippedEnd);
-			const bottomY = section.kind === 'lintel' ? archBottom(section, (clippedStart + clippedEnd) / 2) : section.bottomY;
+			const bottomY =
+				section.kind === 'lintel'
+					? archBottom(section, (clippedStart + clippedEnd) / 2)
+					: section.bottomY;
 			if (section.topY <= bottomY + 1e-6) continue;
-			spans.push({ sectionIndex, startDistance: clippedStart, endDistance: clippedEnd, start, end, bottomY, topY: section.topY });
+			spans.push({
+				sectionIndex,
+				startDistance: clippedStart,
+				endDistance: clippedEnd,
+				start,
+				end,
+				bottomY,
+				topY: section.topY,
+			});
 		}
 	}
 	return spans;
 }
 
-
-
 function archBottom(section: CompiledWallSection, distance: number): number {
 	if (!section.profile || section.profile.kind === 'rectangular') return section.bottomY;
-	const localDistance = Math.max(0, Math.min(section.profile.width, distance - section.startDistance));
+	const localDistance = Math.max(
+		0,
+		Math.min(section.profile.width, distance - section.startDistance),
+	);
 	const profileTop = archProfileTopAt(section.profile, localDistance);
 	const profileBaseY = section.profileBaseY ?? 0;
 	return Math.min(section.topY, profileBaseY + profileTop);

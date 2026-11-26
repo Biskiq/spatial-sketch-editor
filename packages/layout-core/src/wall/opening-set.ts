@@ -75,7 +75,9 @@ export type WallFirstWallIndex = {
 export function wallFirstWallIndex(document: LayoutDocumentWallFirst): WallFirstWallIndex {
 	return {
 		wallById: new Map(document.walls.map((wall) => [wall.id, wall] as const)),
-		pointById: new Map(document.junctions.map((junction) => [junction.id, junction.point] as const))
+		pointById: new Map(
+			document.junctions.map((junction) => [junction.id, junction.point] as const),
+		),
 	};
 }
 
@@ -91,7 +93,7 @@ export function wallFirstWallSpan(
 	document: LayoutDocumentWallFirst,
 	wall: LayoutWall,
 	sampling?: WallSamplingDerivation,
-	index?: WallFirstWallIndex
+	index?: WallFirstWallIndex,
 ): { start: LayoutVec2; end: LayoutVec2; length: number } | undefined {
 	let start: LayoutVec2 | undefined;
 	let end: LayoutVec2 | undefined;
@@ -104,12 +106,8 @@ export function wallFirstWallSpan(
 		// Work count (inert without an observer): two linear Junction
 		// lookups per call, an upper bound on the visits.
 		countWork('lookup:junctions', 2 * document.junctions.length);
-		start = document.junctions.find(
-			(junction) => junction.id === wall.startJunctionId
-		)?.point;
-		end = document.junctions.find(
-			(junction) => junction.id === wall.endJunctionId
-		)?.point;
+		start = document.junctions.find((junction) => junction.id === wall.startJunctionId)?.point;
+		end = document.junctions.find((junction) => junction.id === wall.endJunctionId)?.point;
 	}
 	if (!start || !end) return undefined;
 	const sampled = sampling
@@ -123,9 +121,11 @@ export function wallFirstWallSpan(
 export function wallFirstWallLength(
 	document: LayoutDocumentWallFirst,
 	wallId: string,
-	index?: WallFirstWallIndex
+	index?: WallFirstWallIndex,
 ): number | undefined {
-	const wall = index ? index.wallById.get(wallId) : document.walls.find((candidate) => candidate.id === wallId);
+	const wall = index
+		? index.wallById.get(wallId)
+		: document.walls.find((candidate) => candidate.id === wallId);
 	if (!wall) return undefined;
 	return wallFirstWallSpan(document, wall, undefined, index)?.length;
 }
@@ -137,14 +137,14 @@ export function wallFirstWallLength(
  */
 export function validateWallFirstOpeningSet(
 	document: LayoutDocumentWallFirst,
-	sampling?: WallSamplingDerivation
+	sampling?: WallSamplingDerivation,
 ): OpeningSetIssue[] {
 	if (document.openings.length === 0) return [];
 	return validateIndexedOpeningRecords(
 		document,
 		document.openings.map((opening, index) => ({ opening, index })),
 		wallFirstWallIndex(document),
-		sampling
+		sampling,
 	);
 }
 
@@ -157,7 +157,7 @@ export function validateWallFirstOpeningSubset(
 	document: LayoutDocumentWallFirst,
 	entries: ReadonlyArray<{ readonly opening: LayoutWallOpening; readonly index: number }>,
 	walls: WallFirstWallIndex,
-	sampling?: WallSamplingDerivation
+	sampling?: WallSamplingDerivation,
 ): OpeningSetIssue[] {
 	if (entries.length === 0) return [];
 	return validateIndexedOpeningRecords(document, entries, walls, sampling);
@@ -167,7 +167,7 @@ function validateIndexedOpeningRecords(
 	document: LayoutDocumentWallFirst,
 	entries: ReadonlyArray<{ readonly opening: LayoutWallOpening; readonly index: number }>,
 	walls: WallFirstWallIndex,
-	sampling?: WallSamplingDerivation
+	sampling?: WallSamplingDerivation,
 ): OpeningSetIssue[] {
 	const issues: OpeningSetIssue[] = [];
 	const wallById = walls.wallById;
@@ -180,8 +180,7 @@ function validateIndexedOpeningRecords(
 	for (const { opening, index } of entries) {
 		const path = `$.openings[${index}]`;
 		const wall = wallById.get(opening.wallId);
-		// Keep the historical per-record span call (P23B.4 freezes its count); the
-		// cached value is only so the periodic overlap pass below does not repeat it.
+		// Resolve the span for each record. The periodic overlap pass reuses these values.
 		const span = wall ? wallFirstWallSpan(document, wall, sampling, walls) : undefined;
 		if (wall !== undefined) spanByWall.set(opening.wallId, span);
 		if (!wall || !span || !(span.length > OPENING_SET_EPSILON)) {
@@ -190,7 +189,7 @@ function validateIndexedOpeningRecords(
 				wallId: opening.wallId,
 				path: `${path}.wallId`,
 				code: 'opening_host_wall_unresolved',
-				message: `Opening '${opening.id}' must be hosted by a Wall with a resolved non-zero span`
+				message: `Opening '${opening.id}' must be hosted by a Wall with a resolved non-zero span`,
 			});
 			continue;
 		}
@@ -204,7 +203,7 @@ function validateIndexedOpeningRecords(
 				wallId: opening.wallId,
 				path: `${path}.offset`,
 				code: 'opening_offset_invalid',
-				message: `Opening '${opening.id}' offset must be finite and non-negative`
+				message: `Opening '${opening.id}' offset must be finite and non-negative`,
 			});
 		} else if (closedHost && opening.offset >= span.length - OPENING_SET_EPSILON) {
 			issues.push({
@@ -212,7 +211,7 @@ function validateIndexedOpeningRecords(
 				wallId: opening.wallId,
 				path: `${path}.offset`,
 				code: 'opening_offset_invalid',
-				message: `Opening '${opening.id}' offset must be less than the closed Wall circumference (${span.length} m)`
+				message: `Opening '${opening.id}' offset must be less than the closed Wall circumference (${span.length} m)`,
 			});
 		}
 		if (
@@ -228,7 +227,7 @@ function validateIndexedOpeningRecords(
 				wallId: opening.wallId,
 				path,
 				code: 'opening_dimensions_invalid',
-				message: `Opening '${opening.id}' must have a finite positive width/height and a finite non-negative sill`
+				message: `Opening '${opening.id}' must have a finite positive width/height and a finite non-negative sill`,
 			});
 		}
 		// A closed Wall is logically periodic: an interval that starts before the
@@ -236,42 +235,39 @@ function validateIndexedOpeningRecords(
 		// and an interval whose width is the whole circumference is not a valid
 		// Opening (it would erase the Wall). Every other host keeps the strict
 		// linear fit rule.
-		if (closedHost ? opening.width >= span.length - OPENING_SET_EPSILON : opening.offset + opening.width > span.length + OPENING_SET_EPSILON) {
-			issues.push({
-				openingId: opening.id,
-				wallId: opening.wallId,
-				path,
-				code: 'opening_exceeds_wall',
-				message: `Opening '${opening.id}' does not fit on Wall '${opening.wallId}'`
-			});
-		}
-		// Vertical fit is measured against the hosting Wall, not the
-		// Floor: a partial-height Wall legitimately caps its own Openings while a
-		// full-height Wall keeps the historical Floor-envelope behavior.
 		if (
-			opening.sillHeight + opening.height >
-			wall.height + OPENING_SET_EPSILON
+			closedHost
+				? opening.width >= span.length - OPENING_SET_EPSILON
+				: opening.offset + opening.width > span.length + OPENING_SET_EPSILON
 		) {
 			issues.push({
 				openingId: opening.id,
 				wallId: opening.wallId,
 				path,
-				code: 'opening_exceeds_wall_height',
-				message: `Opening '${opening.id}' (sill ${opening.sillHeight} m + height ${opening.height} m) does not fit Wall '${wall.id}' height ${wall.height} m`
+				code: 'opening_exceeds_wall',
+				message: `Opening '${opening.id}' does not fit on Wall '${opening.wallId}'`,
 			});
 		}
-		const profileResult = buildArchProfile(
-			opening.profile,
-			opening.width,
-			opening.height
-		);
+		// Vertical fit is measured against the hosting Wall, not the
+		// Floor: a partial-height Wall legitimately caps its own Openings while a
+		// full-height Wall keeps the historical Floor-envelope behavior.
+		if (opening.sillHeight + opening.height > wall.height + OPENING_SET_EPSILON) {
+			issues.push({
+				openingId: opening.id,
+				wallId: opening.wallId,
+				path,
+				code: 'opening_exceeds_wall_height',
+				message: `Opening '${opening.id}' (sill ${opening.sillHeight} m + height ${opening.height} m) does not fit Wall '${wall.id}' height ${wall.height} m`,
+			});
+		}
+		const profileResult = buildArchProfile(opening.profile, opening.width, opening.height);
 		for (const profileIssue of profileResult.issues) {
 			issues.push({
 				openingId: opening.id,
 				wallId: opening.wallId,
 				path: `${path}.profile`,
 				code: 'opening_profile_invalid',
-				message: `Opening '${opening.id}' ${profileIssue.message}`
+				message: `Opening '${opening.id}' ${profileIssue.message}`,
 			});
 		}
 		const group = openingsByWall.get(opening.wallId) ?? [];
@@ -287,9 +283,7 @@ function validateIndexedOpeningRecords(
 		const wall = wallById.get(wallId);
 		const span = spanByWall.get(wallId);
 		const closedHost = wall !== undefined && isClosedWall(wall);
-		const sorted = [...openings].sort(
-			(a, b) => a.offset - b.offset || a.id.localeCompare(b.id)
-		);
+		const sorted = [...openings].sort((a, b) => a.offset - b.offset || a.id.localeCompare(b.id));
 		if (!closedHost || span === undefined) {
 			for (let index = 1; index < sorted.length; index += 1) {
 				const previous = sorted[index - 1]!;
@@ -300,7 +294,7 @@ function validateIndexedOpeningRecords(
 						wallId,
 						path: `$.openings`,
 						code: 'opening_overlap',
-						message: `Openings '${previous.id}' and '${current.id}' overlap on Wall '${wallId}'`
+						message: `Openings '${previous.id}' and '${current.id}' overlap on Wall '${wallId}'`,
 					});
 				}
 			}
@@ -311,14 +305,17 @@ function validateIndexedOpeningRecords(
 			const end = start + opening.width;
 			return end <= span.length
 				? [{ start, end }]
-				: [{ start, end: span.length }, { start: 0, end: end - span.length }];
+				: [
+						{ start, end: span.length },
+						{ start: 0, end: end - span.length },
+					];
 		});
 		for (let first = 0; first < intervals.length; first += 1) {
 			for (let second = first + 1; second < intervals.length; second += 1) {
 				const overlaps = intervals[first]!.some((a) =>
 					intervals[second]!.some(
-						(b) => Math.min(a.end, b.end) - Math.max(a.start, b.start) > OPENING_SET_EPSILON
-					)
+						(b) => Math.min(a.end, b.end) - Math.max(a.start, b.start) > OPENING_SET_EPSILON,
+					),
 				);
 				if (overlaps) {
 					issues.push({
@@ -326,7 +323,7 @@ function validateIndexedOpeningRecords(
 						wallId,
 						path: `$.openings`,
 						code: 'opening_overlap',
-						message: `Openings '${sorted[first]!.id}' and '${sorted[second]!.id}' overlap on Wall '${wallId}'`
+						message: `Openings '${sorted[first]!.id}' and '${sorted[second]!.id}' overlap on Wall '${wallId}'`,
 					});
 				}
 			}
@@ -337,8 +334,6 @@ function validateIndexedOpeningRecords(
 }
 
 /** Convenience predicate: does the hosting-Wall opening set validate cleanly? */
-export function wallFirstOpeningSetIsValid(
-	document: LayoutDocumentWallFirst
-): boolean {
+export function wallFirstOpeningSetIsValid(document: LayoutDocumentWallFirst): boolean {
 	return validateWallFirstOpeningSet(document).length === 0;
 }

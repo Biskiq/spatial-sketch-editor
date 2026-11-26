@@ -17,11 +17,11 @@
  * Two rules are deliberately stronger than "look it up":
  *
  * - a subject that appears more than once in the addressable scope is
- *   **ambiguous**, not first-match: it refuses with `incompatible` and a repair
- *   that asks for instance qualification;
+ *  **ambiguous**, not first-match: it refuses with `incompatible` and a repair
+ *  that asks for instance qualification;
  * - an unresolved resource keeps its typed repair identity. It is never resolved
- *   to a fabricated revision, and it is never `missing` — the binding exists and
- *   needs repair, which is a different answer.
+ *  to a fabricated revision, and it is never `missing` — the binding exists and
+ *  needs repair, which is a different answer.
  */
 
 import { dependencyLockKey } from '../units/identity';
@@ -38,16 +38,23 @@ import type {
 	ReferenceResolution,
 	ReferenceResolver,
 	ReferenceResolverOutcome,
-	SemanticReference
+	SemanticReference,
 } from './types';
 import { resolveReference } from './resolve';
 
 const REACQUIRE: readonly ReferenceRepairAction[] = [
-	{ kind: 'reacquire-reference', description: 'Re-resolve the subject from the supplied envelope before binding it again.' }
+	{
+		kind: 'reacquire-reference',
+		description: 'Re-resolve the subject from the supplied envelope before binding it again.',
+	},
 ];
 
 const QUALIFY: readonly ReferenceRepairAction[] = [
-	{ kind: 'choose-subject', description: 'Qualify the subject with its owning instance path so the reference names exactly one subject.' }
+	{
+		kind: 'choose-subject',
+		description:
+			'Qualify the subject with its owning instance path so the reference names exactly one subject.',
+	},
 ];
 
 /**
@@ -63,27 +70,45 @@ const QUALIFY: readonly ReferenceRepairAction[] = [
 export function createDependencyLockReader(
 	projectId: string,
 	lock: DependencyLock,
-	units?: ProjectEnvelope['units']
+	units?: ProjectEnvelope['units'],
 ): DependencyLockReader {
 	const validated = validateDependencyLock(lock);
 	if (!validated.success) throw new Error(validated.issues[0]!.message);
 	const byKey = new Map<string, string>();
 	for (const entry of validated.value.entries) {
-		byKey.set(dependencyLockKey(entry.domain, entry.subjectKind, entry.subjectId, entry.instancePath), entry.contentRevision);
+		byKey.set(
+			dependencyLockKey(entry.domain, entry.subjectKind, entry.subjectId, entry.instancePath),
+			entry.contentRevision,
+		);
 	}
 	return {
 		projectId,
 		contentRevisionFor(reference: SemanticReference): string | null {
-			const direct = byKey.get(dependencyLockKey(reference.domain, reference.subject.kind, reference.subject.id, reference.instancePath));
+			const direct = byKey.get(
+				dependencyLockKey(
+					reference.domain,
+					reference.subject.kind,
+					reference.subject.id,
+					reference.instancePath,
+				),
+			);
 			if (direct !== undefined) return direct;
 			// A domain unit pin covers its owned subjects. Match the supplied unit's
 			// identity exactly; never substitute its current header revision for a pin.
-			if (units !== undefined && (reference.domain === 'camera' || reference.domain === 'experience' || reference.domain === 'layout' || reference.domain === 'scene')) {
+			if (
+				units !== undefined &&
+				(reference.domain === 'camera' ||
+					reference.domain === 'experience' ||
+					reference.domain === 'layout' ||
+					reference.domain === 'scene')
+			) {
 				const unit = units[reference.domain];
-				return byKey.get(dependencyLockKey(reference.domain, 'unit', unit.header.unitId, [])) ?? null;
+				return (
+					byKey.get(dependencyLockKey(reference.domain, 'unit', unit.header.unitId, [])) ?? null
+				);
 			}
 			return null;
-		}
+		},
 	};
 }
 
@@ -104,20 +129,40 @@ type UnitSubject = {
 	location?: ReferenceLocation;
 };
 
-function scoped(subjects: readonly UnitSubject[], reference: SemanticReference, contentRevision: string): ReferenceResolverOutcome {
-	if (reference.componentId !== null || reference.capabilityId !== null || reference.location.kind !== 'project-root') {
-		return { kind: 'missing', message: 'this unit authors no such component, capability or Layout location', repairs: REACQUIRE };
+function scoped(
+	subjects: readonly UnitSubject[],
+	reference: SemanticReference,
+	contentRevision: string,
+): ReferenceResolverOutcome {
+	if (
+		reference.componentId !== null ||
+		reference.capabilityId !== null ||
+		reference.location.kind !== 'project-root'
+	) {
+		return {
+			kind: 'missing',
+			message: 'this unit authors no such component, capability or Layout location',
+			repairs: REACQUIRE,
+		};
 	}
 	const owner = reference.instancePath[0];
-	const byId = subjects.filter((subject) => subject.kind === reference.subject.kind && subject.id === reference.subject.id);
+	const byId = subjects.filter(
+		(subject) => subject.kind === reference.subject.kind && subject.id === reference.subject.id,
+	);
 	// A qualified reference is restricted to the container it names; an
 	// unqualified one is allowed to find a subject that is genuinely unique. A
 	// qualification that names the wrong container is `missing`, never a silent
 	// global search that happens to succeed.
-	const candidates = reference.instancePath.length === 0 ? byId : byId.filter((subject) =>
-		subject.instancePath.length === reference.instancePath.length &&
-		subject.instancePath.every((segment, index) => segment === reference.instancePath[index])
-	);
+	const candidates =
+		reference.instancePath.length === 0
+			? byId
+			: byId.filter(
+					(subject) =>
+						subject.instancePath.length === reference.instancePath.length &&
+						subject.instancePath.every(
+							(segment, index) => segment === reference.instancePath[index],
+						),
+				);
 	if (candidates.length === 0) {
 		return {
 			kind: 'missing',
@@ -125,28 +170,38 @@ function scoped(subjects: readonly UnitSubject[], reference: SemanticReference, 
 				byId.length > 0 && owner !== undefined
 					? `${reference.subject.kind} "${reference.subject.id}" is not addressable under instance "${owner}"`
 					: `no ${reference.subject.kind} "${reference.subject.id}" is addressable in this envelope`,
-			repairs: REACQUIRE
+			repairs: REACQUIRE,
 		};
 	}
 	if (candidates.length > 1) {
 		return {
 			kind: 'repair-required',
 			message: `${candidates.length} ${reference.subject.kind} subjects carry the id "${reference.subject.id}"; the reference names no instance`,
-			repairs: QUALIFY
+			repairs: QUALIFY,
 		};
 	}
 	const found = candidates[0]!;
 	if (found.revision === null || found.repair !== undefined) {
 		return {
 			kind: found.failure ?? 'repair-required',
-			message: found.repair ?? `${reference.subject.kind} "${reference.subject.id}" has no resolved content revision`,
-			repairs: REACQUIRE
+			message:
+				found.repair ??
+				`${reference.subject.kind} "${reference.subject.id}" has no resolved content revision`,
+			repairs: REACQUIRE,
 		};
 	}
 	if (contentRevision !== found.revision) {
-		return { kind: 'repair-required', message: 'the reference revision names content this unit does not hold', repairs: REACQUIRE };
+		return {
+			kind: 'repair-required',
+			message: 'the reference revision names content this unit does not hold',
+			repairs: REACQUIRE,
+		};
 	}
-	return { kind: 'resolved', contentRevision: found.revision, location: found.location ?? { kind: 'project-root' } };
+	return {
+		kind: 'resolved',
+		contentRevision: found.revision,
+		location: found.location ?? { kind: 'project-root' },
+	};
 }
 
 /**
@@ -162,45 +217,77 @@ function layoutScoped(
 	subjects: readonly UnitSubject[],
 	reference: SemanticReference,
 	contentRevision: string,
-	levelId: string
+	levelId: string,
 ): ReferenceResolverOutcome {
 	const component = reference.componentId;
-	const validComponent = component === null || (
-		(reference.subject.kind === 'wall' && (component === 'side:left' || component === 'side:right')) ||
+	const validComponent =
+		component === null ||
+		(reference.subject.kind === 'wall' &&
+			(component === 'side:left' || component === 'side:right')) ||
 		(reference.subject.kind === 'room' && (component === 'floor' || component === 'lid')) ||
-		(reference.subject.kind === 'region' && (component === 'top' || component === 'underside' || component === 'edge'))
-	);
+		(reference.subject.kind === 'region' &&
+			(component === 'top' || component === 'underside' || component === 'edge'));
 	if (!validComponent || reference.capabilityId !== null) {
-		return { kind: 'missing', message: 'this unit authors no such component or capability', repairs: REACQUIRE };
+		return {
+			kind: 'missing',
+			message: 'this unit authors no such component or capability',
+			repairs: REACQUIRE,
+		};
 	}
 	if (reference.location.kind === 'layout-location') {
 		if (reference.location.levelId !== levelId) {
-			return { kind: 'missing', message: `the Layout unit authors level "${levelId}" and no level "${reference.location.levelId}"`, repairs: REACQUIRE };
+			return {
+				kind: 'missing',
+				message: `the Layout unit authors level "${levelId}" and no level "${reference.location.levelId}"`,
+				repairs: REACQUIRE,
+			};
 		}
 		if (reference.location.structureInstancePath.length > 0) {
-			return { kind: 'missing', message: 'the Layout unit authors no structure instances', repairs: REACQUIRE };
+			return {
+				kind: 'missing',
+				message: 'the Layout unit authors no structure instances',
+				repairs: REACQUIRE,
+			};
 		}
 	}
 	if (reference.instancePath.length > 0) {
-		return { kind: 'missing', message: 'the Layout unit authors no nested instances', repairs: REACQUIRE };
+		return {
+			kind: 'missing',
+			message: 'the Layout unit authors no nested instances',
+			repairs: REACQUIRE,
+		};
 	}
 	const found = subjects.find(
-		(subject) => subject.kind === reference.subject.kind && subject.id === reference.subject.id
+		(subject) => subject.kind === reference.subject.kind && subject.id === reference.subject.id,
 	);
 	if (found === undefined) {
-		return { kind: 'missing', message: `the Layout unit has no ${reference.subject.kind} "${reference.subject.id}"`, repairs: REACQUIRE };
+		return {
+			kind: 'missing',
+			message: `the Layout unit has no ${reference.subject.kind} "${reference.subject.id}"`,
+			repairs: REACQUIRE,
+		};
 	}
 	if (found.revision === null || found.repair !== undefined) {
 		return {
 			kind: found.failure ?? 'repair-required',
-			message: found.repair ?? `${reference.subject.kind} "${reference.subject.id}" has no resolved content revision`,
-			repairs: REACQUIRE
+			message:
+				found.repair ??
+				`${reference.subject.kind} "${reference.subject.id}" has no resolved content revision`,
+			repairs: REACQUIRE,
 		};
 	}
 	if (contentRevision !== found.revision) {
-		return { kind: 'repair-required', message: 'the reference revision names content this unit does not hold', repairs: REACQUIRE };
+		return {
+			kind: 'repair-required',
+			message: 'the reference revision names content this unit does not hold',
+			repairs: REACQUIRE,
+		};
 	}
-	return { kind: 'resolved', contentRevision: found.revision, location: found.location ?? { kind: 'project-root' } };
+	return {
+		kind: 'resolved',
+		contentRevision: found.revision,
+		location: found.location ?? { kind: 'project-root' },
+	};
 }
 
 /**
@@ -212,14 +299,14 @@ function layoutScoped(
  */
 function foreignLock(
 	request: { readonly context: ReferenceReadContext },
-	envelope: ProjectEnvelope
+	envelope: ProjectEnvelope,
 ): ReferenceResolverOutcome | null {
 	const lock = request.context.lock;
 	if (lock === null || lock.projectId === envelope.id) return null;
 	return {
 		kind: 'missing',
 		message: `the supplied dependency lock belongs to project "${lock.projectId}"`,
-		repairs: REACQUIRE
+		repairs: REACQUIRE,
 	};
 }
 
@@ -228,7 +315,7 @@ function resolver(
 	domain: ReferenceResolver['domain'],
 	subjectKinds: readonly string[],
 	subjects: readonly UnitSubject[],
-	envelope: ProjectEnvelope
+	envelope: ProjectEnvelope,
 ): ReferenceResolver {
 	return {
 		id,
@@ -245,11 +332,18 @@ function resolver(
 			// `snapshot.acceptedRevision` names the snapshot currently being read. A
 			// later accepted revision therefore shares the envelope's embedded baseline
 			// without being a different source.
-			if (envelope.acceptedRevision.projectId !== envelope.id || accepted.projectId !== envelope.id) {
-				return { kind: 'repair-required', message: 'the resolver and read context must name the same accepted project', repairs: REACQUIRE };
+			if (
+				envelope.acceptedRevision.projectId !== envelope.id ||
+				accepted.projectId !== envelope.id
+			) {
+				return {
+					kind: 'repair-required',
+					message: 'the resolver and read context must name the same accepted project',
+					repairs: REACQUIRE,
+				};
 			}
 			return scoped(subjects, reference, request.contentRevision);
-		}
+		},
 	};
 }
 
@@ -262,7 +356,7 @@ function resolver(
  * registry. Layout and Scene subjects keep their landed current-domain adapters
  * over the current source; an F.2 Layout/Scene resolver is deliberately not
  * invented here, because the source transition that would own it is
- * `T3.P01.S04`'s.
+ * ``'s.
  *
  * A resource resolves to its exact content revision, or to its pin's content
  * hash when the bytes are external. A resource with neither is `repair-required`
@@ -276,7 +370,11 @@ export function createUnitSubjectResolvers(envelope: ProjectEnvelope): Reference
 	const experienceRevision = envelope.units.experience.header.contentRevision;
 	const layout = envelope.units.layout.data;
 	const levelId = layout.floor.id;
-	const layoutLocation: ReferenceLocation = { kind: 'layout-location', levelId, structureInstancePath: [] };
+	const layoutLocation: ReferenceLocation = {
+		kind: 'layout-location',
+		levelId,
+		structureInstancePath: [],
+	};
 	const resolvers: ReferenceResolver[] = [
 		{
 			id: 'unit.layout@1',
@@ -287,24 +385,67 @@ export function createUnitSubjectResolvers(envelope: ProjectEnvelope): Reference
 				const accepted = request.context.snapshot.acceptedRevision;
 				const foreign = foreignLock(request, envelope);
 				if (foreign !== null) return foreign;
-				if (envelope.acceptedRevision.projectId !== envelope.id || accepted.projectId !== envelope.id) {
-					return { kind: 'repair-required', message: 'the resolver and read context must name the same accepted project', repairs: REACQUIRE };
+				if (
+					envelope.acceptedRevision.projectId !== envelope.id ||
+					accepted.projectId !== envelope.id
+				) {
+					return {
+						kind: 'repair-required',
+						message: 'the resolver and read context must name the same accepted project',
+						repairs: REACQUIRE,
+					};
 				}
 				return layoutScoped(
 					[
 						{ kind: 'level', id: levelId, instancePath: [], revision: layoutRevision },
-						...layout.rooms.map((room) => ({ kind: 'room', id: room.id, instancePath: [] as readonly string[], revision: layoutRevision, location: layoutLocation })),
-						...layout.regions.map((region) => ({ kind: 'region', id: region.id, instancePath: [] as readonly string[], revision: layoutRevision, location: layoutLocation })),
-						...layout.walls.map((wall) => ({ kind: 'wall', id: wall.id, instancePath: [] as readonly string[], revision: layoutRevision, location: layoutLocation })),
-						...layout.openings.map((opening) => ({ kind: 'opening', id: opening.id, instancePath: [] as readonly string[], revision: layoutRevision, location: layoutLocation })),
-						...layout.junctions.map((junction) => ({ kind: 'junction', id: junction.id, instancePath: [] as readonly string[], revision: layoutRevision, location: layoutLocation })),
-						...layout.objects.map((object) => ({ kind: 'object', id: object.id, instancePath: [] as readonly string[], revision: layoutRevision, location: layoutLocation }))
+						...layout.rooms.map((room) => ({
+							kind: 'room',
+							id: room.id,
+							instancePath: [] as readonly string[],
+							revision: layoutRevision,
+							location: layoutLocation,
+						})),
+						...layout.regions.map((region) => ({
+							kind: 'region',
+							id: region.id,
+							instancePath: [] as readonly string[],
+							revision: layoutRevision,
+							location: layoutLocation,
+						})),
+						...layout.walls.map((wall) => ({
+							kind: 'wall',
+							id: wall.id,
+							instancePath: [] as readonly string[],
+							revision: layoutRevision,
+							location: layoutLocation,
+						})),
+						...layout.openings.map((opening) => ({
+							kind: 'opening',
+							id: opening.id,
+							instancePath: [] as readonly string[],
+							revision: layoutRevision,
+							location: layoutLocation,
+						})),
+						...layout.junctions.map((junction) => ({
+							kind: 'junction',
+							id: junction.id,
+							instancePath: [] as readonly string[],
+							revision: layoutRevision,
+							location: layoutLocation,
+						})),
+						...layout.objects.map((object) => ({
+							kind: 'object',
+							id: object.id,
+							instancePath: [] as readonly string[],
+							revision: layoutRevision,
+							location: layoutLocation,
+						})),
 					],
 					reference,
 					request.contentRevision,
-					levelId
+					levelId,
 				);
-			}
+			},
 		},
 		resolver(
 			'unit.scene@1',
@@ -312,47 +453,90 @@ export function createUnitSubjectResolvers(envelope: ProjectEnvelope): Reference
 			['scene', 'entity', 'cluster', 'material', 'texture'],
 			[
 				{ kind: 'scene', id: envelope.id, instancePath: [], revision: sceneRevision },
-				...envelope.units.scene.data.entities.map((entity) => ({ kind: 'entity', id: entity.id, instancePath: [] as readonly string[], revision: sceneRevision })),
-				...(envelope.units.scene.data.clusters ?? []).map((cluster) => ({ kind: 'cluster', id: cluster.id, instancePath: [] as readonly string[], revision: sceneRevision })),
-				...envelope.units.scene.data.materials.map((material) => ({ kind: 'material', id: material.id, instancePath: [] as readonly string[], revision: sceneRevision })),
-				...envelope.units.scene.data.textures.map((texture) => ({ kind: 'texture', id: texture.id, instancePath: [] as readonly string[], revision: sceneRevision }))
+				...envelope.units.scene.data.entities.map((entity) => ({
+					kind: 'entity',
+					id: entity.id,
+					instancePath: [] as readonly string[],
+					revision: sceneRevision,
+				})),
+				...(envelope.units.scene.data.clusters ?? []).map((cluster) => ({
+					kind: 'cluster',
+					id: cluster.id,
+					instancePath: [] as readonly string[],
+					revision: sceneRevision,
+				})),
+				...envelope.units.scene.data.materials.map((material) => ({
+					kind: 'material',
+					id: material.id,
+					instancePath: [] as readonly string[],
+					revision: sceneRevision,
+				})),
+				...envelope.units.scene.data.textures.map((texture) => ({
+					kind: 'texture',
+					id: texture.id,
+					instancePath: [] as readonly string[],
+					revision: sceneRevision,
+				})),
 			],
-			envelope
+			envelope,
 		),
 		resolver(
 			'unit.camera@1',
 			'camera',
 			['view', 'connection'],
 			[
-				...envelope.units.camera.data.views.map((view) => ({ kind: 'view', id: view.id, instancePath: [] as readonly string[], revision: cameraRevision })),
+				...envelope.units.camera.data.views.map((view) => ({
+					kind: 'view',
+					id: view.id,
+					instancePath: [] as readonly string[],
+					revision: cameraRevision,
+				})),
 				...envelope.units.camera.data.connections.map((connection) => ({
 					kind: 'connection',
 					id: connection.id,
 					instancePath: [] as readonly string[],
-					revision: cameraRevision
-				}))
+					revision: cameraRevision,
+				})),
 			],
-			envelope
+			envelope,
 		),
 		resolver(
 			'unit.experience@1',
 			'experience',
 			['experience', 'guide', 'stop', 'presentation'],
 			envelope.units.experience.data.experiences.flatMap((experience) => [
-				{ kind: 'experience', id: experience.id, instancePath: [experience.id], revision: experienceRevision },
-				...experience.guides.map((guide) => ({ kind: 'guide', id: guide.id, instancePath: [experience.id], revision: experienceRevision })),
-				...experience.stops.map((stop) => ({ kind: 'stop', id: stop.id, instancePath: [experience.id], revision: experienceRevision })),
+				{
+					kind: 'experience',
+					id: experience.id,
+					instancePath: [experience.id],
+					revision: experienceRevision,
+				},
+				...experience.guides.map((guide) => ({
+					kind: 'guide',
+					id: guide.id,
+					instancePath: [experience.id],
+					revision: experienceRevision,
+				})),
+				...experience.stops.map((stop) => ({
+					kind: 'stop',
+					id: stop.id,
+					instancePath: [experience.id],
+					revision: experienceRevision,
+				})),
 				...experience.presentations.map((presentation) => ({
 					kind: 'presentation',
 					id: presentation.id,
 					instancePath: [experience.id],
-					revision: experienceRevision
-				}))
+					revision: experienceRevision,
+				})),
 			]),
-			envelope
-		)
+			envelope,
+		),
 	];
-	const byDomain = new Map<string, UnitSubject[]>([['texture', []], ['asset', []]]);
+	const byDomain = new Map<string, UnitSubject[]>([
+		['texture', []],
+		['asset', []],
+	]);
 	for (const resource of envelope.units.resources.data.resources) {
 		const subjects = byDomain.get(resource.kind) ?? [];
 		subjects.push({
@@ -362,12 +546,20 @@ export function createUnitSubjectResolvers(envelope: ProjectEnvelope): Reference
 			revision: resource.contentRevision ?? resource.pin?.hash ?? null,
 			...(resource.unresolved === null
 				? {}
-				: { repair: resource.unresolved.message, failure: resource.unresolved.status === 'incompatible' ? 'repair-required' : resource.unresolved.status })
+				: {
+						repair: resource.unresolved.message,
+						failure:
+							resource.unresolved.status === 'incompatible'
+								? 'repair-required'
+								: resource.unresolved.status,
+					}),
 		});
 		byDomain.set(resource.kind, subjects);
 	}
 	for (const [kind, subjects] of byDomain) {
-		resolvers.push(resolver(`unit.resource.${kind}@1`, `resource:${kind}`, ['resource'], subjects, envelope));
+		resolvers.push(
+			resolver(`unit.resource.${kind}@1`, `resource:${kind}`, ['resource'], subjects, envelope),
+		);
 	}
 	return resolvers;
 }
@@ -393,20 +585,30 @@ export type UnitResolutionInput = {
 /** A `ReferenceReadContext` for one envelope: snapshot identity, lock and resolvers. */
 export function createUnitReadContext(input: UnitResolutionInput): ReferenceReadContext {
 	return {
-		snapshot: { acceptedRevision: input.acceptedRevision ?? input.envelope.acceptedRevision, sourceContentId: input.sourceContentId },
+		snapshot: {
+			acceptedRevision: input.acceptedRevision ?? input.envelope.acceptedRevision,
+			sourceContentId: input.sourceContentId,
+		},
 		sessionEpoch: input.sessionEpoch,
 		generationId: input.generationId ?? null,
 		supportedExtensions: input.supportedExtensions ?? [],
-		lock: input.lock === undefined ? createDependencyLockReader(input.envelope.id, input.envelope.dependencyLock, input.envelope.units) : input.lock,
+		lock:
+			input.lock === undefined
+				? createDependencyLockReader(
+						input.envelope.id,
+						input.envelope.dependencyLock,
+						input.envelope.units,
+					)
+				: input.lock,
 		resolvers: createUnitSubjectResolvers(input.envelope),
-		frameResolvers: []
+		frameResolvers: [],
 	};
 }
 
 /** Resolve one reference against an envelope, computing its source-content identity. */
 export async function resolveUnitReference(
 	reference: unknown,
-	input: Omit<UnitResolutionInput, 'sourceContentId'>
+	input: Omit<UnitResolutionInput, 'sourceContentId'>,
 ): Promise<ReferenceResolution> {
 	const sourceContentId = await computeEnvelopeSourceContentId(input.envelope);
 	return resolveReference(reference, createUnitReadContext({ ...input, sourceContentId }));

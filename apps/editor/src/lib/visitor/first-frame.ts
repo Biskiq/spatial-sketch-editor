@@ -7,7 +7,7 @@
  * draw, and a rAF is a scheduling opportunity, not proof that the surface drew.
  *
  * This observer prefers `renderer.info.calls`, the common renderer's monotonic
- * count of `render()` calls, and falls back to the legacy WebGL
+ * count of `render` calls, and falls back to the legacy WebGL
  * `info.render.frame` shape that Threlte's renderer type still exposes. r187
  * keeps that legacy slot only for animation-loop bookkeeping; with
  * `autoRender: false` it does not advance per draw, while `info.calls` does. The callback runs at the next
@@ -77,6 +77,6 @@ export function observeFirstRenderedFrame(input: {
 			done = true;
 			if (handle !== null) input.cancelFrame(handle);
 			handle = null;
-		}
+		},
 	};
 }

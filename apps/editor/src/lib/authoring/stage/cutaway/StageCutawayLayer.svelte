@@ -1,17 +1,17 @@
 <script lang="ts">
 	/**
-	 * X2's cutaway ink and its one live uniform writer.
+	 * The cutaway ink and its one live uniform writer.
 	 *
 	 * It owns two things and nothing else:
 	 *
 	 * - **The live top.** `stageClip.setCutawayTop(stubTopY)` is the whole cut: the
-	 *   twin materials are already leased, and Whole/held/Plan write `null` here, so
-	 *   a toggle costs one uniform write and never a material swap or a compile.
+	 *  twin materials are already leased, and Whole/held/Plan write `null` here, so
+	 *  a toggle costs one uniform write and never a material swap or a compile.
 	 * - **The caps.** The horizontal paper at the stub and the vertical seam faces
-	 *   are assembled from the drawn Wall meshes through SL1's `sectionMeshes`
-	 *   pipeline only when the effective cut set, the stub height or the geometry
-	 *   revision changes. They are overlay ink: never lit, never a pick root, never
-	 *   in a snapshot.
+	 *  are assembled from the drawn Wall meshes through SL1's `sectionMeshes`
+	 *  pipeline only when the effective cut set, the stub height or the geometry
+	 *  revision changes. They are overlay ink: never lit, never a pick root, never
+	 *  in a snapshot.
 	 *
 	 * A component that cannot balance is not drawn and is reported: the Walls it
 	 * names leave the effective set through `onFailure` (D12), so nothing ever

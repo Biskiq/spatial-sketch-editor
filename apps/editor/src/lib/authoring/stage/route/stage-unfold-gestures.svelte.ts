@@ -21,7 +21,11 @@
  * typed reads/callbacks only; it never imports the route, the acceptance host or
  * a renderer.
  */
-import { pointerRay, type ViewportEvaluation, type ViewportRect } from '@portfolio/camera-core/viewport';
+import {
+	pointerRay,
+	type ViewportEvaluation,
+	type ViewportRect,
+} from '@portfolio/camera-core/viewport';
 import type { CompiledPhysicalWall } from '@portfolio/layout-core/geometry';
 import type { AuthoringIntent } from '@portfolio/project-model/f4';
 import type { LayoutUnitPayload } from '@portfolio/project-model/units';
@@ -36,20 +40,23 @@ import {
 	WALL_UNFOLD_EDGE_HIT_COARSE_CSS,
 	WALL_UNFOLD_PIN_HIT_CSS,
 	WALL_UNFOLD_PIN_HIT_COARSE_CSS,
-	type WallUnfoldEdgeCandidate
+	type WallUnfoldEdgeCandidate,
 } from '$lib/layout/wall-unfold';
 import {
 	buildWallUnfoldDisplay,
 	pickWallUnfold,
-	unfoldDisplayPointAtStation
+	unfoldDisplayPointAtStation,
 } from '$lib/layout/wall-unfold-pick';
 import {
 	mapSheetOpeningDrag,
 	sheetOpeningModeFromEdges,
-	type SheetOpeningMode
+	type SheetOpeningMode,
 } from '$lib/layout/wall-unfold-opening-drag';
 import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
-import { buildLayoutIntent, LAYOUT_OPENING_MEASURE_KIND } from '$lib/authoring/adapters/layout/precision';
+import {
+	buildLayoutIntent,
+	LAYOUT_OPENING_MEASURE_KIND,
+} from '$lib/authoring/adapters/layout/precision';
 import { LAYOUT_OPENING_RESIZE_KIND } from '$lib/authoring/adapters/layout/opening-planners';
 import { stageUnitRevision } from '../unit-stage-source';
 import { edgeCandidates, wallStationAtPointer } from './stage-unfold-pick-geometry';
@@ -125,7 +132,7 @@ export type StageUnfoldGesturesInput = {
 	readonly services: () => StageAdapterServices | null;
 	readonly acceptOpening: (
 		services: StageAdapterServices,
-		intent: AuthoringIntent
+		intent: AuthoringIntent,
 	) => Promise<StageAcceptOutcome>;
 	readonly selectSubject: (wallId: string, openingId: string | null) => void;
 	readonly press: StagePressTracker;
@@ -161,7 +168,9 @@ export function createStageUnfoldGestures(input: StageUnfoldGesturesInput) {
 		const state = wallUnfold.state;
 		if (state !== null) {
 			const snapshot = stage.snapshot();
-			const wall = snapshot.domain.geometry.walls.find((candidate) => candidate.wallId === state.wallId);
+			const wall = snapshot.domain.geometry.walls.find(
+				(candidate) => candidate.wallId === state.wallId,
+			);
 			if (wall === undefined) return null;
 			const point = wallUnfoldTopPoint(wall, state.anchorStation, snapshot.domain.datumMeters);
 			return point === null
@@ -189,7 +198,7 @@ export function createStageUnfoldGestures(input: StageUnfoldGesturesInput) {
 			pressX: event.clientX,
 			pressY: event.clientY,
 			moved: false,
-			activeAtPress
+			activeAtPress,
 		};
 		input.press.refuse(event.pointerId);
 		return true;
@@ -199,21 +208,21 @@ export function createStageUnfoldGestures(input: StageUnfoldGesturesInput) {
 	function pinAt(
 		css: readonly [number, number],
 		coarse: boolean,
-		stage: StageFacade
+		stage: StageFacade,
 	): UnfoldPinHit | null {
 		const projectionId = stage.evaluationId();
 		if (projectionId === null) return null;
 		const pin = pinContext(stage);
 		if (pin === null) return null;
-		const projected = stage.projectWorld(
-			[pin.point[0], pin.point[1], pin.point[2]],
-			projectionId
-		);
+		const projected = stage.projectWorld([pin.point[0], pin.point[1], pin.point[2]], projectionId);
 		if (projected.kind !== 'projected') return null;
 		// `projectWorld` is viewport CSS; `sample.css` and edge picks are local to
 		// the Stage. Normalise here so hover and press agree on the handle.
 		const current = input.rect() ?? input.measure();
-		const local: [number, number] = [projected.css[0] - current.left, projected.css[1] - current.top];
+		const local: [number, number] = [
+			projected.css[0] - current.left,
+			projected.css[1] - current.top,
+		];
 		const distance = Math.hypot(local[0] - css[0], local[1] - css[1]);
 		const threshold = coarse ? WALL_UNFOLD_PIN_HIT_COARSE_CSS : WALL_UNFOLD_PIN_HIT_CSS;
 		return distance <= threshold ? { css: local } : null;
@@ -235,7 +244,8 @@ export function createStageUnfoldGestures(input: StageUnfoldGesturesInput) {
 		const state = wallUnfold.state;
 		const current = input.evaluation();
 		const layout = input.layout();
-		if (stage === null || current === null || layout === null || input.task() !== null) return false;
+		if (stage === null || current === null || layout === null || input.task() !== null)
+			return false;
 		if (state === null) {
 			// Before Unroll the pin is the only developed-sheet gesture: it seeds the
 			// anchor and never starts a peel.
@@ -245,20 +255,27 @@ export function createStageUnfoldGestures(input: StageUnfoldGesturesInput) {
 			return beginSheetPin(event, pin.wallId, false);
 		}
 		const snapshot = stage.snapshot();
-		const wall = snapshot.domain.geometry.walls.find((candidate) => candidate.wallId === state.wallId);
+		const wall = snapshot.domain.geometry.walls.find(
+			(candidate) => candidate.wallId === state.wallId,
+		);
 		if (wall === undefined) return false;
 		const spans = wallUnfoldSourceSpans(layout, wall.wallId, wall.length);
 		const preview = wallUnfold.previewOpening;
-		const displayWall = preview?.wallId === wall.wallId ? {
-			...wall,
-			openings: wall.openings.map((opening) => opening.openingId === preview.openingId
-				? { ...opening, offset: preview.offset, width: preview.width }
-				: opening)
-		} : wall;
+		const displayWall =
+			preview?.wallId === wall.wallId
+				? {
+						...wall,
+						openings: wall.openings.map((opening) =>
+							opening.openingId === preview.openingId
+								? { ...opening, offset: preview.offset, width: preview.width }
+								: opening,
+						),
+					}
+				: wall;
 		const display = buildWallUnfoldDisplay(displayWall, state, {
 			floorY: snapshot.domain.datumMeters,
 			spans,
-			sideAngle: wallUnfold.presentationAngle
+			sideAngle: wallUnfold.presentationAngle,
 		});
 		if (display === null) return false;
 		// The sheet pick wins when the ray lands on the developed Wall. The free
@@ -272,11 +289,17 @@ export function createStageUnfoldGestures(input: StageUnfoldGesturesInput) {
 			// screen path falls back to the bounded vertical mapping in `sheetEdgeMove`.
 			const candidates = edgeCandidates(display, state, wall, stage);
 			if (candidates.length >= 2) {
-				const threshold = event.pointerType === 'mouse' ? WALL_UNFOLD_EDGE_HIT_CSS : WALL_UNFOLD_EDGE_HIT_COARSE_CSS;
+				const threshold =
+					event.pointerType === 'mouse'
+						? WALL_UNFOLD_EDGE_HIT_CSS
+						: WALL_UNFOLD_EDGE_HIT_COARSE_CSS;
 				let nearest: WallUnfoldEdgeCandidate | null = null;
 				let nearestDistance = Number.POSITIVE_INFINITY;
 				for (const candidate of candidates) {
-					const distance = Math.hypot(candidate.css[0] - event.clientX, candidate.css[1] - event.clientY);
+					const distance = Math.hypot(
+						candidate.css[0] - event.clientX,
+						candidate.css[1] - event.clientY,
+					);
 					if (distance < nearestDistance) {
 						nearest = candidate;
 						nearestDistance = distance;
@@ -296,7 +319,7 @@ export function createStageUnfoldGestures(input: StageUnfoldGesturesInput) {
 						pressY: event.clientY,
 						startU: state.u,
 						grabOffset: [event.clientX - nearest.css[0], event.clientY - nearest.css[1]],
-						candidates
+						candidates,
 					};
 					input.press.refuse(event.pointerId);
 					return true;
@@ -307,7 +330,10 @@ export function createStageUnfoldGestures(input: StageUnfoldGesturesInput) {
 		// (or the Wall on solid Wall); press-and-move slides the anchor along the
 		// canonical centreline. It never moves the Camera or changes the face.
 		const pin = pinContext(stage);
-		if (pin !== null && pinAt(input.stageCss(event), event.pointerType !== 'mouse', stage) !== null) {
+		if (
+			pin !== null &&
+			pinAt(input.stageCss(event), event.pointerType !== 'mouse', stage) !== null
+		) {
 			return beginSheetPin(event, wall.wallId, true);
 		}
 		if (ray.kind !== 'ray' || pick === null) return false;
@@ -316,15 +342,20 @@ export function createStageUnfoldGestures(input: StageUnfoldGesturesInput) {
 		// S5b — a press on an Opening void starts a canonical offset/width edit.
 		// The jamb is chosen by the projected edge distance; the void's analytic
 		// pick returns its centre, so edge proximity must be measured separately.
-		const sourceOpening = pick.openingId === null ? undefined : layout.openings.find((opening) => opening.id === pick.openingId);
-		const band = pick.openingId === null ? undefined : display.openingBands.find((candidate) => candidate.openingId === pick.openingId);
+		const sourceOpening =
+			pick.openingId === null
+				? undefined
+				: layout.openings.find((opening) => opening.id === pick.openingId);
+		const band =
+			pick.openingId === null
+				? undefined
+				: display.openingBands.find((candidate) => candidate.openingId === pick.openingId);
 		if (sourceOpening !== undefined && band !== undefined && pick.openingId !== null) {
 			// Measure each jamb at the height the pointer actually picked, not the
 			// void's mid-height. On a tall Opening those are visibly different points.
-			const height = snapshot.domain.datumMeters + Math.max(
-				band.sillHeight,
-				Math.min(band.headHeight, pick.height)
-			);
+			const height =
+				snapshot.domain.datumMeters +
+				Math.max(band.sillHeight, Math.min(band.headHeight, pick.height));
 			const projectionId = stage.evaluationId();
 			const edgeAt = (station: number): number => {
 				if (projectionId === null) return Infinity;
@@ -350,7 +381,8 @@ export function createStageUnfoldGestures(input: StageUnfoldGesturesInput) {
 					wallId: wall.wallId,
 					openingId: pick.openingId,
 					mode,
-					grabStation: mode === 'left' ? band.stationStart : mode === 'right' ? band.stationEnd : pick.station,
+					grabStation:
+						mode === 'left' ? band.stationStart : mode === 'right' ? band.stationEnd : pick.station,
 					startOffset: sourceOpening.offset,
 					startWidth: sourceOpening.width,
 					length: wall.length,
@@ -359,9 +391,14 @@ export function createStageUnfoldGestures(input: StageUnfoldGesturesInput) {
 					pressY: event.clientY,
 					moved: false,
 					previewOffset: sourceOpening.offset,
-					previewWidth: sourceOpening.width
+					previewWidth: sourceOpening.width,
 				};
-				wallUnfold.setOpeningPreview({ wallId: wall.wallId, openingId: pick.openingId, offset: sourceOpening.offset, width: sourceOpening.width });
+				wallUnfold.setOpeningPreview({
+					wallId: wall.wallId,
+					openingId: pick.openingId,
+					offset: sourceOpening.offset,
+					width: sourceOpening.width,
+				});
 			} else {
 				sheetOpeningDrag = null;
 				wallUnfold.setOpeningPreview(null);
@@ -376,19 +413,24 @@ export function createStageUnfoldGestures(input: StageUnfoldGesturesInput) {
 		const active = sheetEdgeDrag;
 		const state = wallUnfold.state;
 		const stage = input.facade();
-		if (active === null || active.pointerId !== event.pointerId || state === null || stage === null) return;
-		const wall = stage.snapshot().domain.geometry.walls.find((candidate) => candidate.wallId === active.wallId);
+		if (active === null || active.pointerId !== event.pointerId || state === null || stage === null)
+			return;
+		const wall = stage
+			.snapshot()
+			.domain.geometry.walls.find((candidate) => candidate.wallId === active.wallId);
 		if (wall === undefined) return;
 		const chosen = chooseUnfoldAmount({
 			candidates: active.candidates,
 			pointer: [event.clientX, event.clientY],
 			currentU: state.u,
-			grabOffset: active.grabOffset
+			grabOffset: active.grabOffset,
 		});
-		const next = chosen ?? Math.min(
-			1,
-			Math.max(0, active.startU - (event.clientY - active.grabOffset[1] - active.pressY) / 260)
-		);
+		const next =
+			chosen ??
+			Math.min(
+				1,
+				Math.max(0, active.startU - (event.clientY - active.grabOffset[1] - active.pressY) / 260),
+			);
 		wallUnfold.setU(wall, next);
 	}
 
@@ -398,7 +440,9 @@ export function createStageUnfoldGestures(input: StageUnfoldGesturesInput) {
 		const stage = input.facade();
 		sheetEdgeDrag = null;
 		if (active === null || state === null || stage === null) return;
-		const wall = stage.snapshot().domain.geometry.walls.find((candidate) => candidate.wallId === active.wallId);
+		const wall = stage
+			.snapshot()
+			.domain.geometry.walls.find((candidate) => candidate.wallId === active.wallId);
 		if (wall !== undefined) wallUnfold.setU(wall, snapWallUnfoldAmount(state.u));
 	}
 
@@ -416,7 +460,9 @@ export function createStageUnfoldGestures(input: StageUnfoldGesturesInput) {
 			pinHovered = false;
 		}
 		const snapshot = stage.snapshot();
-		const wall = snapshot.domain.geometry.walls.find((candidate) => candidate.wallId === active.wallId);
+		const wall = snapshot.domain.geometry.walls.find(
+			(candidate) => candidate.wallId === active.wallId,
+		);
 		if (wall === undefined) return;
 		const station = wallStationAtPointer(wall, snapshot.domain.datumMeters, stage, event);
 		if (station !== null) wallUnfold.setAnchor(wall, station);
@@ -426,7 +472,8 @@ export function createStageUnfoldGestures(input: StageUnfoldGesturesInput) {
 		const active = sheetPinDrag;
 		sheetPinDrag = null;
 		if (active === null) return;
-		if (!active.moved && active.activeAtPress) input.selectSubject(active.wallId, wallUnfold.pinnedOpeningId);
+		if (!active.moved && active.activeAtPress)
+			input.selectSubject(active.wallId, wallUnfold.pinnedOpeningId);
 		input.clearHover();
 	}
 
@@ -440,21 +487,36 @@ export function createStageUnfoldGestures(input: StageUnfoldGesturesInput) {
 		const current = input.evaluation();
 		const layout = input.layout();
 		const state = wallUnfold.state;
-		if (active === null || active.pointerId !== event.pointerId || stage === null || current === null || layout === null || state === null) return;
+		if (
+			active === null ||
+			active.pointerId !== event.pointerId ||
+			stage === null ||
+			current === null ||
+			layout === null ||
+			state === null
+		)
+			return;
 		const snapshot = stage.snapshot();
-		const wall = snapshot.domain.geometry.walls.find((candidate) => candidate.wallId === active.wallId);
+		const wall = snapshot.domain.geometry.walls.find(
+			(candidate) => candidate.wallId === active.wallId,
+		);
 		if (wall === undefined) return;
 		const preview = wallUnfold.previewOpening;
-		const displayWall = preview?.wallId === wall.wallId ? {
-			...wall,
-			openings: wall.openings.map((opening) => opening.openingId === preview.openingId
-				? { ...opening, offset: preview.offset, width: preview.width }
-				: opening)
-		} : wall;
+		const displayWall =
+			preview?.wallId === wall.wallId
+				? {
+						...wall,
+						openings: wall.openings.map((opening) =>
+							opening.openingId === preview.openingId
+								? { ...opening, offset: preview.offset, width: preview.width }
+								: opening,
+						),
+					}
+				: wall;
 		const display = buildWallUnfoldDisplay(displayWall, state, {
 			floorY: snapshot.domain.datumMeters,
 			spans: wallUnfoldSourceSpans(layout, wall.wallId, wall.length),
-			sideAngle: wallUnfold.presentationAngle
+			sideAngle: wallUnfold.presentationAngle,
 		});
 		if (display === null) return;
 		const ray = pointerRay([event.clientX, event.clientY], current, current.token);
@@ -463,7 +525,11 @@ export function createStageUnfoldGestures(input: StageUnfoldGesturesInput) {
 		if (pick === null) return;
 		// A press without travel is a click, not an edit: leave the preview at the
 		// canonical values so release commits nothing and the selection stands.
-		if (!active.moved && Math.hypot(event.clientX - active.pressX, event.clientY - active.pressY) <= 3) return;
+		if (
+			!active.moved &&
+			Math.hypot(event.clientX - active.pressX, event.clientY - active.pressY) <= 3
+		)
+			return;
 		active.moved = true;
 		const edit = mapSheetOpeningDrag({
 			mode: active.mode,
@@ -472,11 +538,16 @@ export function createStageUnfoldGestures(input: StageUnfoldGesturesInput) {
 			grabStation: active.grabStation,
 			pointerStation: pick.station,
 			length: active.length,
-			closed: active.closed
+			closed: active.closed,
 		});
 		active.previewOffset = edit.offset;
 		active.previewWidth = edit.width;
-		wallUnfold.setOpeningPreview({ wallId: active.wallId, openingId: active.openingId, offset: edit.offset, width: edit.width });
+		wallUnfold.setOpeningPreview({
+			wallId: active.wallId,
+			openingId: active.openingId,
+			offset: edit.offset,
+			width: edit.width,
+		});
 	}
 
 	async function finishSheetOpening(event: PointerEvent): Promise<void> {
@@ -490,14 +561,16 @@ export function createStageUnfoldGestures(input: StageUnfoldGesturesInput) {
 		}
 		const services = input.services();
 		const stage = input.facade();
-		if (services === null || stage === null) { wallUnfold.setOpeningPreview(null); return; }
+		if (services === null || stage === null) {
+			wallUnfold.setOpeningPreview(null);
+			return;
+		}
 		const snapshot = stage.snapshot();
 		// A jamb drag previews both fields. The left edge therefore commits through
 		// the coupled resize planner (fixed right edge), not a width-only measure.
-		const edge = active.mode === 'left' ? 'left' as const : 'right' as const;
-		const value = edge === 'left'
-			? active.previewOffset
-			: active.previewOffset + active.previewWidth;
+		const edge = active.mode === 'left' ? ('left' as const) : ('right' as const);
+		const value =
+			edge === 'left' ? active.previewOffset : active.previewOffset + active.previewWidth;
 		const target = {
 			version: 1 as const,
 			domain: 'layout' as const,
@@ -507,10 +580,10 @@ export function createStageUnfoldGestures(input: StageUnfoldGesturesInput) {
 			location: {
 				kind: 'layout-location' as const,
 				levelId: snapshot.domain.layoutLevelId,
-				structureInstancePath: [] as const
+				structureInstancePath: [] as const,
 			},
 			componentId: null,
-			capabilityId: null
+			capabilityId: null,
 		};
 		const request = {
 			operationId: globalThis.crypto.randomUUID(),
@@ -518,20 +591,32 @@ export function createStageUnfoldGestures(input: StageUnfoldGesturesInput) {
 			revisionId: services.authoring.acceptedRevision().revisionId,
 			contentRevision: stageUnitRevision(snapshot, 'layout'),
 			levelId: snapshot.domain.layoutLevelId,
-			targets: [target]
+			targets: [target],
 		};
-		const outcome = active.mode === 'slide'
-			? await input.acceptOpening(services, buildLayoutIntent({
-				...request,
-				kind: LAYOUT_OPENING_MEASURE_KIND,
-				payload: { openingId: active.openingId, field: 'offset', value: active.previewOffset }
-			}))
-			: await input.acceptOpening(services, buildLayoutIntent({
-				...request,
-				kind: LAYOUT_OPENING_RESIZE_KIND,
-				payload: { openingId: active.openingId, kind: 'edge', edge, value }
-			}));
-		if (input.services() === services && outcome.kind === 'refused') input.onNotice(outcome.message);
+		const outcome =
+			active.mode === 'slide'
+				? await input.acceptOpening(
+						services,
+						buildLayoutIntent({
+							...request,
+							kind: LAYOUT_OPENING_MEASURE_KIND,
+							payload: {
+								openingId: active.openingId,
+								field: 'offset',
+								value: active.previewOffset,
+							},
+						}),
+					)
+				: await input.acceptOpening(
+						services,
+						buildLayoutIntent({
+							...request,
+							kind: LAYOUT_OPENING_RESIZE_KIND,
+							payload: { openingId: active.openingId, kind: 'edge', edge, value },
+						}),
+					);
+		if (input.services() === services && outcome.kind === 'refused')
+			input.onNotice(outcome.message);
 		wallUnfold.setOpeningPreview(null);
 		stage.notifySurfaceChange();
 	}
@@ -662,29 +747,40 @@ export function createStageUnfoldGestures(input: StageUnfoldGesturesInput) {
 			// when a previous cleanup already dropped the drag. This keeps repeated
 			// disposal harmless and prevents an orphaned display-only Opening.
 			wallUnfold.setOpeningPreview(null);
-		}
+		},
 	};
 }
 
 /** Whether the selected Wall is curved; `null` leaves no idle pin. */
 export function selectedCurvedWallOf(
-	selection: { readonly reference: { readonly domain: string; readonly subject: { readonly kind: string; readonly id: string } } } | null,
+	selection: {
+		readonly reference: {
+			readonly domain: string;
+			readonly subject: { readonly kind: string; readonly id: string };
+		};
+	} | null,
 	geometry: { readonly walls: readonly CompiledPhysicalWall[] },
 	datumMeters: number,
 	viewTarget: readonly [number, number, number] | null,
-	viewCentreStation: (wall: CompiledPhysicalWall, target: readonly [number, number, number]) => number | null
+	viewCentreStation: (
+		wall: CompiledPhysicalWall,
+		target: readonly [number, number, number],
+	) => number | null,
 ): StageSelectedCurvedWall | null {
 	if (
 		selection === null ||
 		selection.reference.domain !== 'layout' ||
 		selection.reference.subject.kind !== 'wall'
-	) return null;
-	const wall = geometry.walls.find((candidate) => candidate.wallId === selection.reference.subject.id);
+	)
+		return null;
+	const wall = geometry.walls.find(
+		(candidate) => candidate.wallId === selection.reference.subject.id,
+	);
 	if (wall === undefined || isStraightCompiledWall(wall)) return null;
 	const viewCentre = viewTarget === null ? null : viewCentreStation(wall, viewTarget);
 	return {
 		wall,
 		datumMeters,
-		defaultStation: wallUnfoldAnchor({ wall, pinStation: viewCentre })
+		defaultStation: wallUnfoldAnchor({ wall, pinStation: viewCentre }),
 	};
 }

@@ -11,6 +11,7 @@ export default defineConfig({
 	test: {
 		include: ['tests/**/*.arch.test.ts'],
 		setupFiles: ['./tests/helpers/editor-cwd.ts'],
+		globalSetup: ['./tests/arch/global-setup.ts'],
 		environment: 'node',
 		// Each boundary test walks and parses the whole source tree. That costs about five
 		// seconds on a loaded runner, so the 5s default fails on timing, not on a boundary.

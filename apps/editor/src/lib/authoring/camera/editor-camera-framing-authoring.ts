@@ -21,7 +21,7 @@ import type { CameraFramingEnvelope } from '@portfolio/camera-core/camera';
 export const CAMERA_FOCUS_TIMING_PRESETS = {
 	early: { enterStart: 0.05, enterEnd: 0.2, exitStart: 1, exitEnd: 1 },
 	centered: { enterStart: 0.25, enterEnd: 0.5, exitStart: 1, exitEnd: 1 },
-	full: { enterStart: 0, enterEnd: 0, exitStart: 1, exitEnd: 1 }
+	full: { enterStart: 0, enterEnd: 0, exitStart: 1, exitEnd: 1 },
 } as const;
 
 export type FocusTimingPresetName = keyof typeof CAMERA_FOCUS_TIMING_PRESETS;
@@ -29,13 +29,13 @@ export type FocusTimingPresetName = keyof typeof CAMERA_FOCUS_TIMING_PRESETS;
 export const FOCUS_TIMING_PRESET_LABELS: Record<FocusTimingPresetName, string> = {
 	early: 'Early',
 	centered: 'Centered',
-	full: 'Full Move'
+	full: 'Full Move',
 } as const;
 
 export const FOCUS_TIMING_PRESET_ORDER: readonly FocusTimingPresetName[] = [
 	'early',
 	'centered',
-	'full'
+	'full',
 ] as const;
 
 /**
@@ -43,8 +43,7 @@ export const FOCUS_TIMING_PRESET_ORDER: readonly FocusTimingPresetName[] = [
  * `createAutoManagedFramingEnvelope`. The reducer expands it so the first key
  * reaches full authored influence and keeps `exitEnd = 1`.
  */
-export const CENTERED_SEED: CameraFramingEnvelope =
-	CAMERA_FOCUS_TIMING_PRESETS.centered;
+export const CENTERED_SEED: CameraFramingEnvelope = CAMERA_FOCUS_TIMING_PRESETS.centered;
 
 // ---------------------------------------------------------------------------
 // Lens presets
@@ -62,10 +61,7 @@ export type LensPreset = {
 };
 
 function focalLengthToVerticalFov(focalLengthMm: number): number {
-	return (
-		(2 * Math.atan(LENS_SENSOR_HEIGHT_MM / (2 * focalLengthMm)) * 180) /
-		Math.PI
-	);
+	return (2 * Math.atan(LENS_SENSOR_HEIGHT_MM / (2 * focalLengthMm)) * 180) / Math.PI;
 }
 
 export const CAMERA_LENS_PRESETS: readonly LensPreset[] = [
@@ -73,20 +69,20 @@ export const CAMERA_LENS_PRESETS: readonly LensPreset[] = [
 		name: 'wide',
 		label: '24 mm Wide',
 		focalLengthMm: 24,
-		verticalFovDegrees: focalLengthToVerticalFov(24)
+		verticalFovDegrees: focalLengthToVerticalFov(24),
 	},
 	{
 		name: 'standard',
 		label: '50 mm Standard',
 		focalLengthMm: 50,
-		verticalFovDegrees: focalLengthToVerticalFov(50)
+		verticalFovDegrees: focalLengthToVerticalFov(50),
 	},
 	{
 		name: 'tight',
 		label: '85 mm Tight',
 		focalLengthMm: 85,
-		verticalFovDegrees: focalLengthToVerticalFov(85)
-	}
+		verticalFovDegrees: focalLengthToVerticalFov(85),
+	},
 ] as const;
 
 /** Convert focal length in mm to vertical FOV in degrees (full-frame, 24 mm sensor height). */
@@ -97,7 +93,7 @@ export function focalLengthMmToFovDegrees(focalLengthMm: number): number {
 	const fov = focalLengthToVerticalFov(focalLengthMm);
 	if (fov < CAMERA_FOV.min || fov > CAMERA_FOV.max) {
 		throw new Error(
-			`Focal length ${focalLengthMm} mm produces FOV ${fov.toFixed(2)}° outside the supported range`
+			`Focal length ${focalLengthMm} mm produces FOV ${fov.toFixed(2)}° outside the supported range`,
 		);
 	}
 	return fov;
@@ -114,9 +110,7 @@ export function fovDegreesToFocalLengthMm(fovDegrees: number): number {
 const LENS_PRESET_MATCH_TOLERANCE_MM = 1;
 
 /** Match a FOV value against known lens presets (focal length within 1 mm). */
-export function findMatchingLensPreset(
-	fovDegrees: number
-): LensPreset | null {
+export function findMatchingLensPreset(fovDegrees: number): LensPreset | null {
 	const focalLengthMm = fovDegreesToFocalLengthMm(fovDegrees);
 	if (!Number.isFinite(focalLengthMm)) return null;
 	for (const preset of CAMERA_LENS_PRESETS) {
@@ -130,7 +124,7 @@ export function findMatchingLensPreset(
 /** FOV copy: "Larger FOV is wider / zoomed out. Smaller FOV is tighter / zoomed in." */
 export const FOV_COPY = {
 	largerWider: 'Larger FOV is wider / zoomed out.',
-	smallerTighter: 'Smaller FOV is tighter / zoomed in.'
+	smallerTighter: 'Smaller FOV is tighter / zoomed in.',
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -138,14 +132,12 @@ export const FOV_COPY = {
 // ---------------------------------------------------------------------------
 
 /** Mirror an envelope for the opposite direction. Involutive: mirror(mirror(e)) === e. */
-export function mirrorFramingEnvelope(
-	envelope: CameraFramingEnvelope
-): CameraFramingEnvelope {
+export function mirrorFramingEnvelope(envelope: CameraFramingEnvelope): CameraFramingEnvelope {
 	return {
 		enterStart: 1 - envelope.exitEnd,
 		enterEnd: 1 - envelope.exitStart,
 		exitStart: 1 - envelope.enterEnd,
-		exitEnd: 1 - envelope.enterStart
+		exitEnd: 1 - envelope.enterStart,
 	};
 }
 
@@ -153,9 +145,7 @@ export function mirrorFramingEnvelope(
  * Mirroring is involutive: mirror(mirror(e)) ≈ e.
  * Uses epsilon comparison to tolerate IEEE 754 rounding.
  */
-export function mirrorFramingEnvelopeInvolutory(
-	envelope: CameraFramingEnvelope
-): boolean {
+export function mirrorFramingEnvelopeInvolutory(envelope: CameraFramingEnvelope): boolean {
 	const mirrored = mirrorFramingEnvelope(envelope);
 	const doubleMirrored = mirrorFramingEnvelope(mirrored);
 	const eps = 1e-9;
@@ -174,12 +164,7 @@ export function mirrorFramingEnvelopeInvolutory(
 /**
  * Canonical ordered handle names in the Advanced disclosure.
  */
-export const ENVELOPE_HANDLE_NAMES = [
-	'enterStart',
-	'enterEnd',
-	'exitStart',
-	'exitEnd'
-] as const;
+export const ENVELOPE_HANDLE_NAMES = ['enterStart', 'enterEnd', 'exitStart', 'exitEnd'] as const;
 
 export type EnvelopeHandleName = (typeof ENVELOPE_HANDLE_NAMES)[number];
 
@@ -187,16 +172,14 @@ export const ENVELOPE_HANDLE_LABELS: Record<EnvelopeHandleName, string> = {
 	enterStart: 'Enter start',
 	enterEnd: 'Full focus',
 	exitStart: 'Resume automatic',
-	exitEnd: 'Automatic by'
+	exitEnd: 'Automatic by',
 } as const;
 
 /**
  * Clamped ordered-envelope predicate. All bounds must be finite, within [0, 1],
  * and non-decreasing.
  */
-export function isClampedOrderedEnvelope(
-	envelope: CameraFramingEnvelope
-): boolean {
+export function isClampedOrderedEnvelope(envelope: CameraFramingEnvelope): boolean {
 	return (
 		Number.isFinite(envelope.enterStart) &&
 		Number.isFinite(envelope.enterEnd) &&
@@ -217,7 +200,7 @@ export function isClampedOrderedEnvelope(
 export function clampEnvelopeHandle(
 	current: CameraFramingEnvelope,
 	handle: EnvelopeHandleName,
-	value: number
+	value: number,
 ): CameraFramingEnvelope | null {
 	if (!Number.isFinite(value) || value < 0 || value > 1) return null;
 
@@ -243,7 +226,7 @@ export const CAMERA_FRAMING_AUTHORING_COMFORT = {
 	/** Above this rate, show "Rapid lens change" diagnostic. */
 	maxFovRateDegreesPerSecond: 30,
 	/** Cap sampling at this many points per ramp for diagnostics. */
-	diagnosticSamplesPerRamp: 96
+	diagnosticSamplesPerRamp: 96,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -267,12 +250,10 @@ export type CameraFramingDiagnostic = {
 /**
  * Format a step (zero-width ramp) diagnostic.
  */
-export function stepLensChangeDiagnostic(
-	rampName: string
-): CameraFramingDiagnostic {
+export function stepLensChangeDiagnostic(rampName: string): CameraFramingDiagnostic {
 	return {
 		kind: 'step-lens-change',
-		message: `Step lens change (${rampName})`
+		message: `Step lens change (${rampName})`,
 	};
 }
 
@@ -281,12 +262,12 @@ export function stepLensChangeDiagnostic(
  */
 export function rapidLensChangeDiagnostic(
 	peakRate: number,
-	rampTimeSeconds: number
+	rampTimeSeconds: number,
 ): CameraFramingDiagnostic {
 	return {
 		kind: 'rapid-lens-change',
 		message: `Rapid lens change — ${peakRate.toFixed(1)}°/s over ${rampTimeSeconds.toFixed(2)} s`,
-		measuredValue: peakRate
+		measuredValue: peakRate,
 	};
 }
 
@@ -296,7 +277,7 @@ export function rapidLensChangeDiagnostic(
 export function parallaxTurnDiagnostic(): CameraFramingDiagnostic {
 	return {
 		kind: 'parallax-turn-softened',
-		message: 'Parallax turn softened'
+		message: 'Parallax turn softened',
 	};
 }
 
@@ -306,7 +287,7 @@ export function parallaxTurnDiagnostic(): CameraFramingDiagnostic {
 export function targetPassesCloseDiagnostic(): CameraFramingDiagnostic {
 	return {
 		kind: 'target-passes-close',
-		message: 'Target passes close to camera path'
+		message: 'Target passes close to camera path',
 	};
 }
 
@@ -317,7 +298,7 @@ export function targetPassesCloseDiagnostic(): CameraFramingDiagnostic {
  * (e.g. both angular-rate limiting and a bypass produce a parallax hint).
  */
 export function dedupeFramingDiagnostics(
-	diagnostics: readonly CameraFramingDiagnostic[]
+	diagnostics: readonly CameraFramingDiagnostic[],
 ): CameraFramingDiagnostic[] {
 	const seen = new Set<CameraFramingDiagnosticKind>();
 	const result: CameraFramingDiagnostic[] = [];
@@ -341,7 +322,7 @@ export function computeRampSeconds(
 	rampStart: number,
 	rampEnd: number,
 	edgeProgressToMotionProgress: (edgeProgress: number) => number,
-	durationSeconds: number
+	durationSeconds: number,
 ): number {
 	if (rampStart >= rampEnd) return 0;
 	const startMotionProgress = edgeProgressToMotionProgress(rampStart);
@@ -362,7 +343,7 @@ export function clampRampEdgeProgress(
 	proposedEdgeProgress: number,
 	edgeProgressToMotionProgress: (edgeProgress: number) => number,
 	durationSeconds: number,
-	minSeconds: number
+	minSeconds: number,
 ): number {
 	if (!Number.isFinite(fixedEdgeProgress) || !Number.isFinite(proposedEdgeProgress)) {
 		return proposedEdgeProgress;
@@ -373,7 +354,9 @@ export function clampRampEdgeProgress(
 	const rampSeconds = (start: number, end: number) => {
 		const a = Math.min(start, end);
 		const b = Math.max(start, end);
-		return Math.abs(edgeProgressToMotionProgress(b) - edgeProgressToMotionProgress(a)) * durationSeconds;
+		return (
+			Math.abs(edgeProgressToMotionProgress(b) - edgeProgressToMotionProgress(a)) * durationSeconds
+		);
 	};
 	if (rampSeconds(fixedEdgeProgress, proposedEdgeProgress) >= minSeconds) {
 		return proposedEdgeProgress;

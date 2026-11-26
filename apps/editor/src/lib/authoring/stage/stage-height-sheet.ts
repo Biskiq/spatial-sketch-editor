@@ -90,7 +90,7 @@ function sameHeight(a: number, b: number): boolean {
  * a UI, and one broken consumer must not stop the others from seeing the height.
  */
 export function createStageHeightSheet(
-	options: { readonly defaultHeightMeters?: number; readonly maxHeightMeters?: number } = {}
+	options: { readonly defaultHeightMeters?: number; readonly maxHeightMeters?: number } = {},
 ): StageHeightSheet {
 	const initial =
 		options.defaultHeightMeters !== undefined && finiteNonNegative(options.defaultHeightMeters)
@@ -196,7 +196,7 @@ export function createStageHeightSheet(
 					// One view's interrupted gesture must not prevent other reset observers.
 				}
 			}
-		}
+		},
 	};
 }
 
@@ -209,10 +209,10 @@ export function createStageHeightSheet(
  * height. Labels stay the owner's own words.
  */
 export function mergeStageHeightTicks(
-	ticks: readonly StageHeightTick[]
+	ticks: readonly StageHeightTick[],
 ): readonly StageHeightTick[] {
 	const usable = ticks.filter(
-		(tick) => finiteNonNegative(tick.heightMeters) && tick.label.length > 0
+		(tick) => finiteNonNegative(tick.heightMeters) && tick.label.length > 0,
 	);
 	const sorted = [...usable].sort((a, b) => {
 		if (a.heightMeters !== b.heightMeters) return a.heightMeters - b.heightMeters;
@@ -226,11 +226,13 @@ export function mergeStageHeightTicks(
 		const datum =
 			group.find((tick) => tick.kind === 'datum' && tick.heightMeters === 0) ??
 			group.find((tick) => tick.kind === 'datum');
-		const label = datum?.label ?? group.reduce((best, tick) => (tick.label < best ? tick.label : best), group[0]!.label);
+		const label =
+			datum?.label ??
+			group.reduce((best, tick) => (tick.label < best ? tick.label : best), group[0]!.label);
 		merged.push({
 			kind: datum === undefined ? 'found' : 'datum',
 			heightMeters: datum?.heightMeters ?? group[0]!.heightMeters,
-			label
+			label,
 		});
 		group = [];
 	};

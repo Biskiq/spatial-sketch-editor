@@ -16,12 +16,16 @@
  * Only Point and Spot exist: the authored Directional kind is retired
  * (Scene format 7) and the Sky owns the only Sun (`resolveSkySun`).
  */
-import { isSceneLightEntity, type RuntimeScene, type SceneLightEntity } from '@portfolio/project-model/scene';
+import {
+	isSceneLightEntity,
+	type RuntimeScene,
+	type SceneLightEntity,
+} from '@portfolio/project-model/scene';
 import {
 	lightKey,
 	PHYSICAL_LIGHT_DECAY,
 	type PointLightDescriptor,
-	type SpotLightDescriptor
+	type SpotLightDescriptor,
 } from './resources/light-descriptor';
 import type { SceneTransform } from './resources/scene-render-item';
 
@@ -40,10 +44,14 @@ export type SceneLightDescription = {
 	readonly items: readonly SceneLightItem[];
 };
 
-export const EMPTY_SCENE_LIGHT_DESCRIPTION: SceneLightDescription = Object.freeze({ items: Object.freeze([]) });
+export const EMPTY_SCENE_LIGHT_DESCRIPTION: SceneLightDescription = Object.freeze({
+	items: Object.freeze([]),
+});
 
 /** The descriptor an authored light resolves to. */
-export function resolveSceneLight(entity: SceneLightEntity): PointLightDescriptor | SpotLightDescriptor {
+export function resolveSceneLight(
+	entity: SceneLightEntity,
+): PointLightDescriptor | SpotLightDescriptor {
 	if (entity.light === 'point') {
 		return {
 			kind: 'point',
@@ -51,7 +59,7 @@ export function resolveSceneLight(entity: SceneLightEntity): PointLightDescripto
 			intensity: entity.intensity,
 			distance: entity.range ?? 0,
 			decay: PHYSICAL_LIGHT_DECAY,
-			castShadow: entity.castShadow
+			castShadow: entity.castShadow,
 		};
 	}
 	return {
@@ -62,7 +70,7 @@ export function resolveSceneLight(entity: SceneLightEntity): PointLightDescripto
 		decay: PHYSICAL_LIGHT_DECAY,
 		angle: entity.angle,
 		penumbra: entity.penumbra ?? 0,
-		castShadow: entity.castShadow
+		castShadow: entity.castShadow,
 	};
 }
 
@@ -72,14 +80,14 @@ function itemOf(entity: SceneLightEntity): SceneLightItem {
 	const transform: SceneTransform = {
 		position: [entity.position[0], entity.position[1], entity.position[2]],
 		rotation: [entity.rotation[0], entity.rotation[1], entity.rotation[2]],
-		scale: [scale, scale, scale]
+		scale: [scale, scale, scale],
 	};
 	return Object.freeze({
 		id: entity.id,
 		key: lightKey(light),
 		light: Object.freeze(light),
 		transform: Object.freeze(transform),
-		placementKey: `${transform.position.join(',')}|${transform.rotation.join(',')}|${scale}`
+		placementKey: `${transform.position.join(',')}|${transform.rotation.join(',')}|${scale}`,
 	});
 }
 

@@ -25,7 +25,7 @@ import { createAcceptanceCoordinator } from '$lib/authoring/f4/acceptance-coordi
 import { captureBindIntent, createExperienceIntent, guideCreateIntent, presentationUpdateIntent, stopCreateIntent, stopUpdateIntent } from '$lib/authoring/experience/commands-structure';
 import { capturedViewPose } from '$lib/authoring/experience/commands-references';
 import { createUnitProject } from '../../authoring/__fixtures__/unit-envelope-fixtures';
-import { freshCapture } from '../../layout/__fixtures__/layout-id-capture';
+import { freshCapture } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 
 export type XFixtureName = 'x-empty' | 'x-salon' | 'x-long' | 'x-dense' | 'x-paths';
 export const X_FIXTURE_NAMES: readonly XFixtureName[] = ['x-empty', 'x-salon', 'x-long', 'x-dense', 'x-paths'];

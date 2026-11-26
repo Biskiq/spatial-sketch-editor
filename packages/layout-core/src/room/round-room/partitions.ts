@@ -3,14 +3,18 @@ import { CURVE_ARC_LENGTH_TOLERANCE } from '../../geometry/curve';
 import { JUNCTION_COINCIDENCE_EPSILON } from '../../wall/junction-identity';
 import type { ResolvedWallSplitResult } from '../../wall/curve-algebra';
 import { subdivideWallCubicSpan } from '../../wall/curve-algebra';
-import type { LayoutWall, LayoutWallCubicSpan, LayoutWallCurveKnot, LayoutWallOpening } from '../../wall/types';
+import type {
+	LayoutWall,
+	LayoutWallCubicSpan,
+	LayoutWallCurveKnot,
+	LayoutWallOpening,
+} from '../../wall/types';
 
 export type ClosedWallSafeCutSearch = {
 	readonly seamOccupied: boolean;
 	readonly seamBlockingOpeningIds: readonly string[];
 	readonly candidates: readonly number[];
 };
-
 
 /**
  * Inspect periodic Opening intervals on a closed Wall and enumerate
@@ -20,7 +24,7 @@ export type ClosedWallSafeCutSearch = {
 export function enumerateClosedWallSafeCutStations(
 	openings: readonly LayoutWallOpening[],
 	wallId: string,
-	totalLength: number
+	totalLength: number,
 ): ClosedWallSafeCutSearch {
 	const occupied: Array<{ start: number; end: number }> = [];
 	const seamBlockingOpeningIds: string[] = [];
@@ -69,7 +73,11 @@ export function enumerateClosedWallSafeCutStations(
 		}
 		const headLen = first.start;
 		const tailLen = totalLength - last.end;
-		if (!seamOccupied && headLen > CURVE_ARC_LENGTH_TOLERANCE && tailLen > CURVE_ARC_LENGTH_TOLERANCE) {
+		if (
+			!seamOccupied &&
+			headLen > CURVE_ARC_LENGTH_TOLERANCE &&
+			tailLen > CURVE_ARC_LENGTH_TOLERANCE
+		) {
 			gaps.push({ start: last.end, length: tailLen + headLen });
 		} else {
 			if (tailLen > 2 * JUNCTION_COINCIDENCE_EPSILON) {
@@ -86,7 +94,7 @@ export function enumerateClosedWallSafeCutStations(
 		merged.some(
 			(interval) =>
 				station > interval.start + CURVE_ARC_LENGTH_TOLERANCE &&
-				station < interval.end - CURVE_ARC_LENGTH_TOLERANCE
+				station < interval.end - CURVE_ARC_LENGTH_TOLERANCE,
 		);
 
 	const rawCandidates: number[] = [];
@@ -122,7 +130,6 @@ export function enumerateClosedWallSafeCutStations(
 	return { seamOccupied, seamBlockingOpeningIds, candidates };
 }
 
-
 export type ClosedWallPartitionSegment = {
 	readonly knots: LayoutWallCurveKnot[];
 	readonly spans: LayoutWallCubicSpan[];
@@ -131,10 +138,9 @@ export type ClosedWallPartitionSegment = {
 	readonly length: number;
 };
 
-
 /**
  * Partition a canonical closed 16-span cubic Wall at strictly ascending
- * resolved stations `0 < d_0 < ... < d_{k-1} < L`, preserving untouched spans
+ * resolved stations `0 < d_0 <... < d_{k-1} < L`, preserving untouched spans
  * byte-identically and keeping unpromoted interior knot IDs.
  */
 export function partitionClosedWallChainAtStations(options: {
@@ -151,7 +157,7 @@ export function partitionClosedWallChainAtStations(options: {
 	const pts: LayoutVec2[] = [
 		[seamPoint[0], seamPoint[1]],
 		...origKnots.map((k): LayoutVec2 => [k.point[0], k.point[1]]),
-		[seamPoint[0], seamPoint[1]]
+		[seamPoint[0], seamPoint[1]],
 	];
 
 	const interiorCutsBySpan = new Map<number, ResolvedWallSplitResult[]>();
@@ -180,7 +186,7 @@ export function partitionClosedWallChainAtStations(options: {
 			spans: curSpans,
 			startDistance: curStartDist,
 			endDistance: endDist,
-			length: endDist - curStartDist
+			length: endDist - curStartDist,
 		});
 		curKnots = [];
 		curSpans = [];
@@ -193,7 +199,7 @@ export function partitionClosedWallChainAtStations(options: {
 			const orig = origSpans[s]!;
 			curSpans.push({
 				handleOut: [orig.handleOut[0], orig.handleOut[1]],
-				handleIn: [orig.handleIn[0], orig.handleIn[1]]
+				handleIn: [orig.handleIn[0], orig.handleIn[1]],
 			});
 		} else {
 			let remSpan: LayoutWallCubicSpan = origSpans[s]!;
@@ -211,7 +217,7 @@ export function partitionClosedWallChainAtStations(options: {
 			}
 			curSpans.push({
 				handleOut: [remSpan.handleOut[0], remSpan.handleOut[1]],
-				handleIn: [remSpan.handleIn[0], remSpan.handleIn[1]]
+				handleIn: [remSpan.handleIn[0], remSpan.handleIn[1]],
 			});
 		}
 

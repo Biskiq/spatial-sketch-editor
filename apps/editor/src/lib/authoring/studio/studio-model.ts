@@ -75,7 +75,7 @@ const STUDIO_OPERATIONS: ReadonlySet<string> = new Set([
 	'scene:scene-compose',
 	'scene:scene-profile-revision',
 	'host:host-measure',
-	'host:host-erase'
+	'host:host-erase',
 ]);
 
 export function isStudioOperation(adapterId: string, id: string): boolean {
@@ -95,7 +95,7 @@ export function studioAdmitsCardAction(
 	rootId: string | null,
 	adapterId: string,
 	subjectId: string,
-	actionId?: string
+	actionId?: string,
 ): boolean {
 	if (rootId === null || adapterId !== 'scene') return false;
 	if (subjectId !== rootId) return true;
@@ -124,9 +124,9 @@ export type StudioOpening =
  * Decide how a loaded project opens in Studio. Pure and total.
  *
  * - An explicit target is honored or named unavailable; it never falls back to a
- *   different object by name or array order.
+ *  different object by name or array order.
  * - With no target, exactly one eligible root enters; several ask which; none is
- *   `empty` for a freshly minted project and `no-objects` for a saved one.
+ *  `empty` for a freshly minted project and `no-objects` for a saved one.
  */
 export function resolveStudioOpening(input: {
 	readonly entities: readonly StudioEntityRead[];
@@ -143,7 +143,7 @@ export function resolveStudioOpening(input: {
 		return {
 			kind: 'unavailable',
 			requestedId: input.requestedId,
-			reason: exists ? 'unsupported' : 'missing'
+			reason: exists ? 'unsupported' : 'missing',
 		};
 	}
 	if (roots.length === 1) return { kind: 'enter', rootId: roots[0]!.id };
@@ -169,7 +169,7 @@ export function pickScopeOf(phase: StudioPhase): StudioPickScope | null {
  */
 export function newRootSince(
 	entities: readonly StudioEntityRead[],
-	baseline: ReadonlySet<string>
+	baseline: ReadonlySet<string>,
 ): StudioRoot | null {
 	const created = studioRoots(entities).filter((root) => !baseline.has(root.id));
 	return created.length === 0 ? null : created[created.length - 1]!;
@@ -184,7 +184,10 @@ export type StudioViewRecord = {
 	readonly targetPlaneHeightMeters: number;
 };
 
-type Box = { readonly min: readonly [number, number, number]; readonly max: readonly [number, number, number] };
+type Box = {
+	readonly min: readonly [number, number, number];
+	readonly max: readonly [number, number, number];
+};
 
 const finite3 = (value: readonly number[]): boolean =>
 	value.length === 3 && value.every((component) => Number.isFinite(component));
@@ -198,7 +201,7 @@ const finite3 = (value: readonly number[]): boolean =>
  */
 export function reviewReturnView(
 	record: StudioViewRecord | null,
-	bounds: Box | null
+	bounds: Box | null,
 ): { readonly valid: true } | { readonly valid: false; readonly reason: string } {
 	if (record === null) return { valid: false, reason: 'No view was saved.' };
 	if (!finite3(record.eye) || !finite3(record.target) || !Number.isFinite(record.fovYDegrees)) {
@@ -209,7 +212,7 @@ export function reviewReturnView(
 			bounds.max[0] - bounds.min[0],
 			bounds.max[1] - bounds.min[1],
 			bounds.max[2] - bounds.min[2],
-			1
+			1,
 		);
 		const margin = Math.max(10, extent * 2);
 		for (let axis = 0; axis < 3; axis += 1) {

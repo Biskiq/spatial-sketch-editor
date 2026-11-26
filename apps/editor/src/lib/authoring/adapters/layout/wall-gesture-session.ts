@@ -1,9 +1,14 @@
-import { proposeWallFirstArchitectureGeometry, type WallFirstArchitectureProposalWall, type FixedWallEndpoint, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import {
+	proposeWallFirstArchitectureGeometry,
+	type WallFirstArchitectureProposalWall,
+	type FixedWallEndpoint,
+	type LayoutDocumentWallFirst,
+} from '@portfolio/layout-core/wall';
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 import {
 	type StageAdapterContext,
-	type StagePointerIntent
+	type StagePointerIntent,
 } from '$lib/authoring/stage/stage-adapter-host';
 import { stageLayout, stageUnitRevision } from '$lib/authoring/stage/stage-adapter-host';
 import type { GestureAcquisition } from '$lib/authoring/stage/stage-adapter-host';
@@ -17,7 +22,7 @@ import {
 	planNumericFields,
 	type PlanNumericEntryState,
 	type PlanNumericField,
-	type PlanNumericHost
+	type PlanNumericHost,
 } from '$lib/authoring/layout/plan-numeric-entry';
 import type { WallFrame, WallManipulationRequest, WallNeighbourPreview } from './precision-frames';
 import { wallManipulationIntent } from './precision-intents';
@@ -26,26 +31,19 @@ import {
 	wallRequestExactLabel,
 	wallRequestLabel,
 	type WallHandle,
-	type WallPointerMode
+	type WallPointerMode,
 } from './wall-gesture';
 import { resolveJunctionPointSnap, snapWallDrag, type LayoutSnapWinner } from './snap';
 import { DRAFTING_SNAP_METERS } from '$lib/authoring/stage/stage-adapter-host';
-import {
-	type CandidatePaperGeometry,
-	candidatePreviewOf
-} from './candidate-preview';
+import { type CandidatePaperGeometry, candidatePreviewOf } from './candidate-preview';
 import {
 	clearPausedProposal,
 	clearPausedProposalsForSource,
 	pausedWallProposal,
 	publishPausedProposal,
-	type PausedWallProposal
+	type PausedWallProposal,
 } from './paused-proposal';
-import {
-	selectedWall,
-	projectWallHandles,
-	wallLength
-} from './layout-subjects';
+import { selectedWall, projectWallHandles, wallLength } from './layout-subjects';
 import {
 	attemptedConflictPoint,
 	createWallDragReader,
@@ -55,7 +53,7 @@ import {
 	previewCoordinates,
 	wallProposalPaper,
 	type LayoutManipulationPorts,
-	type NumericGestureTarget
+	type NumericGestureTarget,
 } from './manipulation-support';
 import type { LayoutSessionPorts } from './session-ports';
 import { createWallScalarSession } from './wall-scalar-session';
@@ -63,11 +61,11 @@ import { createWallScalarSession } from './wall-scalar-session';
 function wallAxisSnapDistance(
 	ctx: StageAdapterContext,
 	origin: Readonly<LayoutVec2>,
-	axis: Readonly<LayoutVec2>
+	axis: Readonly<LayoutVec2>,
 ): (from: number, to: number) => number {
 	const at = (distance: number): LayoutVec2 => [
 		origin[0] + axis[0] * distance,
-		origin[1] + axis[1] * distance
+		origin[1] + axis[1] * distance,
 	];
 	return (from, to) => datumSnapDistance(ctx, at(from), at(to));
 }
@@ -85,20 +83,20 @@ function attemptedWallNetwork(
 	document: LayoutDocumentWallFirst,
 	frame: WallFrame,
 	request: WallManipulationRequest,
-	fixed: FixedWallEndpoint
+	fixed: FixedWallEndpoint,
 ): WallFirstArchitectureProposalWall[] {
 	const network =
 		request.kind === 'move'
 			? proposeWallFirstArchitectureGeometry(document, {
 					kind: 'wall-move',
 					wallId: frame.wallId,
-					delta: request.delta
+					delta: request.delta,
 				})
 			: request.kind === 'junction'
 				? proposeWallFirstArchitectureGeometry(document, {
 						kind: 'junction-move',
 						junctionId: request.junctionId,
-						point: request.point
+						point: request.point,
 					})
 				: undefined;
 	return network !== undefined && network.length > 0
@@ -109,14 +107,14 @@ function attemptedWallNetwork(
 function attemptedWallGesture(
 	frame: WallFrame,
 	request: WallManipulationRequest,
-	fixed: FixedWallEndpoint
+	fixed: FixedWallEndpoint,
 ): WallFirstArchitectureProposalWall[] {
 	const start: LayoutVec2 = [frame.start[0], frame.start[1]];
 	const end: LayoutVec2 = [frame.end[0], frame.end[1]];
 	if (request.kind === 'junction') {
 		if (request.junctionId === frame.startJunctionId)
-			((start[0] = request.point[0]), (start[1] = request.point[1]));
-		else ((end[0] = request.point[0]), (end[1] = request.point[1]));
+			(start[0] = request.point[0]), (start[1] = request.point[1]);
+		else (end[0] = request.point[0]), (end[1] = request.point[1]);
 	} else if (request.kind === 'move') {
 		start[0] += request.delta[0];
 		start[1] += request.delta[1];
@@ -127,7 +125,7 @@ function attemptedWallGesture(
 		const sign = fixed === 'start' ? 1 : -1;
 		const moving: LayoutVec2 = [
 			fixedPoint[0] + frame.direction[0] * request.length * sign,
-			fixedPoint[1] + frame.direction[1] * request.length * sign
+			fixedPoint[1] + frame.direction[1] * request.length * sign,
 		];
 		if (fixed === 'start') end.splice(0, 2, moving[0], moving[1]);
 		else start.splice(0, 2, moving[0], moving[1]);
@@ -190,12 +188,18 @@ export function createWallGestureSession({
 	publishRefusal,
 	settleRefusal,
 	candidatePaper,
-	junctionActive
+	junctionActive,
 }: LayoutManipulationPorts &
 	Pick<LayoutSessionPorts, 'candidatePaper'> & { readonly junctionActive: () => boolean }) {
 	let gesture: WallGesture | null = null;
 	const scalar = createWallScalarSession({
-		services, document, levelId, contentRevision, publishRefusal, settleRefusal, candidatePaper
+		services,
+		document,
+		levelId,
+		contentRevision,
+		publishRefusal,
+		settleRefusal,
+		candidatePaper,
 	});
 
 	/*
@@ -210,7 +214,8 @@ export function createWallGestureSession({
 		gesture = null;
 		// Release **this gesture's own** grant. Reading the session's live lease
 		// would release another owner's after a reading change already spent ours.
-		if (current?.lease?.kind === 'granted' && current.lease.lease.active) current.lease.lease.release();
+		if (current?.lease?.kind === 'granted' && current.lease.lease.active)
+			current.lease.lease.release();
 	}
 	/**
 	 * A reading flip ends the writer but not the work: the last explicit
@@ -229,7 +234,7 @@ export function createWallGestureSession({
 			wallId: current.frame.wallId,
 			request: current.request,
 			fixed: current.fixed,
-			label: wallRequestExactLabel(current.request, current.fixed)
+			label: wallRequestExactLabel(current.request, current.fixed),
 		};
 		pausedProposal = proposal;
 		// The Card's field writer offers an explicit Resume from this store; it is
@@ -246,16 +251,28 @@ export function createWallGestureSession({
 	} | null {
 		switch (markId) {
 			case 'layout-wall-start-mark':
-				return { handle: 'start', fixed: 'end', mode: 'junction', host: 'junction', numericField: 'x' };
+				return {
+					handle: 'start',
+					fixed: 'end',
+					mode: 'junction',
+					host: 'junction',
+					numericField: 'x',
+				};
 			case 'layout-wall-end-mark':
-				return { handle: 'end', fixed: 'start', mode: 'junction', host: 'junction', numericField: 'x' };
+				return {
+					handle: 'end',
+					fixed: 'start',
+					mode: 'junction',
+					host: 'junction',
+					numericField: 'x',
+				};
 			case 'layout-wall-length':
 				return {
 					handle: 'end',
 					fixed: 'start',
 					mode: 'length',
 					host: 'wall-edit',
-					numericField: 'length'
+					numericField: 'length',
 				};
 			case 'layout-wall-move-mark':
 				return {
@@ -263,7 +280,7 @@ export function createWallGestureSession({
 					fixed: 'start',
 					mode: 'move',
 					host: 'wall-normal',
-					numericField: 'distance'
+					numericField: 'distance',
 				};
 			default:
 				return null;
@@ -288,17 +305,19 @@ export function createWallGestureSession({
 		adapterContext: StageAdapterContext,
 		selected: { wallId: string; frame: WallFrame },
 		markId: string,
-		bodyPress: boolean
+		bodyPress: boolean,
 	) {
 		const point = pointerDatumPoint(adapterContext, intent.css);
 		if (point === null) return false;
 		const acquisition = services.stage.acquireGesture({
 			owner: 'layout-precision',
 			evaluationId: intent.evaluationId,
-			policy: 'cancel-on-reading-change'
+			policy: 'cancel-on-reading-change',
 		});
 		if (acquisition.kind !== 'granted') {
-			publishRefusal(`The ${acquisition.owner} gesture owns the pointer; finish or cancel it first.`);
+			publishRefusal(
+				`The ${acquisition.owner} gesture owns the pointer; finish or cancel it first.`,
+			);
 			return false;
 		}
 		const wallSpec = bodyPress
@@ -307,7 +326,7 @@ export function createWallGestureSession({
 					fixed: 'start' as const,
 					mode: 'move' as const,
 					host: 'wall-normal' as const,
-					numericField: 'distance' as const
+					numericField: 'distance' as const,
 				}
 			: wallMarkSpec(markId);
 		if (wallSpec !== null) {
@@ -316,7 +335,7 @@ export function createWallGestureSession({
 				numericFields.find((field) => field.id === wallSpec.numericField) ?? numericFields[0]!;
 			const normal: readonly [number, number] = [
 				-selected.frame.direction[1],
-				selected.frame.direction[0]
+				selected.frame.direction[0],
 			];
 			const junctionId =
 				wallSpec.mode !== 'junction'
@@ -362,7 +381,7 @@ export function createWallGestureSession({
 				snap: null,
 				pointerPoint: [point[0], point[1]],
 				distance: 0,
-				movingPoint
+				movingPoint,
 			};
 			gesture = nextGesture;
 			services.stage.notifySurfaceChange();
@@ -391,10 +410,11 @@ export function createWallGestureSession({
 		}
 		const wallGesture = gesture!;
 		const drafting = adapterContext.drafting();
-		const grabbedEnd = wallGesture.handle === 'start' ? wallGesture.frame.start : wallGesture.frame.end;
+		const grabbedEnd =
+			wallGesture.handle === 'start' ? wallGesture.frame.start : wallGesture.frame.end;
 		const aimed: LayoutVec2 = [
 			grabbedEnd[0] + (point[0] - wallGesture.startPoint[0]),
-			grabbedEnd[1] + (point[1] - wallGesture.startPoint[1])
+			grabbedEnd[1] + (point[1] - wallGesture.startPoint[1]),
 		];
 		let moveSnapped = false;
 		wallGesture.pointerPoint = [point[0], point[1]];
@@ -410,7 +430,7 @@ export function createWallGestureSession({
 				anchor: [anchor[0], anchor[1]],
 				pixelsPerMeter: 1 / adapterContext.evaluation.targetPlaneMetersPerCssPixel,
 				distanceCss: (from, to) => datumSnapDistance(adapterContext, from, to),
-				drafting
+				drafting,
 			});
 			snappedPoint = snapped?.point ?? aimed;
 			winner = snapped;
@@ -420,12 +440,13 @@ export function createWallGestureSession({
 				frame: wallGesture.frame,
 				fixed: wallGesture.fixed,
 				startPoint: wallGesture.startPoint,
-				point: snappedPoint
+				point: snappedPoint,
 			});
 			wallGesture.movingPoint = snappedPoint;
 			// A press that has not left the endpoint's own cell names no move. It is
 			// neither a refusal nor a proposal, so release commits nothing.
-			const origin = wallGesture.handle === 'start' ? wallGesture.frame.start : wallGesture.frame.end;
+			const origin =
+				wallGesture.handle === 'start' ? wallGesture.frame.start : wallGesture.frame.end;
 			if (Math.hypot(snappedPoint[0] - origin[0], snappedPoint[1] - origin[1]) < 1e-9) {
 				wallGesture.request = null;
 				wallGesture.proposal = null;
@@ -443,7 +464,7 @@ export function createWallGestureSession({
 			const { value: distance, snapped } = snapWallDrag(
 				rawDistance,
 				drafting,
-				wallAxisSnapDistance(adapterContext, wallGesture.startPoint, wallGesture.normal)
+				wallAxisSnapDistance(adapterContext, wallGesture.startPoint, wallGesture.normal),
 			);
 			moveSnapped = snapped;
 			wallGesture.distance = distance;
@@ -460,7 +481,7 @@ export function createWallGestureSession({
 			}
 			snappedPoint = [
 				wallGesture.startPoint[0] + wallGesture.normal[0] * distance,
-				wallGesture.startPoint[1] + wallGesture.normal[1] * distance
+				wallGesture.startPoint[1] + wallGesture.normal[1] * distance,
 			];
 			wallGesture.movingPoint = snappedPoint;
 			request = pointerWallRequest({
@@ -469,7 +490,7 @@ export function createWallGestureSession({
 				frame: wallGesture.frame,
 				fixed: wallGesture.fixed,
 				startPoint: wallGesture.startPoint,
-				point: snappedPoint
+				point: snappedPoint,
 			});
 		} else {
 			request = pointerWallRequest({
@@ -478,7 +499,7 @@ export function createWallGestureSession({
 				frame: wallGesture.frame,
 				fixed: wallGesture.fixed,
 				startPoint: wallGesture.startPoint,
-				point
+				point,
 			});
 		}
 		// A pointer dragged across the fixed endpoint names no length on this
@@ -503,17 +524,18 @@ export function createWallGestureSession({
 			return true;
 		}
 		if (request.kind === 'length') {
-			const fixedPoint = wallGesture.fixed === 'start' ? wallGesture.frame.start : wallGesture.frame.end;
+			const fixedPoint =
+				wallGesture.fixed === 'start' ? wallGesture.frame.start : wallGesture.frame.end;
 			const sign = wallGesture.fixed === 'start' ? 1 : -1;
 			const direction: LayoutVec2 = [
 				wallGesture.frame.direction[0] * sign,
-				wallGesture.frame.direction[1] * sign
+				wallGesture.frame.direction[1] * sign,
 			];
 			const { value: snappedLength, snapped } = snapWallDrag(
 				request.length,
 				drafting,
 				wallAxisSnapDistance(adapterContext, fixedPoint, direction),
-				DRAFTING_SNAP_METERS
+				DRAFTING_SNAP_METERS,
 			);
 			if (snappedLength !== request.length) {
 				request = { kind: 'length', length: snappedLength };
@@ -533,10 +555,10 @@ export function createWallGestureSession({
 				winner = {
 					point: [
 						fixedPoint[0] + wallGesture.frame.direction[0] * snappedLength * sign,
-						fixedPoint[1] + wallGesture.frame.direction[1] * snappedLength * sign
+						fixedPoint[1] + wallGesture.frame.direction[1] * snappedLength * sign,
 					],
 					kind: 'grid',
-					name: 'Grid'
+					name: 'Grid',
 				};
 			}
 			wallGesture.movingPoint = winner?.point ?? point;
@@ -556,9 +578,9 @@ export function createWallGestureSession({
 							junctionId: fixedStart ? frame.endJunctionId : frame.startJunctionId,
 							point: [
 								fixedPoint[0] + frame.direction[0] * request.length * sign,
-								fixedPoint[1] + frame.direction[1] * request.length * sign
-							]
-						}
+								fixedPoint[1] + frame.direction[1] * request.length * sign,
+							],
+						},
 		);
 		if (planned.kind === 'refused') {
 			// A refused candidate is not a proposal: drop the preview so a
@@ -585,7 +607,7 @@ export function createWallGestureSession({
 				if (wallId === frame.wallId) return [];
 				const endpoint = [points[0], points.at(-1)].find(
 					(point) =>
-						point !== undefined && moved.some((at) => at?.[0] === point[0] && at?.[1] === point[1])
+						point !== undefined && moved.some((at) => at?.[0] === point[0] && at?.[1] === point[1]),
 				);
 				return endpoint === undefined ? [] : [{ wallId, point: endpoint }];
 			});
@@ -594,10 +616,10 @@ export function createWallGestureSession({
 					? {
 							point: [
 								(frame.start[0] + frame.end[0]) / 2 + request.delta[0],
-								(frame.start[1] + frame.end[1]) / 2 + request.delta[1]
+								(frame.start[1] + frame.end[1]) / 2 + request.delta[1],
 							],
 							kind: 'grid',
-							name: 'Grid'
+							name: 'Grid',
 						}
 					: winner;
 			publishRefusal(null);
@@ -612,7 +634,7 @@ export function createWallGestureSession({
 	function release(
 		intent: StagePointerIntent,
 		adapterContext: StageAdapterContext,
-		refusal: string | null
+		refusal: string | null,
 	) {
 		const current = gesture;
 		if (current === null) return false;
@@ -632,7 +654,7 @@ export function createWallGestureSession({
 				contentRevision: adapterContext.snapshot.domain.unitRevisions.layout,
 				point: current.refusalPoint ?? refusedPoint,
 				text: refusedText,
-				...(attemptGeometry === null ? {} : { geometry: attemptGeometry })
+				...(attemptGeometry === null ? {} : { geometry: attemptGeometry }),
 			});
 		}
 		endGesture();
@@ -646,7 +668,10 @@ export function createWallGestureSession({
 		if (wall !== null) {
 			const length = wallLength(wall.frame);
 			const angle =
-				((Math.atan2(wall.frame.end[1] - wall.frame.start[1], wall.frame.end[0] - wall.frame.start[0]) *
+				((Math.atan2(
+					wall.frame.end[1] - wall.frame.start[1],
+					wall.frame.end[0] - wall.frame.start[0],
+				) *
 					180) /
 					Math.PI +
 					360) %
@@ -662,7 +687,7 @@ export function createWallGestureSession({
 							? { x: wall.movingPoint[0], z: wall.movingPoint[1] }
 							: wall.numericField.id === 'angle'
 								? { angle }
-								: { length }
+								: { length },
 			};
 		}
 		return null;
@@ -690,7 +715,7 @@ export function createWallGestureSession({
 				request = {
 					kind: 'junction',
 					junctionId: wall.junctionId,
-					point: [values.x ?? wall.movingPoint[0], values.z ?? wall.movingPoint[1]]
+					point: [values.x ?? wall.movingPoint[0], values.z ?? wall.movingPoint[1]],
 				};
 			} else if (wall.numericField.id === 'length' && values.length !== undefined) {
 				request = { kind: 'length', length: values.length };
@@ -730,8 +755,10 @@ export function createWallGestureSession({
 						activeWall.attempt === null
 							? { polygons: [], segments: [] }
 							: wallProposalPaper(activeWall.attempt, y),
-					labels: [{ world: world(activeWall.refusalPoint ?? activeWall.pointerPoint), text: refusal }]
-				})
+					labels: [
+						{ world: world(activeWall.refusalPoint ?? activeWall.pointerPoint), text: refusal },
+					],
+				}),
 			];
 		}
 		return null;
@@ -749,21 +776,21 @@ export function createWallGestureSession({
 					labels: [
 						{
 							world: world(activeWall.movingPoint),
-							text: `${planNumericEntryField(activeWall.numeric).label} ${activeWall.numeric.text}`
-						}
-					]
-				})
+							text: `${planNumericEntryField(activeWall.numeric).label} ${activeWall.numeric.text}`,
+						},
+					],
+				}),
 			];
 		}
 		if (activeWall?.proposal != null && activeWall.request !== null) {
 			const wallId = activeWall.frame.wallId;
 			const subject = wallProposalPaper(
 				activeWall.proposal.filter((wall) => wall.wallId === wallId),
-				y
+				y,
 			);
 			const affected = wallProposalPaper(
 				activeWall.proposal.filter((wall) => wall.wallId !== wallId),
-				y
+				y,
 			);
 			const text =
 				activeWall.numeric !== null
@@ -775,7 +802,7 @@ export function createWallGestureSession({
 					role: 'subject',
 					geometry: subject,
 					labels: [{ world: world(activeWall.movingPoint), text }],
-					snap: snapOf(activeWall.snap)
+					snap: snapOf(activeWall.snap),
 				}),
 				...(affected.segments.length === 0
 					? []
@@ -783,9 +810,9 @@ export function createWallGestureSession({
 							candidatePreviewOf({
 								id: 'layout-candidate-neighbours',
 								role: 'affected',
-								geometry: affected
-							})
-						])
+								geometry: affected,
+							}),
+						]),
 			];
 		}
 		if (activeWall !== null) return [];
@@ -809,7 +836,7 @@ export function createWallGestureSession({
 			const css = adapterContext.project([
 				previewEnd[0],
 				adapterContext.snapshot.domain.datumMeters,
-				previewEnd[1]
+				previewEnd[1],
 			]);
 			return [
 				...(css === null
@@ -819,9 +846,9 @@ export function createWallGestureSession({
 								id: 'layout-wall-preview',
 								css,
 								label: wallRequestLabel(activeGesture.request, activeGesture.fixed, {
-									baseline: activeGesture.frame
-								})
-							}
+									baseline: activeGesture.frame,
+								}),
+							},
 						]),
 				// Neighbours the canonical candidate reshaped: the junction this edit
 				// moved is shown at each affected Wall's candidate endpoint.
@@ -829,7 +856,7 @@ export function createWallGestureSession({
 					const marker = adapterContext.project([
 						neighbour.point[0],
 						adapterContext.snapshot.domain.datumMeters,
-						neighbour.point[1]
+						neighbour.point[1],
 					]);
 					return marker === null
 						? []
@@ -837,10 +864,10 @@ export function createWallGestureSession({
 								{
 									id: `layout-wall-neighbour-${neighbour.wallId}`,
 									css: marker,
-									label: `Neighbour ${neighbour.wallId} reshaped by this edit`
-								}
+									label: `Neighbour ${neighbour.wallId} reshaped by this edit`,
+								},
 							];
-				})
+				}),
 			];
 		}
 		// The adapter-owned store is the one source: Discard (or any other
@@ -857,10 +884,12 @@ export function createWallGestureSession({
 						{
 							id: 'layout-wall-paused',
 							css: points.middle,
-							label: `Paused after a reading change — ${paused.label}. Resume or Discard in the selection Card, or Escape to cancel.`
-						}
+							label: `Paused after a reading change — ${paused.label}. Resume or Discard in the selection Card, or Escape to cancel.`,
+						},
 					]),
-			...(refusal === null ? [] : [{ id: 'layout-wall-refusal', css: points.middle, label: refusal }])
+			...(refusal === null
+				? []
+				: [{ id: 'layout-wall-refusal', css: points.middle, label: refusal }]),
 		];
 	}
 
@@ -875,7 +904,7 @@ export function createWallGestureSession({
 		fixed: FixedWallEndpoint,
 		wallId: string,
 		point: LayoutVec2 | null = null,
-		attemptGeometry: CandidatePaperGeometry | null = null
+		attemptGeometry: CandidatePaperGeometry | null = null,
 	): Promise<void> {
 		// Release commits exactly once; that commit is the command
 		// whose completion the performance flow measures.
@@ -890,24 +919,26 @@ export function createWallGestureSession({
 				projectId: snapshot.acceptedRevision.projectId,
 				revisionId: services.authoring.acceptedRevision().revisionId,
 				contentRevision: stageUnitRevision(snapshot, 'layout'),
-				levelId: snapshot.domain.layoutLevelId
-			})
+				levelId: snapshot.domain.layoutLevelId,
+			}),
 		);
-		const refusal = outcome.kind === 'refused' ? wallRefusalWords(outcome.code, outcome.message) : null;
+		const refusal =
+			outcome.kind === 'refused' ? wallRefusalWords(outcome.code, outcome.message) : null;
 		publishRefusal(refusal);
 		if (
 			point !== null &&
 			refusal !== null &&
 			gesture === null &&
 			!junctionActive() &&
-			stageUnitRevision(services.stage.snapshot(), 'layout') === stageUnitRevision(snapshot, 'layout')
+			stageUnitRevision(services.stage.snapshot(), 'layout') ===
+				stageUnitRevision(snapshot, 'layout')
 		) {
 			settleRefusal({
 				subject: request.kind === 'junction' ? { kind: 'junction' } : { kind: 'wall', wallId },
 				contentRevision: stageUnitRevision(snapshot, 'layout'),
 				point,
 				text: refusal,
-				...(attemptGeometry === null ? {} : { geometry: attemptGeometry })
+				...(attemptGeometry === null ? {} : { geometry: attemptGeometry }),
 			});
 		}
 		services.stage.notifySurfaceChange();
@@ -953,7 +984,7 @@ export function createWallGestureSession({
 						request: gesture.request,
 						fixed: gesture.fixed,
 						frame: gesture.frame,
-						incidentWalls: gesture.neighbours.length + 1
-					}
+						incidentWalls: gesture.neighbours.length + 1,
+					},
 	};
 }

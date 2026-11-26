@@ -14,7 +14,7 @@
 import {
 	distanceToChord,
 	type LayoutManipulationPorts,
-	type SettledLayoutRefusal
+	type SettledLayoutRefusal,
 } from './manipulation-support';
 import { datumSnapDistance, isPointerDrag, previewCoordinates } from './manipulation-support';
 import { resolvePlanarDragSnap, type LayoutSnapWinner } from './snap';
@@ -27,7 +27,7 @@ import {
 	LAYOUT_REGION_FOOTPRINT_KIND,
 	LAYOUT_REGION_MOVE_KIND,
 	LAYOUT_REGION_ROTATE_KIND,
-	regionEditIntent
+	regionEditIntent,
 } from './region-planners';
 
 import {
@@ -36,7 +36,7 @@ import {
 	type StageCandidatePreview,
 	type StageHandleDescriptor,
 	type StageKeyboardIntent,
-	type StagePointerIntent
+	type StagePointerIntent,
 } from '$lib/authoring/stage/stage-adapter-host';
 import { stageUnitRevision } from '$lib/authoring/stage/stage-adapter-host';
 import type { GestureAcquisition } from '$lib/authoring/stage/stage-adapter-host';
@@ -164,7 +164,7 @@ function edgeMidpoint(points: readonly LayoutVec2[], index: number): LayoutVec2 
 }
 
 export function createRegionGestureSession(
-	ports: LayoutManipulationPorts & { readonly edgePick: RegionEdgePick }
+	ports: LayoutManipulationPorts & { readonly edgePick: RegionEdgePick },
 ) {
 	const { services, document, levelId, contentRevision, edgePick } = ports;
 	let gesture: RegionGesture | null = null;
@@ -178,12 +178,12 @@ export function createRegionGestureSession(
 
 	function leaseFor(
 		owner: string,
-		intent: StagePointerIntent
+		intent: StagePointerIntent,
 	): Extract<GestureAcquisition, { kind: 'granted' }> | null {
 		const lease = services.stage.acquireGesture({
 			owner,
 			evaluationId: intent.evaluationId,
-			policy: 'cancel-on-reading-change'
+			policy: 'cancel-on-reading-change',
 		});
 		return lease.kind === 'granted' ? lease : null;
 	}
@@ -218,12 +218,13 @@ export function createRegionGestureSession(
 				fact: 'corner',
 				verb: 'Move corner',
 				planner: LAYOUT_REGION_FOOTPRINT_KIND,
-				value: cornerActive && live !== null
-					? live.removal
-						? 'Release to remove corner'
-						: `X ${point[0].toFixed(2)} · Z ${point[1].toFixed(2)} m`
-					: 'Drag onto the edge to remove',
-				refusal: cornerActive ? live.refusal : null
+				value:
+					cornerActive && live !== null
+						? live.removal
+							? 'Release to remove corner'
+							: `X ${point[0].toFixed(2)} · Z ${point[1].toFixed(2)} m`
+						: 'Drag onto the edge to remove',
+				refusal: cornerActive ? live.refusal : null,
 			});
 		});
 		const centroid = centroidOf(points);
@@ -247,11 +248,11 @@ export function createRegionGestureSession(
 				live?.mode === 'move'
 					? `Δx ${live.delta[0].toFixed(2)} · Δz ${live.delta[1].toFixed(2)} m`
 					: `X ${centroid[0].toFixed(2)} · Z ${centroid[1].toFixed(2)} m`,
-			refusal: live?.mode === 'move' ? live.refusal : null
+			refusal: live?.mode === 'move' ? live.refusal : null,
 		});
 		const radius = Math.max(
 			0.25,
-			...points.map(([x, z]) => Math.hypot(x - centroid[0], z - centroid[1]))
+			...points.map(([x, z]) => Math.hypot(x - centroid[0], z - centroid[1])),
 		);
 		marks.push({
 			id: TURN_MARK,
@@ -264,11 +265,8 @@ export function createRegionGestureSession(
 			fact: 'rotation',
 			verb: 'Turn',
 			planner: LAYOUT_REGION_ROTATE_KIND,
-			value:
-				live?.mode === 'rotate'
-					? `${((live.angle * 180) / Math.PI).toFixed(1)}°`
-					: 'Turn',
-			refusal: live?.mode === 'rotate' ? live.refusal : null
+			value: live?.mode === 'rotate' ? `${((live.angle * 180) / Math.PI).toFixed(1)}°` : 'Turn',
+			refusal: live?.mode === 'rotate' ? live.refusal : null,
 		});
 		// The height ray is the elevation writer. A floor region may sit at the
 		// datum; the grip keeps a visible length while its value stays the exact
@@ -288,7 +286,7 @@ export function createRegionGestureSession(
 				live?.mode === 'height'
 					? `${live.elevation.toFixed(3)} m`
 					: `${region.elevation.toFixed(3)} m`,
-			refusal: live?.mode === 'height' ? live.refusal : null
+			refusal: live?.mode === 'height' ? live.refusal : null,
 		});
 		return marks;
 	}
@@ -354,7 +352,7 @@ export function createRegionGestureSession(
 	function beginMove(
 		intent: StagePointerIntent,
 		ctx: StageAdapterContext,
-		regionId: string
+		regionId: string,
 	): boolean {
 		const selected = selectedRegion(document, ctx);
 		if (selected === null || selected.region.id !== regionId) return false;
@@ -378,7 +376,7 @@ export function createRegionGestureSession(
 			baseline: pointsOf(selected.region.footprint.points),
 			delta: [0, 0],
 			snap: null,
-			refusal: null
+			refusal: null,
 		};
 		services.stage.notifySurfaceChange();
 		return true;
@@ -388,7 +386,7 @@ export function createRegionGestureSession(
 		intent: StagePointerIntent,
 		ctx: StageAdapterContext,
 		regionId: string,
-		index: number
+		index: number,
 	): boolean {
 		const selected = selectedRegion(document, ctx);
 		// A Region's corner is drawn at the Region's world elevation, not on the
@@ -399,7 +397,7 @@ export function createRegionGestureSession(
 				: pointerWorkingPlanePoint(
 						ctx,
 						intent.css,
-						ctx.snapshot.domain.datumMeters + selected.region.elevation
+						ctx.snapshot.domain.datumMeters + selected.region.elevation,
 					);
 		if (
 			selected === null ||
@@ -428,7 +426,7 @@ export function createRegionGestureSession(
 			removal: false,
 			leftRemovalZone: false,
 			snap: null,
-			refusal: null
+			refusal: null,
 		};
 		services.stage.notifySurfaceChange();
 		return true;
@@ -450,7 +448,7 @@ export function createRegionGestureSession(
 				anchor: [
 					midpoint[0],
 					ctx.snapshot.domain.datumMeters + selected.region.elevation,
-					midpoint[1]
+					midpoint[1],
 				],
 				axis: [1, 0, 0],
 				draw: { pointRadius: 4.2, hollow: true },
@@ -458,8 +456,8 @@ export function createRegionGestureSession(
 				fact: 'edge',
 				verb: 'Pick edge',
 				planner: LAYOUT_REGION_FOOTPRINT_KIND,
-				value: 'Press to pick this edge'
-			}
+				value: 'Press to pick this edge',
+			},
 		];
 	}
 
@@ -467,7 +465,7 @@ export function createRegionGestureSession(
 	function updateEdgeHover(
 		intent: StagePointerIntent,
 		ctx: StageAdapterContext,
-		blocked: boolean
+		blocked: boolean,
 	): boolean {
 		if (blocked || intent.phase === 'cancel') {
 			edgeHover = null;
@@ -483,10 +481,10 @@ export function createRegionGestureSession(
 			const projected = ctx.project([point[0], y, point[1]]);
 			return projected === null
 				? null
-				: [
+				: ([
 						projected[0] - ctx.evaluation.rect.left,
-						projected[1] - ctx.evaluation.rect.top
-					] as const;
+						projected[1] - ctx.evaluation.rect.top,
+					] as const);
 		});
 		let best: { index: number; distance: number } | null = null;
 		for (let index = 0; index < points.length; index++) {
@@ -507,7 +505,7 @@ export function createRegionGestureSession(
 	function distanceToCssSegment(
 		point: readonly [number, number],
 		start: readonly [number, number],
-		end: readonly [number, number]
+		end: readonly [number, number],
 	): number {
 		const dx = end[0] - start[0];
 		const dy = end[1] - start[1];
@@ -515,7 +513,7 @@ export function createRegionGestureSession(
 		if (!(squared > 0)) return Math.hypot(point[0] - start[0], point[1] - start[1]);
 		const t = Math.min(
 			1,
-			Math.max(0, ((point[0] - start[0]) * dx + (point[1] - start[1]) * dy) / squared)
+			Math.max(0, ((point[0] - start[0]) * dx + (point[1] - start[1]) * dy) / squared),
 		);
 		return Math.hypot(point[0] - (start[0] + dx * t), point[1] - (start[1] + dy * t));
 	}
@@ -523,7 +521,7 @@ export function createRegionGestureSession(
 	function beginRotate(
 		intent: StagePointerIntent,
 		ctx: StageAdapterContext,
-		regionId: string
+		regionId: string,
 	): boolean {
 		const selected = selectedRegion(document, ctx);
 		if (selected === null || selected.region.id !== regionId) return false;
@@ -546,7 +544,7 @@ export function createRegionGestureSession(
 			elevation,
 			pressAngle: Math.atan2(point[1] - pivot[1], point[0] - pivot[0]),
 			angle: 0,
-			refusal: null
+			refusal: null,
 		};
 		services.stage.notifySurfaceChange();
 		return true;
@@ -555,7 +553,7 @@ export function createRegionGestureSession(
 	function beginHeight(
 		intent: StagePointerIntent,
 		ctx: StageAdapterContext,
-		regionId: string
+		regionId: string,
 	): boolean {
 		const selected = selectedRegion(document, ctx);
 		if (selected === null || selected.region.id !== regionId) return false;
@@ -566,7 +564,7 @@ export function createRegionGestureSession(
 			origin: [centroid[0], ctx.snapshot.domain.datumMeters, centroid[1]],
 			direction: [0, 1, 0],
 			rayOrigin: ray.origin,
-			rayDirection: ray.direction
+			rayDirection: ray.direction,
 		});
 		if (travel === null) return false;
 		const lease = leaseFor('layout-region-height', intent);
@@ -583,7 +581,7 @@ export function createRegionGestureSession(
 			startElevation: selected.region.elevation,
 			startTravel: travel,
 			elevation: selected.region.elevation,
-			refusal: null
+			refusal: null,
 		};
 		services.stage.notifySurfaceChange();
 		return true;
@@ -592,7 +590,7 @@ export function createRegionGestureSession(
 	function moveBody(
 		current: MoveGesture,
 		ctx: StageAdapterContext,
-		intent: StagePointerIntent
+		intent: StagePointerIntent,
 	): void {
 		if (!isPointerDrag(current.pressCss, intent.css)) {
 			current.delta = [0, 0];
@@ -602,11 +600,11 @@ export function createRegionGestureSession(
 		const point = pointerWorkingPlanePoint(ctx, intent.css, current.elevation);
 		if (point === null) return;
 		const snapped = resolvePlanarDragSnap(current.pressPoint, point, ctx.drafting(), (from, to) =>
-			datumSnapDistance(ctx, from, to)
+			datumSnapDistance(ctx, from, to),
 		);
 		current.delta = [
 			Number((snapped.point[0] - current.pressPoint[0]).toFixed(9)),
-			Number((snapped.point[1] - current.pressPoint[1]).toFixed(9))
+			Number((snapped.point[1] - current.pressPoint[1]).toFixed(9)),
 		];
 		current.snap = snapped.winner;
 	}
@@ -614,18 +612,18 @@ export function createRegionGestureSession(
 	function moveCorner(
 		current: CornerGesture,
 		ctx: StageAdapterContext,
-		intent: StagePointerIntent
+		intent: StagePointerIntent,
 	): void {
 		const region = document.regions.find((candidate) => candidate.id === current.regionId);
 		if (region === undefined) return;
 		const point = pointerWorkingPlanePoint(
 			ctx,
 			intent.css,
-			ctx.snapshot.domain.datumMeters + region.elevation
+			ctx.snapshot.domain.datumMeters + region.elevation,
 		);
 		if (point === null) return;
 		const snapped = resolvePlanarDragSnap(current.pressPoint, point, ctx.drafting(), (from, to) =>
-			datumSnapDistance(ctx, from, to)
+			datumSnapDistance(ctx, from, to),
 		);
 		current.snap = snapped.winner;
 		const points = [...current.baseline];
@@ -633,9 +631,8 @@ export function createRegionGestureSession(
 		current.points = points;
 		// A corner dragged almost onto its neighbours' chord is removed, exactly as
 		// a bend point is. The hysteresis keeps a jittering pointer from toggling it.
-		const previous = current.baseline[
-			(current.index - 1 + current.baseline.length) % current.baseline.length
-		]!;
+		const previous =
+			current.baseline[(current.index - 1 + current.baseline.length) % current.baseline.length]!;
 		const next = current.baseline[(current.index + 1) % current.baseline.length]!;
 		// Removal reads the **pointer**, not the snapped corner: the bend rule does
 		// the same, so a 0.5 m snap cannot hold the pointer outside the 0.12 m band
@@ -643,7 +640,7 @@ export function createRegionGestureSession(
 		const distance = distanceToChord(
 			[point[0], point[1]],
 			[previous[0], previous[1]],
-			[next[0], next[1]]
+			[next[0], next[1]],
 		);
 		if (distance > REMOVE_LEAVE_METERS) current.leftRemovalZone = true;
 		current.removal =
@@ -653,7 +650,7 @@ export function createRegionGestureSession(
 	function rotateBody(
 		current: RotateGesture,
 		ctx: StageAdapterContext,
-		intent: StagePointerIntent
+		intent: StagePointerIntent,
 	): void {
 		const point = pointerWorkingPlanePoint(ctx, intent.css, current.elevation);
 		if (point === null) return;
@@ -664,7 +661,7 @@ export function createRegionGestureSession(
 	function moveHeight(
 		current: HeightGesture,
 		ctx: StageAdapterContext,
-		intent: StagePointerIntent
+		intent: StagePointerIntent,
 	): void {
 		const ray = pointerViewportRay(ctx, intent.css);
 		if (ray === null) return;
@@ -672,7 +669,7 @@ export function createRegionGestureSession(
 			origin: [current.anchor[0], ctx.snapshot.domain.datumMeters, current.anchor[1]],
 			direction: [0, 1, 0],
 			rayOrigin: ray.origin,
-			rayDirection: ray.direction
+			rayDirection: ray.direction,
 		});
 		if (travel === null) return;
 		const elevation = Number((current.startElevation + travel - current.startTravel).toFixed(9));
@@ -684,10 +681,15 @@ export function createRegionGestureSession(
 		if (current.mode === 'move') {
 			if (current.delta[0] === 0 && current.delta[1] === 0) return;
 			if (!isPointerDrag(current.pressCss, intent.css)) return;
-			await acceptEdit(LAYOUT_REGION_MOVE_KIND, current.regionId, {
-				deltaX: current.delta[0],
-				deltaZ: current.delta[1]
-			}, current.revision);
+			await acceptEdit(
+				LAYOUT_REGION_MOVE_KIND,
+				current.regionId,
+				{
+					deltaX: current.delta[0],
+					deltaZ: current.delta[1],
+				},
+				current.revision,
+			);
 			return;
 		}
 		if (current.mode === 'corner') {
@@ -700,15 +702,25 @@ export function createRegionGestureSession(
 		}
 		if (current.mode === 'rotate') {
 			if (!isPointerDrag(current.pressCss, intent.css) || current.angle === 0) return;
-			await acceptEdit(LAYOUT_REGION_ROTATE_KIND, current.regionId, {
-				angleRadians: current.angle
-			}, current.revision);
+			await acceptEdit(
+				LAYOUT_REGION_ROTATE_KIND,
+				current.regionId,
+				{
+					angleRadians: current.angle,
+				},
+				current.revision,
+			);
 			return;
 		}
 		if (presenceDrift(current)) {
-			await acceptEdit(LAYOUT_REGION_ELEVATION_KIND, current.regionId, {
-				elevation: current.elevation
-			}, current.revision);
+			await acceptEdit(
+				LAYOUT_REGION_ELEVATION_KIND,
+				current.regionId,
+				{
+					elevation: current.elevation,
+				},
+				current.revision,
+			);
 		}
 	}
 
@@ -720,18 +732,23 @@ export function createRegionGestureSession(
 	async function acceptFootprint(
 		regionId: string,
 		points: readonly LayoutVec2[],
-		revision = services.authoring.acceptedRevision().revisionId
+		revision = services.authoring.acceptedRevision().revisionId,
 	): Promise<void> {
-		await acceptEdit(LAYOUT_REGION_FOOTPRINT_KIND, regionId, {
-			points: points.map(([x, z]) => [x, z])
-		}, revision);
+		await acceptEdit(
+			LAYOUT_REGION_FOOTPRINT_KIND,
+			regionId,
+			{
+				points: points.map(([x, z]) => [x, z]),
+			},
+			revision,
+		);
 	}
 
 	async function acceptEdit(
 		kind: string,
 		regionId: string,
 		payload: ReturnType<typeof regionEditIntent>['payload'],
-		revision: string
+		revision: string,
 	): Promise<void> {
 		const snapshot = services.stage.snapshot();
 		if (stageUnitRevision(snapshot, 'layout') !== contentRevision) return;
@@ -744,8 +761,8 @@ export function createRegionGestureSession(
 				projectId: snapshot.acceptedRevision.projectId,
 				revisionId: revision,
 				contentRevision,
-				levelId
-			})
+				levelId,
+			}),
 		);
 		if (outcome.kind === 'refused') {
 			ports.publishRefusal(outcome.message);
@@ -765,7 +782,7 @@ export function createRegionGestureSession(
 			subject: { kind: 'region', regionId },
 			contentRevision,
 			point: centroid,
-			text
+			text,
 		};
 		ports.settleRefusal(refusal);
 	}
@@ -803,7 +820,7 @@ export function createRegionGestureSession(
 			snap = current.snap;
 		} else if (current.mode === 'rotate') {
 			points = selected.footprint.points.map((point) =>
-				rotate(point, current.pivot, current.angle)
+				rotate(point, current.pivot, current.angle),
 			);
 			label = `${((current.angle * 180) / Math.PI).toFixed(1)}°`;
 		} else {
@@ -817,20 +834,24 @@ export function createRegionGestureSession(
 				role: 'subject',
 				geometry: {
 					polygons: [points.map((point) => world(point, elevation))],
-					segments: []
+					segments: [],
 				},
 				labels: [{ world: [centroid[0], elevation, centroid[1]], text: label }],
-				...(snap === null ? {} : { snap: { world: world(snap.point), name: snap.name } })
-			})
+				...(snap === null ? {} : { snap: { world: world(snap.point), name: snap.name } }),
+			}),
 		];
 	}
 
-		return {
+	return {
 		descriptors,
 		edgeHandles,
 		updateEdgeHover,
 		pointer,
-		beginBody, key, previews, endGesture };
+		beginBody,
+		key,
+		previews,
+		endGesture,
+	};
 }
 
 export type RegionGestureSession = ReturnType<typeof createRegionGestureSession>;

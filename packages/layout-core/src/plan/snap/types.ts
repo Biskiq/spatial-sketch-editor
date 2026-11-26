@@ -5,10 +5,8 @@ import { geometryId } from '../../geometry/types';
 /** Centralized default Plan grid step in meters. */
 export const LAYOUT_PLAN_GRID_STEP = 0.25;
 
-
 /** Centralized pointer acquisition radius in CSS pixels. */
 export const LAYOUT_PLAN_SNAP_RADIUS_CSS_PX = 8;
-
 
 /** Semantic rank per candidate family — lower wins. */
 export type SnapFeatureKind =
@@ -23,7 +21,6 @@ export type SnapFeatureKind =
 	| 'orthogonal-guide'
 	| 'extension-guide';
 
-
 export const SEMANTIC_RANK: Record<SnapFeatureKind, number> = {
 	junction: 0,
 	'wall-intersection': 1,
@@ -34,12 +31,10 @@ export const SEMANTIC_RANK: Record<SnapFeatureKind, number> = {
 	'object-bounds-center': 6,
 	'orthogonal-guide': 7,
 	'extension-guide': 8,
-	grid: 9
+	grid: 9,
 };
 
-
 export type SnapOwnerKind = 'object' | 'wall' | 'opening';
-
 
 /**
  * Typed owner of a snap candidate, used for moving-target exclusion.
@@ -54,7 +49,6 @@ export type SnapOwner = {
 	id: string;
 };
 
-
 /**
  * Collision-safe serialized owner identity (length-prefixed tuple). All
  * exclusion sets and candidate `ownerId`s use this encoding — plain
@@ -63,7 +57,6 @@ export type SnapOwner = {
 export function snapOwnerKey(owner: SnapOwner): string {
 	return geometryId([owner.kind, owner.id]);
 }
-
 
 /**
  * Resolve the owner key of one wall segment from the compiled geometry.
@@ -75,7 +68,7 @@ export function snapOwnerKey(owner: SnapOwner): string {
 export function wallOwnerKey(
 	geometry: CompiledLayoutGeometry,
 	roomId: string,
-	segmentId: string
+	segmentId: string,
 ): string {
 	for (const span of geometry.queries.spans) {
 		if (span.kind !== 'wall' || span.segmentId !== segmentId) continue;
@@ -85,7 +78,6 @@ export function wallOwnerKey(
 	}
 	return snapOwnerKey({ kind: 'wall', id: segmentId });
 }
-
 
 /** Identity of a resolved snap candidate — stable across frames. */
 export type SnapCandidate = {
@@ -114,7 +106,6 @@ export type SnapCandidate = {
 	distance: number;
 };
 
-
 export type SnapInputContext = {
 	/**
 	 * Exclude candidates owned by these serialized owner keys
@@ -126,7 +117,6 @@ export type SnapInputContext = {
 	/** Only candidates from these families (tool/context validity filter). */
 	allowedKinds?: readonly SnapFeatureKind[];
 };
-
 
 export type SnapQueryContext = {
 	/** Plan scale in pixels per world unit (CSS px per meter). */
@@ -160,7 +150,6 @@ export type SnapQueryContext = {
 	anchor?: LayoutVec2;
 };
 
-
 export type SnapResolution =
 	| {
 			kind: 'snap';
@@ -169,7 +158,6 @@ export type SnapResolution =
 			guides: SnapGuide[];
 	  }
 	| { kind: 'none' };
-
 
 /**
  * One transient guide line. Session state only — never written to the

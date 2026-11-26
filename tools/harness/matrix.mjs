@@ -14,6 +14,12 @@
  */
 import { SUITES } from './suites.mjs';
 
+const LEAN = [
+	{ job: 'fast 1/2', slug: 'test-fast-1', suites: ['npm run test:fast'], shard: '1/2' },
+	{ job: 'fast 2/2', slug: 'test-fast-2', suites: ['npm run test:fast'], shard: '2/2' },
+	{ job: 'arch', slug: 'test-arch', suites: ['npm run test:arch'] },
+];
+
 /** @type {{job: string, slug: string, suites: string[]}[]} */
 const include = [];
 const byJob = new Map();
@@ -30,4 +36,5 @@ for (const suite of SUITES) {
 	entry.suites.push(suite.name);
 }
 
-console.log(JSON.stringify({ include }));
+const lean = process.argv.includes('--lean');
+console.log(JSON.stringify({ include: lean ? LEAN : include }));

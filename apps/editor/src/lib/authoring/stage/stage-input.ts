@@ -26,7 +26,7 @@ export const STAGE_DOCK_SHORTCUTS: Readonly<Partial<Record<StageDockSlot, string
 	paint: 'B',
 	measure: 'M',
 	erase: 'E',
-	library: 'L'
+	library: 'L',
 };
 
 /** What one key asks the Stage to do. */
@@ -67,7 +67,10 @@ export type StageKeyAction =
  * `2` mean *no Stage command*, so they reach the live gesture's typed entry;
  * `3` still flips the reading during a press.
  */
-export function stageKeyAction(key: string, options: { readonly pressing?: boolean } = {}): StageKeyAction {
+export function stageKeyAction(
+	key: string,
+	options: { readonly pressing?: boolean } = {},
+): StageKeyAction {
 	const pressing = options.pressing === true;
 	switch (key) {
 		case '3':
@@ -156,7 +159,7 @@ export function stageKeyFromControl(target: unknown): boolean {
 		return (
 			(closest as (this: unknown, selector: string) => unknown).call(
 				target,
-				'button, a[href], summary, [role="button"], [role="menuitem"]'
+				'button, a[href], summary, [role="button"], [role="menuitem"]',
 			) != null
 		);
 	} catch {
@@ -199,7 +202,7 @@ export const STAGE_CLICK_TOLERANCE_CSS_PX = 4;
  */
 export function isStageDrag(
 	origin: { readonly x: number; readonly y: number },
-	point: { readonly x: number; readonly y: number }
+	point: { readonly x: number; readonly y: number },
 ): boolean {
 	return Math.hypot(point.x - origin.x, point.y - origin.y) > STAGE_CLICK_TOLERANCE_CSS_PX;
 }
@@ -209,7 +212,7 @@ export function isStageDrag(
  *
  * It is conditioned on the Slice **tool** being armed, never on a reading existing: a
  * cut is a reading, and the creator returns to Select and keeps editing everything
- * below it. Gating this on `sliceReading.isActive()` blocked every Stage selection and
+ * below it. Gating this on `sliceReading.isActive` blocked every Stage selection and
  * drag for as long as the cut was on.
  */
 export const SLICE_PRESS_REFUSAL = 'Drag the Height Sheet to move the cut.';
@@ -230,11 +233,11 @@ export type StagePressOwnership = 'owned' | 'refused';
  * the pointer-up handler silently defeats this whole rule: every drag would select
  * whatever sits under the release point.
  *
- * The three endings are therefore distinct. `end()` is a normal release: the gesture
- * is over, a click may still arrive, and that click is judged by distance. `abort()` is
+ * The three endings are therefore distinct. `end` is a normal release: the gesture
+ * is over, a click may still arrive, and that click is judged by distance. `abort` is
  * an interruption (pointer cancel, capture lost while the pointer is down, Escape, a
  * policy cancel): the gesture is over and the click that may still be dispatched must
- * not select. `decide()` consumes the press, so one press can authorize at most one
+ * not select. `decide` consumes the press, so one press can authorize at most one
  * selection.
  *
  * Ownership matters as much as ordering: every transition names the pointer it belongs
@@ -245,7 +248,7 @@ export type StagePressTracker = {
 	/** A press began at this point for this pointer. */
 	readonly begin: (
 		point: { readonly x: number; readonly y: number },
-		pointerId: number
+		pointerId: number,
 	) => StagePressOwnership;
 	/** This pointer's press was refused (the lease belongs to someone else). */
 	readonly refuse: (pointerId: number) => void;
@@ -265,7 +268,7 @@ export type StagePressTracker = {
 	/** Whether the click at this point may select. Always consumes the decision. */
 	readonly decide: (
 		point: { readonly x: number; readonly y: number },
-		pointerId?: number | null
+		pointerId?: number | null,
 	) => boolean;
 	/** Whether this pointer owns the live press (and so may move, end or select). */
 	readonly ownsPointer: (pointerId: number) => boolean;
@@ -342,6 +345,6 @@ export function createStagePressTracker(): StagePressTracker {
 			// Movement is the one transition a refused pointer still generates: its samples
 			// sit at its own position, not the owner's, so they must not pan or orbit.
 			return owner !== null && owner === pointerId;
-		}
+		},
 	};
 }

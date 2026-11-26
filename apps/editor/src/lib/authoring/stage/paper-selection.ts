@@ -8,7 +8,7 @@
  *
  * - **which source** the primary selection replaces (`paperHiddenSource`); and
  * - **where that source's ink lives** in a line batch (`paperSourceRuns`), as
- *   contiguous instance runs the scene can omit without rebuilding.
+ *  contiguous instance runs the scene can omit without rebuilding.
  *
  * It evaluates no Plan, projects nothing, batches nothing and allocates no
  * renderer resource. Plan assembly, GPU batches, fill geometry and outline union
@@ -36,10 +36,8 @@ export type PaperSourceRun = {
  * A Scene selection is never a Layout source, so it returns null.
  */
 export function paperHiddenSource(selection: StageSelectionEntry | null): string | null {
-	if (
-		selection?.reference.domain !== 'layout' ||
-		selection.reference.subject.kind !== 'opening'
-	) return null;
+	if (selection?.reference.domain !== 'layout' || selection.reference.subject.kind !== 'opening')
+		return null;
 	return selection.reference.subject.id;
 }
 
@@ -60,7 +58,11 @@ export function paperSourceRuns(lines: readonly PaperLineDraw[]): readonly Paper
 		if (count === 0) continue;
 		const last = runs[runs.length - 1];
 		if (last !== undefined && last.sourceId === line.sourceId) {
-			runs[runs.length - 1] = { sourceId: last.sourceId, start: last.start, count: last.count + count };
+			runs[runs.length - 1] = {
+				sourceId: last.sourceId,
+				start: last.start,
+				count: last.count + count,
+			};
 		} else {
 			runs.push({ sourceId: line.sourceId, start, count });
 		}

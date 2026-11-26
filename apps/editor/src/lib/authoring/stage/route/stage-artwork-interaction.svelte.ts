@@ -13,7 +13,7 @@
  * every termination (release, pointer cancel, lost capture, Escape, lens/task
  * interruption, source replacement, disposal) releases that lease exactly once
  * and clears the ghost. Late asset work belongs to the authoring owner and is
- * cancelled by `cancel()`; it can never commit after a cancellation because its
+ * cancelled by `cancel`; it can never commit after a cancellation because its
  * own request is aborted and its acceptance compares the live services.
  *
  * A `.svelte.ts` controller is created in the route's effect scope. It accepts
@@ -21,11 +21,20 @@
  * a renderer.
  */
 import { Vector3 } from 'three';
-import { pointerRay, type PointerRay, type ViewportEvaluation, type ViewportRect } from '@portfolio/camera-core/viewport';
+import {
+	pointerRay,
+	type PointerRay,
+	type ViewportEvaluation,
+	type ViewportRect,
+} from '@portfolio/camera-core/viewport';
 import type { ArtworkLibraryEntry } from '@portfolio/project-model/artwork';
 import type { SceneArtworkEntity } from '@portfolio/project-model/scene';
 import { ARTWORK_TRANSFORM } from '@portfolio/project-model/scene-planning';
-import { artworkPlanePoint, resizeArtworkAtRay, type ArtworkCorner } from '$lib/authoring/artwork/artwork-resize';
+import {
+	artworkPlanePoint,
+	resizeArtworkAtRay,
+	type ArtworkCorner,
+} from '$lib/authoring/artwork/artwork-resize';
 import { artworkHangingGuides, snapArtworkHeight } from '$lib/authoring/artwork/artwork-hanging';
 import { artworkCommand } from '$lib/authoring/artwork/artwork-command';
 import { artworkPlacement, isArtworkWallFace } from '$lib/authoring/artwork/artwork-placement';
@@ -34,7 +43,7 @@ import {
 	artworkFitsWall,
 	artworkIsHung,
 	artworkOuterSize,
-	artworkWallIsCurved
+	artworkWallIsCurved,
 } from '$lib/authoring/artwork/artwork-wall-move';
 import { createArtworkAuthoring } from '$lib/authoring/artwork/artwork-authoring.svelte';
 import type { ProjectApi } from '$lib/platform/project-persistence';
@@ -86,7 +95,7 @@ export function createStageArtworkInteraction(input: StageArtworkInteractionInpu
 		canEdit: input.canEdit,
 		isSaved: input.isSaved,
 		notice: input.onNotice,
-		select: input.onSelect
+		select: input.onSelect,
 	});
 
 	let resize = $state.raw<StageArtworkResizeDrag | null>(null);
@@ -114,21 +123,22 @@ export function createStageArtworkInteraction(input: StageArtworkInteractionInpu
 				[
 					ghost.position[0],
 					ghost.position[1] + artworkOuterSize(ghost).height / 2,
-					ghost.position[2]
+					ghost.position[2],
 				] as const,
-				id
+				id,
 			);
 			if (projected.kind === 'projected' && projected.visibility === 'visible') {
 				projectedCss = [projected.css[0] - currentRect.left, projected.css[1] - currentRect.top];
 			}
 		}
-		const css = projectedCss ?? placementCss ?? ([currentRect.width / 2, currentRect.height * 0.42] as const);
+		const css =
+			projectedCss ?? placementCss ?? ([currentRect.width / 2, currentRect.height * 0.42] as const);
 		return {
 			id: 'artwork-placement-chip',
 			role: prompt.refused ? ('refused' as const) : ('subject' as const),
 			polygons: [],
 			segments: [],
-			labels: [{ css, text: prompt.text }]
+			labels: [{ css, text: prompt.text }],
 		};
 	});
 
@@ -150,8 +160,9 @@ export function createStageArtworkInteraction(input: StageArtworkInteractionInpu
 		const stage = input.facade();
 		if (stage === null) return null;
 		const snapshot = stage.snapshot();
-		return input.pickVisibleFace(ray, snapshot.domain.scene,
-			(candidate) => isArtworkWallFace(candidate, snapshot.domain.geometry));
+		return input.pickVisibleFace(ray, snapshot.domain.scene, (candidate) =>
+			isArtworkWallFace(candidate, snapshot.domain.geometry),
+		);
 	}
 
 	function isHungNow(entity: SceneArtworkEntity): boolean {
@@ -165,8 +176,12 @@ export function createStageArtworkInteraction(input: StageArtworkInteractionInpu
 		const back = artworkBackWallHit(entity.position, entity.rotation[1], wallHit);
 		if (back === null || back.wallId === undefined || back.distanceMeters > 0.01) return false;
 		return artworkFitsWall(
-			entity.position, entity.rotation[1], artworkOuterSize(entity), back.wallId, wallHit,
-			{ curved: artworkWallIsCurved(back, snapshot.domain.geometry) }
+			entity.position,
+			entity.rotation[1],
+			artworkOuterSize(entity),
+			back.wallId,
+			wallHit,
+			{ curved: artworkWallIsCurved(back, snapshot.domain.geometry) },
 		);
 	}
 
@@ -178,20 +193,36 @@ export function createStageArtworkInteraction(input: StageArtworkInteractionInpu
 		if (event.button !== 0 || stage === null || !entity || !evaluationId || stageEl == null) return;
 		event.preventDefault();
 		event.stopPropagation();
-		const acquired = stage.acquireGesture({ owner: 'artwork-resize', evaluationId, policy: 'cancel-on-reading-change' });
+		const acquired = stage.acquireGesture({
+			owner: 'artwork-resize',
+			evaluationId,
+			policy: 'cancel-on-reading-change',
+		});
 		if (acquired.kind !== 'granted') return;
-		if (!input.capturePointer(stageEl, event.pointerId)) { acquired.lease.release(); return; }
+		if (!input.capturePointer(stageEl, event.pointerId)) {
+			acquired.lease.release();
+			return;
+		}
 		input.press.refuse(event.pointerId);
 		const reading = input.evaluation();
-		const ray = reading === null ? null : pointerRay([event.clientX, event.clientY], reading, reading.token);
-		const startPoint = mode === 'move' && ray?.kind === 'ray' ? artworkPlanePoint(entity, ray.ray) : null;
+		const ray =
+			reading === null ? null : pointerRay([event.clientX, event.clientY], reading, reading.token);
+		const startPoint =
+			mode === 'move' && ray?.kind === 'ray' ? artworkPlanePoint(entity, ray.ray) : null;
 		// An already-overhanging Artwork starts in free move (fix.md §7.3), while a
 		// hung Artwork that still fits follows its wall.
 		const hung = mode === 'move' && startsWallBound(entity);
 		resize = {
-			entity, mode, startPoint, startX: event.clientX, pointerId: event.pointerId,
-			shift: event.shiftKey, hung, lastPassing: hung ? entity : null, blocked: false,
-			lease: acquired.lease
+			entity,
+			mode,
+			startPoint,
+			startX: event.clientX,
+			pointerId: event.pointerId,
+			shift: event.shiftKey,
+			hung,
+			lastPassing: hung ? entity : null,
+			blocked: false,
+			lease: acquired.lease,
 		};
 	}
 
@@ -205,7 +236,7 @@ export function createStageArtworkInteraction(input: StageArtworkInteractionInpu
 		const ray = pointerRay([event.clientX, event.clientY], reading, reading.token);
 		if (drag.mode === 'turn') {
 			const rotation = [...drag.entity.rotation] as SceneArtworkEntity['rotation'];
-			rotation[1] += (event.clientX - drag.startX) * Math.PI / 360;
+			rotation[1] += ((event.clientX - drag.startX) * Math.PI) / 360;
 			return { ...drag.entity, rotation };
 		}
 		if (ray.kind !== 'ray') return null;
@@ -215,16 +246,36 @@ export function createStageArtworkInteraction(input: StageArtworkInteractionInpu
 			if (!drag.shift) {
 				const hit = wallHit(ray.ray);
 				if (hit !== null && hit.wallId !== undefined) {
-					const forward = new Vector3(...reading.target).sub(new Vector3(...reading.eye)).normalize().toArray();
-					const pose = artworkPlacement(ray.ray, hit, snapshot.domain.datumMeters, reading.eye, forward, snapshot.domain.geometry);
+					const forward = new Vector3(...reading.target)
+						.sub(new Vector3(...reading.eye))
+						.normalize()
+						.toArray();
+					const pose = artworkPlacement(
+						ray.ray,
+						hit,
+						snapshot.domain.datumMeters,
+						reading.eye,
+						forward,
+						snapshot.domain.geometry,
+					);
 					if (pose !== null) {
 						const placed = { ...drag.entity, ...pose };
-						const guides = artworkHangingGuides(snapshot.domain.scene, placed, snapshot.domain.datumMeters);
-						const candidate = { ...placed, position: snapArtworkHeight(placed.position, guides).position };
+						const guides = artworkHangingGuides(
+							snapshot.domain.scene,
+							placed,
+							snapshot.domain.datumMeters,
+						);
+						const candidate = {
+							...placed,
+							position: snapArtworkHeight(placed.position, guides).position,
+						};
 						const fits = artworkFitsWall(
-							candidate.position, candidate.rotation[1], artworkOuterSize(drag.entity),
-							hit.wallId, wallHit,
-							{ curved: artworkWallIsCurved(hit, snapshot.domain.geometry) }
+							candidate.position,
+							candidate.rotation[1],
+							artworkOuterSize(drag.entity),
+							hit.wallId,
+							wallHit,
+							{ curved: artworkWallIsCurved(hit, snapshot.domain.geometry) },
 						);
 						if (fits) {
 							drag.lastPassing = candidate;
@@ -248,9 +299,16 @@ export function createStageArtworkInteraction(input: StageArtworkInteractionInpu
 			drag.blocked = false;
 			const candidate = {
 				...drag.entity,
-				position: point.sub(drag.startPoint).add(new Vector3(...drag.entity.position)).toArray() as SceneArtworkEntity['position']
+				position: point
+					.sub(drag.startPoint)
+					.add(new Vector3(...drag.entity.position))
+					.toArray() as SceneArtworkEntity['position'],
 			};
-			const guides = artworkHangingGuides(snapshot.domain.scene, candidate, snapshot.domain.datumMeters);
+			const guides = artworkHangingGuides(
+				snapshot.domain.scene,
+				candidate,
+				snapshot.domain.datumMeters,
+			);
 			return { ...candidate, position: snapArtworkHeight(candidate.position, guides).position };
 		}
 		return resizeArtworkAtRay(drag.entity, drag.mode, ray.ray);
@@ -262,28 +320,51 @@ export function createStageArtworkInteraction(input: StageArtworkInteractionInpu
 		const candidate = readResize(event);
 		cancelResize();
 		if (!drag || !candidate || !services) return;
-		const changed = (a: readonly number[], b: readonly number[]) => a.some((value, i) => Math.abs(value - b[i]!) > 1e-7);
-		if (!changed([candidate.widthMeters, ...candidate.position, ...candidate.rotation],
-			[drag.entity.widthMeters, ...drag.entity.position, ...drag.entity.rotation])) return;
-		const result = await artworkCommand(services, ARTWORK_TRANSFORM,
-			drag.mode === 'turn' ? { rotation: candidate.rotation }
-				: drag.mode === 'move' ? { position: candidate.position }
-				: { position: candidate.position, widthMeters: candidate.widthMeters },
-			{ target: candidate.id, expectedRevision: drag.lease.acceptedRevision });
+		const changed = (a: readonly number[], b: readonly number[]) =>
+			a.some((value, i) => Math.abs(value - b[i]!) > 1e-7);
+		if (
+			!changed(
+				[candidate.widthMeters, ...candidate.position, ...candidate.rotation],
+				[drag.entity.widthMeters, ...drag.entity.position, ...drag.entity.rotation],
+			)
+		)
+			return;
+		const result = await artworkCommand(
+			services,
+			ARTWORK_TRANSFORM,
+			drag.mode === 'turn'
+				? { rotation: candidate.rotation }
+				: drag.mode === 'move'
+					? { position: candidate.position }
+					: { position: candidate.position, widthMeters: candidate.widthMeters },
+			{ target: candidate.id, expectedRevision: drag.lease.acceptedRevision },
+		);
 		if (input.services() === services && result.kind === 'refused') input.onNotice(result.message);
 	}
 
 	function poseAt(event: MouseEvent) {
 		const stage = input.facade();
 		const reading = input.evaluation();
-		if (!input.canEdit() || stage === null || reading === null || reading.renderedReading !== '3d') return null;
+		if (!input.canEdit() || stage === null || reading === null || reading.renderedReading !== '3d')
+			return null;
 		const ray = pointerRay([event.clientX, event.clientY], reading, reading.token);
 		if (ray.kind !== 'ray') return null;
 		const snapshot = stage.snapshot();
-		const hit = input.pickVisibleFace(ray.ray, snapshot.domain.scene,
-			(candidate) => isArtworkWallFace(candidate, snapshot.domain.geometry));
-		const forward = new Vector3(...reading.target).sub(new Vector3(...reading.eye)).normalize().toArray();
-		return artworkPlacement(ray.ray, hit, snapshot.domain.datumMeters, reading.eye, forward, snapshot.domain.geometry);
+		const hit = input.pickVisibleFace(ray.ray, snapshot.domain.scene, (candidate) =>
+			isArtworkWallFace(candidate, snapshot.domain.geometry),
+		);
+		const forward = new Vector3(...reading.target)
+			.sub(new Vector3(...reading.eye))
+			.normalize()
+			.toArray();
+		return artworkPlacement(
+			ray.ray,
+			hit,
+			snapshot.domain.datumMeters,
+			reading.eye,
+			forward,
+			snapshot.domain.geometry,
+		);
 	}
 
 	/** The one pointer-move branch: captured resize, then the armed placement ghost. */
@@ -335,8 +416,14 @@ export function createStageArtworkInteraction(input: StageArtworkInteractionInpu
 	}
 
 	function acceptsDrop(transfer: DataTransfer | null): boolean {
-		return input.canEdit() && transfer !== null && [...transfer.items].some((item) =>
-			item.kind === 'file' && ['', 'image/png', 'image/jpeg', 'image/webp'].includes(item.type));
+		return (
+			input.canEdit() &&
+			transfer !== null &&
+			[...transfer.items].some(
+				(item) =>
+					item.kind === 'file' && ['', 'image/png', 'image/jpeg', 'image/webp'].includes(item.type),
+			)
+		);
 	}
 
 	function drop(event: DragEvent): void {
@@ -420,6 +507,6 @@ export function createStageArtworkInteraction(input: StageArtworkInteractionInpu
 		/** The Corpus Canvas presents the live resize ghost before the authoring ghost. */
 		movePlacement: (pose: Parameters<typeof authoring.move>[0]) => authoring.move(pose),
 		importFiles: (files: File[]) => authoring.importFiles(files),
-		replaceFile: authoring.replaceFile
+		replaceFile: authoring.replaceFile,
 	};
 }

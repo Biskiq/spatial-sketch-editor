@@ -1,13 +1,13 @@
 /**
- * SP1d — direct manipulation of a selected open Space's stated open sides.
+ * Direct manipulation of a selected open Space's stated open sides.
  *
  * A virtual edge is not a subject and has no id of its own. This session
  * therefore publishes two kinds of **handles on the Space**:
  *
  * - one mid-grip per open side, which moves the side square to itself by
- *   translating both end Junctions along the side's normal; and
+ *  translating both end Junctions along the side's normal; and
  * - one end knob per end that touches a real Wall, which slides along that Wall
- *   and, at release, splits it there.
+ *  and, at release, splits it there.
  *
  * Both are ordinary Stage editing grips naming one retained planner. Press and
  * release holds a gesture lease, previews are candidate evidence only, and no
@@ -19,9 +19,26 @@
  * creator saw and the document that lands carry the same Junction and stub
  * Wall ids.
  */
-import { allocateCapturedId, mintLayoutIdCapture, type LayoutIdCapture } from '@portfolio/layout-core/plan';
-import { planSpaceOpenSideEndSlide, planSpaceOpenSideOffset, type LayoutDocumentWallFirst, type NodingIdAllocator } from '@portfolio/layout-core/wall';
-import { proposeSpaceOpenSideOffset, roomBoundaryPolygon, spaceOpenSideFrames, spaceOutlineSelfIntersects, spaceOutlineSignedArea, spacePlacementIssues, type SpaceOpenSideFrame } from '@portfolio/layout-core/room';
+import {
+	allocateCapturedId,
+	mintLayoutIdCapture,
+	type LayoutIdCapture,
+} from '@portfolio/layout-core/plan';
+import {
+	planSpaceOpenSideEndSlide,
+	planSpaceOpenSideOffset,
+	type LayoutDocumentWallFirst,
+	type NodingIdAllocator,
+} from '@portfolio/layout-core/wall';
+import {
+	proposeSpaceOpenSideOffset,
+	roomBoundaryPolygon,
+	spaceOpenSideFrames,
+	spaceOutlineSelfIntersects,
+	spaceOutlineSignedArea,
+	spacePlacementIssues,
+	type SpaceOpenSideFrame,
+} from '@portfolio/layout-core/room';
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import type { Vec3 } from '@portfolio/camera-core/camera';
 
@@ -30,7 +47,7 @@ import {
 	type StageCandidatePreview,
 	type StageHandleDescriptor,
 	type StageKeyboardIntent,
-	type StagePointerIntent
+	type StagePointerIntent,
 } from '$lib/authoring/stage/stage-adapter-host';
 import { stageUnitRevision } from '$lib/authoring/stage/stage-adapter-host';
 import type { GestureAcquisition } from '$lib/authoring/stage/stage-adapter-host';
@@ -40,12 +57,12 @@ import {
 	LAYOUT_OPEN_SIDE_OFFSET_KIND,
 	LAYOUT_OPEN_SIDE_SLIDE_KIND,
 	openSideOffsetIntent,
-	openSideSlideIntent
+	openSideSlideIntent,
 } from './open-side-planners';
 import {
 	datumSnapDistance,
 	isPointerDrag,
-	type LayoutManipulationPorts
+	type LayoutManipulationPorts,
 } from './manipulation-support';
 import { pointerDatumPoint } from './stage-pointer';
 import { candidatePreviewOf } from './candidate-preview';
@@ -105,11 +122,10 @@ type OpenSideGesture = OffsetGesture | SlideGesture;
 
 function sameEdge(
 	first: { readonly startJunctionId: string; readonly endJunctionId: string },
-	second: { readonly startJunctionId: string; readonly endJunctionId: string }
+	second: { readonly startJunctionId: string; readonly endJunctionId: string },
 ): boolean {
 	return (
-		first.startJunctionId === second.startJunctionId &&
-		first.endJunctionId === second.endJunctionId
+		first.startJunctionId === second.startJunctionId && first.endJunctionId === second.endJunctionId
 	);
 }
 
@@ -129,10 +145,12 @@ function stationLabel(station: number): string {
 function otherSpaceName(
 	document: LayoutDocumentWallFirst,
 	roomId: string,
-	targetIds: readonly string[]
+	targetIds: readonly string[],
 ): string | null {
 	const other = targetIds.find((id) => id !== roomId);
-	return other === undefined ? null : (document.rooms.find((room) => room.id === other)?.name ?? null);
+	return other === undefined
+		? null
+		: (document.rooms.find((room) => room.id === other)?.name ?? null);
 }
 
 /**
@@ -140,10 +158,7 @@ function otherSpaceName(
  * A self-crossing or inverted outline is not a placement conflict, so it gets
  * the session's own words rather than a second geometry verdict.
  */
-function attemptedRefusal(
-	attempted: LayoutDocumentWallFirst,
-	roomId: string
-): string | null {
+function attemptedRefusal(attempted: LayoutDocumentWallFirst, roomId: string): string | null {
 	const polygon = roomBoundaryPolygon(attempted, roomId);
 	if (
 		polygon === null ||
@@ -163,7 +178,7 @@ function attemptedRefusal(
 function otherSpaceNameInMessage(
 	document: LayoutDocumentWallFirst,
 	roomId: string,
-	message: string
+	message: string,
 ): string | null {
 	const own = document.rooms.find((room) => room.id === roomId)?.name;
 	return (
@@ -176,12 +191,10 @@ function otherSpaceNameInMessage(
 /** A snap is only shown when the constrained handle actually reaches it. */
 function constrainedSnap(
 	winner: LayoutSnapWinner | null,
-	point: LayoutVec2
+	point: LayoutVec2,
 ): LayoutSnapWinner | null {
 	if (winner === null) return null;
-	return Math.hypot(winner.point[0] - point[0], winner.point[1] - point[1]) <= 1e-6
-		? winner
-		: null;
+	return Math.hypot(winner.point[0] - point[0], winner.point[1] - point[1]) <= 1e-6 ? winner : null;
 }
 
 function refusalForSlideRejection(
@@ -189,7 +202,7 @@ function refusalForSlideRejection(
 	roomId: string,
 	code: string,
 	message: string,
-	targetIds: readonly string[]
+	targetIds: readonly string[],
 ): string {
 	return openSideRefusalWords(code, message, otherSpaceName(document, roomId, targetIds));
 }
@@ -197,7 +210,7 @@ function refusalForSlideRejection(
 function previewPolygon(
 	document: LayoutDocumentWallFirst,
 	roomId: string,
-	y: number
+	y: number,
 ): readonly Vec3[] {
 	const polygon = roomBoundaryPolygon(document, roomId);
 	if (polygon === null) return [];
@@ -246,9 +259,9 @@ function capturedNodingAllocator(capture: LayoutIdCapture): NodingIdAllocator {
 			return allocateCapturedId(
 				new Set(baseDocument.junctions.map((junction) => junction.id)),
 				seed,
-				capture
+				capture,
 			);
-		}
+		},
 	};
 }
 
@@ -258,7 +271,7 @@ export function createOpenSideGestureSession({
 	levelId,
 	contentRevision,
 	publishRefusal,
-	settleRefusal
+	settleRefusal,
 }: LayoutManipulationPorts) {
 	let openSideGesture: OpenSideGesture | null = null;
 
@@ -271,11 +284,7 @@ export function createOpenSideGestureSession({
 
 	function selectedOpenRoomId(ctx: StageAdapterContext): string | null {
 		const primary = ctx.selectionState().primary;
-		if (
-			primary === null ||
-			primary.domain !== 'layout' ||
-			primary.subject.kind !== 'room'
-		) {
+		if (primary === null || primary.domain !== 'layout' || primary.subject.kind !== 'room') {
 			return null;
 		}
 		const room = document.rooms.find((candidate) => candidate.id === primary.subject.id);
@@ -295,7 +304,7 @@ export function createOpenSideGestureSession({
 			const mid: [number, number, number] = [
 				frame.midpoint[0] + frame.normal[0] * offset,
 				y,
-				frame.midpoint[1] + frame.normal[1] * offset
+				frame.midpoint[1] + frame.normal[1] * offset,
 			];
 			result.push({
 				id: `${MID_PREFIX}${frame.startJunctionId}|${frame.endJunctionId}`,
@@ -309,7 +318,7 @@ export function createOpenSideGestureSession({
 				verb: 'Move',
 				planner: LAYOUT_OPEN_SIDE_OFFSET_KIND,
 				value: midpointLabel(offset),
-				refusal: activeOffset?.refusal ?? null
+				refusal: activeOffset?.refusal ?? null,
 			});
 			for (const end of ['start', 'end'] as const) {
 				const wall = end === 'start' ? frame.startWall : frame.endWall;
@@ -338,10 +347,8 @@ export function createOpenSideGestureSession({
 					verb: 'Slide',
 					planner: LAYOUT_OPEN_SIDE_SLIDE_KIND,
 					value:
-						activeSlide === null
-							? `${frame.roomName} · open`
-							: stationLabel(activeSlide.station),
-					refusal: activeSlide?.refusal ?? null
+						activeSlide === null ? `${frame.roomName} · open` : stationLabel(activeSlide.station),
+					refusal: activeSlide?.refusal ?? null,
 				});
 			}
 		}
@@ -373,7 +380,7 @@ export function createOpenSideGestureSession({
 		const lease = services.stage.acquireGesture({
 			owner: 'layout-open-side',
 			evaluationId,
-			policy: 'cancel-on-reading-change'
+			policy: 'cancel-on-reading-change',
 		});
 		return lease.kind === 'granted' ? lease : null;
 	}
@@ -381,12 +388,12 @@ export function createOpenSideGestureSession({
 	function beginOffset(
 		intent: StagePointerIntent,
 		ctx: StageAdapterContext,
-		addressed: { readonly startJunctionId: string; readonly endJunctionId: string }
+		addressed: { readonly startJunctionId: string; readonly endJunctionId: string },
 	): boolean {
 		const roomId = selectedOpenRoomId(ctx);
 		if (roomId === null) return false;
 		const frame = spaceOpenSideFrames(document, roomId).find((candidate) =>
-			sameEdge(candidate, addressed)
+			sameEdge(candidate, addressed),
 		);
 		const point = pointerDatumPoint(ctx, intent.css);
 		if (frame === undefined || point === null) return false;
@@ -407,7 +414,7 @@ export function createOpenSideGestureSession({
 			offset: 0,
 			snap: null,
 			refusal: null,
-			preview: null
+			preview: null,
 		};
 		services.stage.notifySurfaceChange();
 		return true;
@@ -420,12 +427,12 @@ export function createOpenSideGestureSession({
 			readonly end?: OpenSideEnd;
 			readonly startJunctionId: string;
 			readonly endJunctionId: string;
-		}
+		},
 	): boolean {
 		const roomId = selectedOpenRoomId(ctx);
 		if (roomId === null || addressed.end === undefined) return false;
 		const frame = spaceOpenSideFrames(document, roomId).find((candidate) =>
-			sameEdge(candidate, addressed)
+			sameEdge(candidate, addressed),
 		);
 		const point = pointerDatumPoint(ctx, intent.css);
 		if (frame === undefined || point === null) return false;
@@ -468,7 +475,7 @@ export function createOpenSideGestureSession({
 			point: [...frame[end]] as LayoutVec2,
 			snap: null,
 			refusal: null,
-			preview: null
+			preview: null,
 		};
 		services.stage.notifySurfaceChange();
 		return true;
@@ -477,7 +484,7 @@ export function createOpenSideGestureSession({
 	function moveOffset(
 		current: OffsetGesture,
 		intent: StagePointerIntent,
-		ctx: StageAdapterContext
+		ctx: StageAdapterContext,
 	): void {
 		if (!isPointerDrag(current.pressCss, intent.css)) {
 			current.offset = 0;
@@ -495,17 +502,14 @@ export function createOpenSideGestureSession({
 			current.pressOffset;
 		const desired: LayoutVec2 = [
 			frame.midpoint[0] + frame.normal[0] * raw,
-			frame.midpoint[1] + frame.normal[1] * raw
+			frame.midpoint[1] + frame.normal[1] * raw,
 		];
-		const snapped = resolvePlanarDragSnap(
-			frame.midpoint,
-			desired,
-			ctx.drafting(),
-			(from, to) => datumSnapDistance(ctx, from, to)
+		const snapped = resolvePlanarDragSnap(frame.midpoint, desired, ctx.drafting(), (from, to) =>
+			datumSnapDistance(ctx, from, to),
 		);
 		const offset = clean(
 			(snapped.point[0] - frame.midpoint[0]) * frame.normal[0] +
-				(snapped.point[1] - frame.midpoint[1]) * frame.normal[1]
+				(snapped.point[1] - frame.midpoint[1]) * frame.normal[1],
 		);
 		current.offset = Math.abs(offset) <= 1e-9 ? 0 : offset;
 		current.preview = null;
@@ -518,7 +522,7 @@ export function createOpenSideGestureSession({
 				current.roomId,
 				frame.startJunctionId,
 				frame.endJunctionId,
-				current.offset
+				current.offset,
 			);
 			if (plan.kind === 'success') {
 				current.preview = plan.document;
@@ -528,7 +532,7 @@ export function createOpenSideGestureSession({
 				current.refusal = openSideRefusalWords(
 					plan.rejection.code,
 					plan.rejection.message,
-					otherSpaceName(document, current.roomId, plan.rejection.targetIds ?? [])
+					otherSpaceName(document, current.roomId, plan.rejection.targetIds ?? []),
 				);
 			}
 		}
@@ -540,7 +544,7 @@ export function createOpenSideGestureSession({
 	function moveSlide(
 		current: SlideGesture,
 		intent: StagePointerIntent,
-		ctx: StageAdapterContext
+		ctx: StageAdapterContext,
 	): void {
 		if (!isPointerDrag(current.pressCss, intent.css)) {
 			current.station = current.endpointStation;
@@ -557,11 +561,11 @@ export function createOpenSideGestureSession({
 			current.pressPoint,
 			[point[0], point[1]],
 			ctx.drafting(),
-			(from, to) => datumSnapDistance(ctx, from, to)
+			(from, to) => datumSnapDistance(ctx, from, to),
 		);
 		const pointerStation = stationAtPoint(current.stationFrame, [
 			snapped.point[0],
-			snapped.point[1]
+			snapped.point[1],
 		]);
 		if (pointerStation === null) return;
 		const station = clean(current.endpointStation + (pointerStation - current.pressStation));
@@ -586,7 +590,7 @@ export function createOpenSideGestureSession({
 			current.wallId,
 			station,
 			current.point,
-			capturedNodingAllocator(current.capture)
+			capturedNodingAllocator(current.capture),
 		);
 		if (plan.kind === 'success') {
 			current.preview = plan.document;
@@ -597,7 +601,7 @@ export function createOpenSideGestureSession({
 				current.roomId,
 				plan.rejection.code,
 				plan.rejection.message,
-				plan.rejection.targetIds ?? []
+				plan.rejection.targetIds ?? [],
 			);
 		}
 		services.stage.notifySurfaceChange();
@@ -664,7 +668,7 @@ export function createOpenSideGestureSession({
 	function movedMidpoint(current: OffsetGesture): LayoutVec2 {
 		return [
 			current.frame.midpoint[0] + current.frame.normal[0] * current.offset,
-			current.frame.midpoint[1] + current.frame.normal[1] * current.offset
+			current.frame.midpoint[1] + current.frame.normal[1] * current.offset,
 		];
 	}
 
@@ -673,7 +677,7 @@ export function createOpenSideGestureSession({
 			subject: { kind: 'room', roomId },
 			contentRevision,
 			point: [point[0], point[1]],
-			text
+			text,
 		});
 	}
 
@@ -690,8 +694,8 @@ export function createOpenSideGestureSession({
 				projectId: snapshot.acceptedRevision.projectId,
 				revisionId: current.revision,
 				contentRevision,
-				levelId
-			})
+				levelId,
+			}),
 		);
 		if (
 			outcome.kind === 'refused' &&
@@ -703,8 +707,8 @@ export function createOpenSideGestureSession({
 				openSideRefusalWords(
 					outcome.code,
 					outcome.message,
-					otherSpaceNameInMessage(document, current.roomId, outcome.message)
-				)
+					otherSpaceNameInMessage(document, current.roomId, outcome.message),
+				),
 			);
 		}
 		services.stage.notifySurfaceChange();
@@ -726,8 +730,8 @@ export function createOpenSideGestureSession({
 				projectId: snapshot.acceptedRevision.projectId,
 				revisionId: current.revision,
 				contentRevision,
-				levelId
-			})
+				levelId,
+			}),
 		);
 		if (
 			outcome.kind === 'refused' &&
@@ -739,8 +743,8 @@ export function createOpenSideGestureSession({
 				openSideRefusalWords(
 					outcome.code,
 					outcome.message,
-					otherSpaceNameInMessage(document, current.roomId, outcome.message)
-				)
+					otherSpaceNameInMessage(document, current.roomId, outcome.message),
+				),
 			);
 		}
 		services.stage.notifySurfaceChange();
@@ -754,7 +758,7 @@ export function createOpenSideGestureSession({
 			const at = movedMidpoint(current);
 			const label = {
 				world: [at[0], y, at[1]] as [number, number, number],
-				text: current.refusal ?? midpointLabel(current.offset)
+				text: current.refusal ?? midpointLabel(current.offset),
 			};
 			return [
 				candidatePreviewOf({
@@ -762,20 +766,17 @@ export function createOpenSideGestureSession({
 					role: current.refusal === null ? 'subject' : 'refused',
 					geometry: {
 						polygons: [previewPolygon(current.preview ?? document, current.roomId, y)],
-						segments: []
+						segments: [],
 					},
 					labels: [label],
-					snap:
-						current.snap === null
-							? undefined
-							: { world: label.world, name: current.snap.name }
-				})
+					snap: current.snap === null ? undefined : { world: label.world, name: current.snap.name },
+				}),
 			];
 		}
 		const at = current.point;
 		const label = {
 			world: [at[0], y, at[1]] as [number, number, number],
-			text: current.refusal ?? stationLabel(current.station)
+			text: current.refusal ?? stationLabel(current.station),
 		};
 		const source = current.preview ?? document;
 		return [
@@ -784,11 +785,8 @@ export function createOpenSideGestureSession({
 				role: current.refusal === null ? 'subject' : 'refused',
 				geometry: { polygons: [previewPolygon(source, current.roomId, y)], segments: [] },
 				labels: [label],
-				snap:
-					current.snap === null
-						? undefined
-						: { world: label.world, name: current.snap.name }
-			})
+				snap: current.snap === null ? undefined : { world: label.world, name: current.snap.name },
+			}),
 		];
 	}
 

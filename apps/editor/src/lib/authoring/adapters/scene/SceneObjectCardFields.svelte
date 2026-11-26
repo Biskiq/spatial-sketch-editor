@@ -46,12 +46,12 @@
 	let busy = $state(false);
 	/**
 	 * One controller per selected entity. The controller reads the live accepted
-	 * source on every `fields()` call, so a surface notification only needs to
+	 * source on every `fields` call, so a surface notification only needs to
 	 * re-sync the inputs; rebuilding it would discard every uncommitted draft.
 	 */
 	let controller = $state<SceneObjectCardController | null>(null);
 	let activeEntityId = $state<string | null>(null);
-	/** The object's one Finish part (U4); lights and Artwork carry none. */
+	/** The object's one Finish part; lights and Artwork carry none. */
 	const finishParts = $derived.by((): readonly FinishCardPart[] => {
 		const id = activeEntityId;
 		if (id === null || entityKind === null || entityKind === 'light' || entityKind === 'artwork') return [];
@@ -73,7 +73,7 @@
 	let entityKind = $state<SceneEntity['kind'] | null>(null);
 	/**
 	 * The fields the controller currently offers. The outline task omits the
-	 * extent dimension from `fields()`, and the size row must follow that answer:
+	 * extent dimension from `fields`, and the size row must follow that answer:
 	 * reading it from a fixed per-kind list kept the row on screen because no
 	 * other component state changed when the task opened.
 	 */

@@ -2,14 +2,20 @@
 
 import { MATERIAL_NEUTRAL_BASE_ID } from '../../materials/types';
 import { type MaterialId, type SceneEntity, type SceneMaterialInstance } from '../../scene';
-import { catalogueBaseOf, isFinishPaintable, isPristineInstance, materialInstanceById, type SceneFinishRef } from './model';
+import {
+	catalogueBaseOf,
+	isFinishPaintable,
+	isPristineInstance,
+	materialInstanceById,
+	type SceneFinishRef,
+} from './model';
 import { type TypedResource } from '../../units/types';
 
 export function assignOne(
 	entity: SceneEntity,
 	finish: SceneFinishRef,
 	materials: SceneMaterialInstance[],
-	pristineIdForBase: (base: MaterialId) => string
+	pristineIdForBase: (base: MaterialId) => string,
 ): SceneEntity {
 	if (!isFinishPaintable(entity)) return entity;
 	if (finish === 'model-own') {
@@ -24,7 +30,11 @@ export function assignOne(
 		if (entity.kind === 'model') {
 			const instance = materialInstanceById(materials, entity.materialInstanceId);
 			// Already carried by the same pristine base: nothing to write.
-			if (instance !== undefined && isPristineInstance(instance) && catalogueBaseOf(instance) === finish.curated) {
+			if (
+				instance !== undefined &&
+				isPristineInstance(instance) &&
+				catalogueBaseOf(instance) === finish.curated
+			) {
 				return entity;
 			}
 			return { ...entity, materialInstanceId: pristineIdForBase(finish.curated) };
@@ -43,15 +53,18 @@ export function assignOne(
 	return {
 		...entity,
 		materialId: catalogueBaseOf(project) ?? MATERIAL_NEUTRAL_BASE_ID,
-		materialInstanceId: project.id
+		materialInstanceId: project.id,
 	} as SceneEntity;
 }
 
-export function collectPristine(materials: readonly SceneMaterialInstance[], entities: readonly SceneEntity[]): SceneMaterialInstance[] {
+export function collectPristine(
+	materials: readonly SceneMaterialInstance[],
+	entities: readonly SceneEntity[],
+): SceneMaterialInstance[] {
 	const used = new Set(
 		entities
 			.map((entity) => (entity as SceneEntity & { materialInstanceId?: string }).materialInstanceId)
-			.filter((id): id is string => id !== undefined)
+			.filter((id): id is string => id !== undefined),
 	);
 	return materials.filter((instance) => !isPristineInstance(instance) || used.has(instance.id));
 }
@@ -62,7 +75,7 @@ export function materialCandidateScopeProblem(
 	beforeLock: readonly import('../../units/types').DependencyLockEntry[],
 	afterLock: readonly import('../../units/types').DependencyLockEntry[],
 	allowedResourceIds: ReadonlySet<string>,
-	addedLocks: readonly import('../../units/types').DependencyLockEntry[]
+	addedLocks: readonly import('../../units/types').DependencyLockEntry[],
 ): string | null {
 	const resourceKey = (resource: TypedResource) => `${resource.kind}:${resource.id}`;
 	const beforeById = new Map(beforeResources.map((resource) => [resourceKey(resource), resource]));
@@ -76,7 +89,8 @@ export function materialCandidateScopeProblem(
 	}
 	for (const [key, resource] of afterById) {
 		if (beforeById.has(key)) continue;
-		if (!allowedResourceIds.has(resource.id)) return 'A material registration added an undeclared resource.';
+		if (!allowedResourceIds.has(resource.id))
+			return 'A material registration added an undeclared resource.';
 	}
 	for (const id of allowedResourceIds) {
 		if (![...afterById.values()].some((resource) => resource.id === id)) {
@@ -87,15 +101,18 @@ export function materialCandidateScopeProblem(
 	const beforeLockKeys = new Set(beforeLock.map(lockKey));
 	const afterLockKeys = new Set(afterLock.map(lockKey));
 	for (const entry of beforeLock) {
-		if (!afterLockKeys.has(lockKey(entry))) return 'A material registration may not remove or rewrite a dependency lock.';
+		if (!afterLockKeys.has(lockKey(entry)))
+			return 'A material registration may not remove or rewrite a dependency lock.';
 	}
 	const declared = new Set(addedLocks.map(lockKey));
 	for (const entry of afterLock) {
 		if (beforeLockKeys.has(lockKey(entry))) continue;
-		if (!declared.has(lockKey(entry))) return 'A material registration added an undeclared dependency lock.';
+		if (!declared.has(lockKey(entry)))
+			return 'A material registration added an undeclared dependency lock.';
 	}
 	for (const entry of addedLocks) {
-		if (!afterLockKeys.has(lockKey(entry))) return 'A material registration omitted its material lock.';
+		if (!afterLockKeys.has(lockKey(entry)))
+			return 'A material registration omitted its material lock.';
 	}
 	return null;
 }

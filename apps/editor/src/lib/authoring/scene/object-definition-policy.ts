@@ -10,16 +10,16 @@
  * Two rules this module exists to enforce:
  *
  * - **Declared metadata, never measured geometry.** Footprints come from the
- *   catalogue's canonical meters and contacts from declared analytical values or
- *   a recorded verification. An asynchronously loaded mesh bound is never an
- *   unrecorded placement input, so nothing here reads a live bounding box.
+ *  catalogue's canonical meters and contacts from declared analytical values or
+ *  a recorded verification. An asynchronously loaded mesh bound is never an
+ *  unrecorded placement input, so nothing here reads a live bounding box.
  * - **Renderer normalization stays the renderer's.** The catalogue's
- *   `defaultScale`/`defaultRotation` are carried as
- *   `renderNormalization` — the identity of the correction the renderer applies
- *   *inside* its own root — and are never copied into an authored instance
- *   transform. A piano with `defaultScale: 0.032` placed at instance scale 1 has
- *   canonical 1.48 x 1.59 m footprint and contact 0; the authored entity carries
- *   neither number.
+ *  `defaultScale`/`defaultRotation` are carried as
+ *  `renderNormalization` — the identity of the correction the renderer applies
+ *  *inside* its own root — and are never copied into an authored instance
+ *  transform. A piano with `defaultScale: 0.032` placed at instance scale 1 has
+ *  canonical 1.48 x 1.59 m footprint and contact 0; the authored entity carries
+ *  neither number.
  *
  * The inventory below is the reviewable admission artifact: every
  * catalogue asset whose declared surface is `floor` appears exactly once, either
@@ -30,13 +30,13 @@ import {
 	type NormalizedPlacementDefinition,
 	type ObjectCreationDefaults,
 	type ObjectDefinitionAdmission,
-	type ObjectDefinitionExclusion
+	type ObjectDefinitionExclusion,
 } from '@portfolio/project-model/scene-planning';
 import {
 	assets,
 	normalizeAssetFootprintOutline,
 	resolveAssetFallback,
-	validateAssetFootprint
+	validateAssetFootprint,
 } from '$lib/content/assets';
 import type { Asset } from '$lib/types/assets';
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
@@ -49,7 +49,7 @@ export type NativePlacementPrimitive = (typeof NATIVE_PLACEMENT_PRIMITIVES)[numb
 export const NATIVE_PLACEMENT_DIMENSIONS = {
 	box: { width: 1, height: 1, depth: 1 },
 	cylinder: { radius: 0.5, height: 1 },
-	sphere: { radius: 0.5 }
+	sphere: { radius: 0.5 },
 } as const;
 
 /** The circle resolution the retained Plan footprint projection already uses. */
@@ -58,7 +58,7 @@ const CIRCLE_STEPS = 32;
 const PLANE_EXCLUSION: ObjectDefinitionExclusion = {
 	code: 'plane-primitive',
 	reason:
-		'A vertical plane has no honest horizontal footprint, so it is not admitted for upright floor placement.'
+		'A vertical plane has no honest horizontal footprint, so it is not admitted for upright floor placement.',
 };
 
 /**
@@ -108,10 +108,10 @@ export const CATALOGUE_MODEL_CONTACT_RECORDS: readonly CatalogueModelContactReco
 			verificationId: 's01-r186-piano-geometry-v1',
 			contactMinY: 0.0000507284917601325,
 			footprintWidth: 1.4825150338836297,
-			footprintDepth: 2.524
+			footprintDepth: 2.524,
 		},
 		notes:
-			'Non-unit source normalization is the discriminating case: the asset declares defaultScale 0.032 and a floor-centred pivot, and its canonical footprint is the authored 1.48 x 1.59 m outline. The r186 geometry verification failed: corrected X/Z extent is 1.482515 x 2.524 m, exceeding the declared 1.48 x 1.59 m footprint; min Y is 0.0000507285 m rather than the declared zero. The source/metadata needs a separately reviewed correction before admission.'
+			'Non-unit source normalization is the discriminating case: the asset declares defaultScale 0.032 and a floor-centred pivot, and its canonical footprint is the authored 1.48 x 1.59 m outline. The r186 geometry verification failed: corrected X/Z extent is 1.482515 x 2.524 m, exceeding the declared 1.48 x 1.59 m footprint; min Y is 0.0000507285 m rather than the declared zero. The source/metadata needs a separately reviewed correction before admission.',
 	},
 	{
 		assetId: 'paris-salon-chair',
@@ -121,7 +121,7 @@ export const CATALOGUE_MODEL_CONTACT_RECORDS: readonly CatalogueModelContactReco
 		verificationId: 'r186-salon-chair-contact-footprint-v1',
 		nonUnitSourceNormalization: true,
 		notes:
-			'r186 GLTFLoader + Meshopt bounds after defaultScale 0.92: X 0.6429088471 m, Y contact -0.000000000005 m, Z 0.5360769552 m. The admitted rectangular footprint rounds X/Z outward to 0.643 × 0.537 m.'
+			'r186 GLTFLoader + Meshopt bounds after defaultScale 0.92: X 0.6429088471 m, Y contact -0.000000000005 m, Z 0.5360769552 m. The admitted rectangular footprint rounds X/Z outward to 0.643 × 0.537 m.',
 	},
 	{
 		assetId: 'paris-salon-sofa',
@@ -129,7 +129,8 @@ export const CATALOGUE_MODEL_CONTACT_RECORDS: readonly CatalogueModelContactReco
 		contactSource: 'catalogue-floor-pivot-note',
 		verified: false,
 		nonUnitSourceNormalization: true,
-		notes: 'Floor-centred pivot, defaultScale 0.9; corrected contact awaits the r186 loader verification.'
+		notes:
+			'Floor-centred pivot, defaultScale 0.9; corrected contact awaits the r186 loader verification.',
 	},
 	{
 		assetId: 'paris-salon-table',
@@ -137,7 +138,8 @@ export const CATALOGUE_MODEL_CONTACT_RECORDS: readonly CatalogueModelContactReco
 		contactSource: 'catalogue-floor-pivot-note',
 		verified: false,
 		nonUnitSourceNormalization: true,
-		notes: 'Floor-centred pivot, defaultScale 0.21; corrected contact awaits the r186 loader verification.'
+		notes:
+			'Floor-centred pivot, defaultScale 0.21; corrected contact awaits the r186 loader verification.',
 	},
 	{
 		assetId: 'paris-grandfather-clock',
@@ -145,15 +147,16 @@ export const CATALOGUE_MODEL_CONTACT_RECORDS: readonly CatalogueModelContactReco
 		contactSource: 'catalogue-floor-pivot-note',
 		verified: false,
 		nonUnitSourceNormalization: true,
-		notes: 'Floor-centred pivot, defaultScale 0.008; corrected contact awaits the r186 loader verification.'
-	}
+		notes:
+			'Floor-centred pivot, defaultScale 0.008; corrected contact awaits the r186 loader verification.',
+	},
 ];
 
 export type PlacementDefinitionInventoryEntry = {
 	definitionKey: string;
 	source:
-	| { kind: 'native'; primitive: NativePlacementPrimitive }
-	| { kind: 'catalogue-model'; assetId: string };
+		| { kind: 'native'; primitive: NativePlacementPrimitive }
+		| { kind: 'catalogue-model'; assetId: string };
 	admission: 'admitted' | 'excluded';
 	exclusions: readonly ObjectDefinitionExclusion[];
 	footprintSource: 'analytical-primitive' | 'catalogue-footprint' | 'none';
@@ -163,17 +166,19 @@ export type PlacementDefinitionInventoryEntry = {
 
 /** Every floor-surface definition, admitted or excluded with its reasons. */
 export function objectDefinitionInventory(
-	manifest: readonly Asset[] = assets
+	manifest: readonly Asset[] = assets,
 ): readonly PlacementDefinitionInventoryEntry[] {
-	const entries: PlacementDefinitionInventoryEntry[] = NATIVE_PLACEMENT_PRIMITIVES.map((primitive) => ({
-		definitionKey: nativeDefinitionKey(primitive),
-		source: { kind: 'native', primitive },
-		admission: 'admitted',
-		exclusions: [],
-		footprintSource: 'analytical-primitive',
-		contactSource: 'analytical',
-		nonUnitSourceNormalization: false
-	}));
+	const entries: PlacementDefinitionInventoryEntry[] = NATIVE_PLACEMENT_PRIMITIVES.map(
+		(primitive) => ({
+			definitionKey: nativeDefinitionKey(primitive),
+			source: { kind: 'native', primitive },
+			admission: 'admitted',
+			exclusions: [],
+			footprintSource: 'analytical-primitive',
+			contactSource: 'analytical',
+			nonUnitSourceNormalization: false,
+		}),
+	);
 	for (const asset of manifest) {
 		if (asset.placementSurface !== 'floor') continue;
 		const exclusions = catalogueModelExclusions(asset);
@@ -183,9 +188,10 @@ export function objectDefinitionInventory(
 			source: { kind: 'catalogue-model', assetId: asset.id },
 			admission: exclusions.length === 0 ? 'admitted' : 'excluded',
 			exclusions,
-			footprintSource: validateAssetFootprint(asset.footprint) === null ? 'catalogue-footprint' : 'none',
+			footprintSource:
+				validateAssetFootprint(asset.footprint) === null ? 'catalogue-footprint' : 'none',
 			contactSource: record?.contactSource ?? 'none',
-			nonUnitSourceNormalization: record?.nonUnitSourceNormalization ?? false
+			nonUnitSourceNormalization: record?.nonUnitSourceNormalization ?? false,
 		});
 	}
 	return entries;
@@ -199,9 +205,11 @@ export function admittedDefinitionKeys(manifest: readonly Asset[] = assets): rea
 }
 
 /** Built-in catalogue assets whose complete floor-placement definition is admitted. */
-export function admittedCatalogueModelAssets(manifest: readonly Asset[] = assets): readonly Asset[] {
+export function admittedCatalogueModelAssets(
+	manifest: readonly Asset[] = assets,
+): readonly Asset[] {
 	return manifest.filter(
-		(asset) => asset.placementSurface === 'floor' && catalogueModelExclusions(asset).length === 0
+		(asset) => asset.placementSurface === 'floor' && catalogueModelExclusions(asset).length === 0,
 	);
 }
 
@@ -211,10 +219,15 @@ export function admittedCatalogueModelAssets(manifest: readonly Asset[] = assets
  * These are candidates for admission, not admitted definitions: they carry a
  * declared footprint and contact but no recorded verification.
  */
-export function pendingVerificationDefinitionKeys(manifest: readonly Asset[] = assets): readonly string[] {
+export function pendingVerificationDefinitionKeys(
+	manifest: readonly Asset[] = assets,
+): readonly string[] {
 	return objectDefinitionInventory(manifest)
 		.filter((entry) => entry.admission === 'excluded')
-		.filter((entry) => entry.exclusions.length === 1 && entry.exclusions[0]!.code === 'unverified-model-contact')
+		.filter(
+			(entry) =>
+				entry.exclusions.length === 1 && entry.exclusions[0]!.code === 'unverified-model-contact',
+		)
 		.map((entry) => entry.definitionKey);
 }
 
@@ -228,7 +241,7 @@ export function modelDefinitionKey(assetId: string): string {
 
 /** The admitted native definition of one primitive, with its captured metadata identity. */
 export async function nativePlacementDefinition(
-	primitive: NativePlacementPrimitive
+	primitive: NativePlacementPrimitive,
 ): Promise<NormalizedPlacementDefinition> {
 	const facts = {
 		definitionKey: nativeDefinitionKey(primitive),
@@ -236,7 +249,7 @@ export async function nativePlacementDefinition(
 		footprintMeters: nativeFootprint(primitive),
 		contactMinY: nativePlacementContactMinY(primitive),
 		creationDefaults: nativeCreationDefaults(primitive),
-		renderNormalization: { defaultScale: 1 }
+		renderNormalization: { defaultScale: 1 },
 	};
 	return { ...facts, metadataContentId: await definitionMetadataContentId(facts) };
 }
@@ -251,7 +264,7 @@ export async function nativePlacementDefinition(
  */
 export async function catalogueModelDefinition(
 	assetId: string,
-	manifest: readonly Asset[] = assets
+	manifest: readonly Asset[] = assets,
 ): Promise<NormalizedPlacementDefinition | null> {
 	const asset = findAsset(manifest, assetId);
 	if (asset === undefined) return null;
@@ -267,7 +280,7 @@ export async function catalogueModelDefinition(
 			supportedSurfaces: ['floor'] as const,
 			uprightOnly: true,
 			provenance: { kind: 'verified-model' as const, verificationId },
-			exclusions: []
+			exclusions: [],
 		} satisfies ObjectDefinitionAdmission,
 		footprintMeters: normalizeAssetFootprintOutline(asset.footprint!),
 		contactMinY,
@@ -275,14 +288,14 @@ export async function catalogueModelDefinition(
 			kind: 'model' as const,
 			name: asset.name,
 			assetId: asset.id,
-			fallback: resolveAssetFallback(asset)
+			fallback: resolveAssetFallback(asset),
 		} satisfies ObjectCreationDefaults,
 		renderNormalization: {
 			defaultScale: asset.defaultScale,
 			...(asset.defaultRotation === undefined
 				? {}
-				: { defaultRotation: [...asset.defaultRotation] as [number, number, number] })
-		}
+				: { defaultRotation: [...asset.defaultRotation] as [number, number, number] }),
+		},
 	};
 	return { ...facts, metadataContentId: await definitionMetadataContentId(facts) };
 }
@@ -290,11 +303,12 @@ export async function catalogueModelDefinition(
 /** A verified floor contact for an admitted built-in model, or `null` when excluded. */
 export function catalogueModelContactMinY(
 	assetId: string,
-	manifest: readonly Asset[] = assets
+	manifest: readonly Asset[] = assets,
 ): number | null {
 	const asset = findAsset(manifest, assetId);
 	const record = contactRecordFor(assetId);
-	if (asset === undefined || record === undefined || catalogueModelExclusions(asset).length > 0) return null;
+	if (asset === undefined || record === undefined || catalogueModelExclusions(asset).length > 0)
+		return null;
 	return record.contactMinY;
 }
 
@@ -307,7 +321,10 @@ export function catalogueModelContactMinY(
  * that belongs to the Scene adapter's host integration, which consumes this
  * function.
  */
-export function isAdmittedPlacementAssetId(assetId: string, manifest: readonly Asset[] = assets): boolean {
+export function isAdmittedPlacementAssetId(
+	assetId: string,
+	manifest: readonly Asset[] = assets,
+): boolean {
 	const asset = findAsset(manifest, assetId);
 	if (asset === undefined) return false;
 	return catalogueModelExclusions(asset).length === 0;
@@ -319,13 +336,13 @@ export function catalogueModelExclusions(asset: Asset): readonly ObjectDefinitio
 	if (asset.placementSurface !== 'floor') {
 		exclusions.push({
 			code: 'unsupported-placement-surface',
-			reason: `Declared placement surface is "${asset.placementSurface}", not "floor".`
+			reason: `Declared placement surface is "${asset.placementSurface}", not "floor".`,
 		});
 	}
 	if (asset.status !== 'approved') {
 		exclusions.push({
 			code: 'unapproved-asset-status',
-			reason: `Asset status is "${asset.status}"; only approved assets are admitted for placement.`
+			reason: `Asset status is "${asset.status}"; only approved assets are admitted for placement.`,
 		});
 	}
 	const footprintIssue = validateAssetFootprint(asset.footprint);
@@ -334,17 +351,20 @@ export function catalogueModelExclusions(asset: Asset): readonly ObjectDefinitio
 	}
 	const record = contactRecordFor(asset.id);
 	if (record?.verificationFailure) {
-		exclusions.push({ code: 'model-geometry-mismatch', reason: `${record.verificationFailure.verificationId}: ${record.notes}` });
+		exclusions.push({
+			code: 'model-geometry-mismatch',
+			reason: `${record.verificationFailure.verificationId}: ${record.notes}`,
+		});
 	}
 	if (record === undefined) {
 		exclusions.push({
 			code: 'missing-contact-record',
-			reason: 'No declared floor-contact record exists for this asset.'
+			reason: 'No declared floor-contact record exists for this asset.',
 		});
 	} else if (!record.verified || record.verificationId === undefined) {
 		exclusions.push({
 			code: 'unverified-model-contact',
-			reason: `Contact is declared from "${record.contactSource}" but not verified on the landed r186 loader base; ${record.notes}`
+			reason: `Contact is declared from "${record.contactSource}" but not verified on the landed r186 loader base; ${record.notes}`,
 		});
 	}
 	return exclusions;
@@ -368,9 +388,9 @@ function nativeAdmission(primitive: NativePlacementPrimitive): ObjectDefinitionA
 			detail:
 				primitive === 'sphere'
 					? 'Centered sphere: contactMinY = -radius.'
-					: 'Centered primitive: contactMinY = -height/2.'
+					: 'Centered primitive: contactMinY = -height/2.',
 		},
-		exclusions: [PLANE_EXCLUSION]
+		exclusions: [PLANE_EXCLUSION],
 	};
 }
 
@@ -386,7 +406,7 @@ function nativeFootprint(primitive: NativePlacementPrimitive): LayoutVec2[] {
 	if (primitive === 'cylinder') return circleFootprint(NATIVE_PLACEMENT_DIMENSIONS.cylinder.radius);
 	return rectangleFootprint(
 		NATIVE_PLACEMENT_DIMENSIONS.box.width,
-		NATIVE_PLACEMENT_DIMENSIONS.box.depth
+		NATIVE_PLACEMENT_DIMENSIONS.box.depth,
 	);
 }
 
@@ -400,7 +420,7 @@ function nativeCreationDefaults(primitive: NativePlacementPrimitive): ObjectCrea
 			dimensions: { ...NATIVE_PLACEMENT_DIMENSIONS.sphere },
 			materialId,
 			castShadow: true,
-			receiveShadow: true
+			receiveShadow: true,
 		};
 	}
 	if (primitive === 'cylinder') {
@@ -411,7 +431,7 @@ function nativeCreationDefaults(primitive: NativePlacementPrimitive): ObjectCrea
 			dimensions: { ...NATIVE_PLACEMENT_DIMENSIONS.cylinder },
 			materialId,
 			castShadow: true,
-			receiveShadow: true
+			receiveShadow: true,
 		};
 	}
 	return {
@@ -421,7 +441,7 @@ function nativeCreationDefaults(primitive: NativePlacementPrimitive): ObjectCrea
 		dimensions: { ...NATIVE_PLACEMENT_DIMENSIONS.box },
 		materialId,
 		castShadow: true,
-		receiveShadow: true
+		receiveShadow: true,
 	};
 }
 
@@ -432,7 +452,7 @@ function rectangleFootprint(width: number, depth: number): LayoutVec2[] {
 		[-halfWidth, -halfDepth],
 		[halfWidth, -halfDepth],
 		[halfWidth, halfDepth],
-		[-halfWidth, halfDepth]
+		[-halfWidth, halfDepth],
 	];
 }
 

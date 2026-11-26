@@ -21,7 +21,7 @@ provenance      PR #233; independently reviewed CLEAN at 66753654; P1 merge.
 
 evidence        apps/editor/tests/lib/authoring/layout-candidate-preview.test.ts
                 apps/editor/tests/lib/authoring/layout-snap-policy.test.ts
-                apps/editor/tests/lib/authoring/layout-wall-manipulation.test.ts
+                ../../../../../apps/editor/tests/lib/authoring/adapters
                 apps/editor/tests/lib/authoring/stage-grid.test.ts
                 npm test 250 files / 3,209 tests; test:arch 23 / 194; check 0/0;
                 build passed.

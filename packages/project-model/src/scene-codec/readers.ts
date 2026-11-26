@@ -28,7 +28,7 @@ export function addIssue(
 	issues: SceneDocumentIssue[],
 	path: string,
 	code: string,
-	message: string
+	message: string,
 ) {
 	issues.push({ path, code, message });
 }
@@ -37,7 +37,7 @@ export function assertAllowedKeys(
 	value: JsonRecord,
 	allowed: readonly string[],
 	path: string,
-	issues: SceneDocumentIssue[]
+	issues: SceneDocumentIssue[],
 ) {
 	for (const key of Object.keys(value)) {
 		if (!allowed.includes(key)) {
@@ -50,7 +50,7 @@ export function readRequiredString(
 	value: JsonRecord,
 	key: string,
 	path: string,
-	issues: SceneDocumentIssue[]
+	issues: SceneDocumentIssue[],
 ): string | undefined {
 	const candidate = value[key];
 	if (typeof candidate !== 'string') {
@@ -67,7 +67,7 @@ export function readOptionalString(
 	value: JsonRecord,
 	key: string,
 	path: string,
-	issues: SceneDocumentIssue[]
+	issues: SceneDocumentIssue[],
 ): string | undefined {
 	if (!(key in value)) return undefined;
 	return readRequiredString(value, key, path, issues);
@@ -77,7 +77,7 @@ export function readRequiredBoolean(
 	value: JsonRecord,
 	key: string,
 	path: string,
-	issues: SceneDocumentIssue[]
+	issues: SceneDocumentIssue[],
 ): boolean | undefined {
 	const candidate = value[key];
 	if (typeof candidate !== 'boolean') {
@@ -91,7 +91,7 @@ export function readRequiredNumber(
 	value: JsonRecord,
 	key: string,
 	path: string,
-	issues: SceneDocumentIssue[]
+	issues: SceneDocumentIssue[],
 ): number | undefined {
 	const candidate = value[key];
 	if (typeof candidate !== 'number') {
@@ -109,18 +109,13 @@ export function readUnitInterval(
 	value: JsonRecord,
 	key: 'roughness' | 'metalness',
 	path: string,
-	issues: SceneDocumentIssue[]
+	issues: SceneDocumentIssue[],
 ): number | undefined {
 	if (!(key in value)) return undefined;
 	const candidate = readRequiredNumber(value, key, path, issues);
 	if (candidate === undefined) return undefined;
 	if (candidate < 0 || candidate > 1) {
-		addIssue(
-			issues,
-			`${path}.${key}`,
-			`invalid_${key}`,
-			`${key} must be between zero and one`
-		);
+		addIssue(issues, `${path}.${key}`, `invalid_${key}`, `${key} must be between zero and one`);
 		return undefined;
 	}
 	return candidate;
@@ -128,7 +123,7 @@ export function readUnitInterval(
 export function readVec3(
 	value: unknown,
 	path: string,
-	issues: SceneDocumentIssue[]
+	issues: SceneDocumentIssue[],
 ): Vec3 | undefined {
 	if (!Array.isArray(value) || value.length !== 3) {
 		addIssue(issues, path, 'invalid_vec3', 'Expected an array of exactly three finite numbers');
@@ -156,21 +151,21 @@ export function rejectRoomId(
 	value: JsonRecord,
 	key: string,
 	path: string,
-	issues: SceneDocumentIssue[]
+	issues: SceneDocumentIssue[],
 ): void {
 	if (value[key] === undefined) return;
 	addIssue(
 		issues,
 		`${path}.${key}`,
 		'room_id_forbidden_in_world_local',
-		'Scene documents must not carry roomId; values are project/world coordinates'
+		'Scene documents must not carry roomId; values are project/world coordinates',
 	);
 }
 
 export function readStringArray(
 	value: unknown,
 	path: string,
-	issues: SceneDocumentIssue[]
+	issues: SceneDocumentIssue[],
 ): string[] | undefined {
 	if (!Array.isArray(value)) {
 		addIssue(issues, path, 'invalid_type', 'Expected an array');
@@ -191,7 +186,7 @@ export function readHoldSeconds(
 	value: JsonRecord,
 	key: string,
 	path: string,
-	issues: SceneDocumentIssue[]
+	issues: SceneDocumentIssue[],
 ): number | undefined {
 	if (!(key in value)) return undefined;
 	const candidate = readRequiredNumber(value, key, path, issues);
@@ -200,7 +195,7 @@ export function readHoldSeconds(
 			issues,
 			`${path}.${key}`,
 			'invalid_hold_seconds',
-			'holdSeconds must be a finite non-negative number'
+			'holdSeconds must be a finite non-negative number',
 		);
 		return undefined;
 	}

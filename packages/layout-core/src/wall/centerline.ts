@@ -16,8 +16,19 @@
  * arrays, span arrays or points with the baseline document.
  */
 import type { LayoutVec2 } from '../geometry/coordinates';
-import type { LayoutWall, LayoutWallCenterline, LayoutWallCubicSpan, LayoutWallCurveKnot } from './types';
-import { projectPointToSampledSegment, sampleSegment, spansToCubics, type CubicBezierShape, type SampledSegment } from '../geometry/curve';
+import type {
+	LayoutWall,
+	LayoutWallCenterline,
+	LayoutWallCubicSpan,
+	LayoutWallCurveKnot,
+} from './types';
+import {
+	projectPointToSampledSegment,
+	sampleSegment,
+	spansToCubics,
+	type CubicBezierShape,
+	type SampledSegment,
+} from '../geometry/curve';
 import { coincidesAsJunction, JUNCTION_COINCIDENCE_EPSILON } from './junction-identity';
 
 /** Deep-copy one bend point: same stable ID, an independent point array. */
@@ -29,7 +40,7 @@ export function cloneWallCurveKnot(knot: LayoutWallCurveKnot): LayoutWallCurveKn
 export function cloneWallCubicSpan(span: LayoutWallCubicSpan): LayoutWallCubicSpan {
 	return {
 		handleOut: [span.handleOut[0], span.handleOut[1]] as LayoutVec2,
-		handleIn: [span.handleIn[0], span.handleIn[1]] as LayoutVec2
+		handleIn: [span.handleIn[0], span.handleIn[1]] as LayoutVec2,
 	};
 }
 
@@ -39,7 +50,7 @@ export function cloneWallCenterline(centerline: LayoutWallCenterline): LayoutWal
 	return {
 		kind: 'cubic-chain',
 		knots: centerline.knots.map(cloneWallCurveKnot),
-		spans: centerline.spans.map(cloneWallCubicSpan)
+		spans: centerline.spans.map(cloneWallCubicSpan),
 	};
 }
 
@@ -51,12 +62,12 @@ export function cloneWallCenterline(centerline: LayoutWallCenterline): LayoutWal
  */
 export function wallCubicChain(
 	knots: readonly LayoutWallCurveKnot[],
-	spans: readonly LayoutWallCubicSpan[]
+	spans: readonly LayoutWallCubicSpan[],
 ): LayoutWallCenterline {
 	return {
 		kind: 'cubic-chain',
 		knots: knots.map(cloneWallCurveKnot),
-		spans: spans.map(cloneWallCubicSpan)
+		spans: spans.map(cloneWallCubicSpan),
 	};
 }
 
@@ -72,20 +83,17 @@ export function wallCubicChain(
  */
 export function translateWallCenterline(
 	centerline: LayoutWallCenterline,
-	delta: LayoutVec2
+	delta: LayoutVec2,
 ): LayoutWallCenterline {
 	if (centerline.kind === 'line') return { kind: 'line' };
-	const shift = (point: LayoutVec2): LayoutVec2 => [
-		point[0] + delta[0],
-		point[1] + delta[1]
-	];
+	const shift = (point: LayoutVec2): LayoutVec2 => [point[0] + delta[0], point[1] + delta[1]];
 	return {
 		kind: 'cubic-chain',
 		knots: centerline.knots.map((knot) => ({ id: knot.id, point: shift(knot.point) })),
 		spans: centerline.spans.map((span) => ({
 			handleOut: shift(span.handleOut),
-			handleIn: shift(span.handleIn)
-		}))
+			handleIn: shift(span.handleIn),
+		})),
 	};
 }
 
@@ -109,7 +117,7 @@ export function translateWallCenterline(
  */
 export function nextWallCurveKnotId(
 	wallId: string,
-	existing: readonly LayoutWallCurveKnot[]
+	existing: readonly LayoutWallCurveKnot[],
 ): string {
 	const used = new Set(existing.map((knot) => knot.id));
 	let index = existing.length + 1;
@@ -131,7 +139,7 @@ export type WallCenterlineTraversal = 'forward' | 'reverse';
 function traversalEnds(
 	startPoint: LayoutVec2,
 	endPoint: LayoutVec2,
-	traversal: WallCenterlineTraversal
+	traversal: WallCenterlineTraversal,
 ): [LayoutVec2, LayoutVec2] {
 	return traversal === 'reverse'
 		? [[...endPoint] as LayoutVec2, [...startPoint] as LayoutVec2]
@@ -148,7 +156,7 @@ function traversalPoints(
 	centerline: LayoutWallCenterline,
 	startPoint: LayoutVec2,
 	endPoint: LayoutVec2,
-	traversal: WallCenterlineTraversal
+	traversal: WallCenterlineTraversal,
 ): LayoutVec2[] {
 	if (centerline.kind === 'line') return traversalEnds(startPoint, endPoint, traversal);
 	// Read path borrows knot order from the single orientation owner below and
@@ -179,7 +187,7 @@ function mirrorSpanView(span: LayoutWallCubicSpan): LayoutWallCubicSpan {
  */
 function orientedKnotRefs(
 	centerline: LayoutWallCenterline,
-	traversal: WallCenterlineTraversal
+	traversal: WallCenterlineTraversal,
 ): readonly LayoutWallCurveKnot[] {
 	if (centerline.kind === 'line') return [];
 	return traversal === 'reverse' ? [...centerline.knots].reverse() : centerline.knots;
@@ -193,7 +201,7 @@ function orientedKnotRefs(
  */
 function orientedSpanViews(
 	centerline: LayoutWallCenterline,
-	traversal: WallCenterlineTraversal
+	traversal: WallCenterlineTraversal,
 ): readonly LayoutWallCubicSpan[] {
 	if (centerline.kind === 'line') return [];
 	if (traversal !== 'reverse') return centerline.spans;
@@ -215,12 +223,12 @@ function orientedSpanViews(
  */
 export function orientedWallChainKnotsAndSpans(
 	centerline: LayoutWallCenterline,
-	traversal: WallCenterlineTraversal
+	traversal: WallCenterlineTraversal,
 ): { knots: LayoutWallCurveKnot[]; spans: LayoutWallCubicSpan[] } {
 	if (centerline.kind === 'line') return { knots: [], spans: [] };
 	return {
 		knots: orientedKnotRefs(centerline, traversal).map(cloneWallCurveKnot),
-		spans: orientedSpanViews(centerline, traversal).map(cloneWallCubicSpan)
+		spans: orientedSpanViews(centerline, traversal).map(cloneWallCubicSpan),
 	};
 }
 
@@ -236,7 +244,7 @@ export function wallCenterlineCubics(
 	centerline: LayoutWallCenterline,
 	startPoint: LayoutVec2,
 	endPoint: LayoutVec2,
-	traversal: WallCenterlineTraversal
+	traversal: WallCenterlineTraversal,
 ): CubicBezierShape[] {
 	if (centerline.kind === 'line') return [];
 	// Stored spans are authored `startJunction → endJunction`, so the forward
@@ -249,12 +257,12 @@ export function wallCenterlineCubics(
 	if (traversal === 'reverse') {
 		return spansToCubics(
 			traversalPoints(centerline, startPoint, endPoint, 'reverse'),
-			orientedSpanViews(centerline, 'reverse')
+			orientedSpanViews(centerline, 'reverse'),
 		);
 	}
 	return spansToCubics(
 		traversalPoints(centerline, startPoint, endPoint, 'forward'),
-		orientedSpanViews(centerline, 'forward')
+		orientedSpanViews(centerline, 'forward'),
 	);
 }
 
@@ -266,7 +274,7 @@ export function wallCenterlinePoints(
 	centerline: LayoutWallCenterline,
 	startPoint: LayoutVec2,
 	endPoint: LayoutVec2,
-	traversal: WallCenterlineTraversal
+	traversal: WallCenterlineTraversal,
 ): LayoutVec2[] {
 	return traversalPoints(centerline, startPoint, endPoint, traversal);
 }
@@ -274,7 +282,7 @@ export function wallCenterlinePoints(
 /**
  * Map the canonical Wall representation onto the existing curve kernel.
  *
- * Returns the segment shape `sampleSegment()` consumes: a `line` between the
+ * Returns the segment shape `sampleSegment` consumes: a `line` between the
  * resolved endpoint Junctions, or a `cubic-chain` carrying the Wall's explicit
  * cubics. This is the ONE adapter — no compiler/topology/Opening code builds
  * Wall curve segments by hand.
@@ -290,7 +298,7 @@ export function wallCenterlineSegment(
 	wall: Pick<LayoutWall, 'id' | 'centerline'>,
 	startPoint: LayoutVec2,
 	endPoint: LayoutVec2,
-	traversal: WallCenterlineTraversal
+	traversal: WallCenterlineTraversal,
 ): WallCenterlineSegment {
 	if (wall.centerline.kind === 'line') {
 		const [from, to] = traversalEnds(startPoint, endPoint, traversal);
@@ -299,7 +307,7 @@ export function wallCenterlineSegment(
 	return {
 		id: wall.id,
 		kind: 'cubic-chain',
-		cubics: wallCenterlineCubics(wall.centerline, startPoint, endPoint, traversal)
+		cubics: wallCenterlineCubics(wall.centerline, startPoint, endPoint, traversal),
 	};
 }
 
@@ -311,7 +319,8 @@ export function wallCenterlineSamples(
 	wall: Pick<LayoutWall, 'id' | 'centerline'>,
 	startPoint: LayoutVec2,
 	endPoint: LayoutVec2,
-	traversal: WallCenterlineTraversal
+	traversal: WallCenterlineTraversal,
+	options: WallSamplingOptions = {},
 ): SampledSegment | undefined {
 	let result: SampledSegment | undefined;
 	try {
@@ -319,7 +328,7 @@ export function wallCenterlineSamples(
 	} catch {
 		result = undefined;
 	}
-	const observer = wallSamplingObserverForTest;
+	const observer = options.observer;
 	if (observer) {
 		try {
 			observer(
@@ -329,9 +338,9 @@ export function wallCenterlineSamples(
 					start: [startPoint[0], startPoint[1]] as LayoutVec2,
 					end: [endPoint[0], endPoint[1]] as LayoutVec2,
 					ok: result !== undefined,
-					centerline: wall.centerline
+					centerline: wall.centerline,
 				},
-				result
+				result,
 			);
 		} catch {
 			// A test observer must never break production sampling.
@@ -341,15 +350,14 @@ export function wallCenterlineSamples(
 }
 
 /**
- * Test-only observation of actual consumer sampling calls.
+ * Observation of actual consumer sampling calls.
  *
- * While set, every `wallCenterlineSamples` invocation reports its inputs and result.
- * Unset (the production default) is zero behavior change beyond one undefined check.
- * The hook never retains: the observer runs synchronously and production stores
- * nothing, so no document lifetime is extended (RL-1). The observer must not mutate
- * its arguments and must copy synchronously if it needs the data. Never set in
- * production code; tests set/clear around a single real-consumer invocation to key
- * observations by consumer/site/traversal/resolved endpoints.
+ * A caller that supplies `observer` receives every `wallCenterlineSamples`
+ * invocation's inputs and result; omitting it (the production default) is zero
+ * behavior change beyond one undefined check. The hook never retains: the
+ * observer runs synchronously and production stores nothing, so no document
+ * lifetime is extended (RL-1). The observer must not mutate its arguments and
+ * must copy synchronously if it needs the data.
  */
 export type WallSamplingCallObservation = {
 	wallId: string;
@@ -366,40 +374,35 @@ export type WallSamplingCallObservation = {
 	 */
 	centerline: LayoutWallCenterline;
 };
-let wallSamplingObserverForTest:
-	| ((observation: WallSamplingCallObservation, result: SampledSegment | undefined) => void)
-	| undefined;
-export function setWallSamplingObserverForTest(
-	observer: ((observation: WallSamplingCallObservation, result: SampledSegment | undefined) => void) | undefined
-): void {
-	wallSamplingObserverForTest = observer;
-}
-export function clearWallSamplingObserverForTest(): void {
-	wallSamplingObserverForTest = undefined;
-}
-export function hasWallSamplingObserverForTest(): boolean {
-	return wallSamplingObserverForTest !== undefined;
-}
+export type WallSamplingObserver = (
+	observation: WallSamplingCallObservation,
+	result: SampledSegment | undefined,
+) => void;
+
+/** The optional observation a caller threads through one sampling request. */
+export type WallSamplingOptions = {
+	observer?: WallSamplingObserver;
+};
 
 /**
- * P23B.4 M-1 — one explicitly-threaded sampled-centerline derivation per acceptance chain.
+ * One explicitly threaded sampled-centerline derivation per acceptance chain.
  *
  * The acceptance chain (`finalizeWallGeometryCandidate`) derives the SAME Wall's canonical
  * centerline once per DISTINCT key and hands THE SAME array object to every consumer that
- * presents that key. The key grammar (owned here, generalized by P23B.5):
+ * presents that key. The key includes:
  *
  * - TRACED INPUTS ONLY: the centerline OBJECT identity (never geometry equality —
- *   coincident coordinates across independent components must not share identity, D-9),
- *   the traversal, the Wall id, and the resolved endpoints at full precision.
+ *  coincident coordinates across independent components must not share identity, D-9),
+ *  the traversal, the Wall id, and the resolved endpoints at full precision.
  * - Pre/post may legitimately hold DIFFERENT derivations: they run on different documents
- *   (different centerline objects), so sharing is per key, never across keys (EQ-1).
+ *  (different centerline objects), so sharing is per key, never across keys (EQ-1).
  * - The key INCLUDES traversal (conservative form): `reverse` is derived independently,
- *   never served by reversing the `forward` array, until OR-2 proves otherwise.
+ *  never served by reversing the `forward` array, until OR-2 proves otherwise.
  * - The key INCLUDES the Wall id: the returned
- *   artefact carries `segmentId = wall.id`, so two Walls that share a centerline OBJECT
- *   and endpoints/traversal must still get their OWN entry. Sharing one entry would hand
- *   the second Wall the first Wall's metadata — a real API hazard, even though landed
- *   documents give every Wall its own centerline object.
+ *  artefact carries `segmentId = wall.id`, so two Walls that share a centerline OBJECT
+ *  and endpoints/traversal must still get their OWN entry. Sharing one entry would hand
+ *  the second Wall the first Wall's metadata — a real API hazard, even though landed
+ *  documents give every Wall its own centerline object.
  *
  * Lifetime is the caller's (a per-release/per-acceptance chain value): chain-scoped, never
  * editor state, never a module global — RL-1 (document retention) is impossible, not merely
@@ -420,7 +423,7 @@ export type WallSamplingDerivation = {
 		wall: Pick<LayoutWall, 'id' | 'centerline'>,
 		startPoint: LayoutVec2,
 		endPoint: LayoutVec2,
-		traversal: WallCenterlineTraversal
+		traversal: WallCenterlineTraversal,
 	): SampledSegment | undefined;
 	/**
 	 * Live counters, split so a measurement can tell the reuse outcomes apart.
@@ -429,16 +432,15 @@ export type WallSamplingDerivation = {
 	 * *derivation* is an absent key, and it is separately attributable:
 	 *
 	 * - `coldMisses`: this scope had never served this Wall before (a first
-	 *   request, or a request whose Wall was never asked).
+	 *  request, or a request whose Wall was never asked).
 	 * - `refusals`: this Wall WAS served before and a traced input changed — the
-	 *   centerline OBJECT, the traversal, or the resolved endpoints. The entry is
-	 *   absent because the input changed, never because the request is new.
+	 *  centerline OBJECT, the traversal, or the resolved endpoints. The entry is
+	 *  absent because the input changed, never because the request is new.
 	 *
 	 * `derivations === coldMisses + refusals` by construction: a request whose
 	 * (centerline, key) pair repeats cannot be a derivation, because the store
 	 * never evicts — it is a hit. A changed centerline OBJECT therefore counts as a
-	 * refusal even when its values are equal, which is the honest reason P23B.5 S0
-	 * recorded: identity, not input divergence, is what refuses those hits.
+	 * refusal even when its values are equal. The cache keys on object identity.
 	 *
 	 * A derivation that yields `undefined` is a *failed derive*, and a hit whose
 	 * cached artefact is `undefined` is not useful geometry reuse; both are counted
@@ -483,14 +485,16 @@ type WallSamplingLastRequest = {
 
 /**
  * Construct one derivation. Every chain constructs its own; a bounded
- * gesture/operation owner constructs exactly one and `reset()`s it at scope end.
+ * gesture/operation owner constructs exactly one and `reset`s it at scope end.
  */
 const CANONICAL_SAMPLING = new WeakMap<WallSamplingDerivation, WallSamplingDerivation['samples']>();
 /** An arbitrary injected sampler is not interchangeable with canonical sampling. */
 export function isCanonicalWallSampling(sampling: WallSamplingDerivation | undefined): boolean {
- return sampling === undefined || CANONICAL_SAMPLING.get(sampling) === sampling.samples;
+	return sampling === undefined || CANONICAL_SAMPLING.get(sampling) === sampling.samples;
 }
-export function createWallSamplingDerivation(): WallSamplingDerivation {
+export function createWallSamplingDerivation(
+	options: WallSamplingOptions = {},
+): WallSamplingDerivation {
 	const cache = new Map<LayoutWallCenterline, Map<string, SampledSegment | undefined>>();
 	/**
 	 * One small record per Wall this scope has served, used only to attribute a
@@ -507,7 +511,7 @@ export function createWallSamplingDerivation(): WallSamplingDerivation {
 		refusals: 0,
 		failedDerivations: 0,
 		cachedUndefined: 0,
-		entries: 0
+		entries: 0,
 	};
 	const derivation: WallSamplingDerivation = {
 		samples(wall, startPoint, endPoint, traversal) {
@@ -542,7 +546,7 @@ export function createWallSamplingDerivation(): WallSamplingDerivation {
 			} else {
 				stats.coldMisses += 1;
 			}
-			const derived = wallCenterlineSamples(wall, startPoint, endPoint, traversal);
+			const derived = wallCenterlineSamples(wall, startPoint, endPoint, traversal, options);
 			if (derived === undefined) stats.failedDerivations += 1;
 			byKey.set(key, derived);
 			stats.entries += 1;
@@ -559,9 +563,11 @@ export function createWallSamplingDerivation(): WallSamplingDerivation {
 			stats.failedDerivations = 0;
 			stats.cachedUndefined = 0;
 			stats.entries = 0;
-		}
+		},
 	};
-	CANONICAL_SAMPLING.set(derivation, derivation.samples);
+	// Only an unobserved derivation is interchangeable with canonical sampling:
+	// an observed one must keep every cache and recorded compile bypassed.
+	if (options.observer === undefined) CANONICAL_SAMPLING.set(derivation, derivation.samples);
 	return derivation;
 }
 
@@ -592,7 +598,7 @@ export function projectPointToWallCenterline(
 	wall: Pick<LayoutWall, 'id' | 'centerline'>,
 	startPoint: LayoutVec2,
 	endPoint: LayoutVec2,
-	point: LayoutVec2
+	point: LayoutVec2,
 ): { distance: number; point: LayoutVec2; distanceToPath: number } | undefined {
 	const sampled = wallCenterlineSamples(wall, startPoint, endPoint, 'forward');
 	if (!sampled) return undefined;
@@ -600,7 +606,7 @@ export function projectPointToWallCenterline(
 	return {
 		distance: projected.distance,
 		point: [projected.point[0], projected.point[1]] as LayoutVec2,
-		distanceToPath: projected.distanceToPath
+		distanceToPath: projected.distanceToPath,
 	};
 }
 
@@ -608,7 +614,7 @@ export function wallCenterlineCarriesPoint(
 	wall: Pick<LayoutWall, 'id' | 'centerline'>,
 	startPoint: LayoutVec2,
 	endPoint: LayoutVec2,
-	point: LayoutVec2
+	point: LayoutVec2,
 ): boolean {
 	if (coincidesAsJunction(point, startPoint) || coincidesAsJunction(point, endPoint)) return true;
 	if (wall.centerline.kind === 'line') {
@@ -622,5 +628,7 @@ export function wallCenterlineCarriesPoint(
 	}
 	const sampled = wallCenterlineSamples(wall, startPoint, endPoint, 'forward');
 	if (!sampled) return false;
-	return projectPointToSampledSegment(point, sampled).distanceToPath <= JUNCTION_COINCIDENCE_EPSILON;
+	return (
+		projectPointToSampledSegment(point, sampled).distanceToPath <= JUNCTION_COINCIDENCE_EPSILON
+	);
 }

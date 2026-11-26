@@ -114,6 +114,6 @@ export function createStageHeightState(ports: StageHeightStatePorts) {
 		setHeight,
 		addPin,
 		setPlaneActive,
-		cancelPlane
+		cancelPlane,
 	};
 }

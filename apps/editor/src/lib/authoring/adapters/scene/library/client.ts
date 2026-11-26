@@ -15,7 +15,7 @@ import {
 	formLibraryContentId,
 	readFormLibraryBytes,
 	type FormLibraryItemSummary,
-	type FormLibraryPayload
+	type FormLibraryPayload,
 } from '@portfolio/project-model/library';
 
 export type FormLibraryClientErrorCode =
@@ -35,7 +35,7 @@ export class FormLibraryClientError extends Error {
 		code: FormLibraryClientErrorCode,
 		message: string,
 		status: number | null = null,
-		serverCode: string | null = null
+		serverCode: string | null = null,
 	) {
 		super(message);
 		this.name = 'FormLibraryClientError';
@@ -54,7 +54,7 @@ export type FormLibraryClient = {
 	 */
 	read(
 		item: Pick<FormLibraryItemSummary, 'id' | 'contentId' | 'formatVersion'>,
-		signal?: AbortSignal
+		signal?: AbortSignal,
 	): Promise<{ readonly payload: FormLibraryPayload; readonly contentId: string }>;
 	save(payload: FormLibraryPayload): Promise<FormLibraryItemSummary>;
 	remove(id: string): Promise<void>;
@@ -79,17 +79,22 @@ function readError(body: unknown, status: number): FormLibraryClientError {
 		isRecord(body) && isRecord(body.error) && typeof body.error.message === 'string'
 			? body.error.message
 			: `My Objects request failed (${status}).`;
-	if (status === 401 || status === 403) return new FormLibraryClientError('unauthorized', message, status, serverCode);
+	if (status === 401 || status === 403)
+		return new FormLibraryClientError('unauthorized', message, status, serverCode);
 	if (status === 404) return new FormLibraryClientError('not-found', message, status, serverCode);
 	if (status === 409 && serverCode === 'library_full') {
 		return new FormLibraryClientError('library-full', message, status, serverCode);
 	}
-	if (status >= 400 && status < 500) return new FormLibraryClientError('refused', message, status, serverCode);
+	if (status >= 400 && status < 500)
+		return new FormLibraryClientError('refused', message, status, serverCode);
 	return new FormLibraryClientError('network', message, status, serverCode);
 }
 
 function invalidResponse(): never {
-	throw new FormLibraryClientError('invalid-response', 'My Objects returned an unexpected response.');
+	throw new FormLibraryClientError(
+		'invalid-response',
+		'My Objects returned an unexpected response.',
+	);
 }
 
 function readSummary(value: unknown): FormLibraryItemSummary {
@@ -110,7 +115,7 @@ function readSummary(value: unknown): FormLibraryItemSummary {
 		kind: 'form',
 		formatVersion: value.formatVersion,
 		contentId: value.contentId,
-		createdAt: value.createdAt
+		createdAt: value.createdAt,
 	};
 }
 
@@ -128,7 +133,7 @@ export function createFormLibraryClient(input: {
 			const response = await request(url('/library/items'), {
 				method: 'GET',
 				credentials: 'include',
-				...(signal === undefined ? {} : { signal })
+				...(signal === undefined ? {} : { signal }),
 			});
 			if (!response.ok) throw readError(await response.json().catch(() => null), response.status);
 			const body: unknown = await response.json().catch(() => invalidResponse());
@@ -140,7 +145,7 @@ export function createFormLibraryClient(input: {
 			const response = await request(itemUrl(item.id), {
 				method: 'GET',
 				credentials: 'include',
-				...(signal === undefined ? {} : { signal })
+				...(signal === undefined ? {} : { signal }),
 			});
 			if (!response.ok) throw readError(await response.json().catch(() => null), response.status);
 			const etag = response.headers.get('etag')?.replace(/^"|"$/g, '') ?? null;
@@ -151,19 +156,18 @@ export function createFormLibraryClient(input: {
 					'refused',
 					'The saved item does not match the identity it was listed under.',
 					200,
-					'content_id_mismatch'
+					'content_id_mismatch',
 				);
 			}
 			const headerFormat = Number(response.headers.get('x-library-format-version'));
-			const formatVersion = Number.isSafeInteger(headerFormat) && headerFormat > 0
-				? headerFormat
-				: item.formatVersion;
+			const formatVersion =
+				Number.isSafeInteger(headerFormat) && headerFormat > 0 ? headerFormat : item.formatVersion;
 			if (formatVersion !== FORM_LIBRARY_PAYLOAD_FORMAT_VERSION) {
 				throw new FormLibraryClientError(
 					'refused',
 					`This item was made with an earlier development version (format ${formatVersion}) and cannot be inserted. Remove it, or keep it for reference.`,
 					200,
-					'unsupported_format_version'
+					'unsupported_format_version',
 				);
 			}
 			const bytes = new Uint8Array(await response.arrayBuffer());
@@ -174,7 +178,7 @@ export function createFormLibraryClient(input: {
 					'refused',
 					first?.message ?? 'The saved item could not be read.',
 					200,
-					first?.code ?? 'invalid_library_item'
+					first?.code ?? 'invalid_library_item',
 				);
 			}
 			return { payload: parsed.payload, contentId: parsed.contentId };
@@ -187,7 +191,7 @@ export function createFormLibraryClient(input: {
 				method: 'POST',
 				credentials: 'include',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ contentId, payload: JSON.parse(canonical) })
+				body: JSON.stringify({ contentId, payload: JSON.parse(canonical) }),
 			});
 			if (!response.ok) throw readError(await response.json().catch(() => null), response.status);
 			return readSummary(await response.json().catch(() => invalidResponse()));
@@ -196,9 +200,9 @@ export function createFormLibraryClient(input: {
 		async remove(id) {
 			const response = await request(itemUrl(id), {
 				method: 'DELETE',
-				credentials: 'include'
+				credentials: 'include',
 			});
 			if (!response.ok) throw readError(await response.json().catch(() => null), response.status);
-		}
+		},
 	};
 }

@@ -6,7 +6,7 @@ import { execFileSync } from 'node:child_process';
 export function focusedFiles(plan, cwd = process.cwd()) {
 	const currentTests = execFileSync('git', ['ls-files', '-z', 'apps/editor/tests'], {
 		cwd,
-		encoding: 'utf8'
+		encoding: 'utf8',
 	})
 		.split('\0')
 		.filter((path) => path.endsWith('.test.ts'));
@@ -15,7 +15,7 @@ export function focusedFiles(plan, cwd = process.cwd()) {
 		.map((path) => path.slice('apps/editor/'.length));
 	const heavyFiles = new Set(currentTests.filter((path) => path.endsWith('.heavy.test.ts')));
 	const heavyBaseNames = new Set(
-		[...heavyFiles].map((path) => path.replace(/\.heavy\.test\.ts$/, '.test.ts'))
+		[...heavyFiles].map((path) => path.replace(/\.heavy\.test\.ts$/, '.test.ts')),
 	);
 	const paths = plan.changes.filter(({ profile }) => profile === 'focused').map(({ path }) => path);
 	const areas = new Set(['authoring', 'design']);
@@ -28,11 +28,16 @@ export function focusedFiles(plan, cwd = process.cwd()) {
 			areas.add('render');
 		}
 		if (!area || !['authoring', 'design', 'content', 'render'].includes(area)) {
-			for (const fallback of ['content', 'experience', 'camera-core', 'render']) areas.add(fallback);
+			for (const fallback of ['content', 'experience', 'camera-core', 'render'])
+				areas.add(fallback);
 		}
 	}
-	const cohort = execFileSync('git', ['ls-tree', '-r', '--name-only', '-z', plan.head, 'apps/editor/tests/lib'],
-		{ cwd, encoding: 'utf8' }).split('\0')
+	const cohort = execFileSync(
+		'git',
+		['ls-tree', '-r', '--name-only', '-z', plan.head, 'apps/editor/tests/lib'],
+		{ cwd, encoding: 'utf8' },
+	)
+		.split('\0')
 		.filter((path) => /\.(?:test|spec)\.[jt]s$/.test(path))
 		.map((path) => path.slice('apps/editor/'.length))
 		.filter((path) => {

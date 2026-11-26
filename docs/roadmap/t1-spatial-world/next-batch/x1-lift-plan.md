@@ -495,7 +495,7 @@ Edited (all exist on `main`):
 - `apps/editor/src/lib/authoring/stage/route/stage-keyboard.ts` — Escape rung.
 - `apps/editor/src/routes/project/[projectId]/spatial/+page.svelte` — wiring, `initialScope`,
   `resetViewContext` / teardown `clear()`, scoped-Room-gone effect.
-- `apps/editor/tests/lib/render/material-factory-boundary.arch.test.ts` — allowlist entry.
+- `../../../../apps/editor/tests/lib/render/material-factory-boundary.arch.case.ts` — allowlist entry.
 - `docs/reference/components/rendering.md` — the one Layers sentence (the T2 integration trigger).
 - `docs/reference/components/layout.md` — one line under session readings: Lift is a Layout
   session reading, not persisted.

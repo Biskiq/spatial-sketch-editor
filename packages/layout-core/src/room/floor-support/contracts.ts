@@ -1,6 +1,12 @@
 import type { Vec3 } from '../../kernel/types';
 import type { LayoutVec2 } from '../../geometry/coordinates';
-import type { CompiledFloor, CompiledLayoutGeometry, CompiledQueryPolygon, CompiledRegion, CompiledRoom } from '../../geometry/types';
+import type {
+	CompiledFloor,
+	CompiledLayoutGeometry,
+	CompiledQueryPolygon,
+	CompiledRegion,
+	CompiledRoom,
+} from '../../geometry/types';
 
 /**
  * Operation/query tolerances, not compiler epsilon.
@@ -17,20 +23,17 @@ export type FloorSupportTolerances = {
 	upNormalComponent: number;
 };
 
-
 export const FLOOR_SUPPORT_TOLERANCES: Readonly<FloorSupportTolerances> = Object.freeze({
 	boundaryMeters: 1e-6,
 	coplanarElevationMeters: 1e-6,
-	upNormalComponent: 1e-9
+	upNormalComponent: 1e-9,
 });
-
 
 /** A compiled Room floor or floor-region top faces up; candidates carry it. */
 export const FLOOR_SUPPORT_UP_NORMAL: Readonly<Vec3> = Object.freeze([0, 1, 0]);
 
 /** A closed-Space lid or overhead-region underside faces down. */
 export const OVERHEAD_SUPPORT_DOWN_NORMAL: Readonly<Vec3> = Object.freeze([0, -1, 0]);
-
 
 /**
  * One compiled support face record, narrowed to the fields the query reads.
@@ -40,13 +43,11 @@ export type FloorSupportQueryPolygon = Pick<
 	'id' | 'cacheKey' | 'kind' | 'polygon' | 'sourceId' | 'floorId' | 'roomId' | 'elevation'
 >;
 
-
 /** The compiled region facts an upward region witness is verified against. */
 export type FloorSupportRegionFacts = Pick<
 	CompiledRegion,
 	'regionId' | 'role' | 'topY' | 'bottomY' | 'id' | 'cacheKey'
 >;
-
 
 /**
  * The compiled facts the upward query is a read-only function of.
@@ -63,16 +64,14 @@ export type FloorSupportSnapshot = {
 	queryPolygons: readonly FloorSupportQueryPolygon[];
 };
 
-
 export function floorSupportSnapshotOf(compiled: CompiledLayoutGeometry): FloorSupportSnapshot {
 	return {
 		floors: compiled.floors,
 		rooms: compiled.rooms,
 		regions: compiled.regions,
-		queryPolygons: compiled.queries.polygons
+		queryPolygons: compiled.queries.polygons,
 	};
 }
-
 
 export type FloorSupportScope = {
 	/**
@@ -83,7 +82,6 @@ export type FloorSupportScope = {
 	 */
 	floorId?: string;
 };
-
 
 export type FloorSupportQueryInput = {
 	/** The caller's compile generation for the snapshot it is querying. */
@@ -100,12 +98,10 @@ export type FloorSupportQueryInput = {
 	scope?: FloorSupportScope;
 };
 
-
 /** One compiled support face that supports the queried point. */
 export type FloorSupportWitnessSource =
 	| { readonly kind: 'room'; readonly roomId: string }
 	| { readonly kind: 'region'; readonly regionId: string };
-
 
 export type FloorSupportWitness = {
 	/** The typed source of this witness: a Room floor or a floor-role region top. */
@@ -122,7 +118,6 @@ export type FloorSupportWitness = {
 	elevation: number;
 };
 
-
 export type FloorSupportCandidate = {
 	/** World X/Z at which these witnesses were queried. */
 	queryPoint: LayoutVec2;
@@ -138,27 +133,25 @@ export type FloorSupportCandidate = {
 	label: string;
 };
 
-
 /** The stable choice identity of datum support; it can never equal a source witness key. */
 export const DATUM_SUPPORT_ORDER_KEY = 'stage-datum';
-
 
 export type FloorSupportQueryResult =
 	| { kind: 'candidates'; candidates: readonly FloorSupportCandidate[] }
 	| { kind: 'none' }
 	| {
-		kind: 'invalid-input';
-		code: 'non-finite-point' | 'missing-generation-id';
-		message: string;
-	}
+			kind: 'invalid-input';
+			code: 'non-finite-point' | 'missing-generation-id';
+			message: string;
+	  }
 	| {
-		kind: 'stale-generation';
-		generationId: string;
-		evidenceGenerationId: string;
-		message: string;
-	}
+			kind: 'stale-generation';
+			generationId: string;
+			evidenceGenerationId: string;
+			message: string;
+	  }
 	| {
-		kind: 'unsupported';
-		code: 'unknown-scope-floor' | 'missing-support-facts' | 'contradictory-support-facts';
-		message: string;
-	};
+			kind: 'unsupported';
+			code: 'unknown-scope-floor' | 'missing-support-facts' | 'contradictory-support-facts';
+			message: string;
+	  };

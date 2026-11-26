@@ -17,5 +17,5 @@ export {
 	type ResolveTarget,
 	type SceneFinishGeometry,
 	type SceneFinishLook,
-	type SceneLook
+	type SceneLook,
 } from './scene-finish';

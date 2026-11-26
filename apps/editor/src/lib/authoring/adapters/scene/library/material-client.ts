@@ -1,5 +1,5 @@
 /**
- * The editor's owner-scoped material library client (T2.S8 G).
+ * The editor's owner-scoped material library client.
  *
  * It is transport only. Save recomputes the item's canonical content identity
  * from the shared codec before posting; read verifies the exact bytes against
@@ -15,7 +15,7 @@ import {
 	type MaterialLibraryImageBinding,
 	type MaterialLibraryItemSummary,
 	type MaterialLibraryPayload,
-	type MaterialLibraryTransfer
+	type MaterialLibraryTransfer,
 } from '@portfolio/project-model/library';
 import { readRecipe, recipeHash, type Recipe } from '@portfolio/project-model/materials';
 
@@ -38,7 +38,7 @@ export class MaterialLibraryClientError extends Error {
 		code: MaterialLibraryClientErrorCode,
 		message: string,
 		status: number | null = null,
-		serverCode: string | null = null
+		serverCode: string | null = null,
 	) {
 		super(message);
 		this.name = 'MaterialLibraryClientError';
@@ -59,7 +59,7 @@ export type MaterialLibraryClient = {
 	list(signal?: AbortSignal): Promise<MaterialLibraryItemSummary[]>;
 	read(
 		item: Pick<MaterialLibraryItemSummary, 'id' | 'contentId' | 'formatVersion'>,
-		signal?: AbortSignal
+		signal?: AbortSignal,
 	): Promise<{
 		readonly payload: MaterialLibraryPayload;
 		readonly contentId: string;
@@ -71,13 +71,13 @@ export type MaterialLibraryClient = {
 	putThumbnail(
 		item: Pick<MaterialLibraryItemSummary, 'id' | 'contentId' | 'recipeHash'>,
 		bytes: Uint8Array,
-		signal?: AbortSignal
+		signal?: AbortSignal,
 	): Promise<void>;
 	transfer(
 		item: Pick<MaterialLibraryItemSummary, 'id' | 'contentId' | 'recipeHash'>,
 		destinationProjectId: string,
 		operationId: string,
-		signal?: AbortSignal
+		signal?: AbortSignal,
 	): Promise<MaterialLibraryTransfer>;
 };
 
@@ -92,7 +92,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function invalidResponse(): never {
-	throw new MaterialLibraryClientError('invalid-response', 'My Materials returned an unexpected response.');
+	throw new MaterialLibraryClientError(
+		'invalid-response',
+		'My Materials returned an unexpected response.',
+	);
 }
 
 function readError(body: unknown, status: number): MaterialLibraryClientError {
@@ -104,18 +107,24 @@ function readError(body: unknown, status: number): MaterialLibraryClientError {
 		isRecord(body) && isRecord(body.error) && typeof body.error.message === 'string'
 			? body.error.message
 			: `My Materials request failed (${status}).`;
-	if (status === 401 || status === 403) return new MaterialLibraryClientError('unauthorized', message, status, serverCode);
-	if (status === 404) return new MaterialLibraryClientError('not-found', message, status, serverCode);
+	if (status === 401 || status === 403)
+		return new MaterialLibraryClientError('unauthorized', message, status, serverCode);
+	if (status === 404)
+		return new MaterialLibraryClientError('not-found', message, status, serverCode);
 	if (status === 409 && serverCode === 'library_full') {
 		return new MaterialLibraryClientError('library-full', message, status, serverCode);
 	}
-	if (status === 409 && (serverCode === 'operation_conflict' || serverCode === 'content_id_mismatch')) {
+	if (
+		status === 409 &&
+		(serverCode === 'operation_conflict' || serverCode === 'content_id_mismatch')
+	) {
 		return new MaterialLibraryClientError('conflict', message, status, serverCode);
 	}
 	if (status === 409 && (serverCode === 'stale_revision' || serverCode === 'stale_thumbnail')) {
 		return new MaterialLibraryClientError('stale', message, status, serverCode);
 	}
-	if (status >= 400 && status < 500) return new MaterialLibraryClientError('refused', message, status, serverCode);
+	if (status >= 400 && status < 500)
+		return new MaterialLibraryClientError('refused', message, status, serverCode);
 	return new MaterialLibraryClientError('network', message, status, serverCode);
 }
 
@@ -143,16 +152,21 @@ function readSummary(value: unknown): MaterialLibraryItemSummary {
 		createdAt: value.createdAt,
 		recipeHash: value.recipeHash,
 		imageCount: value.imageCount,
-		hasThumbnail: value.hasThumbnail
+		hasThumbnail: value.hasThumbnail,
 	};
 }
 
 function readTransferImage(value: unknown): MaterialLibraryTransfer['images'][number] {
-	if (!isRecord(value) || typeof value.hash !== 'string' || !isRecord(value.source)) invalidResponse();
+	if (!isRecord(value) || typeof value.hash !== 'string' || !isRecord(value.source))
+		invalidResponse();
 	const textureId = value.source.textureId;
 	const shipped = value.source.shipped;
 	if ((typeof textureId !== 'string') === (typeof shipped !== 'string')) invalidResponse();
-	if (typeof value.mime !== 'string' || typeof value.byteSize !== 'number' || !Number.isSafeInteger(value.byteSize)) {
+	if (
+		typeof value.mime !== 'string' ||
+		typeof value.byteSize !== 'number' ||
+		!Number.isSafeInteger(value.byteSize)
+	) {
 		invalidResponse();
 	}
 	if (value.name !== undefined && typeof value.name !== 'string') invalidResponse();
@@ -161,11 +175,14 @@ function readTransferImage(value: unknown): MaterialLibraryTransfer['images'][nu
 		source: typeof textureId === 'string' ? { textureId } : { shipped: shipped as string },
 		mime: value.mime,
 		byteSize: value.byteSize,
-		...(typeof value.name === 'string' ? { name: value.name } : {})
+		...(typeof value.name === 'string' ? { name: value.name } : {}),
 	};
 }
 
-function readTransfer(value: unknown, item: Pick<MaterialLibraryItemSummary, 'id' | 'contentId' | 'recipeHash'>): MaterialLibraryTransfer {
+function readTransfer(
+	value: unknown,
+	item: Pick<MaterialLibraryItemSummary, 'id' | 'contentId' | 'recipeHash'>,
+): MaterialLibraryTransfer {
 	if (
 		!isRecord(value) ||
 		value.itemId !== item.id ||
@@ -189,7 +206,7 @@ function readTransfer(value: unknown, item: Pick<MaterialLibraryItemSummary, 'id
 		recipe: recipe.recipe as Recipe,
 		recipeHash: value.recipeHash,
 		images: value.images.map(readTransferImage),
-		savedBase: value.savedBase
+		savedBase: value.savedBase,
 	};
 }
 
@@ -206,7 +223,7 @@ export function createMaterialLibraryClient(input: {
 			const response = await request(url('/library/items?kind=material'), {
 				method: 'GET',
 				credentials: 'include',
-				...(signal === undefined ? {} : { signal })
+				...(signal === undefined ? {} : { signal }),
 			});
 			if (!response.ok) throw readError(await response.json().catch(() => null), response.status);
 			const body: unknown = await response.json().catch(() => invalidResponse());
@@ -218,7 +235,7 @@ export function createMaterialLibraryClient(input: {
 			const response = await request(itemUrl(item.id), {
 				method: 'GET',
 				credentials: 'include',
-				...(signal === undefined ? {} : { signal })
+				...(signal === undefined ? {} : { signal }),
 			});
 			if (!response.ok) throw readError(await response.json().catch(() => null), response.status);
 			const etag = response.headers.get('etag')?.replace(/^"|"$/g, '') ?? null;
@@ -227,21 +244,20 @@ export function createMaterialLibraryClient(input: {
 					'conflict',
 					'The saved material does not match the identity it was listed under.',
 					200,
-					'content_id_mismatch'
+					'content_id_mismatch',
 				);
 			}
 			const kind = response.headers.get('x-library-kind');
 			if (kind !== null && kind !== 'material') invalidResponse();
 			const headerFormat = Number(response.headers.get('x-library-format-version'));
-			const formatVersion = Number.isSafeInteger(headerFormat) && headerFormat > 0
-				? headerFormat
-				: item.formatVersion;
+			const formatVersion =
+				Number.isSafeInteger(headerFormat) && headerFormat > 0 ? headerFormat : item.formatVersion;
 			if (formatVersion !== MATERIAL_LIBRARY_PAYLOAD_FORMAT_VERSION) {
 				throw new MaterialLibraryClientError(
 					'refused',
 					`This material was made with an earlier development version (format ${formatVersion}) and cannot be inserted. Remove it, or keep it for reference.`,
 					200,
-					'unsupported_format_version'
+					'unsupported_format_version',
 				);
 			}
 			const bytes = new Uint8Array(await response.arrayBuffer());
@@ -252,10 +268,14 @@ export function createMaterialLibraryClient(input: {
 					'refused',
 					first?.message ?? 'The saved material could not be read.',
 					200,
-					first?.code ?? 'invalid_library_item'
+					first?.code ?? 'invalid_library_item',
 				);
 			}
-			return { payload: parsed.payload, contentId: parsed.contentId, recipeHash: parsed.recipeHash };
+			return {
+				payload: parsed.payload,
+				contentId: parsed.contentId,
+				recipeHash: parsed.recipeHash,
+			};
 		},
 
 		async save(inputBody, signal) {
@@ -270,9 +290,9 @@ export function createMaterialLibraryClient(input: {
 					operationId: inputBody.operationId,
 					sourceProjectId: inputBody.sourceProjectId,
 					payload: JSON.parse(canonical),
-					images: inputBody.images
+					images: inputBody.images,
 				}),
-				...(signal === undefined ? {} : { signal })
+				...(signal === undefined ? {} : { signal }),
 			});
 			if (!response.ok) throw readError(await response.json().catch(() => null), response.status);
 			return readSummary(await response.json().catch(() => invalidResponse()));
@@ -281,7 +301,7 @@ export function createMaterialLibraryClient(input: {
 		async remove(id) {
 			const response = await request(itemUrl(id), {
 				method: 'DELETE',
-				credentials: 'include'
+				credentials: 'include',
 			});
 			if (!response.ok) throw readError(await response.json().catch(() => null), response.status);
 		},
@@ -290,7 +310,7 @@ export function createMaterialLibraryClient(input: {
 			const response = await request(`${itemUrl(id)}/thumbnail`, {
 				method: 'GET',
 				credentials: 'include',
-				...(signal === undefined ? {} : { signal })
+				...(signal === undefined ? {} : { signal }),
 			});
 			if (!response.ok) throw readError(await response.json().catch(() => null), response.status);
 			const bytes = new Uint8Array(await response.arrayBuffer());
@@ -302,13 +322,16 @@ export function createMaterialLibraryClient(input: {
 			if (bytes.byteLength > 256 * 1024) {
 				throw new MaterialLibraryClientError('refused', 'A material thumbnail is at most 256 KiB.');
 			}
-			const query = new URLSearchParams({ expectedContentId: item.contentId, recipeKey: item.recipeHash });
+			const query = new URLSearchParams({
+				expectedContentId: item.contentId,
+				recipeKey: item.recipeHash,
+			});
 			const response = await request(`${itemUrl(item.id)}/thumbnail?${query.toString()}`, {
 				method: 'PUT',
 				credentials: 'include',
 				headers: { 'Content-Type': 'application/octet-stream' },
 				body: bytes as unknown as BodyInit,
-				...(signal === undefined ? {} : { signal })
+				...(signal === undefined ? {} : { signal }),
 			});
 			if (!response.ok) throw readError(await response.json().catch(() => null), response.status);
 		},
@@ -319,7 +342,7 @@ export function createMaterialLibraryClient(input: {
 				credentials: 'include',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ destinationProjectId, contentId: item.contentId, operationId }),
-				...(signal === undefined ? {} : { signal })
+				...(signal === undefined ? {} : { signal }),
 			});
 			if (!response.ok) throw readError(await response.json().catch(() => null), response.status);
 			const transfer = readTransfer(await response.json().catch(() => invalidResponse()), item);
@@ -329,10 +352,10 @@ export function createMaterialLibraryClient(input: {
 					'conflict',
 					'The inserted material recipe does not match the pinned recipe revision.',
 					200,
-					'content_id_mismatch'
+					'content_id_mismatch',
 				);
 			}
 			return transfer;
-		}
+		},
 	};
 }

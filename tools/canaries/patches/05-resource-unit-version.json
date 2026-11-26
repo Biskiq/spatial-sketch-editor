@@ -1,13 +1,11 @@
 {
-  "id": "05-resource-unit-version",
-  "area": "codec",
-  "citation": "section 7 rule 7 — one refusal per format family",
-  "title": "The admitted Resource unit version drifts from its codec",
-  "file": "packages/project-model/src/units/types.ts",
-  "find": "\tresources: RESOURCE_UNIT_FORMAT_VERSION",
-  "replace": "\tresources: RESOURCE_UNIT_FORMAT_VERSION + 1",
-  "tests": [
-    "packages/project-model/tests/units-conformance.test.ts"
-  ],
-  "root": "repo"
+	"id": "05-resource-unit-version",
+	"area": "codec",
+	"citation": "section 7 rule 7 \u2014 one refusal per format family",
+	"title": "The admitted Resource unit version drifts from its codec",
+	"file": "packages/project-model/src/units/types.ts",
+	"find": "\tresources: RESOURCE_UNIT_FORMAT_VERSION",
+	"replace": "\tresources: RESOURCE_UNIT_FORMAT_VERSION + 1",
+	"tests": ["packages/project-model/tests/units-conformance.test.ts"],
+	"root": "repo"
 }

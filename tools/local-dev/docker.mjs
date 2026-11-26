@@ -10,14 +10,16 @@ import { spawnSync } from 'node:child_process';
 function defaultDocker(args, { encoding = null } = {}) {
 	return spawnSync('docker', args, {
 		encoding: encoding ?? undefined,
-		stdio: encoding ? ['ignore', 'pipe', 'pipe'] : 'inherit'
+		stdio: encoding ? ['ignore', 'pipe', 'pipe'] : 'inherit',
 	});
 }
 
 function failure(label, result) {
 	const stderr =
 		typeof result?.stderr === 'string' ? result.stderr.trim() : String(result?.stderr ?? '').trim();
-	return new Error(`${label} failed with exit ${String(result?.status)}${stderr ? `: ${stderr}` : ''}`);
+	return new Error(
+		`${label} failed with exit ${String(result?.status)}${stderr ? `: ${stderr}` : ''}`,
+	);
 }
 
 function checked(exec, args, label, options) {
@@ -32,7 +34,7 @@ function containerIds(stack, exec, all) {
 		exec,
 		['ps', ...(all ? ['-aq'] : ['-q']), '--filter', `label=com.docker.compose.project=${stack}`],
 		'docker ps',
-		{ encoding: 'utf8' }
+		{ encoding: 'utf8' },
 	);
 	return String(listed.stdout ?? '')
 		.split(/\s+/)
@@ -63,7 +65,7 @@ export function removeProjectVolumes(stack, exec = defaultDocker) {
 	const existing = new Set(
 		String(listed.stdout ?? '')
 			.split(/\s+/)
-			.filter(Boolean)
+			.filter(Boolean),
 	);
 	const names = [`${stack}_pgdata`, `${stack}_s3data`].filter((name) => existing.has(name));
 	if (names.length === 0) return;

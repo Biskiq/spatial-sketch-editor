@@ -1,8 +1,15 @@
 import { probeArtworkImage } from '@portfolio/project-model/artwork';
-import { collectEnvelopeImageRequirements, type ProjectImagePin } from '@portfolio/project-model/project-images';
+import {
+	collectEnvelopeImageRequirements,
+	type ProjectImagePin,
+} from '@portfolio/project-model/project-images';
 import { isSavedBaseToken } from '@portfolio/project-model/save';
 import { type ProjectEnvelope } from '@portfolio/project-model/units';
-import { ArtworkAssetRefusal, ImageVerificationUnavailableError, type ArtworkAssetPin } from '../artwork-persistence.js';
+import {
+	ArtworkAssetRefusal,
+	ImageVerificationUnavailableError,
+	type ArtworkAssetPin,
+} from '../artwork-persistence.js';
 import { type DatabasePool } from '../database.js';
 import { type ObjectStore } from '../object-store.js';
 import { createHash, randomBytes } from 'node:crypto';
@@ -34,7 +41,7 @@ export class ImageRepairError extends Error {
 			| 'image_mismatch'
 			| 'conflict'
 			| 'service_unavailable',
-		message: string
+		message: string,
 	) {
 		super(message);
 		this.name = 'ImageRepairError';
@@ -48,15 +55,27 @@ export function readImageRepairRequest(query: unknown): ImageRepairRequest | Ima
 	}
 	const values = query as Record<string, unknown>;
 	if (Object.keys(values).length !== 2) {
-		return new ImageRepairError(400, 'invalid_repair', 'Repair requires exactly expectedPin and savedBase');
+		return new ImageRepairError(
+			400,
+			'invalid_repair',
+			'Repair requires exactly expectedPin and savedBase',
+		);
 	}
 	const expectedPin = values.expectedPin;
 	const savedBaseToken = values.savedBase;
 	if (typeof expectedPin !== 'string' || !SHA256_PATTERN.test(expectedPin)) {
-		return new ImageRepairError(400, 'invalid_repair', 'expectedPin must be a sha256 image identity');
+		return new ImageRepairError(
+			400,
+			'invalid_repair',
+			'expectedPin must be a sha256 image identity',
+		);
 	}
 	if (!isSavedBaseToken(savedBaseToken)) {
-		return new ImageRepairError(400, 'invalid_repair', 'savedBase must be the loaded saved-base token');
+		return new ImageRepairError(
+			400,
+			'invalid_repair',
+			'savedBase must be the loaded saved-base token',
+		);
 	}
 	return { expectedPin, savedBaseToken };
 }
@@ -65,12 +84,18 @@ export function pinOf(pin: ArtworkAssetPin): ProjectImagePin {
 	return { hash: pin.sha256, mime: pin.mime, size: pin.byteSize };
 }
 
-export type ImageRequirement = ReturnType<typeof collectEnvelopeImageRequirements>['requirements'][number];
+export type ImageRequirement = ReturnType<
+	typeof collectEnvelopeImageRequirements
+>['requirements'][number];
 
 export function requirementFor(envelope: ProjectEnvelope, assetId: string): ImageRequirement {
 	const closure = collectEnvelopeImageRequirements(envelope, 'private-save');
 	if (closure.issues.length > 0) {
-		throw new ImageRepairError(409, 'image_pin_changed', 'The saved image closure cannot be verified; source recovery is required.');
+		throw new ImageRepairError(
+			409,
+			'image_pin_changed',
+			'The saved image closure cannot be verified; source recovery is required.',
+		);
 	}
 	const requirement = closure.requirements.find((candidate) => candidate.assetId === assetId);
 	if (requirement === undefined) {
@@ -84,14 +109,14 @@ export function repairErrorFromRefusal(error: ArtworkAssetRefusal): ImageRepairE
 		return new ImageRepairError(
 			404,
 			'not_found',
-			'The image has no ready registry record in this project; source recovery is required.'
+			'The image has no ready registry record in this project; source recovery is required.',
 		);
 	}
 	if (error.code === 'image-pin-changed') {
 		return new ImageRepairError(
 			409,
 			'image_pin_changed',
-			'The saved revision pins different image bytes; source recovery is required.'
+			'The saved revision pins different image bytes; source recovery is required.',
 		);
 	}
 	return new ImageRepairError(409, 'image_pin_changed', error.message);
@@ -100,34 +125,54 @@ export function repairErrorFromRefusal(error: ArtworkAssetRefusal): ImageRepairE
 export function asImageRepairError(error: unknown): unknown {
 	if (error instanceof ArtworkAssetRefusal) return repairErrorFromRefusal(error);
 	if (error instanceof ImageVerificationUnavailableError) {
-		return new ImageRepairError(503, 'service_unavailable', 'Image storage is unavailable; retry the repair.');
+		return new ImageRepairError(
+			503,
+			'service_unavailable',
+			'Image storage is unavailable; retry the repair.',
+		);
 	}
 	return error;
 }
 
-export function createRepairKey(projectId: string, assetId: string, objectNamespace: string, attemptId: string): string {
+export function createRepairKey(
+	projectId: string,
+	assetId: string,
+	objectNamespace: string,
+	attemptId: string,
+): string {
 	return `projects/${objectNamespace}/${projectId}/assets/${assetId}/repair-${attemptId}-${randomBytes(8).toString('hex')}`;
 }
 
-export async function readObjectBytes(store: ObjectStore, key: string, byteSize: number): Promise<Uint8Array> {
+export async function readObjectBytes(
+	store: ObjectStore,
+	key: string,
+	byteSize: number,
+): Promise<Uint8Array> {
 	const stored = await store.get(key);
-	if (!stored) throw new ArtworkAssetRefusal('', 'Image bytes are missing.', { code: 'image-missing' });
+	if (!stored)
+		throw new ArtworkAssetRefusal('', 'Image bytes are missing.', { code: 'image-missing' });
 	try {
 		if (stored.contentLength !== byteSize) {
-			throw new ArtworkAssetRefusal('', 'The stored image length differs from its pin.', { code: 'image-corrupt' });
+			throw new ArtworkAssetRefusal('', 'The stored image length differs from its pin.', {
+				code: 'image-corrupt',
+			});
 		}
 		const bytes = new Uint8Array(byteSize);
 		let length = 0;
 		for await (const chunk of stored.body) {
 			const part = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
 			if (length + part.length > bytes.length) {
-				throw new ArtworkAssetRefusal('', 'The stored image exceeds its pin.', { code: 'image-corrupt' });
+				throw new ArtworkAssetRefusal('', 'The stored image exceeds its pin.', {
+					code: 'image-corrupt',
+				});
 			}
 			bytes.set(Uint8Array.from(part), length);
 			length += part.length;
 		}
 		if (length !== byteSize) {
-			throw new ArtworkAssetRefusal('', 'The stored image ended before its pin.', { code: 'image-corrupt' });
+			throw new ArtworkAssetRefusal('', 'The stored image ended before its pin.', {
+				code: 'image-corrupt',
+			});
 		}
 		return bytes;
 	} finally {
@@ -136,7 +181,11 @@ export async function readObjectBytes(store: ObjectStore, key: string, byteSize:
 }
 
 /** A bounded read retry for transient object-store failures. */
-export async function readStoredBytesWithRetry(store: ObjectStore, key: string, byteSize: number): Promise<Uint8Array> {
+export async function readStoredBytesWithRetry(
+	store: ObjectStore,
+	key: string,
+	byteSize: number,
+): Promise<Uint8Array> {
 	let last: unknown;
 	for (let attempt = 0; attempt < 3; attempt += 1) {
 		try {
@@ -153,20 +202,27 @@ export async function verifyHealthyRow(store: ObjectStore, pin: ArtworkAssetPin)
 	const bytes = await readStoredBytesWithRetry(store, pin.objectKey, pin.byteSize);
 	const digest = `sha256-${createHash('sha256').update(bytes).digest('hex')}`;
 	if (digest !== pin.sha256) {
-		throw new ArtworkAssetRefusal('', 'The stored image differs from its pin.', { code: 'image-corrupt' });
+		throw new ArtworkAssetRefusal('', 'The stored image differs from its pin.', {
+			code: 'image-corrupt',
+		});
 	}
 	let decoded: ReturnType<typeof probeArtworkImage>;
 	try {
 		decoded = probeArtworkImage(bytes);
 	} catch {
-		throw new ArtworkAssetRefusal('', 'The stored image is not a supported static image.', { code: 'image-corrupt' });
+		throw new ArtworkAssetRefusal('', 'The stored image is not a supported static image.', {
+			code: 'image-corrupt',
+		});
 	}
 	if (
 		decoded.mime !== pin.mime ||
 		(pin.artwork !== null &&
-			(decoded.pixelWidth !== pin.artwork.pixelWidth || decoded.pixelHeight !== pin.artwork.pixelHeight))
+			(decoded.pixelWidth !== pin.artwork.pixelWidth ||
+				decoded.pixelHeight !== pin.artwork.pixelHeight))
 	) {
-		throw new ArtworkAssetRefusal('', 'The stored image MIME or dimensions differ from its pin.', { code: 'image-corrupt' });
+		throw new ArtworkAssetRefusal('', 'The stored image MIME or dimensions differ from its pin.', {
+			code: 'image-corrupt',
+		});
 	}
 }
 
@@ -208,7 +264,10 @@ export async function deleteStagedKey(store: ObjectStore, key: string): Promise<
 	}
 }
 
-export async function forgetAttempt(pool: Pick<DatabasePool, 'query'>, attemptId: string): Promise<void> {
+export async function forgetAttempt(
+	pool: Pick<DatabasePool, 'query'>,
+	attemptId: string,
+): Promise<void> {
 	try {
 		await pool.query('DELETE FROM image_repair_attempts WHERE id = $1::uuid', [attemptId]);
 	} catch {
@@ -217,7 +276,8 @@ export async function forgetAttempt(pool: Pick<DatabasePool, 'query'>, attemptId
 }
 
 export function readString(value: unknown): string {
-	if (typeof value !== 'string' || value.length === 0) throw new Error('Image repair row contained an invalid string');
+	if (typeof value !== 'string' || value.length === 0)
+		throw new Error('Image repair row contained an invalid string');
 	return value;
 }
 
@@ -227,7 +287,9 @@ export function readNullableString(value: unknown): string | null {
 }
 
 export function readSafeInteger(value: unknown): number {
-	const result = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN;
-	if (!Number.isSafeInteger(result) || result < 0) throw new Error('Image repair row contained an invalid version');
+	const result =
+		typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN;
+	if (!Number.isSafeInteger(result) || result < 0)
+		throw new Error('Image repair row contained an invalid version');
 	return result;
 }

@@ -1,12 +1,33 @@
 import type { ExecutionProgram } from '../../../program/types';
-import type { ExperienceEffect, ExperienceEvent, ExperienceInterpreterOptions, ExperienceReduceOutcome, ExperienceReduceResult, ExperienceRunState } from './contracts';
+import type {
+	ExperienceEffect,
+	ExperienceEvent,
+	ExperienceInterpreterOptions,
+	ExperienceReduceOutcome,
+	ExperienceReduceResult,
+	ExperienceRunState,
+} from './contracts';
 import { ignored } from './lifecycle';
-import { arrivalEvent, continueRun, enter, enterPresentation, exploreView, finish, navigate, resetRun, resumeGuide, sameRun, setPaused, setState, tick } from './session';
+import {
+	arrivalEvent,
+	continueRun,
+	enter,
+	enterPresentation,
+	exploreView,
+	finish,
+	navigate,
+	resetRun,
+	resumeGuide,
+	sameRun,
+	setPaused,
+	setState,
+	tick,
+} from './session';
 
 /** The state before `enter`: no occurrence, values at their declared initial. */
 export function createExperienceRun(
 	program: ExecutionProgram,
-	options: ExperienceInterpreterOptions
+	options: ExperienceInterpreterOptions,
 ): ExperienceRunState {
 	const values: Record<string, string | boolean> = {};
 	for (const declaration of program.state) values[declaration.id] = declaration.initial;
@@ -32,23 +53,21 @@ export function createExperienceRun(
 		invocationFromViewId: null,
 		returnToStopId: null,
 		resume: null,
-		lastEvent: null
+		lastEvent: null,
 	};
 }
-
 
 /** Whether a run is exploring: a Stop occurrence is suspended behind it. */
 export function isExploring(state: ExperienceRunState): boolean {
 	return state.resume !== null;
 }
 
-
 /** Fold one event into one run. Pure: the input state is never mutated. */
 export function reduceExperience(
 	program: ExecutionProgram,
 	state: ExperienceRunState,
 	event: ExperienceEvent,
-	options: ExperienceInterpreterOptions = { runId: state.runId, runEpoch: state.runEpoch }
+	options: ExperienceInterpreterOptions = { runId: state.runId, runEpoch: state.runEpoch },
 ): ExperienceReduceResult {
 	if (!sameRun(state, event)) return { state, outcome: 'stale', effects: [] };
 	// A source edit replaces the run: an event prepared from a different lowering
@@ -102,12 +121,11 @@ export function reduceExperience(
 	}
 }
 
-
 /** Replay an ordered event list from a fresh run. Seeking replays; it never guesses history. */
 export function replayExperience(
 	program: ExecutionProgram,
 	options: ExperienceInterpreterOptions,
-	events: readonly ExperienceEvent[]
+	events: readonly ExperienceEvent[],
 ): ExperienceReduceResult {
 	let state = createExperienceRun(program, options);
 	let effects: ExperienceEffect[] = [];

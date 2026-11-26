@@ -1,8 +1,8 @@
 /**
- * Align chart (T2.S8 U6): the exact renderer sampling, inverted for the overlay.
+ * Align chart: the exact renderer sampling, inverted for the overlay.
  *
  * The renderer samples a Finish at
- *   t = diag(repeat) · R(−θ) · (uv − ½) + ½ + offset
+ *  t = diag(repeat) · R(−θ) · (uv − ½) + ½ + offset
  * (`render/resources/finish-sampling.ts` `sampleUv`), where `uv` is the
  * surface's native chart and `repeat = uvMeters / tileMeters` for a metric
  * mapping (`project-model/materials/bind.ts`). A `legacy` origin then reads row
@@ -11,9 +11,9 @@
  *
  * Layout surfaces are metre charts (`uvMeters` [1, 1]):
  * - a wall side's `u` is arc length from the wall's start on both sides and `v`
- *   is height above the wall's floor (the Layout wall mesh);
+ *  is height above the wall's floor (the Layout wall mesh);
  * - a room floor's `u` is world `x` and `v` is world `−z`
- *   (`render/layout-room-representation.ts` `polygonShape`).
+ *  (`render/layout-room-representation.ts` `polygonShape`).
  *
  * Everything here is pure: no Camera, no DOM, no authored writes.
  */
@@ -54,21 +54,30 @@ const MIN_REPEAT = 0.01;
 /** The renderer's sampling for a mapping on a chart (`bind.ts` + `materialMetricRepeat`). */
 export function samplingOf(mapping: Mapping, uvMeters: Vec2): AlignSampling {
 	if (mapping.kind === 'uv') {
-		const repeat: Vec2 = [Math.max(MIN_REPEAT, mapping.repeat[0]), Math.max(MIN_REPEAT, mapping.repeat[1])];
+		const repeat: Vec2 = [
+			Math.max(MIN_REPEAT, mapping.repeat[0]),
+			Math.max(MIN_REPEAT, mapping.repeat[1]),
+		];
 		return {
 			repeat,
 			rotation: mapping.rotation,
 			offset: [mapping.offset[0], mapping.offset[1]],
-			tileMeters: [uvMeters[0] / repeat[0], uvMeters[1] / repeat[1]]
+			tileMeters: [uvMeters[0] / repeat[0], uvMeters[1] / repeat[1]],
 		};
 	}
-	const tile: Vec2 = [Math.max(0.01, mapping.metric.tileMeters[0]), Math.max(0.01, mapping.metric.tileMeters[1])];
-	const repeat: Vec2 = [Math.max(MIN_REPEAT, uvMeters[0] / tile[0]), Math.max(MIN_REPEAT, uvMeters[1] / tile[1])];
+	const tile: Vec2 = [
+		Math.max(0.01, mapping.metric.tileMeters[0]),
+		Math.max(0.01, mapping.metric.tileMeters[1]),
+	];
+	const repeat: Vec2 = [
+		Math.max(MIN_REPEAT, uvMeters[0] / tile[0]),
+		Math.max(MIN_REPEAT, uvMeters[1] / tile[1]),
+	];
 	return {
 		repeat,
 		rotation: mapping.metric.rotation,
 		offset: [mapping.metric.offset[0], mapping.metric.offset[1]],
-		tileMeters: [uvMeters[0] / repeat[0], uvMeters[1] / repeat[1]]
+		tileMeters: [uvMeters[0] / repeat[0], uvMeters[1] / repeat[1]],
 	};
 }
 
@@ -93,7 +102,12 @@ export function tileToUv(t: Vec2, s: AlignSampling): [number, number] {
 }
 
 /** The offset that puts lattice point `k` at `uv` under rotation `rotation` (repeat unchanged). */
-export function offsetPlacing(k: Vec2, uv: Vec2, s: Pick<AlignSampling, 'repeat'>, rotation: number): [number, number] {
+export function offsetPlacing(
+	k: Vec2,
+	uv: Vec2,
+	s: Pick<AlignSampling, 'repeat'>,
+	rotation: number,
+): [number, number] {
 	const cx = uv[0] - 0.5;
 	const cy = uv[1] - 0.5;
 	const c = Math.cos(rotation);
@@ -109,7 +123,7 @@ export function chartToWorld(chart: AlignSurfaceChart, uv: Vec2): [number, numbe
 	return [
 		chart.origin[0] + chart.uAxis[0] * mu + chart.vAxis[0] * mv,
 		chart.origin[1] + chart.uAxis[1] * mu + chart.vAxis[1] * mv,
-		chart.origin[2] + chart.uAxis[2] * mu + chart.vAxis[2] * mv
+		chart.origin[2] + chart.uAxis[2] * mu + chart.vAxis[2] * mv,
 	];
 }
 
@@ -119,16 +133,21 @@ export function chartCorners(chart: AlignSurfaceChart): [Vec2, Vec2, Vec2, Vec2]
 		[chart.uMin, chart.vMin],
 		[chart.uMax, chart.vMin],
 		[chart.uMax, chart.vMax],
-		[chart.uMin, chart.vMax]
+		[chart.uMin, chart.vMax],
 	];
 }
 
 function insideChart(chart: AlignSurfaceChart, uv: Vec2, eps = 1e-9): boolean {
-	return uv[0] >= chart.uMin - eps && uv[0] <= chart.uMax + eps && uv[1] >= chart.vMin - eps && uv[1] <= chart.vMax + eps;
+	return (
+		uv[0] >= chart.uMin - eps &&
+		uv[0] <= chart.uMax + eps &&
+		uv[1] >= chart.vMin - eps &&
+		uv[1] <= chart.vMax + eps
+	);
 }
 
 /**
- * Clip the line {uv : a·uv = d} to the chart rectangle. Returns the segment's
+ * Clip the line {uv: a·uv = d} to the chart rectangle. Returns the segment's
  * two endpoints, or null when the line misses the rectangle.
  */
 function clipLine(chart: AlignSurfaceChart, a: Vec2, d: number): [Vec2, Vec2] | null {
@@ -162,22 +181,31 @@ function clipLine(chart: AlignSurfaceChart, a: Vec2, d: number): [Vec2, Vec2] | 
 	return bestD > 1e-12 ? best : null;
 }
 
-export type AlignGridLine = { readonly axis: 'x' | 'y'; readonly k: number; readonly from: Vec2; readonly to: Vec2 };
+export type AlignGridLine = {
+	readonly axis: 'x' | 'y';
+	readonly k: number;
+	readonly from: Vec2;
+	readonly to: Vec2;
+};
 
 /**
  * Tile boundary segments in uv: every `t_x = k` and `t_y = k` clipped to the
  * chart. `null` when more than `maxPerAxis` boundaries would cross the surface
  * (a tile far smaller than the surface draws no legible grid).
  */
-export function tileGridLines(chart: AlignSurfaceChart, s: AlignSampling, maxPerAxis = 240): AlignGridLine[] | null {
+export function tileGridLines(
+	chart: AlignSurfaceChart,
+	s: AlignSampling,
+	maxPerAxis = 240,
+): AlignGridLine[] | null {
 	const corners = chartCorners(chart).map((c) => uvToTile(c, s));
 	const out: AlignGridLine[] = [];
 	const c = Math.cos(s.rotation);
 	const n = Math.sin(s.rotation);
-	// t_x = repeat_x·( c·(u−½) + n·(v−½) ) + ½ + off_x  →  a·uv = d
+	// t_x = repeat_x·(c·(u−½) + n·(v−½) ) + ½ + off_x → a·uv = d
 	const axes: { axis: 'x' | 'y'; a: Vec2; base: number; rep: number; off: number }[] = [
 		{ axis: 'x', a: [c, n], base: 0.5 * (c + n), rep: s.repeat[0], off: s.offset[0] },
-		{ axis: 'y', a: [-n, c], base: 0.5 * (-n + c), rep: s.repeat[1], off: s.offset[1] }
+		{ axis: 'y', a: [-n, c], base: 0.5 * (-n + c), rep: s.repeat[1], off: s.offset[1] },
 	];
 	for (const [index, ax] of axes.entries()) {
 		const values = corners.map((t) => t[index]!);
@@ -198,7 +226,11 @@ export function tileGridLines(chart: AlignSurfaceChart, s: AlignSampling, maxPer
  * inside the chart nearest `near` (uv). Falls back to the nearest lattice point
  * to the chart centre, clamped into the chart, when none lies inside.
  */
-export function handleLattice(chart: AlignSurfaceChart, s: AlignSampling, near: Vec2): { k: [number, number]; uv: [number, number] } {
+export function handleLattice(
+	chart: AlignSurfaceChart,
+	s: AlignSampling,
+	near: Vec2,
+): { k: [number, number]; uv: [number, number] } {
 	const t = uvToTile(near, s);
 	let best: { k: [number, number]; uv: [number, number]; d: number } | null = null;
 	const span = 3;
@@ -235,9 +267,12 @@ export function handleMetersOf(
 	handleUv: Vec2,
 	corner: { readonly origin: Vec2; readonly right: Vec2; readonly up: Vec2 },
 	uvMeters: Vec2,
-	tileMeters: Vec2
+	tileMeters: Vec2,
 ): [number, number] {
-	const metres = (uv: Vec2): [number, number] => [(uv[0] - corner.origin[0]) * uvMeters[0], (uv[1] - corner.origin[1]) * uvMeters[1]];
+	const metres = (uv: Vec2): [number, number] => [
+		(uv[0] - corner.origin[0]) * uvMeters[0],
+		(uv[1] - corner.origin[1]) * uvMeters[1],
+	];
 	const unit = (v: [number, number]): [number, number] => {
 		const len = Math.hypot(v[0], v[1]);
 		return len > 1e-12 ? [v[0] / len, v[1] / len] : [0, 0];
@@ -249,7 +284,10 @@ export function handleMetersOf(
 		const w = ((v % tile) + tile) % tile;
 		return w > tile - 5e-7 ? 0 : w;
 	};
-	return [wrap(d[0] * r[0] + d[1] * r[1], tileMeters[0]), wrap(d[0] * u[0] + d[1] * u[1], tileMeters[1])];
+	return [
+		wrap(d[0] * r[0] + d[1] * r[1], tileMeters[0]),
+		wrap(d[0] * u[0] + d[1] * u[1], tileMeters[1]),
+	];
 }
 
 /** Snap a tile-fraction offset to 1 cm (1 mm with Shift) in pattern metres, wrapped into [0, 1). */
@@ -257,7 +295,7 @@ export function snapOffset(offset: Vec2, tileMeters: Vec2, fine: boolean): [numb
 	const step = fine ? 0.001 : 0.01;
 	const snap = (o: number, tile: number) => {
 		const metres = Math.round((o * tile) / step) * step;
-		const wrapped = ((metres / tile) % 1 + 1) % 1;
+		const wrapped = (((metres / tile) % 1) + 1) % 1;
 		return Number(wrapped.toFixed(6)) % 1;
 	};
 	return [snap(offset[0], tileMeters[0]), snap(offset[1], tileMeters[1])];
@@ -273,14 +311,23 @@ export type AlignJacobian = {
 export function screenToUvDelta(j: AlignJacobian, delta: Vec2): [number, number] | null {
 	const det = j.du[0] * j.dv[1] - j.dv[0] * j.du[1];
 	if (!(Math.abs(det) > 1e-9)) return null;
-	return [(delta[0] * j.dv[1] - delta[1] * j.dv[0]) / det, (j.du[0] * delta[1] - j.du[1] * delta[0]) / det];
+	return [
+		(delta[0] * j.dv[1] - delta[1] * j.dv[0]) / det,
+		(j.du[0] * delta[1] - j.du[1] * delta[0]) / det,
+	];
 }
 
 /**
  * Drag the square handle: lattice point `k`, which sat at `startUv`, follows a
  * uv delta. Returns the snapped offset that keeps rotation and repeat.
  */
-export function dragOffset(s: AlignSampling, k: Vec2, startUv: Vec2, deltaUv: Vec2, fine: boolean): [number, number] {
+export function dragOffset(
+	s: AlignSampling,
+	k: Vec2,
+	startUv: Vec2,
+	deltaUv: Vec2,
+	fine: boolean,
+): [number, number] {
 	const raw = offsetPlacing(k, [startUv[0] + deltaUv[0], startUv[1] + deltaUv[1]], s, s.rotation);
 	return snapOffset(raw, s.tileMeters, fine);
 }
@@ -295,7 +342,7 @@ export function turnAbout(
 	k: Vec2,
 	handleUv: Vec2,
 	directionUv: Vec2,
-	free: boolean
+	free: boolean,
 ): { rotation: number; offset: [number, number] } {
 	const raw = Math.atan2(directionUv[1], directionUv[0]);
 	const step = Math.PI / 12;
@@ -305,8 +352,15 @@ export function turnAbout(
 }
 
 /** Rotate by `deltaRad` about the square handle (keyboard ±15°). */
-export function turnBy(s: AlignSampling, k: Vec2, handleUv: Vec2, deltaRad: number): { rotation: number; offset: [number, number] } {
-	const rotation = wrapRotation(Math.round((s.rotation + deltaRad) / (Math.PI / 12)) * (Math.PI / 12));
+export function turnBy(
+	s: AlignSampling,
+	k: Vec2,
+	handleUv: Vec2,
+	deltaRad: number,
+): { rotation: number; offset: [number, number] } {
+	const rotation = wrapRotation(
+		Math.round((s.rotation + deltaRad) / (Math.PI / 12)) * (Math.PI / 12),
+	);
 	return { rotation, offset: wrapOffset(offsetPlacing(k, handleUv, s, rotation)) };
 }
 
@@ -331,7 +385,11 @@ export function withPlacement(mapping: Mapping, rotation: number, offset: Vec2):
 	}
 	return {
 		kind: mapping.kind,
-		metric: { tileMeters: [mapping.metric.tileMeters[0], mapping.metric.tileMeters[1]], rotation, offset: [offset[0], offset[1]] }
+		metric: {
+			tileMeters: [mapping.metric.tileMeters[0], mapping.metric.tileMeters[1]],
+			rotation,
+			offset: [offset[0], offset[1]],
+		},
 	} as Mapping;
 }
 
@@ -355,7 +413,11 @@ export function wallSideChart(input: {
 	const ox = (input.normal[0] / nl) * (input.thickness / 2) * sign;
 	const oz = (input.normal[1] / nl) * (input.thickness / 2) * sign;
 	// uv (0, 0) sits at distance 0 along the centreline, moved to this side, on the floor.
-	const origin: Vec3 = [input.start[0] - tx * input.startDistance + ox, input.floorY, input.start[1] - tz * input.startDistance + oz];
+	const origin: Vec3 = [
+		input.start[0] - tx * input.startDistance + ox,
+		input.floorY,
+		input.start[1] - tz * input.startDistance + oz,
+	];
 	return {
 		origin,
 		uAxis: [tx, 0, tz],
@@ -364,7 +426,7 @@ export function wallSideChart(input: {
 		uMin: input.startDistance,
 		uMax: input.startDistance + input.length,
 		vMin: 0,
-		vMax: Math.max(0.01, input.topY - input.floorY)
+		vMax: Math.max(0.01, input.topY - input.floorY),
 	};
 }
 
@@ -384,7 +446,7 @@ export function floorChart(input: {
 		uMin: input.minX,
 		uMax: input.maxX,
 		vMin: -input.maxZ,
-		vMax: -input.minZ
+		vMax: -input.minZ,
 	};
 }
 
@@ -411,12 +473,23 @@ export function regionFraming(input: {
 	readonly up: Vec3;
 	readonly surfaceMeters: Vec2;
 	readonly canvas: { readonly width: number; readonly height: number };
-	readonly region: { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
-}): { readonly target: Vec3; readonly scale: number; readonly halfW: number; readonly halfH: number } | null {
+	readonly region: {
+		readonly x: number;
+		readonly y: number;
+		readonly width: number;
+		readonly height: number;
+	};
+}): {
+	readonly target: Vec3;
+	readonly scale: number;
+	readonly halfW: number;
+	readonly halfH: number;
+} | null {
 	const { canvas, region } = input;
 	const sw = Math.max(0.01, input.surfaceMeters[0]);
 	const sh = Math.max(0.01, input.surfaceMeters[1]);
-	if (!(canvas.width > 0 && canvas.height > 0 && region.width > 1 && region.height > 1)) return null;
+	if (!(canvas.width > 0 && canvas.height > 0 && region.width > 1 && region.height > 1))
+		return null;
 	const s = Math.min(region.width / sw, region.height / sh);
 	if (!(s > 0) || !Number.isFinite(s)) return null;
 	// Screen offset of the region centre from the canvas centre, in metres on the surface plane.
@@ -427,26 +500,33 @@ export function regionFraming(input: {
 	const target: Vec3 = [
 		input.center[0] - input.right[0] * dx + input.up[0] * dy,
 		input.center[1] - input.right[1] * dx + input.up[1] * dy,
-		input.center[2] - input.right[2] * dx + input.up[2] * dy
+		input.center[2] - input.right[2] * dx + input.up[2] * dy,
 	];
 	return { target, scale: s, halfW: canvas.width / (2 * s), halfH: canvas.height / (2 * s) };
 }
 
 /** AABB for a wall `face`: `halfW` spread so its projection on `right` is exactly `halfW`. */
-export function faceBoundsOf(f: { readonly target: Vec3; readonly halfW: number; readonly halfH: number }, right: Vec3): { min: [number, number, number]; max: [number, number, number] } {
+export function faceBoundsOf(
+	f: { readonly target: Vec3; readonly halfW: number; readonly halfH: number },
+	right: Vec3,
+): { min: [number, number, number]; max: [number, number, number] } {
 	const horizontal = Math.max(1e-6, Math.abs(right[0]) + Math.abs(right[2]));
 	const h = f.halfW / horizontal;
 	return {
 		min: [f.target[0] - h, f.target[1] - f.halfH, f.target[2] - h],
-		max: [f.target[0] + h, f.target[1] + f.halfH, f.target[2] + h]
+		max: [f.target[0] + h, f.target[1] + f.halfH, f.target[2] + h],
 	};
 }
 
-/** AABB for a Plan `fit`: x is width and z is depth; the extents are symmetric in the fit's max(). */
-export function planFitBoundsOf(f: { readonly target: Vec3; readonly halfW: number; readonly halfH: number }): { min: [number, number, number]; max: [number, number, number] } {
+/** AABB for a Plan `fit`: x is width and z is depth; the extents are symmetric in the fit's max. */
+export function planFitBoundsOf(f: {
+	readonly target: Vec3;
+	readonly halfW: number;
+	readonly halfH: number;
+}): { min: [number, number, number]; max: [number, number, number] } {
 	return {
 		min: [f.target[0] - f.halfW, f.target[1] - 0.01, f.target[2] - f.halfH],
-		max: [f.target[0] + f.halfW, f.target[1] + 0.01, f.target[2] + f.halfH]
+		max: [f.target[0] + f.halfW, f.target[1] + 0.01, f.target[2] + f.halfH],
 	};
 }
 

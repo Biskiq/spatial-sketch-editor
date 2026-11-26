@@ -8,18 +8,18 @@
  * Finish did not already store.
  *
  * - **Colour modes.** Natural (no colour), Stained (a colour over the kept
- *   colour image) and Painted (a colour with the colour image disabled — a
- *   coat). A base without a colour image offers Natural and Painted.
+ *  colour image) and Painted (a colour with the colour image disabled — a
+ *  coat). A base without a colour image offers Natural and Painted.
  * - **Sheen.** Three targets on effective roughness, `factor × scanned
- *   mean` of the base's roughness image. A value within 0.05 of a target reads
- *   as that step, anything else as Custom; a step rougher than the capture
- *   (factor above 1) is disabled.
+ *  mean` of the base's roughness image. A value within 0.05 of a target reads
+ *  as that step, anything else as Custom; a step rougher than the capture
+ *  (factor above 1) is disabled.
  * - **Swap.** A base change that carries the treatment: colour mode (Stained
- *   becomes Painted on a plain base), a changed sheen at its effective value, a
- *   changed metalness and the pattern direction. Everything tied to the old
- *   images is dropped, and the pattern returns to the new material's real size.
+ *  becomes Painted on a plain base), a changed sheen at its effective value, a
+ *  changed metalness and the pattern direction. Everything tied to the old
+ *  images is dropped, and the pattern returns to the new material's real size.
  * - **Names.** `<material> · <colour>[ stain][ · <step | Custom sheen>]`,
- *   regenerated only while the stored name still equals the generated one.
+ *  regenerated only while the stored name still equals the generated one.
  *
  * Runtime-safe and catalogue-agnostic: presentation facts (labels, families,
  * scanned means, per-family targets) arrive through `FinishTreatmentFacts`.
@@ -32,7 +32,7 @@ import {
 	type FinishBase,
 	type FinishOverrides,
 	type Mapping,
-	type Recipe
+	type Recipe,
 } from '../../materials/types';
 import type { FinishPatchEdit, FinishPatchFactorField } from './patch';
 import { nextFinishName } from './model';
@@ -49,7 +49,7 @@ export const SHEEN_STEP_TOLERANCE = 0.05;
 export const SHEEN_STEP_LABELS: Readonly<Record<SheenStepId, string>> = {
 	matte: 'Matte',
 	satin: 'Satin',
-	gloss: 'Gloss'
+	gloss: 'Gloss',
 };
 const SHEEN_STEP_ORDER: readonly SheenStepId[] = ['matte', 'satin', 'gloss'];
 
@@ -81,7 +81,10 @@ const roundFactor = (value: number): number => Math.round(value * 1000) / 1000;
 export type FinishColourMode = 'natural' | 'stained' | 'painted';
 
 /** Whether a Stained mode exists: the Finish can show a colour image when its colour is not disabled. */
-export function finishHasColourImage(source: FinishSource, recipes: ReadonlyMap<string, Recipe> = new Map()): boolean {
+export function finishHasColourImage(
+	source: FinishSource,
+	recipes: ReadonlyMap<string, Recipe> = new Map(),
+): boolean {
 	const override = source.overrides?.maps?.color;
 	if (override !== undefined && override !== null) return true;
 	const recipe = recipeOf(source.base, recipes);
@@ -89,7 +92,10 @@ export function finishHasColourImage(source: FinishSource, recipes: ReadonlyMap<
 	return recipe === undefined || recipe.maps.color !== undefined;
 }
 
-export function finishColourMode(source: FinishSource, recipes: ReadonlyMap<string, Recipe> = new Map()): FinishColourMode {
+export function finishColourMode(
+	source: FinishSource,
+	recipes: ReadonlyMap<string, Recipe> = new Map(),
+): FinishColourMode {
 	const colour = source.overrides?.color;
 	if (colour === undefined) return 'natural';
 	if (source.overrides?.maps?.color === null) return 'painted';
@@ -100,7 +106,7 @@ export function finishColourMode(source: FinishSource, recipes: ReadonlyMap<stri
 export function defaultColourMode(
 	source: FinishSource,
 	recipes: ReadonlyMap<string, Recipe> = new Map(),
-	facts: FinishTreatmentFacts = {}
+	facts: FinishTreatmentFacts = {},
 ): Exclude<FinishColourMode, 'natural'> {
 	if (!finishHasColourImage(source, recipes)) return 'painted';
 	if (!('catalogue' in source.base)) return 'stained';
@@ -112,7 +118,7 @@ function colourModeOverrides(
 	source: FinishSource,
 	mode: FinishColourMode,
 	colour: SceneColor | null,
-	recipes: ReadonlyMap<string, Recipe>
+	recipes: ReadonlyMap<string, Recipe>,
 ): FinishOverrides | undefined {
 	const overrides = JSON.parse(JSON.stringify(source.overrides ?? {})) as Record<string, unknown>;
 	const maps = { ...((overrides.maps as Record<string, unknown> | undefined) ?? {}) };
@@ -148,7 +154,7 @@ export function colourModeEdits(
 	source: FinishSource,
 	mode: FinishColourMode,
 	colour: SceneColor | null,
-	recipes: ReadonlyMap<string, Recipe> = new Map()
+	recipes: ReadonlyMap<string, Recipe> = new Map(),
 ): FinishPatchEdit[] {
 	const effective = mode === 'stained' && !finishHasColourImage(source, recipes) ? 'painted' : mode;
 	return editsToward(source.overrides, colourModeOverrides(source, effective, colour, recipes));
@@ -167,18 +173,27 @@ export type FinishSheenScan = {
 export function finishSheenScan(
 	source: FinishSource,
 	recipes: ReadonlyMap<string, Recipe> = new Map(),
-	facts: FinishTreatmentFacts = {}
+	facts: FinishTreatmentFacts = {},
 ): FinishSheenScan {
 	const override = source.overrides?.maps?.roughness;
 	if (override === null) return { mean: 1, approximate: false };
 	if (override !== undefined) return { mean: 1, approximate: true };
 	const recipe = recipeOf(source.base, recipes);
-	if (recipe !== undefined && recipe.maps.roughness === undefined) return { mean: 1, approximate: false };
-	const mean = 'catalogue' in source.base ? facts.roughnessMeanOf?.(source.base.catalogue as MaterialId) : undefined;
-	return mean === undefined || !(mean > 0) ? { mean: 1, approximate: true } : { mean, approximate: false };
+	if (recipe !== undefined && recipe.maps.roughness === undefined)
+		return { mean: 1, approximate: false };
+	const mean =
+		'catalogue' in source.base
+			? facts.roughnessMeanOf?.(source.base.catalogue as MaterialId)
+			: undefined;
+	return mean === undefined || !(mean > 0)
+		? { mean: 1, approximate: true }
+		: { mean, approximate: false };
 }
 
-export function finishSheenTargets(source: FinishSource, facts: FinishTreatmentFacts = {}): SheenTargets {
+export function finishSheenTargets(
+	source: FinishSource,
+	facts: FinishTreatmentFacts = {},
+): SheenTargets {
 	return 'catalogue' in source.base
 		? (facts.sheenTargetsOf?.(source.base.catalogue as MaterialId) ?? DEFAULT_SHEEN_TARGETS)
 		: DEFAULT_SHEEN_TARGETS;
@@ -225,7 +240,7 @@ function stepAt(value: number, steps: readonly FinishSheenStep[]): FinishSheenSt
 export function finishSheenReading(
 	source: FinishSource,
 	recipes: ReadonlyMap<string, Recipe> = new Map(),
-	facts: FinishTreatmentFacts = {}
+	facts: FinishTreatmentFacts = {},
 ): FinishSheenReading {
 	const recipe = recipeOf(source.base, recipes);
 	const baseFactor = recipe?.roughness ?? 1;
@@ -239,7 +254,7 @@ export function finishSheenReading(
 			label: SHEEN_STEP_LABELS[id],
 			target: targets[id],
 			factor: roundFactor(Math.min(1, exact)),
-			disabled: exact > 1 + 1e-6
+			disabled: exact > 1 + 1e-6,
 		};
 	});
 	const effective = factor * scan.mean;
@@ -249,10 +264,11 @@ export function finishSheenReading(
 		steps,
 		current: stepAt(effective, steps)?.id ?? null,
 		original: original?.id ?? null,
-		originalExact: original !== null && Math.abs(original.target - baseEffective) <= SHEEN_STEP_TOLERANCE + 1e-9,
+		originalExact:
+			original !== null && Math.abs(original.target - baseEffective) <= SHEEN_STEP_TOLERANCE + 1e-9,
 		effective,
 		scan,
-		changed: source.overrides?.roughness !== undefined
+		changed: source.overrides?.roughness !== undefined,
 	};
 }
 
@@ -271,7 +287,7 @@ export function sheenStepEdits(reading: FinishSheenReading, id: SheenStepId): Fi
 /** The real size a Finish's base tiles at, when its set mapping is metric. */
 export function baseTileMeters(
 	source: FinishSource,
-	recipes: ReadonlyMap<string, Recipe> = new Map()
+	recipes: ReadonlyMap<string, Recipe> = new Map(),
 ): readonly [number, number] | null {
 	const mapping = recipeOf(source.base, recipes)?.mapping;
 	return mapping !== undefined && mapping.kind !== 'uv' ? mapping.metric.tileMeters : null;
@@ -287,7 +303,7 @@ export function swapOverrides(
 	source: FinishSource,
 	nextBase: FinishBase,
 	recipes: ReadonlyMap<string, Recipe> = new Map(),
-	facts: FinishTreatmentFacts = {}
+	facts: FinishTreatmentFacts = {},
 ): FinishOverrides | undefined {
 	const current = source.overrides ?? {};
 	const nextRecipe = recipeOf(nextBase, recipes);
@@ -295,15 +311,19 @@ export function swapOverrides(
 	const mode = finishColourMode(source, recipes);
 	if (mode !== 'natural' && current.color !== undefined) {
 		const target: FinishSource = { base: nextBase };
-		const nextMode = mode === 'stained' && finishHasColourImage(target, recipes) ? 'stained' : 'painted';
+		const nextMode =
+			mode === 'stained' && finishHasColourImage(target, recipes) ? 'stained' : 'painted';
 		Object.assign(next, colourModeOverrides(target, nextMode, current.color, recipes) ?? {});
 	}
 	if (current.roughness !== undefined) {
 		const effective = current.roughness * finishSheenScan(source, recipes, facts).mean;
-		const factor = roundFactor(Math.min(1, effective / finishSheenScan({ base: nextBase }, recipes, facts).mean));
+		const factor = roundFactor(
+			Math.min(1, effective / finishSheenScan({ base: nextBase }, recipes, facts).mean),
+		);
 		if (factor !== nextRecipe?.roughness) next.roughness = factor;
 	}
-	if (current.metalness !== undefined && current.metalness !== nextRecipe?.metalness) next.metalness = current.metalness;
+	if (current.metalness !== undefined && current.metalness !== nextRecipe?.metalness)
+		next.metalness = current.metalness;
 	const mapping = current.mapping;
 	if (mapping !== undefined) {
 		if (mapping.kind === 'uv') {
@@ -312,7 +332,11 @@ export function swapOverrides(
 			const real = baseTileMeters({ base: nextBase }, recipes) ?? mapping.metric.tileMeters;
 			next.mapping = {
 				kind: mapping.kind,
-				metric: { tileMeters: [real[0], real[1]], rotation: mapping.metric.rotation, offset: [0, 0] }
+				metric: {
+					tileMeters: [real[0], real[1]],
+					rotation: mapping.metric.rotation,
+					offset: [0, 0],
+				},
 			} satisfies Mapping;
 		}
 	}
@@ -324,7 +348,7 @@ export function swapEdits(
 	source: FinishSource,
 	nextBase: FinishBase,
 	recipes: ReadonlyMap<string, Recipe> = new Map(),
-	facts: FinishTreatmentFacts = {}
+	facts: FinishTreatmentFacts = {},
 ): FinishPatchEdit[] {
 	return editsToward(source.overrides, swapOverrides(source, nextBase, recipes, facts));
 }
@@ -337,10 +361,11 @@ const FACTOR_FIELDS: readonly FinishPatchFactorField[] = [
 	'metalness',
 	'occlusionStrength',
 	'normalScale',
-	'mapping'
+	'mapping',
 ];
 
-const same = (left: unknown, right: unknown): boolean => JSON.stringify(left ?? null) === JSON.stringify(right ?? null);
+const same = (left: unknown, right: unknown): boolean =>
+	JSON.stringify(left ?? null) === JSON.stringify(right ?? null);
 /** A map override is absent, disabled (`null`) or a binding: three distinct states. */
 const mapKey = (value: unknown): string => (value === undefined ? 'absent' : JSON.stringify(value));
 
@@ -349,13 +374,18 @@ const mapKey = (value: unknown): string => (value === undefined ? 'absent' : JSO
  * `reset` for a removed one, `disable` for a map turned off. Fields that do not
  * change are omitted; an empty list means no change.
  */
-export function editsToward(current: FinishOverrides | undefined, next: FinishOverrides | undefined): FinishPatchEdit[] {
+export function editsToward(
+	current: FinishOverrides | undefined,
+	next: FinishOverrides | undefined,
+): FinishPatchEdit[] {
 	const from = (current ?? {}) as Record<string, unknown>;
 	const to = (next ?? {}) as Record<string, unknown>;
 	const edits: FinishPatchEdit[] = [];
 	for (const field of FACTOR_FIELDS) {
 		if (same(from[field], to[field])) continue;
-		edits.push(to[field] === undefined ? { field, op: 'reset' } : { field, op: 'set', value: to[field] });
+		edits.push(
+			to[field] === undefined ? { field, op: 'reset' } : { field, op: 'set', value: to[field] },
+		);
 	}
 	const fromMaps = (current?.maps ?? {}) as Record<string, unknown>;
 	const toMaps = (next?.maps ?? {}) as Record<string, unknown>;
@@ -374,7 +404,7 @@ export function editsToward(current: FinishOverrides | undefined, next: FinishOv
 /** The material half of a name: a catalogue label, or a resource Finish's name up to its first ` · `. */
 export function finishMaterialLabel(
 	source: { readonly base: FinishBase; readonly name?: string | null },
-	labelForMaterial: (id: MaterialId) => string
+	labelForMaterial: (id: MaterialId) => string,
 ): string {
 	if ('catalogue' in source.base) return labelForMaterial(source.base.catalogue as MaterialId);
 	const name = source.name ?? 'Material';
@@ -383,7 +413,10 @@ export function finishMaterialLabel(
 }
 
 /** A colour's name: the palette slot's name, or the literal's uppercase hex; null for a missing slot. */
-export function finishColourLabel(palette: readonly ScenePaletteSlot[] | undefined, colour: SceneColor): string | null {
+export function finishColourLabel(
+	palette: readonly ScenePaletteSlot[] | undefined,
+	colour: SceneColor,
+): string | null {
 	if (typeof colour === 'string') return colour.toUpperCase();
 	return palette?.find((slot) => slot.id === colour.slot)?.name ?? null;
 }
@@ -400,13 +433,11 @@ export type FinishNameContext = {
  */
 export function generatedFinishName(
 	source: FinishSource & { readonly name?: string | null },
-	context: FinishNameContext = {}
+	context: FinishNameContext = {},
 ): string {
 	const recipes = context.recipes ?? new Map<string, Recipe>();
 	const facts = context.facts ?? {};
-	const parts = [
-		finishMaterialLabel(source, facts.labelForMaterial ?? ((id) => id))
-	];
+	const parts = [finishMaterialLabel(source, facts.labelForMaterial ?? ((id) => id))];
 	const mode = finishColourMode(source, recipes);
 	const colour = source.overrides?.color;
 	if (mode !== 'natural' && colour !== undefined) {
@@ -424,7 +455,7 @@ export function generatedFinishName(
 export function isGeneratedFinishName(
 	name: string,
 	source: FinishSource & { readonly name?: string | null },
-	context: FinishNameContext = {}
+	context: FinishNameContext = {},
 ): boolean {
 	const generated = generatedFinishName(source, context);
 	if (name === generated) return true;
@@ -436,8 +467,9 @@ export function isGeneratedFinishName(
 export function uniqueFinishName(
 	label: string,
 	materials: readonly SceneMaterialInstance[],
-	exceptId: string | null = null
+	exceptId: string | null = null,
 ): string {
-	const others = exceptId === null ? materials : materials.filter((material) => material.id !== exceptId);
+	const others =
+		exceptId === null ? materials : materials.filter((material) => material.id !== exceptId);
 	return others.some((material) => material.name === label) ? nextFinishName(label, others) : label;
 }

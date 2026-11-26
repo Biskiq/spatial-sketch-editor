@@ -11,7 +11,10 @@ let current: ObjectDrawSession | null = null;
 const listeners = new Set<() => void>();
 
 /** Publish a session; a retiring one only clears itself, never its replacement. */
-export function publishObjectDraw(next: ObjectDrawSession | null, retiring?: ObjectDrawSession): void {
+export function publishObjectDraw(
+	next: ObjectDrawSession | null,
+	retiring?: ObjectDrawSession,
+): void {
 	if (next === null && retiring !== current) return;
 	current = next;
 	for (const listener of listeners) listener();

@@ -10,7 +10,7 @@
 import type { SceneEntity, SceneLightEntity, Vec3 } from '@portfolio/project-model/scene';
 import type {
 	StageAdapterContext,
-	StageReadSnapshot
+	StageReadSnapshot,
 } from '$lib/authoring/stage/stage-adapter-host';
 import { stageScene } from '$lib/authoring/stage/stage-adapter-host';
 import { lightKindLabel } from '../../look/light-units';
@@ -26,7 +26,7 @@ export type Light = SceneLightEntity;
 /** Stage pointer intent coordinates are local; Camera rays include the surface offset. */
 export function viewportCss(
 	css: readonly [number, number],
-	context: StageAdapterContext
+	context: StageAdapterContext,
 ): [number, number] {
 	return [css[0] + context.evaluation.rect.left, css[1] + context.evaluation.rect.top];
 }
@@ -40,7 +40,7 @@ export function selectedLight(context: StageAdapterContext): Light | null {
 	if (selection === null || selection.domain !== 'scene') return null;
 	if (selection.subject.kind !== 'entity') return null;
 	const entity = stageScene(context.snapshot).entities.find(
-		(candidate) => candidate.id === selection.subject.id
+		(candidate) => candidate.id === selection.subject.id,
 	);
 	return isLight(entity) ? entity : null;
 }
@@ -61,7 +61,7 @@ export function lightById(snapshot: StageReadSnapshot, id: string): Light | null
  */
 export function lightGlyphAt(
 	css: readonly [number, number],
-	context: StageAdapterContext
+	context: StageAdapterContext,
 ): { readonly light: Light; readonly distance: number } | null {
 	const viewport = viewportCss(css, context);
 	const candidates: { readonly light: Light; readonly distance: number }[] = [];
@@ -114,7 +114,7 @@ export function cloneLight(light: Light): Light {
 	return {
 		...light,
 		position: [...light.position] as Vec3,
-		rotation: [...light.rotation] as Vec3
+		rotation: [...light.rotation] as Vec3,
 	} as Light;
 }
 
@@ -126,6 +126,6 @@ export function spotTargetFor(light: Light, adapterContext: StageAdapterContext)
 	return spotTarget({
 		position: light.position,
 		rotation: light.rotation,
-		pick: (ray) => adapterContext.pickScene(ray)
+		pick: (ray) => adapterContext.pickScene(ray),
 	});
 }

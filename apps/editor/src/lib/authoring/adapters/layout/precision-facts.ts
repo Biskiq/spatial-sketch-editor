@@ -6,9 +6,21 @@
  * over the compiled geometry and the document, never an edit path.
  */
 import { composeSpaceBoundary, readClosedWallCircle } from '@portfolio/layout-core/room';
-import { faceArea, regionsOverSpace, type CompiledLayoutGeometry } from '@portfolio/layout-core/geometry';
-import { deriveLayoutWallRole, isClosedWall, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
-import { lookupIndexedObject, lookupIndexedOpening, lookupIndexedWall } from '@portfolio/layout-core/world';
+import {
+	faceArea,
+	regionsOverSpace,
+	type CompiledLayoutGeometry,
+} from '@portfolio/layout-core/geometry';
+import {
+	deriveLayoutWallRole,
+	isClosedWall,
+	type LayoutDocumentWallFirst,
+} from '@portfolio/layout-core/wall';
+import {
+	lookupIndexedObject,
+	lookupIndexedOpening,
+	lookupIndexedWall,
+} from '@portfolio/layout-core/world';
 import type { LayoutSubject } from './precision';
 import { wallFrame } from './precision-frames';
 
@@ -16,7 +28,11 @@ import { wallFrame } from './precision-frames';
  * One read-only Card fact for a Layout subject. `fieldId` names the field the fact shows;
  * the Card drops it when the contributed writer edits that field, so each value appears once.
  */
-export type LayoutFact = { readonly label: string; readonly value: string; readonly fieldId: string };
+export type LayoutFact = {
+	readonly label: string;
+	readonly value: string;
+	readonly fieldId: string;
+};
 
 /**
  * Full typed values, never rounded display values. JavaScript's shortest
@@ -37,7 +53,7 @@ export function formatMeters(value: number): string {
  */
 export function openSideRunCount(
 	document: LayoutDocumentWallFirst,
-	room: LayoutDocumentWallFirst['rooms'][number]
+	room: LayoutDocumentWallFirst['rooms'][number],
 ): number {
 	const composed = composeSpaceBoundary(document, room);
 	if (composed.kind === 'failed') return room.virtualEdges.length;
@@ -59,14 +75,14 @@ export function openSideRunCount(
 export function layoutRoomFacts(
 	document: LayoutDocumentWallFirst,
 	geometry: CompiledLayoutGeometry,
-	roomId: string
+	roomId: string,
 ): readonly LayoutFact[] {
 	const room = document.rooms.find((candidate) => candidate.id === roomId);
 	if (room === undefined) return [];
 	const compiled = geometry.rooms.find((candidate) => candidate.roomId === roomId);
 	const openSides = openSideRunCount(document, room);
 	const walls = room.boundary.length;
-	// SP1's `overhead` is the only thing that decides a lid. An authored overhead
+	// The Room’s `overhead` is the only thing that decides a lid. An authored overhead
 	// region never closes or opens a Space; it is named as a derived readout.
 	const overlying = regionsOverSpace(geometry, roomId);
 	const overheadRegion = overlying.find((region) => region.role === 'overhead');
@@ -80,8 +96,11 @@ export function layoutRoomFacts(
 		{ label: 'Name', value: room.name ?? '(unnamed)', fieldId: 'name' },
 		{
 			label: 'Area',
-			value: compiled === undefined ? '—' : `${faceArea({ polygon: compiled.floorPolygon }).toFixed(2)} m²`,
-			fieldId: 'area'
+			value:
+				compiled === undefined
+					? '—'
+					: `${faceArea({ polygon: compiled.floorPolygon }).toFixed(2)} m²`,
+			fieldId: 'area',
 		},
 		{
 			label: 'Overhead',
@@ -91,7 +110,7 @@ export function layoutRoomFacts(
 						? 'Open to sky'
 						: `Open to sky · under ${overheadName}`
 					: 'Closed',
-			fieldId: 'overhead'
+			fieldId: 'overhead',
 		},
 		...(overlying.length === 0
 			? []
@@ -101,24 +120,24 @@ export function layoutRoomFacts(
 						value: overlying
 							.map(
 								(region) =>
-									`${document.regions.find((candidate) => candidate.id === region.regionId)?.name ?? region.regionId} (${region.role === 'floor' ? 'floor' : 'overhead'})`
+									`${document.regions.find((candidate) => candidate.id === region.regionId)?.name ?? region.regionId} (${region.role === 'floor' ? 'floor' : 'overhead'})`,
 							)
 							.join(' · '),
-						fieldId: 'regions'
-					} as const
+						fieldId: 'regions',
+					} as const,
 				]),
 		{
 			label: 'Bounds',
 			value: `${walls} ${walls === 1 ? 'Wall' : 'Walls'} · ${openSides} open ${openSides === 1 ? 'side' : 'sides'}`,
-			fieldId: 'bounds'
-		}
+			fieldId: 'bounds',
+		},
 	];
 }
 
 /** Every settled writable/read-only fact the Dimensions instrument shows. */
 export function layoutFacts(
 	document: LayoutDocumentWallFirst,
-	subject: LayoutSubject
+	subject: LayoutSubject,
 ): readonly LayoutFact[] {
 	if (subject.kind === 'wall') {
 		const wall = lookupIndexedWall(document, subject.id);
@@ -127,7 +146,7 @@ export function layoutFacts(
 			{ label: 'Kind', value: 'Wall', fieldId: 'kind' },
 			{ label: 'Name', value: wall.name ?? '(unnamed)', fieldId: 'name' },
 			{ label: 'Height', value: formatMeters(wall.height), fieldId: 'height' },
-			{ label: 'Thickness', value: formatMeters(wall.thickness), fieldId: 'thickness' }
+			{ label: 'Thickness', value: formatMeters(wall.thickness), fieldId: 'thickness' },
 		];
 		if (isClosedWall(wall)) {
 			const circle = readClosedWallCircle(document, wall.id);
@@ -136,7 +155,11 @@ export function layoutFacts(
 					{ label: 'Shape', value: 'Circular (radius edit only; cannot bend)', fieldId: 'shape' },
 					{ label: 'Radius', value: formatMeters(circle.radius), fieldId: 'radius' },
 					{ label: 'Diameter', value: formatMeters(circle.radius * 2), fieldId: 'diameter' },
-					{ label: 'Circumference', value: formatMeters(circle.radius * Math.PI * 2), fieldId: 'circumference' }
+					{
+						label: 'Circumference',
+						value: formatMeters(circle.radius * Math.PI * 2),
+						fieldId: 'circumference',
+					},
 				);
 			}
 		}
@@ -145,7 +168,7 @@ export function layoutFacts(
 		facts.push({
 			label: 'Role',
 			value: `${deriveLayoutWallRole(document, wall.id) ?? 'free-standing'} (derived)`,
-			fieldId: 'role'
+			fieldId: 'role',
 		});
 		return facts;
 	}
@@ -158,7 +181,7 @@ export function layoutFacts(
 			{ label: 'Offset', value: formatMeters(opening.offset), fieldId: 'offset' },
 			{ label: 'Width', value: formatMeters(opening.width), fieldId: 'width' },
 			{ label: 'Height', value: formatMeters(opening.height), fieldId: 'height' },
-			{ label: 'Sill', value: formatMeters(opening.sillHeight), fieldId: 'sillHeight' }
+			{ label: 'Sill', value: formatMeters(opening.sillHeight), fieldId: 'sillHeight' },
 		];
 	}
 	if (subject.kind === 'region') {
@@ -179,15 +202,15 @@ export function layoutFacts(
 			{
 				label: 'Kind',
 				value: region.role === 'overhead' ? 'Flat Roof' : 'Terrace',
-				fieldId: 'regionKind'
+				fieldId: 'regionKind',
 			},
 			{ label: 'Name', value: region.name ?? '(unnamed)', fieldId: 'name' },
 			{ label: 'Area', value: `${(Math.abs(twice) / 2).toFixed(2)} m²`, fieldId: 'area' },
 			{
 				label: region.role === 'overhead' ? 'Underside (world)' : 'Top (world)',
 				value: `${world.toFixed(3)} m`,
-				fieldId: 'regionWorldElevation'
-			}
+				fieldId: 'regionWorldElevation',
+			},
 		];
 	}
 	const object = lookupIndexedObject(document, subject.id);
@@ -195,8 +218,16 @@ export function layoutFacts(
 	return [
 		{ label: 'Kind', value: object.kind, fieldId: 'kind' },
 		{ label: 'Name', value: '(read-only identity)', fieldId: 'name' },
-		{ label: 'Position', value: object.position.map(formatMeters).join(' · '), fieldId: 'position' },
-		{ label: 'Dimensions', value: object.dimensions.map(formatMeters).join(' · '), fieldId: 'dimensions' }
+		{
+			label: 'Position',
+			value: object.position.map(formatMeters).join(' · '),
+			fieldId: 'position',
+		},
+		{
+			label: 'Dimensions',
+			value: object.dimensions.map(formatMeters).join(' · '),
+			fieldId: 'dimensions',
+		},
 	];
 }
 
@@ -212,7 +243,7 @@ export type LayoutWritableFact =
 
 export function layoutWritableFacts(
 	document: LayoutDocumentWallFirst,
-	subject: LayoutSubject
+	subject: LayoutSubject,
 ): readonly LayoutWritableFact[] {
 	if (subject.kind === 'wall') {
 		const wall = lookupIndexedWall(document, subject.id);
@@ -225,12 +256,12 @@ export function layoutWritableFacts(
 			const dimensions: LayoutWritableFact[] = [
 				{ id: 'name', label: 'Name', value: wall.name ?? '', unit: 'text' },
 				{ id: 'height', label: 'Height', value: wall.height, unit: 'm' },
-				{ id: 'thickness', label: 'Thickness', value: wall.thickness, unit: 'm' }
+				{ id: 'thickness', label: 'Thickness', value: wall.thickness, unit: 'm' },
 			];
 			if (circle !== null) {
 				dimensions.push(
 					{ id: 'radius', label: 'Radius', value: circle.radius, unit: 'm' },
-					{ id: 'diameter', label: 'Diameter', value: circle.radius * 2, unit: 'm' }
+					{ id: 'diameter', label: 'Diameter', value: circle.radius * 2, unit: 'm' },
 				);
 			}
 			return dimensions;
@@ -243,7 +274,7 @@ export function layoutWritableFacts(
 			return [
 				{ id: 'name', label: 'Name', value: wall.name ?? '', unit: 'text' },
 				{ id: 'height', label: 'Height', value: wall.height, unit: 'm' },
-				{ id: 'thickness', label: 'Thickness', value: wall.thickness, unit: 'm' }
+				{ id: 'thickness', label: 'Thickness', value: wall.thickness, unit: 'm' },
 			];
 		}
 		return [
@@ -258,7 +289,7 @@ export function layoutWritableFacts(
 			{ id: 'startX', label: 'Start X', value: frame.start[0], unit: 'm' },
 			{ id: 'startZ', label: 'Start Z', value: frame.start[1], unit: 'm' },
 			{ id: 'endX', label: 'End X', value: frame.end[0], unit: 'm' },
-			{ id: 'endZ', label: 'End Z', value: frame.end[1], unit: 'm' }
+			{ id: 'endZ', label: 'End Z', value: frame.end[1], unit: 'm' },
 		];
 	}
 	if (subject.kind === 'opening') {
@@ -269,7 +300,7 @@ export function layoutWritableFacts(
 			{ id: 'offset', label: 'Offset', value: opening.offset, unit: 'm' },
 			{ id: 'width', label: 'Width', value: opening.width, unit: 'm' },
 			{ id: 'height', label: 'Height', value: opening.height, unit: 'm' },
-			{ id: 'sillHeight', label: 'Sill', value: opening.sillHeight, unit: 'm' }
+			{ id: 'sillHeight', label: 'Sill', value: opening.sillHeight, unit: 'm' },
 		];
 	}
 	return [];
@@ -282,7 +313,7 @@ export function layoutWritableFacts(
  */
 export function layoutCardFieldIds(
 	document: LayoutDocumentWallFirst,
-	subject: LayoutSubject
+	subject: LayoutSubject,
 ): readonly string[] {
 	return layoutWritableFacts(document, subject)
 		.map((field) => field.id)

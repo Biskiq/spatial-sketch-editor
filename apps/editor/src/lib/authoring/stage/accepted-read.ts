@@ -2,7 +2,11 @@
 import type { CompiledLayoutGeometry, LayoutGeometryIssue } from '@portfolio/layout-core/geometry';
 import type { AcceptedRevision, ReferenceReadContext } from '@portfolio/project-model/references';
 import type { RuntimeScene, NavigationGraph } from '@portfolio/project-model/scene';
-import type { EnvelopeClosureFinding, EnvelopeDiagnostic, UnitDomain } from '@portfolio/project-model/units';
+import type {
+	EnvelopeClosureFinding,
+	EnvelopeDiagnostic,
+	UnitDomain,
+} from '@portfolio/project-model/units';
 
 /** The domain read access a Stage snapshot publishes. Immutable by construction. */
 export type StageDomainRead = {
@@ -49,7 +53,7 @@ export type StageDomainRead = {
 
 /**
  * `StageReadSnapshot` — the source-independent validated read facade the Stage
- * mounts. Field names follow AM-4's `AcceptedSnapshot@1` (accepted revision,
+ * mounts. Field names follow the `AcceptedSnapshot@1` (accepted revision,
  * source-content identity, admitted source kind/version, domain read access), so
  * F4's accepted snapshot and this facade share one vocabulary.
  */

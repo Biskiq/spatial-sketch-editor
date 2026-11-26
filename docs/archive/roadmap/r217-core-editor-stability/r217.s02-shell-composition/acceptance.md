@@ -16,7 +16,7 @@ height. No Camera implementation changed.
 - **Entry points:** `apps/editor/src/lib/authoring/stage/shell/`,
   `apps/editor/src/lib/platform/app-preferences.ts`,
   `apps/editor/tests/lib/authoring/stage-shell-composition.test.ts`,
-  `apps/editor/tests/lib/authoring/spatial-route-gesture.test.ts`,
+  `../../../../../apps/editor/tests/lib/authoring/stage`,
   `apps/editor/tests/lib/authoring/spatial-route-resume-save.test.ts`.
 - **Residuals:** S04 consumes the appearance preference, S05/S06 fill furniture slots, S10 owns dock
   completion, and S11 owns the exhaustive integrated gate. S03 separately integrates its claimed

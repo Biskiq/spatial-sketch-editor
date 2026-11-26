@@ -24,7 +24,7 @@ import { describe, expect, it } from 'vitest';
 
 import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core/geometry';
 import { createEmptyWallFirstLayoutDocument, planExactWallLength, planExactWallThickness, planWallChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
-import { freshCapture } from './__fixtures__/layout-id-capture';
+import { freshCapture } from '../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 import {
 	formatDegrees,
 	formatMeters,

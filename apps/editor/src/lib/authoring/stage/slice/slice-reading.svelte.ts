@@ -60,7 +60,7 @@ class SliceReadingStore {
 		if (reading === null || reading.kind !== 'drawn') return;
 		this.#reading = {
 			...reading,
-			hidden: reading.hidden === 'left' ? 'right' : 'left'
+			hidden: reading.hidden === 'left' ? 'right' : 'left',
 		};
 	}
 
@@ -75,7 +75,8 @@ class SliceReadingStore {
 	setDrawnSegment(input: { readonly start: SliceVec2; readonly end: SliceVec2 }): void {
 		const reading = this.#reading;
 		if (reading === null || reading.kind !== 'drawn') return;
-		if (![input.start[0], input.start[1], input.end[0], input.end[1]].every(Number.isFinite)) return;
+		if (![input.start[0], input.start[1], input.end[0], input.end[1]].every(Number.isFinite))
+			return;
 		this.#reading = { ...reading, start: input.start, end: input.end };
 	}
 

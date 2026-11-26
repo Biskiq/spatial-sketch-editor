@@ -1,5 +1,5 @@
 /**
- * The Paint tray's own session state (T2.S8 U2): which tab is showing, whether
+ * The Paint tray's own session state: which tab is showing, whether
  * the tray is expanded and whether the floating *Paint colour* picker is open. None of it is
  * project data or a preference; it resets when Paint is left.
  */
@@ -57,7 +57,7 @@ export function createPaintTrayState() {
 		reset(): void {
 			expanded = false;
 			wheelOpen = false;
-		}
+		},
 	};
 }
 

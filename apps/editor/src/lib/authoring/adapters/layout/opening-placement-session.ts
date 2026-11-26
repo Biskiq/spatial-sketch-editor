@@ -10,20 +10,23 @@
  * Two lifetimes, kept apart:
  *
  * - **Adapter-lifetime defaults** — the next Opening's kind, profile and size —
- *   live in the shared `InkMemory` the binding is handed, so an accepted write's
- *   rebind does not forget them.
+ *  live in the shared `InkMemory` the binding is handed, so an accepted write's
+ *  rebind does not forget them.
  * - **Captured gesture state** — the identity capture, the candidate, its preview,
- *   the notice, the press lease, the in-flight guard and the remembered host —
- *   is created here per binding and released by `clear()`, the binding's task
- *   close and its disposal. A press lease is released on every exit path (up,
- *   cancel, reading flip, task close, dispose).
+ *  the notice, the press lease, the in-flight guard and the remembered host —
+ *  is created here per binding and released by `clear`, the binding's task
+ *  close and its disposal. A press lease is released on every exit path (up,
+ *  cancel, reading flip, task close, dispose).
  *
  * Preview and acceptance share one minted capture, so the id the ghost implies is
  * the id acceptance writes; a refused acceptance keeps it for the retry and a
  * settled placement never reuses it.
  */
 import { mintLayoutIdCapture } from '@portfolio/layout-core/plan';
-import { planCreateWallFirstOpening, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import {
+	planCreateWallFirstOpening,
+	type LayoutDocumentWallFirst,
+} from '@portfolio/layout-core/wall';
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 import {
@@ -32,7 +35,7 @@ import {
 	type StageAdapterBinding,
 	type StageAdapterContext,
 	type StageCandidatePreview,
-	type StagePointerIntent
+	type StagePointerIntent,
 } from '$lib/authoring/stage/stage-adapter-host';
 
 import { candidatePreviewOf } from './candidate-preview';
@@ -43,12 +46,12 @@ import {
 	offsetAlongWall,
 	type InkOpeningOptions,
 	type InkPaletteSnapshot,
-	type ProjectedWall
+	type ProjectedWall,
 } from './ink';
 import {
 	openingCreateIntent,
 	openingRefusalWords,
-	type OpeningCreatePayload
+	type OpeningCreatePayload,
 } from './opening-planners';
 import { wallStationFrame, wallStationNearPoint } from './precision-frames';
 import { parseMeasureInput } from './precision';
@@ -82,7 +85,7 @@ export type OpeningPreview =
 function preferredHostOf(
 	document: LayoutDocumentWallFirst,
 	sourceKind: string,
-	sourceId: string
+	sourceId: string,
 ): string | null {
 	if (sourceKind === 'wall') return sourceId;
 	if (sourceKind !== 'opening') return null;
@@ -96,9 +99,14 @@ export type OpeningPlacementSession = {
 	/** Preview the candidate under an unpressed hover; never claims the move. */
 	hover(intent: StagePointerIntent, adapterContext: StageAdapterContext): boolean;
 	/** The planner's live candidate or its refusal, in world coordinates. */
-	previews(adapterContext: StageAdapterContext, datumMeters: number): readonly StageCandidatePreview[];
+	previews(
+		adapterContext: StageAdapterContext,
+		datumMeters: number,
+	): readonly StageCandidatePreview[];
 	/** The host-relative ghost edges and the refusal words. */
-	overlay(adapterContext: StageAdapterContext): ReturnType<NonNullable<StageAdapterBinding['overlay']>>;
+	overlay(
+		adapterContext: StageAdapterContext,
+	): ReturnType<NonNullable<StageAdapterBinding['overlay']>>;
 	/** The palette's Opening view. */
 	paletteView(): NonNullable<InkPaletteSnapshot['opening']>;
 	/** The palette's fields changed (`null` is invalid); defaults are adapter memory. */
@@ -144,7 +152,10 @@ export function createOpeningPlacementSession(ports: LayoutSessionPorts): Openin
 	/** The selected host, or the captured Opening-reading host if selection is gone. */
 	function currentOpeningHostId(): string | null {
 		const selection = services.stage.selection();
-		const selected = selection === null ? null : preferredHostOf(document, selection.sourceKind, selection.sourceId);
+		const selected =
+			selection === null
+				? null
+				: preferredHostOf(document, selection.sourceKind, selection.sourceId);
 		const hostId = selected ?? openingHostId;
 		return hostId !== null && document.walls.some((wall) => wall.id === hostId) ? hostId : null;
 	}
@@ -154,10 +165,7 @@ export function createOpeningPlacementSession(ports: LayoutSessionPorts): Openin
 	 * They are drawn even when the candidate overruns the Wall, so the refusal
 	 * points at the same geometry the planner rejected instead of hiding it.
 	 */
-	function openingGhost(
-		wallId: string,
-		offset: number
-	): readonly [LayoutVec2, LayoutVec2] | null {
+	function openingGhost(wallId: string, offset: number): readonly [LayoutVec2, LayoutVec2] | null {
 		const span = openingSpan(wallId);
 		if (span === null) return null;
 		const { frame, length, station } = span;
@@ -166,7 +174,7 @@ export function createOpeningPlacementSession(ports: LayoutSessionPorts): Openin
 			if (local !== null) return [local.point[0], local.point[1]];
 			return [
 				frame.start[0] + ((frame.end[0] - frame.start[0]) / length) * distance,
-				frame.start[1] + ((frame.end[1] - frame.start[1]) / length) * distance
+				frame.start[1] + ((frame.end[1] - frame.start[1]) / length) * distance,
 			];
 		};
 		return [at(offset), at(offset + memory.openingOptions.width)];
@@ -187,7 +195,7 @@ export function createOpeningPlacementSession(ports: LayoutSessionPorts): Openin
 			offset: candidate.offset,
 			width: memory.openingOptions.width,
 			height: memory.openingOptions.height,
-			sillHeight: memory.openingOptions.sillHeight
+			sillHeight: memory.openingOptions.sillHeight,
 		};
 		const plan = planCreateWallFirstOpening(document, payload, capture, levelId);
 		return plan.kind === 'rejected'
@@ -196,7 +204,7 @@ export function createOpeningPlacementSession(ports: LayoutSessionPorts): Openin
 					kind: 'planned',
 					openingId: plan.changedOpeningIds[0]!,
 					document: plan.document,
-					changedWallIds: plan.changedWallIds
+					changedWallIds: plan.changedWallIds,
 				};
 	}
 
@@ -208,7 +216,7 @@ export function createOpeningPlacementSession(ports: LayoutSessionPorts): Openin
 				: !memory.openingOptionsValid
 					? {
 							kind: 'refused',
-							message: 'Check the Opening Width, Height and Sill before placing.'
+							message: 'Check the Opening Width, Height and Sill before placing.',
 						}
 					: planOpeningCandidate(openingCandidate);
 	}
@@ -240,7 +248,8 @@ export function createOpeningPlacementSession(ports: LayoutSessionPorts): Openin
 	function endOpeningPress(): void {
 		const current = openingPress;
 		openingPress = null;
-		if (current?.lease?.kind === 'granted' && current.lease.lease.active) current.lease.lease.release();
+		if (current?.lease?.kind === 'granted' && current.lease.lease.active)
+			current.lease.lease.release();
 	}
 
 	/**
@@ -252,12 +261,12 @@ export function createOpeningPlacementSession(ports: LayoutSessionPorts): Openin
 	function openingFaceAt(
 		adapterContext: StageAdapterContext,
 		css: readonly [number, number],
-		walls: readonly ProjectedWall[]
+		walls: readonly ProjectedWall[],
 	): OpeningCandidate | null {
 		// `css` is Stage-local; the viewport ray expects viewport coordinates.
 		const ray = adapterContext.ray([
 			css[0] + adapterContext.evaluation.rect.left,
-			css[1] + adapterContext.evaluation.rect.top
+			css[1] + adapterContext.evaluation.rect.top,
 		]);
 		if (ray === null) return null;
 		const datum = adapterContext.snapshot.domain.datumMeters;
@@ -266,10 +275,9 @@ export function createOpeningPlacementSession(ports: LayoutSessionPorts): Openin
 			preferredWallId === null
 				? null
 				: preferredHostOf(document, preferredWallId.subject.kind, preferredWallId.subject.id);
-		let best: { readonly candidate: OpeningCandidate; readonly distance: number;
-		} | null = null;
-		let preferredBest: { readonly candidate: OpeningCandidate; readonly distance: number;
-		} | null = null;
+		let best: { readonly candidate: OpeningCandidate; readonly distance: number } | null = null;
+		let preferredBest: { readonly candidate: OpeningCandidate; readonly distance: number } | null =
+			null;
 		for (const wall of walls) {
 			const data = document.walls.find((candidate) => candidate.id === wall.id);
 			if (data === undefined) continue;
@@ -282,12 +290,11 @@ export function createOpeningPlacementSession(ports: LayoutSessionPorts): Openin
 				normal: [-dz / length, 0, dx / length],
 				yawRadians: Math.atan2(dx, dz),
 				datumMeters: datum,
-				supportedLocalExtent: null
+				supportedLocalExtent: null,
 			});
 			if (hit.kind !== 'intersected') continue;
 			const offset =
-				((hit.worldPoint[0] - wall.start[0]) * dx +
-					(hit.worldPoint[2] - wall.start[1]) * dz) /
+				((hit.worldPoint[0] - wall.start[0]) * dx + (hit.worldPoint[2] - wall.start[1]) * dz) /
 				length;
 			const y = hit.worldPoint[1];
 			if (offset < 0 || offset > length || y < datum || y > datum + data.height) continue;
@@ -295,7 +302,10 @@ export function createOpeningPlacementSession(ports: LayoutSessionPorts): Openin
 			if (best === null || hit.distanceMeters < best.distance) {
 				best = { candidate, distance: hit.distanceMeters };
 			}
-			if (wall.id === preferred && (preferredBest === null || hit.distanceMeters < preferredBest.distance)) {
+			if (
+				wall.id === preferred &&
+				(preferredBest === null || hit.distanceMeters < preferredBest.distance)
+			) {
 				preferredBest = { candidate, distance: hit.distanceMeters };
 			}
 		}
@@ -322,7 +332,7 @@ export function createOpeningPlacementSession(ports: LayoutSessionPorts): Openin
 	/** The candidate one Stage-local pointer position names, or `null`. */
 	function openingCandidateAt(
 		adapterContext: StageAdapterContext,
-		css: readonly [number, number]
+		css: readonly [number, number],
 	): OpeningCandidate | null {
 		const projected = projectedScene(document, adapterContext);
 		// The flat face solve is chord-based; a curved host's face comes from
@@ -330,7 +340,7 @@ export function createOpeningPlacementSession(ports: LayoutSessionPorts): Openin
 		const face = openingFaceAt(
 			adapterContext,
 			css,
-			projected.walls.filter((wall) => wall.path === undefined)
+			projected.walls.filter((wall) => wall.path === undefined),
 		);
 		if (face !== null) return face;
 		const primary = adapterContext.selectionState().primary;
@@ -338,7 +348,9 @@ export function createOpeningPlacementSession(ports: LayoutSessionPorts): Openin
 			css,
 			walls: projected.walls,
 			preferredWallId:
-				primary === null ? null : preferredHostOf(document, primary.subject.kind, primary.subject.id)
+				primary === null
+					? null
+					: preferredHostOf(document, primary.subject.kind, primary.subject.id),
 		});
 		if (hit === null) return null;
 		const wall = projected.walls.find((candidate) => candidate.id === hit.wallId);
@@ -403,8 +415,12 @@ export function createOpeningPlacementSession(ports: LayoutSessionPorts): Openin
 		const generation = services.stage.session.writerGeneration();
 		let attempts = 0;
 		const open = () => {
-			if (epoch !== rearmEpoch || services.stage.session.writerGeneration() !== generation ||
-				services.stage.session.task() !== null) return;
+			if (
+				epoch !== rearmEpoch ||
+				services.stage.session.writerGeneration() !== generation ||
+				services.stage.session.task() !== null
+			)
+				return;
 			const result = services.stage.openContributedTask(LAYOUT_INK_ENTRY, 'layout');
 			if (result.kind === 'refused' && result.code === 'unknown-task' && attempts < 3) {
 				attempts += 1;
@@ -451,7 +467,7 @@ export function createOpeningPlacementSession(ports: LayoutSessionPorts): Openin
 				offset: target.offset,
 				width: memory.openingOptions.width,
 				height: memory.openingOptions.height,
-				sillHeight: memory.openingOptions.sillHeight
+				sillHeight: memory.openingOptions.sillHeight,
 			};
 			const outcome = await services.authoring.accept(
 				openingCreateIntent({
@@ -461,8 +477,8 @@ export function createOpeningPlacementSession(ports: LayoutSessionPorts): Openin
 					projectId: snapshot.acceptedRevision.projectId,
 					revisionId: services.authoring.acceptedRevision().revisionId,
 					contentRevision: stageUnitRevision(snapshot, 'layout'),
-					levelId: snapshot.domain.layoutLevelId
-				})
+					levelId: snapshot.domain.layoutLevelId,
+				}),
 			);
 			if (outcome.kind === 'refused') {
 				openingNotice = outcome.message;
@@ -470,7 +486,8 @@ export function createOpeningPlacementSession(ports: LayoutSessionPorts): Openin
 				publish();
 				return;
 			}
-			const shouldRearm = services.stage.session.taskChoiceGeneration() === taskChoice &&
+			const shouldRearm =
+				services.stage.session.taskChoiceGeneration() === taskChoice &&
 				services.stage.session.task() === null;
 			const openingId = preview.openingId;
 			clearOpeningState();
@@ -487,7 +504,7 @@ export function createOpeningPlacementSession(ports: LayoutSessionPorts): Openin
 	/** The Opening half of the pointer contract. */
 	function openingPointer(
 		intent: StagePointerIntent,
-		adapterContext: StageAdapterContext
+		adapterContext: StageAdapterContext,
 	): boolean {
 		if (intent.phase === 'down') {
 			if (!memory.openingOptionsValid) {
@@ -508,7 +525,7 @@ export function createOpeningPlacementSession(ports: LayoutSessionPorts): Openin
 			const acquisition = services.stage.acquireGesture({
 				owner: LAYOUT_INK_TASK,
 				evaluationId: intent.evaluationId,
-				policy: 'cancel-on-reading-change'
+				policy: 'cancel-on-reading-change',
 			});
 			if (acquisition.kind !== 'granted') {
 				openingNotice = `The ${acquisition.owner} gesture owns the pointer; finish or cancel it first.`;
@@ -518,7 +535,7 @@ export function createOpeningPlacementSession(ports: LayoutSessionPorts): Openin
 			openingPress = {
 				evaluationId: intent.evaluationId,
 				lease: acquisition,
-				css: intent.css
+				css: intent.css,
 			};
 			setOpeningCandidate(candidate);
 			services.stage.notifySurfaceChange();
@@ -564,15 +581,15 @@ export function createOpeningPlacementSession(ports: LayoutSessionPorts): Openin
 	}
 
 	/** Preview the candidate under an unpressed hover; never claims the move. */
-	function openingHover(
-		intent: StagePointerIntent,
-		adapterContext: StageAdapterContext
-	): boolean {
+	function openingHover(intent: StagePointerIntent, adapterContext: StageAdapterContext): boolean {
 		if (!ports.inkTaskOpen() || memory.reading !== 'opening' || intent.phase !== 'move') {
 			return false;
 		}
 		const candidate = openingCandidateAt(adapterContext, intent.css);
-		if (candidate?.wallId === openingCandidate?.wallId && candidate?.offset === openingCandidate?.offset) {
+		if (
+			candidate?.wallId === openingCandidate?.wallId &&
+			candidate?.offset === openingCandidate?.offset
+		) {
 			return true;
 		}
 		setOpeningCandidate(candidate);
@@ -586,22 +603,44 @@ export function createOpeningPlacementSession(ports: LayoutSessionPorts): Openin
 	 * through the existing compile + Paper path, or the refused attempt at its raw
 	 * values with the planner's words. Nothing is persisted.
 	 */
-	function previews(adapterContext: StageAdapterContext, y: number): readonly StageCandidatePreview[] {
-		const world = (point: readonly [number, number], elevation = y): [number, number, number] => [point[0], elevation, point[1]];
+	function previews(
+		adapterContext: StageAdapterContext,
+		y: number,
+	): readonly StageCandidatePreview[] {
+		const world = (point: readonly [number, number], elevation = y): [number, number, number] => [
+			point[0],
+			elevation,
+			point[1],
+		];
 		if (memory.reading === 'opening') {
 			if (openingPreview?.kind === 'planned') {
 				const subjectIds = new Set([openingPreview.openingId, ...openingPreview.changedWallIds]);
-				const geometry = adapterContext.evaluation.settledReading === 'plan'
-					? ports.candidatePaper(openingPreview.document, y, subjectIds, new Set())?.paper.subject ?? null
-					: ports.openingFace(openingPreview.document, new Set([openingPreview.openingId]), y);
+				const geometry =
+					adapterContext.evaluation.settledReading === 'plan'
+						? (ports.candidatePaper(openingPreview.document, y, subjectIds, new Set())?.paper
+								.subject ?? null)
+						: ports.openingFace(openingPreview.document, new Set([openingPreview.openingId]), y);
 				if (geometry !== null) {
-					const ghost = openingCandidate === null ? null : openingGhost(openingCandidate.wallId, openingCandidate.offset);
-					return [candidatePreviewOf({
-						id: 'layout-candidate-opening',
-						role: 'subject',
-						geometry,
-						labels: ghost === null ? [] : [{ world: world(ghost[1]), text: `Width ${memory.openingOptions.width.toFixed(3)} m` }]
-					})];
+					const ghost =
+						openingCandidate === null
+							? null
+							: openingGhost(openingCandidate.wallId, openingCandidate.offset);
+					return [
+						candidatePreviewOf({
+							id: 'layout-candidate-opening',
+							role: 'subject',
+							geometry,
+							labels:
+								ghost === null
+									? []
+									: [
+											{
+												world: world(ghost[1]),
+												text: `Width ${memory.openingOptions.width.toFixed(3)} m`,
+											},
+										],
+						}),
+					];
 				}
 			}
 			const refusedWords =
@@ -614,21 +653,23 @@ export function createOpeningPlacementSession(ports: LayoutSessionPorts): Openin
 					offset: openingCandidate.offset,
 					width: memory.openingOptions.width,
 					height: memory.openingOptions.height,
-					sillHeight: memory.openingOptions.sillHeight
+					sillHeight: memory.openingOptions.sillHeight,
 				};
 				const geometry = presenter.attempt(
 					adapterContext.evaluation.settledReading === 'plan' ? 'plan' : 'face',
 					document,
 					openingCandidate.wallId,
 					values,
-					y
+					y,
 				);
-				return [candidatePreviewOf({
-					id: 'layout-candidate-opening-refused',
-					role: 'refused',
-					geometry,
-					...(ghost === null ? {} : { labels: [{ world: world(ghost[0]), text: refusedWords }] })
-				})];
+				return [
+					candidatePreviewOf({
+						id: 'layout-candidate-opening-refused',
+						role: 'refused',
+						geometry,
+						...(ghost === null ? {} : { labels: [{ world: world(ghost[0]), text: refusedWords }] }),
+					}),
+				];
 			}
 			return [];
 		}
@@ -641,10 +682,9 @@ export function createOpeningPlacementSession(ports: LayoutSessionPorts): Openin
 	 * overruns the Wall, so refusal points at what the planner rejected.
 	 */
 	function openingOverlay(
-		adapterContext: StageAdapterContext
+		adapterContext: StageAdapterContext,
 	): ReturnType<NonNullable<StageAdapterBinding['overlay']>> {
-		const markers: { id: string; css: readonly [number, number]; label: string;
-		}[] = [];
+		const markers: { id: string; css: readonly [number, number]; label: string }[] = [];
 		const y = adapterContext.snapshot.domain.datumMeters;
 		const project = (point: readonly [number, number]) =>
 			adapterContext.project([point[0], y, point[1]]);
@@ -658,9 +698,13 @@ export function createOpeningPlacementSession(ports: LayoutSessionPorts): Openin
 			mark(
 				'layout-opening-start',
 				start,
-				`Opening start — offset ${candidate.offset.toFixed(3)} m on Wall ${candidate.wallId}`
+				`Opening start — offset ${candidate.offset.toFixed(3)} m on Wall ${candidate.wallId}`,
 			);
-			mark('layout-opening-end', ghost === null ? null : project(ghost[1]), `Opening end — ${memory.openingOptions.width.toFixed(3)} m wide`);
+			mark(
+				'layout-opening-end',
+				ghost === null ? null : project(ghost[1]),
+				`Opening end — ${memory.openingOptions.width.toFixed(3)} m wide`,
+			);
 		}
 		const refusal =
 			openingNotice ?? (openingPreview?.kind === 'refused' ? openingPreview.message : null);
@@ -671,7 +715,10 @@ export function createOpeningPlacementSession(ports: LayoutSessionPorts): Openin
 			const fallback =
 				press === null
 					? null
-					: ([press.css[0] + adapterContext.evaluation.rect.left, press.css[1] + adapterContext.evaluation.rect.top] as const);
+					: ([
+							press.css[0] + adapterContext.evaluation.rect.left,
+							press.css[1] + adapterContext.evaluation.rect.top,
+						] as const);
 			mark('layout-opening-refusal', start ?? fallback, refusal);
 		}
 		return markers;
@@ -690,8 +737,7 @@ export function createOpeningPlacementSession(ports: LayoutSessionPorts): Openin
 			profile: memory.openingOptions.profile,
 			canPlace: openingPreview?.kind === 'planned',
 			refusal:
-				openingNotice ??
-				(openingPreview?.kind === 'refused' ? openingPreview.message : null)
+				openingNotice ?? (openingPreview?.kind === 'refused' ? openingPreview.message : null),
 		};
 	}
 
@@ -703,7 +749,8 @@ export function createOpeningPlacementSession(ports: LayoutSessionPorts): Openin
 		paletteView,
 		setOptions(options) {
 			memory.openingOptionsValid = options !== null;
-			if (options !== null) memory.openingOptions = { ...options, profile: options.profile ?? 'rectangular' };
+			if (options !== null)
+				memory.openingOptions = { ...options, profile: options.profile ?? 'rectangular' };
 			if (openingCandidate !== null) refreshOpeningPreview();
 			services.stage.notifySurfaceChange();
 			publish();
@@ -729,6 +776,6 @@ export function createOpeningPlacementSession(ports: LayoutSessionPorts): Openin
 		clear: clearOpeningState,
 		invalidateRearm() {
 			rearmEpoch += 1;
-		}
+		},
 	};
 }

@@ -1,11 +1,40 @@
 import type { ArtworkImage, ArtworkLibraryEntry } from '../../artwork';
-import { ARTWORK_MAX_IMAGE_EDGE, isArtworkAssetId, isArtworkImageEdge, isArtworkWidth } from '../../artwork';
+import {
+	ARTWORK_MAX_IMAGE_EDGE,
+	isArtworkAssetId,
+	isArtworkImageEdge,
+	isArtworkWidth,
+} from '../../artwork';
 import type { ArtworkFrame } from '../../artwork-frame';
 import { readArtworkFrame } from '../../artwork-frame';
-import type { SceneArtworkEntity, SceneEntity, SceneLightEntity, SceneLightKind, SceneModelEntity, SceneObjectCluster, ScenePrimitiveEntity, ScenePrimitiveKind, Vec3 } from '../../scene';
+import type {
+	SceneArtworkEntity,
+	SceneEntity,
+	SceneLightEntity,
+	SceneLightKind,
+	SceneModelEntity,
+	SceneObjectCluster,
+	ScenePrimitiveEntity,
+	ScenePrimitiveKind,
+	Vec3,
+} from '../../scene';
 import type { SceneDocumentIssue } from '../types';
 import type { JsonRecord } from '../readers';
-import { HEX_COLOR_PATTERN, SCENE_LIGHT_KINDS, SCENE_PRIMITIVE_KINDS, addIssue, assertAllowedKeys, isRecord, readOptionalString, readRequiredBoolean, readRequiredNumber, readRequiredString, readStringArray, readVec3, rejectRoomId } from '../readers';
+import {
+	HEX_COLOR_PATTERN,
+	SCENE_LIGHT_KINDS,
+	SCENE_PRIMITIVE_KINDS,
+	addIssue,
+	assertAllowedKeys,
+	isRecord,
+	readOptionalString,
+	readRequiredBoolean,
+	readRequiredNumber,
+	readRequiredString,
+	readStringArray,
+	readVec3,
+	rejectRoomId,
+} from '../readers';
 import type { EntityParserOptions } from './contracts';
 import { parseFormEntity } from './forms';
 import { parsePrimitiveDimensions } from './materials';
@@ -13,7 +42,7 @@ import { parsePrimitiveDimensions } from './materials';
 export function parseEntityTransform(
 	input: JsonRecord,
 	path: string,
-	issues: SceneDocumentIssue[]
+	issues: SceneDocumentIssue[],
 ): { position: Vec3; rotation: Vec3; scale?: number } | undefined {
 	const position = readVec3(input.position, `${path}.position`, issues);
 	const rotation = readVec3(input.rotation, `${path}.rotation`, issues);
@@ -29,12 +58,11 @@ export function parseEntityTransform(
 	return { position, rotation, ...(scale === undefined ? {} : { scale }) };
 }
 
-
 export function parseModelEntity(
 	input: JsonRecord,
 	path: string,
 	issues: SceneDocumentIssue[],
-	options: EntityParserOptions
+	options: EntityParserOptions,
 ): SceneModelEntity | undefined {
 	rejectRoomId(input, 'roomId', path, issues);
 	assertAllowedKeys(
@@ -49,10 +77,10 @@ export function parseModelEntity(
 			'position',
 			'rotation',
 			'scale',
-			...(options.allowMaterialInstance ? ['materialInstanceId'] : [])
+			...(options.allowMaterialInstance ? ['materialInstanceId'] : []),
 		],
 		path,
-		issues
+		issues,
 	);
 	const id = readRequiredString(input, 'id', path, issues);
 	const name = readRequiredString(input, 'name', path, issues);
@@ -89,12 +117,11 @@ export function parseModelEntity(
 	};
 }
 
-
 export function parsePrimitiveEntity(
 	input: JsonRecord,
 	path: string,
 	issues: SceneDocumentIssue[],
-	options: EntityParserOptions
+	options: EntityParserOptions,
 ): ScenePrimitiveEntity | undefined {
 	assertAllowedKeys(
 		input,
@@ -111,10 +138,10 @@ export function parsePrimitiveEntity(
 			'position',
 			'rotation',
 			'scale',
-			...(options.allowMaterialInstance ? ['materialInstanceId'] : [])
+			...(options.allowMaterialInstance ? ['materialInstanceId'] : []),
 		],
 		path,
-		issues
+		issues,
 	);
 	rejectRoomId(input, 'roomId', path, issues);
 	const id = readRequiredString(input, 'id', path, issues);
@@ -125,7 +152,12 @@ export function parsePrimitiveEntity(
 			? (primitiveRaw as ScenePrimitiveKind)
 			: undefined;
 	if (primitiveRaw && !primitive) {
-		addIssue(issues, `${path}.primitive`, 'invalid_primitive', `Invalid primitive kind: ${primitiveRaw}`);
+		addIssue(
+			issues,
+			`${path}.primitive`,
+			'invalid_primitive',
+			`Invalid primitive kind: ${primitiveRaw}`,
+		);
 	}
 	const dimensions =
 		primitive === undefined
@@ -137,7 +169,12 @@ export function parsePrimitiveEntity(
 			? (materialIdRaw as ScenePrimitiveEntity['materialId'])
 			: undefined;
 	if (materialIdRaw && !materialId) {
-		addIssue(issues, `${path}.materialId`, 'unknown_material', `Unknown material: ${materialIdRaw}`);
+		addIssue(
+			issues,
+			`${path}.materialId`,
+			'unknown_material',
+			`Unknown material: ${materialIdRaw}`,
+		);
 	}
 	const castShadow = readRequiredBoolean(input, 'castShadow', path, issues);
 	const receiveShadow = readRequiredBoolean(input, 'receiveShadow', path, issues);
@@ -172,7 +209,6 @@ export function parsePrimitiveEntity(
 	} as ScenePrimitiveEntity;
 }
 
-
 /**
  * The retired authored light kind. It is not in `SCENE_LIGHT_KINDS`; it is
  * recognised only so the codec can refuse it with a typed error that names the
@@ -180,13 +216,11 @@ export function parsePrimitiveEntity(
  */
 const RETIRED_DIRECTIONAL_LIGHT = 'directional';
 
-
 function describeRetiredLight(id: string | undefined, name: string | undefined): string {
 	if (id && name) return `entity "${id}" ("${name}")`;
 	if (id) return `entity "${id}"`;
 	return 'an entity';
 }
-
 
 export function parseLightEntity(
 	input: JsonRecord,
@@ -209,10 +243,10 @@ export function parseLightEntity(
 			'castShadow',
 			'position',
 			'rotation',
-			'scale'
+			'scale',
 		],
 		path,
-		issues
+		issues,
 	);
 	const id = readRequiredString(input, 'id', path, issues);
 	const name = readRequiredString(input, 'name', path, issues);
@@ -227,7 +261,7 @@ export function parseLightEntity(
 			issues,
 			`${path}.light`,
 			'unsupported_light_kind',
-			`This project uses a light kind that is no longer supported: ${describeRetiredLight(id, name)} is a Directional light. The Sky owns the only Sun.`
+			`This project uses a light kind that is no longer supported: ${describeRetiredLight(id, name)} is a Directional light. The Sky owns the only Sun.`,
 		);
 	} else if (lightRaw && !light) {
 		addIssue(issues, `${path}.light`, 'invalid_light', `Invalid light kind: ${lightRaw}`);
@@ -238,13 +272,23 @@ export function parseLightEntity(
 	}
 	const intensity = readRequiredNumber(input, 'intensity', path, issues);
 	if (intensity !== undefined && (!Number.isFinite(intensity) || intensity < 0)) {
-		addIssue(issues, `${path}.intensity`, 'invalid_intensity', 'Intensity must be a finite number ≥ 0');
+		addIssue(
+			issues,
+			`${path}.intensity`,
+			'invalid_intensity',
+			'Intensity must be a finite number ≥ 0',
+		);
 	}
 	let range: number | undefined;
 	if ('range' in input) {
 		range = readRequiredNumber(input, 'range', path, issues);
 		if (range !== undefined && (!Number.isFinite(range) || range <= 0)) {
-			addIssue(issues, `${path}.range`, 'invalid_range', 'Range must be a finite number greater than zero');
+			addIssue(
+				issues,
+				`${path}.range`,
+				'invalid_range',
+				'Range must be a finite number greater than zero',
+			);
 			range = undefined;
 		}
 	}
@@ -265,9 +309,15 @@ export function parseLightEntity(
 		}
 	}
 	if (light === 'point') {
-		if ('angle' in input) addIssue(issues, `${path}.angle`, 'unexpected_property', 'Point lights do not use angle');
+		if ('angle' in input)
+			addIssue(issues, `${path}.angle`, 'unexpected_property', 'Point lights do not use angle');
 		if ('penumbra' in input) {
-			addIssue(issues, `${path}.penumbra`, 'unexpected_property', 'Point lights do not use penumbra');
+			addIssue(
+				issues,
+				`${path}.penumbra`,
+				'unexpected_property',
+				'Point lights do not use penumbra',
+			);
 		}
 	} else if (light === 'spot') {
 		if (!('angle' in input)) {
@@ -308,7 +358,7 @@ export function parseLightEntity(
 			castShadow,
 			...transform,
 			...(range === undefined ? {} : { range }),
-			...(penumbra === undefined ? {} : { penumbra })
+			...(penumbra === undefined ? {} : { penumbra }),
 		};
 	}
 	return {
@@ -320,29 +370,49 @@ export function parseLightEntity(
 		intensity: intensity!,
 		castShadow,
 		...transform,
-		...(range === undefined ? {} : { range })
+		...(range === undefined ? {} : { range }),
 	};
 }
 
-
-function readArtworkImage(input: JsonRecord, path: string, issues: SceneDocumentIssue[]): ArtworkImage | undefined {
+function readArtworkImage(
+	input: JsonRecord,
+	path: string,
+	issues: SceneDocumentIssue[],
+): ArtworkImage | undefined {
 	const assetId = readRequiredString(input, 'assetId', path, issues);
 	const pixelWidth = readRequiredNumber(input, 'pixelWidth', path, issues);
 	const pixelHeight = readRequiredNumber(input, 'pixelHeight', path, issues);
 	if (assetId === undefined || !isArtworkAssetId(assetId)) {
-		addIssue(issues, `${path}.assetId`, 'invalid_asset_id', 'Expected a canonical project asset UUID');
+		addIssue(
+			issues,
+			`${path}.assetId`,
+			'invalid_asset_id',
+			'Expected a canonical project asset UUID',
+		);
 		return undefined;
 	}
-	if (pixelWidth === undefined || pixelHeight === undefined ||
-		!isArtworkImageEdge(pixelWidth) || !isArtworkImageEdge(pixelHeight)) {
-		addIssue(issues, path, 'invalid_dimension', `Artwork image edges must be whole pixels from 1 to ${ARTWORK_MAX_IMAGE_EDGE}`);
+	if (
+		pixelWidth === undefined ||
+		pixelHeight === undefined ||
+		!isArtworkImageEdge(pixelWidth) ||
+		!isArtworkImageEdge(pixelHeight)
+	) {
+		addIssue(
+			issues,
+			path,
+			'invalid_dimension',
+			`Artwork image edges must be whole pixels from 1 to ${ARTWORK_MAX_IMAGE_EDGE}`,
+		);
 		return undefined;
 	}
 	return { assetId, pixelWidth, pixelHeight };
 }
 
-
-export function parseArtworkLibraryEntry(input: unknown, path: string, issues: SceneDocumentIssue[]): ArtworkLibraryEntry | undefined {
+export function parseArtworkLibraryEntry(
+	input: unknown,
+	path: string,
+	issues: SceneDocumentIssue[],
+): ArtworkLibraryEntry | undefined {
 	if (!isRecord(input)) {
 		addIssue(issues, path, 'invalid_type', 'Expected an Artwork Library image');
 		return undefined;
@@ -353,9 +423,17 @@ export function parseArtworkLibraryEntry(input: unknown, path: string, issues: S
 	return name && image ? { ...image, name } : undefined;
 }
 
-
-function parseArtworkEntity(input: JsonRecord, path: string, issues: SceneDocumentIssue[]): SceneArtworkEntity | undefined {
-	assertAllowedKeys(input, ['kind', 'id', 'name', 'position', 'rotation', 'source', 'widthMeters', 'frame'], path, issues);
+function parseArtworkEntity(
+	input: JsonRecord,
+	path: string,
+	issues: SceneDocumentIssue[],
+): SceneArtworkEntity | undefined {
+	assertAllowedKeys(
+		input,
+		['kind', 'id', 'name', 'position', 'rotation', 'source', 'widthMeters', 'frame'],
+		path,
+		issues,
+	);
 	const id = readRequiredString(input, 'id', path, issues);
 	const name = readRequiredString(input, 'name', path, issues);
 	const position = readVec3(input.position, `${path}.position`, issues);
@@ -378,24 +456,34 @@ function parseArtworkEntity(input: JsonRecord, path: string, issues: SceneDocume
 	}
 	assertAllowedKeys(source, ['kind', 'assetId', 'pixelWidth', 'pixelHeight'], sourcePath, issues);
 	const image = readArtworkImage(source, sourcePath, issues);
-	if (!id || !name || !position || !rotation || !image || widthMeters === undefined || frameInvalid) return undefined;
+	if (!id || !name || !position || !rotation || !image || widthMeters === undefined || frameInvalid)
+		return undefined;
 	if (!isArtworkWidth(widthMeters, image)) {
-		addIssue(issues, `${path}.widthMeters`, 'invalid_dimension', 'Artwork width and height must be between 0.001 and 1000 m');
+		addIssue(
+			issues,
+			`${path}.widthMeters`,
+			'invalid_dimension',
+			'Artwork width and height must be between 0.001 and 1000 m',
+		);
 		return undefined;
 	}
 	return {
-		kind: 'artwork', id, name, position, rotation, widthMeters,
+		kind: 'artwork',
+		id,
+		name,
+		position,
+		rotation,
+		widthMeters,
 		source: { kind: 'image', ...image },
-		...(frame === undefined ? {} : { frame })
+		...(frame === undefined ? {} : { frame }),
 	};
 }
-
 
 export function parseEntity(
 	input: unknown,
 	path: string,
 	issues: SceneDocumentIssue[],
-	options: EntityParserOptions
+	options: EntityParserOptions,
 ): SceneEntity | undefined {
 	if (!isRecord(input)) {
 		addIssue(issues, path, 'invalid_type', 'Expected a scene entity object');
@@ -413,11 +501,10 @@ export function parseEntity(
 	return undefined;
 }
 
-
 export function parseCluster(
 	input: unknown,
 	path: string,
-	issues: SceneDocumentIssue[]
+	issues: SceneDocumentIssue[],
 ): SceneObjectCluster | undefined {
 	if (!isRecord(input)) {
 		addIssue(issues, path, 'invalid_type', 'Expected a cluster object');

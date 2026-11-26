@@ -1,8 +1,34 @@
 import type { LayoutVec2 } from '../coordinates';
 import { p2311Measure } from '../../kernel/work-observer';
-import { adaptiveParameters, assertFiniteSamplingInput, autoBezierAnchorPoints, autoBezierDerivativeAt, autoBezierPointAt, compileAutoBezierAnchors, cubicBezierArcLength, cubicBezierArcLengthBetween, cubicBezierPoint, fallbackTangent, lineParameters, tangentFromSamples } from './bezier';
-import type { CubicBezierShape, CurveDistanceResult, CurveSample, CurvedSampleableSegment, SampleableSegment, SampledSegment } from './contracts';
-import { CURVE_ENDPOINT_EPSILON, CURVE_FLATNESS_TOLERANCE, CURVE_MAX_SAMPLE_SPAN, LayoutGeometrySamplingError, MAX_CURVE_SAMPLES_PER_SEGMENT } from './contracts';
+import {
+	adaptiveParameters,
+	assertFiniteSamplingInput,
+	autoBezierAnchorPoints,
+	autoBezierDerivativeAt,
+	autoBezierPointAt,
+	compileAutoBezierAnchors,
+	cubicBezierArcLength,
+	cubicBezierArcLengthBetween,
+	cubicBezierPoint,
+	fallbackTangent,
+	lineParameters,
+	tangentFromSamples,
+} from './bezier';
+import type {
+	CubicBezierShape,
+	CurveDistanceResult,
+	CurveSample,
+	CurvedSampleableSegment,
+	SampleableSegment,
+	SampledSegment,
+} from './contracts';
+import {
+	CURVE_ENDPOINT_EPSILON,
+	CURVE_FLATNESS_TOLERANCE,
+	CURVE_MAX_SAMPLE_SPAN,
+	LayoutGeometrySamplingError,
+	MAX_CURVE_SAMPLES_PER_SEGMENT,
+} from './contracts';
 import { clamp01, distance, lerp, normalize } from './intersections';
 
 /**
@@ -17,12 +43,11 @@ export function segmentVertexPoints(segment: SampleableSegment): LayoutVec2[] {
 	if (segment.kind === 'cubic-chain') {
 		return [
 			[...segment.cubics[0]!.start] as LayoutVec2,
-			...segment.cubics.map((cubic) => [...cubic.end] as LayoutVec2)
+			...segment.cubics.map((cubic) => [...cubic.end] as LayoutVec2),
 		];
 	}
 	return [segment.start, ...segment.interiorAnchors.map((anchor) => anchor.point), segment.end];
 }
-
 
 /**
  * The cubic list of a non-straight segment: stored spans for the canonical
@@ -35,29 +60,29 @@ export function curvedCubics(segment: CurvedSampleableSegment): CubicBezierShape
 		: compileAutoBezierAnchors(autoBezierAnchorPoints(segment));
 }
 
-
 export function segmentPointAt(segment: SampleableSegment, t: number): LayoutVec2 {
 	if (segment.kind === 'line') {
 		const amount = clamp01(t);
 		return [
 			segment.start[0] + (segment.end[0] - segment.start[0]) * amount,
-			segment.start[1] + (segment.end[1] - segment.start[1]) * amount
+			segment.start[1] + (segment.end[1] - segment.start[1]) * amount,
 		];
 	}
 	return autoBezierPointAt(segment, t);
 }
 
-
 export function segmentTangentAt(segment: SampleableSegment, t: number): LayoutVec2 {
-	if (segment.kind === 'line') return normalize([segment.end[0] - segment.start[0], segment.end[1] - segment.start[1]], [1, 0]);
+	if (segment.kind === 'line')
+		return normalize(
+			[segment.end[0] - segment.start[0], segment.end[1] - segment.start[1]],
+			[1, 0],
+		);
 	return normalize(autoBezierDerivativeAt(segment, t), fallbackTangent(segment));
 }
-
 
 export function segmentLength(segment: SampleableSegment): number {
 	return sampleSegment(segment).length;
 }
-
 
 export function sampleSegment(
 	segment: SampleableSegment,
@@ -66,11 +91,10 @@ export function sampleSegment(
 		maxSampleSpan?: number;
 		maxDepth?: number;
 		maxSamples?: number;
-	} = {}
+	} = {},
 ): SampledSegment {
 	return p2311Measure('curve-sampling', () => sampleSegmentUnmeasured(segment, options));
 }
-
 
 function sampleSegmentUnmeasured(
 	segment: SampleableSegment,
@@ -79,7 +103,7 @@ function sampleSegmentUnmeasured(
 		maxSampleSpan?: number;
 		maxDepth?: number;
 		maxSamples?: number;
-	} = {}
+	} = {},
 ): SampledSegment {
 	const flatnessTolerance = options.flatnessTolerance ?? CURVE_FLATNESS_TOLERANCE;
 	const maxSampleSpan = options.maxSampleSpan ?? CURVE_MAX_SAMPLE_SPAN;
@@ -91,7 +115,7 @@ function sampleSegmentUnmeasured(
 		return buildSampledSegment(
 			segment.id,
 			parameters.map((t) => ({ point: segmentPointAt(segment, t), t })),
-			segment
+			segment,
 		);
 	}
 
@@ -104,7 +128,7 @@ function sampleSegmentUnmeasured(
 			if (pointsWithT.length >= maxSamples) {
 				throw new LayoutGeometrySamplingError(
 					'sampling_budget_exceeded',
-					`Segment requires more than ${maxSamples} curve samples.`
+					`Segment requires more than ${maxSamples} curve samples.`,
 				);
 			}
 			const globalT = cubics.length <= 1 ? localT : (cubicIndex + localT) / cubics.length;
@@ -112,7 +136,7 @@ function sampleSegmentUnmeasured(
 			if (!point.every(Number.isFinite)) {
 				throw new LayoutGeometrySamplingError(
 					'sampling_output_invalid',
-					'Segment sampling produced a non-finite point.'
+					'Segment sampling produced a non-finite point.',
 				);
 			}
 			pointsWithT.push({ point, t: globalT });
@@ -122,12 +146,11 @@ function sampleSegmentUnmeasured(
 		const vertices = segmentVertexPoints(segment);
 		pointsWithT.push(
 			{ point: [...vertices[0]!] as LayoutVec2, t: 0 },
-			{ point: [...vertices.at(-1)!] as LayoutVec2, t: 1 }
+			{ point: [...vertices.at(-1)!] as LayoutVec2, t: 1 },
 		);
 	}
 	return buildSampledSegment(segment.id, pointsWithT, segment, cubics);
 }
-
 
 /**
  * Binary search over monotonically increasing sample distances: the first
@@ -151,11 +174,15 @@ function firstSampleIndexAtOrAfter(samples: readonly CurveSample[], threshold: n
 	return result;
 }
 
-
-export function pointAtDistance(sampled: SampledSegment, distanceAlong: number): CurveDistanceResult {
+export function pointAtDistance(
+	sampled: SampledSegment,
+	distanceAlong: number,
+): CurveDistanceResult {
 	const samples = sampled.samples;
-	if (samples.length === 0) return { point: [0, 0], distance: 0, tangent: [1, 0], normal: [0, 1], t: 0 };
-	if (samples.length === 1 || sampled.length <= CURVE_ENDPOINT_EPSILON) return { ...samples[0]!, point: [...samples[0]!.point] };
+	if (samples.length === 0)
+		return { point: [0, 0], distance: 0, tangent: [1, 0], normal: [0, 1], t: 0 };
+	if (samples.length === 1 || sampled.length <= CURVE_ENDPOINT_EPSILON)
+		return { ...samples[0]!, point: [...samples[0]!.point] };
 	const target = Math.min(sampled.length, Math.max(0, distanceAlong));
 	const endIndex = Math.min(samples.length - 1, firstSampleIndexAtOrAfter(samples, target));
 	const start = samples[endIndex - 1]!;
@@ -168,16 +195,15 @@ export function pointAtDistance(sampled: SampledSegment, distanceAlong: number):
 		distance: target,
 		tangent,
 		normal: [-tangent[1], tangent[0]],
-		t: start.t + (end.t - start.t) * amount
+		t: start.t + (end.t - start.t) * amount,
 	};
 }
-
 
 /** Points along a compiled sample range [start, end] including exact clipped endpoints. */
 export function samplePolylineInRange(
 	samples: readonly CurveSample[],
 	startDistance: number,
-	endDistance: number
+	endDistance: number,
 ): LayoutVec2[] {
 	if (samples.length === 0 || endDistance <= startDistance + 1e-6) return [];
 	const points: LayoutVec2[] = [pointAlongSamples(samples, startDistance)];
@@ -190,8 +216,10 @@ export function samplePolylineInRange(
 	return points;
 }
 
-
-export function pointAlongSamples(samples: readonly CurveSample[], distanceAlong: number): LayoutVec2 {
+export function pointAlongSamples(
+	samples: readonly CurveSample[],
+	distanceAlong: number,
+): LayoutVec2 {
 	if (samples.length === 0) return [0, 0];
 	if (samples.length === 1) return [...samples[0]!.point] as LayoutVec2;
 	const target = Math.min(samples.at(-1)!.distance, Math.max(0, distanceAlong));
@@ -203,20 +231,25 @@ export function pointAlongSamples(samples: readonly CurveSample[], distanceAlong
 	const amount = span > 1e-9 ? (target - start.distance) / span : 0;
 	return [
 		start.point[0] + (end.point[0] - start.point[0]) * amount,
-		start.point[1] + (end.point[1] - start.point[1]) * amount
+		start.point[1] + (end.point[1] - start.point[1]) * amount,
 	];
 }
 
-
-export function projectPointToSampledSegment(point: LayoutVec2, sampled: SampledSegment): CurveDistanceResult & { distanceToPath: number } {
-	let best: CurveDistanceResult & { distanceToPath: number } | null = null;
+export function projectPointToSampledSegment(
+	point: LayoutVec2,
+	sampled: SampledSegment,
+): CurveDistanceResult & { distanceToPath: number } {
+	let best: (CurveDistanceResult & { distanceToPath: number }) | null = null;
 	for (let index = 1; index < sampled.samples.length; index += 1) {
 		const start = sampled.samples[index - 1]!;
 		const end = sampled.samples[index]!;
 		const dx = end.point[0] - start.point[0];
 		const dz = end.point[1] - start.point[1];
 		const squared = dx * dx + dz * dz;
-		const rawT = squared > 0 ? ((point[0] - start.point[0]) * dx + (point[1] - start.point[1]) * dz) / squared : 0;
+		const rawT =
+			squared > 0
+				? ((point[0] - start.point[0]) * dx + (point[1] - start.point[1]) * dz) / squared
+				: 0;
 		const amount = Math.min(1, Math.max(0, rawT));
 		const projected = [start.point[0] + dx * amount, start.point[1] + dz * amount] as LayoutVec2;
 		const tangent = normalize(lerp(start.tangent, end.tangent, amount), start.tangent);
@@ -226,13 +259,17 @@ export function projectPointToSampledSegment(point: LayoutVec2, sampled: Sampled
 			tangent,
 			normal: [-tangent[1], tangent[0]] as LayoutVec2,
 			t: start.t + (end.t - start.t) * amount,
-			distanceToPath: distance(point, projected)
+			distanceToPath: distance(point, projected),
 		};
 		if (!best || candidate.distanceToPath < best.distanceToPath) best = candidate;
 	}
-	return best ?? { ...pointAtDistance(sampled, 0), distanceToPath: distance(point, sampled.samples[0]?.point ?? [0, 0]) };
+	return (
+		best ?? {
+			...pointAtDistance(sampled, 0),
+			distanceToPath: distance(point, sampled.samples[0]?.point ?? [0, 0]),
+		}
+	);
 }
-
 
 /**
  * The ONE authored Wall-distance metric.
@@ -253,7 +290,7 @@ export function projectPointToSampledSegment(point: LayoutVec2, sampled: Sampled
  */
 function trueArcSampleDistances(
 	pointsWithT: readonly { point: LayoutVec2; t: number }[],
-	cubics: readonly CubicBezierShape[]
+	cubics: readonly CubicBezierShape[],
 ): number[] {
 	const distances: number[] = [];
 	let running = 0;
@@ -265,7 +302,10 @@ function trueArcSampleDistances(
 		let local = clamp01(scaled - index);
 		// Guard against global-parameter rounding at a cubic boundary, so a
 		// walk can never step backwards inside one cubic.
-		if (currentIndex >= 0 && (index < currentIndex || (index === currentIndex && local < currentLocal))) {
+		if (
+			currentIndex >= 0 &&
+			(index < currentIndex || (index === currentIndex && local < currentLocal))
+		) {
 			index = currentIndex;
 			local = currentLocal;
 		}
@@ -287,12 +327,11 @@ function trueArcSampleDistances(
 	return distances;
 }
 
-
 function buildSampledSegment(
 	segmentId: string,
 	pointsWithT: readonly { point: LayoutVec2; t: number }[],
 	segment: SampleableSegment,
-	cubics?: readonly CubicBezierShape[]
+	cubics?: readonly CubicBezierShape[],
 ): SampledSegment {
 	const points = pointsWithT.map((entry) => entry.point);
 	let distances: number[];
@@ -315,7 +354,7 @@ function buildSampledSegment(
 			distance: distances[index]!,
 			tangent,
 			normal: [-tangent[1], tangent[0]] as LayoutVec2,
-			t: entry.t
+			t: entry.t,
 		};
 	});
 	return { segmentId, length, samples };

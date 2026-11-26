@@ -13,16 +13,14 @@ import type { WallChainArc } from './chain-arcs';
  * Chain wall/junction defaults (same as the seed helpers).
  *
  * The Wall-birth height is not in this table: a new Wall's height comes
- * from `resolveWallBirthHeight()` (the named `WALL_AUTHORING_DEFAULT_HEIGHT` or a
+ * from `resolveWallBirthHeight` (the named `WALL_AUTHORING_DEFAULT_HEIGHT` or a
  * deterministic incident-Wall inheritance), so no runtime Wall-birth path may
  * carry a literal height. Thickness stays a fixed sketch default (it is not a
  * vertical quantity).
  */
 export const WALL_CHAIN_DEFAULTS = {
-	thickness: 0.2
+	thickness: 0.2,
 } as const;
-
-
 
 /**
  * A DECLARED host-Wall connection for one draft point.
@@ -40,8 +38,6 @@ export type WallEndpointHostSnap = {
 	pointIndex: number;
 	wallId: string;
 };
-
-
 
 /**
  * DECLARED CONNECTION ANCHOR, junction form.
@@ -71,8 +67,6 @@ export type WallEndpointJunctionSnap = {
 	junctionId: string;
 };
 
-
-
 /** Why a chain sketch rejected; stable machine codes. */
 export type WallChainRejectionCode =
 	| 'closed_wall_isolated'
@@ -90,8 +84,6 @@ export type WallChainRejectionCode =
 	| 'invalid_candidate_document'
 	| 'candidate_does_not_compile';
 
-
-
 export type WallChainRejection = {
 	code: WallChainRejectionCode;
 	message: string;
@@ -102,8 +94,6 @@ export type WallChainRejection = {
 	/** The final canonical gate's issues, when validation rejects. */
 	issues?: readonly LayoutDocumentIssue[];
 };
-
-
 
 export type WallChainPlan =
 	| {
@@ -158,8 +148,6 @@ export type WallChainPlan =
 			rejection: WallChainRejection;
 	  };
 
-
-
 /**
  * Deterministic chain allocator contract. Compatible with the editor's
  * `NodingIdAllocator` shape. Every id derives from the operation's captured
@@ -169,8 +157,6 @@ export type WallChainIdAllocator = {
 	nextWallId(taken: ReadonlySet<string>, seed: string): string;
 	nextJunctionId(taken: ReadonlySet<string>, seed: string): string;
 };
-
-
 
 /**
  * One captured operation's chain allocator (capture, never occupancy).
@@ -183,34 +169,30 @@ export type WallChainIdAllocator = {
  * sequence, so the ids stay deterministic. Occupancy (including ids this
  * operation already issued) is only the refusal check.
  */
-export function createCapturedWallChainAllocator(
-	capture: LayoutIdCapture
-): WallChainIdAllocator {
+export function createCapturedWallChainAllocator(capture: LayoutIdCapture): WallChainIdAllocator {
 	const wallSeeds = new Map<string, number>();
 	const junctionSeeds = new Map<string, number>();
 	const issued = new Set<string>();
 	const allocate = (
 		seeds: Map<string, number>,
 		taken: ReadonlySet<string>,
-		seed: string
+		seed: string,
 	): string => {
 		const request = (seeds.get(seed) ?? 0) + 1;
 		seeds.set(seed, request);
 		const effectiveSeed = request === 1 ? seed : `${seed}-${request}`;
 		const id = assertCapturedIdUnused(
 			new Set([...taken, ...issued]),
-			layoutCapturedId(capture, effectiveSeed)
+			layoutCapturedId(capture, effectiveSeed),
 		);
 		issued.add(id);
 		return id;
 	};
 	return {
 		nextWallId: (taken, seed) => allocate(wallSeeds, taken, seed),
-		nextJunctionId: (taken, seed) => allocate(junctionSeeds, taken, seed)
+		nextJunctionId: (taken, seed) => allocate(junctionSeeds, taken, seed),
 	};
 }
-
-
 
 /**
  * Plan a sketched Wall/Partition chain over `baseline`.
@@ -224,12 +206,8 @@ export function createCapturedWallChainAllocator(
 /**
  * The wall-chain plan's own DEV-only mark boundaries.
  *
- * The P23B.6 S6 capture left this block in an UNATTRIBUTED interval because no
- * `p2311Measure` mark existed anywhere in the wall-chain / correspondence /
- * face-extraction path. This slice adds exactly the six boundaries its S1 step
- * names, so the wall-chain release splits into plan, topology gate, face
- * extraction, correspondence, room reconciliation and the final canonical
- * gates — in node and in the browser, through the shipped containment harness.
+ * The observer sees plan, topology gate, face extraction, correspondence, Room
+ * reconciliation and final canonical gates in Node and the browser.
  * They are inert unless a measurement harness installs a work observer, so
  * they add no telemetry to a product build.
  */

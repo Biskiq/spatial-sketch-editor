@@ -1,8 +1,22 @@
 import type { LayoutVec2 } from '../../geometry/coordinates';
 import { geometryId } from '../../geometry/types';
 import { pointInPolygon } from '../../geometry/objects';
-import { contradictory, distanceToSegment, groupSupportCandidates, hasUsableBoundary, pointWithinToleranceOfBounds, registerWitness } from './choice';
-import type { FloorSupportCandidate, FloorSupportQueryInput, FloorSupportQueryPolygon, FloorSupportQueryResult, FloorSupportSnapshot, FloorSupportWitness } from './contracts';
+import {
+	contradictory,
+	distanceToSegment,
+	groupSupportCandidates,
+	hasUsableBoundary,
+	pointWithinToleranceOfBounds,
+	registerWitness,
+} from './choice';
+import type {
+	FloorSupportCandidate,
+	FloorSupportQueryInput,
+	FloorSupportQueryPolygon,
+	FloorSupportQueryResult,
+	FloorSupportSnapshot,
+	FloorSupportWitness,
+} from './contracts';
 import { DATUM_SUPPORT_ORDER_KEY, FLOOR_SUPPORT_TOLERANCES } from './contracts';
 
 /**
@@ -12,10 +26,11 @@ import { DATUM_SUPPORT_ORDER_KEY, FLOOR_SUPPORT_TOLERANCES } from './contracts';
  * elevation. A compile with no Floor at all has nothing to measure against, which
  * is why the fallback is the origin rather than a guess.
  */
-export function layoutDatumElevation(geometry: { readonly floors: readonly { readonly elevation: number }[] }): number {
+export function layoutDatumElevation(geometry: {
+	readonly floors: readonly { readonly elevation: number }[];
+}): number {
 	return geometry.floors[0]?.elevation ?? 0;
 }
-
 
 /**
  * The support the explicit datum offers at one point.
@@ -37,10 +52,9 @@ export function datumSupportCandidate(input: {
 		generationId: input.generationId,
 		witnesses: [],
 		orderKey: DATUM_SUPPORT_ORDER_KEY,
-		label: 'Stage datum'
+		label: 'Stage datum',
 	};
 }
-
 
 /**
  * Tolerance-inclusive point/polygon membership.
@@ -57,9 +71,9 @@ export function datumSupportCandidate(input: {
 export function polygonContainsWithTolerance(
 	point: LayoutVec2,
 	polygon: readonly LayoutVec2[],
-	toleranceMeters: number = FLOOR_SUPPORT_TOLERANCES.boundaryMeters
+	toleranceMeters: number = FLOOR_SUPPORT_TOLERANCES.boundaryMeters,
 ): boolean {
-	if (!hasUsableBoundary(polygon) || point.some(value => !Number.isFinite(value))) return false;
+	if (!hasUsableBoundary(polygon) || point.some((value) => !Number.isFinite(value))) return false;
 	if (!Number.isFinite(toleranceMeters) || toleranceMeters < 0) return false;
 	if (pointInPolygon(point, polygon)) return true;
 	for (let index = 0; index < polygon.length; index += 1) {
@@ -70,23 +84,22 @@ export function polygonContainsWithTolerance(
 	return false;
 }
 
-
 export function queryFloorSupports(
 	snapshot: FloorSupportSnapshot,
-	input: FloorSupportQueryInput
+	input: FloorSupportQueryInput,
 ): FloorSupportQueryResult {
 	if (typeof input.generationId !== 'string' || input.generationId.trim().length === 0) {
 		return {
 			kind: 'invalid-input',
 			code: 'missing-generation-id',
-			message: 'A floor-support query needs the caller compile generation it is resolving against.'
+			message: 'A floor-support query needs the caller compile generation it is resolving against.',
 		};
 	}
 	if (!Number.isFinite(input.x) || !Number.isFinite(input.z)) {
 		return {
 			kind: 'invalid-input',
 			code: 'non-finite-point',
-			message: `A floor-support query needs a finite world X/Z point; received (${String(input.x)}, ${String(input.z)}).`
+			message: `A floor-support query needs a finite world X/Z point; received (${String(input.x)}, ${String(input.z)}).`,
 		};
 	}
 	if (
@@ -97,16 +110,19 @@ export function queryFloorSupports(
 			kind: 'stale-generation',
 			generationId: input.generationId,
 			evidenceGenerationId: input.evidenceGenerationId,
-			message: `Evidence was captured against generation "${input.evidenceGenerationId}" and the snapshot is generation "${input.generationId}".`
+			message: `Evidence was captured against generation "${input.evidenceGenerationId}" and the snapshot is generation "${input.generationId}".`,
 		};
 	}
 
 	const scopeFloorId = input.scope?.floorId;
-	if (scopeFloorId !== undefined && !snapshot.floors.some((floor) => floor.floorId === scopeFloorId)) {
+	if (
+		scopeFloorId !== undefined &&
+		!snapshot.floors.some((floor) => floor.floorId === scopeFloorId)
+	) {
 		return {
 			kind: 'unsupported',
 			code: 'unknown-scope-floor',
-			message: `The chosen floor "${scopeFloorId}" is not part of this compiled Layout, so its support cannot be resolved here.`
+			message: `The chosen floor "${scopeFloorId}" is not part of this compiled Layout, so its support cannot be resolved here.`,
 		};
 	}
 
@@ -119,11 +135,17 @@ export function queryFloorSupports(
 		if (polygon.kind !== 'room-floor' && polygon.kind !== 'region-top') continue;
 		if (scopeFloorId !== undefined && polygon.floorId !== scopeFloorId) continue;
 		if (!hasUsableBoundary(polygon.polygon)) {
-			if (pointWithinToleranceOfBounds(point, polygon.polygon, FLOOR_SUPPORT_TOLERANCES.boundaryMeters)) {
+			if (
+				pointWithinToleranceOfBounds(
+					point,
+					polygon.polygon,
+					FLOOR_SUPPORT_TOLERANCES.boundaryMeters,
+				)
+			) {
 				return {
 					kind: 'unsupported',
 					code: 'missing-support-facts',
-					message: `Compiled ${polygon.kind} record "${polygon.id}" carries an invalid or degenerate boundary but reaches the queried point, so this query cannot report an honest support set.`
+					message: `Compiled ${polygon.kind} record "${polygon.id}" carries an invalid or degenerate boundary but reaches the queried point, so this query cannot report an honest support set.`,
 				};
 			}
 			continue;
@@ -141,7 +163,7 @@ export function queryFloorSupports(
 			return {
 				kind: 'unsupported',
 				code: 'missing-support-facts',
-				message: `Compiled ${polygon.kind} record "${polygon.id}" names no floor owner, so its support cannot be qualified.`
+				message: `Compiled ${polygon.kind} record "${polygon.id}" names no floor owner, so its support cannot be qualified.`,
 			};
 		}
 		const floorFacts = snapshot.floors.filter((floor) => floor.floorId === floorId);
@@ -149,7 +171,7 @@ export function queryFloorSupports(
 			return {
 				kind: 'unsupported',
 				code: 'contradictory-support-facts',
-				message: `Compiled record "${polygon.id}" has conflicting facts for one floor identity.`
+				message: `Compiled record "${polygon.id}" has conflicting facts for one floor identity.`,
 			};
 		}
 		const floor = floorByFloorId.get(floorId);
@@ -157,7 +179,7 @@ export function queryFloorSupports(
 			return {
 				kind: 'unsupported',
 				code: 'missing-support-facts',
-				message: `Compiled ${polygon.kind} record "${polygon.id}" has no compiled floor with a finite datum for floor "${floorId}".`
+				message: `Compiled ${polygon.kind} record "${polygon.id}" has no compiled floor with a finite datum for floor "${floorId}".`,
 			};
 		}
 
@@ -166,7 +188,7 @@ export function queryFloorSupports(
 				return {
 					kind: 'unsupported',
 					code: 'missing-support-facts',
-					message: `Compiled room-floor record "${polygon.id}" names no Room owner, so its support cannot be qualified.`
+					message: `Compiled room-floor record "${polygon.id}" names no Room owner, so its support cannot be qualified.`,
 				};
 			}
 			// Duplicate identities must agree exactly; a Map's last writer is no authority.
@@ -175,7 +197,7 @@ export function queryFloorSupports(
 				return {
 					kind: 'unsupported',
 					code: 'contradictory-support-facts',
-					message: `Compiled record "${polygon.id}" has conflicting facts for one source identity.`
+					message: `Compiled record "${polygon.id}" has conflicting facts for one source identity.`,
 				};
 			}
 			const room = roomByRoomId.get(polygon.roomId);
@@ -183,7 +205,7 @@ export function queryFloorSupports(
 				return {
 					kind: 'unsupported',
 					code: 'missing-support-facts',
-					message: `Compiled room-floor record "${polygon.id}" has no compiled Room with a finite floor elevation for Room "${polygon.roomId}".`
+					message: `Compiled room-floor record "${polygon.id}" has no compiled Room with a finite floor elevation for Room "${polygon.roomId}".`,
 				};
 			}
 			// Two compiled facts describe one support: the Room's floor elevation and
@@ -195,7 +217,7 @@ export function queryFloorSupports(
 				return {
 					kind: 'unsupported',
 					code: 'contradictory-support-facts',
-					message: `Compiled Room "${room.roomId}" reports floor elevation ${room.floorElevation} and its floor "${floor.floorId}" reports datum ${floor.elevation}.`
+					message: `Compiled Room "${room.roomId}" reports floor elevation ${room.floorElevation} and its floor "${floor.floorId}" reports datum ${floor.elevation}.`,
 				};
 			}
 			const known = elevationBySource.get(`room:${room.roomId}`);
@@ -206,7 +228,7 @@ export function queryFloorSupports(
 				return {
 					kind: 'unsupported',
 					code: 'contradictory-support-facts',
-					message: `Room "${room.roomId}" appears in two containing compiled records with elevations ${known} and ${room.floorElevation}.`
+					message: `Room "${room.roomId}" appears in two containing compiled records with elevations ${known} and ${room.floorElevation}.`,
 				};
 			}
 			elevationBySource.set(`room:${room.roomId}`, room.floorElevation);
@@ -219,7 +241,7 @@ export function queryFloorSupports(
 				cacheKey: polygon.cacheKey,
 				sourceId: polygon.sourceId,
 				orderKey,
-				elevation: room.floorElevation
+				elevation: room.floorElevation,
 			};
 			if (!registerWitness(witnessByKey, witnessKey, witness)) {
 				return contradictory(polygon.id);
@@ -234,7 +256,7 @@ export function queryFloorSupports(
 			return {
 				kind: 'unsupported',
 				code: 'contradictory-support-facts',
-				message: `Compiled record "${polygon.id}" has conflicting facts for one region identity.`
+				message: `Compiled record "${polygon.id}" has conflicting facts for one region identity.`,
 			};
 		}
 		const region = regionById.get(polygon.sourceId);
@@ -242,14 +264,14 @@ export function queryFloorSupports(
 			return {
 				kind: 'unsupported',
 				code: 'missing-support-facts',
-				message: `Compiled region-top record "${polygon.id}" has no compiled region with finite slab facts for region "${polygon.sourceId}".`
+				message: `Compiled region-top record "${polygon.id}" has no compiled region with finite slab facts for region "${polygon.sourceId}".`,
 			};
 		}
 		if (region.role !== 'floor') {
 			return {
 				kind: 'unsupported',
 				code: 'contradictory-support-facts',
-				message: `Compiled region-top record "${polygon.id}" names "${region.regionId}", which is not a floor-role region.`
+				message: `Compiled region-top record "${polygon.id}" names "${region.regionId}", which is not a floor-role region.`,
 			};
 		}
 		if (
@@ -260,7 +282,7 @@ export function queryFloorSupports(
 			return {
 				kind: 'unsupported',
 				code: 'contradictory-support-facts',
-				message: `Compiled region-top record "${polygon.id}" reports elevation ${String(polygon.elevation)} and region "${region.regionId}" has top ${region.topY}.`
+				message: `Compiled region-top record "${polygon.id}" reports elevation ${String(polygon.elevation)} and region "${region.regionId}" has top ${region.topY}.`,
 			};
 		}
 		const known = elevationBySource.get(`region:${region.regionId}`);
@@ -271,7 +293,7 @@ export function queryFloorSupports(
 			return {
 				kind: 'unsupported',
 				code: 'contradictory-support-facts',
-				message: `Region "${region.regionId}" appears in two containing compiled records with elevations ${known} and ${region.topY}.`
+				message: `Region "${region.regionId}" appears in two containing compiled records with elevations ${known} and ${region.topY}.`,
 			};
 		}
 		elevationBySource.set(`region:${region.regionId}`, region.topY);
@@ -284,7 +306,7 @@ export function queryFloorSupports(
 			cacheKey: polygon.cacheKey,
 			sourceId: polygon.sourceId,
 			orderKey,
-			elevation: region.topY
+			elevation: region.topY,
 		};
 		if (!registerWitness(witnessByKey, witnessKey, witness)) return contradictory(polygon.id);
 	}

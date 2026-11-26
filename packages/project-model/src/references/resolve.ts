@@ -1,5 +1,5 @@
 /**
- * F.1 resolution — `references-v1` (AM-1).
+ * F.1 resolution — `references-v1`.
  *
  * `resolveReference` evaluates one reference against **one supplied accepted
  * snapshot**; there is no ambient "latest" lookup anywhere in this module.
@@ -30,9 +30,13 @@ import {
 	type ReferenceResolution,
 	type ReferenceResolver,
 	type ResolvedSubject,
-	type SemanticReference
+	type SemanticReference,
 } from './types';
-import { validateDerivedSourceRef, validateFrameReference, validateSemanticReference } from './validate';
+import {
+	validateDerivedSourceRef,
+	validateFrameReference,
+	validateSemanticReference,
+} from './validate';
 
 export type ReferenceResolverHost = {
 	readonly resolvers: readonly ReferenceResolver[];
@@ -48,17 +52,19 @@ export type ReferenceResolverHost = {
  */
 export function createReferenceResolverHost(
 	resolvers: readonly ReferenceResolver[],
-	frameResolvers: readonly FrameResolver[]
+	frameResolvers: readonly FrameResolver[],
 ): ReferenceResolverHost {
 	const problems: string[] = [];
 	const domains = new Set<string>();
 	for (const resolver of resolvers) {
-		if (domains.has(resolver.domain)) problems.push(`two resolvers are registered for domain "${resolver.domain}"`);
+		if (domains.has(resolver.domain))
+			problems.push(`two resolvers are registered for domain "${resolver.domain}"`);
 		domains.add(resolver.domain);
 	}
 	const owners = new Set<string>();
 	for (const resolver of frameResolvers) {
-		if (owners.has(resolver.owner)) problems.push(`two frame resolvers are registered for owner "${resolver.owner}"`);
+		if (owners.has(resolver.owner))
+			problems.push(`two frame resolvers are registered for owner "${resolver.owner}"`);
 		owners.add(resolver.owner);
 	}
 	return { resolvers, frameResolvers, problems };
@@ -68,13 +74,16 @@ function failed(
 	reference: SemanticReference,
 	code: ReferenceFailureCode,
 	message: string,
-	repairs: readonly ReferenceRepairAction[]
+	repairs: readonly ReferenceRepairAction[],
 ): ReferenceResolution {
 	return { kind: 'failed', reference, code, message, repairs };
 }
 
 const REACQUIRE: readonly ReferenceRepairAction[] = [
-	{ kind: 'reacquire-reference', description: 'Re-resolve the subject from the current snapshot before binding it again.' }
+	{
+		kind: 'reacquire-reference',
+		description: 'Re-resolve the subject from the current snapshot before binding it again.',
+	},
 ];
 
 /**
@@ -86,8 +95,13 @@ const REACQUIRE: readonly ReferenceRepairAction[] = [
  * domain and subject-kind admission, then the registered resolver. The
  * resolution records its concrete revision.
  */
-export function resolveReference(reference: unknown, context: ReferenceReadContext): ReferenceResolution {
-	const validation = validateSemanticReference(reference, { supportedExtensions: context.supportedExtensions });
+export function resolveReference(
+	reference: unknown,
+	context: ReferenceReadContext,
+): ReferenceResolution {
+	const validation = validateSemanticReference(reference, {
+		supportedExtensions: context.supportedExtensions,
+	});
 	if (!validation.success) {
 		const first = validation.issues[0];
 		const candidate = (reference ?? undefined) as SemanticReference;
@@ -95,7 +109,7 @@ export function resolveReference(reference: unknown, context: ReferenceReadConte
 			candidate,
 			'incompatible',
 			first === undefined ? 'the reference is not a valid references-v1 value' : first.message,
-			REACQUIRE
+			REACQUIRE,
 		);
 	}
 	const value = validation.value;
@@ -109,36 +123,59 @@ export function resolveReference(reference: unknown, context: ReferenceReadConte
 				value,
 				'incompatible',
 				'project-lock resolution needs an admitted F.2 dependency-lock reader; none is supplied and none is manufactured',
-				[{ kind: 'reacquire-reference', description: 'Declare an exact content revision until an F.2 lock reader is admitted.' }]
+				[
+					{
+						kind: 'reacquire-reference',
+						description: 'Declare an exact content revision until an F.2 lock reader is admitted.',
+					},
+				],
 			);
 		}
 		if (context.lock.projectId !== value.revision.projectId) {
-			return failed(value, 'incompatible', `the supplied dependency lock belongs to project "${context.lock.projectId}"`, [
-				{ kind: 'reload-snapshot', description: 'Reload the supplied accepted snapshot for the referenced project.' }
-			]);
+			return failed(
+				value,
+				'incompatible',
+				`the supplied dependency lock belongs to project "${context.lock.projectId}"`,
+				[
+					{
+						kind: 'reload-snapshot',
+						description: 'Reload the supplied accepted snapshot for the referenced project.',
+					},
+				],
+			);
 		}
 		const locked = context.lock.contentRevisionFor(value);
 		if (locked === null) {
-			return failed(value, 'missing', `the dependency lock has no entry for "${value.subject.kind}:${value.subject.id}"`, REACQUIRE);
+			return failed(
+				value,
+				'missing',
+				`the dependency lock has no entry for "${value.subject.kind}:${value.subject.id}"`,
+				REACQUIRE,
+			);
 		}
 		contentRevision = locked;
 	}
 
 	const resolver = context.resolvers.find((candidate) => candidate.domain === value.domain);
 	if (resolver === undefined) {
-		return failed(
-			value,
-			'incompatible',
-			`no ${value.domain} resolver is admitted by this reader`,
-			[{ kind: 'reacquire-reference', description: 'Wait for the owning domain provider to land, or use an admitted domain.' }]
-		);
+		return failed(value, 'incompatible', `no ${value.domain} resolver is admitted by this reader`, [
+			{
+				kind: 'reacquire-reference',
+				description: 'Wait for the owning domain provider to land, or use an admitted domain.',
+			},
+		]);
 	}
 	if (!resolver.subjectKinds.includes(value.subject.kind)) {
 		return failed(
 			value,
 			'incompatible',
 			`subject kind "${value.subject.kind}" is not addressable in domain "${value.domain}"`,
-			[{ kind: 'choose-subject', description: 'Choose a subject kind the owning domain publishes.' }]
+			[
+				{
+					kind: 'choose-subject',
+					description: 'Choose a subject kind the owning domain publishes.',
+				},
+			],
 		);
 	}
 
@@ -155,7 +192,7 @@ export function resolveReference(reference: unknown, context: ReferenceReadConte
 		capabilityId: value.capabilityId,
 		location: outcome.location,
 		contentRevision: outcome.contentRevision,
-		owner: resolver.owner
+		owner: resolver.owner,
 	};
 	return { kind: 'resolved', reference: value, subject };
 }
@@ -175,13 +212,18 @@ export function resolveFrame(frame: unknown, context: ReferenceReadContext): Fra
 			kind: 'failed',
 			frame: candidate,
 			code: 'incompatible',
-			message: first === undefined ? 'the frame is not a valid FrameReference@1 value' : first.message,
-			repairs: REACQUIRE
+			message:
+				first === undefined ? 'the frame is not a valid FrameReference@1 value' : first.message,
+			repairs: REACQUIRE,
 		};
 	}
 	const value = validation.value;
 	if (value.kind === 'project-world') {
-		return { kind: 'resolved', frame: value, placement: { originMeters: [0, 0, 0], yawRadians: 0, datumMeters: 0 } };
+		return {
+			kind: 'resolved',
+			frame: value,
+			placement: { originMeters: [0, 0, 0], yawRadians: 0, datumMeters: 0 },
+		};
 	}
 
 	const resolver = context.frameResolvers.find((candidate) => candidate.owner === value.owner);
@@ -191,12 +233,18 @@ export function resolveFrame(frame: unknown, context: ReferenceReadContext): Fra
 			frame: value,
 			code: 'incompatible',
 			message: `no ${value.owner} frame resolver is admitted by this reader`,
-			repairs: REACQUIRE
+			repairs: REACQUIRE,
 		};
 	}
 	const outcome = resolver.resolve(value, context);
 	if (outcome.kind !== 'resolved') {
-		return { kind: 'failed', frame: value, code: outcome.kind, message: outcome.message, repairs: outcome.repairs ?? REACQUIRE };
+		return {
+			kind: 'failed',
+			frame: value,
+			code: outcome.kind,
+			message: outcome.message,
+			repairs: outcome.repairs ?? REACQUIRE,
+		};
 	}
 	const placement = validatePlacement(outcome.placement);
 	if (placement === null) {
@@ -205,7 +253,7 @@ export function resolveFrame(frame: unknown, context: ReferenceReadContext): Fra
 			frame: value,
 			code: 'incompatible',
 			message: `the ${value.owner} frame resolver returned a non-finite placement`,
-			repairs: REACQUIRE
+			repairs: REACQUIRE,
 		};
 	}
 	return { kind: 'resolved', frame: value, placement };
@@ -217,8 +265,10 @@ function validatePlacement(placement: FramePlacement): FramePlacement | null {
 	if (record === null) return null;
 	const origin = reader.vector3(record.originMeters, '$.originMeters');
 	const yaw = reader.number(record.yawRadians, '$.yawRadians');
-	const datum = record.datumMeters === null ? null : reader.number(record.datumMeters, '$.datumMeters');
-	if (reader.issues.length > 0 || origin === null || yaw === null || datum === undefined) return null;
+	const datum =
+		record.datumMeters === null ? null : reader.number(record.datumMeters, '$.datumMeters');
+	if (reader.issues.length > 0 || origin === null || yaw === null || datum === undefined)
+		return null;
 	return { originMeters: origin, yawRadians: yaw, datumMeters: datum };
 }
 
@@ -227,7 +277,10 @@ function validatePlacement(placement: FramePlacement): FramePlacement | null {
  * was produced from. A recompile produces a new generation and every fragment of
  * the previous one expires.
  */
-export function matchesGeneration(fragment: DerivedSourceRef, generationId: string | null): boolean {
+export function matchesGeneration(
+	fragment: DerivedSourceRef,
+	generationId: string | null,
+): boolean {
 	return generationId !== null && fragment.generationId === generationId;
 }
 
@@ -238,9 +291,11 @@ export function matchesGeneration(fragment: DerivedSourceRef, generationId: stri
  */
 export function resolveDerivedSourceRef(
 	fragment: unknown,
-	context: ReferenceReadContext
+	context: ReferenceReadContext,
 ): DerivedSourceResolution {
-	const validation = validateDerivedSourceRef(fragment, { supportedExtensions: context.supportedExtensions });
+	const validation = validateDerivedSourceRef(fragment, {
+		supportedExtensions: context.supportedExtensions,
+	});
 	if (!validation.success) {
 		const candidate = (fragment ?? undefined) as DerivedSourceRef;
 		const first = validation.issues[0];
@@ -248,8 +303,11 @@ export function resolveDerivedSourceRef(
 			kind: 'failed',
 			fragment: candidate,
 			code: 'incompatible',
-			message: first === undefined ? 'the fragment is not a valid DerivedSourceRef@1 value' : first.message,
-			repairs: REACQUIRE
+			message:
+				first === undefined
+					? 'the fragment is not a valid DerivedSourceRef@1 value'
+					: first.message,
+			repairs: REACQUIRE,
 		};
 	}
 	const value = validation.value;
@@ -259,12 +317,23 @@ export function resolveDerivedSourceRef(
 			fragment: value,
 			code: 'stale-generation',
 			message: `derived fragment belongs to generation "${value.generationId}" and the active generation is "${context.generationId ?? 'none'}"`,
-			repairs: [{ kind: 'reacquire-reference', description: 'Re-derive the fragment from the active representation generation.' }]
+			repairs: [
+				{
+					kind: 'reacquire-reference',
+					description: 'Re-derive the fragment from the active representation generation.',
+				},
+			],
 		};
 	}
 	const source = resolveReference(value.source, context);
 	if (source.kind !== 'resolved') {
-		return { kind: 'failed', fragment: value, code: source.code, message: source.message, repairs: source.repairs };
+		return {
+			kind: 'failed',
+			fragment: value,
+			code: source.code,
+			message: source.message,
+			repairs: source.repairs,
+		};
 	}
 	return { kind: 'resolved', fragment: value, source: source.subject };
 }
@@ -295,7 +364,7 @@ function revisionId(revision: SemanticReference['revision']): string {
  * Stable ordering between two references — by ID fields only, never a parsed
  * display label, instance order or render order.
  *
- * This is a **total** order over the core identity AM-1 declares, so two distinct
+ * This is a **total** order over the core identity declares, so two distinct
  * references never compare equal and a consumer may sort a selection and rely on
  * the result (`compareReferences(a, b) === 0` is exactly "the same reference").
  * The compared sequence is: domain, revision tag and its opaque id, subject kind,
@@ -320,8 +389,8 @@ export function compareReferences(left: SemanticReference, right: SemanticRefere
 		[left.location.kind, right.location.kind],
 		[
 			left.location.kind === 'layout-location' ? left.location.levelId : '',
-			right.location.kind === 'layout-location' ? right.location.levelId : ''
-		]
+			right.location.kind === 'layout-location' ? right.location.levelId : '',
+		],
 	];
 	for (const [a, b] of fields) {
 		const order = compareIds(a, b);
@@ -329,7 +398,7 @@ export function compareReferences(left: SemanticReference, right: SemanticRefere
 	}
 	const locationPath = compareIdPaths(
 		left.location.kind === 'layout-location' ? left.location.structureInstancePath : [],
-		right.location.kind === 'layout-location' ? right.location.structureInstancePath : []
+		right.location.kind === 'layout-location' ? right.location.structureInstancePath : [],
 	);
 	return locationPath !== 0 ? locationPath : compareIdPaths(left.instancePath, right.instancePath);
 }

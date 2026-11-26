@@ -603,7 +603,7 @@ Non-browser verification at the implementation head: `npm run check --workspace 
 | `apps/editor/src/lib/layout/wall-unfold-pick.ts` | `buildWallUnfoldDisplay` L75, `buildDevelopedWallMesh` call L86, `openingBands` L115, `pickWallUnfoldSheetPoint` (unused in production) | Display build, inverse pick, opening identity. |
 | `apps/editor/src/routes/project/[projectId]/spatial/+page.svelte` | unfold executor L749–785, `unfoldedPointerPress` L1993, press routing L2238, click guard L2693 | Camera authority, sheet press, selection. |
 | `apps/editor/tests/lib/layout/wall-unfold.test.ts` | anchor L403–413, station L661, camera/entry tests | Existing invariants; do not weaken. |
-| `apps/editor/tests/lib/authoring/layout-candidate-preview.test.ts` | wall/junction/bend preview tests | Add whole-network/refusal tests here. |
+| `../../apps/editor/tests/lib/authoring/stage/layout-candidate-preview.test.ts` | wall/junction/bend preview tests | Add whole-network/refusal tests here. |
 | `apps/editor/src/lib/authoring/stage/stage-facade.ts` | `StagePointerIntent` L305 (currently only `shift`) | Add `metaKey`/`ctrlKey` (or `alternateShape`) transport; keep it stable across phases. |
 | `apps/editor/src/routes/project/[projectId]/spatial/+page.svelte` | pointer intent construction L2280 (`shift: event.shiftKey`) | Pass platform modifiers at pointer-down and through move/up/cancel. |
 | `apps/editor/src/lib/authoring/adapters/layout/precision.ts` | `LAYOUT_WALL_MOVE_KIND` L101, `wallMovePlanner` L473 | Reuse the canonical move planner for curved body drag; do not write knots in the adapter. |

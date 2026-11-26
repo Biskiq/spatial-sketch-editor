@@ -35,7 +35,7 @@ import {
 	setDefaultTextureSourceLoader
 } from '$lib/render/resources/texture-store';
 import type { InspectionDraft } from '$lib/render/materials/inspection-subject';
-import { contentHash, fullRecipe } from '../../project-model/materials/fixtures';
+import { contentHash, fullRecipe } from '../../../../../../packages/project-model/tests/materials/fixtures';
 
 const PNGS = fileURLToPath(new URL('../../../../static/material-thumbnails/', import.meta.url));
 const IMAGES = readdirSync(PNGS)

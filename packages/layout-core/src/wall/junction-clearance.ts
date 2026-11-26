@@ -13,18 +13,18 @@
  * on the arbitrary canonical orientation of a Wall) and axis-independent:
  *
  * ```text
- * junction_seam_degenerate  a coordinate is not finite, or a resolved band has
- *                           no vertical span (a zero-height surface); a keel
- *                           carrying no region or band is the same failure
- * junction_seam_fold        two incident legs have exactly collinear outward
- *                           rays in the same direction: their offset solids
- *                           coincide
- * junction_seam_overlap     an owned seam polygon or keel region has no area
- *                           (collapsed past its own offset line), or a keel
- *                           region is not the declared convex CCW polygon
- * junction_seam_uncovered   an incident leg was resolved to nothing: it is
- *                           neither a terminal cap, nor a corner, nor a
- *                           suppressed interface, so its end is left open
+ * junction_seam_degenerate a coordinate is not finite, or a resolved band has
+ *  no vertical span (a zero-height surface); a keel
+ *  carrying no region or band is the same failure
+ * junction_seam_fold two incident legs have exactly collinear outward
+ *  rays in the same direction: their offset solids
+ *  coincide
+ * junction_seam_overlap an owned seam polygon or keel region has no area
+ *  (collapsed past its own offset line), or a keel
+ *  region is not the declared convex CCW polygon
+ * junction_seam_uncovered an incident leg was resolved to nothing: it is
+ *  neither a terminal cap, nor a corner, nor a
+ *  suppressed interface, so its end is left open
  * ```
  *
  * `uncovered` is deliberately stated over the resolution's own completeness
@@ -46,7 +46,12 @@
  * a pure function of already-compiled facts.
  */
 import type { LayoutVec2 } from '../geometry/coordinates';
-import type { CompiledJunction, CompiledJunctionLeg, CompiledJunctionResolution, CompiledLegJoin } from '../geometry/types';
+import type {
+	CompiledJunction,
+	CompiledJunctionLeg,
+	CompiledJunctionResolution,
+	CompiledLegJoin,
+} from '../geometry/types';
 
 /** Absolute floor for "this span/area is actually zero". */
 export const JUNCTION_SEAM_EPSILON = 1e-9;
@@ -69,7 +74,7 @@ export const JUNCTION_SEAM_MESSAGES: Readonly<Record<JunctionSeamCode, string>> 
 	junction_seam_degenerate:
 		'Junction seam geometry is degenerate: a coordinate is not finite, a resolved band has no vertical span, or a keel carries no region or band.',
 	junction_seam_fold:
-		'Junction has two legs pointing the same direction (fold); their offset regions would coincide.'
+		'Junction has two legs pointing the same direction (fold); their offset regions would coincide.',
 };
 
 export function junctionSeamFailure(code: JunctionSeamCode): JunctionSeamFailure {
@@ -203,7 +208,10 @@ export function joinSeamFailure(join: CompiledLegJoin): JunctionSeamFailure | un
 		if (surface.ownerWallId !== join.wallId || surface.end !== join.end) {
 			return junctionSeamFailure('junction_seam_uncovered');
 		}
-		if (Math.hypot(surface.to[0] - surface.from[0], surface.to[1] - surface.from[1]) <= JUNCTION_SEAM_EPSILON) {
+		if (
+			Math.hypot(surface.to[0] - surface.from[0], surface.to[1] - surface.from[1]) <=
+			JUNCTION_SEAM_EPSILON
+		) {
 			return junctionSeamFailure('junction_seam_overlap');
 		}
 		for (const band of surface.bands) {
@@ -216,7 +224,11 @@ export function joinSeamFailure(join: CompiledLegJoin): JunctionSeamFailure | un
 		}
 	}
 	for (const entry of join.interfaces ?? []) {
-		if (!finite2(entry.normal) || !Number.isFinite(entry.fromDistance) || !Number.isFinite(entry.toDistance)) {
+		if (
+			!finite2(entry.normal) ||
+			!Number.isFinite(entry.fromDistance) ||
+			!Number.isFinite(entry.toDistance)
+		) {
 			return junctionSeamFailure('junction_seam_degenerate');
 		}
 		if (entry.toDistance - entry.fromDistance <= JUNCTION_SEAM_EPSILON) {
@@ -264,14 +276,18 @@ export function joinSeamFailure(join: CompiledLegJoin): JunctionSeamFailure | un
 		for (const point of join.ownedSeam.polygon) {
 			if (!finite2(point)) return junctionSeamFailure('junction_seam_degenerate');
 		}
-		if (seamPolygonCollapsed(join.ownedSeam.polygon)) return junctionSeamFailure('junction_seam_overlap');
+		if (seamPolygonCollapsed(join.ownedSeam.polygon))
+			return junctionSeamFailure('junction_seam_overlap');
 	}
 	// Every incident leg must be resolved to *something*: a terminal cap, a
-// deterministic trim at the Junction plane (`terminal`/`trim`), a resolved
-// corner, or a suppressed interface. A join that is none of those leaves the
-// Wall end open.
+	// deterministic trim at the Junction plane (`terminal`/`trim`), a resolved
+	// corner, or a suppressed interface. A join that is none of those leaves the
+	// Wall end open.
 	const resolved =
-		join.kind === 'terminal' || join.kind === 'trim' || join.corner !== null || join.interfaceSuppressed;
+		join.kind === 'terminal' ||
+		join.kind === 'trim' ||
+		join.corner !== null ||
+		join.interfaceSuppressed;
 	if (!resolved) return junctionSeamFailure('junction_seam_uncovered');
 	return undefined;
 }
@@ -290,7 +306,7 @@ function sameSegment(a0: Vec2Like, a1: Vec2Like, b0: Vec2Like, b1: Vec2Like): bo
 /** Do any two band lists share a positive vertical span? */
 function bandsOverlap(
 	a: readonly { bottomY: number; topY: number }[],
-	b: readonly { bottomY: number; topY: number }[]
+	b: readonly { bottomY: number; topY: number }[],
 ): boolean {
 	for (const first of a) {
 		for (const second of b) {
@@ -316,9 +332,17 @@ export type JunctionSeamInput = {
  * reported by the pair of legs, then near-parallel overlap). The first failure
  * is returned.
  */
-export function junctionSeamFailureOf(junction: JunctionSeamInput): JunctionSeamFailure | undefined {
+export function junctionSeamFailureOf(
+	junction: JunctionSeamInput,
+): JunctionSeamFailure | undefined {
 	const { point, legs, resolution } = junction;
-	if (!finite2(point) || legs.some((leg) => !finite2(leg.tangentOut) || !finite2(leg.normalOut) || !Number.isFinite(leg.halfThickness))) {
+	if (
+		!finite2(point) ||
+		legs.some(
+			(leg) =>
+				!finite2(leg.tangentOut) || !finite2(leg.normalOut) || !Number.isFinite(leg.halfThickness),
+		)
+	) {
 		return junctionSeamFailure('junction_seam_degenerate');
 	}
 	if (!finite2(resolution.bounds2.min) || !finite2(resolution.bounds2.max)) {
@@ -354,7 +378,8 @@ export function junctionSeamFailureOf(junction: JunctionSeamInput): JunctionSeam
 			const a = junctionOutwardRay(legs[index]!);
 			const b = junctionOutwardRay(legs[other]!);
 			if (dot(a, b) <= 0) continue;
-			if (Math.abs(cross(a, b)) <= JUNCTION_SEAM_PARALLEL_TOLERANCE) return junctionSeamFailure('junction_seam_fold');
+			if (Math.abs(cross(a, b)) <= JUNCTION_SEAM_PARALLEL_TOLERANCE)
+				return junctionSeamFailure('junction_seam_fold');
 		}
 	}
 	return undefined;
@@ -362,7 +387,7 @@ export function junctionSeamFailureOf(junction: JunctionSeamInput): JunctionSeam
 
 /** Convenience wrapper over a compiled Junction record — the compile gate entry point. */
 export function junctionSeamFailureOfCompiled(
-	junction: Pick<CompiledJunction, 'junctionId' | 'point' | 'legs' | 'resolution'>
+	junction: Pick<CompiledJunction, 'junctionId' | 'point' | 'legs' | 'resolution'>,
 ): JunctionSeamFailure | undefined {
 	return junctionSeamFailureOf(junction);
 }
@@ -373,7 +398,7 @@ export function junctionSeamFailureOfCompiled(
  * discovered. Identical predicate, identical codes — no second rule.
  */
 export function wallEndsSeamFailure(
-	ends: { start?: CompiledLegJoin | null; end?: CompiledLegJoin | null } | null | undefined
+	ends: { start?: CompiledLegJoin | null; end?: CompiledLegJoin | null } | null | undefined,
 ): JunctionSeamFailure | undefined {
 	if (!ends) return undefined;
 	for (const join of [ends.start, ends.end]) {

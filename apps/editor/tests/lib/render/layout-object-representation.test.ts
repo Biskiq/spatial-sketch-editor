@@ -11,7 +11,7 @@ import { BufferGeometry, Mesh } from 'three';
 import { compileWallFirstLayoutGeometry, type CompiledLayoutGeometry } from '@portfolio/layout-core/geometry';
 import type { LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 
-import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from '../layout/__fixtures__/layout-scale-fixtures';
+import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from '../../../../../packages/layout-core/tests/__fixtures__/layout-scale-fixtures';
 import { createObjectRepresentation } from '$lib/render/layout-object-representation';
 import { createMaterialStore } from '$lib/render/resources/material-store';
 import { createGeometryStore } from '$lib/render/resources/geometry-store';

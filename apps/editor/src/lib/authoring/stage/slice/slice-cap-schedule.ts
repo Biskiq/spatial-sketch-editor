@@ -33,7 +33,7 @@ export type CapAssemblyDecision = 'rebuild' | 'defer' | 'none' | 'clear';
 
 export function decideCapAssembly(
 	previous: CapAssemblyState | null,
-	next: CapAssemblyState | null
+	next: CapAssemblyState | null,
 ): CapAssemblyDecision {
 	if (next === null) return 'clear';
 	if (previous === null) return 'rebuild';

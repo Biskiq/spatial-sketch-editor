@@ -1,5 +1,5 @@
 /**
- * `ExecutionProgram@4` — the shared visitor program codec (AM-6).
+ * `ExecutionProgram@4` — the shared visitor program codec.
  *
  * One lowered program is executed by Preview and by a prepared release; T4
  * persists it as an immutable delivery derivative and creates no second

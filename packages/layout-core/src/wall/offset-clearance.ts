@@ -7,9 +7,9 @@
  * and neither is visible from the centerline:
  *
  * - `fold` — a bend tighter than half the thickness makes an offset polyline
- *   cross itself, so the front or back face turns inside out;
+ *  cross itself, so the front or back face turns inside out;
  * - `neck` — the Wall passes closer than its own thickness to itself, so the
- *   two offset regions overlap.
+ *  two offset regions overlap.
  *
  * If this rule lived only inside the renderer mesh builders, a curved Wall
  * could pass commit validation and then produce a broken solid with no
@@ -44,19 +44,16 @@ export const WALL_OFFSET_OVERLAP_MESSAGE =
 	'Wall passes closer than its thickness to itself (narrow neck); offset regions overlap.' as const;
 
 /** Offset one sample polyline laterally by `half` along its own normals. */
-export function offsetCurveSamples(
-	samples: readonly CurveSample[],
-	half: number
-): CurveSample[] {
+export function offsetCurveSamples(samples: readonly CurveSample[], half: number): CurveSample[] {
 	return samples.map((sample) => ({
 		point: [
 			sample.point[0] + half * sample.normal[0],
-			sample.point[1] + half * sample.normal[1]
+			sample.point[1] + half * sample.normal[1],
 		] as LayoutVec2,
 		distance: sample.distance,
 		tangent: sample.tangent,
 		normal: sample.normal,
-		t: sample.t
+		t: sample.t,
 	}));
 }
 
@@ -65,7 +62,7 @@ export function polylineSegmentDistance(
 	a0: LayoutVec2,
 	a1: LayoutVec2,
 	b0: LayoutVec2,
-	b1: LayoutVec2
+	b1: LayoutVec2,
 ): number {
 	const d0 = [a1[0] - a0[0], a1[1] - a0[1]];
 	const d1 = [b1[0] - b0[0], b1[1] - b0[1]];
@@ -106,7 +103,7 @@ export function polylineSegmentDistance(
 /** Minimum distance between two sampled polylines. */
 export function minPolylineDistance(
 	first: readonly CurveSample[],
-	second: readonly CurveSample[]
+	second: readonly CurveSample[],
 ): number {
 	let best = Infinity;
 	for (let index = 1; index < first.length; index += 1) {
@@ -117,8 +114,8 @@ export function minPolylineDistance(
 					first[index - 1]!.point,
 					first[index]!.point,
 					second[other - 1]!.point,
-					second[other]!.point
-				)
+					second[other]!.point,
+				),
 			);
 		}
 	}
@@ -134,10 +131,7 @@ export function minPolylineDistance(
  * run are the Wall's own continuous body, never a narrow neck — which is why a
  * straight Wall can never fail this test.
  */
-export function polylineSelfClearance(
-	samples: readonly CurveSample[],
-	thickness: number
-): boolean {
+export function polylineSelfClearance(samples: readonly CurveSample[], thickness: number): boolean {
 	for (let index = 0; index < samples.length - 1; index += 1) {
 		const tangentA = samples[index]!.tangent;
 		for (let other = index + 2; other < samples.length - 1; other += 1) {
@@ -148,7 +142,7 @@ export function polylineSelfClearance(
 				samples[index]!.point,
 				samples[index + 1]!.point,
 				samples[other]!.point,
-				samples[other + 1]!.point
+				samples[other + 1]!.point,
 			);
 			if (spacing < thickness - LAYOUT_GEOMETRY_EPSILON) return true;
 		}
@@ -167,7 +161,7 @@ export function polylineSelfClearance(
  */
 export function wallOffsetClearanceFailure(
 	samples: readonly CurveSample[],
-	thickness: number
+	thickness: number,
 ): WallOffsetClearanceFailure | undefined {
 	if (!Number.isFinite(thickness) || thickness <= 0) return undefined;
 	if (samples.length < 2) return undefined;
@@ -185,11 +179,10 @@ export function wallOffsetClearanceFailure(
 /** Do two Walls pass closer than their combined half-thicknesses? */
 export function wallPairClearanceOverlap(
 	first: { samples: readonly CurveSample[]; thickness: number },
-	second: { samples: readonly CurveSample[]; thickness: number }
+	second: { samples: readonly CurveSample[]; thickness: number },
 ): boolean {
 	return (
-		minPolylineDistance(first.samples, second.samples) <
-		first.thickness / 2 + second.thickness / 2
+		minPolylineDistance(first.samples, second.samples) < first.thickness / 2 + second.thickness / 2
 	);
 }
 

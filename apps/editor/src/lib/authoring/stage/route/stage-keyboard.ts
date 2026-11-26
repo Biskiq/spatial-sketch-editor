@@ -27,11 +27,15 @@ import {
 	stageKeyAction,
 	stageKeyFromControl,
 	stageKeyFromTextEntry,
-	type StageDockSlot
+	type StageDockSlot,
 } from '../stage-input';
 import type { StageInterruptionReason } from '../stage-interruption';
 import type { ViewingIntent } from '@portfolio/camera-core/viewport';
-import { compileEscapeLadder, type BuiltInEscapeRung, type FeatureEscapeRegistration } from '../../workspace/escape-ladder';
+import {
+	compileEscapeLadder,
+	type BuiltInEscapeRung,
+	type FeatureEscapeRegistration,
+} from '../../workspace/escape-ladder';
 import type { EscapeContext, EscapeResult } from '../../workspace/protocol';
 
 export type StageKeyboardInput = {
@@ -79,7 +83,7 @@ export type StageKeyboardInput = {
 	readonly closePalette: () => void;
 	readonly libraryOpen: () => boolean;
 	readonly toggleLibrary: () => void;
-	/** U6 Escape rungs: Align › editor › import › drawers (all after Library, before dropper/tray/draft). */
+	/** Finish and appearance Escape rungs: Align › editor › import › drawers (all after Library, before dropper/tray/draft). */
 	readonly dismissAlign?: () => boolean;
 	readonly dismissMaterialEditor?: () => boolean;
 	readonly dismissMaterialImport?: () => boolean;
@@ -107,7 +111,7 @@ export type StageKeyboardInput = {
 	 * Studio, a standalone Studio whose way out is Back to Projects, or pending work refused).
 	 */
 	readonly leaveStudio?: () => boolean;
-	/** A temporary reading is on (X1: Lift), and Escape puts it back. */
+	/** A temporary reading is on (Lift), and Escape puts it back. */
 	readonly liftActive: () => boolean;
 	readonly putBackLift: () => void;
 	/** A drawn draft or handle edit is live; Escape cancels it before the cut. */
@@ -116,7 +120,7 @@ export type StageKeyboardInput = {
 	/** A Slice cut is on, and Escape exits it after every earlier rung. */
 	readonly sliceActive: () => boolean;
 	readonly putBackSlice: () => void;
-	/** X2's hold-to-show-whole-Walls override. Session-only; released on keyup/blur. */
+	/** The hold-to-show-whole-Walls override. Session-only; released on keyup/blur. */
 	readonly setCutawayHeld?: (held: boolean) => void;
 };
 
@@ -145,7 +149,7 @@ export function createStageKeyboard(input: StageKeyboardInput): StageKeyboard {
 			input.clearPendingDelete();
 			return 'handled';
 		},
-		'finish-gesture': () => input.cancelFinishGesture?.() === true ? 'handled' : 'pass',
+		'finish-gesture': () => (input.cancelFinishGesture?.() === true ? 'handled' : 'pass'),
 		'adapter-gesture-cancel': (context) => {
 			context.stage = input.facade();
 			return context.stage?.gestureKeyIntent({ kind: 'cancel' }).claimed ? 'handled' : 'pass';
@@ -170,10 +174,10 @@ export function createStageKeyboard(input: StageKeyboardInput): StageKeyboard {
 			input.toggleLibrary();
 			return 'handled';
 		},
-		align: () => input.dismissAlign?.() === true ? 'handled' : 'pass',
-		'material-editor': () => input.dismissMaterialEditor?.() === true ? 'handled' : 'pass',
-		'material-import': () => input.dismissMaterialImport?.() === true ? 'handled' : 'pass',
-		'repair-drawer': () => input.dismissRepairDrawer?.() === true ? 'handled' : 'pass',
+		align: () => (input.dismissAlign?.() === true ? 'handled' : 'pass'),
+		'material-editor': () => (input.dismissMaterialEditor?.() === true ? 'handled' : 'pass'),
+		'material-import': () => (input.dismissMaterialImport?.() === true ? 'handled' : 'pass'),
+		'repair-drawer': () => (input.dismissRepairDrawer?.() === true ? 'handled' : 'pass'),
 		measure: (context) => {
 			context.armedHostTool = input.armedHostTool();
 			if (context.armedHostTool !== 'measure' || !input.measureTool()?.clear()) return 'pass';
@@ -201,7 +205,8 @@ export function createStageKeyboard(input: StageKeyboardInput): StageKeyboard {
 		},
 		palette: () => {
 			const armedKey = input.armedDockKey();
-			if (input.task() === null || armedKey?.palette !== true || !input.paletteOpen()) return 'pass';
+			if (input.task() === null || armedKey?.palette !== true || !input.paletteOpen())
+				return 'pass';
 			input.closePalette();
 			return 'handled';
 		},
@@ -234,7 +239,7 @@ export function createStageKeyboard(input: StageKeyboardInput): StageKeyboard {
 			context.claimed = input.activeLayer()?.key(context.event, 'unwind') === 'claimed';
 			return 'pass';
 		},
-		leave: ({ claimed }) => !claimed && input.leaveStudio?.() === true ? 'handled' : 'pass',
+		leave: ({ claimed }) => (!claimed && input.leaveStudio?.() === true ? 'handled' : 'pass'),
 		selection: ({ claimed }) => {
 			if (claimed || !input.selectionPresent()) return 'pass';
 			input.closeSelection();
@@ -249,14 +254,18 @@ export function createStageKeyboard(input: StageKeyboardInput): StageKeyboard {
 			if (claimed || !input.sliceActive()) return 'pass';
 			input.putBackSlice();
 			return 'handled';
-		}
+		},
 	};
 
 	const escapeSteps = compileEscapeLadder(builtInEscape, input.featureEscape);
 
 	function dismiss(event: KeyboardEvent): void {
 		const context: EscapeContext = {
-			event, stage: null, claimed: false, armedHostTool: null, toolbarFocus: false
+			event,
+			stage: null,
+			claimed: false,
+			armedHostTool: null,
+			toolbarFocus: false,
 		};
 		for (const handle of escapeSteps) {
 			if (handle(context) === 'handled') return;
@@ -264,7 +273,7 @@ export function createStageKeyboard(input: StageKeyboardInput): StageKeyboard {
 	}
 
 	function handleKey(event: KeyboardEvent): void {
-		// X2's `W` hold belongs to this map, not a second route listener. Text
+		// The `W` hold belongs to this map, not a second route listener. Text
 		// entry, a focused control and a live press keep their precedence; a
 		// printable key a gesture has claimed is left alone.
 		if (

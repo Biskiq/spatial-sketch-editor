@@ -1,4 +1,11 @@
-import type { LayoutDocumentWallFirst, LayoutSpaceVirtualEdge, LayoutWall, LayoutWallFirstRoom, LayoutWallOpening, OrientedWallRef } from '../wall/types';
+import type {
+	LayoutDocumentWallFirst,
+	LayoutSpaceVirtualEdge,
+	LayoutWall,
+	LayoutWallFirstRoom,
+	LayoutWallOpening,
+	OrientedWallRef,
+} from '../wall/types';
 import type { LayoutVec2 } from '../geometry/coordinates';
 import type { DerivedCandidateFace } from '../geometry/face-extraction';
 import { pointStrictlyInsidePolygon, polygonIntersectionArea } from '../geometry/face-extraction';
@@ -26,7 +33,6 @@ export type CarriedSpaceEdge =
 			replacedWallId?: string;
 	  };
 
-
 /**
  * Compose a predecessor's boundary and replace every erased Wall edge with the
  * stated straight segment between that ref's oriented ends. Existing virtual
@@ -36,7 +42,7 @@ export type CarriedSpaceEdge =
 export function carriedBoundaryEdges(
 	document: Pick<LayoutDocumentWallFirst, 'junctions' | 'walls'>,
 	room: Pick<LayoutWallFirstRoom, 'id' | 'boundary' | 'virtualEdges'>,
-	removedWallIds: ReadonlySet<string>
+	removedWallIds: ReadonlySet<string>,
 ): { kind: 'ok'; edges: CarriedSpaceEdge[] } | { kind: 'failed'; message: string } {
 	const composed = composeSpaceBoundary(document, room);
 	if (composed.kind === 'failed') return { kind: 'failed', message: composed.issue.message };
@@ -46,7 +52,7 @@ export function carriedBoundaryEdges(
 			edges.push({
 				kind: 'virtual',
 				startJunctionId: edge.startJunctionId,
-				endJunctionId: edge.endJunctionId
+				endJunctionId: edge.endJunctionId,
 			});
 			continue;
 		}
@@ -55,7 +61,7 @@ export function carriedBoundaryEdges(
 				kind: 'virtual',
 				startJunctionId: edge.startJunctionId,
 				endJunctionId: edge.endJunctionId,
-				replacedWallId: edge.wallId
+				replacedWallId: edge.wallId,
 			});
 			continue;
 		}
@@ -63,7 +69,6 @@ export function carriedBoundaryEdges(
 	}
 	return { kind: 'ok', edges };
 }
-
 
 /**
  * Drop a reverse virtual-edge pair created by carry: the two sides of one
@@ -89,7 +94,6 @@ export function normalizeCarriedEdges(edges: readonly CarriedSpaceEdge[]): Carri
 	return edges.filter((_, index) => !dropped.has(index));
 }
 
-
 export function carriedBoundaryParts(edges: readonly CarriedSpaceEdge[]): {
 	boundary: OrientedWallRef[];
 	virtualEdges: LayoutSpaceVirtualEdge[];
@@ -99,9 +103,8 @@ export function carriedBoundaryParts(edges: readonly CarriedSpaceEdge[]): {
 	// now starts with that virtual edge; rotate to a surviving Wall so the two
 	// arrays describe the same cycle instead of an unconsumed leading gap.
 	const firstWall = edges.findIndex((edge) => edge.kind === 'wall');
-	const ordered = firstWall < 0
-		? []
-		: edges.map((_, offset) => edges[(firstWall + offset) % edges.length]!);
+	const ordered =
+		firstWall < 0 ? [] : edges.map((_, offset) => edges[(firstWall + offset) % edges.length]!);
 	const boundary: OrientedWallRef[] = [];
 	const virtualEdges: LayoutSpaceVirtualEdge[] = [];
 	for (const edge of ordered) {
@@ -110,13 +113,12 @@ export function carriedBoundaryParts(edges: readonly CarriedSpaceEdge[]): {
 		} else {
 			virtualEdges.push({
 				startJunctionId: edge.startJunctionId,
-				endJunctionId: edge.endJunctionId
+				endJunctionId: edge.endJunctionId,
 			});
 		}
 	}
 	return { boundary, virtualEdges };
 }
-
 
 /**
  * Splice two carried cycles at one removed Wall's ends. A traverses the Wall
@@ -127,18 +129,24 @@ export function carriedBoundaryParts(edges: readonly CarriedSpaceEdge[]): {
 export function spliceCarriedEdges(
 	first: readonly CarriedSpaceEdge[],
 	second: readonly CarriedSpaceEdge[],
-	wall: LayoutWall
+	wall: LayoutWall,
 ): CarriedSpaceEdge[] | null {
 	const matches = (edge: CarriedSpaceEdge, start: string, end: string): boolean =>
 		edge.kind === 'virtual' &&
 		edge.replacedWallId === wall.id &&
 		edge.startJunctionId === start &&
 		edge.endJunctionId === end;
-	let firstIndex = first.findIndex((edge) => matches(edge, wall.startJunctionId, wall.endJunctionId));
-	let secondIndex = second.findIndex((edge) => matches(edge, wall.endJunctionId, wall.startJunctionId));
+	let firstIndex = first.findIndex((edge) =>
+		matches(edge, wall.startJunctionId, wall.endJunctionId),
+	);
+	let secondIndex = second.findIndex((edge) =>
+		matches(edge, wall.endJunctionId, wall.startJunctionId),
+	);
 	if (firstIndex < 0 || secondIndex < 0) {
 		firstIndex = first.findIndex((edge) => matches(edge, wall.endJunctionId, wall.startJunctionId));
-		secondIndex = second.findIndex((edge) => matches(edge, wall.startJunctionId, wall.endJunctionId));
+		secondIndex = second.findIndex((edge) =>
+			matches(edge, wall.startJunctionId, wall.endJunctionId),
+		);
 	}
 	if (firstIndex < 0 || secondIndex < 0) return null;
 	const rotate = (edges: readonly CarriedSpaceEdge[], start: number): CarriedSpaceEdge[] =>
@@ -149,29 +157,26 @@ export function spliceCarriedEdges(
 	return [...firstChain, ...secondChain];
 }
 
-
 /** Composed outline of an assembled carried boundary; `null` when it cannot compose. */
 export function carriedCyclePolygon(
 	document: Pick<LayoutDocumentWallFirst, 'junctions' | 'walls'>,
 	roomId: string,
-	edges: readonly CarriedSpaceEdge[]
+	edges: readonly CarriedSpaceEdge[],
 ): readonly LayoutVec2[] | null {
 	const composed = composeSpaceBoundary(document, { id: roomId, ...carriedBoundaryParts(edges) });
 	if (composed.kind === 'failed') return null;
 	return spaceBoundaryPolygonFromEdges(composed.edges, document);
 }
 
-
 /** Composed outline of a Room record, for the provisional placement gate. */
 export function roomOutlinePolygon(
 	document: Pick<LayoutDocumentWallFirst, 'junctions' | 'walls'>,
-	room: Pick<LayoutWallFirstRoom, 'id' | 'boundary' | 'virtualEdges'>
+	room: Pick<LayoutWallFirstRoom, 'id' | 'boundary' | 'virtualEdges'>,
 ): readonly LayoutVec2[] | null {
 	const composed = composeSpaceBoundary(document, room);
 	if (composed.kind === 'failed') return null;
 	return spaceBoundaryPolygonFromEdges(composed.edges, document);
 }
-
 
 /** Greatest-overlap split survivor with witness and faceKey ties. */
 export function chooseSplitSurvivor(options: {
@@ -189,7 +194,7 @@ export function chooseSplitSurvivor(options: {
 	// computed against the baseline room boundary polygon.
 	const overlaps = candidates.map((face) => ({
 		face,
-		area: predecessorPolygonOverlap(predecessor, face, options.overlapPolygons)
+		area: predecessorPolygonOverlap(predecessor, face, options.overlapPolygons),
 	}));
 	const [first, second] = overlaps;
 	if (!first || !second) return undefined;
@@ -206,7 +211,6 @@ export function chooseSplitSurvivor(options: {
 	return first.face.key < second.face.key ? first.face : second.face;
 }
 
-
 /**
  * Predecessor/candidate overlap. The caller supplies baseline room polygons
  * through `predecessorPolygons`; when absent (no geometry overlap evidence
@@ -216,13 +220,12 @@ export function chooseSplitSurvivor(options: {
 function predecessorPolygonOverlap(
 	predecessor: LayoutWallFirstRoom,
 	face: { polygon: readonly LayoutVec2[] },
-	overlapPolygons: ReadonlyMap<string, readonly LayoutVec2[]>
+	overlapPolygons: ReadonlyMap<string, readonly LayoutVec2[]>,
 ): number {
 	const polygon = overlapPolygons.get(predecessor.id);
 	if (!polygon) return 0;
 	return polygonIntersectionArea(polygon, face.polygon);
 }
-
 
 /** Greatest-contributor merge survivor with room-ID tie. */
 export function chooseMergeSurvivor(options: {
@@ -234,7 +237,7 @@ export function chooseMergeSurvivor(options: {
 	if (predecessors.length !== 2) return undefined;
 	const areas = predecessors.map((room) => ({
 		room,
-		area: predecessorPolygonOverlap(room, face, options.overlapPolygons)
+		area: predecessorPolygonOverlap(room, face, options.overlapPolygons),
 	}));
 	const [first, second] = areas;
 	if (!first || !second) return undefined;
@@ -244,13 +247,11 @@ export function chooseMergeSurvivor(options: {
 	return first.room.id < second.room.id ? first.room : second.room;
 }
 
-
 /** Outcome of resolving one relation endpoint through the topology edit. */
 type PortalSideResolution =
 	| { kind: 'room'; roomId: string }
 	| { kind: 'cleared' }
 	| { kind: 'unresolved'; reason: string };
-
 
 /**
  * Portal semantic remapping for topology edits. New-schema doors on
@@ -263,7 +264,7 @@ type PortalSideResolution =
  * whose reconciled boundary references the opening's hosting Wall — never
  * merely the descendant that kept the predecessor ID. Zero or multiple
  * adjacent descendants is an ambiguous remap and rejects the whole topology
- * edit (`unresolved_portal_remap`), per the P23.8 portal split rule.
+ * edit (`unresolved_portal_remap`), per the portal split rule.
  */
 export function remapPortalRelations(options: {
 	successorOf: ReadonlyMap<string, string>;
@@ -289,7 +290,7 @@ export function remapPortalRelations(options: {
 			if (descendants.length !== 2) {
 				return {
 					kind: 'unresolved',
-					reason: `split of room '${roomId}' has ${descendants.length} descendants`
+					reason: `split of room '${roomId}' has ${descendants.length} descendants`,
 				};
 			}
 			const adjacent = descendants.filter((id) => referencesWall(id, hostWallId));
@@ -299,7 +300,7 @@ export function remapPortalRelations(options: {
 					reason:
 						adjacent.length === 0
 							? `no descendant of split room '${roomId}' is adjacent to the hosting wall '${hostWallId}'`
-							: `descendants ${adjacent.join(', ')} of room '${roomId}' are both adjacent to the hosting wall '${hostWallId}'`
+							: `descendants ${adjacent.join(', ')} of room '${roomId}' are both adjacent to the hosting wall '${hostWallId}'`,
 				};
 			}
 			return { kind: 'room', roomId: adjacent[0]! };
@@ -326,14 +327,14 @@ export function remapPortalRelations(options: {
 			return failure({
 				code: 'unresolved_portal_remap',
 				message: `Opening '${opening.id}' portal relation cannot be remapped unambiguously (${unresolved.reason})`,
-				roomIds: [a, b]
+				roomIds: [a, b],
 			});
 		}
 		const aCleared = nextA.kind !== 'room';
 		const bCleared = nextB.kind !== 'room';
 		if (aCleared && bCleared) {
 			// Unambiguous disappearance clears the relation while preserving
-			// the physical door (P23.8 portal disappearance rule).
+			// the physical door (portal disappearance rule).
 			const cleared = { ...opening };
 			delete (cleared as Partial<LayoutWallOpening>).connectsRoomIds;
 			remapped.push(cleared as LayoutWallOpening);
@@ -345,7 +346,7 @@ export function remapPortalRelations(options: {
 			return failure({
 				code: 'unresolved_portal_remap',
 				message: `Opening '${opening.id}' relation has one unresolvable endpoint (${aCleared ? a : b} disappeared)`,
-				roomIds: [a, b]
+				roomIds: [a, b],
 			});
 		}
 		const nextAId = (nextA as { kind: 'room'; roomId: string }).roomId;
@@ -368,18 +369,16 @@ export function remapPortalRelations(options: {
 			return failure({
 				code: 'unresolved_portal_remap',
 				message: `Opening '${opening.id}' retains a relation to retired room`,
-				roomIds: [relation[0], relation[1]]
+				roomIds: [relation[0], relation[1]],
 			});
 		}
 	}
 	return { kind: 'ok', openings: remapped };
 }
 
-
 export function failure(rejection: ReconciliationRejection): ReconciliationFailure {
 	return { kind: 'rejected', rejection };
 }
-
 
 /** Oriented wall refs helper used by tests/fixtures to build room boundaries. */
 export function wallRef(wallId: string, direction: 'forward' | 'reverse'): OrientedWallRef {

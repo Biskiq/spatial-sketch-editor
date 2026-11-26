@@ -17,7 +17,7 @@
 	 * The scheduling rule is `decideCapAssembly`, tested on its own. The two details
 	 * that make it true in Svelte: the effect returns **no cleanup**, so a re-run
 	 * cannot cancel the pending rAF or settle timer, and `assembled` is recorded only
-	 * inside `rebuild()` — the state it names is the state on screen, not the state
+	 * inside `rebuild` — the state it names is the state on screen, not the state
 	 * requested.
 	 */
 	import { T, useThrelte } from '@threlte/core';
@@ -596,7 +596,7 @@
 	let pending = 0;
 	/** The settle timer; `undefined` when the Sheet is at rest. */
 	let settle: ReturnType<typeof setTimeout> | undefined;
-	/** What is on screen; written only by `rebuild()`. */
+	/** What is on screen; written only by `rebuild`. */
 	let assembled: CapAssemblyState | null = null;
 
 	function cutKeyOf(reading: ResolvedSlice): string {

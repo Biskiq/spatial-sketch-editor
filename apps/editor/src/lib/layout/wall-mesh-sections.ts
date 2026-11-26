@@ -2,7 +2,7 @@ import type {
 	CompiledOpening,
 	CompiledRoom,
 	CompiledWall,
-	CompiledWallSection
+	CompiledWallSection,
 } from '@portfolio/layout-core/geometry';
 import { LAYOUT_GEOMETRY_EPSILON } from '@portfolio/layout-core/geometry';
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
@@ -25,7 +25,7 @@ import {
 	sectionBottomAt,
 	segmentBands,
 	wallOpensAtEnd,
-	wallOpensAtStart
+	wallOpensAtStart,
 } from './wall-mesh-geometry';
 import { quadNormal } from './wall-mesh-geometry';
 import { pushBandFace, quad, vertex } from './wall-mesh-emit';
@@ -40,7 +40,7 @@ export function buildSectionFaces(
 	roomBreakpoints: readonly number[],
 	endClip?: ResolvedEndClip,
 	suppressions: readonly ResolvedFaceSuppression[] = [],
-	attribution = false
+	attribution = false,
 ): Face[] {
 	// A trimmed end shortens the Wall's own material: the section span
 	// starts (or stops) at the resolved clip distance, never at the Junction
@@ -52,10 +52,16 @@ export function buildSectionFaces(
 	// is a whole face, never a half-covered quad.
 	const interfaceDistances: number[] = [];
 	for (const suppression of suppressions) {
-		if (suppression.fromDistance > section.startDistance && suppression.fromDistance < section.endDistance) {
+		if (
+			suppression.fromDistance > section.startDistance &&
+			suppression.fromDistance < section.endDistance
+		) {
 			interfaceDistances.push(suppression.fromDistance);
 		}
-		if (suppression.toDistance > section.startDistance && suppression.toDistance < section.endDistance) {
+		if (
+			suppression.toDistance > section.startDistance &&
+			suppression.toDistance < section.endDistance
+		) {
 			interfaceDistances.push(suppression.toDistance);
 		}
 	}
@@ -66,7 +72,7 @@ export function buildSectionFaces(
 	const clip = clipSectionSamples(wall.samples, spanStart, spanEnd, [
 		...lintelProfileKnotDistances(section),
 		...lintelBandIntersectionDistances(section, roomBreakpoints),
-		...interfaceDistances
+		...interfaceDistances,
 	]);
 	if (clip.length < 2) return [];
 	const faces: Face[] = [];
@@ -133,32 +139,45 @@ export function buildSectionFaces(
 			// interior to the Junction material, so the Wall's own face is omitted
 			// there. Both offset faces are tested by their own outward normal.
 			const frontOmitted = faceOmitted(suppressions, nA, a.distance, b.distance, lo, hi);
-			const backOmitted = faceOmitted(suppressions, [-nA[0], -nA[1]], a.distance, b.distance, lo, hi);
+			const backOmitted = faceOmitted(
+				suppressions,
+				[-nA[0], -nA[1]],
+				a.distance,
+				b.distance,
+				lo,
+				hi,
+			);
 			if (frontOmitted && backOmitted) continue;
-			if (!frontOmitted) pushBandFace(faces,
-				vertex(frontA[0], yHiWorld, frontA[1], nA[0], 0, nA[1], a.distance, hi),
-				vertex(frontA[0], yLoAWorld, frontA[1], nA[0], 0, nA[1], a.distance, yLoA),
-				vertex(frontB[0], yLoBWorld, frontB[1], nB[0], 0, nB[1], b.distance, yLoB),
-				vertex(frontB[0], yHiWorld, frontB[1], nB[0], 0, nB[1], b.distance, hi),
-				frontSectionPick
-			);
-			if (!backOmitted) pushBandFace(faces,
-				vertex(backB[0], yHiWorld, backB[1], -nB[0], 0, -nB[1], b.distance, hi),
-				vertex(backB[0], yLoBWorld, backB[1], -nB[0], 0, -nB[1], b.distance, yLoB),
-				vertex(backA[0], yLoAWorld, backA[1], -nA[0], 0, -nA[1], a.distance, yLoA),
-				vertex(backA[0], yHiWorld, backA[1], -nA[0], 0, -nA[1], a.distance, hi),
-				backSectionPick
-			);
+			if (!frontOmitted)
+				pushBandFace(
+					faces,
+					vertex(frontA[0], yHiWorld, frontA[1], nA[0], 0, nA[1], a.distance, hi),
+					vertex(frontA[0], yLoAWorld, frontA[1], nA[0], 0, nA[1], a.distance, yLoA),
+					vertex(frontB[0], yLoBWorld, frontB[1], nB[0], 0, nB[1], b.distance, yLoB),
+					vertex(frontB[0], yHiWorld, frontB[1], nB[0], 0, nB[1], b.distance, hi),
+					frontSectionPick,
+				);
+			if (!backOmitted)
+				pushBandFace(
+					faces,
+					vertex(backB[0], yHiWorld, backB[1], -nB[0], 0, -nB[1], b.distance, hi),
+					vertex(backB[0], yLoBWorld, backB[1], -nB[0], 0, -nB[1], b.distance, yLoB),
+					vertex(backA[0], yLoAWorld, backA[1], -nA[0], 0, -nA[1], a.distance, yLoA),
+					vertex(backA[0], yHiWorld, backA[1], -nA[0], 0, -nA[1], a.distance, hi),
+					backSectionPick,
+				);
 		}
 
 		// Top face (at topY, +Y).
-		faces.push(quad(
-			vertex(frontA[0], yTop, frontA[1], 0, 1, 0, a.distance, wall.thickness),
-			vertex(frontB[0], yTop, frontB[1], 0, 1, 0, b.distance, wall.thickness),
-			vertex(backB[0], yTop, backB[1], 0, 1, 0, b.distance, 0),
-			vertex(backA[0], yTop, backA[1], 0, 1, 0, a.distance, 0),
-			sectionPick
-		));
+		faces.push(
+			quad(
+				vertex(frontA[0], yTop, frontA[1], 0, 1, 0, a.distance, wall.thickness),
+				vertex(frontB[0], yTop, frontB[1], 0, 1, 0, b.distance, wall.thickness),
+				vertex(backB[0], yTop, backB[1], 0, 1, 0, b.distance, 0),
+				vertex(backA[0], yTop, backA[1], 0, 1, 0, a.distance, 0),
+				sectionPick,
+			),
+		);
 
 		// Bottom face: floor for side sections, arch underside for lintels. The
 		// normal comes from the quad's own geometry so sloped arch undersides
@@ -169,13 +188,51 @@ export function buildSectionFaces(
 			const p2: V3 = [frontB[0], yBottomB, frontB[1]];
 			const p3: V3 = [frontA[0], yBottomA, frontA[1]];
 			const undersideNormal = quadNormal(p0, p1, p2);
-			faces.push(quad(
-				vertex(p0[0], p0[1], p0[2], undersideNormal[0], undersideNormal[1], undersideNormal[2], a.distance, 0),
-				vertex(p1[0], p1[1], p1[2], undersideNormal[0], undersideNormal[1], undersideNormal[2], b.distance, 0),
-				vertex(p2[0], p2[1], p2[2], undersideNormal[0], undersideNormal[1], undersideNormal[2], b.distance, wall.thickness),
-				vertex(p3[0], p3[1], p3[2], undersideNormal[0], undersideNormal[1], undersideNormal[2], a.distance, wall.thickness),
-				undersidePick
-			));
+			faces.push(
+				quad(
+					vertex(
+						p0[0],
+						p0[1],
+						p0[2],
+						undersideNormal[0],
+						undersideNormal[1],
+						undersideNormal[2],
+						a.distance,
+						0,
+					),
+					vertex(
+						p1[0],
+						p1[1],
+						p1[2],
+						undersideNormal[0],
+						undersideNormal[1],
+						undersideNormal[2],
+						b.distance,
+						0,
+					),
+					vertex(
+						p2[0],
+						p2[1],
+						p2[2],
+						undersideNormal[0],
+						undersideNormal[1],
+						undersideNormal[2],
+						b.distance,
+						wall.thickness,
+					),
+					vertex(
+						p3[0],
+						p3[1],
+						p3[2],
+						undersideNormal[0],
+						undersideNormal[1],
+						undersideNormal[2],
+						a.distance,
+						wall.thickness,
+					),
+					undersidePick,
+				),
+			);
 		}
 	}
 	if (attribution) {
@@ -192,7 +249,7 @@ export function buildSectionFaces(
 					vertex.u,
 					(vertex.p[0] - sample.point[0]) * sample.normal[0] +
 						(vertex.p[2] - sample.point[1]) * sample.normal[1],
-					vertex.p[1] - room.floorElevation
+					vertex.p[1] - room.floorElevation,
 				];
 			}
 		}
@@ -211,14 +268,15 @@ export function faceOmitted(
 	startDistance: number,
 	endDistance: number,
 	lo: number,
-	hi: number
+	hi: number,
 ): boolean {
 	for (const suppression of suppressions) {
 		if (suppression.normal[0] * normal[0] + suppression.normal[1] * normal[1] < 0.9) continue;
 		if (startDistance < suppression.fromDistance - LAYOUT_GEOMETRY_EPSILON) continue;
 		if (endDistance > suppression.toDistance + LAYOUT_GEOMETRY_EPSILON) continue;
 		const covered = suppression.bands.some(
-			(band) => lo >= band.bottomY - LAYOUT_GEOMETRY_EPSILON && hi <= band.topY + LAYOUT_GEOMETRY_EPSILON
+			(band) =>
+				lo >= band.bottomY - LAYOUT_GEOMETRY_EPSILON && hi <= band.topY + LAYOUT_GEOMETRY_EPSILON,
 		);
 		if (covered) return true;
 	}
@@ -237,12 +295,14 @@ export function buildRevealFaces(
 	cornerStart: Corner,
 	cornerEnd: Corner,
 	endClip?: ResolvedEndClip,
-	attribution = false
+	attribution = false,
 ): Face[] {
 	const floorElevation = room.floorElevation;
 	// The jamb face ends where the arch spring begins: for rectangular openings
 	// the spring is the full height; for rounded/pointed it is `height - rise`.
-	const springHeight = opening.profileShape ? opening.profileShape.height - opening.profileShape.rise : opening.height;
+	const springHeight = opening.profileShape
+		? opening.profileShape.height - opening.profileShape.rise
+		: opening.height;
 	const revealBottom = opening.sillHeight;
 	const revealTop = Math.min(opening.sillHeight + springHeight, wallHeight);
 	if (revealTop <= revealBottom + LAYOUT_GEOMETRY_EPSILON) return [];
@@ -251,7 +311,7 @@ export function buildRevealFaces(
 	const bands = segmentBands(revealBottom, revealBottom, revealTop, roomBreakpoints);
 	const sides: Array<{ distance: number; sign: number }> = [
 		{ distance: Math.max(opening.offset, endClip?.start ?? 0), sign: 1 },
-		{ distance: Math.min(opening.offset + opening.width, endClip?.end ?? Infinity), sign: -1 }
+		{ distance: Math.min(opening.offset + opening.width, endClip?.end ?? Infinity), sign: -1 },
 	];
 	// Jambs at the wall's endpoints use the same profile-aware corner
 	// coordinates as the sections: a mitered corner shares the apex with the
@@ -283,8 +343,18 @@ export function buildRevealFaces(
 		// A trimmed (Junction-clipped) end has no jamb of its own: the resolved
 		// Junction material closes that end, so a jamb that the clip moved off its
 		// authored position would double-paint the resolved region.
-		if (side.sign > 0 ? opening.offset < (endClip?.start ?? 0) - LAYOUT_GEOMETRY_EPSILON : opening.offset + opening.width > (endClip?.end ?? length) + LAYOUT_GEOMETRY_EPSILON) continue;
-		if (side.sign > 0 ? endClip?.freeStart && side.distance <= LAYOUT_GEOMETRY_EPSILON : endClip?.freeEnd && side.distance >= length - LAYOUT_GEOMETRY_EPSILON) continue;
+		if (
+			side.sign > 0
+				? opening.offset < (endClip?.start ?? 0) - LAYOUT_GEOMETRY_EPSILON
+				: opening.offset + opening.width > (endClip?.end ?? length) + LAYOUT_GEOMETRY_EPSILON
+		)
+			continue;
+		if (
+			side.sign > 0
+				? endClip?.freeStart && side.distance <= LAYOUT_GEOMETRY_EPSILON
+				: endClip?.freeEnd && side.distance >= length - LAYOUT_GEOMETRY_EPSILON
+		)
+			continue;
 		const sample = sampleAt(wall.samples, side.distance);
 		const clip: ClipSample = {
 			...sample,
@@ -293,7 +363,7 @@ export function buildRevealFaces(
 					? 'start'
 					: side.distance >= length - LAYOUT_GEOMETRY_EPSILON
 						? 'end'
-						: null
+						: null,
 		};
 		const tx = side.sign * sample.tangent[0];
 		const tz = side.sign * sample.tangent[1];
@@ -318,9 +388,12 @@ export function buildRevealFaces(
 			// opening-end jamb (−sign) is already front→back→back-bottom→front-bottom;
 			// the opening-start jamb (+sign) needs the opposite order.
 			const jambPick: FacePick = { kind: 'opening', openingId: opening.openingId, surface: 'jamb' };
-			faces.push(side.sign > 0 ? quad(frontTop, frontBottom, backBottom, backTop, jambPick) : quad(frontTop, backTop, backBottom, frontBottom, jambPick));
+			faces.push(
+				side.sign > 0
+					? quad(frontTop, frontBottom, backBottom, backTop, jambPick)
+					: quad(frontTop, backTop, backBottom, frontBottom, jambPick),
+			);
 		}
 	}
 	return faces;
 }
-

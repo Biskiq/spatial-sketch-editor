@@ -7,7 +7,7 @@
  * - a primitive or Form with no instance has `curated:<entity.materialId>`;
  * - a model with no instance has `model-own`;
  * - an instance with only `id`, `name` and a catalogue `base` is *pristine* and
- *   means the curated Finish it names, so the Library never lists it;
+ *  means the curated Finish it names, so the Library never lists it;
  * - any other instance is a project Finish, `project:<id>`.
  *
  * The editor imports these readings, so the Card and the planner cannot
@@ -19,19 +19,13 @@ import {
 	type SceneColor,
 	type SceneEntity,
 	type SceneMaterialInstance,
-	type ScenePaletteSlot
+	type ScenePaletteSlot,
 } from '../../scene';
 import { catalogueRecipe } from '../../materials/catalogue';
 import { pruneOverrides } from '../../materials/read';
 import { NEUTRAL_RECIPE } from '../../materials/recipe';
 import { MATERIAL_NEUTRAL_BASE_ID } from '../../materials/types';
-import type {
-	Finish,
-	FinishOverrides,
-	Mapping,
-	Metric,
-	Recipe
-} from '../../materials/types';
+import type { Finish, FinishOverrides, Mapping, Metric, Recipe } from '../../materials/types';
 import { resolveSceneSurfaceFinish } from '../../scene-surface-reference';
 import type { SceneSurfaceFinish, SceneSurfaceRef } from '../../scene';
 import { resolveLayoutSurface, surfaceKey } from '@portfolio/layout-core/plan';
@@ -111,14 +105,17 @@ export function isPristineInstance(instance: SceneMaterialInstance): boolean {
 export function findIdenticalFinish(
 	materials: readonly SceneMaterialInstance[],
 	base: SceneMaterialInstance['base'],
-	overrides: FinishOverrides | undefined
+	overrides: FinishOverrides | undefined,
 ): SceneMaterialInstance | null {
 	const pruned = pruneOverrides(overrides);
 	const target = { base, ...(pruned === undefined ? {} : { overrides: pruned }) };
 	for (const instance of materials) {
 		if (isPristineInstance(instance)) continue;
 		const candidatePruned = pruneOverrides(instance.overrides);
-		const candidate = { base: instance.base, ...(candidatePruned === undefined ? {} : { overrides: candidatePruned }) };
+		const candidate = {
+			base: instance.base,
+			...(candidatePruned === undefined ? {} : { overrides: candidatePruned }),
+		};
 		if (sameSceneValues(candidate, target)) return instance;
 	}
 	return null;
@@ -182,7 +179,7 @@ function baseMetricOf(instance: SceneMaterialInstance, baseRecipe?: Recipe): Met
 
 export function materialInstanceById(
 	materials: readonly SceneMaterialInstance[],
-	id: string | undefined
+	id: string | undefined,
 ): SceneMaterialInstance | undefined {
 	if (id === undefined) return undefined;
 	return materials.find((instance) => instance.id === id);
@@ -194,7 +191,7 @@ export function materialInstanceById(
  */
 export function finishOf(
 	entity: SceneEntity,
-	materials: readonly SceneMaterialInstance[]
+	materials: readonly SceneMaterialInstance[],
 ): FinishKey | null {
 	if (!isFinishPaintable(entity)) return null;
 	const instance = materialInstanceById(materials, entity.materialInstanceId);
@@ -211,7 +208,7 @@ export function finishOf(
 /** One authored wall/Space Finish assignment, or null when it is unassigned. */
 export function surfaceFinishFor(
 	scene: Pick<FinishScene, 'surfaceFinishes'>,
-	reference: SceneSurfaceRef
+	reference: SceneSurfaceRef,
 ): SceneSurfaceFinish | null {
 	return resolveSceneSurfaceFinish(scene, reference);
 }
@@ -230,20 +227,25 @@ export function finishKeyOfSurface(scene: FinishScene, assignment: SceneSurfaceF
 export function usersOfFinish(
 	scene: FinishScene,
 	key: FinishKey,
-	layout?: LayoutDocumentWallFirst
+	layout?: LayoutDocumentWallFirst,
 ): FinishUser[] {
 	return [
 		...scene.entities
 			.filter((entity) => finishOf(entity, scene.materials) === key)
 			.map((entity): FinishUser => ({ kind: 'entity', id: entity.id, entity })),
 		...(scene.surfaceFinishes ?? [])
-			.filter((assignment) =>
-				finishKeyOfSurface(scene, assignment) === key &&
-				(layout === undefined || resolveLayoutSurface(layout, assignment.surface) !== 'retired')
+			.filter(
+				(assignment) =>
+					finishKeyOfSurface(scene, assignment) === key &&
+					(layout === undefined || resolveLayoutSurface(layout, assignment.surface) !== 'retired'),
 			)
-			.map((assignment): FinishUser => ({
-				kind: 'surface', key: surfaceKey(assignment.surface), assignment
-			}))
+			.map(
+				(assignment): FinishUser => ({
+					kind: 'surface',
+					key: surfaceKey(assignment.surface),
+					assignment,
+				}),
+			),
 	];
 }
 
@@ -262,12 +264,9 @@ export function projectIdOf(key: FinishKey): string | null {
 /** The catalogue base an entity renders from: its instance's base, or its own. */
 export function baseMaterialIdOf(
 	entity: SceneEntity,
-	materials: readonly SceneMaterialInstance[]
+	materials: readonly SceneMaterialInstance[],
 ): MaterialId | null {
-	const instance = materialInstanceById(
-		materials,
-		(entity as FinishEntity).materialInstanceId
-	);
+	const instance = materialInstanceById(materials, (entity as FinishEntity).materialInstanceId);
 	if (instance !== undefined) {
 		const catalogue = catalogueBaseOf(instance);
 		if (catalogue !== null) return catalogue;
@@ -284,10 +283,7 @@ export function baseMaterialIdOf(
  * The first free `<base> <n>` name, starting at 2. Names are display-only;
  * identity is the instance id.
  */
-export function nextFinishName(
-	base: string,
-	materials: readonly SceneMaterialInstance[]
-): string {
+export function nextFinishName(base: string, materials: readonly SceneMaterialInstance[]): string {
 	const used = new Set(materials.map((material) => material.name));
 	for (let ordinal = 2; ordinal < NAME_ALLOCATION_LIMIT; ordinal += 1) {
 		const name = `${base} ${ordinal}`;
@@ -297,9 +293,7 @@ export function nextFinishName(
 }
 
 /** `Colour n`, where n is the first number not already used by such a name. */
-export function nextPaletteName(
-	palette: readonly ScenePaletteSlot[] | undefined
-): string {
+export function nextPaletteName(palette: readonly ScenePaletteSlot[] | undefined): string {
 	const used = new Set((palette ?? []).map((slot) => slot.name));
 	for (let ordinal = 1; ordinal < NAME_ALLOCATION_LIMIT; ordinal += 1) {
 		const name = `Colour ${ordinal}`;
@@ -316,7 +310,7 @@ export function paletteHasRoom(palette: readonly ScenePaletteSlot[] | undefined)
 /** The authored literal of an instance colour, or `null` for an inherited one. */
 export function literalColorOf(
 	entity: SceneEntity,
-	materials: readonly SceneMaterialInstance[]
+	materials: readonly SceneMaterialInstance[],
 ): string | null {
 	const instance = materialInstanceById(materials, (entity as FinishEntity).materialInstanceId);
 	const color = instance?.overrides?.color;
@@ -326,7 +320,7 @@ export function literalColorOf(
 /** The palette slot an instance colour follows, or `null` for a literal/inherited colour. */
 export function followerSlotOf(
 	entity: SceneEntity,
-	materials: readonly SceneMaterialInstance[]
+	materials: readonly SceneMaterialInstance[],
 ): string | null {
 	const instance = materialInstanceById(materials, (entity as FinishEntity).materialInstanceId);
 	const color = instance?.overrides?.color;
@@ -337,13 +331,13 @@ export function followerSlotOf(
 export function effectiveColorOf(
 	entity: SceneEntity,
 	scene: FinishScene,
-	fallbackColor: (base: MaterialId) => string
+	fallbackColor: (base: MaterialId) => string,
 ): string | null {
 	const key = finishOf(entity, scene.materials);
 	if (key === null) return null;
 	const instance = materialInstanceById(
 		scene.materials,
-		(entity as FinishEntity).materialInstanceId
+		(entity as FinishEntity).materialInstanceId,
 	);
 	const instanceColor = instance?.overrides?.color;
 	if (instanceColor !== undefined) {
@@ -403,11 +397,9 @@ export function applyFinishEdit(
 	instance: SceneMaterialInstance,
 	edit: SceneFinishEdit,
 	/** The definition recipe for a `{material}` base, when one is available. */
-	baseRecipe?: Recipe
+	baseRecipe?: Recipe,
 ): SceneMaterialInstance {
-	const overrides = JSON.parse(
-		JSON.stringify(instance.overrides ?? {})
-	) as Record<string, unknown>;
+	const overrides = JSON.parse(JSON.stringify(instance.overrides ?? {})) as Record<string, unknown>;
 	if ('color' in edit) {
 		if (edit.color === null) delete overrides.color;
 		else overrides.color = edit.color;
@@ -421,7 +413,9 @@ export function applyFinishEdit(
 		else overrides.metalness = edit.metalness;
 	}
 	if ('colorMap' in edit) {
-		const maps: Record<string, unknown> = { ...((overrides.maps as Record<string, unknown> | undefined) ?? {}) };
+		const maps: Record<string, unknown> = {
+			...((overrides.maps as Record<string, unknown> | undefined) ?? {}),
+		};
 		const colorMap = edit.colorMap;
 		if (colorMap === null || colorMap === undefined) delete maps.color;
 		else maps.color = { image: { textureId: colorMap } };
@@ -449,42 +443,48 @@ export function applyFinishEdit(
 		let nextMapping: Mapping;
 		if (effective.kind === 'uv' && !hasNonNullTileEdit) {
 			const baseUvRotation = baseMapping.kind === 'uv' ? baseMapping.rotation : base.rotation;
-			const nextRotation = rotationEdit === null ? baseUvRotation : (rotationEdit ?? effective.rotation);
+			const nextRotation =
+				rotationEdit === null ? baseUvRotation : (rotationEdit ?? effective.rotation);
 			nextMapping = {
 				kind: 'uv',
 				repeat: effective.repeat,
 				set: effective.set,
 				rotation: nextRotation,
-				offset: effective.offset
+				offset: effective.offset,
 			};
 		} else {
-			const existingMetric = existing === undefined
-				? undefined
-				: existing.kind === 'uv'
-					? { tileMeters: base.tileMeters, rotation: existing.rotation, offset: existing.offset }
-					: existing.metric;
-			const metric: Metric = effective.kind === 'uv'
-				? {
-					tileMeters: existingMetric?.tileMeters ?? base.tileMeters,
-					rotation: existingMetric?.rotation ?? base.rotation,
-					offset: existingMetric?.offset ?? base.offset
-				}
-				: effective.metric;
+			const existingMetric =
+				existing === undefined
+					? undefined
+					: existing.kind === 'uv'
+						? { tileMeters: base.tileMeters, rotation: existing.rotation, offset: existing.offset }
+						: existing.metric;
+			const metric: Metric =
+				effective.kind === 'uv'
+					? {
+							tileMeters: existingMetric?.tileMeters ?? base.tileMeters,
+							rotation: existingMetric?.rotation ?? base.rotation,
+							offset: existingMetric?.offset ?? base.offset,
+						}
+					: effective.metric;
 			const nextTile = tileEdit === null ? base.tileMeters : (tileEdit ?? metric.tileMeters);
-			const nextRotation = rotationEdit === null ? base.rotation : (rotationEdit ?? metric.rotation);
+			const nextRotation =
+				rotationEdit === null ? base.rotation : (rotationEdit ?? metric.rotation);
 			nextMapping = {
 				kind: effective.kind === 'surface' ? 'surface' : 'target',
 				metric: {
 					tileMeters: [nextTile[0], nextTile[1]],
 					rotation: nextRotation,
-					offset: metric.offset
-				}
+					offset: metric.offset,
+				},
 			};
 		}
 
 		const matchesBase =
 			sameMapping(nextMapping, baseMapping) ||
-			(nextMapping.kind === 'target' && baseMapping.kind === 'uv' && sameMetric(nextMapping.metric, base));
+			(nextMapping.kind === 'target' &&
+				baseMapping.kind === 'uv' &&
+				sameMetric(nextMapping.metric, base));
 		if (!hasNonNullEdit && matchesBase) {
 			delete overrides.mapping;
 		} else {
@@ -496,7 +496,7 @@ export function applyFinishEdit(
 		id: instance.id,
 		name: instance.name,
 		base: instance.base,
-		...(pruned === undefined ? {} : { overrides: pruned })
+		...(pruned === undefined ? {} : { overrides: pruned }),
 	} as Finish;
 }
 
@@ -511,7 +511,7 @@ export function colorMapOf(instance: SceneMaterialInstance | undefined): string 
 export function finishEditIsNoop(
 	instance: SceneMaterialInstance,
 	edit: SceneFinishEdit,
-	baseRecipe?: Recipe
+	baseRecipe?: Recipe,
 ): boolean {
 	return sameSceneValues(applyFinishEdit(instance, edit, baseRecipe), instance);
 }
@@ -519,13 +519,13 @@ export function finishEditIsNoop(
 /** Every material whose colour follows one palette slot. */
 export function paletteFollowers(
 	materials: readonly SceneMaterialInstance[],
-	slotId: string
+	slotId: string,
 ): SceneMaterialInstance[] {
 	return materials.filter(
 		(instance) =>
 			instance.overrides?.color !== undefined &&
 			typeof instance.overrides.color !== 'string' &&
-			instance.overrides.color.slot === slotId
+			instance.overrides.color.slot === slotId,
 	);
 }
 
@@ -533,7 +533,7 @@ export function paletteFollowers(
 export function literalizePaletteFollowers(
 	materials: readonly SceneMaterialInstance[],
 	slotId: string,
-	color: string
+	color: string,
 ): SceneMaterialInstance[] {
 	return materials.map((instance) => {
 		const override = instance.overrides?.color;
@@ -542,7 +542,7 @@ export function literalizePaletteFollowers(
 		}
 		return {
 			...instance,
-			overrides: { ...instance.overrides, color }
+			overrides: { ...instance.overrides, color },
 		} as SceneMaterialInstance;
 	});
 }
@@ -562,16 +562,19 @@ export const FINISH_PREVIEW_INSTANCE_ID = 'preview-finish-card';
 
 export function withFinishInstancePreview<TS extends FinishScene>(
 	scene: TS,
-	preview: FinishInstancePreview | null
+	preview: FinishInstancePreview | null,
 ): TS {
 	if (preview === null || preview.users.length === 0) return scene;
 	const users = new Set(preview.users);
 	const id = FINISH_PREVIEW_INSTANCE_ID;
-	const materials = [...scene.materials.filter((material) => material.id !== id), { ...preview.instance, id }];
+	const materials = [
+		...scene.materials.filter((material) => material.id !== id),
+		{ ...preview.instance, id },
+	];
 	const entities = scene.entities.map((entity) =>
 		users.has(`entity:${entity.id}`) && isFinishPaintable(entity)
 			? ({ ...entity, materialInstanceId: id } as SceneEntity)
-			: entity
+			: entity,
 	);
 	const assigned = new Set<string>();
 	const replaced = (scene.surfaceFinishes ?? []).map((assignment) => {
@@ -591,7 +594,7 @@ export function withFinishInstancePreview<TS extends FinishScene>(
 		...scene,
 		materials,
 		entities,
-		...(surfaceFinishes === undefined ? {} : { surfaceFinishes })
+		...(surfaceFinishes === undefined ? {} : { surfaceFinishes }),
 	} as TS;
 }
 
@@ -612,7 +615,9 @@ function surfaceRefFromKey(key: string): SceneSurfaceRef | null {
 				? { kind, roomId: a }
 				: kind === 'room-lid' && a !== undefined
 					? { kind, roomId: a }
-					: kind === 'region-face' && a !== undefined && (b === 'top' || b === 'underside' || b === 'edge')
+					: kind === 'region-face' &&
+							a !== undefined &&
+							(b === 'top' || b === 'underside' || b === 'edge')
 						? { kind, regionId: a, face: b }
 						: null;
 	return ref !== null && surfaceKey(ref) === key ? ref : null;

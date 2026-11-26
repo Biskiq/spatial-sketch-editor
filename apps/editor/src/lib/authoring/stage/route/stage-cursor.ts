@@ -10,7 +10,8 @@ export function readStageCursor(input: {
 	const edit = input.viewEditKind();
 	if (edit !== null) return edit === 'turn' ? 'turn' : 'grabbing';
 	const drag = input.dragMode();
-	if (drag === 'pan' || drag === 'orbit' || (drag === 'adapter' && input.taskKind() === null)) return 'grabbing';
+	if (drag === 'pan' || drag === 'orbit' || (drag === 'adapter' && input.taskKind() === null))
+		return 'grabbing';
 	if (input.lookThroughActive()) return 'look';
 	if (input.placingView()) return 'place-view';
 	if (input.hoverMove()) return 'move';
@@ -18,19 +19,22 @@ export function readStageCursor(input: {
 	return 'select';
 }
 
-
 export function createStageCursor(input: {
 	readonly experience: Pick<Parameters<typeof readStageCursor>[0], 'viewEditKind' | 'placingView'>;
 	readonly stageInput: Pick<import('./stage-input.svelte').StageInputArbiter, 'drag' | 'hoverMove'>;
-	readonly shell: Pick<import('./stage-shell-state.svelte').StageShellState, 'task' | 'armedHostTool'>;
+	readonly shell: Pick<
+		import('./stage-shell-state.svelte').StageShellState,
+		'task' | 'armedHostTool'
+	>;
 	readonly lookThroughActive: () => boolean;
 }) {
-	return () => readStageCursor({
-		...input.experience,
-		dragMode: () => input.stageInput.drag?.mode ?? null,
-		taskKind: () => input.shell.task?.kind ?? null,
-		lookThroughActive: input.lookThroughActive,
-		hoverMove: () => input.stageInput.hoverMove,
-		toolArmed: () => input.shell.armedHostTool !== null
-	});
+	return () =>
+		readStageCursor({
+			...input.experience,
+			dragMode: () => input.stageInput.drag?.mode ?? null,
+			taskKind: () => input.shell.task?.kind ?? null,
+			lookThroughActive: input.lookThroughActive,
+			hoverMove: () => input.stageInput.hoverMove,
+			toolArmed: () => input.shell.armedHostTool !== null,
+		});
 }

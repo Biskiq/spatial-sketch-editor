@@ -9,11 +9,11 @@
  * So the report is a module seam with two outputs, both dev-only:
  *
  * - `console.error` **once per group and geometry revision** — a Sheet drag bumps
- *   the revision constantly and must not flood the console; a real edit is a new
- *   revision and will be heard again.
+ *  the revision constantly and must not flood the console; a real edit is a new
+ *  revision and will be heard again.
  * - `globalThis.__STAGE_SLICE_DIAGNOSTICS__` — a counter (and the groups that
- *   reported) QA reads from the console, so "zero issues" is checkable rather than
- *   assumed.
+ *  reported) QA reads from the console, so "zero issues" is checkable rather than
+ *  assumed.
  *
  * Production builds keep the counter's shape but publish nothing: it is a
  * development surface, never a runtime behaviour.
@@ -39,7 +39,11 @@ let revision: string | number | null = null;
 let reported = new Set<string>();
 
 /** `console.error` once per group per revision; returns how many lines were written. */
-function report(issues: readonly CapAssemblyIssue[], current: string | number, port: ErrorPort): number {
+function report(
+	issues: readonly CapAssemblyIssue[],
+	current: string | number,
+	port: ErrorPort,
+): number {
 	if (revision !== current) {
 		revision = current;
 		reported = new Set<string>();
@@ -51,14 +55,17 @@ function report(issues: readonly CapAssemblyIssue[], current: string | number, p
 		lines += 1;
 		port.error(
 			`slice: cap group "${issue.group}" did not balance (${issue.identity}, ${issue.unmatchedVertices} unmatched vertices). Its edges are drawn and no cap is filled.`,
-			issue
+			issue,
 		);
 	}
 	return lines;
 }
 
 /** Publish the counter where QA reads it. Never throws: diagnostics must not break a frame. */
-function publish(counter: SliceDiagnosticsCounter, sink?: (counter: SliceDiagnosticsCounter) => void): void {
+function publish(
+	counter: SliceDiagnosticsCounter,
+	sink?: (counter: SliceDiagnosticsCounter) => void,
+): void {
 	try {
 		(globalThis as unknown as Record<string, unknown>)[GLOBAL_KEY] = counter;
 	} catch {
@@ -81,17 +88,25 @@ export type CapIssueReport = SliceDiagnosticsCounter & {
 export function reportCapIssues(
 	issues: readonly CapAssemblyIssue[],
 	current: string | number,
-	options: { readonly error?: ErrorPort['error']; readonly sink?: (counter: SliceDiagnosticsCounter) => void } = {}
+	options: {
+		readonly error?: ErrorPort['error'];
+		readonly sink?: (counter: SliceDiagnosticsCounter) => void;
+	} = {},
 ): CapIssueReport {
 	if (!import.meta.env.DEV) {
-		return { capIssues: issues.length, groups: issues.map((issue) => issue.group), revision: current, logged: 0 };
+		return {
+			capIssues: issues.length,
+			groups: issues.map((issue) => issue.group),
+			revision: current,
+			logged: 0,
+		};
 	}
 	const error = options.error ?? console.error.bind(console);
 	const logged = report(issues, current, { error });
 	const counter: SliceDiagnosticsCounter = {
 		capIssues: issues.length,
 		groups: [...new Set(issues.map((issue) => issue.group))],
-		revision: current
+		revision: current,
 	};
 	publish(counter, options.sink);
 	return { ...counter, logged };

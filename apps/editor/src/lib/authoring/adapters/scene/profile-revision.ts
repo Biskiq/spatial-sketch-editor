@@ -21,7 +21,7 @@ import { PROFILE_LIMITS } from '@portfolio/geometry-core';
 import type { SceneFormEntity, Vec3 } from '@portfolio/project-model/scene';
 import {
 	planSetFormProfile,
-	type SceneOperationContext
+	type SceneOperationContext,
 } from '@portfolio/project-model/scene-planning';
 import type {
 	StageAdapterContext,
@@ -29,12 +29,12 @@ import type {
 	StageCandidatePreview,
 	StageGhostMesh,
 	StageInstrumentContent,
-	StagePointerIntent
+	StagePointerIntent,
 } from '$lib/authoring/stage/stage-adapter-host';
 import {
 	readingIntentClockSeconds,
 	stageEnvelope,
-	stageScene
+	stageScene,
 } from '$lib/authoring/stage/stage-adapter-host';
 import SceneProfileRevisionInstrument from './SceneProfileRevisionInstrument.svelte';
 import { sceneEntityReference } from './placement';
@@ -77,7 +77,10 @@ export type ProfileRevisionSession = {
 	/** Capture one accepted form's generator. `false` leaves the task empty. */
 	open(entityId: string | null): boolean;
 	state(): ProfileRevisionState | null;
-	setAnchor(index: number, patch: { readonly u?: number; readonly v?: number; readonly smooth?: boolean }): void;
+	setAnchor(
+		index: number,
+		patch: { readonly u?: number; readonly v?: number; readonly smooth?: boolean },
+	): void;
 	setExtentPhysical(meters: number): void;
 	pointer(intent: StagePointerIntent, context: StageAdapterContext): boolean;
 	candidatePreview(): StageCandidatePreview | null;
@@ -118,7 +121,11 @@ function localToWorld(entity: SceneFormEntity, local: Vec3): Vec3 {
 
 function worldToLocal(entity: SceneFormEntity, world: Vec3): Vec3 {
 	const inverse = new Quaternion().setFromEuler(entityRotation(entity)).invert();
-	return new Vector3(world[0] - entity.position[0], world[1] - entity.position[1], world[2] - entity.position[2])
+	return new Vector3(
+		world[0] - entity.position[0],
+		world[1] - entity.position[1],
+		world[2] - entity.position[2],
+	)
 		.applyQuaternion(inverse)
 		.toArray() as Vec3;
 }
@@ -131,14 +138,18 @@ function generatorPlane(entity: SceneFormEntity): WorkingPlane {
 	const length = Math.hypot(tip[0] - origin[0], tip[1] - origin[1], tip[2] - origin[2]);
 	const normal: Vec3 =
 		length > 1e-9
-			? [(tip[0] - origin[0]) / length, (tip[1] - origin[1]) / length, (tip[2] - origin[2]) / length]
+			? [
+					(tip[0] - origin[0]) / length,
+					(tip[1] - origin[1]) / length,
+					(tip[2] - origin[2]) / length,
+				]
 			: localNormal;
 	return {
 		originMeters: origin,
 		normal,
 		yawRadians: entity.rotation[1] + (entity.form.generator.plane === 'plan' ? 0 : Math.PI / 2),
 		datumMeters: null,
-		supportedLocalExtent: null
+		supportedLocalExtent: null,
 	};
 }
 
@@ -161,7 +172,12 @@ function extentAxis(entity: SceneFormEntity): 1 | 2 {
 }
 
 function sameAnchor(left: ProfileRevisionAnchor, right: ProfileRevisionAnchor): boolean {
-	return left.key === right.key && left.u === right.u && left.v === right.v && left.smooth === right.smooth;
+	return (
+		left.key === right.key &&
+		left.u === right.u &&
+		left.v === right.v &&
+		left.smooth === right.smooth
+	);
 }
 
 const STALE_SOURCE_MESSAGE =
@@ -202,7 +218,10 @@ type CapturedSource = {
 let current: ProfileRevisionSession | null = null;
 
 /** Publish the binding's one session; a retiring one only clears itself. */
-export function publishProfileRevision(next: ProfileRevisionSession | null, retiring?: ProfileRevisionSession): void {
+export function publishProfileRevision(
+	next: ProfileRevisionSession | null,
+	retiring?: ProfileRevisionSession,
+): void {
 	if (next === null && retiring !== current) return;
 	current = next;
 }
@@ -255,7 +274,9 @@ export type ProfileRevisionBinding = {
 	dispose(): void;
 };
 
-export function createProfileRevisionBinding(services: StageAdapterServices): ProfileRevisionBinding {
+export function createProfileRevisionBinding(
+	services: StageAdapterServices,
+): ProfileRevisionBinding {
 	const session = createProfileRevisionSession(services);
 	let active = false;
 
@@ -286,9 +307,9 @@ export function createProfileRevisionBinding(services: StageAdapterServices): Pr
 				kind: 'face',
 				bounds,
 				look: [forward.x, forward.y, forward.z] as Vec3,
-				rect: context.evaluation.rect
+				rect: context.evaluation.rect,
 			},
-			clockSeconds
+			clockSeconds,
 		);
 	}
 
@@ -305,7 +326,7 @@ export function createProfileRevisionBinding(services: StageAdapterServices): Pr
 				// it closes, so keep answering with it; the session itself may be empty.
 				return {
 					summary: 'Edit outline',
-					view: { component: SceneProfileRevisionInstrument, services }
+					view: { component: SceneProfileRevisionInstrument, services },
 				};
 			}
 			active = true;
@@ -316,7 +337,7 @@ export function createProfileRevisionBinding(services: StageAdapterServices): Pr
 			if (entityId !== null) showProfilePlane(entityId, context);
 			return {
 				summary: 'Edit outline',
-				view: { component: SceneProfileRevisionInstrument, services }
+				view: { component: SceneProfileRevisionInstrument, services },
 			};
 		},
 		pointer(intent, context) {
@@ -337,12 +358,12 @@ export function createProfileRevisionBinding(services: StageAdapterServices): Pr
 		dispose() {
 			active = false;
 			session.dispose();
-		}
+		},
 	};
 }
 
 export function createProfileRevisionSession(
-	services: StageAdapterServices
+	services: StageAdapterServices,
 ): ProfileRevisionSession {
 	let base: SceneFormEntity | null = null;
 	let captured: CapturedSource | null = null;
@@ -350,7 +371,8 @@ export function createProfileRevisionSession(
 	let extent = 0;
 	let refusal: string | null = null;
 	let candidate: SceneFormEntity | null = null;
-	let proposal: ReturnType<StageAdapterServices['stage']['session']['registerProposal']> | null = null;
+	let proposal: ReturnType<StageAdapterServices['stage']['session']['registerProposal']> | null =
+		null;
 	let press: Press | null = null;
 	const listeners = new Set<() => void>();
 
@@ -364,13 +386,15 @@ export function createProfileRevisionSession(
 		return {
 			layout: stageEnvelope(snapshot).units.layout.data,
 			scene: stageScene(snapshot),
-			sourceContentId: snapshot.domain.unitRevisions.scene
+			sourceContentId: snapshot.domain.unitRevisions.scene,
 		};
 	}
 
 	function liveEntity(): SceneFormEntity | null {
 		if (base === null) return null;
-		const entity = stageScene(services.stage.snapshot()).entities.find((entry) => entry.id === base!.id);
+		const entity = stageScene(services.stage.snapshot()).entities.find(
+			(entry) => entry.id === base!.id,
+		);
 		return entity?.kind === 'form' ? entity : null;
 	}
 
@@ -393,7 +417,10 @@ export function createProfileRevisionSession(
 		if (base === null) return false;
 		if (extent !== base.form.generator.extent) return true;
 		const existing = base.form.generator.outline;
-		return anchors.length !== existing.length || anchors.some((anchor, index) => !sameAnchor(anchor, existing[index]!));
+		return (
+			anchors.length !== existing.length ||
+			anchors.some((anchor, index) => !sameAnchor(anchor, existing[index]!))
+		);
 	}
 
 	function replan(): void {
@@ -418,7 +445,7 @@ export function createProfileRevisionSession(
 			context: operationContext,
 			entityId: entity.id,
 			outline: anchors,
-			extent
+			extent,
 		});
 		if (result.kind === 'candidate') {
 			const next = result.scene.entities.find((entry) => entry.id === entity.id);
@@ -454,7 +481,9 @@ export function createProfileRevisionSession(
 	return {
 		open(entityId) {
 			if (entityId === null) return false;
-			const entity = stageScene(services.stage.snapshot()).entities.find((entry) => entry.id === entityId);
+			const entity = stageScene(services.stage.snapshot()).entities.find(
+				(entry) => entry.id === entityId,
+			);
 			if (entity?.kind !== 'form') return false;
 			if (base !== null) close();
 			base = entity;
@@ -462,15 +491,15 @@ export function createProfileRevisionSession(
 			captured = {
 				revision: {
 					projectId: opening.acceptedRevision.projectId,
-					revisionId: opening.acceptedRevision.revisionId
+					revisionId: opening.acceptedRevision.revisionId,
 				},
-				sceneRevision: opening.domain.unitRevisions.scene
+				sceneRevision: opening.domain.unitRevisions.scene,
 			};
 			anchors = entity.form.generator.outline.map((anchor) => ({
 				key: anchor.key,
 				u: anchor.u,
 				v: anchor.v,
-				smooth: anchor.smooth
+				smooth: anchor.smooth,
 			}));
 			extent = entity.form.generator.extent;
 			refusal = null;
@@ -478,7 +507,7 @@ export function createProfileRevisionSession(
 			releasePress();
 			proposal = services.stage.session.registerProposal({
 				owner: 'scene-profile-revision',
-				reason: 'Apply or discard the outline revision first.'
+				reason: 'Apply or discard the outline revision first.',
 			});
 			replan();
 			return true;
@@ -496,7 +525,7 @@ export function createProfileRevisionSession(
 				extent,
 				physicalExtent: extent * base.form.scale[axis],
 				dirty: dirty(),
-				refusal
+				refusal,
 			};
 		},
 
@@ -509,8 +538,8 @@ export function createProfileRevisionSession(
 							...anchor,
 							...(patch.u === undefined ? {} : { u: patch.u }),
 							...(patch.v === undefined ? {} : { v: patch.v }),
-							...(patch.smooth === undefined ? {} : { smooth: patch.smooth })
-						}
+							...(patch.smooth === undefined ? {} : { smooth: patch.smooth }),
+						},
 			);
 			anchors = next;
 			replan();
@@ -540,7 +569,10 @@ export function createProfileRevisionSession(
 					if (css === null) continue;
 					projected.push({
 						index,
-						distance: Math.hypot(css[0] - rect.left - intent.css[0], css[1] - rect.top - intent.css[1])
+						distance: Math.hypot(
+							css[0] - rect.left - intent.css[0],
+							css[1] - rect.top - intent.css[1],
+						),
 					});
 				}
 				const nearest = projected.sort((left, right) => left.distance - right.distance)[0];
@@ -550,7 +582,7 @@ export function createProfileRevisionSession(
 				const lease = services.stage.acquireGesture({
 					owner: 'scene-profile-revision',
 					evaluationId: intent.evaluationId,
-					policy: 'cancel-on-reading-change'
+					policy: 'cancel-on-reading-change',
 				});
 				if (lease.kind !== 'granted') {
 					refusal = `The ${lease.owner} gesture owns the pointer; finish or cancel it first.`;
@@ -562,7 +594,7 @@ export function createProfileRevisionSession(
 					evaluationId: intent.evaluationId,
 					lease,
 					index: nearest.index,
-					start: { u: anchor.u, v: anchor.v }
+					start: { u: anchor.u, v: anchor.v },
 				};
 				refusal = null;
 				notify();
@@ -573,7 +605,9 @@ export function createProfileRevisionSession(
 			if (currentPress === null) return false;
 			if (intent.phase === 'cancel' || intent.evaluationId !== currentPress.evaluationId) {
 				anchors = anchors.map((anchor, index) =>
-					index !== currentPress.index ? anchor : { ...anchor, u: currentPress.start.u, v: currentPress.start.v }
+					index !== currentPress.index
+						? anchor
+						: { ...anchor, u: currentPress.start.u, v: currentPress.start.v },
 				);
 				releasePress();
 				replan();
@@ -584,7 +618,10 @@ export function createProfileRevisionSession(
 				replan();
 				return true;
 			}
-			const ray = adapterContext.ray([intent.css[0] + adapterContext.evaluation.rect.left, intent.css[1] + adapterContext.evaluation.rect.top]);
+			const ray = adapterContext.ray([
+				intent.css[0] + adapterContext.evaluation.rect.left,
+				intent.css[1] + adapterContext.evaluation.rect.top,
+			]);
 			if (ray === null) return true;
 			const hit = adapterContext.intersect(ray, generatorPlane(entity));
 			if (hit.kind !== 'intersected') return true;
@@ -604,7 +641,7 @@ export function createProfileRevisionSession(
 				return true;
 			}
 			anchors = anchors.map((anchor, index) =>
-				index !== currentPress.index ? anchor : { ...anchor, u, v }
+				index !== currentPress.index ? anchor : { ...anchor, u, v },
 			);
 			replan();
 			return true;
@@ -617,7 +654,7 @@ export function createProfileRevisionSession(
 			for (let index = 0; index < anchors.length; index += 1) {
 				segments.push([
 					anchorWorld(entity, anchors[index]!),
-					anchorWorld(entity, anchors[(index + 1) % anchors.length]!)
+					anchorWorld(entity, anchors[(index + 1) % anchors.length]!),
 				]);
 			}
 			return {
@@ -627,8 +664,8 @@ export function createProfileRevisionSession(
 				segments,
 				labels: anchors.map((anchor, index) => ({
 					world: anchorWorld(entity, anchor),
-					text: `A${index + 1}`
-				}))
+					text: `A${index + 1}`,
+				})),
 			};
 		},
 
@@ -638,7 +675,7 @@ export function createProfileRevisionSession(
 				id: 'scene-profile-revision-body',
 				center: [...candidate.position] as Vec3,
 				yaw: candidate.rotation[1],
-				shape: { kind: 'form', form: candidate.form }
+				shape: { kind: 'form', form: candidate.form },
 			};
 		},
 
@@ -662,7 +699,7 @@ export function createProfileRevisionSession(
 				context: operationContext,
 				entityId: base.id,
 				outline: anchors,
-				extent
+				extent,
 			});
 			if (result.kind !== 'candidate') {
 				refusal = result.kind === 'rejected' ? result.message : null;
@@ -682,10 +719,10 @@ export function createProfileRevisionSession(
 				payload: {
 					entityId,
 					outline: anchors.map((anchor) => ({ ...anchor })),
-					extent
+					extent,
 				},
 				capturedInputs: [],
-				allocatedIds: []
+				allocatedIds: [],
 			});
 			if (outcome.kind !== 'installed') {
 				refusal =
@@ -722,6 +759,6 @@ export function createProfileRevisionSession(
 		subscribe(listener: () => void) {
 			listeners.add(listener);
 			return () => listeners.delete(listener);
-		}
+		},
 	};
 }

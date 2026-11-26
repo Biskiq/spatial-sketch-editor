@@ -47,22 +47,37 @@ export function createAlignSession(input: {
 	 * Card lane, then the bar (41 px, or 107 px wrapped in a narrow region), the
 	 * note (46 px) and the ruler padding (l 44, r 24, t 20, b 40).
 	 */
-	function region(viewport: ViewportSize): { x: number; y: number; width: number; height: number } | null {
+	function region(
+		viewport: ViewportSize,
+	): { x: number; y: number; width: number; height: number } | null {
 		const windowWidth = typeof window === 'undefined' ? viewport.width : window.innerWidth;
-		const indexCover = !input.previewing() && shell.indexOpen && windowWidth > 860 ? ALIGN_INDEX_LANE_PX : 0;
+		const indexCover =
+			!input.previewing() && shell.indexOpen && windowWidth > 860 ? ALIGN_INDEX_LANE_PX : 0;
 		const left = indexCover + 10;
 		const right = viewport.width - ALIGN_CARD_COVER_PX - 10;
 		const bar = right - left < 640 ? 107 : 41;
 		const top = 10 + bar;
 		const bottom = viewport.height - shell.lowerColumnHeight - 14 - 46;
-		const aligned = { x: left + 44, y: top + 20, width: right - left - 44 - 24, height: bottom - top - 20 - 40 };
+		const aligned = {
+			x: left + 44,
+			y: top + 20,
+			width: right - left - 44 - 24,
+			height: bottom - top - 20 - 40,
+		};
 		return aligned.width > 40 && aligned.height > 40 ? aligned : null;
 	}
 
 	function framing(fit: Framing, axes: Axes, viewport: ViewportSize) {
 		const aligned = region(viewport);
 		if (aligned === null) return null;
-		return regionFraming({ center: fit.center, right: axes.right, up: axes.up, surfaceMeters: fit.surfaceMeters, canvas: viewport, region: aligned });
+		return regionFraming({
+			center: fit.center,
+			right: axes.right,
+			up: axes.up,
+			surfaceMeters: fit.surfaceMeters,
+			canvas: viewport,
+			region: aligned,
+		});
 	}
 
 	function cutaway(): AlignCutawayRequest | null {
@@ -90,7 +105,9 @@ export function createAlignSession(input: {
 		const top = current.rect.top;
 		return (point: readonly [number, number, number]): readonly [number, number] | null => {
 			const projected = stage.projectWorld(point, id);
-			return projected.kind === 'projected' ? [projected.css[0] - left, projected.css[1] - top] : null;
+			return projected.kind === 'projected'
+				? [projected.css[0] - left, projected.css[1] - top]
+				: null;
 		};
 	});
 
@@ -107,7 +124,7 @@ export function createAlignSession(input: {
 	 */
 	function attach(): void {
 		// Align belongs to the Card's open user: deselect, delete, another surface or
-		// Back ends it exactly as Put back does (U6 lifecycle).
+		// Back ends it exactly as Put back does.
 		$effect(() => {
 			const active = input.finishes().align.active;
 			if (active === null) return;
@@ -140,12 +157,15 @@ export function createAlignSession(input: {
 
 	/** Appearance's Align canvas keys; the entry composes the one contribution. */
 	const canvasKeys = {
-		get alignHiddenWallIds() { return input.alignHiddenWallIds(); }
+		get alignHiddenWallIds() {
+			return input.alignHiddenWallIds();
+		},
 	};
 
 	const props = $derived.by((): AlignProps | null => {
 		const active = input.finishes().align.active;
-		if (active === null || input.previewing() || input.lens() !== 'world' || !input.available()) return null;
+		if (active === null || input.previewing() || input.lens() !== 'world' || !input.available())
+			return null;
 		const inspectedNow = inspected;
 		const scene = input.snapshot()?.domain.scene;
 		if (inspectedNow === null || scene === undefined) return null;
@@ -161,7 +181,7 @@ export function createAlignSession(input: {
 			onMaterialPreview: (edits) => input.finishes().card.previewEdits(active.target, () => edits),
 			onCancelPreview: () => input.finishes().card.cancel(),
 			onCommit: (edits) => input.finishes().card.edit(active.target, () => edits),
-			onPutBack: () => input.finishes().align.putBack(true)
+			onPutBack: () => input.finishes().align.putBack(true),
 		};
 	});
 
@@ -172,8 +192,14 @@ export function createAlignSession(input: {
 		dismiss,
 		attach,
 		canvasKeys,
-		get props() { return props; },
+		get props() {
+			return props;
+		},
 		/** Floor Align shades the Plan; nothing else changes its appearance. */
-		get planAppearance() { return input.finishes().align.active?.surface === 'floor' ? 'shaded' : shell.preferences.planAppearance; }
+		get planAppearance() {
+			return input.finishes().align.active?.surface === 'floor'
+				? 'shaded'
+				: shell.preferences.planAppearance;
+		},
 	};
 }

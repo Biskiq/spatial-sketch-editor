@@ -30,7 +30,7 @@ function keyOf(projectId: string, assetId: string): string {
 }
 
 export function createVerifiedProjectImageCache(
-	options: { maxBytes?: number } = {}
+	options: { maxBytes?: number } = {},
 ): VerifiedProjectImageCache {
 	const maxBytes = options.maxBytes ?? VERIFIED_PROJECT_IMAGE_CACHE_BYTES;
 	if (!Number.isSafeInteger(maxBytes) || maxBytes < 1) {
@@ -78,6 +78,6 @@ export function createVerifiedProjectImageCache(
 		},
 		get size() {
 			return entries.size;
-		}
+		},
 	};
 }

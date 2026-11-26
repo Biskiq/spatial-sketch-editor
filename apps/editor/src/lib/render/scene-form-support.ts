@@ -22,7 +22,7 @@ export const sceneFormSupport: SceneFormSupport = {
 		return {
 			evaluationKey: formEvaluationKey(form),
 			mesh,
-			plane: form.generator.plane
+			plane: form.generator.plane,
 		};
-	}
+	},
 };

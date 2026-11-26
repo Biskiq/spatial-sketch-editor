@@ -4,17 +4,36 @@ import { type PlannerOutcome, type PlannerRequest } from '../../f4/types';
 import { pruneOverrides } from '../../materials/read';
 import { type MaterialId, type SceneMaterialInstance } from '../../scene';
 import { type Kind } from './kinds';
-import { findIdenticalFinish, isPristineInstance, materialInstanceById, nextFinishName, type SceneFinishRef } from './model';
+import {
+	findIdenticalFinish,
+	isPristineInstance,
+	materialInstanceById,
+	nextFinishName,
+	type SceneFinishRef,
+} from './model';
 import { applyFinishPatch, baseRecipeOf } from './patch';
 import { readFinishRef } from './payload';
-import { MATERIAL_ID, materialRecipesOf, type FinishPlannerOptions, refuse, labelOf, nameContextOf, type MaterialGrant, allocationOf } from './shared';
+import {
+	MATERIAL_ID,
+	materialRecipesOf,
+	type FinishPlannerOptions,
+	refuse,
+	labelOf,
+	nameContextOf,
+	type MaterialGrant,
+	allocationOf,
+} from './shared';
 import { type FinishAssignDerive } from './targets';
 import { generatedFinishName, isGeneratedFinishName, uniqueFinishName } from './treatment';
 import { finalizeSceneCandidate, type SceneRecordScope } from '../record-scope';
 import { withFinishTextureResource } from '../texture-resource';
 import { ShapeReader } from '../../strict-shape';
 import { replaceUnitData } from '../../units/envelope';
-import { type CameraFreeSceneDocument as SceneDocument, type ProjectEnvelope, type TypedResource } from '../../units/types';
+import {
+	type CameraFreeSceneDocument as SceneDocument,
+	type ProjectEnvelope,
+	type TypedResource,
+} from '../../units/types';
 
 export type Result = PlannerOutcome<ProjectEnvelope>;
 
@@ -26,7 +45,7 @@ export type Result = PlannerOutcome<ProjectEnvelope>;
 export function createFinishPlanContext(
 	request: PlannerRequest<ProjectEnvelope>,
 	kind: Kind,
-	options: FinishPlannerOptions
+	options: FinishPlannerOptions,
 ) {
 	const envelope = request.snapshot.domain.source;
 	const { data: before, header } = envelope.units.scene;
@@ -39,7 +58,7 @@ export function createFinishPlanContext(
 		instancePath: [],
 		location: { kind: 'project-root' as const },
 		componentId: null,
-		capabilityId: null
+		capabilityId: null,
 	});
 	const scope: SceneRecordScope = {
 		operationKind: kind,
@@ -47,14 +66,14 @@ export function createFinishPlanContext(
 		changedEntityFields: [],
 		createdEntityIds: [],
 		removedEntityIds: [],
-		allowClusterCleanup: false
+		allowClusterCleanup: false,
 	};
 	const complete = (
 		after: SceneDocument,
 		grant: Partial<SceneRecordScope>,
 		subjectIds: readonly string[],
 		fields: string[],
-		textureResource?: TypedResource
+		textureResource?: TypedResource,
 	): Result => {
 		const finalized = finalizeSceneCandidate({ before, after, scope: { ...scope, ...grant } });
 		if (finalized.kind === 'rejected') return finalized;
@@ -62,7 +81,10 @@ export function createFinishPlanContext(
 		if (textureResource !== undefined) {
 			const withResource = withFinishTextureResource(candidateSource, textureResource);
 			if (withResource === null) {
-				return refuse('The Finish image resource could not be added to the candidate.', 'texture-mismatch');
+				return refuse(
+					'The Finish image resource could not be added to the candidate.',
+					'texture-mismatch',
+				);
 			}
 			candidateSource = withResource;
 		}
@@ -84,10 +106,10 @@ export function createFinishPlanContext(
 				correspondence: correspondenceIds.map((id) => ({
 					relation: 'preserved' as const,
 					before: reference(id),
-					after: reference(id)
+					after: reference(id),
 				})),
-				diagnostics: []
-			}
+				diagnostics: [],
+			},
 		};
 	};
 	const materialGrant = (grant: {
@@ -97,26 +119,45 @@ export function createFinishPlanContext(
 	}): MaterialGrant => ({
 		added: grant.added ?? [],
 		changed: grant.changed ?? [],
-		removed: grant.removed ?? []
+		removed: grant.removed ?? [],
 	});
 
 	const resolveDerivedAssign = (
 		sourceFinish: SceneFinishRef,
 		derive: FinishAssignDerive,
-		allowPristineProject: boolean
+		allowPristineProject: boolean,
 	):
-		| { readonly kind: 'resolved'; readonly finish: SceneFinishRef; readonly created: SceneMaterialInstance | null }
+		| {
+				readonly kind: 'resolved';
+				readonly finish: SceneFinishRef;
+				readonly created: SceneMaterialInstance | null;
+		  }
 		| { readonly kind: 'outcome'; readonly outcome: PlannerOutcome<ProjectEnvelope> } => {
 		if (sourceFinish === 'model-own') {
-			return { kind: 'outcome', outcome: refuse("Model's own cannot be derived.", 'not-paintable') };
+			return {
+				kind: 'outcome',
+				outcome: refuse("Model's own cannot be derived.", 'not-paintable'),
+			};
 		}
 		const curated = 'curated' in sourceFinish ? sourceFinish.curated : null;
-		const project = 'project' in sourceFinish ? materialInstanceById(before.materials, sourceFinish.project) : undefined;
+		const project =
+			'project' in sourceFinish
+				? materialInstanceById(before.materials, sourceFinish.project)
+				: undefined;
 		if (curated !== null && !MATERIAL_ID.test(curated)) {
-			return { kind: 'outcome', outcome: refuse('That curated Finish does not exist.', 'unknown-catalogue') };
+			return {
+				kind: 'outcome',
+				outcome: refuse('That curated Finish does not exist.', 'unknown-catalogue'),
+			};
 		}
-		if ('project' in sourceFinish && (project === undefined || (!allowPristineProject && isPristineInstance(project)))) {
-			return { kind: 'outcome', outcome: refuse('That project Finish no longer exists.', 'unknown-finish') };
+		if (
+			'project' in sourceFinish &&
+			(project === undefined || (!allowPristineProject && isPristineInstance(project)))
+		) {
+			return {
+				kind: 'outcome',
+				outcome: refuse('That project Finish no longer exists.', 'unknown-finish'),
+			};
 		}
 		const recipes = materialRecipesOf(envelope);
 		const seed: SceneMaterialInstance =
@@ -134,8 +175,14 @@ export function createFinishPlanContext(
 							kind: 'rejected',
 							code: patched.problem.code,
 							message: patched.problem.message,
-							diagnostics: [{ path: patched.problem.path, code: patched.problem.code, message: patched.problem.message }]
-						}
+							diagnostics: [
+								{
+									path: patched.problem.path,
+									code: patched.problem.code,
+									message: patched.problem.message,
+								},
+							],
+						},
 					};
 				}
 			} else {
@@ -145,7 +192,11 @@ export function createFinishPlanContext(
 		const pruned = pruneOverrides(derived.overrides);
 		if (derive.identity === 'reuse') {
 			if ('catalogue' in derived.base && pruned === undefined) {
-				return { kind: 'resolved', finish: { curated: derived.base.catalogue as MaterialId }, created: null };
+				return {
+					kind: 'resolved',
+					finish: { curated: derived.base.catalogue as MaterialId },
+					created: null,
+				};
 			}
 			const identical = findIdenticalFinish(before.materials, derived.base, pruned);
 			if (identical !== null) {
@@ -158,7 +209,10 @@ export function createFinishPlanContext(
 		}
 		const allocatedId = allocation.id!;
 		if (before.materials.some((instance) => instance.id === allocatedId)) {
-			return { kind: 'outcome', outcome: refuse('That Finish id is already in use.', 'unexpected-allocation') };
+			return {
+				kind: 'outcome',
+				outcome: refuse('That Finish id is already in use.', 'unexpected-allocation'),
+			};
 		}
 		let created: SceneMaterialInstance = {
 			id: allocatedId,
@@ -167,19 +221,22 @@ export function createFinishPlanContext(
 					? nextFinishName(labelOf(options, curated), before.materials)
 					: nextFinishName(project!.name, before.materials),
 			base: derived.base,
-			...(pruned === undefined ? {} : { overrides: pruned })
+			...(pruned === undefined ? {} : { overrides: pruned }),
 		};
 		if (options.treatmentFacts !== undefined) {
 			const context = nameContextOf(options, recipes, before.palette);
-			const wasGenerated = curated !== null || isGeneratedFinishName(project!.name, project!, context);
+			const wasGenerated =
+				curated !== null || isGeneratedFinishName(project!.name, project!, context);
 			if (wasGenerated) {
-				const label = generatedFinishName(curated !== null ? created : { ...created, name: project!.name }, context);
+				const label = generatedFinishName(
+					curated !== null ? created : { ...created, name: project!.name },
+					context,
+				);
 				created = { ...created, name: uniqueFinishName(label, before.materials, null) };
 			}
 		}
 		return { kind: 'resolved', finish: { project: created.id }, created };
 	};
-
 
 	const withResources = (
 		after: SceneDocument,
@@ -187,7 +244,7 @@ export function createFinishPlanContext(
 		resources: readonly TypedResource[] | null,
 		lockEntries: readonly import('../../units/types').DependencyLockEntry[] | null,
 		subjectIds: readonly string[],
-		fields: string[]
+		fields: string[],
 	): Result => {
 		const finalized = finalizeSceneCandidate({ before, after, scope: { ...scope, ...grant } });
 		if (finalized.kind === 'rejected') return finalized;
@@ -199,13 +256,19 @@ export function createFinishPlanContext(
 					...candidateSource.units,
 					resources: {
 						header: { ...candidateSource.units.resources.header },
-						data: { formatVersion: candidateSource.units.resources.data.formatVersion, resources: [...resources] }
-					}
-				}
+						data: {
+							formatVersion: candidateSource.units.resources.data.formatVersion,
+							resources: [...resources],
+						},
+					},
+				},
 			};
 		}
 		if (lockEntries !== null) {
-			candidateSource = { ...candidateSource, dependencyLock: { ...candidateSource.dependencyLock, entries: [...lockEntries] } };
+			candidateSource = {
+				...candidateSource,
+				dependencyLock: { ...candidateSource.dependencyLock, entries: [...lockEntries] },
+			};
 		}
 		return {
 			kind: 'prepared',
@@ -218,15 +281,16 @@ export function createFinishPlanContext(
 				correspondence: after.entities.map((entity) => ({
 					relation: 'preserved' as const,
 					before: reference(entity.id),
-					after: reference(entity.id)
+					after: reference(entity.id),
 				})),
-				diagnostics: []
-			}
+				diagnostics: [],
+			},
 		};
 	};
 	const readProjectFinish = (raw: unknown): SceneMaterialInstance | Result => {
 		const finish = readFinishRef(reader, raw, '$.payload.finish');
-		if (finish === null || reader.issues.length > 0) return refuse(reader.issues[0]?.message ?? 'Name one project Finish.');
+		if (finish === null || reader.issues.length > 0)
+			return refuse(reader.issues[0]?.message ?? 'Name one project Finish.');
 		if (finish === 'model-own' || !('project' in finish)) {
 			return refuse('Only a project Finish can be renamed or removed.', 'not-editable');
 		}
@@ -254,7 +318,7 @@ export function createFinishPlanContext(
 		resolveDerivedAssign,
 		withResources,
 		readProjectFinish,
-		isResult
+		isResult,
 	};
 }
 

@@ -1,4 +1,9 @@
-import type { StageAdapterBinding, StageAdapterContext, StageDomainPick, StagePickQuery } from './facade/adapter-contract';
+import type {
+	StageAdapterBinding,
+	StageAdapterContext,
+	StageDomainPick,
+	StagePickQuery,
+} from './facade/adapter-contract';
 
 /** A binding supplies exactly one winner, after applying its own policy. */
 export type StagePickProvider = {
@@ -14,7 +19,7 @@ export function resolveStagePick(
 	providers: readonly StagePickProvider[],
 	context: StageAdapterContext,
 	reading: 'plan' | '3d',
-	toolOwner: string | null = null
+	toolOwner: string | null = null,
 ): StagePickWinner | null {
 	const winners: StagePickWinner[] = [];
 	for (const { adapterId, binding } of providers) {
@@ -33,14 +38,27 @@ export function resolveStagePick(
 	// order-dependent comparisons when several 3D depths lie within one millimetre.
 	const finiteDepth = (depth: number | null): depth is number =>
 		depth !== null && Number.isFinite(depth) && depth >= 0;
-	const depthWinners = reading === '3d' ? winners.filter(({ pick }) => finiteDepth(pick.depthMeters)) : winners;
+	const depthWinners =
+		reading === '3d' ? winners.filter(({ pick }) => finiteDepth(pick.depthMeters)) : winners;
 	const ranked = depthWinners.length > 0 ? depthWinners : winners;
-	const spatial = reading === 'plan'
-		? Math.max(...ranked.map(({ pick }) => pick.planLayer ?? -Infinity))
-		: Math.min(...ranked.map(({ pick }) => finiteDepth(pick.depthMeters) ? pick.depthMeters : Infinity));
-	const tied = ranked.filter(({ pick }) => reading === 'plan'
-		? (pick.planLayer ?? -Infinity) === spatial
-		: spatial === Infinity || (finiteDepth(pick.depthMeters) && pick.depthMeters <= spatial + 0.001));
-	tied.sort((a, b) => a.pick.cssDistance - b.pick.cssDistance || (a.adapterId < b.adapterId ? -1 : a.adapterId > b.adapterId ? 1 : 0));
+	const spatial =
+		reading === 'plan'
+			? Math.max(...ranked.map(({ pick }) => pick.planLayer ?? -Infinity))
+			: Math.min(
+					...ranked.map(({ pick }) =>
+						finiteDepth(pick.depthMeters) ? pick.depthMeters : Infinity,
+					),
+				);
+	const tied = ranked.filter(({ pick }) =>
+		reading === 'plan'
+			? (pick.planLayer ?? -Infinity) === spatial
+			: spatial === Infinity ||
+				(finiteDepth(pick.depthMeters) && pick.depthMeters <= spatial + 0.001),
+	);
+	tied.sort(
+		(a, b) =>
+			a.pick.cssDistance - b.pick.cssDistance ||
+			(a.adapterId < b.adapterId ? -1 : a.adapterId > b.adapterId ? 1 : 0),
+	);
 	return tied[0] ?? null;
 }

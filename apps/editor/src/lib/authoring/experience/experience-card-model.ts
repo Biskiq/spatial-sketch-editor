@@ -76,12 +76,12 @@ export function presentationCardModel(input: {
 			sourceId: presentationSourceId(presentationId),
 			label,
 			kind: hasSubject ? 'Presentation · about' : 'Presentation',
-			status: hasDefaultView ? 'Default View set' : 'No Default View'
+			status: hasDefaultView ? 'Default View set' : 'No Default View',
 		},
 		facts: [
 			{ label: 'Views', value: String(viewCount) },
-			{ label: 'Used in', value: stopCount === 0 ? 'No Stop yet' : plural(stopCount, 'Stop') }
-		]
+			{ label: 'Used in', value: stopCount === 0 ? 'No Stop yet' : plural(stopCount, 'Stop') },
+		],
 	};
 }
 
@@ -97,9 +97,9 @@ export function viewCardModel(input: {
 			sourceId: viewSourceId(viewId),
 			label,
 			kind: 'View in',
-			status: presentationLabel
+			status: presentationLabel,
 		},
-		facts: []
+		facts: [],
 	};
 }
 
@@ -125,9 +125,9 @@ export function stopCardModel(input: {
 			sourceId: stopSourceId(stopId),
 			label: presentationLabel,
 			kind,
-			status: position === null ? 'Not in this Guide' : guideLabel
+			status: position === null ? 'Not in this Guide' : guideLabel,
 		},
-		facts: []
+		facts: [],
 	};
 }
 
@@ -162,9 +162,9 @@ export function transitionCardModel(input: {
 			sourceId: transitionSourceId(stopId),
 			label: transitionLabel(continuation, fromPosition),
 			kind: `Transition · ${guideLabel}`,
-			status
+			status,
 		},
-		facts: []
+		facts: [],
 	};
 }
 
@@ -180,9 +180,9 @@ export function experienceCardModel(input: {
 			sourceId: experienceSourceId(experienceId),
 			label,
 			kind: 'Experience',
-			status: guideCount === 0 ? 'No Guides yet' : plural(guideCount, 'Guide')
+			status: guideCount === 0 ? 'No Guides yet' : plural(guideCount, 'Guide'),
 		},
-		facts: []
+		facts: [],
 	};
 }
 
@@ -197,8 +197,8 @@ export function subjectCardModel(input: {
 			sourceId: subjectSourceId(entityId),
 			label,
 			kind: 'Scene object',
-			status: 'In the Scene'
+			status: 'In the Scene',
 		},
-		facts: []
+		facts: [],
 	};
 }

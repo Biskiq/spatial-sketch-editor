@@ -1,5 +1,5 @@
 /**
- * Strict validation for the F.1 `references-v1` shapes (AM-1).
+ * Strict validation for the F.1 `references-v1` shapes.
  *
  * A reference is a cross-domain format, so the reader is strict: unknown keys,
  * empty identities, non-finite numbers and unsupported versions are rejected
@@ -25,7 +25,7 @@ import {
 	type ReferenceRevision,
 	type ReferenceSubject,
 	type SemanticReference,
-	type SnapshotIdentity
+	type SnapshotIdentity,
 } from './types';
 
 const SEMANTIC_DOMAINS = REFERENCE_DOMAINS satisfies readonly FrameOwner[];
@@ -50,16 +50,17 @@ const SEMANTIC_REFERENCE_KEYS = [
 	'location',
 	'componentId',
 	'capabilityId',
-	'extensions'
+	'extensions',
 ] as const;
 
 function readExtensions(
 	reader: ShapeReader,
 	input: unknown,
 	path: string,
-	supported: readonly string[]
+	supported: readonly string[],
 ): { extensions: ReferenceExtension[]; ignored: string[]; unsupportedRequired: string | null } {
-	if (input === undefined || input === null) return { extensions: [], ignored: [], unsupportedRequired: null };
+	if (input === undefined || input === null)
+		return { extensions: [], ignored: [], unsupportedRequired: null };
 	if (!Array.isArray(input)) {
 		reader.problem(path, 'not-an-array', `${path} must be an array`);
 		return { extensions: [], ignored: [], unsupportedRequired: null };
@@ -75,7 +76,8 @@ function readExtensions(
 		const id = reader.opaqueId(record.id, `${entryPath}.id`);
 		const required = reader.boolean(record.required, `${entryPath}.required`);
 		if (id === null || required === null) continue;
-		if (seen.has(id)) reader.problem(`${entryPath}.id`, 'duplicate-extension', `${id} is declared twice`);
+		if (seen.has(id))
+			reader.problem(`${entryPath}.id`, 'duplicate-extension', `${id} is declared twice`);
 		seen.add(id);
 		extensions.push({ id, required });
 		if (!supported.includes(id)) {
@@ -103,14 +105,23 @@ function readRevision(reader: ShapeReader, input: unknown, path: string): Refere
 	if (kind === 'exact') {
 		const contentRevision = reader.opaqueId(record.contentRevision, `${path}.contentRevision`);
 		if (contentRevision === null) return null;
-		if (record.projectId !== undefined) reader.problem(`${path}.projectId`, 'unknown-key', `${path}.projectId belongs to a project-lock revision`);
+		if (record.projectId !== undefined)
+			reader.problem(
+				`${path}.projectId`,
+				'unknown-key',
+				`${path}.projectId belongs to a project-lock revision`,
+			);
 		return { kind: 'exact', contentRevision };
 	}
 	if (kind === 'project-lock') {
 		const projectId = reader.opaqueId(record.projectId, `${path}.projectId`);
 		if (projectId === null) return null;
 		if (record.contentRevision !== undefined) {
-			reader.problem(`${path}.contentRevision`, 'unknown-key', `${path}.contentRevision belongs to an exact revision`);
+			reader.problem(
+				`${path}.contentRevision`,
+				'unknown-key',
+				`${path}.contentRevision belongs to an exact revision`,
+			);
 		}
 		return { kind: 'project-lock', projectId };
 	}
@@ -123,13 +134,21 @@ function readLocation(reader: ShapeReader, input: unknown, path: string): Refere
 	const kind = reader.tag(record.kind, `${path}.kind`, ['project-root', 'layout-location']);
 	if (kind === 'project-root') {
 		for (const stray of ['levelId', 'structureInstancePath']) {
-			if (record[stray] !== undefined) reader.problem(`${path}.${stray}`, 'unknown-key', `${path}.${stray} belongs to a layout-location`);
+			if (record[stray] !== undefined)
+				reader.problem(
+					`${path}.${stray}`,
+					'unknown-key',
+					`${path}.${stray} belongs to a layout-location`,
+				);
 		}
 		return { kind: 'project-root' };
 	}
 	if (kind === 'layout-location') {
 		const levelId = reader.opaqueId(record.levelId, `${path}.levelId`);
-		const structureInstancePath = reader.opaqueIdArray(record.structureInstancePath, `${path}.structureInstancePath`);
+		const structureInstancePath = reader.opaqueIdArray(
+			record.structureInstancePath,
+			`${path}.structureInstancePath`,
+		);
 		if (levelId === null || structureInstancePath === null) return null;
 		return { kind: 'layout-location', levelId, structureInstancePath };
 	}
@@ -143,7 +162,7 @@ function readLocation(reader: ShapeReader, input: unknown, path: string): Refere
  */
 export function validateSemanticReference(
 	input: unknown,
-	options: ReferenceValidationOptions = {}
+	options: ReferenceValidationOptions = {},
 ): ReferenceValidation {
 	const supported = options.supportedExtensions ?? [];
 	const reader = new ShapeReader();
@@ -154,7 +173,11 @@ export function validateSemanticReference(
 		reader.problem('$.version', 'unsupported-version', `$.version must be ${REFERENCES_VERSION}`);
 	}
 	if (typeof record.domain !== 'string' || !isReferenceDomain(record.domain)) {
-		reader.problem('$.domain', 'unsupported-domain', '$.domain must be Layout, Scene, Camera, Experience or a declared typed-resource kind');
+		reader.problem(
+			'$.domain',
+			'unsupported-domain',
+			'$.domain must be Layout, Scene, Camera, Experience or a declared typed-resource kind',
+		);
 	}
 	const revision = readRevision(reader, record.revision, '$.revision');
 	const subject = readSubject(reader, record.subject, '$.subject');
@@ -162,9 +185,18 @@ export function validateSemanticReference(
 	const location = readLocation(reader, record.location, '$.location');
 	const componentId = reader.nullableOpaqueId(record.componentId, '$.componentId');
 	const capabilityId = reader.nullableOpaqueId(record.capabilityId, '$.capabilityId');
-	const { extensions, ignored, unsupportedRequired } = readExtensions(reader, record.extensions, '$.extensions', supported);
+	const { extensions, ignored, unsupportedRequired } = readExtensions(
+		reader,
+		record.extensions,
+		'$.extensions',
+		supported,
+	);
 	if (unsupportedRequired !== null) {
-		reader.problem('$.extensions', 'unsupported-extension', `required extension "${unsupportedRequired}" is not supported`);
+		reader.problem(
+			'$.extensions',
+			'unsupported-extension',
+			`required extension "${unsupportedRequired}" is not supported`,
+		);
 	}
 	if (reader.issues.length > 0) return { success: false, issues: reader.issues };
 	if (
@@ -189,9 +221,9 @@ export function validateSemanticReference(
 			location,
 			componentId,
 			capabilityId,
-			...(extensions.length > 0 ? { extensions } : {})
+			...(extensions.length > 0 ? { extensions } : {}),
 		},
-		ignoredOptionalExtensions: ignored
+		ignoredOptionalExtensions: ignored,
 	};
 }
 
@@ -206,10 +238,15 @@ export function validateFrameReference(input: unknown): ShapeValidation<FrameRef
 	const kind = reader.tag(record.kind, '$.kind', ['project-world', 'owner-frame']);
 	if (kind === 'project-world') {
 		for (const stray of ['owner', 'frameId', 'revision']) {
-			if (record[stray] !== undefined) reader.problem(`$.${stray}`, 'unknown-key', `$.${stray} belongs to an owner-frame`);
+			if (record[stray] !== undefined)
+				reader.problem(`$.${stray}`, 'unknown-key', `$.${stray} belongs to an owner-frame`);
 		}
 		if (reader.issues.length > 0) return { success: false, issues: reader.issues };
-		return { success: true, value: { version: REFERENCES_VERSION, kind: 'project-world' }, ignoredOptionalExtensions: [] };
+		return {
+			success: true,
+			value: { version: REFERENCES_VERSION, kind: 'project-world' },
+			ignoredOptionalExtensions: [],
+		};
 	}
 	if (kind === 'owner-frame') {
 		const owner = reader.tag(record.owner, '$.owner', SEMANTIC_DOMAINS);
@@ -220,8 +257,14 @@ export function validateFrameReference(input: unknown): ShapeValidation<FrameRef
 		}
 		return {
 			success: true,
-			value: { version: REFERENCES_VERSION, kind: 'owner-frame', owner: owner as FrameOwner, frameId, revision },
-			ignoredOptionalExtensions: []
+			value: {
+				version: REFERENCES_VERSION,
+				kind: 'owner-frame',
+				owner: owner as FrameOwner,
+				frameId,
+				revision,
+			},
+			ignoredOptionalExtensions: [],
 		};
 	}
 	return { success: false, issues: reader.issues };
@@ -257,7 +300,7 @@ function readSubRef(reader: ShapeReader, input: unknown, path: string): DerivedS
  */
 export function validateDerivedSourceRef(
 	input: unknown,
-	options: ReferenceValidationOptions = {}
+	options: ReferenceValidationOptions = {},
 ): ShapeValidation<DerivedSourceRef> {
 	const reader = new ShapeReader();
 	const record = reader.object(input, '$', ['source', 'generationId', 'stream', 'subRef']);
@@ -266,14 +309,16 @@ export function validateDerivedSourceRef(
 	const stream = reader.opaqueId(record.stream, '$.stream');
 	const subRef = readSubRef(reader, record.subRef, '$.subRef');
 	const source = validateSemanticReference(record.source, options);
-	if (!source.success) for (const issue of source.issues) reader.problem(`$.source${issue.path.slice(1)}`, issue.code, issue.message);
+	if (!source.success)
+		for (const issue of source.issues)
+			reader.problem(`$.source${issue.path.slice(1)}`, issue.code, issue.message);
 	if (reader.issues.length > 0 || generationId === null || stream === null || !source.success) {
 		return { success: false, issues: reader.issues };
 	}
 	return {
 		success: true,
 		value: { source: source.value, generationId, stream, subRef },
-		ignoredOptionalExtensions: source.ignoredOptionalExtensions
+		ignoredOptionalExtensions: source.ignoredOptionalExtensions,
 	};
 }
 
@@ -284,7 +329,8 @@ export function validateAcceptedRevision(input: unknown): ShapeValidation<Accept
 	if (record === null) return { success: false, issues: reader.issues };
 	const projectId = reader.opaqueId(record.projectId, '$.projectId');
 	const revisionId = reader.opaqueId(record.revisionId, '$.revisionId');
-	if (reader.issues.length > 0 || projectId === null || revisionId === null) return { success: false, issues: reader.issues };
+	if (reader.issues.length > 0 || projectId === null || revisionId === null)
+		return { success: false, issues: reader.issues };
 	return { success: true, value: { projectId, revisionId }, ignoredOptionalExtensions: [] };
 }
 
@@ -294,7 +340,9 @@ export function validateSnapshotIdentity(input: unknown): ShapeValidation<Snapsh
 	const record = reader.object(input, '$', ['acceptedRevision', 'sourceContentId']);
 	if (record === null) return { success: false, issues: reader.issues };
 	const revision = validateAcceptedRevision(record.acceptedRevision);
-	if (!revision.success) for (const issue of revision.issues) reader.problem(`$.acceptedRevision${issue.path.slice(1)}`, issue.code, issue.message);
+	if (!revision.success)
+		for (const issue of revision.issues)
+			reader.problem(`$.acceptedRevision${issue.path.slice(1)}`, issue.code, issue.message);
 	const sourceContentId = reader.opaqueId(record.sourceContentId, '$.sourceContentId');
 	if (reader.issues.length > 0 || sourceContentId === null || !revision.success) {
 		return { success: false, issues: reader.issues };
@@ -302,6 +350,6 @@ export function validateSnapshotIdentity(input: unknown): ShapeValidation<Snapsh
 	return {
 		success: true,
 		value: { acceptedRevision: revision.value, sourceContentId },
-		ignoredOptionalExtensions: []
+		ignoredOptionalExtensions: [],
 	};
 }

@@ -9,7 +9,7 @@ import {
 	type InspectionSubject
 } from '$lib/render/materials/inspection-subject';
 import { effectiveTexelValue } from '$lib/render/materials/inspection-texel';
-import { IMAGE_HASH } from '../../project-model/materials/fixtures';
+import { IMAGE_HASH } from '../../../../../../packages/project-model/tests/materials/fixtures';
 import { inspectionDraft } from './__helpers__/inspection-draft';
 
 const draft = (subject = inspectionDraft()): InspectionSubject => ({ kind: 'draft', draft: subject });

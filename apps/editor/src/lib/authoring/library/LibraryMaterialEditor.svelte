@@ -1,10 +1,10 @@
 <script lang="ts">
 	/**
-	 * The Material editor (T2.S8 U6): one dual-mode surface for both
+	 * The Material editor: one dual-mode surface for both
 	 * - **Finish mode**: edits an accepted Finish opened from the Finish Card
-	 *   (each completed control is one E4 patch; preview while dragging);
+	 *  (each completed control is one E4 patch; preview while dragging);
 	 * - **Draft mode**: the Library *Customise…* draft (no writes until Apply
-	 *   or the first Paint stroke; every field connected).
+	 *  or the first Paint stroke; every field connected).
 	 *
 	 * Layout matches the approved #399 Appearance prototype: 560 px wide in the
 	 * Card lane (right inset 10 px, head and foot fixed, right column scrolling

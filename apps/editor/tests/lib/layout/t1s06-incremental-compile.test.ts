@@ -23,7 +23,7 @@ import { cowCreateObject, cowDeleteObject, cowMoveJunctions, cowMoveRigidWall, c
 import type { LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 import { immutableF4Data } from '@portfolio/project-model/f4';
 
-import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from './__fixtures__/layout-scale-fixtures';
+import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from '../../../../../packages/layout-core/tests/__fixtures__/layout-scale-fixtures';
 
 /** Whole compiled result, keys included: this is the retention proof's own claim. */
 function exactCompiled(document: LayoutDocumentWallFirst): string {

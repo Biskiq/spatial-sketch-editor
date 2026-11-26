@@ -22,12 +22,11 @@ export type WallFirstOpRejectionCode =
 	| 'wall_not_in_room_boundary'
 	| 'ambiguous_room_removal'
 	| 'captured_id_in_use'
-	/* SP1b lifecycle. */
+	/* Open Space lifecycle. */
 	| 'not_open_space'
 	| 'space_outline_invalid'
 	/* C2 Round repack conflict. */
 	| 'round_repack_conflict';
-
 
 export type WallFirstOpRejection = {
 	code: WallFirstOpRejectionCode;
@@ -45,13 +44,12 @@ export type WallFirstOpRejection = {
 	issues?: readonly LayoutDocumentIssue[];
 };
 
-
 export type WallFirstOpPlan =
 	| {
 			kind: 'success';
 			/** Exact committed document — allocated IDs included. */
 			document: LayoutDocumentWallFirst;
-			/** `created` lineage records from the P23.8 reconciliation. */
+			/** `created` lineage records from the reconciliation. */
 			lineage: ReadonlyArray<{
 				faceKey: string;
 				roomId: string;
@@ -59,7 +57,7 @@ export type WallFirstOpPlan =
 			}>;
 			surfaceLineage: LayoutSurfaceLineage;
 			retiredRoomIds: readonly string[];
-			/** Why an open Space retired; SP1c reads these for consequence lines. */
+			/** Why an open Space retired. Feeds editor consequence lines. */
 			spaceRetirements?: readonly SpaceRetirement[];
 			/** Round Rooms automatically repacked to one closed Wall on last detach. */
 			repackedRoundRoomIds?: readonly string[];

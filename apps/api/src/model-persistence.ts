@@ -3,9 +3,13 @@ export type {
 	ModelFileRole,
 	ModelImport,
 	ModelRevision,
-	ModelStagedFile
+	ModelStagedFile,
 } from './model-persistence/shared.js';
-export { ModelInputError, ModelNotFoundError, ModelPinRefusalError } from './model-persistence/shared.js';
+export {
+	ModelInputError,
+	ModelNotFoundError,
+	ModelPinRefusalError,
+} from './model-persistence/shared.js';
 export { modelRevisionLocator } from './model-persistence/shared.js';
 
 export { readModelImportBody } from './model-persistence/imports.js';
@@ -15,8 +19,12 @@ export {
 	expireStaleModelImports,
 	modelSourceManifestHash,
 	readStagingImport,
-	uploadModelFile
+	uploadModelFile,
 } from './model-persistence/imports.js';
-export { approveModelImport, readModelApprovalBody, verifyModelResourcePins } from './model-persistence/approval.js';
+export {
+	approveModelImport,
+	readModelApprovalBody,
+	verifyModelResourcePins,
+} from './model-persistence/approval.js';
 export { readModelRevisionContent } from './model-persistence/content.js';
 export { revisionObjectKeys } from './model-persistence/storage.js';

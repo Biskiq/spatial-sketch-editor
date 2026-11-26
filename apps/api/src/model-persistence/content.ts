@@ -1,5 +1,13 @@
 import { type DatabasePool } from '../database.js';
-import { SHA256_PATTERN, ModelNotFoundError, ModelInputError, type RevisionRow, REVISION_COLUMNS, readString, readSafeInteger } from './shared';
+import {
+	SHA256_PATTERN,
+	ModelNotFoundError,
+	ModelInputError,
+	type RevisionRow,
+	REVISION_COLUMNS,
+	readString,
+	readSafeInteger,
+} from './shared';
 import { toBuffer } from './storage';
 import { type ObjectStore } from '../object-store.js';
 import { queryRows } from '../project-persistence.js';
@@ -11,8 +19,13 @@ export async function readModelRevisionContent(
 	db: Pick<DatabasePool, 'query'>,
 	ownerId: string,
 	projectId: string,
-	derivativeHash: string
-): Promise<{ readonly objectKey: string; readonly mime: string; readonly size: number; readonly contentHash: string }> {
+	derivativeHash: string,
+): Promise<{
+	readonly objectKey: string;
+	readonly mime: string;
+	readonly size: number;
+	readonly contentHash: string;
+}> {
 	if (!SHA256_PATTERN.test(derivativeHash)) throw new ModelNotFoundError();
 	const rows = await queryRows<RevisionRow>(
 		db,
@@ -22,7 +35,7 @@ JOIN projects p ON p.id = r.project_id
 WHERE r.project_id = $1 AND r.derivative_hash = $2 AND p.owner_id = $3
 ORDER BY r.created_at ASC
 LIMIT 1`,
-		[projectId, derivativeHash, ownerId]
+		[projectId, derivativeHash, ownerId],
 	);
 	const row = rows[0];
 	if (!row) throw new ModelNotFoundError();
@@ -30,7 +43,7 @@ LIMIT 1`,
 		objectKey: readString(row.derivativeKey),
 		mime: readString(row.derivativeMime),
 		size: readSafeInteger(row.derivativeBytes),
-		contentHash: readString(row.contentHash)
+		contentHash: readString(row.contentHash),
 	};
 }
 
@@ -40,7 +53,7 @@ export async function streamModelFile(
 	objectStore: ObjectStore,
 	key: string,
 	signal: AbortSignal,
-	assertActive: () => void
+	assertActive: () => void,
 ): Promise<{ byteSize: number; sha256: string }> {
 	const output = new PassThrough();
 	output.on('error', () => {});
@@ -68,13 +81,21 @@ export async function streamModelFile(
 			const chunk = toBuffer(value);
 			byteSize += chunk.length;
 			if (byteSize > contentLength) {
-				throw new ModelInputError('invalid_upload', 400, 'Upload length does not match Content-Length');
+				throw new ModelInputError(
+					'invalid_upload',
+					400,
+					'Upload length does not match Content-Length',
+				);
 			}
 			hash.update(chunk as unknown as Uint8Array<ArrayBuffer>);
 			await writeChunk(output, chunk);
 		}
 		if (byteSize !== contentLength) {
-			throw new ModelInputError('invalid_upload', 400, 'Upload length does not match Content-Length');
+			throw new ModelInputError(
+				'invalid_upload',
+				400,
+				'Upload length does not match Content-Length',
+			);
 		}
 		assertActive();
 		output.end();

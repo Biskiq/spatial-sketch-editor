@@ -79,12 +79,15 @@ function iccDescription(profile: Uint8Array, offset: number, size: number): stri
 		profile[offset]!,
 		profile[offset + 1]!,
 		profile[offset + 2]!,
-		profile[offset + 3]!
+		profile[offset + 3]!,
 	);
 	if (type === 'desc') {
 		const length = view.getUint32(offset + 8);
 		if (length === 0 || length > 512 || 12 + length > size) return undefined;
-		return String.fromCharCode(...profile.subarray(offset + 12, offset + 12 + length)).replace(/\0+$/, '');
+		return String.fromCharCode(...profile.subarray(offset + 12, offset + 12 + length)).replace(
+			/\0+$/,
+			'',
+		);
 	}
 	if (type === 'mluc') {
 		const records = view.getUint32(offset + 8);
@@ -118,22 +121,29 @@ function iccDescription(profile: Uint8Array, offset: number, size: number): stri
 }
 
 /** sRGB primaries, Bradford-adapted to the ICC D50 PCS (IEC 61966-2.1 profiles). */
-const SRGB_D50_COLORANTS: Readonly<Record<'rXYZ' | 'gXYZ' | 'bXYZ', readonly [number, number, number]>> = {
+const SRGB_D50_COLORANTS: Readonly<
+	Record<'rXYZ' | 'gXYZ' | 'bXYZ', readonly [number, number, number]>
+> = {
 	rXYZ: [0.4361, 0.2225, 0.0139],
 	gXYZ: [0.3851, 0.7169, 0.0971],
-	bXYZ: [0.1431, 0.0606, 0.7141]
+	bXYZ: [0.1431, 0.0606, 0.7141],
 };
 /** Published sRGB profiles round their colorants differently; P3 differs by >0.07. */
 const SRGB_COLORANT_TOLERANCE = 0.005;
 
 /** One `XYZ ` tag's first s15Fixed16 triple, or undefined when malformed. */
-function iccXyz(profile: Uint8Array, offset: number, size: number): [number, number, number] | undefined {
-	if (size < 20 || offset + 20 > profile.length || !matches(profile, offset, 'XYZ ')) return undefined;
+function iccXyz(
+	profile: Uint8Array,
+	offset: number,
+	size: number,
+): [number, number, number] | undefined {
+	if (size < 20 || offset + 20 > profile.length || !matches(profile, offset, 'XYZ '))
+		return undefined;
 	const view = viewOf(profile);
 	return [
 		view.getInt32(offset + 8) / 65536,
 		view.getInt32(offset + 12) / 65536,
-		view.getInt32(offset + 16) / 65536
+		view.getInt32(offset + 16) / 65536,
 	];
 }
 
@@ -209,7 +219,8 @@ function jpegIccDescription(segments: readonly IccSegment[]): string | undefined
 }
 
 function png(bytes: Uint8Array, view: DataView): RawImageEncoding {
-	if (bytes.length < 33 || view.getUint32(8) !== 13 || !matches(bytes, 12, 'IHDR')) return invalid();
+	if (bytes.length < 33 || view.getUint32(8) !== 13 || !matches(bytes, 12, 'IHDR'))
+		return invalid();
 	const width = view.getUint32(16);
 	const height = view.getUint32(20);
 	const bitDepth = view.getUint8(24);
@@ -226,7 +237,7 @@ function png(bytes: Uint8Array, view: DataView): RawImageEncoding {
 			bytes[offset + 4]!,
 			bytes[offset + 5]!,
 			bytes[offset + 6]!,
-			bytes[offset + 7]!
+			bytes[offset + 7]!,
 		);
 		if (kind === 'acTL') return unsupported('animated PNG', 'Export a single frame.');
 		if (kind === 'eXIf') {
@@ -234,7 +245,7 @@ function png(bytes: Uint8Array, view: DataView): RawImageEncoding {
 			if (orientation !== 1) {
 				return unsupported(
 					'the raw map carries an EXIF orientation',
-					'Re-export the map without rotation.'
+					'Re-export the map without rotation.',
 				);
 			}
 		}
@@ -247,23 +258,21 @@ function png(bytes: Uint8Array, view: DataView): RawImageEncoding {
 	}
 	if (!hasData) return invalid();
 	if (bitDepth !== 8) {
-		return unsupported(
-			`${bitDepth}-bit PNG`,
-			'Re-export the map as 8-bit PNG, JPEG or WebP.'
-		);
+		return unsupported(`${bitDepth}-bit PNG`, 'Re-export the map as 8-bit PNG, JPEG or WebP.');
 	}
 	const channels = new Map<number, 1 | 2 | 3 | 4>([
 		[0, 1],
 		[4, 2],
 		[2, 3],
 		[6, 4],
-		[3, 3]
+		[3, 3],
 	]).get(colourType);
-	if (channels === undefined) return unsupported('unsupported PNG colour type', 'Re-export as RGB or RGBA.');
+	if (channels === undefined)
+		return unsupported('unsupported PNG colour type', 'Re-export as RGB or RGBA.');
 	if (hasCicp || (hasIcc && !hasSrgb)) {
 		return unsupported(
 			'the PNG carries a non-sRGB colour profile',
-			'Re-export the map as untagged sRGB.'
+			'Re-export the map as untagged sRGB.',
 		);
 	}
 	return { mime: 'image/png', width, height, channels, bitDepth: 8 };
@@ -296,7 +305,7 @@ function jpeg(bytes: Uint8Array, view: DataView): RawImageEncoding {
 			iccSegments.push({
 				sequence,
 				total,
-				data: bytes.subarray(payload + 14, offset + size)
+				data: bytes.subarray(payload + 14, offset + size),
 			});
 		}
 		if ([0xc0, 0xc1, 0xc2].includes(marker) && size >= 8) {
@@ -305,7 +314,15 @@ function jpeg(bytes: Uint8Array, view: DataView): RawImageEncoding {
 			width = view.getUint16(payload + 3);
 			const components = view.getUint8(payload + 5);
 			channels =
-				components === 1 ? 1 : components === 2 ? 2 : components === 3 ? 3 : components === 4 ? 4 : undefined;
+				components === 1
+					? 1
+					: components === 2
+						? 2
+						: components === 3
+							? 3
+							: components === 4
+								? 4
+								: undefined;
 			if (channels === undefined) {
 				return unsupported(`${components}-component JPEG`, 'Re-export as grayscale, RGB or RGBA.');
 			}
@@ -323,14 +340,14 @@ function jpeg(bytes: Uint8Array, view: DataView): RawImageEncoding {
 	if ((orientation ?? 1) !== 1) {
 		return unsupported(
 			'the raw map carries an EXIF orientation',
-			'Re-export the map without rotation.'
+			'Re-export the map without rotation.',
 		);
 	}
 	if (iccSegments.length > 0) {
 		if (!jpegIccIsStandardSrgb(iccSegments)) {
 			return unsupported(
 				'the JPEG carries an ICC profile that is not verified as standard sRGB',
-				'Re-export the map as untagged sRGB or with the standard sRGB IEC61966-2.1 profile.'
+				'Re-export the map as untagged sRGB or with the standard sRGB IEC61966-2.1 profile.',
 			);
 		}
 	}
@@ -405,7 +422,7 @@ export function probeRawImage(bytes: Uint8Array): RawImageEncoding {
 	) {
 		return unsupported(
 			`${encoding.width}×${encoding.height} image`,
-			`Resize the map to ${MAX_EDGE} px per edge or less.`
+			`Resize the map to ${MAX_EDGE} px per edge or less.`,
 		);
 	}
 	return encoding;

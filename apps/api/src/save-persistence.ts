@@ -1,5 +1,5 @@
 /**
- * Conditional Save (`SaveAcceptedSource@1`, AM-4) — the F.2 unit path.
+ * Conditional Save (`SaveAcceptedSource@1`,) — the F.2 unit path.
  *
  * One write path, one transaction. The server does not trust the captured
  * digest: the unit source handler re-parses the captured canonical envelope,
@@ -20,10 +20,11 @@ import type { ProjectIssue } from '@portfolio/project-model/package';
 import {
 	createUnitSaveHandler,
 	UNIT_ENVELOPE_SOURCE_FORMAT,
-	type ProjectEnvelope
+	type ProjectEnvelope,
 } from '@portfolio/project-model/units';
 import { verifyMaterialDefinitionHashes } from './material-integrity.js';
-import { SAVE_CONTENT_IDENTITY_SCHEME,
+import {
+	SAVE_CONTENT_IDENTITY_SCHEME,
 	createSavedBaseToken,
 	resolveSaveSourceHandler,
 	sameAcceptedRevision,
@@ -34,7 +35,7 @@ import { SAVE_CONTENT_IDENTITY_SCHEME,
 	type SaveRefusalCode,
 	type SaveRequest,
 	type SaveSourceDatabase,
-	type SaveSourceHandler
+	type SaveSourceHandler,
 } from '@portfolio/project-model/save';
 
 import type { DatabaseClient, DatabasePool } from './database.js';
@@ -43,7 +44,7 @@ import {
 	ImageVerificationUnavailableError,
 	prepareProjectImagePins,
 	verifyProjectImagePinRows,
-	type ArtworkAssetPin
+	type ArtworkAssetPin,
 } from './artwork-persistence.js';
 import type { ObjectStore } from './object-store.js';
 import { verifyModelResourcePins } from './model-persistence.js';
@@ -93,7 +94,7 @@ type ReceiptRow = {
 
 function saveDatabase(db: DatabaseClient): SaveSourceDatabase {
 	return {
-		query: (sql, params) => db.query(sql, params === undefined ? undefined : [...params])
+		query: (sql, params) => db.query(sql, params === undefined ? undefined : [...params]),
 	};
 }
 
@@ -102,7 +103,7 @@ export async function saveAcceptedSource(
 	pool: DatabasePool,
 	ownerId: string,
 	request: SaveRequest,
-	store?: ObjectStore
+	store?: ObjectStore,
 ): Promise<SaveAcknowledgement> {
 	return saveAcceptedSourceWithHandlers(pool, ownerId, request, [UNIT_SAVE_HANDLER], store);
 }
@@ -118,7 +119,7 @@ export async function saveAcceptedSourceWithHandler(
 	pool: DatabasePool,
 	ownerId: string,
 	request: SaveRequest,
-	handler: SaveSourceHandler
+	handler: SaveSourceHandler,
 ): Promise<SaveAcknowledgement> {
 	return saveAcceptedSourceWithHandlers(pool, ownerId, request, [handler]);
 }
@@ -129,10 +130,13 @@ export async function saveAcceptedSourceWithHandlers(
 	ownerId: string,
 	request: SaveRequest,
 	handlers: readonly SaveSourceHandler[],
-	store?: ObjectStore
+	store?: ObjectStore,
 ): Promise<SaveAcknowledgement> {
 	if (request.contentIdentityScheme !== SAVE_CONTENT_IDENTITY_SCHEME) {
-		throw new SaveRefusalError('identity-scheme-mismatch', `This server saves ${SAVE_CONTENT_IDENTITY_SCHEME} sources`);
+		throw new SaveRefusalError(
+			'identity-scheme-mismatch',
+			`This server saves ${SAVE_CONTENT_IDENTITY_SCHEME} sources`,
+		);
 	}
 	const capture = request.capture;
 	const resolved = resolveSaveSourceHandler(handlers, capture);
@@ -145,7 +149,11 @@ export async function saveAcceptedSourceWithHandlers(
 	// encoding of their contents before any write can happen.
 	const preparedResult = await handler.prepare(capture);
 	if (preparedResult.kind === 'refused') {
-		throw new SaveRefusalError(preparedResult.code, preparedResult.message, preparedResult.issues ?? []);
+		throw new SaveRefusalError(
+			preparedResult.code,
+			preparedResult.message,
+			preparedResult.issues ?? [],
+		);
 	}
 	const prepared = preparedResult.source;
 	const materialIssues = await verifyMaterialDefinitionHashes(prepared.document as ProjectEnvelope);
@@ -153,7 +161,11 @@ export async function saveAcceptedSourceWithHandlers(
 		throw new SaveRefusalError(
 			'invalid-project',
 			materialIssues[0]!.message,
-			materialIssues.map((issue) => ({ path: issue.path, code: 'invalid-hash', message: issue.message }))
+			materialIssues.map((issue) => ({
+				path: issue.path,
+				code: 'invalid-hash',
+				message: issue.message,
+			})),
 		);
 	}
 	// Resolve the **complete** image closure, not just the Artwork shelf: a
@@ -171,7 +183,7 @@ export async function saveAcceptedSourceWithHandlers(
 			ownerId,
 			capture.projectId,
 			prepared.document as ProjectEnvelope,
-			'private-save'
+			'private-save',
 		);
 	} catch (error) {
 		if (error instanceof ArtworkAssetRefusal) imageRefusal = error;
@@ -193,7 +205,7 @@ WHERE p.id = $1 AND p.owner_id = $2
 		SELECT 1 FROM project_versions v
 		WHERE v.project_id = p.id AND v.source_format = $3
 	)`,
-				[capture.projectId, ownerId, UNIT_ENVELOPE_SOURCE_FORMAT]
+				[capture.projectId, ownerId, UNIT_ENVELOPE_SOURCE_FORMAT],
 			);
 			if (!owned[0]) throw new ProjectNotFoundError();
 		}
@@ -206,7 +218,7 @@ saved_full_source_hash AS "savedFullSourceHash"
 FROM projects
 WHERE id = $1
 FOR UPDATE`,
-			[capture.projectId]
+			[capture.projectId],
 		);
 		const row = locked[0] ?? null;
 
@@ -217,7 +229,13 @@ FOR UPDATE`,
 		// owner's operation.
 		const receipt = await readReceipt(db, ownerId, capture.projectId, capture.operationId);
 		if (receipt) {
-			assertReceiptMatches(receipt, capture.precondition, capture.acceptedRevision, prepared.sourceContentId, prepared.fullSourceHash);
+			assertReceiptMatches(
+				receipt,
+				capture.precondition,
+				capture.acceptedRevision,
+				prepared.sourceContentId,
+				prepared.fullSourceHash,
+			);
 			return receiptAcknowledgement(receipt);
 		}
 
@@ -227,16 +245,17 @@ FOR UPDATE`,
 			const tombstone = await queryRows<{ projectId: unknown }>(
 				db,
 				`SELECT project_id AS "projectId" FROM project_deletions WHERE project_id = $1`,
-				[capture.projectId]
+				[capture.projectId],
 			);
-			if (tombstone[0]) throw new SaveRefusalError('collision', 'A project with this ID already exists');
+			if (tombstone[0])
+				throw new SaveRefusalError('collision', 'A project with this ID already exists');
 			// The user row is created only when this Save actually creates a
 			// project; a refused Save writes nothing, not even an owner record.
 			await db.query(
 				`INSERT INTO users (id)
 VALUES ($1)
 ON CONFLICT (id) DO NOTHING`,
-				[ownerId]
+				[ownerId],
 			);
 			const inserted = await queryRows<{ id: unknown }>(
 				db,
@@ -244,15 +263,22 @@ ON CONFLICT (id) DO NOTHING`,
 VALUES ($1, $2, $3, $4)
 ON CONFLICT (id) DO NOTHING
 RETURNING id`,
-				[capture.projectId, ownerId, prepared.name, createSavedBaseToken()]
+				[capture.projectId, ownerId, prepared.name, createSavedBaseToken()],
 			);
 			if (!inserted[0]) {
 				// Lost a create-only race. A concurrent identical retry may already
 				// have written its receipt; otherwise this is the one owner-blind
 				// collision answer.
 				const raced = await readReceipt(db, ownerId, capture.projectId, capture.operationId);
-				if (!raced) throw new SaveRefusalError('collision', 'A project with this ID already exists');
-				assertReceiptMatches(raced, capture.precondition, capture.acceptedRevision, prepared.sourceContentId, prepared.fullSourceHash);
+				if (!raced)
+					throw new SaveRefusalError('collision', 'A project with this ID already exists');
+				assertReceiptMatches(
+					raced,
+					capture.precondition,
+					capture.acceptedRevision,
+					prepared.sourceContentId,
+					prepared.fullSourceHash,
+				);
 				return receiptAcknowledgement(raced);
 			}
 			latestVersion = 0;
@@ -271,7 +297,10 @@ RETURNING id`,
 				(readNullableString(row.savedSourceContentId) !== prepared.sourceContentId ||
 					readNullableString(row.savedFullSourceHash) !== prepared.fullSourceHash)
 			) {
-				throw new SaveRefusalError('revision-reuse', 'A saved revision identity cannot be reused for different contents');
+				throw new SaveRefusalError(
+					'revision-reuse',
+					'A saved revision identity cannot be reused for different contents',
+				);
 			}
 			// The saved base is only the latest revision. Revision identity is durable,
 			// so reuse against an older receipt must refuse too: A -> B -> A with new
@@ -290,11 +319,14 @@ LIMIT 1`,
 					capture.acceptedRevision.projectId,
 					capture.acceptedRevision.revisionId,
 					prepared.sourceContentId,
-					prepared.fullSourceHash
-				]
+					prepared.fullSourceHash,
+				],
 			);
 			if (reused[0]) {
-				throw new SaveRefusalError('revision-reuse', 'A saved revision identity cannot be reused for different contents');
+				throw new SaveRefusalError(
+					'revision-reuse',
+					'A saved revision identity cannot be reused for different contents',
+				);
 			}
 		}
 
@@ -315,7 +347,10 @@ LIMIT 1`,
 			finalSource.sourceContentId !== prepared.sourceContentId ||
 			finalSource.fullSourceHash !== prepared.fullSourceHash
 		) {
-			throw new SaveRefusalError('content-identity-mismatch', 'Admission produced a different source than the capture');
+			throw new SaveRefusalError(
+				'content-identity-mismatch',
+				'Admission produced a different source than the capture',
+			);
 		}
 		// A `model` resource is host-asserted no longer. Every model in
 		// the admitted source must name an approved revision of this project whose
@@ -336,7 +371,7 @@ LIMIT 1`,
 			throw new SaveRefusalError(
 				'invalid-project',
 				error.message,
-				paths.map((path) => ({ path, code: error.code, message: error.message }))
+				paths.map((path) => ({ path, code: error.code, message: error.message })),
 			);
 		}
 
@@ -345,7 +380,7 @@ LIMIT 1`,
 		await db.query(
 			`INSERT INTO project_versions (project_id, version, document, source_format)
 VALUES ($1, $2, $3, $4)`,
-			[capture.projectId, nextVersion, finalSource.document, UNIT_ENVELOPE_SOURCE_FORMAT]
+			[capture.projectId, nextVersion, finalSource.document, UNIT_ENVELOPE_SOURCE_FORMAT],
 		);
 		const updated = await queryRows<ProjectRow>(
 			db,
@@ -362,8 +397,8 @@ RETURNING id, name, latest_version AS version, updated_at AS "updatedAt"`,
 				savedBaseToken,
 				capture.acceptedRevision,
 				finalSource.sourceContentId,
-				finalSource.fullSourceHash
-			]
+				finalSource.fullSourceHash,
+			],
 		);
 		const saved = updated[0];
 		if (!saved) throw new Error('Project save returned no row');
@@ -374,7 +409,7 @@ RETURNING id, name, latest_version AS version, updated_at AS "updatedAt"`,
 			updatedAt: readTimestamp(saved.updatedAt),
 			savedBaseToken,
 			savedRevision: capture.acceptedRevision,
-			sourceContentId: finalSource.sourceContentId
+			sourceContentId: finalSource.sourceContentId,
 		};
 
 		await db.query(
@@ -393,8 +428,8 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
 				finalSource.fullSourceHash,
 				nextVersion,
 				savedBaseToken,
-				acknowledgement.name
-			]
+				acknowledgement.name,
+			],
 		);
 		return acknowledgement;
 	});
@@ -404,7 +439,7 @@ async function readReceipt(
 	db: DatabaseClient,
 	ownerId: string,
 	projectId: string,
-	operationId: string
+	operationId: string,
 ): Promise<SaveReceipt | null> {
 	const rows = await queryRows<ReceiptRow>(
 		db,
@@ -417,7 +452,7 @@ r.created_at AS "createdAt"
 FROM save_receipts r
 JOIN projects p ON p.id = r.project_id
 WHERE r.project_id = $1 AND r.operation_id = $2 AND p.owner_id = $3`,
-		[projectId, operationId, ownerId]
+		[projectId, operationId, ownerId],
 	);
 	const row = rows[0];
 	if (!row) return null;
@@ -439,7 +474,7 @@ WHERE r.project_id = $1 AND r.operation_id = $2 AND p.owner_id = $3`,
 		version: readSafeInteger(row.version),
 		savedBaseToken: readString(row.savedBaseToken),
 		name: readString(row.savedName),
-		savedAt: readTimestamp(row.createdAt)
+		savedAt: readTimestamp(row.createdAt),
 	};
 }
 
@@ -448,7 +483,7 @@ function assertReceiptMatches(
 	precondition: SavePrecondition,
 	revision: AcceptedRevision,
 	digest: string,
-	hashedSource: string
+	hashedSource: string,
 ): void {
 	if (
 		!samePrecondition(receipt.precondition, precondition) ||
@@ -456,7 +491,10 @@ function assertReceiptMatches(
 		receipt.sourceContentId !== digest ||
 		receipt.fullSourceHash !== hashedSource
 	) {
-		throw new SaveRefusalError('retry-payload-mismatch', 'This operation ID already records a different payload or precondition');
+		throw new SaveRefusalError(
+			'retry-payload-mismatch',
+			'This operation ID already records a different payload or precondition',
+		);
 	}
 }
 
@@ -468,12 +506,13 @@ function receiptAcknowledgement(receipt: SaveReceipt): SaveAcknowledgement {
 		updatedAt: receipt.savedAt,
 		savedBaseToken: receipt.savedBaseToken,
 		savedRevision: receipt.acceptedRevision,
-		sourceContentId: receipt.sourceContentId
+		sourceContentId: receipt.sourceContentId,
 	};
 }
 
 function readString(value: unknown): string {
-	if (typeof value !== 'string' || value.length === 0) throw new Error('Database row contained an invalid string');
+	if (typeof value !== 'string' || value.length === 0)
+		throw new Error('Database row contained an invalid string');
 	return value;
 }
 
@@ -483,8 +522,10 @@ function readNullableString(value: unknown): string | null {
 }
 
 function readSafeInteger(value: unknown): number {
-	const result = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN;
-	if (!Number.isSafeInteger(result) || result < 0) throw new Error('Database row contained an invalid version');
+	const result =
+		typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN;
+	if (!Number.isSafeInteger(result) || result < 0)
+		throw new Error('Database row contained an invalid version');
 	return result;
 }
 
@@ -507,7 +548,7 @@ function readRevision(value: unknown): AcceptedRevision {
 	}
 	return {
 		projectId: (parsed as Record<string, string>).projectId,
-		revisionId: (parsed as Record<string, string>).revisionId
+		revisionId: (parsed as Record<string, string>).revisionId,
 	};
 }
 

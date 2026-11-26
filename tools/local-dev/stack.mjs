@@ -43,7 +43,7 @@ const INHERITED_KEYS = [
 	'PUBLIC_API_ORIGIN',
 	'RENDER_EXTERNAL_URL',
 	'SESSION_KEY',
-	'TRUST_PROXY'
+	'TRUST_PROXY',
 ];
 const INHERITED_PREFIXES = ['R2_', 'BISKIQ_'];
 
@@ -75,7 +75,7 @@ export function stackIdentity(repoRoot) {
 		hash,
 		stack: `biskiq-dev-${hash}`,
 		namespace: `local-${hash}`,
-		bucket: `biskiq-${hash}-assets`
+		bucket: `biskiq-${hash}-assets`,
 	};
 }
 
@@ -86,7 +86,7 @@ export function preferredPorts(hash) {
 		db: base,
 		storage: base + 1,
 		api: base + 2,
-		editor: DEFAULT_EDITOR_PORT
+		editor: DEFAULT_EDITOR_PORT,
 	};
 }
 
@@ -102,9 +102,9 @@ export function createState(identity, ports) {
 			dbPassword: randomBytes(24).toString('hex'),
 			s3AccessKeyId: randomBytes(16).toString('hex'),
 			s3SecretAccessKey: randomBytes(32).toString('hex'),
-			sessionKey: randomBytes(32).toString('base64')
+			sessionKey: randomBytes(32).toString('base64'),
 		},
-		createdAt: new Date().toISOString()
+		createdAt: new Date().toISOString(),
 	};
 }
 
@@ -116,7 +116,9 @@ export function validateState(state, identity) {
 		throw new Error(`Local stack state version ${String(state.version)} is not supported`);
 	}
 	if (state.worktree !== identity.worktree) {
-		throw new Error(`Local stack state belongs to ${String(state.worktree)}, not ${identity.worktree}`);
+		throw new Error(
+			`Local stack state belongs to ${String(state.worktree)}, not ${identity.worktree}`,
+		);
 	}
 	for (const key of ['stack', 'namespace', 'bucket']) {
 		if (state[key] !== identity[key]) {
@@ -168,7 +170,7 @@ export function authorizeCleanupState(rawState, identity) {
 	} catch (error) {
 		return {
 			state: null,
-			mismatch: error instanceof Error ? error.message : 'Local stack state is invalid'
+			mismatch: error instanceof Error ? error.message : 'Local stack state is invalid',
 		};
 	}
 }
@@ -219,7 +221,7 @@ export function buildStackEnv(state, baseEnv = process.env) {
 		R2_OBJECT_NAMESPACE: state.namespace,
 		R2_ACCESS_KEY_ID: state.credentials.s3AccessKeyId,
 		R2_SECRET_ACCESS_KEY: state.credentials.s3SecretAccessKey,
-		LOCAL_OBJECT_STORE: '1'
+		LOCAL_OBJECT_STORE: '1',
 	});
 }
 
@@ -236,7 +238,7 @@ export function buildComposeEnv(state, baseEnv = process.env) {
 		BISKIQ_LOCAL_DB_PASSWORD: state.credentials.dbPassword,
 		BISKIQ_LOCAL_S3_ACCESS_KEY: state.credentials.s3AccessKeyId,
 		BISKIQ_LOCAL_S3_SECRET_KEY: state.credentials.s3SecretAccessKey,
-		BISKIQ_LOCAL_S3_BUCKET: state.bucket
+		BISKIQ_LOCAL_S3_BUCKET: state.bucket,
 	});
 }
 
@@ -251,11 +253,7 @@ export function isPortAvailable(port, host = '127.0.0.1') {
 	});
 }
 
-export async function findAvailablePort(
-	preferred,
-	used = new Set(),
-	isFree = isPortAvailable
-) {
+export async function findAvailablePort(preferred, used = new Set(), isFree = isPortAvailable) {
 	for (let port = preferred; port <= 65_535; port++) {
 		if (used.has(port)) continue;
 		if (await isFree(port)) return port;

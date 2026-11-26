@@ -1,7 +1,5 @@
 /** The Finish and palette operation kinds, and the union they form. */
 
-
-
 export const SCENE_FINISH_ASSIGN = 'scene-finish-assign';
 export const SCENE_SURFACE_FINISH_ASSIGN = 'scene-surface-finish-assign';
 export const SCENE_FINISH_EDIT = 'scene-finish-edit';
@@ -31,6 +29,6 @@ export const kinds = [
 	SCENE_PALETTE_SLOT_SET,
 	SCENE_PALETTE_SLOT_RENAME,
 	SCENE_PALETTE_SLOT_REMOVE,
-	SCENE_PALETTE_ADOPT
+	SCENE_PALETTE_ADOPT,
 ] as const;
 export type Kind = (typeof kinds)[number];

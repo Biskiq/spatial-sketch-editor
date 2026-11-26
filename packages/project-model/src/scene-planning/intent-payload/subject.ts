@@ -28,7 +28,7 @@ export function readSceneOperationSubject(input: {
 			reader.problem(
 				'$.targets',
 				'invalid-target',
-				`${kind} addresses no existing subject; its entity id is a captured allocation`
+				`${kind} addresses no existing subject; its entity id is a captured allocation`,
 			);
 			return null;
 		}
@@ -38,7 +38,7 @@ export function readSceneOperationSubject(input: {
 		reader.problem(
 			'$.targets',
 			'invalid-target',
-			`${kind} addresses exactly one Scene entity; received ${targets.length} targets`
+			`${kind} addresses exactly one Scene entity; received ${targets.length} targets`,
 		);
 		return null;
 	}
@@ -79,7 +79,7 @@ export function readSceneOperationAllocation(input: {
 			reader.problem(
 				'$.allocatedIds',
 				'unexpected-allocation',
-				`${kind} creates no id, so its intent must not carry an allocation`
+				`${kind} creates no id, so its intent must not carry an allocation`,
 			);
 			return null;
 		}
@@ -89,7 +89,7 @@ export function readSceneOperationAllocation(input: {
 		reader.problem(
 			'$.allocatedIds',
 			'missing-allocation',
-			`${kind} needs exactly one captured scene-entity id; received ${allocations.length}`
+			`${kind} needs exactly one captured scene-entity id; received ${allocations.length}`,
 		);
 		return null;
 	}
@@ -98,7 +98,7 @@ export function readSceneOperationAllocation(input: {
 		reader.problem(
 			'$.allocatedIds[0].kind',
 			'unsupported-allocation',
-			`${kind} allocates a scene-entity id, not "${allocation.kind}"`
+			`${kind} allocates a scene-entity id, not "${allocation.kind}"`,
 		);
 		return null;
 	}
@@ -106,7 +106,7 @@ export function readSceneOperationAllocation(input: {
 		reader.problem(
 			'$.allocatedIds[0].id',
 			'duplicate-entity-id',
-			`Captured id "${allocation.id}" is already used by the accepted source; it is never renamed`
+			`Captured id "${allocation.id}" is already used by the accepted source; it is never renamed`,
 		);
 		return null;
 	}
@@ -116,55 +116,55 @@ export function readSceneOperationAllocation(input: {
 export function sceneEntityTargetProblem(
 	target: SemanticReference,
 	entityId: string,
-	sourceContentId: string
+	sourceContentId: string,
 ): ShapeIssue | null {
 	if (target.domain !== 'scene') {
 		return {
 			path: '$.targets[0].domain',
 			code: 'invalid-target',
-			message: `Scene operations address Scene subjects, not "${target.domain}"`
+			message: `Scene operations address Scene subjects, not "${target.domain}"`,
 		};
 	}
 	if (target.subject.kind !== 'entity') {
 		return {
 			path: '$.targets[0].subject.kind',
 			code: 'invalid-target',
-			message: `Scene operations address entity subjects, not "${target.subject.kind}"`
+			message: `Scene operations address entity subjects, not "${target.subject.kind}"`,
 		};
 	}
 	if (target.subject.id !== entityId) {
 		return {
 			path: '$.targets[0].subject.id',
 			code: 'invalid-target',
-			message: `The target names "${target.subject.id}" and the payload names "${entityId}"`
+			message: `The target names "${target.subject.id}" and the payload names "${entityId}"`,
 		};
 	}
 	if (target.revision.kind !== 'exact' || target.revision.contentRevision !== sourceContentId) {
 		return {
 			path: '$.targets[0].revision',
 			code: 'stale-revision',
-			message: 'The target must be exact for this snapshot\'s content revision'
+			message: "The target must be exact for this snapshot's content revision",
 		};
 	}
 	if (target.instancePath.length !== 0) {
 		return {
 			path: '$.targets[0].instancePath',
 			code: 'invalid-target',
-			message: 'A root Scene entity is addressed with an empty instance path'
+			message: 'A root Scene entity is addressed with an empty instance path',
 		};
 	}
 	if (target.location.kind !== 'project-root') {
 		return {
 			path: '$.targets[0].location',
 			code: 'invalid-target',
-			message: 'A current-format Scene entity lives at the project root'
+			message: 'A current-format Scene entity lives at the project root',
 		};
 	}
 	if (target.componentId !== null || target.capabilityId !== null) {
 		return {
 			path: '$.targets[0]',
 			code: 'invalid-target',
-			message: 'A Scene entity target names no component or capability'
+			message: 'A Scene entity target names no component or capability',
 		};
 	}
 	return null;

@@ -8,16 +8,37 @@ import { expandPlanBox, mergePlanBoxes } from './bvh';
 import type { WallSamplingDerivation } from '../wall/centerline';
 import type { LayoutDocumentWallFirst, LayoutJunction, LayoutWall } from '../wall/types';
 import type { SampledTopologyWall, TopologySegment } from '../wall/topology';
-import { classifyWallIntersection, sampledWallExtentsOverlap, sampledWallSelfIntersects, sampledWallsCross } from '../wall/topology';
+import {
+	classifyWallIntersection,
+	sampledWallExtentsOverlap,
+	sampledWallSelfIntersects,
+	sampledWallsCross,
+} from '../wall/topology';
 import { countWork } from '../kernel/work-observer';
 import { layoutItem, layoutLength } from '../kernel/source-collections';
-import { computeIndexedWallBox, installCertifiedPatch, isValidObjectRecord, isValidVec2, isValidWallRecord, sharedJunctions } from './certified-index';
+import {
+	computeIndexedWallBox,
+	installCertifiedPatch,
+	isValidObjectRecord,
+	isValidVec2,
+	isValidWallRecord,
+	sharedJunctions,
+} from './certified-index';
 import type { IndexedOpeningEntry } from './cow';
 import { WORLD_INDEX_BY_DOC } from './cow';
 import { ID_PATTERN, POINT_EPSILON, SWEPT_INDEX_PAD } from './index-types';
 import { ensureLayoutWorldIndex } from './lookups';
 import type { EdgeAreaContribution, WalkSummary } from './planar-map';
-import { WALK_AREA_GUARD_EPSILON, areaRoundingBound, chordSamples, compareHalfEdgesWithPoints, computeHalfEdgeTwiceAreaContrib, roundingAllowance, sameCyclicHalfEdgeOrder, upperErrorSum } from './planar-map';
+import {
+	WALK_AREA_GUARD_EPSILON,
+	areaRoundingBound,
+	chordSamples,
+	compareHalfEdgesWithPoints,
+	computeHalfEdgeTwiceAreaContrib,
+	roundingAllowance,
+	sameCyclicHalfEdgeOrder,
+	upperErrorSum,
+} from './planar-map';
 
 // =====================================================================
 // Swept-Bounds Geometry Delta Certificate
@@ -84,7 +105,7 @@ export function verifySweptBoundsGeometryDelta(options: {
 		}
 	}
 	const affectedWallIds = [...affectedWallIdSet].sort(
-		(a, b) => (worldIndex.wallIndexById.get(a) ?? 0) - (worldIndex.wallIndexById.get(b) ?? 0)
+		(a, b) => (worldIndex.wallIndexById.get(a) ?? 0) - (worldIndex.wallIndexById.get(b) ?? 0),
 	);
 
 	const nextWallById = new Map<string, LayoutWall>();
@@ -115,9 +136,9 @@ export function verifySweptBoundsGeometryDelta(options: {
 				minX: Math.min(oldPt[0], newPt[0]),
 				minZ: Math.min(oldPt[1], newPt[1]),
 				maxX: Math.max(oldPt[0], newPt[0]),
-				maxZ: Math.max(oldPt[1], newPt[1])
+				maxZ: Math.max(oldPt[1], newPt[1]),
 			},
-			SWEPT_INDEX_PAD
+			SWEPT_INDEX_PAD,
 		);
 		sweptBox = sweptBox ? mergePlanBoxes(sweptBox, ptBox) : ptBox;
 	}
@@ -148,7 +169,7 @@ export function verifySweptBoundsGeometryDelta(options: {
 			id: wId,
 			startJunctionId: wall.startJunctionId,
 			endJunctionId: wall.endJunctionId,
-			samples
+			samples,
 		};
 		if (wall.centerline.kind !== 'line' && sampledWallSelfIntersects(sampledWall)) {
 			return 'delegate-cold';
@@ -232,9 +253,12 @@ export function verifySweptBoundsGeometryDelta(options: {
 
 			// Chord overlap check (padded by POINT_EPSILON so boundary/near-boundary touches reach `classifyWallIntersection`)
 			if (
-				Math.max(segA.start[0], segA.end[0]) + POINT_EPSILON >= Math.min(segB.start[0], segB.end[0]) &&
-				Math.min(segA.start[0], segA.end[0]) - POINT_EPSILON <= Math.max(segB.start[0], segB.end[0]) &&
-				Math.max(segA.start[1], segA.end[1]) + POINT_EPSILON >= Math.min(segB.start[1], segB.end[1]) &&
+				Math.max(segA.start[0], segA.end[0]) + POINT_EPSILON >=
+					Math.min(segB.start[0], segB.end[0]) &&
+				Math.min(segA.start[0], segA.end[0]) - POINT_EPSILON <=
+					Math.max(segB.start[0], segB.end[0]) &&
+				Math.max(segA.start[1], segA.end[1]) + POINT_EPSILON >=
+					Math.min(segB.start[1], segB.end[1]) &&
 				Math.min(segA.start[1], segA.end[1]) - POINT_EPSILON <= Math.max(segB.start[1], segB.end[1])
 			) {
 				countWork('pairs:wall-wall');
@@ -273,7 +297,7 @@ export function verifySweptBoundsGeometryDelta(options: {
 	}
 
 	// 6. Planar Combinatorial Map invariance (cyclic star order at 1-hop junctions)
-	//    + Green's-theorem boundary-chain differential on affected closed walks.
+	//  + Green's-theorem boundary-chain differential on affected closed walks.
 	const starCheckJunctionIds = new Set<string>();
 	for (const jId of changedJunctionIds) {
 		if (worldIndex.starOrderByJunctionId.has(jId)) starCheckJunctionIds.add(jId);
@@ -298,7 +322,10 @@ export function verifySweptBoundsGeometryDelta(options: {
 		}
 	}
 
-	const walkDeltaByIndex = new Map<number, { delta: number; error: number; terms: number; magnitude: number }>();
+	const walkDeltaByIndex = new Map<
+		number,
+		{ delta: number; error: number; terms: number; magnitude: number }
+	>();
 	const nextHalfEdgeContribs = new Map<string, EdgeAreaContribution>();
 	for (const wId of affectedWallIds) {
 		if (!worldIndex.faceGraphWallIdSet.has(wId)) continue;
@@ -306,18 +333,27 @@ export function verifySweptBoundsGeometryDelta(options: {
 		const start = pointOf(wall.startJunctionId)!;
 		const end = pointOf(wall.endJunctionId)!;
 		for (const direction of ['forward', 'reverse'] as const) {
-			const heKey = `${wId}:${direction}`, link = worldIndex.halfEdgeWalkByKey.get(heKey);
+			const heKey = `${wId}:${direction}`,
+				link = worldIndex.halfEdgeWalkByKey.get(heKey);
 			if (!link) return 'delegate-cold';
 			const walk = worldIndex.walks.get(link.walkIndex)!;
 			const contribution = computeHalfEdgeTwiceAreaContrib(wall, start, end, direction, sampling);
 			if (!contribution || !Number.isFinite(contribution.value)) return 'delegate-cold';
 			nextHalfEdgeContribs.set(heKey, contribution);
-			const update = walkDeltaByIndex.get(link.walkIndex) ?? { delta: 0, error: 0, terms: walk.termCount, magnitude: walk.magnitude };
+			const update = walkDeltaByIndex.get(link.walkIndex) ?? {
+				delta: 0,
+				error: 0,
+				terms: walk.termCount,
+				magnitude: walk.magnitude,
+			};
 			const diff = contribution.value - link.twiceEdgeContrib;
-			update.error = upperErrorSum(update.error,
+			update.error = upperErrorSum(
+				update.error,
 				areaRoundingBound(link.termCount, walk.magnitude),
 				areaRoundingBound(contribution.termCount, contribution.magnitude),
-				roundingAllowance(contribution.value, link.twiceEdgeContrib), roundingAllowance(update.delta, diff));
+				roundingAllowance(contribution.value, link.twiceEdgeContrib),
+				roundingAllowance(update.delta, diff),
+			);
 			update.delta += diff;
 			update.terms += contribution.termCount - link.termCount;
 			update.magnitude = Math.max(update.magnitude, contribution.magnitude);
@@ -329,12 +365,32 @@ export function verifySweptBoundsGeometryDelta(options: {
 	for (const [index, update] of walkDeltaByIndex) {
 		const walk = worldIndex.walks.get(index)!;
 		const twiceSignedArea = walk.twiceSignedArea + update.delta;
-		const accumulatedError = upperErrorSum(walk.accumulatedError, update.error, roundingAllowance(walk.twiceSignedArea, update.delta));
+		const accumulatedError = upperErrorSum(
+			walk.accumulatedError,
+			update.error,
+			roundingAllowance(walk.twiceSignedArea, update.delta),
+		);
 		// A fresh cold sum has its own rounding order. Certify its sign only
 		// when BOTH error intervals exclude zero; otherwise the cold gate decides.
-		const guard = upperErrorSum(WALK_AREA_GUARD_EPSILON, accumulatedError, areaRoundingBound(update.terms, update.magnitude));
-		if (!Number.isFinite(twiceSignedArea) || !Number.isFinite(guard) || Math.abs(twiceSignedArea) <= guard || (twiceSignedArea > 0) !== walk.wasPositive) return 'delegate-cold';
-		nextWalkSummaries.set(index, { twiceSignedArea, wasPositive: walk.wasPositive, termCount: update.terms, magnitude: update.magnitude, accumulatedError });
+		const guard = upperErrorSum(
+			WALK_AREA_GUARD_EPSILON,
+			accumulatedError,
+			areaRoundingBound(update.terms, update.magnitude),
+		);
+		if (
+			!Number.isFinite(twiceSignedArea) ||
+			!Number.isFinite(guard) ||
+			Math.abs(twiceSignedArea) <= guard ||
+			twiceSignedArea > 0 !== walk.wasPositive
+		)
+			return 'delegate-cold';
+		nextWalkSummaries.set(index, {
+			twiceSignedArea,
+			wasPositive: walk.wasPositive,
+			termCount: update.terms,
+			magnitude: update.magnitude,
+			accumulatedError,
+		});
 	}
 
 	// 7. Opening-set fit/height/profile/overlap on affected Walls only.
@@ -350,18 +406,18 @@ export function verifySweptBoundsGeometryDelta(options: {
 		const wallIdxView: WallFirstWallIndex = {
 			wallById: {
 				get: (id: string) => wallOf(id),
-				has: (id: string) => worldIndex.wallById.has(id)
+				has: (id: string) => worldIndex.wallById.has(id),
 			} as ReadonlyMap<string, LayoutWall>,
 			pointById: {
 				get: (id: string) => pointOf(id),
-				has: (id: string) => worldIndex.pointById.has(id)
-			} as ReadonlyMap<string, LayoutVec2>
+				has: (id: string) => worldIndex.pointById.has(id),
+			} as ReadonlyMap<string, LayoutVec2>,
 		};
 		const openingIssues = validateWallFirstOpeningSubset(
 			candidate,
 			affectedOpeningEntries,
 			wallIdxView,
-			sampling
+			sampling,
 		);
 		if (openingIssues.length > 0) {
 			return 'delegate-cold';
@@ -377,12 +433,11 @@ export function verifySweptBoundsGeometryDelta(options: {
 		nextSampledWalls,
 		nextWallBoxes,
 		nextWalkSummaries,
-		nextHalfEdgeContribs
+		nextHalfEdgeContribs,
 	});
 
 	return 'certified-valid';
 }
-
 
 /**
  * Verify a non-topological Wall scalar (`wall-thickness`, `wall-height`) or
@@ -426,7 +481,7 @@ export function verifyScalarOrObjectDelta(options: {
 			parentDoc: baseline,
 			changedJunctionIds: [],
 			affectedWallIds: changedWallIds,
-			changedObjectIds: []
+			changedObjectIds: [],
 		});
 		return 'certified-valid';
 	}
@@ -455,11 +510,10 @@ export function verifyScalarOrObjectDelta(options: {
 		parentDoc: baseline,
 		changedJunctionIds: [],
 		affectedWallIds: [],
-		changedObjectIds
+		changedObjectIds,
 	});
 	return 'certified-valid';
 }
-
 
 /**
  * Verify a rectangular Opening scalar update (`offset`, `width`, `height`,
@@ -503,11 +557,11 @@ export function verifyOpeningUpdateDelta(options: {
 
 	const baseWallEntries = worldIndex.openingsByWallId.get(wallId) ?? [];
 	const updatedEntries: IndexedOpeningEntry[] = baseWallEntries.map((entry) =>
-		entry.index === opIdx ? { opening: nextOp, index: opIdx } : entry
+		entry.index === opIdx ? { opening: nextOp, index: opIdx } : entry,
 	);
 	const subsetIssues = validateWallFirstOpeningSubset(candidate, updatedEntries, {
 		wallById: worldIndex.wallById,
-		pointById: worldIndex.pointById
+		pointById: worldIndex.pointById,
 	});
 	if (subsetIssues.length > 0) return 'delegate-cold';
 
@@ -516,7 +570,7 @@ export function verifyOpeningUpdateDelta(options: {
 		changedJunctionIds: [],
 		affectedWallIds: [],
 		changedObjectIds: [],
-		changedOpeningWallIds: [wallId]
+		changedOpeningWallIds: [wallId],
 	});
 	return 'certified-valid';
 }

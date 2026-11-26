@@ -21,7 +21,7 @@ export function pointOf(ray: LightRay, planeY: number): Vec3 | null {
 	return [
 		ray.origin[0] + ray.direction[0] * distance,
 		planeY,
-		ray.origin[2] + ray.direction[2] * distance
+		ray.origin[2] + ray.direction[2] * distance,
 	];
 }
 
@@ -45,7 +45,7 @@ export function cross(left: Vec3, right: Vec3): Vec3 {
 	return [
 		left[1] * right[2] - left[2] * right[1],
 		left[2] * right[0] - left[0] * right[2],
-		left[0] * right[1] - left[1] * right[0]
+		left[0] * right[1] - left[1] * right[0],
 	];
 }
 
@@ -80,7 +80,7 @@ export function rayPlane(ray: LightRay, point: Vec3, normal: Vec3): Vec3 | null 
 export function closestAxisPoint(
 	ray: LightRay,
 	origin: Vec3,
-	axis: Vec3
+	axis: Vec3,
 ): { readonly point: Vec3; readonly distanceAlongAxis: number } | null {
 	const w0 = sub(origin, ray.origin);
 	const a = dot(ray.direction, ray.direction);
@@ -93,11 +93,9 @@ export function closestAxisPoint(
 	const distanceAlongAxis = (b * d - a * e) / denominator;
 	return {
 		point: add(origin, scale(axis, distanceAlongAxis)),
-		distanceAlongAxis
+		distanceAlongAxis,
 	};
 }
-
-
 
 export function clamp(value: number, min: number, max: number): number {
 	return Math.min(max, Math.max(min, value));
@@ -107,7 +105,7 @@ export function nearestPointInBounds(point: Vec3, bounds: SceneBounds): Vec3 {
 	return [
 		clamp(point[0], bounds.min[0], bounds.max[0]),
 		clamp(point[1], bounds.min[1], bounds.max[1]),
-		clamp(point[2], bounds.min[2], bounds.max[2])
+		clamp(point[2], bounds.min[2], bounds.max[2]),
 	];
 }
 
@@ -120,6 +118,6 @@ export function boundsCorners(bounds: SceneBounds): Vec3[] {
 		[bounds.max[0], bounds.min[1], bounds.min[2]],
 		[bounds.max[0], bounds.min[1], bounds.max[2]],
 		[bounds.max[0], bounds.max[1], bounds.min[2]],
-		[bounds.max[0], bounds.max[1], bounds.max[2]]
+		[bounds.max[0], bounds.max[1], bounds.max[2]],
 	];
 }

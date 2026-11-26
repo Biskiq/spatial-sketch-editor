@@ -5,20 +5,20 @@
  * drag preview:
  *
  * - **Retained.** One `Mesh` per compiled Wall, keyed by a retention key that
- *   names every input the mesh builder reads: the Wall's own `cacheKey` (its
- *   authored geometry, Openings, thickness, height and floor datum) plus the
- *   `cacheKey` of every Junction whose resolved end geometry the builder consumes.
- *   A Wall whose key is unchanged keeps its mesh object, its buffers and its
- *   materials.
+ *  names every input the mesh builder reads: the Wall's own `cacheKey` (its
+ *  authored geometry, Openings, thickness, height and floor datum) plus the
+ *  `cacheKey` of every Junction whose resolved end geometry the builder consumes.
+ *  A Wall whose key is unchanged keeps its mesh object, its buffers and its
+ *  materials.
  * - **Patched.** A Wall whose key moved is rebuilt and swapped in; it is the only
- *   one rebuilt.
+ *  one rebuilt.
  * - **Released.** A Wall that left the document, and every superseded buffer, is
- *   disposed in the same call — there is no deferred sweep and no second owner.
+ *  disposed in the same call — there is no deferred sweep and no second owner.
  * - **Shared materials.** Every surface is acquired from the Canvas's
- *   `MaterialStore` by descriptor — one material per tint across all Walls, and
- *   the failure surface from the same store — so a compile constructs no
- *   material at all. The representation gives its leases back once, on dispose;
- *   a tint another representation also draws survives that release.
+ *  `MaterialStore` by descriptor — one material per tint across all Walls, and
+ *  the failure surface from the same store — so a compile constructs no
+ *  material at all. The representation gives its leases back once, on dispose;
+ *  a tint another representation also draws survives that release.
  *
  * It is imperative on purpose: one Svelte component pair per Wall would cost the
  * framework thousands of ownership operations per compile at large grids. A
@@ -29,11 +29,19 @@
  */
 import { BoxGeometry, Group, Mesh, type Material, type Object3D } from 'three';
 import { legJoinsByWall } from '@portfolio/layout-core/wall';
-import { diffCompiledWalls, type CompiledLayoutGeometry, type CompiledPhysicalWall, type LayoutBounds3 } from '@portfolio/layout-core/geometry';
+import {
+	diffCompiledWalls,
+	type CompiledLayoutGeometry,
+	type CompiledPhysicalWall,
+	type LayoutBounds3,
+} from '@portfolio/layout-core/geometry';
 import { countWork } from '@portfolio/layout-core/kernel';
 
 import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-standalone';
-import { toWallBufferGeometry, type WallMeshMaterialFactory } from '$lib/render/wall-geometry-adapter';
+import {
+	toWallBufferGeometry,
+	type WallMeshMaterialFactory,
+} from '$lib/render/wall-geometry-adapter';
 import { createVisitorWallMaterialFactory } from '$lib/render/layout/wall-material-factory';
 import { DEFAULT_WALL_COLOR, DEFAULT_WALL_UNLIT_SHARE } from '$lib/visitor/room-presentation';
 import { reconcileHidden, tagRenderIdentity } from '$lib/render/render-identity';
@@ -41,7 +49,7 @@ import type { MaterialStore } from '$lib/render/resources/material-store';
 import type { TextureLoadScope } from '$lib/render/resources/texture-store';
 import type {
 	BasicMaterialDescriptor,
-	MaterialTreatment
+	MaterialTreatment,
 } from '$lib/render/resources/material-descriptor';
 import type { SceneSurfaceLookResolver } from '$lib/render/layout/surface-look';
 import type { FinishViewGeneration } from '$lib/render/resources/finish-views';
@@ -106,7 +114,7 @@ export type WallRepresentation = {
 	/** Ask again for the surface images that failed, without rebuilding geometry. */
 	reloadTextures(): void;
 	/**
-	 * X2's display overlay: exactly these Walls draw through the cutaway twin
+	 * The display overlay: exactly these Walls draw through the cutaway twin
 	 * material. Work is proportional to the ids that changed state, the set is
 	 * remembered so a rebuilt Wall is born cut, and the twin is a store lease per
 	 * tint — never a second material system and never a buffer rebuild.
@@ -127,8 +135,8 @@ const FAILURE_SURFACE: BasicMaterialDescriptor = { kind: 'basic', color: MAGENTA
  * Attach `object` to `parent` at `index`.
  *
  * three has no ordered insert, and assigning `parent.children[index]` directly
- * leaves `object.parent` unset — which silently disables `removeFromParent()` and
- * leaks the mesh. `add()` first (it sets the parent and dispatches the event),
+ * leaves `object.parent` unset — which silently disables `removeFromParent` and
+ * leaks the mesh. `add` first (it sets the parent and dispatches the event),
  * then move the child to the slot it belongs in.
  */
 function attachAt(parent: Group, object: Object3D, index: number): void {
@@ -140,14 +148,21 @@ function attachAt(parent: Group, object: Object3D, index: number): void {
 	parent.children.splice(index, 0, object);
 }
 
-function failureBox(bounds: LayoutBounds3): { position: [number, number, number]; size: [number, number, number] } {
+function failureBox(bounds: LayoutBounds3): {
+	position: [number, number, number];
+	size: [number, number, number];
+} {
 	return {
 		position: [
 			(bounds.min[0] + bounds.max[0]) / 2,
 			(bounds.min[1] + bounds.max[1]) / 2,
-			(bounds.min[2] + bounds.max[2]) / 2
+			(bounds.min[2] + bounds.max[2]) / 2,
 		],
-		size: [bounds.max[0] - bounds.min[0], bounds.max[1] - bounds.min[1], bounds.max[2] - bounds.min[2]]
+		size: [
+			bounds.max[0] - bounds.min[0],
+			bounds.max[1] - bounds.min[1],
+			bounds.max[2] - bounds.min[2],
+		],
 	};
 }
 
@@ -161,20 +176,20 @@ function failureBox(bounds: LayoutBounds3): { position: [number, number, number]
  * Two preconditions make an equal key mean an equal mesh:
  *
  * - **The Junction resolution is a pure function of the facts in that key.** A
- *   future resolver input (a tolerance, a global option, a neighbour's datum)
- *   must join the Junction key in `layout-core`, or a changed miter would keep a
- *   stale mesh.
+ *  future resolver input (a tolerance, a global option, a neighbour's datum)
+ *  must join the Junction key in `layout-core`, or a changed miter would keep a
+ *  stale mesh.
  * - **The sampling derivation is process-constant.** A Wall's samples come from
- *   `sampleSegment` or from a shared derivation whose density and tolerance are
- *   fixed for the life of the page; a change to those parameters would change
- *   the mesh without changing any authored input. If they ever become
- *   configurable, their signature belongs in the Wall key in `layout-core`.
+ *  `sampleSegment` or from a shared derivation whose density and tolerance are
+ *  fixed for the life of the page; a change to those parameters would change
+ *  the mesh without changing any authored input. If they ever become
+ *  configurable, their signature belongs in the Wall key in `layout-core`.
  * - **The key distinguishes every authored value the builder can see.** It is a
- *   JSON serialization, in which `NaN` and `null` both read as `null`; the codec
- *   rejects non-finite authored numbers, so two documents that can be opened
- *   never share a key while differing in a coordinate. Reuse is compared as a
- *   string here, so that domain guarantee is what makes the comparison a proof
- *   rather than an approximation.
+ *  JSON serialization, in which `NaN` and `null` both read as `null`; the codec
+ *  rejects non-finite authored numbers, so two documents that can be opened
+ *  never share a key while differing in a coordinate. Reuse is compared as a
+ *  string here, so that domain guarantee is what makes the comparison a proof
+ *  rather than an approximation.
  */
 function wallKey(wall: CompiledPhysicalWall, endKeys: ReadonlyMap<string, string>): string {
 	return `${wall.cacheKey}\u0000${endKeys.get(wall.wallId) ?? ''}`;
@@ -187,7 +202,10 @@ function endKeysByWall(geometry: CompiledLayoutGeometry): Map<string, string> {
 		for (const leg of junction.legs) {
 			countWork('representation:junction-leg-test');
 			const existing = keys.get(leg.wallId);
-			keys.set(leg.wallId, existing === undefined ? junction.cacheKey : `${existing}|${junction.cacheKey}`);
+			keys.set(
+				leg.wallId,
+				existing === undefined ? junction.cacheKey : `${existing}|${junction.cacheKey}`,
+			);
 		}
 	}
 	return keys;
@@ -201,7 +219,7 @@ export function createWallRepresentation(
 	onMaterialChange: () => void = () => {},
 	resolveSurfaceLook?: SceneSurfaceLookResolver,
 	viewGeneration?: () => FinishViewGeneration | null,
-	onFinishOutcome?: FinishOutcomeSink
+	onFinishOutcome?: FinishOutcomeSink,
 ): WallRepresentation {
 	const object3d = new Group();
 	object3d.name = 'VisitorLayoutWalls';
@@ -236,7 +254,8 @@ export function createWallRepresentation(
 		if (disposed) return;
 		for (const [wallId, entry] of retained) {
 			if (entry.rematerialize === null) continue;
-			for (const material of entry.rematerialize(factoryFor(wallId), entry.object as Mesh)) materialsSeen.add(material);
+			for (const material of entry.rematerialize(factoryFor(wallId), entry.object as Mesh))
+				materialsSeen.add(material);
 		}
 		onMaterialChange();
 	}
@@ -252,8 +271,8 @@ export function createWallRepresentation(
 				resolveSurfaceLook,
 				onMaterialChange: refreshMaterials,
 				viewGeneration,
-				onFinishOutcome
-			}
+				onFinishOutcome,
+			},
 		);
 	}
 	factory = createFactory();
@@ -270,15 +289,15 @@ export function createWallRepresentation(
 		wall: CompiledPhysicalWall,
 		elevation: number,
 		ends: Parameters<typeof buildStandaloneWallMesh>[2],
-		cutawayNow: boolean
+		cutawayNow: boolean,
 	): {
 		object: Object3D;
 		release: () => void;
-		rematerialize:
-			| ((factory: WallMaterialFactory, target: Mesh) => readonly Material[])
-			| null;
+		rematerialize: ((factory: WallMaterialFactory, target: Mesh) => readonly Material[]) | null;
 	} {
-		const result = buildStandaloneWallMesh(wall, elevation, ends ?? null, { classifySurface: () => 'wall' });
+		const result = buildStandaloneWallMesh(wall, elevation, ends ?? null, {
+			classifySurface: () => 'wall',
+		});
 		if (!result.mesh) {
 			// The explicit failure surface the shell has always drawn: a magenta
 			// wireframe box, never a silently missing Wall.
@@ -298,7 +317,7 @@ export function createWallRepresentation(
 					geometry.dispose();
 					lease.release();
 				},
-				rematerialize: null
+				rematerialize: null,
 			};
 		}
 		const surfaceFactory = cutawayNow ? twinFactory().factory : factory.factory;
@@ -317,11 +336,10 @@ export function createWallRepresentation(
 		// re-resolves these materials, never the buffers or the mesh object.
 		const groups = result.mesh.materialGroups;
 		const source = result.mesh;
-		const rematerialize = (
-			next: WallMaterialFactory,
-			target: Mesh = mesh
-		): readonly Material[] => {
-			const materials = groups.map((group) => next(group.surfaceKey, source, group.paintSide).material);
+		const rematerialize = (next: WallMaterialFactory, target: Mesh = mesh): readonly Material[] => {
+			const materials = groups.map(
+				(group) => next(group.surfaceKey, source, group.paintSide).material,
+			);
 			target.material = [...materials];
 			return materials;
 		};
@@ -331,97 +349,106 @@ export function createWallRepresentation(
 	function update(geometry: CompiledLayoutGeometry): WallRepresentationStats {
 		if (disposed) throw new Error('the layout wall representation has been disposed');
 		const patches = previousGeometry ? diffCompiledWalls(previousGeometry, geometry) : undefined;
-			if (patches !== undefined) {
-				let built = 0;
-				for (const patch of patches) {
-					countWork('representation:wall-entry-test');
-					const key = `${patch.wall.cacheKey}\u0000${patch.endKey}`;
-					const previous = retained.get(patch.wall.wallId);
-					if (previous?.key === key) continue;
-					const ends: NonNullable<Parameters<typeof buildStandaloneWallMesh>[2]> = {};
-					for (const join of patch.joins) ends[join.end] = join;
-					const next = buildWall(patch.wall, patch.elevation, ends, cutaway.has(patch.wall.wallId));
-					if (!previous) throw new Error('compiled Wall membership proof did not match representation');
-					// Keep the attached mesh and its child-array slot. Mesh.copy(false)
-					// replaces buffers/material/transform without scanning or splicing N children.
-					previous.object.copy(next.object, false);
-					// `copy` resets visibility with the rest of the transform state.
-					previous.object.visible = !hidden.has(patch.wall.wallId);
-					previous.release();
-					retained.set(patch.wall.wallId, {
-						key,
-						object: previous.object,
-						release: next.release,
-						rematerialize: next.rematerialize
-					});
-					built += 1;
-				}
-				previousGeometry = geometry;
-				return { walls: retained.size, built, retained: retained.size - built, released: 0, materials: materialsSeen.size };
-			}
-			previousGeometry = geometry;
-			const endKeys = endKeysByWall(geometry);
-			const endsByWall = legJoinsByWall(geometry.junctions);
-			const elevationByFloor = new Map(geometry.floors.map((floor) => [floor.floorId, floor.elevation] as const));
-
+		if (patches !== undefined) {
 			let built = 0;
-			let kept = 0;
-			const present = new Set<string>();
-
-			for (const wall of geometry.walls ?? []) {
+			for (const patch of patches) {
 				countWork('representation:wall-entry-test');
-				present.add(wall.wallId);
-				const key = wallKey(wall, endKeys);
-				const previous = retained.get(wall.wallId);
-				if (previous && previous.key === key) {
-					kept += 1;
-					continue;
-				}
-				const next = buildWall(
-					wall,
-					elevationByFloor.get(wall.floorId) ?? 0,
-					endsByWall.get(wall.wallId) ?? null,
-					cutaway.has(wall.wallId)
-				);
-				next.object.visible = !hidden.has(wall.wallId);
-				const entry: RetainedWall = {
+				const key = `${patch.wall.cacheKey}\u0000${patch.endKey}`;
+				const previous = retained.get(patch.wall.wallId);
+				if (previous?.key === key) continue;
+				const ends: NonNullable<Parameters<typeof buildStandaloneWallMesh>[2]> = {};
+				for (const join of patch.joins) ends[join.end] = join;
+				const next = buildWall(patch.wall, patch.elevation, ends, cutaway.has(patch.wall.wallId));
+				if (!previous)
+					throw new Error('compiled Wall membership proof did not match representation');
+				// Keep the attached mesh and its child-array slot. Mesh.copy(false)
+				// replaces buffers/material/transform without scanning or splicing N children.
+				previous.object.copy(next.object, false);
+				// `copy` resets visibility with the rest of the transform state.
+				previous.object.visible = !hidden.has(patch.wall.wallId);
+				previous.release();
+				retained.set(patch.wall.wallId, {
 					key,
-					object: next.object,
+					object: previous.object,
 					release: next.release,
-					rematerialize: next.rematerialize
-				};
-				if (previous) {
-					// Swap in place so draw order follows the compiled Wall order.
-					countWork('representation:child-array-scan-bound', object3d.children.length);
-					const index = object3d.children.indexOf(previous.object);
-					previous.object.removeFromParent();
-					if (index >= 0) attachAt(object3d, next.object, index);
-					else object3d.add(next.object);
-					previous.release();
-				} else {
-					object3d.add(next.object);
-				}
-				retained.set(wall.wallId, entry);
+					rematerialize: next.rematerialize,
+				});
 				built += 1;
 			}
-
-			let released = 0;
-			for (const [wallId, entry] of retained) {
-				countWork('representation:wall-removal-test');
-				if (present.has(wallId)) continue;
-				entry.object.removeFromParent();
-				entry.release();
-				retained.delete(wallId);
-				released += 1;
-			}
-
+			previousGeometry = geometry;
 			return {
-				walls: present.size,
+				walls: retained.size,
 				built,
-				retained: kept,
-				released,
-				materials: materialsSeen.size
+				retained: retained.size - built,
+				released: 0,
+				materials: materialsSeen.size,
 			};
+		}
+		previousGeometry = geometry;
+		const endKeys = endKeysByWall(geometry);
+		const endsByWall = legJoinsByWall(geometry.junctions);
+		const elevationByFloor = new Map(
+			geometry.floors.map((floor) => [floor.floorId, floor.elevation] as const),
+		);
+
+		let built = 0;
+		let kept = 0;
+		const present = new Set<string>();
+
+		for (const wall of geometry.walls ?? []) {
+			countWork('representation:wall-entry-test');
+			present.add(wall.wallId);
+			const key = wallKey(wall, endKeys);
+			const previous = retained.get(wall.wallId);
+			if (previous && previous.key === key) {
+				kept += 1;
+				continue;
+			}
+			const next = buildWall(
+				wall,
+				elevationByFloor.get(wall.floorId) ?? 0,
+				endsByWall.get(wall.wallId) ?? null,
+				cutaway.has(wall.wallId),
+			);
+			next.object.visible = !hidden.has(wall.wallId);
+			const entry: RetainedWall = {
+				key,
+				object: next.object,
+				release: next.release,
+				rematerialize: next.rematerialize,
+			};
+			if (previous) {
+				// Swap in place so draw order follows the compiled Wall order.
+				countWork('representation:child-array-scan-bound', object3d.children.length);
+				const index = object3d.children.indexOf(previous.object);
+				previous.object.removeFromParent();
+				if (index >= 0) attachAt(object3d, next.object, index);
+				else object3d.add(next.object);
+				previous.release();
+			} else {
+				object3d.add(next.object);
+			}
+			retained.set(wall.wallId, entry);
+			built += 1;
+		}
+
+		let released = 0;
+		for (const [wallId, entry] of retained) {
+			countWork('representation:wall-removal-test');
+			if (present.has(wallId)) continue;
+			entry.object.removeFromParent();
+			entry.release();
+			retained.delete(wallId);
+			released += 1;
+		}
+
+		return {
+			walls: present.size,
+			built,
+			retained: kept,
+			released,
+			materials: materialsSeen.size,
+		};
 	}
 
 	return {
@@ -531,6 +558,6 @@ export function createWallRepresentation(
 			// The failure-surface leases are owned per mesh and released above;
 			// clearing the record keeps the set from pinning them.
 			materialsSeen.clear();
-		}
+		},
 	};
 }

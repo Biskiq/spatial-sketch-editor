@@ -26,9 +26,41 @@
  *
  * Editor machinery is absent: no Svelte, no Three, no DOM.
  */
-import { advanceViewport, aimPoseAlongRay, createViewportCameraState, evaluateViewport, eyeOfInspectionPose, fovYDegreesOf, rebaseViewportSource, requestViewingIntent, type InspectionPose, type PointerRay, type ViewingIntent, type ViewingIntentResult, type ViewportCameraState, type ViewportEvaluation, type ViewportEvaluationResult, type ViewportRect, type ViewportSourceRebase } from '@portfolio/camera-core/viewport';
+import {
+	advanceViewport,
+	aimPoseAlongRay,
+	createViewportCameraState,
+	evaluateViewport,
+	eyeOfInspectionPose,
+	fovYDegreesOf,
+	rebaseViewportSource,
+	requestViewingIntent,
+	type InspectionPose,
+	type PointerRay,
+	type ViewingIntent,
+	type ViewingIntentResult,
+	type ViewportCameraState,
+	type ViewportEvaluation,
+	type ViewportEvaluationResult,
+	type ViewportRect,
+	type ViewportSourceRebase,
+} from '@portfolio/camera-core/viewport';
 import type { Vec3 } from '@portfolio/camera-core/camera';
-import { acquireCameraOutput, cancelCameraOutput, createCameraOutputState, rebaseCameraOutputSource, replaceCameraOutput, returnCameraOutput, type CameraOutputCancelDecision, type CameraOutputDecision, type CameraOutputPolicy, type CameraOutputRebaseDecision, type CameraOutputReturnDecision, type CameraOutputState, type CameraOutputTicket } from '@portfolio/project-model/channels';
+import {
+	acquireCameraOutput,
+	cancelCameraOutput,
+	createCameraOutputState,
+	rebaseCameraOutputSource,
+	replaceCameraOutput,
+	returnCameraOutput,
+	type CameraOutputCancelDecision,
+	type CameraOutputDecision,
+	type CameraOutputPolicy,
+	type CameraOutputRebaseDecision,
+	type CameraOutputReturnDecision,
+	type CameraOutputState,
+	type CameraOutputTicket,
+} from '@portfolio/project-model/channels';
 
 import type { StageReadSnapshot } from './accepted-read';
 import { countWork } from '@portfolio/layout-core/kernel';
@@ -40,13 +72,13 @@ export function initialInspectionPose(bounds: { min: Vec3; max: Vec3 } | null): 
 			target: [0, 0, 0],
 			azimuthRadians: 0,
 			elevationRadians: Math.PI / 4,
-			targetPlaneHeightMeters: 12
+			targetPlaneHeightMeters: 12,
 		};
 	}
 	const target: Vec3 = [
 		(bounds.min[0] + bounds.max[0]) / 2,
 		(bounds.min[1] + bounds.max[1]) / 2,
-		(bounds.min[2] + bounds.max[2]) / 2
+		(bounds.min[2] + bounds.max[2]) / 2,
 	];
 	const horizontal = Math.hypot(bounds.max[0] - bounds.min[0], bounds.max[2] - bounds.min[2]);
 	const height = bounds.max[1] - bounds.min[1];
@@ -55,17 +87,20 @@ export function initialInspectionPose(bounds: { min: Vec3; max: Vec3 } | null): 
 		target,
 		azimuthRadians: 0,
 		elevationRadians: Math.PI / 4,
-		targetPlaneHeightMeters: extent * 1.6
+		targetPlaneHeightMeters: extent * 1.6,
 	};
 }
 
 type SceneBounds = { readonly min: Vec3; readonly max: Vec3 };
 
-function boundsUnion(a: SceneBounds | null, b: SceneBounds | null): { min: Vec3; max: Vec3 } | null {
+function boundsUnion(
+	a: SceneBounds | null,
+	b: SceneBounds | null,
+): { min: Vec3; max: Vec3 } | null {
 	if (a === null || b === null) return (a ?? b) as { min: Vec3; max: Vec3 } | null;
 	return {
 		min: [Math.min(a.min[0], b.min[0]), Math.min(a.min[1], b.min[1]), Math.min(a.min[2], b.min[2])],
-		max: [Math.max(a.max[0], b.max[0]), Math.max(a.max[1], b.max[1]), Math.max(a.max[2], b.max[2])]
+		max: [Math.max(a.max[0], b.max[0]), Math.max(a.max[1], b.max[1]), Math.max(a.max[2], b.max[2])],
 	};
 }
 
@@ -75,17 +110,25 @@ export function sceneRadiusOf(bounds: { min: Vec3; max: Vec3 } | null, target?: 
 	if (target !== undefined) {
 		// The inspection target stays put during editing and may also be panned.
 		// A half-diagonal about the bounds centre no longer encloses the scene then.
-		return Math.max(1, Math.hypot(...target.map((coordinate, axis) =>
-			Math.max(Math.abs(bounds.min[axis]! - coordinate), Math.abs(bounds.max[axis]! - coordinate))
-		)));
+		return Math.max(
+			1,
+			Math.hypot(
+				...target.map((coordinate, axis) =>
+					Math.max(
+						Math.abs(bounds.min[axis]! - coordinate),
+						Math.abs(bounds.max[axis]! - coordinate),
+					),
+				),
+			),
+		);
 	}
 	return Math.max(
 		Math.hypot(
 			bounds.max[0] - bounds.min[0],
 			bounds.max[1] - bounds.min[1],
-			bounds.max[2] - bounds.min[2]
+			bounds.max[2] - bounds.min[2],
 		) / 2,
-		0.5
+		0.5,
 	);
 }
 
@@ -112,7 +155,9 @@ export type CameraSession = {
 	 * It is session state: no authored document holds it.
 	 */
 	lookThrough(): LookThroughState | null;
-	beginLookThrough(view: LookThroughView): { readonly kind: 'entered' } | { readonly kind: 'refused'; readonly message: string };
+	beginLookThrough(
+		view: LookThroughView,
+	): { readonly kind: 'entered' } | { readonly kind: 'refused'; readonly message: string };
 	/** Re-aim the provisional camera at a fixed eye. */
 	reaimLookThrough(target: Vec3): boolean;
 	/** Re-aim through Camera's own pointer ray at the existing focal distance. */
@@ -141,7 +186,11 @@ export type CameraSession = {
 	evaluation(): ViewportEvaluation | null;
 	evaluationId(): string | null;
 	/** Evaluate at the explicit clock and keep the result as the current output. */
-	evaluate(rect: ViewportRect, clockSeconds: number, minimumGroundReachMeters?: number): ViewportEvaluationResult;
+	evaluate(
+		rect: ViewportRect,
+		clockSeconds: number,
+		minimumGroundReachMeters?: number,
+	): ViewportEvaluationResult;
 	/** Submit one viewing intent through the authority. */
 	applyIntent(intent: ViewingIntent, clockSeconds: number): ViewingIntentResult;
 	/**
@@ -157,7 +206,7 @@ export type CameraSession = {
 	rebaseSource(
 		sourceRevision: string,
 		bounds?: { min: Vec3; max: Vec3 } | null,
-		displayGroundYMeters?: number
+		displayGroundYMeters?: number,
 	): {
 		readonly viewport: ViewportSourceRebase;
 		readonly output: CameraOutputRebaseDecision;
@@ -213,7 +262,7 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 		sceneRadiusMeters: sceneRadiusOf(bounds),
 		// The mat ground's datum widens the clip range to the visible
 		// ground. It is a session input only: never scene bounds, Fit or the pose.
-		displayGroundYMeters: input.snapshot.domain.datumMeters
+		displayGroundYMeters: input.snapshot.domain.datumMeters,
 	});
 	let generation = 0;
 	let currentEvaluation: ViewportEvaluation | null = null;
@@ -236,7 +285,7 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 		outputId: input.outputId,
 		viewportId: input.viewportId,
 		sessionEpoch: input.snapshot.sessionEpoch,
-		sourceRevision: input.snapshot.sourceContentId
+		sourceRevision: input.snapshot.sourceContentId,
 	});
 	let ticket: CameraOutputTicket | null = null;
 	let preview: CameraOutputTicket | null = null;
@@ -247,14 +296,12 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 	 * rebase moves the saved entry to the new revision with the live state so Exit
 	 * cannot restore a superseded source.
 	 */
-	let lookThroughState:
-		| {
-				readonly entry: ViewportCameraState;
-				readonly view: LookThroughView;
-				authored: LookThroughView;
-				moved: boolean;
-		  }
-		| null = null;
+	let lookThroughState: {
+		readonly entry: ViewportCameraState;
+		readonly view: LookThroughView;
+		authored: LookThroughView;
+		moved: boolean;
+	} | null = null;
 
 	function cloneView(view: LookThroughView): LookThroughView {
 		return {
@@ -263,7 +310,7 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 			label: view.label,
 			eye: [view.eye[0], view.eye[1], view.eye[2]],
 			target: [view.target[0], view.target[1], view.target[2]],
-			fovYDegrees: view.fovYDegrees
+			fovYDegrees: view.fovYDegrees,
 		};
 	}
 
@@ -276,7 +323,7 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 			label: lookThroughState.view.label,
 			eye: eyeOfInspectionPose(pose),
 			target: [pose.target[0], pose.target[1], pose.target[2]],
-			fovYDegrees: fovYDegreesOf(pose)
+			fovYDegrees: fovYDegreesOf(pose),
 		};
 	}
 
@@ -292,7 +339,7 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 			sourceRevision: output.sourceRevision,
 			sessionEpoch: output.sessionEpoch,
 			ownerId: `${output.viewportId}:inspection`,
-			runEpoch
+			runEpoch,
 		} as const;
 	}
 
@@ -302,7 +349,7 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 			sourceRevision: output.sourceRevision,
 			sessionEpoch: output.sessionEpoch,
 			ownerId: `${output.viewportId}:preview`,
-			runEpoch
+			runEpoch,
 		} as const;
 	}
 
@@ -321,7 +368,8 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 			// Source bounds calibrate Camera's own depth evaluation; they never refit
 			// the pose. Recompute after a pan as well as after an authored edit.
 			const radius = sceneRadiusOf(boundsUnion(bounds, contentBounds), currentState.pose.target);
-			if (radius !== currentState.sceneRadiusMeters) currentState = { ...currentState, sceneRadiusMeters: radius };
+			if (radius !== currentState.sceneRadiusMeters)
+				currentState = { ...currentState, sceneRadiusMeters: radius };
 			// A reading transition is an animation: its progress changes with the clock
 			// even though the settled state object does not, so it is never retained.
 			const stateUnchanged =
@@ -339,9 +387,10 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 			}
 			countWork('camera:evaluate');
 			generation += 1;
-			const evaluationState = minimumGroundReachMeters === undefined
-				? currentState
-				: { ...currentState, minimumGroundReachMeters };
+			const evaluationState =
+				minimumGroundReachMeters === undefined
+					? currentState
+					: { ...currentState, minimumGroundReachMeters };
 			const result = evaluateViewport(evaluationState, rect, clockSeconds, generation);
 			currentEvaluation = result.kind === 'evaluated' ? result.evaluation : null;
 			lastEvaluationRect = currentEvaluation === null ? null : { ...rect };
@@ -374,9 +423,7 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 							? { ...rebasedEntry.state, displayGroundYMeters }
 							: rebasedEntry.state;
 					lookThroughState =
-						rebasedEntry.kind === 'refused'
-							? null
-							: { ...lookThroughState, entry: entryState };
+						rebasedEntry.kind === 'refused' ? null : { ...lookThroughState, entry: entryState };
 				}
 			}
 			// The output named the previous revision, so it is not the current output
@@ -401,7 +448,7 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 				ticket: inspectionRequest(runEpoch),
 				role: 'inspection',
 				expected: ticket === null ? { kind: 'unowned' } : { kind: 'held', ticket },
-				policy
+				policy,
 			});
 			output = decision.state;
 			if (decision.kind === 'acquired') ticket = decision.claim.ticket;
@@ -412,7 +459,7 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 				ticket: inspectionRequest(runEpoch),
 				role: 'inspection',
 				expected: ticket === null ? { kind: 'unowned' } : { kind: 'held', ticket },
-				returnToken
+				returnToken,
 			});
 			output = decision.state;
 			if (decision.kind === 'acquired') ticket = decision.claim.ticket;
@@ -428,7 +475,11 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 		cancelInspection(candidate) {
 			const decision = cancelCameraOutput(output, candidate);
 			output = decision.state;
-			if (decision.kind === 'cancelled' && ticket !== null && ticket.runEpoch === candidate.runEpoch) {
+			if (
+				decision.kind === 'cancelled' &&
+				ticket !== null &&
+				ticket.runEpoch === candidate.runEpoch
+			) {
 				ticket = null;
 			}
 		},
@@ -437,7 +488,7 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 				ticket: previewRequest(runEpoch),
 				role: 'preview',
 				expected: ticket === null ? { kind: 'unowned' } : { kind: 'held', ticket },
-				returnToken
+				returnToken,
 			});
 			output = decision.state;
 			if (decision.kind === 'acquired') {
@@ -461,7 +512,11 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 		cancelPreview(candidate) {
 			const decision = cancelCameraOutput(output, candidate);
 			output = decision.state;
-			if (decision.kind === 'cancelled' && preview !== null && preview.runEpoch === candidate.runEpoch) {
+			if (
+				decision.kind === 'cancelled' &&
+				preview !== null &&
+				preview.runEpoch === candidate.runEpoch
+			) {
 				preview = null;
 			}
 			return decision;
@@ -474,7 +529,7 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 				: {
 						view: lookThroughState.view,
 						authored: lookThroughState.authored,
-						moved: lookThroughState.moved
+						moved: lookThroughState.moved,
 					},
 		beginLookThrough(view) {
 			if (lookThroughState !== null) {
@@ -484,7 +539,7 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 			const result = requestViewingIntent(
 				currentState,
 				{ kind: 'set-view', eye: view.eye, target: view.target, fovYDegrees: view.fovYDegrees },
-				Number.POSITIVE_INFINITY
+				Number.POSITIVE_INFINITY,
 			);
 			currentState = result.state;
 			if (result.kind === 'rejected') return { kind: 'refused', message: result.message };
@@ -508,7 +563,8 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 		},
 		turnLookThrough(deltaYawRadians, deltaPitchRadians) {
 			if (lookThroughState === null) return false;
-			if (!applyLookThroughIntent({ kind: 'turn', deltaYawRadians, deltaPitchRadians })) return false;
+			if (!applyLookThroughIntent({ kind: 'turn', deltaYawRadians, deltaPitchRadians }))
+				return false;
 			lookThroughState = { ...lookThroughState, moved: true };
 			return true;
 		},
@@ -566,6 +622,6 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 			currentState = lookThroughState.entry;
 			lookThroughState = null;
 			return true;
-		}
+		},
 	};
 }

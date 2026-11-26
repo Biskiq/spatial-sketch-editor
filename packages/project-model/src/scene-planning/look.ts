@@ -1,6 +1,11 @@
 import { type DomainPlanner } from '../f4/types';
 import { type SceneSky, type SceneTreatment } from '../scene';
-import { buildEnvironment, sceneWithEnvironment, sameEnvironment, unitSceneCandidate } from './environment';
+import {
+	buildEnvironment,
+	sceneWithEnvironment,
+	sameEnvironment,
+	unitSceneCandidate,
+} from './environment';
 import { ShapeReader } from '../strict-shape';
 import { sceneLookPaletteSlots, sceneLookStart } from '../units/look-presets';
 import { prepared } from '../units/planning/experience/update';
@@ -71,14 +76,16 @@ export function createSceneLookApplyPlanner(): DomainPlanner<ProjectEnvelope> {
 			return prepared(
 				request,
 				unitSceneCandidate(request, data),
-				[{
-					kind: 'scene.look.applied',
-					subjectIds: [],
-					fields: seedsPalette ? ['environment', 'palette'] : ['environment']
-				}],
-				[]
+				[
+					{
+						kind: 'scene.look.applied',
+						subjectIds: [],
+						fields: seedsPalette ? ['environment', 'palette'] : ['environment'],
+					},
+				],
+				[],
 			);
-		}
+		},
 	};
 }
 
@@ -115,9 +122,9 @@ export function createSceneTreatmentSetPlanner(): DomainPlanner<ProjectEnvelope>
 				request,
 				unitSceneCandidate(request, data),
 				[{ kind: 'scene.environment.updated', subjectIds: [], fields: ['environment'] }],
-				[]
+				[],
 			);
-		}
+		},
 	};
 }
 
@@ -136,7 +143,8 @@ export function createSceneLookRestorePlanner(): DomainPlanner<ProjectEnvelope> 
 			const scene = envelopeOf(request).units.scene.data;
 			const reader = new ShapeReader();
 			const payload = reader.object(request.intent.payload, '$.payload', ['sky', 'treatment']);
-			if (payload === null) return refuse('invalid-payload', 'A saved environment is required', reader.issues);
+			if (payload === null)
+				return refuse('invalid-payload', 'A saved environment is required', reader.issues);
 
 			let sky: SceneSky | null = null;
 			if (payload.sky !== null) {
@@ -166,8 +174,8 @@ export function createSceneLookRestorePlanner(): DomainPlanner<ProjectEnvelope> 
 				request,
 				unitSceneCandidate(request, data),
 				[{ kind: 'scene.look.restored', subjectIds: [], fields: ['environment'] }],
-				[]
+				[],
 			);
-		}
+		},
 	};
 }

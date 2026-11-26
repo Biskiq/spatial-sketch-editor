@@ -1,6 +1,6 @@
 /**
  * **Paint**, a host tool that applies the armed pick to what the creator
- * touches (T2.S4a, T2.S8 U2).
+ * touches.
  *
  * Paint asks every binding that declares host tool `paint` for one winner, the
  * same spatial arbitration the Eraser uses: a Wall, an overhead entity, an
@@ -19,7 +19,7 @@
  * the stroke and write nothing. A press that slides off its only subject and
  * releases there is also a cancel, which is how a single click is abandoned.
  *
- * A colour pick (U3) coats instead of replacing: the line names the relief it
+ * A colour pick coats instead of replacing: the line names the relief it
  * keeps, and a subject that takes no coat (a model's own materials) refuses in
  * place and is skipped by the stroke.
  *
@@ -28,7 +28,11 @@
  * controller only translates a press.
  */
 import type { StageFacade, StageSourceHit } from './stage-facade';
-import { surfaceKey, type LayoutSurfaceRef, type SpaceSurfaceExclusion } from '@portfolio/layout-core/plan';
+import {
+	surfaceKey,
+	type LayoutSurfaceRef,
+	type SpaceSurfaceExclusion,
+} from '@portfolio/layout-core/plan';
 import type { StagePaintSpaceScope } from './stage-facade';
 import type { GestureAcquisition } from './stage-session';
 import type { PaintRadius } from '../look/paint-pick';
@@ -41,10 +45,14 @@ export const STAGE_PAINT_TASK = 'host-paint';
 /** The words a Paint answer uses for one surface identity. */
 function surfaceNoun(surface: LayoutSurfaceRef): string {
 	switch (surface.kind) {
-		case 'wall-side': return 'Wall face';
-		case 'room-floor': return 'floor';
-		case 'room-lid': return 'lid';
-		case 'region-face': return `Region ${surface.face}`;
+		case 'wall-side':
+			return 'Wall face';
+		case 'room-floor':
+			return 'floor';
+		case 'room-lid':
+			return 'lid';
+		case 'region-face':
+			return `Region ${surface.face}`;
 	}
 }
 
@@ -107,14 +115,18 @@ export type StagePaintOptions = {
 	/** What the pointed surface or object wears now, for the consequence line; `null` when it has no named Finish. */
 	/** Clock for long-press sampling; tests inject one. */
 	readonly now?: () => number;
-	readonly wornLabel?: (target: { readonly surface: PaintableSurface } | { readonly entityId: string }) => string | null;
+	readonly wornLabel?: (
+		target: { readonly surface: PaintableSurface } | { readonly entityId: string },
+	) => string | null;
 	/**
-	 * What the active **colour** pick does to a target (U3): refuse in place, or
+	 * What the active **colour** pick does to a target: refuse in place, or
 	 * coat it keeping the named relief. `null` when the pick is a material.
 	 */
-	readonly coatReading?: (target: { readonly surface: PaintableSurface } | { readonly entityId: string }) => CoatReading | null;
+	readonly coatReading?: (
+		target: { readonly surface: PaintableSurface } | { readonly entityId: string },
+	) => CoatReading | null;
 	/**
-	 * A click that painted exactly one subject (U4): the host selects it and opens
+	 * A click that painted exactly one subject: the host selects it and opens
 	 * its Finish on the Card. Paint stays armed. A drag across several subjects or
 	 * a Space paint never calls this — the selection stays where it was.
 	 */
@@ -156,7 +168,8 @@ function sameSubject(a: StagePaintCandidate | null, b: StagePaintCandidate | nul
 		a.adapterId === b.adapterId &&
 		a.hit.sourceId === b.hit.sourceId &&
 		a.hit.sourceKind === b.hit.sourceKind &&
-		(a.surface === null ? null : surfaceKey(a.surface)) === (b.surface === null ? null : surfaceKey(b.surface)) &&
+		(a.surface === null ? null : surfaceKey(a.surface)) ===
+			(b.surface === null ? null : surfaceKey(b.surface)) &&
 		(a.assignmentSurfaces[0] === undefined ? null : surfaceKey(a.assignmentSurfaces[0])) ===
 			(b.assignmentSurfaces[0] === undefined ? null : surfaceKey(b.assignmentSurfaces[0]))
 	);
@@ -185,7 +198,7 @@ export const LONG_PRESS_MS = 500;
 export function createStagePainter(
 	facade: StageFacade,
 	options: StagePaintOptions,
-	onChange: () => void = () => {}
+	onChange: () => void = () => {},
 ): StagePaintController {
 	let current: StagePaintCandidate | null = null;
 	let notice: StagePaintNotice | null = null;
@@ -220,7 +233,9 @@ export function createStagePainter(
 	function replaceWords(worn: string | null, target: string): string {
 		if (!options.hasActive()) return `Paint ${target}`;
 		const pick = options.activeLabel();
-		return worn !== null && worn !== pick ? `${pick} replaces ${worn} on ${target}` : `${pick} on ${target}`;
+		return worn !== null && worn !== pick
+			? `${pick} replaces ${worn} on ${target}`
+			: `${pick} on ${target}`;
 	}
 
 	/** A colour keeps the target's relief and sheen: `Sage on this wall · keeps Oak relief and sheen`. */
@@ -244,7 +259,7 @@ export function createStagePainter(
 				space: null,
 				assignmentSurfaces: [],
 				consequence: null,
-				refusal: 'That cannot be painted.'
+				refusal: 'That cannot be painted.',
 			};
 		}
 		if (answer.kind === 'refused') {
@@ -256,33 +271,40 @@ export function createStagePainter(
 				space: null,
 				assignmentSurfaces: [],
 				consequence: null,
-				refusal: answer.message
+				refusal: answer.message,
 			};
 		}
 		if (answer.kind === 'paintable-surface') {
 			const surface = answer.surface;
 			const space = answer.space;
-			const assignmentSurfaces = reach === 'surface'
-				? [surface]
-				: space.kind === 'unique' ? space.surfaces : [];
-			const refusal = reach === 'space'
-				? space.kind === 'none'
-					? 'That surface isn’t inside a space.'
-					: space.kind === 'ambiguous'
-						? surface.kind === 'wall-side'
-							? 'This wall side belongs to two rooms.'
-							: 'That surface belongs to more than one space.'
-						: assignmentSurfaces.length === 0 ? 'That space has no paintable surfaces.' : null
-				: null;
-			const hit: StageSourceHit = surface.kind === 'wall-side' && target.hit.reference === undefined
-				? { ...target.hit, subRef: { kind: 'component', componentId: `side:${surface.side}` } }
-				: target.hit;
+			const assignmentSurfaces =
+				reach === 'surface' ? [surface] : space.kind === 'unique' ? space.surfaces : [];
+			const refusal =
+				reach === 'space'
+					? space.kind === 'none'
+						? 'That surface isn’t inside a space.'
+						: space.kind === 'ambiguous'
+							? surface.kind === 'wall-side'
+								? 'This wall side belongs to two rooms.'
+								: 'That surface belongs to more than one space.'
+							: assignmentSurfaces.length === 0
+								? 'That space has no paintable surfaces.'
+								: null
+					: null;
+			const hit: StageSourceHit =
+				surface.kind === 'wall-side' && target.hit.reference === undefined
+					? { ...target.hit, subRef: { kind: 'component', componentId: `side:${surface.side}` } }
+					: target.hit;
 			const coat = options.coatReading?.({ surface }) ?? null;
-			const consequence = reach === 'space' && space.kind === 'unique'
-				? `${pickWords()} ${assignmentSurfaces.length} surface${assignmentSurfaces.length === 1 ? '' : 's'} in this Space${excludedWords(space.excluded)}`
-				: coat?.kind === 'coat'
-					? coatWords(coat, `this ${surfaceNoun(surface)}`)
-					: replaceWords(options.wornLabel?.({ surface }) ?? null, `this ${surfaceNoun(surface)}`);
+			const consequence =
+				reach === 'space' && space.kind === 'unique'
+					? `${pickWords()} ${assignmentSurfaces.length} surface${assignmentSurfaces.length === 1 ? '' : 's'} in this Space${excludedWords(space.excluded)}`
+					: coat?.kind === 'coat'
+						? coatWords(coat, `this ${surfaceNoun(surface)}`)
+						: replaceWords(
+								options.wornLabel?.({ surface }) ?? null,
+								`this ${surfaceNoun(surface)}`,
+							);
 			return {
 				adapterId: target.adapterId,
 				hit,
@@ -291,7 +313,10 @@ export function createStagePainter(
 				space,
 				assignmentSurfaces,
 				consequence,
-				refusal: target.refusal ?? refusal ?? (reach === 'surface' && coat?.kind === 'refused' ? coat.message : null)
+				refusal:
+					target.refusal ??
+					refusal ??
+					(reach === 'surface' && coat?.kind === 'refused' ? coat.message : null),
 			};
 		}
 		const coat = options.coatReading?.({ entityId: answer.entityId }) ?? null;
@@ -302,10 +327,11 @@ export function createStagePainter(
 			surface: null,
 			space: null,
 			assignmentSurfaces: [],
-			consequence: coat?.kind === 'coat'
-				? coatWords(coat, 'this object')
-				: replaceWords(options.wornLabel?.({ entityId: answer.entityId }) ?? null, 'this object'),
-			refusal: target.refusal ?? (coat?.kind === 'refused' ? coat.message : null)
+			consequence:
+				coat?.kind === 'coat'
+					? coatWords(coat, 'this object')
+					: replaceWords(options.wornLabel?.({ entityId: answer.entityId }) ?? null, 'this object'),
+			refusal: target.refusal ?? (coat?.kind === 'refused' ? coat.message : null),
 		};
 	}
 
@@ -321,7 +347,8 @@ export function createStagePainter(
 
 	function addToStroke(stroke: Press, candidate: StagePaintCandidate): void {
 		if (candidate.refusal !== null) return;
-		const kind = candidate.surface !== null ? 'surface' : candidate.entityId !== null ? 'object' : null;
+		const kind =
+			candidate.surface !== null ? 'surface' : candidate.entityId !== null ? 'object' : null;
 		if (kind === null) return;
 		if (stroke.kind !== null && stroke.kind !== kind) return;
 		const key = subjectKey(candidate);
@@ -345,16 +372,24 @@ export function createStagePainter(
 		return surfaces;
 	}
 
-	async function sampleFrom(target: StagePaintCandidate, css: readonly [number, number]): Promise<void> {
+	async function sampleFrom(
+		target: StagePaintCandidate,
+		css: readonly [number, number],
+	): Promise<void> {
 		if (target.refusal !== null || (target.entityId === null && target.surface === null)) {
 			notice = { kind: 'refused', message: target.refusal ?? 'That cannot be painted.', css };
 			return;
 		}
-		const copied = target.surface === null
-			? await options.copy(target.hit)
-			: await options.copySurface(target.surface);
+		const copied =
+			target.surface === null
+				? await options.copy(target.hit)
+				: await options.copySurface(target.surface);
 		notice = copied
-			? { kind: 'accepted', message: options.sampleMessage?.() ?? `Sampled · ${options.activeLabel()}`, css }
+			? {
+					kind: 'accepted',
+					message: options.sampleMessage?.() ?? `Sampled · ${options.activeLabel()}`,
+					css,
+				}
 			: { kind: 'refused', message: 'That has no Finish colour.', css };
 		onChange();
 	}
@@ -365,7 +400,7 @@ export function createStagePainter(
 			notice = {
 				kind: 'refused',
 				message: target.refusal ?? 'That cannot be painted.',
-				css
+				css,
 			};
 			return;
 		}
@@ -389,14 +424,19 @@ export function createStagePainter(
 			syncSource();
 			if (generation !== strokeGeneration) return;
 			const count = surfaceStroke ? assignedSurfaces.length : entityIds.length;
-			if (accepted && ending.targets.length === 1 && ending.scope !== 'space' && (!surfaceStroke || assignedSurfaces.length === 1)) {
+			if (
+				accepted &&
+				ending.targets.length === 1 &&
+				ending.scope !== 'space' &&
+				(!surfaceStroke || assignedSurfaces.length === 1)
+			) {
 				options.onPaintedOne?.(ending.targets[0]!);
 			}
 			notice = accepted
 				? {
 						kind: 'accepted',
 						message: `Painted ${options.activeLabel()}${count > 1 || surfaceStroke ? ` · ${count} ${surfaceStroke ? 'surface' : 'object'}${count === 1 ? '' : 's'}` : ''}`,
-						css
+						css,
 					}
 				: null;
 		} catch {
@@ -412,9 +452,15 @@ export function createStagePainter(
 	return {
 		hover(input) {
 			if (press !== null || inFlight) return;
-			const next = input === null || input.coarse === true ? null : candidateAt(input, reachFor(input));
+			const next =
+				input === null || input.coarse === true ? null : candidateAt(input, reachFor(input));
 			// The same subject is re-read when its line changes (a new pick while hovering).
-			if (!sameSubject(next, current) || (next === null) !== (current === null) || next?.consequence !== current?.consequence) current = next;
+			if (
+				!sameSubject(next, current) ||
+				(next === null) !== (current === null) ||
+				next?.consequence !== current?.consequence
+			)
+				current = next;
 		},
 		down(input) {
 			if (inFlight || press !== null) return false;
@@ -425,7 +471,7 @@ export function createStagePainter(
 				notice = {
 					kind: 'refused',
 					message: 'Choose a Finish in Library › Finishes, or in the object’s Card.',
-					css: input.css
+					css: input.css,
 				};
 				return false;
 			}
@@ -439,7 +485,7 @@ export function createStagePainter(
 			const lease = facade.acquireGesture({
 				owner: STAGE_PAINT_TASK,
 				evaluationId: input.evaluationId,
-				policy: 'cancel-on-reading-change'
+				policy: 'cancel-on-reading-change',
 			});
 			if (lease.kind !== 'granted') return false;
 			const stroke: Press = {
@@ -452,7 +498,7 @@ export function createStagePainter(
 				targets: [],
 				keys: new Set(),
 				kind: null,
-				cancelled: false
+				cancelled: false,
 			};
 			if (!sampling) addToStroke(stroke, target);
 			press = stroke;
@@ -472,7 +518,10 @@ export function createStagePainter(
 				return;
 			}
 			if (under !== null) addToStroke(stroke, under);
-			current = under !== null && under.refusal === null ? under : stroke.targets[stroke.targets.length - 1] ?? null;
+			current =
+				under !== null && under.refusal === null
+					? under
+					: (stroke.targets[stroke.targets.length - 1] ?? null);
 		},
 		async up(input) {
 			syncSource();
@@ -523,7 +572,8 @@ export function createStagePainter(
 			if (press === null || press.kind === null) return null;
 			return {
 				kind: press.kind,
-				count: press.kind === 'surface' ? strokeSurfaces(press.targets).length : press.targets.length
+				count:
+					press.kind === 'surface' ? strokeSurfaces(press.targets).length : press.targets.length,
 			};
 		},
 		clear() {
@@ -548,7 +598,7 @@ export function createStagePainter(
 			notice = null;
 			strokeGeneration += 1;
 			onChange();
-		}
+		},
 	};
 }
 

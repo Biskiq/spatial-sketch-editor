@@ -3,22 +3,40 @@
  * The provider composes these; this module owns no picker state.
  */
 import { Ray, Vector3 } from 'three';
-import { pointerRay, intersectWorkingPlane, type ViewportEvaluation, type ViewportEvaluationToken, type PointerRay } from '@portfolio/camera-core/viewport';
+import {
+	pointerRay,
+	intersectWorkingPlane,
+	type ViewportEvaluation,
+	type ViewportEvaluationToken,
+	type PointerRay,
+} from '@portfolio/camera-core/viewport';
 import type { Vec3 } from '@portfolio/camera-core/camera';
-import { indexedCompiledWall, pointInPolygon, type CompiledLayoutGeometry, type LayoutVec2, } from '@portfolio/layout-core/geometry';
-import { type PlanEvaluation, type PlanFragment, type PlanFragmentGeometry, } from '@portfolio/layout-core/world';
-import type { StageAdapterContext, } from '../stage/stage-facade';
+import {
+	indexedCompiledWall,
+	pointInPolygon,
+	type CompiledLayoutGeometry,
+	type LayoutVec2,
+} from '@portfolio/layout-core/geometry';
+import {
+	type PlanEvaluation,
+	type PlanFragment,
+	type PlanFragmentGeometry,
+} from '@portfolio/layout-core/world';
+import type { StageAdapterContext } from '../stage/stage-facade';
 import { cutWallBandsOf, type CutWallSpan } from '../stage/paper-plan';
-import { drawnShownPlanCells, sliceHides, type DrawnResolvedSlice, type ResolvedSlice } from '../stage/slice/slice-cut';
+import {
+	drawnShownPlanCells,
+	sliceHides,
+	type DrawnResolvedSlice,
+	type ResolvedSlice,
+} from '../stage/slice/slice-cut';
 import {
 	clipRegionToHalfPlanes,
 	pointOnSegment,
 	ringSignedArea,
-	segmentIntervalInHalfPlanes
+	segmentIntervalInHalfPlanes,
 } from '../stage/slice/slice-clip-2d';
-import {
-	type ResolvedCutaway
-} from '../stage/cutaway/cutaway-resolved';
+import { type ResolvedCutaway } from '../stage/cutaway/cutaway-resolved';
 
 /** The aperture faces and the reveals between them are pickable, but never drawn. */
 export function openingRayHit(ray: Ray, faces: readonly Vector3[][]): Vector3 | null {
@@ -52,7 +70,7 @@ export const PLAN_HIT_TOLERANCE_CSS_PX = 8;
 export function closestOnCssSegment(
 	point: readonly [number, number],
 	start: readonly [number, number],
-	end: readonly [number, number]
+	end: readonly [number, number],
 ): { readonly distance: number; readonly amount: number } {
 	const dx = end[0] - start[0];
 	const dy = end[1] - start[1];
@@ -64,7 +82,7 @@ export function closestOnCssSegment(
 	const amount = Math.min(1, Math.max(0, raw));
 	return {
 		distance: Math.hypot(point[0] - (start[0] + dx * amount), point[1] - (start[1] + dy * amount)),
-		amount
+		amount,
 	};
 }
 
@@ -83,12 +101,12 @@ type StagePickSurface =
 			readonly end: LayoutVec2;
 			readonly bottomMeters: number;
 			readonly topMeters: number;
-		}
+	  }
 	| {
 			readonly kind: 'flat';
 			readonly elevationMeters: number;
 			readonly geometry: PlanFragmentGeometry;
-		};
+	  };
 
 export type StagePick = { readonly distanceCss: number; readonly surface: StagePickSurface };
 
@@ -107,13 +125,18 @@ const SLICE_EMPTY_BAND_METERS = 1e-6;
  * cut Walls would otherwise take a Wall height the creator cannot see. An empty band
  * drops the surface entirely instead of leaving a degenerate one.
  */
-export function clampFaceToSlice(surface: StagePickSurface, slice: ResolvedSlice | null): StagePickSurface | null {
+export function clampFaceToSlice(
+	surface: StagePickSurface,
+	slice: ResolvedSlice | null,
+): StagePickSurface | null {
 	// A drawn cut removes a vertical side, not a horizontal band: the face's compiled
 	// vertical extent is unchanged, and `clipSurfaceToSlice` keeps its shown spans.
 	if (slice === null || slice.kind === 'drawn' || surface.kind !== 'face') return surface;
 	const bottomMeters = Math.max(surface.bottomMeters, slice.lowerY ?? Number.NEGATIVE_INFINITY);
 	const topMeters = Math.min(surface.topMeters, slice.cutY);
-	return topMeters <= bottomMeters + SLICE_EMPTY_BAND_METERS ? null : { ...surface, bottomMeters, topMeters };
+	return topMeters <= bottomMeters + SLICE_EMPTY_BAND_METERS
+		? null
+		: { ...surface, bottomMeters, topMeters };
 }
 
 /** The first plan point of a flat surface, for the hidden-point question. */
@@ -143,7 +166,7 @@ export function flatDrawn(surface: StagePickSurface, slice: ResolvedSlice | null
 const SLICE_EMPTY_SPAN_METERS = 1e-6;
 
 /**
- * A Wall face **clamped to its stub** (X2, §3.6 step 4).
+ * A Wall face **clamped to its stub**.
  *
  * The face is the compiled solid's vertical extent, which is right at rest. Under
  * the cutaway the part above `stubTopY` is not drawn, so it must not be selectable
@@ -153,7 +176,7 @@ const SLICE_EMPTY_SPAN_METERS = 1e-6;
  */
 export function clampFaceToCutaway(
 	surface: StagePickSurface,
-	cutaway: ResolvedCutaway | null
+	cutaway: ResolvedCutaway | null,
 ): StagePickSurface | null {
 	if (cutaway === null || surface.kind !== 'face') return surface;
 	const topMeters = Math.min(surface.topMeters, cutaway.stubTopY);
@@ -167,13 +190,13 @@ export function clampFaceToCutaway(
  *
  * `wallId` is the fragment's own Wall. It is required: a cut near Wall must not
  * shorten the pick quad of another Wall that is still drawn in full. Only Wall
- * faces are removed; floors, objects and Opening symbols are not part of X2
+ * faces are removed; floors, objects and Opening symbols are not part of the cutaway
  * (owner ruling O-1 leaves Scene objects as built).
  */
 export function clipSurfaceToCutaway(
 	surface: StagePickSurface,
 	cutaway: ResolvedCutaway | null,
-	wallId: string | null = null
+	wallId: string | null = null,
 ): StagePickSurface[] {
 	if (cutaway === null || wallId === null || !cutaway.wallIds.has(wallId)) return [surface];
 	const clamped = clampFaceToCutaway(surface, cutaway);
@@ -189,7 +212,7 @@ export function clipSurfaceToCutaway(
 function shownSegmentIntervals(
 	start: LayoutVec2,
 	end: LayoutVec2,
-	slice: DrawnResolvedSlice
+	slice: DrawnResolvedSlice,
 ): (readonly [number, number])[] {
 	const intervals = drawnShownPlanCells(slice)
 		.map((cell) => segmentIntervalInHalfPlanes(start, end, cell))
@@ -218,7 +241,10 @@ function shownSegmentIntervals(
  * of a large fragment is still found. No sampling: a fragment whose every vertex and
  * midpoint is hidden can still cross the shown band.
  */
-export function clipSurfaceToSlice(surface: StagePickSurface, slice: ResolvedSlice | null): StagePickSurface[] {
+export function clipSurfaceToSlice(
+	surface: StagePickSurface,
+	slice: ResolvedSlice | null,
+): StagePickSurface[] {
 	if (slice === null) return [surface];
 	if (slice.kind !== 'drawn') {
 		const clamped = clampFaceToSlice(surface, slice);
@@ -229,7 +255,7 @@ export function clipSurfaceToSlice(surface: StagePickSurface, slice: ResolvedSli
 		return shownSegmentIntervals(surface.start, surface.end, slice).map(([lo, hi]) => ({
 			...surface,
 			start: pointOnSegment(surface.start, surface.end, lo) as LayoutVec2,
-			end: pointOnSegment(surface.start, surface.end, hi) as LayoutVec2
+			end: pointOnSegment(surface.start, surface.end, hi) as LayoutVec2,
 		}));
 	}
 	const geometry = surface.geometry;
@@ -243,8 +269,8 @@ export function clipSurfaceToSlice(surface: StagePickSurface, slice: ResolvedSli
 					geometry: {
 						kind: 'span',
 						start: pointOnSegment(start, end, lo) as LayoutVec2,
-						end: pointOnSegment(start, end, hi) as LayoutVec2
-					}
+						end: pointOnSegment(start, end, hi) as LayoutVec2,
+					},
 				} as StagePickSurface);
 			}
 		}
@@ -253,7 +279,8 @@ export function clipSurfaceToSlice(surface: StagePickSurface, slice: ResolvedSli
 	if (geometry.polygon.length < 3) return [];
 	// The region clip expects its interior on the left: a Layout polygon may arrive
 	// in either winding.
-	const ring = ringSignedArea(geometry.polygon) >= 0 ? [...geometry.polygon] : [...geometry.polygon].reverse();
+	const ring =
+		ringSignedArea(geometry.polygon) >= 0 ? [...geometry.polygon] : [...geometry.polygon].reverse();
 	const pieces: StagePickSurface[] = [];
 	for (const cell of drawnShownPlanCells(slice)) {
 		const result = clipRegionToHalfPlanes([{ points: ring, tags: ring.map(() => '') }], cell);
@@ -264,20 +291,31 @@ export function clipSurfaceToSlice(surface: StagePickSurface, slice: ResolvedSli
 			pieces.push({
 				kind: 'flat',
 				elevationMeters: surface.elevationMeters,
-				geometry: { kind: 'polygon', polygon: piece.points as LayoutVec2[] }
+				geometry: { kind: 'polygon', polygon: piece.points as LayoutVec2[] },
 			} as StagePickSurface);
 		}
 	}
 	return pieces;
 }
 
-export function clipPlanRegionFragments(plan: PlanEvaluation, slice: ResolvedSlice | null): PlanEvaluation {
-	if (slice === null || !plan.fragments.some((fragment) => fragment.ref.sourceKind === 'region')) return plan;
+export function clipPlanRegionFragments(
+	plan: PlanEvaluation,
+	slice: ResolvedSlice | null,
+): PlanEvaluation {
+	if (slice === null || !plan.fragments.some((fragment) => fragment.ref.sourceKind === 'region'))
+		return plan;
 	const clip = (fragment: PlanFragment): PlanFragment[] => {
 		if (fragment.ref.sourceKind !== 'region') return [fragment];
-		return clipSurfaceToSlice({
-			kind: 'flat', elevationMeters: fragment.elevationMeters, geometry: fragment.geometry
-		}, slice).flatMap((surface) => surface.kind === 'flat' ? [{ ...fragment, geometry: surface.geometry }] : []);
+		return clipSurfaceToSlice(
+			{
+				kind: 'flat',
+				elevationMeters: fragment.elevationMeters,
+				geometry: fragment.geometry,
+			},
+			slice,
+		).flatMap((surface) =>
+			surface.kind === 'flat' ? [{ ...fragment, geometry: surface.geometry }] : [],
+		);
 	};
 	return {
 		...plan,
@@ -286,11 +324,10 @@ export function clipPlanRegionFragments(plan: PlanEvaluation, slice: ResolvedSli
 			cut: plan.streams.cut.flatMap(clip),
 			projected: plan.streams.projected.flatMap(clip),
 			hidden: plan.streams.hidden.flatMap(clip),
-			symbol: plan.streams.symbol
-		}
+			symbol: plan.streams.symbol,
+		},
 	};
 }
-
 
 function planSegments(geometry: PlanFragmentGeometry): (readonly [LayoutVec2, LayoutVec2])[] {
 	const segments: (readonly [LayoutVec2, LayoutVec2])[] = [];
@@ -302,7 +339,10 @@ function planSegments(geometry: PlanFragmentGeometry): (readonly [LayoutVec2, La
 		}
 	} else {
 		for (let index = 0; index < geometry.polygon.length; index += 1) {
-			segments.push([geometry.polygon[index]!, geometry.polygon[(index + 1) % geometry.polygon.length]!]);
+			segments.push([
+				geometry.polygon[index]!,
+				geometry.polygon[(index + 1) % geometry.polygon.length]!,
+			]);
 		}
 	}
 	return segments;
@@ -332,12 +372,12 @@ export function pickSurfacesOf(
 	geometry: CompiledLayoutGeometry,
 	datumMeters: number,
 	slice: ResolvedSlice | null = null,
-	cutaway: ResolvedCutaway | null = null
+	cutaway: ResolvedCutaway | null = null,
 ): readonly StagePickSurface[] {
 	const flat: StagePickSurface = {
 		kind: 'flat',
 		elevationMeters: fragment.elevationMeters,
-		geometry: fragment.geometry
+		geometry: fragment.geometry,
 	};
 	if (fragment.ref.sourceKind !== 'wall') return [flat];
 	const wall = indexedCompiledWall(geometry, fragment.ref.sourceId);
@@ -348,7 +388,7 @@ export function pickSurfacesOf(
 			start,
 			end,
 			bottomMeters: datumMeters,
-			topMeters: datumMeters + wall.height
+			topMeters: datumMeters + wall.height,
 		}));
 
 	// **Correspondence first.** A Wall fragment names one compiled span through its
@@ -363,7 +403,7 @@ export function pickSurfacesOf(
 	const matching = wall.solidSpans.filter(
 		(span) =>
 			sameSpanDistance(span.startDistance, interval.start) &&
-			sameSpanDistance(span.endDistance, interval.end)
+			sameSpanDistance(span.endDistance, interval.end),
 	);
 	if (matching.length === 0) {
 		// A fragment whose interval the compiled snapshot no longer emits is tested at its
@@ -376,13 +416,13 @@ export function pickSurfacesOf(
 		start: span.start,
 		end: span.end,
 		bottomMeters: datumMeters + span.bottomY,
-		topMeters: datumMeters + span.topY
+		topMeters: datumMeters + span.topY,
 	}));
 	const stubTopY = cutaway !== null && cutaway.wallIds.has(wall.wallId) ? cutaway.stubTopY : null;
 	return [
 		...faces,
 		...(stubTopY === null ? [] : cutawayCapSurfacesOf(wall, matching, stubTopY, datumMeters)),
-		...capSurfacesOf(fragment, wall, slice, interval)
+		...capSurfacesOf(fragment, wall, slice, interval),
 	];
 }
 
@@ -399,7 +439,7 @@ function cutawayCapSurfacesOf(
 	/** The fragment's own compiled spans, so a cap cannot answer for a sibling interval. */
 	matching: NonNullable<ReturnType<typeof indexedCompiledWall>>['solidSpans'],
 	stubTopY: number,
-	datumMeters: number
+	datumMeters: number,
 ): readonly StagePickSurface[] {
 	const localStub = stubTopY - datumMeters;
 	const spans: CutWallSpan[] = matching
@@ -409,7 +449,7 @@ function cutawayCapSurfacesOf(
 	return cutWallBandsOf(wall, spans).map((polygon) => ({
 		kind: 'flat' as const,
 		elevationMeters: stubTopY,
-		geometry: { kind: 'polygon' as const, polygon }
+		geometry: { kind: 'polygon' as const, polygon },
 	}));
 }
 
@@ -426,7 +466,7 @@ function capSurfacesOf(
 	fragment: PlanFragment,
 	wall: NonNullable<ReturnType<typeof indexedCompiledWall>>,
 	slice: ResolvedSlice | null,
-	interval: { readonly start: number; readonly end: number } | null
+	interval: { readonly start: number; readonly end: number } | null,
 ): readonly StagePickSurface[] {
 	if (slice === null || slice.kind === 'drawn') return [];
 	if (fragment.ref.stream !== 'cut') return [];
@@ -435,7 +475,7 @@ function capSurfacesOf(
 	return cutWallBandsOf(wall, [span]).map((polygon) => ({
 		kind: 'flat' as const,
 		elevationMeters: slice.cutY,
-		geometry: { kind: 'polygon' as const, polygon }
+		geometry: { kind: 'polygon' as const, polygon },
 	}));
 }
 
@@ -452,7 +492,7 @@ function capSurfacesOf(
 export function cssDistanceToSurfaces(
 	css: readonly [number, number],
 	surfaces: readonly StagePickSurface[],
-	project: (point: Vec3) => readonly [number, number] | null
+	project: (point: Vec3) => readonly [number, number] | null,
 ): StagePick | null {
 	let best: StagePick | null = null;
 	const consider = (distanceCss: number, surface: StagePickSurface): void => {
@@ -461,7 +501,7 @@ export function cssDistanceToSurfaces(
 	const considerSegment = (
 		start: readonly [number, number] | null,
 		end: readonly [number, number] | null,
-		surface: StagePickSurface
+		surface: StagePickSurface,
 	): void => {
 		// A segment with an endpoint behind the camera is not something the pointer can be
 		// over; skipping it also keeps a mirrored projection out of the test.
@@ -477,7 +517,7 @@ export function cssDistanceToSurfaces(
 				project([surface.start[0], surface.bottomMeters, surface.start[1]]),
 				project([surface.end[0], surface.bottomMeters, surface.end[1]]),
 				project([surface.end[0], surface.topMeters, surface.end[1]]),
-				project([surface.start[0], surface.topMeters, surface.start[1]])
+				project([surface.start[0], surface.topMeters, surface.start[1]]),
 			];
 			for (let index = 0; index < 4; index += 1) {
 				considerSegment(corners[index] ?? null, corners[(index + 1) % 4] ?? null, surface);
@@ -530,7 +570,7 @@ export function worldPointOnSurface(
 	surface: StagePickSurface,
 	fragment: PlanFragment,
 	evaluation: ViewportEvaluation,
-	token: ViewportEvaluationToken
+	token: ViewportEvaluationToken,
 ): Vec3 {
 	const geometry = fragment.geometry;
 	const first: LayoutVec2 =
@@ -559,16 +599,17 @@ export function worldPointOnSurface(
 					normal: [-dz / length, 0, dx / length],
 					yawRadians: Math.atan2(dx, dz),
 					datumMeters: surface.bottomMeters,
-					supportedLocalExtent: null
+					supportedLocalExtent: null,
 				},
 				evaluation,
-				token
+				token,
 			);
 			if (hit.kind === 'intersected') {
 				// Keep the point on the span the face covers: the ray's height is already on the
 				// face's plane, and clamping along the span stays on it.
 				const raw =
-					((hit.worldPoint[0] - surface.start[0]) * dx + (hit.worldPoint[2] - surface.start[1]) * dz) /
+					((hit.worldPoint[0] - surface.start[0]) * dx +
+						(hit.worldPoint[2] - surface.start[1]) * dz) /
 					(length * length);
 				const amount = Math.min(1, Math.max(0, raw));
 				return [surface.start[0] + dx * amount, hit.worldPoint[1], surface.start[1] + dz * amount];
@@ -584,36 +625,41 @@ export function worldPointOnSurface(
 			normal: [0, 1, 0],
 			yawRadians: 0,
 			datumMeters: elevation,
-			supportedLocalExtent: null
+			supportedLocalExtent: null,
 		},
 		evaluation,
-		token
+		token,
 	);
 	return hit.kind === 'intersected' ? hit.worldPoint : fallback;
 }
 
-
 /** Only a genuine forward intersection with the finite winning surface has a depth. */
 export function surfaceDepth(ray: PointerRay | null, surface: StagePickSurface): number | null {
 	if (ray === null) return null;
-	const o = ray.origin, d = ray.direction;
+	const o = ray.origin,
+		d = ray.direction;
 	let t: number;
 	if (surface.kind === 'face') {
-		const dx = surface.end[0] - surface.start[0], dz = surface.end[1] - surface.start[1];
+		const dx = surface.end[0] - surface.start[0],
+			dz = surface.end[1] - surface.start[1];
 		const denom = -dz * d[0] + dx * d[2];
 		if (Math.abs(denom) < 1e-12) return null;
 		t = (dz * (o[0] - surface.start[0]) - dx * (o[2] - surface.start[1])) / denom;
 		if (!Number.isFinite(t) || t < 0) return null;
-		const x = o[0] + t * d[0], y = o[1] + t * d[1], z = o[2] + t * d[2];
+		const x = o[0] + t * d[0],
+			y = o[1] + t * d[1],
+			z = o[2] + t * d[2];
 		const length2 = dx * dx + dz * dz;
-		const u = length2 === 0 ? -1 : ((x - surface.start[0]) * dx + (z - surface.start[1]) * dz) / length2;
+		const u =
+			length2 === 0 ? -1 : ((x - surface.start[0]) * dx + (z - surface.start[1]) * dz) / length2;
 		return u >= 0 && u <= 1 && y >= surface.bottomMeters && y <= surface.topMeters ? t : null;
 	}
 	if (Math.abs(d[1]) < 1e-12) return null;
 	t = (surface.elevationMeters - o[1]) / d[1];
 	if (!Number.isFinite(t) || t < 0) return null;
 	const point: [number, number] = [o[0] + t * d[0], o[2] + t * d[2]];
-	if (surface.geometry.kind === 'polygon' && pointInPolygon(point, surface.geometry.polygon)) return t;
+	if (surface.geometry.kind === 'polygon' && pointInPolygon(point, surface.geometry.polygon))
+		return t;
 	// Include polygon boundaries and exact intersections with line-only surfaces.
 	for (const [a, b] of planSegments(surface.geometry)) {
 		if (closestOnCssSegment(point, a, b).distance <= 1e-8) return t;

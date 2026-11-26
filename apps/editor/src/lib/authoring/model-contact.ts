@@ -13,11 +13,15 @@ import { catalogueModelContactMinY } from '$lib/authoring/scene/object-definitio
 
 export function sceneModelContactMinY(
 	envelope: ProjectEnvelope,
-	entity: SceneEntity
+	entity: SceneEntity,
 ): number | null {
 	if (entity.kind !== 'model') return null;
 	for (const resource of envelope.units.resources.data.resources) {
-		if (resource.kind === 'model' && resource.id === entity.assetId && resource.model !== undefined) {
+		if (
+			resource.kind === 'model' &&
+			resource.id === entity.assetId &&
+			resource.model !== undefined
+		) {
 			return resource.model.placement.contactMinY;
 		}
 	}

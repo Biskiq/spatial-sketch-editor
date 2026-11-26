@@ -7,7 +7,9 @@ const sessions = new WeakMap<StageTaskPort, SkySession>();
 
 export function bindSkySession(stage: StageTaskPort, session: SkySession): () => void {
 	sessions.set(stage, session);
-	return () => { if (sessions.get(stage) === session) sessions.delete(stage); };
+	return () => {
+		if (sessions.get(stage) === session) sessions.delete(stage);
+	};
 }
 
 export function skySession(stage: StageTaskPort): SkySession | undefined {

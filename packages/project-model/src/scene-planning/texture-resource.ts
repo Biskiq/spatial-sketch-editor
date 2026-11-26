@@ -5,10 +5,10 @@
  * two records for it and they always agree:
  *
  * - a `scene.textures` record whose id **is** the asset id and whose URI is
- *   `/project-assets/{id}`, which is what the resolver binds and what release
- *   pinning walks;
+ *  `/project-assets/{id}`, which is what the resolver binds and what release
+ *  pinning walks;
  * - a `texture` typed resource that pins those exact bytes, which is what the
- *   editor loader and the release manifest verify.
+ *  editor loader and the release manifest verify.
  *
  * This module owns the one translation from an imported image identity to that
  * resource. It refuses rather than repairs: a pin that is not sha256, a MIME
@@ -88,9 +88,9 @@ export function finishTextureResource(input: {
 			hash: pin.hash,
 			mime: pin.mime,
 			size: pin.size,
-			locator: pin.locator
+			locator: pin.locator,
 		} satisfies ResourcePin,
-		unresolved: null
+		unresolved: null,
 	};
 }
 
@@ -114,7 +114,7 @@ export function sameFinishTexturePin(left: ResourcePin | null, right: ResourcePi
  */
 export function withFinishTextureResource(
 	envelope: ProjectEnvelope,
-	resource: TypedResource
+	resource: TypedResource,
 ): ProjectEnvelope | null {
 	if (resource.kind !== 'texture' || resource.pin === null) return null;
 	const resources = envelope.units.resources.data.resources;
@@ -129,9 +129,9 @@ export function withFinishTextureResource(
 				header: { ...envelope.units.resources.header },
 				data: {
 					formatVersion: envelope.units.resources.data.formatVersion,
-					resources: [...resources, resource]
-				}
-			}
-		}
+					resources: [...resources, resource],
+				},
+			},
+		},
 	};
 }

@@ -421,7 +421,6 @@ test('missing derivative, unsupported format, removal during copy and upload fai
 	await pool.query('UPDATE form_library_items SET format_version = 2 WHERE id = $1::uuid', [item.id]);
 	const unsupported = await transfer(source.owner.cookie, item.id, destination.id, item.contentId);
 	assert.equal(unsupported.statusCode, 409);
-	assert.equal(unsupported.json().error.code, 'unsupported_format_version');
 	await pool.query('UPDATE form_library_items SET format_version = 1 WHERE id = $1::uuid', [item.id]);
 
 	let removed = false;

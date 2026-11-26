@@ -1,10 +1,19 @@
 import { type Vec3 } from '../../scene';
-import { readNullableNumber, readPoint, readFrame, readFrameReference, readSupportChoice } from './readers';
+import {
+	readNullableNumber,
+	readPoint,
+	readFrame,
+	readFrameReference,
+	readSupportChoice,
+} from './readers';
 import { type SceneOperationPayload } from './types';
 import { type CreatorModelResourcePayload } from '../model-resource';
 import { ShapeReader } from '../../strict-shape';
 
-export function readPlaceObjectPayload(reader: ShapeReader, raw: unknown): SceneOperationPayload | null {
+export function readPlaceObjectPayload(
+	reader: ShapeReader,
+	raw: unknown,
+): SceneOperationPayload | null {
 	const path = '$.payload';
 	const record = reader.object(raw, path, [
 		'definitionKey',
@@ -14,7 +23,7 @@ export function readPlaceObjectPayload(reader: ShapeReader, raw: unknown): Scene
 		'frame',
 		'frameReference',
 		'supportChoice',
-		'modelResource'
+		'modelResource',
 	]);
 	if (record === null) return null;
 	const definitionKey = reader.opaqueId(record.definitionKey, `${path}.definitionKey`);
@@ -22,7 +31,12 @@ export function readPlaceObjectPayload(reader: ShapeReader, raw: unknown): Scene
 	const worldXZ = readPoint(reader, record.worldXZ, `${path}.worldXZ`);
 	const yaw = reader.number(record.yaw, `${path}.yaw`);
 	const frame = readFrame(reader, record.frame, `${path}.frame`);
-	const frameReference = readFrameReference(reader, record.frameReference, `${path}.frameReference`, frame);
+	const frameReference = readFrameReference(
+		reader,
+		record.frameReference,
+		`${path}.frameReference`,
+		frame,
+	);
 	const choice = readSupportChoice(reader, record.supportChoice, `${path}.supportChoice`);
 	const modelResource =
 		record.modelResource === undefined
@@ -49,7 +63,7 @@ export function readPlaceObjectPayload(reader: ShapeReader, raw: unknown): Scene
 		frame,
 		frameReference: frameReference.value,
 		...(choice.choice === undefined ? {} : { choice: choice.choice }),
-		...(modelResource === null ? {} : { modelResource })
+		...(modelResource === null ? {} : { modelResource }),
 	};
 }
 
@@ -63,20 +77,36 @@ export function readPlaceObjectPayload(reader: ShapeReader, raw: unknown): Scene
 export function readCreatorModelResourcePayload(
 	reader: ShapeReader,
 	raw: unknown,
-	path: string
+	path: string,
 ): ({ readonly id: string } & CreatorModelResourcePayload) | null {
-	const record = reader.object(raw, path, ['id', 'derivative', 'source', 'recipe', 'reportDigest', 'placement']);
+	const record = reader.object(raw, path, [
+		'id',
+		'derivative',
+		'source',
+		'recipe',
+		'reportDigest',
+		'placement',
+	]);
 	if (record === null) return null;
 	const id = reader.opaqueId(record.id, `${path}.id`);
-	const derivative = reader.object(record.derivative, `${path}.derivative`, ['hash', 'mime', 'size', 'locator']);
-	const source = reader.object(record.source, `${path}.source`, ['manifestHash', 'size', 'fileCount']);
+	const derivative = reader.object(record.derivative, `${path}.derivative`, [
+		'hash',
+		'mime',
+		'size',
+		'locator',
+	]);
+	const source = reader.object(record.source, `${path}.source`, [
+		'manifestHash',
+		'size',
+		'fileCount',
+	]);
 	const recipe = reader.object(record.recipe, `${path}.recipe`, ['id', 'version']);
 	const reportDigest = reader.opaqueId(record.reportDigest, `${path}.reportDigest`);
 	const placement = reader.object(record.placement, `${path}.placement`, [
 		'metresPerSourceUnit',
 		'pivot',
 		'footprint',
-		'contactMinY'
+		'contactMinY',
 	]);
 	if (
 		id === null ||
@@ -97,9 +127,17 @@ export function readCreatorModelResourcePayload(
 	const fileCount = reader.integerAtLeast(source.fileCount, `${path}.source.fileCount`, 1);
 	const recipeId = reader.string(recipe.id, `${path}.recipe.id`);
 	const recipeVersion = reader.integerAtLeast(recipe.version, `${path}.recipe.version`, 1);
-	const metresPerSourceUnit = reader.numberAtLeast(placement.metresPerSourceUnit, `${path}.placement.metresPerSourceUnit`, 0, true);
+	const metresPerSourceUnit = reader.numberAtLeast(
+		placement.metresPerSourceUnit,
+		`${path}.placement.metresPerSourceUnit`,
+		0,
+		true,
+	);
 	const pivot = reader.vector3(placement.pivot, `${path}.placement.pivot`);
-	const footprint = reader.object(placement.footprint, `${path}.placement.footprint`, ['width', 'depth']);
+	const footprint = reader.object(placement.footprint, `${path}.placement.footprint`, [
+		'width',
+		'depth',
+	]);
 	const contactMinY = reader.number(placement.contactMinY, `${path}.placement.contactMinY`);
 	if (
 		hash === null ||
@@ -131,12 +169,15 @@ export function readCreatorModelResourcePayload(
 			metresPerSourceUnit,
 			pivot: [pivot[0], pivot[1], pivot[2]],
 			footprint: { width, depth },
-			contactMinY
-		}
+			contactMinY,
+		},
 	};
 }
 
-export function readCreateLightPayload(reader: ShapeReader, raw: unknown): SceneOperationPayload | null {
+export function readCreateLightPayload(
+	reader: ShapeReader,
+	raw: unknown,
+): SceneOperationPayload | null {
 	const path = '$.payload';
 	const record = reader.object(raw, path, [
 		'light',
@@ -148,18 +189,23 @@ export function readCreateLightPayload(reader: ShapeReader, raw: unknown): Scene
 		'rotation',
 		'range',
 		'angle',
-		'penumbra'
+		'penumbra',
 	]);
 	if (record === null) return null;
-	const light = reader.tag(record.light, `${path}.light`, ['point', 'spot']) as 'point' | 'spot' | null;
+	const light = reader.tag(record.light, `${path}.light`, ['point', 'spot']) as
+		| 'point'
+		| 'spot'
+		| null;
 	const name = reader.string(record.name, `${path}.name`);
 	const color = reader.string(record.color, `${path}.color`);
 	const intensity = reader.number(record.intensity, `${path}.intensity`);
 	const castShadow = reader.boolean(record.castShadow, `${path}.castShadow`);
 	const position = reader.vector3(record.position, `${path}.position`);
 	const rotation = reader.vector3(record.rotation, `${path}.rotation`);
-	const range = record.range === undefined ? undefined : reader.number(record.range, `${path}.range`);
-	const angle = record.angle === undefined ? undefined : reader.number(record.angle, `${path}.angle`);
+	const range =
+		record.range === undefined ? undefined : reader.number(record.range, `${path}.range`);
+	const angle =
+		record.angle === undefined ? undefined : reader.number(record.angle, `${path}.angle`);
 	const penumbra =
 		record.penumbra === undefined ? undefined : reader.number(record.penumbra, `${path}.penumbra`);
 	if (
@@ -187,11 +233,14 @@ export function readCreateLightPayload(reader: ShapeReader, raw: unknown): Scene
 		rotation,
 		...(range === undefined || range === null ? {} : { range }),
 		...(angle === undefined || angle === null ? {} : { angle }),
-		...(penumbra === undefined || penumbra === null ? {} : { penumbra })
+		...(penumbra === undefined || penumbra === null ? {} : { penumbra }),
 	};
 }
 
-export function readUpdateLightPayload(reader: ShapeReader, raw: unknown): SceneOperationPayload | null {
+export function readUpdateLightPayload(
+	reader: ShapeReader,
+	raw: unknown,
+): SceneOperationPayload | null {
 	const path = '$.payload';
 	const record = reader.object(raw, path, [
 		'entityId',
@@ -202,7 +251,7 @@ export function readUpdateLightPayload(reader: ShapeReader, raw: unknown): Scene
 		'range',
 		'angle',
 		'penumbra',
-		'castShadow'
+		'castShadow',
 	]);
 	if (record === null) return null;
 	const entityId = reader.opaqueId(record.entityId, `${path}.entityId`);
@@ -210,14 +259,20 @@ export function readUpdateLightPayload(reader: ShapeReader, raw: unknown): Scene
 		record.position === undefined ? undefined : reader.vector3(record.position, `${path}.position`);
 	const rotation =
 		record.rotation === undefined ? undefined : reader.vector3(record.rotation, `${path}.rotation`);
-	const color = record.color === undefined ? undefined : reader.string(record.color, `${path}.color`);
+	const color =
+		record.color === undefined ? undefined : reader.string(record.color, `${path}.color`);
 	const intensity =
-		record.intensity === undefined ? undefined : reader.number(record.intensity, `${path}.intensity`);
+		record.intensity === undefined
+			? undefined
+			: reader.number(record.intensity, `${path}.intensity`);
 	const range = readNullableNumber(reader, record.range, `${path}.range`);
-	const angle = record.angle === undefined ? undefined : reader.number(record.angle, `${path}.angle`);
+	const angle =
+		record.angle === undefined ? undefined : reader.number(record.angle, `${path}.angle`);
 	const penumbra = readNullableNumber(reader, record.penumbra, `${path}.penumbra`);
 	const castShadow =
-		record.castShadow === undefined ? undefined : reader.boolean(record.castShadow, `${path}.castShadow`);
+		record.castShadow === undefined
+			? undefined
+			: reader.boolean(record.castShadow, `${path}.castShadow`);
 	if (
 		entityId === null ||
 		(record.position !== undefined && position === null) ||
@@ -241,11 +296,14 @@ export function readUpdateLightPayload(reader: ShapeReader, raw: unknown): Scene
 		...(range.present ? { range: range.value } : {}),
 		...(angle === undefined ? {} : { angle: angle as number }),
 		...(penumbra.present ? { penumbra: penumbra.value } : {}),
-		...(castShadow === undefined ? {} : { castShadow: castShadow as boolean })
+		...(castShadow === undefined ? {} : { castShadow: castShadow as boolean }),
 	};
 }
 
-export function readDuplicatePayload(reader: ShapeReader, raw: unknown): SceneOperationPayload | null {
+export function readDuplicatePayload(
+	reader: ShapeReader,
+	raw: unknown,
+): SceneOperationPayload | null {
 	const path = '$.payload';
 	const record = reader.object(raw, path, ['entityId', 'contactMinY', 'supportChoice']);
 	if (record === null) return null;
@@ -257,6 +315,6 @@ export function readDuplicatePayload(reader: ShapeReader, raw: unknown): SceneOp
 		kind: 'duplicate-one',
 		entityId,
 		contactMinY,
-		...(choice.choice === undefined ? {} : { choice: choice.choice })
+		...(choice.choice === undefined ? {} : { choice: choice.choice }),
 	};
 }

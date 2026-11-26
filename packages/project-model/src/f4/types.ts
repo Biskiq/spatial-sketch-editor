@@ -1,19 +1,19 @@
 /**
  * F.4 `acceptance-invariants-v1` — the enduring shared acceptance layer, and the
- * `local-single-domain-v1` admission it extends (AM-4).
+ * `local-single-domain-v1` admission it extends.
  *
  * Two layers, one implementation, deliberately separable:
  *
  * - **`acceptance-invariants-v1` (enduring, never retired)** — one opaque
- *   accepted revision per accepted change, an atomic validated install with
- *   exactly one undo result, stale/ABA rejection, one bounded chronological
- *   history and a validated read facade. It is the prerequisite of
- *   the unit capabilities, so **no required signature here names
- *   today's `ProjectDocument`**: the accepted source is a type parameter, and the
- *   only thing this layer claims to know about it is the adapter that admitted it.
+ *  accepted revision per accepted change, an atomic validated install with
+ *  exactly one undo result, stale/ABA rejection, one bounded chronological
+ *  history and a validated read facade. It is the prerequisite of
+ *  the unit capabilities, so **no required signature here names
+ *  today's `ProjectDocument`**: the accepted source is a type parameter, and the
+ *  only thing this layer claims to know about it is the adapter that admitted it.
  * - **`local-single-domain-v1` (retiring with the current-source adapter)** — the
- *   admission of current-source Layout and Scene planners over that source. It is
- *   the retired part, and the part whose scope is single-domain.
+ *  admission of current-source Layout and Scene planners over that source. It is
+ *  the retired part, and the part whose scope is single-domain.
  *
  * These are types and vocabulary: no IO, no editor dependency, no Svelte, no
  * renderer. `SessionEpoch`, `AcceptedRevision` and `SnapshotIdentity` are F.1's
@@ -28,7 +28,7 @@ import type {
 	SemanticDomain,
 	SemanticReference,
 	SessionEpoch,
-	SnapshotIdentity
+	SnapshotIdentity,
 } from '../references/types';
 
 /** The exact F.4 shape version this module implements. */
@@ -102,7 +102,7 @@ export type DomainReadAccess<Source> = {
 /**
  * `AcceptedSnapshot@1` — the validated read facade one accepted change publishes.
  *
- * Field names are the AM-4 names the boot snapshot is composed from, so the
+ * Field names are the names the boot snapshot is composed from, so the
  * host↔F4 wiring uses this export without renaming a consumer. It is
  * immutable by construction and contains no writable handle, no compiled
  * geometry and no current-source field the invariants layer depends on.
@@ -270,14 +270,21 @@ export type SourceAdmission<Source> =
 export type AcceptanceSourceAdapter<Source> = {
 	readonly sourceKind: string;
 	readonly sourceVersion: number;
-	admit(candidate: unknown, baselineBlockingIssues: readonly AdmissionIssue[]): Promise<SourceAdmission<Source>>;
+	admit(
+		candidate: unknown,
+		baselineBlockingIssues: readonly AdmissionIssue[],
+	): Promise<SourceAdmission<Source>>;
 	/**
 	 * Adapter-owned unchanged-domain/resource guard, applied to the admitted
 	 * candidate. It receives the **producing planner's whole admission**, not only
 	 * its primary domain, so the guard can hold the candidate to that planner's
 	 * declared write set instead of to what the host grants.
 	 */
-	validateChange?(before: Source, after: Source, admission: PlannerAdmission): readonly ShapeIssue[];
+	validateChange?(
+		before: Source,
+		after: Source,
+		admission: PlannerAdmission,
+	): readonly ShapeIssue[];
 	/**
 	 * Adapter-owned structural sharing for capture and history (D.4/H5).
 	 *

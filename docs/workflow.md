@@ -1,130 +1,75 @@
 # Workflow — work, claims, tiers and reviews
 
-**Role:** the settled agent workflow: focus, claims, flags, risk tiers, work units, plans and review.
-**Not:** a status store, release list, baton, DAG or closeout procedure.
-**Status is computed:** `npm run status`. **Focus:** [`../focus.md`](../focus.md).
+The owner starts batches. Follow [focus](../focus.md), where holds stop new claims. Finish
+in-flight pull requests or park them as drafts. Use `npm run status` for computed status.
 
 ## Start a batch
 
-- The owner starts a batch by prompt. No agent, skill or digest runs on a schedule.
-- Prefer work that matches the focus line. A hold stops new claims; in-flight work finishes its
-  pull request or parks as a draft.
-- **Claim:** a draft pull request or self-assigned issue whose title names the capability id. Check
-  open issues and pull requests before claiming, and again right after — two agents can both see
-  "unclaimed" first. The earlier claim keeps it; the later one narrows or closes.
-- **Flag:** an issue carrying a capability label and one flag label.
+A draft PR or self-assigned issue with the capability ID in its title is a claim. Check open
+issues and PRs before claiming and immediately afterward. The earlier claim keeps the work.
+A flagged issue has the capability label and one of these labels.
 
-| Flag | Meaning | What the agent does |
-| --- | --- | --- |
-| `needs-decision` | a product choice is undecided | proceed only on a reversible default and record it; otherwise pick other work |
-| `needs-ux` | the flow or UI is not designed | build the logic behind a minimal surface; never invent final UX |
-| `needs-research` | the technical foundation is unknown | run a bounded spike whose exit is a decision |
-| `ambiguous` | the spec or design is unclear or contradicts itself | ask in the issue and proceed on the most reversible reading |
-| `bug` | behavior is wrong | write a failing tagged test first, then fix |
+| Flag | Action |
+| --- | --- |
+| `needs-decision` | Use a reversible default or pick other work. |
+| `needs-ux` | Build the logic behind a minimal surface and leave final UX for design. |
+| `needs-research` | Run a bounded spike that leads to a decision. |
+| `ambiguous` | Ask in the issue and proceed with the most reversible reading. |
+| `bug` | Write a failing tagged test first, then fix it. |
 
-A defect lands as a `bug` issue; an automatable reproducer merges as an expected failure linked to
-it. A skipped check counts as failing.
+Record defects as `bug` issues. A skipped required check fails the gate.
 
 ## Risk tiers (the highest applicable tier wins)
 
-```text
-Tier 0  everything not listed below
-        → one fresh-context review; merge on green CI
+| Tier | Scope | Gate |
+| --- | --- | --- |
+| 0 | Ordinary work | One fresh-context review and green CI |
+| 1 | Contract detail within hard rules, visitor/public surface, shared shell, or persisted format with prior-reader support or tested recovery | Fresh-context review, green CI and owner review at the next checkpoint |
+| 2 | Hard rule, North Star, ledger shape, material approved-design departure, incompatible format without tested recovery, check removal/downgrade, owner review, production data or activation, licence or new dependency | Owner decides before merge |
 
-Tier 1  contract details within the retained hard rules; the visitor/public surface or
-        shared shell rules; a persisted format the previous reader still reads, or one
-        with a tested migration and recovery path
-        → fresh-context review; merge on green CI; owner reviews at the next checkpoint
-
-Tier 2  a retained hard rule, the North Star, the ledger's shape or a material departure
-        from an approved design;
-        a persisted-format change without that compatibility or tested recovery;
-        removing or downgrading a check; recording an owner review; production data or
-        activation; licence; new dependency
-        → the owner decides before merge
-```
-
-Tier 0 and Tier 1 merge on the required green gate after one fresh-context review; Tier 2 waits
-for the owner's decision. A prior scoped owner approval covers implementation of that design,
-including a shared shell change within the approval. Apply the other Tier 2 criteria independently.
+Scoped owner approval covers implementation of that design, including a shared shell change within
+the approval. Apply the other Tier 2 criteria independently.
 
 ## Work units and plans
 
-- The unit of work is a pull request that adds or passes checks for one or more capability ids.
-- **A plan is written when the work needs one:** multi-PR work, Tier 2 work, or any work where an
-  implementer would otherwise invent an interaction, algorithm or data shape. The plan is the first
-  commit of the work's own draft pull request. It is reviewed in that draft before code is written
-  (by the owner for Tier 2, otherwise by a fresh-context agent), then the same pull request
-  implements it. Sections, as needed: Goal, Design, Scope, Specification, Checks, Flags, Risks.
-  Detail is set by the no-invention test. Link settled designs and specify only unresolved decisions,
-  integration and checks. Before final merge, promote genuinely enduring rules where needed and
-  delete the completed plan.
-  Git/PR history retains its review. Archive only evidence with a concrete retention purpose.
-- **One review round:** a fresh-context reviewer receives the diff, the touched areas' `AGENTS.md`,
-  the linked design and the capability checks. P0/P1 findings block; P2 and below become issues
-  unless trivial.
-- **Merging is the closeout.** No acceptance documents, release rows, batons, phase-close records or
-  closeout pull requests. No dated decision-record tier is created. Canonical references directly state the resulting rules.
+A PR delivers one or more capability checks. Plan multi-PR, Tier 2 and invention-risking work
+as the first commit of its own draft PR, reviewed before code by the owner for Tier 2 or a
+fresh-context agent otherwise. Link settled designs and specify unresolved decisions, integration
+and checks. Promote lasting rules and delete the completed plan before merge.
+
+Give a fresh-context reviewer the diff, touched area guides, approved design and capability checks.
+P0/P1 findings block. File nontrivial P2 and lower findings as issues. Merge closes the work in
+the implementation PR. Keep acceptance evidence there.
 
 ## CI, queue and merging
 
-The merge gate runs every pull request, every `main` push and every merge-queue group. The editor
-suite is three disjoint lanes (`test:fast`, `test:arch`, `test:heavy`) whose union is the complete
-`npm test` population; CI runs each lane exactly once and never reruns the full suite on top of them.
-The required contexts are `merge gate`, `check guards` and `linux-x64`; the aggregator refuses a run
-with missing, failed or mismatched provenance.
+Implement → focused local tests → PR → review → CI → merge queue → merge. The native
+queue validates against current `main` once activated. Use it to integrate sibling work.
+The single required check is `merge gate`. See [CI and merge automation](./operations/ci-merge-automation.md)
+for profiles and the [test contract](../apps/editor/tests/README.md) for verification.
 
-The target operating model is implement → focused local tests → PR → review → CI → merge queue →
-merge. Once the owner activates the queue, the queue validates a batch against current `main`.
-Agents do not manually rebase sibling work, refresh a behind branch, or rerun CI to integrate an
-unrelated merge. Activation is one owner action and rollback is one ruleset replacement; see
-[CI and merge automation](./operations/ci-merge-automation.md).
-
-## Areas, not gates
-
-T1–T5 name areas (Spatial world, Composition, Experience, Release, Expressive geometry), not
-permission gates. Anyone may change any area: read the touched area's `AGENTS.md`, keep its tests
-green and respect the invariants its tests enforce. Parallel safety comes from claims and small pull
-requests; whoever merges second rebases.
+T1–T5 identify product areas open to contributors following their area guides and invariants.
+Claims and small PRs coordinate concurrent work.
 
 ## On-demand skills
 
-None runs on a schedule. `work-checkpoint` preserves interrupted work; `owner-checkpoint`
-summarizes significant changes, status movements, Tier 1 merges, ranked flags and next unclaimed
-work for the owner; `gardener` moves dead or closed material to the archive and opens one
-reviewable pull request; `breaker` explores `working` and `polished` capabilities and turns each
-defect into a failing tagged test or `bug` issue.
+Use `work-checkpoint` for interrupted work, `owner-checkpoint` for significant changes and
+next unclaimed work, `gardener` to archive dead or closed material in one PR, and `breaker`
+to turn defects into failing tagged tests or `bug` issues. Invoke them on demand.
 
 ## Design and reference maintenance
 
-Prototype approvals have two modes. Record the mode, scope and exclusions in the existing design
-PR or [prototype catalogue](../prototypes/README.md).
+[Prototype approvals](../prototypes/README.md) identify either exploratory interaction donors
+or approved production UX targets. Harvest only explicitly accepted findings from donors.
+An explicit production approval sets the target for named surfaces, interactions and responsive
+states. Treat unclear approval as research.
 
-- **Exploratory / interaction donor.** Only explicitly harvested and accepted findings become
-  product decisions. An accepted gesture leaves the rest of the prototype as research evidence.
-- **Approved production UX target.** An explicit owner decision sets the intended experience for
-  the named surfaces, interactions and responsive states. Plan implementation from that target.
-  Treat unclear approval as research evidence and clarify scope when it affects the work.
+A later explicit approval supersedes older design details within its scope. Domain ownership,
+identity, geometry, security, persistence, selection, history and visitor isolation still apply.
+Bring conflicting production invariants to the owner before changing the design.
 
-A later explicit approval supersedes an older design prescription within the scope it addresses,
-from the time of approval. Other shared shell rules continue to apply. Execution plans inherit
-approved decisions. Domain ownership, identity, geometry, security, persistence, selection, history
-and visitor isolation are independent constraints. Prototype simulations supply examples. Bring a
-genuine conflict with a production invariant to the owner before changing the design.
-
-In the implementation PR, link the approved states and show representative comparisons with running
-production for material visual changes. Match the relevant viewport and state, and exercise the
-critical interaction journeys, including a constrained layout when behavior changes there. Record
-material departures in the PR for an owner decision before merge. A departure is material when it
-changes the agreed composition or hierarchy, what creators can reach or understand, what an action
-does, or how the design adapts. Equivalent token, spacing, layout-fit and accessibility adjustments
-can be handled in ordinary review. CI shows functional verification. Design review supplies visual
-and interaction evidence.
-
-Implementation acceptance triggers deliberate promotion of genuinely enduring rules when needed.
-References describe enduring principles, ownership, interfaces and invariants. Update them only for
-an actual contract change, accepted design promotion, material contradiction or deliberate audit;
-routine implementation does not trigger reference edits. Replace superseded text rather than append
-an amendment or reconciliation chain. Delete obsolete authorization paperwork and completed plans
-after extracting unique obligations. Keep substantive research, alternatives, counterexamples and
-runnable experiments opt-in. Archive only evidence with an explicit retention purpose; Git is history.
+Link approved states in the implementation PR and show representative comparisons for material
+visual changes, including constrained layouts when affected. Record material departures for an
+owner decision before merge. Update enduring references for actual contract changes, design
+promotion, material contradictions or deliberate audits. Replace superseded text and remove
+completed plans and obsolete approvals after preserving unique obligations. Read research on demand.

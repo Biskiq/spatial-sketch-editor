@@ -8,7 +8,12 @@
 import { MIN_WALL_ARC_RISE, measureWallArc } from '@portfolio/layout-core/wall';
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import type { StageInkReadingRecord } from '$lib/authoring/stage/stage-adapter-host';
-import { pendingLegFacts, type ChainDraft, type ChainDraftPoint, type ChainPlanPreview } from './chain';
+import {
+	pendingLegFacts,
+	type ChainDraft,
+	type ChainDraftPoint,
+	type ChainPlanPreview,
+} from './chain';
 import type { InkPaletteReading, InkPaletteSnapshot, InkPointerTarget, InkWallMode } from './ink';
 import type { OpeningPlacementSession } from './opening-placement-session';
 import type { createRegionInkSession } from './region-ink-session';
@@ -36,29 +41,35 @@ export type InkPaletteState = {
 	readonly contributedReadings: () => readonly StageInkReadingRecord[];
 };
 
-
-
 /** Layout's built-in readings, then every contributed reading in host order. */
-export function paletteReadings(contributed: readonly StageInkReadingRecord[]): readonly InkPaletteReading[] {
+export function paletteReadings(
+	contributed: readonly StageInkReadingRecord[],
+): readonly InkPaletteReading[] {
 	return [
 		{ id: 'wall', label: 'Wall', summary: 'Straight Wall chain.' },
 		{
 			id: 'opening',
 			label: 'Opening',
-			summary: 'A straight door or window on one Wall face.'
+			summary: 'A straight door or window on one Wall face.',
 		},
 		{ id: 'room', label: 'Room', summary: 'Create an Open Space from partial Walls.' },
-		{ id: 'terrace', label: 'Terrace', summary: 'A raised floor region, drawn as a Box or a Line.' },
-		{ id: 'roof', label: 'Roof › Flat', summary: 'Flat Roof › Flat overhead region, drawn as a Box or a Line.' },
+		{
+			id: 'terrace',
+			label: 'Terrace',
+			summary: 'A raised floor region, drawn as a Box or a Line.',
+		},
+		{
+			id: 'roof',
+			label: 'Roof › Flat',
+			summary: 'Flat Roof › Flat overhead region, drawn as a Box or a Line.',
+		},
 		...contributed.map((reading) => ({
 			id: reading.id,
 			label: reading.label,
-			summary: reading.summary
-		}))
+			summary: reading.summary,
+		})),
 	];
 }
-
-
 
 export function snapshotForPalette(state: InkPaletteState): InkPaletteSnapshot {
 	const { memory, draft, region, opening, room } = state;
@@ -86,7 +97,7 @@ export function snapshotForPalette(state: InkPaletteState): InkPaletteSnapshot {
 				elevation: view.elevation,
 				thickness: view.thickness,
 				hint: view.hint,
-				refusal: view.refusal
+				refusal: view.refusal,
 			},
 			points: view.points,
 			closed: false,
@@ -95,15 +106,18 @@ export function snapshotForPalette(state: InkPaletteState): InkPaletteSnapshot {
 			canBacktrack: view.points.length > 0,
 			consequence: null,
 			pending: null,
-			refusal: view.refusal
+			refusal: view.refusal,
 		};
 	}
 	const boxMode = memory.reading === 'wall' && memory.wallMode === 'box';
 	const circleMode = memory.reading === 'wall' && memory.wallMode === 'circle';
 	const arcMode = memory.reading === 'wall' && memory.wallMode === 'arc';
 	const withHover = circleMode || arcMode ? draft : linePreviewDraft();
-	const effective = boxMode ? (boxPreviewDraft() ?? draft)
-		: 'points' in withHover ? withHover : draft;
+	const effective = boxMode
+		? (boxPreviewDraft() ?? draft)
+		: 'points' in withHover
+			? withHover
+			: draft;
 	const pending =
 		inkHover === null || boxMode || circleMode || arcMode
 			? null
@@ -114,19 +128,23 @@ export function snapshotForPalette(state: InkPaletteState): InkPaletteSnapshot {
 			? null
 			: {
 					width: Math.abs(inkHover.point[0] - anchor.point[0]),
-					depth: Math.abs(inkHover.point[1] - anchor.point[1])
+					depth: Math.abs(inkHover.point[1] - anchor.point[1]),
 				};
 	const arc =
 		arcMode && draft.points.length >= 2 && inkArcApex !== null
 			? (() => {
-					const measured = measureWallArc(draft.points[0]!.point, draft.points[1]!.point, inkArcApex!);
+					const measured = measureWallArc(
+						draft.points[0]!.point,
+						draft.points[1]!.point,
+						inkArcApex!,
+					);
 					return measured === null
 						? null
 						: {
 								chord: measured.chord,
 								rise: measured.rise,
 								radius: measured.radius,
-								belowMinimum: Math.abs(measured.rise) < MIN_WALL_ARC_RISE
+								belowMinimum: Math.abs(measured.rise) < MIN_WALL_ARC_RISE,
 							};
 				})()
 			: null;
@@ -151,6 +169,6 @@ export function snapshotForPalette(state: InkPaletteState): InkPaletteSnapshot {
 				? inkPreview.consequence.summary
 				: null,
 		pending,
-		refusal: inkNotice
+		refusal: inkNotice,
 	};
 }

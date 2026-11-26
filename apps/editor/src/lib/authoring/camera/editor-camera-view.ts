@@ -1,9 +1,9 @@
-
-import type { SceneDocument, SceneCameraViewKeyframe, SceneConnection } from '@portfolio/project-model/scene';
 import type {
-	CameraConnectionDirection,
-	Vec3
-} from '$lib/types/scene';
+	SceneDocument,
+	SceneCameraViewKeyframe,
+	SceneConnection,
+} from '@portfolio/project-model/scene';
+import type { CameraConnectionDirection, Vec3 } from '$lib/types/scene';
 import type { Vector3Like } from '@portfolio/camera-core/camera';
 import { createDraftConnectionPositionPath } from './editor-camera-path';
 
@@ -18,7 +18,7 @@ export function mirrorCameraViewTrack(
 	connectionId: string,
 	sourceTrack: readonly SceneCameraViewKeyframe[],
 	destination: CameraConnectionDirection,
-	occupiedIds: Iterable<string>
+	occupiedIds: Iterable<string>,
 ): SceneCameraViewKeyframe[] {
 	const occupied = new Set(occupiedIds);
 	return [...sourceTrack].reverse().map((keyframe) => {
@@ -28,7 +28,7 @@ export function mirrorCameraViewTrack(
 			id,
 			progress: 1 - keyframe.progress,
 			cameraTarget: [...keyframe.cameraTarget] as Vec3,
-			fov: keyframe.fov
+			fov: keyframe.fov,
 		};
 	});
 }
@@ -58,25 +58,18 @@ export function syncReverseViewTrackFromForward(connection: SceneConnection): bo
 		connection.id,
 		forward,
 		'reverse',
-		occupied
+		occupied,
 	);
 	return true;
 }
 
-function isVectorTuple(
-	value: Vector3Like
-): value is readonly [number, number, number] {
+function isVectorTuple(value: Vector3Like): value is readonly [number, number, number] {
 	return Array.isArray(value);
 }
 
 function cloneFiniteVec3(value: Vector3Like, label: string): Vec3 {
-	const components = isVectorTuple(value)
-		? value
-		: [value.x, value.y, value.z];
-	if (
-		components.length !== 3 ||
-		components.some((component) => !Number.isFinite(component))
-	) {
+	const components = isVectorTuple(value) ? value : [value.x, value.y, value.z];
+	if (components.length !== 3 || components.some((component) => !Number.isFinite(component))) {
 		throw new Error(`${label} must contain exactly three finite numbers`);
 	}
 	return [components[0], components[1], components[2]];
@@ -86,7 +79,7 @@ function cloneFiniteVec3(value: Vector3Like, label: string): Vec3 {
 export function allocateCameraViewKeyframeId(
 	connectionId: string,
 	direction: CameraConnectionDirection,
-	existingIds: Iterable<string>
+	existingIds: Iterable<string>,
 ) {
 	const occupied = new Set(existingIds);
 	for (let index = 1; ; index += 1) {
@@ -99,21 +92,13 @@ export function findSceneCameraViewKeyframe(
 	document: SceneDocument,
 	connectionId: string,
 	direction: CameraConnectionDirection,
-	keyframeId: string
+	keyframeId: string,
 ): SceneCameraViewKeyframe | null {
-	const connection = document.connections.find(
-		(candidate) => candidate.id === connectionId
-	);
-	return (
-		connection?.viewTracks?.[direction].find(
-			(keyframe) => keyframe.id === keyframeId
-		) ?? null
-	);
+	const connection = document.connections.find((candidate) => candidate.id === connectionId);
+	return connection?.viewTracks?.[direction].find((keyframe) => keyframe.id === keyframeId) ?? null;
 }
 
-export function getSceneCameraViewKeyframeWorldTarget(
-	keyframe: SceneCameraViewKeyframe
-): Vec3 {
+export function getSceneCameraViewKeyframeWorldTarget(keyframe: SceneCameraViewKeyframe): Vec3 {
 	return [...keyframe.cameraTarget];
 }
 
@@ -124,12 +109,7 @@ export function getSceneCameraViewKeyframeWorldTarget(
  * eye→target radius is preserved exactly. Pure, renderer-neutral tuple math —
  * no Three/DOM/Svelte imports.
  */
-export function orbitWorldLookTarget(
-	eye: Vec3,
-	target: Vec3,
-	yaw: number,
-	pitch: number
-): Vec3 {
+export function orbitWorldLookTarget(eye: Vec3, target: Vec3, yaw: number, pitch: number): Vec3 {
 	const offsetX = target[0] - eye[0];
 	const offsetY = target[1] - eye[1];
 	const offsetZ = target[2] - eye[2];
@@ -148,7 +128,7 @@ export function orbitWorldLookTarget(
 /** Move a view target in world space (a Scene is world-local). */
 export function writeSceneCameraViewKeyframeWorldTarget(
 	keyframe: SceneCameraViewKeyframe,
-	worldTarget: Vector3Like
+	worldTarget: Vector3Like,
 ) {
 	keyframe.cameraTarget = cloneFiniteVec3(worldTarget, 'Camera view target');
 	return keyframe;
@@ -159,7 +139,7 @@ export function createSceneCameraViewKeyframeAtWorldTarget(
 	id: string,
 	progress: number,
 	worldTarget: Vector3Like,
-	fov: number
+	fov: number,
 ): SceneCameraViewKeyframe {
 	return { id, progress, cameraTarget: cloneFiniteVec3(worldTarget, 'Camera view target'), fov };
 }
@@ -169,15 +149,11 @@ export function getSceneCameraViewKeyframeWorldPosition(
 	document: SceneDocument,
 	connectionId: string,
 	direction: CameraConnectionDirection,
-	progress: number
+	progress: number,
 ): Vec3 {
 	if (!Number.isFinite(progress)) {
 		throw new Error('Camera view progress must be finite');
 	}
-	const path = createDraftConnectionPositionPath(
-		document,
-		connectionId,
-		direction
-	);
+	const path = createDraftConnectionPositionPath(document, connectionId, direction);
 	return path.getPointAt(progress).toArray() as Vec3;
 }

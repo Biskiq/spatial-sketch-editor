@@ -45,13 +45,13 @@ import {
 	UNIT_SOURCE_KIND,
 	UNIT_SOURCE_VERSION,
 	captureUnitSave,
-	type ProjectEnvelope
+	type ProjectEnvelope,
 } from '@portfolio/project-model/units';
 import type {
 	SaveAcknowledgement,
 	SavePrecondition,
 	SaveRefusalCode,
-	SaveRequest
+	SaveRequest,
 } from '@portfolio/project-model/save';
 import { SAVE_CONTENT_IDENTITY_SCHEME, sameAcceptedRevision } from '@portfolio/project-model/save';
 import { perfMarksEnabled, perfMeasureAsync, perfMeasureSync } from '$lib/platform/perf-marks';
@@ -87,11 +87,11 @@ export type SaveCoordinatorPort = {
 	sessionEpoch(): unknown;
 };
 
-/** The durable base a Save starts from; `null` metadata means a legacy row. */
+/** The loaded or admitted source that Save compares against. */
 export type SaveBaseline = {
 	readonly savedBaseToken: string | null;
 	readonly savedRevision: AcceptedRevision | null;
-	readonly savedCanonicalJson: string | null;
+	readonly savedCanonicalJson: string;
 	readonly savedSourceContentId: string | null;
 };
 
@@ -120,7 +120,10 @@ export type SaveTransportResult =
 			readonly issues?: readonly { path: string; code: string; message: string }[];
 	  };
 
-export type SaveTransport = (request: SaveRequest, signal?: AbortSignal) => Promise<SaveTransportResult>;
+export type SaveTransport = (
+	request: SaveRequest,
+	signal?: AbortSignal,
+) => Promise<SaveTransportResult>;
 
 export type SaveStatus =
 	| 'never-saved'
@@ -235,12 +238,12 @@ export type SaveStateOptions = {
 	readonly onAuthRequired?: (request: SaveRequest) => void | Promise<void>;
 };
 
-const EMPTY_BASELINE: SaveBaseline = {
+const EMPTY_BASELINE = {
 	savedBaseToken: null,
 	savedRevision: null,
 	savedCanonicalJson: null,
-	savedSourceContentId: null
-};
+	savedSourceContentId: null,
+} as const;
 
 export function createSaveState(options: SaveStateOptions): SaveState {
 	const instrumentation: SaveWorkInstrumentation | undefined = perfMarksEnabled()
@@ -248,7 +251,7 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 		: undefined;
 	let suppressNotificationMeasurement = false;
 	const mintOperationId = options.mintOperationId ?? (() => globalThis.crypto.randomUUID());
-	let baseline = options.baseline ?? EMPTY_BASELINE;
+	let baseline: SaveBaseline | typeof EMPTY_BASELINE = options.baseline ?? EMPTY_BASELINE;
 	let status: SaveStatus = baseline.savedBaseToken === null ? 'never-saved' : 'saved';
 	let error: SaveError | null = null;
 	let conflict: SaveConflict | null = null;
@@ -264,11 +267,15 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 		const sameBase =
 			precondition.kind === 'create-only'
 				? baseline.savedBaseToken === null
-				: precondition.kind === 'expected-saved-base' && precondition.token === baseline.savedBaseToken;
+				: precondition.kind === 'expected-saved-base' &&
+					precondition.token === baseline.savedBaseToken;
 		if (options.resume.capture.projectId === current.revision.projectId && sameBase) {
 			// A resumed source is admitted from the captured bytes themselves, so the
 			// unstamped source text is those same bytes until the creator edits.
-			pending = { request: options.resume, sourceCanonicalJson: options.resume.capture.canonicalJson };
+			pending = {
+				request: options.resume,
+				sourceCanonicalJson: options.resume.capture.canonicalJson,
+			};
 		}
 	}
 	const listeners = new Set<(snapshot: SaveSnapshot) => void>();
@@ -280,7 +287,7 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 				revision: admitted.revision,
 				source: admitted.source,
 				canonicalJson: admitted.canonicalJson,
-				sourceContentId: admitted.sourceContentId
+				sourceContentId: admitted.sourceContentId,
 			};
 		} catch {
 			return null;
@@ -301,9 +308,7 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 
 	function isDirty(): boolean {
 		const current = currentCanonical();
-		if (current === null) return false;
-		if (baseline.savedCanonicalJson === null) return true;
-		return current !== baseline.savedCanonicalJson;
+		return current !== null && current !== baseline.savedCanonicalJson;
 	}
 
 	function steadyStatus(currentDirty: boolean): SaveStatus {
@@ -348,7 +353,7 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 		return {
 			...conflict,
 			localJson: local.canonicalJson,
-			localSourceContentId: local.sourceContentId
+			localSourceContentId: local.sourceContentId,
 		};
 	}
 
@@ -364,7 +369,7 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 			savedCanonicalJson: baseline.savedCanonicalJson,
 			savedSourceContentId: baseline.savedSourceContentId,
 			error,
-			conflict: conflictView()
+			conflict: conflictView(),
 		};
 	}
 
@@ -425,20 +430,27 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 		// stamped into the saved bytes while the source itself keeps its embedded
 		// baseline revision. A hand-built capture would disagree with the server's
 		// re-serialization and be refused on every live Save.
-		const capture = () => captureUnitSave({
-			snapshot: {
-				acceptedRevision: current.revision,
-				sourceContentId: current.sourceContentId,
-				sourceKind: UNIT_SOURCE_KIND,
-				sourceVersion: UNIT_SOURCE_VERSION,
-				domain: {
-					identity: { acceptedRevision: current.revision, sourceContentId: current.sourceContentId },
-					source: current.source
-				}
-			},
-			operationId: mintOperationId(),
-			precondition: currentPrecondition()
-		}, instrumentation);
+		const capture = () =>
+			captureUnitSave(
+				{
+					snapshot: {
+						acceptedRevision: current.revision,
+						sourceContentId: current.sourceContentId,
+						sourceKind: UNIT_SOURCE_KIND,
+						sourceVersion: UNIT_SOURCE_VERSION,
+						domain: {
+							identity: {
+								acceptedRevision: current.revision,
+								sourceContentId: current.sourceContentId,
+							},
+							source: current.source,
+						},
+					},
+					operationId: mintOperationId(),
+					precondition: currentPrecondition(),
+				},
+				instrumentation,
+			);
 		const captured = instrumentation
 			? await instrumentation.async('save.capture-wall', capture)
 			: await capture();
@@ -447,10 +459,12 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 			kind: 'ready',
 			pending: {
 				request: { contentIdentityScheme: SAVE_CONTENT_IDENTITY_SCHEME, capture: captured.capture },
-				sourceCanonicalJson: current.canonicalJson
-			}
+				sourceCanonicalJson: current.canonicalJson,
+			},
 		});
-		return instrumentation ? instrumentation.sync('save.capture-request-assembly', prepare) : prepare();
+		return instrumentation
+			? instrumentation.sync('save.capture-request-assembly', prepare)
+			: prepare();
 	}
 
 	async function run(prepared: PendingCapture, signal?: AbortSignal): Promise<SaveOutcome> {
@@ -477,7 +491,7 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 			result = {
 				kind: 'error',
 				message: failure instanceof Error ? failure.message : 'Save failed',
-				retryable: true
+				retryable: true,
 			};
 		}
 
@@ -514,7 +528,7 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 						error = {
 							code: 'server',
 							message: 'The Save acknowledgement does not describe the captured source',
-							retryable: false
+							retryable: false,
 						};
 						status = 'error';
 						emit();
@@ -527,7 +541,7 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 						// stamped persistence bytes: the envelope's embedded revision is
 						// baseline provenance and does not move when the coordinator mints.
 						savedCanonicalJson: prepared.sourceCanonicalJson,
-						savedSourceContentId: acknowledged.sourceContentId
+						savedSourceContentId: acknowledged.sourceContentId,
 					};
 					pending = null;
 					// Acknowledgment marks only the captured contents; edits made during
@@ -555,7 +569,7 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 				const offer: SaveConflict = {
 					localJson: local?.canonicalJson ?? capturedJson,
 					localSourceContentId: local?.sourceContentId ?? request.capture.sourceContentId,
-					remote: null
+					remote: null,
 				};
 				conflict = offer;
 				status = 'conflict';
@@ -600,7 +614,7 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 					code: result.code,
 					message: result.message,
 					issues: result.issues,
-					retryable: false
+					retryable: false,
 				};
 				// A refused payload must not be retried under the same operation ID.
 				pending = null;
@@ -611,7 +625,7 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 				error = {
 					code: result.retryable ? 'network' : 'server',
 					message: result.message,
-					retryable: result.retryable
+					retryable: result.retryable,
 				};
 				// Keep the capture: a network-ambiguous Save resolves through its
 				// receipt before any retry from a new base.
@@ -635,9 +649,14 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 		// would drop that recovery and send a precondition the server may already
 		// have moved, so the ambiguity is settled first (`retry()`). Once it is, the
 		// newer contents save normally under a fresh operation ID.
-		const hasUnresolvedCapture = pending && (instrumentation
-			? instrumentation.sync('save.retained-capture-command-check', () => retainedCapture(current) === null)
-			: retainedCapture(current) === null);
+		const hasUnresolvedCapture =
+			pending &&
+			(instrumentation
+				? instrumentation.sync(
+						'save.retained-capture-command-check',
+						() => retainedCapture(current) === null,
+					)
+				: retainedCapture(current) === null);
 		if (hasUnresolvedCapture) return { kind: 'unresolved' };
 
 		const startPreparation = (): string => {
@@ -659,8 +678,9 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 			preparing = false;
 			error = {
 				code: 'invalid',
-				message: failure instanceof Error ? failure.message : 'The accepted source could not be captured',
-				retryable: false
+				message:
+					failure instanceof Error ? failure.message : 'The accepted source could not be captured',
+				retryable: false,
 			};
 			status = 'error';
 			emit();
@@ -681,7 +701,7 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 					code: preparation.code,
 					message: preparation.message,
 					issues: preparation.issues,
-					retryable: false
+					retryable: false,
 				};
 				pending = null;
 				status = 'refused';
@@ -704,14 +724,19 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 		},
 		refresh() {
 			if (status === 'saving' || status === 'conflict') return emit();
-			if (status === 'refused' || status === 'error' || status === 'auth-required') return snapshot();
+			if (status === 'refused' || status === 'error' || status === 'auth-required')
+				return snapshot();
 			status = derivedStatus();
 			return emit();
 		},
 		adoptSavedBase(next) {
 			const current = readCurrent();
 			if (inFlight || preparing || pending || current === null) return false;
-			if (next.savedRevision !== null && next.savedRevision.projectId !== current.revision.projectId) return false;
+			if (
+				next.savedRevision !== null &&
+				next.savedRevision.projectId !== current.revision.projectId
+			)
+				return false;
 			baseline = { ...next };
 			conflict = null;
 			error = null;
@@ -733,7 +758,7 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 				document: conflict.remote.document,
 				savedBaseToken: conflict.remote.savedBaseToken,
 				savedRevision: conflict.remote.savedRevision,
-				savedSourceContentId: conflict.remote.savedSourceContentId
+				savedSourceContentId: conflict.remote.savedSourceContentId,
 			};
 		},
 		clearError() {
@@ -742,6 +767,6 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 				status = derivedStatus();
 			}
 			return emit();
-		}
+		},
 	};
 }

@@ -6,22 +6,25 @@
  *
  * - every surface draws only the fixed 1 m minor and 5 m major levels;
  * - each level fades from 16 to 8 CSS px projected spacing and hides below 8,
- *   so a zoom change only thins the drawing and never changes a value;
+ *  so a zoom change only thins the drawing and never changes a value;
  * - a 25 m level appears only while the 5 m level is hidden, so a large site
- *   keeps one reference before the ruler becomes the only one;
+ *  keeps one reference before the ruler becomes the only one;
  * - lines are anchored to world `(0, datum, 0)` and generated only inside the
- *   drawn rectangle;
+ *  drawn rectangle;
  * - Paper's rectangle is a bounded sheet around the work, drawn as lines;
  * - the mat's grid is drawn per pixel on the finite mat: each pixel
- *   fades each level by its own projected spacing, so a perspective view keeps
- *   1 m near the eye, 5 m further out and 25 m toward the horizon;
+ *  fades each level by its own projected spacing, so a perspective view keeps
+ *  1 m near the eye, 5 m further out and 25 m toward the horizon;
  * - Paper and the mat have their own inks from PLATE §Semantic color, and the
- *   3D ground's plate is Paper's own surface and inks.
+ *  3D ground's plate is Paper's own surface and inks.
  *
  * The grid is display-only. It is never a pick source, never delays navigation
  * and never writes a pose, source, history or Save entry.
  */
-import { viewportGroundReachMeters, type ViewportEvaluation } from '@portfolio/camera-core/viewport';
+import {
+	viewportGroundReachMeters,
+	type ViewportEvaluation,
+} from '@portfolio/camera-core/viewport';
 import { SPATIAL_PAINT_ROLES } from '$lib/design/spatial-paint';
 import { GRID_MAJOR_METERS, GRID_MINOR_METERS } from './stage-drafting';
 
@@ -37,14 +40,14 @@ export const PAPER_GRID_INK: GridInk = {
 	minor: SPATIAL_PAINT_ROLES.gridMinor,
 	major: SPATIAL_PAINT_ROLES.gridMajor,
 	minorOpacity: 0.4,
-	majorOpacity: 0.55
+	majorOpacity: 0.55,
 };
 
 export const MAT_GRID_INK: GridInk = {
 	minor: SPATIAL_PAINT_ROLES.gridMatMinor,
 	major: SPATIAL_PAINT_ROLES.gridMatMajor,
 	minorOpacity: 1,
-	majorOpacity: 1
+	majorOpacity: 1,
 };
 
 export type GridSurface = 'paper' | 'mat';
@@ -89,7 +92,7 @@ function clean(value: number): number {
 function levelOpacity(
 	intervalMeters: number,
 	metersPerCssPixel: number,
-	fullOpacity: number
+	fullOpacity: number,
 ): { readonly spacingCssPx: number; readonly opacity: number } | null {
 	const spacingCssPx = intervalMeters / metersPerCssPixel;
 	if (spacingCssPx < GRID_SUPPRESS_SPACING_CSS_PX - 1e-9) return null;
@@ -98,8 +101,8 @@ function levelOpacity(
 		Math.max(
 			0,
 			(spacingCssPx - GRID_SUPPRESS_SPACING_CSS_PX) /
-				(GRID_FULL_SPACING_CSS_PX - GRID_SUPPRESS_SPACING_CSS_PX)
-		)
+				(GRID_FULL_SPACING_CSS_PX - GRID_SUPPRESS_SPACING_CSS_PX),
+		),
 	);
 	if (fade <= 0) return null;
 	return { spacingCssPx, opacity: fullOpacity * fade };
@@ -127,7 +130,7 @@ export function gridLevelsFor(input: {
 			role: 'minor',
 			spacingCssPx: minor.spacingCssPx,
 			opacity: minor.opacity,
-			color: ink.minor
+			color: ink.minor,
 		});
 	}
 	const major = levelOpacity(GRID_MAJOR_METERS, metersPerCssPixel, ink.majorOpacity);
@@ -137,22 +140,20 @@ export function gridLevelsFor(input: {
 			role: 'major',
 			spacingCssPx: major.spacingCssPx,
 			opacity: major.opacity,
-			color: ink.major
+			color: ink.major,
 		});
 	}
 	// The coarse level is a fallback reference, never a third simultaneous
 	// lattice: it appears only after the 5 m level has hidden.
 	const coarse =
-		major === null
-			? levelOpacity(GRID_COARSE_METERS, metersPerCssPixel, ink.majorOpacity)
-			: null;
+		major === null ? levelOpacity(GRID_COARSE_METERS, metersPerCssPixel, ink.majorOpacity) : null;
 	if (coarse !== null) {
 		levels.push({
 			intervalMeters: GRID_COARSE_METERS,
 			role: 'coarse',
 			spacingCssPx: coarse.spacingCssPx,
 			opacity: coarse.opacity,
-			color: ink.major
+			color: ink.major,
 		});
 	}
 	if (levels.length === 0) return null;
@@ -161,7 +162,7 @@ export function gridLevelsFor(input: {
 		minorMeters: finest,
 		majorMeters: major === null ? null : GRID_MAJOR_METERS,
 		coarseMeters: coarse === null ? null : GRID_COARSE_METERS,
-		levels
+		levels,
 	};
 }
 
@@ -212,7 +213,7 @@ export function gridRectFor(input: {
 		minX: clean(quantisedMinX),
 		maxX: clean(quantisedMaxX),
 		minZ: clean(quantisedMinZ),
-		maxZ: clean(quantisedMaxZ)
+		maxZ: clean(quantisedMaxZ),
 	};
 }
 
@@ -242,7 +243,7 @@ export function workspaceRectFor(contentBounds: GridRect | null): GridRect {
 		minX: Math.min(-half, down(work.minX)),
 		maxX: Math.max(half, up(work.maxX)),
 		minZ: Math.min(-half, down(work.minZ)),
-		maxZ: Math.max(half, up(work.maxZ))
+		maxZ: Math.max(half, up(work.maxZ)),
 	};
 }
 
@@ -265,7 +266,7 @@ export function paperSheetRectFor(input: {
 		targetPlaneHeightMeters: input.targetPlaneHeightMeters,
 		aspect: input.aspect,
 		intervalMeters: input.intervalMeters,
-		coverage: 0.75
+		coverage: 0.75,
 	});
 	const minX = Math.max(sheet.minX, visible.minX);
 	const maxX = Math.min(sheet.maxX, visible.maxX);
@@ -307,22 +308,20 @@ export function gridPlanFor(input: {
 		targetPlaneHeightMeters: input.targetPlaneHeightMeters,
 		aspect: input.aspect,
 		intervalMeters: levels.minorMeters,
-		contentBounds: input.contentBounds ?? null
+		contentBounds: input.contentBounds ?? null,
 	});
 	if (rect === null) return null;
 	// Opacity is deliberately absent: the fade changes continuously while zooming,
 	// but the lattice does not. A rebuild keyed on opacity would dispose and
 	// regenerate every line on nearly every frame; the renderer updates the
 	// existing materials instead.
-	const levelKey = levels.levels
-		.map((level) => `${level.role}:${level.intervalMeters}`)
-		.join('|');
+	const levelKey = levels.levels.map((level) => `${level.role}:${level.intervalMeters}`).join('|');
 	return {
 		key: `${input.surface}:${input.datumMeters}:${levelKey}:${rect.minX}:${rect.maxX}:${rect.minZ}:${rect.maxZ}`,
 		surface: input.surface,
 		datumMeters: input.datumMeters,
 		levels,
-		rect
+		rect,
 	};
 }
 
@@ -378,7 +377,7 @@ export function gridLinesFor(plan: GridPlan): readonly GridLine[] {
 					atMeters,
 					role: level.role,
 					color: level.color,
-					opacity: level.opacity
+					opacity: level.opacity,
 				});
 			}
 		}
@@ -413,8 +412,8 @@ export function matGridLevelWeights(minorSpacingCssPx: number): {
 			Math.max(
 				0,
 				(spacing - GRID_SUPPRESS_SPACING_CSS_PX) /
-					(GRID_FULL_SPACING_CSS_PX - GRID_SUPPRESS_SPACING_CSS_PX)
-			)
+					(GRID_FULL_SPACING_CSS_PX - GRID_SUPPRESS_SPACING_CSS_PX),
+			),
 		);
 	const minor = fade(minorSpacingCssPx * GRID_MINOR_METERS);
 	const major = fade(minorSpacingCssPx * GRID_MAJOR_METERS);
@@ -446,20 +445,20 @@ export function matGroundFor(evaluation: ViewportEvaluation, datumMeters: number
 	const reach = viewportGroundReachMeters({
 		targetPlaneHeightMeters: evaluation.pose.targetPlaneHeightMeters,
 		aspect: evaluation.rect.width / evaluation.rect.height,
-		eyeHeightMeters: evaluation.eye[1] - datumMeters
+		eyeHeightMeters: evaluation.eye[1] - datumMeters,
 	});
 	const halfExtentMeters = 2 ** Math.ceil(Math.log2(Math.max(1, 1.5 * reach)));
 	const step = halfExtentMeters / 8;
 	const centerXZ: [number, number] = [
 		Math.round(evaluation.target[0] / step) * step,
-		Math.round(evaluation.target[2] / step) * step
+		Math.round(evaluation.target[2] / step) * step,
 	];
 	return {
 		centerXZ,
 		halfExtentMeters,
 		latticeOffsetXZ: [
 			centerXZ[0] - Math.round(centerXZ[0] / GRID_COARSE_METERS) * GRID_COARSE_METERS,
-			centerXZ[1] - Math.round(centerXZ[1] / GRID_COARSE_METERS) * GRID_COARSE_METERS
-		]
+			centerXZ[1] - Math.round(centerXZ[1] / GRID_COARSE_METERS) * GRID_COARSE_METERS,
+		],
 	};
 }

@@ -21,7 +21,7 @@ import {
 	ReplaceStencilOp,
 	type InstancedInterleavedBuffer,
 	type InterleavedBufferAttribute,
-	type Material
+	type Material,
 } from 'three';
 import { Line2NodeMaterial } from 'three/webgpu';
 import { LineSegments2 } from 'three/addons/lines/webgpu/LineSegments2.js';
@@ -38,7 +38,7 @@ import {
 	type PaperLineDraw,
 	type PaperPlanDrawing,
 	type PaperReveal,
-	type PaperTreatment
+	type PaperTreatment,
 } from './paper-plan';
 
 export type PaperSceneResources = {
@@ -95,7 +95,14 @@ function linePositions(lines: readonly PaperLineDraw[]): Float32Array {
 	const positions: number[] = [];
 	for (const line of lines) {
 		for (const [start, end] of line.segments) {
-			positions.push(start[0], line.elevationMeters, start[1], end[0], line.elevationMeters, end[1]);
+			positions.push(
+				start[0],
+				line.elevationMeters,
+				start[1],
+				end[0],
+				line.elevationMeters,
+				end[1],
+			);
 		}
 	}
 	return new Float32Array(positions);
@@ -104,7 +111,7 @@ function linePositions(lines: readonly PaperLineDraw[]): Float32Array {
 export function createPaperScene(
 	drawing: PaperPlanDrawing,
 	_resolution: readonly [number, number],
-	datumMeters = 0
+	datumMeters = 0,
 ): PaperSceneResources {
 	countWork('paper:scene-build');
 	const group = new Group();
@@ -114,7 +121,11 @@ export function createPaperScene(
 	const batches: PaperLineBatch[] = [];
 	let hiddenSource: string | null = null;
 
-	const addFade = (material: Material & { opacity: number }, baseOpacity: number, part: keyof PaperReveal): void => {
+	const addFade = (
+		material: Material & { opacity: number },
+		baseOpacity: number,
+		part: keyof PaperReveal,
+	): void => {
 		fades.push({ material, baseOpacity, part });
 	};
 
@@ -166,11 +177,17 @@ export function createPaperScene(
 	const sheetGeometry = new PlaneGeometry(PAPER_SHEET_METERS, PAPER_SHEET_METERS);
 	sheetGeometry.rotateX(-Math.PI / 2);
 	const sheetMaterial = new MeshBasicMaterial({
-			fog: false,
+		fog: false,
 		color: new Color(PAPER_GROUND_INK).getHex(),
-		side: DoubleSide, transparent: true, opacity: 1,
-		depthTest: false, depthWrite: false, toneMapped: false,
-		stencilWrite: true, stencilRef: PAPER_SHEET_STENCIL, stencilFunc: NotEqualStencilFunc
+		side: DoubleSide,
+		transparent: true,
+		opacity: 1,
+		depthTest: false,
+		depthWrite: false,
+		toneMapped: false,
+		stencilWrite: true,
+		stencilRef: PAPER_SHEET_STENCIL,
+		stencilFunc: NotEqualStencilFunc,
 	});
 	const sheet = new Mesh(sheetGeometry, sheetMaterial);
 	sheet.name = PAPER_SHEET_NAME;
@@ -190,7 +207,8 @@ export function createPaperScene(
 		treatments.set(line.treatment, list);
 	}
 	for (const [treatment, lines] of treatments) {
-		const style = PAPER_LINE_STYLE[treatment as Exclude<PaperTreatment, 'room-floor' | 'footprint'>];
+		const style =
+			PAPER_LINE_STYLE[treatment as Exclude<PaperTreatment, 'room-floor' | 'footprint'>];
 		const dashGroups = new Map<boolean, PaperLineDraw[]>();
 		for (const line of lines) {
 			const dashed = line.dashed ?? style.dashed;
@@ -204,7 +222,7 @@ export function createPaperScene(
 			const geometry = new LineSegmentsGeometry();
 			geometry.setPositions(positions);
 			const material = new Line2NodeMaterial({
-			fog: false,
+				fog: false,
 				color: new Color(style.ink).getHex(),
 				linewidth: style.widthCssPx,
 				transparent: true,
@@ -216,7 +234,7 @@ export function createPaperScene(
 				toneMapped: false,
 				dashed,
 				dashSize: style.dashSizeMeters,
-				gapSize: style.gapSizeMeters
+				gapSize: style.gapSizeMeters,
 			});
 			const object = new LineSegments2(geometry, material);
 			if (dashed) object.computeLineDistances();
@@ -226,13 +244,11 @@ export function createPaperScene(
 			group.add(object);
 			disposables.push(geometry, material);
 			addFade(material, style.opacity, 'lines');
-			const positionBuffer = (
-				geometry.getAttribute('instanceStart') as InterleavedBufferAttribute
-			).data as InstancedInterleavedBuffer;
+			const positionBuffer = (geometry.getAttribute('instanceStart') as InterleavedBufferAttribute)
+				.data as InstancedInterleavedBuffer;
 			const distanceBuffer = dashed
-				? ((
-						geometry.getAttribute('instanceDistanceStart') as InterleavedBufferAttribute
-					).data as InstancedInterleavedBuffer)
+				? ((geometry.getAttribute('instanceDistanceStart') as InterleavedBufferAttribute)
+						.data as InstancedInterleavedBuffer)
 				: null;
 			batches.push({
 				geometry,
@@ -243,7 +259,7 @@ export function createPaperScene(
 				originalPositions: (positionBuffer.array as Float32Array).slice(),
 				originalDistances:
 					distanceBuffer === null ? null : (distanceBuffer.array as Float32Array).slice(),
-				hiddenSource: null
+				hiddenSource: null,
 			});
 		}
 	}
@@ -262,8 +278,12 @@ export function createPaperScene(
 		const material = new MeshBasicMaterial({
 			fog: false,
 			color: new Color(PAPER_FILL_INK[treatment]).getHex(),
-			side: DoubleSide, transparent: true, opacity: 1,
-			depthTest: false, depthWrite: false, toneMapped: false
+			side: DoubleSide,
+			transparent: true,
+			opacity: 1,
+			depthTest: false,
+			depthWrite: false,
+			toneMapped: false,
 		});
 		const mesh = new Mesh(geometry, material);
 		mesh.renderOrder = treatment === 'cut' ? fills[0]!.layer - 1 : fills[0]!.layer;
@@ -275,10 +295,15 @@ export function createPaperScene(
 		if (treatment !== 'cut') continue;
 		const holeMaterial = new MeshBasicMaterial({
 			fog: false,
-			side: DoubleSide, transparent: true, colorWrite: false,
-			depthTest: false, depthWrite: false,
-			stencilWrite: true, stencilRef: PAPER_SHEET_STENCIL,
-			stencilFunc: AlwaysStencilFunc, stencilZPass: ReplaceStencilOp
+			side: DoubleSide,
+			transparent: true,
+			colorWrite: false,
+			depthTest: false,
+			depthWrite: false,
+			stencilWrite: true,
+			stencilRef: PAPER_SHEET_STENCIL,
+			stencilFunc: AlwaysStencilFunc,
+			stencilZPass: ReplaceStencilOp,
 		});
 		const sheetHole = new Mesh(geometry, holeMaterial);
 		sheetHole.name = PAPER_SHEET_HOLE_NAME;
@@ -298,7 +323,7 @@ export function createPaperScene(
 				start[1],
 				end[0],
 				footprint.elevationMeters,
-				end[1]
+				end[1],
 			);
 		}
 		const geometry = new LineSegmentsGeometry();
@@ -313,7 +338,7 @@ export function createPaperScene(
 			depthTest: false,
 			depthWrite: false,
 			toneMapped: false,
-			dashed: false
+			dashed: false,
 		});
 		const object = new LineSegments2(geometry, material);
 		object.renderOrder = footprint.layer;
@@ -350,6 +375,6 @@ export function createPaperScene(
 			fades.length = 0;
 			disposables.length = 0;
 			hiddenSource = null;
-		}
+		},
 	};
 }

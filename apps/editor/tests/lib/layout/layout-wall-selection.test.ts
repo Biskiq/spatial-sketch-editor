@@ -20,7 +20,7 @@ import { describe, expect, it } from 'vitest';
 import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core/geometry';
 import { createEmptyWallFirstLayoutDocument, deriveLayoutWallRole, planWallChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 import { resolvePlanHit } from '$lib/authoring/layout/plan-hit';
-import { freshCapture } from './__fixtures__/layout-id-capture';
+import { freshCapture } from '../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 
 /** Empty wall-first document with a real floor record (P23.9 precedent). */
 function baseDocument(): LayoutDocumentWallFirst {

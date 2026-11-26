@@ -31,6 +31,6 @@ export function createStageWindowListeners(input: {
 			window.removeEventListener('keydown', onKey);
 			window.removeEventListener('keyup', onReleaseSnap);
 			window.removeEventListener('blur', onWindowBlur);
-		}
+		},
 	};
 }

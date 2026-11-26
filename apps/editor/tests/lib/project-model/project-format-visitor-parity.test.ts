@@ -29,7 +29,7 @@ import { planFirstEnclosureCreation } from '@portfolio/layout-core/wall';
 import { planCreateCircularRoom } from '@portfolio/layout-core/room';
 import { LAYOUT_WALL_FIRST_FORMAT_VERSION } from '@portfolio/layout-core/wall';
 import { createUnitProject } from '../authoring/__fixtures__/unit-envelope-fixtures';
-import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
+import { freshCapture } from '../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 
 // ---------------------------------------------------------------------------
 // Fixtures

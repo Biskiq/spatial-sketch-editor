@@ -3,20 +3,33 @@ import type { LayoutGeometryIssue } from '../geometry/types';
 import type { LayoutDocumentWallFirst } from '../wall/types';
 import type { WallSamplingDerivation } from '../wall/centerline';
 import { createWallSamplingDerivation } from '../wall/centerline';
-import { topologyComponentKeyByJunctionId, topologyComponentKeyByWallId } from '../room/topology-components';
-import type { ArchitectureCandidatePatch, WallFirstArchitectureAffectedExtent, WallFirstArchitectureCandidatePair, WallFirstArchitecturePreflightFailure, WallFirstArchitectureProposalIntent, WallFirstArchitectureVerdictScope, WallFirstArchitectureVerdictScopeStats } from './types';
+import {
+	topologyComponentKeyByJunctionId,
+	topologyComponentKeyByWallId,
+} from '../room/topology-components';
+import type {
+	ArchitectureCandidatePatch,
+	WallFirstArchitectureAffectedExtent,
+	WallFirstArchitectureCandidatePair,
+	WallFirstArchitecturePreflightFailure,
+	WallFirstArchitectureProposalIntent,
+	WallFirstArchitectureVerdictScope,
+	WallFirstArchitectureVerdictScopeStats,
+} from './types';
 import { validateWallFirstTopology, validateWallFirstTopologyPass } from '../topology/wall-first';
-import { architectureCandidatePatch, spliceWallFirstArchitectureCandidate } from './architecture-proposals';
+import {
+	architectureCandidatePatch,
+	spliceWallFirstArchitectureCandidate,
+} from './architecture-proposals';
 import { architectureIntentTargetIdentity } from './document';
 import { guardRoundRoomIntent } from './scalar-edits';
 
 export function wallFirstArchitectureAffectedExtent(
 	document: LayoutDocumentWallFirst,
-	intent: WallFirstArchitectureProposalIntent
+	intent: WallFirstArchitectureProposalIntent,
 ): WallFirstArchitectureAffectedExtent | undefined {
 	return architectureCandidateExtent(document, intent)?.extent;
 }
-
 
 /**
  * The patch AND the extent of one intent, derived from the one intent→candidate mapping. The
@@ -25,7 +38,7 @@ export function wallFirstArchitectureAffectedExtent(
  */
 function architectureCandidateExtent(
 	document: LayoutDocumentWallFirst,
-	intent: WallFirstArchitectureProposalIntent
+	intent: WallFirstArchitectureProposalIntent,
 ): { patch: ArchitectureCandidatePatch; extent: WallFirstArchitectureAffectedExtent } | undefined {
 	if (guardRoundRoomIntent(document, intent)) return undefined;
 	const patch = architectureCandidatePatch(document, intent);
@@ -35,7 +48,9 @@ function architectureCandidateExtent(
 	// follows its endpoint even when the patch rewrote no centreline of its own.
 	const affectedWallIds = new Set(patch.affectedWallIds);
 	for (const wallId of patch.wallCenterlines.keys()) affectedWallIds.add(wallId);
-	const wallIds = document.walls.filter((wall) => affectedWallIds.has(wall.id)).map((wall) => wall.id);
+	const wallIds = document.walls
+		.filter((wall) => affectedWallIds.has(wall.id))
+		.map((wall) => wall.id);
 	const junctionIds = document.junctions
 		.filter((junction) => patch.junctionPoints.has(junction.id))
 		.map((junction) => junction.id);
@@ -47,17 +62,16 @@ function architectureCandidateExtent(
 			wallPairs: candidatePairsInGateOrder(
 				document.walls.map((wall) => wall.id),
 				topologyComponentKeyByWallId(document),
-				new Set(wallIds)
+				new Set(wallIds),
 			),
 			junctionPairs: candidatePairsInGateOrder(
 				document.junctions.map((junction) => junction.id),
 				topologyComponentKeyByJunctionId(document),
-				new Set(junctionIds)
-			)
-		}
+				new Set(junctionIds),
+			),
+		},
 	};
 }
-
 
 /**
  * Every same-component pair with at least one affected member, in the canonical gate's
@@ -71,7 +85,7 @@ function architectureCandidateExtent(
 function candidatePairsInGateOrder<Key>(
 	ids: readonly string[],
 	keyById: ReadonlyMap<string, Key>,
-	affected: ReadonlySet<string>
+	affected: ReadonlySet<string>,
 ): WallFirstArchitectureCandidatePair[] {
 	const indexById = new Map(ids.map((id, index) => [id, index] as const));
 	const affectedInGateOrder = ids.filter((id) => affected.has(id));
@@ -90,7 +104,6 @@ function candidatePairsInGateOrder<Key>(
 	return pairs;
 }
 
-
 /**
  * One move's AFFECTED-ONLY pass.
  *
@@ -108,22 +121,30 @@ function validateWallFirstArchitectureAffectedCandidate(
 	candidate: LayoutDocumentWallFirst,
 	extent: WallFirstArchitectureAffectedExtent,
 	sampling: WallSamplingDerivation | undefined,
-	disableExtentPruneForTest: boolean | undefined
+	disableExtentPruneForTest: boolean | undefined,
 ): LayoutGeometryIssue | undefined {
 	return p2311Measure('preflight-topology', () =>
-		validateWallFirstTopologyPass(candidate, { openingSet: 'defer', sampling, disableExtentPruneForTest, closedContactWallIds: new Set(extent.wallIds) }, {
-			wallIds: extent.wallIds,
-			wallPairs: extent.wallPairs,
-			junctionPairs: extent.junctionPairs,
-			evaluateRooms: false
-		})
+		validateWallFirstTopologyPass(
+			candidate,
+			{
+				openingSet: 'defer',
+				sampling,
+				disableExtentPruneForTest,
+				closedContactWallIds: new Set(extent.wallIds),
+			},
+			{
+				wallIds: extent.wallIds,
+				wallPairs: extent.wallPairs,
+				junctionPairs: extent.junctionPairs,
+				evaluateRooms: false,
+			},
+		),
 	);
 }
 
-
 export function createWallFirstArchitectureVerdictScope(
 	document: LayoutDocumentWallFirst,
-	options: { disableExtentPruneForTest?: boolean } = {}
+	options: { disableExtentPruneForTest?: boolean } = {},
 ): WallFirstArchitectureVerdictScope {
 	let baseline = document;
 	let initializedTarget: string | null = null;
@@ -131,7 +152,7 @@ export function createWallFirstArchitectureVerdictScope(
 		initializations: 0,
 		scoped: 0,
 		canonical: 0,
-		candidates: { walls: 0, wallPairs: 0, junctionPairs: 0 }
+		candidates: { walls: 0, wallPairs: 0, junctionPairs: 0 },
 	};
 	return {
 		verdict(document, intent, sampling) {
@@ -153,8 +174,8 @@ export function createWallFirstArchitectureVerdictScope(
 						openingSet: 'defer',
 						sampling: sampling ?? createWallSamplingDerivation(),
 						disableExtentPruneForTest: options.disableExtentPruneForTest,
-						closedContactWallIds: new Set(prepared.patch.affectedWallIds)
-					})
+						closedContactWallIds: new Set(prepared.patch.affectedWallIds),
+					}),
 				);
 				stats.canonical += 1;
 				if (failure) return { code: failure.code, message: failure.message };
@@ -170,17 +191,16 @@ export function createWallFirstArchitectureVerdictScope(
 				candidate,
 				prepared.extent,
 				sampling,
-				options.disableExtentPruneForTest
+				options.disableExtentPruneForTest,
 			);
 			return failure ? { code: failure.code, message: failure.message } : undefined;
 		},
 		reset() {
 			initializedTarget = null;
 		},
-		stats
+		stats,
 	};
 }
-
 
 /**
  * The **cheap canonical prefix** of the direct-edit transaction, for
@@ -191,15 +211,15 @@ export function createWallFirstArchitectureVerdictScope(
  * Scope is the point:
  *
  * - it decides **unsupported crossing, self-intersection, duplicate Junction
- *   points, zero-length Walls and broken Room boundary structure** — the
- *   geometric rejections a pointermove can honestly know;
+ *  points, zero-length Walls and broken Room boundary structure** — the
+ *  geometric rejections a pointermove can honestly know;
  * - it deliberately does **not** reconcile Rooms, validate the Opening set, the
- *   portal relations or compile, so anything that could only fail there stays
- *   *pending* and is decided by the release planner;
+ *  portal relations or compile, so anything that could only fail there stays
+ *  *pending* and is decided by the release planner;
  * - it is **sound by construction**: it is the same function the planner calls
- *   with the same values (the splice preserves every field the gate reads, and
- *   the planner's own re-parse before it is value-preserving), so a failure
- *   here is a failure at release too. A miss is merely pending, never wrong.
+ *  with the same values (the splice preserves every field the gate reads, and
+ *  the planner's own re-parse before it is value-preserving), so a failure
+ *  here is a failure at release too. A miss is merely pending, never wrong.
  *
  * Returns the canonical issue, or `undefined` when nothing cheap rejects the
  * attempt (including when the intent cannot be derived at all — that is the
@@ -215,7 +235,7 @@ export function preflightWallFirstArchitectureCandidate(
 	 * derivation per call, never retained across moves. A transient gesture may
 	 * instead pass its own gesture-scoped derivation, so the frozen baseline's
 	 * untouched Walls — shared by reference through the shallow splice — are not
-	 * re-derived on every pointermove. The caller owns termination: `reset()` at
+	 * re-derived on every pointermove. The caller owns termination: `reset` at
 	 * gesture release, cancel, restore or replacement. The scope changes only how
 	 * many times an identical artefact is derived, never which artefact the gate
 	 * sees, so a `known-invalid` verdict and a `pending` verdict are unchanged.
@@ -230,7 +250,7 @@ export function preflightWallFirstArchitectureCandidate(
 	 * Without it, the whole-document path below is exactly what it was — the effect-free default
 	 * every other caller and every existing test keeps.
 	 */
-	verdictScope?: WallFirstArchitectureVerdictScope | null
+	verdictScope?: WallFirstArchitectureVerdictScope | null,
 ): WallFirstArchitecturePreflightFailure | undefined {
 	if (verdictScope) return verdictScope.verdict(document, intent, sampling);
 	const roundHit = guardRoundRoomIntent(document, intent);
@@ -241,8 +261,8 @@ export function preflightWallFirstArchitectureCandidate(
 	const failure = p2311Measure('preflight-topology', () =>
 		validateWallFirstTopology(candidate, {
 			openingSet: 'defer',
-			sampling: sampling ?? createWallSamplingDerivation()
-		})
+			sampling: sampling ?? createWallSamplingDerivation(),
+		}),
 	);
 	if (!failure) return undefined;
 	return { code: failure.code, message: failure.message };

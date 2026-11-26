@@ -7,7 +7,7 @@ export type ArtworkWallRayPicker = (ray: PointerRay) => SceneRenderedHit | null;
 
 /** The artwork's outer frame size in metres, including any frame border. */
 export function artworkOuterSize(
-	entity: Pick<SceneArtworkEntity, 'widthMeters' | 'source' | 'frame'>
+	entity: Pick<SceneArtworkEntity, 'widthMeters' | 'source' | 'frame'>,
 ): { width: number; height: number } {
 	const imageHeight = artworkHeight(entity.widthMeters, entity.source);
 	const layout = artworkFrameLayout(entity.widthMeters, imageHeight, entity.frame);
@@ -27,7 +27,7 @@ export function artworkFaceNormal(yaw: number): Vec3 {
 export function artworkFrameSamples(
 	position: readonly number[],
 	yaw: number,
-	outer: { width: number; height: number }
+	outer: { width: number; height: number },
 ): Vec3[] {
 	const right: Vec3 = [Math.cos(yaw), 0, -Math.sin(yaw)];
 	const up: Vec3 = [0, 1, 0];
@@ -39,7 +39,7 @@ export function artworkFrameSamples(
 			samples.push([
 				position[0]! + right[0] * du + up[0] * dv,
 				position[1]! + right[1] * du + up[1] * dv,
-				position[2]! + right[2] * du + up[2] * dv
+				position[2]! + right[2] * du + up[2] * dv,
 			]);
 		}
 	}
@@ -58,18 +58,18 @@ export function artworkFitsWall(
 	outer: { width: number; height: number },
 	wallId: string,
 	pick: ArtworkWallRayPicker,
-	options: { readonly curved?: boolean } = {}
+	options: { readonly curved?: boolean } = {},
 ): boolean {
 	const normal = artworkFaceNormal(yaw);
 	for (const point of artworkFrameSamples(position, yaw, outer)) {
 		const origin: Vec3 = [
 			point[0] + normal[0] * 0.05,
 			point[1] + normal[1] * 0.05,
-			point[2] + normal[2] * 0.05
+			point[2] + normal[2] * 0.05,
 		];
 		const hit = pick({
 			origin,
-			direction: [-normal[0], -normal[1], -normal[2]]
+			direction: [-normal[0], -normal[1], -normal[2]],
 		});
 		if (hit === null || hit.wallId !== wallId) return false;
 		// A flat, centre-tangent Artwork on a curved Wall may stand off the curve
@@ -84,12 +84,12 @@ export function artworkFitsWall(
 export function artworkBackWallHit(
 	position: readonly number[],
 	yaw: number,
-	pick: ArtworkWallRayPicker
+	pick: ArtworkWallRayPicker,
 ): SceneRenderedHit | null {
 	const normal = artworkFaceNormal(yaw);
 	return pick({
 		origin: [position[0], position[1], position[2]],
-		direction: [-normal[0], -normal[1], -normal[2]]
+		direction: [-normal[0], -normal[1], -normal[2]],
 	});
 }
 
@@ -101,7 +101,7 @@ export function artworkBackWallHit(
 export function artworkIsHung(
 	position: readonly number[],
 	yaw: number,
-	pick: ArtworkWallRayPicker
+	pick: ArtworkWallRayPicker,
 ): boolean {
 	const hit = artworkBackWallHit(position, yaw, pick);
 	return hit !== null && hit.distanceMeters <= 0.01;
@@ -110,7 +110,14 @@ export function artworkIsHung(
 /** True when the face is a curved (multi-tangent) sampled Wall. */
 export function artworkWallIsCurved(
 	hit: SceneRenderedHit | null,
-	geometry: { readonly walls: readonly { readonly wallId: string; readonly samples: readonly { readonly tangent: readonly [number, number] }[] }[] } | undefined
+	geometry:
+		| {
+				readonly walls: readonly {
+					readonly wallId: string;
+					readonly samples: readonly { readonly tangent: readonly [number, number] }[];
+				}[];
+		  }
+		| undefined,
 ): boolean {
 	if (hit?.wallId === undefined || geometry === undefined) return false;
 	const wall = geometry.walls.find((entry) => entry.wallId === hit.wallId);

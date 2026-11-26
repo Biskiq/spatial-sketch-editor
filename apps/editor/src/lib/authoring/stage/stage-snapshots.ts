@@ -58,7 +58,7 @@ export function snapshotKey(request: SnapshotRequest): string {
 		String(target[0]),
 		String(target[1]),
 		String(target[2]),
-		String(fovDegrees)
+		String(fovDegrees),
 	].join('|');
 }
 
@@ -116,7 +116,7 @@ export function clearStageSnapshotCache(): void {
 function renderSerially(
 	host: SnapshotRenderer,
 	request: SnapshotRequest,
-	requestGeneration: number
+	requestGeneration: number,
 ): Promise<string | null> {
 	const run = renderQueue.then(() => {
 		// A queued render whose host was replaced or whose scene changed is obsolete;
@@ -126,7 +126,7 @@ function renderSerially(
 	});
 	renderQueue = run.then(
 		() => undefined,
-		() => undefined
+		() => undefined,
 	);
 	return run;
 }

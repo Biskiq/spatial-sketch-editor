@@ -151,7 +151,7 @@ describe('My Objects client', () => {
 				headers: { ETag: `"${contentId}"`, 'X-Library-Format-Version': '2' }
 			});
 		await expect(client.read({ ...summary, formatVersion: 2 })).rejects.toMatchObject({
-			serverCode: 'unsupported_format_version'
+			code: 'refused'
 		});
 	});
 

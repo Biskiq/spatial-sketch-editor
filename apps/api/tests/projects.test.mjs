@@ -352,7 +352,7 @@ test('project payload just under 2 MiB is accepted', async () => {
 	assert.equal(response.json().version, 1);
 });
 
-test('Layout 9 regions round-trip and an outgoing Layout head remains listed and recoverable', async () => {
+test('Layout regions round-trip and an outgoing Layout head remains listed and recoverable', async () => {
 	const projectId = track(nextProjectId());
 	const owner = await sessionCookie(app, 'google:v1a-owner');
 	const outsider = await sessionCookie(app, 'google:v1a-outsider');
@@ -396,6 +396,6 @@ test('Layout 9 regions round-trip and an outgoing Layout head remains listed and
 		...request, capture: { ...request.capture, canonicalJson: JSON.stringify(outgoing, null, 2) + '\n' }
 	});
 	assert.equal(oldSave.statusCode, 400, oldSave.body);
-	assert.ok(oldSave.json().issues.some((issue) => issue.code === 'unsupported_format_version'));
+	assert.equal(oldSave.json().error.code, 'invalid_project');
 	assert.deepEqual(await storageState(), beforeRefusal);
 });

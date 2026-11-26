@@ -20,7 +20,7 @@ export type VisitorRoomPresentation = {
 export const neutralVisitorRoomPresentation: VisitorRoomPresentation = {
 	color: '#4b4b52',
 	accentColor: '#a6a6ad',
-	shell: 'layout'
+	shell: 'layout',
 };
 
 /** A physical Wall's default surface; Walls carry no authored material yet. */

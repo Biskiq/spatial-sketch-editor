@@ -79,7 +79,7 @@ function readOrigin(
 	value: string | undefined,
 	name: string,
 	required = false,
-	allowPath = false
+	allowPath = false,
 ): string | undefined {
 	const origin = value?.trim();
 	if (!origin) {
@@ -88,7 +88,12 @@ function readOrigin(
 	}
 	try {
 		const url = new URL(origin);
-		if (!['http:', 'https:'].includes(url.protocol) || (!allowPath && url.pathname !== '/') || url.search || url.hash) {
+		if (
+			!['http:', 'https:'].includes(url.protocol) ||
+			(!allowPath && url.pathname !== '/') ||
+			url.search ||
+			url.hash
+		) {
 			throw new Error();
 		}
 		return allowPath ? `${url.origin}${url.pathname.replace(/\/+$/, '')}` : url.origin;
@@ -149,7 +154,7 @@ function readLocalObjectStoreEndpoint(value: string | undefined): string {
 		return url.origin;
 	} catch {
 		throw new ConfigError(
-			'LOCAL_OBJECT_STORE requires R2_ENDPOINT to be a credential-free loopback HTTP URL'
+			'LOCAL_OBJECT_STORE requires R2_ENDPOINT to be a credential-free loopback HTTP URL',
 		);
 	}
 }
@@ -167,7 +172,8 @@ function readObjectStoreMode(env: NodeJS.ProcessEnv): 'r2' | 'local' {
 function readTestAuthSecret(value: string | undefined): string | undefined {
 	const secret = value?.trim();
 	if (!secret) return undefined;
-	if (secret.length < 16) throw new ConfigError('E2E_TEST_AUTH_SECRET must be at least 16 characters');
+	if (secret.length < 16)
+		throw new ConfigError('E2E_TEST_AUTH_SECRET must be at least 16 characters');
 	return secret;
 }
 
@@ -183,7 +189,10 @@ function readSessionKey(value: string | undefined): Buffer {
 }
 
 function readTrustProxy(value: string | undefined): string | undefined {
-	const proxies = value?.split(',').map((entry) => entry.trim()).filter(Boolean);
+	const proxies = value
+		?.split(',')
+		.map((entry) => entry.trim())
+		.filter(Boolean);
 	return proxies && proxies.length > 0 ? proxies.join(',') : undefined;
 }
 
@@ -191,7 +200,7 @@ function readObjectNamespace(value: string | undefined): string {
 	const namespace = readRequired(value, 'R2_OBJECT_NAMESPACE');
 	if (!/^[a-z0-9][a-z0-9-]{0,31}$/.test(namespace)) {
 		throw new ConfigError(
-			'R2_OBJECT_NAMESPACE must be 1-32 lowercase letters, digits or hyphens and start with a letter or digit'
+			'R2_OBJECT_NAMESPACE must be 1-32 lowercase letters, digits or hyphens and start with a letter or digit',
 		);
 	}
 	return namespace;
@@ -201,7 +210,12 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
 	const databaseUrl = readDatabaseUrl(env.DATABASE_URL);
 	const port = readPort(env.PORT);
 	const editorOrigin = readOrigin(env.EDITOR_ORIGIN, 'EDITOR_ORIGIN', true)!;
-	const apiOrigin = readOrigin(env.API_ORIGIN ?? env.RENDER_EXTERNAL_URL, 'API_ORIGIN', false, true);
+	const apiOrigin = readOrigin(
+		env.API_ORIGIN ?? env.RENDER_EXTERNAL_URL,
+		'API_ORIGIN',
+		false,
+		true,
+	);
 	const objectStoreMode = readObjectStoreMode(env);
 	return {
 		databaseUrl,
@@ -220,6 +234,6 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
 		r2ObjectNamespace: readObjectNamespace(env.R2_OBJECT_NAMESPACE),
 		r2AccessKeyId: readRequired(env.R2_ACCESS_KEY_ID, 'R2_ACCESS_KEY_ID'),
 		r2SecretAccessKey: readRequired(env.R2_SECRET_ACCESS_KEY, 'R2_SECRET_ACCESS_KEY'),
-		testAuthSecret: readTestAuthSecret(env.E2E_TEST_AUTH_SECRET)
+		testAuthSecret: readTestAuthSecret(env.E2E_TEST_AUTH_SECRET),
 	};
 }

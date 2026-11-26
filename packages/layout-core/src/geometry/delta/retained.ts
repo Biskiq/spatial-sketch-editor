@@ -4,7 +4,6 @@ import type { CompiledJunctionLeg, CompiledLayoutGeometryResult } from '../types
 import type { LayoutCompileReuse } from '../reuse';
 import { sameAuthored } from '../reuse';
 import type { LayoutDocumentWallFirst } from '../../wall/types';
-import { hasAnySamplingTestObserver } from '../../world/lookups';
 import { layoutItem, layoutLength } from '../../kernel/source-collections';
 import { collectJoinsForWall, resolveCowDirtyIds } from './seed';
 import { compileSnapshot } from './snapshots';
@@ -20,13 +19,16 @@ export function tryCompileWallFirstLayoutGeometryDelta(
 	document: LayoutDocumentWallFirst,
 	sampling: WallSamplingDerivation | undefined,
 	reuse: LayoutCompileReuse,
-	builders: CanonicalDeltaBuilders
+	builders: CanonicalDeltaBuilders,
 ): CompiledLayoutGeometryResult | null {
-	if (hasAnySamplingTestObserver() || !isCanonicalWallSampling(sampling)) return null;
+	if (!isCanonicalWallSampling(sampling)) return null;
 	let world = reuse.world as RetainedCompileWorld | null;
 	if (!world) return null;
-	if (document.regions !== world.document.regions &&
-		(document.regions.length !== 0 || world.document.regions.length !== 0)) return null;
+	if (
+		document.regions !== world.document.regions &&
+		(document.regions.length !== 0 || world.document.regions.length !== 0)
+	)
+		return null;
 
 	const defaultWallThickness = layoutItem(document, 'walls', 0)?.thickness ?? 0.1;
 	if (
@@ -116,7 +118,11 @@ export function tryCompileWallFirstLayoutGeometryDelta(
 		}
 	}
 
-	world = { ...world, ...compileSourceViews(document, world), junctionIssuesByOrder: world.junctionIssuesByOrder.fork() };
+	world = {
+		...world,
+		...compileSourceViews(document, world),
+		junctionIssuesByOrder: world.junctionIssuesByOrder.fork(),
+	};
 	reuse.world = world;
 	// 1. Evaluate dirty Walls (base geometry + legs).
 	const evaluatedWallBaseById = new Map<string, EvaluatedWallBaseUnit>();
@@ -136,7 +142,10 @@ export function tryCompileWallFirstLayoutGeometryDelta(
 			return null;
 		}
 		if (evaluated !== null) {
-			if ((evaluated.baseCompiled.samples.length >= 2) !== ((prevSlot.compiled?.samples.length ?? 0) >= 2)) {
+			if (
+				evaluated.baseCompiled.samples.length >= 2 !==
+				(prevSlot.compiled?.samples.length ?? 0) >= 2
+			) {
 				reuse.world = null;
 				return null;
 			}
@@ -174,9 +183,12 @@ export function tryCompileWallFirstLayoutGeometryDelta(
 				world.wallById,
 				world.openingsByHostWallId,
 				world.openingOrderById,
-				defaultWallThickness
+				defaultWallThickness,
 			);
-			if ((prevSlot.stripped === null) !== (unit.stripped === null)) { reuse.world = null; return null; }
+			if ((prevSlot.stripped === null) !== (unit.stripped === null)) {
+				reuse.world = null;
+				return null;
+			}
 			if (prevSlot.hasValidCeiling !== unit.hasValidCeiling) {
 				if (unit.hasValidCeiling) world.validCeilingRoomCount += 1;
 				else world.validCeilingRoomCount -= 1;
@@ -198,16 +210,16 @@ export function tryCompileWallFirstLayoutGeometryDelta(
 						return [
 							ref,
 							w ?? null,
-							w ? world.pointById.get(w.startJunctionId) ?? null : null,
-							w ? world.pointById.get(w.endJunctionId) ?? null : null,
-							world.openingsByHostWallId.get(ref.wallId) ?? null
+							w ? (world.pointById.get(w.startJunctionId) ?? null) : null,
+							w ? (world.pointById.get(w.endJunctionId) ?? null) : null,
+							world.openingsByHostWallId.get(ref.wallId) ?? null,
 						];
 					}),
 					...room.virtualEdges.map((edge) => [
 						edge,
 						world.pointById.get(edge.startJunctionId) ?? null,
-						world.pointById.get(edge.endJunctionId) ?? null
-					])
+						world.pointById.get(edge.endJunctionId) ?? null,
+					]),
 				];
 				reuse.roomSources.set(room.id, { authored: retentionKey, source: unit.source });
 				reuse.roomCompiles.set(unit.source, {
@@ -218,9 +230,9 @@ export function tryCompileWallFirstLayoutGeometryDelta(
 						points: [],
 						spans: [],
 						polygons: unit.polygons,
-						aabbs: unit.aabbs
+						aabbs: unit.aabbs,
 					},
-					issues: unit.issues
+					issues: unit.issues,
 				});
 			}
 			world.roomSlots = world.roomSlots.set(rIdx, {
@@ -230,7 +242,7 @@ export function tryCompileWallFirstLayoutGeometryDelta(
 				polygons: unit.polygons,
 				aabbs: unit.aabbs,
 				issues: unit.issues,
-				bounds3: unit.bounds3
+				bounds3: unit.bounds3,
 			});
 		}
 	}
@@ -280,14 +292,25 @@ export function tryCompileWallFirstLayoutGeometryDelta(
 			(a, b) =>
 				a.outwardAngle - b.outwardAngle ||
 				(a.wallId < b.wallId ? -1 : a.wallId > b.wallId ? 1 : 0) ||
-				(a.end < b.end ? -1 : a.end > b.end ? 1 : 0)
+				(a.end < b.end ? -1 : a.end > b.end ? 1 : 0),
 		);
-		const resolved = builders.resolveJunction(document, jId, point, legs, reuse, world.wallById, world.pointById);
+		const resolved = builders.resolveJunction(
+			document,
+			jId,
+			point,
+			legs,
+			reuse,
+			world.wallById,
+			world.pointById,
+		);
 		if (world.sortedJunctions.get(jSortedIdx) !== resolved.compiled) {
 			world.sortedJunctions = world.sortedJunctions.set(jSortedIdx, resolved.compiled);
 		}
 		const issueOrder = world.junctionLegOrderById.get(jId);
-		if (issueOrder === undefined) { reuse.world = null; return null; }
+		if (issueOrder === undefined) {
+			reuse.world = null;
+			return null;
+		}
 		if (resolved.issues.length > 0) {
 			world.junctionIssuesByOrder.set(issueOrder, resolved.issues);
 		} else {
@@ -329,7 +352,7 @@ export function tryCompileWallFirstLayoutGeometryDelta(
 			baseBounds3,
 			currentCompiled,
 			currentWallAabb,
-			joins
+			joins,
 		);
 
 		const baseRecords = evaluatedBase ? evaluatedBase.baseRecords : prevSlot.baseRecords;
@@ -351,7 +374,7 @@ export function tryCompileWallFirstLayoutGeometryDelta(
 				legs,
 				baseRecords,
 				wallAabb: expanded.wallAabb,
-				issues
+				issues,
 			});
 			world.sortedWalls = world.sortedWalls.set(prevSlot.sortedIndex, expanded.compiled);
 
@@ -368,14 +391,14 @@ export function tryCompileWallFirstLayoutGeometryDelta(
 					document.floor.elevation,
 					hosted,
 					role,
-					false
+					false,
 				],
 				compiled: expanded.compiled,
 				baseBounds2,
 				baseBounds3,
 				legs,
 				records: { ...baseRecords, aabbs: [...baseRecords.aabbs, expanded.wallAabb] },
-				issues
+				issues,
 			});
 		}
 	}

@@ -7,7 +7,7 @@ type RegionSurface = LayoutRegionSurfaceRef['face'];
 /** Triangulate the compiled, outward-wound slab faces and keep their attribution. */
 export function buildRegionMeshGeometry(
 	region: CompiledRegion,
-	origin: readonly [number, number, number] = [0, 0, 0]
+	origin: readonly [number, number, number] = [0, 0, 0],
 ): BufferGeometry {
 	const geometry = new BufferGeometry();
 	const positions: number[] = [];
@@ -16,10 +16,16 @@ export function buildRegionMeshGeometry(
 	const surfaceByTriangle: RegionSurface[] = [];
 	for (const { polygon, normal, surface } of region.faces) {
 		const start = positions.length / 3;
-		const triangles = surface === 'edge' ? [[0, 1, 2], [0, 2, 3]] : ShapeUtils.triangulateShape(
-			polygon.map(([x, , z]) => new Vector2(x - polygon[0]![0], z - polygon[0]![2])),
-			[]
-		);
+		const triangles =
+			surface === 'edge'
+				? [
+						[0, 1, 2],
+						[0, 2, 3],
+					]
+				: ShapeUtils.triangulateShape(
+						polygon.map(([x, , z]) => new Vector2(x - polygon[0]![0], z - polygon[0]![2])),
+						[],
+					);
 		for (const triangle of triangles) {
 			const [i, j, k] = triangle as [number, number, number];
 			const [a, b, c] = [polygon[i]!, polygon[j]!, polygon[k]!];
@@ -38,7 +44,11 @@ export function buildRegionMeshGeometry(
 			normals.push(...normal, ...normal, ...normal);
 			surfaceByTriangle.push(surface);
 		}
-		geometry.addGroup(start, positions.length / 3 - start, surface === 'top' ? 0 : surface === 'underside' ? 1 : 2);
+		geometry.addGroup(
+			start,
+			positions.length / 3 - start,
+			surface === 'top' ? 0 : surface === 'underside' ? 1 : 2,
+		);
 	}
 	geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
 	geometry.setAttribute('normal', new Float32BufferAttribute(normals, 3));
@@ -47,6 +57,9 @@ export function buildRegionMeshGeometry(
 	return geometry;
 }
 
-export function regionSurfaceOf(geometry: BufferGeometry, faceIndex: number): RegionSurface | undefined {
+export function regionSurfaceOf(
+	geometry: BufferGeometry,
+	faceIndex: number,
+): RegionSurface | undefined {
 	return (geometry.userData.regionSurfaces as readonly RegionSurface[] | undefined)?.[faceIndex];
 }

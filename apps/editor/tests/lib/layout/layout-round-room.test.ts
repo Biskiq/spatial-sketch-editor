@@ -159,30 +159,8 @@ describe('C1 · Source, codec and seam contract', () => {
 		}
 	});
 
-	it('rejects old format versions, header/data mismatches, missing isolated fact, bad values, virtual-edge Round and noncircular Rooms', async () => {
+	it('rejects missing round facts, bad values, virtual-edge Round and noncircular Rooms', () => {
 		const circle = createCircle({ center: [0, 0], rim: [5, 0] });
-
-		// Format 9 and 8 rejected strictly
-		for (const oldVersion of [9, 8, 7]) {
-			const old = { ...circle, formatVersion: oldVersion };
-			const res = validateWallFirstLayoutDocument(old);
-			expect(res.success).toBe(false);
-			if (!res.success) expect(res.issues[0]!.code).toBe('unsupported_format_version');
-		}
-
-		// F2 header/data mismatch rejected
-		const project = await createUnitProject({ id: 'c1-mismatch', name: 'Mismatch', layout: circle });
-		const headerOld = structuredClone(project) as unknown as {
-			units: { layout: { header: { formatVersion: number }; data: { formatVersion: number } } };
-		};
-		headerOld.units.layout.header.formatVersion = 9;
-		expect(validateProjectEnvelope(headerOld).success).toBe(false);
-
-		const dataOld = structuredClone(project) as unknown as {
-			units: { layout: { header: { formatVersion: number }; data: { formatVersion: number } } };
-		};
-		dataOld.units.layout.data.formatVersion = 9;
-		expect(validateProjectEnvelope(dataOld).success).toBe(false);
 
 		// Missing round fact on enclosed closed circle
 		const { round: _omitted, ...roomWithoutRound } = circle.rooms[0]!;

@@ -6,7 +6,14 @@ import { CAMERA_UNIT_SCENE_VALIDATION } from '../camera-connectivity';
 import { CAMERA_UNIT_FORMAT_VERSION, type CameraUnitPayload, type CameraView } from '../types';
 import { failed, delegatedIssues } from './shared';
 
-export const CAMERA_VIEW_KEYS = ['id', 'label', 'eye', 'target', 'fov', 'connectedViewIds'] as const;
+export const CAMERA_VIEW_KEYS = [
+	'id',
+	'label',
+	'eye',
+	'target',
+	'fov',
+	'connectedViewIds',
+] as const;
 export const CAMERA_PAYLOAD_KEYS = ['formatVersion', 'views', 'connections'] as const;
 
 /**
@@ -25,7 +32,11 @@ export function validateCameraPayload(input: unknown): ShapeValidation<CameraUni
 	const record = reader.object(input, '$', CAMERA_PAYLOAD_KEYS);
 	if (record === null) return failed(reader);
 	if (record.formatVersion !== CAMERA_UNIT_FORMAT_VERSION) {
-		reader.problem('$.formatVersion', 'unsupported_format_version', `$.formatVersion must be ${CAMERA_UNIT_FORMAT_VERSION}`);
+		reader.problem(
+			'$.formatVersion',
+			'unsupported_format_version',
+			`$.formatVersion must be ${CAMERA_UNIT_FORMAT_VERSION}`,
+		);
 		return failed(reader);
 	}
 	if (!Array.isArray(record.views)) {
@@ -43,11 +54,22 @@ export function validateCameraPayload(input: unknown): ShapeValidation<CameraUni
 		const eye = reader.vector3(viewRecord.eye, `${path}.eye`);
 		const target = reader.vector3(viewRecord.target, `${path}.target`);
 		const fov = reader.number(viewRecord.fov, `${path}.fov`);
-		const connectedViewIds = reader.opaqueIdArray(viewRecord.connectedViewIds, `${path}.connectedViewIds`);
-		if (id === null || label === null || eye === null || target === null || fov === null || connectedViewIds === null) {
+		const connectedViewIds = reader.opaqueIdArray(
+			viewRecord.connectedViewIds,
+			`${path}.connectedViewIds`,
+		);
+		if (
+			id === null ||
+			label === null ||
+			eye === null ||
+			target === null ||
+			fov === null ||
+			connectedViewIds === null
+		) {
 			return failed(reader);
 		}
-		if (viewIds.has(id)) reader.problem(`${path}.id`, 'duplicate-identity', `view "${id}" is declared twice`);
+		if (viewIds.has(id))
+			reader.problem(`${path}.id`, 'duplicate-identity', `view "${id}" is declared twice`);
 		viewIds.add(id);
 		views.push({ id, label, eye, target, fov, connectedViewIds });
 	}
@@ -66,26 +88,34 @@ export function validateCameraPayload(input: unknown): ShapeValidation<CameraUni
 				position: [...view.eye] as [number, number, number],
 				cameraTarget: [...view.target] as [number, number, number],
 				fov: view.fov,
-				connectedNodeIds: [...view.connectedViewIds]
+				connectedNodeIds: [...view.connectedViewIds],
 			})),
-			connections: record.connections
+			connections: record.connections,
 		},
-		CAMERA_UNIT_SCENE_VALIDATION
+		CAMERA_UNIT_SCENE_VALIDATION,
 	);
 	if (!delegated.success) return { success: false, issues: delegatedIssues(delegated.issues) };
 	const poseIssues = validateProjectSceneCameraPoses(delegated.document);
-	if (poseIssues.length > 0) return { success: false, issues: poseIssues.map((issue) => ({ ...issue, path: issue.path.replace('$.scene.', '$.') })) };
+	if (poseIssues.length > 0)
+		return {
+			success: false,
+			issues: poseIssues.map((issue) => ({ ...issue, path: issue.path.replace('$.scene.', '$.') })),
+		};
 	const resolved: CameraView[] = delegated.document.navigationNodes.map((node) => ({
 		id: node.id,
 		label: node.label,
 		eye: [...node.position] as [number, number, number],
 		target: [...node.cameraTarget] as [number, number, number],
 		fov: node.fov,
-		connectedViewIds: [...node.connectedNodeIds]
+		connectedViewIds: [...node.connectedNodeIds],
 	}));
 	return {
 		success: true,
-		value: { formatVersion: CAMERA_UNIT_FORMAT_VERSION, views: resolved, connections: delegated.document.connections },
-		ignoredOptionalExtensions: []
+		value: {
+			formatVersion: CAMERA_UNIT_FORMAT_VERSION,
+			views: resolved,
+			connections: delegated.document.connections,
+		},
+		ignoredOptionalExtensions: [],
 	};
 }

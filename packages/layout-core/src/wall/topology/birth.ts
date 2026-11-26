@@ -8,7 +8,11 @@ import { reconcileRooms } from '../../room/reconciliation';
 import type { ComponentLineage, RoomIdAllocator } from '../../room/reconciliation-types';
 import { roomSurfaceLineage } from '../../plan/surface-reference';
 import type { LayoutIdCapture } from '../../plan/id-capture';
-import { LayoutIdCollisionError, allocateCapturedId, layoutWorkingLevelIssue } from '../../plan/id-capture';
+import {
+	LayoutIdCollisionError,
+	allocateCapturedId,
+	layoutWorkingLevelIssue,
+} from '../../plan/id-capture';
 
 /**
  * Captured Room allocator. Room IDs derive from the
@@ -16,7 +20,10 @@ import { LayoutIdCollisionError, allocateCapturedId, layoutWorkingLevelIssue } f
  * only the refusal check that the captured id is unused. Names extend the
  * existing `Draft Room N` convention — a name is not identity.
  */
-export function createAuthoringRoomAllocator(capture: LayoutIdCapture, namePrefix = 'Draft Room'): RoomIdAllocator {
+export function createAuthoringRoomAllocator(
+	capture: LayoutIdCapture,
+	namePrefix = 'Draft Room',
+): RoomIdAllocator {
 	return {
 		nextRoomId(baseDocument, faceKey) {
 			const taken = new Set(baseDocument.rooms.map((room) => room.id));
@@ -30,13 +37,12 @@ export function createAuthoringRoomAllocator(capture: LayoutIdCapture, namePrefi
 			let index = 1;
 			while (taken.has(`${namePrefix} ${index}`)) index += 1;
 			return `${namePrefix} ${index}`;
-		}
+		},
 	};
 }
 
-
 /**
- * Shared foundation operation (P23.8 "Initial Room creation — foundation
+ * Shared foundation operation ("Initial Room creation — foundation
  * responsibility"): reconcile the candidate document's zero-predecessor
  * faces into born Rooms, then run the full canonical gates.
  *
@@ -53,33 +59,30 @@ function runRoomBirthOperation(options: {
 	if (candidateDocument.walls.length === 0) {
 		return reject({
 			code: 'no_boundary_walls',
-			message: 'The candidate document has no walls; there is nothing to enclose'
+			message: 'The candidate document has no walls; there is nothing to enclose',
 		});
 	}
 
 	const extraction = extractBoundaryCandidateFaces(candidateDocument);
 	if (extraction.faces.length === 0) {
-		const wallIds = [
-			...extraction.danglingWallIds,
-			...extraction.cutEdgeWallIds
-		];
+		const wallIds = [...extraction.danglingWallIds, ...extraction.cutEdgeWallIds];
 		return reject({
 			code: 'no_enclosed_face',
 			message:
 				'Boundary walls form no enclosed candidate face; a Room is born only from a closed boundary cycle',
 			...(wallIds.length > 0 ? { wallIds } : {}),
-			topology: extraction.diagnostics
+			topology: extraction.diagnostics,
 		});
 	}
 
 	// Zero-predecessor births: every face is a fresh component with no
-	// predecessor rooms (P23.8 proves the "failed match is not permission to
+	// predecessor rooms (proves the "failed match is not permission to
 	// create a Room" rule for non-zero predecessors — a birth operation by
 	// definition starts from an empty predecessor set, so every face born
 	// here is genuinely new).
 	const components: ComponentLineage[] = extraction.faces.map((face) => ({
 		candidateFaceKeys: [face.key],
-		predecessorRoomIds: []
+		predecessorRoomIds: [],
 	}));
 
 	const result = reconcileRooms({
@@ -89,14 +92,14 @@ function runRoomBirthOperation(options: {
 		candidateDocument,
 		extraction,
 		components,
-		allocator
+		allocator,
 	});
 	if ('rejection' in result) {
 		return reject({
 			code: 'room_reconciliation_rejected',
 			message: result.rejection.message,
 			...(result.rejection.roomIds ? { roomIds: result.rejection.roomIds } : {}),
-			...(result.rejection.faceKey ? { faceKey: result.rejection.faceKey } : {})
+			...(result.rejection.faceKey ? { faceKey: result.rejection.faceKey } : {}),
 		});
 	}
 
@@ -105,12 +108,15 @@ function runRoomBirthOperation(options: {
 		document,
 		lineage: result.lineage
 			.filter((record) => record.kind === 'created')
-			.map((record) => ({ faceKey: record.faceKey, roomId: record.roomId, kind: 'created' as const })),
+			.map((record) => ({
+				faceKey: record.faceKey,
+				roomId: record.roomId,
+				kind: 'created' as const,
+			})),
 		surfaceLineage: roomSurfaceLineage(result.lineage),
-		retiredRoomIds: result.retiredRoomIds
+		retiredRoomIds: result.retiredRoomIds,
 	}));
 }
-
 
 /**
  * Final canonical gates shared by every planner: codec → compile.
@@ -123,14 +129,14 @@ function runRoomBirthOperation(options: {
 export function validateAndCompile<T>(
 	document: LayoutDocumentWallFirst,
 	reject: (rejection: WallFirstOpRejection) => T,
-	success: (document: LayoutDocumentWallFirst) => T
+	success: (document: LayoutDocumentWallFirst) => T,
 ): T {
 	const validated = validateWallFirstLayoutDocument(document);
 	if (!validated.success) {
 		return reject({
 			code: 'invalid_candidate_document',
 			message: `Candidate document failed canonical validation: ${validated.issues[0]?.message ?? 'unknown issue'}`,
-			issues: validated.issues
+			issues: validated.issues,
 		});
 	}
 	// The canonical compile must succeed before a document may be committed
@@ -141,24 +147,23 @@ export function validateAndCompile<T>(
 	if (hasBlockingLayoutIssues(compiled.issues)) {
 		return reject({
 			code: 'candidate_does_not_compile',
-			message: `Candidate document does not compile: ${compiled.issues[0]?.message ?? 'unknown geometry issue'}`
+			message: `Candidate document does not compile: ${compiled.issues[0]?.message ?? 'unknown geometry issue'}`,
 		});
 	}
 	return success(validated.document);
 }
 
-
 /**
  * Headless first-enclosure creation: reconcile the enclosed candidate faces
  * of a closed boundary-Wall chain into born Rooms with deterministic IDs,
- * `Draft Room N` names and the P23.8 0.1 m floor/ceiling creation defaults.
+ * `Draft Room N` names and the 0.1 m floor/ceiling creation defaults.
  *
  * The operation reconciles the **whole** submitted document, so the caller
  * submits the complete post-operation candidate graph (existing walls plus
- * the closing chain, already noded through the P23.8 noding plans). Every
+ * the closing chain, already noded through the noding plans). Every
  * enclosed face — not just the newly closed one — receives a Room; a
  * pre-existing Room document is out of scope here (the topology-edit entry
- * points run full P23.8 correspondence against their real baseline).
+ * points run full correspondence against their real baseline).
  */
 export function planFirstEnclosureCreation(options: {
 	/**
@@ -182,19 +187,22 @@ export function planFirstEnclosureCreation(options: {
 			rejection: {
 				code: 'no_enclosed_face',
 				message:
-					'First-enclosure creation is a zero-predecessor birth operation; the candidate document must not carry rooms'
-			}
+					'First-enclosure creation is a zero-predecessor birth operation; the candidate document must not carry rooms',
+			},
 		};
 	}
 	try {
 		return runRoomBirthOperation({
 			candidateDocument: options.candidateDocument,
 			allocator,
-			reject: (rejection) => ({ kind: 'rejected', rejection })
+			reject: (rejection) => ({ kind: 'rejected', rejection }),
 		});
 	} catch (error) {
 		if (error instanceof LayoutIdCollisionError) {
-			return { kind: 'rejected', rejection: { code: 'captured_id_in_use', message: error.message } };
+			return {
+				kind: 'rejected',
+				rejection: { code: 'captured_id_in_use', message: error.message },
+			};
 		}
 		throw error;
 	}

@@ -3,7 +3,12 @@ import type { CompiledQuerySpan } from '../../geometry/types';
 import type { TopologySegment } from '../../wall/topology';
 import { classifyWallIntersection } from '../../wall/topology';
 import type { SnapCandidate, SnapInputContext, SnapQueryContext } from './types';
-import { LAYOUT_PLAN_GRID_STEP, LAYOUT_PLAN_SNAP_RADIUS_CSS_PX, SEMANTIC_RANK, snapOwnerKey } from './types';
+import {
+	LAYOUT_PLAN_GRID_STEP,
+	LAYOUT_PLAN_SNAP_RADIUS_CSS_PX,
+	SEMANTIC_RANK,
+	snapOwnerKey,
+} from './types';
 
 /** Convert the fixed CSS-pixel acquisition radius to world units at this zoom. */
 export function snapAcquisitionRadiusWorld(context: SnapQueryContext): number {
@@ -14,13 +19,11 @@ export function snapAcquisitionRadiusWorld(context: SnapQueryContext): number {
 	return cssPx / ppm;
 }
 
-
 /** Snap one free point to the centralized grid step. */
 export function snapToGridStep(point: LayoutVec2, step = LAYOUT_PLAN_GRID_STEP): LayoutVec2 {
 	if (!Number.isFinite(step) || step <= 0) return [...point];
 	return [Math.round(point[0] / step) * step, Math.round(point[1] / step) * step];
 }
-
 
 function excluded(candidate: SnapCandidate, context: SnapInputContext): boolean {
 	// Exclusion is by canonical typed owner (`ownerId`), falling back to the
@@ -34,7 +37,6 @@ function excluded(candidate: SnapCandidate, context: SnapInputContext): boolean 
 	return false;
 }
 
-
 function stableKey(candidate: SnapCandidate): string {
 	// `ownerId` participates so identical `sourceId + point` records with
 	// different qualified owners (coincident junctions from distinct walls)
@@ -42,14 +44,13 @@ function stableKey(candidate: SnapCandidate): string {
 	return `${SEMANTIC_RANK[candidate.kind]}|${candidate.kind}|${candidate.ownerId ?? candidate.sourceId}|${candidate.sourceId}|${candidate.point[0]}|${candidate.point[1]}`;
 }
 
-
 /**
  * Resolve the deterministic winner among candidates:
  * semantic rank → screen distance → stable identity key.
  */
 export function pickSnapWinner(
 	candidates: readonly SnapCandidate[],
-	context: SnapInputContext = {}
+	context: SnapInputContext = {},
 ): SnapCandidate | null {
 	let best: SnapCandidate | null = null;
 	let bestKey = '';
@@ -75,7 +76,6 @@ export function pickSnapWinner(
 	return best;
 }
 
-
 /**
  * Build endpoint, midpoint, and nearest-span candidates for one straight span.
  * `ownerId` is the moving-target exclusion identity — for merged wall spans
@@ -86,13 +86,13 @@ export function spanSnapCandidates(
 	point: LayoutVec2,
 	radius: number,
 	ownerId = span.id,
-	wallId = span.id
+	wallId = span.id,
 ): SnapCandidate[] {
 	const candidates: SnapCandidate[] = [];
 	const length = Math.hypot(span.end[0] - span.start[0], span.end[1] - span.start[1]);
 	const endpoints: Array<[LayoutVec2, 'start' | 'end']> = [
 		[span.start, 'start'],
-		[span.end, 'end']
+		[span.end, 'end'],
 	];
 	for (const [candidatePoint, key] of endpoints) {
 		const distance = Math.hypot(candidatePoint[0] - point[0], candidatePoint[1] - point[1]);
@@ -102,14 +102,14 @@ export function spanSnapCandidates(
 				kind: 'junction',
 				sourceId: `${span.id}#${key}`,
 				ownerId,
-				distance
+				distance,
 			});
 		}
 	}
 	if (length > 0) {
 		const midpoint: LayoutVec2 = [
 			(span.start[0] + span.end[0]) / 2,
-			(span.start[1] + span.end[1]) / 2
+			(span.start[1] + span.end[1]) / 2,
 		];
 		const distance = Math.hypot(midpoint[0] - point[0], midpoint[1] - point[1]);
 		if (distance <= radius) {
@@ -118,14 +118,15 @@ export function spanSnapCandidates(
 				kind: 'wall-midpoint',
 				sourceId: span.id,
 				ownerId,
-				distance
+				distance,
 			});
 		}
 	}
 	const dx = span.end[0] - span.start[0];
 	const dz = span.end[1] - span.start[1];
 	const squared = dx * dx + dz * dz;
-	const rawT = squared > 0 ? ((point[0] - span.start[0]) * dx + (point[1] - span.start[1]) * dz) / squared : 0;
+	const rawT =
+		squared > 0 ? ((point[0] - span.start[0]) * dx + (point[1] - span.start[1]) * dz) / squared : 0;
 	const amount = Math.min(1, Math.max(0, rawT));
 	const projected: LayoutVec2 = [span.start[0] + dx * amount, span.start[1] + dz * amount];
 	const projectedDistance = Math.hypot(projected[0] - point[0], projected[1] - point[1]);
@@ -136,23 +137,22 @@ export function spanSnapCandidates(
 			sourceId: span.id,
 			ownerId,
 			wallId,
-			distance: projectedDistance
+			distance: projectedDistance,
 		});
 	}
 	return candidates;
 }
 
-
 /** Opening-edge candidates: the two ends of each opening span. */
 export function openingEdgeSnapCandidates(
 	span: { id: string; openingId: string; start: LayoutVec2; end: LayoutVec2 },
 	point: LayoutVec2,
-	radius: number
+	radius: number,
 ): SnapCandidate[] {
 	const candidates: SnapCandidate[] = [];
 	const edges: Array<[LayoutVec2, 'start' | 'end']> = [
 		[span.start, 'start'],
-		[span.end, 'end']
+		[span.end, 'end'],
 	];
 	for (const [candidatePoint, key] of edges) {
 		const distance = Math.hypot(candidatePoint[0] - point[0], candidatePoint[1] - point[1]);
@@ -162,20 +162,19 @@ export function openingEdgeSnapCandidates(
 				kind: 'opening-edge',
 				sourceId: `${span.openingId}#${key}`,
 				ownerId: snapOwnerKey({ kind: 'opening', id: span.openingId }),
-				distance
+				distance,
 			});
 		}
 	}
 	return candidates;
 }
 
-
 /** Rotated-object footprint bounds edge + center candidates. */
 export function objectBoundsSnapCandidates(
 	footprint: readonly LayoutVec2[],
 	objectId: string,
 	point: LayoutVec2,
-	radius: number
+	radius: number,
 ): SnapCandidate[] {
 	if (footprint.length === 0) return [];
 	const candidates: SnapCandidate[] = [];
@@ -187,7 +186,7 @@ export function objectBoundsSnapCandidates(
 		const edgePoints: Array<[LayoutVec2, string]> = [
 			[start, `${index}:start`],
 			[end, `${index}:end`],
-			[midpoint, `${index}:mid`]
+			[midpoint, `${index}:mid`],
 		];
 		for (const [candidatePoint, key] of edgePoints) {
 			const distance = Math.hypot(candidatePoint[0] - point[0], candidatePoint[1] - point[1]);
@@ -200,7 +199,7 @@ export function objectBoundsSnapCandidates(
 				kind: 'object-bounds-edge',
 				sourceId: `${objectId}#${key}`,
 				ownerId: snapOwnerKey({ kind: 'object', id: objectId }),
-				distance
+				distance,
 			});
 		}
 	}
@@ -218,12 +217,11 @@ export function objectBoundsSnapCandidates(
 			kind: 'object-bounds-center',
 			sourceId: objectId,
 			ownerId: snapOwnerKey({ kind: 'object', id: objectId }),
-			distance: centerDistance
+			distance: centerDistance,
 		});
 	}
 	return candidates;
 }
-
 
 /**
  * Orthogonal guide candidates relative to the active draft anchor.
@@ -234,7 +232,7 @@ export function objectBoundsSnapCandidates(
  * radius is what keeps the family from winning when the draft is nowhere near an
  * axis — the resolver filters by `distance` before ranking.
  *
- * **Locked *and* stepped (P23.13 S8 owner decision).** The candidate's free
+ * **Locked *and* stepped (S8 owner decision).** The candidate's free
  * coordinate is quantized to `step` — the same value the grid fallback reads, so
  * the lattice is stated once — while the held coordinate stays *exactly* the
  * anchor's. That is the point of the family: with Snap on the draft must never
@@ -259,7 +257,7 @@ export function objectBoundsSnapCandidates(
 export function orthogonalGuideCandidates(
 	anchor: LayoutVec2,
 	point: LayoutVec2,
-	step = LAYOUT_PLAN_GRID_STEP
+	step = LAYOUT_PLAN_GRID_STEP,
 ): SnapCandidate[] {
 	// Quantize the free coordinate (the lock is exact), keep the held one exactly
 	// as the anchor states it.
@@ -286,7 +284,7 @@ export function orthogonalGuideCandidates(
 			kind: 'orthogonal-guide',
 			sourceId: 'orthogonal-x',
 			ownerId: 'orthogonal-x',
-			distance: offsetX
+			distance: offsetX,
 		});
 	}
 	if (lockZ) {
@@ -295,12 +293,11 @@ export function orthogonalGuideCandidates(
 			kind: 'orthogonal-guide',
 			sourceId: 'orthogonal-z',
 			ownerId: 'orthogonal-z',
-			distance: offsetZ
+			distance: offsetZ,
 		});
 	}
 	return candidates;
 }
-
 
 /** Nearest-point (wall-span) candidates for one sample chunk of a curved wall. */
 export function curvedSpanNearestCandidates(
@@ -310,7 +307,7 @@ export function curvedSpanNearestCandidates(
 	point: LayoutVec2,
 	radius: number,
 	ownerId: string,
-	wallId: string
+	wallId: string,
 ): SnapCandidate[] {
 	const dx = sample.end[0] - sample.start[0];
 	const dz = sample.end[1] - sample.start[1];
@@ -328,11 +325,10 @@ export function curvedSpanNearestCandidates(
 			sourceId: `${wallKey}#sample:${index}`,
 			ownerId,
 			wallId,
-			distance
-		}
+			distance,
+		},
 	];
 }
-
 
 /**
  * Valid wall-wall intersection candidates across the compiled wall spans
@@ -343,7 +339,7 @@ export function curvedSpanNearestCandidates(
 export function wallIntersectionSnapCandidates(
 	spans: readonly { id: string; start: LayoutVec2; end: LayoutVec2 }[],
 	point: LayoutVec2,
-	radius: number
+	radius: number,
 ): SnapCandidate[] {
 	const candidates: SnapCandidate[] = [];
 	for (let first = 0; first < spans.length; first += 1) {
@@ -353,7 +349,8 @@ export function wallIntersectionSnapCandidates(
 			const segmentA: TopologySegment = { id: a.id, start: a.start, end: a.end };
 			const segmentB: TopologySegment = { id: b.id, start: b.start, end: b.end };
 			const classified = classifyWallIntersection(segmentA, segmentB, []);
-			if (classified.kind !== 'endpoint-on-interior' && classified.kind !== 'proper-crossing') continue;
+			if (classified.kind !== 'endpoint-on-interior' && classified.kind !== 'proper-crossing')
+				continue;
 			const intersectionPoint = classified.point;
 			const distance = Math.hypot(intersectionPoint[0] - point[0], intersectionPoint[1] - point[1]);
 			if (distance > radius) continue;
@@ -362,7 +359,7 @@ export function wallIntersectionSnapCandidates(
 				kind: 'wall-intersection',
 				sourceId: `${a.id}~${b.id}`,
 				ownerId: snapOwnerKey({ kind: 'wall', id: `${a.id}~${b.id}` }),
-				distance
+				distance,
 			});
 		}
 	}

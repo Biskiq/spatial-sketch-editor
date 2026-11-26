@@ -9,15 +9,18 @@
 import type { AuthoringIntent } from '@portfolio/project-model/f4';
 import {
 	creatorModelResourcePayload,
-	type SceneSupportChoice
+	type SceneSupportChoice,
 } from '@portfolio/project-model/scene-planning';
-import { nativePlacementDefinition, type NativePlacementPrimitive } from '../../scene/object-definition-policy';
+import {
+	nativePlacementDefinition,
+	type NativePlacementPrimitive,
+} from '../../scene/object-definition-policy';
 import type {
 	ArmedFormCopy,
 	ArmedModelPlacement,
 	SceneEditingSnapshot,
 	SceneSessionOutcome,
-	SceneWritePort
+	SceneWritePort,
 } from './placement';
 import { FRAME, PROJECT_WORLD } from './scene-placement-support';
 
@@ -28,8 +31,6 @@ export type SceneAcceptContext = {
 	readonly placed: (entityId: string | null) => void;
 	readonly notify: () => void;
 };
-
-
 
 /**
  * Accept one immediate command (duplicate/delete) without a preview or a lease.
@@ -42,7 +43,7 @@ export type SceneAcceptContext = {
 export async function acceptOne(
 	ctx: SceneAcceptContext,
 	intentToAccept: AuthoringIntent,
-	createdEntityId: string | null
+	createdEntityId: string | null,
 ): Promise<SceneSessionOutcome> {
 	let outcome: Awaited<ReturnType<SceneWritePort['accept']>>;
 	try {
@@ -51,7 +52,7 @@ export async function acceptOne(
 		return {
 			kind: 'failed',
 			code: 'accept-failed',
-			message: error instanceof Error ? error.message : 'The accepted install failed.'
+			message: error instanceof Error ? error.message : 'The accepted install failed.',
 		};
 	}
 	if (outcome.kind === 'refused') return outcome;
@@ -62,18 +63,20 @@ export async function acceptOne(
 	return { kind: 'committed' };
 }
 
-
-
 /** The one F4 placement intent, captured from an exact world X/Z and definition. */
 export async function acceptPlacement(
 	ctx: SceneAcceptContext,
 	primitive: NativePlacementPrimitive,
 	worldXZ: readonly [number, number],
-	choice?: SceneSupportChoice
+	choice?: SceneSupportChoice,
 ): Promise<SceneSessionOutcome> {
 	const definition = await nativePlacementDefinition(primitive).catch(() => null);
 	if (definition === null) {
-		return { kind: 'refused', code: 'missing-definition', message: 'That object definition is not admitted.' };
+		return {
+			kind: 'refused',
+			code: 'missing-definition',
+			message: 'That object definition is not admitted.',
+		};
 	}
 	const allocatedId = `entity-${ctx.mint()}`;
 	const intentToAccept: AuthoringIntent = {
@@ -82,7 +85,7 @@ export async function acceptPlacement(
 		operationId: ctx.mint(),
 		expectedRevision: {
 			projectId: ctx.snapshot.projectId,
-			revisionId: ctx.port.acceptedRevision().revisionId
+			revisionId: ctx.port.acceptedRevision().revisionId,
 		},
 		targets: [],
 		payload: {
@@ -92,10 +95,10 @@ export async function acceptPlacement(
 			yaw: 0,
 			frame: FRAME,
 			frameReference: PROJECT_WORLD,
-			...(choice === undefined ? {} : { supportChoice: choice })
+			...(choice === undefined ? {} : { supportChoice: choice }),
 		},
 		capturedInputs: [],
-		allocatedIds: [{ kind: 'scene-entity', id: allocatedId }]
+		allocatedIds: [{ kind: 'scene-entity', id: allocatedId }],
 	};
 	let outcome: Awaited<ReturnType<SceneWritePort['accept']>>;
 	try {
@@ -104,15 +107,13 @@ export async function acceptPlacement(
 		return {
 			kind: 'failed',
 			code: 'accept-failed',
-			message: error instanceof Error ? error.message : 'The accepted install failed.'
+			message: error instanceof Error ? error.message : 'The accepted install failed.',
 		};
 	}
 	if (outcome.kind === 'refused') return outcome;
 	ctx.placed(allocatedId);
 	return { kind: 'committed' };
 }
-
-
 
 /**
  * The one creator-model placement intent.
@@ -126,11 +127,15 @@ export async function acceptModelPlacement(
 	ctx: SceneAcceptContext,
 	model: ArmedModelPlacement,
 	worldXZ: readonly [number, number],
-	choice?: SceneSupportChoice
+	choice?: SceneSupportChoice,
 ): Promise<SceneSessionOutcome> {
 	const definition = model.definition;
 	if (definition.creationDefaults.kind !== 'model') {
-		return { kind: 'refused', code: 'missing-definition', message: 'That definition is not a creator model.' };
+		return {
+			kind: 'refused',
+			code: 'missing-definition',
+			message: 'That definition is not a creator model.',
+		};
 	}
 	const allocatedId = `entity-${ctx.mint()}`;
 	const intentToAccept: AuthoringIntent = {
@@ -139,7 +144,7 @@ export async function acceptModelPlacement(
 		operationId: ctx.mint(),
 		expectedRevision: {
 			projectId: ctx.snapshot.projectId,
-			revisionId: ctx.port.acceptedRevision().revisionId
+			revisionId: ctx.port.acceptedRevision().revisionId,
 		},
 		targets: [],
 		payload: {
@@ -150,10 +155,12 @@ export async function acceptModelPlacement(
 			frame: FRAME,
 			frameReference: PROJECT_WORLD,
 			...(choice === undefined ? {} : { supportChoice: choice }),
-			...(model.resource === null ? {} : { modelResource: creatorModelResourcePayload(model.resource) })
+			...(model.resource === null
+				? {}
+				: { modelResource: creatorModelResourcePayload(model.resource) }),
 		},
 		capturedInputs: [],
-		allocatedIds: [{ kind: 'scene-entity', id: allocatedId }]
+		allocatedIds: [{ kind: 'scene-entity', id: allocatedId }],
 	};
 	let outcome: Awaited<ReturnType<SceneWritePort['accept']>>;
 	try {
@@ -162,15 +169,13 @@ export async function acceptModelPlacement(
 		return {
 			kind: 'failed',
 			code: 'accept-failed',
-			message: error instanceof Error ? error.message : 'The accepted install failed.'
+			message: error instanceof Error ? error.message : 'The accepted install failed.',
 		};
 	}
 	if (outcome.kind === 'refused') return outcome;
 	ctx.placed(allocatedId);
 	return { kind: 'committed' };
 }
-
-
 
 /**
  * The one My Objects insertion intent.
@@ -183,7 +188,7 @@ export async function acceptFormCopyPlacement(
 	ctx: SceneAcceptContext,
 	copy: ArmedFormCopy,
 	worldXZ: readonly [number, number],
-	choice?: SceneSupportChoice
+	choice?: SceneSupportChoice,
 ): Promise<SceneSessionOutcome> {
 	const allocatedId = copy.entityId ?? `entity-${ctx.mint()}`;
 	const intentToAccept: AuthoringIntent = {
@@ -192,7 +197,7 @@ export async function acceptFormCopyPlacement(
 		operationId: ctx.mint(),
 		expectedRevision: {
 			projectId: ctx.snapshot.projectId,
-			revisionId: ctx.port.acceptedRevision().revisionId
+			revisionId: ctx.port.acceptedRevision().revisionId,
 		},
 		targets: [],
 		payload: {
@@ -200,10 +205,10 @@ export async function acceptFormCopyPlacement(
 			worldXZ: [worldXZ[0], worldXZ[1]],
 			yaw: 0,
 			contactMinY: copy.contactMinY,
-			...(choice === undefined ? {} : { supportChoice: choice })
+			...(choice === undefined ? {} : { supportChoice: choice }),
 		},
 		capturedInputs: [],
-		allocatedIds: [{ kind: 'scene-entity', id: allocatedId }]
+		allocatedIds: [{ kind: 'scene-entity', id: allocatedId }],
 	};
 	let outcome: Awaited<ReturnType<SceneWritePort['accept']>>;
 	try {
@@ -212,7 +217,7 @@ export async function acceptFormCopyPlacement(
 		return {
 			kind: 'failed',
 			code: 'accept-failed',
-			message: error instanceof Error ? error.message : 'The accepted install failed.'
+			message: error instanceof Error ? error.message : 'The accepted install failed.',
 		};
 	}
 	if (outcome.kind === 'refused') return outcome;

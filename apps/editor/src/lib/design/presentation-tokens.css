@@ -4,67 +4,67 @@
  * `apps/editor/static/fonts`.
  */
 @font-face {
-	font-family: 'Fraunces';
+	font-family: "Fraunces";
 	font-style: normal;
 	font-weight: 400;
 	font-display: swap;
-	src: url('/fonts/fraunces-400.ttf') format('truetype');
+	src: url("/fonts/fraunces-400.ttf") format("truetype");
 }
 @font-face {
-	font-family: 'Fraunces';
+	font-family: "Fraunces";
 	font-style: normal;
 	font-weight: 500;
 	font-display: swap;
-	src: url('/fonts/fraunces-500.ttf') format('truetype');
+	src: url("/fonts/fraunces-500.ttf") format("truetype");
 }
 @font-face {
-	font-family: 'Fraunces';
+	font-family: "Fraunces";
 	font-style: normal;
 	font-weight: 600;
 	font-display: swap;
-	src: url('/fonts/fraunces-600.ttf') format('truetype');
+	src: url("/fonts/fraunces-600.ttf") format("truetype");
 }
 @font-face {
-	font-family: 'Fraunces';
+	font-family: "Fraunces";
 	font-style: normal;
 	font-weight: 700;
 	font-display: swap;
-	src: url('/fonts/fraunces-700.ttf') format('truetype');
+	src: url("/fonts/fraunces-700.ttf") format("truetype");
 }
 @font-face {
-	font-family: 'Instrument Sans';
+	font-family: "Instrument Sans";
 	font-style: normal;
 	font-weight: 400;
 	font-display: swap;
-	src: url('/fonts/instrument-sans-400.ttf') format('truetype');
+	src: url("/fonts/instrument-sans-400.ttf") format("truetype");
 }
 @font-face {
-	font-family: 'Instrument Sans';
+	font-family: "Instrument Sans";
 	font-style: normal;
 	font-weight: 500;
 	font-display: swap;
-	src: url('/fonts/instrument-sans-500.ttf') format('truetype');
+	src: url("/fonts/instrument-sans-500.ttf") format("truetype");
 }
 @font-face {
-	font-family: 'Instrument Sans';
+	font-family: "Instrument Sans";
 	font-style: normal;
 	font-weight: 600;
 	font-display: swap;
-	src: url('/fonts/instrument-sans-600.ttf') format('truetype');
+	src: url("/fonts/instrument-sans-600.ttf") format("truetype");
 }
 @font-face {
-	font-family: 'DM Mono';
+	font-family: "DM Mono";
 	font-style: normal;
 	font-weight: 400;
 	font-display: swap;
-	src: url('/fonts/dm-mono-400.ttf') format('truetype');
+	src: url("/fonts/dm-mono-400.ttf") format("truetype");
 }
 @font-face {
-	font-family: 'DM Mono';
+	font-family: "DM Mono";
 	font-style: normal;
 	font-weight: 500;
 	font-display: swap;
-	src: url('/fonts/dm-mono-500.ttf') format('truetype');
+	src: url("/fonts/dm-mono-500.ttf") format("truetype");
 }
 
 /*
@@ -74,35 +74,35 @@
  * Values come from the approved PLATE design (accepted Round 2) and are not
  * changed by moving them here. This file owns *shared* roles only:
  *
- *  - `--shell-*`  shell, furniture and page roles (surfaces, ink, states, type,
- *                 geometry, elevation) consumed by the editor shell, landing,
- *                 login, Projects and the visitor surfaces;
- *  - `--stage-*`  spatial drawing and instrument roles (draft ink, proposal,
- *                 selection, grid, paper, mat). `stage-paint.ts` is the same
- *                 table for Three.js paint, and a test holds the two together;
+ *  - `--shell-*` shell, furniture and page roles (surfaces, ink, states, type,
+ *  geometry, elevation) consumed by the editor shell, landing,
+ *  login, Projects and the visitor surfaces;
+ *  - `--stage-*` spatial drawing and instrument roles (draft ink, proposal,
+ *  selection, grid, paper, mat). `stage-paint.ts` is the same
+ *  table for Three.js paint, and a test holds the two together;
  *  - `--cursor-*` the approved cursor family, declared in `cursors.css`.
  *
  * Rules for every consumer:
  *
  *  1. Consume the role; never repeat its value. A literal hex that equals a
- *     role here is a drift copy, not a component choice.
- *  2. Do not add a `var()` fallback. These roles are declared at `:root`, so a
- *     fallback is unreachable code at best and a second value at worst.
+ *  role here is a drift copy, not a component choice.
+ *  2. Do not add a `var` fallback. These roles are declared at `:root`, so a
+ *  fallback is unreachable code at best and a second value at worst.
  *  3. A value that is genuinely local to one instrument or to one authored
- *     Experience look stays local and is written with a comment naming why. It
- *     does not become a new shared role.
+ *  Experience look stays local and is written with a comment naming why. It
+ *  does not become a new shared role.
  *
  * Boundaries for a future skin:
  *
  *  - `--shell-*` may be re-declared under `[data-theme]`: those roles paint DOM
- *    chrome only, so a CSS-only skin is sufficient.
+ *  chrome only, so a CSS-only skin is sufficient.
  *  - `--stage-*` may not be overridden by a skin. Three.js paint is compiled
- *    from `spatial-paint.ts`, so a spatial style changes the TS table and these
- *    base declarations together; a CSS-only override would desynchronize the
- *    DOM overlay from the 3D view and is rejected by the ownership guard.
+ *  from `spatial-paint.ts`, so a spatial style changes the TS table and these
+ *  base declarations together; a CSS-only override would desynchronize the
+ *  DOM overlay from the 3D view and is rejected by the ownership guard.
  *  - `--visitor-*` is the published-visit presentation's own contract, declared
- *    in `VisitorPreviewSurface.svelte`; it is intentionally independent of
- *    editor skins.
+ *  in `VisitorPreviewSurface.svelte`; it is intentionally independent of
+ *  editor skins.
  *
  * This file does not implement skin switching or a plugin runtime.
  */
@@ -175,12 +175,12 @@
 	 * Interaction grammar — the one control-state language.
 	 *
 	 *  · engaged (a mode, selected key or pressed panel): light neutral fill,
-	 *    forest ink. Weight never changes, so a bar cannot reflow when it moves;
+	 *  forest ink. Weight never changes, so a bar cannot reflow when it moves;
 	 *  · armed (the dock tool that is live, and temporary tools such as Measure or
-	 *    Place a View): a quiet forest-3 step with ivory ink and a faint inner
-	 *    edge (D12), so gold and cobalt stay the loudest marks on screen. One
-	 *    token for every tool family; primary buttons, the lens and pressed
-	 *    segments keep the engaged ivory key;
+	 *  Place a View): a quiet forest-3 step with ivory ink and a faint inner
+	 *  edge (D12), so gold and cobalt stay the loudest marks on screen. One
+	 *  token for every tool family; primary buttons, the lens and pressed
+	 *  segments keep the engaged ivory key;
 	 *  · idle: transparent with the muted light ink;
 	 *  · focus: one halo on forest, moss on paper.
 	 *
@@ -197,7 +197,7 @@
 	--shell-focus-ring-light: 2px solid var(--shell-leaf);
 
 	/*
-	 * Dock anatomy (accepted appearance design, #399; T2.S8 U8) — one chassis and one key for
+	 * Dock anatomy (accepted appearance design, #399) — one chassis and one key for
 	 * the World and Experience docks: a 56 px forest bar carrying 46 px inset, rounded,
 	 * icon-over-label keys with a quiet shortcut hint and 28 px separators.
 	 */
@@ -240,11 +240,11 @@
 
 	/* Type. */
 	/* One UI face across the editor; Fraunces is display and branding only. */
-	--shell-sans: 'Instrument Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-	--shell-display: 'Fraunces', 'Iowan Old Style', Georgia, serif;
+	--shell-sans: "Instrument Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+	--shell-display: "Fraunces", "Iowan Old Style", Georgia, serif;
 	/* Legacy display alias: never a routine control's face. */
 	--shell-serif: var(--shell-display);
-	--shell-mono: 'DM Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+	--shell-mono: "DM Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 	/* A compact scale: title, body/control, label, metadata. */
 	--shell-text-title: 15px;
 	--shell-text-body: 12.5px;
@@ -282,7 +282,8 @@
 	--stage-ink: #1b201c;
 	--stage-ink-halo: none;
 	--stage-proposal: #2a62d6;
-	--stage-proposal-halo: drop-shadow(0 0 0.7px rgba(255, 255, 255, 0.95)) drop-shadow(0 0 1.4px rgba(255, 255, 255, 0.5));
+	--stage-proposal-halo: drop-shadow(0 0 0.7px rgba(255, 255, 255, 0.95))
+		drop-shadow(0 0 1.4px rgba(255, 255, 255, 0.5));
 	--stage-selection: #d4ad45;
 	--stage-hover: #4f8f6c;
 	--stage-erase: #d0412d;
@@ -315,7 +316,7 @@
  * Theme-private palette. Components consume the semantic `--shell-*` roles
  * below; the `--ld-*` names are this skin's source values, not a second API.
  */
-[data-shell='living-draft'] {
+[data-shell="living-draft"] {
 	/* The #285 prototype palette, used directly rather than tinted on top. */
 	--ld-forest: #13261b;
 	--ld-forest-deep: #0d1c13;
@@ -357,9 +358,9 @@
 	--ld-form: #b08a3e;
 	--ld-land: #6f8a3e;
 	--ld-furnish: #c08a2a;
-	--ld-serif: 'Fraunces', 'Iowan Old Style', Georgia, serif;
-	--ld-sans: 'Instrument Sans', system-ui, sans-serif;
-	--ld-mono: 'DM Mono', ui-monospace, monospace;
+	--ld-serif: "Fraunces", "Iowan Old Style", Georgia, serif;
+	--ld-sans: "Instrument Sans", system-ui, sans-serif;
+	--ld-mono: "DM Mono", ui-monospace, monospace;
 	/* The shell furniture this skin repaints; spatial --stage-* paint stays shared. */
 	--shell-forest: var(--ld-forest);
 	--shell-forest-raised: var(--ld-forest-2);

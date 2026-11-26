@@ -1,13 +1,13 @@
 {
-  "id": "44-paint-normalise-hex",
-  "area": "authoring",
-  "citation": "section 3 — conditional Save and authoring state",
-  "title": "A three-digit hex colour expands to one repeated channel",
-  "file": "apps/editor/src/lib/authoring/look/paint-pick.ts",
-  "find": "${text[1]}${text[1]}${text[2]}${text[2]}${text[3]}${text[3]}",
-  "replace": "${text[1]}${text[1]}${text[1]}${text[1]}${text[1]}${text[1]}",
-  "tests": [
-    "tests/lib/authoring/look/paint-pick.test.ts",
-    "tests/lib/authoring/stage-paint-tray.test.ts"
-  ]
+	"id": "44-paint-normalise-hex",
+	"area": "authoring",
+	"citation": "section 3 \u2014 conditional Save and authoring state",
+	"title": "A three-digit hex colour expands to one repeated channel",
+	"file": "apps/editor/src/lib/authoring/look/paint-pick.ts",
+	"find": "${text[1]}${text[1]}${text[2]}${text[2]}${text[3]}${text[3]}",
+	"replace": "${text[1]}${text[1]}${text[1]}${text[1]}${text[1]}${text[1]}",
+	"tests": [
+		"tests/lib/authoring/look/paint-pick.test.ts",
+		"tests/lib/authoring/stage/stage-paint-tray.test.ts"
+	]
 }

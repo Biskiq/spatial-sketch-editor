@@ -23,12 +23,21 @@
  *
  * Face keys are deterministic temporary keys derived from the oriented
  * boundary cycle (rotation-normalized `wallId:direction` tokens through the
- * collision-safe `geometryId()` helper). They are NOT room IDs and are never
+ * collision-safe `geometryId` helper). They are NOT room IDs and are never
  * persisted as product identity.
  */
 
 export { ON_RING_TOLERANCE } from './face-extraction/contracts';
-export type { TopologyDiagnostic, DerivedCandidateFace, FaceExtractionResult } from './face-extraction/contracts';
+export type {
+	TopologyDiagnostic,
+	DerivedCandidateFace,
+	FaceExtractionResult,
+} from './face-extraction/contracts';
 export { extractBoundaryCandidateFaces } from './face-extraction/extract';
 export { canonicalBoundaryCycleKey } from './face-extraction/identity';
-export { faceArea, polygonIntersectionArea, polygonsShareInteriorArea, pointStrictlyInsidePolygon } from './face-extraction/polygons';
+export {
+	faceArea,
+	polygonIntersectionArea,
+	polygonsShareInteriorArea,
+	pointStrictlyInsidePolygon,
+} from './face-extraction/polygons';

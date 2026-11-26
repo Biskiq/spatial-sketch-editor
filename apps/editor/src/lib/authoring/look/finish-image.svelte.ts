@@ -4,7 +4,7 @@
  * Two steps, only one of them undoable:
  *
  * 1. the P20 upload, outside the Scene, never in Undo, recovered by re-listing
- *    when a response is lost and deduplicated by sha256;
+ *  when a response is lost and deduplicated by sha256;
  * 2. the one `scene-finish-from-image` intent that names those bytes.
  *
  * This service owns the first step and the states the Library tile and the
@@ -20,7 +20,7 @@
 import {
 	FINISH_IMAGE_POLICY,
 	importProjectImage,
-	type ImportedProjectImage
+	type ImportedProjectImage,
 } from '../artwork/project-artwork';
 import type { ProjectApi } from '$lib/platform/project-persistence';
 
@@ -52,7 +52,7 @@ export type FinishImageOutcome =
 export type FinishImageApply = (
 	image: ImportedProjectImage,
 	warning: string | null,
-	label: string
+	label: string,
 ) => Promise<FinishImageOutcome>;
 
 const IDLE: FinishImageState = { phase: 'idle', fileName: null, message: null, warning: null };
@@ -75,7 +75,7 @@ export function finishImagePin(image: ImportedProjectImage) {
 		hash: image.sha256,
 		mime: image.mime,
 		size: image.byteSize,
-		locator: `/project-assets/${image.assetId}`
+		locator: `/project-assets/${image.assetId}`,
 	};
 }
 
@@ -124,12 +124,19 @@ export function createFinishImageFlow(host: {
 		request = abort;
 		state = { phase: 'checking', fileName: file.name, message: null, warning: null };
 		try {
-			const imported = await importProjectImage(api, projectId, file, abort.signal, FINISH_IMAGE_POLICY, {
-				onPhase: (phase) => {
-					if (request !== abort) return;
-					state = { ...state, phase };
-				}
-			});
+			const imported = await importProjectImage(
+				api,
+				projectId,
+				file,
+				abort.signal,
+				FINISH_IMAGE_POLICY,
+				{
+					onPhase: (phase) => {
+						if (request !== abort) return;
+						state = { ...state, phase };
+					},
+				},
+			);
 			if (abort.signal.aborted || request !== abort) return { kind: 'no-op' };
 			const warning = finishImageWarning(imported.pixelWidth, imported.pixelHeight);
 			const label = finishImageLabel(file.name);
@@ -157,7 +164,7 @@ export function createFinishImageFlow(host: {
 				phase: 'failed',
 				fileName: file.name,
 				message,
-				warning: null
+				warning: null,
 			};
 			return { kind: 'refused', message };
 		} finally {
@@ -173,7 +180,7 @@ export function createFinishImageFlow(host: {
 			return state.phase === 'checking' || state.phase === 'uploading' || state.phase === 'saving';
 		},
 		get canRetry() {
-			return last !== null && (state.phase === 'failed');
+			return last !== null && state.phase === 'failed';
 		},
 		begin(file: File, apply: FinishImageApply): Promise<FinishImageOutcome> {
 			if (state.phase === 'checking' || state.phase === 'uploading' || state.phase === 'saving') {
@@ -195,10 +202,11 @@ export function createFinishImageFlow(host: {
 			state = IDLE;
 		},
 		reset(): void {
-			if (state.phase === 'checking' || state.phase === 'uploading' || state.phase === 'saving') return;
+			if (state.phase === 'checking' || state.phase === 'uploading' || state.phase === 'saving')
+				return;
 			last = null;
 			state = IDLE;
-		}
+		},
 	};
 }
 

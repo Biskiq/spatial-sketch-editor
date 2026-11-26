@@ -7,11 +7,11 @@
  *
  * - **One root, mounted once.** `object3d` is never replaced.
  * - **Patched by key.** An unchanged item touches nothing. A moved item moves
- *   its holder. A changed light of the same kind is updated in place through its
- *   lease (same Light object, same shadow map). A changed kind is a replacement:
- *   the old lease is released before the new one is acquired.
+ *  its holder. A changed light of the same kind is updated in place through its
+ *  lease (same Light object, same shadow map). A changed kind is a replacement:
+ *  the old lease is released before the new one is acquired.
  * - **Lights come from the store.** Nothing here constructs a light; a removed
- *   item releases its lease, and `dispose` releases every lease.
+ *  item releases its lease, and `dispose` releases every lease.
  *
  * The holder carries the entity's position, Euler rotation and uniform scale;
  * the light sits at its origin and a Spot aims down its local −Z (the store's
@@ -63,7 +63,9 @@ function place(holder: Group, item: SceneLightItem): void {
 	holder.scale.set(scale[0], scale[1], scale[2]);
 }
 
-export function createSceneLightRepresentation(options: { readonly lights: LightStore }): SceneLightRepresentation {
+export function createSceneLightRepresentation(options: {
+	readonly lights: LightStore;
+}): SceneLightRepresentation {
 	const { lights } = options;
 	const root = new Group();
 	root.name = 'SceneLights';
@@ -81,7 +83,15 @@ export function createSceneLightRepresentation(options: { readonly lights: Light
 		object3d: root,
 		update(description) {
 			if (disposed) throw new Error('scene light representation is disposed');
-			const zero = { items: description.items.length, built: 0, updated: 0, replaced: 0, moved: 0, retained: 0, released: 0 };
+			const zero = {
+				items: description.items.length,
+				built: 0,
+				updated: 0,
+				replaced: 0,
+				moved: 0,
+				retained: 0,
+				released: 0,
+			};
 			if (description === last) return { ...zero, retained: description.items.length };
 			last = description;
 			let built = 0;
@@ -133,7 +143,15 @@ export function createSceneLightRepresentation(options: { readonly lights: Light
 				entries.delete(id);
 				released += 1;
 			}
-			return { items: description.items.length, built, updated, replaced, moved, retained, released };
+			return {
+				items: description.items.length,
+				built,
+				updated,
+				replaced,
+				moved,
+				retained,
+				released,
+			};
 		},
 		objectOf(id) {
 			return entries.get(id)?.holder ?? null;
@@ -150,6 +168,6 @@ export function createSceneLightRepresentation(options: { readonly lights: Light
 			}
 			entries.clear();
 			last = null;
-		}
+		},
 	};
 }

@@ -10,8 +10,8 @@
  * The two adjoining Walls are the ones a handle may slide along:
  *
  * ```text
- *   previous Wall ──▶ virtual edge ──▶ next Wall
- *   (oriented end)      start → end      (oriented start)
+ *  previous Wall ──▶ virtual edge ──▶ next Wall
+ *  (oriented end) start → end (oriented start)
  * ```
  *
  * Only the edge's **start** touches the previous Wall and only its **end**
@@ -58,17 +58,16 @@ function wallEnd(edge: Extract<SpaceBoundaryEdge, { kind: 'wall' }>): SpaceOpenS
 		wallId: edge.wallId,
 		direction: edge.direction,
 		orientedStartJunctionId: edge.startJunctionId,
-		orientedEndJunctionId: edge.endJunctionId
+		orientedEndJunctionId: edge.endJunctionId,
 	};
 }
 
 function samePair(
 	first: { readonly startJunctionId: string; readonly endJunctionId: string },
-	second: { readonly startJunctionId: string; readonly endJunctionId: string }
+	second: { readonly startJunctionId: string; readonly endJunctionId: string },
 ): boolean {
 	return (
-		first.startJunctionId === second.startJunctionId &&
-		first.endJunctionId === second.endJunctionId
+		first.startJunctionId === second.startJunctionId && first.endJunctionId === second.endJunctionId
 	);
 }
 
@@ -81,7 +80,7 @@ function samePair(
  */
 export function spaceOpenSideFrames(
 	document: LayoutDocumentWallFirst,
-	roomId: string
+	roomId: string,
 ): readonly SpaceOpenSideFrame[] {
 	const room = document.rooms.find((candidate) => candidate.id === roomId);
 	if (room === undefined || room.virtualEdges.length === 0) return [];
@@ -115,7 +114,7 @@ export function spaceOpenSideFrames(
 			normal: [-dz / length, dx / length],
 			length,
 			startWall: previous.kind === 'wall' ? wallEnd(previous) : null,
-			endWall: next.kind === 'wall' ? wallEnd(next) : null
+			endWall: next.kind === 'wall' ? wallEnd(next) : null,
 		});
 	}
 	return frames;
@@ -126,11 +125,11 @@ export function spaceOpenSideFrame(
 	document: LayoutDocumentWallFirst,
 	roomId: string,
 	startJunctionId: string,
-	endJunctionId: string
+	endJunctionId: string,
 ): SpaceOpenSideFrame | null {
 	return (
 		spaceOpenSideFrames(document, roomId).find((frame) =>
-			samePair(frame, { startJunctionId, endJunctionId })
+			samePair(frame, { startJunctionId, endJunctionId }),
 		) ?? null
 	);
 }
@@ -146,20 +145,20 @@ export function spaceOpenSideFrame(
 export function proposeSpaceOpenSideOffset(
 	document: LayoutDocumentWallFirst,
 	frame: SpaceOpenSideFrame,
-	offset: number
+	offset: number,
 ): LayoutDocumentWallFirst {
 	if (!Number.isFinite(offset) || offset === 0) return document;
 	const dx = frame.normal[0] * offset;
 	const dz = frame.normal[1] * offset;
 	const moved = new Map<string, LayoutVec2>([
 		[frame.startJunctionId, [frame.start[0] + dx, frame.start[1] + dz]],
-		[frame.endJunctionId, [frame.end[0] + dx, frame.end[1] + dz]]
+		[frame.endJunctionId, [frame.end[0] + dx, frame.end[1] + dz]],
 	]);
 	return {
 		...document,
 		junctions: document.junctions.map((junction) => {
 			const point = moved.get(junction.id);
 			return point === undefined ? junction : { ...junction, point: [point[0], point[1]] };
-		})
+		}),
 	};
 }

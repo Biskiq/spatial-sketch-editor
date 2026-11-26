@@ -9,9 +9,8 @@ const OPENING_DRAG_SEMANTIC_RANK: Record<OpeningDragSnapCandidate['kind'], numbe
 	junction: 0,
 	'opening-edge': 1,
 	'wall-midpoint': 2,
-	grid: 9
+	grid: 9,
 };
-
 
 export type OpeningDragSnapCandidate = {
 	/**
@@ -30,18 +29,16 @@ export type OpeningDragSnapCandidate = {
 	distance: number;
 };
 
-
 export type OpeningDragSnapResolution =
 	| { kind: 'snap'; candidate: OpeningDragSnapCandidate }
 	| { kind: 'none' };
-
 
 /**
  * Which authored Opening coordinate the pointer drives.
  *
  * `center` (body drag): the pointer projects onto the Opening **center**, so
  * candidates resolve in center space and are emitted as start-edge offsets
- * (the P23.2 semantics, unchanged).
+ * (the semantics, unchanged).
  *
  * `edge` (width-handle drag): the pointer projects onto the **moving edge**
  * itself, so candidates resolve in edge space and are emitted as that edge's
@@ -49,7 +46,6 @@ export type OpeningDragSnapResolution =
  * from either side resolves to exactly the same coordinate.
  */
 export type OpeningDragAnchor = { kind: 'center'; width: number } | { kind: 'edge' };
-
 
 /**
  * Resolve one opening drag along its host wall in offset space
@@ -63,7 +59,7 @@ export type OpeningDragAnchor = { kind: 'center'; width: number } | { kind: 'edg
  * junction endpoints, its midpoint, other openings' edges on the same wall,
  * and the grid fallback. The dragged opening's own spans are skipped
  * entirely, so its own edges can never act as external reference candidates
- * (the moving self-snap loop — P23.2 §Moving-target exclusion). Grid
+ * (the moving self-snap loop — §Moving-target exclusion). Grid
  * candidates snap the dragged anchor (the opening **center** for body drags,
  * the moving **edge** for width handles) to the step exactly like opening
  * creation (`createDefaultOpening`), so drag and create share one grid
@@ -87,7 +83,7 @@ function resolveOpeningDragAnchoredSnap(
 	draggedOpeningId: string,
 	pointerOffset: number,
 	anchor: OpeningDragAnchor,
-	context: SnapQueryContext
+	context: SnapQueryContext,
 ): OpeningDragSnapResolution {
 	const radius = snapAcquisitionRadiusWorld(context);
 	if (radius <= 0) return { kind: 'none' };
@@ -121,7 +117,7 @@ function resolveOpeningDragAnchoredSnap(
 		target: number,
 		kind: OpeningDragSnapCandidate['kind'],
 		sourceId: string,
-		acquisition = radius
+		acquisition = radius,
 	): void => {
 		const distance = Math.abs(pointerOffset - target);
 		if (distance > acquisition) return;
@@ -151,10 +147,11 @@ function resolveOpeningDragAnchoredSnap(
 		if (roomScoped && other.roomId !== hostSpan.roomId) continue;
 		const edges: Array<[LayoutVec2, 'start' | 'end']> = [
 			[other.start, 'start'],
-			[other.end, 'end']
+			[other.end, 'end'],
 		];
 		for (const [edgePoint, key] of edges) {
-			const edgeOffset = (edgePoint[0] - hostSpan.start[0]) * dirX + (edgePoint[1] - hostSpan.start[1]) * dirZ;
+			const edgeOffset =
+				(edgePoint[0] - hostSpan.start[0]) * dirX + (edgePoint[1] - hostSpan.start[1]) * dirZ;
 			if (edgeOffset < -1e-9 || edgeOffset > length + 1e-9) continue;
 			const target =
 				anchor.kind === 'edge'
@@ -180,7 +177,8 @@ function resolveOpeningDragAnchoredSnap(
 			bestKey = key;
 			continue;
 		}
-		const rankDiff = OPENING_DRAG_SEMANTIC_RANK[candidate.kind] - OPENING_DRAG_SEMANTIC_RANK[best.kind];
+		const rankDiff =
+			OPENING_DRAG_SEMANTIC_RANK[candidate.kind] - OPENING_DRAG_SEMANTIC_RANK[best.kind];
 		const distanceDiff = candidate.distance - best.distance;
 		if (
 			rankDiff < 0 ||
@@ -193,10 +191,9 @@ function resolveOpeningDragAnchoredSnap(
 	return best ? { kind: 'snap', candidate: best } : { kind: 'none' };
 }
 
-
 /**
  * Body drag: resolve one Opening's drag position in **center** space, emitting
- * start-edge offsets clamped into `[0, length - width]` (P23.2 semantics).
+ * start-edge offsets clamped into `[0, length - width]` (semantics).
  */
 export function resolveOpeningDragSnap(
 	geometry: CompiledLayoutGeometry,
@@ -204,7 +201,7 @@ export function resolveOpeningDragSnap(
 	draggedOpeningId: string,
 	pointerOffset: number,
 	openingWidth: number,
-	context: SnapQueryContext
+	context: SnapQueryContext,
 ): OpeningDragSnapResolution {
 	return resolveOpeningDragAnchoredSnap(
 		geometry,
@@ -212,10 +209,9 @@ export function resolveOpeningDragSnap(
 		draggedOpeningId,
 		pointerOffset,
 		{ kind: 'center', width: openingWidth },
-		context
+		context,
 	);
 }
-
 
 /**
  * Width-handle drag: resolve the **moving edge** directly in edge space,
@@ -231,7 +227,7 @@ export function resolveOpeningDragEdgeSnap(
 	hostSpan: { segmentId: string; roomId?: string; start: LayoutVec2; end: LayoutVec2 },
 	draggedOpeningId: string,
 	pointerEdgeOffset: number,
-	context: SnapQueryContext
+	context: SnapQueryContext,
 ): OpeningDragSnapResolution {
 	return resolveOpeningDragAnchoredSnap(
 		geometry,
@@ -239,18 +235,16 @@ export function resolveOpeningDragEdgeSnap(
 		draggedOpeningId,
 		pointerEdgeOffset,
 		{ kind: 'edge' },
-		context
+		context,
 	);
 }
-
 
 /** Fit tolerance for raw drag validity (matches the compiler epsilon order). */
 const OPENING_DRAG_EPSILON = 1e-6;
 
-
 /**
  * Raw drag candidate validity, kept **separate** from the bounded
- * P23.2 snap result.
+ *  snap result.
  *
  * The snap resolvers clamp every candidate into the anchor's legal range,
  * which is correct as a *suggestion* but must never be laundered into
@@ -259,9 +253,9 @@ const OPENING_DRAG_EPSILON = 1e-6;
  * candidate (and its own fit result) next to an optional **honored** snap win:
  *
  * ```text
- * raw candidate outside fit bounds        → rawValid false, candidate invalid
- *                                            (transient invalid preview, reject)
- * snap win inside the acquisition radius  → committable snapped candidate
+ * raw candidate outside fit bounds → rawValid false, candidate invalid
+ *  (transient invalid preview, reject)
+ * snap win inside the acquisition radius → committable snapped candidate
  * snap win only reachable by clamping far → NOT honored (raw candidate stands)
  * ```
  *
@@ -289,13 +283,12 @@ export type OpeningDragRawResolution = {
 	candidateValid: boolean;
 };
 
-
 export function resolveOpeningDragSnapUseMode(
 	geometry: CompiledLayoutGeometry,
 	hostSpan: { segmentId: string; roomId?: string; start: LayoutVec2; end: LayoutVec2 },
 	draggedOpeningId: string,
 	pointerOffset: number,
-	options: { anchor: OpeningDragAnchor; context: SnapQueryContext }
+	options: { anchor: OpeningDragAnchor; context: SnapQueryContext },
 ): OpeningDragRawResolution {
 	const resolution =
 		options.anchor.kind === 'center'
@@ -305,20 +298,25 @@ export function resolveOpeningDragSnapUseMode(
 					draggedOpeningId,
 					pointerOffset,
 					options.anchor.width,
-					options.context
+					options.context,
 				)
-			: resolveOpeningDragEdgeSnap(geometry, hostSpan, draggedOpeningId, pointerOffset, options.context);
+			: resolveOpeningDragEdgeSnap(
+					geometry,
+					hostSpan,
+					draggedOpeningId,
+					pointerOffset,
+					options.context,
+				);
 	return resolveOpeningDragRawValidity(resolution, {
 		hostSpan,
 		pointerOffset,
 		anchor: options.anchor,
-		context: options.context
+		context: options.context,
 	});
 }
 
-
 /**
- * Pure projection of a (already resolved) snap result into the P23.3 raw
+ * Pure projection of a (already resolved) snap result into the raw
  * validity pair. Splitting this from `resolveOpeningDragSnapUseMode` keeps the
  * contract unit-testable without geometry fixtures.
  */
@@ -329,18 +327,17 @@ export function resolveOpeningDragRawValidity(
 		pointerOffset: number;
 		anchor: OpeningDragAnchor;
 		context: SnapQueryContext;
-	}
+	},
 ): OpeningDragRawResolution {
 	const { hostSpan, pointerOffset, anchor, context } = options;
 	const length = Math.hypot(
 		hostSpan.end[0] - hostSpan.start[0],
-		hostSpan.end[1] - hostSpan.start[1]
+		hostSpan.end[1] - hostSpan.start[1],
 	);
 	const rawOffset = anchor.kind === 'center' ? pointerOffset - anchor.width / 2 : pointerOffset;
 	const fitWidth = anchor.kind === 'center' ? anchor.width : 0;
 	const fits = (offset: number): boolean =>
-		offset >= -OPENING_DRAG_EPSILON &&
-		offset + fitWidth <= length + OPENING_DRAG_EPSILON;
+		offset >= -OPENING_DRAG_EPSILON && offset + fitWidth <= length + OPENING_DRAG_EPSILON;
 	const rawValid = fits(rawOffset);
 
 	const radius = snapAcquisitionRadiusWorld(context);
@@ -369,10 +366,15 @@ export function resolveOpeningDragRawValidity(
 		rawOffset,
 		rawValid,
 		snappedOffset,
-		snappedKind: snappedOffset === null ? null : resolution.kind === 'snap' ? resolution.candidate.kind : null,
+		snappedKind:
+			snappedOffset === null ? null : resolution.kind === 'snap' ? resolution.candidate.kind : null,
 		snappedSourceId:
-			snappedOffset === null ? null : resolution.kind === 'snap' ? resolution.candidate.sourceId : null,
+			snappedOffset === null
+				? null
+				: resolution.kind === 'snap'
+					? resolution.candidate.sourceId
+					: null,
 		candidateOffset: snappedOffset ?? rawOffset,
-		candidateValid: snappedOffset === null ? rawValid : true
+		candidateValid: snappedOffset === null ? rawValid : true,
 	};
 }

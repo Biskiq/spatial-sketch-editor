@@ -19,32 +19,33 @@ export function layoutDeletionPreview(input: {
 	readonly wallId: string;
 }): WallDeletionPreview {
 	const { context, document, levelId, deletionDisclosures, wallId } = input;
-		const key = `${context.snapshot.sourceContentId}\u0000${wallId}`;
-		const remembered = deletionDisclosures.get(key);
-		if (remembered !== undefined) return remembered;
-		const preview = planWallDeletion({
-			document,
-			wallId,
-			capture: mintLayoutIdCapture(),
-			levelId
-		});
-		const disclosed = preview.kind === 'planned'
+	const key = `${context.snapshot.sourceContentId}\u0000${wallId}`;
+	const remembered = deletionDisclosures.get(key);
+	if (remembered !== undefined) return remembered;
+	const preview = planWallDeletion({
+		document,
+		wallId,
+		capture: mintLayoutIdCapture(),
+		levelId,
+	});
+	const disclosed =
+		preview.kind === 'planned'
 			? (() => {
-				const lineage = layoutSurfaceLineageConsequence({
-					source: stageEnvelope(context.snapshot),
-					beforeLayout: document,
-					afterLayout: preview.document,
-					lineage: preview.surfaceLineage
-				});
-				return lineage === 'No competing surface Finishes.'
-					? preview
-					: { ...preview, summary: `${preview.summary} ${lineage}` };
-			})()
+					const lineage = layoutSurfaceLineageConsequence({
+						source: stageEnvelope(context.snapshot),
+						beforeLayout: document,
+						afterLayout: preview.document,
+						lineage: preview.surfaceLineage,
+					});
+					return lineage === 'No competing surface Finishes.'
+						? preview
+						: { ...preview, summary: `${preview.summary} ${lineage}` };
+				})()
 			: preview;
-		if (deletionDisclosures.size >= 32) {
-			const oldest = deletionDisclosures.keys().next().value;
-			if (oldest !== undefined) deletionDisclosures.delete(oldest);
-		}
-		deletionDisclosures.set(key, disclosed);
-		return disclosed;
+	if (deletionDisclosures.size >= 32) {
+		const oldest = deletionDisclosures.keys().next().value;
+		if (oldest !== undefined) deletionDisclosures.delete(oldest);
 	}
+	deletionDisclosures.set(key, disclosed);
+	return disclosed;
+}

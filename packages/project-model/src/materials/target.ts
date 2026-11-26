@@ -7,7 +7,7 @@
  *
  * - a UV set exists only when every referenced vertex has a finite pair;
  * - a normal frame exists only when at least one active triangle has nonzero
- *   area, nonzero UV edge lengths and a non-singular 2×2 UV Jacobian;
+ *  area, nonzero UV edge lengths and a non-singular 2×2 UV Jacobian;
  * - an empty draw range contributes no requirement.
  *
  * The geometry summarizer below is the headless adapter for those facts. It
@@ -32,7 +32,7 @@ export type DrawGeometry = {
 function readVertex(
 	array: ArrayLike<number>,
 	index: number,
-	width: number
+	width: number,
 ): readonly number[] | null {
 	const base = index * width;
 	const values: number[] = [];
@@ -58,7 +58,7 @@ type ActiveRange = { readonly start: number; readonly end: number };
  */
 function drawRangeOf(
 	range: DrawGeometry['drawRange'],
-	total: number
+	total: number,
 ): { readonly start: number; readonly end: number; readonly valid: boolean } {
 	const start = range?.start ?? 0;
 	const count = range?.count ?? Infinity;
@@ -67,8 +67,7 @@ function drawRangeOf(
 		return { start: 0, end: 0, valid: false };
 	}
 	const clippedStart = Math.min(start, total);
-	const clippedEnd =
-		count === Infinity ? total : Math.min(start + count, total);
+	const clippedEnd = count === Infinity ? total : Math.min(start + count, total);
 	return { start: clippedStart, end: Math.max(clippedStart, clippedEnd), valid: true };
 }
 
@@ -80,7 +79,7 @@ function drawRangeOf(
  */
 function groupRanges(
 	groups: NonNullable<DrawGeometry['groups']>,
-	draw: { readonly start: number; readonly end: number }
+	draw: { readonly start: number; readonly end: number },
 ): { readonly ranges: readonly ActiveRange[]; readonly valid: boolean } {
 	const ranges: ActiveRange[] = [];
 	for (const group of groups) {
@@ -124,7 +123,12 @@ function activeIndices(geometry: DrawGeometry): ActiveIndices {
 		if ((range.end - range.start) % 3 !== 0) return { active: [], invalid: true };
 		for (let index = range.start; index < range.end; index += 1) {
 			const vertex = geometry.indices ? geometry.indices[index] : index;
-			if (vertex === undefined || !Number.isInteger(vertex) || vertex < 0 || vertex >= vertexCount) {
+			if (
+				vertex === undefined ||
+				!Number.isInteger(vertex) ||
+				vertex < 0 ||
+				vertex >= vertexCount
+			) {
 				return { active: [], invalid: true };
 			}
 			active.push(vertex);
@@ -144,7 +148,7 @@ function uvSetAvailable(uv: ArrayLike<number> | null, referenced: readonly numbe
 function frameAvailable(
 	geometry: DrawGeometry,
 	triangles: readonly (readonly [number, number, number])[],
-	uv: ArrayLike<number> | null
+	uv: ArrayLike<number> | null,
 ): boolean {
 	if (uv === null) return false;
 	for (const [a, b, c] of triangles) {
@@ -162,7 +166,7 @@ function frameAvailable(
 		const cross = [
 			ab[1] * ac[2] - ab[2] * ac[1],
 			ab[2] * ac[0] - ab[0] * ac[2],
-			ab[0] * ac[1] - ab[1] * ac[0]
+			ab[0] * ac[1] - ab[1] * ac[0],
 		] as const;
 		if (Math.hypot(cross[0], cross[1], cross[2]) <= 0) continue;
 
@@ -220,7 +224,7 @@ export type AvailabilityIntersection = {
  * contribute no constraint.
  */
 export function intersectTargetAvailability(
-	targets: readonly TargetFacts[]
+	targets: readonly TargetFacts[],
 ): AvailabilityIntersection {
 	let uvSets: (0 | 1)[] = [0, 1];
 	let normalFrameSets: (0 | 1)[] = [0, 1];

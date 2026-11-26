@@ -1,9 +1,24 @@
 import { wallCenterlineSegment } from '../wall/centerline';
-import type { CanonicalDeltaBuilders, CompiledObjectsUnit, EvaluatedRoomUnit, EvaluatedWallBaseUnit, ExpandedWallUnit, FloorAndAabbsUnit, ResolvedJunctionUnit } from './delta';
+import type {
+	CanonicalDeltaBuilders,
+	CompiledObjectsUnit,
+	EvaluatedRoomUnit,
+	EvaluatedWallBaseUnit,
+	ExpandedWallUnit,
+	FloorAndAabbsUnit,
+	ResolvedJunctionUnit,
+} from './delta';
 import { layoutItem } from '../kernel/source-collections';
 import type { Vec3 } from '../kernel/types';
 import type { LayoutVec2 } from './coordinates';
-import type { CompiledJunction, CompiledPhysicalWall, CompilerOpening, LayoutBounds2, LayoutBounds3, LayoutGeometryIssue } from './types';
+import type {
+	CompiledJunction,
+	CompiledPhysicalWall,
+	CompilerOpening,
+	LayoutBounds2,
+	LayoutBounds3,
+	LayoutGeometryIssue,
+} from './types';
 import { geometryId } from './types';
 import { junctionSeamFailureOf } from '../wall/junction-clearance';
 import { compiledJunctionId, resolveJunctionGeometry } from '../wall/junction-resolution';
@@ -12,14 +27,34 @@ import { cacheKeyDependency, cacheKeyOf } from './keys';
 import { noQueryRecords, sameAuthored } from './reuse';
 import type { SampledSegment } from './curve';
 import { sampleSegment } from './curve';
-import { WALL_OFFSET_FOLD_CODE, WALL_OFFSET_FOLD_MESSAGE, WALL_OFFSET_OVERLAP_CODE, WALL_OFFSET_OVERLAP_MESSAGE, wallOffsetClearanceFailure } from '../wall/offset-clearance';
+import {
+	WALL_OFFSET_FOLD_CODE,
+	WALL_OFFSET_FOLD_MESSAGE,
+	WALL_OFFSET_OVERLAP_CODE,
+	WALL_OFFSET_OVERLAP_MESSAGE,
+	wallOffsetClearanceFailure,
+} from '../wall/offset-clearance';
 import { splitSampledWallAroundOpenings, wallPolylinesAroundOpenings } from './openings';
-import { hasBlockingLayoutIssues, prepareLayoutRoomSegments, validatePreparedLayoutRoomGeometry } from './validation';
+import {
+	hasBlockingLayoutIssues,
+	prepareLayoutRoomSegments,
+	validatePreparedLayoutRoomGeometry,
+} from './validation';
 import { createQueryGeometryBuilder } from './queries';
 import { junctionInputs, junctionLeg } from './junctions';
 import { floorElevationOf, wallEndExpansion } from './physical-walls';
-import { aabbRecord, buildWallFirstFloorAndAggregateAabbs, emitPhysicalWallQueryRecords, expandBounds2, expandBounds3, finiteBounds3, includeBounds3, wallBounds2, wallBounds3 } from './query-records';
-import { buildSolidSpans, buildWallFirstRoomSource, compileOpening, compileRoom } from './rooms'
+import {
+	aabbRecord,
+	buildWallFirstFloorAndAggregateAabbs,
+	emitPhysicalWallQueryRecords,
+	expandBounds2,
+	expandBounds3,
+	finiteBounds3,
+	includeBounds3,
+	wallBounds2,
+	wallBounds3,
+} from './query-records';
+import { buildSolidSpans, buildWallFirstRoomSource, compileOpening, compileRoom } from './rooms';
 import { compileObjects } from './room-objects';
 
 export const DELTA_BUILDERS: CanonicalDeltaBuilders = {
@@ -32,7 +67,7 @@ export const DELTA_BUILDERS: CanonicalDeltaBuilders = {
 		wallById,
 		openingsByHostWallId,
 		openingOrderById,
-		defaultWallThickness
+		defaultWallThickness,
 	): EvaluatedRoomUnit {
 		const room = layoutItem(document, 'rooms', roomIndex)!;
 		const floor = document.floor;
@@ -52,7 +87,7 @@ export const DELTA_BUILDERS: CanonicalDeltaBuilders = {
 			openingOrderById,
 			wallThicknessBySegmentId,
 			openingHeightLimitBySegmentId,
-			defaultWallThickness
+			defaultWallThickness,
 		});
 		const path = `floors[0].rooms[${roomIndex}]`;
 		if ('issue' in built) {
@@ -64,7 +99,7 @@ export const DELTA_BUILDERS: CanonicalDeltaBuilders = {
 				polygons: [],
 				aabbs: [],
 				issues: [built.issue],
-				bounds3: null
+				bounds3: null,
 			};
 		}
 		const source = built.source;
@@ -81,10 +116,10 @@ export const DELTA_BUILDERS: CanonicalDeltaBuilders = {
 						path: `${path}.boundary`,
 						code: 'room_ceiling_undefined',
 						message: `Room '${room.id}' has no resolvable boundary Wall to derive a ceiling from`,
-						targetId: room.id
-					}
+						targetId: room.id,
+					},
 				],
-				bounds3: null
+				bounds3: null,
 			};
 		}
 
@@ -96,8 +131,8 @@ export const DELTA_BUILDERS: CanonicalDeltaBuilders = {
 				floor,
 				prepared.segments,
 				path,
-				source.openingHeightLimitBySegmentId
-			)
+				source.openingHeightLimitBySegmentId,
+			),
 		];
 		if (hasBlockingLayoutIssues(roomIssues)) {
 			return {
@@ -108,7 +143,7 @@ export const DELTA_BUILDERS: CanonicalDeltaBuilders = {
 				polygons: [],
 				aabbs: [],
 				issues: roomIssues,
-				bounds3: null
+				bounds3: null,
 			};
 		}
 
@@ -118,7 +153,7 @@ export const DELTA_BUILDERS: CanonicalDeltaBuilders = {
 			floor,
 			prepared.segments as SampledSegment[],
 			roomQueryBuilder,
-			'physical-wall'
+			'physical-wall',
 		);
 		const stripped =
 			compiledRoom.walls.length === 0 && compiledRoom.openings.length === 0
@@ -132,11 +167,17 @@ export const DELTA_BUILDERS: CanonicalDeltaBuilders = {
 			polygons: roomQueryBuilder.polygons,
 			aabbs: roomQueryBuilder.aabbs,
 			issues: roomIssues,
-			bounds3: compiledRoom.bounds3
+			bounds3: compiledRoom.bounds3,
 		};
 	},
 
-	evaluateWallBase(document, wall, pointById, hostedOpenings, derivedRole): EvaluatedWallBaseUnit | null {
+	evaluateWallBase(
+		document,
+		wall,
+		pointById,
+		hostedOpenings,
+		derivedRole,
+	): EvaluatedWallBaseUnit | null {
 		const start = pointById.get(wall.startJunctionId);
 		const end = pointById.get(wall.endJunctionId);
 		if (!start || !end) return null;
@@ -152,7 +193,7 @@ export const DELTA_BUILDERS: CanonicalDeltaBuilders = {
 		countWork('pairs:wall-opening', hostedOpenings.length);
 		const wallOpenings: CompilerOpening[] = hostedOpenings.map((opening) => ({
 			...opening,
-			segmentId: opening.wallId
+			segmentId: opening.wallId,
 		}));
 		const wallGeometryDependency = cacheKeyDependency(
 			cacheKeyOf([
@@ -162,13 +203,13 @@ export const DELTA_BUILDERS: CanonicalDeltaBuilders = {
 				segment,
 				wall.thickness,
 				wall.height,
-				floor.elevation
-			])
+				floor.elevation,
+			]),
 		);
 		const wallTop = floorElevation + wall.height;
 		const sections = splitSampledWallAroundOpenings(sampled, segment, wallOpenings, wall.height);
 		const compiledOpenings = wallOpenings.map((opening) =>
-			compileOpening(opening, sampled, floor.id, wall.id, wallGeometryDependency)
+			compileOpening(opening, sampled, floor.id, wall.id, wallGeometryDependency),
 		);
 		const solidSpans = buildSolidSpans(sampled.samples, sections);
 		const solidCenterlinePolylines = wallPolylinesAroundOpenings(sampled.samples, wallOpenings);
@@ -184,7 +225,7 @@ export const DELTA_BUILDERS: CanonicalDeltaBuilders = {
 				wallOpenings,
 				wall.thickness,
 				floor.elevation,
-				wall.height
+				wall.height,
 			]),
 			wallId: wall.id,
 			role: derivedRole,
@@ -200,19 +241,19 @@ export const DELTA_BUILDERS: CanonicalDeltaBuilders = {
 			bounds2: wallBounds2Value,
 			bounds3: wallBounds3Value,
 			startJunctionId: wall.startJunctionId,
-			endJunctionId: wall.endJunctionId
+			endJunctionId: wall.endJunctionId,
 		};
 		const wallClearanceIssues: LayoutGeometryIssue[] = [];
 		if (wall.centerline.kind !== 'line') {
 			const clearance = p2311Measure('finite-thickness', () =>
-				wallOffsetClearanceFailure(baseCompiled.samples, wall.thickness)
+				wallOffsetClearanceFailure(baseCompiled.samples, wall.thickness),
 			);
 			if (clearance) {
 				wallClearanceIssues.push({
 					path: `walls.${wall.id}`,
 					code: clearance === 'fold' ? WALL_OFFSET_FOLD_CODE : WALL_OFFSET_OVERLAP_CODE,
 					message: clearance === 'fold' ? WALL_OFFSET_FOLD_MESSAGE : WALL_OFFSET_OVERLAP_MESSAGE,
-					targetId: wall.id
+					targetId: wall.id,
 				});
 			}
 		}
@@ -225,22 +266,22 @@ export const DELTA_BUILDERS: CanonicalDeltaBuilders = {
 				sampled,
 				compiledOpenings,
 				solidSpans,
-				true
+				true,
 			) ?? noQueryRecords();
 		const baseBounds2: LayoutBounds2 = {
 			min: [...wallBounds2Value.min] as LayoutVec2,
-			max: [...wallBounds2Value.max] as LayoutVec2
+			max: [...wallBounds2Value.max] as LayoutVec2,
 		};
 		const baseBounds3: LayoutBounds3 = {
 			min: [...wallBounds3Value.min] as Vec3,
-			max: [...wallBounds3Value.max] as Vec3
+			max: [...wallBounds3Value.max] as Vec3,
 		};
 		const baseWallAabb = aabbRecord(
 			'wall',
 			wall.id,
 			['wall', floor.id, wall.id],
 			baseBounds3.min,
-			baseBounds3.max
+			baseBounds3.max,
 		);
 		const legs =
 			baseCompiled.samples.length < 2
@@ -251,7 +292,7 @@ export const DELTA_BUILDERS: CanonicalDeltaBuilders = {
 							: {}),
 						...(wall.endJunctionId && pointById.has(wall.endJunctionId)
 							? { end: junctionLeg(baseCompiled, 'end') }
-							: {})
+							: {}),
 					};
 		return {
 			baseCompiled,
@@ -261,13 +302,27 @@ export const DELTA_BUILDERS: CanonicalDeltaBuilders = {
 			baseWallAabb,
 			issues: wallClearanceIssues,
 			legs,
-			openingsCount: hostedOpenings.length
+			openingsCount: hostedOpenings.length,
 		};
 	},
 
-	resolveJunction(document, junctionId, point, sortedLegs, reuse, wallById, pointById): ResolvedJunctionUnit {
+	resolveJunction(
+		document,
+		junctionId,
+		point,
+		sortedLegs,
+		reuse,
+		wallById,
+		pointById,
+	): ResolvedJunctionUnit {
 		const floorElevation = floorElevationOf(document);
-		const { authored: junctionAuthored, roundedContinuation } = junctionInputs(document, point, sortedLegs, wallById, pointById);
+		const { authored: junctionAuthored, roundedContinuation } = junctionInputs(
+			document,
+			point,
+			sortedLegs,
+			wallById,
+			pointById,
+		);
 		reuse.counters.signatureVisits += 1;
 		const retainedJunction = reuse.junctions.get(junctionId);
 		if (retainedJunction && sameAuthored(retainedJunction.authored, junctionAuthored)) {
@@ -275,25 +330,27 @@ export const DELTA_BUILDERS: CanonicalDeltaBuilders = {
 			return {
 				compiled: retainedJunction.compiled,
 				issues: retainedJunction.issues,
-				evaluated: false
+				evaluated: false,
 			};
 		}
 		reuse.counters.junctionsEvaluated += 1;
 		const junctionIssues: LayoutGeometryIssue[] = [];
-		const resolved = resolveJunctionGeometry(junctionId, point, sortedLegs, { roundedContinuation });
+		const resolved = resolveJunctionGeometry(junctionId, point, sortedLegs, {
+			roundedContinuation,
+		});
 		junctionIssues.push(...resolved.issues);
 		const seam = junctionSeamFailureOf({
 			junctionId,
 			point,
 			legs: sortedLegs,
-			resolution: resolved.resolution
+			resolution: resolved.resolution,
 		});
 		if (seam && !resolved.issues.some((issue) => issue.code === seam.code)) {
 			junctionIssues.push({
 				path: `junctions.${junctionId}`,
 				code: seam.code,
 				message: seam.message,
-				targetId: junctionId
+				targetId: junctionId,
 			});
 		}
 		const minBand = Math.min(...sortedLegs.map((leg) => leg.bottomY));
@@ -319,10 +376,10 @@ export const DELTA_BUILDERS: CanonicalDeltaBuilders = {
 						band.bottomY,
 						band.topY,
 						band.solid,
-						band.openingId ?? null
-					])
+						band.openingId ?? null,
+					]),
 				})),
-				...(roundedContinuation ? ['rounded-continuation'] : [])
+				...(roundedContinuation ? ['rounded-continuation'] : []),
 			]),
 			junctionId,
 			point,
@@ -332,19 +389,19 @@ export const DELTA_BUILDERS: CanonicalDeltaBuilders = {
 				min: [
 					resolved.resolution.bounds2.min[0],
 					floorElevation + minBand,
-					resolved.resolution.bounds2.min[1]
+					resolved.resolution.bounds2.min[1],
 				],
 				max: [
 					resolved.resolution.bounds2.max[0],
 					floorElevation + maxBand,
-					resolved.resolution.bounds2.max[1]
-				]
-			}
+					resolved.resolution.bounds2.max[1],
+				],
+			},
 		};
 		reuse.junctions.set(junctionId, {
 			authored: junctionAuthored,
 			compiled: resolvedJunction,
-			issues: junctionIssues
+			issues: junctionIssues,
 		});
 		return { compiled: resolvedJunction, issues: junctionIssues, evaluated: true };
 	},
@@ -359,17 +416,30 @@ export const DELTA_BUILDERS: CanonicalDeltaBuilders = {
 		baseBounds3,
 		currentCompiled,
 		currentWallAabb,
-		joins
+		joins,
 	): ExpandedWallUnit {
 		const expansion = wallEndExpansion(joins);
 		const bounds2Val = expansion ? expandBounds2(baseBounds2, expansion) : baseBounds2;
 		const bounds3Val = expansion
 			? expandBounds3(baseBounds3, expansion, floorElevation, wallHeight)
 			: baseBounds3;
-		if (!sameAuthored(currentCompiled.bounds2, bounds2Val) || !sameAuthored(currentCompiled.bounds3, bounds3Val)) {
+		if (
+			!sameAuthored(currentCompiled.bounds2, bounds2Val) ||
+			!sameAuthored(currentCompiled.bounds3, bounds3Val)
+		) {
 			countWork('pairs:wall-aabb', 1);
-			const compiled: CompiledPhysicalWall = { ...baseCompiled, bounds2: bounds2Val, bounds3: bounds3Val };
-			const wallAabb = aabbRecord('wall', wallId, ['wall', floorId, wallId], bounds3Val.min, bounds3Val.max);
+			const compiled: CompiledPhysicalWall = {
+				...baseCompiled,
+				bounds2: bounds2Val,
+				bounds3: bounds3Val,
+			};
+			const wallAabb = aabbRecord(
+				'wall',
+				wallId,
+				['wall', floorId, wallId],
+				bounds3Val.min,
+				bounds3Val.max,
+			);
 			return { compiled, wallAabb };
 		}
 		return { compiled: currentCompiled, wallAabb: currentWallAabb };
@@ -397,7 +467,7 @@ export const DELTA_BUILDERS: CanonicalDeltaBuilders = {
 			aabbs: queryBuilder.aabbs,
 			issues,
 			bounds3: finiteBounds3(docMin, docMax),
-			floorRoomBounds3: finiteBounds3(floorMin, floorMax)
+			floorRoomBounds3: finiteBounds3(floorMin, floorMax),
 		};
 	},
 
@@ -407,7 +477,7 @@ export const DELTA_BUILDERS: CanonicalDeltaBuilders = {
 			floorRoomIds,
 			floorBounds,
 			documentBounds,
-			reuse
+			reuse,
 		);
 	},
 
@@ -418,8 +488,8 @@ export const DELTA_BUILDERS: CanonicalDeltaBuilders = {
 				wall.samples,
 				wall.thickness,
 				floorElevation,
-				floorElevation + wall.height
-			)
+				floorElevation + wall.height,
+			),
 		};
-	}
+	},
 };

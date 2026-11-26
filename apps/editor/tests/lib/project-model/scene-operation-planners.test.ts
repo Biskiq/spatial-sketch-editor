@@ -47,7 +47,7 @@ import {
 	admitUnitProject,
 	createUnitProject
 } from '../authoring/__fixtures__/unit-envelope-fixtures';
-import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
+import { freshCapture } from '../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 import { createEmptyWallFirstLayoutDocument, planWallChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 import { floorSupportSnapshotOf, queryFloorSupports, planCreateRegion, type FloorSupportCandidate } from '@portfolio/layout-core/room';
 import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core/geometry';

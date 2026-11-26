@@ -1,11 +1,8 @@
-
-
 /** Operation-local correspondence emitted by C2 Round Room planners. */
 export type RoundOperationRoomCorrespondence = {
 	readonly roomId: string;
 	readonly status: 'preserved' | 'cleared-round' | 'retired';
 };
-
 
 export type RoundOperationWallCorrespondence =
 	| {
@@ -19,7 +16,6 @@ export type RoundOperationWallCorrespondence =
 			readonly survivorWallId: string;
 	  };
 
-
 export type RoundOperationJunctionCorrespondence =
 	| { readonly kind: 'preserved'; readonly junctionId: string }
 	| {
@@ -30,13 +26,11 @@ export type RoundOperationJunctionCorrespondence =
 	  }
 	| { readonly kind: 'retired'; readonly junctionId: string; readonly after: null };
 
-
 export type RoundOperationOpeningCorrespondence = {
 	readonly openingId: string;
 	readonly beforeWallId: string;
 	readonly afterWallId: string;
 };
-
 
 export type RoundOperationCorrespondence = {
 	readonly rooms: readonly RoundOperationRoomCorrespondence[];

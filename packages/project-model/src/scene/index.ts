@@ -1,6 +1,4 @@
-export {
-	validateProjectSceneCameraPoses,
-} from '../project-layout-semantics';
+export { validateProjectSceneCameraPoses } from '../project-layout-semantics';
 
 export {
 	assertNavigationGraphMatchesNavigation,
@@ -87,6 +85,4 @@ export type {
 	Vec3,
 } from '../scene';
 
-export type {
-	SceneValidationOptions,
-} from '../scene-validation';
+export type { SceneValidationOptions } from '../scene-validation';

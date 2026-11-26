@@ -4,13 +4,13 @@
  * Two directions, one contract:
  *
  * - **Upward** (`queryFloorSupports`) answers which `room-floor` and
- *   `region-top` faces support a world X/Z point. Every containing face is a
- *   witness; coincident equivalent supports merge into one candidate that keeps
- *   **all** witnesses; a genuine elevation ambiguity is `choice-required` rather
- *   than an array-order pick.
+ *  `region-top` faces support a world X/Z point. Every containing face is a
+ *  witness; coincident equivalent supports merge into one candidate that keeps
+ *  **all** witnesses; a genuine elevation ambiguity is `choice-required` rather
+ *  than an array-order pick.
  * - **Downward** (`queryOverheadSupports`) mirrors the same validation,
- *   tolerances and witness merging for closed-Space lids and overhead-region
- *   undersides, ordered by increasing elevation.
+ *  tolerances and witness merging for closed-Space lids and overhead-region
+ *  undersides, ordered by increasing elevation.
  *
  * Facts come from compiled records only: elevation is the compiled Room's
  * `floorElevation`, the compiled region's `topY`/`bottomY`, or the compiled lid's
@@ -20,7 +20,13 @@
  * never mutated.
  */
 
-export { FLOOR_SUPPORT_TOLERANCES, FLOOR_SUPPORT_UP_NORMAL, OVERHEAD_SUPPORT_DOWN_NORMAL, floorSupportSnapshotOf, DATUM_SUPPORT_ORDER_KEY } from './floor-support/contracts';
+export {
+	FLOOR_SUPPORT_TOLERANCES,
+	FLOOR_SUPPORT_UP_NORMAL,
+	OVERHEAD_SUPPORT_DOWN_NORMAL,
+	floorSupportSnapshotOf,
+	DATUM_SUPPORT_ORDER_KEY,
+} from './floor-support/contracts';
 export type {
 	FloorSupportTolerances,
 	FloorSupportQueryPolygon,
@@ -31,9 +37,14 @@ export type {
 	FloorSupportWitnessSource,
 	FloorSupportWitness,
 	FloorSupportCandidate,
-	FloorSupportQueryResult
+	FloorSupportQueryResult,
 } from './floor-support/contracts';
-export { layoutDatumElevation, datumSupportCandidate, polygonContainsWithTolerance, queryFloorSupports } from './floor-support/floor';
+export {
+	layoutDatumElevation,
+	datumSupportCandidate,
+	polygonContainsWithTolerance,
+	queryFloorSupports,
+} from './floor-support/floor';
 export { overheadSupportSnapshotOf, queryOverheadSupports } from './floor-support/overhead';
 export type {
 	OverheadSupportQueryPolygon,
@@ -41,7 +52,7 @@ export type {
 	OverheadSupportQueryInput,
 	OverheadSupportWitness,
 	OverheadSupportCandidate,
-	OverheadSupportQueryResult
+	OverheadSupportQueryResult,
 } from './floor-support/overhead';
 export { chooseFloorSupport } from './floor-support/choice';
 export type { FloorSupportChoice, FloorSupportChoiceResult } from './floor-support/choice';

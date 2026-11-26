@@ -1,7 +1,18 @@
 import type { CompiledRegionUnit } from '../../room/region-compile';
 import type { LayoutVec2 } from '../coordinates';
-import type { CompiledJunction, CompiledLayoutGeometry, CompiledPhysicalWall, LayoutBounds3, LayoutGeometryIssue } from '../types';
-import type { LayoutDerivedWallRole, LayoutDocumentWallFirst, LayoutWall, LayoutWallOpening } from '../../wall/types';
+import type {
+	CompiledJunction,
+	CompiledLayoutGeometry,
+	CompiledPhysicalWall,
+	LayoutBounds3,
+	LayoutGeometryIssue,
+} from '../types';
+import type {
+	LayoutDerivedWallRole,
+	LayoutDocumentWallFirst,
+	LayoutWall,
+	LayoutWallOpening,
+} from '../../wall/types';
 import type { Vec3 } from '../../kernel/types';
 import { PersistentMap, PersistentVector } from '../../kernel/persistent-store';
 import { layoutItem, layoutLength, mappedReadonlyMap } from '../../kernel/source-collections';
@@ -10,13 +21,13 @@ import type { CompiledObjectsUnit, RetainedCompileWorld, RoomSlot, WallSlot } fr
 
 export function mergeBounds3Into(
 	acc: { min: Vec3; max: Vec3 } | null,
-	bounds: LayoutBounds3 | null
+	bounds: LayoutBounds3 | null,
 ): { min: Vec3; max: Vec3 } | null {
 	if (!bounds) return acc;
 	if (!acc) {
 		return {
 			min: [bounds.min[0], bounds.min[1], bounds.min[2]],
-			max: [bounds.max[0], bounds.max[1], bounds.max[2]]
+			max: [bounds.max[0], bounds.max[1], bounds.max[2]],
 		};
 	}
 	if (bounds.min[0] < acc.min[0]) acc.min[0] = bounds.min[0];
@@ -28,38 +39,67 @@ export function mergeBounds3Into(
 	return acc;
 }
 
-
-export function compileSourceViews(document: LayoutDocumentWallFirst, indexes: Pick<RetainedCompileWorld, 'junctionDocIndexById' | 'wallDocIndexById' | 'openingOrderById' | 'openingIndicesByHostWallId'>) {
- const { junctionDocIndexById, wallDocIndexById, openingOrderById, openingIndicesByHostWallId } = indexes;
- const hosted = new Map<string, LayoutWallOpening[]>();
- return {
-  pointById: mappedReadonlyMap(junctionDocIndexById, (index) => layoutItem(document, 'junctions', index)!.point),
-  junctionById: mappedReadonlyMap(junctionDocIndexById, (index) => layoutItem(document, 'junctions', index)!),
-  wallById: mappedReadonlyMap(wallDocIndexById, (index) => layoutItem(document, 'walls', index)!),
-  openingById: mappedReadonlyMap(openingOrderById, (index) => layoutItem(document, 'openings', index)!),
-  openingsByHostWallId: mappedReadonlyMap(openingIndicesByHostWallId, (indices, id) => {
-   let list = hosted.get(id);
-   if (!list) { list = indices.map((index) => layoutItem(document, 'openings', index)!); hosted.set(id, list); countWork('compile:hosted-opening-record', list.length); }
-   return list;
-  })
- };
+export function compileSourceViews(
+	document: LayoutDocumentWallFirst,
+	indexes: Pick<
+		RetainedCompileWorld,
+		'junctionDocIndexById' | 'wallDocIndexById' | 'openingOrderById' | 'openingIndicesByHostWallId'
+	>,
+) {
+	const { junctionDocIndexById, wallDocIndexById, openingOrderById, openingIndicesByHostWallId } =
+		indexes;
+	const hosted = new Map<string, LayoutWallOpening[]>();
+	return {
+		pointById: mappedReadonlyMap(
+			junctionDocIndexById,
+			(index) => layoutItem(document, 'junctions', index)!.point,
+		),
+		junctionById: mappedReadonlyMap(
+			junctionDocIndexById,
+			(index) => layoutItem(document, 'junctions', index)!,
+		),
+		wallById: mappedReadonlyMap(wallDocIndexById, (index) => layoutItem(document, 'walls', index)!),
+		openingById: mappedReadonlyMap(
+			openingOrderById,
+			(index) => layoutItem(document, 'openings', index)!,
+		),
+		openingsByHostWallId: mappedReadonlyMap(openingIndicesByHostWallId, (indices, id) => {
+			let list = hosted.get(id);
+			if (!list) {
+				list = indices.map((index) => layoutItem(document, 'openings', index)!);
+				hosted.set(id, list);
+				countWork('compile:hosted-opening-record', list.length);
+			}
+			return list;
+		}),
+	};
 }
-
 
 export type ChunkSummary = { bounds3: LayoutBounds3 | null; issues: number; rooms: number };
 
-function summarizedVector<T>(items: readonly T[], summarize: (item: T) => ChunkSummary): PersistentVector<T, ChunkSummary> {
- const merge = (a: ChunkSummary, b: ChunkSummary): ChunkSummary => {
-  countWork('compile:aggregate-merge');
-  return { bounds3: mergeBounds3Into(mergeBounds3Into(null, a.bounds3), b.bounds3), issues: a.issues + b.issues, rooms: a.rooms + b.rooms };
- };
- return PersistentVector.from(items, {
-  leaf(block) {
-   let total: ChunkSummary = { bounds3: null, issues: 0, rooms: 0 };
-   for (const item of block) { countWork('compile:aggregate-child-read'); total = merge(total, summarize(item)); }
-   return total;
-  }, branch: merge
- });
+function summarizedVector<T>(
+	items: readonly T[],
+	summarize: (item: T) => ChunkSummary,
+): PersistentVector<T, ChunkSummary> {
+	const merge = (a: ChunkSummary, b: ChunkSummary): ChunkSummary => {
+		countWork('compile:aggregate-merge');
+		return {
+			bounds3: mergeBounds3Into(mergeBounds3Into(null, a.bounds3), b.bounds3),
+			issues: a.issues + b.issues,
+			rooms: a.rooms + b.rooms,
+		};
+	};
+	return PersistentVector.from(items, {
+		leaf(block) {
+			let total: ChunkSummary = { bounds3: null, issues: 0, rooms: 0 };
+			for (const item of block) {
+				countWork('compile:aggregate-child-read');
+				total = merge(total, summarize(item));
+			}
+			return total;
+		},
+		branch: merge,
+	});
 }
 
 export type LazySealState = { sealed: boolean; sealers: (() => void)[] };
@@ -67,18 +107,35 @@ export type LazySealState = { sealed: boolean; sealers: (() => void)[] };
 export const LAZY_GEOMETRY_SEAL = new WeakMap<CompiledLayoutGeometry, () => void>();
 
 export function lazyArray<T>(label: string, build: () => T[], state?: LazySealState): () => T[] {
- let cached: T[] | undefined;
- const seal = () => { if (cached && !Object.isFrozen(cached)) { countWork('snapshot:flat-array-freeze-slots', cached.length); Object.freeze(cached); } };
- state?.sealers.push(seal);
- return () => { if (!cached) { cached = build(); countWork(`materialize:${label}:slots`, cached.length); } if (state?.sealed) seal(); return cached; };
+	let cached: T[] | undefined;
+	const seal = () => {
+		if (cached && !Object.isFrozen(cached)) {
+			countWork('snapshot:flat-array-freeze-slots', cached.length);
+			Object.freeze(cached);
+		}
+	};
+	state?.sealers.push(seal);
+	return () => {
+		if (!cached) {
+			cached = build();
+			countWork(`materialize:${label}:slots`, cached.length);
+		}
+		if (state?.sealed) seal();
+		return cached;
+	};
 }
 
-export function collectChunks<T, C>(chunks: PersistentVector<C, ChunkSummary>, values: (chunk: C) => readonly T[]): T[] {
- const out: T[] = [];
- for (const chunk of chunks.values()) { countWork('materialize:chunk-read'); for (const item of values(chunk)) out.push(item); }
- return out;
+export function collectChunks<T, C>(
+	chunks: PersistentVector<C, ChunkSummary>,
+	values: (chunk: C) => readonly T[],
+): T[] {
+	const out: T[] = [];
+	for (const chunk of chunks.values()) {
+		countWork('materialize:chunk-read');
+		for (const item of values(chunk)) out.push(item);
+	}
+	return out;
 }
-
 
 /** Build a `RetainedCompileWorld` at the end of a full canonical pass. */
 export function buildRetainedCompileWorldFromPass(input: {
@@ -164,12 +221,21 @@ export function buildRetainedCompileWorldFromPass(input: {
 		junctionSortedIndexById.set(input.sortedJunctions[i]!.junctionId, i);
 	}
 
- const openingIndicesByHostWallId = new Map<string, readonly number[]>();
- for (const [id, openings] of openingsByHostWallId) openingIndicesByHostWallId.set(id, openings.map((opening) => openingOrderById.get(opening.id)!));
+	const openingIndicesByHostWallId = new Map<string, readonly number[]>();
+	for (const [id, openings] of openingsByHostWallId)
+		openingIndicesByHostWallId.set(
+			id,
+			openings.map((opening) => openingOrderById.get(opening.id)!),
+		);
 
 	return {
 		document,
-		...compileSourceViews(document, { junctionDocIndexById, wallDocIndexById, openingOrderById, openingIndicesByHostWallId }),
+		...compileSourceViews(document, {
+			junctionDocIndexById,
+			wallDocIndexById,
+			openingOrderById,
+			openingIndicesByHostWallId,
+		}),
 		openingIndicesByHostWallId,
 		floorId: document.floor.id,
 		floorElevation: document.floor.elevation,
@@ -183,15 +249,31 @@ export function buildRetainedCompileWorldFromPass(input: {
 		roomIndicesByJunctionId,
 		wallIdsByJunctionId,
 		derivedWallRoles: input.derivedWallRoles,
-		roomSlots: summarizedVector(input.roomSlots, (slot) => ({ bounds3: slot.stripped ? slot.bounds3 : null, issues: slot.issues.length, rooms: slot.stripped ? 1 : 0 })),
+		roomSlots: summarizedVector(input.roomSlots, (slot) => ({
+			bounds3: slot.stripped ? slot.bounds3 : null,
+			issues: slot.issues.length,
+			rooms: slot.stripped ? 1 : 0,
+		})),
 		validCeilingRoomCount,
-		wallSlots: summarizedVector(input.wallSlots, (slot) => ({ bounds3: slot.compiled?.bounds3 ?? null, issues: slot.compiled ? slot.issues.length : 0, rooms: 0 })),
+		wallSlots: summarizedVector(input.wallSlots, (slot) => ({
+			bounds3: slot.compiled?.bounds3 ?? null,
+			issues: slot.compiled ? slot.issues.length : 0,
+			rooms: 0,
+		})),
 		sortedWalls: PersistentVector.from(input.sortedWalls),
-		sortedJunctions: summarizedVector(input.sortedJunctions, (junction) => ({ bounds3: junction.bounds3, issues: 0, rooms: 0 })),
+		sortedJunctions: summarizedVector(input.sortedJunctions, (junction) => ({
+			bounds3: junction.bounds3,
+			issues: 0,
+			rooms: 0,
+		})),
 		junctionSortedIndexById,
 		junctionLegOrderById: input.junctionLegOrderById,
-		junctionIssuesByOrder: PersistentMap.from([...input.junctionIssuesById].map(([id, issues]) => [input.junctionLegOrderById.get(id)!, issues] as const)),
+		junctionIssuesByOrder: PersistentMap.from(
+			[...input.junctionIssuesById].map(
+				([id, issues]) => [input.junctionLegOrderById.get(id)!, issues] as const,
+			),
+		),
 		objectUnit: input.objectUnit,
-		regionUnit: input.regionUnit
+		regionUnit: input.regionUnit,
 	};
 }

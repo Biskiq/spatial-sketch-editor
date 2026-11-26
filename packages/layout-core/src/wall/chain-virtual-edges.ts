@@ -1,4 +1,10 @@
-import type { LayoutDocumentWallFirst, LayoutJunction, LayoutWall, LayoutWallFirstRoom, OrientedWallRef } from './types';
+import type {
+	LayoutDocumentWallFirst,
+	LayoutJunction,
+	LayoutWall,
+	LayoutWallFirstRoom,
+	OrientedWallRef,
+} from './types';
 import type { LayoutVec2 } from '../geometry/coordinates';
 import type { SpaceBoundaryEdge } from '../room/reconciliation-boundary';
 import { composeSpaceBoundary } from '../room/reconciliation-boundary';
@@ -14,9 +20,8 @@ type PartialVirtualEdgeMatch = {
 	readonly remaining: readonly [string, string];
 };
 
-
 /**
- * SP1d — turn a proper subsegment of an open side into boundary Walls.
+ * Turn a proper subsegment of an open side into boundary Walls.
  *
  * Only a Wall the operation authored, with one endpoint on an existing
  * virtual-edge Junction and the other strictly inside that edge, matches. A
@@ -27,10 +32,12 @@ type PartialVirtualEdgeMatch = {
  */
 export function absorbPartialVirtualEdgeWalls(
 	document: LayoutDocumentWallFirst,
-	authoredWallIds: ReadonlySet<string>
+	authoredWallIds: ReadonlySet<string>,
 ): string[] {
 	const absorbed = new Set<string>();
-	const junctionById = new Map(document.junctions.map((junction) => [junction.id, junction] as const));
+	const junctionById = new Map(
+		document.junctions.map((junction) => [junction.id, junction] as const),
+	);
 	const wallById = new Map(document.walls.map((wall) => [wall.id, wall] as const));
 	for (const room of document.rooms) {
 		if (room.virtualEdges.length === 0) continue;
@@ -53,13 +60,13 @@ export function absorbPartialVirtualEdgeWalls(
 					wallId,
 					direction: match.direction,
 					startJunctionId: match.startJunctionId,
-					endJunctionId: match.endJunctionId
+					endJunctionId: match.endJunctionId,
 				};
 				const remaining: SpaceBoundaryEdge = {
 					kind: 'virtual',
 					startJunctionId: match.remaining[0],
 					endJunctionId: match.remaining[1],
-					index: 0
+					index: 0,
 				};
 				const replacement =
 					match.remainingSide === 'before' ? [remaining, wallEdge] : [wallEdge, remaining];
@@ -80,12 +87,11 @@ export function absorbPartialVirtualEdgeWalls(
 	return [...absorbed];
 }
 
-
 /** One authored Wall against one composed virtual edge, or `null`. */
 function matchPartialVirtualEdge(
 	junctionById: ReadonlyMap<string, LayoutJunction>,
 	wall: LayoutWall,
-	edge: Extract<SpaceBoundaryEdge, { kind: 'virtual' }>
+	edge: Extract<SpaceBoundaryEdge, { kind: 'virtual' }>,
 ): PartialVirtualEdgeMatch | null {
 	const start = junctionById.get(edge.startJunctionId)?.point;
 	const end = junctionById.get(edge.endJunctionId)?.point;
@@ -121,10 +127,9 @@ function matchPartialVirtualEdge(
 		remainingSide: touchesStart ? 'after' : 'before',
 		remaining: touchesStart
 			? [freeJunctionId, edge.endJunctionId]
-			: [edge.startJunctionId, freeJunctionId]
+			: [edge.startJunctionId, freeJunctionId],
 	};
 }
-
 
 /** True only for a point strictly between the ends and on the straight edge. */
 function pointStrictlyOnEdge(point: LayoutVec2, start: LayoutVec2, end: LayoutVec2): boolean {
@@ -139,12 +144,10 @@ function pointStrictlyOnEdge(point: LayoutVec2, start: LayoutVec2, end: LayoutVe
 	return Math.hypot(point[0] - projectedX, point[1] - projectedZ) <= JUNCTION_COINCIDENCE_EPSILON;
 }
 
-
 /** Rebuild the persisted boundary arrays from one mixed edge cycle. */
-function boundaryPartsFromEdges(edges: readonly SpaceBoundaryEdge[]): Pick<
-	LayoutWallFirstRoom,
-	'boundary' | 'virtualEdges'
-> {
+function boundaryPartsFromEdges(
+	edges: readonly SpaceBoundaryEdge[],
+): Pick<LayoutWallFirstRoom, 'boundary' | 'virtualEdges'> {
 	const firstWall = edges.findIndex((edge) => edge.kind === 'wall');
 	const ordered = firstWall < 0 ? [] : [...edges.slice(firstWall), ...edges.slice(0, firstWall)];
 	const boundary: OrientedWallRef[] = [];
@@ -155,7 +158,7 @@ function boundaryPartsFromEdges(edges: readonly SpaceBoundaryEdge[]): Pick<
 		} else {
 			virtualEdges.push({
 				startJunctionId: edge.startJunctionId,
-				endJunctionId: edge.endJunctionId
+				endJunctionId: edge.endJunctionId,
 			});
 		}
 	}

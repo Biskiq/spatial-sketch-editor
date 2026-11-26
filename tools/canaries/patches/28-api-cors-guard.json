@@ -1,13 +1,11 @@
 {
-  "id": "28-api-cors-guard",
-  "area": "api-ownership",
-  "citation": "section 2 — preserved security hooks",
-  "title": "CORS preflight accepts a mismatched Origin",
-  "file": "apps/api/src/app.ts",
-  "find": "if (!origin || origin !== expectedBrowserOrigin) {",
-  "replace": "if (!origin || origin === expectedBrowserOrigin) {",
-  "tests": [
-    "auth-session-origin.test.mjs"
-  ],
-  "kind": "api"
+	"id": "28-api-cors-guard",
+	"area": "api-ownership",
+	"citation": "section 2 \u2014 preserved security hooks",
+	"title": "CORS preflight accepts a mismatched Origin",
+	"file": "apps/api/src/app.ts",
+	"find": "if (!origin || origin !== expectedBrowserOrigin) {",
+	"replace": "if (!origin || origin === expectedBrowserOrigin) {",
+	"tests": ["auth-session-origin.test.mjs"],
+	"kind": "api"
 }

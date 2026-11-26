@@ -10,11 +10,11 @@
 	 * Two rules keep it honest:
 	 *
 	 * - **Never under a pick root.** This group is a child of the one Canvas, not
-	 *   of `VisitorLayoutShell` or `SceneEntity:*`, so the recursive pick raycast
-	 *   cannot reach presentation ink.
+	 *  of `VisitorLayoutShell` or `SceneEntity:*`, so the recursive pick raycast
+	 *  cannot reach presentation ink.
 	 * - **The Stage overlay layer.** Every child is on layer 2, which the Stage
-	 *   camera shows only when world meshes are drawn. Raycasting keeps its
-	 *   default layer mask and never hits this ink.
+	 *  camera shows only when world meshes are drawn. Raycasting keeps its
+	 *  default layer mask and never hits this ink.
 	 *
 	 * It deliberately does not own Paper ink: `StagePaper` re-strokes the selected
 	 * fragment and footprint on vellum through `paper-marks`, where a mesh tint
@@ -78,7 +78,7 @@
 		/** The armed Eraser's winner reads as red dashes, never gold. */
 		hoverTone?: 'hover' | 'erase' | 'paint';
 		/**
-		 * The other users a Finish Card edit reaches while *All* is chosen (U4):
+		 * The other users a Finish Card edit reaches while *All* is chosen:
 		 * cobalt dashes, the same proposal ink Paint uses. Never the selection itself.
 		 */
 		proposals?: readonly StageSelectionEntry[];
@@ -98,7 +98,7 @@
 		fade?: number;
 		eye?: readonly [number, number, number];
 		/**
-		 * X2's effective cut set. Hover/rim ink of a cut Wall is drawn through
+		 * The effective cut set. Hover/rim ink of a cut Wall is drawn through
 		 * `cutawayInk` so its contour matches the stub; selection ink never is,
 		 * because a selected Wall is exempt from the cutaway (D9).
 		 */

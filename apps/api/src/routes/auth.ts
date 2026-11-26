@@ -1,6 +1,24 @@
-import { admitAuthAttempt, enrollCredentials, hasCredentials, loginAttempt, readCredentials } from '../auth.js';
-import { isValidTestAuthSecret, readTestAuthBearer, readTestAuthTarget, resolveTestAuthUserId } from '../test-auth.js';
-import { errorBody, unauthorized, databaseFailure, sessionUserId, appSession, authUnavailable } from '../http.js';
+import {
+	admitAuthAttempt,
+	enrollCredentials,
+	hasCredentials,
+	loginAttempt,
+	readCredentials,
+} from '../auth.js';
+import {
+	isValidTestAuthSecret,
+	readTestAuthBearer,
+	readTestAuthTarget,
+	resolveTestAuthUserId,
+} from '../test-auth.js';
+import {
+	errorBody,
+	unauthorized,
+	databaseFailure,
+	sessionUserId,
+	appSession,
+	authUnavailable,
+} from '../http.js';
 
 import type { RouteDeps } from './deps.js';
 
@@ -15,8 +33,20 @@ export function registerAuthRoutes(deps: RouteDeps): void {
 			const existingUserId = sessionUserId(request, sessionsEnabled);
 			if (action === 'credentials' && !existingUserId) return unauthorized(reply);
 			const credentials = readCredentials(request.body);
-			if (!credentials) return reply.code(400).send(errorBody('invalid_credentials', 'Use a 3–32 character username and an 8–128 character password'));
-			if (authState.busy) return reply.header('Retry-After', '1').code(429).send(errorBody('auth_busy', 'Try again shortly'));
+			if (!credentials)
+				return reply
+					.code(400)
+					.send(
+						errorBody(
+							'invalid_credentials',
+							'Use a 3–32 character username and an 8–128 character password',
+						),
+					);
+			if (authState.busy)
+				return reply
+					.header('Retry-After', '1')
+					.code(429)
+					.send(errorBody('auth_busy', 'Try again shortly'));
 			authState.busy = true;
 			try {
 				let userId: string;
@@ -24,26 +54,49 @@ export function registerAuthRoutes(deps: RouteDeps): void {
 					// Admission, verification and failure recording are one serialized
 					// transaction: a success is charged nothing and clears only this
 					// source's budget for the username.
-					const attempt = await loginAttempt(pool, request.ip, credentials.username, credentials.password);
+					const attempt = await loginAttempt(
+						pool,
+						request.ip,
+						credentials.username,
+						credentials.password,
+					);
 					if (attempt.kind === 'limited') {
-						return reply.header('Retry-After', '900').code(429).send(errorBody('rate_limited', 'Too many attempts; try again later'));
+						return reply
+							.header('Retry-After', '900')
+							.code(429)
+							.send(errorBody('rate_limited', 'Too many attempts; try again later'));
 					}
 					if (attempt.kind === 'invalid') {
-						return reply.code(401).send(errorBody('invalid_login', 'Username or password is incorrect'));
+						return reply
+							.code(401)
+							.send(errorBody('invalid_login', 'Username or password is incorrect'));
 					}
 					userId = attempt.userId;
 				} else {
-					if (!await admitAuthAttempt(pool, request.ip)) {
-						return reply.header('Retry-After', '900').code(429).send(errorBody('rate_limited', 'Too many attempts; try again later'));
+					if (!(await admitAuthAttempt(pool, request.ip))) {
+						return reply
+							.header('Retry-After', '900')
+							.code(429)
+							.send(errorBody('rate_limited', 'Too many attempts; try again later'));
 					}
-					userId = await enrollCredentials(pool, credentials, action === 'credentials' ? existingUserId! : undefined);
+					userId = await enrollCredentials(
+						pool,
+						credentials,
+						action === 'credentials' ? existingUserId! : undefined,
+					);
 				}
 				appSession(request).regenerate();
 				appSession(request).set('userId', userId);
-				return reply.code(action === 'login' ? 200 : 201).send({ authenticated: true, user: { id: userId } });
+				return reply
+					.code(action === 'login' ? 200 : 201)
+					.send({ authenticated: true, user: { id: userId } });
 			} catch (error) {
 				if ((error as { code?: string }).code === '23505') {
-					return reply.code(409).send(errorBody('credentials_unavailable', 'Username or account is already registered'));
+					return reply
+						.code(409)
+						.send(
+							errorBody('credentials_unavailable', 'Username or account is already registered'),
+						);
 				}
 				return databaseFailure(app, reply, error, 'Local authentication failed');
 			} finally {
@@ -55,8 +108,11 @@ export function registerAuthRoutes(deps: RouteDeps): void {
 		reply.header('Cache-Control', 'no-store');
 		const userId = sessionUserId(request, sessionsEnabled);
 		if (!userId) return unauthorized(reply);
-		try { return { enrolled: await hasCredentials(pool, userId) }; }
-		catch (error) { return databaseFailure(app, reply, error, 'Credential status failed'); }
+		try {
+			return { enrolled: await hasCredentials(pool, userId) };
+		} catch (error) {
+			return databaseFailure(app, reply, error, 'Credential status failed');
+		}
 	});
 
 	app.get('/auth/me', async (request, reply) => {
@@ -67,14 +123,12 @@ export function registerAuthRoutes(deps: RouteDeps): void {
 				auth: {
 					stage: 'session',
 					hasCookie: request.headers.cookie?.includes(`${SESSION_COOKIE_NAME}=`) ?? false,
-					authenticated: Boolean(userId)
-				}
+					authenticated: Boolean(userId),
+				},
 			},
-			'Authentication session checked'
+			'Authentication session checked',
 		);
-		return userId
-			? { authenticated: true, user: { id: userId } }
-			: { authenticated: false };
+		return userId ? { authenticated: true, user: { id: userId } } : { authenticated: false };
 	});
 
 	app.post('/auth/logout', async (request, reply) => {
@@ -92,7 +146,8 @@ export function registerAuthRoutes(deps: RouteDeps): void {
 			const secret = readTestAuthBearer(request.headers.authorization);
 			if (!isValidTestAuthSecret(secret, testAuthSecret)) return unauthorized(reply);
 			const target = readTestAuthTarget(request.body);
-			if (!target) return reply.code(400).send(errorBody('invalid_body', 'Expected a test user body'));
+			if (!target)
+				return reply.code(400).send(errorBody('invalid_body', 'Expected a test user body'));
 			const userId = resolveTestAuthUserId(target.user);
 			if (!userId) return reply.code(400).send(errorBody('unknown_test_user', 'Unknown test user'));
 			// The canonical session creation path — identical to local login
@@ -104,5 +159,3 @@ export function registerAuthRoutes(deps: RouteDeps): void {
 		});
 	}
 }
-
-

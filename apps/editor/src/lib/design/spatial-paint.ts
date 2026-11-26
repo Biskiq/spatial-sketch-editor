@@ -39,7 +39,7 @@ export const SPATIAL_PAINT_ROLES = Object.freeze({
 	gridMajor: '#8a907f',
 	/** The mat's own grid inks (dark ground). */
 	gridMatMinor: '#2b5147',
-	gridMatMajor: '#3c6a5c'
+	gridMatMajor: '#3c6a5c',
 } as const);
 
 export type SpatialPaintRole = keyof typeof SPATIAL_PAINT_ROLES;
@@ -57,7 +57,7 @@ export const SPATIAL_PAINT_CSS_VAR: Readonly<Record<SpatialPaintRole, string>> =
 	gridMinor: '--stage-grid-minor',
 	gridMajor: '--stage-grid-major',
 	gridMatMinor: '--stage-grid-mat-minor',
-	gridMatMajor: '--stage-grid-mat-major'
+	gridMatMajor: '--stage-grid-mat-major',
 });
 
 /** α `0xrrggbb` paint value for one role, for Three.js material colours. */
@@ -68,6 +68,9 @@ export function spatialPaintHex(role: SpatialPaintRole): number {
 /** Every role as a Three.js paint value. */
 export const SPATIAL_PAINT = Object.freeze(
 	Object.fromEntries(
-		(Object.keys(SPATIAL_PAINT_ROLES) as SpatialPaintRole[]).map((role) => [role, spatialPaintHex(role)])
-	)
+		(Object.keys(SPATIAL_PAINT_ROLES) as SpatialPaintRole[]).map((role) => [
+			role,
+			spatialPaintHex(role),
+		]),
+	),
 ) as Readonly<Record<SpatialPaintRole, number>>;

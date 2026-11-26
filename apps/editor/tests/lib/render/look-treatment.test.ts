@@ -22,7 +22,7 @@ import { CLAY_COLOR, CLAY_ROUGHNESS, FLAT_MIN_ROUGHNESS } from '$lib/render/mate
 import { createVisitorWallMaterialFactory } from '$lib/render/layout/wall-material-factory';
 import { createWallRepresentation } from '$lib/render/layout-wall-representation';
 import { createRoomRepresentation } from '$lib/render/layout-room-representation';
-import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from '../layout/__fixtures__/layout-scale-fixtures';
+import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from '../../../../../packages/layout-core/tests/__fixtures__/layout-scale-fixtures';
 import { compileWallFirstLayoutGeometry, createLayoutCompileSession, withLayoutCompileSession } from '@portfolio/layout-core/geometry';
 import { planRigidWallMove } from '@portfolio/layout-core/wall';
 

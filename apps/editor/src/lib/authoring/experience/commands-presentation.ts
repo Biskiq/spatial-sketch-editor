@@ -14,17 +14,24 @@
 
 import type { AuthoringIntent } from '@portfolio/project-model/f4';
 import type { ScenePathAnchor } from '@portfolio/project-model/scene';
-import type {
-	ExperienceGuidePacing,
-	ProjectEnvelope
-} from '@portfolio/project-model/units';
-import { type CameraView, } from '@portfolio/project-model/units';
-import { CAMERA_CONNECTION_CREATE_KIND, CAMERA_CONNECTION_UPDATE_KIND, CAMERA_VIEW_UPDATE_KIND, EXPERIENCE_GUIDE_REMOVE_KIND, EXPERIENCE_GUIDE_UPDATE_KIND, EXPERIENCE_PRESENTATION_REMOVE_KIND, EXPERIENCE_PRESENTATION_VIEW_REMOVE_KIND, EXPERIENCE_STOP_REMOVE_KIND, } from '@portfolio/project-model/units/planning';import {
+import type { ExperienceGuidePacing, ProjectEnvelope } from '@portfolio/project-model/units';
+import { type CameraView } from '@portfolio/project-model/units';
+import {
+	CAMERA_CONNECTION_CREATE_KIND,
+	CAMERA_CONNECTION_UPDATE_KIND,
+	CAMERA_VIEW_UPDATE_KIND,
+	EXPERIENCE_GUIDE_REMOVE_KIND,
+	EXPERIENCE_GUIDE_UPDATE_KIND,
+	EXPERIENCE_PRESENTATION_REMOVE_KIND,
+	EXPERIENCE_PRESENTATION_VIEW_REMOVE_KIND,
+	EXPERIENCE_STOP_REMOVE_KIND,
+} from '@portfolio/project-model/units/planning';
+import {
 	cameraViewReference,
 	experienceMemberReference,
 	intent,
 	type CommandIds,
-	type Revision
+	type Revision,
 } from './commands-references';
 
 /** Rename a Guide or set its pacing (sheet §31). */
@@ -44,9 +51,9 @@ export function guideUpdateIntent(input: {
 		[experienceMemberReference(input.envelope, input.experienceId, 'guide', input.guideId)],
 		{
 			...(input.label === undefined ? {} : { label: input.label }),
-			...(input.pacing === undefined ? {} : { pacing: input.pacing })
+			...(input.pacing === undefined ? {} : { pacing: input.pacing }),
 		},
-		[]
+		[],
 	);
 }
 
@@ -74,21 +81,24 @@ export function viewUpdateIntent(input: {
 			{
 				version: 1,
 				domain: 'camera',
-				revision: { kind: 'exact', contentRevision: input.envelope.units.camera.header.contentRevision },
+				revision: {
+					kind: 'exact',
+					contentRevision: input.envelope.units.camera.header.contentRevision,
+				},
 				subject: { kind: 'view', id: input.view.id },
 				instancePath: [],
 				location: { kind: 'project-root' },
 				componentId: null,
-				capabilityId: null
-			}
+				capabilityId: null,
+			},
 		],
 		{
 			label: input.label ?? input.view.label,
 			eye: [eye[0], eye[1], eye[2]],
 			target: [target[0], target[1], target[2]],
-			fov: input.fov ?? input.view.fov
+			fov: input.fov ?? input.view.fov,
 		},
-		[]
+		[],
 	);
 }
 
@@ -111,21 +121,24 @@ export function viewRenameIntent(input: {
 			{
 				version: 1,
 				domain: 'camera',
-				revision: { kind: 'exact', contentRevision: input.envelope.units.camera.header.contentRevision },
+				revision: {
+					kind: 'exact',
+					contentRevision: input.envelope.units.camera.header.contentRevision,
+				},
 				subject: { kind: 'view', id: input.view.id },
 				instancePath: [],
 				location: { kind: 'project-root' },
 				componentId: null,
-				capabilityId: null
-			}
+				capabilityId: null,
+			},
 		],
 		{
 			label: input.label,
 			eye: [...input.view.eye],
 			target: [...input.view.target],
-			fov: input.view.fov
+			fov: input.view.fov,
 		},
-		[]
+		[],
 	);
 }
 
@@ -148,10 +161,10 @@ export function cameraConnectionCreateIntent(input: {
 		input.revision,
 		[
 			cameraViewReference(input.envelope, input.fromView.id),
-			cameraViewReference(input.envelope, input.toView.id)
+			cameraViewReference(input.envelope, input.toView.id),
 		],
 		{},
-		[{ kind: 'connection', id: input.ids.connection! }]
+		[{ kind: 'connection', id: input.ids.connection! }],
 	);
 }
 
@@ -178,21 +191,29 @@ export function cameraConnectionUpdateIntent(input: {
 			{
 				version: 1,
 				domain: 'camera',
-				revision: { kind: 'exact', contentRevision: input.envelope.units.camera.header.contentRevision },
+				revision: {
+					kind: 'exact',
+					contentRevision: input.envelope.units.camera.header.contentRevision,
+				},
 				subject: { kind: 'connection', id: input.connectionId },
 				instancePath: [],
 				location: { kind: 'project-root' },
 				componentId: null,
-				capabilityId: null
-			}
+				capabilityId: null,
+			},
 		],
 		{
 			...(input.anchors === undefined
 				? {}
-				: { anchors: input.anchors.map((anchor) => ({ id: anchor.id, position: [...anchor.position] })) }),
-			...(input.timing === undefined ? {} : { timing: input.timing })
+				: {
+						anchors: input.anchors.map((anchor) => ({
+							id: anchor.id,
+							position: [...anchor.position],
+						})),
+					}),
+			...(input.timing === undefined ? {} : { timing: input.timing }),
 		},
-		[]
+		[],
 	);
 }
 
@@ -217,7 +238,7 @@ export function removeIntent(input: {
 		input.revision,
 		[experienceMemberReference(input.envelope, input.experienceId, input.subject, input.id)],
 		{},
-		(input.ids.connections ?? []).map((id) => ({ kind: 'connection' as const, id }))
+		(input.ids.connections ?? []).map((id) => ({ kind: 'connection' as const, id })),
 	);
 }
 
@@ -235,9 +256,19 @@ export function viewRemoveIntent(input: {
 		EXPERIENCE_PRESENTATION_VIEW_REMOVE_KIND,
 		input.ids,
 		input.revision,
-		[experienceMemberReference(input.envelope, input.experienceId, 'presentation', input.presentationId)],
-		{ viewId: input.viewId, ...(input.defaultViewId === null ? {} : { defaultViewId: input.defaultViewId }) },
-		(input.ids.connections ?? []).map((id) => ({ kind: 'connection' as const, id }))
+		[
+			experienceMemberReference(
+				input.envelope,
+				input.experienceId,
+				'presentation',
+				input.presentationId,
+			),
+		],
+		{
+			viewId: input.viewId,
+			...(input.defaultViewId === null ? {} : { defaultViewId: input.defaultViewId }),
+		},
+		(input.ids.connections ?? []).map((id) => ({ kind: 'connection' as const, id })),
 	);
 }
 

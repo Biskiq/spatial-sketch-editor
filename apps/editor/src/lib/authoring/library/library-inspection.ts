@@ -1,5 +1,5 @@
 /**
- * The Library inspection's remembered geometry and lighting (T2.S8 U5).
+ * The Library inspection's remembered geometry and lighting.
  * Session view state only: Library detail and Customise… share it, nothing
  * serializes it.
  */
@@ -9,4 +9,7 @@ export type LibraryInspectionSettings = {
 	readonly geometry: LibraryInspectionGeometry;
 	readonly lighting: LibraryInspectionLighting;
 };
-export const LIBRARY_INSPECTION_DEFAULT: LibraryInspectionSettings = { geometry: 'sphere', lighting: 'studio' };
+export const LIBRARY_INSPECTION_DEFAULT: LibraryInspectionSettings = {
+	geometry: 'sphere',
+	lighting: 'studio',
+};

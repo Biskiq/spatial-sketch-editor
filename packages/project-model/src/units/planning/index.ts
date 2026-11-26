@@ -1,21 +1,52 @@
 import { type PlannerRegistry, type PrepareResult } from '../../f4/prepare';
-import { type AcceptanceSourceAdapter, type AcceptedSnapshot, type AuthoringIntent, type CapturedInput, type DomainPlanner } from '../../f4/types';
+import {
+	type AcceptanceSourceAdapter,
+	type AcceptedSnapshot,
+	type AuthoringIntent,
+	type CapturedInput,
+	type DomainPlanner,
+} from '../../f4/types';
 import { createUnitPlannerRegistry } from '../../f4/unit-acceptance';
-import { createSceneEnvironmentSetPlanner, createSceneSkyUpdatePlanner } from '../../scene-planning/environment';
-import { createSceneLookApplyPlanner, createSceneTreatmentSetPlanner, createSceneLookRestorePlanner } from '../../scene-planning/look';
+import {
+	createSceneEnvironmentSetPlanner,
+	createSceneSkyUpdatePlanner,
+} from '../../scene-planning/environment';
+import {
+	createSceneLookApplyPlanner,
+	createSceneTreatmentSetPlanner,
+	createSceneLookRestorePlanner,
+} from '../../scene-planning/look';
 import { createUnitAcceptanceAdapter, createUnitAcceptancePreparation } from '../acceptance';
 import { type StagedUnitResource } from '../acceptance-staging';
-import { createCameraConnectionCreatePlanner, createCameraConnectionUpdatePlanner } from './camera-connection';
+import {
+	createCameraConnectionCreatePlanner,
+	createCameraConnectionUpdatePlanner,
+} from './camera-connection';
 import { createCameraViewUpdatePlanner } from './camera-view';
 import { type CaptureBindOptions, createCaptureBindPlanner } from './experience/capture-bind';
 import { createExperienceCreatePlanner } from './experience/create';
-import { createExperienceGuideCreatePlanner, createExperienceGuideOrderPlanner, createExperienceGuideUpdatePlanner, createExperienceGuideRemovePlanner } from './experience/guide';
-import { createExperiencePresentationUpdatePlanner, createExperiencePresentationRemovePlanner, createExperiencePresentationViewRemovePlanner } from './experience/presentation';
-import { createExperienceStopCreatePlanner, createExperienceStopUpdatePlanner, createExperienceStopRemovePlanner } from './experience/stop';
+import {
+	createExperienceGuideCreatePlanner,
+	createExperienceGuideOrderPlanner,
+	createExperienceGuideUpdatePlanner,
+	createExperienceGuideRemovePlanner,
+} from './experience/guide';
+import {
+	createExperiencePresentationUpdatePlanner,
+	createExperiencePresentationRemovePlanner,
+	createExperiencePresentationViewRemovePlanner,
+} from './experience/presentation';
+import {
+	createExperienceStopCreatePlanner,
+	createExperienceStopUpdatePlanner,
+	createExperienceStopRemovePlanner,
+} from './experience/stop';
 import { createExperienceUpdatePlanner } from './experience/update';
 import { type ProjectEnvelope, type TypedResource } from '../types';
 
-export function createUnitCandidatePlanners(options: CaptureBindOptions = {}): DomainPlanner<ProjectEnvelope>[] {
+export function createUnitCandidatePlanners(
+	options: CaptureBindOptions = {},
+): DomainPlanner<ProjectEnvelope>[] {
 	return [
 		createSceneEnvironmentSetPlanner(),
 		createSceneSkyUpdatePlanner(),
@@ -37,7 +68,7 @@ export function createUnitCandidatePlanners(options: CaptureBindOptions = {}): D
 		createExperienceStopRemovePlanner(),
 		createExperiencePresentationViewRemovePlanner(),
 		createExperiencePresentationRemovePlanner(),
-		createExperienceGuideRemovePlanner()
+		createExperienceGuideRemovePlanner(),
 	];
 }
 
@@ -55,7 +86,7 @@ export type UnitAcceptanceProfile = {
 	prepare(
 		snapshot: AcceptedSnapshot<ProjectEnvelope>,
 		intent: AuthoringIntent,
-		capturedInputs?: readonly CapturedInput[]
+		capturedInputs?: readonly CapturedInput[],
 	): PrepareResult<ProjectEnvelope>;
 };
 
@@ -69,7 +100,7 @@ export type UnitAcceptanceProfile = {
  * places and disagree.
  */
 export function createUnitAcceptanceProfile(
-	options: UnitAcceptanceProfileOptions = {}
+	options: UnitAcceptanceProfileOptions = {},
 ): UnitAcceptanceProfile {
 	const compound = options.compound === true;
 	const resourceStaging = options.resourceStaging === true;
@@ -80,13 +111,13 @@ export function createUnitAcceptanceProfile(
 		registry,
 		compound,
 		resourceStaging,
-		...(options.sessionEpoch === undefined ? {} : { sessionEpoch: options.sessionEpoch })
+		...(options.sessionEpoch === undefined ? {} : { sessionEpoch: options.sessionEpoch }),
 	});
 	return {
 		registry,
 		planners,
 		adapter: createUnitAcceptanceAdapter({ compound, resourceStaging }),
-		prepare: preparation.prepare
+		prepare: preparation.prepare,
 	};
 }
 
@@ -97,7 +128,7 @@ export function stagedResourcesAsTyped(staged: readonly StagedUnitResource[]): T
 		id: item.id,
 		contentRevision: item.contentRevision,
 		pin: item.pin,
-		unresolved: null
+		unresolved: null,
 	}));
 }
 
@@ -106,7 +137,7 @@ export {
 	CAMERA_CONNECTION_DEFAULT_CLEARANCE,
 	CAMERA_CONNECTION_UPDATE_KIND,
 	createCameraConnectionCreatePlanner,
-	createCameraConnectionUpdatePlanner
+	createCameraConnectionUpdatePlanner,
 } from './camera-connection';
 export { CAMERA_VIEW_UPDATE_KIND, createCameraViewUpdatePlanner } from './camera-view';
 export { EXPERIENCE_CAPTURE_BIND_KIND, createCaptureBindPlanner } from './experience/capture-bind';
@@ -120,7 +151,7 @@ export {
 	createExperienceGuideCreatePlanner,
 	createExperienceGuideOrderPlanner,
 	createExperienceGuideRemovePlanner,
-	createExperienceGuideUpdatePlanner
+	createExperienceGuideUpdatePlanner,
 } from './experience/guide';
 export {
 	EXPERIENCE_PRESENTATION_REMOVE_KIND,
@@ -128,7 +159,7 @@ export {
 	EXPERIENCE_PRESENTATION_VIEW_REMOVE_KIND,
 	createExperiencePresentationRemovePlanner,
 	createExperiencePresentationUpdatePlanner,
-	createExperiencePresentationViewRemovePlanner
+	createExperiencePresentationViewRemovePlanner,
 } from './experience/presentation';
 export {
 	EXPERIENCE_STOP_CREATE_KIND,
@@ -136,7 +167,7 @@ export {
 	EXPERIENCE_STOP_UPDATE_KIND,
 	createExperienceStopCreatePlanner,
 	createExperienceStopRemovePlanner,
-	createExperienceStopUpdatePlanner
+	createExperienceStopUpdatePlanner,
 } from './experience/stop';
 export { EXPERIENCE_UPDATE_KIND, createExperienceUpdatePlanner } from './experience/update';
 export {
@@ -144,7 +175,7 @@ export {
 	SCENE_ENVIRONMENT_SET_KIND,
 	SCENE_SKY_UPDATE_KIND,
 	createSceneEnvironmentSetPlanner,
-	createSceneSkyUpdatePlanner
+	createSceneSkyUpdatePlanner,
 } from '../../scene-planning/environment';
 export type { SceneSkyUpdatePayload } from '../../scene-planning/environment';
 export {
@@ -153,11 +184,11 @@ export {
 	SCENE_TREATMENT_SET_KIND,
 	createSceneLookApplyPlanner,
 	createSceneLookRestorePlanner,
-	createSceneTreatmentSetPlanner
+	createSceneTreatmentSetPlanner,
 } from '../../scene-planning/look';
 export type {
 	SceneLookApplyPayload,
 	SceneLookRestorePayload,
-	SceneTreatmentSetPayload
+	SceneTreatmentSetPayload,
 } from '../../scene-planning/look';
 export { STAGED_RESOURCES_INPUT } from './shared';

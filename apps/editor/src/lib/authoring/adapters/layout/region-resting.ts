@@ -6,13 +6,20 @@
  * contact from the accepted resource or verified catalogue record. It is a
  * read: no Scene entity, geometry or history value is written.
  */
-import { countSceneRootsOnFloorRegion, sceneSupportGenerationId } from '@portfolio/project-model/scene-planning';
+import {
+	countSceneRootsOnFloorRegion,
+	sceneSupportGenerationId,
+} from '@portfolio/project-model/scene-planning';
 import { sceneModelContactMinY } from '$lib/authoring/model-contact';
-import { stageEnvelope, stageLayout, type StageAdapterContext } from '$lib/authoring/stage/stage-adapter-host';
+import {
+	stageEnvelope,
+	stageLayout,
+	type StageAdapterContext,
+} from '$lib/authoring/stage/stage-adapter-host';
 
 export function restingObjectsOnFloorRegion(
 	snapshot: StageAdapterContext['snapshot'],
-	regionId: string
+	regionId: string,
 ): number {
 	const region = stageLayout(snapshot).regions.find((candidate) => candidate.id === regionId);
 	if (region === undefined || region.role !== 'floor') return 0;
@@ -22,6 +29,6 @@ export function restingObjectsOnFloorRegion(
 		generationId: sceneSupportGenerationId(snapshot.sourceContentId),
 		scene: envelope.units.scene.data,
 		regionId,
-		modelContactMinY: (entity) => sceneModelContactMinY(envelope, entity)
+		modelContactMinY: (entity) => sceneModelContactMinY(envelope, entity),
 	});
 }

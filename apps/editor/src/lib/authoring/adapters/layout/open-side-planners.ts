@@ -1,5 +1,5 @@
 /**
- * SP1d — the two retained planners one open-side handle submits.
+ * The two retained planners one open-side handle submits.
  *
  * | Operation | Kind | Canonical planner |
  * | --- | --- | --- |
@@ -17,9 +17,22 @@
  * creator previewed and the document that lands describe the same ids, and
  * Undo/Redo replays them.
  */
-import { allocateCapturedId, layoutIdCaptureInput, layoutWorkingLevelInput, readLayoutIdCapture, readLayoutWorkingLevel, type LayoutIdCapture, type LayoutSurfaceLineage } from '@portfolio/layout-core/plan';
+import {
+	allocateCapturedId,
+	layoutIdCaptureInput,
+	layoutWorkingLevelInput,
+	readLayoutIdCapture,
+	readLayoutWorkingLevel,
+	type LayoutIdCapture,
+	type LayoutSurfaceLineage,
+} from '@portfolio/layout-core/plan';
 import { materializeLayoutSourceForCapture } from '@portfolio/layout-core/kernel';
-import { planSpaceOpenSideEndSlide, planSpaceOpenSideOffset, type LayoutDocumentWallFirst, type NodingIdAllocator } from '@portfolio/layout-core/wall';
+import {
+	planSpaceOpenSideEndSlide,
+	planSpaceOpenSideOffset,
+	type LayoutDocumentWallFirst,
+	type NodingIdAllocator,
+} from '@portfolio/layout-core/wall';
 import { recordPreparedCowCandidate } from '@portfolio/layout-core/world';
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import {
@@ -27,13 +40,24 @@ import {
 	replaceUnitData,
 	UNIT_SOURCE_KIND,
 	UNIT_SOURCE_VERSION,
-	type ProjectEnvelope
+	type ProjectEnvelope,
 } from '@portfolio/project-model/units';
-import type { AuthoringIntent, DomainPlanner, PlannerOutcome, PlannerRequest, PreparedCandidate } from '@portfolio/project-model/f4';
+import type {
+	AuthoringIntent,
+	DomainPlanner,
+	PlannerOutcome,
+	PlannerRequest,
+	PreparedCandidate,
+} from '@portfolio/project-model/f4';
 
 import { layoutSubjectReference } from './drawing-planners';
 import { wallStationFrame } from './precision-frames';
-import { addressedSubject, layoutPlanner, layoutReference, registerLayoutSurfaceLineage } from './precision';
+import {
+	addressedSubject,
+	layoutPlanner,
+	layoutReference,
+	registerLayoutSurfaceLineage,
+} from './precision';
 
 export const LAYOUT_OPEN_SIDE_OFFSET_KIND = 'layout-open-side-offset';
 export const LAYOUT_OPEN_SIDE_SLIDE_KIND = 'layout-open-side-slide';
@@ -66,7 +90,7 @@ function opaqueId(value: unknown): value is string {
 
 function readOpenSide(
 	payload: unknown,
-	expected: readonly string[]
+	expected: readonly string[],
 ): { readonly value: OpenSidePayload } | { readonly message: string } {
 	if (!isRecord(payload)) return { message: 'The open-side payload must be an object.' };
 	const unknown = Object.keys(payload).filter((key) => !expected.includes(key));
@@ -100,7 +124,7 @@ function readSlidePayload(payload: unknown): OpenSideSlidePayload | { readonly m
 		'endJunctionId',
 		'end',
 		'wallId',
-		'station'
+		'station',
 	]);
 	if ('message' in read) return read;
 	const record = payload as Record<string, unknown>;
@@ -126,15 +150,18 @@ function capturedNodingAllocator(capture: LayoutIdCapture): NodingIdAllocator {
 			return allocateCapturedId(
 				new Set(baseDocument.junctions.map((junction) => junction.id)),
 				seed,
-				capture
+				capture,
 			);
-		}
+		},
 	};
 }
 
-function capturedLevel(request: PlannerRequest<ProjectEnvelope>): string | PlannerOutcome<ProjectEnvelope> {
+function capturedLevel(
+	request: PlannerRequest<ProjectEnvelope>,
+): string | PlannerOutcome<ProjectEnvelope> {
 	const levelId = readLayoutWorkingLevel(request.capturedInputs);
-	if (levelId === null) return refused('The intent must capture its working Layout level before evaluation.');
+	if (levelId === null)
+		return refused('The intent must capture its working Layout level before evaluation.');
 	const baseline = request.snapshot.domain.source.units.layout.data;
 	if (levelId !== baseline.floor.id) {
 		return refused(`The captured working level '${levelId}' is not the accepted Layout floor.`);
@@ -169,21 +196,26 @@ function preparedOpenSideCandidate(input: {
 	const levelId = capturedLevel(input.request);
 	if (typeof levelId !== 'string') return levelId;
 	const contentRevision = input.request.snapshot.domain.source.units.layout.header.contentRevision;
-	const room = layoutReference(input.request.snapshot, { kind: 'room', id: input.roomId }, contentRevision, levelId);
+	const room = layoutReference(
+		input.request.snapshot,
+		{ kind: 'room', id: input.roomId },
+		contentRevision,
+		levelId,
+	);
 	const createdWallIds = input.createdWallIds ?? [];
 	const createdJunctionIds = input.createdJunctionIds ?? [];
 	const changedJunctionIds = [...new Set(input.changedJunctionIds ?? [])];
 	const affectedRoomIds = [...new Set(input.affectedRoomIds ?? [])].filter(
-		(roomId) => roomId !== input.roomId
+		(roomId) => roomId !== input.roomId,
 	);
 	const affectedOpeningIds = [...new Set(input.affectedOpeningIds ?? [])];
 	const preservedWallIds = [...new Set(input.preservedWallIds ?? input.changedWallIds)].filter(
-		(wallId) => !createdWallIds.includes(wallId)
+		(wallId) => !createdWallIds.includes(wallId),
 	);
 	recordPreparedCowCandidate(
 		input.request.intent.operationId,
 		input.document,
-		canonicalUnitJson(input.request.intent)
+		canonicalUnitJson(input.request.intent),
 	);
 	materializeLayoutSourceForCapture(input.document);
 	const candidate: PreparedCandidate<ProjectEnvelope> = {
@@ -198,73 +230,78 @@ function preparedOpenSideCandidate(input: {
 					...new Set([
 						input.roomId,
 						...input.changedWallIds,
-							...changedJunctionIds,
-							...affectedRoomIds,
-							...affectedOpeningIds,
+						...changedJunctionIds,
+						...affectedRoomIds,
+						...affectedOpeningIds,
 						...createdJunctionIds,
-						...createdWallIds
-					])
+						...createdWallIds,
+					]),
 				],
-					fields: [
-						'rooms',
-						'walls',
-						'junctions',
-						...(affectedOpeningIds.length === 0 ? [] : ['openings'])
-					]
-			}
+				fields: [
+					'rooms',
+					'walls',
+					'junctions',
+					...(affectedOpeningIds.length === 0 ? [] : ['openings']),
+				],
+			},
 		],
 		correspondence: [
 			{ relation: 'preserved', before: room, after: room },
-				...changedJunctionIds
-					.filter((junctionId) => !createdJunctionIds.includes(junctionId))
-					.map((junctionId) => {
-						const reference = layoutSubjectReference({
-							kind: 'junction',
-							id: junctionId,
-							contentRevision,
-							levelId
-						});
-						return { relation: 'preserved' as const, before: reference, after: reference };
-					}),
+			...changedJunctionIds
+				.filter((junctionId) => !createdJunctionIds.includes(junctionId))
+				.map((junctionId) => {
+					const reference = layoutSubjectReference({
+						kind: 'junction',
+						id: junctionId,
+						contentRevision,
+						levelId,
+					});
+					return { relation: 'preserved' as const, before: reference, after: reference };
+				}),
 			...preservedWallIds.map((wallId) => {
 				const reference = layoutReference(
 					input.request.snapshot,
 					{ kind: 'wall', id: wallId },
 					contentRevision,
-					levelId
+					levelId,
 				);
 				return { relation: 'preserved' as const, before: reference, after: reference };
 			}),
-				...affectedRoomIds.map((roomId) => {
-					const reference = layoutReference(
-						input.request.snapshot,
-						{ kind: 'room' as const, id: roomId },
-						contentRevision,
-						levelId
-					);
-					return { relation: 'preserved' as const, before: reference, after: reference };
-				}),
-				...affectedOpeningIds.map((openingId) => {
-					const reference = layoutReference(
-						input.request.snapshot,
-						{ kind: 'opening' as const, id: openingId },
-						contentRevision,
-						levelId
-					);
-					return { relation: 'preserved' as const, before: reference, after: reference };
-				}),
+			...affectedRoomIds.map((roomId) => {
+				const reference = layoutReference(
+					input.request.snapshot,
+					{ kind: 'room' as const, id: roomId },
+					contentRevision,
+					levelId,
+				);
+				return { relation: 'preserved' as const, before: reference, after: reference };
+			}),
+			...affectedOpeningIds.map((openingId) => {
+				const reference = layoutReference(
+					input.request.snapshot,
+					{ kind: 'opening' as const, id: openingId },
+					contentRevision,
+					levelId,
+				);
+				return { relation: 'preserved' as const, before: reference, after: reference };
+			}),
 			...createdJunctionIds.map((id) => ({
 				relation: 'created' as const,
 				before: null,
-				after: layoutSubjectReference({ kind: 'junction', id, contentRevision, levelId })
+				after: layoutSubjectReference({ kind: 'junction', id, contentRevision, levelId }),
 			})),
 			...createdWallIds.map((id) => ({
 				relation: 'created' as const,
 				before: null,
-				after: layoutReference(input.request.snapshot, { kind: 'wall', id }, contentRevision, levelId)
-			}))
+				after: layoutReference(
+					input.request.snapshot,
+					{ kind: 'wall', id },
+					contentRevision,
+					levelId,
+				),
+			})),
 		],
-		diagnostics: []
+		diagnostics: [],
 	};
 	registerLayoutSurfaceLineage(candidate, input.surfaceLineage);
 	return { kind: 'prepared', candidate };
@@ -281,10 +318,15 @@ function openSideOffsetPlanner(): DomainPlanner<ProjectEnvelope> {
 			payload.roomId,
 			payload.startJunctionId,
 			payload.endJunctionId,
-			payload.offset
+			payload.offset,
 		);
 		if (plan.kind === 'rejected') {
-			return { kind: 'rejected', code: plan.rejection.code, message: plan.rejection.message, diagnostics: [] };
+			return {
+				kind: 'rejected',
+				code: plan.rejection.code,
+				message: plan.rejection.message,
+				diagnostics: [],
+			};
 		}
 		return preparedOpenSideCandidate({
 			request,
@@ -299,7 +341,7 @@ function openSideOffsetPlanner(): DomainPlanner<ProjectEnvelope> {
 			affectedOpeningIds: request.snapshot.domain.source.units.layout.data.openings
 				.filter((opening) => plan.changedWallIds.includes(opening.wallId))
 				.map((opening) => opening.id),
-			surfaceLineage: []
+			surfaceLineage: [],
 		});
 	});
 }
@@ -331,10 +373,15 @@ function openSideSlidePlanner(): DomainPlanner<ProjectEnvelope> {
 			payload.wallId,
 			payload.station,
 			[at.point[0], at.point[1]] as LayoutVec2,
-			capturedNodingAllocator(capture)
+			capturedNodingAllocator(capture),
 		);
 		if (plan.kind === 'rejected') {
-			return { kind: 'rejected', code: plan.rejection.code, message: plan.rejection.message, diagnostics: [] };
+			return {
+				kind: 'rejected',
+				code: plan.rejection.code,
+				message: plan.rejection.message,
+				diagnostics: [],
+			};
 		}
 		const createdWallId = plan.createdWallIds[0];
 		if (createdWallId === undefined) return refused('The Wall split created no second fragment.');
@@ -354,7 +401,7 @@ function openSideSlidePlanner(): DomainPlanner<ProjectEnvelope> {
 			preservedWallIds: [payload.wallId],
 			createdWallIds: [createdWallId],
 			createdJunctionIds: [plan.splitJunctionId],
-			surfaceLineage: plan.surfaceLineage
+			surfaceLineage: plan.surfaceLineage,
 		});
 	});
 }
@@ -382,13 +429,13 @@ export function openSideOffsetIntent(input: {
 			roomId: input.roomId,
 			startJunctionId: input.startJunctionId,
 			endJunctionId: input.endJunctionId,
-			offset: input.offset
+			offset: input.offset,
 		},
 		projectId: input.projectId,
 		revisionId: input.revisionId,
 		contentRevision: input.contentRevision,
 		levelId: input.levelId,
-		operationId: input.operationId
+		operationId: input.operationId,
 	});
 }
 
@@ -416,14 +463,14 @@ export function openSideSlideIntent(input: {
 			endJunctionId: input.endJunctionId,
 			end: input.end,
 			wallId: input.wallId,
-			station: input.station
+			station: input.station,
 		},
 		projectId: input.projectId,
 		revisionId: input.revisionId,
 		contentRevision: input.contentRevision,
 		levelId: input.levelId,
 		operationId: input.operationId,
-		capture: input.capture
+		capture: input.capture,
 	});
 }
 
@@ -452,14 +499,14 @@ function layoutIntent(input: {
 				instancePath: [],
 				location: { kind: 'layout-location', levelId: input.levelId, structureInstancePath: [] },
 				componentId: null,
-				capabilityId: null
-			}
+				capabilityId: null,
+			},
 		],
 		payload: input.payload,
 		capturedInputs: [
 			layoutWorkingLevelInput(input.levelId),
-			...(input.capture === undefined ? [] : [layoutIdCaptureInput(input.capture)])
+			...(input.capture === undefined ? [] : [layoutIdCaptureInput(input.capture)]),
 		],
-		allocatedIds: []
+		allocatedIds: [],
 	};
 }

@@ -1,5 +1,5 @@
 /**
- * The complete project-image closure (T2.S8 · PR C).
+ * The complete project-image closure.
  *
  * A project names creator bytes in two places: the Scene texture registry (a
  * Finish image, including records left behind by a removed Finish) and the
@@ -11,10 +11,10 @@
  * storage implementation. It deliberately returns **requirements**, not bytes:
  *
  * - a project texture carries an authored `texture` resource pin when one is
- *   present; Save and Load require that pin, because it is the only authored
- *   answer for what those bytes are;
+ *  present; Save and Load require that pin, because it is the only authored
+ *  answer for what those bytes are;
  * - an Artwork image has no authored hash; its P20 registry row is authoritative
- *   and its shelf entry carries the oriented dimensions to verify.
+ *  and its shelf entry carries the oriented dimensions to verify.
  *
  * `delivery` includes the current texture registry closure and only placed
  * Artwork, matching release preparation. `private-save` and `private-load`
@@ -109,7 +109,10 @@ function expectedPinOf(resource: TypedResource | undefined): ProjectImagePin | n
 		: null;
 }
 
-function resourceFor(resources: readonly TypedResource[], assetId: string): TypedResource | undefined {
+function resourceFor(
+	resources: readonly TypedResource[],
+	assetId: string,
+): TypedResource | undefined {
 	return resources.find((resource) => resource.kind === 'texture' && resource.id === assetId);
 }
 
@@ -124,14 +127,12 @@ function comparePaths(paths: string[]): string[] {
 /**
  * Enumerate the image closure of one Scene payload.
  *
- * `resources` supplies the authored texture pins. Passing an empty list is the
- * legacy release shape, where the P20 registry row is the only pin; Save and
- * Load pass the envelope's resource unit and therefore require an authored pin.
+ * The envelope’s resource unit supplies authored pins for project textures.
  */
 export function collectSceneImageRequirements(
 	scene: Scene,
 	purpose: ProjectImagePurpose,
-	resources: readonly TypedResource[] = []
+	resources: readonly TypedResource[] = [],
 ): ProjectImageClosure {
 	const issues: ProjectImageClosureIssue[] = [];
 	const requirements = new Map<string, { requirement: ProjectImageRequirement; paths: string[] }>();
@@ -149,26 +150,32 @@ export function collectSceneImageRequirements(
 		}
 		for (const path of requirement.paths) addPath(existing.paths, path);
 		const previous = existing.requirement;
-		if (previous.expectedPin !== null && requirement.expectedPin !== null &&
+		if (
+			previous.expectedPin !== null &&
+			requirement.expectedPin !== null &&
 			(previous.expectedPin.hash !== requirement.expectedPin.hash ||
 				previous.expectedPin.mime !== requirement.expectedPin.mime ||
-				previous.expectedPin.size !== requirement.expectedPin.size)) {
+				previous.expectedPin.size !== requirement.expectedPin.size)
+		) {
 			issues.push({
 				path: requirement.paths[0] ?? requirement.locator,
 				code: 'image-pin-conflict',
-				message: `Project image "${requirement.assetId}" is pinned to two different byte identities`
+				message: `Project image "${requirement.assetId}" is pinned to two different byte identities`,
 			});
 			return;
 		}
 		const expectedPin = previous.expectedPin ?? requirement.expectedPin;
 		const artwork = previous.artwork ?? requirement.artwork;
-		if (previous.artwork !== null && requirement.artwork !== null &&
+		if (
+			previous.artwork !== null &&
+			requirement.artwork !== null &&
 			(previous.artwork.pixelWidth !== requirement.artwork.pixelWidth ||
-				previous.artwork.pixelHeight !== requirement.artwork.pixelHeight)) {
+				previous.artwork.pixelHeight !== requirement.artwork.pixelHeight)
+		) {
 			issues.push({
 				path: requirement.paths[0] ?? requirement.locator,
 				code: 'image-dimensions-conflict',
-				message: `Project image "${requirement.assetId}" declares two different oriented sizes`
+				message: `Project image "${requirement.assetId}" declares two different oriented sizes`,
 			});
 			return;
 		}
@@ -182,7 +189,7 @@ export function collectSceneImageRequirements(
 				issues.push({
 					path: recordPath,
 					code: 'image-static-unknown',
-					message: `Static texture "${texture.uri}" is not in the frozen shipped registry`
+					message: `Static texture "${texture.uri}" is not in the frozen shipped registry`,
 				});
 			}
 			continue;
@@ -192,25 +199,25 @@ export function collectSceneImageRequirements(
 			issues.push({
 				path: recordPath,
 				code: 'image-texture-identity-mismatch',
-				message: `Scene texture "${texture.id}" must carry the canonical project asset URI for its own id`
+				message: `Scene texture "${texture.id}" must carry the canonical project asset URI for its own id`,
 			});
 			continue;
 		}
 		const resource = resourceFor(resources, assetId);
 		const expectedPin = expectedPinOf(resource);
-		if (purpose !== 'delivery' && expectedPin === null) {
+		if (expectedPin === null) {
 			issues.push({
 				path: `$.units.resources.data.resources`,
 				code: 'image-pin-missing',
-				message: `Project image "${assetId}" needs a texture resource pin before it can be saved or opened`
+				message: `Project image "${assetId}" needs a texture resource pin before it can be saved, opened or delivered`,
 			});
 			continue;
 		}
-		if (expectedPin !== null && resource?.pin?.locator !== texture.uri) {
+		if (resource?.pin?.locator !== texture.uri) {
 			issues.push({
 				path: `$.units.resources.data.resources`,
 				code: 'image-pin-locator-mismatch',
-				message: `Project image "${assetId}" is pinned to a different locator than its Scene texture record`
+				message: `Project image "${assetId}" is pinned to a different locator than its Scene texture record`,
 			});
 			continue;
 		}
@@ -220,7 +227,7 @@ export function collectSceneImageRequirements(
 				if (binding.textureId === texture.id) {
 					addPath(
 						paths,
-						`$.units.scene.data.materials[${materialIndex}].overrides.maps.${binding.role}.image.textureId`
+						`$.units.scene.data.materials[${materialIndex}].overrides.maps.${binding.role}.image.textureId`,
 					);
 				}
 			}
@@ -232,7 +239,7 @@ export function collectSceneImageRequirements(
 			artwork: null,
 			// The Scene record is the canonical locator and stays first; the
 			// material/entity references follow in authored order.
-			paths: [recordPath, ...comparePaths(paths.filter((path) => path !== recordPath))]
+			paths: [recordPath, ...comparePaths(paths.filter((path) => path !== recordPath))],
 		});
 	}
 
@@ -244,11 +251,11 @@ export function collectSceneImageRequirements(
 			const path = `$.units.scene.data.materials[${materialIndex}].overrides.maps.${binding.role}.image.textureId`;
 			const resource = resourceFor(resources, binding.textureId);
 			const expectedPin = expectedPinOf(resource);
-			if (expectedPin === null && purpose !== 'delivery') {
+			if (expectedPin === null) {
 				issues.push({
 					path,
 					code: 'image-pin-missing',
-					message: `Project image "${binding.textureId}" needs a texture resource pin before it can be saved or opened`
+					message: `Project image "${binding.textureId}" needs a texture resource pin before it can be saved, opened or delivered`,
 				});
 				continue;
 			}
@@ -257,7 +264,7 @@ export function collectSceneImageRequirements(
 				locator: `${PROJECT_ASSET_URI_PREFIX}${binding.textureId}`,
 				expectedPin,
 				artwork: null,
-				paths: [path]
+				paths: [path],
 			});
 		}
 		// A Scene 12 override may name a shipped image rather than a project
@@ -271,7 +278,7 @@ export function collectSceneImageRequirements(
 			issues.push({
 				path: `$.units.scene.data.materials[${materialIndex}].overrides.maps.${role}.image.shipped`,
 				code: 'image-static-unknown',
-				message: `Static texture "${image.shipped}" is not in the frozen shipped registry`
+				message: `Static texture "${image.shipped}" is not in the frozen shipped registry`,
 			});
 		}
 	}
@@ -289,7 +296,7 @@ export function collectSceneImageRequirements(
 					issues.push({
 						path: definitionPath,
 						code: 'image-static-unknown',
-						message: `Material "${resource.id}" names shipped image "${image.source.shipped}" outside the frozen manifest or with a different digest`
+						message: `Material "${resource.id}" names shipped image "${image.source.shipped}" outside the frozen manifest or with a different digest`,
 					});
 				}
 				continue;
@@ -300,7 +307,7 @@ export function collectSceneImageRequirements(
 				issues.push({
 					path: definitionPath,
 					code: 'image-texture-identity-mismatch',
-					message: `Material "${resource.id}" maps ${image.hash} to texture "${textureId}" with no Scene texture record`
+					message: `Material "${resource.id}" maps ${image.hash} to texture "${textureId}" with no Scene texture record`,
 				});
 				continue;
 			}
@@ -310,7 +317,7 @@ export function collectSceneImageRequirements(
 				issues.push({
 					path: definitionPath,
 					code: 'image-pin-missing',
-					message: `Material "${resource.id}" maps ${image.hash} to texture "${textureId}" with no resolved pin`
+					message: `Material "${resource.id}" maps ${image.hash} to texture "${textureId}" with no resolved pin`,
 				});
 				continue;
 			}
@@ -318,7 +325,7 @@ export function collectSceneImageRequirements(
 				issues.push({
 					path: definitionPath,
 					code: 'image-pin-conflict',
-					message: `Material "${resource.id}" binds ${image.hash} and texture "${textureId}" pins ${expectedPin.hash}`
+					message: `Material "${resource.id}" binds ${image.hash} and texture "${textureId}" pins ${expectedPin.hash}`,
 				});
 				continue;
 			}
@@ -327,7 +334,7 @@ export function collectSceneImageRequirements(
 				locator: texture.uri,
 				expectedPin,
 				artwork: null,
-				paths: [definitionPath]
+				paths: [definitionPath],
 			});
 		}
 	}
@@ -339,7 +346,7 @@ export function collectSceneImageRequirements(
 			issues.push({
 				path: paths[0]!,
 				code: 'image-artwork-identity-invalid',
-				message: 'An Artwork shelf entry must carry a canonical project asset id'
+				message: 'An Artwork shelf entry must carry a canonical project asset id',
 			});
 			continue;
 		}
@@ -353,7 +360,7 @@ export function collectSceneImageRequirements(
 			locator: `${PROJECT_ASSET_URI_PREFIX}${image.assetId}`,
 			expectedPin: null,
 			artwork: { name: image.name, pixelWidth: image.pixelWidth, pixelHeight: image.pixelHeight },
-			paths
+			paths,
 		});
 	}
 
@@ -363,7 +370,7 @@ export function collectSceneImageRequirements(
 			issues.push({
 				path: '$.units.scene.data.artworkLibrary',
 				code: 'image-artwork-shelf-missing',
-				message: `Placed Artwork "${assetId}" has no shelf entry declaring its dimensions`
+				message: `Placed Artwork "${assetId}" has no shelf entry declaring its dimensions`,
 			});
 		}
 	}
@@ -371,20 +378,23 @@ export function collectSceneImageRequirements(
 	return {
 		requirements: [...requirements.values()]
 			.map((entry) => ({ ...entry.requirement, paths: [...entry.paths] }))
-			.sort((left, right) => (left.assetId < right.assetId ? -1 : left.assetId > right.assetId ? 1 : 0)),
+			.sort((left, right) =>
+				left.assetId < right.assetId ? -1 : left.assetId > right.assetId ? 1 : 0,
+			),
 		issues: issues.sort((left, right) =>
-			left.path < right.path ? -1 : left.path > right.path ? 1 : left.code < right.code ? -1 : 1)
+			left.path < right.path ? -1 : left.path > right.path ? 1 : left.code < right.code ? -1 : 1,
+		),
 	};
 }
 
 /** Enumerate the image closure of a complete admitted project envelope. */
 export function collectEnvelopeImageRequirements(
 	envelope: ProjectEnvelope,
-	purpose: ProjectImagePurpose
+	purpose: ProjectImagePurpose,
 ): ProjectImageClosure {
 	return collectSceneImageRequirements(
 		envelope.units.scene.data,
 		purpose,
-		envelope.units.resources.data.resources
+		envelope.units.resources.data.resources,
 	);
 }

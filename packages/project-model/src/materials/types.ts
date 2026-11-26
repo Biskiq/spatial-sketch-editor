@@ -10,9 +10,9 @@
  *
  * - `color` is an opaque sRGB `#rrggbb` factor.
  * - map images are content digests (`Maps<Hash>`), never local texture ids, so
- *   the same recipe in two projects with different local ids has one identity.
+ *  the same recipe in two projects with different local ids has one identity.
  * - `mapping` states the coordinate intent of the whole set; a binding may
- *   carry its own mapping instead.
+ *  carry its own mapping instead.
  *
  * The canonical form (see `recipe.ts`) always carries every scalar property and
  * a `maps` object, even when empty. Only those normalized bytes determine the
@@ -25,8 +25,8 @@ export type MaterialProfile = typeof MATERIAL_PROFILE;
 
 /** The capability a consumer declares for a material resource. */
 export const MATERIAL_CAPABILITY = {
-  id: 'pbr-metallic-roughness',
-  version: '1'
+	id: 'pbr-metallic-roughness',
+	version: '1',
 } as const;
 
 /**
@@ -41,9 +41,7 @@ export type MaterialNeutralBaseId = typeof MATERIAL_NEUTRAL_BASE_ID;
 export type Hash = string;
 
 /** One project texture record, or one allowlisted immutable shipped texture. */
-export type LocalImage =
-	| { readonly textureId: string }
-	| { readonly shipped: string };
+export type LocalImage = { readonly textureId: string } | { readonly shipped: string };
 
 /** Authored physical tiling: one tile's real size, rotation and shift. */
 export type Metric = {
@@ -58,7 +56,7 @@ export type Metric = {
  * The coordinate intent of a set or one binding.
  *
  * - `target` uses the target's metric basis when it has one and identity UV0
- *   otherwise (a legacy model remap).
+ *  otherwise (a legacy model remap).
  * - `surface` requires a metric basis and refuses without one.
  * - `uv` reads the named native UV set directly with the authored repeat.
  */
@@ -106,7 +104,7 @@ export const MATERIAL_MAP_ROLES = [
 	'normal',
 	'roughness',
 	'metalness',
-	'occlusion'
+	'occlusion',
 ] as const;
 export type MapRole = (typeof MATERIAL_MAP_ROLES)[number];
 
@@ -216,12 +214,7 @@ export type FieldProvenance = {
 	readonly paletteSlot?: string;
 };
 
-export type ScalarField =
-	| 'color'
-	| 'roughness'
-	| 'metalness'
-	| 'occlusionStrength'
-	| 'normalScale';
+export type ScalarField = 'color' | 'roughness' | 'metalness' | 'occlusionStrength' | 'normalScale';
 
 export type FinishProvenance = {
 	readonly color: FieldProvenance;
@@ -303,7 +296,7 @@ export type TargetAnalysisRequest = {
 
 /** Facts derived by the host, keyed by the subject the caller selected. */
 export type TargetAnalysis = (
-	requests: readonly TargetAnalysisRequest[]
+	requests: readonly TargetAnalysisRequest[],
 ) => readonly TargetFacts[] | null;
 
 /** One role's resolved sampling instruction for a bound draw. */

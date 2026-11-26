@@ -53,7 +53,7 @@ type LoadedProjectRow = ProjectRow & {
 
 export async function listProjects(
 	db: Pick<DatabasePool, 'query'>,
-	ownerId: string
+	ownerId: string,
 ): Promise<ProjectSummary[]> {
 	const result = await queryRows<ProjectRow>(
 		db,
@@ -65,7 +65,7 @@ WHERE p.owner_id = $1
 		WHERE v.project_id = p.id AND v.source_format = $2
 	)
 ORDER BY p.updated_at DESC, p.id ASC`,
-		[ownerId, UNIT_ENVELOPE_SOURCE_FORMAT]
+		[ownerId, UNIT_ENVELOPE_SOURCE_FORMAT],
 	);
 	return result.map(readProjectSummary);
 }
@@ -73,7 +73,7 @@ ORDER BY p.updated_at DESC, p.id ASC`,
 export async function loadProject(
 	db: Pick<DatabasePool, 'query'>,
 	ownerId: string,
-	projectId: string
+	projectId: string,
 ): Promise<LoadedProject> {
 	const result = await queryRows<LoadedProjectRow>(
 		db,
@@ -85,16 +85,16 @@ FROM projects p
 JOIN project_versions v
 	ON v.project_id = p.id AND v.version = p.latest_version
 WHERE p.id = $1 AND p.owner_id = $2 AND v.source_format = $3`,
-		[projectId, ownerId, UNIT_ENVELOPE_SOURCE_FORMAT]
+		[projectId, ownerId, UNIT_ENVELOPE_SOURCE_FORMAT],
 	);
 	const row = result[0];
 	if (!row) throw new ProjectNotFoundError();
 	const summary = readProjectSummary({
-			id: row.projectId,
-			name: row.name,
-			version: row.version,
-			updatedAt: row.updatedAt
-		});
+		id: row.projectId,
+		name: row.name,
+		version: row.version,
+		updatedAt: row.updatedAt,
+	});
 	return {
 		projectId: readString(row.projectId),
 		name: summary.name,
@@ -104,13 +104,13 @@ WHERE p.id = $1 AND p.owner_id = $2 AND v.source_format = $3`,
 		sourceFormat: readString(row.sourceFormat),
 		savedBaseToken: readNullableString(row.savedBaseToken),
 		savedRevision: readNullableRevision(row.savedRevision),
-		savedSourceContentId: readNullableString(row.savedSourceContentId)
+		savedSourceContentId: readNullableString(row.savedSourceContentId),
 	};
 }
 
 export async function withTransaction<T>(
 	pool: DatabasePool,
-	work: (db: DatabaseClient) => Promise<T>
+	work: (db: DatabaseClient) => Promise<T>,
 ): Promise<T> {
 	if (!pool.connect) throw new Error('Database transactions are unavailable');
 	const db = await pool.connect();
@@ -127,7 +127,7 @@ export async function withTransaction<T>(
  */
 export async function withTransactionOnClient<T>(
 	db: DatabaseClient,
-	work: (db: DatabaseClient) => Promise<T>
+	work: (db: DatabaseClient) => Promise<T>,
 ): Promise<T> {
 	try {
 		await db.query('BEGIN');
@@ -147,7 +147,7 @@ export async function withTransactionOnClient<T>(
 export async function queryRows<Row>(
 	db: Pick<DatabasePool, 'query'>,
 	text: string,
-	values: unknown[]
+	values: unknown[],
 ): Promise<Row[]> {
 	const result = (await db.query(text, values)) as DatabaseQueryResult<Row>;
 	if (!result || !Array.isArray(result.rows)) throw new Error('Database query returned no rows');
@@ -159,12 +159,13 @@ function readProjectSummary(row: ProjectRow): ProjectSummary {
 		id: readString(row.id),
 		name: readString(row.name),
 		version: readSafeInteger(row.version),
-		updatedAt: readTimestamp(row.updatedAt)
+		updatedAt: readTimestamp(row.updatedAt),
 	};
 }
 
 function readString(value: unknown): string {
-	if (typeof value !== 'string' || value.length === 0) throw new Error('Database row contained an invalid string');
+	if (typeof value !== 'string' || value.length === 0)
+		throw new Error('Database row contained an invalid string');
 	return value;
 }
 
@@ -187,13 +188,15 @@ function readNullableRevision(value: unknown): AcceptedRevision | null {
 	}
 	return {
 		projectId: (parsed as Record<string, string>).projectId,
-		revisionId: (parsed as Record<string, string>).revisionId
+		revisionId: (parsed as Record<string, string>).revisionId,
 	};
 }
 
 function readSafeInteger(value: unknown): number {
-	const result = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN;
-	if (!Number.isSafeInteger(result) || result < 0) throw new Error('Database row contained an invalid version');
+	const result =
+		typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN;
+	if (!Number.isSafeInteger(result) || result < 0)
+		throw new Error('Database row contained an invalid version');
 	return result;
 }
 

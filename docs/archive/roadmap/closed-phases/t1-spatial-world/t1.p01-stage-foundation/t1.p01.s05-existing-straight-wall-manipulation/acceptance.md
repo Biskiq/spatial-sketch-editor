@@ -99,9 +99,9 @@ lane results on a branch, **not** a merge gate against a merge revision.
 
 The suites this slice adds or changes are:
 
-- `apps/editor/tests/lib/authoring/layout-wall-manipulation.test.ts` (new; pointer shift-drag angle, endpoint crossing, exact paused resume with intent-payload assertion, and neighbour preview for both one-junction and rigid-move edits added)
+- `../../../../../../../apps/editor/tests/lib/authoring/adapters` (new; pointer shift-drag angle, endpoint crossing, exact paused resume with intent-payload assertion, and neighbour preview for both one-junction and rigid-move edits added)
 - `apps/editor/src/lib/authoring/adapters/layout/paused-proposal.ts` (new; the paused parameter store)
-- `apps/editor/tests/lib/authoring/stage-host-acceptance.test.ts` (TD-8 block)
+- `../../../../../../../apps/editor/tests/lib/authoring/stage` (TD-8 block)
 - `apps/editor/tests/lib/authoring/stage-shell-composition.test.ts` (capture-loss → adapter cancel)
 - `apps/editor/tests/lib/authoring/layout-precision-adapter.test.ts` (planner list)
 
@@ -129,8 +129,8 @@ keep / simplify / delete / not-exposed verdicts remain the **owner's** separate 
 implementation  apps/editor/src/lib/authoring/adapters/layout/{precision.ts,instrument.ts,adapter-support.ts,layout.adapter.ts}
                 apps/editor/src/lib/authoring/adapters/layout/{paused-proposal.ts,wall-gesture.ts,LayoutDimensionsInstrument.svelte}
                 apps/editor/src/lib/authoring/stage/stage-facade.ts (TD-8 task-scoped services)
-validation      apps/editor/tests/lib/authoring/layout-wall-manipulation.test.ts
-                apps/editor/tests/lib/authoring/stage-host-acceptance.test.ts
+validation      ../../../../../../../apps/editor/tests/lib/authoring/adapters
+                ../../../../../../../apps/editor/tests/lib/authoring/stage
                 apps/editor/tests/lib/authoring/stage-shell-composition.test.ts
 regressions     apps/editor/tests/lib/authoring/layout-precision-adapter.test.ts
 ```

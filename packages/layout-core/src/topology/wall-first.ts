@@ -9,9 +9,16 @@ import { wallCenterlineCarriesPoint, wallCenterlineSamples } from '../wall/cente
 import { isClosedWall } from '../wall/closed-wall';
 import { coincidentJunctionPairs, coincidesAsJunction } from '../wall/junction-identity';
 import { createPlanBoxIndex } from '../world/plan-box-index';
-import { topologyComponentKeyByJunctionId, topologyComponentKeyByWallId } from '../room/topology-components';
+import {
+	topologyComponentKeyByJunctionId,
+	topologyComponentKeyByWallId,
+} from '../room/topology-components';
 import type { SampledTopologyWall, TopologySegment } from '../wall/topology';
-import { classifyWallIntersection, sampledWallExtentsOverlap, sampledWallsCross } from '../wall/topology';
+import {
+	classifyWallIntersection,
+	sampledWallExtentsOverlap,
+	sampledWallsCross,
+} from '../wall/topology';
 import type { LayoutVec2 } from '../geometry/coordinates';
 import { segmentPlanBox, sharedJunctionIds, wallEndpoints } from '../precision/document';
 import type { WallFirstArchitectureCandidatePair } from '../precision/types';
@@ -31,19 +38,19 @@ import { detectWallCurveTopologyCrossings, topologyFailure } from './curve-cross
  * diagnostic order are unchanged; only which pairs reach it are scoped:
  *
  * ```text
- * COMPONENT-SCOPED  the pairwise `classifyWallIntersection` loop, the sampled
- *                   crossing authority (`detectWallCurveTopologyCrossings`) and the
- *                   `duplicate_junction_point` coincidence rule. An
- *                   intersection or a coincident node BETWEEN two components is
- *                   PERMITTED geometry — an independent Room may be moved through
- *                   another, independent curved Walls may cross, collinear overlap
- *                   between independent groups is legal, and two independent
- *                   structures may sit at identical coordinates.
- * DOCUMENT-GLOBAL   zero-length Walls, Room boundary closure/role/minimum length,
- *                   a self-intersecting centerline, and the translated Opening-set
- *                   issue. These are INTRINSIC to one structural element, not
- *                   relationships between two elements, so Option E does not relax
- *                   them.
+ * COMPONENT-SCOPED the pairwise `classifyWallIntersection` loop, the sampled
+ *  crossing authority (`detectWallCurveTopologyCrossings`) and the
+ *  `duplicate_junction_point` coincidence rule. An
+ *  intersection or a coincident node BETWEEN two components is
+ *  PERMITTED geometry — an independent Room may be moved through
+ *  another, independent curved Walls may cross, collinear overlap
+ *  between independent groups is legal, and two independent
+ *  structures may sit at identical coordinates.
+ * DOCUMENT-GLOBAL zero-length Walls, Room boundary closure/role/minimum length,
+ *  a self-intersecting centerline, and the translated Opening-set
+ *  issue. These are INTRINSIC to one structural element, not
+ *  relationships between two elements, so Option E does not relax
+ *  them.
  * ```
  *
  * CONNECTIVITY IS THE TRANSITIVE CLOSURE of explicit authored Junction identity,
@@ -76,7 +83,6 @@ export type WallFirstTopologyOptions = {
 	disableExtentPruneForTest?: boolean;
 };
 
-
 /**
  * The predicates ONE pass evaluates. Absent (the canonical gate) evaluates all of
  * them; a scoped pass evaluates only the listed subjects, in the gate's own order.
@@ -96,13 +102,12 @@ type TopologyPassSubject = {
 	evaluateRooms: boolean;
 };
 
-
 /** Closed-Wall contacts use the same predicates for whole-document and edit validation. */
 export function validateClosedWallContacts(
 	document: LayoutDocumentWallFirst,
 	affectedWallIds?: ReadonlySet<string>,
 	sampling?: WallSamplingDerivation,
-	junctionPointById = new Map(document.junctions.map((junction) => [junction.id, junction.point]))
+	junctionPointById = new Map(document.junctions.map((junction) => [junction.id, junction.point])),
 ): LayoutGeometryIssue | undefined {
 	const sample = (wall: LayoutWall): SampledTopologyWall | undefined => {
 		const start = junctionPointById.get(wall.startJunctionId);
@@ -119,9 +124,21 @@ export function validateClosedWallContacts(
 				startJunctionId: wall.startJunctionId,
 				endJunctionId: wall.endJunctionId,
 				samples: [
-					{ point: [...start] as LayoutVec2, distance: 0, tangent, normal: [-tangent[1], tangent[0]], t: 0 },
-					{ point: [...end] as LayoutVec2, distance: length, tangent, normal: [-tangent[1], tangent[0]], t: 1 }
-				]
+					{
+						point: [...start] as LayoutVec2,
+						distance: 0,
+						tangent,
+						normal: [-tangent[1], tangent[0]],
+						t: 0,
+					},
+					{
+						point: [...end] as LayoutVec2,
+						distance: length,
+						tangent,
+						normal: [-tangent[1], tangent[0]],
+						t: 1,
+					},
+				],
 			};
 		}
 		const sampled = sampling
@@ -132,7 +149,7 @@ export function validateClosedWallContacts(
 			id: wall.id,
 			startJunctionId: wall.startJunctionId,
 			endJunctionId: wall.endJunctionId,
-			samples: sampled.samples
+			samples: sampled.samples,
 		};
 	};
 	const samples = new Map<string, SampledTopologyWall | undefined>();
@@ -146,7 +163,8 @@ export function validateClosedWallContacts(
 		if (!seam) continue;
 		for (const other of document.walls) {
 			if (other.id === closed.id) continue;
-			if (affectedWallIds && !affectedWallIds.has(closed.id) && !affectedWallIds.has(other.id)) continue;
+			if (affectedWallIds && !affectedWallIds.has(closed.id) && !affectedWallIds.has(other.id))
+				continue;
 			if (
 				other.startJunctionId === closed.startJunctionId ||
 				other.endJunctionId === closed.startJunctionId
@@ -154,7 +172,7 @@ export function validateClosedWallContacts(
 				return topologyFailure(
 					closed.id,
 					other.id,
-					`Closed Wall '${closed.id}' is isolated (closed_wall_isolated): Wall '${other.id}' connects at its seam Junction`
+					`Closed Wall '${closed.id}' is isolated (closed_wall_isolated): Wall '${other.id}' connects at its seam Junction`,
 				);
 			}
 			const otherStart = junctionPointById.get(other.startJunctionId);
@@ -166,18 +184,14 @@ export function validateClosedWallContacts(
 				return topologyFailure(
 					closed.id,
 					other.id,
-					`Closed Wall '${closed.id}' is isolated (closed_wall_isolated): Wall '${other.id}' attaches to its centerline`
+					`Closed Wall '${closed.id}' is isolated (closed_wall_isolated): Wall '${other.id}' attaches to its centerline`,
 				);
 			}
-			if (
-				otherStart &&
-				otherEnd &&
-				wallCenterlineCarriesPoint(other, otherStart, otherEnd, seam)
-			) {
+			if (otherStart && otherEnd && wallCenterlineCarriesPoint(other, otherStart, otherEnd, seam)) {
 				return topologyFailure(
 					closed.id,
 					other.id,
-					`Closed Wall '${closed.id}' is isolated (closed_wall_isolated): its seam attaches to Wall '${other.id}'`
+					`Closed Wall '${closed.id}' is isolated (closed_wall_isolated): its seam attaches to Wall '${other.id}'`,
 				);
 			}
 			const closedSampled = sampledWall(closed);
@@ -191,26 +205,24 @@ export function validateClosedWallContacts(
 				return topologyFailure(
 					closed.id,
 					other.id,
-					`Closed Wall '${closed.id}' is isolated (closed_wall_isolated): Wall '${other.id}' crosses its centerline`
+					`Closed Wall '${closed.id}' is isolated (closed_wall_isolated): Wall '${other.id}' crosses its centerline`,
 				);
 			}
 		}
 	}
 }
 
-
 export function validateWallFirstTopology(
 	document: LayoutDocumentWallFirst,
-	options: WallFirstTopologyOptions = {}
+	options: WallFirstTopologyOptions = {},
 ): LayoutGeometryIssue | undefined {
 	return validateWallFirstTopologyPass(document, options);
 }
 
-
 export function validateWallFirstTopologyPass(
 	document: LayoutDocumentWallFirst,
 	options: WallFirstTopologyOptions,
-	subject?: TopologyPassSubject
+	subject?: TopologyPassSubject,
 ): LayoutGeometryIssue | undefined {
 	// The coincidence rule is COMPONENT-SCOPED: a coincident node is an ACCIDENT
 	// only where the two nodes describe one graph, so equal coordinates are refused
@@ -225,18 +237,32 @@ export function validateWallFirstTopologyPass(
 	// string, so no authored Wall id can collide with it — not even a Wall whose id
 	// is literally `unattached-junctions`.
 	const keyByJunctionId = topologyComponentKeyByJunctionId(document);
-	const junctionIndexById = new Map(document.junctions.map((junction, index) => [junction.id, index] as const));
-	const junctionById = new Map(document.junctions.map((junction) => [junction.id, junction] as const));
+	const junctionIndexById = new Map(
+		document.junctions.map((junction, index) => [junction.id, index] as const),
+	);
+	const junctionById = new Map(
+		document.junctions.map((junction) => [junction.id, junction] as const),
+	);
 	// One id→point index for every Wall this pass resolves,
 	// instead of two linear Junction scans per Wall.
-	const junctionPointById = new Map(document.junctions.map((junction) => [junction.id, junction.point] as const));
+	const junctionPointById = new Map(
+		document.junctions.map((junction) => [junction.id, junction.point] as const),
+	);
 
-	const closedContact = validateClosedWallContacts(document, options.closedContactWallIds, options.sampling, junctionPointById);
+	const closedContact = validateClosedWallContacts(
+		document,
+		options.closedContactWallIds,
+		options.sampling,
+		junctionPointById,
+	);
 	if (closedContact) return closedContact;
 
 	// The predicate itself, so a scoped pass evaluates the SAME rule with the same path, code,
 	// message and target as the canonical loop.
-	const coincidenceFailure = (firstId: string, secondId: string): LayoutGeometryIssue | undefined => {
+	const coincidenceFailure = (
+		firstId: string,
+		secondId: string,
+	): LayoutGeometryIssue | undefined => {
 		const first = junctionById.get(firstId);
 		const second = junctionById.get(secondId);
 		if (!first || !second) return undefined;
@@ -245,7 +271,7 @@ export function validateWallFirstTopologyPass(
 			path: `junctions[${junctionIndexById.get(secondId)}].point`,
 			code: 'duplicate_junction_point',
 			message: `Junction '${secondId}' duplicates the point of '${firstId}'`,
-			targetId: secondId
+			targetId: secondId,
 		};
 	};
 	if (subject) {
@@ -295,13 +321,12 @@ export function validateWallFirstTopologyPass(
 		? document.walls.filter((wall) => subject.wallIds.includes(wall.id))
 		: document.walls;
 	for (const wall of lengthCandidates) {
-		
 		if (wallSegments.has(wall.id)) continue;
 		return {
 			path: `walls.${wall.id}`,
 			code: 'zero_length_wall',
 			message: `Wall '${wall.id}' must have a non-zero effective length`,
-			targetId: wall.id
+			targetId: wall.id,
 		};
 	}
 
@@ -343,7 +368,11 @@ export function validateWallFirstTopologyPass(
 			return undefined;
 		}
 		if (intersection.kind !== 'none') {
-			return topologyFailure(a.id, b.id, `Walls '${a.id}' and '${b.id}' have unsupported ${intersection.kind}`);
+			return topologyFailure(
+				a.id,
+				b.id,
+				`Walls '${a.id}' and '${b.id}' have unsupported ${intersection.kind}`,
+			);
 		}
 		return undefined;
 	};
@@ -386,14 +415,14 @@ export function validateWallFirstTopologyPass(
 		options.sampling,
 		options.disableExtentPruneForTest,
 		subject ? { wallIds: subject.wallIds, pairs: subject.wallPairs } : undefined,
-		junctionPointById
+		junctionPointById,
 	);
 	if (curveCrossing) {
 		if (curveCrossing.kind === 'self') {
 			return topologyFailure(
 				curveCrossing.wallId,
 				curveCrossing.wallId,
-				`Wall '${curveCrossing.wallId}' centerline intersects itself`
+				`Wall '${curveCrossing.wallId}' centerline intersects itself`,
 			);
 		}
 		const [firstCurve, secondCurve] = curveCrossing.wallIds;
@@ -402,7 +431,7 @@ export function validateWallFirstTopologyPass(
 			secondCurve,
 			curveCrossing.sharedJunctionId
 				? `Walls '${firstCurve}' and '${secondCurve}' cross away from their shared Junction`
-				: `Walls '${firstCurve}' and '${secondCurve}' have unsupported centerline crossing`
+				: `Walls '${firstCurve}' and '${secondCurve}' have unsupported centerline crossing`,
 		);
 	}
 
@@ -415,7 +444,11 @@ export function validateWallFirstTopologyPass(
 				return topologyFailure(room.id, undefined, composed.issue.message);
 			}
 			if (composed.edges.length < 3) {
-				return topologyFailure(room.id, undefined, `Room '${room.id}' needs at least three boundary edges`);
+				return topologyFailure(
+					room.id,
+					undefined,
+					`Room '${room.id}' needs at least three boundary edges`,
+				);
 			}
 			if (!roomBoundaryPolygon(document, room.id)) {
 				return topologyFailure(room.id, undefined, `Room '${room.id}' has no resolvable outline`);
@@ -429,7 +462,11 @@ export function validateWallFirstTopologyPass(
 		if (room.boundary.length < 3) {
 			const roomPolygon = roomBoundaryPolygon(document, room.id);
 			if (!roomPolygon || roomPolygon.length < 3) {
-				return topologyFailure(room.id, undefined, `Room '${room.id}' needs at least three boundary Walls`);
+				return topologyFailure(
+					room.id,
+					undefined,
+					`Room '${room.id}' needs at least three boundary Walls`,
+				);
 			}
 		}
 		let previousEnd: string | undefined;
@@ -443,18 +480,23 @@ export function validateWallFirstTopologyPass(
 				return topologyFailure(
 					room.id,
 					ref.wallId,
-					`Room '${room.id}' references unknown Wall '${ref.wallId}'`
+					`Room '${room.id}' references unknown Wall '${ref.wallId}'`,
 				);
 			}
 			const start = ref.direction === 'forward' ? wall.startJunctionId : wall.endJunctionId;
 			const end = ref.direction === 'forward' ? wall.endJunctionId : wall.startJunctionId;
 			if (index === 0) firstStart = start;
 			if (previousEnd !== undefined && previousEnd !== start) {
-				return topologyFailure(room.id, ref.wallId, `Room '${room.id}' boundary is disconnected at Wall '${ref.wallId}'`);
+				return topologyFailure(
+					room.id,
+					ref.wallId,
+					`Room '${room.id}' boundary is disconnected at Wall '${ref.wallId}'`,
+				);
 			}
 			previousEnd = end;
 		}
-		if (previousEnd !== firstStart) return topologyFailure(room.id, undefined, `Room '${room.id}' boundary is not closed`);
+		if (previousEnd !== firstStart)
+			return topologyFailure(room.id, undefined, `Room '${room.id}' boundary is not closed`);
 	}
 
 	if (options.openingSet !== 'defer') {
@@ -473,14 +515,10 @@ export function validateWallFirstTopologyPass(
 					path: `walls.${openingIssue.wallId}.height`,
 					code: 'wall_height_below_opening',
 					message: openingIssue.message,
-					targetId: openingIssue.wallId
+					targetId: openingIssue.wallId,
 				};
 			}
-			return topologyFailure(
-				openingIssue.openingId,
-				openingIssue.wallId,
-				openingIssue.message
-			);
+			return topologyFailure(openingIssue.openingId, openingIssue.wallId, openingIssue.message);
 		}
 	}
 	return undefined;

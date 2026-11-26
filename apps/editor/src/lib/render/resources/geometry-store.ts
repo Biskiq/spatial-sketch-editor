@@ -23,10 +23,14 @@ import {
 	CylinderGeometry,
 	PlaneGeometry,
 	SphereGeometry,
-	type BufferGeometry
+	type BufferGeometry,
 } from 'three';
 import { buildFormGeometry } from '$lib/render/entities/form-geometry';
-import { artworkBackingGeometry, artworkFrameGeometry, artworkMatGeometry } from '../artwork/artwork-geometry';
+import {
+	artworkBackingGeometry,
+	artworkFrameGeometry,
+	artworkMatGeometry,
+} from '../artwork/artwork-geometry';
 import { geometryKeyOf, type GeometrySpec } from './scene-render-item';
 
 export { geometryKeyOf } from './scene-render-item';
@@ -36,7 +40,7 @@ export type {
 	FormPlane,
 	FrustumGeometrySpec,
 	GeometrySpec,
-	UnitGeometrySpec
+	UnitGeometrySpec,
 } from './scene-render-item';
 
 /** One claim on a shared buffer. `release` is idempotent. */
@@ -82,7 +86,7 @@ export function constructGeometry(spec: GeometrySpec): BufferGeometry {
 			spec.height,
 			spec.radialSegments,
 			1,
-			spec.openEnded
+			spec.openEnded,
 		);
 	}
 	switch (spec.shape) {
@@ -140,7 +144,7 @@ export function createGeometryStore(): GeometryStore {
 					entries.delete(key);
 					held.geometry.dispose();
 					disposedCount += 1;
-				}
+				},
 			};
 		},
 
@@ -156,6 +160,6 @@ export function createGeometryStore(): GeometryStore {
 				disposedCount += 1;
 			}
 			entries.clear();
-		}
+		},
 	};
 }

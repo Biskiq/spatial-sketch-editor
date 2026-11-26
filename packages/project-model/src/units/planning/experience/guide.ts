@@ -5,7 +5,18 @@ import { readOptionalTransition } from './payload';
 import { containerOf, withExperience, prepared, installRemoval, emptyPayload } from './update';
 import { refuse, envelopeOf, revisionOf, reference, targetOf, capturedId, allIds } from '../shared';
 import { UNIT_SOURCE_KIND, UNIT_SOURCE_VERSION } from '../../source';
-import { EXPERIENCE_GUIDE_PACINGS, EXPERIENCE_STAY_DEFAULT_SECONDS, presentationDefaultViewId, presentationViewIds, type ExperienceGuidePacing, EXPERIENCE_UNIT_FORMAT_VERSION, type Experience, type ExperienceGuide, type ExperienceStop, type ProjectEnvelope } from '../../types';
+import {
+	EXPERIENCE_GUIDE_PACINGS,
+	EXPERIENCE_STAY_DEFAULT_SECONDS,
+	presentationDefaultViewId,
+	presentationViewIds,
+	type ExperienceGuidePacing,
+	EXPERIENCE_UNIT_FORMAT_VERSION,
+	type Experience,
+	type ExperienceGuide,
+	type ExperienceStop,
+	type ProjectEnvelope,
+} from '../../types';
 import { readStaySeconds } from '../../validate';
 
 /** Create a Guide and its initial Stop from an existing Presentation; the first one opens the Experience. */
@@ -20,7 +31,14 @@ export const EXPERIENCE_GUIDE_UPDATE_KIND = 'experience-guide-update';
 /** Remove one Guide under the removal rules. */
 export const EXPERIENCE_GUIDE_REMOVE_KIND = 'experience-guide-remove';
 
-export const GUIDE_CREATE_PAYLOAD_KEYS = ['label', 'presentationId', 'entryViewId', 'staySeconds', 'transition', 'pacing'] as const;
+export const GUIDE_CREATE_PAYLOAD_KEYS = [
+	'label',
+	'presentationId',
+	'entryViewId',
+	'staySeconds',
+	'transition',
+	'pacing',
+] as const;
 
 /**
  * Create one Guide of an Experience and its initial distinct Stop.
@@ -40,24 +58,39 @@ export function createExperienceGuideCreatePlanner(): DomainPlanner<ProjectEnvel
 	return {
 		id: 'unit.experience-guide-create',
 		kind: EXPERIENCE_GUIDE_CREATE_KIND,
-		admission: { domain: 'experience', compound: true, writes: ['camera'], units: true, resources: false },
+		admission: {
+			domain: 'experience',
+			compound: true,
+			writes: ['camera'],
+			units: true,
+			resources: false,
+		},
 		sourceKinds: [UNIT_SOURCE_KIND],
 		sourceVersions: [UNIT_SOURCE_VERSION],
 		prepare(request) {
 			const envelope = envelopeOf(request);
 			const reader = new ShapeReader();
 			const payload = reader.object(request.intent.payload, '$.payload', GUIDE_CREATE_PAYLOAD_KEYS);
-			if (payload === null) return refuse('invalid-payload', 'The Guide payload is not a valid shape', reader.issues);
+			if (payload === null)
+				return refuse('invalid-payload', 'The Guide payload is not a valid shape', reader.issues);
 			const label = reader.string(payload.label, '$.payload.label');
 			const presentationId = reader.opaqueId(payload.presentationId, '$.payload.presentationId');
 			const entryViewProvided = payload.entryViewId !== undefined && payload.entryViewId !== null;
-			const entryViewId = entryViewProvided ? reader.opaqueId(payload.entryViewId, '$.payload.entryViewId') : null;
-			const staySeconds = payload.staySeconds === undefined
-				? EXPERIENCE_STAY_DEFAULT_SECONDS
-				: readStaySeconds(reader, payload.staySeconds, '$.payload.staySeconds');
-			const pacing = payload.pacing === undefined
-				? 'automatic'
-				: (reader.tag(payload.pacing, '$.payload.pacing', EXPERIENCE_GUIDE_PACINGS) as ExperienceGuidePacing | null);
+			const entryViewId = entryViewProvided
+				? reader.opaqueId(payload.entryViewId, '$.payload.entryViewId')
+				: null;
+			const staySeconds =
+				payload.staySeconds === undefined
+					? EXPERIENCE_STAY_DEFAULT_SECONDS
+					: readStaySeconds(reader, payload.staySeconds, '$.payload.staySeconds');
+			const pacing =
+				payload.pacing === undefined
+					? 'automatic'
+					: (reader.tag(
+							payload.pacing,
+							'$.payload.pacing',
+							EXPERIENCE_GUIDE_PACINGS,
+						) as ExperienceGuidePacing | null);
 			const transition = readOptionalTransition(reader, payload.transition, '$.payload.transition');
 			if (
 				label === null ||
@@ -71,43 +104,73 @@ export function createExperienceGuideCreatePlanner(): DomainPlanner<ProjectEnvel
 			}
 			const target = targetOf(request.intent, 'experience', 'experience');
 			if (target === null) {
-				return refuse('unsupported-operation', 'experience-guide-create targets exactly one experience:experience reference');
+				return refuse(
+					'unsupported-operation',
+					'experience-guide-create targets exactly one experience:experience reference',
+				);
 			}
-			const experienceIndex = envelope.units.experience.data.experiences.findIndex((candidate) => candidate.id === target.subject.id);
-			if (experienceIndex === -1) return refuse('missing-target', `experience "${target.subject.id}" is not in this envelope`);
+			const experienceIndex = envelope.units.experience.data.experiences.findIndex(
+				(candidate) => candidate.id === target.subject.id,
+			);
+			if (experienceIndex === -1)
+				return refuse(
+					'missing-target',
+					`experience "${target.subject.id}" is not in this envelope`,
+				);
 			const experience = envelope.units.experience.data.experiences[experienceIndex]!;
 			const firstGuide = experience.guides.length === 0;
 			if (firstGuide && experience.entryGuideId !== null) {
 				return refuse(
 					'missing-target',
-					`experience "${experience.id}" already names entry guide "${experience.entryGuideId}", which it does not carry`
+					`experience "${experience.id}" already names entry guide "${experience.entryGuideId}", which it does not carry`,
 				);
 			}
-			const presentation = experience.presentations.find((candidate) => candidate.id === presentationId);
+			const presentation = experience.presentations.find(
+				(candidate) => candidate.id === presentationId,
+			);
 			if (presentation === undefined) {
-				return refuse('missing-target', `presentation "${presentationId}" is not in experience "${experience.id}"`);
+				return refuse(
+					'missing-target',
+					`presentation "${presentationId}" is not in experience "${experience.id}"`,
+				);
 			}
 			// A Presentation without a Default View is not enterable, so no Stop of it
 			// can join a Guide.
 			const defaultViewId = presentationDefaultViewId(presentation);
 			if (defaultViewId === null) {
-				return refuse('missing-entry', `presentation "${presentation.id}" has no Default View, so a Stop cannot enter it`);
+				return refuse(
+					'missing-entry',
+					`presentation "${presentation.id}" has no Default View, so a Stop cannot enter it`,
+				);
 			}
 			const entry: string = entryViewId ?? defaultViewId;
 			if (!presentationViewIds(presentation).includes(entry)) {
-				return refuse('invalid-payload', `entry view "${entry}" is not one of presentation "${presentation.id}"'s views`);
+				return refuse(
+					'invalid-payload',
+					`entry view "${entry}" is not one of presentation "${presentation.id}"'s views`,
+				);
 			}
 			const guideId = capturedId(request.intent, 'guide');
 			const stopId = capturedId(request.intent, 'stop');
 			if (guideId === null || stopId === null) {
-				return refuse('unsupported-operation', 'the intent must capture exactly one guide id and one stop id');
+				return refuse(
+					'unsupported-operation',
+					'the intent must capture exactly one guide id and one stop id',
+				);
 			}
 			const ids = allIds(envelope);
 			for (const id of [guideId, stopId]) {
-				if (ids.has(id)) return refuse('duplicate-identity', `the captured id "${id}" already names a subject in this envelope`);
+				if (ids.has(id))
+					return refuse(
+						'duplicate-identity',
+						`the captured id "${id}" already names a subject in this envelope`,
+					);
 			}
 			if (guideId === stopId) {
-				return refuse('duplicate-identity', 'a Guide and its initial Stop must have distinct identities');
+				return refuse(
+					'duplicate-identity',
+					'a Guide and its initial Stop must have distinct identities',
+				);
 			}
 			const newStop: ExperienceStop = {
 				id: stopId,
@@ -115,14 +178,14 @@ export function createExperienceGuideCreatePlanner(): DomainPlanner<ProjectEnvel
 				entryViewId: entryViewId ?? null,
 				staySeconds,
 				invitation: null,
-				...(transition === undefined ? {} : { transition })
+				...(transition === undefined ? {} : { transition }),
 			};
 			const newGuide: ExperienceGuide = { id: guideId, label, stopIds: [newStop.id], pacing };
 			const updatedExperience: Experience = {
 				...experience,
 				entryGuideId: firstGuide ? newGuide.id : experience.entryGuideId,
 				stops: [...experience.stops, newStop],
-				guides: [...experience.guides, newGuide]
+				guides: [...experience.guides, newGuide],
 			};
 			const candidate: ProjectEnvelope = {
 				...envelope,
@@ -132,30 +195,64 @@ export function createExperienceGuideCreatePlanner(): DomainPlanner<ProjectEnvel
 						header: { ...envelope.units.experience.header },
 						data: {
 							formatVersion: EXPERIENCE_UNIT_FORMAT_VERSION,
-							experiences: envelope.units.experience.data.experiences.map((entryExperience, index) =>
-								index === experienceIndex ? updatedExperience : entryExperience
-							)
-						}
-					}
-				}
-			};
-			return prepared(request, candidate, [
-						{ kind: 'experience.guide.created', subjectIds: [newGuide.id], fields: ['label', 'stopIds', 'pacing'] },
-						{ kind: 'experience.stop.created', subjectIds: [newStop.id], fields: ['presentationId', 'entryViewId', 'staySeconds', 'invitation', 'transition'] },
-						...(firstGuide ? [{ kind: 'experience.updated', subjectIds: [experience.id], fields: ['entryGuideId'] }] : [])
-					], [
-						{
-							relation: 'created',
-							before: null,
-							after: reference('experience', 'guide', newGuide.id, [experience.id], revisionOf(candidate, 'experience'))
+							experiences: envelope.units.experience.data.experiences.map(
+								(entryExperience, index) =>
+									index === experienceIndex ? updatedExperience : entryExperience,
+							),
 						},
-						{
-							relation: 'created',
-							before: null,
-							after: reference('experience', 'stop', newStop.id, [experience.id], revisionOf(candidate, 'experience'))
-						}
-					]);
-		}
+					},
+				},
+			};
+			return prepared(
+				request,
+				candidate,
+				[
+					{
+						kind: 'experience.guide.created',
+						subjectIds: [newGuide.id],
+						fields: ['label', 'stopIds', 'pacing'],
+					},
+					{
+						kind: 'experience.stop.created',
+						subjectIds: [newStop.id],
+						fields: ['presentationId', 'entryViewId', 'staySeconds', 'invitation', 'transition'],
+					},
+					...(firstGuide
+						? [
+								{
+									kind: 'experience.updated',
+									subjectIds: [experience.id],
+									fields: ['entryGuideId'],
+								},
+							]
+						: []),
+				],
+				[
+					{
+						relation: 'created',
+						before: null,
+						after: reference(
+							'experience',
+							'guide',
+							newGuide.id,
+							[experience.id],
+							revisionOf(candidate, 'experience'),
+						),
+					},
+					{
+						relation: 'created',
+						before: null,
+						after: reference(
+							'experience',
+							'stop',
+							newStop.id,
+							[experience.id],
+							revisionOf(candidate, 'experience'),
+						),
+					},
+				],
+			);
+		},
 	};
 }
 
@@ -175,28 +272,56 @@ export function createExperienceGuideOrderPlanner(): DomainPlanner<ProjectEnvelo
 	return {
 		id: 'unit.experience-guide-order',
 		kind: EXPERIENCE_GUIDE_ORDER_KIND,
-		admission: { domain: 'experience', compound: true, writes: ['camera'], units: true, resources: false },
+		admission: {
+			domain: 'experience',
+			compound: true,
+			writes: ['camera'],
+			units: true,
+			resources: false,
+		},
 		sourceKinds: [UNIT_SOURCE_KIND],
 		sourceVersions: [UNIT_SOURCE_VERSION],
 		prepare(request) {
 			const envelope = envelopeOf(request);
 			const reader = new ShapeReader();
 			const payload = reader.object(request.intent.payload, '$.payload', GUIDE_ORDER_PAYLOAD_KEYS);
-			if (payload === null) return refuse('invalid-payload', 'The Guide order payload is not a valid shape', reader.issues);
+			if (payload === null)
+				return refuse(
+					'invalid-payload',
+					'The Guide order payload is not a valid shape',
+					reader.issues,
+				);
 			const guideId = reader.opaqueId(payload.guideId, '$.payload.guideId');
 			const stopIds = reader.opaqueIdArray(payload.stopIds, '$.payload.stopIds');
 			if (guideId === null || stopIds === null) {
-				return refuse('invalid-payload', 'The Guide order payload is not a valid shape', reader.issues);
+				return refuse(
+					'invalid-payload',
+					'The Guide order payload is not a valid shape',
+					reader.issues,
+				);
 			}
 			const target = targetOf(request.intent, 'experience', 'experience');
 			if (target === null) {
-				return refuse('unsupported-operation', 'experience-guide-order targets exactly one experience:experience reference');
+				return refuse(
+					'unsupported-operation',
+					'experience-guide-order targets exactly one experience:experience reference',
+				);
 			}
-			const experienceIndex = envelope.units.experience.data.experiences.findIndex((candidate) => candidate.id === target.subject.id);
-			if (experienceIndex === -1) return refuse('missing-target', `experience "${target.subject.id}" is not in this envelope`);
+			const experienceIndex = envelope.units.experience.data.experiences.findIndex(
+				(candidate) => candidate.id === target.subject.id,
+			);
+			if (experienceIndex === -1)
+				return refuse(
+					'missing-target',
+					`experience "${target.subject.id}" is not in this envelope`,
+				);
 			const experience = envelope.units.experience.data.experiences[experienceIndex]!;
 			const guide = experience.guides.find((candidate) => candidate.id === guideId);
-			if (guide === undefined) return refuse('missing-target', `guide "${guideId}" is not in experience "${experience.id}"`);
+			if (guide === undefined)
+				return refuse(
+					'missing-target',
+					`guide "${guideId}" is not in experience "${experience.id}"`,
+				);
 			const authored = new Set(guide.stopIds);
 			const supplied = new Set(stopIds);
 			if (
@@ -206,12 +331,14 @@ export function createExperienceGuideOrderPlanner(): DomainPlanner<ProjectEnvelo
 			) {
 				return refuse(
 					'invalid-order',
-					`the new order must be a permutation of guide "${guide.id}"'s authored stops; it is never an insert, a removal or an index-keyed move`
+					`the new order must be a permutation of guide "${guide.id}"'s authored stops; it is never an insert, a removal or an index-keyed move`,
 				);
 			}
 			const updatedExperience: Experience = {
 				...experience,
-				guides: experience.guides.map((candidate) => (candidate.id === guide.id ? { ...candidate, stopIds } : candidate))
+				guides: experience.guides.map((candidate) =>
+					candidate.id === guide.id ? { ...candidate, stopIds } : candidate,
+				),
 			};
 			const candidate: ProjectEnvelope = {
 				...envelope,
@@ -221,21 +348,39 @@ export function createExperienceGuideOrderPlanner(): DomainPlanner<ProjectEnvelo
 						header: { ...envelope.units.experience.header },
 						data: {
 							formatVersion: EXPERIENCE_UNIT_FORMAT_VERSION,
-							experiences: envelope.units.experience.data.experiences.map((entryExperience, index) =>
-								index === experienceIndex ? updatedExperience : entryExperience
-							)
-						}
-					}
-				}
+							experiences: envelope.units.experience.data.experiences.map(
+								(entryExperience, index) =>
+									index === experienceIndex ? updatedExperience : entryExperience,
+							),
+						},
+					},
+				},
 			};
-			return prepared(request, candidate, [{ kind: 'experience.guide.updated', subjectIds: [guide.id], fields: ['stopIds'] }], [
-						{
-							relation: 'preserved',
-							before: reference('experience', 'guide', guide.id, [experience.id], revisionOf(envelope, 'experience')),
-							after: reference('experience', 'guide', guide.id, [experience.id], revisionOf(candidate, 'experience'))
-						}
-					]);
-		}
+			return prepared(
+				request,
+				candidate,
+				[{ kind: 'experience.guide.updated', subjectIds: [guide.id], fields: ['stopIds'] }],
+				[
+					{
+						relation: 'preserved',
+						before: reference(
+							'experience',
+							'guide',
+							guide.id,
+							[experience.id],
+							revisionOf(envelope, 'experience'),
+						),
+						after: reference(
+							'experience',
+							'guide',
+							guide.id,
+							[experience.id],
+							revisionOf(candidate, 'experience'),
+						),
+					},
+				],
+			);
+		},
 	};
 }
 
@@ -260,48 +405,85 @@ export function createExperienceGuideUpdatePlanner(): DomainPlanner<ProjectEnvel
 			const envelope = envelopeOf(request);
 			const reader = new ShapeReader();
 			const payload = reader.object(request.intent.payload, '$.payload', GUIDE_UPDATE_KEYS);
-			if (payload === null) return refuse('invalid-payload', 'The Guide payload is not a valid shape', reader.issues);
-			const label = payload.label === undefined ? undefined : reader.string(payload.label, '$.payload.label');
-			const pacing = payload.pacing === undefined
-				? undefined
-				: (reader.tag(payload.pacing, '$.payload.pacing', EXPERIENCE_GUIDE_PACINGS) as ExperienceGuidePacing | null);
+			if (payload === null)
+				return refuse('invalid-payload', 'The Guide payload is not a valid shape', reader.issues);
+			const label =
+				payload.label === undefined ? undefined : reader.string(payload.label, '$.payload.label');
+			const pacing =
+				payload.pacing === undefined
+					? undefined
+					: (reader.tag(
+							payload.pacing,
+							'$.payload.pacing',
+							EXPERIENCE_GUIDE_PACINGS,
+						) as ExperienceGuidePacing | null);
 			if (label === null || pacing === null) {
 				return refuse('invalid-payload', 'The Guide payload is not a valid shape', reader.issues);
 			}
 			if (label === undefined && pacing === undefined) {
 				return refuse('invalid-payload', 'the Guide payload names no field to change');
 			}
-			if (label !== undefined && label.trim() === '') return refuse('invalid-payload', 'A name is needed');
+			if (label !== undefined && label.trim() === '')
+				return refuse('invalid-payload', 'A name is needed');
 			const target = targetOf(request.intent, 'experience', 'guide');
 			if (target === null) {
-				return refuse('unsupported-operation', 'experience-guide-update targets exactly one experience:guide reference');
+				return refuse(
+					'unsupported-operation',
+					'experience-guide-update targets exactly one experience:guide reference',
+				);
 			}
 			const container = containerOf(envelope, target);
 			if (container === undefined) {
-				return refuse('missing-target', `the Guide's Experience "${target.instancePath[0] ?? '(unspecified)'}" is not in this envelope`);
+				return refuse(
+					'missing-target',
+					`the Guide's Experience "${target.instancePath[0] ?? '(unspecified)'}" is not in this envelope`,
+				);
 			}
 			const previous = container.guides.find((candidate) => candidate.id === target.subject.id);
-			if (previous === undefined) return refuse('missing-target', `guide "${target.subject.id}" is not in experience "${container.id}"`);
+			if (previous === undefined)
+				return refuse(
+					'missing-target',
+					`guide "${target.subject.id}" is not in experience "${container.id}"`,
+				);
 			const updated: ExperienceGuide = {
 				...previous,
 				label: label ?? previous.label,
-				pacing: pacing ?? previous.pacing
+				pacing: pacing ?? previous.pacing,
 			};
 			const candidate = withExperience(envelope, {
 				...container,
-				guides: container.guides.map((candidate) => (candidate.id === updated.id ? updated : candidate))
+				guides: container.guides.map((candidate) =>
+					candidate.id === updated.id ? updated : candidate,
+				),
 			});
 			const fields: string[] = [];
 			if (updated.label !== previous.label) fields.push('label');
 			if (updated.pacing !== previous.pacing) fields.push('pacing');
-			return prepared(request, candidate, [{ kind: 'experience.guide.updated', subjectIds: [updated.id], fields }], [
-				{
-					relation: 'preserved',
-					before: reference('experience', 'guide', previous.id, [container.id], revisionOf(envelope, 'experience')),
-					after: reference('experience', 'guide', previous.id, [container.id], revisionOf(candidate, 'experience'))
-				}
-			]);
-		}
+			return prepared(
+				request,
+				candidate,
+				[{ kind: 'experience.guide.updated', subjectIds: [updated.id], fields }],
+				[
+					{
+						relation: 'preserved',
+						before: reference(
+							'experience',
+							'guide',
+							previous.id,
+							[container.id],
+							revisionOf(envelope, 'experience'),
+						),
+						after: reference(
+							'experience',
+							'guide',
+							previous.id,
+							[container.id],
+							revisionOf(candidate, 'experience'),
+						),
+					},
+				],
+			);
+		},
 	};
 }
 
@@ -319,7 +501,13 @@ export function createExperienceGuideRemovePlanner(): DomainPlanner<ProjectEnvel
 	return {
 		id: 'unit.experience-guide-remove',
 		kind: EXPERIENCE_GUIDE_REMOVE_KIND,
-		admission: { domain: 'experience', compound: true, writes: ['camera'], units: true, resources: false },
+		admission: {
+			domain: 'experience',
+			compound: true,
+			writes: ['camera'],
+			units: true,
+			resources: false,
+		},
 		sourceKinds: [UNIT_SOURCE_KIND],
 		sourceVersions: [UNIT_SOURCE_VERSION],
 		prepare(request) {
@@ -327,13 +515,24 @@ export function createExperienceGuideRemovePlanner(): DomainPlanner<ProjectEnvel
 			const invalid = emptyPayload(request, 'Guide');
 			if (invalid !== null) return invalid;
 			const target = targetOf(request.intent, 'experience', 'guide');
-			if (target === null) return refuse('unsupported-operation', 'experience-guide-remove targets exactly one experience:guide reference');
+			if (target === null)
+				return refuse(
+					'unsupported-operation',
+					'experience-guide-remove targets exactly one experience:guide reference',
+				);
 			const container = containerOf(envelope, target);
 			if (container === undefined) {
-				return refuse('missing-target', `the Guide's Experience "${target.instancePath[0] ?? '(unspecified)'}" is not in this envelope`);
+				return refuse(
+					'missing-target',
+					`the Guide's Experience "${target.instancePath[0] ?? '(unspecified)'}" is not in this envelope`,
+				);
 			}
-			return installRemoval(request, envelope, container.id, planGuideRemoval(container, target.subject.id));
-		}
+			return installRemoval(
+				request,
+				envelope,
+				container.id,
+				planGuideRemoval(container, target.subject.id),
+			);
+		},
 	};
 }
-

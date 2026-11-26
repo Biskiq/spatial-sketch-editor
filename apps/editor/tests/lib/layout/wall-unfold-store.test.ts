@@ -12,7 +12,7 @@ import {
 	wallUnfold,
 	type WallUnfoldCameraRequest
 } from '$lib/authoring/layout/wall-unfold-store.svelte';
-import { freshCapture } from './__fixtures__/layout-id-capture';
+import { freshCapture } from '../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 
 const ENTRY = {
 	pose: {

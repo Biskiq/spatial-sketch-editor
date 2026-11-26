@@ -14,13 +14,13 @@
  * `AbortError` so callers can distinguish cancellation from failure.
  */
 
-import {
-	composeColdReleaseBundle,
-	type ColdReleaseBundle
-} from './visitor-cold-runtime';
+import { composeColdReleaseBundle, type ColdReleaseBundle } from './visitor-cold-runtime';
 
 import { artworkAssetUri } from '@portfolio/project-model/artwork';
-import { validateProjectEnvelope, verifyEnvelopeMaterialDigests } from '@portfolio/project-model/units';
+import {
+	validateProjectEnvelope,
+	verifyEnvelopeMaterialDigests,
+} from '@portfolio/project-model/units';
 import { verifyArtworkDecode } from '$lib/render/artwork/artwork-decode';
 import { imageSha256 } from '$lib/render/artwork/image-digest';
 import type { ReleaseBytesEntry } from './visitor-texture-scope';
@@ -45,7 +45,7 @@ export type PublicVisitorErrorCode =
 export class PublicVisitorError extends Error {
 	constructor(
 		readonly code: PublicVisitorErrorCode,
-		message: string
+		message: string,
 	) {
 		super(message);
 		this.name = 'PublicVisitorError';
@@ -100,7 +100,10 @@ export async function fetchPublicRelease(input: {
 }): Promise<PublicReleasePayload> {
 	const { publicationId, apiOrigin } = input;
 	if (!isValidPublicationId(publicationId)) {
-		throw new PublicVisitorError('not-found', 'This published link is unknown or no longer available');
+		throw new PublicVisitorError(
+			'not-found',
+			'This published link is unknown or no longer available',
+		);
 	}
 	const origin = normalizeApiOrigin(apiOrigin);
 	if (!origin) throw new PublicVisitorError('network', 'The publish service is unavailable');
@@ -112,14 +115,17 @@ export async function fetchPublicRelease(input: {
 		response = await fetchImpl(`${origin}/publications/${encodeURIComponent(publicationId)}`, {
 			method: 'GET',
 			signal: input.signal,
-			headers: { Accept: 'application/json' }
+			headers: { Accept: 'application/json' },
 		});
 	} catch (error) {
 		if (input.signal?.aborted) throw error;
 		throw new PublicVisitorError('network', 'Could not reach the publish service');
 	}
 	if (response.status === 404) {
-		throw new PublicVisitorError('not-found', 'This published link is unknown or no longer available');
+		throw new PublicVisitorError(
+			'not-found',
+			'This published link is unknown or no longer available',
+		);
 	}
 	if (!response.ok) {
 		throw new PublicVisitorError('network', 'The publish service is unavailable');
@@ -134,7 +140,8 @@ export async function fetchPublicRelease(input: {
 }
 
 function readReleasePayload(value: unknown): PublicReleasePayload {
-	if (!isRecord(value)) throw new PublicVisitorError('invalid-response', 'The published project could not be read');
+	if (!isRecord(value))
+		throw new PublicVisitorError('invalid-response', 'The published project could not be read');
 	const { name, version, revision, document, assets } = value;
 	if (typeof name !== 'string' || name.trim().length === 0) {
 		throw new PublicVisitorError('invalid-response', 'The published project could not be read');
@@ -156,12 +163,13 @@ function readReleasePayload(value: unknown): PublicReleasePayload {
 		version: version as number,
 		revision: revision as number,
 		document,
-		assets: assets.map(readAssetDescriptor)
+		assets: assets.map(readAssetDescriptor),
 	};
 }
 
 function readAssetDescriptor(value: unknown): PublicAssetDescriptor {
-	if (!isRecord(value)) throw new PublicVisitorError('invalid-response', 'The published project could not be read');
+	if (!isRecord(value))
+		throw new PublicVisitorError('invalid-response', 'The published project could not be read');
 	const { assetId, mime, byteSize } = value;
 	if (typeof assetId !== 'string' || !UUID_PATTERN.test(assetId)) {
 		throw new PublicVisitorError('invalid-response', 'The published project could not be read');
@@ -178,10 +186,18 @@ function readAssetDescriptor(value: unknown): PublicAssetDescriptor {
 		throw new PublicVisitorError('invalid-response', 'The published project could not be read');
 	}
 	const sha256 = value.sha256;
-	if (sha256 !== undefined && (typeof sha256 !== 'string' || !/^sha256-[0-9a-f]{64}$/.test(sha256))) {
+	if (
+		sha256 !== undefined &&
+		(typeof sha256 !== 'string' || !/^sha256-[0-9a-f]{64}$/.test(sha256))
+	) {
 		throw new PublicVisitorError('invalid-response', 'A published asset digest is invalid');
 	}
-	return { assetId, mime: mime.toLowerCase(), byteSize, ...(sha256 === undefined ? {} : { sha256 }) };
+	return {
+		assetId,
+		mime: mime.toLowerCase(),
+		byteSize,
+		...(sha256 === undefined ? {} : { sha256 }),
+	};
 }
 
 /**
@@ -215,12 +231,26 @@ export async function fetchPublicReleaseBytes(input: {
 	// shared AbortSignal cancels the remainder on route switch/unmount.
 	await Promise.all(
 		assets.map(async (asset) => {
-			const bytes = await fetchOneAssetBytes(fetchImpl, origin, publicationId, version, asset, input.signal);
+			const bytes = await fetchOneAssetBytes(
+				fetchImpl,
+				origin,
+				publicationId,
+				version,
+				asset,
+				input.signal,
+			);
 			if (asset.sha256 !== undefined && `sha256-${await imageSha256(bytes)}` !== asset.sha256) {
-				throw new PublicVisitorError('asset-failed', 'A published image failed digest verification');
+				throw new PublicVisitorError(
+					'asset-failed',
+					'A published image failed digest verification',
+				);
 			}
-			bytesByUri.set(`/project-assets/${asset.assetId}`, { bytes, mime: asset.mime, ...(asset.sha256 ? { sha256: asset.sha256 } : {}) });
-		})
+			bytesByUri.set(`/project-assets/${asset.assetId}`, {
+				bytes,
+				mime: asset.mime,
+				...(asset.sha256 ? { sha256: asset.sha256 } : {}),
+			});
+		}),
 	);
 	return bytesByUri;
 }
@@ -231,7 +261,7 @@ async function fetchOneAssetBytes(
 	publicationId: string,
 	version: number,
 	asset: PublicAssetDescriptor,
-	signal?: AbortSignal
+	signal?: AbortSignal,
 ): Promise<Uint8Array> {
 	signal?.throwIfAborted();
 	const url =
@@ -242,7 +272,7 @@ async function fetchOneAssetBytes(
 		response = await fetchImpl(url, {
 			method: 'GET',
 			signal,
-			headers: { Accept: asset.mime }
+			headers: { Accept: asset.mime },
 		});
 	} catch (error) {
 		if (signal?.aborted) throw error;
@@ -275,9 +305,10 @@ async function fetchOneAssetBytes(
 async function readBoundedBytes(
 	response: Response,
 	expectedLength: number,
-	signal?: AbortSignal
+	signal?: AbortSignal,
 ): Promise<Uint8Array> {
-	if (!response.body) throw new PublicVisitorError('asset-failed', 'A published texture could not be downloaded');
+	if (!response.body)
+		throw new PublicVisitorError('asset-failed', 'A published texture could not be downloaded');
 	const reader = response.body.getReader();
 	const chunks: Uint8Array[] = [];
 	let total = 0;
@@ -345,7 +376,7 @@ function matchesMimeMagic(bytes: Uint8Array, mime: string): boolean {
  * cache namespace) by public ID + version, so Back/Forward and repeat
  * visits never retain another project's state. Throws without leaking
  * object URLs — `composeColdReleaseBundle` revokes partial URLs on failure
- * and the caller owns `bundle.dispose()` afterwards.
+ * and the caller owns `bundle.dispose` afterwards.
  */
 export async function loadPublicReleaseBundle(input: {
 	publicationId: string;
@@ -373,7 +404,7 @@ export async function loadPublicReleaseBundle(input: {
 		assets: release.assets,
 		apiOrigin: input.apiOrigin,
 		fetchImpl: input.fetchImpl,
-		signal: input.signal
+		signal: input.signal,
 	});
 	input.signal?.throwIfAborted();
 
@@ -382,13 +413,13 @@ export async function loadPublicReleaseBundle(input: {
 		bundle = composeColdReleaseBundle({
 			document: release.document,
 			manifest: { releaseId: `${input.publicationId}@v${release.version}`, bytesByUri },
-			signal: input.signal
+			signal: input.signal,
 		});
 	} catch (error) {
 		if (input.signal?.aborted) throw input.signal.reason ?? error;
 		throw new PublicVisitorError(
 			'invalid-release',
-			error instanceof Error ? error.message : 'The published project is invalid'
+			error instanceof Error ? error.message : 'The published project is invalid',
 		);
 	}
 	// The detached manifest is usable without a DOM. Browser boot additionally
@@ -406,7 +437,10 @@ export async function loadPublicReleaseBundle(input: {
 		} catch (error) {
 			bundle.dispose();
 			if (input.signal?.aborted) throw error;
-			throw new PublicVisitorError('asset-failed', 'A published Artwork image could not be decoded');
+			throw new PublicVisitorError(
+				'asset-failed',
+				'A published Artwork image could not be decoded',
+			);
 		}
 	}
 	// Every visitor-visible authored value comes from the release snapshot:

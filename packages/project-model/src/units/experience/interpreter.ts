@@ -1,5 +1,5 @@
 /**
- * The one Experience interpreter (AM-6).
+ * The one Experience interpreter.
  *
  * A deterministic reducer over `ExecutionProgram@4`: an initial state plus
  * ordered events produce the same state every time, and an explicit integer
@@ -11,17 +11,17 @@
  * Identity rules:
  *
  * - a Stop is a stable authored occurrence; each visit adds a **fresh run
- *   occurrence identity** (`occurrenceId`), so revisiting a Stop never reuses a
- *   visit;
+ *  occurrence identity** (`occurrenceId`), so revisiting a Stop never reuses a
+ *  visit;
  * - every event is qualified by `runId` + `runEpoch`; an event from an older run
- *   is rejected (`stale`) and can neither advance, complete nor clear the newer
- *   run;
+ *  is rejected (`stale`) and can neither advance, complete nor clear the newer
+ *  run;
  * - an `arrival` event only confirms the current occurrence. The Camera intent is
- *   emitted once at editorial arrival, so a confirmation never reissues it, and
- *   a terminal run ignores the confirmation entirely;
+ *  emitted once at editorial arrival, so a confirmation never reissues it, and
+ *  a terminal run ignores the confirmation entirely;
  * - state is initialized once per run and reset explicitly, never on every
- *   arrival. A `reset` rewinds the **same** run (`runId`/`runEpoch` unchanged)
- *   to a fresh entry; starting a new run is the host's new-run path, not reset.
+ *  arrival. A `reset` rewinds the **same** run (`runId`/`runEpoch` unchanged)
+ *  to a fresh entry; starting a new run is the host's new-run path, not reset.
  *
  * Guide clock (sheet §31): a Stop's stay counts only after its arrival
  * completes. An arrival by Travel is `traveling` until the host confirms it with
@@ -47,8 +47,13 @@ export type {
 	ExperienceInterpreterOptions,
 	ExperienceEffect,
 	ExperienceReduceOutcome,
-	ExperienceReduceResult
+	ExperienceReduceResult,
 } from './interpreter/contracts';
 export { EXPERIENCE_RESUME_LEAD_IN_MS } from './interpreter/contracts';
-export { createExperienceRun, isExploring, reduceExperience, replayExperience } from './interpreter/reduce';
+export {
+	createExperienceRun,
+	isExploring,
+	reduceExperience,
+	replayExperience,
+} from './interpreter/reduce';
 export { createExperienceInterpreter } from './interpreter/session';

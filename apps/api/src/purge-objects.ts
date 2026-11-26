@@ -19,10 +19,10 @@ export async function main(): Promise<void> {
 		pool = createPool(config);
 		store = createR2ObjectStore(config);
 		const result = await purgeUnreferencedObjects(pool, store, {
-			namespace: config.r2ObjectNamespace
+			namespace: config.r2ObjectNamespace,
 		});
 		console.log(
-			`[api] r2 purge complete (listed ${result.listed}, referenced ${result.referenced}, deleted ${result.deleted})`
+			`[api] r2 purge complete (listed ${result.listed}, referenced ${result.referenced}, deleted ${result.deleted})`,
 		);
 	} catch (error) {
 		if (error instanceof ConfigError || error instanceof R2PurgeRefusal) {

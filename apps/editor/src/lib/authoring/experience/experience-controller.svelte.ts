@@ -32,7 +32,7 @@ import type {
 	ExperienceGuidePacing,
 	ExperiencePresentation,
 	ExperienceStop,
-	ProjectEnvelope
+	ProjectEnvelope,
 } from '@portfolio/project-model/units';
 import { experienceFocus } from './focus.svelte';
 import {
@@ -47,26 +47,23 @@ import {
 	type GuidedViewPosition,
 	type ExperienceSubject,
 	type ExperienceViewFacts,
-	type ResolvedContinuation
+	type ResolvedContinuation,
 } from './experience-model';
 import { travelGapMessagesByStop } from './experience-problems';
 import {
 	readExperiencePath,
 	type ExperiencePathOccurrence,
-	type ExperiencePathRead
+	type ExperiencePathRead,
 } from './experience-paths';
 import type { OperationChange } from '@portfolio/project-model/f4';
-import {
-	type ExperienceRemovalPreview,
-	type ExperienceRemovalTarget,
-} from './experience-removal';
+import { type ExperienceRemovalPreview, type ExperienceRemovalTarget } from './experience-removal';
 import type { PlaybackSource } from './playback.svelte';
 import { createExperienceRemovalReadings } from './experience-removal-readings';
 import {
 	createExperienceViewAuthoring,
 	type ExperiencePlacement,
 	type ExperienceViewPose,
-	type ExperienceViewUpdate
+	type ExperienceViewUpdate,
 } from './experience-view-authoring';
 import { createExperienceStopAuthoring } from './experience-stop-authoring';
 import { createExperienceCameraSession } from './experience-camera-session.svelte';
@@ -89,7 +86,10 @@ export type ExperienceFeedback = { readonly kind: ExperienceFeedbackKind; readon
 /** The ready draft's name until the creator renames it (Experience review 1). */
 export const DRAFT_EXPERIENCE_LABEL = 'Untitled experience';
 
-export type ExperienceRenameOutcome = { readonly kind: 'accepted' | 'refused'; readonly message?: string };
+export type ExperienceRenameOutcome = {
+	readonly kind: 'accepted' | 'refused';
+	readonly message?: string;
+};
 
 /** The creator-facing refusal for an empty name (every Experience rename field). */
 export const NAME_NEEDED = 'A name is needed';
@@ -184,7 +184,7 @@ export type ExperienceController = {
 	 */
 	addStop(
 		presentationId: string,
-		options?: { readonly afterStopId?: string; readonly entryViewId?: string | null }
+		options?: { readonly afterStopId?: string; readonly entryViewId?: string | null },
 	): Promise<boolean>;
 	/** A guide-order permutation of the active Guide. */
 	moveStopTo(stopId: string, index: number): Promise<boolean>;
@@ -196,9 +196,16 @@ export type ExperienceController = {
 	/** Stop Card · Stay: at least 1 s; Manual keeps it unused. */
 	setStopStay(stopId: string, seconds: number): Promise<boolean>;
 	/** Stop Card · Invite to explore: `null` is off. */
-	setStopInvitation(stopId: string, invitation: { readonly prompt: string | null } | null): Promise<boolean>;
+	setStopInvitation(
+		stopId: string,
+		invitation: { readonly prompt: string | null } | null,
+	): Promise<boolean>;
 	/** Presentation Card spine: Cut or Travel into View `toIndex`, as one Undo. */
-	setPresentationStep(presentationId: string, toIndex: number, kind: 'cut' | 'travel'): Promise<boolean>;
+	setPresentationStep(
+		presentationId: string,
+		toIndex: number,
+		kind: 'cut' | 'travel',
+	): Promise<boolean>;
 	/** Presentation Card reorder: View 1 is the Default. */
 	movePresentationView(presentationId: string, viewId: string, index: number): Promise<boolean>;
 	setExplorable(presentationId: string, explorable: boolean): Promise<boolean>;
@@ -212,22 +219,27 @@ export type ExperienceController = {
 	selectAnchor(anchorId: string | null): void;
 	/** Add the one Camera path a Travel needs; never for a Cut. */
 	createPath(occurrence: ExperiencePathOccurrence): Promise<boolean>;
-	previewPathDrag(anchorId: string | null, point: readonly [number, number, number], origin: readonly [number, number, number]): ExperiencePathRead['samples'] | null;
+	previewPathDrag(
+		anchorId: string | null,
+		point: readonly [number, number, number],
+		origin: readonly [number, number, number],
+	): ExperiencePathRead['samples'] | null;
 	/**
 	 * Insert an interior point at a validated canonical slot in authored order.
 	 * Omitted, the slot is derived from Camera's own directed curve progress.
 	 */
-	addPathAnchor(point: readonly [number, number, number], slot?: number, near?: readonly [number, number, number]): Promise<boolean>;
+	addPathAnchor(
+		point: readonly [number, number, number],
+		slot?: number,
+		near?: readonly [number, number, number],
+	): Promise<boolean>;
 	movePathAnchor(anchorId: string, point: readonly [number, number, number]): Promise<boolean>;
 	removePathAnchor(anchorId: string): Promise<boolean>;
 	straightenPath(): Promise<boolean>;
 	/** A positive finite duration, or null for Camera's automatic duration. */
 	setPathDuration(seconds: number | null): Promise<boolean>;
 	/** The Card's inline rename of one Presentation's label. */
-	renamePresentation(
-		presentationId: string,
-		label: string
-	): Promise<ExperienceRenameOutcome>;
+	renamePresentation(presentationId: string, label: string): Promise<ExperienceRenameOutcome>;
 	/** An empty body clears the Presentation's text. */
 	updatePresentationText(presentationId: string, body: string): Promise<boolean>;
 	/** The View Card's Make default: the only place a Default View changes. */
@@ -265,24 +277,40 @@ export type ExperienceController = {
 	/** Lens and Eye height steps write the exact Camera View. */
 	setViewFraming(
 		viewId: string,
-		framing: { readonly fov?: number; readonly eyeHeightMetres?: number }
+		framing: { readonly fov?: number; readonly eyeHeightMetres?: number },
 	): Promise<boolean>;
 	/** Place a View in the selected Presentation, else a new one. Never adds a Stop. */
-	placeView(pose: { readonly eye: readonly [number, number, number]; readonly target: readonly [number, number, number]; readonly fov: number }): Promise<ExperiencePlacement>;
+	placeView(pose: {
+		readonly eye: readonly [number, number, number];
+		readonly target: readonly [number, number, number];
+		readonly fov: number;
+	}): Promise<ExperiencePlacement>;
 	/** Update View from Look through; a shared View needs its named consequence confirmed. */
 	updateViewPose(
 		viewId: string,
-		pose: { readonly eye: readonly [number, number, number]; readonly target: readonly [number, number, number]; readonly fov: number },
+		pose: {
+			readonly eye: readonly [number, number, number];
+			readonly target: readonly [number, number, number];
+			readonly fov: number;
+		},
 		presentationId: string,
-		options?: { readonly confirmShared?: boolean }
+		options?: { readonly confirmShared?: boolean },
 	): Promise<ExperienceViewUpdate>;
 	/** Capture an exact provisional pose as a new View, without reading the painted frame. */
-	capturePose(pose: { readonly eye: readonly [number, number, number]; readonly target: readonly [number, number, number]; readonly fov: number }): Promise<boolean>;
+	capturePose(pose: {
+		readonly eye: readonly [number, number, number];
+		readonly target: readonly [number, number, number];
+		readonly fov: number;
+	}): Promise<boolean>;
 	/** Present this, after Camera has visibly framed the subject. */
 	presentThisFramed(
 		entityId: string,
 		label: string,
-		pose: { readonly eye: readonly [number, number, number]; readonly target: readonly [number, number, number]; readonly fov: number }
+		pose: {
+			readonly eye: readonly [number, number, number];
+			readonly target: readonly [number, number, number];
+			readonly fov: number;
+		},
 	): Promise<boolean>;
 	/** The subject Back returns to, or null. */
 	readonly backTarget: ExperienceSubject | null;
@@ -294,7 +322,7 @@ export type ExperienceController = {
 
 export function createExperienceController(
 	readServices: () => StageAdapterServices,
-	readSnapshot: () => ProjectEnvelope | null
+	readSnapshot: () => ProjectEnvelope | null,
 ): ExperienceController {
 	let version = $state(0);
 	$effect(() => {
@@ -337,7 +365,13 @@ export function createExperienceController(
 	});
 	const selectedView = $derived.by((): ExperienceViewFacts | null => {
 		if (current === null || subject === null || subject.kind !== 'view') return null;
-		return viewFactsOf(current, snapshot.units.camera.data.views, subject.viewId, subject.presentationId, datumMeters);
+		return viewFactsOf(
+			current,
+			snapshot.units.camera.data.views,
+			subject.viewId,
+			subject.presentationId,
+			datumMeters,
+		);
 	});
 	const selectedStop = $derived.by(() => {
 		if (current === null || subject === null) return null;
@@ -346,9 +380,13 @@ export function createExperienceController(
 	});
 	// One validation per snapshot, shared by every Stop card and the Transition Card.
 	const travelGapsByStop = $derived.by(() =>
-		current === null ? new Map<string, readonly string[]>() : travelGapMessagesByStop(snapshot, current.id)
+		current === null
+			? new Map<string, readonly string[]>()
+			: travelGapMessagesByStop(snapshot, current.id),
 	);
-	const travelGaps = $derived(selectedStop === null ? [] : travelGapsByStop.get(selectedStop.id) ?? []);
+	const travelGaps = $derived(
+		selectedStop === null ? [] : (travelGapsByStop.get(selectedStop.id) ?? []),
+	);
 	const stopUsage = $derived.by(() => {
 		const usage = new Map<string, string[]>();
 		for (const stop of current?.stops ?? []) {
@@ -384,7 +422,7 @@ export function createExperienceController(
 		say: (kind, text) => say(kind, text),
 		newId,
 		revision,
-		run
+		run,
 	});
 
 	const level = createExperienceLevelAuthoring({
@@ -401,7 +439,7 @@ export function createExperienceController(
 		focus: experienceFocus,
 		connectionPool,
 		removals: () => removals,
-		captureNewPresentation: (entityId, label) => views.captureNewPresentation(entityId, label)
+		captureNewPresentation: (entityId, label) => views.captureNewPresentation(entityId, label),
 	});
 
 	let query = $state('');
@@ -413,8 +451,8 @@ export function createExperienceController(
 				presentation.id,
 				presentation.views.map(({ viewId }) => ({
 					id: viewId,
-					label: views.find((view) => view.id === viewId)?.label ?? viewId
-				}))
+					label: views.find((view) => view.id === viewId)?.label ?? viewId,
+				})),
 			);
 		}
 		return byPresentation;
@@ -427,7 +465,7 @@ export function createExperienceController(
 		return current.presentations.filter(
 			(entry) =>
 				level.presentationDisplayName(entry.id).toLowerCase().includes(needle) ||
-				(viewsOf.get(entry.id) ?? []).some((view) => view.label.toLowerCase().includes(needle))
+				(viewsOf.get(entry.id) ?? []).some((view) => view.label.toLowerCase().includes(needle)),
 		);
 	});
 
@@ -440,7 +478,8 @@ export function createExperienceController(
 	 * one plain sentence (the detail stays in the source findings' Copy details).
 	 */
 	function creatorMessage(text: string): string {
-		const technical = /\$\.|\([a-z]+(?:-[a-z]+)+\)|[a-z]+:[a-z-]+|"[0-9a-f-]{8,}"|[a-z]+(?:-[a-z]+){2,}/;
+		const technical =
+			/\$\.|\([a-z]+(?:-[a-z]+)+\)|[a-z]+:[a-z-]+|"[0-9a-f-]{8,}"|[a-z]+(?:-[a-z]+){2,}/;
 		return technical.test(text) ? "That change didn't go through. Undo is unchanged." : text;
 	}
 	function say(kind: ExperienceFeedbackKind, text: string): void {
@@ -455,13 +494,15 @@ export function createExperienceController(
 			() => {
 				if (feedback === shown) feedback = null;
 			},
-			kind === 'refusal' ? 8000 : 4000
+			kind === 'refusal' ? 8000 : 4000,
 		);
 	}
 	let busy = $state(false);
 
 	function newId(): string {
-		return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+		return (
+			globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`
+		);
 	}
 
 	/** The retained Camera authoring convention, kept local so the controller imports no Camera module. */
@@ -475,7 +516,10 @@ export function createExperienceController(
 	 * reach the creator: a Cut normalisation or a straight path the edit required.
 	 * One sentence, appended to the action's own success line.
 	 */
-	function planChangeSentence(changes: readonly OperationChange[], source: ProjectEnvelope | undefined): string {
+	function planChangeSentence(
+		changes: readonly OperationChange[],
+		source: ProjectEnvelope | undefined,
+	): string {
 		if (changes.length === 0 || source === undefined) return '';
 		const experience =
 			source.units.experience.data.experiences.find((entry) => entry.id === current?.id) ??
@@ -483,9 +527,10 @@ export function createExperienceController(
 		if (experience === undefined) return '';
 		const labelOf = (viewId: string): string =>
 			source.units.camera.data.views.find((view) => view.id === viewId)?.label ?? viewId;
-		const guide = contextGuide === null
-			? undefined
-			: experience.guides.find((entry) => entry.id === contextGuide.id);
+		const guide =
+			contextGuide === null
+				? undefined
+				: experience.guides.find((entry) => entry.id === contextGuide.id);
 		const placeOf = (stopId: string): number => (guide?.stopIds.indexOf(stopId) ?? -1) + 1;
 		const entryViewOf = (stopId: string): string | null => {
 			const stop = experience.stops.find((entry) => entry.id === stopId);
@@ -505,17 +550,22 @@ export function createExperienceController(
 					const toPlace = placeOf(nextStopId);
 					const view = entryViewOf(stopId);
 					clauses.push(
-						`Stop ${fromPlace} → ${toPlace === 0 ? fromPlace + 1 : toPlace} is now a Cut: both show ${view === null ? 'the same View' : labelOf(view)}`
+						`Stop ${fromPlace} → ${toPlace === 0 ? fromPlace + 1 : toPlace} is now a Cut: both show ${view === null ? 'the same View' : labelOf(view)}`,
 					);
 				}
 			} else if (change.kind === 'experience.presentation-view.transition.normalised') {
 				const viewId = change.subjectIds[1];
-				if (viewId !== undefined) clauses.push(`View ${labelOf(viewId)} is last, so its Travel became a Cut`);
+				if (viewId !== undefined)
+					clauses.push(`View ${labelOf(viewId)} is last, so its Travel became a Cut`);
 			} else if (change.kind === 'camera.connection.created') {
 				const connectionId = change.subjectIds[0];
-				const connection = source.units.camera.data.connections.find((entry) => entry.id === connectionId);
+				const connection = source.units.camera.data.connections.find(
+					(entry) => entry.id === connectionId,
+				);
 				if (connection !== undefined) {
-					clauses.push(`a straight Camera path joins ${labelOf(connection.fromNodeId)} and ${labelOf(connection.toNodeId)}`);
+					clauses.push(
+						`a straight Camera path joins ${labelOf(connection.fromNodeId)} and ${labelOf(connection.toNodeId)}`,
+					);
 				}
 			}
 		}
@@ -527,7 +577,7 @@ export function createExperienceController(
 	/** Submit one command; `true` only when the source actually changed. */
 	async function run(
 		builder: () => Submission,
-		success: (changes: readonly OperationChange[]) => string = () => ''
+		success: (changes: readonly OperationChange[]) => string = () => '',
 	): Promise<boolean> {
 		if (busy) return false;
 		busy = true;
@@ -569,19 +619,21 @@ export function createExperienceController(
 		readServices,
 		perfMark,
 		alsoIn: (viewId, presentationId) => presentation.alsoIn(viewId, presentationId),
-		presentationDisplayName: (id) => level.presentationDisplayName(id)
+		presentationDisplayName: (id) => level.presentationDisplayName(id),
 	});
 
 	/** One captured connection id per Travel use in the Experience, plus one. */
 	function connectionPool(): string[] {
 		const experience = current;
-		const travels = experience === null
-			? 0
-			: experience.stops.filter((stop) => stop.transition === 'travel').length +
-				experience.presentations.reduce(
-					(total, presentation) => total + presentation.views.filter((view) => view.transition === 'travel').length,
-					0
-				);
+		const travels =
+			experience === null
+				? 0
+				: experience.stops.filter((stop) => stop.transition === 'travel').length +
+					experience.presentations.reduce(
+						(total, presentation) =>
+							total + presentation.views.filter((view) => view.transition === 'travel').length,
+						0,
+					);
 		return Array.from({ length: travels + 1 }, () => newId());
 	}
 
@@ -596,7 +648,7 @@ export function createExperienceController(
 		revision,
 		run,
 		connectionPool,
-		focus: experienceFocus
+		focus: experienceFocus,
 	});
 
 	const presentation = createExperiencePresentationAuthoring({
@@ -614,25 +666,23 @@ export function createExperienceController(
 		updateStop: (stopId, fields) => stops.updateStop(stopId, fields),
 		focus: experienceFocus,
 		presentationDisplayName: (id) => level.presentationDisplayName(id),
-		presentationLabel: (id) => level.presentationLabel(id)
+		presentationLabel: (id) => level.presentationLabel(id),
 	});
-
 
 	/** Write one Presentation's whole View list (order and steps) as one accepted change. */
-	/** Names as the creator reads them: Stops by their position in the context Guide. */	const removals = createExperienceRemovalReadings({
-		experience: () => current,
-		contextGuide: () => contextGuide,
-		envelope: () => snapshot,
-		presentationLabel: (id) => level.presentationLabel(id),
-		presentationDisplayName: (id) => level.presentationDisplayName(id)
-	});
+	/** Names as the creator reads them: Stops by their position in the context Guide. */ const removals =
+		createExperienceRemovalReadings({
+			experience: () => current,
+			contextGuide: () => contextGuide,
+			envelope: () => snapshot,
+			presentationLabel: (id) => level.presentationLabel(id),
+			presentationDisplayName: (id) => level.presentationDisplayName(id),
+		});
 
 	const backTarget = $derived.by(() => {
 		void subject;
 		return experienceFocus.previous(removals.resolves);
 	});
-
-
 
 	function openGuide(guideId: string): void {
 		// Focus never names a Guide the source does not carry.
@@ -730,13 +780,19 @@ export function createExperienceController(
 		},
 		guideForStop(stopId: string) {
 			const containing = (current?.guides ?? []).filter((guide) => guide.stopIds.includes(stopId));
-			return containing.find((guide) => guide.id === currentGuide?.id)?.id ?? containing[0]?.id ?? null;
+			return (
+				containing.find((guide) => guide.id === currentGuide?.id)?.id ?? containing[0]?.id ?? null
+			);
 		},
 		viewPose(viewId: string) {
 			const view = snapshot.units.camera.data.views.find((candidate) => candidate.id === viewId);
 			return view === undefined
 				? null
-				: { eye: [view.eye[0], view.eye[1], view.eye[2]], target: [view.target[0], view.target[1], view.target[2]], fov: view.fov };
+				: {
+						eye: [view.eye[0], view.eye[1], view.eye[2]],
+						target: [view.target[0], view.target[1], view.target[2]],
+						fov: view.fov,
+					};
 		},
 		setViewFraming: views.setViewFraming,
 		placeView: views.placeView,
@@ -755,12 +811,20 @@ export function createExperienceController(
 				: viewFactsOf(current, snapshot.units.camera.data.views, viewId, undefined, datumMeters),
 		resolveContinuation: (stopId: string) =>
 			current === null ? null : resolveStopContinuation(current, contextGuide, stopId),
-		viewStops: (viewId: string) => (current === null ? [] : stopsGuiding(current, contextGuide, viewId)),
+		viewStops: (viewId: string) =>
+			current === null ? [] : stopsGuiding(current, contextGuide, viewId),
 		presentationsAbout: (entityId: string) =>
 			current === null ? [] : presentationsAboutEntity(current, entityId),
 		reach: (guide = contextGuide) =>
 			current === null
-				? { presentations: 0, views: 0, freePresentations: 0, freeViews: 0, viewsOnlyFree: 0, hiddenViews: 0 }
+				? {
+						presentations: 0,
+						views: 0,
+						freePresentations: 0,
+						freeViews: 0,
+						viewsOnlyFree: 0,
+						hiddenViews: 0,
+					}
 				: reachSummary(current, guide),
 		createExperience: level.createExperience,
 		get draftLabel() {
@@ -790,7 +854,7 @@ export function createExperienceController(
 							guide: contextGuide,
 							graph: acceptedGraph,
 							occurrence,
-							geometry: acceptedGeometry
+							geometry: acceptedGeometry,
 						}),
 		selectPath: paths.select,
 		selectAnchor: paths.selectAnchor,
@@ -819,6 +883,6 @@ export function createExperienceController(
 			return backTarget;
 		},
 		back: () => experienceFocus.back(removals.resolves),
-		subjectName: removals.subjectName
+		subjectName: removals.subjectName,
 	};
 }

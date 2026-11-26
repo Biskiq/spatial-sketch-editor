@@ -28,6 +28,33 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+
+/**
+ * One source index per run. `tests/arch/global-setup.ts` writes it once; each
+ * worker loads it on its first read, so every boundary suite shares one copy
+ * of the tree instead of reading it again.
+ */
+const ARCH_SOURCE_INDEX = path.join(process.cwd(), 'node_modules/.cache/biskiq/arch-source-index.json');
+let sourceIndex: Map<string, string> | null = null;
+let sourceIndexLoaded = false;
+
+function indexedSource(file: string): string | undefined {
+	if (!sourceIndexLoaded) {
+		sourceIndexLoaded = true;
+		try {
+			sourceIndex = new Map(Object.entries(JSON.parse(fs.readFileSync(ARCH_SOURCE_INDEX, 'utf8')) as Record<string, string>));
+		} catch {
+			sourceIndex = null;
+		}
+	}
+	const relative = path.relative(process.cwd(), file).split(path.sep).join('/');
+	return sourceIndex?.get(relative);
+}
+
+/** Read one source file, through the run's index when it holds the file. */
+export function readSource(file: string): string {
+	return indexedSource(file) ?? fs.readFileSync(file, 'utf8');
+}
 import { parse } from 'svelte/compiler';
 import ts from 'typescript';
 
@@ -255,7 +282,7 @@ export function importClosure(
 		if (!isFile(file)) continue;
 		let source: string;
 		try {
-			source = fs.readFileSync(file, 'utf8');
+			source = readSource(file);
 		} catch {
 			continue;
 		}
@@ -471,7 +498,7 @@ export function relativeToRepo(absolutePath: string): string {
 
 /** Line count of a file, matching `wc -l` (a trailing newline is not a line). */
 export function lineCount(file: string): number {
-	const source = fs.readFileSync(file, 'utf8');
+	const source = readSource(file);
 	if (source.length === 0) return 0;
 	let lines = 0;
 	for (let i = 0; i < source.length; i += 1) if (source[i] === '\n') lines += 1;

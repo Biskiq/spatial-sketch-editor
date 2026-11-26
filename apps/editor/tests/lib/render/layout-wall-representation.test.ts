@@ -19,7 +19,7 @@ import { ensureLayoutWorldIndex } from '@portfolio/layout-core/world';
 import { planRigidWallMove, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 
 import { immutableF4Data } from '@portfolio/project-model/f4';
-import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from '../layout/__fixtures__/layout-scale-fixtures';
+import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from '../../../../../packages/layout-core/tests/__fixtures__/layout-scale-fixtures';
 import { createWallRepresentation } from '$lib/render/layout-wall-representation';
 import { createMaterialStore } from '$lib/render/resources/material-store';
 import { resolveSceneSurfaceLook } from '$lib/render/layout/scene-surface-look';

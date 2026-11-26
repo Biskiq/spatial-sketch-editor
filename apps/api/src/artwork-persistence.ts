@@ -1,5 +1,5 @@
 /**
- * Project-image pin verification (P20, T2.S4b, T2.S8 · PR C).
+ * Project-image pin verification.
  *
  * A project image is not host-asserted. The saved project names it through a
  * Scene texture record or an Artwork shelf entry, and the byte identity comes
@@ -14,18 +14,23 @@
  */
 import { createHash } from 'node:crypto';
 import { ARTWORK_MAX_BYTES, probeArtworkImage } from '@portfolio/project-model/artwork';
+import type { ProjectEnvelope } from '@portfolio/project-model/units';
 import {
 	collectEnvelopeImageRequirements,
-	collectSceneImageRequirements,
 	type ProjectImageArtwork,
 	type ProjectImageClosureIssue,
 	type ProjectImagePin,
 	type ProjectImagePurpose,
-	type ProjectImageRequirement
+	type ProjectImageRequirement,
 } from '@portfolio/project-model/project-images';
-import type { CameraFreeSceneDocument, ProjectEnvelope } from '@portfolio/project-model/units';
 
-import { AssetNotFoundError, readAsset, readAssetRow, type AssetMime, type StoredAsset } from './asset-persistence.js';
+import {
+	AssetNotFoundError,
+	readAsset,
+	readAssetRow,
+	type AssetMime,
+	type StoredAsset,
+} from './asset-persistence.js';
 import type { DatabasePool } from './database.js';
 import type { ObjectStore } from './object-store.js';
 
@@ -69,7 +74,7 @@ export class ArtworkAssetRefusal extends Error {
 			expectedPin?: ProjectImagePin | null;
 			paths?: readonly string[];
 			action?: string;
-		} = {}
+		} = {},
 	) {
 		super(reason);
 		this.name = 'ArtworkAssetRefusal';
@@ -83,7 +88,10 @@ export class ArtworkAssetRefusal extends Error {
 
 /** Storage or database failure; never folded into a wrong-bytes answer. */
 export class ImageVerificationUnavailableError extends Error {
-	constructor(message = 'Project image storage is unavailable', readonly cause?: unknown) {
+	constructor(
+		message = 'Project image storage is unavailable',
+		readonly cause?: unknown,
+	) {
 		super(message);
 		this.name = 'ImageVerificationUnavailableError';
 	}
@@ -96,14 +104,14 @@ function refusalFor(
 	requirement: ProjectImageRequirement | undefined,
 	path: string,
 	code: ImageRefusalCode,
-	message: string
+	message: string,
 ): ArtworkAssetRefusal {
 	return new ArtworkAssetRefusal(path, message, {
 		code,
 		assetId: requirement?.assetId ?? '',
 		expectedPin: requirement?.expectedPin ?? null,
 		paths: requirement?.paths ?? [path],
-		action: DEFAULT_ACTION
+		action: DEFAULT_ACTION,
 	});
 }
 
@@ -111,7 +119,7 @@ function refusalForIssue(issue: ProjectImageClosureIssue): ArtworkAssetRefusal {
 	return new ArtworkAssetRefusal(issue.path, issue.message, {
 		code: 'image-requirement-invalid',
 		paths: [issue.path],
-		action: 'Reopen the saved project and correct the image reference before retrying.'
+		action: 'Reopen the saved project and correct the image reference before retrying.',
 	});
 }
 
@@ -121,20 +129,21 @@ export async function readProjectImagePin(
 	ownerId: string,
 	projectId: string,
 	requirement: ProjectImageRequirement,
-	lock: 'none' | 'share' | 'update' = 'none'
+	lock: 'none' | 'share' | 'update' = 'none',
 ): Promise<ArtworkAssetPin> {
 	let asset: StoredAsset;
 	try {
-		asset = lock === 'none'
-			? await readAsset(db, ownerId, projectId, requirement.assetId)
-			: await readAssetRow(db, ownerId, projectId, requirement.assetId, lock);
+		asset =
+			lock === 'none'
+				? await readAsset(db, ownerId, projectId, requirement.assetId)
+				: await readAssetRow(db, ownerId, projectId, requirement.assetId, lock);
 	} catch (error) {
 		if (error instanceof AssetNotFoundError) {
 			throw refusalFor(
 				requirement,
 				requirement.paths[0] ?? requirement.locator,
 				'image-missing',
-				`Project image "${requirement.assetId}" has no ready registry record in this project.`
+				`Project image "${requirement.assetId}" has no ready registry record in this project.`,
 			);
 		}
 		throw new ImageVerificationUnavailableError(undefined, error);
@@ -154,7 +163,7 @@ export async function readProjectImagePin(
 			requirement,
 			requirement.paths[0] ?? requirement.locator,
 			'image-missing',
-			`Project image "${requirement.assetId}" is not a ready uploaded image.`
+			`Project image "${requirement.assetId}" is not a ready uploaded image.`,
 		);
 	}
 	if (
@@ -167,7 +176,7 @@ export async function readProjectImagePin(
 			requirement,
 			requirement.paths[0] ?? requirement.locator,
 			'image-pin-changed',
-			`Project image "${requirement.assetId}" no longer matches the bytes its saved revision pins.`
+			`Project image "${requirement.assetId}" no longer matches the bytes its saved revision pins.`,
 		);
 	}
 	return {
@@ -178,18 +187,18 @@ export async function readProjectImagePin(
 		objectKey: asset.objectKey,
 		paths: requirement.paths,
 		expectedPin: requirement.expectedPin,
-		artwork: requirement.artwork
+		artwork: requirement.artwork,
 	};
 }
 
 async function readObjectBytes(
 	store: ObjectStore | undefined,
-	pin: ArtworkAssetPin
+	pin: ArtworkAssetPin,
 ): Promise<Uint8Array> {
 	if (store === undefined) {
 		throw new ImageVerificationUnavailableError(
 			undefined,
-			new Error('Object storage is not configured for project images')
+			new Error('Object storage is not configured for project images'),
 		);
 	}
 	let stored: Awaited<ReturnType<ObjectStore['get']>>;
@@ -202,7 +211,13 @@ async function readObjectBytes(
 		throw new ArtworkAssetRefusal(
 			pin.paths[0] ?? `/project-assets/${pin.assetId}`,
 			`Project image "${pin.assetId}" bytes are missing from storage.`,
-			{ code: 'image-missing', assetId: pin.assetId, expectedPin: pin.expectedPin, paths: pin.paths, action: DEFAULT_ACTION }
+			{
+				code: 'image-missing',
+				assetId: pin.assetId,
+				expectedPin: pin.expectedPin,
+				paths: pin.paths,
+				action: DEFAULT_ACTION,
+			},
 		);
 	}
 	try {
@@ -210,7 +225,13 @@ async function readObjectBytes(
 			throw new ArtworkAssetRefusal(
 				pin.paths[0] ?? `/project-assets/${pin.assetId}`,
 				`Project image "${pin.assetId}" length differs from its registry record.`,
-				{ code: 'image-corrupt', assetId: pin.assetId, expectedPin: pin.expectedPin, paths: pin.paths, action: DEFAULT_ACTION }
+				{
+					code: 'image-corrupt',
+					assetId: pin.assetId,
+					expectedPin: pin.expectedPin,
+					paths: pin.paths,
+					action: DEFAULT_ACTION,
+				},
 			);
 		}
 		const bytes = new Uint8Array(pin.byteSize);
@@ -221,7 +242,13 @@ async function readObjectBytes(
 				throw new ArtworkAssetRefusal(
 					pin.paths[0] ?? `/project-assets/${pin.assetId}`,
 					`Project image "${pin.assetId}" exceeds its registered length.`,
-					{ code: 'image-corrupt', assetId: pin.assetId, expectedPin: pin.expectedPin, paths: pin.paths, action: DEFAULT_ACTION }
+					{
+						code: 'image-corrupt',
+						assetId: pin.assetId,
+						expectedPin: pin.expectedPin,
+						paths: pin.paths,
+						action: DEFAULT_ACTION,
+					},
 				);
 			}
 			bytes.set(Uint8Array.from(part), length);
@@ -231,7 +258,13 @@ async function readObjectBytes(
 			throw new ArtworkAssetRefusal(
 				pin.paths[0] ?? `/project-assets/${pin.assetId}`,
 				`Project image "${pin.assetId}" ended before its registered length.`,
-				{ code: 'image-corrupt', assetId: pin.assetId, expectedPin: pin.expectedPin, paths: pin.paths, action: DEFAULT_ACTION }
+				{
+					code: 'image-corrupt',
+					assetId: pin.assetId,
+					expectedPin: pin.expectedPin,
+					paths: pin.paths,
+					action: DEFAULT_ACTION,
+				},
 			);
 		}
 		const digest = `sha256-${createHash('sha256').update(bytes).digest('hex')}`;
@@ -239,7 +272,13 @@ async function readObjectBytes(
 			throw new ArtworkAssetRefusal(
 				pin.paths[0] ?? `/project-assets/${pin.assetId}`,
 				`Project image "${pin.assetId}" bytes differ from their registry digest.`,
-				{ code: 'image-corrupt', assetId: pin.assetId, expectedPin: pin.expectedPin, paths: pin.paths, action: DEFAULT_ACTION }
+				{
+					code: 'image-corrupt',
+					assetId: pin.assetId,
+					expectedPin: pin.expectedPin,
+					paths: pin.paths,
+					action: DEFAULT_ACTION,
+				},
 			);
 		}
 		let decoded: ReturnType<typeof probeArtworkImage>;
@@ -251,14 +290,26 @@ async function readObjectBytes(
 			throw new ArtworkAssetRefusal(
 				pin.paths[0] ?? `/project-assets/${pin.assetId}`,
 				`Project image "${pin.assetId}" is not a supported static image.`,
-				{ code: 'image-corrupt', assetId: pin.assetId, expectedPin: pin.expectedPin, paths: pin.paths, action: DEFAULT_ACTION }
+				{
+					code: 'image-corrupt',
+					assetId: pin.assetId,
+					expectedPin: pin.expectedPin,
+					paths: pin.paths,
+					action: DEFAULT_ACTION,
+				},
 			);
 		}
 		if (decoded.mime !== pin.mime) {
 			throw new ArtworkAssetRefusal(
 				pin.paths[0] ?? `/project-assets/${pin.assetId}`,
 				`Project image "${pin.assetId}" MIME differs from its verified image.`,
-				{ code: 'image-corrupt', assetId: pin.assetId, expectedPin: pin.expectedPin, paths: pin.paths, action: DEFAULT_ACTION }
+				{
+					code: 'image-corrupt',
+					assetId: pin.assetId,
+					expectedPin: pin.expectedPin,
+					paths: pin.paths,
+					action: DEFAULT_ACTION,
+				},
 			);
 		}
 		if (
@@ -269,7 +320,13 @@ async function readObjectBytes(
 			throw new ArtworkAssetRefusal(
 				pin.paths[0] ?? `/project-assets/${pin.assetId}`,
 				`Project image "${pin.assetId}" dimensions differ from its shelf entry.`,
-				{ code: 'image-corrupt', assetId: pin.assetId, expectedPin: pin.expectedPin, paths: pin.paths, action: DEFAULT_ACTION }
+				{
+					code: 'image-corrupt',
+					assetId: pin.assetId,
+					expectedPin: pin.expectedPin,
+					paths: pin.paths,
+					action: DEFAULT_ACTION,
+				},
 			);
 		}
 		return bytes;
@@ -286,7 +343,7 @@ async function prepareRequirements(
 	store: ObjectStore | undefined,
 	ownerId: string,
 	projectId: string,
-	requirements: readonly ProjectImageRequirement[]
+	requirements: readonly ProjectImageRequirement[],
 ): Promise<readonly ArtworkAssetPin[]> {
 	const pins: ArtworkAssetPin[] = [];
 	for (const requirement of requirements) {
@@ -300,10 +357,8 @@ async function prepareRequirements(
 /**
  * Resolve and verify the complete image closure of one envelope.
  *
- * `private-save` and `private-load` require every project texture's authored
- * pin; `delivery` accepts the registry row as authoritative for a legacy texture
- * resource without one. Artwork is always registry-authoritative with declared
- * dimensions.
+ * Project textures require authored resource pins. Artwork is registry-authoritative
+ * with declared dimensions.
  */
 export async function prepareProjectImagePins(
 	db: Pick<DatabasePool, 'query'>,
@@ -311,30 +366,9 @@ export async function prepareProjectImagePins(
 	ownerId: string,
 	projectId: string,
 	envelope: ProjectEnvelope,
-	purpose: ProjectImagePurpose
+	purpose: ProjectImagePurpose,
 ): Promise<readonly ArtworkAssetPin[]> {
 	const closure = collectEnvelopeImageRequirements(envelope, purpose);
-	if (closure.issues[0] !== undefined) throw refusalForIssue(closure.issues[0]);
-	return prepareRequirements(db, store, ownerId, projectId, closure.requirements);
-}
-
-/**
- * Legacy release/save entry over one Scene payload. The new Save and cold Load
- * use `prepareProjectImagePins` with the whole envelope; this wrapper keeps the
- * release fixture's shape while sharing the same storage verifier.
- */
-export async function prepareArtworkPins(
-	db: Pick<DatabasePool, 'query'>,
-	store: ObjectStore | undefined,
-	ownerId: string,
-	projectId: string,
-	scene: CameraFreeSceneDocument,
-	mode: 'save' | 'release'
-): Promise<readonly ArtworkAssetPin[]> {
-	const closure = collectSceneImageRequirements(
-		scene,
-		mode === 'release' ? 'delivery' : 'private-save'
-	);
 	if (closure.issues[0] !== undefined) throw refusalForIssue(closure.issues[0]);
 	return prepareRequirements(db, store, ownerId, projectId, closure.requirements);
 }
@@ -352,11 +386,12 @@ export async function verifyProjectImagePinRows(
 	db: Pick<DatabasePool, 'query'>,
 	ownerId: string,
 	projectId: string,
-	pins: readonly ArtworkAssetPin[]
+	pins: readonly ArtworkAssetPin[],
 ): Promise<void> {
 	if (pins.length === 0) return;
 	for (const pin of [...pins].sort((left, right) =>
-		left.assetId < right.assetId ? -1 : left.assetId > right.assetId ? 1 : 0)) {
+		left.assetId < right.assetId ? -1 : left.assetId > right.assetId ? 1 : 0,
+	)) {
 		let current: ArtworkAssetPin;
 		try {
 			current = await readProjectImagePin(
@@ -368,19 +403,23 @@ export async function verifyProjectImagePinRows(
 					locator: `/project-assets/${pin.assetId}`,
 					expectedPin: pin.expectedPin,
 					artwork: pin.artwork,
-					paths: pin.paths
+					paths: pin.paths,
 				},
-				'share'
+				'share',
 			);
 		} catch (error) {
 			if (error instanceof ArtworkAssetRefusal) {
-				throw new ArtworkAssetRefusal(pin.paths[0] ?? error.path, 'Project image changed before Save. Retry the save.', {
-					code: 'image-pin-changed',
-					assetId: pin.assetId,
-					expectedPin: pin.expectedPin,
-					paths: pin.paths,
-					action: 'Reload the project and retry the save.'
-				});
+				throw new ArtworkAssetRefusal(
+					pin.paths[0] ?? error.path,
+					'Project image changed before Save. Retry the save.',
+					{
+						code: 'image-pin-changed',
+						assetId: pin.assetId,
+						expectedPin: pin.expectedPin,
+						paths: pin.paths,
+						action: 'Reload the project and retry the save.',
+					},
+				);
 			}
 			throw error;
 		}
@@ -398,8 +437,8 @@ export async function verifyProjectImagePinRows(
 					assetId: pin.assetId,
 					expectedPin: pin.expectedPin,
 					paths: pin.paths,
-					action: 'Reload the project and retry the save.'
-				}
+					action: 'Reload the project and retry the save.',
+				},
 			);
 		}
 	}
@@ -410,7 +449,7 @@ export async function verifyArtworkPinRows(
 	db: Pick<DatabasePool, 'query'>,
 	ownerId: string,
 	projectId: string,
-	pins: readonly ArtworkAssetPin[]
+	pins: readonly ArtworkAssetPin[],
 ): Promise<void> {
 	return verifyProjectImagePinRows(db, ownerId, projectId, pins);
 }

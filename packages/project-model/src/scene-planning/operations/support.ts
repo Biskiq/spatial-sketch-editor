@@ -3,7 +3,13 @@ import { sceneFormContactMinY } from '../../form';
 import { type SceneEntity, type ScenePrimitiveEntity } from '../../scene';
 import { framePointToWorld, frameYawToWorld } from '../frame';
 import { unsupportedTransform, refusal } from './refusals';
-import { type SceneOperationRefusal, type SceneOperationSupportEvidence, type SceneOperationContext, UPRIGHT_TOLERANCE, CONTACT_TOLERANCE_METERS } from './types';
+import {
+	type SceneOperationRefusal,
+	type SceneOperationSupportEvidence,
+	type SceneOperationContext,
+	UPRIGHT_TOLERANCE,
+	CONTACT_TOLERANCE_METERS,
+} from './types';
 import { resolveSceneSupport, type SceneSupportChoice } from '../support';
 import { type LocalInputFrame } from '../types';
 import { type CameraFreeSceneDocument as SceneDocument } from '../../units/types';
@@ -12,14 +18,16 @@ export function resolveSupport(
 	context: SceneOperationContext,
 	point: LayoutVec2,
 	requiredElevation: number | null,
-	choice: SceneSupportChoice | undefined
-): { readonly kind: 'resolved'; readonly support: SceneOperationSupportEvidence } | SceneOperationRefusal {
+	choice: SceneSupportChoice | undefined,
+):
+	| { readonly kind: 'resolved'; readonly support: SceneOperationSupportEvidence }
+	| SceneOperationRefusal {
 	const resolution = resolveSceneSupport({
 		layout: context.layout,
 		sourceContentId: context.sourceContentId,
 		point,
 		requiredElevation,
-		...(choice === undefined ? {} : { choice })
+		...(choice === undefined ? {} : { choice }),
 	});
 	if (resolution.kind === 'resolved') {
 		return {
@@ -34,17 +42,17 @@ export function resolveSupport(
 							? { kind: 'room', roomId: witness.source.roomId }
 							: { kind: 'region', regionId: witness.source.regionId },
 					floorId: witness.floorId,
-					recordId: witness.recordId
-				}))
-			}
+					recordId: witness.recordId,
+				})),
+			},
 		};
 	}
 	return refusal(
 		resolution.code,
 		resolution.message,
 		resolution.candidates.map(
-			(candidate) => `${candidate.orderKey} · ${candidate.label} at ${candidate.elevation} m`
-		)
+			(candidate) => `${candidate.orderKey} · ${candidate.label} at ${candidate.elevation} m`,
+		),
 	);
 }
 
@@ -71,28 +79,28 @@ export function floorTransformSupport(entity: SceneEntity): FloorTransformSuppor
 		return {
 			supported: false,
 			code: 'unsupported-transform',
-			message: 'Artwork is positioned by its centre and has no floor contact.'
+			message: 'Artwork is positioned by its centre and has no floor contact.',
 		};
 	}
 	if (entity.kind === 'light') {
 		return {
 			supported: false,
 			code: 'unsupported-transform',
-			message: `Entity "${entity.id}" is a light; lights have no object footprint or floor placement to transform.`
+			message: `Entity "${entity.id}" is a light; lights have no object footprint or floor placement to transform.`,
 		};
 	}
 	if (entity.kind === 'primitive' && entity.primitive === 'plane') {
 		return {
 			supported: false,
 			code: 'unsupported-transform',
-			message: `Entity "${entity.id}" is a vertical plane, which has no honest floor footprint for this operation.`
+			message: `Entity "${entity.id}" is a vertical plane, which has no honest floor footprint for this operation.`,
 		};
 	}
 	if (!upright(entity)) {
 		return {
 			supported: false,
 			code: 'unsupported-transform',
-			message: `Entity "${entity.id}" is not a truthful upright floor object, so this operation cannot own its transform.`
+			message: `Entity "${entity.id}" is not a truthful upright floor object, so this operation cannot own its transform.`,
 		};
 	}
 	if (entity.kind === 'form') {
@@ -100,7 +108,7 @@ export function floorTransformSupport(entity: SceneEntity): FloorTransformSuppor
 			return {
 				supported: false,
 				code: 'unsupported-transform',
-				message: `Entity "${entity.id}" has no honest floor contact, so this operation cannot own its transform.`
+				message: `Entity "${entity.id}" has no honest floor contact, so this operation cannot own its transform.`,
 			};
 		}
 		return { supported: true };
@@ -109,7 +117,7 @@ export function floorTransformSupport(entity: SceneEntity): FloorTransformSuppor
 		return {
 			supported: false,
 			code: 'unsupported-transform',
-			message: `Entity "${entity.id}" has no honest floor footprint for this operation.`
+			message: `Entity "${entity.id}" has no honest floor footprint for this operation.`,
 		};
 	}
 	return { supported: true };
@@ -117,13 +125,13 @@ export function floorTransformSupport(entity: SceneEntity): FloorTransformSuppor
 
 export function readContactMinY(
 	entity: SceneEntity,
-	captured: number
+	captured: number,
 ): { readonly kind: 'value'; readonly value: number } | SceneOperationRefusal {
 	if (!Number.isFinite(captured)) {
 		return refusal(
 			'missing-contact-metadata',
 			`Entity "${entity.id}" has no finite captured contact height.`,
-			['contactMinY']
+			['contactMinY'],
 		);
 	}
 	if (entity.kind === 'primitive') {
@@ -133,7 +141,7 @@ export function readContactMinY(
 			return refusal(
 				'missing-contact-metadata',
 				`Entity "${entity.id}" declares contact ${captured} m but its ${entity.primitive} dimensions give ${analytical} m.`,
-				['contactMinY', 'dimensions']
+				['contactMinY', 'dimensions'],
 			);
 		}
 	}
@@ -144,7 +152,7 @@ export function readContactMinY(
 			return refusal(
 				'missing-contact-metadata',
 				`Entity "${entity.id}" declares contact ${captured} m but its form source gives ${analytical} m.`,
-				['contactMinY', 'form']
+				['contactMinY', 'form'],
 			);
 		}
 	}
@@ -214,7 +222,7 @@ export function restingElevation(entity: SceneEntity, contactMinY: number): numb
 export function sceneEntityLift(
 	context: SceneOperationContext,
 	entity: SceneEntity,
-	contactMinY: number
+	contactMinY: number,
 ): { readonly lift: number; readonly supportY: number } | null {
 	const rest = restSupport(context, entity, contactMinY, undefined);
 	return rest.kind === 'resolved' ? { lift: rest.lift, supportY: rest.support.elevation } : null;
@@ -224,7 +232,7 @@ export function restSupport(
 	context: SceneOperationContext,
 	entity: SceneEntity,
 	contactMinY: number,
-	choice: SceneSupportChoice | undefined
+	choice: SceneSupportChoice | undefined,
 ):
 	| {
 			readonly kind: 'resolved';
@@ -236,17 +244,26 @@ export function restSupport(
 	const point: LayoutVec2 = [entity.position[0], entity.position[2]];
 	const resting = restingElevation(entity, contactMinY);
 	const onIt = resolveSupport(context, point, resting, choice);
-	if (onIt.kind === 'resolved') return { kind: 'resolved', support: onIt.support, resting, lift: 0 };
+	if (onIt.kind === 'resolved')
+		return { kind: 'resolved', support: onIt.support, resting, lift: 0 };
 	const beneath = resolveSupport(context, point, null, choice);
-	if (beneath.kind === 'resolved' && resting > beneath.support.elevation + CONTACT_TOLERANCE_METERS) {
-		return { kind: 'resolved', support: beneath.support, resting, lift: resting - beneath.support.elevation };
+	if (
+		beneath.kind === 'resolved' &&
+		resting > beneath.support.elevation + CONTACT_TOLERANCE_METERS
+	) {
+		return {
+			kind: 'resolved',
+			support: beneath.support,
+			resting,
+			lift: resting - beneath.support.elevation,
+		};
 	}
 	return onIt;
 }
 
 export function worldPoint(
 	frame: LocalInputFrame,
-	worldXZ: readonly [number, number]
+	worldXZ: readonly [number, number],
 ): LayoutVec2 | null {
 	if (!Array.isArray(worldXZ) || worldXZ.length !== 2 || !worldXZ.every(Number.isFinite)) {
 		return null;
@@ -257,13 +274,15 @@ export function worldPoint(
 
 export function readObject(
 	scene: SceneDocument,
-	entityId: string
+	entityId: string,
 ): { readonly kind: 'object'; readonly entity: SceneEntity } | SceneOperationRefusal {
 	const entity = scene.entities.find((candidate) => candidate.id === entityId);
 	if (entity === undefined) {
-		return refusal('missing-target', `No Scene entity "${entityId}" exists in the accepted source.`, [
-			entityId
-		]);
+		return refusal(
+			'missing-target',
+			`No Scene entity "${entityId}" exists in the accepted source.`,
+			[entityId],
+		);
 	}
 	const support = floorTransformSupport(entity);
 	if (!support.supported) return refusal(support.code, support.message, [entityId]);

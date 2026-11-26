@@ -40,7 +40,9 @@ class ExperienceFocusState {
 
 	get stopId(): string | null {
 		const subject = this.subject;
-		return subject !== null && (subject.kind === 'stop' || subject.kind === 'transition') ? subject.stopId : null;
+		return subject !== null && (subject.kind === 'stop' || subject.kind === 'transition')
+			? subject.stopId
+			: null;
 	}
 
 	get presentationId(): string | null {
@@ -55,7 +57,7 @@ class ExperienceFocusState {
 			experienceId: this.experienceId,
 			guideId: this.guideId,
 			stopId: this.stopId,
-			presentationId: this.presentationId
+			presentationId: this.presentationId,
 		};
 	}
 
@@ -75,7 +77,10 @@ class ExperienceFocusState {
 	select(subject: ExperienceSubject | null): void {
 		const previous = this.subject;
 		if (previous !== null && (subject === null || !sameSubject(previous, subject))) {
-			this.history = [...this.history.filter((entry) => !sameSubject(entry, previous)), previous].slice(-EXPERIENCE_BACK_LIMIT);
+			this.history = [
+				...this.history.filter((entry) => !sameSubject(entry, previous)),
+				previous,
+			].slice(-EXPERIENCE_BACK_LIMIT);
 		}
 		this.subject = subject;
 	}
@@ -84,7 +89,8 @@ class ExperienceFocusState {
 	previous(resolves: (subject: ExperienceSubject) => boolean): ExperienceSubject | null {
 		for (let index = this.history.length - 1; index >= 0; index -= 1) {
 			const entry = this.history[index]!;
-			if (resolves(entry) && (this.subject === null || !sameSubject(entry, this.subject))) return entry;
+			if (resolves(entry) && (this.subject === null || !sameSubject(entry, this.subject)))
+				return entry;
 		}
 		return null;
 	}

@@ -11,12 +11,29 @@
  * It emits **world coordinates**. The Stage facade is the one boundary that
  * projects them, exactly as it does every overlay mark.
  */
-import { evaluateLayoutPlan, type PlanEvaluation, openingAttemptSymbolSource, openingPlanSymbol } from '@portfolio/layout-core/world';
-import { buildArchProfile, type LayoutVec2, type CompiledLayoutGeometry } from '@portfolio/layout-core/geometry';
+import {
+	evaluateLayoutPlan,
+	type PlanEvaluation,
+	openingAttemptSymbolSource,
+	openingPlanSymbol,
+} from '@portfolio/layout-core/world';
+import {
+	buildArchProfile,
+	type LayoutVec2,
+	type CompiledLayoutGeometry,
+} from '@portfolio/layout-core/geometry';
 import { countWork } from '@portfolio/layout-core/kernel';
-import { type LayoutDocumentWallFirst, type LayoutWallOpening, wallCenterlineSamples } from '@portfolio/layout-core/wall';
+import {
+	type LayoutDocumentWallFirst,
+	type LayoutWallOpening,
+	wallCenterlineSamples,
+} from '@portfolio/layout-core/wall';
 
-import { compiledOpeningFaceLoops, openingFaceLoops, openingLoopSegments } from '../../layout/opening-faces';
+import {
+	compiledOpeningFaceLoops,
+	openingFaceLoops,
+	openingLoopSegments,
+} from '../../layout/opening-faces';
 import { buildPaperPlan, unionOutline } from '$lib/authoring/stage/stage-adapter-host';
 import type { StageCandidatePreview } from '$lib/authoring/stage/stage-adapter-host';
 
@@ -36,13 +53,16 @@ function worldPoint(point: LayoutVec2, datumMeters: number): Vec3 {
 	return [point[0], datumMeters, point[1]];
 }
 
-export type OpeningGhostValues = Pick<LayoutWallOpening, 'kind' | 'profile' | 'offset' | 'width' | 'height' | 'sillHeight'>;
+export type OpeningGhostValues = Pick<
+	LayoutWallOpening,
+	'kind' | 'profile' | 'offset' | 'width' | 'height' | 'sillHeight'
+>;
 
 /** The candidate's compiled profile outline on both Wall faces in the 3D reading. */
 export function openingFacePaper(
 	compiled: CompiledLayoutGeometry,
 	openingIds: ReadonlySet<string>,
-	datumMeters: number
+	datumMeters: number,
 ): CandidatePaperGeometry {
 	countWork('candidate:opening-build');
 	const segments: CandidatePaperGeometry['segments'][number][] = [];
@@ -60,16 +80,30 @@ export function openingAttemptFacePaper(
 	compiled: CompiledLayoutGeometry,
 	wallId: string,
 	values: OpeningGhostValues,
-	datumMeters: number
+	datumMeters: number,
 ): CandidatePaperGeometry {
 	countWork('candidate:opening-build');
 	const wall = compiled.walls.find((candidate) => candidate.wallId === wallId);
 	if (wall === undefined) return { polygons: [], segments: [] };
-	const profile = values.profile === 'rectangular'
-		? { topBoundary: [[0, values.height], [values.width, values.height]] as LayoutVec2[] }
-		: buildArchProfile(values.profile, values.width, values.height).profile;
-	const envelope = [[0, values.height], [values.width, values.height]] as LayoutVec2[];
-	return { polygons: [], segments: openingLoopSegments(openingFaceLoops(wall, values, datumMeters, profile?.topBoundary ?? envelope)) };
+	const profile =
+		values.profile === 'rectangular'
+			? {
+					topBoundary: [
+						[0, values.height],
+						[values.width, values.height],
+					] as LayoutVec2[],
+				}
+			: buildArchProfile(values.profile, values.width, values.height).profile;
+	const envelope = [
+		[0, values.height],
+		[values.width, values.height],
+	] as LayoutVec2[];
+	return {
+		polygons: [],
+		segments: openingLoopSegments(
+			openingFaceLoops(wall, values, datumMeters, profile?.topBoundary ?? envelope),
+		),
+	};
 }
 
 /**
@@ -81,7 +115,7 @@ export function openingAttemptPlanPaper(
 	compiled: CompiledLayoutGeometry,
 	wallId: string,
 	values: OpeningGhostValues,
-	datumMeters: number
+	datumMeters: number,
 ): CandidatePaperGeometry {
 	countWork('candidate:opening-build');
 	const wall = compiled.walls.find((candidate) => candidate.wallId === wallId);
@@ -90,8 +124,8 @@ export function openingAttemptPlanPaper(
 	return {
 		polygons: [],
 		segments: [...symbol.segments, ...symbol.dashedSegments].map(
-			([a, b]) => [worldPoint(a, datumMeters), worldPoint(b, datumMeters)] as const
-		)
+			([a, b]) => [worldPoint(a, datumMeters), worldPoint(b, datumMeters)] as const,
+		),
 	};
 }
 
@@ -108,7 +142,7 @@ export function buildCompiledLayoutCandidatePaper(
 	datumMeters: number,
 	subjectIds: ReadonlySet<string>,
 	affectedIds: ReadonlySet<string>,
-	lateralSpanHalfWidthMeters = plan.lateralSpanHalfWidthMeters
+	lateralSpanHalfWidthMeters = plan.lateralSpanHalfWidthMeters,
 ): LayoutCandidatePaper {
 	countWork('candidate:paper-build');
 	const evaluated = evaluateLayoutPlan(
@@ -118,13 +152,13 @@ export function buildCompiledLayoutCandidatePaper(
 			depthMeters: plan.depthMeters,
 			lateralSpanHalfWidthMeters,
 			sourceKindFilter: plan.sourceKindFilter,
-			reveal: plan.reveal
+			reveal: plan.reveal,
 		},
 		{
 			generationId: `${plan.generationId}:candidate`,
 			target: plan.target,
-			datumMeters: plan.datumMeters
-		}
+			datumMeters: plan.datumMeters,
+		},
 	);
 	if (evaluated.kind === 'refused') {
 		return { subject: { polygons: [], segments: [] }, affected: { polygons: [], segments: [] } };
@@ -133,43 +167,37 @@ export function buildCompiledLayoutCandidatePaper(
 	const polygonsFor = (ids: ReadonlySet<string>): CandidatePaperGeometry['polygons'] =>
 		drawing.fills.flatMap((fill) =>
 			ids.has(fill.sourceId)
-				? fill.polygons.map((polygon) =>
-						polygon.map((point) => worldPoint(point, datumMeters))
-					)
-				: []
+				? fill.polygons.map((polygon) => polygon.map((point) => worldPoint(point, datumMeters)))
+				: [],
 		);
 	const segmentsFor = (ids: ReadonlySet<string>): CandidatePaperGeometry['segments'] => {
 		const cutSources = new Set(
 			drawing.fills
 				.filter((fill) => ids.has(fill.sourceId) && fill.treatment === 'cut')
-				.map((fill) => fill.sourceId)
+				.map((fill) => fill.sourceId),
 		);
 		const fillOutlines = [...ids].flatMap((sourceId) => {
 			const polygons = drawing.fills
 				.filter((fill) => fill.sourceId === sourceId)
 				.flatMap((fill) => fill.polygons);
 			return unionOutline(polygons).map(
-				([start, end]) =>
-					[worldPoint(start, datumMeters), worldPoint(end, datumMeters)] as const
+				([start, end]) => [worldPoint(start, datumMeters), worldPoint(end, datumMeters)] as const,
 			);
 		});
 		const planLines = drawing.lines.flatMap((line) =>
 			ids.has(line.sourceId) && !(line.treatment === 'cut' && cutSources.has(line.sourceId))
 				? line.segments.map(
 						([start, end]) =>
-							[
-								worldPoint(start, datumMeters),
-								worldPoint(end, datumMeters)
-							] as const
+							[worldPoint(start, datumMeters), worldPoint(end, datumMeters)] as const,
 					)
-				: []
+				: [],
 		);
 		return [...fillOutlines, ...planLines];
 	};
 	return {
 		subject: { polygons: polygonsFor(subjectIds), segments: segmentsFor(subjectIds) },
 		// Affected geometry is context for the edit, not another filled candidate.
-		affected: { polygons: [], segments: segmentsFor(affectedIds) }
+		affected: { polygons: [], segments: segmentsFor(affectedIds) },
 	};
 }
 
@@ -184,7 +212,7 @@ export function buildCompiledLayoutCandidatePaper(
 export function wallCenterlinePaper(
 	document: LayoutDocumentWallFirst,
 	wallIds: ReadonlySet<string>,
-	datumMeters: number
+	datumMeters: number,
 ): CandidatePaperGeometry {
 	const junctions = new Map(document.junctions.map((junction) => [junction.id, junction.point]));
 	const segments: [Vec3, Vec3][] = [];
@@ -193,10 +221,17 @@ export function wallCenterlinePaper(
 		const start = junctions.get(wall.startJunctionId);
 		const end = junctions.get(wall.endJunctionId);
 		if (start === undefined || end === undefined) continue;
-		const sampled = wall.centerline.kind === 'line' ? undefined : wallCenterlineSamples(wall, start, end, 'forward');
-		const points = sampled === undefined ? [start, end] : sampled.samples.map((sample) => sample.point);
+		const sampled =
+			wall.centerline.kind === 'line'
+				? undefined
+				: wallCenterlineSamples(wall, start, end, 'forward');
+		const points =
+			sampled === undefined ? [start, end] : sampled.samples.map((sample) => sample.point);
 		for (let index = 1; index < points.length; index += 1) {
-			segments.push([worldPoint(points[index - 1]!, datumMeters), worldPoint(points[index]!, datumMeters)]);
+			segments.push([
+				worldPoint(points[index - 1]!, datumMeters),
+				worldPoint(points[index]!, datumMeters),
+			]);
 		}
 	}
 	return { polygons: [], segments };
@@ -211,7 +246,7 @@ export function wallHeightGhostPaper(
 	document: LayoutDocumentWallFirst,
 	wallId: string,
 	datumMeters: number,
-	heightMeters: number
+	heightMeters: number,
 ): CandidatePaperGeometry {
 	const base = wallCenterlinePaper(document, new Set([wallId]), datumMeters).segments;
 	if (base.length === 0) return { polygons: [], segments: [] };
@@ -225,15 +260,15 @@ export function wallHeightGhostPaper(
 			...base,
 			...base.map(([start, end]) => [lift(start), lift(end)] as [Vec3, Vec3]),
 			[first, lift(first)],
-			[last, lift(last)]
-		]
+			[last, lift(last)],
+		],
 	};
 }
 
 /** The opening ids hosted by any of the named Walls. */
 export function openingIdsOnWalls(
 	document: LayoutDocumentWallFirst,
-	wallIds: ReadonlySet<string>
+	wallIds: ReadonlySet<string>,
 ): readonly string[] {
 	return document.openings
 		.filter((opening) => wallIds.has(opening.wallId))
@@ -256,6 +291,6 @@ export function candidatePreviewOf(input: {
 		polygons: input.geometry.polygons,
 		segments: input.geometry.segments,
 		labels: input.labels ?? [],
-		...(input.snap === undefined ? {} : { snap: input.snap })
+		...(input.snap === undefined ? {} : { snap: input.snap }),
 	};
 }

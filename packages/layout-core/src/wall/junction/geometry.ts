@@ -1,6 +1,12 @@
 import type { LayoutVec2 } from '../../geometry/coordinates';
 import { ivAdd, ivEncloseWorld, ivMul, ivSub } from '../../geometry/binary64-interval';
-import type { CompiledCornerSide, CompiledEndCorner, CompiledJunctionLeg, CompiledLegJoin, LayoutBounds2 } from '../../geometry/types';
+import type {
+	CompiledCornerSide,
+	CompiledEndCorner,
+	CompiledJunctionLeg,
+	CompiledLegJoin,
+	LayoutBounds2,
+} from '../../geometry/types';
 
 /** Parallel rays closer than this `|det|` are treated as collinear. */
 export const JUNCTION_DET_EPSILON = 1e-9;
@@ -25,11 +31,9 @@ export const JUNCTION_SECTOR_SNAP = 1e-5;
 /** Slop when asking whether a probe is inside a leg's own compiled body. */
 export const JUNCTION_PROBE_TOLERANCE = 1e-9;
 
-
 export function negateVec2(v: LayoutVec2): LayoutVec2 {
 	return [-v[0], -v[1]];
 }
-
 
 /** The outward ray of a leg (from the Junction into the Wall), normalised. */
 export function outwardTangent(leg: CompiledJunctionLeg): LayoutVec2 {
@@ -37,22 +41,16 @@ export function outwardTangent(leg: CompiledJunctionLeg): LayoutVec2 {
 	return [leg.tangentOut[0] / length, leg.tangentOut[1] / length];
 }
 
-
 /** Cross product of two plan vectors (`a × b`). */
 export function cross(a: LayoutVec2, b: LayoutVec2): number {
 	return a[0] * b[1] - a[1] * b[0];
 }
 
-
 export function dot(a: LayoutVec2, b: LayoutVec2): number {
 	return a[0] * b[0] + a[1] * b[1];
 }
 
-
-export type CornerSideResolution =
-	| { kind: 'side'; side: CompiledCornerSide }
-	| { kind: 'fold' };
-
+export type CornerSideResolution = { kind: 'side'; side: CompiledCornerSide } | { kind: 'fold' };
 
 /**
  * Resolve one side (`sign = +1` front, `-1` back) of a corner between an
@@ -72,7 +70,7 @@ export function resolveSharedCornerSide(
 	nB: LayoutVec2,
 	halfB: number,
 	sign: 1 | -1,
-	miterLimit = JUNCTION_MITER_LIMIT
+	miterLimit = JUNCTION_MITER_LIMIT,
 ): CornerSideResolution {
 	const a0: LayoutVec2 = [junction[0] + sign * halfA * nA[0], junction[1] + sign * halfA * nA[1]];
 	const b0: LayoutVec2 = [junction[0] + sign * halfB * nB[0], junction[1] + sign * halfB * nB[1]];
@@ -88,12 +86,14 @@ export function resolveSharedCornerSide(
 	const u = (dx * dirB[1] - dy * dirB[0]) / determinant;
 	const point: LayoutVec2 = [a0[0] + u * dirA[0], a0[1] + u * dirA[1]];
 	const reach = Math.max(Math.abs(halfA), Math.abs(halfB));
-	if (reach > 0 && Math.hypot(point[0] - junction[0], point[1] - junction[1]) > miterLimit * reach) {
+	if (
+		reach > 0 &&
+		Math.hypot(point[0] - junction[0], point[1] - junction[1]) > miterLimit * reach
+	) {
 		return { kind: 'side', side: { kind: 'bevel', a0, b0 } };
 	}
 	return { kind: 'side', side: { kind: 'miter', apex: point } };
 }
-
 
 /**
  * The canonical corner between a **predecessor** leg `prev` (a0 side) and a
@@ -107,24 +107,42 @@ export function resolveLegPairCorner(
 	junction: LayoutVec2,
 	prev: CompiledJunctionLeg,
 	cur: CompiledJunctionLeg,
-	miterLimit = JUNCTION_MITER_LIMIT
+	miterLimit = JUNCTION_MITER_LIMIT,
 ): { corner: CompiledEndCorner } | { fold: true } {
 	// prev arrives (`-tangentOut`), cur departs (`tangentOut`).
 	const dirA = negateVec2(outwardTangent(prev));
 	const nA = negateVec2(prev.normalOut);
 	const dirB = outwardTangent(cur);
 	const nB = cur.normalOut;
-	const front = resolveSharedCornerSide(junction, dirA, nA, prev.halfThickness, dirB, nB, cur.halfThickness, 1, miterLimit);
-	const back = resolveSharedCornerSide(junction, dirA, nA, prev.halfThickness, dirB, nB, cur.halfThickness, -1, miterLimit);
+	const front = resolveSharedCornerSide(
+		junction,
+		dirA,
+		nA,
+		prev.halfThickness,
+		dirB,
+		nB,
+		cur.halfThickness,
+		1,
+		miterLimit,
+	);
+	const back = resolveSharedCornerSide(
+		junction,
+		dirA,
+		nA,
+		prev.halfThickness,
+		dirB,
+		nB,
+		cur.halfThickness,
+		-1,
+		miterLimit,
+	);
 	if (front.kind === 'fold' || back.kind === 'fold') return { fold: true };
 	return { corner: { front: front.side, back: back.side } };
 }
 
-
 function swapCornerSide(side: CompiledCornerSide): CompiledCornerSide {
 	return side.kind === 'miter' ? side : { kind: 'bevel', a0: side.b0, b0: side.a0 };
 }
-
 
 /**
  * The corner as the other role reads it. The canonical front is `-prev.normalOut`
@@ -135,19 +153,21 @@ function swapCorner(corner: CompiledEndCorner): CompiledEndCorner {
 	return { front: swapCornerSide(corner.back), back: swapCornerSide(corner.front) };
 }
 
-
 /**
  * Adapt a canonical `(prev, cur)` corner to a specific leg. `canonical === 'prev'`
  * means the leg owns the `a0` slot; `'cur'` owns `b0`. A leg whose Junction end
  * is `end` reads `a0`, a leg whose end is `start` reads `b0`, so a role/label
  * mismatch exchanges the sides and swaps the offset slots.
  */
-export function cornerForEnd(corner: CompiledEndCorner, canonical: 'prev' | 'cur', end: 'start' | 'end'): CompiledEndCorner {
+export function cornerForEnd(
+	corner: CompiledEndCorner,
+	canonical: 'prev' | 'cur',
+	end: 'start' | 'end',
+): CompiledEndCorner {
 	const wantsA0 = end === 'end';
 	const isA0 = canonical === 'prev';
 	return wantsA0 === isA0 ? corner : swapCorner(corner);
 }
-
 
 /** Is the outward-ray pair a tangent (straight) continuation? */
 export function isTangentContinuation(a: CompiledJunctionLeg, b: CompiledJunctionLeg): boolean {
@@ -156,9 +176,11 @@ export function isTangentContinuation(a: CompiledJunctionLeg, b: CompiledJunctio
 	return Math.abs(cross(ta, tb)) < JUNCTION_DET_EPSILON && dot(ta, tb) < 0;
 }
 
-
 /** Can the stored derivative anchors represent antiparallel rays at their shared Junction? */
-export function tangentAnchorsAllowContinuation(point: LayoutVec2, [a, b]: readonly [LayoutVec2, LayoutVec2]): boolean {
+export function tangentAnchorsAllowContinuation(
+	point: LayoutVec2,
+	[a, b]: readonly [LayoutVec2, LayoutVec2],
+): boolean {
 	const ox = ivEncloseWorld(point[0]);
 	const oz = ivEncloseWorld(point[1]);
 	const ax = ivSub(ivEncloseWorld(a[0]), ox);
@@ -169,7 +191,6 @@ export function tangentAnchorsAllowContinuation(point: LayoutVec2, [a, b]: reado
 	return determinant.lo <= 0 && determinant.hi >= 0 && ivAdd(ivMul(ax, bx), ivMul(az, bz)).hi < 0;
 }
 
-
 /** Is the outward-ray pair a fold (≈0°, walls overlap)? */
 export function isFoldPair(a: CompiledJunctionLeg, b: CompiledJunctionLeg): boolean {
 	const ta = outwardTangent(a);
@@ -177,19 +198,20 @@ export function isFoldPair(a: CompiledJunctionLeg, b: CompiledJunctionLeg): bool
 	return Math.abs(cross(ta, tb)) < JUNCTION_DET_EPSILON && dot(ta, tb) > 0;
 }
 
-
 /** The leg's own end cross-section, front → back, in plan. */
 export function legEndBoundary(junction: LayoutVec2, leg: CompiledJunctionLeg): LayoutVec2[] {
 	const h = leg.halfThickness;
 	const n = leg.normalOut;
 	return [
 		[junction[0] + h * n[0], junction[1] + h * n[1]],
-		[junction[0] - h * n[0], junction[1] - h * n[1]]
+		[junction[0] - h * n[0], junction[1] - h * n[1]],
 	];
 }
 
-
-export function joinsBounds2(junction: LayoutVec2, joins: readonly CompiledLegJoin[]): LayoutBounds2 {
+export function joinsBounds2(
+	junction: LayoutVec2,
+	joins: readonly CompiledLegJoin[],
+): LayoutBounds2 {
 	let minX = junction[0];
 	let minY = junction[1];
 	let maxX = junction[0];

@@ -10,14 +10,14 @@
  * The scope is one per route. It holds:
  *
  * - **Pins** from the accepted Scene's `texture` resources. A URI with no pin
- *   is refused rather than fetched, so a tampered Scene cannot make the editor
- *   download arbitrary project bytes.
+ *  is refused rather than fetched, so a tampered Scene cannot make the editor
+ *  download arbitrary project bytes.
  * - **Digest and MIME verification** on every load, using the same sha256 the
- *   asset registry and release manifest carry. A mismatch is a refusal and the
- *   object falls back to its Finish colour through the resolver's existing
- *   missing-texture behaviour.
+ *  asset registry and release manifest carry. A mismatch is a refusal and the
+ *  object falls back to its Finish colour through the resolver's existing
+ *  missing-texture behaviour.
  * - **Decoded dimensions**, so the Card can state a low-resolution warning and
- *   derive a tile's aspect without a second decoder.
+ *  derive a tile's aspect without a second decoder.
  *
  * Retry is targeted: `retry(uri)` drops that one source-cache error and reloads
  * only that URI. The Stage then calls every representation's `reloadTextures`, so
@@ -32,7 +32,7 @@ import {
 	loadSourceTexture,
 	releaseTextureScope,
 	retainDecodedImage,
-	type TextureLoadScope
+	type TextureLoadScope,
 } from './texture-store';
 import { imageSha256 } from '$lib/render/artwork/image-digest';
 import { probeRawImage } from './image-encoding';
@@ -143,18 +143,24 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 		return createImageBitmap(new Blob([Uint8Array.from(bytes)], { type: mime }), {
 			imageOrientation: 'none',
 			premultiplyAlpha: 'none',
-			colorSpaceConversion: 'none'
+			colorSpaceConversion: 'none',
 		});
 	}
 
-	function publish(assetId: string, probe: { pixelWidth: number; pixelHeight: number }, blob: Blob): void {
+	function publish(
+		assetId: string,
+		probe: { pixelWidth: number; pixelHeight: number },
+		blob: Blob,
+	): void {
 		dimensions.set(assetId, { width: probe.pixelWidth, height: probe.pixelHeight });
 		if (!previewUris.has(assetId)) previewUris.set(assetId, URL.createObjectURL(blob));
 	}
 
 	function httpStatusOf(error: unknown): number | undefined {
 		if (typeof error !== 'object' || error === null) return undefined;
-		const status = (error as { status?: unknown; httpStatus?: unknown }).httpStatus ?? (error as { status?: unknown }).status;
+		const status =
+			(error as { status?: unknown; httpStatus?: unknown }).httpStatus ??
+			(error as { status?: unknown }).status;
 		return typeof status === 'number' && Number.isInteger(status) ? status : undefined;
 	}
 
@@ -162,7 +168,7 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 		assetId: string,
 		isCurrent: () => boolean = () => true,
 		raw = false,
-		signal: AbortSignal = abort.signal
+		signal: AbortSignal = abort.signal,
 	): Promise<ThreeTexture> {
 		const pin = input.pins().get(assetId);
 		if (pin === undefined) {
@@ -177,7 +183,7 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 			throw new ImageLoadFailure(
 				error instanceof Error ? error.message : 'The image could not be loaded.',
 				'acquire',
-				httpStatusOf(error)
+				httpStatusOf(error),
 			);
 		}
 		signal.throwIfAborted();
@@ -190,7 +196,7 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 		} catch (error) {
 			throw new ImageLoadFailure(
 				error instanceof Error ? error.message : 'The image cannot be decoded.',
-				'decode'
+				'decode',
 			);
 		}
 		const digest = `sha256-${await imageSha256(content.bytes)}`;
@@ -212,7 +218,7 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 				if (signal.aborted || disposed || !isCurrent()) throw error;
 				throw new ImageLoadFailure(
 					error instanceof Error ? error.message : 'The raw image cannot be decoded.',
-					'decode'
+					'decode',
 				);
 			}
 			if (signal.aborted) {
@@ -240,7 +246,7 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 				if (signal.aborted || disposed || !isCurrent()) throw error;
 				throw new ImageLoadFailure(
 					error instanceof Error ? error.message : 'The image cannot be decoded.',
-					'decode'
+					'decode',
 				);
 			}
 			if (disposed || !isCurrent()) {
@@ -255,7 +261,11 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 		}
 	}
 
-	async function loadCatalogue(uri: string, raw = false, signal?: AbortSignal): Promise<ThreeTexture> {
+	async function loadCatalogue(
+		uri: string,
+		raw = false,
+		signal?: AbortSignal,
+	): Promise<ThreeTexture> {
 		if (raw) {
 			// A raw map cannot silently fall back to the colour-managed loader: that
 			// would turn a normal/roughness map into display-referred sRGB bytes.
@@ -269,14 +279,14 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 				if (signal?.aborted || disposed) throw error;
 				throw new ImageLoadFailure(
 					error instanceof Error ? error.message : 'The material map is unreachable.',
-					'acquire'
+					'acquire',
 				);
 			}
 			if (!response.ok) {
 				throw new ImageLoadFailure(
 					`Could not load raw material map (${response.status}).`,
 					'acquire',
-					response.status
+					response.status,
 				);
 			}
 			const blob = await response.blob();
@@ -289,7 +299,7 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 				if (signal?.aborted || disposed || isImageLoadFailure(error)) throw error;
 				throw new ImageLoadFailure(
 					error instanceof Error ? error.message : 'The material map cannot be decoded.',
-					'decode'
+					'decode',
 				);
 			}
 			if (signal?.aborted) {
@@ -312,7 +322,7 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 			if (signal?.aborted || disposed) throw error;
 			throw new ImageLoadFailure(
 				error instanceof Error ? error.message : 'The material image could not load.',
-				'acquire'
+				'acquire',
 			);
 		}
 		if (disposed) {
@@ -333,8 +343,7 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 			// change, disposal) advances this generation and invalidates them.
 			const generation = generations.get(uri) ?? 0;
 			const assetId = PROJECT_ASSET_URI.exec(uri)?.[1] ?? null;
-			const raw =
-				options?.policy === 'raw' || (options === undefined && slot !== 'map');
+			const raw = options?.policy === 'raw' || (options === undefined && slot !== 'map');
 			// A caller's cancellation releases only its interest; the texture store
 			// aborts the shared read when its last waiter leaves. The scope's own
 			// abort also ends this load on teardown.
@@ -348,11 +357,11 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 					assetId === null
 						? await loadCatalogue(uri, raw, loadController.signal)
 						: await loadProjectImage(
-							assetId,
-							() => (generations.get(uri) ?? 0) === generation,
-							raw,
-							loadController.signal
-						);
+								assetId,
+								() => (generations.get(uri) ?? 0) === generation,
+								raw,
+								loadController.signal,
+							);
 				if (disposed || (generations.get(uri) ?? 0) !== generation) {
 					// The store has not taken ownership yet, so nothing else closes the bitmap.
 					retainDecodedImage(texture);
@@ -425,7 +434,7 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 			dimensions.clear();
 			prepared.clear();
 			preparedPins.clear();
-		}
+		},
 	};
 	return scope;
 }

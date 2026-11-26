@@ -1,9 +1,27 @@
 import { type LayoutVec2 } from '@portfolio/layout-core/geometry';
 import { type SceneEntity } from '../../scene';
-import { finalize, cloneEntityWithId, note, cleanupClusters, fromFinalization } from './finalization';
+import {
+	finalize,
+	cloneEntityWithId,
+	note,
+	cleanupClusters,
+	fromFinalization,
+} from './finalization';
 import { unsupportedTransform, invalid, refusal } from './refusals';
-import { resolveSupport, readContactMinY, upright, entityScale, restSupport, readObject } from './support';
-import { type SceneOperationResult, type SceneOperationContext, DUPLICATE_OFFSET_METERS, SCENE_NAME_LIMIT } from './types';
+import {
+	resolveSupport,
+	readContactMinY,
+	upright,
+	entityScale,
+	restSupport,
+	readObject,
+} from './support';
+import {
+	type SceneOperationResult,
+	type SceneOperationContext,
+	DUPLICATE_OFFSET_METERS,
+	SCENE_NAME_LIMIT,
+} from './types';
 import { finalizeSceneCandidate, sameSceneValues } from '../record-scope';
 import { type SceneSupportChoice } from '../support';
 import { type CameraFreeSceneDocument as SceneDocument } from '../../units/types';
@@ -19,14 +37,18 @@ export function planSetName(input: {
 }): SceneOperationResult {
 	const entity = input.context.scene.entities.find((candidate) => candidate.id === input.entityId);
 	if (entity === undefined) {
-		return refusal('missing-target', `No Scene entity "${input.entityId}" exists in the accepted source.`, [
-			input.entityId
-		]);
+		return refusal(
+			'missing-target',
+			`No Scene entity "${input.entityId}" exists in the accepted source.`,
+			[input.entityId],
+		);
 	}
 	const name = typeof input.name === 'string' ? input.name.trim() : '';
 	if (name.length === 0) return invalid('A name can’t be empty.', ['name']);
-	if (name.length > SCENE_NAME_LIMIT) return invalid(`A name can have at most ${SCENE_NAME_LIMIT} characters.`, ['name']);
-	if (name === entity.name) return refusal('no_op', `Entity "${input.entityId}" is already named "${name}".`, ['name']);
+	if (name.length > SCENE_NAME_LIMIT)
+		return invalid(`A name can have at most ${SCENE_NAME_LIMIT} characters.`, ['name']);
+	if (name === entity.name)
+		return refusal('no_op', `Entity "${input.entityId}" is already named "${name}".`, ['name']);
 	return finalize({
 		context: input.context,
 		operationKind: 'set-name',
@@ -37,9 +59,9 @@ export function planSetName(input: {
 			changedEntityFields: ['name'],
 			createdEntityIds: [],
 			removedEntityIds: [],
-			allowClusterCleanup: false
+			allowClusterCleanup: false,
 		},
-		correspondence: [{ relation: 'preserved', entityId: entity.id }]
+		correspondence: [{ relation: 'preserved', entityId: entity.id }],
 	});
 }
 
@@ -62,17 +84,17 @@ export function planDuplicateOne(input: {
 	if (scene.entities.some((entity) => entity.id === input.newEntityId)) {
 		return invalid(
 			`Captured duplicate id "${input.newEntityId}" is already used by the accepted source; it is never renamed.`,
-			['newEntityId', 'duplicate-entity-id']
+			['newEntityId', 'duplicate-entity-id'],
 		);
 	}
 	const cluster = (scene.clusters ?? []).find((candidate) =>
-		candidate.memberIds.includes(input.entityId)
+		candidate.memberIds.includes(input.entityId),
 	);
 	if (cluster !== undefined) {
 		return refusal(
 			'unsupported-set',
 			`Entity "${input.entityId}" belongs to cluster "${cluster.id}". Duplicating a cluster member would silently change grouping; set duplication is not supported in this phase.`,
-			[cluster.id]
+			[cluster.id],
 		);
 	}
 
@@ -80,9 +102,14 @@ export function planDuplicateOne(input: {
 	if (rest.kind !== 'resolved') return rest;
 	const point: LayoutVec2 = [
 		target.entity.position[0] + DUPLICATE_OFFSET_METERS,
-		target.entity.position[2] + DUPLICATE_OFFSET_METERS
+		target.entity.position[2] + DUPLICATE_OFFSET_METERS,
 	];
-	const support = resolveSupport(input.context, point, rest.lift > 0 ? null : rest.resting, input.choice);
+	const support = resolveSupport(
+		input.context,
+		point,
+		rest.lift > 0 ? null : rest.resting,
+		input.choice,
+	);
 	if (support.kind !== 'resolved') return support;
 
 	const duplicate: SceneEntity = {
@@ -90,8 +117,8 @@ export function planDuplicateOne(input: {
 		position: [
 			target.entity.position[0] + DUPLICATE_OFFSET_METERS,
 			target.entity.position[1],
-			target.entity.position[2] + DUPLICATE_OFFSET_METERS
-		]
+			target.entity.position[2] + DUPLICATE_OFFSET_METERS,
+		],
 	};
 	const after: SceneDocument = { ...scene, entities: [...scene.entities, duplicate] };
 	const finalized = finalizeSceneCandidate({
@@ -103,8 +130,8 @@ export function planDuplicateOne(input: {
 			changedEntityFields: [],
 			createdEntityIds: [input.newEntityId],
 			removedEntityIds: [],
-			allowClusterCleanup: false
-		}
+			allowClusterCleanup: false,
+		},
 	});
 	if (finalized.kind === 'rejected') return fromFinalization(finalized);
 
@@ -119,9 +146,12 @@ export function planDuplicateOne(input: {
 		worldPose: {
 			position: [...duplicate.position],
 			rotation: [...duplicate.rotation],
-			scale: entityScale(duplicate)
+			scale: entityScale(duplicate),
 		},
-		diagnostics: [note(`duplicate-of:${input.entityId}`), note(`offset-meters:${DUPLICATE_OFFSET_METERS}`)]
+		diagnostics: [
+			note(`duplicate-of:${input.entityId}`),
+			note(`offset-meters:${DUPLICATE_OFFSET_METERS}`),
+		],
 	};
 }
 
@@ -132,16 +162,18 @@ export function planDeleteOne(input: {
 	const scene = input.context.scene;
 	const target = scene.entities.find((entity) => entity.id === input.entityId);
 	if (target === undefined) {
-		return refusal('missing-target', `No Scene entity "${input.entityId}" exists in the accepted source.`, [
-			input.entityId
-		]);
+		return refusal(
+			'missing-target',
+			`No Scene entity "${input.entityId}" exists in the accepted source.`,
+			[input.entityId],
+		);
 	}
 	const entities = scene.entities.filter((entity) => entity.id !== input.entityId);
 	const clusters = cleanupClusters(scene.clusters, [input.entityId]);
 	const after: SceneDocument = {
 		...scene,
 		entities,
-		...(clusters === undefined ? { clusters: undefined } : { clusters })
+		...(clusters === undefined ? { clusters: undefined } : { clusters }),
 	};
 	if (clusters === undefined) delete after.clusters;
 	const finalized = finalizeSceneCandidate({
@@ -153,13 +185,14 @@ export function planDeleteOne(input: {
 			changedEntityFields: [],
 			createdEntityIds: [],
 			removedEntityIds: [input.entityId],
-			allowClusterCleanup: true
-		}
+			allowClusterCleanup: true,
+		},
 	});
 	const clustersChanged = !sameSceneValues(scene.clusters ?? [], clusters ?? []);
-	const fields = clusters === undefined || scene.clusters === undefined || !clustersChanged
-		? ['entities']
-		: ['entities', 'clusters'];
+	const fields =
+		clusters === undefined || scene.clusters === undefined || !clustersChanged
+			? ['entities']
+			: ['entities', 'clusters'];
 	if (finalized.kind === 'rejected') return fromFinalization(finalized);
 	return {
 		kind: 'candidate',
@@ -168,8 +201,10 @@ export function planDeleteOne(input: {
 		scene: finalized.scene,
 		fields,
 		correspondence: [{ relation: 'retired', entityId: input.entityId }],
-		diagnostics: (scene.clusters ?? []).some((cluster) => cluster.memberIds.includes(input.entityId))
+		diagnostics: (scene.clusters ?? []).some((cluster) =>
+			cluster.memberIds.includes(input.entityId),
+		)
 			? [note('cluster-membership-cleaned')]
-			: []
+			: [],
 	};
 }

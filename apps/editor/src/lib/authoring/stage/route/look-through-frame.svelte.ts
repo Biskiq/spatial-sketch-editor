@@ -17,7 +17,6 @@ function installLookThroughFrame(input: {
 	});
 }
 
-
 type LightFrame = RegionProps['viewport']['lookThrough'];
 
 export function createLookThroughFrame(input: {
@@ -43,20 +42,26 @@ export function createLookThroughFrame(input: {
 			onUpdate: (): void => void view.updateLookThrough(view.lookThroughConfirm() !== null),
 			onExit: view.exitLookThrough,
 			onCapture: (): void => void view.captureProvisional(),
-			onClearConfirm: view.clearLookThroughConfirm
+			onClearConfirm: view.clearLookThroughConfirm,
 		};
 	});
 	installLookThroughFrame({
 		frame: () => element,
 		viewSession: view.lookThroughSession,
 		lightSession: input.lightSession,
-		refresh: input.refresh
+		refresh: input.refresh,
 	});
 
 	return {
 		active: () => view.lookThroughActive() || input.lightActive(),
-		get props() { return props; },
-		get element() { return element; },
-		set element(value: HTMLElement | undefined) { element = value; }
+		get props() {
+			return props;
+		},
+		get element() {
+			return element;
+		},
+		set element(value: HTMLElement | undefined) {
+			element = value;
+		},
 	};
 }

@@ -7,7 +7,9 @@
  */
 import type { StageAdapterFactory } from '../stage/stage-adapter-host';
 
-const modules = import.meta.glob<{ createAdapter: StageAdapterFactory }>('./*.adapter.ts', { eager: true });
+const modules = import.meta.glob<{ createAdapter: StageAdapterFactory }>('./*.adapter.ts', {
+	eager: true,
+});
 export const stageAdapterFactories: readonly StageAdapterFactory[] = Object.keys(modules)
 	.sort()
 	.map((path) => modules[path]!.createAdapter);

@@ -1,6 +1,15 @@
 import { Euler, Vector3 } from 'three';
-import { getAssetById, normalizeAssetFootprintOutline, validateAssetFootprint } from '$lib/content/assets';
-import type { SceneDocument, SceneEntity, SceneFormEntity, ScenePrimitiveEntity } from '@portfolio/project-model/scene';
+import {
+	getAssetById,
+	normalizeAssetFootprintOutline,
+	validateAssetFootprint,
+} from '$lib/content/assets';
+import type {
+	SceneDocument,
+	SceneEntity,
+	SceneFormEntity,
+	ScenePrimitiveEntity,
+} from '@portfolio/project-model/scene';
 import { evaluateFormMesh } from '$lib/content/form-evaluation';
 import type { Asset } from '$lib/types/assets';
 import type { Vec3 } from '$lib/types/scene';
@@ -20,11 +29,7 @@ export type PlanSceneFootprint = {
 	presentation?: PlanSceneFootprintPresentation;
 };
 
-export type PlanSceneFootprintPresentation =
-	| 'passive'
-	| 'bridge-hover'
-	| 'active'
-	| 'selected';
+export type PlanSceneFootprintPresentation = 'passive' | 'bridge-hover' | 'active' | 'selected';
 
 export type PlanSceneProjection = {
 	footprints: readonly PlanSceneFootprint[];
@@ -40,7 +45,9 @@ export type PlanSceneFootprintOptions = {
 	 * in the catalogue, so its confirmed footprint is the only extent Plan can
 	 * draw — the same extent the renderer and the planner use.
 	 */
-	modelFootprintById?: (assetId: string) => { readonly width: number; readonly depth: number } | undefined;
+	modelFootprintById?: (
+		assetId: string,
+	) => { readonly width: number; readonly depth: number } | undefined;
 	/** Resolves session-aware scale; document scalar remains the fallback. */
 	getEffectiveScale?: (entity: SceneEntity) => PlanSceneEffectiveScale | undefined;
 	/** UI-only presentation; geometry/eligibility stays independent of it. */
@@ -60,7 +67,7 @@ export function buildPlanSceneFootprintProjection(
 	// `SceneDocument` and the Camera-free Scene 2 unit share the entity records
 	// this projection reads; naming only that member keeps both callers exact.
 	document: Pick<SceneDocument, 'entities'>,
-	options: PlanSceneFootprintOptions = {}
+	options: PlanSceneFootprintOptions = {},
 ): PlanSceneProjection {
 	const assetById = options.assetById ?? getAssetById;
 	const footprints: PlanSceneFootprint[] = [];
@@ -79,8 +86,10 @@ export function buildPlanSceneFootprintProjection(
 				entityId: entity.id,
 				kind: 'form',
 				points: formPoints,
-				...(entity.rotation[0] !== 0 || entity.rotation[2] !== 0 ? { polygons: tiltedFormPolygons(entity) } : {}),
-				...(formPresentation ? { presentation: formPresentation } : {})
+				...(entity.rotation[0] !== 0 || entity.rotation[2] !== 0
+					? { polygons: tiltedFormPolygons(entity) }
+					: {}),
+				...(formPresentation ? { presentation: formPresentation } : {}),
 			});
 			continue;
 		}
@@ -97,7 +106,7 @@ export function buildPlanSceneFootprintProjection(
 			kind: entity.kind,
 			...(entity.kind === 'primitive' ? { primitive: entity.primitive } : {}),
 			points,
-			...(presentation ? { presentation } : {})
+			...(presentation ? { presentation } : {}),
 		});
 	}
 
@@ -116,19 +125,21 @@ export function buildPlanSceneFootprintProjection(
 const projections = new WeakMap<
 	object,
 	{
-		readonly modelFootprints: ReadonlyMap<string, { readonly width: number; readonly depth: number }> | undefined;
+		readonly modelFootprints:
+			| ReadonlyMap<string, { readonly width: number; readonly depth: number }>
+			| undefined;
 		readonly projection: PlanSceneProjection;
 	}
 >();
 
 export function planSceneFootprintsFor(
 	document: Pick<SceneDocument, 'entities'>,
-	modelFootprints?: ReadonlyMap<string, { readonly width: number; readonly depth: number }>
+	modelFootprints?: ReadonlyMap<string, { readonly width: number; readonly depth: number }>,
 ): PlanSceneProjection {
 	const cached = projections.get(document);
 	if (cached !== undefined && cached.modelFootprints === modelFootprints) return cached.projection;
 	const projection = buildPlanSceneFootprintProjection(document, {
-		modelFootprintById: (assetId) => modelFootprints?.get(assetId)
+		modelFootprintById: (assetId) => modelFootprints?.get(assetId),
 	});
 	projections.set(document, { modelFootprints, projection });
 	return projection;
@@ -141,20 +152,29 @@ function tiltedFormPolygons(entity: SceneFormEntity): LayoutVec2[][] {
 	const rotation = new Euler(...entity.rotation);
 	const positions: LayoutVec2[] = [];
 	for (let i = 0; i < mesh.positions.length; i += 3) {
-		const point = new Vector3(mesh.positions[i], mesh.positions[i + 1], mesh.positions[i + 2]).applyEuler(rotation);
+		const point = new Vector3(
+			mesh.positions[i],
+			mesh.positions[i + 1],
+			mesh.positions[i + 2],
+		).applyEuler(rotation);
 		positions.push([point.x + entity.position[0], point.z + entity.position[2]]);
 	}
 	const polygons: LayoutVec2[][] = [];
-	for (let i = 0; i < mesh.indices.length; i += 3) polygons.push([
-		positions[mesh.indices[i]!]!, positions[mesh.indices[i + 1]!]!, positions[mesh.indices[i + 2]!]!
-	]);
+	for (let i = 0; i < mesh.indices.length; i += 3)
+		polygons.push([
+			positions[mesh.indices[i]!]!,
+			positions[mesh.indices[i + 1]!]!,
+			positions[mesh.indices[i + 2]!]!,
+		]);
 	return polygons;
 }
 
 function footprintForEntity(
 	entity: SceneEntity,
 	assetById: (assetId: string) => Pick<Asset, 'placementSurface' | 'footprint'> | undefined,
-	modelFootprintById?: (assetId: string) => { readonly width: number; readonly depth: number } | undefined
+	modelFootprintById?: (
+		assetId: string,
+	) => { readonly width: number; readonly depth: number } | undefined,
 ): readonly [number, number][] | null {
 	if (entity.kind === 'model') {
 		// An approved creator model has no catalogue entry; its footprint is the
@@ -166,7 +186,8 @@ function footprintForEntity(
 				: null;
 		}
 		const asset = assetById(entity.assetId);
-		if (!asset || asset.placementSurface !== 'floor' || validateAssetFootprint(asset.footprint)) return null;
+		if (!asset || asset.placementSurface !== 'floor' || validateAssetFootprint(asset.footprint))
+			return null;
 		return normalizeAssetFootprintOutline(asset.footprint!);
 	}
 	if (entity.kind !== 'primitive') return null;
@@ -204,7 +225,11 @@ function projectFormFootprint(entity: SceneFormEntity): LayoutVec2[] | null {
 	const cos = Math.cos(entity.rotation[1]);
 	const sin = Math.sin(entity.rotation[1]);
 	return mesh.footprint.map(
-		([x, z]) => [entity.position[0] + x * cos + z * sin, entity.position[2] - x * sin + z * cos] as LayoutVec2
+		([x, z]) =>
+			[
+				entity.position[0] + x * cos + z * sin,
+				entity.position[2] - x * sin + z * cos,
+			] as LayoutVec2,
 	);
 }
 
@@ -219,7 +244,7 @@ function rectangle(width: number, depth: number): readonly [number, number][] {
 		[-halfWidth, -halfDepth],
 		[halfWidth, -halfDepth],
 		[halfWidth, halfDepth],
-		[-halfWidth, halfDepth]
+		[-halfWidth, halfDepth],
 	];
 }
 
@@ -232,13 +257,16 @@ function ellipse(radiusX: number, radiusZ: number): readonly [number, number][] 
 
 function resolveScale(
 	entity: SceneEntity,
-	effective: PlanSceneEffectiveScale | undefined
+	effective: PlanSceneEffectiveScale | undefined,
 ): Vec3 | null {
 	const value = effective ?? entity.scale ?? 1;
 	if (typeof value === 'number') {
 		return Number.isFinite(value) && value > 0 ? [value, value, value] : null;
 	}
-	if (value.length !== 3 || value.some((component) => !Number.isFinite(component) || component <= 0)) {
+	if (
+		value.length !== 3 ||
+		value.some((component) => !Number.isFinite(component) || component <= 0)
+	) {
 		return null;
 	}
 	return [value[0], value[1], value[2]];
@@ -247,7 +275,7 @@ function resolveScale(
 function projectFootprint(
 	entity: SceneEntity,
 	outline: readonly [number, number][],
-	scale: Vec3
+	scale: Vec3,
 ): LayoutVec2[] | null {
 	if (
 		entity.position.length !== 3 ||

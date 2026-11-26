@@ -1,5 +1,19 @@
-import type { ExecutionProgram, ProgramInvocation, ProgramPresentation, ProgramStop } from '../../../program/types';
-import type { ExperienceEffect, ExperienceEvent, ExperienceInterpreterOptions, ExperiencePanel, ExperienceReduceResult, ExperienceRunPhase, ExperienceRunState, ExperienceVisit } from './contracts';
+import type {
+	ExecutionProgram,
+	ProgramInvocation,
+	ProgramPresentation,
+	ProgramStop,
+} from '../../../program/types';
+import type {
+	ExperienceEffect,
+	ExperienceEvent,
+	ExperienceInterpreterOptions,
+	ExperiencePanel,
+	ExperienceReduceResult,
+	ExperienceRunPhase,
+	ExperienceRunState,
+	ExperienceVisit,
+} from './contracts';
 import { EXPERIENCE_RESUME_LEAD_IN_MS } from './contracts';
 import { accepted, applyLifecycle, ignored } from './lifecycle';
 import { createExperienceRun, reduceExperience } from './reduce';
@@ -7,11 +21,14 @@ import { createExperienceRun, reduceExperience } from './reduce';
 /** A small imperative wrapper over the pure reducer. */
 export function createExperienceInterpreter(
 	program: ExecutionProgram,
-	options: ExperienceInterpreterOptions
+	options: ExperienceInterpreterOptions,
 ) {
 	let current = createExperienceRun(program, options);
 	const run = <K extends ExperienceEvent['kind']>(kind: K) =>
-		({ kind, runId: current.runId, runEpoch: current.runEpoch }) as Extract<ExperienceEvent, { kind: K }>;
+		({ kind, runId: current.runId, runEpoch: current.runEpoch }) as Extract<
+			ExperienceEvent,
+			{ kind: K }
+		>;
 	return {
 		program,
 		state: (): ExperienceRunState => current,
@@ -27,7 +44,7 @@ export function createExperienceInterpreter(
 			return this.dispatch({
 				...run('enter-presentation'),
 				presentationId,
-				...(viewId === undefined ? {} : { viewId })
+				...(viewId === undefined ? {} : { viewId }),
 			});
 		},
 		exploreView(viewId: string): ExperienceReduceResult {
@@ -53,54 +70,59 @@ export function createExperienceInterpreter(
 		},
 		navigate(stopId: string): ExperienceReduceResult {
 			return this.dispatch({ ...run('navigate'), stopId });
-		}
+		},
 	};
 }
-
 
 export function sameRun(state: ExperienceRunState, event: ExperienceEvent): boolean {
 	return state.runId === event.runId && state.runEpoch === event.runEpoch;
 }
 
-
 function stopById(program: ExecutionProgram, stopId: string): ProgramStop | undefined {
 	return program.stops.find((stop) => stop.id === stopId);
 }
 
-
-function presentationById(program: ExecutionProgram, presentationId: string | null): ProgramPresentation | undefined {
-	return presentationId === null ? undefined : program.presentations.find((entry) => entry.id === presentationId);
+function presentationById(
+	program: ExecutionProgram,
+	presentationId: string | null,
+): ProgramPresentation | undefined {
+	return presentationId === null
+		? undefined
+		: program.presentations.find((entry) => entry.id === presentationId);
 }
-
 
 function fullPanel(presentation: ProgramPresentation): ExperiencePanel {
 	return {
 		presentationId: presentation.id,
 		title: presentation.label,
-		content: presentation.content.map((record) => ({ id: record.id, text: record.text }))
+		content: presentation.content.map((record) => ({ id: record.id, text: record.text })),
 	};
 }
-
 
 function stayMs(stop: ProgramStop): number | null {
 	return stop.staySeconds === null ? null : Math.round(stop.staySeconds * 1000);
 }
 
-
 export function enter(
 	program: ExecutionProgram,
 	state: ExperienceRunState,
-	options: ExperienceInterpreterOptions
+	options: ExperienceInterpreterOptions,
 ): ExperienceReduceResult {
 	if (state.entered) return accepted(state, []);
 	if (program.entryStopId === null) {
 		return {
 			state: { ...state, entered: true, resume: null, phase: 'completed', lastEvent: 'enter' },
 			outcome: 'accepted',
-			effects: [{ kind: 'completed' }]
+			effects: [{ kind: 'completed' }],
 		};
 	}
-	const entered: ExperienceRunState = { ...state, entered: true, resume: null, paused: false, lastEvent: 'enter' };
+	const entered: ExperienceRunState = {
+		...state,
+		entered: true,
+		resume: null,
+		paused: false,
+		lastEvent: 'enter',
+	};
 	const effects: ExperienceEffect[] = [];
 	// An `enter` cancellation can have no occurrence to continue from yet; only the
 	// arrival lifecycle may request a continuation.
@@ -110,7 +132,6 @@ export function enter(
 	}
 	return arrive(program, actioned.state, program.entryStopId, options, effects);
 }
-
 
 /**
  * Explore one Presentation. This is the interpreter's Presentation-entry event,
@@ -126,11 +147,14 @@ export function enterPresentation(
 	program: ExecutionProgram,
 	state: ExperienceRunState,
 	presentationId: string,
-	viewId: string | undefined
+	viewId: string | undefined,
 ): ExperienceReduceResult {
 	const presentation = presentationById(program, presentationId);
 	if (presentation === undefined) return ignored(state);
-	const startViewId = viewId !== undefined && presentation.viewIds.includes(viewId) ? viewId : presentation.viewIds[0]!;
+	const startViewId =
+		viewId !== undefined && presentation.viewIds.includes(viewId)
+			? viewId
+			: presentation.viewIds[0]!;
 	let resume = state.resume;
 	if (state.stopId !== null && state.occurrenceId !== null) {
 		const stop = stopById(program, state.stopId)!;
@@ -138,10 +162,14 @@ export function enterPresentation(
 		resume = {
 			stopId: state.stopId,
 			occurrenceId: state.occurrenceId,
-			viewId: landed ? stop.entryViewId : state.viewId ?? stop.entryViewId,
-			holdRemainingMs: landed ? stayMs(stop) : state.phase === 'holding' ? state.holdRemainingMs : null,
+			viewId: landed ? stop.entryViewId : (state.viewId ?? stop.entryViewId),
+			holdRemainingMs: landed
+				? stayMs(stop)
+				: state.phase === 'holding'
+					? state.holdRemainingMs
+					: null,
 			paused: state.paused,
-			returnToStopId: state.returnToStopId
+			returnToStopId: state.returnToStopId,
 		};
 	}
 	const panel = fullPanel(presentation);
@@ -163,15 +191,14 @@ export function enterPresentation(
 		invocation,
 		invocationFromViewId: null,
 		returnToStopId: null,
-		lastEvent: 'arrival'
+		lastEvent: 'arrival',
 	};
 	return accepted(next, [
 		{ kind: 'camera', stopId: null, invocation },
 		{ kind: 'panel', panel },
-		{ kind: 'ready', stopId: null }
+		{ kind: 'ready', stopId: null },
 	]);
 }
-
 
 /**
  * Step to one View of the explored Presentation. A neighbour plays the
@@ -179,20 +206,25 @@ export function enterPresentation(
  * any other pick is a Cut, because Experience never routes through the Camera
  * graph. Steps add no Guide time.
  */
-export function exploreView(program: ExecutionProgram, state: ExperienceRunState, viewId: string): ExperienceReduceResult {
+export function exploreView(
+	program: ExecutionProgram,
+	state: ExperienceRunState,
+	viewId: string,
+): ExperienceReduceResult {
 	if (state.stopId !== null) return ignored(state);
 	const presentation = presentationById(program, state.presentationId);
 	if (presentation === undefined || state.viewId === null) return ignored(state);
 	const to = presentation.viewIds.indexOf(viewId);
 	const from = presentation.viewIds.indexOf(state.viewId);
 	if (to === -1 || to === from) return ignored(state);
-	const step = from === -1
-		? null
-		: to === from + 1
-			? presentation.steps[from]
-			: to === from - 1
-				? presentation.steps[to]
-				: null;
+	const step =
+		from === -1
+			? null
+			: to === from + 1
+				? presentation.steps[from]
+				: to === from - 1
+					? presentation.steps[to]
+					: null;
 	const invocation: ProgramInvocation = step?.kind === 'travel' ? step : { kind: 'cut', viewId };
 	return accepted(
 		{
@@ -200,14 +232,16 @@ export function exploreView(program: ExecutionProgram, state: ExperienceRunState
 			viewId,
 			viewIndex: to,
 			invocation,
-			invocationFromViewId: invocation.kind === 'travel' ? state.viewId : null
+			invocationFromViewId: invocation.kind === 'travel' ? state.viewId : null,
 		},
-		[{ kind: 'camera', stopId: null, invocation }]
+		[{ kind: 'camera', stopId: null, invocation }],
 	);
 }
 
-
-export function arrivalEvent(program: ExecutionProgram, state: ExperienceRunState): ExperienceReduceResult {
+export function arrivalEvent(
+	program: ExecutionProgram,
+	state: ExperienceRunState,
+): ExperienceReduceResult {
 	if (state.stopId === null) return ignored(state);
 	// The arrival Travel completed: the stay starts now, never during the Travel.
 	if (state.phase === 'traveling') {
@@ -220,9 +254,12 @@ export function arrivalEvent(program: ExecutionProgram, state: ExperienceRunStat
 	return accepted({ ...state, lastEvent: 'arrival' }, []);
 }
 
-
 /** Start the stay (Automatic) or the wait for Next (Manual) of an arrived Stop. */
-function beginStay(state: ExperienceRunState, stop: ProgramStop, effects: ExperienceEffect[]): ExperienceRunState {
+function beginStay(
+	state: ExperienceRunState,
+	stop: ProgramStop,
+	effects: ExperienceEffect[],
+): ExperienceRunState {
 	const milliseconds = stayMs(stop);
 	if (milliseconds === null) {
 		effects.push({ kind: 'ready', stopId: stop.id });
@@ -231,7 +268,6 @@ function beginStay(state: ExperienceRunState, stop: ProgramStop, effects: Experi
 	effects.push({ kind: 'hold', stopId: stop.id, milliseconds });
 	return { ...state, phase: 'holding', holdRemainingMs: milliseconds };
 }
-
 
 /**
  * Resolve the invocation for the actual approach. A transition table entry wins;
@@ -244,8 +280,10 @@ function invocationFor(
 	state: ExperienceRunState,
 	stopId: string,
 	stop: ProgramStop,
-	options: ExperienceInterpreterOptions
-): { readonly kind: 'resolved'; readonly invocation: ProgramInvocation } | { readonly kind: 'gap'; readonly message: string } {
+	options: ExperienceInterpreterOptions,
+):
+	| { readonly kind: 'resolved'; readonly invocation: ProgramInvocation }
+	| { readonly kind: 'gap'; readonly message: string } {
 	const predecessor = state.stopId;
 	if (predecessor === null) {
 		return { kind: 'resolved', invocation: { kind: 'cut', viewId: stop.entryViewId } };
@@ -253,7 +291,7 @@ function invocationFor(
 	const exit = stopById(program, predecessor)?.entryViewId;
 	const fromExit = exit === state.viewId;
 	const transition = (options.transitions ?? []).find(
-		(entry) => entry.fromStopId === predecessor && entry.toStopId === stopId
+		(entry) => entry.fromStopId === predecessor && entry.toStopId === stopId,
 	);
 	if (transition !== undefined) {
 		if (transition.invocation.kind !== 'travel' || fromExit) {
@@ -263,14 +301,14 @@ function invocationFor(
 	}
 	const index = program.stops.findIndex((entry) => entry.id === stopId);
 	const authoredPredecessor = index > 0 ? program.stops[index - 1]!.id : null;
-	if (authoredPredecessor === predecessor && fromExit) return { kind: 'resolved', invocation: stop.invocation };
+	if (authoredPredecessor === predecessor && fromExit)
+		return { kind: 'resolved', invocation: stop.invocation };
 	if (stop.invocation.kind === 'cut') return { kind: 'resolved', invocation: stop.invocation };
 	return {
 		kind: 'gap',
-		message: `arriving at Stop "${stopId}" from "${predecessor}" has no resolved Camera transition; its bound Travel starts from "${authoredPredecessor ?? 'the entry'}"`
+		message: `arriving at Stop "${stopId}" from "${predecessor}" has no resolved Camera transition; its bound Travel starts from "${authoredPredecessor ?? 'the entry'}"`,
 	};
 }
-
 
 /**
  * Arrive at a Stop occurrence: a fresh occurrence identity, the Presentation's
@@ -285,37 +323,54 @@ function arrive(
 	effects: ExperienceEffect[],
 	appendVisit = true,
 	depth = 0,
-	continueDepth = 0
+	continueDepth = 0,
 ): ExperienceReduceResult {
 	if (depth > 8) {
 		return {
 			state,
 			outcome: 'ignored',
-			effects: [...effects, {
-				kind: 'gap',
-				fromStopId: state.stopId,
-				toStopId: stopId,
-				message: 'the arrival lifecycle redirects too many times'
-			}]
+			effects: [
+				...effects,
+				{
+					kind: 'gap',
+					fromStopId: state.stopId,
+					toStopId: stopId,
+					message: 'the arrival lifecycle redirects too many times',
+				},
+			],
 		};
 	}
 	const stop = stopById(program, stopId);
 	if (stop === undefined) {
-		return { state, outcome: 'ignored', effects: [...effects, {
-			kind: 'gap',
-			fromStopId: state.stopId,
-			toStopId: stopId,
-			message: `the program carries no Stop "${stopId}"`
-		}] };
+		return {
+			state,
+			outcome: 'ignored',
+			effects: [
+				...effects,
+				{
+					kind: 'gap',
+					fromStopId: state.stopId,
+					toStopId: stopId,
+					message: `the program carries no Stop "${stopId}"`,
+				},
+			],
+		};
 	}
 	const presentation = presentationById(program, stop.presentationId);
 	if (presentation === undefined) {
-		return { state, outcome: 'ignored', effects: [...effects, {
-			kind: 'gap',
-			fromStopId: state.stopId,
-			toStopId: stopId,
-			message: `Stop "${stopId}" names no Presentation`
-		}] };
+		return {
+			state,
+			outcome: 'ignored',
+			effects: [
+				...effects,
+				{
+					kind: 'gap',
+					fromStopId: state.stopId,
+					toStopId: stopId,
+					message: `Stop "${stopId}" names no Presentation`,
+				},
+			],
+		};
 	}
 	// The invocation must be valid for the approach this run actually made. A
 	// Travel bound to another predecessor is a typed gap: the run does not arrive
@@ -325,38 +380,42 @@ function arrive(
 		return {
 			state,
 			outcome: 'ignored',
-			effects: [...effects, {
-				kind: 'gap',
-				fromStopId: state.stopId,
-				toStopId: stopId,
-				message: resolvedInvocation.message
-			}]
+			effects: [
+				...effects,
+				{
+					kind: 'gap',
+					fromStopId: state.stopId,
+					toStopId: stopId,
+					message: resolvedInvocation.message,
+				},
+			],
 		};
 	}
 	const invocation = resolvedInvocation.invocation;
 	const visit: ExperienceVisit = {
 		stopId,
 		occurrenceId: `${state.runId}:${stopId}:${state.visited.length + 1}`,
-		index: state.visited.length + 1
+		index: state.visited.length + 1,
 	};
 	// A `show-content` selected before this arrival (an `enter` lifecycle action, or
 	// an arrival action that ran before the panel existed) narrows the panel to the
 	// selected records. The selection is consumed once, here, so a later Stop shows
 	// its own full Presentation.
-	const matchedSelection = state.pendingContent.length === 0
-		? presentation.content
-		: presentation.content.filter((record) => state.pendingContent.includes(record.id));
+	const matchedSelection =
+		state.pendingContent.length === 0
+			? presentation.content
+			: presentation.content.filter((record) => state.pendingContent.includes(record.id));
 	// A selection that names only another Presentation's content must not blank the
 	// panel: the arrival shows its own full Presentation and reports the foreign id
 	// as a gap below. A partially matching selection still narrows as declared.
 	const selected = matchedSelection.length === 0 ? presentation.content : matchedSelection;
 	const outsideSelection = state.pendingContent.filter(
-		(contentId) => !presentation.content.some((record) => record.id === contentId)
+		(contentId) => !presentation.content.some((record) => record.id === contentId),
 	);
 	const panel: ExperiencePanel = {
 		presentationId: presentation.id,
 		title: presentation.label,
-		content: selected.map((record) => ({ id: record.id, text: record.text }))
+		content: selected.map((record) => ({ id: record.id, text: record.text })),
 	};
 	const base: ExperienceRunState = {
 		...state,
@@ -372,28 +431,37 @@ function arrive(
 		invocationFromViewId: invocation.kind === 'travel' ? state.viewId : null,
 		holdRemainingMs: null,
 		phase: 'ready',
-		lastEvent: 'arrival'
+		lastEvent: 'arrival',
 	};
 	const nextEffects: ExperienceEffect[] = [
 		...effects,
 		{ kind: 'camera', stopId, invocation },
-		{ kind: 'panel', panel }
+		{ kind: 'panel', panel },
 	];
 	for (const contentId of outsideSelection) {
 		nextEffects.push({
 			kind: 'gap',
 			fromStopId: state.stopId,
 			toStopId: stopId,
-			message: `show-content selected "${contentId}", which Presentation "${presentation.id}" does not carry`
+			message: `show-content selected "${contentId}", which Presentation "${presentation.id}" does not carry`,
 		});
 	}
 	const actioned = applyLifecycle(program, base, 'arrival', nextEffects);
 	if (actioned.navigateTo !== null && actioned.navigateTo !== stopId) {
-		return arrive(program, actioned.state, actioned.navigateTo, options, nextEffects, true, depth + 1);
+		return arrive(
+			program,
+			actioned.state,
+			actioned.navigateTo,
+			options,
+			nextEffects,
+			true,
+			depth + 1,
+		);
 	}
-	const result = invocation.kind === 'travel'
-		? { ...actioned.state, phase: 'traveling' as const }
-		: beginStay(actioned.state, stop, nextEffects);
+	const result =
+		invocation.kind === 'travel'
+			? { ...actioned.state, phase: 'traveling' as const }
+			: beginStay(actioned.state, stop, nextEffects);
 	// A lifecycle `continue` resolves the occurrence exactly once, and only when the
 	// occurrence is waiting: a stay is time, so it is not skipped by the action.
 	if (actioned.continueRequested && result.phase === 'ready') {
@@ -401,7 +469,6 @@ function arrive(
 	}
 	return { state: result, outcome: 'accepted', effects: nextEffects };
 }
-
 
 /**
  * Advance the Guide clock. Ticks are ignored while paused or exploring. A tick
@@ -413,7 +480,7 @@ export function tick(
 	program: ExecutionProgram,
 	state: ExperienceRunState,
 	milliseconds: number,
-	options: ExperienceInterpreterOptions
+	options: ExperienceInterpreterOptions,
 ): ExperienceReduceResult {
 	if (!Number.isInteger(milliseconds) || milliseconds < 0) return ignored(state);
 	if (state.paused || state.resume !== null) return ignored(state);
@@ -435,13 +502,19 @@ export function tick(
 	return accepted(next, effects);
 }
 
-
-export function setPaused(program: ExecutionProgram, state: ExperienceRunState, paused: boolean): ExperienceReduceResult {
-	if (paused && ((program.pacing !== 'automatic' && state.phase !== 'traveling') || state.stopId === null)) return ignored(state);
+export function setPaused(
+	program: ExecutionProgram,
+	state: ExperienceRunState,
+	paused: boolean,
+): ExperienceReduceResult {
+	if (
+		paused &&
+		((program.pacing !== 'automatic' && state.phase !== 'traveling') || state.stopId === null)
+	)
+		return ignored(state);
 	if (state.paused === paused) return ignored(state);
 	return accepted({ ...state, paused }, []);
 }
-
 
 /**
  * Next. It is always available at a Stop: during an arrival Travel it lands now
@@ -452,7 +525,7 @@ export function setPaused(program: ExecutionProgram, state: ExperienceRunState, 
 export function continueRun(
 	program: ExecutionProgram,
 	state: ExperienceRunState,
-	options: ExperienceInterpreterOptions
+	options: ExperienceInterpreterOptions,
 ): ExperienceReduceResult {
 	if (state.stopId === null) return ignored(state);
 	const current = state.paused ? { ...state, paused: false } : state;
@@ -463,15 +536,16 @@ export function continueRun(
 		effects.push({ kind: 'camera', stopId: stop.id, invocation });
 		return accepted(
 			beginStay({ ...current, invocation, invocationFromViewId: null }, stop, effects),
-			effects
+			effects,
 		);
 	}
 	const advanced = advance(program, current, options, effects);
 	// A paused run that pressed Next still plays on, even when the advance had
 	// nowhere to go.
-	return advanced.outcome === 'ignored' && current !== state ? accepted(current, advanced.effects) : advanced;
+	return advanced.outcome === 'ignored' && current !== state
+		? accepted(current, advanced.effects)
+		: advanced;
 }
-
 
 /** Resolve the occurrence's continuation once, by occurrence identity. */
 function advance(
@@ -479,19 +553,22 @@ function advance(
 	state: ExperienceRunState,
 	options: ExperienceInterpreterOptions,
 	effects: ExperienceEffect[],
-	continueDepth = 0
+	continueDepth = 0,
 ): ExperienceReduceResult {
 	if (state.stopId === null) return ignored(state);
 	if (continueDepth > 8) {
 		return {
 			state,
 			outcome: 'ignored',
-			effects: [...effects, {
-				kind: 'gap',
-				fromStopId: state.stopId,
-				toStopId: state.stopId,
-				message: 'the arrival lifecycle continues too many times'
-			}]
+			effects: [
+				...effects,
+				{
+					kind: 'gap',
+					fromStopId: state.stopId,
+					toStopId: state.stopId,
+					message: 'the arrival lifecycle continues too many times',
+				},
+			],
 		};
 	}
 	const stop = stopById(program, state.stopId);
@@ -512,7 +589,16 @@ function advance(
 		return finish(program, state, 'complete', options, effects);
 	}
 	if (continuation.kind === 'stop') {
-		return arrive(program, { ...state, returnToStopId: null }, continuation.stopId, options, effects, true, 0, continueDepth + 1);
+		return arrive(
+			program,
+			{ ...state, returnToStopId: null },
+			continuation.stopId,
+			options,
+			effects,
+			true,
+			0,
+			continueDepth + 1,
+		);
 	}
 	const index = program.stops.findIndex((entry) => entry.id === state.stopId);
 	const next = index >= 0 ? program.stops[index + 1] : undefined;
@@ -522,7 +608,6 @@ function advance(
 	return arrive(program, state, next.id, options, effects, true, 0, continueDepth + 1);
 }
 
-
 /**
  * Back to the tour: restore the suspended occurrence as a Cut to its View. It is
  * the same occurrence — no new visit, and arrival lifecycle actions do not run
@@ -530,16 +615,21 @@ function advance(
  * the stay remained, the playhead steps back to leave the lead-in (never longer
  * than the stay itself); the Guide gets no longer.
  */
-export function resumeGuide(program: ExecutionProgram, state: ExperienceRunState): ExperienceReduceResult {
+export function resumeGuide(
+	program: ExecutionProgram,
+	state: ExperienceRunState,
+): ExperienceReduceResult {
 	const suspended = state.resume;
 	if (suspended === null) return ignored(state);
 	const stop = stopById(program, suspended.stopId);
-	const presentation = stop === undefined ? undefined : presentationById(program, stop.presentationId);
+	const presentation =
+		stop === undefined ? undefined : presentationById(program, stop.presentationId);
 	if (stop === undefined || presentation === undefined) return ignored(state);
 	const stay = stayMs(stop);
-	const holdRemainingMs = suspended.holdRemainingMs === null || stay === null
-		? null
-		: Math.max(suspended.holdRemainingMs, Math.min(EXPERIENCE_RESUME_LEAD_IN_MS, stay));
+	const holdRemainingMs =
+		suspended.holdRemainingMs === null || stay === null
+			? null
+			: Math.max(suspended.holdRemainingMs, Math.min(EXPERIENCE_RESUME_LEAD_IN_MS, stay));
 	const invocation: ProgramInvocation = { kind: 'cut', viewId: suspended.viewId };
 	const panel = fullPanel(presentation);
 	const next: ExperienceRunState = {
@@ -558,66 +648,65 @@ export function resumeGuide(program: ExecutionProgram, state: ExperienceRunState
 		invocation,
 		invocationFromViewId: null,
 		returnToStopId: suspended.returnToStopId,
-		lastEvent: 'arrival'
+		lastEvent: 'arrival',
 	};
 	return accepted(next, [
 		{ kind: 'camera', stopId: stop.id, invocation },
 		{ kind: 'panel', panel },
 		holdRemainingMs === null
 			? { kind: 'ready', stopId: stop.id }
-			: { kind: 'hold', stopId: stop.id, milliseconds: holdRemainingMs }
+			: { kind: 'hold', stopId: stop.id, milliseconds: holdRemainingMs },
 	]);
 }
-
 
 export function navigate(
 	program: ExecutionProgram,
 	state: ExperienceRunState,
 	stopId: string,
-	options: ExperienceInterpreterOptions
+	options: ExperienceInterpreterOptions,
 ): ExperienceReduceResult {
 	if (stopById(program, stopId) === undefined) return ignored(state);
 	if (state.phase === 'completed' || state.phase === 'cancelled') return ignored(state);
 	// A detour inside an excursion would overwrite the outer return obligation and
 	// strand the run at the inner origin. The outer excursion wins: navigate to the
-// target but keep the obligation that is already owed.
+	// target but keep the obligation that is already owed.
 	if (state.returnToStopId !== null) {
 		return arrive(program, { ...state, resume: null }, stopId, options, []);
 	}
 	const detour = (options.detours ?? []).find(
-		(entry) => entry.fromStopId === state.stopId && entry.toStopId === stopId
+		(entry) => entry.fromStopId === state.stopId && entry.toStopId === stopId,
 	);
-	const next: ExperienceRunState = detour === undefined
-		? { ...state, returnToStopId: null, resume: null }
-		: { ...state, returnToStopId: detour.returnToStopId, resume: null };
+	const next: ExperienceRunState =
+		detour === undefined
+			? { ...state, returnToStopId: null, resume: null }
+			: { ...state, returnToStopId: detour.returnToStopId, resume: null };
 	return arrive(program, next, stopId, options, []);
 }
-
 
 export function setState(
 	program: ExecutionProgram,
 	state: ExperienceRunState,
 	stateId: string,
-	value: string | boolean
+	value: string | boolean,
 ): ExperienceReduceResult {
 	const declaration = program.state.find((entry) => entry.id === stateId);
 	if (declaration === undefined) return ignored(state);
-	const valid = declaration.type === 'boolean'
-		? typeof value === 'boolean'
-		: typeof value === 'string' && declaration.values.includes(value);
+	const valid =
+		declaration.type === 'boolean'
+			? typeof value === 'boolean'
+			: typeof value === 'string' && declaration.values.includes(value);
 	if (!valid) return ignored(state);
 	return {
 		state: { ...state, values: { ...state.values, [stateId]: value } },
 		outcome: 'accepted',
-		effects: []
+		effects: [],
 	};
 }
-
 
 export function resetRun(
 	program: ExecutionProgram,
 	state: ExperienceRunState,
-	options: ExperienceInterpreterOptions
+	options: ExperienceInterpreterOptions,
 ): ExperienceReduceResult {
 	const values: Record<string, string | boolean> = {};
 	for (const declaration of program.state) values[declaration.id] = declaration.reset;
@@ -641,27 +730,27 @@ export function resetRun(
 		invocationFromViewId: null,
 		returnToStopId: null,
 		resume: null,
-		lastEvent: null
+		lastEvent: null,
 	};
 	return enter(program, reset, options);
 }
-
 
 export function finish(
 	program: ExecutionProgram,
 	state: ExperienceRunState,
 	event: 'complete' | 'cancel',
 	_options: ExperienceInterpreterOptions,
-	effects: ExperienceEffect[] = []
+	effects: ExperienceEffect[] = [],
 ): ExperienceReduceResult {
 	// Defence in depth for any internal caller: an ended run never runs another
 	// lifecycle list. The dispatcher already rejects terminal runs.
 	if (state.phase === 'completed' || state.phase === 'cancelled') return ignored(state);
 	const actioned = applyLifecycle(program, state, event, effects);
 	const phase: ExperienceRunPhase = event === 'complete' ? 'completed' : 'cancelled';
-	const values = event === 'cancel'
-		? Object.fromEntries(program.state.map((declaration) => [declaration.id, declaration.reset]))
-		: actioned.state.values;
+	const values =
+		event === 'cancel'
+			? Object.fromEntries(program.state.map((declaration) => [declaration.id, declaration.reset]))
+			: actioned.state.values;
 	// A `navigate-to` in a complete/cancel lifecycle is deliberately not followed:
 	// the run has ended, so the declared navigation has no occurrence to reach. The
 	// obligation is cleared with the run instead of leaving a stale redirect.
@@ -673,9 +762,9 @@ export function finish(
 			holdRemainingMs: null,
 			returnToStopId: null,
 			resume: null,
-			pendingContent: []
+			pendingContent: [],
 		},
 		outcome: 'accepted',
-		effects: event === 'complete' ? [...effects, { kind: 'completed' }] : effects
+		effects: event === 'complete' ? [...effects, { kind: 'completed' }] : effects,
 	};
 }

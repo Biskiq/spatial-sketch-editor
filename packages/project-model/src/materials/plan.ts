@@ -10,12 +10,12 @@
  * Two rules are load-bearing:
  *
  * - **Origin is a signal of the mapping, not a second flag.** A `target` or
- *   `surface` mapping samples the repository's established TextureLoader rows
- *   (`1−v`); an explicit glTF `uv` mapping samples the authored rows (`v`).
- *   Mixing the two is what an asymmetric checker catches.
+ *  `surface` mapping samples the repository's established TextureLoader rows
+ *  (`1−v`); an explicit glTF `uv` mapping samples the authored rows (`v`).
+ *  Mixing the two is what an asymmetric checker catches.
  * - **One plan is one canonical key.** Sorting by role and encoding every field
- *   makes the key a function of meaning, so two equal plans share one material
- *   and a changed component or convention cannot reuse one.
+ *  makes the key a function of meaning, so two equal plans share one material
+ *  and a changed component or convention cannot reuse one.
  */
 import type { Hash, LocalImage, MapRole, SamplingEntry } from './types';
 
@@ -26,9 +26,9 @@ export const FINISH_SAMPLING_PLAN_VERSION = 1 as const;
  * Where the image's rows start.
  *
  * - `legacy`: the repository's established TextureLoader upload convention, so
- *   the sample boundary reads row `1−v`.
+ *  the sample boundary reads row `1−v`.
  * - `gltf`: an explicit glTF UV binding, whose origin is the upper-left, so the
- *   sample boundary reads row `v`.
+ *  sample boundary reads row `v`.
  */
 export type FinishPlanOrigin = 'legacy' | 'gltf';
 
@@ -92,9 +92,9 @@ export function finishSamplingPlanKey(plan: FinishSamplingPlan): string {
 					pairText(entry.offset),
 					entry.convention ?? '-',
 					entry.component ?? '-',
-					entry.invert === true ? '1' : '0'
-				].join(':')
-			)
+					entry.invert === true ? '1' : '0',
+				].join(':'),
+			),
 	].join('|');
 }
 
@@ -116,13 +116,13 @@ export function finishSamplingPlan(bound: {
 				offset: [sample.offset[0], sample.offset[1]],
 				...(sample.convention === undefined ? {} : { convention: sample.convention }),
 				...(sample.component === undefined ? {} : { component: sample.component }),
-				...(sample.invert === undefined ? {} : { invert: sample.invert })
-			})
+				...(sample.invert === undefined ? {} : { invert: sample.invert }),
+			}),
 		);
 	return Object.freeze({
 		profile: 'pbr-metallic-roughness/v1',
 		version: FINISH_SAMPLING_PLAN_VERSION,
-		entries: Object.freeze(entries)
+		entries: Object.freeze(entries),
 	});
 }
 

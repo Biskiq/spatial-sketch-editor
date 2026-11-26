@@ -13,17 +13,17 @@
  *
  * - input key order and whitespace never change the identity;
  * - the exclusion list and the admitted-surface set are sorted, because they
- *   are sets of reasons rather than ordered data;
+ *  are sets of reasons rather than ordered data;
  * - the footprint point order is **kept** — polygon winding and vertex order
- *   are meaningful geometry, not incidental key order;
+ *  are meaningful geometry, not incidental key order;
  * - the renderer's normalization identity participates, so two definitions that
- *   differ only in the source correction are distinct.
+ *  differ only in the source correction are distinct.
  */
 import { sha256Bytes } from '../package-sha';
 import type {
 	NativeObjectCreationDefaults,
 	NormalizedPlacementDefinition,
-	ObjectCreationDefaults
+	ObjectCreationDefaults,
 } from './types';
 
 /** The definition without its own identity: exactly what the identity covers. */
@@ -38,8 +38,11 @@ export function canonicalDefinitionMetadata(facts: DefinitionMetadataFacts): str
 			uprightOnly: facts.admission.uprightOnly,
 			provenance: canonicalProvenance(facts.admission.provenance),
 			exclusions: [...facts.admission.exclusions]
-				.sort((left, right) => compareText(left.code, right.code) || compareText(left.reason, right.reason))
-				.map((exclusion) => ({ code: exclusion.code, reason: exclusion.reason }))
+				.sort(
+					(left, right) =>
+						compareText(left.code, right.code) || compareText(left.reason, right.reason),
+				)
+				.map((exclusion) => ({ code: exclusion.code, reason: exclusion.reason })),
 		},
 		footprintMeters: facts.footprintMeters.map(([x, z]) => [x, z]),
 		contactMinY: facts.contactMinY,
@@ -48,8 +51,8 @@ export function canonicalDefinitionMetadata(facts: DefinitionMetadataFacts): str
 			defaultScale: facts.renderNormalization.defaultScale,
 			...(facts.renderNormalization.defaultRotation === undefined
 				? {}
-				: { defaultRotation: [...facts.renderNormalization.defaultRotation] })
-		}
+				: { defaultRotation: [...facts.renderNormalization.defaultRotation] }),
+		},
 	});
 }
 
@@ -57,7 +60,9 @@ export async function definitionMetadataContentId(facts: DefinitionMetadataFacts
 	return sha256Bytes(new TextEncoder().encode(canonicalDefinitionMetadata(facts)));
 }
 
-function canonicalProvenance(provenance: DefinitionMetadataFacts['admission']['provenance']): unknown {
+function canonicalProvenance(
+	provenance: DefinitionMetadataFacts['admission']['provenance'],
+): unknown {
 	return provenance.kind === 'analytical'
 		? { kind: 'analytical', detail: provenance.detail }
 		: { kind: 'verified-model', verificationId: provenance.verificationId };
@@ -73,7 +78,7 @@ function canonicalCreationDefaults(defaults: ObjectCreationDefaults): unknown {
 			materialId: defaults.materialId,
 			materialInstanceId: defaults.materialInstanceId ?? null,
 			castShadow: defaults.castShadow,
-			receiveShadow: defaults.receiveShadow
+			receiveShadow: defaults.receiveShadow,
 		};
 	}
 	return {
@@ -81,7 +86,7 @@ function canonicalCreationDefaults(defaults: ObjectCreationDefaults): unknown {
 		name: defaults.name,
 		assetId: defaults.assetId,
 		fallback: defaults.fallback,
-		materialInstanceId: defaults.materialInstanceId ?? null
+		materialInstanceId: defaults.materialInstanceId ?? null,
 	};
 }
 
@@ -91,7 +96,7 @@ function canonicalDimensions(defaults: NativeObjectCreationDefaults): unknown {
 			return {
 				width: defaults.dimensions.width,
 				height: defaults.dimensions.height,
-				depth: defaults.dimensions.depth
+				depth: defaults.dimensions.depth,
 			};
 		case 'cylinder':
 			return { radius: defaults.dimensions.radius, height: defaults.dimensions.height };

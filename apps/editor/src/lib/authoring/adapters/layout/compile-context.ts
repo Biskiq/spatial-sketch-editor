@@ -9,23 +9,31 @@
  * It is the only module in the Layout adapter that reaches the compiler:
  *
  * - `plan` binds this project's incremental session for one synchronous planner
- *   step, seeded from the accepted baseline, so the precision planners' candidate
- *   compiles reuse every unchanged entity;
+ *  step, seeded from the accepted baseline, so the precision planners' candidate
+ *  compiles reuse every unchanged entity;
  * - `compiled` is the canonical session-less read (the record of a frozen
- *   document, or one compile) used by candidate presentation; a planner step's
- *   own last compile is handed over once for that exact document object, and the
- *   context keeps one identity-keyed entry of the last document it compiled, so a
- *   new Plan evaluation of an unchanged candidate (a bounded-span pan) reads that
- *   geometry instead of compiling it again. That entry is released when the task
- *   ends or its binding is disposed, so a gesture's whole-candidate compile is
- *   never retained for the rest of the project.
+ *  document, or one compile) used by candidate presentation; a planner step's
+ *  own last compile is handed over once for that exact document object, and the
+ *  context keeps one identity-keyed entry of the last document it compiled, so a
+ *  new Plan evaluation of an unchanged candidate (a bounded-span pan) reads that
+ *  geometry instead of compiling it again. That entry is released when the task
+ *  ends or its binding is disposed, so a gesture's whole-candidate compile is
+ *  never retained for the rest of the project.
  *
  * It is a cache, never decision state: a cold run of either is equal by the
  * session's construction proof. After `dispose`, `plan` runs its body with no
  * session bound and the store stays empty, so a late planner step of a closed
  * project cannot hold that project's units.
  */
-import { compileWallFirstLayoutGeometry, compileWallFirstLayoutGeometryFresh, createLayoutCompileSession, withLayoutCompileSession, type CompiledLayoutGeometry, type CompiledLayoutGeometryResult, type LayoutCompileSession } from '@portfolio/layout-core/geometry';
+import {
+	compileWallFirstLayoutGeometry,
+	compileWallFirstLayoutGeometryFresh,
+	createLayoutCompileSession,
+	withLayoutCompileSession,
+	type CompiledLayoutGeometry,
+	type CompiledLayoutGeometryResult,
+	type LayoutCompileSession,
+} from '@portfolio/layout-core/geometry';
 import type { LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 import type { DomainPlanner } from '@portfolio/project-model/f4';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
@@ -56,7 +64,8 @@ export function createLayoutCompileContext(): LayoutCompileContext {
 	 * same frame (Opening Repeat) reads the planner's own compile of that exact
 	 * object instead of compiling it a second time.
 	 */
-	let handover: { document: LayoutDocumentWallFirst; result: CompiledLayoutGeometryResult } | null = null;
+	let handover: { document: LayoutDocumentWallFirst; result: CompiledLayoutGeometryResult } | null =
+		null;
 	/**
 	 * The last document this context compiled, and that compile.
 	 *
@@ -72,14 +81,17 @@ export function createLayoutCompileContext(): LayoutCompileContext {
 	 * moment it is compiled. Production callers pass planner-produced candidates
 	 * and accepted documents, both replaced rather than edited.
 	 */
-	let lastCompiled: { document: LayoutDocumentWallFirst; result: CompiledLayoutGeometryResult } | null = null;
+	let lastCompiled: {
+		document: LayoutDocumentWallFirst;
+		result: CompiledLayoutGeometryResult;
+	} | null = null;
 	const bound: LayoutCompileSession = {
 		...session,
 		compile(document, sampling) {
 			const result = session.compile(document, sampling);
 			handover = sampling === undefined ? { document, result } : null;
 			return result;
-		}
+		},
 	};
 	return {
 		plan(accepted, body) {
@@ -117,7 +129,7 @@ export function createLayoutCompileContext(): LayoutCompileContext {
 			handover = null;
 			lastCompiled = null;
 			session.reset();
-		}
+		},
 	};
 }
 
@@ -131,7 +143,7 @@ export function createLayoutCompileContext(): LayoutCompileContext {
  * (E4); callers receive only compiled geometry.
  */
 export function compileLayoutGeometryNow(
-	document: LayoutDocumentWallFirst
+	document: LayoutDocumentWallFirst,
 ): CompiledLayoutGeometry {
 	return compileWallFirstLayoutGeometryFresh(document).geometry;
 }
@@ -139,11 +151,14 @@ export function compileLayoutGeometryNow(
 /** The same planner with each `prepare` run through `context.plan`. */
 export function plannerInContext(
 	context: LayoutCompileContext,
-	planner: DomainPlanner<ProjectEnvelope>
+	planner: DomainPlanner<ProjectEnvelope>,
 ): DomainPlanner<ProjectEnvelope> {
 	return {
 		...planner,
-		prepare: (request) => context.plan(request.snapshot.domain.source.units.layout.data, () => planner.prepare(request))
+		prepare: (request) =>
+			context.plan(request.snapshot.domain.source.units.layout.data, () =>
+				planner.prepare(request),
+			),
 	};
 }
 

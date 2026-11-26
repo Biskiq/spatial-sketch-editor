@@ -61,7 +61,7 @@ function meters(
 	id: PlanNumericFieldId,
 	label: string,
 	domain: PlanNumericDomain,
-	decimals = 2
+	decimals = 2,
 ): PlanNumericField {
 	return { id, label, unit: 'length', domain, decimals };
 }
@@ -86,7 +86,11 @@ export function planNumericFieldAxis(field: PlanNumericField): 'x' | 'y' | 'z' |
 }
 
 /** A degree-valued field. Angles are the only signed numeric §7 displays. */
-function degrees(id: PlanNumericFieldId, label: string, domain: PlanNumericDomain = 'signed'): PlanNumericField {
+function degrees(
+	id: PlanNumericFieldId,
+	label: string,
+	domain: PlanNumericDomain = 'signed',
+): PlanNumericField {
 	return { id, label, unit: 'angle', domain, decimals: 1 };
 }
 
@@ -138,9 +142,18 @@ export const PLAN_NUMERIC_FIELD_SETS = {
 	'wall-chain': [meters('length', 'Length', 'positive'), degrees('angle', 'Angle')],
 	'wall-edit': [meters('length', 'Length', 'positive'), degrees('angle', 'Angle')],
 	rectangle: [meters('width', 'Width', 'positive'), meters('depth', 'Depth', 'positive')],
-	'opening-insert': [meters('width', 'Width', 'positive'), meters('offset', 'Offset', 'nonnegative')],
-	'opening-slide': [meters('offset', 'Offset', 'nonnegative'), meters('width', 'Width', 'positive')],
-	'opening-resize': [meters('width', 'Width', 'positive'), meters('offset', 'Offset', 'nonnegative')],
+	'opening-insert': [
+		meters('width', 'Width', 'positive'),
+		meters('offset', 'Offset', 'nonnegative'),
+	],
+	'opening-slide': [
+		meters('offset', 'Offset', 'nonnegative'),
+		meters('width', 'Width', 'positive'),
+	],
+	'opening-resize': [
+		meters('width', 'Width', 'positive'),
+		meters('offset', 'Offset', 'nonnegative'),
+	],
 	'wall-move': [meters('dx', 'ΔX', 'signed'), meters('dz', 'ΔZ', 'signed')],
 	'wall-normal': [meters('distance', 'Distance', 'signed')],
 	height: [meters('height', 'Height', 'positive')],
@@ -150,8 +163,8 @@ export const PLAN_NUMERIC_FIELD_SETS = {
 	'object-transform': [
 		meters('width', 'Width', 'positive'),
 		meters('depth', 'Depth', 'positive'),
-		degrees('yaw', 'Rotation')
-	]
+		degrees('yaw', 'Rotation'),
+	],
 } as const satisfies Record<PlanNumericHost, readonly PlanNumericField[]>;
 
 /** The applicable fields for a host, in Tab order. */
@@ -211,7 +224,7 @@ const PLAN_NUMERIC_DIMENSION_TARGETS: readonly {
 	// `selected-opening:` with a suffix, and matching the shorter prefix first
 	// would open the editor on the wrong number of the same Opening.
 	{ prefix: 'selected-opening-offset:', host: 'opening-resize', fieldId: 'offset' },
-	{ prefix: 'selected-opening:', host: 'opening-resize', fieldId: 'width' }
+	{ prefix: 'selected-opening:', host: 'opening-resize', fieldId: 'width' },
 ];
 
 /**
@@ -220,7 +233,9 @@ const PLAN_NUMERIC_DIMENSION_TARGETS: readonly {
  * offered an editor, so a Room's identity label or an arc length never acquires
  * an affordance it cannot honour.
  */
-export function planNumericDimensionEntryTarget(dimensionKey: string): PlanNumericEntryTarget | null {
+export function planNumericDimensionEntryTarget(
+	dimensionKey: string,
+): PlanNumericEntryTarget | null {
 	for (const target of PLAN_NUMERIC_DIMENSION_TARGETS) {
 		if (!dimensionKey.startsWith(target.prefix)) continue;
 		const ownerId = dimensionKey.slice(target.prefix.length);
@@ -263,19 +278,21 @@ export function planNumericRestingEntryTarget(measure: {
  * rather than opened onto a second solver — the same "absence is the
  * enforcement" rule the field sets keep. `null` is that answer.
  */
-const PLAN_NUMERIC_CONTROL_TARGETS: Readonly<Record<string, { host: PlanNumericHost; fieldId: PlanNumericFieldId }>> = {
+const PLAN_NUMERIC_CONTROL_TARGETS: Readonly<
+	Record<string, { host: PlanNumericHost; fieldId: PlanNumericFieldId }>
+> = {
 	// §7: "Junction move … Coordinates on focused handle".
 	junction: { host: 'junction', fieldId: 'x' },
 	// §7: "Opening insert / slide | Width; offset on focus" and "Opening resize |
 	// Width" — the width edge is the handle §7 grants the width to.
 	'opening-edge': { host: 'opening-resize', fieldId: 'width' },
 	// The paired body grip is the offset's own handle (§7: "offset on focus").
-	'opening-slide': { host: 'opening-slide', fieldId: 'offset' }
+	'opening-slide': { host: 'opening-slide', fieldId: 'offset' },
 };
 
 export function planNumericControlEntryTarget(
 	control: string,
-	ownerId: string
+	ownerId: string,
 ): PlanNumericEntryTarget | null {
 	const target = PLAN_NUMERIC_CONTROL_TARGETS[control];
 	if (!target || !ownerId) return null;
@@ -309,7 +326,7 @@ export function planNumericControlEntryTarget(
  */
 export function planNumericEntryOpen(
 	target: PlanNumericEntryTarget,
-	candidates: PlanNumericCandidates = {}
+	candidates: PlanNumericCandidates = {},
 ): PlanNumericEntryState {
 	const fields = planNumericFields(target.host);
 	const found = fields.findIndex((field) => field.id === target.fieldId);
@@ -327,7 +344,7 @@ export function planNumericEntryOpen(
 		dragActive: false,
 		pointerUpConsumed: false,
 		submitted: false,
-		invalidReason: text === '' ? 'blank' : null
+		invalidReason: text === '' ? 'blank' : null,
 	};
 }
 
@@ -349,11 +366,11 @@ export type PlanNumericInvalidReason =
 	| 'not-positive';
 
 export type PlanNumericParse =
-	{ ok: true; value: number }
+	| { ok: true; value: number }
 	| { ok: false; reason: PlanNumericInvalidReason };
 
 /**
- * A numeric literal, and nothing else. `Number()` alone would accept `0x10`,
+ * A numeric literal, and nothing else. `Number` alone would accept `0x10`,
  * `Infinity` and `1e999`, which is a command language §7 explicitly does not
  * want; the exponent form stays because it is a numeric literal, not an
  * expression.
@@ -362,8 +379,19 @@ const PLAN_NUMERIC_LITERAL = /^[+-]?(\d+(\.\d*)?|\.\d+)(e[+-]?\d+)?$/i;
 
 /** Accepted spellings per unit, longest first so `cm` cannot be read as `m`. */
 const PLAN_NUMERIC_UNIT_TOKENS: Record<PlanNumericUnit, readonly string[]> = {
-	length: ['cm', 'centimetre', 'centimetres', 'centimeter', 'centimeters', 'm', 'metre', 'metres', 'meter', 'meters'],
-	angle: ['deg', 'degs', 'degree', 'degrees', '°']
+	length: [
+		'cm',
+		'centimetre',
+		'centimetres',
+		'centimeter',
+		'centimeters',
+		'm',
+		'metre',
+		'metres',
+		'meter',
+		'meters',
+	],
+	angle: ['deg', 'degs', 'degree', 'degrees', '°'],
 };
 
 /** Values per meter for the ratified length suffixes (`m` is the default). */
@@ -393,14 +421,15 @@ export function parsePlanNumericText(text: string, field: PlanNumericField): Pla
 	let scale = 1;
 	if (suffix) {
 		const token = PLAN_NUMERIC_UNIT_TOKENS[field.unit].find(
-			(candidate) => candidate === suffix || (candidate.length > 1 && suffix.startsWith(candidate))
+			(candidate) => candidate === suffix || (candidate.length > 1 && suffix.startsWith(candidate)),
 		);
 		if (!token) return { ok: false, reason: 'unit-not-allowed' };
 		scale = PLAN_NUMERIC_METERS_PER[token] ?? 1;
 	}
 
 	if (!body || !PLAN_NUMERIC_LITERAL.test(body)) return { ok: false, reason: 'not-a-number' };
-	if (field.domain !== 'signed' && body.startsWith('-')) return { ok: false, reason: 'sign-not-allowed' };
+	if (field.domain !== 'signed' && body.startsWith('-'))
+		return { ok: false, reason: 'sign-not-allowed' };
 
 	const scaled = Number(body) * scale;
 	if (!Number.isFinite(scaled)) return { ok: false, reason: 'not-finite' };
@@ -413,7 +442,10 @@ export function parsePlanNumericText(text: string, field: PlanNumericField): Pla
  * established voice ("Exact value …") so the two numeric surfaces read as one
  * editor, and it always names the field's own constraint rather than a guess.
  */
-export function planNumericInvalidMessage(reason: PlanNumericInvalidReason, field: PlanNumericField): string {
+export function planNumericInvalidMessage(
+	reason: PlanNumericInvalidReason,
+	field: PlanNumericField,
+): string {
 	switch (reason) {
 		case 'blank':
 			return 'Exact value is blank';
@@ -431,7 +463,10 @@ export function planNumericInvalidMessage(reason: PlanNumericInvalidReason, fiel
 }
 
 /** The field's display text for a value; `null`/non-finite seeds an empty field. */
-export function planNumericFieldText(value: number | null | undefined, field: PlanNumericField): string {
+export function planNumericFieldText(
+	value: number | null | undefined,
+	field: PlanNumericField,
+): string {
 	if (value === null || value === undefined || !Number.isFinite(value)) return '';
 	// `-0` is a signed zero, not a negative measurement; showing `-0.00` would
 	// suggest a value the field never held.
@@ -450,7 +485,7 @@ export function planNumericFieldText(value: number | null | undefined, field: Pl
  */
 export function planNumericFieldReadout(
 	value: number | null | undefined,
-	field: PlanNumericField
+	field: PlanNumericField,
 ): string | null {
 	const text = planNumericFieldText(value, field);
 	if (!text) return null;
@@ -467,7 +502,7 @@ export function planNumericFieldReadout(
  */
 export function planNumericHostReadout(
 	host: PlanNumericHost,
-	candidates: PlanNumericCandidates
+	candidates: PlanNumericCandidates,
 ): string | null {
 	const parts: string[] = [];
 	for (const field of planNumericFields(host)) {
@@ -542,7 +577,7 @@ export type PlanNumericTriggerEvent = {
  */
 export function planNumericEntryTrigger(
 	event: PlanNumericTriggerEvent,
-	request: PlanNumericEntryRequest
+	request: PlanNumericEntryRequest,
 ): PlanNumericEntryState | null {
 	if (event.isComposing) return null;
 	if (event.metaKey || event.ctrlKey || event.altKey) return null;
@@ -572,7 +607,7 @@ export function planNumericEntryTrigger(
 		dragActive: request.dragActive === true,
 		pointerUpConsumed: false,
 		submitted: false,
-		invalidReason: seeded.ok ? null : seeded.reason
+		invalidReason: seeded.ok ? null : seeded.reason,
 	};
 }
 
@@ -636,8 +671,7 @@ function focusedText(state: PlanNumericEntryState, fieldIndex: number): string {
 function focusField(
 	state: PlanNumericEntryState,
 	fieldIndex: number,
-	overrides: { text?: string; invalidReason?: PlanNumericInvalidReason | null;
-	} = {}
+	overrides: { text?: string; invalidReason?: PlanNumericInvalidReason | null } = {},
 ): PlanNumericEntryState {
 	const text = overrides.text ?? focusedText(state, fieldIndex);
 	const field = state.fields[fieldIndex];
@@ -653,7 +687,7 @@ function focusField(
 					? null
 					: parsed.ok
 						? null
-						: parsed.reason
+						: parsed.reason,
 	};
 }
 
@@ -674,7 +708,7 @@ export type PlanNumericTabDirection = 'forward' | 'backward' | 1 | -1;
 export function planNumericEntryTab(
 	state: PlanNumericEntryState,
 	direction: PlanNumericTabDirection,
-	candidates: PlanNumericCandidates = {}
+	candidates: PlanNumericCandidates = {},
 ): PlanNumericEntryState {
 	const step = direction === 'forward' || direction === 1 ? 1 : -1;
 	const count = state.fields.length;
@@ -689,14 +723,20 @@ export function planNumericEntryTab(
  * keystrokes append. A field reached by Tab is untouched, so typing Z after Tab
  * must not silently turn the seeded `0` into `0.001`.
  */
-export function planNumericEntryKey(state: PlanNumericEntryState, key: string): PlanNumericEntryState {
+export function planNumericEntryKey(
+	state: PlanNumericEntryState,
+	key: string,
+): PlanNumericEntryState {
 	const field = planNumericEntryField(state);
 	const text = state.typed[field.id] === undefined ? key : `${state.text}${key}`;
 	return planNumericEntryInput(state, text);
 }
 
 /** Typing. Validation is continuous, but never a commit by itself. */
-export function planNumericEntryInput(state: PlanNumericEntryState, text: string): PlanNumericEntryState {
+export function planNumericEntryInput(
+	state: PlanNumericEntryState,
+	text: string,
+): PlanNumericEntryState {
 	const field = planNumericEntryField(state);
 	const parsed = parsePlanNumericText(text, field);
 	return {
@@ -705,7 +745,7 @@ export function planNumericEntryInput(state: PlanNumericEntryState, text: string
 		// Recorded even when refused: an invalid value is still the user's explicit
 		// text, and it has to be there to be corrected (never silently dropped).
 		typed: { ...state.typed, [field.id]: text },
-		invalidReason: parsed.ok ? null : parsed.reason
+		invalidReason: parsed.ok ? null : parsed.reason,
 	};
 }
 
@@ -721,7 +761,7 @@ export type PlanNumericSubmitOutcome =
 			kind: 'commit';
 			values: Partial<Record<PlanNumericFieldId, number>>;
 			state: PlanNumericEntryState;
-		}
+	  }
 	/**
 	 * Refused with a reason. The state focuses the field the reason is about, so the
 	 * refusal is shown beside the number that caused it rather than beside whatever
@@ -732,7 +772,7 @@ export type PlanNumericSubmitOutcome =
 			reason: PlanNumericInvalidReason;
 			field: PlanNumericField;
 			state: PlanNumericEntryState;
-		}
+	  }
 	/** This editor instance already submitted (key repeat, or a second Enter). */
 	| { kind: 'ignored'; state: PlanNumericEntryState };
 
@@ -752,8 +792,8 @@ export type PlanNumericSubmitOutcome =
 export function planNumericEntrySubmit(state: PlanNumericEntryState): PlanNumericSubmitOutcome {
 	if (state.submitted) return { kind: 'ignored', state };
 	const values: Partial<Record<PlanNumericFieldId, number>> = {};
-	let refused: { index: number; field: PlanNumericField; reason: PlanNumericInvalidReason;
-	} | null = null;
+	let refused: { index: number; field: PlanNumericField; reason: PlanNumericInvalidReason } | null =
+		null;
 	for (const [index, field] of state.fields.entries()) {
 		const text = state.typed[field.id];
 		if (text === undefined) continue;
@@ -767,7 +807,7 @@ export function planNumericEntrySubmit(state: PlanNumericEntryState): PlanNumeri
 			kind: 'refuse',
 			reason: refusal.reason,
 			field: refusal.field,
-			state: focusField(state, refusal.index, { invalidReason: refusal.reason })
+			state: focusField(state, refusal.index, { invalidReason: refusal.reason }),
 		};
 	}
 	return { kind: 'commit', values, state: { ...state, submitted: true, invalidReason: null } };
@@ -785,14 +825,18 @@ export function planNumericEntrySubmit(state: PlanNumericEntryState): PlanNumeri
  */
 export type PlanNumericEscapeAction = 'restore' | 'cancel-gesture';
 
-export function planNumericEntryEscape(state: PlanNumericEntryState | null): PlanNumericEscapeAction {
+export function planNumericEntryEscape(
+	state: PlanNumericEntryState | null,
+): PlanNumericEscapeAction {
 	return state ? 'restore' : 'cancel-gesture';
 }
 
 /** §7: "Blur never silently commits." The field closes and nothing is written. */
 export type PlanNumericBlurAction = 'discard';
 
-export function planNumericEntryBlur(state: PlanNumericEntryState | null): PlanNumericBlurAction | null {
+export function planNumericEntryBlur(
+	state: PlanNumericEntryState | null,
+): PlanNumericBlurAction | null {
 	return state ? 'discard' : null;
 }
 

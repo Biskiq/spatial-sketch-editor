@@ -58,11 +58,16 @@ export type ExperienceIndexGroups = {
 	/** Create and open an empty Experience under this name (Experience review 1: inline in the list). */
 	onCreateExperience(label?: string): Promise<boolean> | void;
 	/** The crumb's inline rename. An empty name refuses with its reason. */
-	onRenameExperience(label: string): Promise<{ readonly kind: 'accepted' | 'refused'; readonly message?: string }>;
+	onRenameExperience(
+		label: string,
+	): Promise<{ readonly kind: 'accepted' | 'refused'; readonly message?: string }>;
 	/** null = the "No Guide yet" row: open the empty Guide. */
 	onOpenGuide(guideId: string | null): void;
 	/** D-2: the Index Guide row renames in place and removes through its ⋯ menu. */
-	onRenameGuide(guideId: string, label: string): Promise<{ readonly kind: 'accepted' | 'refused'; readonly message?: string }>;
+	onRenameGuide(
+		guideId: string,
+		label: string,
+	): Promise<{ readonly kind: 'accepted' | 'refused'; readonly message?: string }>;
 	onRemoveGuide(guideId: string): void;
 	/** G23/D-9: a View row's ＋ Stop creates its Stop entering that View, and Tour if no Guide exists. */
 	onAddStopFromView(viewId: string, presentationId: string): void;

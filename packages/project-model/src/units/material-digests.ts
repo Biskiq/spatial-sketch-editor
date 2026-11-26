@@ -25,13 +25,13 @@ export type EnvelopeMaterialProofResult =
 
 /** Recompute every material definition digest in one envelope. */
 export async function verifyEnvelopeMaterialDigests(
-	envelope: ProjectEnvelope
+	envelope: ProjectEnvelope,
 ): Promise<EnvelopeMaterialProofResult> {
 	const definitions = envelope.units.resources.data.resources
 		.filter((resource) => resource.kind === 'material' && resource.material !== undefined)
 		.map((resource) => ({
 			hash: resource.id,
-			recipe: resource.material!.recipe
+			recipe: resource.material!.recipe,
 		}));
 	if (definitions.length === 0) {
 		const empty = await buildMaterialDigestProof([]);
@@ -53,7 +53,7 @@ export async function verifyEnvelopeMaterialDigests(
  */
 export function checkEnvelopeMaterialProof(
 	envelope: ProjectEnvelope,
-	proof: MaterialDigestProof
+	proof: MaterialDigestProof,
 ): readonly ShapeIssue[] {
 	const issues: ShapeIssue[] = [];
 	for (const resource of envelope.units.resources.data.resources) {
@@ -62,7 +62,7 @@ export function checkEnvelopeMaterialProof(
 			issues.push({
 				path: `$.units.resources.data.resources`,
 				code: 'unverified-material',
-				message: `material definition ${resource.id} has no matching canonical-byte proof`
+				message: `material definition ${resource.id} has no matching canonical-byte proof`,
 			});
 		}
 	}
@@ -70,11 +70,11 @@ export function checkEnvelopeMaterialProof(
 }
 
 function proofIssues(
-	issues: readonly { readonly path: string; readonly code: string; readonly action?: string }[]
+	issues: readonly { readonly path: string; readonly code: string; readonly action?: string }[],
 ): ShapeIssue[] {
 	return issues.map((issue) => ({
 		path: issue.path,
 		code: issue.code,
-		message: issue.action ?? issue.code
+		message: issue.action ?? issue.code,
 	}));
 }

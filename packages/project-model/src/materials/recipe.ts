@@ -35,7 +35,7 @@ export async function recipeHash(recipe: Recipe): Promise<Hash> {
 
 /** Read and hash one recipe in a single result. */
 export async function readRecipeWithHash(
-	input: unknown
+	input: unknown,
 ): Promise<
 	| { readonly success: true; readonly recipe: Recipe; readonly hash: Hash }
 	| Extract<RecipeReadResult, { readonly success: false }>
@@ -52,18 +52,18 @@ export async function readRecipeWithHash(
  */
 export function materialMetricRepeat(
 	surfaceMeters: readonly [number, number],
-	tileMeters: readonly [number, number]
+	tileMeters: readonly [number, number],
 ): [number, number] {
 	return [
 		Math.max(0.01, surfaceMeters[0] / Math.max(0.01, tileMeters[0])),
-		Math.max(0.01, surfaceMeters[1] / Math.max(0.01, tileMeters[1]))
+		Math.max(0.01, surfaceMeters[1] / Math.max(0.01, tileMeters[1])),
 	];
 }
 
 /** The effective mapping of one binding: its own, or the set mapping. */
 export function mappingOfBinding(
 	binding: { readonly mapping?: Mapping } | undefined,
-	setMapping: Mapping
+	setMapping: Mapping,
 ): Mapping | undefined {
 	if (binding === undefined) return undefined;
 	return binding.mapping ?? setMapping;

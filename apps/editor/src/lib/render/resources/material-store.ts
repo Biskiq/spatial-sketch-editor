@@ -37,7 +37,7 @@ import {
 	Vector2,
 	type Material,
 	type Plane,
-	type Texture
+	type Texture,
 } from 'three';
 import { reference } from 'three/tsl';
 import type { SliceClipMasks } from '$lib/render/clip/slice-clip-mask';
@@ -50,12 +50,12 @@ import {
 	type ImportedMaterialDescriptor,
 	type MaterialDescriptor,
 	type MaterialTextureSlotKey,
-	type MaterialTreatment
+	type MaterialTreatment,
 } from './material-descriptor';
 import {
 	createFinishMaterial,
 	missingFinishViews,
-	type FinishTextureViews
+	type FinishTextureViews,
 } from './finish-sampling';
 
 /**
@@ -118,7 +118,7 @@ export type MaterialStore = {
 		maps?: MaterialTextureMaps,
 		source?: Material,
 		/** The GPU views a sampled descriptor's plan names, by view key. */
-		views?: FinishTextureViews
+		views?: FinishTextureViews,
 	): MaterialLease;
 	/** The live instance for `descriptor`, or null. Takes no lease; for reads and tests. */
 	peek(descriptor: MaterialDescriptor): Material | null;
@@ -145,7 +145,7 @@ function viewSignature(views: FinishTextureViews | undefined): string {
 
 function boundMaps(
 	descriptor: MaterialDescriptor,
-	maps: MaterialTextureMaps | undefined
+	maps: MaterialTextureMaps | undefined,
 ): Partial<Record<MaterialTextureSlotKey, Texture>> | null {
 	const declared: Readonly<Partial<Record<MaterialTextureSlotKey, string>>> | undefined =
 		descriptor.kind === 'standard'
@@ -180,25 +180,26 @@ function constructImported(
 	descriptor: ImportedMaterialDescriptor,
 	maps: MaterialTextureMaps | undefined,
 	source: Material | undefined,
-	views: FinishTextureViews | undefined
+	views: FinishTextureViews | undefined,
 ): Material {
 	if (descriptor.remap !== undefined) {
 		return construct(
 			{ kind: 'standard', ...descriptor.remap, wireframe: descriptor.wireframe },
 			maps,
 			undefined,
-			views
+			views,
 		);
 	}
 	if (source === undefined) {
 		throw new Error(
-			`imported material ${descriptor.asset} mesh ${descriptor.mesh} slot ${descriptor.slot} needs its source material`
+			`imported material ${descriptor.asset} mesh ${descriptor.mesh} slot ${descriptor.slot} needs its source material`,
 		);
 	}
 	// The descriptor's wireframe always wins: an explicit false overrides a source
 	// whose own material draws wireframe, and the source is never mutated.
 	const clone = source.clone();
-	if ('wireframe' in clone) (clone as Material & { wireframe: boolean }).wireframe = descriptor.wireframe;
+	if ('wireframe' in clone)
+		(clone as Material & { wireframe: boolean }).wireframe = descriptor.wireframe;
 	return clone;
 }
 
@@ -233,7 +234,7 @@ const APPEARANCE_MAPS = [
 	'thicknessMap',
 	'iridescenceMap',
 	'iridescenceThicknessMap',
-	'anisotropyMap'
+	'anisotropyMap',
 ] as const;
 
 function tuneImported(material: Material, treatment: MaterialTreatment): boolean {
@@ -281,7 +282,7 @@ function construct(
 	descriptor: MaterialDescriptor,
 	maps: MaterialTextureMaps | undefined,
 	source?: Material,
-	views?: FinishTextureViews
+	views?: FinishTextureViews,
 ): Material {
 	if (descriptor.kind === 'imported') return constructImported(descriptor, maps, source, views);
 	const bound = boundMaps(descriptor, maps);
@@ -293,7 +294,7 @@ function construct(
 				const missing = missingFinishViews(descriptor, views);
 				if (missing.length > 0) {
 					throw new Error(
-						`material descriptor names finish view(s) without one: ${missing.join(', ')}`
+						`material descriptor names finish view(s) without one: ${missing.join(', ')}`,
 					);
 				}
 				if (views === undefined) {
@@ -303,11 +304,13 @@ function construct(
 			}
 			return new MeshStandardMaterial({
 				color: descriptor.color,
-				...(descriptor.polygonOffset ? {
-					polygonOffset: true,
-					polygonOffsetFactor: descriptor.polygonOffset[0],
-					polygonOffsetUnits: descriptor.polygonOffset[1]
-				} : {}),
+				...(descriptor.polygonOffset
+					? {
+							polygonOffset: true,
+							polygonOffsetFactor: descriptor.polygonOffset[0],
+							polygonOffsetUnits: descriptor.polygonOffset[1],
+						}
+					: {}),
 				roughness: descriptor.roughness,
 				metalness: descriptor.metalness,
 				// Three's own defaults for the rest: an unset emissive is black and
@@ -322,7 +325,7 @@ function construct(
 				...(descriptor.normalScale === undefined
 					? {}
 					: { normalScale: new Vector2(descriptor.normalScale[0], descriptor.normalScale[1]) }),
-				...(bound === null ? {} : bound)
+				...(bound === null ? {} : bound),
 			});
 		case 'basic':
 			return new MeshBasicMaterial({
@@ -330,7 +333,7 @@ function construct(
 				...(descriptor.wireframe === undefined ? {} : { wireframe: descriptor.wireframe }),
 				...(descriptor.toneMapped === undefined ? {} : { toneMapped: descriptor.toneMapped }),
 				...(descriptor.vertexColors === undefined ? {} : { vertexColors: descriptor.vertexColors }),
-				...(descriptor.depthWrite === undefined ? {} : { depthWrite: descriptor.depthWrite })
+				...(descriptor.depthWrite === undefined ? {} : { depthWrite: descriptor.depthWrite }),
 			});
 		case 'lambert': {
 			const material = new MeshLambertMaterial({
@@ -340,7 +343,7 @@ function construct(
 				...(descriptor.depthWrite === undefined ? {} : { depthWrite: descriptor.depthWrite }),
 				...(descriptor.vertexColors === undefined ? {} : { vertexColors: descriptor.vertexColors }),
 				...(descriptor.fog === false ? { fog: false } : {}),
-				...(bound === null ? {} : bound)
+				...(bound === null ? {} : bound),
 			});
 			if (descriptor.shadowAlpha !== undefined) {
 				// The shadow-pass mask reads the material's own map, exactly as r187's
@@ -360,13 +363,15 @@ function construct(
 			return new ShadowMaterial({
 				...(descriptor.opacity === undefined ? {} : { opacity: descriptor.opacity }),
 				...(descriptor.depthWrite === undefined ? {} : { depthWrite: descriptor.depthWrite }),
-				...(descriptor.polygonOffset === undefined ? {} : { polygonOffset: descriptor.polygonOffset }),
+				...(descriptor.polygonOffset === undefined
+					? {}
+					: { polygonOffset: descriptor.polygonOffset }),
 				...(descriptor.polygonOffsetFactor === undefined
 					? {}
 					: { polygonOffsetFactor: descriptor.polygonOffsetFactor }),
 				...(descriptor.polygonOffsetUnits === undefined
 					? {}
-					: { polygonOffsetUnits: descriptor.polygonOffsetUnits })
+					: { polygonOffsetUnits: descriptor.polygonOffsetUnits }),
 			});
 	}
 }
@@ -439,7 +444,7 @@ export function createMaterialStore(options: MaterialStoreOptions = {}): Materia
 					if (tuneImported(material, descriptor.treatment)) treated += 1;
 					else treatmentSkipped += 1;
 				}
-				// **After** any `source.clone()`: `Material.copy` clones each plane into a
+				// **After** any `source.clone`: `Material.copy` clones each plane into a
 				// new array, so a material cloned by the imported path would otherwise
 				// keep a detached copy that never follows the cut.
 				const clips = clipsWithStore(descriptor);
@@ -477,7 +482,7 @@ export function createMaterialStore(options: MaterialStoreOptions = {}): Materia
 					entries.delete(key);
 					held.material.dispose();
 					disposedCount += 1;
-				}
+				},
 			};
 		},
 
@@ -500,7 +505,7 @@ export function createMaterialStore(options: MaterialStoreOptions = {}): Materia
 				acquired,
 				treated,
 				treatmentSkipped,
-				sampled
+				sampled,
 			};
 		},
 
@@ -512,6 +517,6 @@ export function createMaterialStore(options: MaterialStoreOptions = {}): Materia
 				disposedCount += 1;
 			}
 			entries.clear();
-		}
+		},
 	};
 }

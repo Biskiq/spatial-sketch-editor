@@ -2,22 +2,17 @@ import secureSession from '@fastify/secure-session';
 import Fastify, {
 	type FastifyInstance,
 	type FastifyRequest,
-	type FastifyServerOptions
+	type FastifyServerOptions,
 } from 'fastify';
-
-
 
 import { sanitizeDatabaseError, type DatabasePool } from './database.js';
 
-
-
-
-
 import type { ObjectStore } from './object-store.js';
 
-
-
-import { resolveProjectLifecyclePolicy, type ProjectLifecyclePolicy } from './project-write-lease.js';
+import {
+	resolveProjectLifecyclePolicy,
+	type ProjectLifecyclePolicy,
+} from './project-write-lease.js';
 
 import type { TestAuthOptions } from './test-auth.js';
 import { errorBody } from './http.js';
@@ -29,9 +24,6 @@ import { registerModelRoutes } from './routes/models.js';
 import { registerProjectRoutes } from './routes/projects.js';
 import { registerPublicationRoutes } from './routes/publications.js';
 import { registerSaveRoutes } from './routes/saves.js';
-
-
-
 
 export type ApiAppOptions = {
 	pool: DatabasePool;
@@ -71,7 +63,7 @@ export function createApp({
 	testAuth,
 	projectLifecyclePolicy,
 	trustProxy,
-	logger = true
+	logger = true,
 }: ApiAppOptions): FastifyInstance {
 	const lifecyclePolicy = resolveProjectLifecyclePolicy(projectLifecyclePolicy);
 	const safeLogger =
@@ -85,7 +77,7 @@ export function createApp({
 	const expectedBrowserOrigin = editorOrigin ?? apiOrigin;
 	app.addContentTypeParser(
 		'application/octet-stream',
-		async (_request: FastifyRequest, payload: FastifyRequest['raw']) => payload
+		async (_request: FastifyRequest, payload: FastifyRequest['raw']) => payload,
 	);
 
 	if (sessionKey !== undefined) {
@@ -99,8 +91,8 @@ export function createApp({
 				httpOnly: true,
 				secure: true,
 				sameSite: 'lax',
-				maxAge: SESSION_EXPIRY_SECONDS
-			}
+				maxAge: SESSION_EXPIRY_SECONDS,
+			},
 		});
 	}
 
@@ -113,7 +105,9 @@ export function createApp({
 	app.addHook('onClose', async () => {
 		poolClose ??= Promise.resolve().then(() => pool.end());
 		if (objectStore?.close) {
-			objectStoreClose ??= Promise.resolve().then(() => objectStore.close?.()).then(() => undefined);
+			objectStoreClose ??= Promise.resolve()
+				.then(() => objectStore.close?.())
+				.then(() => undefined);
 		}
 		await Promise.all([poolClose, objectStoreClose]);
 	});
@@ -131,7 +125,7 @@ export function createApp({
 					// My Objects reads these headers to verify the item it listed.
 					.header(
 						'Access-Control-Expose-Headers',
-						'ETag, X-Library-Format-Version, X-Library-Kind'
+						'ETag, X-Library-Format-Version, X-Library-Kind',
 					);
 			}
 			if (request.method === 'OPTIONS') {
@@ -153,10 +147,7 @@ export function createApp({
 			await pool.query('SELECT 1');
 			return { status: 'ok' };
 		} catch (error) {
-			app.log.warn(
-				{ database: sanitizeDatabaseError(error) },
-				'Database readiness check failed'
-			);
+			app.log.warn({ database: sanitizeDatabaseError(error) }, 'Database readiness check failed');
 			return reply.code(503).send({ status: 'unavailable' });
 		}
 	});
@@ -170,10 +161,13 @@ export function createApp({
 			return reply.code(400).send(errorBody('invalid_json', 'Malformed JSON body'));
 		}
 		if (code === 'FST_ERR_CTP_EMPTY_JSON_BODY') {
-			const isAssetRegistration = request.url.startsWith('/projects/') && request.url.includes('/assets');
+			const isAssetRegistration =
+				request.url.startsWith('/projects/') && request.url.includes('/assets');
 			return reply
 				.code(400)
-				.send(errorBody(isAssetRegistration ? 'invalid_asset' : 'invalid_json', 'Malformed JSON body'));
+				.send(
+					errorBody(isAssetRegistration ? 'invalid_asset' : 'invalid_json', 'Malformed JSON body'),
+				);
 		}
 		if (code === 'FST_ERR_CTP_INVALID_MEDIA_TYPE') {
 			return reply.code(415).send(errorBody('unsupported_media_type', 'Unsupported Media Type'));
@@ -184,7 +178,6 @@ export function createApp({
 		return reply.code(500).send(errorBody('internal_error', 'Internal Server Error'));
 	});
 
-
 	const deps: RouteDeps = {
 		app,
 		pool,
@@ -193,7 +186,7 @@ export function createApp({
 		objectNamespace,
 		lifecyclePolicy,
 		testAuth,
-		authState: { busy: false }
+		authState: { busy: false },
 	};
 
 	registerAuthRoutes(deps);
@@ -206,33 +199,6 @@ export function createApp({
 
 	return app;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 function safeRequestLog(request: { method?: string; url?: string }) {
 	return { method: request.method, url: request.url?.split('?', 1)[0] };

@@ -67,10 +67,10 @@ path. Format 7 and the canonical `pointed` encoding are untouched.
 ## Files
 
 - `apps/editor/src/lib/authoring/world-toolbar/InkPlate.svelte` — enable Pointed.
-- `apps/editor/tests/lib/authoring/layout-opening-adapter.test.ts` — pointed Door/Window creation
+- `../../../../apps/editor/tests/lib/authoring/stage/layout-opening-adapter.test.ts` — pointed Door/Window creation
   through the Ink controller, preview/commit parity, geometry, Card edit, refusal, Undo/Redo,
   Save/Load.
-- `apps/editor/tests/lib/authoring/spatial-route-gesture.test.ts` — the mounted plate's Pointed
+- `../../../../apps/editor/tests/lib/authoring/stage` — the mounted plate's Pointed
   control is enabled and drives the real Ink surface (call-site proof).
 - `capabilities.json` — `layout.opening-hosted` summary.
 

@@ -17,7 +17,7 @@ export type ShapeReadingPlane = 'plan' | 'elevation';
 export function shapeWorkingPlane(
 	plane: ShapeReadingPlane,
 	sheet: ShapeSheet,
-	datumMeters: number
+	datumMeters: number,
 ): WorkingPlane {
 	if (plane === 'plan') return datumWorkingPlane(datumMeters);
 	return {
@@ -26,7 +26,7 @@ export function shapeWorkingPlane(
 		normal: [Math.sin(sheet.yaw), 0, Math.cos(sheet.yaw)],
 		yawRadians: sheet.yaw + Math.PI / 2,
 		datumMeters,
-		supportedLocalExtent: null
+		supportedLocalExtent: null,
 	};
 }
 
@@ -40,7 +40,7 @@ export function shapeLocalPoint(
 	plane: ShapeReadingPlane,
 	sheet: ShapeSheet,
 	datumMeters: number,
-	world: Vec3
+	world: Vec3,
 ): ShapePoint {
 	if (plane === 'plan') return { u: world[0], v: world[2] };
 	const right = shapeSheetRight(sheet);
@@ -58,7 +58,7 @@ export function shapeLocalPoint(
  * way. Winding is canonicalized again by the planner, so no order surgery is needed.
  */
 export function flipUprightOutline(
-	outline: readonly ShapeOutlineAnchor[]
+	outline: readonly ShapeOutlineAnchor[],
 ): readonly ShapeOutlineAnchor[] {
 	return outline.map((anchor) => ({ ...anchor, u: -anchor.u }));
 }

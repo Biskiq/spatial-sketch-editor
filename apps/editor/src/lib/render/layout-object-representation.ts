@@ -5,13 +5,13 @@
  * the Wall representation, rather than mounted as a Svelte component pair:
  *
  * - one `Mesh` per compiled object, keyed by the object's own `cacheKey` (which
- *   names its kind, dimensions, position, rotation, Room and read-only flag), so
- *   an unchanged object keeps its object, buffers and material;
+ *  names its kind, dimensions, position, rotation, Room and read-only flag), so
+ *  an unchanged object keeps its object, buffers and material;
  * - a changed object is rebuilt and swapped in place, in compiled order;
  * - an object that left the document is released in the same update;
  * - its one surface material is acquired from the Canvas's `MaterialStore`, so a
- *   compile constructs no material and a second representation drawing the same
- *   look shares the instance.
+ *  compile constructs no material and a second representation drawing the same
+ *  look shares the instance.
  *
  * Every shape is a shared unit geometry from the Canvas `GeometryStore` scaled
  * to the compiled dimensions (see `geometrySpecFor`).
@@ -28,14 +28,18 @@ import type { MaterialStore } from '$lib/render/resources/material-store';
 import type { StandardMaterialDescriptor } from '$lib/render/resources/material-descriptor';
 import type { GeometryLease, GeometryStore } from '$lib/render/resources/geometry-store';
 import { countWork } from '@portfolio/layout-core/kernel';
-import { sphereRenderScale, type CompiledLayoutGeometry, type CompiledLayoutObject } from '@portfolio/layout-core/geometry';
+import {
+	sphereRenderScale,
+	type CompiledLayoutGeometry,
+	type CompiledLayoutObject,
+} from '@portfolio/layout-core/geometry';
 
 /** The neutral Layout-object surface the shell has always drawn (`#e7e4dd`). */
 const OBJECT_SURFACE: StandardMaterialDescriptor = {
 	kind: 'standard',
 	color: 0xe7e4dd,
 	roughness: 0.78,
-	metalness: 0
+	metalness: 0,
 };
 
 /** One retained object: what it was built from, the object and its buffer lease. */
@@ -69,8 +73,8 @@ export type ObjectRepresentation = {
  * Attach `object` to `parent` at `index`.
  *
  * three has no ordered insert, and assigning `parent.children[index]` directly
- * leaves `object.parent` unset — which silently disables `removeFromParent()` and
- * leaks the mesh. `add()` first (it sets the parent and dispatches the event),
+ * leaves `object.parent` unset — which silently disables `removeFromParent` and
+ * leaks the mesh. `add` first (it sets the parent and dispatches the event),
  * then move the child to the slot it belongs in.
  */
 function attachAt(parent: Group, object: Object3D, index: number): void {
@@ -97,23 +101,26 @@ function geometrySpecFor(object: CompiledLayoutObject): {
 	if (object.kind === 'cylinder') {
 		return {
 			spec: { kind: 'unit', shape: 'cylinder', radialSegments: 24 },
-			scale: [object.dimensions[0], object.dimensions[1], object.dimensions[2]]
+			scale: [object.dimensions[0], object.dimensions[1], object.dimensions[2]],
 		};
 	}
 	if (object.kind === 'sphere') {
 		const scale = sphereRenderScale(object.dimensions);
 		return {
 			spec: { kind: 'unit', shape: 'sphere', widthSegments: 24, heightSegments: 16 },
-			scale: [scale[0], scale[1], scale[2]]
+			scale: [scale[0], scale[1], scale[2]],
 		};
 	}
 	// box, plane and profile: the compiled slab as a scaled unit box.
-	return { spec: { kind: 'unit', shape: 'box' }, scale: [...object.dimensions] as [number, number, number] };
+	return {
+		spec: { kind: 'unit', shape: 'box' },
+		scale: [...object.dimensions] as [number, number, number],
+	};
 }
 
 export function createObjectRepresentation(
 	store: MaterialStore,
-	geometryStore: GeometryStore
+	geometryStore: GeometryStore,
 ): ObjectRepresentation {
 	const object3d = new Group();
 	object3d.name = 'VisitorLayoutObjects';
@@ -131,7 +138,8 @@ export function createObjectRepresentation(
 
 		update(geometry) {
 			if (disposed) throw new Error('the layout object representation has been disposed');
-			if (previousObjects === geometry.objects) return { objects: retained.size, built: 0, retained: retained.size, released: 0 };
+			if (previousObjects === geometry.objects)
+				return { objects: retained.size, built: 0, retained: retained.size, released: 0 };
 			previousObjects = geometry.objects;
 			let built = 0;
 			let kept = 0;
@@ -208,7 +216,6 @@ export function createObjectRepresentation(
 			}
 			retained.clear();
 			surface.release();
-		}
+		},
 	};
 }
-

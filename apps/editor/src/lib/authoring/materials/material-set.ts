@@ -1,18 +1,18 @@
 /**
- * Manual composition and correctable set import, editor side (T2.S8 E5).
+ * Manual composition and correctable set import, editor side.
  *
  * The pure grammar, correction and composition live in
  * `@portfolio/project-model/material-authoring`; this module owns everything
  * that touches bytes and the network:
  *
  * 1. `readSetFileFacts` hashes and probes the creator's files (two at a time)
- *    and keeps the exact bytes in session memory. Nothing here is persisted.
+ *  and keeps the exact bytes in session memory. Nothing here is persisted.
  * 2. `prepareDraft` composes one recipe from edits and verified facts, digests
- *    it through the session proof registry and returns a `PreparedFinishDraft`
- *    whose sources are scoped readers over those session bytes.
+ *  it through the session proof registry and returns a `PreparedFinishDraft`
+ *  whose sources are scoped readers over those session bytes.
  * 3. `acceptDraft` stages each distinct digest through the P20 importer, rechecks
- *    the expected revision and target reach after IO, then issues exactly one
- *    `scene-finish-register` intent with a deterministic Finish id.
+ *  the expected revision and target reach after IO, then issues exactly one
+ *  `scene-finish-register` intent with a deterministic Finish id.
  *
  * A refusal at any step leaves the accepted project unchanged. Uploaded P20
  * bytes stay under ordinary retention when a later step is cancelled.
@@ -25,16 +25,24 @@ import {
 	type DraftEdits,
 	type DraftIssue,
 	type SetFileFact,
-	type SetImageMime
+	type SetImageMime,
 } from '@portfolio/project-model/material-authoring';
 import type { Hash, Recipe, TargetAnalysis } from '@portfolio/project-model/materials';
 import { SCENE_FINISH_REGISTER, isFinishTarget } from '@portfolio/project-model/scene-planning';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
-import { resolveLayoutSurface, surfaceKey, type LayoutSurfaceRef } from '@portfolio/layout-core/plan';
+import {
+	resolveLayoutSurface,
+	surfaceKey,
+	type LayoutSurfaceRef,
+} from '@portfolio/layout-core/plan';
 import type { ProjectApi } from '$lib/platform/project-persistence';
 import { imageSha256 } from '$lib/render/artwork/image-digest';
 import { probeRawImage } from '$lib/render/resources/image-encoding';
-import { FINISH_IMAGE_POLICY, importProjectImage, type ImportedProjectImage } from '../artwork/project-artwork';
+import {
+	FINISH_IMAGE_POLICY,
+	importProjectImage,
+	type ImportedProjectImage,
+} from '../artwork/project-artwork';
 import type { MaterialProofRegistry } from '../material-proof';
 
 /** The preflight/decode/upload concurrency the plan fixes. */
@@ -81,7 +89,7 @@ async function mapBounded<T, R>(
 	items: readonly T[],
 	limit: number,
 	signal: AbortSignal,
-	work: (item: T, signal: AbortSignal) => Promise<R>
+	work: (item: T, signal: AbortSignal) => Promise<R>,
 ): Promise<R[]> {
 	const controller = new AbortController();
 	const link = () => controller.abort(signal.reason);
@@ -93,7 +101,9 @@ async function mapBounded<T, R>(
 	const lanes = Array.from({ length: Math.min(limit, items.length) }, async () => {
 		while (failure === null && next < items.length) {
 			if (controller.signal.aborted) {
-				failure ??= { error: controller.signal.reason ?? new DOMException('Aborted', 'AbortError') };
+				failure ??= {
+					error: controller.signal.reason ?? new DOMException('Aborted', 'AbortError'),
+				};
 				return;
 			}
 			const index = next++;
@@ -112,7 +122,10 @@ async function mapBounded<T, R>(
 	return results;
 }
 
-function admissionFailure(error: unknown, fallback: string): { ok: false; reason: string; action: string } {
+function admissionFailure(
+	error: unknown,
+	fallback: string,
+): { ok: false; reason: string; action: string } {
 	const message = error instanceof Error ? error.message : fallback;
 	const unsupported = message.startsWith('unsupported-image-encoding:');
 	const detail = unsupported ? message.slice('unsupported-image-encoding:'.length).trim() : message;
@@ -120,7 +133,8 @@ function admissionFailure(error: unknown, fallback: string): { ok: false; reason
 	return {
 		ok: false,
 		reason: reason ?? detail,
-		action: rest.length > 0 ? rest.join('. ') : 'Export the map as an 8-bit sRGB PNG, JPEG or WebP.'
+		action:
+			rest.length > 0 ? rest.join('. ') : 'Export the map as an 8-bit sRGB PNG, JPEG or WebP.',
 	};
 }
 
@@ -129,7 +143,12 @@ function isLossy(bytes: Uint8Array, mime: string): boolean {
 	if (mime === 'image/jpeg') return true;
 	if (mime !== 'image/webp') return false;
 	for (let offset = 12; offset + 4 <= bytes.length && offset < 64; offset += 1) {
-		if (bytes[offset] === 0x56 && bytes[offset + 1] === 0x50 && bytes[offset + 2] === 0x38 && bytes[offset + 3] === 0x20) {
+		if (
+			bytes[offset] === 0x56 &&
+			bytes[offset + 1] === 0x50 &&
+			bytes[offset + 2] === 0x38 &&
+			bytes[offset + 3] === 0x20
+		) {
 			return true;
 		}
 	}
@@ -137,7 +156,11 @@ function isLossy(bytes: Uint8Array, mime: string): boolean {
 }
 
 /** Hash and probe one file. Unreadable files still produce a fact, refused for both roles. */
-export async function readSetFileFact(key: string, name: string, bytes: Uint8Array): Promise<SetFileFact> {
+export async function readSetFileFact(
+	key: string,
+	name: string,
+	bytes: Uint8Array,
+): Promise<SetFileFact> {
 	const hash = `sha256-${await imageSha256(bytes)}`;
 	let mime: SetImageMime | null = null;
 	let width = 0;
@@ -175,7 +198,7 @@ export async function readSetFileFact(key: string, name: string, bytes: Uint8Arr
  */
 export async function readSetFileFacts(
 	files: readonly SetFileInput[],
-	signal: AbortSignal
+	signal: AbortSignal,
 ): Promise<SetFileSession> {
 	const keys = new Set<string>();
 	for (const input of files) {
@@ -198,13 +221,17 @@ export async function readSetFileFacts(
 		release() {
 			released = true;
 			bytes.clear();
-		}
+		},
 	};
 }
 
 export type PrepareDraftResult =
 	| { readonly ok: true; readonly draft: PreparedFinishDraft }
-	| { readonly ok: false; readonly code: 'aborted' | 'unresolved-role'; readonly issues: readonly DraftIssue[] };
+	| {
+			readonly ok: false;
+			readonly code: 'aborted' | 'unresolved-role';
+			readonly issues: readonly DraftIssue[];
+	  };
 
 /**
  * Compose and digest one draft. Manual creation and a corrected set proposal
@@ -215,7 +242,7 @@ export async function prepareDraft(
 	files: SetFileSession,
 	expectedRevision: AcceptedRevision,
 	signal: AbortSignal,
-	materialProofs: MaterialProofRegistry
+	materialProofs: MaterialProofRegistry,
 ): Promise<PrepareDraftResult> {
 	if (signal.aborted) return { ok: false, code: 'aborted', issues: [] };
 	const composed = composeDraft(edits, files.factsByKey());
@@ -230,13 +257,15 @@ export async function prepareDraft(
 				code: issue.code === 'out-of-range' ? 'out-of-range' : 'invalid-value',
 				path: issue.path,
 				...(issue.role === undefined ? {} : { role: issue.role }),
-				action: issue.action ?? 'Correct this value.'
-			}))
+				action: issue.action ?? 'Correct this value.',
+			})),
 		};
 	}
 	const facts = files.factsByKey();
 	const sources = new Map<Hash, VerifiedImageSource>();
-	for (const [hash, key] of [...composed.draft.files].sort(([left], [right]) => (left < right ? -1 : 1))) {
+	for (const [hash, key] of [...composed.draft.files].sort(([left], [right]) =>
+		left < right ? -1 : 1,
+	)) {
 		const fact = facts.get(key)!;
 		let held: Uint8Array | undefined = files.bytesOf(key);
 		if (held === undefined) return { ok: false, code: 'aborted', issues: [] };
@@ -248,12 +277,13 @@ export async function prepareDraft(
 			name: fact.name,
 			async read(readSignal) {
 				readSignal?.throwIfAborted();
-				if (held === undefined) throw new Error('This draft source was released. Choose the files again.');
+				if (held === undefined)
+					throw new Error('This draft source was released. Choose the files again.');
 				return held;
 			},
 			release() {
 				held = undefined;
-			}
+			},
 		});
 	}
 	return {
@@ -263,8 +293,8 @@ export async function prepareDraft(
 			name: composed.draft.name,
 			recipe: composed.draft.recipe,
 			recipeHash: prepared.hash,
-			sources
-		}
+			sources,
+		},
 	};
 }
 
@@ -288,7 +318,10 @@ export type AcceptDraftHost = {
 	}>;
 	readonly targetAnalysis?: TargetAnalysis;
 	readonly entityReference: (source: ProjectEnvelope, entityId: string) => SemanticReference;
-	readonly surfaceReference: (source: ProjectEnvelope, surface: DraftTargets['surfaces'][number]) => SemanticReference;
+	readonly surfaceReference: (
+		source: ProjectEnvelope,
+		surface: DraftTargets['surfaces'][number],
+	) => SemanticReference;
 	/** Override the importer (tests); defaults to P20's `importProjectImage`. */
 	readonly importImage?: typeof importProjectImage;
 };
@@ -322,7 +355,11 @@ function sameRevision(left: AcceptedRevision, right: AcceptedRevision): boolean 
 	return left.projectId === right.projectId && left.revisionId === right.revisionId;
 }
 
-function refused(code: AcceptDraftRefusal, message: string, issues: readonly AcceptIssue[] = []): AcceptDraftResult {
+function refused(
+	code: AcceptDraftRefusal,
+	message: string,
+	issues: readonly AcceptIssue[] = [],
+): AcceptDraftResult {
 	return { ok: false, code, message, issues };
 }
 
@@ -342,7 +379,9 @@ function targetProblem(source: ProjectEnvelope, targets: DraftTargets): string |
 		const entity = entities.get(id);
 		if (entity === undefined) return 'That object is not in the current revision.';
 		if (!isFinishTarget(entity)) {
-			return entity.kind === 'light' ? 'Lights have no Finish.' : 'That subject cannot take a Finish.';
+			return entity.kind === 'light'
+				? 'Lights have no Finish.'
+				: 'That subject cannot take a Finish.';
 		}
 	}
 	for (const surface of targets.surfaces) {
@@ -350,7 +389,8 @@ function targetProblem(source: ProjectEnvelope, targets: DraftTargets): string |
 		// lid of an open-to-sky room) draws nothing, so it can never qualify: refuse
 		// it for good instead of reporting it as pending analysis.
 		const lifecycle = resolveLayoutSurface(source.units.layout.data, surface);
-		if (lifecycle === 'dormant') return 'That surface is not drawn right now, so it cannot take a Finish.';
+		if (lifecycle === 'dormant')
+			return 'That surface is not drawn right now, so it cannot take a Finish.';
 		if (lifecycle !== 'present') return 'That surface changed. Try again.';
 	}
 	return null;
@@ -359,28 +399,32 @@ function targetProblem(source: ProjectEnvelope, targets: DraftTargets): string |
 function targetsArePending(
 	source: ProjectEnvelope,
 	targets: DraftTargets,
-	analysis: TargetAnalysis | undefined
+	analysis: TargetAnalysis | undefined,
 ): boolean {
 	const requests = [
 		...targets.entityIds.map((entityId) => ({
 			subject: entityId,
 			domain: 'scene' as const,
 			entityId,
-			expectedGeometryRevision: source.units.scene.header.contentRevision
+			expectedGeometryRevision: source.units.scene.header.contentRevision,
 		})),
 		...targets.surfaces.map((surface) => ({
 			subject: surfaceKey(surface),
 			domain: 'layout' as const,
 			surface,
-			expectedGeometryRevision: source.units.layout.header.contentRevision
-		}))
+			expectedGeometryRevision: source.units.layout.header.contentRevision,
+		})),
 	];
 	if (requests.length === 0) return false;
 	const facts = analysis?.(requests) ?? null;
 	if (facts === null) return true;
 	return requests.some((request) => {
 		const answer = facts.find((entry) => entry.subject === request.subject);
-		return answer === undefined || answer.geometryRevision !== request.expectedGeometryRevision || answer.draws.length === 0;
+		return (
+			answer === undefined ||
+			answer.geometryRevision !== request.expectedGeometryRevision ||
+			answer.draws.length === 0
+		);
 	});
 }
 
@@ -394,70 +438,117 @@ export async function acceptDraft(
 	targets: DraftTargets,
 	operationId: string,
 	signal: AbortSignal,
-	host: AcceptDraftHost
+	host: AcceptDraftHost,
 ): Promise<AcceptDraftResult> {
 	if (signal.aborted) return refused('aborted', 'Cancelled. Nothing was added.');
 	// One registration addresses one target domain; F4 never widens it to a
 	// compound Layout + Scene write. Refuse before any byte leaves the browser.
 	if (targets.entityIds.length > 0 && targets.surfaces.length > 0) {
-		return refused('refused', 'Assign the new Finish to objects or to surfaces first, then paint the rest.');
+		return refused(
+			'refused',
+			'Assign the new Finish to objects or to surfaces first, then paint the rest.',
+		);
 	}
 	const before = host.current();
 	if (!sameRevision(before.revision, draft.expectedRevision)) {
-		return refused('stale-revision', 'The project changed since this material was prepared. Review it again.');
+		return refused(
+			'stale-revision',
+			'The project changed since this material was prepared. Review it again.',
+		);
 	}
 	const unpaintable = targetProblem(before.source, targets);
 	if (unpaintable !== null) return refused('refused', unpaintable);
 	if (targetsArePending(before.source, targets, host.targetAnalysis)) {
-		return refused('target-pending', 'The selected objects are still being analysed. Try again in a moment.');
+		return refused(
+			'target-pending',
+			'The selected objects are still being analysed. Try again in a moment.',
+		);
 	}
 	const importImage = host.importImage ?? importProjectImage;
 	const prefer = referencedTextureIds(before.source);
-	const sources = [...draft.sources.values()].sort((left, right) => (left.hash < right.hash ? -1 : 1));
+	const sources = [...draft.sources.values()].sort((left, right) =>
+		left.hash < right.hash ? -1 : 1,
+	);
 	let staged: ImportedProjectImage[];
 	try {
-		staged = await mapBounded(sources, MATERIAL_SET_CONCURRENCY, signal, async (source, laneSignal) => {
-			const bytes = await source.read(laneSignal);
-			const file = new File([bytes as BlobPart], source.name, { type: source.mime });
-			return importImage(host.api, host.projectId, file, laneSignal, FINISH_IMAGE_POLICY, { preferAssetIds: prefer });
-		});
+		staged = await mapBounded(
+			sources,
+			MATERIAL_SET_CONCURRENCY,
+			signal,
+			async (source, laneSignal) => {
+				const bytes = await source.read(laneSignal);
+				const file = new File([bytes as BlobPart], source.name, { type: source.mime });
+				return importImage(host.api, host.projectId, file, laneSignal, FINISH_IMAGE_POLICY, {
+					preferAssetIds: prefer,
+				});
+			},
+		);
 	} catch (error) {
-		if (signal.aborted) return refused('aborted', 'Cancelled. Uploaded images stay in the project; no Finish was added.');
+		if (signal.aborted)
+			return refused(
+				'aborted',
+				'Cancelled. Uploaded images stay in the project; no Finish was added.',
+			);
 		return refused(
 			'upload-failed',
-			error instanceof Error ? error.message : 'An image could not be uploaded. Try again.'
+			error instanceof Error ? error.message : 'An image could not be uploaded. Try again.',
 		);
 	}
 	for (const [index, image] of staged.entries()) {
 		const source = sources[index]!;
-		if (image.sha256 !== source.hash || image.mime !== source.mime || image.byteSize !== source.length) {
-			return refused('image-pin-mismatch', `“${source.name}” changed while it was uploading. Choose it again.`);
+		if (
+			image.sha256 !== source.hash ||
+			image.mime !== source.mime ||
+			image.byteSize !== source.length
+		) {
+			return refused(
+				'image-pin-mismatch',
+				`“${source.name}” changed while it was uploading. Choose it again.`,
+			);
 		}
 	}
 	// IO is over: recheck what the write depends on before issuing it.
-	if (signal.aborted) return refused('aborted', 'Cancelled. Uploaded images stay in the project; no Finish was added.');
+	if (signal.aborted)
+		return refused(
+			'aborted',
+			'Cancelled. Uploaded images stay in the project; no Finish was added.',
+		);
 	const after = host.current();
 	if (!sameRevision(after.revision, draft.expectedRevision)) {
-		return refused('stale-revision', 'The project changed while images were uploading. Review the material again.');
+		return refused(
+			'stale-revision',
+			'The project changed while images were uploading. Review the material again.',
+		);
 	}
 	const unpaintableAfter = targetProblem(after.source, targets);
 	if (unpaintableAfter !== null) return refused('refused', unpaintableAfter);
 	if (targetsArePending(after.source, targets, host.targetAnalysis)) {
-		return refused('target-pending', 'The selected objects changed while images were uploading. Try again.');
+		return refused(
+			'target-pending',
+			'The selected objects changed while images were uploading. Try again.',
+		);
 	}
 	const scene = after.source.units.scene.data;
 	const resources = after.source.units.resources.data.resources;
 	const images = staged.map((image) => {
 		const recorded = scene.textures.some((texture) => texture.id === image.assetId);
 		const pinned = resources.some(
-			(resource) => resource.kind === 'texture' && resource.id === image.assetId && resource.pin?.hash === image.sha256
+			(resource) =>
+				resource.kind === 'texture' &&
+				resource.id === image.assetId &&
+				resource.pin?.hash === image.sha256,
 		);
 		return {
 			hash: image.sha256,
 			source: { textureId: image.assetId },
 			...(recorded && pinned
 				? {}
-				: { texture: { name: image.name, pin: { hash: image.sha256, mime: image.mime, size: image.byteSize } } })
+				: {
+						texture: {
+							name: image.name,
+							pin: { hash: image.sha256, mime: image.mime, size: image.byteSize },
+						},
+					}),
 		};
 	});
 	const finishId = draftFinishId(operationId);
@@ -468,7 +559,7 @@ export async function acceptDraft(
 		expectedRevision: after.revision,
 		targets: [
 			...targets.entityIds.map((id) => host.entityReference(after.source, id)),
-			...targets.surfaces.map((surface) => host.surfaceReference(after.source, surface))
+			...targets.surfaces.map((surface) => host.surfaceReference(after.source, surface)),
 		],
 		payload: {
 			name: draft.name,
@@ -477,10 +568,10 @@ export async function acceptDraft(
 			images,
 			entityIds: [...targets.entityIds],
 			...(targets.surfaces.length === 0 ? {} : { surfaces: [...targets.surfaces] }),
-			targetFacts: []
+			targetFacts: [],
 		},
 		capturedInputs: [],
-		allocatedIds: [{ kind: 'scene-finish', id: finishId }]
+		allocatedIds: [{ kind: 'scene-finish', id: finishId }],
 	} as AuthoringIntent);
 	if (outcome.kind !== 'accepted') {
 		const reason = outcome.reason ?? outcome.code ?? outcome.kind;
@@ -495,7 +586,7 @@ export async function acceptDraft(
 							? 'aborted'
 							: 'refused';
 		return refused(code, outcome.message ?? 'The material could not be added.', [
-			{ path: '$', code: reason, message: outcome.message ?? outcome.kind }
+			{ path: '$', code: reason, message: outcome.message ?? outcome.kind },
 		]);
 	}
 	return { ok: true, finishId, revision: host.current().revision };

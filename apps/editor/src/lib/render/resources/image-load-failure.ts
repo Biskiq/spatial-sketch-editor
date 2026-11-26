@@ -1,5 +1,5 @@
 /**
- * Typed runtime image load failure (T2.S8 U6).
+ * Typed runtime image load failure.
  *
  * Separates acquisition failures (404/unregistered vs transient network/5xx),
  * pin verification mismatches, and decode failures so the editor's Repair

@@ -43,7 +43,11 @@ export type StageEraseNotice = {
 	readonly css: readonly [number, number];
 };
 
-type PointerInput = { readonly css: readonly [number, number]; readonly evaluationId: string; readonly coarse?: boolean };
+type PointerInput = {
+	readonly css: readonly [number, number];
+	readonly evaluationId: string;
+	readonly coarse?: boolean;
+};
 
 export type StageEraserController = {
 	/** A fine-pointer hover; `null` clears it. */
@@ -60,15 +64,28 @@ export type StageEraserController = {
 };
 
 function sameSubject(a: StageEraseCandidate | null, b: StageEraseCandidate | null): boolean {
-	return a !== null && b !== null && a.adapterId === b.adapterId && a.hit.sourceId === b.hit.sourceId && a.hit.sourceKind === b.hit.sourceKind;
+	return (
+		a !== null &&
+		b !== null &&
+		a.adapterId === b.adapterId &&
+		a.hit.sourceId === b.hit.sourceId &&
+		a.hit.sourceKind === b.hit.sourceKind
+	);
 }
 
-export function createStageEraser(facade: StageFacade, onChange: () => void = () => {}): StageEraserController {
+export function createStageEraser(
+	facade: StageFacade,
+	onChange: () => void = () => {},
+): StageEraserController {
 	let current: StageEraseCandidate | null = null;
 	let notice: StageEraseNotice | null = null;
 	/** The subject whose disclosure the creator has read; a second click runs it. */
 	let disclosed: StageEraseCandidate | null = null;
-	let press: { readonly lease: GestureAcquisition; readonly target: StageEraseCandidate; cancelled: boolean } | null = null;
+	let press: {
+		readonly lease: GestureAcquisition;
+		readonly target: StageEraseCandidate;
+		cancelled: boolean;
+	} | null = null;
 	let source = facade.snapshot();
 	let inFlight = false;
 	let uiGeneration = 0;
@@ -89,7 +106,9 @@ export function createStageEraser(facade: StageFacade, onChange: () => void = ()
 	function candidateAt(input: PointerInput): StageEraseCandidate | null {
 		syncSource();
 		const target = facade.hostToolTarget({ ...input, tool: 'erase' });
-		return target.kind === 'hit' ? { adapterId: target.adapterId, hit: target.hit, refusal: target.refusal } : null;
+		return target.kind === 'hit'
+			? { adapterId: target.adapterId, hit: target.hit, refusal: target.refusal }
+			: null;
 	}
 
 	function endPress(): void {
@@ -120,7 +139,7 @@ export function createStageEraser(facade: StageFacade, onChange: () => void = ()
 			notice = {
 				kind: 'disclose',
 				message: `${answer.action.detail ?? answer.action.label} Click again to erase.`,
-				css
+				css,
 			};
 			return;
 		}
@@ -134,10 +153,17 @@ export function createStageEraser(facade: StageFacade, onChange: () => void = ()
 			const outcome = await answer.action.run();
 			syncSource();
 			if (generation !== uiGeneration) return;
-			notice = outcome.kind === 'accepted' ? null
-				: { kind: outcome.kind === 'refused' ? 'refused' : 'none', message: outcome.message ?? 'Nothing was erased.', css };
+			notice =
+				outcome.kind === 'accepted'
+					? null
+					: {
+							kind: outcome.kind === 'refused' ? 'refused' : 'none',
+							message: outcome.message ?? 'Nothing was erased.',
+							css,
+						};
 		} catch {
-			if (generation === uiGeneration) notice = { kind: 'refused', message: 'The erase could not finish. Try again.', css };
+			if (generation === uiGeneration)
+				notice = { kind: 'refused', message: 'The erase could not finish. Try again.', css };
 		} finally {
 			inFlight = false;
 			onChange();
@@ -162,7 +188,7 @@ export function createStageEraser(facade: StageFacade, onChange: () => void = ()
 			const lease = facade.acquireGesture({
 				owner: STAGE_ERASER_TASK,
 				evaluationId: input.evaluationId,
-				policy: 'cancel-on-reading-change'
+				policy: 'cancel-on-reading-change',
 			});
 			if (lease.kind !== 'granted') return false;
 			press = { lease, target, cancelled: false };
@@ -182,7 +208,10 @@ export function createStageEraser(facade: StageFacade, onChange: () => void = ()
 			const ending = press;
 			if (ending === null) return;
 			const under = candidateAt(input);
-			const stillOn = !ending.cancelled && sameSubject(under, ending.target) && sameSubject(current, ending.target);
+			const stillOn =
+				!ending.cancelled &&
+				sameSubject(under, ending.target) &&
+				sameSubject(current, ending.target);
 			endPress();
 			if (input.coarse === true) current = null;
 			if (!stillOn) return;
@@ -214,6 +243,6 @@ export function createStageEraser(facade: StageFacade, onChange: () => void = ()
 		},
 		pressing() {
 			return press !== null;
-		}
+		},
 	};
 }

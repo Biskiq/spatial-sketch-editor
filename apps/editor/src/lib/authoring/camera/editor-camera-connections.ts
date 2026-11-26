@@ -26,22 +26,15 @@ export type NodeConnections = {
  * Partner rows whose navigation node is no longer in the document are skipped so the
  * list stays readable. Each bucket is sorted by `connectionId` for stable row order.
  */
-export function getNodeConnections(
-	document: SceneDocument,
-	nodeId: string
-): NodeConnections {
-	const nodes = new Map(
-		document.navigationNodes.map((node) => [node.id, node])
-	);
+export function getNodeConnections(document: SceneDocument, nodeId: string): NodeConnections {
+	const nodes = new Map(document.navigationNodes.map((node) => [node.id, node]));
 	const outgoing: NodeConnectionRow[] = [];
 	const incoming: NodeConnectionRow[] = [];
 	for (const connection of document.connections) {
 		const isOutgoing = connection.fromNodeId === nodeId;
 		const isIncoming = connection.toNodeId === nodeId;
 		if (!isOutgoing && !isIncoming) continue;
-		const partnerId = isOutgoing
-			? connection.toNodeId
-			: connection.fromNodeId;
+		const partnerId = isOutgoing ? connection.toNodeId : connection.fromNodeId;
 		const partner = nodes.get(partnerId);
 		if (!partner) continue;
 		const forward = connection.viewTracks?.forward ?? [];
@@ -56,8 +49,8 @@ export function getNodeConnections(
 			keyCounts: {
 				forward: forward.length,
 				reverse: reverse.length,
-				total: forward.length + reverse.length
-			}
+				total: forward.length + reverse.length,
+			},
 		};
 		(isOutgoing ? outgoing : incoming).push(row);
 	}

@@ -1,8 +1,88 @@
-export { accept, evaluateViewport, perspectiveDistanceMeters, reject, settledPoseFor, viewportGroundReachMeters, withPose } from './viewport/evaluate';
+export {
+	accept,
+	evaluateViewport,
+	perspectiveDistanceMeters,
+	reject,
+	settledPoseFor,
+	viewportGroundReachMeters,
+	withPose,
+} from './viewport/evaluate';
 export { requestViewingIntent } from './viewport/intent';
-export { aimPoseAlongRay, aimPoseAtTarget, eyeOfInspectionPose, facePoseFromBounds, fovYDegreesOf, frameSubjectPose, inspectionPoseFromView, liftPose, poseDirection, poseFovIsValid, setPoseLens, stepPose, truckPose, turnPose, viewPlacementPose, viewUpForPose } from './viewport/pose';
+export {
+	aimPoseAlongRay,
+	aimPoseAtTarget,
+	eyeOfInspectionPose,
+	facePoseFromBounds,
+	fovYDegreesOf,
+	frameSubjectPose,
+	inspectionPoseFromView,
+	liftPose,
+	poseDirection,
+	poseFovIsValid,
+	setPoseLens,
+	stepPose,
+	truckPose,
+	turnPose,
+	viewPlacementPose,
+	viewUpForPose,
+} from './viewport/pose';
 export { intersectWorkingPlane, pointerRay, projectWorld } from './viewport/projection';
 export { rebaseViewportSource } from './viewport/rebase';
-export { advanceViewport, clamp, createViewportCameraState, isFiniteNumber, isFinitePair, isHiddenViewport, nearestQuarterTurn, sameEvaluationToken, smoothstep, transitionProgress, validateViewportRect, viewportEvaluationToken } from './viewport/state';
-export { HALF_PI, VIEWING_INTENT_REFUSALS, VIEWPORT_ELEVATION_LIMIT_RADIANS, VIEWPORT_FIT_PADDING_FRACTION, VIEWPORT_GROUND_NEAR_FRACTION, VIEWPORT_GROUND_REACH_EXTENTS, VIEWPORT_GROUND_REACH_EYE_HEIGHTS, VIEWPORT_NEAR_FLOOR_METERS, VIEWPORT_PLAN_EYE_DISTANCE_METERS, VIEWPORT_PROJECTION_KINDS, VIEWPORT_READINGS, VIEWPORT_READING_POSE_HOLD, VIEWPORT_READING_TRANSITION_SECONDS, VIEWPORT_REFERENCE_FOV_Y_RADIANS, VIEWPORT_TARGET_PLANE_MAX_METERS, VIEWPORT_TARGET_PLANE_MIN_METERS, VIEWPORT_TURN_STEP_LIMIT_RADIANS } from './viewport/types';
-export type { InspectionPose, PointerRay, PointerRayResult, ProjectWorldResult, ViewingIntent, ViewingIntentRefusal, ViewingIntentResult, ViewportCameraInput, ViewportCameraState, ViewportDiagnostic, ViewportEvaluation, ViewportEvaluationRefusal, ViewportEvaluationResult, ViewportEvaluationToken, ViewportIssue, ViewportProjectionKind, ViewportReading, ViewportRect, ViewportSourceRebase, ViewportTransition, WorkingPlane, WorkingPlaneHit, WorkingPlaneQualification } from './viewport/types';
+export {
+	advanceViewport,
+	clamp,
+	createViewportCameraState,
+	isFiniteNumber,
+	isFinitePair,
+	isHiddenViewport,
+	nearestQuarterTurn,
+	sameEvaluationToken,
+	smoothstep,
+	transitionProgress,
+	validateViewportRect,
+	viewportEvaluationToken,
+} from './viewport/state';
+export {
+	HALF_PI,
+	VIEWING_INTENT_REFUSALS,
+	VIEWPORT_ELEVATION_LIMIT_RADIANS,
+	VIEWPORT_FIT_PADDING_FRACTION,
+	VIEWPORT_GROUND_NEAR_FRACTION,
+	VIEWPORT_GROUND_REACH_EXTENTS,
+	VIEWPORT_GROUND_REACH_EYE_HEIGHTS,
+	VIEWPORT_NEAR_FLOOR_METERS,
+	VIEWPORT_PLAN_EYE_DISTANCE_METERS,
+	VIEWPORT_PROJECTION_KINDS,
+	VIEWPORT_READINGS,
+	VIEWPORT_READING_POSE_HOLD,
+	VIEWPORT_READING_TRANSITION_SECONDS,
+	VIEWPORT_REFERENCE_FOV_Y_RADIANS,
+	VIEWPORT_TARGET_PLANE_MAX_METERS,
+	VIEWPORT_TARGET_PLANE_MIN_METERS,
+	VIEWPORT_TURN_STEP_LIMIT_RADIANS,
+} from './viewport/types';
+export type {
+	InspectionPose,
+	PointerRay,
+	PointerRayResult,
+	ProjectWorldResult,
+	ViewingIntent,
+	ViewingIntentRefusal,
+	ViewingIntentResult,
+	ViewportCameraInput,
+	ViewportCameraState,
+	ViewportDiagnostic,
+	ViewportEvaluation,
+	ViewportEvaluationRefusal,
+	ViewportEvaluationResult,
+	ViewportEvaluationToken,
+	ViewportIssue,
+	ViewportProjectionKind,
+	ViewportReading,
+	ViewportRect,
+	ViewportSourceRebase,
+	ViewportTransition,
+	WorkingPlane,
+	WorkingPlaneHit,
+	WorkingPlaneQualification,
+} from './viewport/types';

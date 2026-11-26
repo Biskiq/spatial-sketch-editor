@@ -17,7 +17,7 @@ import type {
 	StageAdapterContext,
 	StageCandidatePreview,
 	StageGhostMesh,
-	StageOverlayContribution
+	StageOverlayContribution,
 } from '$lib/authoring/stage/stage-adapter-host';
 import { stageScene } from '$lib/authoring/stage/stage-adapter-host';
 import type { SceneEntity, Vec3 } from '@portfolio/project-model/scene';
@@ -65,7 +65,7 @@ export type PlacementPresentationView = {
 /** A Scene entity at the exact pose a candidate would install. */
 export function sceneEntityAtCandidate(
 	candidate: SceneCandidate,
-	acceptedEntities: readonly SceneEntity[]
+	acceptedEntities: readonly SceneEntity[],
 ): SceneEntity | null {
 	if (candidate.entityId !== null) {
 		const accepted = acceptedEntities.find((entity) => entity.id === candidate.entityId);
@@ -75,14 +75,14 @@ export function sceneEntityAtCandidate(
 				...accepted,
 				position: [...candidate.position] as Vec3,
 				rotation: [...candidate.rotation] as Vec3,
-				...(candidate.form === undefined ? {} : { form: candidate.form })
+				...(candidate.form === undefined ? {} : { form: candidate.form }),
 			};
 		}
 		return {
 			...accepted,
 			position: [...candidate.position] as Vec3,
 			rotation: [...candidate.rotation] as Vec3,
-			scale: candidate.scale
+			scale: candidate.scale,
 		};
 	}
 	if (candidate.form !== undefined) {
@@ -95,7 +95,7 @@ export function sceneEntityAtCandidate(
 			materialId: 'plaster-painted',
 			castShadow: true,
 			receiveShadow: true,
-			form: candidate.form
+			form: candidate.form,
 		};
 	}
 	if (candidate.primitive !== null) {
@@ -107,15 +107,23 @@ export function sceneEntityAtCandidate(
 			castShadow: true,
 			receiveShadow: true,
 			position: [...candidate.position] as Vec3,
-			rotation: [...candidate.rotation] as Vec3
+			rotation: [...candidate.rotation] as Vec3,
 		};
 		switch (candidate.primitive) {
 			case 'box':
 				return { ...base, primitive: 'box', dimensions: { ...NATIVE_PLACEMENT_DIMENSIONS.box } };
 			case 'cylinder':
-				return { ...base, primitive: 'cylinder', dimensions: { ...NATIVE_PLACEMENT_DIMENSIONS.cylinder } };
+				return {
+					...base,
+					primitive: 'cylinder',
+					dimensions: { ...NATIVE_PLACEMENT_DIMENSIONS.cylinder },
+				};
 			case 'sphere':
-				return { ...base, primitive: 'sphere', dimensions: { ...NATIVE_PLACEMENT_DIMENSIONS.sphere } };
+				return {
+					...base,
+					primitive: 'sphere',
+					dimensions: { ...NATIVE_PLACEMENT_DIMENSIONS.sphere },
+				};
 		}
 	}
 	if (candidate.modelAssetId !== undefined && candidate.footprint !== undefined) {
@@ -126,7 +134,7 @@ export function sceneEntityAtCandidate(
 			assetId: candidate.modelAssetId,
 			fallback: 'generic',
 			position: [...candidate.position] as Vec3,
-			rotation: [...candidate.rotation] as Vec3
+			rotation: [...candidate.rotation] as Vec3,
 		};
 	}
 	return null;
@@ -136,13 +144,15 @@ export function sceneEntityAtCandidate(
 export function sceneCandidatePaperPreview(
 	entity: SceneEntity,
 	datumMeters: number,
-	modelFootprints: ReadonlyMap<string, { readonly width: number; readonly depth: number }> | undefined,
+	modelFootprints:
+		| ReadonlyMap<string, { readonly width: number; readonly depth: number }>
+		| undefined,
 	role: StageCandidatePreview['role'] = 'subject',
-	label?: { readonly world: Vec3; readonly text: string }
+	label?: { readonly world: Vec3; readonly text: string },
 ): StageCandidatePreview | null {
 	const projection = buildPlanSceneFootprintProjection(
 		{ entities: [entity] },
-		{ modelFootprintById: (assetId) => modelFootprints?.get(assetId) }
+		{ modelFootprintById: (assetId) => modelFootprints?.get(assetId) },
 	);
 	const footprint = projection.footprints[0];
 	if (footprint === undefined) return null;
@@ -152,7 +162,7 @@ export function sceneCandidatePaperPreview(
 		role,
 		polygons: rings.map((ring) => ring.map(([x, z]) => [x, datumMeters, z] as Vec3)),
 		segments: [],
-		labels: label === undefined ? [] : [label]
+		labels: label === undefined ? [] : [label],
 	};
 }
 
@@ -163,7 +173,7 @@ export function sceneCandidatePaperPreview(
  */
 export function presentMarkOutline(
 	adapterContext: StageAdapterContext,
-	candidate: SceneCandidate | null
+	candidate: SceneCandidate | null,
 ): StageCandidatePreview | null {
 	if (candidate === null) return null;
 	const entity = sceneEntityAtCandidate(candidate, stageScene(adapterContext.snapshot).entities);
@@ -175,8 +185,8 @@ export function presentMarkOutline(
 			modelFootprintById: (assetId) =>
 				runtimeScene.modelFootprints?.get(assetId) ??
 				admittedModelFootprint(adapterContext.snapshot, assetId) ??
-				undefined
-		}
+				undefined,
+		},
 	);
 	const footprint = projection.footprints[0];
 	if (footprint === undefined) return null;
@@ -186,7 +196,10 @@ export function presentMarkOutline(
 		for (let index = 0; index < ring.length; index += 1) {
 			const a = ring[index]!;
 			const b = ring[(index + 1) % ring.length]!;
-			segments.push([[a[0], y, a[1]], [b[0], y, b[1]]]);
+			segments.push([
+				[a[0], y, a[1]],
+				[b[0], y, b[1]],
+			]);
 		}
 	}
 	return { id: 'scene-mark-outline', role: 'subject', polygons: [], segments, labels: [] };
@@ -195,20 +208,23 @@ export function presentMarkOutline(
 /** The drawn Shape tile's Paper preview: its footprint plus the draft segments. */
 export function presentDrawnCandidate(
 	drawn: DrawPreview | null,
-	datumMeters: number
+	datumMeters: number,
 ): readonly StageCandidatePreview[] {
 	if (drawn === null) return [];
-	const footprint = drawn.entity === null
-		? null
-		: sceneCandidatePaperPreview(drawn.entity, datumMeters, undefined, 'subject');
-	return [{
-		id: 'scene-draw-footprint',
-		role: drawn.refused ? 'refused' : 'subject',
-		polygons: footprint?.polygons ?? [],
-		segments: drawn.segments,
-		labels: drawn.label === null ? [] : [drawn.label],
-		...(drawn.snap === null ? {} : { snap: { world: drawn.snap, name: 'Grid' } })
-	}];
+	const footprint =
+		drawn.entity === null
+			? null
+			: sceneCandidatePaperPreview(drawn.entity, datumMeters, undefined, 'subject');
+	return [
+		{
+			id: 'scene-draw-footprint',
+			role: drawn.refused ? 'refused' : 'subject',
+			polygons: footprint?.polygons ?? [],
+			segments: drawn.segments,
+			labels: drawn.label === null ? [] : [drawn.label],
+			...(drawn.snap === null ? {} : { snap: { world: drawn.snap, name: 'Grid' } }),
+		},
+	];
 }
 
 /**
@@ -220,7 +236,7 @@ export function presentDrawnCandidate(
 export function presentPlacementPreview(
 	adapterContext: StageAdapterContext,
 	view: PlacementPresentationView,
-	markCandidate: SceneCandidate | null
+	markCandidate: SceneCandidate | null,
 ): readonly StageCandidatePreview[] {
 	const runtimeScene = adapterContext.snapshot.domain.scene;
 	let entity: SceneEntity | null = null;
@@ -265,7 +281,7 @@ export function presentPlacementPreview(
 		adapterContext.snapshot.domain.datumMeters,
 		modelFootprints,
 		role,
-		label
+		label,
 	);
 	return preview === null ? [] : [preview];
 }
@@ -273,7 +289,7 @@ export function presentPlacementPreview(
 /** The captured candidate as the one overlay label Plan and 3D share. */
 export function presentOverlay(
 	adapterContext: StageAdapterContext,
-	view: PlacementPresentationView
+	view: PlacementPresentationView,
 ): readonly StageOverlayContribution[] {
 	const held = view.held;
 	if (held !== null) {
@@ -290,27 +306,31 @@ export function presentOverlay(
 	const candidate = view.sessionCandidate();
 	if (candidate === null) {
 		if (view.pointerRefusal !== null) {
-			return [{
-				id: 'scene-candidate-refusal',
-				// StageFacade applies the viewport-to-surface translation to all
-				// adapter overlays. This refusal is captured in surface CSS by the
-				// pointer path, so restore viewport CSS before returning it.
-				css: [
-					view.pointerRefusal.css[0] + adapterContext.evaluation.rect.left,
-					view.pointerRefusal.css[1] + adapterContext.evaluation.rect.top
-				],
-				label: view.pointerRefusal.message
-			}];
+			return [
+				{
+					id: 'scene-candidate-refusal',
+					// StageFacade applies the viewport-to-surface translation to all
+					// adapter overlays. This refusal is captured in surface CSS by the
+					// pointer path, so restore viewport CSS before returning it.
+					css: [
+						view.pointerRefusal.css[0] + adapterContext.evaluation.rect.left,
+						view.pointerRefusal.css[1] + adapterContext.evaluation.rect.top,
+					],
+					label: view.pointerRefusal.message,
+				},
+			];
 		}
 		if (view.placing && view.pointerCss !== null) {
-			return [{
-				id: 'scene-candidate-need',
-				css: [
-					view.pointerCss[0] + adapterContext.evaluation.rect.left,
-					view.pointerCss[1] + adapterContext.evaluation.rect.top
-				],
-				label: 'Point at a surface'
-			}];
+			return [
+				{
+					id: 'scene-candidate-need',
+					css: [
+						view.pointerCss[0] + adapterContext.evaluation.rect.left,
+						view.pointerCss[1] + adapterContext.evaluation.rect.top,
+					],
+					label: 'Point at a surface',
+				},
+			];
 		}
 		return [];
 	}
@@ -322,8 +342,8 @@ export function presentOverlay(
 			css,
 			label: view.placing
 				? 'Click to place · Esc cancels'
-				: `${candidate.worldXZ[0].toFixed(3)}, ${candidate.worldXZ[1].toFixed(3)} m · ${candidate.yaw.toFixed(3)} rad${candidate.kind === 'resize' ? ` · scale ${candidate.scale}` : ''}${candidate.snappedStep === null ? '' : ` · snap ${candidate.snappedStep} m`}`
-		}
+				: `${candidate.worldXZ[0].toFixed(3)}, ${candidate.worldXZ[1].toFixed(3)} m · ${candidate.yaw.toFixed(3)} rad${candidate.kind === 'resize' ? ` · scale ${candidate.scale}` : ''}${candidate.snappedStep === null ? '' : ` · snap ${candidate.snappedStep} m`}`,
+		},
 	];
 }
 
@@ -334,30 +354,32 @@ export function presentOverlay(
 export function presentGhosts(
 	adapterContext: StageAdapterContext,
 	view: PlacementPresentationView,
-	leading: readonly StageGhostMesh[]
+	leading: readonly StageGhostMesh[],
 ): readonly StageGhostMesh[] {
 	const marks = [...leading];
 	const candidate: SceneCandidate | null = view.held ?? view.sessionCandidate();
 	const releaseRefusal = candidate === null ? view.releaseRefusal() : null;
-	const refused = candidate === null
-		? releaseRefusal?.candidate ?? view.pointerRefusal?.candidate ?? null
-		: null;
+	const refused =
+		candidate === null
+			? (releaseRefusal?.candidate ?? view.pointerRefusal?.candidate ?? null)
+			: null;
 	const shown = candidate ?? refused;
 	if (shown === null) return marks;
 	const entity =
 		shown.entityId === null
 			? null
-			: adapterContext.snapshot.domain.scene.entities.find((entry) => entry.id === shown.entityId) ??
-				null;
+			: (adapterContext.snapshot.domain.scene.entities.find(
+					(entry) => entry.id === shown.entityId,
+				) ?? null);
 	const ghost = candidateGhost(entity, shown, {
 		modelFootprint:
 			entity?.kind === 'model'
-				? adapterContext.snapshot.domain.scene.modelFootprints?.get(entity.assetId) ??
-				  admittedModelFootprint(adapterContext.snapshot, entity.assetId)
+				? (adapterContext.snapshot.domain.scene.modelFootprints?.get(entity.assetId) ??
+					admittedModelFootprint(adapterContext.snapshot, entity.assetId))
 				: null,
 		modelContactMinY:
 			shown.modelContactMinY ?? (entity?.kind === 'model' ? view.contact(entity) : null),
-		treatment: candidate !== null ? 'subject' : 'refused'
+		treatment: candidate !== null ? 'subject' : 'refused',
 	});
 	return ghost === null ? marks : [...marks, ghost];
 }

@@ -8,17 +8,24 @@
  *
  * Validation policy (exhaustive reference set):
  * - every scene texture URI is either a same-release P20 entry present in the
- *   manifest or an allowlisted shipped-static URI;
+ *  manifest or an allowlisted shipped-static URI;
  * - `/local/`, package rewrite paths, `blob:`/`data:`, external URLs, unknown
- *   static paths and missing P20 refs are rejected, never pruned;
+ *  static paths and missing P20 refs are rejected, never pruned;
  * - every model asset and material ID resolves through the checked-in
- *   compatibility registry, so a later catalogue change cannot break an
- *   existing release;
+ *  compatibility registry, so a later catalogue change cannot break an
+ *  existing release;
  * - catalogue-implied texture dependencies (fallback/base materials) are
- *   included in the reference set.
+ *  included in the reference set.
  */
-import { hasBlockingLayoutIssues, type CompiledLayoutGeometry } from '@portfolio/layout-core/geometry';
-import { artworkAssetUri, probeArtworkImage, type ArtworkImage } from '@portfolio/project-model/artwork';
+import {
+	hasBlockingLayoutIssues,
+	type CompiledLayoutGeometry,
+} from '@portfolio/layout-core/geometry';
+import {
+	artworkAssetUri,
+	probeArtworkImage,
+	type ArtworkImage,
+} from '@portfolio/project-model/artwork';
 import type { NavigationGraph, RuntimeScene } from '@portfolio/project-model/scene';
 import { prepareUnitRuntime } from '@portfolio/project-model/units';
 import {
@@ -30,7 +37,7 @@ import {
 	shippedImageIndex,
 	type Finish,
 	type MaterialDeliverySubject,
-	type MaterialRuntimeIndex
+	type MaterialRuntimeIndex,
 } from '@portfolio/project-model/materials';
 import { surfaceKey } from '@portfolio/layout-core/plan';
 import {
@@ -39,9 +46,13 @@ import {
 	isAllowedShippedTextureUri,
 	isKnownShippedAssetId,
 	isKnownShippedMaterialId,
-	isShippedFallback
+	isShippedFallback,
 } from './shipped-static-registry';
-import { createReleaseTextureScope, type ReleaseBytesEntry, type ReleaseTextureScope } from './visitor-texture-scope';
+import {
+	createReleaseTextureScope,
+	type ReleaseBytesEntry,
+	type ReleaseTextureScope,
+} from './visitor-texture-scope';
 
 import { createArtworkScope, type ArtworkScope } from '$lib/render/artwork/artwork-scope';
 
@@ -107,7 +118,7 @@ const COLD_SCENE_OPTIONS = {
 	isKnownMaterialId: (materialId: string) =>
 		materialId === MATERIAL_NEUTRAL_BASE_ID || isKnownShippedMaterialId(materialId),
 	isSceneObjectFallback: (value: unknown) => isShippedFallback(value),
-	isSafeTextureUri: (uri: string) => isRootRelativeSafe(uri)
+	isSafeTextureUri: (uri: string) => isRootRelativeSafe(uri),
 };
 
 /**
@@ -118,7 +129,13 @@ export function validateColdReleaseReferences(input: {
 	scene: {
 		textures: Array<{ id: string; name: string; uri: string }>;
 		materials: Array<Finish>;
-		entities: Array<{ kind: string; source?: ArtworkImage; assetId?: string; materialInstanceId?: string | null; materialId?: string }>;
+		entities: Array<{
+			kind: string;
+			source?: ArtworkImage;
+			assetId?: string;
+			materialInstanceId?: string | null;
+			materialId?: string;
+		}>;
 		materialIndex?: MaterialRuntimeIndex;
 	};
 	manifest: ColdReleaseManifest;
@@ -137,7 +154,10 @@ export function validateColdReleaseReferences(input: {
 			continue;
 		}
 		if (isSessionLocalUri(uri) || uri.startsWith('/local/')) {
-			issues.push({ path, message: `Session-local texture "${texture.name}" cannot ship in a release` });
+			issues.push({
+				path,
+				message: `Session-local texture "${texture.name}" cannot ship in a release`,
+			});
 			continue;
 		}
 		if (isAllowedShippedTextureUri(uri)) continue;
@@ -145,13 +165,19 @@ export function validateColdReleaseReferences(input: {
 			issues.push({ path, message: `Texture "${texture.name}" uses an unsupported source` });
 			continue;
 		}
-		issues.push({ path, message: `Texture "${texture.name}" is not a release P20 asset or allowlisted shipped resource` });
+		issues.push({
+			path,
+			message: `Texture "${texture.name}" is not a release P20 asset or allowlisted shipped resource`,
+		});
 	}
 
 	for (const [index, material] of input.scene.materials.entries()) {
 		const path = `$.scene.materials[${index}]`;
 		if ('catalogue' in material.base) {
-			if (material.base.catalogue !== MATERIAL_NEUTRAL_BASE_ID && getShippedMaterialById(material.base.catalogue) === undefined) {
+			if (
+				material.base.catalogue !== MATERIAL_NEUTRAL_BASE_ID &&
+				getShippedMaterialById(material.base.catalogue) === undefined
+			) {
 				issues.push({ path, message: `Unknown base material "${material.base.catalogue}"` });
 			}
 		} else {
@@ -171,15 +197,27 @@ export function validateColdReleaseReferences(input: {
 					}
 					if ('shipped' in image.source) {
 						if (!isAllowedShippedTextureUri(image.source.shipped)) {
-							issues.push({ path, message: `Material image "${image.hash}" is not an allowlisted shipped resource` });
+							issues.push({
+								path,
+								message: `Material image "${image.hash}" is not an allowlisted shipped resource`,
+							});
 						}
 						continue;
 					}
 					const texture = textureById.get(image.source.textureId);
 					if (texture === undefined) {
-						issues.push({ path, message: `Material image "${image.hash}" names an unknown texture` });
-					} else if (isProjectAssetUri(texture.uri) && !input.manifest.bytesByUri.get(texture.uri)?.bytes.byteLength) {
-						issues.push({ path, message: `Material image "${image.hash}" is missing release bytes` });
+						issues.push({
+							path,
+							message: `Material image "${image.hash}" names an unknown texture`,
+						});
+					} else if (
+						isProjectAssetUri(texture.uri) &&
+						!input.manifest.bytesByUri.get(texture.uri)?.bytes.byteLength
+					) {
+						issues.push({
+							path,
+							message: `Material image "${image.hash}" is missing release bytes`,
+						});
 					}
 				}
 			}
@@ -190,7 +228,7 @@ export function validateColdReleaseReferences(input: {
 			if (!textureById.has(binding.textureId)) {
 				issues.push({
 					path: `${path}.overrides.maps.${binding.role}.image.textureId`,
-					message: `Unknown finish map "${binding.textureId}"`
+					message: `Unknown finish map "${binding.textureId}"`,
 				});
 			}
 		}
@@ -202,27 +240,41 @@ export function validateColdReleaseReferences(input: {
 		// must be a blocking issue rather than something a release ships by omission.
 		if (entity.kind === 'artwork') {
 			const source = entity.source;
-			const entry = source === undefined ? undefined : input.manifest.bytesByUri.get(artworkAssetUri(source.assetId));
+			const entry =
+				source === undefined
+					? undefined
+					: input.manifest.bytesByUri.get(artworkAssetUri(source.assetId));
 			try {
 				if (!source || !entry?.sha256) throw new Error();
 				const dimensions = probeArtworkImage(entry.bytes);
-				if (dimensions.mime !== entry.mime || dimensions.pixelWidth !== source.pixelWidth ||
-					dimensions.pixelHeight !== source.pixelHeight) throw new Error();
+				if (
+					dimensions.mime !== entry.mime ||
+					dimensions.pixelWidth !== source.pixelWidth ||
+					dimensions.pixelHeight !== source.pixelHeight
+				)
+					throw new Error();
 			} catch {
-				issues.push({ path: `$.scene.entities[${index}].source`, message: 'Artwork image is missing or invalid in this release.' });
+				issues.push({
+					path: `$.scene.entities[${index}].source`,
+					message: 'Artwork image is missing or invalid in this release.',
+				});
 			}
 			continue;
 		}
 		if (entity.kind === 'form') {
 			issues.push({
 				path: `$.scene.entities[${index}]`,
-				message: 'Native forms are not admitted for publication'
+				message: 'Native forms are not admitted for publication',
 			});
 			continue;
 		}
 		if (entity.kind !== 'model' && entity.kind !== 'primitive') continue;
 		const path = `$.scene.entities[${index}]`;
-		if (entity.kind === 'model' && entity.assetId !== undefined && getShippedModelByAssetId(entity.assetId) === undefined) {
+		if (
+			entity.kind === 'model' &&
+			entity.assetId !== undefined &&
+			getShippedModelByAssetId(entity.assetId) === undefined
+		) {
 			issues.push({ path, message: `Unknown model asset "${entity.assetId}"` });
 		}
 		const instanceId = entity.materialInstanceId ?? null;
@@ -247,7 +299,10 @@ export function validateColdReleaseReferences(input: {
 			}
 			for (const textureUri of shipped.textureUris) {
 				if (!isAllowedShippedTextureUri(textureUri)) {
-					issues.push({ path, message: `Catalogue material "${materialId}" needs retained bytes for ${textureUri}` });
+					issues.push({
+						path,
+						message: `Catalogue material "${materialId}" needs retained bytes for ${textureUri}`,
+					});
 				}
 			}
 		}
@@ -258,7 +313,7 @@ export function validateColdReleaseReferences(input: {
 
 /**
  * Compose a detached, validated cold bundle. Throws on invalid input without
- * leaking object URLs. Call `dispose()` on unmount/failure to revoke release
+ * leaking object URLs. Call `dispose` on unmount/failure to revoke release
  * URLs. Aborts early when `signal` is already aborted.
  */
 export function composeColdReleaseBundle(input: {
@@ -300,17 +355,23 @@ export function composeColdReleaseBundle(input: {
 	// one unit runtime; the released Scene no longer carries a navigation graph.
 	const graph = prepared.graph;
 
-	const referenceIssues = validateColdReleaseReferences(
-		{
-			scene: {
-				textures: runtimeScene.textures,
-				materials: runtimeScene.materials,
-				...(runtimeScene.materialIndex === undefined ? {} : { materialIndex: runtimeScene.materialIndex }),
-				entities: runtimeScene.entities as Array<{ kind: string; source?: ArtworkImage; assetId?: string; materialInstanceId?: string | null; materialId?: string }>
-			},
-			manifest
-		}
-	);
+	const referenceIssues = validateColdReleaseReferences({
+		scene: {
+			textures: runtimeScene.textures,
+			materials: runtimeScene.materials,
+			...(runtimeScene.materialIndex === undefined
+				? {}
+				: { materialIndex: runtimeScene.materialIndex }),
+			entities: runtimeScene.entities as Array<{
+				kind: string;
+				source?: ArtworkImage;
+				assetId?: string;
+				materialInstanceId?: string | null;
+				materialId?: string;
+			}>,
+		},
+		manifest,
+	});
 	if (referenceIssues.length > 0) {
 		throw new Error(referenceIssues[0]!.message);
 	}
@@ -327,16 +388,26 @@ export function composeColdReleaseBundle(input: {
 			const finish = finishById.get(assignment.finish.materialInstanceId);
 			if (finish !== undefined) subjects.push({ subject, finish, palette: runtimeScene.palette });
 		} else {
-			subjects.push({ subject, catalogue: assignment.finish.materialId, palette: runtimeScene.palette });
+			subjects.push({
+				subject,
+				catalogue: assignment.finish.materialId,
+				palette: runtimeScene.palette,
+			});
 		}
 	}
 	for (const entity of runtimeScene.entities) {
-		const materialInstanceId = 'materialInstanceId' in entity ? entity.materialInstanceId : undefined;
-		const finish = materialInstanceId === undefined ? undefined : finishById.get(materialInstanceId);
+		const materialInstanceId =
+			'materialInstanceId' in entity ? entity.materialInstanceId : undefined;
+		const finish =
+			materialInstanceId === undefined ? undefined : finishById.get(materialInstanceId);
 		if (finish !== undefined) {
 			subjects.push({ subject: `entity:${entity.id}`, finish, palette: runtimeScene.palette });
 		} else if ('materialId' in entity && typeof entity.materialId === 'string') {
-			subjects.push({ subject: `entity:${entity.id}`, catalogue: entity.materialId, palette: runtimeScene.palette });
+			subjects.push({
+				subject: `entity:${entity.id}`,
+				catalogue: entity.materialId,
+				palette: runtimeScene.palette,
+			});
 		}
 	}
 	const pinsByHash = new Map(
@@ -344,23 +415,22 @@ export function composeColdReleaseBundle(input: {
 			.filter((resource) => resource.kind === 'texture' && resource.pin !== null)
 			.map((resource) => [
 				resource.pin!.hash,
-				{ mime: resource.pin!.mime, size: resource.pin!.size }
-			])
+				{ mime: resource.pin!.mime, size: resource.pin!.size },
+			]),
 	);
 	const materialImages = runtimeScene.materialIndex?.images ?? [];
 	const delivery = materialDeliveryContribution({
 		definitions: runtimeScene.materialIndex?.definitions ?? new Map(),
 		definitionImages: runtimeScene.materialIndex?.definitionImages ?? new Map(),
-		imageIndex: mergeImageIndexes(
-			shippedImageIndex(),
-			materialImageIndex(materialImages)
-		),
+		imageIndex: mergeImageIndexes(shippedImageIndex(), materialImageIndex(materialImages)),
 		projectImagePins: pinsByHash,
-		subjects
+		subjects,
 	});
 	if (delivery.issues.length > 0) {
 		const issue = delivery.issues[0]!;
-		throw new Error(`${issue.code} at ${issue.path}: ${issue.action ?? 'Material delivery is incomplete.'}`);
+		throw new Error(
+			`${issue.code} at ${issue.path}: ${issue.action ?? 'Material delivery is incomplete.'}`,
+		);
 	}
 	const textureById = new Map(runtimeScene.textures.map((texture) => [texture.id, texture]));
 	for (const pin of delivery.imagePins) {
@@ -373,7 +443,9 @@ export function composeColdReleaseBundle(input: {
 			entry.mime !== pin.mime ||
 			entry.bytes.byteLength !== pin.size
 		) {
-			throw new Error(`Material image "${pin.hash}" does not match its verified release manifest entry`);
+			throw new Error(
+				`Material image "${pin.hash}" does not match its verified release manifest entry`,
+			);
 		}
 	}
 	if (signal?.aborted) throw new Error('Release preparation was cancelled');
@@ -381,7 +453,7 @@ export function composeColdReleaseBundle(input: {
 	const textureUris = new Set(runtimeScene.textures.map((texture) => texture.uri));
 	const textureScope = createReleaseTextureScope({
 		releaseId: manifest.releaseId,
-		bytesByUri: new Map([...manifest.bytesByUri].filter(([uri]) => textureUris.has(uri)))
+		bytesByUri: new Map([...manifest.bytesByUri].filter(([uri]) => textureUris.has(uri))),
 	});
 
 	const artworkBytes = new Map<string, ReleaseBytesEntry>();
@@ -413,6 +485,6 @@ export function composeColdReleaseBundle(input: {
 		graph,
 		textureScope,
 		artworkScope,
-		dispose
+		dispose,
 	};
 }

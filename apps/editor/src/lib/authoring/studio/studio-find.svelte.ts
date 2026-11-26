@@ -27,11 +27,13 @@ export function createStudioFind(input: {
 			origin: studio?.origin ?? 'world',
 			context: studio?.context ?? 'world',
 			canEdit: selectedForm && studio?.active !== true,
-			rootCount: studio?.roots.length ?? 0
+			rootCount: studio?.roots.length ?? 0,
 		};
 	});
 
 	return {
-		get state() { return state; }
+		get state() {
+			return state;
+		},
 	};
 }

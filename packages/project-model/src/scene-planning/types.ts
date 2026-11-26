@@ -11,12 +11,12 @@
  * Two separations are structural here, not conventions:
  *
  * - `renderNormalization` is the *renderer's* scale/orientation correction. It is
- *   carried for parity verification and is never copied into authored instance
- *   scale/rotation (a piano with `defaultScale: 0.032` and instance scale 2
- *   yields 2 x canonical footprint, never an authored root scale of 0.064).
+ *  carried for parity verification and is never copied into authored instance
+ *  scale/rotation (a piano with `defaultScale: 0.032` and instance scale 2
+ *  yields 2 x canonical footprint, never an authored root scale of 0.064).
  * - `contactMinY` and `footprintMeters` are declared metadata, verified once by
- *   the host. Asynchronously loaded mesh bounds are never an unrecorded
- *   placement input, so nothing here is derived from a live bounding box.
+ *  the host. Asynchronously loaded mesh bounds are never an unrecorded
+ *  placement input, so nothing here is derived from a live bounding box.
  */
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import type {
@@ -26,7 +26,7 @@ import type {
 	SceneCylinderDimensions,
 	SceneObjectFallback,
 	SceneSphereDimensions,
-	Vec3
+	Vec3,
 } from '../scene';
 
 /** A yaw-only local input frame, supplied explicitly by the caller. */

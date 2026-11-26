@@ -15,7 +15,12 @@
  */
 
 import type { LayoutVec2 } from '../geometry/coordinates.js';
-import { layoutArchitecturalPreset, planCommitLayoutObjectPreset, type LayoutArchitecturalPresetId, type PrecisionPlan } from '../precision/index.js';
+import {
+	layoutArchitecturalPreset,
+	planCommitLayoutObjectPreset,
+	type LayoutArchitecturalPresetId,
+	type PrecisionPlan,
+} from '../precision/index.js';
 import type { LayoutDocumentWallFirst } from '../wall/types';
 import { layoutCapturedId, layoutWorkingLevelIssue, type LayoutIdCapture } from './id-capture.js';
 
@@ -26,7 +31,7 @@ import { layoutCapturedId, layoutWorkingLevelIssue, type LayoutIdCapture } from 
  */
 export function nextLayoutPresetObjectId(
 	document: LayoutDocumentWallFirst,
-	capture: LayoutIdCapture
+	capture: LayoutIdCapture,
 ): string {
 	return layoutCapturedId(capture, `layout-object-${document.objects.length + 1}`);
 }
@@ -46,13 +51,13 @@ export function planCommitLayoutObjectPresetWithId(
 	floorElevation: number,
 	capture: LayoutIdCapture,
 	capturedObjectId: string,
-	levelId: string
+	levelId: string,
 ): PrecisionPlan {
 	const levelIssue = layoutWorkingLevelIssue(document, levelId);
 	if (levelIssue !== null) {
 		return {
 			kind: 'rejected',
-			rejection: { code: 'invalid_value', message: levelIssue, targetIds: [presetId] }
+			rejection: { code: 'invalid_value', message: levelIssue, targetIds: [presetId] },
 		};
 	}
 	if (layoutArchitecturalPreset(presetId) === undefined) {
@@ -61,8 +66,8 @@ export function planCommitLayoutObjectPresetWithId(
 			rejection: {
 				code: 'invalid_reference',
 				message: `Unknown architectural preset '${presetId}'`,
-				targetIds: [presetId]
-			}
+				targetIds: [presetId],
+			},
 		};
 	}
 	if (capturedObjectId.length === 0) {
@@ -71,8 +76,8 @@ export function planCommitLayoutObjectPresetWithId(
 			rejection: {
 				code: 'invalid_value',
 				message: 'Preset creation requires a captured object id',
-				targetIds: [presetId]
-			}
+				targetIds: [presetId],
+			},
 		};
 	}
 	const expected = nextLayoutPresetObjectId(document, capture);
@@ -82,8 +87,8 @@ export function planCommitLayoutObjectPresetWithId(
 			rejection: {
 				code: 'invalid_value',
 				message: `Preset creation captured '${capturedObjectId}', but this operation's nonce derives '${expected}'; capture the id again before placing`,
-				targetIds: [capturedObjectId, expected]
-			}
+				targetIds: [capturedObjectId, expected],
+			},
 		};
 	}
 	const planned = planCommitLayoutObjectPreset(
@@ -92,7 +97,7 @@ export function planCommitLayoutObjectPresetWithId(
 		point,
 		floorElevation,
 		capturedObjectId,
-		levelId
+		levelId,
 	);
 	if (planned.kind === 'rejected') return planned;
 	if (planned.createdObjectId !== capturedObjectId) {
@@ -101,8 +106,8 @@ export function planCommitLayoutObjectPresetWithId(
 			rejection: {
 				code: 'invalid_value',
 				message: `Preset creation created '${planned.createdObjectId ?? '(none)'}', not the captured '${capturedObjectId}'; capture the id again before placing`,
-				targetIds: [capturedObjectId, planned.createdObjectId ?? presetId]
-			}
+				targetIds: [capturedObjectId, planned.createdObjectId ?? presetId],
+			},
 		};
 	}
 	return planned;

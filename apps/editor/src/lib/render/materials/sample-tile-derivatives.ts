@@ -1,12 +1,12 @@
 /**
- * Responsive display sizes of a sample tile (U1).
+ * Responsive display sizes of a sample tile.
  *
  * One 256 px master is the only stored picture. XS, S and M derive from it, so
  * a list never opens a full-resolution texture and a Retina display is covered
  * without a second render:
  *
  * - **XS 64**: a tighter window (the master's central 62.5%), so the material
- *   detail that would shrink to noise at 44 CSS px stays legible;
+ *  detail that would shrink to noise at 44 CSS px stays legible;
  * - **S 112**: the whole master, scaled;
  * - **M 256**: the master itself.
  *
@@ -26,22 +26,28 @@ export type TileDerivative = {
 export const TILE_DERIVATIVES: readonly TileDerivative[] = [
 	{ id: 'xs', edge: 64, crop: 0.625 },
 	{ id: 's', edge: 112, crop: 1 },
-	{ id: 'm', edge: SAMPLE_TILE_MASTER_SIZE, crop: 1 }
+	{ id: 'm', edge: SAMPLE_TILE_MASTER_SIZE, crop: 1 },
 ];
 
 const MAX_DEVICE_PIXEL_RATIO = 3;
 
 /** The derivative that covers `cssPx` at `devicePixelRatio`. */
 export function tileDerivativeFor(cssPx: number, devicePixelRatio: number): TileDerivative {
-	const ratio = Math.min(MAX_DEVICE_PIXEL_RATIO, Math.max(1, Number.isFinite(devicePixelRatio) ? devicePixelRatio : 1));
+	const ratio = Math.min(
+		MAX_DEVICE_PIXEL_RATIO,
+		Math.max(1, Number.isFinite(devicePixelRatio) ? devicePixelRatio : 1),
+	);
 	const need = Math.ceil((Number.isFinite(cssPx) && cssPx > 0 ? cssPx : 0) * ratio);
-	return TILE_DERIVATIVES.find((derivative) => derivative.edge >= need) ?? TILE_DERIVATIVES[TILE_DERIVATIVES.length - 1]!;
+	return (
+		TILE_DERIVATIVES.find((derivative) => derivative.edge >= need) ??
+		TILE_DERIVATIVES[TILE_DERIVATIVES.length - 1]!
+	);
 }
 
 /** The source rectangle `[x, y, width, height]` of a derivative within a master. */
 export function tileCropRect(
 	masterEdge: number,
-	derivative: TileDerivative
+	derivative: TileDerivative,
 ): readonly [number, number, number, number] {
 	const size = Math.round(masterEdge * derivative.crop);
 	const offset = Math.floor((masterEdge - size) / 2);
@@ -55,7 +61,7 @@ export function tileCropRect(
  */
 export async function deriveTile(
 	master: ImageBitmap,
-	derivative: TileDerivative
+	derivative: TileDerivative,
 ): Promise<Blob | null> {
 	if (typeof OffscreenCanvas === 'undefined') return null;
 	const [sx, sy, sw, sh] = tileCropRect(master.width, derivative);

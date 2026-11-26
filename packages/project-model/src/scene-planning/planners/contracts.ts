@@ -13,9 +13,8 @@ export const SCENE_PLANNER_ADMISSION: PlannerAdmission = Object.freeze({
 	domain: 'scene',
 	compound: false,
 	units: false,
-	resources: false
+	resources: false,
 });
-
 
 /** A-3: `delete-one` is the only Scene operation that also writes Experience. */
 export const SCENE_DELETE_ADMISSION: PlannerAdmission = Object.freeze({
@@ -23,17 +22,15 @@ export const SCENE_DELETE_ADMISSION: PlannerAdmission = Object.freeze({
 	compound: true,
 	writes: ['experience'] as const,
 	units: false,
-	resources: false
+	resources: false,
 });
-
 
 export const SCENE_PLACEMENT_ADMISSION: PlannerAdmission = Object.freeze({
 	domain: 'scene',
 	compound: false,
 	units: false,
-	resources: true
+	resources: true,
 });
-
 
 export type ScenePlannerOptions = {
 	/**

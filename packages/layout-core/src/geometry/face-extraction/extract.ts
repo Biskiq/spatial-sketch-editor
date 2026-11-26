@@ -4,13 +4,18 @@ import { orientXZ } from '../robust-orientation';
 import type { WallSamplingDerivation } from '../../wall/centerline';
 import { wallCenterlineSamples } from '../../wall/centerline';
 import type { SampledSegment } from '../curve';
-import type { DerivedCandidateFace, FaceExtractionResult, HalfEdge, TopologyDiagnostic } from './contracts';
+import type {
+	DerivedCandidateFace,
+	FaceExtractionResult,
+	HalfEdge,
+	TopologyDiagnostic,
+} from './contracts';
 import { canonicalFaceKey, keyFloorlessTokens } from './identity';
 import { polygonSignedArea, reportNestedLoops } from './polygons';
 
 export function extractBoundaryCandidateFaces(
 	document: LayoutDocumentWallFirst,
-	sampling?: WallSamplingDerivation
+	sampling?: WallSamplingDerivation,
 ): FaceExtractionResult {
 	const diagnostics: TopologyDiagnostic[] = [];
 	const junctionById = new Map(document.junctions.map((junction) => [junction.id, junction]));
@@ -27,7 +32,7 @@ export function extractBoundaryCandidateFaces(
 		diagnostics.push({
 			code: 'boundary_dangle',
 			message: `Wall '${wallId}' has a degree-1 endpoint and is excluded from face extraction`,
-			wallId
+			wallId,
 		});
 	}
 
@@ -38,13 +43,13 @@ export function extractBoundaryCandidateFaces(
 			fromId: wall.startJunctionId,
 			toId: wall.endJunctionId,
 			wallId: wall.id,
-			direction: 'forward'
+			direction: 'forward',
 		});
 		halfEdges.push({
 			fromId: wall.endJunctionId,
 			toId: wall.startJunctionId,
 			wallId: wall.id,
-			direction: 'reverse'
+			direction: 'reverse',
 		});
 	}
 
@@ -110,14 +115,14 @@ export function extractBoundaryCandidateFaces(
 			diagnostics.push({
 				code: 'invalid_face_ring',
 				message: 'Face walk repeated a directed edge before closure',
-				wallId: ring[0]?.wallId
+				wallId: ring[0]?.wallId,
 			});
 			continue;
 		}
 
 		const boundaryRefs = ring.map((half) => ({
 			wallId: half.wallId,
-			direction: half.direction
+			direction: half.direction,
 		}));
 		// The geometric face polygon expands each curved Wall into its
 		// canonical sampled centerline vertices in traversal order (samples
@@ -158,7 +163,7 @@ export function extractBoundaryCandidateFaces(
 			diagnostics.push({
 				code: 'invalid_face_ring',
 				message: 'Face walk produced non-finite area',
-				wallId: boundaryRefs[0]?.wallId
+				wallId: boundaryRefs[0]?.wallId,
 			});
 			continue;
 		}
@@ -166,7 +171,7 @@ export function extractBoundaryCandidateFaces(
 			diagnostics.push({
 				code: 'zero_area_face',
 				message: 'Face walk produced a zero-area ring',
-				wallId: boundaryRefs[0]?.wallId
+				wallId: boundaryRefs[0]?.wallId,
 			});
 			continue;
 		}
@@ -193,7 +198,7 @@ export function extractBoundaryCandidateFaces(
 			diagnostics.push({
 				code: 'boundary_cut_edge',
 				message: `Boundary wall '${wall.id}' has no bounded-face incidence`,
-				wallId: wall.id
+				wallId: wall.id,
 			});
 		}
 	}
@@ -206,7 +211,6 @@ export function extractBoundaryCandidateFaces(
 	return { faces, diagnostics, danglingWallIds, cutEdgeWallIds };
 }
 
-
 /**
  * Recursively strip degree-1 boundary walls from the face working graph.
  * Authored walls are diagnosed and retained in the document; only the face
@@ -214,7 +218,7 @@ export function extractBoundaryCandidateFaces(
  */
 function stripDangles(
 	walls: readonly LayoutWall[],
-	junctionById: Map<string, LayoutJunction>
+	junctionById: Map<string, LayoutJunction>,
 ): { faceGraphWalls: LayoutWall[]; danglingWallIds: string[] } {
 	const degree = new Map<string, number>();
 	for (const wall of walls) {
@@ -246,10 +250,9 @@ function stripDangles(
 	const nested = stripDangles(kept, junctionById);
 	return {
 		faceGraphWalls: nested.faceGraphWalls,
-		danglingWallIds: [...dangling, ...nested.danglingWallIds]
+		danglingWallIds: [...dangling, ...nested.danglingWallIds],
 	};
 }
-
 
 /**
  * One half-edge's departure ray at its start Junction, plus the signed
@@ -262,12 +265,11 @@ function stripDangles(
  */
 type DepartureRay = { probe: LayoutVec2; curvature: number };
 
-
 function resolveDepartureRay(
 	edge: HalfEdge,
 	junctionById: Map<string, LayoutJunction>,
 	wallById: Map<string, LayoutWall>,
-	sampling?: WallSamplingDerivation
+	sampling?: WallSamplingDerivation,
 ): { ray: DepartureRay; sampled?: SampledSegment } {
 	const wall = wallById.get(edge.wallId);
 	const target = junctionById.get(edge.toId);
@@ -276,7 +278,10 @@ function resolveDepartureRay(
 	if (!wall || wall.centerline.kind === 'line' || !target) {
 		// Straight Wall: its chord *is* its departure direction.
 		return {
-			ray: { probe: target ? target.point : ([origin[0] + 1, origin[1]] as LayoutVec2), curvature: 0 }
+			ray: {
+				probe: target ? target.point : ([origin[0] + 1, origin[1]] as LayoutVec2),
+				curvature: 0,
+			},
 		};
 	}
 	const start = junctionById.get(wall.startJunctionId)?.point;
@@ -289,7 +294,10 @@ function resolveDepartureRay(
 	const first = sampled?.samples[0];
 	if (!sampled || !first) return { ray: { probe: target.point, curvature: 0 }, sampled };
 	const tangent = first.tangent;
-	const hasDirection = Number.isFinite(tangent[0]) && Number.isFinite(tangent[1]) && Math.hypot(tangent[0], tangent[1]) > 1e-12;
+	const hasDirection =
+		Number.isFinite(tangent[0]) &&
+		Number.isFinite(tangent[1]) &&
+		Math.hypot(tangent[0], tangent[1]) > 1e-12;
 	if (!hasDirection) return { ray: { probe: target.point, curvature: 0 }, sampled };
 	let curvature = 0;
 	const second = sampled.samples[1];
@@ -302,10 +310,9 @@ function resolveDepartureRay(
 	}
 	return {
 		ray: { probe: [origin[0] + tangent[0], origin[1] + tangent[1]] as LayoutVec2, curvature },
-		sampled
+		sampled,
 	};
 }
-
 
 /**
  * Quadrant-then-orientation comparison of two outgoing **departure** rays at a
@@ -322,7 +329,7 @@ function compareOutgoingEdges(
 	aRay: DepartureRay,
 	bRay: DepartureRay,
 	a: HalfEdge,
-	b: HalfEdge
+	b: HalfEdge,
 ): number {
 	if (a.wallId === b.wallId && a.direction === b.direction) return 0;
 	const aTarget = aRay.probe;
@@ -343,7 +350,6 @@ function compareOutgoingEdges(
 	return a.wallId < b.wallId ? -1 : a.wallId > b.wallId ? 1 : 0;
 }
 
-
 function quadrantOf(dx: number, dy: number): number {
 	// Deterministic quadrants for the half-plane classification:
 	// 0: NE (dx>0, dy>=0) · 1: NW (dx<=0, dy>0) · 2: SW (dx<0, dy<=0) · 3: SE (dx>=0, dy<0)
@@ -353,7 +359,6 @@ function quadrantOf(dx: number, dy: number): number {
 	return 3;
 }
 
-
 /**
  * Next half-edge around the face: at the current edge's target junction,
  * take the outgoing edge immediately clockwise from the twin (reverse of
@@ -361,7 +366,7 @@ function quadrantOf(dx: number, dy: number): number {
  */
 function nextCounterClockwiseFaceEdge(
 	outgoing: Map<string, HalfEdge[]>,
-	current: HalfEdge
+	current: HalfEdge,
 ): HalfEdge | undefined {
 	const star = outgoing.get(current.toId);
 	if (!star || star.length === 0) return undefined;
@@ -369,7 +374,7 @@ function nextCounterClockwiseFaceEdge(
 	// for every non-loop Wall, but it is ambiguous on a self-connected Wall,
 	// where both half-edges leave the same seam Junction (B2).
 	const twinIndex = star.findIndex(
-		(edge) => edge.wallId === current.wallId && edge.direction !== current.direction
+		(edge) => edge.wallId === current.wallId && edge.direction !== current.direction,
 	);
 	if (twinIndex === -1) {
 		// Dangling target (non-manifold in the working graph): no twin.

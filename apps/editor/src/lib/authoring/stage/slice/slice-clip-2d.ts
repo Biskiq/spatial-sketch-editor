@@ -10,17 +10,17 @@
  * This module clips the region, not the rings one at a time:
  *
  * 1. Every ring is split at its crossings with the line into **runs** — open paths
- *    that enter the kept side, stay in it and leave it.
+ *  that enter the kept side, stay in it and leave it.
  * 2. Along the clip line, the region's interior is a union of intervals. With the
- *    region on the **left** of every ring (outers counter-clockwise, holes
- *    clockwise, as `mesh-plane-section.ts` returns them) and rings that do not cross
- *    each other, each interval starts at an exit crossing and ends at the next entry
- *    crossing in the line's direction `d = (-n.y, n.x)`; sorted crossings therefore
- *    alternate exit, entry, exit, entry. The alternation is **checked**, not
- *    assumed: a violation means the input was not a valid region and is reported.
+ *  region on the **left** of every ring (outers counter-clockwise, holes
+ *  clockwise, as `mesh-plane-section.ts` returns them) and rings that do not cross
+ *  each other, each interval starts at an exit crossing and ends at the next entry
+ *  crossing in the line's direction `d = (-n.y, n.x)`; sorted crossings therefore
+ *  alternate exit, entry, exit, entry. The alternation is **checked**, not
+ *  assumed: a violation means the input was not a valid region and is reported.
  * 3. Runs are stitched through those intervals into closed rings. Disjoint islands
- *    become separate rings, a crossing hole merges into the contour it opens onto,
- *    and rings wholly on one side are kept or dropped whole.
+ *  become separate rings, a crossing hole merges into the contour it opens onto,
+ *  and rings wholly on one side are kept or dropped whole.
  *
  * Vertices exactly on the line are treated as outside (symbolic perturbation), so a
  * crossing is always a proper sign change and no vertex is ever both in and out.
@@ -92,7 +92,11 @@ function cleanRing(points: readonly ClipPoint[], tags: readonly string[]): ClipR
 	while (outPoints.length > 1) {
 		const first = outPoints[0]!;
 		const last = outPoints[outPoints.length - 1]!;
-		if (Math.abs(first[0] - last[0]) > POINT_EPSILON || Math.abs(first[1] - last[1]) > POINT_EPSILON) break;
+		if (
+			Math.abs(first[0] - last[0]) > POINT_EPSILON ||
+			Math.abs(first[1] - last[1]) > POINT_EPSILON
+		)
+			break;
 		outPoints.pop();
 		outTags.pop();
 	}
@@ -114,7 +118,7 @@ type Crossing = { readonly kind: 'entry' | 'exit'; readonly at: number; readonly
 /** Clip a region (a set of non-crossing, left-oriented rings) to one half-plane. */
 export function clipRegionToHalfPlane(
 	rings: readonly ClipRing[],
-	half: ClipHalfPlane
+	half: ClipHalfPlane,
 ): ClipRegionResult {
 	const whole: ClipRing[] = [];
 	const runs: Run[] = [];
@@ -175,7 +179,7 @@ export function clipRegionToHalfPlane(
 						? 0
 						: left.crossing.kind === 'exit'
 							? -1
-							: 1
+							: 1,
 			);
 		const entryAfterExit = new Map<number, number>();
 		for (let position = 0; position < order.length; position += 2) {
@@ -217,7 +221,7 @@ export function clipRegionToHalfPlane(
 /** Clip a region by every half-plane in turn (their intersection is the kept side). */
 export function clipRegionToHalfPlanes(
 	rings: readonly ClipRing[],
-	halves: readonly ClipHalfPlane[]
+	halves: readonly ClipHalfPlane[],
 ): ClipRegionResult {
 	let current: readonly ClipRing[] = rings;
 	for (const half of halves) {
@@ -237,7 +241,7 @@ export function clipRegionToHalfPlanes(
 export function segmentIntervalInHalfPlanes(
 	a: ClipPoint,
 	b: ClipPoint,
-	halves: readonly ClipHalfPlane[]
+	halves: readonly ClipHalfPlane[],
 ): readonly [number, number] | null {
 	let lo = 0;
 	let hi = 1;

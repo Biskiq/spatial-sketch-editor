@@ -14,14 +14,12 @@ export type ReconciliationRejection = {
 	roomIds?: string[];
 };
 
-
 export type RoomLineageRecord = {
 	faceKey: string;
 	roomId: string;
 	predecessorRoomIds: readonly string[];
 	kind: 'preserved' | 'split-survivor' | 'merge-survivor' | 'created';
 };
-
 
 export type RoomReconciliation = {
 	document: LayoutDocumentWallFirst;
@@ -33,8 +31,7 @@ export type RoomReconciliation = {
 	spaceRetirements: readonly SpaceRetirement[];
 };
 
-
-/** Why an open Space retired; stable machine codes for consequence lines (SP1c). */
+/** Why an open Space retired; stable machine codes for consequence lines. */
 export type SpaceRetirementReason =
 	| 'explicit-remove'
 	| 'last-boundary-wall'
@@ -44,7 +41,6 @@ export type SpaceRetirementReason =
 	| 'overlaps'
 	| 'contains';
 
-
 export type SpaceRetirement = {
 	roomId: string;
 	reason: SpaceRetirementReason;
@@ -52,7 +48,6 @@ export type SpaceRetirement = {
 	otherRoomIds?: readonly string[];
 	successorRoomId?: string;
 };
-
 
 /**
  * How one reconciliation pass treats Spaces that are not claimed by a face.
@@ -71,15 +66,12 @@ export type SpaceLifecyclePolicy = {
 	invalidOutline?: 'retire' | 'reject';
 };
 
-
 export type ReconciliationFailure = {
 	kind: 'rejected';
 	rejection: ReconciliationRejection;
 };
 
-
 export type ReconciliationResult = RoomReconciliation | ReconciliationFailure;
-
 
 /**
  * Declared lineage for one topology-changing operation: which candidate
@@ -92,7 +84,6 @@ export type ComponentLineage = {
 	/** Predecessor room IDs involved in this component (may be empty for births). */
 	predecessorRoomIds: readonly string[];
 };
-
 
 /** Deterministic allocator for new Room IDs/names against the complete candidate document. */
 export type RoomIdAllocator = {

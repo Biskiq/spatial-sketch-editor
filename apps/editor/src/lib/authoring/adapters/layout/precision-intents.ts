@@ -16,7 +16,7 @@ import {
 	LAYOUT_WALL_LENGTH_KIND,
 	LAYOUT_WALL_MOVE_KIND,
 	LAYOUT_WALL_STRAIGHTEN_KIND,
-	buildLayoutIntent
+	buildLayoutIntent,
 } from './precision';
 import type { WallManipulationRequest } from './precision-frames';
 
@@ -44,7 +44,7 @@ export function wallManipulationIntent(input: {
 		instancePath: [],
 		location: { kind: 'layout-location', levelId: input.levelId, structureInstancePath: [] },
 		componentId: null,
-		capabilityId: null
+		capabilityId: null,
 	};
 	const base = {
 		operationId: input.operationId,
@@ -52,7 +52,7 @@ export function wallManipulationIntent(input: {
 		revisionId: input.revisionId,
 		contentRevision: input.contentRevision,
 		levelId: input.levelId,
-		targets: [reference]
+		targets: [reference],
 	};
 	// One literal per operation: a shared conditional object would widen its
 	// unselected keys to `undefined`, which is not an F.4 JSON value.
@@ -60,7 +60,7 @@ export function wallManipulationIntent(input: {
 		return buildLayoutIntent({
 			...base,
 			kind: LAYOUT_WALL_LENGTH_KIND,
-			payload: { wallId: input.wallId, length: input.request.length, fixed: input.fixed }
+			payload: { wallId: input.wallId, length: input.request.length, fixed: input.fixed },
 		});
 	}
 	if (input.request.kind === 'junction') {
@@ -71,15 +71,19 @@ export function wallManipulationIntent(input: {
 				wallId: input.wallId,
 				junctionId: input.request.junctionId,
 				x: input.request.point[0],
-				z: input.request.point[1]
-			}
+				z: input.request.point[1],
+			},
 		});
 	}
 	if (input.request.kind === 'angle') {
 		return buildLayoutIntent({
 			...base,
 			kind: LAYOUT_WALL_ANGLE_KIND,
-			payload: { wallId: input.wallId, angleRadians: input.request.angleRadians, fixed: input.fixed }
+			payload: {
+				wallId: input.wallId,
+				angleRadians: input.request.angleRadians,
+				fixed: input.fixed,
+			},
 		});
 	}
 	return buildLayoutIntent({
@@ -88,8 +92,8 @@ export function wallManipulationIntent(input: {
 		payload: {
 			wallId: input.wallId,
 			deltaX: input.request.delta[0],
-			deltaZ: input.request.delta[1]
-		}
+			deltaZ: input.request.delta[1],
+		},
 	});
 }
 
@@ -120,7 +124,7 @@ export function wallBendIntent(input: {
 		instancePath: [],
 		location: { kind: 'layout-location', levelId: input.levelId, structureInstancePath: [] },
 		componentId: null,
-		capabilityId: null
+		capabilityId: null,
 	};
 	return buildLayoutIntent({
 		operationId: input.operationId,
@@ -135,8 +139,8 @@ export function wallBendIntent(input: {
 			distance: input.distance,
 			x: input.point[0],
 			z: input.point[1],
-			knotId: input.knotId
-		}
+			knotId: input.knotId,
+		},
 	});
 }
 
@@ -158,7 +162,7 @@ export function wallKnotDeleteIntent(input: {
 		instancePath: [],
 		location: { kind: 'layout-location', levelId: input.levelId, structureInstancePath: [] },
 		componentId: null,
-		capabilityId: null
+		capabilityId: null,
 	};
 	return buildLayoutIntent({
 		operationId: input.operationId,
@@ -168,7 +172,7 @@ export function wallKnotDeleteIntent(input: {
 		levelId: input.levelId,
 		targets: [reference],
 		kind: LAYOUT_WALL_KNOT_DELETE_KIND,
-		payload: { wallId: input.wallId, knotId: input.knotId }
+		payload: { wallId: input.wallId, knotId: input.knotId },
 	});
 }
 
@@ -189,7 +193,7 @@ export function wallStraightenIntent(input: {
 		instancePath: [],
 		location: { kind: 'layout-location', levelId: input.levelId, structureInstancePath: [] },
 		componentId: null,
-		capabilityId: null
+		capabilityId: null,
 	};
 	return buildLayoutIntent({
 		operationId: input.operationId,
@@ -199,6 +203,6 @@ export function wallStraightenIntent(input: {
 		levelId: input.levelId,
 		targets: [reference],
 		kind: LAYOUT_WALL_STRAIGHTEN_KIND,
-		payload: { wallId: input.wallId }
+		payload: { wallId: input.wallId },
 	});
 }

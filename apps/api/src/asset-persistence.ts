@@ -9,7 +9,7 @@ import { queryRows } from './project-persistence.js';
 import {
 	DEFAULT_PROJECT_LIFECYCLE_POLICY,
 	withProjectWriteLease,
-	type ProjectLifecyclePolicy
+	type ProjectLifecyclePolicy,
 } from './project-write-lease.js';
 
 export const MAX_ASSET_BYTES = 25 * 1024 * 1024;
@@ -49,12 +49,17 @@ export class AssetNotReadyError extends Error {
 
 export class AssetInputError extends Error {
 	readonly statusCode: 400 | 411 | 413 | 415;
-	readonly code: 'invalid_asset' | 'length_required' | 'invalid_upload' | 'payload_too_large' | 'unsupported_media_type';
+	readonly code:
+		| 'invalid_asset'
+		| 'length_required'
+		| 'invalid_upload'
+		| 'payload_too_large'
+		| 'unsupported_media_type';
 
 	constructor(
 		code: AssetInputError['code'],
 		statusCode: AssetInputError['statusCode'],
-		message: string
+		message: string,
 	) {
 		super(message);
 		this.name = 'AssetInputError';
@@ -144,12 +149,13 @@ export async function registerAsset(
 	ownerId: string,
 	projectId: string,
 	name: string,
-	objectNamespace: string
+	objectNamespace: string,
 ): Promise<AssetMetadata> {
 	const assetId = randomUUID();
 	const objectKey = createObjectKey(projectId, assetId, objectNamespace);
-	const rows = await queryRows<AssetRow>(			db,
-			`INSERT INTO assets (
+	const rows = await queryRows<AssetRow>(
+		db,
+		`INSERT INTO assets (
 	id, project_id, name, kind, storage_kind, source_kind, object_key, import_state
 )
 SELECT $1::uuid, p.id, $3, 'texture', 'r2', 'upload', $5, 'pending'
@@ -160,8 +166,8 @@ WHERE p.id = $2 AND p.owner_id = $4
 		WHERE v.project_id = p.id AND v.source_format = $6
 	)
 RETURNING ${returningColumns()}`,
-			[assetId, projectId, name, ownerId, objectKey, UNIT_ENVELOPE_SOURCE_FORMAT]
-		);
+		[assetId, projectId, name, ownerId, objectKey, UNIT_ENVELOPE_SOURCE_FORMAT],
+	);
 	const row = rows[0];
 	if (!row) throw new AssetNotFoundError();
 	return readAssetMetadata(row);
@@ -170,10 +176,11 @@ RETURNING ${returningColumns()}`,
 export async function listAssets(
 	db: Pick<DatabasePool, 'query'>,
 	ownerId: string,
-	projectId: string
+	projectId: string,
 ): Promise<AssetMetadata[]> {
-	const rows = await queryRows<AssetRow>(			db,
-			`SELECT ${ASSET_COLUMNS}
+	const rows = await queryRows<AssetRow>(
+		db,
+		`SELECT ${ASSET_COLUMNS}
 FROM projects p
 LEFT JOIN assets a ON a.project_id = p.id
 WHERE p.id = $1 AND p.owner_id = $2
@@ -182,8 +189,8 @@ WHERE p.id = $1 AND p.owner_id = $2
 		WHERE v.project_id = p.id AND v.source_format = $3
 	)
 ORDER BY a.created_at DESC NULLS LAST, a.id ASC`,
-			[projectId, ownerId, UNIT_ENVELOPE_SOURCE_FORMAT]
-		);
+		[projectId, ownerId, UNIT_ENVELOPE_SOURCE_FORMAT],
+	);
 	if (rows.length === 0) throw new AssetNotFoundError();
 	return rows.filter((row) => row.id !== null).map(readAssetMetadata);
 }
@@ -192,7 +199,7 @@ export async function readAsset(
 	db: Pick<DatabasePool, 'query'>,
 	ownerId: string,
 	projectId: string,
-	assetId: string
+	assetId: string,
 ): Promise<StoredAsset> {
 	return readAssetRow(db, ownerId, projectId, assetId);
 }
@@ -210,9 +217,10 @@ export async function readAssetRow(
 	ownerId: string,
 	projectId: string,
 	assetId: string,
-	lock: 'none' | 'share' | 'update' = 'none'
+	lock: 'none' | 'share' | 'update' = 'none',
 ): Promise<StoredAsset> {
-	const lockClause = lock === 'share' ? '\nFOR SHARE OF a' : lock === 'update' ? '\nFOR UPDATE OF a' : '';
+	const lockClause =
+		lock === 'share' ? '\nFOR SHARE OF a' : lock === 'update' ? '\nFOR UPDATE OF a' : '';
 	const rows = await queryRows<AssetRow>(
 		db,
 		`SELECT ${ASSET_COLUMNS}
@@ -223,7 +231,7 @@ WHERE a.id = $1::uuid AND a.project_id = $2 AND p.owner_id = $3
 		SELECT 1 FROM project_versions v
 		WHERE v.project_id = p.id AND v.source_format = $4
 	)${lockClause}`,
-		[assetId, projectId, ownerId, UNIT_ENVELOPE_SOURCE_FORMAT]
+		[assetId, projectId, ownerId, UNIT_ENVELOPE_SOURCE_FORMAT],
 	);
 	const row = rows[0];
 	if (!row) throw new AssetNotFoundError();
@@ -244,7 +252,7 @@ export async function uploadAsset(
 	body: Readable,
 	objectStore: ObjectStore | undefined,
 	objectNamespace: string,
-	options: { parentSignal?: AbortSignal; policy?: ProjectLifecyclePolicy } = {}
+	options: { parentSignal?: AbortSignal; policy?: ProjectLifecyclePolicy } = {},
 ): Promise<AssetMetadata> {
 	if (!objectStore) throw new Error('Object storage is unavailable');
 	return withProjectWriteLease(
@@ -268,13 +276,20 @@ WHERE a.id = $1::uuid AND a.project_id = $2 AND p.id = a.project_id
 		WHERE v.project_id = p.id AND v.source_format = $5
 	)
 RETURNING ${returningColumns('a.')}`,
-				[assetId, projectId, ownerId, objectKey, UNIT_ENVELOPE_SOURCE_FORMAT]
+				[assetId, projectId, ownerId, objectKey, UNIT_ENVELOPE_SOURCE_FORMAT],
 			);
 			if (!claimed[0]) throw new AssetNotReadyError();
 
 			let uploaded: UploadedAsset;
 			try {
-				uploaded = await streamAsset(body, contentLength, objectStore, objectKey, signal, assertActive);
+				uploaded = await streamAsset(
+					body,
+					contentLength,
+					objectStore,
+					objectKey,
+					signal,
+					assertActive,
+				);
 			} catch (error) {
 				try {
 					await pool.query(
@@ -287,7 +302,7 @@ WHERE a.id = $1::uuid AND a.project_id = $2 AND p.id = a.project_id
 		SELECT 1 FROM project_versions v
 		WHERE v.project_id = p.id AND v.source_format = $5
 	)`,
-						[assetId, projectId, ownerId, objectKey, UNIT_ENVELOPE_SOURCE_FORMAT]
+						[assetId, projectId, ownerId, objectKey, UNIT_ENVELOPE_SOURCE_FORMAT],
 					);
 				} catch {
 					// The claimed key remains available to deletion inventory.
@@ -316,7 +331,16 @@ WHERE a.id = $1::uuid AND a.project_id = $2 AND p.id = a.project_id
 		WHERE v.project_id = p.id AND v.source_format = $8
 	)
 RETURNING ${returningColumns('a.')}`,
-					[assetId, projectId, ownerId, uploaded.mime, uploaded.byteSize, uploaded.sha256, objectKey, UNIT_ENVELOPE_SOURCE_FORMAT]
+					[
+						assetId,
+						projectId,
+						ownerId,
+						uploaded.mime,
+						uploaded.byteSize,
+						uploaded.sha256,
+						objectKey,
+						UNIT_ENVELOPE_SOURCE_FORMAT,
+					],
 				);
 				assertActive();
 			} catch (error) {
@@ -340,7 +364,10 @@ RETURNING ${returningColumns('a.')}`,
 			}
 			return readAssetMetadata(finalizedRow);
 		},
-		{ parentSignal: options.parentSignal, policy: options.policy ?? DEFAULT_PROJECT_LIFECYCLE_POLICY }
+		{
+			parentSignal: options.parentSignal,
+			policy: options.policy ?? DEFAULT_PROJECT_LIFECYCLE_POLICY,
+		},
 	);
 }
 
@@ -356,7 +383,7 @@ async function streamAsset(
 	objectStore: ObjectStore,
 	key: string,
 	signal: AbortSignal,
-	assertActive: () => void
+	assertActive: () => void,
 ): Promise<UploadedAsset> {
 	const output = new PassThrough();
 	output.on('error', () => {});
@@ -378,15 +405,17 @@ async function streamAsset(
 	const begin = async (detectedMime: AssetMime) => {
 		assertActive();
 		mime = detectedMime;
-		putPromise = objectStore.put(key, output, {
-			contentType: detectedMime,
-			contentLength,
-			signal
-		}).catch((error) => {
-			storageError = error;
-			output.destroy(error instanceof Error ? error : new Error('Asset storage failed'));
-			throw error;
-		});
+		putPromise = objectStore
+			.put(key, output, {
+				contentType: detectedMime,
+				contentLength,
+				signal,
+			})
+			.catch((error) => {
+				storageError = error;
+				output.destroy(error instanceof Error ? error : new Error('Asset storage failed'));
+				throw error;
+			});
 		for (const chunk of pending) await writeChunk(output, chunk);
 		pending.length = 0;
 	};
@@ -400,7 +429,11 @@ async function streamAsset(
 				throw new AssetInputError('payload_too_large', 413, 'Payload Too Large');
 			}
 			if (byteSize > contentLength) {
-				throw new AssetInputError('invalid_upload', 400, 'Upload length does not match Content-Length');
+				throw new AssetInputError(
+					'invalid_upload',
+					400,
+					'Upload length does not match Content-Length',
+				);
 			}
 			hash.update(chunk as unknown as Uint8Array<ArrayBuffer>);
 			if (prefix.length < 12) {
@@ -424,27 +457,32 @@ async function streamAsset(
 
 		if (!putPromise) {
 			const detected = sniffImageMime(prefix);
-			if (!detected) throw new AssetInputError('unsupported_media_type', 415, 'Unsupported image bytes');
+			if (!detected)
+				throw new AssetInputError('unsupported_media_type', 415, 'Unsupported image bytes');
 			await begin(detected);
 		}
 		assertActive();
 		if (byteSize !== contentLength) {
-			throw new AssetInputError('invalid_upload', 400, 'Upload length does not match Content-Length');
+			throw new AssetInputError(
+				'invalid_upload',
+				400,
+				'Upload length does not match Content-Length',
+			);
 		}
 		output.end();
 		await putPromise;
 		signal.removeEventListener('abort', onAbort);
 		return { mime: mime!, byteSize, sha256: `sha256-${hash.digest('hex')}` };
 	} catch (error) {
-			const reportedError = signal.aborted
-				? signal.reason instanceof Error
-					? signal.reason
-					: new Error('Asset write aborted')
-				: error instanceof AssetInputError || storageError
-					? error
-					: new AssetInputError('invalid_upload', 400, 'Upload stream failed');
+		const reportedError = signal.aborted
+			? signal.reason instanceof Error
+				? signal.reason
+				: new Error('Asset write aborted')
+			: error instanceof AssetInputError || storageError
+				? error
+				: new AssetInputError('invalid_upload', 400, 'Upload stream failed');
 		const streamError = error instanceof Error ? error : new Error('Asset upload failed');
-			source.destroy(streamError);
+		source.destroy(streamError);
 		output.destroy(streamError);
 		if (putPromise) {
 			try {
@@ -558,7 +596,7 @@ function readAssetMetadata(row: AssetRow): AssetMetadata {
 		sha256: readNullableSha256(row.sha256),
 		importState: readEnum(row.importState, ['pending', 'ready', 'failed']),
 		createdAt: readTimestamp(row.createdAt),
-		updatedAt: readTimestamp(row.updatedAt)
+		updatedAt: readTimestamp(row.updatedAt),
 	};
 }
 
@@ -571,7 +609,8 @@ function createObjectKey(projectId: string, assetId: string, objectNamespace: st
 }
 
 function readString(value: unknown): string {
-	if (typeof value !== 'string' || value.length === 0) throw new Error('Asset row contained an invalid string');
+	if (typeof value !== 'string' || value.length === 0)
+		throw new Error('Asset row contained an invalid string');
 	return value;
 }
 
@@ -580,14 +619,18 @@ function readNullableString(value: unknown): string | null {
 	return readString(value);
 }
 
-function readEnum<const Values extends readonly string[]>(value: unknown, values: Values): Values[number] {
-	if (typeof value !== 'string' || !values.includes(value)) throw new Error('Asset row contained an invalid enum');
+function readEnum<const Values extends readonly string[]>(
+	value: unknown,
+	values: Values,
+): Values[number] {
+	if (typeof value !== 'string' || !values.includes(value))
+		throw new Error('Asset row contained an invalid enum');
 	return value as Values[number];
 }
 
 function readNullableEnum<const Values extends readonly string[]>(
 	value: unknown,
-	values: Values
+	values: Values,
 ): Values[number] | null {
 	if (value === null || value === undefined) return null;
 	return readEnum(value, values);
@@ -595,7 +638,8 @@ function readNullableEnum<const Values extends readonly string[]>(
 
 function readNullableByteSize(value: unknown): number | null {
 	if (value === null || value === undefined) return null;
-	const result = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN;
+	const result =
+		typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN;
 	if (!Number.isSafeInteger(result) || result < 1 || result > MAX_ASSET_BYTES) {
 		throw new Error('Asset row contained an invalid byte size');
 	}

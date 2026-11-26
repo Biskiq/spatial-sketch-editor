@@ -8,7 +8,7 @@
 export {
 	readSceneOperationAllocation,
 	readSceneOperationSubject,
-	sceneEntityTargetProblem
+	sceneEntityTargetProblem,
 } from './subject';
 export type { SceneOperationPayload, SceneOperationSubject } from './types';
 export { readSceneOperationPayload } from './dispatcher';

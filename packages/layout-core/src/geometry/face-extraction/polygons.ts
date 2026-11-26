@@ -21,7 +21,6 @@ export function polygonSignedArea(polygon: readonly LayoutVec2[]): number {
 	return sum / 2;
 }
 
-
 /**
  * Deterministic nesting detection: a bounded face whose polygon
  * is strictly inside another bounded face is a nested loop diagnostic; one
@@ -43,10 +42,9 @@ function polygonPlanBox(polygon: readonly LayoutVec2[]): PlanBox {
 	return { minX, minZ, maxX, maxZ };
 }
 
-
 export function reportNestedLoops(
 	faces: readonly DerivedCandidateFace[],
-	diagnostics: TopologyDiagnostic[]
+	diagnostics: TopologyDiagnostic[],
 ): void {
 	if (faces.length <= 1) return;
 	const witnessBoxes: PlanBox[] = faces.map((face) => {
@@ -70,25 +68,21 @@ export function reportNestedLoops(
 				diagnostics.push({
 					code: 'nested_boundary_loop',
 					message: `Face '${inner.key}' lies inside face '${outer.key}'`,
-					faceKey: inner.key
+					faceKey: inner.key,
 				});
 			} else if (pointOnPolygonBoundary(outer.polygon, witness)) {
 				diagnostics.push({
 					code: 'touching_nested_loop',
 					message: `Face '${inner.key}' touches the boundary of face '${outer.key}'`,
-					faceKey: inner.key
+					faceKey: inner.key,
 				});
 			}
 		}
 	}
 }
 
-
 /** Point lies exactly on the polygon's boundary ring (robust collinearity). */
-function pointOnPolygonBoundary(
-	polygon: readonly LayoutVec2[],
-	point: LayoutVec2
-): boolean {
+function pointOnPolygonBoundary(polygon: readonly LayoutVec2[], point: LayoutVec2): boolean {
 	for (let index = 0; index < polygon.length; index += 1) {
 		const a = polygon[index]!;
 		const b = polygon[(index + 1) % polygon.length]!;
@@ -105,8 +99,10 @@ function pointOnPolygonBoundary(
 	return false;
 }
 
-
-export function pointStrictlyInsidePolygon(polygon: readonly LayoutVec2[], point: LayoutVec2): boolean {
+export function pointStrictlyInsidePolygon(
+	polygon: readonly LayoutVec2[],
+	point: LayoutVec2,
+): boolean {
 	let inside = false;
 	for (let index = 0; index < polygon.length; index += 1) {
 		const a = polygon[index]!;
@@ -118,7 +114,6 @@ export function pointStrictlyInsidePolygon(polygon: readonly LayoutVec2[], point
 	}
 	return inside;
 }
-
 
 /**
  * Find a deterministic point in the strict interior of a simple polygon.
@@ -141,10 +136,7 @@ function polygonInteriorPoint(polygon: readonly LayoutVec2[]): LayoutVec2 | null
 		const a = polygon[previous]!;
 		const b = polygon[current]!;
 		const c = polygon[next]!;
-		const candidate: LayoutVec2 = [
-			(a[0] + b[0] + c[0]) / 3,
-			(a[1] + b[1] + c[1]) / 3
-		];
+		const candidate: LayoutVec2 = [(a[0] + b[0] + c[0]) / 3, (a[1] + b[1] + c[1]) / 3];
 		if (pointStrictlyInsidePolygon(polygon, candidate)) candidates.push(candidate);
 	};
 
@@ -166,8 +158,8 @@ function polygonInteriorPoint(polygon: readonly LayoutVec2[]): LayoutVec2 | null
 						index !== previous &&
 						index !== current &&
 						index !== next &&
-						pointStrictlyInsideTriangle(polygon[index]!, a, b, c)
-					)
+						pointStrictlyInsideTriangle(polygon[index]!, a, b, c),
+				)
 			)
 				continue;
 			addCandidate(previous, current, next);
@@ -196,22 +188,17 @@ function polygonInteriorPoint(polygon: readonly LayoutVec2[]): LayoutVec2 | null
 	return deepest;
 }
 
-
 function pointStrictlyInsideTriangle(
 	point: LayoutVec2,
 	a: LayoutVec2,
 	b: LayoutVec2,
-	c: LayoutVec2
+	c: LayoutVec2,
 ): boolean {
 	const first = orientXZ(a, b, point);
 	const second = orientXZ(b, c, point);
 	const third = orientXZ(c, a, point);
-	return (
-		(first > 0 && second > 0 && third > 0) ||
-		(first < 0 && second < 0 && third < 0)
-	);
+	return (first > 0 && second > 0 && third > 0) || (first < 0 && second < 0 && third < 0);
 }
-
 
 function distanceToPolygonRing(polygon: readonly LayoutVec2[], point: LayoutVec2): number {
 	let best = Infinity;
@@ -226,7 +213,7 @@ function distanceToPolygonRing(polygon: readonly LayoutVec2[], point: LayoutVec2
 				? 0
 				: Math.max(
 						0,
-						Math.min(1, ((point[0] - start[0]) * dx + (point[1] - start[1]) * dz) / lengthSquared)
+						Math.min(1, ((point[0] - start[0]) * dx + (point[1] - start[1]) * dz) / lengthSquared),
 					);
 		const offsetX = point[0] - (start[0] + dx * t);
 		const offsetZ = point[1] - (start[1] + dz * t);
@@ -235,38 +222,24 @@ function distanceToPolygonRing(polygon: readonly LayoutVec2[], point: LayoutVec2
 	return best;
 }
 
-
 /** Polygon area of a candidate face (exposed for reconciliation overlap math). */
 export function faceArea(face: { polygon: readonly LayoutVec2[] }): number {
 	return Math.abs(polygonSignedArea(face.polygon));
 }
 
-
 /** Area of the overlap between the face polygons of a predecessor region and a candidate. */
 export function polygonIntersectionArea(
 	a: readonly LayoutVec2[],
-	b: readonly LayoutVec2[]
+	b: readonly LayoutVec2[],
 ): number {
 	// Exact polygon clipping is out of scope for the P23 minimum; H5 uses
 	// overlap only as secondary evidence between classified candidates, where
 	// a sampling-based measure on a shared grid is deterministic and adequate
 	// for ranking. Use a lattice over the bounding box of the intersection.
-	const minX = Math.max(
-		Math.min(...a.map((p) => p[0])),
-		Math.min(...b.map((p) => p[0]))
-	);
-	const maxX = Math.min(
-		Math.max(...a.map((p) => p[0])),
-		Math.max(...b.map((p) => p[0]))
-	);
-	const minY = Math.max(
-		Math.min(...a.map((p) => p[1])),
-		Math.min(...b.map((p) => p[1]))
-	);
-	const maxY = Math.min(
-		Math.max(...a.map((p) => p[1])),
-		Math.max(...b.map((p) => p[1]))
-	);
+	const minX = Math.max(Math.min(...a.map((p) => p[0])), Math.min(...b.map((p) => p[0])));
+	const maxX = Math.min(Math.max(...a.map((p) => p[0])), Math.max(...b.map((p) => p[0])));
+	const minY = Math.max(Math.min(...a.map((p) => p[1])), Math.min(...b.map((p) => p[1])));
+	const maxY = Math.min(Math.max(...a.map((p) => p[1])), Math.max(...b.map((p) => p[1])));
 	if (!(maxX > minX) || !(maxY > minY)) return 0;
 	const steps = 64;
 	const dx = (maxX - minX) / steps;
@@ -283,7 +256,6 @@ export function polygonIntersectionArea(
 	}
 	return hits * dx * dy;
 }
-
 
 /**
  * Do two simple polygons share interior area?
@@ -303,7 +275,7 @@ export function polygonIntersectionArea(
  */
 export function polygonsShareInteriorArea(
 	a: readonly LayoutVec2[],
-	b: readonly LayoutVec2[]
+	b: readonly LayoutVec2[],
 ): boolean {
 	// `pointOnPolygonBoundary` is exact-collinearity (`orientXZ === 0`). Points
 	// sampled along a shared **oblique** ring evaluate a hair off zero
@@ -322,13 +294,16 @@ export function polygonsShareInteriorArea(
 					? 0
 					: Math.max(
 							0,
-							Math.min(1, ((point[0] - start[0]) * dx + (point[1] - start[1]) * dz) / lengthSquared)
+							Math.min(
+								1,
+								((point[0] - start[0]) * dx + (point[1] - start[1]) * dz) / lengthSquared,
+							),
 						);
-				const offsetX = point[0] - (start[0] + dx * t);
-				const offsetZ = point[1] - (start[1] + dz * t);
-				if (offsetX * offsetX + offsetZ * offsetZ <= ON_RING_TOLERANCE * ON_RING_TOLERANCE) {
-					return true;
-				}
+			const offsetX = point[0] - (start[0] + dx * t);
+			const offsetZ = point[1] - (start[1] + dz * t);
+			if (offsetX * offsetX + offsetZ * offsetZ <= ON_RING_TOLERANCE * ON_RING_TOLERANCE) {
+				return true;
+			}
 		}
 		return false;
 	};
@@ -343,7 +318,7 @@ export function polygonsShareInteriorArea(
 				? 0
 				: Math.max(
 						0,
-						Math.min(1, ((point[0] - start[0]) * dx + (point[1] - start[1]) * dz) / lengthSquared)
+						Math.min(1, ((point[0] - start[0]) * dx + (point[1] - start[1]) * dz) / lengthSquared),
 					);
 		const offsetX = point[0] - (start[0] + dx * t);
 		const offsetZ = point[1] - (start[1] + dz * t);

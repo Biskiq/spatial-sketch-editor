@@ -24,14 +24,14 @@ import type {
 	StageCardFact,
 	StageDomainPick,
 	StageHandleDescriptor,
-	StageHeightTick
+	StageHeightTick,
 } from '$lib/authoring/stage/stage-adapter-host';
 import {
 	PAPER_LAYER,
 	datumWorkingPlane,
 	scopeAdmitsEntity,
 	stageEnvelope,
-	stageScene
+	stageScene,
 } from '$lib/authoring/stage/stage-adapter-host';
 import type { SceneEntity, Vec3 } from '@portfolio/project-model/scene';
 import { sceneEntityLift } from '@portfolio/project-model/scene-planning';
@@ -49,7 +49,7 @@ import {
 	sceneObjectCardFieldFacts,
 	sceneObjectMarkDescriptors,
 	sceneObjectScale,
-	type SceneObjectMarkLive
+	type SceneObjectMarkLive,
 } from './object-marks';
 import {
 	liveProjectId,
@@ -59,13 +59,13 @@ import {
 	selectedObjectEntity,
 	sizePlannerContext,
 	type ObjectMarkGestureReading,
-	type ObjectMarkRefusalReading
+	type ObjectMarkRefusalReading,
 } from './object-readings';
 import { sceneComposeSupport, sceneEntityReference, sceneModelContactMinY } from './placement';
 import {
 	formSizeMeasurement,
 	type FormMarkScreenHeight,
-	type FormSizeMeasurement
+	type FormSizeMeasurement,
 } from './shape/form-size';
 import {
 	SCENE_COMPOSE_TASK,
@@ -75,7 +75,7 @@ import {
 	SCENE_PLACE_TASK,
 	SCENE_PROFILE_REVISION_ACTION,
 	SCENE_PROFILE_REVISION_KIND,
-	SCENE_PROFILE_REVISION_TASK
+	SCENE_PROFILE_REVISION_TASK,
 } from './scene-task-ids';
 
 const FORM_PLAN_HEIGHT_MARKER_GAP_CSS_PX = 24;
@@ -111,7 +111,7 @@ export type SceneContributions = Required<
 function entityFacts(
 	services: StageAdapterServices,
 	source: ReturnType<typeof stageScene>,
-	entityId: string
+	entityId: string,
 ): readonly StageCardFact[] {
 	const entity = source.entities.find((candidate) => candidate.id === entityId);
 	if (entity === undefined || entity.kind === 'light') return [];
@@ -128,17 +128,17 @@ function entityFacts(
 		{
 			label: 'Position (X · Z)',
 			value: `${entity.position[0]} m · ${entity.position[2]} m`,
-			fieldId: 'position'
+			fieldId: 'position',
 		},
 		{
 			label: 'Elevation',
 			...(entity.kind === 'artwork' ? { fieldId: 'elevation' } : {}),
-			value: `${entity.position[1]} m`
+			value: `${entity.position[1]} m`,
 		},
 		{
 			label: 'Yaw',
 			value: `${entity.rotation[1]} rad`,
-			fieldId: 'yaw'
+			fieldId: 'yaw',
 		},
 		// Only a subject Compose can actually resize advertises a Scale fact: a light
 		// or an unapproved catalogue model has no verified contact, so a Scale row
@@ -148,12 +148,14 @@ function entityFacts(
 					{
 						label: 'Scale',
 						value: `${typeof entity.scale === 'number' ? entity.scale : 1} (uniform)`,
-						fieldId: 'scale'
-					}
+						fieldId: 'scale',
+					},
 				]
 			: []),
 		// Dimensions are exposed by the lazy Card's per-axis Size fields.
-		...(entity.kind === 'form' ? [{ label: 'Material', value: entity.materialId, fieldId: 'material' }] : [])
+		...(entity.kind === 'form'
+			? [{ label: 'Material', value: entity.materialId, fieldId: 'material' }]
+			: []),
 	];
 }
 
@@ -162,7 +164,10 @@ function formCenter(entity: SceneFormEntity): [number, number, number] {
 	const mesh = evaluateFormMesh(entity.form);
 	if (mesh === null) return entity.position;
 	const center = mesh.bounds.min.map((value, axis) => (value + mesh.bounds.max[axis]!) / 2);
-	return new Vector3(center[0], center[1], center[2]).applyEuler(new Euler(...entity.rotation)).add(new Vector3(...entity.position)).toArray();
+	return new Vector3(center[0], center[1], center[2])
+		.applyEuler(new Euler(...entity.rotation))
+		.add(new Vector3(...entity.position))
+		.toArray();
 }
 
 function isYawOnly(rotation: Vec3): boolean {
@@ -192,13 +197,13 @@ function heightTicksFor(adapterContext: StageAdapterContext): readonly StageHeig
 					min: [
 						entity.position[0] + mesh.bounds.min[0],
 						entity.position[1] + mesh.bounds.min[1],
-						entity.position[2] + mesh.bounds.min[2]
+						entity.position[2] + mesh.bounds.min[2],
 					] as Vec3,
 					max: [
 						entity.position[0] + mesh.bounds.max[0],
 						entity.position[1] + mesh.bounds.max[1],
-						entity.position[2] + mesh.bounds.max[2]
-					] as Vec3
+						entity.position[2] + mesh.bounds.max[2],
+					] as Vec3,
 				};
 			}
 		} else if (entity.kind === 'primitive' && isYawOnly(entity.rotation)) {
@@ -223,26 +228,22 @@ function heightTicksFor(adapterContext: StageAdapterContext): readonly StageHeig
  */
 function formScreenHeight(
 	adapterContext: StageAdapterContext,
-	measurement: FormSizeMeasurement
+	measurement: FormSizeMeasurement,
 ): FormMarkScreenHeight | null {
 	if (adapterContext.evaluation.settledReading !== 'plan') return null;
 	const height = measurement.handles.find((handle) => handle.axis === 1);
 	const metersPerCssPixel = adapterContext.evaluation.targetPlaneMetersPerCssPixel;
 	if (height === undefined || !(metersPerCssPixel > 0)) return null;
 	return {
-		offset: [
-			0,
-			-(FORM_PLAN_HEIGHT_MARKER_GAP_CSS_PX + height.dimension / metersPerCssPixel)
-		],
-		axis: [0, -1]
+		offset: [0, -(FORM_PLAN_HEIGHT_MARKER_GAP_CSS_PX + height.dimension / metersPerCssPixel)],
+		axis: [0, -1],
 	};
 }
-
 
 export function createSceneContributions(
 	services: StageAdapterServices,
 	context: StageAdapterContext,
-	marks: ObjectMarkReading
+	marks: ObjectMarkReading,
 ): SceneContributions {
 	const source = stageScene(context.snapshot);
 	// The same projection Paper draws: the accepted runtime Scene the route hands
@@ -258,7 +259,7 @@ export function createSceneContributions(
 				position: current.candidate?.position ?? entity.position,
 				yaw: current.candidate?.yaw ?? entity.rotation[1],
 				scale: current.candidate?.scale ?? sceneObjectScale(entity),
-				refusal: current.refusal
+				refusal: current.refusal,
 			};
 		}
 		const refusal = marks.refusal();
@@ -268,14 +269,14 @@ export function createSceneContributions(
 				position: entity.position,
 				yaw: entity.rotation[1],
 				scale: sceneObjectScale(entity),
-				refusal: refusal.message
+				refusal: refusal.message,
 			};
 		}
 		return null;
 	}
 
 	function objectMarkDescriptors(
-		adapterContext: StageAdapterContext
+		adapterContext: StageAdapterContext,
 	): ReturnType<typeof sceneObjectMarkDescriptors> {
 		marks.prune();
 		const entity = selectedObjectEntity(adapterContext);
@@ -308,8 +309,8 @@ export function createSceneContributions(
 					measurement,
 					baseline: formSizeMeasurement(entity),
 					form,
-					screenHeight: formScreenHeight(adapterContext, measurement)
-				}
+					screenHeight: formScreenHeight(adapterContext, measurement),
+				},
 			});
 		}
 		const bounds = objectBounds(adapterContext, entity);
@@ -320,7 +321,7 @@ export function createSceneContributions(
 			bounds,
 			footprint: objectFootprint(services, entity, bounds),
 			lift,
-			live
+			live,
 		});
 	}
 
@@ -351,13 +352,13 @@ export function createSceneContributions(
 							async run() {
 								const opened = services.stage.openContributedTask(
 									SCENE_PROFILE_REVISION_TASK,
-									'scene'
+									'scene',
 								);
 								return opened.kind === 'opened'
 									? { kind: 'accepted' as const }
 									: { kind: 'refused' as const, message: opened.message };
-							}
-						}
+							},
+						},
 					]
 				: []),
 			// Studio edits a native form only; imported models and primitives have no Studio.
@@ -376,8 +377,8 @@ export function createSceneContributions(
 								return outcome.kind === 'entered'
 									? { kind: 'accepted' as const }
 									: { kind: 'refused' as const, message: outcome.message };
-							}
-						}
+							},
+						},
 					]
 				: []),
 			{
@@ -389,7 +390,7 @@ export function createSceneContributions(
 				detail: `Add one copy of ${entity.name} at +0.5 m X/Z. Undo removes it.`,
 				async run() {
 					return duplicateSceneObject(services, services.stage.snapshot(), entity.id);
-				}
+				},
 			},
 			{
 				id: 'scene-object-delete',
@@ -398,8 +399,8 @@ export function createSceneContributions(
 				detail: `Remove ${entity.name}. Undo restores it.`,
 				async run() {
 					return deleteSceneObject(services, services.stage.snapshot(), entity.id);
-				}
-			}
+				},
+			},
 		];
 	}
 
@@ -414,7 +415,7 @@ export function createSceneContributions(
 				id: `scene:entity:${entity.id}`,
 				label: entity.name,
 				reference: sceneEntityReference(entity.id, context.snapshot.domain.unitRevisions.scene),
-				worldPoint: entity.kind !== 'form' ? entity.position : formCenter(entity)
+				worldPoint: entity.kind !== 'form' ? entity.position : formCenter(entity),
 			})),
 		hostTools: ['erase', 'measure', 'paint'],
 		/**
@@ -442,7 +443,7 @@ export function createSceneContributions(
 				sourceId: hit.sourceId,
 				sourceKind: hit.sourceKind,
 				reference: hit.reference,
-				ref: null
+				ref: null,
 			}).find((candidate) => candidate.destructive === true);
 			return action === undefined
 				? { kind: 'refused', message: 'That object cannot be erased.' }
@@ -450,7 +451,10 @@ export function createSceneContributions(
 		},
 		pick(candidate, live) {
 			if (!source.entities.some((entity) => entity.kind !== 'light')) return null;
-			const css: [number, number] = [candidate.css[0] + live.evaluation.rect.left, candidate.css[1] + live.evaluation.rect.top];
+			const css: [number, number] = [
+				candidate.css[0] + live.evaluation.rect.left,
+				candidate.css[1] + live.evaluation.rect.top,
+			];
 			const ray = live.ray(css);
 			if (ray === null) return null;
 			// Object Studio's scope is this domain's own policy: candidates outside it are
@@ -458,7 +462,11 @@ export function createSceneContributions(
 			const scope = live.subjectScope?.() ?? null;
 			const admitted = (id: string): boolean => scopeAdmitsEntity(scope, id);
 			const drawn = live.pickScene(ray);
-			if (drawn?.kind === 'layout' || drawn?.kind === 'floor' && live.evaluation.renderedReading !== 'plan') return null;
+			if (
+				drawn?.kind === 'layout' ||
+				(drawn?.kind === 'floor' && live.evaluation.renderedReading !== 'plan')
+			)
+				return null;
 			// Measure admits rendered bounds corners independently of a surface hit.
 			// An AABB corner often lies outside a model's silhouette/declared Paper
 			// footprint; requiring Select to hit first made real model bounds unreachable.
@@ -469,20 +477,42 @@ export function createSceneContributions(
 					if (entity.kind === 'light' || !admitted(entity.id)) continue;
 					const bounds = live.sceneBounds(entity.id);
 					if (bounds === null) continue;
-					for (const x of [bounds.min[0], bounds.max[0]]) for (const y of [bounds.min[1], bounds.max[1]]) for (const z of [bounds.min[2], bounds.max[2]]) {
-						const corner: [number, number, number] = [x, y, z];
-						const projected = live.project(corner);
-						if (projected === null) continue;
-						const depth = corner.reduce((sum, n, axis) => sum + (n - ray.origin[axis]!) * ray.direction[axis]!, 0);
-						if (depth < 0 || drawn?.kind === 'entity' && drawn.entityId !== entity.id && drawn.distanceMeters < depth - 0.001) continue;
-						const distanceCss = Math.hypot(projected[0] - css[0], projected[1] - css[1]);
-						if (distanceCss > nearest) continue;
-						nearest = distanceCss;
-						cornerHit = {
-							hit: { sourceId: entity.id, sourceKind: 'entity', reference: sceneEntityReference(entity.id, live.snapshot.domain.unitRevisions.scene), worldPoint: corner },
-							refusal: null, depthMeters: depth, planLayer: PAPER_LAYER.sceneFootprint, cssDistance: distanceCss
-						};
-					}
+					for (const x of [bounds.min[0], bounds.max[0]])
+						for (const y of [bounds.min[1], bounds.max[1]])
+							for (const z of [bounds.min[2], bounds.max[2]]) {
+								const corner: [number, number, number] = [x, y, z];
+								const projected = live.project(corner);
+								if (projected === null) continue;
+								const depth = corner.reduce(
+									(sum, n, axis) => sum + (n - ray.origin[axis]!) * ray.direction[axis]!,
+									0,
+								);
+								if (
+									depth < 0 ||
+									(drawn?.kind === 'entity' &&
+										drawn.entityId !== entity.id &&
+										drawn.distanceMeters < depth - 0.001)
+								)
+									continue;
+								const distanceCss = Math.hypot(projected[0] - css[0], projected[1] - css[1]);
+								if (distanceCss > nearest) continue;
+								nearest = distanceCss;
+								cornerHit = {
+									hit: {
+										sourceId: entity.id,
+										sourceKind: 'entity',
+										reference: sceneEntityReference(
+											entity.id,
+											live.snapshot.domain.unitRevisions.scene,
+										),
+										worldPoint: corner,
+									},
+									refusal: null,
+									depthMeters: depth,
+									planLayer: PAPER_LAYER.sceneFootprint,
+									cssDistance: distanceCss,
+								};
+							}
 				}
 				if (cornerHit !== null) return cornerHit;
 			}
@@ -494,7 +524,10 @@ export function createSceneContributions(
 				if (hit.kind !== 'intersected' || !Number.isFinite(hit.distanceMeters)) return null;
 				const point: [number, number] = [hit.worldPoint[0], hit.worldPoint[2]];
 				const planHit = pickPlanSceneSubject({
-					footprints: scope === null ? footprints : footprints.filter((footprint) => admitted(footprint.entityId)),
+					footprints:
+						scope === null
+							? footprints
+							: footprints.filter((footprint) => admitted(footprint.entityId)),
 					point,
 					edgeHaloMeters: 6 * live.evaluation.targetPlaneMetersPerCssPixel,
 					datumMeters: live.snapshot.domain.datumMeters,
@@ -503,7 +536,7 @@ export function createSceneContributions(
 					ray,
 					pickScene: (probe) => live.pickScene(probe),
 					projectWorld: (probe) => live.project(probe),
-					rayAtCss: (probeCss) => live.ray(probeCss)
+					rayAtCss: (probeCss) => live.ray(probeCss),
 				});
 				if (planHit === null) return null;
 				entityId = planHit.entityId;
@@ -511,13 +544,20 @@ export function createSceneContributions(
 				cssDistance = planHit.cssDistance;
 			}
 			if (entityId === null) return null;
-			const worldPoint = ray.origin.map((value, axis) => value + ray.direction[axis]! * distance) as [number, number, number];
+			const worldPoint = ray.origin.map(
+				(value, axis) => value + ray.direction[axis]! * distance,
+			) as [number, number, number];
 			return {
-				hit: { sourceId: entityId, sourceKind: 'entity',
-				reference: sceneEntityReference(entityId, live.snapshot.domain.unitRevisions.scene),
-				worldPoint },
-				refusal: null, depthMeters: drawn?.kind === 'entity' ? drawn.distanceMeters : null,
-				planLayer: PAPER_LAYER.sceneFootprint, cssDistance
+				hit: {
+					sourceId: entityId,
+					sourceKind: 'entity',
+					reference: sceneEntityReference(entityId, live.snapshot.domain.unitRevisions.scene),
+					worldPoint,
+				},
+				refusal: null,
+				depthMeters: drawn?.kind === 'entity' ? drawn.distanceMeters : null,
+				planLayer: PAPER_LAYER.sceneFootprint,
+				cssDistance,
 			};
 		},
 		tasks: [
@@ -526,29 +566,29 @@ export function createSceneContributions(
 				taskKind: SCENE_PLACE_KIND,
 				label: 'Objects',
 				targetRef: null,
-				order: 20
+				order: 20,
 			},
 			{
 				id: SCENE_COMPOSE_TASK,
 				taskKind: SCENE_COMPOSE_TASK,
 				label: 'Compose',
 				targetRef: context.selection()?.ref ?? null,
-				order: 5
+				order: 5,
 			},
 			{
 				id: SCENE_PROFILE_REVISION_TASK,
 				taskKind: SCENE_PROFILE_REVISION_KIND,
 				label: 'Edit outline',
 				targetRef: context.selection()?.ref ?? null,
-				order: 6
+				order: 6,
 			},
 			{
 				id: SCENE_IMPORT_TASK,
 				taskKind: SCENE_IMPORT_KIND,
 				label: 'Import model',
 				targetRef: null,
-				order: 30
-			}
+				order: 30,
+			},
 		],
 		findEntries: [
 			{
@@ -560,7 +600,7 @@ export function createSceneContributions(
 				capability: 'scene',
 				home: 'dock',
 				slot: 'library',
-				order: 20
+				order: 20,
 			},
 			{
 				id: 'scene-exact-placement',
@@ -569,7 +609,7 @@ export function createSceneContributions(
 				railFamily: 'place',
 				capability: 'scene',
 				order: 21,
-				onInvoke: () => requestObjectsPrecision(liveProjectId(services))
+				onInvoke: () => requestObjectsPrecision(liveProjectId(services)),
 			},
 			{
 				id: 'scene-resize',
@@ -577,7 +617,7 @@ export function createSceneContributions(
 				label: 'Resize',
 				railFamily: 'arrange',
 				capability: 'scene',
-				order: 5
+				order: 5,
 			},
 			{
 				id: 'scene-duplicate',
@@ -585,7 +625,7 @@ export function createSceneContributions(
 				label: 'Duplicate',
 				railFamily: 'arrange',
 				capability: 'scene',
-				order: 6
+				order: 6,
 			},
 			{
 				id: 'scene-delete',
@@ -593,7 +633,7 @@ export function createSceneContributions(
 				label: 'Delete',
 				railFamily: 'arrange',
 				capability: 'scene',
-				order: 7
+				order: 7,
 			},
 			// Objects and Head Find both read these entries: Import is a
 			// procedure invoked by name, never a permanent pointer tool.
@@ -603,8 +643,8 @@ export function createSceneContributions(
 				label: 'Import model…',
 				railFamily: 'library',
 				capability: 'own model',
-				order: 30
-			}
+				order: 30,
+			},
 		],
 		/**
 		 * Marks are direct manipulation of the current selection, not a task. The
@@ -633,7 +673,7 @@ export function createSceneContributions(
 			return {
 				summary: 'Object fields',
 				fieldIds: sceneObjectCardFieldFacts(entity),
-				view: { component: SceneObjectCardFields, services }
+				view: { component: SceneObjectCardFields, services },
 			};
 		},
 		/**
@@ -643,7 +683,7 @@ export function createSceneContributions(
 		cardName(subject) {
 			if (subject.reference?.domain !== 'scene') return null;
 			const entity = stageScene(services.stage.snapshot()).entities.find(
-				(entry) => entry.id === subject.sourceId
+				(entry) => entry.id === subject.sourceId,
 			);
 			if (entity === undefined || entity.kind === 'light') return null;
 			return {
@@ -654,12 +694,12 @@ export function createSceneContributions(
 						services.stage.snapshot(),
 						entity.id,
 						'set-name',
-						{ entityId: entity.id, name }
+						{ entityId: entity.id, name },
 					);
 					return outcome.kind === 'refused'
 						? ({ kind: 'refused', code: 'refused', message: outcome.message } as const)
 						: ({ kind: 'accepted' } as const);
-				}
+				},
 			};
 		},
 		cardActions,
@@ -668,6 +708,6 @@ export function createSceneContributions(
 			// the Layout adapter's facts.
 			if (cardSubject.sourceKind !== 'entity') return [];
 			return entityFacts(services, source, cardSubject.sourceId);
-		}
+		},
 	};
 }

@@ -35,7 +35,12 @@ export function regionVerticalBand(region: LayoutRegion, datum: number): [number
 export function regionFootprintBounds(points: readonly LayoutVec2[]) {
 	const xs = points.map(([x]) => x);
 	const zs = points.map(([, z]) => z);
-	return { minX: Math.min(...xs), maxX: Math.max(...xs), minZ: Math.min(...zs), maxZ: Math.max(...zs) };
+	return {
+		minX: Math.min(...xs),
+		maxX: Math.max(...xs),
+		minZ: Math.min(...zs),
+		maxZ: Math.max(...zs),
+	};
 }
 
 /** G1 and G5 for a whole region collection, in document order. */
@@ -68,15 +73,21 @@ export function regionGeometryIssues(regions: readonly LayoutRegion[]): LayoutDo
 			continue;
 		}
 		if (lengths.some((length) => length <= LAYOUT_GEOMETRY_EPSILON)) {
-			reject('region_short_edge', 'Region footprint edges must be longer than the geometry tolerance');
+			reject(
+				'region_short_edge',
+				'Region footprint edges must be longer than the geometry tolerance',
+			);
 			continue;
 		}
 		const backtracks = points.some((point, i) => {
 			const before = points[(i + points.length - 1) % points.length]!;
 			const after = points[(i + 1) % points.length]!;
-			return orientXZ(before, point, after) === 0 &&
+			return (
+				orientXZ(before, point, after) === 0 &&
 				(before[0] - point[0]) * (after[0] - point[0]) +
-				(before[1] - point[1]) * (after[1] - point[1]) > 0;
+					(before[1] - point[1]) * (after[1] - point[1]) >
+					0
+			);
 		});
 		if (backtracks || spaceOutlineSelfIntersects(points)) {
 			reject('region_self_intersection', 'Region footprint must be a simple polygon');
@@ -87,21 +98,29 @@ export function regionGeometryIssues(regions: readonly LayoutRegion[]): LayoutDo
 			reject('region_nonpositive_area', 'Region footprint must have positive signed area in X/Z');
 			continue;
 		}
-		candidates.push({ region, index, band: regionVerticalBand(region, 0), bounds: regionFootprintBounds(points) });
+		candidates.push({
+			region,
+			index,
+			band: regionVerticalBand(region, 0),
+			bounds: regionFootprintBounds(points),
+		});
 	}
 	for (const [index, a] of candidates.entries()) {
 		for (let next = index + 1; next < candidates.length; next++) {
 			const b = candidates[next]!;
 			if (
-				a.bounds.maxX <= b.bounds.minX || b.bounds.maxX <= a.bounds.minX ||
-				a.bounds.maxZ <= b.bounds.minZ || b.bounds.maxZ <= a.bounds.minZ ||
+				a.bounds.maxX <= b.bounds.minX ||
+				b.bounds.maxX <= a.bounds.minX ||
+				a.bounds.maxZ <= b.bounds.minZ ||
+				b.bounds.maxZ <= a.bounds.minZ ||
 				Math.min(a.band[1], b.band[1]) - Math.max(a.band[0], b.band[0]) <= LAYOUT_GEOMETRY_EPSILON
-			) continue;
+			)
+				continue;
 			if (polygonsShareInteriorArea(a.region.footprint.points, b.region.footprint.points)) {
 				issues.push({
 					path: `$.regions[${b.index}].footprint`,
 					code: 'region_overlap',
-					message: `Regions '${a.region.id}' and '${b.region.id}' overlap in volume`
+					message: `Regions '${a.region.id}' and '${b.region.id}' overlap in volume`,
 				});
 			}
 		}
@@ -112,15 +131,20 @@ export function regionGeometryIssues(regions: readonly LayoutRegion[]): LayoutDo
 /** Carry Wall intent through explicit planner lineage, preserving unchanged source. */
 export function carryRegionWallIntents(
 	regions: LayoutRegion[],
-	correspondence: ReadonlyMap<string, readonly string[]>
+	correspondence: ReadonlyMap<string, readonly string[]>,
 ): LayoutRegion[] {
 	if (regions.length === 0 || correspondence.size === 0) return regions;
 	let changed = false;
 	const result = regions.map((region) => {
 		if (!region.intendedGaps.some((id) => correspondence.has(id))) return region;
-		const intendedGaps = [...new Set(region.intendedGaps.flatMap((id) => correspondence.get(id) ?? [id]))].sort();
-		if (intendedGaps.length === region.intendedGaps.length &&
-			intendedGaps.every((id, index) => id === region.intendedGaps[index])) return region;
+		const intendedGaps = [
+			...new Set(region.intendedGaps.flatMap((id) => correspondence.get(id) ?? [id])),
+		].sort();
+		if (
+			intendedGaps.length === region.intendedGaps.length &&
+			intendedGaps.every((id, index) => id === region.intendedGaps[index])
+		)
+			return region;
 		changed = true;
 		return { ...region, intendedGaps };
 	});

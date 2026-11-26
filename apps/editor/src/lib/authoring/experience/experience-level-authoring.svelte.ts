@@ -1,6 +1,9 @@
 import type { OperationChange } from '@portfolio/project-model/f4';
 import type { Experience, ProjectEnvelope } from '@portfolio/project-model/units';
-import { lowerExperienceProgram, presentationDisplayName as displayPresentationName } from '@portfolio/project-model/units';
+import {
+	lowerExperienceProgram,
+	presentationDisplayName as displayPresentationName,
+} from '@portfolio/project-model/units';
 import type { StageAdapterServices } from '../stage/stage-adapter-host';
 import { removeIntent, viewRemoveIntent } from './commands-presentation';
 import { sceneEntitySubject } from './commands-references';
@@ -24,7 +27,10 @@ export type ExperienceLevelPorts = {
 	readonly say: (kind: 'success' | 'info' | 'refusal', text: string) => void;
 	readonly newId: () => string;
 	readonly revision: () => Revision;
-	readonly run: (builder: () => Submission, success?: (changes: readonly OperationChange[]) => string) => Promise<boolean>;
+	readonly run: (
+		builder: () => Submission,
+		success?: (changes: readonly OperationChange[]) => string,
+	) => Promise<boolean>;
 	readonly focus: {
 		readonly openExperience: (experienceId: string) => void;
 		readonly select: (subject: ExperienceSubject | null) => void;
@@ -49,21 +55,20 @@ export function createExperienceLevelAuthoring(ports: ExperienceLevelPorts) {
 			experienceId: experience.id,
 			sourceContentId: read.sourceContentId,
 			sessionEpoch: read.sessionEpoch,
-			guideId: guide.id
+			guideId: guide.id,
 		});
 		if (lowered.kind !== 'lowered') return null;
 		return {
 			program: lowered.program,
 			transitions: lowered.transitions,
 			graph,
-			entryStopId: guide.stopIds[0]!
+			entryStopId: guide.stopIds[0]!,
 		};
 	}
 	const playbackSource = $derived.by((): PlaybackSource | null => {
 		const guide = ports.contextGuide();
 		return guide === null ? null : lowerPlaybackSource(guide.id);
 	});
-
 
 	async function createExperience(label?: string): Promise<boolean> {
 		const experienceId = ports.newId();
@@ -72,8 +77,8 @@ export function createExperienceLevelAuthoring(ports: ExperienceLevelPorts) {
 			createExperienceIntent({
 				revision: ports.revision(),
 				ids: { operation: ports.newId(), experience: experienceId },
-				label: named
-			})
+				label: named,
+			}),
 		);
 		// Focus never names an identity the source does not carry: a refused create
 		// must not point Preview at a non-existent Experience.
@@ -81,11 +86,9 @@ export function createExperienceLevelAuthoring(ports: ExperienceLevelPorts) {
 		return accepted;
 	}
 
-
 	async function presentThis(entityId: string, _label?: string): Promise<boolean> {
 		return ports.captureNewPresentation(entityId, null);
 	}
-
 
 	async function remove(target: ExperienceRemovalTarget): Promise<boolean> {
 		const experience = ports.current();
@@ -123,7 +126,7 @@ export function createExperienceLevelAuthoring(ports: ExperienceLevelPorts) {
 							experienceId: experience.id,
 							presentationId: target.presentationId,
 							viewId: target.viewId,
-							defaultViewId: target.newDefaultViewId ?? null
+							defaultViewId: target.newDefaultViewId ?? null,
 						})
 					: removeIntent({
 							envelope: ports.snapshot(),
@@ -131,26 +134,39 @@ export function createExperienceLevelAuthoring(ports: ExperienceLevelPorts) {
 							ids: { operation: ports.newId(), connections: ports.connectionPool() },
 							experienceId: experience.id,
 							subject: target.kind,
-							id: target.kind === 'stop' ? target.stopId : target.kind === 'guide' ? target.guideId : target.presentationId
+							id:
+								target.kind === 'stop'
+									? target.stopId
+									: target.kind === 'guide'
+										? target.guideId
+										: target.presentationId,
 						}),
-			() => `${removedName} removed. ${ports.removals().remaining(target, after)}`.trim()
+			() => `${removedName} removed. ${ports.removals().remaining(target, after)}`.trim(),
 		);
 		if (ok) {
 			if (selectsParent) ports.focus.select(parent);
-			if (target.kind === 'guide' && ports.focus.guideId === target.guideId) ports.focus.openGuide(null);
+			if (target.kind === 'guide' && ports.focus.guideId === target.guideId)
+				ports.focus.openGuide(null);
 		}
 		return ok;
 	}
 
-
 	function presentationSubjectName(presentationId: string): string | null {
-		const reference = ports.current()?.presentations.find((entry) => entry.id === presentationId)?.subject ?? null;
-		if (reference === null || reference.domain !== 'scene' || reference.subject.kind !== 'entity') return null;
-		return ports.snapshot().units.scene.data.entities.find((entity) => entity.id === reference.subject.id)?.name ?? null;
+		const reference =
+			ports.current()?.presentations.find((entry) => entry.id === presentationId)?.subject ?? null;
+		if (reference === null || reference.domain !== 'scene' || reference.subject.kind !== 'entity')
+			return null;
+		return (
+			ports
+				.snapshot()
+				.units.scene.data.entities.find((entity) => entity.id === reference.subject.id)?.name ??
+			null
+		);
 	}
 
 	function presentationDisplayName(presentationId: string): string {
-		const presentation = ports.current()?.presentations.find((entry) => entry.id === presentationId) ?? null;
+		const presentation =
+			ports.current()?.presentations.find((entry) => entry.id === presentationId) ?? null;
 		if (presentation === null) return presentationId;
 		return displayPresentationName(presentation, presentationSubjectName(presentationId));
 	}
@@ -160,13 +176,16 @@ export function createExperienceLevelAuthoring(ports: ExperienceLevelPorts) {
 	}
 
 	const linkCandidates = $derived(
-		ports.snapshot().units.scene.data.entities.map((entity) => ({ id: entity.id, label: entity.name }))
+		ports
+			.snapshot()
+			.units.scene.data.entities.map((entity) => ({ id: entity.id, label: entity.name })),
 	);
 
 	async function linkPresentation(presentationId: string, entityId: string): Promise<boolean> {
 		const experience = ports.current();
 		if (experience === null) return false;
-		if (!ports.snapshot().units.scene.data.entities.some((entity) => entity.id === entityId)) return false;
+		if (!ports.snapshot().units.scene.data.entities.some((entity) => entity.id === entityId))
+			return false;
 		return ports.run(
 			() =>
 				presentationUpdateIntent({
@@ -176,16 +195,18 @@ export function createExperienceLevelAuthoring(ports: ExperienceLevelPorts) {
 					experienceId: experience.id,
 					presentationId,
 					subject: sceneEntitySubject(ports.snapshot(), entityId),
-					label: null
+					label: null,
 				}),
-			() => `Linked to ${ports.snapshot().units.scene.data.entities.find((entity) => entity.id === entityId)?.name ?? 'the object'}.`
+			() =>
+				`Linked to ${ports.snapshot().units.scene.data.entities.find((entity) => entity.id === entityId)?.name ?? 'the object'}.`,
 		);
 	}
 
 	async function unlinkPresentation(presentationId: string): Promise<boolean> {
 		const experience = ports.current();
 		const presentation = experience?.presentations.find((entry) => entry.id === presentationId);
-		if (experience === null || presentation === undefined || presentation.subject === null) return false;
+		if (experience === null || presentation === undefined || presentation.subject === null)
+			return false;
 		return ports.run(
 			() =>
 				presentationUpdateIntent({
@@ -195,16 +216,22 @@ export function createExperienceLevelAuthoring(ports: ExperienceLevelPorts) {
 					experienceId: experience.id,
 					presentationId,
 					subject: null,
-					label: presentationDisplayName(presentationId)
+					label: presentationDisplayName(presentationId),
 				}),
-			() => 'Unlinked from its object.'
+			() => 'Unlinked from its object.',
 		);
 	}
 
 	async function followPresentation(presentationId: string): Promise<boolean> {
 		const experience = ports.current();
 		const presentation = experience?.presentations.find((entry) => entry.id === presentationId);
-		if (experience === null || presentation === undefined || presentation.subject === null || presentation.label === null) return false;
+		if (
+			experience === null ||
+			presentation === undefined ||
+			presentation.subject === null ||
+			presentation.label === null
+		)
+			return false;
 		return ports.run(
 			() =>
 				presentationUpdateIntent({
@@ -213,12 +240,11 @@ export function createExperienceLevelAuthoring(ports: ExperienceLevelPorts) {
 					ids: { operation: ports.newId() },
 					experienceId: experience.id,
 					presentationId,
-					label: null
+					label: null,
 				}),
-			() => 'Following the object\'s name.'
+			() => "Following the object's name.",
 		);
 	}
-
 
 	return {
 		get playbackSource() {
@@ -236,6 +262,6 @@ export function createExperienceLevelAuthoring(ports: ExperienceLevelPorts) {
 		followPresentation,
 		presentationSubjectName,
 		presentationDisplayName,
-		presentationLabel
+		presentationLabel,
 	};
 }

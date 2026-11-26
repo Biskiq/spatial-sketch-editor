@@ -272,7 +272,7 @@ Report it through the router's triage; do not fix product code here.**
     [`save-state.ts`](../apps/editor/src/lib/authoring/save/save-state.ts),
     [`head-save.ts`](../apps/editor/src/lib/authoring/save/head-save.ts) and
     [`EditorHead.svelte`](../apps/editor/src/lib/authoring/stage/shell/EditorHead.svelte) (covered by
-    [`head-save.test.ts`](../apps/editor/tests/lib/authoring/head-save.test.ts)) shows that when Head Save
+    [`head-save.test.ts`](../apps/editor/tests/lib/authoring/save/head-save.test.ts)) shows that when Head Save
     fails with `auth-required`, `SaveState` captures `pending: SaveRequest` **in memory** and switches the
     Head button to `Resume pending save` (`save.retry()`). This supports **same-mounted-session retry**
     while the `/project/:id/spatial` session remains mounted (not cross-tab state continuity and not
@@ -285,7 +285,7 @@ Report it through the router's triage; do not fix product code here.**
     (lines 70–85) reads `readPendingCloudSave` after `/auth?next=/`, but `writePendingCloudSave` has
     **zero production callers**, carries the legacy `{ name, layout, scene }` shape rather than the v2
     unit envelope, and is forbidden on `/project/:id/spatial` by
-    [`editor-host-no-write.arch.test.ts`](../apps/editor/tests/lib/authoring/editor-host-no-write.arch.test.ts).
+    [`editor-host-no-write.arch.test.ts`](../apps/editor/tests/lib/authoring/stage/editor-host-no-write.arch.case.ts).
   - **What the reference and roadmap documents actually state:**
     [`persistence.md`](../docs/reference/components/persistence.md) (`P19`) specifies authenticated owned
     Save (`POST /api/projects` / `PUT /api/projects/:id`, `401` when unauthenticated) and does **not**

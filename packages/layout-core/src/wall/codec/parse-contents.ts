@@ -1,14 +1,42 @@
-import type { LayoutObject, LayoutSpaceVirtualEdge, LayoutWallOpening, OrientedWallRef } from '../types';
+import type {
+	LayoutObject,
+	LayoutSpaceVirtualEdge,
+	LayoutWallOpening,
+	OrientedWallRef,
+} from '../types';
 import type { LayoutDocumentIssue } from '../../plan/issue';
 import { parseOptionalName } from './parse-structure';
-import { addIssue, assertAllowedKeys, parseArray, readEnum, readId, readNonNegativeNumber, readPositiveNumber, readPositiveVec3, readRecord, readString, readVec2, readVec3, validateUniqueIds } from './readers';
+import {
+	addIssue,
+	assertAllowedKeys,
+	parseArray,
+	readEnum,
+	readId,
+	readNonNegativeNumber,
+	readPositiveNumber,
+	readPositiveVec3,
+	readRecord,
+	readString,
+	readVec2,
+	readVec3,
+	validateUniqueIds,
+} from './readers';
 import type { ParsedValue } from './schema';
-import { AUTO_BEZIER_SEGMENT_KEYS, INTERIOR_ANCHOR_KEYS, LINE_SEGMENT_KEYS, OBJECT_KEYS, OPENING_KEYS, PATH_KEYS, VIRTUAL_EDGE_KEYS, WALL_REF_KEYS } from './schema';
+import {
+	AUTO_BEZIER_SEGMENT_KEYS,
+	INTERIOR_ANCHOR_KEYS,
+	LINE_SEGMENT_KEYS,
+	OBJECT_KEYS,
+	OPENING_KEYS,
+	PATH_KEYS,
+	VIRTUAL_EDGE_KEYS,
+	WALL_REF_KEYS,
+} from './schema';
 
 export function parseVirtualEdge(
 	input: unknown,
 	path: string,
-	issues: LayoutDocumentIssue[]
+	issues: LayoutDocumentIssue[],
 ): ParsedValue<LayoutSpaceVirtualEdge> {
 	const record = readRecord(input, path, issues);
 	if (!record) return undefined;
@@ -19,11 +47,10 @@ export function parseVirtualEdge(
 	return { startJunctionId, endJunctionId };
 }
 
-
 export function parseBoundaryRefs(
 	input: unknown,
 	path: string,
-	issues: LayoutDocumentIssue[]
+	issues: LayoutDocumentIssue[],
 ): OrientedWallRef[] | undefined {
 	if (!Array.isArray(input)) {
 		addIssue(issues, path, 'invalid_type', 'Expected an array');
@@ -33,11 +60,10 @@ export function parseBoundaryRefs(
 	return refs.every((ref) => ref !== undefined) ? refs : undefined;
 }
 
-
 function parseBoundaryRef(
 	input: unknown,
 	path: string,
-	issues: LayoutDocumentIssue[]
+	issues: LayoutDocumentIssue[],
 ): ParsedValue<OrientedWallRef> {
 	const record = readRecord(input, path, issues);
 	if (!record) return undefined;
@@ -49,11 +75,10 @@ function parseBoundaryRef(
 	return { wallId, direction };
 }
 
-
 export function parseOpening(
 	input: unknown,
 	path: string,
-	issues: LayoutDocumentIssue[]
+	issues: LayoutDocumentIssue[],
 ): ParsedValue<LayoutWallOpening> {
 	const record = readRecord(input, path, issues);
 	if (!record) return undefined;
@@ -70,9 +95,13 @@ export function parseOpening(
 		record.profile,
 		`${path}.profile`,
 		['rectangular', 'rounded', 'pointed'],
-		issues
+		issues,
 	);
-	const connectsRoomIds = parsePortalRoomIds(record.connectsRoomIds, `${path}.connectsRoomIds`, issues);
+	const connectsRoomIds = parsePortalRoomIds(
+		record.connectsRoomIds,
+		`${path}.connectsRoomIds`,
+		issues,
+	);
 	const name = parseOptionalName(record.name, `${path}.name`, issues);
 	if (
 		!id ||
@@ -97,15 +126,14 @@ export function parseOpening(
 		sillHeight,
 		profile,
 		...(connectsRoomIds ? { connectsRoomIds } : {}),
-		...(name !== undefined ? { name } : {})
+		...(name !== undefined ? { name } : {}),
 	};
 }
-
 
 function parsePortalRoomIds(
 	input: unknown,
 	path: string,
-	issues: LayoutDocumentIssue[]
+	issues: LayoutDocumentIssue[],
 ): [string, string] | undefined {
 	if (input === undefined) return undefined;
 	if (!Array.isArray(input) || input.length !== 2) {
@@ -119,11 +147,10 @@ function parsePortalRoomIds(
 	return first.localeCompare(second) <= 0 ? [first, second] : [second, first];
 }
 
-
 export function parseObject(
 	input: unknown,
 	path: string,
-	issues: LayoutDocumentIssue[]
+	issues: LayoutDocumentIssue[],
 ): ParsedValue<LayoutObject> {
 	const record = readRecord(input, path, issues);
 	if (!record) return undefined;
@@ -134,28 +161,47 @@ export function parseObject(
 		record.kind,
 		`${path}.kind`,
 		['box', 'plane', 'cylinder', 'sphere', 'profile'],
-		issues
+		issues,
 	);
 	const position = readVec3(record.position, `${path}.position`, issues);
 	const rotation = readVec3(record.rotation, `${path}.rotation`, issues);
 	const dimensions = readPositiveVec3(record.dimensions, `${path}.dimensions`, issues);
-	const roomId = record.roomId === undefined ? undefined : readId(record.roomId, `${path}.roomId`, issues);
-	const profile = record.profile === undefined ? undefined : parsePath(record.profile, `${path}.profile`, issues);
+	const roomId =
+		record.roomId === undefined ? undefined : readId(record.roomId, `${path}.roomId`, issues);
+	const profile =
+		record.profile === undefined ? undefined : parsePath(record.profile, `${path}.profile`, issues);
 	if (kind === 'profile' && !profile) {
-		addIssue(issues, `${path}.profile`, 'missing_field', "Profile objects require a closed 'profile'");
+		addIssue(
+			issues,
+			`${path}.profile`,
+			'missing_field',
+			"Profile objects require a closed 'profile'",
+		);
 	}
 	if (kind !== 'profile' && record.profile !== undefined) {
-		addIssue(issues, `${path}.profile`, 'unexpected_field', "Only profile objects may define 'profile'");
+		addIssue(
+			issues,
+			`${path}.profile`,
+			'unexpected_field',
+			"Only profile objects may define 'profile'",
+		);
 	}
 	if (!id || !kind || !position || !rotation || !dimensions) return undefined;
-	return { id, kind, position, rotation, dimensions, ...(profile ? { profile } : {}), ...(roomId ? { roomId } : {}) };
+	return {
+		id,
+		kind,
+		position,
+		rotation,
+		dimensions,
+		...(profile ? { profile } : {}),
+		...(roomId ? { roomId } : {}),
+	};
 }
-
 
 function parsePath(
 	input: unknown,
 	path: string,
-	issues: LayoutDocumentIssue[]
+	issues: LayoutDocumentIssue[],
 ): ParsedValue<import('../../geometry/path').DraftPath> {
 	const record = readRecord(input, path, issues);
 	if (!record) return undefined;
@@ -173,11 +219,10 @@ function parsePath(
 	return { closed: true, segments };
 }
 
-
 function parseSegment(
 	input: unknown,
 	path: string,
-	issues: LayoutDocumentIssue[]
+	issues: LayoutDocumentIssue[],
 ): ParsedValue<import('../../geometry/path').DraftSegment> {
 	const record = readRecord(input, path, issues);
 	if (!record) return undefined;
@@ -197,7 +242,11 @@ function parseSegment(
 		const id = readId(record.id, `${path}.id`, issues);
 		const start = readVec2(record.start, `${path}.start`, issues);
 		const end = readVec2(record.end, `${path}.end`, issues);
-		const interiorAnchors = parseInteriorAnchors(record.interiorAnchors, `${path}.interiorAnchors`, issues);
+		const interiorAnchors = parseInteriorAnchors(
+			record.interiorAnchors,
+			`${path}.interiorAnchors`,
+			issues,
+		);
 		if (!id || !start || !end || !interiorAnchors) return undefined;
 		return { id, kind, start, end, interiorAnchors };
 	}
@@ -208,28 +257,31 @@ function parseSegment(
 	return undefined;
 }
 
-
 function parseInteriorAnchors(
 	input: unknown,
 	path: string,
-	issues: LayoutDocumentIssue[]
+	issues: LayoutDocumentIssue[],
 ): ParsedValue<import('../../geometry/path').LayoutInteriorAnchor[]> {
 	const anchors = parseArray(input, path, issues, parseInteriorAnchor);
 	if (!anchors) return undefined;
 	validateUniqueIds(anchors, path, issues, (anchor) => anchor.id);
 	for (const [index, anchor] of anchors.entries()) {
 		if (!anchor.point.every((value) => Number.isFinite(value))) {
-			addIssue(issues, `${path}[${index}].point`, 'invalid_value', 'Interior anchor point must be finite');
+			addIssue(
+				issues,
+				`${path}[${index}].point`,
+				'invalid_value',
+				'Interior anchor point must be finite',
+			);
 		}
 	}
 	return anchors;
 }
 
-
 function parseInteriorAnchor(
 	input: unknown,
 	path: string,
-	issues: LayoutDocumentIssue[]
+	issues: LayoutDocumentIssue[],
 ): ParsedValue<import('../../geometry/path').LayoutInteriorAnchor> {
 	const record = readRecord(input, path, issues);
 	if (!record) return undefined;

@@ -25,7 +25,12 @@
  * world features at the same screen distances).
  */
 
-export { LAYOUT_PLAN_GRID_STEP, LAYOUT_PLAN_SNAP_RADIUS_CSS_PX, snapOwnerKey, wallOwnerKey } from './snap/types';
+export {
+	LAYOUT_PLAN_GRID_STEP,
+	LAYOUT_PLAN_SNAP_RADIUS_CSS_PX,
+	snapOwnerKey,
+	wallOwnerKey,
+} from './snap/types';
 export type {
 	SnapFeatureKind,
 	SnapOwnerKind,
@@ -34,7 +39,7 @@ export type {
 	SnapInputContext,
 	SnapQueryContext,
 	SnapResolution,
-	SnapGuide
+	SnapGuide,
 } from './snap/types';
 export {
 	snapAcquisitionRadiusWorld,
@@ -44,7 +49,7 @@ export {
 	openingEdgeSnapCandidates,
 	objectBoundsSnapCandidates,
 	orthogonalGuideCandidates,
-	wallIntersectionSnapCandidates
+	wallIntersectionSnapCandidates,
 } from './snap/features';
 export { wallSnapIndex, resolveLayoutSnap } from './snap/resolve';
 export type { DerivedWallSnapIndex, P23B1SnapInputEntry } from './snap/resolve';
@@ -52,8 +57,13 @@ export {
 	resolveOpeningDragSnap,
 	resolveOpeningDragEdgeSnap,
 	resolveOpeningDragSnapUseMode,
-	resolveOpeningDragRawValidity
+	resolveOpeningDragRawValidity,
 } from './snap/opening-drag';
-export type { OpeningDragSnapCandidate, OpeningDragSnapResolution, OpeningDragAnchor, OpeningDragRawResolution } from './snap/opening-drag';
+export type {
+	OpeningDragSnapCandidate,
+	OpeningDragSnapResolution,
+	OpeningDragAnchor,
+	OpeningDragRawResolution,
+} from './snap/opening-drag';
 export { dedupeWallSpans, objectFootprintCenter } from './snap/walls';
 export type { MergedWallSpan } from './snap/walls';

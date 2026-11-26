@@ -24,27 +24,37 @@ export type AppearanceDependencies = {
 	readonly finishes: Omit<FinishesInput, 'retryTextures'>;
 	readonly card: Omit<Parameters<typeof createCardSession>[0], 'draftPreview' | 'finishes'>;
 	readonly draft: Omit<Parameters<typeof createLibraryDraftSession>[0], 'finishes'>;
-	readonly materialImport: Omit<Parameters<typeof createAppearanceImportSession>[0], 'previewing' | 'lens' | 'finishes'>;
-	readonly paint: Omit<Parameters<typeof createPaintSession>[0], 'finishTileSource' | 'endLibraryDraft' | 'finishes'>;
+	readonly materialImport: Omit<
+		Parameters<typeof createAppearanceImportSession>[0],
+		'previewing' | 'lens' | 'finishes'
+	>;
+	readonly paint: Omit<
+		Parameters<typeof createPaintSession>[0],
+		'finishTileSource' | 'endLibraryDraft' | 'finishes'
+	>;
 	readonly align: Omit<Parameters<typeof createAlignSession>[0], 'finishes'>;
 	readonly repair: Omit<Parameters<typeof createRepairSession>[0], 'finishes'>;
 };
 
 export function createAppearanceFeature(deps: AppearanceDependencies) {
 	const finishes = createAppearanceFinishAuthority(deps.finishes);
-	const card = createCardSession({ ...deps.card, finishes: () => finishes, draftPreview: () => draft.draftPreview() });
+	const card = createCardSession({
+		...deps.card,
+		finishes: () => finishes,
+		draftPreview: () => draft.draftPreview(),
+	});
 	const paint = createPaintSession({
 		...deps.paint,
 		finishes: () => finishes,
 		finishTileSource: (id) => draft.finishTileSource(id),
-		endLibraryDraft: () => draft.endLibraryDraft()
+		endLibraryDraft: () => draft.endLibraryDraft(),
 	});
 	const draft = createLibraryDraftSession({ ...deps.draft, finishes: () => finishes });
 	const materialImport = createAppearanceImportSession({
 		...deps.materialImport,
 		finishes: () => finishes,
 		previewing: deps.paint.previewing,
-		lens: deps.align.lens
+		lens: deps.align.lens,
 	});
 	const align = createAlignSession({ ...deps.align, finishes: () => finishes });
 	const repair = createRepairSession({ ...deps.repair, finishes: () => finishes });
@@ -53,14 +63,14 @@ export function createAppearanceFeature(deps: AppearanceDependencies) {
 		finishes: () => finishes,
 		lens: deps.align.lens,
 		repair,
-		cancelImport: materialImport.cancel
+		cancelImport: materialImport.cancel,
 	});
 	return {
 		id: 'appearance' as const,
 		lifecycle: {
 			interruptForReplacement: {
 				'end-operations-no-camera': operations.endNoCamera,
-				'reset-issues': repair.reset
+				'reset-issues': repair.reset,
 			},
 			historyStep: { 'cancel-card-gesture': card.cancelCardGesture },
 			readingChange: { 'cancel-card-gesture': card.cancelCardGesture },
@@ -70,8 +80,8 @@ export function createAppearanceFeature(deps: AppearanceDependencies) {
 			leaveProject: { 'cancel-image': operations.cancelImage },
 			dispose: {
 				'end-operations-no-camera': operations.endNoCamera,
-				'reset-issues': repair.reset
-			}
+				'reset-issues': repair.reset,
+			},
 		},
 		rungs: {
 			cancelFinishGesture: card.cancelGesture,
@@ -80,7 +90,7 @@ export function createAppearanceFeature(deps: AppearanceDependencies) {
 			dismissMaterialImport: materialImport.dismissMaterialImport,
 			dismissRepairDrawer: repair.dismiss,
 			dismissPaint: paint.dismissPaint,
-			paintKey: paint.paintKey
+			paintKey: paint.paintKey,
 		},
 		ports: {
 			finishes: () => finishes,
@@ -97,21 +107,39 @@ export function createAppearanceFeature(deps: AppearanceDependencies) {
 			dismissRepairDrawer: repair.dismiss,
 			endOperations: operations.endOperations,
 			alignCutaway: align.cutaway,
-			alignFraming: align.framing
+			alignFraming: align.framing,
 		},
 		regions: {
 			regionsCanvas: canvasRegion,
 			head: repair.head,
 			toolbars: paint.toolbars,
-			get importSheet() { return materialImport.props; },
-			get align() { return align.props; },
-			get materialEditor() { return draft.materialEditor; },
-			get paint() { return paint.tray; },
-			get repair() { return repair.props; },
-			get finishShelf() { return draft.shelf; },
-			get ownsPaintPlate() { return paint.ownsPlate; },
-			get paintChip() { return paint.chip; },
-			get planAppearance() { return align.planAppearance; }
-		}
+			get importSheet() {
+				return materialImport.props;
+			},
+			get align() {
+				return align.props;
+			},
+			get materialEditor() {
+				return draft.materialEditor;
+			},
+			get paint() {
+				return paint.tray;
+			},
+			get repair() {
+				return repair.props;
+			},
+			get finishShelf() {
+				return draft.shelf;
+			},
+			get ownsPaintPlate() {
+				return paint.ownsPlate;
+			},
+			get paintChip() {
+				return paint.chip;
+			},
+			get planAppearance() {
+				return align.planAppearance;
+			},
+		},
 	};
 }

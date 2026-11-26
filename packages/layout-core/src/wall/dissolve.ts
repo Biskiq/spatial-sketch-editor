@@ -27,17 +27,39 @@
  * occupancy never decides it.
  */
 import { carryRegionWallIntents } from '../room/region';
-import type { LayoutDocumentWallFirst, LayoutWall, LayoutWallCenterline, LayoutWallCurveKnot } from './types';
+import type {
+	LayoutDocumentWallFirst,
+	LayoutWall,
+	LayoutWallCenterline,
+	LayoutWallCurveKnot,
+} from './types';
 import type { LayoutVec2 } from '../geometry/coordinates';
-import { allocateCapturedId, LayoutIdCollisionError, layoutWorkingLevelIssue, type LayoutIdCapture } from '../plan/id-capture';
-import { orientedWallChainKnotsAndSpans, wallCubicChain, type WallCenterlineTraversal } from './centerline';
+import {
+	allocateCapturedId,
+	LayoutIdCollisionError,
+	layoutWorkingLevelIssue,
+	type LayoutIdCapture,
+} from '../plan/id-capture';
+import {
+	orientedWallChainKnotsAndSpans,
+	wallCubicChain,
+	type WallCenterlineTraversal,
+} from './centerline';
 import { wallCurveChainLength } from './curve-algebra';
 import { extractBoundaryCandidateFaces } from '../geometry/face-extraction';
-import { buildCorrespondenceComponents } from '../room/reconciliation-correspondence'
-import { createRoomBoundaryLookup, interiorWitness, roomBoundaryPolygon } from '../room/reconciliation-boundary'
-import { reconcileRooms } from '../room/reconciliation'
+import { buildCorrespondenceComponents } from '../room/reconciliation-correspondence';
+import {
+	createRoomBoundaryLookup,
+	interiorWitness,
+	roomBoundaryPolygon,
+} from '../room/reconciliation-boundary';
+import { reconcileRooms } from '../room/reconciliation';
 import { type RoomLineageRecord } from '../room/reconciliation-types';
-import { createAuthoringRoomAllocator, validateAndCompile, type WallFirstOpRejection } from './topology-ops';
+import {
+	createAuthoringRoomAllocator,
+	validateAndCompile,
+	type WallFirstOpRejection,
+} from './topology-ops';
 import { validateWallFirstOpeningSet } from './opening-set';
 import { validateWallFirstPortalRelations } from './portals';
 import { joinWallSurfaceLineage, type LayoutSurfaceLineage } from '../plan/surface-reference';
@@ -114,15 +136,19 @@ export function planDissolveJunction(
 	document: LayoutDocumentWallFirst,
 	junctionId: string,
 	capture: LayoutIdCapture,
-	levelId: string
+	levelId: string,
 ): DissolvePlan {
 	const reject = (rejection: DissolveSpecificRejection): DissolvePlan => ({
 		kind: 'rejected',
-		rejection
+		rejection,
 	});
 	const levelIssue = layoutWorkingLevelIssue(document, levelId);
 	if (levelIssue !== null) {
-		return reject({ code: 'invalid_candidate_document', message: levelIssue, junctionIds: [junctionId] });
+		return reject({
+			code: 'invalid_candidate_document',
+			message: levelIssue,
+			junctionIds: [junctionId],
+		});
 	}
 
 	const junction = document.junctions.find((candidate) => candidate.id === junctionId);
@@ -130,7 +156,7 @@ export function planDissolveJunction(
 		return reject({
 			code: 'unknown_junction',
 			message: `Unknown junction '${junctionId}'`,
-			junctionIds: [junctionId]
+			junctionIds: [junctionId],
 		});
 	}
 	const junctionPoint: LayoutVec2 = [junction.point[0], junction.point[1]];
@@ -139,15 +165,15 @@ export function planDissolveJunction(
 	// would dissolve it and leave the Space's virtual edge dangling.
 	const virtualEdgeOwner = document.rooms.find((room) =>
 		room.virtualEdges.some(
-			(edge) => edge.startJunctionId === junctionId || edge.endJunctionId === junctionId
-		)
+			(edge) => edge.startJunctionId === junctionId || edge.endJunctionId === junctionId,
+		),
 	);
 	if (virtualEdgeOwner) {
 		return reject({
 			code: 'open_side_ends_here',
 			message: 'An open side ends here',
 			junctionIds: [junctionId],
-			roomIds: [virtualEdgeOwner.id]
+			roomIds: [virtualEdgeOwner.id],
 		});
 	}
 
@@ -155,14 +181,14 @@ export function planDissolveJunction(
 	// the loop is the only incident Wall, so a generic degree-2 diagnostic would
 	// misdescribe the refusal as an unrelated topology count.
 	const closedIncident = document.walls.find(
-		(wall) => wall.startJunctionId === junctionId && wall.endJunctionId === junctionId
+		(wall) => wall.startJunctionId === junctionId && wall.endJunctionId === junctionId,
 	);
 	if (closedIncident) {
 		return reject({
 			code: 'degenerate_wall_pair',
 			message: `Junction '${junctionId}' is the seam of closed Wall '${closedIncident.id}' (closed_wall_isolated); a loop cannot dissolve`,
 			junctionIds: [junctionId],
-			wallIds: [closedIncident.id]
+			wallIds: [closedIncident.id],
 		});
 	}
 
@@ -173,19 +199,19 @@ export function planDissolveJunction(
 			message: ROUND_ROOM_MEMBER_EDIT_MESSAGE,
 			junctionIds: [junctionId],
 			wallIds: [...seamOwner.wallIds],
-			roomIds: [seamOwner.room.id]
+			roomIds: [seamOwner.room.id],
 		});
 	}
 
 	const incident = document.walls.filter(
-		(wall) => wall.startJunctionId === junctionId || wall.endJunctionId === junctionId
+		(wall) => wall.startJunctionId === junctionId || wall.endJunctionId === junctionId,
 	);
 	if (incident.length !== 2) {
 		return reject({
 			code: 'junction_degree_not_two',
 			message: `Junction '${junctionId}' has ${incident.length} incident walls; only a degree-2 junction can dissolve`,
 			junctionIds: [junctionId],
-			wallIds: incident.map((wall) => wall.id)
+			wallIds: incident.map((wall) => wall.id),
 		});
 	}
 	const [first, second] = incident as [LayoutWall, LayoutWall];
@@ -193,19 +219,18 @@ export function planDissolveJunction(
 	// Degenerate pairs: a self-loop is not a degree-2 path, and walls sharing
 	// both endpoints would join into a zero-span loop (the codec requires two
 	// distinct endpoint Junctions per Wall).
-	const firstIsLoop =
-		first.startJunctionId === junctionId && first.endJunctionId === junctionId;
-	const secondIsLoop =
-		second.startJunctionId === junctionId && second.endJunctionId === junctionId;
+	const firstIsLoop = first.startJunctionId === junctionId && first.endJunctionId === junctionId;
+	const secondIsLoop = second.startJunctionId === junctionId && second.endJunctionId === junctionId;
 	if (firstIsLoop || secondIsLoop) {
 		return reject({
 			code: 'degenerate_wall_pair',
 			message: `Junction '${junctionId}' is incident to a self-loop wall; a loop cannot dissolve`,
 			junctionIds: [junctionId],
-			wallIds: [first.id, second.id]
+			wallIds: [first.id, second.id],
 		});
 	}
-	const firstFarId = first.startJunctionId === junctionId ? first.endJunctionId : first.startJunctionId;
+	const firstFarId =
+		first.startJunctionId === junctionId ? first.endJunctionId : first.startJunctionId;
 	const secondFarId =
 		second.startJunctionId === junctionId ? second.endJunctionId : second.startJunctionId;
 	if (firstFarId === secondFarId) {
@@ -213,7 +238,7 @@ export function planDissolveJunction(
 			code: 'degenerate_wall_pair',
 			message: `Walls '${first.id}' and '${second.id}' share both endpoints; joining them would form a loop`,
 			junctionIds: [junctionId],
-			wallIds: [first.id, second.id]
+			wallIds: [first.id, second.id],
 		});
 	}
 
@@ -224,14 +249,14 @@ export function planDissolveJunction(
 		(wall) =>
 			!pairIds.has(wall.id) &&
 			((wall.startJunctionId === firstFarId && wall.endJunctionId === secondFarId) ||
-				(wall.startJunctionId === secondFarId && wall.endJunctionId === firstFarId))
+				(wall.startJunctionId === secondFarId && wall.endJunctionId === firstFarId)),
 	);
 	if (duplicate) {
 		return reject({
 			code: 'duplicate_joined_wall',
 			message: `Wall '${duplicate.id}' already spans the joined endpoints; dissolving '${junctionId}' would duplicate it`,
 			junctionIds: [junctionId],
-			wallIds: [first.id, second.id, duplicate.id]
+			wallIds: [first.id, second.id, duplicate.id],
 		});
 	}
 
@@ -244,7 +269,7 @@ export function planDissolveJunction(
 			code: 'incompatible_wall_pair',
 			message: `Walls '${first.id}' and '${second.id}' disagree on thickness or height and cannot join`,
 			junctionIds: [junctionId],
-			wallIds: [first.id, second.id]
+			wallIds: [first.id, second.id],
 		});
 	}
 	if (first.name !== second.name && first.name !== undefined && second.name !== undefined) {
@@ -252,7 +277,7 @@ export function planDissolveJunction(
 			code: 'incompatible_wall_pair',
 			message: `Walls '${first.id}' and '${second.id}' carry different authored names and cannot join`,
 			junctionIds: [junctionId],
-			wallIds: [first.id, second.id]
+			wallIds: [first.id, second.id],
 		});
 	}
 	const firstKind = first.centerline.kind;
@@ -262,7 +287,7 @@ export function planDissolveJunction(
 			code: 'incompatible_wall_pair',
 			message: `Walls '${first.id}' (${firstKind}) and '${second.id}' (${secondKind}) mix straight and curved centerlines and cannot join`,
 			junctionIds: [junctionId],
-			wallIds: [first.id, second.id]
+			wallIds: [first.id, second.id],
 		});
 	}
 
@@ -281,8 +306,10 @@ export function planDissolveJunction(
 	} else {
 		[survivor, other] = first.id < second.id ? [first, second] : [second, first];
 	}
-	const survivorFarId = survivor.startJunctionId === junctionId ? survivor.endJunctionId : survivor.startJunctionId;
-	const otherFarId = other.startJunctionId === junctionId ? other.endJunctionId : other.startJunctionId;
+	const survivorFarId =
+		survivor.startJunctionId === junctionId ? survivor.endJunctionId : survivor.startJunctionId;
+	const otherFarId =
+		other.startJunctionId === junctionId ? other.endJunctionId : other.startJunctionId;
 	const joinedStartId = survivorFarId;
 	const joinedEndId = otherFarId;
 
@@ -294,7 +321,7 @@ export function planDissolveJunction(
 			code: 'invalid_candidate_document',
 			message: `Joined wall endpoints reference unknown junctions`,
 			junctionIds: [junctionId],
-			wallIds: [first.id, second.id]
+			wallIds: [first.id, second.id],
 		});
 	}
 
@@ -314,7 +341,7 @@ export function planDissolveJunction(
 				code: 'non_collinear_straight_pair',
 				message: `Walls '${first.id}' and '${second.id}' meet at an angle at junction '${junctionId}'; only collinear straight walls can join`,
 				junctionIds: [junctionId],
-				wallIds: [first.id, second.id]
+				wallIds: [first.id, second.id],
 			});
 		}
 		joinedCenterline = { kind: 'line' };
@@ -332,21 +359,17 @@ export function planDissolveJunction(
 		const arrivingControl = orientedSurvivor.spans[orientedSurvivor.spans.length - 1]!;
 		const departingControl = orientedOther.spans[0]!;
 		if (
-			!curvePairJoinsTangent(
-				arrivingControl.handleIn,
-				departingControl.handleOut,
-				junctionPoint
-			) &&
+			!curvePairJoinsTangent(arrivingControl.handleIn, departingControl.handleOut, junctionPoint) &&
 			!tangentAnchorsAllowContinuation(junctionPoint, [
 				arrivingControl.handleIn,
-				departingControl.handleOut
+				departingControl.handleOut,
 			])
 		) {
 			return reject({
 				code: 'non_tangent_curved_pair',
 				message: `Walls '${first.id}' and '${second.id}' meet at a corner at junction '${junctionId}'; only a tangent curved pair can join`,
 				junctionIds: [junctionId],
-				wallIds: [first.id, second.id]
+				wallIds: [first.id, second.id],
 			});
 		}
 		// The demoted knot's id comes from the operation's capture, never from
@@ -357,24 +380,28 @@ export function planDissolveJunction(
 			createdKnotId = allocateCapturedId(
 				new Set([
 					...orientedSurvivor.knots.map((knot) => knot.id),
-					...orientedOther.knots.map((knot) => knot.id)
+					...orientedOther.knots.map((knot) => knot.id),
 				]),
 				`${survivor.id}:knot`,
-				capture
+				capture,
 			);
 		} catch (error) {
 			if (error instanceof LayoutIdCollisionError) {
-				return reject({ code: 'captured_id_in_use', message: error.message, junctionIds: [junctionId] });
+				return reject({
+					code: 'captured_id_in_use',
+					message: error.message,
+					junctionIds: [junctionId],
+				});
 			}
 			throw error;
 		}
 		const demoted: LayoutWallCurveKnot = {
 			id: createdKnotId,
-			point: [junctionPoint[0], junctionPoint[1]]
+			point: [junctionPoint[0], junctionPoint[1]],
 		};
 		joinedCenterline = wallCubicChain(
 			[...orientedSurvivor.knots, demoted, ...orientedOther.knots],
-			[...orientedSurvivor.spans, ...orientedOther.spans]
+			[...orientedSurvivor.spans, ...orientedOther.spans],
 		);
 	}
 
@@ -389,7 +416,7 @@ export function planDissolveJunction(
 			code: 'invalid_candidate_document',
 			message: `Joined wall endpoints reference unknown junctions`,
 			junctionIds: [junctionId],
-			wallIds: [first.id, second.id]
+			wallIds: [first.id, second.id],
 		});
 	}
 	const openings = document.openings.map((opening) => {
@@ -414,7 +441,7 @@ export function planDissolveJunction(
 		thickness: survivor.thickness,
 		height: survivor.height,
 		centerline: joinedCenterline,
-		...(joinedName !== undefined ? { name: joinedName } : {})
+		...(joinedName !== undefined ? { name: joinedName } : {}),
 	};
 	const candidate: LayoutDocumentWallFirst = {
 		...document,
@@ -425,7 +452,7 @@ export function planDissolveJunction(
 			return [wall];
 		}),
 		openings,
-		regions: carryRegionWallIntents(document.regions, new Map([[other.id, [survivor.id]]]))
+		regions: carryRegionWallIntents(document.regions, new Map([[other.id, [survivor.id]]])),
 	};
 	// An open Space has no candidate face to rewrite its boundary, so the join
 	// must update its record here: the two incident refs become the joined Wall.
@@ -444,8 +471,8 @@ export function planDissolveJunction(
 				.map((ref) =>
 					ref.wallId === survivor.id
 						? { wallId: survivor.id, direction: forward ? 'forward' : 'reverse' }
-						: ref
-				)
+						: ref,
+				),
 		};
 	});
 
@@ -464,7 +491,7 @@ export function planDissolveJunction(
 				return reject({
 					code: 'room_reconciliation_rejected',
 					message: `Predecessor room '${room.id}' has an unresolvable boundary`,
-					roomIds: [room.id]
+					roomIds: [room.id],
 				});
 			}
 			predecessorPolygons.set(room.id, polygon);
@@ -482,17 +509,21 @@ export function planDissolveJunction(
 					predecessorWitnesses,
 					predecessorPolygons,
 					candidateDocument: candidate,
-					baselineRooms: document.rooms
+					baselineRooms: document.rooms,
 				}),
 				predecessorWitnesses,
 				predecessorPolygons,
 				// Join is non-removal: an open Space is carried, never retired.
 				candidateRooms: candidate.rooms,
-				allocator: createAuthoringRoomAllocator(capture)
+				allocator: createAuthoringRoomAllocator(capture),
 			});
 		} catch (error) {
 			if (error instanceof LayoutIdCollisionError) {
-				return reject({ code: 'captured_id_in_use', message: error.message, junctionIds: [junctionId] });
+				return reject({
+					code: 'captured_id_in_use',
+					message: error.message,
+					junctionIds: [junctionId],
+				});
 			}
 			throw error;
 		}
@@ -501,7 +532,7 @@ export function planDissolveJunction(
 				code: 'room_reconciliation_rejected',
 				message: result.rejection.message,
 				...(result.rejection.roomIds ? { roomIds: result.rejection.roomIds } : {}),
-				...(result.rejection.faceKey ? { faceKey: result.rejection.faceKey } : {})
+				...(result.rejection.faceKey ? { faceKey: result.rejection.faceKey } : {}),
 			});
 		}
 		// Dissolve preserves the face set geometrically, so any birth or
@@ -513,7 +544,10 @@ export function planDissolveJunction(
 				message: `Dissolving junction '${junctionId}' would retire or create rooms; the join is not topology-preserving`,
 				junctionIds: [junctionId],
 				wallIds: [first.id, second.id],
-				roomIds: [...result.retiredRoomIds, ...created.map((record: RoomLineageRecord) => record.roomId)]
+				roomIds: [
+					...result.retiredRoomIds,
+					...created.map((record: RoomLineageRecord) => record.roomId),
+				],
 			});
 		}
 		candidate.rooms = result.document.rooms;
@@ -528,9 +562,12 @@ export function planDissolveJunction(
 	if (setIssues.length > 0) {
 		const problem = setIssues[0]!;
 		return reject({
-			code: problem.code === 'opening_exceeds_wall_height' ? 'wall_height_below_opening' : 'opening_set_invalid',
+			code:
+				problem.code === 'opening_exceeds_wall_height'
+					? 'wall_height_below_opening'
+					: 'opening_set_invalid',
 			message: problem.message,
-			wallIds: [problem.wallId]
+			wallIds: [problem.wallId],
 		});
 	}
 	const relationIssues = validateWallFirstPortalRelations(candidate);
@@ -539,7 +576,7 @@ export function planDissolveJunction(
 		return reject({
 			code: 'portal_relation_invalid',
 			message: problem.message,
-			wallIds: [survivor.id]
+			wallIds: [survivor.id],
 		});
 	}
 
@@ -556,18 +593,15 @@ export function planDissolveJunction(
 				survivorWallId: survivor.id,
 				absorbedWallId: other.id,
 				survivorForward,
-				absorbedForward: otherForward
+				absorbedForward: otherForward,
 			}),
-			...(createdKnotId !== undefined ? { createdKnotId } : {})
-		})
+			...(createdKnotId !== undefined ? { createdKnotId } : {}),
+		}),
 	);
 }
 
 /** True arc length of one Wall (chord for straight, chain sum for curved). */
-function wallArcLength(
-	document: LayoutDocumentWallFirst,
-	wall: LayoutWall
-): number | undefined {
+function wallArcLength(document: LayoutDocumentWallFirst, wall: LayoutWall): number | undefined {
 	const start = document.junctions.find((entry) => entry.id === wall.startJunctionId);
 	const end = document.junctions.find((entry) => entry.id === wall.endJunctionId);
 	if (!start || !end) return undefined;
@@ -578,7 +612,7 @@ function wallArcLength(
 		startPoint: start.point,
 		endPoint: end.point,
 		knots: wall.centerline.knots,
-		spans: wall.centerline.spans
+		spans: wall.centerline.spans,
 	});
 }
 
@@ -602,7 +636,7 @@ function wallArcLength(
 function curvePairJoinsTangent(
 	arriving: LayoutVec2,
 	departing: LayoutVec2,
-	junction: LayoutVec2
+	junction: LayoutVec2,
 ): boolean {
 	const a: LayoutVec2 = [arriving[0] - junction[0], arriving[1] - junction[1]];
 	const b: LayoutVec2 = [departing[0] - junction[0], departing[1] - junction[1]];
@@ -624,11 +658,7 @@ function curvePairJoinsTangent(
  * Junction identity, connectivity, intersection, snapping, or Room topology —
  * exact robust orientation stays the authority for all of those.
  */
-function linePairJoinsWithinNoise(
-	e1: LayoutVec2,
-	j: LayoutVec2,
-	e2: LayoutVec2
-): boolean {
+function linePairJoinsWithinNoise(e1: LayoutVec2, j: LayoutVec2, e2: LayoutVec2): boolean {
 	const ux = e2[0] - e1[0];
 	const uz = e2[1] - e1[1];
 	const length = Math.hypot(ux, uz);
@@ -645,7 +675,7 @@ function linePairJoinsWithinNoise(
 		Math.abs(e2[1]),
 		Math.abs(j[0]),
 		Math.abs(j[1]),
-		length
+		length,
 	);
 	return perpendicular <= 64 * Number.EPSILON * scale;
 }

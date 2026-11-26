@@ -1,6 +1,4 @@
-export {
-	resolveSaveSourceHandler,
-} from './admission';
+export { resolveSaveSourceHandler } from './admission';
 
 export type {
 	PreparedSaveSource,

@@ -112,7 +112,7 @@ implementation  apps/editor/src/lib/authoring/stage/
                 apps/editor/src/routes/project/[projectId]/spatial/+page.svelte
                 packages/camera-core/src/viewport.ts
                 packages/layout-core/src/layout-plan-representation.ts
-validation      apps/editor/tests/lib/authoring/stage-host-acceptance.test.ts
+validation      ../../../../../../../apps/editor/tests/lib/authoring/stage
                 apps/editor/tests/lib/authoring/stage-consumer-probes.test.ts
                 apps/editor/tests/lib/authoring/stage-semantic-lifecycle.test.ts
 regressions     apps/editor/tests/lib/authoring/stage-session.test.ts

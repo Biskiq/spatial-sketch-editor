@@ -29,7 +29,7 @@ export async function startServer(options: StartServerOptions = {}): Promise<Fas
 		trustProxy: config.trustProxy,
 		objectStore: options.objectStore ?? createR2ObjectStore(config),
 		objectNamespace: config.r2ObjectNamespace,
-		...(config.testAuthSecret ? { testAuth: { secret: config.testAuthSecret } } : {})
+		...(config.testAuthSecret ? { testAuth: { secret: config.testAuthSecret } } : {}),
 	});
 	const closeOnce = installShutdownHandlers(app, options.processLike);
 
@@ -47,7 +47,9 @@ export async function main(): Promise<void> {
 	try {
 		await startServer();
 	} catch (error) {
-		console.error(error instanceof ConfigError ? `[api] ${error.message}` : '[api] failed to start');
+		console.error(
+			error instanceof ConfigError ? `[api] ${error.message}` : '[api] failed to start',
+		);
 		process.exitCode = 1;
 	}
 }

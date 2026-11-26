@@ -14,14 +14,14 @@
 import { orient2d } from 'robust-predicates';
 
 export function orient2dExact(
-  ax: number,
-  ay: number,
-  bx: number,
-  by: number,
-  cx: number,
-  cy: number
+	ax: number,
+	ay: number,
+	bx: number,
+	by: number,
+	cx: number,
+	cy: number,
 ): number {
-  const sign = -orient2d(ax, ay, bx, by, cx, cy);
-  // Negation maps exact zero to -0; normalize so callers compare against 0.
-  return sign === 0 ? 0 : sign;
+	const sign = -orient2d(ax, ay, bx, by, cx, cy);
+	// Negation maps exact zero to -0; normalize so callers compare against 0.
+	return sign === 0 ? 0 : sign;
 }

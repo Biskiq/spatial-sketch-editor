@@ -23,7 +23,7 @@ import {
 	type ExperienceLoweringRefusal,
 	type ExperienceProgramTransition,
 	type ExecutionProgram,
-	type ProgramInvocation
+	type ProgramInvocation,
 } from '@portfolio/project-model/units';
 
 export type ExperienceFocus = {
@@ -37,7 +37,7 @@ export const EMPTY_EXPERIENCE_FOCUS: ExperienceFocus = {
 	experienceId: null,
 	guideId: null,
 	stopId: null,
-	presentationId: null
+	presentationId: null,
 };
 
 export type PreviewUnavailablePresentation = {
@@ -79,37 +79,46 @@ export type PreviewEntry =
 export type EnterablePreviewEntry = Exclude<PreviewEntry, { readonly kind: 'unavailable' }>;
 
 function _titleOf(envelope: ProjectEnvelope, experienceId: string): string {
-	const experience = envelope.units.experience.data.experiences.find((entry) => entry.id === experienceId);
+	const experience = envelope.units.experience.data.experiences.find(
+		(entry) => entry.id === experienceId,
+	);
 	return experience?.label ?? experienceId;
 }
 
 function effectiveName(
 	envelope: ProjectEnvelope,
-	presentation: ProjectEnvelope['units']['experience']['data']['experiences'][number]['presentations'][number]
+	presentation: ProjectEnvelope['units']['experience']['data']['experiences'][number]['presentations'][number],
 ): string {
 	const subject = presentation.subject;
-	const subjectName = subject !== null && subject.domain === 'scene' && subject.subject.kind === 'entity'
-		? envelope.units.scene.data.entities.find((entity) => entity.id === subject.subject.id)?.name ?? null
-		: null;
+	const subjectName =
+		subject !== null && subject.domain === 'scene' && subject.subject.kind === 'entity'
+			? (envelope.units.scene.data.entities.find((entity) => entity.id === subject.subject.id)
+					?.name ?? null)
+			: null;
 	return presentation.label ?? subjectName ?? 'Untitled Presentation';
 }
 
 function unavailableFrom(
 	lowered: Extract<ReturnType<typeof lowerExperienceProgram>, { kind: 'lowered' }>,
 	envelope: ProjectEnvelope,
-	experienceId: string
+	experienceId: string,
 ): PreviewUnavailablePresentation[] {
-	const experience = envelope.units.experience.data.experiences.find((entry) => entry.id === experienceId);
+	const experience = envelope.units.experience.data.experiences.find(
+		(entry) => entry.id === experienceId,
+	);
 	if (experience === undefined) return [];
 	return lowered.unavailablePresentations.map((entry) => {
-		const presentation = experience.presentations.find((candidate) => candidate.id === entry.presentationId);
+		const presentation = experience.presentations.find(
+			(candidate) => candidate.id === entry.presentationId,
+		);
 		return {
 			presentationId: entry.presentationId,
-			label: presentation === undefined ? entry.presentationId : effectiveName(envelope, presentation),
+			label:
+				presentation === undefined ? entry.presentationId : effectiveName(envelope, presentation),
 			reason:
 				entry.reason === 'no-default-view'
 					? 'No Default View is set, so this Presentation cannot be entered.'
-					: 'Its Default View is not in this source, so this Presentation cannot be entered.'
+					: 'Its Default View is not in this source, so this Presentation cannot be entered.',
 		};
 	});
 }
@@ -141,7 +150,7 @@ export function previewEntryFor(input: {
 		if (experiences.length > 1) {
 			return {
 				kind: 'unavailable',
-				message: 'This source holds several Experiences; open one in the Experience lens first.'
+				message: 'This source holds several Experiences; open one in the Experience lens first.',
 			};
 		}
 	}
@@ -150,39 +159,47 @@ export function previewEntryFor(input: {
 	const experienceId = focus.experienceId ?? experiences[0]!.id;
 	const experience = experiences.find((entry) => entry.id === experienceId);
 	if (experience === undefined) {
-		return { kind: 'unavailable', message: `The source does not carry Experience "${experienceId}".` };
+		return {
+			kind: 'unavailable',
+			message: `The source does not carry Experience "${experienceId}".`,
+		};
 	}
 	const runId = `${input.sessionEpoch}:preview:${input.epoch}`;
-	const options = (_program: ExecutionProgram, transitions: readonly ExperienceProgramTransition[]): ExperienceInterpreterOptions => ({
+	const options = (
+		_program: ExecutionProgram,
+		transitions: readonly ExperienceProgramTransition[],
+	): ExperienceInterpreterOptions => ({
 		runId,
 		runEpoch: input.epoch,
 		sourceContentId: input.sourceContentId,
 		detours: experience.detours.map((detour) => ({
 			fromStopId: detour.fromStopId,
 			toStopId: detour.toStopId,
-			returnToStopId: detour.returnToStopId
+			returnToStopId: detour.returnToStopId,
 		})),
-		transitions
+		transitions,
 	});
 
 	const baseLowering = {
 		experienceId: experience.id,
 		sourceContentId: input.sourceContentId,
-		sessionEpoch: input.sessionEpoch
+		sessionEpoch: input.sessionEpoch,
 	};
 
 	// 1. An open Guide starts at its own entry Stop (its authored start, Stop 1 by
 	// default), never at the Stop the editor has focused: the welcome's guided tour
 	// begins there. Lowering with no explicit entry starts at the Guide's first Stop.
-	const openGuide = focus.guideId === null
-		? null
-		: experience.guides.find((guide) => guide.id === focus.guideId) ?? null;
+	const openGuide =
+		focus.guideId === null
+			? null
+			: (experience.guides.find((guide) => guide.id === focus.guideId) ?? null);
 	if (openGuide !== null) {
 		const lowered = lowerExperienceProgram(envelope, {
 			...baseLowering,
-			guideId: openGuide.id
+			guideId: openGuide.id,
 		});
-		if (lowered.kind === 'refused') return { kind: 'unavailable', message: refusalMessage(lowered), refusal: lowered };
+		if (lowered.kind === 'refused')
+			return { kind: 'unavailable', message: refusalMessage(lowered), refusal: lowered };
 		return {
 			kind: 'program',
 			experienceId: experience.id,
@@ -191,7 +208,7 @@ export function previewEntryFor(input: {
 			options: options(lowered.program, lowered.transitions),
 			transitions: lowered.transitions,
 			entryPresentationId: null,
-			unavailable: unavailableFrom(lowered, envelope, experience.id)
+			unavailable: unavailableFrom(lowered, envelope, experience.id),
 		};
 	}
 
@@ -201,13 +218,16 @@ export function previewEntryFor(input: {
 			...baseLowering,
 			// The selected Presentation is entered alone: the unrelated entry Guide's
 			// Stops and transitions must not refuse or shape this preview.
-			guideId: null
+			guideId: null,
 		});
-		if (lowered.kind === 'refused') return { kind: 'unavailable', message: refusalMessage(lowered), refusal: lowered };
-		const presentation = lowered.program.presentations.find((entry) => entry.id === focus.presentationId);
+		if (lowered.kind === 'refused')
+			return { kind: 'unavailable', message: refusalMessage(lowered), refusal: lowered };
+		const presentation = lowered.program.presentations.find(
+			(entry) => entry.id === focus.presentationId,
+		);
 		if (presentation === undefined) {
 			const reason = unavailableFrom(lowered, envelope, experience.id).find(
-				(entry) => entry.presentationId === focus.presentationId
+				(entry) => entry.presentationId === focus.presentationId,
 			);
 			return {
 				kind: 'presentations',
@@ -220,10 +240,10 @@ export function previewEntryFor(input: {
 								{
 									presentationId: focus.presentationId,
 									label: focus.presentationId,
-									reason: 'This Presentation is not enterable in the current source.'
-								}
+									reason: 'This Presentation is not enterable in the current source.',
+								},
 							]
-						: [reason]
+						: [reason],
 			};
 		}
 		return {
@@ -234,7 +254,7 @@ export function previewEntryFor(input: {
 			options: options(lowered.program, lowered.transitions),
 			transitions: lowered.transitions,
 			entryPresentationId: presentation.id,
-			unavailable: unavailableFrom(lowered, envelope, experience.id)
+			unavailable: unavailableFrom(lowered, envelope, experience.id),
 		};
 	}
 
@@ -242,9 +262,10 @@ export function previewEntryFor(input: {
 	if (experience.entryGuideId !== null) {
 		const lowered = lowerExperienceProgram(envelope, {
 			...baseLowering,
-			guideId: experience.entryGuideId
+			guideId: experience.entryGuideId,
 		});
-		if (lowered.kind === 'refused') return { kind: 'unavailable', message: refusalMessage(lowered), refusal: lowered };
+		if (lowered.kind === 'refused')
+			return { kind: 'unavailable', message: refusalMessage(lowered), refusal: lowered };
 		return {
 			kind: 'program',
 			experienceId: experience.id,
@@ -253,30 +274,34 @@ export function previewEntryFor(input: {
 			options: options(lowered.program, lowered.transitions),
 			transitions: lowered.transitions,
 			entryPresentationId: null,
-			unavailable: unavailableFrom(lowered, envelope, experience.id)
+			unavailable: unavailableFrom(lowered, envelope, experience.id),
 		};
 	}
 
 	// 4. No Guide at all: the visitor list of enterable Presentations.
 	const lowered = lowerExperienceProgram(envelope, baseLowering);
-	if (lowered.kind === 'refused') return { kind: 'unavailable', message: refusalMessage(lowered), refusal: lowered };
+	if (lowered.kind === 'refused')
+		return { kind: 'unavailable', message: refusalMessage(lowered), refusal: lowered };
 	return {
 		kind: 'presentations',
 		experienceId: experience.id,
 		title: experience.label,
 		presentations: lowered.program.presentations.map((presentation) => ({
 			id: presentation.id,
-			label: presentation.label
+			label: presentation.label,
 		})),
 		unavailable: unavailableFrom(lowered, envelope, experience.id),
 		program: lowered.program,
 		options: options(lowered.program, lowered.transitions),
-		transitions: lowered.transitions
+		transitions: lowered.transitions,
 	};
 }
 
 /** Program invocation a Presentation entry realizes: a Cut to its Default View. */
-export function presentationEntryInvocation(program: ExecutionProgram, presentationId: string): ProgramInvocation | null {
+export function presentationEntryInvocation(
+	program: ExecutionProgram,
+	presentationId: string,
+): ProgramInvocation | null {
 	const presentation = program.presentations.find((entry) => entry.id === presentationId);
 	return presentation === undefined ? null : { kind: 'cut', viewId: presentation.viewIds[0]! };
 }

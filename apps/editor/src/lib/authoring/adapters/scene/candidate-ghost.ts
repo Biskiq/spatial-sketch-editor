@@ -10,7 +10,10 @@
 
 import type { SceneEntity } from '@portfolio/project-model/scene';
 import type { StageGhostMesh } from '$lib/authoring/stage/stage-adapter-host';
-import { NATIVE_PLACEMENT_DIMENSIONS, type NativePlacementPrimitive } from '../../scene/object-definition-policy';
+import {
+	NATIVE_PLACEMENT_DIMENSIONS,
+	type NativePlacementPrimitive,
+} from '../../scene/object-definition-policy';
 
 import type { SceneCandidate } from './placement';
 
@@ -40,7 +43,7 @@ function primitiveShape(primitive: NativePlacementPrimitive): StageGhostMesh['sh
 export function candidateGhost(
 	entity: SceneEntity | null,
 	candidate: SceneCandidate,
-	options: CandidateGhostOptions = {}
+	options: CandidateGhostOptions = {},
 ): StageGhostMesh | null {
 	let treatment = options.treatment ?? 'subject';
 	let center: SceneCandidate['position'] = candidate.position;
@@ -57,11 +60,11 @@ export function candidateGhost(
 			center = [
 				candidate.position[0],
 				candidate.position[1] + scale * (contactMinY + 0.5),
-				candidate.position[2]
+				candidate.position[2],
 			];
 			return {
 				kind: 'box',
-				size: [candidate.footprint.width * scale, scale, candidate.footprint.depth * scale]
+				size: [candidate.footprint.width * scale, scale, candidate.footprint.depth * scale],
 			};
 		}
 		if (entity === null) return null;
@@ -75,7 +78,7 @@ export function candidateGhost(
 			center = [
 				candidate.position[0],
 				candidate.position[1] + scale * (contactMinY + 0.5),
-				candidate.position[2]
+				candidate.position[2],
 			];
 			return { kind: 'box', size: [footprint.width * scale, scale, footprint.depth * scale] };
 		}
@@ -90,21 +93,21 @@ export function candidateGhost(
 					size: [
 						entity.dimensions.width * scale,
 						entity.dimensions.height * scale,
-						entity.dimensions.depth * scale
-					]
+						entity.dimensions.depth * scale,
+					],
 				};
 			case 'plane':
 				// The drawn plane has no thickness; a hair of depth keeps the ghost
 				// visible from the side without implying a solid object.
 				return {
 					kind: 'box',
-					size: [entity.dimensions.width * scale, entity.dimensions.height * scale, 0.01]
+					size: [entity.dimensions.width * scale, entity.dimensions.height * scale, 0.01],
 				};
 			case 'cylinder':
 				return {
 					kind: 'cylinder',
 					radius: entity.dimensions.radius * scale,
-					height: entity.dimensions.height * scale
+					height: entity.dimensions.height * scale,
 				};
 			case 'sphere':
 				return { kind: 'sphere', radius: entity.dimensions.radius * scale };
@@ -117,6 +120,6 @@ export function candidateGhost(
 		center: [...center],
 		yaw: candidate.rotation[1],
 		treatment,
-		shape
+		shape,
 	};
 }

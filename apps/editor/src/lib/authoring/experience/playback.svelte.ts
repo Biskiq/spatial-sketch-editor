@@ -12,11 +12,17 @@
  * A wait is zero elapsed seconds and its own addressable occurrence: playback
  * stops on the first wait crossed, and a fresh Play moves past that wait.
  */
-import { formatGuideTime, guideTimeCursorAt, nextGuideTimeSegment, normalizeGuideTimeCursor, sampleGuideTime, type CameraGraph, type GuideTimeCursor, type GuideTimeMap } from '@portfolio/camera-core/navigation';
-import type {
-	ExecutionProgram,
-	ExperienceProgramTransition
-} from '@portfolio/project-model/units';
+import {
+	formatGuideTime,
+	guideTimeCursorAt,
+	nextGuideTimeSegment,
+	normalizeGuideTimeCursor,
+	sampleGuideTime,
+	type CameraGraph,
+	type GuideTimeCursor,
+	type GuideTimeMap,
+} from '@portfolio/camera-core/navigation';
+import type { ExecutionProgram, ExperienceProgramTransition } from '@portfolio/project-model/units';
 import type { ExperiencePathOccurrence } from './experience-paths';
 import { guideTimeMapForProgram, movementTimeMap } from './playback-map';
 
@@ -37,7 +43,11 @@ export type PlaybackView = {
 	readonly activeStopId: string | null;
 	readonly activeViewId: string | null;
 	readonly following: boolean;
-	readonly sample: { readonly eye: readonly [number, number, number]; readonly target: readonly [number, number, number]; readonly fov: number } | null;
+	readonly sample: {
+		readonly eye: readonly [number, number, number];
+		readonly target: readonly [number, number, number];
+		readonly fov: number;
+	} | null;
 	readonly elapsedLabel: string;
 	readonly totalLabel: string;
 	readonly message: string;
@@ -91,7 +101,7 @@ export function createExperiencePlayback(read: () => PlaybackSource | null) {
 			program: source.program,
 			transitions: source.transitions,
 			graph: source.graph,
-			entryStopId
+			entryStopId,
 		});
 		if (derived.kind !== 'ready') {
 			message = derived.reason;
@@ -139,7 +149,7 @@ export function createExperiencePlayback(read: () => PlaybackSource | null) {
 	/** The initial cursor: a wait at 0 s is the run's first occurrence. */
 	function initialCursor(guideMap: GuideTimeMap): GuideTimeCursor {
 		const wait = guideMap.segments.find(
-			(segment) => segment.kind === 'wait' && segment.startSeconds === 0
+			(segment) => segment.kind === 'wait' && segment.startSeconds === 0,
 		);
 		return wait === undefined
 			? guideTimeCursorAt(guideMap, 0)
@@ -362,7 +372,14 @@ export function createExperiencePlayback(read: () => PlaybackSource | null) {
 				const derived = derive(readSource()?.entryStopId ?? null);
 				if (derived === null) return;
 			}
-			status = status === 'ended' ? 'paused' : status === 'playing' ? 'paused' : status === 'waiting' ? 'paused' : status;
+			status =
+				status === 'ended'
+					? 'paused'
+					: status === 'playing'
+						? 'paused'
+						: status === 'waiting'
+							? 'paused'
+							: status;
 			if (status === 'idle') status = 'paused';
 			seekTo(seconds);
 		},
@@ -426,7 +443,7 @@ export function createExperiencePlayback(read: () => PlaybackSource | null) {
 				occurrence,
 				program: source.program,
 				transitions: source.transitions,
-				graph: source.graph
+				graph: source.graph,
 			});
 			if (derived === null) {
 				message = 'That move is no longer part of this Guide.';
@@ -462,7 +479,7 @@ export function createExperiencePlayback(read: () => PlaybackSource | null) {
 		/** The source object the live map was derived from, if any. */
 		get source() {
 			return mapSource;
-		}
+		},
 	};
 }
 

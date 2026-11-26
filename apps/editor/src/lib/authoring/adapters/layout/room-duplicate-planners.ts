@@ -16,16 +16,16 @@
  * replay the same identities and Save/Load persists them as ordinary ids:
  *
  * ```text
- * source Junction <j>  → <j>-copy.<nonce>   same point + delta
- * source Wall     <w>  → <w>-copy.<nonce>   same thickness/height/name,
- *                                            centerline + delta, remapped ends
- * source Opening  <o>  → <o>-copy.<nonce>   same kind/name/offset/width/height/
- *                                            sill/profile, host remapped,
- *                                            connectsRoomIds dropped
- * source Room     <r>  → <r>-copy.<nonce>   name "<name> copy" (or the next
- *                                            free suffix), remapped boundary,
- *                                            same thicknesses
- * associated object <x> → <x>-copy.<nonce>  same shape, + delta, room remapped
+ * source Junction <j> → <j>-copy.<nonce> same point + delta
+ * source Wall <w> → <w>-copy.<nonce> same thickness/height/name,
+ *  centerline + delta, remapped ends
+ * source Opening <o> → <o>-copy.<nonce> same kind/name/offset/width/height/
+ *  sill/profile, host remapped,
+ *  connectsRoomIds dropped
+ * source Room <r> → <r>-copy.<nonce> name "<name> copy" (or the next
+ *  free suffix), remapped boundary,
+ *  same thicknesses
+ * associated object <x> → <x>-copy.<nonce> same shape, + delta, room remapped
  * ```
  *
  * A boundary Wall shared with another Room copies privately: the source keeps
@@ -41,17 +41,29 @@
  * Layout contract states; the derived **overlaps, not joined** cue reports it
  * and nothing is welded.
  */
-import { layoutIdCaptureInput, layoutWorkingLevelInput, planDuplicateRoom, readLayoutIdCapture, readLayoutWorkingLevel, type LayoutIdCapture } from '@portfolio/layout-core/plan';
+import {
+	layoutIdCaptureInput,
+	layoutWorkingLevelInput,
+	planDuplicateRoom,
+	readLayoutIdCapture,
+	readLayoutWorkingLevel,
+	type LayoutIdCapture,
+} from '@portfolio/layout-core/plan';
 import { materializeLayoutSourceForCapture } from '@portfolio/layout-core/kernel';
 import { recordPreparedCowCandidate } from '@portfolio/layout-core/world';
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
-import type { AuthoringIntent, DomainPlanner, PlannerOutcome, PreparedCandidate } from '@portfolio/project-model/f4';
+import type {
+	AuthoringIntent,
+	DomainPlanner,
+	PlannerOutcome,
+	PreparedCandidate,
+} from '@portfolio/project-model/f4';
 import {
 	canonicalUnitJson,
 	replaceUnitData,
 	UNIT_SOURCE_KIND,
 	UNIT_SOURCE_VERSION,
-	type ProjectEnvelope
+	type ProjectEnvelope,
 } from '@portfolio/project-model/units';
 
 import { layoutSubjectReference } from './drawing-planners';
@@ -91,7 +103,9 @@ function finiteNumber(value: unknown): value is number {
 	return typeof value === 'number' && Number.isFinite(value);
 }
 
-function readDuplicatePayload(payload: unknown): RoomDuplicatePayload | { readonly message: string } {
+function readDuplicatePayload(
+	payload: unknown,
+): RoomDuplicatePayload | { readonly message: string } {
 	if (!isRecord(payload)) return { message: 'The Room duplicate payload must be an object.' };
 	const expected = ['roomId', 'deltaX', 'deltaZ'];
 	const unknown = Object.keys(payload).filter((key) => !expected.includes(key));
@@ -132,16 +146,16 @@ export function roomDuplicateIntent(input: {
 				kind: 'room',
 				id: input.roomId,
 				contentRevision: input.contentRevision,
-				levelId: input.levelId
-			})
+				levelId: input.levelId,
+			}),
 		],
 		payload: {
 			roomId: input.roomId,
 			deltaX: input.delta[0],
-			deltaZ: input.delta[1]
+			deltaZ: input.delta[1],
 		},
 		capturedInputs: [layoutWorkingLevelInput(input.levelId), layoutIdCaptureInput(input.capture)],
-		allocatedIds: []
+		allocatedIds: [],
 	};
 }
 
@@ -166,25 +180,24 @@ function roomDuplicatePlanner(): DomainPlanner<ProjectEnvelope> {
 			return refused('A Room duplicate addresses exactly one Room.');
 		}
 		const target = request.intent.targets[0]!;
-		if (target.domain !== 'layout' || target.subject.kind !== 'room' || target.subject.id !== roomId) {
+		if (
+			target.domain !== 'layout' ||
+			target.subject.kind !== 'room' ||
+			target.subject.id !== roomId
+		) {
 			return refused(`The intent must address the Room "${roomId}" it duplicates.`);
 		}
 		if (roomDuplicateIsCoincident([deltaX, deltaZ])) {
 			return refused(ROOM_DUPLICATE_COINCIDENT_MESSAGE, 'coincident_with_source');
 		}
 
-		const plan = planDuplicateRoom(
-			baseline,
-			{ roomId, delta: [deltaX, deltaZ] },
-			capture,
-			levelId
-		);
+		const plan = planDuplicateRoom(baseline, { roomId, delta: [deltaX, deltaZ] }, capture, levelId);
 		if (plan.kind === 'rejected') {
 			return {
 				kind: 'rejected',
 				code: plan.rejection.code,
 				message: roomDuplicateRefusalWords(baseline, plan.rejection),
-				diagnostics: []
+				diagnostics: [],
 			};
 		}
 		const createdRoomId = plan.createdRoomId;
@@ -192,7 +205,11 @@ function roomDuplicatePlanner(): DomainPlanner<ProjectEnvelope> {
 			return refused('The Room duplicate produced no Room.');
 		}
 		const contentRevision = request.snapshot.domain.source.units.layout.header.contentRevision;
-		recordPreparedCowCandidate(request.intent.operationId, plan.document, canonicalUnitJson(request.intent));
+		recordPreparedCowCandidate(
+			request.intent.operationId,
+			plan.document,
+			canonicalUnitJson(request.intent),
+		);
 		materializeLayoutSourceForCapture(plan.document);
 		const candidate: PreparedCandidate<ProjectEnvelope> = {
 			operationId: request.intent.operationId,
@@ -207,39 +224,44 @@ function roomDuplicatePlanner(): DomainPlanner<ProjectEnvelope> {
 						...plan.createdWallIds,
 						...plan.createdOpeningIds,
 						createdRoomId,
-						...plan.createdObjectIds
+						...plan.createdObjectIds,
 					],
-					fields: ['walls', 'junctions', 'openings', 'rooms', 'objects']
-				}
+					fields: ['walls', 'junctions', 'openings', 'rooms', 'objects'],
+				},
 			],
 			correspondence: [
 				...plan.createdJunctionIds.map((id) => ({
 					relation: 'created' as const,
 					before: null,
-					after: layoutSubjectReference({ kind: 'junction', id, contentRevision, levelId })
+					after: layoutSubjectReference({ kind: 'junction', id, contentRevision, levelId }),
 				})),
 				...plan.createdWallIds.map((id) => ({
 					relation: 'created' as const,
 					before: null,
-					after: layoutSubjectReference({ kind: 'wall', id, contentRevision, levelId })
+					after: layoutSubjectReference({ kind: 'wall', id, contentRevision, levelId }),
 				})),
 				...plan.createdOpeningIds.map((id) => ({
 					relation: 'created' as const,
 					before: null,
-					after: layoutSubjectReference({ kind: 'opening', id, contentRevision, levelId })
+					after: layoutSubjectReference({ kind: 'opening', id, contentRevision, levelId }),
 				})),
 				{
 					relation: 'created' as const,
 					before: null,
-					after: layoutSubjectReference({ kind: 'room', id: createdRoomId, contentRevision, levelId })
+					after: layoutSubjectReference({
+						kind: 'room',
+						id: createdRoomId,
+						contentRevision,
+						levelId,
+					}),
 				},
 				...plan.createdObjectIds.map((id) => ({
 					relation: 'created' as const,
 					before: null,
-					after: layoutSubjectReference({ kind: 'object', id, contentRevision, levelId })
-				}))
+					after: layoutSubjectReference({ kind: 'object', id, contentRevision, levelId }),
+				})),
 			],
-			diagnostics: []
+			diagnostics: [],
 		};
 		registerLayoutSurfaceLineage(candidate, plan.surfaceLineage);
 		return { kind: 'prepared', candidate };

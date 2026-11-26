@@ -13,9 +13,10 @@ export function createReadingPlanParameters(input: {
 			const stage = input.facade();
 			if (stage === null) return;
 			stage.setPlanParameters({
-				depthMeters: reading === null
-					? PLAN_DEFAULT_DEPTH_METERS
-					: (planOverridesOf(reading).depthMeters ?? PLAN_DEFAULT_DEPTH_METERS)
+				depthMeters:
+					reading === null
+						? PLAN_DEFAULT_DEPTH_METERS
+						: (planOverridesOf(reading).depthMeters ?? PLAN_DEFAULT_DEPTH_METERS),
 			});
 		});
 	}

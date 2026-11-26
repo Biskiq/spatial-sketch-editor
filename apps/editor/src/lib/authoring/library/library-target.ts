@@ -1,5 +1,5 @@
 /**
- * What a Library action names (T2.S8 U5).
+ * What a Library action names.
  *
  * The Stage calls Apply/Use, but the Library talks about "this surface" or
  * "this object". This maps the accepted selection to exactly the entity or
@@ -14,7 +14,7 @@ import {
 	finishOf,
 	isFinishPaintable,
 	surfaceFinishFor,
-	type FinishKey
+	type FinishKey,
 } from '@portfolio/project-model/scene-planning';
 import { resolveLayoutSurface, surfaceKey } from '@portfolio/layout-core/plan';
 import type { StageAdapterServices } from '../stage/stage-adapter-host';
@@ -31,14 +31,14 @@ export type LibraryTarget =
 			readonly entityId: string;
 			readonly label: string;
 			readonly finishKey: FinishKey | null;
-		}
+	  }
 	| {
 			readonly kind: 'surface';
 			readonly key: string;
 			readonly surface: SceneSurfaceRef;
 			readonly label: string;
 			readonly finishKey: FinishKey | null;
-		};
+	  };
 
 export function surfaceLabel(surface: SceneSurfaceRef): string {
 	if (surface.kind === 'wall-side') return `Wall · ${surface.side}`;
@@ -52,7 +52,11 @@ function surfaceOfReference(reference: SemanticReference): SceneSurfaceRef | nul
 	const component = reference.componentId;
 	if (reference.subject.kind === 'wall') {
 		if (component !== 'side:left' && component !== 'side:right') return null;
-		return { kind: 'wall-side', wallId: reference.subject.id, side: component === 'side:left' ? 'left' : 'right' };
+		return {
+			kind: 'wall-side',
+			wallId: reference.subject.id,
+			side: component === 'side:left' ? 'left' : 'right',
+		};
 	}
 	if (reference.subject.kind === 'room') {
 		if (component !== 'floor' && component !== 'lid') return null;
@@ -73,7 +77,7 @@ function surfaceOfReference(reference: SemanticReference): SceneSurfaceRef | nul
  */
 export function libraryTargetOf(
 	reference: SemanticReference | null,
-	envelope: ProjectEnvelope
+	envelope: ProjectEnvelope,
 ): LibraryTarget | null {
 	if (reference === null) return null;
 	const scene = envelope.units.scene.data;
@@ -85,7 +89,7 @@ export function libraryTargetOf(
 			key: `entity:${entity.id}`,
 			entityId: entity.id,
 			label: entity.name,
-			finishKey: finishOf(entity, scene.materials)
+			finishKey: finishOf(entity, scene.materials),
 		};
 	}
 	if (reference.domain !== 'layout') return null;
@@ -99,7 +103,7 @@ export function libraryTargetOf(
 		key: `surface:${surfaceKey(surface)}`,
 		surface,
 		label: surfaceLabel(surface),
-		finishKey: assignment === null ? null : finishKeyOfSurface(scene, assignment)
+		finishKey: assignment === null ? null : finishKeyOfSurface(scene, assignment),
 	};
 }
 
@@ -108,8 +112,10 @@ export function libraryTargetOf(
  * fresh from the accepted envelope: null when it cannot take a Finish.
  */
 export function libraryTargetOfPick(
-	pick: { readonly kind: 'entity'; readonly entityId: string } | { readonly kind: 'surface'; readonly surface: SceneSurfaceRef },
-	envelope: ProjectEnvelope
+	pick:
+		| { readonly kind: 'entity'; readonly entityId: string }
+		| { readonly kind: 'surface'; readonly surface: SceneSurfaceRef },
+	envelope: ProjectEnvelope,
 ): LibraryTarget | null {
 	const scene = envelope.units.scene.data;
 	if (pick.kind === 'entity') {
@@ -120,7 +126,7 @@ export function libraryTargetOfPick(
 			key: `entity:${entity.id}`,
 			entityId: entity.id,
 			label: entity.name,
-			finishKey: finishOf(entity, scene.materials)
+			finishKey: finishOf(entity, scene.materials),
 		};
 	}
 	const layout = envelope.units.layout.data;
@@ -131,14 +137,14 @@ export function libraryTargetOfPick(
 		key: `surface:${surfaceKey(pick.surface)}`,
 		surface: pick.surface,
 		label: surfaceLabel(pick.surface),
-		finishKey: assignment === null ? null : finishKeyOfSurface(scene, assignment)
+		finishKey: assignment === null ? null : finishKeyOfSurface(scene, assignment),
 	};
 }
 
 /** A selection of every present user an inspection found; dormant surfaces are listed but not selected. */
 export function selectionEntriesOfFinishUsers(
 	users: readonly InspectedFinishUser[],
-	snapshot: Snapshot
+	snapshot: Snapshot,
 ): StageSelectionEntry[] {
 	const entries: StageSelectionEntry[] = [];
 	for (const user of users) {

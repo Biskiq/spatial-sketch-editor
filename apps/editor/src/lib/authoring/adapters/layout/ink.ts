@@ -5,15 +5,15 @@
  * Two responsibilities, both narrow:
  *
  * 1. **The target hit test.** A press names an existing Junction, a Wall's
- *    interior or a free point — and only the first two are *connections*. The
- *    test runs in the CSS pixels the Stage actually drew, so what the creator
- *    aimed at is what they hit; the figure is a tolerance, never a snap radius
- *    that invents a coordinate. Junctions win over Walls at equal aim, because a
- *    Junction is the more specific subject.
+ *  interior or a free point — and only the first two are *connections*. The
+ *  test runs in the CSS pixels the Stage actually drew, so what the creator
+ *  aimed at is what they hit; the figure is a tolerance, never a snap radius
+ *  that invents a coordinate. Junctions win over Walls at equal aim, because a
+ *  Junction is the more specific subject.
  * 2. **The published palette surface.** The instrument is mounted by the shell,
- *    so the binding publishes a snapshot plus the controller it exposes, exactly
- *    as the paused-proposal store does. Nothing here owns document state: the
- *    buffer it reports is the adapter's draft.
+ *  so the binding publishes a snapshot plus the controller it exposes, exactly
+ *  as the paused-proposal store does. Nothing here owns document state: the
+ *  buffer it reports is the adapter's draft.
  */
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 
@@ -73,7 +73,7 @@ export type ProjectedWall = {
 function closestOnCssSegment(
 	point: readonly [number, number],
 	start: readonly [number, number],
-	end: readonly [number, number]
+	end: readonly [number, number],
 ): readonly [number, number] {
 	const dx = end[0] - start[0];
 	const dy = end[1] - start[1];
@@ -81,20 +81,19 @@ function closestOnCssSegment(
 	if (squared === 0) return [Math.hypot(point[0] - start[0], point[1] - start[1]), 0];
 	const raw = ((point[0] - start[0]) * dx + (point[1] - start[1]) * dy) / squared;
 	const amount = Math.min(1, Math.max(0, raw));
-	return [Math.hypot(point[0] - (start[0] + dx * amount), point[1] - (start[1] + dy * amount)), amount];
+	return [
+		Math.hypot(point[0] - (start[0] + dx * amount), point[1] - (start[1] + dy * amount)),
+		amount,
+	];
 }
 
 /** The world-space centerline polyline: compiled samples when curved, chord when straight. */
 export function projectedWallPath(wall: ProjectedWall): readonly LayoutVec2[] {
-	return wall.path !== undefined && wall.path.length >= 2
-		? wall.path
-		: [wall.start, wall.end];
+	return wall.path !== undefined && wall.path.length >= 2 ? wall.path : [wall.start, wall.end];
 }
 
 /** The CSS-space centerline polyline, index-aligned with `projectedWallPath`. */
-export function projectedWallPathCss(
-	wall: ProjectedWall
-): readonly (readonly [number, number])[] {
+export function projectedWallPathCss(wall: ProjectedWall): readonly (readonly [number, number])[] {
 	return wall.pathCss !== undefined && wall.pathCss.length >= 2
 		? wall.pathCss
 		: [wall.startCss, wall.endCss];
@@ -107,10 +106,8 @@ function cumulativeLengths(path: readonly (readonly [number, number])[]): number
 	for (let index = 1; index < path.length; index += 1) {
 		const previous = path[index - 1]!;
 		const current = path[index]!;
-		lengths[index] = lengths[index - 1]! + Math.hypot(
-			current[0] - previous[0],
-			current[1] - previous[1]
-		);
+		lengths[index] =
+			lengths[index - 1]! + Math.hypot(current[0] - previous[0], current[1] - previous[1]);
 	}
 	return lengths;
 }
@@ -138,12 +135,15 @@ export function closestOnPolyline(input: {
 			segment: 0,
 			amount: 0,
 			offset: 0,
-			point: path[0]!
+			point: path[0]!,
 		};
 	}
 	const lengths = cumulativeLengths(path);
 	let best: {
-		distance: number; segment: number; amount: number; offset: number;
+		distance: number;
+		segment: number;
+		amount: number;
+		offset: number;
 		point: readonly [number, number];
 	} | null = null;
 	for (let index = 0; index < path.length - 1; index += 1) {
@@ -156,21 +156,18 @@ export function closestOnPolyline(input: {
 			segment: index,
 			amount,
 			offset: lengths[index]! + (lengths[index + 1]! - lengths[index]!) * amount,
-			point: [
-				start[0] + (end[0] - start[0]) * amount,
-				start[1] + (end[1] - start[1]) * amount
-			]
+			point: [start[0] + (end[0] - start[0]) * amount, start[1] + (end[1] - start[1]) * amount],
 		};
 	}
 	return best;
 }
 
 /** Distance from a Stage-local CSS point to a Wall's drawn centerline. */
-function projectedWallDistanceCss(
-	wall: ProjectedWall,
-	point: readonly [number, number]
-): number {
-	return closestOnPolyline({ point, path: projectedWallPathCss(wall) })?.distance ?? Number.POSITIVE_INFINITY;
+function projectedWallDistanceCss(wall: ProjectedWall, point: readonly [number, number]): number {
+	return (
+		closestOnPolyline({ point, path: projectedWallPathCss(wall) })?.distance ??
+		Number.POSITIVE_INFINITY
+	);
 }
 
 /**
@@ -249,8 +246,7 @@ export function offsetAlongWall(wall: ProjectedWall, point: LayoutVec2): number 
 	const dz = wall.end[1] - wall.start[1];
 	const length = Math.hypot(dx, dz);
 	if (!(length > 0)) return 0;
-	return (((point[0] - wall.start[0]) * dx + (point[1] - wall.start[1]) * dz) / length
-	);
+	return ((point[0] - wall.start[0]) * dx + (point[1] - wall.start[1]) * dz) / length;
 }
 
 /** A point at one meter distance from the Wall start, for the opening ghost. */
@@ -265,7 +261,7 @@ export function pointAlongWall(wall: ProjectedWall, distance: number): LayoutVec
 		const amount = span > 0 ? (target - lengths[segment]!) / span : 0;
 		return [
 			path[segment]![0] + (path[segment + 1]![0] - path[segment]![0]) * amount,
-			path[segment]![1] + (path[segment + 1]![1] - path[segment]![1]) * amount
+			path[segment]![1] + (path[segment + 1]![1] - path[segment]![1]) * amount,
 		];
 	}
 	const length = projectedWallLength(wall);
@@ -273,7 +269,7 @@ export function pointAlongWall(wall: ProjectedWall, distance: number): LayoutVec
 	const amount = distance / length;
 	return [
 		wall.start[0] + (wall.end[0] - wall.start[0]) * amount,
-		wall.start[1] + (wall.end[1] - wall.start[1]) * amount
+		wall.start[1] + (wall.end[1] - wall.start[1]) * amount,
 	];
 }
 
@@ -300,7 +296,7 @@ export function classifyOpeningHost(input: {
 	const preferred = candidates.find((candidate) => candidate.id === input.preferredWallId);
 	if (preferred !== undefined) return { wallId: preferred.id, distance: preferred.distance };
 	const nearest = candidates.reduce((best, candidate) =>
-		candidate.distance < best.distance ? candidate : best
+		candidate.distance < best.distance ? candidate : best,
 	);
 	return { wallId: nearest.id, distance: nearest.distance };
 }
@@ -415,8 +411,7 @@ export type InkPaletteSnapshot = {
 	/** The planner-derived consequence of finishing now, or `null`. */
 	readonly consequence: string | null;
 	/** The live length/angle of the pending leg, when a pointer is over the Stage. */
-	readonly pending: { readonly length: number; readonly angleDegrees: number;
-	} | null;
+	readonly pending: { readonly length: number; readonly angleDegrees: number } | null;
 	/** Refusal or repair words; the live chain stays editable while it is shown. */
 	readonly refusal: string | null;
 };
@@ -456,7 +451,9 @@ export type InkController = {
 	 * Remembered chain options. `null` means "use the canonical default", never
 	 * zero: an unset height is resolved by the planner's own birth rule.
 	 */
-	readonly setOptions: (options: { readonly thickness: number | null; readonly height: number | null;
+	readonly setOptions: (options: {
+		readonly thickness: number | null;
+		readonly height: number | null;
 	}) => void;
 };
 

@@ -45,16 +45,25 @@ export function createRepairSession(input: {
 	}
 
 	const head = contribution<'appearance', 'head'>()({
-		get repairIssueCount() { return input.finishes().issues.count; },
-		get repairOpen() { return open; },
-		onToggleRepair: () => { open = !open; }
+		get repairIssueCount() {
+			return input.finishes().issues.count;
+		},
+		get repairOpen() {
+			return open;
+		},
+		onToggleRepair: () => {
+			open = !open;
+		},
 	});
 
 	/** Appearance's Repair canvas keys; the entry composes the one contribution. */
 	const canvasKeys = {
-		onFinishOutcome: (outcome: Parameters<NonNullable<RegionProps['canvas']['onFinishOutcome']>>[0]) =>
-			input.finishes().issues.recordOutcome(outcome),
-		get repairAffectedTargets() { return input.finishes().issues.hatchedTargets; }
+		onFinishOutcome: (
+			outcome: Parameters<NonNullable<RegionProps['canvas']['onFinishOutcome']>>[0],
+		) => input.finishes().issues.recordOutcome(outcome),
+		get repairAffectedTargets() {
+			return input.finishes().issues.hatchedTargets;
+		},
 	};
 
 	const props = $derived.by((): RepairProps | null => ({
@@ -62,7 +71,7 @@ export function createRepairSession(input: {
 		issues: input.finishes().issues.open,
 		repaired: input.finishes().issues.repaired,
 		onOpenCard: openCard,
-		onClose: close
+		onClose: close,
 	}));
 
 	attachAuthoring();
@@ -72,7 +81,11 @@ export function createRepairSession(input: {
 		dismiss,
 		head,
 		canvasKeys,
-		get open() { return open; },
-		get props() { return props; }
+		get open() {
+			return open;
+		},
+		get props() {
+			return props;
+		},
 	};
 }

@@ -1,21 +1,44 @@
 import { Box3, Ray, Vector3 } from 'three';
 import { compiledOpeningFaceLoops } from './opening-faces';
-import { projectWorld, pointerRay, type ViewportEvaluation, type ViewportEvaluationToken, } from '@portfolio/camera-core/viewport';
+import {
+	projectWorld,
+	pointerRay,
+	type ViewportEvaluation,
+	type ViewportEvaluationToken,
+} from '@portfolio/camera-core/viewport';
 import type { Vec3 } from '@portfolio/camera-core/camera';
-import { indexedCompiledWall, type CompiledLayoutGeometry, type OverheadSource } from '@portfolio/layout-core/geometry';
-import { eligiblePlanFragments, type PlanEvaluation, type PlanFragment, type PlanFragmentGeometry, type PlanSubRef } from '@portfolio/layout-core/world';
+import {
+	indexedCompiledWall,
+	type CompiledLayoutGeometry,
+	type OverheadSource,
+} from '@portfolio/layout-core/geometry';
+import {
+	eligiblePlanFragments,
+	type PlanEvaluation,
+	type PlanFragment,
+	type PlanFragmentGeometry,
+	type PlanSubRef,
+} from '@portfolio/layout-core/world';
 import { createPlanPickIndex, type PlanPickBox, type PlanPickIndex } from './plan-pick-index';
 import { LIFT_OUTLINE_DEPTH_BAND_METERS, LIFT_OUTLINE_DROP_METERS } from '../stage/lift-ink';
 import type { StageDomainPick, StageHitSourceKind, StagePickQuery } from '../stage/stage-facade';
-import { fragmentLayer, PAPER_LAYER, } from '../stage/paper-plan';
+import { fragmentLayer, PAPER_LAYER } from '../stage/paper-plan';
 import { sliceHides, type ResolvedSlice } from '../stage/slice/slice-cut';
 import { resolvedSliceNow } from '../stage/slice/slice-resolved';
-import {
-	resolvedCutawayNow,
-	type ResolvedCutaway
-} from '../stage/cutaway/cutaway-resolved';
+import { resolvedCutawayNow, type ResolvedCutaway } from '../stage/cutaway/cutaway-resolved';
 import type { PlanEvaluationResult } from '@portfolio/layout-core/world';
-import { PLAN_HIT_TOLERANCE_CSS_PX, closestOnCssSegment, clipSurfaceToCutaway, clipSurfaceToSlice, cssDistanceToSurfaces, openingRayHit, pickSurfacesOf, surfaceDepth, worldPointOnSurface, type LayoutPickContext, } from './plan-pick-geometry';
+import {
+	PLAN_HIT_TOLERANCE_CSS_PX,
+	closestOnCssSegment,
+	clipSurfaceToCutaway,
+	clipSurfaceToSlice,
+	cssDistanceToSurfaces,
+	openingRayHit,
+	pickSurfacesOf,
+	surfaceDepth,
+	worldPointOnSurface,
+	type LayoutPickContext,
+} from './plan-pick-geometry';
 
 export function createPlanPickProvider(
 	planFor: () => PlanEvaluationResult,
@@ -37,7 +60,7 @@ export function createPlanPickProvider(
 	 * route's mirror — the same set the Canvas cuts — so the adapter needs no new
 	 * wiring and the provider can never hold a cut the Stage is not showing.
 	 */
-	cutawayOf: () => ResolvedCutaway | null = resolvedCutawayNow
+	cutawayOf: () => ResolvedCutaway | null = resolvedCutawayNow,
 ) {
 	/**
 	 * The retained pick index for one Plan evaluation.
@@ -75,27 +98,40 @@ export function createPlanPickProvider(
 		return retained;
 	}
 
-	const openingTargets = new WeakMap<RetainedPickIndex, readonly {
-		fragment: PlanFragment;
-		/** The host Wall, so the cutaway's stub filter can answer per Opening. */
-		wallId: string;
-		faces: Vector3[][];
-		bounds: Box3;
-	}[]>();
+	const openingTargets = new WeakMap<
+		RetainedPickIndex,
+		readonly {
+			fragment: PlanFragment;
+			/** The host Wall, so the cutaway's stub filter can answer per Opening. */
+			wallId: string;
+			faces: Vector3[][];
+			bounds: Box3;
+		}[]
+	>();
 
 	function openingTargetsFor(retained: RetainedPickIndex, geometry: CompiledLayoutGeometry) {
 		const cached = openingTargets.get(retained);
 		if (cached !== undefined) return cached;
-		const fragments = new Map(retained.fragments.filter((fragment) => fragment.ref.sourceKind === 'opening')
-			.map((fragment) => [fragment.ref.sourceId, fragment]));
+		const fragments = new Map(
+			retained.fragments
+				.filter((fragment) => fragment.ref.sourceKind === 'opening')
+				.map((fragment) => [fragment.ref.sourceId, fragment]),
+		);
 		const elevations = new Map(geometry.floors.map((floor) => [floor.floorId, floor.elevation]));
-		const targets = geometry.walls.flatMap((wall) => wall.openings.flatMap((opening) => {
-			const fragment = fragments.get(opening.openingId);
-			if (fragment === undefined) return [];
-			const faces = compiledOpeningFaceLoops(wall, opening, elevations.get(wall.floorId) ?? 0)
-				.map((face) => face.map((point) => new Vector3(...point)));
-			return [{ fragment, wallId: wall.wallId, faces, bounds: new Box3().setFromPoints(faces.flat()) }];
-		}));
+		const targets = geometry.walls.flatMap((wall) =>
+			wall.openings.flatMap((opening) => {
+				const fragment = fragments.get(opening.openingId);
+				if (fragment === undefined) return [];
+				const faces = compiledOpeningFaceLoops(
+					wall,
+					opening,
+					elevations.get(wall.floorId) ?? 0,
+				).map((face) => face.map((point) => new Vector3(...point)));
+				return [
+					{ fragment, wallId: wall.wallId, faces, bounds: new Box3().setFromPoints(faces.flat()) },
+				];
+			}),
+		);
 		openingTargets.set(retained, targets);
 		return targets;
 	}
@@ -113,7 +149,7 @@ export function createPlanPickProvider(
 	function pickBoxOf(
 		fragment: PlanFragment,
 		geometry: CompiledLayoutGeometry,
-		datumMeters: number
+		datumMeters: number,
 	): PlanPickBox {
 		const planBounds = planExtentOf(fragment.geometry);
 		const elevation = Number.isFinite(fragment.elevationMeters)
@@ -132,7 +168,7 @@ export function createPlanPickProvider(
 					minZ: Math.min(wall.bounds3.min[2], planBounds.minZ),
 					maxX: Math.max(wall.bounds3.max[0], planBounds.maxX),
 					maxY: Math.max(wall.bounds3.max[1], datumMeters + wall.height, elevation),
-					maxZ: Math.max(wall.bounds3.max[2], planBounds.maxZ)
+					maxZ: Math.max(wall.bounds3.max[2], planBounds.maxZ),
 				};
 			}
 		}
@@ -143,7 +179,7 @@ export function createPlanPickProvider(
 			minZ: planBounds.minZ,
 			maxX: planBounds.maxX,
 			maxY: elevation,
-			maxZ: planBounds.maxZ
+			maxZ: planBounds.maxZ,
 		};
 	}
 
@@ -186,10 +222,10 @@ export function createPlanPickProvider(
 		sourceKind === 'region'
 			? null
 			: sourceKind === 'room-floor'
-			? 'A Room floor cannot be erased.'
-			: sourceKind === 'object'
-				? 'A plinth cannot be erased; Layout has no delete for its objects.'
-				: null;
+				? 'A Room floor cannot be erased.'
+				: sourceKind === 'object'
+					? 'A plinth cannot be erased; Layout has no delete for its objects.'
+					: null;
 
 	/**
 	 * A lifted overhead answers the pointer through the **outline it is drawn as**.
@@ -211,7 +247,7 @@ export function createPlanPickProvider(
 		token: ViewportEvaluationToken,
 		context: LayoutPickContext,
 		retained: RetainedPickIndex,
-		slice: ResolvedSlice | null
+		slice: ResolvedSlice | null,
 	): StageDomainPick | null {
 		const sources = liftedOutlines(context.snapshot.domain.geometry);
 		if (sources.length === 0) return null;
@@ -247,10 +283,11 @@ export function createPlanPickProvider(
 				const worldPoint: Vec3 = [
 					start[0] + (end[0] - start[0]) * closest.amount,
 					elevation,
-					start[1] + (end[1] - start[1]) * closest.amount
+					start[1] + (end[1] - start[1]) * closest.amount,
 				];
 				// A lid the cut has removed is not an outline the creator can aim at.
-				if (slice !== null && sliceHides(slice, worldPoint[0], worldPoint[1], worldPoint[2])) continue;
+				if (slice !== null && sliceHides(slice, worldPoint[0], worldPoint[1], worldPoint[2]))
+					continue;
 				// Depth along the pointer's own ray, so an outline and a surface are
 				// compared on one axis.
 				const depthMeters =
@@ -260,10 +297,9 @@ export function createPlanPickProvider(
 				if (!(depthMeters > 0)) continue;
 				const fragment = retained.fragments.find((candidate) =>
 					source.key.kind === 'region'
-						? candidate.ref.sourceKind === 'region' &&
-							candidate.ref.sourceId === source.subject.id
+						? candidate.ref.sourceKind === 'region' && candidate.ref.sourceId === source.subject.id
 						: candidate.ref.sourceKind === 'room-floor' &&
-							candidate.ref.sourceId === source.subject.id
+							candidate.ref.sourceId === source.subject.id,
 				);
 				if (fragment === undefined) continue;
 				best = { fragment, worldPoint, depthMeters, cssDistance: closest.distance };
@@ -285,25 +321,32 @@ export function createPlanPickProvider(
 				generationId: best.fragment.ref.generationId,
 				stream: best.fragment.ref.stream,
 				subRef: best.fragment.ref.subRef,
-				worldPoint: best.worldPoint
+				worldPoint: best.worldPoint,
 			},
 			refusal: null,
 			depthMeters: best.depthMeters,
 			planLayer: fragmentLayer(best.fragment),
-			cssDistance: best.cssDistance
+			cssDistance: best.cssDistance,
 		};
 	}
 
 	return (query: StagePickQuery, context: LayoutPickContext): StageDomainPick | null => {
 		const evaluation = context.evaluation;
-		const css: [number, number] = [query.css[0] + evaluation.rect.left, query.css[1] + evaluation.rect.top];
+		const css: [number, number] = [
+			query.css[0] + evaluation.rect.left,
+			query.css[1] + evaluation.rect.top,
+		];
 		if (!css.every(Number.isFinite)) return null;
 		const token = evaluation.token;
 		const result = planFor();
 		if (result.kind !== 'evaluated') return null;
-		const project = (point: readonly [number, number, number]): readonly [number, number] | null => {
+		const project = (
+			point: readonly [number, number, number],
+		): readonly [number, number] | null => {
 			const projected = projectWorld(point as Vec3, evaluation, token);
-			return projected.kind === 'projected' && projected.visibility !== 'behind' ? projected.css : null;
+			return projected.kind === 'projected' && projected.visibility !== 'behind'
+				? projected.css
+				: null;
 		};
 		const retained = pickIndexFor(result.plan, context);
 		const slice = sliceOf();
@@ -312,47 +355,68 @@ export function createPlanPickProvider(
 		// In the 3D reading Paint needs the exact rendered triangle: the side tag
 		// distinguishes the two outward Wall faces and excludes tops, caps and
 		// Opening reveals. The ordinary Plan hit remains Layout's projected pick.
-		if (evaluation.renderedReading !== 'plan' && query.purpose === 'tool' && query.tool?.kind === 'paint') {
+		if (
+			evaluation.renderedReading !== 'plan' &&
+			query.purpose === 'tool' &&
+			query.tool?.kind === 'paint'
+		) {
 			const ray = pointerRay(css, evaluation, token);
 			const drawn = ray.kind === 'ray' ? context.pickScene(ray.ray) : null;
-			if (drawn === null || drawn.entityId !== null || drawn.layoutId === undefined || drawn.layoutKind === undefined) return null;
+			if (
+				drawn === null ||
+				drawn.entityId !== null ||
+				drawn.layoutId === undefined ||
+				drawn.layoutKind === undefined
+			)
+				return null;
 			let sourceKind: StageHitSourceKind;
 			let sourceId = drawn.layoutId;
 			let subRef: PlanSubRef | null = null;
 			if (drawn.layoutKind === 'wall' || drawn.layoutKind === 'wall-failure') {
 				sourceKind = 'wall';
 				sourceId = drawn.wallId ?? drawn.layoutId;
-				if (drawn.wallSide !== undefined) subRef = { kind: 'component', componentId: `side:${drawn.wallSide}` };
+				if (drawn.wallSide !== undefined)
+					subRef = { kind: 'component', componentId: `side:${drawn.wallSide}` };
 			} else if (drawn.layoutKind === 'floor') {
 				sourceKind = 'room-floor';
 			} else if (drawn.layoutKind === 'lid') {
 				sourceKind = 'room-lid';
 			} else if (drawn.layoutKind === 'region') {
 				sourceKind = 'region';
-				if (drawn.region !== undefined) subRef = { kind: 'component', componentId: drawn.region.face };
+				if (drawn.region !== undefined)
+					subRef = { kind: 'component', componentId: drawn.region.face };
 			} else {
 				sourceKind = 'object';
 			}
 			return {
 				hit: {
-					sourceId, sourceKind, generationId: context.snapshot.compileGeneration,
-					stream: 'projected', subRef, worldPoint: drawn.worldPoint
+					sourceId,
+					sourceKind,
+					generationId: context.snapshot.compileGeneration,
+					stream: 'projected',
+					subRef,
+					worldPoint: drawn.worldPoint,
 				},
 				refusal: null,
 				depthMeters: drawn.distanceMeters,
 				planLayer: PAPER_LAYER.projected,
-				cssDistance: 0
+				cssDistance: 0,
 			};
 		}
-		const pickOpeningIn3D = evaluation.renderedReading !== 'plan' &&
-			(query.purpose !== 'tool' || erasing) && (query.tool === null || erasing);
+		const pickOpeningIn3D =
+			evaluation.renderedReading !== 'plan' &&
+			(query.purpose !== 'tool' || erasing) &&
+			(query.tool === null || erasing);
 		if (pickOpeningIn3D) {
 			const rayResult = pointerRay(css, evaluation, token);
 			if (rayResult.kind === 'ray') {
 				const { origin, direction } = rayResult.ray;
 				const ray = new Ray(new Vector3(...origin), new Vector3(...direction));
 				let nearest: StageDomainPick | null = null;
-				for (const { fragment, wallId, faces, bounds } of openingTargetsFor(retained, context.snapshot.domain.geometry)) {
+				for (const { fragment, wallId, faces, bounds } of openingTargetsFor(
+					retained,
+					context.snapshot.domain.geometry,
+				)) {
 					if (!ray.intersectsBox(bounds)) continue;
 					const point = openingRayHit(ray, faces);
 					if (point === null) continue;
@@ -361,14 +425,23 @@ export function createPlanPickProvider(
 					if (slice !== null && sliceHides(slice, point.x, point.y, point.z)) continue;
 					// An Opening above a cut Wall's stub is not selectable: its host is
 					// not drawn there, and the ray must reach the interior behind it.
-					if (cutaway !== null && cutaway.wallIds.has(wallId) && point.y > cutaway.stubTopY + 1e-4) continue;
+					if (cutaway !== null && cutaway.wallIds.has(wallId) && point.y > cutaway.stubTopY + 1e-4)
+						continue;
 					const depthMeters = ray.origin.distanceTo(point);
 					if (depthMeters >= (nearest?.depthMeters ?? Infinity)) continue;
 					nearest = {
-						hit: { sourceId: fragment.ref.sourceId, sourceKind: 'opening',
-							generationId: fragment.ref.generationId, stream: fragment.ref.stream,
-							subRef: fragment.ref.subRef, worldPoint: point.toArray() },
-						depthMeters, cssDistance: 0, planLayer: fragmentLayer(fragment), refusal: null
+						hit: {
+							sourceId: fragment.ref.sourceId,
+							sourceKind: 'opening',
+							generationId: fragment.ref.generationId,
+							stream: fragment.ref.stream,
+							subRef: fragment.ref.subRef,
+							worldPoint: point.toArray(),
+						},
+						depthMeters,
+						cssDistance: 0,
+						planLayer: fragmentLayer(fragment),
+						refusal: null,
 					};
 				}
 				if (nearest !== null) {
@@ -377,25 +450,39 @@ export function createPlanPickProvider(
 				}
 			}
 		}
-		if (evaluation.renderedReading !== 'plan' && context.snapshot.domain.geometry.regions.length > 0) {
+		if (
+			evaluation.renderedReading !== 'plan' &&
+			context.snapshot.domain.geometry.regions.length > 0
+		) {
 			const ray = pointerRay(css, evaluation, token);
 			const drawn = ray.kind === 'ray' ? context.pickScene(ray.ray) : null;
 			if (drawn?.region) {
 				return {
 					hit: {
-						sourceId: drawn.region.regionId, sourceKind: 'region',
-						generationId: context.snapshot.compileGeneration, stream: 'projected',
+						sourceId: drawn.region.regionId,
+						sourceKind: 'region',
+						generationId: context.snapshot.compileGeneration,
+						stream: 'projected',
 						subRef: { kind: 'component', componentId: drawn.region.face },
-						worldPoint: drawn.worldPoint
+						worldPoint: drawn.worldPoint,
 					},
-					refusal: query.purpose === 'tool' && query.tool?.kind === 'erase' ? eraseRefusal('region') : null,
-					depthMeters: drawn.distanceMeters, planLayer: PAPER_LAYER.projected, cssDistance: 0
+					refusal:
+						query.purpose === 'tool' && query.tool?.kind === 'erase'
+							? eraseRefusal('region')
+							: null,
+					depthMeters: drawn.distanceMeters,
+					planLayer: PAPER_LAYER.projected,
+					cssDistance: 0,
 				};
 			}
 		}
-		const openingOverHost = erasing || (evaluation.renderedReading === 'plan' && query.purpose === 'select' && query.tool === null);
+		const openingOverHost =
+			erasing ||
+			(evaluation.renderedReading === 'plan' && query.purpose === 'select' && query.tool === null);
 		const roomAreaOf = (roomId: string): number | null => {
-			const room = context.snapshot.domain.geometry.rooms.find((candidate) => candidate.roomId === roomId);
+			const room = context.snapshot.domain.geometry.rooms.find(
+				(candidate) => candidate.roomId === roomId,
+			);
 			if (room === undefined) return null;
 			let twice = 0;
 			for (let index = 0; index < room.floorPolygon.length; index += 1) {
@@ -428,20 +515,25 @@ export function createPlanPickProvider(
 		};
 		for (const index of retained.index.candidates(css, PLAN_HIT_TOLERANCE_CSS_PX, project)) {
 			const fragment = retained.fragments[index];
-			if (fragment === undefined || (fragment.ref.sourceKind === 'region' && evaluation.renderedReading !== 'plan') || (pickOpeningIn3D && fragment.ref.sourceKind === 'opening')) continue;
+			if (
+				fragment === undefined ||
+				(fragment.ref.sourceKind === 'region' && evaluation.renderedReading !== 'plan') ||
+				(pickOpeningIn3D && fragment.ref.sourceKind === 'opening')
+			)
+				continue;
 			const surfaces = pickSurfacesOf(
 				fragment,
 				context.snapshot.domain.geometry,
 				context.snapshot.domain.datumMeters,
 				slice,
-				cutaway
+				cutaway,
 			)
 				.flatMap((surface) =>
 					clipSurfaceToCutaway(
 						surface,
 						cutaway,
-						fragment.ref.sourceKind === 'wall' ? fragment.ref.sourceId : null
-					)
+						fragment.ref.sourceKind === 'wall' ? fragment.ref.sourceId : null,
+					),
 				)
 				.flatMap((surface) => clipSurfaceToSlice(surface, slice));
 			const pick = cssDistanceToSurfaces(css, surfaces, project);
@@ -461,9 +553,15 @@ export function createPlanPickProvider(
 				if (!openingOverHost || fragment.ref.sourceKind !== 'wall') break;
 				continue;
 			}
-			if (fragment.ref.sourceKind === 'opening' && winner.fragment.ref.sourceKind === 'wall'
-				&& context.snapshot.domain.geometry.walls?.some((wall) => wall.wallId === winner!.fragment.ref.sourceId
-					&& wall.openings.some((opening) => opening.openingId === fragment.ref.sourceId))) {
+			if (
+				fragment.ref.sourceKind === 'opening' &&
+				winner.fragment.ref.sourceKind === 'wall' &&
+				context.snapshot.domain.geometry.walls?.some(
+					(wall) =>
+						wall.wallId === winner!.fragment.ref.sourceId &&
+						wall.openings.some((opening) => opening.openingId === fragment.ref.sourceId),
+				)
+			) {
 				winner = { fragment, pick, roomArea };
 				break;
 			}
@@ -492,25 +590,51 @@ export function createPlanPickProvider(
 			let worldPoint = worldPointOnSurface(css, pick.surface, fragment, evaluation, token);
 			if (query.purpose === 'tool' && query.tool?.kind === 'measure') {
 				const candidates: Vec3[] = [];
-				const wall = fragment.ref.sourceKind === 'wall' ? indexedCompiledWall(context.snapshot.domain.geometry, fragment.ref.sourceId) : undefined;
+				const wall =
+					fragment.ref.sourceKind === 'wall'
+						? indexedCompiledWall(context.snapshot.domain.geometry, fragment.ref.sourceId)
+						: undefined;
 				if (wall !== undefined && wall.samples.length) {
-					for (const sample of [wall.samples[0]!, wall.samples[wall.samples.length - 1]!]) candidates.push([sample.point[0], context.snapshot.domain.datumMeters, sample.point[1]]);
+					for (const sample of [wall.samples[0]!, wall.samples[wall.samples.length - 1]!])
+						candidates.push([
+							sample.point[0],
+							context.snapshot.domain.datumMeters,
+							sample.point[1],
+						]);
 				}
-				for (const junction of context.snapshot.domain.geometry.junctions ?? []) candidates.push([junction.point[0], context.snapshot.domain.datumMeters, junction.point[1]]);
+				for (const junction of context.snapshot.domain.geometry.junctions ?? [])
+					candidates.push([
+						junction.point[0],
+						context.snapshot.domain.datumMeters,
+						junction.point[1],
+					]);
 				let nearest = PLAN_HIT_TOLERANCE_CSS_PX;
 				for (const point of candidates) {
 					const projected = project(point);
 					if (projected === null) continue;
 					const d = Math.hypot(projected[0] - css[0], projected[1] - css[1]);
-					if (d <= nearest) { nearest = d; worldPoint = point; }
+					if (d <= nearest) {
+						nearest = d;
+						worldPoint = point;
+					}
 				}
 			}
 			return {
-				hit: { sourceId: fragment.ref.sourceId, sourceKind: fragment.ref.sourceKind,
-					generationId: fragment.ref.generationId, stream: fragment.ref.stream, subRef: fragment.ref.subRef,
-					worldPoint },
-				refusal: query.purpose === 'tool' && query.tool?.kind === 'erase' ? eraseRefusal(fragment.ref.sourceKind) : null, depthMeters: surfaceDepth(rayResult.kind === 'ray' ? rayResult.ray : null, pick.surface),
-				planLayer: fragmentLayer(fragment), cssDistance: pick.distanceCss
+				hit: {
+					sourceId: fragment.ref.sourceId,
+					sourceKind: fragment.ref.sourceKind,
+					generationId: fragment.ref.generationId,
+					stream: fragment.ref.stream,
+					subRef: fragment.ref.subRef,
+					worldPoint,
+				},
+				refusal:
+					query.purpose === 'tool' && query.tool?.kind === 'erase'
+						? eraseRefusal(fragment.ref.sourceKind)
+						: null,
+				depthMeters: surfaceDepth(rayResult.kind === 'ray' ? rayResult.ray : null, pick.surface),
+				planLayer: fragmentLayer(fragment),
+				cssDistance: pick.distanceCss,
 			};
 		}
 		return null;

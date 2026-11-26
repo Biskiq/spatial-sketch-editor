@@ -1,4 +1,17 @@
-import { createSpaceCreationOutlineQuery, findSpaceCreationReturn, planCreateOpenSpace, spaceCreationAnchorKey, spaceCreationAnchorPoint, spaceCreationWallChoices, spaceOutlineSignedArea, type PlannedSpaceCreation, type SpaceCreationAnchor, type SpaceCreationCycle, type SpaceCreationEvidence, type SpaceCreationSpan } from '@portfolio/layout-core/room';
+import {
+	createSpaceCreationOutlineQuery,
+	findSpaceCreationReturn,
+	planCreateOpenSpace,
+	spaceCreationAnchorKey,
+	spaceCreationAnchorPoint,
+	spaceCreationWallChoices,
+	spaceOutlineSignedArea,
+	type PlannedSpaceCreation,
+	type SpaceCreationAnchor,
+	type SpaceCreationCycle,
+	type SpaceCreationEvidence,
+	type SpaceCreationSpan,
+} from '@portfolio/layout-core/room';
 import { mintLayoutIdCapture, type LayoutIdCapture } from '@portfolio/layout-core/plan';
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import type { AuthoringIntent } from '@portfolio/project-model/f4';
@@ -11,12 +24,19 @@ import {
 	type StageAdapterContext,
 	type StageCandidatePreview,
 	type StageKeyboardIntent,
-	type StagePointerIntent
+	type StagePointerIntent,
 } from '$lib/authoring/stage/stage-adapter-host';
 
 import { candidatePreviewOf } from './candidate-preview';
 import { layoutSubjectReference } from './drawing-planners';
-import { closestOnPolyline, INK_JUNCTION_HIT_CSS_PX, INK_WALL_HIT_CSS_PX, LAYOUT_INK_TASK, projectedWallPathCss, type RoomInkSnapshot } from './ink';
+import {
+	closestOnPolyline,
+	INK_JUNCTION_HIT_CSS_PX,
+	INK_WALL_HIT_CSS_PX,
+	LAYOUT_INK_TASK,
+	projectedWallPathCss,
+	type RoomInkSnapshot,
+} from './ink';
 import { openWallFrame, wallStationAtPoint } from './precision-frames';
 import type { LayoutSessionPorts } from './session-ports';
 import { resolveJunctionPointSnap } from './snap';
@@ -40,15 +60,19 @@ type Press = {
 };
 
 function nearest<T>(options: { value: T; distance: number }[], radius: number): T | 'tied' | null {
-	const [first, second] = options.filter(({ distance }) => distance <= radius).sort((a, b) => a.distance - b.distance);
+	const [first, second] = options
+		.filter(({ distance }) => distance <= radius)
+		.sort((a, b) => a.distance - b.distance);
 	if (!first) return null;
 	return second && second.distance - first.distance <= 0.5 ? 'tied' : first.value;
 }
 
-export function createSpaceCreateSession(ports: Pick<LayoutSessionPorts, 'document' | 'levelId' | 'services' | 'inkTaskOpen'> & {
-	publish: () => void;
-	planCandidate<T>(body: () => T): T;
-}) {
+export function createSpaceCreateSession(
+	ports: Pick<LayoutSessionPorts, 'document' | 'levelId' | 'services' | 'inkTaskOpen'> & {
+		publish: () => void;
+		planCandidate<T>(body: () => T): T;
+	},
+) {
 	const { document, levelId, services } = ports;
 	const autoOutlineAt = createSpaceCreationOutlineQuery(document, levelId);
 	let mode: RoomInkSnapshot['mode'] = 'hover';
@@ -58,7 +82,12 @@ export function createSpaceCreateSession(ports: Pick<LayoutSessionPorts, 'docume
 	let capture: LayoutIdCapture | null = null;
 	let press: Press | null = null;
 	let displayed: Candidate | null = null;
-	let prepared: { key: string; candidate: Candidate | null; refusal?: string; evidence?: SpaceCreationEvidence } | null = null;
+	let prepared: {
+		key: string;
+		candidate: Candidate | null;
+		refusal?: string;
+		evidence?: SpaceCreationEvidence;
+	} | null = null;
 	let hoverPoint: LayoutVec2 | null = null;
 	let hoverTarget: Target | null = null;
 	let failure: SpaceCreationEvidence | null = null;
@@ -71,10 +100,16 @@ export function createSpaceCreateSession(ports: Pick<LayoutSessionPorts, 'docume
 	let choices: readonly WallSpan[] = [];
 	let projected: { evaluationId: string; scene: ReturnType<typeof projectedScene> } | null = null;
 	const frameByWall = new Map<string, ReturnType<typeof openWallFrame>>();
-	const physicalJunctions = new Set(document.walls.flatMap(({ startJunctionId, endJunctionId }) => [startJunctionId, endJunctionId]));
+	const physicalJunctions = new Set(
+		document.walls.flatMap(({ startJunctionId, endJunctionId }) => [
+			startJunctionId,
+			endJunctionId,
+		]),
+	);
 
 	const cursor = () => draft.at(-1)?.to ?? start;
-	const sameAnchor = (a: SpaceCreationAnchor, b: SpaceCreationAnchor) => spaceCreationAnchorKey(a) === spaceCreationAnchorKey(b);
+	const sameAnchor = (a: SpaceCreationAnchor, b: SpaceCreationAnchor) =>
+		spaceCreationAnchorKey(a) === spaceCreationAnchorKey(b);
 	const pointOf = (anchor: SpaceCreationAnchor) => spaceCreationAnchorPoint(document, anchor);
 
 	function publish() {
@@ -125,22 +160,45 @@ export function createSpaceCreateSession(ports: Pick<LayoutSessionPorts, 'docume
 		return projected.scene;
 	}
 
-	function selectCandidate(key: string, cycle: SpaceCreationCycle, evidence: SpaceCreationEvidence, manual?: PlannedSpaceCreation): void {
+	function selectCandidate(
+		key: string,
+		cycle: SpaceCreationCycle,
+		evidence: SpaceCreationEvidence,
+		manual?: PlannedSpaceCreation,
+	): void {
 		if (prepared?.key !== key) {
 			const snapshot = services.stage.snapshot();
 			const nonce = manual ? capture! : mintLayoutIdCapture();
 			const intent = spaceCreateIntent({
-				cycle, capture: nonce, operationId: globalThis.crypto.randomUUID(),
-				...snapshot.acceptedRevision, levelId, contentRevision: stageUnitRevision(snapshot, 'layout')
+				cycle,
+				capture: nonce,
+				operationId: globalThis.crypto.randomUUID(),
+				...snapshot.acceptedRevision,
+				levelId,
+				contentRevision: stageUnitRevision(snapshot, 'layout'),
 			});
-			const plan = manual ?? ports.planCandidate(() => planCreateOpenSpace({ baseline: document, levelId, capture: nonce, cycle }));
+			const plan =
+				manual ??
+				ports.planCandidate(() =>
+					planCreateOpenSpace({ baseline: document, levelId, capture: nonce, cycle }),
+				);
 			if (plan.kind === 'refused') {
-				prepared = { key, candidate: null, refusal: plan.message, evidence: plan.evidence ?? evidence };
+				prepared = {
+					key,
+					candidate: null,
+					refusal: plan.message,
+					evidence: plan.evidence ?? evidence,
+				};
 			} else {
-				const floor = plan.compiled.geometry.rooms.find(({ roomId }) => roomId === plan.roomId)!.floorPolygon;
+				const floor = plan.compiled.geometry.rooms.find(
+					({ roomId }) => roomId === plan.roomId,
+				)!.floorPolygon;
 				const area = Math.abs(spaceOutlineSignedArea(floor)).toFixed(1);
 				const label = `Open space · ${area} m² · ${manual ? 'Create Space' : 'Click to name'}`;
-				prepared = { key, candidate: { intent, roomId: plan.roomId, evidence: plan.evidence, label } };
+				prepared = {
+					key,
+					candidate: { intent, roomId: plan.roomId, evidence: plan.evidence, label },
+				};
 			}
 		}
 		displayed = prepared.candidate;
@@ -165,33 +223,54 @@ export function createSpaceCreateSession(ports: Pick<LayoutSessionPorts, 'docume
 		displayed = null;
 		failure = null;
 		refusal = point ? null : 'The working floor can’t be projected';
-		if (outline?.kind === 'outline') selectCandidate(outline.cycleKey, outline.cycle, outline.evidence);
+		if (outline?.kind === 'outline')
+			selectCandidate(outline.cycleKey, outline.cycle, outline.evidence);
 		else if (outline && outline.kind !== 'none') {
 			refusal = outline.message;
-			failure = outline.kind === 'refused' ? outline.evidence ?? null : null;
+			failure = outline.kind === 'refused' ? (outline.evidence ?? null) : null;
 		}
 	}
 
-	function connectionAt(scene: ReturnType<typeof projectedScene>, css: StagePointerIntent['css'], coarse: boolean) {
+	function connectionAt(
+		scene: ReturnType<typeof projectedScene>,
+		css: StagePointerIntent['css'],
+		coarse: boolean,
+	) {
 		const nodes = scene.junctions.filter(({ id }) => physicalJunctions.has(id));
-		const hit = nearest(nodes.map((node) => ({
-			value: node, distance: Math.hypot(node.css[0] - css[0], node.css[1] - css[1])
-		})), coarse ? 22 : INK_JUNCTION_HIT_CSS_PX);
+		const hit = nearest(
+			nodes.map((node) => ({
+				value: node,
+				distance: Math.hypot(node.css[0] - css[0], node.css[1] - css[1]),
+			})),
+			coarse ? 22 : INK_JUNCTION_HIT_CSS_PX,
+		);
 		if (hit === 'tied') return 'tied' as const;
 		if (hit) return { kind: 'junction' as const, junction: hit };
-		const wall = nearest(scene.walls.map((wall) => ({
-			value: wall, distance: closestOnPolyline({ point: css, path: projectedWallPathCss(wall) })?.distance ?? Infinity
-		})), coarse ? 16 : INK_WALL_HIT_CSS_PX);
+		const wall = nearest(
+			scene.walls.map((wall) => ({
+				value: wall,
+				distance:
+					closestOnPolyline({ point: css, path: projectedWallPathCss(wall) })?.distance ?? Infinity,
+			})),
+			coarse ? 16 : INK_WALL_HIT_CSS_PX,
+		);
 		return wall === 'tied' ? wall : wall ? { kind: 'wall' as const, wall } : null;
 	}
 
-	function stationOn(anchor: SpaceCreationAnchor, frame: NonNullable<ReturnType<typeof openWallFrame>>) {
-		return anchor.kind === 'wall-station' ? anchor.station :
-			anchor.kind === 'junction' && anchor.id === frame.startJunctionId ? 0 : frame.length;
+	function stationOn(
+		anchor: SpaceCreationAnchor,
+		frame: NonNullable<ReturnType<typeof openWallFrame>>,
+	) {
+		return anchor.kind === 'wall-station'
+			? anchor.station
+			: anchor.kind === 'junction' && anchor.id === frame.startJunctionId
+				? 0
+				: frame.length;
 	}
 
 	function spanPath(span: WallSpan): readonly LayoutVec2[] {
-		if (!frameByWall.has(span.wallId)) frameByWall.set(span.wallId, openWallFrame(document, span.wallId));
+		if (!frameByWall.has(span.wallId))
+			frameByWall.set(span.wallId, openWallFrame(document, span.wallId));
 		const frame = frameByWall.get(span.wallId);
 		const from = pointOf(span.from);
 		const to = pointOf(span.to);
@@ -199,11 +278,16 @@ export function createSpaceCreateSession(ports: Pick<LayoutSessionPorts, 'docume
 		if (!frame) return [from, to];
 		const a = stationOn(span.from, frame);
 		const b = stationOn(span.to, frame);
-		const points = frame.samples.filter(({ distance }) => distance > Math.min(a, b) && distance < Math.max(a, b)).map(({ point }) => point);
+		const points = frame.samples
+			.filter(({ distance }) => distance > Math.min(a, b) && distance < Math.max(a, b))
+			.map(({ point }) => point);
 		return [from, ...(a > b ? points.reverse() : points), to];
 	}
 
-	function targetAt(context: StageAdapterContext, intent: StagePointerIntent): Target | 'tied' | null {
+	function targetAt(
+		context: StageAdapterContext,
+		intent: StagePointerIntent,
+	): Target | 'tied' | null {
 		const raw = pointerDatumPoint(context, intent.css);
 		if (!raw || mode === 'choose') return null;
 		const point: LayoutVec2 = [raw[0], raw[1]];
@@ -212,31 +296,48 @@ export function createSpaceCreateSession(ports: Pick<LayoutSessionPorts, 'docume
 		const { left, top } = context.evaluation.rect;
 		const project = ([x, z]: LayoutVec2) => {
 			const p = context.project([x, context.snapshot.domain.datumMeters, z]);
-			return p && [p[0] - left, p[1] - top] as const;
+			return p && ([p[0] - left, p[1] - top] as const);
 		};
 		if (mode === 'follow') {
-			const hit = nearest(choices.map((span) => {
-				const path = spanPath(span).map(project);
-				const distance = path.every((p) => p !== null) ? closestOnPolyline({ point: css, path })?.distance : null;
-				return { value: span, distance: distance ?? Infinity };
-			}), radius);
+			const hit = nearest(
+				choices.map((span) => {
+					const path = spanPath(span).map(project);
+					const distance = path.every((p) => p !== null)
+						? closestOnPolyline({ point: css, path })?.distance
+						: null;
+					return { value: span, distance: distance ?? Infinity };
+				}),
+				radius,
+			);
 			if (hit === 'tied') return hit;
 			const endpoint = hit && pointOf(hit.to);
 			return hit && endpoint ? { anchor: hit.to, point: endpoint, span: hit } : null;
 		}
 		const priorStations = new Map<string, SpaceCreationAnchor>();
 		for (const anchor of [start, ...draft.map(({ to }) => to)]) {
-			if (anchor?.kind === 'wall-station') priorStations.set(spaceCreationAnchorKey(anchor), anchor);
+			if (anchor?.kind === 'wall-station')
+				priorStations.set(spaceCreationAnchorKey(anchor), anchor);
 		}
-		const prior = nearest([...priorStations.values()].flatMap((anchor) => {
-			const endpoint = pointOf(anchor);
-			const projected = endpoint && project(endpoint);
-			return endpoint && projected ? [{ value: { anchor, point: endpoint }, distance: Math.hypot(css[0] - projected[0], css[1] - projected[1]) }] : [];
-		}), radius);
+		const prior = nearest(
+			[...priorStations.values()].flatMap((anchor) => {
+				const endpoint = pointOf(anchor);
+				const projected = endpoint && project(endpoint);
+				return endpoint && projected
+					? [
+							{
+								value: { anchor, point: endpoint },
+								distance: Math.hypot(css[0] - projected[0], css[1] - projected[1]),
+							},
+						]
+					: [];
+			}),
+			radius,
+		);
 		if (prior) return prior;
 		const hit = connectionAt(sceneFor(context), css, intent.coarse ?? false);
 		if (hit === 'tied') return hit;
-		if (hit?.kind === 'junction') return { anchor: { kind: 'junction', id: hit.junction.id }, point: hit.junction.point };
+		if (hit?.kind === 'junction')
+			return { anchor: { kind: 'junction', id: hit.junction.id }, point: hit.junction.point };
 		if (hit?.kind === 'wall') {
 			const station = wallStationAtPoint(document, hit.wall.id, point);
 			if (station === null) return null;
@@ -246,12 +347,20 @@ export function createSpaceCreateSession(ports: Pick<LayoutSessionPorts, 'docume
 		}
 		const previous = cursor();
 		const anchor = previous && pointOf(previous);
-		const snap = anchor && resolveJunctionPointSnap({
-			geometry: context.snapshot.domain.geometry, point, anchor,
-			pixelsPerMeter: 1 / context.evaluation.targetPlaneMetersPerCssPixel, drafting: context.drafting()
-		});
+		const snap =
+			anchor &&
+			resolveJunctionPointSnap({
+				geometry: context.snapshot.domain.geometry,
+				point,
+				anchor,
+				pixelsPerMeter: 1 / context.evaluation.targetPlaneMetersPerCssPixel,
+				drafting: context.drafting(),
+			});
 		const free = snap?.point ?? point;
-		return { anchor: { kind: 'corner', key: `corner-${cornerSequence}`, point: free }, point: free };
+		return {
+			anchor: { kind: 'corner', key: `corner-${cornerSequence}`, point: free },
+			point: free,
+		};
 	}
 
 	function changeMode(next: 'draw' | 'follow') {
@@ -267,7 +376,10 @@ export function createSpaceCreateSession(ports: Pick<LayoutSessionPorts, 'docume
 		refusal = null;
 		splitHint = null;
 		hoverTarget = null;
-		choices = next === 'follow' && from && start ? spaceCreationWallChoices(document, from, draft, start) : [];
+		choices =
+			next === 'follow' && from && start
+				? spaceCreationWallChoices(document, from, draft, start)
+				: [];
 		publish();
 	}
 
@@ -279,10 +391,11 @@ export function createSpaceCreateSession(ports: Pick<LayoutSessionPorts, 'docume
 		const from = cursor();
 		if (!start || !from || (closeOnly && !sameAnchor(start, from))) return;
 		const outline = ports.planCandidate(() => findSpaceCreationReturn(document, capture!, draft));
-		if (outline.kind === 'outline') selectCandidate(outline.cycleKey, outline.cycle, outline.evidence, outline.plan);
+		if (outline.kind === 'outline')
+			selectCandidate(outline.cycleKey, outline.cycle, outline.evidence, outline.plan);
 		else if (outline.kind !== 'none') {
 			refusal = outline.message;
-			failure = outline.kind === 'refused' ? outline.evidence ?? null : null;
+			failure = outline.kind === 'refused' ? (outline.evidence ?? null) : null;
 		}
 		if (!refusal && !displayed) refusal = 'Follow Wall to continue the outline';
 	}
@@ -299,7 +412,8 @@ export function createSpaceCreateSession(ports: Pick<LayoutSessionPorts, 'docume
 			start = target.anchor;
 			capture = mintLayoutIdCapture();
 			lease = services.stage.session.registerProposal({
-				owner: LAYOUT_INK_TASK, reason: 'An open outline is live. Finish or cancel it to use Undo.'
+				owner: LAYOUT_INK_TASK,
+				reason: 'An open outline is live. Finish or cancel it to use Undo.',
 			});
 			describeSplits();
 			return;
@@ -325,8 +439,12 @@ export function createSpaceCreateSession(ports: Pick<LayoutSessionPorts, 'docume
 
 	function describeSplits() {
 		const anchors = [start, ...draft.map(({ to }) => to)];
-		const hostIds = new Set(anchors.flatMap((anchor) => anchor?.kind === 'wall-station' ? [anchor.wallId] : []));
-		const names = document.walls.filter(({ id }) => hostIds.has(id)).map(({ name }) => name || 'Wall');
+		const hostIds = new Set(
+			anchors.flatMap((anchor) => (anchor?.kind === 'wall-station' ? [anchor.wallId] : [])),
+		);
+		const names = document.walls
+			.filter(({ id }) => hostIds.has(id))
+			.map(({ name }) => name || 'Wall');
 		splitHint = names.length ? `Splits ${names.join(', ')}` : null;
 	}
 
@@ -355,7 +473,13 @@ export function createSpaceCreateSession(ports: Pick<LayoutSessionPorts, 'docume
 
 	async function commit(candidate: Candidate) {
 		reconcileLease();
-		if (busy || displayed !== candidate || !currentSource() || projectionId !== services.stage.evaluationId()) return;
+		if (
+			busy ||
+			displayed !== candidate ||
+			!currentSource() ||
+			projectionId !== services.stage.evaluationId()
+		)
+			return;
 		const before = services.stage.selectionState().primary;
 		busy = true;
 		publish();
@@ -375,11 +499,16 @@ export function createSpaceCreateSession(ports: Pick<LayoutSessionPorts, 'docume
 			if (current && (!before || !sameSubject(before, current))) return;
 			if (before && !current && !result.install.clearedSelection) return;
 			const reference = layoutSubjectReference({
-				kind: 'room', id: candidate.roomId,
-				contentRevision: stageUnitRevision(fresh, 'layout'), levelId
+				kind: 'room',
+				id: candidate.roomId,
+				contentRevision: stageUnitRevision(fresh, 'layout'),
+				levelId,
 			});
 			services.stage.closeTask();
-			if (services.stage.setSelection({ ordered: [{ reference }], primary: reference }).kind === 'selected') {
+			if (
+				services.stage.setSelection({ ordered: [{ reference }], primary: reference }).kind ===
+				'selected'
+			) {
 				services.openSpaceCreated?.(reference);
 			}
 		} finally {
@@ -396,8 +525,11 @@ export function createSpaceCreateSession(ports: Pick<LayoutSessionPorts, 'docume
 		const target = targetAt(context, intent);
 		hoverTarget = target === 'tied' ? null : target;
 		if (mode !== 'choose') {
-			refusal = !raw ? 'The working floor can’t be projected' :
-				target === 'tied' ? 'Aim more clearly at one Wall or Junction' : null;
+			refusal = !raw
+				? 'The working floor can’t be projected'
+				: target === 'tied'
+					? 'Aim more clearly at one Wall or Junction'
+					: null;
 		}
 	}
 
@@ -429,23 +561,31 @@ export function createSpaceCreateSession(ports: Pick<LayoutSessionPorts, 'docume
 			else updateManual(context, intent);
 			if (!hoverPoint) return false;
 			const acquired = services.stage.acquireGesture({
-				owner: LAYOUT_INK_TASK, evaluationId: intent.evaluationId, policy: 'cancel-on-reading-change'
+				owner: LAYOUT_INK_TASK,
+				evaluationId: intent.evaluationId,
+				policy: 'cancel-on-reading-change',
 			});
 			if (acquired.kind !== 'granted') return false;
 			press = {
-				lease: acquired.lease, origin: intent.css, evaluationId: intent.evaluationId,
-				candidate: mode === 'hover' && shown === displayed ? shown : null, target: hoverTarget
+				lease: acquired.lease,
+				origin: intent.css,
+				evaluationId: intent.evaluationId,
+				candidate: mode === 'hover' && shown === displayed ? shown : null,
+				target: hoverTarget,
 			};
 			return true;
 		}
 		if (!press) return false;
 		const old = press;
 		const dragged = isStageDrag(
-			{ x: old.origin[0], y: old.origin[1] }, { x: intent.css[0], y: intent.css[1] }
+			{ x: old.origin[0], y: old.origin[1] },
+			{ x: intent.css[0], y: intent.css[1] },
 		);
-		const sameProjection = old.evaluationId === intent.evaluationId && old.evaluationId === context.evaluationId;
+		const sameProjection =
+			old.evaluationId === intent.evaluationId && old.evaluationId === context.evaluationId;
 		if (intent.phase === 'move' && old.lease.active && !dragged && sameProjection) return true;
-		const eligible = old.lease.active && intent.phase === 'up' && currentSource() && sameProjection && !dragged;
+		const eligible =
+			old.lease.active && intent.phase === 'up' && currentSource() && sameProjection && !dragged;
 		endPress();
 		if (!eligible) {
 			hoverTarget = null;
@@ -458,11 +598,17 @@ export function createSpaceCreateSession(ports: Pick<LayoutSessionPorts, 'docume
 		} else if (old.target) {
 			const released = targetAt(context, intent);
 			const held = old.target;
-			if (released && released !== 'tied' && (
-				(sameAnchor(held.anchor, released.anchor) && held.span?.wallId === released.span?.wallId) ||
-				(!held.span && held.anchor.kind === 'wall-station' && released.anchor.kind === 'wall-station' &&
-					held.anchor.wallId === released.anchor.wallId)
-			)) append(held);
+			if (
+				released &&
+				released !== 'tied' &&
+				((sameAnchor(held.anchor, released.anchor) &&
+					held.span?.wallId === released.span?.wallId) ||
+					(!held.span &&
+						held.anchor.kind === 'wall-station' &&
+						released.anchor.kind === 'wall-station' &&
+						held.anchor.wallId === released.anchor.wallId))
+			)
+				append(held);
 		}
 		return true;
 	}
@@ -495,15 +641,27 @@ export function createSpaceCreateSession(ports: Pick<LayoutSessionPorts, 'docume
 		const anchored = from !== null && from.kind !== 'corner';
 		return {
 			mode,
-			hint: splitHint ?? (mode === 'hover' ? 'Hover inside Walls' :
-				!from ? 'Start on a Wall' : displayed ? displayed.label :
-				mode === 'draw' ? 'Pick a corner or end on a Wall' : 'Pick a highlighted Wall'),
+			hint:
+				splitHint ??
+				(mode === 'hover'
+					? 'Hover inside Walls'
+					: !from
+						? 'Start on a Wall'
+						: displayed
+							? displayed.label
+							: mode === 'draw'
+								? 'Pick a corner or end on a Wall'
+								: 'Pick a highlighted Wall'),
 			canFollow: mode !== 'hover' && anchored && draft.length > 0 && !closed,
 			canDraw: mode === 'hover' || (anchored && !closed),
-			canCreate: mode !== 'hover' && displayed !== null && !busy && projectionId === services.stage.evaluationId(),
-			confirmationId: mode !== 'hover' ? displayed?.intent.operationId ?? null : null,
+			canCreate:
+				mode !== 'hover' &&
+				displayed !== null &&
+				!busy &&
+				projectionId === services.stage.evaluationId(),
+			confirmationId: mode !== 'hover' ? (displayed?.intent.operationId ?? null) : null,
 			canBacktrack: start !== null && !busy,
-			refusal
+			refusal,
 		};
 	}
 
@@ -515,51 +673,114 @@ export function createSpaceCreateSession(ports: Pick<LayoutSessionPorts, 'docume
 		const live = mode !== 'hover' || projectionId === context.evaluationId;
 		if (!live) return [];
 		const evidence = displayed?.evidence ?? failure;
-		const walls = evidence?.walls ?? draft.flatMap((span) => span.kind === 'wall' ? [spanPath(span)] : []);
-		const virtual = [...(evidence?.virtual ?? draft.flatMap((span) => {
-			const a = pointOf(span.from);
-			const b = pointOf(span.to);
-			return span.kind === 'virtual' && a && b ? [[a, b] as const] : [];
-		}))];
+		const walls =
+			evidence?.walls ?? draft.flatMap((span) => (span.kind === 'wall' ? [spanPath(span)] : []));
+		const virtual = [
+			...(evidence?.virtual ??
+				draft.flatMap((span) => {
+					const a = pointOf(span.from);
+					const b = pointOf(span.to);
+					return span.kind === 'virtual' && a && b ? [[a, b] as const] : [];
+				})),
+		];
 		const from = cursor();
 		const active = from && pointOf(from);
 		const first = start && draft.length > 0 ? pointOf(start) : null;
 		if (mode === 'draw' && active && hoverTarget) virtual.push([active, hoverTarget.point]);
 		const anchor = mode === 'hover' ? hoverPoint : active;
-		const labels = anchor && (refusal || displayed) ? [{ world: world(anchor), text: refusal ?? displayed!.label }] : [];
-		const mark = hoverTarget && mode === 'draw' ? hoverTarget : active && from ? { point: active, anchor: from } : null;
-		const snap = mark ? {
-			world: world(mark.point), name: mark.anchor.kind === 'corner' ? 'Corner' : mark.anchor.kind === 'wall-station' ? 'Wall' : 'Junction'
-		} : undefined;
+		const labels =
+			anchor && (refusal || displayed)
+				? [{ world: world(anchor), text: refusal ?? displayed!.label }]
+				: [];
+		const mark =
+			hoverTarget && mode === 'draw'
+				? hoverTarget
+				: active && from
+					? { point: active, anchor: from }
+					: null;
+		const snap = mark
+			? {
+					world: world(mark.point),
+					name:
+						mark.anchor.kind === 'corner'
+							? 'Corner'
+							: mark.anchor.kind === 'wall-station'
+								? 'Wall'
+								: 'Junction',
+				}
+			: undefined;
 		return [
-			...(first && start && from && !sameAnchor(start, from) ? [candidatePreviewOf({
-				id: 'layout-room-start', role: 'subject', geometry: { polygons: [], segments: [] },
-				snap: { world: world(first), name: start.kind === 'wall-station' ? 'Wall' : 'Junction' }
-			})] : []),
-			...(walls.length ? [candidatePreviewOf({
-				id: 'layout-room-physical', role: 'subject', drawing: true,
-				geometry: { polygons: [], segments: physical(walls) }
-			})] : []),
-			...(choices.length ? [candidatePreviewOf({
-				id: 'layout-room-wall-choices', role: 'affected',
-				geometry: { polygons: [], segments: physical(choices.map(spanPath)) }
-			})] : []),
-			...(hoverTarget?.span ? [candidatePreviewOf({
-				id: 'layout-room-follow-hover', role: 'subject', drawing: true,
-				geometry: { polygons: [], segments: physical([spanPath(hoverTarget.span)]) }
-			})] : []),
-			...(virtual.length || snap || labels.length ? [candidatePreviewOf({
-				id: 'layout-room-virtual', role: refusal ? 'refused' : 'subject',
-				geometry: { polygons: [], segments: virtual.map(([a, b]) => [world(a), world(b)]) },
-				labels, snap
-			})] : [])
+			...(first && start && from && !sameAnchor(start, from)
+				? [
+						candidatePreviewOf({
+							id: 'layout-room-start',
+							role: 'subject',
+							geometry: { polygons: [], segments: [] },
+							snap: {
+								world: world(first),
+								name: start.kind === 'wall-station' ? 'Wall' : 'Junction',
+							},
+						}),
+					]
+				: []),
+			...(walls.length
+				? [
+						candidatePreviewOf({
+							id: 'layout-room-physical',
+							role: 'subject',
+							drawing: true,
+							geometry: { polygons: [], segments: physical(walls) },
+						}),
+					]
+				: []),
+			...(choices.length
+				? [
+						candidatePreviewOf({
+							id: 'layout-room-wall-choices',
+							role: 'affected',
+							geometry: { polygons: [], segments: physical(choices.map(spanPath)) },
+						}),
+					]
+				: []),
+			...(hoverTarget?.span
+				? [
+						candidatePreviewOf({
+							id: 'layout-room-follow-hover',
+							role: 'subject',
+							drawing: true,
+							geometry: { polygons: [], segments: physical([spanPath(hoverTarget.span)]) },
+						}),
+					]
+				: []),
+			...(virtual.length || snap || labels.length
+				? [
+						candidatePreviewOf({
+							id: 'layout-room-virtual',
+							role: refusal ? 'refused' : 'subject',
+							geometry: { polygons: [], segments: virtual.map(([a, b]) => [world(a), world(b)]) },
+							labels,
+							snap,
+						}),
+					]
+				: []),
 		];
 	}
 
 	return {
-		pointer, hover, key, previews, paletteView, changeMode, backtrack,
-		finish: () => { if (paletteView().canCreate && displayed) void commit(displayed); },
+		pointer,
+		hover,
+		key,
+		previews,
+		paletteView,
+		changeMode,
+		backtrack,
+		finish: () => {
+			if (paletteView().canCreate && displayed) void commit(displayed);
+		},
 		clear,
-		dispose() { clear(); disposed = true; }
+		dispose() {
+			clear();
+			disposed = true;
+		},
 	};
 }

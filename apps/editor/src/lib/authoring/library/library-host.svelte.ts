@@ -26,7 +26,10 @@ export function createLibraryHost(input: {
 		openLibraryDraft(ref: LibraryFinishEntry['ref']): boolean;
 		toggleFavouriteMaterial(key: string): void;
 	};
-	readonly commands: () => Pick<StageShellCommands, 'armWorldTool' | 'toggleWorldLibrary' | 'pickWorldObject' | 'selectTool'>;
+	readonly commands: () => Pick<
+		StageShellCommands,
+		'armWorldTool' | 'toggleWorldLibrary' | 'pickWorldObject' | 'selectTool'
+	>;
 	readonly scene: () => CameraFreeSceneDocument | null;
 	readonly looks: () => LibraryProps['looks'];
 	readonly lens: () => StageLens;
@@ -35,7 +38,10 @@ export function createLibraryHost(input: {
 	readonly finishTileSource: (finishId: string) => FinishTileSource | null;
 	readonly armArtwork: (entry: ArtworkLibraryEntry) => void;
 	readonly importArtwork: (files: File[]) => Promise<unknown>;
-	readonly importMaterial: (files: readonly File[], invoker?: HTMLElement | null) => Promise<unknown>;
+	readonly importMaterial: (
+		files: readonly File[],
+		invoker?: HTMLElement | null,
+	) => Promise<unknown>;
 	readonly pickLook: NonNullable<LibraryProps['onLook']>;
 }) {
 	const { shell } = input;
@@ -50,7 +56,8 @@ export function createLibraryHost(input: {
 	});
 
 	function libraryTileSource(entry: LibraryFinishEntry): FinishTileSource | null {
-		if (entry.source === 'curated' && entry.curatedId !== null) return { kind: 'catalogue', id: entry.curatedId };
+		if (entry.source === 'curated' && entry.curatedId !== null)
+			return { kind: 'catalogue', id: entry.curatedId };
 		return entry.projectId === null ? null : input.finishTileSource(entry.projectId);
 	}
 	const libraryObjects = assets
@@ -64,7 +71,7 @@ export function createLibraryHost(input: {
 		lights: '[data-world-library-key]',
 		paint: '[data-paint-library], [data-paint-library-open]',
 		furnish: '[data-furnish-browse]',
-		card: '[data-finish-swap]'
+		card: '[data-finish-swap]',
 	} as const;
 	function returnLibraryFocus(from: keyof typeof LIBRARY_INVOKERS): void {
 		void tick().then(() => {
@@ -89,21 +96,39 @@ export function createLibraryHost(input: {
 		if (returnFocus) returnLibraryFocus(from);
 	}
 	const props: LibraryProps = {
-		get entries() { return libraryEntries; },
-		get intent() { return shell.libraryInvocation.intent; },
-		get target() { return libraryTarget; },
-		get swap() { return input.finishes().librarySwap; },
-		get view() { return shell.libraryView; },
-		get openKind() { return shell.libraryInvocation.kind; },
-		get busy() { return input.finishes().busy; },
+		get entries() {
+			return libraryEntries;
+		},
+		get intent() {
+			return shell.libraryInvocation.intent;
+		},
+		get target() {
+			return libraryTarget;
+		},
+		get swap() {
+			return input.finishes().librarySwap;
+		},
+		get view() {
+			return shell.libraryView;
+		},
+		get openKind() {
+			return shell.libraryInvocation.kind;
+		},
+		get busy() {
+			return input.finishes().busy;
+		},
 		tileSource: libraryTileSource,
 		objects: libraryObjects,
 		get artwork() {
 			const scene = input.scene();
-			return scene === null ? null : scene.artworkLibrary ?? [];
+			return scene === null ? null : (scene.artworkLibrary ?? []);
 		},
-		get looks() { return input.looks(); },
-		get inspection() { return shell.libraryInspection; },
+		get looks() {
+			return input.looks();
+		},
+		get inspection() {
+			return shell.libraryInspection;
+		},
 		onInspection: shell.setLibraryInspection,
 		onView: shell.setLibraryView,
 		onClose: closeLibrary,
@@ -118,11 +143,12 @@ export function createLibraryHost(input: {
 			if (!accepted) {
 				return {
 					ok: false,
-					message: libraryTarget === null
-						? 'Select an object or surface first. Nothing changed.'
-						: libraryTarget.finishKey === entry.key
-							? `${libraryTarget.label} already wears ${entry.name}.`
-							: 'That change could not be made. Nothing changed.'
+					message:
+						libraryTarget === null
+							? 'Select an object or surface first. Nothing changed.'
+							: libraryTarget.finishKey === entry.key
+								? `${libraryTarget.label} already wears ${entry.name}.`
+								: 'That change could not be made. Nothing changed.',
 				};
 			}
 			if (!keepOpen) closeLibrary();
@@ -161,15 +187,25 @@ export function createLibraryHost(input: {
 		onLook(id) {
 			closeLibrary();
 			input.pickLook(id);
-		}
+		},
 	};
 	const view: LibraryView = {
-		get open() { return shell.libraryOpen; },
-		get previewing() { return input.previewing(); },
-		get lens() { return input.lens(); },
-		get available() { return input.available(); },
-		get nonce() { return shell.libraryInvocation.nonce; },
-		props
+		get open() {
+			return shell.libraryOpen;
+		},
+		get previewing() {
+			return input.previewing();
+		},
+		get lens() {
+			return input.lens();
+		},
+		get available() {
+			return input.available();
+		},
+		get nonce() {
+			return shell.libraryInvocation.nonce;
+		},
+		props,
 	};
 	return {
 		view,
@@ -177,11 +213,11 @@ export function createLibraryHost(input: {
 			open: () => shell.libraryOpen,
 			invocation: () => shell.libraryInvocation,
 			close: closeLibrary,
-			tileSource: libraryTileSource
+			tileSource: libraryTileSource,
 		},
 		escape: {
 			libraryOpen: () => shell.libraryOpen,
-			toggleLibrary: () => closeLibrary()
-		}
+			toggleLibrary: () => closeLibrary(),
+		},
 	};
 }

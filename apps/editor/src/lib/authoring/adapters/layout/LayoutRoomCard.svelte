@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * The Room Card's writer (T2.S8 U4): the Room's area facts, then its Floor and
+	 * The Room Card's writer: the Room's area facts, then its Floor and
 	 * Ceiling Finishes through the shared Finish section. The Room's relations
 	 * stay in More, as before; the Card header remains the selection.
 	 */

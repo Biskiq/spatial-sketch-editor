@@ -15,13 +15,13 @@
    * Two lifecycle rules are load-bearing:
    *
    * - **Ownership is untracked.** The effect reads only descriptor inputs; the
-   *   lease it holds lives in a plain variable, and the reactive `lease` is a
-   *   publication for the template. If the effect read the published state it
-   *   would track it, and publishing a lease would re-run the effect forever.
+   *  lease it holds lives in a plain variable, and the reactive `lease` is a
+   *  publication for the template. If the effect read the published state it
+   *  would track it, and publishing a lease would re-run the effect forever.
    * - **Threlte never disposes the instance.** `dispose={false}` keeps the shared
-   *   material out of Threlte's disposal registry: the reference-counted store is
-   *   the only disposal authority, so one consumer unmounting cannot free a
-   *   material another consumer still draws.
+   *  material out of Threlte's disposal registry: the reference-counted store is
+   *  the only disposal authority, so one consumer unmounting cannot free a
+   *  material another consumer still draws.
    */
   import { T } from '@threlte/core';
   import { useRenderResources } from '$lib/render/resources/render-resources';

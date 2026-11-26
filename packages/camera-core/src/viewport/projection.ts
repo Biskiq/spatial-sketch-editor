@@ -1,7 +1,24 @@
 import type { Vec3 } from '../scene-types';
-import { addVec3, crossVec3, dotVec3, isFiniteVec3, normalizeVec3, scaleVec3, subtractVec3, transformPoint } from '../viewport-math';
+import {
+	addVec3,
+	crossVec3,
+	dotVec3,
+	isFiniteVec3,
+	normalizeVec3,
+	scaleVec3,
+	subtractVec3,
+	transformPoint,
+} from '../viewport-math';
 import { isFiniteNumber, sameEvaluationToken } from './state';
-import type { PointerRay, PointerRayResult, ProjectWorldResult, ViewportEvaluation, ViewportEvaluationToken, WorkingPlane, WorkingPlaneHit } from './types';
+import type {
+	PointerRay,
+	PointerRayResult,
+	ProjectWorldResult,
+	ViewportEvaluation,
+	ViewportEvaluationToken,
+	WorkingPlane,
+	WorkingPlaneHit,
+} from './types';
 
 /**
  * Project a project-world point through the evaluation's **own** matrices.
@@ -14,26 +31,39 @@ import type { PointerRay, PointerRayResult, ProjectWorldResult, ViewportEvaluati
 export function projectWorld(
 	point: unknown,
 	evaluation: ViewportEvaluation,
-	expected: ViewportEvaluationToken
+	expected: ViewportEvaluationToken,
 ): ProjectWorldResult {
 	if (!isFiniteVec3(point)) {
-		return { kind: 'failed', code: 'invalid-point', message: 'the point must be a finite project-world triple in meters' };
+		return {
+			kind: 'failed',
+			code: 'invalid-point',
+			message: 'the point must be a finite project-world triple in meters',
+		};
 	}
 	if (!sameEvaluationToken(evaluation.token, expected)) {
 		return {
 			kind: 'failed',
 			code: 'stale-evaluation',
-			message: 'the supplied evaluation is not the expected one; evaluate the viewport again before projecting'
+			message:
+				'the supplied evaluation is not the expected one; evaluate the viewport again before projecting',
 		};
 	}
 	const clip = transformPoint(evaluation.viewProjectionMatrix, point);
 	if (!clip.every((component) => Number.isFinite(component))) {
-		return { kind: 'failed', code: 'non-finite-projection', message: 'the projection produced a non-finite component' };
+		return {
+			kind: 'failed',
+			code: 'non-finite-projection',
+			message: 'the projection produced a non-finite component',
+		};
 	}
 	const w = clip[3];
 	const rect = evaluation.rect;
 	if (w === 0) {
-		return { kind: 'failed', code: 'non-finite-projection', message: 'the point projects with a zero clip-space w' };
+		return {
+			kind: 'failed',
+			code: 'non-finite-projection',
+			message: 'the point projects with a zero clip-space w',
+		};
 	}
 	const ndcX = clip[0] / w;
 	const ndcY = clip[1] / w;
@@ -52,10 +82,9 @@ export function projectWorld(
 		kind: 'projected',
 		css: [(ndcX * 0.5 + 0.5) * rect.width + rect.left, (0.5 - ndcY * 0.5) * rect.height + rect.top],
 		ndcDepth: ndcZ,
-		visibility
+		visibility,
 	};
 }
-
 
 /**
  * The project-world ray through one CSS point, from the **same** rendered
@@ -68,7 +97,7 @@ export function projectWorld(
 export function pointerRay(
 	cssPoint: unknown,
 	evaluation: ViewportEvaluation,
-	expected: ViewportEvaluationToken
+	expected: ViewportEvaluationToken,
 ): PointerRayResult {
 	if (
 		!Array.isArray(cssPoint) ||
@@ -76,17 +105,26 @@ export function pointerRay(
 		!isFiniteNumber(cssPoint[0] as number) ||
 		!isFiniteNumber(cssPoint[1] as number)
 	) {
-		return { kind: 'failed', code: 'invalid-css-point', message: 'the CSS point must be a finite [x, y] pair' };
+		return {
+			kind: 'failed',
+			code: 'invalid-css-point',
+			message: 'the CSS point must be a finite [x, y] pair',
+		};
 	}
 	const rect = evaluation.rect;
 	if (rect.width <= 0 || rect.height <= 0) {
-		return { kind: 'failed', code: 'invalid-viewport', message: 'a viewport with no drawable area has no ray' };
+		return {
+			kind: 'failed',
+			code: 'invalid-viewport',
+			message: 'a viewport with no drawable area has no ray',
+		};
 	}
 	if (!sameEvaluationToken(evaluation.token, expected)) {
 		return {
 			kind: 'failed',
 			code: 'stale-evaluation',
-			message: 'the supplied evaluation is not the expected one; evaluate the viewport again before casting a ray'
+			message:
+				'the supplied evaluation is not the expected one; evaluate the viewport again before casting a ray',
 		};
 	}
 	const x = cssPoint[0] as number;
@@ -96,17 +134,29 @@ export function pointerRay(
 	const nearPoint = unproject(evaluation.inverseViewProjectionMatrix, ndcX, ndcY, -1);
 	const farPoint = unproject(evaluation.inverseViewProjectionMatrix, ndcX, ndcY, 1);
 	if (nearPoint === null || farPoint === null) {
-		return { kind: 'failed', code: 'degenerate-ray', message: 'the ray could not be unprojected from the evaluation matrices' };
+		return {
+			kind: 'failed',
+			code: 'degenerate-ray',
+			message: 'the ray could not be unprojected from the evaluation matrices',
+		};
 	}
 	const direction = normalizeVec3(subtractVec3(farPoint, nearPoint));
 	if (direction === null) {
-		return { kind: 'failed', code: 'degenerate-ray', message: 'the unprojected ray has no direction' };
+		return {
+			kind: 'failed',
+			code: 'degenerate-ray',
+			message: 'the unprojected ray has no direction',
+		};
 	}
 	return { kind: 'ray', ray: { origin: nearPoint, direction } };
 }
 
-
-function unproject(inverseViewProjection: readonly number[], ndcX: number, ndcY: number, ndcZ: number): Vec3 | null {
+function unproject(
+	inverseViewProjection: readonly number[],
+	ndcX: number,
+	ndcY: number,
+	ndcZ: number,
+): Vec3 | null {
 	const clip: Vec3 = [ndcX, ndcY, ndcZ];
 	const transformed = transformPoint(inverseViewProjection, clip);
 	const w = transformed[3];
@@ -114,7 +164,6 @@ function unproject(inverseViewProjection: readonly number[], ndcX: number, ndcY:
 	const point: Vec3 = [transformed[0] / w, transformed[1] / w, transformed[2] / w];
 	return isFiniteVec3(point) ? point : null;
 }
-
 
 function planeAxes(plane: WorkingPlane): { right: Vec3; up: Vec3; normal: Vec3 } | null {
 	const normal = normalizeVec3(plane.normal);
@@ -125,7 +174,6 @@ function planeAxes(plane: WorkingPlane): { right: Vec3; up: Vec3; normal: Vec3 }
 	if (right === null) return null;
 	return { right, up, normal };
 }
-
 
 /**
  * Intersect a ray with an explicit working plane.
@@ -139,36 +187,45 @@ export function intersectWorkingPlane(
 	ray: PointerRay,
 	plane: WorkingPlane,
 	evaluation: ViewportEvaluation,
-	expected: ViewportEvaluationToken
+	expected: ViewportEvaluationToken,
 ): WorkingPlaneHit {
 	if (!sameEvaluationToken(evaluation.token, expected)) {
 		return {
 			kind: 'failed',
 			code: 'stale-evaluation',
-			message: 'the supplied evaluation is not the expected one; evaluate the viewport again before intersecting a plane'
+			message:
+				'the supplied evaluation is not the expected one; evaluate the viewport again before intersecting a plane',
 		};
 	}
 	if (!isFiniteVec3(ray.origin) || !isFiniteVec3(ray.direction)) {
-		return { kind: 'failed', code: 'invalid-frame', message: 'the ray must have a finite origin and direction' };
+		return {
+			kind: 'failed',
+			code: 'invalid-frame',
+			message: 'the ray must have a finite origin and direction',
+		};
 	}
 	const axes = planeAxes(plane);
 	if (axes === null) {
 		return {
 			kind: 'failed',
 			code: 'invalid-frame',
-			message: 'the working plane has no usable basis: its normal or yaw is degenerate'
+			message: 'the working plane has no usable basis: its normal or yaw is degenerate',
 		};
 	}
 	const denominator = dotVec3(axes.normal, ray.direction);
 	if (Math.abs(denominator) < 1e-9) {
-		return { kind: 'failed', code: 'parallel', message: 'the ray is parallel to the working plane and never meets it' };
+		return {
+			kind: 'failed',
+			code: 'parallel',
+			message: 'the ray is parallel to the working plane and never meets it',
+		};
 	}
 	const distance = dotVec3(axes.normal, subtractVec3(plane.originMeters, ray.origin)) / denominator;
 	if (distance < 0) {
 		return {
 			kind: 'failed',
 			code: 'behind',
-			message: 'the plane is behind the ray: the intersection lies at a negative distance'
+			message: 'the plane is behind the ray: the intersection lies at a negative distance',
 		};
 	}
 	const worldPoint = addVec3(ray.origin, scaleVec3(ray.direction, distance));
@@ -186,8 +243,13 @@ export function intersectWorkingPlane(
 		return {
 			kind: 'failed',
 			code: 'outside-supported-domain',
-			message: 'the intersection lies outside the extent the plane owner supports'
+			message: 'the intersection lies outside the extent the plane owner supports',
 		};
 	}
-	return { kind: 'intersected', worldPoint, local: { x: localX, y: localY }, distanceMeters: distance };
+	return {
+		kind: 'intersected',
+		worldPoint,
+		local: { x: localX, y: localY },
+		distanceMeters: distance,
+	};
 }

@@ -1,7 +1,11 @@
 import type { NavigationGraph } from '@portfolio/project-model/scene';
 import type { CameraConnectionDirection, RuntimeConnection } from '$lib/types/scene';
 import { createCameraMotion, type CameraMotion } from '@portfolio/camera-core/camera';
-import { getCameraConnectionRoute, getCameraMotionOptions, type ResolvedCameraRoute } from '@portfolio/camera-core/camera';
+import {
+	getCameraConnectionRoute,
+	getCameraMotionOptions,
+	type ResolvedCameraRoute,
+} from '@portfolio/camera-core/camera';
 
 /**
  * P8 S1 — the canonical directed-edge motion resolver.
@@ -61,7 +65,7 @@ export type DirectedEdgeTimingSource = Pick<
 export function resolveDirectedEdgeMotionForConnection(
 	connection: DirectedEdgeTimingSource,
 	direction: CameraConnectionDirection,
-	route: ResolvedCameraRoute
+	route: ResolvedCameraRoute,
 ): DirectedEdgeMotion {
 	if (direction !== 'forward' && direction !== 'reverse') {
 		throw new Error(`Unknown camera connection direction: ${String(direction)}`);
@@ -80,7 +84,7 @@ export function resolveDirectedEdgeMotionForConnection(
 		toNodeId,
 		route,
 		motion: createCameraMotion(route, undefined, getCameraMotionOptions(connection, direction)),
-		durationFallback
+		durationFallback,
 	};
 }
 
@@ -93,7 +97,7 @@ export function resolveDirectedEdgeMotionByDirection(
 	graph: NavigationGraph,
 	connectionId: string,
 	direction: CameraConnectionDirection,
-	options: ResolveDirectedEdgeOptions = {}
+	options: ResolveDirectedEdgeOptions = {},
 ): DirectedEdgeMotion {
 	if (direction !== 'forward' && direction !== 'reverse') {
 		throw new Error(`Unknown camera connection direction: ${String(direction)}`);
@@ -114,7 +118,7 @@ export function resolveDirectedEdgeMotion(
 	connectionId: string,
 	fromNodeId: string,
 	toNodeId: string,
-	options: ResolveDirectedEdgeOptions = {}
+	options: ResolveDirectedEdgeOptions = {},
 ): DirectedEdgeMotion {
 	const connection = findConnection(graph, connectionId);
 	const direction =
@@ -125,7 +129,7 @@ export function resolveDirectedEdgeMotion(
 				: null;
 	if (!direction) {
 		throw new Error(
-			`Camera connection ${connectionId} joins ${connection.fromNodeId} ↔ ${connection.toNodeId}, not ${fromNodeId} → ${toNodeId}`
+			`Camera connection ${connectionId} joins ${connection.fromNodeId} ↔ ${connection.toNodeId}, not ${fromNodeId} → ${toNodeId}`,
 		);
 	}
 	return resolveDirectedEdgeMotionByDirection(graph, connectionId, direction, options);
@@ -134,11 +138,11 @@ export function resolveDirectedEdgeMotion(
 /** Compile both directions of one connection with their authored options. */
 export function resolveConnectionEdgeMotions(
 	graph: NavigationGraph,
-	connectionId: string
+	connectionId: string,
 ): Record<CameraConnectionDirection, CameraMotion> {
 	return {
 		forward: resolveDirectedEdgeMotionByDirection(graph, connectionId, 'forward').motion,
-		reverse: resolveDirectedEdgeMotionByDirection(graph, connectionId, 'reverse').motion
+		reverse: resolveDirectedEdgeMotionByDirection(graph, connectionId, 'reverse').motion,
 	};
 }
 

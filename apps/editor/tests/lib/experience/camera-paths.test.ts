@@ -35,7 +35,7 @@ import {
 } from '$lib/authoring/experience/experience-paths';
 import type { CameraGraph } from '@portfolio/camera-core/navigation';
 import { buildXFixture } from './__fixtures__/x-fixtures';
-import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
+import { freshCapture } from '../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 
 async function pathsFixture(name: 'x-paths' | 'x-salon' = 'x-paths') {
 	const fixture = await buildXFixture(name);

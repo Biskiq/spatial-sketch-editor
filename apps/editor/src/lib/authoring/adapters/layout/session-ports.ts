@@ -56,7 +56,7 @@ export function createRegionEdgePick(): RegionEdgePick {
 		read: () => value,
 		write: (next) => {
 			value = next;
-		}
+		},
 	};
 }
 
@@ -67,8 +67,14 @@ export function createInkMemory(): InkMemory {
 		reading: 'wall',
 		wallMode: 'line',
 		regionMode: 'box',
-		openingOptions: { kind: 'door', profile: 'rectangular', width: 0.9, height: 2.1, sillHeight: 0 },
-		openingOptionsValid: true
+		openingOptions: {
+			kind: 'door',
+			profile: 'rectangular',
+			width: 0.9,
+			height: 2.1,
+			sillHeight: 0,
+		},
+		openingOptionsValid: true,
 	};
 }
 
@@ -92,12 +98,12 @@ export type LayoutSessionPorts = {
 		document: LayoutDocumentWallFirst,
 		datumMeters: number,
 		subjectIds: ReadonlySet<string>,
-		affectedIds: ReadonlySet<string>
+		affectedIds: ReadonlySet<string>,
 	) => { readonly paper: LayoutCandidatePaper } | null;
 	/** The 3D reading's Opening outline, or `null` while the Plan does not evaluate. */
 	readonly openingFace: (
 		document: LayoutDocumentWallFirst,
 		openingIds: ReadonlySet<string>,
-		datumMeters: number
+		datumMeters: number,
 	) => CandidatePaperGeometry | null;
 };

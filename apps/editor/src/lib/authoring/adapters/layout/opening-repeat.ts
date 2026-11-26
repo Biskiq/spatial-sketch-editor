@@ -17,17 +17,35 @@
  * stores new session state. The allocation is captured before evaluation, so
  * Undo/Redo replays the same generated Opening ids.
  */
-import { layoutIdCaptureInput, layoutWorkingLevelInput, mintLayoutIdCapture, planRepeatWallOpening, readLayoutIdCapture, readLayoutWorkingLevel, type DuplicateRejection, type LayoutIdCapture } from '@portfolio/layout-core/plan';
+import {
+	layoutIdCaptureInput,
+	layoutWorkingLevelInput,
+	mintLayoutIdCapture,
+	planRepeatWallOpening,
+	readLayoutIdCapture,
+	readLayoutWorkingLevel,
+	type DuplicateRejection,
+	type LayoutIdCapture,
+} from '@portfolio/layout-core/plan';
 import { recordPreparedCowCandidate } from '@portfolio/layout-core/world';
 import { materializeLayoutSourceForCapture } from '@portfolio/layout-core/kernel';
-import { wallFirstWallLength, type LayoutDocumentWallFirst, type LayoutWallOpening } from '@portfolio/layout-core/wall';
-import type { AuthoringIntent, DomainPlanner, PlannerOutcome, PreparedCandidate } from '@portfolio/project-model/f4';
+import {
+	wallFirstWallLength,
+	type LayoutDocumentWallFirst,
+	type LayoutWallOpening,
+} from '@portfolio/layout-core/wall';
+import type {
+	AuthoringIntent,
+	DomainPlanner,
+	PlannerOutcome,
+	PreparedCandidate,
+} from '@portfolio/project-model/f4';
 import {
 	canonicalUnitJson,
 	replaceUnitData,
 	UNIT_SOURCE_KIND,
 	UNIT_SOURCE_VERSION,
-	type ProjectEnvelope
+	type ProjectEnvelope,
 } from '@portfolio/project-model/units';
 
 import { layoutSubjectReference } from './drawing-planners';
@@ -62,7 +80,8 @@ function readRepeatPayload(payload: unknown): OpeningRepeatPayload | { readonly 
 	if (!isRecord(payload)) return { message: 'The Opening repeat payload must be an object.' };
 	const expected = ['openingId', 'count', 'spacing'];
 	const unknown = Object.keys(payload).filter((key) => !expected.includes(key));
-	if (unknown.length > 0) return { message: `The Opening repeat payload cannot carry ${unknown.join(', ')}.` };
+	if (unknown.length > 0)
+		return { message: `The Opening repeat payload cannot carry ${unknown.join(', ')}.` };
 	for (const key of expected) {
 		if (!(key in payload)) return { message: `The Opening repeat payload is missing "${key}".` };
 	}
@@ -98,7 +117,7 @@ function kindWords(kind: LayoutWallOpening['kind']): string {
 export function openingRepeatRefusalWords(
 	document: LayoutDocumentWallFirst,
 	rejection: DuplicateRejection,
-	attempt: OpeningRepeatRefusalAttempt
+	attempt: OpeningRepeatRefusalAttempt,
 ): string {
 	if (rejection.code === 'count_out_of_range') {
 		return 'Repeat takes a whole number of copies from 1 to 50.';
@@ -118,7 +137,8 @@ export function openingRepeatRefusalWords(
 	if (source !== undefined && length !== undefined && length !== null) {
 		const copyCount = Number.isInteger(attempt.count) && attempt.count >= 0 ? attempt.count : 0;
 		const furthestStart = attempt.spacing < 0 ? attempt.spacing * copyCount : 0;
-		const furthestEnd = source.offset + source.width + (attempt.spacing > 0 ? attempt.spacing * copyCount : 0);
+		const furthestEnd =
+			source.offset + source.width + (attempt.spacing > 0 ? attempt.spacing * copyCount : 0);
 		const earliestStart = source.offset + Math.min(0, furthestStart);
 		if (issue !== undefined && issue.code === 'opening_overlap') {
 			return 'A copy would collide with another Opening on this Wall. Increase the spacing or choose a clear stretch.';
@@ -126,7 +146,12 @@ export function openingRepeatRefusalWords(
 		if (issue !== undefined && issue.code === 'opening_exceeds_wall_height') {
 			return `This ${kindWords(source.kind)} is taller than the Wall, so a copy cannot fit either. Lower it or raise the Wall.`;
 		}
-		if (issue !== undefined && issue.code === 'opening_exceeds_wall' && attempt.spacing < 0 && earliestStart < 0) {
+		if (
+			issue !== undefined &&
+			issue.code === 'opening_exceeds_wall' &&
+			attempt.spacing < 0 &&
+			earliestStart < 0
+		) {
 			return `The last copy would start ${meters(earliestStart)} before the ${meters(length)} Wall. Reduce the count or the spacing.`;
 		}
 		if (issue !== undefined && issue.code === 'opening_exceeds_wall' && furthestEnd > length) {
@@ -136,10 +161,17 @@ export function openingRepeatRefusalWords(
 	if (rejection.code === 'opening_set_invalid') {
 		return 'These copies would not all fit this Wall. Reduce the count or the spacing.';
 	}
-	if (rejection.code === 'portal_relation_invalid' || rejection.code === 'external_portal_relation') {
+	if (
+		rejection.code === 'portal_relation_invalid' ||
+		rejection.code === 'external_portal_relation'
+	) {
 		return 'These copies would break the connection between Rooms.';
 	}
-	if (rejection.code === 'invalid_candidate_document' || rejection.code === 'candidate_does_not_compile' || rejection.code === 'topology_invalid') {
+	if (
+		rejection.code === 'invalid_candidate_document' ||
+		rejection.code === 'candidate_does_not_compile' ||
+		rejection.code === 'topology_invalid'
+	) {
 		return 'These copies are not a valid Opening set. Reduce the count or the spacing.';
 	}
 	return 'These copies were refused. Adjust the count or the spacing and try again.';
@@ -176,7 +208,7 @@ export function previewOpeningRepeat(input: {
 		input.document,
 		{ openingId: input.openingId, count: input.count, spacing: input.spacing },
 		input.capture ?? mintLayoutIdCapture(),
-		input.document.floor.id
+		input.document.floor.id,
 	);
 	if (plan.kind === 'rejected') {
 		return {
@@ -184,8 +216,8 @@ export function previewOpeningRepeat(input: {
 			message: openingRepeatRefusalWords(input.document, plan.rejection, {
 				openingId: input.openingId,
 				count: input.count,
-				spacing: input.spacing
-			})
+				spacing: input.spacing,
+			}),
 		};
 	}
 	return {
@@ -193,7 +225,7 @@ export function previewOpeningRepeat(input: {
 		document: plan.document,
 		wallId: source.wallId,
 		sourceOpening: source,
-		createdOpeningIds: plan.createdOpeningIds
+		createdOpeningIds: plan.createdOpeningIds,
 	};
 }
 
@@ -218,7 +250,11 @@ function openingRepeatPlanner(): DomainPlanner<ProjectEnvelope> {
 			return refused('An Opening repeat addresses exactly one Opening.');
 		}
 		const target = request.intent.targets[0]!;
-		if (target.domain !== 'layout' || target.subject.kind !== 'opening' || target.subject.id !== openingId) {
+		if (
+			target.domain !== 'layout' ||
+			target.subject.kind !== 'opening' ||
+			target.subject.id !== openingId
+		) {
 			return refused(`The intent must address the Opening "${openingId}" it repeats.`);
 		}
 		const source = baseline.openings.find((opening) => opening.id === openingId);
@@ -229,12 +265,16 @@ function openingRepeatPlanner(): DomainPlanner<ProjectEnvelope> {
 				kind: 'rejected',
 				code: plan.rejection.code,
 				message: openingRepeatRefusalWords(baseline, plan.rejection, { openingId, count, spacing }),
-				diagnostics: []
+				diagnostics: [],
 			};
 		}
 		const createdOpeningIds = plan.createdOpeningIds;
 		const contentRevision = request.snapshot.domain.source.units.layout.header.contentRevision;
-		recordPreparedCowCandidate(request.intent.operationId, plan.document, canonicalUnitJson(request.intent));
+		recordPreparedCowCandidate(
+			request.intent.operationId,
+			plan.document,
+			canonicalUnitJson(request.intent),
+		);
 		materializeLayoutSourceForCapture(plan.document);
 		const candidate: PreparedCandidate<ProjectEnvelope> = {
 			operationId: request.intent.operationId,
@@ -245,24 +285,34 @@ function openingRepeatPlanner(): DomainPlanner<ProjectEnvelope> {
 				{
 					kind: LAYOUT_OPENING_REPEAT_KIND,
 					subjectIds: [openingId, ...createdOpeningIds],
-					fields: ['openings']
-				}
+					fields: ['openings'],
+				},
 			],
 			correspondence: [
 				// The source Opening keeps its id, station and every authored value.
 				{
 					relation: 'preserved',
-					before: layoutSubjectReference({ kind: 'opening', id: openingId, contentRevision, levelId }),
-					after: layoutSubjectReference({ kind: 'opening', id: openingId, contentRevision, levelId })
+					before: layoutSubjectReference({
+						kind: 'opening',
+						id: openingId,
+						contentRevision,
+						levelId,
+					}),
+					after: layoutSubjectReference({
+						kind: 'opening',
+						id: openingId,
+						contentRevision,
+						levelId,
+					}),
 				},
 				// Every copy is a new Opening created from that source, in copy order.
 				...createdOpeningIds.map((id) => ({
 					relation: 'created' as const,
 					before: null,
-					after: layoutSubjectReference({ kind: 'opening', id, contentRevision, levelId })
-				}))
+					after: layoutSubjectReference({ kind: 'opening', id, contentRevision, levelId }),
+				})),
 			],
-			diagnostics: []
+			diagnostics: [],
 		};
 		registerLayoutSurfaceLineage(candidate, plan.surfaceLineage);
 		return { kind: 'prepared', candidate };
@@ -295,11 +345,11 @@ export function openingRepeatIntent(input: {
 				kind: 'opening',
 				id: input.openingId,
 				contentRevision: input.contentRevision,
-				levelId: input.levelId
-			})
+				levelId: input.levelId,
+			}),
 		],
 		payload: { openingId: input.openingId, count: input.count, spacing: input.spacing },
 		capturedInputs: [layoutWorkingLevelInput(input.levelId), layoutIdCaptureInput(input.capture)],
-		allocatedIds: []
+		allocatedIds: [],
 	};
 }

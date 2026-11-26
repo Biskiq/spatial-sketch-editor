@@ -1,6 +1,11 @@
 import type { LayoutDocumentIssue } from '../plan/issue';
 import type { CompiledLayoutGeometryResult, LayoutGeometryIssue } from '../geometry/types';
-import type { LayoutDocumentWallFirst, LayoutJunction, LayoutObject, LayoutWallCenterline } from '../wall/types';
+import type {
+	LayoutDocumentWallFirst,
+	LayoutJunction,
+	LayoutObject,
+	LayoutWallCenterline,
+} from '../wall/types';
 import type { WallSamplingDerivation } from '../wall/centerline';
 import type { LayoutVec2 } from '../geometry/coordinates';
 import type { Vec3 } from '../kernel/types';
@@ -16,9 +21,7 @@ import type { LayoutSurfaceLineage } from '../plan/surface-reference';
  */
 export const MAX_WALL_CURVE_KNOTS = 32;
 
-
 export type FixedWallEndpoint = 'start' | 'end';
-
 
 export type WallLengthIntent = {
 	wallId: string;
@@ -27,14 +30,12 @@ export type WallLengthIntent = {
 	fixedEndpoint?: FixedWallEndpoint;
 };
 
-
 export type WallAngleIntent = {
 	wallId: string;
 	angle: number;
 	fixed?: FixedWallEndpoint;
 	fixedEndpoint?: FixedWallEndpoint;
 };
-
 
 /**
  * One rigid Wall translation: both endpoint Junctions
@@ -46,14 +47,12 @@ export type WallMoveIntent = {
 	delta: LayoutVec2;
 };
 
-
 export type RectangleResizeOptions = {
 	/** Explicit anchor reference. Omission uses the smallest stable corner ID. */
 	anchorJunctionId?: string;
 	/** Explicit width edge reference. Omission uses the smallest stable edge ID. */
 	widthWallId?: string;
 };
-
 
 export type ResolvedRectangle = {
 	anchorJunctionId: string;
@@ -65,14 +64,11 @@ export type ResolvedRectangle = {
 	depthWallId: string;
 };
 
-
 export type RectangleResolution = ResolvedRectangle | { rejection: PrecisionRejection };
-
 
 export type LayoutObjectTransformPatch = Partial<
 	Pick<LayoutObject, 'position' | 'rotation' | 'dimensions' | 'roomId'>
 >;
-
 
 export type PrecisionOperation =
 	| 'junction-position'
@@ -108,11 +104,10 @@ export type PrecisionOperation =
 	| 'layout-object-transform'
 	| 'layout-object-delete'
 	| 'layout-object-preset-create'
-	/** SP1d — one virtual edge moved square to itself. */
+	/** One virtual edge moved square to itself. */
 	| 'open-side-offset'
-	/** SP1d — one virtual edge end slid along its adjoining Wall and split there. */
+	/** One virtual edge end slid along its adjoining Wall and split there. */
 	| 'open-side-end-slide';
-
 
 export type PrecisionRejection = {
 	code:
@@ -182,7 +177,6 @@ export type PrecisionRejection = {
 	issues?: readonly (LayoutDocumentIssue | LayoutGeometryIssue)[];
 };
 
-
 /**
  * The **acceptance compile** a successful geometry plan already paid for.
  *
@@ -203,7 +197,6 @@ export type WallFirstAcceptanceCompile = {
 	issues: CompiledLayoutGeometryResult['issues'];
 };
 
-
 export type PrecisionPlan =
 	| {
 			kind: 'success';
@@ -219,12 +212,11 @@ export type PrecisionPlan =
 			 * `document`: the compile result acceptance already produced.
 			 */
 			acceptance?: WallFirstAcceptanceCompile;
-		}
+	  }
 	| {
 			kind: 'rejected';
 			rejection: PrecisionRejection;
-		};
-
+	  };
 
 /** The split-at-release result: the IDs a captured acceptance must replay. */
 export type SpaceOpenSideSlidePlan =
@@ -245,7 +237,6 @@ export type SpaceOpenSideSlidePlan =
 	  }
 	| { kind: 'rejected'; rejection: PrecisionRejection };
 
-
 // =====================================================================
 // The pure curve PROPOSAL seam.
 //
@@ -260,13 +251,11 @@ export type WallCurveProposeIntent =
 	| { kind: 'knot-move'; knotId: string; point: LayoutVec2 }
 	| { kind: 'bend'; distance: number; point: LayoutVec2 };
 
-
 /** One sampled Wall centerline in a transient direct-edit proposal. */
 export type WallFirstArchitectureProposalWall = {
 	wallId: string;
 	points: LayoutVec2[];
 };
-
 
 /** Pure direct-edit intent used only to derive invalid-drag overlay geometry. */
 export type WallFirstArchitectureProposalIntent =
@@ -274,7 +263,6 @@ export type WallFirstArchitectureProposalIntent =
 	| { kind: 'wall-move'; wallId: string; delta: LayoutVec2 }
 	| { kind: 'curve-control-move'; wallId: string; knotId: string; point: LayoutVec2 }
 	| { kind: 'wall-bend'; wallId: string; distance: number; point: LayoutVec2 };
-
 
 /**
  * One intent's structural effect on the baseline: the records it changes and
@@ -292,10 +280,8 @@ export type ArchitectureCandidatePatch = {
 	affectedWallIds: readonly string[];
 };
 
-
 /** One candidate relationship the extent rule admits: a same-component pair. */
 export type WallFirstArchitectureCandidatePair = readonly [string, string];
-
 
 /**
  * The AFFECTED EXTENT of one direct-edit intent.
@@ -306,12 +292,12 @@ export type WallFirstArchitectureCandidatePair = readonly [string, string];
  *
  * - `junctionIds` — the Junctions whose point the patch overrides, document order;
  * - `wallIds` — every Wall whose derived inputs can change: the Walls whose centreline
- *   the patch overrides, plus every Wall incident to a moved Junction. These are also
- *   the zero-length and self-intersection candidates;
+ *  the patch overrides, plus every Wall incident to a moved Junction. These are also
+ *  the zero-length and self-intersection candidates;
  * - `wallPairs` — the same-component Wall pairs with at least one affected member, in
- *   the canonical gate's own order;
+ *  the canonical gate's own order;
  * - `junctionPairs` — the same-component Junction pairs with at least one moved member,
- *   in the canonical gate's own order.
+ *  in the canonical gate's own order.
  *
  * WHAT IS NOT HERE, and why that is sound: a pair with neither member
  * affected has both endpoints on Junctions the patch does not touch and both centreline
@@ -332,7 +318,6 @@ export type WallFirstArchitectureAffectedExtent = {
 	wallPairs: readonly WallFirstArchitectureCandidatePair[];
 	junctionPairs: readonly WallFirstArchitectureCandidatePair[];
 };
-
 
 /**
  * What one gesture's verdict scope did. Every number is a count of moves or of
@@ -357,7 +342,6 @@ export type WallFirstArchitectureVerdictScopeStats = {
 	 */
 	candidates: { walls: number; wallPairs: number; junctionPairs: number };
 };
-
 
 /**
  * The GESTURE-SCOPED VERDICT SET.
@@ -396,20 +380,18 @@ export type WallFirstArchitectureVerdictScope = {
 	verdict(
 		document: LayoutDocumentWallFirst,
 		intent: WallFirstArchitectureProposalIntent,
-		sampling?: WallSamplingDerivation
+		sampling?: WallSamplingDerivation,
 	): WallFirstArchitecturePreflightFailure | undefined;
 	/** Forget the initialization; the next move re-initializes. */
 	reset(): void;
 	readonly stats: WallFirstArchitectureVerdictScopeStats;
 };
 
-
 /** One cheap, canonical refutation of a live direct-edit attempt. */
 export type WallFirstArchitecturePreflightFailure = {
 	code: string;
 	message: string;
 };
-
 
 /** Target of one Bend gesture: how far along the Wall it was grabbed, and where. */
 export type WallBendIntent = {
@@ -418,7 +400,6 @@ export type WallBendIntent = {
 	/** Where the dragged bend point sits now (document X/Z meters). */
 	point: LayoutVec2;
 };
-
 
 // =====================================================================
 // Small architectural preset set (creation defaults only).
@@ -433,7 +414,6 @@ export type WallBendIntent = {
 
 /** Preset identifiers. No `Partition` preset: partitions are first-class wall-first Walls. */
 export type LayoutArchitecturalPresetId = 'column' | 'platform' | 'plinth';
-
 
 export type LayoutArchitecturalPreset = {
 	id: LayoutArchitecturalPresetId;

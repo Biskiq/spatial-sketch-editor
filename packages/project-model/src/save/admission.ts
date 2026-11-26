@@ -42,7 +42,9 @@ export type PreparedSaveSource = {
 	readonly fullSourceHash: string;
 };
 
-export type SaveSourcePreparation = { readonly kind: 'prepared'; readonly source: PreparedSaveSource } | SaveSourceRefusal;
+export type SaveSourcePreparation =
+	| { readonly kind: 'prepared'; readonly source: PreparedSaveSource }
+	| SaveSourceRefusal;
 
 /**
  * The minimal query surface a handler may use for a baseline. The API supplies
@@ -56,44 +58,56 @@ export type SaveSourceAdmissionInput = {
 	readonly capture: SaveAcceptedSource;
 	readonly prepared: PreparedSaveSource;
 	/** Blocking issues the expected saved base already carried. */
-	readonly baseline: readonly { readonly path: string; readonly code: string; readonly message: string }[];
+	readonly baseline: readonly {
+		readonly path: string;
+		readonly code: string;
+		readonly message: string;
+	}[];
 };
 
 /**
  * One admitted source format.
  *
  * - `prepare` runs **before** the row lock: it parses, canonicalizes and
- *   identifies the captured bytes, and refuses a capture that is not the
- *   canonical encoding of its own contents. It performs no write.
+ *  identifies the captured bytes, and refuses a capture that is not the
+ *  canonical encoding of its own contents. It performs no write.
  * - `baseline` runs **inside** the transaction for formats whose admission is
- *   baseline-relative. A format with no such baseline returns `[]`.
+ *  baseline-relative. A format with no such baseline returns `[]`.
  * - `validate` runs inside the transaction and is the format's full admission.
- *   It must re-derive what it checks from `capture`, never trust `prepared`.
+ *  It must re-derive what it checks from `capture`, never trust `prepared`.
  */
 export type SaveSourceHandler = {
 	readonly sourceKind: string;
 	readonly sourceVersion: number;
 	prepare(capture: SaveAcceptedSource): Promise<SaveSourcePreparation>;
 	validate(input: SaveSourceAdmissionInput): Promise<SaveSourcePreparation>;
-	baseline?(db: SaveSourceDatabase, projectId: string, version: number): Promise<readonly { readonly path: string; readonly code: string; readonly message: string }[]>;
+	baseline?(
+		db: SaveSourceDatabase,
+		projectId: string,
+		version: number,
+	): Promise<readonly { readonly path: string; readonly code: string; readonly message: string }[]>;
 };
 
 /** Resolve exactly one handler for a capture's declared source, or refuse. */
 export function resolveSaveSourceHandler(
 	handlers: readonly SaveSourceHandler[],
-	capture: SaveAcceptedSource
+	capture: SaveAcceptedSource,
 ):
 	| { readonly kind: 'resolved'; readonly handler: SaveSourceHandler }
 	| { readonly kind: 'refused'; readonly code: SaveRefusalCode; readonly message: string } {
 	const handler = handlers.find(
-		(candidate) => candidate.sourceKind === capture.sourceKind && candidate.sourceVersion === capture.sourceVersion
+		(candidate) =>
+			candidate.sourceKind === capture.sourceKind &&
+			candidate.sourceVersion === capture.sourceVersion,
 	);
 	if (handler === undefined) {
-		const admitted = handlers.map((candidate) => `${candidate.sourceKind}@${candidate.sourceVersion}`).join(', ');
+		const admitted = handlers
+			.map((candidate) => `${candidate.sourceKind}@${candidate.sourceVersion}`)
+			.join(', ');
 		return {
 			kind: 'refused',
 			code: 'source-version-mismatch',
-			message: `Save admits ${admitted || 'no source format'} in this build`
+			message: `Save admits ${admitted || 'no source format'} in this build`,
 		};
 	}
 	return { kind: 'resolved', handler };

@@ -1,19 +1,37 @@
 import type { WallFirstOpPlan, WallFirstOpRejection } from './contracts';
 import { carryRegionWallIntents } from '../../room/region';
-import type { LayoutDocumentWallFirst, LayoutWall, LayoutWallFirstRoom, LayoutWallOpening } from '../types';
+import type {
+	LayoutDocumentWallFirst,
+	LayoutWall,
+	LayoutWallFirstRoom,
+	LayoutWallOpening,
+} from '../types';
 import { extractBoundaryCandidateFaces } from '../../geometry/face-extraction';
 import { buildCorrespondenceComponents } from '../../room/reconciliation-correspondence';
-import { createRoomBoundaryLookup, interiorWitness, roomBoundaryPolygon } from '../../room/reconciliation-boundary';
+import {
+	createRoomBoundaryLookup,
+	interiorWitness,
+	roomBoundaryPolygon,
+} from '../../room/reconciliation-boundary';
 import { reconcileRooms } from '../../room/reconciliation';
 import type { SpaceRetirement } from '../../room/reconciliation-types';
 import type { LayoutVec2 } from '../../geometry/coordinates';
 import { CURVE_ARC_LENGTH_TOLERANCE } from '../../geometry/curve';
 import { validateWallFirstOpeningSet } from '../opening-set';
 import { buildClosedWallCircleCenterlineFromRay } from '../closed-wall';
-import type { RoundOperationCorrespondence, RoundOperationJunctionCorrespondence, RoundOperationOpeningCorrespondence, RoundOperationWallCorrespondence } from '../../room/round-room';
+import type {
+	RoundOperationCorrespondence,
+	RoundOperationJunctionCorrespondence,
+	RoundOperationOpeningCorrespondence,
+	RoundOperationWallCorrespondence,
+} from '../../room/round-room';
 import { certifyRoundRoom } from '../../room/round-room';
 import type { LayoutSurfaceLineage } from '../../plan/surface-reference';
-import { normalizeLayoutSurfaceLineage, repackWallSurfaceLineage, roomSurfaceLineage } from '../../plan/surface-reference';
+import {
+	normalizeLayoutSurfaceLineage,
+	repackWallSurfaceLineage,
+	roomSurfaceLineage,
+} from '../../plan/surface-reference';
 import { wallCurveChainLength } from '../curve-algebra';
 import type { LayoutIdCapture } from '../../plan/id-capture';
 import { LayoutIdCollisionError, layoutWorkingLevelIssue } from '../../plan/id-capture';
@@ -30,19 +48,19 @@ import { createAuthoringRoomAllocator, validateAndCompile } from './birth';
  * atomically, Junction cleanup scoped to the deleted Wall's own
  * start/end Junctions — an endpoint is pruned only when no surviving Wall
  * references it, and pre-existing orphan Junctions elsewhere are untouched)
- * runs face extraction + P23.8 correspondence reconciliation + the final
+ * runs face extraction + correspondence reconciliation + the final
  * canonical gates, exactly like the chain engine. The
  * deterministic reconciliation result is accepted as-is — deletion is not
  * intrinsically a "merge Rooms" command:
  *
  * - shared boundary Wall between two Rooms whose deletion yields one valid
- *   enclosed face → the normal 2→1 merge path;
+ *  enclosed face → the normal 2→1 merge path;
  * - outer boundary Wall of an enclosed Room → the enclosure opens and the
- *   affected Room retires through normal reconciliation;
+ *  affected Room retires through normal reconciliation;
  * - roomless / partition Wall → clean removal with existing Room topology
- *   and identities unchanged.
+ *  and identities unchanged.
  *
- * Portal relations remap/clear per the existing P23.8 portal contract inside
+ * Portal relations remap/clear per the existing portal contract inside
  * reconciliation (one vanished endpoint beside a surviving one rejects
  * rather than guessing). Ambiguous or unsupported topology rejects atomically
  * with zero history. One plan = one history entry at the caller. Post-delete
@@ -56,9 +74,12 @@ export function planWallRemovalSet(
 	options: {
 		invalidOutline: 'retire' | 'reject';
 		retireRoomIds?: readonly string[];
-	}
+	},
 ): WallFirstOpPlan {
-	const reject = (rejection: WallFirstOpRejection): WallFirstOpPlan => ({ kind: 'rejected', rejection });
+	const reject = (rejection: WallFirstOpRejection): WallFirstOpPlan => ({
+		kind: 'rejected',
+		rejection,
+	});
 	const removalSet = new Set(wallIds);
 	const removedWalls = document.walls.filter((wall) => removalSet.has(wall.id));
 
@@ -69,7 +90,7 @@ export function planWallRemovalSet(
 		...document,
 		walls: document.walls.filter((wall) => !removalSet.has(wall.id)),
 		regions: carryRegionWallIntents(document.regions, new Map(wallIds.map((id) => [id, []]))),
-		openings: document.openings.filter((opening) => !removalSet.has(opening.wallId))
+		openings: document.openings.filter((opening) => !removalSet.has(opening.wallId)),
 	};
 	// Junction cleanup is deliberately DEFERRED until after reconciliation: a
 	// carried open Space keeps an erased Wall's end Junction as a virtual-edge
@@ -102,7 +123,7 @@ export function planWallRemovalSet(
 				return reject({
 					code: 'room_reconciliation_rejected',
 					message: `Predecessor room '${room.id}' has an unresolvable boundary`,
-					roomIds: [room.id]
+					roomIds: [room.id],
 				});
 			}
 			predecessorPolygons.set(room.id, polygon);
@@ -114,7 +135,7 @@ export function planWallRemovalSet(
 			predecessorWitnesses,
 			predecessorPolygons,
 			candidateDocument: candidate,
-			baselineRooms: document.rooms
+			baselineRooms: document.rooms,
 		});
 		const result = reconcileRooms({
 			baseline: document,
@@ -126,9 +147,9 @@ export function planWallRemovalSet(
 			spacePolicy: {
 				removedWalls: [...removalSet],
 				...(options.retireRoomIds ? { retireRoomIds: options.retireRoomIds } : {}),
-				invalidOutline: options.invalidOutline
+				invalidOutline: options.invalidOutline,
 			},
-			allocator: createAuthoringRoomAllocator(capture)
+			allocator: createAuthoringRoomAllocator(capture),
 		});
 		if ('rejection' in result) {
 			return reject({
@@ -138,7 +159,7 @@ export function planWallRemovalSet(
 						: 'room_reconciliation_rejected',
 				message: result.rejection.message,
 				...(result.rejection.roomIds ? { roomIds: result.rejection.roomIds } : {}),
-				...(result.rejection.faceKey ? { faceKey: result.rejection.faceKey } : {})
+				...(result.rejection.faceKey ? { faceKey: result.rejection.faceKey } : {}),
 			});
 		}
 		candidate.rooms = result.document.rooms;
@@ -149,7 +170,11 @@ export function planWallRemovalSet(
 		candidate.openings = result.document.openings;
 		lineage = result.lineage
 			.filter((record) => record.kind === 'created')
-			.map((record) => ({ faceKey: record.faceKey, roomId: record.roomId, kind: 'created' as const }));
+			.map((record) => ({
+				faceKey: record.faceKey,
+				roomId: record.roomId,
+				kind: 'created' as const,
+			}));
 		retiredRoomIds = [...result.retiredRoomIds];
 		spaceRetirements = result.spaceRetirements;
 		surfaceLineage = roomSurfaceLineage(result.lineage);
@@ -163,7 +188,10 @@ export function planWallRemovalSet(
 	const roundWallCorr: RoundOperationWallCorrespondence[] = [];
 	const roundJunctionCorr: RoundOperationJunctionCorrespondence[] = [];
 	const roundOpeningCorr: RoundOperationOpeningCorrespondence[] = [];
-	const roundRoomOutsideWallIds = (doc: LayoutDocumentWallFirst, room: LayoutWallFirstRoom): string[] => {
+	const roundRoomOutsideWallIds = (
+		doc: LayoutDocumentWallFirst,
+		room: LayoutWallFirstRoom,
+	): string[] => {
 		const ringWallIds = new Set(room.boundary.map((ref) => ref.wallId));
 		const rimJunctionIds = new Set<string>();
 		for (const wall of doc.walls) {
@@ -175,7 +203,7 @@ export function planWallRemovalSet(
 			.filter(
 				(w) =>
 					!ringWallIds.has(w.id) &&
-					(rimJunctionIds.has(w.startJunctionId) || rimJunctionIds.has(w.endJunctionId))
+					(rimJunctionIds.has(w.startJunctionId) || rimJunctionIds.has(w.endJunctionId)),
 			)
 			.map((w) => w.id);
 	};
@@ -205,7 +233,7 @@ export function planWallRemovalSet(
 				code: 'round_repack_conflict',
 				message: `Round Room '${afterRoom.id}' seam Wall '${seamRef.wallId}' is missing`,
 				roomIds: [afterRoom.id],
-				wallIds: [seamRef.wallId]
+				wallIds: [seamRef.wallId],
 			});
 		}
 		const seamJunctionId =
@@ -219,10 +247,14 @@ export function planWallRemovalSet(
 					code: 'round_repack_conflict',
 					message: `Round Room '${afterRoom.id}' member Wall '${ref.wallId}' is missing`,
 					roomIds: [afterRoom.id],
-					wallIds: [ref.wallId]
+					wallIds: [ref.wallId],
 				});
 			}
-			if (w.height !== seamWall.height || w.thickness !== seamWall.thickness || w.name !== seamWall.name) {
+			if (
+				w.height !== seamWall.height ||
+				w.thickness !== seamWall.thickness ||
+				w.name !== seamWall.name
+			) {
 				const reason =
 					w.height !== seamWall.height
 						? 'height'
@@ -233,7 +265,7 @@ export function planWallRemovalSet(
 					code: 'round_repack_conflict',
 					message: `Cannot repack Round Room '${afterRoom.id}': member Walls '${seamWall.id}' and '${w.id}' disagree on ${reason}. Equalize attributes or Release round before detaching.`,
 					roomIds: [afterRoom.id],
-					wallIds: [seamWall.id, w.id]
+					wallIds: [seamWall.id, w.id],
 				});
 			}
 		}
@@ -249,10 +281,10 @@ export function planWallRemovalSet(
 		}
 		for (const other of candidate.rooms) {
 			if (other.id === afterRoom.id) continue;
-			const anchorHit =
-				other.virtualEdges.find(
-					(e) => discardedJunctionIds.has(e.startJunctionId) || discardedJunctionIds.has(e.endJunctionId)
-				);
+			const anchorHit = other.virtualEdges.find(
+				(e) =>
+					discardedJunctionIds.has(e.startJunctionId) || discardedJunctionIds.has(e.endJunctionId),
+			);
 			if (anchorHit) {
 				const hitJ = discardedJunctionIds.has(anchorHit.startJunctionId)
 					? anchorHit.startJunctionId
@@ -261,7 +293,7 @@ export function planWallRemovalSet(
 					code: 'round_repack_conflict',
 					message: `Cannot repack Round Room '${afterRoom.id}': rim Junction '${hitJ}' anchors Space '${other.id}'.`,
 					roomIds: [afterRoom.id, other.id],
-					junctionIds: [hitJ]
+					junctionIds: [hitJ],
 				});
 			}
 			const sharedBoundaryWall = other.boundary.find((ref) => ringWallIdSet.has(ref.wallId));
@@ -270,7 +302,7 @@ export function planWallRemovalSet(
 					code: 'round_repack_conflict',
 					message: `Cannot repack Round Room '${afterRoom.id}': Wall '${sharedBoundaryWall.wallId}' is shared with Space '${other.id}'.`,
 					roomIds: [afterRoom.id, other.id],
-					wallIds: [sharedBoundaryWall.wallId]
+					wallIds: [sharedBoundaryWall.wallId],
 				});
 			}
 		}
@@ -281,7 +313,7 @@ export function planWallRemovalSet(
 			return reject({
 				code: 'round_repack_conflict',
 				message: cert.issue.message,
-				roomIds: [afterRoom.id]
+				roomIds: [afterRoom.id],
 			});
 		}
 		const rebuilt = buildClosedWallCircleCenterlineFromRay({
@@ -289,21 +321,21 @@ export function planWallRemovalSet(
 			radius: cert.certified.radius,
 			seamDirection: cert.certified.seamDirection,
 			wallId: seamWall.id,
-			explicitSeam: cert.certified.seamPoint
+			explicitSeam: cert.certified.seamPoint,
 		});
 		if (rebuilt.kind === 'rejected') {
 			return reject({
 				code: 'round_repack_conflict',
 				message: rebuilt.rejection.message,
 				roomIds: [afterRoom.id],
-				wallIds: [seamWall.id]
+				wallIds: [seamWall.id],
 			});
 		}
 		const closedLength = wallCurveChainLength({
 			startPoint: cert.certified.seamPoint,
 			endPoint: cert.certified.seamPoint,
 			knots: rebuilt.centerline.kind === 'cubic-chain' ? rebuilt.centerline.knots : [],
-			spans: rebuilt.centerline.kind === 'cubic-chain' ? rebuilt.centerline.spans : []
+			spans: rebuilt.centerline.kind === 'cubic-chain' ? rebuilt.centerline.spans : [],
 		});
 
 		// 4. Rehost Openings from all member arcs onto the canonical closed Wall.
@@ -323,7 +355,7 @@ export function planWallRemovalSet(
 					code: 'round_repack_conflict',
 					message: `Round Room '${afterRoom.id}' Wall '${w.id}' has unresolved endpoints`,
 					roomIds: [afterRoom.id],
-					wallIds: [w.id]
+					wallIds: [w.id],
 				});
 			}
 			const len =
@@ -333,13 +365,13 @@ export function planWallRemovalSet(
 							startPoint: startPt,
 							endPoint: endPt,
 							knots: w.centerline.knots,
-							spans: w.centerline.spans
+							spans: w.centerline.spans,
 						});
 			memberCumulative.push({
 				wallId: w.id,
 				direction: ref.direction,
 				startDist: accum,
-				length: len
+				length: len,
 			});
 			accum += len;
 		}
@@ -356,7 +388,7 @@ export function planWallRemovalSet(
 					code: 'round_repack_conflict',
 					message: `Cannot repack Round Room '${afterRoom.id}': Opening '${opening.id}' still carries portal relation '${opening.connectsRoomIds.join(', ')}'.`,
 					roomIds: [afterRoom.id],
-					openingIds: [opening.id]
+					openingIds: [opening.id],
 				});
 			}
 			const rimStart =
@@ -368,12 +400,12 @@ export function planWallRemovalSet(
 			nextOpenings.push({
 				...opening,
 				wallId: seamWall.id,
-				offset
+				offset,
 			});
 			roundOpeningCorr.push({
 				openingId: opening.id,
 				beforeWallId: opening.wallId,
-				afterWallId: seamWall.id
+				afterWallId: seamWall.id,
 			});
 		}
 
@@ -381,7 +413,7 @@ export function planWallRemovalSet(
 			...seamWall,
 			startJunctionId: seamJunctionId,
 			endJunctionId: seamJunctionId,
-			centerline: rebuilt.centerline
+			centerline: rebuilt.centerline,
 		};
 		candidate.walls = candidate.walls.flatMap((w) => {
 			if (w.id === seamWall.id) return [repackedWall];
@@ -392,11 +424,11 @@ export function planWallRemovalSet(
 		candidate.rooms = candidate.rooms.map((r) =>
 			r.id === afterRoom.id
 				? { ...r, boundary: [{ wallId: seamWall.id, direction: 'forward' }] }
-				: r
+				: r,
 		);
 		candidate.regions = carryRegionWallIntents(
 			candidate.regions,
-			new Map(retiredArcIds.map((id) => [id, [seamWall.id]]))
+			new Map(retiredArcIds.map((id) => [id, [seamWall.id]])),
 		);
 
 		const openingIssues = validateWallFirstOpeningSet(candidate);
@@ -407,20 +439,20 @@ export function planWallRemovalSet(
 				message: first.message,
 				roomIds: [afterRoom.id],
 				wallIds: [first.wallId],
-				openingIds: [first.openingId]
+				openingIds: [first.openingId],
 			});
 		}
 
 		for (const jId of discardedJunctionIds) removedEndpointIds.add(jId);
 		surfaceLineage = [
 			...surfaceLineage,
-			...repackWallSurfaceLineage({ survivorWallId: seamWall.id, members })
+			...repackWallSurfaceLineage({ survivorWallId: seamWall.id, members }),
 		];
 		repackedRoundRoomIds.push(afterRoom.id);
 		roundWallCorr.push({
 			kind: 'repack',
 			sourceWallIds: members.map((m) => m.wallId),
-			survivorWallId: seamWall.id
+			survivorWallId: seamWall.id,
 		});
 		roundJunctionCorr.push({ kind: 'preserved', junctionId: seamJunctionId });
 		for (const jId of discardedJunctionIds) {
@@ -455,19 +487,19 @@ export function planWallRemovalSet(
 	candidate.junctions = document.junctions.filter(
 		(junction) =>
 			survivingJunctionIds.has(junction.id) ||
-			(!removedEndpointIds.has(junction.id) && !baselineVirtualJunctionIds.has(junction.id))
+			(!removedEndpointIds.has(junction.id) && !baselineVirtualJunctionIds.has(junction.id)),
 	);
 
 	return validateAndCompile(candidate, reject, (committed) => {
 		const norm = normalizeLayoutSurfaceLineage({
 			beforeLayout: document,
 			afterLayout: committed,
-			lineage: surfaceLineage
+			lineage: surfaceLineage,
 		});
 		if (norm.kind === 'rejected') {
 			return reject({
 				code: 'invalid_candidate_document',
-				message: norm.message
+				message: norm.message,
 			});
 		}
 		const clearedRoundRoomIds: string[] = [];
@@ -490,7 +522,7 @@ export function planWallRemovalSet(
 						rooms: roundRoomCorr,
 						walls: roundWallCorr,
 						junctions: roundJunctionCorr,
-						openings: roundOpeningCorr
+						openings: roundOpeningCorr,
 					}
 				: undefined;
 		return {
@@ -502,11 +534,10 @@ export function planWallRemovalSet(
 			spaceRetirements,
 			...(repackedRoundRoomIds.length > 0 ? { repackedRoundRoomIds } : {}),
 			...(clearedRoundRoomIds.length > 0 ? { clearedRoundRoomIds } : {}),
-			...(roundCorrespondence ? { roundCorrespondence } : {})
+			...(roundCorrespondence ? { roundCorrespondence } : {}),
 		};
 	});
 }
-
 
 /**
  * Canonical deletion of ONE physical Wall (the viewport/Inspector/
@@ -517,11 +548,14 @@ export function planDeleteWall(
 	document: LayoutDocumentWallFirst,
 	wallId: string,
 	capture: LayoutIdCapture,
-	levelId: string
+	levelId: string,
 ): WallFirstOpPlan {
 	const levelIssue = layoutWorkingLevelIssue(document, levelId);
 	if (levelIssue !== null) {
-		return { kind: 'rejected', rejection: { code: 'invalid_value', message: levelIssue, wallIds: [wallId] } };
+		return {
+			kind: 'rejected',
+			rejection: { code: 'invalid_value', message: levelIssue, wallIds: [wallId] },
+		};
 	}
 	const wall = document.walls.find((candidate) => candidate.id === wallId);
 	if (!wall) {
@@ -530,20 +564,22 @@ export function planDeleteWall(
 			rejection: {
 				code: 'unknown_wall',
 				message: `Unknown wall '${wallId}'`,
-				wallIds: [wallId]
-			}
+				wallIds: [wallId],
+			},
 		};
 	}
 	try {
 		return planWallRemovalSet(document, [wallId], capture, { invalidOutline: 'retire' });
 	} catch (error) {
 		if (error instanceof LayoutIdCollisionError) {
-			return { kind: 'rejected', rejection: { code: 'captured_id_in_use', message: error.message, wallIds: [wallId] } };
+			return {
+				kind: 'rejected',
+				rejection: { code: 'captured_id_in_use', message: error.message, wallIds: [wallId] },
+			};
 		}
 		throw error;
 	}
 }
-
 
 /**
  * Canonical deletion of a SET of physical Walls through the same pipeline as
@@ -554,15 +590,21 @@ export function planDeleteWalls(
 	document: LayoutDocumentWallFirst,
 	wallIds: readonly string[],
 	capture: LayoutIdCapture,
-	levelId: string
+	levelId: string,
 ): WallFirstOpPlan {
 	const levelIssue = layoutWorkingLevelIssue(document, levelId);
 	if (levelIssue !== null) {
-		return { kind: 'rejected', rejection: { code: 'invalid_value', message: levelIssue, wallIds: [...wallIds] } };
+		return {
+			kind: 'rejected',
+			rejection: { code: 'invalid_value', message: levelIssue, wallIds: [...wallIds] },
+		};
 	}
 	const unique = [...new Set(wallIds)];
 	if (unique.length === 0) {
-		return { kind: 'rejected', rejection: { code: 'no_op', message: 'No Walls were named for deletion' } };
+		return {
+			kind: 'rejected',
+			rejection: { code: 'no_op', message: 'No Walls were named for deletion' },
+		};
 	}
 	const known = new Set(document.walls.map((wall) => wall.id));
 	const unknown = unique.filter((wallId) => !known.has(wallId));
@@ -572,15 +614,18 @@ export function planDeleteWalls(
 			rejection: {
 				code: 'unknown_wall',
 				message: `Unknown wall(s) ${unknown.join(', ')}`,
-				wallIds: unknown
-			}
+				wallIds: unknown,
+			},
 		};
 	}
 	try {
 		return planWallRemovalSet(document, unique, capture, { invalidOutline: 'retire' });
 	} catch (error) {
 		if (error instanceof LayoutIdCollisionError) {
-			return { kind: 'rejected', rejection: { code: 'captured_id_in_use', message: error.message, wallIds: unique } };
+			return {
+				kind: 'rejected',
+				rejection: { code: 'captured_id_in_use', message: error.message, wallIds: unique },
+			};
 		}
 		throw error;
 	}

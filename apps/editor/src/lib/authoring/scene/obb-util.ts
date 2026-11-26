@@ -5,15 +5,10 @@ export const OBB_FLOATS_PER_VERTEX = 3;
 export const OBB_FLOAT_COUNT = OBB_VERTEX_COUNT * OBB_FLOATS_PER_VERTEX;
 
 export const OBB_EDGE_INDICES: readonly number[] = [
-	0, 1, 1, 2, 2, 3, 3, 0,
-	4, 5, 5, 6, 6, 7, 7, 4,
-	0, 4, 1, 5, 2, 6, 3, 7
+	0, 1, 1, 2, 2, 3, 3, 0, 4, 5, 5, 6, 6, 7, 7, 4, 0, 4, 1, 5, 2, 6, 3, 7,
 ];
 
-const VERTEX_OFFSETS: readonly number[] = [
-	0b000, 0b001, 0b011, 0b010,
-	0b100, 0b101, 0b111, 0b110
-];
+const VERTEX_OFFSETS: readonly number[] = [0b000, 0b001, 0b011, 0b010, 0b100, 0b101, 0b111, 0b110];
 
 const VEC = /* @__PURE__ */ new Vector3();
 const SIZE = /* @__PURE__ */ new Vector3();
@@ -40,11 +35,7 @@ export function box3CornersToLineGeometry(box: Box3): {
  * The module-side Vector3 + size vector are reused across calls so the helper
  * doesn't allocate per frame.
  */
-export function localCornersInto(
-	matrixWorld: Matrix4,
-	box: Box3,
-	out: Float32Array
-): void {
+export function localCornersInto(matrixWorld: Matrix4, box: Box3, out: Float32Array): void {
 	const min = box.min;
 	box.getSize(SIZE);
 	for (let i = 0; i < OBB_VERTEX_COUNT; i++) {
@@ -52,7 +43,7 @@ export function localCornersInto(
 		VEC.set(
 			min.x + (bit & 0b001 ? SIZE.x : 0),
 			min.y + (bit & 0b010 ? SIZE.y : 0),
-			min.z + (bit & 0b100 ? SIZE.z : 0)
+			min.z + (bit & 0b100 ? SIZE.z : 0),
 		);
 		VEC.applyMatrix4(matrixWorld);
 		out[i * 3 + 0] = VEC.x;

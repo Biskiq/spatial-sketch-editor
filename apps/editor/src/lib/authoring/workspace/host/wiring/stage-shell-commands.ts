@@ -31,7 +31,7 @@ export function wireStageShellCommands(input: StageShellCommandsWiring) {
 		clearExperienceFocus: input.clearExperienceFocus,
 		experience: {
 			lens: input.lens,
-			active: input.active
+			active: input.active,
 		},
 		cardActions: input.cardActions,
 		dockKeys: input.dockKeys,
@@ -42,11 +42,11 @@ export function wireStageShellCommands(input: StageShellCommandsWiring) {
 			zoomIn: input.zoomIn,
 			zoomOut: input.zoomOut,
 			fit: input.fit,
-			requestScaleDetent: input.requestScaleDetent
+			requestScaleDetent: input.requestScaleDetent,
 		},
 		project: {
 			requestReplacement: input.requestReplacement,
-			downloadSourceJson: input.downloadSourceJson
+			downloadSourceJson: input.downloadSourceJson,
 		},
 		showExperienceWelcome: input.showExperienceWelcome,
 		levelSlice: input.levelSlice,
@@ -54,6 +54,6 @@ export function wireStageShellCommands(input: StageShellCommandsWiring) {
 		isStudioTool: input.isStudioTool,
 		studioActive: input.studioActive,
 		libraryReplaceQualified: input.libraryReplaceQualified,
-		runStudioEntry: input.runStudioEntry
+		runStudioEntry: input.runStudioEntry,
 	});
 }

@@ -44,7 +44,7 @@ import {
 	createUnitProject,
 	unitRevision
 } from '../authoring/__fixtures__/unit-envelope-fixtures';
-import { g1DocumentWithRooms, g1RoomPolygon } from '../layout/__fixtures__/layout-g1-fixtures';
+import { g1DocumentWithRooms, g1RoomPolygon } from '../../../../../packages/layout-core/tests/__fixtures__/layout-g1-fixtures';
 
 const LABELS: Record<string, string> = {
 	'wood-walnut': 'Walnut Wood',

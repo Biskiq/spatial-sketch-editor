@@ -25,8 +25,6 @@ export type InkCircleCommitInput = {
 	readonly clearChain: () => void;
 };
 
-
-
 /**
  * Accept one Circle as one captured closed-Wall intent. The preview and
  * the commit use the same capture and the same centre/rim points, so the
@@ -35,7 +33,7 @@ export type InkCircleCommitInput = {
 export async function commitCircle(
 	input: InkCircleCommitInput,
 	center: ChainDraftPoint,
-	rim: ChainDraftPoint
+	rim: ChainDraftPoint,
 ): Promise<void> {
 	if (input.inFlight()) return;
 	const capture = input.capture() ?? mintLayoutIdCapture();
@@ -54,15 +52,15 @@ export async function commitCircle(
 					center: [center.point[0], center.point[1]],
 					rim: [rim.point[0], rim.point[1]],
 					thickness: input.memory.thickness,
-					height: input.memory.height
+					height: input.memory.height,
 				},
 				capture,
 				operationId: globalThis.crypto.randomUUID(),
 				projectId: snapshot.acceptedRevision.projectId,
 				revisionId: input.services.authoring.acceptedRevision().revisionId,
 				contentRevision: stageUnitRevision(snapshot, 'layout'),
-				levelId: input.levelId
-			})
+				levelId: input.levelId,
+			}),
 		);
 		if (outcome.kind === 'refused') {
 			input.setNotice(outcome.message);
@@ -82,8 +80,8 @@ export async function commitCircle(
 					sourceKind: 'wall',
 					generationId: fresh.compileGeneration,
 					stream: 'projected',
-					subRef: null
-				}
+					subRef: null,
+				},
 			});
 		}
 		input.services.stage.openContributedTask(LAYOUT_INK_ENTRY, 'layout');

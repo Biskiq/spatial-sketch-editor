@@ -26,11 +26,9 @@ export type CameraPlanDirectionTiming = {
 export function resolveCameraConnectionTiming(
 	connectionId: string,
 	direction: CameraConnectionDirection,
-	graph: NavigationGraph
+	graph: NavigationGraph,
 ): CameraPlanDirectionTiming {
-	const connection = graph.connections.find(
-		(candidate) => candidate.id === connectionId
-	);
+	const connection = graph.connections.find((candidate) => candidate.id === connectionId);
 	if (!connection) {
 		throw new Error(`Unknown camera connection: ${connectionId}`);
 	}
@@ -40,17 +38,14 @@ export function resolveCameraConnectionTiming(
 	const pathLengthMeters = motion.totalPositionDistance;
 	const durationSeconds = motion.durationSeconds;
 	const speedMetersPerSecond =
-		pathLengthMeters > 1e-9 &&
-		durationSeconds > 1e-9 &&
-		Number.isFinite(durationSeconds)
+		pathLengthMeters > 1e-9 && durationSeconds > 1e-9 && Number.isFinite(durationSeconds)
 			? pathLengthMeters / durationSeconds
 			: 0;
 	return {
 		direction,
 		pathLengthMeters,
 		durationSeconds,
-		authoredDuration:
-			connection.timing?.[direction]?.durationSeconds !== undefined,
-		speedMetersPerSecond
+		authoredDuration: connection.timing?.[direction]?.durationSeconds !== undefined,
+		speedMetersPerSecond,
 	};
 }

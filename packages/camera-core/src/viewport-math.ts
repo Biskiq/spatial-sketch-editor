@@ -37,7 +37,7 @@ export function crossVec3(left: Vec3, right: Vec3): Vec3 {
 	return [
 		left[1] * right[2] - left[2] * right[1],
 		left[2] * right[0] - left[0] * right[2],
-		left[0] * right[1] - left[1] * right[0]
+		left[0] * right[1] - left[1] * right[0],
 	];
 }
 
@@ -56,7 +56,7 @@ export function lerpVec3(from: Vec3, to: Vec3, amount: number): Vec3 {
 	return [
 		from[0] + (to[0] - from[0]) * amount,
 		from[1] + (to[1] - from[1]) * amount,
-		from[2] + (to[2] - from[2]) * amount
+		from[2] + (to[2] - from[2]) * amount,
 	];
 }
 
@@ -96,32 +96,78 @@ export function lookAtMatrix(eye: Vec3, target: Vec3, up: Vec3): number[] | null
 	if (right === null) return null;
 	const trueUp = crossVec3(backward, right);
 	return [
-		right[0], trueUp[0], backward[0], 0,
-		right[1], trueUp[1], backward[1], 0,
-		right[2], trueUp[2], backward[2], 0,
-		-dotVec3(right, eye), -dotVec3(trueUp, eye), -dotVec3(backward, eye), 1
+		right[0],
+		trueUp[0],
+		backward[0],
+		0,
+		right[1],
+		trueUp[1],
+		backward[1],
+		0,
+		right[2],
+		trueUp[2],
+		backward[2],
+		0,
+		-dotVec3(right, eye),
+		-dotVec3(trueUp, eye),
+		-dotVec3(backward, eye),
+		1,
 	];
 }
 
 /** Right-handed perspective, column-major. `tanHalfFovY` is `tan(fovY / 2)`. */
-export function perspectiveMatrix(tanHalfFovY: number, aspect: number, near: number, far: number): number[] {
+export function perspectiveMatrix(
+	tanHalfFovY: number,
+	aspect: number,
+	near: number,
+	far: number,
+): number[] {
 	const f = 1 / tanHalfFovY;
 	return [
-		f / aspect, 0, 0, 0,
-		0, f, 0, 0,
-		0, 0, (far + near) / (near - far), -1,
-		0, 0, (2 * far * near) / (near - far), 0
+		f / aspect,
+		0,
+		0,
+		0,
+		0,
+		f,
+		0,
+		0,
+		0,
+		0,
+		(far + near) / (near - far),
+		-1,
+		0,
+		0,
+		(2 * far * near) / (near - far),
+		0,
 	];
 }
 
 /** Right-handed orthographic, column-major, from the target-plane half extents. */
-export function orthographicMatrix(halfHeight: number, aspect: number, near: number, far: number): number[] {
+export function orthographicMatrix(
+	halfHeight: number,
+	aspect: number,
+	near: number,
+	far: number,
+): number[] {
 	const halfWidth = halfHeight * aspect;
 	return [
-		1 / halfWidth, 0, 0, 0,
-		0, 1 / halfHeight, 0, 0,
-		0, 0, -2 / (far - near), 0,
-		0, 0, -(far + near) / (far - near), 1
+		1 / halfWidth,
+		0,
+		0,
+		0,
+		0,
+		1 / halfHeight,
+		0,
+		0,
+		0,
+		0,
+		-2 / (far - near),
+		0,
+		0,
+		0,
+		-(far + near) / (far - near),
+		1,
 	];
 }
 
@@ -196,23 +242,30 @@ export function invertMatrix(matrix: readonly number[]): number[] | null {
 		(a11 * b07 - a10 * b09 - a12 * b06) * determinant,
 		(a00 * b09 - a01 * b07 + a02 * b06) * determinant,
 		(a31 * b01 - a30 * b03 - a32 * b00) * determinant,
-		(a20 * b03 - a21 * b01 + a22 * b00) * determinant
+		(a20 * b03 - a21 * b01 + a22 * b00) * determinant,
 	];
 }
 
 /** Apply a column-major matrix to a point (implicit `w = 1`) and return all four components. */
-export function transformPoint(matrix: readonly number[], point: Vec3): [number, number, number, number] {
+export function transformPoint(
+	matrix: readonly number[],
+	point: Vec3,
+): [number, number, number, number] {
 	const [x, y, z] = point;
 	return [
 		matrix[0]! * x + matrix[4]! * y + matrix[8]! * z + matrix[12]!,
 		matrix[1]! * x + matrix[5]! * y + matrix[9]! * z + matrix[13]!,
 		matrix[2]! * x + matrix[6]! * y + matrix[10]! * z + matrix[14]!,
-		matrix[3]! * x + matrix[7]! * y + matrix[11]! * z + matrix[15]!
+		matrix[3]! * x + matrix[7]! * y + matrix[11]! * z + matrix[15]!,
 	];
 }
 
 /** Minimal orthonormal screen basis for the current view: screen right and screen up in project world. */
-export function viewScreenBasis(eye: Vec3, target: Vec3, up: Vec3): { right: Vec3; up: Vec3 } | null {
+export function viewScreenBasis(
+	eye: Vec3,
+	target: Vec3,
+	up: Vec3,
+): { right: Vec3; up: Vec3 } | null {
 	const backward = normalizeVec3(subtractVec3(eye, target));
 	if (backward === null) return null;
 	const right = normalizeVec3(crossVec3(up, backward));

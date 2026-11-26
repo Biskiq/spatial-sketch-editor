@@ -6,21 +6,21 @@
  * form's floor behaviour and its rendered body cannot disagree.
  */
 import {
-  evaluateProfile,
-  extrudeProfile,
-  type FormMesh,
-  type ProfileAnchor
+	evaluateProfile,
+	extrudeProfile,
+	type FormMesh,
+	type ProfileAnchor,
 } from '@portfolio/geometry-core';
 import type { SceneFormSource } from './scene';
 
 /** Evaluate one form source at its stored extent and per-axis scale. */
 export function evaluateSceneForm(source: SceneFormSource): FormMesh {
-  return extrudeProfile({
-    profile: evaluateProfile(source.generator.outline as readonly ProfileAnchor[]),
-    extent: source.generator.extent,
-    scale: source.scale,
-    plane: source.generator.plane
-  });
+	return extrudeProfile({
+		profile: evaluateProfile(source.generator.outline as readonly ProfileAnchor[]),
+		extent: source.generator.extent,
+		scale: source.scale,
+		plane: source.generator.plane,
+	});
 }
 
 /**
@@ -29,10 +29,10 @@ export function evaluateSceneForm(source: SceneFormSource): FormMesh {
  * `null` is a defensive answer for corrupt in-memory data, not a repair path.
  */
 export function sceneFormContactMinY(source: SceneFormSource): number | null {
-  try {
-    const contact = evaluateSceneForm(source).contactMinY;
-    return Number.isFinite(contact) ? contact : null;
-  } catch {
-    return null;
-  }
+	try {
+		const contact = evaluateSceneForm(source).contactMinY;
+		return Number.isFinite(contact) ? contact : null;
+	} catch {
+		return null;
+	}
 }

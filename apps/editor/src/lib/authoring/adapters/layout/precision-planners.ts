@@ -20,14 +20,46 @@ import {
 	planRigidWallMove,
 	planRoomMetadataUpdate,
 	planUpdateWallFirstOpening,
-	planWallMetadataUpdate
+	planWallMetadataUpdate,
 } from '@portfolio/layout-core/wall';
-import { nextLayoutPresetObjectId, planCommitLayoutObjectPresetWithId, readLayoutIdCapture } from '@portfolio/layout-core/plan';
+import {
+	nextLayoutPresetObjectId,
+	planCommitLayoutObjectPresetWithId,
+	readLayoutIdCapture,
+} from '@portfolio/layout-core/plan';
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import type { DomainPlanner } from '@portfolio/project-model/f4';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
 import { openingRefusalWords, wallRefusalWords } from './refusals';
-import { LAYOUT_ENTITY_NAME_KIND, LAYOUT_JUNCTION_MOVE_KIND, LAYOUT_OPENING_MEASURE_KIND, LAYOUT_PLINTH_PLACE_KIND, LAYOUT_ROOM_MOVE_KIND, LAYOUT_ROOM_OVERHEAD_KIND, LAYOUT_SPACE_REMOVE_KIND, LAYOUT_WALL_ANGLE_KIND, LAYOUT_WALL_BEND_KIND, LAYOUT_WALL_HEIGHT_KIND, LAYOUT_WALL_KNOT_DELETE_KIND, LAYOUT_WALL_LENGTH_KIND, LAYOUT_WALL_MOVE_KIND, LAYOUT_WALL_STRAIGHTEN_KIND, LAYOUT_WALL_THICKNESS_KIND, addressedSubject, capturedWorkingLevel, finiteNonNegative, finiteNumber, finitePositive, isFixedEndpoint, isLayoutOpeningField, layoutPlanner, opaqueId, preparedLayoutCandidate, readPayload, rejected } from './precision';
+import {
+	LAYOUT_ENTITY_NAME_KIND,
+	LAYOUT_JUNCTION_MOVE_KIND,
+	LAYOUT_OPENING_MEASURE_KIND,
+	LAYOUT_PLINTH_PLACE_KIND,
+	LAYOUT_ROOM_MOVE_KIND,
+	LAYOUT_ROOM_OVERHEAD_KIND,
+	LAYOUT_SPACE_REMOVE_KIND,
+	LAYOUT_WALL_ANGLE_KIND,
+	LAYOUT_WALL_BEND_KIND,
+	LAYOUT_WALL_HEIGHT_KIND,
+	LAYOUT_WALL_KNOT_DELETE_KIND,
+	LAYOUT_WALL_LENGTH_KIND,
+	LAYOUT_WALL_MOVE_KIND,
+	LAYOUT_WALL_STRAIGHTEN_KIND,
+	LAYOUT_WALL_THICKNESS_KIND,
+	addressedSubject,
+	capturedWorkingLevel,
+	finiteNonNegative,
+	finiteNumber,
+	finitePositive,
+	isFixedEndpoint,
+	isLayoutOpeningField,
+	layoutPlanner,
+	opaqueId,
+	preparedLayoutCandidate,
+	readPayload,
+	rejected,
+} from './precision';
 
 function wallHeightPlanner(): DomainPlanner<ProjectEnvelope> {
 	return layoutPlanner(LAYOUT_WALL_HEIGHT_KIND, (request) => {
@@ -35,17 +67,29 @@ function wallHeightPlanner(): DomainPlanner<ProjectEnvelope> {
 		if ('message' in payload) return rejected('invalid-value', payload.message);
 		const { wallId, height } = payload.value;
 		if (!opaqueId(wallId) || !finitePositive(height)) {
-			return rejected('invalid-value', 'A Wall height needs one wall id and one finite positive height in meters.');
+			return rejected(
+				'invalid-value',
+				'A Wall height needs one wall id and one finite positive height in meters.',
+			);
 		}
 		const addressed = addressedSubject(request, 'wall', wallId);
 		if (!addressed.ok) return rejected('invalid-value', addressed.message);
-		const plan = planExactWallHeight(request.snapshot.domain.source.units.layout.data, wallId, height);
+		const plan = planExactWallHeight(
+			request.snapshot.domain.source.units.layout.data,
+			wallId,
+			height,
+		);
 		if (plan.kind === 'rejected') {
 			return rejected(plan.rejection.code, plan.rejection.message);
 		}
-		return preparedLayoutCandidate(request, 'layout-wall-height', { kind: 'wall', id: wallId }, plan.document, [
-			'height'
-		], { surfaceLineage: [] });
+		return preparedLayoutCandidate(
+			request,
+			'layout-wall-height',
+			{ kind: 'wall', id: wallId },
+			plan.document,
+			['height'],
+			{ surfaceLineage: [] },
+		);
 	});
 }
 
@@ -55,14 +99,17 @@ function wallThicknessPlanner(): DomainPlanner<ProjectEnvelope> {
 		if ('message' in payload) return rejected('invalid-value', payload.message);
 		const { wallId, thickness } = payload.value;
 		if (!opaqueId(wallId) || !finitePositive(thickness)) {
-			return rejected('invalid-value', 'A Wall thickness needs one wall id and one finite positive thickness in meters.');
+			return rejected(
+				'invalid-value',
+				'A Wall thickness needs one wall id and one finite positive thickness in meters.',
+			);
 		}
 		const addressed = addressedSubject(request, 'wall', wallId);
 		if (!addressed.ok) return rejected('invalid-value', addressed.message);
 		const plan = planExactWallThickness(
 			request.snapshot.domain.source.units.layout.data,
 			wallId,
-			thickness
+			thickness,
 		);
 		if (plan.kind === 'rejected') {
 			return rejected(plan.rejection.code, plan.rejection.message);
@@ -73,7 +120,7 @@ function wallThicknessPlanner(): DomainPlanner<ProjectEnvelope> {
 			{ kind: 'wall', id: wallId },
 			plan.document,
 			['thickness'],
-			{ surfaceLineage: [] }
+			{ surfaceLineage: [] },
 		);
 	});
 }
@@ -94,7 +141,7 @@ function wallLengthPlanner(): DomainPlanner<ProjectEnvelope> {
 		if (!opaqueId(wallId) || !finitePositive(length) || !isFixedEndpoint(fixed)) {
 			return rejected(
 				'invalid-value',
-				'A Wall length needs one wall id, one finite positive length in meters and a start or end fixed endpoint.'
+				'A Wall length needs one wall id, one finite positive length in meters and a start or end fixed endpoint.',
 			);
 		}
 		const addressed = addressedSubject(request, 'wall', wallId);
@@ -102,12 +149,17 @@ function wallLengthPlanner(): DomainPlanner<ProjectEnvelope> {
 		const plan = planExactWallLength(request.snapshot.domain.source.units.layout.data, {
 			wallId,
 			length,
-			fixedEndpoint: fixed
+			fixedEndpoint: fixed,
 		});
 		if (plan.kind === 'rejected') return rejected(plan.rejection.code, plan.rejection.message);
-		return preparedLayoutCandidate(request, 'layout-wall-length', { kind: 'wall', id: wallId }, plan.document, [
-			'length'
-		], { surfaceLineage: [] });
+		return preparedLayoutCandidate(
+			request,
+			'layout-wall-length',
+			{ kind: 'wall', id: wallId },
+			plan.document,
+			['length'],
+			{ surfaceLineage: [] },
+		);
 	});
 }
 
@@ -120,7 +172,7 @@ function wallAnglePlanner(): DomainPlanner<ProjectEnvelope> {
 		if (!opaqueId(wallId) || !finiteNumber(angleRadians) || !isFixedEndpoint(fixed)) {
 			return rejected(
 				'invalid-value',
-				'A Wall angle needs one wall id, one finite angle in radians and a start or end fixed endpoint.'
+				'A Wall angle needs one wall id, one finite angle in radians and a start or end fixed endpoint.',
 			);
 		}
 		const addressed = addressedSubject(request, 'wall', wallId);
@@ -128,12 +180,17 @@ function wallAnglePlanner(): DomainPlanner<ProjectEnvelope> {
 		const plan = planExactWallAngle(request.snapshot.domain.source.units.layout.data, {
 			wallId,
 			angle: angleRadians,
-			fixedEndpoint: fixed
+			fixedEndpoint: fixed,
 		});
 		if (plan.kind === 'rejected') return rejected(plan.rejection.code, plan.rejection.message);
-		return preparedLayoutCandidate(request, 'layout-wall-angle', { kind: 'wall', id: wallId }, plan.document, [
-			'angle'
-		], { surfaceLineage: [] });
+		return preparedLayoutCandidate(
+			request,
+			'layout-wall-angle',
+			{ kind: 'wall', id: wallId },
+			plan.document,
+			['angle'],
+			{ surfaceLineage: [] },
+		);
 	});
 }
 
@@ -146,16 +203,24 @@ function wallMovePlanner(): DomainPlanner<ProjectEnvelope> {
 		if (!opaqueId(wallId) || !finiteNumber(deltaX) || !finiteNumber(deltaZ)) {
 			return rejected(
 				'invalid-value',
-				'A rigid Wall move needs one wall id and finite X and Z deltas in meters.'
+				'A rigid Wall move needs one wall id and finite X and Z deltas in meters.',
 			);
 		}
 		const addressed = addressedSubject(request, 'wall', wallId);
 		if (!addressed.ok) return rejected('invalid-value', addressed.message);
-		const plan = planRigidWallMove(request.snapshot.domain.source.units.layout.data, wallId, [deltaX, deltaZ]);
+		const plan = planRigidWallMove(request.snapshot.domain.source.units.layout.data, wallId, [
+			deltaX,
+			deltaZ,
+		]);
 		if (plan.kind === 'rejected') return rejected(plan.rejection.code, plan.rejection.message);
-		return preparedLayoutCandidate(request, 'layout-wall-move', { kind: 'wall', id: wallId }, plan.document, [
-			'position'
-		], { surfaceLineage: [] });
+		return preparedLayoutCandidate(
+			request,
+			'layout-wall-move',
+			{ kind: 'wall', id: wallId },
+			plan.document,
+			['position'],
+			{ surfaceLineage: [] },
+		);
 	});
 }
 
@@ -178,7 +243,7 @@ function wallBendPlanner(): DomainPlanner<ProjectEnvelope> {
 		) {
 			return rejected(
 				'invalid-value',
-				'A Wall bend needs one wall id, a finite non-negative arc distance, a finite bend point and the captured bend-point id.'
+				'A Wall bend needs one wall id, a finite non-negative arc distance, a finite bend point and the captured bend-point id.',
 			);
 		}
 		const addressed = addressedSubject(request, 'wall', wallId);
@@ -187,12 +252,21 @@ function wallBendPlanner(): DomainPlanner<ProjectEnvelope> {
 			request.snapshot.domain.source.units.layout.data,
 			wallId,
 			{ distance, point: [x, z] },
-			{ knotId }
+			{ knotId },
 		);
-		if (plan.kind === 'rejected') return rejected(plan.rejection.code, wallRefusalWords(plan.rejection.code, plan.rejection.message));
-		return preparedLayoutCandidate(request, 'layout-wall-bend', { kind: 'wall', id: wallId }, plan.document, [
-			'shape'
-		], { surfaceLineage: [] });
+		if (plan.kind === 'rejected')
+			return rejected(
+				plan.rejection.code,
+				wallRefusalWords(plan.rejection.code, plan.rejection.message),
+			);
+		return preparedLayoutCandidate(
+			request,
+			'layout-wall-bend',
+			{ kind: 'wall', id: wallId },
+			plan.document,
+			['shape'],
+			{ surfaceLineage: [] },
+		);
 	});
 }
 
@@ -207,19 +281,31 @@ function wallKnotDeletePlanner(): DomainPlanner<ProjectEnvelope> {
 		if ('message' in payload) return rejected('invalid-value', payload.message);
 		const { wallId, knotId } = payload.value;
 		if (!opaqueId(wallId) || !opaqueId(knotId)) {
-			return rejected('invalid-value', 'Removing a bend point needs one wall id and one bend-point id.');
+			return rejected(
+				'invalid-value',
+				'Removing a bend point needs one wall id and one bend-point id.',
+			);
 		}
 		const addressed = addressedSubject(request, 'wall', wallId);
 		if (!addressed.ok) return rejected('invalid-value', addressed.message);
 		const plan = planDeleteWallCurveKnot(
 			request.snapshot.domain.source.units.layout.data,
 			wallId,
-			knotId
+			knotId,
 		);
-		if (plan.kind === 'rejected') return rejected(plan.rejection.code, wallRefusalWords(plan.rejection.code, plan.rejection.message));
-		return preparedLayoutCandidate(request, 'layout-wall-knot-delete', { kind: 'wall', id: wallId }, plan.document, [
-			'shape'
-		], { surfaceLineage: [] });
+		if (plan.kind === 'rejected')
+			return rejected(
+				plan.rejection.code,
+				wallRefusalWords(plan.rejection.code, plan.rejection.message),
+			);
+		return preparedLayoutCandidate(
+			request,
+			'layout-wall-knot-delete',
+			{ kind: 'wall', id: wallId },
+			plan.document,
+			['shape'],
+			{ surfaceLineage: [] },
+		);
 	});
 }
 
@@ -229,14 +315,20 @@ function wallStraightenPlanner(): DomainPlanner<ProjectEnvelope> {
 		const payload = readPayload(LAYOUT_WALL_STRAIGHTEN_KIND, request.intent.payload);
 		if ('message' in payload) return rejected('invalid-value', payload.message);
 		const { wallId } = payload.value;
-		if (!opaqueId(wallId)) return rejected('invalid-value', 'Straightening a Wall needs one wall id.');
+		if (!opaqueId(wallId))
+			return rejected('invalid-value', 'Straightening a Wall needs one wall id.');
 		const addressed = addressedSubject(request, 'wall', wallId);
 		if (!addressed.ok) return rejected('invalid-value', addressed.message);
 		const plan = planConvertWallToLine(request.snapshot.domain.source.units.layout.data, wallId);
 		if (plan.kind === 'rejected') return rejected(plan.rejection.code, plan.rejection.message);
-		return preparedLayoutCandidate(request, 'layout-wall-straighten', { kind: 'wall', id: wallId }, plan.document, [
-			'shape'
-		], { surfaceLineage: [] });
+		return preparedLayoutCandidate(
+			request,
+			'layout-wall-straighten',
+			{ kind: 'wall', id: wallId },
+			plan.document,
+			['shape'],
+			{ surfaceLineage: [] },
+		);
 	});
 }
 
@@ -247,13 +339,26 @@ function roomMovePlanner(): DomainPlanner<ProjectEnvelope> {
 		if ('message' in payload) return rejected('invalid-value', payload.message);
 		const { roomId, deltaX, deltaZ } = payload.value;
 		if (!opaqueId(roomId) || !finiteNumber(deltaX) || !finiteNumber(deltaZ)) {
-			return rejected('invalid-value', 'A Room move needs one room id and finite X and Z deltas in meters.');
+			return rejected(
+				'invalid-value',
+				'A Room move needs one room id and finite X and Z deltas in meters.',
+			);
 		}
 		const addressed = addressedSubject(request, 'room', roomId);
 		if (!addressed.ok) return rejected('invalid-value', addressed.message);
-		const plan = planWallFirstRoomMove(request.snapshot.domain.source.units.layout.data, roomId, [deltaX, deltaZ]);
+		const plan = planWallFirstRoomMove(request.snapshot.domain.source.units.layout.data, roomId, [
+			deltaX,
+			deltaZ,
+		]);
 		if (plan.kind === 'rejected') return rejected(plan.rejection.code, plan.rejection.message);
-		return preparedLayoutCandidate(request, 'layout-room-move', { kind: 'room', id: roomId }, plan.document, ['position'], { surfaceLineage: [] });
+		return preparedLayoutCandidate(
+			request,
+			'layout-room-move',
+			{ kind: 'room', id: roomId },
+			plan.document,
+			['position'],
+			{ surfaceLineage: [] },
+		);
 	});
 }
 
@@ -271,21 +376,27 @@ function junctionMovePlanner(): DomainPlanner<ProjectEnvelope> {
 		if (!opaqueId(wallId) || !opaqueId(junctionId) || !finiteNumber(x) || !finiteNumber(z)) {
 			return rejected(
 				'invalid-value',
-				'A Junction move needs one wall id, one junction id and finite X and Z coordinates in meters.'
+				'A Junction move needs one wall id, one junction id and finite X and Z coordinates in meters.',
 			);
 		}
 		const addressed = addressedSubject(request, 'wall', wallId);
 		if (!addressed.ok) return rejected('invalid-value', addressed.message);
 		const wall = request.snapshot.domain.source.units.layout.data.walls.find(
-			(candidate) => candidate.id === wallId
+			(candidate) => candidate.id === wallId,
 		);
-		if (wall === undefined || (wall.startJunctionId !== junctionId && wall.endJunctionId !== junctionId)) {
-			return rejected('invalid-value', "The Junction must be one of the addressed Wall's endpoints.");
+		if (
+			wall === undefined ||
+			(wall.startJunctionId !== junctionId && wall.endJunctionId !== junctionId)
+		) {
+			return rejected(
+				'invalid-value',
+				"The Junction must be one of the addressed Wall's endpoints.",
+			);
 		}
 		const plan = planExactJunctionMove(
 			request.snapshot.domain.source.units.layout.data,
 			junctionId,
-			[x, z]
+			[x, z],
 		);
 		if (plan.kind === 'rejected') return rejected(plan.rejection.code, plan.rejection.message);
 		return preparedLayoutCandidate(
@@ -294,7 +405,7 @@ function junctionMovePlanner(): DomainPlanner<ProjectEnvelope> {
 			{ kind: 'wall', id: wallId },
 			plan.document,
 			['start', 'end'],
-			{ surfaceLineage: [] }
+			{ surfaceLineage: [] },
 		);
 	});
 }
@@ -307,16 +418,19 @@ function openingMeasurePlanner(): DomainPlanner<ProjectEnvelope> {
 		if (!opaqueId(openingId) || !isLayoutOpeningField(field)) {
 			return rejected(
 				'invalid-value',
-				'An Opening measure needs one opening id and one of offset, width, height or sill height.'
+				'An Opening measure needs one opening id and one of offset, width, height or sill height.',
 			);
 		}
 		// Offset and sill are non-negative; width and height must be positive. The
 		// retained planner enforces the same rule, so this only names the field earlier.
-		const valid = field === 'offset' || field === 'sillHeight' ? finiteNonNegative(value) : finitePositive(value);
+		const valid =
+			field === 'offset' || field === 'sillHeight'
+				? finiteNonNegative(value)
+				: finitePositive(value);
 		if (!valid) {
 			return rejected(
 				'invalid-value',
-				`An Opening ${field} must be a finite ${field === 'offset' || field === 'sillHeight' ? 'non-negative' : 'positive'} number of meters.`
+				`An Opening ${field} must be a finite ${field === 'offset' || field === 'sillHeight' ? 'non-negative' : 'positive'} number of meters.`,
 			);
 		}
 		const addressed = addressedSubject(request, 'opening', openingId);
@@ -324,7 +438,7 @@ function openingMeasurePlanner(): DomainPlanner<ProjectEnvelope> {
 		const plan = planUpdateWallFirstOpening(
 			request.snapshot.domain.source.units.layout.data,
 			openingId,
-			{ [field]: value } as Parameters<typeof planUpdateWallFirstOpening>[2]
+			{ [field]: value } as Parameters<typeof planUpdateWallFirstOpening>[2],
 		);
 		if (plan.kind === 'rejected') {
 			const baseline = request.snapshot.domain.source.units.layout.data;
@@ -341,10 +455,10 @@ function openingMeasurePlanner(): DomainPlanner<ProjectEnvelope> {
 								offset: opening.offset,
 								width: opening.width,
 								height: opening.height,
-								sillHeight: opening.sillHeight
+								sillHeight: opening.sillHeight,
 							}),
-					[field]: value
-				})
+					[field]: value,
+				}),
 			);
 		}
 		return preparedLayoutCandidate(
@@ -353,7 +467,7 @@ function openingMeasurePlanner(): DomainPlanner<ProjectEnvelope> {
 			{ kind: 'opening', id: openingId },
 			plan.document,
 			[field],
-			{ surfaceLineage: [] }
+			{ surfaceLineage: [] },
 		);
 	});
 }
@@ -370,7 +484,7 @@ function entityNamePlanner(): DomainPlanner<ProjectEnvelope> {
 		) {
 			return rejected(
 				'invalid-value',
-				'A Layout name edit needs one Wall, Opening or Room id and one string name.'
+				'A Layout name edit needs one Wall, Opening or Room id and one string name.',
 			);
 		}
 		const addressed = addressedSubject(request, subjectKind, subjectId);
@@ -391,7 +505,7 @@ function entityNamePlanner(): DomainPlanner<ProjectEnvelope> {
 			{ kind: subjectKind, id: subjectId },
 			plan.document,
 			['name'],
-			{ surfaceLineage: [] }
+			{ surfaceLineage: [] },
 		);
 	});
 }
@@ -409,16 +523,14 @@ function roomOverheadPlanner(): DomainPlanner<ProjectEnvelope> {
 		if (!opaqueId(roomId) || (overhead !== 'closed' && overhead !== 'open-to-sky')) {
 			return rejected(
 				'invalid-value',
-				"A Room overhead edit needs one Room id and either 'closed' or 'open-to-sky'."
+				"A Room overhead edit needs one Room id and either 'closed' or 'open-to-sky'.",
 			);
 		}
 		const addressed = addressedSubject(request, 'room', roomId);
 		if (!addressed.ok) return rejected('invalid-value', addressed.message);
-		const plan = planRoomMetadataUpdate(
-			request.snapshot.domain.source.units.layout.data,
-			roomId,
-			{ overhead }
-		);
+		const plan = planRoomMetadataUpdate(request.snapshot.domain.source.units.layout.data, roomId, {
+			overhead,
+		});
 		if (plan.kind === 'rejected') {
 			return rejected(plan.rejection.code, plan.rejection.message);
 		}
@@ -428,7 +540,7 @@ function roomOverheadPlanner(): DomainPlanner<ProjectEnvelope> {
 			{ kind: 'room', id: roomId },
 			plan.document,
 			['overhead'],
-			{ surfaceLineage: [] }
+			{ surfaceLineage: [] },
 		);
 	});
 }
@@ -451,7 +563,7 @@ function spaceRemovePlanner(): DomainPlanner<ProjectEnvelope> {
 		const plan = planRemoveSpace(
 			request.snapshot.domain.source.units.layout.data,
 			roomId,
-			level.levelId
+			level.levelId,
 		);
 		if (plan.kind === 'rejected') {
 			return rejected(plan.rejection.code, plan.rejection.message);
@@ -462,7 +574,7 @@ function spaceRemovePlanner(): DomainPlanner<ProjectEnvelope> {
 			{ kind: 'room', id: roomId },
 			plan.document,
 			['rooms', 'objects', 'openings', 'junctions'],
-			{ retired: true, surfaceLineage: plan.surfaceLineage }
+			{ retired: true, surfaceLineage: plan.surfaceLineage },
 		);
 	});
 }
@@ -480,7 +592,10 @@ function plinthPlanner(): DomainPlanner<ProjectEnvelope> {
 			point.length !== 2 ||
 			!point.every((value) => typeof value === 'number' && Number.isFinite(value))
 		) {
-			return rejected('invalid-value', 'A plinth placement needs two finite working-plane X/Z meters.');
+			return rejected(
+				'invalid-value',
+				'A plinth placement needs two finite working-plane X/Z meters.',
+			);
 		}
 		if (typeof floorElevation !== 'number' || !Number.isFinite(floorElevation)) {
 			return rejected('invalid-value', 'A plinth placement needs a finite floor datum.');
@@ -491,7 +606,7 @@ function plinthPlanner(): DomainPlanner<ProjectEnvelope> {
 		if (floorElevation !== datumMeters) {
 			return rejected(
 				'stale-datum',
-				`The captured floor datum ${floorElevation} m no longer matches the mounted level datum ${datumMeters} m.`
+				`The captured floor datum ${floorElevation} m no longer matches the mounted level datum ${datumMeters} m.`,
 			);
 		}
 		if (request.intent.targets.length !== 0) {
@@ -503,27 +618,27 @@ function plinthPlanner(): DomainPlanner<ProjectEnvelope> {
 		if (capture === null) {
 			return rejected(
 				'invalid-value',
-				'A plinth placement must capture its identity nonce before evaluation.'
+				'A plinth placement must capture its identity nonce before evaluation.',
 			);
 		}
 		const expectedObjectId = nextLayoutPresetObjectId(
 			request.snapshot.domain.source.units.layout.data,
-			capture
+			capture,
 		);
 		if (expectedObjectId !== objectId) {
 			return rejected(
 				'invalid-value',
-				`The plinth payload names '${objectId}', but this operation's nonce derives '${expectedObjectId}'.`
+				`The plinth payload names '${objectId}', but this operation's nonce derives '${expectedObjectId}'.`,
 			);
 		}
 		if (
 			!request.intent.allocatedIds.some(
-				(allocation) => allocation.kind === 'layout-object' && allocation.id === objectId
+				(allocation) => allocation.kind === 'layout-object' && allocation.id === objectId,
 			)
 		) {
 			return rejected(
 				'invalid-value',
-				'A plinth placement must capture its new layout-object id before evaluation.'
+				'A plinth placement must capture its new layout-object id before evaluation.',
 			);
 		}
 		const level = capturedWorkingLevel(request);
@@ -535,7 +650,7 @@ function plinthPlanner(): DomainPlanner<ProjectEnvelope> {
 			floorElevation,
 			capture,
 			objectId,
-			level.levelId
+			level.levelId,
 		);
 		if (plan.kind === 'rejected') {
 			return rejected(plan.rejection.code, plan.rejection.message);
@@ -546,7 +661,7 @@ function plinthPlanner(): DomainPlanner<ProjectEnvelope> {
 			{ kind: 'object', id: objectId },
 			plan.document,
 			['objects'],
-			{ created: true, id: objectId, surfaceLineage: [] }
+			{ created: true, id: objectId, surfaceLineage: [] },
 		);
 	});
 }
@@ -568,6 +683,6 @@ export function createLayoutPlanners(): readonly DomainPlanner<ProjectEnvelope>[
 		entityNamePlanner(),
 		roomOverheadPlanner(),
 		spaceRemovePlanner(),
-		plinthPlanner()
+		plinthPlanner(),
 	];
 }

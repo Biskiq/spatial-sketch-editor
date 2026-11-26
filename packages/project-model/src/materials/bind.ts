@@ -7,16 +7,12 @@
  * transform actually samples each bound image? A mapping that cannot be
  * satisfied is refused with a code, a path, the role and the target key.
  */
-import {
-	dedupeMaterialIssues,
-	sortMaterialIssues,
-	type MaterialIssue
-} from './issues';
+import { dedupeMaterialIssues, sortMaterialIssues, type MaterialIssue } from './issues';
 import { materialMetricRepeat } from './recipe';
 import {
 	intersectTargetAvailability,
 	targetHasDraws,
-	type AvailabilityIntersection
+	type AvailabilityIntersection,
 } from './target';
 import type {
 	BindingTarget,
@@ -25,7 +21,7 @@ import type {
 	FinishResolution,
 	MapRole,
 	SamplingEntry,
-	TargetFacts
+	TargetFacts,
 } from './types';
 
 const IDENTITY_REPEAT: readonly [number, number] = [1, 1];
@@ -36,14 +32,14 @@ function issue(
 	path: string,
 	action: string,
 	role: MapRole | undefined,
-	target: string | undefined
+	target: string | undefined,
 ): MaterialIssue {
 	return {
 		code,
 		path,
 		...(role === undefined ? {} : { role }),
 		...(target === undefined ? {} : { target }),
-		action
+		action,
 	};
 }
 
@@ -58,7 +54,7 @@ function samplingFor(
 	},
 	facts: TargetFacts,
 	subject: string,
-	issues: MaterialIssue[]
+	issues: MaterialIssue[],
 ): SamplingEntry | null {
 	if (binding.image === null) return null;
 	const mapping = binding.mapping;
@@ -76,7 +72,7 @@ function samplingFor(
 			offset: [mapping.offset[0], mapping.offset[1]],
 			...(binding.convention === undefined ? {} : { convention: binding.convention }),
 			...(binding.component === undefined ? {} : { component: binding.component }),
-			...(binding.invert === undefined ? {} : { invert: binding.invert })
+			...(binding.invert === undefined ? {} : { invert: binding.invert }),
 		};
 	}
 	if (mapping.kind === 'surface' && facts.metricBasis === undefined) {
@@ -86,8 +82,8 @@ function samplingFor(
 				`$.maps.${role}.mapping`,
 				'Use target or uv mapping for this target, or supply a metric basis.',
 				role,
-				subject
-			)
+				subject,
+			),
 		);
 		return null;
 	}
@@ -99,9 +95,7 @@ function samplingFor(
 	// Using the surface span here would multiply the surface in twice on a metre
 	// chart (3.2 m × (3.2 / 0.8) = 12.8 tiles instead of 4).
 	const repeat =
-		basis === undefined
-			? IDENTITY_REPEAT
-			: materialMetricRepeat(basis.uvMeters, metric.tileMeters);
+		basis === undefined ? IDENTITY_REPEAT : materialMetricRepeat(basis.uvMeters, metric.tileMeters);
 	const rotation = basis === undefined ? 0 : metric.rotation;
 	const offset = basis === undefined ? ZERO_OFFSET : metric.offset;
 	return {
@@ -117,14 +111,14 @@ function samplingFor(
 		offset: [offset[0], offset[1]],
 		...(binding.convention === undefined ? {} : { convention: binding.convention }),
 		...(binding.component === undefined ? {} : { component: binding.component }),
-		...(binding.invert === undefined ? {} : { invert: binding.invert })
+		...(binding.invert === undefined ? {} : { invert: binding.invert }),
 	};
 }
 
 function qualifySamples(
 	samples: readonly SamplingEntry[],
 	facts: TargetFacts,
-	subject: string
+	subject: string,
 ): MaterialIssue[] {
 	const issues: MaterialIssue[] = [];
 	for (const draw of facts.draws) {
@@ -137,8 +131,8 @@ function qualifySamples(
 						`$.maps.${sample.role}.mapping`,
 						`Provide UV${sample.uvSet} on this draw or choose a mapping it supports.`,
 						sample.role,
-						target
-					)
+						target,
+					),
 				);
 				continue;
 			}
@@ -149,8 +143,8 @@ function qualifySamples(
 						`$.maps.${sample.role}.mapping`,
 						'Provide a non-singular UV frame on this draw or remove the normal map.',
 						sample.role,
-						target
-					)
+						target,
+					),
 				);
 			}
 		}
@@ -165,10 +159,7 @@ function qualifySamples(
  * `inputs` is still returned so inspection can show the authored values and the
  * corrective actions.
  */
-export function bindFinish(
-	resolution: FinishResolution,
-	target: BindingTarget
-): FinishBinding {
+export function bindFinish(resolution: FinishResolution, target: BindingTarget): FinishBinding {
 	const issues: MaterialIssue[] = [...resolution.issues];
 	const inputs = resolution.inputs;
 	if (inputs === null) {
@@ -182,8 +173,8 @@ export function bindFinish(
 				'$.target',
 				'Derive target facts for the exact geometry revision, then requalify.',
 				undefined,
-				target.subject
-			)
+				target.subject,
+			),
 		);
 		return { inputs, bound: null, issues: sortMaterialIssues(issues) };
 	}
@@ -197,8 +188,8 @@ export function bindFinish(
 				'$.target.geometryRevision',
 				`Recompute target facts for revision ${target.expectedGeometryRevision}.`,
 				undefined,
-				`${target.subject}@${facts.geometryRevision}`
-			)
+				`${target.subject}@${facts.geometryRevision}`,
+			),
 		);
 		return { inputs, bound: null, issues: sortMaterialIssues(issues) };
 	}
@@ -209,8 +200,8 @@ export function bindFinish(
 				'$.target.draws',
 				'Derive target facts with at least one active draw, then requalify.',
 				undefined,
-				target.subject
-			)
+				target.subject,
+			),
 		);
 		return { inputs, bound: null, issues: sortMaterialIssues(issues) };
 	}
@@ -223,8 +214,8 @@ export function bindFinish(
 					'$.target.draws',
 					'Repair the malformed indices, groups or position array, then requalify.',
 					undefined,
-					`${target.subject}#${draw.drawKey}`
-				)
+					`${target.subject}#${draw.drawKey}`,
+				),
 			);
 		}
 		return { inputs, bound: null, issues: sortMaterialIssues(issues) };
@@ -245,7 +236,7 @@ export function bindFinish(
 		subject: target.subject,
 		geometryRevision: facts.geometryRevision,
 		samples,
-		draws: facts.draws.map((draw) => draw.drawKey)
+		draws: facts.draws.map((draw) => draw.drawKey),
 	};
 	return { inputs, bound, issues: [] };
 }
@@ -272,7 +263,7 @@ export type AcrossTargetsQualification = {
  */
 export function qualifyAcrossTargets(
 	resolution: FinishResolution,
-	targets: readonly BindingTarget[]
+	targets: readonly BindingTarget[],
 ): AcrossTargetsQualification {
 	const issues: MaterialIssue[] = [...resolution.issues];
 	const perTarget: TargetQualification[] = [];
@@ -288,6 +279,6 @@ export function qualifyAcrossTargets(
 		inputs: resolution.inputs,
 		common: intersectTargetAvailability(facts),
 		issues: dedupeMaterialIssues(issues),
-		perTarget
+		perTarget,
 	};
 }

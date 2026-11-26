@@ -1,12 +1,11 @@
 {
-  "id": "43-surface-finish-duplicate",
-  "area": "codec",
-  "citation": "section 5 rule 7 — comments state the current contract",
-  "title": "Two Finish assignments for one surface are silently accepted",
-  "file": "packages/project-model/src/units/validate/scene.ts",
-  "find": "reader.problem(`${path}.surface`, 'duplicate_surface_finish', `Surface \"${key}\" has more than one Finish assignment`);",
-  "replace": "reader.problem(`${path}.surface`, 'duplicate-identity', `Surface \"${key}\" has more than one Finish assignment`);",
-  "tests": [
-    "tests/lib/project-model/scene-look-schema.test.ts"
-  ]
+	"id": "43-surface-finish-duplicate",
+	"area": "codec",
+	"citation": "section 5 rule 7 \u2014 comments state the current contract",
+	"title": "A duplicate surface Finish reports the wrong refusal code",
+	"file": "packages/project-model/src/units/validate/scene.ts",
+	"find": "'duplicate_surface_finish',",
+	"replace": "'duplicate-identity',",
+	"tests": ["packages/project-model/tests/scene-look-codec.test.ts"],
+	"root": "repo"
 }

@@ -1,11 +1,18 @@
 import { prepareClosedCircleProposal } from '@portfolio/layout-core/room';
-import { prepareWallBend, proposeWallKnotRemoval, validateWallFirstOpeningSubset, type LayoutWallCenterline, wallCenterlineSamples, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import {
+	prepareWallBend,
+	proposeWallKnotRemoval,
+	validateWallFirstOpeningSubset,
+	type LayoutWallCenterline,
+	wallCenterlineSamples,
+	type LayoutDocumentWallFirst,
+} from '@portfolio/layout-core/wall';
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 import {
 	type StageAdapterContext,
 	type StageCardActionOutcome,
-	type StagePointerIntent
+	type StagePointerIntent,
 } from '$lib/authoring/stage/stage-adapter-host';
 import { stageLayout, stageUnitRevision } from '$lib/authoring/stage/stage-adapter-host';
 import type { GestureAcquisition } from '$lib/authoring/stage/stage-adapter-host';
@@ -15,7 +22,13 @@ import { WALL_UNFOLD_SHAPE_REFUSAL } from '$lib/layout/wall-unfold';
 import { wallRefusalWords } from './refusals';
 import { circleRadiusIntent, circleTranslateIntent } from './drawing-planners';
 import { pointerDatumPoint } from './stage-pointer';
-import { curvedWallPointAt, previewWallKnotDelete, wallStationAtPoint, wallStationNearPoint, type OpenWallFrame } from './precision-frames';
+import {
+	curvedWallPointAt,
+	previewWallKnotDelete,
+	wallStationAtPoint,
+	wallStationNearPoint,
+	type OpenWallFrame,
+} from './precision-frames';
 import { wallBendIntent, wallKnotDeleteIntent } from './precision-intents';
 import { candidatePreviewOf } from './candidate-preview';
 import { selectedClosedWall, selectedOpenWall, selectedCurvedWall } from './layout-subjects';
@@ -24,7 +37,7 @@ import {
 	isPointerDrag,
 	previewCoordinates,
 	wallProposalPaper,
-	type LayoutManipulationPorts
+	type LayoutManipulationPorts,
 } from './manipulation-support';
 import { type LayoutSessionPorts } from './session-ports';
 
@@ -68,7 +81,10 @@ const BEND_BODY_TOLERANCE_METERS = 0.35;
 const REMOVE_ENTER_METERS = 0.12;
 /** It must leave this wider zone once before removal can arm; the hysteresis stops flicker. */
 const REMOVE_LEAVE_METERS = 0.3;
-type PreparedCircleProposal = Extract<ReturnType<typeof prepareClosedCircleProposal>, { kind: 'prepared' }>;
+type PreparedCircleProposal = Extract<
+	ReturnType<typeof prepareClosedCircleProposal>,
+	{ kind: 'prepared' }
+>;
 
 export function createCurveGestureSession({
 	services,
@@ -76,7 +92,7 @@ export function createCurveGestureSession({
 	contentRevision,
 	publishRefusal,
 	settleRefusal,
-	candidatePaper
+	candidatePaper,
 }: LayoutManipulationPorts & Pick<LayoutSessionPorts, 'candidatePaper'>) {
 	/**
 	 * Hover discovery for the selected Wall's Bend writer. It names the span
@@ -135,7 +151,8 @@ export function createCurveGestureSession({
 	function endBendGesture(): void {
 		const current = bendGesture;
 		bendGesture = null;
-		if (current?.lease?.kind === 'granted' && current.lease.lease.active) current.lease.lease.release();
+		if (current?.lease?.kind === 'granted' && current.lease.lease.active)
+			current.lease.lease.release();
 	}
 
 	/**
@@ -156,8 +173,8 @@ export function createCurveGestureSession({
 				projectId: snapshot.acceptedRevision.projectId,
 				revisionId: services.authoring.acceptedRevision().revisionId,
 				contentRevision: stageUnitRevision(snapshot, 'layout'),
-				levelId: snapshot.domain.layoutLevelId
-			})
+				levelId: snapshot.domain.layoutLevelId,
+			}),
 		);
 		if (outcome.kind === 'refused') return { kind: 'refused', message: outcome.message };
 		if (activeKnot?.wallId === wallId && activeKnot.knotId === knotId) activeKnot = null;
@@ -176,12 +193,12 @@ export function createCurveGestureSession({
 			projectId: snapshot.acceptedRevision.projectId,
 			revisionId: current.revision,
 			contentRevision,
-			levelId: snapshot.domain.layoutLevelId
+			levelId: snapshot.domain.layoutLevelId,
 		};
 		const intent = current.intent;
 		if (!current.removal && intent === null) return;
 		const outcome = await services.authoring.accept(
-			current.removal ? wallKnotDeleteIntent(target) : wallBendIntent({ ...target, ...intent! })
+			current.removal ? wallKnotDeleteIntent(target) : wallBendIntent({ ...target, ...intent! }),
 		);
 		if (
 			outcome.kind === 'refused' &&
@@ -194,7 +211,7 @@ export function createCurveGestureSession({
 				text:
 					outcome.code === 'planner-rejected'
 						? outcome.message
-						: wallRefusalWords(outcome.code, outcome.message)
+						: wallRefusalWords(outcome.code, outcome.message),
 			});
 			services.stage.notifySurfaceChange();
 		}
@@ -207,14 +224,17 @@ export function createCurveGestureSession({
 	 */
 	function circleRadiusPointer(
 		intent: StagePointerIntent,
-		adapterContext: StageAdapterContext
+		adapterContext: StageAdapterContext,
 	): boolean {
 		const active = circleRadiusGesture;
 		if (active === null) {
 			if (intent.phase !== 'down' || intent.handleId !== 'layout-circle-radius-mark') return false;
 			const selected = selectedClosedWall(adapterContext);
 			if (selected === null) return false;
-			const proposal = prepareClosedCircleProposal(stageLayout(adapterContext.snapshot), selected.wallId);
+			const proposal = prepareClosedCircleProposal(
+				stageLayout(adapterContext.snapshot),
+				selected.wallId,
+			);
 			if (proposal.kind === 'rejected') {
 				publishRefusal(proposal.rejection.message);
 				return false;
@@ -222,10 +242,12 @@ export function createCurveGestureSession({
 			const acquisition = services.stage.acquireGesture({
 				owner: 'layout-circle-radius',
 				evaluationId: intent.evaluationId,
-				policy: 'cancel-on-reading-change'
+				policy: 'cancel-on-reading-change',
 			});
 			if (acquisition.kind !== 'granted') {
-				publishRefusal(`The ${acquisition.owner} gesture owns the pointer; finish or cancel it first.`);
+				publishRefusal(
+					`The ${acquisition.owner} gesture owns the pointer; finish or cancel it first.`,
+				);
 				return false;
 			}
 			circleRadiusGesture = {
@@ -237,7 +259,7 @@ export function createCurveGestureSession({
 				center: selected.center,
 				preview: null,
 				radius: null,
-				refusal: null
+				refusal: null,
 			};
 			services.stage.notifySurfaceChange();
 			return true;
@@ -273,19 +295,21 @@ export function createCurveGestureSession({
 		endCircleRadius();
 		if (radius !== null) {
 			const snapshot = services.stage.snapshot();
-			void services.authoring.accept(
-				circleRadiusIntent({
-					wallId,
-					radius,
-					operationId: globalThis.crypto.randomUUID(),
-					projectId: snapshot.acceptedRevision.projectId,
-					revisionId: services.authoring.acceptedRevision().revisionId,
-					contentRevision: stageUnitRevision(snapshot, 'layout'),
-					levelId: snapshot.domain.layoutLevelId
-				})
-			).then((outcome) => {
-				if (outcome.kind === 'refused') publishRefusal(outcome.message);
-			});
+			void services.authoring
+				.accept(
+					circleRadiusIntent({
+						wallId,
+						radius,
+						operationId: globalThis.crypto.randomUUID(),
+						projectId: snapshot.acceptedRevision.projectId,
+						revisionId: services.authoring.acceptedRevision().revisionId,
+						contentRevision: stageUnitRevision(snapshot, 'layout'),
+						levelId: snapshot.domain.layoutLevelId,
+					}),
+				)
+				.then((outcome) => {
+					if (outcome.kind === 'refused') publishRefusal(outcome.message);
+				});
 		}
 		services.stage.notifySurfaceChange();
 		return true;
@@ -301,7 +325,7 @@ export function createCurveGestureSession({
 	 */
 	function circleTranslatePointer(
 		intent: StagePointerIntent,
-		adapterContext: StageAdapterContext
+		adapterContext: StageAdapterContext,
 	): boolean {
 		const active = circleTranslateGesture;
 		if (active === null) {
@@ -318,7 +342,7 @@ export function createCurveGestureSession({
 				evaluationId: intent.evaluationId,
 				purpose: 'select',
 				tool: null,
-				...(intent.coarse === undefined ? {} : { coarse: intent.coarse })
+				...(intent.coarse === undefined ? {} : { coarse: intent.coarse }),
 			});
 			if (
 				picked.kind !== 'resolved' ||
@@ -328,7 +352,10 @@ export function createCurveGestureSession({
 				return false;
 			const point = pointerDatumPoint(adapterContext, intent.css);
 			if (point === null) return false;
-			const proposal = prepareClosedCircleProposal(stageLayout(adapterContext.snapshot), selected.wallId);
+			const proposal = prepareClosedCircleProposal(
+				stageLayout(adapterContext.snapshot),
+				selected.wallId,
+			);
 			if (proposal.kind === 'rejected') {
 				publishRefusal(proposal.rejection.message);
 				return false;
@@ -336,10 +363,12 @@ export function createCurveGestureSession({
 			const acquisition = services.stage.acquireGesture({
 				owner: 'layout-circle-move',
 				evaluationId: intent.evaluationId,
-				policy: 'cancel-on-reading-change'
+				policy: 'cancel-on-reading-change',
 			});
 			if (acquisition.kind !== 'granted') {
-				publishRefusal(`The ${acquisition.owner} gesture owns the pointer; finish or cancel it first.`);
+				publishRefusal(
+					`The ${acquisition.owner} gesture owns the pointer; finish or cancel it first.`,
+				);
 				return false;
 			}
 			circleTranslateGesture = {
@@ -350,7 +379,7 @@ export function createCurveGestureSession({
 				pressPoint: [point[0], point[1]],
 				preview: null,
 				delta: null,
-				refusal: null
+				refusal: null,
 			};
 			services.stage.notifySurfaceChange();
 			return true;
@@ -395,26 +424,28 @@ export function createCurveGestureSession({
 			// the preview ran. The straight `layout-wall-move` planner is not used:
 			// a self-connected Wall has no endpoint chord to solve.
 			const snapshot = services.stage.snapshot();
-			void services.authoring.accept(
-				circleTranslateIntent({
-					wallId,
-					delta,
-					operationId: globalThis.crypto.randomUUID(),
-					projectId: snapshot.acceptedRevision.projectId,
-					revisionId: services.authoring.acceptedRevision().revisionId,
-					contentRevision: stageUnitRevision(snapshot, 'layout'),
-					levelId: snapshot.domain.layoutLevelId
-				})
-			).then((outcome) => {
-				if (outcome.kind === 'refused') publishRefusal(outcome.message);
-			});
+			void services.authoring
+				.accept(
+					circleTranslateIntent({
+						wallId,
+						delta,
+						operationId: globalThis.crypto.randomUUID(),
+						projectId: snapshot.acceptedRevision.projectId,
+						revisionId: services.authoring.acceptedRevision().revisionId,
+						contentRevision: stageUnitRevision(snapshot, 'layout'),
+						levelId: snapshot.domain.layoutLevelId,
+					}),
+				)
+				.then((outcome) => {
+					if (outcome.kind === 'refused') publishRefusal(outcome.message);
+				});
 		}
 		services.stage.notifySurfaceChange();
 		return true;
 	}
 
 	/**
-	 * The Bend sub-machine, driven through the same `pointer()` entry as
+	 * The Bend sub-machine, driven through the same `pointer` entry as
 	 * every other captured gesture. A press on the body captures one station
 	 * and one knot id; a move previews through the retained planner; the up
 	 * commits exactly once. The rigid move mark never enters this path.
@@ -422,7 +453,7 @@ export function createCurveGestureSession({
 	function bendPointer(
 		intent: StagePointerIntent,
 		adapterContext: StageAdapterContext,
-		blocked: boolean
+		blocked: boolean,
 	): boolean {
 		const active = bendGesture;
 		if (active === null) {
@@ -462,7 +493,7 @@ export function createCurveGestureSession({
 					evaluationId: intent.evaluationId,
 					purpose: 'select',
 					tool: null,
-					...(intent.coarse === undefined ? {} : { coarse: intent.coarse })
+					...(intent.coarse === undefined ? {} : { coarse: intent.coarse }),
 				});
 				if (
 					picked.kind !== 'resolved' ||
@@ -480,24 +511,25 @@ export function createCurveGestureSession({
 							const projected = adapterContext.project([
 								candidate.point[0],
 								adapterContext.snapshot.domain.datumMeters,
-								candidate.point[1]
+								candidate.point[1],
 							]);
 							return (
 								projected !== null &&
 								Math.hypot(
 									projected[0] - adapterContext.evaluation.rect.left - intent.css[0],
-									projected[1] - adapterContext.evaluation.rect.top - intent.css[1]
+									projected[1] - adapterContext.evaluation.rect.top - intent.css[1],
 								) <= 10
 							);
 						})
 					: undefined;
 			// A plain body press within the hidden knot's 10 px promotion radius
 			// activates/edits that knot; anywhere else it is the rigid move.
-			if (effectiveHandle === undefined && nearestKnot === undefined && !shapeModifier) return false;
+			if (effectiveHandle === undefined && nearestKnot === undefined && !shapeModifier)
+				return false;
 			const knot =
 				resolvedKnotMark && source.centerline.kind !== 'line'
 					? source.centerline.knots.find(
-							(candidate) => candidate.id === effectiveHandle!.slice('layout-wall-knot:'.length)
+							(candidate) => candidate.id === effectiveHandle!.slice('layout-wall-knot:'.length),
 						)
 					: nearestKnot;
 			if (resolvedKnotMark && knot === undefined) return false;
@@ -508,7 +540,7 @@ export function createCurveGestureSession({
 							document,
 							selected.wallId,
 							[press[0], press[1]],
-							BEND_BODY_TOLERANCE_METERS
+							BEND_BODY_TOLERANCE_METERS,
 						)
 					: wallStationAtPoint(document, selected.wallId, [knot.point[0], knot.point[1]]);
 			if (distance === null || !(distance > 0) || distance >= selected.frame.length) return false;
@@ -518,7 +550,7 @@ export function createCurveGestureSession({
 			const acquisition = services.stage.acquireGesture({
 				owner: 'layout-bend',
 				evaluationId: intent.evaluationId,
-				policy: 'cancel-on-reading-change'
+				policy: 'cancel-on-reading-change',
 			});
 			if (acquisition.kind !== 'granted') return false;
 			const removal =
@@ -526,17 +558,17 @@ export function createCurveGestureSession({
 			const knots = source.centerline.kind === 'cubic-chain' ? source.centerline.knots : [];
 			const knotIndex = knots.findIndex((entry) => entry.id === knotId);
 			const openings = document.openings.flatMap((opening, index) =>
-				opening.wallId === selected.wallId ? [{ opening, index }] : []
+				opening.wallId === selected.wallId ? [{ opening, index }] : [],
 			);
 			const pointById = new Map([
 				[source.startJunctionId, selected.frame.start],
-				[source.endJunctionId, selected.frame.end]
+				[source.endJunctionId, selected.frame.end],
 			]);
 			const openingRefusal = (centerline: LayoutWallCenterline): string | null => {
 				if (openings.length === 0) return null;
 				const [issue] = validateWallFirstOpeningSubset(document, openings, {
 					pointById,
-					wallById: new Map([[source.id, { ...source, centerline }]])
+					wallById: new Map([[source.id, { ...source, centerline }]]),
 				});
 				return issue ? wallRefusalWords(issue.code, issue.message) : null;
 			};
@@ -546,7 +578,7 @@ export function createCurveGestureSession({
 							{ id: selected.wallId, centerline: removal.centerline },
 							removal.start,
 							removal.end,
-							'forward'
+							'forward',
 						)
 					: undefined;
 			settleRefusal(null);
@@ -572,17 +604,17 @@ export function createCurveGestureSession({
 						? null
 						: [
 								knots[knotIndex - 1]?.point ?? selected.frame.start,
-								knots[knotIndex + 1]?.point ?? selected.frame.end
+								knots[knotIndex + 1]?.point ?? selected.frame.end,
 							],
 				intent: null,
 				previewPoints: null,
 				removal: false,
 				leftRemovalZone: false,
 				attemptPoints: selected.frame.samples.map(
-					(sample) => [sample.point[0], sample.point[1]] as LayoutVec2
+					(sample) => [sample.point[0], sample.point[1]] as LayoutVec2,
 				),
 				attemptPoint: null,
-				refusal: null
+				refusal: null,
 			};
 			services.stage.notifySurfaceChange();
 			return true;
@@ -611,14 +643,23 @@ export function createCurveGestureSession({
 			}
 			const point = pointerDatumPoint(adapterContext, intent.css);
 			if (point === null) return true;
-			const attempted: LayoutVec2 = [point[0] + active.grabOffset[0], point[1] + active.grabOffset[1]];
+			const attempted: LayoutVec2 = [
+				point[0] + active.grabOffset[0],
+				point[1] + active.grabOffset[1],
+			];
 			const attemptPoints = active.frame.samples.map(
-				(sample) => [sample.point[0], sample.point[1]] as LayoutVec2
+				(sample) => [sample.point[0], sample.point[1]] as LayoutVec2,
 			);
-			const insertAt = active.frame.samples.findIndex((sample) => sample.distance >= active.distance);
+			const insertAt = active.frame.samples.findIndex(
+				(sample) => sample.distance >= active.distance,
+			);
 			if (active.existingKnot && insertAt >= 0) attemptPoints[insertAt] = attempted;
 			else
-				attemptPoints.splice(Math.max(1, insertAt < 0 ? attemptPoints.length : insertAt), 0, attempted);
+				attemptPoints.splice(
+					Math.max(1, insertAt < 0 ? attemptPoints.length : insertAt),
+					0,
+					attempted,
+				);
 			active.attemptPoints = attemptPoints;
 			active.attemptPoint = attempted;
 			// A held existing knot that comes back onto its neighbours' chord is
@@ -639,14 +680,15 @@ export function createCurveGestureSession({
 							{ id: active.wallId, centerline: proposal.centerline },
 							shape.start,
 							shape.end,
-							'forward'
+							'forward',
 						)
 					: undefined;
 			const points = active.removal
 				? active.removedPoints
 				: samples?.samples.map((sample) => sample.point);
 			active.previewPoints = points ?? null;
-			active.intent = active.removal || !points ? null : { distance: active.distance, point: attempted };
+			active.intent =
+				active.removal || !points ? null : { distance: active.distance, point: attempted };
 			const openingIssue = active.removal
 				? active.removalRefusal
 				: proposal.kind === 'proposed'
@@ -665,7 +707,8 @@ export function createCurveGestureSession({
 		// up: one captured gesture is at most one accepted command.
 		const current = bendGesture;
 		bendGesture = null;
-		if (current?.lease?.kind === 'granted' && current.lease.lease.active) current.lease.lease.release();
+		if (current?.lease?.kind === 'granted' && current.lease.lease.active)
+			current.lease.lease.release();
 		// The knot a gesture created or edited stays named after release,
 		// including a brand-new knot, until Escape or a different selection.
 		if (current !== null && current.removal) {
@@ -699,7 +742,7 @@ export function createCurveGestureSession({
 	function updateIdleBendHover(
 		intent: StagePointerIntent,
 		adapterContext: StageAdapterContext,
-		blocked: boolean
+		blocked: boolean,
 	): boolean {
 		const previous = idleBendHint;
 		const clear = (): false => {
@@ -725,9 +768,10 @@ export function createCurveGestureSession({
 			document,
 			selected.wallId,
 			[point[0], point[1]],
-			BEND_BODY_TOLERANCE_METERS
+			BEND_BODY_TOLERANCE_METERS,
 		);
-		if (station === null || !(station > 0.02) || station >= selected.frame.length - 0.02) return clear();
+		if (station === null || !(station > 0.02) || station >= selected.frame.length - 0.02)
+			return clear();
 		const source = document.walls.find((candidate) => candidate.id === selected.wallId);
 		if (source === undefined) return clear();
 		const boundaries = [0];
@@ -735,7 +779,7 @@ export function createCurveGestureSession({
 			for (const knot of source.centerline.knots) {
 				const knotStation = wallStationAtPoint(document, selected.wallId, [
 					knot.point[0],
-					knot.point[1]
+					knot.point[1],
 				]);
 				if (
 					knotStation !== null &&
@@ -763,7 +807,7 @@ export function createCurveGestureSession({
 		const next = {
 			wallId: selected.wallId,
 			point: [at[0], at[1]] as LayoutVec2,
-			station: (from + to) / 2
+			station: (from + to) / 2,
 		};
 		idleBendHint = next;
 		if (
@@ -785,7 +829,7 @@ export function createCurveGestureSession({
 				activeCircleRadius.preview,
 				y,
 				new Set([activeCircleRadius.wallId]),
-				new Set()
+				new Set(),
 			);
 			if (built !== null) {
 				return [
@@ -793,8 +837,8 @@ export function createCurveGestureSession({
 						id: 'layout-candidate-circle-radius',
 						role: 'subject',
 						geometry: built.paper.subject,
-						snap: undefined
-					})
+						snap: undefined,
+					}),
 				];
 			}
 		}
@@ -805,7 +849,7 @@ export function createCurveGestureSession({
 				activeCircleTranslate.preview,
 				y,
 				new Set([activeCircleTranslate.wallId]),
-				new Set()
+				new Set(),
 			);
 			if (built !== null) {
 				return [
@@ -813,8 +857,8 @@ export function createCurveGestureSession({
 						id: 'layout-candidate-circle-translate',
 						role: 'subject',
 						geometry: built.paper.subject,
-						snap: undefined
-					})
+						snap: undefined,
+					}),
 				];
 			}
 		}
@@ -825,22 +869,24 @@ export function createCurveGestureSession({
 			if (activeBend.previewPoints !== null && activeBend.refusal === null) {
 				return [
 					candidatePreviewOf({
-						id: activeBend.removal ? 'layout-candidate-wall-bend-remove' : 'layout-candidate-wall-bend',
+						id: activeBend.removal
+							? 'layout-candidate-wall-bend-remove'
+							: 'layout-candidate-wall-bend',
 						role: 'subject',
 						geometry: wallProposalPaper(
 							[{ wallId: activeBend.wallId, points: [...activeBend.previewPoints] }],
-							y
+							y,
 						),
 						...(activeBend.removal
 							? { labels: [{ world: world(activeBend.anchor), text: 'Remove bend point' }] }
-							: {})
-					})
+							: {}),
+					}),
 				];
 			}
 			if (activeBend.attemptPoints.length >= 2) {
 				const geometry = wallProposalPaper(
 					[{ wallId: activeBend.wallId, points: [...activeBend.attemptPoints] }],
-					y
+					y,
 				);
 				return [
 					candidatePreviewOf({
@@ -853,9 +899,9 @@ export function createCurveGestureSession({
 						...(activeBend.refusal === null || activeBend.attemptPoint === null
 							? {}
 							: {
-									labels: [{ world: world(activeBend.attemptPoint), text: activeBend.refusal }]
-								})
-					})
+									labels: [{ world: world(activeBend.attemptPoint), text: activeBend.refusal }],
+								}),
+					}),
 				];
 			}
 			return [];
@@ -873,7 +919,9 @@ export function createCurveGestureSession({
 		const primary = ctx.selectionState().primary;
 		if (
 			activeKnot !== null &&
-			(primary === null || primary.subject.kind !== 'wall' || primary.subject.id !== activeKnot.wallId)
+			(primary === null ||
+				primary.subject.kind !== 'wall' ||
+				primary.subject.id !== activeKnot.wallId)
 		) {
 			activeKnot = null;
 		}
@@ -899,11 +947,14 @@ export function createCurveGestureSession({
 
 	function removeSelectedKnot(wallId: string) {
 		if (wallUnfold.isActive(wallId))
-			return { kind: 'refused', message: WALL_UNFOLD_SHAPE_REFUSAL } satisfies StageCardActionOutcome;
+			return {
+				kind: 'refused',
+				message: WALL_UNFOLD_SHAPE_REFUSAL,
+			} satisfies StageCardActionOutcome;
 		if (activeKnot === null || activeKnot.wallId !== wallId) {
 			return {
 				kind: 'refused',
-				message: 'Select the bend point again before removing it.'
+				message: 'Select the bend point again before removing it.',
 			} satisfies StageCardActionOutcome;
 		}
 		return removeWallKnot(wallId, activeKnot.knotId);
@@ -937,13 +988,13 @@ export function createCurveGestureSession({
 							wallId: bendGesture.wallId,
 							markId: bendGesture.markId,
 							knotId: bendGesture.knotId,
-							refusal: bendGesture.refusal
-						}
+							refusal: bendGesture.refusal,
+						},
 		}),
 		cancel() {
 			endCircleRadius();
 			endCircleTranslate();
 			endBendGesture();
-		}
+		},
 	};
 }

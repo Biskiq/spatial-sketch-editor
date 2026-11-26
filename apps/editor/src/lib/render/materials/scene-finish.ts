@@ -8,7 +8,7 @@
  * 1. the Scene 12 instance is already the v1 Finish grammar;
  * 2. `resolveFinish` applies sparse overrides, palette followers and provenance;
  * 3. `bindFinish` qualifies the target and produces per-role UV sets, transforms
- *    and origins;
+ *  and origins;
  * 4. `finishSamplingPlan` freezes the portable plan;
  * 5. this module assigns the renderer's view keys and URIs.
  *
@@ -33,24 +33,20 @@ import {
 	type MapRole,
 	type MaterialIssue,
 	type ResolvedMaps,
-	type TargetFacts
+	type TargetFacts,
 } from '@portfolio/project-model/materials';
 import { computeTextureRepeat, materialById } from '$lib/content/materials';
 import { countWork } from '@portfolio/layout-core/kernel';
-import type {
-	MaterialDefinition,
-	MaterialId,
-	MaterialTextureSlot
-} from '$lib/types/materials';
+import type { MaterialDefinition, MaterialId, MaterialTextureSlot } from '$lib/types/materials';
 import type { RuntimeScene, SceneTextureAsset } from '@portfolio/project-model/scene';
 import type {
 	FinishSamplingPlanEntry as DescriptorPlanEntry,
 	StandardFinishPlan,
-	StandardMaterialDescriptor
+	StandardMaterialDescriptor,
 } from '$lib/render/resources/material-descriptor';
 import type {
 	SceneFinishViewSource,
-	SceneTextureSpec
+	SceneTextureSpec,
 } from '$lib/render/resources/scene-render-item';
 import { applyTreatment } from './treatment';
 
@@ -59,7 +55,7 @@ const SLOT_ORDER: MaterialTextureSlot[] = [
 	'normalMap',
 	'roughnessMap',
 	'aoMap',
-	'metalnessMap'
+	'metalnessMap',
 ];
 
 const SLOT_FOR_ROLE: Readonly<Record<MapRole, MaterialTextureSlot>> = {
@@ -67,7 +63,7 @@ const SLOT_FOR_ROLE: Readonly<Record<MapRole, MaterialTextureSlot>> = {
 	normal: 'normalMap',
 	roughness: 'roughnessMap',
 	occlusion: 'aoMap',
-	metalness: 'metalnessMap'
+	metalness: 'metalnessMap',
 };
 
 export type LookSource = Pick<RuntimeScene, 'materials' | 'textures' | 'palette' | 'environment'> &
@@ -137,7 +133,10 @@ function djb2(input: string): string {
 	return (hash >>> 0).toString(16).padStart(8, '0').slice(0, 6);
 }
 
-function findTexture(document: LookSource, textureId: string | undefined): SceneTextureAsset | undefined {
+function findTexture(
+	document: LookSource,
+	textureId: string | undefined,
+): SceneTextureAsset | undefined {
 	if (!textureId) return undefined;
 	return document.textures.find((texture) => texture.id === textureId);
 }
@@ -151,16 +150,17 @@ function findTexture(document: LookSource, textureId: string | undefined): Scene
  */
 function sceneImageIndex(document: LookSource, definitionHash?: string): ImageIndex {
 	const allImages = document.materialIndex?.images ?? [];
-	const proofImages = definitionHash === undefined
-		? allImages
-		: (document.materialIndex?.definitionImages.get(definitionHash) ?? []);
+	const proofImages =
+		definitionHash === undefined
+			? allImages
+			: (document.materialIndex?.definitionImages.get(definitionHash) ?? []);
 	// A definition's own mappings win over an unrelated texture with the same
 	// bytes. Overrides may still pin another texture from this Scene, so the full
 	// registry remains a fallback rather than being dropped.
 	return mergeImageIndexes(
 		shippedImageIndex(),
 		materialImageIndex(proofImages),
-		materialImageIndex(allImages)
+		materialImageIndex(allImages),
 	);
 }
 
@@ -170,7 +170,10 @@ function definitionRecipe(document: LookSource, hash: string) {
 }
 
 /** A URI for one resolved image, or null when a local record no longer exists. */
-type ImageRef = { readonly source: import('@portfolio/project-model/materials').LocalImage; readonly hash?: string };
+type ImageRef = {
+	readonly source: import('@portfolio/project-model/materials').LocalImage;
+	readonly hash?: string;
+};
 
 function imageUri(document: LookSource, image: ImageRef): string | null {
 	if ('textureId' in image.source) {
@@ -198,7 +201,7 @@ function viewKey(role: MapRole, image: ImageRef): string {
  */
 function sanitizeInstance(
 	document: LookSource,
-	instance: Finish
+	instance: Finish,
 ): { instance: Finish; dropped: string[] } {
 	const maps = instance.overrides?.maps;
 	if (maps === undefined) return { instance, dropped: [] };
@@ -227,23 +230,25 @@ function sanitizeInstance(
 	}
 	const overrides = pruneOverrides({
 		...instance.overrides,
-		...(Object.keys(kept).length === 0 ? { maps: undefined } : { maps: kept as NonNullable<FinishOverrides['maps']> })
+		...(Object.keys(kept).length === 0
+			? { maps: undefined }
+			: { maps: kept as NonNullable<FinishOverrides['maps']> }),
 	});
 	return {
 		instance: {
 			id: instance.id,
 			name: instance.name,
 			base: instance.base,
-			...(overrides === undefined ? {} : { overrides })
+			...(overrides === undefined ? {} : { overrides }),
 		},
-		dropped
+		dropped,
 	};
 }
 
 function targetFacts(
 	instanceId: string | null,
 	catalogueId: string | null,
-	geometry: SceneFinishGeometry
+	geometry: SceneFinishGeometry,
 ): TargetFacts {
 	const subject = instanceId ?? `catalogue:${catalogueId ?? 'unknown'}`;
 	if (geometry.kind === 'legacy') {
@@ -254,9 +259,9 @@ function targetFacts(
 				{
 					drawKey: 'legacy-draw',
 					uvSets: [...(geometry.uvSets ?? [0])],
-					normalFrameSets: [...(geometry.normalFrameSets ?? geometry.uvSets ?? [0])]
-				}
-			]
+					normalFrameSets: [...(geometry.normalFrameSets ?? geometry.uvSets ?? [0])],
+				},
+			],
 		};
 	}
 	const revision = `metric:${geometry.uvMeters[0]},${geometry.uvMeters[1]}:${geometry.surfaceMeters[0]},${geometry.surfaceMeters[1]}`;
@@ -265,10 +270,10 @@ function targetFacts(
 		geometryRevision: revision,
 		metricBasis: {
 			uvMeters: [geometry.uvMeters[0], geometry.uvMeters[1]],
-			surfaceMeters: [geometry.surfaceMeters[0], geometry.surfaceMeters[1]]
+			surfaceMeters: [geometry.surfaceMeters[0], geometry.surfaceMeters[1]],
 		},
 		// Native metric targets carry UV0 only; UV1 comes from an approved model derivative.
-		draws: [{ drawKey: 'native-draw', uvSets: [0], normalFrameSets: [0] }]
+		draws: [{ drawKey: 'native-draw', uvSets: [0], normalFrameSets: [0] }],
 	};
 }
 
@@ -284,13 +289,13 @@ export function mappingMetric(inputs: BoundInputs): {
 	return {
 		tileMeters: [mapping.metric.tileMeters[0], mapping.metric.tileMeters[1]],
 		rotation: mapping.metric.rotation,
-		offset: [mapping.metric.offset[0], mapping.metric.offset[1]]
+		offset: [mapping.metric.offset[0], mapping.metric.offset[1]],
 	};
 }
 
 function slotUrisFor(
 	document: LookSource,
-	maps: ResolvedMaps
+	maps: ResolvedMaps,
 ): { slotUris: Partial<Record<MaterialTextureSlot, string>>; uris: Map<MapRole, string> } {
 	const slotUris: Partial<Record<MaterialTextureSlot, string>> = {};
 	const uris = new Map<MapRole, string>();
@@ -310,18 +315,20 @@ function legacyVariantSeed(
 	slotUris: Partial<Record<MaterialTextureSlot, string>>,
 	roughness: number,
 	metalness: number,
-	treatment: 'flat-colour' | 'clay' | undefined
+	treatment: 'flat-colour' | 'clay' | undefined,
 ): string {
 	const sortedEntries = SLOT_ORDER.filter((slot) => slotUris[slot] !== undefined)
 		.map((slot) => `${slot}=${slotUris[slot]}`)
 		.join('&');
 	const treatmentSeed = treatment === undefined ? '' : `|${treatment}`;
 	return `v${djb2(
-		`${sortedEntries}|${Math.round(roughness * 1000)}|${Math.round(metalness * 1000)}${treatmentSeed}`
+		`${sortedEntries}|${Math.round(roughness * 1000)}|${Math.round(metalness * 1000)}${treatmentSeed}`,
 	)}`;
 }
 
-function descriptorEntry(entry: ReturnType<typeof finishSamplingPlan>['entries'][number]): DescriptorPlanEntry {
+function descriptorEntry(
+	entry: ReturnType<typeof finishSamplingPlan>['entries'][number],
+): DescriptorPlanEntry {
 	return {
 		role: entry.role,
 		view: viewKey(entry.role, { hash: entry.hash, source: entry.source }),
@@ -332,7 +339,7 @@ function descriptorEntry(entry: ReturnType<typeof finishSamplingPlan>['entries']
 		offset: [entry.offset[0], entry.offset[1]],
 		...(entry.convention === undefined ? {} : { convention: entry.convention }),
 		...(entry.component === undefined ? {} : { component: entry.component }),
-		...(entry.invert === undefined ? {} : { invert: entry.invert })
+		...(entry.invert === undefined ? {} : { invert: entry.invert }),
 	};
 }
 
@@ -347,14 +354,16 @@ function descriptorEntry(entry: ReturnType<typeof finishSamplingPlan>['entries']
 export function sceneFinishFor(
 	document: LookSource,
 	target: ResolveTarget,
-	geometry: SceneFinishGeometry
+	geometry: SceneFinishGeometry,
 ): SceneFinishLook {
 	countWork('material:resolve');
 	const instance = target.materialInstanceId
 		? document.materials.find((material) => material.id === target.materialInstanceId)
 		: undefined;
 	if (target.materialInstanceId && !instance && isDevEnv) {
-		console.warn(`[scene-instance-material] Unknown materialInstanceId: ${target.materialInstanceId}`);
+		console.warn(
+			`[scene-instance-material] Unknown materialInstanceId: ${target.materialInstanceId}`,
+		);
 	}
 	const base = instance?.base;
 	const definitionHash = base !== undefined && 'material' in base ? base.material : null;
@@ -366,7 +375,9 @@ export function sceneFinishFor(
 				? target.fallbackCatalogueId
 				: null;
 	if (catalogueId !== null && !materialById.has(catalogueId)) catalogueId = null;
-	const catalogue: MaterialDefinition | undefined = catalogueId ? materialById.get(catalogueId) : undefined;
+	const catalogue: MaterialDefinition | undefined = catalogueId
+		? materialById.get(catalogueId)
+		: undefined;
 	const fallbackCatalogue = materialById.get(target.fallbackCatalogueId);
 	if (base !== undefined && 'material' in base && baseRecipe === null) {
 		const fallback = applyTreatment(document.environment?.treatment, {
@@ -374,7 +385,7 @@ export function sceneFinishFor(
 			roughness: fallbackCatalogue?.roughness ?? 0.5,
 			metalness: 0,
 			slotUris: {},
-			normalScale: null
+			normalScale: null,
 		});
 		return {
 			catalogue: null,
@@ -383,7 +394,7 @@ export function sceneFinishFor(
 				color: fallback.color,
 				roughness: fallback.roughness,
 				metalness: fallback.metalness,
-				toneMapped: true
+				toneMapped: true,
 			},
 			textures: null,
 			inputs: null,
@@ -391,9 +402,9 @@ export function sceneFinishFor(
 				{
 					code: 'missing-definition',
 					path: '$.base.material',
-					action: 'Re-import the material definition so its recipe and images are available.'
-				}
-			]
+					action: 'Re-import the material definition so its recipe and images are available.',
+				},
+			],
 		};
 	}
 	if (catalogueId === null && baseRecipe === null) {
@@ -402,7 +413,7 @@ export function sceneFinishFor(
 			roughness: fallbackCatalogue?.roughness ?? 0.5,
 			metalness: 0,
 			slotUris: {},
-			normalScale: null
+			normalScale: null,
 		});
 		return {
 			catalogue: null,
@@ -411,7 +422,7 @@ export function sceneFinishFor(
 				color: fallback.color,
 				roughness: fallback.roughness,
 				metalness: fallback.metalness,
-				toneMapped: true
+				toneMapped: true,
 			},
 			textures: null,
 			inputs: null,
@@ -419,28 +430,29 @@ export function sceneFinishFor(
 				{
 					code: 'unknown-catalogue-base',
 					path: '$.base.catalogue',
-					action: 'Use an admitted catalogue base.'
-				}
-			]
+					action: 'Use an admitted catalogue base.',
+				},
+			],
 		};
 	}
 
 	const issues: MaterialIssue[] = [];
 	const sanitized = instance === undefined ? undefined : sanitizeInstance(document, instance);
 	const source = sanitized?.instance ?? instance;
-	const resolution = baseRecipe !== null
-		? resolveFinish(
-				{ material: baseRecipe },
-				source?.overrides,
-				document.palette,
-				sceneImageIndex(document, definitionHash ?? undefined)
-			)
-		: resolveFinish(
-				{ catalogue: catalogue!.id },
-				source?.overrides,
-				document.palette,
-				sceneImageIndex(document)
-			);
+	const resolution =
+		baseRecipe !== null
+			? resolveFinish(
+					{ material: baseRecipe },
+					source?.overrides,
+					document.palette,
+					sceneImageIndex(document, definitionHash ?? undefined),
+				)
+			: resolveFinish(
+					{ catalogue: catalogue!.id },
+					source?.overrides,
+					document.palette,
+					sceneImageIndex(document),
+				);
 	issues.push(...resolution.issues);
 	warnIssues(target.materialInstanceId ?? catalogueId ?? 'material', resolution.issues);
 	const inputs = resolution.inputs;
@@ -450,7 +462,7 @@ export function sceneFinishFor(
 			roughness: catalogue?.roughness ?? fallbackCatalogue?.roughness ?? 0.5,
 			metalness: catalogue?.metalness ?? 0,
 			slotUris: {},
-			normalScale: null
+			normalScale: null,
 		});
 		return {
 			catalogue: catalogueId,
@@ -459,18 +471,21 @@ export function sceneFinishFor(
 				color: fallback.color,
 				roughness: fallback.roughness,
 				metalness: fallback.metalness,
-				toneMapped: true
+				toneMapped: true,
 			},
 			textures: null,
 			inputs: null,
-			issues
+			issues,
 		};
 	}
 
 	const facts = targetFacts(instance?.id ?? null, catalogueId, geometry);
 	const binding = bindFinish(resolution, { subject: facts.subject, facts });
 	issues.push(...binding.issues);
-	warnIssues(target.materialInstanceId ?? catalogue?.id ?? catalogueId ?? 'material', binding.issues);
+	warnIssues(
+		target.materialInstanceId ?? catalogue?.id ?? catalogueId ?? 'material',
+		binding.issues,
+	);
 	const { slotUris, uris } = slotUrisFor(document, inputs.maps);
 	const treatment = document.environment?.treatment;
 
@@ -495,11 +510,12 @@ export function sceneFinishFor(
 					geometry.uvMeters[0] === 1 && geometry.uvMeters[1] === 1
 						? [1, 1]
 						: [geometry.surfaceMeters[0], geometry.surfaceMeters[1]],
-					metric.tileMeters
+					metric.tileMeters,
 				)
 			: [1, 1];
 	const rotation = geometry.kind === 'metric' ? metric.rotation : 0;
-	const offset: [number, number] = geometry.kind === 'metric' ? [metric.offset[0], metric.offset[1]] : [0, 0];
+	const offset: [number, number] =
+		geometry.kind === 'metric' ? [metric.offset[0], metric.offset[1]] : [0, 0];
 
 	const bound = binding.bound;
 	let finish: StandardFinishPlan | undefined;
@@ -523,7 +539,7 @@ export function sceneFinishFor(
 				profile: 'pbr-metallic-roughness/v1',
 				entries,
 				occlusionStrength: inputs.occlusionStrength,
-				normalScale: inputs.normalScale
+				normalScale: inputs.normalScale,
 			};
 			views = [...unique.values()];
 		}
@@ -535,7 +551,7 @@ export function sceneFinishFor(
 			? null
 			: [
 					inputs.normalScale,
-					normalBinding.convention === '-Y' ? -inputs.normalScale : inputs.normalScale
+					normalBinding.convention === '-Y' ? -inputs.normalScale : inputs.normalScale,
 				];
 
 	const descriptor: StandardMaterialDescriptor = {
@@ -545,7 +561,7 @@ export function sceneFinishFor(
 		metalness,
 		toneMapped: true,
 		...(normalScale === null || treatment !== undefined ? {} : { normalScale }),
-		...(finish === undefined ? {} : { finish })
+		...(finish === undefined ? {} : { finish }),
 	};
 
 	// A Treatment is not a textured look: Clay and Flat Colour drop every sample,
@@ -566,7 +582,7 @@ export function sceneFinishFor(
 				repeat: legacyRepeat,
 				rotation,
 				offset,
-				...(views.length === 0 ? {} : { views })
+				...(views.length === 0 ? {} : { views }),
 			}
 		: null;
 
@@ -607,14 +623,14 @@ export function projectSceneLook(look: SceneFinishLook): SceneLook {
 export function sceneLookFor(
 	document: LookSource,
 	target: ResolveTarget,
-	surfaceSize: readonly [number, number]
+	surfaceSize: readonly [number, number],
 ): SceneLook {
 	return projectSceneLook(
 		sceneFinishFor(document, target, {
 			kind: 'metric',
 			uvMeters: [surfaceSize[0], surfaceSize[1]],
-			surfaceMeters: [surfaceSize[0], surfaceSize[1]]
-		})
+			surfaceMeters: [surfaceSize[0], surfaceSize[1]],
+		}),
 	);
 }
 
@@ -623,7 +639,10 @@ export function sceneLookFor(
  * `EffectiveSceneMaterial` caller. The tile is the base metric's unless the
  * instance authored a target mapping.
  */
-function defaultsFor(document: LookSource, target: ResolveTarget): {
+function defaultsFor(
+	document: LookSource,
+	target: ResolveTarget,
+): {
 	tileMeters: [number, number];
 	rotation: number;
 	offset: [number, number];
@@ -631,25 +650,28 @@ function defaultsFor(document: LookSource, target: ResolveTarget): {
 	const instance = target.materialInstanceId
 		? document.materials.find((material) => material.id === target.materialInstanceId)
 		: undefined;
-	const baseRecipe = instance !== undefined && 'material' in instance.base
-		? definitionRecipe(document, instance.base.material)
-		: null;
-	const catalogueId = instance !== undefined && 'catalogue' in instance.base
-		? (instance.base.catalogue as MaterialId)
-		: target.fallbackCatalogueId;
+	const baseRecipe =
+		instance !== undefined && 'material' in instance.base
+			? definitionRecipe(document, instance.base.material)
+			: null;
+	const catalogueId =
+		instance !== undefined && 'catalogue' in instance.base
+			? (instance.base.catalogue as MaterialId)
+			: target.fallbackCatalogueId;
 	const catalogue = materialById.get(catalogueId);
 	const baseMapping = baseRecipe?.mapping;
 	const override = instance?.overrides?.mapping;
-	const metric = override !== undefined && override.kind !== 'uv'
-		? override.metric
-		: baseMapping !== undefined && baseMapping.kind !== 'uv'
-			? baseMapping.metric
-			: undefined;
+	const metric =
+		override !== undefined && override.kind !== 'uv'
+			? override.metric
+			: baseMapping !== undefined && baseMapping.kind !== 'uv'
+				? baseMapping.metric
+				: undefined;
 	const tile = metric?.tileMeters ?? catalogue?.defaultTileSizeMeters ?? [1, 1];
 	return {
 		tileMeters: [tile[0], tile[1]],
 		rotation: metric?.rotation ?? 0,
-		offset: metric ? [metric.offset[0], metric.offset[1]] : [0, 0]
+		offset: metric ? [metric.offset[0], metric.offset[1]] : [0, 0],
 	};
 }
 
@@ -657,11 +679,14 @@ function defaultsFor(document: LookSource, target: ResolveTarget): {
  * The frozen `EffectiveSceneMaterial` reading. It is the scalar/tile projection of
  * the same resolution, kept for callers that need a value rather than a material.
  */
-export function resolveSceneMaterial(document: LookSource, target: ResolveTarget): EffectiveSceneMaterial {
+export function resolveSceneMaterial(
+	document: LookSource,
+	target: ResolveTarget,
+): EffectiveSceneMaterial {
 	const look = sceneFinishFor(document, target, {
 		kind: 'metric',
 		uvMeters: [1, 1],
-		surfaceMeters: [1, 1]
+		surfaceMeters: [1, 1],
 	});
 	const defaults = defaultsFor(document, target);
 	return {
@@ -677,6 +702,6 @@ export function resolveSceneMaterial(document: LookSource, target: ResolveTarget
 			look.material.normalScale === undefined
 				? null
 				: [look.material.normalScale[0], look.material.normalScale[1]],
-		variantSeed: look.textures?.variantSeed ?? `v${djb2(`${defaults.tileMeters.join(',')}`)}`
+		variantSeed: look.textures?.variantSeed ?? `v${djb2(`${defaults.tileMeters.join(',')}`)}`,
 	};
 }

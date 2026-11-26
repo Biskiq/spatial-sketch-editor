@@ -18,7 +18,6 @@ export type WallChainArc = {
 	readonly apex: LayoutVec2;
 };
 
-
 /**
  * The least rise (sagitta) an Arc may carry.
  *
@@ -27,7 +26,6 @@ export type WallChainArc = {
  * This is the one minimum the interaction and the planner share.
  */
 export const MIN_WALL_ARC_RISE = 0.02;
-
 
 /** What an Arc's two endpoints and its bulge point state physically. */
 export type WallArcMeasures = {
@@ -41,7 +39,6 @@ export type WallArcMeasures = {
 	readonly apex: LayoutVec2;
 };
 
-
 /**
  * Measure one drawn Arc exactly from its start, end and bulge point.
  *
@@ -52,7 +49,7 @@ export type WallArcMeasures = {
 export function measureWallArc(
 	start: LayoutVec2,
 	end: LayoutVec2,
-	apex: LayoutVec2
+	apex: LayoutVec2,
 ): WallArcMeasures | null {
 	const dx = end[0] - start[0];
 	const dz = end[1] - start[1];
@@ -72,10 +69,9 @@ export function measureWallArc(
 			magnitude > JUNCTION_COINCIDENCE_EPSILON
 				? (chord * chord) / (8 * magnitude) + magnitude / 2
 				: Number.POSITIVE_INFINITY,
-		apex: [mx + nx * rise, mz + nz * rise]
+		apex: [mx + nx * rise, mz + nz * rise],
 	};
 }
-
 
 /**
  * The canonical centerline one Arc leg commits.
@@ -90,7 +86,7 @@ export function measureWallArc(
 export function wallChainArcCenterline(
 	start: LayoutVec2,
 	end: LayoutVec2,
-	apex: LayoutVec2
+	apex: LayoutVec2,
 ): { readonly centerline: LayoutWall['centerline']; readonly measures: WallArcMeasures } | null {
 	const measures = measureWallArc(start, end, apex);
 	if (measures === null) return null;
@@ -108,23 +104,20 @@ export function wallChainArcCenterline(
 	const turn = Math.sign(rise) * halfAngle;
 	const rotate = (angle: number): LayoutVec2 => [
 		dx * Math.cos(angle) - dz * Math.sin(angle),
-		dx * Math.sin(angle) + dz * Math.cos(angle)
+		dx * Math.sin(angle) + dz * Math.cos(angle),
 	];
 	const startTangent = rotate(turn);
 	const endTangent = rotate(-turn);
 	return {
-		centerline: wallCubicChain([], [
-			{
-				handleOut: [
-					start[0] + startTangent[0] * control,
-					start[1] + startTangent[1] * control
-				],
-				handleIn: [
-					end[0] - endTangent[0] * control,
-					end[1] - endTangent[1] * control
-				]
-			}
-		]),
-		measures
+		centerline: wallCubicChain(
+			[],
+			[
+				{
+					handleOut: [start[0] + startTangent[0] * control, start[1] + startTangent[1] * control],
+					handleIn: [end[0] - endTangent[0] * control, end[1] - endTangent[1] * control],
+				},
+			],
+		),
+		measures,
 	};
 }

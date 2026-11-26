@@ -1,7 +1,7 @@
 /**
  * What an inspection draws: one Finish resolved for one reference geometry.
  *
- * E7's subject is an accepted Finish (curated catalogue base or a project
+ * The inspection subject is an accepted Finish (curated catalogue base or a project
  * Finish at an accepted revision) or a provisional draft that has not been
  * accepted. Every subject goes through the **same** Scene look adapter the
  * product draws with (`sceneFinishFor`), against the reference geometry's own
@@ -10,11 +10,11 @@
  *
  * - A catalogue subject resolves through the shipped index.
  * - An accepted project Finish resolves through the accepted Scene's runtime
- *   material index (D's projection of the resources unit).
+ *  material index (D's projection of the resources unit).
  * - A draft resolves through a **synthetic** look source: its recipe is the one
- *   definition, and each verified source digest becomes a scope-private
- *   `/project-assets/draft-…` texture that only the draft's own memory scope
- *   can load. The draft never enters a project document.
+ *  definition, and each verified source digest becomes a scope-private
+ *  `/project-assets/draft-…` texture that only the draft's own memory scope
+ *  can load. The draft never enters a project document.
  *
  * Treatment is decided by the lighting, not by the subject: reference modes
  * draw Natural (untreated), Current World draws the World's Treatment. Unlit
@@ -25,26 +25,26 @@ import type {
 	Finish,
 	MapRole,
 	MaterialIssue,
-	Recipe
+	Recipe,
 } from '@portfolio/project-model/materials';
 import type { SceneTreatment } from '@portfolio/project-model/scene';
 import type { MaterialId } from '$lib/types/materials';
 import type {
 	FinishSamplingPlanEntry,
-	StandardMaterialDescriptor
+	StandardMaterialDescriptor,
 } from '$lib/render/resources/material-descriptor';
 import type { FinishViewSource } from '$lib/render/resources/finish-views';
 import type { TextureLoadScope } from '$lib/render/resources/texture-store';
 import {
 	createProjectTextureScope,
-	type ProjectTextureScope
+	type ProjectTextureScope,
 } from '$lib/render/resources/project-texture-scope';
 import {
 	sceneFinishFor,
 	type LookSource,
 	type ResolveTarget,
 	type SceneFinishGeometry,
-	type SceneFinishLook
+	type SceneFinishLook,
 } from './scene-finish';
 import { inspectionGeometryFacts, type InspectionGeometryKind } from './inspection-geometry';
 
@@ -121,20 +121,20 @@ export function draftLookSource(draft: InspectionDraft): LookSource {
 		.map((hash) => ({ hash, source: { textureId: draftAssetId(hash) } }));
 	return {
 		materials: [
-			{ id: 'inspection-draft', name: draft.name, base: { material: draft.recipeHash } }
+			{ id: 'inspection-draft', name: draft.name, base: { material: draft.recipeHash } },
 		] as unknown as LookSource['materials'],
 		textures: images.map((image) => ({
 			id: image.source.textureId,
 			name: image.source.textureId,
-			uri: `/project-assets/${image.source.textureId}`
+			uri: `/project-assets/${image.source.textureId}`,
 		})),
 		palette: undefined,
 		environment: undefined,
 		materialIndex: {
 			definitions: new Map([[draft.recipeHash, draft.recipe]]),
 			definitionImages: new Map([[draft.recipeHash, images]]),
-			images
-		}
+			images,
+		},
 	} as LookSource;
 }
 
@@ -150,13 +150,16 @@ export function draftLookSource(draft: InspectionDraft): LookSource {
  * or released source is a refusal, never pixels. Disposal releases every
  * decoded texture and Finish view the scope loaded.
  */
-export function createDraftTextureScope(current: () => InspectionDraft, scopeId: string): ProjectTextureScope {
+export function createDraftTextureScope(
+	current: () => InspectionDraft,
+	scopeId: string,
+): ProjectTextureScope {
 	const initial = [...current().sources.values()];
 	const pins = new Map(
 		initial.map((source) => [
 			draftAssetId(source.hash),
-			{ hash: source.hash, mime: source.mime, size: source.length }
-		])
+			{ hash: source.hash, mime: source.mime, size: source.length },
+		]),
 	);
 	const hashes = new Map(initial.map((source) => [draftAssetId(source.hash), source.hash]));
 	return createProjectTextureScope({
@@ -167,7 +170,7 @@ export function createDraftTextureScope(current: () => InspectionDraft, scopeId:
 			const source = hash === undefined ? undefined : current().sources.get(hash);
 			if (source === undefined) throw new Error('This draft has no such image.');
 			return { bytes: await source.read(signal), mime: source.mime };
-		}
+		},
 	});
 }
 
@@ -177,14 +180,17 @@ function withTreatment(document: LookSource, treatment: SceneTreatment | undefin
 	const next = { ...(current ?? {}) } as Record<string, unknown>;
 	if (treatment === undefined) delete next.treatment;
 	else next.treatment = treatment;
-	return { ...document, environment: Object.keys(next).length === 0 ? undefined : next } as LookSource;
+	return {
+		...document,
+		environment: Object.keys(next).length === 0 ? undefined : next,
+	} as LookSource;
 }
 
 const EMPTY_DOCUMENT: LookSource = {
 	materials: [],
 	textures: [],
 	palette: undefined,
-	environment: undefined
+	environment: undefined,
 } as unknown as LookSource;
 
 function sourceOf(subject: InspectionSubject): {
@@ -193,16 +199,25 @@ function sourceOf(subject: InspectionSubject): {
 } {
 	switch (subject.kind) {
 		case 'catalogue':
-			return { document: EMPTY_DOCUMENT, target: { materialInstanceId: null, fallbackCatalogueId: subject.id } };
+			return {
+				document: EMPTY_DOCUMENT,
+				target: { materialInstanceId: null, fallbackCatalogueId: subject.id },
+			};
 		case 'finish':
 			return {
 				document: subject.document,
-				target: { materialInstanceId: subject.finishId, fallbackCatalogueId: 'plaster-painted' as MaterialId }
+				target: {
+					materialInstanceId: subject.finishId,
+					fallbackCatalogueId: 'plaster-painted' as MaterialId,
+				},
 			};
 		case 'draft':
 			return {
 				document: draftLookSource(subject.draft),
-				target: { materialInstanceId: 'inspection-draft', fallbackCatalogueId: 'plaster-painted' as MaterialId }
+				target: {
+					materialInstanceId: 'inspection-draft',
+					fallbackCatalogueId: 'plaster-painted' as MaterialId,
+				},
 			};
 	}
 }
@@ -241,7 +256,11 @@ export function inspectionRecipeKey(inputs: BoundInputs): string {
 	const maps: Record<string, unknown> = {};
 	for (const role of ['color', 'normal', 'roughness', 'metalness', 'occlusion'] as const) {
 		const binding = inputs.maps[role] as
-			| (BoundInputs['maps'][typeof role] & { convention?: string; component?: string; invert?: boolean })
+			| (BoundInputs['maps'][typeof role] & {
+					convention?: string;
+					component?: string;
+					invert?: boolean;
+			  })
 			| undefined;
 		if (binding === undefined) continue;
 		maps[role] = {
@@ -249,7 +268,7 @@ export function inspectionRecipeKey(inputs: BoundInputs): string {
 			mapping: binding.mapping,
 			convention: binding.convention,
 			component: binding.component,
-			invert: binding.invert
+			invert: binding.invert,
 		};
 	}
 	return canonical({
@@ -260,7 +279,7 @@ export function inspectionRecipeKey(inputs: BoundInputs): string {
 		occlusionStrength: inputs.occlusionStrength,
 		normalScale: inputs.normalScale,
 		mapping: inputs.mapping,
-		maps
+		maps,
 	});
 }
 
@@ -273,19 +292,23 @@ function channelPlan(
 	document: LookSource,
 	target: ResolveTarget,
 	metric: SceneFinishGeometry,
-	look: SceneFinishLook
+	look: SceneFinishLook,
 ): { channels: StandardMaterialDescriptor; views: readonly FinishViewSource[] } {
 	const whole = { channels: look.material, views: look.textures?.views ?? [] };
 	const { inputs } = look;
 	if (inputs === null || look.material.finish !== undefined) return whole;
-	const roles = (Object.keys(inputs.maps) as MapRole[]).filter((role) => inputs.maps[role] !== undefined);
+	const roles = (Object.keys(inputs.maps) as MapRole[]).filter(
+		(role) => inputs.maps[role] !== undefined,
+	);
 	if (roles.length < 2) return whole;
 
 	const id = target.materialInstanceId ?? 'inspection-channels';
-	const instance: Finish = (document.materials.find((material) => material.id === id) as Finish | undefined) ?? {
+	const instance: Finish = (document.materials.find((material) => material.id === id) as
+		| Finish
+		| undefined) ?? {
 		id,
 		name: id,
-		base: { catalogue: target.fallbackCatalogueId }
+		base: { catalogue: target.fallbackCatalogueId },
 	};
 	const entries: FinishSamplingPlanEntry[] = [];
 	const views = new Map<string, FinishViewSource>();
@@ -295,10 +318,12 @@ function channelPlan(
 		const alone = sceneFinishFor(
 			{
 				...document,
-				materials: [{ ...instance, overrides: { ...instance.overrides, maps } }] as unknown as LookSource['materials']
+				materials: [
+					{ ...instance, overrides: { ...instance.overrides, maps } },
+				] as unknown as LookSource['materials'],
 			},
 			{ ...target, materialInstanceId: id },
-			metric
+			metric,
 		);
 		const entry = alone.material.finish?.entries.find((candidate) => candidate.role === role);
 		const view = alone.textures?.views?.find((candidate) => candidate.view === entry?.view);
@@ -311,9 +336,9 @@ function channelPlan(
 	return {
 		channels: {
 			...look.material,
-			finish: { profile: 'pbr-metallic-roughness/v1', entries, occlusionStrength, normalScale }
+			finish: { profile: 'pbr-metallic-roughness/v1', entries, occlusionStrength, normalScale },
 		},
-		views: [...views.values()]
+		views: [...views.values()],
 	};
 }
 
@@ -329,14 +354,17 @@ export function resolveInspectionSubject(
 	geometry: InspectionGeometryKind,
 	treatment?: SceneTreatment,
 	/** A sample tile's window: one UV unit is that many metres (`sampleTileMetricFacts`). */
-	metricFacts?: { readonly uvMeters: readonly [number, number]; readonly surfaceMeters: readonly [number, number] }
+	metricFacts?: {
+		readonly uvMeters: readonly [number, number];
+		readonly surfaceMeters: readonly [number, number];
+	},
 ): ResolvedInspectionSubject {
 	const { document, target } = sourceOf(subject);
 	const facts = metricFacts ?? inspectionGeometryFacts(geometry);
 	const metric = {
 		kind: 'metric' as const,
 		uvMeters: [facts.uvMeters[0], facts.uvMeters[1]] as const,
-		surfaceMeters: [facts.surfaceMeters[0], facts.surfaceMeters[1]] as const
+		surfaceMeters: [facts.surfaceMeters[0], facts.surfaceMeters[1]] as const,
 	};
 	const natural = withTreatment(document, undefined);
 	const untreatedLook = sceneFinishFor(natural, target, metric);
@@ -348,7 +376,7 @@ export function resolveInspectionSubject(
 	const views: FinishViewSource[] = plan.views.map((view) => ({
 		view: view.view,
 		uri: view.uri,
-		role: view.role
+		role: view.role,
 	}));
 	return {
 		lit: litLook.material,
@@ -359,6 +387,6 @@ export function resolveInspectionSubject(
 		issues: untreatedLook.issues,
 		recipeKey: untreatedLook.inputs === null ? null : inspectionRecipeKey(untreatedLook.inputs),
 		reusable: subject.kind !== 'draft',
-		identity: inspectionSubjectIdentity(subject)
+		identity: inspectionSubjectIdentity(subject),
 	};
 }

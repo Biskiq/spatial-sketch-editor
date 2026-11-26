@@ -1,5 +1,5 @@
 /**
- * The canonical **starter gallery** (AM-5): one rectangular enclosure, a real
+ * The canonical **starter gallery**: one rectangular enclosure, a real
  * reconciled Room and floor datum, no Scene objects and no Camera/Experience
  * content.
  *
@@ -20,7 +20,11 @@
  * replacement (an empty boot, a create-only entry, or the creator-confirmed
  * replacement guard).
  */
-import { createEmptyWallFirstLayoutDocument, planWallChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import {
+	createEmptyWallFirstLayoutDocument,
+	planWallChain,
+	type LayoutDocumentWallFirst,
+} from '@portfolio/layout-core/wall';
 import type { LayoutIdCapture } from '@portfolio/layout-core/plan';
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import type { AcceptedRevision } from '@portfolio/project-model/references';
@@ -31,7 +35,7 @@ import {
 	prepareUnitRuntime,
 	skyFromPreset,
 	type CameraFreeSceneDocument,
-	type ProjectEnvelope
+	type ProjectEnvelope,
 } from '@portfolio/project-model/units';
 import { aimThroughWindows } from '../look/aim-through-windows';
 
@@ -53,12 +57,15 @@ export const STARTER_PALETTE: readonly ScenePaletteSlot[] = [
 	{ id: 'chalk', name: 'Chalk', color: '#ece7dc' },
 	{ id: 'sage', name: 'Sage', color: '#9aa58c' },
 	{ id: 'clay', name: 'Clay', color: '#b9775a' },
-	{ id: 'ink', name: 'Ink', color: '#2f3a44' }
+	{ id: 'ink', name: 'Ink', color: '#2f3a44' },
 ];
 
 /** An empty Scene carrying the starter palette, for a new baseline. */
 export function seededSceneDocument(): CameraFreeSceneDocument {
-	return { ...createEmptyUnitSceneDocument(), palette: STARTER_PALETTE.map((slot) => ({ ...slot })) };
+	return {
+		...createEmptyUnitSceneDocument(),
+		palette: STARTER_PALETTE.map((slot) => ({ ...slot })),
+	};
 }
 
 /** The starter enclosure, in project-world XZ meters: a 7 m x 6 m rectangle. */
@@ -66,7 +73,7 @@ export const STARTER_ENCLOSURE_POINTS: readonly LayoutVec2[] = [
 	[0, -4],
 	[7, -4],
 	[7, 2],
-	[0, 2]
+	[0, 2],
 ];
 
 export type StarterTemplate = {
@@ -80,7 +87,7 @@ export type StarterTemplate = {
 	readonly build: (
 		projectId: string,
 		name: string,
-		acceptedRevision: AcceptedRevision
+		acceptedRevision: AcceptedRevision,
 	) => Promise<ProjectEnvelope>;
 };
 
@@ -97,7 +104,7 @@ export function buildStarterEnclosureLayout(): LayoutDocumentWallFirst {
 		points: STARTER_ENCLOSURE_POINTS.map((point) => [point[0], point[1]] as LayoutVec2),
 		close: true,
 		capture: STARTER_TEMPLATE_ID_CAPTURE,
-		levelId: baseline.floor.id
+		levelId: baseline.floor.id,
 	});
 	if (plan.kind !== 'success') {
 		throw new Error(`the canonical starter enclosure no longer plans: ${plan.rejection.code}`);
@@ -108,9 +115,15 @@ export function buildStarterEnclosureLayout(): LayoutDocumentWallFirst {
 async function starterEnvelope(
 	projectId: string,
 	name: string,
-	acceptedRevision: AcceptedRevision
+	acceptedRevision: AcceptedRevision,
 ): Promise<ProjectEnvelope> {
-	const input = { id: projectId, name, acceptedRevision, layout: buildStarterEnclosureLayout(), scene: seededSceneDocument() };
+	const input = {
+		id: projectId,
+		name,
+		acceptedRevision,
+		layout: buildStarterEnclosureLayout(),
+		scene: seededSceneDocument(),
+	};
 	const initial = await createEmptyUnitEnvelope(input);
 	const runtime = prepareUnitRuntime(initial);
 	if (runtime.kind !== 'ready') throw new Error('The starter gallery failed runtime preparation.');
@@ -118,7 +131,7 @@ async function starterEnvelope(
 	if (heading === null || heading === 0) return initial;
 	return createEmptyUnitEnvelope({
 		...input,
-		scene: { ...seededSceneDocument(), environment: { sky: skyFromPreset('studio', heading) } }
+		scene: { ...seededSceneDocument(), environment: { sky: skyFromPreset('studio', heading) } },
 	});
 }
 
@@ -127,8 +140,9 @@ export const STARTER_TEMPLATES: readonly StarterTemplate[] = [
 		id: 'starter-enclosure',
 		label: 'Enclosed room',
 		description: 'One rectangular room with real reconciled walls, floor polygon and datum.',
-		build: (projectId, name, acceptedRevision) => starterEnvelope(projectId, name, acceptedRevision)
-	}
+		build: (projectId, name, acceptedRevision) =>
+			starterEnvelope(projectId, name, acceptedRevision),
+	},
 ];
 
 /** The template the gallery offers first. */

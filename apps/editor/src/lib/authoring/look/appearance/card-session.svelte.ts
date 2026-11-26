@@ -14,14 +14,15 @@ export function createCardSession(input: {
 	let finishCardSelectionKey = '';
 	$effect(() => {
 		const entry = input.selection();
-		const key = entry === null
-			? ''
-			: `${entry.reference.domain}\u0000${entry.reference.subject.kind}\u0000${entry.reference.subject.id}`;
+		const key =
+			entry === null
+				? ''
+				: `${entry.reference.domain}\u0000${entry.reference.subject.kind}\u0000${entry.reference.subject.id}`;
 		if (key === finishCardSelectionKey) return;
 		finishCardSelectionKey = key;
 		// A selection change discards a Card gesture: nothing is written. The
 		// material Editor and the image/repair pickers it opened belong to the old
-		// target and close by their cancel paths (U6 lifecycle); Align follows the
+		// target and close by their cancel paths; Align follows the
 		// Card's open user below.
 		untrack(() => {
 			input.finishes().card.cancel();
@@ -47,11 +48,21 @@ export function createCardSession(input: {
 				const accepted = input.snapshot()?.domain.scene;
 				return accepted === undefined
 					? snapshot.domain.scene
-					: withFinishInstancePreview(accepted, input.draftPreview() ?? input.finishes().card.preview);
+					: withFinishInstancePreview(
+							accepted,
+							input.draftPreview() ?? input.finishes().card.preview,
+						);
 			},
-			get proposals() { return input.finishes().card.proposalEntries(); }
+			get proposals() {
+				return input.finishes().card.proposalEntries();
+			},
 		};
 	}
 
-	return { cancelGesture, cancelCardGesture, canvasKeys, adapter: (): StageFinishCardPort => input.finishes() };
+	return {
+		cancelGesture,
+		cancelCardGesture,
+		canvasKeys,
+		adapter: (): StageFinishCardPort => input.finishes(),
+	};
 }

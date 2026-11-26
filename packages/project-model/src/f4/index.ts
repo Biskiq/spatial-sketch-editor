@@ -39,9 +39,7 @@ export type {
 	RegistrationRefusal,
 } from './prepare';
 
-export {
-	F4_VERSION,
-} from './types';
+export { F4_VERSION } from './types';
 
 export type {
 	AcceptanceRejection,

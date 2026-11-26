@@ -1,7 +1,10 @@
 import type { ViewportEvaluation } from '@portfolio/camera-core/viewport';
 import { lightById, type Light } from '../../adapters/light/light-subjects';
 import type { StageFacade } from '../../stage/stage-facade';
-import type { LightLookThroughCone, LightLookThroughSession } from '../../stage/route/light-look-through.svelte';
+import type {
+	LightLookThroughCone,
+	LightLookThroughSession,
+} from '../../stage/route/light-look-through.svelte';
 import type { LightCoverage } from './light-inspection-view';
 
 export function createLightCoverage(input: {
@@ -25,10 +28,7 @@ export function createLightCoverage(input: {
 			for (const point of points) {
 				const result = stage.projectWorld(point, evaluationId);
 				if (result.kind !== 'projected') return null;
-				projected.push([
-					result.css[0] - current.rect.left,
-					result.css[1] - current.rect.top
-				]);
+				projected.push([result.css[0] - current.rect.left, result.css[1] - current.rect.top]);
 			}
 			return projected;
 		};

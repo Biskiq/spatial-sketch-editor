@@ -16,7 +16,7 @@ import {
 	CAMERA_FOV,
 	type CameraEasing,
 	type SceneConnectionTiming,
-	type Vec3
+	type Vec3,
 } from '../scene';
 import type {
 	CameraFramingEnvelope,
@@ -27,7 +27,7 @@ import type {
 	SceneConnectionViewTracks,
 	SceneNavigationNode,
 	ScenePathAnchor,
-	SceneWaypoint
+	SceneWaypoint,
 } from '../scene';
 import { finishTextureBindings } from '../materials/read';
 import type { SceneDocumentIssue } from './types';
@@ -41,13 +41,13 @@ import {
 	readRequiredString,
 	rejectRoomId,
 	readStringArray,
-	readVec3
+	readVec3,
 } from './readers';
 
 export function parseNode(
 	input: unknown,
 	path: string,
-	issues: SceneDocumentIssue[]
+	issues: SceneDocumentIssue[],
 ): SceneNavigationNode | undefined {
 	if (!isRecord(input)) {
 		addIssue(issues, path, 'invalid_type', 'Expected a navigation node object');
@@ -55,17 +55,9 @@ export function parseNode(
 	}
 	assertAllowedKeys(
 		input,
-		[
-			'id',
-			'roomId',
-			'label',
-			'position',
-			'cameraTarget',
-			'fov',
-			'connectedNodeIds'
-		],
+		['id', 'roomId', 'label', 'position', 'cameraTarget', 'fov', 'connectedNodeIds'],
 		path,
-		issues
+		issues,
 	);
 	const id = readRequiredString(input, 'id', path, issues);
 	rejectRoomId(input, 'roomId', path, issues);
@@ -73,21 +65,18 @@ export function parseNode(
 	const position = readVec3(input.position, `${path}.position`, issues);
 	const cameraTarget = readVec3(input.cameraTarget, `${path}.cameraTarget`, issues);
 	const fov = readRequiredNumber(input, 'fov', path, issues);
-	if (
-		fov !== undefined &&
-		(fov < CAMERA_FOV.min || fov > CAMERA_FOV.max)
-	) {
+	if (fov !== undefined && (fov < CAMERA_FOV.min || fov > CAMERA_FOV.max)) {
 		addIssue(
 			issues,
 			`${path}.fov`,
 			'invalid_fov',
-			`FOV must be between ${CAMERA_FOV.min} and ${CAMERA_FOV.max} degrees`
+			`FOV must be between ${CAMERA_FOV.min} and ${CAMERA_FOV.max} degrees`,
 		);
 	}
 	const connectedNodeIds = readStringArray(
 		input.connectedNodeIds,
 		`${path}.connectedNodeIds`,
-		issues
+		issues,
 	);
 	if (
 		!id ||
@@ -107,14 +96,14 @@ export function parseNode(
 		position,
 		cameraTarget,
 		fov,
-		connectedNodeIds
+		connectedNodeIds,
 	};
 }
 
 function parseWaypoint(
 	input: unknown,
 	path: string,
-	issues: SceneDocumentIssue[]
+	issues: SceneDocumentIssue[],
 ): SceneWaypoint | undefined {
 	if (!isRecord(input)) {
 		addIssue(issues, path, 'invalid_type', 'Expected a waypoint object');
@@ -130,7 +119,7 @@ function parseWaypoint(
 export function parsePathAnchor(
 	input: unknown,
 	path: string,
-	issues: SceneDocumentIssue[]
+	issues: SceneDocumentIssue[],
 ): ScenePathAnchor | undefined {
 	if (!isRecord(input)) {
 		addIssue(issues, path, 'invalid_type', 'Expected a path anchor object');
@@ -147,14 +136,14 @@ export function parsePathAnchor(
 export function parseWaypoints(
 	value: unknown,
 	path: string,
-	issues: SceneDocumentIssue[]
+	issues: SceneDocumentIssue[],
 ): SceneWaypoint[] | undefined {
 	if (!Array.isArray(value)) {
 		addIssue(issues, path, 'invalid_type', 'Expected an array');
 		return undefined;
 	}
 	const parsed = value.map((waypoint, index) =>
-		parseWaypoint(waypoint, `${path}[${index}]`, issues)
+		parseWaypoint(waypoint, `${path}[${index}]`, issues),
 	);
 	return parsed.every((waypoint): waypoint is SceneWaypoint => waypoint !== undefined)
 		? parsed
@@ -165,7 +154,7 @@ export function parseConnectionBase(
 	input: unknown,
 	path: string,
 	issues: SceneDocumentIssue[],
-	allowedKeys: readonly string[]
+	allowedKeys: readonly string[],
 ) {
 	if (!isRecord(input)) {
 		addIssue(issues, path, 'invalid_type', 'Expected a connection object');
@@ -177,11 +166,17 @@ export function parseConnectionBase(
 	const toNodeId = readRequiredString(input, 'toNodeId', path, issues);
 	const clearance = readRequiredNumber(input, 'clearance', path, issues);
 	if (clearance !== undefined && clearance <= 0) {
-		addIssue(issues, `${path}.clearance`, 'invalid_clearance', 'Clearance must be greater than zero');
+		addIssue(
+			issues,
+			`${path}.clearance`,
+			'invalid_clearance',
+			'Clearance must be greater than zero',
+		);
 	}
-	const targetWaypoints = 'targetWaypoints' in input
-		? parseWaypoints(input.targetWaypoints, `${path}.targetWaypoints`, issues)
-		: undefined;
+	const targetWaypoints =
+		'targetWaypoints' in input
+			? parseWaypoints(input.targetWaypoints, `${path}.targetWaypoints`, issues)
+			: undefined;
 	if (
 		!id ||
 		!fromNodeId ||
@@ -198,14 +193,14 @@ export function parseConnectionBase(
 		fromNodeId,
 		toNodeId,
 		clearance,
-		...(targetWaypoints === undefined ? {} : { targetWaypoints })
+		...(targetWaypoints === undefined ? {} : { targetWaypoints }),
 	};
 }
 
 export function parsePositionPath(
 	input: unknown,
 	path: string,
-	issues: SceneDocumentIssue[]
+	issues: SceneDocumentIssue[],
 ): SceneConnection['positionPath'] | undefined {
 	if (!isRecord(input)) {
 		addIssue(issues, path, 'invalid_type', 'Expected a position path object');
@@ -218,7 +213,7 @@ export function parsePositionPath(
 			issues,
 			`${path}.kind`,
 			'invalid_path_kind',
-			`Expected rounded-polyline or auto-bezier, received: ${String(kind)}`
+			`Expected rounded-polyline or auto-bezier, received: ${String(kind)}`,
 		);
 	}
 	if (!Array.isArray(input.anchors)) {
@@ -226,7 +221,7 @@ export function parsePositionPath(
 		return undefined;
 	}
 	const anchors = input.anchors.map((anchor, index) =>
-		parsePathAnchor(anchor, `${path}.anchors[${index}]`, issues)
+		parsePathAnchor(anchor, `${path}.anchors[${index}]`, issues),
 	);
 	if (
 		(kind !== 'rounded-polyline' && kind !== 'auto-bezier') ||
@@ -241,7 +236,7 @@ export function parseViewKeyframe(
 	input: unknown,
 	path: string,
 	issues: SceneDocumentIssue[],
-	options: { allowTiming: boolean }
+	options: { allowTiming: boolean },
 ): SceneCameraViewKeyframe | undefined {
 	if (!isRecord(input)) {
 		addIssue(issues, path, 'invalid_type', 'Expected a camera view keyframe object');
@@ -258,21 +253,18 @@ export function parseViewKeyframe(
 			issues,
 			`${path}.progress`,
 			'invalid_view_progress',
-			'View keyframe progress must be strictly between zero and one'
+			'View keyframe progress must be strictly between zero and one',
 		);
 	}
 	const cameraTarget = readVec3(input.cameraTarget, `${path}.cameraTarget`, issues);
 	rejectRoomId(input, 'roomId', path, issues);
 	const fov = readRequiredNumber(input, 'fov', path, issues);
-	if (
-		fov !== undefined &&
-		(fov < CAMERA_FOV.min || fov > CAMERA_FOV.max)
-	) {
+	if (fov !== undefined && (fov < CAMERA_FOV.min || fov > CAMERA_FOV.max)) {
 		addIssue(
 			issues,
 			`${path}.fov`,
 			'invalid_fov',
-			`FOV must be between ${CAMERA_FOV.min} and ${CAMERA_FOV.max} degrees`
+			`FOV must be between ${CAMERA_FOV.min} and ${CAMERA_FOV.max} degrees`,
 		);
 	}
 	let holdSeconds: number | undefined;
@@ -285,7 +277,7 @@ export function parseViewKeyframe(
 					issues,
 					`${path}.holdSeconds`,
 					'invalid_view_hold_seconds',
-					'View keyframe holdSeconds must be a finite non-negative number'
+					'View keyframe holdSeconds must be a finite non-negative number',
 				);
 				holdSeconds = undefined;
 			}
@@ -312,7 +304,7 @@ export function parseViewKeyframe(
 		cameraTarget,
 		fov,
 		...(holdSeconds === undefined ? {} : { holdSeconds }),
-		...(easing === undefined ? {} : { easing })
+		...(easing === undefined ? {} : { easing }),
 	};
 }
 
@@ -320,18 +312,16 @@ export function parseViewTrack(
 	input: unknown,
 	path: string,
 	issues: SceneDocumentIssue[],
-	options: { allowTiming: boolean }
+	options: { allowTiming: boolean },
 ) {
 	if (!Array.isArray(input)) {
 		addIssue(issues, path, 'invalid_type', 'Expected an array');
 		return undefined;
 	}
 	const parsed = input.map((keyframe, index) =>
-		parseViewKeyframe(keyframe, `${path}[${index}]`, issues, options)
+		parseViewKeyframe(keyframe, `${path}[${index}]`, issues, options),
 	);
-	return parsed.every(
-		(keyframe): keyframe is SceneCameraViewKeyframe => keyframe !== undefined
-	)
+	return parsed.every((keyframe): keyframe is SceneCameraViewKeyframe => keyframe !== undefined)
 		? parsed
 		: undefined;
 }
@@ -340,7 +330,7 @@ export function parseViewTracks(
 	input: unknown,
 	path: string,
 	issues: SceneDocumentIssue[],
-	options: { allowTiming: boolean }
+	options: { allowTiming: boolean },
 ): SceneConnectionViewTracks | undefined {
 	if (!isRecord(input)) {
 		addIssue(issues, path, 'invalid_type', 'Expected a camera view tracks object');
@@ -349,49 +339,48 @@ export function parseViewTracks(
 	assertAllowedKeys(input, ['forward', 'reverse', 'framingEnvelope'], path, issues);
 	const forward = parseViewTrack(input.forward, `${path}.forward`, issues, options);
 	const reverse = parseViewTrack(input.reverse, `${path}.reverse`, issues, options);
-	const framingEnvelope = 'framingEnvelope' in input
-		? parseFramingEnvelopeMap(input.framingEnvelope, `${path}.framingEnvelope`, issues)
-		: undefined;
+	const framingEnvelope =
+		'framingEnvelope' in input
+			? parseFramingEnvelopeMap(input.framingEnvelope, `${path}.framingEnvelope`, issues)
+			: undefined;
 	if (!forward || !reverse || ('framingEnvelope' in input && framingEnvelope === undefined)) {
 		return undefined;
 	}
 	return {
 		forward,
 		reverse,
-		...(framingEnvelope === undefined ? {} : { framingEnvelope })
+		...(framingEnvelope === undefined ? {} : { framingEnvelope }),
 	};
 }
 
-const FRAMING_ENVELOPE_KEYS = [
-	'enterStart',
-	'enterEnd',
-	'exitStart',
-	'exitEnd'
-] as const;
+const FRAMING_ENVELOPE_KEYS = ['enterStart', 'enterEnd', 'exitStart', 'exitEnd'] as const;
 
 function parseFramingEnvelope(
 	input: unknown,
 	path: string,
-	issues: SceneDocumentIssue[]
+	issues: SceneDocumentIssue[],
 ): CameraFramingEnvelope | undefined {
 	if (!isRecord(input)) {
 		addIssue(issues, path, 'invalid_type', 'Expected a camera framing envelope object');
 		return undefined;
 	}
 	assertAllowedKeys(input, FRAMING_ENVELOPE_KEYS, path, issues);
-	const values = FRAMING_ENVELOPE_KEYS.map((key) =>
-		readRequiredNumber(input, key, path, issues)
-	);
+	const values = FRAMING_ENVELOPE_KEYS.map((key) => readRequiredNumber(input, key, path, issues));
 	if (values.some((value) => value === undefined)) return undefined;
 	const envelope: CameraFramingEnvelope = {
 		enterStart: values[0]!,
 		enterEnd: values[1]!,
 		exitStart: values[2]!,
-		exitEnd: values[3]!
+		exitEnd: values[3]!,
 	};
 	for (const key of FRAMING_ENVELOPE_KEYS) {
 		if (envelope[key] < 0 || envelope[key] > 1) {
-			addIssue(issues, `${path}.${key}`, 'invalid_framing_envelope', 'Framing envelope bounds must be between zero and one');
+			addIssue(
+				issues,
+				`${path}.${key}`,
+				'invalid_framing_envelope',
+				'Framing envelope bounds must be between zero and one',
+			);
 			return undefined;
 		}
 	}
@@ -399,7 +388,12 @@ function parseFramingEnvelope(
 		const key = FRAMING_ENVELOPE_KEYS[index]!;
 		const previous = FRAMING_ENVELOPE_KEYS[index - 1]!;
 		if (envelope[key] < envelope[previous]) {
-			addIssue(issues, `${path}.${key}`, 'invalid_framing_envelope', `Framing envelope ${key} must be greater than or equal to ${previous}`);
+			addIssue(
+				issues,
+				`${path}.${key}`,
+				'invalid_framing_envelope',
+				`Framing envelope ${key} must be greater than or equal to ${previous}`,
+			);
 			return undefined;
 		}
 	}
@@ -409,35 +403,34 @@ function parseFramingEnvelope(
 function parseFramingEnvelopeMap(
 	input: unknown,
 	path: string,
-	issues: SceneDocumentIssue[]
+	issues: SceneDocumentIssue[],
 ): SceneConnectionViewTracks['framingEnvelope'] | undefined {
 	if (!isRecord(input)) {
 		addIssue(issues, path, 'invalid_type', 'Expected a directional framing envelope object');
 		return undefined;
 	}
 	assertAllowedKeys(input, ['forward', 'reverse'], path, issues);
-	const forward = 'forward' in input
-		? parseFramingEnvelope(input.forward, `${path}.forward`, issues)
-		: undefined;
-	const reverse = 'reverse' in input
-		? parseFramingEnvelope(input.reverse, `${path}.reverse`, issues)
-		: undefined;
-	if (('forward' in input && forward === undefined) || ('reverse' in input && reverse === undefined)) {
+	const forward =
+		'forward' in input ? parseFramingEnvelope(input.forward, `${path}.forward`, issues) : undefined;
+	const reverse =
+		'reverse' in input ? parseFramingEnvelope(input.reverse, `${path}.reverse`, issues) : undefined;
+	if (
+		('forward' in input && forward === undefined) ||
+		('reverse' in input && reverse === undefined)
+	) {
 		return undefined;
 	}
 	return {
 		...(forward === undefined ? {} : { forward }),
-		...(reverse === undefined ? {} : { reverse })
+		...(reverse === undefined ? {} : { reverse }),
 	};
 }
-
-
 
 export function readEasing(
 	value: JsonRecord,
 	key: string,
 	path: string,
-	issues: SceneDocumentIssue[]
+	issues: SceneDocumentIssue[],
 ): CameraEasing | undefined {
 	if (!(key in value)) return undefined;
 	const candidate = readRequiredString(value, key, path, issues);
@@ -448,7 +441,7 @@ export function readEasing(
 			issues,
 			`${path}.${key}`,
 			'invalid_easing',
-			`Expected easing ${CAMERA_EASING.join(', ')}, received: ${stringifyUnknown(candidate)}`
+			`Expected easing ${CAMERA_EASING.join(', ')}, received: ${stringifyUnknown(candidate)}`,
 		);
 		return undefined;
 	}
@@ -463,7 +456,7 @@ export function readEasing(
  * messages in lock-step with what `parseConnectionTiming` would surface.
  */
 export function cameraSceneConnectionTimingFailureReason(
-	timing: SceneConnectionTiming
+	timing: SceneConnectionTiming,
 ): string | null {
 	if (
 		timing.durationSeconds !== undefined &&
@@ -484,7 +477,7 @@ export function stringifyUnknown(value: unknown) {
 export function parseConnectionTiming(
 	input: unknown,
 	path: string,
-	issues: SceneDocumentIssue[]
+	issues: SceneDocumentIssue[],
 ): SceneConnectionTiming | undefined {
 	if (!isRecord(input)) {
 		addIssue(issues, path, 'invalid_type', 'Expected a connection timing object');
@@ -502,7 +495,7 @@ export function parseConnectionTiming(
 				issues,
 				`${path}.durationSeconds`,
 				'invalid_duration_seconds',
-				'durationSeconds must be a finite positive number'
+				'durationSeconds must be a finite positive number',
 			);
 			durationSeconds = undefined;
 		}
@@ -511,14 +504,14 @@ export function parseConnectionTiming(
 	if (durationSeconds === undefined && easing === undefined) return undefined;
 	return {
 		...(durationSeconds === undefined ? {} : { durationSeconds }),
-		...(easing === undefined ? {} : { easing })
+		...(easing === undefined ? {} : { easing }),
 	};
 }
 
 export function parseConnectionTimingPair(
 	value: unknown,
 	path: string,
-	issues: SceneDocumentIssue[]
+	issues: SceneDocumentIssue[],
 ): SceneConnectionTimingPair | undefined {
 	if (value === undefined) return undefined;
 	if (!isRecord(value)) {
@@ -526,12 +519,14 @@ export function parseConnectionTimingPair(
 		return undefined;
 	}
 	assertAllowedKeys(value, ['forward', 'reverse'], path, issues);
-	const forward = 'forward' in value
-		? parseConnectionTiming(value.forward, `${path}.forward`, issues)
-		: undefined;
-	const reverse = 'reverse' in value
-		? parseConnectionTiming(value.reverse, `${path}.reverse`, issues)
-		: undefined;
+	const forward =
+		'forward' in value
+			? parseConnectionTiming(value.forward, `${path}.forward`, issues)
+			: undefined;
+	const reverse =
+		'reverse' in value
+			? parseConnectionTiming(value.reverse, `${path}.reverse`, issues)
+			: undefined;
 	if (
 		('forward' in value && forward === undefined) ||
 		('reverse' in value && reverse === undefined)
@@ -540,14 +535,14 @@ export function parseConnectionTimingPair(
 	}
 	return {
 		...(forward === undefined ? {} : { forward }),
-		...(reverse === undefined ? {} : { reverse })
+		...(reverse === undefined ? {} : { reverse }),
 	};
 }
 
 export function parseConnection(
 	input: unknown,
 	path: string,
-	issues: SceneDocumentIssue[]
+	issues: SceneDocumentIssue[],
 ): SceneConnection | undefined {
 	const base = parseConnectionBase(input, path, issues, [
 		'id',
@@ -557,16 +552,18 @@ export function parseConnection(
 		'positionPath',
 		'viewTracks',
 		'targetWaypoints',
-		'timing'
+		'timing',
 	]);
 	if (!base) return undefined;
 	const positionPath = parsePositionPath(base.input.positionPath, `${path}.positionPath`, issues);
-	const viewTracks = 'viewTracks' in base.input
-		? parseViewTracks(base.input.viewTracks, `${path}.viewTracks`, issues, { allowTiming: true })
-		: undefined;
-	const timing = 'timing' in base.input
-		? parseConnectionTimingPair(base.input.timing, `${path}.timing`, issues)
-		: undefined;
+	const viewTracks =
+		'viewTracks' in base.input
+			? parseViewTracks(base.input.viewTracks, `${path}.viewTracks`, issues, { allowTiming: true })
+			: undefined;
+	const timing =
+		'timing' in base.input
+			? parseConnectionTimingPair(base.input.timing, `${path}.timing`, issues)
+			: undefined;
 	if (
 		!positionPath ||
 		('viewTracks' in base.input && !viewTracks) ||
@@ -579,7 +576,7 @@ export function parseConnection(
 		...connection,
 		positionPath,
 		...(viewTracks === undefined ? {} : { viewTracks }),
-		...(timing === undefined ? {} : { timing })
+		...(timing === undefined ? {} : { timing }),
 	};
 }
 
@@ -589,11 +586,17 @@ export function assertUnique(
 	values: readonly { id: string }[],
 	label: string,
 	path: string,
-	issues: SceneDocumentIssue[]
+	issues: SceneDocumentIssue[],
 ) {
 	const seen = new Set<string>();
 	for (const [index, value] of values.entries()) {
-		if (seen.has(value.id)) addIssue(issues, `${path}[${index}].id`, 'duplicate_id', `Duplicate ${label} id: ${value.id}`);
+		if (seen.has(value.id))
+			addIssue(
+				issues,
+				`${path}[${index}].id`,
+				'duplicate_id',
+				`Duplicate ${label} id: ${value.id}`,
+			);
 		seen.add(value.id);
 	}
 }
@@ -604,7 +607,7 @@ export function distance(a: Vec3, b: Vec3) {
 export function validateSemantics(
 	document: SceneDocument,
 	issues: SceneDocumentIssue[],
-	options: Pick<ResolvedSceneValidationOptions, 'connectivity'>
+	options: Pick<ResolvedSceneValidationOptions, 'connectivity'>,
 ) {
 	const entities = document.entities;
 	assertUnique(entities, 'scene entity', '$.entities', issues);
@@ -621,7 +624,7 @@ export function validateSemantics(
 				issues,
 				`$.materials[${index}].overrides.maps.${binding.role}.image.textureId`,
 				'unknown_texture',
-				`Unknown texture asset: ${binding.textureId}`
+				`Unknown texture asset: ${binding.textureId}`,
 			);
 		}
 	}
@@ -636,7 +639,7 @@ export function validateSemantics(
 				issues,
 				`$.entities[${index}].materialInstanceId`,
 				'unknown_material_instance',
-				`Unknown material instance: ${entity.materialInstanceId}`
+				`Unknown material instance: ${entity.materialInstanceId}`,
 			);
 		}
 	}
@@ -644,16 +647,41 @@ export function validateSemantics(
 	const entityById = new Map(entities.map((entity) => [entity.id, entity]));
 	const clusteredIds = new Set<string>();
 	for (const [clusterIndex, cluster] of (document.clusters ?? []).entries()) {
-		if (cluster.memberIds.length < 2) addIssue(issues, `$.clusters[${clusterIndex}].memberIds`, 'cluster_too_small', 'Scene cluster must contain at least two members');
+		if (cluster.memberIds.length < 2)
+			addIssue(
+				issues,
+				`$.clusters[${clusterIndex}].memberIds`,
+				'cluster_too_small',
+				'Scene cluster must contain at least two members',
+			);
 		const memberIds = new Set<string>();
 		for (const [memberIndex, memberId] of cluster.memberIds.entries()) {
 			const path = `$.clusters[${clusterIndex}].memberIds[${memberIndex}]`;
-			if (memberIds.has(memberId)) addIssue(issues, path, 'duplicate_cluster_member', `Duplicate member in scene cluster ${cluster.id}: ${memberId}`);
+			if (memberIds.has(memberId))
+				addIssue(
+					issues,
+					path,
+					'duplicate_cluster_member',
+					`Duplicate member in scene cluster ${cluster.id}: ${memberId}`,
+				);
 			memberIds.add(memberId);
 			const entity = entityById.get(memberId);
-			if (!entity) addIssue(issues, path, 'unknown_cluster_member', `Unknown member in scene cluster ${cluster.id}: ${memberId}`);
-			else if (entity.kind === 'artwork') addIssue(issues, path, 'invalid_cluster_member', 'Artwork grouping is unavailable');
-			if (clusteredIds.has(memberId)) addIssue(issues, path, 'multiple_cluster_membership', `Scene entity belongs to multiple clusters: ${memberId}`);
+			if (!entity)
+				addIssue(
+					issues,
+					path,
+					'unknown_cluster_member',
+					`Unknown member in scene cluster ${cluster.id}: ${memberId}`,
+				);
+			else if (entity.kind === 'artwork')
+				addIssue(issues, path, 'invalid_cluster_member', 'Artwork grouping is unavailable');
+			if (clusteredIds.has(memberId))
+				addIssue(
+					issues,
+					path,
+					'multiple_cluster_membership',
+					`Scene entity belongs to multiple clusters: ${memberId}`,
+				);
 			clusteredIds.add(memberId);
 		}
 	}
@@ -665,29 +693,58 @@ export function validateSemantics(
 	if (document.navigationNodes.length === 0) return;
 	const nodeById = new Map(document.navigationNodes.map((node) => [node.id, node]));
 	for (const [index, node] of document.navigationNodes.entries()) {
-		if (distance(node.position, node.cameraTarget) <= EPSILON) addIssue(issues, `$.navigationNodes[${index}].cameraTarget`, 'camera_target_too_close', `Camera eye and target must be farther than ${EPSILON}`);
+		if (distance(node.position, node.cameraTarget) <= EPSILON)
+			addIssue(
+				issues,
+				`$.navigationNodes[${index}].cameraTarget`,
+				'camera_target_too_close',
+				`Camera eye and target must be farther than ${EPSILON}`,
+			);
 		const adjacency = new Set<string>();
 		for (const [neighborIndex, neighborId] of node.connectedNodeIds.entries()) {
 			const path = `$.navigationNodes[${index}].connectedNodeIds[${neighborIndex}]`;
-			if (neighborId === node.id) addIssue(issues, path, 'self_adjacency', 'A node cannot be adjacent to itself');
-			if (adjacency.has(neighborId)) addIssue(issues, path, 'duplicate_adjacency', `Duplicate adjacency: ${neighborId}`);
-			if (!nodeById.has(neighborId)) addIssue(issues, path, 'unknown_node', `Unknown navigation node: ${neighborId}`);
+			if (neighborId === node.id)
+				addIssue(issues, path, 'self_adjacency', 'A node cannot be adjacent to itself');
+			if (adjacency.has(neighborId))
+				addIssue(issues, path, 'duplicate_adjacency', `Duplicate adjacency: ${neighborId}`);
+			if (!nodeById.has(neighborId))
+				addIssue(issues, path, 'unknown_node', `Unknown navigation node: ${neighborId}`);
 			adjacency.add(neighborId);
 		}
 	}
 
 	const edgeKeys = new Map<string, number>();
-	const edgeKey = (a: string, b: string) => a < b ? `${a.length}:${a}${b.length}:${b}` : `${b.length}:${b}${a.length}:${a}`;
+	const edgeKey = (a: string, b: string) =>
+		a < b ? `${a.length}:${a}${b.length}:${b}` : `${b.length}:${b}${a.length}:${a}`;
 	const generatedEndpointIds = new Set(
-		document.navigationNodes.map((node) => `node:${node.id}:position`)
+		document.navigationNodes.map((node) => `node:${node.id}:position`),
 	);
 	for (const [index, connection] of document.connections.entries()) {
 		const path = `$.connections[${index}]`;
-		if (connection.fromNodeId === connection.toNodeId) addIssue(issues, path, 'self_connection', 'A connection cannot join a node to itself');
-		if (!nodeById.has(connection.fromNodeId)) addIssue(issues, `${path}.fromNodeId`, 'unknown_node', `Unknown navigation node: ${connection.fromNodeId}`);
-		if (!nodeById.has(connection.toNodeId)) addIssue(issues, `${path}.toNodeId`, 'unknown_node', `Unknown navigation node: ${connection.toNodeId}`);
+		if (connection.fromNodeId === connection.toNodeId)
+			addIssue(issues, path, 'self_connection', 'A connection cannot join a node to itself');
+		if (!nodeById.has(connection.fromNodeId))
+			addIssue(
+				issues,
+				`${path}.fromNodeId`,
+				'unknown_node',
+				`Unknown navigation node: ${connection.fromNodeId}`,
+			);
+		if (!nodeById.has(connection.toNodeId))
+			addIssue(
+				issues,
+				`${path}.toNodeId`,
+				'unknown_node',
+				`Unknown navigation node: ${connection.toNodeId}`,
+			);
 		const key = edgeKey(connection.fromNodeId, connection.toNodeId);
-		if (edgeKeys.has(key)) addIssue(issues, path, 'duplicate_connection', `Duplicate undirected connection: ${connection.fromNodeId} / ${connection.toNodeId}`);
+		if (edgeKeys.has(key))
+			addIssue(
+				issues,
+				path,
+				'duplicate_connection',
+				`Duplicate undirected connection: ${connection.fromNodeId} / ${connection.toNodeId}`,
+			);
 		edgeKeys.set(key, index);
 		if ('positionPath' in connection) {
 			const anchorIds = new Set<string>();
@@ -698,7 +755,7 @@ export function validateSemantics(
 						issues,
 						anchorPath,
 						'duplicate_anchor_id',
-						`Duplicate path anchor id in ${connection.id}: ${anchor.id}`
+						`Duplicate path anchor id in ${connection.id}: ${anchor.id}`,
 					);
 				}
 				if (generatedEndpointIds.has(anchor.id)) {
@@ -706,29 +763,28 @@ export function validateSemantics(
 						issues,
 						anchorPath,
 						'endpoint_anchor_id',
-						`Interior anchor id collides with a generated endpoint: ${anchor.id}`
+						`Interior anchor id collides with a generated endpoint: ${anchor.id}`,
 					);
 				}
 				anchorIds.add(anchor.id);
 			}
 		}
-		const viewTracks = 'viewTracks' in connection
-			? (connection.viewTracks as SceneConnectionViewTracks | undefined)
-			: undefined;
+		const viewTracks =
+			'viewTracks' in connection
+				? (connection.viewTracks as SceneConnectionViewTracks | undefined)
+				: undefined;
 		if (viewTracks) {
 			const keyframeIds = new Set<string>();
 			for (const direction of ['forward', 'reverse'] as const) {
 				let previousProgress = -Infinity;
-				for (const [keyframeIndex, keyframe] of viewTracks[
-					direction
-				].entries()) {
+				for (const [keyframeIndex, keyframe] of viewTracks[direction].entries()) {
 					const keyframePath = `${path}.viewTracks.${direction}[${keyframeIndex}]`;
 					if (keyframeIds.has(keyframe.id)) {
 						addIssue(
 							issues,
 							`${keyframePath}.id`,
 							'duplicate_view_keyframe_id',
-							`Duplicate camera view keyframe id in ${connection.id}: ${keyframe.id}`
+							`Duplicate camera view keyframe id in ${connection.id}: ${keyframe.id}`,
 						);
 					}
 					keyframeIds.add(keyframe.id);
@@ -737,7 +793,7 @@ export function validateSemantics(
 							issues,
 							`${keyframePath}.progress`,
 							'unordered_view_progress',
-							`Camera view keyframe progress must be strictly increasing in the ${direction} track`
+							`Camera view keyframe progress must be strictly increasing in the ${direction} track`,
 						);
 					}
 					previousProgress = keyframe.progress;
@@ -748,14 +804,32 @@ export function validateSemantics(
 
 	for (const [index, node] of document.navigationNodes.entries()) {
 		for (const [neighborIndex, neighborId] of node.connectedNodeIds.entries()) {
-			if (!edgeKeys.has(edgeKey(node.id, neighborId))) addIssue(issues, `$.navigationNodes[${index}].connectedNodeIds[${neighborIndex}]`, 'adjacency_without_connection', `No connection exists between ${node.id} and ${neighborId}`);
+			if (!edgeKeys.has(edgeKey(node.id, neighborId)))
+				addIssue(
+					issues,
+					`$.navigationNodes[${index}].connectedNodeIds[${neighborIndex}]`,
+					'adjacency_without_connection',
+					`No connection exists between ${node.id} and ${neighborId}`,
+				);
 		}
 	}
 	for (const [index, connection] of document.connections.entries()) {
 		const from = nodeById.get(connection.fromNodeId);
 		const to = nodeById.get(connection.toNodeId);
-		if (from && !from.connectedNodeIds.includes(to?.id ?? '')) addIssue(issues, `$.connections[${index}].fromNodeId`, 'connection_without_adjacency', `${from.id} must list ${connection.toNodeId} as adjacent`);
-		if (to && !to.connectedNodeIds.includes(from?.id ?? '')) addIssue(issues, `$.connections[${index}].toNodeId`, 'connection_without_adjacency', `${to.id} must list ${connection.fromNodeId} as adjacent`);
+		if (from && !from.connectedNodeIds.includes(to?.id ?? ''))
+			addIssue(
+				issues,
+				`$.connections[${index}].fromNodeId`,
+				'connection_without_adjacency',
+				`${from.id} must list ${connection.toNodeId} as adjacent`,
+			);
+		if (to && !to.connectedNodeIds.includes(from?.id ?? ''))
+			addIssue(
+				issues,
+				`$.connections[${index}].toNodeId`,
+				'connection_without_adjacency',
+				`${to.id} must list ${connection.fromNodeId} as adjacent`,
+			);
 	}
 
 	// B0 — standalone placement authoring state: an isolated
@@ -776,7 +850,12 @@ export function validateSemantics(
 				if (!visited.has(neighbor)) queue.push(neighbor);
 			}
 		}
-		if (visited.size !== connectedNodeIds.length) addIssue(issues, '$.connections', 'disconnected_graph', 'Navigation connections must form one connected graph');
+		if (visited.size !== connectedNodeIds.length)
+			addIssue(
+				issues,
+				'$.connections',
+				'disconnected_graph',
+				'Navigation connections must form one connected graph',
+			);
 	}
-
 }

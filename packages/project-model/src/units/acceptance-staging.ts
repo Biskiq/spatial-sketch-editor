@@ -14,17 +14,17 @@
  * Staging rules (all tested):
  *
  * - every requested resource must resolve in this envelope's resource unit; a
- *   missing or unresolved one refuses the whole staging (no partial set). An
- *   external resource with bytes outside the project resolves through its pin's
- *   content hash, exactly as the F.1 resolver already answers, so a genuinely
- *   admitted pinned resource stages; a resource with neither revision nor pin is
- *   `repair-required` at resolution and never reaches staging;
+ *  missing or unresolved one refuses the whole staging (no partial set). An
+ *  external resource with bytes outside the project resolves through its pin's
+ *  content hash, exactly as the F.1 resolver already answers, so a genuinely
+ *  admitted pinned resource stages; a resource with neither revision nor pin is
+ *  `repair-required` at resolution and never reaches staging;
  * - the staging is a **set** keyed by `kind:id`, so requesting the same resource
- *   twice stages it once;
+ *  twice stages it once;
  * - order is stable (sorted by `kind`, then `id`), so two equal requests produce
- *   equal staging and a replay is comparable;
+ *  equal staging and a replay is comparable;
  * - nothing is written. The coordinator's install commits the candidate that
- *   carries this staging; a refused staging stages nothing at all.
+ *  carries this staging; a refused staging stages nothing at all.
  */
 import type { ReferenceReadContext, SemanticReference } from '../references/types';
 import { resolveReference } from '../references/resolve';
@@ -63,12 +63,15 @@ export type UnitResourceStaging =
 export function stageUnitResources(
 	envelope: ProjectEnvelope,
 	targets: readonly SemanticReference[],
-	context: ReferenceReadContext
+	context: ReferenceReadContext,
 ): UnitResourceStaging {
 	const issues: ShapeIssue[] = [];
 	const staged = new Map<string, StagedUnitResource>();
 	const available = new Map<string, (typeof envelope.units.resources.data.resources)[number]>(
-		envelope.units.resources.data.resources.map((resource) => [`${resource.kind}:${resource.id}`, resource])
+		envelope.units.resources.data.resources.map((resource) => [
+			`${resource.kind}:${resource.id}`,
+			resource,
+		]),
 	);
 	for (const [index, target] of targets.entries()) {
 		const path = `$.targets[${index}]`;
@@ -76,7 +79,7 @@ export function stageUnitResources(
 			issues.push({
 				path,
 				code: 'unsupported-target',
-				message: `${target.domain} is not a typed-resource target; only resources are staged`
+				message: `${target.domain} is not a typed-resource target; only resources are staged`,
 			});
 			continue;
 		}
@@ -96,7 +99,7 @@ export function stageUnitResources(
 			issues.push({
 				path,
 				code: 'unresolved-resource',
-				message: `the envelope's resource registry carries no "${key}"`
+				message: `the envelope's resource registry carries no "${key}"`,
 			});
 			continue;
 		}
@@ -109,7 +112,7 @@ export function stageUnitResources(
 			issues.push({
 				path,
 				code: 'repair-required',
-				message: `resource "${key}" has neither a content revision nor an external-bytes pin`
+				message: `resource "${key}" has neither a content revision nor an external-bytes pin`,
 			});
 			continue;
 		}
@@ -117,7 +120,7 @@ export function stageUnitResources(
 			issues.push({
 				path,
 				code: 'unresolved-resource',
-				message: `resource "${key}" resolves to "${resolution.subject.contentRevision}" but the envelope records "${expectedRevision}"`
+				message: `resource "${key}" resolves to "${resolution.subject.contentRevision}" but the envelope records "${expectedRevision}"`,
 			});
 			continue;
 		}
@@ -130,12 +133,14 @@ export function stageUnitResources(
 			kind: resource.kind,
 			id: resource.id,
 			contentRevision: expectedRevision,
-			pin: resource.pin
+			pin: resource.pin,
 		});
 	}
 	if (issues.length > 0) return { kind: 'refused', issues };
 	const resources = [...staged.values()].sort((left, right) =>
-		left.kind === right.kind ? left.id.localeCompare(right.id) : left.kind.localeCompare(right.kind)
+		left.kind === right.kind
+			? left.id.localeCompare(right.id)
+			: left.kind.localeCompare(right.kind),
 	);
 	return { kind: 'staged', resources };
 }

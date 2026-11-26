@@ -7,12 +7,12 @@
  * Head:
  *
  * 1. **One label and one visible reason** for the Save control. The Head never
- *    renders a dead button: a state that cannot save says why.
+ *  renders a dead button: a state that cannot save says why.
  * 2. **Unsaved-work signalling** at project exit and replacement. The signal is
- *    explicit (`unsavedWork`), so a caller must decide; it is never inferred.
+ *  explicit (`unsavedWork`), so a caller must decide; it is never inferred.
  * 3. **Routing *Reload remote* through the host's replacement guard.** The
- *    controller returns the `ReloadOffer`; it never installs the remote document
- *    itself, so the host's guard remains the only replacement path.
+ *  controller returns the `ReloadOffer`; it never installs the remote document
+ *  itself, so the host's guard remains the only replacement path.
  *
  * Framework-free: no Svelte, host, route or renderer import, so the Head
  * component and the tests drive exactly the same behaviour.
@@ -75,7 +75,11 @@ export type HeadSave = {
 	clearError(): void;
 };
 
-function statusReason(snapshot: SaveSnapshot): { label: string; reason: string | null; disabled: boolean } {
+function statusReason(snapshot: SaveSnapshot): {
+	label: string;
+	reason: string | null;
+	disabled: boolean;
+} {
 	switch (snapshot.status) {
 		case 'never-saved':
 			return snapshot.busy
@@ -84,7 +88,7 @@ function statusReason(snapshot: SaveSnapshot): { label: string; reason: string |
 					? {
 							label: 'Resume pending save',
 							reason: 'A Save was captured before sign-in. Resume it to save exactly that work.',
-							disabled: false
+							disabled: false,
 						}
 					: { label: 'Save to Cloud', reason: null, disabled: false };
 		case 'dirty':
@@ -94,7 +98,7 @@ function statusReason(snapshot: SaveSnapshot): { label: string; reason: string |
 					? {
 							label: 'Resume pending save',
 							reason: 'A Save was captured before sign-in. Resume it to save exactly that work.',
-							disabled: false
+							disabled: false,
 						}
 					: { label: 'Save changes', reason: null, disabled: false };
 		case 'saving':
@@ -103,13 +107,14 @@ function statusReason(snapshot: SaveSnapshot): { label: string; reason: string |
 			return {
 				label: 'Saved',
 				reason: 'All accepted changes are saved.',
-				disabled: true
+				disabled: true,
 			};
 		case 'conflict':
 			return {
 				label: 'Resolve conflict',
-				reason: 'The cloud copy changed. Download your local work or reload the remote copy; nothing is merged automatically.',
-				disabled: true
+				reason:
+					'The cloud copy changed. Download your local work or reload the remote copy; nothing is merged automatically.',
+				disabled: true,
 			};
 		case 'auth-required':
 			return {
@@ -118,14 +123,14 @@ function statusReason(snapshot: SaveSnapshot): { label: string; reason: string |
 				// enabled and says what it will do.
 				label: 'Resume pending save',
 				reason: 'Your session needs sign-in. After signing in, resume the pending Save.',
-				disabled: false
+				disabled: false,
 			};
 		case 'refused':
 		case 'error':
 			return {
 				label: 'Retry save',
 				reason: snapshot.error?.message ?? 'The last Save did not complete.',
-				disabled: snapshot.busy
+				disabled: snapshot.busy,
 			};
 	}
 }
@@ -149,7 +154,7 @@ function commandOf(outcome: SaveOutcome): HeadSaveCommand {
 
 export function createHeadSave(
 	state: SaveState,
-	options: { readonly unavailableReason?: string | null } = {}
+	options: { readonly unavailableReason?: string | null } = {},
 ): HeadSave {
 	return {
 		snapshot: () => state.getSnapshot(),
@@ -169,7 +174,7 @@ export function createHeadSave(
 					unavailable: true,
 					busy: snapshot.busy,
 					conflict: snapshot.status === 'conflict',
-					signInRequired: false
+					signInRequired: false,
 				};
 			}
 			const base = statusReason(snapshot);
@@ -178,7 +183,7 @@ export function createHeadSave(
 				unavailable: false,
 				busy: snapshot.busy,
 				conflict: snapshot.status === 'conflict',
-				signInRequired: snapshot.status === 'auth-required'
+				signInRequired: snapshot.status === 'auth-required',
 			};
 		},
 		unsavedWork() {
@@ -187,7 +192,7 @@ export function createHeadSave(
 			return {
 				kind: 'confirm',
 				message:
-					'This project has unsaved changes. Save, download the source, or leave and lose them.'
+					'This project has unsaved changes. Save, download the source, or leave and lose them.',
 			};
 		},
 		isDirty: () => state.getSnapshot().dirty,
@@ -198,7 +203,7 @@ export function createHeadSave(
 			return commandOf(await state.save());
 		},
 		async retry() {
-			// `retry()` reuses the retained capture. A sign-in interruption is the one
+			// `retry` reuses the retained capture. A sign-in interruption is the one
 			// state where the same command is the documented resume path.
 			perfMark('save:command', { retry: true });
 			return commandOf(await state.retry());
@@ -206,6 +211,6 @@ export function createHeadSave(
 		reloadRemote: () => state.reloadRemote(),
 		clearError() {
 			state.clearError();
-		}
+		},
 	};
 }

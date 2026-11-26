@@ -1,30 +1,8 @@
-/**
- * Test-only F.2 envelope fixtures.
- *
- * The live source is one `ProjectEnvelope`; every suite that used to build a
- * current-source `ProjectDocument` builds through here instead. Nothing in this
- * module is production code or a second source path: `createProjectEnvelope`
- * computes the same derived unit revisions production admission requires, and
- * `admitUnitProject` calls the one live Stage admission.
- *
- * Scene fixtures used to carry `navigationNodes`/`connections`. That data is
- * Camera-owned now, so `createUnitProject` splits a legacy Scene-shaped fixture
- * into the Camera-free Scene unit and the Camera unit exactly as migration 005
- * does, and the resulting envelope has no navigation graph in its Scene.
- */
-import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core/wall';
+/** Admit an envelope through the editor and wire the real acceptance coordinator. */
 import type { AcceptedRevision } from '@portfolio/project-model/references';
 import type { DomainPlanner } from '@portfolio/project-model/f4';
-import type { SceneDocument } from '@portfolio/project-model/scene';
 import {
-	CAMERA_UNIT_FORMAT_VERSION,
-	SCENE_UNIT_FORMAT_VERSION,
 	computeEnvelopeSourceContentId,
-	createEmptyCameraPayload,
-	createEmptyExperiencePayload,
-	createEmptyResourcePayload,
-	createEmptyUnitSceneDocument,
-	createProjectEnvelope,
 	createUnitAcceptanceAdapter,
 	createUnitAcceptancePreparation,
 	createUnitPlannerRegistry,
@@ -32,14 +10,9 @@ import {
 	serializeProjectEnvelope,
 	UNIT_SOURCE_KIND,
 	UNIT_SOURCE_VERSION,
-	type CameraFreeSceneDocument,
-	type CameraUnitPayload,
-	type CameraView,
-	type ExperienceUnitPayload,
-	type LayoutUnitPayload,
-	type ProjectEnvelope,
-	type ResourceUnitPayload
+	type ProjectEnvelope
 } from '@portfolio/project-model/units';
+import { createUnitProject, type UnitProjectInput } from '../../../../../../packages/project-model/tests/__fixtures__/unit-envelope';
 import {
 	createAcceptanceCoordinator,
 	type AcceptanceCoordinator
@@ -51,86 +24,13 @@ export { UNIT_SOURCE_KIND, UNIT_SOURCE_VERSION };
 
 export const DEFAULT_SESSION_EPOCH = 'session-1';
 
-export function unitRevision(projectId: string, revisionId = 'revision-1'): AcceptedRevision {
-	return { projectId, revisionId };
-}
-
-/** The Camera unit a legacy Scene's navigation graph migrates to. */
-export function cameraOfScene(scene: SceneDocument): CameraUnitPayload {
-	const views: CameraView[] = scene.navigationNodes.map((node) => ({
-		id: node.id,
-		label: node.label,
-		eye: [...node.position] as [number, number, number],
-		target: [...node.cameraTarget] as [number, number, number],
-		fov: node.fov,
-		connectedViewIds: [...node.connectedNodeIds]
-	}));
-	return { formatVersion: CAMERA_UNIT_FORMAT_VERSION, views, connections: scene.connections };
-}
-
-/** The Camera-free Scene unit a legacy Scene migrates to. */
-export function cameraFreeScene(scene: SceneDocument): CameraFreeSceneDocument {
-	return {
-		formatVersion: SCENE_UNIT_FORMAT_VERSION,
-		textures: scene.textures,
-		materials: scene.materials,
-		entities: scene.entities,
-		...(scene.clusters === undefined ? {} : { clusters: scene.clusters })
-	};
-}
-
-export type UnitProjectInput = {
-	readonly id: string;
-	readonly name: string;
-	readonly acceptedRevision?: AcceptedRevision;
-	readonly layout?: LayoutUnitPayload;
-	/** A legacy Scene shape is split into Scene 2 + Camera 1. */
-	readonly scene?: SceneDocument | CameraFreeSceneDocument;
-	readonly camera?: CameraUnitPayload;
-	readonly experience?: ExperienceUnitPayload;
-	readonly resources?: ResourceUnitPayload;
-	/** A pinned resource's lock entries, when the fixture has one. */
-	readonly dependencyLock?: ProjectEnvelope['dependencyLock'];
-};
-
-function isLegacyScene(value: SceneDocument | CameraFreeSceneDocument): value is SceneDocument {
-	return 'navigationNodes' in value;
-}
-
-/**
- * Build one admitted-shape envelope. Unit revisions are computed by the
- * provider, so the result is what `validateProjectEnvelope` and
- * `verifyUnitContentRevisions` accept rather than a hand-written object.
- */
-export async function createUnitProject(input: UnitProjectInput): Promise<ProjectEnvelope> {
-	const acceptedRevision = input.acceptedRevision ?? unitRevision(input.id);
-	const legacy = input.scene !== undefined && isLegacyScene(input.scene) ? input.scene : null;
-	const sceneData =
-		input.scene === undefined
-			? createEmptyUnitSceneDocument()
-			: legacy === null
-				? (input.scene as CameraFreeSceneDocument)
-				: cameraFreeScene(legacy);
-	const cameraData =
-		input.camera ?? (legacy === null ? createEmptyCameraPayload() : cameraOfScene(legacy));
-	return createProjectEnvelope({
-		id: input.id,
-		name: input.name,
-		acceptedRevision,
-		dependencyLock: input.dependencyLock ?? { formatVersion: 1, entries: [] },
-		layout: { unitId: `${input.id}:layout`, data: input.layout ?? createEmptyWallFirstLayoutDocument() },
-		scene: { unitId: `${input.id}:scene`, data: sceneData },
-		camera: { unitId: `${input.id}:camera`, data: cameraData },
-		experience: {
-			unitId: `${input.id}:experience`,
-			data: input.experience ?? createEmptyExperiencePayload()
-		},
-		resources: {
-			unitId: `${input.id}:resources`,
-			data: input.resources ?? createEmptyResourcePayload()
-		}
-	});
-}
+export {
+	cameraFreeScene,
+	cameraOfScene,
+	createUnitProject,
+	unitRevision,
+	type UnitProjectInput
+} from '../../../../../../packages/project-model/tests/__fixtures__/unit-envelope';
 
 /** The old admission result shape, over the live F.2 admission. */
 export type AdmittedUnitProject = {

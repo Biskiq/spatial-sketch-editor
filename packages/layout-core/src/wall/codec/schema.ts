@@ -19,17 +19,13 @@ export type WallFirstLayoutValidationResult =
 			issues: LayoutDocumentIssue[];
 	  };
 
-
 export const UNITS = 'meters' as const;
 
 export const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]*$/;
 
-
 export type JsonRecord = Record<string, unknown>;
 
-
 export type ParsedValue<T> = T | undefined;
-
 
 export const ROOT_KEYS = [
 	'units',
@@ -41,11 +37,18 @@ export const ROOT_KEYS = [
 	'openings',
 	'objects',
 	'regions',
-	'identity'
+	'identity',
 ] as const;
 
 /** The reference ledger's key set. */
-export const IDENTITY_KEYS = ['cursor', 'rooms', 'junctions', 'walls', 'openings', 'regions'] as const;
+export const IDENTITY_KEYS = [
+	'cursor',
+	'rooms',
+	'junctions',
+	'walls',
+	'openings',
+	'regions',
+] as const;
 
 /**
  * Canonical Floor key set. The current Floor has no vertical extent, so a
@@ -62,7 +65,7 @@ export const WALL_KEYS = [
 	'thickness',
 	'height',
 	'centerline',
-	'name'
+	'name',
 ] as const;
 
 /** One bend point of a Wall `cubic-chain` centerline. */
@@ -71,14 +74,7 @@ export const WALL_CURVE_KNOT_KEYS = ['id', 'point'] as const;
 /** One cubic span of a Wall `cubic-chain` centerline: controls only. */
 export const WALL_CURVE_SPAN_KEYS = ['handleOut', 'handleIn'] as const;
 
-export const ROOM_KEYS = [
-	'id',
-	'name',
-	'boundary',
-	'virtualEdges',
-	'overhead',
-	'round'
-] as const;
+export const ROOM_KEYS = ['id', 'name', 'boundary', 'virtualEdges', 'overhead', 'round'] as const;
 
 export const ROOM_ROUND_KEYS = ['center', 'radius'] as const;
 
@@ -98,10 +94,18 @@ export const OPENING_KEYS = [
 	'sillHeight',
 	'profile',
 	'connectsRoomIds',
-	'name'
+	'name',
 ] as const;
 
-export const OBJECT_KEYS = ['id', 'kind', 'position', 'rotation', 'dimensions', 'profile', 'roomId'] as const;
+export const OBJECT_KEYS = [
+	'id',
+	'kind',
+	'position',
+	'rotation',
+	'dimensions',
+	'profile',
+	'roomId',
+] as const;
 
 export const PATH_KEYS = ['closed', 'segments'] as const;
 

@@ -1,10 +1,10 @@
 /**
- * The Library's browse model (T2.S8 U5).
+ * The Library's browse model.
  *
  * Pure presentation data and pure filtering over the accepted catalogue and
  * Scene. It never reads a texture URI, never writes a project and never opens a
  * renderer: cards only name a `FinishTile` source, so opening the Library reads
- * the U1 masters and never a full-resolution catalogue image.
+ * the masters and never a full-resolution catalogue image.
  *
  * D1 folding lives here: Smooth and Polished concrete are one card with a
  * Matte / Polished chip, and the card keeps its stable identity while the chip
@@ -16,7 +16,7 @@ import {
 	foldVariantCards,
 	materialFamilies,
 	variantCardOf,
-	type MaterialFamilyId
+	type MaterialFamilyId,
 } from '$lib/content/material-presentation';
 
 export type LibrarySource = 'all' | 'curated' | 'project';
@@ -87,7 +87,7 @@ export type LibraryGroup = {
 export const LIBRARY_SOURCES: readonly { readonly id: LibrarySource; readonly label: string }[] = [
 	{ id: 'all', label: 'All' },
 	{ id: 'curated', label: 'Curated' },
-	{ id: 'project', label: 'This project' }
+	{ id: 'project', label: 'This project' },
 ];
 
 export const LIBRARY_FILTERS: readonly { readonly id: LibraryFilter; readonly label: string }[] = [
@@ -97,7 +97,7 @@ export const LIBRARY_FILTERS: readonly { readonly id: LibraryFilter; readonly la
 	{ id: 'metal', label: 'Metal' },
 	{ id: 'matte', label: 'Matte' },
 	{ id: 'glossy', label: 'Glossy' },
-	{ id: 'used', label: 'Used here' }
+	{ id: 'used', label: 'Used here' },
 ];
 
 export function libraryFamilyLabel(family: MaterialFamilyId | null): string {
@@ -111,7 +111,7 @@ export function libraryCategoryOf(entry: LibraryFinishEntry): LibraryCategory {
 /** The family categories present in the current source, in taxonomy order. */
 export function libraryCategoryOptions(
 	entries: readonly LibraryFinishEntry[],
-	source: LibrarySource
+	source: LibrarySource,
 ): readonly { readonly id: LibraryCategory; readonly label: string }[] {
 	const visible = entries.filter((entry) => source === 'all' || entry.source === source);
 	const present = new Set(visible.map(libraryCategoryOf));
@@ -131,7 +131,7 @@ function matchesQuery(card: LibraryCard, query: string): boolean {
 		card.entry.name,
 		card.entry.materialLabel,
 		card.entry.familyLabel,
-		card.entry.subline
+		card.entry.subline,
 	].some((value) => value.toLowerCase().includes(needle));
 }
 
@@ -165,7 +165,7 @@ function matchesCategory(card: LibraryCard, category: LibraryCategory): boolean 
  */
 export function curatedLibraryCards(
 	entries: readonly LibraryFinishEntry[],
-	variantChoice: Readonly<Record<string, MaterialId | undefined>> = {}
+	variantChoice: Readonly<Record<string, MaterialId | undefined>> = {},
 ): LibraryCard[] {
 	const curated = entries
 		.filter((entry) => entry.source === 'curated' && entry.curatedId !== null)
@@ -179,7 +179,7 @@ export function curatedLibraryCards(
 			title: cardLabel ?? entry.name,
 			primary: cardLabel === null ? null : primary,
 			variant: id,
-			variants
+			variants,
 		};
 	});
 }
@@ -191,7 +191,7 @@ function projectCard(entry: LibraryFinishEntry): LibraryCard {
 		title: entry.name,
 		primary: null,
 		variant: null,
-		variants: []
+		variants: [],
 	};
 }
 
@@ -202,7 +202,7 @@ function projectCard(entry: LibraryFinishEntry): LibraryCard {
 export function browseLibrary(
 	entries: readonly LibraryFinishEntry[],
 	state: LibraryBrowseState,
-	variantChoice: Readonly<Record<string, MaterialId | undefined>> = {}
+	variantChoice: Readonly<Record<string, MaterialId | undefined>> = {},
 ): LibraryGroup[] {
 	const keep = (card: LibraryCard): boolean => {
 		if (!matchesCategory(card, state.category)) return false;
@@ -210,20 +210,20 @@ export function browseLibrary(
 		for (const filter of state.filters) if (!matchesFilter(card.entry, filter)) return false;
 		return true;
 	};
-	const curated = state.source === 'project'
-		? []
-		: curatedLibraryCards(entries, variantChoice).filter(keep);
-	const project = state.source === 'curated'
-		? []
-		: entries
-			.filter((entry) => entry.source === 'project')
-			.map(projectCard)
-			.filter(keep);
+	const curated =
+		state.source === 'project' ? [] : curatedLibraryCards(entries, variantChoice).filter(keep);
+	const project =
+		state.source === 'curated'
+			? []
+			: entries
+					.filter((entry) => entry.source === 'project')
+					.map(projectCard)
+					.filter(keep);
 	if (state.source === 'curated') return [{ label: null, cards: curated }];
 	if (state.source === 'project') return [{ label: null, cards: project }];
 	return [
 		{ label: 'This project', cards: project },
-		{ label: 'Curated', cards: curated }
+		{ label: 'Curated', cards: curated },
 	].filter((group) => group.cards.length > 0);
 }
 
@@ -236,11 +236,12 @@ export function libraryCardsOf(groups: readonly LibraryGroup[]): LibraryCard[] {
 export function librarySourceCount(
 	entries: readonly LibraryFinishEntry[],
 	source: LibrarySource,
-	variantChoice: Readonly<Record<string, MaterialId | undefined>> = {}
+	variantChoice: Readonly<Record<string, MaterialId | undefined>> = {},
 ): number {
 	if (source === 'curated') return curatedLibraryCards(entries, variantChoice).length;
 	if (source === 'project') return entries.filter((entry) => entry.source === 'project').length;
-	return entries.filter((entry) => entry.source === 'project').length +
-		curatedLibraryCards(entries, variantChoice).length;
+	return (
+		entries.filter((entry) => entry.source === 'project').length +
+		curatedLibraryCards(entries, variantChoice).length
+	);
 }
-

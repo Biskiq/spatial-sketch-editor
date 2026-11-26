@@ -18,22 +18,34 @@
  * terms with a repair, composed from the planner's own rejection — the editor
  * never re-derives fit or overlap.
  */
-import { layoutIdCaptureInput, layoutWorkingLevelInput, type LayoutIdCapture } from '@portfolio/layout-core/plan';
-import { planCreateWallFirstOpening, planDeleteWallFirstOpening, planUpdateWallFirstOpening, type LayoutWallOpening, type WallOpeningPatch } from '@portfolio/layout-core/wall';
+import {
+	layoutIdCaptureInput,
+	layoutWorkingLevelInput,
+	type LayoutIdCapture,
+} from '@portfolio/layout-core/plan';
+import {
+	planCreateWallFirstOpening,
+	planDeleteWallFirstOpening,
+	planUpdateWallFirstOpening,
+	type LayoutWallOpening,
+	type WallOpeningPatch,
+} from '@portfolio/layout-core/wall';
 import { recordPreparedCowCandidate } from '@portfolio/layout-core/world';
-import type { AuthoringIntent, DomainPlanner, PlannerOutcome, PreparedCandidate } from '@portfolio/project-model/f4';
+import type {
+	AuthoringIntent,
+	DomainPlanner,
+	PlannerOutcome,
+	PreparedCandidate,
+} from '@portfolio/project-model/f4';
 import {
 	canonicalUnitJson,
 	replaceUnitData,
 	UNIT_SOURCE_KIND,
 	UNIT_SOURCE_VERSION,
-	type ProjectEnvelope
+	type ProjectEnvelope,
 } from '@portfolio/project-model/units';
 
-import {
-	layoutSubjectReference,
-	readCapturedOperation
-} from './drawing-planners';
+import { layoutSubjectReference, readCapturedOperation } from './drawing-planners';
 import { layoutPlanner, preparedLayoutCandidate, registerLayoutSurfaceLineage } from './precision';
 import { openingRefusalWords } from './refusals';
 
@@ -75,7 +87,10 @@ export type OpeningResizePayload =
 	  };
 
 export type OpeningResizeEdge = Extract<OpeningResizePayload, { readonly kind: 'edge' }>['edge'];
-export type OpeningResizeCorner = Extract<OpeningResizePayload, { readonly kind: 'corner' }>['corner'];
+export type OpeningResizeCorner = Extract<
+	OpeningResizePayload,
+	{ readonly kind: 'corner' }
+>['corner'];
 
 export type OpeningDeletePayload = {
 	readonly openingId: string;
@@ -89,9 +104,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function readCreatePayload(
-	payload: unknown
-): OpeningCreatePayload | { readonly message: string } {
+function readCreatePayload(payload: unknown): OpeningCreatePayload | { readonly message: string } {
 	if (!isRecord(payload)) return { message: 'The Opening operation payload must be an object.' };
 	const { wallId, kind, offset, width, height, sillHeight } = payload;
 	const profile = payload.profile ?? 'rectangular';
@@ -105,8 +118,12 @@ function readCreatePayload(
 		return { message: 'An Opening offset must be a finite non-negative number of meters.' };
 	}
 	if (
-		typeof width !== 'number' || !Number.isFinite(width) || width <= 0 ||
-		typeof height !== 'number' || !Number.isFinite(height) || height <= 0
+		typeof width !== 'number' ||
+		!Number.isFinite(width) ||
+		width <= 0 ||
+		typeof height !== 'number' ||
+		!Number.isFinite(height) ||
+		height <= 0
 	) {
 		return { message: 'An Opening width and height must be finite positive numbers of meters.' };
 	}
@@ -125,8 +142,11 @@ function readResizePayload(payload: unknown): OpeningResizePayload | { readonly 
 		return { message: 'An Opening resize needs one opening id.' };
 	}
 	if (payload.kind === 'edge') {
-		const unknown = Object.keys(payload).filter((key) => !['openingId', 'kind', 'edge', 'value'].includes(key));
-		if (unknown.length > 0) return { message: `An Opening edge resize cannot carry ${unknown.join(', ')}.` };
+		const unknown = Object.keys(payload).filter(
+			(key) => !['openingId', 'kind', 'edge', 'value'].includes(key),
+		);
+		if (unknown.length > 0)
+			return { message: `An Opening edge resize cannot carry ${unknown.join(', ')}.` };
 		if (!['left', 'right', 'top', 'bottom'].includes(String(payload.edge))) {
 			return { message: 'An Opening edge resize must name left, right, top or bottom.' };
 		}
@@ -137,13 +157,18 @@ function readResizePayload(payload: unknown): OpeningResizePayload | { readonly 
 			openingId: payload.openingId,
 			kind: 'edge',
 			edge: payload.edge as Extract<OpeningResizePayload, { kind: 'edge' }>['edge'],
-			value: payload.value
+			value: payload.value,
 		};
 	}
 	if (payload.kind === 'corner') {
-		const unknown = Object.keys(payload).filter((key) => !['openingId', 'kind', 'corner', 'factor'].includes(key));
-		if (unknown.length > 0) return { message: `An Opening corner resize cannot carry ${unknown.join(', ')}.` };
-		if (!['top-left', 'top-right', 'bottom-left', 'bottom-right'].includes(String(payload.corner))) {
+		const unknown = Object.keys(payload).filter(
+			(key) => !['openingId', 'kind', 'corner', 'factor'].includes(key),
+		);
+		if (unknown.length > 0)
+			return { message: `An Opening corner resize cannot carry ${unknown.join(', ')}.` };
+		if (
+			!['top-left', 'top-right', 'bottom-left', 'bottom-right'].includes(String(payload.corner))
+		) {
 			return { message: 'An Opening corner resize must name one of its four corners.' };
 		}
 		if (typeof payload.factor !== 'number' || !Number.isFinite(payload.factor)) {
@@ -153,15 +178,13 @@ function readResizePayload(payload: unknown): OpeningResizePayload | { readonly 
 			openingId: payload.openingId,
 			kind: 'corner',
 			corner: payload.corner as Extract<OpeningResizePayload, { kind: 'corner' }>['corner'],
-			factor: payload.factor
+			factor: payload.factor,
 		};
 	}
 	return { message: 'An Opening resize must be one edge adjustment or one uniform corner scale.' };
 }
 
-function readDeletePayload(
-	payload: unknown
-): OpeningDeletePayload | { readonly message: string } {
+function readDeletePayload(payload: unknown): OpeningDeletePayload | { readonly message: string } {
 	if (!isRecord(payload)) return { message: 'The Opening operation payload must be an object.' };
 	return typeof payload.openingId === 'string' && payload.openingId.length > 0
 		? { openingId: payload.openingId }
@@ -171,7 +194,7 @@ function readDeletePayload(
 /** The exact coupled model patch implied by one bounded edge/corner gesture. */
 export function openingResizePatch(
 	opening: LayoutWallOpening,
-	payload: OpeningResizePayload
+	payload: OpeningResizePayload,
 ): WallOpeningPatch {
 	if (payload.kind === 'edge') {
 		switch (payload.edge) {
@@ -182,7 +205,10 @@ export function openingResizePatch(
 			case 'top':
 				return { height: payload.value - opening.sillHeight };
 			case 'bottom':
-				return { sillHeight: payload.value, height: opening.sillHeight + opening.height - payload.value };
+				return {
+					sillHeight: payload.value,
+					height: opening.sillHeight + opening.height - payload.value,
+				};
 		}
 	}
 	const width = opening.width * payload.factor;
@@ -193,7 +219,7 @@ export function openingResizePatch(
 		...(left ? { offset: opening.offset + opening.width - width } : {}),
 		width,
 		...(bottom ? { sillHeight: opening.sillHeight + opening.height - height } : {}),
-		height
+		height,
 	};
 }
 
@@ -209,7 +235,11 @@ function openingCreatePlanner(): DomainPlanner<ProjectEnvelope> {
 			return refused('An Opening placement addresses exactly one host Wall.');
 		}
 		const target = request.intent.targets[0]!;
-		if (target.domain !== 'layout' || target.subject.kind !== 'wall' || target.subject.id !== payload.wallId) {
+		if (
+			target.domain !== 'layout' ||
+			target.subject.kind !== 'wall' ||
+			target.subject.id !== payload.wallId
+		) {
 			return refused(`The intent must address the host Wall "${payload.wallId}" it places on.`);
 		}
 		const baseline = request.snapshot.domain.source.units.layout.data;
@@ -222,17 +252,17 @@ function openingCreatePlanner(): DomainPlanner<ProjectEnvelope> {
 				width: payload.width,
 				height: payload.height,
 				sillHeight: payload.sillHeight,
-				profile: payload.profile
+				profile: payload.profile,
 			},
 			capture,
-			levelId
+			levelId,
 		);
 		if (plan.kind === 'rejected') {
 			return {
 				kind: 'rejected',
 				code: plan.rejection.code,
 				message: openingRefusalWords(baseline, plan.rejection, payload),
-				diagnostics: []
+				diagnostics: [],
 			};
 		}
 		const openingId = plan.changedOpeningIds[0]!;
@@ -242,7 +272,7 @@ function openingCreatePlanner(): DomainPlanner<ProjectEnvelope> {
 			{ kind: 'opening', id: openingId },
 			plan.document,
 			['openings'],
-			{ created: true, id: openingId, surfaceLineage: [] }
+			{ created: true, id: openingId, surfaceLineage: [] },
 		);
 	});
 }
@@ -258,7 +288,11 @@ function openingResizePlanner(): DomainPlanner<ProjectEnvelope> {
 			return refused('An Opening resize addresses exactly one Opening.');
 		}
 		const target = request.intent.targets[0]!;
-		if (target.domain !== 'layout' || target.subject.kind !== 'opening' || target.subject.id !== payload.openingId) {
+		if (
+			target.domain !== 'layout' ||
+			target.subject.kind !== 'opening' ||
+			target.subject.id !== payload.openingId
+		) {
 			return refused(`The intent must address the Opening "${payload.openingId}" it resizes.`);
 		}
 		const baseline = request.snapshot.domain.source.units.layout.data;
@@ -278,9 +312,9 @@ function openingResizePlanner(): DomainPlanner<ProjectEnvelope> {
 					width: opening.width,
 					height: opening.height,
 					sillHeight: opening.sillHeight,
-					...patch
+					...patch,
 				}),
-				diagnostics: []
+				diagnostics: [],
 			};
 		}
 		return preparedLayoutCandidate(
@@ -289,7 +323,7 @@ function openingResizePlanner(): DomainPlanner<ProjectEnvelope> {
 			{ kind: 'opening', id: opening.id },
 			plan.document,
 			Object.keys(patch),
-			{ surfaceLineage: [] }
+			{ surfaceLineage: [] },
 		);
 	});
 }
@@ -306,7 +340,11 @@ function openingDeletePlanner(): DomainPlanner<ProjectEnvelope> {
 			return refused('An Opening deletion addresses exactly one Opening.');
 		}
 		const target = request.intent.targets[0]!;
-		if (target.domain !== 'layout' || target.subject.kind !== 'opening' || target.subject.id !== payload.openingId) {
+		if (
+			target.domain !== 'layout' ||
+			target.subject.kind !== 'opening' ||
+			target.subject.id !== payload.openingId
+		) {
 			return refused(`The intent must address the Opening "${payload.openingId}" it deletes.`);
 		}
 		const baseline = request.snapshot.domain.source.units.layout.data;
@@ -316,9 +354,9 @@ function openingDeletePlanner(): DomainPlanner<ProjectEnvelope> {
 				kind: 'rejected',
 				code: plan.rejection.code,
 				message: openingRefusalWords(baseline, plan.rejection, {
-					openingId: payload.openingId
+					openingId: payload.openingId,
 				}),
-				diagnostics: []
+				diagnostics: [],
 			};
 		}
 		const contentRevision = request.snapshot.domain.source.units.layout.header.contentRevision;
@@ -326,7 +364,7 @@ function openingDeletePlanner(): DomainPlanner<ProjectEnvelope> {
 			kind: 'opening',
 			id: payload.openingId,
 			contentRevision,
-			levelId
+			levelId,
 		});
 		const candidate: PreparedCandidate<ProjectEnvelope> = {
 			operationId: request.intent.operationId,
@@ -337,17 +375,17 @@ function openingDeletePlanner(): DomainPlanner<ProjectEnvelope> {
 				{
 					kind: LAYOUT_OPENING_DELETE_KIND,
 					subjectIds: [payload.openingId],
-					fields: ['openings']
-				}
+					fields: ['openings'],
+				},
 			],
 			correspondence: [{ relation: 'retired', before: reference, after: null }],
-			diagnostics: []
+			diagnostics: [],
 		};
 		registerLayoutSurfaceLineage(candidate, []);
 		recordPreparedCowCandidate(
 			request.intent.operationId,
 			plan.document,
-			canonicalUnitJson(request.intent)
+			canonicalUnitJson(request.intent),
 		);
 		return { kind: 'prepared', candidate };
 	});
@@ -372,7 +410,7 @@ function openingIntent(
 	subjectKind: 'wall' | 'opening',
 	subjectId: string,
 	payload: AuthoringIntent['payload'],
-	input: OpeningIntentInput
+	input: OpeningIntentInput,
 ): AuthoringIntent {
 	return {
 		version: 1,
@@ -384,53 +422,50 @@ function openingIntent(
 				kind: subjectKind,
 				id: subjectId,
 				contentRevision: input.contentRevision,
-				levelId: input.levelId
-			})
+				levelId: input.levelId,
+			}),
 		],
 		payload,
-		capturedInputs: [
-			layoutWorkingLevelInput(input.levelId),
-			layoutIdCaptureInput(input.capture)
-		],
-		allocatedIds: []
+		capturedInputs: [layoutWorkingLevelInput(input.levelId), layoutIdCaptureInput(input.capture)],
+		allocatedIds: [],
 	};
 }
 
 /** The F.4 intent for one Opening placement, addressed at its host Wall. */
 export function openingCreateIntent(
-	input: OpeningIntentInput & { readonly payload: OpeningCreatePayload }
+	input: OpeningIntentInput & { readonly payload: OpeningCreatePayload },
 ): AuthoringIntent {
 	return openingIntent(
 		LAYOUT_OPENING_CREATE_KIND,
 		'wall',
 		input.payload.wallId,
 		{ ...input.payload },
-		input
+		input,
 	);
 }
 
 /** The F.4 intent for one Opening deletion, addressed at the Opening. */
 export function openingDeleteIntent(
-	input: OpeningIntentInput & { readonly openingId: string }
+	input: OpeningIntentInput & { readonly openingId: string },
 ): AuthoringIntent {
 	return openingIntent(
 		LAYOUT_OPENING_DELETE_KIND,
 		'opening',
 		input.openingId,
 		{ openingId: input.openingId },
-		input
+		input,
 	);
 }
 
 /** The F.4 intent for one bounded coupled edge/corner resize. */
 export function openingResizeIntent(
-	input: OpeningIntentInput & { readonly payload: OpeningResizePayload }
+	input: OpeningIntentInput & { readonly payload: OpeningResizePayload },
 ): AuthoringIntent {
 	return openingIntent(
 		LAYOUT_OPENING_RESIZE_KIND,
 		'opening',
 		input.payload.openingId,
 		{ ...input.payload },
-		input
+		input,
 	);
 }

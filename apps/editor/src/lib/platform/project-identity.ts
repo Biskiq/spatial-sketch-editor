@@ -40,7 +40,7 @@ export class ProjectPersistenceError extends Error {
 		readonly status?: number,
 		/** The server's typed refusal, when it supplied one. */
 		readonly serverCode?: string,
-		readonly issues?: readonly { path: string; code: string; message: string }[]
+		readonly issues?: readonly { path: string; code: string; message: string }[],
 	) {
 		super(message);
 		this.name = 'ProjectPersistenceError';
@@ -69,7 +69,7 @@ async function requestJson(
 	origin: string,
 	path: string,
 	init: RequestInit,
-	signal?: AbortSignal
+	signal?: AbortSignal,
 ): Promise<unknown> {
 	let response: Response;
 	try {
@@ -80,8 +80,8 @@ async function requestJson(
 			headers: {
 				Accept: 'application/json',
 				...(init.body === undefined ? {} : { 'Content-Type': 'application/json' }),
-				...(init.headers ?? {})
-			}
+				...(init.headers ?? {}),
+			},
 		});
 	} catch (error) {
 		if (isAbort(error, signal)) throw error;
@@ -99,7 +99,7 @@ async function requestJson(
 	throw new ProjectPersistenceError(
 		errorCodeForStatus(response.status),
 		`Cloud request failed (${response.status})`,
-		response.status
+		response.status,
 	);
 }
 
@@ -126,14 +126,19 @@ export function createProjectAuth(apiOrigin: string, fetchImpl?: FetchLike): Pro
 		getSession: (signal) =>
 			requestJson(requestFetch, origin, '/auth/me', { method: 'GET' }, signal).then(readSession),
 		signIn: (intent = 'projects') => {
-			if (typeof window === 'undefined') throw new ProjectPersistenceError('configuration', 'Sign-in is unavailable');
+			if (typeof window === 'undefined')
+				throw new ProjectPersistenceError('configuration', 'Sign-in is unavailable');
 			window.location.assign(`/login?intent=${encodeURIComponent(intent)}`);
 		},
 		signOut: (signal) =>
-			requestJson(requestFetch, origin, '/auth/logout', { method: 'POST' }, signal).then(() => undefined)
+			requestJson(requestFetch, origin, '/auth/logout', { method: 'POST' }, signal).then(
+				() => undefined,
+			),
 	};
 }
 
-export function createProjectId(randomUUID: () => string = () => globalThis.crypto.randomUUID()): string {
+export function createProjectId(
+	randomUUID: () => string = () => globalThis.crypto.randomUUID(),
+): string {
 	return `project:${randomUUID()}`;
 }

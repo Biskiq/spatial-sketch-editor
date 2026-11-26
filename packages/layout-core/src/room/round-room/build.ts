@@ -1,7 +1,13 @@
 import { UNIT_TEMPLATE_SCALARS, unitToWorldPoint } from '../round-template';
 import type { LayoutVec2 } from '../../geometry/coordinates';
 import type { LayoutDocumentIssue } from '../../plan/issue';
-import type { LayoutDocumentWallFirst, LayoutRoomRound, LayoutWallCenterline, LayoutWallCubicSpan, LayoutWallCurveKnot } from '../../wall/types';
+import type {
+	LayoutDocumentWallFirst,
+	LayoutRoomRound,
+	LayoutWallCenterline,
+	LayoutWallCubicSpan,
+	LayoutWallCurveKnot,
+} from '../../wall/types';
 import type { CertifiedRoundRoom, CertifiedRoundSubspan } from './certify';
 import { certifyRoundRoom, isEnclosedClosedCircleBoundary } from './certify';
 import { TEMPLATE_SPAN_COUNT, templateSubspanUnitScalar } from './interval';
@@ -13,7 +19,7 @@ import { TEMPLATE_SPAN_COUNT, templateSubspanUnitScalar } from './interval';
  */
 export function validateRoundRooms(
 	document: Pick<LayoutDocumentWallFirst, 'junctions' | 'walls' | 'rooms'>,
-	path = '$'
+	path = '$',
 ): LayoutDocumentIssue[] {
 	const issues: LayoutDocumentIssue[] = [];
 	const junctionById = new Map(document.junctions.map((j) => [j.id, j] as const));
@@ -26,7 +32,7 @@ export function validateRoundRooms(
 				issues.push({
 					path: `${roomPath}.round`,
 					code: 'missing_round_fact',
-					message: `Enclosed closed-circle Room '${room.id}' must state round centre and radius`
+					message: `Enclosed closed-circle Room '${room.id}' must state round centre and radius`,
 				});
 			}
 			continue;
@@ -38,7 +44,6 @@ export function validateRoundRooms(
 	}
 	return issues;
 }
-
 
 /**
  * Rebuild a certified Round Room's Wall centerlines and Junction points at a
@@ -58,7 +63,10 @@ export function buildRoundRoomGeometryFromCertified(options: {
 	readonly explicitSeamPoint?: LayoutVec2;
 }): {
 	readonly junctionPoints: ReadonlyMap<string, LayoutVec2>;
-	readonly wallCenterlines: ReadonlyMap<string, Extract<LayoutWallCenterline, { kind: 'cubic-chain' }>>;
+	readonly wallCenterlines: ReadonlyMap<
+		string,
+		Extract<LayoutWallCenterline, { kind: 'cubic-chain' }>
+	>;
 	readonly round: LayoutRoomRound;
 } {
 	const { document, certified, center, radius, seamDirection, explicitSeamPoint } = options;
@@ -78,10 +86,7 @@ export function buildRoundRoomGeometryFromCertified(options: {
 		wallSubspans.set(sub.wallId, list);
 	}
 
-	const wallCenterlines = new Map<
-		string,
-		Extract<LayoutWallCenterline, { kind: 'cubic-chain' }>
-	>();
+	const wallCenterlines = new Map<string, Extract<LayoutWallCenterline, { kind: 'cubic-chain' }>>();
 
 	for (const [wallId, subs] of wallSubspans.entries()) {
 		const wall = wallById.get(wallId)!;
@@ -133,12 +138,12 @@ export function buildRoundRoomGeometryFromCertified(options: {
 
 		const newKnots: LayoutWallCurveKnot[] = wall.centerline.knots.map((knot, idx) => ({
 			id: knot.id,
-			point: newKnotPoints[idx]!
+			point: newKnotPoints[idx]!,
 		}));
 		wallCenterlines.set(wallId, {
 			kind: 'cubic-chain',
 			knots: newKnots,
-			spans: newSpans
+			spans: newSpans,
 		});
 	}
 
@@ -147,7 +152,7 @@ export function buildRoundRoomGeometryFromCertified(options: {
 		wallCenterlines,
 		round: {
 			center: [center[0], center[1]],
-			radius
-		}
+			radius,
+		},
 	};
 }

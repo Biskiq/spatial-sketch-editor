@@ -8,22 +8,29 @@
  *
  * Identity rules:
  * - Wall `W(A → B)` split at distance `d` from canonical start `A`:
- *   `A → X` retains Wall ID `W`; `X → B` receives one new deterministic
- *   Wall ID. Canonical orientation is never reversed for convenience.
+ *  `A → X` retains Wall ID `W`; `X → B` receives one new deterministic
+ *  Wall ID. Canonical orientation is never reversed for convenience.
  * - Opening rebasing by physical meter offset:
- *   `o + width <= d` stays; `o >= d` moves with `offset' = o - d`;
- *   `o < d < o + width` rejects the whole operation; exact start/end splits
- *   are legal and deterministic.
+ *  `o + width <= d` stays; `o >= d` moves with `offset' = o - d`;
+ *  `o < d < o + width` rejects the whole operation; exact start/end splits
+ *  are legal and deterministic.
  * - Every Room boundary referencing the split Wall is rewritten atomically:
- *   forward `[W] → [W, W2]`; reverse `[W] → [W2, W]`.
+ *  forward `[W] → [W, W2]`; reverse `[W] → [W2, W]`.
  * - Junction X is allocated/reused exactly once per split point.
  * - Split at an existing endpoint is a no-op (rejected by callers as
- *   meaningless), never a zero-length child.
+ *  meaningless), never a zero-length child.
  * - X crossings split both walls against one shared new Junction, processed
- *   in stable Wall-ID order.
+ *  in stable Wall-ID order.
  */
 import { carryRegionWallIntents } from '../room/region';
-import type { LayoutDocumentWallFirst, LayoutJunction, LayoutWall, LayoutWallOpening, LayoutWallFirstRoom, OrientedWallRef } from './types';
+import type {
+	LayoutDocumentWallFirst,
+	LayoutJunction,
+	LayoutWall,
+	LayoutWallOpening,
+	LayoutWallFirstRoom,
+	OrientedWallRef,
+} from './types';
 import type { LayoutVec2 } from '../geometry/coordinates';
 import { splitWallSurfaceLineage, type LayoutSurfaceLineage } from '../plan/surface-reference';
 import { coincidesAsJunction } from './junction-identity';
@@ -103,7 +110,7 @@ export function planWallSplit(
 	wallId: string,
 	splitDistance: number,
 	allocator: NodingIdAllocator,
-	options: { existingJunctionId?: string } = {}
+	options: { existingJunctionId?: string } = {},
 ): NodingPlan {
 	return planWallSplitInternal(document, wallId, splitDistance, allocator, options, undefined);
 }
@@ -119,7 +126,7 @@ function planWallSplitWithPoint(
 	splitDistance: number,
 	point: LayoutVec2,
 	allocator: NodingIdAllocator,
-	options: { existingJunctionId?: string }
+	options: { existingJunctionId?: string },
 ): NodingPlan {
 	return planWallSplitInternal(document, wallId, splitDistance, allocator, options, point);
 }
@@ -130,7 +137,7 @@ function planWallSplitInternal(
 	splitDistance: number,
 	allocator: NodingIdAllocator,
 	options: { existingJunctionId?: string },
-	overridePoint: LayoutVec2 | undefined
+	overridePoint: LayoutVec2 | undefined,
 ): NodingPlan {
 	const wall = document.walls.find((candidate) => candidate.id === wallId);
 	if (!wall) {
@@ -144,7 +151,7 @@ function planWallSplitInternal(
 		return rejected({
 			code: 'closed_wall_isolated',
 			message: `Closed Wall '${wallId}' is isolated (closed_wall_isolated) and cannot be split`,
-			wallId
+			wallId,
 		});
 	}
 	const startJunction = document.junctions.find((junction) => junction.id === wall.startJunctionId);
@@ -153,7 +160,7 @@ function planWallSplitInternal(
 		return rejected({
 			code: 'unknown_junction',
 			message: `Wall '${wallId}' references unknown junctions`,
-			wallId
+			wallId,
 		});
 	}
 
@@ -175,7 +182,7 @@ function planWallSplitInternal(
 						? 'split_at_existing_endpoint'
 						: 'split_distance_out_of_range',
 				message: `Split distance ${splitDistance} is outside the open interval (0, ${length}) for wall '${wallId}'`,
-				wallId
+				wallId,
 			});
 		}
 		wallLength = length;
@@ -190,9 +197,9 @@ function planWallSplitInternal(
 				startPoint: startJunction.point,
 				endPoint: endJunction.point,
 				knots: wall.centerline.knots,
-				spans: wall.centerline.spans
+				spans: wall.centerline.spans,
 			},
-			splitDistance
+			splitDistance,
 		);
 		if (resolution.kind === 'rejected') {
 			return rejected({
@@ -203,7 +210,7 @@ function planWallSplitInternal(
 							? 'curved_wall_unsupported'
 							: 'split_distance_out_of_range',
 				message: resolution.message,
-				wallId
+				wallId,
 			});
 		}
 		const { result } = resolution;
@@ -224,11 +231,12 @@ function planWallSplitInternal(
 		return rejected({
 			code: 'split_through_opening_interior',
 			message: `Split of wall '${wallId}' at ${splitDistance} passes through opening interior: ${rebased}`,
-			wallId
+			wallId,
 		});
 	}
 
-	const junctionId = options.existingJunctionId ?? allocator.nextJunctionId(document, `${wallId}-split`);
+	const junctionId =
+		options.existingJunctionId ?? allocator.nextJunctionId(document, `${wallId}-split`);
 	const newWallId = allocator.nextWallId(document, `${wallId}-b`);
 	// Candidate documents: replace W with [W (A→X), W2 (X→B)]. The junction
 	// record is inserted when newly allocated; a supplied existing junction is
@@ -241,13 +249,15 @@ function planWallSplitInternal(
 	if (!options.existingJunctionId) {
 		junctions = [...document.junctions, { id: junctionId, point: splitPoint }];
 	} else {
-		const existing = document.junctions.find((junction) => junction.id === options.existingJunctionId);
+		const existing = document.junctions.find(
+			(junction) => junction.id === options.existingJunctionId,
+		);
 		if (existing) {
 			if (!coincidesAsJunction(existing.point, splitPoint)) {
 				return rejected({
 					code: 'junction_point_mismatch',
 					message: `Junction '${junctionId}' exists at a different coordinate than the requested split point`,
-					wallId
+					wallId,
 				});
 			}
 		} else {
@@ -273,7 +283,7 @@ function planWallSplitInternal(
 			endJunctionId: candidate.endJunctionId,
 			thickness: candidate.thickness,
 			height: candidate.height,
-			centerline: fragmentB
+			centerline: fragmentB,
 		});
 	}
 	for (const opening of document.openings) {
@@ -295,7 +305,7 @@ function planWallSplitInternal(
 	// Room boundary rewrites: forward [W] → [W, W2]; reverse [W] → [W2, W].
 	const rooms = document.rooms.map((room) => ({
 		...room,
-		boundary: rewriteBoundaryForSplit(room.boundary, wallId, newWallId)
+		boundary: rewriteBoundaryForSplit(room.boundary, wallId, newWallId),
 	}));
 
 	return {
@@ -306,12 +316,12 @@ function planWallSplitInternal(
 			walls,
 			rooms,
 			regions: carryRegionWallIntents(document.regions, new Map([[wallId, [wallId, newWallId]]])),
-			openings
+			openings,
 		},
 		junctionId,
 		createdWallIds: [newWallId],
 		splitWallIds: [wallId],
-		surfaceLineage: splitWallSurfaceLineage(wallId, newWallId)
+		surfaceLineage: splitWallSurfaceLineage(wallId, newWallId),
 	};
 }
 
@@ -328,7 +338,7 @@ export function planWallSplitAtPoint(
 	splitDistance: number,
 	point: LayoutVec2,
 	allocator: NodingIdAllocator,
-	options: { existingJunctionId?: string } = {}
+	options: { existingJunctionId?: string } = {},
 ): NodingPlan {
 	return planWallSplitInternal(document, wallId, splitDistance, allocator, options, point);
 }
@@ -341,7 +351,7 @@ export function planWallCrossing(
 	document: LayoutDocumentWallFirst,
 	wallIds: [string, string],
 	crossingPoint: LayoutVec2,
-	allocator: NodingIdAllocator
+	allocator: NodingIdAllocator,
 ): NodingPlan {
 	const [firstId, secondId] = wallIds;
 	const first = document.walls.find((wall) => wall.id === firstId);
@@ -350,7 +360,7 @@ export function planWallCrossing(
 		return rejected({
 			code: 'unknown_wall',
 			message: `Unknown wall in crossing plan: ${!first ? firstId : secondId}`,
-			wallId: !first ? firstId : secondId
+			wallId: !first ? firstId : secondId,
 		});
 	}
 	// Crossing discovery still measures in chords, so curve
@@ -362,7 +372,7 @@ export function planWallCrossing(
 			return rejected({
 				code: 'curved_wall_unsupported',
 				message: `Wall '${wall.id}' is curved; crossing noding stays straight-only`,
-				wallId: wall.id
+				wallId: wall.id,
 			});
 		}
 	}
@@ -372,7 +382,7 @@ export function planWallCrossing(
 	// §9.2): identical crossings plan identical IDs regardless of call order.
 	const junctionId = allocator.nextJunctionId(
 		document,
-		`${orderedIds[0]}-${orderedIds[1]}-crossing`
+		`${orderedIds[0]}-${orderedIds[1]}-crossing`,
 	);
 
 	// Split both walls against the same junction. The first split introduces
@@ -383,7 +393,7 @@ export function planWallCrossing(
 		distanceTo(document, orderedIds[0]!, crossingPoint),
 		crossingPoint,
 		allocator,
-		{ existingJunctionId: junctionId }
+		{ existingJunctionId: junctionId },
 	);
 	if (firstSplit.kind === 'rejected') return firstSplit;
 
@@ -393,7 +403,7 @@ export function planWallCrossing(
 		distanceTo(firstSplit.document, orderedIds[1]!, crossingPoint),
 		crossingPoint,
 		allocator,
-		{ existingJunctionId: junctionId }
+		{ existingJunctionId: junctionId },
 	);
 	if (secondSplit.kind === 'rejected') return secondSplit;
 
@@ -403,15 +413,11 @@ export function planWallCrossing(
 		junctionId,
 		createdWallIds: [...firstSplit.createdWallIds, ...secondSplit.createdWallIds],
 		splitWallIds: [...firstSplit.splitWallIds, ...secondSplit.splitWallIds],
-		surfaceLineage: [...firstSplit.surfaceLineage, ...secondSplit.surfaceLineage]
+		surfaceLineage: [...firstSplit.surfaceLineage, ...secondSplit.surfaceLineage],
 	};
 }
 
-function distanceTo(
-	document: LayoutDocumentWallFirst,
-	wallId: string,
-	point: LayoutVec2
-): number {
+function distanceTo(document: LayoutDocumentWallFirst, wallId: string, point: LayoutVec2): number {
 	const wall = document.walls.find((candidate) => candidate.id === wallId)!;
 	const start = document.junctions.find((junction) => junction.id === wall.startJunctionId)!;
 	return Math.hypot(point[0] - start.point[0], point[1] - start.point[1]);
@@ -434,10 +440,8 @@ function rebaseOpenings(
 	openings: readonly LayoutWallOpening[],
 	wallId: string,
 	splitDistance: number,
-	wallLength: number
-):
-	| { retained: Array<{ id: string }>; moved: Array<{ id: string; offset: number }> }
-	| string {
+	wallLength: number,
+): { retained: Array<{ id: string }>; moved: Array<{ id: string; offset: number }> } | string {
 	const retained: Array<{ id: string }> = [];
 	const moved: Array<{ id: string; offset: number }> = [];
 	for (const opening of openings) {
@@ -464,7 +468,7 @@ function rebaseOpenings(
 function rewriteBoundaryForSplit(
 	boundary: readonly OrientedWallRef[],
 	wallId: string,
-	newWallId: string
+	newWallId: string,
 ): OrientedWallRef[] {
 	const rewritten: OrientedWallRef[] = [];
 	for (const ref of boundary) {

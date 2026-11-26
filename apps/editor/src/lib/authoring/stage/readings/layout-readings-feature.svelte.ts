@@ -20,7 +20,10 @@ export function createLayoutReadingsFeature(deps: LayoutReadingsDependencies) {
 	const lift = createLiftHost(deps.lift);
 	const cutaway = createCutawayHost(deps.cutaway);
 	const wallFace = createWallFaceHost(deps.wallFace);
-	const plan = createReadingPlanParameters({ facade: deps.cutaway.facade, resolvedSlice: slice.resolved });
+	const plan = createReadingPlanParameters({
+		facade: deps.cutaway.facade,
+		resolvedSlice: slice.resolved,
+	});
 	const lifetime = createLayoutReadingsLifecycle({
 		clearFace: wallFace.clear,
 		clearLift: lift.clear,
@@ -28,16 +31,28 @@ export function createLayoutReadingsFeature(deps: LayoutReadingsDependencies) {
 		resetCutaway: cutaway.reset,
 		clearCutawayFailures: cutaway.clearFailures,
 		installEffects: [
-			unfold.attachAnchor, cutaway.attachPreviewHold, slice.attachMirror,
-			cutaway.attachClassification, plan.attach, lift.attachScope
-		]
+			unfold.attachAnchor,
+			cutaway.attachPreviewHold,
+			slice.attachMirror,
+			cutaway.attachClassification,
+			plan.attach,
+			lift.attachScope,
+		],
 	});
 	return {
 		id: 'layout-readings' as const,
-		get liftControl() { return lift.control; },
-		get nearWallsControl() { return cutaway.control; },
-		get sliceMode() { return slice.mode; },
-		get alignHiddenWallIds() { return cutaway.alignHiddenWallIds; },
+		get liftControl() {
+			return lift.control;
+		},
+		get nearWallsControl() {
+			return cutaway.control;
+		},
+		get sliceMode() {
+			return slice.mode;
+		},
+		get alignHiddenWallIds() {
+			return cutaway.alignHiddenWallIds;
+		},
 		ports: {
 			resolvedSlice: slice.resolved,
 			levelSlice: slice.level,
@@ -45,7 +60,7 @@ export function createLayoutReadingsFeature(deps: LayoutReadingsDependencies) {
 			sliceDraw: slice.controller,
 			unfold: unfold.gestures,
 			unfoldActive: unfold.active,
-			setCutawayHeld: cutaway.setHeld
+			setCutawayHeld: cutaway.setHeld,
 		},
 		escape: {
 			liftActive: lift.active,
@@ -53,7 +68,7 @@ export function createLayoutReadingsFeature(deps: LayoutReadingsDependencies) {
 			sliceActive: slice.active,
 			putBackSlice: slice.putBack,
 			sliceDraftActive: slice.controller.hasDraft,
-			cancelSliceDraft: slice.controller.cancelDraft
+			cancelSliceDraft: slice.controller.cancelDraft,
 		},
 		regions: {
 			liftCanvas: lift.canvas,
@@ -62,7 +77,7 @@ export function createLayoutReadingsFeature(deps: LayoutReadingsDependencies) {
 			cutawayCanvas: cutaway.canvas,
 			liftViewport: lift.viewport,
 			sliceViewport: slice.viewport,
-			overlay: slice.overlay
+			overlay: slice.overlay,
 		},
 		lifecycle: {
 			resetPresentation: { reset: lifetime.reset },
@@ -71,8 +86,8 @@ export function createLayoutReadingsFeature(deps: LayoutReadingsDependencies) {
 			dispose: {
 				'dispose-unfold': unfold.dispose,
 				'release-hold': cutaway.releaseHold,
-				'clear-cutaway-mirror': cutaway.clearMirror
-			}
-		}
+				'clear-cutaway-mirror': cutaway.clearMirror,
+			},
+		},
 	};
 }

@@ -1,11 +1,11 @@
 /**
- * What Paint holds and how its quick lists behave (T2.S8 U2).
+ * What Paint holds and how its quick lists behave.
  *
  * Pure vocabulary, no Svelte and no Scene: the tray, the Finish service and the
  * preference store share these words. A **pick** is what the next stroke
  * applies: a material Finish (rounded square, replaces the whole Finish) or a
  * colour (circle, keeps relief and sheen, written by the colour-coat planner
- * that U3 supplies through `PaintColourPort`).
+ * that comes through `PaintColourPort`).
  *
  * Favourites and recents are references, never copies: a Finish key
  * (`curated:<id>` / `project:<id>`), a palette slot (`slot:<id>`) or a literal
@@ -39,8 +39,16 @@ export type PaintPick =
 
 /** Paint's reach. A future freeform Brush joins this table; nothing else names it. */
 export const PAINT_RADII = [
-	{ id: 'surface', label: 'Surface', hint: 'One surface per click, or every surface the stroke crosses' },
-	{ id: 'space', label: 'Space', hint: 'Every wall surface in the room, or every part of an object' }
+	{
+		id: 'surface',
+		label: 'Surface',
+		hint: 'One surface per click, or every surface the stroke crosses',
+	},
+	{
+		id: 'space',
+		label: 'Space',
+		hint: 'Every wall surface in the room, or every part of an object',
+	},
 ] as const;
 
 export type PaintRadius = (typeof PAINT_RADII)[number]['id'];
@@ -69,7 +77,8 @@ export function parseColourKey(key: string): PaintColour | null {
 export function pickKey(pick: PaintPick): string {
 	if (pick.kind === 'finish') return pick.key;
 	if (pick.kind === 'colour') return colourKey(pick.colour);
-	const base = 'curated' in pick.ref ? `curated:${pick.ref.curated}` : `project:${pick.ref.project}`;
+	const base =
+		'curated' in pick.ref ? `curated:${pick.ref.curated}` : `project:${pick.ref.project}`;
 	return `draft:${base}:${JSON.stringify(pick.edits)}`;
 }
 
@@ -82,7 +91,7 @@ export function samePick(a: PaintPick | null, b: PaintPick | null): boolean {
 export function touchRecent(
 	list: readonly string[],
 	key: string,
-	limit: number = PAINT_RECENTS_LIMIT
+	limit: number = PAINT_RECENTS_LIMIT,
 ): readonly string[] {
 	return [key, ...list.filter((entry) => entry !== key)].slice(0, limit);
 }
@@ -91,9 +100,11 @@ export function touchRecent(
 export function toggleFavourite(
 	list: readonly string[],
 	key: string,
-	limit: number = PAINT_FAVOURITES_LIMIT
+	limit: number = PAINT_FAVOURITES_LIMIT,
 ): readonly string[] {
-	return list.includes(key) ? list.filter((entry) => entry !== key) : [...list, key].slice(0, limit);
+	return list.includes(key)
+		? list.filter((entry) => entry !== key)
+		: [...list, key].slice(0, limit);
 }
 
 export type PaintRowEntry = { readonly key: string; readonly favourite: boolean };
@@ -107,13 +118,13 @@ export function paintRow(
 	favourites: readonly string[],
 	recents: readonly string[],
 	resolves: (key: string) => boolean,
-	maxRecents: number = PAINT_ROW_RECENTS
+	maxRecents: number = PAINT_ROW_RECENTS,
 ): readonly PaintRowEntry[] {
 	const kept = favourites.filter(resolves);
 	const fresh = recents.filter((key) => resolves(key) && !kept.includes(key)).slice(0, maxRecents);
 	return [
 		...kept.map((key) => ({ key, favourite: true })),
-		...fresh.map((key) => ({ key, favourite: false }))
+		...fresh.map((key) => ({ key, favourite: false })),
 	];
 }
 
@@ -128,8 +139,21 @@ export function hslToHex({ h, s, l }: Hsl): string {
 	const x = chroma * (1 - Math.abs(((hue / 60) % 2) - 1));
 	const m = light - chroma / 2;
 	const [r, g, b] =
-		hue < 60 ? [chroma, x, 0] : hue < 120 ? [x, chroma, 0] : hue < 180 ? [0, chroma, x] : hue < 240 ? [0, x, chroma] : hue < 300 ? [x, 0, chroma] : [chroma, 0, x];
-	const byte = (value: number) => Math.round((value + m) * 255).toString(16).padStart(2, '0');
+		hue < 60
+			? [chroma, x, 0]
+			: hue < 120
+				? [x, chroma, 0]
+				: hue < 180
+					? [0, chroma, x]
+					: hue < 240
+						? [0, x, chroma]
+						: hue < 300
+							? [x, 0, chroma]
+							: [chroma, 0, x];
+	const byte = (value: number) =>
+		Math.round((value + m) * 255)
+			.toString(16)
+			.padStart(2, '0');
 	return `#${byte(r)}${byte(g)}${byte(b)}`;
 }
 
@@ -145,20 +169,25 @@ export function hexToHsl(hex: string): Hsl {
 	if (d === 0) return { h: 0, s: 0, l: l * 100 };
 	const s = d / (1 - Math.abs(2 * l - 1));
 	const h =
-		max === r ? ((g - b) / d + (g < b ? 6 : 0)) * 60 : max === g ? ((b - r) / d + 2) * 60 : ((r - g) / d + 4) * 60;
+		max === r
+			? ((g - b) / d + (g < b ? 6 : 0)) * 60
+			: max === g
+				? ((b - r) / d + 2) * 60
+				: ((r - g) / d + 4) * 60;
 	return { h, s: s * 100, l: l * 100 };
 }
 
 /**
- * The U1 picture source of a stored Finish key: a curated key is its catalogue
+ * The picture source of a stored Finish key: a curated key is its catalogue
  * master, a project key goes through the page's project source (its Scene and
  * texture scope), anything else (a colour, the model's own look) has none.
  */
 export function paintTileSource<S>(
 	key: string,
-	project: (finishId: string) => S | null
+	project: (finishId: string) => S | null,
 ): { readonly kind: 'catalogue'; readonly id: MaterialId } | S | null {
-	if (key.startsWith('curated:')) return { kind: 'catalogue', id: key.slice('curated:'.length) as MaterialId };
+	if (key.startsWith('curated:'))
+		return { kind: 'catalogue', id: key.slice('curated:'.length) as MaterialId };
 	if (key.startsWith('project:')) return project(key.slice('project:'.length));
 	return null;
 }

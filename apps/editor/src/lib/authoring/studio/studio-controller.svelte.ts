@@ -23,7 +23,7 @@ import {
 	type StudioPhase,
 	type StudioPickScope,
 	type StudioRoot,
-	type StudioViewRecord
+	type StudioViewRecord,
 } from './studio-model';
 
 export type StudioBounds = {
@@ -65,7 +65,7 @@ export type StudioPorts = {
 	 * open the destination chooser. Reports its own failures through `notice` and
 	 * resolves `true` only when it navigated.
 	 *
-	 * `current()` answers whether this very transfer is still the creator's intent: it
+	 * `current` answers whether this very transfer is still the creator's intent: it
 	 * turns false the moment the root, the posture or the session changes. The port asks
 	 * after every await and never navigates, or reports, for a transfer that is not current.
 	 */
@@ -119,7 +119,10 @@ export function createStudioController(ports: StudioPorts) {
 	}
 
 	function applyScope(next: StudioPhase): void {
-		if (transfer !== null && !(next.kind === 'active' && phase.kind === 'active' && next.rootId === phase.rootId)) {
+		if (
+			transfer !== null &&
+			!(next.kind === 'active' && phase.kind === 'active' && next.rootId === phase.rootId)
+		) {
 			transfer = null;
 			placingCopy = false;
 		}
@@ -170,7 +173,12 @@ export function createStudioController(ports: StudioPorts) {
 				ports.syncUrl({ objectId: null });
 				return;
 			case 'unavailable':
-				applyScope({ kind: 'unavailable', requestedId: opening.requestedId, reason: opening.reason, lost: false });
+				applyScope({
+					kind: 'unavailable',
+					requestedId: opening.requestedId,
+					reason: opening.reason,
+					lost: false,
+				});
 				ports.select(null);
 				ports.syncUrl({ objectId: null });
 		}
@@ -188,15 +196,33 @@ export function createStudioController(ports: StudioPorts) {
 	}
 
 	return {
-		get phase(): StudioPhase { return phase; },
-		get active(): boolean { return phase.kind !== 'inactive'; },
-		get origin(): StudioOrigin { return origin; },
-		get context(): StudioContext { return context; },
-		get creating(): boolean { return creating; },
-		get placingCopy(): boolean { return placingCopy; },
-		get rootId(): string | null { return phase.kind === 'active' ? phase.rootId : null; },
-		get rootName(): string | null { return phase.kind === 'active' ? rootName(phase.rootId) : null; },
-		get roots(): readonly StudioRoot[] { return rootList; },
+		get phase(): StudioPhase {
+			return phase;
+		},
+		get active(): boolean {
+			return phase.kind !== 'inactive';
+		},
+		get origin(): StudioOrigin {
+			return origin;
+		},
+		get context(): StudioContext {
+			return context;
+		},
+		get creating(): boolean {
+			return creating;
+		},
+		get placingCopy(): boolean {
+			return placingCopy;
+		},
+		get rootId(): string | null {
+			return phase.kind === 'active' ? phase.rootId : null;
+		},
+		get rootName(): string | null {
+			return phase.kind === 'active' ? rootName(phase.rootId) : null;
+		},
+		get roots(): readonly StudioRoot[] {
+			return rootList;
+		},
 
 		/** Open the posture from the address, once the project is loaded. */
 		openFromEntry(input: { readonly objectId: string | null; readonly minted: boolean }): void {
@@ -204,7 +230,13 @@ export function createStudioController(ports: StudioPorts) {
 			context = 'mat';
 			returning = null;
 			syncKnown();
-			applyOpening(resolveStudioOpening({ entities: ports.entities(), requestedId: input.objectId, minted: input.minted }));
+			applyOpening(
+				resolveStudioOpening({
+					entities: ports.entities(),
+					requestedId: input.objectId,
+					minted: input.minted,
+				}),
+			);
 		},
 
 		/** World entry: record the way back, then scope the selected form. */
@@ -223,7 +255,7 @@ export function createStudioController(ports: StudioPorts) {
 				view: ports.captureView(),
 				selectedId: ports.selectedEntityId() ?? rootId,
 				indexOpen: ports.indexOpen?.() ?? null,
-				initiator
+				initiator,
 			};
 			enter(rootId);
 			return true;
@@ -270,7 +302,7 @@ export function createStudioController(ports: StudioPorts) {
 			if (!ports.settlePending()) return;
 			creation = {
 				previousRootId: phase.kind === 'active' ? phase.rootId : lastRoot,
-				baseline: new Set(ports.entities().map((entity) => entity.id))
+				baseline: new Set(ports.entities().map((entity) => entity.id)),
 			};
 			creating = true;
 			context = 'mat';
@@ -364,13 +396,16 @@ export function createStudioController(ports: StudioPorts) {
 				return;
 			}
 			if (phase.kind === 'no-objects' && roots.length > 0) {
-				applyOpening(roots.length === 1 ? { kind: 'enter', rootId: roots[0]!.id } : { kind: 'choose', roots });
+				applyOpening(
+					roots.length === 1 ? { kind: 'enter', rootId: roots[0]!.id } : { kind: 'choose', roots },
+				);
 			}
 		},
 
 		/** Retry a frame that was waiting for the body to mount. */
 		retryFrame(): void {
-			if (framePending !== null && phase.kind === 'active' && phase.rootId === framePending) frameRoot(framePending);
+			if (framePending !== null && phase.kind === 'active' && phase.rootId === framePending)
+				frameRoot(framePending);
 		},
 
 		/** World origin: restore the Camera view and the original selection, then leave. */
@@ -394,9 +429,13 @@ export function createStudioController(ports: StudioPorts) {
 				// Realized as one viewing intent through the Camera; nothing was written.
 			} else {
 				ports.fitAll();
-				ports.notice(`${check.valid ? 'The saved view could not be restored' : check.reason} Showing everything instead.`);
+				ports.notice(
+					`${check.valid ? 'The saved view could not be restored' : check.reason} Showing everything instead.`,
+				);
 			}
-			const stillThere = record.selectedId !== null && ports.entities().some((entity) => entity.id === record.selectedId);
+			const stillThere =
+				record.selectedId !== null &&
+				ports.entities().some((entity) => entity.id === record.selectedId);
 			ports.select(stillThere ? record.selectedId : null);
 			if (record.indexOpen !== null) ports.setIndexOpen?.(record.indexOpen);
 			ports.focusReturn(record.initiator);
@@ -409,7 +448,7 @@ export function createStudioController(ports: StudioPorts) {
 			if (!ports.settlePending()) return;
 			// Once navigation is accepted it owns the frame. Drop the transfer here,
 			// synchronously, so a delayed Save/library result cannot reopen a chooser
-			// over the page we are leaving. The in-flight journey asks `current()`
+			// over the page we are leaving. The in-flight journey asks `current`
 			// after every await and now sees false; its `finally` no longer owns the
 			// busy flag (we reset it here). Every other exit reaches the same drop
 			// through `applyScope`; this one leaves without changing scope, so it
@@ -469,7 +508,7 @@ export function createStudioController(ports: StudioPorts) {
 		},
 
 		/** A replaced project or a refused load ends the posture. */
-		end: endPosture
+		end: endPosture,
 	};
 }
 

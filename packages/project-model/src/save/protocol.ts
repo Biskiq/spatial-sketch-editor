@@ -1,5 +1,5 @@
 /**
- * `SaveAcceptedSource@1` — the conditional Save capture (AM-4,
+ * `SaveAcceptedSource@1` — the conditional Save capture (,
  * `F4.intent-acceptance@1:conditional-save-current-v1`).
  *
  * The protocol is runtime-safe and lives on its own package subpath so the API,
@@ -8,12 +8,12 @@
  * durable saved-base token form. It deliberately does not own:
  *
  * - source validation or admission — the live F.2 unit Save handler owns both,
- *   so Save cannot become a second validator;
+ *  so Save cannot become a second validator;
  * - the content-identity implementation — the digest comes from the live source
- *   provider, and its **scheme** travels as transport metadata outside the
- *   capture. Keeping the scheme constant here, pinned by a golden-digest test,
- *   makes a canonicalization change fail loudly instead of silently turning
- *   every Save into a false conflict or false match.
+ *  provider, and its **scheme** travels as transport metadata outside the
+ *  capture. Keeping the scheme constant here, pinned by a golden-digest test,
+ *  makes a canonicalization change fail loudly instead of silently turning
+ *  every Save into a false conflict or false match.
  *
  * The capture carries the full canonical source **text**. That is deliberate:
  * equal digests do not prove equal bytes, and retry identity / dirty comparison
@@ -40,7 +40,8 @@ export const SAVE_CONTENT_IDENTITY_SCHEME = 'project-model/canonical-authored-js
 /** The durable saved-base token prefix. Tokens are opaque to the client. */
 export const SAVED_BASE_TOKEN_PREFIX = 'saved-base:';
 
-const SAVED_BASE_TOKEN_PATTERN = /^saved-base:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const SAVED_BASE_TOKEN_PATTERN =
+	/^saved-base:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const SOURCE_CONTENT_ID_PATTERN = /^sha256-[0-9a-f]{64}$/;
 const OPERATION_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9:._-]{0,127}$/;
 
@@ -74,7 +75,7 @@ export type SaveAcceptedSource = {
 
 /**
  * One wire request: the capture plus the transport-only scheme. The scheme is
- * outside `SaveAcceptedSource@1` so the ratified AM-4 capture shape is not
+ * outside `SaveAcceptedSource@1` so the ratified capture shape is not
  * extended by a build fact.
  */
 export type SaveRequest = {
@@ -149,7 +150,9 @@ export function isSavedBaseToken(value: unknown): value is string {
 }
 
 /** Mint one durable saved-base token. The caller supplies randomness. */
-export function createSavedBaseToken(randomUUID: () => string = () => globalThis.crypto.randomUUID()): string {
+export function createSavedBaseToken(
+	randomUUID: () => string = () => globalThis.crypto.randomUUID(),
+): string {
 	return `${SAVED_BASE_TOKEN_PREFIX}${randomUUID()}`;
 }
 
@@ -165,7 +168,8 @@ export async function fullSourceHash(canonicalJson: string): Promise<string> {
 /** Equality for preconditions, keeping the token out of `create-only`. */
 export function samePrecondition(a: SavePrecondition, b: SavePrecondition): boolean {
 	if (a.kind === 'create-only' && b.kind === 'create-only') return true;
-	if (a.kind === 'expected-saved-base' && b.kind === 'expected-saved-base') return a.token === b.token;
+	if (a.kind === 'expected-saved-base' && b.kind === 'expected-saved-base')
+		return a.token === b.token;
 	return false;
 }
 
@@ -184,7 +188,10 @@ export function readSaveRequest(input: unknown): SaveRequestValidation {
 	const reader = new ShapeReader();
 	const outer = reader.object(input, '$', ['contentIdentityScheme', 'capture']);
 	if (outer === null) return { kind: 'invalid', issues: reader.issues };
-	const contentIdentityScheme = reader.string(outer.contentIdentityScheme, '$.contentIdentityScheme');
+	const contentIdentityScheme = reader.string(
+		outer.contentIdentityScheme,
+		'$.contentIdentityScheme',
+	);
 	const captureRecord = reader.object(outer.capture, '$.capture', [
 		'protocol',
 		'projectId',
@@ -194,18 +201,26 @@ export function readSaveRequest(input: unknown): SaveRequestValidation {
 		'sourceVersion',
 		'acceptedRevision',
 		'sourceContentId',
-		'canonicalJson'
+		'canonicalJson',
 	]);
 	if (captureRecord === null) return { kind: 'invalid', issues: reader.issues };
 
 	if (captureRecord.protocol !== SAVE_ACCEPTED_SOURCE_VERSION) {
-		reader.problem('$.capture.protocol', 'unsupported-version', `Expected ${SAVE_ACCEPTED_SOURCE_VERSION}`);
+		reader.problem(
+			'$.capture.protocol',
+			'unsupported-version',
+			`Expected ${SAVE_ACCEPTED_SOURCE_VERSION}`,
+		);
 	}
 	const projectId = reader.opaqueId(captureRecord.projectId, '$.capture.projectId');
 	const operationId = readOperationId(reader, captureRecord.operationId);
 	const precondition = readPrecondition(reader, captureRecord.precondition);
 	const sourceKind = reader.string(captureRecord.sourceKind, '$.capture.sourceKind');
-	const sourceVersion = readSafeInteger(reader, captureRecord.sourceVersion, '$.capture.sourceVersion');
+	const sourceVersion = readSafeInteger(
+		reader,
+		captureRecord.sourceVersion,
+		'$.capture.sourceVersion',
+	);
 	const revision = validateAcceptedRevision(captureRecord.acceptedRevision);
 	if (!revision.success) {
 		for (const issue of revision.issues) {
@@ -217,19 +232,15 @@ export function readSaveRequest(input: unknown): SaveRequestValidation {
 		captureRecord.sourceContentId,
 		'$.capture.sourceContentId',
 		SOURCE_CONTENT_ID_PATTERN,
-		'a sha256 digest'
+		'a sha256 digest',
 	);
 	const canonicalJson = readCanonicalJson(reader, captureRecord.canonicalJson);
 
-	if (
-		projectId !== null &&
-		revision.success &&
-		revision.value.projectId !== projectId
-	) {
+	if (projectId !== null && revision.success && revision.value.projectId !== projectId) {
 		reader.problem(
 			'$.capture.acceptedRevision.projectId',
 			'project-mismatch',
-			'The accepted revision must belong to the captured project'
+			'The accepted revision must belong to the captured project',
 		);
 	}
 
@@ -261,16 +272,20 @@ export function readSaveRequest(input: unknown): SaveRequestValidation {
 				sourceVersion,
 				acceptedRevision: revision.value,
 				sourceContentId,
-				canonicalJson
-			}
-		}
+				canonicalJson,
+			},
+		},
 	};
 }
 
 function readOperationId(reader: ShapeReader, value: unknown): string | null {
 	const id = reader.string(value, '$.capture.operationId');
 	if (id !== null && !OPERATION_ID_PATTERN.test(id)) {
-		reader.problem('$.capture.operationId', 'invalid-operation-id', 'The operation ID must be a stable printable id');
+		reader.problem(
+			'$.capture.operationId',
+			'invalid-operation-id',
+			'The operation ID must be a stable printable id',
+		);
 		return null;
 	}
 	return id;
@@ -294,13 +309,17 @@ function readPrecondition(reader: ShapeReader, value: unknown): SavePrecondition
 			reader.problem(
 				'$.capture.precondition.token',
 				'invalid-saved-base-token',
-				'The saved-base token must be a durable token issued by a prior Save'
+				'The saved-base token must be a durable token issued by a prior Save',
 			);
 			return null;
 		}
 		return { kind: 'expected-saved-base', token };
 	}
-	reader.problem('$.capture.precondition.kind', 'unsupported-precondition', 'Expected create-only or expected-saved-base');
+	reader.problem(
+		'$.capture.precondition.kind',
+		'unsupported-precondition',
+		'Expected create-only or expected-saved-base',
+	);
 	return null;
 }
 
@@ -317,7 +336,7 @@ function readPattern(
 	value: unknown,
 	path: string,
 	pattern: RegExp,
-	description: string
+	description: string,
 ): string | null {
 	if (typeof value !== 'string' || !pattern.test(value)) {
 		reader.problem(path, 'invalid-identity', `${path} must be ${description}`);
@@ -328,7 +347,11 @@ function readPattern(
 
 function readCanonicalJson(reader: ShapeReader, value: unknown): string | null {
 	if (typeof value !== 'string' || value.length === 0) {
-		reader.problem('$.capture.canonicalJson', 'invalid-source-bytes', 'The captured source must be canonical JSON text');
+		reader.problem(
+			'$.capture.canonicalJson',
+			'invalid-source-bytes',
+			'The captured source must be canonical JSON text',
+		);
 		return null;
 	}
 	return value;

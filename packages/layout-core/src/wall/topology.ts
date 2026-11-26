@@ -13,16 +13,21 @@
  *
  * Classification rules:
  * 1. an explicit shared Junction ID wins first — that is a topological
- *    endpoint touch, classified before any orientation math;
+ *  endpoint touch, classified before any orientation math;
  * 2. four robust orientation signs decide proper/T/collinear classes;
  * 3. proper-crossing coordinates use ordinary double line intersection after
- *    robust classification, validated finite + inside both envelopes —
- *    otherwise `unstable`, never a nearest-endpoint snap;
+ *  robust classification, validated finite + inside both envelopes —
+ *  otherwise `unstable`, never a nearest-endpoint snap;
  * 4. no distance tolerance ever decides an orientation sign; proximity only
- *    feeds the separate near-coincident *diagnostic*.
+ *  feeds the separate near-coincident *diagnostic*.
  */
 import type { LayoutVec2 } from '../geometry/coordinates';
-import { CURVE_SELF_INTERSECTION_TOLERANCE, sampledPolylineIntersects, sampledPolylineSelfIntersects, type CurveSample } from '../geometry/curve';
+import {
+	CURVE_SELF_INTERSECTION_TOLERANCE,
+	sampledPolylineIntersects,
+	sampledPolylineSelfIntersects,
+	type CurveSample,
+} from '../geometry/curve';
 import { orientXZ } from '../geometry/robust-orientation';
 
 /** Typed intersection classification between two straight wall segments. */
@@ -97,7 +102,7 @@ export function sampledWallSelfIntersects(wall: SampledTopologyWall): boolean {
 export function sampledWallExtentsOverlap(
 	a: Pick<SampledTopologyWall, 'samples'>,
 	b: Pick<SampledTopologyWall, 'samples'>,
-	tolerance: number = CURVE_SELF_INTERSECTION_TOLERANCE
+	tolerance: number = CURVE_SELF_INTERSECTION_TOLERANCE,
 ): boolean {
 	let aMinX = Infinity;
 	let aMinZ = Infinity;
@@ -151,7 +156,7 @@ export function sampledWallExtentsOverlap(
 export function sampledWallsCross(
 	a: SampledTopologyWall,
 	b: SampledTopologyWall,
-	sharedJunctionId?: string
+	sharedJunctionId?: string,
 ): boolean {
 	if (sharedJunctionId === undefined) {
 		return sampledPolylineIntersects(a.samples, b.samples, CURVE_SELF_INTERSECTION_TOLERANCE);
@@ -174,7 +179,7 @@ export function sampledWallsCross(
 		second,
 		CURVE_SELF_INTERSECTION_TOLERANCE,
 		sharedPoint,
-		otherSharedPoint
+		otherSharedPoint,
 	);
 }
 
@@ -187,20 +192,25 @@ export function sampledWallsCross(
 export function classifyWallIntersection(
 	a: TopologySegment,
 	b: TopologySegment,
-	sharedJunctionIds: readonly string[] = []
+	sharedJunctionIds: readonly string[] = [],
 ): WallIntersection {
 	// Rule 1: explicit shared junction wins before orientation math.
 	if (sharedJunctionIds.length > 0) {
-		const point = a.start[0] === b.start[0] && a.start[1] === b.start[1] ? a.start
-			: a.start[0] === b.end[0] && a.start[1] === b.end[1] ? a.start
-			: a.end[0] === b.start[0] && a.end[1] === b.start[1] ? a.end
-			: a.end[0] === b.end[0] && a.end[1] === b.end[1] ? a.end
-			: undefined;
+		const point =
+			a.start[0] === b.start[0] && a.start[1] === b.start[1]
+				? a.start
+				: a.start[0] === b.end[0] && a.start[1] === b.end[1]
+					? a.start
+					: a.end[0] === b.start[0] && a.end[1] === b.start[1]
+						? a.end
+						: a.end[0] === b.end[0] && a.end[1] === b.end[1]
+							? a.end
+							: undefined;
 		if (point !== undefined) {
 			return {
 				kind: 'shared-explicit-junction',
 				junctionId: sharedJunctionIds[0]!,
-				point: [point[0], point[1]]
+				point: [point[0], point[1]],
 			};
 		}
 	}
@@ -241,7 +251,7 @@ export function classifyWallIntersection(
 			kind: 'endpoint-on-interior',
 			endpointWallId: t.endpointWallId,
 			interiorWallId: t.interiorWallId,
-			point: t.point
+			point: t.point,
 		};
 	}
 	const tReverse = endpointOnInterior(b, a);
@@ -252,7 +262,7 @@ export function classifyWallIntersection(
 			kind: 'endpoint-on-interior',
 			endpointWallId: tReverse.endpointWallId,
 			interiorWallId: tReverse.interiorWallId,
-			point: tReverse.point
+			point: tReverse.point,
 		};
 	}
 
@@ -262,11 +272,11 @@ export function classifyWallIntersection(
 /** Endpoint of `p` collinear with segment `q` and inside its bounds? */
 function endpointOnInterior(
 	p: TopologySegment,
-	q: TopologySegment
+	q: TopologySegment,
 ): { endpointWallId: string; interiorWallId: string; point: LayoutVec2 } | undefined {
 	const endpoints: Array<[LayoutVec2, 'start' | 'end']> = [
 		[p.start, 'start'],
-		[p.end, 'end']
+		[p.end, 'end'],
 	];
 	for (const [point] of endpoints) {
 		const sideStart = orientXZ(q.start, q.end, point);
@@ -310,10 +320,7 @@ function classifyCollinear(a: TopologySegment, b: TopologySegment): WallIntersec
 		const span = a.end[axis] - a.start[axis];
 		if (span === 0) return [a.start[0], a.start[1]];
 		const t = (coordinate - a.start[axis]) / span;
-		return [
-			a.start[0] + t * (a.end[0] - a.start[0]),
-			a.start[1] + t * (a.end[1] - a.start[1])
-		];
+		return [a.start[0] + t * (a.end[0] - a.start[0]), a.start[1] + t * (a.end[1] - a.start[1])];
 	};
 
 	if (overlapStart === overlapEnd) {
@@ -324,7 +331,7 @@ function classifyCollinear(a: TopologySegment, b: TopologySegment): WallIntersec
 	return {
 		kind: 'collinear-overlap',
 		start: pointAt(overlapStart),
-		end: pointAt(overlapEnd)
+		end: pointAt(overlapEnd),
 	};
 }
 
@@ -336,8 +343,7 @@ function lineIntersection(a: TopologySegment, b: TopologySegment): LayoutVec2 | 
 	const d2y = b.end[1] - b.start[1];
 	const denominator = d1x * d2y - d1y * d2x;
 	if (denominator === 0) return undefined;
-	const t =
-		((b.start[0] - a.start[0]) * d2y - (b.start[1] - a.start[1]) * d2x) / denominator;
+	const t = ((b.start[0] - a.start[0]) * d2y - (b.start[1] - a.start[1]) * d2x) / denominator;
 	if (!Number.isFinite(t)) return undefined;
 	return [a.start[0] + t * d1x, a.start[1] + t * d1y];
 }

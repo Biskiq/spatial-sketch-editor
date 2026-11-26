@@ -8,7 +8,7 @@
  * URL is known, so no identity changes when its meshes are added. The model
  * representation publishes that arrival here, and the shadow owner invalidates
  * once for it. Animation is the other case: a playing action moves a caster every
- * frame, so the shadow owner renders per frame only while `playing()` is non-zero.
+ * frame, so the shadow owner renders per frame only while `playing` is non-zero.
  *
  * The channel carries facts, not decisions. It owns no renderer object and no
  * GPU resource, and a publish never mounts or disposes anything.
@@ -75,6 +75,6 @@ export function createCasterChannel(): CasterChannel {
 			disposed = true;
 			listeners = [];
 			playingEntities.clear();
-		}
+		},
 	};
 }

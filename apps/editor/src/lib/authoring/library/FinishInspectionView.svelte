@@ -1,10 +1,10 @@
 <script lang="ts">
 	/**
-	 * Interactive material preview (T2.S8 U5 / U6): the one active E7 inspection.
+	 * Interactive material preview: the one active inspection.
 	 *
 	 * Used by Library detail (compact controls) and the Material editor (full
 	 * Shape/Light/Turn/View/Probe/Split-Compare controls). Always holds at most
-	 * one live E7 request: Split Compare renders the original frame first for the
+	 * one live inspection request: Split Compare renders the original frame first for the
 	 * current view key, then observes the live subject and composites left/right
 	 * halves with a 2 px white divider.
 	 */

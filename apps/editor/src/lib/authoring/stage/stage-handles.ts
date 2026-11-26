@@ -7,20 +7,20 @@
  * grips it reveals. This module is the host side of that contract:
  *
  * 1. **Admission** — an editing grip may only name one of the owning adapter's
- *    registered planners, and a disclosure may only reveal admitted grips of the
- *    same binding. A refused mark is reported and never drawn.
+ *  registered planners, and a disclosure may only reveal admitted grips of the
+ *  same binding. A refused mark is reported and never drawn.
  * 2. **Disclosure** — opening a disclosure is session view state. It reveals
- *    grips, writes no source, enters no history and can never make the project
- *    dirty.
+ *  grips, writes no source, enters no history and can never make the project
+ *  dirty.
  * 3. **Projection** — marks are painted in the same Stage-local CSS space as the
- *    existing overlay, through the caller's one `ViewportEvaluation`, at the
- *    shared calibrated screen size (`STAGE_MARK_GLYPH_CSS`): a 0.6 m plinth and
- *    a 24 m roof read alike. A descriptor's `extent` names its world reach, not
- *    the length the host draws. This module never projects through a second
- *    camera.
+ *  existing overlay, through the caller's one `ViewportEvaluation`, at the
+ *  shared calibrated screen size (`STAGE_MARK_GLYPH_CSS`): a 0.6 m plinth and
+ *  a 24 m roof read alike. A descriptor's `extent` names its world reach, not
+ *  the length the host draws. This module never projects through a second
+ *  camera.
  * 4. **Hit legibility** — marks are visually small but keep a larger invisible
- *    area (22 px fine, 44 px coarse), and the owning domain's descriptor order
- *    wins an overlap.
+ *  area (22 px fine, 44 px coarse), and the owning domain's descriptor order
+ *  wins an overlap.
  *
  * It is framework-free and makes no document, so the whole lifecycle can be
  * tested in the node environment.
@@ -167,21 +167,25 @@ export type StageHandleAdmission = {
 };
 
 function finiteVec3(value: Vec3 | undefined): value is Vec3 {
-	return (
-		value !== undefined && value.length === 3 && value.every(Number.isFinite)
-	);
+	return value !== undefined && value.length === 3 && value.every(Number.isFinite);
 }
 
 function hasUsableGeometry(descriptor: StageHandleDescriptor): boolean {
 	if (!finiteVec3(descriptor.anchor)) return false;
 	if (descriptor.kind === 'ray' || descriptor.kind === 'track') {
 		return (
-			finiteVec3(descriptor.axis) && descriptor.extent !== undefined && Number.isFinite(descriptor.extent) && descriptor.extent > 0
+			finiteVec3(descriptor.axis) &&
+			descriptor.extent !== undefined &&
+			Number.isFinite(descriptor.extent) &&
+			descriptor.extent > 0
 		);
 	}
 	if (descriptor.kind === 'ring') {
 		return (
-			finiteVec3(descriptor.axis) && descriptor.extent !== undefined && Number.isFinite(descriptor.extent) && descriptor.extent > 0
+			finiteVec3(descriptor.axis) &&
+			descriptor.extent !== undefined &&
+			Number.isFinite(descriptor.extent) &&
+			descriptor.extent > 0
 		);
 	}
 	return true;
@@ -216,11 +220,19 @@ export function admitStageHandles(input: {
 			continue;
 		}
 		if (byId.has(descriptor.id)) {
-			report(descriptor.id, 'duplicate-id', `The mark id "${descriptor.id}" is repeated in one binding.`);
+			report(
+				descriptor.id,
+				'duplicate-id',
+				`The mark id "${descriptor.id}" is repeated in one binding.`,
+			);
 			continue;
 		}
 		if (!hasUsableGeometry(descriptor)) {
-			report(descriptor.id, 'invalid-geometry', `The mark "${descriptor.id}" has no finite anchor, axis or extent.`);
+			report(
+				descriptor.id,
+				'invalid-geometry',
+				`The mark "${descriptor.id}" has no finite anchor, axis or extent.`,
+			);
 			continue;
 		}
 		byId.set(descriptor.id, descriptor);
@@ -233,7 +245,7 @@ export function admitStageHandles(input: {
 			report(
 				descriptor.id,
 				'unknown-planner',
-				`The grip "${descriptor.id}" names the planner "${descriptor.planner}", which this adapter has not registered.`
+				`The grip "${descriptor.id}" names the planner "${descriptor.planner}", which this adapter has not registered.`,
 			);
 			continue;
 		}
@@ -254,7 +266,7 @@ export function admitStageHandles(input: {
 				report(
 					descriptor.id,
 					reason,
-					`The disclosure "${descriptor.id}" reveals "${reveal}", which is not an admitted grip of this binding.`
+					`The disclosure "${descriptor.id}" reveals "${reveal}", which is not an admitted grip of this binding.`,
 				);
 				refused = true;
 			}
@@ -272,7 +284,7 @@ export function admitStageHandles(input: {
 					report(
 						descriptor.id,
 						'unknown-disclosure',
-						`The grip "${descriptor.id}" is disclosed by "${descriptor.disclosedBy}", which does not reveal it.`
+						`The grip "${descriptor.id}" is disclosed by "${descriptor.disclosedBy}", which does not reveal it.`,
 					);
 					continue;
 				}
@@ -288,12 +300,10 @@ export function admitStageHandles(input: {
 /** Whether an admitted mark is drawn for the current disclosure set. */
 export function stageHandleVisible(
 	descriptor: StageHandleDescriptor,
-	openDisclosures: ReadonlySet<string>
+	openDisclosures: ReadonlySet<string>,
 ): boolean {
 	if (descriptor.role === 'disclose') return true;
-	return (
-		descriptor.disclosedBy === undefined || openDisclosures.has(descriptor.disclosedBy)
-	);
+	return descriptor.disclosedBy === undefined || openDisclosures.has(descriptor.disclosedBy);
 }
 
 export type StageMarkView = {
@@ -312,15 +322,19 @@ export type StageMarkView = {
 	readonly tail: readonly [number, number] | null;
 	/** Ring outline in Stage-local CSS. */
 	readonly ring: readonly (readonly [number, number])[] | null;
-	readonly pointRadius?:number;
-	readonly cross?:boolean;
-	readonly bend?:boolean;
+	readonly pointRadius?: number;
+	readonly cross?: boolean;
+	readonly bend?: boolean;
 	/** A span's plain hollow point, drawn as a ring rather than a solid dot. */
-	readonly hollow?:boolean;
+	readonly hollow?: boolean;
 	/** Projected direction of a point's or ray's world axis (the glyph's heading). */
 	readonly direction?: readonly [number, number] | null;
 	/** The ring's one turn arrow: where it sits and which way it points. */
-	readonly ringGlyph?: { readonly at: readonly [number, number]; readonly angle: number; readonly flip: boolean } | null;
+	readonly ringGlyph?: {
+		readonly at: readonly [number, number];
+		readonly angle: number;
+		readonly flip: boolean;
+	} | null;
 	/** A stem knob's other end, in Stage-local CSS. */
 	readonly stem?: readonly [number, number] | null;
 	readonly glyph?: 'top-knob' | 'lift-knob' | null;
@@ -328,7 +342,10 @@ export type StageMarkView = {
 	/** Cursor-only resize mark. Its SVG icon remains hidden. */
 	readonly resizeCursor?: StageResizeCursor;
 	readonly hidden: boolean;
-	readonly hitSegments: readonly (readonly [readonly [number, number], readonly [number, number]])[];
+	readonly hitSegments: readonly (readonly [
+		readonly [number, number],
+		readonly [number, number],
+	])[];
 	readonly hitRadiusCss?: number;
 	/** A disclosure that also drags (the W·D·H chip): the adapter claims its press. */
 	readonly drags?: boolean;
@@ -361,7 +378,7 @@ export function stageMarkHitRadiusCss(coarse: boolean): number {
 function squaredDistanceToSegment(
 	point: readonly [number, number],
 	start: readonly [number, number],
-	end: readonly [number, number]
+	end: readonly [number, number],
 ): number {
 	const dx = end[0] - start[0];
 	const dy = end[1] - start[1];
@@ -369,15 +386,13 @@ function squaredDistanceToSegment(
 	if (squared === 0) return (point[0] - start[0]) ** 2 + (point[1] - start[1]) ** 2;
 	const raw = ((point[0] - start[0]) * dx + (point[1] - start[1]) * dy) / squared;
 	const amount = Math.min(1, Math.max(0, raw));
-	return (
-		(point[0] - (start[0] + dx * amount)) ** 2 + (point[1] - (start[1] + dy * amount)) ** 2
-	);
+	return (point[0] - (start[0] + dx * amount)) ** 2 + (point[1] - (start[1] + dy * amount)) ** 2;
 }
 
 function distanceToSegment(
 	point: readonly [number, number],
 	start: readonly [number, number],
-	end: readonly [number, number]
+	end: readonly [number, number],
 ): number {
 	return Math.sqrt(squaredDistanceToSegment(point, start, end));
 }
@@ -388,14 +403,16 @@ function normalize(value: Vec3): Vec3 | null {
 	return [value[0] / length, value[1] / length, value[2] / length];
 }
 
-function finiteCssPair(value: readonly [number, number] | undefined): value is readonly [number, number] {
-	return (
-		value !== undefined && value.length === 2 && value.every(Number.isFinite)
-	);
+function finiteCssPair(
+	value: readonly [number, number] | undefined,
+): value is readonly [number, number] {
+	return value !== undefined && value.length === 2 && value.every(Number.isFinite);
 }
 
 /** A finite, non-zero CSS direction, or `null` when the hint cannot be trusted. */
-function screenDirection(value: readonly [number, number] | undefined): readonly [number, number] | null {
+function screenDirection(
+	value: readonly [number, number] | undefined,
+): readonly [number, number] | null {
 	if (!finiteCssPair(value)) return null;
 	const length = Math.hypot(value[0], value[1]);
 	if (!Number.isFinite(length) || length === 0) return null;
@@ -411,13 +428,13 @@ function basisFor(axis: Vec3): { readonly u: Vec3; readonly v: Vec3 } | null {
 	const u = normalize([
 		unit[1] * helper[2] - unit[2] * helper[1],
 		unit[2] * helper[0] - unit[0] * helper[2],
-		unit[0] * helper[1] - unit[1] * helper[0]
+		unit[0] * helper[1] - unit[1] * helper[0],
 	]);
 	if (u === null) return null;
 	const v = normalize([
 		unit[1] * u[2] - unit[2] * u[1],
 		unit[2] * u[0] - unit[0] * u[2],
-		unit[0] * u[1] - unit[1] * u[0]
+		unit[0] * u[1] - unit[1] * u[0],
 	]);
 	return v === null ? null : { u, v };
 }
@@ -439,7 +456,7 @@ export const STAGE_MARK_GLYPH_CSS = {
 	/** Half of a two-way ray/track (the grammar's two-way base ray). */
 	twoWayHalf: 16,
 	/** The planar radius of a ring, in the ring's own plane. */
-	ringRadius: 30
+	ringRadius: 30,
 } as const;
 
 /** Below this a projected step is edge-on: the mark is withheld, not guessed. */
@@ -460,13 +477,13 @@ function projectedAxis(
 	axis: Vec3,
 	worldAnchor: Vec3,
 	project: (point: Vec3) => readonly [number, number] | null,
-	minimumCssStep = MIN_AXIS_CSS
+	minimumCssStep = MIN_AXIS_CSS,
 ): readonly [number, number] | null {
 	for (const step of [1, 0.25, 0.05]) {
 		const projected = project([
 			worldAnchor[0] + axis[0] * step,
 			worldAnchor[1] + axis[1] * step,
-			worldAnchor[2] + axis[2] * step
+			worldAnchor[2] + axis[2] * step,
 		]);
 		if (projected === null) continue;
 		const dx = projected[0] - anchor[0];
@@ -488,7 +505,7 @@ function turnArrow(
 	radius: number,
 	anchor: readonly [number, number],
 	project: (point: Vec3) => readonly [number, number] | null,
-	points: readonly (readonly [number, number])[]
+	points: readonly (readonly [number, number])[],
 ): StageMarkView['ringGlyph'] {
 	const phase = descriptor.phase === undefined ? null : normalize(descriptor.phase);
 	let at: readonly [number, number] | null = null;
@@ -498,12 +515,12 @@ function turnArrow(
 		const tangent: Vec3 = [
 			axis[1] * phase[2] - axis[2] * phase[1],
 			axis[2] * phase[0] - axis[0] * phase[2],
-			axis[0] * phase[1] - axis[1] * phase[0]
+			axis[0] * phase[1] - axis[1] * phase[0],
 		];
 		const point = (along: number): Vec3 => [
 			descriptor.anchor[0] + (phase[0] + tangent[0] * along) * radius,
 			descriptor.anchor[1] + (phase[1] + tangent[1] * along) * radius,
-			descriptor.anchor[2] + (phase[2] + tangent[2] * along) * radius
+			descriptor.anchor[2] + (phase[2] + tangent[2] * along) * radius,
 		];
 		at = project(point(0));
 		ahead = project(point(0.05));
@@ -569,35 +586,41 @@ export function projectStageHandles(input: {
 			if (direction === null) continue;
 			if (descriptor.bothWays === true) {
 				tip = [
-					anchor[0] + direction[0] *
+					anchor[0] +
+						direction[0] *
 							(Number.isFinite(descriptor.draw?.twoWayHalf)
 								? Math.min(160, Math.max(6, descriptor.draw!.twoWayHalf!))
 								: STAGE_MARK_GLYPH_CSS.twoWayHalf),
-					anchor[1] + direction[1] *
+					anchor[1] +
+						direction[1] *
 							(Number.isFinite(descriptor.draw?.twoWayHalf)
 								? Math.min(160, Math.max(6, descriptor.draw!.twoWayHalf!))
-								: STAGE_MARK_GLYPH_CSS.twoWayHalf)
+								: STAGE_MARK_GLYPH_CSS.twoWayHalf),
 				];
 				tail = [
-					anchor[0] - direction[0] *
+					anchor[0] -
+						direction[0] *
 							(Number.isFinite(descriptor.draw?.twoWayHalf)
 								? Math.min(160, Math.max(6, descriptor.draw!.twoWayHalf!))
 								: STAGE_MARK_GLYPH_CSS.twoWayHalf),
-					anchor[1] - direction[1] *
+					anchor[1] -
+						direction[1] *
 							(Number.isFinite(descriptor.draw?.twoWayHalf)
 								? Math.min(160, Math.max(6, descriptor.draw!.twoWayHalf!))
-								: STAGE_MARK_GLYPH_CSS.twoWayHalf)
+								: STAGE_MARK_GLYPH_CSS.twoWayHalf),
 				];
 			} else {
 				tip = [
-					anchor[0] + direction[0] *
+					anchor[0] +
+						direction[0] *
 							(Number.isFinite(descriptor.draw?.ray)
 								? Math.min(160, Math.max(6, descriptor.draw!.ray!))
 								: STAGE_MARK_GLYPH_CSS.ray),
-					anchor[1] + direction[1] *
+					anchor[1] +
+						direction[1] *
 							(Number.isFinite(descriptor.draw?.ray)
 								? Math.min(160, Math.max(6, descriptor.draw!.ray!))
-								: STAGE_MARK_GLYPH_CSS.ray)
+								: STAGE_MARK_GLYPH_CSS.ray),
 				];
 			}
 		} else if (descriptor.kind === 'ring') {
@@ -614,7 +637,7 @@ export function projectStageHandles(input: {
 					const projected = project([
 						descriptor.anchor[0] + basis.u[0] * cos + basis.v[0] * sin,
 						descriptor.anchor[1] + basis.u[1] * cos + basis.v[1] * sin,
-						descriptor.anchor[2] + basis.u[2] * cos + basis.v[2] * sin
+						descriptor.anchor[2] + basis.u[2] * cos + basis.v[2] * sin,
 					]);
 					if (projected !== null) points.push([projected[0], projected[1]]);
 				}
@@ -624,7 +647,7 @@ export function projectStageHandles(input: {
 			let points = outline(radiusUsed);
 			if (points.length < 12) continue;
 			const radiusCss = Math.max(
-				...points.map((point) => Math.hypot(point[0] - anchor[0], point[1] - anchor[1]))
+				...points.map((point) => Math.hypot(point[0] - anchor[0], point[1] - anchor[1])),
 			);
 			if (radiusCss < MIN_RING_RADIUS_CSS) continue;
 			// **Radius calibrated at implementation.** Draw the planar ring at the
@@ -647,23 +670,27 @@ export function projectStageHandles(input: {
 		let direction: readonly [number, number] | null = null;
 		if (descriptor.kind === 'point' && descriptor.axis !== undefined) {
 			const axis = normalize(descriptor.axis);
-			direction = axis === null
-				? null
-				: projectedAxis(
-						projected,
-						axis,
-						descriptor.anchor,
-						project,
-						descriptor.draw?.resizeCursor === undefined ? MIN_AXIS_CSS : 0.1
-					);
+			direction =
+				axis === null
+					? null
+					: projectedAxis(
+							projected,
+							axis,
+							descriptor.anchor,
+							project,
+							descriptor.draw?.resizeCursor === undefined ? MIN_AXIS_CSS : 0.1,
+						);
 		} else if (tip !== null) {
 			const length = Math.hypot(tip[0] - anchor[0], tip[1] - anchor[1]);
-			direction = length === 0 ? null : [(tip[0] - anchor[0]) / length, (tip[1] - anchor[1]) / length];
+			direction =
+				length === 0 ? null : [(tip[0] - anchor[0]) / length, (tip[1] - anchor[1]) / length];
 		}
 		// The stem rides the same CSS offset as its knob, so it stays parallel to
 		// the subject's edge rather than slanting back to it.
 		const stemProjected =
-			descriptor.stem === undefined || !finiteVec3(descriptor.stem) ? null : project(descriptor.stem);
+			descriptor.stem === undefined || !finiteVec3(descriptor.stem)
+				? null
+				: project(descriptor.stem);
 		const stemPoint: readonly [number, number] | null =
 			stemProjected === null
 				? null
@@ -681,10 +708,12 @@ export function projectStageHandles(input: {
 		views.push({
 			adapterId: input.adapterId,
 			id: descriptor.id,
-			pointRadius:Number.isFinite(descriptor.draw?.pointRadius)?Math.min(6,Math.max(3,descriptor.draw!.pointRadius!)):4.2,
-			cross:descriptor.kind==='point' && descriptor.draw?.cross===true,
-			bend:descriptor.kind==='point' && descriptor.draw?.bend===true,
-			hollow:descriptor.kind==='point' && descriptor.draw?.hollow===true,
+			pointRadius: Number.isFinite(descriptor.draw?.pointRadius)
+				? Math.min(6, Math.max(3, descriptor.draw!.pointRadius!))
+				: 4.2,
+			cross: descriptor.kind === 'point' && descriptor.draw?.cross === true,
+			bend: descriptor.kind === 'point' && descriptor.draw?.bend === true,
+			hollow: descriptor.kind === 'point' && descriptor.draw?.hollow === true,
 			direction,
 			ringGlyph,
 			stem: stemPoint,
@@ -713,7 +742,7 @@ export function projectStageHandles(input: {
 			open,
 			active: input.activeId === descriptor.id,
 			hovered: input.hoveredId === descriptor.id,
-			descriptor
+			descriptor,
 		});
 	}
 	return views;
@@ -727,7 +756,7 @@ export function projectStageHandles(input: {
 function stageMarkHitDistance(
 	mark: StageMarkView,
 	css: readonly [number, number],
-	radius: number
+	radius: number,
 ): number | null {
 	let distance = Number.POSITIVE_INFINITY;
 	for (const [start, end] of mark.hitSegments) {
@@ -739,33 +768,38 @@ function stageMarkHitDistance(
 		if (mark.ringGlyph != null) {
 			// The ring is not drawn (review pass 3): its bent arrow is the control,
 			// with a knob's reach so a press on the body beside it stays a body grab.
-			distance = Math.min(distance, Math.hypot(css[0] - mark.ringGlyph.at[0], css[1] - mark.ringGlyph.at[1]));
+			distance = Math.min(
+				distance,
+				Math.hypot(css[0] - mark.ringGlyph.at[0], css[1] - mark.ringGlyph.at[1]),
+			);
 		} else if (mark.ring !== null) {
 			for (let index = 0; index < mark.ring.length; index += 1) {
 				distance = Math.min(
 					distance,
-					distanceToSegment(css, mark.ring[index]!, mark.ring[(index + 1) % mark.ring.length]!)
+					distanceToSegment(css, mark.ring[index]!, mark.ring[(index + 1) % mark.ring.length]!),
 				);
 			}
 		}
 	} else if (mark.tip !== null) {
 		distance = Math.min(distance, distanceToSegment(css, mark.anchor, mark.tip));
-		if (mark.tail !== null) distance = Math.min(distance, distanceToSegment(css, mark.anchor, mark.tail));
+		if (mark.tail !== null)
+			distance = Math.min(distance, distanceToSegment(css, mark.anchor, mark.tail));
 	}
 	return distance <= radius ? distance : null;
 }
 
 export function hitStageMark(
 	marks: readonly StageMarkView[],
-	query: StageMarkQuery
+	query: StageMarkQuery,
 ): StageMarkHit | null {
 	const defaultRadius = stageMarkHitRadiusCss(query.coarse);
-	for (let index = 0; index < marks.length;) {
+	for (let index = 0; index < marks.length; ) {
 		const mark = marks[index]!;
 		const group = mark.descriptor.hitGroup;
 		if (group === undefined) {
 			const distance = stageMarkHitDistance(mark, query.css, mark.hitRadiusCss ?? defaultRadius);
-			if (distance !== null) return { adapterId: mark.adapterId, id: mark.id, role: mark.role, mark };
+			if (distance !== null)
+				return { adapterId: mark.adapterId, id: mark.id, role: mark.role, mark };
 			index += 1;
 			continue;
 		}
@@ -774,7 +808,11 @@ export function hitStageMark(
 		let end = index;
 		while (end < marks.length && marks[end]!.descriptor.hitGroup === group) {
 			const candidate = marks[end]!;
-			const distance = stageMarkHitDistance(candidate, query.css, candidate.hitRadiusCss ?? defaultRadius);
+			const distance = stageMarkHitDistance(
+				candidate,
+				query.css,
+				candidate.hitRadiusCss ?? defaultRadius,
+			);
 			// Strictly less keeps domain order as the deterministic equal-distance tie-break.
 			if (distance !== null && distance < winnerDistance) {
 				winner = candidate;
@@ -782,7 +820,8 @@ export function hitStageMark(
 			}
 			end += 1;
 		}
-		if (winner !== null) return { adapterId: winner.adapterId, id: winner.id, role: winner.role, mark: winner };
+		if (winner !== null)
+			return { adapterId: winner.adapterId, id: winner.id, role: winner.role, mark: winner };
 		index = end;
 	}
 	return null;

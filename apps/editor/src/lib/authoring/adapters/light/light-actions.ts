@@ -13,7 +13,7 @@ import type {
 	StageAdapterBinding,
 	StageAdapterServices,
 	StageCardAction,
-	StageCardSubject
+	StageCardSubject,
 } from '$lib/authoring/stage/stage-adapter-host';
 import { sceneEntityReference } from '../scene/placement';
 import { acceptFormCommand } from '../scene/form-card-command';
@@ -24,10 +24,9 @@ import {
 	unionLightItBounds,
 	washRecipe,
 	type LightItBounds,
-	type LightItRecipeOutcome
+	type LightItRecipeOutcome,
 } from '../../look/light-recipes';
 import { entityById, lightById, nextEntityName, type Light } from './light-subjects';
-
 
 type LightItSelectionRecipe = LightItRecipeOutcome;
 
@@ -48,7 +47,7 @@ function lightItSelectionRecipe(services: StageAdapterServices): LightItSelectio
 		if (entry.reference.domain !== 'scene' || entry.reference.subject.kind !== 'entity') {
 			return {
 				kind: 'refused',
-				message: 'Light it works on Scene Artwork and objects, not on that selection.'
+				message: 'Light it works on Scene Artwork and objects, not on that selection.',
 			};
 		}
 		const entity = entityById(snapshot, entry.reference.subject.id);
@@ -90,7 +89,7 @@ function lightItDetail(entity: SceneEntity, selectedCount: number): string {
 
 export function lightItAction(
 	services: StageAdapterServices,
-	subject: StageCardSubject
+	subject: StageCardSubject,
 ): StageCardAction | null {
 	if (subject.reference?.domain !== 'scene') return null;
 	const snapshot = services.stage.snapshot();
@@ -124,10 +123,10 @@ export function lightItAction(
 						position: [...recipe.position],
 						rotation: [...recipe.rotation],
 						angle: recipe.angle,
-						range: recipe.range
+						range: recipe.range,
 					} as never,
 					capturedInputs: [],
-					allocatedIds: [{ kind: 'scene-entity', id: allocatedId }]
+					allocatedIds: [{ kind: 'scene-entity', id: allocatedId }],
 				});
 			} finally {
 				services.stage.notifySurfaceChange();
@@ -135,7 +134,7 @@ export function lightItAction(
 			if (outcome.kind === 'installed') {
 				const reference = sceneEntityReference(
 					allocatedId,
-					services.stage.snapshot().domain.unitRevisions.scene
+					services.stage.snapshot().domain.unitRevisions.scene,
 				);
 				services.stage.setSelection({ ordered: [{ reference }], primary: reference });
 				return { kind: 'accepted' };
@@ -143,7 +142,7 @@ export function lightItAction(
 			return outcome.kind === 'refused'
 				? { kind: 'refused', message: outcome.message }
 				: { kind: 'no-op' };
-		}
+		},
 	};
 }
 
@@ -154,7 +153,7 @@ export function lightItAction(
  */
 export function lightLookThroughAction(
 	services: StageAdapterServices,
-	light: Light
+	light: Light,
 ): StageCardAction | null {
 	if (light.light !== 'spot' || services.lightInspection === undefined) return null;
 	return {
@@ -168,13 +167,13 @@ export function lightLookThroughAction(
 			return outcome.kind === 'entered'
 				? { kind: 'accepted' as const }
 				: { kind: 'refused' as const, message: outcome.message };
-		}
+		},
 	};
 }
 
 export function duplicateLightAction(
 	services: StageAdapterServices,
-	light: Light
+	light: Light,
 ): StageCardAction {
 	return {
 		id: 'light-duplicate',
@@ -190,12 +189,12 @@ export function duplicateLightAction(
 				light.id,
 				'duplicate-light',
 				{ entityId: light.id },
-				allocatedId
+				allocatedId,
 			);
 			if (outcome.kind === 'installed') {
 				const reference = sceneEntityReference(
 					allocatedId,
-					services.stage.snapshot().domain.unitRevisions.scene
+					services.stage.snapshot().domain.unitRevisions.scene,
 				);
 				services.stage.setSelection({ ordered: [{ reference }], primary: reference });
 			}
@@ -204,14 +203,11 @@ export function duplicateLightAction(
 				: outcome.kind === 'no-op'
 					? { kind: 'no-op' }
 					: { kind: 'accepted' };
-		}
+		},
 	};
 }
 
-export function deleteLightAction(
-	services: StageAdapterServices,
-	light: Light
-): StageCardAction {
+export function deleteLightAction(services: StageAdapterServices, light: Light): StageCardAction {
 	return {
 		id: 'light-delete',
 		label: 'Delete light',
@@ -224,21 +220,21 @@ export function deleteLightAction(
 				services.stage.snapshot(),
 				light.id,
 				'delete-one',
-				{ entityId: light.id }
+				{ entityId: light.id },
 			);
 			return outcome.kind === 'refused'
 				? { kind: 'refused', message: outcome.message }
 				: outcome.kind === 'no-op'
 					? { kind: 'no-op' }
 					: { kind: 'accepted' };
-		}
+		},
 	};
 }
 
 /** The Card's actions for a light (Duplicate, Delete) or an object ("Light it"). */
 export function lightCardActions(
 	services: StageAdapterServices,
-	subject: StageCardSubject
+	subject: StageCardSubject,
 ): readonly StageCardAction[] {
 	if (subject.reference?.domain !== 'scene') return [];
 	const snapshot = services.stage.snapshot();
@@ -248,7 +244,7 @@ export function lightCardActions(
 		return [
 			...(lookThrough === null ? [] : [lookThrough]),
 			duplicateLightAction(services, light),
-			deleteLightAction(services, light)
+			deleteLightAction(services, light),
 		];
 	}
 	const lightIt = lightItAction(services, subject);
@@ -258,7 +254,7 @@ export function lightCardActions(
 /** The light's Card name writer, or `null` when the subject is not a light. */
 export function lightNameWriter(
 	services: StageAdapterServices,
-	subject: StageCardSubject
+	subject: StageCardSubject,
 ): ReturnType<NonNullable<StageAdapterBinding['cardName']>> {
 	if (subject.reference?.domain !== 'scene') return null;
 	const light = lightById(services.stage.snapshot(), subject.sourceId);
@@ -271,11 +267,11 @@ export function lightNameWriter(
 				services.stage.snapshot(),
 				light.id,
 				'set-name',
-				{ entityId: light.id, name }
+				{ entityId: light.id, name },
 			);
 			return outcome.kind === 'refused'
 				? { kind: 'refused', code: 'refused', message: outcome.message }
 				: { kind: 'accepted' };
-		}
+		},
 	};
 }

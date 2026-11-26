@@ -7,15 +7,15 @@
  * implements the approved recovery episode:
  *
  * - an init failure after acquiring the canvas retries forced WebGL2 once on a
- *   fresh canvas;
+ *  fresh canvas;
  * - the first device loss on a backend retries that backend once on a fresh
- *   canvas;
+ *  canvas;
  * - a repeated loss on WebGPU (or a failed WebGPU retry) switches to forced
- *   WebGL2 once;
+ *  WebGL2 once;
  * - a loss on WebGL2, or a second failed attempt there, presents Retry instead
- *   of looping;
+ *  of looping;
  * - a recovery episode ends only after the new surface has run for 30 seconds
- *   without loss.
+ *  without loss.
  *
  * Plain TypeScript with an injected clock, so the mounted tests and the lifecycle
  * contract drive the episode without real waits. No Svelte import: the host
@@ -49,7 +49,7 @@ function defaultClock(): LifecycleClock {
 	return {
 		now: () => Date.now(),
 		set: (callback, ms) => globalThis.setTimeout(callback, ms),
-		clear: (handle) => globalThis.clearTimeout(handle as ReturnType<typeof setTimeout>)
+		clear: (handle) => globalThis.clearTimeout(handle as ReturnType<typeof setTimeout>),
 	};
 }
 
@@ -66,11 +66,13 @@ export class CanvasLifecycle {
 	private episodeTimer: unknown = null;
 	private episodeOpen = false;
 
-	constructor(options: {
-		readonly clock?: LifecycleClock;
-		readonly episodeMs?: number;
-		readonly onChange?: (snapshot: LifecycleSnapshot) => void;
-	} = {}) {
+	constructor(
+		options: {
+			readonly clock?: LifecycleClock;
+			readonly episodeMs?: number;
+			readonly onChange?: (snapshot: LifecycleSnapshot) => void;
+		} = {},
+	) {
 		this.clock = options.clock ?? defaultClock();
 		this.episodeMs = options.episodeMs ?? EPISODE_MS;
 		this.onChange = options.onChange;
@@ -83,7 +85,7 @@ export class CanvasLifecycle {
 			generation: this.generation,
 			backend: this.backend,
 			failure: this.failure,
-			episodeLosses: this.episodeLosses
+			episodeLosses: this.episodeLosses,
 		};
 	}
 

@@ -40,9 +40,10 @@ export function planParameters(overrides: PlanParameterOverrides = {}): PlanPara
 		cutHeightMeters: overrides.cutHeightMeters ?? PLAN_DEFAULT_CUT_HEIGHT_METERS,
 		depthMeters: overrides.depthMeters ?? PLAN_DEFAULT_DEPTH_METERS,
 		lateralSpanHalfWidthMeters:
-			overrides.lateralSpanHalfWidthMeters === undefined ? null : overrides.lateralSpanHalfWidthMeters,
-		sourceKindFilter:
-			overrides.sourceKindFilter === undefined ? null : overrides.sourceKindFilter,
-		reveal: overrides.reveal ?? []
+			overrides.lateralSpanHalfWidthMeters === undefined
+				? null
+				: overrides.lateralSpanHalfWidthMeters,
+		sourceKindFilter: overrides.sourceKindFilter === undefined ? null : overrides.sourceKindFilter,
+		reveal: overrides.reveal ?? [],
 	};
 }

@@ -10,22 +10,22 @@
  * between Experience-facing runs and delegates every transition:
  *
  * - guided and free navigation own the output through their own acquisition;
- *   they replace one another in order, but never preempt a handoff role
- *   (Follow, Look-through, Preview) that must be ended or returned explicitly;
+ *  they replace one another in order, but never preempt a handoff role
+ *  (Follow, Look-through, Preview) that must be ended or returned explicitly;
  * - only a declared handoff role may take the output from another role:
- *   Follow, Look-through and Preview. Inspection and the navigation roles hold
- *   the output through their own acquisition; a handoff preempts a run, it does
- *   not become one;
+ *  Follow, Look-through and Preview. Inspection and the navigation roles hold
+ *  the output through their own acquisition; a handoff preempts a run, it does
+ *  not become one;
  * - a handoff must transfer to a *different* role. Same-role takeover is an
- *   ordered replacement, and naming it a handoff would issue a return obligation
- *   to a run that still means the same thing;
+ *  ordered replacement, and naming it a handoff would issue a return obligation
+ *  to a run that still means the same thing;
  * - the return path and the cancellation path refuse to act on behalf of a run
- *   that did not receive the output as a handoff, so an inspection or navigation
- *   run is never ended by Experience cleanup;
+ *  that did not receive the output as a handoff, so an inspection or navigation
+ *  run is never ended by Experience cleanup;
  * - `pendingCameraHandoff` is the one read a cleanup pass needs: which role owes
- *   a return, and to whom. It returns no ticket that could be replayed; the
- *   return token is disclosed because the holder must present it, exactly as the
- *   landed protocol requires.
+ *  a return, and to whom. It returns no ticket that could be replayed; the
+ *  return token is disclosed because the holder must present it, exactly as the
+ *  landed protocol requires.
  *
  * There is no pose, FOV or order authority here: the Camera authority evaluates
  * pose and projection, Experience owns editorial order, and this module only
@@ -44,7 +44,7 @@ import {
 	type CameraOutputReturnDecision,
 	type CameraOutputRole,
 	type CameraOutputState,
-	type CameraOutputTicket
+	type CameraOutputTicket,
 } from './camera-output';
 
 /** The exact scope this module provides, complete over the landed ticket protocol. */
@@ -69,7 +69,9 @@ export function isCameraHandoffRole(role: CameraOutputRole): role is CameraHando
 	return (CAMERA_HANDOFF_ROLES as readonly string[]).includes(role);
 }
 
-export function isExperienceNavigationRole(role: CameraOutputRole): role is ExperienceNavigationRole {
+export function isExperienceNavigationRole(
+	role: CameraOutputRole,
+): role is ExperienceNavigationRole {
 	return (EXPERIENCE_NAVIGATION_ROLES as readonly string[]).includes(role);
 }
 
@@ -86,9 +88,15 @@ export type CameraHandoffRequest = {
 function refuse(
 	state: CameraOutputState,
 	reason: CameraOutputRefusal,
-	message: string
+	message: string,
 ): Extract<CameraOutputDecision, { kind: 'refused' }> {
-	return { kind: 'refused', state, reason, message, owners: state.claim === null ? [] : [state.claim.ticket.ownerId] };
+	return {
+		kind: 'refused',
+		state,
+		reason,
+		message,
+		owners: state.claim === null ? [] : [state.claim.ticket.ownerId],
+	};
 }
 
 /**
@@ -99,13 +107,13 @@ function refuse(
  */
 export function handoffCameraOutput(
 	state: CameraOutputState,
-	request: CameraHandoffRequest
+	request: CameraHandoffRequest,
 ): CameraOutputDecision {
 	if (!isCameraHandoffRole(request.role)) {
 		return refuse(
 			state,
 			'unsupported-role',
-			`"${String(request.role)}" is not a declared handoff role; only ${CAMERA_HANDOFF_ROLES.join(', ')} receive a handoff`
+			`"${String(request.role)}" is not a declared handoff role; only ${CAMERA_HANDOFF_ROLES.join(', ')} receive a handoff`,
 		);
 	}
 	const current = state.claim;
@@ -113,7 +121,7 @@ export function handoffCameraOutput(
 		return refuse(
 			state,
 			'invalid-request',
-			`the output is already held as "${current.role}"; a same-role takeover is an ordered replacement, not a handoff`
+			`the output is already held as "${current.role}"; a same-role takeover is an ordered replacement, not a handoff`,
 		);
 	}
 	return acquireCameraOutput(state, {
@@ -121,7 +129,7 @@ export function handoffCameraOutput(
 		role: request.role,
 		expected: request.expected,
 		policy: 'ordered-handoff',
-		returnToken: request.returnToken
+		returnToken: request.returnToken,
 	});
 }
 
@@ -142,13 +150,13 @@ export type ExperienceNavigationRequest = {
  */
 export function beginExperienceNavigation(
 	state: CameraOutputState,
-	request: ExperienceNavigationRequest
+	request: ExperienceNavigationRequest,
 ): CameraOutputDecision {
 	if (!isExperienceNavigationRole(request.mode)) {
 		return refuse(
 			state,
 			'unsupported-role',
-			`"${String(request.mode)}" is not an Experience navigation mode; expected ${EXPERIENCE_NAVIGATION_ROLES.join(' or ')}`
+			`"${String(request.mode)}" is not an Experience navigation mode; expected ${EXPERIENCE_NAVIGATION_ROLES.join(' or ')}`,
 		);
 	}
 	const current = state.claim;
@@ -156,14 +164,14 @@ export function beginExperienceNavigation(
 		return refuse(
 			state,
 			'invalid-request',
-			`the output is held as "${current.role}", a handoff role; end or return that run before navigation takes ownership`
+			`the output is held as "${current.role}", a handoff role; end or return that run before navigation takes ownership`,
 		);
 	}
 	return acquireCameraOutput(state, {
 		ticket: request.ticket,
 		role: request.mode,
 		expected: request.expected,
-		policy: current === null ? 'exclusive' : 'ordered-replacement'
+		policy: current === null ? 'exclusive' : 'ordered-replacement',
 	});
 }
 
@@ -174,7 +182,7 @@ export function beginExperienceNavigation(
  */
 export function endExperienceNavigation(
 	state: CameraOutputState,
-	ticket: unknown
+	ticket: unknown,
 ): CameraOutputCancelDecision {
 	const current = state.claim;
 	if (current !== null && !isExperienceNavigationRole(current.role)) {
@@ -182,7 +190,7 @@ export function endExperienceNavigation(
 			kind: 'ignored',
 			state,
 			reason: 'unsupported-role',
-			message: `the active run holds the output as "${current.role}", not as navigation; navigation cleanup does not end it`
+			message: `the active run holds the output as "${current.role}", not as navigation; navigation cleanup does not end it`,
 		};
 	}
 	return cancelCameraOutput(state, ticket);
@@ -198,7 +206,7 @@ export function endExperienceNavigation(
 export function returnCameraHandoff(
 	state: CameraOutputState,
 	ticket: unknown,
-	returnToken: string | null
+	returnToken: string | null,
 ): CameraOutputReturnDecision {
 	const current = state.claim;
 	if (current !== null && !isCameraHandoffRole(current.role)) {
@@ -207,7 +215,7 @@ export function returnCameraHandoff(
 			state,
 			reason: 'unsupported-role',
 			message: `the active run holds the output as "${current.role}", not as a handoff; it cannot return a handoff it never received`,
-			owners: [current.ticket.ownerId]
+			owners: [current.ticket.ownerId],
 		};
 	}
 	return returnCameraOutput(state, ticket, returnToken);
@@ -220,7 +228,7 @@ export function returnCameraHandoff(
  */
 export function cancelCameraHandoff(
 	state: CameraOutputState,
-	ticket: unknown
+	ticket: unknown,
 ): CameraOutputCancelDecision {
 	const current = state.claim;
 	if (current !== null && !isCameraHandoffRole(current.role)) {
@@ -228,7 +236,7 @@ export function cancelCameraHandoff(
 			kind: 'ignored',
 			state,
 			reason: 'unsupported-role',
-			message: `the active run holds the output as "${current.role}", not as a handoff; handoff cleanup does not end it`
+			message: `the active run holds the output as "${current.role}", not as a handoff; handoff cleanup does not end it`,
 		};
 	}
 	return cancelCameraOutput(state, ticket);
@@ -242,7 +250,7 @@ export function cancelCameraHandoff(
  */
 export function cleanupCameraHandoff(
 	state: CameraOutputState,
-	ticket: unknown
+	ticket: unknown,
 ): CameraOutputCancelDecision {
 	const current = state.claim;
 	// Even with no active claim the ticket must still be qualified: reporting
@@ -280,6 +288,6 @@ export function pendingCameraHandoff(state: CameraOutputState): PendingCameraHan
 		role: claim.returnContext.role,
 		ownerId: claim.returnContext.issuedTo.ownerId,
 		runEpoch: claim.returnContext.issuedTo.runEpoch,
-		returnToken: claim.returnContext.token
+		returnToken: claim.returnContext.token,
 	};
 }

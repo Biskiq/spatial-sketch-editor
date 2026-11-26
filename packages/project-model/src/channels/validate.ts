@@ -1,5 +1,5 @@
 /**
- * Strict validation for the F.3 `inspection-v1` shapes (AM-3).
+ * Strict validation for the F.3 `inspection-v1` shapes.
  *
  * Strictness here is the point: an address is read only through its named fields
  * (never a parsed delimiter string), a descriptor's declared value kind decides
@@ -29,7 +29,7 @@ import {
 	type ChannelSourceIdentity,
 	type ChannelUnits,
 	type ChannelValue,
-	type ChannelValueKind
+	type ChannelValueKind,
 } from './types';
 
 const UNITS: readonly (ChannelUnits | string)[] = ['meters', 'radians', 'ratio'];
@@ -43,7 +43,15 @@ export type ChannelContributionValidation =
 	| { success: true; value: ChannelContribution; unavailableFamilies: readonly string[] }
 	| { success: false; issues: readonly ShapeIssue[] };
 
-const ADDRESS_KEYS = ['version', 'ownerReference', 'instancePath', 'componentId', 'capabilityId', 'propertyId', 'frame'] as const;
+const ADDRESS_KEYS = [
+	'version',
+	'ownerReference',
+	'instancePath',
+	'componentId',
+	'capabilityId',
+	'propertyId',
+	'frame',
+] as const;
 
 const DESCRIPTOR_KEYS = [
 	'version',
@@ -58,7 +66,7 @@ const DESCRIPTOR_KEYS = [
 	'interpolation',
 	'invalidation',
 	'capability',
-	'validator'
+	'validator',
 ] as const;
 
 const CONTRIBUTION_KEYS = [
@@ -69,12 +77,16 @@ const CONTRIBUTION_KEYS = [
 	'scopeId',
 	'invocationId',
 	'runEpoch',
-	'computedFrom'
+	'computedFrom',
 ] as const;
 
 const NUMERIC_KINDS: readonly ChannelValueKind[] = ['number', 'vector3'];
 
-function readCapability(reader: ShapeReader, input: unknown, path: string): ChannelCapability | null {
+function readCapability(
+	reader: ShapeReader,
+	input: unknown,
+	path: string,
+): ChannelCapability | null {
 	const record = reader.object(input, path, ['id', 'required']);
 	if (record === null) return null;
 	const id = reader.opaqueId(record.id, `${path}.id`);
@@ -91,7 +103,14 @@ function readRange(reader: ShapeReader, input: unknown, path: string): ChannelRa
 	const max = record.max === null ? null : reader.number(record.max, `${path}.max`);
 	const minExclusive = reader.boolean(record.minExclusive, `${path}.minExclusive`);
 	const maxExclusive = reader.boolean(record.maxExclusive, `${path}.maxExclusive`);
-	if (reader.issues.length > 0 || min === undefined || max === undefined || minExclusive === null || maxExclusive === null) return null;
+	if (
+		reader.issues.length > 0 ||
+		min === undefined ||
+		max === undefined ||
+		minExclusive === null ||
+		maxExclusive === null
+	)
+		return null;
 	if (min !== null && max !== null && min >= max) {
 		reader.problem(path, 'invalid-range', `${path} must have min < max`);
 		return null;
@@ -99,7 +118,11 @@ function readRange(reader: ShapeReader, input: unknown, path: string): ChannelRa
 	return { min, max, minExclusive, maxExclusive };
 }
 
-function readInvalidation(reader: ShapeReader, input: unknown, path: string): ChannelInvalidationInput[] | null {
+function readInvalidation(
+	reader: ShapeReader,
+	input: unknown,
+	path: string,
+): ChannelInvalidationInput[] | null {
 	if (!Array.isArray(input)) {
 		reader.problem(path, 'not-an-array', `${path} must be an array`);
 		return null;
@@ -124,14 +147,27 @@ export function validateChannelDescriptor(input: unknown): ShapeValidation<Chann
 	}
 	const family = reader.opaqueId(record.family, '$.family');
 	const propertyId = reader.opaqueId(record.propertyId, '$.propertyId');
-	const valueKind = reader.tag(record.valueKind, '$.valueKind', CHANNEL_VALUE_KINDS) as ChannelValueKind | null;
-	if (record.units !== null && (typeof record.units !== 'string' || !UNITS.includes(record.units))) {
-		reader.problem('$.units', 'unknown-units', `$.units must be one of ${UNITS.join(' | ')} or null`);
+	const valueKind = reader.tag(
+		record.valueKind,
+		'$.valueKind',
+		CHANNEL_VALUE_KINDS,
+	) as ChannelValueKind | null;
+	if (
+		record.units !== null &&
+		(typeof record.units !== 'string' || !UNITS.includes(record.units))
+	) {
+		reader.problem(
+			'$.units',
+			'unknown-units',
+			`$.units must be one of ${UNITS.join(' | ')} or null`,
+		);
 	}
 	const units: ChannelUnits = record.units === null ? null : (record.units as ChannelUnits);
 	const range = readRange(reader, record.range, '$.range');
 	const values =
-		record.values === null || record.values === undefined ? null : reader.opaqueIdArray(record.values, '$.values');
+		record.values === null || record.values === undefined
+			? null
+			: reader.opaqueIdArray(record.values, '$.values');
 	const scope = reader.tag(record.scope, '$.scope', CHANNEL_SCOPES);
 	const arbitration = reader.tag(record.arbitration, '$.arbitration', CHANNEL_ARBITRATIONS);
 	const interpolation = reader.tag(record.interpolation, '$.interpolation', CHANNEL_INTERPOLATIONS);
@@ -148,7 +184,11 @@ export function validateChannelDescriptor(input: unknown): ShapeValidation<Chann
 			reader.problem('$.range', 'invalid-range', `value kind "${valueKind}" declares no range`);
 		}
 		if (values !== null && valueKind !== 'identifier') {
-			reader.problem('$.values', 'invalid-values', `only an "identifier" value declares a vocabulary`);
+			reader.problem(
+				'$.values',
+				'invalid-values',
+				`only an "identifier" value declares a vocabulary`,
+			);
 		}
 	}
 
@@ -181,9 +221,9 @@ export function validateChannelDescriptor(input: unknown): ShapeValidation<Chann
 			interpolation: interpolation as ChannelDescriptor['interpolation'],
 			invalidation,
 			capability,
-			validator
+			validator,
 		},
-		ignoredOptionalExtensions: []
+		ignoredOptionalExtensions: [],
 	};
 }
 
@@ -196,15 +236,25 @@ export function validateChannelAddress(input: unknown): ShapeValidation<ChannelA
 		reader.problem('$.version', 'unsupported-version', `$.version must be ${INSPECTION_VERSION}`);
 	}
 	const owner = validateSemanticReference(record.ownerReference);
-	if (!owner.success) for (const issue of owner.issues) reader.problem(`$.ownerReference${issue.path.slice(1)}`, issue.code, issue.message);
+	if (!owner.success)
+		for (const issue of owner.issues)
+			reader.problem(`$.ownerReference${issue.path.slice(1)}`, issue.code, issue.message);
 	const instancePath = reader.opaqueIdArray(record.instancePath, '$.instancePath');
 	const componentId = reader.nullableOpaqueId(record.componentId, '$.componentId');
 	const capabilityId = reader.nullableOpaqueId(record.capabilityId, '$.capabilityId');
 	const propertyId = reader.opaqueId(record.propertyId, '$.propertyId');
 	const frame = validateFrameReference(record.frame);
-	if (!frame.success) for (const issue of frame.issues) reader.problem(`$.frame${issue.path.slice(1)}`, issue.code, issue.message);
-	if (reader.issues.length > 0 || !owner.success || !frame.success) return { success: false, issues: reader.issues };
-	if (instancePath === null || componentId === undefined || capabilityId === undefined || propertyId === null) {
+	if (!frame.success)
+		for (const issue of frame.issues)
+			reader.problem(`$.frame${issue.path.slice(1)}`, issue.code, issue.message);
+	if (reader.issues.length > 0 || !owner.success || !frame.success)
+		return { success: false, issues: reader.issues };
+	if (
+		instancePath === null ||
+		componentId === undefined ||
+		capabilityId === undefined ||
+		propertyId === null
+	) {
 		return { success: false, issues: reader.issues };
 	}
 	return {
@@ -216,18 +266,26 @@ export function validateChannelAddress(input: unknown): ShapeValidation<ChannelA
 			componentId,
 			capabilityId,
 			propertyId,
-			frame: frame.value
+			frame: frame.value,
 		},
-		ignoredOptionalExtensions: owner.ignoredOptionalExtensions
+		ignoredOptionalExtensions: owner.ignoredOptionalExtensions,
 	};
 }
 
-function readSourceIdentity(reader: ShapeReader, input: unknown, path: string): ChannelSourceIdentity | null {
+function readSourceIdentity(
+	reader: ShapeReader,
+	input: unknown,
+	path: string,
+): ChannelSourceIdentity | null {
 	const record = reader.object(input, path, ['domain', 'subject', 'instancePath']);
 	if (record === null) return null;
 	const domain = reader.opaqueId(record.domain, `${path}.domain`);
 	if (domain !== null && !isReferenceDomain(domain)) {
-		reader.problem(`${path}.domain`, 'unsupported-domain', `${path}.domain must be an admitted domain qualification`);
+		reader.problem(
+			`${path}.domain`,
+			'unsupported-domain',
+			`${path}.domain must be an admitted domain qualification`,
+		);
 		return null;
 	}
 	const subject = reader.object(record.subject, `${path}.subject`, ['kind', 'id']);
@@ -241,22 +299,28 @@ function readSourceIdentity(reader: ShapeReader, input: unknown, path: string): 
 /** Validate a typed value against its descriptor: kind, units, range and vocabulary. */
 export function validateChannelValue(
 	input: unknown,
-	descriptor: ChannelDescriptor
+	descriptor: ChannelDescriptor,
 ): ShapeValidation<ChannelValue> & { rangeViolation?: boolean } {
 	const reader = new ShapeReader();
 	const kind = reader.object(input, '$', ['kind', 'value']);
 	if (kind === null) return { success: false, issues: reader.issues };
 	const valueKind = reader.tag(kind.kind, '$.kind', CHANNEL_VALUE_KINDS);
 	if (valueKind !== descriptor.valueKind) {
-		reader.problem('$.kind', 'value-kind-mismatch', `the value kind must be "${descriptor.valueKind}" as declared`);
+		reader.problem(
+			'$.kind',
+			'value-kind-mismatch',
+			`the value kind must be "${descriptor.valueKind}" as declared`,
+		);
 	}
 	let rangeViolation = false;
 	const inRange = (input: unknown, path: string): number | null => {
 		const bound = descriptor.range;
 		const finite = reader.number(input, path);
 		if (finite === null || bound === null) return finite;
-		const belowMin = bound.min !== null && (bound.minExclusive ? finite <= bound.min : finite < bound.min);
-		const aboveMax = bound.max !== null && (bound.maxExclusive ? finite >= bound.max : finite > bound.max);
+		const belowMin =
+			bound.min !== null && (bound.minExclusive ? finite <= bound.min : finite < bound.min);
+		const aboveMax =
+			bound.max !== null && (bound.maxExclusive ? finite >= bound.max : finite > bound.max);
 		if (belowMin || aboveMax) {
 			rangeViolation = true;
 			reader.problem(path, 'out-of-range', `${path} is outside the declared range`);
@@ -267,8 +331,14 @@ export function validateChannelValue(
 
 	if (valueKind === 'number') {
 		const value = inRange(kind.value, '$.value');
-		if (value === null || reader.issues.length > 0) return { success: false, issues: reader.issues, rangeViolation };
-		return { success: true, value: { kind: 'number', value }, ignoredOptionalExtensions: [], rangeViolation };
+		if (value === null || reader.issues.length > 0)
+			return { success: false, issues: reader.issues, rangeViolation };
+		return {
+			success: true,
+			value: { kind: 'number', value },
+			ignoredOptionalExtensions: [],
+			rangeViolation,
+		};
 	}
 	if (valueKind === 'vector3') {
 		const vector = reader.vector3(kind.value, '$.value');
@@ -277,23 +347,45 @@ export function validateChannelValue(
 			inRange(component, `$.value[${index}]`);
 		});
 		if (reader.issues.length > 0) return { success: false, issues: reader.issues, rangeViolation };
-		return { success: true, value: { kind: 'vector3', value: vector }, ignoredOptionalExtensions: [], rangeViolation };
+		return {
+			success: true,
+			value: { kind: 'vector3', value: vector },
+			ignoredOptionalExtensions: [],
+			rangeViolation,
+		};
 	}
 	if (valueKind === 'identifier') {
 		const value = reader.opaqueId(kind.value, '$.value');
 		if (value !== null && descriptor.values !== null && !descriptor.values.includes(value)) {
-			reader.problem('$.value', 'undeclared-identifier', `$.value must be one of ${descriptor.values.join(' | ')}`);
+			reader.problem(
+				'$.value',
+				'undeclared-identifier',
+				`$.value must be one of ${descriptor.values.join(' | ')}`,
+			);
 		}
-		if (reader.issues.length > 0 || value === null) return { success: false, issues: reader.issues, rangeViolation };
-		return { success: true, value: { kind: 'identifier', value }, ignoredOptionalExtensions: [], rangeViolation };
+		if (reader.issues.length > 0 || value === null)
+			return { success: false, issues: reader.issues, rangeViolation };
+		return {
+			success: true,
+			value: { kind: 'identifier', value },
+			ignoredOptionalExtensions: [],
+			rangeViolation,
+		};
 	}
 	if (valueKind === 'identifier-set') {
 		const values = reader.opaqueIdArray(kind.value, '$.value');
-		if (values === null || reader.issues.length > 0) return { success: false, issues: reader.issues, rangeViolation };
+		if (values === null || reader.issues.length > 0)
+			return { success: false, issues: reader.issues, rangeViolation };
 		const unique = new Set(values);
-		if (unique.size !== values.length) reader.problem('$.value', 'duplicate-identifier', '$.value must not repeat an identifier');
+		if (unique.size !== values.length)
+			reader.problem('$.value', 'duplicate-identifier', '$.value must not repeat an identifier');
 		if (reader.issues.length > 0) return { success: false, issues: reader.issues, rangeViolation };
-		return { success: true, value: { kind: 'identifier-set', value: values }, ignoredOptionalExtensions: [], rangeViolation };
+		return {
+			success: true,
+			value: { kind: 'identifier-set', value: values },
+			ignoredOptionalExtensions: [],
+			rangeViolation,
+		};
 	}
 	if (valueKind === 'source-set') {
 		if (!Array.isArray(kind.value)) {
@@ -307,13 +399,28 @@ export function validateChannelValue(
 			if (identity === null) continue;
 			// An unambiguous canonical encoding: JSON string escaping is injective, so two
 			// distinct opaque id paths can never share a key (a delimiter join could collide).
-			const key = JSON.stringify([identity.domain, identity.subject.kind, identity.subject.id, identity.instancePath]);
-			if (seen.has(key)) reader.problem(`$.value[${index}]`, 'duplicate-source', '$.value must not repeat a source identity');
+			const key = JSON.stringify([
+				identity.domain,
+				identity.subject.kind,
+				identity.subject.id,
+				identity.instancePath,
+			]);
+			if (seen.has(key))
+				reader.problem(
+					`$.value[${index}]`,
+					'duplicate-source',
+					'$.value must not repeat a source identity',
+				);
 			seen.add(key);
 			identities.push(identity);
 		}
 		if (reader.issues.length > 0) return { success: false, issues: reader.issues, rangeViolation };
-		return { success: true, value: { kind: 'source-set', value: identities }, ignoredOptionalExtensions: [], rangeViolation };
+		return {
+			success: true,
+			value: { kind: 'source-set', value: identities },
+			ignoredOptionalExtensions: [],
+			rangeViolation,
+		};
 	}
 	return { success: false, issues: reader.issues, rangeViolation };
 }
@@ -325,7 +432,7 @@ export function validateChannelValue(
  */
 export function validateChannelContribution(
 	input: unknown,
-	options: ChannelValidationOptions = {}
+	options: ChannelValidationOptions = {},
 ): ChannelContributionValidation {
 	const admitted = options.admittedFamilies ?? null;
 	const reader = new ShapeReader();
@@ -336,23 +443,42 @@ export function validateChannelContribution(
 		reader.problem('$.version', 'unsupported-version', `$.version must be ${INSPECTION_VERSION}`);
 	}
 	const descriptor = validateChannelDescriptor(record.descriptor);
-	if (!descriptor.success) for (const issue of descriptor.issues) reader.problem(`$.descriptor${issue.path.slice(1)}`, issue.code, issue.message);
+	if (!descriptor.success)
+		for (const issue of descriptor.issues)
+			reader.problem(`$.descriptor${issue.path.slice(1)}`, issue.code, issue.message);
 	const address = validateChannelAddress(record.address);
-	if (!address.success) for (const issue of address.issues) reader.problem(`$.address${issue.path.slice(1)}`, issue.code, issue.message);
+	if (!address.success)
+		for (const issue of address.issues)
+			reader.problem(`$.address${issue.path.slice(1)}`, issue.code, issue.message);
 	if (!descriptor.success || !address.success) return { success: false, issues: reader.issues };
 
 	if (address.value.propertyId !== descriptor.value.propertyId) {
-		reader.problem('$.address.propertyId', 'property-mismatch', 'the address property must be the descriptor property');
+		reader.problem(
+			'$.address.propertyId',
+			'property-mismatch',
+			'the address property must be the descriptor property',
+		);
 	}
 	const value = validateChannelValue(record.value, descriptor.value);
-	if (!value.success) for (const issue of value.issues) reader.problem(`$.value${issue.path.slice(1)}`, issue.code, issue.message);
+	if (!value.success)
+		for (const issue of value.issues)
+			reader.problem(`$.value${issue.path.slice(1)}`, issue.code, issue.message);
 
 	const scopeId = reader.opaqueId(record.scopeId, '$.scopeId');
 	const invocationId = reader.opaqueId(record.invocationId, '$.invocationId');
 	const runEpoch = reader.integerAtLeast(record.runEpoch, '$.runEpoch', 0);
-	const computed = reader.object(record.computedFrom, '$.computedFrom', ['contentRevision', 'generationId']);
-	const contentRevision = computed === null ? undefined : reader.nullableOpaqueId(computed.contentRevision, '$.computedFrom.contentRevision');
-	const generationId = computed === null ? undefined : reader.nullableOpaqueId(computed.generationId, '$.computedFrom.generationId');
+	const computed = reader.object(record.computedFrom, '$.computedFrom', [
+		'contentRevision',
+		'generationId',
+	]);
+	const contentRevision =
+		computed === null
+			? undefined
+			: reader.nullableOpaqueId(computed.contentRevision, '$.computedFrom.contentRevision');
+	const generationId =
+		computed === null
+			? undefined
+			: reader.nullableOpaqueId(computed.generationId, '$.computedFrom.generationId');
 
 	const unavailableFamilies: string[] = [];
 	if (admitted !== null && !admitted.includes(descriptor.value.family)) {
@@ -360,7 +486,7 @@ export function validateChannelContribution(
 			reader.problem(
 				'$.descriptor.family',
 				'unsupported-required-family',
-				`family "${descriptor.value.family}" is not admitted by this reader`
+				`family "${descriptor.value.family}" is not admitted by this reader`,
 			);
 		} else {
 			unavailableFamilies.push(descriptor.value.family);
@@ -387,8 +513,8 @@ export function validateChannelContribution(
 			scopeId,
 			invocationId,
 			runEpoch,
-			computedFrom: { contentRevision, generationId }
+			computedFrom: { contentRevision, generationId },
 		},
-		unavailableFamilies
+		unavailableFamilies,
 	};
 }

@@ -13,7 +13,7 @@ export function datumWorkingPlane(datumMeters: number): WorkingPlane {
 		normal: [0, 1, 0],
 		yawRadians: 0,
 		datumMeters,
-		supportedLocalExtent: null
+		supportedLocalExtent: null,
 	};
 }
 
@@ -25,11 +25,14 @@ export function datumWorkingPlane(datumMeters: number): WorkingPlane {
  * excludes them. Prefer a binding whose subject list contains the reference;
  * fall back to the domain binding for subjects an adapter does not enumerate.
  */
-export function adapterForSelection(adapters: ReadonlyMap<string, BoundAdapter>, entry: StageSelectionEntry) {
+export function adapterForSelection(
+	adapters: ReadonlyMap<string, BoundAdapter>,
+	entry: StageSelectionEntry,
+) {
 	const direct = adapters.get(entry.reference.domain);
 	const owns = (candidate: NonNullable<typeof direct>): boolean =>
 		candidate.contributions.subjects?.some((subject) =>
-			sameReference(subject.reference, entry.reference)
+			sameReference(subject.reference, entry.reference),
 		) ?? false;
 	if (direct !== undefined && (direct.contributions.subjects === undefined || owns(direct))) {
 		return direct;
@@ -61,48 +64,83 @@ export function createSelectionPick(input: SelectionPickPort) {
 		let result: ResolvedStageHit = { kind: 'none', reason: 'no-fragment' };
 		try {
 			const evaluation = input.evaluation();
-			if (evaluation === null || input.idOf(evaluation) !== query.evaluationId) return result = { kind: 'failed', code: 'stale-evaluation' };
-			if (!query.css.every(Number.isFinite)) return result = { kind: 'failed', code: 'invalid-css-point' };
+			if (evaluation === null || input.idOf(evaluation) !== query.evaluationId)
+				return (result = { kind: 'failed', code: 'stale-evaluation' });
+			if (!query.css.every(Number.isFinite))
+				return (result = { kind: 'failed', code: 'invalid-css-point' });
 			ensureBindings();
 			const handle = adapterContext();
 			if (handle === null) return result;
 			// The mark tier sits above world candidates. A host tool (Measure, Eraser)
 			// asks the world, not the selection's manipulation language.
 			if (query.purpose !== 'tool') {
-				const mark = hitStageMark(input.selectionMarks(), { css: query.css, coarse: query.coarse === true });
-				if (mark !== null) return result = { kind: 'mark', mark: mark.mark };
+				const mark = hitStageMark(input.selectionMarks(), {
+					css: query.css,
+					coarse: query.coarse === true,
+				});
+				if (mark !== null) return (result = { kind: 'mark', mark: mark.mark });
 			}
-			const winner = resolveStagePick(query, [...adapters].map(([adapterId, entry]) => ({ adapterId, binding: entry.contributions })), handle.context, evaluation.renderedReading === 'plan' ? 'plan' : '3d', toolOwner ?? input.toolOwner() ?? null);
+			const winner = resolveStagePick(
+				query,
+				[...adapters].map(([adapterId, entry]) => ({ adapterId, binding: entry.contributions })),
+				handle.context,
+				evaluation.renderedReading === 'plan' ? 'plan' : '3d',
+				toolOwner ?? input.toolOwner() ?? null,
+			);
 			if (winner === null) return result;
-			return result = winner.pick.refusal === null
-				? { kind: 'resolved', hit: winner.pick.hit }
-				: { kind: 'refused', hit: winner.pick.hit, message: winner.pick.refusal };
+			return (result =
+				winner.pick.refusal === null
+					? { kind: 'resolved', hit: winner.pick.hit }
+					: { kind: 'refused', hit: winner.pick.hit, message: winner.pick.refusal });
 		} finally {
-			if (started !== null) perfMark('stage:pick', { elapsedMs: performance.now() - started, outcome: result.kind,
-				sourceId: result.kind === 'resolved' ? result.hit.sourceId : null,
-				sourceKind: result.kind === 'resolved' ? result.hit.sourceKind : null });
+			if (started !== null)
+				perfMark('stage:pick', {
+					elapsedMs: performance.now() - started,
+					outcome: result.kind,
+					sourceId: result.kind === 'resolved' ? result.hit.sourceId : null,
+					sourceKind: result.kind === 'resolved' ? result.hit.sourceKind : null,
+				});
 		}
 	};
 	const hostToolTarget: StageFacade['hostToolTarget'] = (query) => {
 		const evaluation = input.evaluation();
-		if (evaluation === null || input.idOf(evaluation) !== query.evaluationId) return { kind: 'failed', code: 'stale-evaluation' };
+		if (evaluation === null || input.idOf(evaluation) !== query.evaluationId)
+			return { kind: 'failed', code: 'stale-evaluation' };
 		if (!query.css.every(Number.isFinite)) return { kind: 'failed', code: 'invalid-css-point' };
 		ensureBindings();
 		const handle = adapterContext();
 		if (handle === null) return { kind: 'none', datumPoint: null };
 		try {
 			const context = handle.context;
-			const ray = context.ray([query.css[0] + evaluation.rect.left, query.css[1] + evaluation.rect.top]);
-			const plane = ray === null ? null : context.intersect(ray, datumWorkingPlane(context.snapshot.domain.datumMeters));
+			const ray = context.ray([
+				query.css[0] + evaluation.rect.left,
+				query.css[1] + evaluation.rect.top,
+			]);
+			const plane =
+				ray === null
+					? null
+					: context.intersect(ray, datumWorkingPlane(context.snapshot.domain.datumMeters));
 			const datumPoint = plane?.kind === 'intersected' ? plane.worldPoint : null;
 			const winner = resolveStagePick(
-				{ evaluationId: query.evaluationId, css: query.css, purpose: 'tool', tool: { kind: query.tool, scope: 'host' }, ...(query.coarse === undefined ? {} : { coarse: query.coarse }) },
+				{
+					evaluationId: query.evaluationId,
+					css: query.css,
+					purpose: 'tool',
+					tool: { kind: query.tool, scope: 'host' },
+					...(query.coarse === undefined ? {} : { coarse: query.coarse }),
+				},
 				[...adapters].map(([adapterId, entry]) => ({ adapterId, binding: entry.contributions })),
 				context,
-				evaluation.renderedReading === 'plan' ? 'plan' : '3d'
+				evaluation.renderedReading === 'plan' ? 'plan' : '3d',
 			);
 			if (winner === null) return { kind: 'none', datumPoint };
-			return { kind: 'hit', adapterId: winner.adapterId, hit: winner.pick.hit, refusal: winner.pick.refusal, datumPoint };
+			return {
+				kind: 'hit',
+				adapterId: winner.adapterId,
+				hit: winner.pick.hit,
+				refusal: winner.pick.refusal,
+				datumPoint,
+			};
 		} finally {
 			handle.end();
 		}
@@ -139,6 +177,7 @@ export function createSelectionPick(input: SelectionPickPort) {
 		eraseAnswer,
 		paintAnswer,
 		hitMark,
-		hitIdleMark: (css: readonly [number, number]) => hitStageMark(input.idleMarks(), { css, coarse: false }),
+		hitIdleMark: (css: readonly [number, number]) =>
+			hitStageMark(input.idleMarks(), { css, coarse: false }),
 	};
 }

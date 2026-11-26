@@ -10,18 +10,18 @@
  * parts, never the id alone:
  *
  * - an entry decides the outcome only when its `before` subject has the
- *   selection's subject kind *and* its id. Canonical ids are opaque and only
- *   unique inside their own namespace, so a Layout object and a Scene entity may
- *   legitimately share one; matching the id alone would requalify the creator's
- *   selection onto a different subject that happens to share a string;
+ *  selection's subject kind *and* its id. Canonical ids are opaque and only
+ *  unique inside their own namespace, so a Layout object and a Scene entity may
+ *  legitimately share one; matching the id alone would requalify the creator's
+ *  selection onto a different subject that happens to share a string;
  * - `after: null` means the subject retired, so the selection clears with a reason;
  * - a correspondence that moves the subject to another domain or another subject
- *   kind has not preserved this subject: it clears with a reason rather than
- *   retargeting onto a different owner or species;
+ *  kind has not preserved this subject: it clears with a reason rather than
+ *  retargeting onto a different owner or species;
  * - a component-qualified selection survives only with the same component; a
- *   vanished component is a retired subject, not a fragment of the new one;
+ *  vanished component is a retired subject, not a fragment of the new one;
  * - no entry at all is **not** a reason to guess: the selection clears with a
- *   reason rather than retargeting by proximity.
+ *  reason rather than retargeting by proximity.
  *
  * Two entry points enforce that rule at different strengths: the retained Layout
  * helper (`requalifySelection`) matches the subject kind and id because a
@@ -68,7 +68,7 @@ function f1ComponentOf(selection: StageSelection): string | null {
 export function requalifySelection(
 	selection: StageSelection,
 	correspondence: readonly CorrespondenceEntry[],
-	context: { readonly generationId: string }
+	context: { readonly generationId: string },
 ): SelectionRequalificationResult {
 	const componentId = f1ComponentOf(selection);
 	for (const entry of correspondence) {
@@ -110,17 +110,27 @@ export function requalifySelection(
 				...selection,
 				sourceId,
 				generationId: context.generationId,
-				ref: { ...selection.ref, sourceId, generationId: context.generationId }
-			}
+				ref: { ...selection.ref, sourceId, generationId: context.generationId },
+			},
 		};
 	}
-	return { kind: 'cleared', reason: componentId !== null && correspondence.some((entry) =>
-		entry.before?.subject.kind === selection.sourceKind && entry.before.subject.id === selection.sourceId)
-		? 'subject-retired' : 'no-correspondence' };
+	return {
+		kind: 'cleared',
+		reason:
+			componentId !== null &&
+			correspondence.some(
+				(entry) =>
+					entry.before?.subject.kind === selection.sourceKind &&
+					entry.before.subject.id === selection.sourceId,
+			)
+				? 'subject-retired'
+				: 'no-correspondence',
+	};
 }
 
 /** What became of one ordered F.1 selection entry across accepted content. */
-export type EntryRequalification = { readonly kind: 'requalified'; readonly entry: StageSelectionEntry }
+export type EntryRequalification =
+	| { readonly kind: 'requalified'; readonly entry: StageSelectionEntry }
 	| { readonly kind: 'cleared'; readonly reason: 'subject-retired' | 'no-correspondence' };
 
 /**
@@ -139,16 +149,30 @@ export type EntryRequalification = { readonly kind: 'requalified'; readonly entr
  * as `no-correspondence` rather than retargeted. The stored `after` is canonicalised
  * for the same reason, so both sides of the next change speak one address.
  */
-export function requalifySelectionEntry(entry: StageSelectionEntry, correspondence: readonly CorrespondenceEntry[], next: StageReadSnapshot): EntryRequalification {
-	const mapping = correspondence.find((candidate) => candidate.before !== null && sameSubject(candidate.before, entry.reference));
+export function requalifySelectionEntry(
+	entry: StageSelectionEntry,
+	correspondence: readonly CorrespondenceEntry[],
+	next: StageReadSnapshot,
+): EntryRequalification {
+	const mapping = correspondence.find(
+		(candidate) => candidate.before !== null && sameSubject(candidate.before, entry.reference),
+	);
 	if (!mapping) return unrelatedEntry(entry, next);
 	const after = mapping.after;
-	if (!after || after.domain !== entry.reference.domain || after.subject.kind !== entry.reference.subject.kind) return { kind: 'cleared', reason: 'subject-retired' };
+	if (
+		!after ||
+		after.domain !== entry.reference.domain ||
+		after.subject.kind !== entry.reference.subject.kind
+	)
+		return { kind: 'cleared', reason: 'subject-retired' };
 	// The reference names the owning unit's content revision. An F.2 envelope has
 	// five independent unit revisions; using the envelope-wide digest here would
 	// name content the domain resolver does not hold.
 	const revision = next.domain.unitRevisions[after.domain as UnitDomain] ?? next.sourceContentId;
-	const candidate: SemanticReference = { ...after, revision: { kind: 'exact', contentRevision: revision } };
+	const candidate: SemanticReference = {
+		...after,
+		revision: { kind: 'exact', contentRevision: revision },
+	};
 	const resolved = resolveReference(candidate, next.domain.references);
 	if (resolved.kind !== 'resolved') return { kind: 'cleared', reason: 'subject-retired' };
 	// The owner's answer is the stored identity, exactly as admission does it. A
@@ -165,11 +189,22 @@ export function requalifySelectionEntry(entry: StageSelectionEntry, corresponden
 			entry.reference.subject.kind !== 'region' && representation.subRef?.kind === 'component'
 				? representation.subRef.componentId
 				: null;
-		if (representationComponent !== null && reference.componentId !== representationComponent ||
-			representation.subRef?.kind === 'interval' && reference.subject.id !== entry.reference.subject.id) return { kind: 'cleared', reason: 'subject-retired' };
-		representation = { ...representation, sourceId: reference.subject.id, generationId: next.compileGeneration };
+		if (
+			(representationComponent !== null && reference.componentId !== representationComponent) ||
+			(representation.subRef?.kind === 'interval' &&
+				reference.subject.id !== entry.reference.subject.id)
+		)
+			return { kind: 'cleared', reason: 'subject-retired' };
+		representation = {
+			...representation,
+			sourceId: reference.subject.id,
+			generationId: next.compileGeneration,
+		};
 	}
-	return { kind: 'requalified', entry: { reference, ...(representation ? { representation } : {}) } };
+	return {
+		kind: 'requalified',
+		entry: { reference, ...(representation ? { representation } : {}) },
+	};
 }
 
 /**
@@ -182,10 +217,16 @@ export function requalifySelectionEntry(entry: StageSelectionEntry, corresponden
 function unrelatedEntry(entry: StageSelectionEntry, next: StageReadSnapshot): EntryRequalification {
 	const revision = entry.reference.revision;
 	const current = next.domain.unitRevisions[entry.reference.domain as UnitDomain];
-	if (revision.kind !== 'exact' || current === undefined || revision.contentRevision !== current) return { kind: 'cleared', reason: 'no-correspondence' };
+	if (revision.kind !== 'exact' || current === undefined || revision.contentRevision !== current)
+		return { kind: 'cleared', reason: 'no-correspondence' };
 	const resolved = resolveReference(entry.reference, next.domain.references);
 	if (resolved.kind !== 'resolved') return { kind: 'cleared', reason: 'no-correspondence' };
 	const reference = canonicalReference(resolved.subject);
-	const representation = entry.representation ? { ...entry.representation, generationId: next.compileGeneration } : undefined;
-	return { kind: 'requalified', entry: { reference, ...(representation ? { representation } : {}) } };
+	const representation = entry.representation
+		? { ...entry.representation, generationId: next.compileGeneration }
+		: undefined;
+	return {
+		kind: 'requalified',
+		entry: { reference, ...(representation ? { representation } : {}) },
+	};
 }

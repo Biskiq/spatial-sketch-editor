@@ -3,13 +3,25 @@ import type { LayoutDocumentWallFirst } from '../wall/types';
 import type { LayoutWallCurveKnot } from '../wall/types';
 import { wallCubicChain } from '../wall/centerline';
 import { isClosedWall } from '../wall/closed-wall';
-import { ROUND_ROOM_MEMBER_EDIT_MESSAGE, guardRoundRoomMemberGeometryEdit } from '../room/round-room';
-import { deleteWallCurveKnot, moveWallCurveKnot, resolveWallCurveSplit } from '../wall/curve-algebra';
+import {
+	ROUND_ROOM_MEMBER_EDIT_MESSAGE,
+	guardRoundRoomMemberGeometryEdit,
+} from '../room/round-room';
+import {
+	deleteWallCurveKnot,
+	moveWallCurveKnot,
+	resolveWallCurveSplit,
+} from '../wall/curve-algebra';
 import { coincidesAsJunction } from '../wall/junction-identity';
 import type { LayoutVec2 } from '../geometry/coordinates';
 import type { PrecisionPlan, WallBendIntent } from './types';
 import { MAX_WALL_CURVE_KNOTS } from './types';
-import { curveEditRejection, finalizeCurveCandidate, resolveCurveTarget, withWallCenterline } from './curve-edits';
+import {
+	curveEditRejection,
+	finalizeCurveCandidate,
+	resolveCurveTarget,
+	withWallCenterline,
+} from './curve-edits';
 import { finitePoint, reject, rejectRoundMember } from './rejections';
 
 /**
@@ -31,7 +43,7 @@ export function prepareWallBend(
 	document: LayoutDocumentWallFirst,
 	wallId: string,
 	distance: number,
-	capturedKnotId: string
+	capturedKnotId: string,
 ) {
 	const target = resolveCurveTarget(document, wallId, { allowStraight: true });
 	if ('plan' in target) return target.plan;
@@ -40,11 +52,7 @@ export function prepareWallBend(
 	// curve. Its shape is owned by the radius writer and preserve-angle placement;
 	// a bend would break both invariants, so it refuses explicitly.
 	if (isClosedWall(wall)) {
-		return reject(
-			'closed_wall_not_bendable',
-			ROUND_ROOM_MEMBER_EDIT_MESSAGE,
-			[wallId]
-		);
+		return reject('closed_wall_not_bendable', ROUND_ROOM_MEMBER_EDIT_MESSAGE, [wallId]);
 	}
 	const bendRoundHit = guardRoundRoomMemberGeometryEdit(document, { wallIds: [wallId] });
 	if (bendRoundHit) return rejectRoundMember(bendRoundHit);
@@ -52,12 +60,16 @@ export function prepareWallBend(
 		return reject('invalid_value', 'Bend distance must be a finite number of meters', [wallId]);
 	}
 	if (typeof capturedKnotId !== 'string' || capturedKnotId.length === 0) {
-		return reject('invalid_value', 'A Bend must capture the id of the bend point it may insert', [wallId]);
+		return reject('invalid_value', 'A Bend must capture the id of the bend point it may insert', [
+			wallId,
+		]);
 	}
 
 	// One resolver call decides both halves: whether the grab promotes an
 	// existing bend point, and where the inserted knot belongs.
-	const resolution = p2311Measure('planner-exact-split', () => resolveWallCurveSplit(chain, distance));
+	const resolution = p2311Measure('planner-exact-split', () =>
+		resolveWallCurveSplit(chain, distance),
+	);
 	if (resolution.kind === 'rejected') {
 		return reject(
 			resolution.code === 'split_at_endpoint'
@@ -66,7 +78,7 @@ export function prepareWallBend(
 					? 'unsupported_geometry'
 					: 'split_distance_out_of_range',
 			resolution.message,
-			[wallId]
+			[wallId],
 		);
 	}
 
@@ -75,7 +87,7 @@ export function prepareWallBend(
 		return reject(
 			'curve_knot_limit',
 			`Wall '${wallId}' already has ${MAX_WALL_CURVE_KNOTS} bend points, the maximum a new insertion may produce`,
-			[wallId]
+			[wallId],
 		);
 	}
 	// Captured identity, never an occupancy count: a promoted knot keeps its
@@ -84,10 +96,13 @@ export function prepareWallBend(
 	const { fragments } = resolution.result;
 	const insertedKnot: LayoutWallCurveKnot = {
 		id: knotId,
-		point: [resolution.result.point[0], resolution.result.point[1]] as LayoutVec2
+		point: [resolution.result.point[0], resolution.result.point[1]] as LayoutVec2,
 	};
 	const knots = promotedKnotId
-		? chain.knots.map((knot) => ({ id: knot.id, point: [knot.point[0], knot.point[1]] as LayoutVec2 }))
+		? chain.knots.map((knot) => ({
+				id: knot.id,
+				point: [knot.point[0], knot.point[1]] as LayoutVec2,
+			}))
 		: [...fragments.a.knots, insertedKnot, ...fragments.b.knots];
 	const grabbed = knots.find((knot) => knot.id === knotId)!;
 	const spans = promotedKnotId ? chain.spans : [...fragments.a.spans, ...fragments.b.spans];
@@ -96,38 +111,48 @@ export function prepareWallBend(
 		start,
 		end,
 		reshape(point: LayoutVec2) {
-			if (!finitePoint(point)) return reject('invalid_value', 'Bend point X/Z must be finite', [wallId]);
+			if (!finitePoint(point))
+				return reject('invalid_value', 'Bend point X/Z must be finite', [wallId]);
 			if (coincidesAsJunction(grabbed.point, point)) {
 				return promotedKnotId
 					? reject('no_op', `Bend point '${knotId}' is already at that point`, [wallId, knotId])
 					: { kind: 'proposed' as const, centerline: wallCubicChain(knots, spans) };
 			}
-			const moved = moveWallCurveKnot({ startPoint: start, endPoint: end, knots, spans }, knotId, point);
+			const moved = moveWallCurveKnot(
+				{ startPoint: start, endPoint: end, knots, spans },
+				knotId,
+				point,
+			);
 			return moved.kind === 'rejected'
 				? reject(curveEditRejection(moved.code), moved.message, [wallId, knotId])
 				: { kind: 'proposed' as const, centerline: wallCubicChain(moved.knots, moved.spans) };
-		}
+		},
 	};
 }
-
 
 export function planBendWallCurveKnot(
 	document: LayoutDocumentWallFirst,
 	wallId: string,
 	intent: WallBendIntent,
-	options: { readonly knotId: string }
+	options: { readonly knotId: string },
 ): PrecisionPlan {
 	const prepared = prepareWallBend(document, wallId, intent.distance, options.knotId);
 	if (prepared.kind !== 'ready') return prepared;
 	const proposed = prepared.reshape(intent.point);
 	if (proposed.kind !== 'proposed') return proposed;
 	return finalizeCurveCandidate(
-		document, withWallCenterline(document, wallId, proposed.centerline), 'wall-curve-knot-bend', wallId
+		document,
+		withWallCenterline(document, wallId, proposed.centerline),
+		'wall-curve-knot-bend',
+		wallId,
 	);
 }
 
-
-export function proposeWallKnotRemoval(document: LayoutDocumentWallFirst, wallId: string, knotId: string) {
+export function proposeWallKnotRemoval(
+	document: LayoutDocumentWallFirst,
+	wallId: string,
+	knotId: string,
+) {
 	const target = resolveCurveTarget(document, wallId);
 	if ('plan' in target) return target.plan;
 	const removeRoundHit = guardRoundRoomMemberGeometryEdit(document, { wallIds: [wallId] });
@@ -141,6 +166,6 @@ export function proposeWallKnotRemoval(document: LayoutDocumentWallFirst, wallId
 				kind: 'proposed' as const,
 				centerline: wallCubicChain(deletion.knots, deletion.spans),
 				start: target.start,
-				end: target.end
+				end: target.end,
 			};
 }

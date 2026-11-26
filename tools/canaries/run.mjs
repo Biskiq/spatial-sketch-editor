@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * VER-0 canary runner.
+ * Canary runner.
  *
  * A canary is one realistic defect, recorded as a literal mutation of a
  * production file, plus the tests that must fail because of it. The runner
@@ -8,15 +8,16 @@
  * and reports `killed` (the tests failed) or `survived` (they stayed green).
  *
  * The corpus is evidence for the verification contract, never a replacement
- * for it: a deletion is still justified by the section 7 rules, and a canary
+ * for it: a deletion still follows the test contract, and a canary
  * that survives at baseline gets a test before any test is deleted.
  *
  * Usage:
- *   node tools/canaries/run.mjs                 # every editor canary
- *   node tools/canaries/run.mjs --only 01-envelope-version
- *   node tools/canaries/run.mjs --kind api      # DB-backed API canaries
- *   node tools/canaries/run.mjs --list
- *   node tools/canaries/run.mjs --json .harness/canaries.json
+ *  node tools/canaries/run.mjs # editor and package Vitest canaries
+ *  node tools/canaries/run.mjs --all # complete corpus, including Postgres
+ *  node tools/canaries/run.mjs --only 01-envelope-version
+ *  node tools/canaries/run.mjs --kind api # DB-backed API canaries
+ *  node tools/canaries/run.mjs --list
+ *  node tools/canaries/run.mjs --json .harness/canaries.json
  *
  * The runner never runs in CI. It refuses to touch a dirty target file, and it
  * restores every file it mutates from HEAD even when the test run throws.
@@ -58,7 +59,8 @@ function loadCanaries() {
 
 function assertClean(file) {
 	const changed = git('status', '--porcelain', '--', file).trim();
-	if (changed !== '') throw new Error(`${file} has uncommitted changes; canaries need a clean target`);
+	if (changed !== '')
+		throw new Error(`${file} has uncommitted changes; canaries need a clean target`);
 }
 
 function apply(canary) {
@@ -82,42 +84,39 @@ function runVitest(canary) {
 	const result = spawnSync('npx', ['vitest', 'run', ...canary.tests], {
 		cwd,
 		encoding: 'utf8',
-		env: { ...process.env, CI: '1' },
-		timeout: 180_000
+		env: { ...process.env, CI: '1', NO_COLOR: '1' },
+		timeout: 180_000,
 	});
+	if (result.error) throw result.error;
 	const output = `${result.stdout ?? ''}\n${result.stderr ?? ''}`;
 	return {
 		status: typeof result.status === 'number' ? result.status : 1,
-		output,
-		// A collection error also exits non-zero, but proves nothing. Require the
-		// reporter to name at least one failed test.
-		failed: /\b\d+ failed\b/.test(output) || /\bFAIL\b/.test(output)
+		// The Tests total excludes files that failed before executing a test.
+		failures: Number(/^\s*Tests\s+(\d+) failed\b/m.exec(output)?.[1] ?? 0),
 	};
 }
 
 function runApi(canary) {
-	const build = spawnSync('npm', ['run', 'build'], { cwd: API_ROOT, encoding: 'utf8', timeout: 180_000 });
-	if (build.status !== 0) return { status: 1, output: build.stderr ?? '', failed: false };
+	const build = spawnSync('npm', ['run', 'build'], {
+		cwd: API_ROOT,
+		encoding: 'utf8',
+		timeout: 180_000,
+	});
+	if (build.status !== 0) throw new Error(build.stderr || 'API canary build failed');
 	const database = process.env.DATABASE_URL ?? 'postgresql://localhost:5432/biskiq';
 	const result = spawnSync('npx', ['vite-node', `tests/${canary.tests[0]}`], {
 		cwd: API_ROOT,
 		encoding: 'utf8',
 		env: { ...process.env, DATABASE_URL: database, NODE_ENV: 'test' },
-		timeout: 300_000
+		timeout: 300_000,
 	});
+	if (result.error) throw result.error;
 	const output = `${result.stdout ?? ''}\n${result.stderr ?? ''}`;
 	return {
 		status: typeof result.status === 'number' ? result.status : 1,
-		output,
-		failed: result.status !== 0 && /AssertionError|ERR_ASSERTION|not ok/.test(output)
+		// Node can report assertion error codes as TAP fields or inspected properties.
+		failures: output.match(/^[ \t]+code: 'ERR_ASSERTION',?\r?$/gm)?.length ?? 0,
 	};
-}
-
-function summarize(output) {
-	const failed = /(\d+) failed/.exec(output)?.[1];
-	if (failed) return `${failed} failing test${failed === '1' ? '' : 's'}`;
-	if (/\bFAIL\b/.test(output)) return 'failing test file';
-	return 'no failing test named';
 }
 
 function main() {
@@ -152,19 +151,31 @@ function main() {
 			apply(canary);
 			try {
 				const run = (canary.kind ?? 'vitest') === 'api' ? runApi(canary) : runVitest(canary);
-				outcome = run.status !== 0 && run.failed
-					? { status: 'killed', detail: summarize(run.output) }
-					: { status: 'survived', detail: `exit ${run.status}; ${summarize(run.output)}` };
+				outcome =
+					run.status === 0
+						? { status: 'survived', detail: 'tests passed' }
+						: run.failures > 0
+							? { status: 'killed', detail: `${run.failures} failing tests` }
+							: { status: 'error', detail: `exit ${run.status} without a test failure` };
 			} finally {
 				restore(canary);
 			}
 		} catch (error) {
-			restore(canary);
 			outcome = { status: 'error', detail: error instanceof Error ? error.message : String(error) };
 		}
-		const result = { ...outcome, id: canary.id, title: canary.title, durationMs: Date.now() - begin };
+		const result = {
+			...outcome,
+			id: canary.id,
+			title: canary.title,
+			durationMs: Date.now() - begin,
+		};
 		results.push(result);
-		const mark = result.status === 'killed' ? 'KILLED  ' : result.status === 'survived' ? 'SURVIVED' : 'ERROR   ';
+		const mark =
+			result.status === 'killed'
+				? 'KILLED  '
+				: result.status === 'survived'
+					? 'SURVIVED'
+					: 'ERROR   ';
 		console.log(`${mark} ${canary.id} (${result.durationMs} ms) — ${result.detail}`);
 	}
 
@@ -178,15 +189,18 @@ function main() {
 		killed,
 		survived: survived.map((result) => result.id),
 		errors: errors.map((result) => result.id),
-		results
+		results,
 	};
 	if (options.json) {
 		const path = resolve(REPO_ROOT, options.json);
 		mkdirSync(resolve(path, '..'), { recursive: true });
 		writeFileSync(path, `${JSON.stringify(report, null, 2)}\n`);
 	}
-	console.log(`\ncanaries: ${killed}/${results.length} killed in ${Math.round((Date.now() - startedAt.getTime()) / 1000)} s`);
-	if (survived.length > 0) console.log(`survived: ${survived.map((result) => result.id).join(', ')}`);
+	console.log(
+		`\ncanaries: ${killed}/${results.length} killed in ${Math.round((Date.now() - startedAt.getTime()) / 1000)} s`,
+	);
+	if (survived.length > 0)
+		console.log(`survived: ${survived.map((result) => result.id).join(', ')}`);
 	if (errors.length > 0) console.log(`errors: ${errors.map((result) => result.id).join(', ')}`);
 	process.exitCode = survived.length === 0 && errors.length === 0 ? 0 : 1;
 }

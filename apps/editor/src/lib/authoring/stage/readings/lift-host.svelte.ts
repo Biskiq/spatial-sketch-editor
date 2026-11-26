@@ -28,12 +28,12 @@ export function createLiftHost(input: {
 	const liftedRoomIds = $derived(
 		liftedSources
 			.filter((source) => source.key.kind === 'room-lid')
-			.map((source) => source.subject.id)
+			.map((source) => source.subject.id),
 	);
 	const liftedRegionIds = $derived(
 		liftedSources
 			.filter((source) => source.key.kind === 'region')
-			.map((source) => source.subject.id)
+			.map((source) => source.subject.id),
 	);
 	/** The selected Room, when the selection is one: a lift is selected through its Room. */
 	const selectedLiftRoomId = $derived.by(() => {
@@ -61,8 +61,8 @@ export function createLiftHost(input: {
 				selectedRoomId: selectedLiftRoomId,
 				reading: evaluation?.renderedReading === 'plan' ? 'plan' : '3d',
 				eye: evaluation === null ? null : eyeOfInspectionPose(evaluation.pose),
-				compiled: snapshot.domain.geometry
-			})
+				compiled: snapshot.domain.geometry,
+			}),
 		);
 	}
 
@@ -92,7 +92,7 @@ export function createLiftHost(input: {
 							selectedRoomId: null,
 							reading: '3d',
 							eye: eyeOfInspectionPose(evaluation.pose),
-							compiled: geometry
+							compiled: geometry,
 						});
 						return occupied.kind === 'space' ? occupied.roomId : null;
 					})();
@@ -108,7 +108,7 @@ export function createLiftHost(input: {
 			onScope: (roomId: string | null) => {
 				interiorLift.setScope(roomId === null ? { kind: 'all' } : { kind: 'space', roomId });
 			},
-			onPutBack: () => interiorLift.putBack()
+			onPutBack: () => interiorLift.putBack(),
 		};
 	});
 
@@ -131,19 +131,31 @@ export function createLiftHost(input: {
 	}
 
 	const canvas = contribution<'layout-readings', 'canvas'>()({
-		get liftSources() { return liftedSources; },
-		get liftedRoomIds() { return liftedRoomIds; },
-		get liftedRegionIds() { return liftedRegionIds; }
+		get liftSources() {
+			return liftedSources;
+		},
+		get liftedRoomIds() {
+			return liftedRoomIds;
+		},
+		get liftedRegionIds() {
+			return liftedRegionIds;
+		},
 	});
 	const viewport = contribution<'layout-readings', 'viewport'>()({
-		get lift() { return liftPill; }
+		get lift() {
+			return liftPill;
+		},
 	});
 
 	return {
-		canvas, viewport, attachScope,
-		get control() { return liftControl; },
+		canvas,
+		viewport,
+		attachScope,
+		get control() {
+			return liftControl;
+		},
 		active: () => interiorLift.isActive(),
 		putBack: () => interiorLift.putBack(),
-		clear: () => interiorLift.clear()
+		clear: () => interiorLift.clear(),
 	};
 }

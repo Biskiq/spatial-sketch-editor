@@ -1,7 +1,7 @@
 import type {
 	CompiledRoom,
 	CompiledWall,
-	LayoutGeometryIssue
+	LayoutGeometryIssue,
 } from '@portfolio/layout-core/geometry';
 import {
 	WALL_CLEARANCE_INSUFFICIENT_CODE,
@@ -10,7 +10,7 @@ import {
 	WALL_OFFSET_OVERLAP_CODE,
 	WALL_OFFSET_OVERLAP_MESSAGE,
 	wallOffsetClearanceFailure,
-	wallPairClearanceOverlap
+	wallPairClearanceOverlap,
 } from '@portfolio/layout-core/wall';
 import type {
 	Corner,
@@ -23,7 +23,7 @@ import type {
 	WallMeshBuildResult,
 	WallMeshOptions,
 	WallMeshSectionRef,
-	WallMeshSurfaceKey
+	WallMeshSurfaceKey,
 } from './wall-mesh-types';
 import { DEFAULT_MITER_LIMIT, DEFAULT_WELD_TOLERANCE } from './wall-mesh-types';
 import { computeCorners, roomHeightBreakpoints } from './wall-mesh-geometry';
@@ -31,7 +31,10 @@ import { buildRevealFaces, buildSectionFaces } from './wall-mesh-sections';
 import { buildStartBridgeFaces } from './wall-mesh-corners';
 import { assertWindingAgreesWithNormals, emitMesh } from './wall-mesh-emit';
 
-export function buildRoomWallMesh(room: CompiledRoom, options: WallMeshOptions = {}): WallMeshBuildResult {
+export function buildRoomWallMesh(
+	room: CompiledRoom,
+	options: WallMeshOptions = {},
+): WallMeshBuildResult {
 	const issues = validateRoom(room);
 	if (issues.length > 0) return { mesh: undefined, issues };
 
@@ -48,16 +51,15 @@ export function buildRoomWallMesh(room: CompiledRoom, options: WallMeshOptions =
 		wallResult.wallsFaces,
 		classify,
 		weldTolerance,
-		options.attribution === true
+		options.attribution === true,
 	);
 	if (options.assertWinding) assertWindingAgreesWithNormals(mesh);
 	return { mesh, issues: [] };
 }
 
-
 export function withSuppressionBreakpoints(
 	breakpoints: readonly number[],
-	suppressions: readonly ResolvedFaceSuppression[]
+	suppressions: readonly ResolvedFaceSuppression[],
 ): number[] {
 	if (suppressions.length === 0) return [...breakpoints];
 	const edges = new Set<number>(breakpoints);
@@ -73,18 +75,38 @@ export function withSuppressionBreakpoints(
 export function validateRoom(room: CompiledRoom): LayoutGeometryIssue[] {
 	const issues: LayoutGeometryIssue[] = [];
 	if (room.walls.length === 0) {
-		issues.push({ path: `rooms.${room.roomId}`, code: 'room_no_walls', message: 'Room has no walls to build a mesh for.', targetId: room.roomId });
+		issues.push({
+			path: `rooms.${room.roomId}`,
+			code: 'room_no_walls',
+			message: 'Room has no walls to build a mesh for.',
+			targetId: room.roomId,
+		});
 		return issues;
 	}
 	if (!Number.isFinite(room.wallThickness) || room.wallThickness <= 0) {
-		issues.push({ path: `rooms.${room.roomId}`, code: 'wall_thickness_invalid', message: 'Room wall thickness must be finite and greater than zero.', targetId: room.roomId });
+		issues.push({
+			path: `rooms.${room.roomId}`,
+			code: 'wall_thickness_invalid',
+			message: 'Room wall thickness must be finite and greater than zero.',
+			targetId: room.roomId,
+		});
 	}
 	for (const wall of room.walls) {
 		if (wall.samples.length < 2) {
-			issues.push({ path: `rooms.${room.roomId}.walls.${wall.segmentId}`, code: 'wall_degenerate', message: 'Wall has too few samples to build a mesh.', targetId: wall.segmentId });
+			issues.push({
+				path: `rooms.${room.roomId}.walls.${wall.segmentId}`,
+				code: 'wall_degenerate',
+				message: 'Wall has too few samples to build a mesh.',
+				targetId: wall.segmentId,
+			});
 		}
 		if (!Number.isFinite(wall.thickness) || wall.thickness <= 0) {
-			issues.push({ path: `rooms.${room.roomId}.walls.${wall.segmentId}`, code: 'wall_thickness_invalid', message: 'Wall thickness must be finite and greater than zero.', targetId: wall.segmentId });
+			issues.push({
+				path: `rooms.${room.roomId}.walls.${wall.segmentId}`,
+				code: 'wall_thickness_invalid',
+				message: 'Wall thickness must be finite and greater than zero.',
+				targetId: wall.segmentId,
+			});
 		}
 	}
 	return issues;
@@ -107,14 +129,14 @@ export function detectOffsetOverlap(room: CompiledRoom): LayoutGeometryIssue[] {
 				path: `rooms.${room.roomId}.walls.${wall.segmentId}`,
 				code: WALL_OFFSET_FOLD_CODE,
 				message: WALL_OFFSET_FOLD_MESSAGE,
-				targetId: wall.segmentId
+				targetId: wall.segmentId,
 			});
 		} else if (clearance === 'neck') {
 			issues.push({
 				path: `rooms.${room.roomId}.walls.${wall.segmentId}`,
 				code: WALL_OFFSET_OVERLAP_CODE,
 				message: WALL_OFFSET_OVERLAP_MESSAGE,
-				targetId: wall.segmentId
+				targetId: wall.segmentId,
 			});
 		}
 	}
@@ -130,7 +152,7 @@ export function detectOffsetOverlap(room: CompiledRoom): LayoutGeometryIssue[] {
 					path: `rooms.${room.roomId}`,
 					code: WALL_CLEARANCE_INSUFFICIENT_CODE,
 					message: `Walls ${a.segmentId} and ${b.segmentId} are closer than their combined thickness; offset regions overlap.`,
-					targetId: room.roomId
+					targetId: room.roomId,
 				});
 			}
 		}
@@ -141,7 +163,7 @@ export function detectOffsetOverlap(room: CompiledRoom): LayoutGeometryIssue[] {
 export function buildAllWallFaces(
 	room: CompiledRoom,
 	options: WallMeshOptions,
-	classify: (ref: WallMeshSectionRef) => WallMeshSurfaceKey
+	classify: (ref: WallMeshSectionRef) => WallMeshSurfaceKey,
 ): { wallsFaces: WallFaces[]; issues: LayoutGeometryIssue[] } {
 	const cornerResult = computeCorners(room.walls, options.miterLimit ?? DEFAULT_MITER_LIMIT, room);
 	if (cornerResult.issues.length > 0) return { wallsFaces: [], issues: cornerResult.issues };
@@ -154,7 +176,17 @@ export function buildAllWallFaces(
 		const cornerEnd = corners[(index + 1) % count]!;
 		const prevWall = room.walls[(index - 1 + count) % count]!;
 		const nextWall = room.walls[(index + 1) % count]!;
-		return buildWallFaces(room, wall, prevWall, nextWall, cornerStart, cornerEnd, wallHeight, roomBreakpoints, classify);
+		return buildWallFaces(
+			room,
+			wall,
+			prevWall,
+			nextWall,
+			cornerStart,
+			cornerEnd,
+			wallHeight,
+			roomBreakpoints,
+			classify,
+		);
 	});
 	return { wallsFaces, issues: [] };
 }
@@ -172,7 +204,7 @@ export function buildWallFaces(
 	emitBridges = true,
 	clip?: ResolvedEndClip,
 	suppressions: readonly ResolvedFaceSuppression[] = [],
-	attribution = false
+	attribution = false,
 ): WallFaces {
 	const half = wall.thickness / 2;
 	const sections: SectionFaces[] = [];
@@ -182,7 +214,7 @@ export function buildWallFaces(
 			segmentId: wall.segmentId,
 			sectionIndex,
 			...(section.openingId ? { openingId: section.openingId } : {}),
-			kind: section.kind
+			kind: section.kind,
 		};
 		const surfaceKey = classify(ref);
 		const faces = buildSectionFaces(
@@ -195,7 +227,7 @@ export function buildWallFaces(
 			roomBreakpoints,
 			clip,
 			suppressions,
-			attribution
+			attribution,
 		);
 		if (faces.length > 0) sections.push({ ref, surfaceKey, faces });
 	}
@@ -207,7 +239,7 @@ export function buildWallFaces(
 			segmentId: wall.segmentId,
 			sectionIndex: -1,
 			...(opening.openingId ? { openingId: opening.openingId } : {}),
-			kind: 'side'
+			kind: 'side',
 		});
 		const faces = buildRevealFaces(
 			room,
@@ -221,7 +253,7 @@ export function buildWallFaces(
 			cornerStart,
 			cornerEnd,
 			clip,
-			attribution
+			attribution,
 		);
 		if (faces.length > 0) reveals.push({ openingId: opening.openingId, surfaceKey, faces });
 	}
@@ -231,7 +263,15 @@ export function buildWallFaces(
 	// own resolved bridges from both ends.
 	const bridges: BridgeFaces[] = [];
 	if (emitBridges) {
-		const bridge = buildStartBridgeFaces(room, prevWall, wall, cornerStart, wallHeight, roomBreakpoints, classify);
+		const bridge = buildStartBridgeFaces(
+			room,
+			prevWall,
+			wall,
+			cornerStart,
+			wallHeight,
+			roomBreakpoints,
+			classify,
+		);
 		if (bridge) bridges.push(bridge);
 	}
 
@@ -240,7 +280,10 @@ export function buildWallFaces(
 		sections,
 		reveals,
 		bridges,
-		development: { samples: wall.samples, thickness: wall.thickness, floorElevation: room.floorElevation }
+		development: {
+			samples: wall.samples,
+			thickness: wall.thickness,
+			floorElevation: room.floorElevation,
+		},
 	};
 }
-

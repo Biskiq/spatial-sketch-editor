@@ -29,7 +29,7 @@ export const LIGHT_SPOT_TARGET_MARGIN_METERS = 0.5;
 export const LIGHT_WARMTH_TOKENS = [
 	{ id: 'warm', label: 'Warm', color: '#ffd6a5' },
 	{ id: 'neutral', label: 'Neutral', color: '#ffffff' },
-	{ id: 'cool', label: 'Cool', color: '#dbe9ff' }
+	{ id: 'cool', label: 'Cool', color: '#dbe9ff' },
 ] as const;
 
 export type LightWarmthToken = (typeof LIGHT_WARMTH_TOKENS)[number];
@@ -66,10 +66,7 @@ export function spotCutoffForTargetDistance(distance: number): number {
 
 /** A spot guide's drawable half-angle, bounded without changing the stored value. */
 export function drawableSpotHalfAngle(angle: number): number {
-	return Math.min(
-		Math.max(angle, 0),
-		degreesToRadians(LIGHT_GUIDE_MAX_HALF_ANGLE_DEGREES)
-	);
+	return Math.min(Math.max(angle, 0), degreesToRadians(LIGHT_GUIDE_MAX_HALF_ANGLE_DEGREES));
 }
 
 export function lightKindLabel(light: SceneLightEntity['light']): string {

@@ -1,6 +1,22 @@
 import type { LayoutVec2 } from '../../geometry/coordinates';
-import type { CompiledJunctionLeg, CompiledJunctionResolution, CompiledJunctionSurface, CompiledLegJoin, LayoutGeometryIssue } from '../../geometry/types';
-import { JUNCTION_BAND_EPSILON, JUNCTION_DET_EPSILON, JUNCTION_PROBE_TOLERANCE, JUNCTION_SECTOR_SNAP, JUNCTION_SURFACE_PROBE, cross, dot, joinsBounds2, outwardTangent } from './geometry';
+import type {
+	CompiledJunctionLeg,
+	CompiledJunctionResolution,
+	CompiledJunctionSurface,
+	CompiledLegJoin,
+	LayoutGeometryIssue,
+} from '../../geometry/types';
+import {
+	JUNCTION_BAND_EPSILON,
+	JUNCTION_DET_EPSILON,
+	JUNCTION_PROBE_TOLERANCE,
+	JUNCTION_SECTOR_SNAP,
+	JUNCTION_SURFACE_PROBE,
+	cross,
+	dot,
+	joinsBounds2,
+	outwardTangent,
+} from './geometry';
 import { legSolidInBand } from './surfaces';
 
 /**
@@ -25,14 +41,17 @@ type PartitionBeam = {
 	prevSide: 1 | -1;
 };
 
-
 function signOf(value: number): 1 | -1 {
 	return value >= 0 ? 1 : -1;
 }
 
-
 /** Intersection of two lines given as a point plus a direction, or `null`. */
-function lineIntersection(p1: LayoutVec2, d1: LayoutVec2, p2: LayoutVec2, d2: LayoutVec2): LayoutVec2 | null {
+function lineIntersection(
+	p1: LayoutVec2,
+	d1: LayoutVec2,
+	p2: LayoutVec2,
+	d2: LayoutVec2,
+): LayoutVec2 | null {
 	const det = cross(d1, d2);
 	if (Math.abs(det) < JUNCTION_DET_EPSILON) return null;
 	const dx = p2[0] - p1[0];
@@ -41,29 +60,35 @@ function lineIntersection(p1: LayoutVec2, d1: LayoutVec2, p2: LayoutVec2, d2: La
 	return [p1[0] + u * d1[0], p1[1] + u * d1[1]];
 }
 
-
 /** A point on the leg's `sign`-sided offset line (whose own direction is `tangentOut`). */
 function offsetLinePoint(junction: LayoutVec2, leg: CompiledJunctionLeg, sign: 1 | -1): LayoutVec2 {
 	return [
 		junction[0] + sign * leg.halfThickness * leg.normalOut[0],
-		junction[1] + sign * leg.halfThickness * leg.normalOut[1]
+		junction[1] + sign * leg.halfThickness * leg.normalOut[1],
 	];
 }
-
 
 /** Where a leg's `sign`-sided offset line crosses a beam line, or `null`. */
 function beamOffsetCrossing(
 	junction: LayoutVec2,
 	leg: CompiledJunctionLeg,
 	sign: 1 | -1,
-	beam: PartitionBeam
+	beam: PartitionBeam,
 ): LayoutVec2 | null {
-	return lineIntersection(offsetLinePoint(junction, leg, sign), outwardTangent(leg), beam.origin, beam.dir);
+	return lineIntersection(
+		offsetLinePoint(junction, leg, sign),
+		outwardTangent(leg),
+		beam.origin,
+		beam.dir,
+	);
 }
 
-
 /** The equal-clearance beam separating `a` from `b`, or `null` when unresolvable. */
-function partitionBeam(junction: LayoutVec2, a: CompiledJunctionLeg, b: CompiledJunctionLeg): PartitionBeam | null {
+function partitionBeam(
+	junction: LayoutVec2,
+	a: CompiledJunctionLeg,
+	b: CompiledJunctionLeg,
+): PartitionBeam | null {
 	const ta = outwardTangent(a);
 	const tb = outwardTangent(b);
 	const sx = ta[0] + tb[0];
@@ -81,25 +106,23 @@ function partitionBeam(junction: LayoutVec2, a: CompiledJunctionLeg, b: Compiled
 		offsetLinePoint(junction, a, signOf(sideA)),
 		ta,
 		offsetLinePoint(junction, b, signOf(sideB)),
-		tb
+		tb,
 	);
 	if (!origin) return null;
 	return { prev: a, next: b, origin, dir, normal, prevSide: signOf(dot(ta, normal)) };
 }
-
 
 /** Twice the signed plan area of a triangle. */
 function triangleArea2(a: LayoutVec2, b: LayoutVec2, c: LayoutVec2): number {
 	return (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
 }
 
-
-/** Clip a convex plan polygon by the half-plane `{p : sign · (p - anchor) · normal ≥ 0}`. */
+/** Clip a convex plan polygon by the half-plane `{p: sign · (p - anchor) · normal ≥ 0}`. */
 function clipHalfPlane(
 	polygon: readonly LayoutVec2[],
 	anchor: LayoutVec2,
 	normal: LayoutVec2,
-	sign: 1 | -1
+	sign: 1 | -1,
 ): LayoutVec2[] {
 	const side = (p: LayoutVec2): number =>
 		sign * ((p[0] - anchor[0]) * normal[0] + (p[1] - anchor[1]) * normal[1]);
@@ -114,13 +137,12 @@ function clipHalfPlane(
 			const amount = currentSide / (currentSide - nextSide);
 			output.push([
 				current[0] + (next[0] - current[0]) * amount,
-				current[1] + (next[1] - current[1]) * amount
+				current[1] + (next[1] - current[1]) * amount,
 			]);
 		}
 	}
 	return output;
 }
-
 
 /** Signed plan area of a convex polygon. */
 function polygonArea(polygon: readonly LayoutVec2[]): number {
@@ -138,9 +160,12 @@ function polygonArea(polygon: readonly LayoutVec2[]): number {
 	return total / 2;
 }
 
-
 /** Outward plan normal of a polygon edge, pointing away from the polygon's centroid. */
-function edgeOutwardNormal(polygon: readonly LayoutVec2[], from: LayoutVec2, to: LayoutVec2): LayoutVec2 {
+function edgeOutwardNormal(
+	polygon: readonly LayoutVec2[],
+	from: LayoutVec2,
+	to: LayoutVec2,
+): LayoutVec2 {
 	let cx = 0;
 	let cy = 0;
 	for (const point of polygon) {
@@ -159,7 +184,6 @@ function edgeOutwardNormal(polygon: readonly LayoutVec2[], from: LayoutVec2, to:
 	return normal;
 }
 
-
 /**
  * Expose one keel side face over the bands the abutting neighbour is void in.
  * Where the neighbour *is* solid the face stays interior — its material rests
@@ -172,7 +196,7 @@ function pushKeelSide(
 	polygon: readonly LayoutVec2[],
 	from: LayoutVec2,
 	to: LayoutVec2,
-	bands: readonly { bottomY: number; topY: number }[]
+	bands: readonly { bottomY: number; topY: number }[],
 ): void {
 	const exposed = bands
 		.filter((band) => !legSolidInBand(neighbour, band.bottomY, band.topY))
@@ -185,10 +209,9 @@ function pushKeelSide(
 		from,
 		to,
 		normal: edgeOutwardNormal(polygon, from, to),
-		bands: exposed
+		bands: exposed,
 	});
 }
-
 
 /**
  * A degree >= 3 Junction whose partition **cannot be defined at all**: two
@@ -205,11 +228,10 @@ function starFailure(junctionId: string, reason: string, issues: LayoutGeometryI
 		code: 'junction_partition_failed',
 		message: `Junction material cannot be partitioned across its incident Walls (${reason}); the Junction fails closed.`,
 		targetId: junctionId,
-		severity: 'error'
+		severity: 'error',
 	});
 	return null;
 }
-
 
 /**
  * The owner of a Junction-local plan point, when some **other** leg's own body
@@ -226,7 +248,7 @@ function junctionPointOwner(
 	junction: LayoutVec2,
 	query: LayoutVec2,
 	self: CompiledJunctionLeg,
-	legs: readonly CompiledJunctionLeg[]
+	legs: readonly CompiledJunctionLeg[],
 ): CompiledJunctionLeg | null {
 	let best: CompiledJunctionLeg | null = null;
 	let bestClearance = Infinity;
@@ -248,7 +270,6 @@ function junctionPointOwner(
 	return best;
 }
 
-
 /**
  * The convex pieces of `polygon \ cutter` (both convex and wound CCW).
  *
@@ -257,7 +278,10 @@ function junctionPointOwner(
  * a hole — the shape a Wall-owned band can actually be extruded from. Order is
  * stable: the cutter's own edges are walked in order.
  */
-function _subtractConvexPolygon(polygon: readonly LayoutVec2[], cutter: readonly LayoutVec2[]): LayoutVec2[][] {
+function _subtractConvexPolygon(
+	polygon: readonly LayoutVec2[],
+	cutter: readonly LayoutVec2[],
+): LayoutVec2[][] {
 	if (polygon.length < 3) return [];
 	if (cutter.length < 3) return [[...polygon]];
 	const outward = polygonArea(cutter) > 0 ? cutter : [...cutter].reverse();
@@ -274,7 +298,6 @@ function _subtractConvexPolygon(polygon: readonly LayoutVec2[], cutter: readonly
 	return pieces;
 }
 
-
 /**
  * Clean a solved sector region in the owning Wall's own frame: clamp every
  * vertex back inside the Wall's strip (`|lateral| <= halfThickness`) and merge
@@ -287,7 +310,11 @@ function _subtractConvexPolygon(polygon: readonly LayoutVec2[], cutter: readonly
  * both the clamp and the merge exact in the coordinates that matter, so the
  * region a builder extrudes is the region this solver reasoned about.
  */
-function cleanSectorRegion(junction: LayoutVec2, leg: CompiledJunctionLeg, polygon: readonly LayoutVec2[]): LayoutVec2[] {
+function cleanSectorRegion(
+	junction: LayoutVec2,
+	leg: CompiledJunctionLeg,
+	polygon: readonly LayoutVec2[],
+): LayoutVec2[] {
 	const t = outwardTangent(leg);
 	const n = leg.normalOut;
 	const half = leg.halfThickness;
@@ -301,7 +328,11 @@ function cleanSectorRegion(junction: LayoutVec2, leg: CompiledJunctionLeg, polyg
 	const merged: Array<[number, number]> = [];
 	for (const point of solved) {
 		const last = merged[merged.length - 1];
-		if (last && Math.abs(last[0] - point[0]) <= JUNCTION_SECTOR_SNAP && Math.abs(last[1] - point[1]) <= JUNCTION_SECTOR_SNAP) {
+		if (
+			last &&
+			Math.abs(last[0] - point[0]) <= JUNCTION_SECTOR_SNAP &&
+			Math.abs(last[1] - point[1]) <= JUNCTION_SECTOR_SNAP
+		) {
 			continue;
 		}
 		merged.push(point);
@@ -309,26 +340,31 @@ function cleanSectorRegion(junction: LayoutVec2, leg: CompiledJunctionLeg, polyg
 	while (merged.length > 1) {
 		const first = merged[0]!;
 		const last = merged[merged.length - 1]!;
-		if (Math.abs(last[0] - first[0]) > JUNCTION_SECTOR_SNAP || Math.abs(last[1] - first[1]) > JUNCTION_SECTOR_SNAP) break;
+		if (
+			Math.abs(last[0] - first[0]) > JUNCTION_SECTOR_SNAP ||
+			Math.abs(last[1] - first[1]) > JUNCTION_SECTOR_SNAP
+		)
+			break;
 		merged.pop();
 	}
-	return merged.map(([along, lateral]): LayoutVec2 => [
-		junction[0] + along * t[0] + lateral * n[0],
-		junction[1] + along * t[1] + lateral * n[1]
-	]);
+	return merged.map(
+		([along, lateral]): LayoutVec2 => [
+			junction[0] + along * t[0] + lateral * n[0],
+			junction[1] + along * t[1] + lateral * n[1],
+		],
+	);
 }
-
 
 /**
  * Partition a degree >= 3 Junction that has **no** continuation pair (Y, star)
  * across all of its incident legs:
  *
  * ```text
- * cyclic leg pairs          → one equal-clearance beam each
- * leg band + its two beams  → this leg's Junction-local cell (a half-plane
- *                             intersection, never a wedge sign test)
- * cell cut at capDistance   → the keel this Wall owns near the Junction
- * cell beyond capDistance   → the Wall's own body (a plain strip, nothing to solve)
+ * cyclic leg pairs → one equal-clearance beam each
+ * leg band + its two beams → this leg's Junction-local cell (a half-plane
+ *  intersection, never a wedge sign test)
+ * cell cut at capDistance → the keel this Wall owns near the Junction
+ * cell beyond capDistance → the Wall's own body (a plain strip, nothing to solve)
  * ```
  *
  * A leg's Junction-local material is the part of its own band that lies in front
@@ -359,7 +395,7 @@ export function resolveStarPartition(
 	point: LayoutVec2,
 	legs: readonly CompiledJunctionLeg[],
 	bands: Array<{ bottomY: number; topY: number }>,
-	issues: LayoutGeometryIssue[]
+	issues: LayoutGeometryIssue[],
 ): { resolution: CompiledJunctionResolution; issues: LayoutGeometryIssue[] } | null {
 	const count = legs.length;
 	if (count < 3) return null;
@@ -369,7 +405,8 @@ export function resolveStarPartition(
 		const a = legs[index]!;
 		const b = legs[(index + 1) % count]!;
 		const beam = partitionBeam(point, a, b);
-		if (!beam) return starFailure(junctionId, `no separating beam for ${a.wallId} and ${b.wallId}`, issues);
+		if (!beam)
+			return starFailure(junctionId, `no separating beam for ${a.wallId} and ${b.wallId}`, issues);
 		beams.push(beam);
 	}
 	// Two forms of the same rule. A leg whose two neighbours leave on **opposite**
@@ -385,7 +422,8 @@ export function resolveStarPartition(
 		const prev = legs[(index - 1 + count) % count]!;
 		const next = legs[(index + 1) % count]!;
 		return (
-			signOf(dot(leg.normalOut, outwardTangent(prev))) !== signOf(dot(leg.normalOut, outwardTangent(next)))
+			signOf(dot(leg.normalOut, outwardTangent(prev))) !==
+			signOf(dot(leg.normalOut, outwardTangent(next)))
 		);
 	});
 	// The wedge form is the closed form of this rule and solves the symmetric Y in
@@ -395,10 +433,14 @@ export function resolveStarPartition(
 	// same Junction exactly, because it is the definition rather than a case. A
 	// Junction is only unresolved when no separating beam exists at all, which is
 	// reported once above and fails closed here.
-	const joins = (wedged ? resolveStarWedges(point, legs, beams, bands) : null) ?? resolveStarSectors(point, legs, beams, bands);
-	return { resolution: { junctionId, legOrder, joins, bounds2: joinsBounds2(point, joins) }, issues };
+	const joins =
+		(wedged ? resolveStarWedges(point, legs, beams, bands) : null) ??
+		resolveStarSectors(point, legs, beams, bands);
+	return {
+		resolution: { junctionId, legOrder, joins, bounds2: joinsBounds2(point, joins) },
+		issues,
+	};
 }
-
 
 /**
  * Which side of `beam` the **owner's** material lies on (`beam.normal` terms).
@@ -411,10 +453,13 @@ export function resolveStarPartition(
  * which sits inside the *other* leg's material when that leg is thick enough to
  * swallow the overlap.
  */
-function sideAtOrigin(owner: CompiledJunctionLeg, other: CompiledJunctionLeg, beam: PartitionBeam): 1 | -1 {
+function sideAtOrigin(
+	owner: CompiledJunctionLeg,
+	other: CompiledJunctionLeg,
+	beam: PartitionBeam,
+): 1 | -1 {
 	return signOf(-dot(owner.normalOut, outwardTangent(other)) * dot(owner.normalOut, beam.normal));
 }
-
 
 /**
  * The wedge form of the sector partition: for every leg whose two neighbours
@@ -429,7 +474,7 @@ function resolveStarWedges(
 	point: LayoutVec2,
 	legs: readonly CompiledJunctionLeg[],
 	beams: readonly PartitionBeam[],
-	bands: Array<{ bottomY: number; topY: number }>
+	bands: Array<{ bottomY: number; topY: number }>,
 ): CompiledLegJoin[] | null {
 	const count = legs.length;
 	const joins: CompiledLegJoin[] = [];
@@ -453,15 +498,18 @@ function resolveStarWedges(
 		// left uncovered without an overlap or a hole, so the Junction fails closed
 		// rather than rendering either. The difference form resolves it; this form
 		// only runs for legs that do have a wedge.
-		for (const [neighbour, beam] of [
-			[prev, prevBeam] as const,
-			[next, nextBeam] as const
-		]) {
+		for (const [neighbour, beam] of [[prev, prevBeam] as const, [next, nextBeam] as const]) {
 			let region: LayoutVec2[] = [
-				[point[0] + leg.halfThickness * leg.normalOut[0], point[1] + leg.halfThickness * leg.normalOut[1]],
-				[point[0] - leg.halfThickness * leg.normalOut[0], point[1] - leg.halfThickness * leg.normalOut[1]],
+				[
+					point[0] + leg.halfThickness * leg.normalOut[0],
+					point[1] + leg.halfThickness * leg.normalOut[1],
+				],
+				[
+					point[0] - leg.halfThickness * leg.normalOut[0],
+					point[1] - leg.halfThickness * leg.normalOut[1],
+				],
 				prevSide > 0 ? capNext : capPrev,
-				prevSide > 0 ? capPrev : capNext
+				prevSide > 0 ? capPrev : capNext,
 			];
 			region = clipHalfPlane(region, beam.origin, beam.normal, sideAtOrigin(neighbour, leg, beam));
 			const farSide = signOf(-dot(neighbour.normalOut, t));
@@ -469,12 +517,15 @@ function resolveStarWedges(
 				region,
 				[
 					point[0] + farSide * neighbour.halfThickness * neighbour.normalOut[0],
-					point[1] + farSide * neighbour.halfThickness * neighbour.normalOut[1]
+					point[1] + farSide * neighbour.halfThickness * neighbour.normalOut[1],
 				],
 				neighbour.normalOut,
-				farSide
+				farSide,
 			);
-			if (region.length >= 3 && Math.abs(polygonArea(region)) > JUNCTION_BAND_EPSILON * leg.halfThickness) {
+			if (
+				region.length >= 3 &&
+				Math.abs(polygonArea(region)) > JUNCTION_BAND_EPSILON * leg.halfThickness
+			) {
 				return null; // thin neighbour leaves a wrap: difference form owns it
 			}
 		}
@@ -489,13 +540,17 @@ function resolveStarWedges(
 		const regions: LayoutVec2[][] = [];
 		if (Math.abs(keelArea2) > JUNCTION_BAND_EPSILON * Math.max(JUNCTION_BAND_EPSILON, capSpan)) {
 			if (apexDepth > JUNCTION_BAND_EPSILON) return null; // beams cross in front of the cap: difference form
-			const polygon: LayoutVec2[] = keelArea2 > 0 ? [capPrev, apex, capNext] : [capNext, apex, capPrev];
+			const polygon: LayoutVec2[] =
+				keelArea2 > 0 ? [capPrev, apex, capNext] : [capNext, apex, capPrev];
 			regions.push(polygon);
 			pushKeelSide(surfaces, leg, prev, polygon, capPrev, apex, keelBands);
 			pushKeelSide(surfaces, leg, next, polygon, apex, capNext, keelBands);
 		}
 		if (regions.length > 0 && keelBands.length > 0) {
-			keel = { regions, bands: keelBands.map((band) => ({ bottomY: band.bottomY, topY: band.topY })) };
+			keel = {
+				regions,
+				bands: keelBands.map((band) => ({ bottomY: band.bottomY, topY: band.topY })),
+			};
 		}
 		joins.push({
 			wallId: leg.wallId,
@@ -507,15 +562,14 @@ function resolveStarWedges(
 			bands: bands.map((band) => ({ bottomY: band.bottomY, topY: band.topY })),
 			corner: {
 				front: { kind: 'miter', apex: leg.end === 'start' ? plusCap : minusCap },
-				back: { kind: 'miter', apex: leg.end === 'start' ? minusCap : plusCap }
+				back: { kind: 'miter', apex: leg.end === 'start' ? minusCap : plusCap },
 			},
 			...(keel ? { keel } : {}),
-			...(surfaces.length > 0 ? { surfaces } : {})
+			...(surfaces.length > 0 ? { surfaces } : {}),
 		});
 	}
 	return joins;
 }
-
 
 /**
  * The **difference** form of the sector partition, for a Junction whose legs have
@@ -537,7 +591,7 @@ function resolveStarSectors(
 	point: LayoutVec2,
 	legs: readonly CompiledJunctionLeg[],
 	beams: readonly PartitionBeam[],
-	bands: Array<{ bottomY: number; topY: number }>
+	bands: Array<{ bottomY: number; topY: number }>,
 ): CompiledLegJoin[] {
 	const count = legs.length;
 	const joins: CompiledLegJoin[] = [];
@@ -556,37 +610,46 @@ function resolveStarSectors(
 			[point[0] + half * leg.normalOut[0], point[1] + half * leg.normalOut[1]],
 			[
 				point[0] + distance * t[0] + half * leg.normalOut[0],
-				point[1] + distance * t[1] + half * leg.normalOut[1]
+				point[1] + distance * t[1] + half * leg.normalOut[1],
 			],
 			[
 				point[0] + distance * t[0] - half * leg.normalOut[0],
-				point[1] + distance * t[1] - half * leg.normalOut[1]
+				point[1] + distance * t[1] - half * leg.normalOut[1],
 			],
-			[point[0] - half * leg.normalOut[0], point[1] - half * leg.normalOut[1]]
+			[point[0] - half * leg.normalOut[0], point[1] - half * leg.normalOut[1]],
 		];
 		// Farthest station at which a beam still cuts this leg's strip: beyond it the
 		// whole strip lies inside the cell, so the Wall's own body can start there.
 		let capDistance = 0;
 		for (const beam of [prevBeam, nextBeam]) {
 			for (const sign of [1, -1] as const) {
-				const crossing = lineIntersection(offsetLinePoint(point, leg, sign), t, beam.origin, beam.dir);
+				const crossing = lineIntersection(
+					offsetLinePoint(point, leg, sign),
+					t,
+					beam.origin,
+					beam.dir,
+				);
 				if (crossing) capDistance = Math.max(capDistance, along(crossing));
 			}
 		}
 		capDistance = Math.max(0, capDistance);
 		const capPlus: LayoutVec2 = [
 			point[0] + capDistance * t[0] + half * leg.normalOut[0],
-			point[1] + capDistance * t[1] + half * leg.normalOut[1]
+			point[1] + capDistance * t[1] + half * leg.normalOut[1],
 		];
 		const capMinus: LayoutVec2 = [
 			point[0] + capDistance * t[0] - half * leg.normalOut[0],
-			point[1] + capDistance * t[1] - half * leg.normalOut[1]
+			point[1] + capDistance * t[1] - half * leg.normalOut[1],
 		];
 		const regions: LayoutVec2[][] = [];
 		const pushRegion = (polygon: readonly LayoutVec2[]): void => {
 			const cleaned = cleanSectorRegion(point, leg, polygon);
 			const area = polygonArea(cleaned);
-			if (cleaned.length < 3 || Math.abs(area) <= JUNCTION_BAND_EPSILON * Math.max(JUNCTION_BAND_EPSILON, half)) return;
+			if (
+				cleaned.length < 3 ||
+				Math.abs(area) <= JUNCTION_BAND_EPSILON * Math.max(JUNCTION_BAND_EPSILON, half)
+			)
+				return;
 			regions.push(area > 0 ? cleaned : [...cleaned].reverse());
 		};
 		// This leg's Junction-local material: its own band, in front of its Junction
@@ -603,7 +666,7 @@ function resolveStarSectors(
 		// left uncovered or hidden behind an overlap.
 		for (const [neighbour, beam, otherBeam] of [
 			[prev, prevBeam, nextBeam] as const,
-			[next, nextBeam, prevBeam] as const
+			[next, nextBeam, prevBeam] as const,
 		]) {
 			const farSide = signOf(-dot(neighbour.normalOut, t));
 			let wrap = clipHalfPlane(bandQuad(capDistance), point, t, 1);
@@ -612,13 +675,18 @@ function resolveStarSectors(
 				wrap,
 				[
 					point[0] + farSide * neighbour.halfThickness * neighbour.normalOut[0],
-					point[1] + farSide * neighbour.halfThickness * neighbour.normalOut[1]
+					point[1] + farSide * neighbour.halfThickness * neighbour.normalOut[1],
 				],
 				neighbour.normalOut,
-				farSide
+				farSide,
 			);
 			// Only the shared beam is relaxed; the other beam still bounds this leg.
-			wrap = clipHalfPlane(wrap, otherBeam.origin, otherBeam.normal, sideAtOrigin(leg, neighbour, otherBeam));
+			wrap = clipHalfPlane(
+				wrap,
+				otherBeam.origin,
+				otherBeam.normal,
+				sideAtOrigin(leg, neighbour, otherBeam),
+			);
 			pushRegion(wrap);
 		}
 
@@ -632,7 +700,10 @@ function resolveStarSectors(
 				const from = region[edge]!;
 				const to = region[(edge + 1) % region.length]!;
 				// The cap edge is the seam with this Wall's own body: always interior.
-				if (along(from) >= capDistance - JUNCTION_SECTOR_SNAP && along(to) >= capDistance - JUNCTION_SECTOR_SNAP) {
+				if (
+					along(from) >= capDistance - JUNCTION_SECTOR_SNAP &&
+					along(to) >= capDistance - JUNCTION_SECTOR_SNAP
+				) {
 					continue;
 				}
 				if (Math.hypot(to[0] - from[0], to[1] - from[1]) <= JUNCTION_BAND_EPSILON) continue;
@@ -642,10 +713,10 @@ function resolveStarSectors(
 						point,
 						[
 							(from[0] + to[0]) / 2 + JUNCTION_SURFACE_PROBE * normal[0],
-							(from[1] + to[1]) / 2 + JUNCTION_SURFACE_PROBE * normal[1]
+							(from[1] + to[1]) / 2 + JUNCTION_SURFACE_PROBE * normal[1],
 						],
 						leg,
-						legs
+						legs,
 					);
 					if (!coverer) return true;
 					return !legSolidInBand(coverer, band.bottomY, band.topY);
@@ -658,7 +729,7 @@ function resolveStarSectors(
 					from,
 					to,
 					normal,
-					bands: exposed.map((band) => ({ bottomY: band.bottomY, topY: band.topY }))
+					bands: exposed.map((band) => ({ bottomY: band.bottomY, topY: band.topY })),
 				});
 			}
 		}
@@ -679,10 +750,10 @@ function resolveStarSectors(
 			// end normal, so the builder needs no convention of its own.
 			corner: {
 				front: { kind: 'miter', apex: leg.end === 'start' ? capPlus : capMinus },
-				back: { kind: 'miter', apex: leg.end === 'start' ? capMinus : capPlus }
+				back: { kind: 'miter', apex: leg.end === 'start' ? capMinus : capPlus },
 			},
 			...(keel ? { keel } : {}),
-			...(surfaces.length > 0 ? { surfaces } : {})
+			...(surfaces.length > 0 ? { surfaces } : {}),
 		});
 	}
 	return joins;

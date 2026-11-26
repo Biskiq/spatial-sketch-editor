@@ -11,7 +11,12 @@ import type { RoomCopyDroppedRelation } from '../../room/isolation';
 import { isSupportedLayoutObject } from '../../room/isolation';
 import type { LayoutDocumentWallFirst, LayoutObject } from '../../wall/types';
 import type { LayoutSurfaceLineage } from '../surface-reference';
-import type { DuplicateOperation, DuplicatePlan, LayoutObjectRepeatIntent, RoomCopyCorrespondence } from './contracts';
+import type {
+	DuplicateOperation,
+	DuplicatePlan,
+	LayoutObjectRepeatIntent,
+	RoomCopyCorrespondence,
+} from './contracts';
 import { LAYOUT_DUPLICATE_MAX_COPIES } from './contracts';
 import { allocateId, guardedDuplicatePlan, isValidCopyCount, reject } from './shared';
 
@@ -31,17 +36,17 @@ import { allocateId, guardedDuplicatePlan, isValidCopyCount, reject } from './sh
  * F-C1 ingress hole).
  *
  * What that bar is under the ratified policy (D-1/E, D-9):
- *   · spatial overlap between INDEPENDENT components is PERMITTED, so a clone
- *     placed across its source or across any other group COMMITS and joins
- *     nothing — separate ids, no adopted Junction, no split Wall (F1/F5);
- *   · a violation INSIDE one connected component stays refused, so a batch that
- *     introduces Walls into a document already carrying a same-component
- *     crossing is refused rather than admitted;
- *   · ingestion is separately governed and unchanged: the codec
- *     (`validateWallFirstLayoutDocument`) still carries NO topology rule, so a
- *     payload stays codec-valid exactly as before and topology remains a later,
- *     separate validation. Wiring the codec to geometry is NOT this change's
- *     business — F-C6 is a scope, not a licence to make the codec semantic.
+ *  · spatial overlap between INDEPENDENT components is PERMITTED, so a clone
+ *  placed across its source or across any other group COMMITS and joins
+ *  nothing — separate ids, no adopted Junction, no split Wall (F1/F5);
+ *  · a violation INSIDE one connected component stays refused, so a batch that
+ *  introduces Walls into a document already carrying a same-component
+ *  crossing is refused rather than admitted;
+ *  · ingestion is separately governed and unchanged: the codec
+ *  (`validateWallFirstLayoutDocument`) still carries NO topology rule, so a
+ *  payload stays codec-valid exactly as before and topology remains a later,
+ *  separate validation. Wiring the codec to geometry is NOT this change's
+ *  business — F-C6 is a scope, not a licence to make the codec semantic.
  */
 export function finalizeCandidate(
 	candidate: LayoutDocumentWallFirst,
@@ -55,7 +60,7 @@ export function finalizeCandidate(
 		surfaceLineage?: LayoutSurfaceLineage;
 		droppedRoomRelations?: readonly RoomCopyDroppedRelation[];
 		roomCopyCorrespondence?: RoomCopyCorrespondence;
-	}
+	},
 ): DuplicatePlan {
 	const structural = validateWallFirstLayoutDocument(candidate);
 	if (!structural.success) {
@@ -63,7 +68,7 @@ export function finalizeCandidate(
 			'invalid_candidate_document',
 			`Candidate failed wall-first validation: ${structural.issues[0]?.message ?? 'unknown issue'}`,
 			undefined,
-			structural.issues
+			structural.issues,
 		);
 	}
 	if ((created.createdWallIds?.length ?? 0) > 0) {
@@ -82,14 +87,14 @@ export function finalizeCandidate(
 		// document's existing one and the check is skipped.
 		const topologyIssue = validateWallFirstTopology(structural.document, {
 			openingSet: 'defer',
-			closedContactWallIds: new Set(created.createdWallIds)
+			closedContactWallIds: new Set(created.createdWallIds),
 		});
 		if (topologyIssue) {
 			return reject(
 				'topology_invalid',
 				topologyIssue.message,
 				topologyIssue.targetId ? [topologyIssue.targetId] : undefined,
-				[topologyIssue]
+				[topologyIssue],
 			);
 		}
 	}
@@ -113,7 +118,7 @@ export function finalizeCandidate(
 			'candidate_does_not_compile',
 			`Candidate document does not compile: ${compiled.issues[0]?.message ?? 'unknown geometry issue'}`,
 			undefined,
-			compiled.issues
+			compiled.issues,
 		);
 	}
 	return {
@@ -131,70 +136,68 @@ export function finalizeCandidate(
 			: {}),
 		...(created.roomCopyCorrespondence !== undefined
 			? { roomCopyCorrespondence: created.roomCopyCorrespondence }
-			: {})
+			: {}),
 	};
 }
-
 
 export function cloneObject(object: LayoutObject): LayoutObject {
 	return {
 		...object,
 		position: [...object.position] as typeof object.position,
 		rotation: [...object.rotation] as typeof object.rotation,
-		dimensions: [...object.dimensions] as typeof object.dimensions
+		dimensions: [...object.dimensions] as typeof object.dimensions,
 	};
 }
 
-
 /**
- * Shared supported-object predicate for the P23.4 duplicate paths. The one
+ * Shared supported-object predicate for the duplicate paths. The one
  * implementation lives in `layout-room-isolation.ts` (P23.6a shares the whole
  * isolation policy, including this predicate, with the Room-move planner);
  * this alias keeps the duplicate-facing name for its callers.
  */
 export const isSupportedDuplicateLayoutObject = isSupportedLayoutObject;
 
-
 /**
  * Repeat one supported document-level Layout object: `count` copies at exact
  * `index × delta` positions from the original source. Document-level and
  * project/world-local ownership is unchanged; the optional semantic `roomId`
- * is preserved on each copy (P23.8 owns later remapping, never this
+ * is preserved on each copy (owns later remapping, never this
  * operation). Profile/read-only objects reject explicitly.
  */
 export function planRepeatLayoutObject(
 	document: LayoutDocumentWallFirst,
 	intent: LayoutObjectRepeatIntent,
 	capture: LayoutIdCapture,
-	levelId: string
+	levelId: string,
 ): DuplicatePlan {
 	const levelIssue = layoutWorkingLevelIssue(document, levelId);
 	if (levelIssue !== null) return reject('invalid_value', levelIssue, [intent.objectId]);
 	return guardedDuplicatePlan(() => planRepeatLayoutObjectInternal(document, intent, capture));
 }
 
-
 function planRepeatLayoutObjectInternal(
 	document: LayoutDocumentWallFirst,
 	intent: LayoutObjectRepeatIntent,
-	capture: LayoutIdCapture
+	capture: LayoutIdCapture,
 ): DuplicatePlan {
 	const source = document.objects.find((candidate) => candidate.id === intent.objectId);
 	if (!source) {
-		return reject('unknown_object', `Unknown layout object '${intent.objectId}'`, [intent.objectId]);
+		return reject('unknown_object', `Unknown layout object '${intent.objectId}'`, [
+			intent.objectId,
+		]);
 	}
 	if (!isSupportedDuplicateLayoutObject(source)) {
 		return reject(
 			'profile_object_read_only',
 			`Profile object '${intent.objectId}' is read-only and cannot be duplicated`,
-			[intent.objectId]
+			[intent.objectId],
 		);
 	}
 	if (!isValidCopyCount(intent.count)) {
 		return reject(
 			'count_out_of_range',
 			`Copy count must be an integer between 1 and ${LAYOUT_DUPLICATE_MAX_COPIES}`,
-			[intent.objectId]
+			[intent.objectId],
 		);
 	}
 	const [dx, dz] = intent.delta;
@@ -213,12 +216,16 @@ function planRepeatLayoutObjectInternal(
 		copies.push({
 			...cloneObject(source),
 			id,
-			position: [source.position[0] + index * dx, source.position[1], source.position[2] + index * dz]
+			position: [
+				source.position[0] + index * dx,
+				source.position[1],
+				source.position[2] + index * dz,
+			],
 		});
 	}
 	const candidate: LayoutDocumentWallFirst = {
 		...document,
-		objects: [...document.objects, ...copies]
+		objects: [...document.objects, ...copies],
 	};
 	return finalizeCandidate(candidate, 'layout-object-repeat', { createdObjectIds });
 }

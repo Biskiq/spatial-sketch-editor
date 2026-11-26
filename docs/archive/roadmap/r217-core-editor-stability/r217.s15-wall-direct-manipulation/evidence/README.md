@@ -7,4 +7,4 @@ the [acceptance record](../acceptance.md).
 
 The captures are settled endpoints at `462b80cc`. The retained refusal lifetime, typed-axis
 contracts and the curved-Wall Card-only path are proved in
-`apps/editor/tests/lib/authoring/layout-wall-manipulation.test.ts`.
+`../../../../../../apps/editor/tests/lib/authoring/adapters`.

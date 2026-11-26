@@ -7,7 +7,7 @@
  * ordinary arithmetic freely.
  *
  * - **Box** and **Round** read the rectangle two corners span, or a standard size
- *   around one point. A click and a drag therefore make the same kind of object.
+ *  around one point. A click and a drag therefore make the same kind of object.
  * - **Free** keeps clicked corners sharp and drawn runs smooth.
  *
  * Winding is canonicalized before validation because a clockwise drawing is a
@@ -18,7 +18,7 @@ import {
 	PROFILE_LIMITS,
 	canonicalizeWinding,
 	validateProfile,
-	type ProfileIssue
+	type ProfileIssue,
 } from '@portfolio/geometry-core';
 
 export type ShapeKind = 'box' | 'round' | 'free';
@@ -38,7 +38,7 @@ export const SHAPE_KINDS: readonly {
 }[] = [
 	{ id: 'box', label: 'Box', summary: 'Click for a 1 m box, or drag corner to corner.' },
 	{ id: 'round', label: 'Round', summary: 'Click for a 1 m round, or drag corner to corner.' },
-	{ id: 'free', label: 'Free', summary: 'Click corners or drag curves, then close on the start.' }
+	{ id: 'free', label: 'Free', summary: 'Click corners or drag curves, then close on the start.' },
 ];
 
 /** The size one click creates: the same native form a drag of this size would. */
@@ -61,22 +61,24 @@ function canonicalOutline(outline: readonly ShapeOutlineAnchor[]): readonly Shap
 			key: index + 1,
 			u: anchor.u,
 			v: anchor.v,
-			smooth: anchor.smooth
-		}))
+			smooth: anchor.smooth,
+		})),
 	).map((anchor) => ({ u: anchor.u, v: anchor.v, smooth: anchor.smooth }));
 }
 
 /** One typed outline validation answer, ready for the palette. */
 export function validateShapeOutline(
-	outline: readonly ShapeOutlineAnchor[]
-): { readonly kind: 'valid' } | { readonly kind: 'refused'; readonly message: string; readonly issue: ProfileIssue } {
+	outline: readonly ShapeOutlineAnchor[],
+):
+	| { readonly kind: 'valid' }
+	| { readonly kind: 'refused'; readonly message: string; readonly issue: ProfileIssue } {
 	const issues = validateProfile(
 		outline.map((anchor, index) => ({
 			key: index + 1,
 			u: anchor.u,
 			v: anchor.v,
-			smooth: anchor.smooth
-		}))
+			smooth: anchor.smooth,
+		})),
 	);
 	if (issues.length === 0) return { kind: 'valid' };
 	const issue = issues[0]!;
@@ -87,7 +89,7 @@ export function validateShapeOutline(
 export function shapeOutline(
 	kind: 'box' | 'round',
 	first: ShapePoint,
-	second: ShapePoint
+	second: ShapePoint,
 ): ShapeOutlineResult {
 	return boundsOutline(kind, [first, second]);
 }
@@ -97,7 +99,7 @@ export function standardOutline(kind: 'box' | 'round', centre: ShapePoint): Shap
 	const half = STANDARD_SHAPE_METERS / 2;
 	return boundsOutline(kind, [
 		{ u: centre.u - half, v: centre.v - half },
-		{ u: centre.u + half, v: centre.v + half }
+		{ u: centre.u + half, v: centre.v + half },
 	]);
 }
 
@@ -110,14 +112,15 @@ function segmentDistance(point: ShapePoint, a: ShapePoint, b: ShapePoint): numbe
 	const du = b.u - a.u;
 	const dv = b.v - a.v;
 	const span = du * du + dv * dv;
-	const t = span === 0 ? 0 : Math.max(0, Math.min(1, ((point.u - a.u) * du + (point.v - a.v) * dv) / span));
+	const t =
+		span === 0 ? 0 : Math.max(0, Math.min(1, ((point.u - a.u) * du + (point.v - a.v) * dv) / span));
 	return Math.hypot(point.u - a.u - du * t, point.v - a.v - dv * t);
 }
 
 /** Douglas–Peucker over one drawn run; both ends always stay. */
 function simplifyRun(
 	run: readonly ShapeOutlineAnchor[],
-	toleranceMeters: number
+	toleranceMeters: number,
 ): readonly ShapeOutlineAnchor[] {
 	if (run.length < 3) return run;
 	let farthest = 0;
@@ -132,7 +135,7 @@ function simplifyRun(
 	if (index === -1 || farthest <= toleranceMeters) return [run[0]!, run[run.length - 1]!];
 	return [
 		...simplifyRun(run.slice(0, index + 1), toleranceMeters).slice(0, -1),
-		...simplifyRun(run.slice(index), toleranceMeters)
+		...simplifyRun(run.slice(index), toleranceMeters),
 	];
 }
 
@@ -146,7 +149,7 @@ function simplifyRun(
  */
 export function freeOutline(
 	runs: readonly (readonly ShapeOutlineAnchor[])[],
-	toleranceMeters: number
+	toleranceMeters: number,
 ): ShapeOutlineResult {
 	let tolerance = toleranceMeters;
 	for (let attempt = 0; attempt < 24; attempt += 1) {
@@ -156,7 +159,7 @@ export function freeOutline(
 				return {
 					kind: 'refused',
 					message: `An outline needs at least ${PROFILE_LIMITS.minAnchors} points off one line.`,
-					issue: null
+					issue: null,
 				};
 			}
 			return validateConverted(anchors);
@@ -166,20 +169,24 @@ export function freeOutline(
 	return {
 		kind: 'refused',
 		message: `An outline can hold at most ${PROFILE_LIMITS.maxAnchors} points.`,
-		issue: null
+		issue: null,
 	};
 }
 
 function freeAnchors(
 	runs: readonly (readonly ShapeOutlineAnchor[])[],
-	toleranceMeters: number
+	toleranceMeters: number,
 ): readonly ShapeOutlineAnchor[] {
 	const joined: ShapeOutlineAnchor[] = [];
 	for (const run of runs) {
 		for (const anchor of simplifyRun(run, toleranceMeters)) {
 			if (!Number.isFinite(anchor.u) || !Number.isFinite(anchor.v)) continue;
 			const previous = joined[joined.length - 1];
-			if (previous !== undefined && Math.hypot(anchor.u - previous.u, anchor.v - previous.v) < MIN_SHAPE_EDGE_METERS) continue;
+			if (
+				previous !== undefined &&
+				Math.hypot(anchor.u - previous.u, anchor.v - previous.v) < MIN_SHAPE_EDGE_METERS
+			)
+				continue;
 			joined.push(anchor);
 		}
 	}
@@ -225,7 +232,7 @@ function boundsOutline(kind: 'box' | 'round', points: readonly ShapePoint[]): Sh
 		return {
 			kind: 'refused',
 			message: `${kind === 'box' ? 'A Box' : 'A Round'} needs at least ${MIN_SHAPE_EDGE_METERS * 1000} mm in both directions.`,
-			issue: null
+			issue: null,
 		};
 	}
 	if (kind === 'box') {
@@ -233,7 +240,7 @@ function boundsOutline(kind: 'box' | 'round', points: readonly ShapePoint[]): Sh
 			{ u: minU, v: minV, smooth: false },
 			{ u: maxU, v: minV, smooth: false },
 			{ u: maxU, v: maxV, smooth: false },
-			{ u: minU, v: maxV, smooth: false }
+			{ u: minU, v: maxV, smooth: false },
 		]);
 	}
 	const centreU = (minU + maxU) / 2;
@@ -246,15 +253,13 @@ function boundsOutline(kind: 'box' | 'round', points: readonly ShapePoint[]): Sh
 		outline.push({
 			u: centreU + Math.cos(angle) * radiusU,
 			v: centreV + Math.sin(angle) * radiusV,
-			smooth: true
+			smooth: true,
 		});
 	}
 	return validateConverted(outline);
 }
 
-function validateConverted(
-	outline: readonly ShapeOutlineAnchor[]
-): ShapeOutlineResult {
+function validateConverted(outline: readonly ShapeOutlineAnchor[]): ShapeOutlineResult {
 	// The returned outline is canonical, not the drawn order: a clockwise stroke
 	// is a valid drawing, and every later session read (bounds, preview)
 	// must see the same counter-clockwise profile the planner will store.

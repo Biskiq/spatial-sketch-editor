@@ -1,31 +1,52 @@
 import { Euler, Vector3 } from 'three';
 import type { PointerRay } from '@portfolio/camera-core/viewport';
-import { ARTWORK_MIN_METERS, ARTWORK_MAX_METERS, artworkFrameBorderMeters, artworkHeight } from '@portfolio/project-model/artwork';
+import {
+	ARTWORK_MIN_METERS,
+	ARTWORK_MAX_METERS,
+	artworkFrameBorderMeters,
+	artworkHeight,
+} from '@portfolio/project-model/artwork';
 import type { SceneArtworkEntity } from '@portfolio/project-model/scene';
 
 export type ArtworkCorner = readonly [x: -1 | 1, y: -1 | 1];
-export const ARTWORK_CORNERS: readonly ArtworkCorner[] = [[-1, -1], [-1, 1], [1, 1], [1, -1]];
+export const ARTWORK_CORNERS: readonly ArtworkCorner[] = [
+	[-1, -1],
+	[-1, 1],
+	[1, 1],
+	[1, -1],
+];
 
 function orientation(entity: SceneArtworkEntity): Euler {
 	return new Euler(...entity.rotation);
 }
 
 export function artworkCornerPoint(entity: SceneArtworkEntity, [x, y]: ArtworkCorner) {
-	return new Vector3(x * entity.widthMeters / 2, y * artworkHeight(entity.widthMeters, entity.source) / 2, 0)
-		.applyEuler(orientation(entity)).add(new Vector3(...entity.position));
+	return new Vector3(
+		(x * entity.widthMeters) / 2,
+		(y * artworkHeight(entity.widthMeters, entity.source)) / 2,
+		0,
+	)
+		.applyEuler(orientation(entity))
+		.add(new Vector3(...entity.position));
 }
 
 /** The manipulation grip sits on the generated outer frame edge, not the image. */
 export function artworkHandlePoint(entity: SceneArtworkEntity, [x, y]: ArtworkCorner) {
 	const border = artworkFrameBorderMeters(entity.frame);
 	return new Vector3(
-		x * (entity.widthMeters + 2 * border) / 2,
-		y * (artworkHeight(entity.widthMeters, entity.source) + 2 * border) / 2,
-		0
-	).applyEuler(orientation(entity)).add(new Vector3(...entity.position));
+		(x * (entity.widthMeters + 2 * border)) / 2,
+		(y * (artworkHeight(entity.widthMeters, entity.source) + 2 * border)) / 2,
+		0,
+	)
+		.applyEuler(orientation(entity))
+		.add(new Vector3(...entity.position));
 }
 
-export function resizeArtworkAtRay(entity: SceneArtworkEntity, [x, y]: ArtworkCorner, ray: PointerRay) {
+export function resizeArtworkAtRay(
+	entity: SceneArtworkEntity,
+	[x, y]: ArtworkCorner,
+	ray: PointerRay,
+) {
 	const rotation = orientation(entity);
 	const normal = new Vector3(0, 0, 1).applyEuler(rotation);
 	const direction = new Vector3(...ray.direction);
@@ -40,11 +61,14 @@ export function resizeArtworkAtRay(entity: SceneArtworkEntity, [x, y]: ArtworkCo
 	// The pointer addresses the outer grip. Pull it back by the generated border
 	// so the image corner follows while the opposite image corner stays fixed.
 	const border = artworkFrameBorderMeters(entity.frame);
-	const imageTarget = origin.addScaledVector(direction, distance)
+	const imageTarget = origin
+		.addScaledVector(direction, distance)
 		.sub(new Vector3(x * border, y * border, 0).applyEuler(rotation));
 	const width = imageTarget.sub(opposite).dot(diagonal) / diagonal.lengthSq();
-	const widthMeters = Math.max(ARTWORK_MIN_METERS / Math.min(1, aspect),
-		Math.min(width, ARTWORK_MAX_METERS / Math.max(1, aspect)));
+	const widthMeters = Math.max(
+		ARTWORK_MIN_METERS / Math.min(1, aspect),
+		Math.min(width, ARTWORK_MAX_METERS / Math.max(1, aspect)),
+	);
 	const position = opposite.addScaledVector(diagonal, widthMeters / 2).toArray();
 	return { ...entity, widthMeters, position };
 }

@@ -3,8 +3,20 @@ import type { LayoutVec2 } from '../geometry/coordinates';
 import { countWork } from '../kernel/work-observer';
 import { topologyComponentKeyByWallId } from './topology-components';
 import type { DerivedCandidateFace } from '../geometry/face-extraction';
-import { ON_RING_TOLERANCE, canonicalBoundaryCycleKey, pointStrictlyInsidePolygon, polygonsShareInteriorArea } from '../geometry/face-extraction';
-import { correspondenceObserverForTest, correspondencePairClassOf, correspondenceShortCircuitsDisabledForTest, emptyCorrespondenceObservation, recordInsideCall, recordObservationPairClass, recordOverlapCall } from './reconciliation-observation';
+import {
+	ON_RING_TOLERANCE,
+	canonicalBoundaryCycleKey,
+	pointStrictlyInsidePolygon,
+	polygonsShareInteriorArea,
+} from '../geometry/face-extraction';
+import {
+	correspondencePairClassOf,
+	emptyCorrespondenceObservation,
+	recordInsideCall,
+	recordObservationPairClass,
+	recordOverlapCall,
+	type CorrespondenceObserver,
+} from './reconciliation-observation';
 import type { ComponentLineage } from './reconciliation-types';
 
 /**
@@ -24,7 +36,6 @@ export type CorrespondenceAuthorization = {
 	 */
 	predecessorComponentKeysByRoomId: ReadonlyMap<string, ReadonlySet<string>>;
 };
-
 
 /**
  * Derive the D-12 authorization for one reconciliation pass.
@@ -69,34 +80,33 @@ export function correspondenceAuthorization(options: {
 	return { faceComponentKeyByKey, predecessorComponentKeysByRoomId };
 }
 
-
 /**
  * May this predecessor Room and this candidate face be unioned by EVIDENCE?
  *
  * THE CONTRACT (D-12 — a POSITIVE identity match or nothing):
  *
  * 1. BOTH sides resolve -> the component labels must MATCH. This is the rule that
- *    keeps two coincident or contained graph-independent Rooms apart.
+ *  keeps two coincident or contained graph-independent Rooms apart.
  * 2. NEITHER side resolves -> geometry is the only evidence that exists, so it
- *    decides. This is a DEFENSIVE branch, not a path a shipped planner travels:
- *    a candidate face extracted from the candidate Wall graph always resolves
- *    (see `correspondenceAuthorization`), so "neither side" requires faces that do
- *    not belong to the candidate document. The predicate stays total rather than
- *    silently reversing for that malformed input.
+ *  decides. This is a DEFENSIVE branch, not a path a shipped planner travels:
+ *  a candidate face extracted from the candidate Wall graph always resolves
+ *  (see `correspondenceAuthorization`), so "neither side" requires faces that do
+ *  not belong to the candidate document. The predicate stays total rather than
+ *  silently reversing for that malformed input.
  * 3. EXACTLY ONE side resolves -> DENIED. No match can be established, and
- *    geometry alone must never union an attributed structure with an
- *    unattributed one: without this, a Room that lost its own boundary identity
- *    could be handed an unrelated overlapping Room's face — and, symmetrically,
- *    a surviving Room could claim an identity-less structure that is not its
- *    successor merely because the two overlap. This is the branch a Room whose
- *    whole boundary disappeared actually takes (`planRemoveRoom`), and the
- *    documented outcome there is retirement of that Room (its enclosure is gone),
- *    never a merge into the unrelated Room it happened to overlap.
+ *  geometry alone must never union an attributed structure with an
+ *  unattributed one: without this, a Room that lost its own boundary identity
+ *  could be handed an unrelated overlapping Room's face — and, symmetrically,
+ *  a surviving Room could claim an identity-less structure that is not its
+ *  successor merely because the two overlap. This is the branch a Room whose
+ *  whole boundary disappeared actually takes (`planRemoveRoom`), and the
+ *  documented outcome there is retirement of that Room (its enclosure is gone),
+ *  never a merge into the unrelated Room it happened to overlap.
  */
 function unionAuthorized(
 	authorization: CorrespondenceAuthorization,
 	predecessorRoomId: string,
-	faceKey: string
+	faceKey: string,
 ): boolean {
 	const predecessorKeys = authorization.predecessorComponentKeysByRoomId.get(predecessorRoomId);
 	const faceKeyValue = authorization.faceComponentKeyByKey.get(faceKey);
@@ -105,7 +115,6 @@ function unionAuthorized(
 	return predecessorKeys.has(faceKeyValue);
 }
 
-
 /**
  * M-1b — the coarse phase's own slack.
  *
@@ -113,16 +122,16 @@ function unionAuthorized(
  * each impossibility is proved by the exact predicate it removes:
  *
  * ```text
- * inside impossible   `pointStrictlyInsidePolygon` is a plain even-odd cast, so a
- *                     point outside the face's INFLATED box can never be counted
- *                     inside it (every crossing it counts needs an edge to the
- *                     point's right and to the point's vertical side);
- * overlap impossible  `polygonsShareInteriorArea` returns true only through a
- *                     probe, an ear-triangle interior point, or a proper edge
- *                     crossing — and every one of those is a point inside BOTH
- *                     polygons' closed boxes (the probes are points OF one
- *                     polygon). Two boxes farther apart than the slack therefore
- *                     admit no shared point at all.
+ * inside impossible `pointStrictlyInsidePolygon` is a plain even-odd cast, so a
+ *  point outside the face's INFLATED box can never be counted
+ *  inside it (every crossing it counts needs an edge to the
+ *  point's right and to the point's vertical side);
+ * overlap impossible `polygonsShareInteriorArea` returns true only through a
+ *  probe, an ear-triangle interior point, or a proper edge
+ *  crossing — and every one of those is a point inside BOTH
+ *  polygons' closed boxes (the probes are points OF one
+ *  polygon). Two boxes farther apart than the slack therefore
+ *  admit no shared point at all.
  * ```
  *
  * `ON_RING_TOLERANCE` is the predicates' own slack (one owner, imported — never a
@@ -136,9 +145,7 @@ function unionAuthorized(
  */
 const CORRESPONDENCE_BOUNDS_RELATIVE_SLACK = 1e-12;
 
-
 type CorrespondenceBounds = { minX: number; maxX: number; minZ: number; maxZ: number };
-
 
 /** `null` when any coordinate is non-finite or the polygon is empty: never pruned. */
 function correspondenceBounds(polygon: readonly LayoutVec2[]): CorrespondenceBounds | null {
@@ -157,12 +164,10 @@ function correspondenceBounds(polygon: readonly LayoutVec2[]): CorrespondenceBou
 	return { minX, maxX, minZ, maxZ };
 }
 
-
 function correspondenceBoundsSlack(bounds: CorrespondenceBounds): number {
 	const extent = Math.max(bounds.maxX - bounds.minX, bounds.maxZ - bounds.minZ);
 	return ON_RING_TOLERANCE + extent * CORRESPONDENCE_BOUNDS_RELATIVE_SLACK;
 }
-
 
 /** True only when NO point the inflated box contains can be strictly inside the face. */
 function pointProvablyOutsideBounds(bounds: CorrespondenceBounds, point: LayoutVec2): boolean {
@@ -176,7 +181,6 @@ function pointProvablyOutsideBounds(bounds: CorrespondenceBounds, point: LayoutV
 	);
 }
 
-
 /** True only when the two inflated boxes are disjoint, so no shared point exists. */
 function boundsProvablyDisjoint(a: CorrespondenceBounds, b: CorrespondenceBounds): boolean {
 	const slack = correspondenceBoundsSlack(a) + correspondenceBoundsSlack(b);
@@ -188,7 +192,6 @@ function boundsProvablyDisjoint(a: CorrespondenceBounds, b: CorrespondenceBounds
 	);
 }
 
-
 /**
  * The pair classes the observer counts.
  *
@@ -198,7 +201,6 @@ function boundsProvablyDisjoint(a: CorrespondenceBounds, b: CorrespondenceBounds
  * `unionAuthorized`'s own label comparison, read for counting only.
  */
 export type CorrespondencePairClass = 'same-group' | 'cross-group' | 'undefined';
-
 
 /**
  * True correspondence components: connected components of the
@@ -237,12 +239,19 @@ export function buildCorrespondenceComponents(options: {
 	candidateDocument: Pick<LayoutDocumentWallFirst, 'walls' | 'junctions'>;
 	/** Predecessor Rooms whose surviving boundary Walls anchor their identity. */
 	baselineRooms: readonly LayoutWallFirstRoom[];
+	/** Optional per-pass report; production callers omit it. */
+	observer?: CorrespondenceObserver;
+	/**
+	 * Optional exhaustive evaluation: both predicates for every pair, geometry
+	 * before authorization, no pruning. Production callers omit it.
+	 */
+	exhaustive?: boolean;
 }): ComponentLineage[] {
 	const { faces, predecessorRoomIds, predecessorWitnesses, predecessorPolygons } = options;
 	const authorization = correspondenceAuthorization({
 		baselineRooms: options.baselineRooms,
 		candidateDocument: options.candidateDocument,
-		faces
+		faces,
 	});
 	const faceCount = faces.length;
 	const predecessorCount = predecessorRoomIds.length;
@@ -262,7 +271,7 @@ export function buildCorrespondenceComponents(options: {
 		const rootB = find(b);
 		if (rootA !== rootB) parent[rootB] = rootA;
 	};
-	const exhaustive = correspondenceShortCircuitsDisabledForTest;
+	const exhaustive = options.exhaustive === true;
 	const observation = emptyCorrespondenceObservation(exhaustive ? 'exhaustive' : 'short-circuit');
 	// M-1(b): the coarse phase's boxes, computed ONCE per pass — never per pair — and
 	// only while the short-circuits are live: the exhaustive path is today's loop
@@ -421,7 +430,7 @@ export function buildCorrespondenceComponents(options: {
 		});
 	});
 	// OR-6: the pass is over — report it ONCE, to a test-only observer if one is set.
-	correspondenceObserverForTest?.(observation);
+	options.observer?.(observation);
 	const groups = new Map<number, { faces: string[]; predecessors: string[] }>();
 	faces.forEach((face, faceIndex) => {
 		const root = find(predecessorCount + faceIndex);
@@ -441,7 +450,7 @@ export function buildCorrespondenceComponents(options: {
 	return [...groups.values()]
 		.map((group) => ({
 			candidateFaceKeys: [...group.faces].sort(),
-			predecessorRoomIds: [...group.predecessors].sort()
+			predecessorRoomIds: [...group.predecessors].sort(),
 		}))
 		.sort((a, b) => (a.candidateFaceKeys[0]! < b.candidateFaceKeys[0]! ? -1 : 1));
 }

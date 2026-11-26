@@ -1,6 +1,6 @@
 /**
  * Experience lowering — one selected Experience + its Camera unit -> the accepted
- * `ExecutionProgram@4` codec (AM-6).
+ * `ExecutionProgram@4` codec.
  *
  * Lowering is **derivation**, not a second authored format: it reads the accepted
  * F.2 envelope, resolves every Experience/Presentation/Stop/View/connection
@@ -39,14 +39,14 @@ import type {
 	ProgramLifecycleAction,
 	ProgramPresentation,
 	ProgramStateDeclaration,
-	ProgramStop
+	ProgramStop,
 } from '../../program/types';
 import {
 	presentationDefaultViewId,
 	presentationDisplayName,
 	stopEntryViewId,
 	type Experience,
-	type ProjectEnvelope
+	type ProjectEnvelope,
 } from '../types';
 
 /** The family the selected Experience's run owns while it is executing. */
@@ -134,9 +134,11 @@ function withoutStop(refusal: ExperienceLoweringRefusal): ExperienceLoweringRefu
 function refuse(
 	code: ExperienceLoweringRefusal['code'],
 	message: string,
-	stopId?: string
+	stopId?: string,
 ): ExperienceLoweringRefusal {
-	return stopId === undefined ? { kind: 'refused', code, message } : { kind: 'refused', code, message, stopId };
+	return stopId === undefined
+		? { kind: 'refused', code, message }
+		: { kind: 'refused', code, message, stopId };
 }
 
 function reference(
@@ -144,7 +146,7 @@ function reference(
 	kind: string,
 	id: string,
 	revision: string,
-	instancePath: readonly string[]
+	instancePath: readonly string[],
 ) {
 	return {
 		version: 1 as const,
@@ -154,7 +156,7 @@ function reference(
 		instancePath,
 		location: { kind: 'project-root' as const },
 		componentId: null,
-		capabilityId: null
+		capabilityId: null,
 	};
 }
 
@@ -172,24 +174,31 @@ function resolves(context: ReferenceReadContext, candidate: unknown): boolean {
  */
 export function lowerExperienceProgram(
 	envelope: ProjectEnvelope,
-	options: ExperienceLoweringOptions
+	options: ExperienceLoweringOptions,
 ): ExperienceLoweringResult {
-	const experience = envelope.units.experience.data.experiences.find((entry) => entry.id === options.experienceId);
+	const experience = envelope.units.experience.data.experiences.find(
+		(entry) => entry.id === options.experienceId,
+	);
 	if (experience === undefined) {
-		return refuse('unknown-experience', `the envelope carries no Experience "${options.experienceId}"`);
+		return refuse(
+			'unknown-experience',
+			`the envelope carries no Experience "${options.experienceId}"`,
+		);
 	}
 	const context = createUnitReadContext({
 		envelope,
 		sourceContentId: options.sourceContentId,
-		sessionEpoch: options.sessionEpoch
+		sessionEpoch: options.sessionEpoch,
 	});
 	const cameraRevision = envelope.units.camera.header.contentRevision;
-	const entryGuide = experience.guides.find((guide) => guide.id === experience.entryGuideId) ?? null;
-	const selectedGuide = options.guideId === undefined
-		? entryGuide
-		: options.guideId === null
-			? null
-			: experience.guides.find((guide) => guide.id === options.guideId) ?? null;
+	const entryGuide =
+		experience.guides.find((guide) => guide.id === experience.entryGuideId) ?? null;
+	const selectedGuide =
+		options.guideId === undefined
+			? entryGuide
+			: options.guideId === null
+				? null
+				: (experience.guides.find((guide) => guide.id === options.guideId) ?? null);
 	if (typeof options.guideId === 'string' && selectedGuide === null) {
 		return refuse('unknown-guide', `this Experience carries no Guide "${options.guideId}"`);
 	}
@@ -197,7 +206,8 @@ export function lowerExperienceProgram(
 		// An explicit order is a claim about the **selected** authored Guide, never a
 		// second editable sequence: it must match that Guide's stopIds exactly. A
 		// sequence from another Guide would mix one Guide's entry with another's order.
-		const authored = selectedGuide !== null &&
+		const authored =
+			selectedGuide !== null &&
 			selectedGuide.stopIds.length === options.order.length &&
 			selectedGuide.stopIds.every((stopId, index) => stopId === options.order![index]);
 		if (!authored) {
@@ -205,7 +215,7 @@ export function lowerExperienceProgram(
 				'invalid-order',
 				`the lowering order must equal the selected Guide${
 					selectedGuide === null ? '' : ` "${selectedGuide.id}"`
-				}'s authored stopIds exactly; supply its guideId and authored order, never a supplied sequence`
+				}'s authored stopIds exactly; supply its guideId and authored order, never a supplied sequence`,
 			);
 		}
 	}
@@ -213,12 +223,19 @@ export function lowerExperienceProgram(
 
 	// An explicit `guideId: null` is a Guide-free lowering, not a missing order.
 	if (order.length === 0 && experience.stops.length > 0 && options.guideId !== null) {
-		return refuse('missing-entry', 'the Experience has Stops but no Guide orders them; author a Guide before Preview can enter them');
+		return refuse(
+			'missing-entry',
+			'the Experience has Stops but no Guide orders them; author a Guide before Preview can enter them',
+		);
 	}
 	const stopById = new Map(experience.stops.map((stop) => [stop.id, stop]));
 	for (const stopId of order) {
 		if (!stopById.has(stopId)) {
-			return refuse('unknown-stop', `the lowering order names Stop "${stopId}", which this Experience does not carry`, stopId);
+			return refuse(
+				'unknown-stop',
+				`the lowering order names Stop "${stopId}", which this Experience does not carry`,
+				stopId,
+			);
 		}
 	}
 	const entryStopId = options.entryStopId ?? order[0] ?? null;
@@ -226,11 +243,17 @@ export function lowerExperienceProgram(
 		return refuse('missing-entry', 'an empty program cannot declare an entry Stop');
 	}
 	if (entryStopId !== null && !order.includes(entryStopId)) {
-		return refuse('unknown-stop', `the entry Stop "${entryStopId}" is not in the lowered order`, entryStopId);
+		return refuse(
+			'unknown-stop',
+			`the entry Stop "${entryStopId}" is not in the lowered order`,
+			entryStopId,
+		);
 	}
 
-	const presentationById = new Map(experience.presentations.map((presentation) => [presentation.id, presentation]));
-	// A Presentation may exist without a Guide (AM-9). Lowering emits every
+	const presentationById = new Map(
+		experience.presentations.map((presentation) => [presentation.id, presentation]),
+	);
+	// A Presentation may exist without a Guide. Lowering emits every
 	// **enterable** Presentation this Experience carries, not only those a selected
 	// Guide's Stops use, so a guide-free Presentation stays reachable to DOM
 	// navigation and camera handoff. A Presentation with no Default View, or whose
@@ -242,7 +265,10 @@ export function lowerExperienceProgram(
 		readonly reason: 'no-default-view' | 'unresolved-default-view';
 	}[] = [];
 	const entryOccurrence = entryStopId === null ? -1 : order.indexOf(entryStopId);
-	const travelConnection = (fromViewId: string | null, toViewId: string | null):
+	const travelConnection = (
+		fromViewId: string | null,
+		toViewId: string | null,
+	):
 		| { readonly kind: 'resolved'; readonly connectionId: string }
 		| { readonly kind: 'none' }
 		| { readonly kind: 'ambiguous' } => {
@@ -250,10 +276,10 @@ export function lowerExperienceProgram(
 		const matches = envelope.units.camera.data.connections.filter(
 			(connection) =>
 				(connection.fromNodeId === fromViewId && connection.toNodeId === toViewId) ||
-				(connection.fromNodeId === toViewId && connection.toNodeId === fromViewId)
+				(connection.fromNodeId === toViewId && connection.toNodeId === fromViewId),
 		);
 		const resolved = matches.filter((connection) =>
-			resolves(context, reference('camera', 'connection', connection.id, cameraRevision, []))
+			resolves(context, reference('camera', 'connection', connection.id, cameraRevision, [])),
 		);
 		if (resolved.length === 0) return { kind: 'none' };
 		if (resolved.length > 1) return { kind: 'ambiguous' };
@@ -269,10 +295,16 @@ export function lowerExperienceProgram(
 		targetViewId: string | null,
 		targetStopId: string,
 		transition: 'cut' | 'travel' | undefined,
-		label: string
-	): { readonly kind: 'resolved'; readonly invocation: ProgramInvocation } | ExperienceLoweringRefusal => {
+		label: string,
+	):
+		| { readonly kind: 'resolved'; readonly invocation: ProgramInvocation }
+		| ExperienceLoweringRefusal => {
 		if (targetViewId === null) {
-			return refuse('missing-entry', `${label} enters Stop "${targetStopId}", which has no entry View`, targetStopId);
+			return refuse(
+				'missing-entry',
+				`${label} enters Stop "${targetStopId}", which has no entry View`,
+				targetStopId,
+			);
 		}
 		if (transition !== 'travel') {
 			return { kind: 'resolved', invocation: { kind: 'cut', viewId: targetViewId } };
@@ -282,17 +314,20 @@ export function lowerExperienceProgram(
 			return refuse(
 				'travel-ambiguous',
 				`${label} binds a Travel, and more than one Camera connection joins "${fromViewId ?? '?'}" to "${targetViewId}"; Experience never chooses between them`,
-				targetStopId
+				targetStopId,
 			);
 		}
 		if (connection.kind === 'none') {
 			return refuse(
 				'travel-gap',
 				`${label} binds a Travel, and no Camera connection joins "${fromViewId ?? '?'}" to "${targetViewId}"`,
-				targetStopId
+				targetStopId,
 			);
 		}
-		return { kind: 'resolved', invocation: { kind: 'travel', connectionId: connection.connectionId } };
+		return {
+			kind: 'resolved',
+			invocation: { kind: 'travel', connectionId: connection.connectionId },
+		};
 	};
 	for (const presentation of experience.presentations) {
 		const defaultViewId = presentationDefaultViewId(presentation);
@@ -301,7 +336,10 @@ export function lowerExperienceProgram(
 			continue;
 		}
 		if (!resolves(context, reference('camera', 'view', defaultViewId, cameraRevision, []))) {
-			unavailablePresentations.push({ presentationId: presentation.id, reason: 'unresolved-default-view' });
+			unavailablePresentations.push({
+				presentationId: presentation.id,
+				reason: 'unresolved-default-view',
+			});
 			continue;
 		}
 		// An unresolved View is left out of the delivered order. The Views either
@@ -310,45 +348,56 @@ export function lowerExperienceProgram(
 		const viewIds: string[] = [];
 		const steps: ProgramInvocation[] = [];
 		for (const [position, view] of presentation.views.entries()) {
-			const resolved = resolves(context, reference('camera', 'view', view.viewId, cameraRevision, []));
+			const resolved = resolves(
+				context,
+				reference('camera', 'view', view.viewId, cameraRevision, []),
+			);
 			if (resolved && viewIds.length > 0) {
 				const previous = viewIds.at(-1)!;
 				// A step leaves the View it is authored on; a dropped View makes its
 				// surviving neighbours a Cut, never a borrowed Travel.
 				const authoredPrevious = presentation.views[position - 1];
-				const transition = authoredPrevious?.viewId === previous ? authoredPrevious.transition : 'cut';
+				const transition =
+					authoredPrevious?.viewId === previous ? authoredPrevious.transition : 'cut';
 				const step = resolveApproach(
 					previous,
 					view.viewId,
 					'',
 					transition,
-					`The explore step from "${previous}" to "${view.viewId}" in Presentation "${presentation.id}"`
+					`The explore step from "${previous}" to "${view.viewId}" in Presentation "${presentation.id}"`,
 				);
-				if (step.kind === 'refused') return { ...withoutStop(step), presentationId: presentation.id };
+				if (step.kind === 'refused')
+					return { ...withoutStop(step), presentationId: presentation.id };
 				steps.push(step.invocation);
 			}
 			if (resolved) viewIds.push(view.viewId);
 		}
-		const subjectName = presentation.subject !== null &&
+		const subjectName =
+			presentation.subject !== null &&
 			presentation.subject.domain === 'scene' &&
 			presentation.subject.subject.kind === 'entity'
-			? envelope.units.scene.data.entities.find((entity) => entity.id === presentation.subject!.subject.id)?.name ?? null
-			: null;
+				? (envelope.units.scene.data.entities.find(
+						(entity) => entity.id === presentation.subject!.subject.id,
+					)?.name ?? null)
+				: null;
 		presentations.push({
 			id: presentation.id,
 			label: presentationDisplayName(presentation, subjectName),
 			viewIds,
 			steps,
 			explorable: presentation.explorable,
-			content: presentation.text === null
-				? []
-				: [{ id: `${presentation.id}:text`, kind: 'text', text: presentation.text.body }]
+			content:
+				presentation.text === null
+					? []
+					: [{ id: `${presentation.id}:text`, kind: 'text', text: presentation.text.body }],
 		});
 	}
 
 	const pacing = selectedGuide?.pacing ?? 'automatic';
-	const presentationOf = (stop: Experience['stops'][number]) => presentationById.get(stop.presentationId);
-	const entryViewOf = (stop: Experience['stops'][number]) => stopEntryViewId(stop, presentationOf(stop));
+	const presentationOf = (stop: Experience['stops'][number]) =>
+		presentationById.get(stop.presentationId);
+	const entryViewOf = (stop: Experience['stops'][number]) =>
+		stopEntryViewId(stop, presentationOf(stop));
 	// A Stop is one visit: it leaves from the View it entered at.
 	const exitViewOf = entryViewOf;
 	/**
@@ -357,7 +406,7 @@ export function lowerExperienceProgram(
 	 */
 	const adjacentTransition = (
 		previous: Experience['stops'][number],
-		_target: Experience['stops'][number]
+		_target: Experience['stops'][number],
 	) => previous.transition ?? ('cut' as const);
 	const stops: ProgramStop[] = [];
 	const localTime: ProgramLocalTime[] = [];
@@ -368,22 +417,18 @@ export function lowerExperienceProgram(
 			return refuse(
 				'unknown-presentation',
 				`Stop "${stop.id}" names Presentation "${stop.presentationId}", which this Experience does not carry`,
-				stop.id
+				stop.id,
 			);
 		}
 		const entryViewId = entryViewOf(stop);
 		if (entryViewId === null) {
-			return refuse(
-				'missing-entry',
-				`Stop "${stop.id}" has no guided entry View`,
-				stop.id
-			);
+			return refuse('missing-entry', `Stop "${stop.id}" has no guided entry View`, stop.id);
 		}
 		if (!resolves(context, reference('camera', 'view', entryViewId, cameraRevision, []))) {
 			return refuse(
 				'unknown-view',
 				`Stop "${stop.id}" enters at Camera view "${entryViewId}", which this envelope does not resolve`,
-				stop.id
+				stop.id,
 			);
 		}
 		const staySeconds = pacing === 'manual' ? null : stop.staySeconds;
@@ -395,13 +440,20 @@ export function lowerExperienceProgram(
 			return refuse(
 				'missing-entry',
 				`Stop "${stop.id}" uses Presentation "${stop.presentationId}", which has no enterable Default View`,
-				stop.id
+				stop.id,
 			);
 		}
 		const previous = occurrence === 0 ? null : stopById.get(order[occurrence - 1]!)!;
-		const approach = previous === null
-			? { kind: 'resolved' as const, invocation: { kind: 'cut' as const, viewId: entryViewId } }
-			: resolveApproach(exitViewOf(previous), entryViewId, stop.id, adjacentTransition(previous, stop), `Guide adjacency into Stop "${stop.id}"`);
+		const approach =
+			previous === null
+				? { kind: 'resolved' as const, invocation: { kind: 'cut' as const, viewId: entryViewId } }
+				: resolveApproach(
+						exitViewOf(previous),
+						entryViewId,
+						stop.id,
+						adjacentTransition(previous, stop),
+						`Guide adjacency into Stop "${stop.id}"`,
+					);
 		if (approach.kind === 'refused') return approach;
 		stops.push({
 			id: stop.id,
@@ -411,7 +463,7 @@ export function lowerExperienceProgram(
 			invitation: stop.invitation === null ? null : { prompt: stop.invitation.prompt },
 			invocation: approach.invocation,
 			// A-4 — lowering emits only `sequence-next`; the order is the route.
-			continuation: { kind: 'sequence-next' }
+			continuation: { kind: 'sequence-next' },
 		});
 	}
 
@@ -423,7 +475,7 @@ export function lowerExperienceProgram(
 	const addTransition = (
 		fromStopId: string,
 		toStopId: string,
-		invocation: ProgramInvocation
+		invocation: ProgramInvocation,
 	): void => {
 		const key = `${fromStopId}\u0000${toStopId}`;
 		if (transitionByKey.has(key)) return;
@@ -439,8 +491,14 @@ export function lowerExperienceProgram(
 		const out = stops.find((entry) => entry.id === detour.toStopId);
 		const back = stops.find((entry) => entry.id === detour.returnToStopId);
 		if (out === undefined || back === undefined) continue;
-		addTransition(detour.fromStopId, detour.toStopId, { kind: 'cut', viewId: entryViewOf(stopById.get(detour.toStopId)!)! });
-		addTransition(detour.toStopId, detour.returnToStopId, { kind: 'cut', viewId: entryViewOf(stopById.get(detour.returnToStopId)!)! });
+		addTransition(detour.fromStopId, detour.toStopId, {
+			kind: 'cut',
+			viewId: entryViewOf(stopById.get(detour.toStopId)!)!,
+		});
+		addTransition(detour.toStopId, detour.returnToStopId, {
+			kind: 'cut',
+			viewId: entryViewOf(stopById.get(detour.returnToStopId)!)!,
+		});
 	}
 
 	// The entry occurrence is the run's **first arrival**, never a Travel from an
@@ -449,7 +507,8 @@ export function lowerExperienceProgram(
 	// still uses its Travel while `enter` starts with a Cut.
 	// `stops` is built in `order`, so the entry occurrence's index addresses it.
 	const entryStop = entryOccurrence > 0 ? stops[entryOccurrence] : undefined;
-	if (entryStop !== undefined) entryStop.invocation = { kind: 'cut', viewId: entryStop.entryViewId };
+	if (entryStop !== undefined)
+		entryStop.invocation = { kind: 'cut', viewId: entryStop.entryViewId };
 
 	const program: ExecutionProgram = {
 		kind: EXECUTION_PROGRAM_KIND,
@@ -464,24 +523,26 @@ export function lowerExperienceProgram(
 		state: options.state ?? [],
 		localTime,
 		channels: options.channels ?? [
-			{ id: 'camera-output', family: CAMERA_CHANNEL_FAMILY, policy: 'exclusive' }
+			{ id: 'camera-output', family: CAMERA_CHANNEL_FAMILY, policy: 'exclusive' },
 		],
 		lifecycle: options.lifecycle ?? [],
-		profile: { reducedMotion: 'required', semanticDomNavigation: 'required' }
+		profile: { reducedMotion: 'required', semanticDomNavigation: 'required' },
 	};
 	const validated = validateExecutionProgram(program);
 	if (!validated.success) {
 		const first = validated.issues[0];
 		return refuse(
 			'invalid-program',
-			first === undefined ? 'the lowered program is not a valid ExecutionProgram@4' : `${first.path} (${first.code}): ${first.message}`
+			first === undefined
+				? 'the lowered program is not a valid ExecutionProgram@4'
+				: `${first.path} (${first.code}): ${first.message}`,
 		);
 	}
 	return {
 		kind: 'lowered',
 		program: validated.value,
 		transitions: [...transitionByKey.values()],
-		unavailablePresentations
+		unavailablePresentations,
 	};
 }
 

@@ -2,7 +2,14 @@ import { sameAuthored, type LayoutCompileReuse } from '../geometry/reuse';
 import type { Vec3 } from '../kernel/types';
 import { cacheKeyOf } from '../geometry/keys';
 import { polygonBounds2 } from '../geometry/queries';
-import { geometryId, type CompiledQueryAabb, type CompiledQueryPolygon, type CompiledRegion, type LayoutBounds3, type LayoutGeometryIssue } from '../geometry/types';
+import {
+	geometryId,
+	type CompiledQueryAabb,
+	type CompiledQueryPolygon,
+	type CompiledRegion,
+	type LayoutBounds3,
+	type LayoutGeometryIssue,
+} from '../geometry/types';
 import { regionGeometryIssues, regionVerticalBand } from './region-validation';
 import type { LayoutDocumentWallFirst, LayoutRegion } from '../wall/types';
 
@@ -34,7 +41,11 @@ export function regionUnitBounds(regions: readonly CompiledRegion[]): LayoutBoun
 	return { min, max };
 }
 
-function compileRegion(region: LayoutRegion, floor: LayoutDocumentWallFirst['floor'], authored: readonly unknown[]): RetainedRegion {
+function compileRegion(
+	region: LayoutRegion,
+	floor: LayoutDocumentWallFirst['floor'],
+	authored: readonly unknown[],
+): RetainedRegion {
 	const { id: regionId, role } = region;
 	const footprint = region.footprint.points.map(([x, z]): [number, number] => [x, z]);
 	const [bottomY, topY] = regionVerticalBand(region, floor.elevation);
@@ -43,11 +54,11 @@ function compileRegion(region: LayoutRegion, floor: LayoutDocumentWallFirst['flo
 	const bounds2 = polygonBounds2(footprint)!;
 	const bounds3: LayoutBounds3 = {
 		min: [bounds2.min[0], bottomY, bounds2.min[1]],
-		max: [bounds2.max[0], topY, bounds2.max[1]]
+		max: [bounds2.max[0], topY, bounds2.max[1]],
 	};
 	const faces: CompiledRegion['faces'] = [
 		{ surface: 'top', polygon: [...top].reverse(), normal: [0, 1, 0] },
-		{ surface: 'underside', polygon: bottom, normal: [0, -1, 0] }
+		{ surface: 'underside', polygon: bottom, normal: [0, -1, 0] },
 	];
 	for (let i = 0; i < footprint.length; i++) {
 		const j = (i + 1) % footprint.length;
@@ -57,28 +68,53 @@ function compileRegion(region: LayoutRegion, floor: LayoutDocumentWallFirst['flo
 		faces.push({
 			surface: 'edge',
 			polygon: [bottom[i]!, top[i]!, top[j]!, bottom[j]!],
-			normal: [dz / length, 0, -dx / length]
+			normal: [dz / length, 0, -dx / length],
 		});
 	}
 	const parts = ['region', floor.id, regionId];
 	const cacheKey = cacheKeyOf([...parts, ...authored]);
 	const compiled: CompiledRegion = {
-		id: geometryId(parts), cacheKey, regionId, role, footprint, bottomY, topY, faces, bounds2, bounds3
+		id: geometryId(parts),
+		cacheKey,
+		regionId,
+		role,
+		footprint,
+		bottomY,
+		topY,
+		faces,
+		bounds2,
+		bounds3,
 	};
 	const kind = role === 'floor' ? 'region-top' : 'region-underside';
 	return {
-		authored, compiled,
+		authored,
+		compiled,
 		polygon: {
-			id: geometryId([kind, floor.id, regionId]), cacheKey, kind, polygon: footprint,
-			aabb: bounds2, sourceId: regionId, floorId: floor.id, elevation: role === 'floor' ? topY : bottomY
+			id: geometryId([kind, floor.id, regionId]),
+			cacheKey,
+			kind,
+			polygon: footprint,
+			aabb: bounds2,
+			sourceId: regionId,
+			floorId: floor.id,
+			elevation: role === 'floor' ? topY : bottomY,
 		},
 		aabb: {
-			id: compiled.id, cacheKey, kind: 'region', aabb: bounds2, bounds3, sourceId: regionId, floorId: floor.id
-		}
+			id: compiled.id,
+			cacheKey,
+			kind: 'region',
+			aabb: bounds2,
+			bounds3,
+			sourceId: regionId,
+			floorId: floor.id,
+		},
 	};
 }
 
-export function compileRegions(document: LayoutDocumentWallFirst, reuse?: LayoutCompileReuse): CompiledRegionUnit {
+export function compileRegions(
+	document: LayoutDocumentWallFirst,
+	reuse?: LayoutCompileReuse,
+): CompiledRegionUnit {
 	const regions: CompiledRegion[] = [];
 	const polygons: CompiledQueryPolygon[] = [];
 	const aabbs: CompiledQueryAabb[] = [];
@@ -90,7 +126,15 @@ export function compileRegions(document: LayoutDocumentWallFirst, reuse?: Layout
 	if (issues.length) return { regions, polygons, aabbs, bounds3: null, issues };
 	const live = new Set<string>();
 	for (const region of document.regions) {
-		const authored = [document.floor.id, document.floor.elevation, region.role, region.footprint, region.elevation, region.thickness, region.form];
+		const authored = [
+			document.floor.id,
+			document.floor.elevation,
+			region.role,
+			region.footprint,
+			region.elevation,
+			region.thickness,
+			region.form,
+		];
 		let retained = reuse?.regions.get(region.id);
 		if (retained && sameAuthored(retained.authored, authored)) {
 			reuse!.counters.regionsReused++;

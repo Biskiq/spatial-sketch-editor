@@ -18,9 +18,14 @@ import {
 	type LayoutGesturePort,
 	type LayoutInstrument,
 	type LayoutInstrumentOptions,
-	type LayoutWriteOutcome
+	type LayoutWriteOutcome,
 } from './instrument';
-import { LAYOUT_ENTITY_NAME_KIND, buildLayoutIntent, layoutSubjectOf, type LayoutSubject } from './precision';
+import {
+	LAYOUT_ENTITY_NAME_KIND,
+	buildLayoutIntent,
+	layoutSubjectOf,
+	type LayoutSubject,
+} from './precision';
 import { layoutSubjectReference } from './drawing-planners';
 
 function writeOutcome(outcome: StageAcceptOutcome): LayoutWriteOutcome {
@@ -36,10 +41,11 @@ function writeOutcome(outcome: StageAcceptOutcome): LayoutWriteOutcome {
 
 function port(services: StageAdapterServices): LayoutInstrumentOptions['port'] {
 	return {
-		accept: async (intent: AuthoringIntent) => writeOutcome(await services.authoring.accept(intent)),
+		accept: async (intent: AuthoringIntent) =>
+			writeOutcome(await services.authoring.accept(intent)),
 		acceptedRevision: () => ({
-			revisionId: services.authoring.acceptedRevision().revisionId
-		})
+			revisionId: services.authoring.acceptedRevision().revisionId,
+		}),
 	};
 }
 
@@ -67,7 +73,7 @@ function gesturePort(services: StageAdapterServices): LayoutGesturePort {
 			const outcome = services.stage.acquireGesture({
 				owner: 'layout-precision',
 				evaluationId,
-				policy: 'cancel-on-reading-change'
+				policy: 'cancel-on-reading-change',
 			});
 			if (outcome.kind !== 'granted') return false;
 			lease = outcome;
@@ -76,7 +82,7 @@ function gesturePort(services: StageAdapterServices): LayoutGesturePort {
 		release() {
 			if (lease !== null && lease.kind === 'granted') lease.lease.release();
 			lease = null;
-		}
+		},
 	};
 }
 
@@ -96,21 +102,26 @@ function gesturePort(services: StageAdapterServices): LayoutGesturePort {
  */
 export function layoutNameTarget(
 	services: StageAdapterServices,
-	subject: LayoutSubject
-): { readonly value: string; commit(name: string): Promise<{ kind: 'accepted' } | { kind: 'refused'; code: string; message: string }> } | null {
+	subject: LayoutSubject,
+): {
+	readonly value: string;
+	commit(
+		name: string,
+	): Promise<{ kind: 'accepted' } | { kind: 'refused'; code: string; message: string }>;
+} | null {
 	if (subject.kind === 'object') return null;
 	const document = documentOf(services);
 	const value =
 		subject.kind === 'wall'
-			? document.walls.find((candidate) => candidate.id === subject.id)?.name ?? ''
-			: document.openings.find((candidate) => candidate.id === subject.id)?.name ?? '';
+			? (document.walls.find((candidate) => candidate.id === subject.id)?.name ?? '')
+			: (document.openings.find((candidate) => candidate.id === subject.id)?.name ?? '');
 	const snapshot = services.stage.snapshot();
 	const instrument = createLayoutInstrument({
 		subject,
 		document,
 		projectId: snapshot.acceptedRevision.projectId,
 		contentRevision: snapshot.domain.unitRevisions.layout,
-		port: port(services)
+		port: port(services),
 	});
 	return {
 		value,
@@ -122,9 +133,12 @@ export function layoutNameTarget(
 			return {
 				kind: 'refused',
 				code: outcome.kind === 'refused' ? outcome.code : outcome.kind,
-				message: outcome.kind === 'refused' || outcome.kind === 'invalid' ? outcome.message : 'The name was not accepted.'
+				message:
+					outcome.kind === 'refused' || outcome.kind === 'invalid'
+						? outcome.message
+						: 'The name was not accepted.',
 			};
-		}
+		},
 	};
 }
 
@@ -135,8 +149,13 @@ export function layoutNameTarget(
  */
 export function layoutRoomNameTarget(
 	services: StageAdapterServices,
-	roomId: string
-): { readonly value: string; commit(name: string): Promise<{ kind: 'accepted' } | { kind: 'refused'; code: string; message: string }> } | null {
+	roomId: string,
+): {
+	readonly value: string;
+	commit(
+		name: string,
+	): Promise<{ kind: 'accepted' } | { kind: 'refused'; code: string; message: string }>;
+} | null {
 	const room = documentOf(services).rooms.find((candidate) => candidate.id === roomId);
 	if (room === undefined) return null;
 	return {
@@ -144,7 +163,11 @@ export function layoutRoomNameTarget(
 		async commit(name: string) {
 			const trimmed = name.trim();
 			if (trimmed.length === 0) {
-				return { kind: 'refused', code: 'blank', message: 'Enter a name; an empty name is not a rename.' };
+				return {
+					kind: 'refused',
+					code: 'blank',
+					message: 'Enter a name; an empty name is not a rename.',
+				};
 			}
 			const snapshot = services.stage.snapshot();
 			const document = documentOf(services);
@@ -158,15 +181,20 @@ export function layoutRoomNameTarget(
 					contentRevision,
 					levelId: document.floor.id,
 					targets: [
-						layoutSubjectReference({ kind: 'room', id: roomId, contentRevision, levelId: document.floor.id })
+						layoutSubjectReference({
+							kind: 'room',
+							id: roomId,
+							contentRevision,
+							levelId: document.floor.id,
+						}),
 					],
-					payload: { subjectKind: 'room', subjectId: roomId, name: trimmed }
-				})
+					payload: { subjectKind: 'room', subjectId: roomId, name: trimmed },
+				}),
 			);
 			return outcome.kind === 'refused'
 				? { kind: 'refused', code: outcome.code, message: outcome.message }
 				: { kind: 'accepted' };
-		}
+		},
 	};
 }
 
@@ -175,7 +203,9 @@ export function layoutRoomNameTarget(
  * is none. The ordinary Layout fields live on the Card and use the Dimensions
  * instrument's controller.
  */
-export function layoutCardFieldsInput(services: StageAdapterServices): LayoutInstrumentOptions | null {
+export function layoutCardFieldsInput(
+	services: StageAdapterServices,
+): LayoutInstrumentOptions | null {
 	const snapshot = services.stage.snapshot();
 	const subject = layoutSubjectOf(services.stage.selection());
 	if (subject === null || subject.kind === 'object') return null;
@@ -185,7 +215,7 @@ export function layoutCardFieldsInput(services: StageAdapterServices): LayoutIns
 		projectId: snapshot.acceptedRevision.projectId,
 		contentRevision: snapshot.domain.unitRevisions.layout,
 		port: port(services),
-		gesture: gesturePort(services)
+		gesture: gesturePort(services),
 	};
 }
 
@@ -197,7 +227,7 @@ export function layoutPlacementInput(services: StageAdapterServices): LayoutInst
 	const snapshot = services.stage.snapshot();
 	const subject: LayoutSubject = layoutSubjectOf(services.stage.selection()) ?? {
 		kind: 'object',
-		id: '(placement)'
+		id: '(placement)',
 	};
 	return {
 		subject,
@@ -205,11 +235,13 @@ export function layoutPlacementInput(services: StageAdapterServices): LayoutInst
 		projectId: snapshot.acceptedRevision.projectId,
 		contentRevision: snapshot.domain.unitRevisions.layout,
 		port: port(services),
-		gesture: gesturePort(services)
+		gesture: gesturePort(services),
 	};
 }
 
-export function createCardFieldsInstrument(services: StageAdapterServices): LayoutInstrument | null {
+export function createCardFieldsInstrument(
+	services: StageAdapterServices,
+): LayoutInstrument | null {
 	const input = layoutCardFieldsInput(services);
 	return input === null ? null : createLayoutInstrument(input);
 }

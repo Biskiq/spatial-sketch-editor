@@ -18,28 +18,38 @@
  * travel readings; planning stays in `object-marks` and the Scene planners.
  */
 
-import type { StageAdapterContext, StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
+import type {
+	StageAdapterContext,
+	StageAdapterServices,
+} from '$lib/authoring/stage/stage-adapter-host';
 import type {
 	GestureAcquisition,
 	StageGhostMesh,
 	StageKeyboardIntent,
-	StagePointerIntent
+	StagePointerIntent,
 } from '$lib/authoring/stage/stage-adapter-host';
 import {
 	draftingSnapIncrementMeters,
 	snapDraftingPlacement,
-	stageScene
+	stageScene,
 } from '$lib/authoring/stage/stage-adapter-host';
 import type { SceneFormEntity } from '@portfolio/project-model/scene';
 import type { Vec3 } from '@portfolio/project-model/scene';
 import {
 	sceneEntityLift,
 	sceneSupportGenerationId,
-	type SceneSupportChoice
+	type SceneSupportChoice,
 } from '@portfolio/project-model/scene-planning';
 import { perfMark } from '$lib/platform/perf-marks';
 import { candidateGhost } from './candidate-ghost';
-import { formRayHandle, formTravelOrigin, liftTravelAt, previewFormRay, sizeTravelAt, turnAngleAt } from './object-mark-form-geometry';
+import {
+	formRayHandle,
+	formTravelOrigin,
+	liftTravelAt,
+	previewFormRay,
+	sizeTravelAt,
+	turnAngleAt,
+} from './object-mark-form-geometry';
 import { acceptFormCommand } from './form-card-command';
 import {
 	SCENE_OBJECT_MARK,
@@ -49,7 +59,7 @@ import {
 	sceneObjectMarkIntent,
 	sceneObjectScale,
 	type SceneObjectBounds,
-	type SceneObjectEditMarkId
+	type SceneObjectEditMarkId,
 } from './object-marks';
 import {
 	type ObjectMarkGestureReading,
@@ -58,14 +68,14 @@ import {
 	objectBounds,
 	objectContact,
 	selectedObjectEntity,
-	sizePlannerContext
+	sizePlannerContext,
 } from './object-readings';
 import type { SceneCandidate } from './placement';
 import {
 	isStagePointerDrag,
 	moveSupportRefusal,
 	pointerFloorSupport,
-	pointerPlanePoint
+	pointerPlanePoint,
 } from './pointer-support';
 import {
 	axisTravelFromRay,
@@ -74,7 +84,7 @@ import {
 	formWorldPoint,
 	isSceneFormRayMarkId,
 	type FormSizeHandle,
-	type FormSizeMeasurement
+	type FormSizeMeasurement,
 } from './shape/form-size';
 
 export type ObjectMarkSession = {
@@ -137,7 +147,10 @@ export function createObjectMarkSession(services: StageAdapterServices): ObjectM
 			readonly measurement: FormSizeMeasurement;
 			readonly handle: FormSizeHandle;
 			/** Plan hides world Y, so Height uses pointer travel in the same CSS axis as its mark. */
-			readonly planHeightTravel: { readonly startY: number; readonly metersPerCssPixel: number } | null;
+			readonly planHeightTravel: {
+				readonly startY: number;
+				readonly metersPerCssPixel: number;
+			} | null;
 			/** World-axis cursor coordinate at pointerdown; size rays start at a fixed screen glyph. */
 			readonly startTravelMeters: number | null;
 			scale: readonly [number, number, number] | null;
@@ -170,45 +183,43 @@ export function createObjectMarkSession(services: StageAdapterServices): ObjectM
 			objectMarkRefusal = {
 				entityId: current.entityId,
 				markId: current.markId,
-				message: 'The reading changed; start the gesture again.'
+				message: 'The reading changed; start the gesture again.',
 			};
 		}
 	}
 
-	function ghost(
-		adapterContext: StageAdapterContext
-	): StageGhostMesh | null {
+	function ghost(adapterContext: StageAdapterContext): StageGhostMesh | null {
 		pruneObjectMarkGesture();
 		const current = objectMarkGesture;
 		if (current?.candidate === null || current?.candidate === undefined) return null;
 		const entity = stageScene(adapterContext.snapshot).entities.find(
-			(entry) => entry.id === current.entityId
+			(entry) => entry.id === current.entityId,
 		);
 		return entity === undefined
 			? null
 			: candidateGhost(entity, current.candidate, {
 					modelFootprint:
 						entity.kind === 'model'
-							? adapterContext.snapshot.domain.scene.modelFootprints?.get(entity.assetId) ??
-							  admittedModelFootprint(adapterContext.snapshot, entity.assetId)
+							? (adapterContext.snapshot.domain.scene.modelFootprints?.get(entity.assetId) ??
+								admittedModelFootprint(adapterContext.snapshot, entity.assetId))
 							: null,
-					modelContactMinY: entity.kind === 'model' ? current.contactMinY : null
+					modelContactMinY: entity.kind === 'model' ? current.contactMinY : null,
 				});
 	}
 
 	function applyObjectMarkPlan(
-			gesture: ObjectMarkGesture,
-			result: ReturnType<typeof planSceneObjectMark>
-		): void {
-			if (result.kind === 'rejected') {
-				gesture.candidate = null;
-				gesture.refusal = result.message;
-				return;
-			}
-			const candidate = markCandidate(result);
-			gesture.candidate = candidate;
-			gesture.refusal = candidate === null ? 'The candidate entity vanished.' : null;
+		gesture: ObjectMarkGesture,
+		result: ReturnType<typeof planSceneObjectMark>,
+	): void {
+		if (result.kind === 'rejected') {
+			gesture.candidate = null;
+			gesture.refusal = result.message;
+			return;
 		}
+		const candidate = markCandidate(result);
+		gesture.candidate = candidate;
+		gesture.refusal = candidate === null ? 'The candidate entity vanished.' : null;
+	}
 
 	/**
 	 * The no-task press path for every Scene object mark, forms included.
@@ -218,10 +229,7 @@ export function createObjectMarkSession(services: StageAdapterServices): ObjectM
 	 * path for every kind; sizing is the one branch that differs — the chip's
 	 * uniform scale for a model or primitive, the per-axis rays for a form.
 	 */
-	function pointer(
-		intent: StagePointerIntent,
-		adapterContext: StageAdapterContext
-	): boolean {
+	function pointer(intent: StagePointerIntent, adapterContext: StageAdapterContext): boolean {
 		if (services.stage.session.task() !== null) return false;
 		pruneObjectMarkGesture();
 		if (intent.phase === 'down') {
@@ -237,14 +245,15 @@ export function createObjectMarkSession(services: StageAdapterServices): ObjectM
 					evaluationId: intent.evaluationId,
 					purpose: 'select',
 					tool: null,
-					...(intent.coarse === undefined ? {} : { coarse: intent.coarse })
+					...(intent.coarse === undefined ? {} : { coarse: intent.coarse }),
 				});
 				if (
 					picked.kind !== 'resolved' ||
 					picked.hit.reference?.domain !== 'scene' ||
 					picked.hit.sourceKind !== 'entity' ||
 					picked.hit.sourceId !== selected.id
-				) return false;
+				)
+					return false;
 				markId = SCENE_OBJECT_MARK.move;
 				bodyPress = true;
 			}
@@ -265,7 +274,11 @@ export function createObjectMarkSession(services: StageAdapterServices): ObjectM
 				markId !== SCENE_OBJECT_MARK.lift
 					? null
 					: form !== null && measurement?.bounds != null
-						? formWorldPoint(form, [measurement.bounds.max[0], measurement.bounds.min[1], measurement.bounds.max[2]])
+						? formWorldPoint(form, [
+								measurement.bounds.max[0],
+								measurement.bounds.min[1],
+								measurement.bounds.max[2],
+							])
 						: bounds !== null
 							? [bounds.max[0], bounds.min[1], bounds.max[2]]
 							: null;
@@ -275,26 +288,26 @@ export function createObjectMarkSession(services: StageAdapterServices): ObjectM
 					? sceneEntityLift(sizePlannerContext(adapterContext), entity, contactMinY)
 					: null;
 			if (markId === SCENE_OBJECT_MARK.lift && liftStart === null) return false;
-			const handle = form !== null && measurement !== null ? formRayHandle(measurement, markId) : null;
+			const handle =
+				form !== null && measurement !== null ? formRayHandle(measurement, markId) : null;
 			if (isSceneFormRayMarkId(markId) && handle === null) return false;
 			if (objectMarkGesture !== null) endObjectMarkGesture();
 			const acquisition = services.stage.acquireGesture({
 				owner: 'scene-object-marks',
 				evaluationId: intent.evaluationId,
-				policy: 'cancel-on-reading-change'
+				policy: 'cancel-on-reading-change',
 			});
 			if (acquisition.kind !== 'granted') {
 				objectMarkRefusal = {
 					entityId: entity.id,
 					markId,
-					message: `The ${acquisition.owner} gesture owns the pointer; finish or cancel it first.`
+					message: `The ${acquisition.owner} gesture owns the pointer; finish or cancel it first.`,
 				};
 				services.stage.notifySurfaceChange();
 				return false;
 			}
 			objectMarkRefusal = null;
-			const ringY =
-				entity.position[1] + sceneObjectScale(entity) * contactMinY;
+			const ringY = entity.position[1] + sceneObjectScale(entity) * contactMinY;
 			// A body press keeps the pointer's offset on the object's own base
 			// plane: on a raised Terrace a datum-plane grab would sit metres away in
 			// 3D and throw the object toward the camera. A Move grip press (drawn off
@@ -319,25 +332,32 @@ export function createObjectMarkSession(services: StageAdapterServices): ObjectM
 					adapterContext.evaluation.targetPlaneMetersPerCssPixel > 0
 						? {
 								startY: intent.css[1],
-								metersPerCssPixel: adapterContext.evaluation.targetPlaneMetersPerCssPixel
+								metersPerCssPixel: adapterContext.evaluation.targetPlaneMetersPerCssPixel,
 							}
 						: null;
 				let startTravelMeters: number | null = null;
 				if (planHeightTravel === null) {
 					const startRay = adapterContext.ray([
 						intent.css[0] + adapterContext.evaluation.rect.left,
-						intent.css[1] + adapterContext.evaluation.rect.top
+						intent.css[1] + adapterContext.evaluation.rect.top,
 					]);
 					if (startRay !== null) {
 						startTravelMeters = axisTravelFromRay({
 							origin: formTravelOrigin(form, measurement, handle.axis),
 							direction: formWorldAxis(form, handle.axis),
 							rayOrigin: startRay.origin,
-							rayDirection: startRay.direction
+							rayDirection: startRay.direction,
 						});
 					}
 				}
-				formSize = { entity: form, measurement, handle, planHeightTravel, startTravelMeters, scale: null };
+				formSize = {
+					entity: form,
+					measurement,
+					handle,
+					planHeightTravel,
+					startTravelMeters,
+					scale: null,
+				};
 			}
 			objectMarkGesture = {
 				evaluationId: intent.evaluationId,
@@ -371,7 +391,7 @@ export function createObjectMarkSession(services: StageAdapterServices): ObjectM
 					liftOrigin !== null ? liftTravelAt(adapterContext, liftOrigin, intent.css) : null,
 				formSize,
 				candidate: null,
-				refusal: null
+				refusal: null,
 			};
 			services.stage.notifySurfaceChange();
 			return true;
@@ -384,7 +404,7 @@ export function createObjectMarkSession(services: StageAdapterServices): ObjectM
 			objectMarkRefusal = {
 				entityId: gesture.entityId,
 				markId: gesture.markId,
-				message: 'The content changed; start the gesture again.'
+				message: 'The content changed; start the gesture again.',
 			};
 			services.stage.notifySurfaceChange();
 			return true;
@@ -401,20 +421,20 @@ export function createObjectMarkSession(services: StageAdapterServices): ObjectM
 			objectMarkRefusal = {
 				entityId: gesture.entityId,
 				markId: gesture.markId,
-				message: 'The reading changed; start the gesture again.'
+				message: 'The reading changed; start the gesture again.',
 			};
 			services.stage.notifySurfaceChange();
 			return true;
 		}
 		const entity = stageScene(adapterContext.snapshot).entities.find(
-			(entry) => entry.id === gesture.entityId
+			(entry) => entry.id === gesture.entityId,
 		);
 		if (entity === undefined) {
 			endObjectMarkGesture();
 			objectMarkRefusal = {
 				entityId: gesture.entityId,
 				markId: gesture.markId,
-				message: 'The entity no longer exists.'
+				message: 'The entity no longer exists.',
 			};
 			services.stage.notifySurfaceChange();
 			return true;
@@ -437,9 +457,10 @@ export function createObjectMarkSession(services: StageAdapterServices): ObjectM
 					gesture.candidate = null;
 					gesture.moveChoice = null;
 					const refusal = moveSupportRefusal(support);
-					gesture.refusal = refusal.kind === 'refused'
-						? refusal.message
-						: 'The pointer position is not a committable floor support.';
+					gesture.refusal =
+						refusal.kind === 'refused'
+							? refusal.message
+							: 'The pointer position is not a committable floor support.';
 				} else {
 					// Object Move consumes the same live Grid/Snap fact as Layout Ink
 					// and Place. Alt/Option suspension is therefore immediate, and
@@ -449,7 +470,7 @@ export function createObjectMarkSession(services: StageAdapterServices): ObjectM
 					const grabOffset = gesture.moveGrabOffset ?? [0, 0];
 					const snapped = snapDraftingPlacement(
 						[support.worldPoint[0] - grabOffset[0], support.worldPoint[2] - grabOffset[1]],
-						step
+						step,
 					);
 					// The face the creator visibly points at is the support this move
 					// re-seats on: a raised terrace is one of several elevations at the
@@ -457,7 +478,7 @@ export function createObjectMarkSession(services: StageAdapterServices): ObjectM
 					gesture.moveChoice = {
 						kind: 'elevation',
 						elevation: support.worldPoint[1],
-						generationId: sceneSupportGenerationId(adapterContext.snapshot.sourceContentId)
+						generationId: sceneSupportGenerationId(adapterContext.snapshot.sourceContentId),
 					};
 					applyObjectMarkPlan(
 						gesture,
@@ -467,8 +488,8 @@ export function createObjectMarkSession(services: StageAdapterServices): ObjectM
 							entityId: gesture.entityId,
 							contactMinY: gesture.contactMinY,
 							worldXZ: [snapped.x, snapped.z],
-							choice: gesture.moveChoice
-						})
+							choice: gesture.moveChoice,
+						}),
 					);
 				}
 			} else if (gesture.markId === SCENE_OBJECT_MARK.turn) {
@@ -487,8 +508,8 @@ export function createObjectMarkSession(services: StageAdapterServices): ObjectM
 							markId: SCENE_OBJECT_MARK.turn,
 							context: sizePlannerContext(adapterContext),
 							entityId: gesture.entityId,
-							yaw: quantizeMarkValue(gesture.startYaw + delta)
-						})
+							yaw: quantizeMarkValue(gesture.startYaw + delta),
+						}),
 					);
 				}
 			} else if (gesture.markId === SCENE_OBJECT_MARK.lift && gesture.liftOrigin !== null) {
@@ -508,8 +529,8 @@ export function createObjectMarkSession(services: StageAdapterServices): ObjectM
 							context: sizePlannerContext(adapterContext),
 							entityId: gesture.entityId,
 							contactMinY: gesture.contactMinY,
-							lift: quantizeMarkValue(lift)
-						})
+							lift: quantizeMarkValue(lift),
+						}),
 					);
 				}
 			} else if (gesture.formSize !== null) {
@@ -533,8 +554,8 @@ export function createObjectMarkSession(services: StageAdapterServices): ObjectM
 								context: sizePlannerContext(adapterContext),
 								entityId: gesture.entityId,
 								contactMinY: gesture.contactMinY,
-								scale: quantizeMarkValue(gesture.startScale * (travel / start))
-							})
+								scale: quantizeMarkValue(gesture.startScale * (travel / start)),
+							}),
 						);
 					}
 				}
@@ -553,14 +574,16 @@ export function createObjectMarkSession(services: StageAdapterServices): ObjectM
 			services.stage.notifySurfaceChange();
 			return true;
 		}
-		const settle = (outcome: Promise<{ readonly kind: string; readonly message?: string }>): void => {
+		const settle = (
+			outcome: Promise<{ readonly kind: string; readonly message?: string }>,
+		): void => {
 			void outcome.then(
 				(result) => {
 					if (result.kind === 'refused') {
 						objectMarkRefusal = {
 							entityId: preview.entityId,
 							markId: preview.markId,
-							message: result.message ?? 'The edit was refused.'
+							message: result.message ?? 'The edit was refused.',
 						};
 					}
 					services.stage.notifySurfaceChange();
@@ -569,26 +592,32 @@ export function createObjectMarkSession(services: StageAdapterServices): ObjectM
 					objectMarkRefusal = {
 						entityId: preview.entityId,
 						markId: preview.markId,
-						message: error instanceof Error ? error.message : 'The accepted install failed.'
+						message: error instanceof Error ? error.message : 'The accepted install failed.',
 					};
 					services.stage.notifySurfaceChange();
-				}
+				},
 			);
 		};
 		if (preview.formSize !== null) {
 			// A form's per-axis size commits through the Card's own planner.
 			if (preview.formSize.scale !== null && preview.candidate !== null) {
 				settle(
-					acceptFormCommand(services, services.stage.snapshot(), preview.entityId, 'set-form-size', {
-						entityId: preview.entityId,
-						scale: preview.formSize.scale
-					})
+					acceptFormCommand(
+						services,
+						services.stage.snapshot(),
+						preview.entityId,
+						'set-form-size',
+						{
+							entityId: preview.entityId,
+							scale: preview.formSize.scale,
+						},
+					),
 				);
 			} else {
 				objectMarkRefusal = {
 					entityId: preview.entityId,
 					markId: preview.markId,
-					message: preview.refusal ?? 'That drag named no size.'
+					message: preview.refusal ?? 'That drag named no size.',
 				};
 			}
 		} else if (preview.candidate !== null) {
@@ -597,21 +626,21 @@ export function createObjectMarkSession(services: StageAdapterServices): ObjectM
 			try {
 				const intentToAccept = sceneObjectMarkIntent({
 					...(preview.markId === SCENE_OBJECT_MARK.move
-						? {
+						? ({
 								markId: SCENE_OBJECT_MARK.move,
 								entityId: preview.entityId,
 								contactMinY: preview.contactMinY,
 								worldXZ: preview.candidate.worldXZ,
-								...(preview.moveChoice === null ? {} : { choice: preview.moveChoice })
-							} as const
+								...(preview.moveChoice === null ? {} : { choice: preview.moveChoice }),
+							} as const)
 						: preview.markId === SCENE_OBJECT_MARK.turn
-							? {
+							? ({
 									markId: SCENE_OBJECT_MARK.turn,
 									entityId: preview.entityId,
-									yaw: preview.candidate.yaw
-								} as const
+									yaw: preview.candidate.yaw,
+								} as const)
 							: preview.markId === SCENE_OBJECT_MARK.lift && preview.liftStart !== null
-								? {
+								? ({
 										markId: SCENE_OBJECT_MARK.lift,
 										entityId: preview.entityId,
 										contactMinY: preview.contactMinY,
@@ -620,34 +649,34 @@ export function createObjectMarkSession(services: StageAdapterServices): ObjectM
 												0,
 												preview.candidate.position[1] +
 													preview.startScale * preview.contactMinY -
-													preview.liftStart.supportY
-											)
-										)
-									} as const
-							: {
-									markId: SCENE_OBJECT_MARK.size,
-									entityId: preview.entityId,
-									contactMinY: preview.contactMinY,
-									scale: preview.candidate.scale
-								} as const),
+													preview.liftStart.supportY,
+											),
+										),
+									} as const)
+								: ({
+										markId: SCENE_OBJECT_MARK.size,
+										entityId: preview.entityId,
+										contactMinY: preview.contactMinY,
+										scale: preview.candidate.scale,
+									} as const)),
 					projectId: snapshot.acceptedRevision.projectId,
 					revisionId: services.authoring.acceptedRevision().revisionId,
 					sceneContentRevision: snapshot.domain.unitRevisions.scene,
-					operationId: globalThis.crypto.randomUUID()
+					operationId: globalThis.crypto.randomUUID(),
 				});
 				settle(services.authoring.accept(intentToAccept));
 			} catch (error) {
 				objectMarkRefusal = {
 					entityId: preview.entityId,
 					markId: preview.markId,
-					message: error instanceof Error ? error.message : 'The intent could not be built.'
+					message: error instanceof Error ? error.message : 'The intent could not be built.',
 				};
 			}
 		} else if (preview.refusal !== null) {
 			objectMarkRefusal = {
 				entityId: preview.entityId,
 				markId: preview.markId,
-				message: preview.refusal
+				message: preview.refusal,
 			};
 		}
 		services.stage.notifySurfaceChange();
@@ -677,6 +706,6 @@ export function createObjectMarkSession(services: StageAdapterServices): ObjectM
 		ghost,
 		candidate() {
 			return objectMarkGesture?.candidate ?? null;
-		}
+		},
 	};
 }

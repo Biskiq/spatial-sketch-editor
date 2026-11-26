@@ -11,20 +11,20 @@
  * The item carries resolved facts, not decisions:
  *
  * - `geometry` is what shape, as a store spec (a unit geometry or a Form's
- *   canonical evaluated mesh);
+ *  canonical evaluated mesh);
  * - `geometryScale` is the unit-geometry scale that reproduces the authored size
- *   exactly — the parity test compares it against a geometry built at size;
+ *  exactly — the parity test compares it against a geometry built at size;
  * - `material` is the canonical descriptor for the resolved look, and `textures`
- *   names the variant that look binds (identity only, no GPU object);
+ *  names the variant that look binds (identity only, no GPU object);
  * - `transform` is the authored placement, so a retained root keeps the world
- *   matrix the accepted entity has;
+ *  matrix the accepted entity has;
  * - `key` changes only when something that changes the drawn result changes.
  */
 import type { FormMesh } from '@portfolio/geometry-core';
 import type {
 	MaterialTextureSlotKey,
 	StandardFinishPlan,
-	StandardMaterialDescriptor
+	StandardMaterialDescriptor,
 } from './material-descriptor';
 
 export type SceneVec3 = readonly [number, number, number];
@@ -100,7 +100,11 @@ export type FrustumGeometrySpec = {
 };
 
 /** What shape to draw. Plain data: the store decides how to build it. */
-export type GeometrySpec = UnitGeometrySpec | FormGeometrySpec | ArtworkGeometrySpec | FrustumGeometrySpec;
+export type GeometrySpec =
+	| UnitGeometrySpec
+	| FormGeometrySpec
+	| ArtworkGeometrySpec
+	| FrustumGeometrySpec;
 
 /**
  * The canonical key of one geometry spec.
@@ -209,9 +213,9 @@ export type SceneArtworkBody<K extends ArtworkGeometrySpec['kind']> = {
  * never reads authored truth. Three keys split the work an edit causes:
  *
  * - `sourceKey` — the image. A change releases the image lease and the Artwork
- *   disappears until the new image arrives, as the component did.
+ *  disappears until the new image arrives, as the component did.
  * - `bodyKey` — size and framing. A change rebuilds the meshes and their leases
- *   and keeps the loaded image.
+ *  and keeps the loaded image.
  * - `placementKey` — position and rotation. A change moves the retained group.
  */
 export type SceneArtworkItem = {
@@ -266,13 +270,13 @@ export type SceneModelLook = {
  * Its keys split an edit's work:
  *
  * - `sourceKey` — which bytes. A change releases the drawn instance and its
- *   leases, shows the fallback and loads the new bytes. (A resolved approved
- *   derivative URL is runtime data the handler adds to this key.)
+ *  leases, shows the fallback and loads the new bytes. (A resolved approved
+ *  derivative URL is runtime data the handler adds to this key.)
  * - `placementKey` — position, rotation, scale and visibility. A change moves the
- *   retained group and nothing else.
+ *  retained group and nothing else.
  * - `fallbackKey` — the fallback body. A change rebuilds the fallback meshes.
  * - `styleKey` — the look, wireframe and shadow flags of the drawn instance. A
- *   change starts one new presentation of the arrived template.
+ *  change starts one new presentation of the arrived template.
  */
 export type SceneModelItem = {
 	readonly id: string;

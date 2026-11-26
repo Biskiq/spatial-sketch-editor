@@ -31,13 +31,17 @@ function valid(value: unknown): value is FormCopyTransfer {
 	if (typeof value !== 'object' || value === null) return false;
 	const record = value as Record<string, unknown>;
 	return ['sourceProjectId', 'objectId', 'objectName', 'itemId', 'entityId'].every(
-		(field) => typeof record[field] === 'string' && record[field] !== ''
+		(field) => typeof record[field] === 'string' && record[field] !== '',
 	);
 }
 
 export function beginFormCopyTransfer(transfer: FormCopyTransfer): void {
 	memory = transfer;
-	try { sessionStorage.setItem(KEY, JSON.stringify(transfer)); } catch { /* memory keeps it */ }
+	try {
+		sessionStorage.setItem(KEY, JSON.stringify(transfer));
+	} catch {
+		/* memory keeps it */
+	}
 }
 
 /** The pending transfer, or `null`. Reads never clear it. */
@@ -48,14 +52,20 @@ export function peekFormCopyTransfer(): FormCopyTransfer | null {
 			const parsed: unknown = JSON.parse(raw);
 			if (valid(parsed)) return parsed;
 		}
-	} catch { /* fall back to memory */ }
+	} catch {
+		/* fall back to memory */
+	}
 	return memory;
 }
 
 /** The transfer finished (placed) or the creator returned: forget the way back. */
 export function endFormCopyTransfer(): void {
 	memory = null;
-	try { sessionStorage.removeItem(KEY); } catch { /* nothing to clear */ }
+	try {
+		sessionStorage.removeItem(KEY);
+	} catch {
+		/* nothing to clear */
+	}
 }
 
 /**
@@ -71,7 +81,7 @@ export function endFormCopyTransfer(): void {
  */
 export function copyLanded(
 	transfer: FormCopyTransfer,
-	entities: readonly { readonly id: string }[]
+	entities: readonly { readonly id: string }[],
 ): boolean {
 	return entities.some((entity) => entity.id === transfer.entityId);
 }

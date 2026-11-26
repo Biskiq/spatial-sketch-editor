@@ -18,14 +18,23 @@
  *
  * Editor machinery is absent: no Svelte, no Three, no DOM.
  */
-import { MAX_CAMERA_OUTPUT_RUN_EPOCH, type CameraOutputState, type CameraOutputTicket } from '@portfolio/project-model/channels';
+import {
+	MAX_CAMERA_OUTPUT_RUN_EPOCH,
+	type CameraOutputState,
+	type CameraOutputTicket,
+} from '@portfolio/project-model/channels';
 
 import type { CameraSession } from '../stage/camera-session';
 
 /** The session surface the handover drives; the Stage facade exposes exactly this. */
 export type PreviewCameraPort = Pick<
 	CameraSession,
-	'output' | 'inspectionTicket' | 'handOffToPreview' | 'returnFromPreview' | 'cancelPreview' | 'previewTicket'
+	| 'output'
+	| 'inspectionTicket'
+	| 'handOffToPreview'
+	| 'returnFromPreview'
+	| 'cancelPreview'
+	| 'previewTicket'
 >;
 
 export type PreviewEntryHandover =
@@ -78,13 +87,13 @@ export function previewReturnToken(sessionEpoch: string, runEpoch: number): stri
  */
 export function enterPreview(
 	port: PreviewCameraPort,
-	input: { readonly runEpoch: number; readonly returnToken: string }
+	input: { readonly runEpoch: number; readonly returnToken: string },
 ): PreviewEntryHandover {
 	if (port.inspectionTicket() === null) {
 		return {
 			kind: 'refused',
 			reason: 'no-inspection-claim',
-			message: 'The Stage does not hold its Camera output, so there is nothing to hand to Preview.'
+			message: 'The Stage does not hold its Camera output, so there is nothing to hand to Preview.',
 		};
 	}
 	const decision = port.handOffToPreview(input.runEpoch, input.returnToken);
@@ -92,14 +101,14 @@ export function enterPreview(
 		return {
 			kind: 'refused',
 			reason: decision.reason,
-			message: `Preview could not take the Camera output: ${decision.message}.`
+			message: `Preview could not take the Camera output: ${decision.message}.`,
 		};
 	}
 	return {
 		kind: 'entered',
 		ticket: decision.claim.ticket,
 		runEpoch: decision.claim.ticket.runEpoch,
-		replacedOwner: decision.replaced?.ticket.ownerId ?? null
+		replacedOwner: decision.replaced?.ticket.ownerId ?? null,
 	};
 }
 
@@ -112,7 +121,7 @@ export function enterPreview(
  */
 export function returnPreview(
 	port: PreviewCameraPort,
-	ticket?: CameraOutputTicket | null
+	ticket?: CameraOutputTicket | null,
 ): PreviewReturnHandover {
 	const candidate = ticket === undefined ? port.previewTicket() : ticket;
 	if (candidate === null) return { kind: 'abandoned', reason: 'no-preview-claim' };
@@ -121,15 +130,17 @@ export function returnPreview(
 	return {
 		kind: 'refused',
 		reason: decision.reason,
-		message: `The Camera output was not returned to the Stage: ${decision.message}.`
+		message: `The Camera output was not returned to the Stage: ${decision.message}.`,
 	};
 }
 
 /** End a Preview claim without a return; the protocol voids its return context. */
 export function cancelPreview(
 	port: PreviewCameraPort,
-	ticket?: CameraOutputTicket | null
-): { readonly kind: 'cancelled' } | { readonly kind: 'ignored'; readonly reason: string; readonly message: string } {
+	ticket?: CameraOutputTicket | null,
+):
+	| { readonly kind: 'cancelled' }
+	| { readonly kind: 'ignored'; readonly reason: string; readonly message: string } {
 	const candidate = ticket === undefined ? port.previewTicket() : ticket;
 	if (candidate === null) return { kind: 'cancelled' };
 	const decision = port.cancelPreview(candidate);

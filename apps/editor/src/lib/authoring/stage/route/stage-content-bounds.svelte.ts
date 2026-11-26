@@ -15,12 +15,22 @@ export function readStageContentBounds(stage: StageFacade): {
 	for (const entity of stage.snapshot().domain.scene.entities) {
 		const bounds = stage.sceneBounds(entity.id);
 		if (bounds === null) continue;
-		min = min === null
-			? [bounds.min[0], bounds.min[1], bounds.min[2]]
-			: [Math.min(min[0], bounds.min[0]), Math.min(min[1], bounds.min[1]), Math.min(min[2], bounds.min[2])];
-		max = max === null
-			? [bounds.max[0], bounds.max[1], bounds.max[2]]
-			: [Math.max(max[0], bounds.max[0]), Math.max(max[1], bounds.max[1]), Math.max(max[2], bounds.max[2])];
+		min =
+			min === null
+				? [bounds.min[0], bounds.min[1], bounds.min[2]]
+				: [
+						Math.min(min[0], bounds.min[0]),
+						Math.min(min[1], bounds.min[1]),
+						Math.min(min[2], bounds.min[2]),
+					];
+		max =
+			max === null
+				? [bounds.max[0], bounds.max[1], bounds.max[2]]
+				: [
+						Math.max(max[0], bounds.max[0]),
+						Math.max(max[1], bounds.max[1]),
+						Math.max(max[2], bounds.max[2]),
+					];
 	}
 	return min === null || max === null ? null : { min, max };
 }
@@ -48,7 +58,11 @@ export function createStageContentBounds(input: {
 
 	return {
 		renderRootsRevision: () => renderRootsRevision,
-		get stage() { return stageContentBounds; },
-		get paper() { return paperContentBounds; }
+		get stage() {
+			return stageContentBounds;
+		},
+		get paper() {
+			return paperContentBounds;
+		},
 	};
 }

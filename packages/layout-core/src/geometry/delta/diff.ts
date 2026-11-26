@@ -1,4 +1,10 @@
-import type { CompiledLayoutGeometry, CompiledLayoutObject, CompiledLegJoin, CompiledPhysicalWall, CompiledRoom } from '../types';
+import type {
+	CompiledLayoutGeometry,
+	CompiledLayoutObject,
+	CompiledLegJoin,
+	CompiledPhysicalWall,
+	CompiledRoom,
+} from '../types';
 import { countWork } from '../../kernel/work-observer';
 import { collectJoinsForWall } from './seed';
 import { COMPILE_WORLD_BY_GEOMETRY } from './snapshots';
@@ -27,16 +33,18 @@ export type CompiledSourceDelta = {
 	readonly objects: readonly CompiledLayoutObject[] | null;
 };
 
-
 export function diffCompiledSources(
 	before: CompiledLayoutGeometry,
-	after: CompiledLayoutGeometry
+	after: CompiledLayoutGeometry,
 ): CompiledSourceDelta | undefined {
 	const previous = COMPILE_WORLD_BY_GEOMETRY.get(before);
 	const current = COMPILE_WORLD_BY_GEOMETRY.get(after);
 	if (!previous || !current || previous === current) return undefined;
-	if (previous.regionUnit.regions !== current.regionUnit.regions &&
-		(previous.regionUnit.regions.length || current.regionUnit.regions.length)) return undefined;
+	if (
+		previous.regionUnit.regions !== current.regionUnit.regions &&
+		(previous.regionUnit.regions.length || current.regionUnit.regions.length)
+	)
+		return undefined;
 	// A different length is an insertion or a removal: every later slot shifts, so the
 	// roots can no longer be compared position by position.
 	if (previous.sortedWalls.length !== current.sortedWalls.length) return undefined;
@@ -78,7 +86,6 @@ export function diffCompiledSources(
 	return { walls, rooms, objects };
 }
 
-
 /** Openings are derived by first-host order, so a host change invalidates that order. */
 function sameOpeningIds(before: CompiledPhysicalWall, after: CompiledPhysicalWall): boolean {
 	if (before.openings.length !== after.openings.length) return false;
@@ -88,29 +95,52 @@ function sameOpeningIds(before: CompiledPhysicalWall, after: CompiledPhysicalWal
 	return true;
 }
 
-
-export type CompiledWallPatch = { wall: CompiledPhysicalWall; index: number; endKey: string; joins: readonly CompiledLegJoin[]; elevation: number };
+export type CompiledWallPatch = {
+	wall: CompiledPhysicalWall;
+	index: number;
+	endKey: string;
+	joins: readonly CompiledLegJoin[];
+	elevation: number;
+};
 
 /** Undefined means a cold/membership-changing transition: use the complete path. */
-export function diffCompiledWalls(before: CompiledLayoutGeometry, after: CompiledLayoutGeometry): readonly CompiledWallPatch[] | undefined {
- const a = COMPILE_WORLD_BY_GEOMETRY.get(before), b = COMPILE_WORLD_BY_GEOMETRY.get(after);
- if (!a || !b || a.wallDocIndexById !== b.wallDocIndexById) return undefined;
- const dirty = new Set<string>();
- b.sortedWalls.diff(a.sortedWalls, (_index, prev, next) => { dirty.add(prev.wallId); dirty.add(next.wallId); });
- b.sortedJunctions.diff(a.sortedJunctions, (_index, prev, next) => { for (const junction of [prev, next]) for (const leg of junction.legs) dirty.add(leg.wallId); });
- const patches: CompiledWallPatch[] = [];
- for (const id of dirty) {
-  const slot = b.wallSlots.get(b.wallDocIndexById.get(id)!)!;
-  if (!slot.compiled) continue;
-  const source = b.wallById.get(id)!;
-  const junctionIds = source.startJunctionId === source.endJunctionId ? [source.startJunctionId] : [source.startJunctionId, source.endJunctionId].sort();
-  const keys: string[] = [];
-  for (const jId of junctionIds) {
-   const index = b.junctionSortedIndexById.get(jId);
-   if (index !== undefined) keys.push(b.sortedJunctions.get(index)!.cacheKey);
-  }
-  patches.push({ wall: slot.compiled, index: slot.sortedIndex, endKey: keys.join('|'), joins: collectJoinsForWall(id, source.startJunctionId, source.endJunctionId, b) ?? [], elevation: b.floorElevation });
- }
- countWork('representation:wall-patch-record', patches.length);
- return patches;
+export function diffCompiledWalls(
+	before: CompiledLayoutGeometry,
+	after: CompiledLayoutGeometry,
+): readonly CompiledWallPatch[] | undefined {
+	const a = COMPILE_WORLD_BY_GEOMETRY.get(before),
+		b = COMPILE_WORLD_BY_GEOMETRY.get(after);
+	if (!a || !b || a.wallDocIndexById !== b.wallDocIndexById) return undefined;
+	const dirty = new Set<string>();
+	b.sortedWalls.diff(a.sortedWalls, (_index, prev, next) => {
+		dirty.add(prev.wallId);
+		dirty.add(next.wallId);
+	});
+	b.sortedJunctions.diff(a.sortedJunctions, (_index, prev, next) => {
+		for (const junction of [prev, next]) for (const leg of junction.legs) dirty.add(leg.wallId);
+	});
+	const patches: CompiledWallPatch[] = [];
+	for (const id of dirty) {
+		const slot = b.wallSlots.get(b.wallDocIndexById.get(id)!)!;
+		if (!slot.compiled) continue;
+		const source = b.wallById.get(id)!;
+		const junctionIds =
+			source.startJunctionId === source.endJunctionId
+				? [source.startJunctionId]
+				: [source.startJunctionId, source.endJunctionId].sort();
+		const keys: string[] = [];
+		for (const jId of junctionIds) {
+			const index = b.junctionSortedIndexById.get(jId);
+			if (index !== undefined) keys.push(b.sortedJunctions.get(index)!.cacheKey);
+		}
+		patches.push({
+			wall: slot.compiled,
+			index: slot.sortedIndex,
+			endKey: keys.join('|'),
+			joins: collectJoinsForWall(id, source.startJunctionId, source.endJunctionId, b) ?? [],
+			elevation: b.floorElevation,
+		});
+	}
+	countWork('representation:wall-patch-record', patches.length);
+	return patches;
 }

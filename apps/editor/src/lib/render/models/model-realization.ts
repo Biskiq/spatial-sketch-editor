@@ -4,18 +4,18 @@
  * A loaded GLB is a template. Every drawn instance is a clone of its hierarchy:
  *
  * - **Geometry is shared.** A clone keeps the template's buffers; nothing here
- *   copies or disposes a geometry.
+ *  copies or disposes a geometry.
  * - **Skeletons are not.** A hierarchy with skinned meshes is cloned with
- *   `SkeletonUtils.clone`, which rebinds every skinned mesh to its own bones, so
- *   one instance's pose never moves another's. A static hierarchy takes the plain
- *   `Object3D.clone`, which is cheaper and has no bones to rebind.
+ *  `SkeletonUtils.clone`, which rebinds every skinned mesh to its own bones, so
+ *  one instance's pose never moves another's. A static hierarchy takes the plain
+ *  `Object3D.clone`, which is cheaper and has no bones to rebind.
  * - **Surfaces are leases on the Canvas's `MaterialStore`.** An instance holds one
- *   lease per mesh slot. The store decides identity: N instances of one model hold
- *   one material per (mesh, slot, remap), not N. A remap is the resolved look,
- *   which replaces the asset's material on that mesh.
+ *  lease per mesh slot. The store decides identity: N instances of one model hold
+ *  one material per (mesh, slot, remap), not N. A remap is the resolved look,
+ *  which replaces the asset's material on that mesh.
  * - **Textures are leases on the texture store.** A textured look takes one
- *   variant lease per instance, released with the instance; the store's deferred
- *   release keeps a variant alive while any instance still names it.
+ *  variant lease per instance, released with the instance; the store's deferred
+ *  release keeps a variant alive while any instance still names it.
  *
  * Releasing an instance gives back exactly the leases it took. It never disposes
  * the template's geometry or materials, which the loader's cache owns and every
@@ -27,20 +27,31 @@
  * the lazily loaded model support, because SkeletonUtils is part of its graph; the
  * Three-free presentation rules live in `model-presentation`.
  */
-import { Mesh, type BufferGeometry, type Material, type Object3D, type SkinnedMesh, type Texture } from 'three';
+import {
+	Mesh,
+	type BufferGeometry,
+	type Material,
+	type Object3D,
+	type SkinnedMesh,
+	type Texture,
+} from 'three';
 import { clone as cloneSkinnedHierarchy } from 'three/examples/jsm/utils/SkeletonUtils.js';
-import type { MaterialLease, MaterialStore, MaterialTextureMaps } from '../resources/material-store';
+import type {
+	MaterialLease,
+	MaterialStore,
+	MaterialTextureMaps,
+} from '../resources/material-store';
 import {
 	MATERIAL_TEXTURE_SLOTS,
 	type MaterialTextureKeys,
 	type MaterialTextureSlotKey,
-	type StandardMaterialDescriptor
+	type StandardMaterialDescriptor,
 } from '../resources/material-descriptor';
 import {
 	acquireEffectiveVariant,
 	effectiveTextureVariantKey,
 	releaseEffectiveVariant,
-	type TextureLoadScope
+	type TextureLoadScope,
 } from '../resources/texture-store';
 import type { ModelLook } from './model-presentation';
 
@@ -51,7 +62,7 @@ export {
 	texturesReady,
 	type ArrivalGate,
 	type ModelLook,
-	type ModelSurfaceSource
+	type ModelSurfaceSource,
 } from './model-presentation';
 
 /** How a drawn instance's surfaces and shadows are styled. */
@@ -130,7 +141,7 @@ export function cloneModelHierarchy(template: Object3D): Object3D {
  */
 function finitePair(
 	attribute: { getX(index: number): number; getY(index: number): number },
-	vertex: number
+	vertex: number,
 ): readonly [number, number] | null {
 	const u = attribute.getX(vertex);
 	const v = attribute.getY(vertex);
@@ -147,7 +158,10 @@ function finitePair(
  * this checks the same predicates against the live BufferGeometry: finite UVs on
  * every referenced vertex and at least one non-singular UV frame for a normal.
  */
-function finishFitsMesh(mesh: Mesh, plan: NonNullable<StandardMaterialDescriptor['finish']>): boolean {
+function finishFitsMesh(
+	mesh: Mesh,
+	plan: NonNullable<StandardMaterialDescriptor['finish']>,
+): boolean {
 	const geometry = mesh.geometry as BufferGeometry;
 	const position = geometry.getAttribute('position');
 	if (position === undefined) return false;
@@ -250,11 +264,14 @@ function bindLook(look: ModelLook): {
 		remap: { ...(maps.normalMap === undefined ? withoutNormalScale : base), textures },
 		maps,
 		hold: { seed: source.variantSeed, rx, ry, scope },
-		views: undefined
+		views: undefined,
 	};
 }
 
-export function realizeModel(template: Object3D, options: ModelRealizationOptions): ModelRealization {
+export function realizeModel(
+	template: Object3D,
+	options: ModelRealizationOptions,
+): ModelRealization {
 	const templateMeshes = meshesOf(template);
 	const root = cloneModelHierarchy(template);
 	const drawnMeshes = meshesOf(root);
@@ -276,12 +293,16 @@ export function realizeModel(template: Object3D, options: ModelRealizationOption
 		templateMaterial: Material,
 		bound: ReturnType<typeof bindLook> | null,
 		wireframe: boolean,
-		treatment: 'flat-colour' | 'clay' | undefined
+		treatment: 'flat-colour' | 'clay' | undefined,
 	): MaterialLease {
 		// A provisional plan that the arrived mesh cannot actually sample keeps
 		// the resolved constants instead of drawing a half-bound surface. This is
 		// the per-draw target check the pre-arrival adapter cannot perform.
-		if (bound !== null && bound.remap.finish !== undefined && !finishFitsMesh(templateMesh, bound.remap.finish)) {
+		if (
+			bound !== null &&
+			bound.remap.finish !== undefined &&
+			!finishFitsMesh(templateMesh, bound.remap.finish)
+		) {
 			const { finish: _finish, ...constants } = bound.remap;
 			bound = { remap: constants, maps: {}, hold: null, views: undefined };
 		}
@@ -291,7 +312,7 @@ export function realizeModel(template: Object3D, options: ModelRealizationOption
 			mesh: meshIndex,
 			slot,
 			wireframe,
-			...(treatment === undefined ? {} : { treatment })
+			...(treatment === undefined ? {} : { treatment }),
 		};
 		// Natural (treatment absent) is exactly today's key, clone and lease count.
 		if (bound === null) return options.store.acquire(identity, undefined, templateMaterial);
@@ -299,7 +320,7 @@ export function realizeModel(template: Object3D, options: ModelRealizationOption
 			{ ...identity, remap: bound.remap },
 			bound.maps,
 			undefined,
-			bound.views
+			bound.views,
 		);
 	}
 
@@ -328,8 +349,8 @@ export function realizeModel(template: Object3D, options: ModelRealizationOption
 							templateMaterial,
 							bound,
 							style.wireframe,
-							treatment
-						)
+							treatment,
+						),
 					});
 				});
 				return;
@@ -344,8 +365,8 @@ export function realizeModel(template: Object3D, options: ModelRealizationOption
 					templateMesh.material,
 					bound,
 					style.wireframe,
-					treatment
-				)
+					treatment,
+				),
 			});
 		});
 		for (const hold of next) {
@@ -363,7 +384,7 @@ export function realizeModel(template: Object3D, options: ModelRealizationOption
 				previousVariant.rx,
 				previousVariant.ry,
 				0,
-				previousVariant.scope
+				previousVariant.scope,
 			);
 		}
 	}
@@ -373,7 +394,7 @@ export function realizeModel(template: Object3D, options: ModelRealizationOption
 		...(options.treatment === undefined ? {} : { treatment: options.treatment }),
 		wireframe: options.wireframe,
 		castShadow: options.castShadow,
-		receiveShadow: options.receiveShadow
+		receiveShadow: options.receiveShadow,
 	});
 
 	return {
@@ -394,6 +415,6 @@ export function realizeModel(template: Object3D, options: ModelRealizationOption
 		},
 		leaseCount() {
 			return holds.length + (variant === null ? 0 : 1);
-		}
+		},
 	};
 }

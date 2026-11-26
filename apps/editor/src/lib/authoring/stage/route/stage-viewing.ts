@@ -32,7 +32,10 @@ export function createStageViewing(input: {
 	}
 
 	function submitReading(reading: '3d' | 'plan'): void {
-		submit({ kind: 'set-reading', reading }, readingIntentClockSeconds(input.shell.reducedMotion, input.shell.nowSeconds()));
+		submit(
+			{ kind: 'set-reading', reading },
+			readingIntentClockSeconds(input.shell.reducedMotion, input.shell.nowSeconds()),
+		);
 	}
 
 	function endPressForReading(): void {
@@ -42,7 +45,10 @@ export function createStageViewing(input: {
 		const rect = input.rect();
 		if (stageInput.drag !== null && session.gesture() === null) {
 			if (stageInput.drag.mode === 'adapter' && facade !== null) {
-				const css: [number, number] = [stageInput.drag.x - (rect?.left ?? 0), stageInput.drag.y - (rect?.top ?? 0)];
+				const css: [number, number] = [
+					stageInput.drag.x - (rect?.left ?? 0),
+					stageInput.drag.y - (rect?.top ?? 0),
+				];
 				input.refresh();
 				const id = facade.evaluationId();
 				if (id !== null) facade.pointerIntent({ phase: 'move', css, evaluationId: id });
@@ -70,7 +76,10 @@ export function createStageViewing(input: {
 		if (stage === null || rect === null) return;
 		const bounds = readStageContentBounds(stage);
 		if (bounds === null) return;
-		submit({ kind: 'fit', bounds: { min: bounds.min, max: bounds.max }, rect }, input.shell.nowSeconds());
+		submit(
+			{ kind: 'fit', bounds: { min: bounds.min, max: bounds.max }, rect },
+			input.shell.nowSeconds(),
+		);
 	}
 
 	function zoomIn(): void {
@@ -82,7 +91,10 @@ export function createStageViewing(input: {
 	}
 
 	function bringIntoView(target: readonly [number, number, number]): void {
-		submit({ kind: 'bring-into-view', target: [target[0], target[1], target[2]] }, input.shell.nowSeconds());
+		submit(
+			{ kind: 'bring-into-view', target: [target[0], target[1], target[2]] },
+			input.shell.nowSeconds(),
+		);
 	}
 
 	function zoom(scale: number): void {
@@ -96,11 +108,25 @@ export function createStageViewing(input: {
 	}
 
 	function orbit(dAzimuth: number, dElevation: number): void {
-		submit({ kind: 'orbit', deltaAzimuthRadians: dAzimuth, deltaElevationRadians: dElevation }, input.shell.nowSeconds());
+		submit(
+			{ kind: 'orbit', deltaAzimuthRadians: dAzimuth, deltaElevationRadians: dElevation },
+			input.shell.nowSeconds(),
+		);
 	}
 
 	return {
-		submit, setReading, submitReading, endPressForReading, patchDrafting,
-		requestScaleDetent, fit, zoomIn, zoomOut, bringIntoView, zoom, pan, orbit
+		submit,
+		setReading,
+		submitReading,
+		endPressForReading,
+		patchDrafting,
+		requestScaleDetent,
+		fit,
+		zoomIn,
+		zoomOut,
+		bringIntoView,
+		zoom,
+		pan,
+		orbit,
 	};
 }

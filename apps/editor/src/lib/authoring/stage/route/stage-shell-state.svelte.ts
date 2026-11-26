@@ -11,9 +11,9 @@
  * - the motion clock is the existing reduced-motion clock;
  * - host tools keep their existing controllers and projections;
  * - no selection, task, history, acceptance or renderer command is implemented
- *   here.
+ *  here.
  *
- * `start()` installs the browser media listeners once and `dispose()` removes
+ * `start` installs the browser media listeners once and `dispose` removes
  * them exactly once, so the route keeps one ordered teardown.
  */
 import type { SemanticReference } from '@portfolio/project-model/references';
@@ -22,7 +22,7 @@ import {
 	DEFAULT_APP_PREFERENCES,
 	readAppPreferences,
 	writeAppPreferences,
-	type AppPreferences
+	type AppPreferences,
 } from '$lib/platform/app-preferences';
 import { createEditorMotionClock } from '$lib/platform/editor-motion-clock';
 import { createStageHeightState } from './stage-height-state.svelte';
@@ -48,20 +48,20 @@ import {
 	roundScaleBarLength,
 	snapWord as draftingWordForSnap,
 	type StageDraftingPatch,
-	type StageDraftingState
+	type StageDraftingState,
 } from '../stage-drafting';
 import { STAGE_DRAFTING_DEFAULTS } from '../stage-drafting';
 import type { WorldScope } from '../shell/world-index-model';
 import type { WorldLibraryCategory, WorldToolId } from '$lib/authoring/world-toolbar/registry';
 
 /**
- * Why the Library opened (T2.S8 U5 recovery): Paint's *Browse all* picks for
+ * Why the Library opened: Paint's *Browse all* picks for
  * Paint, the dock and `L` Replace a qualified selection, the Card's *Swap…*
  * swaps, Furnish browses Objects, anything else browses. `kind` names the shelf
  * to open on; null keeps the session's last view.
  */
 /**
- * The Library's last browse view (U5): session state, never saved. It survives
+ * The Library's last browse view: session state, never saved. It survives
  * closing and reopening the Library; detail and invocation do not.
  */
 export type StageLibraryView = {
@@ -77,7 +77,7 @@ export const STAGE_LIBRARY_VIEW_DEFAULT: StageLibraryView = {
 	source: 'all',
 	category: 'all',
 	filters: [],
-	query: ''
+	query: '',
 };
 
 export type StageLibraryInvocation = {
@@ -89,13 +89,13 @@ export type StageLibraryInvocation = {
 import { worldTool } from '$lib/authoring/world-toolbar/registry';
 import {
 	LIBRARY_INSPECTION_DEFAULT,
-	type LibraryInspectionSettings
+	type LibraryInspectionSettings,
 } from '$lib/authoring/library/library-inspection';
 import {
 	sameEraseHover,
 	stageArmedHostTool,
 	stageHostToolOverlay,
-	type StageHostToolOverlay
+	type StageHostToolOverlay,
 } from './stage-contribution-view';
 
 export type StagePendingDelete = {
@@ -115,7 +115,7 @@ export type StageShellStateInput = {
 	readonly selection: () => StageSelectionEntry | null;
 	/** The Finish service Paint consumes; `null` until the route has built it. */
 	readonly finishes: () => FinishAuthoring | null;
-	/** A click that painted one subject: select it and open that Finish (U4). */
+	/** A click that painted one subject: select it and open that Finish. */
 	readonly onPaintedOne?: (target: StagePaintCandidate) => void;
 };
 
@@ -126,7 +126,7 @@ export function createStageShellState(input: StageShellStateInput) {
 	const status = createStageShellStatus({
 		openCard: () => {
 			cardOpen = true;
-		}
+		},
 	});
 
 	/** Measured lanes beside the Stage (the lower column and the Sheet). */
@@ -183,7 +183,12 @@ export function createStageShellState(input: StageShellStateInput) {
 	 */
 	let furnishStripOpen = $state(false);
 	/** Why the Library is open; set by the command that opened it, cleared on close. */
-	let libraryInvocation = $state.raw<StageLibraryInvocation>({ intent: 'browse', kind: null, from: 'dock', nonce: 0 });
+	let libraryInvocation = $state.raw<StageLibraryInvocation>({
+		intent: 'browse',
+		kind: null,
+		from: 'dock',
+		nonce: 0,
+	});
 	let libraryView = $state.raw<StageLibraryView>(STAGE_LIBRARY_VIEW_DEFAULT);
 	/** Library detail and Customise… share one remembered geometry and lighting. */
 	let libraryInspection = $state.raw<LibraryInspectionSettings>(LIBRARY_INSPECTION_DEFAULT);
@@ -224,7 +229,7 @@ export function createStageShellState(input: StageShellStateInput) {
 	const height = createStageHeightState({
 		sheet: heightSheet,
 		lensWorld: () => input.lens() === 'world',
-		reducedMotion: () => reducedMotion
+		reducedMotion: () => reducedMotion,
 	});
 
 	let findQuery = $state('');
@@ -232,7 +237,7 @@ export function createStageShellState(input: StageShellStateInput) {
 	/** The one Grid/Snap view state, mirrored from the session. */
 	let drafting = $state<StageDraftingState>(STAGE_DRAFTING_DEFAULTS);
 
-	/** Media-query listeners installed by `start()` and removed by `dispose()`. */
+	/** Media-query listeners installed by `start` and removed by `dispose`. */
 	let cleanups: (() => void) | null = null;
 	let started = false;
 	let disposed = false;
@@ -287,8 +292,7 @@ export function createStageShellState(input: StageShellStateInput) {
 	});
 
 	function nowSeconds(): number {
-		const real =
-			typeof performance === 'undefined' ? Date.now() / 1000 : performance.now() / 1000;
+		const real = typeof performance === 'undefined' ? Date.now() / 1000 : performance.now() / 1000;
 		return motionClock.read(real);
 	}
 
@@ -395,22 +399,28 @@ export function createStageShellState(input: StageShellStateInput) {
 				assign: async (entityIds) =>
 					(await input.finishes()?.paintEntities(entityIds)) === 'accepted',
 				isSurfaceAlready: (surfaces) => input.finishes()?.activeSurfaceIsAlready(surfaces) ?? false,
-				assignSurface: async (surfaces) => (await input.finishes()?.paintSurface(surfaces)) ?? false,
+				assignSurface: async (surfaces) =>
+					(await input.finishes()?.paintSurface(surfaces)) ?? false,
 				dropperArmed: () => input.finishes()?.dropperArmed ?? false,
 				copy: async (hit) => (await input.finishes()?.copyFrom(hit)) ?? false,
 				copySurface: async (surface) => (await input.finishes()?.copySurface(surface)) ?? false,
 				surfaceScope: () => paintScope,
-				setSurfaceScope: (scope) => { paintScope = scope; },
+				setSurfaceScope: (scope) => {
+					paintScope = scope;
+				},
 				activeLabel: () => input.finishes()?.activeLabel() ?? 'Finish',
 				sampleMessage: () => {
-					const target = input.finishes()?.libraryDraft != null ? input.finishes()?.libraryDraftTarget() : undefined;
+					const target =
+						input.finishes()?.libraryDraft != null
+							? input.finishes()?.libraryDraftTarget()
+							: undefined;
 					return target == null ? null : `Draft preview on ${target.label} · nothing is written`;
 				},
 				wornLabel: (target) => input.finishes()?.wornLabel(target) ?? null,
 				coatReading: (target) => input.finishes()?.coatReading(target) ?? null,
-				onPaintedOne: (target) => input.onPaintedOne?.(target)
+				onPaintedOne: (target) => input.onPaintedOne?.(target),
 			},
-			() => refreshHostTools()
+			() => refreshHostTools(),
 		);
 		drafting = next.drafting();
 		task = null;
@@ -419,19 +429,19 @@ export function createStageShellState(input: StageShellStateInput) {
 
 	const armedHostTool = $derived(stageArmedHostTool(task));
 	const showOffCount = $derived(
-		[showMarkers, showFrustums, showPaths, showLabels].filter((on) => !on).length
+		[showMarkers, showFrustums, showPaths, showLabels].filter((on) => !on).length,
 	);
 	const sheetLaneRight = $derived(height.side === 'right' ? sheetLaneWidth : 0);
 	const sheetLaneLeft = $derived(height.side === 'left' ? sheetLaneWidth : 0);
 	const draftingReading: 'plan' | '3d' = $derived(
-		input.evaluation()?.settledReading === 'plan' ? 'plan' : '3d'
+		input.evaluation()?.settledReading === 'plan' ? 'plan' : '3d',
 	);
 	const draftingGridWord = $derived(draftingWordForGrid(drafting));
 	const draftingSnapWord = $derived(draftingWordForSnap(drafting));
 	/** Arrow-key stepping follows the fixed increment, or 0.1 m while Snap is off. */
 	const heightSnapIncrement = $derived(draftingSnapIncrementMeters(drafting) ?? 0.1);
 	const draftingScaleBar = $derived(
-		roundScaleBarLength(input.evaluation()?.targetPlaneMetersPerCssPixel ?? 0)
+		roundScaleBarLength(input.evaluation()?.targetPlaneMetersPerCssPixel ?? 0),
 	);
 
 	function refreshHostTools(): void {
@@ -443,7 +453,7 @@ export function createStageShellState(input: StageShellStateInput) {
 			eraserTool,
 			paintTool,
 			rect: input.rect(),
-			measure: input.measure
+			measure: input.measure,
 		});
 		hostToolOverlay = result.overlay;
 		if (result.eraseHover === null) {
@@ -469,7 +479,9 @@ export function createStageShellState(input: StageShellStateInput) {
 		hostToolOverlay = null;
 	}
 
-	function syncGestureFade(lease: { readonly navigation?: boolean; readonly owner: string } | null): void {
+	function syncGestureFade(
+		lease: { readonly navigation?: boolean; readonly owner: string } | null,
+	): void {
 		status.syncGestureFade(lease);
 	}
 
@@ -642,10 +654,14 @@ export function createStageShellState(input: StageShellStateInput) {
 		get cardRenameRequest() {
 			return status.cardRenameRequest;
 		},
-		get cardRenameTarget() { return status.cardRenameTarget; },
+		get cardRenameTarget() {
+			return status.cardRenameTarget;
+		},
 		requestCardRename,
 		consumeCardRename,
-		get stageGesturing() { return status.stageGesturing; },
+		get stageGesturing() {
+			return status.stageGesturing;
+		},
 		get cardGesturing() {
 			return status.cardGesturing;
 		},
@@ -829,7 +845,7 @@ export function createStageShellState(input: StageShellStateInput) {
 		clearNotice,
 		nowSeconds,
 		start,
-		dispose
+		dispose,
 	};
 }
 

@@ -1,18 +1,18 @@
 /**
  * The editor-only authoring history: **one** bounded chronological stack of
- * accepted source states (AM-4).
+ * accepted source states.
  *
  * Three things this is deliberately not:
  *
  * - it is not a second source of truth. A state is captured *after* acceptance
- *   and is immutable; the current state is whatever the coordinator installed,
- *   and the stack is only the ordering that makes Undo/Redo possible.
+ *  and is immutable; the current state is whatever the coordinator installed,
+ *  and the stack is only the ordering that makes Undo/Redo possible.
  * - it is not an operation log. Undo restores the previous **state**, which is
- *   exactly why `AM-4`'s "undo back to earlier contents is a new acceptance of
- *   the same content" holds without replaying a domain inverse.
+ *  exactly why ``'s "undo back to earlier contents is a new acceptance of
+ *  the same content" holds without replaying a domain inverse.
  * - it is not reachable from the visitor. This module is `lib/authoring/**`,
- *   editor-only, and never enters a package barrel (see
- *   `../README.md` and the F4 public-isolation proof).
+ *  editor-only, and never enters a package barrel (see
+ *  `../README.md` and the F4 public-isolation proof).
  *
  * Bounds and lifetime (all tested): 100 entries; a new accepted state truncates
  * the redo branch; a no-op, refusal or cancel adds **no** entry because it never
@@ -22,7 +22,7 @@
 
 import type { AdmissionIssue, CorrespondenceEntry } from '@portfolio/project-model/f4';
 
-/** AM-4's bounded depth. Not a tuning knob: the acceptance record names it. */
+/** the bounded depth. Not a tuning knob: the acceptance record names it. */
 export const AUTHORING_HISTORY_LIMIT = 100;
 
 /**
@@ -49,7 +49,9 @@ export class AuthoringHistory<Source> {
 
 	constructor(initial: HistoryState<Source>, limit: number = AUTHORING_HISTORY_LIMIT) {
 		if (!Number.isInteger(limit) || limit < 2 || limit > AUTHORING_HISTORY_LIMIT) {
-			throw new RangeError(`History limit must be an integer from 2 to 100, received ${String(limit)}`);
+			throw new RangeError(
+				`History limit must be an integer from 2 to 100, received ${String(limit)}`,
+			);
 		}
 		this.#limit = limit;
 		this.#states = [initial];
@@ -83,7 +85,8 @@ export class AuthoringHistory<Source> {
 		if (states.length < 1 || states.length > this.#limit) {
 			throw new RangeError(`History must retain between 1 and ${this.#limit} states`);
 		}
-		if (this.#cursor >= states.length) throw new RangeError('History cursor is outside the retained states');
+		if (this.#cursor >= states.length)
+			throw new RangeError('History cursor is outside the retained states');
 		this.#states = [...states];
 	}
 
@@ -135,7 +138,7 @@ export class AuthoringHistory<Source> {
 
 	/**
 	 * Start a new baseline: project replacement makes every earlier state
-	 * unreachable (no ordinary Undo crosses a source replacement, AM-4 §Source
+	 * unreachable (no ordinary Undo crosses a source replacement, §Source
 	 * replacement) and leaves exactly one entry.
 	 */
 	replaceBaseline(state: HistoryState<Source>): void {

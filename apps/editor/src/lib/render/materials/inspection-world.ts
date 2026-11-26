@@ -1,5 +1,5 @@
 /**
- * Current World inspection lighting (E7).
+ * Current World inspection lighting.
  *
  * A `WorldLightSample` is read from the accepted Scene exactly as the Stage
  * reads it: the shown Sky (or Paper), the World frame the Sun is aimed with,
@@ -25,14 +25,14 @@ import {
 	colorHex,
 	resolveSkySun,
 	worldEnvironmentLook,
-	type WorldEnvironmentFrame
+	type WorldEnvironmentFrame,
 } from '$lib/render/world-environment';
 import { describeSceneLights, type SceneLightItem } from '$lib/render/scene-light-description';
 import { createSceneLightRepresentation } from '$lib/render/scene-light-representation';
 import type { LightLease, LightStore } from '$lib/render/resources/light-store';
 import {
 	STAGE_NEUTRAL_AMBIENT_INTENSITY,
-	STAGE_NEUTRAL_DIRECTIONALS
+	STAGE_NEUTRAL_DIRECTIONALS,
 } from '$lib/render/stage-neutral-lighting';
 
 export type InspectionVec3 = readonly [number, number, number];
@@ -81,7 +81,7 @@ export function worldLightSampleFor(input: {
 		sky: input.sky,
 		frame: input.frame,
 		lights: input.sky === null ? [] : describeSceneLights(input.scene).items,
-		treatment: input.scene.environment?.treatment
+		treatment: input.scene.environment?.treatment,
 	};
 }
 
@@ -93,7 +93,7 @@ export function worldLightSampleKey(sample: WorldLightSample): string {
 		sky: sample.sky,
 		frame: sample.frame,
 		lights: sample.lights.map((item) => [item.key, item.placementKey]),
-		treatment: sample.treatment ?? null
+		treatment: sample.treatment ?? null,
 	});
 }
 
@@ -106,7 +106,7 @@ export type WorldInspectionLighting = {
 /** Realize one anchored sample around the origin; the caller owns and disposes it. */
 export function createWorldInspectionLighting(
 	sample: WorldLightSample & { readonly anchorWorld: InspectionVec3 },
-	lights: LightStore
+	lights: LightStore,
 ): WorldInspectionLighting {
 	const group = new Group();
 	group.name = 'InspectionLighting:world';
@@ -123,9 +123,9 @@ export function createWorldInspectionLighting(
 			new HemisphereLight(
 				colorHex(look.hemisphere.skyColor),
 				colorHex(look.hemisphere.groundColor),
-				look.hemisphere.intensity
+				look.hemisphere.intensity,
 			),
-			new AmbientLight(0xffffff, look.ambient)
+			new AmbientLight(0xffffff, look.ambient),
 		);
 		const sun = resolveSkySun(look, sample.frame);
 		if (sun !== null) {
@@ -153,8 +153,8 @@ export function createWorldInspectionLighting(
 			items: sample.lights.map((item) => ({
 				...item,
 				key: `${item.key}|inspection-unshadowed`,
-				light: { ...item.light, castShadow: false }
-			}))
+				light: { ...item.light, castShadow: false },
+			})),
 		});
 		translated.add(representation.object3d);
 		releases.push(() => {
@@ -171,6 +171,6 @@ export function createWorldInspectionLighting(
 			if (disposed) return;
 			disposed = true;
 			for (const release of releases.splice(0)) release();
-		}
+		},
 	};
 }

@@ -3,7 +3,7 @@ export function dependencyLockKey(
 	domain: string,
 	subjectKind: string,
 	subjectId: string,
-	instancePath: readonly string[]
+	instancePath: readonly string[],
 ): string {
 	return JSON.stringify([domain, subjectKind, subjectId, instancePath]);
 }

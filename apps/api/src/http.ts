@@ -5,13 +5,19 @@ import { ModelPinRefusalError } from './model-persistence.js';
 import { ProjectWriteAbortedError } from './project-write-lease.js';
 import { PublicationConflictError } from './publication-persistence.js';
 import { SaveRefusalError } from './save-persistence.js';
-import { type FastifyInstance as FastifyInstance, type FastifyReply as FastifyReply, type FastifyRequest as FastifyRequest } from 'fastify';
+import {
+	type FastifyInstance as FastifyInstance,
+	type FastifyReply as FastifyReply,
+	type FastifyRequest as FastifyRequest,
+} from 'fastify';
 
 export function errorBody(code: string, message: string) {
 	return { error: { code, message } };
 }
 
-export function unauthorized(reply: { code(statusCode: number): { send(body: unknown): unknown } }) {
+export function unauthorized(reply: {
+	code(statusCode: number): { send(body: unknown): unknown };
+}) {
 	return reply.code(401).send(errorBody('unauthorized', 'Unauthorized'));
 }
 
@@ -23,7 +29,7 @@ export function databaseFailure(
 	app: FastifyInstance,
 	reply: { code(statusCode: number): { send(body: unknown): unknown } },
 	error: unknown,
-	message: string
+	message: string,
 ) {
 	app.log.warn({ database: sanitizeDatabaseError(error) }, message);
 	return reply.code(503).send(errorBody('service_unavailable', 'Service Unavailable'));
@@ -46,7 +52,9 @@ export function appSession(request: FastifyRequest): AppSession {
 	return request.session as unknown as AppSession;
 }
 
-export function authUnavailable(reply: { code(statusCode: number): { send(body: unknown): unknown } }) {
+export function authUnavailable(reply: {
+	code(statusCode: number): { send(body: unknown): unknown };
+}) {
 	return reply.code(503).send(errorBody('auth_unavailable', 'Authentication is unavailable'));
 }
 
@@ -63,7 +71,11 @@ export function isOctetStream(value: string | undefined): boolean {
 }
 
 export type DeclaredLengthRefusal = {
-	readonly code: 'length_required' | 'invalid_upload' | 'payload_too_large' | 'unsupported_media_type';
+	readonly code:
+		| 'length_required'
+		| 'invalid_upload'
+		| 'payload_too_large'
+		| 'unsupported_media_type';
 	readonly statusCode: 400 | 411 | 413 | 415;
 	readonly message: string;
 };
@@ -72,7 +84,10 @@ export type DeclaredLengthRefusal = {
  * The declared `Content-Length` an upload route accepts. Both upload families
  * share these refusals and differ only in their ceiling and their error type.
  */
-export function readDeclaredLength(request: FastifyRequest, maxBytes: number): number | DeclaredLengthRefusal {
+export function readDeclaredLength(
+	request: FastifyRequest,
+	maxBytes: number,
+): number | DeclaredLengthRefusal {
 	if (!isOctetStream(request.headers['content-type'])) {
 		return { code: 'unsupported_media_type', statusCode: 415, message: 'Unsupported Media Type' };
 	}
@@ -95,7 +110,9 @@ export function readDeclaredLength(request: FastifyRequest, maxBytes: number): n
 
 export function readUploadContentLength(request: FastifyRequest): number | AssetInputError {
 	const read = readDeclaredLength(request, MAX_ASSET_BYTES);
-	return typeof read === 'number' ? read : new AssetInputError(read.code, read.statusCode, read.message);
+	return typeof read === 'number'
+		? read
+		: new AssetInputError(read.code, read.statusCode, read.message);
 }
 
 /**
@@ -106,7 +123,7 @@ export function readUploadContentLength(request: FastifyRequest): number | Asset
  */
 export function createProjectWriteRequestSignal(
 	request: FastifyRequest,
-	timeoutMs: number
+	timeoutMs: number,
 ): { signal: AbortSignal; dispose(): void } {
 	const fastifySignal = request.signal;
 	const controller = new AbortController();
@@ -114,7 +131,11 @@ export function createProjectWriteRequestSignal(
 		const reason = fastifySignal.reason as { code?: unknown } | undefined;
 		if (!request.raw.aborted && reason?.code !== 'FST_ERR_HANDLER_TIMEOUT') return;
 		if (!controller.signal.aborted) {
-			controller.abort(new ProjectWriteAbortedError('The client disconnected or the request exceeded its handler deadline'));
+			controller.abort(
+				new ProjectWriteAbortedError(
+					'The client disconnected or the request exceeded its handler deadline',
+				),
+			);
 		}
 	};
 	fastifySignal.addEventListener('abort', onAbort);
@@ -129,7 +150,7 @@ export function createProjectWriteRequestSignal(
 		dispose() {
 			clearTimeout(timer);
 			fastifySignal.removeEventListener('abort', onAbort);
-		}
+		},
 	};
 }
 
@@ -142,21 +163,22 @@ export function readExpectedPublicationRevision(value: unknown): number | null {
 
 export function publicationConflict(
 	reply: { code(statusCode: number): { send(body: unknown): unknown } },
-	error: PublicationConflictError
+	error: PublicationConflictError,
 ) {
-	return reply
-		.code(409)
-		.send({ error: { code: 'revision_conflict', message: error.message }, revision: error.revision });
+	return reply.code(409).send({
+		error: { code: 'revision_conflict', message: error.message },
+		revision: error.revision,
+	});
 }
 
 export function saveRefusal(
 	reply: { code(statusCode: number): { send(body: unknown): unknown } },
-	error: SaveRefusalError | ModelPinRefusalError
+	error: SaveRefusalError | ModelPinRefusalError,
 ) {
 	if (error instanceof ModelPinRefusalError) {
 		return reply.code(400).send({
 			error: { code: error.code, message: error.message },
-			...(error.issues.length > 0 ? { issues: error.issues } : {})
+			...(error.issues.length > 0 ? { issues: error.issues } : {}),
 		});
 	}
 	if (error.code === 'conflict') {
@@ -171,9 +193,9 @@ export function saveRefusal(
 	return reply.code(400).send({
 		error: {
 			code: error.code === 'invalid-project' ? 'invalid_project' : error.code,
-			message: error.message
+			message: error.message,
 		},
-		...(error.issues.length > 0 ? { issues: error.issues } : {})
+		...(error.issues.length > 0 ? { issues: error.issues } : {}),
 	});
 }
 

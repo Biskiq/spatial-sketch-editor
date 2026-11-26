@@ -2,34 +2,34 @@
  * Per-light shadow-map invalidation for r187's common renderer.
  *
  * The native `WebGLShadowMap` this replaced exposed a frame-global `autoUpdate`
- * and a `render()` the Stage could wrap. r187's node renderer instead reads each
+ * and a `render` the Stage could wrap. r187's node renderer instead reads each
  * leased light's own `LightShadow.autoUpdate` / `needsUpdate` (see
  * `ShadowNode.updateBefore`): the light is either updated every frame or only
  * when something asks. This module owns that decision for the Stage:
  *
  * - a **caster's geometry, Scene or approved model bytes**: the retained
- *   Wall/object rebuild, a Scene placement added, moved or removed. The wiring
- *   watches the compiled `geometry`, the resolved `scene` and `modelUrls`;
+ *  Wall/object rebuild, a Scene placement added, moved or removed. The wiring
+ *  watches the compiled `geometry`, the resolved `scene` and `modelUrls`;
  * - a **caster's or receiver's transform, visibility or flags, or a
- *   depth-affecting material change**: the same identities;
+ *  depth-affecting material change**: the same identities;
  * - a **Scene light** added, removed or changed: `scene` identity again. A light
- *   that arrives late is configured on the next traversal, so it never renders a
- *   per-frame map;
+ *  that arrives late is configured on the next traversal, so it never renders a
+ *  per-frame map;
  * - a **Sun/Moon shadow camera** change: re-render the directional maps alone;
  * - a **model arrival, release or drawn-state change**: the Canvas's caster
- *   channel reports it;
+ *  channel reports it;
  * - an **animation that is playing**: a moving caster needs a fresh map every
- *   frame. The owner renders per frame only while the channel counts a playing
- *   action, and returns to render-on-change when the last one stops;
+ *  frame. The owner renders per frame only while the channel counts a playing
+ *  action, and returns to render-on-change when the last one stops;
  * - **renderer lifecycle**: a fresh generation starts fully invalidated, so its
- *   first shadowed frame is correct.
+ *  first shadowed frame is correct.
  *
  * What is deliberately *not* a trigger: the camera. A shadow map is rendered from
  * the light's shadow camera, so orbiting the view changes no shadow texel.
  *
  * ## Counting
  *
- * `stats()` reports **actual submissions**, not requests. r187's `ShadowNode`
+ * `stats` reports **actual submissions**, not requests. r187's `ShadowNode`
  * renders a due map by calling `renderer.render(scene, shadow.camera)` from
  * `renderShadow`, *inside* the outer scene render. A point light's cube is six
  * such calls, one per face. The counter therefore counts only nested calls whose
@@ -158,9 +158,12 @@ export function createShadowInvalidation(options: ShadowInvalidationOptions): Sh
 		// `src/nodes/lighting/ShadowNode.js`): the same scene and the light's own
 		// shadow camera, nested inside the scene render. Only that submission is a
 		// shadow pass; the enclosing render is not a second one.
-		const submitting = sceneRef === scene
-			? lights.find((light) => light.shadow!.camera !== undefined && light.shadow!.camera === camera)
-			: undefined;
+		const submitting =
+			sceneRef === scene
+				? lights.find(
+						(light) => light.shadow!.camera !== undefined && light.shadow!.camera === camera,
+					)
+				: undefined;
 		// The enclosing render begins a new batch. r187's point cube submits six
 		// faces through this same camera before the outer render returns; the
 		// first face is the pass, and every call is one map face.
@@ -170,7 +173,7 @@ export function createShadowInvalidation(options: ShadowInvalidationOptions): Sh
 			if (!submitted.has(submitting)) {
 				submitted.add(submitting);
 				passes += 1;
-				// The work counter mirrors `stats().passes`: one real shadow pass,
+				// The work counter mirrors `stats.passes`: one real shadow pass,
 				// never the enclosing frame and never a request that rendered nothing.
 				countWork('render:shadow-update');
 			}
@@ -210,7 +213,7 @@ export function createShadowInvalidation(options: ShadowInvalidationOptions): Sh
 			disposed = true;
 			renderer.render = originalRender;
 			for (const light of castingLights()) light.shadow!.autoUpdate = true;
-		}
+		},
 	};
 
 	return controller;

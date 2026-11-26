@@ -50,7 +50,7 @@ import type {
 	SpotLightDescriptor,
 	SunLightDescriptor
 } from '$lib/render/resources/light-descriptor';
-import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from '../layout/__fixtures__/layout-scale-fixtures';
+import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from '../../../../../packages/layout-core/tests/__fixtures__/layout-scale-fixtures';
 
 /** The Sun the Sky realizes: it always casts, with its complete shadow configuration. */
 const SUN: SunLightDescriptor = {

@@ -16,7 +16,7 @@ import { planWallRemovalSet } from './removal';
  */
 export function roomExclusiveBoundaryWallIds(
 	document: LayoutDocumentWallFirst,
-	roomId: string
+	roomId: string,
 ): string[] {
 	const room = document.rooms.find((candidate) => candidate.id === roomId);
 	if (!room) return [];
@@ -31,7 +31,6 @@ export function roomExclusiveBoundaryWallIds(
 	return [...boundaryWallIds].filter((wallId) => !sharedWallIds.has(wallId));
 }
 
-
 /**
  * Canonical "Remove Room": remove the Room and its exclusive
  * enclosure Walls in one atomic operation while preserving shared physical
@@ -44,21 +43,21 @@ export function roomExclusiveBoundaryWallIds(
  * geometry:
  *
  * - every boundary Wall referenced by **no other** Room is removed — for a
- *   standalone drawn Room that is its entire boundary, so nothing (no open
- *   shell of leftover Walls) survives the command;
+ *  standalone drawn Room that is its entire boundary, so nothing (no open
+ *  shell of leftover Walls) survives the command;
  * - a Wall **shared** with a neighbouring Room is kept: it is one physical
- *   Wall the neighbour still needs, and removing the Room's exclusive Walls
- *   still opens its enclosure, so it retires through normal P23.8
- *   reconciliation;
+ *  Wall the neighbour still needs, and removing the Room's exclusive Walls
+ *  still opens its enclosure, so it retires through normal
+ *  reconciliation;
  * - a Room whose every boundary Wall is shared (a fully interior Room) owns
- *   nothing alone, so it rejects `ambiguous_room_removal` rather than silently
- *   demolishing a neighbour's Walls;
+ *  nothing alone, so it rejects `ambiguous_room_removal` rather than silently
+ *  demolishing a neighbour's Walls;
  * - a boundary reference to a missing Wall rejects `wall_not_in_room_boundary`.
  *
  * This is still never a `LayoutRoom` record splice (the Room-identity
  * invariant forbids a boundary-less Room). Hosted Openings of the removed
  * Walls go atomically, endpoint Junctions prune reference-only, and portal/
- * object associations remap/clear per the existing P23.8 contract. Ambiguous
+ * object associations remap/clear per the existing contract. Ambiguous
  * or unsupported topology rejects atomically with zero history; the planner is
  * input-pure.
  */
@@ -66,36 +65,40 @@ export function planRemoveRoom(
 	document: LayoutDocumentWallFirst,
 	roomId: string,
 	capture: LayoutIdCapture,
-	levelId: string
+	levelId: string,
 ): WallFirstOpPlan {
-	const reject = (rejection: WallFirstOpRejection): WallFirstOpPlan => ({ kind: 'rejected', rejection });
+	const reject = (rejection: WallFirstOpRejection): WallFirstOpPlan => ({
+		kind: 'rejected',
+		rejection,
+	});
 	const levelIssue = layoutWorkingLevelIssue(document, levelId);
-	if (levelIssue !== null) return reject({ code: 'invalid_value', message: levelIssue, roomIds: [roomId] });
+	if (levelIssue !== null)
+		return reject({ code: 'invalid_value', message: levelIssue, roomIds: [roomId] });
 	const room = document.rooms.find((candidate) => candidate.id === roomId);
 	if (!room) {
 		return reject({
 			code: 'unknown_room',
 			message: `Unknown room '${roomId}'`,
-			roomIds: [roomId]
+			roomIds: [roomId],
 		});
 	}
 	if (room.boundary.length === 0) {
 		return reject({
 			code: 'ambiguous_room_removal',
 			message: `Room '${roomId}' has no boundary Walls to remove`,
-			roomIds: [roomId]
+			roomIds: [roomId],
 		});
 	}
 	const boundaryWallIds = [...new Set(room.boundary.map((ref) => ref.wallId))];
 	const missing = boundaryWallIds.filter(
-		(wallId) => !document.walls.some((wall) => wall.id === wallId)
+		(wallId) => !document.walls.some((wall) => wall.id === wallId),
 	);
 	if (missing.length > 0) {
 		return reject({
 			code: 'wall_not_in_room_boundary',
 			message: `Room '${roomId}' references unknown Walls: ${missing.join(', ')}`,
 			wallIds: missing,
-			roomIds: [roomId]
+			roomIds: [roomId],
 		});
 	}
 	const exclusiveWallIds = roomExclusiveBoundaryWallIds(document, roomId);
@@ -104,22 +107,29 @@ export function planRemoveRoom(
 			code: 'ambiguous_room_removal',
 			message: `Every boundary Wall of room '${roomId}' is shared with a neighbouring room; delete the shared Walls explicitly`,
 			roomIds: [roomId],
-			wallIds: boundaryWallIds
+			wallIds: boundaryWallIds,
 		});
 	}
 	try {
 		return planWallRemovalSet(document, exclusiveWallIds, capture, {
 			invalidOutline: 'reject',
-			retireRoomIds: [roomId]
+			retireRoomIds: [roomId],
 		});
 	} catch (error) {
 		if (error instanceof LayoutIdCollisionError) {
-			return { kind: 'rejected', rejection: { code: 'captured_id_in_use', message: error.message, wallIds: exclusiveWallIds, roomIds: [roomId] } };
+			return {
+				kind: 'rejected',
+				rejection: {
+					code: 'captured_id_in_use',
+					message: error.message,
+					wallIds: exclusiveWallIds,
+					roomIds: [roomId],
+				},
+			};
 		}
 		throw error;
 	}
 }
-
 
 /**
  * Canonical **Remove space**: remove one open Space record without demolishing
@@ -131,11 +141,15 @@ export function planRemoveRoom(
 export function planRemoveSpace(
 	document: LayoutDocumentWallFirst,
 	roomId: string,
-	levelId: string
+	levelId: string,
 ): WallFirstOpPlan {
-	const reject = (rejection: WallFirstOpRejection): WallFirstOpPlan => ({ kind: 'rejected', rejection });
+	const reject = (rejection: WallFirstOpRejection): WallFirstOpPlan => ({
+		kind: 'rejected',
+		rejection,
+	});
 	const levelIssue = layoutWorkingLevelIssue(document, levelId);
-	if (levelIssue !== null) return reject({ code: 'invalid_value', message: levelIssue, roomIds: [roomId] });
+	if (levelIssue !== null)
+		return reject({ code: 'invalid_value', message: levelIssue, roomIds: [roomId] });
 	const room = document.rooms.find((candidate) => candidate.id === roomId);
 	if (!room) {
 		return reject({ code: 'unknown_room', message: `Unknown room '${roomId}'`, roomIds: [roomId] });
@@ -144,7 +158,7 @@ export function planRemoveSpace(
 		return reject({
 			code: 'not_open_space',
 			message: `Room '${roomId}' is enclosed; Remove space applies to open Spaces only`,
-			roomIds: [roomId]
+			roomIds: [roomId],
 		});
 	}
 
@@ -163,9 +177,9 @@ export function planRemoveSpace(
 		...document,
 		rooms: document.rooms.filter((candidate) => candidate.id !== roomId),
 		objects: document.objects.map((object) =>
-			object.roomId === roomId ? { ...object, roomId: undefined } : object
+			object.roomId === roomId ? { ...object, roomId: undefined } : object,
 		),
-		openings
+		openings,
 	};
 	const referencedJunctionIds = new Set<string>();
 	for (const wall of candidate.walls) {
@@ -179,7 +193,7 @@ export function planRemoveSpace(
 		}
 	}
 	candidate.junctions = document.junctions.filter(
-		(junction) => !releasedJunctionIds.has(junction.id) || referencedJunctionIds.has(junction.id)
+		(junction) => !releasedJunctionIds.has(junction.id) || referencedJunctionIds.has(junction.id),
 	);
 
 	return validateAndCompile(candidate, reject, (committed) => ({
@@ -188,16 +202,15 @@ export function planRemoveSpace(
 		lineage: [],
 		surfaceLineage: [],
 		retiredRoomIds: [roomId],
-		spaceRetirements: [{ roomId, reason: 'explicit-remove' }]
+		spaceRetirements: [{ roomId, reason: 'explicit-remove' }],
 	}));
 }
-
 
 /**
  * Convenience geometry helper for callers/tests: the submitted wall chain
  * as an untyped rectangle-equivalent seed list, so fixtures can build
  * closed chains without hand-writing junction arrays. Production callers
- * assemble junctions/walls through the P23.8 noding plans instead.
+ * assemble junctions/walls through the noding plans instead.
  */
 export function closedChainWalls(options: {
 	junctions: ReadonlyArray<readonly [string, number, number]>;
@@ -220,7 +233,7 @@ export function closedChainWalls(options: {
 			endJunctionId: end,
 			thickness,
 			height,
-			centerline: { kind: 'line' } as const
-		}))
+			centerline: { kind: 'line' } as const,
+		})),
 	};
 }

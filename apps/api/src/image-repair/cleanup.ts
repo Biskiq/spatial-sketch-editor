@@ -25,7 +25,7 @@ export async function expireAbandonedImageRepairs(
 	db: Pick<DatabasePool, 'query'>,
 	store: ObjectStore | undefined,
 	projectId: string,
-	ownerId: string
+	ownerId: string,
 ): Promise<number> {
 	if (!store) return 0;
 	const claimed = await queryRows<AbandonedAttemptRow>(
@@ -38,7 +38,7 @@ export async function expireAbandonedImageRepairs(
 SELECT c.id, c.staging_key AS "stagingKey",
 	EXISTS (SELECT 1 FROM assets a WHERE a.object_key = c.staging_key) AS referenced
 FROM claimed c`,
-		[projectId, ownerId]
+		[projectId, ownerId],
 	);
 	for (const row of claimed) {
 		if (row.referenced === true) continue;

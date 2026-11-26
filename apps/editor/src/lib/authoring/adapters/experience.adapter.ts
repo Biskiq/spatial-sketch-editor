@@ -2,7 +2,7 @@
  * The Experience adapter.
  *
  * It registers the Experience planners with the one F.4 coordinator and
- * contributes the Experience task and Find entry through the AM-5 contribution points.
+ * contributes the Experience task and Find entry through the contribution points.
  * The authoring homes (the Index groups, the Card writers and the Guide instrument) are
  * mounted once by the route's Experience lens, not here: a second contribution would put
  * two draft editors over one accepted source. It edits no host core, route or shell module, and it owns no selection,
@@ -26,7 +26,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 		const registration = services.authoring.registerPlanner(planner);
 		if (registration.kind !== 'registered') {
 			throw new Error(
-				`Experience adapter planner "${planner.kind}" was refused: ${registration.reason} — ${registration.message}`
+				`Experience adapter planner "${planner.kind}" was refused: ${registration.reason} — ${registration.message}`,
 			);
 		}
 	}
@@ -43,8 +43,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				// lens refuses Resume, and stacking both would show two controls that
 				// cannot act on each other.
 				lens: 'experience',
-				order: 1
-			}
+				order: 1,
+			},
 		],
 		findEntries: [
 			{
@@ -53,16 +53,16 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				label: 'Experience authoring',
 				railFamily: 'experience',
 				capability: 'experience',
-				order: 1
-			}
+				order: 1,
+			},
 		],
 		instrument() {
 			// Exactly one writable Experience surface exists: the lens. Contributing a
 			// second copy here would put two draft editors over one accepted source.
 			return {
-				summary: 'Experience authoring is edited in the Experience lens.'
+				summary: 'Experience authoring is edited in the Experience lens.',
 			};
-		}
+		},
 	};
 	return adapter;
 };

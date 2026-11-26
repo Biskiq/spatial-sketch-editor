@@ -51,6 +51,4 @@ export {
 	probeArtworkImage,
 } from '../artwork-image';
 
-export type {
-	ArtworkMime,
-} from '../artwork-image';
+export type { ArtworkMime } from '../artwork-image';

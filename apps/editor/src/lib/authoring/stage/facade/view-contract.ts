@@ -1,17 +1,45 @@
-import type { InspectionPose, PointerRay, PointerRayResult, ProjectWorldResult, ViewingIntent, ViewportEvaluation, WorkingPlane, WorkingPlaneHit } from '@portfolio/camera-core/viewport';
+import type {
+	InspectionPose,
+	PointerRay,
+	PointerRayResult,
+	ProjectWorldResult,
+	ViewingIntent,
+	ViewportEvaluation,
+	WorkingPlane,
+	WorkingPlaneHit,
+} from '@portfolio/camera-core/viewport';
 import type { Vec3 } from '@portfolio/camera-core/camera';
 import type { PlanEvaluationResult, PlanFragment } from '@portfolio/layout-core/world';
-import type { CameraOutputClaim, CameraOutputDecision, CameraOutputPolicy, CameraOutputTicket } from '@portfolio/project-model/channels';
+import type {
+	CameraOutputClaim,
+	CameraOutputDecision,
+	CameraOutputPolicy,
+	CameraOutputTicket,
+} from '@portfolio/project-model/channels';
 import type { StageReadSnapshot } from '../accepted-read';
 import type { CameraSession } from '../camera-session';
 import type { PlanParameterOverrides } from '../plan-parameters';
 import type { EntryRequalification } from '../selection-requalification';
-import type { StageSelectionChange, StageSelectionEntry, StageSelectionState } from '../semantic-selection';
+import type {
+	StageSelectionChange,
+	StageSelectionEntry,
+	StageSelectionState,
+} from '../semantic-selection';
 import type { StageDraftingPatch, StageDraftingState } from '../stage-drafting';
 import type { StageHandleDiagnostic, StageMarkHit, StageMarkView } from '../stage-handles';
 import type { StageHeightSheet, StageHeightTick } from '../stage-height-sheet';
 import type { StageLightPreview } from '../stage-light-preview.svelte';
-import type { GestureAcquisition, SelectionRemoval, SelectionRequalification, SelectionRequalificationOutcome, StageLens, StageSelection, StageSession, StageTask, TaskResumeOutcome } from '../stage-session';
+import type {
+	GestureAcquisition,
+	SelectionRemoval,
+	SelectionRequalification,
+	SelectionRequalificationOutcome,
+	StageLens,
+	StageSelection,
+	StageSession,
+	StageTask,
+	TaskResumeOutcome,
+} from '../stage-session';
 import type { SKIP_REBIND_CONTROL } from './adapter-bindings';
 import type {
 	StageAdapter,
@@ -40,7 +68,7 @@ import type {
 	StageSourceHit,
 	StageSubject,
 	StageTaskEntry,
-	StageWorldGraphic
+	StageWorldGraphic,
 } from './adapter-contract';
 
 export type ResolvedStageHit =
@@ -61,7 +89,15 @@ export type ResolvedStageHit =
 	| { readonly kind: 'none'; readonly reason: 'no-fragment' }
 	| {
 			readonly kind: 'failed';
-			readonly code: 'stale-evaluation' | 'invalid-css-point' | 'invalid-viewport' | 'degenerate-ray' | 'parallel' | 'behind' | 'outside-supported-domain' | 'invalid-frame';
+			readonly code:
+				| 'stale-evaluation'
+				| 'invalid-css-point'
+				| 'invalid-viewport'
+				| 'degenerate-ray'
+				| 'parallel'
+				| 'behind'
+				| 'outside-supported-domain'
+				| 'invalid-frame';
 	  };
 
 /**
@@ -89,7 +125,10 @@ export type StageGuideView = {
 	readonly id: string;
 	readonly role: StageGuideContribution['role'];
 	readonly segments: readonly (readonly [readonly [number, number], readonly [number, number]])[];
-	readonly derivedSegments: readonly (readonly [readonly [number, number], readonly [number, number]])[];
+	readonly derivedSegments: readonly (readonly [
+		readonly [number, number],
+		readonly [number, number],
+	])[];
 	readonly labels: readonly { readonly css: readonly [number, number]; readonly text: string }[];
 };
 
@@ -144,7 +183,11 @@ export type StageContentInstall =
 			readonly requalification: SelectionRequalificationOutcome;
 			readonly selectionRemovals: readonly SelectionRemoval[];
 	  }
-	| { readonly kind: 'unchanged'; readonly sourceContentId: string; readonly claim: CameraOutputClaim | null }
+	| {
+			readonly kind: 'unchanged';
+			readonly sourceContentId: string;
+			readonly claim: CameraOutputClaim | null;
+	  }
 	| {
 			readonly kind: 'refused';
 			readonly code: 'disposed' | 'no-current-source' | 'different-project' | 'stale-session';
@@ -164,9 +207,17 @@ export type StageFacade = {
 	sceneBounds(id: string): { readonly min: Vec3; readonly max: Vec3 } | null;
 	projectWorld(point: unknown, evaluationId: string): ProjectWorldResult;
 	pointerRay(cssPoint: unknown, evaluationId: string): PointerRayResult;
-	intersectWorkingPlane(ray: PointerRay, plane: WorkingPlane, evaluationId: string): WorkingPlaneHit;
+	intersectWorkingPlane(
+		ray: PointerRay,
+		plane: WorkingPlane,
+		evaluationId: string,
+	): WorkingPlaneHit;
 	/** Submit a viewing intent; the run must present the current inspection ticket. */
-	requestViewingIntent(intent: ViewingIntent, ticket: CameraOutputTicket | null, clockSeconds: number): StageIntentResult;
+	requestViewingIntent(
+		intent: ViewingIntent,
+		ticket: CameraOutputTicket | null,
+		clockSeconds: number,
+	): StageIntentResult;
 	/** Acquire the host's own inspection claim on the current output at the current pose. */
 	acquireInspection(policy?: CameraOutputPolicy): CameraOutputDecision;
 	/** The live inspection claim, or `null` while the output is free. */
@@ -191,13 +242,13 @@ export type StageFacade = {
 			 * when the host does not rebuild factory bindings.
 			 */
 			readonly [SKIP_REBIND_CONTROL]?: true;
-		}
+		},
 	): StageContentInstall;
 	/** Update project-level metadata without rebinding domain semantics or clearing selection. */
 	adoptMetadata(next: StageReadSnapshot): ReturnType<StageSession['adoptMetadata']>;
 	plan(overrides?: PlanParameterOverrides): PlanEvaluationResult;
 	/**
-	 * A string that changes exactly when `plan()` would produce a different
+	 * A string that changes exactly when `plan` would produce a different
 	 * evaluation.
 	 *
 	 * A presenter caches on **this**, not on its own guess. The Plan's inputs are the
@@ -223,15 +274,24 @@ export type StageFacade = {
 	resolveSourceHit(candidate: StageHitCandidate): ResolvedStageHit;
 	resolvePick(query: StagePickQuery, toolOwner?: string | null): ResolvedStageHit;
 	/** The one host-tool winner (with its owning adapter) at a Stage-local point. */
-	hostToolTarget(query: StageHitCandidate & { readonly tool: string; readonly coarse?: boolean }): StageHostToolTarget;
+	hostToolTarget(
+		query: StageHitCandidate & { readonly tool: string; readonly coarse?: boolean },
+	): StageHostToolTarget;
 	/** The owning binding's erase answer for its own winner. */
 	eraseAnswer(adapterId: string, hit: StageSourceHit): StageEraseAnswer | null;
 	/** The owning binding's Paint answer for its own winner. */
-	paintAnswer(adapterId: string, hit: StageSourceHit, reading: StagePaintReading): StagePaintAnswer | null;
+	paintAnswer(
+		adapterId: string,
+		hit: StageSourceHit,
+		reading: StagePaintReading,
+	): StagePaintAnswer | null;
 	/** Admitted selected-subject marks, then any current domain idle-hover marks. */
 	marks(): readonly StageMarkView[];
 	/** The mark under a Stage-local CSS point, or `null`. */
-	hitMark(query: { readonly css: readonly [number, number]; readonly coarse: boolean }): StageMarkHit | null;
+	hitMark(query: {
+		readonly css: readonly [number, number];
+		readonly coarse: boolean;
+	}): StageMarkHit | null;
 	/** Update idle-hover contributors and return their mark at this pointer, if any. */
 	idleHoverIntent(intent: StagePointerIntent): StageMarkHit | null;
 	/** Hover emphasis for one mark; never selection, history or source. */
@@ -272,9 +332,10 @@ export type StageFacade = {
 	 * deterministic order wins. A throwing begin refuses rather than degrading the
 	 * Stage, exactly as a throwing contributor does elsewhere in this host.
 	 */
-	openInkReading(id: string, adapterId?: string):
-		| { readonly reading: StageInkReadingRecord; readonly session: StageInkReadingSession }
-		| null;
+	openInkReading(
+		id: string,
+		adapterId?: string,
+	): { readonly reading: StageInkReadingRecord; readonly session: StageInkReadingSession } | null;
 	/**
 	 * Open one contributed task by its contribution ID.
 	 *
@@ -284,7 +345,10 @@ export type StageFacade = {
 	 */
 	instrumentForTask(id: string, adapterId?: string): StageInstrumentContent | null;
 	openFindEntry(adapterId: string, id: string): ReturnType<StageFacade['openContributedTask']>;
-	openContributedTask(id: string, adapterId?: string):
+	openContributedTask(
+		id: string,
+		adapterId?: string,
+	):
 		| {
 				readonly kind: 'opened';
 				readonly taskId: string;
@@ -293,7 +357,11 @@ export type StageFacade = {
 				/** Content the owning adapter contributes for the mounted instrument. */
 				readonly instrument: StageInstrumentContent | null;
 		  }
-		| { readonly kind: 'refused'; readonly code: 'unknown-task' | 'task-closed' | 'wrong-lens'; readonly message: string };
+		| {
+				readonly kind: 'refused';
+				readonly code: 'unknown-task' | 'task-closed' | 'wrong-lens';
+				readonly message: string;
+		  };
 	/** Every contributed Find entry, ordered deterministically and stamped with its adapter. */
 	findEntries(): readonly StageFindEntryRecord[];
 	subjects(): readonly StageSubject[];
@@ -317,26 +385,38 @@ export type StageFacade = {
 	 * Offer a press to the binding that owns the open task. Returns the adapter
 	 * that claimed it, or `null` when the host's navigation gesture keeps it.
 	 */
-	pointerIntent(intent: StagePointerIntent): { readonly claimed: boolean; readonly adapterId: string | null };
+	pointerIntent(intent: StagePointerIntent): {
+		readonly claimed: boolean;
+		readonly adapterId: string | null;
+	};
 	hoverIntent(intent: StagePointerIntent): boolean;
 	/**
 	 * Offer a command key to the binding that owns the open task. Returns the
 	 * adapter that answered it, or `null` when the host's own unwinding keeps it.
 	 */
-	keyboardIntent(intent: StageKeyboardIntent): { readonly claimed: boolean; readonly adapterId: string | null };
+	keyboardIntent(intent: StageKeyboardIntent): {
+		readonly claimed: boolean;
+		readonly adapterId: string | null;
+	};
 	/**
 	 * Offer a command/typing key to the adapter that claimed the live no-task
 	 * press. This is the gesture's own writer path; a task's keys still travel
 	 * through `keyboardIntent`.
 	 */
-	gestureKeyIntent(intent: StageKeyboardIntent): { readonly claimed: boolean; readonly adapterId: string | null };
+	gestureKeyIntent(intent: StageKeyboardIntent): {
+		readonly claimed: boolean;
+		readonly adapterId: string | null;
+	};
 	/**
 	 * Offer a command key to the registered adapters when neither an open task nor
 	 * a live press owns the keyboard. A selected subject's adapter can claim a
 	 * key it has a scoped meaning for (Delete/Backspace on an active bend
 	 * point); every other adapter leaves it to the host's existing map.
 	 */
-	selectionKeyIntent(intent: StageKeyboardIntent): { readonly claimed: boolean; readonly adapterId: string | null };
+	selectionKeyIntent(intent: StageKeyboardIntent): {
+		readonly claimed: boolean;
+		readonly adapterId: string | null;
+	};
 	/**
 	 * Ask the shell to re-read contributions now. An adapter that changes preview
 	 * state (a candidate pose) calls this so the overlay reflects it without a

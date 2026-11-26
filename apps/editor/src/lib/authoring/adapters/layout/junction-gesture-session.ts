@@ -1,13 +1,28 @@
 import { planarDeltaLabel } from '$lib/authoring/stage/stage-adapter-host';
-import { mintLayoutIdCapture, type LayoutSurfaceLineage, type LayoutIdCapture } from '@portfolio/layout-core/plan';
-import { planDissolveJunction, proposeWallFirstArchitectureGeometry, type WallFirstArchitectureProposalWall, type FixedWallEndpoint, type LayoutDocumentWallFirst, wallCenterlinePoints } from '@portfolio/layout-core/wall';
+import {
+	mintLayoutIdCapture,
+	type LayoutSurfaceLineage,
+	type LayoutIdCapture,
+} from '@portfolio/layout-core/plan';
+import {
+	planDissolveJunction,
+	proposeWallFirstArchitectureGeometry,
+	type WallFirstArchitectureProposalWall,
+	type FixedWallEndpoint,
+	type LayoutDocumentWallFirst,
+	wallCenterlinePoints,
+} from '@portfolio/layout-core/wall';
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 import {
 	type StageAdapterContext,
-	type StagePointerIntent
+	type StagePointerIntent,
 } from '$lib/authoring/stage/stage-adapter-host';
-import { stageEnvelope, stageLayout, stageUnitRevision } from '$lib/authoring/stage/stage-adapter-host';
+import {
+	stageEnvelope,
+	stageLayout,
+	stageUnitRevision,
+} from '$lib/authoring/stage/stage-adapter-host';
 import type { GestureAcquisition } from '$lib/authoring/stage/stage-adapter-host';
 
 import { wallJoinRefusalWords, wallRefusalWords } from './refusals';
@@ -18,7 +33,7 @@ import {
 	planNumericEntryField,
 	planNumericEntrySubmit,
 	planNumericFields,
-	type PlanNumericEntryState
+	type PlanNumericEntryState,
 } from '$lib/authoring/layout/plan-numeric-entry';
 import type { WallManipulationRequest } from './precision-frames';
 import { LAYOUT_JUNCTION_MOVE_KIND, layoutSurfaceLineageConsequence } from './precision';
@@ -27,7 +42,7 @@ import {
 	DRAFTING_SNAP_METERS,
 	draftingSnapIncrementMeters,
 	snapDraftingPlacement,
-	snapDraftingPoint
+	snapDraftingPoint,
 } from '$lib/authoring/stage/stage-adapter-host';
 import { type CandidatePaperGeometry, candidatePreviewOf } from './candidate-preview';
 import { selectedWall } from './layout-subjects';
@@ -41,7 +56,7 @@ import {
 	previewCoordinates,
 	wallProposalPaper,
 	type LayoutManipulationPorts,
-	type NumericGestureTarget
+	type NumericGestureTarget,
 } from './manipulation-support';
 
 /** One unselected Junction gesture admitted from the Plan-only hover mark. */
@@ -92,10 +107,10 @@ const JOINT_REMOVE_LEAVE_METERS = 0.3;
 /** The two Walls a degree-2 Joint joins, with each one's far endpoint. */
 function degreeTwoPair(
 	document: LayoutDocumentWallFirst,
-	junctionId: string
+	junctionId: string,
 ): { readonly firstFar: LayoutVec2; readonly secondFar: LayoutVec2 } | null {
 	const incident = document.walls.filter(
-		(wall) => wall.startJunctionId === junctionId || wall.endJunctionId === junctionId
+		(wall) => wall.startJunctionId === junctionId || wall.endJunctionId === junctionId,
 	);
 	if (incident.length !== 2) return null;
 	const farOf = (wall: LayoutDocumentWallFirst['walls'][number]): LayoutVec2 | null => {
@@ -124,7 +139,7 @@ function degreeTwoPair(
 function jointRemovalArmed(
 	gesture: JunctionHoverGesture,
 	document: LayoutDocumentWallFirst,
-	point: LayoutVec2
+	point: LayoutVec2,
 ): boolean {
 	const pair = degreeTwoPair(document, gesture.junctionId);
 	if (pair === null) return false;
@@ -150,8 +165,8 @@ function joinedPreview(plan: {
 	return [
 		{
 			wallId: joined.id,
-			points: wallCenterlinePoints(joined.centerline, start.point, end.point, 'forward')
-		}
+			points: wallCenterlinePoints(joined.centerline, start.point, end.point, 'forward'),
+		},
 	];
 }
 type IdleJunctionHover = {
@@ -166,14 +181,14 @@ export function createJunctionGestureSession({
 	document,
 	publishRefusal,
 	settleRefusal,
-	commit
+	commit,
 }: LayoutManipulationPorts & {
 	readonly commit: (
 		request: WallManipulationRequest,
 		fixed: FixedWallEndpoint,
 		wallId: string,
 		point?: LayoutVec2 | null,
-		attemptGeometry?: CandidatePaperGeometry | null
+		attemptGeometry?: CandidatePaperGeometry | null,
 	) => Promise<void>;
 }) {
 	let junctionGesture: JunctionHoverGesture | null = null;
@@ -183,7 +198,8 @@ export function createJunctionGestureSession({
 		const current = junctionGesture;
 		junctionGesture = null;
 		idleJunctionHover = null;
-		if (current?.lease?.kind === 'granted' && current.lease.lease.active) current.lease.lease.release();
+		if (current?.lease?.kind === 'granted' && current.lease.lease.active)
+			current.lease.lease.release();
 	}
 	/** A hovered Junction may address any one of its existing incident Walls. */
 	function incidentWallIds(junctionId: string): readonly string[] {
@@ -201,7 +217,7 @@ export function createJunctionGestureSession({
 	function updateIdleJunctionHover(
 		intent: StagePointerIntent,
 		adapterContext: StageAdapterContext,
-		blocked: boolean
+		blocked: boolean,
 	): boolean {
 		const previous = idleJunctionHover;
 		if (intent.phase === 'cancel') {
@@ -228,7 +244,8 @@ export function createJunctionGestureSession({
 			const junctionId = junction.junctionId;
 			if (
 				selected !== null &&
-				(junctionId === selected.frame.startJunctionId || junctionId === selected.frame.endJunctionId)
+				(junctionId === selected.frame.startJunctionId ||
+					junctionId === selected.frame.endJunctionId)
 			)
 				continue;
 			const wallIds = incidentWallIds(junctionId);
@@ -237,12 +254,12 @@ export function createJunctionGestureSession({
 			const projected = adapterContext.project([
 				junction.point[0],
 				adapterContext.snapshot.domain.datumMeters,
-				junction.point[1]
+				junction.point[1],
 			]);
 			if (projected === null) continue;
 			const local: LayoutVec2 = [
 				projected[0] - adapterContext.evaluation.rect.left,
-				projected[1] - adapterContext.evaluation.rect.top
+				projected[1] - adapterContext.evaluation.rect.top,
 			];
 			const distanceCss = Math.hypot(intent.css[0] - local[0], intent.css[1] - local[1]);
 			if (distanceCss > 10) continue;
@@ -250,12 +267,13 @@ export function createJunctionGestureSession({
 				junctionId,
 				point: [junction.point[0], junction.point[1]] as LayoutVec2,
 				wallId,
-				wallIds
+				wallIds,
 			};
 			if (
 				nearest === null ||
 				distanceCss < nearest.distanceCss ||
-				(distanceCss === nearest.distanceCss && junctionId.localeCompare(nearest.value.junctionId) < 0)
+				(distanceCss === nearest.distanceCss &&
+					junctionId.localeCompare(nearest.value.junctionId) < 0)
 			)
 				nearest = { value, distanceCss };
 		}
@@ -272,7 +290,7 @@ export function createJunctionGestureSession({
 	function idleJunctionHandles(
 		adapterContext: StageAdapterContext,
 		taskOpen: boolean,
-		refusal: string | null
+		refusal: string | null,
 	): readonly StageHandleDescriptor[] {
 		if (taskOpen || services.stage.session.task() !== null) return [];
 		if (adapterContext.evaluation.renderedReading !== 'plan') return [];
@@ -316,10 +334,10 @@ export function createJunctionGestureSession({
 							? planarDeltaLabel(0, 0)
 							: planarDeltaLabel(
 									active.request.point[0] - active.startPoint[0],
-									active.request.point[1] - active.startPoint[1]
+									active.request.point[1] - active.startPoint[1],
 								)),
-				refusal: active === null ? null : refusal
-			}
+				refusal: active === null ? null : refusal,
+			},
 		];
 	}
 
@@ -338,11 +356,11 @@ export function createJunctionGestureSession({
 				projectId: snapshot.acceptedRevision.projectId,
 				revisionId: services.authoring.acceptedRevision().revisionId,
 				contentRevision: stageUnitRevision(snapshot, 'layout'),
-				levelId: snapshot.domain.layoutLevelId
-			})
+				levelId: snapshot.domain.layoutLevelId,
+			}),
 		);
 		publishRefusal(
-			outcome.kind === 'refused' ? wallJoinRefusalWords(outcome.code, outcome.message) : null
+			outcome.kind === 'refused' ? wallJoinRefusalWords(outcome.code, outcome.message) : null,
 		);
 		services.stage.notifySurfaceChange();
 	}
@@ -356,7 +374,8 @@ export function createJunctionGestureSession({
 			!document.walls.some(
 				(wall) =>
 					wall.id === wallId &&
-					(wall.startJunctionId === hovered.junctionId || wall.endJunctionId === hovered.junctionId)
+					(wall.startJunctionId === hovered.junctionId ||
+						wall.endJunctionId === hovered.junctionId),
 			)
 		) {
 			idleJunctionHover = null;
@@ -367,7 +386,7 @@ export function createJunctionGestureSession({
 		const acquisition = services.stage.acquireGesture({
 			owner: 'layout-precision',
 			evaluationId: intent.evaluationId,
-			policy: 'cancel-on-reading-change'
+			policy: 'cancel-on-reading-change',
 		});
 		if (acquisition.kind !== 'granted') return false;
 		const baseline = stageLayout(adapterContext.snapshot);
@@ -392,7 +411,7 @@ export function createJunctionGestureSession({
 			removal: false,
 			leftRemovalZone: false,
 			joinPreview: null,
-			dragged: false
+			dragged: false,
 		};
 		idleJunctionHover = null;
 		services.stage.notifySurfaceChange();
@@ -418,7 +437,7 @@ export function createJunctionGestureSession({
 		const drafting = adapterContext.drafting();
 		const aimed: LayoutVec2 = [
 			junctionGesture.startPoint[0] + (point[0] - junctionGesture.pressPoint[0]),
-			junctionGesture.startPoint[1] + (point[1] - junctionGesture.pressPoint[1])
+			junctionGesture.startPoint[1] + (point[1] - junctionGesture.pressPoint[1]),
 		];
 		const gridPoint = snapDraftingPoint(aimed, drafting);
 		const snap =
@@ -435,7 +454,7 @@ export function createJunctionGestureSession({
 		// words, and release writes nothing.
 		const armed = jointRemovalArmed(junctionGesture, document, [
 			snappedPoint[0],
-			snappedPoint[1]
+			snappedPoint[1],
 		] as LayoutVec2);
 		junctionGesture.removal = armed;
 		if (armed) {
@@ -443,7 +462,7 @@ export function createJunctionGestureSession({
 				document,
 				junctionGesture.junctionId,
 				junctionGesture.capture,
-				adapterContext.snapshot.domain.layoutLevelId
+				adapterContext.snapshot.domain.layoutLevelId,
 			);
 			junctionGesture.request = null;
 			junctionGesture.snap = null;
@@ -454,7 +473,7 @@ export function createJunctionGestureSession({
 					proposeWallFirstArchitectureGeometry(document, {
 						kind: 'junction-move',
 						junctionId: junctionGesture.junctionId,
-						point: [snappedPoint[0], snappedPoint[1]] as LayoutVec2
+						point: [snappedPoint[0], snappedPoint[1]] as LayoutVec2,
 					}) ?? null;
 				junctionGesture.refusalPoint = [snappedPoint[0], snappedPoint[1]];
 				publishRefusal(wallJoinRefusalWords(dissolved.rejection.code, dissolved.rejection.message));
@@ -472,7 +491,7 @@ export function createJunctionGestureSession({
 		if (
 			Math.hypot(
 				snappedPoint[0] - junctionGesture.startPoint[0],
-				snappedPoint[1] - junctionGesture.startPoint[1]
+				snappedPoint[1] - junctionGesture.startPoint[1],
 			) < 1e-9
 		) {
 			junctionGesture.request = null;
@@ -487,13 +506,13 @@ export function createJunctionGestureSession({
 		const request = {
 			kind: 'junction' as const,
 			junctionId: junctionGesture.junctionId,
-			point: [snappedPoint[0], snappedPoint[1]] as LayoutVec2
+			point: [snappedPoint[0], snappedPoint[1]] as LayoutVec2,
 		};
 		const attempted =
 			proposeWallFirstArchitectureGeometry(document, {
 				kind: 'junction-move',
 				junctionId: request.junctionId,
-				point: request.point
+				point: request.point,
 			}) ?? null;
 		junctionGesture.attempt = attempted;
 		const planned = junctionGesture.readPreview({ ...request, kind: 'junction-move' });
@@ -538,7 +557,7 @@ export function createJunctionGestureSession({
 				contentRevision: adapterContext.snapshot.domain.unitRevisions.layout,
 				point: junctionGesture.refusalPoint ?? junctionGesture.pointerPoint,
 				text: refusal,
-				...(attemptGeometry === null ? {} : { geometry: attemptGeometry })
+				...(attemptGeometry === null ? {} : { geometry: attemptGeometry }),
 			});
 		}
 		const point = junctionGesture.pointerPoint;
@@ -559,7 +578,7 @@ export function createJunctionGestureSession({
 				host: 'junction',
 				field,
 				ownerId: junction.junctionId,
-				candidates: { x: point[0], z: point[1] }
+				candidates: { x: point[0], z: point[1] },
 			};
 		}
 		return null;
@@ -581,7 +600,7 @@ export function createJunctionGestureSession({
 			const request: WallManipulationRequest = {
 				kind: 'junction',
 				junctionId: junction.junctionId,
-				point: [outcome.values.x ?? point[0], outcome.values.z ?? point[1]]
+				point: [outcome.values.x ?? point[0], outcome.values.z ?? point[1]],
 			};
 			const wallId = junction.wallId;
 			endJunctionGesture();
@@ -613,7 +632,7 @@ export function createJunctionGestureSession({
 					source: stageEnvelope(services.stage.snapshot()),
 					beforeLayout: document,
 					afterLayout: activeJunction.joinPreview.document,
-					lineage: activeJunction.joinPreview.surfaceLineage
+					lineage: activeJunction.joinPreview.surfaceLineage,
 				});
 				return [
 					candidatePreviewOf({
@@ -623,10 +642,10 @@ export function createJunctionGestureSession({
 						labels: [
 							{
 								world: world(activeJunction.pointerPoint ?? activeJunction.startPoint),
-								text: `Remove joint · ${consequence}`
-							}
-						]
-					})
+								text: `Remove joint · ${consequence}`,
+							},
+						],
+					}),
 				];
 			}
 			if (activeJunction.request === null || activeJunction.proposal === null) {
@@ -642,10 +661,10 @@ export function createJunctionGestureSession({
 							labels: [
 								{
 									world: world(activeJunction.refusalPoint ?? activeJunction.pointerPoint),
-									text: refusal
-								}
-							]
-						})
+									text: refusal,
+								},
+							],
+						}),
 					];
 				}
 				return [];
@@ -660,12 +679,12 @@ export function createJunctionGestureSession({
 							world: world(activeJunction.request.point),
 							text: planarDeltaLabel(
 								activeJunction.request.point[0] - activeJunction.startPoint[0],
-								activeJunction.request.point[1] - activeJunction.startPoint[1]
-							)
-						}
+								activeJunction.request.point[1] - activeJunction.startPoint[1],
+							),
+						},
 					],
-					snap: snapOf(activeJunction.snap)
-				})
+					snap: snapOf(activeJunction.snap),
+				}),
 			];
 		}
 		return null;
@@ -690,6 +709,6 @@ export function createJunctionGestureSession({
 		endJunctionGesture,
 		updateIdleJunctionHover,
 		idleJunctionHandles,
-		previews
+		previews,
 	};
 }

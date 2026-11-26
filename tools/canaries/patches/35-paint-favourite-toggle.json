@@ -1,12 +1,10 @@
 {
-  "id": "35-paint-favourite-toggle",
-  "area": "authoring",
-  "citation": "section 3 — selection",
-  "title": "Toggling a favourite adds a duplicate instead of removing it",
-  "file": "apps/editor/src/lib/authoring/look/paint-pick.ts",
-  "find": "return list.includes(key) ? list.filter((entry) => entry !== key) : [...list, key].slice(0, limit);",
-  "replace": "return list.includes(key) ? [...list, key].slice(0, limit) : list.filter((entry) => entry !== key);",
-  "tests": [
-    "tests/lib/authoring/look/paint-pick.test.ts"
-  ]
+	"id": "35-paint-favourite-toggle",
+	"area": "authoring",
+	"citation": "section 3 \u2014 selection",
+	"title": "Toggling a favourite adds a duplicate instead of removing it",
+	"file": "apps/editor/src/lib/authoring/look/paint-pick.ts",
+	"find": "return list.includes(key)\n\t\t? list.filter((entry) => entry !== key)\n\t\t: [...list, key].slice(0, limit);",
+	"replace": "return list.includes(key)\n\t\t? [...list, key].slice(0, limit)\n\t\t: list.filter((entry) => entry !== key);",
+	"tests": ["tests/lib/authoring/look/paint-pick.test.ts"]
 }

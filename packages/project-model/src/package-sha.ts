@@ -11,7 +11,7 @@ export type SynchronousWorkMeasure = <T>(phase: string, work: () => T) => T;
 export async function sha256Bytes(
 	bytes: Uint8Array,
 	measureSync?: SynchronousWorkMeasure,
-	phase = 'sha256'
+	phase = 'sha256',
 ): Promise<string> {
 	// Inert without a work observer (I6): the counters describe the digest's own work,
 	// the optional measure is the owner's Save attribution. Neither replaces the other.

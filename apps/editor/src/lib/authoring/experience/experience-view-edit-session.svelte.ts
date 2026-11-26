@@ -1,5 +1,9 @@
 import { untrack } from 'svelte';
-import { createEditorCameraFramingBasis, createEditorCameraFovDragBasis, evaluateEditorCameraFovDrag } from '../camera/editor-camera-framing';
+import {
+	createEditorCameraFramingBasis,
+	createEditorCameraFovDragBasis,
+	evaluateEditorCameraFovDrag,
+} from '../camera/editor-camera-framing';
 import { axisTravelFromRay } from '../stage/stage-axis-travel';
 import { CAMERA_LENS_OFFSET_METRES } from './experience-camera-mesh';
 import { CAMERA_FRUSTUM_FAR_METRES } from './experience-marks';
@@ -15,7 +19,7 @@ import {
 	yawFromEye,
 	type AdvancedViewFraming,
 	type AuthoredViewPose,
-	type ViewEditKind
+	type ViewEditKind,
 } from './experience-view-edit';
 import type { ExperienceLensHost } from './experience-lens.svelte';
 
@@ -57,7 +61,14 @@ export function createExperienceViewEditSession(ports: ExperienceViewEditPorts) 
 		readonly sourceRevision: string;
 	} | null>(null);
 
-	function viewEditResolver(event: PointerEvent, pose: AuthoredViewPose, kind: ViewEditKind, mark: Element, id: string, advanced: boolean): ViewEditSession['resolve'] | null {
+	function viewEditResolver(
+		event: PointerEvent,
+		pose: AuthoredViewPose,
+		kind: ViewEditKind,
+		mark: Element,
+		id: string,
+		advanced: boolean,
+	): ViewEditSession['resolve'] | null {
 		const stage = ports.host.stage();
 		if (stage === null) return null;
 		const origin = ports.host.absoluteCss(event);
@@ -72,8 +83,11 @@ export function createExperienceViewEditSession(ports: ExperienceViewEditPorts) 
 				if (point === null) return null;
 				const x = pose.eye[0] + point[0] - grab[0];
 				const z = pose.eye[2] + point[2] - grab[2];
-				return moveViewOnFloor(pose, [advanced ? snapViewDrag('move', x, next) : x, datum,
-					advanced ? snapViewDrag('move', z, next) : z]);
+				return moveViewOnFloor(pose, [
+					advanced ? snapViewDrag('move', x, next) : x,
+					datum,
+					advanced ? snapViewDrag('move', z, next) : z,
+				]);
 			};
 		}
 		if (kind === 'turn') {
@@ -86,22 +100,29 @@ export function createExperienceViewEditSession(ports: ExperienceViewEditPorts) 
 				const hit = ports.host.pathAnchorPoint(ports.host.absoluteCss(next), datum);
 				const yaw = hit === null ? null : yawFromEye(pose, hit);
 				if (yaw === null) return null;
-				const degrees = angleDelta(yaw, grab) * 180 / Math.PI;
-				return turnViewAboutEye(pose, snapViewDrag('turn', degrees, next) * Math.PI / 180);
+				const degrees = (angleDelta(yaw, grab) * 180) / Math.PI;
+				return turnViewAboutEye(pose, (snapViewDrag('turn', degrees, next) * Math.PI) / 180);
 			};
 		}
 		if (kind === 'lift') {
 			const travel = (next: PointerEvent, evaluationId: string) => {
 				const result = stage.pointerRay(ports.host.absoluteCss(next), evaluationId);
-				return result.kind !== 'ray' ? null : axisTravelFromRay({
-					origin: [...pose.eye], direction: [0, 1, 0], rayOrigin: result.ray.origin, rayDirection: result.ray.direction
-				});
+				return result.kind !== 'ray'
+					? null
+					: axisTravelFromRay({
+							origin: [...pose.eye],
+							direction: [0, 1, 0],
+							rayOrigin: result.ray.origin,
+							rayDirection: result.ray.direction,
+						});
 			};
 			const grab = travel(event, id);
 			if (grab === null) return null;
 			return (next, evaluationId) => {
 				const distance = travel(next, evaluationId);
-				return distance === null ? null : framed('lift', pose.eye[1] - datum + distance - grab, next);
+				return distance === null
+					? null
+					: framed('lift', pose.eye[1] - datum + distance - grab, next);
 			};
 		}
 		if (kind === 'tilt') {
@@ -122,65 +143,116 @@ export function createExperienceViewEditSession(ports: ExperienceViewEditPorts) 
 			if (grab === null) return null;
 			return (next) => {
 				const current = angle(next);
-				return current === null ? null : framed('lens', planLensFromDrag(pose.fov, grab, current, side), next);
+				return current === null
+					? null
+					: framed('lens', planLensFromDrag(pose.fov, grab, current, side), next);
 			};
 		}
 		const initialRay = stage.pointerRay(origin, id);
-		if (initialRay.kind !== 'ray' || Math.hypot(...pose.target.map((v, i) => v - pose.eye[i]!)) <= 1e-6) return null;
+		if (
+			initialRay.kind !== 'ray' ||
+			Math.hypot(...pose.target.map((v, i) => v - pose.eye[i]!)) <= 1e-6
+		)
+			return null;
 		const basis = createEditorCameraFramingBasis([...pose.eye], [...pose.target]);
 		const forward: StageTriple = [basis.forward.x, basis.forward.y, basis.forward.z];
 		const up: StageTriple = [basis.up.x, basis.up.y, basis.up.z];
 		const depth = CAMERA_FRUSTUM_FAR_METRES;
-		const center = basis.eye.clone().addScaledVector(basis.forward, CAMERA_LENS_OFFSET_METRES + depth);
+		const center = basis.eye
+			.clone()
+			.addScaledVector(basis.forward, CAMERA_LENS_OFFSET_METRES + depth);
 		const plane = {
 			originMeters: [center.x, center.y, center.z] as StageTriple,
 			normal: forward,
 			yawRadians: Math.atan2(forward[0], forward[2]) + Math.PI / 2,
 			datumMeters: null,
-			supportedLocalExtent: null
+			supportedLocalExtent: null,
 		};
 		const grab = stage.intersectWorkingPlane(initialRay.ray, plane, id);
 		const dragBasis = createEditorCameraFovDragBasis({
-			eye: [...pose.eye], forward, up, depth, fov0: pose.fov,
+			eye: [...pose.eye],
+			forward,
+			up,
+			depth,
+			fov0: pose.fov,
 			side: side === 1 ? 'top' : 'bottom',
 			rayDirection: initialRay.ray.direction,
 			p0: grab.kind === 'intersected' ? grab.worldPoint : null,
-			startClientY: event.clientY
+			startClientY: event.clientY,
 		});
 		return (next, evaluationId) => {
 			const ray = stage.pointerRay(ports.host.absoluteCss(next), evaluationId);
 			if (ray.kind !== 'ray') return null;
 			const hit = stage.intersectWorkingPlane(ray.ray, plane, evaluationId);
-			return framed('lens', evaluateEditorCameraFovDrag(
-				dragBasis, hit.kind === 'intersected' ? hit.worldPoint : null,
-				side === -1 && dragBasis.useSlider ? origin[1] * 2 - next.clientY : next.clientY,
-				ray.ray.direction
-			), next);
+			return framed(
+				'lens',
+				evaluateEditorCameraFovDrag(
+					dragBasis,
+					hit.kind === 'intersected' ? hit.worldPoint : null,
+					side === -1 && dragBasis.useSlider ? origin[1] * 2 - next.clientY : next.clientY,
+					ray.ray.direction,
+				),
+				next,
+			);
 		};
 	}
 
-	function beginViewEdit(event: PointerEvent, viewId: string, kind: ViewEditKind, mark: Element): void {
+	function beginViewEdit(
+		event: PointerEvent,
+		viewId: string,
+		kind: ViewEditKind,
+		mark: Element,
+	): void {
 		const stage = ports.host.stage();
 		const controller = ports.host.activeController();
 		const id = stage?.evaluationId() ?? null;
 		const advanced = viewId === ports.advancedViewId();
 		const handleId = mark.getAttribute('data-advanced-handle');
-		if (event.button !== 0 || (!advanced && event.shiftKey) || viewEdit !== null || pendingViewWrite !== null) return;
-		if (stage === null || controller === null || controller.busy || id === null || ports.host.evaluation() === null) return;
+		if (
+			event.button !== 0 ||
+			(!advanced && event.shiftKey) ||
+			viewEdit !== null ||
+			pendingViewWrite !== null
+		)
+			return;
+		if (
+			stage === null ||
+			controller === null ||
+			controller.busy ||
+			id === null ||
+			ports.host.evaluation() === null
+		)
+			return;
 		if (handleId !== null && !advanced) return;
-		if (!advanced && kind === 'move' && ports.host.evaluation()?.projectionKind !== 'plan-orthographic') return;
+		if (
+			!advanced &&
+			kind === 'move' &&
+			ports.host.evaluation()?.projectionKind !== 'plan-orthographic'
+		)
+			return;
 		const facts = controller.viewFacts(viewId);
 		const pose = controller.viewPose(viewId);
 		if (facts === null || pose === null) return;
 		const resolve = viewEditResolver(event, pose, kind, mark, id, advanced);
 		if (resolve === null) return;
-		const acquisition = stage.acquireGesture({ owner: 'experience-view-edit', evaluationId: id, policy: 'cancel-on-reading-change' });
+		const acquisition = stage.acquireGesture({
+			owner: 'experience-view-edit',
+			evaluationId: id,
+			policy: 'cancel-on-reading-change',
+		});
 		if (acquisition.kind !== 'granted') {
-			ports.host.notice(`The ${acquisition.owner} gesture owns the pointer; finish or cancel it first.`);
+			ports.host.notice(
+				`The ${acquisition.owner} gesture owns the pointer; finish or cancel it first.`,
+			);
 			return;
 		}
 		// Advanced handles may go out of frame while held. Capture on the stable Stage.
-		const capture = handleId !== null ? ports.host.stageElement() ?? null : event.target instanceof Element ? event.target : null;
+		const capture =
+			handleId !== null
+				? (ports.host.stageElement() ?? null)
+				: event.target instanceof Element
+					? event.target
+					: null;
 		if (capture === null || !ports.host.capturePointer(capture, event.pointerId)) {
 			acquisition.lease.release();
 			return;
@@ -189,7 +261,10 @@ export function createExperienceViewEditSession(ports: ExperienceViewEditPorts) 
 		ports.host.clearHover();
 		viewEdit = {
 			viewId,
-			presentationId: controller.selectedView?.id === viewId ? controller.selectedView.presentationId : facts.presentationId,
+			presentationId:
+				controller.selectedView?.id === viewId
+					? controller.selectedView.presentationId
+					: facts.presentationId,
 			kind,
 			pointerId: event.pointerId,
 			capture,
@@ -204,7 +279,7 @@ export function createExperienceViewEditSession(ports: ExperienceViewEditPorts) 
 			sourceRevision: controller.sourceRevision,
 			lease: acquisition.lease,
 			resolve,
-			moved: false
+			moved: false,
 		};
 	}
 
@@ -215,20 +290,33 @@ export function createExperienceViewEditSession(ports: ExperienceViewEditPorts) 
 		const distance = Math.hypot(event.clientX - edit.origin[0], event.clientY - edit.origin[1]);
 		const pose = distance < 2 ? edit.start : edit.resolve(event, id);
 		if (pose === null) return;
-		viewEdit = { ...edit, eye: [...pose.eye], target: [...pose.target], fov: pose.fov,
-			pointer: ports.host.stageCss(event), moved: viewEditMoved(edit.kind, edit.start, pose) };
+		viewEdit = {
+			...edit,
+			eye: [...pose.eye],
+			target: [...pose.target],
+			fov: pose.fov,
+			pointer: ports.host.stageCss(event),
+			moved: viewEditMoved(edit.kind, edit.start, pose),
+		};
 	}
 
 	function releaseViewEditPointer(edit: ViewEditSession): void {
-		if (edit.capture.hasPointerCapture?.(edit.pointerId)) edit.capture.releasePointerCapture(edit.pointerId);
+		if (edit.capture.hasPointerCapture?.(edit.pointerId))
+			edit.capture.releasePointerCapture(edit.pointerId);
 		edit.lease.release();
 	}
 
 	function viewEditIsCurrent(edit: ViewEditSession): boolean {
-		return ports.host.stage() !== null && edit.lease.active && ports.host.gestureActive() &&
+		return (
+			ports.host.stage() !== null &&
+			edit.lease.active &&
+			ports.host.gestureActive() &&
 			ports.host.activeController()?.sourceRevision === edit.sourceRevision &&
-			(!edit.advanced || (ports.advancedViewId() === edit.viewId && ports.host.showMarkers() &&
-				(ports.host.showFrustums() || (edit.kind !== 'tilt' && edit.kind !== 'lens'))));
+			(!edit.advanced ||
+				(ports.advancedViewId() === edit.viewId &&
+					ports.host.showMarkers() &&
+					(ports.host.showFrustums() || (edit.kind !== 'tilt' && edit.kind !== 'lens'))))
+		);
 	}
 
 	// Reading/source/selection changes cancel provisional work before it can become a write.
@@ -250,17 +338,30 @@ export function createExperienceViewEditSession(ports: ExperienceViewEditPorts) 
 		if (edit === null) return;
 		const current = viewEditIsCurrent(edit);
 		cancelViewEdit();
-		if (current && edit.moved) await writeViewEdit(edit.viewId, edit.presentationId, edit, edit.sourceRevision);
+		if (current && edit.moved)
+			await writeViewEdit(edit.viewId, edit.presentationId, edit, edit.sourceRevision);
 	}
 
-	async function writeViewEdit(viewId: string, presentationId: string, pose: AuthoredViewPose, sourceRevision: string): Promise<void> {
+	async function writeViewEdit(
+		viewId: string,
+		presentationId: string,
+		pose: AuthoredViewPose,
+		sourceRevision: string,
+	): Promise<void> {
 		const controller = ports.host.activeController();
-		if (controller === null || controller.sourceRevision !== sourceRevision || controller.busy) return;
+		if (controller === null || controller.sourceRevision !== sourceRevision || controller.busy)
+			return;
 		// Keep only the Camera payload, never the captured pointer or its live gesture.
 		const next = { eye: pose.eye, target: pose.target, fov: pose.fov };
 		const outcome = await controller.updateViewPose(viewId, next, presentationId);
 		if (outcome.kind === 'needs-confirmation') {
-			pendingViewWrite = { viewId, presentationId, pose: next, alsoIn: outcome.alsoIn, sourceRevision };
+			pendingViewWrite = {
+				viewId,
+				presentationId,
+				pose: next,
+				alsoIn: outcome.alsoIn,
+				sourceRevision,
+			};
 		} else if (outcome.kind === 'updated') {
 			ports.host.refresh();
 		} else {
@@ -270,12 +371,24 @@ export function createExperienceViewEditSession(ports: ExperienceViewEditPorts) 
 
 	async function setAdvancedViewFraming(viewId: string, edit: AdvancedViewFraming): Promise<void> {
 		const controller = ports.host.activeController();
-		if (controller === null || viewId !== ports.advancedViewId() || viewEdit !== null || pendingViewWrite !== null) return;
+		if (
+			controller === null ||
+			viewId !== ports.advancedViewId() ||
+			viewEdit !== null ||
+			pendingViewWrite !== null
+		)
+			return;
 		const facts = controller.viewFacts(viewId);
 		const start = controller.viewPose(viewId);
 		if (facts === null || start === null) return;
 		const pose = frameView(start, edit, ports.host.floorDatum());
-		if (viewEditMoved(edit.kind, start, pose)) await writeViewEdit(viewId, controller.selectedView?.presentationId ?? facts.presentationId, pose, controller.sourceRevision);
+		if (viewEditMoved(edit.kind, start, pose))
+			await writeViewEdit(
+				viewId,
+				controller.selectedView?.presentationId ?? facts.presentationId,
+				pose,
+				controller.sourceRevision,
+			);
 	}
 
 	async function confirmPendingViewWrite(): Promise<void> {
@@ -284,9 +397,14 @@ export function createExperienceViewEditSession(ports: ExperienceViewEditPorts) 
 		if (pending === null) return;
 		const controller = ports.host.activeController();
 		if (controller === null || controller.sourceRevision !== pending.sourceRevision) return;
-		const outcome = await controller.updateViewPose(pending.viewId, pending.pose, pending.presentationId, {
-			confirmShared: true
-		});
+		const outcome = await controller.updateViewPose(
+			pending.viewId,
+			pending.pose,
+			pending.presentationId,
+			{
+				confirmShared: true,
+			},
+		);
 		if (outcome.kind === 'updated') {
 			ports.host.refresh();
 		} else if (outcome.kind === 'refused') {
@@ -309,6 +427,6 @@ export function createExperienceViewEditSession(ports: ExperienceViewEditPorts) 
 		end: endViewEdit,
 		cancel: cancelViewEdit,
 		setAdvancedFraming: setAdvancedViewFraming,
-		confirmPending: confirmPendingViewWrite
+		confirmPending: confirmPendingViewWrite,
 	};
 }

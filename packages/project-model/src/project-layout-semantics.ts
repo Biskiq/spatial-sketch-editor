@@ -32,27 +32,24 @@ export function validateProjectSceneCameraPoses(scene: SceneDocument): ProjectIs
 		const anchors: Vec3[] = [
 			[...fromNode.position] as Vec3,
 			...connection.positionPath.anchors.map((anchor) => [...anchor.position] as Vec3),
-			[...toNode.position] as Vec3
+			[...toNode.position] as Vec3,
 		];
 		const positionPath = createCameraPositionPath([
 			connection.positionPath.kind === 'rounded-polyline'
 				? { kind: 'rounded-polyline', points: anchors, clearance: connection.clearance }
-				: { kind: 'auto-bezier', anchors }
+				: { kind: 'auto-bezier', anchors },
 		]);
 		for (const direction of ['forward', 'reverse'] as const) {
 			for (const [keyframeIndex, keyframe] of connection.viewTracks[direction].entries()) {
 				const eye = positionPath.getPointAt(
-					direction === 'forward' ? keyframe.progress : 1 - keyframe.progress
+					direction === 'forward' ? keyframe.progress : 1 - keyframe.progress,
 				);
 				const target = keyframe.cameraTarget;
-				if (
-					Math.hypot(eye.x - target[0], eye.y - target[1], eye.z - target[2]) <=
-					CAMERA_EPSILON
-				) {
+				if (Math.hypot(eye.x - target[0], eye.y - target[1], eye.z - target[2]) <= CAMERA_EPSILON) {
 					issues.push({
 						path: `$.scene.connections[${connectionIndex}].viewTracks.${direction}[${keyframeIndex}].cameraTarget`,
 						code: 'camera_target_too_close',
-						message: `Camera eye and target must be farther than ${CAMERA_EPSILON}`
+						message: `Camera eye and target must be farther than ${CAMERA_EPSILON}`,
 					});
 				}
 			}

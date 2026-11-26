@@ -5,7 +5,7 @@ import type {
 	CompiledLegJoin,
 	CurveSample,
 	LayoutBounds3,
-	LayoutGeometryIssue
+	LayoutGeometryIssue,
 } from '@portfolio/layout-core/geometry';
 
 /**
@@ -41,7 +41,13 @@ export type Layout3dWallSurface = 'side' | 'lintel' | 'bridge';
 export type Layout3dOpeningSurface = 'jamb' | 'sill' | 'lintel' | 'arch-reveal';
 
 export type Layout3dTriangleRef =
-	| { kind: 'wall'; roomId: string; segmentId: string; surface: Layout3dWallSurface; paintSide?: LayoutWallSide }
+	| {
+			kind: 'wall';
+			roomId: string;
+			segmentId: string;
+			surface: Layout3dWallSurface;
+			paintSide?: LayoutWallSide;
+	  }
 	| {
 			kind: 'opening';
 			roomId: string;
@@ -62,7 +68,14 @@ export type IndexedWallMesh = {
 	uvs: Float32Array; // [u = arc length, v = height above floor]
 	indices: Uint32Array; // surface-major
 	materialGroups: IndexedWallMeshGroup[];
-	sectionToRange: Array<WallMeshSectionRef & { surfaceKey: WallMeshSurfaceKey; paintSide?: LayoutWallSide; start: number; count: number }>;
+	sectionToRange: Array<
+		WallMeshSectionRef & {
+			surfaceKey: WallMeshSurfaceKey;
+			paintSide?: LayoutWallSide;
+			start: number;
+			count: number;
+		}
+	>;
 	wallRanges: Array<{ segmentId: string; ranges: Array<{ start: number; count: number }> }>;
 	/**
 	 * complete authored pick identity: a sorted, non-overlapping
@@ -170,7 +183,12 @@ export type Vertex = {
  */
 export type FacePick =
 	| { kind: 'wall'; surface: Layout3dWallSurface; paintSide?: LayoutWallSide }
-	| { kind: 'opening'; openingId: string; surface: Layout3dOpeningSurface; paintSide?: LayoutWallSide };
+	| {
+			kind: 'opening';
+			openingId: string;
+			surface: Layout3dOpeningSurface;
+			paintSide?: LayoutWallSide;
+	  };
 
 export type Face = { verts: Vertex[]; pick?: FacePick };
 

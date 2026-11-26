@@ -6,7 +6,7 @@
  *
  * ```text
  * bottomY = floor.elevation
- * topY    = floor.elevation + wall.height
+ * topY = floor.elevation + wall.height
  * ```
  *
  * Finiteness and positivity are consumed by every wall-first surface — the
@@ -69,14 +69,14 @@ export type WallHeightIssue = {
  */
 export function validateWallHeight(
 	wall: Pick<LayoutWall, 'id' | 'height'>,
-	path: string
+	path: string,
 ): WallHeightIssue | undefined {
 	if (!Number.isFinite(wall.height) || wall.height <= 0) {
 		return {
 			wallId: wall.id,
 			path,
 			code: 'wall_height_invalid',
-			message: `Wall '${wall.id}' height must be finite and greater than zero`
+			message: `Wall '${wall.id}' height must be finite and greater than zero`,
 		};
 	}
 	return undefined;
@@ -87,7 +87,7 @@ export function validateWallHeight(
  * `document.walls` order, one issue per Wall.
  */
 export function validateWallFirstWallHeights(
-	document: Pick<LayoutDocumentWallFirst, 'walls'>
+	document: Pick<LayoutDocumentWallFirst, 'walls'>,
 ): WallHeightIssue[] {
 	const issues: WallHeightIssue[] = [];
 	document.walls.forEach((wall, index) => {
@@ -107,7 +107,7 @@ export function validateWallFirstWallHeights(
  */
 export function uniqueIncidentWallHeight(
 	document: Pick<LayoutDocumentWallFirst, 'walls'>,
-	junctionId: string
+	junctionId: string,
 ): number | undefined {
 	const heights = new Set<number>();
 	for (const wall of document.walls) {
@@ -125,11 +125,11 @@ export function uniqueIncidentWallHeight(
  * execute the same semantics:
  *
  * ```text
- * explicitHeight                                  → explicitHeight
- * no start Junction (isolated / new start)        → WALL_AUTHORING_DEFAULT_HEIGHT
- * exactly one unique incident Wall height         → that height
- * several distinct incident Wall heights          → WALL_AUTHORING_DEFAULT_HEIGHT
- * zero incident Walls                             → WALL_AUTHORING_DEFAULT_HEIGHT
+ * explicitHeight → explicitHeight
+ * no start Junction (isolated / new start) → WALL_AUTHORING_DEFAULT_HEIGHT
+ * exactly one unique incident Wall height → that height
+ * several distinct incident Wall heights → WALL_AUTHORING_DEFAULT_HEIGHT
+ * zero incident Walls → WALL_AUTHORING_DEFAULT_HEIGHT
  * ```
  *
  * A Junction can legitimately carry several incident Walls with different heights;
@@ -143,7 +143,7 @@ export function uniqueIncidentWallHeight(
 export function resolveWallBirthHeight(
 	document: Pick<LayoutDocumentWallFirst, 'walls'>,
 	startJunctionId: string | null,
-	explicitHeight?: number
+	explicitHeight?: number,
 ): number {
 	if (explicitHeight !== undefined) return explicitHeight;
 	if (startJunctionId === null) return WALL_AUTHORING_DEFAULT_HEIGHT;

@@ -1,9 +1,21 @@
 import type { OperationChange } from '@portfolio/project-model/f4';
-import type { Experience, ExperienceGuide, ExperienceGuidePacing, ExperienceInvitation, ExperienceTransitionKind, ProjectEnvelope } from '@portfolio/project-model/units';
+import type {
+	Experience,
+	ExperienceGuide,
+	ExperienceGuidePacing,
+	ExperienceInvitation,
+	ExperienceTransitionKind,
+	ProjectEnvelope,
+} from '@portfolio/project-model/units';
 import { EXPERIENCE_STAY_MIN_SECONDS } from '@portfolio/project-model/units';
 import type { StageAdapterServices } from '../stage/stage-adapter-host';
 import { guideUpdateIntent } from './commands-presentation';
-import { guideCreateIntent, guideOrderIntent, stopCreateIntent, stopUpdateIntent } from './commands-structure';
+import {
+	guideCreateIntent,
+	guideOrderIntent,
+	stopCreateIntent,
+	stopUpdateIntent,
+} from './commands-structure';
 import type { ExperienceSubject } from './experience-model';
 
 type Submission = Parameters<StageAdapterServices['authoring']['accept']>[0];
@@ -18,7 +30,10 @@ export type ExperienceStopPorts = {
 	readonly say: (kind: 'success' | 'info' | 'refusal', text: string) => void;
 	readonly newId: () => string;
 	readonly revision: () => Revision;
-	readonly run: (builder: () => Submission, success?: (changes: readonly OperationChange[]) => string) => Promise<boolean>;
+	readonly run: (
+		builder: () => Submission,
+		success?: (changes: readonly OperationChange[]) => string,
+	) => Promise<boolean>;
 	readonly connectionPool: () => string[];
 	readonly focus: {
 		readonly openGuide: (guideId: string | null) => void;
@@ -29,7 +44,7 @@ export type ExperienceStopPorts = {
 export function createExperienceStopAuthoring(ports: ExperienceStopPorts) {
 	async function addStop(
 		presentationId: string,
-		options: { readonly afterStopId?: string; readonly entryViewId?: string | null } = {}
+		options: { readonly afterStopId?: string; readonly entryViewId?: string | null } = {},
 	): Promise<boolean> {
 		const experience = ports.current();
 		if (experience === null) return false;
@@ -45,14 +60,19 @@ export function createExperienceStopAuthoring(ports: ExperienceStopPorts) {
 				guideCreateIntent({
 					envelope: ports.snapshot(),
 					revision: ports.revision(),
-					ids: { operation: ports.newId(), guide: guideId, stop: stopId, connections: ports.connectionPool() },
+					ids: {
+						operation: ports.newId(),
+						guide: guideId,
+						stop: stopId,
+						connections: ports.connectionPool(),
+					},
 					experienceId: experience.id,
 					presentationId,
 					label: 'Tour',
 					entryViewId: options.entryViewId ?? null,
 					staySeconds: null,
-					transition: 'cut'
-				})
+					transition: 'cut',
+				}),
 			);
 			if (accepted) {
 				ports.focus.openGuide(guideId);
@@ -82,8 +102,8 @@ export function createExperienceStopAuthoring(ports: ExperienceStopPorts) {
 				afterStopId,
 				entryViewId: options.entryViewId ?? null,
 				staySeconds: null,
-				transition: 'cut'
-			})
+				transition: 'cut',
+			}),
 		);
 		// A refused insert must not select a Stop the accepted source does not carry.
 		if (accepted) {
@@ -111,8 +131,8 @@ export function createExperienceStopAuthoring(ports: ExperienceStopPorts) {
 				ids: { operation: ports.newId(), connections: ports.connectionPool() },
 				experienceId: experience.id,
 				guideId: guide.id,
-				stopIds: order
-			})
+				stopIds: order,
+			}),
 		);
 	}
 
@@ -134,7 +154,7 @@ export function createExperienceStopAuthoring(ports: ExperienceStopPorts) {
 			readonly staySeconds?: number;
 			readonly invitation?: ExperienceInvitation | null;
 			readonly transition?: ExperienceTransitionKind | null;
-		}
+		},
 	): Promise<boolean> {
 		const experience = ports.current();
 		if (experience === null) return false;
@@ -147,9 +167,9 @@ export function createExperienceStopAuthoring(ports: ExperienceStopPorts) {
 					ids: { operation: ports.newId(), connections: ports.connectionPool() },
 					experienceId: experience.id,
 					stopId,
-					...fields
+					...fields,
 				}),
-			() => ''
+			() => '',
 		);
 	}
 
@@ -169,19 +189,21 @@ export function createExperienceStopAuthoring(ports: ExperienceStopPorts) {
 					ids: { operation: ports.newId() },
 					experienceId: experience.id,
 					guideId,
-					pacing
+					pacing,
 				}),
 			() =>
 				pacing === 'manual'
 					? 'Manual: every Stop now waits for Next. Each Stop keeps its time, unused, for switching back.'
-					: 'Automatic: each Stop stays for its time, then the tour moves on by itself.'
+					: 'Automatic: each Stop stays for its time, then the tour moves on by itself.',
 		);
 	}
 
 	/** Stop Card · Enter at: one of its Presentation's Views; the Default follows View 1. */
 	async function setStopEntry(stopId: string, viewId: string | null): Promise<boolean> {
 		const stop = ports.current()?.stops.find((entry) => entry.id === stopId);
-		const presentation = ports.current()?.presentations.find((entry) => entry.id === stop?.presentationId);
+		const presentation = ports
+			.current()
+			?.presentations.find((entry) => entry.id === stop?.presentationId);
 		if (stop === undefined || presentation === undefined) return false;
 		const entry = viewId;
 		if (entry === stop.entryViewId) return false;
@@ -203,16 +225,24 @@ export function createExperienceStopAuthoring(ports: ExperienceStopPorts) {
 	}
 
 	/** Stop Card · Invite to explore: `null` is off; an empty prompt is the default wording. */
-	async function setStopInvitation(stopId: string, invitation: { readonly prompt: string | null } | null): Promise<boolean> {
+	async function setStopInvitation(
+		stopId: string,
+		invitation: { readonly prompt: string | null } | null,
+	): Promise<boolean> {
 		const stop = ports.current()?.stops.find((entry) => entry.id === stopId);
 		if (stop === undefined) return false;
-		const normalized = invitation === null
-			? null
-			: { prompt: invitation.prompt === null || invitation.prompt.trim() === '' ? null : invitation.prompt.trim() };
+		const normalized =
+			invitation === null
+				? null
+				: {
+						prompt:
+							invitation.prompt === null || invitation.prompt.trim() === ''
+								? null
+								: invitation.prompt.trim(),
+					};
 		if (JSON.stringify(normalized) === JSON.stringify(stop.invitation)) return false;
 		return updateStop(stopId, { invitation: normalized });
 	}
-
 
 	return {
 		updateStop,
@@ -222,6 +252,6 @@ export function createExperienceStopAuthoring(ports: ExperienceStopPorts) {
 		setGuidePacing,
 		setStopEntry,
 		setStopStay,
-		setStopInvitation
+		setStopInvitation,
 	};
 }

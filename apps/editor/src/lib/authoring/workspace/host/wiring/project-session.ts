@@ -32,6 +32,6 @@ export function wireProjectSession(input: ProjectSessionWiring) {
 		},
 		set notice(value) {
 			input.writeNotice(value);
-		}
+		},
 	});
 }

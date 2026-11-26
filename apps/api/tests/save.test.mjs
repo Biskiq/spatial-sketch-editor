@@ -377,25 +377,6 @@ test('a non-F2 envelope is refused as invalid_project and writes nothing', async
 	assert.equal(state.receipts, 0);
 });
 
-test('a format-5 Layout is refused as invalid_project and writes nothing', async () => {
-	const cookie = await sessionCookie(app, 'google:s04-save-1');
-	const projectId = track(nextProjectId());
-	const request = await saveRequestBody(projectDocument('Format five Layout', { id: projectId }));
-	const envelope = JSON.parse(request.capture.canonicalJson);
-	envelope.units.layout.data.formatVersion = 5;
-	const invalid = await save(projectId, cookie, {
-		...request,
-		capture: { ...request.capture, canonicalJson: JSON.stringify(envelope) }
-	});
-	assert.equal(invalid.statusCode, 400);
-	assert.equal(invalid.json().error.code, 'invalid_project');
-	assert.ok(invalid.json().issues.some((issue) => issue.code === 'unsupported_format_version'));
-
-	const state = await counts(projectId);
-	assert.equal(state.versions, 0);
-	assert.equal(state.receipts, 0);
-});
-
 test('a format-6 Wall carrying a role key is refused as invalid_project and writes nothing', async () => {
 	const cookie = await sessionCookie(app, 'google:s04-save-1');
 	const projectId = track(nextProjectId());

@@ -1,14 +1,14 @@
 {
-  "id": "02-scene-unit-version",
-  "area": "codec",
-  "citation": "section 7 rule 7 — one refusal per format family",
-  "title": "Scene unit reader accepts a newer payload version",
-  "file": "packages/project-model/src/units/validate/scene.ts",
-  "find": "if (record.formatVersion !== SCENE_UNIT_FORMAT_VERSION) {",
-  "replace": "if (record.formatVersion < SCENE_UNIT_FORMAT_VERSION) {",
-  "tests": [
-    "tests/lib/project-model/scene-look-schema.test.ts",
-    "packages/project-model/tests/units-conformance.test.ts"
-  ],
-  "root": "repo"
+	"id": "02-scene-unit-version",
+	"area": "codec",
+	"citation": "section 7 rule 7 \u2014 one refusal per format family",
+	"title": "Scene unit reader accepts a newer payload version",
+	"file": "packages/project-model/src/units/validate/scene.ts",
+	"find": "if (record.formatVersion !== SCENE_UNIT_FORMAT_VERSION) {",
+	"replace": "if (record.formatVersion < SCENE_UNIT_FORMAT_VERSION) {",
+	"tests": [
+		"packages/project-model/tests/scene-look-codec.test.ts",
+		"packages/project-model/tests/units-conformance.test.ts"
+	],
+	"root": "repo"
 }

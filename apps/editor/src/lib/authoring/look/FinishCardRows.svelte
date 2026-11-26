@@ -495,7 +495,7 @@
 	.step:disabled {
 		opacity: 0.45;
 	}
-	/* tokens.css .card .foot: edge to edge, 6 × 8 padding, plain text buttons. */
+	/* tokens.css.card.foot: edge to edge, 6 × 8 padding, plain text buttons. */
 	.foot {
 		display: flex;
 		align-items: center;

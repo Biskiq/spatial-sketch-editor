@@ -12,13 +12,34 @@
  * (when the point lies in an Opening band) that Opening's identity. The result
  * is the input the existing canonical planners take; unfolding adds no writer.
  */
-import { buildDevelopedWallMesh, createWallDevelopmentBuffers, spanForStation, createWallDevelopmentSheetBuffers, developmentInversePoint, developmentOpeningFragments, developmentOpeningIdentity, developmentPointAtSheetFromBuffers, developmentPointAtStationFromBuffers, developmentSheetCoordinate, evaluateWallDevelopment, evaluateWallDevelopmentSheet, isWallDevelopmentRefusal, type WallDevelopment, type WallDevelopmentBuffers, type WallDevelopmentMesh, type WallDevelopmentMeshHole, type WallDevelopmentOpeningBand, type WallDevelopmentSheetBuffers, type WallDevelopmentSourceSpan } from '@portfolio/layout-core/wall';
+import {
+	buildDevelopedWallMesh,
+	createWallDevelopmentBuffers,
+	spanForStation,
+	createWallDevelopmentSheetBuffers,
+	developmentInversePoint,
+	developmentOpeningFragments,
+	developmentOpeningIdentity,
+	developmentPointAtSheetFromBuffers,
+	developmentPointAtStationFromBuffers,
+	developmentSheetCoordinate,
+	evaluateWallDevelopment,
+	evaluateWallDevelopmentSheet,
+	isWallDevelopmentRefusal,
+	type WallDevelopment,
+	type WallDevelopmentBuffers,
+	type WallDevelopmentMesh,
+	type WallDevelopmentMeshHole,
+	type WallDevelopmentOpeningBand,
+	type WallDevelopmentSheetBuffers,
+	type WallDevelopmentSourceSpan,
+} from '@portfolio/layout-core/wall';
 import type { CompiledPhysicalWall, LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 import {
 	prepareWallUnfoldDevelopment,
 	wallUnfoldSideAngle,
-	type WallUnfoldState
+	type WallUnfoldState,
 } from './wall-unfold';
 
 export type WallUnfoldRay = {
@@ -38,7 +59,13 @@ export function wallUnfoldDisplayKey(input: {
 	readonly previewKey: string;
 	readonly sourceRevision: string;
 }): string {
-	return JSON.stringify([input.wallId, input.anchorStation, input.cutStation, input.previewKey, input.sourceRevision]);
+	return JSON.stringify([
+		input.wallId,
+		input.anchorStation,
+		input.cutStation,
+		input.previewKey,
+		input.sourceRevision,
+	]);
 }
 
 /** One developed strip in world space, with its canonical attribution intact. */
@@ -82,7 +109,7 @@ export function unfoldDisplayAnchor(display: WallUnfoldDisplay): LayoutVec2 {
 		return developmentPointAtStationFromBuffers(
 			display.development,
 			display.buffers,
-			display.development.anchorStation
+			display.development.anchorStation,
 		).point;
 	}
 	const sheet = developmentSheetCoordinate(display.development, display.development.anchorStation);
@@ -125,7 +152,7 @@ function sliceProfile(
 	points: readonly LayoutVec2[],
 	width: number,
 	from: number,
-	to: number
+	to: number,
 ): LayoutVec2[] {
 	const start = Math.min(width, Math.max(0, from));
 	const end = Math.min(width, Math.max(start, to));
@@ -152,15 +179,16 @@ export function buildWallUnfoldDisplay(
 		readonly floorY?: number;
 		readonly spans?: readonly WallDevelopmentSourceSpan[];
 		readonly sideAngle?: number;
-	} = {}
+	} = {},
 ): WallUnfoldDisplay | null {
 	const prepared = prepareWallUnfoldDevelopment(state, wall);
 	if (isWallDevelopmentRefusal(prepared)) return null;
 	const development = prepared;
 	const buffers = createWallDevelopmentBuffers(development);
-	const sheetBuffers = development.closed && development.cutStation !== null
-		? createWallDevelopmentSheetBuffers(development)
-		: null;
+	const sheetBuffers =
+		development.closed && development.cutStation !== null
+			? createWallDevelopmentSheetBuffers(development)
+			: null;
 	if (sheetBuffers === null) evaluateWallDevelopment(development, state.u, buffers);
 	else evaluateWallDevelopmentSheet(development, state.u, sheetBuffers);
 	const spans = options.spans ?? [];
@@ -171,15 +199,19 @@ export function buildWallUnfoldDisplay(
 		sillHeight: opening.sillHeight,
 		headHeight: opening.sillHeight + opening.height,
 		topBoundary: opening.profileShape?.topBoundary,
-		kind: opening.kind
+		kind: opening.kind,
 	}));
 	const openingHoles: WallDevelopmentMeshHole[] = openingBands.flatMap((band) => {
 		const source = wall.openings.find((opening) => opening.openingId === band.openingId)!;
 		const profile = source.profileShape?.topBoundary;
 		const developmentOpening = developmentOpeningFragments(
 			development,
-			{ openingId: band.openingId, offset: band.stationStart, width: band.stationEnd - band.stationStart },
-			spans
+			{
+				openingId: band.openingId,
+				offset: band.stationStart,
+				width: band.stationEnd - band.stationStart,
+			},
+			spans,
 		);
 		return developmentOpening.fragments.map((fragment) => {
 			let topBoundary: LayoutVec2[] | undefined;
@@ -197,7 +229,7 @@ export function buildWallUnfoldDisplay(
 				sheetEnd: fragment.sheetEnd,
 				sillHeight: band.sillHeight,
 				headHeight: band.headHeight,
-				...(topBoundary === undefined ? {} : { topBoundary })
+				...(topBoundary === undefined ? {} : { topBoundary }),
 			};
 		});
 	});
@@ -205,16 +237,17 @@ export function buildWallUnfoldDisplay(
 		thickness: wall.thickness,
 		height: wall.height,
 		spans,
-		openings: openingHoles
+		openings: openingHoles,
 	});
 	const floorY = options.floorY ?? 0;
 	const positions = new Float32Array(mesh.vertices.length * 3);
 	const normals = new Float32Array(mesh.vertices.length * 3);
 	for (let index = 0; index < mesh.vertices.length; index += 1) {
 		const vertex = mesh.vertices[index]!;
-		const mapped = sheetBuffers === null
-			? developmentPointAtStationFromBuffers(development, buffers, vertex.station)
-			: developmentPointAtSheetFromBuffers(sheetBuffers, vertex.sheet);
+		const mapped =
+			sheetBuffers === null
+				? developmentPointAtStationFromBuffers(development, buffers, vertex.station)
+				: developmentPointAtSheetFromBuffers(sheetBuffers, vertex.sheet);
 		positions[index * 3] = mapped.point[0] + mapped.normal[0] * vertex.lateral;
 		positions[index * 3 + 1] = floorY + vertex.height;
 		positions[index * 3 + 2] = mapped.point[1] + mapped.normal[1] * vertex.lateral;
@@ -237,7 +270,7 @@ export function buildWallUnfoldDisplay(
 		positions,
 		normals,
 		openingBands,
-		openingHoles
+		openingHoles,
 	};
 	const oriented = evaluateWallUnfoldDisplay(display, state, sideAngle);
 	return { ...display, positions: oriented.positions, normals: oriented.normals };
@@ -247,21 +280,26 @@ export function buildWallUnfoldDisplay(
 export function evaluateWallUnfoldDisplay(
 	display: WallUnfoldDisplay,
 	state: WallUnfoldState,
-	sideAngle = display.sideAngle
+	sideAngle = display.sideAngle,
 ): { readonly positions: Float32Array; readonly normals: Float32Array } {
-	if (display.sheetBuffers === null) evaluateWallDevelopment(display.development, state.u, display.buffers);
+	if (display.sheetBuffers === null)
+		evaluateWallDevelopment(display.development, state.u, display.buffers);
 	else evaluateWallDevelopmentSheet(display.development, state.u, display.sheetBuffers);
 	const positions = new Float32Array(display.mesh.vertices.length * 3);
 	const normals = new Float32Array(display.mesh.vertices.length * 3);
 	for (let index = 0; index < display.mesh.vertices.length; index += 1) {
 		const vertex = display.mesh.vertices[index]!;
-		const mapped = display.sheetBuffers === null
-			? developmentPointAtStationFromBuffers(display.development, display.buffers, vertex.station)
-			: developmentPointAtSheetFromBuffers(display.sheetBuffers, vertex.sheet);
+		const mapped =
+			display.sheetBuffers === null
+				? developmentPointAtStationFromBuffers(display.development, display.buffers, vertex.station)
+				: developmentPointAtSheetFromBuffers(display.sheetBuffers, vertex.sheet);
 		const point = rotateUnfoldPoint(
-			[mapped.point[0] + mapped.normal[0] * vertex.lateral, mapped.point[1] + mapped.normal[1] * vertex.lateral],
+			[
+				mapped.point[0] + mapped.normal[0] * vertex.lateral,
+				mapped.point[1] + mapped.normal[1] * vertex.lateral,
+			],
 			unfoldDisplayAnchor(display),
-			sideAngle
+			sideAngle,
 		);
 		const normal = rotateUnfoldVector(mapped.normal, sideAngle);
 		positions[index * 3] = point[0];
@@ -278,13 +316,17 @@ export function evaluateWallUnfoldDisplay(
 export function unfoldDisplayPointAtStation(
 	display: WallUnfoldDisplay,
 	station: number,
-	sideAngle = display.sideAngle
+	sideAngle = display.sideAngle,
 ): { point: LayoutVec2; normal: LayoutVec2 } {
 	if (display.sheetBuffers === null) {
-		const mapped = developmentPointAtStationFromBuffers(display.development, display.buffers, station);
+		const mapped = developmentPointAtStationFromBuffers(
+			display.development,
+			display.buffers,
+			station,
+		);
 		return {
 			point: rotateUnfoldPoint(mapped.point, unfoldDisplayAnchor(display), sideAngle),
-			normal: rotateUnfoldVector(mapped.normal, sideAngle)
+			normal: rotateUnfoldVector(mapped.normal, sideAngle),
 		};
 	}
 	const sheet = display.development.closed
@@ -293,7 +335,7 @@ export function unfoldDisplayPointAtStation(
 	const mapped = developmentPointAtSheetFromBuffers(display.sheetBuffers, sheet);
 	return {
 		point: rotateUnfoldPoint(mapped.point, unfoldDisplayAnchor(display), sideAngle),
-		normal: rotateUnfoldVector(mapped.normal, sideAngle)
+		normal: rotateUnfoldVector(mapped.normal, sideAngle),
 	};
 }
 
@@ -304,7 +346,7 @@ export function unfoldDisplayPointAtStation(
  */
 export function pickWallUnfold(
 	display: WallUnfoldDisplay,
-	ray: WallUnfoldRay
+	ray: WallUnfoldRay,
 ): WallUnfoldPick | null {
 	const origin = ray.origin;
 	const direction = ray.direction;
@@ -317,9 +359,15 @@ export function pickWallUnfold(
 		const hit = rayTriangle(
 			origin,
 			direction,
-			display.positions[a * 3]!, display.positions[a * 3 + 1]!, display.positions[a * 3 + 2]!,
-			display.positions[b * 3]!, display.positions[b * 3 + 1]!, display.positions[b * 3 + 2]!,
-			display.positions[c * 3]!, display.positions[c * 3 + 1]!, display.positions[c * 3 + 2]!
+			display.positions[a * 3]!,
+			display.positions[a * 3 + 1]!,
+			display.positions[a * 3 + 2]!,
+			display.positions[b * 3]!,
+			display.positions[b * 3 + 1]!,
+			display.positions[b * 3 + 2]!,
+			display.positions[c * 3]!,
+			display.positions[c * 3 + 1]!,
+			display.positions[c * 3 + 2]!,
 		);
 		if (hit === null) continue;
 		// Determinism rule: the nearest positive hit wins, and an equal-distance
@@ -355,8 +403,13 @@ export function pickWallUnfold(
 			spanIndex: triangle.spanIndex,
 			startKnotId: triangle.startKnotId,
 			endKnotId: triangle.endKnotId,
-			openingId: developmentOpeningIdentity(display.development, display.openingBands, canonicalStation, height),
-			distanceMeters: hit.distance
+			openingId: developmentOpeningIdentity(
+				display.development,
+				display.openingBands,
+				canonicalStation,
+				height,
+			),
+			distanceMeters: hit.distance,
 		};
 	}
 	// A real Opening void has no rendered triangle to hit. Address the band
@@ -370,21 +423,36 @@ export function pickWallUnfold(
 		// than the seam end where the void actually is.
 		const centerStation = Math.min(
 			display.development.length,
-			Math.max(0, band.stationStart + width / 2)
+			Math.max(0, band.stationStart + width / 2),
 		);
 		const center = unfoldDisplayPointAtStation(display, centerStation);
-		const centerWorld = [center.point[0], display.floorY + (band.sillHeight + band.headHeight) / 2, center.point[1]] as const;
-		const lengthSquared = direction[0] * direction[0] + direction[1] * direction[1] + direction[2] * direction[2];
+		const centerWorld = [
+			center.point[0],
+			display.floorY + (band.sillHeight + band.headHeight) / 2,
+			center.point[1],
+		] as const;
+		const lengthSquared =
+			direction[0] * direction[0] + direction[1] * direction[1] + direction[2] * direction[2];
 		if (!(lengthSquared > 0)) continue;
-		const toCenter = [centerWorld[0] - origin[0], centerWorld[1] - origin[1], centerWorld[2] - origin[2]] as const;
-		const distanceAlong = (toCenter[0] * direction[0] + toCenter[1] * direction[1] + toCenter[2] * direction[2]) / lengthSquared;
+		const toCenter = [
+			centerWorld[0] - origin[0],
+			centerWorld[1] - origin[1],
+			centerWorld[2] - origin[2],
+		] as const;
+		const distanceAlong =
+			(toCenter[0] * direction[0] + toCenter[1] * direction[1] + toCenter[2] * direction[2]) /
+			lengthSquared;
 		if (!(distanceAlong > 0)) continue;
 		const closest = [
 			origin[0] + direction[0] * distanceAlong,
 			origin[1] + direction[1] * distanceAlong,
-			origin[2] + direction[2] * distanceAlong
+			origin[2] + direction[2] * distanceAlong,
 		] as const;
-		const perpendicular = Math.hypot(closest[0] - centerWorld[0], closest[1] - centerWorld[1], closest[2] - centerWorld[2]);
+		const perpendicular = Math.hypot(
+			closest[0] - centerWorld[0],
+			closest[1] - centerWorld[1],
+			closest[2] - centerWorld[2],
+		);
 		if (perpendicular > width / 2 + 0.05) continue;
 		const candidate: WallUnfoldPick = {
 			station: centerStation,
@@ -395,7 +463,7 @@ export function pickWallUnfold(
 			startKnotId: '',
 			endKnotId: '',
 			openingId: band.openingId,
-			distanceMeters: Math.sqrt(distanceAlong * lengthSquared)
+			distanceMeters: Math.sqrt(distanceAlong * lengthSquared),
 		};
 		// The analytic band exists for a true void, where there is no rendered
 		// triangle to hit. A top/bottom hit can sit over that void when the Camera
@@ -405,9 +473,11 @@ export function pickWallUnfold(
 		const closed = display.development.closed;
 		const target = closed
 			? wrap(nearest?.station ?? 0, display.development.length)
-			: nearest?.station ?? 0;
+			: (nearest?.station ?? 0);
 		const start = closed ? wrap(band.stationStart, display.development.length) : band.stationStart;
-		const offset = closed ? wrap(target - start, display.development.length) : target - band.stationStart;
+		const offset = closed
+			? wrap(target - start, display.development.length)
+			: target - band.stationStart;
 		const insideBand = nearest !== null && offset >= -1e-9 && offset <= width + 1e-9;
 		if (nearest === null) nearest = candidate;
 		else if (
@@ -415,7 +485,13 @@ export function pickWallUnfold(
 			nearest.openingId === null &&
 			(nearest.face === 'top' || nearest.face === 'bottom')
 		) {
-			nearest = { ...nearest, openingId: candidate.openingId, face: 'left', lateral: 0, height: candidate.height };
+			nearest = {
+				...nearest,
+				openingId: candidate.openingId,
+				face: 'left',
+				lateral: 0,
+				height: candidate.height,
+			};
 		}
 	}
 	return nearest;
@@ -429,7 +505,7 @@ export function pickWallUnfold(
 export function pickWallUnfoldSheetPoint(
 	display: WallUnfoldDisplay,
 	point: LayoutVec2,
-	sideAngle = display.sideAngle
+	sideAngle = display.sideAngle,
 ): WallUnfoldPick | null {
 	const localPoint = rotateUnfoldPoint(point, unfoldDisplayAnchor(display), -sideAngle);
 	if (display.sheetBuffers === null) {
@@ -437,7 +513,7 @@ export function pickWallUnfoldSheetPoint(
 			display.development,
 			display.buffers,
 			localPoint,
-			display.spans
+			display.spans,
 		);
 		if (inverse === null) return null;
 		return {
@@ -452,9 +528,9 @@ export function pickWallUnfoldSheetPoint(
 				display.development,
 				display.openingBands,
 				inverse.station,
-				0
+				0,
 			),
-			distanceMeters: 0
+			distanceMeters: 0,
 		};
 	}
 
@@ -474,20 +550,31 @@ export function pickWallUnfoldSheetPoint(
 		const dz = b[1] - a[1];
 		const lengthSquared = dx * dx + dz * dz;
 		if (!(lengthSquared > 0)) continue;
-		const amount = Math.min(1, Math.max(0, ((localPoint[0] - a[0]) * dx + (localPoint[1] - a[1]) * dz) / lengthSquared));
+		const amount = Math.min(
+			1,
+			Math.max(0, ((localPoint[0] - a[0]) * dx + (localPoint[1] - a[1]) * dz) / lengthSquared),
+		);
 		const closest: LayoutVec2 = [a[0] + dx * amount, a[1] + dz * amount];
 		const distance = Math.hypot(localPoint[0] - closest[0], localPoint[1] - closest[1]);
 		if (nearest !== null && distance >= nearest.distance) continue;
 		const sheet = start.sheet + (end.sheet - start.sheet) * amount;
 		nearest = {
 			distance,
-			station: development.closed ? wrap(cut + sheet, development.length) : sheet + development.anchorStation,
-			lateral: (dx * (localPoint[1] - a[1]) - dz * (localPoint[0] - a[0])) / Math.sqrt(lengthSquared),
-			sheet
+			station: development.closed
+				? wrap(cut + sheet, development.length)
+				: sheet + development.anchorStation,
+			lateral:
+				(dx * (localPoint[1] - a[1]) - dz * (localPoint[0] - a[0])) / Math.sqrt(lengthSquared),
+			sheet,
 		};
 	}
 	if (nearest === null) return null;
-	const span = spanForStation(display.spans, nearest.station, development.length, development.closed);
+	const span = spanForStation(
+		display.spans,
+		nearest.station,
+		development.length,
+		development.closed,
+	);
 	return {
 		station: nearest.station,
 		lateral: nearest.lateral,
@@ -497,7 +584,7 @@ export function pickWallUnfoldSheetPoint(
 		startKnotId: span?.startKnotId ?? '',
 		endKnotId: span?.endKnotId ?? '',
 		openingId: developmentOpeningIdentity(development, display.openingBands, nearest.station, 0),
-		distanceMeters: 0
+		distanceMeters: 0,
 	};
 }
 
@@ -518,7 +605,7 @@ function rayTriangle(
 	bz: number,
 	cx: number,
 	cy: number,
-	cz: number
+	cz: number,
 ): { readonly distance: number; readonly u: number; readonly v: number } | null {
 	const edge1x = bx - ax;
 	const edge1y = by - ay;

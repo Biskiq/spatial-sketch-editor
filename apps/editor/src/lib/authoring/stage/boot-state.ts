@@ -6,16 +6,16 @@
  *
  * - `loading` — a cloud read is in flight.
  * - `new` — a freshly minted identity awaiting the starter/empty choice. The
- *   spatial route now admits an empty baseline immediately and keeps the starter
- *   available as an explicit replacement.
+ *  spatial route now admits an empty baseline immediately and keeps the starter
+ *  available as an explicit replacement.
  * - `empty` — a genuinely empty baseline is active (honest: no floor, no starter).
  * - `ready` — an admitted source is mounted on the Stage.
  * - `diagnostics` — the source validates but its canonical compile has blocking
- *   issues; the state names them and never renders a silent empty Stage.
+ *  issues; the state names them and never renders a silent empty Stage.
  * - `refused` — the payload is not a supported current-format source, or it names
- *   another project than the one this host is showing.
+ *  another project than the one this host is showing.
  * - `missing` — a project identity reached through an explicit open that the
- *   server does not have. Never silently treated as new.
+ *  server does not have. Never silently treated as new.
  * - `forbidden` — the identity exists but this session may not read it.
  * - `error` — network or server failure, distinct from `missing`/`forbidden`.
  *
@@ -38,7 +38,7 @@ import {
 	admitSourceJson,
 	type AdmissionContext,
 	type AdmissionOutcome,
-	type StageReadSnapshot
+	type StageReadSnapshot,
 } from './source-admission';
 import { DEFAULT_STARTER_TEMPLATE, seededSceneDocument, starterTemplate } from './starter-gallery';
 
@@ -114,7 +114,7 @@ export function documentOf(document: unknown): unknown {
 function stateFromAdmission(
 	projectId: string,
 	outcome: AdmissionOutcome,
-	active: 'ready' | 'empty'
+	active: 'ready' | 'empty',
 ): BootState {
 	switch (outcome.kind) {
 		case 'admitted':
@@ -138,7 +138,7 @@ function stateFromAdmission(
 export async function bootFromLoadOutcome(
 	state: BootState,
 	outcome: BootLoadOutcome,
-	context: AdmissionContext
+	context: AdmissionContext,
 ): Promise<BootState> {
 	const projectId = state.projectId;
 	switch (outcome.kind) {
@@ -161,7 +161,11 @@ export async function bootFromLoadOutcome(
 			// previous session remains mounted because nothing was installed.
 			return { status: 'error', projectId, message: outcome.message, image: outcome.diagnostic };
 		case 'loaded':
-			return stateFromAdmission(projectId, await admitSource(documentOf(outcome.document), context), 'ready');
+			return stateFromAdmission(
+				projectId,
+				await admitSource(documentOf(outcome.document), context),
+				'ready',
+			);
 	}
 }
 
@@ -174,7 +178,7 @@ export async function bootFromLoadOutcome(
 export async function bootFromSourceJson(
 	json: string,
 	projectId: string,
-	context: AdmissionContext
+	context: AdmissionContext,
 ): Promise<BootState> {
 	return stateFromAdmission(projectId, await admitSourceJson(json, context), 'ready');
 }
@@ -189,7 +193,7 @@ export async function bootFromSourceJson(
 export async function bootStarterGallery(
 	projectId: string,
 	context: AdmissionContext,
-	templateId: string = DEFAULT_STARTER_TEMPLATE.id
+	templateId: string = DEFAULT_STARTER_TEMPLATE.id,
 ): Promise<BootState> {
 	const template = starterTemplate(templateId);
 	if (template === null) {
@@ -208,7 +212,7 @@ export async function bootEmpty(projectId: string, context: AdmissionContext): P
 		id: projectId,
 		name: 'Untitled project',
 		acceptedRevision: context.acceptedRevision,
-		scene: seededSceneDocument()
+		scene: seededSceneDocument(),
 	});
 	return stateFromAdmission(projectId, await admitSource(envelope, context), 'empty');
 }

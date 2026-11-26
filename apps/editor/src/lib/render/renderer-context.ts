@@ -41,7 +41,7 @@ export function provideCanvasRendererState(): CanvasRendererState {
 		backend: null,
 		generation: 0,
 		viewGeneration: { owner: 'global', generation: 0 },
-		renderer: null
+		renderer: null,
 	};
 	setContext(KEY, state);
 	return state;

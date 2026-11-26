@@ -1,5 +1,5 @@
 /**
- * The per-texel channel report (E7).
+ * The per-texel channel report.
  *
  * For one UV it states, per role, the stored normalized value, the value after
  * component/invert/convention, and the effective value after the Finish's
@@ -18,17 +18,17 @@ import {
 	PlaneGeometry,
 	RenderTarget,
 	Scene,
-	type Material
+	type Material,
 } from 'three';
 import type { BoundInputs, FieldProvenance } from '@portfolio/project-model/materials';
 import type {
 	FinishMapRole,
 	FinishSamplingPlanEntry,
-	StandardMaterialDescriptor
+	StandardMaterialDescriptor,
 } from '$lib/render/resources/material-descriptor';
 import {
 	createFinishChannelMaterial,
-	type FinishTextureViews
+	type FinishTextureViews,
 } from '$lib/render/resources/finish-sampling';
 import { settledOrAborted, type InspectionRenderer } from './inspection';
 
@@ -51,7 +51,7 @@ async function readFragment(
 	input: InspectionRenderer,
 	material: Material,
 	uv: readonly [number, number],
-	signal: AbortSignal
+	signal: AbortSignal,
 ): Promise<readonly number[] | null> {
 	const geometry = new PlaneGeometry(2, 2);
 	const coordinates = new Float32Array([...uv, ...uv, ...uv, ...uv]);
@@ -64,7 +64,7 @@ async function readFragment(
 		type: HalfFloatType,
 		colorSpace: LinearSRGBColorSpace,
 		samples: 0,
-		depthBuffer: false
+		depthBuffer: false,
 	});
 	// See `renderInspectionFrame`: the two backends differ only in TypeScript.
 	const renderer = input as any;
@@ -81,7 +81,8 @@ async function readFragment(
 		const raw = await settledOrAborted(copy, signal);
 		if (raw === null) return null;
 		const half = raw instanceof Uint16Array;
-		const value = (index: number): number => (half ? DataUtils.fromHalfFloat(raw[index]!) : Number(raw[index]));
+		const value = (index: number): number =>
+			half ? DataUtils.fromHalfFloat(raw[index]!) : Number(raw[index]);
 		// The fragment is opaque, so a transparent one is a lost device's empty read.
 		if (!(value(3) >= 0.5)) throw new Error('The texel read back empty.');
 		return [0, 1, 2].map(value);
@@ -96,7 +97,7 @@ export function effectiveTexelValue(
 	role: FinishMapRole,
 	descriptor: StandardMaterialDescriptor,
 	inputs: BoundInputs,
-	sample: readonly number[] | null
+	sample: readonly number[] | null,
 ): readonly number[] {
 	switch (role) {
 		case 'color': {
@@ -134,7 +135,7 @@ export async function readInspectionTexel(input: {
 		const material = createFinishChannelMaterial(
 			{ ...descriptor, finish: { ...descriptor.finish!, entries: [entry] } },
 			views,
-			{ solo: entry.role }
+			{ solo: entry.role },
 		);
 		try {
 			const value = await readFragment(input.renderer, material, input.uv, input.signal);
@@ -156,7 +157,7 @@ export async function readInspectionTexel(input: {
 				provenance,
 				source: null,
 				converted: null,
-				effective: effectiveTexelValue(role, descriptor, inputs, null)
+				effective: effectiveTexelValue(role, descriptor, inputs, null),
 			});
 			continue;
 		}
@@ -173,7 +174,7 @@ export async function readInspectionTexel(input: {
 			provenance,
 			source,
 			converted,
-			effective: effectiveTexelValue(role, descriptor, inputs, converted)
+			effective: effectiveTexelValue(role, descriptor, inputs, converted),
 		});
 	}
 	return channels;

@@ -209,12 +209,16 @@ export function resolveSlice(reading: SliceReading, input: SliceResolveInput): R
 			depthMeters,
 			hidden: reading.hidden,
 			start: [origin[0] - along[0] * halfLength, datumMeters, origin[2] - along[2] * halfLength],
-			end: [origin[0] + along[0] * halfLength, datumMeters, origin[2] + along[2] * halfLength]
+			end: [origin[0] + along[0] * halfLength, datumMeters, origin[2] + along[2] * halfLength],
 		};
 	}
 	const sheetHeight = Number.isFinite(input.sheetHeight) ? Math.max(0, input.sheetHeight) : 0;
 	const cutY = datumMeters + sheetHeight;
-	if (reading.depth.kind === 'below' && Number.isFinite(reading.depth.meters) && reading.depth.meters > 0) {
+	if (
+		reading.depth.kind === 'below' &&
+		Number.isFinite(reading.depth.meters) &&
+		reading.depth.meters > 0
+	) {
 		const lowerY = cutY - reading.depth.meters;
 		return { kind: 'level', cutY, lowerY: lowerY > datumMeters ? lowerY : null };
 	}
@@ -229,11 +233,11 @@ export function hiddenPiecesOf(resolved: ResolvedSlice): readonly HiddenPiece[] 
 			origin: resolved.origin,
 			along: resolved.along,
 			hiddenNormal: resolved.hiddenNormal,
-			halfLength: resolved.halfLength
+			halfLength: resolved.halfLength,
 		};
 		return [
 			{ kind: 'drawn-near', ...common },
-			{ kind: 'drawn-beyond', ...common, depthMeters: resolved.depthMeters }
+			{ kind: 'drawn-beyond', ...common, depthMeters: resolved.depthMeters },
 		];
 	}
 	const pieces: HiddenPiece[] = [{ kind: 'above', cutY: resolved.cutY }];
@@ -247,7 +251,11 @@ export function hiddenPiecesOf(resolved: ResolvedSlice): readonly HiddenPiece[] 
  * The band is **inclusive**: a point on the cut plane or on the lower bound is
  * shown, so a point is hidden only when it is hidden by more than `eps`.
  */
-export function pieceContains(piece: HiddenPiece, y: number, eps: number = SLICE_HIDE_EPSILON_METERS): boolean {
+export function pieceContains(
+	piece: HiddenPiece,
+	y: number,
+	eps: number = SLICE_HIDE_EPSILON_METERS,
+): boolean {
 	if (piece.kind === 'above') return y > piece.cutY + eps;
 	if (piece.kind === 'below') return y < piece.lowerY - eps;
 	return false;
@@ -259,7 +267,7 @@ export function pieceContainsPoint(
 	x: number,
 	y: number,
 	z: number,
-	eps: number = SLICE_HIDE_EPSILON_METERS
+	eps: number = SLICE_HIDE_EPSILON_METERS,
 ): boolean {
 	if (piece.kind === 'above' || piece.kind === 'below') return pieceContains(piece, y, eps);
 	const px = x - piece.origin[0];
@@ -286,7 +294,7 @@ export function sliceHides(
 	x: number,
 	y: number,
 	z: number,
-	eps: number = SLICE_HIDE_EPSILON_METERS
+	eps: number = SLICE_HIDE_EPSILON_METERS,
 ): boolean {
 	if (resolved.kind === 'drawn') {
 		if (resolved.halfLength <= 0) return false;
@@ -296,9 +304,7 @@ export function sliceHides(
 		const s = px * resolved.along[0] + py * resolved.along[1] + pz * resolved.along[2];
 		if (Math.abs(s) > resolved.halfLength + eps) return false;
 		const b =
-			px * resolved.hiddenNormal[0] +
-			py * resolved.hiddenNormal[1] +
-			pz * resolved.hiddenNormal[2];
+			px * resolved.hiddenNormal[0] + py * resolved.hiddenNormal[1] + pz * resolved.hiddenNormal[2];
 		return b > eps || b < -resolved.depthMeters - eps;
 	}
 	for (const piece of hiddenPiecesOf(resolved)) {
@@ -312,7 +318,7 @@ function drawnPlanBound(
 	resolved: DrawnResolvedSlice,
 	axis: SliceVec3,
 	sense: 'max' | 'min',
-	value: number
+	value: number,
 ): ClipHalfPlane {
 	const offset = axis[0] * resolved.origin[0] + axis[2] * resolved.origin[2];
 	return sense === 'max'
@@ -332,7 +338,7 @@ function drawnPlanBound(
  */
 export function drawnShownPlanCells(
 	resolved: DrawnResolvedSlice,
-	eps: number = SLICE_HIDE_EPSILON_METERS
+	eps: number = SLICE_HIDE_EPSILON_METERS,
 ): readonly (readonly ClipHalfPlane[])[] {
 	if (resolved.halfLength <= 0) return [[]];
 	const extent = resolved.halfLength + eps;
@@ -343,8 +349,8 @@ export function drawnShownPlanCells(
 			drawnPlanBound(resolved, resolved.along, 'min', -extent),
 			drawnPlanBound(resolved, resolved.along, 'max', extent),
 			drawnPlanBound(resolved, resolved.hiddenNormal, 'max', eps),
-			drawnPlanBound(resolved, resolved.hiddenNormal, 'min', -resolved.depthMeters - eps)
-		]
+			drawnPlanBound(resolved, resolved.hiddenNormal, 'min', -resolved.depthMeters - eps),
+		],
 	];
 }
 
@@ -354,15 +360,17 @@ export function drawnShownPlanCells(
  * Closed on purpose: a consumer asking "does this touch a hidden piece?" (the ghost's
  * fully-visible shortcut) must err toward the exact test, never away from it.
  */
-export function drawnHiddenPlanCells(resolved: DrawnResolvedSlice): readonly (readonly ClipHalfPlane[])[] {
+export function drawnHiddenPlanCells(
+	resolved: DrawnResolvedSlice,
+): readonly (readonly ClipHalfPlane[])[] {
 	if (resolved.halfLength <= 0) return [];
 	const extent = [
 		drawnPlanBound(resolved, resolved.along, 'min', -resolved.halfLength),
-		drawnPlanBound(resolved, resolved.along, 'max', resolved.halfLength)
+		drawnPlanBound(resolved, resolved.along, 'max', resolved.halfLength),
 	];
 	return [
 		[...extent, drawnPlanBound(resolved, resolved.hiddenNormal, 'min', 0)],
-		[...extent, drawnPlanBound(resolved, resolved.hiddenNormal, 'max', -resolved.depthMeters)]
+		[...extent, drawnPlanBound(resolved, resolved.hiddenNormal, 'max', -resolved.depthMeters)],
 	];
 }
 
@@ -375,7 +383,7 @@ export function drawnHiddenPlanCells(resolved: DrawnResolvedSlice): readonly (re
  */
 export function drawnFarSideDistance(
 	resolved: DrawnResolvedSlice,
-	bounds: { readonly min: SliceVec3; readonly max: SliceVec3 } | null
+	bounds: { readonly min: SliceVec3; readonly max: SliceVec3 } | null,
 ): number {
 	let furthest = 0;
 	if (bounds !== null) {
@@ -409,7 +417,7 @@ export function clampDrawnDepth(meters: number, farSideDistance: number): number
 export function snapDrawnAngle(
 	start: SliceVec2,
 	end: SliceVec2,
-	toleranceRadians = Math.PI / 32
+	toleranceRadians = Math.PI / 32,
 ): SliceVec2 {
 	const dx = end[0] - start[0];
 	const dz = end[1] - start[1];
@@ -435,7 +443,7 @@ export function planOverridesOf(resolved: ResolvedSlice): PlanParameterOverrides
 	if (resolved.kind === 'drawn') return {};
 	return {
 		depthMeters:
-			resolved.lowerY === null ? PLAN_DEFAULT_DEPTH_METERS : resolved.cutY - resolved.lowerY
+			resolved.lowerY === null ? PLAN_DEFAULT_DEPTH_METERS : resolved.cutY - resolved.lowerY,
 	};
 }
 
@@ -477,14 +485,15 @@ export function sliceDepthItems(input: {
 			? input.reading.depth.meters
 			: null;
 	const items: SliceDepthItem[] = [
-		{ kind: 'to-floor', label: 'To the floor', checked: current === null }
+		{ kind: 'to-floor', label: 'To the floor', checked: current === null },
 	];
 	const rows: number[] = [];
 	for (const tick of input.ticks) {
 		if (!Number.isFinite(tick.heightMeters)) continue;
 		if (tick.heightMeters <= 0) continue;
 		if (tick.heightMeters >= sheetHeight) continue;
-		if (rows.some((row) => Math.abs(row - tick.heightMeters) <= SLICE_DEPTH_ITEM_TOLERANCE_METERS)) continue;
+		if (rows.some((row) => Math.abs(row - tick.heightMeters) <= SLICE_DEPTH_ITEM_TOLERANCE_METERS))
+			continue;
 		rows.push(tick.heightMeters);
 	}
 	rows.sort((a, b) => b - a);
@@ -495,7 +504,7 @@ export function sliceDepthItems(input: {
 			kind: 'below',
 			meters,
 			label: tick?.label ?? `${height.toFixed(2)} m`,
-			checked: current !== null && Math.abs(current - meters) <= SLICE_DEPTH_ITEM_TOLERANCE_METERS
+			checked: current !== null && Math.abs(current - meters) <= SLICE_DEPTH_ITEM_TOLERANCE_METERS,
 		});
 	}
 	return items;

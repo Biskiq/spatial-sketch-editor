@@ -7,7 +7,12 @@ import { regionWallRelations } from '@portfolio/layout-core/room';
 import { candidatePreviewOf } from './candidate-preview';
 import { restingObjectsOnFloorRegion } from './region-resting';
 import type { StageCandidatePreview } from '$lib/authoring/stage/stage-adapter-host';
-import { resolveLayoutSurface, spacePaintReading, wallSideAt, type LayoutSurfaceRef } from '@portfolio/layout-core/plan';
+import {
+	resolveLayoutSurface,
+	spacePaintReading,
+	wallSideAt,
+	type LayoutSurfaceRef,
+} from '@portfolio/layout-core/plan';
 import { isClosedWall, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 
 import {
@@ -17,7 +22,7 @@ import {
 	type StageCardSubject,
 	type StageGuideContribution,
 	type StagePaintAnswer,
-	type StagePaintSpaceScope
+	type StagePaintSpaceScope,
 } from '$lib/authoring/stage/stage-adapter-host';
 import type { StageHeightTick } from '$lib/authoring/stage/stage-adapter-host';
 
@@ -27,26 +32,19 @@ import LayoutCardFields from './LayoutCardFields.svelte';
 import LayoutRegionCard from './LayoutRegionCard.svelte';
 import LayoutRoomCard from './LayoutRoomCard.svelte';
 import { independentWallOverlapGuides } from './room-overlap-cue';
-import {
-	type WallDeletionPreview
-} from './drawing-planners';
+import { type WallDeletionPreview } from './drawing-planners';
 import { LAYOUT_ROOM_DUPLICATE_KIND } from './room-duplicate-planners';
-import {
-	layoutRegionNameTarget,
-} from './region-planners';
+import { layoutRegionNameTarget } from './region-planners';
 import type { RegionEdgePick } from './session-ports';
 import { LAYOUT_INK_ENTRY, LAYOUT_INK_TASK } from './ink';
 import type { StageHandleDescriptor } from '$lib/authoring/stage/stage-adapter-host';
-import { curvedWallFrame, } from './precision-frames';
+import { curvedWallFrame } from './precision-frames';
 import { layoutFacts, layoutRoomFacts, layoutCardFieldIds } from './precision-facts';
-import { LAYOUT_PLINTH_PLACE_KIND, layoutSubjectOf, } from './precision';
+import { LAYOUT_PLINTH_PLACE_KIND, layoutSubjectOf } from './precision';
 import { layoutNameTarget, layoutRoomNameTarget } from './adapter-support';
 import type { LayoutSessionPorts } from './session-ports';
 import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
-import {
-	selectedWall,
-	selectedOpening,
-} from './layout-subjects';
+import { selectedWall, selectedOpening } from './layout-subjects';
 
 const LAYOUT_PLINTH_ENTRY = 'layout-place-plinth';
 
@@ -64,7 +62,7 @@ type ContributionPorts = {
 	readonly readActiveKnot: () => ActiveKnot | null;
 	readonly requestRoomDuplicate: (roomId: string) => StageCardActionOutcome;
 	readonly removeSelectedKnot: (
-		wallId: string
+		wallId: string,
 	) => Promise<StageCardActionOutcome> | StageCardActionOutcome;
 	readonly regionEdgePick: RegionEdgePick;
 };
@@ -79,7 +77,7 @@ export function createLayoutContributions({
 	readActiveKnot,
 	requestRoomDuplicate,
 	removeSelectedKnot,
-	regionEdgePick
+	regionEdgePick,
 }: ContributionPorts) {
 	/**
 	 * A5 — the derived **overlaps, not joined** cue. One query over this
@@ -90,10 +88,7 @@ export function createLayoutContributions({
 	let overlapGuides: readonly StageGuideContribution[] | null = null;
 	function guides(): readonly StageGuideContribution[] {
 		if (overlapGuides === null) {
-			overlapGuides = independentWallOverlapGuides(
-				document,
-				context.snapshot.domain.datumMeters
-			);
+			overlapGuides = independentWallOverlapGuides(document, context.snapshot.domain.datumMeters);
 		}
 		return overlapGuides;
 	}
@@ -116,7 +111,7 @@ export function createLayoutContributions({
 	 */
 	function inkInstrument(
 		contributed: { readonly label: string; readonly summary: string } | null,
-		reading: string
+		reading: string,
 	): NonNullable<ReturnType<NonNullable<StageAdapterBinding['instrument']>>> {
 		return {
 			presentation: 'palette',
@@ -132,7 +127,7 @@ export function createLayoutContributions({
 				contributed !== null
 					? [
 							{ label: 'Reading', value: contributed.label },
-							{ label: 'Meaning', value: contributed.summary }
+							{ label: 'Meaning', value: contributed.summary },
 						]
 					: reading === 'room'
 						? [{ label: 'Reading', value: 'Open Space from partial Walls' }]
@@ -141,17 +136,17 @@ export function createLayoutContributions({
 									{ label: 'Reading', value: 'Opening on a Wall face' },
 									{
 										label: 'Host',
-										value: 'Aim at a Wall; a selected host wins a tie'
-									}
+										value: 'Aim at a Wall; a selected host wins a tie',
+									},
 								]
 							: [
 									{ label: 'Reading', value: 'Straight Wall' },
 									{
 										label: 'Finish',
-										value: 'Enter · Close ring from the start point · Esc cancels the chain'
-									}
+										value: 'Enter · Close ring from the start point · Esc cancels the chain',
+									},
 								],
-			view: { component: LayoutInkPalette, services }
+			view: { component: LayoutInkPalette, services },
 		};
 	}
 
@@ -160,16 +155,16 @@ export function createLayoutContributions({
 			summary: 'Place plinth',
 			facts: [
 				{ label: 'Floor datum', value: `${document.floor.elevation} m` },
-				{ label: 'Creates', value: 'One ordinary Layout box' }
+				{ label: 'Creates', value: 'One ordinary Layout box' },
 			],
-			view: { component: LayoutPlacementInstrument, services }
+			view: { component: LayoutPlacementInstrument, services },
 		};
 	}
 
 	const markDescriptors = (
 		adapterContext: StageAdapterContext,
 		state: LayoutMarkState,
-		taskOpen: boolean
+		taskOpen: boolean,
 	): readonly StageHandleDescriptor[] =>
 		layoutMarkDescriptors({ services, document, adapterContext, state, taskOpen });
 	const deletionPreview = (wallId: string): WallDeletionPreview =>
@@ -188,12 +183,17 @@ export function createLayoutContributions({
 			if (hit.sourceKind === 'wall') {
 				const componentId = hit.subRef?.kind === 'component' ? hit.subRef.componentId : null;
 				const taggedSide = componentId?.match(/^side:(left|right)$/)?.[1];
-				const side = taggedSide === 'left' || taggedSide === 'right'
-					? taggedSide
-					: reading === 'plan'
-						? wallSideAt(context.snapshot.domain.geometry, hit.sourceId, [hit.worldPoint[0], hit.worldPoint[2]])
-						: null;
-				if (side === null) return { kind: 'refused', message: 'This part of a wall can’t be painted.' };
+				const side =
+					taggedSide === 'left' || taggedSide === 'right'
+						? taggedSide
+						: reading === 'plan'
+							? wallSideAt(context.snapshot.domain.geometry, hit.sourceId, [
+									hit.worldPoint[0],
+									hit.worldPoint[2],
+								])
+							: null;
+				if (side === null)
+					return { kind: 'refused', message: 'This part of a wall can’t be painted.' };
 				surface = { kind: 'wall-side', wallId: hit.sourceId, side };
 			} else if (hit.sourceKind === 'room-floor') {
 				surface = { kind: 'room-floor', roomId: hit.sourceId };
@@ -217,8 +217,10 @@ export function createLayoutContributions({
 			const space: StagePaintSpaceScope =
 				membership.kind === 'unique'
 					? {
-							kind: 'unique', roomId: membership.roomId,
-							surfaces: scope.surfaces, excluded: scope.excluded
+							kind: 'unique',
+							roomId: membership.roomId,
+							surfaces: scope.surfaces,
+							excluded: scope.excluded,
 						}
 					: membership;
 			return { kind: 'paintable-surface', surface, space };
@@ -230,7 +232,11 @@ export function createLayoutContributions({
 		 * Layout subject was already refused, in Layout's words, by the pick.
 		 */
 		eraseAction(hit): ReturnType<NonNullable<StageAdapterBinding['eraseAction']>> {
-			if (hit.sourceKind !== 'wall' && hit.sourceKind !== 'opening' && hit.sourceKind !== 'region') {
+			if (
+				hit.sourceKind !== 'wall' &&
+				hit.sourceKind !== 'opening' &&
+				hit.sourceKind !== 'region'
+			) {
 				return { kind: 'refused', message: 'That Layout subject cannot be erased.' };
 			}
 			const action = contributions
@@ -262,13 +268,13 @@ export function createLayoutContributions({
 				id: LAYOUT_INK_TASK,
 				taskKind: LAYOUT_INK_TASK,
 				label: 'Ink',
-				order: 0
+				order: 0,
 			},
 			{
 				id: 'layout-place-plinth',
 				taskKind: LAYOUT_PLINTH_PLACE_KIND,
 				label: 'Place plinth',
-				order: 10
+				order: 10,
 			},
 			// A4 — a procedure invoked by the Room Card, never a dock tool and
 			// never an Index entry: no armable mode is added to the tool strip.
@@ -276,8 +282,8 @@ export function createLayoutContributions({
 				id: LAYOUT_ROOM_DUPLICATE_KIND,
 				taskKind: LAYOUT_ROOM_DUPLICATE_KIND,
 				label: 'Duplicate room',
-				order: 20
-			}
+				order: 20,
+			},
 		],
 		findEntries: [
 			{
@@ -290,7 +296,7 @@ export function createLayoutContributions({
 				// (and found by name in the Head), not listed as an Index task.
 				home: 'dock',
 				slot: 'ink',
-				order: 0
+				order: 0,
 			},
 			{
 				id: LAYOUT_PLINTH_ENTRY,
@@ -298,8 +304,8 @@ export function createLayoutContributions({
 				label: 'Place plinth',
 				railFamily: 'place',
 				capability: 'layout',
-				order: 10
-			}
+				order: 10,
+			},
 		],
 		cardFacts(cardSubject: StageCardSubject) {
 			if (cardSubject.sourceKind === 'room' || cardSubject.sourceKind === 'room-floor') {
@@ -307,7 +313,7 @@ export function createLayoutContributions({
 			}
 			const subject = layoutSubjectOf({
 				sourceKind: cardSubject.sourceKind,
-				sourceId: cardSubject.sourceId
+				sourceId: cardSubject.sourceId,
 			});
 			if (subject === null) return [];
 			const facts = [...layoutFacts(document, subject)];
@@ -323,13 +329,13 @@ export function createLayoutContributions({
 					facts.push({
 						label: 'Length (arc)',
 						value: `${frame.length.toFixed(3)} m`,
-						fieldId: 'arcLength'
+						fieldId: 'arcLength',
 					});
 				}
 				facts.push({
 					label: 'Bend points',
 					value: String(source.centerline.knots.length),
-					fieldId: 'bendPoints'
+					fieldId: 'bendPoints',
 				});
 				const activeIndex =
 					activeKnot?.wallId === source.id
@@ -339,7 +345,7 @@ export function createLayoutContributions({
 					facts.push({
 						label: 'Active bend point',
 						value: `${activeIndex + 1} of ${source.centerline.knots.length}`,
-						fieldId: 'activeBendPoint'
+						fieldId: 'activeBendPoint',
 					});
 				}
 			}
@@ -354,7 +360,7 @@ export function createLayoutContributions({
 			}
 			const subject = layoutSubjectOf({
 				sourceKind: cardSubject.sourceKind,
-				sourceId: cardSubject.sourceId
+				sourceId: cardSubject.sourceId,
 			});
 			// A Layout object's name is its identity, so it owns no writer.
 			if (subject === null || subject.kind === 'object') return null;
@@ -367,24 +373,24 @@ export function createLayoutContributions({
 		 */
 		cardWriter(cardSubject: StageCardSubject) {
 			if (cardSubject.sourceKind === 'room' || cardSubject.sourceKind === 'room-floor') {
-				// U4: a Room's Floor and Ceiling Finishes. It writes no Layout field,
+				// A Room's Floor and Ceiling Finishes. It writes no Layout field,
 				// so every Room fact stays a Card fact.
 				return {
 					summary: 'Room surfaces',
 					fieldIds: [],
-					view: { component: LayoutRoomCard, services }
+					view: { component: LayoutRoomCard, services },
 				};
 			}
 			if (cardSubject.sourceKind === 'region') {
 				return {
 					summary: 'Region fields',
 					fieldIds: ['elevation', 'thickness', 'width', 'depth'],
-					view: { component: LayoutRegionCard, services }
+					view: { component: LayoutRegionCard, services },
 				};
 			}
 			const subject = layoutSubjectOf({
 				sourceKind: cardSubject.sourceKind,
-				sourceId: cardSubject.sourceId
+				sourceId: cardSubject.sourceId,
 			});
 			if (subject === null) return null;
 			// The writer edits every writable field except the name, which the Card
@@ -392,7 +398,7 @@ export function createLayoutContributions({
 			return {
 				summary: subject.kind === 'wall' ? 'Wall fields' : 'Opening fields',
 				fieldIds: layoutCardFieldIds(document, subject),
-				view: { component: LayoutCardFields, services }
+				view: { component: LayoutCardFields, services },
 			};
 		},
 		/**
@@ -402,8 +408,19 @@ export function createLayoutContributions({
 		 */
 		cardActions: (cardSubject: StageCardSubject) =>
 			layoutCardActions(
-				{ services, context, document, levelId, requestRoomDuplicate, removeSelectedKnot, regionEdgePick, deletionPreview, selectLayoutSubject, readActiveKnot },
-				cardSubject
+				{
+					services,
+					context,
+					document,
+					levelId,
+					requestRoomDuplicate,
+					removeSelectedKnot,
+					regionEdgePick,
+					deletionPreview,
+					selectLayoutSubject,
+					readActiveKnot,
+				},
+				cardSubject,
 			),
 		heightTicks(): readonly StageHeightTick[] {
 			const datum = context.snapshot.domain.datumMeters;
@@ -417,7 +434,7 @@ export function createLayoutContributions({
 				ticks.push({
 					kind: 'found',
 					heightMeters,
-					label: `${region.role === 'floor' ? 'Terrace' : 'Flat Roof'} ${authored?.name ?? region.regionId}`
+					label: `${region.role === 'floor' ? 'Terrace' : 'Flat Roof'} ${authored?.name ?? region.regionId}`,
 				});
 			}
 			for (const object of document.objects) {
@@ -431,11 +448,11 @@ export function createLayoutContributions({
 				ticks.push({
 					kind: 'found',
 					heightMeters,
-					label: `${object.kind === 'box' ? 'Box' : 'Cylinder'} ${object.id}`
+					label: `${object.kind === 'box' ? 'Box' : 'Cylinder'} ${object.id}`,
 				});
 			}
 			return ticks;
-		}
+		},
 	} satisfies Partial<StageAdapterBinding>;
 	/**
 	 * The selected Region's measured gaps.
@@ -447,7 +464,7 @@ export function createLayoutContributions({
 	 * Region draws no cue, which is why this reads the selection first.
 	 */
 	function regionGapPreviews(
-		adapterContext: StageAdapterContext
+		adapterContext: StageAdapterContext,
 	): readonly StageCandidatePreview[] | null {
 		const selected = selectedRegion(document, adapterContext);
 		if (selected === null) return null;
@@ -455,7 +472,7 @@ export function createLayoutContributions({
 		const relations = regionWallRelations(geometry, selected.region);
 		if (relations.kind !== 'relations') return null;
 		const gaps = relations.relations.filter(
-			(relation) => relation.reading === 'gap' && relation.measureMeters !== null
+			(relation) => relation.reading === 'gap' && relation.measureMeters !== null,
 		);
 		if (gaps.length === 0) return null;
 		const previews: StageCandidatePreview[] = [];
@@ -471,25 +488,25 @@ export function createLayoutContributions({
 					id: `layout-region-gap:${relation.wallId}`,
 					role: 'affected',
 					geometry: {
-					polygons: [],
-					segments: [
-						[
-							[segment.from[0], segment.from[1], segment.from[2]],
-							[segment.to[0], segment.to[1], segment.to[2]]
-						]
-					]
-				},
+						polygons: [],
+						segments: [
+							[
+								[segment.from[0], segment.from[1], segment.from[2]],
+								[segment.to[0], segment.to[1], segment.to[2]],
+							],
+						],
+					},
 					labels: [
 						{
 							world: [
 								(segment.from[0] + segment.to[0]) / 2,
 								(segment.from[1] + segment.to[1]) / 2,
-								(segment.from[2] + segment.to[2]) / 2
+								(segment.from[2] + segment.to[2]) / 2,
 							],
-							text
-						}
-					]
-				})
+							text,
+						},
+					],
+				}),
 			);
 		}
 		return previews.length === 0 ? null : previews;
@@ -498,7 +515,7 @@ export function createLayoutContributions({
 	function settledPreviews(
 		adapterContext: StageAdapterContext,
 		y: number,
-		settledRefusal: SettledLayoutRefusal | null
+		settledRefusal: SettledLayoutRefusal | null,
 	): readonly StageCandidatePreview[] | null {
 		const { world } = previewCoordinates(y);
 		// The reason a refused release did not write outlives the gesture; the
@@ -512,16 +529,18 @@ export function createLayoutContributions({
 					: settledRefusal.subject.kind === 'room'
 						? selectedRoomLabel(adapterContext)?.roomId === settledRefusal.subject.roomId
 						: settledRefusal.subject.kind === 'region'
-							? selectedRegion(document, adapterContext)?.region.id === settledRefusal.subject.regionId
-							: selectedOpening(document, adapterContext)?.openingId === settledRefusal.subject.openingId))
+							? selectedRegion(document, adapterContext)?.region.id ===
+								settledRefusal.subject.regionId
+							: selectedOpening(document, adapterContext)?.openingId ===
+								settledRefusal.subject.openingId))
 		) {
 			return [
 				candidatePreviewOf({
 					id: 'layout-candidate-refused-settled',
 					role: 'refused',
 					geometry: settledRefusal.geometry ?? { polygons: [], segments: [] },
-					labels: [{ world: world(settledRefusal.point), text: settledRefusal.text }]
-				})
+					labels: [{ world: world(settledRefusal.point), text: settledRefusal.text }],
+				}),
 			];
 		}
 

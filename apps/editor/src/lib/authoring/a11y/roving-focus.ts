@@ -21,7 +21,7 @@ export function resolveRovingIndex(
 	count: number,
 	currentIndex: number,
 	key: string,
-	axis: RovingAxis
+	axis: RovingAxis,
 ): number | null {
 	if (count <= 0) return null;
 	const nextKey = axis === 'horizontal' ? 'ArrowRight' : 'ArrowDown';

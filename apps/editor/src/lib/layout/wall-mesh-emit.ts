@@ -11,11 +11,20 @@ import type {
 	Vertex,
 	WallFaces,
 	WallMeshSectionRef,
-	WallMeshSurfaceKey
+	WallMeshSurfaceKey,
 } from './wall-mesh-types';
 import { NORMAL_GRID, UV_GRID, WINDING_DEGENERATE_AREA } from './wall-mesh-types';
 
-export function vertex(x: number, y: number, z: number, nx: number, ny: number, nz: number, u: number, v: number): Vertex {
+export function vertex(
+	x: number,
+	y: number,
+	z: number,
+	nx: number,
+	ny: number,
+	nz: number,
+	u: number,
+	v: number,
+): Vertex {
 	return { p: [x, y, z], n: [nx, ny, nz], u, v };
 }
 
@@ -28,7 +37,7 @@ export function vertex(x: number, y: number, z: number, nx: number, ny: number, 
  */
 export function attributeWallVertex(
 	development: NonNullable<WallFaces['development']>,
-	point: V3
+	point: V3,
 ): [number, number, number] {
 	const samples = development.samples;
 	let bestDistance = Infinity;
@@ -40,7 +49,10 @@ export function attributeWallVertex(
 		const dx = end.point[0] - start.point[0];
 		const dz = end.point[1] - start.point[1];
 		const squared = dx * dx + dz * dz;
-		const raw = squared > 0 ? ((point[0] - start.point[0]) * dx + (point[2] - start.point[1]) * dz) / squared : 0;
+		const raw =
+			squared > 0
+				? ((point[0] - start.point[0]) * dx + (point[2] - start.point[1]) * dz) / squared
+				: 0;
 		const amount = Math.min(1, Math.max(0, raw));
 		const px = start.point[0] + dx * amount;
 		const pz = start.point[1] + dz * amount;
@@ -66,7 +78,14 @@ export function quad(a: Vertex, b: Vertex, c: Vertex, d: Vertex, pick?: FacePick
  * bottom corner coincides with its top corner — collapse the quad to a triangle
  * (preserving winding) instead of emitting a zero-area second triangle.
  */
-export function pushBandFace(faces: Face[], a: Vertex, b: Vertex, c: Vertex, d: Vertex, pick?: FacePick): void {
+export function pushBandFace(
+	faces: Face[],
+	a: Vertex,
+	b: Vertex,
+	c: Vertex,
+	d: Vertex,
+	pick?: FacePick,
+): void {
 	const same = (p: Vertex, q: Vertex) =>
 		Math.hypot(p.p[0] - q.p[0], p.p[1] - q.p[1], p.p[2] - q.p[2]) <= LAYOUT_GEOMETRY_EPSILON;
 	if (same(b, a)) {
@@ -80,13 +99,12 @@ export function pushBandFace(faces: Face[], a: Vertex, b: Vertex, c: Vertex, d: 
 	faces.push(quad(a, b, c, d, pick));
 }
 
-
 export function emitMesh(
 	roomId: string,
 	wallsFaces: WallFaces[],
 	_classify: (ref: WallMeshSectionRef) => WallMeshSurfaceKey,
 	weldTolerance: number,
-	attributionEnabled = false
+	attributionEnabled = false,
 ): IndexedWallMesh {
 	const positions: number[] = [];
 	const normals: number[] = [];
@@ -135,15 +153,28 @@ export function emitMesh(
 		// this guard turns a future dropped tag into a loud build failure.
 		if (!face.pick) {
 			throw new Error(
-				`wall mesh ${roomId}: emitted an untagged face (${face.verts.length} vertices) — every face must carry a pick tag`
+				`wall mesh ${roomId}: emitted an untagged face (${face.verts.length} vertices) — every face must carry a pick tag`,
 			);
 		}
 		const start = indices.length;
 		notePick(
 			face.pick.kind === 'wall'
-				? { kind: 'wall', roomId, segmentId, surface: face.pick.surface, ...(face.pick.paintSide === undefined ? {} : { paintSide: face.pick.paintSide }) }
-				: { kind: 'opening', roomId, segmentId, openingId: face.pick.openingId, surface: face.pick.surface, ...(face.pick.paintSide === undefined ? {} : { paintSide: face.pick.paintSide }) },
-			start
+				? {
+						kind: 'wall',
+						roomId,
+						segmentId,
+						surface: face.pick.surface,
+						...(face.pick.paintSide === undefined ? {} : { paintSide: face.pick.paintSide }),
+					}
+				: {
+						kind: 'opening',
+						roomId,
+						segmentId,
+						openingId: face.pick.openingId,
+						surface: face.pick.surface,
+						...(face.pick.paintSide === undefined ? {} : { paintSide: face.pick.paintSide }),
+					},
+			start,
 		);
 		emitFace(face);
 	}
@@ -198,7 +229,10 @@ export function emitMesh(
 	// be referenced by BOTH adjacent walls' `wallRanges` (metadata-only).
 	const wallRangeBySegment = new Map<string, IndexedWallMesh['wallRanges'][number]>();
 	for (const wall of wallsFaces) {
-		const entry = { segmentId: wall.segmentId, ranges: [] as Array<{ start: number; count: number }> };
+		const entry = {
+			segmentId: wall.segmentId,
+			ranges: [] as Array<{ start: number; count: number }>,
+		};
 		wallRangeBySegment.set(wall.segmentId, entry);
 		wallRanges.push(entry);
 	}
@@ -216,7 +250,13 @@ export function emitMesh(
 					for (const face of matchingFaces) emitFaceWithPick(face, roomId, wall.segmentId);
 					const count = indices.length - start;
 					if (count > 0) {
-						sectionToRange.push({ ...section.ref, surfaceKey, ...(paintSide === undefined ? {} : { paintSide }), start, count });
+						sectionToRange.push({
+							...section.ref,
+							surfaceKey,
+							...(paintSide === undefined ? {} : { paintSide }),
+							start,
+							count,
+						});
 						wallRange.ranges.push({ start, count });
 					}
 				}
@@ -243,7 +283,13 @@ export function emitMesh(
 				}
 			}
 			const groupCount = indices.length - groupStart;
-			if (groupCount > 0) materialGroups.push({ surfaceKey, ...(paintSide === undefined ? {} : { paintSide }), start: groupStart, count: groupCount });
+			if (groupCount > 0)
+				materialGroups.push({
+					surfaceKey,
+					...(paintSide === undefined ? {} : { paintSide }),
+					start: groupStart,
+					count: groupCount,
+				});
 		}
 	}
 
@@ -264,10 +310,10 @@ export function emitMesh(
 			? {
 					attribution: new Float32Array(attributions),
 					attributionExact: new Float64Array(exactAttributions),
-					attributionSourcePositions: new Float64Array(positions)
+					attributionSourcePositions: new Float64Array(positions),
 				}
 			: {}),
-		bounds: { min: [...min] as V3, max: [...max] as V3 }
+		bounds: { min: [...min] as V3, max: [...max] as V3 },
 	};
 }
 
@@ -307,7 +353,9 @@ export function assertWindingAgreesWithNormals(mesh: IndexedWallMesh): void {
 		const nz = normals[ia * 3 + 2]!;
 		const dot = gx * nx + gy * ny + gz * nz;
 		if (dot <= 0) {
-			throw new Error(`wall mesh ${mesh.roomId}: triangle ${t / 3} winds opposite its stored normal`);
+			throw new Error(
+				`wall mesh ${mesh.roomId}: triangle ${t / 3} winds opposite its stored normal`,
+			);
 		}
 	}
 }
@@ -327,13 +375,15 @@ export function collectSurfaceKeys(wallsFaces: WallFaces[]): WallMeshSurfaceKey[
 	});
 }
 
-
 /**
  * spread `Layout3dTriangleRef` into a pick range. Extracted because TS
  * rejects spreading a variable whose *declared* type includes `null` even when
  * the caller has narrowed it (TS2698); a non-nullable parameter sidesteps it.
  */
-export function toPickRange(ref: Layout3dTriangleRef, start: number, count: number): Layout3dPickRange {
+export function toPickRange(
+	ref: Layout3dTriangleRef,
+	start: number,
+	count: number,
+): Layout3dPickRange {
 	return { ...ref, start, count };
 }
-

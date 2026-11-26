@@ -209,13 +209,13 @@ import StageMatGround from './StageMatGround.svelte';
 		/** The live drawn proposal, before it commits to the reading. */
 		sliceDraft?: { readonly start: readonly [number, number, number]; readonly end: readonly [number, number, number] } | null;
 		/**
-		 * X2's effective cut set and stub height. Display-only session state: Preview
+		 * The effective cut set and stub height. Display-only session state: Preview
 		 * is a separate Canvas that never passes them, so a release is as built.
 		 */
 		cutawayWallIds?: readonly string[];
 		cutawayStubTopY?: number | null;
 		/**
-		 * Wall Align (T2.S8 U6): the Walls in front of the faced side, hidden for the
+		 * Wall Align: the Walls in front of the faced side, hidden for the
 		 * session so nothing covers the surface being aligned. Display-only, never authored.
 		 */
 		alignHiddenWallIds?: readonly string[];
@@ -228,9 +228,9 @@ import StageMatGround from './StageMatGround.svelte';
 		 * set separately on the facade, and nothing here writes source.
 		 */
 		studio?: { readonly rootId: string | null; readonly context: 'world' | 'mat' } | null;
-		/** Optional Stage-only sink for sampled Finish view outcomes (U6 Repair). */
+		/** Optional Stage-only sink for sampled Finish view outcomes. */
 		onFinishOutcome?: FinishOutcomeSink;
-		/** Union of open appearance issues' affected target keys (U6 Repair hatch). */
+		/** Union of open appearance issues' affected target keys. */
 		repairAffectedTargets?: ReadonlySet<string>;
 	} = $props();
 
@@ -340,7 +340,7 @@ import StageMatGround from './StageMatGround.svelte';
 	const unfoldedWallId = $derived(wallUnfold.state?.wallId ?? null);
 	/**
 	 * A lifted overhead is selected through its Room, so the Lift ink reads the same
-	 * subject a floor click selects. No ceiling-specific selection exists in X1.
+	 * subject a floor click selects. No ceiling-specific selection exists in Lift.
 	 */
 	const liftSelectedRoomId = $derived(
 		selection !== null &&
@@ -619,7 +619,7 @@ import StageMatGround from './StageMatGround.svelte';
 			draft={sliceDraft}
 		/>
 		<!--
-			X2's cutaway ink: the live stub top and its paper caps. Overlay-layer
+			The cutaway ink: the live stub top and its paper caps. Overlay-layer
 			editor ink, never a pick root and never in a snapshot.
 		-->
 		<StageCutawayLayer
@@ -692,7 +692,7 @@ import StageMatGround from './StageMatGround.svelte';
 		bounds={snapshotBounds}
 		environment={environmentShown && sky ? JSON.stringify(sky) : 'paper'}
 	/>
-	<!-- The Finish picture host: the E7 inspection host on this renderer, drawing only when a shelf asks. -->
+	<!-- The Finish picture host: the inspection host on this renderer, drawing only when a shelf asks. -->
 	<FinishTileRenderer />
 	{/snippet}
 </CanvasHost>

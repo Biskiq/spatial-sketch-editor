@@ -63,8 +63,8 @@ Stage's length ray keeps its existing start-fixed pointer semantics.
 ## Files
 
 - `apps/editor/src/lib/authoring/adapters/layout/LayoutCardFields.svelte` — the choice and its state.
-- `apps/editor/tests/lib/authoring/layout-card-fixed-endpoint.test.ts` — new focused Card suite.
-- `apps/editor/tests/lib/authoring/layout-wall-manipulation.test.ts` — typed-path acceptance.
+- `../../../../apps/editor/tests/lib/authoring/adapters/layout-card-fixed-endpoint.test.ts` — new focused Card suite.
+- `../../../../apps/editor/tests/lib/authoring/adapters` — typed-path acceptance.
 - `docs/roadmap/t1-spatial-world/next-batch/a7-2-fixed-end-length-plan.md` — this plan.
 
 ## Out of scope

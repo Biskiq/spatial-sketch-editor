@@ -20,7 +20,11 @@ import { roomBoundaryPolygon } from './reconciliation-boundary';
 import { spacePairIssue } from './space-outline';
 import type { LayoutDocumentWallFirst, LayoutWallFirstRoom } from '../wall/types';
 
-export { polygonContainsPolygon, spaceOutlineSelfIntersects, spaceOutlineSignedArea } from './space-outline';
+export {
+	polygonContainsPolygon,
+	spaceOutlineSelfIntersects,
+	spaceOutlineSignedArea,
+} from './space-outline';
 
 export type SpacePlacementIssue = {
 	code: 'space_overlap' | 'space_contains_space';
@@ -43,7 +47,11 @@ export function spacePlacementIssues(document: LayoutDocumentWallFirst): SpacePl
 	// so the predicate still sees every pair it could accept. This uses the
 	// existing plan-box index that already owns the other pair gates; it is not
 	// a second membership authority and not a new spatial index.
-	const indexedRooms: Array<{ room: LayoutWallFirstRoom; polygon: readonly LayoutVec2[]; box: PlanBox }> = [];
+	const indexedRooms: Array<{
+		room: LayoutWallFirstRoom;
+		polygon: readonly LayoutVec2[];
+		box: PlanBox;
+	}> = [];
 	for (const room of document.rooms) {
 		const polygon = roomBoundaryPolygon(document, room.id);
 		if (polygon) indexedRooms.push({ room, polygon, box: polygonPlanBox(polygon) });
@@ -56,7 +64,12 @@ export function spacePlacementIssues(document: LayoutDocumentWallFirst): SpacePl
 		for (const second of boxIndex.overlaps(indexedRooms[first]!.box)) {
 			if (second <= first) continue;
 			const b = indexedRooms[second]!.room;
-			const verdict = spacePairIssue(polygonA, indexedRooms[second]!.polygon, isOpenSpace(a), isOpenSpace(b));
+			const verdict = spacePairIssue(
+				polygonA,
+				indexedRooms[second]!.polygon,
+				isOpenSpace(a),
+				isOpenSpace(b),
+			);
 			if (verdict === null) continue;
 			issues.push({
 				code: verdict,
@@ -64,7 +77,7 @@ export function spacePlacementIssues(document: LayoutDocumentWallFirst): SpacePl
 					verdict === 'space_contains_space'
 						? `Space '${a.name}' and Space '${b.name}' contain one another`
 						: `Space '${a.name}' overlaps Space '${b.name}'`,
-				roomIds: [a.id, b.id]
+				roomIds: [a.id, b.id],
 			});
 		}
 	}

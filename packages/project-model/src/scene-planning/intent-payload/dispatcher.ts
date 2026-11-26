@@ -1,6 +1,22 @@
-import { readCreateFormPayload, readPlaceFormCopyPayload, readSetFormSizePayload, readSetFormProfilePayload } from './form';
-import { readPlaceObjectPayload, readCreateLightPayload, readUpdateLightPayload, readDuplicatePayload } from './objects';
-import { readSupportMovePayload, readSetYawPayload, readPlaceOnFloorPayload, readResizePayload, readSetLiftPayload } from './transform';
+import {
+	readCreateFormPayload,
+	readPlaceFormCopyPayload,
+	readSetFormSizePayload,
+	readSetFormProfilePayload,
+} from './form';
+import {
+	readPlaceObjectPayload,
+	readCreateLightPayload,
+	readUpdateLightPayload,
+	readDuplicatePayload,
+} from './objects';
+import {
+	readSupportMovePayload,
+	readSetYawPayload,
+	readPlaceOnFloorPayload,
+	readResizePayload,
+	readSetLiftPayload,
+} from './transform';
 import { type SceneOperationPayload } from './types';
 import { ShapeReader } from '../../strict-shape';
 
@@ -8,7 +24,7 @@ import { ShapeReader } from '../../strict-shape';
 export function readSceneOperationPayload(
 	reader: ShapeReader,
 	kind: string,
-	raw: unknown
+	raw: unknown,
 ): SceneOperationPayload | null {
 	switch (kind) {
 		case 'create-form':
@@ -57,7 +73,11 @@ export function readSceneOperationPayload(
 			return entityId === null ? null : { kind: 'duplicate-light', entityId };
 		}
 		default:
-			reader.problem('$.kind', 'unsupported-operation', `No Scene operation kind "${kind}" is registered`);
+			reader.problem(
+				'$.kind',
+				'unsupported-operation',
+				`No Scene operation kind "${kind}" is registered`,
+			);
 			return null;
 	}
 }

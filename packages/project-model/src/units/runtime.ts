@@ -11,7 +11,12 @@
  * Runtime-safe: no editor, renderer, Svelte or Three import.
  */
 
-import { compileWallFirstLayoutGeometry, type CompiledLayoutGeometry, type LayoutCompileSession, type LayoutGeometryIssue } from '@portfolio/layout-core/geometry';
+import {
+	compileWallFirstLayoutGeometry,
+	type CompiledLayoutGeometry,
+	type LayoutCompileSession,
+	type LayoutGeometryIssue,
+} from '@portfolio/layout-core/geometry';
 import { countWork, p2311Measure } from '@portfolio/layout-core/kernel';
 import {
 	createNavigationGraph,
@@ -21,7 +26,7 @@ import {
 	type NavigationGraph,
 	type RuntimeScene,
 	type SceneConnection,
-	type SceneDocument
+	type SceneDocument,
 } from '../scene';
 import type { SceneValidationOptions } from '../scene-validation';
 import type { ShapeIssue } from '../strict-shape';
@@ -31,12 +36,12 @@ import type {
 	CameraUnitPayload,
 	ProjectEnvelope,
 	ResourceUnitPayload,
-	UnitDomain
+	UnitDomain,
 } from './types';
 import {
 	validateProjectEnvelope,
 	type EnvelopeClosureFinding,
-	type EnvelopeDiagnostic
+	type EnvelopeDiagnostic,
 } from './validate';
 import { materialRuntimeIndexOf } from './material-index';
 
@@ -105,7 +110,7 @@ function cameraFreeSceneProjection(scene: CameraFreeSceneDocument): SceneDocumen
 		entities: scene.entities,
 		...(scene.clusters === undefined ? {} : { clusters: scene.clusters }),
 		navigationNodes: [],
-		connections: []
+		connections: [],
 	};
 }
 
@@ -117,7 +122,7 @@ function cameraFreeSceneProjection(scene: CameraFreeSceneDocument): SceneDocumen
  * graph.
  */
 function navigationProjectionForRuntime(
-	camera: CameraUnitPayload
+	camera: CameraUnitPayload,
 ): Pick<SceneDocument, 'navigationNodes' | 'connections'> {
 	return {
 		navigationNodes: camera.views.map((view) => ({
@@ -126,9 +131,9 @@ function navigationProjectionForRuntime(
 			position: [...view.eye] as [number, number, number],
 			cameraTarget: [...view.target] as [number, number, number],
 			fov: view.fov,
-			connectedNodeIds: [...view.connectedViewIds]
+			connectedNodeIds: [...view.connectedViewIds],
 		})),
-		connections: camera.connections as SceneConnection[]
+		connections: camera.connections as SceneConnection[],
 	};
 }
 
@@ -145,7 +150,7 @@ function navigationProjectionForRuntime(
 function sameUnitContent(
 	previous: ProjectEnvelope,
 	next: ProjectEnvelope,
-	domain: UnitDomain
+	domain: UnitDomain,
 ): boolean {
 	return (
 		previous.id === next.id &&
@@ -156,7 +161,7 @@ function sameUnitContent(
 /** The previous Scene value, or `null` when either of its inputs moved. */
 function retainedSceneOf(
 	previous: RetainedUnitRuntime | undefined,
-	envelope: ProjectEnvelope
+	envelope: ProjectEnvelope,
 ): RuntimeScene | null {
 	if (previous === undefined) return null;
 	// The resolved Scene carries the resource unit's approved model footprints, so
@@ -168,7 +173,7 @@ function retainedSceneOf(
 
 /** The resources unit's approved model footprints, keyed by resource id. */
 function modelFootprintsOf(
-	resources: ResourceUnitPayload
+	resources: ResourceUnitPayload,
 ): Map<string, { width: number; depth: number }> {
 	const footprints = new Map<string, { width: number; depth: number }>();
 	for (const resource of resources.resources) {
@@ -182,7 +187,7 @@ function modelFootprintsOf(
 /** The previous navigation value, or `null` when the Camera unit moved. */
 function retainedNavigationOf(
 	previous: RetainedUnitRuntime | undefined,
-	envelope: ProjectEnvelope
+	envelope: ProjectEnvelope,
 ): NavigationGraph | null {
 	if (previous === undefined) return null;
 	if (!sameUnitContent(previous.envelope, envelope, 'camera')) return null;
@@ -198,7 +203,7 @@ function retainedNavigationOf(
  */
 export function prepareUnitRuntime(
 	input: unknown,
-	sceneOptions: SceneValidationOptions = {}
+	sceneOptions: SceneValidationOptions = {},
 ): UnitRuntimePreparation {
 	countWork('unit-runtime:prepare');
 	const validated = validateProjectEnvelope(input);
@@ -242,7 +247,7 @@ export function prepareValidatedUnitRuntime(
 	 * Absent, preparation resolves every part: boot, Preview and the visitor
 	 * runtime keep the cold path and carry no editor state between sources.
 	 */
-	previous?: RetainedUnitRuntime
+	previous?: RetainedUnitRuntime,
 ): UnitRuntimeReady | UnitRuntimeRejection {
 	countWork('unit-runtime:prepare-validated');
 	const envelope = validated.envelope;
@@ -261,7 +266,7 @@ export function prepareValidatedUnitRuntime(
 					cameraFreeSceneProjection(envelope.units.scene.data),
 					// Force the Camera-unit policy after merging the host's catalogue
 					// options: editor admission and visitor preparation share one answer.
-					{ ...sceneOptions, ...CAMERA_UNIT_SCENE_VALIDATION }
+					{ ...sceneOptions, ...CAMERA_UNIT_SCENE_VALIDATION },
 				);
 			});
 		} catch (error) {
@@ -269,7 +274,7 @@ export function prepareValidatedUnitRuntime(
 			return {
 				kind: 'rejected',
 				reason: 'scene-invalid',
-				issues: [{ path: '$.units.scene', code: 'scene_invalid', message }]
+				issues: [{ path: '$.units.scene', code: 'scene_invalid', message }],
 			};
 		}
 		// The approved placement is read-projection data, never authored into the
@@ -290,12 +295,18 @@ export function prepareValidatedUnitRuntime(
 		// the runtime value every surface shares. Reuse is keyed by this same unit,
 		// so a retained Scene already carries both.
 		const sceneUnit = envelope.units.scene.data;
-		if (sceneUnit.palette !== undefined || sceneUnit.environment !== undefined || sceneUnit.surfaceFinishes !== undefined) {
+		if (
+			sceneUnit.palette !== undefined ||
+			sceneUnit.environment !== undefined ||
+			sceneUnit.surfaceFinishes !== undefined
+		) {
 			runtimeScene = {
 				...runtimeScene,
 				...(sceneUnit.palette === undefined ? {} : { palette: sceneUnit.palette }),
 				...(sceneUnit.environment === undefined ? {} : { environment: sceneUnit.environment }),
-				...(sceneUnit.surfaceFinishes === undefined ? {} : { surfaceFinishes: sceneUnit.surfaceFinishes })
+				...(sceneUnit.surfaceFinishes === undefined
+					? {}
+					: { surfaceFinishes: sceneUnit.surfaceFinishes }),
 			};
 		}
 	}
@@ -306,10 +317,10 @@ export function prepareValidatedUnitRuntime(
 			graph = p2311Measure('navigation-resolve', () => {
 				countWork('navigation:resolve');
 				return createNavigationGraph(
-					resolveNavigationDocument(
-						navigationProjectionForRuntime(envelope.units.camera.data),
-						{ ...sceneOptions, ...CAMERA_UNIT_SCENE_VALIDATION }
-					)
+					resolveNavigationDocument(navigationProjectionForRuntime(envelope.units.camera.data), {
+						...sceneOptions,
+						...CAMERA_UNIT_SCENE_VALIDATION,
+					}),
 				);
 			});
 		} catch (error) {
@@ -319,7 +330,7 @@ export function prepareValidatedUnitRuntime(
 			return {
 				kind: 'rejected',
 				reason: 'scene-invalid',
-				issues: [{ path: '$.units.camera', code: 'scene_invalid', message }]
+				issues: [{ path: '$.units.camera', code: 'scene_invalid', message }],
 			};
 		}
 	}
@@ -332,6 +343,6 @@ export function prepareValidatedUnitRuntime(
 		diagnostics: validated.diagnostics,
 		closure: validated.closure,
 		runtimeScene,
-		graph
+		graph,
 	};
 }

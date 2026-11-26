@@ -29,7 +29,7 @@ import {
 	type DrawnResolvedSlice,
 	type SliceReading,
 	type SliceVec2,
-	type SliceVec3
+	type SliceVec3,
 } from './slice-cut';
 import { sliceReading } from './slice-reading.svelte';
 
@@ -83,13 +83,16 @@ function distanceCss(a: readonly [number, number], b: readonly [number, number])
 function distanceToSegmentCss(
 	point: readonly [number, number],
 	a: readonly [number, number],
-	b: readonly [number, number]
+	b: readonly [number, number],
 ): number {
 	const dx = b[0] - a[0];
 	const dy = b[1] - a[1];
 	const lengthSquared = dx * dx + dy * dy;
 	if (lengthSquared <= 1e-9) return distanceCss(point, a);
-	const t = Math.max(0, Math.min(1, ((point[0] - a[0]) * dx + (point[1] - a[1]) * dy) / lengthSquared));
+	const t = Math.max(
+		0,
+		Math.min(1, ((point[0] - a[0]) * dx + (point[1] - a[1]) * dy) / lengthSquared),
+	);
 	return distanceCss(point, [a[0] + dx * t, a[1] + dy * t]);
 }
 
@@ -117,7 +120,11 @@ export function createSliceDraw(input: {
 	let lineOrigin: { readonly start: SliceVec2; readonly end: SliceVec2 } | null = null;
 	let depthStartMeters = 0;
 	let depthPressPixels = 0;
-	let depthAxis: { readonly origin: readonly [number, number]; readonly unit: readonly [number, number]; readonly pixelsPerMeter: number } | null = null;
+	let depthAxis: {
+		readonly origin: readonly [number, number];
+		readonly unit: readonly [number, number];
+		readonly pixelsPerMeter: number;
+	} | null = null;
 
 	function release(): void {
 		const lease = press;
@@ -132,7 +139,7 @@ export function createSliceDraw(input: {
 			owner: 'host-slice-drawn',
 			evaluationId,
 			policy: 'cancel-on-reading-change',
-			navigation: true
+			navigation: true,
 		});
 		if (lease.kind !== 'granted') return false;
 		press = lease;
@@ -147,7 +154,7 @@ export function createSliceDraw(input: {
 		if (reading === null || reading.kind !== 'drawn') return null;
 		const resolved = resolveSlice(reading, {
 			sheetHeight: 0,
-			datumMeters: input.datumMeters()
+			datumMeters: input.datumMeters(),
 		});
 		return resolved.kind === 'drawn' ? resolved : null;
 	}
@@ -179,7 +186,7 @@ export function createSliceDraw(input: {
 		return [
 			resolved.origin[0] - resolved.hiddenNormal[0] * resolved.depthMeters,
 			resolved.origin[1],
-			resolved.origin[2] - resolved.hiddenNormal[2] * resolved.depthMeters
+			resolved.origin[2] - resolved.hiddenNormal[2] * resolved.depthMeters,
 		];
 	}
 
@@ -207,7 +214,8 @@ export function createSliceDraw(input: {
 		// The line outranks the depth grip: at the minimum depth the grip sits almost
 		// on the centre, and a creator pressing there means the line. The depth ray
 		// becomes grabbable as soon as it is far enough from the line to be its own mark.
-		if (start !== null && end !== null && distanceToSegmentCss(css, start, end) <= tolerance) return 'line';
+		if (start !== null && end !== null && distanceToSegmentCss(css, start, end) <= tolerance)
+			return 'line';
 		if (depth !== null && distanceCss(css, depth) <= tolerance) return 'depth';
 		return null;
 	}
@@ -226,11 +234,11 @@ export function createSliceDraw(input: {
 			end,
 			eye: input.eye(),
 			datumMeters: input.datumMeters(),
-			reading: input.renderedReading()
+			reading: input.renderedReading(),
 		});
 		const provisional = resolveSlice(
 			{ kind: 'drawn', start, end, hidden, depthMeters: 0.1 },
-			{ sheetHeight: 0, datumMeters: input.datumMeters() }
+			{ sheetHeight: 0, datumMeters: input.datumMeters() },
 		);
 		const depthMeters = provisional.kind === 'drawn' ? farSideOf(provisional) : 0.1;
 		sliceReading.drawn({ start, end, hidden, depthMeters });
@@ -284,7 +292,7 @@ export function createSliceDraw(input: {
 					const tip = cssOf([
 						resolved.origin[0] - resolved.hiddenNormal[0] * DEPTH_AXIS_METERS,
 						resolved.origin[1],
-						resolved.origin[2] - resolved.hiddenNormal[2] * DEPTH_AXIS_METERS
+						resolved.origin[2] - resolved.hiddenNormal[2] * DEPTH_AXIS_METERS,
 					]);
 					if (origin === null || tip === null) {
 						release();
@@ -301,8 +309,7 @@ export function createSliceDraw(input: {
 					depthAxis = { origin, unit, pixelsPerMeter: pixels };
 					depthStartMeters = reading.depthMeters;
 					depthPressPixels =
-						(inputValue.css[0] - origin[0]) * unit[0] +
-						(inputValue.css[1] - origin[1]) * unit[1];
+						(inputValue.css[0] - origin[0]) * unit[0] + (inputValue.css[1] - origin[1]) * unit[1];
 					mode = 'depth';
 					return true;
 				}
@@ -327,7 +334,7 @@ export function createSliceDraw(input: {
 					// pointer out along it deepens the slab. Only the delta from the press
 					// counts: the grip can be grabbed anywhere inside its hit radius.
 					depthStartMeters + (pixels - depthPressPixels) / depthAxis.pixelsPerMeter,
-					farSideOf(resolved)
+					farSideOf(resolved),
 				);
 				sliceReading.setDrawnDepth(meters);
 				refreshHandles();
@@ -342,7 +349,7 @@ export function createSliceDraw(input: {
 				draft = {
 					start: draft.start,
 					end,
-					label: formatMeters(Math.hypot(end[0] - draft.start[0], end[2] - draft.start[2]))
+					label: formatMeters(Math.hypot(end[0] - draft.start[0], end[2] - draft.start[2])),
 				};
 				return;
 			}
@@ -359,17 +366,17 @@ export function createSliceDraw(input: {
 				const dz = point[2] - anchor[2];
 				sliceReading.setDrawnSegment({
 					start: [lineOrigin.start[0] + dx, lineOrigin.start[1] + dz],
-					end: [lineOrigin.end[0] + dx, lineOrigin.end[1] + dz]
+					end: [lineOrigin.end[0] + dx, lineOrigin.end[1] + dz],
 				});
 			} else if (mode === 'start') {
 				sliceReading.setDrawnSegment({
 					start: planar(point),
-					end: [reading.end[0], reading.end[1]]
+					end: [reading.end[0], reading.end[1]],
 				});
 			} else if (mode === 'end') {
 				sliceReading.setDrawnSegment({
 					start: [reading.start[0], reading.start[1]],
-					end: planar(point)
+					end: planar(point),
 				});
 			}
 			refreshHandles();
@@ -384,7 +391,7 @@ export function createSliceDraw(input: {
 				if (reading?.kind === 'drawn') {
 					const length = Math.hypot(
 						reading.end[0] - reading.start[0],
-						reading.end[1] - reading.start[1]
+						reading.end[1] - reading.start[1],
 					);
 					if (length < SLICE_MIN_DRAWN_LENGTH_METERS && before !== null) {
 						sliceReading.set(before);
@@ -392,9 +399,7 @@ export function createSliceDraw(input: {
 					} else {
 						const resolved = resolvedDrawn(reading);
 						if (resolved !== null) {
-							sliceReading.setDrawnDepth(
-								clampDrawnDepth(reading.depthMeters, farSideOf(resolved))
-							);
+							sliceReading.setDrawnDepth(clampDrawnDepth(reading.depthMeters, farSideOf(resolved)));
 						}
 					}
 				}
@@ -445,6 +450,6 @@ export function createSliceDraw(input: {
 		},
 		view() {
 			return { armed, mode, draft, handles: handleCss };
-		}
+		},
 	};
 }

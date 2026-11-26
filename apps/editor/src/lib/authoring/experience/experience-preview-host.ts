@@ -27,8 +27,11 @@ export function createExperiencePreviewHost(input: ExperiencePreviewHostInput) {
 		...rest,
 		async prepareArtwork(domain, signal) {
 			const read = domain as StageDomainRead;
-			const images = new Map(read.scene.entities.flatMap((entity) =>
-				entity.kind === 'artwork' ? [[entity.source.assetId, entity.source] as const] : []));
+			const images = new Map(
+				read.scene.entities.flatMap((entity) =>
+					entity.kind === 'artwork' ? [[entity.source.assetId, entity.source] as const] : [],
+				),
+			);
 			if (!images.size) return null;
 			if (api === null) throw new Error('Artwork images are unavailable in Preview.');
 			const bytes = new Map<string, ArtworkBytes>();
@@ -46,7 +49,7 @@ export function createExperiencePreviewHost(input: ExperiencePreviewHostInput) {
 				if (!content) throw new Error('Artwork is missing in this Preview.');
 				return content;
 			});
-		}
+		},
 	});
 }
 
