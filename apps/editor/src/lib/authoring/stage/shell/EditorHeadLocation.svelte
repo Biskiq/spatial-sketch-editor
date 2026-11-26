@@ -20,7 +20,7 @@
 		cursor: pointer;
 	}
 	button:hover {
-		background: var(--shell-hover);
+		background: var(--shell-on-forest-wash-strong);
 	}
 	.location {
 		order: 1;

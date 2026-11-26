@@ -85,7 +85,7 @@
 		cursor: pointer;
 	}
 	button:hover {
-		background: var(--shell-hover);
+		background: var(--shell-on-forest-wash);
 	}
 	.identity {
 		position: relative;

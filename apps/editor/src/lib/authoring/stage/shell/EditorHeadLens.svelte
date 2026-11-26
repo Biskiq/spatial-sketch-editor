@@ -52,7 +52,7 @@
 		cursor: pointer;
 	}
 	button:hover {
-		background: var(--shell-hover);
+		background: var(--shell-on-forest-wash);
 	}
 	.lens-button {
 		height: 26px;
