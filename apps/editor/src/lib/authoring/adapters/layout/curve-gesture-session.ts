@@ -10,12 +10,12 @@ import {
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 import {
+	type GestureAcquisition,
 	type StageAdapterContext,
 	type StageCardActionOutcome,
 	type StagePointerIntent,
 } from '$lib/authoring/stage/stage-adapter-host';
 import { stageLayout, stageUnitRevision } from '$lib/authoring/stage/stage-adapter-host';
-import type { GestureAcquisition } from '$lib/authoring/stage/stage-adapter-host';
 
 import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
 import { WALL_UNFOLD_SHAPE_REFUSAL } from '$lib/layout/wall-unfold';
@@ -31,6 +31,7 @@ import {
 } from './precision-frames';
 import { wallBendIntent, wallKnotDeleteIntent } from './precision-intents';
 import { candidatePreviewOf } from './candidate-preview';
+import { snapRadius } from './snap';
 import { selectedClosedWall, selectedOpenWall, selectedCurvedWall } from './layout-subjects';
 import {
 	distanceToChord,
@@ -272,7 +273,7 @@ export function createCurveGestureSession({
 		if (intent.phase === 'move') {
 			const point = pointerDatumPoint(adapterContext, intent.css);
 			if (point === null) return true;
-			const radius = Math.hypot(point[0] - active.center[0], point[1] - active.center[1]);
+			const { radius } = snapRadius(active.center, point, adapterContext);
 			const planned = active.proposeRadius(radius);
 			if (planned.kind === 'rejected') {
 				active.preview = null;
@@ -857,7 +858,6 @@ export function createCurveGestureSession({
 						id: 'layout-candidate-circle-translate',
 						role: 'subject',
 						geometry: built.paper.subject,
-						snap: undefined,
 					}),
 				];
 			}

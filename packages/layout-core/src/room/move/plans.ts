@@ -8,6 +8,15 @@ import { finalizeRoomUnitMotion } from './finalize';
 import { reject } from './shared';
 
 /**
+ * The Room move scope: the complete attached physical component, including a
+ * dangling or branched attachment. The planner gates it on the Room stating
+ * Round, so an ordinary Room keeps the existing group isolation policy. The
+ * editor's drag preflight reads this same constant, so what the preview shows
+ * and what the accepted plan moves cannot disagree.
+ */
+export const ROOM_MOVE_SCOPE = { includePhysicalAttachments: true } as const;
+
+/**
  * Plan one rigid X/Z move of a wall-first Room. Rejects with the existing
  * canonical gates' reasons — never a bespoke Room-move rule set.
  */
@@ -29,9 +38,7 @@ export function planWallFirstRoomMove(
 
 	// Round translation carries the complete attached physical component;
 	// ordinary Rooms retain the existing group isolation policy.
-	const isolation = resolveIsolatedRoomGroupSubgraph(document, roomId, {
-		includePhysicalAttachments: true,
-	});
+	const isolation = resolveIsolatedRoomGroupSubgraph(document, roomId, ROOM_MOVE_SCOPE);
 	if (isolation.kind === 'rejected') {
 		return reject(
 			isolation.rejection.code,

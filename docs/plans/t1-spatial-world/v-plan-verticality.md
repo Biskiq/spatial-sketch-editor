@@ -10,7 +10,7 @@ implementation slices. V2/V3 remain planned extensions. Production cutover is su
 (PR #290; decisions Q7, Q8, Q9, Q10, Q16), its [slices](./implementation-prs.md#lane-d-depth),
 journeys [J7–J9](./creator-journeys.md#j7-a-courtyard-and-a-canopy) and
 [J11](./creator-journeys.md#j11-working-inside-a-finished-room), the
-[SP-plan](./sp-plan-open-spaces.md) (#305), the [C-plan](./c-plan-connected-curves.md) (#304), the
+[SP-plan](./sp-plan-open-spaces.md) (#305), the C-plan (#304), the
 [Layout contract](../../reference/layout.md) (the P26 verticality vocabulary and
 mechanisms D2 and D3), [persistence](../../reference/persistence.md), the
 [editing-path rules](../../reference/layout.md#editing-path-rules) and the T2 proposal's

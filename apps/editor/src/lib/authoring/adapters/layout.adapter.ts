@@ -50,6 +50,7 @@ import {
 } from './layout/layout-subjects';
 import { createWallGestureSession } from './layout/wall-gesture-session';
 import { createCurveGestureSession } from './layout/curve-gesture-session';
+import { createRoundRoomRadiusSession } from './layout/round-room-gesture-session';
 import { createJunctionGestureSession } from './layout/junction-gesture-session';
 import { createOpeningGestureSession } from './layout/opening-gesture-session';
 import { createRoomGestureSession } from './layout/room-gesture-session';
@@ -91,7 +92,6 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			);
 		}
 	}
-
 	/**
 	 * Ink defaults are the **adapter's** memory, not a binding's: thickness, height,
 	 * reading, wall mode and the next Opening's options survive an accepted chain's
@@ -159,6 +159,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				planCandidate: (plan) => compileContext.plan(document, plan),
 			});
 			const curve = createCurveGestureSession({ ...manipulation, candidatePaper });
+			const roundRadius = createRoundRoomRadiusSession(manipulation);
 			const room = createRoomGestureSession(manipulation);
 			const regionEdgePick = createRegionEdgePick();
 			const region = createRegionGestureSession({ ...manipulation, edgePick: regionEdgePick });
@@ -181,14 +182,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				removeSelectedKnot: curve.removeSelectedKnot,
 				regionEdgePick,
 			});
-
 			function markDescriptors(adapterContext: StageAdapterContext) {
 				if (openTaskKind === null && services.stage.session.task() === null)
 					curve.reconcileSelection(adapterContext);
 				return projectMarks(
 					adapterContext,
 					{
-						curve: curve.markState(),
+						curve: { ...curve.markState(), ...roundRadius.markState() },
 						wall: wall.markState(),
 						opening: existingOpening.markState(),
 						junctionActive: junction.active,
@@ -197,11 +197,11 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					openTaskKind !== null,
 				);
 			}
-
 			function endManipulation(): void {
 				wall.endGesture();
 				junction.endJunctionGesture();
 				existingOpening.endOpeningGesture();
+				roundRadius.end();
 				openSide.endGesture();
 				region.endGesture();
 			}
@@ -236,7 +236,6 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				room: spaceCreate,
 				select: selectLayoutSubject,
 			});
-
 			/** Install one created Opening as the selection, by id, on the fresh source. */
 			function selectLayoutSubject(
 				sourceKind: 'wall' | 'opening' | 'region',
@@ -382,6 +381,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					if (openTaskKind === LAYOUT_INK_TASK) return ink.pointer(intent, adapterContext);
 					if (openTaskKind !== null) return false;
 					if (region.pointer(intent, adapterContext)) return true;
+					if (roundRadius.pointer(intent, adapterContext)) return true;
 					if (curve.circleRadiusPointer(intent, adapterContext)) return true;
 					if (curve.circleTranslatePointer(intent, adapterContext)) return true;
 					if (
@@ -597,7 +597,6 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				},
 			};
 			return binding;
-
 			/** The filtered Paper drawing for one planner candidate document. */
 			function candidatePaper(
 				document: LayoutDocumentWallFirst,
@@ -649,6 +648,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 
 				const manipulationPreview =
 					wall.refusedPreviews(y, refusal) ??
+					roundRadius.previews(y) ??
 					curve.previews(y) ??
 					wall.previews(y) ??
 					junction.previews(y, refusal) ??

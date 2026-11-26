@@ -32,7 +32,10 @@ import {
 	draftingSnapIncrementMeters,
 } from '$lib/authoring/stage/stage-adapter-host';
 
-import type { StageDraftingState } from '$lib/authoring/stage/stage-adapter-host';
+import type {
+	StageAdapterContext,
+	StageDraftingState,
+} from '$lib/authoring/stage/stage-adapter-host';
 
 /** The winning snap, in the words the marks use. */
 export type LayoutSnapWinner = {
@@ -173,6 +176,24 @@ export function snapWallDrag(
 		distanceCss(nearest, value) <= DRAG_GRID_SNAP_CSS_PX
 		? { value: nearest, snapped: true }
 		: { value, snapped: false };
+}
+
+/**
+ * A radius grip is a scalar Wall grip: its rim snaps to the same drafting grid,
+ * measured along the ray the creator is already dragging.
+ */
+export function snapRadius(
+	origin: Readonly<LayoutVec2>,
+	point: Readonly<LayoutVec2>,
+	context: StageAdapterContext,
+): { readonly radius: number; readonly snapped: boolean } {
+	const raw = Math.hypot(point[0] - origin[0], point[1] - origin[1]);
+	const { value, snapped } = snapWallDrag(
+		raw,
+		context.drafting(),
+		(target) => Math.abs(target - raw) / context.evaluation.targetPlaneMetersPerCssPixel,
+	);
+	return { radius: value, snapped };
 }
 
 /** Free planar drags can acquire a heading and a distance in the same sample. */

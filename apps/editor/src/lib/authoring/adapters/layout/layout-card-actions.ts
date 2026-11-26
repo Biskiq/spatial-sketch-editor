@@ -54,7 +54,7 @@ import {
 } from './precision';
 import { wallStraightenIntent } from './precision-intents';
 import { previewWallStraighten, wallStationFrame } from './precision-frames';
-
+import { roundRoomActions, wallBoundingRoomActions } from './round-room-card-actions';
 /**
  * Lift is a **reading, not an edit**.
  *
@@ -86,11 +86,9 @@ function roomLiftAction(
 		},
 	};
 }
-
 function roomDuplicateCount(count: number, noun: string): string {
 	return `${count} ${noun}${count === 1 ? '' : 's'}`;
 }
-
 export function layoutCardActions(
 	input: {
 		readonly services: StageAdapterServices;
@@ -120,7 +118,6 @@ export function layoutCardActions(
 		selectLayoutSubject,
 		readActiveKnot,
 	} = input;
-
 	// A5 — Duplicate is the Room's one scoped action and it works for every
 	// Room. The disclosure comes from the same copy-enclosure resolver the
 	// acceptance re-proves: a shared boundary Wall copies privately, and
@@ -212,6 +209,7 @@ export function layoutCardActions(
 						: { kind: 'accepted' };
 				},
 			},
+			...roundRoomActions(services, document, room),
 			...(openSpace
 				? [
 						{
@@ -599,6 +597,7 @@ export function layoutCardActions(
 			faceAction,
 			splitAction,
 			...curveActions,
+			...wallBoundingRoomActions(services, document, wallId),
 			{
 				id: 'layout-wall-delete',
 				label: 'Delete Wall',
@@ -612,6 +611,7 @@ export function layoutCardActions(
 		faceAction,
 		splitAction,
 		...curveActions,
+		...wallBoundingRoomActions(services, document, wallId),
 		{
 			id: 'layout-wall-delete',
 			label: 'Delete Wall',

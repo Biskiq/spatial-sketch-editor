@@ -1,7 +1,7 @@
 {
 	"generatedFrom": "Budget ratchet baseline; shrink-only from here",
 	"counts": {
-		"filesOver600": 128,
+		"filesOver600": 127,
 		"filesOver1000": 11,
 		"filesOver1500": 0,
 		"functionsOver200": 98,
@@ -41,14 +41,14 @@
 			"reason": "The Stage session host: epoch, cancellations, selection, task and lease share one replacement boundary."
 		},
 		{
-			"path": "apps/editor/src/lib/authoring/adapters/layout/drawing-planners.ts",
-			"lines": 1079,
-			"reason": "The drawing planners: both bounded operations share the F.4 request vocabulary and one canonical planner registry."
-		},
-		{
 			"path": "apps/editor/src/lib/authoring/stage/stage-facade.ts",
 			"lines": 1066,
 			"reason": "The Stage facade: accepted content, selection and Camera tickets share one adapter registry and one read snapshot."
+		},
+		{
+			"path": "apps/editor/src/lib/authoring/adapters/layout/drawing-planners.ts",
+			"lines": 1056,
+			"reason": "The drawing planners: both bounded operations share the F.4 request vocabulary and one canonical planner registry."
 		},
 		{
 			"path": "apps/editor/src/lib/authoring/adapters/layout/ink-session.ts",
@@ -621,11 +621,6 @@
 			"reason": "Baseline exception: the owning split removes this entry."
 		},
 		{
-			"path": "apps/editor/src/lib/authoring/adapters/layout/layout-marks.ts",
-			"lines": 608,
-			"reason": "Baseline exception: the owning split removes this entry."
-		},
-		{
 			"path": "apps/editor/src/lib/authoring/experience/ExperiencePaths.svelte",
 			"lines": 608,
 			"reason": "The Camera path overlay: projected paths, selection and drag lease share one evaluation and one path store."
@@ -746,8 +741,8 @@
 		{
 			"file": "apps/editor/src/lib/authoring/adapters/layout.adapter.ts",
 			"name": "createAdapter",
-			"line": 63,
-			"lines": 603,
+			"line": 64,
+			"lines": 602,
 			"reason": "The Layout adapter root: compile context, bindings and registration share one adapter lifetime."
 		},
 		{
@@ -837,7 +832,7 @@
 		{
 			"file": "packages/layout-core/src/wall/chain-plan.ts",
 			"name": "planWallChainInternal",
-			"line": 58,
+			"line": 57,
 			"lines": 464,
 			"reason": "One chain plan: chord, arc and noding phases share the candidate document and rejection state."
 		},
@@ -1138,7 +1133,7 @@
 		{
 			"file": "packages/project-model/src/project-images.ts",
 			"name": "collectSceneImageRequirements",
-			"line": 134,
+			"line": 132,
 			"lines": 257,
 			"reason": "One recursive Scene walk: image requirements are collected from the same record graph the renderer reads."
 		},
