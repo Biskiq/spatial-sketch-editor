@@ -72,7 +72,7 @@
 		"arrows": 13
 	},
 	"src/lib/authoring/look/appearance-feature.svelte.ts": {
-		"lines": 162,
+		"lines": 165,
 		"imports": 12,
 		"state": 0,
 		"derived": 0,
@@ -270,7 +270,7 @@
 		"arrows": 53
 	},
 	"src/lib/authoring/look/finish-library.svelte.ts": {
-		"lines": 838,
+		"lines": 844,
 		"imports": 22,
 		"state": 4,
 		"derived": 0,
