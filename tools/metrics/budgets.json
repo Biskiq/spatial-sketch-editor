@@ -47,7 +47,7 @@
 		},
 		{
 			"path": "apps/editor/src/lib/authoring/adapters/layout/drawing-planners.ts",
-			"lines": 1057,
+			"lines": 1056,
 			"reason": "The drawing planners: both bounded operations share the F.4 request vocabulary and one canonical planner registry."
 		},
 		{

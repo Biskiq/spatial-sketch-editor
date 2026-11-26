@@ -27,7 +27,6 @@ import type {
 	AuthoringIntent,
 	DomainPlanner,
 	PlannerOutcome,
-	PlannerRequest,
 	PreparedCandidate,
 } from '@portfolio/project-model/f4';
 import {

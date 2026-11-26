@@ -7,7 +7,6 @@
  * permanent handle constellation.
  */
 import type { FixedWallEndpoint, LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
-import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
 import type {
 	StageAdapterContext,

@@ -52,7 +52,6 @@ type RoundRoomRadiusGesture = {
 
 export function createRoundRoomRadiusSession({
 	services,
-	document,
 	contentRevision,
 	publishRefusal,
 	settleRefusal,

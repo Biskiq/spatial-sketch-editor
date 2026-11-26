@@ -82,9 +82,7 @@ export function wallBoundedRooms(
 	document: LayoutDocumentWallFirst,
 	wallId: string,
 ): readonly { readonly roomId: string; readonly name: string }[] {
-	const rooms = document.rooms.filter((room) =>
-		room.boundary.some((ref) => ref.wallId === wallId),
-	);
+	const rooms = document.rooms.filter((room) => room.boundary.some((ref) => ref.wallId === wallId));
 	// Only a Wall that bounds a Round Room is a ring member. An ordinary shared
 	// Wall keeps its Card unchanged; a ring arc that also bounds an ordinary
 	// neighbour offers both destinations, because the creator needs a way back
