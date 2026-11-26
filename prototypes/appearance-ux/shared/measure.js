@@ -1,6 +1,6 @@
 /*
  * Thumbnail distinctness measures, following the E7 method
- * (docs/roadmap/t2-look-atmosphere/s8-professional-material-foundation/evidence/s8-e7-distinctness.json):
+ * (apps/editor/assets-source/textures/s8-e7-distinctness.json):
  *   colour  — per-patch mean in linear sRGB, CIEDE2000, then the mean over patches (8×8 grid);
  *   luma    — SSIM on Rec.601 luma, uniform 8 px windows, stride 4, K1 0.01, K2 0.03, L 255;
  *   clipping — any channel at 255 inside the measured region.

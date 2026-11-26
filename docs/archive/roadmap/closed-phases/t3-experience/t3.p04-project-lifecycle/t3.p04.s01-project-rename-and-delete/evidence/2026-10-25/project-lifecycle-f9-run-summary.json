@@ -1,8 +1,0 @@
-{
-  "browserFacts": null,
-  "cleanupResult": null,
-  "apiTimingCount": 68,
-  "objectCountAtShutdown": 2,
-  "processesClosed": true,
-  "networkStore": "private in-memory ObjectStore; no R2 connection"
-}

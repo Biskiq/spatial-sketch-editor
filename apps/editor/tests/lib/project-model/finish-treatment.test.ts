@@ -63,7 +63,7 @@ describe('presentation facts', () => {
 		const evidence = JSON.parse(
 			readFileSync(
 				new URL(
-					'../../../../../docs/roadmap/t2-look-atmosphere/s8-professional-material-foundation/evidence/s8-f-catalogue.json',
+					'../../../../../apps/editor/assets-source/textures/s8-f-catalogue.json',
 					import.meta.url
 				),
 				'utf8'

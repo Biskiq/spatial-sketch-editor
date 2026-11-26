@@ -1,4 +1,6 @@
-docs/archive/
+broad-research/
+prototypes/**/node_modules/
+prototypes/**/verification-records/
 node_modules/
 dist/
 build/

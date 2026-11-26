@@ -43,28 +43,16 @@
       "port": 5173
     },
     {
-      "name": "world-sheet",
+      "name": "design-system",
       "runtimeExecutable": "python3",
       "runtimeArgs": [
         "-m",
         "http.server",
         "8861",
         "--directory",
-        "docs/roadmap/r217-core-editor-stability/world-shell-recovery"
+        "docs/design-system"
       ],
       "port": 8861
-    },
-    {
-      "name": "experience-sheet",
-      "runtimeExecutable": "python3",
-      "runtimeArgs": [
-        "-m",
-        "http.server",
-        "8862",
-        "--directory",
-        "docs/reference/design-system"
-      ],
-      "port": 8862
     },
     {
       "name": "world-creation-tools",

@@ -134,7 +134,7 @@ their own owner and two tools.
 
 ## Owner decisions this needs
 
-1. **Landscape ownership.** Ground, water, paths and plants have no owner in the North Star: a
+1. **Landscape ownership.** Ground, water, paths and plants have no owner in the strategic research: a
    Landscape authority, terrain in Layout with plants in Scene, or all in Scene. The Landscape key
    does not depend on the answer.
 2. **Placed buildings.** Building assumes Layout placed structures from reusable definitions.

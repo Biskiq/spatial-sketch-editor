@@ -1,0 +1,3437 @@
+{
+	"schema": "s8-f-catalogue-evidence/1",
+	"gate": "/dev/s8-f",
+	"recordedOn": "2026-11-21",
+	"principles": [
+		"Physical plausibility qualifies a source; it is not a target to force-match.",
+		"Texture information is preserved: clipping and contrast are measured per transform; flattened detail fails.",
+		"Correct sources are preferred over aggressive correction; travertine never ships under a marble identity.",
+		"Final rendered behaviour is validated under neutral and grazing light, across representative scenes and both supported renderers.",
+		"Corrections are reproducible: source bytes retained, every transform and hash recorded."
+	],
+	"outcome": {
+		"curatedEntries": 21,
+		"sets": 16,
+		"levels": {
+			"512": [
+				"leather-smooth",
+				"metal-satin",
+				"stone-terrazzo",
+				"stone-travertine",
+				"synthetic-plastic-matte",
+				"textile-linen",
+				"wood-oak-veneer"
+			],
+			"1k": [
+				"concrete-smooth",
+				"masonry-brick-red",
+				"metal-brushed",
+				"plaster-painted",
+				"textile-carpet-loop",
+				"tile-ceramic-white",
+				"wood-oak-planks",
+				"wood-walnut-veneer"
+			],
+			"2k": [
+				"wood-herringbone-parquet"
+			]
+		},
+		"shippedBytes": 28067148,
+		"colourTransformedSets": [
+			"plaster-painted",
+			"textile-linen"
+		],
+		"excludedSets": [
+			"masonry-brick-painted",
+			"stone-marble-white"
+		],
+		"legacy": "The six pre-F entries stay resolvable with legacy: true and leave the creator shelf; new shapes, candidates and native definitions default to plaster-painted and the room portal to metal-brass-satin; generated walls and ceilings without a Finish keep the plaster-warm scalars (they bind no maps), and texturing them is left to a later look slice."
+	},
+	"tool": {
+		"script": "apps/editor/assets-source/textures/derive.ts",
+		"node": "v26.7.0",
+		"platform": "darwin-arm64",
+		"codec": "@napi-rs/image@1.16.0"
+	},
+	"qualificationMethod": "Offline qualification sheets: each ladder level magnified to the 1440p design-distance screen density (surface 1.5 m = 850 px/m, object 0.8 m = 1595 px/m), colour × lit normal under a grazing key, beside a 2×2 tile of the 512 level for seams and repeat. Where a level's magnification is below 1 the sheet sampler has no mip prefilter, so differences above that level are aliasing a GPU would not show and are discounted. Agent judgement; the owner retains final visual acceptance.",
+	"reproducibility": {
+		"command": "node apps/editor/assets-source/textures/derive.ts --verify",
+		"result": "all 16 sets re-derived from the retained sources with identical bytes",
+		"on": "2026-11-21"
+	},
+	"sets": [
+		{
+			"setId": "concrete-smooth",
+			"source": {
+				"provider": "ambientcg",
+				"assetId": "Concrete046",
+				"acquiredAt": "2026-11-21",
+				"files": [
+					{
+						"role": "archive",
+						"retentionKey": "materials/ambientcg/Concrete046/archive/Concrete046_2K-PNG.zip",
+						"sha256": "094b70a90b6d932868f20c081befac50a89a7e969155fad34291e76c40b30306",
+						"bytes": 59708442
+					},
+					{
+						"role": "color",
+						"retentionKey": "materials/ambientcg/Concrete046/color/Concrete046_2K-PNG_Color.png",
+						"sha256": "3b53e738cba92e453e7c8b7b366e75537a179642ee71f2d1d13322e2e2efd7b5",
+						"bytes": 6453231
+					},
+					{
+						"role": "normal",
+						"retentionKey": "materials/ambientcg/Concrete046/normal/Concrete046_2K-PNG_NormalGL.png",
+						"sha256": "a918e1927372652921a1973b37e80158afcfe221124a524522d975e8cd00b8b7",
+						"bytes": 21043237
+					},
+					{
+						"role": "roughness",
+						"retentionKey": "materials/ambientcg/Concrete046/roughness/Concrete046_2K-PNG_Roughness.png",
+						"sha256": "3e896927632f707235538316b3668666380c8ba4794b4e4955a788ac2e8410fd",
+						"bytes": 2597606
+					}
+				]
+			},
+			"selection": null,
+			"qualifiedLevel": "1k",
+			"judgement": "512 blurs the pitting (×3.99); 1K holds it (×1.99, conditional, stochastic low-frequency); 2K adds fine speckle only. Repeat at 2.4 m shows a mild recurring stain at the overview, not conspicuous.",
+			"shipped": {
+				"color": {
+					"sha256": "df97c25706c29bb60855496c958a16b7689800a1daafff95309dae3059c6c4cb",
+					"bytes": 245694
+				},
+				"normal": {
+					"sha256": "2ad3f48a8eaea35483ae210aa6c06bab0c60464e1ed020aa5c0f5f7589ed0713",
+					"bytes": 762750
+				},
+				"orm": {
+					"sha256": "e7a8a9fee83a80b563fc49a85a851cdd5dd53d162b4368e0763e63d910684c97",
+					"bytes": 649010
+				}
+			},
+			"measurements": {
+				"qualified": {
+					"colorSeamRatio": 1.213,
+					"colorSeamVsFeatures": [
+						0.897,
+						0.842
+					],
+					"colorLinearMean": [
+						0.61238,
+						0.61986,
+						0.48826
+					],
+					"colorClippedShare": 0,
+					"normalSeamRatio": 1.202,
+					"normalSeamVsFeatures": [
+						0.785,
+						0.635
+					],
+					"ormSeamRatio": 0.97,
+					"ormSeamVsFeatures": [
+						0.883,
+						0.693
+					],
+					"roughnessMean": 0.4947,
+					"occlusionMean": 1
+				},
+				"perLevel": {
+					"512": {
+						"colorSeamRatio": 1.186,
+						"colorSeamVsFeatures": [
+							0.83,
+							0.772
+						],
+						"colorLinearMean": [
+							0.61206,
+							0.61925,
+							0.48791
+						],
+						"colorClippedShare": 0,
+						"normalSeamRatio": 1.135,
+						"normalSeamVsFeatures": [
+							0.707,
+							0.646
+						],
+						"ormSeamRatio": 0.938,
+						"ormSeamVsFeatures": [
+							0.808,
+							0.683
+						],
+						"roughnessMean": 0.4946,
+						"occlusionMean": 1
+					},
+					"2k": {
+						"colorSeamRatio": 1.347,
+						"colorSeamVsFeatures": [
+							1.044,
+							0.898
+						],
+						"colorLinearMean": [
+							0.61177,
+							0.61934,
+							0.48783
+						],
+						"colorClippedShare": 0,
+						"normalSeamRatio": 1.387,
+						"normalSeamVsFeatures": [
+							0.909,
+							0.734
+						],
+						"ormSeamRatio": 1.002,
+						"ormSeamVsFeatures": [
+							0.945,
+							0.74
+						],
+						"roughnessMean": 0.4946,
+						"occlusionMean": 1
+					},
+					"1k": {
+						"colorSeamRatio": 1.213,
+						"colorSeamVsFeatures": [
+							0.897,
+							0.842
+						],
+						"colorLinearMean": [
+							0.61238,
+							0.61986,
+							0.48826
+						],
+						"colorClippedShare": 0,
+						"normalSeamRatio": 1.202,
+						"normalSeamVsFeatures": [
+							0.785,
+							0.635
+						],
+						"ormSeamRatio": 0.97,
+						"ormSeamVsFeatures": [
+							0.883,
+							0.693
+						],
+						"roughnessMean": 0.4947,
+						"occlusionMean": 1
+					}
+				},
+				"detailLoss": {
+					"2k->1k": {
+						"color": 4.891,
+						"normal": 3.478,
+						"orm": 4.126
+					},
+					"1k->512": {
+						"color": 4.756,
+						"normal": 2.051,
+						"orm": 3.401
+					}
+				}
+			},
+			"colorTransforms": [],
+			"entries": [
+				{
+					"id": "concrete-smooth",
+					"color": "#e7e6ff",
+					"rule": "T1 neutral base: the reference hue at the source luminance (reference is a check, not a luminance target)",
+					"target": null,
+					"measuredLinearMean": [
+						0.61177,
+						0.61934,
+						0.48783
+					],
+					"linearFactor": [
+						0.79741,
+						0.78766,
+						1
+					],
+					"albedoLuminance": 0.4878,
+					"targetLuminance": 0.6082,
+					"targetReached": false,
+					"plausibility": {
+						"reference": "#bdbdbd",
+						"sourceLuminanceRatio": 1.195,
+						"withinTolerance": true
+					}
+				},
+				{
+					"id": "concrete-polished",
+					"color": "#e7e6ff",
+					"rule": "preset of concrete-smooth: shares concrete-smooth images; roughness factor only",
+					"target": null,
+					"measuredLinearMean": [
+						0.61177,
+						0.61934,
+						0.48783
+					],
+					"linearFactor": [
+						0.79741,
+						0.78766,
+						1
+					],
+					"albedoLuminance": 0.4878,
+					"targetLuminance": 0.6082,
+					"targetReached": false,
+					"plausibility": {
+						"reference": "#bdbdbd",
+						"sourceLuminanceRatio": 1.195,
+						"withinTolerance": true
+					}
+				}
+			],
+			"record": {
+				"path": "apps/editor/assets-source/textures/records/concrete-smooth.json",
+				"sha256": "04440f92bfe12f77da11c039462bafb651dc3267bc16022390e8c796f9641fe2"
+			}
+		},
+		{
+			"setId": "leather-smooth",
+			"source": {
+				"provider": "polyhaven",
+				"assetId": "leather_white",
+				"acquiredAt": "2026-11-21",
+				"files": [
+					{
+						"role": "color",
+						"retentionKey": "materials/polyhaven/leather_white/color/leather_white_diff_2k.png",
+						"sha256": "507647ca0d485b7d956e57f70d600da2777088dccbe50e8300b6c119f75b3b7c",
+						"bytes": 8177379
+					},
+					{
+						"role": "normal",
+						"retentionKey": "materials/polyhaven/leather_white/normal/leather_white_nor_gl_2k.png",
+						"sha256": "7766d7a06e2f1d84cb87a1b82e36bff13cc2b3daaf9a02bca15e14b491f414b6",
+						"bytes": 7480079
+					},
+					{
+						"role": "orm",
+						"retentionKey": "materials/polyhaven/leather_white/orm/leather_white_arm_2k.png",
+						"sha256": "b4677a6dcf2055c990159e8979a466289769bdd04a8d4aec3fbbc3060002b2a6",
+						"bytes": 7874714
+					}
+				]
+			},
+			"selection": null,
+			"qualifiedLevel": "512",
+			"judgement": "Grain holds at 512 (×0.93); higher levels add only aliasing in the sheet.",
+			"shipped": {
+				"color": {
+					"sha256": "aabf976f0ae75f15f9e6fba5278789636a8f1c7714eac58497f207921b985a35",
+					"bytes": 48618
+				},
+				"normal": {
+					"sha256": "94c10d202a5018a95b5939c919debd92abfaf181803e5e51479cd9c0fe4fa46f",
+					"bytes": 237852
+				},
+				"orm": {
+					"sha256": "d97e099816b588b3108af9dc7d62eda185a9da771a6c0866bf7ac268346e317b",
+					"bytes": 309432
+				}
+			},
+			"measurements": {
+				"qualified": {
+					"colorSeamRatio": 1.05,
+					"colorSeamVsFeatures": [
+						0.897,
+						0.931
+					],
+					"colorLinearMean": [
+						0.30709,
+						0.29091,
+						0.21481
+					],
+					"colorClippedShare": 0,
+					"normalSeamRatio": 0.976,
+					"normalSeamVsFeatures": [
+						0.895,
+						0.747
+					],
+					"ormSeamRatio": 1.012,
+					"ormSeamVsFeatures": [
+						0.929,
+						0.851
+					],
+					"roughnessMean": 0.6171,
+					"occlusionMean": 0.8683
+				},
+				"perLevel": {
+					"512": {
+						"colorSeamRatio": 1.05,
+						"colorSeamVsFeatures": [
+							0.897,
+							0.931
+						],
+						"colorLinearMean": [
+							0.30709,
+							0.29091,
+							0.21481
+						],
+						"colorClippedShare": 0,
+						"normalSeamRatio": 0.976,
+						"normalSeamVsFeatures": [
+							0.895,
+							0.747
+						],
+						"ormSeamRatio": 1.012,
+						"ormSeamVsFeatures": [
+							0.929,
+							0.851
+						],
+						"roughnessMean": 0.6171,
+						"occlusionMean": 0.8683
+					},
+					"2k": {
+						"colorSeamRatio": 0.933,
+						"colorSeamVsFeatures": [
+							0.867,
+							0.737
+						],
+						"colorLinearMean": [
+							0.30584,
+							0.29131,
+							0.21612
+						],
+						"colorClippedShare": 0,
+						"normalSeamRatio": 0.974,
+						"normalSeamVsFeatures": [
+							0.912,
+							0.755
+						],
+						"ormSeamRatio": 0.968,
+						"ormSeamVsFeatures": [
+							0.909,
+							0.767
+						],
+						"roughnessMean": 0.6171,
+						"occlusionMean": 0.8683
+					},
+					"1k": {
+						"colorSeamRatio": 1.07,
+						"colorSeamVsFeatures": [
+							0.937,
+							0.965
+						],
+						"colorLinearMean": [
+							0.30672,
+							0.29117,
+							0.21533
+						],
+						"colorClippedShare": 0,
+						"normalSeamRatio": 0.989,
+						"normalSeamVsFeatures": [
+							0.916,
+							0.776
+						],
+						"ormSeamRatio": 1.01,
+						"ormSeamVsFeatures": [
+							0.934,
+							0.864
+						],
+						"roughnessMean": 0.6171,
+						"occlusionMean": 0.8683
+					}
+				},
+				"detailLoss": {
+					"2k->1k": {
+						"color": 7.726,
+						"normal": 4.751,
+						"orm": 9.384
+					},
+					"1k->512": {
+						"color": 5.142,
+						"normal": 3.584,
+						"orm": 7.072
+					}
+				}
+			},
+			"colorTransforms": [],
+			"entries": [
+				{
+					"id": "leather-cognac",
+					"color": "#eb8d60",
+					"rule": "design target: linear(target) / measured mean per channel; target hue kept at the supported luminance when unreachable (§7)",
+					"target": "#8a4f2c",
+					"measuredLinearMean": [
+						0.30584,
+						0.29131,
+						0.21612
+					],
+					"linearFactor": [
+						0.831,
+						0.2684,
+						0.11654
+					],
+					"albedoLuminance": 0.1118,
+					"targetLuminance": 0.1118,
+					"targetReached": true
+				}
+			],
+			"record": {
+				"path": "apps/editor/assets-source/textures/records/leather-smooth.json",
+				"sha256": "8bbfe80346d8c862151c6c96b8b0a7ab0436092af1436eac689b10a011a4a7cf"
+			}
+		},
+		{
+			"setId": "masonry-brick-red",
+			"source": {
+				"provider": "polyhaven",
+				"assetId": "red_brick_03",
+				"acquiredAt": "2026-11-21",
+				"files": [
+					{
+						"role": "color",
+						"retentionKey": "materials/polyhaven/red_brick_03/color/red_brick_03_diff_2k.png",
+						"sha256": "c7acd2473455d71729ae9c649047f39ff8cc4a4b37873da47273b71925304181",
+						"bytes": 9101323
+					},
+					{
+						"role": "normal",
+						"retentionKey": "materials/polyhaven/red_brick_03/normal/red_brick_03_nor_gl_2k.png",
+						"sha256": "f27cdea3ee64e775e48654de6ec154d1a48082ae1a5b7007fd111ae2b6a50e22",
+						"bytes": 8141778
+					},
+					{
+						"role": "orm",
+						"retentionKey": "materials/polyhaven/red_brick_03/orm/red_brick_03_arm_2k.png",
+						"sha256": "c2cbc138ad29f6ef03849340d4f69d3a6298c2be39187b438c2c51dcf1c15b07",
+						"bytes": 5877058
+					}
+				]
+			},
+			"selection": null,
+			"qualifiedLevel": "1k",
+			"judgement": "512 softens mortar edges at 1.5 m (×1.66); 1K crisp (×0.83); 2K equal.",
+			"shipped": {
+				"color": {
+					"sha256": "f950fe0f80b27d7f42ca28390ff74c5fed6689addb6edcffce94d74a3f632fce",
+					"bytes": 421944
+				},
+				"normal": {
+					"sha256": "fe24714e3da646826bd82335708e32322cc1b81e9100a9676e54d0c3592c93eb",
+					"bytes": 1937452
+				},
+				"orm": {
+					"sha256": "eb00bef0a6ed59174366dde943cbe5be452d220fe73be6b096806eb0f974158c",
+					"bytes": 1240504
+				}
+			},
+			"measurements": {
+				"qualified": {
+					"colorSeamRatio": 1.137,
+					"colorSeamVsFeatures": [
+						0.665,
+						0.6
+					],
+					"colorLinearMean": [
+						0.15672,
+						0.10186,
+						0.08428
+					],
+					"colorClippedShare": 0,
+					"normalSeamRatio": 1.28,
+					"normalSeamVsFeatures": [
+						0.541,
+						0.494
+					],
+					"ormSeamRatio": 1.524,
+					"ormSeamVsFeatures": [
+						0.62,
+						0.602
+					],
+					"roughnessMean": 0.5317,
+					"occlusionMean": 0.7802
+				},
+				"perLevel": {
+					"512": {
+						"colorSeamRatio": 1.497,
+						"colorSeamVsFeatures": [
+							0.563,
+							0.624
+						],
+						"colorLinearMean": [
+							0.15675,
+							0.10192,
+							0.0842
+						],
+						"colorClippedShare": 0,
+						"normalSeamRatio": 1.572,
+						"normalSeamVsFeatures": [
+							0.479,
+							0.583
+						],
+						"ormSeamRatio": 1.909,
+						"ormSeamVsFeatures": [
+							0.449,
+							0.659
+						],
+						"roughnessMean": 0.5317,
+						"occlusionMean": 0.7802
+					},
+					"2k": {
+						"colorSeamRatio": 1.04,
+						"colorSeamVsFeatures": [
+							0.837,
+							0.634
+						],
+						"colorLinearMean": [
+							0.15703,
+							0.10157,
+							0.08464
+						],
+						"colorClippedShare": 0.00001,
+						"normalSeamRatio": 1.178,
+						"normalSeamVsFeatures": [
+							0.62,
+							0.517
+						],
+						"ormSeamRatio": 1.557,
+						"ormSeamVsFeatures": [
+							0.885,
+							0.734
+						],
+						"roughnessMean": 0.5317,
+						"occlusionMean": 0.7802
+					},
+					"1k": {
+						"colorSeamRatio": 1.137,
+						"colorSeamVsFeatures": [
+							0.665,
+							0.6
+						],
+						"colorLinearMean": [
+							0.15672,
+							0.10186,
+							0.08428
+						],
+						"colorClippedShare": 0,
+						"normalSeamRatio": 1.28,
+						"normalSeamVsFeatures": [
+							0.541,
+							0.494
+						],
+						"ormSeamRatio": 1.524,
+						"ormSeamVsFeatures": [
+							0.62,
+							0.602
+						],
+						"roughnessMean": 0.5317,
+						"occlusionMean": 0.7802
+					}
+				},
+				"detailLoss": {
+					"2k->1k": {
+						"color": 10.922,
+						"normal": 8.687,
+						"orm": 4.111
+					},
+					"1k->512": {
+						"color": 10.221,
+						"normal": 9.778,
+						"orm": 5.223
+					}
+				}
+			},
+			"colorTransforms": [],
+			"entries": [
+				{
+					"id": "masonry-brick-red",
+					"color": "#ffffff",
+					"rule": "as shot",
+					"measuredLinearMean": [
+						0.15703,
+						0.10157,
+						0.08464
+					],
+					"albedoLuminance": 0.1121,
+					"plausibility": {
+						"reference": "#8c5746",
+						"sourceLuminanceRatio": 0.874,
+						"withinTolerance": true
+					}
+				}
+			],
+			"record": {
+				"path": "apps/editor/assets-source/textures/records/masonry-brick-red.json",
+				"sha256": "c8e225731f262b1f47af9c07530873fb120a3bbadf3561a37db1059096736666"
+			}
+		},
+		{
+			"setId": "metal-brushed",
+			"source": {
+				"provider": "ambientcg",
+				"assetId": "Metal009",
+				"acquiredAt": "2026-11-21",
+				"files": [
+					{
+						"role": "archive",
+						"retentionKey": "materials/ambientcg/Metal009/archive/Metal009_2K-PNG.zip",
+						"sha256": "ec6bdaeb50c06a5729d1674bc6f488662742464f0a6a73ce54db4dbdf5103575",
+						"bytes": 50113613
+					},
+					{
+						"role": "color",
+						"retentionKey": "materials/ambientcg/Metal009/color/Metal009_2K-PNG_Color.png",
+						"sha256": "fdeb66251f24eb399e698286e6b92fb354ee3c0df8cde6057011e4af92ae8899",
+						"bytes": 2087919
+					},
+					{
+						"role": "metalness",
+						"retentionKey": "materials/ambientcg/Metal009/metalness/Metal009_2K-PNG_Metalness.png",
+						"sha256": "dd791df05841d9a8dbf4ec00fc6cf3233002205add4e627b0b7309e0b521d597",
+						"bytes": 2581
+					},
+					{
+						"role": "normal",
+						"retentionKey": "materials/ambientcg/Metal009/normal/Metal009_2K-PNG_NormalGL.png",
+						"sha256": "d960ac0e73482e1e9a600485491177628ee1e5997110b0d18d6ae1c5e24a34a7",
+						"bytes": 18866515
+					},
+					{
+						"role": "roughness",
+						"retentionKey": "materials/ambientcg/Metal009/roughness/Metal009_2K-PNG_Roughness.png",
+						"sha256": "ed62c80c0a8a16067d906af035d7b540082106e5ff3ee4098a0082c7a2a5f457",
+						"bytes": 1624139
+					}
+				]
+			},
+			"selection": null,
+			"qualifiedLevel": "1k",
+			"judgement": "512 loses the brushing (×1.56, feature-defined); 1K shows it (×0.78); 2K equal at design distance.",
+			"shipped": {
+				"normal": {
+					"sha256": "9bab5f44390a43a7a04a050c198c1fc110aaf789def6cd81a3a54275b564e5ba",
+					"bytes": 560130
+				},
+				"orm": {
+					"sha256": "94f08c88496afaee26bece34df1b64e2c648ffd456de75262c79252f6b333182",
+					"bytes": 408544
+				}
+			},
+			"measurements": {
+				"qualified": {
+					"normalSeamRatio": 1.087,
+					"normalSeamVsFeatures": [
+						0.833,
+						0.605
+					],
+					"ormSeamRatio": 0.992,
+					"ormSeamVsFeatures": [
+						0.794,
+						0.423
+					],
+					"roughnessMean": 0.4698,
+					"occlusionMean": 1
+				},
+				"perLevel": {
+					"512": {
+						"normalSeamRatio": 1.098,
+						"normalSeamVsFeatures": [
+							0.819,
+							0.621
+						],
+						"ormSeamRatio": 0.967,
+						"ormSeamVsFeatures": [
+							0.862,
+							0.525
+						],
+						"roughnessMean": 0.4695,
+						"occlusionMean": 1
+					},
+					"2k": {
+						"normalSeamRatio": 1.863,
+						"normalSeamVsFeatures": [
+							0.904,
+							0.984
+						],
+						"ormSeamRatio": 1.12,
+						"ormSeamVsFeatures": [
+							0.93,
+							0.408
+						],
+						"roughnessMean": 0.4694,
+						"occlusionMean": 1
+					},
+					"1k": {
+						"normalSeamRatio": 1.087,
+						"normalSeamVsFeatures": [
+							0.833,
+							0.605
+						],
+						"ormSeamRatio": 0.992,
+						"ormSeamVsFeatures": [
+							0.794,
+							0.423
+						],
+						"roughnessMean": 0.4698,
+						"occlusionMean": 1
+					}
+				},
+				"detailLoss": {
+					"2k->1k": {
+						"normal": 3.763,
+						"orm": 3.388
+					},
+					"1k->512": {
+						"normal": 2.28,
+						"orm": 3.594
+					}
+				}
+			},
+			"colorTransforms": [],
+			"entries": [
+				{
+					"id": "metal-stainless-brushed",
+					"color": "#d6d1cb",
+					"rule": "measured F0 (no colour map)"
+				},
+				{
+					"id": "metal-aluminium-brushed",
+					"color": "#f5f6f6",
+					"rule": "measured F0 (no colour map)"
+				}
+			],
+			"record": {
+				"path": "apps/editor/assets-source/textures/records/metal-brushed.json",
+				"sha256": "5c66ce4b75b586dfaca48a8620550391e2c2ea980fb8c25487dd5ed4863ddb9f"
+			}
+		},
+		{
+			"setId": "metal-satin",
+			"source": {
+				"provider": "ambientcg",
+				"assetId": "Metal032",
+				"acquiredAt": "2026-11-21",
+				"files": [
+					{
+						"role": "archive",
+						"retentionKey": "materials/ambientcg/Metal032/archive/Metal032_2K-PNG.zip",
+						"sha256": "5505e02e68cebc0d496f3c1d8c3d67ec8b9f6f9cacb7c905897f52c7311359a2",
+						"bytes": 51323783
+					},
+					{
+						"role": "color",
+						"retentionKey": "materials/ambientcg/Metal032/color/Metal032_2K-PNG_Color.png",
+						"sha256": "01c92355535a746db5ffa4cfe9c986e87193bfaed6ecfa99ecaffccf8d336eec",
+						"bytes": 5237714
+					},
+					{
+						"role": "metalness",
+						"retentionKey": "materials/ambientcg/Metal032/metalness/Metal032_2K-PNG_Metalness.png",
+						"sha256": "b4cdf116d1edb968aceab2a95faef861ea9ee1e1712bbcd689ff0b2b8214fcae",
+						"bytes": 2581
+					},
+					{
+						"role": "normal",
+						"retentionKey": "materials/ambientcg/Metal032/normal/Metal032_2K-PNG_NormalGL.png",
+						"sha256": "dfe511e45f535337267443498d72915d6102a4bd28afead00080cdf498bbd536",
+						"bytes": 17567234
+					},
+					{
+						"role": "roughness",
+						"retentionKey": "materials/ambientcg/Metal032/roughness/Metal032_2K-PNG_Roughness.png",
+						"sha256": "0db7e32e807a9ec743d97223057a65448f74fe387de82b41a3939ad0f6d889f7",
+						"bytes": 2048597
+					}
+				]
+			},
+			"selection": null,
+			"qualifiedLevel": "512",
+			"judgement": "Satin normals are near flat at every level; 512 is indistinguishable (×1.56, conditional).",
+			"shipped": {
+				"normal": {
+					"sha256": "87be18764ce07a9540dfea5ae858d6dff0d545a11a003cb91f6e8b3e7f20d2ef",
+					"bytes": 63656
+				},
+				"orm": {
+					"sha256": "a5b6ed419a02387c3dbff85fc9390a3276f59ec51d2b279b3bcbea807fef04c5",
+					"bytes": 84748
+				}
+			},
+			"measurements": {
+				"qualified": {
+					"normalSeamRatio": 1.018,
+					"normalSeamVsFeatures": [
+						0.924,
+						0.948
+					],
+					"ormSeamRatio": 1.033,
+					"ormSeamVsFeatures": [
+						0.941,
+						0.878
+					],
+					"roughnessMean": 0.4083,
+					"occlusionMean": 1
+				},
+				"perLevel": {
+					"512": {
+						"normalSeamRatio": 1.018,
+						"normalSeamVsFeatures": [
+							0.924,
+							0.948
+						],
+						"ormSeamRatio": 1.033,
+						"ormSeamVsFeatures": [
+							0.941,
+							0.878
+						],
+						"roughnessMean": 0.4083,
+						"occlusionMean": 1
+					},
+					"2k": {
+						"normalSeamRatio": 1.192,
+						"normalSeamVsFeatures": [
+							1.14,
+							1.134
+						],
+						"ormSeamRatio": 1.309,
+						"ormSeamVsFeatures": [
+							1.213,
+							1.228
+						],
+						"roughnessMean": 0.4081,
+						"occlusionMean": 1
+					},
+					"1k": {
+						"normalSeamRatio": 1.023,
+						"normalSeamVsFeatures": [
+							0.968,
+							0.953
+						],
+						"ormSeamRatio": 1.12,
+						"ormSeamVsFeatures": [
+							1.012,
+							1.061
+						],
+						"roughnessMean": 0.4086,
+						"occlusionMean": 1
+					}
+				},
+				"detailLoss": {
+					"2k->1k": {
+						"normal": 0.332,
+						"orm": 1.533
+					},
+					"1k->512": {
+						"normal": 0.124,
+						"orm": 1.046
+					}
+				}
+			},
+			"colorTransforms": [],
+			"entries": [
+				{
+					"id": "metal-stainless-satin",
+					"color": "#d6d1cb",
+					"rule": "measured F0 (no colour map)"
+				},
+				{
+					"id": "metal-brass-satin",
+					"color": "#f5e4ae",
+					"rule": "measured F0 (no colour map)"
+				},
+				{
+					"id": "metal-copper-satin",
+					"color": "#f7cfbf",
+					"rule": "measured F0 (no colour map)"
+				},
+				{
+					"id": "metal-gold-satin",
+					"color": "#ffe496",
+					"rule": "measured F0 (no colour map)"
+				}
+			],
+			"record": {
+				"path": "apps/editor/assets-source/textures/records/metal-satin.json",
+				"sha256": "6e83bd8d19f50de9aa8a93ad41c9eb29c996744e86ea820190577ffdddff3b02"
+			}
+		},
+		{
+			"setId": "plaster-painted",
+			"source": {
+				"provider": "polyhaven",
+				"assetId": "painted_plaster_wall",
+				"acquiredAt": "2026-11-21",
+				"files": [
+					{
+						"role": "color",
+						"retentionKey": "materials/polyhaven/painted_plaster_wall/color/painted_plaster_wall_diff_2k.png",
+						"sha256": "5d3e476d633d873f2f9f443936a7d3f6a5830b5486c9bd704cef7c1f89dbb3cc",
+						"bytes": 22706294
+					},
+					{
+						"role": "normal",
+						"retentionKey": "materials/polyhaven/painted_plaster_wall/normal/painted_plaster_wall_nor_gl_2k.png",
+						"sha256": "322041257ab0dad1a1a1c18d98bc28689136103f6a64d4849f7aa3ae5b8b090f",
+						"bytes": 22789885
+					},
+					{
+						"role": "orm",
+						"retentionKey": "materials/polyhaven/painted_plaster_wall/orm/painted_plaster_wall_arm_2k.png",
+						"sha256": "8fc9a730b7ea6698d4109924984326b2a0c37a77489e425213e8b24962fc9cce",
+						"bytes": 14790707
+					}
+				]
+			},
+			"selection": null,
+			"qualifiedLevel": "1k",
+			"judgement": "512 loses the trowel grain at 1.5 m (×3.32); 1K holds it (×1.66, conditional, stochastic); 2K adds only faint speckle.",
+			"shipped": {
+				"color": {
+					"sha256": "e9aef308c792b2324e562f5cc0607637a5b8de6cdaf1deb0c7f137a66c2f9050",
+					"bytes": 311708
+				},
+				"normal": {
+					"sha256": "14eb6c6261835bd0685113c3910f487ea8226b21b52a5f5853fe290e5b85d23f",
+					"bytes": 1628824
+				},
+				"orm": {
+					"sha256": "a3f907d398b049956bf29187a80f5ee5380bc6f0703790cc2b0177cfafd39704",
+					"bytes": 861296
+				}
+			},
+			"measurements": {
+				"qualified": {
+					"colorSeamRatio": 1.057,
+					"colorSeamVsFeatures": [
+						0.847,
+						0.78
+					],
+					"colorLinearMean": [
+						0.82612,
+						0.75012,
+						0.71589
+					],
+					"colorClippedShare": 0,
+					"normalSeamRatio": 0.998,
+					"normalSeamVsFeatures": [
+						0.714,
+						0.781
+					],
+					"ormSeamRatio": 1.038,
+					"ormSeamVsFeatures": [
+						0.697,
+						0.856
+					],
+					"roughnessMean": 0.9188,
+					"occlusionMean": 0.9571
+				},
+				"perLevel": {
+					"512": {
+						"colorSeamRatio": 1.013,
+						"colorSeamVsFeatures": [
+							0.742,
+							0.698
+						],
+						"colorLinearMean": [
+							0.82582,
+							0.75025,
+							0.71623
+						],
+						"colorClippedShare": 0,
+						"normalSeamRatio": 1,
+						"normalSeamVsFeatures": [
+							0.721,
+							0.797
+						],
+						"ormSeamRatio": 1.003,
+						"ormSeamVsFeatures": [
+							0.655,
+							0.87
+						],
+						"roughnessMean": 0.9188,
+						"occlusionMean": 0.9571
+					},
+					"2k": {
+						"colorSeamRatio": 1.088,
+						"colorSeamVsFeatures": [
+							0.862,
+							0.839
+						],
+						"colorLinearMean": [
+							0.82674,
+							0.74974,
+							0.71551
+						],
+						"colorClippedShare": 0,
+						"normalSeamRatio": 1.011,
+						"normalSeamVsFeatures": [
+							0.719,
+							0.761
+						],
+						"ormSeamRatio": 1.049,
+						"ormSeamVsFeatures": [
+							0.747,
+							0.858
+						],
+						"roughnessMean": 0.9188,
+						"occlusionMean": 0.9571
+					},
+					"1k": {
+						"colorSeamRatio": 1.057,
+						"colorSeamVsFeatures": [
+							0.847,
+							0.78
+						],
+						"colorLinearMean": [
+							0.82612,
+							0.75012,
+							0.71589
+						],
+						"colorClippedShare": 0,
+						"normalSeamRatio": 0.998,
+						"normalSeamVsFeatures": [
+							0.714,
+							0.781
+						],
+						"ormSeamRatio": 1.038,
+						"ormSeamVsFeatures": [
+							0.697,
+							0.856
+						],
+						"roughnessMean": 0.9188,
+						"occlusionMean": 0.9571
+					}
+				},
+				"detailLoss": {
+					"2k->1k": {
+						"color": 9.127,
+						"normal": 8.566,
+						"orm": 2.018
+					},
+					"1k->512": {
+						"color": 6.556,
+						"normal": 7.389,
+						"orm": 1.99
+					}
+				}
+			},
+			"colorTransforms": [
+				{
+					"transform": "linear-colour-gain/1",
+					"target": "#e8e2d8",
+					"neededGain": 2.11324,
+					"gainCeiling": 2.0361,
+					"appliedGain": 2.0361,
+					"maxClippedShare": 0.005,
+					"clippedShare": 0.005,
+					"before": {
+						"linearMean": [
+							0.40642,
+							0.36708,
+							0.35161
+						],
+						"luminanceContrast": 0.1224
+					},
+					"after": {
+						"linearMean": [
+							0.82752,
+							0.74742,
+							0.71591
+						],
+						"luminanceContrast": 0.1224
+					}
+				}
+			],
+			"entries": [
+				{
+					"id": "plaster-painted",
+					"color": "#fbfff9",
+					"rule": "design target: linear(target) / measured mean per channel; target hue kept at the supported luminance when unreachable (§7)",
+					"target": "#e8e2d8",
+					"measuredLinearMean": [
+						0.82674,
+						0.74974,
+						0.71551
+					],
+					"linearFactor": [
+						0.96222,
+						1,
+						0.94611
+					],
+					"albedoLuminance": 0.7542,
+					"targetLuminance": 0.7651,
+					"targetReached": false
+				}
+			],
+			"record": {
+				"path": "apps/editor/assets-source/textures/records/plaster-painted.json",
+				"sha256": "533d50e56e52ab3b1e8d6dbe88abe01059ee22dbc1fa883254eef02fcc78f38d"
+			}
+		},
+		{
+			"setId": "stone-terrazzo",
+			"source": {
+				"provider": "ambientcg",
+				"assetId": "Terrazzo019L",
+				"acquiredAt": "2026-11-21",
+				"files": [
+					{
+						"role": "archive",
+						"retentionKey": "materials/ambientcg/Terrazzo019L/archive/Terrazzo019L_2K-PNG.zip",
+						"sha256": "57ab2301dc27888434ebf201b2b027a5832be3eb25cf86d8a52fafd7a247125f",
+						"bytes": 53612620
+					},
+					{
+						"role": "color",
+						"retentionKey": "materials/ambientcg/Terrazzo019L/color/Terrazzo019L_2K-PNG_Color.png",
+						"sha256": "44742676bcd17bd24bf8442ebff73dca24aa125bccb4261d734957cfcf3c7169",
+						"bytes": 6400839
+					},
+					{
+						"role": "normal",
+						"retentionKey": "materials/ambientcg/Terrazzo019L/normal/Terrazzo019L_2K-PNG_NormalGL.png",
+						"sha256": "328de0bb865ffbac715fedadc7f81c54fa60914001e1fcd1a0307383160cb5b0",
+						"bytes": 17993833
+					},
+					{
+						"role": "roughness",
+						"retentionKey": "materials/ambientcg/Terrazzo019L/roughness/Terrazzo019L_2K-PNG_Roughness.png",
+						"sha256": "9b1e78a330ba8893c8ca9db0ec667564a1875d4a994de0d1c4aecfaa6f86a56b",
+						"bytes": 2035399
+					}
+				]
+			},
+			"selection": null,
+			"qualifiedLevel": "512",
+			"judgement": "Aggregate edges hold at 512 (×1.33); no visible gain at 1K.",
+			"shipped": {
+				"color": {
+					"sha256": "b1b9cb28a2d85597f501526a992af86a12a1b4c772aafc02216c08f3d38c64ca",
+					"bytes": 71870
+				},
+				"normal": {
+					"sha256": "617c711c7ead655306a9d8460e0be782b74fb81fa60a71f8cfa6d3a795e6903b",
+					"bytes": 86608
+				},
+				"orm": {
+					"sha256": "228a0afe700ebe9d7c173cff5712f8a78d96c1733ccaea654be72d205febc5c6",
+					"bytes": 124406
+				}
+			},
+			"measurements": {
+				"qualified": {
+					"colorSeamRatio": 1.081,
+					"colorSeamVsFeatures": [
+						0.829,
+						0.763
+					],
+					"colorLinearMean": [
+						0.35553,
+						0.27357,
+						0.1804
+					],
+					"colorClippedShare": 0,
+					"normalSeamRatio": 1.023,
+					"normalSeamVsFeatures": [
+						0.913,
+						0.884
+					],
+					"ormSeamRatio": 0.945,
+					"ormSeamVsFeatures": [
+						0.712,
+						0.6
+					],
+					"roughnessMean": 0.2766,
+					"occlusionMean": 1
+				},
+				"perLevel": {
+					"512": {
+						"colorSeamRatio": 1.081,
+						"colorSeamVsFeatures": [
+							0.829,
+							0.763
+						],
+						"colorLinearMean": [
+							0.35553,
+							0.27357,
+							0.1804
+						],
+						"colorClippedShare": 0,
+						"normalSeamRatio": 1.023,
+						"normalSeamVsFeatures": [
+							0.913,
+							0.884
+						],
+						"ormSeamRatio": 0.945,
+						"ormSeamVsFeatures": [
+							0.712,
+							0.6
+						],
+						"roughnessMean": 0.2766,
+						"occlusionMean": 1
+					},
+					"2k": {
+						"colorSeamRatio": 1.376,
+						"colorSeamVsFeatures": [
+							1.035,
+							0.856
+						],
+						"colorLinearMean": [
+							0.35526,
+							0.27365,
+							0.18054
+						],
+						"colorClippedShare": 0,
+						"normalSeamRatio": 1.209,
+						"normalSeamVsFeatures": [
+							1.072,
+							0.994
+						],
+						"ormSeamRatio": 0.954,
+						"ormSeamVsFeatures": [
+							0.757,
+							0.678
+						],
+						"roughnessMean": 0.2765,
+						"occlusionMean": 1
+					},
+					"1k": {
+						"colorSeamRatio": 1.152,
+						"colorSeamVsFeatures": [
+							0.928,
+							0.741
+						],
+						"colorLinearMean": [
+							0.35591,
+							0.27389,
+							0.18067
+						],
+						"colorClippedShare": 0,
+						"normalSeamRatio": 1.052,
+						"normalSeamVsFeatures": [
+							0.915,
+							0.873
+						],
+						"ormSeamRatio": 0.903,
+						"ormSeamVsFeatures": [
+							0.716,
+							0.611
+						],
+						"roughnessMean": 0.277,
+						"occlusionMean": 1
+					}
+				},
+				"detailLoss": {
+					"2k->1k": {
+						"color": 4.761,
+						"normal": 0.789,
+						"orm": 1.868
+					},
+					"1k->512": {
+						"color": 5.791,
+						"normal": 0.574,
+						"orm": 1.917
+					}
+				}
+			},
+			"colorTransforms": [],
+			"entries": [
+				{
+					"id": "stone-terrazzo",
+					"color": "#ffffff",
+					"rule": "as shot",
+					"measuredLinearMean": [
+						0.35526,
+						0.27365,
+						0.18054
+					],
+					"albedoLuminance": 0.2843
+				}
+			],
+			"record": {
+				"path": "apps/editor/assets-source/textures/records/stone-terrazzo.json",
+				"sha256": "82aa978e0a5de1d0806d10bff6de924db2f397669085e0eda2834f0e82066778"
+			}
+		},
+		{
+			"setId": "stone-travertine",
+			"source": {
+				"provider": "ambientcg",
+				"assetId": "Travertine009",
+				"acquiredAt": "2026-11-21",
+				"files": [
+					{
+						"role": "archive",
+						"retentionKey": "materials/ambientcg/Travertine009/archive/Travertine009_2K-PNG.zip",
+						"sha256": "838d56d2abac7b7451b54c756afcd36244b55f3d71a968d674b1e9f8ac4fe4b3",
+						"bytes": 35288755
+					},
+					{
+						"role": "occlusion",
+						"retentionKey": "materials/ambientcg/Travertine009/occlusion/Travertine009_2K-PNG_AmbientOcclusion.png",
+						"sha256": "a42bf90ebc5149872d43ee6ede518a09a61de202e5850bb099a77ec6de76a7ea",
+						"bytes": 123329
+					},
+					{
+						"role": "color",
+						"retentionKey": "materials/ambientcg/Travertine009/color/Travertine009_2K-PNG_Color.png",
+						"sha256": "26109f83440709519a1ca0697e4fdf0e9f325cdc383621322af58e99b2e6ac09",
+						"bytes": 5371425
+					},
+					{
+						"role": "normal",
+						"retentionKey": "materials/ambientcg/Travertine009/normal/Travertine009_2K-PNG_NormalGL.png",
+						"sha256": "236dedef7c0219b603ada22f23acce5fb3b4daa73c89447478e782b5cc5a2bbf",
+						"bytes": 11975848
+					},
+					{
+						"role": "roughness",
+						"retentionKey": "materials/ambientcg/Travertine009/roughness/Travertine009_2K-PNG_Roughness.png",
+						"sha256": "e2ab17c98cbfe7253cef90d870d6519d9b8537895c6e5b6224b6555a9ee81661",
+						"bytes": 1101656
+					}
+				]
+			},
+			"selection": {
+				"harvestedOn": "2026-11-21",
+				"replaces": "stone-marble-white",
+				"reason": "listed alternate of stone-marble-white; class A 1.2 m, 1K preview linear mean 0.741/0.601/0.415 (luminance 0.617)"
+			},
+			"qualifiedLevel": "512",
+			"judgement": "Low-frequency banding holds at 512 (×1.99, conditional, stochastic); 1K indistinguishable. Replaces stone-marble-white (excluded on albedo plausibility).",
+			"shipped": {
+				"color": {
+					"sha256": "606be858d1b49aad24f25a9143599e24bcb63daac4150de14319e5d946ddccba",
+					"bytes": 39934
+				},
+				"normal": {
+					"sha256": "eaeec1196865e358e750a1c39e0b9a561d0d84c7be7f6a12742de07fbfcf80ce",
+					"bytes": 61870
+				},
+				"orm": {
+					"sha256": "0f78e8d41ecae47375071bd00add122d04ca9db1c38942b0d80da56e01c6ba4f",
+					"bytes": 72712
+				}
+			},
+			"measurements": {
+				"qualified": {
+					"colorSeamRatio": 1.151,
+					"colorSeamVsFeatures": [
+						0.98,
+						0.601
+					],
+					"colorLinearMean": [
+						0.74206,
+						0.60243,
+						0.41489
+					],
+					"colorClippedShare": 0,
+					"normalSeamRatio": 1.04,
+					"normalSeamVsFeatures": [
+						0.921,
+						0.92
+					],
+					"ormSeamRatio": 1.081,
+					"ormSeamVsFeatures": [
+						0.835,
+						0.722
+					],
+					"roughnessMean": 0.0371,
+					"occlusionMean": 0.9964
+				},
+				"perLevel": {
+					"512": {
+						"colorSeamRatio": 1.151,
+						"colorSeamVsFeatures": [
+							0.98,
+							0.601
+						],
+						"colorLinearMean": [
+							0.74206,
+							0.60243,
+							0.41489
+						],
+						"colorClippedShare": 0,
+						"normalSeamRatio": 1.04,
+						"normalSeamVsFeatures": [
+							0.921,
+							0.92
+						],
+						"ormSeamRatio": 1.081,
+						"ormSeamVsFeatures": [
+							0.835,
+							0.722
+						],
+						"roughnessMean": 0.0371,
+						"occlusionMean": 0.9964
+					},
+					"2k": {
+						"colorSeamRatio": 1.405,
+						"colorSeamVsFeatures": [
+							1.094,
+							0.86
+						],
+						"colorLinearMean": [
+							0.74186,
+							0.60253,
+							0.41489
+						],
+						"colorClippedShare": 0,
+						"normalSeamRatio": 1.192,
+						"normalSeamVsFeatures": [
+							1.137,
+							1.037
+						],
+						"ormSeamRatio": 1.068,
+						"ormSeamVsFeatures": [
+							0.877,
+							0.829
+						],
+						"roughnessMean": 0.037,
+						"occlusionMean": 0.9965
+					},
+					"1k": {
+						"colorSeamRatio": 1.258,
+						"colorSeamVsFeatures": [
+							1.033,
+							0.71
+						],
+						"colorLinearMean": [
+							0.74267,
+							0.60313,
+							0.41537
+						],
+						"colorClippedShare": 0,
+						"normalSeamRatio": 1.064,
+						"normalSeamVsFeatures": [
+							1.005,
+							0.94
+						],
+						"ormSeamRatio": 1.04,
+						"ormSeamVsFeatures": [
+							0.858,
+							0.794
+						],
+						"roughnessMean": 0.0375,
+						"occlusionMean": 0.9965
+					}
+				},
+				"detailLoss": {
+					"2k->1k": {
+						"color": 2.775,
+						"normal": 0.064,
+						"orm": 0.369
+					},
+					"1k->512": {
+						"color": 3.07,
+						"normal": 0.047,
+						"orm": 0.38
+					}
+				}
+			},
+			"colorTransforms": [],
+			"entries": [
+				{
+					"id": "stone-travertine",
+					"color": "#ffffff",
+					"rule": "as shot",
+					"measuredLinearMean": [
+						0.74186,
+						0.60253,
+						0.41489
+					],
+					"albedoLuminance": 0.6186
+				}
+			],
+			"record": {
+				"path": "apps/editor/assets-source/textures/records/stone-travertine.json",
+				"sha256": "069b7230ac2a6a4d457423a94801b31012625921c94fa064c6f600b5a3b75b71"
+			}
+		},
+		{
+			"setId": "synthetic-plastic-matte",
+			"source": {
+				"provider": "ambientcg",
+				"assetId": "Plastic013A",
+				"acquiredAt": "2026-11-21",
+				"files": [
+					{
+						"role": "archive",
+						"retentionKey": "materials/ambientcg/Plastic013A/archive/Plastic013A_2K-PNG.zip",
+						"sha256": "839f6aa8dca14b7403d94998e9da235940ecbfa7a0da9a0e8f76d634be96dec6",
+						"bytes": 60818712
+					},
+					{
+						"role": "color",
+						"retentionKey": "materials/ambientcg/Plastic013A/color/Plastic013A_2K-PNG_Color.png",
+						"sha256": "0eba5df81daa1d17eb4eb9418ee12610b659a239e43bb200d34435361f7c3b23",
+						"bytes": 2582707
+					},
+					{
+						"role": "normal",
+						"retentionKey": "materials/ambientcg/Plastic013A/normal/Plastic013A_2K-PNG_NormalGL.png",
+						"sha256": "617fa76f4871900888994976a8a4e00e151628cfbd4b67f2d215568d2a3e96bd",
+						"bytes": 23068121
+					},
+					{
+						"role": "roughness",
+						"retentionKey": "materials/ambientcg/Plastic013A/roughness/Plastic013A_2K-PNG_Roughness.png",
+						"sha256": "dbf809f41a7402664b99a5f57c9af653ca70921fa8167ce61d1e048523060d7c",
+						"bytes": 2754788
+					}
+				]
+			},
+			"selection": {
+				"harvestedOn": "2026-11-21",
+				"firstChoice": "Plastic010",
+				"used": "Plastic013A",
+				"reason": "§7: the first choice is too dark for its target; the listed alternate (linear mean 0.852/0.820/0.812 from its 1K preview) reaches it"
+			},
+			"qualifiedLevel": "512",
+			"judgement": "Fine stipple reads as a matte sheen at 512 (×1.56, conditional, stochastic); 1K indistinguishable.",
+			"shipped": {
+				"color": {
+					"sha256": "a67e6d09a4f21a8b405a0012984e07e7c30a0ad900d88a64d85d984d15b70320",
+					"bytes": 2084
+				},
+				"normal": {
+					"sha256": "1dde35d60cc767d9f5c2a4c8e30b1779835bc4845becaeb1c00cdf7de8bdc574",
+					"bytes": 237040
+				},
+				"orm": {
+					"sha256": "a8c9f9bb303a7303173568145a0c126cc850a59ed6354e623ff3b9c5c2464eac",
+					"bytes": 112620
+				}
+			},
+			"measurements": {
+				"qualified": {
+					"colorSeamRatio": 6.026,
+					"colorSeamVsFeatures": [
+						0.564,
+						0.795
+					],
+					"colorLinearMean": [
+						0.8471,
+						0.82615,
+						0.8126
+					],
+					"colorClippedShare": 0,
+					"normalSeamRatio": 0.971,
+					"normalSeamVsFeatures": [
+						0.907,
+						0.76
+					],
+					"ormSeamRatio": 1.202,
+					"ormSeamVsFeatures": [
+						1.03,
+						0.883
+					],
+					"roughnessMean": 0.4007,
+					"occlusionMean": 1
+				},
+				"perLevel": {
+					"512": {
+						"colorSeamRatio": 6.026,
+						"colorSeamVsFeatures": [
+							0.564,
+							0.795
+						],
+						"colorLinearMean": [
+							0.8471,
+							0.82615,
+							0.8126
+						],
+						"colorClippedShare": 0,
+						"normalSeamRatio": 0.971,
+						"normalSeamVsFeatures": [
+							0.907,
+							0.76
+						],
+						"ormSeamRatio": 1.202,
+						"ormSeamVsFeatures": [
+							1.03,
+							0.883
+						],
+						"roughnessMean": 0.4007,
+						"occlusionMean": 1
+					},
+					"2k": {
+						"colorSeamRatio": 1.456,
+						"colorSeamVsFeatures": [
+							1.216,
+							0.891
+						],
+						"colorLinearMean": [
+							0.84337,
+							0.82322,
+							0.81297
+						],
+						"colorClippedShare": 0,
+						"normalSeamRatio": 1.033,
+						"normalSeamVsFeatures": [
+							1.01,
+							0.655
+						],
+						"ormSeamRatio": 1.328,
+						"ormSeamVsFeatures": [
+							1.215,
+							0.871
+						],
+						"roughnessMean": 0.4005,
+						"occlusionMean": 1
+					},
+					"1k": {
+						"colorSeamRatio": 1.036,
+						"colorSeamVsFeatures": [
+							0.577,
+							0.778
+						],
+						"colorLinearMean": [
+							0.84584,
+							0.82424,
+							0.81317
+						],
+						"colorClippedShare": 0,
+						"normalSeamRatio": 0.985,
+						"normalSeamVsFeatures": [
+							0.984,
+							0.649
+						],
+						"ormSeamRatio": 1.167,
+						"ormSeamVsFeatures": [
+							1.115,
+							0.72
+						],
+						"roughnessMean": 0.401,
+						"occlusionMean": 1
+					}
+				},
+				"detailLoss": {
+					"2k->1k": {
+						"color": 2.929,
+						"normal": 14.532,
+						"orm": 5.568
+					},
+					"1k->512": {
+						"color": 2.127,
+						"normal": 9.529,
+						"orm": 4.053
+					}
+				}
+			},
+			"colorTransforms": [],
+			"entries": [
+				{
+					"id": "synthetic-plastic-matte",
+					"color": "#f8fbf9",
+					"rule": "design target: linear(target) / measured mean per channel; target hue kept at the supported luminance when unreachable (§7)",
+					"target": "#e6e6e3",
+					"measuredLinearMean": [
+						0.84337,
+						0.82322,
+						0.81297
+					],
+					"linearFactor": [
+						0.93826,
+						0.96122,
+						0.94487
+					],
+					"albedoLuminance": 0.7896,
+					"targetLuminance": 0.7896,
+					"targetReached": true
+				}
+			],
+			"record": {
+				"path": "apps/editor/assets-source/textures/records/synthetic-plastic-matte.json",
+				"sha256": "a082de42a402832fa3c11c9fcdd373c9ef3c9772520d2e43a5a5e20ffda5b1bd"
+			}
+		},
+		{
+			"setId": "textile-carpet-loop",
+			"source": {
+				"provider": "ambientcg",
+				"assetId": "Carpet016",
+				"acquiredAt": "2026-11-21",
+				"files": [
+					{
+						"role": "archive",
+						"retentionKey": "materials/ambientcg/Carpet016/archive/Carpet016_2K-PNG.zip",
+						"sha256": "c3fdd7550c12f9da9c3711e3da469a71765bc436b9de8eceddfa075c9dcc3e5c",
+						"bytes": 65696017
+					},
+					{
+						"role": "occlusion",
+						"retentionKey": "materials/ambientcg/Carpet016/occlusion/Carpet016_2K-PNG_AmbientOcclusion.png",
+						"sha256": "b7ddf9b5dbc81395be5fe085536730ea70d63b12a4fb23878ba6a353b5871b41",
+						"bytes": 2614338
+					},
+					{
+						"role": "color",
+						"retentionKey": "materials/ambientcg/Carpet016/color/Carpet016_2K-PNG_Color.png",
+						"sha256": "c026a25b26e4ab6b64949bbbec2688eaac2bd7faba401b84c51d3040d5a63604",
+						"bytes": 5625069
+					},
+					{
+						"role": "normal",
+						"retentionKey": "materials/ambientcg/Carpet016/normal/Carpet016_2K-PNG_NormalGL.png",
+						"sha256": "1f096e357c7e55f6671d840ab0380762856b744f70cf3ad60d9cf2653e155e17",
+						"bytes": 23129643
+					},
+					{
+						"role": "roughness",
+						"retentionKey": "materials/ambientcg/Carpet016/roughness/Carpet016_2K-PNG_Roughness.png",
+						"sha256": "7b0a932c9b8104fca4962aad9f3d2428d93f25097de8e3448802e049c7a8c9ff",
+						"bytes": 2310696
+					}
+				]
+			},
+			"selection": null,
+			"qualifiedLevel": "1k",
+			"judgement": "512 smears the loops at 1.5 m (×2.82); 1K holds them (×1.41); 2K marginally crisper, not judged necessary.",
+			"shipped": {
+				"color": {
+					"sha256": "6be9de20a80081ccedbe8ad00da5363457cc61be5e18b7b79a924fbeb1adf957",
+					"bytes": 230670
+				},
+				"normal": {
+					"sha256": "63f6dd7a2dc582535d28d33f827c7f9336f489b0b3993a1fa4b9546122d67314",
+					"bytes": 2244576
+				},
+				"orm": {
+					"sha256": "198f1ba16841d5f5014a0bd9c6c5658e1d62da576ef22eb332f4d49d7fb65d81",
+					"bytes": 1254460
+				}
+			},
+			"measurements": {
+				"qualified": {
+					"colorSeamRatio": 1.09,
+					"colorSeamVsFeatures": [
+						0.836,
+						0.79
+					],
+					"colorLinearMean": [
+						0.50155,
+						0.43787,
+						0.29686
+					],
+					"colorClippedShare": 0,
+					"normalSeamRatio": 0.948,
+					"normalSeamVsFeatures": [
+						0.869,
+						0.705
+					],
+					"ormSeamRatio": 0.904,
+					"ormSeamVsFeatures": [
+						0.818,
+						0.632
+					],
+					"roughnessMean": 0.6481,
+					"occlusionMean": 0.9251
+				},
+				"perLevel": {
+					"512": {
+						"colorSeamRatio": 1.073,
+						"colorSeamVsFeatures": [
+							0.903,
+							0.79
+						],
+						"colorLinearMean": [
+							0.50087,
+							0.43734,
+							0.29672
+						],
+						"colorClippedShare": 0,
+						"normalSeamRatio": 0.95,
+						"normalSeamVsFeatures": [
+							0.89,
+							0.778
+						],
+						"ormSeamRatio": 0.945,
+						"ormSeamVsFeatures": [
+							0.882,
+							0.695
+						],
+						"roughnessMean": 0.6481,
+						"occlusionMean": 0.9251
+					},
+					"2k": {
+						"colorSeamRatio": 1.276,
+						"colorSeamVsFeatures": [
+							0.881,
+							0.892
+						],
+						"colorLinearMean": [
+							0.50097,
+							0.43739,
+							0.29647
+						],
+						"colorClippedShare": 0,
+						"normalSeamRatio": 1.069,
+						"normalSeamVsFeatures": [
+							0.952,
+							0.824
+						],
+						"ormSeamRatio": 0.923,
+						"ormSeamVsFeatures": [
+							0.805,
+							0.692
+						],
+						"roughnessMean": 0.6481,
+						"occlusionMean": 0.9251
+					},
+					"1k": {
+						"colorSeamRatio": 1.09,
+						"colorSeamVsFeatures": [
+							0.836,
+							0.79
+						],
+						"colorLinearMean": [
+							0.50155,
+							0.43787,
+							0.29686
+						],
+						"colorClippedShare": 0,
+						"normalSeamRatio": 0.948,
+						"normalSeamVsFeatures": [
+							0.869,
+							0.705
+						],
+						"ormSeamRatio": 0.904,
+						"ormSeamVsFeatures": [
+							0.818,
+							0.632
+						],
+						"roughnessMean": 0.6481,
+						"occlusionMean": 0.9251
+					}
+				},
+				"detailLoss": {
+					"2k->1k": {
+						"color": 3.358,
+						"normal": 11.139,
+						"orm": 4.477
+					},
+					"1k->512": {
+						"color": 4.359,
+						"normal": 13.358,
+						"orm": 5.458
+					}
+				}
+			},
+			"colorTransforms": [],
+			"entries": [
+				{
+					"id": "textile-carpet-loop",
+					"color": "#ffffff",
+					"rule": "as shot",
+					"measuredLinearMean": [
+						0.50097,
+						0.43739,
+						0.29647
+					],
+					"albedoLuminance": 0.4407
+				}
+			],
+			"record": {
+				"path": "apps/editor/assets-source/textures/records/textile-carpet-loop.json",
+				"sha256": "e7a16d38e86055cb7da8a3d6de13b58fb7627125fa603a7aa5a8d76e4f2ac744"
+			}
+		},
+		{
+			"setId": "textile-linen",
+			"source": {
+				"provider": "polyhaven",
+				"assetId": "rough_linen",
+				"acquiredAt": "2026-11-21",
+				"files": [
+					{
+						"role": "color",
+						"retentionKey": "materials/polyhaven/rough_linen/color/rough_linen_diff_2k.png",
+						"sha256": "92a274c46f24af3d7761c6722e54fec8188e3b7ef6b92dc2c874bfc0ed3d4069",
+						"bytes": 23034793
+					},
+					{
+						"role": "normal",
+						"retentionKey": "materials/polyhaven/rough_linen/normal/rough_linen_nor_gl_2k.png",
+						"sha256": "1de2d1e782a54340b9a047a78382c1a0218cc1933bdffb331d6ed5fa2164e932",
+						"bytes": 22196908
+					},
+					{
+						"role": "orm",
+						"retentionKey": "materials/polyhaven/rough_linen/orm/rough_linen_arm_2k.png",
+						"sha256": "d264907dd3fea0c389585dc0b24b9c9d75823662d1c5c8798dd8abea26a73e69",
+						"bytes": 25594524
+					}
+				]
+			},
+			"selection": null,
+			"qualifiedLevel": "512",
+			"judgement": "×0.84 at 0.8 m: the finest threads are below the design screen density at every level once mipped; the weave modulation reads at 512. Higher levels differ only by unprefiltered aliasing.",
+			"shipped": {
+				"color": {
+					"sha256": "a0eef2abb6bd6bd42218b7e21e3ba7345586fb59d9d55089b6b588ebca22a817",
+					"bytes": 56656
+				},
+				"normal": {
+					"sha256": "e9ea4858d8ceb8ef0fb24fecee84b1a76396d16ecf680cb5c756cfa4c2e8d157",
+					"bytes": 340922
+				},
+				"orm": {
+					"sha256": "82ec123de3387d931eb3b526c1442c42de5d8bd59f52916fdeff25cb68f70b4f",
+					"bytes": 382978
+				}
+			},
+			"measurements": {
+				"qualified": {
+					"colorSeamRatio": 1.028,
+					"colorSeamVsFeatures": [
+						0.782,
+						0.805
+					],
+					"colorLinearMean": [
+						0.60986,
+						0.60986,
+						0.60986
+					],
+					"colorClippedShare": 0,
+					"normalSeamRatio": 1.049,
+					"normalSeamVsFeatures": [
+						0.921,
+						0.856
+					],
+					"ormSeamRatio": 0.994,
+					"ormSeamVsFeatures": [
+						0.851,
+						0.866
+					],
+					"roughnessMean": 0.6593,
+					"occlusionMean": 0.7726
+				},
+				"perLevel": {
+					"512": {
+						"colorSeamRatio": 1.028,
+						"colorSeamVsFeatures": [
+							0.782,
+							0.805
+						],
+						"colorLinearMean": [
+							0.60986,
+							0.60986,
+							0.60986
+						],
+						"colorClippedShare": 0,
+						"normalSeamRatio": 1.049,
+						"normalSeamVsFeatures": [
+							0.921,
+							0.856
+						],
+						"ormSeamRatio": 0.994,
+						"ormSeamVsFeatures": [
+							0.851,
+							0.866
+						],
+						"roughnessMean": 0.6593,
+						"occlusionMean": 0.7726
+					},
+					"2k": {
+						"colorSeamRatio": 0.907,
+						"colorSeamVsFeatures": [
+							0.646,
+							0.666
+						],
+						"colorLinearMean": [
+							0.60991,
+							0.60989,
+							0.60991
+						],
+						"colorClippedShare": 0,
+						"normalSeamRatio": 0.969,
+						"normalSeamVsFeatures": [
+							0.799,
+							0.684
+						],
+						"ormSeamRatio": 0.954,
+						"ormSeamVsFeatures": [
+							0.773,
+							0.702
+						],
+						"roughnessMean": 0.6593,
+						"occlusionMean": 0.7726
+					},
+					"1k": {
+						"colorSeamRatio": 0.952,
+						"colorSeamVsFeatures": [
+							0.717,
+							0.822
+						],
+						"colorLinearMean": [
+							0.60984,
+							0.60984,
+							0.60984
+						],
+						"colorClippedShare": 0,
+						"normalSeamRatio": 1.026,
+						"normalSeamVsFeatures": [
+							0.856,
+							0.907
+						],
+						"ormSeamRatio": 0.964,
+						"ormSeamVsFeatures": [
+							0.797,
+							0.872
+						],
+						"roughnessMean": 0.6593,
+						"occlusionMean": 0.7726
+					}
+				},
+				"detailLoss": {
+					"2k->1k": {
+						"color": 10.579,
+						"normal": 7.545,
+						"orm": 15.585
+					},
+					"1k->512": {
+						"color": 11.498,
+						"normal": 8.731,
+						"orm": 16.759
+					}
+				}
+			},
+			"colorTransforms": [
+				{
+					"transform": "rec709-linear-luminance-grey/1",
+					"weights": [
+						0.2126,
+						0.7152,
+						0.0722
+					],
+					"before": {
+						"linearMean": [
+							0.28816,
+							0.41158,
+							0.6154
+						],
+						"luminanceContrast": 0.1778
+					},
+					"after": {
+						"linearMean": [
+							0.40006,
+							0.40006,
+							0.40006
+						],
+						"luminanceContrast": 0.1778
+					}
+				},
+				{
+					"transform": "linear-colour-gain/1",
+					"target": "#cbbfa8",
+					"neededGain": 1.52264,
+					"gainCeiling": 1.86299,
+					"appliedGain": 1.52264,
+					"maxClippedShare": 0.005,
+					"clippedShare": 0,
+					"before": {
+						"linearMean": [
+							0.40006,
+							0.40006,
+							0.40006
+						],
+						"luminanceContrast": 0.1778
+					},
+					"after": {
+						"linearMean": [
+							0.60915,
+							0.60915,
+							0.60915
+						],
+						"luminanceContrast": 0.1778
+					}
+				}
+			],
+			"entries": [
+				{
+					"id": "textile-linen",
+					"color": "#fdeed2",
+					"rule": "design target: linear(target) / measured mean per channel; target hue kept at the supported luminance when unreachable (§7)",
+					"target": "#cbbfa8",
+					"measuredLinearMean": [
+						0.60991,
+						0.60989,
+						0.60991
+					],
+					"linearFactor": [
+						0.97916,
+						0.85425,
+						0.64202
+					],
+					"albedoLuminance": 0.5279,
+					"targetLuminance": 0.5279,
+					"targetReached": true
+				}
+			],
+			"record": {
+				"path": "apps/editor/assets-source/textures/records/textile-linen.json",
+				"sha256": "fc0bdad96d8c2acc1709f5821f74a4c7f45de6c419c49caeff1a1171c56f47e9"
+			}
+		},
+		{
+			"setId": "tile-ceramic-white",
+			"source": {
+				"provider": "ambientcg",
+				"assetId": "Tiles107",
+				"acquiredAt": "2026-11-21",
+				"files": [
+					{
+						"role": "archive",
+						"retentionKey": "materials/ambientcg/Tiles107/archive/Tiles107_2K-PNG.zip",
+						"sha256": "b11357fb73e3f5b67e9bbb989f9ced356ac7d77703695a38404901880486699d",
+						"bytes": 26905547
+					},
+					{
+						"role": "occlusion",
+						"retentionKey": "materials/ambientcg/Tiles107/occlusion/Tiles107_2K-PNG_AmbientOcclusion.png",
+						"sha256": "5767d4764ba7a75ca40b8598145b5ecfabecf500b74cf69449b3aa637f8c91c5",
+						"bytes": 108818
+					},
+					{
+						"role": "color",
+						"retentionKey": "materials/ambientcg/Tiles107/color/Tiles107_2K-PNG_Color.png",
+						"sha256": "e9afcfc5a718c56fd0590f8d8aa8f7428b670e27229ed51007fc4911839debdf",
+						"bytes": 790496
+					},
+					{
+						"role": "normal",
+						"retentionKey": "materials/ambientcg/Tiles107/normal/Tiles107_2K-PNG_NormalGL.png",
+						"sha256": "e79c01bb19ade3e195af27df819af62005141c8781e19237c35a8124c726aec0",
+						"bytes": 9968142
+					},
+					{
+						"role": "roughness",
+						"retentionKey": "materials/ambientcg/Tiles107/roughness/Tiles107_2K-PNG_Roughness.png",
+						"sha256": "2b65352a0b112e90e438503269613e7a08cf84b5811c0c1c6f87b81818699ee4",
+						"bytes": 453608
+					}
+				]
+			},
+			"selection": null,
+			"qualifiedLevel": "1k",
+			"judgement": "512 softens grout lines (×1.66, feature-defined); 1K crisp; 2K equal.",
+			"shipped": {
+				"color": {
+					"sha256": "4c26b805337be92a4e9db0999a8dd2af0b21ec1a4d0c952d82f7148df0095ffe",
+					"bytes": 19976
+				},
+				"normal": {
+					"sha256": "641cdbeea9c27f33c61bd22d4c142acf7938baff4be7548414710be7f0df8057",
+					"bytes": 265234
+				},
+				"orm": {
+					"sha256": "8c37ea083159eebd86c9933e54e8b3cd4a735e215cc70b41800473387b7ca8fc",
+					"bytes": 160486
+				}
+			},
+			"measurements": {
+				"qualified": {
+					"colorSeamRatio": 1.82,
+					"colorSeamVsFeatures": [
+						0.036,
+						0.036
+					],
+					"colorLinearMean": [
+						0.9494,
+						0.94598,
+						0.94629
+					],
+					"colorClippedShare": 0.00049,
+					"normalSeamRatio": 10.561,
+					"normalSeamVsFeatures": [
+						0.32,
+						0.335
+					],
+					"ormSeamRatio": 2.622,
+					"ormSeamVsFeatures": [
+						0.075,
+						0.077
+					],
+					"roughnessMean": 0.0537,
+					"occlusionMean": 0.9942
+				},
+				"perLevel": {
+					"512": {
+						"colorSeamRatio": 1.488,
+						"colorSeamVsFeatures": [
+							0.051,
+							0.049
+						],
+						"colorLinearMean": [
+							0.94897,
+							0.94596,
+							0.94615
+						],
+						"colorClippedShare": 0.00186,
+						"normalSeamRatio": 22.986,
+						"normalSeamVsFeatures": [
+							0.939,
+							0.871
+						],
+						"ormSeamRatio": 1.121,
+						"ormSeamVsFeatures": [
+							0.035,
+							0.04
+						],
+						"roughnessMean": 0.0536,
+						"occlusionMean": 0.9942
+					},
+					"2k": {
+						"colorSeamRatio": 4.22,
+						"colorSeamVsFeatures": [
+							0.064,
+							0.059
+						],
+						"colorLinearMean": [
+							0.94904,
+							0.94501,
+							0.94706
+						],
+						"colorClippedShare": 0.00275,
+						"normalSeamRatio": 20.368,
+						"normalSeamVsFeatures": [
+							0.548,
+							0.599
+						],
+						"ormSeamRatio": 5.239,
+						"ormSeamVsFeatures": [
+							0.118,
+							0.11
+						],
+						"roughnessMean": 0.0536,
+						"occlusionMean": 0.9942
+					},
+					"1k": {
+						"colorSeamRatio": 1.82,
+						"colorSeamVsFeatures": [
+							0.036,
+							0.036
+						],
+						"colorLinearMean": [
+							0.9494,
+							0.94598,
+							0.94629
+						],
+						"colorClippedShare": 0.00049,
+						"normalSeamRatio": 10.561,
+						"normalSeamVsFeatures": [
+							0.32,
+							0.335
+						],
+						"ormSeamRatio": 2.622,
+						"ormSeamVsFeatures": [
+							0.075,
+							0.077
+						],
+						"roughnessMean": 0.0537,
+						"occlusionMean": 0.9942
+					}
+				},
+				"detailLoss": {
+					"2k->1k": {
+						"color": 3.839,
+						"normal": 5.655,
+						"orm": 3.913
+					},
+					"1k->512": {
+						"color": 9.337,
+						"normal": 11.33,
+						"orm": 8.174
+					}
+				}
+			},
+			"colorTransforms": [],
+			"entries": [
+				{
+					"id": "tile-ceramic-white",
+					"color": "#f3f4f0",
+					"rule": "T1 neutral base: the reference hue at the source luminance (reference is a check, not a luminance target)",
+					"target": null,
+					"measuredLinearMean": [
+						0.94904,
+						0.94501,
+						0.94706
+					],
+					"linearFactor": [
+						0.89758,
+						0.90141,
+						0.87249
+					],
+					"albedoLuminance": 0.85,
+					"targetLuminance": 0.85,
+					"targetReached": true,
+					"plausibility": {
+						"reference": "#e0e0dd",
+						"sourceLuminanceRatio": 1.272,
+						"withinTolerance": false
+					}
+				}
+			],
+			"record": {
+				"path": "apps/editor/assets-source/textures/records/tile-ceramic-white.json",
+				"sha256": "30a6a97714e2b8efd6886bad4060a71e999e0887bdf4a1583050dc93cedaa0d6"
+			}
+		},
+		{
+			"setId": "wood-herringbone-parquet",
+			"source": {
+				"provider": "polyhaven",
+				"assetId": "herringbone_parquet",
+				"acquiredAt": "2026-11-21",
+				"files": [
+					{
+						"role": "color",
+						"retentionKey": "materials/polyhaven/herringbone_parquet/color/herringbone_parquet_diff_2k.png",
+						"sha256": "ad7894b9d9189652d89ff0a1553909d2143db017fb2686ed56e5bb7db54745c2",
+						"bytes": 21385327
+					},
+					{
+						"role": "normal",
+						"retentionKey": "materials/polyhaven/herringbone_parquet/normal/herringbone_parquet_nor_gl_2k.png",
+						"sha256": "c7e03fae4aa752ba4524ba703ea78930254ef2a3bf32eb6bbe6e80bf6927c8b6",
+						"bytes": 18984465
+					},
+					{
+						"role": "orm",
+						"retentionKey": "materials/polyhaven/herringbone_parquet/orm/herringbone_parquet_arm_2k.png",
+						"sha256": "d0d5bda6beec6a8ed4cfa04922da84f360c1fc0f06e854cfbfb9d4bfbc69b672",
+						"bytes": 16502136
+					}
+				]
+			},
+			"selection": null,
+			"qualifiedLevel": "2k",
+			"judgement": "512 blurs the blocks; 1K (×2.82) softens block edges and grain; 2K (×1.41) crisp. Feature-defined; 2K is required.",
+			"shipped": {
+				"color": {
+					"sha256": "ca8b379b35cf12a1fb23d3a89049edaa43d427dcec462853f0ecbe48027fccfd",
+					"bytes": 1306350
+				},
+				"normal": {
+					"sha256": "0aa86abab55d8056a58b8ad4c572aab57b6d6dd1297d11d1e9627618b9e93c59",
+					"bytes": 3210128
+				},
+				"orm": {
+					"sha256": "478869f6f71924534bacea4d33d8bd0ad59cf73c8c608be454b4c4e283c41aff",
+					"bytes": 3549212
+				}
+			},
+			"measurements": {
+				"qualified": {
+					"colorSeamRatio": 1.018,
+					"colorSeamVsFeatures": [
+						0.85,
+						0.918
+					],
+					"colorLinearMean": [
+						0.29611,
+						0.16423,
+						0.07607
+					],
+					"colorClippedShare": 0,
+					"normalSeamRatio": 0.891,
+					"normalSeamVsFeatures": [
+						0.487,
+						0.739
+					],
+					"ormSeamRatio": 0.961,
+					"ormSeamVsFeatures": [
+						0.689,
+						0.803
+					],
+					"roughnessMean": 0.0981,
+					"occlusionMean": 0.9734
+				},
+				"perLevel": {
+					"512": {
+						"colorSeamRatio": 1.097,
+						"colorSeamVsFeatures": [
+							0.764,
+							0.907
+						],
+						"colorLinearMean": [
+							0.29662,
+							0.16416,
+							0.07589
+						],
+						"colorClippedShare": 0,
+						"normalSeamRatio": 0.88,
+						"normalSeamVsFeatures": [
+							0.466,
+							0.671
+						],
+						"ormSeamRatio": 0.953,
+						"ormSeamVsFeatures": [
+							0.522,
+							0.75
+						],
+						"roughnessMean": 0.0981,
+						"occlusionMean": 0.9734
+					},
+					"2k": {
+						"colorSeamRatio": 1.018,
+						"colorSeamVsFeatures": [
+							0.85,
+							0.918
+						],
+						"colorLinearMean": [
+							0.29611,
+							0.16423,
+							0.07607
+						],
+						"colorClippedShare": 0,
+						"normalSeamRatio": 0.891,
+						"normalSeamVsFeatures": [
+							0.487,
+							0.739
+						],
+						"ormSeamRatio": 0.961,
+						"ormSeamVsFeatures": [
+							0.689,
+							0.803
+						],
+						"roughnessMean": 0.0981,
+						"occlusionMean": 0.9734
+					},
+					"1k": {
+						"colorSeamRatio": 1.054,
+						"colorSeamVsFeatures": [
+							0.816,
+							0.879
+						],
+						"colorLinearMean": [
+							0.29637,
+							0.16421,
+							0.07595
+						],
+						"colorClippedShare": 0,
+						"normalSeamRatio": 0.86,
+						"normalSeamVsFeatures": [
+							0.428,
+							0.675
+						],
+						"ormSeamRatio": 0.955,
+						"ormSeamVsFeatures": [
+							0.611,
+							0.759
+						],
+						"roughnessMean": 0.0981,
+						"occlusionMean": 0.9734
+					}
+				},
+				"detailLoss": {
+					"2k->1k": {
+						"color": 5.614,
+						"normal": 1.938,
+						"orm": 2.403
+					},
+					"1k->512": {
+						"color": 4.787,
+						"normal": 1.087,
+						"orm": 1.755
+					}
+				}
+			},
+			"colorTransforms": [],
+			"entries": [
+				{
+					"id": "wood-herringbone-parquet",
+					"color": "#ffffff",
+					"rule": "as shot",
+					"measuredLinearMean": [
+						0.29611,
+						0.16423,
+						0.07607
+					],
+					"albedoLuminance": 0.1859
+				}
+			],
+			"record": {
+				"path": "apps/editor/assets-source/textures/records/wood-herringbone-parquet.json",
+				"sha256": "6f38fbd22cb9d798b1ba8c81944ce8488edf06d4d93485bcdc23ef79ced9931a"
+			}
+		},
+		{
+			"setId": "wood-oak-planks",
+			"source": {
+				"provider": "polyhaven",
+				"assetId": "wood_floor",
+				"acquiredAt": "2026-11-21",
+				"files": [
+					{
+						"role": "color",
+						"retentionKey": "materials/polyhaven/wood_floor/color/wood_floor_diff_2k.png",
+						"sha256": "33040146e3ea6fa47d7bbf4ccdecdf3443cdb831e72e1f33dede6ad6542b2b7c",
+						"bytes": 21423099
+					},
+					{
+						"role": "normal",
+						"retentionKey": "materials/polyhaven/wood_floor/normal/wood_floor_nor_gl_2k.png",
+						"sha256": "2364421a19aba9392bcd0ba14617e7e91ac2869ca3fab16d83563b5250d71bc8",
+						"bytes": 19399802
+					},
+					{
+						"role": "orm",
+						"retentionKey": "materials/polyhaven/wood_floor/orm/wood_floor_arm_2k.png",
+						"sha256": "8e586020caf49073e3a3e7e6af3ab298dcd468db9ffa6dc4c62dd37728d38b45",
+						"bytes": 16651290
+					}
+				]
+			},
+			"selection": null,
+			"qualifiedLevel": "1k",
+			"judgement": "512 smears the grain and board joints at 1.5 m (×2.82); 1K crisp (×1.41); 2K equal.",
+			"shipped": {
+				"color": {
+					"sha256": "87cd8d3ca60160177a8e4f684b320819a47bec54e811d2ccfc319fd027fba90e",
+					"bytes": 237406
+				},
+				"normal": {
+					"sha256": "0bae98742d97f49e9c5ca6d5a595f24f252245daf351fa336ee69bc0afe5408f",
+					"bytes": 856620
+				},
+				"orm": {
+					"sha256": "f755dc04f5570ea5548f00a4f4601959702d99d09d90c9e19193f728811587b0",
+					"bytes": 1175470
+				}
+			},
+			"measurements": {
+				"qualified": {
+					"colorSeamRatio": 3.142,
+					"colorSeamVsFeatures": [
+						0.857,
+						0.559
+					],
+					"colorLinearMean": [
+						0.2185,
+						0.11843,
+						0.05553
+					],
+					"colorClippedShare": 0,
+					"normalSeamRatio": 1.735,
+					"normalSeamVsFeatures": [
+						0.522,
+						0.521
+					],
+					"ormSeamRatio": 2.346,
+					"ormSeamVsFeatures": [
+						0.835,
+						0.54
+					],
+					"roughnessMean": 0.4715,
+					"occlusionMean": 0.9116
+				},
+				"perLevel": {
+					"512": {
+						"colorSeamRatio": 2.105,
+						"colorSeamVsFeatures": [
+							0.541,
+							0.598
+						],
+						"colorLinearMean": [
+							0.21864,
+							0.11848,
+							0.05535
+						],
+						"colorClippedShare": 0,
+						"normalSeamRatio": 2.536,
+						"normalSeamVsFeatures": [
+							1.063,
+							0.547
+						],
+						"ormSeamRatio": 1.941,
+						"ormSeamVsFeatures": [
+							0.743,
+							0.537
+						],
+						"roughnessMean": 0.4715,
+						"occlusionMean": 0.9116
+					},
+					"2k": {
+						"colorSeamRatio": 2.426,
+						"colorSeamVsFeatures": [
+							0.751,
+							0.603
+						],
+						"colorLinearMean": [
+							0.21856,
+							0.11831,
+							0.05578
+						],
+						"colorClippedShare": 0,
+						"normalSeamRatio": 1.409,
+						"normalSeamVsFeatures": [
+							0.488,
+							0.458
+						],
+						"ormSeamRatio": 1.783,
+						"ormSeamVsFeatures": [
+							0.8,
+							0.492
+						],
+						"roughnessMean": 0.4715,
+						"occlusionMean": 0.9116
+					},
+					"1k": {
+						"colorSeamRatio": 3.142,
+						"colorSeamVsFeatures": [
+							0.857,
+							0.559
+						],
+						"colorLinearMean": [
+							0.2185,
+							0.11843,
+							0.05553
+						],
+						"colorClippedShare": 0,
+						"normalSeamRatio": 1.735,
+						"normalSeamVsFeatures": [
+							0.522,
+							0.521
+						],
+						"ormSeamRatio": 2.346,
+						"ormSeamVsFeatures": [
+							0.835,
+							0.54
+						],
+						"roughnessMean": 0.4715,
+						"occlusionMean": 0.9116
+					}
+				},
+				"detailLoss": {
+					"2k->1k": {
+						"color": 5.975,
+						"normal": 2.425,
+						"orm": 6.32
+					},
+					"1k->512": {
+						"color": 5.202,
+						"normal": 1.915,
+						"orm": 5.112
+					}
+				}
+			},
+			"colorTransforms": [],
+			"entries": [
+				{
+					"id": "wood-oak-planks",
+					"color": "#ffffff",
+					"rule": "as shot",
+					"measuredLinearMean": [
+						0.21856,
+						0.11831,
+						0.05578
+					],
+					"albedoLuminance": 0.1351
+				}
+			],
+			"record": {
+				"path": "apps/editor/assets-source/textures/records/wood-oak-planks.json",
+				"sha256": "f2f59c41b2122775f42d5c9006c863dcfe9d33d4e3c4a4433b62dbf74d4261a7"
+			}
+		},
+		{
+			"setId": "wood-oak-veneer",
+			"source": {
+				"provider": "polyhaven",
+				"assetId": "white_oak_veneer",
+				"acquiredAt": "2026-11-21",
+				"files": [
+					{
+						"role": "color",
+						"retentionKey": "materials/polyhaven/white_oak_veneer/color/white_oak_veneer_diff_2k.png",
+						"sha256": "9858c01998010a131ebbbc69790a2ccd485643c55f273cd68fc175b08d65adb2",
+						"bytes": 21448863
+					},
+					{
+						"role": "normal",
+						"retentionKey": "materials/polyhaven/white_oak_veneer/normal/white_oak_veneer_nor_gl_2k.png",
+						"sha256": "95b1e3df1db240ac44a8e33574a178539293e0a972f78ead17fcab8fd8a8c745",
+						"bytes": 21125813
+					},
+					{
+						"role": "orm",
+						"retentionKey": "materials/polyhaven/white_oak_veneer/orm/white_oak_veneer_arm_2k.png",
+						"sha256": "12268183ce5ba79a58b7b2a3003c5ac498add4dbbb958178c51808b67253c7dd",
+						"bytes": 16818888
+					}
+				]
+			},
+			"selection": null,
+			"qualifiedLevel": "512",
+			"judgement": "512 holds grain and figure at 0.8 m (×1.56, low-frequency figure); 1K indistinguishable. Conditional screen resolved at the start step.",
+			"shipped": {
+				"color": {
+					"sha256": "609c7523f3bcaa7f4aa10a489980386ee2579acbcb73fa03c1b084f2f00fb54b",
+					"bytes": 28916
+				},
+				"normal": {
+					"sha256": "41c1d86ed94267ccef48d6a2b99d330bf1cd8d8309209fa1c54b9a01bb4b513b",
+					"bytes": 261720
+				},
+				"orm": {
+					"sha256": "1794f4ce7ccf464a5a957820636c3b76d5c9cad3575e35965e6a84b5e3218f6d",
+					"bytes": 222024
+				}
+			},
+			"measurements": {
+				"qualified": {
+					"colorSeamRatio": 1.342,
+					"colorSeamVsFeatures": [
+						0.603,
+						0.886
+					],
+					"colorLinearMean": [
+						0.28034,
+						0.19261,
+						0.12481
+					],
+					"colorClippedShare": 0,
+					"normalSeamRatio": 0.98,
+					"normalSeamVsFeatures": [
+						0.647,
+						0.451
+					],
+					"ormSeamRatio": 0.846,
+					"ormSeamVsFeatures": [
+						0.516,
+						0.647
+					],
+					"roughnessMean": 0.7334,
+					"occlusionMean": 0.9721
+				},
+				"perLevel": {
+					"512": {
+						"colorSeamRatio": 1.342,
+						"colorSeamVsFeatures": [
+							0.603,
+							0.886
+						],
+						"colorLinearMean": [
+							0.28034,
+							0.19261,
+							0.12481
+						],
+						"colorClippedShare": 0,
+						"normalSeamRatio": 0.98,
+						"normalSeamVsFeatures": [
+							0.647,
+							0.451
+						],
+						"ormSeamRatio": 0.846,
+						"ormSeamVsFeatures": [
+							0.516,
+							0.647
+						],
+						"roughnessMean": 0.7334,
+						"occlusionMean": 0.9721
+					},
+					"2k": {
+						"colorSeamRatio": 1.024,
+						"colorSeamVsFeatures": [
+							0.626,
+							0.754
+						],
+						"colorLinearMean": [
+							0.28029,
+							0.19259,
+							0.12482
+						],
+						"colorClippedShare": 0,
+						"normalSeamRatio": 0.888,
+						"normalSeamVsFeatures": [
+							0.562,
+							0.414
+						],
+						"ormSeamRatio": 0.853,
+						"ormSeamVsFeatures": [
+							0.446,
+							0.64
+						],
+						"roughnessMean": 0.7334,
+						"occlusionMean": 0.9721
+					},
+					"1k": {
+						"colorSeamRatio": 1.12,
+						"colorSeamVsFeatures": [
+							0.639,
+							0.791
+						],
+						"colorLinearMean": [
+							0.28031,
+							0.19257,
+							0.12481
+						],
+						"colorClippedShare": 0,
+						"normalSeamRatio": 0.898,
+						"normalSeamVsFeatures": [
+							0.594,
+							0.437
+						],
+						"ormSeamRatio": 0.839,
+						"ormSeamVsFeatures": [
+							0.514,
+							0.636
+						],
+						"roughnessMean": 0.7334,
+						"occlusionMean": 0.9721
+					}
+				},
+				"detailLoss": {
+					"2k->1k": {
+						"color": 4.056,
+						"normal": 4.66,
+						"orm": 3.922
+					},
+					"1k->512": {
+						"color": 3.397,
+						"normal": 3.24,
+						"orm": 3.047
+					}
+				}
+			},
+			"colorTransforms": [],
+			"entries": [
+				{
+					"id": "wood-oak-veneer",
+					"color": "#ffffff",
+					"rule": "as shot",
+					"measuredLinearMean": [
+						0.28029,
+						0.19259,
+						0.12482
+					],
+					"albedoLuminance": 0.2063
+				}
+			],
+			"record": {
+				"path": "apps/editor/assets-source/textures/records/wood-oak-veneer.json",
+				"sha256": "685d910fec708a98efc235872ef4d503e610abf8b3a9642203711840949a2d7d"
+			}
+		},
+		{
+			"setId": "wood-walnut-veneer",
+			"source": {
+				"provider": "polyhaven",
+				"assetId": "walnut_veneer_02",
+				"acquiredAt": "2026-11-21",
+				"files": [
+					{
+						"role": "color",
+						"retentionKey": "materials/polyhaven/walnut_veneer_02/color/walnut_veneer_02_diff_2k.png",
+						"sha256": "5fb013815f24ac2f02cff134e1558eb8e91b8db76d73c7ac7d4a6d35a1a19382",
+						"bytes": 20967169
+					},
+					{
+						"role": "normal",
+						"retentionKey": "materials/polyhaven/walnut_veneer_02/normal/walnut_veneer_02_nor_gl_2k.png",
+						"sha256": "fca41e607df5c9511123d246b8582538db7ecd728c221e657f5593de62dc9030",
+						"bytes": 19226010
+					},
+					{
+						"role": "orm",
+						"retentionKey": "materials/polyhaven/walnut_veneer_02/orm/walnut_veneer_02_arm_2k.png",
+						"sha256": "a3f2a9bd658eaa572940ee0ae50e2b62b7f964fed9f08c4da20c6b177a90df41",
+						"bytes": 16631176
+					}
+				]
+			},
+			"selection": null,
+			"qualifiedLevel": "1k",
+			"judgement": "512 softens the dark grain lines at 0.8 m (×3.11); 1K holds them (×1.56, conditional) and 2K adds nothing visible.",
+			"shipped": {
+				"color": {
+					"sha256": "3b7eb33f0c21f41eae4cd9a58fc85d0c08a5099c9b2a8b1352b98648692e1198",
+					"bytes": 144146
+				},
+				"normal": {
+					"sha256": "1be042d760267e8deeb0927e2239d1e377a3e94d37607f07db66f679f54b9703",
+					"bytes": 621080
+				},
+				"orm": {
+					"sha256": "5d4c9eecbfc0c6a7efa067ae192554b18c538aa1f6c8961e36b3c952980dcd60",
+					"bytes": 916812
+				}
+			},
+			"measurements": {
+				"qualified": {
+					"colorSeamRatio": 1.238,
+					"colorSeamVsFeatures": [
+						0.977,
+						0.459
+					],
+					"colorLinearMean": [
+						0.40102,
+						0.25465,
+						0.16846
+					],
+					"colorClippedShare": 0,
+					"normalSeamRatio": 1.067,
+					"normalSeamVsFeatures": [
+						0.799,
+						0.846
+					],
+					"ormSeamRatio": 1.181,
+					"ormSeamVsFeatures": [
+						0.851,
+						0.814
+					],
+					"roughnessMean": 0.6458,
+					"occlusionMean": 0.958
+				},
+				"perLevel": {
+					"512": {
+						"colorSeamRatio": 1.196,
+						"colorSeamVsFeatures": [
+							0.995,
+							0.357
+						],
+						"colorLinearMean": [
+							0.40095,
+							0.25469,
+							0.16827
+						],
+						"colorClippedShare": 0,
+						"normalSeamRatio": 1.122,
+						"normalSeamVsFeatures": [
+							0.824,
+							0.712
+						],
+						"ormSeamRatio": 1.19,
+						"ormSeamVsFeatures": [
+							0.827,
+							0.831
+						],
+						"roughnessMean": 0.6458,
+						"occlusionMean": 0.958
+					},
+					"2k": {
+						"colorSeamRatio": 1.292,
+						"colorSeamVsFeatures": [
+							0.946,
+							0.565
+						],
+						"colorLinearMean": [
+							0.40102,
+							0.25464,
+							0.16845
+						],
+						"colorClippedShare": 0,
+						"normalSeamRatio": 1.065,
+						"normalSeamVsFeatures": [
+							0.797,
+							0.762
+						],
+						"ormSeamRatio": 1.153,
+						"ormSeamVsFeatures": [
+							0.797,
+							0.722
+						],
+						"roughnessMean": 0.6458,
+						"occlusionMean": 0.958
+					},
+					"1k": {
+						"colorSeamRatio": 1.238,
+						"colorSeamVsFeatures": [
+							0.977,
+							0.459
+						],
+						"colorLinearMean": [
+							0.40102,
+							0.25465,
+							0.16846
+						],
+						"colorClippedShare": 0,
+						"normalSeamRatio": 1.067,
+						"normalSeamVsFeatures": [
+							0.799,
+							0.846
+						],
+						"ormSeamRatio": 1.181,
+						"ormSeamVsFeatures": [
+							0.851,
+							0.814
+						],
+						"roughnessMean": 0.6458,
+						"occlusionMean": 0.958
+					}
+				},
+				"detailLoss": {
+					"2k->1k": {
+						"color": 3.715,
+						"normal": 1.546,
+						"orm": 8.104
+					},
+					"1k->512": {
+						"color": 3.982,
+						"normal": 0.953,
+						"orm": 6.214
+					}
+				}
+			},
+			"colorTransforms": [],
+			"entries": [
+				{
+					"id": "wood-walnut-veneer",
+					"color": "#7a6e63",
+					"rule": "design target: linear(target) / measured mean per channel; target hue kept at the supported luminance when unreachable (§7)",
+					"target": "#4f3828",
+					"measuredLinearMean": [
+						0.40102,
+						0.25464,
+						0.16845
+					],
+					"linearFactor": [
+						0.19497,
+						0.1553,
+						0.12597
+					],
+					"albedoLuminance": 0.0464,
+					"targetLuminance": 0.0464,
+					"targetReached": true
+				}
+			],
+			"record": {
+				"path": "apps/editor/assets-source/textures/records/wood-walnut-veneer.json",
+				"sha256": "fec2110b26462e3c03a0683c556662d5cab76149eaade7debb8b58f91aed3fba"
+			}
+		}
+	],
+	"rejected": [
+		{
+			"kind": "set excluded after harvest and derivation",
+			"setId": "masonry-brick-painted",
+			"provider": "ambientcg",
+			"assetId": "PaintedBricks004",
+			"reason": "§7 / principle \"prefer correct sources over aggressive correction\": the as-shot paint is blue-grey (linear mean ~0.32/0.38/0.39). A gain to the warm-white target clips 99.9% of texels (hue destroyed); the only non-destructive route is the D4 luminance-neutral step, which the owner approved for linen only. No listed alternate. Requalifies if the owner extends D4 to painted masonry or a warm-white painted-brick source is found.",
+			"measurements": {
+				"qualifiedCandidate": {
+					"colorSeamRatio": 16.247,
+					"colorSeamVsFeatures": [
+						0.029,
+						0.201
+					],
+					"colorLinearMean": [
+						0.80663,
+						0.80663,
+						0.80663
+					],
+					"colorClippedShare": 0,
+					"normalSeamRatio": 1.483,
+					"normalSeamVsFeatures": [
+						0.749,
+						0.707
+					],
+					"ormSeamRatio": 1.474,
+					"ormSeamVsFeatures": [
+						0.79,
+						0.722
+					],
+					"roughnessMean": 0.6143,
+					"occlusionMean": 0.9663
+				},
+				"entries": [
+					{
+						"id": "masonry-brick-painted",
+						"target": "#e6e2da",
+						"targetBasis": "targetMeanAlbedo",
+						"measuredLinearMean": [
+							0.80663,
+							0.80663,
+							0.80663
+						],
+						"color": "#fdf8f0",
+						"linearFactor": [
+							0.98099,
+							0.94284,
+							0.86917
+						],
+						"rule": "linear(target) / measured linear mean, per channel (§7)"
+					}
+				]
+			},
+			"record": {
+				"path": "apps/editor/assets-source/textures/records/excluded/masonry-brick-painted.json",
+				"sha256": "272c0042524f1609ebd6348526bc6da0092c8db6ed8ce121fa164fb94a96e4bd"
+			}
+		},
+		{
+			"kind": "set excluded after harvest and derivation",
+			"setId": "stone-marble-white",
+			"provider": "ambientcg",
+			"assetId": "Marble012",
+			"reason": "§15 albedo plausibility: 2K colour mean luminance 0.539x the Physically Based Marble reference (#ebe6e1), outside ±20%; a factor cannot lighten and a recorded gain to the reference clips 57.6% of texels, destroying the veining. The listed alternate Travertine009 replaces it (D1 fallback set).",
+			"measurements": {
+				"qualifiedCandidate": null,
+				"entries": [
+					{
+						"id": "stone-marble-white",
+						"target": "#ebe6e1",
+						"targetBasis": "plausibility reference (source luminance 0.539x)",
+						"measuredLinearMean": [
+							0.83504,
+							0.84739,
+							0.89135
+						],
+						"color": "#fef7ed",
+						"linearFactor": [
+							0.99489,
+							0.93381,
+							0.84472
+						],
+						"rule": "linear(target) / measured linear mean, per channel (§7)"
+					}
+				]
+			},
+			"record": {
+				"path": "apps/editor/assets-source/textures/records/excluded/stone-marble-white.json",
+				"sha256": "ab7801ad9c1036a588c43974e60a199e57a249af5d8977f4fcda2820919af350"
+			}
+		},
+		{
+			"kind": "first choice replaced by listed alternate",
+			"setId": "synthetic-plastic-matte",
+			"provider": "ambientcg",
+			"assetId": "Plastic010",
+			"used": "Plastic013A",
+			"reason": "§7: the first choice is too dark for its target; the listed alternate (linear mean 0.852/0.820/0.812 from its 1K preview) reaches it"
+		},
+		{
+			"kind": "listed alternate not harvested",
+			"setId": "plaster-painted",
+			"provider": "polyhaven",
+			"assetId": "plastered_wall",
+			"reason": "The primary painted_plaster_wall qualified at 1K with one recorded linear gain inside the ceiling (0.5% clipped texels, contrast unchanged); plastered_wall is bare plaster, a different identity for a painted entry, so it was not needed."
+		}
+	],
+	"renderGap": {
+		"found": "The first rendered board showed the metal sets (normal + ORM, no colour map) on the flat fallback: loadMaterialTextures, loadEffectiveTextures and CatalogueMaterial treated a missing colour map as failure even when the entry binds none.",
+		"fix": "A set without a bound colour slot is ready on the structure maps it carries; a set that binds a colour map still falls back when that map fails.",
+		"files": [
+			"apps/editor/src/lib/render/resources/texture-store.ts",
+			"apps/editor/src/lib/render/materials/CatalogueMaterial.svelte"
+		],
+		"test": "apps/editor/tests/lib/render/resources/texture-store.test.ts — binds a map-less set by the structure maps it carries (S8 F metals)"
+	},
+	"renderedQa": {
+		"lighting": {
+			"recipe": "createInspectionLighting (apps/editor/src/lib/render/materials/inspection-lighting.ts)",
+			"version": 2,
+			"neutral": "studio: prefiltered deterministic environment, no punctual lights",
+			"grazing": "one directional key of intensity 2 from normalized (1, 0.12, 0.25), ambient 0.15, no reflection map",
+			"background": "#555555",
+			"toneMapping": "none",
+			"exposure": 1
+		},
+		"browser": "Claude desktop browser pane (Chromium), macOS 15 (Darwin 24.6); WebGL2 forced by hiding navigator.gpu before the canvas mounts",
+		"scenes": {
+			"board": "All 21 curated entries as a panel at real tile size and a 0.4 m sphere; ?only=<id> closes in at 0.9 m.",
+			"living-room": "Herringbone parquet floor, painted-plaster walls, travertine feature wall and table top, walnut-veneer cabinet, linen sofa, cognac leather chair, satin brass fitting and lamp.",
+			"kitchen": "Terrazzo floor, white ceramic tile wall, painted-plaster wall, oak-veneer cabinets, polished-concrete worktop, brushed stainless appliance front and rail, matte plastic stool.",
+			"gallery-office": "Oak plank floor, smooth-concrete and painted-plaster walls, red brick feature wall, loop-pile carpet rug, oak-veneer desk, cognac leather chair, brushed aluminium leg, satin copper globe, satin gold frame, satin stainless panel.",
+			"coverage": "The three vignettes place all 21 curated entries; painted brick and white marble positions take plaster and travertine under their own identities."
+		},
+		"matrix": [
+			{
+				"backend": "webgpu",
+				"view": "board",
+				"rig": "studio",
+				"url": "/dev/s8-f?view=board&light=neutral",
+				"settled": true,
+				"failures": []
+			},
+			{
+				"backend": "webgpu",
+				"view": "board",
+				"rig": "grazing",
+				"url": "/dev/s8-f?view=board&light=grazing",
+				"settled": true,
+				"failures": []
+			},
+			{
+				"backend": "webgpu",
+				"view": "living-room",
+				"rig": "studio",
+				"url": "/dev/s8-f?view=living-room&light=neutral",
+				"settled": true,
+				"failures": []
+			},
+			{
+				"backend": "webgpu",
+				"view": "living-room",
+				"rig": "grazing",
+				"url": "/dev/s8-f?view=living-room&light=grazing",
+				"settled": true,
+				"failures": []
+			},
+			{
+				"backend": "webgpu",
+				"view": "kitchen",
+				"rig": "studio",
+				"url": "/dev/s8-f?view=kitchen&light=neutral",
+				"settled": true,
+				"failures": []
+			},
+			{
+				"backend": "webgpu",
+				"view": "kitchen",
+				"rig": "grazing",
+				"url": "/dev/s8-f?view=kitchen&light=grazing",
+				"settled": true,
+				"failures": []
+			},
+			{
+				"backend": "webgpu",
+				"view": "gallery-office",
+				"rig": "studio",
+				"url": "/dev/s8-f?view=gallery-office&light=neutral",
+				"settled": true,
+				"failures": []
+			},
+			{
+				"backend": "webgpu",
+				"view": "gallery-office",
+				"rig": "grazing",
+				"url": "/dev/s8-f?view=gallery-office&light=grazing",
+				"settled": true,
+				"failures": []
+			},
+			{
+				"backend": "webgl2",
+				"view": "board",
+				"rig": "studio",
+				"url": "/dev/s8-f?view=board&light=neutral&backend=webgl2",
+				"settled": true,
+				"failures": []
+			},
+			{
+				"backend": "webgl2",
+				"view": "board",
+				"rig": "grazing",
+				"url": "/dev/s8-f?view=board&light=grazing&backend=webgl2",
+				"settled": true,
+				"failures": []
+			},
+			{
+				"backend": "webgl2",
+				"view": "living-room",
+				"rig": "studio",
+				"url": "/dev/s8-f?view=living-room&light=neutral&backend=webgl2",
+				"settled": true,
+				"failures": []
+			},
+			{
+				"backend": "webgl2",
+				"view": "living-room",
+				"rig": "grazing",
+				"url": "/dev/s8-f?view=living-room&light=grazing&backend=webgl2",
+				"settled": true,
+				"failures": []
+			},
+			{
+				"backend": "webgl2",
+				"view": "kitchen",
+				"rig": "studio",
+				"url": "/dev/s8-f?view=kitchen&light=neutral&backend=webgl2",
+				"settled": true,
+				"failures": []
+			},
+			{
+				"backend": "webgl2",
+				"view": "kitchen",
+				"rig": "grazing",
+				"url": "/dev/s8-f?view=kitchen&light=grazing&backend=webgl2",
+				"settled": true,
+				"failures": []
+			},
+			{
+				"backend": "webgl2",
+				"view": "gallery-office",
+				"rig": "studio",
+				"url": "/dev/s8-f?view=gallery-office&light=neutral&backend=webgl2",
+				"settled": true,
+				"failures": []
+			},
+			{
+				"backend": "webgl2",
+				"view": "gallery-office",
+				"rig": "grazing",
+				"url": "/dev/s8-f?view=gallery-office&light=grazing&backend=webgl2",
+				"settled": true,
+				"failures": []
+			}
+		],
+		"consoleErrors": 0,
+		"observations": [
+			"Every cell settled with no failed material on both renderers; WebGL2 frames match WebGPU frames by eye.",
+			"Studio v2 is deliberately dim for diffuse surfaces (the owner-approved 0.2x radiance scale serves the highlight gate); judgements compare entries within the rig, not absolute brightness.",
+			"Metals read as reflective under studio and as dark, highlight-only surfaces under grazing (which has no reflection map), as expected.",
+			"Grazing shows relief on plaster, tile grout, brick, carpet and leather; no entry reads flattened.",
+			"Painted plaster keeps its mottling after the recorded gain (0.5% clipped, contrast preserved).",
+			"Travertine banding continues across the 1.2 m repeat with no visible seam (colour seam ratio 1.094, normal 1.137 at the qualified level).",
+			"Terrazzo reads as a warm-grey aggregate, true to the source; it is not recoloured.",
+			"Herringbone parquet holds block edges at 2K; linen weave and leather grain resolve at 0.9 m."
+		],
+		"screenshotsRevision": "2ca766335",
+		"screenshots": [
+			{
+				"file": "docs/roadmap/t2-look-atmosphere/s8-professional-material-foundation/evidence/s8-f-webgl2-board-studio.jpg",
+				"sha256": "40fce38cbffd15d240248259feef87df6ace7b6f8e560dd563d3e5453a9dc226"
+			},
+			{
+				"file": "docs/roadmap/t2-look-atmosphere/s8-professional-material-foundation/evidence/s8-f-webgl2-gallery-office-grazing.jpg",
+				"sha256": "92880896f3e2ad3c1d2b16482d2db4b5ff328e0683469f1827a39299234dc584"
+			},
+			{
+				"file": "docs/roadmap/t2-look-atmosphere/s8-professional-material-foundation/evidence/s8-f-webgl2-kitchen-grazing.jpg",
+				"sha256": "8bdbe91d4b2997741f8ce52f6d2c26e2f859b2f544f0b564d98fbf83acecfe1e"
+			},
+			{
+				"file": "docs/roadmap/t2-look-atmosphere/s8-professional-material-foundation/evidence/s8-f-webgl2-living-room-studio.jpg",
+				"sha256": "8d63e2f599b15609302a11c5bae7f8e25234896642f7a2c5c2f8a6e6a1d48837"
+			},
+			{
+				"file": "docs/roadmap/t2-look-atmosphere/s8-professional-material-foundation/evidence/s8-f-webgpu-board-grazing.jpg",
+				"sha256": "a6b48b9c476fd0d3270b471cc0e5e39e3b502b708d595d97e17fe2ee95d0eda5"
+			},
+			{
+				"file": "docs/roadmap/t2-look-atmosphere/s8-professional-material-foundation/evidence/s8-f-webgpu-board-studio.jpg",
+				"sha256": "996fdfcc18e0e5360fe6c019bfd9c779d62accdfb64ed8984f95b26e91ad5efe"
+			},
+			{
+				"file": "docs/roadmap/t2-look-atmosphere/s8-professional-material-foundation/evidence/s8-f-webgpu-closeup-terrazzo-grazing.jpg",
+				"sha256": "61af2ac3198207ff420fb3773ea9873a8dc1efe2d7331d08a95cd53b58f84a11"
+			},
+			{
+				"file": "docs/roadmap/t2-look-atmosphere/s8-professional-material-foundation/evidence/s8-f-webgpu-closeup-travertine-grazing.jpg",
+				"sha256": "58403d33dfe078ceb1e2d6abd44dde5fc4805f4370febb66afee2a50d03d2037"
+			},
+			{
+				"file": "docs/roadmap/t2-look-atmosphere/s8-professional-material-foundation/evidence/s8-f-webgpu-gallery-office-grazing.jpg",
+				"sha256": "f06592be555f8b47f8309ed4d0a5695f64808522520279402813ceff4d34c523"
+			},
+			{
+				"file": "docs/roadmap/t2-look-atmosphere/s8-professional-material-foundation/evidence/s8-f-webgpu-gallery-office-studio.jpg",
+				"sha256": "e58a9f413310062eb7bdd9a8487576782c3c6cc3241307757ed8638fc6a05471"
+			},
+			{
+				"file": "docs/roadmap/t2-look-atmosphere/s8-professional-material-foundation/evidence/s8-f-webgpu-kitchen-grazing.jpg",
+				"sha256": "5c1668016ecd98134cb257b5a03585169d2580a5aa58dfafe80737d0f2fb9849"
+			},
+			{
+				"file": "docs/roadmap/t2-look-atmosphere/s8-professional-material-foundation/evidence/s8-f-webgpu-kitchen-studio.jpg",
+				"sha256": "4faac2801000cecd1276e84df728b3b6ff5888d14dd2f84f52ca52c8dc964439"
+			},
+			{
+				"file": "docs/roadmap/t2-look-atmosphere/s8-professional-material-foundation/evidence/s8-f-webgpu-living-room-grazing.jpg",
+				"sha256": "d1ae27e672d5f312c7e966577d1bd4b97a101e39b05fcffadd00e09810ed0925"
+			},
+			{
+				"file": "docs/roadmap/t2-look-atmosphere/s8-professional-material-foundation/evidence/s8-f-webgpu-living-room-studio.jpg",
+				"sha256": "01e5c4b70614bc08d332d8dc36147e23937f066182e36d6d9e4a748e1d7ecadd"
+			}
+		]
+	},
+	"notes": {
+		"tileReference": "The Physically Based porcelain reference (#e0e0dd) reads 1.272x darker than the glazed white tile source. A glazed ceramic is brighter than unglazed porcelain body, so the reference is judged not fully applicable; the source is kept and the entry factor reaches the design target without clipping.",
+		"painted": "masonry-brick-painted requalifies only if the owner extends the D4 luminance-neutral step to painted masonry or a warm-white painted-brick source is found.",
+		"outOfScope": [
+			"D2 retention-store upload (sources held at the local retention root, keys immutable)",
+			"E7 product host and 192² shelf thumbnails"
+		]
+	}
+}

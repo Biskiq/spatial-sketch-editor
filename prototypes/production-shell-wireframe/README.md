@@ -2,8 +2,8 @@
 
 **Status:** Historical visual and interaction evidence from Round 2, ratified by the owner on
 2026-10-23. The adopted shared rules live in the
-[shell reference](../../docs/reference/design-system/editor-shell-and-visual-system.md) and
-[spatial grammar](../../docs/reference/design-system/spatial-instrument-grammar.md). For current
+[shell reference](../../docs/design-system.md) and
+[spatial grammar](../../docs/design-system.md). For current
 feature designs, use the [prototype catalogue](../README.md).
 
 ## Purpose
@@ -127,9 +127,14 @@ Every file in this folder, with its role from the module header.
 | [atlas-static.html](./atlas-static.html) | Offline static atlas snapshot (built by `tools/build-static-atlas.mjs`) |
 | [README.md](./README.md) | This file |
 
-The `tools/` generators resolve Playwright from the archived Experience donor
-(`docs/archive/prototypes/experience-authoring/node_modules`). Install it there
-first: `npm install --prefix docs/archive/prototypes/experience-authoring`.
+The `tools/` generators use Playwright. Install it in this folder, then install Chromium:
+
+```sh
+npm install --no-save playwright
+npx playwright install chromium
+```
+
+Then run `node tools/build-story.mjs` or `node tools/build-static-atlas.mjs`.
 
 ## Prototype shortcuts
 

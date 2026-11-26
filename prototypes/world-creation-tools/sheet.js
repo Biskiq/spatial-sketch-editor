@@ -119,7 +119,7 @@ const SHEET = {
     const owners = [
       ['Landscape ownership', 'Ground, water, paths and plants have no owner today. Options: a Landscape authority, terrain inside Layout with plants in Scene, or all in Scene. The prototype marks them “Needs an owner”. The Landscape key does not depend on the answer.'],
       ['Placed buildings', 'Building assumes Layout placed structures from reusable definitions (T5). “Every Cottage” edits the definition; “Only this one” writes an override.'],
-      ['Cross-owner acceptance', 'A path that proposes a doorway commits Landscape and Layout changes in one step. Needs the atomic cross-domain acceptance the North Star asks for.'],
+      ['Cross-owner acceptance', 'A path that proposes a doorway commits Landscape and Layout changes in one step. Needs the atomic cross-domain acceptance the strategic research asks for.'],
       ['Sky', 'The prototype treats the hour as Scene environment, set with an undoable step. Living and Paper are viewing preferences, never saved into the world.'],
       ['Saved forms', 'Save to Library makes a composed form reusable: a Scene-owned definition or a typed resource. The prototype does not keep the entry.'],
       ['Plant scatter rule', 'The skip rule (paths, water, buildings) runs once at painting time and is not stored. Confirm that a persistent rule is not wanted.'],

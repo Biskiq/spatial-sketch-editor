@@ -4,6 +4,11 @@ This directory contains the live editor authoring system, including Svelte compo
 session controllers and domain-specific interaction logic as well as pure semantics.
 The spatial route composes the Stage, its adapters and the Experience authoring homes.
 
+- `workspace/` owns `<WorkspaceHost>`, `createWorkspaceHost`, world placement and the protocol
+  tables (`LIFECYCLE_ORDER`, `ESCAPE_LADDER`, `REGION_KEY_OWNER`). Feature entries
+  (`create<Feature>Feature`) compose isolated sub-owners without runes or local state and register
+  in `apps/editor/tests/lib/authoring/integration-ownership.manifest.ts` (enforced by
+  `npm run test:arch`, `apps/editor/tests/arch/authoring-integration.arch.test.ts`).
 - `stage/` owns the shared Stage host, session and shell.
 - `adapters/` contributes domain-owned interaction and tools to that host.
 - `experience/` owns Experience authoring homes and session behavior.
@@ -39,7 +44,6 @@ The spatial route composes the Stage, its adapters and the Experience authoring 
     being edited is never duplicated or deleted from inside its own Studio.
 
 Editor machinery must not enter visitor or public chunks. See
-[`docs/reference/architecture.md`](../../../../../docs/reference/architecture.md) and
-[`docs/reference/composition-execution.md`](../../../../../docs/reference/composition-execution.md)
+[`docs/reference/architecture.md`](../../../../../docs/reference/architecture.md)
 for the ownership and composition boundaries. The test contract is
 [`apps/editor/tests/README.md`](../../../tests/README.md).

@@ -14,8 +14,32 @@ The classifier and the gate are the only contract here.
 - `check-docs.mjs` resolves documentation links and written paths.
 - `focused.mjs` selects the focused-lane files when the classifier emits that
   profile (kept for the post-D2 lean profile).
-- `status.mjs` prints the commit, the suite contract and the canary baseline.
 
-The retired capability-evidence pipeline (aggregate, report, discovery,
-producer, guards, event context, issue rules/response, linked fixes, ledger)
-is gone. `capabilities.json` remains the journey map's capability ledger.
+## Profiles
+
+Minimal covers Markdown in `docs/` (except `docs/README.md`), `broad-research/`
+and `README.md`, regular CSS edits and additions, and Svelte edits proven
+style-only. Lean runs static checks (Biome, tooling tests), two fast shards,
+arch, editor and package checks, and the build; edits to `AGENTS.md`,
+`apps/api/AGENTS.md` and `docs/README.md` run Lean so the full tooling and arch
+gates cover routing changes. Heavy joins Lean for `packages/**` or
+`apps/editor/src/lib/{layout,render,authoring}/**`. API joins Lean for
+`apps/api/**` (excluding `apps/api/AGENTS.md`) or `packages/**`. Full runs at
+merge group or manual dispatch. The highest applicable profile wins, and a merge
+group must be Full.
+
+## Merge queue
+
+The owner activates the prepared ruleset `.github/rulesets/main-branch.json`.
+It permits merge commits and sets the queue method to `MERGE` to preserve packet
+history and blame-ignore SHAs, with one entry per batch, `ALLGREEN`, three
+concurrent builds and a 60-minute check response timeout. Apply or restore it
+with:
+
+```sh
+gh api --method PUT repos/Biskiq/spatial-sketch-editor/rulesets/22803329 \
+  --input .github/rulesets/main-branch.json
+```
+
+Revert the gate commit to restore artifact-based certification. Revert and
+reapply the ruleset file to restore its earlier settings.

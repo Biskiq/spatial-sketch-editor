@@ -1,79 +1,51 @@
-# Agent context — Personal / Museum
+# Agent context — Biskiq
 
-**Start:** [documentation router](./docs/README.md), [development](./README.md#development)
-and `npm run status`. Code and tests establish behavior, approved designs set scoped targets,
-reference contracts state invariants, and the North Star sets intent. Read the smallest relevant
-contract. Historical evidence stays in the archive.
+**Start:** [documentation router](./docs/README.md), [approved visual targets](./prototypes/README.md),
+[local development](./README.md#development). Read the smallest owning contract. Code and tests
+establish landed behavior; approved designs set scoped UX targets; contracts state invariants.
 
-**Read when relevant:** [workflow](./docs/workflow.md), [focus](./focus.md), [glossary](./docs/glossary.md),
-[path map](./docs/path-map.md), [prototype catalogue](./prototypes/README.md),
-[composition and current formats](./docs/reference/composition-execution.md),
-[persistence](./docs/reference/components/persistence.md), [test contract](./apps/editor/tests/README.md),
-[CI and merge automation](./docs/operations/ci-merge-automation.md).
+## Core invariants
 
-## Hard rules
+1. **One Camera authority.** `@portfolio/camera-core` owns Views, connectivity, routes, framing,
+   projection and pose/FOV evaluation across every profile; Experience maps invocation time through
+   Camera. No second navigation graph, evaluator or pose/FOV interpolation exists.
+2. **Distinct semantic authorities.** Layout (`@portfolio/layout-core`, one runtime-safe compiler),
+   Camera-free world-local Scene and Camera and Experience and typed resources are separate units in
+   the F2 `ProjectEnvelope`. Native Forms are evaluated by `@portfolio/geometry-core`. A new domain
+   declares its own unit; it is never hidden inside another document.
+3. **Authored truth versus derived state.** Persist semantic source and interior connection anchors
+   only. Never serialize generated geometry, node-view endpoints, Three/WebGPU objects, selection,
+   gizmos or history. Immutable, reproducible delivery derivatives stay separate.
+4. **Visitor and prototype isolation.** `/p/[publicationId]` and visitor Preview share runtime-safe
+   evaluators and render layers and exclude editor session, selection, history, gizmos and authoring
+   UI (`npm run test:arch`). Production never imports `prototypes/` or externalized `/museum`.
+   Frozen `/museum` projects are outside this repository's product routes and tests.
+5. **One admitted format version pre-beta.** Bump the owning codec version and regenerate fixtures in
+   the same change; reject every other version with `unsupported_format_version`. Keep version-refusal
+   coverage per family. `LAYOUT_UNIT_FORMAT_VERSION` is the Layout payload version itself.
+6. **Stack and locality.** Svelte 5 runes and Threlte patterns; one cohesive operation family per
+   module; `npm run test:arch` and `tools/metrics/budgets.json` hold boundaries and size. Pass
+   optional per-call observers rather than production test seams.
+7. **Autonomy, verification and Git hygiene.** A prompt or linked issue/PR sets scope; make
+   reversible engineering choices directly. Pause for the owner only on invariant/design conflict,
+   material UX departure, destructive data/schema action, a new dependency or licence, or gate
+   weakening. Verify touched lanes — including `check:api` and zero-skip DB-backed `test:api` for
+   API/shared codecs, and the approved visual target on the live Stage for visual work. Commit only
+   when asked, with no agent attribution or co-author trailers; never commit single-PR plans or
+   closeout reports to `docs/`.
 
-1. **One Camera authority.** Camera owns connectivity, routes, framing, projection and evaluation.
-   Guided travel, free look, reduced motion, film and future XR evaluate through it. Experience
-   owns occurrences, order, holds and pacing and maps invocation time through Camera. One
-   navigation graph and evaluator serve all profiles, including pose and FOV interpolation.
-   Route and motion algorithms are replaceable.
-2. **Distinct semantic authorities.** Layout owns architecture, levels, placed structures,
-   reusable definitions and validated alternatives. Scene owns object composition, placed instances
-   and world presentation. Camera owns views and navigation. Experience owns visitor composition.
-   Give each new domain its own authored document. F2 carries separate Layout, Camera-free Scene,
-   Camera, Experience and typed resource units. Use world-local placement with explicit internal
-   frames. A Room frame is optional. Typed resources are independently versioned.
-3. **Authored truth.** Persist interior connection anchors only. Generate node-view endpoints at
-   runtime. Generated geometry, Three objects, renderer handles, selection and history stay
-   outside authored data. Immutable reproducible delivery derivatives can include generated
-   Camera endpoints.
-4. **Visitor isolation.** The product serves `/` and `/editor` without build-flag gating.
-   `/p/[publicationId]` and releases serve visitors. Their imports and chunks exclude editor
-   sessions, selection, history, gizmos, layout UI and authoring infrastructure. Runtime-safe
-   domain evaluators are shared. `visitor/*`, public-surface and preview-surface contracts enforce
-   isolation. Frozen independent projects, including `/museum` and `/museum/editor`, are outside
-   this repository and its product routes, imports and tests.
-5. **One architectural compiler.** Layout-owned representation and runtime-safe algorithms
-   consume its output. Release lowering may derive shared kernel dataflow through the canonical
-   Camera and Layout authorities. Prefer Floor, Wall and Ceiling planes.
-6. **One persisted version per format before beta.** Bump the version for format changes and
-   update fixtures with it. Reject other versions at the owning codec with
-   `unsupported_format_version`. Keep version-refusal coverage in the codec suite for each family.
-7. Use Svelte 5 runes and Threlte patterns.
-8. Commit only when asked. Keep agent attribution and co-author trailers out of commit messages.
-9. **Scope limits mutation and preserves verification.** Inspect callers, wiring, adjacent code,
-   tests and dependents. Report required edits outside authorized scope. Follow the owning test
-   contract for local and integration gates.
+## Routes
 
-## Locality
+| Need | Read |
+| --- | --- |
+| Domain contracts and planning guidance | [docs/README.md](./docs/README.md) |
+| Shared shell and Stage marks | [docs/design-system.md](./docs/design-system.md) |
+| Feature layout and states | [prototypes/README.md](./prototypes/README.md) |
+| Test lanes and browser QA | [apps/editor/tests/README.md](./apps/editor/tests/README.md) |
+| API auth, Save and DB gate | [apps/api/AGENTS.md](./apps/api/AGENTS.md) |
+| Local stack | [README.md#development](./README.md#development) |
+| Active multi-PR blueprints | [docs/plans/README.md](./docs/plans/README.md) |
+| Harness profiles and CI | [tools/harness/README.md](./tools/harness/README.md) |
 
-- One operation family per module. Group the operations that share inputs, outputs and invariants,
-  with their private helpers. One planner registry per authority maps kinds to family modules.
-- Files target 600 lines with a hard cap of 800. Functions, including closure factories, target
-  200 lines. Ratchet [budget exceptions](./tools/metrics/budgets.json) down as work lands.
-  An addition needs a reviewed one-line reason for a data table or a cohesive algorithm whose
-  phases share mutable state.
-- Split at real seams. Avoid pass-through modules, single-implementation interfaces, long
-  parameter lists or carrier state used by one operation.
-- Observe kernels through optional per-call observers in existing options. Keep test-only
-  seams out of production.
-- Comments explain current invariants, mathematical reasoning and tolerances. Leave roadmap
-  history in Git.
-- Mirror tests to workspace families or features. Preserve independent reference oracles,
-  distinct invariants and call-site proofs. Use the test contract for deletion.
-
-## Verification and workflow
-
-Root `dev`, `check` and `build` target the editor. Root Vitest covers editor and package
-projects. The API has separate `dev:api`, `check:api`, `build:api` and DB-backed `test:api`
-commands. Focused manual browser QA is welcome for affected interactions. The owner retains
-final manual browser acceptance.
-
-Follow the owner-committed focus and holds. Check claims and flags through the workflow.
-Use the highest applicable risk tier. Ordinary changes get fresh-context review. Tier 1
-adds a later owner checkpoint. Tier 2 needs an owner decision before merge. Plan multi-PR,
-Tier 2 and invention-risking work in the first commit of its draft PR. Merge closes the work.
-
-The native queue integrates green PRs once activated. Keep sibling branches and CI runs
-independent. `work-checkpoint`, `owner-checkpoint`, `gardener` and `breaker` run on demand.
+`broad-research/` holds long-term research quarantined from routine search; read it only for the
+specific evidence a task needs.

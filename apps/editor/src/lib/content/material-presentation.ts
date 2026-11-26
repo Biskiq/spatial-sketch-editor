@@ -170,7 +170,7 @@ export function groupByMaterialFamily<T extends { readonly id: MaterialId }>(
 /**
  * D6 sheen facts. The scanned mean of each curated entry's roughness
  * image, from F's qualified catalogue evidence
- * (`docs/roadmap/t2-look-atmosphere/s8-professional-material-foundation/evidence/s8-f-catalogue.json`,
+ * (`apps/editor/assets-source/textures/s8-f-catalogue.json`,
  * `sets[].measurements.qualified.roughnessMean`), keyed by catalogue id: entries
  * that share an image set share its mean. An entry without a mean (legacy
  * images, imported Finishes) reads as approximate on the Card.

@@ -3,8 +3,8 @@
 **Native object creation and deliberate refinement · UX design specification · 26 October 2026**
 
 **Prototype evidence.** Product planning now follows the
-[T5 umbrella](../../docs/roadmap/t5-expressive-geometry/umbrella-plan.md) and its
-[Studio journeys](../../docs/roadmap/t5-expressive-geometry/object-studio-design.md). This prototype's
+[T5 umbrella](../../docs/plans/t5-expressive-geometry/umbrella-plan.md) and its
+[Studio journeys](../../docs/design-system/object-studio.md). This prototype's
 mandatory section split, creation gestures and single-contour shaping restriction are not product
 requirements. Its geometric obligations and refusal examples remain supporting evidence.
 
@@ -471,6 +471,6 @@ The following principles informed the design. The product descriptions come from
 | [Shapr3D: using sketch planes](https://support.shapr3d.com/hc/en-us/articles/7874240047388-Using-sketch-planes) | A deliberate drawing plane and a normal-to-sketch view improve spatial legibility. | Use visible object-relative readings and a stable paper pane, rather than requiring plane selection through an axis cube or a history-organized sketch inventory. |
 | [Illustrator: isolation mode](https://helpx.adobe.com/ca/illustrator/desktop/manage-objects/select-objects/isolate-objects.html) | Isolation limits accidental edits while preserving an object's context and location on exit. | Retain linked 2D/3D readings and geometric consequence previews; merely dimming other objects is insufficient for 3D shaping. |
 
-Relevant project evidence remains [Vellum's design](../p3-vellum/DESIGN.md), [Living Drawings](../living-drawing/index.html), its [second-round findings](../living-drawing/round-two.html), [Native Form Lab findings](../native-form-lab/FINDINGS.md), and [PR #192](https://github.com/Biskiq/spatial-sketch-editor/pull/192), especially its drafting, editable-form and identity proofs. The [existing shell contract](../../docs/reference/design-system/editor-shell-and-visual-system.md) supplies the shared framing, one-writer Card and instrument language; Shape focus and the explicit Shape intent remain proposed extensions for this prototype.
+Relevant project evidence remains [Vellum's design](../p3-vellum/DESIGN.md), [Living Drawings](../living-drawing/index.html), its [second-round findings](../living-drawing/round-two.html), [Native Form Lab findings](../native-form-lab/FINDINGS.md), and [PR #192](https://github.com/Biskiq/spatial-sketch-editor/pull/192), especially its drafting, editable-form and identity proofs. The [existing shell contract](../../docs/design-system.md) supplies the shared framing, one-writer Card and instrument language; Shape focus and the explicit Shape intent remain proposed extensions for this prototype.
 
 This specification commits to the interaction and its observable guarantees. It does not claim a creator study, a robust general deformation engine, production adoption or an implemented prototype. No sub-agents were used.

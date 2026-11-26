@@ -26,17 +26,6 @@ vite.config.ts.timestamp-*
 .opencode/
 .env
 
-docs/roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-M1-label-arms-chrome-leg.json
-docs/roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-label-grid-call-census-chrome-leg.json
-docs/roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-label-grid-cold-workload-chrome-leg.json
-docs/roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-label-grid-first-revision-chrome-leg.json
-docs/roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-label-grid-memo-chrome-leg.json
-docs/roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-label-grid-pass-cost-chrome-leg.json
-docs/roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-label-grid-promoted-cache-chrome-leg.json
-docs/roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-label-grid-ranked-walk-chrome-leg.json
-docs/roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-label-grid-result-identity-chrome-leg.json
-docs/roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-label-grid-reuse-rate-chrome-leg.json
-
 # prototype QA captures
 prototypes/spatial-authoring/qa/out/
 

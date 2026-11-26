@@ -124,5 +124,5 @@ using the role-address policy proposed in
 [geometry identity §5](../../broad-research/native-creative-depth/geometry-identity-and-performance.md#5-identity-and-correspondence).
 [Vellum (P3)](../p3-vellum/README.md) is a separate, broader spatial-authoring
 prototype and does not supply this lab’s data model. The destination World
-authoring design is [PLATE §0.8.4](../../docs/reference/design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination).
+authoring design is [PLATE §0.8.4](../../docs/design-system.md).
 This prototype is not an adopted production contract or shell.

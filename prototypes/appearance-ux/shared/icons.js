@@ -1,6 +1,6 @@
 /*
  * Aperture icon family (Light & Sky): 24 grid, 1.5 stroke, round caps and joins, currentColor.
- * The Light & Sky glyphs used here are copied from gallery-ux-recovery/ux-design.html; the
+ * The Light & Sky glyphs used here are copied from light-and-sky-ux/index.html; the
  * appearance glyphs below the divider are new U proposals drawn to the same rules.
  */
 const F = 'fill="currentColor" stroke="none"';

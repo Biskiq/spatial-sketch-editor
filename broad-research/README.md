@@ -1,7 +1,31 @@
 # Broad research
 
 Research input for future design work. **Not** a product contract or routed authority —
-`docs/README.md` and the `docs/reference/` contracts govern product truth.
+`docs/README.md` and the `docs/reference/` contracts govern product truth. The whole
+root is quarantined in `.ignore`, so routine `rg` searches return only live code and
+contracts.
+
+## Harvested records
+
+Unique measurements, falsified hypotheses, spikes and strategic records kept verbatim
+from earlier trees. Recover anything else by its pre-refactor path with
+`git show 2ca766335:<path>`.
+
+| Record | Path |
+| --- | --- |
+| North Star (November 2026) | [`north-star-2026-11.md`](./north-star-2026-11.md) |
+| Repository audit (October 2026) | [`repo-audit-2026-10.md`](./repo-audit-2026-10.md) |
+| Spatial computation architecture | [`spatial-computation-architecture.md`](./spatial-computation-architecture.md) |
+| T1 S1 connected curves | [`t1-s1-connected-curves.md`](./t1-s1-connected-curves.md) |
+| T1 S2 space conversion | [`t1-s2-space-conversion.md`](./t1-s2-space-conversion.md) |
+| T1/T2 consolidation measurements | [`t1-t2-consolidation-measurements.md`](./t1-t2-consolidation-measurements.md) |
+| T2 S0 rendering gate | [`t2-s0-rendering-gate/`](./t2-s0-rendering-gate/report.md) |
+| T2 S8 E7 material inspection | [`t2-s8-e7-material-inspection.md`](./t2-s8-e7-material-inspection.md) |
+| Archive harvest: performance | [`archive-harvest/performance/`](./archive-harvest/performance/performance-method.md) |
+| Archive harvest: P23 foundation | [`archive-harvest/p23-foundation/`](./archive-harvest/p23-foundation/P23-H3-robust-geometry.md) |
+| Archive harvest: technical | [`archive-harvest/technical/`](./archive-harvest/technical/composition/Pascal-editor-harvest.md) |
+
+`repository-context-evidence.md` records why this refactor happened.
 
 Each of the five domain studies is a pair of files:
 
@@ -88,10 +112,10 @@ verbatim report untouched.
 
 ## After P01
 
-- **T5 Object Studio and modeling reconciliation (PR #266):** [evidence and alternatives](./native-modeling-freedom/PROPOSAL.md) support the single [T5 umbrella](../docs/roadmap/t5-expressive-geometry/umbrella-plan.md). The umbrella replaces the earlier C1–C6 experimental promotion sequence with canonical Studio, profile revision, procedural and reusable assemblies, controlled surfaces and bounded refinement capabilities. Research remains evidence; the plan identifies owner decisions and does not claim shipped behavior.
+- **T5 Object Studio and modeling reconciliation (PR #266):** [evidence and alternatives](./native-modeling-freedom/PROPOSAL.md) support the single [T5 umbrella](../docs/plans/t5-expressive-geometry/umbrella-plan.md). The umbrella replaces the earlier C1–C6 experimental promotion sequence with canonical Studio, profile revision, procedural and reusable assemblies, controlled surfaces and bounded refinement capabilities. Research remains evidence; the plan identifies owner decisions and does not claim shipped behavior.
 - **Native object creation UX (revised 2026-11-01):** [proposal](./native-object-creation-ux/PROPOSAL.md) and [connected PNG storyboard](./native-object-creation-ux/STORYBOARD.md) — World-first and standalone creation converge on Object Focus, with explicit refinement, whole/part selection, return, save/reopen and placement. Distinguishes shipped S17A/P01 behavior, planned P02 and proposed workspace UX; retains chair/piano ceiling illustrations without specifying geometry tools or component storage. Retained PR #244 research and artwork; its implementation proposal is superseded by the T5 umbrella, with no retrospective UX approval implied.
 - **Coordinated roadmaps:** [`post-p01-roadmaps/`](./post-p01-roadmaps/README.md) — [engineering foundations](./post-p01-roadmaps/engineering-authorization-roadmap.md), the [original creative briefs](./post-p01-roadmaps/prototype-roadmap.md), one capability disposition ledger and focused research triggers. Live registers retain operational state; these proposals register, authorize and ratify nothing.
-- **P1–P3 convergence (scope revised 2026-10-22):** [convergence plan](../docs/archive/roadmap/coordination-2026-10/product-convergence-2026-10-21.md)
+- **P1–P3 convergence (scope revised 2026-10-22):** `git show 2ca766335:docs/archive/roadmap/coordination-2026-10/product-convergence-2026-10-21.md`
   and three executable research commissions, routed from the coordinated roadmaps above. The owner
   accepted Guide-free Presentation, Smart Wall manipulation/revision and Vellum sketching; P4 is now
   deferred. PR #173 includes research, owning-contract reconciliation and the canonical roadmap/DAG

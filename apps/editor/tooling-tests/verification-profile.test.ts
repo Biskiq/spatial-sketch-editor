@@ -68,9 +68,14 @@ function repo() {
 }
 
 it.each([
-	['docs/design/example.md', 'minimal'],
+	['docs/design-system.md', 'minimal'],
+	['docs/reference/architecture.md', 'minimal'],
 	['broad-research/notes.md', 'minimal'],
+	['README.md', 'minimal'],
 	['apps/editor/src/lib/design/layout.css', 'minimal'],
+	['AGENTS.md', 'lean'],
+	['docs/README.md', 'lean'],
+	['apps/api/AGENTS.md', 'lean'],
 	['apps/editor/src/lib/authoring/Panel.svelte', 'lean'],
 	['apps/editor/src/lib/authoring/camera/dial.ts', 'lean'],
 	['apps/editor/src/lib/unknown.extension', 'lean'],
@@ -90,6 +95,18 @@ it.each([
 	const result = fixture.run(PLAN);
 	expect(result.stderr).toBe('');
 	expect(JSON.parse(result.stdout).profile).toBe(profile);
+});
+
+it('runs Lean without Postgres API for apps/api/AGENTS.md and enables API for API source', () => {
+	const docsFixture = repo();
+	docsFixture.commit({ 'apps/api/AGENTS.md': '# API area context\n' });
+	expect(docsFixture.run(PLAN).status).toBe(0);
+	expect(docsFixture.readOutputs()).toMatchObject({ profile: 'lean', heavy: '0', api: '0' });
+
+	const codeFixture = repo();
+	codeFixture.commit({ 'apps/api/src/index.ts': 'export const ok = true;\n' });
+	expect(codeFixture.run(PLAN).status).toBe(0);
+	expect(codeFixture.readOutputs()).toMatchObject({ profile: 'lean', heavy: '0', api: '1' });
 });
 
 it('keeps ordinary CSS edits Minimal when existing resource references are unchanged', () => {

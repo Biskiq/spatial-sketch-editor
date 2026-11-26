@@ -57,7 +57,7 @@ export type RendererSurface = 'stage' | 'preview';
  * The accepted tone mapping, named once for the product Canvases.
  *
  * Gate A rejected ACES, AgX and Neutral on artwork fidelity (see
- * `docs/roadmap/t2-look-atmosphere/s0-rendering-gate/pipeline.md`). Threlte's
+ * `broad-research/t2-s0-rendering-gate/pipeline.md`). Threlte's
  * `<Canvas>` assigns `AgXToneMapping` unless a Canvas names this value.
  */
 export const CANVAS_TONE_MAPPING = NoToneMapping;

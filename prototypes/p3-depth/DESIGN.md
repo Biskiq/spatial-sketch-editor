@@ -444,7 +444,7 @@ evidence says late discovery is the expensive failure.
   is defined in a Wall's `(s, z)`; the roof's dormer is defined in the host's plan and eave
   height. This is the pattern the research says generalises, and the prototype confirms it for
   two more hosts.
-- **The North Star's non-goals.** No B-rep editing, no general booleans, no feature tree, no
+- **The strategic research's non-goals.** No B-rep editing, no general booleans, no feature tree, no
   sculpting, no fabrication output. Nothing in the corpus wanted them.
 
 ### Challenge

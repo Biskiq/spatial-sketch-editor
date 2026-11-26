@@ -1,10 +1,10 @@
 # Experience V2 conformance proof manifest
 
-Historical #113 tested contract: [replacement plan](../../../docs/archive/prototypes/spatial-authoring/plans/experience-v2-prototype/conformance-plan.md).
+Historical #113 tested contract: `git show 2ca766335:docs/archive/prototypes/spatial-authoring/plans/experience-v2-prototype/conformance-plan.md`.
 Historical S0–S9 evidence supplies no acceptance. The captures/recipes below belong
 to the closed #113 conformance scope; preserve `screens/experience-conformance/`.
 Current accepted UX is [Conservatory](../../experience-ux-alternative/README.md),
-promoted into [PLATE](../../../docs/reference/design-system/editor-shell-and-visual-system.md).
+promoted into [PLATE](../../../docs/design-system.md).
 UX3/V3 is superseded. This manifest and its old board/recipe language remain
 historical functional evidence, not a current UX or implementation gate.
 

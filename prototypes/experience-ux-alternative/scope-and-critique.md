@@ -3,7 +3,7 @@
 Route: [README](./README.md) · [design rationale](./design-rationale.md) · [visual language](./visual-language.md)
 
 **Ratification boundary (#114, 2026-10-13):** the owner accepts the unified UX
-direction; [PLATE](../../docs/reference/design-system/editor-shell-and-visual-system.md)
+direction; [PLATE](../../docs/design-system.md)
 owns promoted principles and preserved semantics. The original critique and
 recommendations below remain provenance, not automatically ratified product
 rules. §5's Guide-context questions are settled as one active Guide, staying open
