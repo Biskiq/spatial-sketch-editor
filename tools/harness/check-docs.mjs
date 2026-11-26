@@ -6,7 +6,7 @@ import {
 	markdownFiles,
 	missingWalkedDocuments,
 	scanDocumentation,
-} from '../../apps/editor/tests/helpers/docs-references.ts';
+} from '../../apps/editor/tooling-tests/docs/docs-references.ts';
 
 const missing = missingWalkedDocuments(markdownFiles());
 assert.equal(missing.length, 0, `Missing documentation: ${missing.join(', ')}`);
