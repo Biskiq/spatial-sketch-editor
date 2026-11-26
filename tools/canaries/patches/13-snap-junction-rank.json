@@ -2,10 +2,10 @@
 	"id": "13-snap-junction-rank",
 	"area": "layout",
 	"citation": "hard rule 2 \u2014 Layout owns architecture",
-	"title": "Snapping ranks a wall midpoint above a shared junction",
+	"title": "Snapping ranks a wall intersection above a shared junction",
 	"file": "packages/layout-core/src/plan/snap/types.ts",
-	"find": "const SEMANTIC_RANK: Record<SnapFeatureKind, number> = {\n\tjunction: 0,",
-	"replace": "junction: 2,",
+	"find": "\tjunction: 0,\n\t'wall-intersection': 1,",
+	"replace": "\tjunction: 1,\n\t'wall-intersection': 0,",
 	"tests": ["packages/layout-core/tests/layout-snap.test.ts"],
 	"root": "repo"
 }

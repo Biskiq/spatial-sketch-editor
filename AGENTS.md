@@ -16,13 +16,14 @@ contract. Historical evidence stays in the archive.
 1. **One Camera authority.** Camera owns connectivity, routes, framing, projection and evaluation.
    Guided travel, free look, reduced motion, film and future XR evaluate through it. Experience
    owns occurrences, order, holds and pacing and maps invocation time through Camera. One
-   navigation graph and evaluator serve all profiles. Route and motion algorithms are replaceable.
+   navigation graph and evaluator serve all profiles, including pose and FOV interpolation.
+   Route and motion algorithms are replaceable.
 2. **Distinct semantic authorities.** Layout owns architecture, levels, placed structures,
    reusable definitions and validated alternatives. Scene owns object composition, placed instances
    and world presentation. Camera owns views and navigation. Experience owns visitor composition.
-   Typed resources are independently versioned. F2 carries separate Layout, Camera-free Scene,
+   Give each new domain its own authored document. F2 carries separate Layout, Camera-free Scene,
    Camera, Experience and typed resource units. Use world-local placement with explicit internal
-   frames. A Room frame is optional.
+   frames. A Room frame is optional. Typed resources are independently versioned.
 3. **Authored truth.** Persist interior connection anchors only. Generate node-view endpoints at
    runtime. Generated geometry, Three objects, renderer handles, selection and history stay
    outside authored data. Immutable reproducible delivery derivatives can include generated
@@ -34,8 +35,8 @@ contract. Historical evidence stays in the archive.
    isolation. Frozen independent projects, including `/museum` and `/museum/editor`, are outside
    this repository and its product routes, imports and tests.
 5. **One architectural compiler.** Layout-owned representation and runtime-safe algorithms
-   consume its output. Release lowering may derive shared kernel dataflow. Prefer Floor, Wall and
-   Ceiling planes.
+   consume its output. Release lowering may derive shared kernel dataflow through the canonical
+   Camera and Layout authorities. Prefer Floor, Wall and Ceiling planes.
 6. **One persisted version per format before beta.** Bump the version for format changes and
    update fixtures with it. Reject other versions at the owning codec with
    `unsupported_format_version`. Keep version-refusal coverage in the codec suite for each family.

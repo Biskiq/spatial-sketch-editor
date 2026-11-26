@@ -122,6 +122,14 @@ describe('P23.2 deterministic winner order', () => {
 		expect(pickSnapWinner([junction, grid])).toEqual(junction);
 	});
 
+	it.each(['wall-intersection', 'wall-midpoint'] as const)(
+		'gives a junction priority over a %s at equal distance',
+		(kind) => {
+			const wall: SnapCandidate = { ...junction, kind, sourceId: 'a-wall' };
+			expect(pickSnapWinner([wall, junction])).toEqual(junction);
+		}
+	);
+
 	it('equal rank resolves by screen distance', () => {
 		const near: SnapCandidate = { point: [1, 0], kind: 'junction', sourceId: 'j-near', distance: 0.1 };
 		const far: SnapCandidate = { point: [2, 0], kind: 'junction', sourceId: 'j-far', distance: 0.2 };

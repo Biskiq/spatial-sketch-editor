@@ -4,8 +4,8 @@
 	"citation": "hard rule 2 \u2014 Layout owns architecture",
 	"title": "A wall midpoint outranks a junction at equal distance",
 	"file": "packages/layout-core/src/plan/snap/types.ts",
-	"find": "'wall-intersection': 1,\n\t'wall-midpoint': 2,",
-	"replace": "'wall-midpoint': 0,",
+	"find": "'wall-midpoint': 2,",
+	"replace": "'wall-midpoint': -1,",
 	"tests": ["packages/layout-core/tests/layout-snap.test.ts"],
 	"root": "repo"
 }
