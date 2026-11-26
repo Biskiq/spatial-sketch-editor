@@ -6,19 +6,19 @@
  * and its pixels from the one inspection draw. The host owns only the schedule:
  *
  * - **One interactive inspection.** A new request replaces the old one at once;
- *   the replaced request publishes nothing further. An unchanged settled request
- *   re-emits its state, so a settled host makes zero draws.
+ *  the replaced request publishes nothing further. An unchanged settled request
+ *  re-emits its state, so a settled host makes zero draws.
  * - **One render lane.** Interactive work runs before queued thumbnails; each
- *   draw holds its leases only until its readback.
+ *  draw holds its leases only until its readback.
  * - **Generations.** `attach`/`detach` follow the CanvasHost's observed renderer.
- *   Losing it cancels work and drops GPU caches; the last live request and the
- *   queued thumbnails resume on the next attach.
+ *  Losing it cancels work and drops GPU caches; the last live request and the
+ *  queued thumbnails resume on the next attach.
  * - **Sources.** A complete set is leased together. When an image fails, each
- *   view is leased alone so its siblings still read; Retry reloads only failed
- *   images. One draft scope serves every edit over the same source set.
+ *  view is leased alone so its siblings still read; Retry reloads only failed
+ *  images. One draft scope serves every edit over the same source set.
  * - **Thumbnails.** Studio, lit and untreated at any requested size and geometry.
- *   Only a complete `ready` result is cached, under its catalogue or project
- *   scope. Drafts and World readings never enter that cache.
+ *  Only a complete `ready` result is cached, under its catalogue or project
+ *  scope. Drafts and World readings never enter that cache.
  */
 import { Color, Mesh, Scene, type BufferGeometry } from 'three';
 import type { BoundInputs, FieldProvenance } from '@portfolio/project-model/materials';

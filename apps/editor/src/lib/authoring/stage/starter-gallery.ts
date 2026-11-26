@@ -1,5 +1,5 @@
 /**
- * The canonical **starter gallery** (AM-5): one rectangular enclosure, a real
+ * The canonical **starter gallery**: one rectangular enclosure, a real
  * reconciled Room and floor datum, no Scene objects and no Camera/Experience
  * content.
  *

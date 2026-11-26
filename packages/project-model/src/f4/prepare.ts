@@ -1,5 +1,5 @@
 /**
- * The F.4 planner registry and `prepareIntent` (AM-4).
+ * The F.4 planner registry and `prepareIntent`.
  *
  * `local-single-domain-v1` is one **registration seam**: a domain planner
  * declares what it needs, the registry admits or refuses it, and one pure
@@ -166,7 +166,7 @@ export function createPlannerRegistry<Source>(
 					'compound-acceptance',
 					wider
 						? `planner "${planner.id}" needs compound acceptance, which this admission profile does not provide`
-						: `planner "${planner.id}" needs compound acceptance, which local-single-domain-v1 does not provide (T3.P01.S03's unit-acceptance-v1 owns it)`,
+						: `planner "${planner.id}" needs compound acceptance, which local-single-domain-v1 does not provide (unit-acceptance-v1 owns it)`,
 				);
 			}
 			if (planner.admission.compound && (planner.admission.writes ?? []).length === 0) {
@@ -223,7 +223,7 @@ export function createPlannerRegistry<Source>(
 					'unit-acceptance',
 					wider
 						? `planner "${planner.id}" needs F.2 unit acceptance, which this admission profile does not provide`
-						: `planner "${planner.id}" needs F.2 unit acceptance, which local-single-domain-v1 does not provide (T3.P01.S03's unit-acceptance-v1 owns it)`,
+						: `planner "${planner.id}" needs F.2 unit acceptance, which local-single-domain-v1 does not provide (unit-acceptance-v1 owns it)`,
 				);
 			}
 			if (planner.admission.resources && !admission.resources) {
@@ -231,7 +231,7 @@ export function createPlannerRegistry<Source>(
 					'resource-admission',
 					wider
 						? `planner "${planner.id}" needs resource staging, which this admission profile does not provide`
-						: `planner "${planner.id}" needs resource staging, which this current-source adapter never performs (AM-4: no resource/lock mutation)`,
+						: `planner "${planner.id}" needs resource staging, which this current-source adapter never performs (no resource/lock mutation)`,
 				);
 			}
 			if (planner.sourceVersions.length === 0 || planner.sourceKinds.length === 0) {

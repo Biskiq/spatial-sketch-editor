@@ -23,7 +23,7 @@
  *
  * Face keys are deterministic temporary keys derived from the oriented
  * boundary cycle (rotation-normalized `wallId:direction` tokens through the
- * collision-safe `geometryId()` helper). They are NOT room IDs and are never
+ * collision-safe `geometryId` helper). They are NOT room IDs and are never
  * persisted as product identity.
  */
 

@@ -1,7 +1,7 @@
 {
 	"id": "08-strict-shape-identity-space",
 	"area": "codec",
-	"citation": "section 5 rule 7 — comments state the current contract",
+	"citation": "section 5 rule 7 \u2014 comments state the current contract",
 	"title": "Opaque identity check only refuses control whitespace, not a space in an id",
 	"file": "packages/project-model/src/strict-shape.ts",
 	"find": "if (value !== null && /\\s/.test(value)) {",

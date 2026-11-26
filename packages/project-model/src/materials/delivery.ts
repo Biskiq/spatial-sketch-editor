@@ -5,11 +5,11 @@
  *
  * - the one supported profile;
  * - every resource-backed definition an admitted subject actually uses, sorted
- *   by digest;
+ *  by digest;
  * - every image pin the subject's effective bindings resolve to, sorted by
- *   digest then local source;
+ *  digest then local source;
  * - one use per admitted subject with its resolved (untreated) inputs and its
- *   coordinate requirements, sorted by subject.
+ *  coordinate requirements, sorted by subject.
  *
  * It never reads a renderer, a Scene unit or a network. The cold composer
  * supplies the verified image index and manifest pins; a project texture without

@@ -19,7 +19,7 @@
  * reference radius of 5 m (dense radial sampling plus true cubic arc length):
  *
  * - maximum radial error: 3.3162e-7 m
- * - circumference error:   1.0716e-6 m
+ * - circumference error: 1.0716e-6 m
  *
  * `CLOSED_WALL_CIRCLE_ACCURACY` records tolerances of 1e-6 m and 2e-6 m: tight
  * enough that a chord, an 8-span chain or a changed handle rule fails, and

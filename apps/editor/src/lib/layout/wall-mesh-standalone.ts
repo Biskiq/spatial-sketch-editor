@@ -65,8 +65,8 @@ import { buildWallFaces, withSuppressionBreakpoints } from './wall-mesh-room';
  * End geometry resolves in three explicit branches, with no silent fallback:
  *
  * ```text
- * degree 1 / free end      → square corners, closed by the resolved `terminal-cap` surface
- * connected + resolution   → consume the resolved corner + seam + bands
+ * degree 1 / free end → square corners, closed by the resolved `terminal-cap` surface
+ * connected + resolution → consume the resolved corner + seam + bands
  * connected, no resolution → blocking issue, no mesh (fail closed)
  * ```
  *
@@ -113,7 +113,7 @@ export function buildStandaloneWallMesh(
 	// Junction needs its compiled resolution: degree 1 arrives as
 	// `kind: 'terminal'` (the square cap), degree >= 2 as miter/bevel/trim/
 	// suppressed. A missing resolution is an invariant failure, never a square
-	// cap — a silent fallback would recreate the pre-P23.15 geometry and make
+	// cap — a silent fallback would recreate the pre- geometry and make
 	// the renderer an authority the compiler is not.
 	for (const [end, join] of [['start', ends?.start] as const, ['end', ends?.end] as const]) {
 		const junctionId = end === 'start' ? wall.startJunctionId : wall.endJunctionId;
@@ -121,7 +121,7 @@ export function buildStandaloneWallMesh(
 			return { mesh: undefined, issues: [missingResolutionIssue(wall, end)] };
 	}
 
-	// P23.15 / Decision 15 — defense-in-depth, the same pure predicate the
+	// Decision 15 — defense-in-depth, the same pure predicate the
 	// canonical compile gate runs. The compile path is authoritative, so this
 	// normally never fires; it exists so the renderer is never the first place a
 	// seam failure becomes visible. Same predicate, same codes, no second rule.
@@ -140,7 +140,7 @@ export function buildStandaloneWallMesh(
 		};
 	}
 
-	// P23.11 / Issue #6 — defense-in-depth. The canonical acceptance path
+	// Issue #6 — defense-in-depth. The canonical acceptance path
 	// already refuses a Wall that cannot render at its own thickness, so this
 	// normally never fires; it exists so the renderer is never the first place
 	// a folded solid becomes visible. Same predicate, same codes, no second rule.
@@ -211,7 +211,7 @@ export function buildStandaloneWallMesh(
 		standaloneHeightBreakpoints(wall, wallHeight),
 		suppressions,
 	);
-	// P23.15 Task 7 — a measure point for the per-Wall Junction-aware build, beside
+	//  Task 7 — a measure point for the per-Wall Junction-aware build, beside
 	// the compile's `junction-resolution` mark, so the perf lane can attribute the
 	// cost of resolving ends to the compile and the cost of consuming them here.
 	const faces = p2311Measure('standalone-wall-build', () =>

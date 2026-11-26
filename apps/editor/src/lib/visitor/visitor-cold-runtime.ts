@@ -8,14 +8,14 @@
  *
  * Validation policy (exhaustive reference set):
  * - every scene texture URI is either a same-release P20 entry present in the
- *   manifest or an allowlisted shipped-static URI;
+ *  manifest or an allowlisted shipped-static URI;
  * - `/local/`, package rewrite paths, `blob:`/`data:`, external URLs, unknown
- *   static paths and missing P20 refs are rejected, never pruned;
+ *  static paths and missing P20 refs are rejected, never pruned;
  * - every model asset and material ID resolves through the checked-in
- *   compatibility registry, so a later catalogue change cannot break an
- *   existing release;
+ *  compatibility registry, so a later catalogue change cannot break an
+ *  existing release;
  * - catalogue-implied texture dependencies (fallback/base materials) are
- *   included in the reference set.
+ *  included in the reference set.
  */
 import {
 	hasBlockingLayoutIssues,
@@ -313,7 +313,7 @@ export function validateColdReleaseReferences(input: {
 
 /**
  * Compose a detached, validated cold bundle. Throws on invalid input without
- * leaking object URLs. Call `dispose()` on unmount/failure to revoke release
+ * leaking object URLs. Call `dispose` on unmount/failure to revoke release
  * URLs. Aborts early when `signal` is already aborted.
  */
 export function composeColdReleaseBundle(input: {

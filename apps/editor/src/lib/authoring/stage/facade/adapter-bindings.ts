@@ -132,7 +132,7 @@ export function createAdapterBindings(input: AdapterBindingsPort) {
 	 * A context is bounded by **its binding**, not by the session's writer
 	 * generation: opening or closing a task must not invalidate an adapter's
 	 * selection capability, because the binding is still built from live content and
-	 * the adapter is still registered. `end()` is what makes a rebuilt, replaced or
+	 * the adapter is still registered. `end` is what makes a rebuilt, replaced or
 	 * disposed binding's old callbacks inert — the same lifetime the disposer already
 	 * ends. Task-scoped callbacks are the ones that expire with a writer generation,
 	 * and the instrument services guard them with it separately.
@@ -316,7 +316,7 @@ export function createAdapterBindings(input: AdapterBindingsPort) {
 			outputsRevision += 1;
 		}
 		if (rebuilt) input.invalidateSubjects();
-		// A rebuild is discovered **inside a read** (`overlays()`, `tasks()`, …), and the
+		// A rebuild is discovered **inside a read** (`overlays`, `tasks`, …), and the
 		// host reads those from derived values. Notifying synchronously here would let a
 		// subscriber write reactive state while a derivation is being evaluated, which
 		// Svelte refuses. The rebuild invalidates the contribution surface on a

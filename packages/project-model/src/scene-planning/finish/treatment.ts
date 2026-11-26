@@ -8,18 +8,18 @@
  * Finish did not already store.
  *
  * - **Colour modes.** Natural (no colour), Stained (a colour over the kept
- *   colour image) and Painted (a colour with the colour image disabled — a
- *   coat). A base without a colour image offers Natural and Painted.
+ *  colour image) and Painted (a colour with the colour image disabled — a
+ *  coat). A base without a colour image offers Natural and Painted.
  * - **Sheen.** Three targets on effective roughness, `factor × scanned
- *   mean` of the base's roughness image. A value within 0.05 of a target reads
- *   as that step, anything else as Custom; a step rougher than the capture
- *   (factor above 1) is disabled.
+ *  mean` of the base's roughness image. A value within 0.05 of a target reads
+ *  as that step, anything else as Custom; a step rougher than the capture
+ *  (factor above 1) is disabled.
  * - **Swap.** A base change that carries the treatment: colour mode (Stained
- *   becomes Painted on a plain base), a changed sheen at its effective value, a
- *   changed metalness and the pattern direction. Everything tied to the old
- *   images is dropped, and the pattern returns to the new material's real size.
+ *  becomes Painted on a plain base), a changed sheen at its effective value, a
+ *  changed metalness and the pattern direction. Everything tied to the old
+ *  images is dropped, and the pattern returns to the new material's real size.
  * - **Names.** `<material> · <colour>[ stain][ · <step | Custom sheen>]`,
- *   regenerated only while the stored name still equals the generated one.
+ *  regenerated only while the stored name still equals the generated one.
  *
  * Runtime-safe and catalogue-agnostic: presentation facts (labels, families,
  * scanned means, per-family targets) arrive through `FinishTreatmentFacts`.

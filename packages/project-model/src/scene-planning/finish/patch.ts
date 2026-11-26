@@ -5,7 +5,7 @@
  * three operations:
  *
  * - `set` authors a value (a factor, the colour, the set mapping, or one map
- *   binding);
+ *  binding);
  * - `disable` (maps only) authors `null`: the base's map is explicitly off;
  * - `reset` deletes the override so the base's value applies again.
  *
@@ -16,8 +16,8 @@
  * - disabling the normal map keeps `normalScale` authored but dormant;
  * - `normalScale` may only be set when the resulting Finish binds a normal map;
  * - resetting the colour map follows S4's tint rule: the white tint S4 wrote to
- *   keep an image untinted is removed with the image when no other map override
- *   remains and the patch does not itself author the colour.
+ *  keep an image untinted is removed with the image when no other map override
+ *  remains and the patch does not itself author the colour.
  */
 import {
 	normalizeOffset,

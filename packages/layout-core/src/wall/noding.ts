@@ -8,19 +8,19 @@
  *
  * Identity rules:
  * - Wall `W(A → B)` split at distance `d` from canonical start `A`:
- *   `A → X` retains Wall ID `W`; `X → B` receives one new deterministic
- *   Wall ID. Canonical orientation is never reversed for convenience.
+ *  `A → X` retains Wall ID `W`; `X → B` receives one new deterministic
+ *  Wall ID. Canonical orientation is never reversed for convenience.
  * - Opening rebasing by physical meter offset:
- *   `o + width <= d` stays; `o >= d` moves with `offset' = o - d`;
- *   `o < d < o + width` rejects the whole operation; exact start/end splits
- *   are legal and deterministic.
+ *  `o + width <= d` stays; `o >= d` moves with `offset' = o - d`;
+ *  `o < d < o + width` rejects the whole operation; exact start/end splits
+ *  are legal and deterministic.
  * - Every Room boundary referencing the split Wall is rewritten atomically:
- *   forward `[W] → [W, W2]`; reverse `[W] → [W2, W]`.
+ *  forward `[W] → [W, W2]`; reverse `[W] → [W2, W]`.
  * - Junction X is allocated/reused exactly once per split point.
  * - Split at an existing endpoint is a no-op (rejected by callers as
- *   meaningless), never a zero-length child.
+ *  meaningless), never a zero-length child.
  * - X crossings split both walls against one shared new Junction, processed
- *   in stable Wall-ID order.
+ *  in stable Wall-ID order.
  */
 import { carryRegionWallIntents } from '../room/region';
 import type {

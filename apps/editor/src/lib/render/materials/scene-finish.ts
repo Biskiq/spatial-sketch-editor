@@ -8,7 +8,7 @@
  * 1. the Scene 12 instance is already the v1 Finish grammar;
  * 2. `resolveFinish` applies sparse overrides, palette followers and provenance;
  * 3. `bindFinish` qualifies the target and produces per-role UV sets, transforms
- *    and origins;
+ *  and origins;
  * 4. `finishSamplingPlan` freezes the portable plan;
  * 5. this module assigns the renderer's view keys and URIs.
  *

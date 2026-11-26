@@ -16,9 +16,9 @@
  *
  * `kind` decides how completion is proven:
  *
- *   command  exits 0; no artifact beyond the recorded exit code
- *   vitest   a real Vitest JSON reporter artifact with assertions
- *   tap      node:test TAP output (the DB-backed API contract), zero skips
+ *  command exits 0; no artifact beyond the recorded exit code
+ *  vitest a real Vitest JSON reporter artifact with assertions
+ *  tap node:test TAP output (the DB-backed API contract), zero skips
  */
 
 export const SUITES = [

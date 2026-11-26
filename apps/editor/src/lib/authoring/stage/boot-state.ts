@@ -6,16 +6,16 @@
  *
  * - `loading` — a cloud read is in flight.
  * - `new` — a freshly minted identity awaiting the starter/empty choice. The
- *   spatial route now admits an empty baseline immediately and keeps the starter
- *   available as an explicit replacement.
+ *  spatial route now admits an empty baseline immediately and keeps the starter
+ *  available as an explicit replacement.
  * - `empty` — a genuinely empty baseline is active (honest: no floor, no starter).
  * - `ready` — an admitted source is mounted on the Stage.
  * - `diagnostics` — the source validates but its canonical compile has blocking
- *   issues; the state names them and never renders a silent empty Stage.
+ *  issues; the state names them and never renders a silent empty Stage.
  * - `refused` — the payload is not a supported current-format source, or it names
- *   another project than the one this host is showing.
+ *  another project than the one this host is showing.
  * - `missing` — a project identity reached through an explicit open that the
- *   server does not have. Never silently treated as new.
+ *  server does not have. Never silently treated as new.
  * - `forbidden` — the identity exists but this session may not read it.
  * - `error` — network or server failure, distinct from `missing`/`forbidden`.
  *

@@ -17,11 +17,11 @@
 	 * channel instead:
 	 *
 	 * - a model's **arrival** and **release**: its GLB parses after its URL is known,
-	 *   so its meshes are added, and later removed, without `modelUrls`, `scene` or
-	 *   `geometry` changing. The channel reports each one, and each invalidates once;
+	 *  so its meshes are added, and later removed, without `modelUrls`, `scene` or
+	 *  `geometry` changing. The channel reports each one, and each invalidates once;
 	 * - a **playing animation**: a moving caster needs a fresh map every frame, so the
-	 *   controller renders per frame only while the channel counts one. A model that
-	 *   is not animating is static, and a static Scene renders its maps once.
+	 *  controller renders per frame only while the channel counts one. A model that
+	 *  is not animating is static, and a static Scene renders its maps once.
 	 *
 	 * Native forms use a narrower trigger: their renderer is lazy, and the Scene
 	 * entity representation reports when a form is drawn (`onFormRendererReady`).

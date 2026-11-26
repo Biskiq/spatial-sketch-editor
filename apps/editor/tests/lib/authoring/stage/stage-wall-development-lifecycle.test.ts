@@ -24,7 +24,7 @@ import { createEmptyWallFirstLayoutDocument, LAYOUT_WALL_FIRST_FORMAT_VERSION, t
 
 import StageWallDevelopment from '$lib/authoring/stage/shell/StageWallDevelopment.svelte';
 import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
-import { reactiveCell } from '../__fixtures__/reactive-cell.svelte.ts';
+import { reactiveCell } from '../__fixtures__/reactive-cell.svelte';
 
 function wallDocument(height: number): LayoutDocumentWallFirst {
 	const document = createEmptyWallFirstLayoutDocument();

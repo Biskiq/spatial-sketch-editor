@@ -30,16 +30,16 @@ import type { NodingFix } from './chain-repair';
  * rule the Junction anchors already follow. The checks, in order:
  *
  * ```text
- * point index        names an existing draft point
- * uniqueness         at most one host per draft point (never last-wins)
- * host identity      the named Wall exists in the baseline document
- * agreement          a Junction anchor on the same point is in that host's component
- * one component      ALL declarations (hosts and Junction anchors alike) resolve
- *                    to ONE pre-existing component — class 3, not the deferred
- *                    class-4 Join (D-10)
- * genuine relation   the declared point is on the host, OR the operation's own
- *                    geometry meets it, OR the host's component is already
- *                    reached by another declaration of this operation
+ * point index names an existing draft point
+ * uniqueness at most one host per draft point (never last-wins)
+ * host identity the named Wall exists in the baseline document
+ * agreement a Junction anchor on the same point is in that host's component
+ * one component ALL declarations (hosts and Junction anchors alike) resolve
+ *  to ONE pre-existing component — class 3, not the deferred
+ *  class-4 Join (D-10)
+ * genuine relation the declared point is on the host, OR the operation's own
+ *  geometry meets it, OR the host's component is already
+ *  reached by another declaration of this operation
  * ```
  *
  * The one claim this deliberately does NOT make is "the endpoint lies on the

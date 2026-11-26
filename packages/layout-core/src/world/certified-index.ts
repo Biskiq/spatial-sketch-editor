@@ -292,7 +292,7 @@ export function buildCertifiedWorldIndex(
 	}
 
 	// 5. Certify planar combinatorial map, exact 1-to-1 Room face correspondence
-	//    and canonical `room.boundary` element equality.
+	//  and canonical `room.boundary` element equality.
 	const mapInfo = buildPlanarCombinatorialMap(document, pointById, wallById);
 	if (!mapInfo) return undefined;
 

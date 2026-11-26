@@ -65,7 +65,7 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 	if (levelIssue !== null)
 		return reject({ code: 'invalid_candidate_document', message: levelIssue });
 
-	// P23.6I birth semantics. `planWallChain` is the **bounded compound** planner
+	//  birth semantics. `planWallChain` is the **bounded compound** planner
 	// (Rectangle/Polygon and explicit multi-point callers): the whole generated
 	// chain uses one explicit height or the named authoring default, deliberately
 	// with no per-leg or per-vertex inheritance — one gesture must produce one
@@ -443,7 +443,7 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 			});
 		}
 
-		// Enumerate combinations ordered by increasing index sum so `[0, 0, ...]`
+		// Enumerate combinations ordered by increasing index sum so `[0, 0,...]`
 		// (opposite station on each seam-only host) is tried first, capped at 64.
 		const MAX_SEAM_CANDIDATE_COMBINATIONS = 64;
 		const maxSum = preparedHosts.reduce((sum, host) => sum + host.stationCandidates.length - 1, 0);

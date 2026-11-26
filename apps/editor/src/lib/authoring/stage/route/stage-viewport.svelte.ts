@@ -9,8 +9,8 @@
  * contribution reads remain the authorities, and this controller only measures
  * their input and publishes their output.
  *
- * **One loop for the mounted route.** `start()` installs exactly one scheduled
- * callback; `dispose()` stops rescheduling before the facade is disposed.
+ * **One loop for the mounted route.** `start` installs exactly one scheduled
+ * callback; `dispose` stops rescheduling before the facade is disposed.
  * Preview pauses Stage evaluation by returning from the tick while keeping the
  * loop alive, exactly as the route's former inline loop did. A thrown adapter
  * contribution still reschedules from `finally`, so one bad contributor cannot

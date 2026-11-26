@@ -6,12 +6,12 @@
  * translations:
  *
  * - **approval → resource + lock.** One approved immutable revision becomes one
- *   `model` resource entry and the exact dependency-lock entry that pins its
- *   derivative hash. The lock revision is the pin's hash, never a unit content
- *   revision: an external revision is a byte identity.
+ *  `model` resource entry and the exact dependency-lock entry that pins its
+ *  derivative hash. The lock revision is the pin's hash, never a unit content
+ *  revision: an external revision is a byte identity.
  * - **resource → normalized placement definition.** A Scene placement consumes
- *   the resource's confirmed metric scale, pivot, footprint and contact, so the
- *   planner never measures a mesh and never reads a second mutable catalogue.
+ *  the resource's confirmed metric scale, pivot, footprint and contact, so the
+ *  planner never measures a mesh and never reads a second mutable catalogue.
  *
  * Both translations are total and refuse rather than repair. A resource whose
  * detail is incomplete, whose pin is not `model/gltf-binary`, or whose footprint

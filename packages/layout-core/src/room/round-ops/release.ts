@@ -127,9 +127,9 @@ function pointAtWallDistance(
  *
  * - Multi-Wall ring: clears `room.round` only.
  * - Isolated closed circle: converts to two ordinary open arcs of the same
- *   locus and clears `room.round`, keeping the seam Junction when unoccupied or
- *   choosing two deterministic solid-gap cuts and retiring the old seam Junction
- *   explicitly when a periodic Opening spans the seam.
+ *  locus and clears `room.round`, keeping the seam Junction when unoccupied or
+ *  choosing two deterministic solid-gap cuts and retiring the old seam Junction
+ *  explicitly when a periodic Opening spans the seam.
  */
 export function planReleaseRoundRoom(options: {
 	readonly document: LayoutDocumentWallFirst;
@@ -516,7 +516,7 @@ export function planReleaseRoundRoom(options: {
 			];
 
 			// Fragment W_2: J_1 -> J_2 (seg1).
-			// Fragment W:   J_2 -> J_1 (seg2 + seamKnot + seg0), crossing old station 0.
+			// Fragment W: J_2 -> J_1 (seg2 + seamKnot + seg0), crossing old station 0.
 			const wall2Len = split2.distance - split1.distance;
 			const wall1Len = totalLength - split2.distance + split1.distance;
 			const wall1: LayoutWall = {

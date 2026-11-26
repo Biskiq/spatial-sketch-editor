@@ -1,6 +1,6 @@
 /**
  * Visitor Camera handoff — the Experience interpreter chooses the invocation,
- * the Camera authority evaluates it (AM-9).
+ * the Camera authority evaluates it.
  *
  * A Travel names one authored connection. This resolver uses that connection and
  * its direction; it never substitutes `getCameraRoute`'s shortest graph path,

@@ -7,15 +7,15 @@
  * `scene-finish-rename`). It never writes anything else.
  *
  * - **Reach.** A curated Finish defaults to *This*; a project Finish shared by
- *   several users defaults to *All*. *All* on a curated Finish materializes one
- *   Finish for the users of the target's own kind only (D5): objects or walls
- *   and floors.
+ *  several users defaults to *All*. *All* on a curated Finish materializes one
+ *  Finish for the users of the target's own kind only (D5): objects or walls
+ *  and floors.
  * - **Preview.** A gesture (the colour wheel, the roughness slider) previews one
- *   synthetic instance on every reached user, objects and surfaces alike. The
- *   preview is render-only: it never enters the Scene or Undo, and cancel
- *   removes it without a write.
+ *  synthetic instance on every reached user, objects and surfaces alike. The
+ *  preview is render-only: it never enters the Scene or Undo, and cancel
+ *  removes it without a write.
  * - **Refusals** appear as one line in place; a `stale-reach` refusal re-reads
- *   the Finish and writes nothing.
+ *  the Finish and writes nothing.
  *
  * The treatment rules (colour modes, sheen steps, swap carry-over, generated
  * names) live in `@portfolio/project-model/scene-planning`'s

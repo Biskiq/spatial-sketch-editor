@@ -4,18 +4,18 @@
  * A loaded GLB is a template. Every drawn instance is a clone of its hierarchy:
  *
  * - **Geometry is shared.** A clone keeps the template's buffers; nothing here
- *   copies or disposes a geometry.
+ *  copies or disposes a geometry.
  * - **Skeletons are not.** A hierarchy with skinned meshes is cloned with
- *   `SkeletonUtils.clone`, which rebinds every skinned mesh to its own bones, so
- *   one instance's pose never moves another's. A static hierarchy takes the plain
- *   `Object3D.clone`, which is cheaper and has no bones to rebind.
+ *  `SkeletonUtils.clone`, which rebinds every skinned mesh to its own bones, so
+ *  one instance's pose never moves another's. A static hierarchy takes the plain
+ *  `Object3D.clone`, which is cheaper and has no bones to rebind.
  * - **Surfaces are leases on the Canvas's `MaterialStore`.** An instance holds one
- *   lease per mesh slot. The store decides identity: N instances of one model hold
- *   one material per (mesh, slot, remap), not N. A remap is the resolved look,
- *   which replaces the asset's material on that mesh.
+ *  lease per mesh slot. The store decides identity: N instances of one model hold
+ *  one material per (mesh, slot, remap), not N. A remap is the resolved look,
+ *  which replaces the asset's material on that mesh.
  * - **Textures are leases on the texture store.** A textured look takes one
- *   variant lease per instance, released with the instance; the store's deferred
- *   release keeps a variant alive while any instance still names it.
+ *  variant lease per instance, released with the instance; the store's deferred
+ *  release keeps a variant alive while any instance still names it.
  *
  * Releasing an instance gives back exactly the leases it took. It never disposes
  * the template's geometry or materials, which the loader's cache owns and every

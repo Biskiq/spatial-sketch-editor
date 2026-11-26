@@ -10,8 +10,8 @@
  * The two adjoining Walls are the ones a handle may slide along:
  *
  * ```text
- *   previous Wall ──▶ virtual edge ──▶ next Wall
- *   (oriented end)      start → end      (oriented start)
+ *  previous Wall ──▶ virtual edge ──▶ next Wall
+ *  (oriented end) start → end (oriented start)
  * ```
  *
  * Only the edge's **start** touches the previous Wall and only its **end**

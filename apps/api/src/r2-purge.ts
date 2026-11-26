@@ -1,22 +1,22 @@
 /**
- * Idempotent epoch cleanup for unreferenced R2 object bytes (AM-9).
+ * Idempotent epoch cleanup for unreferenced R2 object bytes.
  *
  * The clean-source epoch removed every authored row, including `assets`. This
  * module removes bytes that no remaining row references, under five guards:
  *
  * 1. the store must expose listing and deletion (a read-only store refuses);
  * 2. the schema baseline must be recorded as applied: the purge is a post-epoch
- *    step, and a pre-epoch database may still have rows a release manifest
- *    references;
+ *  step, and a pre-epoch database may still have rows a release manifest
+ *  references;
  * 3. every listed key must sit under this deployment's configured namespace,
- *    `projects/<namespace>/<project>/assets/<uuid>/<hex32>`. A bucket shared with
- *    another deployment therefore refuses instead of deleting the other
- *    deployment's app-shaped keys;
+ *  `projects/<namespace>/<project>/assets/<uuid>/<hex32>`. A bucket shared with
+ *  another deployment therefore refuses instead of deleting the other
+ *  deployment's app-shaped keys;
  * 4. no `releases` row may remain: a release manifest also pins object keys, so
- *    a purge before the schema baseline refuses rather than deleting live
- *    published bytes that only `releases` references;
+ *  a purge before the schema baseline refuses rather than deleting live
+ *  published bytes that only `releases` references;
  * 5. only keys no remaining `assets` row references are deleted, and the
- *    namespace prefix and key shape are re-checked at every delete.
+ *  namespace prefix and key shape are re-checked at every delete.
  *
  * A purge that cannot prove (1)–(3) deletes nothing.
  */
@@ -116,7 +116,7 @@ export async function purgeUnreferencedObjects(
 		);
 	}
 
-	// AM-9 activation order: the schema baseline removes every release row before this
+	//  activation order: the schema baseline removes every release row before this
 	// runs. A release manifest also pins object keys, so refusing here keeps the
 	// command safe when an operator runs it before the reset.
 	const releases = (await pool.query('SELECT 1 FROM releases LIMIT 1')) as { rows?: unknown[] };

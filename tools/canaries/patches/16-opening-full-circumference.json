@@ -1,7 +1,7 @@
 {
 	"id": "16-opening-full-circumference",
 	"area": "authoring",
-	"citation": "section 3 — selection",
+	"citation": "section 3 \u2014 selection",
 	"title": "The recent-paint list keeps duplicate entries",
 	"file": "apps/editor/src/lib/authoring/look/paint-pick.ts",
 	"find": "return [key, ...list.filter((entry) => entry !== key)].slice(0, limit);",

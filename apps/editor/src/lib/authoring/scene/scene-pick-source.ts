@@ -363,18 +363,18 @@ export function createScenePickSource() {
 		 * **Scope is decided by identity, not by what happens to be mounted** (§2.2):
 		 *
 		 * - Scene models are clipped by the planes and **never capped** (owner A-2), so
-		 *   no Scene root is visited. An imported model must also never enter a Wall
-		 *   union: its triangles are open in arbitrary places and would either break the
-		 *   group's balance or fabricate a cap through it.
+		 *  no Scene root is visited. An imported model must also never enter a Wall
+		 *  union: its triangles are open in arbitrary places and would either break the
+		 *  group's balance or fabricate a cap through it.
 		 * - Walls and Wall failure surfaces share one structure group — together they
-		 *   are the closed solid the builder resolved.
+		 *  are the closed solid the builder resolved.
 		 * - **Each Layout object gets its own group.** Grouping every object as `object`
-		 *   unioned unrelated plinths, so one object's section could eat another's.
+		 *  unioned unrelated plinths, so one object's section could eat another's.
 		 * - A floor is not a cap candidate: it is a horizontal slab at the datum, and in
-		 *   the structure group it would weld into every Wall's bottom edge and close
-		 *   their boundaries where the builder had a real end.
+		 *  the structure group it would weld into every Wall's bottom edge and close
+		 *  their boundaries where the builder had a real end.
 		 * - An untagged mesh (a derived ceiling, the floor's shadow catcher) is not
-		 *   identified as a Layout cap source and is skipped rather than guessed at.
+		 *  identified as a Layout cap source and is skipped rather than guessed at.
 		 */
 		sectionSources(onlyRegions = false): SectionSource[] {
 			const sources: SectionSource[] = [];

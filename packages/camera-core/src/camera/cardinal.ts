@@ -12,10 +12,10 @@ export const EDITOR_CARDINAL_SNAP_DURATION_MS = 320;
  *
  * Trajectory (all eased by `cameraApplyEasing`):
  * - eye direction: great-circle slerp from the start direction to the target
- *   cardinal normal (`sphericalDirectionLerp`, so antipodal snaps stay smooth);
+ *  cardinal normal (`sphericalDirectionLerp`, so antipodal snaps stay smooth);
  * - distance: lerp from the start eye-target distance to `targetDistance`;
  * - up: great-circle slerp from the start roll reference to the cardinal
- *   table up.
+ *  table up.
  *
  * The orbit target blends from `startTarget` to `resolvedTarget`. This extends
  * the plan's reference signature deliberately: landing-eye convergence with
@@ -24,7 +24,7 @@ export const EDITOR_CARDINAL_SNAP_DURATION_MS = 320;
  * common preserved-target case the two are equal and the channel is inert.
  *
  * At progress 1 the sampled pose equals the instant commit's pre-handoff pose;
- * callers finish through the fixture-pinned sequence (controls.update() with
+ * callers finish through the fixture-pinned sequence (controls.update with
  * the table up, then restore global +Y) — see
  * `tests/lib/editor/camera/polar-orbit-handoff.test.ts`.
  */

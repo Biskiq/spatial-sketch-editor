@@ -160,7 +160,7 @@ describe('the editor host reaches only authorized write paths', () => {
 		expect(/\bcreateHeadSave\s*\(/.test(owner.code)).toBe(true);
 		const regions = stripComments(sourceOf('apps/editor/src/lib/authoring/stage/route/core-region-views.ts'));
 		expect(route).toMatch(/<EditorHead\s+\{\.\.\.coreRegions\.head\}/);
-		expect(regions).toContain('get save() { return project.headSave; }');
+		expect(regions).toMatch(/get save\(\) \{\s*return project\.headSave;\s*\}/);
 		// The acceptance subscription must still refresh this same Head state.
 		const refreshOwner = sessionOwnerWith(/mounted\.onChanged\(\(\) => \{[\s\S]{0,800}?headSave\?\.refresh\(\)/);
 		expect(/mounted\.onChanged\(\(\) => \{[\s\S]{0,800}?headSave\?\.refresh\(\)/.test(refreshOwner.code)).toBe(true);

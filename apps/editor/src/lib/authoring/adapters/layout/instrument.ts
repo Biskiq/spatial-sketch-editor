@@ -7,17 +7,17 @@
  * behaviour the browser view renders is what the tests drive:
  *
  * - **Enter accepts**, **Esc cancels**, **blur does not commit**. Blur discards
- *   the pending text and restores the accepted value; it never sends an intent.
+ *  the pending text and restores the accepted value; it never sends an intent.
  * - **Exact typed values.** The committed value is the parsed number, not a
- *   rounded display value; the planner rejects non-finite and non-positive
- *   values and its own message is shown unchanged.
+ *  rounded display value; the planner rejects non-finite and non-positive
+ *  values and its own message is shown unchanged.
  * - **Blank is not zero.** A blank field is an `empty` state with a reason and
- *   sends nothing; it can never become a zero-metre edit.
+ *  sends nothing; it can never become a zero-metre edit.
  * - **One proposal at a time.** A second commit while a write is in flight is
- *   refused locally; the in-flight command owns the document revision.
+ *  refused locally; the in-flight command owns the document revision.
  * - **Placement captures identity first.** The new `layout-object` id is
- *   captured from the *pre-commit* document and passed as an allocation, so the
- *   retained preset planner must agree with it or the placement is refused.
+ *  captured from the *pre-commit* document and passed as an allocation, so the
+ *  retained preset planner must agree with it or the placement is refused.
  */
 
 import {
@@ -68,7 +68,7 @@ export type LayoutWritePort = {
 /**
  * The host's one gesture lease, expressed as the two things a proposal needs.
  *
- * `acquire()` answers whether this proposal now owns the lease. A refused
+ * `acquire` answers whether this proposal now owns the lease. A refused
  * acquisition (another gesture is live, or the evaluation ended) leaves the
  * instrument usable but does not claim Undo is blocked.
  */

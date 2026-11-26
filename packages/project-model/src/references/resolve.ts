@@ -1,5 +1,5 @@
 /**
- * F.1 resolution — `references-v1` (AM-1).
+ * F.1 resolution — `references-v1`.
  *
  * `resolveReference` evaluates one reference against **one supplied accepted
  * snapshot**; there is no ambient "latest" lookup anywhere in this module.
@@ -364,7 +364,7 @@ function revisionId(revision: SemanticReference['revision']): string {
  * Stable ordering between two references — by ID fields only, never a parsed
  * display label, instance order or render order.
  *
- * This is a **total** order over the core identity AM-1 declares, so two distinct
+ * This is a **total** order over the core identity declares, so two distinct
  * references never compare equal and a consumer may sort a selection and rely on
  * the result (`compareReferences(a, b) === 0` is exactly "the same reference").
  * The compared sequence is: domain, revision tag and its opaque id, subject kind,

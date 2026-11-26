@@ -8,9 +8,9 @@
  * - a failed Save stops with the work intact and nothing sent anywhere;
  * - a failed library write keeps the saved project and says so;
  * - once anything awaited, the creator may have moved on (another root, the World, the
- *   Experience lens). `current()` is asked after **every** await, and a transfer that is
- *   no longer current neither navigates nor speaks: the saved object is simply in My
- *   Objects, and a late failure must not appear over unrelated work.
+ *  Experience lens). `current` is asked after **every** await, and a transfer that is
+ *  no longer current neither navigates nor speaks: the saved object is simply in My
+ *  Objects, and a late failure must not appear over unrelated work.
  *
  * The journey reads the accepted root again after the Save, so the copy carries what
  * was saved, not what was selected a moment earlier.

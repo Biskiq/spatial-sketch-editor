@@ -242,7 +242,7 @@ export function proposeCreateCircularWall(options: CircularRoomCreateOptions): C
 
 /**
  * Create one closed Wall from a centre → rim gesture and birth its enclosed
- * Room through the existing P23.8 reconciliation.
+ * Room through the existing reconciliation.
  *
  * The candidate contains the existing document plus the new isolated Wall, so
  * every pre-existing Room participates in the same correspondence pass. An

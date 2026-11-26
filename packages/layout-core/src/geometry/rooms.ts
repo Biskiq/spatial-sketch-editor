@@ -294,7 +294,7 @@ export function spacePreflight(document: LayoutDocumentWallFirst): {
 
 /**
  * Group authored Openings by hosting Wall id, preserving document order inside
- * each group. T1.P02.S06 D.1: one grouping replaces the Room × Opening and
+ * each group. D.1: one grouping replaces the Room × Opening and
  * Wall × Opening scans (`find` / `filter` per Room and per Wall).
  */
 export function openingsGroupedByWallId<TOpening extends { readonly wallId: string }>(

@@ -7,7 +7,7 @@
  * the project source, the Stage or the Camera itself.
  *
  * Construct it during route initialisation so its warming `$effect` belongs to
- * the route's effect tree. `reset()` drops a surface built from a replaced
+ * the route's effect tree. `reset` drops a surface built from a replaced
  * source; the chunk stays cached.
  */
 import { previewEntryFor, type EnterablePreviewEntry } from './preview-entry';

@@ -38,19 +38,19 @@ import { detectWallCurveTopologyCrossings, topologyFailure } from './curve-cross
  * diagnostic order are unchanged; only which pairs reach it are scoped:
  *
  * ```text
- * COMPONENT-SCOPED  the pairwise `classifyWallIntersection` loop, the sampled
- *                   crossing authority (`detectWallCurveTopologyCrossings`) and the
- *                   `duplicate_junction_point` coincidence rule. An
- *                   intersection or a coincident node BETWEEN two components is
- *                   PERMITTED geometry — an independent Room may be moved through
- *                   another, independent curved Walls may cross, collinear overlap
- *                   between independent groups is legal, and two independent
- *                   structures may sit at identical coordinates.
- * DOCUMENT-GLOBAL   zero-length Walls, Room boundary closure/role/minimum length,
- *                   a self-intersecting centerline, and the translated Opening-set
- *                   issue. These are INTRINSIC to one structural element, not
- *                   relationships between two elements, so Option E does not relax
- *                   them.
+ * COMPONENT-SCOPED the pairwise `classifyWallIntersection` loop, the sampled
+ *  crossing authority (`detectWallCurveTopologyCrossings`) and the
+ *  `duplicate_junction_point` coincidence rule. An
+ *  intersection or a coincident node BETWEEN two components is
+ *  PERMITTED geometry — an independent Room may be moved through
+ *  another, independent curved Walls may cross, collinear overlap
+ *  between independent groups is legal, and two independent
+ *  structures may sit at identical coordinates.
+ * DOCUMENT-GLOBAL zero-length Walls, Room boundary closure/role/minimum length,
+ *  a self-intersecting centerline, and the translated Opening-set
+ *  issue. These are INTRINSIC to one structural element, not
+ *  relationships between two elements, so Option E does not relax
+ *  them.
  * ```
  *
  * CONNECTIVITY IS THE TRANSITIVE CLOSURE of explicit authored Junction identity,

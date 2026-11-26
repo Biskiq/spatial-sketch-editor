@@ -10,17 +10,17 @@
  * This module clips the region, not the rings one at a time:
  *
  * 1. Every ring is split at its crossings with the line into **runs** — open paths
- *    that enter the kept side, stay in it and leave it.
+ *  that enter the kept side, stay in it and leave it.
  * 2. Along the clip line, the region's interior is a union of intervals. With the
- *    region on the **left** of every ring (outers counter-clockwise, holes
- *    clockwise, as `mesh-plane-section.ts` returns them) and rings that do not cross
- *    each other, each interval starts at an exit crossing and ends at the next entry
- *    crossing in the line's direction `d = (-n.y, n.x)`; sorted crossings therefore
- *    alternate exit, entry, exit, entry. The alternation is **checked**, not
- *    assumed: a violation means the input was not a valid region and is reported.
+ *  region on the **left** of every ring (outers counter-clockwise, holes
+ *  clockwise, as `mesh-plane-section.ts` returns them) and rings that do not cross
+ *  each other, each interval starts at an exit crossing and ends at the next entry
+ *  crossing in the line's direction `d = (-n.y, n.x)`; sorted crossings therefore
+ *  alternate exit, entry, exit, entry. The alternation is **checked**, not
+ *  assumed: a violation means the input was not a valid region and is reported.
  * 3. Runs are stitched through those intervals into closed rings. Disjoint islands
- *    become separate rings, a crossing hole merges into the contour it opens onto,
- *    and rings wholly on one side are kept or dropped whole.
+ *  become separate rings, a crossing hole merges into the contour it opens onto,
+ *  and rings wholly on one side are kept or dropped whole.
  *
  * Vertices exactly on the line are treated as outside (symbolic perturbation), so a
  * crossing is always a proper sign change and no vertex is ever both in and out.

@@ -8,14 +8,14 @@
 	 * retirement:
 	 *
 	 * - `autoRender` stays false until the observed backend is ready, so the
-	 *   scheduler cannot draw on a partially acquired canvas;
+	 *  scheduler cannot draw on a partially acquired canvas;
 	 * - children mount only after readiness, so no task, camera copy or asset lease
-	 *   runs against an uninitialized renderer;
+	 *  runs against an uninitialized renderer;
 	 * - every fresh generation is a **new DOM canvas** through the outer key;
 	 * - an exhausted recovery episode shows an in-place unavailable state with
-	 *   Retry, keeping the editor shell or visitor chrome around it;
+	 *  Retry, keeping the editor shell or visitor chrome around it;
 	 * - a captured Stage gesture is cancelled through the existing pointer-cancel
-	 *   seam before its canvas leaves the page.
+	 *  seam before its canvas leaves the page.
 	 *
 	 * The host is used by the Stage, Visitor Preview and the published visit, so all
 	 * three run the same lifecycle.

@@ -8,13 +8,13 @@
  * Two invariants are structural rather than policed:
  *
  * - **A mesh hit's Y is never an input.** The point arrives as world X/Z only,
- *   with the compile generation its evidence belongs to; the contact elevation
- *   comes from the chosen Layout support. A 3D hit's face height therefore
- *   cannot corrupt the committed pose, because there is nowhere to put it.
+ *  with the compile generation its evidence belongs to; the contact elevation
+ *  comes from the chosen Layout support. A 3D hit's face height therefore
+ *  cannot corrupt the committed pose, because there is nowhere to put it.
  * - **Camera-bearing Scene fields cannot change.** The candidate replaces the
- *   entity list and carries every other Scene field over by reference, so
- *   `navigationNodes`, `connections`, `clusters`, `textures` and `materials`
- *   are the same objects the accepted source already held.
+ *  entity list and carries every other Scene field over by reference, so
+ *  `navigationNodes`, `connections`, `clusters`, `textures` and `materials`
+ *  are the same objects the accepted source already held.
  *
  * Support resolution is the caller's: query the Layout floor supports, choose
  * one through the chooser, then prepare. This function never queries and never

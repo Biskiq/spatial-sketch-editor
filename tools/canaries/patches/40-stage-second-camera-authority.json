@@ -1,10 +1,10 @@
 {
 	"id": "40-stage-second-camera-authority",
 	"area": "camera",
-	"citation": "hard rule 1 — one Camera authority",
+	"citation": "hard rule 1 \u2014 one Camera authority",
 	"title": "The Stage shell imports an independent orbit controller",
 	"file": "apps/editor/src/lib/authoring/stage/shell/StageCanvas.svelte",
 	"find": "\timport { T } from '@threlte/core';",
 	"replace": "\timport { T } from '@threlte/core';\n\timport { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';",
-	"tests": ["tests/lib/authoring/stage-shell-composition.test.ts"]
+	"tests": ["tests/arch/authoring-f4.arch.test.ts"]
 }

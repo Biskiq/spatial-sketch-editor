@@ -10,18 +10,18 @@
  * parts, never the id alone:
  *
  * - an entry decides the outcome only when its `before` subject has the
- *   selection's subject kind *and* its id. Canonical ids are opaque and only
- *   unique inside their own namespace, so a Layout object and a Scene entity may
- *   legitimately share one; matching the id alone would requalify the creator's
- *   selection onto a different subject that happens to share a string;
+ *  selection's subject kind *and* its id. Canonical ids are opaque and only
+ *  unique inside their own namespace, so a Layout object and a Scene entity may
+ *  legitimately share one; matching the id alone would requalify the creator's
+ *  selection onto a different subject that happens to share a string;
  * - `after: null` means the subject retired, so the selection clears with a reason;
  * - a correspondence that moves the subject to another domain or another subject
- *   kind has not preserved this subject: it clears with a reason rather than
- *   retargeting onto a different owner or species;
+ *  kind has not preserved this subject: it clears with a reason rather than
+ *  retargeting onto a different owner or species;
  * - a component-qualified selection survives only with the same component; a
- *   vanished component is a retired subject, not a fragment of the new one;
+ *  vanished component is a retired subject, not a fragment of the new one;
  * - no entry at all is **not** a reason to guess: the selection clears with a
- *   reason rather than retargeting by proximity.
+ *  reason rather than retargeting by proximity.
  *
  * Two entry points enforce that rule at different strengths: the retained Layout
  * helper (`requalifySelection`) matches the subject kind and id because a

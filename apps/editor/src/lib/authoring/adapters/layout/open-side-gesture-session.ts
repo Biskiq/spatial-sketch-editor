@@ -5,9 +5,9 @@
  * therefore publishes two kinds of **handles on the Space**:
  *
  * - one mid-grip per open side, which moves the side square to itself by
- *   translating both end Junctions along the side's normal; and
+ *  translating both end Junctions along the side's normal; and
  * - one end knob per end that touches a real Wall, which slides along that Wall
- *   and, at release, splits it there.
+ *  and, at release, splits it there.
  *
  * Both are ordinary Stage editing grips naming one retained planner. Press and
  * release holds a gesture lease, previews are candidate evidence only, and no

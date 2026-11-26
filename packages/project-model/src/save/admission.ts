@@ -69,12 +69,12 @@ export type SaveSourceAdmissionInput = {
  * One admitted source format.
  *
  * - `prepare` runs **before** the row lock: it parses, canonicalizes and
- *   identifies the captured bytes, and refuses a capture that is not the
- *   canonical encoding of its own contents. It performs no write.
+ *  identifies the captured bytes, and refuses a capture that is not the
+ *  canonical encoding of its own contents. It performs no write.
  * - `baseline` runs **inside** the transaction for formats whose admission is
- *   baseline-relative. A format with no such baseline returns `[]`.
+ *  baseline-relative. A format with no such baseline returns `[]`.
  * - `validate` runs inside the transaction and is the format's full admission.
- *   It must re-derive what it checks from `capture`, never trust `prepared`.
+ *  It must re-derive what it checks from `capture`, never trust `prepared`.
  */
 export type SaveSourceHandler = {
 	readonly sourceKind: string;

@@ -45,9 +45,9 @@ function authoredNameOf(name: string | null): string | null {
  * The labels for one located list, keyed by canonical identity.
  *
  * - An authored name is the label. When two or more subjects of one kind share that
- *   name, each carries its `Kind n` as well, so repeated names stay distinguishable.
+ *  name, each carries its `Kind n` as well, so repeated names stay distinguishable.
  * - A subject with no authored name is `Kind n`, numbered by its sorted identity among
- *   every subject of its kind.
+ *  every subject of its kind.
  */
 export function indexLabels(inputs: readonly IndexLabelInput[]): ReadonlyMap<string, IndexLabel> {
 	const byKind = new Map<string, IndexLabelInput[]>();

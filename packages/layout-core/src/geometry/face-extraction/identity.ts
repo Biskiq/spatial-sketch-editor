@@ -26,7 +26,7 @@ export function keyFloorlessTokens(
 /**
  * Canonical face key from the oriented cycle: rotate so the
  * lexicographically smallest token sequence comes first, then serialize with
- * the collision-safe `geometryId()` helper. The reversed cycle is
+ * the collision-safe `geometryId` helper. The reversed cycle is
  * NOT considered — bounded traversal orientation is already canonical.
  */
 export function canonicalFaceKey(tokens: readonly string[]): string {

@@ -11,13 +11,13 @@
  *
  * - a base id is append-only; changing pixels or meaning needs a new id;
  * - a shipped image is keyed by an allowlisted logical URI with its exact
- *   SHA-256, MIME and byte length;
+ *  SHA-256, MIME and byte length;
  * - the neutral technical base is frozen and excluded from creator-facing
- *   catalogue counts;
+ *  catalogue counts;
  * - the six legacy placeholder bases (pre-S8 F) stay resolvable with unchanged
- *   recipes, pins and bytes for existing documents and baselines, but are not
- *   creator-facing and carry no catalogue provenance. Removing them is a later
- *   strict format change.
+ *  recipes, pins and bytes for existing documents and baselines, but are not
+ *  creator-facing and carry no catalogue provenance. Removing them is a later
+ *  strict format change.
  *
  * The curated bases (T2.S8 F) are derived from retained CC0 sources by
  * `apps/editor/assets-source/textures/derive.ts`; each set's derivation and

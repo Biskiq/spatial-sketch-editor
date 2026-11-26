@@ -282,7 +282,7 @@ export function wallCenterlinePoints(
 /**
  * Map the canonical Wall representation onto the existing curve kernel.
  *
- * Returns the segment shape `sampleSegment()` consumes: a `line` between the
+ * Returns the segment shape `sampleSegment` consumes: a `line` between the
  * resolved endpoint Junctions, or a `cubic-chain` carrying the Wall's explicit
  * cubics. This is the ONE adapter — no compiler/topology/Opening code builds
  * Wall curve segments by hand.
@@ -392,17 +392,17 @@ export type WallSamplingOptions = {
  * presents that key. The key grammar (owned here, generalized by P23B.5):
  *
  * - TRACED INPUTS ONLY: the centerline OBJECT identity (never geometry equality —
- *   coincident coordinates across independent components must not share identity, D-9),
- *   the traversal, the Wall id, and the resolved endpoints at full precision.
+ *  coincident coordinates across independent components must not share identity, D-9),
+ *  the traversal, the Wall id, and the resolved endpoints at full precision.
  * - Pre/post may legitimately hold DIFFERENT derivations: they run on different documents
- *   (different centerline objects), so sharing is per key, never across keys (EQ-1).
+ *  (different centerline objects), so sharing is per key, never across keys (EQ-1).
  * - The key INCLUDES traversal (conservative form): `reverse` is derived independently,
- *   never served by reversing the `forward` array, until OR-2 proves otherwise.
+ *  never served by reversing the `forward` array, until OR-2 proves otherwise.
  * - The key INCLUDES the Wall id: the returned
- *   artefact carries `segmentId = wall.id`, so two Walls that share a centerline OBJECT
- *   and endpoints/traversal must still get their OWN entry. Sharing one entry would hand
- *   the second Wall the first Wall's metadata — a real API hazard, even though landed
- *   documents give every Wall its own centerline object.
+ *  artefact carries `segmentId = wall.id`, so two Walls that share a centerline OBJECT
+ *  and endpoints/traversal must still get their OWN entry. Sharing one entry would hand
+ *  the second Wall the first Wall's metadata — a real API hazard, even though landed
+ *  documents give every Wall its own centerline object.
  *
  * Lifetime is the caller's (a per-release/per-acceptance chain value): chain-scoped, never
  * editor state, never a module global — RL-1 (document retention) is impossible, not merely
@@ -432,10 +432,10 @@ export type WallSamplingDerivation = {
 	 * *derivation* is an absent key, and it is separately attributable:
 	 *
 	 * - `coldMisses`: this scope had never served this Wall before (a first
-	 *   request, or a request whose Wall was never asked).
+	 *  request, or a request whose Wall was never asked).
 	 * - `refusals`: this Wall WAS served before and a traced input changed — the
-	 *   centerline OBJECT, the traversal, or the resolved endpoints. The entry is
-	 *   absent because the input changed, never because the request is new.
+	 *  centerline OBJECT, the traversal, or the resolved endpoints. The entry is
+	 *  absent because the input changed, never because the request is new.
 	 *
 	 * `derivations === coldMisses + refusals` by construction: a request whose
 	 * (centerline, key) pair repeats cannot be a derivation, because the store
@@ -486,7 +486,7 @@ type WallSamplingLastRequest = {
 
 /**
  * Construct one derivation. Every chain constructs its own; a bounded
- * gesture/operation owner constructs exactly one and `reset()`s it at scope end.
+ * gesture/operation owner constructs exactly one and `reset`s it at scope end.
  */
 const CANONICAL_SAMPLING = new WeakMap<WallSamplingDerivation, WallSamplingDerivation['samples']>();
 /** An arbitrary injected sampler is not interchangeable with canonical sampling. */

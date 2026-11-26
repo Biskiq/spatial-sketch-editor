@@ -9,7 +9,7 @@ import type { LayoutWallSide } from '@portfolio/layout-core/plan';
  * adapter invokes exactly once on disposal, for ref-counted/acquired variants
  * such as `acquireMaterialVariant`. Factories that allocate their own throwaway
  * material may omit `release` and free it themselves, or return a `release` that
- * disposes it — the adapter never calls `material.dispose()`.
+ * disposes it — the adapter never calls `material.dispose`.
  */
 export type ResolvedWallMaterial = {
 	material: Material;
@@ -27,7 +27,7 @@ export type WallBufferGeometry = {
 	geometry: BufferGeometry;
 	/** Parallel to `geometry.groups` — one resolved material per surface class. */
 	materials: Material[];
-	/** Disposes the geometry and invokes each factory `release()` exactly once. Idempotent. */
+	/** Disposes the geometry and invokes each factory `release` exactly once. Idempotent. */
 	dispose: () => void;
 };
 

@@ -7,20 +7,20 @@
  * grips it reveals. This module is the host side of that contract:
  *
  * 1. **Admission** — an editing grip may only name one of the owning adapter's
- *    registered planners, and a disclosure may only reveal admitted grips of the
- *    same binding. A refused mark is reported and never drawn.
+ *  registered planners, and a disclosure may only reveal admitted grips of the
+ *  same binding. A refused mark is reported and never drawn.
  * 2. **Disclosure** — opening a disclosure is session view state. It reveals
- *    grips, writes no source, enters no history and can never make the project
- *    dirty.
+ *  grips, writes no source, enters no history and can never make the project
+ *  dirty.
  * 3. **Projection** — marks are painted in the same Stage-local CSS space as the
- *    existing overlay, through the caller's one `ViewportEvaluation`, at the
- *    shared calibrated screen size (`STAGE_MARK_GLYPH_CSS`): a 0.6 m plinth and
- *    a 24 m roof read alike. A descriptor's `extent` names its world reach, not
- *    the length the host draws. This module never projects through a second
- *    camera.
+ *  existing overlay, through the caller's one `ViewportEvaluation`, at the
+ *  shared calibrated screen size (`STAGE_MARK_GLYPH_CSS`): a 0.6 m plinth and
+ *  a 24 m roof read alike. A descriptor's `extent` names its world reach, not
+ *  the length the host draws. This module never projects through a second
+ *  camera.
  * 4. **Hit legibility** — marks are visually small but keep a larger invisible
- *    area (22 px fine, 44 px coarse), and the owning domain's descriptor order
- *    wins an overlap.
+ *  area (22 px fine, 44 px coarse), and the owning domain's descriptor order
+ *  wins an overlap.
  *
  * It is framework-free and makes no document, so the whole lifecycle can be
  * tested in the node environment.

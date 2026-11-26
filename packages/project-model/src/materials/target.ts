@@ -7,7 +7,7 @@
  *
  * - a UV set exists only when every referenced vertex has a finite pair;
  * - a normal frame exists only when at least one active triangle has nonzero
- *   area, nonzero UV edge lengths and a non-singular 2×2 UV Jacobian;
+ *  area, nonzero UV edge lengths and a non-singular 2×2 UV Jacobian;
  * - an empty draw range contributes no requirement.
  *
  * The geometry summarizer below is the headless adapter for those facts. It

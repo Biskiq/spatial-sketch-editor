@@ -1,10 +1,10 @@
 {
 	"id": "30-experience-duplicate-identity",
 	"area": "experience",
-	"citation": "section 3 — Experience lowering",
+	"citation": "section 3 \u2014 Experience lowering",
 	"title": "Experience creation refuses every identity except the one it must refuse",
 	"file": "packages/project-model/src/units/planning/experience/capture-bind.ts",
-	"find": "\t\t\t\tif (id === experience.id) return refuse('duplicate-identity', 'the new Experience and its first View or Presentation must have distinct identities');",
-	"replace": "\t\t\t\tif (id !== experience.id) return refuse('duplicate-identity', 'the new Experience and its first View or Presentation must have distinct identities');",
+	"find": "\t\t\t\tif (id === experience.id)\n\t\t\t\t\treturn refuse(\n\t\t\t\t\t\t'duplicate-identity',\n\t\t\t\t\t\t'the new Experience and its first View or Presentation must have distinct identities',\n\t\t\t\t\t);",
+	"replace": "\t\t\t\tif (id !== experience.id)\n\t\t\t\t\treturn refuse(\n\t\t\t\t\t\t'duplicate-identity',\n\t\t\t\t\t\t'the new Experience and its first View or Presentation must have distinct identities',\n\t\t\t\t\t);",
 	"tests": ["tests/lib/experience/experience-authoring.test.ts"]
 }

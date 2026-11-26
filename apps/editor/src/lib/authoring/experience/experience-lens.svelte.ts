@@ -7,7 +7,7 @@
  * Camera's own command.
  *
  * Construct it during route initialisation so its `$effect`s belong to the route's effect
- * tree. `dispose()` is idempotent: lens exit, project replacement and route teardown may
+ * tree. `dispose` is idempotent: lens exit, project replacement and route teardown may
  * each ask, and only the first restore happens.
  */
 import { tick, untrack } from 'svelte';

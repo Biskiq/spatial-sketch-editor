@@ -10,11 +10,11 @@
  *
  * - A catalogue subject resolves through the shipped index.
  * - An accepted project Finish resolves through the accepted Scene's runtime
- *   material index (D's projection of the resources unit).
+ *  material index (D's projection of the resources unit).
  * - A draft resolves through a **synthetic** look source: its recipe is the one
- *   definition, and each verified source digest becomes a scope-private
- *   `/project-assets/draft-…` texture that only the draft's own memory scope
- *   can load. The draft never enters a project document.
+ *  definition, and each verified source digest becomes a scope-private
+ *  `/project-assets/draft-…` texture that only the draft's own memory scope
+ *  can load. The draft never enters a project document.
  *
  * Treatment is decided by the lighting, not by the subject: reference modes
  * draw Natural (untreated), Current World draws the World's Treatment. Unlit

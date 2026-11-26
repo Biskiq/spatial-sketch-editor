@@ -148,7 +148,7 @@ export function createPlanView(input: {
 		const snapshot = input.snapshot();
 		const { parameters, target, finiteTarget } = effectivePlanContext();
 		// A non-finite target is never retained, so its key must differ from every
-		// retained one; the boundary refuses it on the next `plan()` call either way.
+		// retained one; the boundary refuses it on the next `plan` call either way.
 		if (!finiteTarget) return `${planRetentionKey(snapshot, parameters, target, false)}|non-finite`;
 		return planRetentionKey(snapshot, parameters, target, planDependsOnTarget(parameters));
 	}

@@ -8,11 +8,11 @@
  *
  * Two readings, one model:
  * - 3D: each View is a Detailed camera built in world space at its eye and aimed
- *   along eye -> target, with a wire frustum from the lens tip, a height stem to
- *   the floor and a soft floor shadow. Faces are culled by projected winding and
- *   painted far to near; the silhouette is the convex hull of every vertex.
+ *  along eye -> target, with a wire frustum from the lens tip, a height stem to
+ *  the floor and a soft floor shadow. Faces are culled by projected winding and
+ *  painted far to near; the silhouette is the convex hull of every vertex.
  * - Plan: a dot and a short wedge in screen space. Only the selected View carries
- *   the full cone, which is also its turn grip (review round 2).
+ *  the full cone, which is also its turn grip (review round 2).
  *
  * States follow the plan: selected (gold), strong (the selected Stop's guided
  * Views), normal, and dim. Labels are capped at 12 strong markers and frustums

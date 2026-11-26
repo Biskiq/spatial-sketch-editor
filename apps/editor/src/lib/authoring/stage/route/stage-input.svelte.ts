@@ -5,7 +5,7 @@
  * dispatch. The **one** precedence order is preserved:
  *
  * 1. a second pointer hands off to the Experience posture's pinch, otherwise the
- *    first press is interrupted and navigation-owned pinch begins;
+ *  first press is interrupted and navigation-owned pinch begins;
  * 2. the developed Unfold sheet (contract U) addresses primary presses;
  * 3. the active Experience posture;
  * 4. armed host tools (Measure / Eraser);
@@ -113,7 +113,7 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 	 * The evaluation a claimed adapter press was measured in.
 	 *
 	 * The Camera raises a new evaluation generation every frame, so reading
-	 * `evaluationId()` again on each move would tell the adapter its projection had
+	 * `evaluationId` again on each move would tell the adapter its projection had
 	 * changed on every sample: a drag would pause on its first move and a release
 	 * would look stale, making direct manipulation unreachable. `StagePointerIntent`
 	 * names *the evaluation the press was measured in*, so this one value is carried

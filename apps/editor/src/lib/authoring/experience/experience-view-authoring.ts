@@ -103,7 +103,7 @@ export function createExperienceViewAuthoring(ports: ExperienceViewPorts) {
 	}
 
 	/**
-	 * A new Presentation from the ports.current() 3D framing: View + Presentation in one accepted
+	 * A new Presentation from the ports.current 3D framing: View + Presentation in one accepted
 	 * install. It binds the given Scene entity or none, and never a Guide or a Stop.
 	 */
 	async function captureNewPresentation(

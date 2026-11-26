@@ -15,13 +15,13 @@ import type { WallChainPlan, WallEndpointHostSnap, WallEndpointJunctionSnap } fr
  * **Wall-birth height lives here, not in the editor.** A headless
  * caller and the human Plan interaction must execute the same semantic
  * operation, so the first-segment rule is resolved from canonical document
- * topology by `resolveWallBirthHeight()`:
+ * topology by `resolveWallBirthHeight`:
  *
  * ```text
- * explicit height                                  → that height
+ * explicit height → that height
  * start point on a Junction with one unique
- * incident Wall height                             → inherit it
- * isolated/new start, or mixed incident heights    → WALL_AUTHORING_DEFAULT_HEIGHT
+ * incident Wall height → inherit it
+ * isolated/new start, or mixed incident heights → WALL_AUTHORING_DEFAULT_HEIGHT
  * ```
  *
  * Birth height is a vertical-coherence rule, not a topology rule, so it keeps a

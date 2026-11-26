@@ -1,5 +1,5 @@
 /**
- * The host's **generic consumption** of AM-5 adapter contributions.
+ * The host's **generic consumption** of adapter contributions.
  *
  * A domain adapter registers its tasks, Find entries, Card facts and instrument
  * content with the Stage facade. Nothing in the shell knows about a particular

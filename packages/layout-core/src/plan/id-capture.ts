@@ -11,10 +11,10 @@
  *
  * - a replayed operation (Redo) derives exactly the ids it captured;
  * - a new edit after Undo carries a new nonce, so it cannot recycle an identity
- *   from the undone branch;
+ *  from the undone branch;
  * - reload needs no cursor, because nothing is derived from document occupancy;
  * - a byte-identical recreation still receives a new id, because its nonce is
- *   new.
+ *  new.
  *
  * The nonce is minted outside the undoable document (the editor mints it when it
  * builds the intent). Planning only reads it, which is what keeps planning

@@ -5,7 +5,7 @@
 	 * View-only DOM + SVG chrome around the live Stage framed by Camera (`face`
 	 * or Plan + `fit`). Every mark is placed from the renderer's own sampling:
 	 * a surface point's native uv goes through
-	 *   t = diag(repeat) · R(−θ) · (uv − ½) + ½ + offset
+	 *  t = diag(repeat) · R(−θ) · (uv − ½) + ½ + offset
 	 * (`align-chart.ts`), so tile boundaries are drawn where `t_x` or `t_y` is an
 	 * integer and projected through the live Camera, never as a screen pattern.
 	 * Dragging or nudging previews through the Card adapter; pointerup / keyup

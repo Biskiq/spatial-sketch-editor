@@ -10,18 +10,18 @@ import { validateAndCompile } from './birth';
 /**
  * Canonical Room metadata update (name, floor/ceiling thickness).
  *
- * Metadata is **not** topology: no face extraction, no P23.8 reconciliation.
+ * Metadata is **not** topology: no face extraction, no reconciliation.
  * The candidate rewrites only the Room's own authored fields and runs the same
  * final canonical validation + compile gate every planner uses, so a metadata
  * edit can never smuggle in a boundary/topology change.
  *
  * - `boundary` is correspondence-owned and **not patchable** — a patch that
- *   carries it (or any unrecognized/legacy field) rejects `invalid_patch`;
+ *  carries it (or any unrecognized/legacy field) rejects `invalid_patch`;
  * - `name` is trimmed and must be non-empty (duplicate names are legal — `id`
- *   is identity, mirroring legacy behavior);
- *   requires), with no invented tolerance or range;
+ *  is identity, mirroring legacy behavior);
+ *  requires), with no invented tolerance or range;
  * - a patch that changes nothing rejects `no_op`, so callers write zero
- *   history.
+ *  history.
  */
 export type RoomMetadataPatch = {
 	name?: string;
@@ -114,12 +114,12 @@ export function planRoomMetadataUpdate(
  *
  * - `name: 'North Gallery Wall'` trims and sets;
  * - a string that trims to empty rejects `invalid_value` (blank is never a
- *   name, matching the codec and the Room planner);
+ *  name, matching the codec and the Room planner);
  * - `name: null` **removes** the property (clear; the entity returns to
- *   reference-led presentation);
+ *  reference-led presentation);
  * - the key absent means the field is not part of the patch;
  * - a patch that changes nothing — including `null` for an already-unnamed
- *   entity — rejects `no_op`, so callers write zero history.
+ *  entity — rejects `no_op`, so callers write zero history.
  *
  * Duplicate names are legal (`id` is identity), and a name is never display
  * identity: the compact reference is.

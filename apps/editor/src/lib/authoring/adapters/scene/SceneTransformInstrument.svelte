@@ -5,7 +5,7 @@
 	 *
 	 * The Card writes Position, Yaw and Size; this panel keeps Place and Compose.
 	 * It shows the planner's captured candidate and never commits on blur; Esc,
-	 * Close and unmount run the session's one `cancel()`.
+	 * Close and unmount run the session's one `cancel`.
 	 */
 	import { onDestroy, tick, untrack } from 'svelte';
 

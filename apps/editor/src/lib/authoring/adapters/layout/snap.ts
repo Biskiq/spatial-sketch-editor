@@ -9,9 +9,9 @@
  * The policy follows the target specification's operation table:
  *
  * - Ink Wall point: existing Junction and host targets, an orthogonal guide
- *   from the previous point, then the fixed 0.5 m grid.
+ *  from the previous point, then the fixed 0.5 m grid.
  * - Opening slide: the Opening drag family's edge/centre targets, then the
- *   fixed 0.5 m grid.
+ *  fixed 0.5 m grid.
  * Wall length and body-move fallbacks live here: the
  * normal distance or the length rounds to the fixed 0.5 m grid, and neither
  * ever snaps a Wall onto another Wall or Junction.

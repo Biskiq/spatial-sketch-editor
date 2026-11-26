@@ -43,7 +43,7 @@ export interface PackageManifestPackage {
 	generator: string;
 	documentTitle: string;
 	/**
-	 * P23.0 (stage 2): portable package format version. A SEPARATE concept
+	 *  (stage 2): portable package format version. A SEPARATE concept
 	 * from the nested Scene/Layout schema versions — package orchestration
 	 * must never dispatch on the generator string, and the nested documents
 	 * identify themselves (`layout.formatVersion` wall-first — current 8;

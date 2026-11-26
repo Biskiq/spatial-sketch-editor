@@ -65,7 +65,7 @@ export function finalizeRoomUnitMotion(
 		allocator: guardedAllocator(attemptedAllocation),
 	});
 	// `RoomReconciliation` has no `kind`, so narrow through an explicit
-	// predicate rather than a discriminated-union switch (P23.8 result shape).
+	// predicate rather than a discriminated-union switch (result shape).
 	if (isReconciliationFailure(reconciliation)) {
 		const { rejection } = reconciliation;
 		if (rejection.code === 'ambiguous_room_correspondence') {

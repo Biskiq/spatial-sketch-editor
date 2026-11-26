@@ -10,22 +10,22 @@
  * between Experience-facing runs and delegates every transition:
  *
  * - guided and free navigation own the output through their own acquisition;
- *   they replace one another in order, but never preempt a handoff role
- *   (Follow, Look-through, Preview) that must be ended or returned explicitly;
+ *  they replace one another in order, but never preempt a handoff role
+ *  (Follow, Look-through, Preview) that must be ended or returned explicitly;
  * - only a declared handoff role may take the output from another role:
- *   Follow, Look-through and Preview. Inspection and the navigation roles hold
- *   the output through their own acquisition; a handoff preempts a run, it does
- *   not become one;
+ *  Follow, Look-through and Preview. Inspection and the navigation roles hold
+ *  the output through their own acquisition; a handoff preempts a run, it does
+ *  not become one;
  * - a handoff must transfer to a *different* role. Same-role takeover is an
- *   ordered replacement, and naming it a handoff would issue a return obligation
- *   to a run that still means the same thing;
+ *  ordered replacement, and naming it a handoff would issue a return obligation
+ *  to a run that still means the same thing;
  * - the return path and the cancellation path refuse to act on behalf of a run
- *   that did not receive the output as a handoff, so an inspection or navigation
- *   run is never ended by Experience cleanup;
+ *  that did not receive the output as a handoff, so an inspection or navigation
+ *  run is never ended by Experience cleanup;
  * - `pendingCameraHandoff` is the one read a cleanup pass needs: which role owes
- *   a return, and to whom. It returns no ticket that could be replayed; the
- *   return token is disclosed because the holder must present it, exactly as the
- *   landed protocol requires.
+ *  a return, and to whom. It returns no ticket that could be replayed; the
+ *  return token is disclosed because the holder must present it, exactly as the
+ *  landed protocol requires.
  *
  * There is no pose, FOV or order authority here: the Camera authority evaluates
  * pose and projection, Experience owns editorial order, and this module only

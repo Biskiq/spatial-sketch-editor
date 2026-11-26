@@ -480,7 +480,7 @@ export function certifyRoundRoom(
 	}
 
 	// Step 2: Walk the M = cubics.length oriented spans and compute one shared
-	// station bracket per endpoint vertex V_0 .. V_M.
+	// station bracket per endpoint vertex V_0.. V_M.
 	const M = cubics.length;
 	const vertexLocalIv: Array<readonly [Iv, Iv]> = new Array(M + 1);
 	const vertexStationIv: Iv[] = new Array(M + 1);

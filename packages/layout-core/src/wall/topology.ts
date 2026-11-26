@@ -13,13 +13,13 @@
  *
  * Classification rules:
  * 1. an explicit shared Junction ID wins first — that is a topological
- *    endpoint touch, classified before any orientation math;
+ *  endpoint touch, classified before any orientation math;
  * 2. four robust orientation signs decide proper/T/collinear classes;
  * 3. proper-crossing coordinates use ordinary double line intersection after
- *    robust classification, validated finite + inside both envelopes —
- *    otherwise `unstable`, never a nearest-endpoint snap;
+ *  robust classification, validated finite + inside both envelopes —
+ *  otherwise `unstable`, never a nearest-endpoint snap;
  * 4. no distance tolerance ever decides an orientation sign; proximity only
- *    feeds the separate near-coincident *diagnostic*.
+ *  feeds the separate near-coincident *diagnostic*.
  */
 import type { LayoutVec2 } from '../geometry/coordinates';
 import {

@@ -6,13 +6,13 @@
  * the three conventions the common renderer changed:
  *
  * - the camera's declared coordinate system is set **before** the matrices are
- *   copied. r187 compares `camera.coordinateSystem` with the renderer's on every
- *   draw and recomputes the projection when they differ, which would replace the
- *   evaluated projection with the camera's own fov/aspect construction;
+ *  copied. r187 compares `camera.coordinateSystem` with the renderer's on every
+ *  draw and recomputes the projection when they differ, which would replace the
+ *  evaluated projection with the camera's own fov/aspect construction;
  * - on native WebGPU the clip-space Z is converted from `[-w, w]` to `[0, w]`
- *   (see `convertProjectionForBackend`);
+ *  (see `convertProjectionForBackend`);
  * - the inverse projection is recomputed from the converted matrix, so the
- *   physical camera inverse always agrees with what is drawn.
+ *  physical camera inverse always agrees with what is drawn.
  *
  * Authored evaluation, X/Y and near/far are never modified.
  */

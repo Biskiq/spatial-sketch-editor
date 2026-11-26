@@ -5,16 +5,16 @@
  * One service per Stage. It owns three things and nothing else:
  *
  * 1. **Where a master comes from.** A catalogue entry with a current committed
- *    master (`catalogue-tiles.ts`) opens that one 256 px PNG and never a
- *    texture. Any other Finish, and a catalogue entry whose master is stale, is
- *    drawn by the E7 inspection host the Stage registers; with no host yet it
- *    has no picture and the shelf keeps its colour swatch.
+ *  master (`catalogue-tiles.ts`) opens that one 256 px PNG and never a
+ *  texture. Any other Finish, and a catalogue entry whose master is stale, is
+ *  drawn by the E7 inspection host the Stage registers; with no host yet it
+ *  has no picture and the shelf keeps its colour swatch.
  * 2. **Derivatives.** XS, S and M are made from the master in the browser and
- *    held as object URLs, keyed by the tile's key and size.
+ *  held as object URLs, keyed by the tile's key and size.
  * 3. **Isolation and failure.** A project Finish's pictures live under its
- *    texture scope's id, so a scope is never served another's; only successful
- *    outputs are cached, a failure or refusal is `null`, and the caller's
- *    swatch is the fallback.
+ *  texture scope's id, so a scope is never served another's; only successful
+ *  outputs are cached, a failure or refusal is `null`, and the caller's
+ *  swatch is the fallback.
  *
  * The master's *key* is the picture's identity: a recipe, pin or framing change
  * makes a new key, so an old picture is never served for a new Finish.
@@ -54,7 +54,7 @@ export type FinishTileInspect = ((
 };
 
 /**
- * A held picture. The URL stays valid until `release()`: eviction, a scope
+ * A held picture. The URL stays valid until `release`: eviction, a scope
  * forget or a newer picture never revokes a URL some tile still shows.
  */
 export type FinishTileLease = {

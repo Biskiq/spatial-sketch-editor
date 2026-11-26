@@ -50,7 +50,7 @@ export type MergedWallSpan = {
  * endpoints the farthest pair is only ever attained by the outermost endpoint
  * of each traversal frame, so scanning every pair re-derives a result the
  * distances already state — and on the editor's `$state`-proxied geometry that
- * scan made Snap the dominant cost of a Plan drag (P23.11 live Snap gate).
+ * scan made Snap the dominant cost of a Plan drag (live Snap gate).
  * Straightness is still the same relative-tolerance collinearity test, just
  * against the traversed chord. Curved walls, and any group whose metadata
  * cannot prove a traversal, resolve through the same exact farthest pair by

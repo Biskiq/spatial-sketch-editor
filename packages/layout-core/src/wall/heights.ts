@@ -6,7 +6,7 @@
  *
  * ```text
  * bottomY = floor.elevation
- * topY    = floor.elevation + wall.height
+ * topY = floor.elevation + wall.height
  * ```
  *
  * Finiteness and positivity are consumed by every wall-first surface — the
@@ -125,11 +125,11 @@ export function uniqueIncidentWallHeight(
  * execute the same semantics:
  *
  * ```text
- * explicitHeight                                  → explicitHeight
- * no start Junction (isolated / new start)        → WALL_AUTHORING_DEFAULT_HEIGHT
- * exactly one unique incident Wall height         → that height
- * several distinct incident Wall heights          → WALL_AUTHORING_DEFAULT_HEIGHT
- * zero incident Walls                             → WALL_AUTHORING_DEFAULT_HEIGHT
+ * explicitHeight → explicitHeight
+ * no start Junction (isolated / new start) → WALL_AUTHORING_DEFAULT_HEIGHT
+ * exactly one unique incident Wall height → that height
+ * several distinct incident Wall heights → WALL_AUTHORING_DEFAULT_HEIGHT
+ * zero incident Walls → WALL_AUTHORING_DEFAULT_HEIGHT
  * ```
  *
  * A Junction can legitimately carry several incident Walls with different heights;

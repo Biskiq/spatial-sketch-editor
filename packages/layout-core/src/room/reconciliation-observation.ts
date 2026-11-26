@@ -10,25 +10,25 @@ import type {
  * ACCOUNTING, per mode:
  *
  * ```text
- * short-circuit  pairs = identitySettled + authorizationSkips + absentEvidenceSkips
- *                       + boundsSkips + insideCalls + insideSkipsByBounds
- *                identitySettled = identityUnions + identityRefusals
- *                (every pair is accounted exactly once: settled by the identity
- *                 condition, denied by the D-12 labels, skipped for absent evidence,
- *                 pruned by the inflated boxes, skipped only for the containment CALL,
- *                 or VISITED by the containment step);
- *                insideCalls + insideSkipsByBounds = insideDecisions + overlapCalls
- *                (each pair that reached containment either decided the merge — and
- *                 never paid the overlap predicate — or fell through to it, as did
- *                 every pair whose containment CALL was bounds-skipped);
- *                insideDecisions <= insideCalls,
- * exhaustive     insideCalls = overlapCalls = pairs, both predicate STEPS run for
- *                 every pair exactly as the pre-M-1 loop did, and every skip
- *                 counter is zero — this is OR-2's comparison side, not a shipped
- *                 path. `insideDecisions`/`overlapDecisions` record the predicates'
- *                 own ADMISSIONS here (a pair inside-or-overlapping BEYOND the
- *                 authorization test this order runs afterwards), which is what
- *                 makes a D-12 denial checkable: geometry admits, identity denies.
+ * short-circuit pairs = identitySettled + authorizationSkips + absentEvidenceSkips
+ *  + boundsSkips + insideCalls + insideSkipsByBounds
+ *  identitySettled = identityUnions + identityRefusals
+ *  (every pair is accounted exactly once: settled by the identity
+ *  condition, denied by the D-12 labels, skipped for absent evidence,
+ *  pruned by the inflated boxes, skipped only for the containment CALL,
+ *  or VISITED by the containment step);
+ *  insideCalls + insideSkipsByBounds = insideDecisions + overlapCalls
+ *  (each pair that reached containment either decided the merge — and
+ *  never paid the overlap predicate — or fell through to it, as did
+ *  every pair whose containment CALL was bounds-skipped);
+ *  insideDecisions <= insideCalls,
+ * exhaustive insideCalls = overlapCalls = pairs, both predicate STEPS run for
+ *  every pair exactly as the pre-M-1 loop did, and every skip
+ *  counter is zero — this is OR-2's comparison side, not a shipped
+ *  path. `insideDecisions`/`overlapDecisions` record the predicates'
+ *  own ADMISSIONS here (a pair inside-or-overlapping BEYOND the
+ *  authorization test this order runs afterwards), which is what
+ *  makes a D-12 denial checkable: geometry admits, identity denies.
  * ```
  *
  * "CALL" IS A PAIR VISIT TO THE STEP: the step's own guard (`witness !== undefined` /

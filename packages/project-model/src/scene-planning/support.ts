@@ -6,18 +6,18 @@
  * Two things follow from that, and both are structural here:
  *
  * - **No captured geometry, no mesh height.** A support query runs against
- *   compiled `room-floor` records, so a renderer hit's face Y cannot enter a
- *   committed pose (the planner has nowhere to put it).
+ *  compiled `room-floor` records, so a renderer hit's face Y cannot enter a
+ *  committed pose (the planner has nowhere to put it).
  * - **The datum is the support of last resort.** Where no Room floor
- *   covers a point, the Layout's explicit horizontal datum supports it, so object
- *   creation never needs an enclosure. A Room floor always wins where it exists,
- *   and the datum goes through the same selection: an operation that must keep
- *   another resting elevation refuses rather than dropping to the datum.
+ *  covers a point, the Layout's explicit horizontal datum supports it, so object
+ *  creation never needs an enclosure. A Room floor always wins where it exists,
+ *  and the datum goes through the same selection: an operation that must keep
+ *  another resting elevation refuses rather than dropping to the datum.
  * - **The snapshot is the qualification.** The compile is a pure function of the
- *   accepted Layout, so the support generation identity is derived from the
- *   snapshot's own content identity (`sceneSupportGenerationId`). There is no
- *   viewport generation to map here — the host↔F4 wiring owns that mapping. A captured choice from another generation refuses instead of
- *   being re-resolved against a source the creator never saw.
+ *  accepted Layout, so the support generation identity is derived from the
+ *  snapshot's own content identity (`sceneSupportGenerationId`). There is no
+ *  viewport generation to map here — the host↔F4 wiring owns that mapping. A captured choice from another generation refuses instead of
+ *  being re-resolved against a source the creator never saw.
  *
  * Selection never picks an elevation: a required elevation must be yielded by
  * the snapshot, and more than one eligible floor context is `choice-required`.

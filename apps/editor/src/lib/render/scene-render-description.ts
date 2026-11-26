@@ -9,13 +9,13 @@
  * Two properties are the point:
  *
  * - **One conversion per Scene identity.** An edit that does not touch Scene
- *   yields the same `RuntimeScene` object, so the same description object comes
- *   back and every layer below does nothing. Svelte never re-resolves a look or
- *   re-derives a form for an unrelated accept.
+ *  yields the same `RuntimeScene` object, so the same description object comes
+ *  back and every layer below does nothing. Svelte never re-resolves a look or
+ *  re-derives a form for an unrelated accept.
  * - **Identity is decided here, once.** A look produces a canonical material
- *   descriptor; a shape produces a geometry store key. Two entities with one look
- *   therefore carry the same descriptor, and sharing is a property of the
- *   description rather than of whichever component mounted first.
+ *  descriptor; a shape produces a geometry store key. Two entities with one look
+ *  therefore carry the same descriptor, and sharing is a property of the
+ *  description rather than of whichever component mounted first.
  *
  * Forms are the one content family whose geometry is not unit-scale. The item
  * carries the kernel's canonical evaluated mesh (from the existing evaluation
@@ -379,7 +379,7 @@ export type SceneModelInput = {
  * the shadow defaults are decided here once, with the rules `AssetModel` applied:
  *
  * - the placement fallback wins; otherwise the catalogue's; a creator model (absent
- *   from the catalogue) draws its approved footprint box;
+ *  from the catalogue) draws its approved footprint box;
  * - the catalogue file loads only when the asset is approved or testing;
  * - fallback shadows default off and drawn-model shadows default on.
  *

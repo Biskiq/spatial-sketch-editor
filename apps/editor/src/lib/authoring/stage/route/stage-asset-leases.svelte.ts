@@ -7,11 +7,11 @@
  * candidate and does not own a renderer resource store:
  *
  * - model bytes are resolved from the envelope's `model` resource pins through
- *   the existing `model-bytes` resolver, which keeps one object URL per immutable
- *   content hash and revokes it when its last reference goes;
+ *  the existing `model-bytes` resolver, which keeps one object URL per immutable
+ *  content hash and revokes it when its last reference goes;
  * - the Stage artwork scope is the existing `artwork-scope` texture lifetime,
- *   created once for the route and borrowed by the Canvas. Visitor/Preview
- *   consumers keep their own scope; they never revoke this one.
+ *  created once for the route and borrowed by the Canvas. Visitor/Preview
+ *  consumers keep their own scope; they never revoke this one.
  *
  * **Leases retain across unrelated accepts.** An accepted edit that leaves the
  * approved pins unchanged reuses the installed URL map instead of revoking and
@@ -304,7 +304,7 @@ export function createStageAssetLeases(input: StageAssetLeaseInput) {
 	 * Release the Stage artwork scope at the route's existing teardown point.
 	 *
 	 * The scope is created with the route and disposed before the facade, as the
-	 * baseline route did from its effect cleanup. Idempotent: `dispose()` also
+	 * baseline route did from its effect cleanup. Idempotent: `dispose` also
 	 * releases it, so a teardown path that reaches this twice releases once.
 	 */
 	function disposeArtwork(): void {

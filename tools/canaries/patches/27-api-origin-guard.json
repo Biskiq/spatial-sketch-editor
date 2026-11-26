@@ -1,11 +1,11 @@
 {
 	"id": "27-api-origin-guard",
 	"area": "api-ownership",
-	"citation": "section 2 — preserved security hooks",
+	"citation": "section 2 \u2014 preserved security hooks",
 	"title": "The API accepts an unsafe browser mutation from a foreign Origin",
 	"file": "apps/api/src/app.ts",
 	"find": "if (unsafeBrowserRequest && expectedBrowserOrigin && origin !== expectedBrowserOrigin) {",
 	"replace": "if (unsafeBrowserRequest && expectedBrowserOrigin && origin === expectedBrowserOrigin) {",
-	"tests": ["auth-session-origin.test.mjs"],
+	"tests": ["../api/tests/auth-session-origin.test.mjs"],
 	"kind": "api"
 }

@@ -237,22 +237,22 @@ export function resolveJunctionGeometry(
 	// physical material so no two Wall-owned bodies occupy the same volume.
 	//
 	// 1. Continuation partners first: a collinear antiparallel pair is one through
-	//    Wall split at this Junction, so it suppresses its shared interface (and
-	//    still exposes its thickness/height/Opening difference, per band).
+	//  Wall split at this Junction, so it suppresses its shared interface (and
+	//  still exposes its thickness/height/Opening difference, per band).
 	// 2. One **core** is selected deterministically: the continuation pair
-	//    containing the smallest `wallId`, else the most nearly antiparallel pair.
-	//    The core keeps its own material, exactly as for a plain continuation.
+	//  containing the smallest `wallId`, else the most nearly antiparallel pair.
+	//  The core keeps its own material, exactly as for a plain continuation.
 	// 3. Every other leg is **trimmed** at the distance where it leaves the
-	//    resolved core material. Its end cross-section is an internal interface
-	//    (never a buried cap): the still-exposed parts are emitted as explicit,
-	//    Wall-attributed trim surfaces, and the parts that rest on a core face
-	//    suppress that face region per vertical band.
+	//  resolved core material. Its end cross-section is an internal interface
+	//  (never a buried cap): the still-exposed parts are emitted as explicit,
+	//  Wall-attributed trim surfaces, and the parts that rest on a core face
+	//  suppress that face region per vertical band.
 	// 4. With **no** continuation pair (Y / star) the Junction is partitioned by
-	//    its own beams instead: every cyclically adjacent pair of legs gets one
-	//    equal-clearance beam, each leg's material is cut by the two beams that
-	//    bound its sector, and the sector wedge a Wall-owned strip cannot express
-	//    is published as an explicit Wall-attributed keel. Nothing is left to
-	//    interpenetration: a Junction this rule cannot partition fails closed.
+	//  its own beams instead: every cyclically adjacent pair of legs gets one
+	//  equal-clearance beam, each leg's material is cut by the two beams that
+	//  bound its sector, and the sector wedge a Wall-owned strip cannot express
+	//  is published as an explicit Wall-attributed keel. Nothing is left to
+	//  interpenetration: a Junction this rule cannot partition fails closed.
 	return p2311Measure('junction-partition', () =>
 		resolveDegreeThreePlus(junctionId, point, legs, bands, issues, miterLimit),
 	);

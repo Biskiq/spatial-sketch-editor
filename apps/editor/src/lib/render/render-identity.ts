@@ -7,10 +7,10 @@
  * Two pieces make that true:
  *
  * - **A plain-JSON tag on `userData`**, written by whoever builds the object. It
- *   survives `Object3D.copy` (which JSON-clones `userData`), so a retained mesh
- *   that is patched in place keeps the identity of the thing it now draws.
+ *  survives `Object3D.copy` (which JSON-clones `userData`), so a retained mesh
+ *  that is patched in place keeps the identity of the thing it now draws.
  * - **An index each representation keeps** (`objectOf`), so a consumer asks the
- *   owner "which object draws this id?" instead of searching a subtree.
+ *  owner "which object draws this id?" instead of searching a subtree.
  *
  * This module is renderer-neutral and shared with the visitor; it imports only
  * the Three `Object3D` type.

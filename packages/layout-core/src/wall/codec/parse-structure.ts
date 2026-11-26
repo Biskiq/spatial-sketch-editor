@@ -56,7 +56,7 @@ import {
 /**
  * Parse the optional reference ledger.
  *
- * `undefined` means "absent", which is legal (pre-P23.12 payloads). A present but
+ * `undefined` means "absent", which is legal (pre- payloads). A present but
  * malformed ledger reports issues and returns `undefined`, so the caller can fail
  * closed: tokens must be well-formed for their own family, and no token value may
  * appear twice anywhere in the ledger (a duplicate can only come from a
@@ -295,7 +295,7 @@ function parseWallCenterline(
 		const spans = parseArray(input.spans, `${path}.spans`, issues, parseWallCubicSpan);
 		if (!spans) return undefined;
 		// One span per cubic: `points.length - 1` with
-		// `points = [start, ...knots, end]`.
+		// `points = [start,...knots, end]`.
 		if (spans.length !== knots.length + 1) {
 			addIssue(
 				issues,

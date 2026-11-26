@@ -94,7 +94,7 @@ export function sharedJunctionIds(a: LayoutWall, b: LayoutWall): string[] {
 
 /**
  * One Wall's resolved endpoints. `points` is an optional id→point index for
- * callers that resolve many Walls (T1.P02.S06 D.1: the topology gates); without
+ * callers that resolve many Walls (D.1: the topology gates); without
  * it the historical linear Junction scan runs, so a one-off caller is unchanged.
  */
 export function wallEndpoints(

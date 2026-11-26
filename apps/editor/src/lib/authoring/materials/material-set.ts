@@ -6,13 +6,13 @@
  * that touches bytes and the network:
  *
  * 1. `readSetFileFacts` hashes and probes the creator's files (two at a time)
- *    and keeps the exact bytes in session memory. Nothing here is persisted.
+ *  and keeps the exact bytes in session memory. Nothing here is persisted.
  * 2. `prepareDraft` composes one recipe from edits and verified facts, digests
- *    it through the session proof registry and returns a `PreparedFinishDraft`
- *    whose sources are scoped readers over those session bytes.
+ *  it through the session proof registry and returns a `PreparedFinishDraft`
+ *  whose sources are scoped readers over those session bytes.
  * 3. `acceptDraft` stages each distinct digest through the P20 importer, rechecks
- *    the expected revision and target reach after IO, then issues exactly one
- *    `scene-finish-register` intent with a deterministic Finish id.
+ *  the expected revision and target reach after IO, then issues exactly one
+ *  `scene-finish-register` intent with a deterministic Finish id.
  *
  * A refusal at any step leaves the accepted project unchanged. Uploaded P20
  * bytes stay under ordinary retention when a later step is cancelled.

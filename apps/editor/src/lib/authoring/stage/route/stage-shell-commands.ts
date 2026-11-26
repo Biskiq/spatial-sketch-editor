@@ -9,7 +9,7 @@
  * - tasks are opened, resumed and closed by the facade's one task home;
  * - dock tools arm the very same contributed task the Index invokes;
  * - deletion is the selected subject's own contributed Card action, after its
- *   planner-derived disclosure;
+ *  planner-derived disclosure;
  * - Find arms or invokes the existing command, never a second implementation.
  *
  * The dispatcher holds no presentation state of its own: the shell owner owns

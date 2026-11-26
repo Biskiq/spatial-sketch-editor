@@ -32,7 +32,7 @@ export type PerfRecordKind = 'input' | 'install' | 'result' | 'mark';
 export type PerfRecord = {
 	readonly kind: PerfRecordKind;
 	readonly name: string;
-	/** `performance.now()` of the call. */
+	/** `performance.now` of the call. */
 	readonly time: number;
 	/** The latest input sequence at the call (0 before any input). */
 	readonly sequence: number;

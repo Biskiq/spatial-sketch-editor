@@ -1,5 +1,5 @@
 /**
- * F.3 — the shared Camera-output ticket protocol (AM-3).
+ * F.3 — the shared Camera-output ticket protocol.
  *
  * `{outputId, sourceRevision, sessionEpoch, ownerId, runEpoch}` governs
  * inspection, guided/free navigation, Follow, Look-through and Preview through
@@ -19,7 +19,7 @@
  *
  * **Output vs viewport.** `outputId` is the identity a ticket names; `viewportId`
  * is the Stage viewport that realises the output. They are separate fields
- * because they are separate identities — AM-3 says a second viewport is a distinct
+ * because they are separate identities — says a second viewport is a distinct
  * output, which the Stage owner enforces when it creates states, and
  * this protocol never assumes the two strings are equal. Tickets are qualified by
  * `outputId` only.

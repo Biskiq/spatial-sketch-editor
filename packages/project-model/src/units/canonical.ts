@@ -1,18 +1,18 @@
 import { hasImmutableJsonProof as hasOwnedFrozenJsonProof } from '@portfolio/layout-core/kernel';
 import { countWork } from '@portfolio/layout-core/kernel';
 /**
- * F.2 `unit-envelope-v1` canonical bytes and content identities (AM-2).
+ * F.2 `unit-envelope-v1` canonical bytes and content identities.
  *
  * Two identities live here and they are not the same thing:
  *
  * - a **unit content revision** hashes that unit's canonical domain data alone.
- *   It excludes the header (and therefore excludes itself), every session value
- *   and every document-level identity, so two sources with equal domain data
- *   have equal content revisions.
+ *  It excludes the header (and therefore excludes itself), every session value
+ *  and every document-level identity, so two sources with equal domain data
+ *  have equal content revisions.
  * - the **envelope source-content digest** hashes the authored envelope
- *   *without* `acceptedRevision` and without any session, history or receipt
- *   metadata, so an accepted revision change or a Save receipt never changes the
- *   content identity of identical authored contents.
+ *  *without* `acceptedRevision` and without any session, history or receipt
+ *  metadata, so an accepted revision change or a Save receipt never changes the
+ *  content identity of identical authored contents.
  *
  * Both forms are key-order and whitespace invariant: the canonicalizer writes
  * object keys in sorted order and drops absent (`undefined`) values, so a value

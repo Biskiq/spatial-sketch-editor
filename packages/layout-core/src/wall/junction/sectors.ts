@@ -117,7 +117,7 @@ function triangleArea2(a: LayoutVec2, b: LayoutVec2, c: LayoutVec2): number {
 	return (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
 }
 
-/** Clip a convex plan polygon by the half-plane `{p : sign · (p - anchor) · normal ≥ 0}`. */
+/** Clip a convex plan polygon by the half-plane `{p: sign · (p - anchor) · normal ≥ 0}`. */
 function clipHalfPlane(
 	polygon: readonly LayoutVec2[],
 	anchor: LayoutVec2,
@@ -360,11 +360,11 @@ function cleanSectorRegion(
  * across all of its incident legs:
  *
  * ```text
- * cyclic leg pairs          → one equal-clearance beam each
- * leg band + its two beams  → this leg's Junction-local cell (a half-plane
- *                             intersection, never a wedge sign test)
- * cell cut at capDistance   → the keel this Wall owns near the Junction
- * cell beyond capDistance   → the Wall's own body (a plain strip, nothing to solve)
+ * cyclic leg pairs → one equal-clearance beam each
+ * leg band + its two beams → this leg's Junction-local cell (a half-plane
+ *  intersection, never a wedge sign test)
+ * cell cut at capDistance → the keel this Wall owns near the Junction
+ * cell beyond capDistance → the Wall's own body (a plain strip, nothing to solve)
  * ```
  *
  * A leg's Junction-local material is the part of its own band that lies in front

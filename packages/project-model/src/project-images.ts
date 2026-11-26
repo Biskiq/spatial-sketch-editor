@@ -11,10 +11,10 @@
  * storage implementation. It deliberately returns **requirements**, not bytes:
  *
  * - a project texture carries an authored `texture` resource pin when one is
- *   present; Save and Load require that pin, because it is the only authored
- *   answer for what those bytes are;
+ *  present; Save and Load require that pin, because it is the only authored
+ *  answer for what those bytes are;
  * - an Artwork image has no authored hash; its P20 registry row is authoritative
- *   and its shelf entry carries the oriented dimensions to verify.
+ *  and its shelf entry carries the oriented dimensions to verify.
  *
  * `delivery` includes the current texture registry closure and only placed
  * Artwork, matching release preparation. `private-save` and `private-load`

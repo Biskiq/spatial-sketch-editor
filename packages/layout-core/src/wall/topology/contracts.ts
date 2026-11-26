@@ -49,7 +49,7 @@ export type WallFirstOpPlan =
 			kind: 'success';
 			/** Exact committed document — allocated IDs included. */
 			document: LayoutDocumentWallFirst;
-			/** `created` lineage records from the P23.8 reconciliation. */
+			/** `created` lineage records from the reconciliation. */
 			lineage: ReadonlyArray<{
 				faceKey: string;
 				roomId: string;

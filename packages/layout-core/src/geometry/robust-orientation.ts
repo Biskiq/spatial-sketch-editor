@@ -10,17 +10,17 @@
  * Contract (locked by `layout-orient-xz.test.ts`):
  *
  * ```text
- * orientXZ(a, b, c) >  0  →  c is left of the directed line a→b
- * orientXZ(a, b, c) <  0  →  c is right of the directed line a→b
- * orientXZ(a, b, c) === 0 →  a, b, c are exactly collinear
+ * orientXZ(a, b, c) > 0 → c is left of the directed line a→b
+ * orientXZ(a, b, c) < 0 → c is right of the directed line a→b
+ * orientXZ(a, b, c) === 0 → a, b, c are exactly collinear
  * ```
  *
  * Rules:
  * - callers never import `robust-predicates` directly;
  * - no epsilon is ever applied to the result — the sign *is* the answer and
- *   is exact for the given doubles;
+ *  is exact for the given doubles;
  * - only `orient2d` is used; `orient2dfast` and the in/3D predicates are not
- *   part of Museum topology.
+ *  part of Museum topology.
  *
  * Dependency provenance: `mourner/robust-predicates@3.0.3`,
  * Unlicense / public-domain dedication; `orient2d` only.

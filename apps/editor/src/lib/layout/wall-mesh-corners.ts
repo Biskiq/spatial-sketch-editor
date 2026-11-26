@@ -26,10 +26,10 @@ import { vertex } from './wall-mesh-emit';
  * Pure-miter corners emit nothing (zero-width). The bridge is a loft between
  * the two endpoint cross-sections, driven by the band state table:
  *
- *   both solid    → side quads over the beveled wedge edges
- *   previous only → cap the previous wall's end at its own offset plane
- *   current only  → cap the current wall's end at its own offset plane
- *   both open     → nothing (the corner void is part of the opening)
+ *  both solid → side quads over the beveled wedge edges
+ *  previous only → cap the previous wall's end at its own offset plane
+ *  current only → cap the current wall's end at its own offset plane
+ *  both open → nothing (the corner void is part of the opening)
  *
  * plus horizontal wedge faces where the both-solid volume begins (−Y) or ends
  * (+Y), closing lintel/sill transitions without blocking doorway voids.

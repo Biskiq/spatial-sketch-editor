@@ -1,5 +1,5 @@
 /**
- * Publication status under the AM-9 publication gap.
+ * Publication status under the publication gap.
  *
  * Publishing is unavailable until the prepared release reader lands: the route returns
  * `prepared-reader-required` and no authored release is prepared here. The

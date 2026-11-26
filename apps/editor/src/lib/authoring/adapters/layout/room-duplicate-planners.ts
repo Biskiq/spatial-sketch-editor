@@ -16,16 +16,16 @@
  * replay the same identities and Save/Load persists them as ordinary ids:
  *
  * ```text
- * source Junction <j>  → <j>-copy.<nonce>   same point + delta
- * source Wall     <w>  → <w>-copy.<nonce>   same thickness/height/name,
- *                                            centerline + delta, remapped ends
- * source Opening  <o>  → <o>-copy.<nonce>   same kind/name/offset/width/height/
- *                                            sill/profile, host remapped,
- *                                            connectsRoomIds dropped
- * source Room     <r>  → <r>-copy.<nonce>   name "<name> copy" (or the next
- *                                            free suffix), remapped boundary,
- *                                            same thicknesses
- * associated object <x> → <x>-copy.<nonce>  same shape, + delta, room remapped
+ * source Junction <j> → <j>-copy.<nonce> same point + delta
+ * source Wall <w> → <w>-copy.<nonce> same thickness/height/name,
+ *  centerline + delta, remapped ends
+ * source Opening <o> → <o>-copy.<nonce> same kind/name/offset/width/height/
+ *  sill/profile, host remapped,
+ *  connectsRoomIds dropped
+ * source Room <r> → <r>-copy.<nonce> name "<name> copy" (or the next
+ *  free suffix), remapped boundary,
+ *  same thicknesses
+ * associated object <x> → <x>-copy.<nonce> same shape, + delta, room remapped
  * ```
  *
  * A boundary Wall shared with another Room copies privately: the source keeps

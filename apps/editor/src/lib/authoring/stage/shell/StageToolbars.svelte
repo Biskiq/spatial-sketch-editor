@@ -10,7 +10,7 @@
 	 * - `WorldToolbar` still arms the existing dock/host controllers;
 	 * - `StageInstrumentHost` still renders the facade's one task instrument;
 	 * - `ExperienceDock`/`ExperienceGuide` still command the existing playback and
-	 *   guide controller.
+	 *  guide controller.
 	 *
 	 * The region owns only the lower-column measurement it reports, plus the Show
 	 * popover's open flag. Every other value is a typed read or named command from

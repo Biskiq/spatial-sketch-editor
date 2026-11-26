@@ -233,7 +233,7 @@ export type ReducedMotionController = {
 /**
  * Reduced motion reaches the **same destination** without accelerated travel:
  * every invocation resolves to a Cut of the target View, and no Travel is played.
- * The preference cannot be disabled by the visitor profile (AM-6 requires it).
+ * The preference cannot be disabled by the visitor profile (requires it).
  */
 export function createReducedMotionController(
 	program: ExperienceControlProgram,

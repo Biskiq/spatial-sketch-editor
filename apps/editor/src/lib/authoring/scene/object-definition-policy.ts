@@ -10,16 +10,16 @@
  * Two rules this module exists to enforce:
  *
  * - **Declared metadata, never measured geometry.** Footprints come from the
- *   catalogue's canonical meters and contacts from declared analytical values or
- *   a recorded verification. An asynchronously loaded mesh bound is never an
- *   unrecorded placement input, so nothing here reads a live bounding box.
+ *  catalogue's canonical meters and contacts from declared analytical values or
+ *  a recorded verification. An asynchronously loaded mesh bound is never an
+ *  unrecorded placement input, so nothing here reads a live bounding box.
  * - **Renderer normalization stays the renderer's.** The catalogue's
- *   `defaultScale`/`defaultRotation` are carried as
- *   `renderNormalization` — the identity of the correction the renderer applies
- *   *inside* its own root — and are never copied into an authored instance
- *   transform. A piano with `defaultScale: 0.032` placed at instance scale 1 has
- *   canonical 1.48 x 1.59 m footprint and contact 0; the authored entity carries
- *   neither number.
+ *  `defaultScale`/`defaultRotation` are carried as
+ *  `renderNormalization` — the identity of the correction the renderer applies
+ *  *inside* its own root — and are never copied into an authored instance
+ *  transform. A piano with `defaultScale: 0.032` placed at instance scale 1 has
+ *  canonical 1.48 x 1.59 m footprint and contact 0; the authored entity carries
+ *  neither number.
  *
  * The inventory below is the reviewable admission artifact: every
  * catalogue asset whose declared surface is `floor` appears exactly once, either

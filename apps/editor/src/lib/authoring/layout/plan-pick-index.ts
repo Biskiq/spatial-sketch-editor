@@ -46,7 +46,7 @@
  * - many boxes overlapping the pointer in screen space push `c` toward `F`;
  * - a box that crosses the camera plane cannot be bounded, so its node is kept;
  * - a view where every box projects large enough to reach the pointer keeps every
- *   node (`v → F`), because the broad phase is conservative and never guesses.
+ *  node (`v → F`), because the broad phase is conservative and never guesses.
  *
  * In those cases the query is linear in *overlap*, which is geometry the pointer is
  * genuinely near — never in unrelated project size. Nothing here reads a camera: the

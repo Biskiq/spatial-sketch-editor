@@ -8,7 +8,7 @@
  *
  * It is a **per-object** predicate, unlike the Slice's point test: the cut set names
  * Walls, so the mesh's render identity is the answer's other half. The canvas ink
- * and the caps are not pick roots (`raycast = () => {}`), so they never enter it.
+ * and the caps are not pick roots (`raycast = => {}`), so they never enter it.
  */
 import type { Object3D } from 'three';
 import { renderIdentityOf } from '$lib/render/render-identity';

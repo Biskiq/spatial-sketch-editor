@@ -2,7 +2,7 @@
  * The workspace host's construction sequence.
  *
  * It is the route's only composition root now: core factories, feature entries,
- * the one lifecycle runner and the one `late()` cell are built here, once, during
+ * the one lifecycle runner and the one `late` cell are built here, once, during
  * the route's initialisation. The host view below is what `WorkspaceHost.svelte`
  * renders; regions and workspaces branch on single host members only.
  */

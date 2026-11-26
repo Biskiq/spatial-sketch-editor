@@ -6,11 +6,11 @@
  * turns its results into Stage transitions:
  *
  * - an accepted install becomes a **content change** through the facade's one
- *   accepted-source slot (same pose, adapter re-binding, Camera output re-acquired);
+ *  accepted-source slot (same pose, adapter re-binding, Camera output re-acquired);
  * - the live selection is requalified through the change's accepted correspondence;
  * - Undo/Redo are host commands, and unavailability carries a visible reason;
  * - project replacement starts a new coordinator/baseline under a new epoch, and a
- *   completion from the previous epoch cannot install.
+ *  completion from the previous epoch cannot install.
  *
  * It owns no history of its own: the coordinator's bounded authoring history is the
  * single stack, and this module never interprets an accepted source.

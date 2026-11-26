@@ -1,7 +1,7 @@
 {
 	"id": "32-camera-ramp-clamp",
 	"area": "camera",
-	"citation": "hard rule 1 — one Camera authority",
+	"citation": "hard rule 1 \u2014 one Camera authority",
 	"title": "The camera pose epsilon is widened a hundredfold",
 	"file": "packages/camera-core/src/camera/motion.ts",
 	"find": "export const CAMERA_POSE_EPSILON = 1e-6;",

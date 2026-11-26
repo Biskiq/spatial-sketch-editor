@@ -7,7 +7,7 @@
  *
  * - `definitions` reaches an immutable recipe by digest;
  * - `images` supplies the verified local identity for each digest and for each
- *   `{textureId}` override (through its `texture` resource pin).
+ *  `{textureId}` override (through its `texture` resource pin).
  *
  * It is derived, never authored. `prepareValidatedUnitRuntime` keys reuse on the
  * Scene and resources unit revisions, so a retained runtime carries the exact

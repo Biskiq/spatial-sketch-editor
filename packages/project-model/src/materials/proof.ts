@@ -6,11 +6,11 @@
  * boundary is explicit:
  *
  * - raw ingress (file/paste, cloud Load, pending capture, API Save, release,
- *   library or draft registration) reads structure synchronously;
+ *  library or draft registration) reads structure synchronously;
  * - it then computes one **proof** containing each definition's normalized
- *   recipe and exact canonical bytes;
+ *  recipe and exact canonical bytes;
  * - the synchronous planner receives the proof and refuses a new definition
- *   whose bytes are absent or differ.
+ *  whose bytes are absent or differ.
  *
  * A serialized `verified` flag has no meaning: only these bytes do. Undo/Redo
  * may reuse the same proof for identical content because the content is

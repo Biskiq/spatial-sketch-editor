@@ -1,5 +1,5 @@
 /**
- * Strict validation for `ExecutionProgram@4` (AM-6).
+ * Strict validation for `ExecutionProgram@4`.
  *
  * The program is a delivery format, so the reader refuses anything a consumer
  * could misread: unknown keys, non-finite or negative holds, an unregistered
@@ -9,7 +9,7 @@
  *
  * The reader never throws and never coerces. It is also the only import of this
  * entry besides `./types` and the shared strict-shape primitive — the delivery
- * closure AM-6 requires.
+ * closure requires.
  */
 
 import { ShapeReader, type ShapeValidation } from '../strict-shape';

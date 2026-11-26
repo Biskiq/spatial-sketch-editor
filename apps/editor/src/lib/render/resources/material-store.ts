@@ -444,7 +444,7 @@ export function createMaterialStore(options: MaterialStoreOptions = {}): Materia
 					if (tuneImported(material, descriptor.treatment)) treated += 1;
 					else treatmentSkipped += 1;
 				}
-				// **After** any `source.clone()`: `Material.copy` clones each plane into a
+				// **After** any `source.clone`: `Material.copy` clones each plane into a
 				// new array, so a material cloned by the imported path would otherwise
 				// keep a detached copy that never follows the cut.
 				const clips = clipsWithStore(descriptor);

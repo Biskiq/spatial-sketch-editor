@@ -104,7 +104,7 @@ export function createContributionView(input: ContributionViewPort) {
 		null;
 	/**
 	 * The last projected subject list. Adapter notifications also fire for
-	 * selection and task changes, so `subjects()` must not allocate a fresh array
+	 * selection and task changes, so `subjects` must not allocate a fresh array
 	 * for every one: the route keys its Index projection on this identity.
 	 */
 	let subjectsCache: readonly StageSubject[] | null = null;

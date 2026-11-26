@@ -2,7 +2,7 @@
  * Align chart (T2.S8 U6): the exact renderer sampling, inverted for the overlay.
  *
  * The renderer samples a Finish at
- *   t = diag(repeat) · R(−θ) · (uv − ½) + ½ + offset
+ *  t = diag(repeat) · R(−θ) · (uv − ½) + ½ + offset
  * (`render/resources/finish-sampling.ts` `sampleUv`), where `uv` is the
  * surface's native chart and `repeat = uvMeters / tileMeters` for a metric
  * mapping (`project-model/materials/bind.ts`). A `legacy` origin then reads row
@@ -11,9 +11,9 @@
  *
  * Layout surfaces are metre charts (`uvMeters` [1, 1]):
  * - a wall side's `u` is arc length from the wall's start on both sides and `v`
- *   is height above the wall's floor (the Layout wall mesh);
+ *  is height above the wall's floor (the Layout wall mesh);
  * - a room floor's `u` is world `x` and `v` is world `−z`
- *   (`render/layout-room-representation.ts` `polygonShape`).
+ *  (`render/layout-room-representation.ts` `polygonShape`).
  *
  * Everything here is pure: no Camera, no DOM, no authored writes.
  */
@@ -147,7 +147,7 @@ function insideChart(chart: AlignSurfaceChart, uv: Vec2, eps = 1e-9): boolean {
 }
 
 /**
- * Clip the line {uv : a·uv = d} to the chart rectangle. Returns the segment's
+ * Clip the line {uv: a·uv = d} to the chart rectangle. Returns the segment's
  * two endpoints, or null when the line misses the rectangle.
  */
 function clipLine(chart: AlignSurfaceChart, a: Vec2, d: number): [Vec2, Vec2] | null {
@@ -202,7 +202,7 @@ export function tileGridLines(
 	const out: AlignGridLine[] = [];
 	const c = Math.cos(s.rotation);
 	const n = Math.sin(s.rotation);
-	// t_x = repeat_x·( c·(u−½) + n·(v−½) ) + ½ + off_x  →  a·uv = d
+	// t_x = repeat_x·(c·(u−½) + n·(v−½) ) + ½ + off_x → a·uv = d
 	const axes: { axis: 'x' | 'y'; a: Vec2; base: number; rep: number; off: number }[] = [
 		{ axis: 'x', a: [c, n], base: 0.5 * (c + n), rep: s.repeat[0], off: s.offset[0] },
 		{ axis: 'y', a: [-n, c], base: 0.5 * (-n + c), rep: s.repeat[1], off: s.offset[1] },
@@ -518,7 +518,7 @@ export function faceBoundsOf(
 	};
 }
 
-/** AABB for a Plan `fit`: x is width and z is depth; the extents are symmetric in the fit's max(). */
+/** AABB for a Plan `fit`: x is width and z is depth; the extents are symmetric in the fit's max. */
 export function planFitBoundsOf(f: {
 	readonly target: Vec3;
 	readonly halfW: number;

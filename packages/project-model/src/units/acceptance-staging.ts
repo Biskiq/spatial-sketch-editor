@@ -14,17 +14,17 @@
  * Staging rules (all tested):
  *
  * - every requested resource must resolve in this envelope's resource unit; a
- *   missing or unresolved one refuses the whole staging (no partial set). An
- *   external resource with bytes outside the project resolves through its pin's
- *   content hash, exactly as the F.1 resolver already answers, so a genuinely
- *   admitted pinned resource stages; a resource with neither revision nor pin is
- *   `repair-required` at resolution and never reaches staging;
+ *  missing or unresolved one refuses the whole staging (no partial set). An
+ *  external resource with bytes outside the project resolves through its pin's
+ *  content hash, exactly as the F.1 resolver already answers, so a genuinely
+ *  admitted pinned resource stages; a resource with neither revision nor pin is
+ *  `repair-required` at resolution and never reaches staging;
  * - the staging is a **set** keyed by `kind:id`, so requesting the same resource
- *   twice stages it once;
+ *  twice stages it once;
  * - order is stable (sorted by `kind`, then `id`), so two equal requests produce
- *   equal staging and a replay is comparable;
+ *  equal staging and a replay is comparable;
  * - nothing is written. The coordinator's install commits the candidate that
- *   carries this staging; a refused staging stages nothing at all.
+ *  carries this staging; a refused staging stages nothing at all.
  */
 import type { ReferenceReadContext, SemanticReference } from '../references/types';
 import { resolveReference } from '../references/resolve';

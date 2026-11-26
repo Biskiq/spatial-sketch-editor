@@ -8,24 +8,24 @@
  *
  * - **Structure** is the agreed envelope validator's (`validateProjectEnvelope`).
  * - **Derived identity** — each unit's `contentRevision` and each unit-scoped
- *   lock entry's revision — is recomputed from the candidate's own data, because
- *   a revision is a derived fact, not authored input. A caller cannot install a
- *   header or lock that disagrees with the bytes it carries.
+ *  lock entry's revision — is recomputed from the candidate's own data, because
+ *  a revision is a derived fact, not authored input. A caller cannot install a
+ *  header or lock that disagrees with the bytes it carries.
  * - **Lock resolution** runs through the same F.1 unit resolvers the reference
- *   path uses, so a lock entry whose subject does not exist, or whose revision
- *   is not the unit revision it claims, refuses the whole candidate.
+ *  path uses, so a lock entry whose subject does not exist, or whose revision
+ *  is not the unit revision it claims, refuses the whole candidate.
  * - **Resource closure** (a pinned resource the registry cannot satisfy, a lock
- *   pin that disagrees with the registry) refuses acceptance; a repairable
- *   authored diagnostic (`unresolved-view`, `unresolved-presentation`) stays a
- *   diagnostic, exactly as F.2 defines it.
+ *  pin that disagrees with the registry) refuses acceptance; a repairable
+ *  authored diagnostic (`unresolved-view`, `unresolved-presentation`) stays a
+ *  diagnostic, exactly as F.2 defines it.
  * - **`acceptedRevision` is the baseline revision, not the installed one.** The
- *   landed coordinator installs the admitted source bytes unchanged and keeps
- *   the accepted revision as the snapshot identity; history restoration requires
- *   byte-exact source, so rewriting the embedded field on every install would
- *   break that invariant. The embedded value therefore names the revision the
- *   candidate was prepared from. Consumers take revision authority from
- *   `AcceptedSnapshot.acceptedRevision`; the Save capture stamps that revision
- *   into the persisted bytes at the persistence boundary.
+ *  landed coordinator installs the admitted source bytes unchanged and keeps
+ *  the accepted revision as the snapshot identity; history restoration requires
+ *  byte-exact source, so rewriting the embedded field on every install would
+ *  break that invariant. The embedded value therefore names the revision the
+ *  candidate was prepared from. Consumers take revision authority from
+ *  `AcceptedSnapshot.acceptedRevision`; the Save capture stamps that revision
+ *  into the persisted bytes at the persistence boundary.
  *
  * The adapter is constructed with the profile the host **grants**: a compound
  * host admits multi-domain installs; a resource-staging host admits resource

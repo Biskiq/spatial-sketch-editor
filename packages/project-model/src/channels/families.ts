@@ -1,7 +1,7 @@
 /**
  * F.3 — the v1 channel families and the host that admits them.
  *
- * AM-3 admits exactly two families at version 1: Layout's ordinary Plan
+ *  admits exactly two families at version 1: Layout's ordinary Plan
  * inspection parameters and the Camera session inspection output. A family is a
  * declaration (properties, required properties, capability), not an evaluator:
  * Layout evaluates representation from its canonical output, and Camera evaluates
@@ -21,11 +21,11 @@ import {
 	type ChannelFamilyId,
 } from './types';
 
-/** Layout's ordinary Plan inspection parameters (AM-3, Layout ordinary Plan family). */
+/** Layout's ordinary Plan inspection parameters (, Layout ordinary Plan family). */
 export const LAYOUT_PLAN_FAMILY_ID: ChannelFamilyId = 'layout.plan@1';
 
 /**
- * Camera's session inspection output (AM-3, Camera session inspection family).
+ * Camera's session inspection output (, Camera session inspection family).
  *
  * Every property is `camera-output`-arbitrated and `output`-scoped: it belongs to
  * the run that holds the Camera output named by `scopeId`, and is admitted only
@@ -35,7 +35,7 @@ export const LAYOUT_PLAN_FAMILY_ID: ChannelFamilyId = 'layout.plan@1';
  * instead of running a second ordered-replacement path. The `controller` property
  * is the one resolved controller per output: its value must be the claim's role.
  *
- * No property declares generic interpolation (`none`): AM-3 forbids generic Camera
+ * No property declares generic interpolation (`none`): forbids generic Camera
  * pose/FOV interpolation, so target, azimuth, elevation and frame height change
  * only by a new contribution and are moved only by Camera's own evaluation. The
  * family is addressed to the project's Camera authority root (`camera`), because a

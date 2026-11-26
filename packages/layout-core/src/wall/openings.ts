@@ -257,9 +257,9 @@ export function planCreateWallFirstOpening(
 
 /**
  * Update one authored Opening's exact fields. The hosting Wall never changes
- * (P23.8 owns host/offset rebasing on topology edits). Relations written by
+ * (owns host/offset rebasing on topology edits). Relations written by
  * this operation are validated against the canonical adjacency rule;
- * pre-existing legacy relations authored elsewhere stay readable (P23.0
+ * pre-existing legacy relations authored elsewhere stay readable (
  * compatibility) and are only cleared/rewritten explicitly.
  */
 export function planUpdateWallFirstOpening(

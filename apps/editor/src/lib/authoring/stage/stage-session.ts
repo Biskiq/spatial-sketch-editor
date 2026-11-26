@@ -3,16 +3,16 @@
  * one canonical selection, one task home and one gesture lease.
  *
  * The session is the single owner of the facts that must not survive a project
- * replacement. `replace()` is the whole lifetime transition, and its order is the
+ * replacement. `replace` is the whole lifetime transition, and its order is the
  * contract:
  *
  * 1. **Validate first.** The caller supplies an already-admitted snapshot, so a
- *    replacement cannot half-happen: nothing is cancelled or cleared for a source
- *    that then fails admission.
+ *  replacement cannot half-happen: nothing is cancelled or cleared for a source
+ *  that then fails admission.
  * 2. **Cancel writers atomically.** Every registered load, gesture, camera run,
- *    task, command or project action is cancelled exactly once and its token becomes stale.
+ *  task, command or project action is cancelled exactly once and its token becomes stale.
  * 3. **Clear the old context.** Selection, task and gesture leases are cleared;
- *    no project-specific singleton survives.
+ *  no project-specific singleton survives.
  * 4. **Swap.** The epoch advances and the new snapshot becomes current.
  *
  * Stale completions cannot affect the replacement because every writer is
@@ -115,7 +115,7 @@ export type GestureLease = {
 	/**
 	 * Whether this lease is **navigation** rather than authoring work.
 	 *
-	 * The declaration is what keeps `liveProposal()` free of a list of owner
+	 * The declaration is what keeps `liveProposal` free of a list of owner
 	 * names: a navigation press explicitly says it is one and never blocks
 	 * history; every other live lease is authored work whose candidate is not in
 	 * the document yet, which is exactly what Undo must explain before it runs.
@@ -259,7 +259,7 @@ export type StageSession = {
 	isCurrent(token: ReplacementEpochToken): boolean;
 	writers(): CancellationRegistry;
 	current(): StageReadSnapshot | null;
-	/** Layout convenience view of the primary item; canonical state is selectionState(). */
+	/** Layout convenience view of the primary item; canonical state is selectionState. */
 	selection(): StageSelection | null;
 	selectionState(): StageSelectionState;
 	/** Ephemeral pointer hover; never part of accepted content or history. */
@@ -406,7 +406,7 @@ export function createCancellationRegistry(): CancellationRegistry {
  * a replacement is `null`, never an install.
  *
  * This is the mechanism the session's contract already names ("every registered
- * load ... is cancelled exactly once", "a prior-epoch load ... is refused rather
+ * load... is cancelled exactly once", "a prior-epoch load... is refused rather
  * than installed"); the route must use it rather than holding a private
  * `AbortController` nobody cancels.
  */
@@ -513,7 +513,7 @@ export function createStageSession(
 			? { sourceId: ref.sourceId, sourceKind: ref.sourceKind, generationId: ref.generationId, ref }
 			: null;
 	}
-	/** What a convenience `select()` request did to the one selection value. */
+	/** What a convenience `select` request did to the one selection value. */
 	type LegacySelectionOutcome = 'admitted' | 'cleared' | 'refused';
 
 	function setLegacy(next: StageSelection | null): LegacySelectionOutcome {

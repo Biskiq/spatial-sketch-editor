@@ -8,12 +8,12 @@
  *
  * Internal helpers live in:
  *
- *   - `./readers`       — leaf typed JSON readers + `JsonRecord`
- *   - `./parse-entities`— entities, materials, textures
- *   - `./parse-document`— nodes, waypoints, connections, timing, semantics
- *   - `./canonical`     — clone helpers + deterministic serializer
- *   - `./types`         — issue, result and error types
- *   - `./validate`      — document and artwork-library validation
+ *  - `./readers` — leaf typed JSON readers + `JsonRecord`
+ *  - `./parse-entities`— entities, materials, textures
+ *  - `./parse-document`— nodes, waypoints, connections, timing, semantics
+ *  - `./canonical` — clone helpers + deterministic serializer
+ *  - `./types` — issue, result and error types
+ *  - `./validate` — document and artwork-library validation
  *
  * Public surface frozen to: `SceneDocumentIssue`,
  * `SceneDocumentValidationResult`, `SceneDocumentValidationError`,

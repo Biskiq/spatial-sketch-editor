@@ -9,11 +9,11 @@
  * So the report is a module seam with two outputs, both dev-only:
  *
  * - `console.error` **once per group and geometry revision** — a Sheet drag bumps
- *   the revision constantly and must not flood the console; a real edit is a new
- *   revision and will be heard again.
+ *  the revision constantly and must not flood the console; a real edit is a new
+ *  revision and will be heard again.
  * - `globalThis.__STAGE_SLICE_DIAGNOSTICS__` — a counter (and the groups that
- *   reported) QA reads from the console, so "zero issues" is checkable rather than
- *   assumed.
+ *  reported) QA reads from the console, so "zero issues" is checkable rather than
+ *  assumed.
  *
  * Production builds keep the counter's shape but publish nothing: it is a
  * development surface, never a runtime behaviour.

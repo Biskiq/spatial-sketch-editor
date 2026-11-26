@@ -102,7 +102,7 @@ type KindIndex = {
 	ids: readonly string[];
 	/**
 	 * Derived records, in a persistent map so an assembled evaluation can capture the map
-	 * with `fork()` — `O(1)` — instead of copying one entry per source. The retainer keeps
+	 * with `fork` — `O(1)` — instead of copying one entry per source. The retainer keeps
 	 * writing through its own handle; every fork keeps the root it was taken from.
 	 */
 	byId: PersistentMap<string, SourceRecord>;
@@ -317,15 +317,15 @@ export type PlanRetainer = {
  * **What it does per evaluation.**
  *
  * - *Nothing changed* — same derivation inputs, same generation, same compiled object —
- *   returns the retained result: `O(1)`.	 * - *New generation, same derivation inputs* (every accepted edit): asks the compiler's
- *   root difference which records changed and re-derives exactly those; with no provable
- *   difference it walks every source once instead. **No sort of any kind**: the declared
- *   order is maintained with the records, so the fragment array is produced by walking
- *   it, not by sorting into it — and it is produced only if someone reads it.
+ *  returns the retained result: `O(1)`. * - *New generation, same derivation inputs* (every accepted edit): asks the compiler's
+ *  root difference which records changed and re-derives exactly those; with no provable
+ *  difference it walks every source once instead. **No sort of any kind**: the declared
+ *  order is maintained with the records, so the fragment array is produced by walking
+ *  it, not by sorting into it — and it is produced only if someone reads it.
  * - *Parameters changed* (cut height, depth, lateral span, filter, reveal): re-derives
- *   every source — the order is still maintained, so nothing is sorted.
+ *  every source — the order is still maintained, so nothing is sorted.
  * - *Source ids added or removed*: the id list is updated by binary-search insertion when
- *   a few ids change, and rebuilt (one sort) when many do.
+ *  a few ids change, and rebuilt (one sort) when many do.
  *
  * It remembers **one** derivation signature. A caller that alternates between two
  * parameter sets would re-derive on every call, so a host with genuinely interleaved

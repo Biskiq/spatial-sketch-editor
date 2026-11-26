@@ -577,7 +577,7 @@ export function reconcileRooms(options: {
 	// component emits one `split-survivor` (the predecessor ID) plus one
 	// `created` record carrying the predecessor as its single lineage source.
 	// The survivor is NOT retired, so a relation endpoint on it must still be
-	// resolved through wall-side adjacency (P23.8 portal split rule) instead
+	// resolved through wall-side adjacency (portal split rule) instead
 	// of silently keeping the ID survivor.
 	const splitDescendants = new Map<string, string[]>();
 	for (const record of lineage) {

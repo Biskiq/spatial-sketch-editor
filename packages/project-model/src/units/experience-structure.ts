@@ -9,16 +9,16 @@
  * disagree. Nothing here is replaced silently:
  *
  * - the Detours that name a removed Stop (or a Stops a removed Guide took) go in
- *   the same change, named (A-6);
+ *  the same change, named (A-6);
  * - a Stop that entered at a removed View enters at its Presentation's Default
- *   (`entryViewId: null`), named;
+ *  (`entryViewId: null`), named;
  * - removing a Presentation's first View makes the next View the Default, named;
- *   the Views either side of a removed View become neighbours and keep their
- *   Cut/Travel;
+ *  the Views either side of a removed View become neighbours and keep their
+ *  Cut/Travel;
  * - a Camera View is deleted with its connections only when no other
- *   Presentation lists it; otherwise it is kept and its other users are named;
+ *  Presentation lists it; otherwise it is kept and its other users are named;
  * - removing the Opening Guide makes the next Guide the Opening Guide, named, or
- *   leaves `entryGuideId` null when none is left.
+ *  leaves `entryGuideId` null when none is left.
  *
  * Runtime-safe: no editor, renderer, Svelte or Three import. No id is allocated,
  * no clock is read.

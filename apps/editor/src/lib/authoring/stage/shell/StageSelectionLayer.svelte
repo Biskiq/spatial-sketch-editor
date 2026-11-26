@@ -10,11 +10,11 @@
 	 * Two rules keep it honest:
 	 *
 	 * - **Never under a pick root.** This group is a child of the one Canvas, not
-	 *   of `VisitorLayoutShell` or `SceneEntity:*`, so the recursive pick raycast
-	 *   cannot reach presentation ink.
+	 *  of `VisitorLayoutShell` or `SceneEntity:*`, so the recursive pick raycast
+	 *  cannot reach presentation ink.
 	 * - **The Stage overlay layer.** Every child is on layer 2, which the Stage
-	 *   camera shows only when world meshes are drawn. Raycasting keeps its
-	 *   default layer mask and never hits this ink.
+	 *  camera shows only when world meshes are drawn. Raycasting keeps its
+	 *  default layer mask and never hits this ink.
 	 *
 	 * It deliberately does not own Paper ink: `StagePaper` re-strokes the selected
 	 * fragment and footprint on vellum through `paper-marks`, where a mesh tint

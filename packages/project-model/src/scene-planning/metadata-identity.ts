@@ -13,11 +13,11 @@
  *
  * - input key order and whitespace never change the identity;
  * - the exclusion list and the admitted-surface set are sorted, because they
- *   are sets of reasons rather than ordered data;
+ *  are sets of reasons rather than ordered data;
  * - the footprint point order is **kept** — polygon winding and vertex order
- *   are meaningful geometry, not incidental key order;
+ *  are meaningful geometry, not incidental key order;
  * - the renderer's normalization identity participates, so two definitions that
- *   differ only in the source correction are distinct.
+ *  differ only in the source correction are distinct.
  */
 import { sha256Bytes } from '../package-sha';
 import type {

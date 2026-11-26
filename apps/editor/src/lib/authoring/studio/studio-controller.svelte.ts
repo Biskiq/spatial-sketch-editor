@@ -65,7 +65,7 @@ export type StudioPorts = {
 	 * open the destination chooser. Reports its own failures through `notice` and
 	 * resolves `true` only when it navigated.
 	 *
-	 * `current()` answers whether this very transfer is still the creator's intent: it
+	 * `current` answers whether this very transfer is still the creator's intent: it
 	 * turns false the moment the root, the posture or the session changes. The port asks
 	 * after every await and never navigates, or reports, for a transfer that is not current.
 	 */
@@ -448,7 +448,7 @@ export function createStudioController(ports: StudioPorts) {
 			if (!ports.settlePending()) return;
 			// Once navigation is accepted it owns the frame. Drop the transfer here,
 			// synchronously, so a delayed Save/library result cannot reopen a chooser
-			// over the page we are leaving. The in-flight journey asks `current()`
+			// over the page we are leaving. The in-flight journey asks `current`
 			// after every await and now sees false; its `finally` no longer owns the
 			// busy flag (we reset it here). Every other exit reaches the same drop
 			// through `applyScope`; this one leaves without changing scope, so it

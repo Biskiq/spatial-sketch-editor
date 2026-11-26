@@ -6,17 +6,17 @@
  *
  * - every surface draws only the fixed 1 m minor and 5 m major levels;
  * - each level fades from 16 to 8 CSS px projected spacing and hides below 8,
- *   so a zoom change only thins the drawing and never changes a value;
+ *  so a zoom change only thins the drawing and never changes a value;
  * - a 25 m level appears only while the 5 m level is hidden, so a large site
- *   keeps one reference before the ruler becomes the only one;
+ *  keeps one reference before the ruler becomes the only one;
  * - lines are anchored to world `(0, datum, 0)` and generated only inside the
- *   drawn rectangle;
+ *  drawn rectangle;
  * - Paper's rectangle is a bounded sheet around the work, drawn as lines;
  * - the mat's grid is drawn per pixel on the finite mat: each pixel
- *   fades each level by its own projected spacing, so a perspective view keeps
- *   1 m near the eye, 5 m further out and 25 m toward the horizon;
+ *  fades each level by its own projected spacing, so a perspective view keeps
+ *  1 m near the eye, 5 m further out and 25 m toward the horizon;
  * - Paper and the mat have their own inks from PLATE §Semantic color, and the
- *   3D ground's plate is Paper's own surface and inks.
+ *  3D ground's plate is Paper's own surface and inks.
  *
  * The grid is display-only. It is never a pick source, never delays navigation
  * and never writes a pose, source, history or Save entry.

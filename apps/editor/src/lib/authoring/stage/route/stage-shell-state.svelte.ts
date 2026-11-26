@@ -11,9 +11,9 @@
  * - the motion clock is the existing reduced-motion clock;
  * - host tools keep their existing controllers and projections;
  * - no selection, task, history, acceptance or renderer command is implemented
- *   here.
+ *  here.
  *
- * `start()` installs the browser media listeners once and `dispose()` removes
+ * `start` installs the browser media listeners once and `dispose` removes
  * them exactly once, so the route keeps one ordered teardown.
  */
 import type { SemanticReference } from '@portfolio/project-model/references';
@@ -237,7 +237,7 @@ export function createStageShellState(input: StageShellStateInput) {
 	/** The one Grid/Snap view state, mirrored from the session. */
 	let drafting = $state<StageDraftingState>(STAGE_DRAFTING_DEFAULTS);
 
-	/** Media-query listeners installed by `start()` and removed by `dispose()`. */
+	/** Media-query listeners installed by `start` and removed by `dispose`. */
 	let cleanups: (() => void) | null = null;
 	let started = false;
 	let disposed = false;

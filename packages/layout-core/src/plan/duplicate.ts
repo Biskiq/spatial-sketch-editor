@@ -24,9 +24,9 @@
  * - one supported document-level Layout object;
  * - one Wall-hosted Opening on its current Wall;
  * - any Room, cloned as a **free island** with a private copy of its complete
- *   boundary enclosure (`planDuplicateRoom`);
+ *  boundary enclosure (`planDuplicateRoom`);
  * - one **isolated** Room (`planDuplicateIsolatedRoom`, the stricter A4 path
- *   retained for its callers).
+ *  retained for its callers).
  */
 
 export { LAYOUT_DUPLICATE_MAX_COPIES } from './duplicate/contracts';

@@ -1,5 +1,5 @@
 /**
- * F.3 channels — `inspection-v1` shapes (AM-3).
+ * F.3 channels — `inspection-v1` shapes.
  *
  * A channel address names a writable/evaluable value:
  * instance → component → capability/property → frame. Each address carries a

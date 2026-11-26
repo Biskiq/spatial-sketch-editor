@@ -3,7 +3,7 @@
  *
  * The worker module is reached through a dynamic import of its URL, so a build
  * that never opens Import emits no worker chunk. One worker serves one import
- * session; `dispose()` terminates it and every in-flight request settles as
+ * session; `dispose` terminates it and every in-flight request settles as
  * cancelled. There is deliberately no module-level singleton: two Stage
  * lifetimes must not share an import session.
  */

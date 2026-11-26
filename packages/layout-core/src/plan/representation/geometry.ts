@@ -129,11 +129,11 @@ export function boundsOf(fragments: readonly PlanFragment[]): LayoutBounds2 | nu
  * Stream placement of one source, from its vertical extent against the cut plane.
  *
  * - `cut`: the cut plane passes through the solid (`minY < cutElevation <= maxY`) —
- *   the wall/solid the section actually cuts.
+ *  the wall/solid the section actually cuts.
  * - `projected`: the solid is shown by projection onto the Plan. Every `room-floor`
- *   is projected whatever its datum: a floor is the surface the Plan looks at, never
- *   overhead geometry hidden behind the cut plane. Remaining sources are projected
- *   when their whole extent sits at or above the cut (a lintel, a high object).
+ *  is projected whatever its datum: a floor is the surface the Plan looks at, never
+ *  overhead geometry hidden behind the cut plane. Remaining sources are projected
+ *  when their whole extent sits at or above the cut (a lintel, a high object).
  * - `hidden`: the whole extent is below the cut plane and is drawn hidden.
  */
 export function streamFor(

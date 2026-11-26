@@ -14,15 +14,14 @@ the North Star states intent. Do not read the archive unless current evidence ne
 
 - npm workspaces; apps are `@portfolio/editor` and `@biskiq/api`; shared packages are
   `@portfolio/layout-core`, `@portfolio/project-model`, `@portfolio/camera-core` and
-  `@portfolio/geometry-core`. PR #115 removed `apps/museum`, superseded by the separately hosted
-  frozen project.
+  `@portfolio/geometry-core`.
 - Find scoped UX targets and research in the [prototype catalogue](./prototypes/README.md).
   [Workflow](./docs/workflow.md#design-and-reference-maintenance) owns approval and review.
 - “Camera” = **3D guided PerspectiveCamera navigation**, not webcam.
-- **Frozen, separate projects are outside product scope.** The Chopin museum project was externalized
-  by PR #115: it is independently hosted and versioned, the folder is absent from this repository,
-  and no product file imports, aliases or references it. Product rules, authorities and tests do not
-  apply to such a project, and the product's public routes never serve it.
+- **Frozen, separate projects are outside product scope.** A project that is independently hosted
+  and versioned is absent from this repository; no product file imports, aliases or references it.
+  Product rules, authorities and tests do not apply to it, and the product's public routes never
+  serve it.
 - Root `dev` / `test` / `build` / `check` target the editor app only; the API has its own `dev:api` /
   `build:api` / `check:api` / `test:api` scripts, which root `build` and `check` never run.
 
@@ -74,6 +73,26 @@ the North Star states intent. Do not read the archive unless current evidence ne
    stay owned by `apps/editor/tests/README.md` and are deliberately not duplicated here.
 10. **No agent footer in commits** — when asked to commit, the message is the message: never append a
     `Generated with …` line or a `Co-Authored-By: <agent>` trailer for any tool, guide or harness.
+
+## Locality
+
+1. **One operation family per module.** A family shares inputs, outputs and invariants. A module
+   holds one family and the private helpers only it uses.
+2. **Budgets ratchet.** Files stay at or below 600 lines (hard 800) and functions at or below 200; a
+   closure factory counts as one function. The allowlist in `tools/metrics/budgets.json` shrinks as
+   work lands. An entry may be added only for a data table or a cohesive algorithm whose phases
+   share mutable state, with a one-line reason accepted in review.
+3. **Split only on real seams.** A split that needs long parameter lists, a carrier context used by
+   one operation, a single-implementation interface or a pass-through module is wrong. Keep the code
+   together and allowlist it.
+4. **The registry is the index.** Each authority has one planner registry mapping each kind to its
+   family module; a new operation adds one row and one function.
+5. **No test seams in production.** A kernel that must be observed takes an optional observer in its
+   existing options.
+6. **Comments state the current contract.** Keep mathematical reasoning, tolerance rationales and
+   invariants. Roadmap identifiers and arrival narration go; Git holds history.
+7. **Tests live with their workspace,** mirrored to its families or features. Retirement tests and
+   historical oracles are not kept; independent reference oracles and distinct invariants are.
 
 ## Verification and browser QA
 

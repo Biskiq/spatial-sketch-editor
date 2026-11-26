@@ -7,7 +7,7 @@
  * - a primitive or Form with no instance has `curated:<entity.materialId>`;
  * - a model with no instance has `model-own`;
  * - an instance with only `id`, `name` and a catalogue `base` is *pristine* and
- *   means the curated Finish it names, so the Library never lists it;
+ *  means the curated Finish it names, so the Library never lists it;
  * - any other instance is a project Finish, `project:<id>`.
  *
  * The editor imports these readings, so the Card and the planner cannot

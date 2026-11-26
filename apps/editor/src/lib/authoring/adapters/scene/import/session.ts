@@ -5,7 +5,7 @@
  * the worker, the staging record and the approved revision; none of that is
  * authored state, and closing the task, cancelling, replacing the project or
  * unmounting the route ends it. A cancelled, stale or replaced completion never
- * arms a placement: `dispose()` invalidates every later step.
+ * arms a placement: `dispose` invalidates every later step.
  *
  * The session never edits the project. Approval produces a resource entry and
  * the definition its first placement will capture; the placement itself goes
@@ -146,7 +146,7 @@ export class CreatorImportSession {
 	private abort: AbortController | null = null;
 	private disposed = false;
 	/**
-	 * Procedure generation. `cancel()` and `dispose()` bump it, so an approval
+	 * Procedure generation. `cancel` and `dispose` bump it, so an approval
 	 * already awaiting the API can never install a revision into a procedure the
 	 * creator has abandoned — including one whose staging it just cancelled.
 	 */

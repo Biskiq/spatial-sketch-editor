@@ -211,15 +211,15 @@ export function createWallFirstArchitectureVerdictScope(
  * Scope is the point:
  *
  * - it decides **unsupported crossing, self-intersection, duplicate Junction
- *   points, zero-length Walls and broken Room boundary structure** — the
- *   geometric rejections a pointermove can honestly know;
+ *  points, zero-length Walls and broken Room boundary structure** — the
+ *  geometric rejections a pointermove can honestly know;
  * - it deliberately does **not** reconcile Rooms, validate the Opening set, the
- *   portal relations or compile, so anything that could only fail there stays
- *   *pending* and is decided by the release planner;
+ *  portal relations or compile, so anything that could only fail there stays
+ *  *pending* and is decided by the release planner;
  * - it is **sound by construction**: it is the same function the planner calls
- *   with the same values (the splice preserves every field the gate reads, and
- *   the planner's own re-parse before it is value-preserving), so a failure
- *   here is a failure at release too. A miss is merely pending, never wrong.
+ *  with the same values (the splice preserves every field the gate reads, and
+ *  the planner's own re-parse before it is value-preserving), so a failure
+ *  here is a failure at release too. A miss is merely pending, never wrong.
  *
  * Returns the canonical issue, or `undefined` when nothing cheap rejects the
  * attempt (including when the intent cannot be derived at all — that is the
@@ -235,7 +235,7 @@ export function preflightWallFirstArchitectureCandidate(
 	 * derivation per call, never retained across moves. A transient gesture may
 	 * instead pass its own gesture-scoped derivation, so the frozen baseline's
 	 * untouched Walls — shared by reference through the shallow splice — are not
-	 * re-derived on every pointermove. The caller owns termination: `reset()` at
+	 * re-derived on every pointermove. The caller owns termination: `reset` at
 	 * gesture release, cancel, restore or replacement. The scope changes only how
 	 * many times an identical artefact is derived, never which artefact the gate
 	 * sees, so a `known-invalid` verdict and a `pending` verdict are unchanged.

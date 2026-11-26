@@ -1723,8 +1723,8 @@ describe('Material editor mount condition', () => {
 			'input.finishes().libraryDraft !== null && input.canShowEditor() ? readDraft() : readFinish()'
 		);
 		const host = read(HOST);
-		expect(host).toContain(
-			'canShowEditor: () => !previewController.openState && experience.lensState === \'world\' && stageEpoch.services !== null'
+		expect(host).toMatch(
+			/canShowEditor: \(\) =>\s*!previewController\.openState &&\s*experience\.lensState === 'world' &&\s*stageEpoch\.services !== null/
 		);
 	});
 });

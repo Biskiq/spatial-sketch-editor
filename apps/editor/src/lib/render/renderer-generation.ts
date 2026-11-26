@@ -1,16 +1,16 @@
 /**
  * One renderer generation for the product's Canvas hosts.
  *
- * Threlte 8.5.16's renderer context calls `setAnimationLoop()` and `dispose()`
+ * Threlte 8.5.16's renderer context calls `setAnimationLoop` and `dispose`
  * without awaiting their promises and catches only synchronous disposal errors.
  * r187's `WebGPURenderer` is asynchronous in both directions. This owner supplies
  * exactly what Threlte does not:
  *
- * - one explicit `init()` promise with a 10-second UI deadline per attempt;
- * - a facade that refuses `render()` until init has resolved, so a scheduler
- *   frame cannot draw on a partially acquired canvas;
- * - one idempotent retirement promise shared by Threlte's synchronous `dispose()`
- *   call, a failed init, a device loss and the host's unmount;
+ * - one explicit `init` promise with a 10-second UI deadline per attempt;
+ * - a facade that refuses `render` until init has resolved, so a scheduler
+ *  frame cannot draw on a partially acquired canvas;
+ * - one idempotent retirement promise shared by Threlte's synchronous `dispose`
+ *  call, a failed init, a device loss and the host's unmount;
  * - a device-loss observer registered before init starts;
  * - cleanup of a successful init that arrives after the generation retired.
  *

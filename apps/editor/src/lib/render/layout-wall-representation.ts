@@ -5,20 +5,20 @@
  * drag preview:
  *
  * - **Retained.** One `Mesh` per compiled Wall, keyed by a retention key that
- *   names every input the mesh builder reads: the Wall's own `cacheKey` (its
- *   authored geometry, Openings, thickness, height and floor datum) plus the
- *   `cacheKey` of every Junction whose resolved end geometry the builder consumes.
- *   A Wall whose key is unchanged keeps its mesh object, its buffers and its
- *   materials.
+ *  names every input the mesh builder reads: the Wall's own `cacheKey` (its
+ *  authored geometry, Openings, thickness, height and floor datum) plus the
+ *  `cacheKey` of every Junction whose resolved end geometry the builder consumes.
+ *  A Wall whose key is unchanged keeps its mesh object, its buffers and its
+ *  materials.
  * - **Patched.** A Wall whose key moved is rebuilt and swapped in; it is the only
- *   one rebuilt.
+ *  one rebuilt.
  * - **Released.** A Wall that left the document, and every superseded buffer, is
- *   disposed in the same call — there is no deferred sweep and no second owner.
+ *  disposed in the same call — there is no deferred sweep and no second owner.
  * - **Shared materials.** Every surface is acquired from the Canvas's
- *   `MaterialStore` by descriptor — one material per tint across all Walls, and
- *   the failure surface from the same store — so a compile constructs no
- *   material at all. The representation gives its leases back once, on dispose;
- *   a tint another representation also draws survives that release.
+ *  `MaterialStore` by descriptor — one material per tint across all Walls, and
+ *  the failure surface from the same store — so a compile constructs no
+ *  material at all. The representation gives its leases back once, on dispose;
+ *  a tint another representation also draws survives that release.
  *
  * It is imperative on purpose: one Svelte component pair per Wall would cost the
  * framework thousands of ownership operations per compile at large grids. A
@@ -135,8 +135,8 @@ const FAILURE_SURFACE: BasicMaterialDescriptor = { kind: 'basic', color: MAGENTA
  * Attach `object` to `parent` at `index`.
  *
  * three has no ordered insert, and assigning `parent.children[index]` directly
- * leaves `object.parent` unset — which silently disables `removeFromParent()` and
- * leaks the mesh. `add()` first (it sets the parent and dispatches the event),
+ * leaves `object.parent` unset — which silently disables `removeFromParent` and
+ * leaks the mesh. `add` first (it sets the parent and dispatches the event),
  * then move the child to the slot it belongs in.
  */
 function attachAt(parent: Group, object: Object3D, index: number): void {
@@ -176,20 +176,20 @@ function failureBox(bounds: LayoutBounds3): {
  * Two preconditions make an equal key mean an equal mesh:
  *
  * - **The Junction resolution is a pure function of the facts in that key.** A
- *   future resolver input (a tolerance, a global option, a neighbour's datum)
- *   must join the Junction key in `layout-core`, or a changed miter would keep a
- *   stale mesh.
+ *  future resolver input (a tolerance, a global option, a neighbour's datum)
+ *  must join the Junction key in `layout-core`, or a changed miter would keep a
+ *  stale mesh.
  * - **The sampling derivation is process-constant.** A Wall's samples come from
- *   `sampleSegment` or from a shared derivation whose density and tolerance are
- *   fixed for the life of the page; a change to those parameters would change
- *   the mesh without changing any authored input. If they ever become
- *   configurable, their signature belongs in the Wall key in `layout-core`.
+ *  `sampleSegment` or from a shared derivation whose density and tolerance are
+ *  fixed for the life of the page; a change to those parameters would change
+ *  the mesh without changing any authored input. If they ever become
+ *  configurable, their signature belongs in the Wall key in `layout-core`.
  * - **The key distinguishes every authored value the builder can see.** It is a
- *   JSON serialization, in which `NaN` and `null` both read as `null`; the codec
- *   rejects non-finite authored numbers, so two documents that can be opened
- *   never share a key while differing in a coordinate. Reuse is compared as a
- *   string here, so that domain guarantee is what makes the comparison a proof
- *   rather than an approximation.
+ *  JSON serialization, in which `NaN` and `null` both read as `null`; the codec
+ *  rejects non-finite authored numbers, so two documents that can be opened
+ *  never share a key while differing in a coordinate. Reuse is compared as a
+ *  string here, so that domain guarantee is what makes the comparison a proof
+ *  rather than an approximation.
  */
 function wallKey(wall: CompiledPhysicalWall, endKeys: ReadonlyMap<string, string>): string {
 	return `${wall.cacheKey}\u0000${endKeys.get(wall.wallId) ?? ''}`;

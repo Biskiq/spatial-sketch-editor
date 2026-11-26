@@ -1,5 +1,5 @@
 /**
- * Strict validation for the F.1 `references-v1` shapes (AM-1).
+ * Strict validation for the F.1 `references-v1` shapes.
  *
  * A reference is a cross-domain format, so the reader is strict: unknown keys,
  * empty identities, non-finite numbers and unsupported versions are rejected

@@ -5,13 +5,13 @@
  * the Wall representation, rather than mounted as a Svelte component pair:
  *
  * - one `Mesh` per compiled object, keyed by the object's own `cacheKey` (which
- *   names its kind, dimensions, position, rotation, Room and read-only flag), so
- *   an unchanged object keeps its object, buffers and material;
+ *  names its kind, dimensions, position, rotation, Room and read-only flag), so
+ *  an unchanged object keeps its object, buffers and material;
  * - a changed object is rebuilt and swapped in place, in compiled order;
  * - an object that left the document is released in the same update;
  * - its one surface material is acquired from the Canvas's `MaterialStore`, so a
- *   compile constructs no material and a second representation drawing the same
- *   look shares the instance.
+ *  compile constructs no material and a second representation drawing the same
+ *  look shares the instance.
  *
  * Every shape is a shared unit geometry from the Canvas `GeometryStore` scaled
  * to the compiled dimensions (see `geometrySpecFor`).
@@ -73,8 +73,8 @@ export type ObjectRepresentation = {
  * Attach `object` to `parent` at `index`.
  *
  * three has no ordered insert, and assigning `parent.children[index]` directly
- * leaves `object.parent` unset — which silently disables `removeFromParent()` and
- * leaks the mesh. `add()` first (it sets the parent and dispatches the event),
+ * leaves `object.parent` unset — which silently disables `removeFromParent` and
+ * leaks the mesh. `add` first (it sets the parent and dispatches the event),
  * then move the child to the slot it belongs in.
  */
 function attachAt(parent: Group, object: Object3D, index: number): void {

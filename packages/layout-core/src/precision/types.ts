@@ -292,12 +292,12 @@ export type WallFirstArchitectureCandidatePair = readonly [string, string];
  *
  * - `junctionIds` — the Junctions whose point the patch overrides, document order;
  * - `wallIds` — every Wall whose derived inputs can change: the Walls whose centreline
- *   the patch overrides, plus every Wall incident to a moved Junction. These are also
- *   the zero-length and self-intersection candidates;
+ *  the patch overrides, plus every Wall incident to a moved Junction. These are also
+ *  the zero-length and self-intersection candidates;
  * - `wallPairs` — the same-component Wall pairs with at least one affected member, in
- *   the canonical gate's own order;
+ *  the canonical gate's own order;
  * - `junctionPairs` — the same-component Junction pairs with at least one moved member,
- *   in the canonical gate's own order.
+ *  in the canonical gate's own order.
  *
  * WHAT IS NOT HERE, and why that is sound: a pair with neither member
  * affected has both endpoints on Junctions the patch does not touch and both centreline

@@ -376,7 +376,7 @@ function matchesMimeMagic(bytes: Uint8Array, mime: string): boolean {
  * cache namespace) by public ID + version, so Back/Forward and repeat
  * visits never retain another project's state. Throws without leaking
  * object URLs — `composeColdReleaseBundle` revokes partial URLs on failure
- * and the caller owns `bundle.dispose()` afterwards.
+ * and the caller owns `bundle.dispose` afterwards.
  */
 export async function loadPublicReleaseBundle(input: {
 	publicationId: string;

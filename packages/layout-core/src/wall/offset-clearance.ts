@@ -7,9 +7,9 @@
  * and neither is visible from the centerline:
  *
  * - `fold` — a bend tighter than half the thickness makes an offset polyline
- *   cross itself, so the front or back face turns inside out;
+ *  cross itself, so the front or back face turns inside out;
  * - `neck` — the Wall passes closer than its own thickness to itself, so the
- *   two offset regions overlap.
+ *  two offset regions overlap.
  *
  * If this rule lived only inside the renderer mesh builders, a curved Wall
  * could pass commit validation and then produce a broken solid with no

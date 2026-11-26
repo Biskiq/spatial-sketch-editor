@@ -10,16 +10,16 @@
  * ## What the graph owns
  *
  * - **UV affine.** Three's `setUvTransform` semantics with pivot (½, ½): centre,
- *   rotate by −rotation, scale each axis by its positive repeat, then offset.
- *   The transform feeds the sample only; the uploaded bitmap never moves, so a
- *   rotated map costs no second texture.
+ *  rotate by −rotation, scale each axis by its positive repeat, then offset.
+ *  The transform feeds the sample only; the uploaded bitmap never moves, so a
+ *  rotated map costs no second texture.
  * - **One origin conversion.** Uploads are top-first. A `legacy` plan entry
- *   reads row `1−v` at the sample boundary; a `gltf` entry reads row `v`.
+ *  reads row `1−v` at the sample boundary; a `gltf` entry reads row `v`.
  * - **Channel conversion.** A scalar role selects one component and optionally
- *   inverts it; a normal role unpacks `[0,1]` to `[−1,1]`, applies exactly one
- *   Y sign and the normal strength, then builds a view-space frame.
+ *  inverts it; a normal role unpacks `[0,1]` to `[−1,1]`, applies exactly one
+ *  Y sign and the normal strength, then builds a view-space frame.
  * - **ORM sharing.** Three roles that name the same view and transform build
- *   three sample expressions over one uploaded bitmap.
+ *  three sample expressions over one uploaded bitmap.
  *
  * The stock `map`/`roughnessMap`/... inputs stay empty: setting either would
  * multiply or decode a second time. `colorNode`, `roughnessNode`,

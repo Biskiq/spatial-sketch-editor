@@ -61,7 +61,7 @@ export function createEditorCameraFramingBasis(
  * Shared orientation basis. The nub (mesh, +Z
  * forward), the framing rectangle/handles (derived from the same basis
  * above), and the preview camera (camera, −Z forward) all orient from one
- * supported basis — never independent `lookAt()` calls, whose default-Y-up
+ * supported basis — never independent `lookAt` calls, whose default-Y-up
  * colinear handling disagrees with the Z-up fallback near vertical by ~90°.
  * Coincident eye/target keeps the existing orientation (no throw on a live
  * per-frame pose path).
@@ -298,7 +298,7 @@ export function createEditorCameraFovDragBasis(args: {
 /**
  * Evaluate one FOV-drag move against a frozen basis. Ray-plane branch keeps
  * the TRUE grab offset (`h₀ + sign·dot(p−p₀)`, signed handle identity — no
- * `abs()`, so crossing the center clamps at min instead of inverting);
+ * `abs`, so crossing the center clamps at min instead of inverting);
  * invalid intersections hold the last valid FOV without switching solvers.
  *
  * Per-move grazing recheck. `movementRayDirection`

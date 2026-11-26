@@ -169,7 +169,7 @@ describe('spatial route composition boundary (X1)', () => {
 		expect(stripComments(fs.readFileSync(path.join(EDITOR_SRC, 'lib/authoring/stage/route/stage-selection-presentation.svelte.ts'), 'utf8'))).toContain('createStageSelectionView()');
 		expect(stripComments(fs.readFileSync(path.join(EDITOR_SRC, 'lib/authoring/stage/route/stage-contribution-views.svelte.ts'), 'utf8'))).toContain('stageDockView({');
 		expect(stripComments(fs.readFileSync(path.join(EDITOR_SRC, 'lib/authoring/stage/route/stage-contribution-views.svelte.ts'), 'utf8'))).toContain('stageFindView({');
-		expect(stripComments(fs.readFileSync(CORE_REGIONS, 'utf8'))).toContain('get hostTools() { return shell.hostToolOverlay; }');
+		expect(stripComments(fs.readFileSync(CORE_REGIONS, 'utf8'))).toMatch(/get hostTools\(\) \{\s*return shell\.hostToolOverlay;\s*\}/);
 		for (const region of ['StageProjectNotices', 'StageViewportRegion', 'StagePanels', 'StageToolbars']) {
 			expect(markup.match(new RegExp(`<${region}\\b`, 'g')) ?? [], region).toHaveLength(1);
 		}

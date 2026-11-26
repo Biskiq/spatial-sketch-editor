@@ -212,7 +212,7 @@ export function isStageDrag(
  *
  * It is conditioned on the Slice **tool** being armed, never on a reading existing: a
  * cut is a reading, and the creator returns to Select and keeps editing everything
- * below it. Gating this on `sliceReading.isActive()` blocked every Stage selection and
+ * below it. Gating this on `sliceReading.isActive` blocked every Stage selection and
  * drag for as long as the cut was on.
  */
 export const SLICE_PRESS_REFUSAL = 'Drag the Height Sheet to move the cut.';
@@ -233,11 +233,11 @@ export type StagePressOwnership = 'owned' | 'refused';
  * the pointer-up handler silently defeats this whole rule: every drag would select
  * whatever sits under the release point.
  *
- * The three endings are therefore distinct. `end()` is a normal release: the gesture
- * is over, a click may still arrive, and that click is judged by distance. `abort()` is
+ * The three endings are therefore distinct. `end` is a normal release: the gesture
+ * is over, a click may still arrive, and that click is judged by distance. `abort` is
  * an interruption (pointer cancel, capture lost while the pointer is down, Escape, a
  * policy cancel): the gesture is over and the click that may still be dispatched must
- * not select. `decide()` consumes the press, so one press can authorize at most one
+ * not select. `decide` consumes the press, so one press can authorize at most one
  * selection.
  *
  * Ownership matters as much as ordering: every transition names the pointer it belongs

@@ -8,15 +8,15 @@
  * entity and be admitted. This guard is T2's record-level complement:
  *
  * - the entity id sequence is exactly "before, minus removals, plus captured
- *   creations" — no reordering, no renaming, no uncaptured id;
+ *  creations" — no reordering, no renaming, no uncaptured id;
  * - an operation may only change the values it owns on its targeted entity
- *   (move owns `position`, yaw owns `rotation[1]` alone, per-axis sizing owns
- *   `form.scale` and `position[1]`, …) — everything else compares exactly, down
- *   to the components a vector grant does not name and the parent fields a
- *   dotted grant does not own;
+ *  (move owns `position`, yaw owns `rotation[1]` alone, per-axis sizing owns
+ *  `form.scale` and `position[1]`, …) — everything else compares exactly, down
+ *  to the components a vector grant does not name and the parent fields a
+ *  dotted grant does not own;
  * - a created entity is new, appended and unclustered;
  * - cluster membership may only lose removed ids, and only a cluster that falls
- *   below the codec's two-member minimum may disappear. No cluster is created.
+ *  below the codec's two-member minimum may disappear. No cluster is created.
  *
  * Every T2 planner returns through `finalizeSceneCandidate`, so the guard runs
  * once, before F.4 admission, on the same candidate the adapter will validate.

@@ -1,10 +1,10 @@
 {
 	"id": "23-stage-pick-distance",
 	"area": "selection",
-	"citation": "section 7 rule 3 — independent oracles stay",
+	"citation": "section 7 rule 3 \u2014 independent oracles stay",
 	"title": "Stage pick returns the worst-ranked candidate instead of the best",
 	"file": "apps/editor/src/lib/authoring/stage/stage-pick.ts",
 	"find": "return tied[0] ?? null;",
 	"replace": "return tied[tied.length - 1] ?? null;",
-	"tests": ["tests/lib/authoring/stage-pick.test.ts"]
+	"tests": ["tests/lib/authoring/stage/stage-pick.test.ts"]
 }

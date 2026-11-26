@@ -512,7 +512,7 @@
 		border: 1px dashed var(--shell-hairline);
 		border-radius: 0.25rem;
 	}
-	/* tokens.css .card .ch: ‹ back 24 × 32, 32 px tile, the name at 15 / 650. */
+	/* tokens.css.card.ch: ‹ back 24 × 32, 32 px tile, the name at 15 / 650. */
 	.head {
 		display: flex;
 		align-items: flex-start;

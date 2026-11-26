@@ -388,8 +388,8 @@ function nearestWallHit(
  *
  * The verdict reorders exactly two things, both required by §6:
  * - a curve control whose owner is the selected Wall outranks a co-located
- *   Junction/endpoint ("a curve point owned by the selected Wall beats an
- *   unrelated co-located Opening or Junction"), and
+ *  Junction/endpoint ("a curve point owned by the selected Wall beats an
+ *  unrelated co-located Opening or Junction"), and
  * - a Junction verdict keeps the default order, i.e. the endpoint still wins.
  */
 export function resolvePlanHit(

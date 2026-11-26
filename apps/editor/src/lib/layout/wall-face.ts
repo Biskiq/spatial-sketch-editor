@@ -10,11 +10,11 @@
  * Two sources, one rule:
  *
  * - a **folded Wall** is faced at the station nearest the view centre, on the
- *   side the creator is already looking at (the Plan reading has no eye, so it
- *   faces the Wall's left/Room face);
+ *  side the creator is already looking at (the Plan reading has no eye, so it
+ *  faces the Wall's left/Room face);
  * - an **unrolled sheet** is faced as the sheet is displayed right now — its
- *   displayed positions at the current peel amount and side angle, and the
- *   displayed face normal at the pin.
+ *  displayed positions at the current peel amount and side angle, and the
+ *  displayed face normal at the pin.
  *
  * Bounds are the subject's whole extent as a **face footprint**: the axis-aligned
  * extent moved so the side facing the eye lies on the target plane. That keeps a

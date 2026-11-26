@@ -86,22 +86,22 @@ export function correspondenceAuthorization(options: {
  * THE CONTRACT (D-12 — a POSITIVE identity match or nothing):
  *
  * 1. BOTH sides resolve -> the component labels must MATCH. This is the rule that
- *    keeps two coincident or contained graph-independent Rooms apart.
+ *  keeps two coincident or contained graph-independent Rooms apart.
  * 2. NEITHER side resolves -> geometry is the only evidence that exists, so it
- *    decides. This is a DEFENSIVE branch, not a path a shipped planner travels:
- *    a candidate face extracted from the candidate Wall graph always resolves
- *    (see `correspondenceAuthorization`), so "neither side" requires faces that do
- *    not belong to the candidate document. The predicate stays total rather than
- *    silently reversing for that malformed input.
+ *  decides. This is a DEFENSIVE branch, not a path a shipped planner travels:
+ *  a candidate face extracted from the candidate Wall graph always resolves
+ *  (see `correspondenceAuthorization`), so "neither side" requires faces that do
+ *  not belong to the candidate document. The predicate stays total rather than
+ *  silently reversing for that malformed input.
  * 3. EXACTLY ONE side resolves -> DENIED. No match can be established, and
- *    geometry alone must never union an attributed structure with an
- *    unattributed one: without this, a Room that lost its own boundary identity
- *    could be handed an unrelated overlapping Room's face — and, symmetrically,
- *    a surviving Room could claim an identity-less structure that is not its
- *    successor merely because the two overlap. This is the branch a Room whose
- *    whole boundary disappeared actually takes (`planRemoveRoom`), and the
- *    documented outcome there is retirement of that Room (its enclosure is gone),
- *    never a merge into the unrelated Room it happened to overlap.
+ *  geometry alone must never union an attributed structure with an
+ *  unattributed one: without this, a Room that lost its own boundary identity
+ *  could be handed an unrelated overlapping Room's face — and, symmetrically,
+ *  a surviving Room could claim an identity-less structure that is not its
+ *  successor merely because the two overlap. This is the branch a Room whose
+ *  whole boundary disappeared actually takes (`planRemoveRoom`), and the
+ *  documented outcome there is retirement of that Room (its enclosure is gone),
+ *  never a merge into the unrelated Room it happened to overlap.
  */
 function unionAuthorized(
 	authorization: CorrespondenceAuthorization,
@@ -122,16 +122,16 @@ function unionAuthorized(
  * each impossibility is proved by the exact predicate it removes:
  *
  * ```text
- * inside impossible   `pointStrictlyInsidePolygon` is a plain even-odd cast, so a
- *                     point outside the face's INFLATED box can never be counted
- *                     inside it (every crossing it counts needs an edge to the
- *                     point's right and to the point's vertical side);
- * overlap impossible  `polygonsShareInteriorArea` returns true only through a
- *                     probe, an ear-triangle interior point, or a proper edge
- *                     crossing — and every one of those is a point inside BOTH
- *                     polygons' closed boxes (the probes are points OF one
- *                     polygon). Two boxes farther apart than the slack therefore
- *                     admit no shared point at all.
+ * inside impossible `pointStrictlyInsidePolygon` is a plain even-odd cast, so a
+ *  point outside the face's INFLATED box can never be counted
+ *  inside it (every crossing it counts needs an edge to the
+ *  point's right and to the point's vertical side);
+ * overlap impossible `polygonsShareInteriorArea` returns true only through a
+ *  probe, an ear-triangle interior point, or a proper edge
+ *  crossing — and every one of those is a point inside BOTH
+ *  polygons' closed boxes (the probes are points OF one
+ *  polygon). Two boxes farther apart than the slack therefore
+ *  admit no shared point at all.
  * ```
  *
  * `ON_RING_TOLERANCE` is the predicates' own slack (one owner, imported — never a

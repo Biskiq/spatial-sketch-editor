@@ -6,16 +6,16 @@
  * representations, rather than mounted per Room through Svelte:
  *
  * - **Retained by the Room's own `cacheKey`.** A Room whose key did not move
- *   keeps its group, its geometries, its transforms and its meshes.
+ *  keeps its group, its geometries, its transforms and its meshes.
  * - **One or two geometries per Room.** One floor triangulation, shared by the
- *   floor and the floor-shadow mesh; a closed Room adds one ceiling
- *   triangulation, while `open-to-sky` has no lid mesh to build.
+ *  floor and the floor-shadow mesh; a closed Room adds one ceiling
+ *  triangulation, while `open-to-sky` has no lid mesh to build.
  * - **Three materials for every Room.** Acquired once from the Canvas's
- *   `MaterialStore`: the unlit ground-coloured floor, the shadow catcher and the
- *   dark plaster ceiling. Equal descriptors share one instance, so 196 Rooms draw
- *   three materials, not 588.
+ *  `MaterialStore`: the unlit ground-coloured floor, the shadow catcher and the
+ *  dark plaster ceiling. Equal descriptors share one instance, so 196 Rooms draw
+ *  three materials, not 588.
  * - **Released in the same update.** A Room that left the document, and every
- *   superseded buffer, is disposed there; the material leases go back at the end.
+ *  superseded buffer, is disposed there; the material leases go back at the end.
  *
  * Deliberately unchanged: the world placement of each surface (floor
  * `-π/2` at `floorElevation`, ceiling `+π/2` at `ceilingElevation`), the
@@ -253,8 +253,8 @@ export function createRoomRepresentation(
 	 * Attach `group` at `index`.
 	 *
 	 * three has no ordered insert, and assigning `parent.children[index]` directly
-	 * leaves `group.parent` unset — which silently disables `removeFromParent()` and
-	 * leaks the subtree. `add()` first, then move the child to its slot.
+	 * leaves `group.parent` unset — which silently disables `removeFromParent` and
+	 * leaks the subtree. `add` first, then move the child to its slot.
 	 */
 	function attachAt(parent: Group, group: Group, index: number): void {
 		parent.add(group);

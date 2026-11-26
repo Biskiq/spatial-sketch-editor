@@ -445,7 +445,7 @@ export function createCurveGestureSession({
 	}
 
 	/**
-	 * The Bend sub-machine, driven through the same `pointer()` entry as
+	 * The Bend sub-machine, driven through the same `pointer` entry as
 	 * every other captured gesture. A press on the body captures one station
 	 * and one knot id; a move previews through the retained planner; the up
 	 * commits exactly once. The rigid move mark never enters this path.

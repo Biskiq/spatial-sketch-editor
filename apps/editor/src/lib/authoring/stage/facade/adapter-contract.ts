@@ -457,7 +457,7 @@ export type StageCardNameWriterRecord = StageCardNameTarget & { readonly adapter
  * One action the Card offers for the selected subject.
  *
  * The adapter owns the writer: the Card renders the label and its disclosed
- * consequence, calls `run()`, and shows the returned words. The host never builds
+ * consequence, calls `run`, and shows the returned words. The host never builds
  * the intent, and the action never reaches the source directly.
  */
 export type StageCardActionOutcome = {

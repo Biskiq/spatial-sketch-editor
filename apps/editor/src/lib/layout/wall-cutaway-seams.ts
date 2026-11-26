@@ -12,12 +12,12 @@
  * builder and never from the drawn meshes:
  *
  * 1. **Interfaces.** Each `U.join.interfaces` entry whose `wallId` is the cut leg
- *    names the region of `U`'s own face the cut leg rested on. The face's plan
- *    line is `U`'s centreline at `[fromDistance, toDistance]` offset by half its
- *    thickness along the entry's own outward normal, over the entry's bands.
+ *  names the region of `U`'s own face the cut leg rested on. The face's plan
+ *  line is `U`'s centreline at `[fromDistance, toDistance]` offset by half its
+ *  thickness along the entry's own outward normal, over the entry's bands.
  * 2. **Shared boundary edges.** Where the two legs' end-region boundaries
- *    (`endBoundary`, `ownedSeam.polygon`, `keel.regions`) coincide — a mitered L,
- *    a tangent continuation, a keel partition — the overlap is the exposure.
+ *  (`endBoundary`, `ownedSeam.polygon`, `keel.regions`) coincide — a mitered L,
+ *  a tangent continuation, a keel partition — the overlap is the exposure.
  *
  * Two cut legs never get a seam and two uncut legs never get one. Each quad is
  * wound **outward from the cut Wall's remaining material**, which is what lets the

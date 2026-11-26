@@ -7,7 +7,7 @@
  * ordinary arithmetic freely.
  *
  * - **Box** and **Round** read the rectangle two corners span, or a standard size
- *   around one point. A click and a drag therefore make the same kind of object.
+ *  around one point. A click and a drag therefore make the same kind of object.
  * - **Free** keeps clicked corners sharp and drawn runs smooth.
  *
  * Winding is canonicalized before validation because a clockwise drawing is a

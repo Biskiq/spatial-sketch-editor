@@ -10,13 +10,13 @@
  * Two lifetimes, kept apart:
  *
  * - **Adapter-lifetime defaults** — the next Opening's kind, profile and size —
- *   live in the shared `InkMemory` the binding is handed, so an accepted write's
- *   rebind does not forget them.
+ *  live in the shared `InkMemory` the binding is handed, so an accepted write's
+ *  rebind does not forget them.
  * - **Captured gesture state** — the identity capture, the candidate, its preview,
- *   the notice, the press lease, the in-flight guard and the remembered host —
- *   is created here per binding and released by `clear()`, the binding's task
- *   close and its disposal. A press lease is released on every exit path (up,
- *   cancel, reading flip, task close, dispose).
+ *  the notice, the press lease, the in-flight guard and the remembered host —
+ *  is created here per binding and released by `clear`, the binding's task
+ *  close and its disposal. A press lease is released on every exit path (up,
+ *  cancel, reading flip, task close, dispose).
  *
  * Preview and acceptance share one minted capture, so the id the ghost implies is
  * the id acceptance writes; a refused acceptance keeps it for the retry and a

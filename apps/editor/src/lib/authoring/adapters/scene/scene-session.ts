@@ -6,26 +6,26 @@
  * Stage's one gesture lease:
  *
  * - **Arming is session state only.** No document, history or view changes when
- *   Place/Move/Yaw is armed; Place stays armed after a success until Select or
- *   Esc disarms it.
+ *  Place/Move/Yaw is armed; Place stays armed after a success until Select or
+ *  Esc disarms it.
  * - **The displayed candidate is the committed candidate.** Preview and commit
- *   call the **same** pure planner with the same captured inputs; the last
- *   displayed pose is what the intent carries, so there is no post-preview Y
- *   correction.
+ *  call the **same** pure planner with the same captured inputs; the last
+ *  displayed pose is what the intent carries, so there is no post-preview Y
+ *  correction.
  * - **Snap is the shared Stage fact.** The session applies the increment its
- *   adapter supplies from `StageAdapterContext.drafting()`; it owns no switch
- *   and no default. The step is applied to the captured candidate and reported
- *   in feedback. It never becomes a hidden commit-time correction.
+ *  adapter supplies from `StageAdapterContext.drafting`; it owns no switch
+ *  and no default. The step is applied to the captured candidate and reported
+ *  in feedback. It never becomes a hidden commit-time correction.
  * - **One cancel path.** The lease policy is `cancel-on-reading-change`; Esc,
- *   blur, capture loss, replacement and adapter unmount all use `cancel()`,
- *   which restores the accepted baseline and releases the lease exactly once.
+ *  blur, capture loss, replacement and adapter unmount all use `cancel`,
+ *  which restores the accepted baseline and releases the lease exactly once.
  * - **Scene mutates Scene only.** Support is resolved by the retained planner
- *   from compiled Layout; this session never writes Layout.
+ *  from compiled Layout; this session never writes Layout.
  * - **Compose adds no second writer.** Resize, duplicate and delete all build the
- *   same F.4 intent shape the move/yaw paths use, and each previews through the
- *   same retained planner that commit calls. Resize resolves its contact on the
- *   entity's own accepted X/Z inside the planner, so the shown Y and the
- *   installed Y cannot disagree.
+ *  same F.4 intent shape the move/yaw paths use, and each previews through the
+ *  same retained planner that commit calls. Resize resolves its contact on the
+ *  entity's own accepted X/Z inside the planner, so the shown Y and the
+ *  installed Y cannot disagree.
  */
 
 /**
@@ -36,26 +36,26 @@
  * Stage's one gesture lease:
  *
  * - **Arming is session state only.** No document, history or view changes when
- *   Place/Move/Yaw is armed; Place stays armed after a success until Select or
- *   Esc disarms it.
+ *  Place/Move/Yaw is armed; Place stays armed after a success until Select or
+ *  Esc disarms it.
  * - **The displayed candidate is the committed candidate.** Preview and commit
- *   call the **same** pure planner with the same captured inputs; the last
- *   displayed pose is what the intent carries, so there is no post-preview Y
- *   correction.
+ *  call the **same** pure planner with the same captured inputs; the last
+ *  displayed pose is what the intent carries, so there is no post-preview Y
+ *  correction.
  * - **Snap is the shared Stage fact.** The session applies the increment its
- *   adapter supplies from `StageAdapterContext.drafting()`; it owns no switch
- *   and no default. The step is applied to the captured candidate and reported
- *   in feedback. It never becomes a hidden commit-time correction.
+ *  adapter supplies from `StageAdapterContext.drafting`; it owns no switch
+ *  and no default. The step is applied to the captured candidate and reported
+ *  in feedback. It never becomes a hidden commit-time correction.
  * - **One cancel path.** The lease policy is `cancel-on-reading-change`; Esc,
- *   blur, capture loss, replacement and adapter unmount all use `cancel()`,
- *   which restores the accepted baseline and releases the lease exactly once.
+ *  blur, capture loss, replacement and adapter unmount all use `cancel`,
+ *  which restores the accepted baseline and releases the lease exactly once.
  * - **Scene mutates Scene only.** Support is resolved by the retained planner
- *   from compiled Layout; this session never writes Layout.
+ *  from compiled Layout; this session never writes Layout.
  * - **Compose adds no second writer.** Resize, duplicate and delete all build the
- *   same F.4 intent shape the move/yaw paths use, and each previews through the
- *   same retained planner that commit calls. Resize resolves its contact on the
- *   entity's own accepted X/Z inside the planner, so the shown Y and the
- *   installed Y cannot disagree.
+ *  same F.4 intent shape the move/yaw paths use, and each previews through the
+ *  same retained planner that commit calls. Resize resolves its contact on the
+ *  entity's own accepted X/Z inside the planner, so the shown Y and the
+ *  installed Y cannot disagree.
  */
 
 import {

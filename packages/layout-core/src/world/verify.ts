@@ -297,7 +297,7 @@ export function verifySweptBoundsGeometryDelta(options: {
 	}
 
 	// 6. Planar Combinatorial Map invariance (cyclic star order at 1-hop junctions)
-	//    + Green's-theorem boundary-chain differential on affected closed walks.
+	//  + Green's-theorem boundary-chain differential on affected closed walks.
 	const starCheckJunctionIds = new Set<string>();
 	for (const jId of changedJunctionIds) {
 		if (worldIndex.starOrderByJunctionId.has(jId)) starCheckJunctionIds.add(jId);

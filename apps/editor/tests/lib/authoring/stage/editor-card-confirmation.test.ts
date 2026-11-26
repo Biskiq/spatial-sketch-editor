@@ -22,7 +22,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { flushSync, mount, tick, unmount } from 'svelte';
 import EditorCard from '$lib/authoring/stage/shell/EditorCard.svelte';
 import type { StageCardActionRecord } from '$lib/authoring/stage/stage-facade';
-import { reactiveCell } from '../__fixtures__/reactive-cell.svelte.ts';
+import { reactiveCell } from '../__fixtures__/reactive-cell.svelte';
 
 let cleanup: (() => void) | undefined;
 afterEach(() => {

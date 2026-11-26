@@ -1,5 +1,5 @@
 /**
- * `AuthoringIntent@1` validation and scope classification (AM-4).
+ * `AuthoringIntent@1` validation and scope classification.
  *
  * A cross-domain intent is a persisted/recorded format, so it is read strictly:
  * unknown keys, non-finite numbers, empty identities, unsupported versions and
@@ -7,11 +7,11 @@
  * and a code. Two jobs:
  *
  * 1. **Strict shape** — `validateAuthoringIntent`, the single reader for the
- *    intent grammar (`apps/editor/tests/README.md` rule 7: one parser per
- *    grammar; the F.1 reference reader is reused for each target).
+ *  intent grammar (`apps/editor/tests/README.md` rule 7: one parser per
+ *  grammar; the F.1 reference reader is reused for each target).
  * 2. **Scope classification** — which domains and typed-resource kinds an intent
- *    addresses, so the coordinator can refuse compound, resource and new-unit
- *    requests *before* any planner runs.
+ *  addresses, so the coordinator can refuse compound, resource and new-unit
+ *  requests *before* any planner runs.
  *
  * Runtime-safe: no editor, renderer, Svelte or Three import.
  */

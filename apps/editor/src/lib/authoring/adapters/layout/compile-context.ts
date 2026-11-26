@@ -9,16 +9,16 @@
  * It is the only module in the Layout adapter that reaches the compiler:
  *
  * - `plan` binds this project's incremental session for one synchronous planner
- *   step, seeded from the accepted baseline, so the precision planners' candidate
- *   compiles reuse every unchanged entity;
+ *  step, seeded from the accepted baseline, so the precision planners' candidate
+ *  compiles reuse every unchanged entity;
  * - `compiled` is the canonical session-less read (the record of a frozen
- *   document, or one compile) used by candidate presentation; a planner step's
- *   own last compile is handed over once for that exact document object, and the
- *   context keeps one identity-keyed entry of the last document it compiled, so a
- *   new Plan evaluation of an unchanged candidate (a bounded-span pan) reads that
- *   geometry instead of compiling it again. That entry is released when the task
- *   ends or its binding is disposed, so a gesture's whole-candidate compile is
- *   never retained for the rest of the project.
+ *  document, or one compile) used by candidate presentation; a planner step's
+ *  own last compile is handed over once for that exact document object, and the
+ *  context keeps one identity-keyed entry of the last document it compiled, so a
+ *  new Plan evaluation of an unchanged candidate (a bounded-span pan) reads that
+ *  geometry instead of compiling it again. That entry is released when the task
+ *  ends or its binding is disposed, so a gesture's whole-candidate compile is
+ *  never retained for the rest of the project.
  *
  * It is a cache, never decision state: a cold run of either is equal by the
  * session's construction proof. After `dispose`, `plan` runs its body with no

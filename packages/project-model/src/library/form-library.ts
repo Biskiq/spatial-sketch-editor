@@ -4,7 +4,7 @@
  * My Objects stores one native form's authored source, never a generated mesh.
  * The payload is the typed-resource content for the `form` kind:
  *
- *   { formatVersion: 1, kind: 'form', name, form, materialId, castShadow, receiveShadow }
+ *  { formatVersion: 1, kind: 'form', name, form, materialId, castShadow, receiveShadow }
  *
  * `form` is the Scene form source exactly as the Scene format 4 codec defines
  * it. The reader is strict (unknown keys, other formats and an unevaluable body

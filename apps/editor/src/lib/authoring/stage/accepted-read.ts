@@ -53,7 +53,7 @@ export type StageDomainRead = {
 
 /**
  * `StageReadSnapshot` — the source-independent validated read facade the Stage
- * mounts. Field names follow AM-4's `AcceptedSnapshot@1` (accepted revision,
+ * mounts. Field names follow the `AcceptedSnapshot@1` (accepted revision,
  * source-content identity, admitted source kind/version, domain read access), so
  * F4's accepted snapshot and this facade share one vocabulary.
  */

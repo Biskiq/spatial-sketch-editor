@@ -15,7 +15,7 @@
  * depends on it staying untouched. Revision authority is
  * `AcceptedSnapshot.acceptedRevision`, so this persistence boundary stamps that
  * revision onto the envelope before serializing. The envelope source digest
- * excludes the field (AM-2), so two captures of identical authored content under
+ * excludes the field, so two captures of identical authored content under
  * different revisions share one content identity — while the saved bytes name
  * the revision they were saved under. `readUnitEnvelopeForSave` and the server
  * handler still require the captured bytes to carry the captured revision, so a

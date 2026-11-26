@@ -8,28 +8,28 @@
  * here is exact:
  *
  * - {@link subdivideWallCubicSpan} is de Casteljau — the two halves together
- *   are the original cubic, point for point;
+ *  are the original cubic, point for point;
  * - {@link resolveWallCurveSplit} is the ONE split-distance authority: it
- *   converts a physical arc distance into a span index, a parameter, a point,
- *   a resolved distance and the two fragment partitions. Junction placement,
- *   Opening rebasing, fragment metrics and diagnostics all consume that one
- *   result and never recompute a distance, a parameter or a range;
+ *  converts a physical arc distance into a span index, a parameter, a point,
+ *  a resolved distance and the two fragment partitions. Junction placement,
+ *  Opening rebasing, fragment metrics and diagnostics all consume that one
+ *  result and never recompute a distance, a parameter or a range;
  * - {@link insertWallCurveKnot} is that same subdivision with the seam kept as
- *   an interior knot, so inserting a knot without moving it cannot change the
- *   sampled centerline;
+ *  an interior knot, so inserting a knot without moving it cannot change the
+ *  sampled centerline;
  * - {@link deleteWallCurveKnot} merges the two adjacent cubics with no refit
- *   and never falls back to `line`.
+ *  and never falls back to `line`.
  *
  * Two tolerances are explicit and deliberately separate:
  *
  * - {@link CURVE_ARC_LENGTH_TOLERANCE} bounds how faithfully a distance maps to
- *   a parameter (quadrature and bisection only — subdivision stays exact);
+ *  a parameter (quadrature and bisection only — subdivision stays exact);
  * - {@link JUNCTION_COINCIDENCE_EPSILON} is the canonical **knot-identity**
- *   tolerance: a request resolving onto an existing knot promotes it instead of
- *   subdividing, and a request resolving onto an endpoint Junction rejects.
- *   A caller that already knows it hit a knot (a knot handle, a wall-split at a
- *   knot) uses {@link resolveWallCurveSplitAtKnot}, which needs no tolerance at
- *   all.
+ *  tolerance: a request resolving onto an existing knot promotes it instead of
+ *  subdividing, and a request resolving onto an endpoint Junction rejects.
+ *  A caller that already knows it hit a knot (a knot handle, a wall-split at a
+ *  knot) uses {@link resolveWallCurveSplitAtKnot}, which needs no tolerance at
+ *  all.
  */
 import type { LayoutVec2 } from '../geometry/coordinates';
 import type { LayoutWallCubicSpan, LayoutWallCurveKnot } from './types';
@@ -277,7 +277,7 @@ export function resolveWallCurveSplit(
 		);
 	}
 	// A request exactly at either end names an existing endpoint rather than a
-	// distance error, so callers keep reporting the P23.8 endpoint code.
+	// distance error, so callers keep reporting the endpoint code.
 	if (distance === 0 || distance === totalLength) {
 		return reject(
 			'split_at_endpoint',
@@ -405,7 +405,7 @@ export type WallCurveEditRejection =
 
 /**
  * Move exactly one bend point, preserving every stored span the moved knot
- * does not semantically touch (P23.11 blocker 1).
+ * does not semantically touch (blocker 1).
  *
  * The stored chain — not a re-derivation from the remaining points — is the
  * geometry authority. The two controls that face the moved knot are derived

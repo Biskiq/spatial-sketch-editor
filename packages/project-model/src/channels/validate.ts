@@ -1,5 +1,5 @@
 /**
- * Strict validation for the F.3 `inspection-v1` shapes (AM-3).
+ * Strict validation for the F.3 `inspection-v1` shapes.
  *
  * Strictness here is the point: an address is read only through its named fields
  * (never a parsed delimiter string), a descriptor's declared value kind decides

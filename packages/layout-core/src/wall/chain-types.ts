@@ -13,7 +13,7 @@ import type { WallChainArc } from './chain-arcs';
  * Chain wall/junction defaults (same as the seed helpers).
  *
  * The Wall-birth height is not in this table: a new Wall's height comes
- * from `resolveWallBirthHeight()` (the named `WALL_AUTHORING_DEFAULT_HEIGHT` or a
+ * from `resolveWallBirthHeight` (the named `WALL_AUTHORING_DEFAULT_HEIGHT` or a
  * deterministic incident-Wall inheritance), so no runtime Wall-birth path may
  * carry a literal height. Thickness stays a fixed sketch default (it is not a
  * vertical quantity).

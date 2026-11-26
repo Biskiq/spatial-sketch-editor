@@ -1,7 +1,7 @@
 {
 	"id": "12-mesh-digest-multiplier",
 	"area": "geometry",
-	"citation": "section 7 rule 2 — goldens remain where bytes are the contract",
+	"citation": "section 7 rule 2 \u2014 goldens remain where bytes are the contract",
 	"title": "The canonical mesh digest mixes the wrong FNV multiplier",
 	"file": "packages/geometry-core/src/digest.ts",
 	"find": "hash = Math.imul(hash, 0x01000193) >>> 0;",

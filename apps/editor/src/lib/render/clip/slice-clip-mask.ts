@@ -18,7 +18,7 @@
  *
  * ## Why one node graph, not one per material
  *
- * The uniform objects are TSL `uniform()` nodes created once by the Canvas's clip
+ * The uniform objects are TSL `uniform` nodes created once by the Canvas's clip
  * owner. Every material holds the *same* node graph by reference, so entering,
  * dragging, flipping and leaving a Slice only writes uniform values. The material
  * pipeline never changes, and the program count stays flat.

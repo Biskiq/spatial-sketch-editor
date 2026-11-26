@@ -10,10 +10,10 @@
  * The evaluated ring is:
  *
  * - counter-clockwise in `(u, v)`, so the exact orientation at its
- *   lexicographically lowest point is positive;
+ *  lexicographically lowest point is positive;
  * - simple: no two non-adjacent segments touch or cross;
  * - triangulated by `earcut`, accepted only with `pointCount − 2` positively
- *   oriented triangles.
+ *  oriented triangles.
  *
  * Arithmetic is limited to `+ − × ÷`, `Math.sqrt`, comparisons, the admitted
  * `Math` rounding helpers and the exact predicate below. No trigonometric,

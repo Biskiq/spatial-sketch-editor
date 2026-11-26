@@ -2,12 +2,12 @@
 /**
  * One-command local Biskiq stack.
  *
- *   npm run dev:local        start PostgreSQL + SeaweedFS, migrate, initialize
- *                            the bucket, then run the API and Vite in the
- *                            foreground with hot reload
- *   npm run dev:local:stop   stop services and keep both data volumes
- *   npm run dev:local:reset  stop and delete both data volumes and local state
- *   npm run dev:local:status show container/process readiness
+ *  npm run dev:local start PostgreSQL + SeaweedFS, migrate, initialize
+ *  the bucket, then run the API and Vite in the
+ *  foreground with hot reload
+ *  npm run dev:local:stop stop services and keep both data volumes
+ *  npm run dev:local:reset stop and delete both data volumes and local state
+ *  npm run dev:local:status show container/process readiness
  *
  * The stack is per worktree: identity, ports, credentials and object namespace
  * live in `.local/dev-stack.json`, and Compose names/volumes carry the same

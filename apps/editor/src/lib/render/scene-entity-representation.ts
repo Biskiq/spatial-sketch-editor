@@ -6,16 +6,16 @@
  * representations share:
  *
  * - **One root, mounted once.** `object3d` is the subtree the shell mounts; it is
- *   never replaced.
+ *  never replaced.
  * - **Patched by item key.** `update` compares each item's content key and
- *   touches only what changed. An unchanged entity keeps its group, mesh, buffer,
- *   material and texture lease.
+ *  touches only what changed. An unchanged entity keeps its group, mesh, buffer,
+ *  material and texture lease.
  * - **Geometry and materials come from the stores.** The unit/Form buffer is a
- *   lease on the Canvas `GeometryStore`; the surface is a lease on the Canvas
- *   `MaterialStore`. Equal looks share one material, so 196 primitives with three
- *   looks hold three instances.
+ *  lease on the Canvas `GeometryStore`; the surface is a lease on the Canvas
+ *  `MaterialStore`. Equal looks share one material, so 196 primitives with three
+ *  looks hold three instances.
  * - **`objectOf` and `onRoot` replace a subtree search.** The host's pick source
- *   registers each item's root; selection reads the same object.
+ *  registers each item's root; selection reads the same object.
  *
  * Texture variants are loaded per look and bound to the shared material when they
  * arrive. A failed or partial load keeps the untextured surface. Releases are

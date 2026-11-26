@@ -48,19 +48,19 @@ import { createAuthoringRoomAllocator, validateAndCompile } from './birth';
  * atomically, Junction cleanup scoped to the deleted Wall's own
  * start/end Junctions — an endpoint is pruned only when no surviving Wall
  * references it, and pre-existing orphan Junctions elsewhere are untouched)
- * runs face extraction + P23.8 correspondence reconciliation + the final
+ * runs face extraction + correspondence reconciliation + the final
  * canonical gates, exactly like the chain engine. The
  * deterministic reconciliation result is accepted as-is — deletion is not
  * intrinsically a "merge Rooms" command:
  *
  * - shared boundary Wall between two Rooms whose deletion yields one valid
- *   enclosed face → the normal 2→1 merge path;
+ *  enclosed face → the normal 2→1 merge path;
  * - outer boundary Wall of an enclosed Room → the enclosure opens and the
- *   affected Room retires through normal reconciliation;
+ *  affected Room retires through normal reconciliation;
  * - roomless / partition Wall → clean removal with existing Room topology
- *   and identities unchanged.
+ *  and identities unchanged.
  *
- * Portal relations remap/clear per the existing P23.8 portal contract inside
+ * Portal relations remap/clear per the existing portal contract inside
  * reconciliation (one vanished endpoint beside a surviving one rejects
  * rather than guessing). Ambiguous or unsupported topology rejects atomically
  * with zero history. One plan = one history entry at the caller. Post-delete

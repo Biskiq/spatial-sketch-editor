@@ -1,45 +1,45 @@
 /**
- * F.3 — channel negotiation, reading and cleanup (AM-3).
+ * F.3 — channel negotiation, reading and cleanup.
  *
  * Negotiation is where the common contract decides contention:
  *
  * - an unadmitted **required** family is rejected; an unadmitted **optional**
- *   family is reported unavailable and may be ignored;
+ *  family is reported unavailable and may be ignored;
  * - a contribution whose descriptor does not match the family's declaration is
- *   refused, so a contributor cannot redefine a family's meaning, and a family's
- *   owning domain must agree with the address's owner domain;
+ *  refused, so a contributor cannot redefine a family's meaning, and a family's
+ *  owning domain must agree with the address's owner domain;
  * - an address must be one the family admits (its owner subject kind, frame kind
- *   and address qualification), and its owner reference — and an owner-qualified
- *   frame — must **resolve against the supplied snapshot's current content**, so a
- *   stale exact reference or an unresolved project-lock reference never enters as
- *   though it were current;
+ *  and address qualification), and its owner reference — and an owner-qualified
+ *  frame — must **resolve against the supplied snapshot's current content**, so a
+ *  stale exact reference or an unresolved project-lock reference never enters as
+ *  though it were current;
  * - the contention boundary is the **semantic property scope**
- *   (`ChannelPropertyScope`): the canonical owner the reference resolved to, the
- *   address's own qualification, its frame, its property and its scope instance.
- *   Distinct valid references to one subject therefore contend for one property,
- *   while distinct subjects, frames and scope instances never merge;
+ *  (`ChannelPropertyScope`): the canonical owner the reference resolved to, the
+ *  address's own qualification, its frame, its property and its scope instance.
+ *  Distinct valid references to one subject therefore contend for one property,
+ *  while distinct subjects, frames and scope instances never merge;
  * - competing exclusive contributions are rejected with the domain, address,
- *   the conflicting owners (their invocation identities) and an actionable
- *   reason, while the same invocation's deliberate replacement by a newer run is
- *   accepted;
+ *  the conflicting owners (their invocation identities) and an actionable
+ *  reason, while the same invocation's deliberate replacement by a newer run is
+ *  accepted;
  * - an `ordered-replacement` property accepts only a strictly newer accepted run
- *   epoch than any run that scope has accepted, so an older run cannot reclaim it;
+ *  epoch than any run that scope has accepted, so an older run cannot reclaim it;
  * - a `union` property holds **one contribution per invocation**, each ordered by
- *   its own run epoch; its value is the union read across current contributors, so
- *   one owner replaces or withdraws its own contribution without touching another's;
+ *  its own run epoch; its value is the union read across current contributors, so
+ *  one owner replaces or withdraws its own contribution without touching another's;
  * - a `camera-output` property is admitted only from the run holding the Camera
- *   output, so the ticket protocol stays the one Camera ownership authority;
+ *  output, so the ticket protocol stays the one Camera ownership authority;
  * - a contribution that can no longer prove it belongs to the context — the
- *   supplied snapshot's **content**, the active generation, or the live Camera
- *   output claim — is stale. One rule (`channelContributionStaleness`) decides it
- *   everywhere: an incoming stale contribution is refused, stale entries in the
- *   negotiated scope expire, reads never return them and `pruneChannelState`
- *   drops them. Content, not the acceptance token: an accepted revision is fresh
- *   on every source change *including Undo/Redo*, so a contribution computed from
- *   content the snapshot still holds is current. The other declared inputs
- *   (`parameters`, `frame`, `intent`, `clock`, `viewport-rect`, `source-extent`,
- *   `source-kind-filter`, `reveal-set`, `epoch`) are the owning evaluator's duty to
- *   re-evaluate, since `computedFrom` is the only provenance a contribution carries.
+ *  supplied snapshot's **content**, the active generation, or the live Camera
+ *  output claim — is stale. One rule (`channelContributionStaleness`) decides it
+ *  everywhere: an incoming stale contribution is refused, stale entries in the
+ *  negotiated scope expire, reads never return them and `pruneChannelState`
+ *  drops them. Content, not the acceptance token: an accepted revision is fresh
+ *  on every source change *including Undo/Redo*, so a contribution computed from
+ *  content the snapshot still holds is current. The other declared inputs
+ *  (`parameters`, `frame`, `intent`, `clock`, `viewport-rect`, `source-extent`,
+ *  `source-kind-filter`, `reveal-set`, `epoch`) are the owning evaluator's duty to
+ *  re-evaluate, since `computedFrom` is the only provenance a contribution carries.
  *
  * Run-epoch ordering outlives a contribution: a withdrawn or replaced run is
  * retired, so a stale completion can neither delete a newer contribution

@@ -248,7 +248,7 @@ export type StageFacade = {
 	adoptMetadata(next: StageReadSnapshot): ReturnType<StageSession['adoptMetadata']>;
 	plan(overrides?: PlanParameterOverrides): PlanEvaluationResult;
 	/**
-	 * A string that changes exactly when `plan()` would produce a different
+	 * A string that changes exactly when `plan` would produce a different
 	 * evaluation.
 	 *
 	 * A presenter caches on **this**, not on its own guess. The Plan's inputs are the

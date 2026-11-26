@@ -394,7 +394,7 @@ describe('the workspace reads committed geometry only', () => {
 		const views = readFileSync(resolve(EDITOR_ROOT, 'src/lib/authoring/stage/route/core-region-views.ts'), 'utf8');
 		expect(views).toMatch(/get contentBounds\(\)\s*\{\s*return input\.paperContentBounds\(\)\s*;/);
 		expect(route).toContain('paperContentBounds: () => contentBounds.paper');
-		expect(contentBounds).toContain('get paper() { return paperContentBounds; }');
+		expect(contentBounds).toMatch(/get paper\(\) \{\s*return paperContentBounds;\s*\}/);
 	});
 
 	it('changes once when work is committed and restores on Undo', () => {

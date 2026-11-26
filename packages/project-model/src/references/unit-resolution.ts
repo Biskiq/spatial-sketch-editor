@@ -17,11 +17,11 @@
  * Two rules are deliberately stronger than "look it up":
  *
  * - a subject that appears more than once in the addressable scope is
- *   **ambiguous**, not first-match: it refuses with `incompatible` and a repair
- *   that asks for instance qualification;
+ *  **ambiguous**, not first-match: it refuses with `incompatible` and a repair
+ *  that asks for instance qualification;
  * - an unresolved resource keeps its typed repair identity. It is never resolved
- *   to a fabricated revision, and it is never `missing` — the binding exists and
- *   needs repair, which is a different answer.
+ *  to a fabricated revision, and it is never `missing` — the binding exists and
+ *  needs repair, which is a different answer.
  */
 
 import { dependencyLockKey } from '../units/identity';
@@ -356,7 +356,7 @@ function resolver(
  * registry. Layout and Scene subjects keep their landed current-domain adapters
  * over the current source; an F.2 Layout/Scene resolver is deliberately not
  * invented here, because the source transition that would own it is
- * `T3.P01.S04`'s.
+ * ``'s.
  *
  * A resource resolves to its exact content revision, or to its pin's content
  * hash when the bytes are external. A resource with neither is `repair-required`

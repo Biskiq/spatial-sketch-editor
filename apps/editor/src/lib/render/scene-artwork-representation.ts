@@ -6,17 +6,17 @@
  * Canvas stores:
  *
  * - **Geometry is shared by key.** The image is the store's `unit:plane` scaled
- *   to the image size; the frame ring, Mat ring and backing plate are keyed by
- *   the numbers they are built from. A Artworks of s distinct framed sizes hold
- *   1 + 3·s buffers.
+ *  to the image size; the frame ring, Mat ring and backing plate are keyed by
+ *  the numbers they are built from. A Artworks of s distinct framed sizes hold
+ *  1 + 3·s buffers.
  * - **Materials are store leases.** Frame, Mat and backing are Lambert surfaces
- *   keyed by colour and ghost state. The image surface is keyed by the loaded
- *   texture's own id, so two Artworks of one image share one material, and a
- *   replaced source can never reuse a material that still binds the old texture.
+ *  keyed by colour and ghost state. The image surface is keyed by the loaded
+ *  texture's own id, so two Artworks of one image share one material, and a
+ *  replaced source can never reuse a material that still binds the old texture.
  * - **The image is a lease on the artwork scope.** The handler takes one lease
- *   per drawn source and gives it back when the source, the scope or the Artwork
- *   goes away. Nothing is drawn until the image arrives, and a failed image draws
- *   nothing and reports the error — the component's behaviour, unchanged.
+ *  per drawn source and gives it back when the source, the scope or the Artwork
+ *  goes away. Nothing is drawn until the image arrives, and a failed image draws
+ *  nothing and reports the error — the component's behaviour, unchanged.
  *
  * Three keys split an edit's work (see `SceneArtworkItem`): a placement edit
  * moves the retained group, a body edit rebuilds the meshes and their leases

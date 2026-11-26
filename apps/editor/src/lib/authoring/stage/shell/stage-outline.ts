@@ -62,7 +62,7 @@ function dot(a: Point, b: Point): number {
 }
 
 /**
- * Joins end-to-end collinear segments of a `[ax, ay, az, bx, by, bz, ...]` list
+ * Joins end-to-end collinear segments of a `[ax, ay, az, bx, by, bz,...]` list
  * into one segment each. Corners, branches and curves are left as they are, and
  * every point the input covered is still covered.
  */

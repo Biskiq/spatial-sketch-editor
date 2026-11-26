@@ -36,17 +36,17 @@ import { allocateId, guardedDuplicatePlan, isValidCopyCount, reject } from './sh
  * F-C1 ingress hole).
  *
  * What that bar is under the ratified policy (D-1/E, D-9):
- *   · spatial overlap between INDEPENDENT components is PERMITTED, so a clone
- *     placed across its source or across any other group COMMITS and joins
- *     nothing — separate ids, no adopted Junction, no split Wall (F1/F5);
- *   · a violation INSIDE one connected component stays refused, so a batch that
- *     introduces Walls into a document already carrying a same-component
- *     crossing is refused rather than admitted;
- *   · ingestion is separately governed and unchanged: the codec
- *     (`validateWallFirstLayoutDocument`) still carries NO topology rule, so a
- *     payload stays codec-valid exactly as before and topology remains a later,
- *     separate validation. Wiring the codec to geometry is NOT this change's
- *     business — F-C6 is a scope, not a licence to make the codec semantic.
+ *  · spatial overlap between INDEPENDENT components is PERMITTED, so a clone
+ *  placed across its source or across any other group COMMITS and joins
+ *  nothing — separate ids, no adopted Junction, no split Wall (F1/F5);
+ *  · a violation INSIDE one connected component stays refused, so a batch that
+ *  introduces Walls into a document already carrying a same-component
+ *  crossing is refused rather than admitted;
+ *  · ingestion is separately governed and unchanged: the codec
+ *  (`validateWallFirstLayoutDocument`) still carries NO topology rule, so a
+ *  payload stays codec-valid exactly as before and topology remains a later,
+ *  separate validation. Wiring the codec to geometry is NOT this change's
+ *  business — F-C6 is a scope, not a licence to make the codec semantic.
  */
 export function finalizeCandidate(
 	candidate: LayoutDocumentWallFirst,
@@ -150,7 +150,7 @@ export function cloneObject(object: LayoutObject): LayoutObject {
 }
 
 /**
- * Shared supported-object predicate for the P23.4 duplicate paths. The one
+ * Shared supported-object predicate for the duplicate paths. The one
  * implementation lives in `layout-room-isolation.ts` (P23.6a shares the whole
  * isolation policy, including this predicate, with the Room-move planner);
  * this alias keeps the duplicate-facing name for its callers.
@@ -161,7 +161,7 @@ export const isSupportedDuplicateLayoutObject = isSupportedLayoutObject;
  * Repeat one supported document-level Layout object: `count` copies at exact
  * `index × delta` positions from the original source. Document-level and
  * project/world-local ownership is unchanged; the optional semantic `roomId`
- * is preserved on each copy (P23.8 owns later remapping, never this
+ * is preserved on each copy (owns later remapping, never this
  * operation). Profile/read-only objects reject explicitly.
  */
 export function planRepeatLayoutObject(

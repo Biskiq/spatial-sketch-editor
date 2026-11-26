@@ -4,13 +4,13 @@
  * Two directions, one contract:
  *
  * - **Upward** (`queryFloorSupports`) answers which `room-floor` and
- *   `region-top` faces support a world X/Z point. Every containing face is a
- *   witness; coincident equivalent supports merge into one candidate that keeps
- *   **all** witnesses; a genuine elevation ambiguity is `choice-required` rather
- *   than an array-order pick.
+ *  `region-top` faces support a world X/Z point. Every containing face is a
+ *  witness; coincident equivalent supports merge into one candidate that keeps
+ *  **all** witnesses; a genuine elevation ambiguity is `choice-required` rather
+ *  than an array-order pick.
  * - **Downward** (`queryOverheadSupports`) mirrors the same validation,
- *   tolerances and witness merging for closed-Space lids and overhead-region
- *   undersides, ordered by increasing elevation.
+ *  tolerances and witness merging for closed-Space lids and overhead-region
+ *  undersides, ordered by increasing elevation.
  *
  * Facts come from compiled records only: elevation is the compiled Room's
  * `floorElevation`, the compiled region's `topY`/`bottomY`, or the compiled lid's

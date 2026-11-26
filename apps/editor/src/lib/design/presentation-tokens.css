@@ -74,35 +74,35 @@
  * Values come from the approved PLATE design (accepted Round 2) and are not
  * changed by moving them here. This file owns *shared* roles only:
  *
- *  - `--shell-*`  shell, furniture and page roles (surfaces, ink, states, type,
- *                 geometry, elevation) consumed by the editor shell, landing,
- *                 login, Projects and the visitor surfaces;
- *  - `--stage-*`  spatial drawing and instrument roles (draft ink, proposal,
- *                 selection, grid, paper, mat). `stage-paint.ts` is the same
- *                 table for Three.js paint, and a test holds the two together;
+ *  - `--shell-*` shell, furniture and page roles (surfaces, ink, states, type,
+ *  geometry, elevation) consumed by the editor shell, landing,
+ *  login, Projects and the visitor surfaces;
+ *  - `--stage-*` spatial drawing and instrument roles (draft ink, proposal,
+ *  selection, grid, paper, mat). `stage-paint.ts` is the same
+ *  table for Three.js paint, and a test holds the two together;
  *  - `--cursor-*` the approved cursor family, declared in `cursors.css`.
  *
  * Rules for every consumer:
  *
  *  1. Consume the role; never repeat its value. A literal hex that equals a
- *     role here is a drift copy, not a component choice.
- *  2. Do not add a `var()` fallback. These roles are declared at `:root`, so a
- *     fallback is unreachable code at best and a second value at worst.
+ *  role here is a drift copy, not a component choice.
+ *  2. Do not add a `var` fallback. These roles are declared at `:root`, so a
+ *  fallback is unreachable code at best and a second value at worst.
  *  3. A value that is genuinely local to one instrument or to one authored
- *     Experience look stays local and is written with a comment naming why. It
- *     does not become a new shared role.
+ *  Experience look stays local and is written with a comment naming why. It
+ *  does not become a new shared role.
  *
  * Boundaries for a future skin:
  *
  *  - `--shell-*` may be re-declared under `[data-theme]`: those roles paint DOM
- *    chrome only, so a CSS-only skin is sufficient.
+ *  chrome only, so a CSS-only skin is sufficient.
  *  - `--stage-*` may not be overridden by a skin. Three.js paint is compiled
- *    from `spatial-paint.ts`, so a spatial style changes the TS table and these
- *    base declarations together; a CSS-only override would desynchronize the
- *    DOM overlay from the 3D view and is rejected by the ownership guard.
+ *  from `spatial-paint.ts`, so a spatial style changes the TS table and these
+ *  base declarations together; a CSS-only override would desynchronize the
+ *  DOM overlay from the 3D view and is rejected by the ownership guard.
  *  - `--visitor-*` is the published-visit presentation's own contract, declared
- *    in `VisitorPreviewSurface.svelte`; it is intentionally independent of
- *    editor skins.
+ *  in `VisitorPreviewSurface.svelte`; it is intentionally independent of
+ *  editor skins.
  *
  * This file does not implement skin switching or a plugin runtime.
  */
@@ -175,12 +175,12 @@
 	 * Interaction grammar — the one control-state language.
 	 *
 	 *  · engaged (a mode, selected key or pressed panel): light neutral fill,
-	 *    forest ink. Weight never changes, so a bar cannot reflow when it moves;
+	 *  forest ink. Weight never changes, so a bar cannot reflow when it moves;
 	 *  · armed (the dock tool that is live, and temporary tools such as Measure or
-	 *    Place a View): a quiet forest-3 step with ivory ink and a faint inner
-	 *    edge (D12), so gold and cobalt stay the loudest marks on screen. One
-	 *    token for every tool family; primary buttons, the lens and pressed
-	 *    segments keep the engaged ivory key;
+	 *  Place a View): a quiet forest-3 step with ivory ink and a faint inner
+	 *  edge (D12), so gold and cobalt stay the loudest marks on screen. One
+	 *  token for every tool family; primary buttons, the lens and pressed
+	 *  segments keep the engaged ivory key;
 	 *  · idle: transparent with the muted light ink;
 	 *  · focus: one halo on forest, moss on paper.
 	 *

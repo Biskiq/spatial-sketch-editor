@@ -9,22 +9,22 @@
  * scope's behaviour**:
  *
  * - `createUnitPlannerRegistry` is the **landed** registry with a wider
- *   admission profile (Camera and Experience planners, compound and unit-bearing
- *   planners, resources only with explicit staging). The registration loop, its
- *   refusal order and the duplicate-kind rule stay in `createPlannerRegistry`,
- *   so there is one admission seam rather than two that can drift.
+ *  admission profile (Camera and Experience planners, compound and unit-bearing
+ *  planners, resources only with explicit staging). The registration loop, its
+ *  refusal order and the duplicate-kind rule stay in `createPlannerRegistry`,
+ *  so there is one admission seam rather than two that can drift.
  * - `prepareUnitIntent` is the **same** dispatcher with the wider admission, so
- *   the order of refusals, the planner lookup and the baseline check have one
- *   implementation rather than two that can drift.
+ *  the order of refusals, the planner lookup and the baseline check have one
+ *  implementation rather than two that can drift.
  * - `createUnitTargetInspector` runs the F.1 resolver over every target against
- *   one supplied envelope and its dependency lock, so a subject the snapshot
- *   cannot resolve refuses the operation **before** planning. It never repairs,
- *   never retargets by proximity and never fabricates a lock entry.
+ *  one supplied envelope and its dependency lock, so a subject the snapshot
+ *  cannot resolve refuses the operation **before** planning. It never repairs,
+ *  never retargets by proximity and never fabricates a lock entry.
  * - resource staging is the **F.2-dependent** half and lives in
- *   `../units/acceptance-staging.ts`, behind the inactive `./units` subpath: the
- *   architecture gate keeps this module from reaching the unit envelope through
- *   a root-barrel import. Nothing here imports it, and a caller stages only by
- *   knowingly crossing the F.2 subpath.
+ *  `../units/acceptance-staging.ts`, behind the inactive `./units` subpath: the
+ *  architecture gate keeps this module from reaching the unit envelope through
+ *  a root-barrel import. Nothing here imports it, and a caller stages only by
+ *  knowingly crossing the F.2 subpath.
  *
  * What this module deliberately does not do: it does not read or write a source
  * (the adapter admits), it does not mint revisions or keep history (the

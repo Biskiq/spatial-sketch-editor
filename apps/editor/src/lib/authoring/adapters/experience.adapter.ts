@@ -2,7 +2,7 @@
  * The Experience adapter.
  *
  * It registers the Experience planners with the one F.4 coordinator and
- * contributes the Experience task and Find entry through the AM-5 contribution points.
+ * contributes the Experience task and Find entry through the contribution points.
  * The authoring homes (the Index groups, the Card writers and the Guide instrument) are
  * mounted once by the route's Experience lens, not here: a second contribution would put
  * two draft editors over one accepted source. It edits no host core, route or shell module, and it owns no selection,

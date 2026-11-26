@@ -10,14 +10,14 @@
  * The scope is one per route. It holds:
  *
  * - **Pins** from the accepted Scene's `texture` resources. A URI with no pin
- *   is refused rather than fetched, so a tampered Scene cannot make the editor
- *   download arbitrary project bytes.
+ *  is refused rather than fetched, so a tampered Scene cannot make the editor
+ *  download arbitrary project bytes.
  * - **Digest and MIME verification** on every load, using the same sha256 the
- *   asset registry and release manifest carry. A mismatch is a refusal and the
- *   object falls back to its Finish colour through the resolver's existing
- *   missing-texture behaviour.
+ *  asset registry and release manifest carry. A mismatch is a refusal and the
+ *  object falls back to its Finish colour through the resolver's existing
+ *  missing-texture behaviour.
  * - **Decoded dimensions**, so the Card can state a low-resolution warning and
- *   derive a tile's aspect without a second decoder.
+ *  derive a tile's aspect without a second decoder.
  *
  * Retry is targeted: `retry(uri)` drops that one source-cache error and reloads
  * only that URI. The Stage then calls every representation's `reloadTextures`, so

@@ -38,7 +38,7 @@ export type OpeningDragSnapResolution =
  *
  * `center` (body drag): the pointer projects onto the Opening **center**, so
  * candidates resolve in center space and are emitted as start-edge offsets
- * (the P23.2 semantics, unchanged).
+ * (the semantics, unchanged).
  *
  * `edge` (width-handle drag): the pointer projects onto the **moving edge**
  * itself, so candidates resolve in edge space and are emitted as that edge's
@@ -59,7 +59,7 @@ export type OpeningDragAnchor = { kind: 'center'; width: number } | { kind: 'edg
  * junction endpoints, its midpoint, other openings' edges on the same wall,
  * and the grid fallback. The dragged opening's own spans are skipped
  * entirely, so its own edges can never act as external reference candidates
- * (the moving self-snap loop — P23.2 §Moving-target exclusion). Grid
+ * (the moving self-snap loop — §Moving-target exclusion). Grid
  * candidates snap the dragged anchor (the opening **center** for body drags,
  * the moving **edge** for width handles) to the step exactly like opening
  * creation (`createDefaultOpening`), so drag and create share one grid
@@ -193,7 +193,7 @@ function resolveOpeningDragAnchoredSnap(
 
 /**
  * Body drag: resolve one Opening's drag position in **center** space, emitting
- * start-edge offsets clamped into `[0, length - width]` (P23.2 semantics).
+ * start-edge offsets clamped into `[0, length - width]` (semantics).
  */
 export function resolveOpeningDragSnap(
 	geometry: CompiledLayoutGeometry,
@@ -244,7 +244,7 @@ const OPENING_DRAG_EPSILON = 1e-6;
 
 /**
  * Raw drag candidate validity, kept **separate** from the bounded
- * P23.2 snap result.
+ *  snap result.
  *
  * The snap resolvers clamp every candidate into the anchor's legal range,
  * which is correct as a *suggestion* but must never be laundered into
@@ -253,9 +253,9 @@ const OPENING_DRAG_EPSILON = 1e-6;
  * candidate (and its own fit result) next to an optional **honored** snap win:
  *
  * ```text
- * raw candidate outside fit bounds        → rawValid false, candidate invalid
- *                                            (transient invalid preview, reject)
- * snap win inside the acquisition radius  → committable snapped candidate
+ * raw candidate outside fit bounds → rawValid false, candidate invalid
+ *  (transient invalid preview, reject)
+ * snap win inside the acquisition radius → committable snapped candidate
  * snap win only reachable by clamping far → NOT honored (raw candidate stands)
  * ```
  *
@@ -316,7 +316,7 @@ export function resolveOpeningDragSnapUseMode(
 }
 
 /**
- * Pure projection of a (already resolved) snap result into the P23.3 raw
+ * Pure projection of a (already resolved) snap result into the raw
  * validity pair. Splitting this from `resolveOpeningDragSnapUseMode` keeps the
  * contract unit-testable without geometry fixtures.
  */

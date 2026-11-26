@@ -3,7 +3,7 @@
  *
  * One presenter per live Layout binding: created in `bind`, reset by the
  * binding's terminators and dropped with it on every accepted install (rebase).
- * The Stage reads `candidatePreviews()` every frame; with a still pointer the
+ * The Stage reads `candidatePreviews` every frame; with a still pointer the
  * candidate is the same object every frame, so its Paper is built once and read
  * back thereafter.
  *
@@ -11,12 +11,12 @@
  * a hit can never be stale:
  *
  * - **presentation** — the built drawing for (reading, candidate document
- *   identity, live Plan evaluation identity, datum, subject/affected id-set
- *   contents) or, for a refused Opening attempt, (accepted document identity,
- *   Wall, raw typed values);
+ *  identity, live Plan evaluation identity, datum, subject/affected id-set
+ *  contents) or, for a refused Opening attempt, (accepted document identity,
+ *  Wall, raw typed values);
  * - **proposal** — a planner result the binding would otherwise recompute every
- *   frame (Opening Repeat, Circle), keyed by its inputs. The memo pins a
- *   proposal's minted preview ids for its lifetime; a commit plans for itself.
+ *  frame (Opening Repeat, Circle), keyed by its inputs. The memo pins a
+ *  proposal's minted preview ids for its lifetime; a commit plans for itself.
  *
  * Each frame drops a slot it did not consult, so a gesture's end or cancel
  * releases its entry on the next frame. Conversion stays in

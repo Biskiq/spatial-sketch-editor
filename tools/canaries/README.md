@@ -1,4 +1,4 @@
-# Canaries (VER-0)
+# Canaries
 
 A canary is one realistic defect, recorded as a literal mutation of a production
 file plus the tests that must fail because of it. The corpus is the evidence

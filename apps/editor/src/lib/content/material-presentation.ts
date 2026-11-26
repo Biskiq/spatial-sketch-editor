@@ -6,14 +6,14 @@
  * `materials` by id.
  *
  * - **Framing hints**: the physical window the sample-tile thumbnail shows, in
- *   metres, and where its centre sits on the tile (tile fractions). A hint
- *   frames a piece of the material (a few boards, a brick course, a few linen
- *   threads), never a repeat count. An entry without a hint, and every project
- *   or imported Finish, derives its window from its tile size
- *   (`defaultSampleTileFraming`).
+ *  metres, and where its centre sits on the tile (tile fractions). A hint
+ *  frames a piece of the material (a few boards, a brick course, a few linen
+ *  threads), never a repeat count. An entry without a hint, and every project
+ *  or imported Finish, derives its window from its tile size
+ *  (`defaultSampleTileFraming`).
  * - **Variants** (D1): two catalogue entries that differ only by a Finish
- *   factor on one image set present as ONE card with a variant chip. F's
- *   distinctness rule applies between cards, never between a card's variants.
+ *  factor on one image set present as ONE card with a variant chip. F's
+ *  distinctness rule applies between cards, never between a card's variants.
  */
 import type { MaterialId } from '$lib/types/materials';
 import type { SampleTileFraming } from '$lib/render/materials/sample-tile';

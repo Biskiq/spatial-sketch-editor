@@ -1,5 +1,5 @@
 /**
- * Locality metrics and the shrink-only budget check (LOC-0).
+ * Locality metrics and the shrink-only budget check.
  *
  * One reader produces the section 3 tables — file and function sizes, `export *`
  * statements, exported test seams, cross-package re-exports, package import
@@ -13,10 +13,10 @@
  * therefore delete an exception but never add one silently.
  *
  * Usage:
- *   npx vite-node tools/metrics/metrics.ts                 # section 3 tables
- *   npx vite-node tools/metrics/metrics.ts --check          # budget only
- *   npx vite-node tools/metrics/metrics.ts --json out.json
- *   npx vite-node tools/metrics/metrics.ts --write-budget   # regenerate allowlist
+ *  npx vite-node tools/metrics/metrics.ts # section 3 tables
+ *  npx vite-node tools/metrics/metrics.ts --check # budget only
+ *  npx vite-node tools/metrics/metrics.ts --json out.json
+ *  npx vite-node tools/metrics/metrics.ts --write-budget # regenerate allowlist
  */
 import { readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -123,7 +123,7 @@ function collectBody(lines: string[], start: number): { end: number } | null {
 				if (depth < 0) return null;
 			}
 		}
-		// A one-line `const x = () => value;` has no body braces and is not a
+		// A one-line `const x = => value;` has no body braces and is not a
 		// long function; stop rather than absorbing the rest of the file.
 		if (!opened && index > start + 40) return null;
 	}
@@ -228,7 +228,7 @@ export function measure(): Measurement {
 	functions.sort((a, b) => b.lines - a.lines);
 	// Family cycles are cycles between a package's subpath entry modules. A
 	// same-package file pair that imports in both directions is not a family
-	// cycle; LOC-1 gives families their own entry points, and this check then
+	// cycle; gives families their own entry points, and this check then
 	// guards the registry that joins them.
 	const entries = new Map([...graph].filter(([file]) => file.endsWith('index.ts')));
 	return {
@@ -294,7 +294,7 @@ export function readBudgets(): Budgets {
 	return JSON.parse(readFileSync(BUDGET_PATH, 'utf8')) as Budgets;
 }
 
-const REASON = 'Baseline exception recorded by LOC-0; the owning split packet removes this entry.';
+const REASON = 'Baseline exception: the owning split removes this entry.';
 
 export function writeBudgets(measurement: Measurement, previous?: Budgets): Budgets {
 	const oldFiles = new Map((previous?.files ?? []).map((entry) => [entry.path, entry.reason]));
@@ -302,7 +302,7 @@ export function writeBudgets(measurement: Measurement, previous?: Budgets): Budg
 		(previous?.functions ?? []).map((entry) => [`${entry.file}#${entry.name}`, entry.reason]),
 	);
 	const budgets: Budgets = {
-		generatedFrom: 'LOC-0 baseline; shrink-only from here',
+		generatedFrom: 'Budget ratchet baseline; shrink-only from here',
 		counts: {
 			filesOver600: measurement.files.filter((file) => file.lines > 600).length,
 			filesOver1000: measurement.files.filter((file) => file.lines > 1000).length,

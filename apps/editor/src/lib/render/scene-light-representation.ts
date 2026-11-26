@@ -7,11 +7,11 @@
  *
  * - **One root, mounted once.** `object3d` is never replaced.
  * - **Patched by key.** An unchanged item touches nothing. A moved item moves
- *   its holder. A changed light of the same kind is updated in place through its
- *   lease (same Light object, same shadow map). A changed kind is a replacement:
- *   the old lease is released before the new one is acquired.
+ *  its holder. A changed light of the same kind is updated in place through its
+ *  lease (same Light object, same shadow map). A changed kind is a replacement:
+ *  the old lease is released before the new one is acquired.
  * - **Lights come from the store.** Nothing here constructs a light; a removed
- *   item releases its lease, and `dispose` releases every lease.
+ *  item releases its lease, and `dispose` releases every lease.
  *
  * The holder carries the entity's position, Euler rotation and uniform scale;
  * the light sits at its origin and a Spot aims down its local −Z (the store's

@@ -201,7 +201,7 @@ export function createStageFacade(input: {
 	function notifyTaskClosed(): void {
 		pointerOwner = null;
 		// An accepted install closes the contributed task through the session, not
-		// through `closeTask()`; the owner record must end with it, or the host
+		// through `closeTask`; the owner record must end with it, or the host
 		// keeps offering presses and keys to a task that no longer exists and
 		// never reaches a binding's no-task direct manipulation.
 		contributedTaskOwner = null;

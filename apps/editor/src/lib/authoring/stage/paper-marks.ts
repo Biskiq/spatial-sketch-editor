@@ -9,13 +9,13 @@
  * system:
  *
  * - a **gold** pass for the primary selection: a translucent fill under a solid
- *   contour, so a selected Room, Opening or Scene footprint reads as one identity.
- *   A Scene fill reads from the polygons `buildPaperPlan` already retained,
- *   and keeps the fill under cut ink. A cut Wall's poché keeps its black ink with no
- *   tint is repainted in gold from the same cut polygons;
+ *  contour, so a selected Room, Opening or Scene footprint reads as one identity.
+ *  A Scene fill reads from the polygons `buildPaperPlan` already retained,
+ *  and keeps the fill under cut ink. A cut Wall's poché keeps its black ink with no
+ *  tint is repainted in gold from the same cut polygons;
  * - a **quiet neutral** contour for hover, never gold (gold means selected);
  * - the **erase** treatment: the armed Eraser's winner in red dashes, drawn
- *   above the selection so it reads even on the selected subject.
+ *  above the selection so it reads even on the selected subject.
  *
  * Every mark is depth-test-free. Contours are ordered above
  * `PAPER_LAYER.sceneFootprint`; the selection fill sits

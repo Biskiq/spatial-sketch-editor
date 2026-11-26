@@ -1,5 +1,5 @@
 /**
- * Conditional Save (`SaveAcceptedSource@1`, AM-4) — the F.2 unit path.
+ * Conditional Save (`SaveAcceptedSource@1`,) — the F.2 unit path.
  *
  * One write path, one transaction. The server does not trust the captured
  * digest: the unit source handler re-parses the captured canonical envelope,

@@ -4,12 +4,12 @@
  * One service owns the creator's Finish intent outside the Scene document:
  *
  * - the **active** pick Paint applies (a Finish, or a colour through the
- *   colour-coat seam) and the creator's favourites and recents;
+ *  colour-coat seam) and the creator's favourites and recents;
  * - the Finish Card adapter (U4, `finish-card.svelte.ts`), which shows reach
- *   before an edit and owns the Card's preview;
+ *  before an edit and owns the Card's preview;
  * - the project palette's own writes and the From-image flow;
  * - the semantic **dropper**, which copies an authored Finish or colour rather
- *   than rendered pixels.
+ *  than rendered pixels.
  *
  * Every write is one F.4 intent through the route's one acceptance host. The
  * service reads the live accepted snapshot each time, so the Card and the

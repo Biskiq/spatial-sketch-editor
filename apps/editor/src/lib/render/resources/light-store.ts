@@ -11,11 +11,11 @@
  *
  * - **acquire** constructs a light for a descriptor and applies it.
  * - **update** re-applies a descriptor of the same kind *in place*: the same
- *   Light object, its shadow map and its target survive. An equal key is a no-op.
- *   A different kind is refused — the caller replaces (release, then acquire),
- *   so a kind change is always visible as a replacement.
+ *  Light object, its shadow map and its target survive. An equal key is a no-op.
+ *  A different kind is refused — the caller replaces (release, then acquire),
+ *  so a kind change is always visible as a replacement.
  * - **release** detaches the light and its target and disposes it (its shadow
- *   map included). Idempotent. A released lease refuses further updates.
+ *  map included). Idempotent. A released lease refuses further updates.
  *
  * The store is per Canvas (`render-resources.ts`): WebGL shadow maps cannot cross
  * contexts and no lease can free another Canvas's light. `dispose` releases

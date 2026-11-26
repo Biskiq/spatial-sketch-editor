@@ -6,12 +6,12 @@
  * Stage amber hatch layer:
  *
  * 1. **Static** — `inspectFinish` per accepted revision (`missing-image`,
- *    `missing-pin`, `missing-uv`, `missing-normal-frame`,
- *    `mapping-requires-metric-basis`).
+ *  `missing-pin`, `missing-uv`, `missing-normal-frame`,
+ *  `mapping-requires-metric-basis`).
  * 2. **Runtime** — per-target outcomes from the four Stage `acquireFinishViews`
- *    callers (`image-unavailable`, `image-unreachable`, `image-mismatch`,
- *    `image-undecodable`). `pending` and `budget` targets never count as
- *    issues and are never hatched.
+ *  callers (`image-unavailable`, `image-unreachable`, `image-mismatch`,
+ *  `image-undecodable`). `pending` and `budget` targets never count as
+ *  issues and are never hatched.
  *
  * `affected` is strictly the failing/named subset of a Finish's users.
  * A session-owned fix list feeds *Repaired (…)*; entries with

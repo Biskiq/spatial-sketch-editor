@@ -2,7 +2,7 @@
  * The Scene adapter: the first coherent Scene editing surface.
  *
  * It registers the Scene planners with the one F.4 coordinator and contributes
- * Place, Compose and Import through the AM-5 contribution points. It also publishes
+ * Place, Compose and Import through the contribution points. It also publishes
  * the shared Stage mark vocabulary for a selected object: Move, Turn, a Scale point
  * disclosure and the Size ray it reveals. The same exact Position, Yaw and Size
  * values are the Card's writer. It edits no host core, route or shell module, and
@@ -13,14 +13,14 @@
  * lifetime it touches. The three never share state.
  *
  * - `./scene/placement-binding`: the placement session's arm, reopen, complete,
- *   clear and rebind lifetimes, and the drawn Shape tile.
+ *  clear and rebind lifetimes, and the drawn Shape tile.
  * - `./scene/object-mark-session`: the no-task Move, Turn, Size, Lift and Form-ray
- *   gestures, each holding its own lease and submitting the same planner the Card
- *   field does.
+ *  gestures, each holding its own lease and submitting the same planner the Card
+ *  field does.
  * - `./scene/scene-contributions`: read-only facts, marks, tasks and Card
- *   projections.
+ *  projections.
  * - `./scene/candidate-presenter`: the pure Paper preview, overlay and ghost
- *   projection of whichever proposal is live.
+ *  projection of whichever proposal is live.
  */
 
 import type {
@@ -236,8 +236,8 @@ export const createAdapter: StageAdapterFactory = (services: StageAdapterService
 						// contributed task's targetRef was captured when the binding was built,
 						// and a later selection does not rebuild every contribution; the
 						// selection at the moment of opening is the target that was acted on.
-						// `selectionState()` is the canonical selection and is populated by both
-						// selection paths; the convenience `selection()` view is null when the
+						// `selectionState` is the canonical selection and is populated by both
+						// selection paths; the convenience `selection` view is null when the
 						// caller used `setSelection` without a plan representation.
 						const primary = context.selectionState().primary;
 						const liveTarget = primary?.domain === 'scene' ? primary.subject.id : null;

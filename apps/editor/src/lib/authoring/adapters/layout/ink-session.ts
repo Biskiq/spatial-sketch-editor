@@ -13,13 +13,13 @@
  * Two lifetimes, kept apart:
  *
  * - **Adapter-lifetime defaults** — thickness, height, reading and wall mode —
- *   live in the shared `InkMemory`, so an accepted write's rebind does not
- *   forget them.
+ *  live in the shared `InkMemory`, so an accepted write's rebind does not
+ *  forget them.
  * - **Captured gesture state** — the draft, its capture, the hover and snap, the
- *   preview, the notice, the press lease and the proposal lease — is created
- *   here per binding. `clear()` and `release()` end it exactly once: a live
- *   chain's proposal lease is released on finish, cancel, backtrack-to-empty,
- *   task close, replacement and disposal, so Undo is never stranded behind it.
+ *  preview, the notice, the press lease and the proposal lease — is created
+ *  here per binding. `clear` and `release` end it exactly once: a live
+ *  chain's proposal lease is released on finish, cancel, backtrack-to-empty,
+ *  task close, replacement and disposal, so Undo is never stranded behind it.
  *
  * A refused acceptance leaves the chain editable with its capture kept for the
  * retry; a settled chain never donates its capture to the next one.

@@ -5,19 +5,19 @@
  * in its Place task. One gesture has one result:
  *
  * - **Box, Round:** a click creates the standard form; a drag creates the form its
- *   two corners span, on release.
+ *  two corners span, on release.
  * - **Free:** a click adds a corner, a drag adds a smooth run, and closing on the
- *   start, Enter or Finish creates the form.
+ *  start, Enter or Finish creates the form.
  *
  * Two rules keep the preview honest:
  *
  * - **One planner.** Preview and commit both run `create-form`'s `planCreateForm`,
- *   so the body shown is the candidate the planner would install, support and
- *   contact included. On a Room floor or on the explicit datum, the answer is the
- *   same one at both moments.
+ *  so the body shown is the candidate the planner would install, support and
+ *  contact included. On a Room floor or on the explicit datum, the answer is the
+ *  same one at both moments.
  * - **One validation.** Live validity is `validateProfile` over the converted
- *   outline, and a refusal is the kernel's own issue in words. A refused Free
- *   draft keeps every point.
+ *  outline, and a refusal is the kernel's own issue in words. A refused Free
+ *  draft keeps every point.
  *
  * Nothing here is document state, a second selection, history or writer.
  */

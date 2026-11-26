@@ -385,7 +385,7 @@ describe('Stage shell composition', () => {
 			.flatMap(({ code }) => code.match(/\.setPointerCapture(?:\?\.)?\(/g) ?? []);
 		expect(raw).toHaveLength(1);
 		expect(matches(/function capturePointer\([^)]*\): boolean \{\s*try \{\s*target\.setPointerCapture\(pointerId\);/)).toHaveLength(1);
-		expect(matches(/try \{ surface\.setPointerCapture\(event\.pointerId\); \} catch/)).toHaveLength(1);
+		expect(matches(/try \{\s*surface\.setPointerCapture\(event\.pointerId\);\s*\} catch/)).toHaveLength(1);
 		const guarded = [EXPERIENCE_LENS, EXPERIENCE_VIEW_EDIT_SESSION]
 			.map((file) => stripComments(readFileSync(file, 'utf8')))
 			.filter((source) => /capture === null \|\| !(?:ports\.)?host\.capturePointer\(capture, event\.pointerId\)/.test(source));
@@ -441,7 +441,7 @@ describe('Stage shell composition', () => {
 			.map((file) => ({ file, code: stripComments(readFileSync(file, 'utf8')) }));
 		// Model resolution has its own bound load; identify the project read rather
 		// than confusing it with that independent, route-owned operation.
-		const owners = composed.filter(({ code }) => code.includes('runBoundLoad(session, (signal) => fetchOutcome('));
+		const owners = composed.filter(({ code }) => code.replace(/\s+/g, ' ').includes('runBoundLoad(session, (signal) => fetchOutcome('));
 		expect(owners).toHaveLength(1);
 		const owner = owners[0]!.code;
 		if (owners[0]!.file !== ROUTE) {
@@ -455,7 +455,7 @@ describe('Stage shell composition', () => {
 		// Project actions have their own request cancellation and register it with
 		// the session writer registry. The project read itself must continue to use
 		// `runBoundLoad`, not a private controller the session cannot cancel.
-		expect(owner).toContain("session.writers().register('project-action', token, () => controller.abort())");
+		expect(owner.replace(/\s+/g, '')).toContain("session.writers().register('project-action',token,()=>controller.abort())");
 		for (const { file, code } of composed) expect(code, file).not.toMatch(/loadProject\([^)]*controller\.signal/);
 	});
 

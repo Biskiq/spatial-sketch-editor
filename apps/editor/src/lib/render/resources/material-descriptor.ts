@@ -17,11 +17,11 @@
  * things follow, and both are tested:
  *
  * - **Order-independent.** The key is built from named fields in a fixed order,
- *   so two descriptors with the same values in a different property order are
- *   the same key.
+ *  so two descriptors with the same values in a different property order are
+ *  the same key.
  * - **Default-equivalent.** `toneMapped` absent and `toneMapped: true` are the
- *   same key, because they are the same material. A key that told them apart
- *   would hand one look two instances, which is the defect this store removes.
+ *  same key, because they are the same material. A key that told them apart
+ *  would hand one look two instances, which is the defect this store removes.
  *
  * Colours are normalised to lowercase `#rrggbb`. A numeric `0xff2fd4` and the
  * string `'#ff2fd4'` produce one key for the same colour. Only those two forms

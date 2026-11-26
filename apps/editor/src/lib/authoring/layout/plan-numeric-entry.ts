@@ -370,7 +370,7 @@ export type PlanNumericParse =
 	| { ok: false; reason: PlanNumericInvalidReason };
 
 /**
- * A numeric literal, and nothing else. `Number()` alone would accept `0x10`,
+ * A numeric literal, and nothing else. `Number` alone would accept `0x10`,
  * `Infinity` and `1e999`, which is a command language §7 explicitly does not
  * want; the exponent form stays because it is a numeric literal, not an
  * expression.

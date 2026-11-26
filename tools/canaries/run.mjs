@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * VER-0 canary runner.
+ *  canary runner.
  *
  * A canary is one realistic defect, recorded as a literal mutation of a
  * production file, plus the tests that must fail because of it. The runner
@@ -12,11 +12,11 @@
  * that survives at baseline gets a test before any test is deleted.
  *
  * Usage:
- *   node tools/canaries/run.mjs                 # every editor canary
- *   node tools/canaries/run.mjs --only 01-envelope-version
- *   node tools/canaries/run.mjs --kind api      # DB-backed API canaries
- *   node tools/canaries/run.mjs --list
- *   node tools/canaries/run.mjs --json .harness/canaries.json
+ *  node tools/canaries/run.mjs # every editor canary
+ *  node tools/canaries/run.mjs --only 01-envelope-version
+ *  node tools/canaries/run.mjs --kind api # DB-backed API canaries
+ *  node tools/canaries/run.mjs --list
+ *  node tools/canaries/run.mjs --json.harness/canaries.json
  *
  * The runner never runs in CI. It refuses to touch a dirty target file, and it
  * restores every file it mutates from HEAD even when the test run throws.

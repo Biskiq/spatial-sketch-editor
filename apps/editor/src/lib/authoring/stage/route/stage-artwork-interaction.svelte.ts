@@ -13,7 +13,7 @@
  * every termination (release, pointer cancel, lost capture, Escape, lens/task
  * interruption, source replacement, disposal) releases that lease exactly once
  * and clears the ghost. Late asset work belongs to the authoring owner and is
- * cancelled by `cancel()`; it can never commit after a cancellation because its
+ * cancelled by `cancel`; it can never commit after a cancellation because its
  * own request is aborted and its acceptance compares the live services.
  *
  * A `.svelte.ts` controller is created in the route's effect scope. It accepts

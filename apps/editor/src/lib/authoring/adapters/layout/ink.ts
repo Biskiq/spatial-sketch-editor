@@ -5,15 +5,15 @@
  * Two responsibilities, both narrow:
  *
  * 1. **The target hit test.** A press names an existing Junction, a Wall's
- *    interior or a free point — and only the first two are *connections*. The
- *    test runs in the CSS pixels the Stage actually drew, so what the creator
- *    aimed at is what they hit; the figure is a tolerance, never a snap radius
- *    that invents a coordinate. Junctions win over Walls at equal aim, because a
- *    Junction is the more specific subject.
+ *  interior or a free point — and only the first two are *connections*. The
+ *  test runs in the CSS pixels the Stage actually drew, so what the creator
+ *  aimed at is what they hit; the figure is a tolerance, never a snap radius
+ *  that invents a coordinate. Junctions win over Walls at equal aim, because a
+ *  Junction is the more specific subject.
  * 2. **The published palette surface.** The instrument is mounted by the shell,
- *    so the binding publishes a snapshot plus the controller it exposes, exactly
- *    as the paused-proposal store does. Nothing here owns document state: the
- *    buffer it reports is the adapter's draft.
+ *  so the binding publishes a snapshot plus the controller it exposes, exactly
+ *  as the paused-proposal store does. Nothing here owns document state: the
+ *  buffer it reports is the adapter's draft.
  */
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 

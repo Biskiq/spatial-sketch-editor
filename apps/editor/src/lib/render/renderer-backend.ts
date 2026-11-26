@@ -145,7 +145,7 @@ export function disposeProductRenderer(renderer: WebGPURenderer): Promise<void> 
 /**
  * Observe device loss for one generation.
  *
- * Registered **before** `init()`: a device can be lost during startup. Three
+ * Registered **before** `init`: a device can be lost during startup. Three
  * filters a `destroyed` reason from its own WebGPU callback, which is why the
  * documented `onDeviceLost` hook is the one place the owner learns about a lost
  * device; the WebGL2 backend relies on the canvas's `webglcontextlost` event.

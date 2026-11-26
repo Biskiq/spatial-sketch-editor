@@ -9,7 +9,7 @@
  * `blob:`/`data:`, external URLs, unknown static, missing P20 refs) resolves
  * to null so callers surface a retryable failure instead of partial texturing.
  *
- * Lifetime: the owner revokes URLs via `dispose()` on unmount/failure. Dispose
+ * Lifetime: the owner revokes URLs via `dispose` on unmount/failure. Dispose
  * is idempotent and never touches shared state.
  */
 import { Texture as ThreeTextureClass, TextureLoader, type Texture as ThreeTexture } from 'three';

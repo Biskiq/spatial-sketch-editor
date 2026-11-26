@@ -23,7 +23,7 @@ import { sameAuthored } from './reuse';
 import { floorElevationOf } from './physical-walls';
 
 /**
- * P23.15 Task 1/2 — build the compiled Junction records from canonical
+ *  Task 1/2 — build the compiled Junction records from canonical
  * incidence and resolve each Junction locally. `bottomY`/`topY` on a leg are
  * wall-local (0 = Wall base), matching compiled section coordinates; bounds3
  * adds `floorElevation`.

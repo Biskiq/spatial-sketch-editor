@@ -13,13 +13,13 @@ import { sealCompiledLayoutSnapshot } from '@portfolio/layout-core/geometry';
  * Three distinct outcomes, deliberately not collapsed:
  *
  * - `refused` — the envelope validator rejected the payload (malformed,
- *   pre-epoch, unknown version). The viewer is told it is not a supported
- *   source; the Stage never renders.
+ *  pre-epoch, unknown version). The viewer is told it is not a supported
+ *  source; the Stage never renders.
  * - `diagnostics` — the payload validates, but its canonical compile has blocking
- *   issues. The Stage never renders a silent empty or partial scene.
+ *  issues. The Stage never renders a silent empty or partial scene.
  * - `admitted` — validated, compiled clean, Scene resolved, Camera graph built,
- *   content identity computed. This is the only outcome that yields a
- *   `StageReadSnapshot`.
+ *  content identity computed. This is the only outcome that yields a
+ *  `StageReadSnapshot`.
  *
  * The content identity is the envelope source-content digest, so boot, local
  * acceptance and the server-side conditional Save cannot disagree about what

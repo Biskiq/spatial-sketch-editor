@@ -393,7 +393,7 @@ export function compileWallFirstWithPhysicalWalls(
 			// The Wall query AABB was created before the Junction resolve, so it is
 			// stale by construction once resolved geometry extends the Wall.
 			// Reconcile it from the final bounds instead of leaving a pre-resolution
-			// record; T1.P02.S06 D.1 recorded its position, so this is one
+			// record; D.1 recorded its position, so this is one
 			// lookup instead of an AABB-list scan per Wall.
 			const index = wallAabbIndexByWallId.get(wall.wallId);
 			countWork('pairs:wall-aabb', index === undefined ? 0 : 1);

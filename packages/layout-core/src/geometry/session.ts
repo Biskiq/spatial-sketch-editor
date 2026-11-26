@@ -19,7 +19,7 @@ import { compileWallFirstLayoutGeometry } from './compiler';
 import { DELTA_BUILDERS } from './delta-builders';
 
 /**
- * An incremental compile session (T1.P02.S06 D.3 / H1).
+ * An incremental compile session (D.3 / H1).
  *
  * The session owns one retained store and feeds it the documents it compiles.
  * Each `compile` is the **canonical compiler** — same builders, same assembly,
@@ -165,8 +165,8 @@ export function withLayoutCompileSession<T>(
 }
 
 /**
- * Shared compile core (P23.0 compiler cutover): one geometry compiler/output
- * model. `compileWallFirstLayoutGeometry` is its only adapter since T1.P02.S05;
+ * Shared compile core (compiler cutover): one geometry compiler/output
+ * model. `compileWallFirstLayoutGeometry` is its only adapter since;
  * a direct caller may still supply any `CompilerSource` shape, whose optional
  * fields keep their historical defaults. Diagnostics paths remain room-indexed
  * (`rooms[i]`) so existing issue expectations are unchanged.
@@ -175,10 +175,10 @@ export function withLayoutCompileSession<T>(
  * Which query-record set the shared core emits for Room boundary walls.
  *
  * - `room` (default) is the historical room-indexed set: points, spans and
- *   Wall/Opening AABBs carrying `roomId`.
+ *  Wall/Opening AABBs carrying `roomId`.
  * - `physical-wall` emits only what the wall-first adapter keeps — Room floor
- *   polygons and Room AABBs — because that adapter replaces every room-derived
- *   point, span and Wall/Opening AABB with the canonical physical-Wall set.
+ *  polygons and Room AABBs — because that adapter replaces every room-derived
+ *  point, span and Wall/Opening AABB with the canonical physical-Wall set.
  *
  * The wall-first adapter used to build the discarded set
  * and then drop it, which Bench 1 counted as most of a grid-L compile's

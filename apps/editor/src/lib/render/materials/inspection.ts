@@ -4,16 +4,16 @@
  * It supplies three things the product and the bench share:
  *
  * - **Channel readings.** `inspectionChannels` states, per role, whether the plan
- *   samples a view, which component/invert/convention it uses, or which constant
- *   the resolved surface falls back to. Provisional/missing siblings are visible
- *   rather than silently drawn.
+ *  samples a view, which component/invert/convention it uses, or which constant
+ *  the resolved surface falls back to. Provisional/missing siblings are visible
+ *  rather than silently drawn.
  * - **One offscreen draw/readback.** `renderInspectionFrame` owns a bounded RGBA8
- *   target, restores every renderer mutation, and normalizes row orientation by
- *   the observed backend. Display encoding happens once, outside measurement.
+ *  target, restores every renderer mutation, and normalizes row orientation by
+ *  the observed backend. Display encoding happens once, outside measurement.
  * - **Coalescing and generations.** `createInspectionObserver` allows one draw in
- *   flight; a newer request replaces the pending one, cancellation has no result,
- *   and a generation change is reported as `generation-lost` rather than as stale
- *   pixels.
+ *  flight; a newer request replaces the pending one, cancellation has no result,
+ *  and a generation change is reported as `generation-lost` rather than as stale
+ *  pixels.
  *
  * The fixed thumbnail is the same draw at 192×192 on the reference sphere under
  * studio light. Its key hashes the effective untreated recipe identity and every

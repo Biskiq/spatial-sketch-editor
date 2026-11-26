@@ -41,7 +41,7 @@ export function registerPublicationRoutes(deps: RouteDeps): void {
 		if (typeof projectId !== 'string' || !projectId) {
 			return reply.code(400).send(errorBody('invalid_project_id', 'Invalid project ID'));
 		}
-		// AM-9 publication gap: every authored publication row is removed at
+		//  publication gap: every authored publication row is removed at
 		// activation and prepared delivery is T4's. The request is understood and
 		// refused with the ratified code, never read as an old release.
 		return reply
@@ -70,7 +70,7 @@ export function registerPublicationRoutes(deps: RouteDeps): void {
 		}
 	});
 
-	// AM-9's publication gap: prepared delivery is T4's, and no public document
+	// the publication gap: prepared delivery is T4's, and no public document
 	// or asset read is served from an authored row. Both routes answer an
 	// honest not-found for every ID, including a prior `/p/` link.
 	app.get('/publications/:publicationId', async (_request, reply) => {

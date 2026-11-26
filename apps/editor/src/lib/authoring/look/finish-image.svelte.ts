@@ -4,7 +4,7 @@
  * Two steps, only one of them undoable:
  *
  * 1. the P20 upload, outside the Scene, never in Undo, recovered by re-listing
- *    when a response is lost and deduplicated by sha256;
+ *  when a response is lost and deduplicated by sha256;
  * 2. the one `scene-finish-from-image` intent that names those bytes.
  *
  * This service owns the first step and the states the Library tile and the

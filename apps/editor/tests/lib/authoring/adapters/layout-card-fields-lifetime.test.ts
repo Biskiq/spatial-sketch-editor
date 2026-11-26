@@ -17,7 +17,7 @@ import CardFieldsLifetimeProbe from '../fixtures/CardFieldsLifetimeProbe.svelte'
 import { createCardFieldsInstrument } from '$lib/authoring/adapters/layout/adapter-support';
 import type { LayoutInstrument, LayoutInstrumentOutcome } from '$lib/authoring/adapters/layout/instrument';
 import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
-import { reactiveCell } from '../__fixtures__/reactive-cell.svelte.ts';
+import { reactiveCell } from '../__fixtures__/reactive-cell.svelte';
 vi.mock('$lib/authoring/adapters/layout/adapter-support', () => ({ createCardFieldsInstrument: vi.fn() }));
 let cleanup: (() => void) | undefined;
 afterEach(() => { cleanup?.(); cleanup = undefined; vi.restoreAllMocks(); document.body.replaceChildren(); });

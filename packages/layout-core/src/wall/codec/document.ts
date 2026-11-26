@@ -38,17 +38,17 @@ export function createEmptyWallFirstLayoutDocument(): LayoutDocumentWallFirst {
  *
  * Reference rules enforced here:
  * - IDs are unique within their document-global collection (junctions, walls,
- *   openings, objects) and across rooms;
+ *  openings, objects) and across rooms;
  * - every Wall references two existing, distinct Junction IDs;
  * - duplicate Walls between the same two Junctions are invalid, except the
- *   exactly-two curved Walls of a two-Wall lens (topology must then prove the
- *   loop closed, simple and bounded);
+ *  exactly-two curved Walls of a two-Wall lens (topology must then prove the
+ *  loop closed, simple and bounded);
  * - Room boundary references point at existing Walls; a Room boundary must
- *   not use the same directed Wall ref twice (undirected reuse across two
- *   Rooms is the shared-wall case and stays valid);
+ *  not use the same directed Wall ref twice (undirected reuse across two
+ *  Rooms is the shared-wall case and stays valid);
  * - openings reference existing Walls (document-global `wallId`);
  * - `LayoutObject.roomId` still references a persistent Room — the optional
- *   semantic association survives the schema change unchanged.
+ *  semantic association survives the schema change unchanged.
  */
 export function validateWallFirstLayoutDocument(input: unknown): WallFirstLayoutValidationResult {
 	const issues: LayoutDocumentIssue[] = [];

@@ -1,5 +1,5 @@
 /**
- * F.1 references — `references-v1` shapes (AM-1).
+ * F.1 references — `references-v1` shapes.
  *
  * A durable reference identifies meaning, not a location:
  * domain qualification + revision context + stable subject identity + stable

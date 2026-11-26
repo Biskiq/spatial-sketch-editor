@@ -373,8 +373,8 @@ function projectedAuthoredEndpointTee(
 /**
  * Final topology gate over the committed candidate: every wall pair IN ONE
  * CONNECTED COMPONENT must relate only through explicit shared junctions (or be
- * disjoint). This is the same bar `validateWallFirstTopology` holds the P23.1
- * precision and P23.6a Room-move candidates to — the P23.9 plan forbids un-noded
+ * disjoint). This is the same bar `validateWallFirstTopology` holds the
+ * precision and P23.6a Room-move candidates to — the plan forbids un-noded
  * visual crossings in committed data — and, since P23B.3a S5, the same SUBJECT:
  * the connected component, not the document.
  *

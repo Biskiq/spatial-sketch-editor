@@ -42,7 +42,7 @@ export function createAuthoringRoomAllocator(
 }
 
 /**
- * Shared foundation operation (P23.8 "Initial Room creation — foundation
+ * Shared foundation operation ("Initial Room creation — foundation
  * responsibility"): reconcile the candidate document's zero-predecessor
  * faces into born Rooms, then run the full canonical gates.
  *
@@ -76,7 +76,7 @@ function runRoomBirthOperation(options: {
 	}
 
 	// Zero-predecessor births: every face is a fresh component with no
-	// predecessor rooms (P23.8 proves the "failed match is not permission to
+	// predecessor rooms (proves the "failed match is not permission to
 	// create a Room" rule for non-zero predecessors — a birth operation by
 	// definition starts from an empty predecessor set, so every face born
 	// here is genuinely new).
@@ -156,14 +156,14 @@ export function validateAndCompile<T>(
 /**
  * Headless first-enclosure creation: reconcile the enclosed candidate faces
  * of a closed boundary-Wall chain into born Rooms with deterministic IDs,
- * `Draft Room N` names and the P23.8 0.1 m floor/ceiling creation defaults.
+ * `Draft Room N` names and the 0.1 m floor/ceiling creation defaults.
  *
  * The operation reconciles the **whole** submitted document, so the caller
  * submits the complete post-operation candidate graph (existing walls plus
- * the closing chain, already noded through the P23.8 noding plans). Every
+ * the closing chain, already noded through the noding plans). Every
  * enclosed face — not just the newly closed one — receives a Room; a
  * pre-existing Room document is out of scope here (the topology-edit entry
- * points run full P23.8 correspondence against their real baseline).
+ * points run full correspondence against their real baseline).
  */
 export function planFirstEnclosureCreation(options: {
 	/**

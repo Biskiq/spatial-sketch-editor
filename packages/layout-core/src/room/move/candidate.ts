@@ -28,7 +28,7 @@ export type RoomUnitMoveProposalWall = {
 /**
  * The **single** moving-set→candidate mapping shared by the release planner and
  * the live preview proposal below, so neither can describe geometry the other
- * does not have — the same rule the P23.11 architecture proposal follows.
+ * does not have — the same rule the architecture proposal follows.
  *
  * Translates the group's boundary Junctions, the centerlines of the group's
  * Walls, and the explicitly associated objects. Nothing is validated and nothing
@@ -147,7 +147,7 @@ export function proposeWallFirstRoomUnitGeometry(
  * rotated about `pivot`.
  *
  * WIRED on the owner's direction (pre-P23B.8 follow-up, 2026-09-28), which
- * reversed P23.14 Decision 7 — the reason that decision gave was that a
+ * reversed Decision 7 — the reason that decision gave was that a
  * canonical Room has no authored yaw so "a rotation gesture has no honest result
  * to commit", and the honest result is now this candidate, committed by
  * `planWallFirstRoomRotation` exactly as a translation is committed by

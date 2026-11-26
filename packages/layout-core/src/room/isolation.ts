@@ -7,23 +7,23 @@
  * travel with it. Two scopes are stated here, once each, and shared by their
  * callers:
  *
- * - `resolveIsolatedRoomSubgraph()` — **one** Room whose boundary graph is
- *   isolated from every other Room and Wall. The retained isolated duplicate
- *   planner uses this scope; an isolated Room move still resolves through the
- *   group scope as a group of one.
- * - `resolveIsolatedRoomGroupSubgraph()` — the **connected Room group** that
- *   contains a Room: every Room transitively joined to it through shared
- *   boundary Junctions. Moving any member alone would detach the others, so
- *   the group is the smallest unit a rigid translation can move. Interior
- *   shared Walls travel once with the group.
- * - `resolveRoomCopyEnclosure()` — the **copy enclosure** of one Room: its
- *   boundary Walls, their Junctions, hosted Openings and explicitly associated
- *   objects. This is the A5 scope. It deliberately does not require isolation:
- *   the copy takes a private clone of every boundary Wall, so a shared Wall or
- *   a stationary Wall at a boundary Junction is architecture the copy leaves
- *   behind, never a reason to refuse. A hosted Door relation that leaves the
- *   enclosure is reported for the caller's words; it cannot travel with the
- *   copy because the Rooms it joins do not.
+ * - `resolveIsolatedRoomSubgraph` — **one** Room whose boundary graph is
+ *  isolated from every other Room and Wall. The retained isolated duplicate
+ *  planner uses this scope; an isolated Room move still resolves through the
+ *  group scope as a group of one.
+ * - `resolveIsolatedRoomGroupSubgraph` — the **connected Room group** that
+ *  contains a Room: every Room transitively joined to it through shared
+ *  boundary Junctions. Moving any member alone would detach the others, so
+ *  the group is the smallest unit a rigid translation can move. Interior
+ *  shared Walls travel once with the group.
+ * - `resolveRoomCopyEnclosure` — the **copy enclosure** of one Room: its
+ *  boundary Walls, their Junctions, hosted Openings and explicitly associated
+ *  objects. This is the A5 scope. It deliberately does not require isolation:
+ *  the copy takes a private clone of every boundary Wall, so a shared Wall or
+ *  a stationary Wall at a boundary Junction is architecture the copy leaves
+ *  behind, never a reason to refuse. A hosted Door relation that leaves the
+ *  enclosure is reported for the caller's words; it cannot travel with the
+ *  copy because the Rooms it joins do not.
  *
  * The scopes differ deliberately, not by drift. The isolated subgraph still
  * rejects a shared Wall because it promises a truly isolated clone. The A5 copy
@@ -346,7 +346,7 @@ export function connectedRoomIds(document: LayoutDocumentWallFirst, roomId: stri
  * 2. every boundary Wall resolves;
  * 3. no boundary Wall is referenced by another Room (shared Wall);
  * 4. no Wall outside the subgraph is incident to a boundary Junction
- *    (including a corner-only single-Wall connection);
+ *  (including a corner-only single-Wall connection);
  * 5. no hosted Opening carries a `connectsRoomIds` portal relation;
  * 6. no explicitly associated object is a read-only `profile`.
  */
@@ -440,7 +440,7 @@ export function resolveIsolatedRoomSubgraph(
  * 1. the Room does not exist (`unknown_room`);
  * 2. a boundary Wall does not resolve (`invalid_reference`);
  * 3. an explicitly associated object is a read-only `profile`
- *    (`profile_object_read_only`).
+ *  (`profile_object_read_only`).
  *
  * A hosted Opening's `connectsRoomIds` is not a rejection here: the copy keeps
  * the Door and drops the relation, and the relation is reported so the calling

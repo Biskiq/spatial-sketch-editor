@@ -12,10 +12,10 @@
  * hidden state:
  *
  * - **Space hysteresis** (`SPACE_SWITCH_INSET`): orbiting across a shared Room
- *   boundary keeps the previous Space until the target is clearly inside a
- *   different one.
+ *  boundary keeps the previous Space until the target is clearly inside a
+ *  different one.
  * - **Wall hysteresis** (`CUT_THRESHOLD` / `WHOLE_THRESHOLD`): a sight margin
- *   that hovers near a Wall top keeps its previous state instead of flickering.
+ *  that hovers near a Wall top keeps its previous state instead of flickering.
  *
  * The margin `m_w` is the largest vertical clearance of the Wall's top over the
  * sight lines from the eye to the inspected Space's interior samples: positive

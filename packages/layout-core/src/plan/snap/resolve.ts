@@ -162,7 +162,7 @@ export function resolveLayoutSnap(
 	// incident room boundary under one wall identity) collapse to one.
 	// Deduping by position alone would let whichever wall the compiler
 	// happened to emit first shadow the other's exclusion — query-array
-	// order must never decide the winner (P23.2 deterministic contract).
+	// order must never decide the winner (deterministic contract).
 	const seenPointOwners = new Set<string>();
 	for (const queryPoint of geometry.queries.points) {
 		const ownerId = snapOwnerKey({ kind: 'wall', id: queryPoint.wallKey ?? queryPoint.segmentId });
@@ -185,7 +185,7 @@ export function resolveLayoutSnap(
 	// walls, not sample boundaries. Straight walls get the full family
 	// (endpoints/midpoint/nearest-point); curved walls keep their per-sample
 	// spans and only provide nearest-point candidates — a chord through a
-	// curve must never masquerade as the wall, and P23.2 midpoint semantics
+	// curve must never masquerade as the wall, and midpoint semantics
 	// are straight-wall-scoped.
 	const wallMerges = wallSnapIndex(geometry).walls;
 	const wallOwner = (key: string): string => snapOwnerKey({ kind: 'wall', id: key });
@@ -265,7 +265,7 @@ export function resolveLayoutSnap(
 		});
 	}
 
-	// The draft-anchor axis family (rank 7, ratified in P23.2 and
+	// The draft-anchor axis family (rank 7, ratified in and
 	// dormant until now because nothing produced it). It is emitted *after* the
 	// geometry candidates and *before* the winner is picked, so the family
 	// competes through the ratified rank order rather than being special-cased.
@@ -304,7 +304,7 @@ export function resolveLayoutSnap(
  *
  * The `kind` names the **held** coordinate (`orthogonal-z` for a candidate that
  * holds Z and therefore runs its leg along X), matching the convention the
- * family has carried since P23.2. The paint layer draws `start`/`end` and does
+ * family has carried since. The paint layer draws `start`/`end` and does
  * not branch on `kind`; it is kept accurate for identification.
  */
 function guidesForCandidate(candidate: SnapCandidate, anchor: LayoutVec2 | null): SnapGuide[] {

@@ -23,7 +23,7 @@ import type { ProjectedJunction, ProjectedWall } from './ink';
  * exactly as the Scene adapter's floor query does), while pointer intents use
  * Stage-local pixels; the one accepted evaluation rect is the only translation
  * between them. Overlay contributions are viewport CSS and are translated once
- * by `StageFacade.overlays()`, never here.
+ * by `StageFacade.overlays`, never here.
  */
 export function pointerDatumPoint(
 	context: StageAdapterContext,

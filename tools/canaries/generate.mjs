@@ -33,7 +33,7 @@ for (const canary of catalog) {
 	if (canary.find === canary.replace) problems.push(`${canary.id}: replacement is a no-op`);
 }
 if (catalog.length < 40)
-	problems.push(`catalog has ${catalog.length} canaries; VER-0 requires at least 40`);
+	problems.push(`catalog has ${catalog.length} canaries; the canary contract requires at least 40`);
 if (problems.length > 0) {
 	console.error(`canary catalog is invalid:\n- ${problems.join('\n- ')}`);
 	process.exit(1);

@@ -10,9 +10,9 @@ import { drawingRefusalWords } from './refusals';
  * builds geometry, never allocates an identity and never decides validity.
  *
  * ```text
- * tap on a Junction mark      → target junction  (declared de-jure connection)
- * tap on a Wall's interior    → target host      (the planner splits that Wall)
- * tap anywhere else           → free point       (independent placement)
+ * tap on a Junction mark → target junction (declared de-jure connection)
+ * tap on a Wall's interior → target host (the planner splits that Wall)
+ * tap anywhere else → free point (independent placement)
  * ```
  *
  * "Nearness never adopts a coordinate" is mechanical here: a point carries a

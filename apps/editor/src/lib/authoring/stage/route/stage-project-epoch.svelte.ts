@@ -9,7 +9,7 @@
  *
  * - `project-session` still owns load/replacement/save protocol;
  * - `StageSession` still owns the replacement epoch, cancellation registry,
- *   selection, task and gesture leases;
+ *  selection, task and gesture leases;
  * - `host-acceptance` still owns the one F4 coordinator and its bounded history;
  * - the facade still owns the compiled/presented Stage;
  * - the caller's presentation callbacks still own route view state.

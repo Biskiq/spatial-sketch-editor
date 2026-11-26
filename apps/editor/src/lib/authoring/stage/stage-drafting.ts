@@ -5,11 +5,11 @@
  * Camera mode or a source writer:
  *
  * - **Grid** is on or off and always draws the fixed 1 m minor and 5 m major
- *   levels. Drawing thins with zoom; the values never change.
+ *  levels. Drawing thins with zoom; the values never change.
  * - **Snap** is on or off, may be temporarily **held** by Alt/Option, and always
- *   rounds to the fixed 0.5 m increment.
+ *  rounds to the fixed 0.5 m increment.
  * - **Scale** is a reading of the current Camera evaluation, reachable through
- *   Find and the ruler; it never writes a pose of its own.
+ *  Find and the ruler; it never writes a pose of its own.
  *
  * Everything here is pure. The session owns the one state value; the adapter
  * context publishes it read-only; the shell renders it; Layout Ink and free

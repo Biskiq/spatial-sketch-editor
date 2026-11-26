@@ -154,7 +154,7 @@ export function createExperienceRemovalReadings(ports: ExperienceRemovalReadings
 		}
 	}
 
-	/** Whether a subject still names something in the ports.experience() Experience. */
+	/** Whether a subject still names something in the ports.experience Experience. */
 	function resolves(candidate: ExperienceSubject): boolean {
 		const experience = ports.experience();
 		if (experience === null) return false;

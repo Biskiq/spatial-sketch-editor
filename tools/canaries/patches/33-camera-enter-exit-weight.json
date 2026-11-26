@@ -1,7 +1,7 @@
 {
 	"id": "33-camera-enter-exit-weight",
 	"area": "camera",
-	"citation": "hard rule 1 — one Camera authority",
+	"citation": "hard rule 1 \u2014 one Camera authority",
 	"title": "The camera angular sample bound is widened sixfold",
 	"file": "packages/camera-core/src/camera/motion.ts",
 	"find": "maxSampleAngularDeltaRadians: Math.PI / 36,",

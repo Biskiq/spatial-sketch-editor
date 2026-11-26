@@ -8,13 +8,13 @@
  * Identity rules:
  * - Junction IDs are the only normal-authoring connectivity authority.
  * - Wall IDs are document-global and survive deformation; canonical Wall
- *   orientation (start → end) is stable and identity-bearing because opening
- *   offsets are measured from start.
+ *  orientation (start → end) is stable and identity-bearing because opening
+ *  offsets are measured from start.
  * - Opening IDs are document-global in the new schema.
  * - Room IDs remain product identities, never face-extractor IDs.
  * - IDs never derive from coordinates, traversal order, timestamps or random
- *   allocation (allocation happens in authoring operations, not
- *   in this codec).
+ *  allocation (allocation happens in authoring operations, not
+ *  in this codec).
  */
 import type { LayoutVec2 } from '../geometry/coordinates';
 import type { DraftPath } from '../geometry/path';
@@ -140,7 +140,7 @@ export type LayoutWallCubicSpan = {
  * its endpoint Junctions (`kind: 'line'`) or an explicit cubic chain through
  * its endpoint Junctions and its ordered interior bend points.
  *
- * With `P = [startJunction, ...knots, endJunction]`:
+ * With `P = [startJunction,...knots, endJunction]`:
  *
  * ```text
  * spans.length === knots.length + 1
@@ -149,16 +149,16 @@ export type LayoutWallCubicSpan = {
  *
  * Rules:
  * - endpoint positions remain owned only by `startJunctionId` /
- *   `endJunctionId`; the chain stores no endpoint point, only per-span
- *   controls;
+ *  `endJunctionId`; the chain stores no endpoint point, only per-span
+ *  controls;
  * - `knots.length === 0` is legal and means one cubic between the two
- *   endpoint Junctions — it is not a flattened Wall;
+ *  endpoint Junctions — it is not a flattened Wall;
  * - `spans.length === knots.length + 1` is a validated invariant, and every
- *   span is one cubic;
+ *  span is one cubic;
  * - bend points are never Junctions and never carry connectivity;
  * - spans carry no identity, no ordering field and no lookup by ID;
  * - the persisted controls are the only curve authority. Nothing re-derives
- *   them on the read path, so subdivision and translation are exact.
+ *  them on the read path, so subdivision and translation are exact.
  */
 export type LayoutWallCenterline =
 	| { kind: 'line' }
@@ -183,7 +183,7 @@ export type LayoutWallCenterline =
  *
  * ```text
  * bottomY = floor.elevation
- * topY    = floor.elevation + wall.height
+ * topY = floor.elevation + wall.height
  * ```
  *
  * It is finite and strictly positive, per physical Wall, shared by both sides of

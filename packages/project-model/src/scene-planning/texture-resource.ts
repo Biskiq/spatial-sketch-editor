@@ -5,10 +5,10 @@
  * two records for it and they always agree:
  *
  * - a `scene.textures` record whose id **is** the asset id and whose URI is
- *   `/project-assets/{id}`, which is what the resolver binds and what release
- *   pinning walks;
+ *  `/project-assets/{id}`, which is what the resolver binds and what release
+ *  pinning walks;
  * - a `texture` typed resource that pins those exact bytes, which is what the
- *   editor loader and the release manifest verify.
+ *  editor loader and the release manifest verify.
  *
  * This module owns the one translation from an imported image identity to that
  * resource. It refuses rather than repairs: a pin that is not sha256, a MIME

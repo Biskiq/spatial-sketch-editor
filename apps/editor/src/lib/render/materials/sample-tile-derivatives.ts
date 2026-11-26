@@ -6,7 +6,7 @@
  * without a second render:
  *
  * - **XS 64**: a tighter window (the master's central 62.5%), so the material
- *   detail that would shrink to noise at 44 CSS px stays legible;
+ *  detail that would shrink to noise at 44 CSS px stays legible;
  * - **S 112**: the whole master, scaled;
  * - **M 256**: the master itself.
  *

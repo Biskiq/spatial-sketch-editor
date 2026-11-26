@@ -38,15 +38,15 @@ type ClonedRoomEnclosure = {
  *
  * - every boundary Junction gets `<source>-copy.<nonce>` at `point + delta`;
  * - every boundary Wall keeps thickness, height and authored name, gets its
- *   own id, remapped ends and a deep centerline translated by the same delta;
+ *  own id, remapped ends and a deep centerline translated by the same delta;
  * - every hosted Opening keeps kind, authored name, offset, size, sill and
- *   profile, gets its own id and its clone host, and never carries
- *   `connectsRoomIds` (the Rooms it names do not copy); the dropped relation is
- *   reported;
+ *  profile, gets its own id and its clone host, and never carries
+ *  `connectsRoomIds` (the Rooms it names do not copy); the dropped relation is
+ *  reported;
  * - the Room keeps thicknesses and gets `<name> copy` (or the next free
- *   suffix), a new id and boundary references remapped to the cloned Walls;
+ *  suffix), a new id and boundary references remapped to the cloned Walls;
  * - explicitly associated objects copy once with the same translation and the
- *   new Room association.
+ *  new Room association.
  *
  * This is the ONE clone/remap implementation for both Room planners, so the
  * isolated A4 path and the general A5 path cannot drift in what they copy.
@@ -246,7 +246,7 @@ function cloneRoomEnclosure(
  * Walls, and supported document-level Layout objects whose explicit `roomId`
  * equals the source Room ID copy with the same per-copy X/Z delta and the
  * remapped association. Unassociated objects inside the face never copy, and
- * Scene/Camera documents are not touched at all (P23.4 non-goal).
+ * Scene/Camera documents are not touched at all (non-goal).
  *
  * Rejections: shared boundary Walls or subgraph junctions shared with
  * non-cloned walls (`room_not_isolated`), any external portal relation on a

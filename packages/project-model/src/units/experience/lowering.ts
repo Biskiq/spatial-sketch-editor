@@ -1,6 +1,6 @@
 /**
  * Experience lowering — one selected Experience + its Camera unit -> the accepted
- * `ExecutionProgram@4` codec (AM-6).
+ * `ExecutionProgram@4` codec.
  *
  * Lowering is **derivation**, not a second authored format: it reads the accepted
  * F.2 envelope, resolves every Experience/Presentation/Stop/View/connection
@@ -253,7 +253,7 @@ export function lowerExperienceProgram(
 	const presentationById = new Map(
 		experience.presentations.map((presentation) => [presentation.id, presentation]),
 	);
-	// A Presentation may exist without a Guide (AM-9). Lowering emits every
+	// A Presentation may exist without a Guide. Lowering emits every
 	// **enterable** Presentation this Experience carries, not only those a selected
 	// Guide's Stops use, so a guide-free Presentation stays reachable to DOM
 	// navigation and camera handoff. A Presentation with no Default View, or whose

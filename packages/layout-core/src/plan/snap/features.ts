@@ -232,7 +232,7 @@ export function objectBoundsSnapCandidates(
  * radius is what keeps the family from winning when the draft is nowhere near an
  * axis — the resolver filters by `distance` before ranking.
  *
- * **Locked *and* stepped (P23.13 S8 owner decision).** The candidate's free
+ * **Locked *and* stepped (S8 owner decision).** The candidate's free
  * coordinate is quantized to `step` — the same value the grid fallback reads, so
  * the lattice is stated once — while the held coordinate stays *exactly* the
  * anchor's. That is the point of the family: with Snap on the draft must never

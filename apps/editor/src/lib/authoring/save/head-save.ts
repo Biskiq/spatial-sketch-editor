@@ -7,12 +7,12 @@
  * Head:
  *
  * 1. **One label and one visible reason** for the Save control. The Head never
- *    renders a dead button: a state that cannot save says why.
+ *  renders a dead button: a state that cannot save says why.
  * 2. **Unsaved-work signalling** at project exit and replacement. The signal is
- *    explicit (`unsavedWork`), so a caller must decide; it is never inferred.
+ *  explicit (`unsavedWork`), so a caller must decide; it is never inferred.
  * 3. **Routing *Reload remote* through the host's replacement guard.** The
- *    controller returns the `ReloadOffer`; it never installs the remote document
- *    itself, so the host's guard remains the only replacement path.
+ *  controller returns the `ReloadOffer`; it never installs the remote document
+ *  itself, so the host's guard remains the only replacement path.
  *
  * Framework-free: no Svelte, host, route or renderer import, so the Head
  * component and the tests drive exactly the same behaviour.
@@ -203,7 +203,7 @@ export function createHeadSave(
 			return commandOf(await state.save());
 		},
 		async retry() {
-			// `retry()` reuses the retained capture. A sign-in interruption is the one
+			// `retry` reuses the retained capture. A sign-in interruption is the one
 			// state where the same command is the documented resume path.
 			perfMark('save:command', { retry: true });
 			return commandOf(await state.retry());

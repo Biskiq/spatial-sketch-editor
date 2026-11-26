@@ -264,7 +264,7 @@ type PortalSideResolution =
  * whose reconciled boundary references the opening's hosting Wall — never
  * merely the descendant that kept the predecessor ID. Zero or multiple
  * adjacent descendants is an ambiguous remap and rejects the whole topology
- * edit (`unresolved_portal_remap`), per the P23.8 portal split rule.
+ * edit (`unresolved_portal_remap`), per the portal split rule.
  */
 export function remapPortalRelations(options: {
 	successorOf: ReadonlyMap<string, string>;
@@ -334,7 +334,7 @@ export function remapPortalRelations(options: {
 		const bCleared = nextB.kind !== 'room';
 		if (aCleared && bCleared) {
 			// Unambiguous disappearance clears the relation while preserving
-			// the physical door (P23.8 portal disappearance rule).
+			// the physical door (portal disappearance rule).
 			const cleared = { ...opening };
 			delete (cleared as Partial<LayoutWallOpening>).connectsRoomIds;
 			remapped.push(cleared as LayoutWallOpening);

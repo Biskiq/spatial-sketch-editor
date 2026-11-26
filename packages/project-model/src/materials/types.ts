@@ -10,9 +10,9 @@
  *
  * - `color` is an opaque sRGB `#rrggbb` factor.
  * - map images are content digests (`Maps<Hash>`), never local texture ids, so
- *   the same recipe in two projects with different local ids has one identity.
+ *  the same recipe in two projects with different local ids has one identity.
  * - `mapping` states the coordinate intent of the whole set; a binding may
- *   carry its own mapping instead.
+ *  carry its own mapping instead.
  *
  * The canonical form (see `recipe.ts`) always carries every scalar property and
  * a `maps` object, even when empty. Only those normalized bytes determine the
@@ -56,7 +56,7 @@ export type Metric = {
  * The coordinate intent of a set or one binding.
  *
  * - `target` uses the target's metric basis when it has one and identity UV0
- *   otherwise (a legacy model remap).
+ *  otherwise (a legacy model remap).
  * - `surface` requires a metric basis and refuses without one.
  * - `uv` reads the named native UV set directly with the authored repeat.
  */

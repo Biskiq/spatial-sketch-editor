@@ -7,34 +7,34 @@
  * Canvas stores, under the one Scene root:
  *
  * ```
- * SceneEntity:<id>            transform-free root: the pick registration
- *   placement                 position, rotation, scale, visibility
- *     presentation            the asset's own orientation/scale correction
- *       fallback | instance   the fallback body until the model is drawn
+ * SceneEntity:<id> transform-free root: the pick registration
+ *  placement position, rotation, scale, visibility
+ *  presentation the asset's own orientation/scale correction
+ *  fallback | instance the fallback body until the model is drawn
  * ```
  *
  * - **The fallback is data.** The description resolves each part to a keyed store
- *   geometry and a canonical material descriptor (`fallback-shapes`), so equal
- *   parts across instances share one buffer and one material. The fallback draws
- *   at once, before the lazy model support has arrived.
+ *  geometry and a canonical material descriptor (`fallback-shapes`), so equal
+ *  parts across instances share one buffer and one material. The fallback draws
+ *  at once, before the lazy model support has arrived.
  * - **The drawn instance is a realization.** A loaded template is cloned by
- *   `model-realization` (through the lazily loaded support): geometry shared,
- *   skinned hierarchies with their own skeletons, every surface a store lease, a
- *   remap and its texture variant as leases.
+ *  `model-realization` (through the lazily loaded support): geometry shared,
+ *  skinned hierarchies with their own skeletons, every surface a store lease, a
+ *  remap and its texture variant as leases.
  * - **Every async step is gated.** A load begins a token on the entry's arrival
- *   gate and an arrival mounts only while that token is current; replacement and
- *   release close the gate. A presentation (arrival, style change) starts a new
- *   generation, and a texture completion applies only while its generation is
- *   still the newest. An unscoped look mounts at once and remaps when its textures
- *   arrive; a scoped look waits for them, so its first frame is already textured.
+ *  gate and an arrival mounts only while that token is current; replacement and
+ *  release close the gate. A presentation (arrival, style change) starts a new
+ *  generation, and a texture completion applies only while its generation is
+ *  still the newest. An unscoped look mounts at once and remaps when its textures
+ *  arrive; a scoped look waits for them, so its first frame is already textured.
  * - **Every lease is given back.** A replaced source releases the instance, its
- *   material/texture leases and its template lease; a released entity also gives
- *   back its fallback leases and its pick registration. The handler disposes
- *   nothing itself: the stores and the per-Canvas loader own every GPU resource.
+ *  material/texture leases and its template lease; a released entity also gives
+ *  back its fallback leases and its pick registration. The handler disposes
+ *  nothing itself: the stores and the per-Canvas loader own every GPU resource.
  * - **One caster channel.** The handler publishes `arrived` when an instance is
- *   drawn, `released` when it goes, and `changed` when a drawn instance's
- *   visibility or shadow flags change. Nothing animates, so `playing()` stays
- *   zero and the shadow owner never renders per frame for a model.
+ *  drawn, `released` when it goes, and `changed` when a drawn instance's
+ *  visibility or shadow flags change. Nothing animates, so `playing` stays
+ *  zero and the shadow owner never renders per frame for a model.
  *
  * Three keys split an edit's work (see `SceneModelItem`), and an update whose
  * items, support, URLs and texture scope are all unchanged does nothing at all.

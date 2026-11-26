@@ -13,18 +13,18 @@
  * on the arbitrary canonical orientation of a Wall) and axis-independent:
  *
  * ```text
- * junction_seam_degenerate  a coordinate is not finite, or a resolved band has
- *                           no vertical span (a zero-height surface); a keel
- *                           carrying no region or band is the same failure
- * junction_seam_fold        two incident legs have exactly collinear outward
- *                           rays in the same direction: their offset solids
- *                           coincide
- * junction_seam_overlap     an owned seam polygon or keel region has no area
- *                           (collapsed past its own offset line), or a keel
- *                           region is not the declared convex CCW polygon
- * junction_seam_uncovered   an incident leg was resolved to nothing: it is
- *                           neither a terminal cap, nor a corner, nor a
- *                           suppressed interface, so its end is left open
+ * junction_seam_degenerate a coordinate is not finite, or a resolved band has
+ *  no vertical span (a zero-height surface); a keel
+ *  carrying no region or band is the same failure
+ * junction_seam_fold two incident legs have exactly collinear outward
+ *  rays in the same direction: their offset solids
+ *  coincide
+ * junction_seam_overlap an owned seam polygon or keel region has no area
+ *  (collapsed past its own offset line), or a keel
+ *  region is not the declared convex CCW polygon
+ * junction_seam_uncovered an incident leg was resolved to nothing: it is
+ *  neither a terminal cap, nor a corner, nor a
+ *  suppressed interface, so its end is left open
  * ```
  *
  * `uncovered` is deliberately stated over the resolution's own completeness

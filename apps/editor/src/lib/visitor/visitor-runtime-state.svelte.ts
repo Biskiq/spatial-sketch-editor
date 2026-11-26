@@ -1,5 +1,5 @@
 /**
- * Visitor runtime — Experience-unit orchestration (AM-9).
+ * Visitor runtime — Experience-unit orchestration.
  *
  * The visitor executes one lowered `ExecutionProgram@4` through the single
  * Experience reducer. There is no node-keyed order, no main-flow walk and no
@@ -11,7 +11,7 @@
  * One Guide clock (sheet §31): play, pause, wait and Explore are run state in
  * the reducer, never a second flag here or in the director. A stay counts only
  * after its arrival: the director confirms a finished arrival Travel with
- * `arrival()`, in Preview and in a release alike.
+ * `arrival`, in Preview and in a release alike.
  */
 import {
 	buildExperienceCompanion,

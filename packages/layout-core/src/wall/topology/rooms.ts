@@ -43,21 +43,21 @@ export function roomExclusiveBoundaryWallIds(
  * geometry:
  *
  * - every boundary Wall referenced by **no other** Room is removed — for a
- *   standalone drawn Room that is its entire boundary, so nothing (no open
- *   shell of leftover Walls) survives the command;
+ *  standalone drawn Room that is its entire boundary, so nothing (no open
+ *  shell of leftover Walls) survives the command;
  * - a Wall **shared** with a neighbouring Room is kept: it is one physical
- *   Wall the neighbour still needs, and removing the Room's exclusive Walls
- *   still opens its enclosure, so it retires through normal P23.8
- *   reconciliation;
+ *  Wall the neighbour still needs, and removing the Room's exclusive Walls
+ *  still opens its enclosure, so it retires through normal
+ *  reconciliation;
  * - a Room whose every boundary Wall is shared (a fully interior Room) owns
- *   nothing alone, so it rejects `ambiguous_room_removal` rather than silently
- *   demolishing a neighbour's Walls;
+ *  nothing alone, so it rejects `ambiguous_room_removal` rather than silently
+ *  demolishing a neighbour's Walls;
  * - a boundary reference to a missing Wall rejects `wall_not_in_room_boundary`.
  *
  * This is still never a `LayoutRoom` record splice (the Room-identity
  * invariant forbids a boundary-less Room). Hosted Openings of the removed
  * Walls go atomically, endpoint Junctions prune reference-only, and portal/
- * object associations remap/clear per the existing P23.8 contract. Ambiguous
+ * object associations remap/clear per the existing contract. Ambiguous
  * or unsupported topology rejects atomically with zero history; the planner is
  * input-pure.
  */
@@ -210,7 +210,7 @@ export function planRemoveSpace(
  * Convenience geometry helper for callers/tests: the submitted wall chain
  * as an untyped rectangle-equivalent seed list, so fixtures can build
  * closed chains without hand-writing junction arrays. Production callers
- * assemble junctions/walls through the P23.8 noding plans instead.
+ * assemble junctions/walls through the noding plans instead.
  */
 export function closedChainWalls(options: {
 	junctions: ReadonlyArray<readonly [string, number, number]>;

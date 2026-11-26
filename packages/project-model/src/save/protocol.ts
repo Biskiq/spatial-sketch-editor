@@ -1,5 +1,5 @@
 /**
- * `SaveAcceptedSource@1` — the conditional Save capture (AM-4,
+ * `SaveAcceptedSource@1` — the conditional Save capture (,
  * `F4.intent-acceptance@1:conditional-save-current-v1`).
  *
  * The protocol is runtime-safe and lives on its own package subpath so the API,
@@ -8,12 +8,12 @@
  * durable saved-base token form. It deliberately does not own:
  *
  * - source validation or admission — the live F.2 unit Save handler owns both,
- *   so Save cannot become a second validator;
+ *  so Save cannot become a second validator;
  * - the content-identity implementation — the digest comes from the live source
- *   provider, and its **scheme** travels as transport metadata outside the
- *   capture. Keeping the scheme constant here, pinned by a golden-digest test,
- *   makes a canonicalization change fail loudly instead of silently turning
- *   every Save into a false conflict or false match.
+ *  provider, and its **scheme** travels as transport metadata outside the
+ *  capture. Keeping the scheme constant here, pinned by a golden-digest test,
+ *  makes a canonicalization change fail loudly instead of silently turning
+ *  every Save into a false conflict or false match.
  *
  * The capture carries the full canonical source **text**. That is deliberate:
  * equal digests do not prove equal bytes, and retry identity / dirty comparison
@@ -75,7 +75,7 @@ export type SaveAcceptedSource = {
 
 /**
  * One wire request: the capture plus the transport-only scheme. The scheme is
- * outside `SaveAcceptedSource@1` so the ratified AM-4 capture shape is not
+ * outside `SaveAcceptedSource@1` so the ratified capture shape is not
  * extended by a build fact.
  */
 export type SaveRequest = {

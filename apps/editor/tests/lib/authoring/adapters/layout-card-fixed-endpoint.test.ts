@@ -16,7 +16,7 @@ import { createCardFieldsInstrument } from '$lib/authoring/adapters/layout/adapt
 import type { LayoutFieldState, LayoutInstrument } from '$lib/authoring/adapters/layout/instrument';
 import type { FixedWallEndpoint } from '@portfolio/layout-core/wall';
 import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
-import { reactiveCell } from '../__fixtures__/reactive-cell.svelte.ts';
+import { reactiveCell } from '../__fixtures__/reactive-cell.svelte';
 
 vi.mock('$lib/authoring/adapters/layout/adapter-support', () => ({ createCardFieldsInstrument: vi.fn() }));
 

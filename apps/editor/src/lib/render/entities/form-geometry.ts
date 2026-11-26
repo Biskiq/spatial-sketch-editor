@@ -6,13 +6,13 @@
  * only place both are derived:
  *
  * - **Normals** are `computeVertexNormals` over the kernel's indexed topology.
- *   Cap vertices are separate from side vertices and side vertices are
- *   duplicated at straight anchors, so caps stay flat and curves stay smooth
- *   with no extra split here.
+ *  Cap vertices are separate from side vertices and side vertices are
+ *  duplicated at straight anchors, so caps stay flat and curves stay smooth
+ *  with no extra split here.
  * - **UVs are metres.** Caps use local `(x, z)` for a plan form and `(x, y)` for
- *   an elevation form; sides use the profile arclength and the extrusion axis.
- *   With metre UVs, `SceneInstanceMaterial` tiling at real scale is just
- *   `repeat = 1 / tileSize`, which is what `surfaceSize = [1, 1]` produces.
+ *  an elevation form; sides use the profile arclength and the extrusion axis.
+ *  With metre UVs, `SceneInstanceMaterial` tiling at real scale is just
+ *  `repeat = 1 / tileSize`, which is what `surfaceSize = [1, 1]` produces.
  *
  * The arclength of a side vertex is read from the base-cap ring the kernel
  * already emitted (the first `profilePointCount` vertices are exactly the

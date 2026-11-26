@@ -11,7 +11,7 @@
  * Endpoint welding alone does not close a contour:
  *
  * - at a **T Junction** the stem's side faces end at points that lie on (not at
- *   the ends of) the through-Wall's split face;
+ *  the ends of) the through-Wall's split face;
  * - at **X and Y Junctions** keel faces meet several Walls;
  * - two coincident faces can run in opposite directions;
  * - overlapping, not-joined Walls cross each other.
@@ -20,26 +20,26 @@
  * therefore works on the **group's union** in seven fixed steps:
  *
  * 1. **Groups.** One structure group for every Wall-owned mesh (Walls, bridges and
- *    keels are together the closed solid the builder resolved), one group per
- *    Layout object. A plinth flush against a Wall therefore never cancels the
- *    Wall's boundary.
+ *  keels are together the closed solid the builder resolved), one group per
+ *  Layout object. A plinth flush against a Wall therefore never cancels the
+ *  Wall's boundary.
  * 2. **Section offset.** The caller offsets the plane by 0.1 mm toward the solid
- *    (see `SectionPlane.sectionOffsetMeters`) so a cut exactly on a horizontal
- *    face — the common case, because Sheet ticks snap to sills, heads and Wall
- *    tops — makes every triangle either straddle or not, with no coplanar or
- *    vertex-on-plane degeneracy.
+ *  (see `SectionPlane.sectionOffsetMeters`) so a cut exactly on a horizontal
+ *  face — the common case, because Sheet ticks snap to sills, heads and Wall
+ *  tops — makes every triangle either straddle or not, with no coplanar or
+ *  vertex-on-plane degeneracy.
  * 3. **Oriented segments.** Each straddling triangle yields one segment, oriented
- *    so the solid is on its left in the plane's own 2D frame.
+ *  so the solid is on its left in the plane's own 2D frame.
  * 4. **Weld** endpoints in a spatial hash with tolerance τ.
  * 5. **Split** every segment at every welded vertex lying within τ of its interior
- *    (T-vertices) and at every proper crossing with another segment of the group.
+ *  (T-vertices) and at every proper crossing with another segment of the group.
  * 6. **Net multiplicity.** Merge equal undirected edges, summing `+1`/`−1`. Net
- *    zero (two coincident opposite faces) is dropped; net `±k` is kept.
+ *  zero (two coincident opposite faces) is dropped; net `±k` is kept.
  * 7. **Union boundary.** For each net edge compute the nonzero winding on its right
- *    by a horizontal probe against the group's net edges, bucketed by v-strip; the
- *    winding on its left is right + net. Keep the edge iff exactly one side is
- *    zero, then stitch with Paper's rule (at a touching point turn clockwise from
- *    the way back). Counter-clockwise loops are outers, clockwise loops are holes.
+ *  by a horizontal probe against the group's net edges, bucketed by v-strip; the
+ *  winding on its left is right + net. Keep the edge iff exactly one side is
+ *  zero, then stitch with Paper's rule (at a touching point turn clockwise from
+ *  the way back). Counter-clockwise loops are outers, clockwise loops are holes.
  *
  * **Validity is checked, not assumed.** Before step 7 every vertex must balance
  * (net in = net out). A closed input always balances after steps 4–6; an imbalance

@@ -10,10 +10,10 @@
  * Grammar:
  *
  * 1. Normalize to NFC, case-fold ASCII, strip the final extension and tokenize
- *    on space, underscore, dot and hyphen.
+ *  on space, underscore, dot and hyphen.
  * 2. Strip a final resolution token (`1k`, `2k`, `4k`).
  * 3. Match the longest terminal role alias. A resolution token immediately
- *    before the role is stripped too.
+ *  before the role is stripped too.
  * 4. Group by the remaining stem.
  *
  * Standalone scalars read R. ORM is occlusion R, roughness G, metallic B; RMA

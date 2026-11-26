@@ -124,9 +124,9 @@ export type StudioOpening =
  * Decide how a loaded project opens in Studio. Pure and total.
  *
  * - An explicit target is honored or named unavailable; it never falls back to a
- *   different object by name or array order.
+ *  different object by name or array order.
  * - With no target, exactly one eligible root enters; several ask which; none is
- *   `empty` for a freshly minted project and `no-objects` for a saved one.
+ *  `empty` for a freshly minted project and `no-objects` for a saved one.
  */
 export function resolveStudioOpening(input: {
 	readonly entities: readonly StudioEntityRead[];

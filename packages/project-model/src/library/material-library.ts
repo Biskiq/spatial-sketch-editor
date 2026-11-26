@@ -5,12 +5,12 @@
  * effective, untreated recipe a creator chose to keep, with its display name.
  * It is deliberately distinct from the recipe identity:
  *
- *   { formatVersion: 1, kind: 'material', name, recipe }
+ *  { formatVersion: 1, kind: 'material', name, recipe }
  *
  * - `contentId` hashes these exact canonical bytes, including the display name.
  * - `recipeHash` is the recipe's own identity (canonical recipe bytes only), so
- *   the same material saved under two names has two item identities and one
- *   portable recipe revision.
+ *  the same material saved under two names has two item identities and one
+ *  portable recipe revision.
  *
  * Local image identities and project ids are never part of the payload. They are
  * the transport's pinned dependencies (`MaterialLibraryImageBinding`), so a
@@ -450,7 +450,7 @@ export async function readMaterialLibraryBytes(
 }
 
 /* -------------------------------------------------------------------------- */
-/* Flattening an accepted Finish                                              */
+/* Flattening an accepted Finish */
 /* -------------------------------------------------------------------------- */
 
 export type FinishLibraryCapture = {

@@ -276,7 +276,7 @@ export function executeWallChainCandidate(
 
 	// --- noding against the full candidate graph -----------------------------
 	// The chain may T into or cross pre-existing walls (and vice versa). Every
-	// un-noded relationship is resolved through the P23.8 noding plans until
+	// un-noded relationship is resolved through the noding plans until
 	// the graph is clean; distances are always recomputed against the current
 	// candidate so a wall already fragmented by an earlier fix stays correct.
 	//
@@ -474,7 +474,7 @@ export function executeWallChainCandidate(
 				predecessorPolygons.set(room.id, polygon);
 				predecessorWitnesses.set(room.id, interiorWitness(polygon));
 			}
-			// True P23.8 correspondence components: connected components of
+			// True correspondence components: connected components of
 			// the bipartite predecessor-Room ↕ candidate-face graph. An edge
 			// exists when the predecessor witness lies strictly inside the
 			// face or the predecessor polygon overlaps the face with

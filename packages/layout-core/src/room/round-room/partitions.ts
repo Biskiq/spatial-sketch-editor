@@ -140,7 +140,7 @@ export type ClosedWallPartitionSegment = {
 
 /**
  * Partition a canonical closed 16-span cubic Wall at strictly ascending
- * resolved stations `0 < d_0 < ... < d_{k-1} < L`, preserving untouched spans
+ * resolved stations `0 < d_0 <... < d_{k-1} < L`, preserving untouched spans
  * byte-identically and keeping unpromoted interior knot IDs.
  */
 export function partitionClosedWallChainAtStations(options: {

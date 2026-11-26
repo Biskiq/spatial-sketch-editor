@@ -5,7 +5,7 @@
  * two things on top, both pure:
  *
  * - the plane a drawn reading implies (the vertical plane through the segment,
- *   offset toward what is shown), and
+ *  offset toward what is shown), and
  * - a clipping of the returned loops/chains to the segment's **finite** extent.
  *
  * The depth boundary is deliberately not capped: it is a display limit, not a

@@ -134,12 +134,12 @@ export function finalizeCandidate(
  *
  * ```text
  * candidate (immutable baseline → cloned coordinate edit, or planWallSplit)
- *   → pre-reconciliation structural/topology gate (canonical rejection codes)
- *   → candidate faces (extractBoundaryCandidateFaces)
- *   → explicit 1→1 Room boundary-cycle lineage declared from authored IDs
- *   → reconcileRooms with an allocator that records — never grants — a birth
- *   → assert exact Room identity preservation (no birth/retire/split/merge)
- *   → wall-first codec → topology → Opening set → portal relations → compiler
+ *  → pre-reconciliation structural/topology gate (canonical rejection codes)
+ *  → candidate faces (extractBoundaryCandidateFaces)
+ *  → explicit 1→1 Room boundary-cycle lineage declared from authored IDs
+ *  → reconcileRooms with an allocator that records — never grants — a birth
+ *  → assert exact Room identity preservation (no birth/retire/split/merge)
+ *  → wall-first codec → topology → Opening set → portal relations → compiler
  * ```
  *
  * Lineage is declared from the candidate document's own authored boundary

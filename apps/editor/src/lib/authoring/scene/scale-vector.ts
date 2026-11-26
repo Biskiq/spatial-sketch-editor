@@ -6,8 +6,8 @@
  * numeric tuples.
  *
  * Two ways to render "scale":
- *   - `scaleScalar: number`  → uniform mode, applied identically to x/y/z.
- *   - `scaleVector: [x, y, z]` → independent mode, per-axis values.
+ *  - `scaleScalar: number` → uniform mode, applied identically to x/y/z.
+ *  - `scaleVector: [x, y, z]` → independent mode, per-axis values.
  *
  * The schema-v6 visitor path only ever carries `placement.scale: number`; the
  * editor transform map owns the vector. `normalizeScale` collapses to scalar
@@ -52,8 +52,8 @@ export function averageScale(vector: Vec3): number {
  * Independent mode always emits a vector (round-trips verbatim).
  * Uniform mode collapses any vector to scalar (drops the vector).
  * Fallbacks:
- *   - missing uniform scalar → 1
- *   - missing independent vector → [1, 1, 1]
+ *  - missing uniform scalar → 1
+ *  - missing independent vector → [1, 1, 1]
  */
 export function normalizeScale(input: {
 	mode: ScaleMode;

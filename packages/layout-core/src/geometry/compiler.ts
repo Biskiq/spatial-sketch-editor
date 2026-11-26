@@ -401,7 +401,7 @@ export function compileLayoutGeometrySource(
 
 		for (const [roomIndex, roomSource] of floorEntry.rooms.entries()) {
 			const path = `floors[${floorIndex}].rooms[${roomIndex}]`;
-			// P23.6I D7 (review closeout) — a Room with no vertical datum
+			//  D7 (review closeout) — a Room with no vertical datum
 			// (neither a derived ceiling nor a supplied Floor height) never acquires
 			// an invented ceiling: skip it and block by name instead of compiling a
 			// fake zero-height Room at the elevation. No current source supplies a

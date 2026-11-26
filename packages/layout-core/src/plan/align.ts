@@ -4,9 +4,9 @@
  * Scope: one selected supported Layout object → one
  * explicit reference. References are canonical compiled records:
  *
- *   - another Layout object's compiled plan footprint AABB,
- *   - a Room's compiled boundary spans AABB,
- *   - a straight Wall's compiled span (bounded **Center on Wall**).
+ *  - another Layout object's compiled plan footprint AABB,
+ *  - a Room's compiled boundary spans AABB,
+ *  - a straight Wall's compiled span (bounded **Center on Wall**).
  *
  * Actions preserve the selected object's Y, rotation, dimensions and
  * document-level ownership: only document-level X/Z position changes. A no-op
@@ -135,7 +135,7 @@ function referenceBounds(
 	const merged = dedupeWallSpans(wallSpans);
 	const bounds = spansAabb(wallSpans);
 	if (!bounds) return null;
-	// Center-on-Wall is a straight-wall action (P23.2 scope): a curved wall
+	// Center-on-Wall is a straight-wall action (scope): a curved wall
 	// resolves to bounds only and is rejected by the planner below.
 	const wallSpan = merged[0]!.straight ? merged[0] : undefined;
 	return { bounds, wallSpan };

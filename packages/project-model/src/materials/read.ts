@@ -4,10 +4,10 @@
  * The reader never throws, never clamps and never coerces:
  *
  * - unknown keys, wrong role selectors and unsupported profiles are recorded
- *   rather than ignored;
+ *  rather than ignored;
  * - a non-finite or out-of-domain dimension is refused; only authored angles
- *   and offsets are wrapped (modulo a full turn or one tile), because wrapping
- *   is a valid way to spell the same authored intent;
+ *  and offsets are wrapped (modulo a full turn or one tile), because wrapping
+ *  is a valid way to spell the same authored intent;
  * - `null` is a map binding's explicit disable, never an absent factor.
  *
  * Every successful value is deeply frozen: a definition's bytes and its
