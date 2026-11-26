@@ -8,7 +8,7 @@
 import { compileWallFirstLayoutGeometry, type CompiledLayoutGeometry, type LayoutVec2 } from '@portfolio/layout-core/geometry';
 import { createEmptyWallFirstLayoutDocument, planWallChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 
-import { captureFor } from './layout-id-capture';
+import { captureFor } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 
 const FIRST: readonly LayoutVec2[] = [
 	[0, 0],

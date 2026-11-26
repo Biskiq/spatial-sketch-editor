@@ -124,7 +124,7 @@ export function createAlignSession(input: {
 	 */
 	function attach(): void {
 		// Align belongs to the Card's open user: deselect, delete, another surface or
-		// Back ends it exactly as Put back does (U6 lifecycle).
+		// Back ends it exactly as Put back does.
 		$effect(() => {
 			const active = input.finishes().align.active;
 			if (active === null) return;

@@ -1,5 +1,5 @@
 /**
- * The product's Finish pictures (U1): catalogue, project and private-library
+ * The product's Finish pictures: catalogue, project and private-library
  * Finishes drawn as a flat, lit sample tile.
  *
  * One service per Stage. It owns three things and nothing else:
@@ -7,7 +7,7 @@
  * 1. **Where a master comes from.** A catalogue entry with a current committed
  *  master (`catalogue-tiles.ts`) opens that one 256 px PNG and never a
  *  texture. Any other Finish, and a catalogue entry whose master is stale, is
- *  drawn by the E7 inspection host the Stage registers; with no host yet it
+ *  drawn by the inspection host the Stage registers; with no host yet it
  *  has no picture and the shelf keeps its colour swatch.
  * 2. **Derivatives.** XS, S and M are made from the master in the browser and
  *  held as object URLs, keyed by the tile's key and size.

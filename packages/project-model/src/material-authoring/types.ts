@@ -1,6 +1,5 @@
 /**
- * The authoring vocabulary for manual composition and correctable set import
- * (T2.S8 E5).
+ * The authoring vocabulary for manual composition and correctable set import.
  *
  * This module is authoring-only. It is deliberately **not** part of the
  * runtime-safe `@portfolio/project-model/materials` subpath: visitors, release

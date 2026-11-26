@@ -1,8 +1,8 @@
 /**
- * Material set import session over E5 (T2.S8 U6).
+ * Material set import session.
  *
- * Owns session-local file bytes, slow-read progress (after 300 ms), E5
- * proposal/conflict/normal-acknowledgement state, `prepareDraft` for live E7
+ * Owns session-local file bytes, slow-read progress (after 300 ms), set-recognition
+ * proposal/conflict/normal-acknowledgement state, `prepareDraft` for live inspection
  * previews, and `acceptDraft` (one undo, P20 upload retention). Cancelling or
  * closing aborts in-flight work and releases bytes; nothing is written until
  * Accept succeeds.

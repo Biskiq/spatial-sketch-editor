@@ -1,7 +1,7 @@
 /**
  * What an inspection draws: one Finish resolved for one reference geometry.
  *
- * E7's subject is an accepted Finish (curated catalogue base or a project
+ * The inspection subject is an accepted Finish (curated catalogue base or a project
  * Finish at an accepted revision) or a provisional draft that has not been
  * accepted. Every subject goes through the **same** Scene look adapter the
  * product draws with (`sceneFinishFor`), against the reference geometry's own

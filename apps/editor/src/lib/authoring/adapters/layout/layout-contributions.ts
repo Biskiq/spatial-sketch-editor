@@ -373,7 +373,7 @@ export function createLayoutContributions({
 		 */
 		cardWriter(cardSubject: StageCardSubject) {
 			if (cardSubject.sourceKind === 'room' || cardSubject.sourceKind === 'room-floor') {
-				// U4: a Room's Floor and Ceiling Finishes. It writes no Layout field,
+				// A Room's Floor and Ceiling Finishes. It writes no Layout field,
 				// so every Room fact stays a Card fact.
 				return {
 					summary: 'Room surfaces',

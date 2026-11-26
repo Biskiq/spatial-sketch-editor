@@ -160,7 +160,7 @@ export function createStageAssetLeases(input: StageAssetLeaseInput) {
 			// orphan on every route open.
 			const usedTextureIds = new Set<string>();
 			for (const material of scene.materials) {
-				// The route controller may not execute a package barrel (X1/X2); the
+				// The route controller may not execute a package barrel; the
 				// canonical enumerator is `finishTextureBindings`, and this is its
 				// five-role walk over the same accepted Finish value.
 				for (const role of ['color', 'normal', 'roughness', 'occlusion', 'metalness'] as const) {

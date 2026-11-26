@@ -10,7 +10,7 @@ import { compileWallFirstLayoutGeometry, deriveChainSpans, extractBoundaryCandid
 import { createEmptyWallFirstLayoutDocument, planDeleteWall, planDeleteWalls, planDissolveJunction, planExactJunctionMove, planExactRectangleDimensions, planRemoveRoom, planRemoveSpace, planRoomMetadataUpdate, planWallChain, planWallSubdivision, serializeWallFirstLayoutDocument, wallCubicChain, type LayoutDocumentWallFirst, type NodingIdAllocator } from '@portfolio/layout-core/wall';
 import { planDuplicateIsolatedRoom } from '@portfolio/layout-core/plan';
 import { AuthoringHistory, type HistoryState } from '$lib/authoring/f4/history';
-import { captureFor } from './__fixtures__/layout-id-capture';
+import { captureFor } from '../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 import { twoRoomDocument } from './__fixtures__/two-room-fixture';
 
 function wall(id: string, start: string, end: string): LayoutDocumentWallFirst['walls'][number] {

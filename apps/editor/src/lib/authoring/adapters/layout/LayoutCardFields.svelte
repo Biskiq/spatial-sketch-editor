@@ -254,7 +254,7 @@
 		return createCardFieldsInstrument(services);
 	});
 	/**
-	 * A Wall's two sides, each its own Finish user (U4). A side that faces a Room
+	 * A Wall's two sides, each its own Finish user. A side that faces a Room
 	 * is named for it: Inside/Outside for a perimeter Wall, the Room's name on a
 	 * dividing Wall; a free Wall's sides are Left and Right.
 	 */

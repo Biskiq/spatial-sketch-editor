@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * Align on wall / floor overlay (T2.S8 U6).
+	 * Align on wall / floor overlay.
 	 *
 	 * View-only DOM + SVG chrome around the live Stage framed by Camera (`face`
 	 * or Plan + `fit`). Every mark is placed from the renderer's own sampling:

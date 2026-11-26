@@ -56,7 +56,7 @@ import { wallStraightenIntent } from './precision-intents';
 import { previewWallStraighten, wallStationFrame } from './precision-frames';
 
 /**
- * X1 — Lift is a **reading, not an edit**.
+ * Lift is a **reading, not an edit**.
  *
  * The action changes only the shell's temporary scope: no document value, no
  * history entry, no Camera intent. It is a Room action because a generated lid

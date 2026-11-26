@@ -22,7 +22,7 @@ export function createCardSession(input: {
 		finishCardSelectionKey = key;
 		// A selection change discards a Card gesture: nothing is written. The
 		// material Editor and the image/repair pickers it opened belong to the old
-		// target and close by their cancel paths (U6 lifecycle); Align follows the
+		// target and close by their cancel paths; Align follows the
 		// Card's open user below.
 		untrack(() => {
 			input.finishes().card.cancel();

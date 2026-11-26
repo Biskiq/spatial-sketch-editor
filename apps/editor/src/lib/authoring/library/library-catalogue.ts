@@ -1,10 +1,10 @@
 /**
- * The Library's browse model (T2.S8 U5).
+ * The Library's browse model.
  *
  * Pure presentation data and pure filtering over the accepted catalogue and
  * Scene. It never reads a texture URI, never writes a project and never opens a
  * renderer: cards only name a `FinishTile` source, so opening the Library reads
- * the U1 masters and never a full-resolution catalogue image.
+ * the masters and never a full-resolution catalogue image.
  *
  * D1 folding lives here: Smooth and Polished concrete are one card with a
  * Matte / Polished chip, and the card keeps its stable identity while the chip

@@ -1,5 +1,5 @@
 /**
- * The Library inspection's remembered geometry and lighting (T2.S8 U5).
+ * The Library inspection's remembered geometry and lighting.
  * Session view state only: Library detail and Customise… share it, nothing
  * serializes it.
  */

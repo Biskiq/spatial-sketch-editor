@@ -13,7 +13,7 @@ import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/la
 import type { SceneArtworkEntity, SceneEntity, SceneLightEntity, SceneModelEntity, Vec3 } from '@portfolio/project-model/scene';
 import { SCENE_UNIT_FORMAT_VERSION } from '@portfolio/project-model/units';
 import { creatorModelResourceEntry } from '@portfolio/project-model/scene-planning';
-import { freshCapture } from '../../layout/__fixtures__/layout-id-capture';
+import { freshCapture } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 import { createAdapter as createSceneAdapter } from '$lib/authoring/adapters/scene.adapter';
 import { createAdapter as createLightAdapter } from '$lib/authoring/adapters/light.adapter';
 import { sceneEntityReference } from '$lib/authoring/adapters/scene/placement';

@@ -68,7 +68,7 @@ import { createJoinPlanners } from '$lib/authoring/adapters/layout/join-planners
 import { createOpeningRepeatPlanners } from '$lib/authoring/adapters/layout/opening-repeat';
 import { createRegionPlanners } from '$lib/authoring/adapters/layout/region-planners';
 import { createCardFieldsInstrument, createPlacementInstrument } from '$lib/authoring/adapters/layout/adapter-support';
-import { freshCapture } from '../../layout/__fixtures__/layout-id-capture';
+import { freshCapture } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 
 const RECT = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };
 const PROJECT_ID = 'project-layout-s04';

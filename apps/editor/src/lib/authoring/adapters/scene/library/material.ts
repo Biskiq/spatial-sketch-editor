@@ -1,6 +1,6 @@
 /**
  * Save an accepted Scene Finish into My Materials and insert one back into a
- * project (T2.S8 G).
+ * project.
  *
  * Save is a snapshot, not a link: it flattens the current palette-following
  * colour to a literal and names every private image by its exact pin. Insert is
@@ -114,13 +114,12 @@ export async function saveFinishToLibrary(input: {
 	return { ok: true, summary, draft: draft.draft };
 }
 
-/** The sample-tile master (U1) and the 192 px thumbnail stored before it. */
+/** The sample-tile master and the 192 px thumbnail size. */
 const THUMBNAIL_EDGES: readonly number[] = [MATERIAL_LIBRARY_MAX_THUMBNAIL_EDGE, 192];
 
 /**
  * Encode and install the square thumbnail for one saved item: the 256×256
- * sample-tile master, or a 192×192 frame (compatible with items stored before
- * U1). The render happens outside this function; a failed encode or upload
+ * sample-tile master or a 192×192 frame. The render happens outside this function; a failed encode or upload
  * leaves the item usable with the swatch fallback.
  */
 export async function uploadFinishThumbnail(input: {

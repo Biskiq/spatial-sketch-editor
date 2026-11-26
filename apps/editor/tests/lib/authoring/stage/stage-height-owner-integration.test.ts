@@ -20,7 +20,7 @@ import { createStageFacade } from '$lib/authoring/stage/stage-facade';
 import { createStageSession } from '$lib/authoring/stage/stage-session';
 import { buildPaperPlan } from '$lib/authoring/stage/paper-plan';
 import { createUnitProject } from '../__fixtures__/unit-envelope-fixtures';
-import { freshCapture } from '../../layout/__fixtures__/layout-id-capture';
+import { freshCapture } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 
 const PROJECT_ID = 'project-height-owner-integration';
 const EMPTY_PROJECTION = { footprints: [] } as const;

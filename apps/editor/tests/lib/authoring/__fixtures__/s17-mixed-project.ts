@@ -26,7 +26,7 @@ import {
 import { getAssetById } from '$lib/content/assets';
 import { CATALOGUE_MODEL_CONTACT_RECORDS } from '$lib/authoring/scene/object-definition-policy';
 import { createUnitProject } from './unit-envelope-fixtures';
-import { freshCapture } from '../../layout/__fixtures__/layout-id-capture';
+import { freshCapture } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 
 const PROJECT_ID = 'project-r217-s17-mixed';
 const CREATOR_MODEL_ID = 's17-approved-creator-model';

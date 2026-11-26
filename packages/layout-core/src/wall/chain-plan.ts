@@ -37,9 +37,8 @@ export function cloneWallFirstDocument(document: LayoutDocumentWallFirst): Layou
 }
 
 /**
- * Plan a sketched Wall/Partition chain over `baseline` (P23B.11 S1 mark boundary:
- * `p2311:wall-chain-plan` encloses the whole planner run, including every early
- * rejection).
+ * Plan a sketched Wall/Partition chain over `baseline`. The planner work interval
+ * encloses the whole run, including every early rejection.
  */
 export function planWallChain(options: WallChainPlanOptions): WallChainPlan {
 	try {
@@ -208,7 +207,7 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 		arcLeg = { pointIndex, centerline: built.centerline };
 	}
 
-	// P23B.3a S6 (review correction) — the DECLARED host-Wall anchors are
+	// Declared host-Wall anchors are
 	// validated BEFORE any of them grants noding authority. A declaration is a
 	// claim about a real relationship, so a malformed one fails closed instead of
 	// silently authorizing noding of an unrelated group (the same fail-closed rule

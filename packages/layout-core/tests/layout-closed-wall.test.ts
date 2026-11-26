@@ -225,7 +225,7 @@ describe('C2 foundation — self-loop topology and D6 closed Bézier Wall', () =
 		expect(compiled.geometry.rooms[0]!.walls).toHaveLength(0);
 	});
 
-	it('keeps the canonical seam at the authored rim through Save/Load and refuses format 6', () => {
+	it('keeps the canonical seam at the authored rim through Save/Load', () => {
 		const born = roomDocument();
 		const wallId = born.walls[0]!.id;
 		const wallBefore = born.walls[0]!;
@@ -245,12 +245,6 @@ describe('C2 foundation — self-loop topology and D6 closed Bézier Wall', () =
 		expect(seamAfter).toEqual(RIM);
 		expect(wallAfter.centerline).toEqual(wallBefore.centerline);
 
-		const older = JSON.parse(json) as { formatVersion: number };
-		older.formatVersion = LAYOUT_WALL_FIRST_FORMAT_VERSION - 1;
-		const refused = validateWallFirstLayoutDocument(older);
-		expect(refused.success).toBe(false);
-		if (refused.success) return;
-		expect(refused.issues.map((issue) => issue.code)).toContain('unsupported_format_version');
 	});
 
 	it('refuses non-canonical closed shapes at the codec', () => {

@@ -7,7 +7,7 @@
 	"find": "if (record.formatVersion !== SCENE_UNIT_FORMAT_VERSION) {",
 	"replace": "if (record.formatVersion < SCENE_UNIT_FORMAT_VERSION) {",
 	"tests": [
-		"tests/lib/project-model/scene-look-schema.test.ts",
+		"packages/project-model/tests/scene-look-codec.test.ts",
 		"packages/project-model/tests/units-conformance.test.ts"
 	],
 	"root": "repo"

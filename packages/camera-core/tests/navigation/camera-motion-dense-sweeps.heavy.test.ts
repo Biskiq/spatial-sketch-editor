@@ -17,9 +17,9 @@ import { CAMERA_FRAMING_GUARD_POLICY, VISITOR_CAMERA_PROJECTION, cameraApplyEasi
 import {
   CAMERA_FOV,
   type CameraEasing,
-  type RuntimeCameraFramingEnvelope
-} from '$lib/types/scene';
-import { sample, sampleFull, smootherstep, expectVectorClose } from '../../../helpers/camera-motion-fixtures';
+  type CameraFramingEnvelope
+} from '@portfolio/camera-core/camera';
+import { sample, sampleFull, smootherstep, expectVectorClose } from '../__fixtures__/camera-motion-fixtures';
 
 // ============================================================================
 // P1.4 — dense whole-transition acceptance matrices (2026-08-19)
@@ -347,7 +347,7 @@ const ORDINARY_ENVELOPE = {
 } as const;
 
 function createOrdinaryRoute(
-  envelope: RuntimeCameraFramingEnvelope = ORDINARY_ENVELOPE,
+  envelope: CameraFramingEnvelope = ORDINARY_ENVELOPE,
   overrides: Partial<NonNullable<CameraRoute['edges']>[number]> = {}
 ): CameraRoute {
   return {
@@ -849,7 +849,7 @@ function createPoiRoute(
   options: {
     durationSeconds?: number;
     direction?: 'forward' | 'reverse';
-    envelope?: RuntimeCameraFramingEnvelope;
+    envelope?: CameraFramingEnvelope;
   } = {}
 ): CameraRoute {
   const envelope =

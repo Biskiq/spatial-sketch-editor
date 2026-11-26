@@ -50,7 +50,7 @@ async function eventually(predicate: () => boolean): Promise<void> {
 	throw new Error('the Save state did not settle');
 }
 
-async function boot(overrides: { baselineToken?: string | null; legacyTokenOnly?: boolean } = {}) {
+async function boot(overrides: { baselineToken?: string | null } = {}) {
 	const fixture = await buildCurrentSourceFixture();
 	const revision: AcceptedRevision = { projectId: fixture.project.id, revisionId: 'revision-1' };
 	const admitted = await admitUnitProject(fixture.project, revision);
@@ -82,9 +82,9 @@ async function boot(overrides: { baselineToken?: string | null; legacyTokenOnly?
 		save: transport,
 		baseline: {
 			savedBaseToken: baselineToken,
-			savedRevision: baselineToken && !overrides.legacyTokenOnly ? revision : null,
-			savedCanonicalJson: baselineToken && !overrides.legacyTokenOnly ? admitted.canonicalJson : null,
-			savedSourceContentId: baselineToken && !overrides.legacyTokenOnly ? admitted.sourceContentId : null
+			savedRevision: baselineToken ? revision : null,
+			savedCanonicalJson: admitted.canonicalJson,
+			savedSourceContentId: baselineToken ? admitted.sourceContentId : null
 		},
 		mintOperationId: (() => {
 			let counter = 0;
@@ -326,16 +326,6 @@ describe('framework-free Save state', () => {
 		const snapshot = state.refresh();
 		expect(snapshot.dirty).toBe(true);
 		expect(snapshot.status).toBe('dirty');
-	});
-
-	it('a pre-migration token-only baseline starts dirty and uses the token as its precondition', async () => {
-		const { state, calls, setBehaviour } = await boot({ legacyTokenOnly: true });
-		expect(state.getSnapshot().status).toBe('dirty');
-		expect(state.getSnapshot().savedCanonicalJson).toBeNull();
-		setBehaviour(async (request) => acknowledgement(request));
-		await state.save();
-		expect(calls[0].capture.precondition).toEqual({ kind: 'expected-saved-base', token: TOKEN_ONE });
-		expect(state.getSnapshot().status).toBe('saved');
 	});
 
 	it('Save adds no history entry and no-op saves are not commands', async () => {

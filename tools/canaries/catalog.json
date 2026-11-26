@@ -5,7 +5,7 @@
 		"citation": "section 7 rule 7 \u2014 one refusal per format family",
 		"title": "Envelope reader accepts a newer format version",
 		"file": "packages/project-model/src/units/validate/envelope.ts",
-		"find": "const record = reader.object(input, '$', ENVELOPE_KEYS);\n\tif (record === null) return { success: false, issues: reader.issues };\n\tif (record.formatVersion !== UNIT_ENVELOPE_FORMAT_VERSION) {",
+		"find": "if (record.formatVersion !== UNIT_ENVELOPE_FORMAT_VERSION) {",
 		"replace": "if (record.formatVersion < UNIT_ENVELOPE_FORMAT_VERSION) {",
 		"tests": ["packages/project-model/tests/units-conformance.test.ts"],
 		"root": "repo"
@@ -19,7 +19,7 @@
 		"find": "if (record.formatVersion !== SCENE_UNIT_FORMAT_VERSION) {",
 		"replace": "if (record.formatVersion < SCENE_UNIT_FORMAT_VERSION) {",
 		"tests": [
-			"tests/lib/project-model/scene-look-schema.test.ts",
+			"packages/project-model/tests/scene-look-codec.test.ts",
 			"packages/project-model/tests/units-conformance.test.ts"
 		],
 		"root": "repo"
@@ -63,9 +63,10 @@
 		"citation": "section 7 rule 6 \u2014 contract names; section 5 rule 7 \u2014 comments state the current contract",
 		"title": "Strict reader silently tolerates unknown keys instead of refusing them",
 		"file": "packages/project-model/src/strict-shape.ts",
-		"find": "if (!allowedKeys.includes(key)) this.problem(",
-		"replace": "if (!allowedKeys.includes(key) && allowedKeys.length === 0) this.problem(",
-		"tests": ["tests/lib/project-model/references-conformance.test.ts"]
+		"find": "if (!allowedKeys.includes(key))",
+		"replace": "if (!allowedKeys.includes(key) && allowedKeys.length === 0)",
+		"tests": ["packages/project-model/tests/references-conformance.test.ts"],
+		"root": "repo"
 	},
 	{
 		"id": "07-strict-shape-exclusive-bound",
@@ -75,7 +76,7 @@
 		"file": "apps/editor/src/lib/authoring/stage/stage-pick.ts",
 		"find": "if (query.tool.scope === 'domain' && adapterId !== toolOwner) continue;",
 		"replace": "if (query.tool.scope === 'domain' && adapterId === toolOwner) continue;",
-		"tests": ["tests/lib/authoring/stage-pick.test.ts"]
+		"tests": ["tests/lib/authoring/stage/stage-pick.test.ts"]
 	},
 	{
 		"id": "08-strict-shape-identity-space",
@@ -85,7 +86,8 @@
 		"file": "packages/project-model/src/strict-shape.ts",
 		"find": "if (value !== null && /\\s/.test(value)) {",
 		"replace": "if (value !== null && /[^\\S ]/.test(value)) {",
-		"tests": ["tests/lib/project-model/references-conformance.test.ts"]
+		"tests": ["packages/project-model/tests/references-conformance.test.ts"],
+		"root": "repo"
 	},
 	{
 		"id": "09-strict-shape-number-finite",
@@ -95,7 +97,8 @@
 		"file": "packages/layout-core/src/plan/snap/types.ts",
 		"find": "\t'extension-guide': 8,\n\tgrid: 9",
 		"replace": "\t'extension-guide': 8,\n\tgrid: 0",
-		"tests": ["tests/lib/layout/layout-snap.test.ts"]
+		"tests": ["packages/layout-core/tests/layout-snap.test.ts"],
+		"root": "repo"
 	},
 	{
 		"id": "10-strict-shape-empty-string",
@@ -105,7 +108,8 @@
 		"file": "packages/project-model/src/strict-shape.ts",
 		"find": "if (typeof input !== 'string' || input.trim() === '') {",
 		"replace": "if (typeof input !== 'string') {",
-		"tests": ["tests/lib/project-model/references-conformance.test.ts"]
+		"tests": ["packages/project-model/tests/references-conformance.test.ts"],
+		"root": "repo"
 	},
 	{
 		"id": "11-orientation-sign",
@@ -115,7 +119,8 @@
 		"file": "packages/geometry-core/src/predicates.ts",
 		"find": "const sign = -orient2d(ax, ay, bx, by, cx, cy);",
 		"replace": "const sign = orient2d(ax, ay, bx, by, cx, cy);",
-		"tests": ["tests/lib/geometry-core"]
+		"tests": ["packages/geometry-core/tests/profile-corpus.test.ts"],
+		"root": "repo"
 	},
 	{
 		"id": "12-mesh-digest-multiplier",
@@ -125,7 +130,8 @@
 		"file": "packages/geometry-core/src/digest.ts",
 		"find": "hash = Math.imul(hash, 0x01000193) >>> 0;",
 		"replace": "hash = Math.imul(hash, 0x811c9dc5) >>> 0;",
-		"tests": ["tests/lib/geometry-core"]
+		"tests": ["packages/geometry-core/tests/profile-corpus.test.ts"],
+		"root": "repo"
 	},
 	{
 		"id": "13-snap-junction-rank",
@@ -135,7 +141,8 @@
 		"file": "packages/layout-core/src/plan/snap/types.ts",
 		"find": "const SEMANTIC_RANK: Record<SnapFeatureKind, number> = {\n\tjunction: 0,",
 		"replace": "junction: 2,",
-		"tests": ["tests/lib/layout/layout-snap.test.ts"]
+		"tests": ["packages/layout-core/tests/layout-snap.test.ts"],
+		"root": "repo"
 	},
 	{
 		"id": "14-snap-radius",
@@ -145,7 +152,8 @@
 		"file": "packages/layout-core/src/plan/snap/types.ts",
 		"find": "export const LAYOUT_PLAN_SNAP_RADIUS_CSS_PX = 8;",
 		"replace": "export const LAYOUT_PLAN_SNAP_RADIUS_CSS_PX = 18;",
-		"tests": ["tests/lib/layout/layout-snap.test.ts"]
+		"tests": ["packages/layout-core/tests/layout-snap.test.ts"],
+		"root": "repo"
 	},
 	{
 		"id": "15-snap-grid-step",
@@ -155,7 +163,8 @@
 		"file": "packages/layout-core/src/plan/snap/types.ts",
 		"find": "export const LAYOUT_PLAN_GRID_STEP = 0.25;",
 		"replace": "export const LAYOUT_PLAN_GRID_STEP = 0.5;",
-		"tests": ["tests/lib/layout/layout-snap.test.ts"]
+		"tests": ["packages/layout-core/tests/layout-snap.test.ts"],
+		"root": "repo"
 	},
 	{
 		"id": "16-opening-full-circumference",
@@ -175,7 +184,7 @@
 		"file": "apps/editor/src/lib/authoring/save/save-state.ts",
 		"find": "return sameSource ? pending : null;",
 		"replace": "return pending;",
-		"tests": ["tests/lib/authoring/save-state.test.ts"]
+		"tests": ["tests/lib/authoring/save/save-state.test.ts"]
 	},
 	{
 		"id": "18-dimension-limit-tolerance",
@@ -183,9 +192,9 @@
 		"citation": "section 3 \u2014 canonical invariants",
 		"title": "The supported geometry envelope is silently widened tenfold",
 		"file": "packages/layout-core/src/geometry/limits.ts",
-		"find": "return Number.isFinite(value) && value > MAX_LAYOUT_DIMENSION_METERS + DIMENSION_LIMIT_TOLERANCE_METERS;",
-		"replace": "return Number.isFinite(value) && value > MAX_LAYOUT_DIMENSION_METERS * 10;",
-		"tests": ["tests/lib/authoring/layout-dimension-limit.test.ts"]
+		"find": "value > MAX_LAYOUT_DIMENSION_METERS + DIMENSION_LIMIT_TOLERANCE_METERS",
+		"replace": "value > MAX_LAYOUT_DIMENSION_METERS * 10",
+		"tests": ["tests/lib/authoring/stage/layout-dimension-limit.test.ts"]
 	},
 	{
 		"id": "19-region-edge-limit",
@@ -205,7 +214,8 @@
 		"file": "packages/layout-core/src/plan/snap/types.ts",
 		"find": "'wall-span': 4,",
 		"replace": "'wall-span': 0,",
-		"tests": ["tests/lib/layout/layout-snap.test.ts"]
+		"tests": ["packages/layout-core/tests/layout-snap.test.ts"],
+		"root": "repo"
 	},
 	{
 		"id": "21-snap-opening-rank",
@@ -215,7 +225,7 @@
 		"file": "apps/editor/src/lib/authoring/save/save-state.ts",
 		"find": "currentCanonical() === prepared.sourceCanonicalJson ? 'saved' : 'dirty'",
 		"replace": "currentCanonical() === prepared.sourceCanonicalJson ? 'dirty' : 'saved'",
-		"tests": ["tests/lib/authoring/save-state.test.ts"]
+		"tests": ["tests/lib/authoring/save/save-state.test.ts"]
 	},
 	{
 		"id": "22-reference-space-bound",
@@ -225,7 +235,8 @@
 		"file": "packages/layout-core/src/plan/identity.ts",
 		"find": "if (!Number.isInteger(index) || index < 0 || index >= LAYOUT_REFERENCE_SPACE) {",
 		"replace": "if (!Number.isInteger(index) || index < 0 || index > LAYOUT_REFERENCE_SPACE) {",
-		"tests": ["tests/lib/layout/layout-identity.test.ts"]
+		"tests": ["packages/layout-core/tests/layout-identity.test.ts"],
+		"root": "repo"
 	},
 	{
 		"id": "23-stage-pick-distance",
@@ -235,7 +246,7 @@
 		"file": "apps/editor/src/lib/authoring/stage/stage-pick.ts",
 		"find": "return tied[0] ?? null;",
 		"replace": "return tied[tied.length - 1] ?? null;",
-		"tests": ["tests/lib/authoring/stage-pick.test.ts"]
+		"tests": ["tests/lib/authoring/stage/stage-pick.test.ts"]
 	},
 	{
 		"id": "24-stage-pick-plan-layer",
@@ -245,7 +256,7 @@
 		"file": "apps/editor/src/lib/authoring/stage/stage-pick.ts",
 		"find": "? Math.max(...ranked.map(({ pick }) => pick.planLayer ?? -Infinity))",
 		"replace": "? Math.min(...ranked.map(({ pick }) => pick.planLayer ?? -Infinity))",
-		"tests": ["tests/lib/authoring/stage-pick-differential.test.ts"]
+		"tests": ["tests/lib/authoring/stage/stage-pick-differential.test.ts"]
 	},
 	{
 		"id": "25-save-precondition-match",
@@ -255,7 +266,7 @@
 		"file": "apps/editor/src/lib/authoring/save/save-state.ts",
 		"find": "function retainedCapture(current: SaveSourceState): PendingCapture | null {\n\t\tif (!pending) return null;",
 		"replace": "function retainedCapture(current: SaveSourceState): PendingCapture | null {\n\t\tif (pending) return null;",
-		"tests": ["tests/lib/authoring/save-state.test.ts"]
+		"tests": ["tests/lib/authoring/save/save-state.test.ts"]
 	},
 	{
 		"id": "26-save-precondition-kind",
@@ -265,7 +276,7 @@
 		"file": "apps/editor/src/lib/authoring/save/save-state.ts",
 		"find": "return baseline.savedBaseToken === null\n\t\t\t? { kind: 'create-only' }\n\t\t\t: { kind: 'expected-saved-base', token: baseline.savedBaseToken };",
 		"replace": "return baseline.savedBaseToken !== null\n\t\t\t? { kind: 'create-only' }\n\t\t\t: { kind: 'expected-saved-base', token: baseline.savedBaseToken };",
-		"tests": ["tests/lib/authoring/save-state.test.ts"]
+		"tests": ["tests/lib/authoring/save/save-state.test.ts"]
 	},
 	{
 		"id": "27-api-origin-guard",
@@ -293,10 +304,10 @@
 		"id": "29-api-material-owner",
 		"area": "api-ownership",
 		"citation": "section 2 \u2014 preserved authentication and ownership",
-		"title": "The material read compares the owner id into the uuid column",
+		"title": "The material read omits its owner predicate",
 		"file": "apps/api/src/form-library/items.ts",
-		"find": "export async function readLibraryItem(\n  pool: DatabasePool,\n  ownerId: string,\n  id: string\n): Promise<{ readonly summary: LibraryItemSummary; readonly bytes: Uint8Array }> {\n  const rows = await queryRows<LibraryRow>(\n    pool,\n    `SELECT ${MATERIAL_SUMMARY_COLUMNS}, canonical_bytes AS \"canonicalBytes\"\n\t\t FROM form_library_items\n\t\t WHERE owner_id = $1 AND id = $2::uuid`,\n    [ownerId, id]",
-		"replace": "export async function readLibraryItem(\n  pool: DatabasePool,\n  ownerId: string,\n  id: string\n): Promise<{ readonly summary: LibraryItemSummary; readonly bytes: Uint8Array }> {\n  const rows = await queryRows<LibraryRow>(\n    pool,\n    `SELECT ${MATERIAL_SUMMARY_COLUMNS}, canonical_bytes AS \"canonicalBytes\"\n\t\t FROM form_library_items\n\t\t WHERE owner_id = $1 AND id = $2::uuid`,\n    [id, id]",
+		"find": "WHERE owner_id = $1 AND id = $2::uuid`,\n\t\t[ownerId, id],\n\t);\n\tconst row = rows[0];\n\tif (row === undefined) throw new FormLibraryNotFoundError();\n\treturn { summary: summaryOf(row), bytes:",
+		"replace": "WHERE id = $2::uuid AND $1::text IS NOT NULL`,\n\t\t[ownerId, id],\n\t);\n\tconst row = rows[0];\n\tif (row === undefined) throw new FormLibraryNotFoundError();\n\treturn { summary: summaryOf(row), bytes:",
 		"tests": ["material-library.test.mjs"],
 		"kind": "api"
 	},
@@ -306,8 +317,8 @@
 		"citation": "section 3 \u2014 Experience lowering",
 		"title": "Experience creation refuses every identity except the one it must refuse",
 		"file": "packages/project-model/src/units/planning/experience/capture-bind.ts",
-		"find": "\t\t\t\tif (id === experience.id) return refuse('duplicate-identity', 'the new Experience and its first View or Presentation must have distinct identities');",
-		"replace": "\t\t\t\tif (id !== experience.id) return refuse('duplicate-identity', 'the new Experience and its first View or Presentation must have distinct identities');",
+		"find": "if (id === experience.id)",
+		"replace": "if (id !== experience.id)",
 		"tests": ["tests/lib/experience/experience-authoring.test.ts"]
 	},
 	{
@@ -328,7 +339,8 @@
 		"file": "packages/camera-core/src/camera/motion.ts",
 		"find": "export const CAMERA_POSE_EPSILON = 1e-6;",
 		"replace": "export const CAMERA_POSE_EPSILON = 1e-2;",
-		"tests": ["tests/lib/camera-core/navigation"]
+		"tests": ["packages/camera-core/tests/navigation"],
+		"root": "repo"
 	},
 	{
 		"id": "33-camera-enter-exit-weight",
@@ -338,7 +350,8 @@
 		"file": "packages/camera-core/src/camera/motion.ts",
 		"find": "maxSampleAngularDeltaRadians: Math.PI / 36,",
 		"replace": "maxSampleAngularDeltaRadians: Math.PI / 6,",
-		"tests": ["tests/lib/camera-core/navigation"]
+		"tests": ["packages/camera-core/tests/navigation"],
+		"root": "repo"
 	},
 	{
 		"id": "34-paint-recent-limit",
@@ -356,8 +369,8 @@
 		"citation": "section 3 \u2014 selection",
 		"title": "Toggling a favourite adds a duplicate instead of removing it",
 		"file": "apps/editor/src/lib/authoring/look/paint-pick.ts",
-		"find": "return list.includes(key) ? list.filter((entry) => entry !== key) : [...list, key].slice(0, limit);",
-		"replace": "return list.includes(key) ? [...list, key].slice(0, limit) : list.filter((entry) => entry !== key);",
+		"find": "return list.includes(key)\n\t\t? list.filter((entry) => entry !== key)\n\t\t: [...list, key].slice(0, limit);",
+		"replace": "return list.includes(key)\n\t\t? [...list, key].slice(0, limit)\n\t\t: list.filter((entry) => entry !== key);",
 		"tests": ["tests/lib/authoring/look/paint-pick.test.ts"]
 	},
 	{
@@ -388,7 +401,8 @@
 		"file": "packages/project-model/src/units/validate/scene.ts",
 		"find": "reader.problem(`${path}.id`, 'duplicate_id', `Duplicate palette slot id: ${id}`);",
 		"replace": "reader.problem(`${path}.id`, 'duplicate-identity', `Duplicate palette slot id: ${id}`);",
-		"tests": ["tests/lib/project-model/scene-look-schema.test.ts"]
+		"tests": ["packages/project-model/tests/scene-look-codec.test.ts"],
+		"root": "repo"
 	},
 	{
 		"id": "39-visitor-editor-import",
@@ -398,7 +412,7 @@
 		"file": "apps/editor/src/lib/visitor/VisitorPreviewSurface.svelte",
 		"find": "<script lang=\"ts\">",
 		"replace": "<script lang=\"ts\">\n\timport { resolveStagePick } from '$lib/authoring/stage/stage-pick';",
-		"tests": ["tests/lib/visitor/preview-surface-closure.test.ts"]
+		"tests": ["tests/arch/visitor.arch.test.ts"]
 	},
 	{
 		"id": "40-stage-second-camera-authority",
@@ -408,7 +422,7 @@
 		"file": "apps/editor/src/lib/authoring/stage/shell/StageCanvas.svelte",
 		"find": "\timport { T } from '@threlte/core';",
 		"replace": "\timport { T } from '@threlte/core';\n\timport { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';",
-		"tests": ["tests/lib/authoring/stage-shell-composition.test.ts"]
+		"tests": ["tests/arch/authoring-f4.arch.test.ts"]
 	},
 	{
 		"id": "41-envelope-generated-field",
@@ -418,7 +432,8 @@
 		"file": "packages/project-model/src/units/validate/serialize.ts",
 		"find": "const json = JSON.stringify(envelope, null, 2) + '\\n';",
 		"replace": "const json = JSON.stringify({ ...envelope, generatedAt: 'now' }, null, 2) + '\\n';",
-		"tests": ["tests/lib/project-model/units-canonical-form.test.ts"]
+		"tests": ["packages/project-model/tests/units-canonical-form.test.ts"],
+		"root": "repo"
 	},
 	{
 		"id": "42-snap-midpoint-rank",
@@ -428,17 +443,19 @@
 		"file": "packages/layout-core/src/plan/snap/types.ts",
 		"find": "'wall-intersection': 1,\n\t'wall-midpoint': 2,",
 		"replace": "'wall-midpoint': 0,",
-		"tests": ["tests/lib/layout/layout-snap.test.ts"]
+		"tests": ["packages/layout-core/tests/layout-snap.test.ts"],
+		"root": "repo"
 	},
 	{
 		"id": "43-surface-finish-duplicate",
 		"area": "codec",
 		"citation": "section 5 rule 7 \u2014 comments state the current contract",
-		"title": "Two Finish assignments for one surface are silently accepted",
+		"title": "A duplicate surface Finish reports the wrong refusal code",
 		"file": "packages/project-model/src/units/validate/scene.ts",
-		"find": "reader.problem(`${path}.surface`, 'duplicate_surface_finish', `Surface \"${key}\" has more than one Finish assignment`);",
-		"replace": "reader.problem(`${path}.surface`, 'duplicate-identity', `Surface \"${key}\" has more than one Finish assignment`);",
-		"tests": ["tests/lib/project-model/scene-look-schema.test.ts"]
+		"find": "'duplicate_surface_finish',",
+		"replace": "'duplicate-identity',",
+		"tests": ["packages/project-model/tests/scene-look-codec.test.ts"],
+		"root": "repo"
 	},
 	{
 		"id": "44-paint-normalise-hex",
@@ -450,7 +467,7 @@
 		"replace": "${text[1]}${text[1]}${text[1]}${text[1]}${text[1]}${text[1]}",
 		"tests": [
 			"tests/lib/authoring/look/paint-pick.test.ts",
-			"tests/lib/authoring/stage-paint-tray.test.ts"
+			"tests/lib/authoring/stage/stage-paint-tray.test.ts"
 		]
 	},
 	{
@@ -461,7 +478,8 @@
 		"file": "packages/layout-core/src/wall/opening-set.ts",
 		"find": "\t\t\t\tcode: 'opening_exceeds_wall',",
 		"replace": "\t\t\t\tcode: 'opening_exceeds_wall_height',",
-		"tests": ["tests/lib/layout/layout-openings.test.ts"]
+		"tests": ["packages/layout-core/tests/layout-openings.test.ts"],
+		"root": "repo"
 	},
 	{
 		"id": "46-room-duplicate-guard",
@@ -471,6 +489,7 @@
 		"file": "packages/layout-core/src/plan/identity.ts",
 		"find": "return typeof token === 'string' && LAYOUT_REFERENCE_PATTERN.test(token);",
 		"replace": "return typeof token === 'string' && token.length > 0;",
-		"tests": ["tests/lib/layout/layout-identity.test.ts"]
+		"tests": ["packages/layout-core/tests/layout-identity.test.ts"],
+		"root": "repo"
 	}
 ]

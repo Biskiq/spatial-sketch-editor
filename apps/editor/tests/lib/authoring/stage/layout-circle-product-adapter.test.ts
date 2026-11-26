@@ -22,7 +22,7 @@ import { createUnitProject } from '../__fixtures__/unit-envelope-fixtures';
 import { createAdapter } from '$lib/authoring/adapters/layout.adapter';
 import { inkSurface } from '$lib/authoring/adapters/layout/ink';
 import { createCardFieldsInstrument } from '$lib/authoring/adapters/layout/adapter-support';
-import { freshCapture } from '../../layout/__fixtures__/layout-id-capture';
+import { freshCapture } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 
 const RECT = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };
 const PROJECT_ID = 'project-c2-circle';

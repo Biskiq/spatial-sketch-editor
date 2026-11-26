@@ -1,12 +1,12 @@
 <script lang="ts">
 	/**
-	 * The Import sheet on E5 (T2.S8 U6).
+	 * The Import sheet.
 	 *
 	 * Modal 940 px wide on desktop (radius 16), viewport − 24 px at narrow widths,
-	 * bottom sheet on portrait iPad. Shows the E5 proposal summary, conflict
+	 * bottom sheet on portrait iPad. Shows the set-recognition proposal summary, conflict
 	 * choices, normal convention acknowledgement / detected ok box, physical size
 	 * & name validation, target registration (with mixed-kind domain segment),
-	 * collapsible file table, and two E7 draft previews.
+	 * collapsible file table, and two draft previews.
 	 */
 	import { onMount } from 'svelte';
 	import type { MapRole } from '@portfolio/project-model/materials';

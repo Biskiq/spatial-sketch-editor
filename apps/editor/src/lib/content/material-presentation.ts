@@ -1,5 +1,5 @@
 /**
- * The curated catalogue's presentation side table (T2.S8 U1).
+ * The curated catalogue's presentation side table.
  *
  * Everything here is presentation, never recipe: it sits outside a Finish's
  * canonical identity, so changing it never changes a Finish digest. It joins
@@ -168,7 +168,7 @@ export function groupByMaterialFamily<T extends { readonly id: MaterialId }>(
 }
 
 /**
- * D6 sheen facts (T2.S8 U4). The scanned mean of each curated entry's roughness
+ * D6 sheen facts. The scanned mean of each curated entry's roughness
  * image, from F's qualified catalogue evidence
  * (`docs/roadmap/t2-look-atmosphere/s8-professional-material-foundation/evidence/s8-f-catalogue.json`,
  * `sets[].measurements.qualified.roughnessMean`), keyed by catalogue id: entries

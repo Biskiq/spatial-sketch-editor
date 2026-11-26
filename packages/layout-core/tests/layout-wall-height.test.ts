@@ -1,39 +1,9 @@
-/**
- * P23.6H + P23.6I — Vertical Wall Semantics (core domain + compiler +
- * compatibility). P23.6I supersedes P23.6H's Floor cap, Floor-derived birth and
- * Floor-derived Room/Floor envelope, so the assertions that pinned those are
- * **replaced here** rather than deleted.
- *
- * `LayoutWall.height` is the authoritative physical Wall height:
- *
- * ```text
- * bottomY = floor.elevation
- * topY    = floor.elevation + wall.height
- * 0 < wall.height <= 1000 // finite, positive, shared Layout envelope; no Floor-relative cap
- * ```
- *
- * This suite pins what the slice exists for:
- * 1. the **creation rule** — a new Wall takes the named
- *    `WALL_AUTHORING_DEFAULT_HEIGHT` or a deterministic topological seed, never a
- *    Floor-derived value and never an unnamed literal;
- * 2. **pre-baseline policy** — the wall-first `4` generation that reached `main`
- *    before this branch is **not** migrated: it fails as an unsupported version
- *    rather than being reinterpreted as `5` (P23.6I, `docs/reference/north-star.md` →
- *    Development-stage schema compatibility (pre-baseline));
- * 3. **one compiler path** — compiled Wall vertical bounds/sections follow
- *    `wall.height`, and a Room's ceiling is the derived flat plane at
- *    `floor.elevation + max(boundary Wall heights)`;
- * 4. **one edit operation** — `planExactWallHeight` accepts values inside the
- *    shared 1,000 m envelope, rejects an Opening-invalidating lowering (never
- *    clamps) and leaves Wall/Junction/Opening/Room identity and topology untouched.
- */
 import { describe, expect, it } from 'vitest';
 
-import * as layoutCore from '@portfolio/layout-core/wall';
-import { createEmptyWallFirstLayoutDocument, KNOWN_LAYOUT_FORMAT_VERSIONS } from '@portfolio/layout-core/wall';
+import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core/wall';
 import { freshCapture } from './__fixtures__/layout-id-capture';
 import { compileWallFirstLayoutGeometry, type LayoutVec2 } from '@portfolio/layout-core/geometry';
-import { deriveLayoutWallRole, LAYOUT_WALL_FIRST_FORMAT_VERSION, planExactWallHeight, planWallChain, planWallSegment, planWallSubdivision, serializeWallFirstLayoutDocument, validateWallFirstLayoutDocument, validateWallFirstWallHeights, wallFirstCanonicalFormatVersionIssue, WALL_AUTHORING_DEFAULT_HEIGHT, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import { deriveLayoutWallRole, LAYOUT_WALL_FIRST_FORMAT_VERSION, planExactWallHeight, planWallChain, planWallSegment, planWallSubdivision, serializeWallFirstLayoutDocument, validateWallFirstLayoutDocument, validateWallFirstWallHeights, WALL_AUTHORING_DEFAULT_HEIGHT, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 import { planDuplicateIsolatedRoom } from '@portfolio/layout-core/plan';
 
 /** Deterministic noding allocator (test-local; mirrors the editor's shape). */
@@ -128,21 +98,6 @@ function withOpening(
 			}
 		]
 	};
-}
-
-/**
- * Reserialize a document as the superseded wall-first `4` payload, Floor height
- * included. P23.6I does **not** migrate that generation, so this payload exists
- * in these tests only to prove it is refused by name — never to prove it loads.
- */
-function asV4Payload(document: LayoutDocumentWallFirst, floorHeight: number): unknown {
-	return JSON.parse(
-		JSON.stringify({
-			...document,
-			formatVersion: 4,
-			floor: { ...document.floor, height: floorHeight }
-		})
-	);
 }
 
 function wallById(document: LayoutDocumentWallFirst, wallId: string) {
@@ -266,56 +221,7 @@ describe('P23.6H/P23.6I creation rule — a new Wall is never born at a Floor-de
 	});
 });
 
-describe('P23.6I pre-baseline policy — the wall-first `4` generation is not migrated', () => {
-	it('rejects a format-4 payload as an unsupported version instead of reinterpreting it', () => {
-		// P23.6I is pre-baseline: the wall-first `4` generation that
-		// reached `main` before this branch is deliberately **not** migrated, because
-		// having existed on `main` does not by itself create a compatibility
-		// obligation before the baseline (`docs/reference/north-star.md` → Development-stage
-		// schema compatibility (pre-baseline)).
-		//
-		// Migration was rejected on meaning, not effort: a format-5 H document meant
-		// `Room ceiling = floor.height` while Wall-derived semantics mean
-		// `max(boundary Wall heights)`, so advancing a stored payload without
-		// rewriting it would silently change what that document *says*.
-		//
-		// PR #115 (WP3): the generation-identification boundary that used to carry
-		// this proof is deleted with the legacy chain, so the same guarantee is
-		// asserted against the one retained current-format gate: `4` is refused by
-		// name, and validation is still a pure read.
-		const historical = asV4Payload(rectangleDocument({ wallHeight: 3 }), 2.5);
-		const before = JSON.stringify(historical);
-		const result = validateWallFirstLayoutDocument(historical);
-		expect(result.success).toBe(false);
-		if (result.success) return;
-		expect(result.issues.map((issue) => issue.code)).toContain('unsupported_format_version');
-		expect(result.issues.map((issue) => issue.path)).toContain('$.formatVersion');
-		expect(wallFirstCanonicalFormatVersionIssue(historical)?.code).toBe(
-			'unsupported_format_version'
-		);
-		// Validation is a pure read: a rejected payload is never rewritten in place.
-		expect(JSON.stringify(historical)).toBe(before);
-	});
-
-	it('rejects the payload at the strict codec too, where `4` is not a known version', () => {
-		const result = validateWallFirstLayoutDocument(asV4Payload(rectangleDocument(), 2.5));
-		expect(result.success).toBe(false);
-		if (result.success) return;
-		expect(result.issues.map((issue) => issue.code)).toContain('unsupported_format_version');
-	});
-
-	it('names the version rather than shape noise when only the version is superseded', () => {
-		// The payload below is a perfectly valid current-format document apart from
-		// its declared version, so the diagnosis must be the version — not a pile of
-		// structural complaints about fields that are correct for `5`.
-		const payload = { ...rectangleDocument(), formatVersion: 4 };
-		const result = validateWallFirstLayoutDocument(payload);
-		expect(result.success).toBe(false);
-		if (result.success) return;
-		expect(result.issues.every((issue) => issue.code === 'unsupported_format_version')).toBe(true);
-		expect(result.issues.map((issue) => issue.path)).toEqual(['$.formatVersion']);
-	});
-
+describe('Wall height codec shape', () => {
 	it('keeps floor.height out of the canonical schema', () => {
 		// The canonical Floor carries no vertical extent, so a present `height` is
 		// `unknown_key` rather than a tolerated optional: there is no persisted
@@ -354,45 +260,10 @@ describe('P23.6I pre-baseline policy — the wall-first `4` generation is not mi
 		expect(serializeWallFirstLayoutDocument(rectangleDocument())).not.toContain('"role"');
 	});
 
-	it('exposes no historical v4 decoder, normalizer or version constant', () => {
-		// A regression guard for the policy itself: re-adding a `4` path means
-		// re-adding these names and failing here first.
-		const exported = Object.keys(layoutCore);
-		expect(exported).not.toContain('normalizePreHWallFirstLayoutV4');
-		expect(exported).not.toContain('LAYOUT_PRE_AUTHORITATIVE_WALL_HEIGHT_FORMAT_VERSION');
-		expect(KNOWN_LAYOUT_FORMAT_VERSIONS).toEqual([LAYOUT_WALL_FIRST_FORMAT_VERSION]);
-	});
 
-	it('canonical writers reject a format-4 payload fail-closed', () => {
-		// The writer gate is current-format strictness, not a migration branch: a
-		// superseded payload cannot reach storage at all, and there is no read-side
-		// normalization path that could make it writable.
-		const historical = asV4Payload(rectangleDocument(), 2.5);
-		expect(wallFirstCanonicalFormatVersionIssue(historical)?.code).toBe(
-			'unsupported_format_version'
-		);
-		expect(() => serializeWallFirstLayoutDocument(historical)).toThrowError(
-			/Canonical Layout Save requires formatVersion 10/
-		);
-		// A canonical document round-trips through the same writer unchanged.
-		expect(serializeWallFirstLayoutDocument(rectangleDocument())).toContain(
-			`"formatVersion": ${LAYOUT_WALL_FIRST_FORMAT_VERSION}`
-		);
-	});
-
-	it('still rejects an unknown format version by name', () => {
-		const unknown = validateWallFirstLayoutDocument({
-			...rectangleDocument(),
-			formatVersion: 12
-		});
-		expect(unknown.success).toBe(false);
-		if (unknown.success) return;
-		expect(unknown.issues.map((issue) => issue.code)).toContain('unsupported_format_version');
-		expect(unknown.issues.map((issue) => issue.path)).toContain('$.formatVersion');
-	});
 });
 
-describe('P23.6I range and validation — positive and finite, with the shared geometry envelope', () => {
+describe('Wall height range and validation — positive and finite, with the shared geometry envelope', () => {
 	it('reports every invalid Wall height in document order', () => {
 		const document = rectangleDocument({ wallHeight: 1 });
 		document.walls[1]!.height = 0;

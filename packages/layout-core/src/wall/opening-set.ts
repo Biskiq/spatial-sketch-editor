@@ -180,8 +180,7 @@ function validateIndexedOpeningRecords(
 	for (const { opening, index } of entries) {
 		const path = `$.openings[${index}]`;
 		const wall = wallById.get(opening.wallId);
-		// Keep the historical per-record span call (P23B.4 freezes its count); the
-		// cached value is only so the periodic overlap pass below does not repeat it.
+		// Resolve the span for each record. The periodic overlap pass reuses these values.
 		const span = wall ? wallFirstWallSpan(document, wall, sampling, walls) : undefined;
 		if (wall !== undefined) spanByWall.set(opening.wallId, span);
 		if (!wall || !span || !(span.length > OPENING_SET_EPSILON)) {

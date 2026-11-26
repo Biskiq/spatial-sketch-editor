@@ -252,7 +252,7 @@
 		},
 		{
 			"path": "apps/editor/src/lib/authoring/save/save-state.ts",
-			"lines": 774,
+			"lines": 772,
 			"reason": "The conditional Save state: inputs, commands and one snapshot share a single framework-free machine."
 		},
 		{
@@ -487,7 +487,7 @@
 		},
 		{
 			"path": "packages/project-model/src/library/material-library.ts",
-			"lines": 660,
+			"lines": 659,
 			"reason": "One material-library envelope: its size limits, payload validation and image rules form one contract."
 		},
 		{
@@ -552,7 +552,7 @@
 		},
 		{
 			"path": "packages/layout-core/src/wall/centerline.ts",
-			"lines": 635,
+			"lines": 634,
 			"reason": "One wall-centreline algebra: cloning, sampling, translation and knot identity are one curve contract."
 		},
 		{
@@ -789,7 +789,7 @@
 			"file": "apps/editor/src/lib/authoring/save/save-state.ts",
 			"name": "createSaveState",
 			"line": 248,
-			"lines": 527,
+			"lines": 525,
 			"reason": "The one framework-free conditional Save machine over explicit inputs and commands."
 		},
 		{
@@ -1104,7 +1104,7 @@
 			"file": "packages/layout-core/src/wall/codec/parse-document.ts",
 			"name": "parseDocument",
 			"line": 28,
-			"lines": 273,
+			"lines": 272,
 			"reason": "One wall document parser: the field walk and refusal order are the codec contract."
 		},
 		{

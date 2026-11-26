@@ -28,7 +28,7 @@ export type WallFaceReading = {
  * accepted, so a refusal is reported rather than assumed.
  */
 /**
- * Align (U6): the faced surface's centre and metres, so the route can frame it
+ * Align: the faced surface's centre and metres, so the route can frame it
  * inside the chrome-free Stage region instead of the whole canvas. Absent for
  * the plain A6 Face, which keeps its conservative whole-canvas frame.
  */
@@ -45,7 +45,7 @@ type FloorBounds = {
 export type WallFaceCameraPort = {
 	standpoint(): ViewportCameraState | null;
 	face(frame: WallFaceFrame, fit?: WallFaceFit): boolean;
-	/** Plan reading + fit on floor bounds (Align on floor, U6). */
+	/** Plan reading + fit on floor bounds (Align on floor). */
 	frameFloor?(bounds: FloorBounds, fit?: WallFaceFit): boolean;
 	putBack(entry: ViewportCameraState): boolean;
 };

@@ -15,7 +15,7 @@ import { curvedWallFrame, curvedWallPointAt } from '$lib/authoring/adapters/layo
 import { createLayoutPlanners } from '$lib/authoring/adapters/layout/precision-planners';
 import { LAYOUT_WALL_BEND_KIND } from '$lib/authoring/adapters/layout/precision';
 import { wallBendIntent } from '$lib/authoring/adapters/layout/precision-intents';
-import { freshCapture } from '../../layout/__fixtures__/layout-id-capture';
+import { freshCapture } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 
 function straightWall(): { document: LayoutDocumentWallFirst; wallId: string } {
 	const base = createEmptyWallFirstLayoutDocument();

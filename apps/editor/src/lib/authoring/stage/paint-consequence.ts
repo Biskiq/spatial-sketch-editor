@@ -1,5 +1,5 @@
 /**
- * The armed Paint tool's one-line consequence (T2.S8 U2): what the next press
+ * The armed Paint tool's one-line consequence: what the next press
  * does, read on the Stage's view bar as in the accepted appearance prototype.
  * Pure wording over the painter's candidate and stroke; it owns no state.
  */

@@ -20,7 +20,7 @@ import type { WallChainIdAllocator, WallChainRejection, WallEndpointHostSnap } f
 import type { NodingFix } from './chain-repair';
 
 /**
- * P23B.3a S6 (review correction) — VALIDATE `endpointHostSnaps` before any
+ * Validate `endpointHostSnaps` before any
  * declaration grants noding authority.
  *
  * A host-Wall declaration is the operation's statement that it extends the host

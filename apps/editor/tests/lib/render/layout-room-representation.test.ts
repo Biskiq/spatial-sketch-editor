@@ -34,7 +34,7 @@ import {
 import { compileWallFirstLayoutGeometry, type CompiledLayoutGeometry, type CompiledRoom, type LayoutVec2 } from '@portfolio/layout-core/geometry';
 import type { LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 
-import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from '../layout/__fixtures__/layout-scale-fixtures';
+import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from '../../../../../packages/layout-core/tests/__fixtures__/layout-scale-fixtures';
 import { createRoomRepresentation } from '$lib/render/layout-room-representation';
 import { resolveSceneSurfaceLook } from '$lib/render/layout/scene-surface-look';
 import { LIFTED_RENDER_LAYER } from '$lib/render/render-layers';

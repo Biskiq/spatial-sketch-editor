@@ -45,7 +45,7 @@ import { createWallRepresentation } from '$lib/render/layout-wall-representation
 import { createObjectRepresentation } from '$lib/render/layout-object-representation';
 import { createGeometryStore } from '$lib/render/resources/geometry-store';
 import { createMaterialStore } from '$lib/render/resources/material-store';
-import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from '../../layout/__fixtures__/layout-scale-fixtures';
+import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-scale-fixtures';
 
 const REQUEST: SnapshotRequest = {
 	viewId: 'view-gallery-up',

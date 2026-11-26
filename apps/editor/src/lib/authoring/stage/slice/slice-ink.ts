@@ -7,7 +7,7 @@
  * them here means the fixture draws the shipped numbers rather than a copy that can
  * drift — and a palette change is a failing fixture, not a silently different picture.
  *
- * Yellow is Slice's alone: X2's cutaway stubs keep paper with an ink edge.
+ * Slice uses yellow. Cutaway stubs use paper with an ink edge.
  */
 import { STAGE_PAINT } from '../shell/stage-paint';
 

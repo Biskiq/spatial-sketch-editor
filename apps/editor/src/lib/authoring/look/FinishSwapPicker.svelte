@@ -1,8 +1,8 @@
 <script lang="ts">
 	/**
-	 * Swap › (T2.S8 U4): the curated catalogue, grouped by family, with D1 variant
+	 * Swap ›: the curated catalogue, grouped by family, with D1 variant
 	 * cards. Choosing an entry asks the Card to swap; the picker itself never
-	 * writes and holds no state beyond the variant shown on a card. U5 routes
+	 * writes and holds no state beyond the variant shown on a card. The Library routes
 	 * Swap through the Library with intent = swap and replaces this entry point.
 	 */
 	import type { MaterialId } from '$lib/types/materials';

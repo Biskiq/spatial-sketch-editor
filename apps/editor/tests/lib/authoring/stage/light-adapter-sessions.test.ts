@@ -14,7 +14,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core/wall';
 import type { SceneEntity, SceneLightEntity, Vec3 } from '@portfolio/project-model/scene';
-import { freshCapture } from '../../layout/__fixtures__/layout-id-capture';
+import { freshCapture } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 import { armedLightKind, armLight, clearArmedLight } from '$lib/authoring/look/light-tool.svelte';
 import { rotationForLightDirection } from '$lib/authoring/look/light-aim';
 import { sceneEntityReference } from '$lib/authoring/adapters/scene/placement';

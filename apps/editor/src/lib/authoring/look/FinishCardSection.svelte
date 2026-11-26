@@ -13,7 +13,7 @@
 
 <script lang="ts">
 	/**
-	 * The Card's Finish section (T2.S8 U4): the quick Finish.
+	 * The Card's Finish section: the quick Finish.
 	 *
 	 * A subject with several surfaces lists them first (Wall sides, floor and
 	 * ceiling); a row opens that surface's Finish, with Back. One surface opens
@@ -247,7 +247,7 @@
 	}
 
 	/**
-	 * Swap… opens the shared Library on Materials with this target and reach (U5).
+	 * Swap… opens the shared Library on Materials with this target and reach.
 	 * Without a route Library (a harness) the inline picker stays the fallback.
 	 */
 	function openSwap(): void {

@@ -1,5 +1,5 @@
 /**
- * The inspection host (E7): one per editor, on the editor's own renderer.
+ * The inspection host: one per editor, on the editor's own renderer.
  *
  * It owns no authority. A subject resolves through `inspection-subject`, its
  * material comes from the Canvas's store, its lights from the Canvas's realizer
@@ -105,7 +105,7 @@ export type InspectionRequest = {
 	/** Optional yaw rotation of the inspection light rig or World light sample about +Y (radians). */
 	readonly lightTurnRadians?: number;
 	/**
-	 * U1's sample-tile presentation: a front-on window of this many metres on
+	 * The sample-tile presentation: a front-on window of this many metres on
 	 * the reference plane, lit by the `sample-tile` rig. `geometry` and
 	 * `lighting` are then `plane` and `sample-tile`; the size is square.
 	 */
@@ -680,7 +680,7 @@ export function createInspectionHost(options: {
 			}
 			leases += 1;
 
-			// The Library's own rigs draw on a light backdrop; every other rig keeps E7's.
+			// The Library's own rigs draw on a light backdrop; every other rig keeps its inspection backdrop.
 			const backdrop =
 				(display === 'lit' && typeof lighting === 'string' ? libraryRigBackdrop(lighting) : null) ??
 				INSPECTION_THUMBNAIL_BACKGROUND;

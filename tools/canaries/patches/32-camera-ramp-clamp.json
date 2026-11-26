@@ -6,5 +6,6 @@
 	"file": "packages/camera-core/src/camera/motion.ts",
 	"find": "export const CAMERA_POSE_EPSILON = 1e-6;",
 	"replace": "export const CAMERA_POSE_EPSILON = 1e-2;",
-	"tests": ["tests/lib/camera-core/navigation"]
+	"tests": ["packages/camera-core/tests/navigation"],
+	"root": "repo"
 }

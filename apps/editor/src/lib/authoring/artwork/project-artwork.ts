@@ -73,7 +73,7 @@ export type ProjectImageImportHooks = {
 	readonly onPhase?: (phase: 'checking' | 'uploading') => void;
 	/**
 	 * Asset ids the caller's project already references. When several ready rows
-	 * hold identical bytes, a referenced one is reused before any other (T2.S8 E5).
+	 * hold identical bytes, a referenced one is reused before any other.
 	 */
 	readonly preferAssetIds?: ReadonlySet<string>;
 };

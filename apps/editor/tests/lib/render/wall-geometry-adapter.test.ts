@@ -9,7 +9,7 @@ import {
 	toWallBufferGeometry,
 	type WallMeshMaterialFactory
 } from '$lib/render/wall-geometry-adapter';
-import { g1LineRectangleDocument, g1MultipleOpeningsDocument } from '../layout/__fixtures__/layout-g1-fixtures';
+import { g1LineRectangleDocument, g1MultipleOpeningsDocument } from '../../../../../packages/layout-core/tests/__fixtures__/layout-g1-fixtures';
 import { compileRoom } from '../../helpers/wall-mesh-fixtures';
 
 function buildMesh(document: ReturnType<typeof g1LineRectangleDocument>): IndexedWallMesh {

@@ -30,7 +30,7 @@ import {
 import type { SaveAcknowledgement, SaveRequest } from '@portfolio/project-model/save';
 import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core/wall';
 import { createUnitProject } from '../__fixtures__/unit-envelope-fixtures';
-import { freshCapture } from '../../layout/__fixtures__/layout-id-capture';
+import { freshCapture } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 
 import { sceneSurfaceFor } from '$lib/authoring/adapters/scene/placement';
 import { createAdapter } from '$lib/authoring/adapters/scene.adapter';

@@ -34,7 +34,7 @@ import { stageEnvelope } from '$lib/authoring/stage/unit-stage-source';
 import { createUnitProject } from '../__fixtures__/unit-envelope-fixtures';
 import { createAdapter } from '$lib/authoring/adapters/layout.adapter';
 import { inkSurface, type InkController } from '$lib/authoring/adapters/layout/ink';
-import { freshCapture } from '../../layout/__fixtures__/layout-id-capture';
+import { freshCapture } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 
 const RECT = { left: 96, top: 48, width: 1280, height: 720, devicePixelRatio: 1 };
 const PROJECT_ID = 'project-layout-x5-sessions';

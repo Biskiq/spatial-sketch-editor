@@ -4,7 +4,7 @@
 	"citation": "section 3 \u2014 selection",
 	"title": "Toggling a favourite adds a duplicate instead of removing it",
 	"file": "apps/editor/src/lib/authoring/look/paint-pick.ts",
-	"find": "\treturn list.includes(key)\n\t\t? list.filter((entry) => entry !== key)\n\t\t: [...list, key].slice(0, limit);",
-	"replace": "\treturn list.includes(key)\n\t\t? [...list, key].slice(0, limit)\n\t\t: list.filter((entry) => entry !== key);",
+	"find": "return list.includes(key)\n\t\t? list.filter((entry) => entry !== key)\n\t\t: [...list, key].slice(0, limit);",
+	"replace": "return list.includes(key)\n\t\t? [...list, key].slice(0, limit)\n\t\t: list.filter((entry) => entry !== key);",
 	"tests": ["tests/lib/authoring/look/paint-pick.test.ts"]
 }

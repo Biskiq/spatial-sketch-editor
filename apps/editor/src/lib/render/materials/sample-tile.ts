@@ -1,8 +1,8 @@
 /**
- * The product material thumbnail: a flat, lit **sample tile** (U1).
+ * The product material thumbnail: a flat, lit **sample tile**.
  *
  * Recipe `sample-tile/1` draws one Finish as a front-on square window onto the
- * material, in the E7 inspection host, on the E7 plane geometry, lit by the
+ * material, in the inspection host, on the inspection plane geometry, lit by the
  * `sample-tile` rig: a soft sky, a horizontal strip light whose reflection
  * crosses the upper part of a glossy sample as a sheen band, and one raking
  * key light that gives matte relief. The frame is the window, edge to edge,
@@ -17,7 +17,7 @@
  *
  * One 256 px master is rendered per Finish. XS, S and M derive from it (see
  * `sample-tile-derivatives.ts`), so opening a list never opens a full-resolution
- * texture. E7's recipe 2 sphere and its 192 px references stay as engineering
+ * texture. The inspection recipe 2 sphere and its 192 px references stay as engineering
  * references; this recipe has its own key.
  */
 import { BufferGeometry, PlaneGeometry } from 'three';

@@ -83,16 +83,15 @@ function runVitest(canary) {
 	const result = spawnSync('npx', ['vitest', 'run', ...canary.tests], {
 		cwd,
 		encoding: 'utf8',
-		env: { ...process.env, CI: '1' },
+		env: { ...process.env, CI: '1', NO_COLOR: '1' },
 		timeout: 180_000,
 	});
+	if (result.error) throw result.error;
 	const output = `${result.stdout ?? ''}\n${result.stderr ?? ''}`;
 	return {
 		status: typeof result.status === 'number' ? result.status : 1,
-		output,
-		// A collection error also exits non-zero, but proves nothing. Require the
-		// reporter to name at least one failed test.
-		failed: /\b\d+ failed\b/.test(output) || /\bFAIL\b/.test(output),
+		// The Tests total excludes files that failed before executing a test.
+		failures: Number(/^\s*Tests\s+(\d+) failed\b/m.exec(output)?.[1] ?? 0),
 	};
 }
 
@@ -102,7 +101,7 @@ function runApi(canary) {
 		encoding: 'utf8',
 		timeout: 180_000,
 	});
-	if (build.status !== 0) return { status: 1, output: build.stderr ?? '', failed: false };
+	if (build.status !== 0) throw new Error(build.stderr || 'API canary build failed');
 	const database = process.env.DATABASE_URL ?? 'postgresql://localhost:5432/biskiq';
 	const result = spawnSync('npx', ['vite-node', `tests/${canary.tests[0]}`], {
 		cwd: API_ROOT,
@@ -110,19 +109,12 @@ function runApi(canary) {
 		env: { ...process.env, DATABASE_URL: database, NODE_ENV: 'test' },
 		timeout: 300_000,
 	});
+	if (result.error) throw result.error;
 	const output = `${result.stdout ?? ''}\n${result.stderr ?? ''}`;
 	return {
 		status: typeof result.status === 'number' ? result.status : 1,
-		output,
-		failed: result.status !== 0 && /AssertionError|ERR_ASSERTION|not ok/.test(output),
+		failures: output.match(/^\s*code: 'ERR_ASSERTION'$/gm)?.length ?? 0,
 	};
-}
-
-function summarize(output) {
-	const failed = /(\d+) failed/.exec(output)?.[1];
-	if (failed) return `${failed} failing test${failed === '1' ? '' : 's'}`;
-	if (/\bFAIL\b/.test(output)) return 'failing test file';
-	return 'no failing test named';
 }
 
 function main() {
@@ -158,14 +150,15 @@ function main() {
 			try {
 				const run = (canary.kind ?? 'vitest') === 'api' ? runApi(canary) : runVitest(canary);
 				outcome =
-					run.status !== 0 && run.failed
-						? { status: 'killed', detail: summarize(run.output) }
-						: { status: 'survived', detail: `exit ${run.status}; ${summarize(run.output)}` };
+					run.status === 0
+						? { status: 'survived', detail: 'tests passed' }
+						: run.failures > 0
+							? { status: 'killed', detail: `${run.failures} failing tests` }
+							: { status: 'error', detail: `exit ${run.status} without a test failure` };
 			} finally {
 				restore(canary);
 			}
 		} catch (error) {
-			restore(canary);
 			outcome = { status: 'error', detail: error instanceof Error ? error.message : String(error) };
 		}
 		const result = {

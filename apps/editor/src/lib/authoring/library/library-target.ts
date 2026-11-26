@@ -1,5 +1,5 @@
 /**
- * What a Library action names (T2.S8 U5).
+ * What a Library action names.
  *
  * The Stage calls Apply/Use, but the Library talks about "this surface" or
  * "this object". This maps the accepted selection to exactly the entity or

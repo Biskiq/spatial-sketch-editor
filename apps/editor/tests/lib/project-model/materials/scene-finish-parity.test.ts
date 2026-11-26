@@ -26,7 +26,7 @@ import {
 import type { MaterialTextureSlot } from '$lib/types/materials';
 import type { SceneColor } from '@portfolio/project-model/units';
 import type { SceneTextureAsset } from '@portfolio/project-model/scene';
-import { contentHash } from './fixtures';
+import { contentHash } from '../../../../../../packages/project-model/tests/materials/fixtures';
 
 const TEXTURES: SceneTextureAsset[] = [
 	{ id: 'tex-color', name: 'Colour', uri: '/project-assets/tex-color' },

@@ -47,7 +47,7 @@ import {
 	bottomStart,
 	bottomEnd,
 	twoRoomsWithOneObliqueDivider
-} from '../../helpers/angled-plan-fixtures';
+} from './__fixtures__/angled-plan-fixtures';
 import { freshCapture } from './__fixtures__/layout-id-capture';
 
 describe('P23.6e regression — projected Wall endpoints node oblique hosts', () => {

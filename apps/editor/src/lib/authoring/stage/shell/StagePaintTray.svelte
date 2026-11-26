@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * The armed Paint tool's tray (T2.S8 U2): one Colours / Materials tray with a
+	 * The armed Paint tool's tray: one Colours / Materials tray with a
 	 * reach control, a swatch row (favourites then recents), the dropper, a
 	 * custom colour wheel and an expansion to the full palette or Finishes. It
 	 * draws the pick and owns no Finish state (the consequence line is the
@@ -44,7 +44,7 @@
 		onRadius: (radius: PaintRadius) => void;
 		onLibrary: () => void;
 		/**
-		 * Paint › ⌃ › Edit palette (U4): the project palette's own writes, each one
+		 * Paint › ⌃ › Edit palette: the project palette's own writes, each one
 		 * Undo. A slot change reaches every surface that follows it.
 		 */
 		palette?: {
@@ -56,7 +56,7 @@
 			/** One Undo; resolves to the new slot id when the add is accepted. */
 			readonly add: (color: string) => Promise<string | null> | void;
 		} | null;
-		/** U1's project-Finish picture source (the route's, shared with the Library shelf). */
+		/** the sample tile’s project-Finish picture source (the route's, shared with the Library shelf). */
 		tileSource?: (finishId: string) => FinishTileSource | null;
 	} = $props();
 
@@ -161,7 +161,7 @@
 			{#if tray.colourEnabled}
 				<button type="button" role="tab" data-paint-tab-button="colours" aria-selected={tab === 'colours'} class:on={tab === 'colours'} onclick={() => view.setTab('colours')}>Colours</button>
 			{:else}
-				<!-- Colour paint is U3's colour-coat planner; the tab is decided and drawn, and inert until it lands. -->
+				<!-- Colour paint writes through the colour-coat planner. -->
 				<button type="button" role="tab" class="future" data-paint-tab-button="colours" aria-selected="false" aria-disabled="true" title="Colour replaces the surface colour and keeps its relief (T) · arrives with colour coats" onclick={(event) => event.preventDefault()}>Colours</button>
 			{/if}
 			<button type="button" role="tab" title="A material replaces the whole Finish (T)" data-paint-tab-button="materials" aria-selected={tab === 'materials'} class:on={tab === 'materials'} onclick={() => view.setTab('materials')}>Materials</button>
@@ -443,7 +443,7 @@
 			box-shadow 0.12s,
 			transform 0.12s;
 	}
-	/* U1's picture fills the swatch and takes its shape; the ring stays the button's. */
+	/* The picture fills the swatch and takes its shape; the ring stays the button's. */
 	.swatch-button :global(.finish-tile) {
 		width: 100%;
 		height: 100%;

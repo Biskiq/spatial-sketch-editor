@@ -72,12 +72,11 @@
 		paperTone3d?: PaperTone;
 		onViewPreference?: (patch: ViewPreferencePatch) => void;
 		/**
-		 * The reading control's ▾. X1 has exactly one more reading, Lift, so the menu
-		 * carries exactly one item and no disabled or planned ones. Null hides the ▾.
+		 * Lift appears under the reading control’s ▾ when available. Null hides it.
 		 */
 		lift?: { readonly active: boolean; toggle(): void } | null;
 		/**
-		 * X2's `Near walls: Cut | Whole`, under Lift in the same ▾. It is a two-way
+		 * `Near walls: Cut | Whole` appears under Lift in the same ▾. It is a two-way
 		 * item group with a default of Cut — never a pill, never a reading, and never
 		 * in the Escape ladder. Null hides it.
 		 */

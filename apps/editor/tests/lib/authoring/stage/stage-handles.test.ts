@@ -36,7 +36,7 @@ import { admitSource, type StageReadSnapshot } from '$lib/authoring/stage/source
 import { createStageSession } from '$lib/authoring/stage/stage-session';
 import { createStageFacade, type StageFacade } from '$lib/authoring/stage/stage-facade';
 import { createUnitProject } from '../__fixtures__/unit-envelope-fixtures';
-import { freshCapture } from '../../layout/__fixtures__/layout-id-capture';
+import { freshCapture } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 
 const RECT = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };
 

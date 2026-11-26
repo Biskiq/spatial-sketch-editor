@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { PersistentMap, PersistentVector } from '../../../../../packages/layout-core/src/kernel/persistent-store';
 import { freezeF4Data, immutableF4Data } from '@portfolio/project-model/f4';
-import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from './__fixtures__/layout-scale-fixtures';
+import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from '../../../../../packages/layout-core/tests/__fixtures__/layout-scale-fixtures';
 import { setWorkObserver, rememberImmutableJsonNode } from '@portfolio/layout-core/kernel';
 import { cowCreateObject, cowSetWallScalar, recordPreparedCowCandidate, consumePreparedCowCandidate, linkClonedCowCandidate } from '@portfolio/layout-core/world';
 import { createLayoutCompileSession, withLayoutCompileSession } from '@portfolio/layout-core/geometry';

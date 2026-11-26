@@ -19,7 +19,7 @@ import { createEmptyWallFirstLayoutDocument, planConvertWallToCurve, planCreateW
 import { validateProjectEnvelope } from '@portfolio/project-model/units';
 import { admitSource } from '$lib/authoring/stage/source-admission';
 import { createUnitProject } from '../__fixtures__/unit-envelope-fixtures';
-import { freshCapture } from '../../layout/__fixtures__/layout-id-capture';
+import { freshCapture } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 
 const LIMIT = MAX_LAYOUT_DIMENSION_METERS;
 const OVER_LIMIT = LIMIT + 0.001;

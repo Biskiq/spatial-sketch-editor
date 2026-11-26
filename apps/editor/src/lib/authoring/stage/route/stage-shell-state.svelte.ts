@@ -55,13 +55,13 @@ import type { WorldScope } from '../shell/world-index-model';
 import type { WorldLibraryCategory, WorldToolId } from '$lib/authoring/world-toolbar/registry';
 
 /**
- * Why the Library opened (T2.S8 U5 recovery): Paint's *Browse all* picks for
+ * Why the Library opened: Paint's *Browse all* picks for
  * Paint, the dock and `L` Replace a qualified selection, the Card's *Swap…*
  * swaps, Furnish browses Objects, anything else browses. `kind` names the shelf
  * to open on; null keeps the session's last view.
  */
 /**
- * The Library's last browse view (U5): session state, never saved. It survives
+ * The Library's last browse view: session state, never saved. It survives
  * closing and reopening the Library; detail and invocation do not.
  */
 export type StageLibraryView = {
@@ -115,7 +115,7 @@ export type StageShellStateInput = {
 	readonly selection: () => StageSelectionEntry | null;
 	/** The Finish service Paint consumes; `null` until the route has built it. */
 	readonly finishes: () => FinishAuthoring | null;
-	/** A click that painted one subject: select it and open that Finish (U4). */
+	/** A click that painted one subject: select it and open that Finish. */
 	readonly onPaintedOne?: (target: StagePaintCandidate) => void;
 };
 

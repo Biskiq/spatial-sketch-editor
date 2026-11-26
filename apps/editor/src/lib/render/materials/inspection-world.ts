@@ -1,5 +1,5 @@
 /**
- * Current World inspection lighting (E7).
+ * Current World inspection lighting.
  *
  * A `WorldLightSample` is read from the accepted Scene exactly as the Stage
  * reads it: the shown Sky (or Paper), the World frame the Sun is aimed with,

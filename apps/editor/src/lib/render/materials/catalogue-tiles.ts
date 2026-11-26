@@ -1,5 +1,5 @@
 /**
- * The curated catalogue's 256×256 sample-tile masters (U1).
+ * The curated catalogue's 256×256 sample-tile masters.
  *
  * One master per entry, drawn by the inspection host's `sample-tile/1` recipe
  * and committed with a manifest (`scripts/generate-material-tiles.mjs`). A row
@@ -9,7 +9,7 @@
  * Looking one up resolves a description only: it never loads a texture, and
  * never opens the full-resolution image set.
  *
- * E7's 192 px engineering references (`catalogue-thumbnails.ts`) are a separate
+ * The 192 px engineering references (`catalogue-thumbnails.ts`) are a separate
  * set with their own manifest and are untouched.
  */
 import manifest from '$lib/content/material-tiles.json';

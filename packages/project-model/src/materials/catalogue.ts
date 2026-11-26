@@ -19,7 +19,7 @@
  *  creator-facing and carry no catalogue provenance. Removing them is a later
  *  strict format change.
  *
- * The curated bases (T2.S8 F) are derived from retained CC0 sources by
+ * The curated bases are derived from retained CC0 sources by
  * `apps/editor/assets-source/textures/derive.ts`; each set's derivation and
  * licence record lives under `apps/editor/assets-source/`.
  */
@@ -360,7 +360,7 @@ export const SHIPPED_MATERIAL_IMAGES: readonly CatalogueImage[] = deepFreeze([
 const IMAGE_BY_URI = new Map(SHIPPED_MATERIAL_IMAGES.map((entry) => [entry.uri, entry]));
 const IMAGE_BY_HASH = new Map(SHIPPED_MATERIAL_IMAGES.map((entry) => [entry.hash, entry]));
 
-/** The creator-facing curated catalogue ids (T2.S8 F), in shelf order. */
+/** The creator-facing curated catalogue ids, in shelf order. */
 export const CATALOGUE_MATERIAL_IDS = Object.freeze([
 	'wood-oak-veneer',
 	'wood-walnut-veneer',

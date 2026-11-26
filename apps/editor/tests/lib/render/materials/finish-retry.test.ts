@@ -5,7 +5,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BoxGeometry, Group, Mesh, MeshStandardMaterial, Texture } from 'three';
 import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core/geometry';
-import { g1DocumentWithRooms, g1RoomPolygon } from '../../layout/__fixtures__/layout-g1-fixtures';
+import { g1DocumentWithRooms, g1RoomPolygon } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-g1-fixtures';
 import { createWallRepresentation } from '$lib/render/layout-wall-representation';
 import { createRoomRepresentation } from '$lib/render/layout-room-representation';
 import { createRegionRepresentation } from '$lib/render/layout-region-representation';

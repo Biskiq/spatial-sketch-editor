@@ -21,7 +21,7 @@ import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/la
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
 import { stageLayout } from '$lib/authoring/stage/unit-stage-source';
-import { freshCapture } from '../../layout/__fixtures__/layout-id-capture';
+import { freshCapture } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 import { createUnitProject } from '../__fixtures__/unit-envelope-fixtures';
 import {
 	admitSource,

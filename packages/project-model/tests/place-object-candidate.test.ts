@@ -18,8 +18,8 @@
  *    cannot diverge: a mesh hit's Y has nowhere to enter.
  */
 import { describe, expect, it } from 'vitest';
-import { cloneFixtureDocument } from '../content/__fixtures__/load-fixture-scene';
-import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
+import { cloneFixtureDocument } from './__fixtures__/load-fixture-scene';
+import { freshCapture } from '../../layout-core/tests/__fixtures__/layout-id-capture';
 import { FLOOR_SUPPORT_TOLERANCES, floorSupportSnapshotOf, queryFloorSupports, chooseFloorSupport, type FloorSupportCandidate } from '@portfolio/layout-core/room';
 import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core/wall';
 import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core/geometry';
@@ -43,8 +43,8 @@ import {
 } from '@portfolio/project-model/units';
 import {
 	cameraFreeScene
-} from '../authoring/__fixtures__/unit-envelope-fixtures';
-import { createUnitProject } from '../authoring/__fixtures__/unit-envelope-fixtures';
+} from './__fixtures__/unit-envelope';
+import { createUnitProject } from './__fixtures__/unit-envelope';
 
 const GENERATION = 'generation-1';
 const SNAPSHOT = { acceptedRevision: { projectId: 'project-1', revisionId: 'revision-1' }, sourceContentId: 'content-1' };

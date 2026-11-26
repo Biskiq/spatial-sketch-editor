@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from './__fixtures__/layout-scale-fixtures';
+import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from '../../../../../packages/layout-core/tests/__fixtures__/layout-scale-fixtures';
 import { getCameraMotionOptions } from '@portfolio/camera-core/camera';
 import type { Vector3Like } from '@portfolio/camera-core/camera';
 

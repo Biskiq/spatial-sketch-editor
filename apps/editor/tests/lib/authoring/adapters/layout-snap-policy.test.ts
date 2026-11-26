@@ -12,7 +12,7 @@ import { compileWallFirstLayoutGeometry, type CompiledLayoutGeometry, type Layou
 import { createEmptyWallFirstLayoutDocument, planCreateWallFirstOpening, planWallChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 
 import { layoutSnapName, resolveOpeningSlideSnap } from '$lib/authoring/adapters/layout/snap';
-import { freshCapture } from '../../layout/__fixtures__/layout-id-capture';
+import { freshCapture } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 
 const DRAFTING = { grid: true, snap: true, snapSuspended: false } as const;
 const PIXELS_PER_METER = 100;

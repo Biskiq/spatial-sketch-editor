@@ -253,10 +253,8 @@ function cloneRoomEnclosure(
  * hosted Opening (`external_portal_relation`), any read-only/profile
  * associated object (`profile_object_read_only`), and a candidate that
  * violates the CANONICAL topology bar inside one connected component
- * (`topology_invalid`). P23B.3a S7 / D-8 — a clone that merely OVERLAPS or
- * crosses INDEPENDENT geometry is permitted placement: it commits, and it joins
- * nothing (the earlier wording here claimed the overlap itself was refused,
- * which was the chord-exact rule this path no longer owns).
+ * (`topology_invalid`). A clone can overlap or cross independent geometry without
+ * joining it.
  */
 export function planDuplicateIsolatedRoom(
 	document: LayoutDocumentWallFirst,
@@ -324,7 +322,7 @@ function planDuplicateIsolatedRoomInternal(
  * (`invalid_candidate_document`, `topology_invalid`, `opening_set_invalid`,
  * `portal_relation_invalid`, `candidate_does_not_compile`).
  *
- * P23B.3a S7 / D-8 — overlap between INDEPENDENT components is permitted
+ * Overlap between independent components is permitted
  * placement: a copy placed across another group's Walls commits, joins nothing
  * and is reported by the derived overlap cue, never refused here.
  */

@@ -5,7 +5,7 @@ import {
 	resolveWorldScope,
 	worldScopeRows
 } from '$lib/authoring/stage/shell/world-index-model';
-import { freshCapture } from '../../layout/__fixtures__/layout-id-capture';
+import { freshCapture } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 
 function twoRooms(): LayoutDocumentWallFirst {
 	const base = createEmptyWallFirstLayoutDocument();

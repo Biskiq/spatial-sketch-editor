@@ -30,7 +30,7 @@
  * ## Snapshots are as built
  *
  * `asBuilt(render)` parks the native planes at no-op, the mask mode at `0` and
- * X2's cutaway top at never-cut for the duration of a snapshot, then restores them
+ * The cutaway top at never-cut for the duration of a snapshot, then restores them
  * in `finally` — re-entrant, exception safe, and never invalidating. Overlay ink is
  * outside the snapshot mask already, so the image is the world as built.
  *
@@ -57,7 +57,7 @@ import {
 /**
  * Two planes for every reading, so the count never changes.
  *
- * X2's cutaway inherits this seam; if it ever needs more planes it raises this
+ * The cutaway inherits this seam; if it ever needs more planes it raises this
  * constant once (one build at load, never at runtime) instead of adding a second
  * clipping path.
  */
@@ -145,7 +145,7 @@ export type StageClip = {
 	 */
 	clipInk<M extends Material>(material: M): M;
 	/**
-	 * The X2 cutaway top applied to the one live uniform, or `null` for never cut.
+	 * The cutaway top applied to the one live uniform, or `null` for never cut.
 	 *
 	 * Whole, the hold key, Plan, Preview and snapshots all write `null` here: the
 	 * twin materials stay leased and the cut simply stops discarding, so returning
@@ -210,7 +210,7 @@ export function createStageClip(): StageClip {
 				return;
 			}
 			write(planes, native);
-			// X2 owns the cutaway top independently of the Slice reading. `shader` is a
+			// The cutaway maintains its top independently of the Slice reading. `shader` is a
 			// fresh state for the reading (never-cut by default), so restore it around
 			// the write rather than letting a Level/Drawn edit silently show every Wall.
 			const cutawayTopY = sliceUniforms.cutawayTopY.value;
@@ -225,7 +225,7 @@ export function createStageClip(): StageClip {
 					plane.copy(keepAll());
 				});
 				sliceUniforms.mode.value = 0;
-				// X2's cutaway is a viewing state too: a snapshot is the world as built.
+				// The cutaway is a viewing state too: a snapshot is the world as built.
 				sliceUniforms.cutawayTopY.value = NEVER_CUT_TOP_Y;
 			}
 			depth += 1;

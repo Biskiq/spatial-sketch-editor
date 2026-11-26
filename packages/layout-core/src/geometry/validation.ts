@@ -48,8 +48,8 @@ export function prepareLayoutRoomSegments(
 	const issues: LayoutGeometryIssue[] = [];
 	const segments = room.boundary.segments.map((segment, index) => {
 		if (!isFiniteSegment(segment)) return null;
-		// P23B.4 M-1: a mapped segment is served from the chain derivation instead
-		// of re-sampling. Unmapped segments keep the historical kernel path exactly.
+		// A mapped segment is served from the chain derivation instead
+		// of re-sampling. Unmapped segments use the same sampling kernel directly.
 		const pre = preSampled?.get(segment);
 		if (pre) return pre;
 		try {

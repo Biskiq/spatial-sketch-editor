@@ -18,7 +18,7 @@ import { createPlanPickProvider } from '$lib/authoring/layout/plan-pick-provider
 import { admitSource } from '$lib/authoring/stage/source-admission';
 import { createStageSession } from '$lib/authoring/stage/stage-session';
 import { createStageFacade, type StageFacade } from '$lib/authoring/stage/stage-facade';
-import { captureFor } from '../../layout/__fixtures__/layout-id-capture';
+import { captureFor } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 import { createUnitProject } from '../__fixtures__/unit-envelope-fixtures';
 
 const RECT = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };

@@ -61,7 +61,7 @@ import { hitStageMark } from '$lib/authoring/stage/stage-handles';
 import { buildCurrentSourceFixture, FIXTURE_ENTITY_ID, FIXTURE_PROJECT_ID } from '../__fixtures__/f4-current-source-fixtures';
 import { buildS17MixedProject } from '../__fixtures__/s17-mixed-project';
 import { admitUnitProject, createUnitProject } from '../__fixtures__/unit-envelope-fixtures';
-import { freshCapture } from '../../layout/__fixtures__/layout-id-capture';
+import { freshCapture } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 
 const ENTITY_ID = 'entity-scene-box';
 const PROJECT_ID = 'project-scene-editing';

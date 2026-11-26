@@ -114,7 +114,7 @@ export type WallRepresentation = {
 	/** Ask again for the surface images that failed, without rebuilding geometry. */
 	reloadTextures(): void;
 	/**
-	 * X2's display overlay: exactly these Walls draw through the cutaway twin
+	 * The display overlay: exactly these Walls draw through the cutaway twin
 	 * material. Work is proportional to the ids that changed state, the set is
 	 * remembered so a rebuilt Wall is born cut, and the twin is a store lease per
 	 * tint — never a second material system and never a buffer rebuild.

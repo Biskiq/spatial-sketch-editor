@@ -1,5 +1,5 @@
 /**
- * The complete project-image closure (T2.S8 · PR C).
+ * The complete project-image closure.
  *
  * A project names creator bytes in two places: the Scene texture registry (a
  * Finish image, including records left behind by a removed Finish) and the
@@ -127,9 +127,7 @@ function comparePaths(paths: string[]): string[] {
 /**
  * Enumerate the image closure of one Scene payload.
  *
- * `resources` supplies the authored texture pins. Passing an empty list is the
- * legacy release shape, where the P20 registry row is the only pin; Save and
- * Load pass the envelope's resource unit and therefore require an authored pin.
+ * The envelope’s resource unit supplies authored pins for project textures.
  */
 export function collectSceneImageRequirements(
 	scene: Scene,
@@ -207,15 +205,15 @@ export function collectSceneImageRequirements(
 		}
 		const resource = resourceFor(resources, assetId);
 		const expectedPin = expectedPinOf(resource);
-		if (purpose !== 'delivery' && expectedPin === null) {
+		if (expectedPin === null) {
 			issues.push({
 				path: `$.units.resources.data.resources`,
 				code: 'image-pin-missing',
-				message: `Project image "${assetId}" needs a texture resource pin before it can be saved or opened`,
+				message: `Project image "${assetId}" needs a texture resource pin before it can be saved, opened or delivered`,
 			});
 			continue;
 		}
-		if (expectedPin !== null && resource?.pin?.locator !== texture.uri) {
+		if (resource?.pin?.locator !== texture.uri) {
 			issues.push({
 				path: `$.units.resources.data.resources`,
 				code: 'image-pin-locator-mismatch',
@@ -253,11 +251,11 @@ export function collectSceneImageRequirements(
 			const path = `$.units.scene.data.materials[${materialIndex}].overrides.maps.${binding.role}.image.textureId`;
 			const resource = resourceFor(resources, binding.textureId);
 			const expectedPin = expectedPinOf(resource);
-			if (expectedPin === null && purpose !== 'delivery') {
+			if (expectedPin === null) {
 				issues.push({
 					path,
 					code: 'image-pin-missing',
-					message: `Project image "${binding.textureId}" needs a texture resource pin before it can be saved or opened`,
+					message: `Project image "${binding.textureId}" needs a texture resource pin before it can be saved, opened or delivered`,
 				});
 				continue;
 			}

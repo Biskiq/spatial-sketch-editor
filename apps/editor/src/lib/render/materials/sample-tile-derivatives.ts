@@ -1,5 +1,5 @@
 /**
- * Responsive display sizes of a sample tile (U1).
+ * Responsive display sizes of a sample tile.
  *
  * One 256 px master is the only stored picture. XS, S and M derive from it, so
  * a list never opens a full-resolution texture and a Retina display is covered

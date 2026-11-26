@@ -12,7 +12,7 @@ import {
 	computeEnvelopeSourceContentId,
 	serializeProjectEnvelope
 } from '@portfolio/project-model/units';
-import { createUnitProject } from '../authoring/__fixtures__/unit-envelope-fixtures';
+import { createUnitProject } from './__fixtures__/unit-envelope';
 import {
 	SAVE_ACCEPTED_SOURCE_VERSION,
 	SAVE_CONTENT_IDENTITY_SCHEME,

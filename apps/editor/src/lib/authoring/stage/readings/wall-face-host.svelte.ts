@@ -31,7 +31,7 @@ export function createWallFaceHost(input: {
 					const stage = input.facade();
 					const viewport = input.rect();
 					if (stage === null || viewport === null) return false;
-					// Align (U6): frame the surface inside the chrome-free region, not the
+					// Align: frame the surface inside the chrome-free region, not the
 					// whole canvas. Plain Face keeps its conservative whole-canvas frame.
 					const axes = faceScreenAxes(frame.look);
 					const framing = fit === undefined ? null : input.alignFraming(fit, axes, viewport);

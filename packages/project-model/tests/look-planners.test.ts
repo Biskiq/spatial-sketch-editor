@@ -11,7 +11,7 @@ import type { AcceptedSnapshot, AuthoringIntent } from '@portfolio/project-model
 import type { SceneMaterialInstance } from '@portfolio/project-model/scene';
 import { SCENE_UNIT_FORMAT_VERSION, SCENE_SKY_DEFAULT, UNIT_SOURCE_KIND, UNIT_SOURCE_VERSION, skyFromPreset, type CameraFreeSceneDocument, type ProjectEnvelope, type SceneEnvironment } from '@portfolio/project-model/units';
 import { SCENE_LOOK_APPLY_KIND, SCENE_LOOK_RESTORE_KIND, SCENE_TREATMENT_SET_KIND, createSceneLookApplyPlanner, createSceneLookRestorePlanner, createSceneTreatmentSetPlanner } from '@portfolio/project-model/units/planning';
-import { createUnitProject } from '../authoring/__fixtures__/unit-envelope-fixtures';
+import { createUnitProject } from './__fixtures__/unit-envelope';
 
 const MATERIAL: SceneMaterialInstance = { id: 'finish-1', name: 'Coral paint', base: { catalogue: 'plaster-warm' }, overrides: { color: '#ee6c4d', roughness: 0.8 } };
 

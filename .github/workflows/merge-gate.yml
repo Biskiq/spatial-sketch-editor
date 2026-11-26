@@ -256,8 +256,7 @@ jobs:
       - run: npm run check:geometry-core
       - run: npm exec -w @portfolio/editor -- svelte-kit sync
       - name: Check pinned corpus and determinism boundary
-        working-directory: apps/editor
-        run: npx vitest run tests/lib/geometry-core
+        run: npx vitest run packages/geometry-core/tests apps/editor/tests/arch/geometry.arch.test.ts
 
   gate:
     name: merge gate

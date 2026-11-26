@@ -4,7 +4,7 @@
 	"citation": "section 3 \u2014 canonical invariants",
 	"title": "The supported geometry envelope is silently widened tenfold",
 	"file": "packages/layout-core/src/geometry/limits.ts",
-	"find": "\treturn (\n\t\tNumber.isFinite(value) && value > MAX_LAYOUT_DIMENSION_METERS + DIMENSION_LIMIT_TOLERANCE_METERS\n\t);",
-	"replace": "\treturn (\n\t\tNumber.isFinite(value) && value > MAX_LAYOUT_DIMENSION_METERS * 10\n\t);",
+	"find": "value > MAX_LAYOUT_DIMENSION_METERS + DIMENSION_LIMIT_TOLERANCE_METERS",
+	"replace": "value > MAX_LAYOUT_DIMENSION_METERS * 10",
 	"tests": ["tests/lib/authoring/stage/layout-dimension-limit.test.ts"]
 }

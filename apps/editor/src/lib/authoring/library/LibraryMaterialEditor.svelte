@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * The Material editor (T2.S8 U6): one dual-mode surface for both
+	 * The Material editor: one dual-mode surface for both
 	 * - **Finish mode**: edits an accepted Finish opened from the Finish Card
 	 *  (each completed control is one E4 patch; preview while dragging);
 	 * - **Draft mode**: the Library *Customise…* draft (no writes until Apply

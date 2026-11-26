@@ -142,7 +142,7 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 	 * route, so the cache is an optimisation, never a second authority.
 	 */
 	const verifiedImages = createVerifiedProjectImageCache();
-	// The Stage's Finish pictures (U1): the shelf asks, the Stage-mounted host draws.
+	// The Stage's Finish pictures: the shelf asks, the Stage-mounted host draws.
 	const finishTiles = provideFinishTiles();
 	onDestroy(() => finishTiles.dispose());
 	const stageAssets = createStageAssetLeases({
@@ -314,7 +314,7 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 			// entry standpoint synchronously before the ticket moves.
 			lightInspection.ports.cancel();
 			// Align, the material Editor, Import and the repair pickers end by their
-			// cancel paths; Align restores its entry standpoint first (U6 lifecycle).
+			// cancel paths; Align restores its entry standpoint first.
 			appearance.ports.endOperations(true);
 			experienceBinding.stopAndRestore();
 		},

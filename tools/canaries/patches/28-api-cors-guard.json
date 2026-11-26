@@ -6,6 +6,6 @@
 	"file": "apps/api/src/app.ts",
 	"find": "if (!origin || origin !== expectedBrowserOrigin) {",
 	"replace": "if (!origin || origin === expectedBrowserOrigin) {",
-	"tests": ["../api/tests/auth-session-origin.test.mjs"],
+	"tests": ["auth-session-origin.test.mjs"],
 	"kind": "api"
 }

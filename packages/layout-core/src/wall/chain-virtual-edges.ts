@@ -21,7 +21,7 @@ type PartialVirtualEdgeMatch = {
 };
 
 /**
- * SP1d — turn a proper subsegment of an open side into boundary Walls.
+ * Turn a proper subsegment of an open side into boundary Walls.
  *
  * Only a Wall the operation authored, with one endpoint on an existing
  * virtual-edge Junction and the other strictly inside that edge, matches. A

@@ -1,5 +1,5 @@
 /**
- * The Material editor facet (T2.S8 U6).
+ * The Material editor facet.
  *
  * Owns the editor's open state (Finish mode), view settings (display channel,
  * light turn, compare), and the pure field-group projection shared between

@@ -3,7 +3,7 @@
  * compiler's placement gate and Room reconciliation.
  *
  * This module deliberately knows nothing about documents, Rooms or Walls: it
- * takes composed X/Z polygons and answers the SP1a outline questions (positive
+ * takes composed X/Z polygons and answers outline queries (positive
  * signed area, self-intersection, containment, pair conflict). Keeping it free
  * of `layout-room-reconciliation.ts` and `layout-space-placement.ts` is what
  * lets both import one authority without a circular dependency:

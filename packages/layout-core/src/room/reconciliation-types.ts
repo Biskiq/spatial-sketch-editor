@@ -31,7 +31,7 @@ export type RoomReconciliation = {
 	spaceRetirements: readonly SpaceRetirement[];
 };
 
-/** Why an open Space retired; stable machine codes for consequence lines (SP1c). */
+/** Why an open Space retired; stable machine codes for consequence lines. */
 export type SpaceRetirementReason =
 	| 'explicit-remove'
 	| 'last-boundary-wall'

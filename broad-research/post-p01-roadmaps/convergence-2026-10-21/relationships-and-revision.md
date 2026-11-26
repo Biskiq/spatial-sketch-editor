@@ -87,7 +87,7 @@ npm exec -w @portfolio/editor -- vitest run tests/lib/layout/layout-curve-split-
 npm --prefix prototypes/p3-vellum test -- tests/hold.test.ts tests/storey.test.ts
 ```
 
-For a separately scoped scratch execution, use disposable tests importing `@portfolio/layout-core` and the existing F.4 coordinator. Begin from `apps/editor/tests/lib/layout/layout-dissolve-curves.test.ts` and `layout-curve-split-primitives.test.ts` fixtures; consume `planWallSplit`, `planDissolveJunction`, `wallCenterlineCubics`, `wallCurveChainLength` and owner evaluators. Do not reconstruct a competing topology. Use `apps/editor/tests/README.md` focused commands for the scratch file; broader acceptance follows the consuming plan, not these filters.
+For a separately scoped scratch execution, use disposable tests importing `@portfolio/layout-core` and the existing F.4 coordinator. Begin from `packages/layout-core/tests/layout-dissolve-curves.test.ts` and `layout-curve-split-primitives.test.ts` fixtures; consume `planWallSplit`, `planDissolveJunction`, `wallCenterlineCubics`, `wallCurveChainLength` and owner evaluators. Do not reconstruct a competing topology. Use `apps/editor/tests/README.md` focused commands for the scratch file; broader acceptance follows the consuming plan, not these filters.
 
 | Probe | Fixture / implementable oracle | Pass or useful stop |
 | --- | --- | --- |

@@ -51,7 +51,7 @@
 	 */
 	let controller = $state<SceneObjectCardController | null>(null);
 	let activeEntityId = $state<string | null>(null);
-	/** The object's one Finish part (U4); lights and Artwork carry none. */
+	/** The object's one Finish part; lights and Artwork carry none. */
 	const finishParts = $derived.by((): readonly FinishCardPart[] => {
 		const id = activeEntityId;
 		if (id === null || entityKind === null || entityKind === 'light' || entityKind === 'artwork') return [];

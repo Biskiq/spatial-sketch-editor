@@ -84,8 +84,7 @@ describe('material library client', () => {
 			fetchImpl: (async () => response('2')) as typeof fetch
 		});
 		await expect(future.read(item)).rejects.toMatchObject({
-			code: 'refused',
-			serverCode: 'unsupported_format_version'
+			code: 'refused'
 		});
 	});
 

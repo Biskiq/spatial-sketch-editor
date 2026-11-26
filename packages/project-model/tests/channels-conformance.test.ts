@@ -25,7 +25,7 @@ import { CAMERA_OUTPUT_ROLES, CAMERA_SESSION_INSPECTION_FAMILY, DEFAULT_CHANNEL_
 import { compareReferences, type DependencyLockReader, type SemanticReference, type SnapshotIdentity } from '@portfolio/project-model/references';
 import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core/wall';
 import { createUnitReadContext } from '@portfolio/project-model/references/unit-resolution';
-import { createUnitProject } from '../authoring/__fixtures__/unit-envelope-fixtures';
+import { createUnitProject } from './__fixtures__/unit-envelope';
 
 /** A real F.2 envelope with one authored floor and one Camera view. */
 const DOCUMENT = await createUnitProject({

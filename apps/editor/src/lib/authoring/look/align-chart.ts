@@ -1,5 +1,5 @@
 /**
- * Align chart (T2.S8 U6): the exact renderer sampling, inverted for the overlay.
+ * Align chart: the exact renderer sampling, inverted for the overlay.
  *
  * The renderer samples a Finish at
  *  t = diag(repeat) · R(−θ) · (uv − ½) + ½ + offset

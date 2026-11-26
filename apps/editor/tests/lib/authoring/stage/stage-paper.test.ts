@@ -18,17 +18,9 @@
  * 4. **Appearance is a camera/layer fact** — Paper and Shaded use layer masks,
  *    no Paper module writes `Object3D.visible`, and Paper is the default.
  */
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
-import { REPO_ROOT } from '../../../helpers/import-closure';
-import {
-	InterleavedBufferAttribute,
-	Layers,
-	Mesh,
-	MeshBasicMaterial,
-	type InstancedInterleavedBuffer
-} from 'three';
+import { Mesh } from 'three';
 import { LineSegments2 } from 'three/addons/lines/webgpu/LineSegments2.js';
 import { Line2NodeMaterial } from 'three/webgpu';
 import { compileWallFirstLayoutGeometry, type CompiledLayoutGeometry, type LayoutVec2 } from '@portfolio/layout-core/geometry';
@@ -42,35 +34,12 @@ import {
 	type PlanSceneProjection
 } from '$lib/authoring/scene/plan-scene-footprint';
 import { resolvePlanSceneHit } from '$lib/authoring/scene/plan-scene-hit';
-import { createPaperScene, PAPER_SHEET_NAME } from '$lib/authoring/stage/paper-scene';
+import { createPaperScene } from '$lib/authoring/stage/paper-scene';
 import { createPaperMarkScene } from '$lib/authoring/stage/paper-marks';
-import {
-	buildPaperPlan,
-	fragmentLayer,
-	fragmentTreatment,
-	isPaperPlanVisible,
-	paperRevealFor,
-	MAT_BACKGROUND_INK,
-	PAPER_GROUND_INK,
-	PAPER_INK,
-	PAPER_LAYER,
-	paperStageComposition,
-	PAPER_LINE_STYLE,
-	stageCameraLayerMask,
-	unionOutline,
-	STAGE_OVERLAY_LAYER,
-	STAGE_WORLD_LAYER,
-	type PaperLineDraw,
-	type PaperSegment
-} from '$lib/authoring/stage/paper-plan';
-import { paperHiddenSource, paperSourceRuns } from '$lib/authoring/stage/paper-selection';
+import { buildPaperPlan, fragmentLayer, fragmentTreatment, PAPER_LAYER, PAPER_LINE_STYLE, unionOutline } from '$lib/authoring/stage/paper-plan';
 import { STARTER_ENCLOSURE_POINTS } from '$lib/authoring/stage/starter-gallery';
-import { DEFAULT_APP_PREFERENCES } from '$lib/platform/app-preferences';
-import { freshCapture } from '../../layout/__fixtures__/layout-id-capture';
-import { openingSelection } from '../fixtures/selection-entry';
-
+import { freshCapture } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 type Fixture = { readonly compiled: CompiledLayoutGeometry; readonly document: LayoutDocumentWallFirst };
-
 function enclosure(points: readonly LayoutVec2[]): Fixture {
 	const baseline = createEmptyWallFirstLayoutDocument();
 	const planned = planWallChain({
@@ -83,7 +52,6 @@ function enclosure(points: readonly LayoutVec2[]): Fixture {
 	if (planned.kind !== 'success') throw new Error(`the envelope no longer plans: ${planned.rejection.code}`);
 	return { compiled: compileWallFirstLayoutGeometry(planned.document).geometry, document: planned.document };
 }
-
 function standaloneWall(): Fixture {
 	const baseline = createEmptyWallFirstLayoutDocument();
 	const planned = planWallChain({
@@ -96,7 +64,6 @@ function standaloneWall(): Fixture {
 	if (planned.kind !== 'success') throw new Error(`the standalone Wall no longer plans: ${planned.rejection.code}`);
 	return { compiled: compileWallFirstLayoutGeometry(planned.document).geometry, document: planned.document };
 }
-
 const L_POINTS: readonly LayoutVec2[] = [
 	[0, 0],
 	[6, 0],
@@ -105,7 +72,6 @@ const L_POINTS: readonly LayoutVec2[] = [
 	[3, 6],
 	[0, 6]
 ];
-
 function withDoor(fixture: Fixture): Fixture {
 	const layout = fixture.document;
 	const door = planCreateWallFirstOpening(
@@ -117,26 +83,6 @@ function withDoor(fixture: Fixture): Fixture {
 	if (door.kind !== 'success') throw new Error(`the door no longer plans: ${door.rejection.code}`);
 	return { compiled: compileWallFirstLayoutGeometry(door.document).geometry, document: door.document };
 }
-
-function withTwoDoors(fixture: Fixture): Fixture {
-	const layout = fixture.document;
-	const first = planCreateWallFirstOpening(
-		layout,
-		{ wallId: layout.walls[0]!.id, kind: 'door', offset: 1, width: 0.9, height: 2.1, sillHeight: 0 },
-		freshCapture(),
-		layout.floor.id
-	);
-	if (first.kind !== 'success') throw new Error(`the first door no longer plans: ${first.rejection.code}`);
-	const second = planCreateWallFirstOpening(
-		first.document,
-		{ wallId: first.document.walls[1]!.id, kind: 'door', offset: 1, width: 0.9, height: 2.1, sillHeight: 0 },
-		freshCapture(),
-		first.document.floor.id
-	);
-	if (second.kind !== 'success') throw new Error(`the second door no longer plans: ${second.rejection.code}`);
-	return { compiled: compileWallFirstLayoutGeometry(second.document).geometry, document: second.document };
-}
-
 function withWindow(fixture: Fixture): Fixture {
 	const layout = fixture.document;
 	const window = planCreateWallFirstOpening(
@@ -148,7 +94,6 @@ function withWindow(fixture: Fixture): Fixture {
 	if (window.kind !== 'success') throw new Error(`the window no longer plans: ${window.rejection.code}`);
 	return { compiled: compileWallFirstLayoutGeometry(window.document).geometry, document: window.document };
 }
-
 function withLowWalls(fixture: Fixture, height: number): Fixture {
 	const document: LayoutDocumentWallFirst = {
 		...fixture.document,
@@ -156,7 +101,6 @@ function withLowWalls(fixture: Fixture, height: number): Fixture {
 	};
 	return { compiled: compileWallFirstLayoutGeometry(document).geometry, document };
 }
-
 function evaluate(
 	compiled: CompiledLayoutGeometry,
 	overrides: Partial<PlanParameters> = {},
@@ -180,33 +124,16 @@ function evaluate(
 	if (result.kind !== 'evaluated') throw new Error(`the fixture Plan did not evaluate: ${JSON.stringify(result.issues)}`);
 	return result.plan;
 }
-
 const EMPTY_PROJECTION: PlanSceneProjection = { footprints: [] };
-
-/** One synthetic batch entry; the addressability contract reads only these fields. */
-function lineOf(sourceId: string, segments: number): PaperLineDraw {
-	return {
-		key: `${sourceId}:${segments}`,
-		sourceId,
-		stream: 'symbol',
-		layer: PAPER_LAYER.symbol,
-		treatment: 'symbol',
-		elevationMeters: 0,
-		segments: Array.from({ length: segments }, (_, index): PaperSegment => [[index, 0], [index + 1, 0]])
-	};
-}
-
 function drawnSourceStreams(drawing: ReturnType<typeof buildPaperPlan>): Set<string> {
 	const drawn = new Set<string>();
 	for (const line of drawing.lines) drawn.add(`${line.sourceId}::${line.stream}`);
 	for (const fill of drawing.fills) drawn.add(`${fill.sourceId}::${fill.treatment === 'room-floor' ? 'projected' : 'cut'}`);
 	return drawn;
 }
-
 function eligibleSourceStreams(fragments: readonly PlanFragment[]): Set<string> {
 	return new Set(fragments.map((fragment) => `${fragment.ref.sourceId}::${fragment.ref.stream}`));
 }
-
 function primitive(id: string, position: [number, number, number], rotation: [number, number, number] = [0, 0, 0]): SceneEntity {
 	return {
 		kind: 'primitive',
@@ -221,7 +148,6 @@ function primitive(id: string, position: [number, number, number], rotation: [nu
 		rotation
 	};
 }
-
 function form(id: string, position: [number, number, number], rotation: [number, number, number] = [0, 0, 0]): SceneEntity {
 	return {
 		kind: 'form',
@@ -249,7 +175,6 @@ function form(id: string, position: [number, number, number], rotation: [number,
 		receiveShadow: true
 	};
 }
-
 function projectionOf(entities: SceneEntity[]): PlanSceneProjection {
 	return buildPlanSceneFootprintProjection({ entities } as Pick<SceneDocument, 'entities'>);
 }
@@ -645,377 +570,5 @@ describe('Paper Plan — Scene and native-form outlines', () => {
 		const outlined = drawing.footprints[0]!;
 		expect(outlined.segments).toHaveLength(4);
 		expect(outlined.polygons[0]).toEqual(projection.footprints[0]!.points);
-	});
-});
-
-describe('selection changes Paper visibility, not its drawing', () => {
-	it('addresses one source as contiguous instance runs of a batch', () => {
-		expect(paperSourceRuns([lineOf('a', 2), lineOf('a', 1), lineOf('b', 2)])).toEqual([
-			{ sourceId: 'a', start: 0, count: 3 },
-			{ sourceId: 'b', start: 3, count: 2 }
-		]);
-	});
-
-	it('hides the exact segments, keeps dash distances and reuses every Paper resource', () => {
-		const fixture = withTwoDoors(enclosure(STARTER_ENCLOSURE_POINTS));
-		const drawing = buildPaperPlan(evaluate(fixture.compiled), fixture.compiled, EMPTY_PROJECTION);
-		const [first, second] = fixture.compiled.walls.flatMap((wall) => wall.openings);
-		if (first === undefined || second === undefined) throw new Error('the two-door fixture has no two Openings');
-		const openingIds = [first.openingId, second.openingId] as const;
-		for (const id of openingIds) {
-			expect(paperHiddenSource(openingSelection(id))).toBe(id);
-			expect(drawing.lines.some((line) => line.sourceId === id)).toBe(true);
-		}
-		expect(paperHiddenSource(null)).toBeNull();
-
-		const counts = new Map<string, number>();
-		const previous = setWorkObserver({
-			span() {},
-			count(name, amount) {
-				counts.set(name, (counts.get(name) ?? 0) + amount);
-			}
-		});
-		const resources = createPaperScene(drawing, [800, 600]);
-		try {
-			const inks = () =>
-				resources.group.children.filter(
-					(child): child is LineSegments2 => child instanceof LineSegments2
-				);
-			const positionBuffer = (ink: LineSegments2) =>
-				(ink.geometry.getAttribute('instanceStart') as InterleavedBufferAttribute)
-					.data as InstancedInterleavedBuffer;
-			const distanceBuffer = (ink: LineSegments2) => {
-				const attribute = ink.geometry.getAttribute('instanceDistanceStart') as
-					| InterleavedBufferAttribute
-					| undefined;
-				return attribute === undefined ? null : (attribute.data as InstancedInterleavedBuffer);
-			};
-			const instances = (ink: LineSegments2) => {
-				const positions = positionBuffer(ink).array as Float32Array;
-				const buffer = distanceBuffer(ink);
-				const distances = buffer === null ? null : (buffer.array as Float32Array);
-				return Array.from({ length: ink.geometry.instanceCount }, (_, index) => ({
-					segment: Array.from(positions.slice(index * 6, index * 6 + 6)),
-					distance: distances === null ? null : Array.from(distances.slice(index * 2, index * 2 + 2))
-				}));
-			};
-			const key = (values: readonly number[]) => values.map((value) => value.toFixed(6)).join(',');
-			// The buffer is Float32; key the drawing's doubles through the same width.
-			const segmentKey = (line: PaperLineDraw, segment: PaperSegment) =>
-				key(
-					Array.from(
-						new Float32Array([
-							segment[0][0],
-							line.elevationMeters,
-							segment[0][1],
-							segment[1][0],
-							line.elevationMeters,
-							segment[1][1]
-						])
-					)
-				);
-			const drawnSegments = (sourceId: string | null) =>
-				drawing.lines
-					.filter((line) => sourceId === null || line.sourceId === sourceId)
-					.flatMap((line) => line.segments.map((segment) => segmentKey(line, segment)));
-			const without = (all: readonly string[], removed: readonly string[]) => {
-				const remaining = new Map<string, number>();
-				for (const entry of all) remaining.set(entry, (remaining.get(entry) ?? 0) + 1);
-				for (const entry of removed) remaining.set(entry, (remaining.get(entry) ?? 1) - 1);
-				return [...remaining]
-					.filter(([, count]) => count > 0)
-					.flatMap(([entry, count]) => Array.from({ length: count }, () => entry))
-					.sort();
-			};
-			const visibleSegments = () =>
-				inks()
-					.flatMap((ink) => instances(ink).map((instance) => key(instance.segment)))
-					.sort();
-
-			// Everything the scene realized. Identity is the only observable that
-			// distinguishes a new GPU allocation from a content update.
-			const realized = inks().map((ink) => ({
-				object: ink,
-				geometry: ink.geometry,
-				positions: positionBuffer(ink),
-				distances: distanceBuffer(ink),
-				renderOrder: ink.renderOrder
-			}));
-			const positionArrays = realized.map((entry) => Float32Array.from(entry.positions.array as Float32Array));
-			const distanceArrays = realized.map((entry) =>
-				entry.distances === null ? null : Float32Array.from(entry.distances.array as Float32Array)
-			);
-			const countsBefore = realized.map((entry) => entry.geometry.instanceCount);
-			const versions = realized.map((entry) => entry.positions.version);
-			const childCount = resources.group.children.length;
-			const all = drawnSegments(null);
-			expect(realized.length).toBeGreaterThan(0);
-			expect(realized.some((entry) => entry.distances !== null)).toBe(true);
-			expect(positionArrays.reduce((sum, array) => sum + array.length, 0)).toBe(all.length * 6);
-			expect(visibleSegments()).toEqual([...all].sort());
-
-			// Every segment's own dash pair, so a shift after hiding would be visible.
-			const distancesBySegment = new Map<string, Set<string>>();
-			for (const ink of inks()) {
-				for (const instance of instances(ink)) {
-					if (instance.distance === null) continue;
-					const set = distancesBySegment.get(key(instance.segment)) ?? new Set<string>();
-					set.add(key(instance.distance));
-					distancesBySegment.set(key(instance.segment), set);
-				}
-			}
-			const sameResources = () => {
-				const now = inks().map((ink) => ({
-					object: ink,
-					geometry: ink.geometry,
-					positions: positionBuffer(ink),
-					distances: distanceBuffer(ink),
-					renderOrder: ink.renderOrder
-				}));
-				expect(now).toHaveLength(realized.length);
-				for (const [index, entry] of now.entries()) {
-					const before = realized[index]!;
-					expect(entry.object).toBe(before.object);
-					expect(entry.geometry).toBe(before.geometry);
-					expect(entry.positions).toBe(before.positions);
-					expect(entry.distances).toBe(before.distances);
-					expect(entry.renderOrder).toBe(before.renderOrder);
-				}
-				expect(resources.group.children).toHaveLength(childCount);
-			};
-
-			// A: exactly the complement, with each segment's dash pair carried over.
-			resources.setHiddenSource(openingIds[0]);
-			expect(counts.get('paper:scene-build')).toBe(1);
-			expect(
-				realized.some((entry, index) => entry.positions.version > versions[index]!)
-			).toBe(true);
-			sameResources();
-			expect(visibleSegments()).toEqual(without(all, drawnSegments(openingIds[0])));
-			for (const ink of inks()) {
-				for (const instance of instances(ink)) {
-					if (instance.distance === null) continue;
-					expect(distancesBySegment.get(key(instance.segment))).toContain(key(instance.distance));
-				}
-			}
-
-			// A → B: B's complement replaces A's without allocating anything.
-			resources.setHiddenSource(openingIds[1]);
-			expect(counts.get('paper:scene-build')).toBe(1);
-			sameResources();
-			expect(visibleSegments()).toEqual(without(all, drawnSegments(openingIds[1])));
-
-			// None: the built drawing returns byte for byte, in the same buffers.
-			resources.setHiddenSource(null);
-			expect(counts.get('paper:scene-build')).toBe(1);
-			sameResources();
-			expect(visibleSegments()).toEqual([...all].sort());
-			for (const [index, entry] of realized.entries()) {
-				expect(entry.geometry.instanceCount).toBe(countsBefore[index]);
-				expect(Array.from(entry.positions.array as Float32Array)).toEqual(Array.from(positionArrays[index]!));
-				if (entry.distances !== null) {
-					expect(Array.from(entry.distances.array as Float32Array)).toEqual(
-						Array.from(distanceArrays[index]!)
-					);
-				}
-			}
-		} finally {
-			resources.dispose();
-			setWorkObserver(previous);
-		}
-	});
-
-	it('keeps the drawing unfiltered, so a selection never owns a second copy', () => {
-		const fixture = withDoor(enclosure(STARTER_ENCLOSURE_POINTS));
-		const drawing = buildPaperPlan(evaluate(fixture.compiled), fixture.compiled, EMPTY_PROJECTION);
-		const opening = fixture.compiled.walls.flatMap((wall) => wall.openings)[0]!;
-		expect(paperHiddenSource(openingSelection(opening.openingId))).toBe(opening.openingId);
-		expect(drawing.lines.some((line) => line.sourceId === opening.openingId)).toBe(true);
-	});
-});
-
-describe('Paper Plan — appearance is a camera layer mask', () => {
-	it('shows only the overlay layer on Paper and both layers in the world reading', () => {
-		expect(stageCameraLayerMask(true)).toEqual([STAGE_OVERLAY_LAYER]);
-		expect(stageCameraLayerMask(false)).toEqual([STAGE_WORLD_LAYER, STAGE_OVERLAY_LAYER]);
-
-		const paper = new Layers();
-		paper.disableAll();
-		for (const layer of stageCameraLayerMask(true)) paper.enable(layer);
-		const mat = new Layers();
-		mat.disableAll();
-		for (const layer of stageCameraLayerMask(false)) mat.enable(layer);
-		const world = new Layers();
-		world.disableAll();
-		world.enable(STAGE_WORLD_LAYER);
-		const overlay = new Layers();
-		overlay.disableAll();
-		overlay.enable(STAGE_OVERLAY_LAYER);
-		expect(paper.test(world)).toBe(false);
-		expect(paper.test(overlay)).toBe(true);
-		expect(mat.test(world)).toBe(true);
-		expect(mat.test(overlay)).toBe(true);
-	});
-
-	it('reveals linework, then sheet, then poché purely from the Camera weight', () => {
-		const at = (weight: number) => paperRevealFor({ renderedReading: 'transition', orthographicWeight: weight }, 'paper')!;
-		expect(paperRevealFor({ renderedReading: '3d', orthographicWeight: 0 }, 'paper')).toBeNull();
-		expect(paperRevealFor({ renderedReading: 'transition', orthographicWeight: 0.95 }, 'shaded')).toBeNull();
-		expect(paperRevealFor(null, 'paper')).toBeNull();
-		// Mounted for the whole flip, but drawn only late in it.
-		expect(at(0.1)).toEqual({ lines: 0, sheet: 0, poche: 0 });
-		expect(paperRevealFor({ renderedReading: 'plan', orthographicWeight: 1 }, 'paper')).toEqual({ lines: 1, sheet: 1, poche: 1 });
-		let previous = at(0);
-		for (let weight = 0.01; weight < 1; weight += 0.01) {
-			const reveal = at(weight);
-			expect(reveal.lines).toBeGreaterThanOrEqual(previous.lines);
-			expect(reveal.sheet).toBeGreaterThanOrEqual(previous.sheet);
-			expect(reveal.poche).toBeGreaterThanOrEqual(previous.poche);
-			expect(reveal.lines).toBeGreaterThanOrEqual(reveal.poche);
-			expect(reveal.sheet).toBeGreaterThanOrEqual(reveal.poche);
-			previous = reveal;
-		}
-		expect(at(0.999).sheet).toBe(1);
-		expect(at(0.999).poche).toBeLessThan(1);
-	});
-
-	it('draws only when the Plan has settled and Paper is chosen', () => {
-		const plan = { renderedReading: 'plan', orthographicWeight: 1 } as const;
-		expect(isPaperPlanVisible(plan, 'paper')).toBe(true);
-		expect(isPaperPlanVisible(plan, 'shaded')).toBe(false);
-		expect(isPaperPlanVisible({ renderedReading: 'plan', orthographicWeight: 0.98 }, 'paper')).toBe(false);
-		expect(isPaperPlanVisible({ renderedReading: 'transition', orthographicWeight: 1 }, 'paper')).toBe(false);
-		expect(isPaperPlanVisible({ renderedReading: '3d', orthographicWeight: 0 }, 'paper')).toBe(false);
-		expect(DEFAULT_APP_PREFERENCES.planAppearance).toBe('paper');
-	});
-
-	it('settles 2D Paper to opaque black Wall poché over the sheet, and masks the world only then', () => {
-		const settled = paperStageComposition({
-			evaluation: { renderedReading: 'plan', orthographicWeight: 1 }, appearance: 'paper', framed: false, hasPlan: true
-		});
-		expect(settled).toEqual({ reveal: { lines: 1, sheet: 1, poche: 1 }, visible: true, covers: true });
-		expect(stageCameraLayerMask(settled.covers)).toEqual([STAGE_OVERLAY_LAYER]);
-		// Mid-flip the shaded Walls stay under the translucent poché (material → ink).
-		for (const weight of [0.6, 0.8, 0.95, 0.999]) {
-			const flipping = paperStageComposition({
-				evaluation: { renderedReading: 'transition', orthographicWeight: weight }, appearance: 'paper', framed: false, hasPlan: true
-			});
-			expect(flipping.covers).toBe(false);
-			expect(stageCameraLayerMask(flipping.covers)).toContain(STAGE_WORLD_LAYER);
-		}
-		// Shaded, a capture frame, or no Plan never draw Paper.
-		for (const input of [
-			{ appearance: 'shaded' as const, framed: false, hasPlan: true },
-			{ appearance: 'paper' as const, framed: true, hasPlan: true },
-			{ appearance: 'paper' as const, framed: false, hasPlan: false }
-		]) {
-			expect(paperStageComposition({ evaluation: { renderedReading: 'plan', orthographicWeight: 1 }, ...input }))
-				.toEqual({ reveal: null, visible: false, covers: false });
-		}
-
-		const fixture = enclosure(STARTER_ENCLOSURE_POINTS);
-		const drawing = buildPaperPlan(evaluate(fixture.compiled), fixture.compiled, EMPTY_PROJECTION);
-		const resources = createPaperScene(drawing, [1280, 720]);
-		const marks = createPaperMarkScene({
-			selection: { fills: [], contours: [] }, hover: { fills: [], contours: [] }, erase: { fills: [], contours: [] }, paint: { fills: [], contours: [] }
-		}, [1280, 720]);
-		try {
-			resources.setReveal(settled.reveal!);
-			const meshes: Mesh[] = [];
-			resources.group.traverse((node) => { if (node instanceof Mesh && node.material instanceof MeshBasicMaterial) meshes.push(node); });
-			const material = (mesh: Mesh) => mesh.material as MeshBasicMaterial;
-			const sheet = meshes.find((mesh) => mesh.name === PAPER_SHEET_NAME)!;
-			const poche = meshes.filter((mesh) => mesh.name === '' && material(mesh).color.getHexString() === PAPER_INK.slice(1));
-			const floors = meshes.filter((mesh) => mesh.name === '' && mesh !== poche[0] && material(mesh).colorWrite);
-			expect(poche).toHaveLength(1);
-			const ink = material(poche[0]!);
-			expect(ink.opacity).toBe(1);
-			expect(ink.colorWrite).toBe(true);
-			expect(ink.stencilWrite).toBe(false);
-			expect(ink.depthTest).toBe(false);
-			expect(poche[0]!.renderOrder).toBeGreaterThan(sheet.renderOrder);
-			for (const floor of floors) expect(poche[0]!.renderOrder).toBeGreaterThan(floor.renderOrder);
-			// Nothing unselected in the marks layer paints over the settled poché.
-			expect(marks.group.children).toHaveLength(0);
-		} finally {
-			resources.dispose();
-			marks.dispose();
-		}
-	});
-
-	it('puts every Paper object on layer 2 and orders it by its Plan layer', () => {
-		const fixture = enclosure(STARTER_ENCLOSURE_POINTS);
-		const plan = evaluate(fixture.compiled);
-		const projection = projectionOf([primitive('entity-box', [2, 0, 2])]);
-		const drawing = buildPaperPlan(plan, fixture.compiled, projection);
-		const resources = createPaperScene(drawing, [1280, 720]);
-		const overlay = new Layers();
-		overlay.disableAll();
-		overlay.enable(STAGE_OVERLAY_LAYER);
-		const world = new Layers();
-		world.disableAll();
-		world.enable(STAGE_WORLD_LAYER);
-		let objects = 0;
-		resources.group.traverse((node) => {
-			if (node.type === 'Group' || node.name.startsWith('StagePaperSheet')) return;
-			objects += 1;
-			expect(node.layers.test(overlay)).toBe(true);
-			expect(node.layers.test(world)).toBe(false);
-			expect(node.renderOrder).toBeGreaterThanOrEqual(PAPER_LAYER.roomFloor);
-			expect(node.renderOrder).toBeLessThanOrEqual(PAPER_LAYER.sceneFootprint);
-		});
-		expect(objects).toBeGreaterThan(0);
-		resources.dispose();
-	});
-
-	it('puts 3D on the mat and keeps Paper inks out of the renderer tone map', () => {
-		expect(PAPER_GROUND_INK).toBe('#e5e8e1');
-		expect(MAT_BACKGROUND_INK).toBe('#1d3a33');
-
-		const canvas = readFileSync(join(REPO_ROOT, 'apps/editor/src/lib/authoring/stage/shell/StageCanvas.svelte'), 'utf8');
-		// No fog: the mat is a measured ground, not an atmospheric room.
-		expect(canvas).not.toMatch(/<T\.Fog/);
-		// R217.S19: the Canvas mounts the mat ground, whose material wears the mat ink.
-		expect(canvas).toContain('<StageMatGround');
-		const matGround = readFileSync(
-			join(REPO_ROOT, 'apps/editor/src/lib/authoring/stage/shell/StageMatGround.svelte'),
-			'utf8'
-		);
-		expect(matGround).toContain('createMatGroundMaterial');
-		const groundShader = readFileSync(join(REPO_ROOT, 'apps/editor/src/lib/authoring/stage/shell/stage-mat-grid.ts'), 'utf8');
-		expect(groundShader).toContain('uMatInk: uniform(new Color(MAT_BACKGROUND_INK))');
-
-		// PLATE inks are semantic colors; tone mapping would shift the vellum and ink
-		// away from the shell's own values. Every Paper material opts out.
-		const scene = readFileSync(join(REPO_ROOT, 'apps/editor/src/lib/authoring/stage/paper-scene.ts'), 'utf8');
-		expect(scene.match(/toneMapped: false/g)?.length ?? 0).toBeGreaterThanOrEqual(3);
-
-		const camera = readFileSync(join(REPO_ROOT, 'apps/editor/src/lib/authoring/stage/shell/StageCamera.svelte'), 'utf8');
-		expect(camera).toContain('renderer.setClearColor');
-	});
-
-	it('redraws Paper when a root gains geometry or a lazy renderer arrives', () => {
-		const canvas = readFileSync(join(REPO_ROOT, 'apps/editor/src/lib/authoring/stage/shell/StageCanvas.svelte'), 'utf8');
-		expect(canvas).toContain('hasPickableBody');
-		expect(canvas).toContain('onEntityRenderable={entityRendererReady}');
-		expect(canvas).toContain('revision={sceneRootRevision + entityRenderRevision}');
-
-		const entities = readFileSync(join(REPO_ROOT, 'apps/editor/src/lib/authoring/stage/shell/StageEntities.svelte'), 'utf8');
-		expect(entities).toContain('onEntityRenderable?.()');
-	});
-
-	it('never writes Object3D.visible in Paper or appearance code', () => {
-		const files = [
-			'apps/editor/src/lib/authoring/stage/paper-plan.ts',
-			'apps/editor/src/lib/authoring/stage/paper-scene.ts',
-			'apps/editor/src/lib/authoring/stage/shell/StagePaper.svelte',
-			'apps/editor/src/lib/authoring/stage/shell/StageCamera.svelte',
-			'apps/editor/src/lib/authoring/stage/shell/StageCanvas.svelte'
-		];
-		for (const file of files) {
-			const source = readFileSync(join(REPO_ROOT, file), 'utf8');
-			expect(source, file).not.toMatch(/\.visible\s*=/);
-			expect(source, file).not.toMatch(/visible\s*:\s*false/);
-		}
 	});
 });

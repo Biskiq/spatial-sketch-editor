@@ -20,7 +20,7 @@ import {
 	formEvaluationCacheSize,
 	formEvaluationKey
 } from '$lib/content/form-evaluation';
-import { VALID_FORMS, type ValidFormSource } from '../geometry-core/__fixtures__/corpus';
+import { VALID_FORMS, type ValidFormSource } from '../../../../../packages/geometry-core/tests/__fixtures__/corpus';
 
 function formSourceOf(form: ValidFormSource): SceneFormSource {
 	return {

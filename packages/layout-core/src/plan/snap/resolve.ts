@@ -55,8 +55,7 @@ const derivedWallSnapIndex = new WeakMap<CompiledLayoutGeometry, DerivedWallSnap
  * nothing else, so the same mark reading cannot say whether a large number is
  * large work on a large input or a small input read through something slow. The
  * editor resolves snaps against a frozen baseline geometry that is a Svelte
- * `$state` proxy, and every field read inside the merge then pays a trap — a
- * multiplier the P23B.6 S1a probe already measured for the Plan model. This probe
+ * `$state` proxy, and every field read inside the merge then pays a proxy trap. This probe
  * records the input shape (spans, walls, endpoints per wall) and runs the SAME
  * merge twice: once on the geometry as handed in, once on a JSON copy of the same
  * spans (plain objects, identical values). The difference between the two is the

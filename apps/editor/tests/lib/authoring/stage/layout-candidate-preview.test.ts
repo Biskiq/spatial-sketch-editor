@@ -27,7 +27,7 @@ import { openingFacePaper } from '$lib/authoring/adapters/layout/candidate-previ
 import { createUnitProject } from '../__fixtures__/unit-envelope-fixtures';
 import { createAdapter } from '$lib/authoring/adapters/layout.adapter';
 import { inkSurface, type InkController } from '$lib/authoring/adapters/layout/ink';
-import { freshCapture } from '../../layout/__fixtures__/layout-id-capture';
+import { freshCapture } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 
 const PROJECT_ID = 'project-layout-s14-candidate';
 const ELEVATION = 0.5;

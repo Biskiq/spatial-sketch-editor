@@ -78,7 +78,7 @@
 		/** The armed Eraser's winner reads as red dashes, never gold. */
 		hoverTone?: 'hover' | 'erase' | 'paint';
 		/**
-		 * The other users a Finish Card edit reaches while *All* is chosen (U4):
+		 * The other users a Finish Card edit reaches while *All* is chosen:
 		 * cobalt dashes, the same proposal ink Paint uses. Never the selection itself.
 		 */
 		proposals?: readonly StageSelectionEntry[];
@@ -98,7 +98,7 @@
 		fade?: number;
 		eye?: readonly [number, number, number];
 		/**
-		 * X2's effective cut set. Hover/rim ink of a cut Wall is drawn through
+		 * The effective cut set. Hover/rim ink of a cut Wall is drawn through
 		 * `cutawayInk` so its contour matches the stub; selection ink never is,
 		 * because a selected Wall is exempt from the cutaway (D9).
 		 */

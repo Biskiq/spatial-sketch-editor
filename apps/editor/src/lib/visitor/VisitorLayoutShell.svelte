@@ -58,7 +58,7 @@
 		/** Authored slabs the same Lift reading has lifted. */
 		liftedRegionIds?: readonly string[];
 		/**
-		 * X2's display-only cutaway overlay: the Walls drawn through the cutaway twin
+		 * The display-only cutaway overlay: the Walls drawn through the cutaway twin
 		 * material. Never authored, never persisted, and never passed by Preview — its
 		 * Canvas draws the same world as built.
 		 */

@@ -1,7 +1,7 @@
 import type { MaterialDefinition, MaterialId } from '$lib/types/materials';
 
 /**
- * The creator-facing curated catalogue (T2.S8 F), in shelf order. Every entry
+ * The creator-facing curated catalogue, in shelf order. Every entry
  * joins `catalogueRenderFacts` in `@portfolio/project-model` exactly.
  */
 export const materials: MaterialDefinition[] = [
@@ -307,8 +307,8 @@ export const materials: MaterialDefinition[] = [
 ];
 
 /**
- * The pre-S8 F placeholder bases. They resolve for existing documents and
- * baselines but are never offered on a creator shelf.
+ * Material bases used by admitted Scene documents and shipped model fallbacks.
+ * The creator shelf lists its curated bases separately.
  */
 export const legacyMaterials: MaterialDefinition[] = [
 	{

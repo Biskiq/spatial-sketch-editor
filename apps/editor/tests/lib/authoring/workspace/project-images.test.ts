@@ -58,14 +58,10 @@ describe('the shared project-image closure enumerator', () => {
 		]);
 	});
 
-	it('refuses a private texture without an authored pin but lets delivery use the registry', () => {
-		const privateClosure = collectSceneImageRequirements(scene({ textures: [texture()] }), 'private-load', []);
-		expect(privateClosure.requirements).toEqual([]);
-		expect(privateClosure.issues).toMatchObject([{ code: 'image-pin-missing', path: '$.units.resources.data.resources' }]);
-
-		const delivery = collectSceneImageRequirements(scene({ textures: [texture()] }), 'delivery', []);
-		expect(delivery.issues).toEqual([]);
-		expect(delivery.requirements[0]).toMatchObject({ assetId: A, expectedPin: null });
+	it.each(['private-load', 'delivery'] as const)('requires an authored project texture pin for %s', (purpose) => {
+		const closure = collectSceneImageRequirements(scene({ textures: [texture()] }), purpose, []);
+		expect(closure.requirements).toEqual([]);
+		expect(closure.issues).toMatchObject([{ code: 'image-pin-missing', path: '$.units.resources.data.resources' }]);
 	});
 
 	it('deduplicates an image shared by a Finish and an unplaced Artwork shelf entry', () => {

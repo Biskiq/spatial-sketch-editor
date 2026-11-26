@@ -1,5 +1,5 @@
 /**
- * Project-image pin verification (P20, T2.S4b, T2.S8 · PR C).
+ * Project-image pin verification.
  *
  * A project image is not host-asserted. The saved project names it through a
  * Scene texture record or an Artwork shelf entry, and the byte identity comes
@@ -14,16 +14,15 @@
  */
 import { createHash } from 'node:crypto';
 import { ARTWORK_MAX_BYTES, probeArtworkImage } from '@portfolio/project-model/artwork';
+import type { ProjectEnvelope } from '@portfolio/project-model/units';
 import {
 	collectEnvelopeImageRequirements,
-	collectSceneImageRequirements,
 	type ProjectImageArtwork,
 	type ProjectImageClosureIssue,
 	type ProjectImagePin,
 	type ProjectImagePurpose,
 	type ProjectImageRequirement,
 } from '@portfolio/project-model/project-images';
-import type { CameraFreeSceneDocument, ProjectEnvelope } from '@portfolio/project-model/units';
 
 import {
 	AssetNotFoundError,
@@ -358,10 +357,8 @@ async function prepareRequirements(
 /**
  * Resolve and verify the complete image closure of one envelope.
  *
- * `private-save` and `private-load` require every project texture's authored
- * pin; `delivery` accepts the registry row as authoritative for a legacy texture
- * resource without one. Artwork is always registry-authoritative with declared
- * dimensions.
+ * Project textures require authored resource pins. Artwork is registry-authoritative
+ * with declared dimensions.
  */
 export async function prepareProjectImagePins(
 	db: Pick<DatabasePool, 'query'>,
@@ -372,27 +369,6 @@ export async function prepareProjectImagePins(
 	purpose: ProjectImagePurpose,
 ): Promise<readonly ArtworkAssetPin[]> {
 	const closure = collectEnvelopeImageRequirements(envelope, purpose);
-	if (closure.issues[0] !== undefined) throw refusalForIssue(closure.issues[0]);
-	return prepareRequirements(db, store, ownerId, projectId, closure.requirements);
-}
-
-/**
- * Legacy release/save entry over one Scene payload. The new Save and cold Load
- * use `prepareProjectImagePins` with the whole envelope; this wrapper keeps the
- * release fixture's shape while sharing the same storage verifier.
- */
-export async function prepareArtworkPins(
-	db: Pick<DatabasePool, 'query'>,
-	store: ObjectStore | undefined,
-	ownerId: string,
-	projectId: string,
-	scene: CameraFreeSceneDocument,
-	mode: 'save' | 'release',
-): Promise<readonly ArtworkAssetPin[]> {
-	const closure = collectSceneImageRequirements(
-		scene,
-		mode === 'release' ? 'delivery' : 'private-save',
-	);
 	if (closure.issues[0] !== undefined) throw refusalForIssue(closure.issues[0]);
 	return prepareRequirements(db, store, ownerId, projectId, closure.requirements);
 }

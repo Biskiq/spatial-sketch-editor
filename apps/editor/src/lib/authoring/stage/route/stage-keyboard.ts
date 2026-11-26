@@ -83,7 +83,7 @@ export type StageKeyboardInput = {
 	readonly closePalette: () => void;
 	readonly libraryOpen: () => boolean;
 	readonly toggleLibrary: () => void;
-	/** U6 Escape rungs: Align › editor › import › drawers (all after Library, before dropper/tray/draft). */
+	/** Finish and appearance Escape rungs: Align › editor › import › drawers (all after Library, before dropper/tray/draft). */
 	readonly dismissAlign?: () => boolean;
 	readonly dismissMaterialEditor?: () => boolean;
 	readonly dismissMaterialImport?: () => boolean;
@@ -111,7 +111,7 @@ export type StageKeyboardInput = {
 	 * Studio, a standalone Studio whose way out is Back to Projects, or pending work refused).
 	 */
 	readonly leaveStudio?: () => boolean;
-	/** A temporary reading is on (X1: Lift), and Escape puts it back. */
+	/** A temporary reading is on (Lift), and Escape puts it back. */
 	readonly liftActive: () => boolean;
 	readonly putBackLift: () => void;
 	/** A drawn draft or handle edit is live; Escape cancels it before the cut. */
@@ -120,7 +120,7 @@ export type StageKeyboardInput = {
 	/** A Slice cut is on, and Escape exits it after every earlier rung. */
 	readonly sliceActive: () => boolean;
 	readonly putBackSlice: () => void;
-	/** X2's hold-to-show-whole-Walls override. Session-only; released on keyup/blur. */
+	/** The hold-to-show-whole-Walls override. Session-only; released on keyup/blur. */
 	readonly setCutawayHeld?: (held: boolean) => void;
 };
 
@@ -273,7 +273,7 @@ export function createStageKeyboard(input: StageKeyboardInput): StageKeyboard {
 	}
 
 	function handleKey(event: KeyboardEvent): void {
-		// X2's `W` hold belongs to this map, not a second route listener. Text
+		// The `W` hold belongs to this map, not a second route listener. Text
 		// entry, a focused control and a live press keep their precedence; a
 		// printable key a gesture has claimed is left alone.
 		if (

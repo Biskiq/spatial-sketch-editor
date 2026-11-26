@@ -13,7 +13,7 @@ import { expect } from 'vitest';
 import { buildCorrespondenceComponents, interiorWitness, roomBoundaryPolygon } from '@portfolio/layout-core/room';
 import { createEmptyWallFirstLayoutDocument, JUNCTION_COINCIDENCE_EPSILON, planWallChain, planWallSegment, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 import { extractBoundaryCandidateFaces, type LayoutVec2 } from '@portfolio/layout-core/geometry';
-import { freshCapture } from '../lib/layout/__fixtures__/layout-id-capture';
+import { freshCapture } from './layout-id-capture';
 
 /**
  * P23B.3a S6 — how a fixture gesture CONNECTS to existing geometry.

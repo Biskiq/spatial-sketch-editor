@@ -49,7 +49,7 @@ import { LAYOUT_WALL_ANGLE_KIND, LAYOUT_WALL_HEIGHT_KIND, LAYOUT_WALL_LENGTH_KIN
 import { wallManipulationIntent } from '$lib/authoring/adapters/layout/precision-intents';
 import { typedLengthTiming } from '../../../../perf/lib/spot-measurement';
 import type { PerfRecord } from '$lib/platform/perf-marks';
-import { freshCapture } from '../../layout/__fixtures__/layout-id-capture';
+import { freshCapture } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 import { pointerWallRequest } from '$lib/authoring/adapters/layout/wall-gesture';
 import { resolveJunctionPointSnap, resolvePlanarDragSnap, snapWallDrag } from '$lib/authoring/adapters/layout/snap';
 import { STAGE_MARK_GLYPH_CSS } from '$lib/authoring/stage/stage-handles';

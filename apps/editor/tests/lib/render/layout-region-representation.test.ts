@@ -11,7 +11,7 @@ import type { RuntimeScene } from '@portfolio/project-model/scene';
 import { Mesh, MeshBasicMaterial, MeshStandardMaterial, type Material } from 'three';
 import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core/geometry';
 import type { LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
-import { g1DocumentWithRooms, g1RoomPolygon } from '../layout/__fixtures__/layout-g1-fixtures';
+import { g1DocumentWithRooms, g1RoomPolygon } from '../../../../../packages/layout-core/tests/__fixtures__/layout-g1-fixtures';
 import { createRegionRepresentation } from '$lib/render/layout-region-representation';
 import { resolveSceneSurfaceLook } from '$lib/render/layout/scene-surface-look';
 import { createMaterialStore } from '$lib/render/resources/material-store';

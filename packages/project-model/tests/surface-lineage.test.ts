@@ -9,8 +9,8 @@ import {
 } from '@portfolio/project-model/scene-planning';
 import type { CameraFreeSceneDocument } from '@portfolio/project-model/units';
 import { SCENE_UNIT_FORMAT_VERSION } from '@portfolio/project-model/units';
-import { g1DocumentWithRooms, g1RoomPolygon } from '../layout/__fixtures__/layout-g1-fixtures';
-import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
+import { g1DocumentWithRooms, g1RoomPolygon } from '../../layout-core/tests/__fixtures__/layout-g1-fixtures';
+import { freshCapture } from '../../layout-core/tests/__fixtures__/layout-id-capture';
 
 function wallLayout(ids: readonly string[]): LayoutDocumentWallFirst {
 	const layout = createEmptyWallFirstLayoutDocument();

@@ -11,7 +11,7 @@ import {
 	g1MultipleOpeningsDocument,
 	g1ObjectMatrixDocument,
 	g1ProfileMatrixDocument
-} from './layout-g1-fixtures';
+} from '../../../../../../packages/layout-core/tests/__fixtures__/layout-g1-fixtures';
 
 /**
  * Frozen G2 back-to-front render order. Committed geometry fills layers 1–5;

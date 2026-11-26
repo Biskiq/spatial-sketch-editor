@@ -6,7 +6,7 @@ import {
   Vector3
 } from 'three';
 import { CAMERA_FRAMING_GUARD_POLICY, CAMERA_MOTION_PATH, CAMERA_MOTION_TIMING, VISITOR_CAMERA_PROJECTION, cameraMotionEdgeProgressAtProgress, cameraMotionProgressAtEdgeProgress, createCameraMotion, createCameraMotionSample, createCameraPositionPath, sampleCameraMotion, type CameraRoute } from '@portfolio/camera-core/camera';
-import { sample, sampleFull, inverseSmootherstep, expectVectorClose } from '../../../helpers/camera-motion-fixtures';
+import { sample, sampleFull, inverseSmootherstep, expectVectorClose } from '../__fixtures__/camera-motion-fixtures';
 
 describe('camera motion constants', () => {
   it('publishes visitor projection, timing, and path policies', () => {

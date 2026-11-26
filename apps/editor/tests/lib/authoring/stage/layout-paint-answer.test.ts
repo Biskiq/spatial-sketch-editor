@@ -12,7 +12,7 @@ import { surfaceKey, surfacesOfSpace } from '@portfolio/layout-core/plan';
 import type { LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 import type { StageSourceHit } from '$lib/authoring/stage/stage-facade';
 import { createLayoutContributions } from '$lib/authoring/adapters/layout/layout-contributions';
-import { g1DocumentWithRooms, g1RoomPolygon } from '../../layout/__fixtures__/layout-g1-fixtures';
+import { g1DocumentWithRooms, g1RoomPolygon } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-g1-fixtures';
 import { startStageCounting } from '../../../helpers/stage-counts';
 
 function document(): LayoutDocumentWallFirst {

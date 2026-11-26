@@ -6,5 +6,6 @@
 	"file": "packages/layout-core/src/wall/opening-set.ts",
 	"find": "\t\t\t\tcode: 'opening_exceeds_wall',",
 	"replace": "\t\t\t\tcode: 'opening_exceeds_wall_height',",
-	"tests": ["tests/lib/layout/layout-openings.test.ts"]
+	"tests": ["packages/layout-core/tests/layout-openings.test.ts"],
+	"root": "repo"
 }

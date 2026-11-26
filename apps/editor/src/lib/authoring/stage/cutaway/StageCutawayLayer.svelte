@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * X2's cutaway ink and its one live uniform writer.
+	 * The cutaway ink and its one live uniform writer.
 	 *
 	 * It owns two things and nothing else:
 	 *

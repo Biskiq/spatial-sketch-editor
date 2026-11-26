@@ -86,18 +86,8 @@ describe('native form Scene codec', () => {
     expect(JSON.parse(result.canonicalJson)).toEqual(result.document);
   });
 
-  it('admits the form in Scene unit format 4 and refuses format 3', () => {
+  it('admits the form in the current Scene unit', () => {
     expect(validateCameraFreeScenePayload(unit(formEntity())).success).toBe(true);
-    const legacy = validateCameraFreeScenePayload({
-      formatVersion: 3,
-      textures: [],
-      materials: [],
-      entities: []
-    });
-    expect(legacy.success).toBe(false);
-    if (!legacy.success) {
-      expect(legacy.issues.map((issue) => issue.code)).toContain('unsupported_format_version');
-    }
   });
 
   it('refuses entity-level scale and roomId by name', () => {

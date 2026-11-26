@@ -3,7 +3,7 @@ import { buildCorrespondenceComponents, interiorWitness, roomBoundaryPolygon } f
 import { extractBoundaryCandidateFaces } from '@portfolio/layout-core/geometry';
 import { parseWallFirstLayoutDocumentJson, planWallChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 import repro from './fixtures/curved-correspondence-repro.json';
-import { hostWallAtSpan } from '../../helpers/angled-plan-fixtures';
+import { hostWallAtSpan } from './__fixtures__/angled-plan-fixtures';
 import { freshCapture } from './__fixtures__/layout-id-capture';
 
 function suppliedLayout(): LayoutDocumentWallFirst {

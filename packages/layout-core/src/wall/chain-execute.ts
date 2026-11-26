@@ -431,7 +431,7 @@ export function executeWallChainCandidate(
 		candidate.openings = document.openings;
 	}
 
-	// SP1d partial-Wall absorption: a newly drawn Wall that starts at one
+	// Partial-Wall absorption: a newly drawn Wall that starts at one
 	// virtual-edge Junction and ends on a proper subsegment of that edge replaces
 	// the covered part of the open side and joins the Space boundary. This runs
 	// before reconciliation so the carry rule sees the authored boundary; the
@@ -478,7 +478,7 @@ export function executeWallChainCandidate(
 			// the bipartite predecessor-Room ↕ candidate-face graph. An edge
 			// exists when the predecessor witness lies strictly inside the
 			// face or the predecessor polygon overlaps the face with
-			// positive area — AND (P23B.3a D-12) authored identity puts both
+			// positive area, and authored identity puts both
 			// sides in the same connected component, so an authored Wall
 			// landing over an INDEPENDENT group can never claim its Rooms.
 			// Faces with no predecessor form independent 0→1 birth
@@ -650,7 +650,7 @@ export function executeWallChainCandidate(
 		absorbedRoomIds,
 		...(clearedRoundRoomIds.length > 0 ? { clearedRoundRoomIds } : {}),
 		...(roundCorrespondence ? { roundCorrespondence } : {}),
-		// P23B.11 M-4 — the final canonical gate above is the ONLY compile
+		// The final canonical gate is the only compile
 		// authority; this carries its result so an installing caller does not pay
 		// for a second compile of the same accepted document.
 		acceptance: {

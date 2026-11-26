@@ -41,7 +41,7 @@ import { createStageMeasure, resolveMeasureEndpoint } from '$lib/authoring/stage
 import { createStageEraser } from '$lib/authoring/stage/stage-eraser';
 import { createStagePainter, LONG_PRESS_MS, STAGE_PAINT_TASK, type StagePaintOptions } from '$lib/authoring/stage/stage-painter';
 import { createUnitProject } from '../__fixtures__/unit-envelope-fixtures';
-import { freshCapture } from '../../layout/__fixtures__/layout-id-capture';
+import { freshCapture } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 
 const RECT = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };
 const PROJECT_ID = 'project-s10-host-tools';

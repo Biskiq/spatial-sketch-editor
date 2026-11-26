@@ -19,7 +19,7 @@ import type { Vec3 } from '@portfolio/camera-core/camera';
 import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core/wall';
 import { createCameraSession, initialInspectionPose, sceneRadiusOf } from '$lib/authoring/stage/camera-session';
 import { admitSource, type StageReadSnapshot } from '$lib/authoring/stage/source-admission';
-import { freshCapture } from '../../layout/__fixtures__/layout-id-capture';
+import { freshCapture } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 import { createUnitProject } from '../__fixtures__/unit-envelope-fixtures';
 import { PAPER_GROUND_INK } from '$lib/authoring/stage/paper-plan';
 import { createGridScene } from '$lib/authoring/stage/shell/stage-grid-scene';

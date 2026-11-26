@@ -4,7 +4,7 @@ import { createWallSamplingDerivation, planRigidWallMove } from '@portfolio/layo
 import { ensureLayoutWorldIndex } from '@portfolio/layout-core/world';
 import { setWorkObserver } from '@portfolio/layout-core/kernel';
 import { immutableF4Data } from '@portfolio/project-model/f4';
-import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from './__fixtures__/layout-scale-fixtures';
+import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from '../../../../../packages/layout-core/tests/__fixtures__/layout-scale-fixtures';
 
 describe('Stage sealing of persistent generated snapshots', () => {
  it('freezes generated facts and lazy array outputs without flattening unrelated query records', () => {

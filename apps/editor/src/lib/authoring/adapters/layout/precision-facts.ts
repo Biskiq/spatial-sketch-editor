@@ -82,7 +82,7 @@ export function layoutRoomFacts(
 	const compiled = geometry.rooms.find((candidate) => candidate.roomId === roomId);
 	const openSides = openSideRunCount(document, room);
 	const walls = room.boundary.length;
-	// SP1's `overhead` is the only thing that decides a lid. An authored overhead
+	// The Room’s `overhead` is the only thing that decides a lid. An authored overhead
 	// region never closes or opens a Space; it is named as a derived readout.
 	const overlying = regionsOverSpace(geometry, roomId);
 	const overheadRegion = overlying.find((region) => region.role === 'overhead');

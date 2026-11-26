@@ -179,7 +179,7 @@ export type OverheadSource = {
  *
  * **One authority.** A lifted overhead is whatever this function names, never
  * whatever a consumer decides by reading `CompiledRoom.ceilingElevation` itself,
- * so V1's authored regions and SP1's open-to-sky Rooms join here — and only
+ * so authored regions and open-to-sky Rooms join here — and only
  * here. Layout owns the geometry and this representation of it; the shell owns
  * only the temporary reading that asks for a scope.
  *

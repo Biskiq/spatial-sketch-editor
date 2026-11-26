@@ -34,7 +34,7 @@ import { stageCardActions } from '$lib/authoring/stage/stage-contributions';
 import { createAdapter } from '$lib/authoring/adapters/layout.adapter';
 import { curvedWallFrame, wallStationFrame } from '$lib/authoring/adapters/layout/precision-frames';
 import { createUnitProject } from '../__fixtures__/unit-envelope-fixtures';
-import { freshCapture } from '../../layout/__fixtures__/layout-id-capture';
+import { freshCapture } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 
 const RECT = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };
 const PROJECT_ID = 'project-layout-a1-split';

@@ -54,9 +54,8 @@ export function parseDocument(
 	const openings = parseArray(record.openings, `${path}.openings`, issues, parseOpening);
 	const objects = parseArray(record.objects, `${path}.objects`, issues, parseObject);
 	const regions = parseArray(record.regions, `${path}.regions`, issues, parseRegion);
-	// The reference ledger is optional on read (pre- documents and
-	// already-published releases have none) but strict when present: malformed
-	// tokens and duplicate values reject.
+	// The current format permits an omitted reference ledger. A present ledger
+	// must contain well-formed, unique tokens.
 	const identity = parseIdentityLedger(record.identity, `${path}.identity`, issues);
 	if (record.identity !== undefined && !identity) return undefined;
 	if (!floor || !junctions || !walls || !rooms || !openings || !objects || !regions) {

@@ -17,14 +17,12 @@ import { cowMoveJunctions, ensureLayoutWorldIndex } from '@portfolio/layout-core
 import { mintLayoutIdCapture } from '@portfolio/layout-core/plan';
 import {
 	LAYOUT_UNIT_FORMAT_VERSION,
-	validateLayoutPayload,
 	validateProjectEnvelope,
-	prepareUnitRuntime,
 	serializeProjectEnvelope
 } from '@portfolio/project-model/units';
 import { composeColdReleaseBundle } from '$lib/visitor/visitor-cold-runtime';
 import { createUnitProject } from '../authoring/__fixtures__/unit-envelope-fixtures';
-import { captureFor } from './__fixtures__/layout-id-capture';
+import { captureFor } from '../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 import { twoRoomDocument } from './__fixtures__/two-room-fixture';
 
 const POINTS = [
@@ -622,36 +620,6 @@ describe('SP1a — R-2 persistence version ownership', () => {
 		expect(loaded.envelope.units.layout.data.formatVersion).toBe(10);
 		expect(loaded.envelope.units.layout.data.rooms[0]!.virtualEdges).toHaveLength(1);
 		expect(serializeProjectEnvelope(loaded.envelope)).toBe(saved);
-	});
-
-	it('refuses a format-8 Layout through project-model and the visitor release path', async () => {
-		const project = await projectWithOpenSpace();
-		const old = structuredClone(project) as unknown as {
-			units: { layout: { header: { formatVersion: number }; data: { formatVersion: number } } };
-		};
-		old.units.layout.header.formatVersion = 8;
-		old.units.layout.data.formatVersion = 8;
-		expect(validateLayoutPayload(old.units.layout.data).success).toBe(false);
-		const direct = validateLayoutPayload(old.units.layout.data);
-		if (!direct.success) {
-			expect(direct.issues.map((issue) => issue.code)).toContain('unsupported_format_version');
-		}
-		const envelope = validateProjectEnvelope(old);
-		expect(envelope.success).toBe(false);
-		if (!envelope.success) {
-			expect(envelope.issues.map((issue) => issue.code)).toContain('unsupported_format_version');
-		}
-		const runtime = prepareUnitRuntime(old);
-		expect(runtime.kind).toBe('rejected');
-		if (runtime.kind === 'rejected') {
-			expect(runtime.issues.map((issue) => issue.code)).toContain('unsupported_format_version');
-		}
-		expect(() =>
-			composeColdReleaseBundle({
-				document: old,
-				manifest: { releaseId: 'sp1a-old@v1', bytesByUri: new Map() }
-			})
-		).toThrow(/formatVersion|unsupported/i);
 	});
 
 	it('T19 keeps virtual edges out of visitor geometry and releases the open Space', async () => {

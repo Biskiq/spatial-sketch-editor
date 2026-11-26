@@ -183,7 +183,7 @@ export function finishTargetWord(target: FinishCardTarget): string {
 }
 
 /**
- * The reach → patch mapping (U4 plan, "Reach"). Pure, so the Card, the cobalt
+ * The reach → patch mapping. Pure, so the Card, the cobalt
  * outlines and the tests read one rule.
  */
 export function finishWritePlan(

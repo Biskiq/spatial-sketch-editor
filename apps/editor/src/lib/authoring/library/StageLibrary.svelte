@@ -1,12 +1,12 @@
 <script lang="ts">
 	/**
-	 * The professional Library sheet (T2.S8 U5).
+	 * The professional Library sheet.
 	 *
 	 * One Stage-bounded surface in the measured shell lanes (a bottom sheet above
 	 * the dock in portrait): a kind rail with the Materials families nested under
 	 * it, sources, attribute filters, a searchable grid of square cards and a
 	 * detail pane. Browse cards use `FinishTile` sample-tile derivatives only;
-	 * the one active detail asks the Stage's E7 inspection host for a live draw
+	 * the one active detail asks the Stage's inspection host for a live draw
 	 * and releases it on change or close.
 	 *
 	 * **One action per card.** Click and keyboard activation do what the

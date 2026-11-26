@@ -1,5 +1,5 @@
 /**
- * The curated catalogue's 192×192 engineering reference derivatives (E7).
+ * The curated catalogue's 192×192 engineering reference derivatives.
  *
  * They are regression references for the inspection host, not product
  * thumbnails: the creator shelf shows colour swatches, and U owns the pictures

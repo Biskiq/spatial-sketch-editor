@@ -21,7 +21,7 @@ const CLOSED_WALL_CONTACT_WORDS =
 	'This would touch or cross a circular Wall. Move it clear of the circle.';
 
 /**
- * SP1d — the open-side handles' refusals.
+ * The open-side handles' refusals.
  *
  * A placement conflict is stated as **Stops at *Space name***, because the
  * creator's question is which Space it hit, not which pair code the compiler

@@ -1,5 +1,5 @@
 /**
- * SP1d — the two retained planners one open-side handle submits.
+ * The two retained planners one open-side handle submits.
  *
  * | Operation | Kind | Canonical planner |
  * | --- | --- | --- |

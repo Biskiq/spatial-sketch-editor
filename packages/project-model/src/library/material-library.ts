@@ -55,9 +55,8 @@ export const MATERIAL_LIBRARY_MAX_CANONICAL_BYTES = 256 * 1024;
 export const MATERIAL_LIBRARY_MAX_IMAGES = 5;
 
 /**
- * One thumbnail is a PNG no larger than 256×256 and 256 KiB. 256 is the U1
- * sample-tile master; the 192×192 thumbnails stored before U1 stay valid (the
- * rule is a cap, not an exact size).
+ * One thumbnail is a PNG no larger than 256×256 and 256 KiB. The sample-tile
+ * master is 256×256. Smaller images, including 192×192, also meet the cap.
  */
 export const MATERIAL_LIBRARY_MAX_THUMBNAIL_BYTES = 256 * 1024;
 export const MATERIAL_LIBRARY_MAX_THUMBNAIL_EDGE = 256;

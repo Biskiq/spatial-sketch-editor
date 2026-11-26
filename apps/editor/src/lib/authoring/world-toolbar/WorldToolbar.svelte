@@ -80,7 +80,7 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 			}[];
 		} | null;
 		onFinishPick?: (ref: SceneFinishRef) => void;
-		/** The picture source of one project Finish (U1); null while none can be drawn. */
+		/** The picture source of one project Finish; null while none can be drawn. */
 		finishTileSource?: (finishId: string) => FinishTileSource | null;
 		/** *+ From image*: the one upload state machine shared with the Card. */
 		finishImage?: FinishImageState | null;

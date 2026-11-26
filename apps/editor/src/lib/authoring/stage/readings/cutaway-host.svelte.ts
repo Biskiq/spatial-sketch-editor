@@ -25,7 +25,7 @@ export function createCutawayHost(input: {
 	readonly previewing: () => boolean;
 	readonly alignCutaway: () => AlignCutawayRequest | null;
 }) {
-	/** X2's two-way switch, under Lift in the reading control's ▾ (never a pill). */
+	/** The two-way switch, under Lift in the reading control's ▾ (never a pill). */
 	const nearWallsControl = $derived({
 		mode: nearWallCutaway.mode,
 		set: (mode: 'cut' | 'whole') => nearWallCutaway.setMode(mode),
@@ -39,7 +39,7 @@ export function createCutawayHost(input: {
 	}
 
 	/**
-	 * X2 — the selection's host Walls (D9).
+	 * The selection's host Walls (D9).
 	 *
 	 * A selected Wall, a selected Opening's host Wall, and a selected hung
 	 * Artwork's **derived** host (O-1 keeps Scene objects as built; the derived host
@@ -91,7 +91,7 @@ export function createCutawayHost(input: {
 		return next;
 	});
 	/**
-	 * Wall Align (T2.S8 U6) — a view-only mask while a wall side is faced: every
+	 * Wall Align — a view-only mask while a wall side is faced: every
 	 * other Wall in front of the faced plane is cut to the floor (picks pass
 	 * through) and hidden, so nothing covers the surface being aligned. Hiding is
 	 * what draws it: a cutaway twin of a plain material can reuse the uncut program

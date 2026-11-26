@@ -41,7 +41,7 @@ import type {
 	StagePickQuery
 } from '$lib/authoring/stage/stage-facade';
 import { STARTER_ENCLOSURE_POINTS } from '$lib/authoring/stage/starter-gallery';
-import { freshCapture } from '../../layout/__fixtures__/layout-id-capture';
+import { freshCapture } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 
 const RECT = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };
 

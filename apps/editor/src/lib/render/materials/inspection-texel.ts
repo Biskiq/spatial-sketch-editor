@@ -1,5 +1,5 @@
 /**
- * The per-texel channel report (E7).
+ * The per-texel channel report.
  *
  * For one UV it states, per role, the stored normalized value, the value after
  * component/invert/convention, and the effective value after the Finish's

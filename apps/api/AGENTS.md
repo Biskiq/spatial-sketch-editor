@@ -1,31 +1,21 @@
 # API area context
 
-**Read first:** root [`AGENTS.md`](../../AGENTS.md) · [`path map`](../../docs/path-map.md) ·
-[`persistence`](../../docs/reference/components/persistence.md) · [`architecture`](../../docs/reference/architecture.md#platform-boundary-current).
+**Read when relevant:** [path map](../../docs/path-map.md),
+[persistence](../../docs/reference/components/persistence.md),
+[platform boundary](../../docs/reference/architecture.md#platform-boundary-current),
+[verification](../editor/tests/README.md#what-a-change-requires).
 
-**Owns:** Fastify routes, Postgres persistence, local credential/session handling, project/version
-writes, model-resource staging/approval and private R2 access. Editor UI and shared domain shapes stay
-with their owners.
+Own Fastify, Postgres persistence, local credentials and sessions, project/version writes,
+model-resource staging and private R2 access. Shared domain shapes belong to their codecs.
 
-## Invariants
-
-- Validate the same F2 unit envelope the editor writes; reject unknown versions and mixed roots
-  without conversion.
-- Scope every project, version, asset and publication query to the authenticated owner. Never trust a
-  client-supplied owner or expected revision.
-- Save is conditional and append-only under the project row lock; an idempotent operation receipt
-  protects ambiguous retries. A stale writer preserves local work by refusing.
-- Public release reads are visitor-only and never expose authoring internals. Publish stays
-  `prepared-reader-required` until T4 activates the prepared reader.
-- Keep model bytes in private object storage; metadata and ownership stay in Postgres.
-
-## Commands
-
-```sh
-npm run check:api
-npm run build:api
-npm run test:api                 # requires the database configured by the test contract
-npm run test:api:stack           # local Postgres stack
-```
-
-`test:api` builds first and runs its suite serially; use the repository test contract for DB setup.
+- Validate the editor's current F2 envelope. Refuse unknown versions and mixed roots at the
+  codec without conversion. Keep format fixtures and refusal tests with their owning codec.
+- Scope project, version, asset and publication queries to the authenticated owner.
+  Validate client-supplied revision preconditions against persisted state.
+- Save conditionally and append-only under the project row lock. Preserve idempotent receipts
+  for ambiguous retries and refuse stale writers while preserving local work.
+- Public releases expose visitor delivery only. Publishing requires a prepared reader.
+  Model bytes stay in private object storage with metadata and ownership in Postgres.
+- Keep route, persistence and library operation families local. Verify affected contracts
+  with `npm run check:api` and DB-backed `npm run test:api` with zero skips. The test command
+  builds first. Use the shared verification contract for test database setup.

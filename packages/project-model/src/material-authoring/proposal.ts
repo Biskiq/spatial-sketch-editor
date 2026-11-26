@@ -1,5 +1,5 @@
 /**
- * The deterministic set-recognition grammar (T2.S8 E5, step 1–2).
+ * The deterministic set-recognition grammar.
  *
  * A file name yields a *proposal*, never a decision. The proposal groups the
  * creator's selected files by stem, offers a role, component and conversion for

@@ -1,5 +1,5 @@
 /**
- * The colour-coat port (T2.S8 U3): Paint's Colours tab writes through it.
+ * The colour-coat port: Paint's Colours tab writes through it.
  *
  * Each stroke is one `scene-colour-coat` acceptance, so one Undo. The port
  * runs the same pure `planColourCoats` the planner runs, on the same accepted

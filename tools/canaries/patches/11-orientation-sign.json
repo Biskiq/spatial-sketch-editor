@@ -6,5 +6,6 @@
 	"file": "packages/geometry-core/src/predicates.ts",
 	"find": "const sign = -orient2d(ax, ay, bx, by, cx, cy);",
 	"replace": "const sign = orient2d(ax, ay, bx, by, cx, cy);",
-	"tests": ["tests/lib/geometry-core"]
+	"tests": ["packages/geometry-core/tests/profile-corpus.test.ts"],
+	"root": "repo"
 }

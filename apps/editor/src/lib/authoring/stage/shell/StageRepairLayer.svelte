@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * Stage amber repair hatch layer (T2.S8 · U6).
+	 * Stage amber repair hatch layer.
 	 *
 	 * Render-only overlay beside `StageSelectionLayer.svelte` on Stage overlay
 	 * layer 2 (never under a pick root, never hit by raycasts). Draws a diagonal

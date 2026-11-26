@@ -1,5 +1,5 @@
 /**
- * Appearance issues service (T2.S8 · U6).
+ * Appearance issues service.
  *
  * Merges two sources into one session-only model feeding the Head pill,
  * Repair drawer, Card diagnostic strip, Subject-card *Needs repair* badge and

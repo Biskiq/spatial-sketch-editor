@@ -10,7 +10,7 @@ import { createEmptyWallFirstLayoutDocument, planWallChain, type LayoutDocumentW
 import type { SceneFormEntity } from '@portfolio/project-model/scene';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
 import { createUnitProject } from '../__fixtures__/unit-envelope-fixtures';
-import { freshCapture } from '../../layout/__fixtures__/layout-id-capture';
+import { freshCapture } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 import { admitSource } from '$lib/authoring/stage/source-admission';
 import { createStageSession } from '$lib/authoring/stage/stage-session';
 import { createStageFacade, type StageFacade, type StageKeyboardIntent } from '$lib/authoring/stage/stage-facade';

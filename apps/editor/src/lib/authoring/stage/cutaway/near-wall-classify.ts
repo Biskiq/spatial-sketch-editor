@@ -1,5 +1,5 @@
 /**
- * X2 — which Walls stand between the eye and the Space it is inspecting.
+ * Which Walls stand between the eye and the Space it is inspecting.
  *
  * Pure arithmetic over plain numbers and compiled Layout facts: no Three, no
  * Svelte, no session. The classifier is the **only** place a near Wall is decided,

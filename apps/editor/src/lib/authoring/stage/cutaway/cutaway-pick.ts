@@ -1,5 +1,5 @@
 /**
- * X2's hit-path predicate: a cut Wall above its stub is not pickable.
+ * The hit-path predicate: a cut Wall above its stub is not pickable.
  *
  * The cut is display geometry, exactly like a Slice: the Wall body is still in the
  * world, and its shadow still falls, but the creator cannot see or aim at the part

@@ -1,5 +1,5 @@
 /**
- * Manual composition and correctable set import, editor side (T2.S8 E5).
+ * Manual composition and correctable set import, editor side.
  *
  * The pure grammar, correction and composition live in
  * `@portfolio/project-model/material-authoring`; this module owns everything

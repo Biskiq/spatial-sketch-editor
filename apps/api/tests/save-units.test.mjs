@@ -36,7 +36,7 @@ import {
 } from '@portfolio/project-model/units';
 
 import { registerAsset, uploadAsset } from '../dist/asset-persistence.js';
-import { prepareArtworkPins, prepareProjectImagePins } from '../dist/artwork-persistence.js';
+import { prepareProjectImagePins } from '../dist/artwork-persistence.js';
 import { memoryObjectStore } from './test-support.mjs';
 import { runMigrations } from '../dist/migrate.js';
 import { ProjectNotFoundError, loadProject } from '../dist/project-persistence.js';
@@ -585,12 +585,12 @@ test('release preparation pins a P20 texture that a Finish names only through a 
 	assert.deepEqual(reread.envelope.units.scene.data.palette, authored.palette);
 	assert.deepEqual(reread.envelope.units.scene.data.environment, authored.environment);
 	assert.equal(reread.envelope.units.scene.header.revision, stored.rows[0].document.units.scene.header.revision);
-	const pins = await prepareArtworkPins(pool, store, owner, projectId, envelope.units.scene.data, 'release');
+	const pins = await prepareProjectImagePins(pool, store, owner, projectId, envelope, 'delivery');
 	assert.deepEqual(pins.map((pin) => pin.assetId), [ready.id]);
 	// Without its bytes the mapped texture cannot be released.
 	store.objects.delete(pins[0].objectKey);
 	await assert.rejects(
-		prepareArtworkPins(pool, store, owner, projectId, envelope.units.scene.data, 'release'),
+		prepareProjectImagePins(pool, store, owner, projectId, envelope, 'delivery'),
 		(error) => error.path === '$.units.scene.data.textures[0].uri'
 	);
 });
@@ -630,12 +630,12 @@ test('release preparation pins the colour image of a Finish and reopen keeps its
 	const reopened = await loadProject(pool, owner, projectId);
 	assert.deepEqual(reopened.document.units.scene.data.materials, [finish]);
 	assert.deepEqual(reopened.document.units.scene.data.textures, envelope.units.scene.data.textures);
-	const pins = await prepareArtworkPins(pool, store, owner, projectId, envelope.units.scene.data, 'release');
+	const pins = await prepareProjectImagePins(pool, store, owner, projectId, envelope, 'delivery');
 	assert.deepEqual(pins.map((pin) => pin.assetId), [ready.id]);
 	// A missing colour image is a named release refusal, not a silent fallback.
 	store.objects.delete(pins[0].objectKey);
 	await assert.rejects(
-		prepareArtworkPins(pool, store, owner, projectId, envelope.units.scene.data, 'release'),
+		prepareProjectImagePins(pool, store, owner, projectId, envelope, 'delivery'),
 		(error) => error.path === '$.units.scene.data.textures[0].uri'
 	);
 });
@@ -997,9 +997,9 @@ test('Artwork Save verifies project bytes and release preparation pins each plac
 		artworkLibrary: [unplaced, image], sceneEntities: [artwork, { ...artwork, id: 'artwork-b' }]
 	});
 	const request = await requestFor(envelope, { precondition: { kind: 'expected-saved-base', token: first.savedBaseToken } });
-	const pins = await prepareArtworkPins(pool, store, owner, projectId, envelope.units.scene.data, 'release');
+	const pins = await prepareProjectImagePins(pool, store, owner, projectId, envelope, 'delivery');
 	assert.deepEqual(pins.map((pin) => pin.assetId), [image.assetId]);
-	await assert.rejects(prepareArtworkPins(pool, store, 'foreign', projectId, envelope.units.scene.data, 'release'));
+	await assert.rejects(prepareProjectImagePins(pool, store, 'foreign', projectId, envelope, 'delivery'));
 	const original = store.objects.get(pins[0].objectKey);
 	store.objects.set(pins[0].objectKey, { ...original, bytes: Buffer.alloc(bytes.length) });
 	await assert.rejects(saveAcceptedSource(pool, owner, request, store), /registry digest/);

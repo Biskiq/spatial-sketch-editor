@@ -9,7 +9,8 @@
  *
  * Usage: node tools/canaries/generate.mjs [--check]
  */
-import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -31,6 +32,22 @@ for (const canary of catalog) {
 		problems.push(`${canary.id}: ${canary.file} has ${occurrences} matches for the find text`);
 	}
 	if (canary.find === canary.replace) problems.push(`${canary.id}: replacement is a no-op`);
+	if (check) {
+		const patch = resolve(PATCH_DIR, `${canary.id}.json`);
+		if (
+			!existsSync(patch) ||
+			JSON.stringify(JSON.parse(readFileSync(patch, 'utf8'))) !== JSON.stringify(canary)
+		) {
+			problems.push(`${canary.id}: generated patch is stale`);
+		}
+	}
+}
+if (check) {
+	for (const name of readdirSync(PATCH_DIR)) {
+		if (name.endsWith('.json') && !ids.has(name.slice(0, -5))) {
+			problems.push(`${name}: generated patch has no catalog entry`);
+		}
+	}
 }
 if (catalog.length < 40)
 	problems.push(`catalog has ${catalog.length} canaries; the canary contract requires at least 40`);
@@ -45,8 +62,19 @@ if (!check) {
 		if (name.endsWith('.json')) rmSync(resolve(PATCH_DIR, name));
 	}
 	for (const canary of catalog) {
-		writeFileSync(resolve(PATCH_DIR, `${canary.id}.json`), `${JSON.stringify(canary, null, 2)}\n`);
+		const json = JSON.stringify(canary, null, 2).replace(
+			/[^\u0000-\u007f]/g,
+			(character) => `\\u${character.charCodeAt(0).toString(16).padStart(4, '0')}`,
+		);
+		writeFileSync(resolve(PATCH_DIR, `${canary.id}.json`), `${json}\n`);
 	}
+	const format = spawnSync(
+		process.execPath,
+		[resolve(REPO_ROOT, 'node_modules/@biomejs/biome/bin/biome'), 'format', '--write', PATCH_DIR],
+		{ cwd: REPO_ROOT, stdio: 'inherit' },
+	);
+	if (format.status !== 0)
+		throw new Error('Could not format generated patches', { cause: format.error });
 }
 console.log(
 	`canaries: ${catalog.length} patches ${check ? 'validated' : 'written'} (${catalog.filter((entry) => entry.kind === 'api').length} API)`,

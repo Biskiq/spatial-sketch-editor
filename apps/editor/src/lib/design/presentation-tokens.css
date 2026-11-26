@@ -197,7 +197,7 @@
 	--shell-focus-ring-light: 2px solid var(--shell-leaf);
 
 	/*
-	 * Dock anatomy (accepted appearance design, #399; T2.S8 U8) — one chassis and one key for
+	 * Dock anatomy (accepted appearance design, #399) — one chassis and one key for
 	 * the World and Experience docks: a 56 px forest bar carrying 46 px inset, rounded,
 	 * icon-over-label keys with a quiet shortcut hint and 28 px separators.
 	 */

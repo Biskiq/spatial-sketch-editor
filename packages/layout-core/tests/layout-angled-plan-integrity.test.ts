@@ -37,7 +37,7 @@ import {
 	bottomStart,
 	bottomEnd,
 	twoRoomsWithOneObliqueDivider
-} from '../../helpers/angled-plan-fixtures';
+} from './__fixtures__/angled-plan-fixtures';
 import { freshCapture } from './__fixtures__/layout-id-capture';
 
 describe('P23.6e extra — angled neighbours stay distinct Rooms', () => {

@@ -29,7 +29,7 @@ import { createAdapter } from '$lib/authoring/adapters/layout.adapter';
 import { interiorLift } from '$lib/authoring/layout/interior-lift-store.svelte';
 import { sliceReading } from '$lib/authoring/stage/slice/slice-reading.svelte';
 import { createUnitProject } from '../__fixtures__/unit-envelope-fixtures';
-import { captureFor } from '../../layout/__fixtures__/layout-id-capture';
+import { captureFor } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 
 const RECT = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };
 const PROJECT_ID = 'project-t1-x1-lift-action';

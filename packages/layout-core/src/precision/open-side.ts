@@ -20,7 +20,7 @@ import { finalizeWallGeometryCandidate } from './finalization';
 import { reject, rejectRoundMember } from './rejections';
 
 /**
- * SP1d — move one stated open side square to itself.
+ * Move one stated open side square to itself.
  *
  * The virtual edge has no coordinates of its own: its two end Junctions are the
  * authority. A perpendicular offset therefore moves exactly those two
@@ -99,7 +99,7 @@ export function planSpaceOpenSideOffset(
 }
 
 /**
- * SP1d / B2 — slide one open-side end into its adjoining Wall and split that
+ * Slide one open-side end into its adjoining Wall and split that
  * Wall at release.
  *
  * The end is always a Junction. The adjoining Wall is cut with the canonical

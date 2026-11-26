@@ -17,7 +17,7 @@ import type { AuthoringIntent } from '@portfolio/project-model/f4';
 import type { SceneEntity, Vec3 } from '@portfolio/project-model/scene';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
 import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core/wall';
-import { freshCapture } from '../../layout/__fixtures__/layout-id-capture';
+import { freshCapture } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 
 import {
 	createSceneSession,

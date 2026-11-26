@@ -6,5 +6,6 @@
 	"file": "packages/project-model/src/strict-shape.ts",
 	"find": "if (typeof input !== 'string' || input.trim() === '') {",
 	"replace": "if (typeof input !== 'string') {",
-	"tests": ["tests/lib/project-model/references-conformance.test.ts"]
+	"tests": ["packages/project-model/tests/references-conformance.test.ts"],
+	"root": "repo"
 }

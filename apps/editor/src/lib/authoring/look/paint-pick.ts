@@ -1,11 +1,11 @@
 /**
- * What Paint holds and how its quick lists behave (T2.S8 U2).
+ * What Paint holds and how its quick lists behave.
  *
  * Pure vocabulary, no Svelte and no Scene: the tray, the Finish service and the
  * preference store share these words. A **pick** is what the next stroke
  * applies: a material Finish (rounded square, replaces the whole Finish) or a
  * colour (circle, keeps relief and sheen, written by the colour-coat planner
- * that U3 supplies through `PaintColourPort`).
+ * that comes through `PaintColourPort`).
  *
  * Favourites and recents are references, never copies: a Finish key
  * (`curated:<id>` / `project:<id>`), a palette slot (`slot:<id>`) or a literal
@@ -178,7 +178,7 @@ export function hexToHsl(hex: string): Hsl {
 }
 
 /**
- * The U1 picture source of a stored Finish key: a curated key is its catalogue
+ * The picture source of a stored Finish key: a curated key is its catalogue
  * master, a project key goes through the page's project source (its Scene and
  * texture scope), anything else (a colour, the model's own look) has none.
  */

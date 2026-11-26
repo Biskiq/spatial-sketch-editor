@@ -47,7 +47,7 @@
 		readonly viewLine?: {
 			readonly drafting: DraftingProps;
 		} | null;
-		/** The armed Paint tool's consequence, read on the view bar (T2.S8 U2). */
+		/** The armed Paint tool's consequence, read on the view bar. */
 		readonly paintLine?: PaintConsequence | null;
 		readonly show?: {
 			readonly open: boolean;

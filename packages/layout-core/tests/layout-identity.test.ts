@@ -377,10 +377,10 @@ describe('P23.12 codec round trip', () => {
 		expect(serializeWallFirstLayoutDocument(result.document)).toBe(result.canonicalJson);
 	});
 
-	it('accepts a legacy document without a ledger or names', () => {
-		const legacy = createEmptyWallFirstLayoutDocument();
-		delete legacy.identity;
-		const result = validateWallFirstLayoutDocument(legacy);
+	it('accepts a current-format Layout without a ledger or names', () => {
+		const fixture = createEmptyWallFirstLayoutDocument();
+		delete fixture.identity;
+		const result = validateWallFirstLayoutDocument(fixture);
 		expect(result.success).toBe(true);
 		if (result.success) expect(result.document.identity).toBeUndefined();
 	});

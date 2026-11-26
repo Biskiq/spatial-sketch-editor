@@ -1,5 +1,5 @@
 /**
- * Align on wall and floor (T2.S8 U6): pure snap/step math + reactive session.
+ * Align on wall and floor: pure snap/step math + reactive session.
  *
  * Uses the live Stage through Camera (`wallFace.face` on the Card target's own
  * side for walls; `wallFace.faceFloor` Plan + `fit` for floors) and commits

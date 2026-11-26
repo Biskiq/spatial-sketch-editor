@@ -166,7 +166,7 @@ export function flatDrawn(surface: StagePickSurface, slice: ResolvedSlice | null
 const SLICE_EMPTY_SPAN_METERS = 1e-6;
 
 /**
- * A Wall face **clamped to its stub** (X2, §3.6 step 4).
+ * A Wall face **clamped to its stub**.
  *
  * The face is the compiled solid's vertical extent, which is right at rest. Under
  * the cutaway the part above `stubTopY` is not drawn, so it must not be selectable
@@ -190,7 +190,7 @@ export function clampFaceToCutaway(
  *
  * `wallId` is the fragment's own Wall. It is required: a cut near Wall must not
  * shorten the pick quad of another Wall that is still drawn in full. Only Wall
- * faces are removed; floors, objects and Opening symbols are not part of X2
+ * faces are removed; floors, objects and Opening symbols are not part of the cutaway
  * (owner ruling O-1 leaves Scene objects as built).
  */
 export function clipSurfaceToCutaway(

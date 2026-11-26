@@ -14,7 +14,7 @@
 import { describe, expect, it } from 'vitest';
 import { proxy } from 'svelte/internal/client';
 
-import { buildP23BMatrixFixture, P23B_MATRIX_SPECS } from './__fixtures__/p23b-fixtures';
+import { buildP23BMatrixFixture, P23B_MATRIX_SPECS } from '../../../../../packages/layout-core/tests/__fixtures__/p23b-fixtures';
 import { compileWallFirstLayoutGeometry, type CompiledLayoutGeometry } from '@portfolio/layout-core/geometry';
 import { resolveLayoutSnap, wallSnapIndex } from '@portfolio/layout-core/plan';
 

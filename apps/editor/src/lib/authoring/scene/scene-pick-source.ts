@@ -28,7 +28,7 @@ export type SectionSource = {
 
 export type PickOptions = {
 	/**
-	 * Whether a world point is currently not drawn (a Slice or X2's cutaway hides it).
+	 * Whether a world point is currently not drawn (a Slice or The cutaway hides it).
 	 * A hidden hit is skipped and the ray continues, so a click reaches what is
 	 * visible behind it. `object` is the hit's own mesh, which lets the cutaway
 	 * answer per Wall rather than per point. Existing callers ignore it.

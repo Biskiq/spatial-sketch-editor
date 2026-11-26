@@ -38,7 +38,7 @@ import { admitSource } from '$lib/authoring/stage/source-admission';
 import { stageEnvelope } from '$lib/authoring/stage/unit-stage-source';
 import { evaluateFormMesh } from '$lib/content/form-evaluation';
 import { createUnitProject } from '../__fixtures__/unit-envelope-fixtures';
-import { freshCapture } from '../../layout/__fixtures__/layout-id-capture';
+import { freshCapture } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 
 const PROJECT_ID = 'project-profile-revision';
 const FORM_ID = 'entity-profile-form';

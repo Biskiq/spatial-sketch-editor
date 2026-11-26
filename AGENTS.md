@@ -1,134 +1,78 @@
 # Agent context — Personal / Museum
 
-**Bootstrap:** [`docs/README.md`](./docs/README.md) (router). **Human start:**
-[`README.md`](./README.md#development). **Status:** `npm run status`.
-**Workflow:** [`docs/workflow.md`](./docs/workflow.md) (claims, flags, risk tiers, plans).
-**Focus:** [`focus.md`](./focus.md). **Glossary:** [`docs/glossary.md`](./docs/glossary.md).
-**Path map:** [`docs/path-map.md`](./docs/path-map.md).
+**Start:** [documentation router](./docs/README.md), [development](./README.md#development)
+and `npm run status`. Code and tests establish behavior, approved designs set scoped targets,
+reference contracts state invariants, and the North Star sets intent. Read the smallest relevant
+contract. Historical evidence stays in the archive.
 
-For product truth, read the smallest routed contract or area context that answers the task. Code and
-tests state current behavior; reference contracts and approved designs state invariants and targets;
-the North Star states intent. Do not read the archive unless current evidence needs it.
-
-## Repo facts
-
-- npm workspaces; apps are `@portfolio/editor` and `@biskiq/api`; shared packages are
-  `@portfolio/layout-core`, `@portfolio/project-model`, `@portfolio/camera-core` and
-  `@portfolio/geometry-core`.
-- Find scoped UX targets and research in the [prototype catalogue](./prototypes/README.md).
-  [Workflow](./docs/workflow.md#design-and-reference-maintenance) owns approval and review.
-- “Camera” = **3D guided PerspectiveCamera navigation**, not webcam.
-- **Frozen, separate projects are outside product scope.** A project that is independently hosted
-  and versioned is absent from this repository; no product file imports, aliases or references it.
-  Product rules, authorities and tests do not apply to it, and the product's public routes never
-  serve it.
-- Root `dev` / `test` / `build` / `check` target the editor app only; the API has its own `dev:api` /
-  `build:api` / `check:api` / `test:api` scripts, which root `build` and `check` never run.
+**Read when relevant:** [workflow](./docs/workflow.md), [focus](./focus.md), [glossary](./docs/glossary.md),
+[path map](./docs/path-map.md), [prototype catalogue](./prototypes/README.md),
+[composition and current formats](./docs/reference/composition-execution.md),
+[persistence](./docs/reference/components/persistence.md), [test contract](./apps/editor/tests/README.md),
+[CI and merge automation](./docs/operations/ci-merge-automation.md).
 
 ## Hard rules
 
-1. **One Camera authority** — one authority for connectivity, routes, framing, projection and
-   evaluation; every profile controller (guided travel, free look, reduced motion, film, future XR)
-   realizes viewing intent through it, and no second navigation graph, evaluator, or independent
-   pose/FOV interpolation exists. Experience owns editorial occurrences, order, holds and pacing;
-   invocation time mapping evaluates through Camera. The current `camera-route.ts` +
-   `camera-motion.ts` mechanism and its curve/guard model are replaceable implementation, not the
-   guarantee, and "one motion" does not mean one motion kind.
-2. **Distinct, never-merged semantic authorities** — Layout owns architecture (including levels,
-   placed structures, reusable definitions and validated alternatives); Scene owns object
-   composition, placed instances and world presentation; Camera owns views, routes, framing,
-   projection and evaluation; Experience owns visitor-facing composition and editorial occurrences;
-   typed resources form their own independently versioned system. Never hide a new domain inside
-   another document. World-local project placement with explicit internal frames; no mandatory Room
-   frame. F2 encodes separate Layout, Camera-free Scene, Camera, Experience and typed resource
-   units. [Composition and execution](./docs/reference/composition-execution.md) lists the current
-   source versions.
-3. **Authored truth excludes generated/render/session state** — authored connection anchors are
-   interior only; node-view endpoints are generated at runtime, never authored; generated geometry,
-   Three objects, renderer handles, selection and history are never serialized. Immutable,
-   reproducible delivery derivatives (compiled release payloads) are explicitly permitted outside
-   authored documents; generated Camera endpoints may exist in a compiled delivery descriptor, never
-   as a second authored set of connection anchors.
-4. **Visitor isolation** — the product serves `/` and `/editor` (no build-flag gating).
-   `/p/[publicationId]` and public releases are visitor-only: no editor session, selection, history,
-   gizmo, layout UI, or authoring infrastructure in visitor chunks. `/museum` and `/museum/editor`
-   are **not product routes**: they belong to the frozen, independently deployed project, which this
-   repository neither builds nor serves. Runtime-safe domain evaluators (e.g. Layout representation)
-   are shared with visitor runtimes; isolation is about editor machinery, not about forking domain
-   math.
-5. **Editor helpers stay outside visitor/public imports** — no editor-only module reaches the visitor
-   or published surface (`visitor/*` and `public-surface-boundary` own it; a bespoke
-   `MuseumScene.svelte` in the preview surface is refused by `preview-surface-boundary`).
-6. **No second authority** — one canonical architectural compiler; Layout-owned representation and
-   runtime-safe algorithms consume its output, and release lowering may derive shared kernel dataflow
-   without becoming a second navigation authority or architectural reconstruction. Prefer
-   Floor/Wall/Ceiling planes.
-7. Svelte 5 runes; Threlte patterns.
-8. **No commits** unless the user asks.
-9. **Scope limits mutation, not inspection or verification.** For implementation/code tasks, local
-   task scope never narrows the repository-level verification required by the applicable test
-   contract. Inspect callers, dependents, wiring, tests and adjacent code as needed to establish
-   impact. If correctness appears to require a change outside the assigned scope, report it rather
-   than making it unless scope is explicitly expanded. Concrete editor commands and lane semantics
-   stay owned by `apps/editor/tests/README.md` and are deliberately not duplicated here.
-10. **No agent footer in commits** — when asked to commit, the message is the message: never append a
-    `Generated with …` line or a `Co-Authored-By: <agent>` trailer for any tool, guide or harness.
+1. **One Camera authority.** Camera owns connectivity, routes, framing, projection and evaluation.
+   Guided travel, free look, reduced motion, film and future XR evaluate through it. Experience
+   owns occurrences, order, holds and pacing and maps invocation time through Camera. One
+   navigation graph and evaluator serve all profiles. Route and motion algorithms are replaceable.
+2. **Distinct semantic authorities.** Layout owns architecture, levels, placed structures,
+   reusable definitions and validated alternatives. Scene owns object composition, placed instances
+   and world presentation. Camera owns views and navigation. Experience owns visitor composition.
+   Typed resources are independently versioned. F2 carries separate Layout, Camera-free Scene,
+   Camera, Experience and typed resource units. Use world-local placement with explicit internal
+   frames. A Room frame is optional.
+3. **Authored truth.** Persist interior connection anchors only. Generate node-view endpoints at
+   runtime. Generated geometry, Three objects, renderer handles, selection and history stay
+   outside authored data. Immutable reproducible delivery derivatives can include generated
+   Camera endpoints.
+4. **Visitor isolation.** The product serves `/` and `/editor` without build-flag gating.
+   `/p/[publicationId]` and releases serve visitors. Their imports and chunks exclude editor
+   sessions, selection, history, gizmos, layout UI and authoring infrastructure. Runtime-safe
+   domain evaluators are shared. `visitor/*`, public-surface and preview-surface contracts enforce
+   isolation. Frozen independent projects, including `/museum` and `/museum/editor`, are outside
+   this repository and its product routes, imports and tests.
+5. **One architectural compiler.** Layout-owned representation and runtime-safe algorithms
+   consume its output. Release lowering may derive shared kernel dataflow. Prefer Floor, Wall and
+   Ceiling planes.
+6. **One persisted version per format before beta.** Bump the version for format changes and
+   update fixtures with it. Reject other versions at the owning codec with
+   `unsupported_format_version`. Keep version-refusal coverage in the codec suite for each family.
+7. Use Svelte 5 runes and Threlte patterns.
+8. Commit only when asked. Keep agent attribution and co-author trailers out of commit messages.
+9. **Scope limits mutation and preserves verification.** Inspect callers, wiring, adjacent code,
+   tests and dependents. Report required edits outside authorized scope. Follow the owning test
+   contract for local and integration gates.
 
 ## Locality
 
-1. **One operation family per module.** A family shares inputs, outputs and invariants. A module
-   holds one family and the private helpers only it uses.
-2. **Budgets ratchet.** Files stay at or below 600 lines (hard 800) and functions at or below 200; a
-   closure factory counts as one function. The allowlist in `tools/metrics/budgets.json` shrinks as
-   work lands. An entry may be added only for a data table or a cohesive algorithm whose phases
-   share mutable state, with a one-line reason accepted in review.
-3. **Split only on real seams.** A split that needs long parameter lists, a carrier context used by
-   one operation, a single-implementation interface or a pass-through module is wrong. Keep the code
-   together and allowlist it.
-4. **The registry is the index.** Each authority has one planner registry mapping each kind to its
-   family module; a new operation adds one row and one function.
-5. **No test seams in production.** A kernel that must be observed takes an optional observer in its
-   existing options.
-6. **Comments state the current contract.** Keep mathematical reasoning, tolerance rationales and
-   invariants. Roadmap identifiers and arrival narration go; Git holds history.
-7. **Tests live with their workspace,** mirrored to its families or features. Retirement tests and
-   historical oracles are not kept; independent reference oracles and distinct invariants are.
+- One operation family per module. Group the operations that share inputs, outputs and invariants,
+  with their private helpers. One planner registry per authority maps kinds to family modules.
+- Files target 600 lines with a hard cap of 800. Functions, including closure factories, target
+  200 lines. Ratchet [budget exceptions](./tools/metrics/budgets.json) down as work lands.
+  An addition needs a reviewed one-line reason for a data table or a cohesive algorithm whose
+  phases share mutable state.
+- Split at real seams. Avoid pass-through modules, single-implementation interfaces, long
+  parameter lists or carrier state used by one operation.
+- Observe kernels through optional per-call observers in existing options. Keep test-only
+  seams out of production.
+- Comments explain current invariants, mathematical reasoning and tolerances. Leave roadmap
+  history in Git.
+- Mirror tests to workspace families or features. Preserve independent reference oracles,
+  distinct invariants and call-site proofs. Use the test contract for deletion.
 
-## Verification and browser QA
+## Verification and workflow
 
-Unit, integration, contract, geometry, typecheck and build checks are the routine default. For a
-change whose visual or interaction behavior matters, an agent may open the running application,
-interact with the changed feature, inspect rendering and console errors, and capture targeted
-evidence. That is **focused manual browser QA**, and it is allowed.
+Root `dev`, `check` and `build` target the editor. Root Vitest covers editor and package
+projects. The API has separate `dev:api`, `check:api`, `build:api` and DB-backed `test:api`
+commands. Focused manual browser QA is welcome for affected interactions. The owner retains
+final manual browser acceptance.
 
-See [design review](./docs/workflow.md#design-and-reference-maintenance) for approved UX changes
-and the [editor test contract](./apps/editor/tests/README.md#browser-qa-policy) for browser scope
-and verification lanes. The owner retains final manual browser acceptance.
+Follow the owner-committed focus and holds. Check claims and flags through the workflow.
+Use the highest applicable risk tier. Ordinary changes get fresh-context review. Tier 1
+adds a later owner checkpoint. Tier 2 needs an owner decision before merge. Plan multi-PR,
+Tier 2 and invention-risking work in the first commit of its draft PR. Merge closes the work.
 
-## Workflow
-
-**Status** is computed: `npm run status` prints report provenance, maturity, health, flags and
-claims. **Focus and holds** live in [`focus.md`](./focus.md); change that file only by an owner
-commit. **Claims** are a draft PR or self-assigned issue whose title names the capability id; check
-open issues and draft PRs before and immediately after claiming. **Flags** are issues labelled
-`needs-decision`, `needs-ux`, `needs-research`, `ambiguous` or `bug` plus the capability: proceed
-only on a reversible default, otherwise pick other work. **Plans** are written only for multi-PR,
-Tier 2 or invention-risking work, as the first commit of the work's own draft PR. Merging is the
-closeout: no acceptance document, anchor PR, closeout PR or phase-close record.
-
-**Tiers** (highest wins): **Tier 0** ordinary work → one fresh-context review, merge on green CI.
-**Tier 1** contract details within the hard rules, visitor/public or shared shell surface, or a
-persisted-format change the previous reader can still read (or with a tested recovery) → agent
-review, merge on green CI, owner check at the next checkpoint. **Tier 2** hard-rule, North Star,
-ledger-shape or material approved-design change, incompatible format, check removal, owner review,
-production activation, licence or new dependency → owner decides before merge.
-
-**Integration is native.** The target path is implement → focused local tests → PR → review → CI →
-merge queue → merge. Once the owner activates the queue, the queue validates each batch against
-current `main`; agents do not rebase sibling work, refresh a behind branch by hand, or rerun CI to
-integrate another PR. See
-[CI and merge automation](./docs/operations/ci-merge-automation.md).
-
-On-demand skills: `work-checkpoint`, `owner-checkpoint`, `gardener` (archive-only) and `breaker`.
-No schedules. The
-full process contract is [`docs/workflow.md`](./docs/workflow.md).
+The native queue integrates green PRs once activated. Keep sibling branches and CI runs
+independent. `work-checkpoint`, `owner-checkpoint`, `gardener` and `breaker` run on demand.

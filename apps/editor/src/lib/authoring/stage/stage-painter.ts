@@ -1,6 +1,6 @@
 /**
  * **Paint**, a host tool that applies the armed pick to what the creator
- * touches (T2.S4a, T2.S8 U2).
+ * touches.
  *
  * Paint asks every binding that declares host tool `paint` for one winner, the
  * same spatial arbitration the Eraser uses: a Wall, an overhead entity, an
@@ -19,7 +19,7 @@
  * the stroke and write nothing. A press that slides off its only subject and
  * releases there is also a cancel, which is how a single click is abandoned.
  *
- * A colour pick (U3) coats instead of replacing: the line names the relief it
+ * A colour pick coats instead of replacing: the line names the relief it
  * keeps, and a subject that takes no coat (a model's own materials) refuses in
  * place and is skipped by the stroke.
  *
@@ -119,14 +119,14 @@ export type StagePaintOptions = {
 		target: { readonly surface: PaintableSurface } | { readonly entityId: string },
 	) => string | null;
 	/**
-	 * What the active **colour** pick does to a target (U3): refuse in place, or
+	 * What the active **colour** pick does to a target: refuse in place, or
 	 * coat it keeping the named relief. `null` when the pick is a material.
 	 */
 	readonly coatReading?: (
 		target: { readonly surface: PaintableSurface } | { readonly entityId: string },
 	) => CoatReading | null;
 	/**
-	 * A click that painted exactly one subject (U4): the host selects it and opens
+	 * A click that painted exactly one subject: the host selects it and opens
 	 * its Finish on the Card. Paint stays armed. A drag across several subjects or
 	 * a Space paint never calls this — the selection stays where it was.
 	 */

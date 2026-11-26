@@ -56,7 +56,7 @@ import {
 /**
  * Parse the optional reference ledger.
  *
- * `undefined` means "absent", which is legal (pre- payloads). A present but
+ * An omitted ledger is legal. A present but
  * malformed ledger reports issues and returns `undefined`, so the caller can fail
  * closed: tokens must be well-formed for their own family, and no token value may
  * appear twice anywhere in the ledger (a duplicate can only come from a

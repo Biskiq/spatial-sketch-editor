@@ -4,7 +4,8 @@
 	"citation": "section 7 rule 6 \u2014 contract names; section 5 rule 7 \u2014 comments state the current contract",
 	"title": "Strict reader silently tolerates unknown keys instead of refusing them",
 	"file": "packages/project-model/src/strict-shape.ts",
-	"find": "\t\t\tif (!allowedKeys.includes(key))\n",
-	"replace": "\t\t\tif (!allowedKeys.includes(key) && allowedKeys.length === 0)\n",
-	"tests": ["tests/lib/project-model/references-conformance.test.ts"]
+	"find": "if (!allowedKeys.includes(key))",
+	"replace": "if (!allowedKeys.includes(key) && allowedKeys.length === 0)",
+	"tests": ["packages/project-model/tests/references-conformance.test.ts"],
+	"root": "repo"
 }

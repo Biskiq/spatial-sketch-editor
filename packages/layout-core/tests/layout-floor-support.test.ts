@@ -24,7 +24,7 @@ import { describe, expect, it } from 'vitest';
 import { FLOOR_SUPPORT_TOLERANCES, FLOOR_SUPPORT_UP_NORMAL, chooseFloorSupport, floorSupportSnapshotOf, polygonContainsWithTolerance, queryFloorSupports, type FloorSupportCandidate, type FloorSupportQueryPolygon, type FloorSupportSnapshot, type FloorSupportWitness } from '@portfolio/layout-core/room';
 import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core/geometry';
 import { planWallChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
-import { baseDocument, p } from '../../helpers/angled-plan-fixtures';
+import { baseDocument, p } from './__fixtures__/angled-plan-fixtures';
 import { freshCapture } from './__fixtures__/layout-id-capture';
 
 /** A 7 m x 6 m rectangle enclosure: one reconciled Room at the floor datum. */

@@ -6,5 +6,6 @@
 	"file": "packages/project-model/src/units/validate/scene.ts",
 	"find": "reader.problem(`${path}.id`, 'duplicate_id', `Duplicate palette slot id: ${id}`);",
 	"replace": "reader.problem(`${path}.id`, 'duplicate-identity', `Duplicate palette slot id: ${id}`);",
-	"tests": ["tests/lib/project-model/scene-look-schema.test.ts"]
+	"tests": ["packages/project-model/tests/scene-look-codec.test.ts"],
+	"root": "repo"
 }

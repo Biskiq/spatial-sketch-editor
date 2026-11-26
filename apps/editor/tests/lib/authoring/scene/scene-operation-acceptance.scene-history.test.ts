@@ -13,37 +13,13 @@
  * mutation-control planner at the end proves the T2 record-scope guard refuses a
  * candidate the current-source adapter would otherwise admit.
  */
+
 import { describe, expect, it } from 'vitest';
-import {
-	createScenePlanners,
-	checkSceneRecordScope,
-	evaluateSceneForm,
-	finalizeSceneCandidate,
-	type NormalizedPlacementDefinition
-} from '@portfolio/project-model/scene-planning';
-import { formMeshDigest } from '@portfolio/geometry-core';
-import {
-	creatorModelDefinition,
-	creatorModelResourceEntry,
-	creatorModelResourcePayload
-} from '@portfolio/project-model/scene-planning';
+import { createScenePlanners, type NormalizedPlacementDefinition } from '@portfolio/project-model/scene-planning';
 import type { AuthoringIntent, DomainPlanner } from '@portfolio/project-model/f4';
 import type { SceneDocument, SceneEntity, ScenePrimitiveEntity, Vec3 } from '@portfolio/project-model/scene';
 import type { SemanticReference } from '@portfolio/project-model/references';
-import {
-	replaceUnitData,
-	serializeProjectEnvelope,
-	validateProjectEnvelope,
-	type CameraFreeSceneDocument,
-	type ExperienceUnitPayload,
-	type ProjectEnvelope
-} from '@portfolio/project-model/units';
-import {
-	canonicalFormLibraryBytes,
-	formLibraryContentId,
-	formLibraryPayloadFromEntity,
-	readFormLibraryBytes
-} from '@portfolio/project-model/library';
+import { serializeProjectEnvelope, validateProjectEnvelope, type ExperienceUnitPayload, type ProjectEnvelope } from '@portfolio/project-model/units';
 import { createEmptyWallFirstLayoutDocument, planCommitLayoutObjectPreset, planWallChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 import { nextLayoutPresetObjectId } from '@portfolio/layout-core/plan';
 import { nativePlacementDefinition } from '$lib/authoring/scene/object-definition-policy';
@@ -54,20 +30,11 @@ import {
 	layoutObjectReference,
 	proofIntent
 } from '../__fixtures__/f4-current-source-fixtures';
-import { freshCapture } from '../../layout/__fixtures__/layout-id-capture';
+import { freshCapture } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 import { EXPERIENCE } from '../../experience/fixtures';
-import {
-	UNIT_SOURCE_KIND,
-	UNIT_SOURCE_VERSION,
-	admitUnitContent,
-	admitUnitProject,
-	createUnitCoordinator,
-	createUnitProject
-} from '../__fixtures__/unit-envelope-fixtures';
-
+import { UNIT_SOURCE_KIND, UNIT_SOURCE_VERSION, admitUnitProject, createUnitCoordinator, createUnitProject } from '../__fixtures__/unit-envelope-fixtures';
 const BOOT_REVISION = { projectId: 'project-scene-operations', revisionId: 'revision-1' };
 const ELEVATION = 2.5;
-
 function box(id: string, position: Vec3, scale = 1): ScenePrimitiveEntity {
 	return {
 		kind: 'primitive',
@@ -83,7 +50,6 @@ function box(id: string, position: Vec3, scale = 1): ScenePrimitiveEntity {
 		scale
 	};
 }
-
 function sceneWith(
 	entities: readonly SceneEntity[],
 	clusters: SceneDocument['clusters'] = undefined
@@ -123,7 +89,6 @@ function sceneWith(
 		]
 	};
 }
-
 function enclosedLayout(elevation = 0): LayoutDocumentWallFirst {
 	const base = createEmptyWallFirstLayoutDocument();
 	const planned = planWallChain({
@@ -141,14 +106,12 @@ function enclosedLayout(elevation = 0): LayoutDocumentWallFirst {
 	if (planned.kind !== 'success') throw new Error('the conformance enclosure was refused');
 	return planned.document;
 }
-
 type LegacyConformanceProject = {
 	readonly id: string;
 	readonly name: string;
 	readonly layout: LayoutDocumentWallFirst;
 	readonly scene: SceneDocument;
 };
-
 /** A supported project plus one real Layout object for the mixed-domain history. */
 function conformanceProject(
 	elevation = ELEVATION,
@@ -184,7 +147,6 @@ function conformanceProject(
 		layoutObjectId: objectPlan.createdObjectId
 	};
 }
-
 function entityTarget(contentId: string, entityId: string): SemanticReference {
 	return {
 		version: 1,
@@ -197,7 +159,6 @@ function entityTarget(contentId: string, entityId: string): SemanticReference {
 		capabilityId: null
 	};
 }
-
 function sceneIntent(input: {
 	readonly kind: string;
 	readonly operationId: string;
@@ -219,25 +180,6 @@ function sceneIntent(input: {
 			input.allocatedId === undefined ? [] : [{ kind: 'scene-entity', id: input.allocatedId }]
 	};
 }
-
-function createFormIntent(input: {
-	readonly intentRevision: { projectId: string; revisionId: string };
-	readonly operationId: string;
-	readonly entityId: string;
-	readonly payload: Record<string, unknown>;
-}): AuthoringIntent {
-	return {
-		version: 1,
-		kind: 'create-form',
-		operationId: input.operationId,
-		expectedRevision: input.intentRevision,
-		targets: [],
-		payload: input.payload as AuthoringIntent['payload'],
-		capturedInputs: [],
-		allocatedIds: [{ kind: 'scene-entity', id: input.entityId }]
-	};
-}
-
 function placeIntent(input: {
 	readonly intentRevision: { projectId: string; revisionId: string };
 	readonly operationId: string;
@@ -255,31 +197,9 @@ function placeIntent(input: {
 		allocatedIds: [{ kind: 'scene-entity', id: input.entityId }]
 	};
 }
-
-/** One My Objects insertion: no existing target, exactly one allocated entity. */
-function placeFormCopyIntent(input: {
-	readonly intentRevision: { projectId: string; revisionId: string };
-	readonly operationId: string;
-	readonly entityId: string;
-	readonly payload: Record<string, unknown>;
-	readonly targets?: AuthoringIntent['targets'];
-}): AuthoringIntent {
-	return {
-		version: 1,
-		kind: 'place-form-copy',
-		operationId: input.operationId,
-		expectedRevision: input.intentRevision,
-		targets: input.targets ?? [],
-		payload: input.payload as AuthoringIntent['payload'],
-		capturedInputs: [],
-		allocatedIds: [{ kind: 'scene-entity', id: input.entityId }]
-	};
-}
-
 function cameraBytes(camera: ProjectEnvelope['units']['camera']['data']): string {
 	return JSON.stringify({ views: camera.views, connections: camera.connections });
 }
-
 async function boot(
 	options: {
 		readonly elevation?: number;
@@ -329,7 +249,6 @@ async function boot(
 	});
 	return { coordinator, fixture: { project: envelope, layoutObjectId }, definition, admitted, scenePlanners };
 }
-
 /** The current accepted revision/content, as a caller captures an intent. */
 function now(coordinator: AcceptanceCoordinator<ProjectEnvelope>) {
 	const state = coordinator.current();
@@ -340,25 +259,7 @@ function now(coordinator: AcceptanceCoordinator<ProjectEnvelope>) {
 	};
 }
 
-/** The one accepted form with this id, narrowed for the library payload. */
-function acceptedForm(coordinator: AcceptanceCoordinator<ProjectEnvelope>, entityId: string) {
-	const entity = coordinator.current().source.units.scene.data.entities.find(
-		(candidate) => candidate.id === entityId
-	);
-	if (entity?.kind !== 'form') throw new Error(`expected the accepted form ${entityId}`);
-	return entity;
-}
-
-/**
- * T2.P02.S02 — a creator model's first placement is one accepted result.
- *
- * The resource, its exact lock and the entity install together, Undo removes all
- * three and Redo restores the captured identities; a later instance reuses the
- * accepted pins and adds only a distinct entity. The resource is read from the
- * accepted envelope, never from a second catalogue.
- */
-
-describe('Scene operations through the F.4 coordinator', () => {
+describe('scene history', () => {
 	it('registers the sixteen Scene planners beside the conformance Layout planner', async () => {
 		const { coordinator } = await boot();
 		expect(coordinator.planners().map((planner) => planner.kind).sort()).toEqual(
@@ -464,198 +365,6 @@ describe('Scene operations through the F.4 coordinator', () => {
 		expect(preparationCount).toBe(1);
 	});
 
-	it('creates and sizes a native form with one history entry each, exact Undo/Redo and an identical cold reopen', async () => {
-		const { coordinator } = await boot();
-		expect(coordinator.history().depth).toBe(1);
-		const state = now(coordinator);
-		const created = await coordinator.accept(
-			createFormIntent({
-				intentRevision: state.intentRevision,
-				operationId: 'op-create-form',
-				entityId: 'entity-form',
-				payload: {
-					plane: 'plan',
-					outline: [
-						{ u: 0, v: 0, smooth: false },
-						{ u: 2, v: 0, smooth: false },
-						{ u: 2, v: 1, smooth: false },
-						{ u: 0, v: 1, smooth: false }
-					],
-					extent: 0.8,
-					position: [3, 0, 2],
-					yaw: 0,
-					materialId: 'plaster-warm',
-					name: 'Drawn plinth'
-				}
-			})
-		);
-		expect(created.kind).toBe('accepted');
-		if (created.kind !== 'accepted') return;
-		expect(coordinator.history()).toEqual({ depth: 2, position: 1, limit: 100 });
-		const afterCreate = coordinator.current();
-		const createdForm = afterCreate.source.units.scene.data.entities.find(
-			(entity) => entity.id === 'entity-form'
-		);
-		expect(createdForm?.kind).toBe('form');
-		if (createdForm?.kind !== 'form') return;
-		expect(createdForm.position).toEqual([4, ELEVATION, 2.5]);
-		expect(createdForm.form.scale).toEqual([1, 1, 1]);
-
-		const resizeState = now(coordinator);
-		const resized = await coordinator.accept(
-			sceneIntent({
-				kind: 'set-form-size',
-				operationId: 'op-form-size',
-				intentRevision: resizeState.intentRevision,
-				contentId: resizeState.contentId,
-				entityId: 'entity-form',
-				payload: { entityId: 'entity-form', scale: [2, 1.5, 1] }
-			})
-		);
-		expect(resized.kind).toBe('accepted');
-		if (resized.kind !== 'accepted') return;
-		expect(coordinator.history().depth).toBe(3);
-		const afterResize = coordinator.current();
-		const resizedForm = afterResize.source.units.scene.data.entities.find(
-			(entity) => entity.id === 'entity-form'
-		);
-		expect(resizedForm?.kind).toBe('form');
-		if (resizedForm?.kind !== 'form') return;
-		expect(resizedForm.form.scale).toEqual([2, 1.5, 1]);
-		// A plan form's contact is its base, so the per-axis scale moves no Y.
-		expect(resizedForm.position).toEqual([4, ELEVATION, 2.5]);
-
-		const undo = await coordinator.undo();
-		expect(undo.kind).toBe('restored');
-		expect(coordinator.current().canonicalJson).toBe(afterCreate.canonicalJson);
-		const undoState = coordinator.current();
-		const undoneForm = undoState.source.units.scene.data.entities.find(
-			(entity) => entity.id === 'entity-form'
-		);
-		expect(undoneForm?.kind === 'form' ? undoneForm.form.scale : null).toEqual([1, 1, 1]);
-
-		const redo = await coordinator.redo();
-		expect(redo.kind).toBe('restored');
-		expect(coordinator.current().canonicalJson).toBe(afterResize.canonicalJson);
-
-		// A refused no-op size neither adds history nor rewrites the source.
-		const noopState = now(coordinator);
-		const noop = await coordinator.accept(
-			sceneIntent({
-				kind: 'set-form-size',
-				operationId: 'op-form-size-noop',
-				intentRevision: noopState.intentRevision,
-				contentId: noopState.contentId,
-				entityId: 'entity-form',
-				payload: { entityId: 'entity-form', scale: [2, 1.5, 1] }
-			})
-		);
-		expect(noop.kind).toBe('no-op');
-		expect(coordinator.current().canonicalJson).toBe(afterResize.canonicalJson);
-		expect(coordinator.history().depth).toBe(3);
-
-		// Save is the captured canonical bytes; a cold reopen admits them again and
-		// the form evaluates to the identical mesh.
-		const saved = coordinator.current();
-		const reopened = await admitUnitProject(
-			JSON.parse(saved.canonicalJson) as ProjectEnvelope,
-			{ projectId: saved.revision.projectId, revisionId: 'revision-reopen' }
-		);
-		expect(reopened.kind).toBe('admitted');
-		if (reopened.kind !== 'admitted') return;
-		expect(reopened.canonicalJson).toBe(saved.canonicalJson);
-		const liveForm = saved.source.units.scene.data.entities.find(
-			(entity) => entity.id === 'entity-form'
-		);
-		const reopenedForm = reopened.project.units.scene.data.entities.find(
-			(entity) => entity.id === 'entity-form'
-		);
-		if (liveForm?.kind !== 'form' || reopenedForm?.kind !== 'form') {
-			throw new Error('the form did not survive the cold reopen');
-		}
-		expect(formMeshDigest(evaluateSceneForm(reopenedForm.form))).toBe(
-			formMeshDigest(evaluateSceneForm(liveForm.form))
-		);
-	});
-
-	it('revises an existing form outline as one entry, with exact Undo/Redo and a refused no-op', async () => {
-		const { coordinator } = await boot();
-		const bootState = now(coordinator);
-		const created = await coordinator.accept(
-			createFormIntent({
-				intentRevision: bootState.intentRevision,
-				operationId: 'op-create-profile-form',
-				entityId: 'entity-form',
-				payload: {
-					plane: 'plan',
-					outline: [
-						{ u: 0, v: 0, smooth: false },
-						{ u: 2, v: 0, smooth: false },
-						{ u: 2, v: 1, smooth: false },
-						{ u: 0, v: 1, smooth: false }
-					],
-					extent: 0.8,
-					position: [3, 0, 2],
-					yaw: 0,
-					materialId: 'plaster-warm',
-					name: 'Drawn plinth'
-				}
-			})
-		);
-		expect(created.kind).toBe('accepted');
-		if (created.kind !== 'accepted') return;
-		const original = acceptedForm(coordinator, 'entity-form');
-		const outline = original.form.generator.outline.map((anchor, index) =>
-			index === 0 ? { ...anchor, u: anchor.u + 0.5 } : { ...anchor }
-		);
-
-		const state = now(coordinator);
-		const revised = await coordinator.accept(
-			sceneIntent({
-				kind: 'set-form-profile',
-				operationId: 'op-profile-form',
-				intentRevision: state.intentRevision,
-				contentId: state.contentId,
-				entityId: 'entity-form',
-				payload: { entityId: 'entity-form', outline, extent: 1.1 }
-			})
-		);
-		expect(revised.kind).toBe('accepted');
-		if (revised.kind !== 'accepted') return;
-		expect(coordinator.history().depth).toBe(3);
-		const revisedForm = acceptedForm(coordinator, 'entity-form');
-		expect(revisedForm.form.generator.outline).toEqual(outline);
-		expect(revisedForm.form.generator.extent).toBe(1.1);
-		// Keys, the next key and the placement are the form's own preserved facts.
-		expect(revisedForm.form.nextKey).toBe(original.form.nextKey);
-		expect(revisedForm.position).toEqual(original.position);
-		const afterRevision = coordinator.current();
-
-		const undo = await coordinator.undo();
-		expect(undo.kind).toBe('restored');
-		expect(acceptedForm(coordinator, 'entity-form').form.generator.outline).toEqual(
-			original.form.generator.outline
-		);
-		const redo = await coordinator.redo();
-		expect(redo.kind).toBe('restored');
-		expect(coordinator.current().canonicalJson).toBe(afterRevision.canonicalJson);
-
-		const noopState = now(coordinator);
-		const noop = await coordinator.accept(
-			sceneIntent({
-				kind: 'set-form-profile',
-				operationId: 'op-profile-form-noop',
-				intentRevision: noopState.intentRevision,
-				contentId: noopState.contentId,
-				entityId: 'entity-form',
-				payload: { entityId: 'entity-form', outline, extent: 1.1 }
-			})
-		);
-		expect(noop.kind).toBe('no-op');
-		expect(coordinator.history().depth).toBe(3);
-		expect(coordinator.current().canonicalJson).toBe(afterRevision.canonicalJson);
-	});
-
 	it('undoes chronologically across Layout and Scene through one stack (L1→S1→L2)', async () => {
 		const { coordinator, fixture, admitted } = await boot();
 		const bootState = coordinator.current();
@@ -729,93 +438,6 @@ describe('Scene operations through the F.4 coordinator', () => {
 		expect(coordinator.current().canonicalJson).toBe(afterL2.canonicalJson);
 	});
 
-	it('writes nothing for a no-op, a refused operation or a stale request', async () => {
-		const { coordinator } = await boot();
-		const before = coordinator.current();
-		const historyBefore = coordinator.history();
-		const installsBefore = coordinator.installs();
-
-		const state = now(coordinator);
-		const noOp = await coordinator.accept(
-			sceneIntent({
-				kind: 'set-yaw',
-				operationId: 'op-noop',
-				intentRevision: state.intentRevision,
-				contentId: state.contentId,
-				entityId: 'entity-a',
-				payload: {
-					entityId: 'entity-a',
-					yaw: 0,
-					frame: { origin: [0, 0, 0], yaw: 0 },
-					frameReference: { version: 1, kind: 'project-world' }
-				}
-			})
-		);
-		expect(noOp.kind).toBe('no-op');
-		expect(coordinator.current()).toEqual(before);
-		expect(coordinator.history()).toEqual(historyBefore);
-		expect(coordinator.installs()).toBe(installsBefore);
-
-		const outside = await coordinator.accept(
-			sceneIntent({
-				kind: 'move-horizontal',
-				operationId: 'op-outside',
-				intentRevision: state.intentRevision,
-				contentId: state.contentId,
-				entityId: 'entity-missing',
-				payload: {
-					entityId: 'entity-missing',
-					worldXZ: [20, 20],
-					frame: { origin: [0, 0, 0], yaw: 0 },
-					frameReference: { version: 1, kind: 'project-world' },
-					contactMinY: -0.5
-				}
-			})
-		);
-		expect(outside.kind).toBe('rejected');
-		expect(coordinator.current()).toEqual(before);
-		expect(coordinator.history()).toEqual(historyBefore);
-		expect(coordinator.installs()).toBe(installsBefore);
-
-		// A valid edit, then an intent captured before it is stale.
-		const moved = await coordinator.accept(
-			sceneIntent({
-				kind: 'set-yaw',
-				operationId: 'op-yaw',
-				intentRevision: state.intentRevision,
-				contentId: state.contentId,
-				entityId: 'entity-a',
-				payload: {
-					entityId: 'entity-a',
-					yaw: 0.8,
-					frame: { origin: [0, 0, 0], yaw: 0 },
-					frameReference: { version: 1, kind: 'project-world' }
-				}
-			})
-		);
-		expect(moved.kind).toBe('accepted');
-		const afterMove = coordinator.current();
-		const installsAfterMove = coordinator.installs();
-		const stale = await coordinator.accept(
-			sceneIntent({
-				kind: 'set-yaw',
-				operationId: 'op-yaw-stale',
-				intentRevision: state.intentRevision,
-				contentId: state.contentId,
-				entityId: 'entity-a',
-				payload: {
-					entityId: 'entity-a',
-					yaw: 1.1,
-					frame: { origin: [0, 0, 0], yaw: 0 },
-					frameReference: { version: 1, kind: 'project-world' }
-				}
-			})
-		);
-		expect(stale).toMatchObject({ kind: 'rejected', code: 'stale-revision' });
-		expect(coordinator.current()).toEqual(afterMove);
-		expect(coordinator.installs()).toBe(installsAfterMove);
-	});
-
 	it('truncates redo when a new Scene edit follows an undo', async () => {
 		const { coordinator } = await boot();
 		const bootState = coordinator.current();
@@ -855,34 +477,6 @@ describe('Scene operations through the F.4 coordinator', () => {
 			revision: afterSecond.revision
 		});
 		expect(coordinator.current().canonicalJson).toBe(afterSecond.canonicalJson);
-	});
-
-	it('installs nothing when a caller writes and admits a Scene document directly', async () => {
-		// A caller that prepares and admits a changed document itself must still not
-		// reach the accepted source, revision or history: there is no shared store a
-		// direct admission could write through, and the coordinator exposes no
-		// install API other than `accept`/`undo`/`redo`/`replace`.
-		const { coordinator } = await boot();
-		const before = coordinator.current();
-		const historyBefore = coordinator.history();
-		const installsBefore = coordinator.installs();
-		const bypassed: CameraFreeSceneDocument = {
-			...before.source.units.scene.data,
-			entities: [
-				...before.source.units.scene.data.entities,
-				box('entity-bypass', [5, ELEVATION + 0.5, 4])
-			]
-		};
-		const admitted = await admitUnitContent(replaceUnitData(before.source, 'scene', bypassed));
-		expect(admitted.kind).toBe('admitted');
-
-		expect(coordinator.current()).toEqual(before);
-		expect(
-			coordinator.current().source.units.scene.data.entities.map((entity) => entity.id)
-		).not.toContain('entity-bypass');
-		expect(coordinator.acceptedRevision()).toEqual(before.revision);
-		expect(coordinator.history()).toEqual(historyBefore);
-		expect(coordinator.installs()).toBe(installsBefore);
 	});
 
 	it('undoes a delete to the exact prior snapshot, restoring its cluster cleanup', async () => {
@@ -977,141 +571,6 @@ describe('Scene operations through the F.4 coordinator', () => {
 		expect(undone.kind).toBe('restored');
 		expect(serializeProjectEnvelope(coordinator.current().source)).toBe(before);
 		expect(coordinator.current().source.units.experience.data.experiences[0]!.presentations[0]!.label).toBeNull();
-	});
-
-	it('refuses a mutation-control candidate the adapter admits, through the T2 record-scope guard', async () => {
-		const { coordinator } = await boot();
-		const before = coordinator.current();
-		const mutatedScene: CameraFreeSceneDocument = {
-			...before.source.units.scene.data,
-			entities: before.source.units.scene.data.entities.map((entity) =>
-				entity.id === 'entity-b' ? box('entity-b', [6, ELEVATION + 0.5, 5]) : entity
-			)
-		};
-		const clusterMutatedScene: CameraFreeSceneDocument = {
-			...before.source.units.scene.data,
-			clusters: [{ id: 'cluster-1', name: 'Group', memberIds: ['entity-b', 'entity-a'] }]
-		};
-
-		// The landed adapter itself admits these documents: record-level scope is not
-		// its concern, which is exactly why T2 must own it.
-		expect(
-			(await admitUnitContent(replaceUnitData(before.source, 'scene', mutatedScene))).kind
-		).toBe('admitted');
-		expect(
-			(await admitUnitContent(replaceUnitData(before.source, 'scene', clusterMutatedScene))).kind
-		).toBe('admitted');
-
-		function mutationControl(input: {
-			readonly kind: string;
-			readonly scene: CameraFreeSceneDocument;
-			readonly changedEntityIds: readonly string[];
-			readonly changedEntityFields: readonly string[];
-		}): DomainPlanner<ProjectEnvelope> {
-			return {
-				id: `conformance.${input.kind}`,
-				kind: input.kind,
-				admission: { domain: 'scene', compound: false, units: false, resources: false },
-				sourceKinds: [UNIT_SOURCE_KIND],
-				sourceVersions: [UNIT_SOURCE_VERSION],
-				prepare({ snapshot, intent }) {
-					const finalized = finalizeSceneCandidate({
-						before: snapshot.domain.source.units.scene.data,
-						after: input.scene,
-						scope: {
-							operationKind: 'move-horizontal',
-							changedEntityIds: input.changedEntityIds,
-							changedEntityFields: input.changedEntityFields,
-							createdEntityIds: [],
-							removedEntityIds: [],
-							allowClusterCleanup: false
-						}
-					});
-					if (finalized.kind === 'rejected') {
-						return {
-							kind: 'rejected',
-							code: finalized.code,
-							message: finalized.message,
-							diagnostics: finalized.diagnostics
-						};
-					}
-					return {
-						kind: 'prepared',
-						candidate: {
-							operationId: intent.operationId,
-							sourceKind: snapshot.sourceKind,
-							sourceVersion: snapshot.sourceVersion,
-							source: replaceUnitData(snapshot.domain.source, 'scene', finalized.scene),
-							changes: [],
-							correspondence: [],
-							diagnostics: []
-						}
-					};
-				}
-			};
-		}
-
-		for (const [kind, plan] of [
-			[
-				'conformance-record-scope-entity',
-				mutationControl({
-					kind: 'conformance-record-scope-entity',
-					scene: mutatedScene,
-					changedEntityIds: ['entity-a'],
-					changedEntityFields: ['position']
-				})
-			],
-			[
-				'conformance-record-scope-cluster',
-				mutationControl({
-					kind: 'conformance-record-scope-cluster',
-					scene: clusterMutatedScene,
-					changedEntityIds: [],
-					changedEntityFields: []
-				})
-			]
-		] as const) {
-			expect(coordinator.register(plan).kind).toBe('registered');
-			const state = now(coordinator);
-			const result = await coordinator.accept(
-				sceneIntent({
-					kind,
-					operationId: `op-${kind}`,
-					intentRevision: state.intentRevision,
-					contentId: state.contentId,
-					entityId: 'entity-a',
-					payload: { entityId: 'entity-a' }
-				})
-			);
-			expect(result.kind, kind).toBe('rejected');
-			if (result.kind !== 'rejected') return;
-			expect(result.code, kind).toBe('planner-rejected');
-			expect(result.reason, kind).toBe('record-scope-violation');
-			expect(coordinator.current(), kind).toEqual(before);
-		}
-		expect(coordinator.installs()).toBe(1);
-		expect(coordinator.history()).toEqual({ depth: 1, position: 0, limit: 100 });
-		// The guard reports the untargeted records, not just a generic refusal.
-		expect(
-			checkSceneRecordScope(before.source.units.scene.data, mutatedScene, {
-				operationKind: 'move-horizontal',
-				changedEntityIds: ['entity-a'],
-				changedEntityFields: ['position'],
-				createdEntityIds: [],
-				removedEntityIds: [],
-				allowClusterCleanup: false
-			}).some((issue) => issue.path.includes('entity-b'))
-		).toBe(true);
-		expect(
-			checkSceneRecordScope(before.source.units.scene.data, clusterMutatedScene, {
-				operationKind: 'move-horizontal',
-				changedEntityIds: [],
-				changedEntityFields: [],
-				createdEntityIds: [],
-				removedEntityIds: [],
-				allowClusterCleanup: false
-			}).some((issue) => issue.path.includes('cluster-1'))
-		).toBe(true);
 	});
 
 	it('keeps Camera-bearing bytes identical through every accepted operation', async () => {

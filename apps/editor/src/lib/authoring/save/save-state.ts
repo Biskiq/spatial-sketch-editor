@@ -87,11 +87,11 @@ export type SaveCoordinatorPort = {
 	sessionEpoch(): unknown;
 };
 
-/** The durable base a Save starts from; `null` metadata means a legacy row. */
+/** The loaded or admitted source that Save compares against. */
 export type SaveBaseline = {
 	readonly savedBaseToken: string | null;
 	readonly savedRevision: AcceptedRevision | null;
-	readonly savedCanonicalJson: string | null;
+	readonly savedCanonicalJson: string;
 	readonly savedSourceContentId: string | null;
 };
 
@@ -238,12 +238,12 @@ export type SaveStateOptions = {
 	readonly onAuthRequired?: (request: SaveRequest) => void | Promise<void>;
 };
 
-const EMPTY_BASELINE: SaveBaseline = {
+const EMPTY_BASELINE = {
 	savedBaseToken: null,
 	savedRevision: null,
 	savedCanonicalJson: null,
 	savedSourceContentId: null,
-};
+} as const;
 
 export function createSaveState(options: SaveStateOptions): SaveState {
 	const instrumentation: SaveWorkInstrumentation | undefined = perfMarksEnabled()
@@ -251,7 +251,7 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 		: undefined;
 	let suppressNotificationMeasurement = false;
 	const mintOperationId = options.mintOperationId ?? (() => globalThis.crypto.randomUUID());
-	let baseline = options.baseline ?? EMPTY_BASELINE;
+	let baseline: SaveBaseline | typeof EMPTY_BASELINE = options.baseline ?? EMPTY_BASELINE;
 	let status: SaveStatus = baseline.savedBaseToken === null ? 'never-saved' : 'saved';
 	let error: SaveError | null = null;
 	let conflict: SaveConflict | null = null;
@@ -308,9 +308,7 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 
 	function isDirty(): boolean {
 		const current = currentCanonical();
-		if (current === null) return false;
-		if (baseline.savedCanonicalJson === null) return true;
-		return current !== baseline.savedCanonicalJson;
+		return current !== null && current !== baseline.savedCanonicalJson;
 	}
 
 	function steadyStatus(currentDirty: boolean): SaveStatus {

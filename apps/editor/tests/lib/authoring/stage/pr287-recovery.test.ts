@@ -12,7 +12,7 @@ import { deriveChainSpans } from '@portfolio/layout-core/geometry';
 import { admitSource } from '$lib/authoring/stage/source-admission';
 import { refusedChainPreview } from '$lib/authoring/adapters/layout/chain';
 import { createUnitProject } from '../__fixtures__/unit-envelope-fixtures';
-import { freshCapture } from '../../layout/__fixtures__/layout-id-capture';
+import { freshCapture } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 
 const PROJECT_ID = 'project-pr287-d-room';
 

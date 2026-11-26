@@ -10,7 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core/wall';
 import type { Vec3 } from '@portfolio/camera-core/camera';
 import { createEmptyUnitSceneDocument, skyFromPreset, type SceneSky } from '@portfolio/project-model/units';
-import { freshCapture } from '../../layout/__fixtures__/layout-id-capture';
+import { freshCapture } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 import { createAdapter as createExperienceAdapter } from '$lib/authoring/adapters/experience.adapter';
 import { createAdapter as createSkyAdapter } from '$lib/authoring/adapters/sky.adapter';
 import { celestialDialModel, dialRing, dialStagePoint, placeCelestialDial, type CelestialDialModel } from '$lib/authoring/look/celestial-dial';

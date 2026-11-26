@@ -58,7 +58,7 @@ export type SliceClipUniforms = {
 	readonly halfLength: ScalarUniform;
 	readonly depth: ScalarUniform;
 	/**
-	 * The X2 cutaway top: a **live** uniform owned by `StageClip`. Every material
+	 * The cutaway top: a **live** uniform owned by `StageClip`. Every material
 	 * outside the cutaway twin set is bound to the never-cut constant instead, so
 	 * one predicate serves both and a cut costs no pipeline.
 	 */
@@ -100,7 +100,7 @@ export function createSliceClipUniforms(): SliceClipUniforms {
 /**
  * Build the one predicate graph for these uniforms.
  *
- * `cutaway: true` binds the live cutaway top (the X2 twin set); every other
+ * `cutaway: true` binds the live cutaway top (the cutaway twin set); every other
  * material binds the constant never-cut value.
  */
 export function createSliceClipMask(

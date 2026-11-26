@@ -54,7 +54,7 @@ import {
 	layoutObjectReference,
 	proofIntent
 } from '../__fixtures__/f4-current-source-fixtures';
-import { freshCapture } from '../../layout/__fixtures__/layout-id-capture';
+import { freshCapture } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 import { EXPERIENCE } from '../../experience/fixtures';
 import {
 	UNIT_SOURCE_KIND,

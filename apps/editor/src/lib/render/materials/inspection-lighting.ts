@@ -49,9 +49,9 @@ export const GRAZING_KEY_INTENSITY = 2;
 export const GRAZING_AMBIENT_INTENSITY = 0.15;
 
 /**
- * `sample-tile` is U1's product thumbnail rig (recipe `sample-tile/1`, see
+ * `sample-tile` is the product thumbnail rig (recipe `sample-tile/1`, see
  * `sample-tile.ts`). It is a third rig beside the two engineering references:
- * studio and grazing, their constants and their 192 px derivatives stay as E7
+ * studio and grazing, their constants and their 192 px derivatives stay as inspection
  * froze them.
  */
 export type InspectionRig =
@@ -62,10 +62,10 @@ export type InspectionRig =
 	| 'library-grazing';
 
 /**
- * `library-studio` is U5's creator-facing Studio for Library detail and the
+ * `library-studio` is the creator-facing Studio for Library detail and the
  * Customise… draft (recipe `library-studio/1`): a brighter neutral room so a
  * white ceramic, a dark matte and a glossy metal all read on a light backdrop.
- * E7's `studio` and `grazing` stay the frozen engineering references and U1's
+ * `studio` and `grazing` stay the frozen engineering references and the sample tile’s
  * `sample-tile` stays the browse thumbnail rig; any change here is a new
  * recipe version, never an edit in place.
  *
@@ -90,9 +90,9 @@ export const LIBRARY_STUDIO_FILL_DIRECTION: readonly [number, number, number] = 
 export const LIBRARY_STUDIO_RIM_DIRECTION: readonly [number, number, number] = [0.2, 0.5, -1];
 
 /**
- * The Library's Grazing (T2.S8 U5): a low side key that rakes across the
+ * The Library's Grazing: a low side key that rakes across the
  * surface to reveal relief, over a dim soft fill so colour and sheen still
- * read, on the same light backdrop. E7's engineering `grazing` (key + 0.15
+ * read, on the same light backdrop. The engineering `grazing` (key + 0.15
  * ambient, no environment) stays the reference.
  */
 export const LIBRARY_GRAZING_RECIPE = 'library-grazing/1';

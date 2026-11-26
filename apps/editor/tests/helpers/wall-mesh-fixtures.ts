@@ -9,7 +9,7 @@ import {
 	g1DocumentWithRooms,
 	g1LineRectangleDocument,
 	g1RoomPolygon
-} from '../lib/layout/__fixtures__/layout-g1-fixtures';
+} from '../../../../packages/layout-core/tests/__fixtures__/layout-g1-fixtures';
 import type { CompiledRoom, CompiledWall } from '@portfolio/layout-core/geometry';
 import type { LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 

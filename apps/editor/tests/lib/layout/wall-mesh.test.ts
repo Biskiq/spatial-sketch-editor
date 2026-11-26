@@ -10,7 +10,7 @@ import {
 	g1Opening,
 	g1ProfileMatrixDocument,
 	g1RectangleRoom
-} from './__fixtures__/layout-g1-fixtures';
+} from '../../../../../packages/layout-core/tests/__fixtures__/layout-g1-fixtures';
 import type { CompiledRoom, CompiledWall } from '@portfolio/layout-core/geometry';
 import type { CurveSample } from '@portfolio/layout-core/geometry';
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';

@@ -1,5 +1,5 @@
 /**
- * Creator Paint preferences (T2.S8 U2): favourites and recents, behind one
+ * Creator Paint preferences: favourites and recents, behind one
  * small interface so the device store can become an account store later.
  *
  * Preferences are not project data. They are never serialized into a project,

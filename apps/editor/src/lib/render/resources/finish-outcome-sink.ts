@@ -1,5 +1,5 @@
 /**
- * Optional session-only outcome sink for Stage Finish view acquisitions (T2.S8 U6).
+ * Optional session-only outcome sink for Stage Finish view acquisitions.
  *
  * Runtime-safe type and classifier: visitor paths omit the sink and report
  * nothing. Pending, cancelled, generation-mismatch and texture-budget states

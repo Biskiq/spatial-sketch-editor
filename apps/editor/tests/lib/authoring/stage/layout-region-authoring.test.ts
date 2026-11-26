@@ -36,7 +36,7 @@ import {
 } from '$lib/authoring/adapters/layout/region-planners';
 import { interiorLift, liftedSourcesNow } from '$lib/authoring/layout/interior-lift-store.svelte';
 import { createUnitProject } from '../__fixtures__/unit-envelope-fixtures';
-import { captureFor } from '../../layout/__fixtures__/layout-id-capture';
+import { captureFor } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 import { startStageCounting, type StageCounting } from '../../../helpers/stage-counts';
 
 const RECT = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };

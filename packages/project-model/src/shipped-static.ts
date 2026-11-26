@@ -45,7 +45,7 @@ export const SHIPPED_TEXTURES: readonly ShippedTextureEntry[] = [
 		deployedPath: 'textures/brass-aged/map.png',
 		required: true,
 	},
-	// T2.S8 F curated catalogue: qualified WebP derivatives.
+	// Curated catalogue: qualified WebP derivatives.
 	{
 		logicalUri: '/textures/wood-oak-veneer/color.webp',
 		deployedPath: 'textures/wood-oak-veneer/color.webp',
@@ -355,7 +355,7 @@ export const SHIPPED_MATERIALS: readonly ShippedMaterialEntry[] = [
 	{ id: 'marble-light', textureUris: [] },
 	{ id: 'velvet-dark', textureUris: [] },
 	{ id: 'paper-aged', textureUris: [] },
-	// T2.S8 F curated catalogue.
+	// Curated catalogue.
 	{
 		id: 'wood-oak-veneer',
 		textureUris: [

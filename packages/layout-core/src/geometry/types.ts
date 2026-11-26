@@ -239,7 +239,7 @@ export type CompiledRoom = CompiledIdentity & {
 	 * The Space's stated open sides. They contribute to the outline and area but
 	 * are never Walls, never pick targets and never visitor geometry; an editor
 	 * surface reads them for its dashed open-side ink. Absent on an enclosed Room
-	 * so its compiled reading keeps the pre-SP1c shape.
+	 * so its compiled reading keeps the physical boundary shape.
 	 */
 	openSides?: CompiledSpaceEdge[];
 	floorElevation: number;

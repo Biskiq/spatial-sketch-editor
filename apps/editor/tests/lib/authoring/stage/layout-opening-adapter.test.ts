@@ -40,7 +40,7 @@ import {
 	type InkController,
 	type ProjectedWall
 } from '$lib/authoring/adapters/layout/ink';
-import { freshCapture } from '../../layout/__fixtures__/layout-id-capture';
+import { freshCapture } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 
 // A Stage that does not start at the window origin: pointer intents are
 // Stage-local, so the adapter must translate them before casting a ray.

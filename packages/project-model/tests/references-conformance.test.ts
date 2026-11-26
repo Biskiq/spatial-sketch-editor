@@ -25,7 +25,7 @@ import {
 	type LayoutUnitPayload
 } from '@portfolio/project-model/units';
 import { createUnitReadContext } from '@portfolio/project-model/references/unit-resolution';
-import { createUnitProject } from '../authoring/__fixtures__/unit-envelope-fixtures';
+import { createUnitProject } from './__fixtures__/unit-envelope';
 
 const SNAPSHOT: SnapshotIdentity = {
 	acceptedRevision: { projectId: 'project-1', revisionId: 'revision-7' },

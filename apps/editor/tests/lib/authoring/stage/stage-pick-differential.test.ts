@@ -10,7 +10,7 @@ import { createGeometryStore } from '$lib/render/resources/geometry-store';
 import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core/wall';
 import type { SceneEntity } from '@portfolio/project-model/scene';
 import { createUnitProject } from '../__fixtures__/unit-envelope-fixtures';
-import { captureFor } from '../../layout/__fixtures__/layout-id-capture';
+import { captureFor } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 import { STARTER_ENCLOSURE_POINTS } from '$lib/authoring/stage/starter-gallery';
 import { admitSource } from '$lib/authoring/stage/source-admission';
 import { createStageSession } from '$lib/authoring/stage/stage-session';

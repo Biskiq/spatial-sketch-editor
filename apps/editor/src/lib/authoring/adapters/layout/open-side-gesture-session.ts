@@ -1,5 +1,5 @@
 /**
- * SP1d — direct manipulation of a selected open Space's stated open sides.
+ * Direct manipulation of a selected open Space's stated open sides.
  *
  * A virtual edge is not a subject and has no id of its own. This session
  * therefore publishes two kinds of **handles on the Space**:

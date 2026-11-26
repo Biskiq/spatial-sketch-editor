@@ -212,7 +212,7 @@
 			box-shadow 0.12s,
 			transform 0.12s;
 	}
-	/* U1's picture fills the swatch and takes its shape; the ring stays the button's. */
+	/* The picture fills the swatch and takes its shape; the ring stays the button's. */
 	.swatch-button :global(.finish-tile) {
 		width: 100%;
 		height: 100%;

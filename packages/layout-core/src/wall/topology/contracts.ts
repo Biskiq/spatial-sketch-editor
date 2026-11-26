@@ -22,7 +22,7 @@ export type WallFirstOpRejectionCode =
 	| 'wall_not_in_room_boundary'
 	| 'ambiguous_room_removal'
 	| 'captured_id_in_use'
-	/* SP1b lifecycle. */
+	/* Open Space lifecycle. */
 	| 'not_open_space'
 	| 'space_outline_invalid'
 	/* C2 Round repack conflict. */
@@ -57,7 +57,7 @@ export type WallFirstOpPlan =
 			}>;
 			surfaceLineage: LayoutSurfaceLineage;
 			retiredRoomIds: readonly string[];
-			/** Why an open Space retired; SP1c reads these for consequence lines. */
+			/** Why an open Space retired. Feeds editor consequence lines. */
 			spaceRetirements?: readonly SpaceRetirement[];
 			/** Round Rooms automatically repacked to one closed Wall on last detach. */
 			repackedRoundRoomIds?: readonly string[];

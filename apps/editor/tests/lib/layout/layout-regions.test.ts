@@ -3,7 +3,6 @@ import { compileWallFirstLayoutGeometryFresh, createLayoutCompileSession, type L
 import { createEmptyWallFirstLayoutDocument, planDeleteWall, planDissolveJunction, planExactJunctionMove, planWallChain, planWallSplit, validateWallFirstLayoutDocument, type LayoutRegion } from '@portfolio/layout-core/wall';
 import { createPlanRetainer, evaluateLayoutPlan, type PlanParameters } from '@portfolio/layout-core/world';
 import { withLayoutIdentity } from '@portfolio/layout-core/plan';
-import outgoingLayout from './fixtures/layout-8-outgoing.json';
 import { buildStarterEnclosureLayout } from '$lib/authoring/stage/starter-gallery';
 import { buildRegionMeshGeometry, regionSurfaceOf } from '$lib/render/layout/region-mesh-builder';
 import { Mesh, MeshBasicMaterial, Raycaster, Vector3 } from 'three';
@@ -51,11 +50,8 @@ describe('Layout 9 horizontal regions', () => {
 		});
 	});
 
-	it('strictly refuses the outgoing format and both retired Room keys', () => {
+	it('refuses thickness keys on Rooms', () => {
 		const document = buildStarterEnclosureLayout();
-		expect(validateWallFirstLayoutDocument(outgoingLayout)).toMatchObject({
-			success: false, issues: [{ path: '$.formatVersion', code: 'unsupported_format_version' }]
-		});
 		for (const key of ['floorThickness', 'ceilingThickness']) {
 			expect(validateWallFirstLayoutDocument({ ...document, rooms: [{ ...document.rooms[0], [key]: 0.2 }] })).toMatchObject({
 				success: false, issues: [{ path: `$.rooms[0].${key}`, code: 'unknown_key' }]

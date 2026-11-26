@@ -18,9 +18,9 @@ import { layoutRoomFacts } from '$lib/authoring/adapters/layout/precision-facts'
 import { findPlanHitRoom } from '$lib/authoring/layout/plan-hit';
 import { innermostRoomId } from '$lib/authoring/adapters/scene/room-membership';
 import { layoutKindWord } from '$lib/authoring/stage/shell/index-labels';
-import { captureFor } from './__fixtures__/layout-id-capture';
-import { buildP23B11ConnectedCase } from './__fixtures__/p23b11-connected-case';
-import { buildP23BMatrixFixture, P23B_MATRIX_SPECS } from './__fixtures__/p23b-fixtures';
+import { captureFor } from '../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
+import { buildP23B11ConnectedCase } from '../../../../../packages/layout-core/tests/__fixtures__/p23b11-connected-case';
+import { buildP23BMatrixFixture, P23B_MATRIX_SPECS } from '../../../../../packages/layout-core/tests/__fixtures__/p23b-fixtures';
 
 function wall(id: string, start: string, end: string): LayoutDocumentWallFirst['walls'][number] {
 	return {

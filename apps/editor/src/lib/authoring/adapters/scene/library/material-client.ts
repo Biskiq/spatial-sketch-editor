@@ -1,5 +1,5 @@
 /**
- * The editor's owner-scoped material library client (T2.S8 G).
+ * The editor's owner-scoped material library client.
  *
  * It is transport only. Save recomputes the item's canonical content identity
  * from the shared codec before posting; read verifies the exact bytes against

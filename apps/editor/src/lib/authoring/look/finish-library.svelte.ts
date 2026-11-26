@@ -721,7 +721,7 @@ export function createFinishLibraryAuthoring(ports: FinishLibraryPorts) {
 	}
 
 	/**
-	 * The Card's *Swap…* hand-off (U5): the target, place and reach the Card showed,
+	 * The Card's *Swap…* hand-off: the target, place and reach the Card showed,
 	 * captured once. The Library shows it before activation; Apply requalifies it.
 	 */
 	let librarySwap = $state.raw<LibrarySwapRequest | null>(null);

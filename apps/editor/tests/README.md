@@ -1,413 +1,106 @@
-# Tests — `apps/editor/tests/`
+# Verification contract
 
-All Vitest suites live here, mirrored to `src/lib/`. A test for
-`src/lib/layout/wall-mesh-builder.ts` sits at
-`tests/lib/layout/wall-mesh-builder.test.ts`. **No `.test.ts` files live under `src/`.**
+Focused affected tests are the local inner loop. The merge gate certifies the integration delta.
+Scope limits edits and leaves repository-level verification intact. See
+[CI and merge automation](../../../docs/operations/ci-merge-automation.md) for profile selection.
 
-## Start here (startup verification summary)
+## Ownership and test kit
 
-Repository-level verification stays intact: focused affected tests are the
-normal local run, while the complete contract below is certified by the
-mandatory GitHub CI merge gate, not routinely duplicated locally (AGENTS.md
-rule 9). Local task scope never narrows the gates; it decides which focused
-contracts you repeat locally. Major lanes: `test:fast` (inner loop),
-`test:arch` (ownership/isolation boundaries, always before a PR, never
-path-gated), `test:heavy` (dense correctness/stress). PR #115 removed the PERF
-lane with its configuration: the bench harness, the `/dev/perf*` routes and the
-`bench:record`/`reuse:record` scripts are gone, and the two former PERF-lane
-files that asserted kernel correctness run in the default suite. Read lane internals ([Lanes](#lanes), [Running](#running)) when the
-implementation or verification task actually needs that lane — not before the
-first edit. Test-design authority for adding/replacing tests:
-[Test design rules](#test-design-rules).
-
-## Import rules
-
-1. **Import source modules via `$lib` aliases, never relative paths.** Tests are
-   location-independent by design: `import { validateProject } from '$lib/project/project-codec'`.
-   The `$lib` alias is configured in `vitest.shared.ts` and in the SvelteKit-generated
-   tsconfig (inherited by `svelte-check`), so tests typecheck in place.
-2. **Relative imports are reserved for sibling test helpers and fixtures** that move
-   together with the test (e.g. `./__fixtures__/p23b-fixtures`).
-3. No extension on imports: `allowImportingTsExtensions` is off, so
-   `'$lib/project/project-codec'` not `'$lib/project/project-codec.ts'`.
+- Mirror editor suites to their feature in `tests/lib/`. Keep package-pure suites and fixtures
+  with the owning workspace. Cross-workspace integration stays with its consumer. Keep
+  `.test.*` out of production source.
+- Import editor source using `$lib` and public package entry points. Relative imports join
+  test helpers and fixtures. Use extensionless TypeScript imports.
+- Put scenario fixtures next to their tests and shared editor setup in [the test kit](./kit/index.ts).
+  Reuse `mountComponent` / `mountWithProps`, `settle` and `eventually` for mounted tests.
+  Always clean up the mount and its effects. Use `emptyLayout`, `layoutEnclosure`,
+  `emptyScene` / `sceneWith`, and `emptySceneUnit` / `sceneUnitWith` for current-format fixtures.
+  Use `bootProject` when the test needs real Stage admission. Builders take versions from codecs.
+- Use [the architecture index](./arch/README.md) for shared boundary entry points. Use
+  `tests/helpers/import-closure.ts` for import graphs and `tests/helpers/docs-references.ts`
+  for Markdown. Share a parser per grammar and document any distinct root or import policy.
+  Keep ad hoc QA scripts and generated artifacts outside Vitest's discovery paths.
 
 ## Test design rules
 
-Durable doctrine for adding, replacing and placing tests. This section is the
-authority; the evidence behind it (measurements, migration history, review
-findings) was recorded in the retired `test-suite-harvest-2026-09-19` harvest
-that #115 deleted because it described a test tree #115 restructures
-(`git show e90a5822:docs/operations/test-suite-harvest-2026-09-19.md`), and none
-of it is needed to contribute a normal test.
+- Own one coherent behavior per suite and split at distinct contracts. Give the suite and cases
+  names that describe the failure. Extend an existing contract when it can catch the same defect.
+- Exercise outputs, identity, order, diagnostics and real call-site behavior. Keep assertions
+  on forbidden imports, dependency direction, isolation and unique ownership in architecture
+  suites. A pure helper test cannot prove that production invokes it correctly.
+- Use representative equivalence classes. Where density proves continuity, conservatism or
+  geometric correctness, preserve the sweep and give it explicit timeout headroom.
+- Keep fixture inputs readable and expectations in the test. Use current version constants and
+  maintain one dedicated version-refusal check per format family in the codec suites.
 
 ### Successors and deletion
 
-1. **Same feature ≠ successor.** A replacement counts as a successor only if it
-   would fail on the **same defect** the removed test protected. Naming a test
-   that covers a related subject proves nothing.
-2. **Identical assertion text ≠ duplicate coverage.** Same expression + same
-   asserted value/pattern + same polarity identifies a *candidate* only.
-   Deleting also requires equivalent execution conditions, source root and lane
-   coverage.
-3. **Machinery correctness ≠ call-site correctness.** A perfect helper, store or
-   pure function stays green after production stops invoking it. When the
-   invariant depends on wiring, polarity, teardown, ownership or invocation,
-   keep a narrow **call-site proof** alongside the machinery test.
-4. **Replacement claims are proved by mutation.** For a successor/replacement
-   claim, or any change to an architecture or call-site boundary, prefer a
-   mutation that (a) reintroduces the old defect, (b) makes the proposed
-   successor fail, and (c) leaves unrelated controls green. This is not required
-   for ordinary new unit tests.
+Delete tests for removed behavior. For supported behavior, require a successor that fails on
+the same defect in equivalent execution conditions, source roots and lanes. Keep a narrow
+call-site proof where invocation, polarity, ownership or teardown matters. Matching assertions or
+subjects are only leads. Demonstrate a claimed successor or changed boundary with a targeted
+mutation where possible and keep unrelated controls green. Every
+[canary](../../../tools/canaries/README.md) that names a removed test must be killed before and
+after replacement. Preserve distinct invariants and independent reference oracles.
 
-### Behavioral vs architecture proof
+## Lanes
 
-5. **Prefer behavioral proof** over source-shape proof whenever the behavior can
-   actually be exercised.
-6. **Source inspection is appropriate for genuine architecture invariants only:**
-   forbidden imports, dependency direction, unique ownership, absence of a
-   duplicate system, visitor/editor isolation, and source-level composition
-   boundaries where no executable harness exists.
-7. **One parser per grammar.** When several tests must interpret the same
-   source/import grammar, share one extractor/predicate instead of parallel
-   regexes — two patterns for one invariant means two holes. The shared readers
-   are `tests/helpers/import-closure.ts` for source and import specifiers
-   (`parseModuleSpecifiers`, `stripComments`, `resolveSpecifier`) and
-   `tests/helpers/docs-references.ts` for Markdown. A boundary suite may keep a
-   local walk when its **root, allowed-import set or defect** differs from those
-   readers — that is a different invariant, not a second pattern for this one —
-   but it should say so where the walk is written. WP3T retired
-   `tests/helpers/lib-source.ts`: no file imported it, and its visitor root named
-   the deleted `apps/museum`; the two arch owners that absorbed its candidates
-   already carry better-suited readers.
+Membership uses filename suffixes. `*.arch.test.ts` owns architecture and isolation.
+`*.heavy.test.ts` owns dense correctness, property and stress tests. Other files run in fast.
+The lanes are disjoint and their union is the complete suite. Use the root scripts to run package
+and editor projects together. An empty lane or a test outside all projects fails verification.
 
-### Lanes
-
-8. `test:fast` owns ordinary behavioral feedback.
-9. `test:arch` owns unconditional architecture/ownership/isolation boundaries. It
-   runs whole before a PR and is **never path-gated**.
-10. `test:heavy` owns dense correctness/property/stress work.
-11. **No timing gate lives in this suite after #115.** The PERF lane, the P23B
-    browser baseline/ratchet contracts and their recorders were removed with
-    `lib/bench/**`. Timing is only ever asserted *relatively* on identical input,
-    never as a wall-clock floor, and a measurement harness returns only if an
-    owner ratifies one — a number that can pass or fail on machine noise alone is
-    not a gate.
-12. **Split, do not cut.** Moving expensive work to `heavy` keeps cheap
-    representative behavior in `fast`.
-13. **Draw the boundary around the expensive `it`s**, not automatically around a
-    large file or its enclosing `describe`. An “is this section dense?” claim
-    needs per-test evidence whenever it is not obvious.
-14. **When the density is the proof, keep the density** and give the test
-    explicit timeout headroom rather than shrinking the sweep.
-15. `npm test` / `test:full` remain the complete suite: the lane union must equal
-    full and the lanes must stay pairwise disjoint.
-
-### Naming and ownership
-
-16. **Prefer durable subsystem/contract names** over roadmap/slice-era names once
-    the behavior is a stable product contract.
-17. **A rename does not fix mixed ownership.** If a file genuinely bundles
-    unrelated subjects, do not hide that behind an inaccurate umbrella name.
-
-### Adding or restructuring a test
-
-18. **One coherent behavioral contract per suite.** Name the contract the suite
-    owns; when a second, unrelated contract grows inside it, split on that
-    behavioral seam. Never split on line count or file size.
-19. **A new test names the material failure it catches.** If an existing check
-    already fails on that defect, extend it instead of adding a parallel one.
-20. **Reuse before adding.** Extend the suite that owns the guarantee and prefer
-    the existing fixtures, readers and helpers. A duplicated helper smaller than
-    its abstraction cost is fine; an opaque universal fixture builder is not.
-21. **Representative equivalence classes — except where density is the proof.**
-    Dense numerical and geometric sweeps stay dense: the density *is* the
-    evidence of continuity and conservative sampling. Elsewhere one
-    representative per equivalence class beats a near-duplicate matrix.
-22. **Assert the contract, not the decomposition.** Pin required output, identity,
-    ordering and diagnostics rather than incidental internal structure a
-    refactor may legitimately change.
-23. **Fixtures stay narrow, visible and self-owned.** Scenario inputs are readable
-    at the call site, cleanup is reliable, and the expectations a test pins
-    (identity digests, verdicts) live with the test — never in a roadmap,
-    measurement or ledger document.
-24. **Deleted subject vs proven successor.** Both are legitimate; a deletion
-    quota is not. Rules 1–4 decide which one a change is.
-25. **Focused feedback is not acceptance.** The focused ladder below is for
-    iteration; the §7.4 contract at a checkpoint is the acceptance evidence.
-
-## What lives here vs in `src/`
-
-| Thing | Where |
-|---|---|
-| Test suites | `tests/lib/...`, mirrored to `src/lib/...` |
-| Test-only helpers (`editor-test-utils.ts`, `layout-a1-fixtures.ts`) | `tests/lib/...` next to their consumers |
-| A repo-wide check with no `src/` counterpart (documentation cross-references) | `tests/helpers/docs-references.ts` + `tests/docs/` |
-| Fixtures (`__fixtures__/` dirs with `.ts` + `.json`) | `tests/lib/.../__fixtures__/` |
-| Modules imported by both tests **and** `src/` | stay in `src/lib/` |
-
-If a helper starts being imported from `src/`, move it back to `src/lib/` and flip the
-imports back to `$lib`.
-
-## Caveats
-
-- **Boundary tests walk `src/` via `import.meta.url`**
-  (`layout-geometry-boundary`, `camera-core-boundary`, `wall-mesh-shell-boundary`,
-  `project-model-boundary`, the `visitor/*` isolation suites and
-  `legacy-isolation`). They compute roots as
-  `resolve(import.meta.url, '../../../src')` — update them if `tests/` moves.
-  The `$lib/layout` renderer-free sweep lives in `layout-geometry-boundary`; the
-  wall-mesh shell/import boundary is owned by `wall-mesh-shell-boundary`, so
-  `wall-mesh-builder` is a behavioral file and walks no source.
-- **No `__`-prefixed QA plates in the tree.** A `__qa-*` plate runs inside the
-  suite via the vitest `include` pattern and writes into the tree — keep QA
-  fixtures outside matched paths.
-- **The documentation gate reads the repository root, not `src/`.**
-  `tests/helpers/docs-references.ts` derives the root from `import.meta.url` like
-  the other boundary helpers, and intersects its walk with `git ls-files` so an
-  untracked scratch copy is never held to the gate. When git is unavailable it
-  falls back to the walk alone, minus the named exclusions. Numbered sections are
-  held to their own sequence (a gap is a swallowed heading; a `# 6.–13. … — moved`
-  placeholder accounts for a declared range), and a heading glued to the rule
-  above it (`---# 7. Core color system`) is reported directly, because Markdown
-  renders it as prose and the section disappears.
-- **Records are not held to link resolution.** Two permanent prefixes are excluded:
-  `docs/archive/` (history by contract) and `Repo-Audit/` (an audit log written
-  against another checkout). That is the whole exclusion list, and the gate
-  asserts it as an exact set, so a new exclusion has to be added deliberately
-  rather than appearing as a blind spot. A *historical locator* inside a kept
-  record is declared instead, with a written path in an `EVIDENCE-PATHS` region
-  (`docs/README.md` → "Historical paths in a record"); the record's links,
-  definitions and `#anchors` are still resolved, because those are the reader's
-  route today. WP4 removed the temporary `ARCHIVAL_RECORD_PREFIXES` list and its
-  guard machinery once the closed records it covered were archived or deleted.
-
-## Running
-
-```bash
-npm test        # vitest run (include pattern: tests/**/*.{test,spec}.{js,ts}) — the complete suite
-npm run check   # svelte-check — picks up tests/ via the generated tsconfig
+```sh
+npm run test:fast
+npm run test:arch
+npm run test:heavy
+npm test
 ```
 
-### Lanes
-
-The suite is split into lanes by **filename** — the mirrored tree and every
-`import.meta.url` boundary root stay put. `*.arch.test.ts` and
-`*.heavy.test.ts` belong to their lanes; everything else is fast. The scripts
-are in `apps/editor/package.json`:
-
-```bash
-npm run test:fast    # inner loop: everything EXCEPT arch + heavy
-npm run test:arch    # durable architecture boundaries (always run before a PR)
-npm run test:heavy   # expensive correctness/property/stress work
-npm run test:full    # the same effective suite as `npm test`
-```
-
-The suffix is the whole membership rule, so a renamed or relocated suite keeps
-its lane without a registry edit. A test file that sits outside every Vitest
-project fails `tooling-tests/test-projects.test.ts` instead of running nowhere;
-a lane that collects zero files fails the Vitest run and the merge-gate suite
-runner.
-
-The arch lane also carries one **repo-wide documentation gate**
-(`tests/docs/documentation-references.test.ts`): every Markdown document the
-repository authors must resolve its own relative links, written-out paths and
-`#section` anchors. It belongs to the arch lane because nothing imports a `docs/`
-reference — no lane, build or type-check can see a moved file or a renamed
-heading, so only an unconditional lane can hold it. Run it alone while writing
-documentation:
-
-```bash
-cd apps/editor && npx vitest run --config vitest.arch.config.ts tests/docs
-```
-
-(#115 removed the P23B.0 browser baseline recorder and the P23B.5 reuse ratchet
-with `lib/bench/**`: there is no `bench:record`, no `reuse:record` and no
-checked-in baseline or ledger to re-record. Their historical measurements stay
-recoverable at the baseline SHA, and the owner statement records the
-benchmark's purpose as fulfilled.)
-
-The lane also carries the **workflow cutover gate**
-(`tests/docs/workflow-cutover.test.ts`): the capability ledger's definitions and
-North-Star anchors, the compact router's live routes, the focus file, the
-archived retired-process routes and the on-demand skill set. Repository routing is not
-visible to any build, lane report or type check, so only an unconditional lane
-can hold it. Gate and track identities remain recorded in `docs/roadmap/README.md`
-as contract evidence; they are not permission.
-
-`npm test` still runs the complete suite and is never narrowed. The arch lane
-is never path-gated: a Plan or store change can break a camera drawer or
-visitor boundary through shared code. Membership is executable fact in
-the filename suffix; the rules for *placing* a test are under
-[Test design rules](#test-design-rules) above. The retired harvest held the
-original lane model and the final measurements
-(`git show e90a5822:docs/operations/test-suite-harvest-2026-09-19.md`).
+Run the whole architecture lane before a PR. The tooling lane owns documentation and workflow checks.
+Keep a cheap representative when moving dense cases to heavy. Split around the expensive cases
+and keep their exhaustive inputs. Tooling tests have a separate `npm run test:tooling` entry point.
 
 ## What a change requires
 
-Verification is triggered by **what changed**, not only by production-code
-edits. A test edit is a change like any other and lands through the same
-contract its subject does. The complete merge-gate contract is:
-`npm run check`, `npm run test:fast`, `npm run test:arch`, `npm run test:heavy`,
-`npm run build`, `npm run check:api`, DB-backed `npm run test:api` with zero
-skips, and the affected package checks (`check:layout-core`,
-`check:project-model`, `check:camera-core`, `check:geometry-core`). CI selects Minimal, Focused or Full from the actual integration delta.
-Full runs the three disjoint lanes whose union is the complete `npm test` population.
-Focused runs the architecture files and selected editor cohorts. Minimal runs applicable
-static checks. `npm test` remains the complete local suite. See
-[CI and merge automation](../../../docs/operations/ci-merge-automation.md).
-
-| Changed | Required before the change is judged green |
+| Change | Evidence |
 | --- | --- |
-| A `fast` test, its fixtures or its local helper | The **complete affected contract** — the whole file, not a `-t` case: `npx vitest run <file>` |
-| A `heavy` test or its fixtures | The affected heavy contract **including its exhaustive cases**; no `-t` narrowing, and `npm run test:heavy` when the lane is the contract |
-| An `arch` boundary test | The **whole arch lane** at the applicable review gate: `npm run test:arch` |
-| Production code a heavy correctness invariant exercises | The relevant heavy contract during verification, alongside the affected fast contract |
-| Shared test setup (`tests/helpers/**`, `tests/docs/**`), `vitest.shared.ts` or a `vitest.*.config.ts` | Every lane the change reaches **and** the full suite at acceptance (`npm test`) |
-| Production code (ordinary) | The affected contract, then the §7.7 escalation for its subsystem, call sites and package type checks |
-| `apps/api` code, its tests or fixtures | `npm run check:api` and the DB-backed `npm run test:api` with **zero skips** (a reachable `DATABASE_URL`; the run's DB target is recorded at a checkpoint — `npm run test:api:stack` targets the local Compose database that `npm run stack:up` starts). Root `check`, `build` and `test` cover the editor only and never sub for an API run |
+| Fast suite, fixture or ordinary production behavior | Whole affected contract. Inspect callers and escalate to affected type checks, architecture, build and heavy coverage. |
+| Heavy suite, fixture or production invariant it exercises | Complete affected heavy contract including its exhaustive cases, or the entire lane when it is the contract. |
+| Architecture, boundaries or documentation | Whole arch lane before a PR. Use the documentation gate alone while iterating on links. |
+| Shared setup or Vitest configuration | Every affected lane and complete coverage at acceptance. |
+| Package code | Its contract and workspace type check. Include editor/API consumers where the change reaches them. |
+| API code, suites or fixtures | `npm run check:api` and DB-backed `npm run test:api` with zero skips. Use a reachable test `DATABASE_URL` or `npm run test:api:stack` with local Compose. Record the DB target. |
 
-### Local verification policy
+Full merge-gate evidence includes `npm run check`, all three lanes, `npm run build`,
+`npm run check:api`, the DB-backed API tests, and all affected package checks. The root editor
+check/build commands do not run the API. Local runs and CI evidence are reported separately.
+Before intensive local runs, check load, memory and other worktrees, limit worker counts as
+appropriate and use a free heavy-testing slot. Broad local runs require owner authorization.
 
-Focused affected tests are the normal local run, preferably with limited
-workers. Before CPU-intensive local verification, inspect current CPU/load,
-available cores, memory pressure and competing test/build/browser processes
-across all worktrees. Only one agent should occupy the shared heavy-testing
-slot at a time. If the machine is busy, defer the expensive run to CI or a free
-slot; never kill another agent's processes.
+### Focused verification
 
-By default, `npm test` and `npm run test:heavy` are certified by the mandatory
-GitHub CI merge gate and are not duplicated locally as routine verification. An
-architecture, build, browser or heavy correctness run may be justified when
-sufficient resources are available. A broad local run needs a stated reason,
-confirmed headroom and owner authorization. Every existing test, CI gate and
-acceptance requirement remains in force; report local evidence separately from
-CI evidence. A CI failure triggers focused local reproduction, not an automatic
-full-suite rerun.
-
-Every checkpoint and implementation-PR merge gate keeps the declared complete
-verification contract — the §7.4 contract **including `test:heavy`** — however
-small the change looks. This is a change-impact policy, not a demand to run
-every heavy suite after every edit.
+From the repository root, use `npx vitest run <suite-path>` for editor or package files. From
+`apps/editor`, use `npx vitest run --config vitest.tooling.config.ts tooling-tests/docs` for documentation.
+File arguments are path filters. `-t` filters names after collection and still runs shared hooks.
+Confirm the selection is nonempty. To focus an API test, build once in `apps/api` and run
+`npx vite-node tests/<file>.test.mjs` with the test database configured.
 
 ### Browser QA policy
 
-Focused **agent-driven manual browser QA** is allowed and expected where visual or interaction
-behavior matters: open the app, exercise the changed interaction, inspect rendering and console
-errors, and capture targeted evidence. It is not a separate mandatory lane and does not replace the
-non-browser contract above.
-
-Do **not** require full Playwright capture, exhaustive automated browser journeys, scripted E2E
-replay, or bulk screenshot/video recording for ordinary changes. Those require explicit owner
-authorization. Historical browser specs and artifacts remain in place; this policy changes what is
-required, not what is preserved. The owner retains final manual browser acceptance.
-
-### Verification depth
-
-Merging the pull request is the closeout: there is no phase/slice acceptance
-document, release row, baton or closeout pull request. Focused runs are
-iteration feedback; the complete merge-gate contract under [What a change
-requires](#what-a-change-requires) is the acceptance evidence, and the final
-integrated run happens at the pull request gate. A documentation-only change
-still runs the documentation and architecture gates; it does not fabricate
-product runs.
+Exercise affected visual and interaction behavior with focused manual browser QA. Inspect
+rendering and console errors and capture targeted evidence. Keep the non-browser gates and
+leave final manual acceptance to the owner. Full Playwright capture, automated journey replay
+and bulk recording require explicit owner authorization. For authorized automation, use
+`tests/e2e/test-auth.ts` with a local `E2E_TEST_AUTH_SECRET` from
+[the environment example](../../../.env.example), an allowlisted automation identity and the
+editor Origin. Keep this test-auth seam disabled in production.
 
 ### Correctness tests vs performance benchmarks
 
-`test:heavy` carries expensive **correctness** work: dense numerical and
-geometric sweeps, whole-table differentials and deterministic operation counts.
-They stay in `test:heavy` and must pass like any other test. A deterministic
-operation-count assertion is a correctness oracle, not a timing measurement, and
-slow-but-exact coverage is not a reason to weaken it (rules 12–14).
-
-Actual latency, frame-time, memory, allocation and throughput benchmarks are a
-different thing, and since the **2026-10-28 owner policy amendment** they are
-exclusively **owner-initiated**, triggered by an observed slowdown. No slice,
-phase, final gate, plan or closeout may run the formal performance matrix as an
-acceptance prerequisite. Existing measurements are historical evidence, not
-mandatory prerequisites; an unmeasured row stays unmeasured, never a pass. A
-passing correctness suite is not evidence that runtime performance is unchanged.
-#115 deliberately retired the P23B PERF harness, the browser baseline recorder,
-the reuse ratchet and every wall-clock threshold (rule 11), and its WP5 installed
-the execution structure rather than a benchmark: **no** permanent benchmark
-workflow, registry, scheduled job or CI gate exists, and adding one needs
-separate owner authorization. Harnesses and historical evidence are preserved
-for a future owner-commissioned investigation.
-[Decision record](../../../docs/reference/components/performance.md).
-
-## Focused verification
-
-Installed Vitest is 3.2.7. These commands are run from `apps/editor` unless
-stated, and each one below has been exercised on this tree. A focused run is
-feedback, not acceptance (rule 25).
-
-```sh
-npx vitest run tests/lib/layout/layout-curve-editing.test.ts      # one contract
-npx vitest run tests/lib/camera-core/navigation/camera-motion.test.ts -t 'live target and FOV'
-npx vitest list tests/lib/camera-core/navigation/camera-motion.test.ts -t 'live target and FOV'
-npx vitest related --run src/lib/layout/wall-mesh-builder.ts       # importers of a source file
-npx vitest run --changed HEAD                                      # what the branch touched
-```
-
-A file filter is a path substring and `-t` matches the full test name as a
-regex, so both still collect, transform and run that file's shared hooks: a
-cheap file is not the same as a cheap case, and `-t` cannot avoid a file-wide
-`beforeAll`. Check a selection is non-empty without `--passWithNoTests`.
-
-API contracts sit outside Vitest, so run the one you changed after a single
-build:
-
-```sh
-cd apps/api && npm run build && npx vite-node tests/projects.test.mjs
-```
-
-Escalate by risk, not by habit. Documentation- and planning-only changes use the
-documentation and arch gates rather than fabricating product runs; a checkpoint
-uses the complete §7.4 contract, including the DB-backed API files with zero
-skips.
-
-## Agent E2E (`tests/e2e/`)
-
-This harness is available for explicit owner-authorized browser automation. It is not a routine
-per-slice gate, and ordinary changes should use focused browser spot checks plus the non-browser
-contract above. The test-auth seam remains supported for authorized runs.
-
-Browser-driven agent tests log in without the external OAuth ceremony through
-the API test-auth seam (`POST {PUBLIC_API_ORIGIN}/test-auth/session`,
-`apps/api/src/test-auth.ts`): bearer `E2E_TEST_AUTH_SECRET` + `{ user }` mints
-the canonical app session for an allowlisted automation identity
-(`agent-admin`, `agent-user-a`, `agent-user-b` → normal `google:e2e-*` user
-ids). Ownership and permission checks apply unchanged.
-
-- Helper: `tests/e2e/test-auth.ts` (`loginAs`, Node-side — browsers hide
-  `Set-Cookie`; install the returned pair in the browser context, then
-  navigate). Never imported by `src/`.
-- Its contract is pinned by `tests/e2e/test-auth.test.ts` (runs in the normal
-  `npm test` above).
-- API-side coverage lives in `apps/api/tests/test-auth.test.mjs` (seam
-  session, secret/identity rejection, structural absence without the option,
-  cross-ownership on real Postgres).
-- Enable locally with `E2E_TEST_AUTH_SECRET` in `.env` (ignored, local-only;
-  see [`.env.example`](../../../.env.example)). NEVER set it on production — without it the route does
-  not exist (404).
-- Non-browser POSTs need the `Origin` header matching the API's editor origin;
-  pass `origin` to `loginAs`.
-
-
-## Product convergence performance workflow
-
-**The mandatory comprehensive workflow is suspended.** The
-[2026-10-28 suspension](../../../docs/reference/components/performance.md)
-remains in force for the F2/F3/F4/F8/F13 matrix, battery certification and the former multi-hour
-suite. The [spot-check decision](../../../docs/reference/components/performance.md)
-authorizes `npm run perf:spot` at the four triggers named there. It is not a routine per-slice gate
-and it is not a CI job.
-
-`npm run perf` refuses and points at `perf:spot`. Functional browser specs that live under
-`apps/editor/perf/flows/` remain available for owner-authorized or focused diagnostic runs; they are
-not a routine per-slice gate and they are not the spot check. Historical measurements remain
-historical. An unmeasured row stays unmeasured. `grid-M` and `grid-L` do not
-cover imported models or texture-heavy scenes.
-
-The Playwright harness used by those functional specs, and the bundle report, stay outside the
-default lanes. No schedule and no benchmark registry. Ratifying a spot-check trigger releases no
-production scope from the owner hold.
+Heavy correctness includes deterministic operation counts, geometric sweeps and differentials.
+Keep wall-clock performance thresholds out of the correctness lanes. The owner initiates
+runtime benchmarking based on an observed slowdown. The comprehensive benchmark matrix is
+suspended. Use the authorized `perf:spot` triggers in the
+[performance contract](../../../docs/reference/components/performance.md). Bundle provenance
+and functional browser flow tooling sit outside the Vitest lanes.

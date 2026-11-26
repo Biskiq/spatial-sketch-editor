@@ -104,9 +104,9 @@ export type PrecisionOperation =
 	| 'layout-object-transform'
 	| 'layout-object-delete'
 	| 'layout-object-preset-create'
-	/** SP1d — one virtual edge moved square to itself. */
+	/** One virtual edge moved square to itself. */
 	| 'open-side-offset'
-	/** SP1d — one virtual edge end slid along its adjoining Wall and split there. */
+	/** One virtual edge end slid along its adjoining Wall and split there. */
 	| 'open-side-end-slide';
 
 export type PrecisionRejection = {

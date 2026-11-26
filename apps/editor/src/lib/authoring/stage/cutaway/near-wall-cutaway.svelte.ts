@@ -1,5 +1,5 @@
 /**
- * X2's one **Near walls: Cut | Whole** state.
+ * The one **Near walls: Cut | Whole** state.
  *
  * It is session state, never a document: no authored unit, history entry, Save
  * payload, snapshot or visitor chunk learns that a cutaway exists. The store holds

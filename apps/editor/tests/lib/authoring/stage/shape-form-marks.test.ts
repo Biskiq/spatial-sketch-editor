@@ -41,7 +41,7 @@ import {
 } from '$lib/authoring/adapters/scene/shape/form-size';
 import { sceneObjectCommands } from '../__fixtures__/scene-object-commands';
 import { createUnitProject } from '../__fixtures__/unit-envelope-fixtures';
-import { freshCapture } from '../../layout/__fixtures__/layout-id-capture';
+import { freshCapture } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 
 const RECT = { left: 96, top: 48, width: 1280, height: 720, devicePixelRatio: 1 };
 const PROJECT_ID = 'project-shape-reading';

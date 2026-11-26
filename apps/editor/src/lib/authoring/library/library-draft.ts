@@ -1,5 +1,5 @@
 /**
- * The Library's Customise… draft (T2.S8 U5 / U6).
+ * The Library's Customise… draft.
  *
  * A draft is local view state: beginning it, editing any field and closing it
  * never touch the authoring host, so the project cannot change until Apply or
@@ -41,7 +41,7 @@ export type LibraryDraft = {
 	readonly source: 'curated' | 'project';
 	readonly step: SheenStepId;
 	readonly reading: FinishSheenReading;
-	/** Full typed patch list accumulated in the Material editor (U6). */
+	/** Full typed patch list accumulated in the Material editor. */
 	readonly edits: readonly FinishPatchEdit[];
 	readonly users: readonly string[];
 };

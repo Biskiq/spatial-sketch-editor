@@ -11,11 +11,7 @@ import { invalidJsonMessage } from './readers';
 import type { WallFirstLayoutValidationResult } from './schema';
 import { UNITS } from './schema';
 
-/**
- * Authoring-empty wall-first document. Used by wall-first fixtures and
- * explicit reset/import flows; the editor's default boot document remains
- * the legacy compatibility fixture.
- */
+/** Build an empty current-format Layout with its reference ledger. */
 export function createEmptyWallFirstLayoutDocument(): LayoutDocumentWallFirst {
 	return {
 		units: UNITS,
@@ -27,8 +23,6 @@ export function createEmptyWallFirstLayoutDocument(): LayoutDocumentWallFirst {
 		openings: [],
 		objects: [],
 		regions: [],
-		// The canonical writers always emit the ledger; it stays optional
-		// on read because documents written before the ledger lack it.
 		identity: emptyLayoutIdentityLedger(),
 	};
 }

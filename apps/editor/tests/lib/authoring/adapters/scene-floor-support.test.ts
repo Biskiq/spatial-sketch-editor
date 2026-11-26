@@ -16,7 +16,7 @@ import { floorSupport, supportOccluders } from '$lib/authoring/adapters/scene/su
 import { snapFreePlacement } from '$lib/authoring/adapters/scene/placement';
 import { admitSource } from '$lib/authoring/stage/source-admission';
 import { createUnitProject } from '../__fixtures__/unit-envelope-fixtures';
-import { freshCapture } from '../../layout/__fixtures__/layout-id-capture';
+import { freshCapture } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 
 const PROJECT_ID = 'project-floor-support';
 

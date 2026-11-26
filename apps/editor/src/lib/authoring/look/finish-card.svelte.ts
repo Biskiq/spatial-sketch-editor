@@ -1,5 +1,5 @@
 /**
- * The Finish Card adapter (T2.S8 U4).
+ * The Finish Card adapter.
  *
  * The Card is the quick Finish: it reads one Finish user (an object or a Layout
  * surface), shows how far an edit reaches *before* the edit (D2), and turns each

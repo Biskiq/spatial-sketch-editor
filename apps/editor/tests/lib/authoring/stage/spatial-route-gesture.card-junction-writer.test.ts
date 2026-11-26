@@ -65,7 +65,7 @@ import { readFileSync } from 'node:fs';
 import { flushSync, mount, tick, unmount } from 'svelte';
 import { captureUnitSave, type CameraFreeSceneDocument } from '@portfolio/project-model/units';
 import { createUnitProject } from '../__fixtures__/unit-envelope-fixtures';
-import { freshCapture } from '../../layout/__fixtures__/layout-id-capture';
+import { freshCapture } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 import { createClosedWallCircleDocument, createEmptyWallFirstLayoutDocument, LAYOUT_WALL_FIRST_FORMAT_VERSION, planCreateWallFirstOpening, wallCubicChain, wallFirstWallLength, type LayoutDocumentWallFirst, type LayoutWall, type LayoutWallCurveKnot } from '@portfolio/layout-core/wall';
 import { deriveChainSpans, type LayoutVec2 } from '@portfolio/layout-core/geometry';
 import { layoutCapturedId } from '@portfolio/layout-core/plan';

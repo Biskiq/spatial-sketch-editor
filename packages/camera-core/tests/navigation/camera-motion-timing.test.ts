@@ -8,7 +8,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { CAMERA_MOTION_TIMING, cameraApplyEasing, cameraInverseEasing, createCameraMotion, resolveCameraMotionDuration, type CameraRoute } from '@portfolio/camera-core/camera';
-import { type CameraEasing } from '$lib/types/scene';
+import { type CameraEasing } from '@portfolio/camera-core/camera';
 
 describe('Phase 3.7 easing library', () => {
   const easings: CameraEasing[] = [

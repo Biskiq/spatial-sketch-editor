@@ -1,5 +1,5 @@
 /**
- * X2's caps: the horizontal paper at `stubTopY` and the vertical seam faces that
+ * The caps: the horizontal paper at `stubTopY` and the vertical seam faces that
  * close a cut Wall against an uncut Junction neighbour.
  *
  * The assembly is SL1's own pipeline, not a second one: the cut Walls' retained

@@ -37,7 +37,7 @@ import { createAdapter } from '$lib/authoring/adapters/layout.adapter';
 import { wallStationFrame } from '$lib/authoring/adapters/layout/precision-frames';
 import { wallJoinRefusalWords } from '$lib/authoring/adapters/layout/refusals';
 import { createUnitProject } from '../__fixtures__/unit-envelope-fixtures';
-import { freshCapture } from '../../layout/__fixtures__/layout-id-capture';
+import { freshCapture } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 
 const RECT = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };
 const PROJECT_ID = 'project-layout-a2-join';

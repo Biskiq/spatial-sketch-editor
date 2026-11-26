@@ -15,7 +15,7 @@ import { experienceUpdateIntent, presentationUpdateIntent, stopUpdateIntent } fr
 import { createAcceptanceCoordinator } from '$lib/authoring/f4/acceptance-coordinator';
 import { createEmptyWallFirstLayoutDocument, planCommitLayoutObjectPreset } from '@portfolio/layout-core/wall';
 import { nextLayoutPresetObjectId } from '@portfolio/layout-core/plan';
-import { freshCapture } from '../../layout/__fixtures__/layout-id-capture';
+import { freshCapture } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 import { resolveReference, type AcceptedRevision, type SemanticReference } from '@portfolio/project-model/references';
 import type { AuthoringIntent } from '@portfolio/project-model/f4';
 import type { SceneSurfaceFinish } from '@portfolio/project-model/scene';

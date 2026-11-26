@@ -9,7 +9,7 @@
 import { describe, expect, it } from 'vitest';
 import { CubicBezierCurve3, LineCurve3, Vector3 } from 'three';
 import { compileCameraPositionPath, createCameraMotion, createCameraPositionPath, type CameraRoute } from '@portfolio/camera-core/camera';
-import { expectVectorClose } from '../../../helpers/camera-motion-fixtures';
+import { expectVectorClose } from '../__fixtures__/camera-motion-fixtures';
 
 describe('createCameraPositionPath', () => {
   it('returns exact requested spans without changing rounded geometry or length', () => {

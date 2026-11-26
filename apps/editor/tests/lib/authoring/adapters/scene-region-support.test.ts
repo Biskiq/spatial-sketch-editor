@@ -38,7 +38,7 @@ import {
 	upwardSupportFaces
 } from '$lib/authoring/adapters/scene/support-occlusion';
 import { snappedPlaceSupport } from '$lib/authoring/adapters/scene/pointer-support';
-import { freshCapture } from '../../layout/__fixtures__/layout-id-capture';
+import { freshCapture } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 
 const GENERATION = 'generation-v1d';
 const FRAME: LocalInputFrame = { origin: [0, 0, 0], yaw: 0 };

@@ -1,5 +1,5 @@
 /**
- * The reusable inspection core (E7's rendering half).
+ * The reusable inspection core.
  *
  * It supplies three things the product and the bench share:
  *

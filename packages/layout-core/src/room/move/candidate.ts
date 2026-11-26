@@ -146,12 +146,9 @@ export function proposeWallFirstRoomUnitGeometry(
  * The **rotation** partner of the candidate above: the same moving set rigidly
  * rotated about `pivot`.
  *
- * WIRED on the owner's direction (pre-P23B.8 follow-up, 2026-09-28), which
- * reversed Decision 7 — the reason that decision gave was that a
- * canonical Room has no authored yaw so "a rotation gesture has no honest result
- * to commit", and the honest result is now this candidate, committed by
- * `planWallFirstRoomRotation` exactly as a translation is committed by
- * `planWallFirstRoomMove`. The release re-derives at the release angle against
+ * A Room has no authored yaw. `planWallFirstRoomRotation` commits the rotated
+ * geometry, as `planWallFirstRoomMove` commits translated geometry.
+ * The release re-derives at the release angle against
  * the frozen baseline, so the transient attempt the Plan drag draws is this same
  * mapping (see `proposeWallFirstRoomUnitRotation` below).
  *

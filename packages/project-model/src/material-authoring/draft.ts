@@ -1,5 +1,5 @@
 /**
- * Manual composition and set correction share one lowering (T2.S8 E5, step 3).
+ * Manual composition and set correction share one lowering.
  *
  * `draftFromCandidate` turns a proposed candidate plus the creator's
  * corrections into `DraftEdits`; manual creation writes `DraftEdits` directly.

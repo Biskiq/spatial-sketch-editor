@@ -5,7 +5,7 @@
  *
  * - the **active** pick Paint applies (a Finish, or a colour through the
  *  colour-coat seam) and the creator's favourites and recents;
- * - the Finish Card adapter (U4, `finish-card.svelte.ts`), which shows reach
+ * - the Finish Card adapter, which shows reach
  *  before an edit and owns the Card's preview;
  * - the project palette's own writes and the From-image flow;
  * - the semantic **dropper**, which copies an authored Finish or colour rather
@@ -990,7 +990,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		const material = getMaterial(id);
 		return material.swatchColor ?? material.fallbackColor;
 	};
-	/** The quick Finish on the Card (U4): its one adapter. */
+	/** The quick Finish on the Card: its one adapter. */
 	const card: FinishCard = createFinishCard({
 		services: servicesNow,
 		labelForMaterial: catalogueLabel,
@@ -1031,17 +1031,17 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		},
 	});
 
-	/** The Material editor facet (U6): Finish mode over the Card adapter. */
+	/** The Material editor facet: Finish mode over the Card adapter. */
 	const editor: FinishEditor = createFinishEditor({
 		card: () => card,
 		facts: treatmentFacts,
 		labelForMaterial: catalogueLabel,
 		swatchOf,
 	});
-	/** Align on wall and floor session (U6). */
+	/** Align on wall and floor session. */
 	const align: FinishAlign = createFinishAlign();
 
-	/** Appearance issues service (U6): static + runtime merged for pill, drawer, strip & hatch. */
+	/** Appearance issues service: static + runtime merged for pill, drawer, strip & hatch. */
 	const issues: AppearanceIssuesService = createAppearanceIssues({
 		envelope: () => {
 			const services = servicesNow();

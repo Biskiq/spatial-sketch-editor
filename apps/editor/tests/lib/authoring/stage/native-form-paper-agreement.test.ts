@@ -24,7 +24,7 @@ import { hitStageMark } from '$lib/authoring/stage/stage-handles';
 import { formSizeMeasurement, formWorldPoint, SCENE_FORM_MARK } from '$lib/authoring/adapters/scene/shape/form-size';
 import { createUnitProject } from '../__fixtures__/unit-envelope-fixtures';
 import { stageEnvelope } from '$lib/authoring/stage/unit-stage-source';
-import { freshCapture } from '../../layout/__fixtures__/layout-id-capture';
+import { freshCapture } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 
 const RECT = { left: 80, top: 40, width: 1280, height: 720, devicePixelRatio: 1 };
 

@@ -206,12 +206,8 @@ export function createCapturedWallChainAllocator(capture: LayoutIdCapture): Wall
 /**
  * The wall-chain plan's own DEV-only mark boundaries.
  *
- * The P23B.6 S6 capture left this block in an UNATTRIBUTED interval because no
- * `p2311Measure` mark existed anywhere in the wall-chain / correspondence /
- * face-extraction path. This slice adds exactly the six boundaries its S1 step
- * names, so the wall-chain release splits into plan, topology gate, face
- * extraction, correspondence, room reconciliation and the final canonical
- * gates — in node and in the browser, through the shipped containment harness.
+ * The observer sees plan, topology gate, face extraction, correspondence, Room
+ * reconciliation and final canonical gates in Node and the browser.
  * They are inert unless a measurement harness installs a work observer, so
  * they add no telemetry to a product build.
  */

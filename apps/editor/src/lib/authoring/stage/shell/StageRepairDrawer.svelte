@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * Appearance issues drawer (T2.S8 · U6).
+	 * Appearance issues drawer.
 	 *
 	 * 400 px wide right-docked drawer below the Head. Lists open appearance
 	 * issues grouped by Finish (with affected targets and *Open its Card*)

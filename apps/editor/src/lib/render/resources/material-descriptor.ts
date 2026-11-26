@@ -149,7 +149,7 @@ export type StandardMaterialDescriptor = {
 	 */
 	readonly clip?: false;
 	/**
-	 * The descriptor of X2's **cutaway twin**: the same surface, driven by the
+	 * The descriptor of the **cutaway twin**: the same surface, driven by the
 	 * StageClip's live cutaway top instead of the constant never-cut value.
 	 *
 	 * The flag participates in the canonical key exactly like `clip: false`, so a
@@ -177,7 +177,7 @@ export type BasicMaterialDescriptor = {
 	 * Absent means the surface is clipped like every other world surface.
 	 */
 	readonly clip?: false;
-	/** The X2 cutaway twin (see `StandardMaterialDescriptor.cutaway`). */
+	/** The cutaway twin (see `StandardMaterialDescriptor.cutaway`). */
 	readonly cutaway?: true;
 };
 
@@ -207,7 +207,7 @@ export type LambertMaterialDescriptor = {
 	readonly fog?: false;
 	/** `false` exempts the surface from the Canvas's slice clipping planes. */
 	readonly clip?: false;
-	/** The X2 cutaway twin (see `StandardMaterialDescriptor.cutaway`). */
+	/** The cutaway twin (see `StandardMaterialDescriptor.cutaway`). */
 	readonly cutaway?: true;
 	/**
 	 * The alpha threshold of this surface's **cast shadow** silhouette.

@@ -95,9 +95,8 @@ export type FinishAuthoringHost = {
 	readonly isPaintArmed?: () => boolean;
 	/** Creator favourites and recents. Defaults to the device store. */
 	readonly preferences?: PaintPreferenceStore;
-	/** The colour-coat seam. U3's planner supplies it; until then Paint offers no
-	 * Colours tab, because a colour that keeps relief needs the coat dedupe rule
-	 * rather than an edit of a Finish other surfaces share.
+	/** The colour-coat planner enables the Colours tab. It preserves relief and
+	 * deduplicates coats without mutating the Finish shared by other surfaces.
 	 */
 	readonly colourCoat?: PaintColourPort;
 	/** Optional target analysis for static Finish diagnostics (UV / normal / metric basis). */
@@ -188,7 +187,7 @@ export type FinishPaletteView = {
 	readonly room: boolean;
 };
 
-/** The seam U3's colour-coat planner implements. Paint never edits a Finish. */
+/** The seam the colour-coat planner implements. Paint never edits a Finish. */
 export type PaintColourPort = {
 	/** One acceptance: coat these objects with the colour. */
 	readonly paintEntities: (entityIds: readonly string[], colour: PaintColour) => Promise<boolean>;

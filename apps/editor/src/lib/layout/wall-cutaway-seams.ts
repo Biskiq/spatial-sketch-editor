@@ -1,5 +1,5 @@
 /**
- * X2's seam faces: the vertical paper that closes a cut Wall where it met a Wall
+ * The seam faces: the vertical paper that closes a cut Wall where it met a Wall
  * that was **not** cut.
  *
  * A compiled per-Wall mesh is deliberately open at a Junction interface: the

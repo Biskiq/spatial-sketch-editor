@@ -34,7 +34,7 @@ import {
 	type ProjectEnvelope
 } from '@portfolio/project-model/units';
 import { createUnitProject } from './unit-envelope-fixtures';
-import { freshCapture } from '../../layout/__fixtures__/layout-id-capture';
+import { freshCapture } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 import { createEmptyWallFirstLayoutDocument, planCommitLayoutObjectPreset, planExactLayoutObjectTransform, wallCubicChain, type LayoutDocumentWallFirst, type LayoutWallCurveKnot } from '@portfolio/layout-core/wall';
 import { deriveChainSpans, type LayoutVec2 } from '@portfolio/layout-core/geometry';
 import { nextLayoutPresetObjectId } from '@portfolio/layout-core/plan';

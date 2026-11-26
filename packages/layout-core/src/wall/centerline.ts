@@ -385,11 +385,11 @@ export type WallSamplingOptions = {
 };
 
 /**
- * P23B.4 M-1 — one explicitly-threaded sampled-centerline derivation per acceptance chain.
+ * One explicitly threaded sampled-centerline derivation per acceptance chain.
  *
  * The acceptance chain (`finalizeWallGeometryCandidate`) derives the SAME Wall's canonical
  * centerline once per DISTINCT key and hands THE SAME array object to every consumer that
- * presents that key. The key grammar (owned here, generalized by P23B.5):
+ * presents that key. The key includes:
  *
  * - TRACED INPUTS ONLY: the centerline OBJECT identity (never geometry equality —
  *  coincident coordinates across independent components must not share identity, D-9),
@@ -440,8 +440,7 @@ export type WallSamplingDerivation = {
 	 * `derivations === coldMisses + refusals` by construction: a request whose
 	 * (centerline, key) pair repeats cannot be a derivation, because the store
 	 * never evicts — it is a hit. A changed centerline OBJECT therefore counts as a
-	 * refusal even when its values are equal, which is the honest reason P23B.5 S0
-	 * recorded: identity, not input divergence, is what refuses those hits.
+	 * refusal even when its values are equal. The cache keys on object identity.
 	 *
 	 * A derivation that yields `undefined` is a *failed derive*, and a hit whose
 	 * cached artefact is `undefined` is not useful geometry reuse; both are counted

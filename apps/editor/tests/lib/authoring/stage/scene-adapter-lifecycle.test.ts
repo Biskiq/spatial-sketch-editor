@@ -45,7 +45,7 @@ import { admitSource } from '$lib/authoring/stage/source-admission';
 import { stageEnvelope, stageScene } from '$lib/authoring/stage/unit-stage-source';
 import { sceneObjectCommands } from '../__fixtures__/scene-object-commands';
 import { createUnitProject } from '../__fixtures__/unit-envelope-fixtures';
-import { freshCapture } from '../../layout/__fixtures__/layout-id-capture';
+import { freshCapture } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 
 const PROJECT_ID = 'project-scene-lifecycle';
 const BOX_ID = 'entity-lifecycle-box';

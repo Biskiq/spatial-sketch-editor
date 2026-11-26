@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * One Finish picture: the flat, lit sample tile (U1) over the colour swatch.
+	 * One Finish picture: the flat, lit sample tile over the colour swatch.
 	 *
 	 * The swatch is always the background, so a tile that has not loaded, cannot
 	 * be drawn (no host yet, a refusal, a failure) or has no service keeps the

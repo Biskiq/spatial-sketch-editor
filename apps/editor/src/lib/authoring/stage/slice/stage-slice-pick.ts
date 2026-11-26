@@ -1,5 +1,5 @@
 /**
- * The Stage's shared hit path. Slice and X2 cutaway hide faces from the pick ray;
+ * The Stage's shared hit path. Slice and cutaway hide faces from the pick ray;
  * Object Studio narrows the walk to its one scoped Scene root.
  *
  * The options are read lazily on each pointer. A hidden hit never intercepts the
@@ -118,7 +118,7 @@ function optionsOf(
 }
 
 /**
- * The union of the two display cuts. X2 is per Wall, not just per point:
+ * The union of the two display cuts. The cutaway is per Wall, not just per point:
  * this must receive the actual object from the Scene pick source.
  */
 function hiddenAtOf(
