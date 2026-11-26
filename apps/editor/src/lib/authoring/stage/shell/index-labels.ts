@@ -90,11 +90,12 @@ export function layoutKindWord(
 	sourceKind: string,
 	openingKind?: 'door' | 'window',
 	openSpace = false,
+	roundRoom = false,
 ): string {
 	if (sourceKind === 'wall') return 'Wall';
 	if (sourceKind === 'opening') return openingKind === 'window' ? 'Window' : 'Door';
 	if (sourceKind === 'room-floor' || sourceKind === 'room')
-		return openSpace ? 'Open space' : 'Room';
+		return roundRoom ? 'Room · Round' : openSpace ? 'Open space' : 'Room';
 	if (sourceKind === 'object') return 'Object';
 	return sourceKind.charAt(0).toUpperCase() + sourceKind.slice(1);
 }

@@ -57,6 +57,10 @@ import {
 	LAYOUT_WALL_CHAIN_COMMIT_KIND,
 	LAYOUT_WALL_DELETE_KIND
 } from '$lib/authoring/adapters/layout/drawing-planners';
+import {
+	LAYOUT_ROUND_ROOM_RADIUS_KIND,
+	LAYOUT_ROUND_ROOM_RELEASE_KIND,
+} from '$lib/authoring/adapters/layout/round-room-planners';
 import { createOpeningPlanners } from '$lib/authoring/adapters/layout/opening-planners';
 import { createOpenSidePlanners } from '$lib/authoring/adapters/layout/open-side-planners';
 import {
@@ -207,6 +211,8 @@ describe('Layout precision', () => {
 			LAYOUT_CIRCLE_RADIUS_KIND,
 			LAYOUT_CIRCLE_ROOM_CREATE_KIND,
 			LAYOUT_CIRCLE_TRANSLATE_KIND,
+			LAYOUT_ROUND_ROOM_RADIUS_KIND,
+			LAYOUT_ROUND_ROOM_RELEASE_KIND,
 			LAYOUT_WALL_CHAIN_COMMIT_KIND,
 			LAYOUT_WALL_DELETE_KIND
 		]);

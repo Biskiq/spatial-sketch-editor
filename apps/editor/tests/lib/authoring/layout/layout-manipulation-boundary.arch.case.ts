@@ -232,6 +232,7 @@ const allowed = new Map<string, readonly string[]>([
 			'./layout/precision-intents',
 			'./layout/precision-planners',
 			'./layout/room-duplicate-planners',
+			'./layout/round-room-gesture-session',
 			'./layout/room-gesture-session',
 			'./layout/session-ports',
 			'./layout/split-planners',

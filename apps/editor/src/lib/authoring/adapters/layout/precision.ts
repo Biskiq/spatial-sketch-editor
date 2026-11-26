@@ -33,6 +33,7 @@ import { type FixedWallEndpoint, type LayoutDocumentWallFirst } from '@portfolio
 import {
 	layoutIdCaptureInput,
 	layoutWorkingLevelInput,
+	readLayoutIdCapture,
 	readLayoutWorkingLevel,
 	surfaceKey,
 	type LayoutIdCapture,
@@ -506,4 +507,55 @@ export function buildLayoutIntent(input: {
 		],
 		allocatedIds: [...(input.allocatedIds ?? [])],
 	};
+}
+
+/**
+ * An exact F.1 reference to one Layout subject of the operation's own level.
+ *
+ * Shared with the drawing and Opening operations: they address a Room, Wall or
+ * Opening through the same reference shape, never a second encoding.
+ */
+export function layoutSubjectReference(input: {
+	readonly kind: string;
+	readonly id: string;
+	readonly contentRevision: string;
+	readonly levelId: string;
+}): SemanticReference {
+	return {
+		version: 1,
+		domain: 'layout',
+		revision: { kind: 'exact', contentRevision: input.contentRevision },
+		subject: { kind: input.kind, id: input.id },
+		instancePath: [],
+		location: { kind: 'layout-location', levelId: input.levelId, structureInstancePath: [] },
+		componentId: null,
+		capabilityId: null,
+	};
+}
+
+/**
+ * The operation's captured nonce and working level, through the canonical
+ * readers. A missing capture is a caller defect, never something to infer from
+ * the document.
+ */
+export function readCapturedOperation(
+	request: PlannerRequest<ProjectEnvelope>,
+):
+	| { readonly capture: LayoutIdCapture; readonly levelId: string }
+	| PlannerOutcome<ProjectEnvelope> {
+	const capture = readLayoutIdCapture(request.capturedInputs);
+	if (capture === null) {
+		return rejected(
+			'invalid-value',
+			'The operation must capture its Layout identity before evaluation.',
+		);
+	}
+	const levelId = readLayoutWorkingLevel(request.capturedInputs);
+	if (levelId === null) {
+		return rejected(
+			'invalid-value',
+			'The intent must capture its working Layout level before evaluation.',
+		);
+	}
+	return { capture, levelId };
 }

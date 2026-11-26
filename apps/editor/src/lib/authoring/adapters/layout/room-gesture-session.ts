@@ -2,6 +2,7 @@ import { selectedRoomLabel } from './layout-subjects';
 import { planarDeltaLabel } from '$lib/authoring/stage/stage-adapter-host';
 import { mintLayoutIdCapture, type LayoutIdCapture } from '@portfolio/layout-core/plan';
 import {
+	ROOM_MOVE_SCOPE,
 	resolveIsolatedRoomGroupSubgraph,
 	resolveRoomCopyEnclosure,
 } from '@portfolio/layout-core/room';
@@ -116,7 +117,7 @@ export function createRoomGestureSession({
 			});
 			if (lease.kind !== 'granted') return false;
 			settleRefusal(null);
-			const isolation = resolveIsolatedRoomGroupSubgraph(document, label.roomId);
+			const isolation = resolveIsolatedRoomGroupSubgraph(document, label.roomId, ROOM_MOVE_SCOPE);
 			const centerlines =
 				isolation.kind === 'success'
 					? wallCenterlinePaper(
@@ -335,7 +336,6 @@ export function createRoomGestureSession({
 		roomDuplicateProposal?.release();
 		roomDuplicateProposal = null;
 	}
-
 	/** The compiled floor extent, with the authored boundary as a fallback. */
 	function roomDuplicateFrame(
 		roomId: string,
