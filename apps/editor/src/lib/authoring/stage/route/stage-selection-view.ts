@@ -229,7 +229,7 @@ export function createStageSelectionView() {
 			}
 			if (sourceKind === 'room-floor' || sourceKind === 'room') {
 				const room = layoutPayload?.rooms.find((candidate) => candidate.id === sourceId);
-				return layoutKindWord(sourceKind, undefined, (room?.virtualEdges.length ?? 0) > 0);
+				return layoutKindWord(sourceKind, undefined, !!room?.virtualEdges.length, !!room?.round);
 			}
 			return layoutKindWord(sourceKind);
 		};

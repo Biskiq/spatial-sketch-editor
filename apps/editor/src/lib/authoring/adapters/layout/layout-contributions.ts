@@ -3,7 +3,7 @@ import { layoutMarkDescriptors, type ActiveKnot, type LayoutMarkState } from './
 import { layoutDeletionPreview } from './layout-deletion-preview';
 import { layoutCardActions } from './layout-card-actions';
 import { previewCoordinates, type SettledLayoutRefusal } from './manipulation-support';
-import { regionWallRelations } from '@portfolio/layout-core/room';
+import { findEnclosingRoundRoomForWall, regionWallRelations } from '@portfolio/layout-core/room';
 import { candidatePreviewOf } from './candidate-preview';
 import { restingObjectsOnFloorRegion } from './region-resting';
 import type { StageCandidatePreview } from '$lib/authoring/stage/stage-adapter-host';
@@ -324,19 +324,25 @@ export function createLayoutContributions({
 			const source =
 				subject.kind === 'wall' ? document.walls.find((wall) => wall.id === subject.id) : undefined;
 			if (source?.centerline.kind === 'cubic-chain' && !isClosedWall(source)) {
+				const roundMember = findEnclosingRoundRoomForWall(document, source.id) !== undefined;
 				const frame = curvedWallFrame(document, source.id);
 				if (frame !== null) {
 					facts.push({
-						label: 'Length (arc)',
+						label: roundMember ? 'Length (arc) · set by Radius' : 'Length (arc)',
 						value: `${frame.length.toFixed(3)} m`,
 						fieldId: 'arcLength',
 					});
 				}
-				facts.push({
-					label: 'Bend points',
-					value: String(source.centerline.knots.length),
-					fieldId: 'bendPoints',
-				});
+				// A Round Room member's knots are template stations, not authored
+				// bend points: showing a count would invite an edit the core guard
+				// refuses.
+				if (!roundMember) {
+					facts.push({
+						label: 'Bend points',
+						value: String(source.centerline.knots.length),
+						fieldId: 'bendPoints',
+					});
+				}
 				const activeIndex =
 					activeKnot?.wallId === source.id
 						? source.centerline.knots.findIndex((knot) => knot.id === activeKnot!.knotId)
@@ -373,11 +379,13 @@ export function createLayoutContributions({
 		 */
 		cardWriter(cardSubject: StageCardSubject) {
 			if (cardSubject.sourceKind === 'room' || cardSubject.sourceKind === 'room-floor') {
-				// A Room's Floor and Ceiling Finishes. It writes no Layout field,
-				// so every Room fact stays a Card fact.
+				// A Room's Floor and Ceiling Finishes, plus the Room-owned Radius and
+				// Diameter writer when the Room states Round. The values are facts; the
+				// writer owns the two fields it edits so neither is repeated.
+				const room = document.rooms.find((entry) => entry.id === cardSubject.sourceId);
 				return {
 					summary: 'Room surfaces',
-					fieldIds: [],
+					fieldIds: room?.round === undefined ? [] : ['radius', 'diameter'],
 					view: { component: LayoutRoomCard, services },
 				};
 			}

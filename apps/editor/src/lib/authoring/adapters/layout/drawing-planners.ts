@@ -31,8 +31,6 @@ import { faceArea, type LayoutVec2 } from '@portfolio/layout-core/geometry';
 import {
 	layoutIdCaptureInput,
 	layoutWorkingLevelInput,
-	readLayoutIdCapture,
-	readLayoutWorkingLevel,
 	type LayoutIdCapture,
 	type LayoutSurfaceLineage,
 } from '@portfolio/layout-core/plan';
@@ -48,10 +46,8 @@ import type {
 	AuthoringIntent,
 	DomainPlanner,
 	PlannerOutcome,
-	PlannerRequest,
 	PreparedCandidate,
 } from '@portfolio/project-model/f4';
-import type { SemanticReference } from '@portfolio/project-model/references';
 import {
 	canonicalUnitJson,
 	replaceUnitData,
@@ -60,7 +56,18 @@ import {
 	type ProjectEnvelope,
 } from '@portfolio/project-model/units';
 
-import { layoutPlanner, preparedLayoutCandidate, registerLayoutSurfaceLineage } from './precision';
+import {
+	layoutPlanner,
+	layoutSubjectReference,
+	preparedLayoutCandidate,
+	readCapturedOperation,
+	registerLayoutSurfaceLineage,
+} from './precision';
+import { createRoundRoomPlanners } from './round-room-planners';
+
+// The Opening operations address their host through the same reference and
+// captured-identity readers; these stay reachable from the drawing module.
+export { layoutSubjectReference, readCapturedOperation } from './precision';
 
 export const LAYOUT_WALL_CHAIN_COMMIT_KIND = 'layout-wall-chain-commit';
 export const LAYOUT_WALL_DELETE_KIND = 'layout-wall-delete';
@@ -224,54 +231,6 @@ function readChainPayload(payload: unknown): WallChainCommitPayload | { readonly
 }
 
 /**
- * An exact F.1 reference to one Layout subject of the operation's own level.
- *
- * Shared with the Opening operations: they address a host Wall or an
- * Opening through the same reference shape, never a second encoding.
- */
-export function layoutSubjectReference(input: {
-	readonly kind: string;
-	readonly id: string;
-	readonly contentRevision: string;
-	readonly levelId: string;
-}): SemanticReference {
-	return {
-		version: 1,
-		domain: 'layout',
-		revision: { kind: 'exact', contentRevision: input.contentRevision },
-		subject: { kind: input.kind, id: input.id },
-		instancePath: [],
-		location: { kind: 'layout-location', levelId: input.levelId, structureInstancePath: [] },
-		componentId: null,
-		capabilityId: null,
-	};
-}
-
-/**
- * The operation's captured nonce and working level, through the canonical
- * readers. A missing capture is a caller defect, never something to infer from
- * the document.
- *
- * Shared with the Opening operations, which use the same captured
- * identity and level contract as every other Layout F.4 planner.
- */
-export function readCapturedOperation(
-	request: PlannerRequest<ProjectEnvelope>,
-):
-	| { readonly capture: LayoutIdCapture; readonly levelId: string }
-	| PlannerOutcome<ProjectEnvelope> {
-	const capture = readLayoutIdCapture(request.capturedInputs);
-	if (capture === null) {
-		return refused('The operation must capture its Layout identity before evaluation.');
-	}
-	const levelId = readLayoutWorkingLevel(request.capturedInputs);
-	if (levelId === null) {
-		return refused('The intent must capture its working Layout level before evaluation.');
-	}
-	return { capture, levelId };
-}
-
-/**
  * The chain-commit planner: one captured intent, one canonical plan, one
  * complete candidate document.
  *
@@ -404,6 +363,8 @@ export type WallDeletionSummary = {
 	readonly keptOpenRoomIds: readonly string[];
 	/** Why an open Space retired, with the names the consequence line reads. */
 	readonly spaceNotes: readonly SpaceLifecycleNote[];
+	/** Round Rooms that survive this change but lose their stated Round fact. */
+	readonly clearedRoundRoomNames: readonly string[];
 	readonly summary: string;
 };
 
@@ -453,6 +414,15 @@ export function planWallDeletion(options: {
 	const keptOpenRoomIds = options.document.rooms
 		.filter((room) => room.virtualEdges.length > 0 && resultRoomById.has(room.id))
 		.map((room) => room.id);
+	// C4 — a surviving Room that loses the stated fact says so in its own name.
+	const clearedRoundRoomNames = options.document.rooms
+		.filter(
+			(room) =>
+				room.round !== undefined &&
+				resultRoomById.get(room.id) !== undefined &&
+				resultRoomById.get(room.id)!.round === undefined,
+		)
+		.map((room) => room.name ?? room.id);
 	const spaceNotes = (plan.spaceRetirements ?? []).map((retirement) => {
 		const merged = baselineRoomById.get(retirement.roomId);
 		const successor =
@@ -505,6 +475,7 @@ export function planWallDeletion(options: {
 		),
 		spaceNotes,
 		areaChanges,
+		clearedRoundRoomNames,
 	});
 	return {
 		kind: 'planned',
@@ -517,6 +488,7 @@ export function planWallDeletion(options: {
 		openedRoomIds,
 		keptOpenRoomIds,
 		spaceNotes,
+		clearedRoundRoomNames,
 		summary,
 	};
 }
@@ -542,6 +514,7 @@ export function wallDeletionSummary(input: {
 	readonly keptOpenRoomNames?: readonly string[];
 	readonly spaceNotes?: readonly SpaceLifecycleNote[];
 	readonly areaChanges?: readonly { readonly name: string; readonly areaAfter: number }[];
+	readonly clearedRoundRoomNames?: readonly string[];
 }): string {
 	const removals = ['the Wall'];
 	if (input.hostedOpeningIds.length > 0) {
@@ -585,6 +558,9 @@ export function wallDeletionSummary(input: {
 	const keptOpen = [...new Set(input.keptOpenRoomNames ?? [])];
 	if (keptOpen.length > 0) {
 		spaceSentences.push(`It keeps ${keptOpen.join(' and ')} open.`);
+	}
+	for (const name of [...new Set(input.clearedRoundRoomNames ?? [])]) {
+		spaceSentences.push(`${name} stops being round.`);
 	}
 	const areaChanges = input.areaChanges ?? [];
 	for (const change of areaChanges) {
@@ -915,6 +891,7 @@ export function createDrawingPlanners(): readonly DomainPlanner<ProjectEnvelope>
 		circleRoomCreatePlanner(),
 		circleRadiusPlanner(),
 		circleTranslatePlanner(),
+		...createRoundRoomPlanners(),
 	];
 }
 

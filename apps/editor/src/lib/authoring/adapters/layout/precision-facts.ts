@@ -5,7 +5,11 @@
  * offered only where a production planner owns the field. Both are pure reads
  * over the compiled geometry and the document, never an edit path.
  */
-import { composeSpaceBoundary, readClosedWallCircle } from '@portfolio/layout-core/room';
+import {
+	composeSpaceBoundary,
+	findEnclosingRoundRoomForWall,
+	readClosedWallCircle,
+} from '@portfolio/layout-core/room';
 import {
 	faceArea,
 	regionsOverSpace,
@@ -68,6 +72,26 @@ export function openSideRunCount(
 }
 
 /**
+ * The names of every Round Room a Wall is a member of, in Room storage order.
+ *
+ * This is a read of the authored `boundary` arrays, not a face traversal: an
+ * arc's Card offers one step back to the whole, and the Wall's own identity
+ * already names the subject.
+ */
+export function wallBoundedRooms(
+	document: LayoutDocumentWallFirst,
+	wallId: string,
+): readonly { readonly roomId: string; readonly name: string }[] {
+	const rooms = document.rooms.filter((room) => room.boundary.some((ref) => ref.wallId === wallId));
+	// Only a Wall that bounds a Round Room is a ring member. An ordinary shared
+	// Wall keeps its Card unchanged; a ring arc that also bounds an ordinary
+	// neighbour offers both destinations, because the creator needs a way back
+	// to every Space the member separates.
+	if (!rooms.some((room) => room.round !== undefined)) return [];
+	return rooms.map((room) => ({ roomId: room.id, name: room.name ?? 'Room' }));
+}
+
+/**
  * The Room Card's facts. Area is read from the compiled floor polygon, never
  * recomputed from the authored boundary; the kind word and the open-side count
  * are derived readings of one Space record.
@@ -92,8 +116,26 @@ export function layoutRoomFacts(
 			: (document.regions.find((region) => region.id === overheadRegion.regionId)?.name ??
 				overheadRegion.regionId);
 	return [
-		{ label: 'Kind', value: openSides > 0 ? 'Open space' : 'Room', fieldId: 'kind' },
+		{
+			label: 'Kind',
+			value: room.round !== undefined ? 'Room · Round' : openSides > 0 ? 'Open space' : 'Room',
+			fieldId: 'kind',
+		},
 		{ label: 'Name', value: room.name ?? '(unnamed)', fieldId: 'name' },
+		...(room.round === undefined
+			? []
+			: [
+					{
+						label: 'Radius',
+						value: formatMeters(room.round.radius),
+						fieldId: 'radius',
+					} as const,
+					{
+						label: 'Diameter',
+						value: formatMeters(room.round.radius * 2),
+						fieldId: 'diameter',
+					} as const,
+				]),
 		{
 			label: 'Area',
 			value:
@@ -148,6 +190,15 @@ export function layoutFacts(
 			{ label: 'Height', value: formatMeters(wall.height), fieldId: 'height' },
 			{ label: 'Thickness', value: formatMeters(wall.thickness), fieldId: 'thickness' },
 		];
+		const roundRoom = findEnclosingRoundRoomForWall(document, wall.id);
+		const bounding = wallBoundedRooms(document, wall.id);
+		if (bounding.length > 0) {
+			facts.push({
+				label: 'Bounds',
+				value: bounding.map((room) => room.name).join(' · '),
+				fieldId: 'bounds',
+			});
+		}
 		if (isClosedWall(wall)) {
 			const circle = readClosedWallCircle(document, wall.id);
 			if (circle !== null) {
@@ -162,6 +213,14 @@ export function layoutFacts(
 					},
 				);
 			}
+		} else if (roundRoom !== undefined) {
+			// A connected rotunda is a ring of ordinary Walls. Its Length is set by
+			// the Room's Radius, never typed per arc.
+			facts.push({
+				label: 'Shape',
+				value: 'Round Room member (length set by Radius)',
+				fieldId: 'shape',
+			});
 		}
 		// Format 6 — the role is derived from Room boundary membership, shown
 		// read-only because it follows geometry rather than a control.
@@ -265,6 +324,16 @@ export function layoutWritableFacts(
 				);
 			}
 			return dimensions;
+		}
+		// A Round Room's member arc owns no geometry writer: its length follows
+		// the Room's Radius, and the core guard refuses bend/knot/straighten and
+		// junction moves. Height, thickness and name remain ordinary writes.
+		if (findEnclosingRoundRoomForWall(document, wall.id) !== undefined) {
+			return [
+				{ id: 'name', label: 'Name', value: wall.name ?? '', unit: 'text' },
+				{ id: 'height', label: 'Height', value: wall.height, unit: 'm' },
+				{ id: 'thickness', label: 'Thickness', value: wall.thickness, unit: 'm' },
+			];
 		}
 		const frame = wallFrame(document, subject.id);
 		// A curved open Wall keeps every precision scalar edit and gains no length/angle/rigid

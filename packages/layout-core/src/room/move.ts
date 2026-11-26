@@ -7,4 +7,8 @@ export {
 	proposeWallFirstRoomUnitRotation,
 } from './move/candidate';
 export type { RoomUnitMoveSubgraph, RoomUnitMoveProposalWall } from './move/candidate';
-export { planWallFirstRoomMove, planWallFirstRoomRotation } from './move/plans';
+export {
+	ROOM_MOVE_SCOPE,
+	planWallFirstRoomMove,
+	planWallFirstRoomRotation,
+} from './move/plans';

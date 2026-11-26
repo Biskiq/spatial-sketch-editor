@@ -26,8 +26,8 @@ that have not been tried by a creator. What still needs a check is listed once, 
 **At planning time (`97e208d7`), T1 had a wiring gap, not a design gap, in its fundamentals.** Split,
 join, isolated Room duplicate and Opening Repeat existed as tested layout-core planners that no editor
 intent reached, and Arc was disabled on the Walls plate. Those initial wiring slices (`A0–A8`), along
-with `X0–X2`, `SL1–SL2`, `SP1–SP2`, `C1–C3` and `V1a–V1d`, have since landed; the sections below keep
-the planning baseline and design rationale intact for the remaining unshipped slices (`C4`, `SL3`,
+with `X0–X2`, `SL1–SL2`, `SP1–SP2`, `C1–C4` and `V1a–V1d`, have since landed; the sections below keep
+the planning baseline and design rationale intact for the remaining unshipped slices (`SL3`,
 `SP3`, `V2`, `V3` and `R`).
 
 Behind them sit five pieces of real design, now resolved to the level a plan can start from:
@@ -428,7 +428,7 @@ Wave 3   SP1 opened Room stays a Space · SP2 Space from partial Walls          
          J   surface references and lineage, with T2's S5a                      joint plan
          X2  near-wall cutaway switch                                           implement
 
-Wave 4   C   connected curves (plan on S1) · R  Unroll the room
+Wave 4   R  Unroll the room
          SL2 Drawn cut · SP3 Space from a floor
          V2  Wall top profiles → V3 shed and gable → SL3 Section
 
@@ -451,7 +451,7 @@ Slice's Section, an opened Room before a pavilion, a flat canopy before a gable.
 | SL1 Level cut | **Ready for implementation.** Interaction is settled; cap generation is the implementer's | Its PR |
 | Spaces | **Ready for implementation once S2 reports.** Concept and rules are settled; the encoding is not, on purpose | SP-plan, then PR |
 | Verticality | **Ready for implementation.** Order, datum and intent are settled | V-plan, then PR |
-| Connected curves | **Not ready for a plan.** Waits for S1 | S1 |
+| Connected curves | **Landed (`C1–C4`).** The C-plan is retired after acceptance | – |
 | Section (SL3), SP3, V2, V3 | **Sequenced, not planned.** Each follows a slice that will inform it | Later |
 
 Overall: the proposal is ready to drive implementation of the fundamentals and implementation

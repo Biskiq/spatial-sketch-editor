@@ -7,7 +7,6 @@
  * permanent handle constellation.
  */
 import type { FixedWallEndpoint, LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
-import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
 import type {
 	StageAdapterContext,
@@ -25,7 +24,7 @@ import {
 	type OpeningResizeCorner,
 	type OpeningResizeEdge,
 } from './opening-planners';
-import { LAYOUT_CIRCLE_RADIUS_KIND } from './drawing-planners';
+import { closedWallRadiusMarks, roundRoomRadiusMark } from './radius-marks';
 import {
 	LAYOUT_OPENING_MEASURE_KIND,
 	LAYOUT_JUNCTION_MOVE_KIND,
@@ -39,6 +38,7 @@ import {
 	selectedClosedWall,
 	selectedCurvedWall,
 	selectedOpening,
+	selectedRoundRoom,
 	wallLength,
 	wallDirection,
 	framePoint,
@@ -56,6 +56,8 @@ export type LayoutMarkState = {
 		readonly activeKnot: ActiveKnot | null;
 		readonly idleBendHint: { readonly wallId: string; readonly station: number } | null;
 		readonly radiusRefusal: string | null;
+		/** The Room-owned radius writer's own refusal, for the Round Room ray. */
+		readonly roomRadiusRefusal: string | null;
 		readonly bend: {
 			readonly wallId: string;
 			readonly knotId: string;
@@ -90,7 +92,13 @@ export function layoutMarkDescriptors(input: {
 }): readonly StageHandleDescriptor[] {
 	const { services, document, adapterContext, state, taskOpen } = input;
 	if (taskOpen || services.stage.session.task() !== null) return [];
-	const { activeKnot, idleBendHint, radiusRefusal, bend: bendGesture } = state.curve;
+	const {
+		activeKnot,
+		idleBendHint,
+		radiusRefusal,
+		roomRadiusRefusal,
+		bend: bendGesture,
+	} = state.curve;
 	const { wall: gesture, opening: openingGesture, junctionActive, refusal } = state;
 	const wall = selectedWall(adapterContext);
 	const curved = wall === null ? selectedCurvedWall(document, adapterContext) : null;
@@ -99,7 +107,12 @@ export function layoutMarkDescriptors(input: {
 		wall === null && curved === null && closed === null
 			? selectedOpening(document, adapterContext)
 			: null;
-	if (wall === null && curved === null && closed === null && opening === null) return [];
+	const roundRoom =
+		wall === null && curved === null && closed === null && opening === null
+			? selectedRoundRoom(document, adapterContext)
+			: null;
+	if (wall === null && curved === null && closed === null && opening === null && roundRoom === null)
+		return [];
 	const y = adapterContext.snapshot.domain.datumMeters;
 	// The unrolled sheet is the editing surface: its Wall's canonical marks
 	// (including a closed Wall's radius grip) are not drawn or hit while it
@@ -110,50 +123,14 @@ export function layoutMarkDescriptors(input: {
 		(closed !== null && wallUnfold.isActive(closed.wallId))
 	)
 		return [];
-	if (closed !== null) {
-		// The only shape grip a closed Wall publishes is the radius grip.
-		// It sits on the authored seam (the rim point) and writes the same
-		// retained radius planner as the Card's Radius/Diameter fields.
-		// The closed Wall's only shape grip is a radius ray from the centre to
-		// the authored seam, never a pair of end points: a closed Wall has no
-		// ends to move. The ray is the primary grip, so it stays visible.
-		// The size chip sits away from the seam and discloses the retained
-		// height/thickness writers; it never replaces the radius semantics.
-		const planReading = adapterContext.evaluation.settledReading === 'plan';
-		const seamX = closed.seam[0] - closed.center[0];
-		const seamZ = closed.seam[1] - closed.center[1];
-		const radius = Math.hypot(seamX, seamZ);
-		const chipAngle = Math.atan2(seamZ, seamX) + Math.PI * 2 * 0.82;
-		const chipPoint: LayoutVec2 = [
-			closed.center[0] + Math.cos(chipAngle) * radius,
-			closed.center[1] + Math.sin(chipAngle) * radius,
-		];
-		return [
-			{
-				id: 'layout-wall-size-chip',
-				kind: 'point',
-				role: 'disclose',
-				anchor: [chipPoint[0], y, chipPoint[1]],
-				screen: { offset: [0, -22] },
-				label: 'Size',
-				reveals: ['layout-wall-thickness', ...(planReading ? [] : ['layout-wall-height'])],
-			},
-			{
-				id: 'layout-circle-radius-mark',
-				kind: 'ray',
-				role: 'edit',
-				anchor: [closed.center[0], y, closed.center[1]],
-				axis: [seamX, 0, seamZ],
-				extent: closed.radius,
-				label: 'Radius',
-				fact: 'radius',
-				verb: 'Resize',
-				planner: LAYOUT_CIRCLE_RADIUS_KIND,
-				value: `${closed.radius.toFixed(2)} m`,
-				refusal: radiusRefusal,
-			},
-		];
-	}
+	if (roundRoom !== null) return [roundRoomRadiusMark(roundRoom, y, roomRadiusRefusal)];
+	if (closed !== null)
+		return closedWallRadiusMarks(
+			closed,
+			y,
+			adapterContext.evaluation.settledReading === 'plan',
+			radiusRefusal,
+		);
 	if (curved !== null) {
 		// A curved Wall does not carry a permanent constellation of bend
 		// handles. The body is the ordinary editing surface; only the knot a

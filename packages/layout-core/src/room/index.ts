@@ -124,6 +124,7 @@ export type {
 } from './isolation';
 
 export {
+	ROOM_MOVE_SCOPE,
 	planWallFirstRoomMove,
 	planWallFirstRoomRotation,
 	proposeWallFirstRoomUnitGeometry,

@@ -119,6 +119,19 @@ reconciliation; geometry remains derived.
   Opening keeps its angular station by scaling `offset` with the circumference and keeps its
   physical width. The whole edit refuses if an Opening no longer fits or would overlap; nothing is
   clamped.
+- **Round authoring.** A selected Round Room reads **Room · Round** with Radius, Diameter, Area and
+  the ordinary Room actions plus **Release round**. Radius and Diameter are one Room-owned writer:
+  the Card field and the Stage's centre → seam ray submit the same `layout-round-room-radius`
+  intent, so a typed value and a drag agree, and a drag previews the canonical planner on every
+  move. A member arc reads **set by Radius**, hides Bend point and the geometry writers, and refuses
+  bend/knot, straighten, length, angle and rim-Junction moves with **This wall is part of a round
+  room. Change Radius, or release round.** Height, thickness, name and Opening edits remain
+  ordinary. A Wall Card names each Room it bounds as **Go to <Room>**; a Round member that also
+  separates an ordinary neighbour names both destinations. That action changes only the selection. **Release round** clears `room.round` on a ring and splits an isolated circle into two
+  open arcs of the same locus; both are one undoable F.4 acceptance with captured correspondence.
+  A Round Room's move carries its complete attached physical component, and Duplicate uses the A5
+  enclosure copy with the seam mapped and fresh captured ids. Removing a Wall that clears the fact
+  says **<name> stops being round.**
 
 ## Hosted Openings
 

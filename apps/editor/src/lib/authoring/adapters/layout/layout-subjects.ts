@@ -1,5 +1,5 @@
 import { roomLabelFacts } from '$lib/authoring/stage/stage-adapter-host';
-import { readClosedWallCircle } from '@portfolio/layout-core/room';
+import { readClosedWallCircle, roundRoomSeamJunctionId } from '@portfolio/layout-core/room';
 import {
 	isClosedWall,
 	type LayoutDocumentWallFirst,
@@ -58,6 +58,35 @@ export function selectedClosedWall(
 		? null
 		: { wallId: source.id, center: facts.center, radius: facts.radius, seam: facts.seam };
 }
+/**
+ * The selected Round Room's authored centre, radius and seam point.
+ *
+ * The Room is selected by its floor (the same `room-floor` source a Room Card
+ * uses). The seam is read from the canonical C1 helper, never re-detected from
+ * Wall controls, so the Stage's radius ray and the Room's Radius field agree on
+ * the phase the Room stores.
+ */
+export function selectedRoundRoom(
+	document: LayoutDocumentWallFirst,
+	adapterContext: StageAdapterContext,
+): { roomId: string; center: LayoutVec2; radius: number; seam: LayoutVec2 } | null {
+	const primary = adapterContext.selectionState().primary;
+	if (primary === null || primary.domain !== 'layout' || primary.subject.kind !== 'room')
+		return null;
+	const room = document.rooms.find((candidate) => candidate.id === primary.subject.id);
+	if (room === undefined || room.round === undefined) return null;
+	const wallById = new Map(document.walls.map((wall) => [wall.id, wall] as const));
+	const seamJunctionId = roundRoomSeamJunctionId(room, wallById);
+	const seam = document.junctions.find((junction) => junction.id === seamJunctionId)?.point;
+	if (seam === undefined) return null;
+	return {
+		roomId: room.id,
+		center: [room.round.center[0], room.round.center[1]],
+		radius: room.round.radius,
+		seam: [seam[0], seam[1]],
+	};
+}
+
 /** The selected **curved** open Wall, or `null` for a straight one. */
 export function selectedCurvedWall(
 	document: LayoutDocumentWallFirst,
