@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- *  canary runner.
+ * Canary runner.
  *
  * A canary is one realistic defect, recorded as a literal mutation of a
  * production file, plus the tests that must fail because of it. The runner
@@ -8,15 +8,16 @@
  * and reports `killed` (the tests failed) or `survived` (they stayed green).
  *
  * The corpus is evidence for the verification contract, never a replacement
- * for it: a deletion is still justified by the section 7 rules, and a canary
+ * for it: a deletion still follows the test contract, and a canary
  * that survives at baseline gets a test before any test is deleted.
  *
  * Usage:
- *  node tools/canaries/run.mjs # every editor canary
+ *  node tools/canaries/run.mjs # editor and package Vitest canaries
+ *  node tools/canaries/run.mjs --all # complete corpus, including Postgres
  *  node tools/canaries/run.mjs --only 01-envelope-version
  *  node tools/canaries/run.mjs --kind api # DB-backed API canaries
  *  node tools/canaries/run.mjs --list
- *  node tools/canaries/run.mjs --json.harness/canaries.json
+ *  node tools/canaries/run.mjs --json .harness/canaries.json
  *
  * The runner never runs in CI. It refuses to touch a dirty target file, and it
  * restores every file it mutates from HEAD even when the test run throws.
@@ -113,7 +114,8 @@ function runApi(canary) {
 	const output = `${result.stdout ?? ''}\n${result.stderr ?? ''}`;
 	return {
 		status: typeof result.status === 'number' ? result.status : 1,
-		failures: output.match(/^\s*code: 'ERR_ASSERTION'$/gm)?.length ?? 0,
+		// Node can report assertion error codes as TAP fields or inspected properties.
+		failures: output.match(/^[ \t]+code: 'ERR_ASSERTION',?\r?$/gm)?.length ?? 0,
 	};
 }
 
