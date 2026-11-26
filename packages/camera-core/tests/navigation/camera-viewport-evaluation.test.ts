@@ -556,7 +556,7 @@ describe('view viewing intents', () => {
 		expectClose(azimuth.state.pose.elevationRadians, Math.PI / 2, 1e-12);
 	});
 
-	it('[cap:camera.one-authority edge] anchors an off-axis Wall point and pans at its depth', () => {
+	it(' anchors an off-axis Wall point and pans at its depth', () => {
 		const camera = {
 			...state(),
 			pose: { target: [0, 1.5, 0] as Vec3, azimuthRadians: 0, elevationRadians: 0, targetPlaneHeightMeters: 0.08 }

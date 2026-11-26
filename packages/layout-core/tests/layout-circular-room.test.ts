@@ -260,7 +260,7 @@ describe('C2 product — Circle creation and radius semantics', () => {
 	});
 });
 
-it('[cap:layout.circular-room edge] refuses a new circular contact while allowing unrelated Room motion', () => {
+it(' refuses a new circular contact while allowing unrelated Room motion', () => {
 	const circle = circleDocument();
 	const circleWall = circle.walls[0]!;
 	const outside = planWallChain({
