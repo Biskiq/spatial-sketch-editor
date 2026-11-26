@@ -11,7 +11,10 @@
  */
 
 import type { SceneEntity } from '@portfolio/project-model/scene';
-import type { StageAdapterContext, StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
+import type {
+	StageAdapterContext,
+	StageAdapterServices,
+} from '$lib/authoring/stage/stage-adapter-host';
 import { stageEnvelope, stageScene } from '$lib/authoring/stage/stage-adapter-host';
 import { getAssetById } from '$lib/content/assets';
 import { catalogueModelContactMinY } from '$lib/authoring/scene/object-definition-policy';
@@ -21,7 +24,7 @@ import {
 	isSceneObjectEntity,
 	primitiveBounds,
 	type SceneObjectBounds,
-	type SceneObjectFootprint
+	type SceneObjectFootprint,
 } from './object-marks';
 import { localContactMinY, sceneModelContactMinY, type SceneCandidate } from './placement';
 
@@ -36,7 +39,7 @@ export function selectedObjectEntity(adapterContext: StageAdapterContext): Scene
 		return null;
 	}
 	const entity = stageScene(adapterContext.snapshot).entities.find(
-		(entry) => entry.id === primary.subject.id
+		(entry) => entry.id === primary.subject.id,
 	);
 	return isSceneObjectEntity(entity) ? entity : null;
 }
@@ -47,7 +50,7 @@ export function objectContact(services: StageAdapterServices, entity: SceneEntit
 		entity,
 		entity.kind === 'model'
 			? sceneModelContactMinY(stageEnvelope(services.stage.snapshot()), entity)
-			: null
+			: null,
 	);
 }
 
@@ -58,7 +61,7 @@ export function objectContact(services: StageAdapterServices, entity: SceneEntit
  */
 export function objectBounds(
 	adapterContext: StageAdapterContext,
-	entity: SceneEntity
+	entity: SceneEntity,
 ): SceneObjectBounds | null {
 	const rendered = adapterContext.sceneBounds(entity.id);
 	if (rendered !== null) return rendered;
@@ -68,7 +71,7 @@ export function objectBounds(
 export function objectFootprint(
 	services: StageAdapterServices,
 	entity: SceneEntity,
-	bounds: SceneObjectBounds | null
+	bounds: SceneObjectBounds | null,
 ): SceneObjectFootprint | null {
 	if (bounds !== null) return boundsFootprint(bounds);
 	if (entity.kind !== 'model') return null;
@@ -78,13 +81,13 @@ export function objectFootprint(
 /** A model proxy comes only from its captured creator metadata or verified catalogue record. */
 export function admittedModelFootprint(
 	snapshot: StageAdapterContext['snapshot'],
-	assetId: string
+	assetId: string,
 ): SceneObjectFootprint | null {
 	for (const resource of stageEnvelope(snapshot).units.resources.data.resources) {
 		if (resource.kind === 'model' && resource.id === assetId && resource.model !== undefined) {
 			return {
 				width: resource.model.placement.footprint.width,
-				depth: resource.model.placement.footprint.depth
+				depth: resource.model.placement.footprint.depth,
 			};
 		}
 	}
@@ -102,7 +105,7 @@ export function sizePlannerContext(adapterContext: StageAdapterContext) {
 	return {
 		layout: envelope.units.layout.data,
 		scene: envelope.units.scene.data,
-		sourceContentId: snapshot.sourceContentId
+		sourceContentId: snapshot.sourceContentId,
 	};
 }
 

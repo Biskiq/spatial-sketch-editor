@@ -1,10 +1,14 @@
 import { goto, replaceState } from '$app/navigation';
-import { eyeOfInspectionPose, fovYDegreesOf, type ViewportRect } from '@portfolio/camera-core/viewport';
+import {
+	eyeOfInspectionPose,
+	fovYDegreesOf,
+	type ViewportRect,
+} from '@portfolio/camera-core/viewport';
 import {
 	PLACE_COPY_PARAM,
 	STUDIO_ENTRY_PARAM,
 	STUDIO_ENTRY_VALUE,
-	STUDIO_OBJECT_PARAM
+	STUDIO_OBJECT_PARAM,
 } from '$lib/platform/studio-entry';
 import { beginFormCopyTransfer } from '../adapters/scene/library/transfer';
 import { sceneEntityReference } from '../adapters/scene/placement';
@@ -25,13 +29,29 @@ import { isStudioOperation, studioAdmitsCardAction } from './studio-model';
 export function createStudioStagePorts(input: {
 	readonly projectId: string;
 	readonly facade: () => StageFacade | null;
-	readonly commands: () => Pick<StageShellCommands, 'closeSelection' | 'selectStageReference' | 'closeTask' | 'armWorldTool'>;
-	readonly shell: () => Pick<StageShellState,
-		'activeWorldTool' | 'libraryOpen' | 'indexOpen' | 'setLibraryOpen' | 'setWorldPlateOpen' |
-		'setIndexOpen' | 'setNotice' | 'reducedMotion' | 'bumpContributions' | 'nowSeconds'>;
+	readonly commands: () => Pick<
+		StageShellCommands,
+		'closeSelection' | 'selectStageReference' | 'closeTask' | 'armWorldTool'
+	>;
+	readonly shell: () => Pick<
+		StageShellState,
+		| 'activeWorldTool'
+		| 'libraryOpen'
+		| 'indexOpen'
+		| 'setLibraryOpen'
+		| 'setWorldPlateOpen'
+		| 'setIndexOpen'
+		| 'setNotice'
+		| 'reducedMotion'
+		| 'bumpContributions'
+		| 'nowSeconds'
+	>;
 	readonly subjectScope: ReturnType<typeof createSubjectScope>;
 	readonly viewing: () => Pick<ReturnType<typeof createStageViewing>, 'submit'>;
-	readonly projectSession: () => Pick<ReturnType<typeof createProjectSession>, 'headSave' | 'saveBeforeSwitch'>;
+	readonly projectSession: () => Pick<
+		ReturnType<typeof createProjectSession>,
+		'headSave' | 'saveBeforeSwitch'
+	>;
 	readonly selection: () => StageSelectionEntry | null;
 	readonly entities: StudioPorts['entities'];
 	readonly rect: () => ViewportRect | null;
@@ -63,13 +83,24 @@ export function createStudioStagePorts(input: {
 				input.commands().closeSelection();
 				return true;
 			}
-			input.commands().selectStageReference(
-				sceneEntityReference(entityId, stage.snapshot().domain.unitRevisions.scene)
-			);
+			input
+				.commands()
+				.selectStageReference(
+					sceneEntityReference(entityId, stage.snapshot().domain.unitRevisions.scene),
+				);
 			return true;
 		},
 		setScope: (scope) => {
-			input.subjectScope.set(scope === null ? null : { entityId: scope.entityId, admitsOperation: isStudioOperation, admitsCardAction: (adapterId, subjectId, actionId) => studioAdmitsCardAction(scope.entityId, adapterId, subjectId, actionId) });
+			input.subjectScope.set(
+				scope === null
+					? null
+					: {
+							entityId: scope.entityId,
+							admitsOperation: isStudioOperation,
+							admitsCardAction: (adapterId, subjectId, actionId) =>
+								studioAdmitsCardAction(scope.entityId, adapterId, subjectId, actionId),
+						},
+			);
 			input.clearHover();
 			input.shell().bumpContributions();
 			input.facade()?.notifySurfaceChange();
@@ -83,7 +114,7 @@ export function createStudioStagePorts(input: {
 				eye: eyeOfInspectionPose(camera.pose),
 				target: camera.pose.target,
 				fovYDegrees: fovYDegreesOf(camera.pose),
-				targetPlaneHeightMeters: camera.pose.targetPlaneHeightMeters
+				targetPlaneHeightMeters: camera.pose.targetPlaneHeightMeters,
 			};
 		},
 		restoreView: (record) => {
@@ -93,13 +124,18 @@ export function createStudioStagePorts(input: {
 					eye: [record.eye[0], record.eye[1], record.eye[2]],
 					target: [record.target[0], record.target[1], record.target[2]],
 					fovYDegrees: record.fovYDegrees,
-					transition: !input.shell().reducedMotion
+					transition: !input.shell().reducedMotion,
 				},
-				input.shell().nowSeconds()
+				input.shell().nowSeconds(),
 			);
 			if (result?.kind !== 'accepted') return false;
 			if (record.reading === 'plan') {
-				input.viewing().submit({ kind: 'set-reading', reading: 'plan' }, readingIntentClockSeconds(input.shell().reducedMotion, input.shell().nowSeconds()));
+				input
+					.viewing()
+					.submit(
+						{ kind: 'set-reading', reading: 'plan' },
+						readingIntentClockSeconds(input.shell().reducedMotion, input.shell().nowSeconds()),
+					);
 			}
 			return true;
 		},
@@ -107,30 +143,41 @@ export function createStudioStagePorts(input: {
 		fit: (bounds) => {
 			const rect = input.rect();
 			if (input.facade() === null || rect === null) return false;
-			return input.viewing().submit(
-				{
-					kind: 'fit',
-					bounds: { min: [...bounds.min], max: [...bounds.max] },
-					rect,
-					// A lone object is framed with room around it, not edge to edge.
-					paddingFraction: 0.3
-				},
-				input.shell().nowSeconds()
-			)?.kind === 'accepted';
+			return (
+				input.viewing().submit(
+					{
+						kind: 'fit',
+						bounds: { min: [...bounds.min], max: [...bounds.max] },
+						rect,
+						// A lone object is framed with room around it, not edge to edge.
+						paddingFraction: 0.3,
+					},
+					input.shell().nowSeconds(),
+				)?.kind === 'accepted'
+			);
 		},
 		contentBounds: contentBounds,
 		fitAll: () => {
 			const bounds = contentBounds();
 			const rect = input.rect();
 			if (bounds === null || rect === null) return;
-			input.viewing().submit({ kind: 'fit', bounds: { min: bounds.min, max: bounds.max }, rect, paddingFraction: 0.25 }, input.shell().nowSeconds());
+			input.viewing().submit(
+				{
+					kind: 'fit',
+					bounds: { min: bounds.min, max: bounds.max },
+					rect,
+					paddingFraction: 0.25,
+				},
+				input.shell().nowSeconds(),
+			);
 		},
 		armCreation: () => input.armCreation(),
 		closeCreation: () => {
 			const close = (): void => {
 				// The placement task stays armed for repeat placing: Studio has its root now.
 				input.commands().closeTask();
-				if (input.shell().activeWorldTool === 'objects' || input.shell().libraryOpen) input.commands().armWorldTool('select');
+				if (input.shell().activeWorldTool === 'objects' || input.shell().libraryOpen)
+					input.commands().armWorldTool('select');
 				input.shell().setWorldPlateOpen(false);
 				input.shell().setLibraryOpen(false);
 			};
@@ -160,35 +207,46 @@ export function createStudioStagePorts(input: {
 		},
 		navigate: (href) => void goto(href),
 		placeCopy: async (rootId, current) => {
-			const { saveFormCopyToMyObjects } = await import('$lib/authoring/adapters/scene/library/save');
+			const { saveFormCopyToMyObjects } = await import(
+				'$lib/authoring/adapters/scene/library/save'
+			);
 			if (!current()) return false;
 			const outcome = await runPlaceCopy(rootId, current, {
 				entity: (id) => {
-					const entry = input.facade()?.snapshot().domain.scene.entities.find((candidate) => candidate.id === id);
+					const entry = input
+						.facade()
+						?.snapshot()
+						.domain.scene.entities.find((candidate) => candidate.id === id);
 					return entry?.kind === 'form' ? entry : null;
 				},
 				isDirty: () => input.projectSession().headSave?.isDirty() === true,
 				saveFirst: () => input.projectSession().saveBeforeSwitch(),
 				saveToLibrary: (entity) => saveFormCopyToMyObjects(entity),
-				beginTransfer: (itemId, name) => beginFormCopyTransfer({
-					sourceProjectId: input.projectId, objectId: rootId, objectName: name, itemId,
-					// Mint the exact entity the copy will occupy; it travels through the
-					// intake to place-form-copy and identifies this insertion at settlement.
-					entityId: `entity-${crypto.randomUUID()}`
-				}),
-				openChooser: (itemId) => goto(`/projects?${PLACE_COPY_PARAM}=${encodeURIComponent(itemId)}`),
-				notice: (message) => input.shell().setNotice(message)
+				beginTransfer: (itemId, name) =>
+					beginFormCopyTransfer({
+						sourceProjectId: input.projectId,
+						objectId: rootId,
+						objectName: name,
+						itemId,
+						// Mint the exact entity the copy will occupy; it travels through the
+						// intake to place-form-copy and identifies this insertion at settlement.
+						entityId: `entity-${crypto.randomUUID()}`,
+					}),
+				openChooser: (itemId) =>
+					goto(`/projects?${PLACE_COPY_PARAM}=${encodeURIComponent(itemId)}`),
+				notice: (message) => input.shell().setNotice(message),
 			});
 			return outcome === 'navigated';
 		},
 		focusReturn: () => {
 			setTimeout(() => {
 				const card = document.querySelector<HTMLElement>('[data-editor-card], .card');
-				const target = card?.querySelector<HTMLElement>('button, [tabindex]') ?? input.stageElement() ?? null;
+				const target =
+					card?.querySelector<HTMLElement>('button, [tabindex]') ?? input.stageElement() ?? null;
 				target?.focus({ preventScroll: true });
 			}, 0);
 		},
 		indexOpen: () => input.shell().indexOpen,
-		setIndexOpen: (open) => input.shell().setIndexOpen(open)
+		setIndexOpen: (open) => input.shell().setIndexOpen(open),
 	};
 }

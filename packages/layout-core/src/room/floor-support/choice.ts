@@ -1,6 +1,10 @@
 import type { Vec3 } from '../../kernel/types';
 import type { LayoutVec2 } from '../../geometry/coordinates';
-import type { FloorSupportCandidate, FloorSupportQueryInput, FloorSupportWitness } from './contracts';
+import type {
+	FloorSupportCandidate,
+	FloorSupportQueryInput,
+	FloorSupportWitness,
+} from './contracts';
 import { FLOOR_SUPPORT_TOLERANCES, FLOOR_SUPPORT_UP_NORMAL } from './contracts';
 
 /** An explicit creator choice, by opaque source-derived choice key or by elevation. */
@@ -8,16 +12,14 @@ export type FloorSupportChoice =
 	| { kind: 'order-key'; orderKey: string }
 	| { kind: 'elevation'; elevation: number };
 
-
 export type FloorSupportChoiceResult =
 	| { kind: 'resolved'; support: FloorSupportCandidate }
 	| { kind: 'choice-required'; candidates: readonly FloorSupportCandidate[] }
 	| {
-		kind: 'invalid-choice';
-		code: 'no-support' | 'unknown-choice' | 'ambiguous-choice';
-		message: string;
-	};
-
+			kind: 'invalid-choice';
+			code: 'no-support' | 'unknown-choice' | 'ambiguous-choice';
+			message: string;
+	  };
 
 /**
  * Resolve one support from the query's candidates.
@@ -29,13 +31,13 @@ export type FloorSupportChoiceResult =
  */
 export function chooseFloorSupport(
 	candidates: readonly FloorSupportCandidate[],
-	explicitChoice?: FloorSupportChoice
+	explicitChoice?: FloorSupportChoice,
 ): FloorSupportChoiceResult {
 	if (candidates.length === 0) {
 		return {
 			kind: 'invalid-choice',
 			code: 'no-support',
-			message: 'No floor-support candidate is available to choose from.'
+			message: 'No floor-support candidate is available to choose from.',
 		};
 	}
 	if (explicitChoice === undefined) {
@@ -48,10 +50,10 @@ export function chooseFloorSupport(
 			? candidates.filter((candidate) => candidate.orderKey === explicitChoice.orderKey)
 			: Number.isFinite(explicitChoice.elevation)
 				? candidates.filter(
-					(candidate) =>
-						Math.abs(candidate.elevation - explicitChoice.elevation) <=
-						FLOOR_SUPPORT_TOLERANCES.coplanarElevationMeters
-				)
+						(candidate) =>
+							Math.abs(candidate.elevation - explicitChoice.elevation) <=
+							FLOOR_SUPPORT_TOLERANCES.coplanarElevationMeters,
+					)
 				: [];
 
 	if (matches.length === 0) {
@@ -61,7 +63,7 @@ export function chooseFloorSupport(
 			message:
 				explicitChoice.kind === 'order-key'
 					? `No floor-support candidate carries ordering key "${explicitChoice.orderKey}".`
-					: `No floor-support candidate matches elevation ${String((explicitChoice as { elevation: number }).elevation)}.`
+					: `No floor-support candidate matches elevation ${String((explicitChoice as { elevation: number }).elevation)}.`,
 		};
 	}
 	if (matches.length > 1) {
@@ -70,17 +72,16 @@ export function chooseFloorSupport(
 			code: 'ambiguous-choice',
 			message: `${matches.length} floor-support candidates match this choice: ${matches
 				.map((candidate) => candidate.orderKey)
-				.join(', ')}.`
+				.join(', ')}.`,
 		};
 	}
 	return { kind: 'resolved', support: matches[0]! };
 }
 
-
 export function registerWitness(
 	byKey: Map<string, FloorSupportWitness>,
 	key: string,
-	witness: FloorSupportWitness
+	witness: FloorSupportWitness,
 ): boolean {
 	const previous = byKey.get(key);
 	if (previous !== undefined) {
@@ -90,19 +91,17 @@ export function registerWitness(
 	return true;
 }
 
-
 export function contradictory(recordId: string) {
 	return {
 		kind: 'unsupported' as const,
 		code: 'contradictory-support-facts' as const,
-		message: `Compiled record "${recordId}" has conflicting source correspondence.`
+		message: `Compiled record "${recordId}" has conflicting source correspondence.`,
 	};
 }
 
-
 export function groupSupportCandidates(
 	input: FloorSupportQueryInput,
-	witnessByKey: ReadonlyMap<string, FloorSupportWitness>
+	witnessByKey: ReadonlyMap<string, FloorSupportWitness>,
 ): FloorSupportCandidate[] {
 	return groupWitnessesByElevation(witnessByKey)
 		.map((group) => {
@@ -113,23 +112,21 @@ export function groupSupportCandidates(
 				upNormal: [
 					FLOOR_SUPPORT_UP_NORMAL[0],
 					FLOOR_SUPPORT_UP_NORMAL[1],
-					FLOOR_SUPPORT_UP_NORMAL[2]
+					FLOOR_SUPPORT_UP_NORMAL[2],
 				] as Vec3,
 				generationId: input.generationId,
 				witnesses: group.witnesses,
 				orderKey: first.orderKey,
-				label: witnessLabel(first)
+				label: witnessLabel(first),
 			};
 		})
 		.sort((left, right) => compareWitnesses(left.witnesses[0]!, right.witnesses[0]!));
 }
 
-
 type WitnessGroup = { floorId: string; elevation: number; witnesses: FloorSupportWitness[] };
 
-
 export function groupWitnessesByElevation(
-	witnessByKey: ReadonlyMap<string, FloorSupportWitness>
+	witnessByKey: ReadonlyMap<string, FloorSupportWitness>,
 ): WitnessGroup[] {
 	const witnesses = [...witnessByKey.values()].sort(compareWitnesses);
 	const groups: WitnessGroup[] = [];
@@ -143,22 +140,21 @@ export function groupWitnessesByElevation(
 				candidate.witnesses.every(
 					(member) =>
 						Math.abs(member.elevation - witness.elevation) <=
-						FLOOR_SUPPORT_TOLERANCES.coplanarElevationMeters
-				)
+						FLOOR_SUPPORT_TOLERANCES.coplanarElevationMeters,
+				),
 		);
-		if (group === undefined) groups.push({ floorId: witness.floorId, elevation: witness.elevation, witnesses: [witness] });
+		if (group === undefined)
+			groups.push({ floorId: witness.floorId, elevation: witness.elevation, witnesses: [witness] });
 		else group.witnesses.push(witness);
 	}
 	return groups;
 }
-
 
 export function witnessLabel(witness: FloorSupportWitness): string {
 	return witness.source.kind === 'room'
 		? `Floor ${witness.floorId} / Room ${witness.source.roomId}`
 		: `Floor ${witness.floorId} / Region ${witness.source.regionId}`;
 }
-
 
 // `geometryId` is collision-safe identity encoding, not a lexical sort key:
 // its length prefixes would sort "b" before "a-long-source".
@@ -173,9 +169,9 @@ export function compareWitnesses(left: FloorSupportWitness, right: FloorSupportW
 	return 0;
 }
 
-
 export function hasUsableBoundary(polygon: readonly LayoutVec2[]): boolean {
-	if (polygon.length < 3 || polygon.some(point => point.some(value => !Number.isFinite(value)))) return false;
+	if (polygon.length < 3 || polygon.some((point) => point.some((value) => !Number.isFinite(value))))
+		return false;
 	const origin = polygon[0]!;
 	let area = 0;
 	for (let index = 1; index + 1 < polygon.length; index++) {
@@ -185,7 +181,6 @@ export function hasUsableBoundary(polygon: readonly LayoutVec2[]): boolean {
 	}
 	return Number.isFinite(area) && area !== 0;
 }
-
 
 export function distanceToSegment(point: LayoutVec2, start: LayoutVec2, end: LayoutVec2): number {
 	const dx = end[0] - start[0];
@@ -197,11 +192,10 @@ export function distanceToSegment(point: LayoutVec2, start: LayoutVec2, end: Lay
 	return Math.hypot(point[0] - (start[0] + dx * t), point[1] - (start[1] + dz * t));
 }
 
-
 export function pointWithinToleranceOfBounds(
 	point: LayoutVec2,
 	polygon: readonly LayoutVec2[],
-	toleranceMeters: number
+	toleranceMeters: number,
 ): boolean {
 	if (polygon.length === 0) return false;
 	let minX = Infinity;

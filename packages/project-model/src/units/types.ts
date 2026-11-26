@@ -29,7 +29,7 @@ import type {
 	AcceptedRevision,
 	ReferenceDomain,
 	ReferenceFailureCode,
-	SemanticReference
+	SemanticReference,
 } from '../references/types';
 import type {
 	SceneConnection,
@@ -39,27 +39,19 @@ import type {
 	SceneObjectCluster,
 	ScenePaletteSlot,
 	SceneSkyPreset,
-	SceneTextureAsset
+	SceneTextureAsset,
 } from '../scene';
 import type { SceneSurfaceFinish } from '../scene';
-import {
-	SCENE_PALETTE_MAX_SLOTS,
-	SCENE_SKY_PRESETS,
-	SCENE_TREATMENTS
-} from '../scene';
+import { SCENE_PALETTE_MAX_SLOTS, SCENE_SKY_PRESETS, SCENE_TREATMENTS } from '../scene';
 
-export {
-	SCENE_PALETTE_MAX_SLOTS,
-	SCENE_SKY_PRESETS,
-	SCENE_TREATMENTS
-};
+export { SCENE_PALETTE_MAX_SLOTS, SCENE_SKY_PRESETS, SCENE_TREATMENTS };
 export type {
 	SceneColor,
 	SceneEnvironment,
 	ScenePaletteSlot,
 	SceneSky,
 	SceneSkyPreset,
-	SceneTreatment
+	SceneTreatment,
 } from '../scene';
 
 /** The envelope format this module implements. */
@@ -83,7 +75,7 @@ export const ADMITTED_UNIT_VERSIONS: Readonly<Record<UnitDomain, number>> = {
 	scene: SCENE_UNIT_FORMAT_VERSION,
 	camera: CAMERA_UNIT_FORMAT_VERSION,
 	experience: EXPERIENCE_UNIT_FORMAT_VERSION,
-	resources: RESOURCE_UNIT_FORMAT_VERSION
+	resources: RESOURCE_UNIT_FORMAT_VERSION,
 };
 
 /**
@@ -275,13 +267,15 @@ export type ExperiencePresentation = {
  */
 export function presentationDisplayName(
 	presentation: Pick<ExperiencePresentation, 'label'>,
-	subjectName: string | null
+	subjectName: string | null,
 ): string {
 	return presentation.label ?? subjectName ?? 'Untitled Presentation';
 }
 
 /** The Default View of a Presentation: its first View, or `null` when it has none. */
-export function presentationDefaultViewId(presentation: Pick<ExperiencePresentation, 'views'>): string | null {
+export function presentationDefaultViewId(
+	presentation: Pick<ExperiencePresentation, 'views'>,
+): string | null {
 	return presentation.views[0]?.viewId ?? null;
 }
 
@@ -335,7 +329,7 @@ export type ExperienceStop = {
 /** The View a Stop enters at: its own override, else its Presentation's Default. */
 export function stopEntryViewId(
 	stop: Pick<ExperienceStop, 'entryViewId'>,
-	presentation: Pick<ExperiencePresentation, 'views'> | null | undefined
+	presentation: Pick<ExperiencePresentation, 'views'> | null | undefined,
 ): string | null {
 	return stop.entryViewId ?? (presentation ? presentationDefaultViewId(presentation) : null);
 }

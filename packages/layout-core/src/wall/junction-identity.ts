@@ -38,23 +38,26 @@ export function coincidesAsJunction(a: LayoutVec2, b: LayoutVec2): boolean {
  * only a malformed document (a validated document has finite coordinates) pays.
  */
 export function coincidentJunctionPairs(
-	junctions: readonly { readonly point: LayoutVec2 }[]
+	junctions: readonly { readonly point: LayoutVec2 }[],
 ): Array<[number, number]> {
 	// Exhaustive only on the malformed path: J(J−1)/2 tuples, the loop this rule
 	// shipped with. A validated document never reaches it.
-	if (junctions.some((junction) => !Number.isFinite(junction.point[0]) || !Number.isFinite(junction.point[1]))) {
+	if (
+		junctions.some(
+			(junction) => !Number.isFinite(junction.point[0]) || !Number.isFinite(junction.point[1]),
+		)
+	) {
 		const exhaustive: Array<[number, number]> = [];
 		for (let first = 0; first < junctions.length; first += 1) {
-			for (let second = first + 1; second < junctions.length; second += 1) exhaustive.push([first, second]);
+			for (let second = first + 1; second < junctions.length; second += 1)
+				exhaustive.push([first, second]);
 		}
 		countWork('index:junction-sweep-visits', (junctions.length * (junctions.length - 1)) / 2);
 		countWork('index:junction-sweep-fallback', 1);
 		return exhaustive;
 	}
 	const order = junctions.map((_, index) => index);
-	order.sort(
-		(a, b) => junctions[a]!.point[0] - junctions[b]!.point[0] || a - b
-	);
+	order.sort((a, b) => junctions[a]!.point[0] - junctions[b]!.point[0] || a - b);
 	const pairs: Array<[number, number]> = [];
 	let visited = 0;
 	for (let first = 0; first < order.length; first += 1) {

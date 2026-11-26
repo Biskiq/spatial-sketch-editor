@@ -1,12 +1,10 @@
 {
-  "id": "42-snap-midpoint-rank",
-  "area": "layout",
-  "citation": "hard rule 2 — Layout owns architecture",
-  "title": "A wall midpoint outranks a junction at equal distance",
-  "file": "packages/layout-core/src/plan/snap/types.ts",
-  "find": "'wall-intersection': 1,\n\t'wall-midpoint': 2,",
-  "replace": "'wall-midpoint': 0,",
-  "tests": [
-    "tests/lib/layout/layout-snap.test.ts"
-  ]
+	"id": "42-snap-midpoint-rank",
+	"area": "layout",
+	"citation": "hard rule 2 — Layout owns architecture",
+	"title": "A wall midpoint outranks a junction at equal distance",
+	"file": "packages/layout-core/src/plan/snap/types.ts",
+	"find": "'wall-intersection': 1,\n\t'wall-midpoint': 2,",
+	"replace": "'wall-midpoint': 0,",
+	"tests": ["tests/lib/layout/layout-snap.test.ts"]
 }

@@ -14,7 +14,13 @@ import {
 	type InspectedFinishUser,
 	type SceneFinishRef,
 } from '@portfolio/project-model/scene-planning';
-import type { MaterialId, SceneColor, SceneMaterialInstance, ScenePaletteSlot, SceneSurfaceRef } from '@portfolio/project-model/scene';
+import type {
+	MaterialId,
+	SceneColor,
+	SceneMaterialInstance,
+	ScenePaletteSlot,
+	SceneSurfaceRef,
+} from '@portfolio/project-model/scene';
 import type { MapRole, Mapping, Recipe } from '@portfolio/project-model/materials';
 import { type StageAdapterServices } from '../stage/stage-adapter-host';
 
@@ -57,7 +63,12 @@ export type FinishCardColour = {
 	/** The hex the colour reads as today (the slot's colour for a follower). */
 	readonly hex: string | null;
 	readonly caption: string;
-	readonly chips: readonly { readonly id: string; readonly name: string; readonly color: string; readonly active: boolean }[];
+	readonly chips: readonly {
+		readonly id: string;
+		readonly name: string;
+		readonly color: string;
+		readonly active: boolean;
+	}[];
 	/** A literal colour not linked to the palette. */
 	readonly custom: boolean;
 };
@@ -87,9 +98,17 @@ export type FinishCardView =
 			readonly renameTitle: string;
 			readonly meta: string;
 			/** The FinishTile source and swatch colour of the Finish itself. */
-			readonly tile: { readonly source: { readonly kind: 'catalogue'; readonly id: MaterialId } | null; readonly color: string };
+			readonly tile: {
+				readonly source: { readonly kind: 'catalogue'; readonly id: MaterialId } | null;
+				readonly color: string;
+			};
 			/** `sub` is the prototype's second line: family and source (`Wood · Curated`, `Imported`). */
-			readonly material: { readonly label: string; readonly sub: string; readonly catalogueId: MaterialId | null; readonly swappable: boolean };
+			readonly material: {
+				readonly label: string;
+				readonly sub: string;
+				readonly catalogueId: MaterialId | null;
+				readonly swappable: boolean;
+			};
 			readonly reach: FinishCardReach;
 			readonly colour: FinishCardColour;
 			readonly sheen: FinishSheenReading & { readonly caption: string };
@@ -116,7 +135,11 @@ export type FinishCardHost = {
 	readonly isFavourite?: (finishKey: string) => boolean;
 	readonly toggleFavourite?: (finishKey: string) => void;
 	/** More › Image › Replace for an object (S4b's From-image flow). */
-	readonly replaceImage?: (entityId: string, file: File, mode: 'in-place' | 'all' | 'just-this') => Promise<import('./finish-image.svelte').FinishImageOutcome>;
+	readonly replaceImage?: (
+		entityId: string,
+		file: File,
+		mode: 'in-place' | 'all' | 'just-this',
+	) => Promise<import('./finish-image.svelte').FinishImageOutcome>;
 	/** Called after any accepted write (e.g. to note the Finish as recently used). */
 	readonly onAccepted?: (finishKey: string) => void;
 	/** Select every user of a Finish (Card ⋯ › Select all). */
@@ -141,16 +164,21 @@ export function finishCardTargetKey(target: FinishCardTarget): string {
 	return target.kind === 'entity' ? `entity:${target.entityId}` : surfaceUserKey(target.surface);
 }
 
-export const userKind = (key: string): 'entity' | 'surface' => (key.startsWith('entity:') ? 'entity' : 'surface');
+export const userKind = (key: string): 'entity' | 'surface' =>
+	key.startsWith('entity:') ? 'entity' : 'surface';
 
 /** The word a reach line uses for one user of this kind. */
 export function finishTargetWord(target: FinishCardTarget): string {
 	if (target.kind === 'entity') return 'object';
 	switch (target.surface.kind) {
-		case 'wall-side': return 'side';
-		case 'room-floor': return 'floor';
-		case 'room-lid': return 'ceiling';
-		case 'region-face': return 'surface';
+		case 'wall-side':
+			return 'side';
+		case 'room-floor':
+			return 'floor';
+		case 'room-lid':
+			return 'ceiling';
+		case 'region-face':
+			return 'surface';
 	}
 }
 
@@ -159,8 +187,12 @@ export function finishTargetWord(target: FinishCardTarget): string {
  * outlines and the tests read one rule.
  */
 export function finishWritePlan(
-	input: { readonly curated: boolean; readonly users: readonly string[]; readonly targetKey: string },
-	choice: FinishReachChoice
+	input: {
+		readonly curated: boolean;
+		readonly users: readonly string[];
+		readonly targetKey: string;
+	},
+	choice: FinishReachChoice,
 ): FinishWritePlan {
 	const { curated, users, targetKey } = input;
 	if (users.length <= 1) {
@@ -184,30 +216,49 @@ export function defaultReach(curated: boolean): FinishReachChoice {
 	return curated ? 'this' : 'all';
 }
 
-export const plural = (count: number, one: string, many = `${one}s`) => `${count} ${count === 1 ? one : many}`;
+export const plural = (count: number, one: string, many = `${one}s`) =>
+	`${count} ${count === 1 ? one : many}`;
 
 export function formatMeters(value: number): string {
 	if (value >= 1) return `${Number(value.toFixed(2))} m`;
 	return `${Number(value.toFixed(3))} m`;
 }
 
-export const RATIO: Readonly<Record<string, string>> = { '-3': '⅛', '-2': '¼', '-1': '½', '1': '2', '2': '4', '3': '8' };
+export const RATIO: Readonly<Record<string, string>> = {
+	'-3': '⅛',
+	'-2': '¼',
+	'-1': '½',
+	'1': '2',
+	'2': '4',
+	'3': '8',
+};
 
-export function mappingOf(source: FinishSource, recipes: ReadonlyMap<string, Recipe>): Mapping | undefined {
+export function mappingOf(
+	source: FinishSource,
+	recipes: ReadonlyMap<string, Recipe>,
+): Mapping | undefined {
 	if (source.overrides?.mapping !== undefined) return source.overrides.mapping;
-	const recipe = 'catalogue' in source.base ? baseRecipeOf({ id: '', name: '', base: source.base }, recipes) : recipes.get(source.base.material);
+	const recipe =
+		'catalogue' in source.base
+			? baseRecipeOf({ id: '', name: '', base: source.base }, recipes)
+			: recipes.get(source.base.material);
 	return recipe?.mapping;
 }
 
-export function recipeOfSource(source: FinishSource, recipes: ReadonlyMap<string, Recipe>): Recipe | undefined {
+export function recipeOfSource(
+	source: FinishSource,
+	recipes: ReadonlyMap<string, Recipe>,
+): Recipe | undefined {
 	return baseRecipeOf({ id: '', name: '', base: source.base }, recipes);
 }
 
 /** A scalar role's channel when neither the override nor the base names one (glTF ORM packing). */
-export const DEFAULT_SCALAR_COMPONENT: Readonly<Record<'roughness' | 'metalness' | 'occlusion', 'r' | 'g' | 'b'>> = {
+export const DEFAULT_SCALAR_COMPONENT: Readonly<
+	Record<'roughness' | 'metalness' | 'occlusion', 'r' | 'g' | 'b'>
+> = {
 	occlusion: 'r',
 	roughness: 'g',
-	metalness: 'b'
+	metalness: 'b',
 };
 
 /** A project image imported by the S4 flow, as a replacement binding needs it. */
@@ -224,20 +275,37 @@ export type FinishRoleImage = {
  * already says (its own mapping, normal convention, scalar channel and invert),
  * from the override when there is one and the base otherwise.
  */
-export function roleImageBinding(source: FinishSource, recipes: ReadonlyMap<string, Recipe>, role: MapRole, textureId: string): Record<string, unknown> {
+export function roleImageBinding(
+	source: FinishSource,
+	recipes: ReadonlyMap<string, Recipe>,
+	role: MapRole,
+	textureId: string,
+): Record<string, unknown> {
 	const override = source.overrides?.maps?.[role];
-	const current = (override ?? recipeOfSource(source, recipes)?.maps?.[role] ?? null) as
-		| { readonly mapping?: Mapping; readonly convention?: '+Y' | '-Y'; readonly component?: 'r' | 'g' | 'b' | 'a'; readonly invert?: boolean }
-		| null;
+	const current = (override ?? recipeOfSource(source, recipes)?.maps?.[role] ?? null) as {
+		readonly mapping?: Mapping;
+		readonly convention?: '+Y' | '-Y';
+		readonly component?: 'r' | 'g' | 'b' | 'a';
+		readonly invert?: boolean;
+	} | null;
 	const image = { textureId };
 	const mapping = current?.mapping === undefined ? {} : { mapping: current.mapping };
 	if (role === 'color') return { image, ...mapping };
 	if (role === 'normal') return { image, convention: current?.convention ?? '+Y', ...mapping };
-	return { image, component: current?.component ?? DEFAULT_SCALAR_COMPONENT[role], invert: current?.invert ?? false, ...mapping };
+	return {
+		image,
+		component: current?.component ?? DEFAULT_SCALAR_COMPONENT[role],
+		invert: current?.invert ?? false,
+		...mapping,
+	};
 }
 
 /** The edits that set a mapping, resetting it when it equals the base's own. */
-export function mappingEdits(source: FinishSource, recipes: ReadonlyMap<string, Recipe>, next: Mapping): FinishPatchEdit[] {
+export function mappingEdits(
+	source: FinishSource,
+	recipes: ReadonlyMap<string, Recipe>,
+	next: Mapping,
+): FinishPatchEdit[] {
 	const base = recipeOfSource(source, recipes)?.mapping;
 	const overrides = { ...(source.overrides ?? {}) } as Record<string, unknown>;
 	if (base !== undefined && JSON.stringify(base) === JSON.stringify(next)) delete overrides.mapping;
@@ -249,7 +317,7 @@ export function factorEdits(
 	source: FinishSource,
 	recipes: ReadonlyMap<string, Recipe>,
 	field: 'roughness' | 'metalness',
-	value: number
+	value: number,
 ): FinishPatchEdit[] {
 	const base = recipeOfSource(source, recipes)?.[field];
 	const overrides = { ...(source.overrides ?? {}) } as Record<string, unknown>;

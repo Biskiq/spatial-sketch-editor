@@ -16,17 +16,26 @@
  * the Wall end rejects rather than becoming an end-placed commit.
  */
 import type { LayoutDocumentIssue } from '../plan/issue';
-import { activeLayoutCompileSession } from '../geometry/session'
+import { activeLayoutCompileSession } from '../geometry/session';
 import { compileWallFirstLayoutGeometry } from '../geometry/compiler';
 import { hasBlockingLayoutIssues } from '../geometry/validation';
-import { type OpeningSetIssue, validateWallFirstOpeningSet, wallFirstWallLength } from './opening-set';
+import {
+	type OpeningSetIssue,
+	validateWallFirstOpeningSet,
+	wallFirstWallLength,
+} from './opening-set';
 import { validateWallFirstPortalRelations } from './portals';
 import { validateWallFirstLayoutDocument } from './codec';
 import { exceedsLayoutDimension, LAYOUT_DIMENSION_LIMIT_MESSAGE } from '../geometry/limits';
-import { cowUpdateOpening, getCowDocumentDelta } from '../world/cow'
-import { ensureLayoutWorldIndex, lookupIndexedOpening, peekLayoutWorldIndex } from '../world/lookups'
+import { cowUpdateOpening, getCowDocumentDelta } from '../world/cow';
+import { ensureLayoutWorldIndex, lookupIndexedOpening } from '../world/lookups';
 import { verifyOpeningUpdateDelta } from '../world/verify';
-import { allocateCapturedId, layoutWorkingLevelIssue, LayoutIdCollisionError, type LayoutIdCapture } from '../plan/id-capture';
+import {
+	allocateCapturedId,
+	layoutWorkingLevelIssue,
+	LayoutIdCollisionError,
+	type LayoutIdCapture,
+} from '../plan/id-capture';
 import type { LayoutDocumentWallFirst, LayoutWallOpening } from './types';
 
 /** Creation defaults (legacy parity: door 0.9×2.1 sill 0, window 1.2×1.2 sill 1). */
@@ -35,13 +44,10 @@ export const WALL_OPENING_DEFAULTS: Record<
 	Pick<LayoutWallOpening, 'width' | 'height' | 'sillHeight'>
 > = {
 	door: { width: 0.9, height: 2.1, sillHeight: 0 },
-	window: { width: 1.2, height: 1.2, sillHeight: 1 }
+	window: { width: 1.2, height: 1.2, sillHeight: 1 },
 };
 
-export type WallOpeningOperation =
-	| 'opening-create'
-	| 'opening-update'
-	| 'opening-delete';
+export type WallOpeningOperation = 'opening-create' | 'opening-update' | 'opening-delete';
 
 export type WallOpeningRejectionCode =
 	| 'unknown_wall'
@@ -116,7 +122,7 @@ export type WallFirstOpeningMetrics = {
 
 export function wallFirstOpeningMetrics(
 	document: LayoutDocumentWallFirst,
-	openingId: string
+	openingId: string,
 ): WallFirstOpeningMetrics | undefined {
 	const opening = document.openings.find((entry) => entry.id === openingId);
 	if (!opening) return undefined;
@@ -132,7 +138,7 @@ export function wallFirstOpeningMetrics(
 		sillHeight: opening.sillHeight,
 		clearanceFromStart: opening.offset,
 		clearanceFromEnd: wallLength - (opening.offset + opening.width),
-		centerOffset: (wallLength - opening.width) / 2
+		centerOffset: (wallLength - opening.width) / 2,
 	};
 }
 
@@ -148,14 +154,14 @@ export function wallFirstOffsetFromStartDistance(distanceFromStart: number): num
 /** Distance-from-end → canonical `offset` (`length - width - distance`). */
 export function wallFirstOffsetFromEndDistance(
 	metrics: Pick<WallFirstOpeningMetrics, 'wallLength' | 'width'>,
-	distanceFromEnd: number
+	distanceFromEnd: number,
 ): number {
 	return metrics.wallLength - metrics.width - distanceFromEnd;
 }
 
 /** Center-on-Wall offset for the current width (meters, never normalized). */
 export function wallFirstCenterOffset(
-	metrics: Pick<WallFirstOpeningMetrics, 'wallLength' | 'width'>
+	metrics: Pick<WallFirstOpeningMetrics, 'wallLength' | 'width'>,
 ): number {
 	return (metrics.wallLength - metrics.width) / 2;
 }
@@ -163,7 +169,7 @@ export function wallFirstCenterOffset(
 /** Clearance helper for the two Wall ends of one authored Opening. */
 export function wallFirstOpeningClearances(
 	document: LayoutDocumentWallFirst,
-	openingId: string
+	openingId: string,
 ): { fromStart: number; fromEnd: number } | undefined {
 	const metrics = wallFirstOpeningMetrics(document, openingId);
 	return metrics
@@ -183,7 +189,7 @@ export function planCreateWallFirstOpening(
 	document: LayoutDocumentWallFirst,
 	intent: WallFirstOpeningIntent,
 	capture: LayoutIdCapture,
-	levelId: string
+	levelId: string,
 ): WallOpeningPlan {
 	const levelIssue = layoutWorkingLevelIssue(document, levelId);
 	if (levelIssue !== null) return reject('invalid_value', levelIssue, [intent.wallId]);
@@ -193,7 +199,7 @@ export function planCreateWallFirstOpening(
 	}
 	if (!Number.isFinite(intent.offset) || intent.offset < 0) {
 		return reject('invalid_value', 'Opening offset must be finite and non-negative', [
-			intent.wallId
+			intent.wallId,
 		]);
 	}
 	const defaults = WALL_OPENING_DEFAULTS[intent.kind];
@@ -209,7 +215,7 @@ export function planCreateWallFirstOpening(
 			id = allocateCapturedId(
 				new Set(document.openings.map((candidate) => candidate.id)),
 				`opening:${intent.kind}:${intent.wallId}`,
-				capture
+				capture,
 			);
 		} catch (error) {
 			if (error instanceof LayoutIdCollisionError) {
@@ -229,24 +235,21 @@ export function planCreateWallFirstOpening(
 		profile: intent.profile ?? 'rectangular',
 		...(intent.connectsRoomIds
 			? { connectsRoomIds: [...intent.connectsRoomIds] as [string, string] }
-			: {})
+			: {}),
 	};
 	if (document.openings.some((candidate) => candidate.id === opening.id)) {
 		return reject('invalid_value', `Opening ID '${opening.id}' already exists`, [opening.id]);
 	}
 	const candidate: LayoutDocumentWallFirst = {
 		...document,
-		openings: [...document.openings, opening]
+		openings: [...document.openings, opening],
 	};
 	if (opening.connectsRoomIds) {
 		const relationIssue = validateWallFirstPortalRelations(candidate).find(
-			(issue) => issue.openingId === opening.id
+			(issue) => issue.openingId === opening.id,
 		);
 		if (relationIssue) {
-			return reject('portal_relation_invalid', relationIssue.message, [
-				opening.id,
-				intent.wallId
-			]);
+			return reject('portal_relation_invalid', relationIssue.message, [opening.id, intent.wallId]);
 		}
 	}
 	return finalize(candidate, 'opening-create', [opening.id], [intent.wallId]);
@@ -262,7 +265,7 @@ export function planCreateWallFirstOpening(
 export function planUpdateWallFirstOpening(
 	document: LayoutDocumentWallFirst,
 	openingId: string,
-	patch: WallOpeningPatch
+	patch: WallOpeningPatch,
 ): WallOpeningPlan {
 	const worldIndex = ensureLayoutWorldIndex(document);
 	const current = lookupIndexedOpening(document, openingId);
@@ -281,21 +284,24 @@ export function planUpdateWallFirstOpening(
 			patch.connectsRoomIds === undefined
 				? `Opening '${openingId}' carries a portal relation that must be cleared explicitly before it becomes a window`
 				: 'Only door openings may define portal relations',
-			[openingId]
+			[openingId],
 		);
 	}
 	for (const [field, value] of [
 		['offset', patch.offset],
 		['width', patch.width],
 		['height', patch.height],
-		['sillHeight', patch.sillHeight]
+		['sillHeight', patch.sillHeight],
 	] as const) {
 		if (value === undefined) continue;
-		if (!Number.isFinite(value) || (field === 'offset' || field === 'sillHeight' ? value < 0 : value <= 0)) {
+		if (
+			!Number.isFinite(value) ||
+			(field === 'offset' || field === 'sillHeight' ? value < 0 : value <= 0)
+		) {
 			return reject(
 				'invalid_value',
 				`Opening '${openingId}' ${field} must be a finite ${field === 'offset' || field === 'sillHeight' ? 'non-negative' : 'positive'} number`,
-				[openingId]
+				[openingId],
 			);
 		}
 		if (exceedsLayoutDimension(value)) {
@@ -309,7 +315,7 @@ export function planUpdateWallFirstOpening(
 		...(patch.height !== undefined ? { height: patch.height } : {}),
 		...(patch.sillHeight !== undefined ? { sillHeight: patch.sillHeight } : {}),
 		...(patch.profile !== undefined ? { profile: patch.profile } : {}),
-		kind: nextKind
+		kind: nextKind,
 	};
 	if (nextRelation) next.connectsRoomIds = [...nextRelation] as [string, string];
 	else delete next.connectsRoomIds;
@@ -321,13 +327,10 @@ export function planUpdateWallFirstOpening(
 	// readable relations are resolved through the Save gate, never silently).
 	if (relationProvided && !clearedRelation && next.connectsRoomIds) {
 		const relationIssue = validateWallFirstPortalRelations(candidate).find(
-			(issue) => issue.openingId === openingId
+			(issue) => issue.openingId === openingId,
 		);
 		if (relationIssue) {
-			return reject('portal_relation_invalid', relationIssue.message, [
-				openingId,
-				current.wallId
-			]);
+			return reject('portal_relation_invalid', relationIssue.message, [openingId, current.wallId]);
 		}
 	}
 	return finalize(candidate, 'opening-update', [openingId], [current.wallId]);
@@ -340,7 +343,7 @@ export function planUpdateWallFirstOpening(
 export function planMoveWallFirstOpening(
 	document: LayoutDocumentWallFirst,
 	openingId: string,
-	offset: number
+	offset: number,
 ): WallOpeningPlan {
 	return planUpdateWallFirstOpening(document, openingId, { offset });
 }
@@ -348,17 +351,19 @@ export function planMoveWallFirstOpening(
 /** Center one authored Opening on its hosting Wall (exact meter offset). */
 export function planCenterWallFirstOpening(
 	document: LayoutDocumentWallFirst,
-	openingId: string
+	openingId: string,
 ): WallOpeningPlan {
 	const metrics = wallFirstOpeningMetrics(document, openingId);
 	if (!metrics) {
 		const exists = document.openings.some((opening) => opening.id === openingId);
 		return exists
-			? reject('invalid_value', `Opening '${openingId}' has an unresolved hosting Wall`, [openingId])
+			? reject('invalid_value', `Opening '${openingId}' has an unresolved hosting Wall`, [
+					openingId,
+				])
 			: reject('unknown_opening', `Unknown Opening '${openingId}'`, [openingId]);
 	}
 	return planUpdateWallFirstOpening(document, openingId, {
-		offset: metrics.centerOffset
+		offset: metrics.centerOffset,
 	});
 }
 
@@ -368,7 +373,7 @@ export function planCenterWallFirstOpening(
  */
 export function planDeleteWallFirstOpening(
 	document: LayoutDocumentWallFirst,
-	openingId: string
+	openingId: string,
 ): WallOpeningPlan {
 	const opening = document.openings.find((candidate) => candidate.id === openingId);
 	if (!opening) {
@@ -376,7 +381,7 @@ export function planDeleteWallFirstOpening(
 	}
 	const candidate: LayoutDocumentWallFirst = {
 		...document,
-		openings: document.openings.filter((entry) => entry.id !== openingId)
+		openings: document.openings.filter((entry) => entry.id !== openingId),
 	};
 	return finalize(candidate, 'opening-delete', [openingId], [opening.wallId]);
 }
@@ -385,18 +390,15 @@ function finalize(
 	candidate: LayoutDocumentWallFirst,
 	operation: WallOpeningOperation,
 	changedOpeningIds: readonly string[],
-	changedWallIds: readonly string[]
+	changedWallIds: readonly string[],
 ): WallOpeningPlan {
-	const cowDelta =
-		operation === 'opening-update'
-			? getCowDocumentDelta(candidate)
-			: undefined;
+	const cowDelta = operation === 'opening-update' ? getCowDocumentDelta(candidate) : undefined;
 	if (cowDelta && changedOpeningIds.length === 1 && changedWallIds.length === 1) {
 		const verdict = verifyOpeningUpdateDelta({
 			baseline: cowDelta.baseline,
 			candidate,
 			openingId: changedOpeningIds[0]!,
-			wallId: changedWallIds[0]!
+			wallId: changedWallIds[0]!,
 		});
 		if (verdict === 'certified-valid') {
 			const compileSession = activeLayoutCompileSession();
@@ -406,7 +408,7 @@ function finalize(
 			if (hasBlockingLayoutIssues(compiled.issues)) {
 				return reject(
 					'candidate_does_not_compile',
-					compiled.issues[0]?.message ?? 'Candidate geometry does not compile'
+					compiled.issues[0]?.message ?? 'Candidate geometry does not compile',
 				);
 			}
 			return {
@@ -414,7 +416,7 @@ function finalize(
 				document: candidate,
 				operation,
 				changedOpeningIds: [...changedOpeningIds],
-				changedWallIds: [...new Set(changedWallIds)]
+				changedWallIds: [...new Set(changedWallIds)],
 			};
 		}
 	}
@@ -425,7 +427,7 @@ function finalize(
 			'invalid_candidate_document',
 			`Candidate failed wall-first validation: ${structural.issues[0]?.message ?? 'unknown issue'}`,
 			undefined,
-			structural.issues
+			structural.issues,
 		);
 	}
 	const setIssues = validateWallFirstOpeningSet(structural.document);
@@ -440,7 +442,7 @@ function finalize(
 	if (hasBlockingLayoutIssues(compiled.issues)) {
 		return reject(
 			'candidate_does_not_compile',
-			compiled.issues[0]?.message ?? 'Candidate geometry does not compile'
+			compiled.issues[0]?.message ?? 'Candidate geometry does not compile',
 		);
 	}
 	return {
@@ -448,7 +450,7 @@ function finalize(
 		document: structural.document,
 		operation,
 		changedOpeningIds: [...changedOpeningIds],
-		changedWallIds: [...new Set(changedWallIds)]
+		changedWallIds: [...new Set(changedWallIds)],
 	};
 }
 
@@ -471,10 +473,15 @@ function reject(
 	code: WallOpeningRejectionCode,
 	message: string,
 	targetIds?: readonly string[],
-	issues?: readonly (LayoutDocumentIssue | OpeningSetIssue)[]
+	issues?: readonly (LayoutDocumentIssue | OpeningSetIssue)[],
 ): WallOpeningPlan {
 	return {
 		kind: 'rejected',
-		rejection: { code, message, ...(targetIds ? { targetIds } : {}), ...(issues ? { issues } : {}) }
+		rejection: {
+			code,
+			message,
+			...(targetIds ? { targetIds } : {}),
+			...(issues ? { issues } : {}),
+		},
 	};
 }

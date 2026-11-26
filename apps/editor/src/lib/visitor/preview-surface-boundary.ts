@@ -25,9 +25,15 @@ const FORBIDDEN_PATTERNS: ReadonlyArray<{ pattern: RegExp; label: string }> = [
 	// The editor's authoring tree — Stage host, adapters, Save, F.4 acceptance — is
 	// editor machinery. This names the live tree; the deleted `src/lib/editor/`
 	// pattern it replaced could never match anything again.
-	{ pattern: /src\/lib\/authoring\//, label: 'editor authoring machinery (stage, adapters, Save, F.4)' },
+	{
+		pattern: /src\/lib\/authoring\//,
+		label: 'editor authoring machinery (stage, adapters, Save, F.4)',
+	},
 	{ pattern: /project-model\/(?:src\/)?scene-planning\//, label: 'F4 scene-planning barrel' },
-	{ pattern: /project-model\/(?:src\/)?material-authoring\//, label: 'material set proposal and draft composition (authoring-only)' },
+	{
+		pattern: /project-model\/(?:src\/)?material-authoring\//,
+		label: 'material set proposal and draft composition (authoring-only)',
+	},
 	{ pattern: /MuseumScene\.svelte/, label: 'bespoke MuseumScene' },
 	{ pattern: /MuseumHUD\.svelte/, label: 'bespoke MuseumHUD' },
 	{ pattern: /MuseumCanvas\.svelte/, label: 'museum canvas (Chopin-bound)' },
@@ -38,14 +44,20 @@ const FORBIDDEN_PATTERNS: ReadonlyArray<{ pattern: RegExp; label: string }> = [
 	{ pattern: /content\/rooms/, label: 'Chopin rooms' },
 	{ pattern: /chopin-layout/, label: 'Chopin layout' },
 	{ pattern: /state\/runtime-state/, label: 'legacy runtime state (Chopin defaults)' },
-	{ pattern: /museum\/navigation\/CameraDirector\.svelte/, label: 'legacy CameraDirector (Paris restriction)' },
+	{
+		pattern: /museum\/navigation\/CameraDirector\.svelte/,
+		label: 'legacy CameraDirector (Paris restriction)',
+	},
 	{ pattern: /museum\/MuseumEntities\.svelte/, label: 'MuseumEntities (Paris activation)' },
 	{ pattern: /paris-activation/, label: 'Paris activation' },
 	{ pattern: /museum\/rooms\//, label: 'bespoke room frames' },
-	{ pattern: /museum\/layout\/LayoutMuseumShell\.svelte/, label: 'legacy layout shell (use visitor shell)' },
+	{
+		pattern: /museum\/layout\/LayoutMuseumShell\.svelte/,
+		label: 'legacy layout shell (use visitor shell)',
+	},
 	{ pattern: /project\/project-codec/, label: 'project codec (editor-side validation only)' },
 	{ pattern: /project-export-store/, label: 'cloud/export predicates (editor-side only)' },
-	{ pattern: /binary-texture-store/, label: 'BinaryTextureStore (editor-side only)' }
+	{ pattern: /binary-texture-store/, label: 'BinaryTextureStore (editor-side only)' },
 ];
 
 export function isForbiddenPreviewSurfaceModule(id: string): string | null {
@@ -80,7 +92,7 @@ export function validatePreviewSurfaceGraph(graph: PreviewSurfaceGraph): Preview
 			reached: [],
 			forbidden: [],
 			missing: [{ id: graph.rootId, via: '<root>' }],
-			unresolvedDynamics: [...(graph.unresolvedDynamics ?? [])]
+			unresolvedDynamics: [...(graph.unresolvedDynamics ?? [])],
 		};
 	}
 

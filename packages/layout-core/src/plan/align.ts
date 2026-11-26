@@ -90,7 +90,7 @@ function spansAabb(spans: readonly CompiledQuerySpan[]): Bounds2 | null {
 function referenceBounds(
 	geometry: CompiledLayoutGeometry,
 	reference: AlignReference,
-	ownerRoomId?: string
+	ownerRoomId?: string,
 ): { bounds: Bounds2; wallSpan?: MergedWallSpan } | null {
 	if (reference.kind === 'object') {
 		for (const polygon of geometry.queries.polygons) {
@@ -104,7 +104,9 @@ function referenceBounds(
 		// Legacy/hand-built room spans carry roomId; wall-first canonical
 		// spans carry none, so fall back to the room-floor polygon (which
 		// retains roomId in every generation).
-		const roomSpans = geometry.queries.spans.filter((span) => span.kind === 'wall' && span.roomId === reference.id);
+		const roomSpans = geometry.queries.spans.filter(
+			(span) => span.kind === 'wall' && span.roomId === reference.id,
+		);
 		const spanBounds = spansAabb(roomSpans);
 		if (spanBounds) return { bounds: spanBounds };
 		for (const polygon of geometry.queries.polygons) {
@@ -125,7 +127,9 @@ function referenceBounds(
 		(span) =>
 			span.kind === 'wall' &&
 			span.segmentId === reference.id &&
-			(span.wallKey === undefined || span.wallKey === span.segmentId || span.roomId === ownerRoomId)
+			(span.wallKey === undefined ||
+				span.wallKey === span.segmentId ||
+				span.roomId === ownerRoomId),
 	);
 	if (wallSpans.length === 0) return null;
 	const merged = dedupeWallSpans(wallSpans);
@@ -152,18 +156,35 @@ export function planLayoutObjectAlign(
 	objectId: string,
 	reference: AlignReference,
 	action: AlignAction,
-	axis: AlignAxis = 'x'
+	axis: AlignAxis = 'x',
 ): AlignPlan {
 	const object = geometry.objects.find((candidate) => candidate.objectId === objectId);
-	if (!object) return { kind: 'rejected', code: 'unknown_object', message: `Unknown layout object '${objectId}'` };
+	if (!object)
+		return {
+			kind: 'rejected',
+			code: 'unknown_object',
+			message: `Unknown layout object '${objectId}'`,
+		};
 	if (object.kind === 'profile') {
-		return { kind: 'rejected', code: 'unsupported_reference', message: 'Profile objects are read-only and cannot be aligned' };
+		return {
+			kind: 'rejected',
+			code: 'unsupported_reference',
+			message: 'Profile objects are read-only and cannot be aligned',
+		};
 	}
 	if (action !== 'center-on-wall' && action !== 'min' && action !== 'center' && action !== 'max') {
-		return { kind: 'rejected', code: 'invalid_action', message: `Invalid alignment action '${String(action)}'` };
+		return {
+			kind: 'rejected',
+			code: 'invalid_action',
+			message: `Invalid alignment action '${String(action)}'`,
+		};
 	}
 	if (action === 'center-on-wall' && reference.kind !== 'wall') {
-		return { kind: 'rejected', code: 'unsupported_reference', message: 'Center on Wall requires a Wall reference' };
+		return {
+			kind: 'rejected',
+			code: 'unsupported_reference',
+			message: 'Center on Wall requires a Wall reference',
+		};
 	}
 
 	const resolved = referenceBounds(geometry, reference, object.roomId);
@@ -171,7 +192,7 @@ export function planLayoutObjectAlign(
 		return {
 			kind: 'rejected',
 			code: 'unknown_reference',
-			message: `Unknown ${reference.kind} alignment reference '${reference.id}'`
+			message: `Unknown ${reference.kind} alignment reference '${reference.id}'`,
 		};
 	}
 
@@ -180,7 +201,7 @@ export function planLayoutObjectAlign(
 		return {
 			kind: 'rejected',
 			code: 'unsupported_reference',
-			message: `Object '${objectId}' has no plan footprint to align`
+			message: `Object '${objectId}' has no plan footprint to align`,
 		};
 	}
 
@@ -191,7 +212,7 @@ export function planLayoutObjectAlign(
 			return {
 				kind: 'rejected',
 				code: 'unsupported_reference',
-				message: 'Center on Wall requires a straight Wall reference'
+				message: 'Center on Wall requires a straight Wall reference',
 			};
 		}
 		// Canonical compiled wall geometry: project the object footprint
@@ -200,7 +221,10 @@ export function planLayoutObjectAlign(
 		const dx = span.end[0] - span.start[0];
 		const dz = span.end[1] - span.start[1];
 		const squared = dx * dx + dz * dz;
-		const rawT = squared > 0 ? ((center[0] - span.start[0]) * dx + (center[1] - span.start[1]) * dz) / squared : 0;
+		const rawT =
+			squared > 0
+				? ((center[0] - span.start[0]) * dx + (center[1] - span.start[1]) * dz) / squared
+				: 0;
 		const amount = Math.min(1, Math.max(0, rawT));
 		const projected: LayoutVec2 = [span.start[0] + dx * amount, span.start[1] + dz * amount];
 		position[0] += projected[0] - center[0];
@@ -227,13 +251,17 @@ export function planLayoutObjectAlign(
 		Math.abs(position[0] - object.position[0]) > 1e-9 ||
 		Math.abs(position[2] - object.position[2]) > 1e-9;
 	if (!changed) {
-		return { kind: 'rejected', code: 'no_op', message: `Object '${objectId}' is already aligned to '${reference.id}'` };
+		return {
+			kind: 'rejected',
+			code: 'no_op',
+			message: `Object '${objectId}' is already aligned to '${reference.id}'`,
+		};
 	}
 	return {
 		kind: 'success',
 		position,
 		reference,
 		action,
-		...(action === 'center-on-wall' ? {} : { axis })
+		...(action === 'center-on-wall' ? {} : { axis }),
 	};
 }

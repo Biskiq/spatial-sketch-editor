@@ -31,7 +31,7 @@ import type {
 	ResolvedMaps,
 	ResolvedNormal,
 	ResolvedScalar,
-	Scalar
+	Scalar,
 } from './types';
 import { MATERIAL_MAP_ROLES, MATERIAL_PROFILE } from './types';
 import type { MaterialIssue } from './issues';
@@ -77,7 +77,7 @@ export function createImageIndex(entries: readonly ResolvedImage[]): ImageIndex 
 	}
 	return {
 		byHash: (hash) => byHash.get(hash) ?? null,
-		hashOf: (source) => bySource.get(sourceKey(source)) ?? null
+		hashOf: (source) => bySource.get(sourceKey(source)) ?? null,
 	};
 }
 
@@ -97,7 +97,7 @@ export function mergeImageIndexes(...indexes: readonly ImageIndex[]): ImageIndex
 				if (value !== null) return value;
 			}
 			return null;
-		}
+		},
 	};
 }
 
@@ -105,7 +105,7 @@ export function mergeImageIndexes(...indexes: readonly ImageIndex[]): ImageIndex
 export function shippedImageIndex(): ImageIndex {
 	const entries: ResolvedImage[] = SHIPPED_MATERIAL_IMAGES.map((image) => ({
 		hash: image.hash,
-		source: { shipped: image.uri }
+		source: { shipped: image.uri },
 	}));
 	const index = createImageIndex(entries);
 	return {
@@ -114,13 +114,13 @@ export function shippedImageIndex(): ImageIndex {
 			if (!('shipped' in source)) return null;
 			const image = shippedImage(source.shipped);
 			return image === undefined ? null : image.hash;
-		}
+		},
 	};
 }
 
 /** A resource-backed definition's images as an index. */
 export function materialImageIndex(
-	images: readonly { readonly hash: Hash; readonly source: LocalImage }[]
+	images: readonly { readonly hash: Hash; readonly source: LocalImage }[],
 ): ImageIndex {
 	return createImageIndex(images.map((image) => ({ hash: image.hash, source: image.source })));
 }
@@ -128,13 +128,13 @@ export function materialImageIndex(
 function prefixIssues(issues: readonly MaterialIssue[], prefix: string): MaterialIssue[] {
 	return issues.map((issue) => ({
 		...issue,
-		path: issue.path === '$' ? prefix : `${prefix}${issue.path.slice(1)}`
+		path: issue.path === '$' ? prefix : `${prefix}${issue.path.slice(1)}`,
 	}));
 }
 
 function paletteColor(
 	slotId: string,
-	palette: readonly PaletteSlot[] | undefined
+	palette: readonly PaletteSlot[] | undefined,
 ): { readonly color: string | null; readonly found: boolean } {
 	const slot = palette?.find((entry) => entry.id === slotId);
 	if (slot === undefined) return { color: null, found: false };
@@ -147,7 +147,7 @@ function resolveBaseBinding(
 	binding: Colour<Hash> | Normal<Hash> | Scalar<Hash>,
 	setMapping: Mapping,
 	imageIndex: ImageIndex,
-	issues: MaterialIssue[]
+	issues: MaterialIssue[],
 ): ResolvedColour & {
 	readonly convention?: '+Y' | '-Y';
 	readonly component?: ScalarComponent;
@@ -160,7 +160,7 @@ function resolveBaseBinding(
 			code: 'missing-pin',
 			path: `$.maps.${role}.image`,
 			role,
-			action: 'Pin the image or remove the binding.'
+			action: 'Pin the image or remove the binding.',
 		});
 	}
 	const resolved: ResolvedColour & {
@@ -182,7 +182,7 @@ function resolveOverrideBinding(
 	binding: Colour<LocalImage> | Normal<LocalImage> | Scalar<LocalImage>,
 	setMapping: Mapping,
 	imageIndex: ImageIndex,
-	issues: MaterialIssue[]
+	issues: MaterialIssue[],
 ): ResolvedColour & {
 	readonly convention?: '+Y' | '-Y';
 	readonly component?: ScalarComponent;
@@ -196,7 +196,7 @@ function resolveOverrideBinding(
 			code: 'missing-pin',
 			path: `$.overrides.maps.${role}.image`,
 			role,
-			action: 'Import or pin the image before binding it.'
+			action: 'Import or pin the image before binding it.',
 		});
 	} else {
 		image = imageIndex.byHash(hash) ?? { hash, source: binding.image };
@@ -229,7 +229,7 @@ export function resolveFinish(
 	base: ResolveBase,
 	overrides: FinishOverrides | undefined,
 	palette: readonly PaletteSlot[] | undefined,
-	imageIndex: ImageIndex
+	imageIndex: ImageIndex,
 ): FinishResolution {
 	const issues: MaterialIssue[] = [];
 	let baseRecipe: Recipe | null = null;
@@ -239,7 +239,7 @@ export function resolveFinish(
 			issues.push({
 				code: 'unknown-catalogue-base',
 				path: '$.base.catalogue',
-				action: 'Use an admitted catalogue base.'
+				action: 'Use an admitted catalogue base.',
 			});
 		}
 	} else {
@@ -276,7 +276,13 @@ export function resolveFinish(
 		}
 		if (override !== undefined) {
 			provenanceMaps[role] = provenance('override');
-			const resolved = resolveOverrideBinding(role, override as never, setMapping, imageIndex, issues);
+			const resolved = resolveOverrideBinding(
+				role,
+				override as never,
+				setMapping,
+				imageIndex,
+				issues,
+			);
 			maps[role] = resolved as never;
 			continue;
 		}
@@ -303,13 +309,13 @@ export function resolveFinish(
 				issues.push({
 					code: 'missing-palette-slot',
 					path: '$.overrides.color',
-					action: 'Restore the palette slot or set a literal colour.'
+					action: 'Restore the palette slot or set a literal colour.',
 				});
 			} else if (paletteValue.color === null) {
 				issues.push({
 					code: 'invalid-colour',
 					path: '$.overrides.color',
-					action: 'Use a lowercase #rrggbb palette colour.'
+					action: 'Use a lowercase #rrggbb palette colour.',
 				});
 			} else {
 				color = paletteValue.color;
@@ -323,8 +329,7 @@ export function resolveFinish(
 		color,
 		roughness: normalizedOverrides?.roughness ?? baseRecipe.roughness,
 		metalness: normalizedOverrides?.metalness ?? baseRecipe.metalness,
-		occlusionStrength:
-			normalizedOverrides?.occlusionStrength ?? baseRecipe.occlusionStrength,
+		occlusionStrength: normalizedOverrides?.occlusionStrength ?? baseRecipe.occlusionStrength,
 		normalScale: normalizedOverrides?.normalScale ?? baseRecipe.normalScale,
 		mapping: setMapping,
 		maps: maps as ResolvedMaps,
@@ -339,11 +344,13 @@ export function resolveFinish(
 					? provenance('base')
 					: provenance('override'),
 			normalScale:
-				normalizedOverrides?.normalScale === undefined ? provenance('base') : provenance('override'),
+				normalizedOverrides?.normalScale === undefined
+					? provenance('base')
+					: provenance('override'),
 			mapping:
 				normalizedOverrides?.mapping === undefined ? provenance('base') : provenance('override'),
-			maps: provenanceMaps
-		}
+			maps: provenanceMaps,
+		},
 	};
 	return { inputs: deepFreeze(inputs), issues: dedupeMaterialIssues(issues) };
 }

@@ -11,5 +11,5 @@ export const STAGE_PAINT = Object.freeze({
 	ink: SPATIAL_PAINT.ink,
 	hover: SPATIAL_PAINT.hover,
 	selection: SPATIAL_PAINT.selection,
-	proposal: SPATIAL_PAINT.proposal
+	proposal: SPATIAL_PAINT.proposal,
 });

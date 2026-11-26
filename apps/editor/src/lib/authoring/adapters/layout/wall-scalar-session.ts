@@ -1,4 +1,9 @@
-import { planExactWallHeight, planExactWallThickness, planUpdateWallFirstOpening, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import {
+	planExactWallHeight,
+	planExactWallThickness,
+	planUpdateWallFirstOpening,
+	type LayoutDocumentWallFirst,
+} from '@portfolio/layout-core/wall';
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import {
 	axisTravelFromRay,
@@ -9,19 +14,29 @@ import {
 	type StageAdapterContext,
 	type StageHandleDescriptor,
 	type StageKeyboardIntent,
-	type StagePointerIntent
+	type StagePointerIntent,
 } from '$lib/authoring/stage/stage-adapter-host';
 import {
 	planNumericEntryInput,
 	planNumericEntryOpen,
 	planNumericEntrySubmit,
-	type PlanNumericEntryState
+	type PlanNumericEntryState,
 } from '$lib/authoring/layout/plan-numeric-entry';
 import { candidatePreviewOf, openingIdsOnWalls, wallHeightGhostPaper } from './candidate-preview';
-import { selectedClosedWall, selectedCurvedWall, selectedWall, wallDirection } from './layout-subjects';
+import {
+	selectedClosedWall,
+	selectedCurvedWall,
+	selectedWall,
+	wallDirection,
+} from './layout-subjects';
 import { isPointerDrag, type LayoutManipulationPorts } from './manipulation-support';
 import { openingRefusalWords } from './opening-planners';
-import { LAYOUT_OPENING_MEASURE_KIND, LAYOUT_WALL_HEIGHT_KIND, LAYOUT_WALL_THICKNESS_KIND, buildLayoutIntent } from './precision';
+import {
+	LAYOUT_OPENING_MEASURE_KIND,
+	LAYOUT_WALL_HEIGHT_KIND,
+	LAYOUT_WALL_THICKNESS_KIND,
+	buildLayoutIntent,
+} from './precision';
 import { curvedWallPointAt } from './precision-frames';
 import { wallRefusalWords } from './refusals';
 import type { LayoutSessionPorts } from './session-ports';
@@ -34,7 +49,7 @@ export function createWallScalarSession({
 	contentRevision,
 	publishRefusal,
 	settleRefusal,
-	candidatePaper
+	candidatePaper,
 }: LayoutManipulationPorts & Pick<LayoutSessionPorts, 'candidatePaper'>) {
 	type ScalarGesture = {
 		spec: {
@@ -93,8 +108,8 @@ export function createWallScalarSession({
 			cap: closed.seam,
 			tangent: [
 				-(closed.seam[1] - closed.center[1]) / radius,
-				(closed.seam[0] - closed.center[0]) / radius
-			]
+				(closed.seam[0] - closed.center[0]) / radius,
+			],
 		};
 	}
 	function scalarSpecs(ctx: StageAdapterContext): ScalarGesture['spec'][] {
@@ -107,7 +122,7 @@ export function createWallScalarSession({
 		const normal: LayoutVec2 = [-target.tangent[1], target.tangent[0]];
 		const knob: LayoutVec2 = [
 			target.cap[0] + target.tangent[0] * WALL_TOP_KNOB_REACH_METERS,
-			target.cap[1] + target.tangent[1] * WALL_TOP_KNOB_REACH_METERS
+			target.cap[1] + target.tangent[1] * WALL_TOP_KNOB_REACH_METERS,
 		];
 		return [
 			{
@@ -121,7 +136,7 @@ export function createWallScalarSession({
 				// so the drawn offset never changes the planned height.
 				anchor: [knob[0], y + source.height, knob[1]],
 				stem: [knob[0], y, knob[1]],
-				axis: [0, 1, 0]
+				axis: [0, 1, 0],
 			},
 			{
 				id: 'layout-wall-thickness',
@@ -130,14 +145,14 @@ export function createWallScalarSession({
 				field: 'thickness',
 				value: source.thickness,
 				anchor: [target.cap[0], planReading ? y : y + source.height, target.cap[1]],
-				axis: [normal[0], 0, normal[1]]
-			}
+				axis: [normal[0], 0, normal[1]],
+			},
 		];
 	}
 	function scalarTravel(
 		ctx: StageAdapterContext,
 		spec: ScalarGesture['spec'],
-		css: readonly [number, number]
+		css: readonly [number, number],
 	): number | null {
 		if (spec.field === 'height' && ctx.evaluation.settledReading === 'plan')
 			return -css[1] * ctx.evaluation.targetPlaneMetersPerCssPixel;
@@ -148,7 +163,7 @@ export function createWallScalarSession({
 					origin: spec.anchor,
 					direction: spec.axis,
 					rayOrigin: ray.origin,
-					rayDirection: ray.direction
+					rayDirection: ray.direction,
 				});
 	}
 	function previewScalar(value: number): boolean {
@@ -167,10 +182,10 @@ export function createWallScalarSession({
 								wallId: opening.wallId,
 								kind: opening.kind,
 								offset: opening.offset,
-								width: opening.width
+								width: opening.width,
 							}
 						: {}),
-					height: value
+					height: value,
 				});
 				return false;
 			}
@@ -224,17 +239,17 @@ export function createWallScalarSession({
 						location: {
 							kind: 'layout-location',
 							levelId,
-							structureInstancePath: []
+							structureInstancePath: [],
 						},
 						componentId: null,
-						capabilityId: null
-					}
+						capabilityId: null,
+					},
 				],
 				payload:
 					subject === 'opening'
 						? { openingId: id, field: 'height', value }
-						: { wallId: id, [field]: value }
-			})
+						: { wallId: id, [field]: value },
+			}),
 		);
 		publishRefusal(outcome.kind === 'refused' ? outcome.message : null);
 		services.stage.notifySurfaceChange();
@@ -248,7 +263,7 @@ export function createWallScalarSession({
 			const lease = services.stage.acquireGesture({
 				owner: 'layout-scalar',
 				evaluationId: intent.evaluationId,
-				policy: 'cancel-on-reading-change'
+				policy: 'cancel-on-reading-change',
 			});
 			if (lease.kind !== 'granted') return false;
 			scalarGesture = {
@@ -262,7 +277,7 @@ export function createWallScalarSession({
 				value: null,
 				candidate: null,
 				numeric: null,
-				refusal: null
+				refusal: null,
 			};
 			services.stage.notifySurfaceChange();
 			return true;
@@ -297,7 +312,7 @@ export function createWallScalarSession({
 					const candidates = [
 						services.stage.heightSheet().height(),
 						...services.stage.heightSheet().pins(),
-						...services.stage.heightTicks().map((tick) => tick.heightMeters)
+						...services.stage.heightTicks().map((tick) => tick.heightMeters),
 					]
 						.map((h) => h - sill)
 						.filter((h) => h > 0);
@@ -323,7 +338,7 @@ export function createWallScalarSession({
 							: { kind: 'opening', openingId: current.spec.subjectId },
 					contentRevision,
 					point: [current.spec.anchor[0], current.spec.anchor[2]],
-					text: current.refusal
+					text: current.refusal,
 				});
 			endScalar();
 			if (value !== null) void commitScalar(current, value);
@@ -341,7 +356,7 @@ export function createWallScalarSession({
 				const field = current.spec.field;
 				const opened = planNumericEntryOpen(
 					{ host: field, fieldId: field, ownerId: current.spec.subjectId },
-					{ [field]: current.value ?? current.spec.value }
+					{ [field]: current.value ?? current.spec.value },
 				);
 				current.numeric = planNumericEntryInput(opened, key);
 			} else current.numeric = planNumericEntryInput(current.numeric, current.numeric.text + key);
@@ -369,7 +384,9 @@ export function createWallScalarSession({
 
 	function scalarDescriptors(adapterContext: StageAdapterContext) {
 		return scalarSpecs(adapterContext)
-			.filter((spec) => spec.field !== 'height' || adapterContext.evaluation.settledReading !== 'plan')
+			.filter(
+				(spec) => spec.field !== 'height' || adapterContext.evaluation.settledReading !== 'plan',
+			)
 			.map(
 				(spec): StageHandleDescriptor => ({
 					id: spec.id,
@@ -384,7 +401,7 @@ export function createWallScalarSession({
 							? { ray: 8, glyph: 'top-knob' }
 							: {
 									ray: spec.field === 'height' ? 22 : 9,
-									twoWayHalf: 9
+									twoWayHalf: 9,
 								},
 					...(spec.stem === undefined ? {} : { stem: spec.stem }),
 					bothWays: spec.field === 'thickness',
@@ -394,7 +411,7 @@ export function createWallScalarSession({
 									axis: [0, -1],
 									...(adapterContext.evaluation.settledReading === 'plan'
 										? { offset: [0, -24] as const }
-										: {})
+										: {}),
 								}
 							: undefined,
 					label: spec.field === 'height' ? 'Height' : 'Thickness',
@@ -410,11 +427,13 @@ export function createWallScalarSession({
 						scalarGesture?.spec.id === spec.id && scalarGesture.numeric
 							? `${spec.field} ${scalarGesture.numeric.text}`
 							: sizeDeltaLabel(
-									scalarGesture?.spec.id === spec.id ? (scalarGesture.value ?? spec.value) : spec.value,
-									spec.value
+									scalarGesture?.spec.id === spec.id
+										? (scalarGesture.value ?? spec.value)
+										: spec.value,
+									spec.value,
 								),
-					refusal: scalarGesture?.spec.id === spec.id ? scalarGesture.refusal : null
-				})
+					refusal: scalarGesture?.spec.id === spec.id ? scalarGesture.refusal : null,
+				}),
 			);
 	}
 
@@ -431,15 +450,20 @@ export function createWallScalarSession({
 					candidatePreviewOf({
 						id: 'layout-scalar-candidate',
 						role: 'subject',
-						geometry: wallHeightGhostPaper(current.candidate, current.spec.subjectId, y, current.value)
-					})
+						geometry: wallHeightGhostPaper(
+							current.candidate,
+							current.spec.subjectId,
+							y,
+							current.value,
+						),
+					}),
 				];
 			if (current.candidate !== null) {
 				const ids = new Set([
 					current.spec.subjectId,
 					...(current.spec.subject === 'wall'
 						? openingIdsOnWalls(current.candidate, new Set([current.spec.subjectId]))
-						: [])
+						: []),
 				]);
 				const built = candidatePaper(current.candidate, y, ids, new Set());
 				if (built)
@@ -447,8 +471,8 @@ export function createWallScalarSession({
 						candidatePreviewOf({
 							id: 'layout-scalar-candidate',
 							role: 'subject',
-							geometry: built.paper.subject
-						})
+							geometry: built.paper.subject,
+						}),
 					];
 			}
 			return [];
@@ -464,6 +488,6 @@ export function createWallScalarSession({
 		previews: scalarPreviews,
 		get active() {
 			return scalarGesture !== null;
-		}
+		},
 	};
 }

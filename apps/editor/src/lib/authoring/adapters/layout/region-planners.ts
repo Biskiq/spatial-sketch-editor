@@ -10,11 +10,42 @@
  * same intents from this module, so one gesture is one intent and one history
  * entry on the one F4 path.
  */
-import { allocateCapturedId, duplicateRegionSurfaceLineage, layoutIdCaptureInput, layoutWorkingLevelInput, readLayoutIdCapture, readLayoutWorkingLevel, type LayoutIdCapture, type LayoutSurfaceLineage } from '@portfolio/layout-core/plan';
-import { planCreateRegion, planDuplicateRegion, planFitRegionEdgeToWall, planFitRegionToSpace, planFitRegionToWalls, planFitWallsToRegion, planMoveRegion, planRemoveRegion, planRenameRegion, planRotateRegion, planSetRegionElevation, planSetRegionFootprint, planSetRegionIntendedGap, planSetRegionThickness, regionWallRelations, type RegionPlan } from '@portfolio/layout-core/room';
+import {
+	allocateCapturedId,
+	duplicateRegionSurfaceLineage,
+	layoutIdCaptureInput,
+	layoutWorkingLevelInput,
+	readLayoutIdCapture,
+	readLayoutWorkingLevel,
+	type LayoutIdCapture,
+	type LayoutSurfaceLineage,
+} from '@portfolio/layout-core/plan';
+import {
+	planCreateRegion,
+	planDuplicateRegion,
+	planFitRegionEdgeToWall,
+	planFitRegionToSpace,
+	planFitRegionToWalls,
+	planFitWallsToRegion,
+	planMoveRegion,
+	planRemoveRegion,
+	planRenameRegion,
+	planRotateRegion,
+	planSetRegionElevation,
+	planSetRegionFootprint,
+	planSetRegionIntendedGap,
+	planSetRegionThickness,
+	regionWallRelations,
+	type RegionPlan,
+} from '@portfolio/layout-core/room';
 import type { LayoutDocumentWallFirst, LayoutRegion } from '@portfolio/layout-core/wall';
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
-import type { AuthoringIntent, DomainPlanner, PlannerOutcome, PlannerRequest } from '@portfolio/project-model/f4';
+import type {
+	AuthoringIntent,
+	DomainPlanner,
+	PlannerOutcome,
+	PlannerRequest,
+} from '@portfolio/project-model/f4';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
 
 import { stageLayout, type StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
@@ -57,7 +88,7 @@ const PAYLOAD_KEYS: Readonly<Record<string, readonly string[]>> = {
 	[LAYOUT_REGION_FIT_SPACE_KIND]: ['regionId', 'roomId'],
 	[LAYOUT_REGION_FIT_EDGE_KIND]: ['regionId', 'wallId'],
 	[LAYOUT_REGION_FIT_ROOF_KIND]: ['regionId', 'wallIds'],
-	[LAYOUT_REGION_FIT_WALLS_KIND]: ['regionId', 'wallIds']
+	[LAYOUT_REGION_FIT_WALLS_KIND]: ['regionId', 'wallIds'],
 };
 
 function rejected(code: string, message: string): PlannerOutcome<ProjectEnvelope> {
@@ -74,7 +105,7 @@ function finiteNumber(value: unknown): value is number {
 
 function readPayload(
 	kind: string,
-	payload: AuthoringIntent['payload']
+	payload: AuthoringIntent['payload'],
 ): { readonly value: Payload } | PlanFailure {
 	if (payload === null || typeof payload !== 'object' || Array.isArray(payload)) {
 		return { message: 'The operation payload must be an object.' };
@@ -132,23 +163,27 @@ function readName(value: unknown): string | null | undefined {
  */
 function addressedRegion(
 	request: PlannerRequest<ProjectEnvelope>,
-	regionId: string
+	regionId: string,
 ): { readonly ok: true } | { readonly ok: false; readonly message: string } {
 	if (request.intent.targets.length !== 1) {
 		return { ok: false, message: 'A region edit addresses exactly one region.' };
 	}
 	const target = request.intent.targets[0]!;
-	if (target.domain !== 'layout' || target.subject.kind !== 'region' || target.subject.id !== regionId) {
+	if (
+		target.domain !== 'layout' ||
+		target.subject.kind !== 'region' ||
+		target.subject.id !== regionId
+	) {
 		return {
 			ok: false,
-			message: `The intent must address the region "${regionId}" it edits.`
+			message: `The intent must address the region "${regionId}" it edits.`,
 		};
 	}
 	return { ok: true };
 }
 
 function addressedBirth(
-	request: PlannerRequest<ProjectEnvelope>
+	request: PlannerRequest<ProjectEnvelope>,
 ): { readonly ok: true } | { readonly ok: false; readonly message: string } {
 	if (request.intent.targets.length !== 0) {
 		return { ok: false, message: 'A region birth addresses no existing subject.' };
@@ -157,7 +192,7 @@ function addressedBirth(
 }
 
 function capturedIdentity(
-	request: PlannerRequest<ProjectEnvelope>
+	request: PlannerRequest<ProjectEnvelope>,
 ): { readonly capture: LayoutIdCapture; readonly levelId: string } | PlanFailure {
 	const capture = readLayoutIdCapture(request.intent.capturedInputs);
 	if (capture === null) {
@@ -178,7 +213,7 @@ function documentIds(document: LayoutDocumentWallFirst): Set<string> {
 		document.rooms,
 		document.openings,
 		document.objects,
-		document.regions
+		document.regions,
 	]) {
 		for (const entry of collection as readonly { id: string }[]) ids.add(entry.id);
 	}
@@ -192,7 +227,7 @@ function documentIds(document: LayoutDocumentWallFirst): Set<string> {
  */
 export function regionIdFromCapture(
 	document: LayoutDocumentWallFirst,
-	capture: LayoutIdCapture
+	capture: LayoutIdCapture,
 ): string {
 	return allocateCapturedId(documentIds(document), 'region', capture);
 }
@@ -207,7 +242,7 @@ function regionPlanOutcome(
 		readonly retired?: boolean;
 		readonly id?: string;
 		readonly surfaceLineage?: LayoutSurfaceLineage;
-	} = {}
+	} = {},
 ): PlannerOutcome<ProjectEnvelope> {
 	if (plan.kind === 'rejected') {
 		return rejected(plan.rejection.code, plan.rejection.message);
@@ -225,8 +260,8 @@ function regionPlanOutcome(
 			id: regionId,
 			// Edits keep their ids and removal is pruned by the Scene applicator.
 			// Duplicate is the one operation that carries a shared Finish.
-			surfaceLineage: options.surfaceLineage ?? []
-		}
+			surfaceLineage: options.surfaceLineage ?? [],
+		},
 	);
 }
 
@@ -246,14 +281,20 @@ export function regionCreateIntent(input: {
 	readonly contentRevision: string;
 	readonly levelId: string;
 }): AuthoringIntent {
-	return regionIntent(LAYOUT_REGION_CREATE_KIND, input, [], {
-		regionId: input.regionId,
-		role: input.role,
-		footprint: input.footprint.map(([x, z]) => [x, z]),
-		elevation: input.elevation,
-		thickness: input.thickness,
-		name: input.name ?? null
-	}, input.capture);
+	return regionIntent(
+		LAYOUT_REGION_CREATE_KIND,
+		input,
+		[],
+		{
+			regionId: input.regionId,
+			role: input.role,
+			footprint: input.footprint.map(([x, z]) => [x, z]),
+			elevation: input.elevation,
+			thickness: input.thickness,
+			name: input.name ?? null,
+		},
+		input.capture,
+	);
 }
 
 export function regionDuplicateIntent(input: {
@@ -275,9 +316,9 @@ export function regionDuplicateIntent(input: {
 			regionId: input.regionId,
 			sourceRegionId: input.sourceRegionId,
 			deltaX: input.delta[0],
-			deltaZ: input.delta[1]
+			deltaZ: input.delta[1],
 		},
-		input.capture
+		input.capture,
 	);
 }
 
@@ -299,7 +340,7 @@ export function regionEditIntent(input: {
 		// or manipulate a region never repeat the id.
 		typeof input.payload === 'object' && input.payload !== null && !Array.isArray(input.payload)
 			? { regionId: input.regionId, ...input.payload }
-			: { regionId: input.regionId }
+			: { regionId: input.regionId },
 	);
 }
 
@@ -314,7 +355,7 @@ function regionIntent(
 	},
 	targets: AuthoringIntent['targets'],
 	payload: AuthoringIntent['payload'],
-	capture?: LayoutIdCapture
+	capture?: LayoutIdCapture,
 ): AuthoringIntent {
 	return {
 		version: 1,
@@ -325,13 +366,17 @@ function regionIntent(
 		payload,
 		capturedInputs: [
 			layoutWorkingLevelInput(input.levelId),
-			...(capture === undefined ? [] : [layoutIdCaptureInput(capture)])
+			...(capture === undefined ? [] : [layoutIdCaptureInput(capture)]),
 		],
-		allocatedIds: []
+		allocatedIds: [],
 	};
 }
 
-function regionReference(regionId: string, contentRevision: string, levelId: string): AuthoringIntent['targets'][number] {
+function regionReference(
+	regionId: string,
+	contentRevision: string,
+	levelId: string,
+): AuthoringIntent['targets'][number] {
 	return layoutSubjectReference({ kind: 'region', id: regionId, contentRevision, levelId });
 }
 
@@ -359,7 +404,10 @@ function regionCreatePlanner(): DomainPlanner<ProjectEnvelope> {
 		const role = record.role;
 		const name = readName(record.name);
 		if (!opaqueId(record.regionId) || !footprint) {
-			return rejected('invalid-value', 'A region needs its derived id and a footprint of 3 to 1024 points.');
+			return rejected(
+				'invalid-value',
+				'A region needs its derived id and a footprint of 3 to 1024 points.',
+			);
 		}
 		if (role !== 'floor' && role !== 'overhead') {
 			return rejected('invalid-value', "A region role must be 'floor' or 'overhead'.");
@@ -367,13 +415,14 @@ function regionCreatePlanner(): DomainPlanner<ProjectEnvelope> {
 		if (!finiteNumber(record.elevation) || !finiteNumber(record.thickness)) {
 			return rejected('invalid-value', 'A region needs finite elevation and thickness in meters.');
 		}
-		if (name === undefined) return rejected('invalid-value', 'A region name must be a string or null.');
+		if (name === undefined)
+			return rejected('invalid-value', 'A region name must be a string or null.');
 		const baseline = request.snapshot.domain.source.units.layout.data;
 		const expected = regionIdFromCapture(baseline, identity.capture);
 		if (record.regionId !== expected) {
 			return rejected(
 				'invalid-value',
-				`The region payload names '${record.regionId}', but this operation's nonce derives '${expected}'.`
+				`The region payload names '${record.regionId}', but this operation's nonce derives '${expected}'.`,
 			);
 		}
 		const plan = planCreateRegion({
@@ -384,12 +433,12 @@ function regionCreatePlanner(): DomainPlanner<ProjectEnvelope> {
 				footprint,
 				elevation: record.elevation,
 				thickness: record.thickness,
-				...(name === null ? {} : { name })
-			}
+				...(name === null ? {} : { name }),
+			},
 		});
 		return regionPlanOutcome(request, LAYOUT_REGION_CREATE_KIND, plan, ['regions'], {
 			created: true,
-			id: expected
+			id: expected,
 		});
 	});
 }
@@ -406,7 +455,7 @@ function regionMovePlanner(): DomainPlanner<ProjectEnvelope> {
 		if (!addressed.ok) return rejected('invalid-value', addressed.message);
 		const plan = planMoveRegion(request.snapshot.domain.source.units.layout.data, regionId, [
 			deltaX,
-			deltaZ
+			deltaZ,
 		]);
 		return regionPlanOutcome(request, LAYOUT_REGION_MOVE_KIND, plan, ['regions']);
 	});
@@ -425,7 +474,7 @@ function regionRotatePlanner(): DomainPlanner<ProjectEnvelope> {
 		const plan = planRotateRegion(
 			request.snapshot.domain.source.units.layout.data,
 			regionId,
-			angleRadians
+			angleRadians,
 		);
 		return regionPlanOutcome(request, LAYOUT_REGION_ROTATE_KIND, plan, ['regions']);
 	});
@@ -438,14 +487,17 @@ function regionFootprintPlanner(): DomainPlanner<ProjectEnvelope> {
 		const regionId = payload.value.regionId;
 		const points = readPoints(payload.value.points);
 		if (!opaqueId(regionId) || points === null) {
-			return rejected('invalid-value', 'A footprint edit needs one region id and 3 to 1024 finite points.');
+			return rejected(
+				'invalid-value',
+				'A footprint edit needs one region id and 3 to 1024 finite points.',
+			);
 		}
 		const addressed = addressedRegion(request, regionId);
 		if (!addressed.ok) return rejected('invalid-value', addressed.message);
 		const plan = planSetRegionFootprint(
 			request.snapshot.domain.source.units.layout.data,
 			regionId,
-			points
+			points,
 		);
 		return regionPlanOutcome(request, LAYOUT_REGION_FOOTPRINT_KIND, plan, ['regions']);
 	});
@@ -457,14 +509,17 @@ function regionElevationPlanner(): DomainPlanner<ProjectEnvelope> {
 		if (isFailure(payload)) return rejected('invalid-value', payload.message);
 		const { regionId, elevation } = payload.value;
 		if (!opaqueId(regionId) || !finiteNumber(elevation)) {
-			return rejected('invalid-value', 'A region elevation needs one region id and a finite height.');
+			return rejected(
+				'invalid-value',
+				'A region elevation needs one region id and a finite height.',
+			);
 		}
 		const addressed = addressedRegion(request, regionId);
 		if (!addressed.ok) return rejected('invalid-value', addressed.message);
 		const plan = planSetRegionElevation(
 			request.snapshot.domain.source.units.layout.data,
 			regionId,
-			elevation
+			elevation,
 		);
 		return regionPlanOutcome(request, LAYOUT_REGION_ELEVATION_KIND, plan, ['regions']);
 	});
@@ -476,14 +531,17 @@ function regionThicknessPlanner(): DomainPlanner<ProjectEnvelope> {
 		if (isFailure(payload)) return rejected('invalid-value', payload.message);
 		const { regionId, thickness } = payload.value;
 		if (!opaqueId(regionId) || !finiteNumber(thickness)) {
-			return rejected('invalid-value', 'A region thickness needs one region id and a finite thickness.');
+			return rejected(
+				'invalid-value',
+				'A region thickness needs one region id and a finite thickness.',
+			);
 		}
 		const addressed = addressedRegion(request, regionId);
 		if (!addressed.ok) return rejected('invalid-value', addressed.message);
 		const plan = planSetRegionThickness(
 			request.snapshot.domain.source.units.layout.data,
 			regionId,
-			thickness
+			thickness,
 		);
 		return regionPlanOutcome(request, LAYOUT_REGION_THICKNESS_KIND, plan, ['regions']);
 	});
@@ -504,11 +562,11 @@ function regionIntendedGapPlanner(): DomainPlanner<ProjectEnvelope> {
 			compiledNow(request),
 			regionId,
 			wallId,
-			intended
+			intended,
 		);
 		return regionPlanOutcome(request, LAYOUT_REGION_INTENDED_GAP_KIND, plan, [
 			'regions',
-			'intendedGaps'
+			'intendedGaps',
 		]);
 	});
 }
@@ -524,11 +582,9 @@ function regionNamePlanner(): DomainPlanner<ProjectEnvelope> {
 		}
 		const addressed = addressedRegion(request, regionId);
 		if (!addressed.ok) return rejected('invalid-value', addressed.message);
-		const plan = planRenameRegion(
-			request.snapshot.domain.source.units.layout.data,
-			regionId,
-			{ name }
-		);
+		const plan = planRenameRegion(request.snapshot.domain.source.units.layout.data, regionId, {
+			name,
+		});
 		return regionPlanOutcome(request, LAYOUT_REGION_NAME_KIND, plan, ['regions', 'name']);
 	});
 }
@@ -543,7 +599,7 @@ function regionRemovePlanner(): DomainPlanner<ProjectEnvelope> {
 		if (!addressed.ok) return rejected('invalid-value', addressed.message);
 		const plan = planRemoveRegion(request.snapshot.domain.source.units.layout.data, regionId);
 		return regionPlanOutcome(request, LAYOUT_REGION_REMOVE_KIND, plan, ['regions'], {
-			retired: true
+			retired: true,
 		});
 	});
 }
@@ -561,7 +617,10 @@ function regionDuplicatePlanner(): DomainPlanner<ProjectEnvelope> {
 			!finiteNumber(deltaX) ||
 			!finiteNumber(deltaZ)
 		) {
-			return rejected('invalid-value', 'A region duplicate needs its derived id, a source and a delta.');
+			return rejected(
+				'invalid-value',
+				'A region duplicate needs its derived id, a source and a delta.',
+			);
 		}
 		const addressed = addressedRegion(request, sourceRegionId);
 		if (!addressed.ok) return rejected('invalid-value', addressed.message);
@@ -570,18 +629,18 @@ function regionDuplicatePlanner(): DomainPlanner<ProjectEnvelope> {
 		if (regionId !== expected) {
 			return rejected(
 				'invalid-value',
-				`The region payload names '${regionId}', but this operation's nonce derives '${expected}'.`
+				`The region payload names '${regionId}', but this operation's nonce derives '${expected}'.`,
 			);
 		}
 		const plan = planDuplicateRegion(
 			baseline,
 			{ regionId: sourceRegionId, delta: [deltaX, deltaZ] },
-			identity.capture
+			identity.capture,
 		);
 		return regionPlanOutcome(request, LAYOUT_REGION_DUPLICATE_KIND, plan, ['regions'], {
 			created: true,
 			id: expected,
-			surfaceLineage: duplicateRegionSurfaceLineage(sourceRegionId, expected)
+			surfaceLineage: duplicateRegionSurfaceLineage(sourceRegionId, expected),
 		});
 	});
 }
@@ -600,7 +659,7 @@ function regionFitSpacePlanner(): DomainPlanner<ProjectEnvelope> {
 			request.snapshot.domain.source.units.layout.data,
 			compiledNow(request),
 			regionId,
-			roomId
+			roomId,
 		);
 		return regionPlanOutcome(request, LAYOUT_REGION_FIT_SPACE_KIND, plan, ['regions']);
 	});
@@ -620,7 +679,7 @@ function regionFitEdgePlanner(): DomainPlanner<ProjectEnvelope> {
 			request.snapshot.domain.source.units.layout.data,
 			compiledNow(request),
 			regionId,
-			wallId
+			wallId,
 		);
 		return regionPlanOutcome(request, LAYOUT_REGION_FIT_EDGE_KIND, plan, ['regions']);
 	});
@@ -641,7 +700,7 @@ function regionFitRoofPlanner(): DomainPlanner<ProjectEnvelope> {
 			request.snapshot.domain.source.units.layout.data,
 			compiledNow(request),
 			regionId,
-			wallIds
+			wallIds,
 		);
 		return regionPlanOutcome(request, LAYOUT_REGION_FIT_ROOF_KIND, plan, ['regions']);
 	});
@@ -662,7 +721,7 @@ function regionFitWallsPlanner(): DomainPlanner<ProjectEnvelope> {
 			request.snapshot.domain.source.units.layout.data,
 			compiledNow(request),
 			regionId,
-			wallIds
+			wallIds,
 		);
 		if (plan.kind === 'rejected') {
 			return rejected(plan.rejection.code, plan.rejection.message);
@@ -673,7 +732,7 @@ function regionFitWallsPlanner(): DomainPlanner<ProjectEnvelope> {
 			{ kind: 'region', id: regionId },
 			plan.document,
 			['regions', 'walls'],
-			{ id: regionId, surfaceLineage: [] }
+			{ id: regionId, surfaceLineage: [] },
 		);
 		return outcome;
 	});
@@ -695,7 +754,7 @@ export function createRegionPlanners(): readonly DomainPlanner<ProjectEnvelope>[
 		regionFitSpacePlanner(),
 		regionFitEdgePlanner(),
 		regionFitRoofPlanner(),
-		regionFitWallsPlanner()
+		regionFitWallsPlanner(),
 	];
 }
 
@@ -705,10 +764,12 @@ export function createRegionPlanners(): readonly DomainPlanner<ProjectEnvelope>[
  */
 export function layoutRegionNameTarget(
 	services: StageAdapterServices,
-	regionId: string
+	regionId: string,
 ): {
 	readonly value: string;
-	commit(name: string): Promise<{ kind: 'accepted' } | { kind: 'refused'; code: string; message: string }>;
+	commit(
+		name: string,
+	): Promise<{ kind: 'accepted' } | { kind: 'refused'; code: string; message: string }>;
 } {
 	const document = stageLayout(services.stage.snapshot());
 	return {
@@ -724,20 +785,20 @@ export function layoutRegionNameTarget(
 					projectId: snapshot.acceptedRevision.projectId,
 					revisionId: services.authoring.acceptedRevision().revisionId,
 					contentRevision: snapshot.domain.unitRevisions.layout,
-					levelId: snapshot.domain.layoutLevelId
-				})
+					levelId: snapshot.domain.layoutLevelId,
+				}),
 			);
 			if (outcome.kind === 'refused') {
 				return { kind: 'refused', code: outcome.code, message: outcome.message };
 			}
 			return { kind: 'accepted' };
-		}
+		},
 	};
 }
 
 export function regionRelationsNow(
 	compiled: Parameters<typeof regionWallRelations>[0],
-	region: LayoutRegion
+	region: LayoutRegion,
 ): ReturnType<typeof regionWallRelations> {
 	return regionWallRelations(compiled, region);
 }

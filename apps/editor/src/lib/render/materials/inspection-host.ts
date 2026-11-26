@@ -28,14 +28,14 @@ import {
 	type FinishViewGeneration,
 	type FinishViewIssue,
 	type FinishViewLease,
-	type FinishViewSource
+	type FinishViewSource,
 } from '$lib/render/resources/finish-views';
 import { createFinishChannelMaterial } from '$lib/render/resources/finish-sampling';
 import type { LightStore } from '$lib/render/resources/light-store';
 import type { MaterialStore } from '$lib/render/resources/material-store';
 import type {
 	FinishMapRole,
-	StandardMaterialDescriptor
+	StandardMaterialDescriptor,
 } from '$lib/render/resources/material-descriptor';
 import type { ProjectTextureScope } from '$lib/render/resources/project-texture-scope';
 import { releaseFinishTexture, type TextureLoadScope } from '$lib/render/resources/texture-store';
@@ -49,14 +49,14 @@ import {
 	sampleTileFramingKey,
 	sampleTileKey,
 	sampleTileMetricFacts,
-	type SampleTileFraming
+	type SampleTileFraming,
 } from './sample-tile';
 import {
 	INSPECTION_LIGHTING_VERSION,
 	libraryRigBackdrop,
 	createInspectionLighting,
 	type InspectionLighting,
-	type InspectionRig
+	type InspectionRig,
 } from './inspection-lighting';
 import {
 	INSPECTION_THUMBNAIL_BACKGROUND,
@@ -70,7 +70,7 @@ import {
 	renderInspectionFrame,
 	type InspectionChannelState,
 	type InspectionFrame,
-	type InspectionRenderer
+	type InspectionRenderer,
 } from './inspection';
 import {
 	createDraftTextureScope,
@@ -78,14 +78,14 @@ import {
 	resolveInspectionSubject,
 	type InspectionDraft,
 	type InspectionSubject,
-	type ResolvedInspectionSubject
+	type ResolvedInspectionSubject,
 } from './inspection-subject';
 import { readInspectionTexel, type InspectionTexelChannel } from './inspection-texel';
 import {
 	createWorldInspectionLighting,
 	worldLightSampleKey,
 	type WorldInspectionLighting,
-	type WorldLightSample
+	type WorldLightSample,
 } from './inspection-world';
 
 /** A bound on one readback, not a display rule: any size up to it is served. */
@@ -194,14 +194,17 @@ export type InspectionHost = {
 	observe(request: InspectionRequest, onState: (state: InspectionState) => void): () => void;
 	/** Reload the live request's failed images and redraw it (an image Retry). */
 	retry(): void;
-	thumbnail(request: InspectionThumbnailRequest, signal?: AbortSignal): Promise<InspectionThumbnail>;
+	thumbnail(
+		request: InspectionThumbnailRequest,
+		signal?: AbortSignal,
+	): Promise<InspectionThumbnail>;
 	texel(
 		request: {
 			readonly subject: InspectionSubject;
 			readonly geometry: InspectionGeometryKind;
 			readonly uv: readonly [number, number];
 		},
-		signal?: AbortSignal
+		signal?: AbortSignal,
 	): Promise<InspectionTexel>;
 	stats(): InspectionHostStats;
 	dispose(): void;
@@ -254,7 +257,9 @@ function refused(code: string, action?: string): { status: 'refused'; issues: In
 }
 
 function validSize(size: readonly number[]): boolean {
-	return size.every((value) => Number.isInteger(value) && value >= 1 && value <= INSPECTION_MAX_SIZE);
+	return size.every(
+		(value) => Number.isInteger(value) && value >= 1 && value <= INSPECTION_MAX_SIZE,
+	);
 }
 
 /** One signal that follows both; `done` removes its listeners. */
@@ -269,7 +274,7 @@ function linkSignals(...signals: readonly AbortSignal[]): { signal: AbortSignal;
 		signal: controller.signal,
 		done: () => {
 			for (const signal of signals) signal.removeEventListener('abort', abort);
-		}
+		},
 	};
 }
 
@@ -290,11 +295,17 @@ function subjectRefusal(subject: InspectionSubject): ReturnType<typeof refused> 
 }
 
 /** Resolver issues, plus a mapped Finish that could not produce a sampling plan. */
-function resolutionIssues(resolved: ResolvedInspectionSubject, inputs: BoundInputs): InspectionIssue[] {
+function resolutionIssues(
+	resolved: ResolvedInspectionSubject,
+	inputs: BoundInputs,
+): InspectionIssue[] {
 	const issues: InspectionIssue[] = [...resolved.issues];
 	const mapped = Object.values(inputs.maps).some((binding) => binding !== undefined);
 	if (issues.length === 0 && mapped && resolved.untreated.finish === undefined) {
-		issues.push({ code: 'sampling-unavailable', action: 'Retry once every bound image is available.' });
+		issues.push({
+			code: 'sampling-unavailable',
+			action: 'Retry once every bound image is available.',
+		});
 	}
 	return issues;
 }
@@ -303,7 +314,7 @@ function channelReadings(
 	resolved: ResolvedInspectionSubject,
 	inputs: BoundInputs,
 	views: FinishViewLease['views'],
-	treated: boolean
+	treated: boolean,
 ): InspectionChannelReading[] {
 	const surface: StandardMaterialDescriptor = treated ? resolved.lit : resolved.untreated;
 	const constants = {
@@ -311,7 +322,7 @@ function channelReadings(
 		normal: [0, 0, 1],
 		roughness: surface.roughness,
 		metalness: surface.metalness,
-		occlusion: 1
+		occlusion: 1,
 	} as const;
 	return inspectionChannels(resolved.channels, views).map((channel) => {
 		let state: InspectionChannelReading['state'] = channel.state;
@@ -324,7 +335,7 @@ function channelReadings(
 			...channel,
 			state,
 			provenance: inputs.provenance.maps[channel.role],
-			constant: constants[channel.role]
+			constant: constants[channel.role],
 		};
 	});
 }
@@ -361,7 +372,11 @@ export function createInspectionHost(options: {
 
 	const objectIds = new WeakMap<object, number>();
 	/** The live draft's scope, kept across edits that leave its source set alone. */
-	let draftScope: { readonly key: string; draft: InspectionDraft; readonly scope: ProjectTextureScope } | null = null;
+	let draftScope: {
+		readonly key: string;
+		draft: InspectionDraft;
+		readonly scope: ProjectTextureScope;
+	} | null = null;
 	/** Scopes of one-shot jobs, so disposal can end their reads. */
 	const jobScopes = new Set<ProjectTextureScope>();
 
@@ -461,7 +476,7 @@ export function createInspectionHost(options: {
 	async function withScope<T>(
 		subject: InspectionSubject,
 		interactive: boolean,
-		run: (scope: TextureLoadScope | null) => Promise<T>
+		run: (scope: TextureLoadScope | null) => Promise<T>,
 	): Promise<T> {
 		if (subject.kind === 'catalogue') return run(null);
 		if (subject.kind === 'finish') return run(subject.scope);
@@ -471,7 +486,7 @@ export function createInspectionHost(options: {
 				draftScope?.scope.dispose();
 				const held = { key, draft: subject.draft };
 				draftScope = Object.assign(held, {
-					scope: createDraftTextureScope(() => held.draft, `${hostId}:draft-${(serial += 1)}`)
+					scope: createDraftTextureScope(() => held.draft, `${hostId}:draft-${(serial += 1)}`),
 				});
 			}
 			return run(draftScope.scope);
@@ -499,7 +514,7 @@ export function createInspectionHost(options: {
 		resolved: ResolvedInspectionSubject,
 		scope: TextureLoadScope | null,
 		signal: AbortSignal,
-		options: { readonly retry?: boolean; readonly solo?: FinishMapRole | null } = {}
+		options: { readonly retry?: boolean; readonly solo?: FinishMapRole | null } = {},
 	): Promise<AcquiredViews | null> {
 		const held: FinishViewLease[] = [];
 		const release = (): void => {
@@ -553,7 +568,10 @@ export function createInspectionHost(options: {
 				? null
 				: { views: {}, issues: [], lost: true, held: false, release };
 		}
-		const views = Object.assign({}, ...held.map((lease) => lease.views)) as FinishViewLease['views'];
+		const views = Object.assign(
+			{},
+			...held.map((lease) => lease.views),
+		) as FinishViewLease['views'];
 		return { views, issues, lost: false, held: held.length > 0, release };
 	}
 
@@ -562,18 +580,23 @@ export function createInspectionHost(options: {
 		request: InspectionRequest,
 		scope: TextureLoadScope | null,
 		signal: AbortSignal,
-		retry: boolean
+		retry: boolean,
 	): Promise<InspectionState | null> {
 		const { subject, geometry, display, lighting, sampleTile } = request;
 		const [width, height] = request.sizePx;
 		if (!validSize(request.sizePx)) return refused('invalid-size');
-		if (sampleTile !== undefined && (width !== height || geometry !== 'plane' || lighting !== SAMPLE_TILE_RIG)) {
+		if (
+			sampleTile !== undefined &&
+			(width !== height || geometry !== 'plane' || lighting !== SAMPLE_TILE_RIG)
+		) {
 			return refused('invalid-sample-tile');
 		}
 		const missing = subjectRefusal(subject);
 		if (missing !== null) return missing;
 
-		let world: (WorldLightSample & { anchorWorld: NonNullable<WorldLightSample['anchorWorld']> }) | null = null;
+		let world:
+			| (WorldLightSample & { anchorWorld: NonNullable<WorldLightSample['anchorWorld']> })
+			| null = null;
 		if (typeof lighting !== 'string') {
 			const sample = lighting.world;
 			const anchor = sample.anchorWorld;
@@ -593,7 +616,7 @@ export function createInspectionHost(options: {
 			subject,
 			geometry,
 			world?.treatment,
-			sampleTile === undefined ? undefined : sampleTileMetricFacts(sampleTile)
+			sampleTile === undefined ? undefined : sampleTileMetricFacts(sampleTile),
 		);
 		const { inputs, recipeKey } = resolved;
 		if (inputs === null || recipeKey === null) {
@@ -628,12 +651,14 @@ export function createInspectionHost(options: {
 				}
 			}
 			if (solo !== null && inputs.maps[solo] !== undefined) {
-				const entry = resolved.channels.finish?.entries.find((candidate) => candidate.role === solo);
+				const entry = resolved.channels.finish?.entries.find(
+					(candidate) => candidate.role === solo,
+				);
 				if (entry === undefined || views[entry.view] === undefined) {
 					// A bound channel never passes its constant off as the map.
 					return {
 						status: 'refused',
-						issues: issues.length > 0 ? issues : [{ code: 'channel-unavailable', role: solo }]
+						issues: issues.length > 0 ? issues : [{ code: 'channel-unavailable', role: solo }],
 					};
 				}
 			}
@@ -657,7 +682,8 @@ export function createInspectionHost(options: {
 
 			// The Library's own rigs draw on a light backdrop; every other rig keeps E7's.
 			const backdrop =
-				(display === 'lit' && typeof lighting === 'string' ? libraryRigBackdrop(lighting) : null) ?? INSPECTION_THUMBNAIL_BACKGROUND;
+				(display === 'lit' && typeof lighting === 'string' ? libraryRigBackdrop(lighting) : null) ??
+				INSPECTION_THUMBNAIL_BACKGROUND;
 			scene.background = new Color(backdrop);
 			// A channel display is unlit; it realizes no rig and no World light.
 			const turn = request.lightTurnRadians ?? 0;
@@ -678,7 +704,10 @@ export function createInspectionHost(options: {
 				scene.add(new Mesh(geometryFor(current, geometry), material));
 			} else {
 				// A window is per request (its UV range fits the framing): built and freed here.
-				const windowGeometry = createSampleTileGeometry(sampleTile, mappingTileMeters(inputs.mapping));
+				const windowGeometry = createSampleTileGeometry(
+					sampleTile,
+					mappingTileMeters(inputs.mapping),
+				);
 				windowGeometries.push(windowGeometry);
 				scene.add(new Mesh(windowGeometry, material));
 			}
@@ -692,23 +721,31 @@ export function createInspectionHost(options: {
 				height,
 				background: backdrop,
 				exposure: INSPECTION_THUMBNAIL_EXPOSURE,
-				signal
+				signal,
 			});
 			if (signal.aborted) return null;
 			// The background is opaque, so a transparent first pixel is a lost device's empty read.
-			if (frame === null || frame.pixels[3] !== 255) return refused('readback-failed', 'Retry the inspection.');
+			if (frame === null || frame.pixels[3] !== 255)
+				return refused('readback-failed', 'Retry the inspection.');
 			draws += 1;
 			const drawn: Drawn = {
 				frame,
 				channels: channelReadings(resolved, inputs, views, treated),
-				recipeKey
+				recipeKey,
 			};
-			return issues.length === 0 ? { status: 'ready', ...drawn } : { status: 'partial', issues, ...drawn };
+			return issues.length === 0
+				? { status: 'ready', ...drawn }
+				: { status: 'partial', issues, ...drawn };
 		} catch (error) {
 			if (signal.aborted) return null;
 			return {
 				status: 'refused',
-				issues: [{ code: 'inspection-draw-failed', message: error instanceof Error ? error.message : String(error) }]
+				issues: [
+					{
+						code: 'inspection-draw-failed',
+						message: error instanceof Error ? error.message : String(error),
+					},
+				],
 			};
 		} finally {
 			if (activeRig !== null) activeRig.group.rotation.y = 0;
@@ -747,7 +784,7 @@ export function createInspectionHost(options: {
 				try {
 					if (linked.signal.aborted) return null;
 					const state = await withScope(submitted.request.subject, true, (scope) =>
-						drawRequest(current, submitted.request, scope, linked.signal, submitted.retry)
+						drawRequest(current, submitted.request, scope, linked.signal, submitted.retry),
 					);
 					if (state === null || linked.signal.aborted) return null;
 					drawnState = state;
@@ -768,7 +805,7 @@ export function createInspectionHost(options: {
 			settled = state.status === 'pending' ? null : { key: live.key, state };
 			if (settled !== null) live.retry = false;
 			emit(state);
-		}
+		},
 	});
 
 	function requestKey(request: InspectionRequest): string {
@@ -783,7 +820,7 @@ export function createInspectionHost(options: {
 			typeof lighting === 'string' ? lighting : worldLightSampleKey(lighting.world),
 			request.display,
 			request.sizePx,
-			request.sampleTile === undefined ? null : sampleTileFramingKey(request.sampleTile)
+			request.sampleTile === undefined ? null : sampleTileFramingKey(request.sampleTile),
 		];
 		if (request.lightTurnRadians !== undefined && request.lightTurnRadians !== 0) {
 			base.push(`turn:${request.lightTurnRadians.toFixed(4)}`);
@@ -797,7 +834,8 @@ export function createInspectionHost(options: {
 	}
 
 	function remember(key: string, result: InspectionThumbnail & { status: 'ready' }): void {
-		const bytesOf = (entry: typeof result): number => entry.frame.pixels.byteLength + entry.png.byteLength;
+		const bytesOf = (entry: typeof result): number =>
+			entry.frame.pixels.byteLength + entry.png.byteLength;
 		const previous = cache.get(key);
 		if (previous !== undefined) cacheBytes -= bytesOf(previous);
 		cache.delete(key);
@@ -820,7 +858,7 @@ export function createInspectionHost(options: {
 		const retry = job.retryKey !== null && failedLooks.has(job.retryKey);
 		try {
 			const state = await withScope(job.request.subject, false, (scope) =>
-				drawRequest(current, job.request, scope, linked.signal, retry)
+				drawRequest(current, job.request, scope, linked.signal, retry),
 			);
 			if (job.controller.signal.aborted) return;
 			if (linked.signal.aborted) {
@@ -831,7 +869,10 @@ export function createInspectionHost(options: {
 			if (state === null) return finishJob(job, refused('cancelled'));
 			if (state.status === 'pending') return finishJob(job, refused('generation-mismatch'));
 			if (state.status !== 'ready') {
-				if (job.retryKey !== null && state.issues.some((issue) => issue.code === 'image-load-failed')) {
+				if (
+					job.retryKey !== null &&
+					state.issues.some((issue) => issue.code === 'image-load-failed')
+				) {
 					failedLooks.add(job.retryKey);
 				}
 				return finishJob(job, { status: 'refused', issues: state.issues });
@@ -846,14 +887,19 @@ export function createInspectionHost(options: {
 				key: job.key,
 				recipeKey: job.recipeKey,
 				frame: state.frame,
-				png
+				png,
 			} as const;
 			if (job.cacheKey !== null) remember(job.cacheKey, result);
 			finishJob(job, result);
 		} catch (error) {
 			finishJob(job, {
 				status: 'refused',
-				issues: [{ code: 'thumbnail-failed', message: error instanceof Error ? error.message : String(error) }]
+				issues: [
+					{
+						code: 'thumbnail-failed',
+						message: error instanceof Error ? error.message : String(error),
+					},
+				],
 			});
 		} finally {
 			linked.done();
@@ -869,10 +915,13 @@ export function createInspectionHost(options: {
 			session = {
 				renderer: state.renderer,
 				backend: state.backend,
-				viewGeneration: { owner: state.viewGeneration.owner, generation: state.viewGeneration.generation },
+				viewGeneration: {
+					owner: state.viewGeneration.owner,
+					generation: state.viewGeneration.generation,
+				},
 				controller: new AbortController(),
 				geometries: new Map(),
-				rigs: new Map()
+				rigs: new Map(),
 			};
 			settled = null;
 			if (live !== null) {
@@ -898,7 +947,9 @@ export function createInspectionHost(options: {
 			}
 			// A draft prepared again is a new chance for an image that failed.
 			const retry =
-				request.subject.kind === 'draft' && draftScope !== null && draftScope.draft !== request.subject.draft;
+				request.subject.kind === 'draft' &&
+				draftScope !== null &&
+				draftScope.draft !== request.subject.draft;
 			const next: Live = { request, key: requestKey(request), onState, retry };
 			live = next;
 			pruneDraftScope(request.subject);
@@ -940,7 +991,8 @@ export function createInspectionHost(options: {
 			const fallbackSize = tiled ? SAMPLE_TILE_MASTER_SIZE : INSPECTION_THUMBNAIL_SIZE;
 			const width = input.width ?? fallbackSize;
 			const height = input.height ?? input.width ?? fallbackSize;
-			if (!validSize([width, height]) || (tiled && width !== height)) return refused('invalid-size');
+			if (!validSize([width, height]) || (tiled && width !== height))
+				return refused('invalid-size');
 			const missing = subjectRefusal(input.subject);
 			if (missing !== null) return missing;
 			let resolved = resolveInspectionSubject(input.subject, geometry);
@@ -961,7 +1013,13 @@ export function createInspectionHost(options: {
 			const key =
 				framing === undefined
 					? inspectionThumbnailKey({ recipeKey, geometry, width, height })
-					: sampleTileKey({ recipeKey, framing, width, height, lightingVersion: INSPECTION_LIGHTING_VERSION });
+					: sampleTileKey({
+							recipeKey,
+							framing,
+							width,
+							height,
+							lightingVersion: INSPECTION_LIGHTING_VERSION,
+						});
 			let cacheKey: string | null = null;
 			let retryKey: string | null = null;
 			let jobId: string | null = null;
@@ -1002,10 +1060,10 @@ export function createInspectionHost(options: {
 						lighting: framing === undefined ? 'studio' : SAMPLE_TILE_RIG,
 						display: 'lit',
 						sizePx: [width, height],
-						...(framing === undefined ? {} : { sampleTile: framing })
+						...(framing === undefined ? {} : { sampleTile: framing }),
 					},
 					waiters: new Set(),
-					controller: new AbortController()
+					controller: new AbortController(),
 				};
 				jobs.set(id, job);
 				queue.push(job);
@@ -1017,7 +1075,7 @@ export function createInspectionHost(options: {
 						joined.waiters.delete(waiter);
 						signal?.removeEventListener('abort', abandon);
 						resolve(result);
-					}
+					},
 				};
 				function abandon(): void {
 					waiter.settle(refused('cancelled'));
@@ -1046,7 +1104,10 @@ export function createInspectionHost(options: {
 					? { status: 'refused', issues: resolved.issues }
 					: refused('unresolved-finish');
 			}
-			const linked = linkSignals(...(signal === undefined ? [] : [signal]), current.controller.signal);
+			const linked = linkSignals(
+				...(signal === undefined ? [] : [signal]),
+				current.controller.signal,
+			);
 			try {
 				if (!(await enterLane(linked.signal))) return refused('cancelled');
 				try {
@@ -1064,7 +1125,7 @@ export function createInspectionHost(options: {
 								inputs,
 								views: acquired.views,
 								uv: input.uv,
-								signal: linked.signal
+								signal: linked.signal,
 							});
 							if (channels === null || linked.signal.aborted) return refused('cancelled');
 							return { status: issues.length === 0 ? 'ready' : 'partial', channels, issues };
@@ -1090,7 +1151,7 @@ export function createInspectionHost(options: {
 				leases,
 				queued: queue.length,
 				cached: cache.size,
-				draftScopes: (draftScope === null ? 0 : 1) + jobScopes.size
+				draftScopes: (draftScope === null ? 0 : 1) + jobScopes.size,
 			};
 		},
 
@@ -1112,6 +1173,6 @@ export function createInspectionHost(options: {
 			cache.clear();
 			cacheBytes = 0;
 			failedLooks.clear();
-		}
+		},
 	};
 }

@@ -3,15 +3,15 @@ import { CAMERA_FOV } from '../scene-types';
 
 export const VIEWPORT_READINGS = ['3d', 'plan'] as const;
 
-
 export type ViewportReading = (typeof VIEWPORT_READINGS)[number];
 
-
-export const VIEWPORT_PROJECTION_KINDS = ['perspective-3d', 'projective-transition', 'plan-orthographic'] as const;
-
+export const VIEWPORT_PROJECTION_KINDS = [
+	'perspective-3d',
+	'projective-transition',
+	'plan-orthographic',
+] as const;
 
 export type ViewportProjectionKind = (typeof VIEWPORT_PROJECTION_KINDS)[number];
-
 
 /** Declared duration of a reading flip. The evaluator uses an explicit clock, never a shell tween. */
 export const VIEWPORT_READING_TRANSITION_SECONDS = 1.0;
@@ -19,24 +19,19 @@ export const VIEWPORT_READING_TRANSITION_SECONDS = 1.0;
 /** The share of a flip, at its Plan end, where the pose is already overhead. */
 export const VIEWPORT_READING_POSE_HOLD = 0.25;
 
-
 /** Target-plane extent bounds, in meters of visible height at the target plane. */
 export const VIEWPORT_TARGET_PLANE_MIN_METERS = 0.05;
 
 export const VIEWPORT_TARGET_PLANE_MAX_METERS = 1000;
 
-
 /** Default 3D field of view, in radians. The landed camera vocabulary stays the single source of it. */
 export const VIEWPORT_REFERENCE_FOV_Y_RADIANS = (CAMERA_FOV.default * Math.PI) / 180;
-
 
 /** Distance from the target to the orthographic eye. Finite so the ortho depth range is real. */
 export const VIEWPORT_PLAN_EYE_DISTANCE_METERS = 100;
 
-
 /** Near-plane floor: a near plane at or below zero is not a depth range. */
 export const VIEWPORT_NEAR_FLOOR_METERS = 0.01;
-
 
 /**
  * Elevation limit in 3D. The view up vector must stay nondegenerate, and a
@@ -44,13 +39,10 @@ export const VIEWPORT_NEAR_FLOOR_METERS = 0.01;
  */
 export const VIEWPORT_ELEVATION_LIMIT_RADIANS = Math.PI / 2 - 0.001;
 
-
 /** Declared lateral/vertical fit padding, as a fraction of the framed extent. */
 export const VIEWPORT_FIT_PADDING_FRACTION = 0.1;
 
-
 export const HALF_PI = Math.PI / 2;
-
 
 /**
  * The inspection pose: where the camera looks, from which direction, and the
@@ -74,7 +66,6 @@ export type InspectionPose = {
 	readonly fovYDegrees?: number;
 };
 
-
 /** The Stage's viewport rectangle. CSS pixels drive input and overlays; DPR only scales rendering. */
 export type ViewportRect = {
 	readonly left: number;
@@ -83,7 +74,6 @@ export type ViewportRect = {
 	readonly height: number;
 	readonly devicePixelRatio: number;
 };
-
 
 /**
  * A resolved working plane. The owning domain resolves a frame to this (or
@@ -98,20 +88,23 @@ export type WorkingPlane = {
 	readonly yawRadians: number;
 	/** The plane owner's datum in meters, or `null` when the owner authored none. */
 	readonly datumMeters: number | null;
-	readonly supportedLocalExtent: { readonly min: readonly [number, number]; readonly max: readonly [number, number] } | null;
+	readonly supportedLocalExtent: {
+		readonly min: readonly [number, number];
+		readonly max: readonly [number, number];
+	} | null;
 };
-
 
 export type WorkingPlaneQualification =
 	| { readonly kind: 'qualified'; readonly plane: WorkingPlane }
 	| { readonly kind: 'unavailable'; readonly reason: 'no-plane-supplied' | 'invalid-plane' };
 
-
-export type ViewportIssue = { readonly path: string; readonly code: string; readonly message: string };
-
+export type ViewportIssue = {
+	readonly path: string;
+	readonly code: string;
+	readonly message: string;
+};
 
 export type ViewportDiagnostic = { readonly code: string; readonly message: string };
-
 
 /** The identity of one evaluation: which output, session, source and generation produced it. */
 export type ViewportEvaluationToken = {
@@ -120,7 +113,6 @@ export type ViewportEvaluationToken = {
 	readonly sourceRevision: string;
 	readonly evaluationGeneration: number;
 };
-
 
 export type ViewportEvaluation = {
 	readonly token: ViewportEvaluationToken;
@@ -150,18 +142,19 @@ export type ViewportEvaluation = {
 	readonly diagnostics: readonly ViewportDiagnostic[];
 };
 
-
 export type ViewportEvaluationRefusal =
 	| 'invalid-viewport'
 	| 'hidden-viewport'
 	| 'degenerate-view'
 	| 'singular-projection';
 
-
 export type ViewportEvaluationResult =
-	| { readonly kind: 'unavailable'; readonly reason: ViewportEvaluationRefusal; readonly issues: readonly ViewportIssue[] }
+	| {
+			readonly kind: 'unavailable';
+			readonly reason: ViewportEvaluationRefusal;
+			readonly issues: readonly ViewportIssue[];
+	  }
 	| { readonly kind: 'evaluated'; readonly evaluation: ViewportEvaluation };
-
 
 export type ViewportTransition = {
 	readonly from: ViewportReading;
@@ -171,7 +164,6 @@ export type ViewportTransition = {
 	readonly startSeconds: number;
 	readonly durationSeconds: number;
 };
-
 
 /**
  * One output's inspection session over one current source.
@@ -202,7 +194,6 @@ export type ViewportCameraState = {
 	readonly transition: ViewportTransition | null;
 };
 
-
 export type ViewportCameraInput = {
 	readonly outputId: string;
 	readonly sessionEpoch: string;
@@ -214,11 +205,18 @@ export type ViewportCameraInput = {
 	readonly displayGroundYMeters?: number | null;
 };
 
-
 export type ViewingIntent =
 	/** A CSS-pixel pan in the settled reading's target plane. */
-	| { readonly kind: 'pan'; readonly deltaCss: readonly [number, number]; readonly rect: ViewportRect }
-	| { readonly kind: 'orbit'; readonly deltaAzimuthRadians: number; readonly deltaElevationRadians: number }
+	| {
+			readonly kind: 'pan';
+			readonly deltaCss: readonly [number, number];
+			readonly rect: ViewportRect;
+	  }
+	| {
+			readonly kind: 'orbit';
+			readonly deltaAzimuthRadians: number;
+			readonly deltaElevationRadians: number;
+	  }
 	| { readonly kind: 'zoom'; readonly scale: number; readonly anchor?: Vec3 }
 	| { readonly kind: 'set-reading'; readonly reading: ViewportReading }
 	| {
@@ -241,7 +239,11 @@ export type ViewingIntent =
 			readonly rect: ViewportRect;
 			readonly paddingFraction?: number;
 	  }
-	| { readonly kind: 'bring-into-view'; readonly target: Vec3; readonly targetPlaneHeightMeters?: number }
+	| {
+			readonly kind: 'bring-into-view';
+			readonly target: Vec3;
+			readonly targetPlaneHeightMeters?: number;
+	  }
 	/** Re-aim at a new target with the eye held exactly still. */
 	| { readonly kind: 'aim'; readonly target: Vec3 }
 	/** Install one exact authored View pose (eye, target, FOV). */
@@ -269,24 +271,25 @@ export type ViewingIntent =
 	| { readonly kind: 'turn'; readonly deltaYawRadians: number; readonly deltaPitchRadians: number }
 	/** Experience review 1 — step the eye and target together along the level aim (Look through scroll). */
 	| { readonly kind: 'step'; readonly deltaMeters: number }
-	| { readonly kind: 'truck'; readonly deltaRightMeters: number; readonly deltaUpMeters: number }
-
+	| { readonly kind: 'truck'; readonly deltaRightMeters: number; readonly deltaUpMeters: number };
 
 export const VIEWING_INTENT_REFUSALS = [
 	'invalid-intent',
 	'already-settled',
 	'unsupported-in-plan-reading',
-	'invalid-viewport'
+	'invalid-viewport',
 ] as const;
-
 
 export type ViewingIntentRefusal = (typeof VIEWING_INTENT_REFUSALS)[number];
 
-
 export type ViewingIntentResult =
 	| { readonly kind: 'accepted'; readonly state: ViewportCameraState }
-	| { readonly kind: 'rejected'; readonly state: ViewportCameraState; readonly code: ViewingIntentRefusal; readonly message: string };
-
+	| {
+			readonly kind: 'rejected';
+			readonly state: ViewportCameraState;
+			readonly code: ViewingIntentRefusal;
+			readonly message: string;
+	  };
 
 export type ViewportSourceRebase =
 	| { readonly kind: 'unchanged'; readonly state: ViewportCameraState }
@@ -297,8 +300,12 @@ export type ViewportSourceRebase =
 			/** The settled reading and pose were carried over: an install never moves or refits the view. */
 			readonly posePreserved: true;
 	  }
-	| { readonly kind: 'refused'; readonly state: ViewportCameraState; readonly reason: 'invalid-source-revision'; readonly message: string };
-
+	| {
+			readonly kind: 'refused';
+			readonly state: ViewportCameraState;
+			readonly reason: 'invalid-source-revision';
+			readonly message: string;
+	  };
 
 export type ProjectWorldResult =
 	| {
@@ -313,18 +320,23 @@ export type ProjectWorldResult =
 			readonly message: string;
 	  };
 
-
 export type PointerRay = {
 	/** Project-world origin: the ray's point on the near plane, so orthographic origins legitimately vary. */
 	readonly origin: Vec3;
 	readonly direction: Vec3;
 };
 
-
 export type PointerRayResult =
 	| { readonly kind: 'ray'; readonly ray: PointerRay }
-	| { readonly kind: 'failed'; readonly code: 'invalid-css-point' | 'invalid-viewport' | 'stale-evaluation' | 'degenerate-ray'; readonly message: string };
-
+	| {
+			readonly kind: 'failed';
+			readonly code:
+				| 'invalid-css-point'
+				| 'invalid-viewport'
+				| 'stale-evaluation'
+				| 'degenerate-ray';
+			readonly message: string;
+	  };
 
 export type WorkingPlaneHit =
 	| {
@@ -336,14 +348,17 @@ export type WorkingPlaneHit =
 	  }
 	| {
 			readonly kind: 'failed';
-			readonly code: 'parallel' | 'behind' | 'outside-supported-domain' | 'invalid-frame' | 'stale-evaluation';
+			readonly code:
+				| 'parallel'
+				| 'behind'
+				| 'outside-supported-domain'
+				| 'invalid-frame'
+				| 'stale-evaluation';
 			readonly message: string;
 	  };
 
-
 /** The largest single turn a `turn` intent accepts; a drag sends many small ones. */
 export const VIEWPORT_TURN_STEP_LIMIT_RADIANS = Math.PI / 2;
-
 
 /** The display ground reaches this many target-plane extents. */
 export const VIEWPORT_GROUND_REACH_EXTENTS = 24;

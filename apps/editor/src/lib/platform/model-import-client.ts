@@ -10,7 +10,7 @@
 import type {
 	CreatorImportApproved,
 	CreatorImportFile,
-	CreatorImportStaging
+	CreatorImportStaging,
 } from '$lib/authoring/adapters/scene/import/types';
 
 export type ModelImportClientErrorCode =
@@ -30,7 +30,7 @@ export class ModelImportClientError extends Error {
 		code: ModelImportClientErrorCode,
 		message: string,
 		status: number | null = null,
-		serverCode: string | null = null
+		serverCode: string | null = null,
 	) {
 		super(message);
 		this.name = 'ModelImportClientError';
@@ -75,17 +75,23 @@ function originOf(apiOrigin: string): string {
 
 function errorFor(status: number, body: unknown): ModelImportClientError {
 	const serverCode =
-		typeof body === 'object' && body !== null && typeof (body as { code?: unknown }).code === 'string'
-			? ((body as { code: string }).code)
+		typeof body === 'object' &&
+		body !== null &&
+		typeof (body as { code?: unknown }).code === 'string'
+			? (body as { code: string }).code
 			: null;
 	const message =
-		typeof body === 'object' && body !== null && typeof (body as { message?: unknown }).message === 'string'
+		typeof body === 'object' &&
+		body !== null &&
+		typeof (body as { message?: unknown }).message === 'string'
 			? (body as { message: string }).message
 			: `Model request failed (${status}).`;
-	if (status === 401 || status === 403) return new ModelImportClientError('unauthorized', message, status, serverCode);
+	if (status === 401 || status === 403)
+		return new ModelImportClientError('unauthorized', message, status, serverCode);
 	if (status === 404) return new ModelImportClientError('not-found', message, status, serverCode);
 	if (status === 409) return new ModelImportClientError('conflict', message, status, serverCode);
-	if (status >= 400 && status < 500) return new ModelImportClientError('refused', message, status, serverCode);
+	if (status >= 400 && status < 500)
+		return new ModelImportClientError('refused', message, status, serverCode);
 	return new ModelImportClientError('network', message, status, serverCode);
 }
 
@@ -96,8 +102,9 @@ function paths(projectId: string) {
 		import: (importId: string) => `${project}/models/imports/${encodeURIComponent(importId)}`,
 		file: (importId: string, fileId: string) =>
 			`${project}/models/imports/${encodeURIComponent(importId)}/files/${encodeURIComponent(fileId)}/content`,
-		approve: (importId: string) => `${project}/models/imports/${encodeURIComponent(importId)}/approve`,
-		content: (hash: string) => `${project}/models/content/${encodeURIComponent(hash)}`
+		approve: (importId: string) =>
+			`${project}/models/imports/${encodeURIComponent(importId)}/approve`,
+		content: (hash: string) => `${project}/models/content/${encodeURIComponent(hash)}`,
 	};
 }
 
@@ -106,11 +113,15 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function invalidResponse(): never {
-	throw new ModelImportClientError('invalid-response', 'The model route returned an unexpected response.');
+	throw new ModelImportClientError(
+		'invalid-response',
+		'The model route returned an unexpected response.',
+	);
 }
 
 function readStaging(value: unknown): CreatorImportStaging {
-	if (!isRecord(value) || typeof value.importId !== 'string' || !Array.isArray(value.files)) invalidResponse();
+	if (!isRecord(value) || typeof value.importId !== 'string' || !Array.isArray(value.files))
+		invalidResponse();
 	const files = value.files.map((entry) => {
 		if (
 			!isRecord(entry) ||
@@ -126,7 +137,7 @@ function readStaging(value: unknown): CreatorImportStaging {
 			role: entry.role,
 			path: entry.path,
 			size: entry.size,
-			hash: typeof entry.hash === 'string' ? entry.hash : ''
+			hash: typeof entry.hash === 'string' ? entry.hash : '',
 		} as const;
 	});
 	return { importId: value.importId, files };
@@ -168,12 +179,12 @@ function readApproved(value: unknown): CreatorImportApproved {
 			hash: value.derivative.hash,
 			mime: value.derivative.mime,
 			size: value.derivative.size,
-			locator: value.derivative.locator
+			locator: value.derivative.locator,
 		},
 		source: {
 			manifestHash: value.source.manifestHash,
 			size: value.source.size,
-			fileCount: value.source.fileCount
+			fileCount: value.source.fileCount,
 		},
 		recipe: { id: value.recipe.id, version: value.recipe.version },
 		reportDigest: value.reportDigest,
@@ -182,14 +193,14 @@ function readApproved(value: unknown): CreatorImportApproved {
 			pivot: value.placement.pivot as [number, number, number],
 			footprint: { width: value.placement.footprint.width, depth: value.placement.footprint.depth },
 			contactMinY: value.placement.contactMinY,
-			placement: 'floor'
-		}
+			placement: 'floor',
+		},
 	};
 }
 
 export function createModelImportClient(
 	apiOrigin: string,
-	fetchImpl: FetchLike = globalThis.fetch.bind(globalThis)
+	fetchImpl: FetchLike = globalThis.fetch.bind(globalThis),
 ): ModelImportClient | null {
 	const origin = originOf(apiOrigin);
 	if (origin.length === 0) return null;
@@ -204,8 +215,8 @@ export function createModelImportClient(
 				headers: {
 					Accept: 'application/json',
 					...(init.body === undefined ? {} : { 'Content-Type': 'application/json' }),
-					...(init.headers ?? {})
-				}
+					...(init.headers ?? {}),
+				},
 			});
 		} catch (error) {
 			if (signal?.aborted === true) throw error;
@@ -234,24 +245,27 @@ export function createModelImportClient(
 					recipe: { id: input.recipe.id, version: input.recipe.version },
 					files: [
 						...input.source.map((file) => ({ role: 'source', ...file })),
-						{ role: 'derivative', ...input.derivative }
-					]
-				})
+						{ role: 'derivative', ...input.derivative },
+					],
+				}),
 			});
 			return readStaging(body);
 		},
 		async uploadFile(input) {
 			let response: Response;
 			try {
-				response = await fetchImpl(`${origin}${paths(input.projectId).file(input.importId, input.fileId)}`, {
-					method: 'PUT',
-					body: input.bytes.slice() as unknown as BodyInit,
-					credentials: 'include',
-					headers: {
-						Accept: 'application/json',
-						'Content-Type': 'application/octet-stream'
-					}
-				});
+				response = await fetchImpl(
+					`${origin}${paths(input.projectId).file(input.importId, input.fileId)}`,
+					{
+						method: 'PUT',
+						body: input.bytes.slice() as unknown as BodyInit,
+						credentials: 'include',
+						headers: {
+							Accept: 'application/json',
+							'Content-Type': 'application/octet-stream',
+						},
+					},
+				);
 			} catch {
 				throw new ModelImportClientError('network', 'The model upload could not reach the API.');
 			}
@@ -271,7 +285,7 @@ export function createModelImportClient(
 		async approveImport(input) {
 			const body = await json(paths(input.projectId).approve(input.importId), {
 				method: 'POST',
-				body: JSON.stringify({ reportDigest: input.reportDigest, placement: input.placement })
+				body: JSON.stringify({ reportDigest: input.reportDigest, placement: input.placement }),
 			});
 			return readApproved(body);
 		},
@@ -284,7 +298,7 @@ export function createModelImportClient(
 				response = await fetchImpl(`${origin}${paths(projectId).content(hash)}`, {
 					credentials: 'include',
 					...(signal === undefined ? {} : { signal }),
-					headers: { Accept: 'model/gltf-binary' }
+					headers: { Accept: 'model/gltf-binary' },
 				});
 			} catch (error) {
 				if (signal?.aborted === true) throw error;
@@ -300,7 +314,7 @@ export function createModelImportClient(
 				throw errorFor(response.status, body);
 			}
 			return new Uint8Array(await response.arrayBuffer());
-		}
+		},
 	};
 }
 

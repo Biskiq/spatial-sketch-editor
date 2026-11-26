@@ -29,33 +29,36 @@
  */
 
 import { materializeLayoutSourceForCapture } from '@portfolio/layout-core/kernel';
-import {
-	type FixedWallEndpoint,
-	type LayoutDocumentWallFirst
-} from '@portfolio/layout-core/wall';
+import { type FixedWallEndpoint, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 import {
 	layoutIdCaptureInput,
 	layoutWorkingLevelInput,
 	readLayoutWorkingLevel,
 	surfaceKey,
 	type LayoutIdCapture,
-	type LayoutSurfaceLineage
+	type LayoutSurfaceLineage,
 } from '@portfolio/layout-core/plan';
 import { recordPreparedCowCandidate } from '@portfolio/layout-core/world';
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
-import type { AuthoringIntent, DomainPlanner, PlannerOutcome, PlannerRequest, PreparedCandidate } from '@portfolio/project-model/f4';
+import type {
+	AuthoringIntent,
+	DomainPlanner,
+	PlannerOutcome,
+	PlannerRequest,
+	PreparedCandidate,
+} from '@portfolio/project-model/f4';
 import type { SemanticReference } from '@portfolio/project-model/references';
 import {
 	applySurfaceLineage,
 	newlyRetiredSurfaceReferenceKeys,
-	surfaceLineageConsequence
+	surfaceLineageConsequence,
 } from '@portfolio/project-model/scene-planning';
 import {
 	replaceUnitData,
 	canonicalUnitJson,
 	UNIT_SOURCE_KIND,
 	UNIT_SOURCE_VERSION,
-	type ProjectEnvelope
+	type ProjectEnvelope,
 } from '@portfolio/project-model/units';
 
 export const LAYOUT_WALL_HEIGHT_KIND = 'layout-wall-height';
@@ -124,7 +127,7 @@ const PAYLOAD_KEYS: Readonly<Record<string, readonly string[]>> = {
 	[LAYOUT_ENTITY_NAME_KIND]: ['subjectKind', 'subjectId', 'name'],
 	[LAYOUT_ROOM_OVERHEAD_KIND]: ['roomId', 'overhead'],
 	[LAYOUT_SPACE_REMOVE_KIND]: ['roomId'],
-	[LAYOUT_PLINTH_PLACE_KIND]: ['point', 'floorElevation', 'objectId']
+	[LAYOUT_PLINTH_PLACE_KIND]: ['point', 'floorElevation', 'objectId'],
 };
 
 /**
@@ -134,7 +137,7 @@ const PAYLOAD_KEYS: Readonly<Record<string, readonly string[]>> = {
  */
 export function readPayload(
 	kind: string,
-	payload: unknown
+	payload: unknown,
 ): { readonly value: Record<string, unknown> } | { readonly message: string } {
 	if (payload === null || typeof payload !== 'object' || Array.isArray(payload)) {
 		return { message: 'The operation payload must be an object.' };
@@ -181,7 +184,7 @@ export function layoutReference(
 	subject: LayoutSubject | LayoutRoomSubject,
 	contentRevision: string,
 	/** The working level, supplied by the caller as an explicit input. */
-	levelId: string
+	levelId: string,
 ): SemanticReference {
 	return {
 		version: 1,
@@ -192,10 +195,10 @@ export function layoutReference(
 		location: {
 			kind: 'layout-location',
 			levelId,
-			structureInstancePath: []
+			structureInstancePath: [],
 		},
 		componentId: null,
-		capabilityId: null
+		capabilityId: null,
 	};
 }
 
@@ -212,12 +215,18 @@ export function rejected(code: string, message: string): PlannerOutcome<ProjectE
  */
 export function layoutPlanner(
 	kind: string,
-	prepare: (request: PlannerRequest<ProjectEnvelope>) => PlannerOutcome<ProjectEnvelope>
+	prepare: (request: PlannerRequest<ProjectEnvelope>) => PlannerOutcome<ProjectEnvelope>,
 ): DomainPlanner<ProjectEnvelope> {
 	return {
 		id: `layout.${kind}`,
 		kind,
-		admission: Object.freeze({ domain: 'layout', compound: true, writes: ['scene'] as const, units: false, resources: false }),
+		admission: Object.freeze({
+			domain: 'layout',
+			compound: true,
+			writes: ['scene'] as const,
+			units: false,
+			resources: false,
+		}),
 		sourceKinds: [UNIT_SOURCE_KIND],
 		sourceVersions: [UNIT_SOURCE_VERSION],
 		prepare(request) {
@@ -225,7 +234,10 @@ export function layoutPlanner(
 			if (outcome.kind !== 'prepared') return outcome;
 			const lineage = layoutSurfaceLineage.get(outcome.candidate);
 			if (lineage === undefined) {
-				return rejected('surface_lineage_invalid', `The ${kind} planner did not provide its required Layout surface lineage.`);
+				return rejected(
+					'surface_lineage_invalid',
+					`The ${kind} planner did not provide its required Layout surface lineage.`,
+				);
 			}
 			const accepted = request.snapshot.domain.source;
 			const afterLayout = outcome.candidate.source.units.layout.data;
@@ -233,31 +245,49 @@ export function layoutPlanner(
 				beforeScene: accepted.units.scene.data,
 				beforeLayout: accepted.units.layout.data,
 				afterLayout,
-				lineage
+				lineage,
 			});
 			if (applied.kind === 'rejected') return rejected(applied.code, applied.message);
 			const newOrphans = newlyRetiredSurfaceReferenceKeys({
 				beforeScene: accepted.units.scene.data,
 				beforeLayout: accepted.units.layout.data,
 				afterScene: applied.scene,
-				afterLayout
+				afterLayout,
 			});
 			if (newOrphans.length > 0) {
-				return rejected('surface_reference_orphaned', `The ${kind} candidate creates retired surface reference "${newOrphans[0]}".`);
+				return rejected(
+					'surface_reference_orphaned',
+					`The ${kind} candidate creates retired surface reference "${newOrphans[0]}".`,
+				);
 			}
-			if (canonicalUnitJson(accepted.units.scene.data) === canonicalUnitJson(applied.scene)) return outcome;
-			const beforeByKey = new Map((accepted.units.scene.data.surfaceFinishes ?? []).map((entry) => [surfaceKey(entry.surface), entry]));
-			const afterByKey = new Map((applied.scene.surfaceFinishes ?? []).map((entry) => [surfaceKey(entry.surface), entry]));
+			if (canonicalUnitJson(accepted.units.scene.data) === canonicalUnitJson(applied.scene))
+				return outcome;
+			const beforeByKey = new Map(
+				(accepted.units.scene.data.surfaceFinishes ?? []).map((entry) => [
+					surfaceKey(entry.surface),
+					entry,
+				]),
+			);
+			const afterByKey = new Map(
+				(applied.scene.surfaceFinishes ?? []).map((entry) => [surfaceKey(entry.surface), entry]),
+			);
 			const changedKeys = [...new Set([...beforeByKey.keys(), ...afterByKey.keys()])]
-				.filter((key) => canonicalUnitJson(beforeByKey.get(key) ?? null) !== canonicalUnitJson(afterByKey.get(key) ?? null))
+				.filter(
+					(key) =>
+						canonicalUnitJson(beforeByKey.get(key) ?? null) !==
+						canonicalUnitJson(afterByKey.get(key) ?? null),
+				)
 				.sort();
 			const candidate: PreparedCandidate<ProjectEnvelope> = {
 				...outcome.candidate,
 				source: replaceUnitData(outcome.candidate.source, 'scene', applied.scene),
-				changes: [...outcome.candidate.changes, { kind: 'scene-surface-lineage', subjectIds: changedKeys, fields: ['surfaceFinishes'] }]
+				changes: [
+					...outcome.candidate.changes,
+					{ kind: 'scene-surface-lineage', subjectIds: changedKeys, fields: ['surfaceFinishes'] },
+				],
 			};
 			return { kind: 'prepared', candidate };
-		}
+		},
 	};
 }
 
@@ -272,11 +302,9 @@ export function layoutSurfaceLineageConsequence(input: {
 		beforeScene: input.source.units.scene.data,
 		beforeLayout: input.beforeLayout,
 		afterLayout: input.afterLayout,
-		lineage: input.lineage
+		lineage: input.lineage,
 	});
-	return result.kind === 'ready'
-		? surfaceLineageConsequence(result.report)
-		: result.message;
+	return result.kind === 'ready' ? surfaceLineageConsequence(result.report) : result.message;
 }
 
 /** Planner lineage is runtime metadata and never enters a serialized source. */
@@ -284,7 +312,7 @@ const layoutSurfaceLineage = new WeakMap<object, LayoutSurfaceLineage>();
 
 export function registerLayoutSurfaceLineage<T extends PreparedCandidate<ProjectEnvelope>>(
 	candidate: T,
-	lineage: LayoutSurfaceLineage
+	lineage: LayoutSurfaceLineage,
 ): T {
 	layoutSurfaceLineage.set(candidate, lineage);
 	return candidate;
@@ -300,7 +328,7 @@ export function registerLayoutSurfaceLineage<T extends PreparedCandidate<Project
 export function addressedSubject(
 	request: PlannerRequest<ProjectEnvelope>,
 	kind: LayoutSubjectKind | 'room',
-	id: string
+	id: string,
 ): { readonly ok: true } | { readonly ok: false; readonly message: string } {
 	if (request.intent.targets.length !== 1) {
 		return { ok: false, message: 'A Layout precision intent addresses exactly one subject.' };
@@ -309,7 +337,7 @@ export function addressedSubject(
 	if (target.domain !== 'layout' || target.subject.kind !== kind || target.subject.id !== id) {
 		return {
 			ok: false,
-			message: `The intent must address the ${kind} "${id}" it edits.`
+			message: `The intent must address the ${kind} "${id}" it edits.`,
 		};
 	}
 	return { ok: true };
@@ -320,16 +348,19 @@ export function addressedSubject(
  * read out of the document during planning. A missing or stale level fails closed.
  */
 export function capturedWorkingLevel(
-	request: PlannerRequest<ProjectEnvelope>
+	request: PlannerRequest<ProjectEnvelope>,
 ): { readonly levelId: string } | PlannerOutcome<ProjectEnvelope> {
 	const levelId = readLayoutWorkingLevel(request.capturedInputs);
 	if (levelId === null) {
-		return rejected('invalid-value', 'The intent must capture its working Layout level before evaluation.');
+		return rejected(
+			'invalid-value',
+			'The intent must capture its working Layout level before evaluation.',
+		);
 	}
 	if (levelId !== request.snapshot.domain.source.units.layout.data.floor.id) {
 		return rejected(
 			'stale-level',
-			`The captured working level '${levelId}' is not the accepted Layout floor.`
+			`The captured working level '${levelId}' is not the accepted Layout floor.`,
 		);
 	}
 	return { levelId };
@@ -351,7 +382,7 @@ export function preparedLayoutCandidate(
 		readonly created?: boolean;
 		readonly retired?: boolean;
 		readonly id?: string;
-	}
+	},
 ): PlannerOutcome<ProjectEnvelope> {
 	const level = capturedWorkingLevel(request);
 	if ('kind' in level) return level;
@@ -360,9 +391,13 @@ export function preparedLayoutCandidate(
 		request.snapshot,
 		subject,
 		request.snapshot.domain.source.units.layout.header.contentRevision,
-		levelId
+		levelId,
 	);
-	recordPreparedCowCandidate(request.intent.operationId, document, canonicalUnitJson(request.intent));
+	recordPreparedCowCandidate(
+		request.intent.operationId,
+		document,
+		canonicalUnitJson(request.intent),
+	);
 	materializeLayoutSourceForCapture(document);
 	const candidate: PreparedCandidate<ProjectEnvelope> = {
 		operationId: request.intent.operationId,
@@ -375,9 +410,9 @@ export function preparedLayoutCandidate(
 				? { relation: 'created', before: null, after: reference }
 				: options.retired
 					? { relation: 'retired', before: reference, after: null }
-					: { relation: 'preserved', before: reference, after: reference }
+					: { relation: 'preserved', before: reference, after: reference },
 		],
-		diagnostics: []
+		diagnostics: [],
 	};
 	registerLayoutSurfaceLineage(candidate, options.surfaceLineage);
 	return { kind: 'prepared', candidate };
@@ -385,7 +420,7 @@ export function preparedLayoutCandidate(
 
 /** The subject a selection names, or `null` for a non-Layout / read-only selection. */
 export function layoutSubjectOf(
-	selection: { readonly sourceKind: string; readonly sourceId: string } | null
+	selection: { readonly sourceKind: string; readonly sourceId: string } | null,
 ): LayoutSubject | null {
 	if (selection === null) return null;
 	if (selection.sourceKind === 'wall') return { kind: 'wall', id: selection.sourceId };
@@ -401,7 +436,11 @@ export function layoutSubjectOf(
  */
 export type MeasureParse =
 	| { readonly ok: true; readonly value: number }
-	| { readonly ok: false; readonly code: 'blank' | 'non-finite' | 'malformed'; readonly reason: string };
+	| {
+			readonly ok: false;
+			readonly code: 'blank' | 'non-finite' | 'malformed';
+			readonly reason: string;
+	  };
 
 export function parseMeasureInput(text: string): MeasureParse {
 	const trimmed = text.trim();
@@ -420,7 +459,11 @@ export function parseMeasureInput(text: string): MeasureParse {
 
 export type PlacementParse =
 	| { readonly ok: true; readonly point: LayoutVec2 }
-	| { readonly ok: false; readonly code: 'blank' | 'non-finite' | 'malformed'; readonly reason: string };
+	| {
+			readonly ok: false;
+			readonly code: 'blank' | 'non-finite' | 'malformed';
+			readonly reason: string;
+	  };
 
 export function parsePlacementXZ(xText: string, zText: string): PlacementParse {
 	const x = parseMeasureInput(xText);
@@ -459,8 +502,8 @@ export function buildLayoutIntent(input: {
 		payload: input.payload,
 		capturedInputs: [
 			layoutWorkingLevelInput(input.levelId),
-			...(input.capture ? [layoutIdCaptureInput(input.capture)] : [])
+			...(input.capture ? [layoutIdCaptureInput(input.capture)] : []),
 		],
-		allocatedIds: [...(input.allocatedIds ?? [])]
+		allocatedIds: [...(input.allocatedIds ?? [])],
 	};
 }

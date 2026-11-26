@@ -1,23 +1,59 @@
 /** Project loading, replacement, lifecycle actions and the epoch's Head Save. */
 import { beforeNavigate, goto, replaceState } from '$app/navigation';
-import { ProjectPersistenceError, type ProjectApi, type ProjectAuth, type PreparedProjectLifecycle, type ProjectLifecycleActionResult, type ProjectLifecyclePrepareResult } from '$lib/platform/project-persistence';
+import {
+	ProjectPersistenceError,
+	type ProjectApi,
+	type ProjectAuth,
+	type PreparedProjectLifecycle,
+	type ProjectLifecycleActionResult,
+	type ProjectLifecyclePrepareResult,
+} from '$lib/platform/project-persistence';
 import { perfMark, perfMeasureSync } from '$lib/platform/perf-marks';
-import { discardIncompatiblePendingCapture, discardPendingCapture, persistPendingCapture, readPendingCapture, type IncompatiblePendingCloudSave } from '$lib/authoring/save/pending-capture';
+import {
+	discardIncompatiblePendingCapture,
+	discardPendingCapture,
+	persistPendingCapture,
+	readPendingCapture,
+	type IncompatiblePendingCloudSave,
+} from '$lib/authoring/save/pending-capture';
 import { isSavedBaseToken, type SaveRequest } from '@portfolio/project-model/save';
-import { serializeProjectEnvelope, validateProjectEnvelope, type ProjectEnvelope } from '@portfolio/project-model/units';
+import {
+	serializeProjectEnvelope,
+	validateProjectEnvelope,
+	type ProjectEnvelope,
+} from '@portfolio/project-model/units';
 import {
 	ProjectImageLoadError,
 	verifyProjectImageClosure,
-	type ProjectImageDiagnostic
+	type ProjectImageDiagnostic,
 } from '$lib/authoring/artwork/project-artwork';
 import type { VerifiedProjectImageCache } from '$lib/authoring/artwork/project-image-cache';
 import { LAYOUT_DIMENSION_LIMIT_MESSAGE } from '@portfolio/layout-core/geometry';
-import { bootEmpty, bootFromLoadOutcome, bootFromSourceJson, bootStarterGallery, initialBootState, type BootIntent, type BootLoadOutcome, type BootState } from '$lib/authoring/stage/boot-state';
+import {
+	bootEmpty,
+	bootFromLoadOutcome,
+	bootFromSourceJson,
+	bootStarterGallery,
+	initialBootState,
+	type BootIntent,
+	type BootLoadOutcome,
+	type BootState,
+} from '$lib/authoring/stage/boot-state';
 import type { AdmissionContext, StageReadSnapshot } from '$lib/authoring/stage/source-admission';
-import { runBoundLoad, type ReplacementEpochToken, type StageSession } from '$lib/authoring/stage/stage-session';
+import {
+	runBoundLoad,
+	type ReplacementEpochToken,
+	type StageSession,
+} from '$lib/authoring/stage/stage-session';
 import type { StageAcceptanceHost } from '$lib/authoring/stage/host-acceptance';
 import type { MaterialProofRegistry } from '$lib/authoring/material-proof';
-import { createApiSaveTransport, createHeadSave, createSaveState, type HeadSave, type ReloadOffer } from '$lib/authoring/save';
+import {
+	createApiSaveTransport,
+	createHeadSave,
+	createSaveState,
+	type HeadSave,
+	type ReloadOffer,
+} from '$lib/authoring/save';
 
 export function createProjectSession(host: {
 	readonly projectId: string;
@@ -36,9 +72,16 @@ export function createProjectSession(host: {
 }) {
 	const { projectId, intent, api, auth, session } = host;
 	let boot = $state<BootState>(initialBootState(projectId, intent));
-	let pendingSavedBase = $state.raw<{ readonly token: string | null; readonly revision: { readonly projectId: string; readonly revisionId: string } | null; readonly contentId: string | null } | null>(null);
+	let pendingSavedBase = $state.raw<{
+		readonly token: string | null;
+		readonly revision: { readonly projectId: string; readonly revisionId: string } | null;
+		readonly contentId: string | null;
+	} | null>(null);
 	let headSave = $state.raw<HeadSave | null>(null);
-	let resumeOffer = $state.raw<{ readonly save: SaveRequest; readonly project: ProjectEnvelope } | null>(null);
+	let resumeOffer = $state.raw<{
+		readonly save: SaveRequest;
+		readonly project: ProjectEnvelope;
+	} | null>(null);
 	let resumeSource: SaveRequest | null = null;
 	let recoveryOffer = $state.raw<IncompatiblePendingCloudSave | null>(null);
 	let remoteSavedCanonicalJson: string | null = null;
@@ -57,12 +100,15 @@ export function createProjectSession(host: {
 		return {
 			sessionEpoch: `session-${epochCounter}-${projectId}`,
 			acceptedRevision: { projectId, revisionId: `revision-${revisionCounter}` },
-			...(host.materialProofs === undefined ? {} : { materialProofs: host.materialProofs })
+			...(host.materialProofs === undefined ? {} : { materialProofs: host.materialProofs }),
 		};
 	}
 
 	/** Build one conditional-Save controller against the loaded or minted baseline. */
-	function buildHeadSave(mounted: StageAcceptanceHost, snapshot: StageReadSnapshot): HeadSave | null {
+	function buildHeadSave(
+		mounted: StageAcceptanceHost,
+		snapshot: StageReadSnapshot,
+	): HeadSave | null {
 		if (api === null) return null;
 		const saved = pendingSavedBase;
 		const closure = snapshot.domain.closure;
@@ -90,7 +136,7 @@ export function createProjectSession(host: {
 				// legacy row both report none rather than a locally invented one.
 				savedRevision: saved?.revision ?? null,
 				savedCanonicalJson: remoteSavedCanonicalJson ?? snapshot.canonicalJson,
-				savedSourceContentId: saved?.contentId ?? snapshot.sourceContentId
+				savedSourceContentId: saved?.contentId ?? snapshot.sourceContentId,
 			},
 			loadRemote: async (id) => {
 				const loaded = await api!.loadProject(id);
@@ -99,15 +145,15 @@ export function createProjectSession(host: {
 					document: loaded.document,
 					savedBaseToken: loaded.savedBaseToken,
 					savedRevision: loaded.savedRevision,
-					savedSourceContentId: loaded.savedSourceContentId
+					savedSourceContentId: loaded.savedSourceContentId,
 				};
-			}
+			},
 		});
 		return createHeadSave(state, {
 			unavailableReason:
 				closure.length === 0
 					? null
-					: `This source cannot execute (${closure[0]!.code}): ${closure[0]!.message} Save is unavailable until the resource requirement is satisfied.`
+					: `This source cannot execute (${closure[0]!.code}): ${closure[0]!.message} Save is unavailable until the resource requirement is satisfied.`,
 		});
 	}
 
@@ -134,7 +180,8 @@ export function createProjectSession(host: {
 	 * `applyState`.
 	 */
 	function reportSourceRefusal(next: BootState, action: 'open' | 'reload'): void {
-		const outcome = action === 'open' ? 'The source was not opened' : 'The remote copy was not installed';
+		const outcome =
+			action === 'open' ? 'The source was not opened' : 'The remote copy was not installed';
 		if (next.status === 'refused') {
 			if (next.reason === 'dimension-limit') {
 				host.notice = `${outcome}: ${LAYOUT_DIMENSION_LIMIT_MESSAGE} The current project is unchanged.`;
@@ -191,7 +238,11 @@ export function createProjectSession(host: {
 			return;
 		}
 		if (api === null) {
-			boot = { status: 'error', projectId: projectIdToLoad, message: 'Cloud service is unavailable' };
+			boot = {
+				status: 'error',
+				projectId: projectIdToLoad,
+				message: 'Cloud service is unavailable',
+			};
 			return;
 		}
 		const token = session.token();
@@ -204,7 +255,9 @@ export function createProjectSession(host: {
 			// epoch: a replacement or teardown aborts it exactly once, and a completion
 			// that lands after either is dropped instead of installing itself over the
 			// newer source.
-			outcome = await runBoundLoad(session, (signal) => fetchOutcome(projectIdToLoad, signal, captured, requestedIntent));
+			outcome = await runBoundLoad(session, (signal) =>
+				fetchOutcome(projectIdToLoad, signal, captured, requestedIntent),
+			);
 		} catch {
 			// The GET was cancelled: the replacement that cancelled it owns the stage now.
 			return;
@@ -227,14 +280,19 @@ export function createProjectSession(host: {
 			host.images?.clear(projectIdToLoad);
 		}
 		applyState(next);
-		perfMark(next.status === 'ready' || next.status === 'empty' ? 'f2:cloud-admitted' : `f2:cloud-${next.status}`);
+		perfMark(
+			next.status === 'ready' || next.status === 'empty'
+				? 'f2:cloud-admitted'
+				: `f2:cloud-${next.status}`,
+		);
 		// A loaded source is offered with whatever precondition its capture states.
 		// An absent row is different: only a create-only capture can describe a Save
 		// the server could still accept, so the offer is deliberately narrowed there.
 		// The boot state itself is unchanged — `new` stays `new`, `missing` stays
 		// `missing`; the offer is a separate, explicit creator action.
 		if (next.status === 'ready' || next.status === 'empty') offerResumeSave({ createOnly: false });
-		else if (next.status === 'new' || next.status === 'missing') offerResumeSave({ createOnly: true });
+		else if (next.status === 'new' || next.status === 'missing')
+			offerResumeSave({ createOnly: true });
 	}
 
 	/**
@@ -284,7 +342,8 @@ export function createProjectSession(host: {
 		url.searchParams.delete('resume-save');
 		replaceState(`${url.pathname}${url.search}`, {});
 		resumeOffer = pending;
-		host.notice = 'A Save captured before sign-in is available. Resume it to save exactly that work.';
+		host.notice =
+			'A Save captured before sign-in is available. Resume it to save exactly that work.';
 	}
 
 	/**
@@ -329,7 +388,7 @@ export function createProjectSession(host: {
 		const context = admissionContext();
 		const next = await bootFromSourceJson(offer.save.capture.canonicalJson, projectId, {
 			sessionEpoch: context.sessionEpoch,
-			acceptedRevision: offer.save.capture.acceptedRevision
+			acceptedRevision: offer.save.capture.acceptedRevision,
 		});
 		// The admission is asynchronous: a replacement or teardown that happened
 		// while it ran owns the Stage now, and this older capture must not overwrite
@@ -347,18 +406,20 @@ export function createProjectSession(host: {
 				verifyOpenedImages(
 					offer.project,
 					precondition.kind === 'expected-saved-base' ? precondition.token : null,
-					signal
-				)
+					signal,
+				),
 			);
 		} catch (error) {
-			if (session.isCurrent(token)) host.notice = error instanceof Error ? error.message : 'Project images could not be verified.';
+			if (session.isCurrent(token))
+				host.notice =
+					error instanceof Error ? error.message : 'Project images could not be verified.';
 			return;
 		}
 		if (!session.isCurrent(token)) return;
 		pendingSavedBase = {
 			token: precondition.kind === 'expected-saved-base' ? precondition.token : null,
 			revision: pendingSavedBase?.revision ?? null,
-			contentId: pendingSavedBase?.contentId ?? null
+			contentId: pendingSavedBase?.contentId ?? null,
 		};
 		resumeSource = offer.save;
 		resumeOffer = null;
@@ -375,7 +436,8 @@ export function createProjectSession(host: {
 				break;
 			case 'conflict':
 				discardPendingCapture();
-				host.notice = 'The cloud copy changed; the pending Save was not applied. Resolve the conflict explicitly.';
+				host.notice =
+					'The cloud copy changed; the pending Save was not applied. Resolve the conflict explicitly.';
 				break;
 			case 'refused':
 				host.notice = outcome.message;
@@ -409,14 +471,18 @@ export function createProjectSession(host: {
 	 * so the current session, its history and its saved base stay exactly as they
 	 * were.
 	 */
-	async function verifyOpenedImages(document: unknown, savedBaseToken: string | null, signal: AbortSignal): Promise<void> {
+	async function verifyOpenedImages(
+		document: unknown,
+		savedBaseToken: string | null,
+		signal: AbortSignal,
+	): Promise<void> {
 		const validated = validateProjectEnvelope(document);
 		if (!validated.success || api === null) return;
 		host.images?.clear(projectId);
 		try {
 			await verifyProjectImageClosure(api, projectId, validated.envelope, signal, {
 				savedBaseToken,
-				cache: host.images
+				cache: host.images,
 			});
 		} catch (error) {
 			// A refused candidate never leaves verified bytes behind for the session
@@ -430,7 +496,7 @@ export function createProjectSession(host: {
 		projectIdToLoad: string,
 		signal: AbortSignal,
 		captured: { base: typeof pendingSavedBase },
-		requestedIntent: BootIntent
+		requestedIntent: BootIntent,
 	): Promise<BootLoadOutcome> {
 		try {
 			const loaded = await api!.loadProject(projectIdToLoad, signal);
@@ -441,7 +507,7 @@ export function createProjectSession(host: {
 			captured.base = {
 				token: loaded.savedBaseToken,
 				revision: loaded.savedRevision,
-				contentId: loaded.savedSourceContentId
+				contentId: loaded.savedSourceContentId,
 			};
 			return { kind: 'loaded', document: loaded.document };
 		} catch (error) {
@@ -451,7 +517,11 @@ export function createProjectSession(host: {
 			// A minted guest identity starts local work before authentication. An
 			// unrelated Open still reports forbidden, and Save remains create-only: no
 			// project row is created until the creator explicitly saves.
-			if (requestedIntent === 'create' && error instanceof ProjectPersistenceError && error.code === 'auth') {
+			if (
+				requestedIntent === 'create' &&
+				error instanceof ProjectPersistenceError &&
+				error.code === 'auth'
+			) {
 				return { kind: 'not-found' };
 			}
 			if (error instanceof ProjectImageLoadError) {
@@ -468,7 +538,10 @@ export function createProjectSession(host: {
 			if (error.code === 'network') return { kind: 'network' };
 			return { kind: 'server', message: error.message };
 		}
-		return { kind: 'server', message: error instanceof Error ? error.message : 'Project could not be loaded.' };
+		return {
+			kind: 'server',
+			message: error instanceof Error ? error.message : 'Project could not be loaded.',
+		};
 	}
 
 	function activeProject(): boolean {
@@ -488,7 +561,9 @@ export function createProjectSession(host: {
 		publication: Awaited<ReturnType<ProjectApi['getPublicationStatus']>> | null;
 	};
 
-	function parseLifecycleEnvelope(loaded: Awaited<ReturnType<ProjectApi['loadProject']>>):
+	function parseLifecycleEnvelope(
+		loaded: Awaited<ReturnType<ProjectApi['loadProject']>>,
+	):
 		| { kind: 'ready'; envelope: ProjectEnvelope; canonicalJson: string }
 		| { kind: 'error'; message: string } {
 		const validation = validateProjectEnvelope(loaded.document);
@@ -498,19 +573,25 @@ export function createProjectSession(host: {
 			validation.envelope.id !== projectId ||
 			loaded.name !== validation.envelope.name
 		) {
-			return { kind: 'error', message: 'Cloud returned an invalid or mismatched project document.' };
+			return {
+				kind: 'error',
+				message: 'Cloud returned an invalid or mismatched project document.',
+			};
 		}
 		if (
 			loaded.savedRevision !== null &&
 			(loaded.savedRevision.projectId !== validation.envelope.acceptedRevision.projectId ||
 				loaded.savedRevision.revisionId !== validation.envelope.acceptedRevision.revisionId)
 		) {
-			return { kind: 'error', message: 'Cloud project metadata does not match its saved document.' };
+			return {
+				kind: 'error',
+				message: 'Cloud project metadata does not match its saved document.',
+			};
 		}
 		return {
 			kind: 'ready',
 			envelope: validation.envelope,
-			canonicalJson: serializeProjectEnvelope(validation.envelope)
+			canonicalJson: serializeProjectEnvelope(validation.envelope),
 		};
 	}
 
@@ -526,10 +607,10 @@ export function createProjectSession(host: {
 		}
 		return (
 			serializeProjectEnvelope({
-			...next,
-			name: previous.name,
-			acceptedRevision: previous.acceptedRevision
-		}) === remoteSavedCanonicalJson
+				...next,
+				name: previous.name,
+				acceptedRevision: previous.acceptedRevision,
+			}) === remoteSavedCanonicalJson
 		);
 	}
 
@@ -541,9 +622,10 @@ export function createProjectSession(host: {
 
 	async function readLifecycleProject(
 		includePublication: boolean,
-		token: ReplacementEpochToken
+		token: ReplacementEpochToken,
 	): Promise<
-		| { kind: 'ready'; value: LifecycleRead } | { kind: 'stale' } | { kind: 'error'; message: string }> {
+		{ kind: 'ready'; value: LifecycleRead } | { kind: 'stale' } | { kind: 'error'; message: string }
+	> {
 		if (api === null) return { kind: 'error', message: 'Cloud project actions are unavailable.' };
 		try {
 			const value = await runBoundLoad(session, async (signal) => {
@@ -560,15 +642,16 @@ export function createProjectSession(host: {
 			if (parsed.kind !== 'ready') return parsed;
 			return {
 				kind: 'ready',
-				value: { ...value, envelope: parsed.envelope, canonicalJson: parsed.canonicalJson }
+				value: { ...value, envelope: parsed.envelope, canonicalJson: parsed.canonicalJson },
 			};
 		} catch (error) {
 			if (!session.isCurrent(token)) return { kind: 'stale' };
 			return {
 				kind: 'error',
-				message: error instanceof ProjectPersistenceError
-					? error.message
-					: 'Cloud project metadata could not be loaded.'
+				message:
+					error instanceof ProjectPersistenceError
+						? error.message
+						: 'Cloud project metadata could not be loaded.',
 			};
 		}
 	}
@@ -580,14 +663,14 @@ export function createProjectSession(host: {
 			name: value.loaded.name,
 			version: value.loaded.version,
 			precondition: { kind: 'expected-saved-base', token: value.loaded.savedBaseToken },
-			...(value.publication === null ? {} : { publication: value.publication })
+			...(value.publication === null ? {} : { publication: value.publication }),
 		};
 	}
 
 	async function adoptRemoteLifecycleMetadata(
 		value: LifecycleRead,
 		token: ReplacementEpochToken,
-		existingLock?: { release(): void }
+		existingLock?: { release(): void },
 	): Promise<{ kind: 'adopted' } | { kind: 'stale' } | { kind: 'error'; message: string }> {
 		const mounted = host.acceptance();
 		const save = headSave;
@@ -603,15 +686,18 @@ export function createProjectSession(host: {
 				savedBaseToken: value.loaded.savedBaseToken,
 				savedRevision,
 				savedCanonicalJson: value.canonicalJson,
-				savedSourceContentId: value.loaded.savedSourceContentId
+				savedSourceContentId: value.loaded.savedSourceContentId,
 			};
 			if (!save.adoptSavedBase(baseline)) {
-				return { kind: 'error', message: 'The current Save must finish before Cloud project metadata can be refreshed.' };
+				return {
+					kind: 'error',
+					message: 'The current Save must finish before Cloud project metadata can be refreshed.',
+				};
 			}
 			pendingSavedBase = {
 				token: value.loaded.savedBaseToken,
 				revision: savedRevision,
-				contentId: value.loaded.savedSourceContentId
+				contentId: value.loaded.savedSourceContentId,
 			};
 			remoteSavedCanonicalJson = value.canonicalJson;
 			return { kind: 'adopted' };
@@ -620,14 +706,31 @@ export function createProjectSession(host: {
 		}
 	}
 
-	async function prepareProjectLifecycle(includePublication: boolean): Promise<ProjectLifecyclePrepareResult> {
-		if (api === null) return { kind: 'blocked', message: 'Cloud project actions are unavailable because the Cloud service is not configured.' };
-		if (!activeProject() || pendingSavedBase?.token === null || pendingSavedBase?.token === undefined) {
-			return { kind: 'blocked', message: 'Save this project to Cloud before renaming or deleting it.' };
+	async function prepareProjectLifecycle(
+		includePublication: boolean,
+	): Promise<ProjectLifecyclePrepareResult> {
+		if (api === null)
+			return {
+				kind: 'blocked',
+				message:
+					'Cloud project actions are unavailable because the Cloud service is not configured.',
+			};
+		if (
+			!activeProject() ||
+			pendingSavedBase?.token === null ||
+			pendingSavedBase?.token === undefined
+		) {
+			return {
+				kind: 'blocked',
+				message: 'Save this project to Cloud before renaming or deleting it.',
+			};
 		}
 		const saveSnapshot = headSave?.snapshot();
 		if (saveSnapshot === undefined || saveSnapshot.busy || saveSnapshot.pending) {
-			return { kind: 'blocked', message: 'Finish or retry the current Save before using project actions.' };
+			return {
+				kind: 'blocked',
+				message: 'Finish or retry the current Save before using project actions.',
+			};
 		}
 		const token = session.token();
 		preparedLifecycleEpoch = token;
@@ -636,19 +739,32 @@ export function createProjectSession(host: {
 		if (!sameLifecycleEpoch(token)) return { kind: 'stale' };
 		if (read.kind === 'error') return { kind: 'error', message: read.message };
 		const prepared = lifecyclePrepared(read.value);
-		if (prepared === null) return { kind: 'blocked', message: 'This project has no current Cloud saved base. Reload it before renaming or deleting.' };
-		if (includePublication && (read.value.publication === null || read.value.publication.activeVersion !== null)) {
+		if (prepared === null)
+			return {
+				kind: 'blocked',
+				message:
+					'This project has no current Cloud saved base. Reload it before renaming or deleting.',
+			};
+		if (
+			includePublication &&
+			(read.value.publication === null || read.value.publication.activeVersion !== null)
+		) {
 			return { kind: 'blocked', message: 'Unpublish this project before deleting it.' };
 		}
 		if (!isMetadataOnlyRemoteChange(read.value.envelope)) {
-			return { kind: 'blocked', message: 'Cloud project content changed. Resolve the Save conflict and reload remote before using project actions.' };
+			return {
+				kind: 'blocked',
+				message:
+					'Cloud project content changed. Resolve the Save conflict and reload remote before using project actions.',
+			};
 		}
 		const savedRevision = read.value.loaded.savedRevision ?? read.value.envelope.acceptedRevision;
 		if (
 			pendingSavedBase?.token !== read.value.loaded.savedBaseToken ||
 			read.value.canonicalJson !== remoteSavedCanonicalJson ||
 			savedRevision.revisionId !== pendingSavedBase.revision?.revisionId ||
-			read.value.loaded.name !== (boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain.name : '')
+			read.value.loaded.name !==
+				(boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain.name : '')
 		) {
 			const adopted = await adoptRemoteLifecycleMetadata(read.value, token);
 			if (adopted.kind === 'stale') return { kind: 'stale' };
@@ -661,16 +777,19 @@ export function createProjectSession(host: {
 
 	function retryableLifecycleError(error: unknown): boolean {
 		return (
-			error instanceof ProjectPersistenceError && ['network', 'server', 'project-busy'].includes(error.code)
+			error instanceof ProjectPersistenceError &&
+			['network', 'server', 'project-busy'].includes(error.code)
 		);
 	}
 
 	async function runBoundProjectAction<T>(
 		token: ReplacementEpochToken,
-		start: (signal: AbortSignal) => Promise<T>
+		start: (signal: AbortSignal) => Promise<T>,
 	): Promise<{ kind: 'value'; value: T } | { kind: 'stale' }> {
 		const controller = new AbortController();
-		const unregister = session.writers().register('project-action', token, () => controller.abort());
+		const unregister = session
+			.writers()
+			.register('project-action', token, () => controller.abort());
 		try {
 			const value = await start(controller.signal);
 			if (controller.signal.aborted || !sameLifecycleEpoch(token)) return { kind: 'stale' };
@@ -685,7 +804,7 @@ export function createProjectSession(host: {
 
 	async function refreshLifecycleConflict(
 		projectIdToRefresh: string,
-		includePublication: boolean
+		includePublication: boolean,
 	): Promise<ProjectLifecycleActionResult> {
 		const token = session.token();
 		preparedLifecycleEpoch = token;
@@ -693,9 +812,16 @@ export function createProjectSession(host: {
 		if (read.kind === 'stale' || !sameLifecycleEpoch(token)) return { kind: 'stale' };
 		if (read.kind === 'error') return { kind: 'error', message: read.message, retryable: false };
 		if (projectIdToRefresh !== projectId || !isSavedBaseToken(read.value.loaded.savedBaseToken)) {
-			return { kind: 'error', message: 'Cloud returned invalid project metadata.', retryable: false };
+			return {
+				kind: 'error',
+				message: 'Cloud returned invalid project metadata.',
+				retryable: false,
+			};
 		}
-		if (includePublication && (read.value.publication === null || read.value.publication.activeVersion !== null)) {
+		if (
+			includePublication &&
+			(read.value.publication === null || read.value.publication.activeVersion !== null)
+		) {
 			return { kind: 'refused', message: 'Unpublish this project before deleting it.' };
 		}
 		const safeToRetry = isMetadataOnlyRemoteChange(read.value.envelope);
@@ -707,25 +833,31 @@ export function createProjectSession(host: {
 			remoteName: read.value.loaded.name,
 			retryPrepared: safeToRetry
 				? { ...lifecyclePrepared(read.value)!, requiresExplicitRefresh: true }
-				: null
+				: null,
 		};
 	}
 
 	async function reconcileExplicitRenameRetry(
 		prepared: PreparedProjectLifecycle,
 		token: ReplacementEpochToken,
-		lock: { release(): void }
-	): Promise<
-		| { kind: 'ready'; prepared: PreparedProjectLifecycle } | ProjectLifecycleActionResult> {
+		lock: { release(): void },
+	): Promise<{ kind: 'ready'; prepared: PreparedProjectLifecycle } | ProjectLifecycleActionResult> {
 		if (!prepared.requiresExplicitRefresh) return { kind: 'ready', prepared };
 		const read = await readLifecycleProject(false, token);
 		if (read.kind === 'stale' || !sameLifecycleEpoch(token)) return { kind: 'stale' };
 		if (read.kind === 'error') return { kind: 'error', message: read.message, retryable: false };
-		if (!isSavedBaseToken(read.value.loaded.savedBaseToken) || !isMetadataOnlyRemoteChange(read.value.envelope)) {
-			return { kind: 'refused', message: 'Cloud project content changed again. Reload remote before retrying.' };
+		if (
+			!isSavedBaseToken(read.value.loaded.savedBaseToken) ||
+			!isMetadataOnlyRemoteChange(read.value.envelope)
+		) {
+			return {
+				kind: 'refused',
+				message: 'Cloud project content changed again. Reload remote before retrying.',
+			};
 		}
 		const nextPrepared = lifecyclePrepared(read.value);
-		if (nextPrepared === null) return { kind: 'refused', message: 'Cloud returned no current saved base.' };
+		if (nextPrepared === null)
+			return { kind: 'refused', message: 'Cloud returned no current saved base.' };
 		const adopted = await adoptRemoteLifecycleMetadata(read.value, token, lock);
 		if (adopted.kind === 'stale') return { kind: 'stale' };
 		if (adopted.kind === 'error') return { kind: 'refused', message: adopted.message };
@@ -735,10 +867,11 @@ export function createProjectSession(host: {
 
 	async function renameCurrentProject(
 		prepared: PreparedProjectLifecycle,
-		name: string
+		name: string,
 	): Promise<ProjectLifecycleActionResult> {
 		const token = preparedLifecycleEpoch;
-		if (token === null || !sameLifecycleEpoch(token) || prepared.projectId !== projectId) return { kind: 'stale' };
+		if (token === null || !sameLifecycleEpoch(token) || prepared.projectId !== projectId)
+			return { kind: 'stale' };
 		const mounted = host.acceptance();
 		if (mounted === null) return { kind: 'stale' };
 		const lock = mounted.beginProjectAction();
@@ -750,39 +883,54 @@ export function createProjectSession(host: {
 			if (!sameLifecycleEpoch(token)) return { kind: 'stale' };
 			if (name === operation.name && prepared.requiresExplicitRefresh) return { kind: 'unchanged' };
 			const response = await runBoundProjectAction(token, (signal) =>
-				api!.renameProject(projectId, { name, precondition: operation.precondition }, signal)
+				api!.renameProject(projectId, { name, precondition: operation.precondition }, signal),
 			);
 			if (response.kind === 'stale') return { kind: 'stale' };
 			const acknowledgement = response.value;
-			const adopted = await mounted.adoptProjectName({ name: acknowledgement.name, savedRevision: acknowledgement.savedRevision });
+			const adopted = await mounted.adoptProjectName({
+				name: acknowledgement.name,
+				savedRevision: acknowledgement.savedRevision,
+			});
 			if (!sameLifecycleEpoch(token)) return { kind: 'stale' };
-			if (adopted.kind === 'refused') return { kind: 'error', message: adopted.message, retryable: false };
+			if (adopted.kind === 'refused')
+				return { kind: 'error', message: adopted.message, retryable: false };
 			let baselineEnvelope: ProjectEnvelope;
 			try {
-				const validation = validateProjectEnvelope(JSON.parse(remoteSavedCanonicalJson ?? '') as unknown);
-				if (!validation.success || validation.envelope.id !== projectId) throw new Error('Saved project baseline is unavailable.');
+				const validation = validateProjectEnvelope(
+					JSON.parse(remoteSavedCanonicalJson ?? '') as unknown,
+				);
+				if (!validation.success || validation.envelope.id !== projectId)
+					throw new Error('Saved project baseline is unavailable.');
 				baselineEnvelope = validation.envelope;
 			} catch {
-				return { kind: 'error', message: 'The saved project baseline could not be updated after rename.', retryable: false };
+				return {
+					kind: 'error',
+					message: 'The saved project baseline could not be updated after rename.',
+					retryable: false,
+				};
 			}
 			const canonicalJson = serializeProjectEnvelope({
 				...baselineEnvelope,
 				name: acknowledgement.name,
-				acceptedRevision: acknowledgement.savedRevision
+				acceptedRevision: acknowledgement.savedRevision,
 			});
 			const nextBase = {
 				savedBaseToken: acknowledgement.savedBaseToken,
 				savedRevision: acknowledgement.savedRevision,
 				savedCanonicalJson: canonicalJson,
-				savedSourceContentId: acknowledgement.sourceContentId
+				savedSourceContentId: acknowledgement.sourceContentId,
 			};
 			if (!headSave?.adoptSavedBase(nextBase)) {
-				return { kind: 'error', message: 'Rename completed, but the current Save baseline could not be refreshed.', retryable: false };
+				return {
+					kind: 'error',
+					message: 'Rename completed, but the current Save baseline could not be refreshed.',
+					retryable: false,
+				};
 			}
 			pendingSavedBase = {
 				token: acknowledgement.savedBaseToken,
 				revision: acknowledgement.savedRevision,
-				contentId: acknowledgement.sourceContentId
+				contentId: acknowledgement.sourceContentId,
 			};
 			remoteSavedCanonicalJson = canonicalJson;
 			return { kind: 'renamed', name: acknowledgement.name, version: acknowledgement.version };
@@ -791,26 +939,34 @@ export function createProjectSession(host: {
 				return await refreshLifecycleConflict(projectId, false);
 			}
 			return {
-				kind: error instanceof ProjectPersistenceError && ['invalid', 'auth', 'not-found'].includes(error.code) ? 'refused' : 'error',
+				kind:
+					error instanceof ProjectPersistenceError &&
+					['invalid', 'auth', 'not-found'].includes(error.code)
+						? 'refused'
+						: 'error',
 				message: error instanceof ProjectPersistenceError ? error.message : 'Cloud rename failed.',
-				retryable: retryableLifecycleError(error)
+				retryable: retryableLifecycleError(error),
 			};
 		} finally {
 			lock.release();
 		}
 	}
 
-	async function deleteCurrentProject(prepared: PreparedProjectLifecycle): Promise<ProjectLifecycleActionResult> {
+	async function deleteCurrentProject(
+		prepared: PreparedProjectLifecycle,
+	): Promise<ProjectLifecycleActionResult> {
 		const token = preparedLifecycleEpoch;
-		if (token === null || !sameLifecycleEpoch(token) || prepared.projectId !== projectId) return { kind: 'stale' };
-		if (!confirmUnsavedWork()) return { kind: 'refused', message: 'Delete canceled. Your local work is unchanged.' };
+		if (token === null || !sameLifecycleEpoch(token) || prepared.projectId !== projectId)
+			return { kind: 'stale' };
+		if (!confirmUnsavedWork())
+			return { kind: 'refused', message: 'Delete canceled. Your local work is unchanged.' };
 		const mounted = host.acceptance();
 		if (mounted === null) return { kind: 'stale' };
 		const lock = mounted.beginProjectAction();
 		if (lock.kind !== 'locked') return { kind: 'refused', message: lock.message };
 		try {
 			const response = await runBoundProjectAction(token, (signal) =>
-				api!.deleteProject(projectId, { precondition: prepared.precondition }, signal)
+				api!.deleteProject(projectId, { precondition: prepared.precondition }, signal),
 			);
 			if (response.kind === 'stale') return { kind: 'stale' };
 			return { kind: 'deleted', cleanup: response.value.cleanup };
@@ -822,9 +978,14 @@ export function createProjectSession(host: {
 				return { kind: 'refused', message: error.message };
 			}
 			return {
-				kind: error instanceof ProjectPersistenceError && ['invalid', 'auth', 'not-found'].includes(error.code) ? 'refused' : 'error',
-				message: error instanceof ProjectPersistenceError ? error.message : 'Cloud deletion failed.',
-				retryable: retryableLifecycleError(error)
+				kind:
+					error instanceof ProjectPersistenceError &&
+					['invalid', 'auth', 'not-found'].includes(error.code)
+						? 'refused'
+						: 'error',
+				message:
+					error instanceof ProjectPersistenceError ? error.message : 'Cloud deletion failed.',
+				retryable: retryableLifecycleError(error),
 			};
 		} finally {
 			lock.release();
@@ -832,7 +993,7 @@ export function createProjectSession(host: {
 	}
 
 	async function finishCurrentProjectAction(
-		result: Extract<ProjectLifecycleActionResult, { kind: 'renamed' | 'deleted' | 'unchanged' }>
+		result: Extract<ProjectLifecycleActionResult, { kind: 'renamed' | 'deleted' | 'unchanged' }>,
 	): Promise<void> {
 		if (result.kind !== 'deleted') return;
 		const token = preparedLifecycleEpoch;
@@ -842,7 +1003,8 @@ export function createProjectSession(host: {
 		// Route teardown then releases its normal Stage, history and asset owners.
 		session.dispose();
 		const query = new URLSearchParams({ deleted: result.cleanup });
-		if (boot.status === 'ready' || boot.status === 'empty') query.set('name', boot.snapshot.domain.name);
+		if (boot.status === 'ready' || boot.status === 'empty')
+			query.set('name', boot.snapshot.domain.name);
 		await goto(`/projects?${query.toString()}`);
 	}
 
@@ -857,7 +1019,7 @@ export function createProjectSession(host: {
 			document: loaded.document,
 			savedBaseToken: loaded.savedBaseToken,
 			savedRevision: loaded.savedRevision,
-			savedSourceContentId: loaded.savedSourceContentId
+			savedSourceContentId: loaded.savedSourceContentId,
 		});
 	}
 
@@ -878,17 +1040,22 @@ export function createProjectSession(host: {
 		const token = session.token();
 		try {
 			await runBoundLoad(session, (signal) =>
-				verifyOpenedImages(offer.document, offer.savedBaseToken, signal)
+				verifyOpenedImages(offer.document, offer.savedBaseToken, signal),
 			);
 		} catch (error) {
 			if (session.isCurrent(token)) {
 				host.images?.clear(projectId);
-				host.notice = error instanceof Error ? error.message : 'Project images could not be verified.';
+				host.notice =
+					error instanceof Error ? error.message : 'Project images could not be verified.';
 			}
 			return false;
 		}
 		if (!session.isCurrent(token)) return false;
-		const next = await bootFromSourceJson(JSON.stringify(offer.document), projectId, admissionContext());
+		const next = await bootFromSourceJson(
+			JSON.stringify(offer.document),
+			projectId,
+			admissionContext(),
+		);
 		// Admission itself is asynchronous: a stale offer installs nothing, adopts no
 		// saved base and reports no refusal over the newer session.
 		if (!session.isCurrent(token)) return false;
@@ -903,7 +1070,7 @@ export function createProjectSession(host: {
 		pendingSavedBase = {
 			token: offer.savedBaseToken,
 			revision: offer.savedRevision,
-			contentId: offer.savedSourceContentId
+			contentId: offer.savedSourceContentId,
 		};
 		remoteSavedCanonicalJson = next.snapshot.canonicalJson;
 		applyState(next);
@@ -986,7 +1153,8 @@ export function createProjectSession(host: {
 		// Standalone JSON does not transfer project-owned artwork byte identity.
 		const validated = validateProjectEnvelope(JSON.parse(source));
 		if (validated.success && validated.envelope.units.scene.data.artworkLibrary?.length) {
-			host.notice = 'This source uses project Artwork images. Open its saved cloud project to recover those images.';
+			host.notice =
+				'This source uses project Artwork images. Open its saved cloud project to recover those images.';
 			return;
 		}
 
@@ -1035,11 +1203,14 @@ export function createProjectSession(host: {
 
 	function projectActionsUnavailableReason(): string | null {
 		void headSaveVersion;
-		if (api === null) return 'Cloud project actions are unavailable because the Cloud service is not configured.';
+		if (api === null)
+			return 'Cloud project actions are unavailable because the Cloud service is not configured.';
 		if (!activeProject()) return 'Open a saved Cloud project to rename or delete it.';
-		if (!pendingSavedBase?.token) return 'Save this project to Cloud before renaming or deleting it.';
+		if (!pendingSavedBase?.token)
+			return 'Save this project to Cloud before renaming or deleting it.';
 		const save = headSave?.snapshot();
-		if (save?.busy || save?.pending) return 'Finish or retry the current Save before using project actions.';
+		if (save?.busy || save?.pending)
+			return 'Finish or retry the current Save before using project actions.';
 		return null;
 	}
 
@@ -1047,7 +1218,7 @@ export function createProjectSession(host: {
 		assetId: string,
 		bytes: Uint8Array,
 		expectedPin: string,
-		signal?: AbortSignal
+		signal?: AbortSignal,
 	): Promise<{ readonly ok: true } | { readonly ok: false; readonly message: string }> {
 		if (api === null) {
 			return { ok: false, message: 'Cloud storage is unavailable in this session.' };
@@ -1057,16 +1228,11 @@ export function createProjectSession(host: {
 			return { ok: false, message: 'Save this project to Cloud before relinking saved images.' };
 		}
 		try {
-			await api.repairAsset(
-				projectId,
-				assetId,
-				bytes,
-				{ expectedPin, savedBaseToken },
-				signal
-			);
+			await api.repairAsset(projectId, assetId, bytes, { expectedPin, savedBaseToken }, signal);
 			return { ok: true };
 		} catch (error) {
-			const message = error instanceof Error ? error.message : 'That file could not restore the saved image.';
+			const message =
+				error instanceof Error ? error.message : 'That file could not restore the saved image.';
 			return { ok: false, message };
 		}
 	}
@@ -1074,13 +1240,16 @@ export function createProjectSession(host: {
 	async function repairBootImage(
 		diagnostic: ProjectImageDiagnostic,
 		bytes: Uint8Array,
-		signal?: AbortSignal
+		signal?: AbortSignal,
 	): Promise<{ readonly ok: true } | { readonly ok: false; readonly message: string }> {
 		if (api === null) {
 			return { ok: false, message: 'Cloud storage is unavailable in this session.' };
 		}
 		if (diagnostic.expectedPin === null || diagnostic.savedBase === null) {
-			return { ok: false, message: 'This project does not hold a saved pin for exact-byte recovery.' };
+			return {
+				ok: false,
+				message: 'This project does not hold a saved pin for exact-byte recovery.',
+			};
 		}
 		try {
 			await api.repairAsset(
@@ -1088,10 +1257,11 @@ export function createProjectSession(host: {
 				diagnostic.assetId,
 				bytes,
 				{ expectedPin: diagnostic.expectedPin.hash, savedBaseToken: diagnostic.savedBase },
-				signal
+				signal,
 			);
 		} catch (error) {
-			const message = error instanceof Error ? error.message : 'That file does not match the original image.';
+			const message =
+				error instanceof Error ? error.message : 'That file does not match the original image.';
 			return { ok: false, message };
 		}
 		await load(projectId, intent);
@@ -1100,25 +1270,56 @@ export function createProjectSession(host: {
 
 	return {
 		downloadSourceJson,
-		get boot() { return boot; },
-		get headSave() { return headSave; },
-		get resumeOffer() { return resumeOffer; },
-		get recoveryOffer() { return recoveryOffer; },
+		get boot() {
+			return boot;
+		},
+		get headSave() {
+			return headSave;
+		},
+		get resumeOffer() {
+			return resumeOffer;
+		},
+		get recoveryOffer() {
+			return recoveryOffer;
+		},
 		dismissRecoveryOffer,
-		get pendingReplacement() { return pendingReplacement; },
-		get projectActionBusy() { return projectActionBusy; },
-		setProjectActionBusy(value: boolean) { projectActionBusy = value; },
-		cancelReplacement() { pendingReplacement = null; },
+		get pendingReplacement() {
+			return pendingReplacement;
+		},
+		get projectActionBusy() {
+			return projectActionBusy;
+		},
+		setProjectActionBusy(value: boolean) {
+			projectActionBusy = value;
+		},
+		cancelReplacement() {
+			pendingReplacement = null;
+		},
 		updateSnapshot(snapshot: StageReadSnapshot) {
 			if (boot.status === 'ready' || boot.status === 'empty') boot = { ...boot, snapshot };
 		},
 		/** Callers must inspect the Save outcome before switching projects. */
-		saveBeforeSwitch() { return headSave?.save() ?? Promise.resolve({ kind: 'unavailable' as const }); },
+		saveBeforeSwitch() {
+			return headSave?.save() ?? Promise.resolve({ kind: 'unavailable' as const });
+		},
 		dispose: unmountSave,
-		bindNavigation, mountSave, unmountSave, projectActionsUnavailableReason, activeProject, load,
-		requestReplacement, runReplacement, resumePendingSave, dismissResumeOffer,
-		prepareProjectLifecycle, renameCurrentProject, deleteCurrentProject,
-		finishCurrentProjectAction, reloadLifecycleRemote, applyReloadOffer,
-		repairProjectAsset, repairBootImage
+		bindNavigation,
+		mountSave,
+		unmountSave,
+		projectActionsUnavailableReason,
+		activeProject,
+		load,
+		requestReplacement,
+		runReplacement,
+		resumePendingSave,
+		dismissResumeOffer,
+		prepareProjectLifecycle,
+		renameCurrentProject,
+		deleteCurrentProject,
+		finishCurrentProjectAction,
+		reloadLifecycleRemote,
+		applyReloadOffer,
+		repairProjectAsset,
+		repairBootImage,
 	};
 }

@@ -8,7 +8,6 @@ import { roundRoomSeamJunctionId } from './certify';
 export const ROUND_ROOM_MEMBER_EDIT_MESSAGE =
 	'This wall is part of a round room. Change Radius, or release round.' as const;
 
-
 export type RoundRoomMemberGuardHit = {
 	readonly code: 'round_room_member_locked';
 	readonly message: typeof ROUND_ROOM_MEMBER_EDIT_MESSAGE;
@@ -16,7 +15,6 @@ export type RoundRoomMemberGuardHit = {
 	readonly wallIds: readonly string[];
 	readonly junctionIds: readonly string[];
 };
-
 
 /**
  * Guard geometry-changing member edits on any Round Room boundary Wall or rim
@@ -27,7 +25,7 @@ export function guardRoundRoomMemberGeometryEdit(
 	target: {
 		readonly wallIds?: readonly string[];
 		readonly junctionIds?: readonly string[];
-	}
+	},
 ): RoundRoomMemberGuardHit | null {
 	const roundRooms = document.rooms.filter((room) => room.round !== undefined);
 	if (roundRooms.length === 0) return null;
@@ -57,18 +55,17 @@ export function guardRoundRoomMemberGeometryEdit(
 				message: ROUND_ROOM_MEMBER_EDIT_MESSAGE,
 				roomId: room.id,
 				wallIds: hitWalls,
-				junctionIds: hitJunctions
+				junctionIds: hitJunctions,
 			};
 		}
 	}
 	return null;
 }
 
-
 /** Find a Round Room whose canonical seam Junction equals `junctionId`. */
 export function findRoundRoomSeamOwner(
 	document: Pick<LayoutDocumentWallFirst, 'walls' | 'rooms'>,
-	junctionId: string
+	junctionId: string,
 ): { readonly room: LayoutWallFirstRoom; readonly wallIds: readonly string[] } | null {
 	const wallById = new Map(document.walls.map((wall) => [wall.id, wall] as const));
 	for (const room of document.rooms) {
@@ -77,7 +74,7 @@ export function findRoundRoomSeamOwner(
 		if (seamId === junctionId) {
 			return {
 				room,
-				wallIds: room.boundary.map((ref) => ref.wallId)
+				wallIds: room.boundary.map((ref) => ref.wallId),
 			};
 		}
 	}

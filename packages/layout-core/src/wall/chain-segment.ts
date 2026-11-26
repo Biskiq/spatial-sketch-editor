@@ -70,21 +70,21 @@ export function planWallSegment(options: {
 	endpointJunctionSnaps?: readonly WallEndpointJunctionSnap[];
 }): WallChainPlan {
 	const declaredStartJunctionId = options.endpointJunctionSnaps?.find(
-		(snap) => snap.pointIndex === 0
+		(snap) => snap.pointIndex === 0,
 	)?.junctionId;
 	// Birth height is a vertical-coherence rule, not a topology rule, so
 	// it keeps its coordinate fallback: a segment whose start sits on a Junction
 	// inherits that Junction's height whether or not the operation declared the
 	// identity. A declared anchor is authoritative when both are present.
 	const coordinateStartJunction = options.baseline.junctions.find((junction) =>
-		coincidesAsJunction(junction.point, options.start)
+		coincidesAsJunction(junction.point, options.start),
 	);
 	// S6 — one merged declaration list: the single-end spelling (`endpointHostWallId`,
 	// what the editor passes for the endpoint the author snapped to) plus the
 	// general per-point form a headless caller uses to declare both ends.
 	const declaredHostSnaps: WallEndpointHostSnap[] = [
 		...(options.endpointHostWallId ? [{ pointIndex: 1, wallId: options.endpointHostWallId }] : []),
-		...(options.endpointHostSnaps ?? [])
+		...(options.endpointHostSnaps ?? []),
 	];
 	return planWallChain({
 		baseline: options.baseline,
@@ -93,7 +93,7 @@ export function planWallSegment(options: {
 		height: resolveWallBirthHeight(
 			options.baseline,
 			declaredStartJunctionId ?? coordinateStartJunction?.id ?? null,
-			options.height
+			options.height,
 		),
 		...(options.thickness !== undefined ? { thickness: options.thickness } : {}),
 		...(declaredHostSnaps.length > 0 ? { endpointHostSnaps: declaredHostSnaps } : {}),
@@ -101,6 +101,6 @@ export function planWallSegment(options: {
 			? { endpointJunctionSnaps: options.endpointJunctionSnaps }
 			: {}),
 		capture: options.capture,
-		levelId: options.levelId
+		levelId: options.levelId,
 	});
 }

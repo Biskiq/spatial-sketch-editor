@@ -25,13 +25,13 @@ import {
 	aimTarget,
 	LIGHT_AIM_GUIDE_METERS,
 	lightForward,
-	rotationForLightDirection
+	rotationForLightDirection,
 } from '../../look/light-aim';
 import {
 	drawableSpotAngle,
 	LIGHT_SPOT_TARGET_FALLBACK_METERS,
 	spotFootprintRadius,
-	spotInnerRadius
+	spotInnerRadius,
 } from '../../look/light-presentation';
 import { radiansToDegrees } from '../../look/light-units';
 import { lightById, lightRange, type Light } from '../../adapters/light/light-subjects';
@@ -96,7 +96,7 @@ function cross(left: Vec3, right: Vec3): Vec3 {
 	return [
 		left[1] * right[2] - left[2] * right[1],
 		left[2] * right[0] - left[0] * right[2],
-		left[0] * right[1] - left[1] * right[0]
+		left[0] * right[1] - left[1] * right[0],
 	];
 }
 
@@ -114,12 +114,7 @@ function sameVector(left: Vec3, right: Vec3): boolean {
 	);
 }
 
-function ringFor(
-	center: Vec3,
-	direction: Vec3,
-	radius: number,
-	segments = 64
-): Vec3[] {
+function ringFor(center: Vec3, direction: Vec3, radius: number, segments = 64): Vec3[] {
 	// The same orthonormal basis `spotConeGuide` uses, so the coverage ring and
 	// the Stage's published cone cannot disagree about which way is "up".
 	const reference: Vec3 = Math.abs(direction[1]) > 0.9 ? [1, 0, 0] : [0, 1, 0];
@@ -131,8 +126,8 @@ function ringFor(
 		ring.push(
 			add(
 				center,
-				add(scaledBy(right, Math.cos(angle) * radius), scaledBy(up, Math.sin(angle) * radius))
-			)
+				add(scaledBy(right, Math.cos(angle) * radius), scaledBy(up, Math.sin(angle) * radius)),
+			),
 		);
 	}
 	return ring;
@@ -153,7 +148,7 @@ export function lookThroughCone(light: Light): LightLookThroughCone {
 			capRing: [],
 			innerRing: null,
 			halfAngleDegrees: 0,
-			reachMeters: lightRange(light) ?? null
+			reachMeters: lightRange(light) ?? null,
 		};
 	}
 	const direction = normalize(lightForward(light.rotation));
@@ -165,20 +160,19 @@ export function lookThroughCone(light: Light): LightLookThroughCone {
 	const drawAngle = drawableSpotAngle(light.angle);
 	const capRadius = spotFootprintRadius(distance, drawAngle);
 	const penumbra = light.penumbra ?? 0;
-	const innerRadius =
-		penumbra > 0.001 ? spotInnerRadius(distance, drawAngle, penumbra) : 0;
+	const innerRadius = penumbra > 0.001 ? spotInnerRadius(distance, drawAngle, penumbra) : 0;
 	return {
 		capRing: capRadius > 1e-6 ? ringFor(center, direction, capRadius) : [],
 		innerRing: innerRadius > 1e-4 ? ringFor(center, direction, innerRadius) : null,
 		halfAngleDegrees: radiansToDegrees(light.angle),
-		reachMeters: lightRange(light) ?? null
+		reachMeters: lightRange(light) ?? null,
 	};
 }
 
 /** The fixed-eye inspection View for a Spot, derived from its stored aim. */
 export function lightLookThroughView(
 	light: Light,
-	cameraState: { readonly pose: Parameters<typeof fovYDegreesOf>[0] }
+	cameraState: { readonly pose: Parameters<typeof fovYDegreesOf>[0] },
 ) {
 	return {
 		viewId: `${LIGHT_LOOK_THROUGH_VIEW_PREFIX}${light.id}`,
@@ -186,7 +180,7 @@ export function lightLookThroughView(
 		label: light.name,
 		eye: [...light.position] as Vec3,
 		target: aimTarget(light.position, light.rotation, LIGHT_AIM_GUIDE_METERS),
-		fovYDegrees: fovYDegreesOf(cameraState.pose)
+		fovYDegrees: fovYDegreesOf(cameraState.pose),
 	};
 }
 
@@ -286,7 +280,10 @@ export function createLightLookThrough(host: LightLookThroughHost) {
 	function enter(lightId: string): LightLookThroughEnter {
 		if (disposed) return { kind: 'refused', message: 'This Stage is no longer mounted.' };
 		if (session !== null) {
-			return { kind: 'refused', message: 'Already looking through a light; finish or exit it first.' };
+			return {
+				kind: 'refused',
+				message: 'Already looking through a light; finish or exit it first.',
+			};
 		}
 		if (host.lens() !== 'world') {
 			return { kind: 'refused', message: 'Look through is available in the World lens.' };
@@ -297,7 +294,8 @@ export function createLightLookThrough(host: LightLookThroughHost) {
 			return { kind: 'refused', message: 'The Stage is still opening; try again in a moment.' };
 		}
 		const light = lightById(stage.snapshot(), lightId);
-		if (light === null) return { kind: 'refused', message: 'That light is no longer in this project.' };
+		if (light === null)
+			return { kind: 'refused', message: 'That light is no longer in this project.' };
 		if (light.light !== 'spot') {
 			return { kind: 'refused', message: 'Only a Spot has an eye and a cone to look through.' };
 		}
@@ -315,7 +313,7 @@ export function createLightLookThrough(host: LightLookThroughHost) {
 			stage,
 			entryPosition: [...light.position] as Vec3,
 			entryRotation: [...light.rotation] as Vec3,
-			entryReading: entry.reading
+			entryReading: entry.reading,
 		};
 		host.notice('');
 		refresh();
@@ -381,10 +379,16 @@ export function createLightLookThrough(host: LightLookThroughHost) {
 		}
 		busy = true;
 		try {
-			const outcome = await acceptFormCommand(services, stage.snapshot(), light.id, 'update-light', {
-				entityId: light.id,
-				rotation
-			});
+			const outcome = await acceptFormCommand(
+				services,
+				stage.snapshot(),
+				light.id,
+				'update-light',
+				{
+					entityId: light.id,
+					rotation,
+				},
+			);
 			// Exit, Cancel, a replacement or teardown may have ended the session
 			// while the acceptance was in flight. Its completion must not restore,
 			// select or write through another Camera.
@@ -468,7 +472,7 @@ export function createLightLookThrough(host: LightLookThroughHost) {
 		if (light === null || light.light !== 'spot') return null;
 		return {
 			halfAngleDegrees: radiansToDegrees(light.angle),
-			reachMeters: lightRange(light) ?? null
+			reachMeters: lightRange(light) ?? null,
 		};
 	}
 
@@ -552,11 +556,11 @@ export function createLightLookThrough(host: LightLookThroughHost) {
 		pinch(event: PointerEvent) {
 			// The eye is fixed: a second pointer cannot pinch, truck or dolly it.
 			event.preventDefault();
-			return session === null ? 'pass' as const : 'claimed' as const;
+			return session === null ? ('pass' as const) : ('claimed' as const);
 		},
 		click(event: MouseEvent) {
 			if (session === null) return 'pass' as const;
-			return aimAtClick(event) ? 'claimed' as const : 'pass' as const;
+			return aimAtClick(event) ? ('claimed' as const) : ('pass' as const);
 		},
 		wheel(event: WheelEvent) {
 			if (session === null) return 'pass' as const;
@@ -595,7 +599,7 @@ export function createLightLookThrough(host: LightLookThroughHost) {
 			// explicit replacement/teardown cancel still owns the destructive path.
 			if (session !== null && !busy) exitInternal();
 		},
-		dispose
+		dispose,
 	};
 
 	return {
@@ -613,6 +617,6 @@ export function createLightLookThrough(host: LightLookThroughHost) {
 		dispose,
 		moved,
 		beam,
-		busy: () => busy
+		busy: () => busy,
 	};
 }

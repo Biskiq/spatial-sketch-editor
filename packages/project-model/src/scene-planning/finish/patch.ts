@@ -19,7 +19,12 @@
  *   keep an image untinted is removed with the image when no other map override
  *   remains and the patch does not itself author the colour.
  */
-import { normalizeOffset, normalizeRotation, pruneOverrides, readOverrides } from '../../materials/read';
+import {
+	normalizeOffset,
+	normalizeRotation,
+	pruneOverrides,
+	readOverrides,
+} from '../../materials/read';
 import { catalogueRecipe } from '../../materials/catalogue';
 import { NEUTRAL_RECIPE } from '../../materials/neutral';
 import {
@@ -27,7 +32,7 @@ import {
 	type FinishOverrides,
 	type MapRole,
 	type Mapping,
-	type Recipe
+	type Recipe,
 } from '../../materials/types';
 import type { SceneMaterialInstance } from '../../scene';
 
@@ -37,7 +42,7 @@ export const FINISH_PATCH_FACTOR_FIELDS = [
 	'metalness',
 	'occlusionStrength',
 	'normalScale',
-	'mapping'
+	'mapping',
 ] as const;
 export type FinishPatchFactorField = (typeof FINISH_PATCH_FACTOR_FIELDS)[number];
 export type FinishPatchMapField = `maps.${MapRole}`;
@@ -45,7 +50,7 @@ export type FinishPatchField = FinishPatchFactorField | FinishPatchMapField;
 
 export const FINISH_PATCH_FIELDS: readonly FinishPatchField[] = [
 	...FINISH_PATCH_FACTOR_FIELDS,
-	...MATERIAL_MAP_ROLES.map((role) => `maps.${role}` as const)
+	...MATERIAL_MAP_ROLES.map((role) => `maps.${role}` as const),
 ];
 
 export type FinishPatchEdit =
@@ -66,7 +71,11 @@ export type FinishPatchProblem = {
 };
 
 export type FinishPatchResult =
-	| { readonly ok: true; readonly instance: SceneMaterialInstance; readonly touchesSampling: boolean }
+	| {
+			readonly ok: true;
+			readonly instance: SceneMaterialInstance;
+			readonly touchesSampling: boolean;
+	  }
 	| { readonly ok: false; readonly problem: FinishPatchProblem };
 
 function isMapField(field: FinishPatchField): field is FinishPatchMapField {
@@ -80,22 +89,36 @@ function normalizeMapping(raw: unknown): unknown {
 		if (mapping.kind === 'uv') {
 			return {
 				...mapping,
-				rotation: typeof mapping.rotation === 'number' ? normalizeRotation(mapping.rotation) : mapping.rotation,
+				rotation:
+					typeof mapping.rotation === 'number'
+						? normalizeRotation(mapping.rotation)
+						: mapping.rotation,
 				offset: Array.isArray(mapping.offset)
-					? mapping.offset.map((value) => (typeof value === 'number' ? normalizeOffset(value) : value))
-					: mapping.offset
+					? mapping.offset.map((value) =>
+							typeof value === 'number' ? normalizeOffset(value) : value,
+						)
+					: mapping.offset,
 			};
 		}
-		if ((mapping.kind === 'target' || mapping.kind === 'surface') && typeof mapping.metric === 'object' && mapping.metric !== null) {
+		if (
+			(mapping.kind === 'target' || mapping.kind === 'surface') &&
+			typeof mapping.metric === 'object' &&
+			mapping.metric !== null
+		) {
 			return {
 				...mapping,
 				metric: {
 					...mapping.metric,
-					rotation: typeof mapping.metric.rotation === 'number' ? normalizeRotation(mapping.metric.rotation) : mapping.metric.rotation,
+					rotation:
+						typeof mapping.metric.rotation === 'number'
+							? normalizeRotation(mapping.metric.rotation)
+							: mapping.metric.rotation,
 					offset: Array.isArray(mapping.metric.offset)
-						? mapping.metric.offset.map((value) => (typeof value === 'number' ? normalizeOffset(value) : value))
-						: mapping.metric.offset
-				}
+						? mapping.metric.offset.map((value) =>
+								typeof value === 'number' ? normalizeOffset(value) : value,
+							)
+						: mapping.metric.offset,
+				},
 			};
 		}
 	} catch {
@@ -106,13 +129,16 @@ function normalizeMapping(raw: unknown): unknown {
 
 function normalizeBinding(raw: unknown): unknown {
 	if (typeof raw !== 'object' || raw === null || !('mapping' in raw)) return raw;
-	return { ...(raw as Record<string, unknown>), mapping: normalizeMapping((raw as { mapping: unknown }).mapping) };
+	return {
+		...(raw as Record<string, unknown>),
+		mapping: normalizeMapping((raw as { mapping: unknown }).mapping),
+	};
 }
 
 /** The base recipe a Finish instance inherits, when it is readable. */
 export function baseRecipeOf(
 	instance: SceneMaterialInstance,
-	materialRecipes: ReadonlyMap<string, Recipe>
+	materialRecipes: ReadonlyMap<string, Recipe>,
 ): Recipe | undefined {
 	if ('catalogue' in instance.base) return catalogueRecipe(instance.base.catalogue);
 	return materialRecipes.get(instance.base.material);
@@ -133,7 +159,7 @@ function bindsNormal(overrides: FinishOverrides | undefined, base: Recipe | unde
 export function applyFinishPatch(
 	instance: SceneMaterialInstance,
 	edits: readonly FinishPatchEdit[],
-	baseRecipe: Recipe | undefined
+	baseRecipe: Recipe | undefined,
 ): FinishPatchResult {
 	const seen = new Set<FinishPatchField>();
 	const overrides = JSON.parse(JSON.stringify(instance.overrides ?? {})) as Record<string, unknown>;
@@ -144,10 +170,24 @@ export function applyFinishPatch(
 	for (const [index, edit] of edits.entries()) {
 		const path = `$.payload.edits[${index}]`;
 		if (!FINISH_PATCH_FIELDS.includes(edit.field)) {
-			return { ok: false, problem: { code: 'unknown-field', path: `${path}.field`, message: `"${String(edit.field)}" is not a Finish field.` } };
+			return {
+				ok: false,
+				problem: {
+					code: 'unknown-field',
+					path: `${path}.field`,
+					message: `"${String(edit.field)}" is not a Finish field.`,
+				},
+			};
 		}
 		if (seen.has(edit.field)) {
-			return { ok: false, problem: { code: 'duplicate-field', path: `${path}.field`, message: `"${edit.field}" is edited twice in one patch.` } };
+			return {
+				ok: false,
+				problem: {
+					code: 'duplicate-field',
+					path: `${path}.field`,
+					message: `"${edit.field}" is edited twice in one patch.`,
+				},
+			};
 		}
 		seen.add(edit.field);
 		if (isMapField(edit.field)) {
@@ -159,15 +199,36 @@ export function applyFinishPatch(
 				delete maps[role];
 				if (role === 'color') resetsColourMap = true;
 			} else {
-				return { ok: false, problem: { code: 'invalid-operation', path: `${path}.op`, message: 'A map edit is set, disable or reset.' } };
+				return {
+					ok: false,
+					problem: {
+						code: 'invalid-operation',
+						path: `${path}.op`,
+						message: 'A map edit is set, disable or reset.',
+					},
+				};
 			}
 			continue;
 		}
 		if (edit.op === 'disable') {
-			return { ok: false, problem: { code: 'invalid-operation', path: `${path}.op`, message: 'Only a map can be disabled.' } };
+			return {
+				ok: false,
+				problem: {
+					code: 'invalid-operation',
+					path: `${path}.op`,
+					message: 'Only a map can be disabled.',
+				},
+			};
 		}
 		if (edit.op !== 'set' && edit.op !== 'reset') {
-			return { ok: false, problem: { code: 'invalid-operation', path: `${path}.op`, message: 'A field edit is set or reset.' } };
+			return {
+				ok: false,
+				problem: {
+					code: 'invalid-operation',
+					path: `${path}.op`,
+					message: 'A field edit is set or reset.',
+				},
+			};
 		}
 		if (edit.field === 'mapping') touchesSampling = true;
 		if (edit.field === 'color') authorsColour = true;
@@ -175,11 +236,12 @@ export function applyFinishPatch(
 			delete overrides[edit.field];
 			continue;
 		}
-		const value = edit.field === 'mapping'
-			? normalizeMapping(edit.value)
-			: edit.field === 'color' && typeof edit.value === 'string'
-				? edit.value.toLowerCase()
-				: edit.value;
+		const value =
+			edit.field === 'mapping'
+				? normalizeMapping(edit.value)
+				: edit.field === 'color' && typeof edit.value === 'string'
+					? edit.value.toLowerCase()
+					: edit.value;
 		overrides[edit.field] = value;
 		if (edit.field === 'normalScale') {
 			// Validated below against the resulting binding.
@@ -189,7 +251,12 @@ export function applyFinishPatch(
 	else overrides.maps = maps;
 	// S4's tint rule: the white tint written for an untinted colour image leaves
 	// with that image when nothing else still needs it.
-	if (resetsColourMap && !authorsColour && overrides.maps === undefined && overrides.color === '#ffffff') {
+	if (
+		resetsColourMap &&
+		!authorsColour &&
+		overrides.maps === undefined &&
+		overrides.color === '#ffffff'
+	) {
 		delete overrides.color;
 	}
 	const read = readOverrides(overrides);
@@ -200,8 +267,8 @@ export function applyFinishPatch(
 			problem: {
 				code: 'invalid-value',
 				path: first.path === '$' ? '$.payload.edits' : `$.payload.overrides${first.path.slice(1)}`,
-				message: first.action ?? `${first.path} is not admissible (${first.code}).`
-			}
+				message: first.action ?? `${first.path} is not admissible (${first.code}).`,
+			},
 		};
 	}
 	const pruned = pruneOverrides(read.overrides);
@@ -218,18 +285,25 @@ export function applyFinishPatch(
 			problem: {
 				code: 'normal-control-without-normal',
 				path: '$.payload.edits',
-				message: 'Normal strength needs a normal map. Bind one first.'
-			}
+				message: 'Normal strength needs a normal map. Bind one first.',
+			},
 		};
 	}
 	const next: SceneMaterialInstance = {
 		id: instance.id,
 		name: instance.name,
 		base: instance.base,
-		...(pruned === undefined ? {} : { overrides: pruned })
+		...(pruned === undefined ? {} : { overrides: pruned }),
 	};
 	if (JSON.stringify(next.overrides ?? null) === JSON.stringify(instance.overrides ?? null)) {
-		return { ok: false, problem: { code: 'no-change', path: '$.payload.edits', message: 'That Finish already has those values.' } };
+		return {
+			ok: false,
+			problem: {
+				code: 'no-change',
+				path: '$.payload.edits',
+				message: 'That Finish already has those values.',
+			},
+		};
 	}
 	return { ok: true, instance: next, touchesSampling };
 }

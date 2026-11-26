@@ -4,7 +4,7 @@ export function unsupportedTransform(entityId: string, operation: string): Scene
 	return refusal(
 		'unsupported-transform',
 		`Entity "${entityId}" is not a truthful upright floor object, so ${operation} cannot own its transform.`,
-		[entityId]
+		[entityId],
 	);
 }
 
@@ -12,7 +12,7 @@ export function invalidFrame(): SceneOperationRefusal {
 	return refusal(
 		'invalid-value',
 		'The operation needs a finite yaw-only input frame and a finite yaw.',
-		['frame', 'yaw']
+		['frame', 'yaw'],
 	);
 }
 
@@ -20,7 +20,7 @@ export function nonFinitePoint(): SceneOperationRefusal {
 	return refusal(
 		'invalid-value',
 		'The destination X/Z (or its composed world point) is not finite.',
-		['worldXZ']
+		['worldXZ'],
 	);
 }
 
@@ -31,7 +31,7 @@ export function invalid(message: string, diagnostics: readonly string[]): SceneO
 export function refusal(
 	code: SceneOperationRefusalCode,
 	message: string,
-	diagnostics: readonly string[]
+	diagnostics: readonly string[],
 ): SceneOperationRefusal {
 	return {
 		kind: 'rejected',
@@ -40,7 +40,7 @@ export function refusal(
 		diagnostics: diagnostics.map((entry) => ({
 			path: '$.payload',
 			code: 'operation-refusal',
-			message: entry
-		}))
+			message: entry,
+		})),
 	};
 }

@@ -18,7 +18,7 @@ import type { ResourceUnitPayload } from './types';
 
 /** Whether the index has anything a renderer could resolve. */
 export function materialRuntimeIndexOf(
-	resources: ResourceUnitPayload
+	resources: ResourceUnitPayload,
 ): MaterialRuntimeIndex | undefined {
 	const definitions = new Map<string, import('../materials/types').Recipe>();
 	const definitionImages = new Map<string, ResolvedImage[]>();
@@ -26,10 +26,13 @@ export function materialRuntimeIndexOf(
 	for (const resource of resources.resources) {
 		if (resource.kind === 'material' && resource.material !== undefined) {
 			definitions.set(resource.id, resource.material.recipe);
-			definitionImages.set(resource.id, resource.material.images.map((image) => ({
-				hash: image.hash,
-				source: image.source
-			})));
+			definitionImages.set(
+				resource.id,
+				resource.material.images.map((image) => ({
+					hash: image.hash,
+					source: image.source,
+				})),
+			);
 			continue;
 		}
 		if (resource.kind === 'texture' && resource.pin !== null && resource.unresolved === null) {

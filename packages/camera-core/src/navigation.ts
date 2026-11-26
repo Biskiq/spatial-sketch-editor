@@ -7,13 +7,13 @@ import type { CameraGraphConnection, CameraGraphNode } from './scene-types';
  * dependency stays one-way (camera-core never imports project-model).
  */
 export type CameraGraph = {
-  navigationNodes: readonly CameraGraphNode[];
-  connections: readonly CameraGraphConnection[];
-  nodeById: ReadonlyMap<string, CameraGraphNode>;
+	navigationNodes: readonly CameraGraphNode[];
+	connections: readonly CameraGraphConnection[];
+	nodeById: ReadonlyMap<string, CameraGraphNode>;
 };
 
 export function getNode(id: string, graph: CameraGraph): CameraGraphNode {
-  const node = graph.nodeById.get(id);
-  if (!node) throw new Error(`Unknown navigation node: ${id}`);
-  return node;
+	const node = graph.nodeById.get(id);
+	if (!node) throw new Error(`Unknown navigation node: ${id}`);
+	return node;
 }

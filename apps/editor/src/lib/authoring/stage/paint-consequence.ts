@@ -22,11 +22,23 @@ export function paintConsequence(input: {
 	const { stroke, dropper, picked, tab, candidate } = input;
 	const tool = dropper ? 'Sample' : 'Paint';
 	if (stroke !== null && stroke.count > 0) {
-		const noun = stroke.kind === 'surface' ? (stroke.count === 1 ? 'surface' : 'surfaces') : stroke.count === 1 ? 'object' : 'objects';
+		const noun =
+			stroke.kind === 'surface'
+				? stroke.count === 1
+					? 'surface'
+					: 'surfaces'
+				: stroke.count === 1
+					? 'object'
+					: 'objects';
 		return { tool, text: `${stroke.count} ${noun} · release to paint`, refused: false };
 	}
 	if (dropper) return { tool, text: 'Click to sample a Finish', refused: false };
-	if (!picked) return { tool, text: tab === 'colours' ? 'Choose a colour' : 'Choose a material', refused: false };
+	if (!picked)
+		return {
+			tool,
+			text: tab === 'colours' ? 'Choose a colour' : 'Choose a material',
+			refused: false,
+		};
 	if (candidate?.refusal) return { tool, text: candidate.refusal, refused: true };
 	if (candidate?.consequence) return { tool, text: candidate.consequence, refused: false };
 	return { tool, text: 'Point at a surface or an object', refused: false };

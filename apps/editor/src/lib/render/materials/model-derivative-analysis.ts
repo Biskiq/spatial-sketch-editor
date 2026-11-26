@@ -16,10 +16,7 @@ import type { BufferGeometry, Mesh } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import type { DrawGeometry } from '@portfolio/project-model/materials';
-import type {
-	ModelDerivativeAnalysis,
-	ModelDerivativeAnalysisProvider
-} from './target-analysis';
+import type { ModelDerivativeAnalysis, ModelDerivativeAnalysisProvider } from './target-analysis';
 
 export type ModelAnalysisCache = {
 	/** The provider the production Stage passes to the Finish planners. */
@@ -39,7 +36,7 @@ export function createModelAnalysisCache(): ModelAnalysisCache {
 			analyses.set(analysis.digest, analysis);
 		},
 		has: (digest) => analyses.has(digest),
-		size: () => analyses.size
+		size: () => analyses.size,
 	};
 }
 
@@ -63,7 +60,7 @@ function drawGeometryOf(geometry: BufferGeometry): DrawGeometry {
 		// and the summarizer's absent value already means "the whole buffer".
 		drawRange: Number.isFinite(range.count) ? { start: range.start, count: range.count } : null,
 		groups: geometry.groups.map((group) => ({ start: group.start, count: group.count })),
-		uvs: [copyAttribute(geometry, 'uv', 2), copyAttribute(geometry, 'uv1', 2)]
+		uvs: [copyAttribute(geometry, 'uv', 2), copyAttribute(geometry, 'uv1', 2)],
 	};
 }
 
@@ -75,14 +72,19 @@ function drawGeometryOf(geometry: BufferGeometry): DrawGeometry {
  */
 export async function analyzeModelDerivativeBytes(
 	bytes: Uint8Array,
-	digest: string
+	digest: string,
 ): Promise<ModelDerivativeAnalysis> {
 	const loader = new GLTFLoader();
 	loader.setMeshoptDecoder(MeshoptDecoder);
-	const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
-	const gltf = await new Promise<Awaited<ReturnType<GLTFLoader['loadAsync']>>>((resolve, reject) => {
-		loader.parse(buffer, '', resolve, reject);
-	});
+	const buffer = bytes.buffer.slice(
+		bytes.byteOffset,
+		bytes.byteOffset + bytes.byteLength,
+	) as ArrayBuffer;
+	const gltf = await new Promise<Awaited<ReturnType<GLTFLoader['loadAsync']>>>(
+		(resolve, reject) => {
+			loader.parse(buffer, '', resolve, reject);
+		},
+	);
 	const draws: { drawKey: string; geometry: DrawGeometry }[] = [];
 	let meshIndex = 0;
 	gltf.scene.traverse((node) => {

@@ -22,7 +22,23 @@ import { layoutLength } from '../kernel/source-collections';
  */
 
 import type { CacheKeyDependency } from './keys';
-import type { CompiledCurveSample, CompiledFloor, CompiledJunction, CompiledJunctionLeg, CompiledLayoutObject, CompiledPhysicalWall, CompiledQueryAabb, CompiledQueryPoint, CompiledQueryPolygon, CompiledQuerySpan, CompiledRoom, CompilerRoomSource, LayoutBounds2, LayoutBounds3, LayoutGeometryIssue } from './types';
+import type {
+	CompiledCurveSample,
+	CompiledFloor,
+	CompiledJunction,
+	CompiledJunctionLeg,
+	CompiledLayoutObject,
+	CompiledPhysicalWall,
+	CompiledQueryAabb,
+	CompiledQueryPoint,
+	CompiledQueryPolygon,
+	CompiledQuerySpan,
+	CompiledRoom,
+	CompilerRoomSource,
+	LayoutBounds2,
+	LayoutBounds3,
+	LayoutGeometryIssue,
+} from './types';
 import type { LayoutDocumentWallFirst } from '../wall/types';
 import { areEquivalentLayoutClones, getCowDocumentDelta } from '../world/cow';
 
@@ -56,7 +72,10 @@ export function sameAuthored(left: unknown, right: unknown): boolean {
 	if (leftKeys.length !== rightKeys.length) return false;
 	for (const key of leftKeys) {
 		if (!Object.hasOwn(right, key)) return false;
-		if (!sameAuthored((left as Record<string, unknown>)[key], (right as Record<string, unknown>)[key])) return false;
+		if (
+			!sameAuthored((left as Record<string, unknown>)[key], (right as Record<string, unknown>)[key])
+		)
+			return false;
 	}
 	return true;
 }
@@ -194,7 +213,7 @@ const EMPTY_STATS: LayoutCompileStats = {
 	objectsReused: 0,
 	signatureVisits: 0,
 	cold: true,
-	entities: 0
+	entities: 0,
 };
 
 export type PrunableLayoutCollections = {
@@ -257,11 +276,11 @@ function freshCounters(): MutableStats {
 		roomsEvaluated: 0,
 		roomsReused: 0,
 		regionsEvaluated: 0,
-	regionsReused: 0,
-	objectsEvaluated: 0,
+		regionsReused: 0,
+		objectsEvaluated: 0,
 		objectsReused: 0,
 		signatureVisits: 0,
-		entities: 0
+		entities: 0,
 	};
 }
 
@@ -280,7 +299,7 @@ export function createLayoutCompileReuse(): LayoutCompileReuse {
 		world: null,
 		lastPrunedDocument: null,
 		stats: EMPTY_STATS,
-		counters: freshCounters()
+		counters: freshCounters(),
 	};
 }
 
@@ -322,7 +341,7 @@ export function finishLayoutCompile(reuse: LayoutCompileReuse, cold: boolean): L
 		objectsReused: counters.objectsReused,
 		signatureVisits: counters.signatureVisits,
 		cold,
-		entities: counters.entities
+		entities: counters.entities,
 	};
 	return reuse.stats;
 }
@@ -334,14 +353,19 @@ export function finishLayoutCompile(reuse: LayoutCompileReuse, cold: boolean): L
  */
 function sameArchitectureIdMembership(
 	prev: PrunableLayoutCollections,
-	next: PrunableLayoutCollections
+	next: PrunableLayoutCollections,
 ): { arch: boolean; objects: boolean } {
 	const countsMatch =
-		layoutLength(prev as LayoutDocumentWallFirst, 'walls') === layoutLength(next as LayoutDocumentWallFirst, 'walls') &&
-		layoutLength(prev as LayoutDocumentWallFirst, 'junctions') === layoutLength(next as LayoutDocumentWallFirst, 'junctions') &&
-		layoutLength(prev as LayoutDocumentWallFirst, 'rooms') === layoutLength(next as LayoutDocumentWallFirst, 'rooms');
+		layoutLength(prev as LayoutDocumentWallFirst, 'walls') ===
+			layoutLength(next as LayoutDocumentWallFirst, 'walls') &&
+		layoutLength(prev as LayoutDocumentWallFirst, 'junctions') ===
+			layoutLength(next as LayoutDocumentWallFirst, 'junctions') &&
+		layoutLength(prev as LayoutDocumentWallFirst, 'rooms') ===
+			layoutLength(next as LayoutDocumentWallFirst, 'rooms');
 	if (!countsMatch) return { arch: false, objects: false };
-	const objCountsMatch = layoutLength(prev as LayoutDocumentWallFirst, 'objects') === layoutLength(next as LayoutDocumentWallFirst, 'objects');
+	const objCountsMatch =
+		layoutLength(prev as LayoutDocumentWallFirst, 'objects') ===
+		layoutLength(next as LayoutDocumentWallFirst, 'objects');
 	const prevDoc = prev as LayoutDocumentWallFirst;
 	const nextDoc = next as LayoutDocumentWallFirst;
 	if (areEquivalentLayoutClones(prevDoc, nextDoc)) {
@@ -365,7 +389,7 @@ function sameArchitectureIdMembership(
 				arch &&
 				objCountsMatch &&
 				prevDelta.changedObjectIds.length === 0 &&
-				nextDelta.changedObjectIds.length === 0
+				nextDelta.changedObjectIds.length === 0,
 		};
 	}
 	const nextParentDelta = nextDelta ? getCowDocumentDelta(nextDelta.baseline) : undefined;
@@ -379,7 +403,7 @@ function sameArchitectureIdMembership(
 					arch &&
 					objCountsMatch &&
 					nextParentDelta.changedObjectIds.length === 0 &&
-					nextDelta.changedObjectIds.length === 0
+					nextDelta.changedObjectIds.length === 0,
 			};
 		}
 		if (prevDelta && areEquivalentLayoutClones(prevDelta.baseline, nextParentDelta.baseline)) {
@@ -394,7 +418,7 @@ function sameArchitectureIdMembership(
 					objCountsMatch &&
 					prevDelta.changedObjectIds.length === 0 &&
 					nextParentDelta.changedObjectIds.length === 0 &&
-					nextDelta.changedObjectIds.length === 0
+					nextDelta.changedObjectIds.length === 0,
 			};
 		}
 	}
@@ -410,7 +434,7 @@ function sameArchitectureIdMembership(
  */
 export function pruneLayoutCompileReuse(
 	reuse: LayoutCompileReuse,
-	document: PrunableLayoutCollections
+	document: PrunableLayoutCollections,
 ): number {
 	if (
 		reuse.walls.size === 0 &&
@@ -424,7 +448,8 @@ export function pruneLayoutCompileReuse(
 	const prev = reuse.lastPrunedDocument;
 	if (prev === document) return 0;
 
-	const skip = prev !== null ? sameArchitectureIdMembership(prev, document) : { arch: false, objects: false };
+	const skip =
+		prev !== null ? sameArchitectureIdMembership(prev, document) : { arch: false, objects: false };
 	const skipArchPrune = skip.arch;
 	let released = 0;
 

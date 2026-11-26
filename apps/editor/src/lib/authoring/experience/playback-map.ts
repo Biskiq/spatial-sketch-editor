@@ -8,11 +8,16 @@
  *
  * Pure: no editor state, no renderer, no writes.
  */
-import { buildGuideMovementMap, type CameraGraph, type GuideTimeInvocation, type GuideTimeMapResult } from '@portfolio/camera-core/navigation';
+import {
+	buildGuideMovementMap,
+	type CameraGraph,
+	type GuideTimeInvocation,
+	type GuideTimeMapResult,
+} from '@portfolio/camera-core/navigation';
 import type {
 	ExecutionProgram,
 	ExperienceProgramTransition,
-	ProgramInvocation
+	ProgramInvocation,
 } from '@portfolio/project-model/units';
 import { nextProgramStopId, programTransitionFor } from '$lib/visitor/guide-run-map';
 import type { ExperiencePathOccurrence } from './experience-paths';
@@ -21,7 +26,7 @@ export {
 	guideRunFromProgram,
 	guideTimeMapForProgram,
 	type GuideRunRefusal,
-	type GuideRunResult
+	type GuideRunResult,
 } from '$lib/visitor/guide-run-map';
 
 /** The authoring identity of one move, projected to its program edge or step. */
@@ -38,7 +43,9 @@ export function movementForOccurrence(input: {
 } | null {
 	const occurrence = input.occurrence;
 	if (occurrence.kind === 'step') {
-		const presentation = input.program.presentations.find((entry) => entry.id === occurrence.presentationId);
+		const presentation = input.program.presentations.find(
+			(entry) => entry.id === occurrence.presentationId,
+		);
 		if (presentation === undefined) return null;
 		const viewIndex = presentation.viewIds.indexOf(occurrence.toViewId);
 		if (viewIndex <= 0) return null;
@@ -47,7 +54,7 @@ export function movementForOccurrence(input: {
 			toViewId: occurrence.toViewId,
 			invocation: presentation.steps[viewIndex - 1] ?? { kind: 'cut', viewId: occurrence.toViewId },
 			stopId: null,
-			presentationId: presentation.id
+			presentationId: presentation.id,
 		};
 	}
 	const stop = input.program.stops.find((entry) => entry.id === occurrence.stopId);
@@ -61,11 +68,12 @@ export function movementForOccurrence(input: {
 		toViewId: next.entryViewId,
 		// A Travel is used only when the authored edge names one; never inferred
 		// from connectivity and never borrowed from another approach.
-		invocation:
-			programTransitionFor(input.transitions, stop.id, next.id) ??
-			{ kind: 'cut', viewId: next.entryViewId },
+		invocation: programTransitionFor(input.transitions, stop.id, next.id) ?? {
+			kind: 'cut',
+			viewId: next.entryViewId,
+		},
 		stopId: stop.id,
-		presentationId: stop.presentationId
+		presentationId: stop.presentationId,
 	};
 }
 
@@ -89,6 +97,6 @@ export function movementTimeMap(input: {
 		stopId: movement.stopId ?? movement.presentationId,
 		presentationId: movement.presentationId,
 		occurrenceId: `${input.occurrence.kind}:${occurrenceRef}`,
-		graph: input.graph
+		graph: input.graph,
 	});
 }

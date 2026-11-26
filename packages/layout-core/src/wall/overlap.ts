@@ -75,7 +75,7 @@ function wallPolyline(
 	_document: LayoutDocumentWallFirst,
 	wall: LayoutWall,
 	componentKey: string,
-	junctionPointById: ReadonlyMap<string, LayoutVec2>
+	junctionPointById: ReadonlyMap<string, LayoutVec2>,
 ): WallPolyline | null {
 	const start = junctionPointById.get(wall.startJunctionId);
 	const end = junctionPointById.get(wall.endJunctionId);
@@ -105,7 +105,7 @@ function wallPolyline(
 		minX,
 		maxX,
 		minZ,
-		maxZ
+		maxZ,
 	};
 }
 
@@ -128,7 +128,7 @@ function collinearOverlap(
 	firstStart: LayoutVec2,
 	firstEnd: LayoutVec2,
 	secondStart: LayoutVec2,
-	secondEnd: LayoutVec2
+	secondEnd: LayoutVec2,
 ): readonly [LayoutVec2, LayoutVec2] | null {
 	const ux = firstEnd[0] - firstStart[0];
 	const uz = firstEnd[1] - firstStart[1];
@@ -162,7 +162,7 @@ function collinearOverlap(
 	if (high - low <= LAYOUT_WALL_OVERLAP_EPSILON) return null;
 	return [
 		[firstStart[0] + unitX * low, firstStart[1] + unitZ * low],
-		[firstStart[0] + unitX * high, firstStart[1] + unitZ * high]
+		[firstStart[0] + unitX * high, firstStart[1] + unitZ * high],
 	];
 }
 
@@ -177,7 +177,7 @@ function samePoint(first: LayoutVec2, second: LayoutVec2): boolean {
  * of one cue per sample.
  */
 function chainOverlaps(
-	pieces: readonly (readonly [LayoutVec2, LayoutVec2])[]
+	pieces: readonly (readonly [LayoutVec2, LayoutVec2])[],
 ): readonly LayoutWallOverlapStretch[] {
 	const used = new Set<number>();
 	const chains: LayoutVec2[][] = [];
@@ -225,7 +225,7 @@ function polylineLength(points: readonly LayoutVec2[]): number {
 	for (let index = 1; index < points.length; index += 1) {
 		length += Math.hypot(
 			points[index]![0] - points[index - 1]![0],
-			points[index]![1] - points[index - 1]![1]
+			points[index]![1] - points[index - 1]![1],
 		);
 	}
 	return length;
@@ -292,7 +292,7 @@ function broadPhasePairs(polylines: readonly WallPolyline[]): {
 			}
 			pairs.push([
 				Math.min(candidate.index, current.index),
-				Math.max(candidate.index, current.index)
+				Math.max(candidate.index, current.index),
 			]);
 		}
 		active.push(current);
@@ -313,11 +313,11 @@ function broadPhasePairs(polylines: readonly WallPolyline[]): {
  */
 export function independentWallOverlaps(
 	document: LayoutDocumentWallFirst,
-	observe?: (observation: LayoutWallOverlapObservation) => void
+	observe?: (observation: LayoutWallOverlapObservation) => void,
 ): readonly LayoutIndependentWallOverlap[] {
 	const keyByWallId = topologyComponentKeyByWallId(document);
 	const junctionPointById = new Map(
-		document.junctions.map((junction) => [junction.id, junction.point] as const)
+		document.junctions.map((junction) => [junction.id, junction.point] as const),
 	);
 	const polylines: WallPolyline[] = [];
 	for (const wall of document.walls) {
@@ -341,7 +341,7 @@ export function independentWallOverlaps(
 					firstStart,
 					firstEnd,
 					second.points[secondLeg - 1]!,
-					second.points[secondLeg]!
+					second.points[secondLeg]!,
 				);
 				if (overlap !== null) pieces.push(overlap);
 			}
@@ -366,7 +366,7 @@ export function independentWallOverlaps(
 			secondWallId: second.wallId,
 			stretches,
 			length,
-			labelAt: polylineMidpoint(longest)
+			labelAt: polylineMidpoint(longest),
 		});
 	}
 	observe?.({ wallCount: polylines.length, candidatePairs });

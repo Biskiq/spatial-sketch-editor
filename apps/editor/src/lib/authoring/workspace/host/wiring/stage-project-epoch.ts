@@ -27,7 +27,7 @@ export function wireStageProjectEpoch(input: StageProjectEpochWiring) {
 			finishCard: input.finishCard,
 			lightInspection: input.lightInspection,
 			objectStudio: input.objectStudio,
-			openSpaceCreated: input.openSpaceCreated
+			openSpaceCreated: input.openSpaceCreated,
 		},
 		projectSession: input.projectSession,
 		preview: input.preview,
@@ -37,6 +37,6 @@ export function wireStageProjectEpoch(input: StageProjectEpochWiring) {
 		lifecycle: input.lifecycle,
 		onNotice: input.onNotice,
 		refresh: input.refresh,
-		isActiveProject: input.isActiveProject
+		isActiveProject: input.isActiveProject,
 	});
 }

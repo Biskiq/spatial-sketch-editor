@@ -27,7 +27,7 @@ export type TestAuthOptions = {
 const TEST_AUTH_USERS = {
 	'agent-admin': 'google:e2e-agent-admin',
 	'agent-user-a': 'google:e2e-agent-user-a',
-	'agent-user-b': 'google:e2e-agent-user-b'
+	'agent-user-b': 'google:e2e-agent-user-b',
 } as const;
 
 export type TestAuthUserKey = keyof typeof TEST_AUTH_USERS;

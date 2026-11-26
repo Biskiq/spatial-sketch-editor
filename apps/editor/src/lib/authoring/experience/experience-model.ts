@@ -21,7 +21,7 @@ import {
 	type ExperienceGuide,
 	type ExperiencePresentation,
 	type ExperienceStop,
-	type ExperienceTransitionKind
+	type ExperienceTransitionKind,
 } from '@portfolio/project-model/units';
 
 /**
@@ -89,7 +89,10 @@ export function lensMillimetres(fovDegrees: number): number {
 
 /** The View a Stop enters at: its own entry, else its Presentation's Default. */
 export function stopEntryViewId(experience: Experience, stop: ExperienceStop): string | null {
-	return unitStopEntryViewId(stop, experience.presentations.find((entry) => entry.id === stop.presentationId));
+	return unitStopEntryViewId(
+		stop,
+		experience.presentations.find((entry) => entry.id === stop.presentationId),
+	);
 }
 
 /** A Stop is one visit: it leaves from the View it entered at. */
@@ -101,13 +104,19 @@ export function stopExitViewId(experience: Experience, stop: ExperienceStop): st
 export function presentationOfView(
 	experience: Experience,
 	viewId: string,
-	presentationId?: string
+	presentationId?: string,
 ): ExperiencePresentation | null {
 	const named =
 		presentationId === undefined
 			? undefined
-			: experience.presentations.find((entry) => entry.id === presentationId && presentationViewIds(entry).includes(viewId));
-	return named ?? experience.presentations.find((entry) => presentationViewIds(entry).includes(viewId)) ?? null;
+			: experience.presentations.find(
+					(entry) => entry.id === presentationId && presentationViewIds(entry).includes(viewId),
+				);
+	return (
+		named ??
+		experience.presentations.find((entry) => presentationViewIds(entry).includes(viewId)) ??
+		null
+	);
 }
 
 export function viewFactsOf(
@@ -115,7 +124,7 @@ export function viewFactsOf(
 	cameraViews: readonly CameraView[],
 	viewId: string,
 	presentationId?: string,
-	floorDatumMeters = 0
+	floorDatumMeters = 0,
 ): ExperienceViewFacts | null {
 	const view = cameraViews.find((entry) => entry.id === viewId);
 	const presentation = presentationOfView(experience, viewId, presentationId);
@@ -127,12 +136,15 @@ export function viewFactsOf(
 		fovDegrees: view.fov,
 		lensMillimetres: lensMillimetres(view.fov),
 		eyeHeightMetres: view.eye[1] - floorDatumMeters,
-		isDefault: presentationDefaultViewId(presentation) === view.id
+		isDefault: presentationDefaultViewId(presentation) === view.id,
 	};
 }
 
 /** The Guide's Stops in order, skipping any id the Experience does not carry. */
-export function guideStopsOf(experience: Experience, guide: ExperienceGuide | null): readonly ExperienceStop[] {
+export function guideStopsOf(
+	experience: Experience,
+	guide: ExperienceGuide | null,
+): readonly ExperienceStop[] {
 	if (guide === null) return [];
 	const stops: ExperienceStop[] = [];
 	for (const stopId of guide.stopIds) {
@@ -150,7 +162,7 @@ export function guideStopsOf(experience: Experience, guide: ExperienceGuide | nu
 export function resolveContinuation(
 	experience: Experience,
 	guide: ExperienceGuide | null,
-	stopId: string
+	stopId: string,
 ): ResolvedContinuation | null {
 	const stop = experience.stops.find((entry) => entry.id === stopId);
 	if (stop === undefined) return null;
@@ -168,12 +180,13 @@ export type GuidedViewPosition = { readonly stopId: string; readonly position: n
 export function stopsGuiding(
 	experience: Experience,
 	guide: ExperienceGuide | null,
-	viewId: string
+	viewId: string,
 ): readonly GuidedViewPosition[] {
 	const matches: GuidedViewPosition[] = [];
 	guide?.stopIds.forEach((stopId, position) => {
 		const stop = experience.stops.find((entry) => entry.id === stopId);
-		if (stop !== undefined && stopEntryViewId(experience, stop) === viewId) matches.push({ stopId, position: position + 1 });
+		if (stop !== undefined && stopEntryViewId(experience, stop) === viewId)
+			matches.push({ stopId, position: position + 1 });
 	});
 	return matches;
 }
@@ -181,26 +194,31 @@ export function stopsGuiding(
 /** Presentations whose subject is this Scene entity. */
 export function presentationsAboutEntity(
 	experience: Experience,
-	entityId: string
+	entityId: string,
 ): readonly ExperiencePresentation[] {
 	return experience.presentations.filter(
 		(entry) =>
 			entry.subject !== null &&
 			entry.subject.domain === 'scene' &&
 			entry.subject.subject.kind === 'entity' &&
-			entry.subject.subject.id === entityId
+			entry.subject.subject.id === entityId,
 	);
 }
 
 /** Count distinct Camera Views reached by the Guide, free exploration, or neither. */
-export function reachSummary(experience: Experience, guide: ExperienceGuide | null): ExperienceReach {
+export function reachSummary(
+	experience: Experience,
+	guide: ExperienceGuide | null,
+): ExperienceReach {
 	const guided = new Set(
 		guideStopsOf(experience, guide).flatMap((stop) => {
 			const entry = stopEntryViewId(experience, stop);
 			return entry === null ? [] : [entry];
-		})
+		}),
 	);
-	const views = new Set(experience.presentations.flatMap((presentation) => presentationViewIds(presentation)));
+	const views = new Set(
+		experience.presentations.flatMap((presentation) => presentationViewIds(presentation)),
+	);
 	const explorable = experience.presentations.filter((presentation) => presentation.explorable);
 	const free = new Set(explorable.flatMap((presentation) => presentationViewIds(presentation)));
 	return {
@@ -209,6 +227,6 @@ export function reachSummary(experience: Experience, guide: ExperienceGuide | nu
 		freePresentations: explorable.length,
 		freeViews: free.size,
 		viewsOnlyFree: [...free].filter((viewId) => !guided.has(viewId)).length,
-		hiddenViews: [...views].filter((viewId) => !guided.has(viewId) && !free.has(viewId)).length
+		hiddenViews: [...views].filter((viewId) => !guided.has(viewId) && !free.has(viewId)).length,
 	};
 }

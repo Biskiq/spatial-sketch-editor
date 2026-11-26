@@ -39,7 +39,9 @@ function acquire(hash: string, bytes: Uint8Array): string {
 		existing.refs += 1;
 		return existing.url;
 	}
-	const url = URL.createObjectURL(new Blob([bytes.slice() as unknown as BlobPart], { type: 'model/gltf-binary' }));
+	const url = URL.createObjectURL(
+		new Blob([bytes.slice() as unknown as BlobPart], { type: 'model/gltf-binary' }),
+	);
 	cache.set(hash, { url, refs: 1 });
 	return url;
 }
@@ -71,7 +73,10 @@ export function approvedModelPins(envelope: ProjectEnvelope): readonly ApprovedM
 	return envelope.units.resources.data.resources
 		.filter(
 			(resource) =>
-				resource.kind === 'model' && resource.pin !== null && resource.unresolved === null && resource.model !== undefined
+				resource.kind === 'model' &&
+				resource.pin !== null &&
+				resource.unresolved === null &&
+				resource.model !== undefined,
 		)
 		.map((resource) => ({ assetId: resource.id, hash: resource.pin!.hash }));
 }
@@ -103,16 +108,21 @@ export type ResolveApprovedModelsInput = {
  * footprint so the reading stays truthful about what is missing.
  */
 export async function resolveApprovedModels(
-	input: ResolveApprovedModelsInput
+	input: ResolveApprovedModelsInput,
 ): Promise<ApprovedModelSources> {
 	const pins = approvedModelPins(input.envelope);
-	const client = input.client === undefined ? createModelImportClient(input.apiOrigin) : input.client;
+	const client =
+		input.client === undefined ? createModelImportClient(input.apiOrigin) : input.client;
 	const urls = new Map<string, string>();
 	const failures = new Map<string, string>();
 	const acquired: string[] = [];
 	if (pins.length === 0 || client === null) {
 		if (pins.length > 0) {
-			for (const pin of pins) failures.set(pin.assetId, 'The API is not configured, so approved model bytes are unavailable.');
+			for (const pin of pins)
+				failures.set(
+					pin.assetId,
+					'The API is not configured, so approved model bytes are unavailable.',
+				);
 		}
 		return { urls, failures, dispose() {} };
 	}
@@ -149,7 +159,7 @@ export async function resolveApprovedModels(
 			}
 			failures.set(
 				pin.assetId,
-				error instanceof Error ? error.message : 'The approved model could not be loaded.'
+				error instanceof Error ? error.message : 'The approved model could not be loaded.',
 			);
 		}
 	}
@@ -159,7 +169,7 @@ export async function resolveApprovedModels(
 		dispose() {
 			for (const hash of acquired) release(hash);
 			acquired.length = 0;
-		}
+		},
 	};
 }
 
@@ -167,5 +177,5 @@ export async function resolveApprovedModels(
 export const NO_APPROVED_MODELS: ApprovedModelSources = {
 	urls: new Map(),
 	failures: new Map(),
-	dispose() {}
+	dispose() {},
 };

@@ -15,7 +15,13 @@
  *
  * Pure: no editor state, no renderer, no writes.
  */
-import { createCameraMotion, getCameraConnectionRoute, getCameraMotionOptions, type CameraMotion, type CameraMotionOptions } from '@portfolio/camera-core/camera';
+import {
+	createCameraMotion,
+	getCameraConnectionRoute,
+	getCameraMotionOptions,
+	type CameraMotion,
+	type CameraMotionOptions,
+} from '@portfolio/camera-core/camera';
 import type { CameraGraph } from '@portfolio/camera-core/navigation';
 import type {
 	Experience,
@@ -26,10 +32,13 @@ import type {
 import type { NavigationGraph, SceneConnection } from '@portfolio/project-model/scene';
 import { routeCrossesWall, type RouteWallRead } from '@portfolio/layout-core/world';
 import type { CompiledLayoutGeometry } from '@portfolio/layout-core/geometry';
-import { resolveContinuation, guideStopsOf, stopEntryViewId, stopExitViewId } from './experience-model';
 import {
-	findNearestCurveProgress
-} from '../camera/editor-camera-path';
+	resolveContinuation,
+	guideStopsOf,
+	stopEntryViewId,
+	stopExitViewId,
+} from './experience-model';
+import { findNearestCurveProgress } from '../camera/editor-camera-path';
 import type { Vec3 } from '@portfolio/camera-core/camera';
 
 /** One Guided move, addressed by authored identity only. */
@@ -87,7 +96,7 @@ export function occurrenceKey(occurrence: ExperiencePathOccurrence): string {
 
 export function sameOccurrence(
 	left: ExperiencePathOccurrence | null,
-	right: ExperiencePathOccurrence | null
+	right: ExperiencePathOccurrence | null,
 ): boolean {
 	if (left === null || right === null) return left === right;
 	return occurrenceKey(left) === occurrenceKey(right);
@@ -101,10 +110,12 @@ function stopOf(experience: Experience, stopId: string): ExperienceStop | null {
 export function resolvePathOccurrence(
 	experience: Experience,
 	guide: ExperienceGuide | null,
-	occurrence: ExperiencePathOccurrence
+	occurrence: ExperiencePathOccurrence,
 ): ResolvedPathOccurrence | null {
 	if (occurrence.kind === 'step') {
-		const presentation = experience.presentations.find((entry) => entry.id === occurrence.presentationId);
+		const presentation = experience.presentations.find(
+			(entry) => entry.id === occurrence.presentationId,
+		);
 		if (presentation === undefined) return null;
 		const index = presentation.views.findIndex((view) => view.viewId === occurrence.toViewId);
 		if (index <= 0) return null;
@@ -115,7 +126,7 @@ export function resolvePathOccurrence(
 			transition: presentation.views[index - 1]!.transition ?? 'cut',
 			stopId: null,
 			presentationId: presentation.id,
-			toStopId: null
+			toStopId: null,
 		};
 	}
 	const stop = stopOf(experience, occurrence.stopId);
@@ -134,32 +145,40 @@ export function resolvePathOccurrence(
 		transition: resolved.transition,
 		stopId: stop.id,
 		presentationId: null,
-		toStopId: destination.id
+		toStopId: destination.id,
 	};
 }
 
 /** Every occurrence of one Experience, in authored Stop order. */
 export function experiencePathOccurrences(
 	experience: Experience,
-	guide: ExperienceGuide | null
+	guide: ExperienceGuide | null,
 ): readonly ResolvedPathOccurrence[] {
 	const occurrences: ResolvedPathOccurrence[] = [];
 	// A visible route belongs to the open Guide: iterate its actual Stop order,
 	// including a nonadjacent Next and every in-Stop Travel.
 	const stops = guide === null ? experience.stops : guideStopsOf(experience, guide);
 	for (const stop of stops) {
-		const transition = resolvePathOccurrence(experience, guide, { kind: 'transition', stopId: stop.id });
+		const transition = resolvePathOccurrence(experience, guide, {
+			kind: 'transition',
+			stopId: stop.id,
+		});
 		if (transition !== null) occurrences.push(transition);
 	}
 	// Each Presentation's explore steps, once: those the Guide's Stops use, or all
 	// of them when no Guide is open.
-	const presentationIds = guide === null
-		? experience.presentations.map((presentation) => presentation.id)
-		: [...new Set(stops.map((stop) => stop.presentationId))];
+	const presentationIds =
+		guide === null
+			? experience.presentations.map((presentation) => presentation.id)
+			: [...new Set(stops.map((stop) => stop.presentationId))];
 	for (const presentationId of presentationIds) {
 		const presentation = experience.presentations.find((entry) => entry.id === presentationId);
 		for (const view of presentation?.views.slice(1) ?? []) {
-			const step = resolvePathOccurrence(experience, guide, { kind: 'step', presentationId, toViewId: view.viewId });
+			const step = resolvePathOccurrence(experience, guide, {
+				kind: 'step',
+				presentationId,
+				toViewId: view.viewId,
+			});
 			if (step !== null) occurrences.push(step);
 		}
 	}
@@ -167,8 +186,20 @@ export function experiencePathOccurrences(
 }
 
 /** One connection's directed Camera motion and route, cached per accepted graph. */
-const motionCache = new WeakMap<object, Map<string, { motion: CameraMotion; options: CameraMotionOptions }>>();
-const readCache = new WeakMap<object, WeakMap<object, Map<string, { motion: CameraMotion; samples: Vec3[]; wall: ReturnType<typeof routeCrossesWall> | null }>>>();
+const motionCache = new WeakMap<
+	object,
+	Map<string, { motion: CameraMotion; options: CameraMotionOptions }>
+>();
+const readCache = new WeakMap<
+	object,
+	WeakMap<
+		object,
+		Map<
+			string,
+			{ motion: CameraMotion; samples: Vec3[]; wall: ReturnType<typeof routeCrossesWall> | null }
+		>
+	>
+>();
 const NO_GEOMETRY = {};
 
 function readCacheFor(graph: object, geometry: object | null) {
@@ -189,7 +220,7 @@ function readCacheFor(graph: object, geometry: object | null) {
 export function pathMotionFor(
 	connection: SceneConnection,
 	direction: 'forward' | 'reverse',
-	graph: CameraGraph
+	graph: CameraGraph,
 ): { readonly motion: CameraMotion; readonly options: CameraMotionOptions } {
 	const key = `${connection.id}:${direction}`;
 	let byGraph = motionCache.get(graph);
@@ -211,7 +242,7 @@ export function previewPathSamples(
 	connectionId: string,
 	direction: 'forward' | 'reverse',
 	graph: CameraGraph,
-	anchors: readonly SceneConnection['positionPath']['anchors'][number][]
+	anchors: readonly SceneConnection['positionPath']['anchors'][number][],
 ): Vec3[] | null {
 	const connection = graph.connections.find((entry) => entry.id === connectionId);
 	if (connection === undefined) return null;
@@ -220,20 +251,22 @@ export function previewPathSamples(
 	if (from === undefined || to === undefined) return null;
 	const candidate = {
 		...connection,
-		positionPath: { ...connection.positionPath, anchors: [from, ...anchors, to] }
+		positionPath: { ...connection.positionPath, anchors: [from, ...anchors, to] },
 	};
 	const draft = {
 		...graph,
-		connections: graph.connections.map((entry) => entry.id === candidate.id ? candidate : entry)
+		connections: graph.connections.map((entry) => (entry.id === candidate.id ? candidate : entry)),
 	};
 	const route = getCameraConnectionRoute(candidate.id, direction, draft);
-	return pathSamples(createCameraMotion(route, undefined, getCameraMotionOptions(candidate, direction)));
+	return pathSamples(
+		createCameraMotion(route, undefined, getCameraMotionOptions(candidate, direction)),
+	);
 }
 
 function connectionDirection(
 	connection: SceneConnection,
 	fromViewId: string,
-	toViewId: string
+	toViewId: string,
 ): 'forward' | 'reverse' | null {
 	if (connection.fromNodeId === fromViewId && connection.toNodeId === toViewId) return 'forward';
 	if (connection.toNodeId === fromViewId && connection.fromNodeId === toViewId) return 'reverse';
@@ -273,7 +306,7 @@ export function readExperiencePath(input: {
 		occurrence,
 		fromViewId: resolved.fromViewId,
 		toViewId: resolved.toViewId,
-		transition: resolved.transition
+		transition: resolved.transition,
 	};
 	if (resolved.transition === 'cut') {
 		return {
@@ -288,13 +321,14 @@ export function readExperiencePath(input: {
 			anchors: [],
 			sharedUses: [],
 			samples: [],
-			wall: null
+			wall: null,
 		};
 	}
 	const connections = graph.connections.filter(
 		(connection) =>
-			(connection.fromNodeId === resolved.fromViewId && connection.toNodeId === resolved.toViewId) ||
-			(connection.toNodeId === resolved.fromViewId && connection.fromNodeId === resolved.toViewId)
+			(connection.fromNodeId === resolved.fromViewId &&
+				connection.toNodeId === resolved.toViewId) ||
+			(connection.toNodeId === resolved.fromViewId && connection.fromNodeId === resolved.toViewId),
 	);
 	if (connections.length !== 1) {
 		return {
@@ -309,22 +343,30 @@ export function readExperiencePath(input: {
 			anchors: [],
 			sharedUses: [],
 			samples: [],
-			wall: null
+			wall: null,
 		};
 	}
 	const connection = connections[0]!;
-	const direction = connectionDirection(connection as SceneConnection, resolved.fromViewId, resolved.toViewId);
+	const direction = connectionDirection(
+		connection as SceneConnection,
+		resolved.fromViewId,
+		resolved.toViewId,
+	);
 	if (direction === null) return null;
 	const cache = readCacheFor(input.graph, input.geometry ?? null);
 	const key = `${connection.id}:${direction}`;
 	let computed = cache.get(key);
 	if (computed === undefined) {
-		const { motion } = pathMotionFor(connection as SceneConnection, direction, input.graph as unknown as CameraGraph);
+		const { motion } = pathMotionFor(
+			connection as SceneConnection,
+			direction,
+			input.graph as unknown as CameraGraph,
+		);
 		const samples = pathSamples(motion);
 		computed = {
 			motion,
 			samples,
-			wall: input.geometry == null ? null : routeCrossesWall({ samples, geometry: input.geometry })
+			wall: input.geometry == null ? null : routeCrossesWall({ samples, geometry: input.geometry }),
 		};
 		cache.set(key, computed);
 	}
@@ -333,7 +375,7 @@ export function readExperiencePath(input: {
 	// interior points are counted, selected or written back.
 	const anchors = connection.positionPath.anchors.slice(1, -1).map((anchor) => ({
 		id: anchor.id,
-		position: [...anchor.position] as Vec3
+		position: [...anchor.position] as Vec3,
 	}));
 	const sharedUses = experiencePathOccurrences(experience, guide).filter((candidate) => {
 		if (sameOccurrence(candidate.occurrence, occurrence)) return false;
@@ -343,7 +385,7 @@ export function readExperiencePath(input: {
 		const candidateConnections = graph.connections.filter(
 			(entry) =>
 				(entry.fromNodeId === candidate.fromViewId && entry.toNodeId === candidate.toViewId) ||
-				(entry.toNodeId === candidate.fromViewId && entry.fromNodeId === candidate.toViewId)
+				(entry.toNodeId === candidate.fromViewId && entry.fromNodeId === candidate.toViewId),
 		);
 		return candidateConnections.length === 1 && candidateConnections[0]!.id === connection.id;
 	});
@@ -359,7 +401,7 @@ export function readExperiencePath(input: {
 		anchors,
 		sharedUses,
 		samples,
-		wall
+		wall,
 	};
 }
 
@@ -372,10 +414,10 @@ export type PathAnchorInsertion = {
 /**
  * The one canonical insertion slot for a point on an evaluated Camera path.
  *	 * The nearest forward-curve progress is Camera's own (`findNearestCurveProgress`),
-	 * and the slot counts the authored interior points whose progress lies before
-	 * it. Direction is travel, not geometry: a reversed connection inserts at the
-	 * same authored slot as its forward twin. The count is defined for both
-	 * `auto-bezier` and `rounded-polyline`; it never assumes one curve per anchor.
+ * and the slot counts the authored interior points whose progress lies before
+ * it. Direction is travel, not geometry: a reversed connection inserts at the
+ * same authored slot as its forward twin. The count is defined for both
+ * `auto-bezier` and `rounded-polyline`; it never assumes one curve per anchor.
  */
 export function resolvePathAnchorInsertion(input: {
 	readonly connection: SceneConnection;
@@ -383,17 +425,26 @@ export function resolvePathAnchorInsertion(input: {
 	readonly graph: NavigationGraph;
 	readonly point: Vec3;
 }): PathAnchorInsertion | null {
-	if (!Number.isFinite(input.point[0]) || !Number.isFinite(input.point[1]) || !Number.isFinite(input.point[2])) {
+	if (
+		!Number.isFinite(input.point[0]) ||
+		!Number.isFinite(input.point[1]) ||
+		!Number.isFinite(input.point[2])
+	) {
 		return null;
 	}
 	// Geometry is direction-free: both directions are the same curve. Reading the
 	// forward motion keeps the slot in authored order, so a reverse-travelled
 	// connection inserts at the same place as its authored twin.
-	const { motion } = pathMotionFor(input.connection, 'forward', input.graph as unknown as CameraGraph);
+	const { motion } = pathMotionFor(
+		input.connection,
+		'forward',
+		input.graph as unknown as CameraGraph,
+	);
 	const progress = findNearestCurveProgress(motion.positionPath, input.point);
 	if (!Number.isFinite(progress)) return null;
 	const anchors = input.connection.positionPath.anchors;
-	if (anchors.length === 0) return { index: 0, position: [input.point[0], input.point[1], input.point[2]] };
+	if (anchors.length === 0)
+		return { index: 0, position: [input.point[0], input.point[1], input.point[2]] };
 	let directedSlot = 0;
 	for (const anchor of anchors) {
 		const anchorProgress = findNearestCurveProgress(motion.positionPath, anchor.position);
@@ -407,11 +458,16 @@ export function resolvePathAnchorInsertion(input: {
 /** Whether this read is the one path the armed overlay may write. */
 export function isPathEditTarget(
 	read: ExperiencePathRead | null,
-	selected: ExperiencePathRead | null
+	selected: ExperiencePathRead | null,
 ): boolean {
 	// Sharing one connection is not enough: another Travel occurrence that uses
 	// the same path is still a different visible route and must not write it.
-	return read !== null && selected !== null && read.connectionId !== null && sameOccurrence(read.occurrence, selected.occurrence);
+	return (
+		read !== null &&
+		selected !== null &&
+		read.connectionId !== null &&
+		sameOccurrence(read.occurrence, selected.occurrence)
+	);
 }
 
 /** Whole seconds for whole values, one decimal otherwise. */
@@ -434,7 +490,10 @@ export function formatPathFacts(read: ExperiencePathRead): string {
 }
 
 /** A short name for an occurrence, used by the shared-path note. */
-export function occurrenceLabel(read: ResolvedPathOccurrence, guideNames: readonly string[]): string {
+export function occurrenceLabel(
+	read: ResolvedPathOccurrence,
+	guideNames: readonly string[],
+): string {
 	if (read.occurrence.kind === 'transition') {
 		const index = guideNames.indexOf(read.occurrence.stopId);
 		return index >= 0 ? `Stop ${index + 1} → ${index + 2}` : 'a Stop transition';

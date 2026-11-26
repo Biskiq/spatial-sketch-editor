@@ -1,9 +1,20 @@
 import type { SubjectScope } from '../subject-scope';
-import { intersectWorkingPlane, pointerRay, projectWorld, type ViewportEvaluation } from '@portfolio/camera-core/viewport';
+import {
+	intersectWorkingPlane,
+	pointerRay,
+	projectWorld,
+	type ViewportEvaluation,
+} from '@portfolio/camera-core/viewport';
 import type { StageReadSnapshot } from '../accepted-read';
 import { EMPTY_SELECTION } from '../semantic-selection';
 import { STAGE_DRAFTING_DEFAULTS } from '../stage-drafting';
-import type { StageAdapter, StageAdapterBinding, StageAdapterContext, StageAdapterRegistration, StageIntentResult } from './adapter-contract';
+import type {
+	StageAdapter,
+	StageAdapterBinding,
+	StageAdapterContext,
+	StageAdapterRegistration,
+	StageIntentResult,
+} from './adapter-contract';
 
 /** The capabilities this host actually provides. Anything else refuses mounting. */
 export const HOST_STAGE_CAPABILITIES: readonly string[] = [
@@ -14,7 +25,7 @@ export const HOST_STAGE_CAPABILITIES: readonly string[] = [
 	// Ink is one Pen that can carry readings from more than one
 	// domain. The host keeps the contribution list; the reading's own session
 	// owns its meaning, so this adds no document state to the Stage.
-	'ink-readings-v1'
+	'ink-readings-v1',
 ];
 
 /**
@@ -34,7 +45,8 @@ export type BoundAdapter = {
 
 export type AdapterContextHandle = { readonly context: StageAdapterContext; end(): void };
 
-type AdapterBindingsPort = Pick<StageAdapterContext,
+type AdapterBindingsPort = Pick<
+	StageAdapterContext,
 	'selection' | 'selectionState' | 'select' | 'setSelection' | 'drafting' | 'requestIntent'
 > & {
 	readonly snapshot: () => StageReadSnapshot;
@@ -42,8 +54,14 @@ type AdapterBindingsPort = Pick<StageAdapterContext,
 	readonly evaluationId: () => string | null;
 	readonly idOf: (evaluation: ViewportEvaluation) => string;
 	readonly cameraState: () => Extract<StageIntentResult, { kind: 'superseded' }>['state'];
-	readonly pickScene?: (ray: Parameters<StageAdapterContext['pickScene']>[0], scene: StageReadSnapshot['domain']['scene']) => ReturnType<StageAdapterContext['pickScene']>;
-	readonly sceneBounds?: (id: string, scene: StageReadSnapshot['domain']['scene']) => ReturnType<StageAdapterContext['sceneBounds']>;
+	readonly pickScene?: (
+		ray: Parameters<StageAdapterContext['pickScene']>[0],
+		scene: StageReadSnapshot['domain']['scene'],
+	) => ReturnType<StageAdapterContext['pickScene']>;
+	readonly sceneBounds?: (
+		id: string,
+		scene: StageReadSnapshot['domain']['scene'],
+	) => ReturnType<StageAdapterContext['sceneBounds']>;
 	readonly subjectScope?: () => SubjectScope | null;
 	readonly isLive: () => boolean;
 	readonly isDisposed: () => boolean;
@@ -143,16 +161,32 @@ export function createAdapterBindings(input: AdapterBindingsPort) {
 				return result.kind === 'ray' ? result.ray : null;
 			},
 			intersect(ray, plane) {
-				if (!hasLiveEvaluation()) return { kind: 'failed', code: 'stale-evaluation', message: 'the adapter evaluation has ended' };
+				if (!hasLiveEvaluation())
+					return {
+						kind: 'failed',
+						code: 'stale-evaluation',
+						message: 'the adapter evaluation has ended',
+					};
 				return intersectWorkingPlane(ray, plane, evaluation, token);
 			},
-			pickScene: (ray) => hasLiveEvaluation() ? input.pickScene?.(ray, boundSnapshot.domain.scene) ?? null : null,
-			sceneBounds: (id) => hasLiveEvaluation() ? input.sceneBounds?.(id, boundSnapshot.domain.scene) ?? null : null,
-			subjectScope: () => (contextIsLive() ? input.subjectScope?.() ?? null : null),
-			selection: () => contextIsLive() ? input.selection() : null,
-			selectionState: () => contextIsLive() ? input.selectionState() : EMPTY_SELECTION,
-			setSelection: (value) => contextIsLive() ? input.setSelection(value) : { kind: 'refused', code: 'stale-binding', message: 'Reacquire the active adapter binding.' },
-			select: (selection) => { if (contextIsLive()) input.select(selection); },
+			pickScene: (ray) =>
+				hasLiveEvaluation() ? (input.pickScene?.(ray, boundSnapshot.domain.scene) ?? null) : null,
+			sceneBounds: (id) =>
+				hasLiveEvaluation() ? (input.sceneBounds?.(id, boundSnapshot.domain.scene) ?? null) : null,
+			subjectScope: () => (contextIsLive() ? (input.subjectScope?.() ?? null) : null),
+			selection: () => (contextIsLive() ? input.selection() : null),
+			selectionState: () => (contextIsLive() ? input.selectionState() : EMPTY_SELECTION),
+			setSelection: (value) =>
+				contextIsLive()
+					? input.setSelection(value)
+					: {
+							kind: 'refused',
+							code: 'stale-binding',
+							message: 'Reacquire the active adapter binding.',
+						},
+			select: (selection) => {
+				if (contextIsLive()) input.select(selection);
+			},
 			// View state is still a session fact: an ended binding must not keep
 			// reading the live session's Grid/Snap after its adapter is gone.
 			drafting: () => (contextIsLive() ? input.drafting() : STAGE_DRAFTING_DEFAULTS),
@@ -160,14 +194,29 @@ export function createAdapterBindings(input: AdapterBindingsPort) {
 			// the caller's own time, never at a fabricated zero that would make every
 			// transition begin in the past and land instantly.
 			requestIntent: (intent, clockSeconds) =>
-				contextIsLive() ? input.requestIntent(intent, clockSeconds)
-				: { kind: 'superseded', state: input.cameraState(), message: 'the adapter binding lifetime has ended' }
+				contextIsLive()
+					? input.requestIntent(intent, clockSeconds)
+					: {
+							kind: 'superseded',
+							state: input.cameraState(),
+							message: 'the adapter binding lifetime has ended',
+						},
 		};
-		return { context, end: () => { ended = true; } };
+		return {
+			context,
+			end: () => {
+				ended = true;
+			},
+		};
 	}
 	function echoSelection(): void {
 		for (const entry of adapters.values()) {
-			try { entry.contributions.selectionEcho?.(input.selection()); entry.contributions.selectionChanged?.(input.selectionState()); } catch { /* Subscriber isolation. */ }
+			try {
+				entry.contributions.selectionEcho?.(input.selection());
+				entry.contributions.selectionChanged?.(input.selectionState());
+			} catch {
+				/* Subscriber isolation. */
+			}
 		}
 	}
 	/** End every binding and registration: used by dispose, never by a content change. */
@@ -185,7 +234,11 @@ export function createAdapterBindings(input: AdapterBindingsPort) {
 		return () => {
 			if (ended) return;
 			ended = true;
-			try { dispose(); } catch { /* Cleanup must continue for the other bindings. */ }
+			try {
+				dispose();
+			} catch {
+				/* Cleanup must continue for the other bindings. */
+			}
 		};
 	}
 
@@ -200,7 +253,11 @@ export function createAdapterBindings(input: AdapterBindingsPort) {
 	 * exists.
 	 */
 	function buildBinding(adapter: StageAdapter):
-		| { readonly kind: 'built'; readonly contributions: StageAdapterBinding; readonly dispose: () => void }
+		| {
+				readonly kind: 'built';
+				readonly contributions: StageAdapterBinding;
+				readonly dispose: () => void;
+		  }
 		| { readonly kind: 'deferred' } {
 		const handle = adapterContext();
 		if (adapter.bind === undefined || handle === null) return { kind: 'deferred' };
@@ -221,7 +278,14 @@ export function createAdapterBindings(input: AdapterBindingsPort) {
 		} catch {
 			// A throwing echo leaves the binding registered.
 		}
-		return { kind: 'built', contributions: binding, dispose: once(() => { end(); binding.dispose?.(); }) };
+		return {
+			kind: 'built',
+			contributions: binding,
+			dispose: once(() => {
+				end();
+				binding.dispose?.();
+			}),
+		};
 	}
 
 	/**
@@ -244,7 +308,7 @@ export function createAdapterBindings(input: AdapterBindingsPort) {
 				factory: true,
 				pending: false,
 				dispose: built.dispose,
-				end: entry.end
+				end: entry.end,
 			});
 			rebuilt = true;
 			// The read that discovered this rebuild must not answer with the array built
@@ -272,9 +336,7 @@ export function createAdapterBindings(input: AdapterBindingsPort) {
 	 * through `endAdapters`.
 	 */
 	function rebindAdapters(): readonly string[] {
-		const rebound = [...adapters.entries()]
-			.filter(([, entry]) => entry.factory)
-			.map(([id]) => id);
+		const rebound = [...adapters.entries()].filter(([, entry]) => entry.factory).map(([id]) => id);
 		for (const id of rebound) {
 			const entry = adapters.get(id)!;
 			entry.dispose();
@@ -284,7 +346,7 @@ export function createAdapterBindings(input: AdapterBindingsPort) {
 				factory: true,
 				pending: true,
 				dispose: () => {},
-				end: entry.end
+				end: entry.end,
 			});
 		}
 		if (rebound.length > 0) input.invalidateSubjects();
@@ -299,7 +361,7 @@ export function createAdapterBindings(input: AdapterBindingsPort) {
 				kind: 'refused',
 				code: 'unknown-required-capability',
 				missing: [],
-				message: 'the stage is disposed and mounts no adapter'
+				message: 'the stage is disposed and mounts no adapter',
 			};
 		}
 		if (adapters.has(adapter.id)) {
@@ -307,7 +369,7 @@ export function createAdapterBindings(input: AdapterBindingsPort) {
 				kind: 'refused',
 				code: 'duplicate-adapter',
 				missing: [],
-				message: `an adapter "${adapter.id}" is already registered`
+				message: `an adapter "${adapter.id}" is already registered`,
 			};
 		}
 		const required = adapter.requiredCapabilities ?? [];
@@ -317,14 +379,18 @@ export function createAdapterBindings(input: AdapterBindingsPort) {
 				kind: 'refused',
 				code: 'unknown-required-capability',
 				missing,
-				message: `this host does not provide ${missing.join(', ')}; refusing to mount "${adapter.id}"`
+				message: `this host does not provide ${missing.join(', ')}; refusing to mount "${adapter.id}"`,
 			};
 		}
 		let ended = false;
 		const factory = adapter.bind !== undefined;
 		const built = factory
 			? buildBinding(adapter)
-			: { kind: 'built' as const, contributions: adapter, dispose: once(() => adapter.dispose?.()) };
+			: {
+					kind: 'built' as const,
+					contributions: adapter,
+					dispose: once(() => adapter.dispose?.()),
+				};
 		// The map entry owns the *binding* disposer; the registration disposer also
 		// removes the entry, so a content change never ends a registration.
 		const bindingDispose = built.kind === 'built' ? built.dispose : () => {};
@@ -349,7 +415,7 @@ export function createAdapterBindings(input: AdapterBindingsPort) {
 			factory,
 			pending: factory && built.kind === 'deferred',
 			dispose: bindingDispose,
-			end: endRegistration
+			end: endRegistration,
 		});
 		input.invalidateSubjects();
 		input.addDisposable(dispose);
@@ -367,18 +433,30 @@ export function createAdapterBindings(input: AdapterBindingsPort) {
 		if (surviving !== null) {
 			for (const entry of adapters.values()) {
 				if (entry.factory) continue;
-				try { entry.contributions.selectionEcho?.(surviving); } catch { /* Subscriber isolation. */ }
+				try {
+					entry.contributions.selectionEcho?.(surviving);
+				} catch {
+					/* Subscriber isolation. */
+				}
 			}
 		}
 		for (const entry of adapters.values()) {
 			if (entry.factory) continue;
-			try { entry.contributions.selectionChanged?.(input.selectionState()); } catch { /* Subscriber isolation. */ }
+			try {
+				entry.contributions.selectionChanged?.(input.selectionState());
+			} catch {
+				/* Subscriber isolation. */
+			}
 		}
 	}
 
 	function notifyTaskClosed(): void {
 		for (const entry of adapters.values()) {
-			try { entry.contributions.taskClosed?.(); } catch { /* Subscriber isolation. */ }
+			try {
+				entry.contributions.taskClosed?.();
+			} catch {
+				/* Subscriber isolation. */
+			}
 		}
 	}
 
@@ -403,6 +481,6 @@ export function createAdapterBindings(input: AdapterBindingsPort) {
 		registerStageAdapter,
 		onAdaptersChanged,
 		notifyAdaptersChanged,
-		dispose
+		dispose,
 	};
 }

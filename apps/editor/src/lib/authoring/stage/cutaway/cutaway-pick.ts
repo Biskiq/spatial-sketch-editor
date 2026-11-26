@@ -28,7 +28,7 @@ export const CUTAWAY_PICK_EPSILON_METERS = 1e-4;
 export function cutawayHides(
 	point: readonly [number, number, number],
 	object: Object3D,
-	cutaway: ResolvedCutaway | null | undefined
+	cutaway: ResolvedCutaway | null | undefined,
 ): boolean {
 	if (cutaway === null || cutaway === undefined) return false;
 	if (point[1] <= cutaway.stubTopY + CUTAWAY_PICK_EPSILON_METERS) return false;

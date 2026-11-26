@@ -38,7 +38,7 @@ export type {
 	DuplicatePlan,
 	LayoutObjectRepeatIntent,
 	WallOpeningRepeatIntent,
-	RoomDuplicateIntent
+	RoomDuplicateIntent,
 } from './duplicate/contracts';
 export { isSupportedDuplicateLayoutObject, planRepeatLayoutObject } from './duplicate/objects';
 export { planRepeatWallOpening } from './duplicate/openings';

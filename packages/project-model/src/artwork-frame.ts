@@ -11,15 +11,18 @@ export type ArtworkFrameStyle = (typeof ARTWORK_FRAME_STYLES)[number];
 export const ARTWORK_FRAME_COLORS = [
 	{ id: 'black', label: 'Black', hex: '#1b1b1b' },
 	{ id: 'walnut', label: 'Walnut', hex: '#8a6238' },
-	{ id: 'ivory', label: 'Ivory', hex: '#f4f1ea' }
+	{ id: 'ivory', label: 'Ivory', hex: '#f4f1ea' },
 ] as const;
 export type ArtworkFrameColor = (typeof ARTWORK_FRAME_COLORS)[number]['id'];
 
-export const ARTWORK_FRAME_OPTIONS: readonly { readonly style: ArtworkFrameStyle; readonly label: string }[] = [
+export const ARTWORK_FRAME_OPTIONS: readonly {
+	readonly style: ArtworkFrameStyle;
+	readonly label: string;
+}[] = [
 	{ style: 'none', label: 'None' },
 	{ style: 'thin', label: 'Thin' },
 	{ style: 'gallery', label: 'Gallery' },
-	{ style: 'float', label: 'Float' }
+	{ style: 'float', label: 'Float' },
 ];
 
 export type ArtworkFrameSpec = {
@@ -33,7 +36,7 @@ export const ARTWORK_FRAME_SPECS: Readonly<Record<ArtworkFrameStyle, ArtworkFram
 	none: { faceMeters: 0, depthMeters: 0, revealMeters: 0 },
 	thin: { faceMeters: 0.018, depthMeters: 0.025, revealMeters: 0 },
 	gallery: { faceMeters: 0.06, depthMeters: 0.04, revealMeters: 0 },
-	float: { faceMeters: 0.015, depthMeters: 0.04, revealMeters: 0.012 }
+	float: { faceMeters: 0.015, depthMeters: 0.04, revealMeters: 0.012 },
 };
 
 export const ARTWORK_MAT_METERS = 0.06;
@@ -97,7 +100,9 @@ export function artworkFrameStyleLabel(style: ArtworkFrameStyle): string {
 }
 
 export function artworkFrameColorHex(color: ArtworkFrameColor): string {
-	return ARTWORK_FRAME_COLORS.find((entry) => entry.id === color)?.hex ?? ARTWORK_FRAME_COLORS[0].hex;
+	return (
+		ARTWORK_FRAME_COLORS.find((entry) => entry.id === color)?.hex ?? ARTWORK_FRAME_COLORS[0].hex
+	);
 }
 
 export function artworkFrameColorLabel(color: ArtworkFrameColor): string {
@@ -152,7 +157,7 @@ export type ArtworkFrameLayout = {
 export function artworkFrameLayout(
 	widthMeters: number,
 	heightMeters: number,
-	frame: ArtworkFrame | undefined
+	frame: ArtworkFrame | undefined,
 ): ArtworkFrameLayout {
 	const normalized = normalizeArtworkFrame(frame);
 	const style = normalized?.style ?? 'none';
@@ -167,9 +172,14 @@ export function artworkFrameLayout(
 	const openingWidth = widthMeters + 2 * (matMeters + revealMeters);
 	const openingHeight = heightMeters + 2 * (matMeters + revealMeters);
 
-	const backingColor = faceMeters > 0
-		? (style === 'float' ? ARTWORK_FLOAT_BACKING_COLOR : ARTWORK_MAT_COLOR)
-		: matMeters > 0 ? ARTWORK_MAT_COLOR : null;
+	const backingColor =
+		faceMeters > 0
+			? style === 'float'
+				? ARTWORK_FLOAT_BACKING_COLOR
+				: ARTWORK_MAT_COLOR
+			: matMeters > 0
+				? ARTWORK_MAT_COLOR
+				: null;
 
 	const rails: ArtworkFrameRail[] = [];
 	if (faceMeters > 0) {
@@ -180,7 +190,7 @@ export function artworkFrameLayout(
 			{ size: [outerWidth, faceMeters, depth], center: [0, y, railZ] },
 			{ size: [outerWidth, faceMeters, depth], center: [0, -y, railZ] },
 			{ size: [faceMeters, outerHeight - 2 * faceMeters, depth], center: [-x, 0, railZ] },
-			{ size: [faceMeters, outerHeight - 2 * faceMeters, depth], center: [x, 0, railZ] }
+			{ size: [faceMeters, outerHeight - 2 * faceMeters, depth], center: [x, 0, railZ] },
 		);
 	}
 
@@ -195,29 +205,30 @@ export function artworkFrameLayout(
 		matMeters,
 		revealMeters,
 		borderMeters,
-		frameColor: faceMeters > 0 && normalized !== undefined
-			? artworkFrameColorHex(normalized.color)
-			: null,
+		frameColor:
+			faceMeters > 0 && normalized !== undefined ? artworkFrameColorHex(normalized.color) : null,
 		matColor: ARTWORK_MAT_COLOR,
 		backingColor,
 		rails,
-		mat: matMeters > 0
-			? {
-					width: widthMeters + 2 * matMeters,
-					height: heightMeters + 2 * matMeters,
-					innerWidth: widthMeters,
-					innerHeight: heightMeters,
-					z: 0.002
-				}
-			: null,
-		backing: backingColor !== null
-			? {
-					width: openingWidth,
-					height: openingHeight,
-					innerWidth: openingWidth,
-					innerHeight: openingHeight,
-					z: -0.004
-				}
-			: null
+		mat:
+			matMeters > 0
+				? {
+						width: widthMeters + 2 * matMeters,
+						height: heightMeters + 2 * matMeters,
+						innerWidth: widthMeters,
+						innerHeight: heightMeters,
+						z: 0.002,
+					}
+				: null,
+		backing:
+			backingColor !== null
+				? {
+						width: openingWidth,
+						height: openingHeight,
+						innerWidth: openingWidth,
+						innerHeight: openingHeight,
+						z: -0.004,
+					}
+				: null,
 	};
 }

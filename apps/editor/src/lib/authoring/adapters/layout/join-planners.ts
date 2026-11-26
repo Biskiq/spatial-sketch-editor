@@ -20,17 +20,28 @@
  * mints one interior knot whose id comes from the captured nonce, so Undo/Redo
  * replay the same id.
  */
-import { layoutIdCaptureInput, layoutWorkingLevelInput, readLayoutIdCapture, readLayoutWorkingLevel, type LayoutIdCapture } from '@portfolio/layout-core/plan';
+import {
+	layoutIdCaptureInput,
+	layoutWorkingLevelInput,
+	readLayoutIdCapture,
+	readLayoutWorkingLevel,
+	type LayoutIdCapture,
+} from '@portfolio/layout-core/plan';
 import { materializeLayoutSourceForCapture } from '@portfolio/layout-core/kernel';
 import { planDissolveJunction } from '@portfolio/layout-core/wall';
 import { recordPreparedCowCandidate } from '@portfolio/layout-core/world';
-import type { AuthoringIntent, DomainPlanner, PlannerOutcome, PreparedCandidate } from '@portfolio/project-model/f4';
+import type {
+	AuthoringIntent,
+	DomainPlanner,
+	PlannerOutcome,
+	PreparedCandidate,
+} from '@portfolio/project-model/f4';
 import {
 	canonicalUnitJson,
 	replaceUnitData,
 	UNIT_SOURCE_KIND,
 	UNIT_SOURCE_VERSION,
-	type ProjectEnvelope
+	type ProjectEnvelope,
 } from '@portfolio/project-model/units';
 
 import { layoutPlanner, registerLayoutSurfaceLineage } from './precision';
@@ -56,8 +67,10 @@ function readJoinPayload(payload: unknown): WallJoinPayload | { readonly message
 	if (!isRecord(payload)) return { message: 'The Wall join payload must be an object.' };
 	const expected = ['junctionId'];
 	const unknown = Object.keys(payload).filter((key) => !expected.includes(key));
-	if (unknown.length > 0) return { message: `The Wall join payload cannot carry ${unknown.join(', ')}.` };
-	if (!('junctionId' in payload)) return { message: 'The Wall join payload is missing "junctionId".' };
+	if (unknown.length > 0)
+		return { message: `The Wall join payload cannot carry ${unknown.join(', ')}.` };
+	if (!('junctionId' in payload))
+		return { message: 'The Wall join payload is missing "junctionId".' };
 	const { junctionId } = payload;
 	if (typeof junctionId !== 'string' || junctionId.length === 0) {
 		return { message: 'A Wall join needs one junction id.' };
@@ -86,7 +99,11 @@ function wallJoinPlanner(): DomainPlanner<ProjectEnvelope> {
 			return refused('A Wall join addresses exactly one joint.');
 		}
 		const target = request.intent.targets[0]!;
-		if (target.domain !== 'layout' || target.subject.kind !== 'junction' || target.subject.id !== junctionId) {
+		if (
+			target.domain !== 'layout' ||
+			target.subject.kind !== 'junction' ||
+			target.subject.id !== junctionId
+		) {
 			return refused(`The intent must address the joint "${junctionId}" it removes.`);
 		}
 		if (!baseline.junctions.some((junction) => junction.id === junctionId)) {
@@ -98,7 +115,7 @@ function wallJoinPlanner(): DomainPlanner<ProjectEnvelope> {
 				kind: 'rejected',
 				code: plan.rejection.code,
 				message: wallJoinRefusalWords(plan.rejection.code, plan.rejection.message),
-				diagnostics: []
+				diagnostics: [],
 			};
 		}
 		const contentRevision = request.snapshot.domain.source.units.layout.header.contentRevision;
@@ -109,16 +126,22 @@ function wallJoinPlanner(): DomainPlanner<ProjectEnvelope> {
 		const rebasedOpenings = plan.document.openings.filter(
 			(opening) =>
 				opening.wallId === plan.survivorWallId &&
-				baseline.openings.some((before) => before.id === opening.id && before.wallId === plan.retiredWallId)
+				baseline.openings.some(
+					(before) => before.id === opening.id && before.wallId === plan.retiredWallId,
+				),
 		);
 		const affectedRoomIds = baseline.rooms
 			.filter((room) =>
 				room.boundary.some(
-					(ref) => ref.wallId === plan.survivorWallId || ref.wallId === plan.retiredWallId
-				)
+					(ref) => ref.wallId === plan.survivorWallId || ref.wallId === plan.retiredWallId,
+				),
 			)
 			.map((room) => room.id);
-		recordPreparedCowCandidate(request.intent.operationId, plan.document, canonicalUnitJson(request.intent));
+		recordPreparedCowCandidate(
+			request.intent.operationId,
+			plan.document,
+			canonicalUnitJson(request.intent),
+		);
 		materializeLayoutSourceForCapture(plan.document);
 		const candidate: PreparedCandidate<ProjectEnvelope> = {
 			operationId: request.intent.operationId,
@@ -132,17 +155,17 @@ function wallJoinPlanner(): DomainPlanner<ProjectEnvelope> {
 						plan.survivorWallId,
 						plan.retiredWallId,
 						junctionId,
-						...rebasedOpenings.map((opening) => opening.id)
+						...rebasedOpenings.map((opening) => opening.id),
 					],
-					fields: ['walls', 'junctions', 'openings', 'rooms']
-				}
+					fields: ['walls', 'junctions', 'openings', 'rooms'],
+				},
 			],
 			correspondence: [
 				// The survivor keeps the Wall identity the pair is now described by.
 				{
 					relation: 'preserved',
 					before: reference(plan.survivorWallId, 'wall'),
-					after: reference(plan.survivorWallId, 'wall')
+					after: reference(plan.survivorWallId, 'wall'),
 				},
 				// The other Wall and the Joint are gone; nothing replaces either id.
 				{ relation: 'retired', before: reference(plan.retiredWallId, 'wall'), after: null },
@@ -152,16 +175,16 @@ function wallJoinPlanner(): DomainPlanner<ProjectEnvelope> {
 				...rebasedOpenings.map((opening) => ({
 					relation: 'preserved' as const,
 					before: reference(opening.id, 'opening'),
-					after: reference(opening.id, 'opening')
+					after: reference(opening.id, 'opening'),
 				})),
 				// Every Room naming either Wall keeps its id.
 				...affectedRoomIds.map((roomId) => ({
 					relation: 'preserved' as const,
 					before: reference(roomId, 'room'),
-					after: reference(roomId, 'room')
-				}))
+					after: reference(roomId, 'room'),
+				})),
 			],
-			diagnostics: []
+			diagnostics: [],
 		};
 		registerLayoutSurfaceLineage(candidate, plan.surfaceLineage);
 		return { kind: 'prepared', candidate };
@@ -192,11 +215,11 @@ export function wallJoinIntent(input: {
 				kind: 'junction',
 				id: input.junctionId,
 				contentRevision: input.contentRevision,
-				levelId: input.levelId
-			})
+				levelId: input.levelId,
+			}),
 		],
 		payload: { junctionId: input.junctionId },
 		capturedInputs: [layoutWorkingLevelInput(input.levelId), layoutIdCaptureInput(input.capture)],
-		allocatedIds: []
+		allocatedIds: [],
 	};
 }

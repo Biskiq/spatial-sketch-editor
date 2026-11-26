@@ -17,13 +17,13 @@ import {
 	drawableSpotHalfAngle,
 	LIGHT_GUIDE_MAX_HALF_ANGLE_DEGREES,
 	LIGHT_SPOT_TARGET_MARGIN_METERS,
-	spotCutoffForTargetDistance
+	spotCutoffForTargetDistance,
 } from './light-units';
 
 /** World forward of a stored Euler, using the renderer's XYZ order. */
 export function lightForward(rotation: Vec3): Vec3 {
 	const direction = new Vector3(0, 0, -1).applyEuler(
-		new Euler(rotation[0], rotation[1], rotation[2], 'XYZ')
+		new Euler(rotation[0], rotation[1], rotation[2], 'XYZ'),
 	);
 	return [direction.x, direction.y, direction.z];
 }
@@ -38,11 +38,7 @@ export function lightForward(rotation: Vec3): Vec3 {
 export function rotationForLightDirection(direction: Vec3): Vec3 {
 	const length = Math.hypot(direction[0], direction[1], direction[2]);
 	if (!(length > 1e-12)) return [0, 0, 0];
-	const target = new Vector3(
-		direction[0] / length,
-		direction[1] / length,
-		direction[2] / length
-	);
+	const target = new Vector3(direction[0] / length, direction[1] / length, direction[2] / length);
 	const rotation = new Quaternion().setFromUnitVectors(new Vector3(0, 0, -1), target);
 	const euler = new Euler().setFromQuaternion(rotation, 'XYZ');
 	return [euler.x, euler.y, euler.z];
@@ -92,18 +88,32 @@ export function spotConeGuide(input: {
 		capRing.push(
 			add(
 				capCenter,
-				add(scale(basis.right, Math.cos(angle) * capRadius), scale(basis.up, Math.sin(angle) * capRadius))
-			)
+				add(
+					scale(basis.right, Math.cos(angle) * capRadius),
+					scale(basis.up, Math.sin(angle) * capRadius),
+				),
+			),
 		);
 	}
 	const edges = [0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2].map((angle) => {
 		const rim = add(
 			capCenter,
-			add(scale(basis.right, Math.cos(angle) * capRadius), scale(basis.up, Math.sin(angle) * capRadius))
+			add(
+				scale(basis.right, Math.cos(angle) * capRadius),
+				scale(basis.up, Math.sin(angle) * capRadius),
+			),
 		);
 		return [input.position, rim] as const;
 	});
-	return { direction, target: capCenter, capCenter, capRadius, capRing, edges, halfAngle: input.halfAngle };
+	return {
+		direction,
+		target: capCenter,
+		capCenter,
+		capRadius,
+		capRing,
+		edges,
+		halfAngle: input.halfAngle,
+	};
 }
 
 /** A point light's reach ring in the Stage datum plane. */
@@ -119,7 +129,7 @@ export function pointReachRing(input: {
 		ring.push([
 			input.position[0] + Math.cos(angle) * input.range,
 			input.position[1],
-			input.position[2] + Math.sin(angle) * input.range
+			input.position[2] + Math.sin(angle) * input.range,
 		]);
 	}
 	return ring;
@@ -162,7 +172,7 @@ function cross(left: Vec3, right: Vec3): Vec3 {
 	return [
 		left[1] * right[2] - left[2] * right[1],
 		left[2] * right[0] - left[0] * right[2],
-		left[0] * right[1] - left[1] * right[0]
+		left[0] * right[1] - left[1] * right[0],
 	];
 }
 

@@ -18,7 +18,7 @@ export const SCENE_OPERATION_KINDS = [
 	'set-name',
 	'create-light',
 	'update-light',
-	'duplicate-light'
+	'duplicate-light',
 ] as const;
 
 export type SceneOperationKind = (typeof SCENE_OPERATION_KINDS)[number];

@@ -19,7 +19,6 @@ export type RegionPlannerOperation =
 	| 'region-fit-walls'
 	| 'region-fit-roof';
 
-
 export type RegionPlannerRejectionCode =
 	| 'unknown_region'
 	| 'unknown_wall'
@@ -42,14 +41,12 @@ export type RegionPlannerRejectionCode =
 	| 'captured_id_in_use'
 	| (string & {});
 
-
 export type RegionPlannerRejection = {
 	code: RegionPlannerRejectionCode;
 	message: string;
 	targetIds?: readonly string[];
 	issues?: readonly (LayoutDocumentIssue | LayoutGeometryIssue)[];
 };
-
 
 export type RegionPlan =
 	| {
@@ -66,7 +63,6 @@ export type RegionPlan =
 			skippedWallIds?: readonly string[];
 	  }
 	| { kind: 'rejected'; rejection: RegionPlannerRejection };
-
 
 export type RegionCreateIntent = {
 	readonly role: LayoutRegion['role'];

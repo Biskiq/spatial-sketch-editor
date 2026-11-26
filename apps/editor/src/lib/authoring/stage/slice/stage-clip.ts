@@ -51,7 +51,7 @@ import {
 	snapshotSliceClipUniforms,
 	writeSliceClipUniforms,
 	type SliceClipMasks,
-	type SliceClipUniforms
+	type SliceClipUniforms,
 } from '../../../render/clip/slice-clip-mask';
 
 /**
@@ -109,7 +109,7 @@ function nativePlanesOf(resolved: ResolvedSlice | null): readonly Plane[] {
 	if (resolved === null || resolved.kind === 'drawn') return [keepAll(), keepAll()];
 	return [
 		keepBelow(resolved.cutY),
-		resolved.lowerY === null ? keepAll() : keepAbove(resolved.lowerY)
+		resolved.lowerY === null ? keepAll() : keepAbove(resolved.lowerY),
 	];
 }
 
@@ -263,7 +263,7 @@ export function createStageClip(): StageClip {
 			material.clippingPlanes = planes;
 			(material as Material & { maskNode?: unknown }).maskNode = packed(true).colour;
 			return material;
-		}
+		},
 	};
 }
 

@@ -28,11 +28,20 @@ export function createCoreLifecycleSteps(input: {
 	readonly clearRevealed: () => void;
 	readonly assets: Pick<StageAssetLeases, 'disposeArtwork'>;
 	readonly shell: StageShellState;
-	readonly commands: Pick<StageShellCommands, 'syncPrimarySelection' | 'syncContributedTask' | 'armWorldTool'>;
+	readonly commands: Pick<
+		StageShellCommands,
+		'syncPrimarySelection' | 'syncContributedTask' | 'armWorldTool'
+	>;
 	readonly stageInput: Pick<StageInputArbiter, 'clearHover' | 'interrupt' | 'reset'>;
-	readonly viewport: Pick<ReturnType<typeof createStageViewport>, 'invalidatePlan' | 'refresh' | 'reset' | 'start' | 'dispose'>;
+	readonly viewport: Pick<
+		ReturnType<typeof createStageViewport>,
+		'invalidatePlan' | 'refresh' | 'reset' | 'start' | 'dispose'
+	>;
 	readonly history: Pick<ReturnType<typeof createStageHistoryCommand>, 'run'>;
-	readonly viewing: Pick<ReturnType<typeof createStageViewing>, 'submitReading' | 'endPressForReading'>;
+	readonly viewing: Pick<
+		ReturnType<typeof createStageViewing>,
+		'submitReading' | 'endPressForReading'
+	>;
 	readonly listeners: ReturnType<typeof createStageWindowListeners>;
 }): LifecycleRegistration<'core'> {
 	const { shell, commands, viewport, stageInput } = input;
@@ -48,10 +57,10 @@ export function createCoreLifecycleSteps(input: {
 	return {
 		interruptForReplacement: {
 			'clear-hover': stageInput.clearHover,
-			'interrupt-press': () => stageInput.interrupt('replacement')
+			'interrupt-press': () => stageInput.interrupt('replacement'),
 		},
 		resetPresentationBeforeSwap: {
-			'collapse-expanded-presentation': () => shell.setExpandedPresentationId(null)
+			'collapse-expanded-presentation': () => shell.setExpandedPresentationId(null),
 		},
 		resetPresentation: {
 			'reset-selection-and-shell': () => {
@@ -64,19 +73,19 @@ export function createCoreLifecycleSteps(input: {
 				shell.setCardOpen(true);
 			},
 			'reset-input': stageInput.reset,
-			'reset-viewport': viewport.reset
+			'reset-viewport': viewport.reset,
 		},
 		facadeMounted: { 'bind-facade': shell.bindFacade },
 		adaptersChanged: {
 			'refresh-adapter-presentation': () => {
 				shell.bumpContributions();
 				syncAcceptedTaskAndSelection();
-			}
+			},
 		},
 		accepted: {
 			'sync-task-and-selection': syncAcceptedTaskAndSelection,
 			'invalidate-plan': viewport.invalidatePlan,
-			refresh: viewport.refresh
+			refresh: viewport.refresh,
 		},
 		historyInstalled: {
 			'install-selection': (outcome) => {
@@ -86,12 +95,12 @@ export function createCoreLifecycleSteps(input: {
 					shell.setNotice('The selected subject no longer exists in the restored source.');
 				}
 			},
-			'invalidate-plan': viewport.invalidatePlan
+			'invalidate-plan': viewport.invalidatePlan,
 		},
 		historyStep: { 'run-history': input.history.run },
 		readingChange: {
 			'submit-reading': input.viewing.submitReading,
-			'end-press-for-reading': input.viewing.endPressForReading
+			'end-press-for-reading': input.viewing.endPressForReading,
 		},
 		settlePending: {
 			'refuse-during-gesture': () => {
@@ -99,7 +108,7 @@ export function createCoreLifecycleSteps(input: {
 				shell.setNotice('Finish or cancel the current gesture first.');
 				return false;
 			},
-			'arm-select': () => commands.armWorldTool('select')
+			'arm-select': () => commands.armWorldTool('select'),
 		},
 		windowBlur: { 'release-snap': () => shell.suspendSnap(false) },
 		leaveProject: { 'dispose-artwork-assets': input.assets.disposeArtwork },
@@ -111,7 +120,9 @@ export function createCoreLifecycleSteps(input: {
 			'install-interruptions': () => {
 				removeInterruptions = installStageInterruptions(window, document, stageInput.interrupt);
 			},
-			'load-project': () => { void input.projectSession.load(input.projectId, input.intent); }
+			'load-project': () => {
+				void input.projectSession.load(input.projectId, input.intent);
+			},
 		},
 		dispose: {
 			'mark-torn-down': input.stageEpoch.markTornDown,
@@ -120,8 +131,8 @@ export function createCoreLifecycleSteps(input: {
 			'clear-hover': stageInput.clearHover,
 			'remove-listeners': input.listeners.remove,
 			'remove-interruptions': () => removeInterruptions(),
-			'dispose-epoch': input.stageEpoch.dispose
-		}
+			'dispose-epoch': input.stageEpoch.dispose,
+		},
 	};
 }
 
@@ -129,7 +140,9 @@ export function installLeaveProject(cell: { get(): Pick<FeatureLifecycle, 'leave
 	$effect(() => () => cell.get().leaveProject());
 }
 
-export function installStageMount(cell: { get(): Pick<FeatureLifecycle, 'start' | 'dispose'> }): void {
+export function installStageMount(cell: {
+	get(): Pick<FeatureLifecycle, 'start' | 'dispose'>;
+}): void {
 	onMount(() => {
 		const lifecycle = cell.get();
 		lifecycle.start();

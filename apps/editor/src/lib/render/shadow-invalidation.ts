@@ -158,9 +158,12 @@ export function createShadowInvalidation(options: ShadowInvalidationOptions): Sh
 		// `src/nodes/lighting/ShadowNode.js`): the same scene and the light's own
 		// shadow camera, nested inside the scene render. Only that submission is a
 		// shadow pass; the enclosing render is not a second one.
-		const submitting = sceneRef === scene
-			? lights.find((light) => light.shadow!.camera !== undefined && light.shadow!.camera === camera)
-			: undefined;
+		const submitting =
+			sceneRef === scene
+				? lights.find(
+						(light) => light.shadow!.camera !== undefined && light.shadow!.camera === camera,
+					)
+				: undefined;
 		// The enclosing render begins a new batch. r187's point cube submits six
 		// faces through this same camera before the outer render returns; the
 		// first face is the pass, and every call is one map face.
@@ -210,7 +213,7 @@ export function createShadowInvalidation(options: ShadowInvalidationOptions): Sh
 			disposed = true;
 			renderer.render = originalRender;
 			for (const light of castingLights()) light.shadow!.autoUpdate = true;
-		}
+		},
 	};
 
 	return controller;

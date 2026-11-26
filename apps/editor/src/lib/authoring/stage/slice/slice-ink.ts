@@ -29,5 +29,5 @@ export const SLICE_INK = {
 	/** Section edges: 2 px, the plan's width. */
 	edgeWidth: 2,
 	/** A selected identity's edges sit over them: 3 px, always readable. */
-	selectedEdgeWidth: 3
+	selectedEdgeWidth: 3,
 } as const;

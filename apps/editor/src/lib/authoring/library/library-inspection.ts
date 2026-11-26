@@ -9,4 +9,7 @@ export type LibraryInspectionSettings = {
 	readonly geometry: LibraryInspectionGeometry;
 	readonly lighting: LibraryInspectionLighting;
 };
-export const LIBRARY_INSPECTION_DEFAULT: LibraryInspectionSettings = { geometry: 'sphere', lighting: 'studio' };
+export const LIBRARY_INSPECTION_DEFAULT: LibraryInspectionSettings = {
+	geometry: 'sphere',
+	lighting: 'studio',
+};

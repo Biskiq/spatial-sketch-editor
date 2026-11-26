@@ -30,8 +30,9 @@ export function wireStageShellState(input: StageShellStateWiring) {
 			// selected by id against the source the write just installed.
 			input.selectSource(target.entityId ?? target.hit.sourceId);
 			const surface = target.assignmentSurfaces[0] ?? target.surface;
-			if (target.entityId !== null) input.finishes()?.card.requestOpen({ kind: 'entity', entityId: target.entityId });
+			if (target.entityId !== null)
+				input.finishes()?.card.requestOpen({ kind: 'entity', entityId: target.entityId });
 			else if (surface !== null) input.finishes()?.card.requestOpen({ kind: 'surface', surface });
-		}
+		},
 	});
 }

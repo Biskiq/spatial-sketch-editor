@@ -18,10 +18,7 @@
  * the segment **and** its local elapsed seconds, never only a time.
  */
 
-import {
-	getCameraConnectionRoute,
-	getCameraMotionOptions
-} from './camera-route';
+import { getCameraConnectionRoute, getCameraMotionOptions } from './camera-route';
 import {
 	createCameraMotion,
 	createCameraMotionSample,
@@ -193,7 +190,10 @@ function segmentId(occurrenceId: string, boundary: string): string {
 	return `${occurrenceId}:${boundary}`;
 }
 
-function viewPose(graph: CameraGraph, viewId: string):
+function viewPose(
+	graph: CameraGraph,
+	viewId: string,
+):
 	| { readonly kind: 'pose'; readonly eye: Vec3; readonly target: Vec3; readonly fov: number }
 	| GuideTimeGap {
 	try {
@@ -202,12 +202,12 @@ function viewPose(graph: CameraGraph, viewId: string):
 			kind: 'pose',
 			eye: [node.position[0], node.position[1], node.position[2]],
 			target: [node.cameraTarget[0], node.cameraTarget[1], node.cameraTarget[2]],
-			fov: node.fov
+			fov: node.fov,
 		};
 	} catch (error) {
 		return {
 			kind: 'gap',
-			reason: error instanceof Error ? error.message : `Camera View "${viewId}" is unavailable.`
+			reason: error instanceof Error ? error.message : `Camera View "${viewId}" is unavailable.`,
 		};
 	}
 }
@@ -243,16 +243,18 @@ function resolveMovement(input: {
 			connectionId: null,
 			direction: null,
 			motion: null,
-			durationSeconds: 0
+			durationSeconds: 0,
 		};
 	}
-	const connection = graph.connections.find((candidate) => candidate.id === invocation.connectionId);
+	const connection = graph.connections.find(
+		(candidate) => candidate.id === invocation.connectionId,
+	);
 	if (connection === undefined) {
 		return {
 			kind: 'gap',
 			reason: `${input.label} names Camera connection "${invocation.connectionId}", which this graph does not carry.`,
 			stopId: input.stopId,
-			viewIndex: input.viewIndex
+			viewIndex: input.viewIndex,
 		};
 	}
 	if (fromViewId === null) {
@@ -260,18 +262,20 @@ function resolveMovement(input: {
 			kind: 'gap',
 			reason: `${input.label} binds a Travel with no logical predecessor View.`,
 			stopId: input.stopId,
-			viewIndex: input.viewIndex
+			viewIndex: input.viewIndex,
 		};
 	}
 	let direction: CameraConnectionDirection | null = null;
-	if (connection.fromNodeId === fromViewId && connection.toNodeId === toViewId) direction = 'forward';
-	else if (connection.toNodeId === fromViewId && connection.fromNodeId === toViewId) direction = 'reverse';
+	if (connection.fromNodeId === fromViewId && connection.toNodeId === toViewId)
+		direction = 'forward';
+	else if (connection.toNodeId === fromViewId && connection.fromNodeId === toViewId)
+		direction = 'reverse';
 	if (direction === null) {
 		return {
 			kind: 'gap',
 			reason: `${input.label} binds a Travel, and Camera connection "${connection.id}" joins "${connection.fromNodeId}" and "${connection.toNodeId}", not "${fromViewId}" and "${toViewId}".`,
 			stopId: input.stopId,
-			viewIndex: input.viewIndex
+			viewIndex: input.viewIndex,
 		};
 	}
 	try {
@@ -284,14 +288,17 @@ function resolveMovement(input: {
 			connectionId: connection.id,
 			direction,
 			motion,
-			durationSeconds: Math.max(0, motion.durationSeconds)
+			durationSeconds: Math.max(0, motion.durationSeconds),
 		};
 	} catch (error) {
 		return {
 			kind: 'gap',
-			reason: error instanceof Error ? error.message : `${input.label} could not resolve its Camera motion.`,
+			reason:
+				error instanceof Error
+					? error.message
+					: `${input.label} could not resolve its Camera motion.`,
 			stopId: input.stopId,
-			viewIndex: input.viewIndex
+			viewIndex: input.viewIndex,
 		};
 	}
 }
@@ -326,7 +333,7 @@ export function buildGuideTimeMap(input: {
 			return {
 				kind: 'gap',
 				reason: `Stop "${occurrence.stopId}" has no guided View to time.`,
-				stopId: occurrence.stopId
+				stopId: occurrence.stopId,
 			};
 		}
 		const occurrenceStart = seconds;
@@ -341,7 +348,7 @@ export function buildGuideTimeMap(input: {
 			graph: input.graph,
 			stopId: occurrence.stopId,
 			viewIndex: 0,
-			label: `The arrival at Stop "${occurrence.stopId}"`
+			label: `The arrival at Stop "${occurrence.stopId}"`,
 		});
 		if (arrival.kind === 'gap') return arrival;
 		// The first occurrence is presented with no incoming movement: the caller
@@ -351,7 +358,7 @@ export function buildGuideTimeMap(input: {
 				kind: 'gap',
 				reason: `The run's first occurrence cannot begin with a Travel.`,
 				stopId: occurrence.stopId,
-				viewIndex: 0
+				viewIndex: 0,
 			};
 		}
 		drafts.push(
@@ -368,7 +375,7 @@ export function buildGuideTimeMap(input: {
 						connectionId: arrival.connectionId,
 						durationSeconds: arrival.durationSeconds,
 						direction: arrival.direction!,
-						motion: arrival.motion!
+						motion: arrival.motion!,
 					}
 				: {
 						kind: 'cut',
@@ -380,8 +387,8 @@ export function buildGuideTimeMap(input: {
 						viewId: occurrence.views[0]!.viewId,
 						fromViewId: previousExitViewId,
 						connectionId: null,
-						durationSeconds: 0
-					}
+						durationSeconds: 0,
+					},
 		);
 		cursorViewId = occurrence.views[0]!.viewId;
 
@@ -394,7 +401,7 @@ export function buildGuideTimeMap(input: {
 					graph: input.graph,
 					stopId: occurrence.stopId,
 					viewIndex,
-					label: `Step ${viewIndex + 1} of Stop "${occurrence.stopId}"`
+					label: `Step ${viewIndex + 1} of Stop "${occurrence.stopId}"`,
 				});
 				if (step.kind === 'gap') return step;
 				drafts.push(
@@ -411,7 +418,7 @@ export function buildGuideTimeMap(input: {
 								connectionId: step.connectionId,
 								durationSeconds: step.durationSeconds,
 								direction: step.direction!,
-								motion: step.motion!
+								motion: step.motion!,
 							}
 						: {
 								kind: 'cut',
@@ -423,8 +430,8 @@ export function buildGuideTimeMap(input: {
 								viewId: view.viewId,
 								fromViewId: cursorViewId,
 								connectionId: null,
-								durationSeconds: 0
-							}
+								durationSeconds: 0,
+							},
 				);
 				cursorViewId = view.viewId;
 			}
@@ -440,7 +447,7 @@ export function buildGuideTimeMap(input: {
 					viewId: view.viewId,
 					fromViewId: cursorViewId,
 					connectionId: null,
-					durationSeconds: 0
+					durationSeconds: 0,
 				});
 				waitCount += 1;
 				continue;
@@ -456,7 +463,7 @@ export function buildGuideTimeMap(input: {
 				viewId: view.viewId,
 				fromViewId: cursorViewId,
 				connectionId: null,
-				durationSeconds: holdSeconds
+				durationSeconds: holdSeconds,
 			});
 		}
 
@@ -465,7 +472,7 @@ export function buildGuideTimeMap(input: {
 			const segment = {
 				...draft,
 				startSeconds: seconds,
-				endSeconds: seconds + durationSeconds
+				endSeconds: seconds + durationSeconds,
 			} as GuideTimeSegment;
 			segments.push(segment);
 			seconds = segment.endSeconds;
@@ -476,14 +483,14 @@ export function buildGuideTimeMap(input: {
 			presentationId: occurrence.presentationId,
 			viewIds: occurrence.views.map((view) => view.viewId),
 			startSeconds: occurrenceStart,
-			endSeconds: seconds
+			endSeconds: seconds,
 		});
 		stopEntries.push({
 			stopId: occurrence.stopId,
 			occurrenceId: occurrence.occurrenceId,
 			presentationId: occurrence.presentationId,
 			startSeconds: occurrenceStart,
-			endSeconds: seconds
+			endSeconds: seconds,
 		});
 		previousOccurrence = occurrence;
 	}
@@ -492,7 +499,15 @@ export function buildGuideTimeMap(input: {
 	const boundaries = buildBoundaries(segments);
 	return {
 		kind: 'ready',
-		map: { graph: input.graph, segments, totalSeconds, waitCount, stopEntries, occurrences, boundaries }
+		map: {
+			graph: input.graph,
+			segments,
+			totalSeconds,
+			waitCount,
+			stopEntries,
+			occurrences,
+			boundaries,
+		},
 	};
 }
 
@@ -529,7 +544,7 @@ export function buildGuideMovementMap(input: {
 		graph: input.graph,
 		stopId: input.stopId,
 		viewIndex: 0,
-		label: `The movement into "${input.toViewId}"`
+		label: `The movement into "${input.toViewId}"`,
 	});
 	if (movement.kind === 'gap') return movement;
 	const durationSeconds = movement.durationSeconds;
@@ -543,7 +558,7 @@ export function buildGuideMovementMap(input: {
 		fromViewId: input.fromViewId,
 		connectionId: movement.connectionId,
 		startSeconds: 0,
-		endSeconds: durationSeconds
+		endSeconds: durationSeconds,
 	};
 	const segment: GuideTimeSegment =
 		movement.kindOfMovement === 'travel'
@@ -552,7 +567,7 @@ export function buildGuideMovementMap(input: {
 					kind: 'travel',
 					durationSeconds,
 					direction: movement.direction!,
-					motion: movement.motion!
+					motion: movement.motion!,
 				}
 			: { ...base, kind: 'cut', durationSeconds: 0 };
 	return {
@@ -568,8 +583,8 @@ export function buildGuideMovementMap(input: {
 					occurrenceId: input.occurrenceId,
 					presentationId: input.presentationId,
 					startSeconds: 0,
-					endSeconds: durationSeconds
-				}
+					endSeconds: durationSeconds,
+				},
 			],
 			occurrences: [
 				{
@@ -578,11 +593,11 @@ export function buildGuideMovementMap(input: {
 					presentationId: input.presentationId,
 					viewIds: [input.toViewId],
 					startSeconds: 0,
-					endSeconds: durationSeconds
-				}
+					endSeconds: durationSeconds,
+				},
 			],
-			boundaries: buildBoundaries([segment])
-		}
+			boundaries: buildBoundaries([segment]),
+		},
 	};
 }
 
@@ -609,21 +624,21 @@ export function guideTimeCursorAt(map: GuideTimeMap, seconds: number): GuideTime
 	// start) must respect that occurrence, not skip it to the following Cut.
 	if (clamped === 0) {
 		const initialWait = map.segments.find(
-			(segment) => segment.kind === 'wait' && segment.startSeconds === 0
+			(segment) => segment.kind === 'wait' && segment.startSeconds === 0,
 		);
 		if (initialWait !== undefined) return { segmentId: initialWait.id, elapsedSeconds: 0 };
 	}
 	const segment = segmentAtSeconds(map, clamped);
 	return {
 		segmentId: segment.id,
-		elapsedSeconds: Math.max(0, Math.min(clamped - segment.startSeconds, segment.durationSeconds))
+		elapsedSeconds: Math.max(0, Math.min(clamped - segment.startSeconds, segment.durationSeconds)),
 	};
 }
 
 /** The normalized cursor for an explicit segment, clamped to its own span. */
 export function normalizeGuideTimeCursor(
 	map: GuideTimeMap,
-	cursor: GuideTimeCursor
+	cursor: GuideTimeCursor,
 ): GuideTimeCursor | null {
 	const segment = map.segments.find((entry) => entry.id === cursor.segmentId);
 	if (segment === undefined) return null;
@@ -631,14 +646,17 @@ export function normalizeGuideTimeCursor(
 		segmentId: segment.id,
 		elapsedSeconds: Math.max(
 			0,
-			Math.min(Number.isFinite(cursor.elapsedSeconds) ? cursor.elapsedSeconds : 0, segment.durationSeconds)
-		)
+			Math.min(
+				Number.isFinite(cursor.elapsedSeconds) ? cursor.elapsedSeconds : 0,
+				segment.durationSeconds,
+			),
+		),
 	};
 }
 
 export function guideTimeSegmentOf(
 	map: GuideTimeMap,
-	cursor: GuideTimeCursor
+	cursor: GuideTimeCursor,
 ): GuideTimeSegment | null {
 	return map.segments.find((entry) => entry.id === cursor.segmentId) ?? null;
 }
@@ -646,7 +664,7 @@ export function guideTimeSegmentOf(
 /** The next segment in stable order, or null at the map's end. */
 export function nextGuideTimeSegment(
 	map: GuideTimeMap,
-	cursor: GuideTimeCursor
+	cursor: GuideTimeCursor,
 ): GuideTimeSegment | null {
 	const index = map.segments.findIndex((entry) => entry.id === cursor.segmentId);
 	return index < 0 ? null : (map.segments[index + 1] ?? null);
@@ -655,7 +673,7 @@ export function nextGuideTimeSegment(
 /** The segment before a cursor's own, or null at the map's start. */
 export function previousGuideTimeSegment(
 	map: GuideTimeMap,
-	cursor: GuideTimeCursor
+	cursor: GuideTimeCursor,
 ): GuideTimeSegment | null {
 	const index = map.segments.findIndex((entry) => entry.id === cursor.segmentId);
 	return index <= 0 ? null : map.segments[index - 1]!;
@@ -664,7 +682,7 @@ export function previousGuideTimeSegment(
 /** Which occurrence presents a Stop, by authored Stop identity. */
 export function guideTimeEntryForStop(
 	map: GuideTimeMap,
-	stopId: string
+	stopId: string,
 ): GuideTimeStopEntry | null {
 	return map.stopEntries.find((entry) => entry.stopId === stopId) ?? null;
 }
@@ -680,7 +698,7 @@ export function guideTimeEntryForStop(
 export function sampleGuideTime(
 	map: GuideTimeMap,
 	cursor: GuideTimeCursor,
-	options: GuideTimeSampleOptions = {}
+	options: GuideTimeSampleOptions = {},
 ): GuideTimeSample {
 	const normalized = normalizeGuideTimeCursor(map, cursor);
 	if (normalized === null) {
@@ -696,13 +714,19 @@ function sampleSegmentWithGraph(
 	segment: GuideTimeSegment,
 	elapsedSeconds: number,
 	options: GuideTimeSampleOptions,
-	graph: CameraGraph
+	graph: CameraGraph,
 ): GuideTimeSample {
 	if (segment.kind === 'travel') {
 		const progress =
 			options.reducedMotion === true || segment.durationSeconds <= 0
 				? 1
-				: Math.max(0, Math.min(1, segment.durationSeconds <= 0 ? 1 : elapsedSeconds / segment.durationSeconds));
+				: Math.max(
+						0,
+						Math.min(
+							1,
+							segment.durationSeconds <= 0 ? 1 : elapsedSeconds / segment.durationSeconds,
+						),
+					);
 		sampleCameraMotion(segment.motion, progress, motionSample);
 		return {
 			kind: 'camera',
@@ -717,8 +741,8 @@ function sampleSegmentWithGraph(
 			sample: {
 				eye: [motionSample.position.x, motionSample.position.y, motionSample.position.z],
 				target: [motionSample.target.x, motionSample.target.y, motionSample.target.z],
-				fov: motionSample.fov
-			}
+				fov: motionSample.fov,
+			},
 		};
 	}
 	const pose = viewPose(graph, segment.viewId);
@@ -733,7 +757,7 @@ function sampleSegmentWithGraph(
 		viewIndex: segment.viewIndex,
 		viewId: segment.viewId,
 		elapsedSeconds,
-		sample: { eye: pose.eye, target: pose.target, fov: pose.fov }
+		sample: { eye: pose.eye, target: pose.target, fov: pose.fov },
 	};
 }
 

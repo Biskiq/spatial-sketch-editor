@@ -64,7 +64,7 @@ export function normalizeScale(input: {
 		const v = input.vector ?? [1, 1, 1];
 		return {
 			scaleScalar: averageScale(v),
-			scaleVector: [v[0], v[1], v[2]] as Vec3
+			scaleVector: [v[0], v[1], v[2]] as Vec3,
 		};
 	}
 	const candidate = input.scalar ?? 1;
@@ -77,7 +77,7 @@ export function normalizeScale(input: {
  * only wins when strictly more members report independent than uniform.
  */
 export function dominantMode(
-	members: readonly { scaleMode: ScaleMode; scaleVector: Vec3 | null }[]
+	members: readonly { scaleMode: ScaleMode; scaleVector: Vec3 | null }[],
 ): ScaleMode {
 	if (members.length === 0) return 'uniform';
 	let independentCount = 0;
@@ -100,7 +100,7 @@ export function dominantMode(
  */
 export function resolveEditorPlacementScale(
 	documentScale: number | undefined,
-	sessionVector: Vec3 | null
+	sessionVector: Vec3 | null,
 ): number | Vec3 {
 	if (sessionVector) return [sessionVector[0], sessionVector[1], sessionVector[2]] as Vec3;
 	return documentScale ?? 1;
@@ -112,7 +112,6 @@ export function resolveEditorPlacementScale(
 export function scaleVectorEquals(a: Vec3 | null, b: Vec3 | null): boolean {
 	if (a === null && b === null) return true;
 	if (a === null || b === null) return false;
-	for (let i = 0; i < 3; i++)
-		if (Math.abs(a[i]! - b[i]!) > SCALE_VALUES_TOLERANCE) return false;
+	for (let i = 0; i < 3; i++) if (Math.abs(a[i]! - b[i]!) > SCALE_VALUES_TOLERANCE) return false;
 	return true;
 }

@@ -92,7 +92,11 @@ function cleanRing(points: readonly ClipPoint[], tags: readonly string[]): ClipR
 	while (outPoints.length > 1) {
 		const first = outPoints[0]!;
 		const last = outPoints[outPoints.length - 1]!;
-		if (Math.abs(first[0] - last[0]) > POINT_EPSILON || Math.abs(first[1] - last[1]) > POINT_EPSILON) break;
+		if (
+			Math.abs(first[0] - last[0]) > POINT_EPSILON ||
+			Math.abs(first[1] - last[1]) > POINT_EPSILON
+		)
+			break;
 		outPoints.pop();
 		outTags.pop();
 	}
@@ -114,7 +118,7 @@ type Crossing = { readonly kind: 'entry' | 'exit'; readonly at: number; readonly
 /** Clip a region (a set of non-crossing, left-oriented rings) to one half-plane. */
 export function clipRegionToHalfPlane(
 	rings: readonly ClipRing[],
-	half: ClipHalfPlane
+	half: ClipHalfPlane,
 ): ClipRegionResult {
 	const whole: ClipRing[] = [];
 	const runs: Run[] = [];
@@ -175,7 +179,7 @@ export function clipRegionToHalfPlane(
 						? 0
 						: left.crossing.kind === 'exit'
 							? -1
-							: 1
+							: 1,
 			);
 		const entryAfterExit = new Map<number, number>();
 		for (let position = 0; position < order.length; position += 2) {
@@ -217,7 +221,7 @@ export function clipRegionToHalfPlane(
 /** Clip a region by every half-plane in turn (their intersection is the kept side). */
 export function clipRegionToHalfPlanes(
 	rings: readonly ClipRing[],
-	halves: readonly ClipHalfPlane[]
+	halves: readonly ClipHalfPlane[],
 ): ClipRegionResult {
 	let current: readonly ClipRing[] = rings;
 	for (const half of halves) {
@@ -237,7 +241,7 @@ export function clipRegionToHalfPlanes(
 export function segmentIntervalInHalfPlanes(
 	a: ClipPoint,
 	b: ClipPoint,
-	halves: readonly ClipHalfPlane[]
+	halves: readonly ClipHalfPlane[],
 ): readonly [number, number] | null {
 	let lo = 0;
 	let hi = 1;

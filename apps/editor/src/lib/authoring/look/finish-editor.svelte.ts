@@ -19,7 +19,7 @@ import {
 	type FinishColourMode,
 	type FinishPatchEdit,
 	type FinishSource,
-	type FinishTreatmentFacts
+	type FinishTreatmentFacts,
 } from '@portfolio/project-model/scene-planning';
 import {
 	NEUTRAL_RECIPE,
@@ -27,12 +27,23 @@ import {
 	shippedImageIndex,
 	type MapRole,
 	type Mapping,
-	type Recipe
+	type Recipe,
 } from '@portfolio/project-model/materials';
-import type { MaterialId, SceneColor, SceneMaterialInstance, ScenePaletteSlot } from '@portfolio/project-model/scene';
+import type {
+	MaterialId,
+	SceneColor,
+	SceneMaterialInstance,
+	ScenePaletteSlot,
+} from '@portfolio/project-model/scene';
 import type { FinishCard, FinishCardTarget, FinishReachChoice } from './finish-card.svelte';
 
-export type EditorDisplayMode = 'lit' | 'unlit-color' | 'normal' | 'roughness' | 'metalness' | 'occlusion';
+export type EditorDisplayMode =
+	| 'lit'
+	| 'unlit-color'
+	| 'normal'
+	| 'roughness'
+	| 'metalness'
+	| 'occlusion';
 
 export type EditorFieldGroup =
 	| 'colour'
@@ -73,7 +84,11 @@ export type EditorFieldsView = {
 		readonly hex: string | null;
 		readonly slotId: string | null;
 		readonly slotName: string | null;
-		readonly palette: readonly { readonly id: string; readonly name: string; readonly color: string }[];
+		readonly palette: readonly {
+			readonly id: string;
+			readonly name: string;
+			readonly color: string;
+		}[];
 	};
 	readonly sheen: {
 		readonly changed: boolean;
@@ -127,7 +142,11 @@ export function formatEditorMeters(value: number): string {
 	return `${value >= 1 ? Number(value.toFixed(2)) : Number(value.toFixed(3))} m`;
 }
 
-export function mapEditorRefusal(code: string | undefined, fallback: string, fieldRange?: string): string | null {
+export function mapEditorRefusal(
+	code: string | undefined,
+	fallback: string,
+	fieldRange?: string,
+): string | null {
 	switch (code) {
 		case 'no-change':
 			return null;
@@ -154,13 +173,21 @@ function imageFileOf(binding: { readonly image: unknown } | undefined): string {
 		}
 		return img.slice(0, 16);
 	}
-	if (typeof img === 'object' && 'shipped' in img && typeof (img as { shipped: unknown }).shipped === 'string') {
+	if (
+		typeof img === 'object' &&
+		'shipped' in img &&
+		typeof (img as { shipped: unknown }).shipped === 'string'
+	) {
 		const id = (img as { shipped: string }).shipped;
 		const info = shippedImage(id);
 		if (info?.uri) return info.uri.replace(/^\/textures\//, '');
 		return id;
 	}
-	if (typeof img === 'object' && 'textureId' in img && typeof (img as { textureId: unknown }).textureId === 'string') {
+	if (
+		typeof img === 'object' &&
+		'textureId' in img &&
+		typeof (img as { textureId: unknown }).textureId === 'string'
+	) {
 		return (img as { textureId: string }).textureId;
 	}
 	return '';
@@ -170,19 +197,24 @@ function imageIdentityOf(binding: { readonly image: unknown } | undefined): stri
 	if (!binding || binding.image == null) return null;
 	const img = binding.image;
 	if (typeof img === 'string') return `hash:${img}`;
-	if (typeof img === 'object' && 'shipped' in img && typeof (img as { shipped: unknown }).shipped === 'string') {
+	if (
+		typeof img === 'object' &&
+		'shipped' in img &&
+		typeof (img as { shipped: unknown }).shipped === 'string'
+	) {
 		return `shipped:${(img as { shipped: string }).shipped}`;
 	}
-	if (typeof img === 'object' && 'textureId' in img && typeof (img as { textureId: unknown }).textureId === 'string') {
+	if (
+		typeof img === 'object' &&
+		'textureId' in img &&
+		typeof (img as { textureId: unknown }).textureId === 'string'
+	) {
 		return `texture:${(img as { textureId: string }).textureId}`;
 	}
 	return null;
 }
 
-function buildRawRows(
-	source: FinishSource,
-	base: Recipe
-): EditorRawMapRow[] {
+function buildRawRows(source: FinishSource, base: Recipe): EditorRawMapRow[] {
 	const rows: EditorRawMapRow[] = [];
 	const ovMaps = source.overrides?.maps;
 
@@ -200,7 +232,7 @@ function buildRawRows(
 		on: colorOn,
 		file: hasColorImage ? imageFileOf(colorBinding) : 'no colour image · plain material',
 		displayTarget: 'unlit-color',
-		changed: ovColor !== undefined
+		changed: ovColor !== undefined,
 	});
 
 	// Relief (normal) row
@@ -218,13 +250,16 @@ function buildRawRows(
 			on: normalOn,
 			file: imageFileOf(normalBinding),
 			displayTarget: 'normal',
-			changed: ovNormal !== undefined
+			changed: ovNormal !== undefined,
 		});
 	}
 
 	// Sheen · occlusion (and metalness) grouped by image identity (ORM packing -> one row)
 	const scalarRoles: readonly MapRole[] = ['roughness', 'occlusion', 'metalness'];
-	const grouped = new Map<string, { roles: MapRole[]; binding: { readonly image: unknown } | undefined }>();
+	const grouped = new Map<
+		string,
+		{ roles: MapRole[]; binding: { readonly image: unknown } | undefined }
+	>();
 	for (const role of scalarRoles) {
 		const ov = ovMaps?.[role];
 		const b = ov && ov !== null ? ov : base.maps[role];
@@ -264,7 +299,7 @@ function buildRawRows(
 			on,
 			file: imageFileOf(group.binding),
 			displayTarget,
-			changed
+			changed,
 		});
 		index += 1;
 	}
@@ -302,7 +337,9 @@ export function buildFinishEditorFields(input: {
 
 	// Colour
 	const hasColourMap = finishHasColourImage(source, recipes);
-	const modes: FinishColourMode[] = hasColourMap ? ['natural', 'stained', 'painted'] : ['natural', 'painted'];
+	const modes: FinishColourMode[] = hasColourMap
+		? ['natural', 'stained', 'painted']
+		: ['natural', 'painted'];
 	const mode = finishColourMode(source, recipes);
 	const ovColor = source.overrides?.color;
 	let slotId: string | null = null;
@@ -335,23 +372,26 @@ export function buildFinishEditorFields(input: {
 		.map((step) => ({
 			position: Number((1 - step.target).toFixed(3)),
 			label: step.label,
-			active: sheenReading.current === step.id
+			active: sheenReading.current === step.id,
 		}))
 		.filter((tick) => tick.position >= minSlider - EPS);
 	const sheenChanged =
-		source.overrides?.roughness !== undefined && Math.abs(source.overrides.roughness - base.roughness) > EPS;
+		source.overrides?.roughness !== undefined &&
+		Math.abs(source.overrides.roughness - base.roughness) > EPS;
 
 	// Metal
 	const metalValue = source.overrides?.metalness ?? base.metalness;
 	const metalChanged =
-		source.overrides?.metalness !== undefined && Math.abs(source.overrides.metalness - base.metalness) > EPS;
+		source.overrides?.metalness !== undefined &&
+		Math.abs(source.overrides.metalness - base.metalness) > EPS;
 
 	// Relief
 	const normalRow = rawRows.find((row) => row.roles.includes('normal'));
 	const normalBound = normalRow !== undefined && normalRow.on;
 	const reliefValue = source.overrides?.normalScale ?? base.normalScale;
 	const reliefChanged =
-		source.overrides?.normalScale !== undefined && Math.abs(source.overrides.normalScale - base.normalScale) > EPS;
+		source.overrides?.normalScale !== undefined &&
+		Math.abs(source.overrides.normalScale - base.normalScale) > EPS;
 
 	// Pattern & Mapping
 	const mapping = effectiveMapping(source, base);
@@ -389,7 +429,7 @@ export function buildFinishEditorFields(input: {
 		raw: {
 			label: materialLabel,
 			caption,
-			rows: rawRows
+			rows: rawRows,
 		},
 		colour: {
 			changed: colourChanged,
@@ -398,7 +438,7 @@ export function buildFinishEditorFields(input: {
 			hex,
 			slotId,
 			slotName,
-			palette: palette.map((slot) => ({ id: slot.id, name: slot.name, color: slot.color }))
+			palette: palette.map((slot) => ({ id: slot.id, name: slot.name, color: slot.color })),
 		},
 		sheen: {
 			changed: sheenChanged,
@@ -412,19 +452,22 @@ export function buildFinishEditorFields(input: {
 			ticks,
 			ormOff,
 			readout: `r ${effectiveR.toFixed(2)}${ormOff ? '' : ` · ×${factor.toFixed(2)} on scan`}`,
-			caption: scanMean < 0.97 && !ormOff ? `Captured at r ${scanMean.toFixed(2)} — a Finish is never rougher than its capture.` : null
+			caption:
+				scanMean < 0.97 && !ormOff
+					? `Captured at r ${scanMean.toFixed(2)} — a Finish is never rougher than its capture.`
+					: null,
 		},
 		metal: {
 			changed: metalChanged,
 			value: metalValue,
-			original: base.metalness
+			original: base.metalness,
 		},
 		relief: {
 			changed: reliefChanged,
 			value: reliefValue,
 			original: base.normalScale,
 			disabled: !normalBound,
-			readout: normalBound ? `×${reliefValue.toFixed(2)}` : 'map off'
+			readout: normalBound ? `×${reliefValue.toFixed(2)}` : 'map off',
 		},
 		pattern: {
 			changed: patternChanged,
@@ -433,16 +476,16 @@ export function buildFinishEditorFields(input: {
 			angleDeg,
 			offsetX,
 			offsetY,
-			realCaption: `Real size ${formatEditorMeters(realTile[0])}`
+			realCaption: `Real size ${formatEditorMeters(realTile[0])}`,
 		},
 		mapping: {
 			changed: mappingChanged,
 			isModel: entityKind === 'model',
 			value: mappingValue,
-			readOnlyText: 'Metres on the surface · same size everywhere'
+			readOnlyText: 'Metres on the surface · same size everywhere',
 		},
 		changedGroups,
-		changeCount: changedGroups.length
+		changeCount: changedGroups.length,
 	};
 }
 
@@ -452,7 +495,7 @@ function scalarFactorEdits(
 	source: FinishSource,
 	recipes: ReadonlyMap<string, Recipe>,
 	field: 'roughness' | 'metalness' | 'normalScale',
-	value: number
+	value: number,
 ): FinishPatchEdit[] {
 	const base = baseRecipeOf({ id: '', name: '', base: source.base }, recipes) ?? NEUTRAL_RECIPE;
 	const rounded = Math.round(value * 1000) / 1000;
@@ -466,7 +509,7 @@ export function editorSheenEdits(
 	source: FinishSource,
 	recipes: ReadonlyMap<string, Recipe>,
 	facts: FinishTreatmentFacts,
-	sliderValue: number
+	sliderValue: number,
 ): FinishPatchEdit[] {
 	const effectiveR = Math.min(1, Math.max(0, 1 - sliderValue));
 	const base = baseRecipeOf({ id: '', name: '', base: source.base }, recipes) ?? NEUTRAL_RECIPE;
@@ -479,7 +522,7 @@ export function editorSheenEdits(
 export function editorMetalEdits(
 	source: FinishSource,
 	recipes: ReadonlyMap<string, Recipe>,
-	value: number
+	value: number,
 ): FinishPatchEdit[] {
 	return scalarFactorEdits(source, recipes, 'metalness', Math.min(1, Math.max(0, value)));
 }
@@ -487,17 +530,19 @@ export function editorMetalEdits(
 export function editorReliefEdits(
 	source: FinishSource,
 	recipes: ReadonlyMap<string, Recipe>,
-	value: number
+	value: number,
 ): FinishPatchEdit[] {
 	return scalarFactorEdits(source, recipes, 'normalScale', Math.min(2, Math.max(0, value)));
 }
 
 export function editorMapToggleEdits(
 	roles: readonly MapRole[],
-	enable: boolean
+	enable: boolean,
 ): FinishPatchEdit[] {
 	return roles.map((role) =>
-		enable ? ({ field: `maps.${role}`, op: 'reset' } as const) : ({ field: `maps.${role}`, op: 'disable' } as const)
+		enable
+			? ({ field: `maps.${role}`, op: 'reset' } as const)
+			: ({ field: `maps.${role}`, op: 'disable' } as const),
 	);
 }
 
@@ -505,10 +550,11 @@ export function editorColourModeEdits(
 	source: FinishSource,
 	recipes: ReadonlyMap<string, Recipe>,
 	palette: readonly ScenePaletteSlot[],
-	mode: FinishColourMode
+	mode: FinishColourMode,
 ): FinishPatchEdit[] {
 	if (mode === 'natural') return colourModeEdits(source, 'natural', null, recipes);
-	const current = finishColourMode(source, recipes) === 'natural' ? null : (source.overrides?.color ?? null);
+	const current =
+		finishColourMode(source, recipes) === 'natural' ? null : (source.overrides?.color ?? null);
 	const fallback: SceneColor = palette[0] !== undefined ? { slot: palette[0].id } : '#9aa58c';
 	return colourModeEdits(source, mode, current ?? fallback, recipes);
 }
@@ -517,7 +563,7 @@ export function editorColourValueEdits(
 	source: FinishSource,
 	recipes: ReadonlyMap<string, Recipe>,
 	facts: FinishTreatmentFacts,
-	colour: SceneColor
+	colour: SceneColor,
 ): FinishPatchEdit[] {
 	const current = finishColourMode(source, recipes);
 	const mode = current === 'natural' ? defaultColourMode(source, recipes, facts) : current;
@@ -527,9 +573,10 @@ export function editorColourValueEdits(
 function nextMappingEdits(
 	source: FinishSource,
 	recipes: ReadonlyMap<string, Recipe>,
-	next: Mapping
+	next: Mapping,
 ): FinishPatchEdit[] {
-	const base = (baseRecipeOf({ id: '', name: '', base: source.base }, recipes) ?? NEUTRAL_RECIPE).mapping;
+	const base = (baseRecipeOf({ id: '', name: '', base: source.base }, recipes) ?? NEUTRAL_RECIPE)
+		.mapping;
 	if (JSON.stringify(base) === JSON.stringify(next)) {
 		return source.overrides?.mapping === undefined ? [] : [{ field: 'mapping', op: 'reset' }];
 	}
@@ -539,19 +586,29 @@ function nextMappingEdits(
 export function editorPatternEdits(
 	source: FinishSource,
 	recipes: ReadonlyMap<string, Recipe>,
-	change: { readonly tileMeters?: number; readonly angleDeg?: number; readonly offsetX?: number; readonly offsetY?: number }
+	change: {
+		readonly tileMeters?: number;
+		readonly angleDeg?: number;
+		readonly offsetX?: number;
+		readonly offsetY?: number;
+	},
 ): FinishPatchEdit[] {
 	const base = baseRecipeOf({ id: '', name: '', base: source.base }, recipes) ?? NEUTRAL_RECIPE;
 	const current = effectiveMapping(source, base);
 	if (current.kind === 'uv') {
 		const tile = change.tileMeters ?? 1;
-		const rotation = change.angleDeg !== undefined ? ((((change.angleDeg % 360) + 360) % 360) * Math.PI) / 180 : current.rotation;
-		const ox = change.offsetX !== undefined ? change.offsetX / Math.max(0.02, tile) : current.offset[0];
-		const oy = change.offsetY !== undefined ? change.offsetY / Math.max(0.02, tile) : current.offset[1];
+		const rotation =
+			change.angleDeg !== undefined
+				? ((((change.angleDeg % 360) + 360) % 360) * Math.PI) / 180
+				: current.rotation;
+		const ox =
+			change.offsetX !== undefined ? change.offsetX / Math.max(0.02, tile) : current.offset[0];
+		const oy =
+			change.offsetY !== undefined ? change.offsetY / Math.max(0.02, tile) : current.offset[1];
 		return nextMappingEdits(source, recipes, {
 			...current,
 			rotation,
-			offset: [Number(ox.toFixed(4)), Number(oy.toFixed(4))]
+			offset: [Number(ox.toFixed(4)), Number(oy.toFixed(4))],
 		});
 	}
 	const prevTile = current.metric.tileMeters;
@@ -559,23 +616,31 @@ export function editorPatternEdits(
 	const tileX = change.tileMeters ?? prevTile[0];
 	const tileY = change.tileMeters !== undefined ? Number((tileX * aspect).toFixed(4)) : prevTile[1];
 	const rotation =
-		change.angleDeg !== undefined ? ((((change.angleDeg % 360) + 360) % 360) * Math.PI) / 180 : current.metric.rotation;
-	const ox = change.offsetX !== undefined ? change.offsetX / Math.max(0.02, tileX) : current.metric.offset[0];
-	const oy = change.offsetY !== undefined ? change.offsetY / Math.max(0.02, tileY) : current.metric.offset[1];
+		change.angleDeg !== undefined
+			? ((((change.angleDeg % 360) + 360) % 360) * Math.PI) / 180
+			: current.metric.rotation;
+	const ox =
+		change.offsetX !== undefined
+			? change.offsetX / Math.max(0.02, tileX)
+			: current.metric.offset[0];
+	const oy =
+		change.offsetY !== undefined
+			? change.offsetY / Math.max(0.02, tileY)
+			: current.metric.offset[1];
 	return nextMappingEdits(source, recipes, {
 		kind: current.kind,
 		metric: {
 			tileMeters: [Number(tileX.toFixed(4)), Number(tileY.toFixed(4))],
 			rotation,
-			offset: [Number(ox.toFixed(4)), Number(oy.toFixed(4))]
-		}
+			offset: [Number(ox.toFixed(4)), Number(oy.toFixed(4))],
+		},
 	} as Mapping);
 }
 
 export function editorMappingKindEdits(
 	source: FinishSource,
 	recipes: ReadonlyMap<string, Recipe>,
-	kind: 'uv0' | 'uv1' | 'surface'
+	kind: 'uv0' | 'uv1' | 'surface',
 ): FinishPatchEdit[] {
 	const base = baseRecipeOf({ id: '', name: '', base: source.base }, recipes) ?? NEUTRAL_RECIPE;
 	const current = effectiveMapping(source, base);
@@ -586,14 +651,27 @@ export function editorMappingKindEdits(
 				? current
 				: current.kind === 'target'
 					? { kind: 'surface', metric: current.metric }
-					: { kind: 'surface', metric: { tileMeters: [real[0], real[1]], rotation: current.rotation, offset: [current.offset[0], current.offset[1]] } };
+					: {
+							kind: 'surface',
+							metric: {
+								tileMeters: [real[0], real[1]],
+								rotation: current.rotation,
+								offset: [current.offset[0], current.offset[1]],
+							},
+						};
 		return nextMappingEdits(source, recipes, next);
 	}
 	const set: 0 | 1 = kind === 'uv1' ? 1 : 0;
 	const next: Mapping =
 		current.kind === 'uv'
 			? { ...current, set }
-			: { kind: 'uv', set, repeat: [1, 1], rotation: current.metric.rotation, offset: [current.metric.offset[0], current.metric.offset[1]] };
+			: {
+					kind: 'uv',
+					set,
+					repeat: [1, 1],
+					rotation: current.metric.rotation,
+					offset: [current.metric.offset[0], current.metric.offset[1]],
+				};
 	return nextMappingEdits(source, recipes, next);
 }
 
@@ -601,7 +679,7 @@ export function editorResetGroupEdits(
 	source: FinishSource,
 	recipes: ReadonlyMap<string, Recipe>,
 	group: EditorFieldGroup,
-	rawRows: readonly EditorRawMapRow[]
+	rawRows: readonly EditorRawMapRow[],
 ): FinishPatchEdit[] {
 	switch (group) {
 		case 'colour':
@@ -611,7 +689,9 @@ export function editorResetGroupEdits(
 		case 'metal':
 			return source.overrides?.metalness === undefined ? [] : [{ field: 'metalness', op: 'reset' }];
 		case 'relief':
-			return source.overrides?.normalScale === undefined ? [] : [{ field: 'normalScale', op: 'reset' }];
+			return source.overrides?.normalScale === undefined
+				? []
+				: [{ field: 'normalScale', op: 'reset' }];
 		case 'pattern':
 		case 'mapping':
 			return source.overrides?.mapping === undefined ? [] : [{ field: 'mapping', op: 'reset' }];
@@ -631,7 +711,7 @@ export function editorResetAllEdits(source: FinishSource): FinishPatchEdit[] {
 /** Merge a new patch into an existing draft patch list (last edit per field wins). */
 export function mergeDraftEdits(
 	current: readonly FinishPatchEdit[],
-	incoming: readonly FinishPatchEdit[]
+	incoming: readonly FinishPatchEdit[],
 ): FinishPatchEdit[] {
 	const byField = new Map<FinishPatchEdit['field'], FinishPatchEdit>();
 	for (const edit of current) byField.set(edit.field, edit);
@@ -657,7 +737,11 @@ export function createFinishEditor(host: FinishEditorHost) {
 	let compare = $state(false);
 	let fieldRefusal = $state.raw<{ readonly field: string; readonly message: string } | null>(null);
 
-	function open(nextTarget: FinishCardTarget, nextPlace: string, opener?: HTMLElement | null): void {
+	function open(
+		nextTarget: FinishCardTarget,
+		nextPlace: string,
+		opener?: HTMLElement | null,
+	): void {
 		target = nextTarget;
 		place = nextPlace;
 		invoker = opener ?? null;
@@ -687,7 +771,8 @@ export function createFinishEditor(host: FinishEditorHost) {
 	}
 
 	function turnLight(): void {
-		lightTurnRadians = lightTurnRadians >= 1.2 - 1e-6 ? -1.2 : Number((lightTurnRadians + 0.4).toFixed(1));
+		lightTurnRadians =
+			lightTurnRadians >= 1.2 - 1e-6 ? -1.2 : Number((lightTurnRadians + 0.4).toFixed(1));
 	}
 
 	function setCompare(next: boolean): void {
@@ -730,8 +815,12 @@ export function createFinishEditor(host: FinishEditorHost) {
 		if (ctx === null) return null;
 		const { inspected } = ctx;
 		const curated = 'curated' in inspected.ref;
-		const baseCat = 'catalogue' in inspected.instance.base ? (inspected.instance.base.catalogue as MaterialId) : null;
-		const materialLabel = baseCat !== null ? host.labelForMaterial(baseCat) : inspected.instance.name;
+		const baseCat =
+			'catalogue' in inspected.instance.base
+				? (inspected.instance.base.catalogue as MaterialId)
+				: null;
+		const materialLabel =
+			baseCat !== null ? host.labelForMaterial(baseCat) : inspected.instance.name;
 		const fields = buildFinishEditorFields({
 			source: { base: inspected.instance.base, overrides: inspected.instance.overrides },
 			recipes: inspected.recipes,
@@ -739,7 +828,7 @@ export function createFinishEditor(host: FinishEditorHost) {
 			entityKind: inspected.entityKind,
 			facts: host.facts,
 			materialLabel,
-			curated
+			curated,
 		});
 		const align =
 			ctx.target.kind === 'surface' && ctx.target.surface.kind === 'wall-side'
@@ -758,7 +847,7 @@ export function createFinishEditor(host: FinishEditorHost) {
 			reach: inspected.reach,
 			instance: inspected.instance,
 			fields,
-			align
+			align,
 		};
 	}
 
@@ -768,14 +857,22 @@ export function createFinishEditor(host: FinishEditorHost) {
 		host.card().setReach(ctx.target, ctx.inspected.reach === 'all' ? 'this' : 'all');
 	}
 
-	function preview(edits: (source: FinishSource, recipes: ReadonlyMap<string, Recipe>) => readonly FinishPatchEdit[]): void {
+	function preview(
+		edits: (
+			source: FinishSource,
+			recipes: ReadonlyMap<string, Recipe>,
+		) => readonly FinishPatchEdit[],
+	): void {
 		if (target === null) return;
 		host.card().previewEdits(target, edits);
 	}
 
 	async function commit(
 		field: string,
-		edits: (source: FinishSource, recipes: ReadonlyMap<string, Recipe>) => readonly FinishPatchEdit[]
+		edits: (
+			source: FinishSource,
+			recipes: ReadonlyMap<string, Recipe>,
+		) => readonly FinishPatchEdit[],
 	): Promise<boolean> {
 		if (target === null) return false;
 		fieldRefusal = null;
@@ -832,7 +929,7 @@ export function createFinishEditor(host: FinishEditorHost) {
 		preview,
 		commit,
 		resetAll,
-		cancelPreview
+		cancelPreview,
 	};
 }
 

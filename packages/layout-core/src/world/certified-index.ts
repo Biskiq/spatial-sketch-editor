@@ -4,30 +4,63 @@ import { CURVE_SELF_INTERSECTION_TOLERANCE } from '../geometry/curve';
 import { coincidentJunctionPairs, coincidesAsJunction } from '../wall/junction-identity';
 import type { PlanBox } from './plan-box-index';
 import { createDynamicBvh } from './bvh';
-import { topologyComponentKeyByJunctionId, topologyComponentKeyByWallId } from '../room/topology-components';
+import {
+	topologyComponentKeyByJunctionId,
+	topologyComponentKeyByWallId,
+} from '../room/topology-components';
 import { validateWallFirstLayoutDocument } from '../wall/codec';
-import type { LayoutDocumentWallFirst, LayoutJunction, LayoutObject, LayoutWall, LayoutWallFirstRoom } from '../wall/types';
+import type {
+	LayoutDocumentWallFirst,
+	LayoutJunction,
+	LayoutObject,
+	LayoutWall,
+	LayoutWallFirstRoom,
+} from '../wall/types';
 import { validateWallFirstPortalRelations } from '../wall/portals';
-import { composeSpaceBoundary, spaceBoundaryPolygonFromEdges } from '../room/reconciliation-boundary';
-import { isOpenSpace, spaceOutlineSelfIntersects, spaceOutlineSignedArea, spacePlacementIssues } from '../room/space-placement';
+import {
+	composeSpaceBoundary,
+	spaceBoundaryPolygonFromEdges,
+} from '../room/reconciliation-boundary';
+import {
+	isOpenSpace,
+	spaceOutlineSelfIntersects,
+	spaceOutlineSignedArea,
+	spacePlacementIssues,
+} from '../room/space-placement';
 import type { SampledTopologyWall, TopologySegment } from '../wall/topology';
-import { classifyWallIntersection, sampledWallExtentsOverlap, sampledWallSelfIntersects, sampledWallsCross } from '../wall/topology';
+import {
+	classifyWallIntersection,
+	sampledWallExtentsOverlap,
+	sampledWallSelfIntersects,
+	sampledWallsCross,
+} from '../wall/topology';
 import { countWork } from '../kernel/work-observer';
 import { PersistentMap, PersistentVector } from '../kernel/persistent-store';
-import { layoutCollectionRef, layoutItem, layoutLength, mappedReadonlyMap, seedLayoutVectors } from '../kernel/source-collections';
+import {
+	layoutCollectionRef,
+	layoutItem,
+	layoutLength,
+	mappedReadonlyMap,
+	seedLayoutVectors,
+} from '../kernel/source-collections';
 import type { IndexedOpeningEntry } from './cow';
 import { WORLD_INDEX_BY_DOC } from './cow';
 import type { CertifiedWorldPatch, DocumentWorldIndex } from './index-types';
 import { ID_PATTERN, POINT_EPSILON, SWEPT_INDEX_PAD } from './index-types';
 import { ensureLayoutWorldIndex } from './lookups';
-import { buildPlanarCombinatorialMap, certifyOpeningsQuietly, chordSamples, sampleSegmentQuietly } from './planar-map';
+import {
+	buildPlanarCombinatorialMap,
+	certifyOpeningsQuietly,
+	chordSamples,
+	sampleSegmentQuietly,
+} from './planar-map';
 
 // =====================================================================
 // Certified World-Index Construction & Incremental Patch Materialization
 // =====================================================================
 
 export function buildCertifiedWorldIndex(
-	document: LayoutDocumentWallFirst
+	document: LayoutDocumentWallFirst,
 ): DocumentWorldIndex | undefined {
 	// 1. Complete structural validation (with lazy canonicalJson getter — zero stringify).
 	const structural = validateWallFirstLayoutDocument(document);
@@ -209,7 +242,7 @@ export function buildCertifiedWorldIndex(
 			id: w.id,
 			startJunctionId: w.startJunctionId,
 			endJunctionId: w.endJunctionId,
-			samples
+			samples,
 		};
 		if (w.centerline.kind !== 'line' && sampledWallSelfIntersects(sampledWall)) {
 			return undefined;
@@ -270,7 +303,11 @@ export function buildCertifiedWorldIndex(
 	}
 
 	const openingIndicesByWallId = new Map<string, readonly number[]>();
-	for (const [id, entries] of openingsByWallMutable) openingIndicesByWallId.set(id, entries.map((entry) => entry.index));
+	for (const [id, entries] of openingsByWallMutable)
+		openingIndicesByWallId.set(
+			id,
+			entries.map((entry) => entry.index),
+		);
 	seedLayoutVectors(document);
 	return {
 		junctionsRef: layoutCollectionRef(document, 'junctions'),
@@ -278,7 +315,12 @@ export function buildCertifiedWorldIndex(
 		roomsRef: layoutCollectionRef(document, 'rooms'),
 		openingsRef: layoutCollectionRef(document, 'openings'),
 		objectsRef: layoutCollectionRef(document, 'objects'),
-		...sourceRecordViews(document, { junctionIndexById, wallIndexById, objectIndexById, openingIndicesByWallId }),
+		...sourceRecordViews(document, {
+			junctionIndexById,
+			wallIndexById,
+			objectIndexById,
+			openingIndicesByWallId,
+		}),
 		junctionIndexById,
 		wallIndexById,
 		roomById,
@@ -300,41 +342,61 @@ export function buildCertifiedWorldIndex(
 		faceGraphWallIdSet: mapInfo.faceGraphWallIdSet,
 		starOrderByJunctionId: mapInfo.starOrderByJunctionId,
 		walks: PersistentVector.from(mapInfo.walks),
-		halfEdgeWalkByKey: PersistentMap.from(mapInfo.halfEdgeWalkByKey)
+		halfEdgeWalkByKey: PersistentMap.from(mapInfo.halfEdgeWalkByKey),
 	};
 }
 
-
-
-function forkPersistent<K extends string | number, V>(source: ReadonlyMap<K, V>): PersistentMap<K, V> {
- return source instanceof PersistentMap ? source.fork() : PersistentMap.from(source);
+function forkPersistent<K extends string | number, V>(
+	source: ReadonlyMap<K, V>,
+): PersistentMap<K, V> {
+	return source instanceof PersistentMap ? source.fork() : PersistentMap.from(source);
 }
 
-export function installCertifiedPatch(document: LayoutDocumentWallFirst, patch: CertifiedWorldPatch): void {
- const parent = ensureLayoutWorldIndex(patch.parentDoc);
- const index = parent ? materializePatchedWorldIndex(parent, document, patch) : undefined;
- if (index) WORLD_INDEX_BY_DOC.set(document, index);
+export function installCertifiedPatch(
+	document: LayoutDocumentWallFirst,
+	patch: CertifiedWorldPatch,
+): void {
+	const parent = ensureLayoutWorldIndex(patch.parentDoc);
+	const index = parent ? materializePatchedWorldIndex(parent, document, patch) : undefined;
+	if (index) WORLD_INDEX_BY_DOC.set(document, index);
 }
 
-
-export function sourceRecordViews(document: LayoutDocumentWallFirst, indexes: Pick<DocumentWorldIndex, 'junctionIndexById' | 'wallIndexById' | 'objectIndexById' | 'openingIndicesByWallId'>) {
- const { junctionIndexById, wallIndexById, objectIndexById, openingIndicesByWallId } = indexes;
- return {
-  junctionById: mappedReadonlyMap(junctionIndexById, (index) => layoutItem(document, 'junctions', index)!),
-  pointById: mappedReadonlyMap(junctionIndexById, (index) => layoutItem(document, 'junctions', index)!.point),
-  wallById: mappedReadonlyMap(wallIndexById, (index) => layoutItem(document, 'walls', index)!),
-  objectById: mappedReadonlyMap(objectIndexById, (index) => layoutItem(document, 'objects', index)!),
-  openingsByWallId: mappedReadonlyMap(openingIndicesByWallId, (indices) => indices.map((index) => ({ index, opening: layoutItem(document, 'openings', index)! })))
- };
+export function sourceRecordViews(
+	document: LayoutDocumentWallFirst,
+	indexes: Pick<
+		DocumentWorldIndex,
+		'junctionIndexById' | 'wallIndexById' | 'objectIndexById' | 'openingIndicesByWallId'
+	>,
+) {
+	const { junctionIndexById, wallIndexById, objectIndexById, openingIndicesByWallId } = indexes;
+	return {
+		junctionById: mappedReadonlyMap(
+			junctionIndexById,
+			(index) => layoutItem(document, 'junctions', index)!,
+		),
+		pointById: mappedReadonlyMap(
+			junctionIndexById,
+			(index) => layoutItem(document, 'junctions', index)!.point,
+		),
+		wallById: mappedReadonlyMap(wallIndexById, (index) => layoutItem(document, 'walls', index)!),
+		objectById: mappedReadonlyMap(
+			objectIndexById,
+			(index) => layoutItem(document, 'objects', index)!,
+		),
+		openingsByWallId: mappedReadonlyMap(openingIndicesByWallId, (indices) =>
+			indices.map((index) => ({ index, opening: layoutItem(document, 'openings', index)! })),
+		),
+	};
 }
 
 function materializePatchedWorldIndex(
 	prev: DocumentWorldIndex,
 	document: LayoutDocumentWallFirst,
-	patch: CertifiedWorldPatch
+	patch: CertifiedWorldPatch,
 ): DocumentWorldIndex | undefined {
 	const sampledWallById = forkPersistent(prev.sampledWallById);
-	const wallBvh = patch.nextWallBoxes && patch.nextWallBoxes.size > 0 ? prev.wallBvh.clone() : prev.wallBvh;
+	const wallBvh =
+		patch.nextWallBoxes && patch.nextWallBoxes.size > 0 ? prev.wallBvh.clone() : prev.wallBvh;
 	for (const wId of patch.affectedWallIds) {
 		const idx = prev.wallIndexById.get(wId);
 		if (idx === undefined) return undefined;
@@ -349,23 +411,28 @@ function materializePatchedWorldIndex(
 	if (layoutLength(document, 'objects') !== prev.objectsRef.length) {
 		countWork('index:global-object-reindex', layoutLength(document, 'objects'));
 		const nextIndex = new Map<string, number>();
-		for (let i = 0; i < layoutLength(document, 'objects'); i += 1) nextIndex.set(layoutItem(document, 'objects', i)!.id, i);
+		for (let i = 0; i < layoutLength(document, 'objects'); i += 1)
+			nextIndex.set(layoutItem(document, 'objects', i)!.id, i);
 		objectIndexById = nextIndex;
 	}
 
 	let walks = prev.walks;
-	if (patch.nextWalkSummaries) for (const [index, summary] of patch.nextWalkSummaries) walks = walks.set(index, summary);
+	if (patch.nextWalkSummaries)
+		for (const [index, summary] of patch.nextWalkSummaries) walks = walks.set(index, summary);
 
 	let halfEdgeWalkByKey = prev.halfEdgeWalkByKey;
 	if (patch.nextHalfEdgeContribs && patch.nextHalfEdgeContribs.size > 0) {
 		const copy = forkPersistent(prev.halfEdgeWalkByKey);
 		for (const [heKey, contrib] of patch.nextHalfEdgeContribs) {
 			const old = copy.get(heKey)!;
-			copy.set(heKey, { walkIndex: old.walkIndex, twiceEdgeContrib: contrib.value, termCount: contrib.termCount });
+			copy.set(heKey, {
+				walkIndex: old.walkIndex,
+				twiceEdgeContrib: contrib.value,
+				termCount: contrib.termCount,
+			});
 		}
 		halfEdgeWalkByKey = copy;
 	}
-
 
 	return {
 		...prev,
@@ -379,14 +446,13 @@ function materializePatchedWorldIndex(
 		wallBvh,
 		sampledWallById,
 		walks,
-		halfEdgeWalkByKey
+		halfEdgeWalkByKey,
 	};
 }
 
-
 export function computeIndexedWallBox(
 	segment: TopologySegment,
-	samples: readonly CurveSample[]
+	samples: readonly CurveSample[],
 ): PlanBox {
 	let minX = Math.min(segment.start[0], segment.end[0]);
 	let minZ = Math.min(segment.start[1], segment.end[1]);
@@ -403,7 +469,6 @@ export function computeIndexedWallBox(
 	return { minX: minX - pad, minZ: minZ - pad, maxX: maxX + pad, maxZ: maxZ + pad };
 }
 
-
 export function sharedJunctions(a: LayoutWall, b: LayoutWall): string[] {
 	const shared: string[] = [];
 	if (a.startJunctionId === b.startJunctionId || a.startJunctionId === b.endJunctionId) {
@@ -418,7 +483,6 @@ export function sharedJunctions(a: LayoutWall, b: LayoutWall): string[] {
 	return shared;
 }
 
-
 export function isValidVec2(value: readonly number[]): value is LayoutVec2 {
 	return (
 		Array.isArray(value) &&
@@ -430,12 +494,15 @@ export function isValidVec2(value: readonly number[]): value is LayoutVec2 {
 	);
 }
 
-
 export function isValidWallRecord(wall: LayoutWall): boolean {
 	if (!ID_PATTERN.test(wall.id)) return false;
 	if (!ID_PATTERN.test(wall.startJunctionId) || !ID_PATTERN.test(wall.endJunctionId)) return false;
 	if (wall.startJunctionId === wall.endJunctionId) return false;
-	if (typeof wall.thickness !== 'number' || !Number.isFinite(wall.thickness) || wall.thickness <= 0) {
+	if (
+		typeof wall.thickness !== 'number' ||
+		!Number.isFinite(wall.thickness) ||
+		wall.thickness <= 0
+	) {
 		return false;
 	}
 	if (typeof wall.height !== 'number' || !Number.isFinite(wall.height) || wall.height <= 0) {
@@ -463,10 +530,9 @@ export function isValidWallRecord(wall: LayoutWall): boolean {
 	return true;
 }
 
-
 export function isValidObjectRecord(
 	obj: LayoutObject,
-	roomById: ReadonlyMap<string, LayoutWallFirstRoom>
+	roomById: ReadonlyMap<string, LayoutWallFirstRoom>,
 ): boolean {
 	if (!ID_PATTERN.test(obj.id)) return false;
 	if (

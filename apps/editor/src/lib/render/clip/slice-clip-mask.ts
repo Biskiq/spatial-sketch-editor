@@ -93,7 +93,7 @@ export function createSliceClipUniforms(): SliceClipUniforms {
 		along: uniform(new Vector3(1, 0, 0)) as unknown as VectorUniform,
 		halfLength: uniform(0) as unknown as ScalarUniform,
 		depth: uniform(0.1) as unknown as ScalarUniform,
-		cutawayTopY: uniform(NEVER_CUT_TOP_Y) as unknown as ScalarUniform
+		cutawayTopY: uniform(NEVER_CUT_TOP_Y) as unknown as ScalarUniform,
 	};
 }
 
@@ -105,7 +105,7 @@ export function createSliceClipUniforms(): SliceClipUniforms {
  */
 export function createSliceClipMask(
 	uniforms: SliceClipUniforms,
-	options: { readonly cutaway?: boolean } = {}
+	options: { readonly cutaway?: boolean } = {},
 ): SliceClipMasks {
 	const origin = uniforms.origin as unknown as Tsl;
 	const normal = uniforms.normal as unknown as Tsl;
@@ -114,9 +114,7 @@ export function createSliceClipMask(
 	const halfLength = uniforms.halfLength as unknown as Tsl;
 	const depth = uniforms.depth as unknown as Tsl;
 	const cutawayTop =
-		options.cutaway === true
-			? (uniforms.cutawayTopY as unknown as Tsl)
-			: float(NEVER_CUT_TOP_Y);
+		options.cutaway === true ? (uniforms.cutawayTopY as unknown as Tsl) : float(NEVER_CUT_TOP_Y);
 
 	const relative = positionWorld.sub(origin);
 	const alongDistance = abs(dot(relative, along));
@@ -128,7 +126,7 @@ export function createSliceClipMask(
 	return {
 		colour: hiddenBySegment.or(hiddenByCutaway).not() as unknown as MaskNode,
 		// Shadows are the unclipped world: a constant true keeps every caster.
-		shadow: bool(true) as unknown as MaskNode
+		shadow: bool(true) as unknown as MaskNode,
 	};
 }
 
@@ -142,10 +140,7 @@ export type SliceClipSource = {
 } | null;
 
 /** Write a drawn cut into the shared uniforms. `null` turns the predicate off. */
-export function writeSliceClipUniforms(
-	uniforms: SliceClipUniforms,
-	source: SliceClipSource
-): void {
+export function writeSliceClipUniforms(uniforms: SliceClipUniforms, source: SliceClipSource): void {
 	if (source === null) {
 		uniforms.mode.value = 0;
 		uniforms.halfLength.value = 0;
@@ -153,11 +148,7 @@ export function writeSliceClipUniforms(
 	}
 	uniforms.mode.value = 1;
 	uniforms.origin.value.set(source.origin[0], source.origin[1], source.origin[2]);
-	uniforms.normal.value.set(
-		source.hiddenNormal[0],
-		source.hiddenNormal[1],
-		source.hiddenNormal[2]
-	);
+	uniforms.normal.value.set(source.hiddenNormal[0], source.hiddenNormal[1], source.hiddenNormal[2]);
 	uniforms.along.value.set(source.along[0], source.along[1], source.along[2]);
 	uniforms.halfLength.value = source.halfLength;
 	uniforms.depth.value = source.depthMeters;
@@ -180,13 +171,13 @@ export function snapshotSliceClipUniforms(uniforms: SliceClipUniforms): {
 		along: uniforms.along.value.toArray() as [number, number, number],
 		halfLength: uniforms.halfLength.value,
 		depth: uniforms.depth.value,
-		cutawayTopY: uniforms.cutawayTopY.value
+		cutawayTopY: uniforms.cutawayTopY.value,
 	};
 }
 
 export function restoreSliceClipUniforms(
 	uniforms: SliceClipUniforms,
-	state: ReturnType<typeof snapshotSliceClipUniforms>
+	state: ReturnType<typeof snapshotSliceClipUniforms>,
 ): void {
 	uniforms.mode.value = state.mode;
 	uniforms.origin.value.fromArray(state.origin);
@@ -203,6 +194,9 @@ export function hasSliceClipMask(material: object): boolean {
 }
 
 /** The plane array a clipped material holds by reference (SL1 test 5's identity). */
-export function materialUsesPlanes(material: { clippingPlanes?: Plane[] | null }, planes: readonly Plane[]): boolean {
+export function materialUsesPlanes(
+	material: { clippingPlanes?: Plane[] | null },
+	planes: readonly Plane[],
+): boolean {
 	return material.clippingPlanes === (planes as Plane[]);
 }

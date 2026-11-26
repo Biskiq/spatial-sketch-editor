@@ -7,7 +7,7 @@ export type ShutdownProcess = {
 
 export function installShutdownHandlers(
 	app: Pick<FastifyInstance, 'close'>,
-	processLike: ShutdownProcess = process
+	processLike: ShutdownProcess = process,
 ): () => Promise<void> {
 	let closePromise: Promise<void> | undefined;
 	const closeOnce = () => {

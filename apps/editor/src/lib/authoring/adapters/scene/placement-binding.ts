@@ -27,16 +27,23 @@ import type {
 	StageGhostMesh,
 	StageKeyboardIntent,
 	StageOverlayContribution,
-	StagePointerIntent
+	StagePointerIntent,
 } from '$lib/authoring/stage/stage-adapter-host';
 import {
 	draftingSnapIncrementMeters,
 	evaluationIdOf,
-	stageEnvelope
+	stageEnvelope,
 } from '$lib/authoring/stage/stage-adapter-host';
 import type { SceneEntity, Vec3 } from '@portfolio/project-model/scene';
-import { creatorModelDefinition, approvedModelResources } from '@portfolio/project-model/scene-planning';
-import { createObjectDrawSession, type DrawPreview, type ObjectDrawSession } from './shape/draw-session';
+import {
+	creatorModelDefinition,
+	approvedModelResources,
+} from '@portfolio/project-model/scene-planning';
+import {
+	createObjectDrawSession,
+	type DrawPreview,
+	type ObjectDrawSession,
+} from './shape/draw-session';
 import { armTile, armedTile, setObjectsPanelCompact } from './shape/armed-tile';
 import { publishObjectDraw } from './shape/draw-surface';
 import type { ShapeKind } from './shape/outline';
@@ -44,15 +51,19 @@ import {
 	clearArmedModel,
 	clearCreatorDefinitions,
 	peekArmedModel,
-	rememberCreatorDefinition
+	rememberCreatorDefinition,
 } from './import/definitions';
-import type { PlacementPointerRefusal, PlacementPresentationView, PlacementReleaseRefusal } from './candidate-presenter';
+import type {
+	PlacementPointerRefusal,
+	PlacementPresentationView,
+	PlacementReleaseRefusal,
+} from './candidate-presenter';
 import { liveProjectId, objectContact } from './object-readings';
 import {
 	moveSupportRefusal,
 	pointerDatumPoint,
 	pointerFloorSupport,
-	pointerPlaceSupport
+	pointerPlaceSupport,
 } from './pointer-support';
 import {
 	publishSceneSurface,
@@ -64,9 +75,14 @@ import {
 	type SceneCandidate,
 	type ScenePlacementSession,
 	type SceneSessionOutcome,
-	type SceneSurface
+	type SceneSurface,
 } from './placement';
-import { SCENE_COMPOSE_TASK, SCENE_IMPORT_KIND, SCENE_PLACE_KIND, SCENE_PLACE_TASK } from './scene-task-ids';
+import {
+	SCENE_COMPOSE_TASK,
+	SCENE_IMPORT_KIND,
+	SCENE_PLACE_KIND,
+	SCENE_PLACE_TASK,
+} from './scene-task-ids';
 
 export type PlacementBinding = {
 	/** The task this binding is showing; pointer behavior follows the invoked task. */
@@ -98,7 +114,7 @@ export type PlacementBinding = {
 
 export function createPlacementBinding(
 	services: StageAdapterServices,
-	context: StageAdapterContext
+	context: StageAdapterContext,
 ): PlacementBinding {
 	// The accepted resource is the authority for every later placement, so a
 	// rebind replaces whatever the procedure captured before the install.
@@ -148,16 +164,22 @@ export function createPlacementBinding(
 
 	function placementRefusalCandidate(
 		session: ScenePlacementSession,
-		world: Vec3
+		world: Vec3,
 	): SceneCandidate | null {
 		const worldXZ: readonly [number, number] = [world[0], world[2]];
 		const copy = session.armedFormCopy();
 		if (copy !== null) {
 			return {
-				kind: 'place', entityId: null, primitive: null,
+				kind: 'place',
+				entityId: null,
+				primitive: null,
 				position: [world[0], world[1] - copy.contactMinY, world[2]],
-				rotation: [0, 0, 0], worldXZ, yaw: 0, scale: 1, snappedStep: null,
-				form: copy.item.form
+				rotation: [0, 0, 0],
+				worldXZ,
+				yaw: 0,
+				scale: 1,
+				snappedStep: null,
+				form: copy.item.form,
 			};
 		}
 		const model = session.armedModel();
@@ -165,28 +187,40 @@ export function createPlacementBinding(
 			const xs = model.definition.footprintMeters.map(([x]) => x);
 			const zs = model.definition.footprintMeters.map(([, z]) => z);
 			return {
-				kind: 'place', entityId: null, primitive: null,
+				kind: 'place',
+				entityId: null,
+				primitive: null,
 				position: [world[0], world[1] - model.definition.contactMinY, world[2]],
-				rotation: [0, 0, 0], worldXZ, yaw: 0, scale: 1, snappedStep: null,
+				rotation: [0, 0, 0],
+				worldXZ,
+				yaw: 0,
+				scale: 1,
+				snappedStep: null,
 				modelContactMinY: model.definition.contactMinY,
 				footprint: {
 					width: Math.max(...xs) - Math.min(...xs),
-					depth: Math.max(...zs) - Math.min(...zs)
+					depth: Math.max(...zs) - Math.min(...zs),
 				},
-				modelAssetId: model.definition.creationDefaults.assetId
+				modelAssetId: model.definition.creationDefaults.assetId,
 			};
 		}
 		return {
-			kind: 'place', entityId: null, primitive: session.placePrimitive(),
+			kind: 'place',
+			entityId: null,
+			primitive: session.placePrimitive(),
 			position: [world[0], world[1] + 0.5, world[2]],
-			rotation: [0, 0, 0], worldXZ, yaw: 0, scale: 1, snappedStep: null
+			rotation: [0, 0, 0],
+			worldXZ,
+			yaw: 0,
+			scale: 1,
+			snappedStep: null,
 		};
 	}
 
 	function refusePlaceAtPointer(
 		session: ScenePlacementSession,
 		adapterContext: StageAdapterContext,
-		css: readonly [number, number]
+		css: readonly [number, number],
 	): void {
 		const world = pointerDatumPoint(adapterContext, css);
 		const visible = pointerFloorSupport(adapterContext, css, null);
@@ -199,7 +233,7 @@ export function createPlacementBinding(
 			css: [css[0], css[1]],
 			world,
 			message,
-			candidate: world === null ? null : placementRefusalCandidate(session, world)
+			candidate: world === null ? null : placementRefusalCandidate(session, world),
 		};
 	}
 
@@ -231,7 +265,7 @@ export function createPlacementBinding(
 			return (entityId) => {
 				const reference = sceneEntityReference(
 					entityId,
-					services.stage.snapshot().domain.unitRevisions.scene
+					services.stage.snapshot().domain.unitRevisions.scene,
 				);
 				services.stage.setSelection({ ordered: [{ reference }], primary: reference });
 				if (epoch !== taskEpoch) return;
@@ -243,7 +277,7 @@ export function createPlacementBinding(
 		},
 		changed() {
 			publishObjectDraw(objectDraw);
-		}
+		},
 	});
 	publishObjectDraw(objectDraw);
 
@@ -255,7 +289,7 @@ export function createPlacementBinding(
 	 */
 	function surfaceFor(
 		evaluation: ViewportEvaluation,
-		snapshot = services.stage.snapshot()
+		snapshot = services.stage.snapshot(),
 	): SceneSurface {
 		const existing = sceneSurfaceFor(snapshot, evaluation);
 		if (existing !== null) {
@@ -265,7 +299,10 @@ export function createPlacementBinding(
 			}
 			return existing;
 		}
-		const session = sceneSessionFromServices({ services, evaluationId: evaluationIdOf(evaluation) });
+		const session = sceneSessionFromServices({
+			services,
+			evaluationId: evaluationIdOf(evaluation),
+		});
 		const next: SceneSurface = { reading: sceneReadingKey(evaluation), session };
 		if (openTaskKind === SCENE_PLACE_KIND) {
 			applyPendingArm(session);
@@ -319,7 +356,7 @@ export function createPlacementBinding(
 				// subject.
 				const reference = sceneEntityReference(
 					placedId,
-					services.stage.snapshot().domain.unitRevisions.scene
+					services.stage.snapshot().domain.unitRevisions.scene,
 				);
 				services.stage.setSelection({ ordered: [{ reference }], primary: reference });
 			}
@@ -403,7 +440,7 @@ export function createPlacementBinding(
 				outcome = {
 					kind: 'failed',
 					code: 'accept-failed',
-					message: error instanceof Error ? error.message : 'The accepted install failed.'
+					message: error instanceof Error ? error.message : 'The accepted install failed.',
 				};
 			}
 			if (placementCommit === token) {
@@ -468,7 +505,7 @@ export function createPlacementBinding(
 					if (createdId === null) return;
 					const reference = sceneEntityReference(
 						createdId,
-						services.stage.snapshot().domain.unitRevisions.scene
+						services.stage.snapshot().domain.unitRevisions.scene,
 					);
 					services.stage.setSelection({ ordered: [{ reference }], primary: reference });
 				});
@@ -546,11 +583,32 @@ export function createPlacementBinding(
 					}
 					placementPointerRefusal = null;
 					if (copy !== null) {
-						session.previewPlaceFormCopy(copy, support.x, support.z, support.elevation, support.choice, snapStep);
+						session.previewPlaceFormCopy(
+							copy,
+							support.x,
+							support.z,
+							support.elevation,
+							support.choice,
+							snapStep,
+						);
 					} else if (armed === null) {
-						session.previewPlace(primitive, support.x, support.z, support.elevation, snapStep, support.choice);
+						session.previewPlace(
+							primitive,
+							support.x,
+							support.z,
+							support.elevation,
+							snapStep,
+							support.choice,
+						);
 					} else {
-						session.previewPlaceModel(armed, support.x, support.z, support.elevation, snapStep, support.choice);
+						session.previewPlaceModel(
+							armed,
+							support.x,
+							support.z,
+							support.elevation,
+							snapStep,
+							support.choice,
+						);
 					}
 					return true;
 				}
@@ -614,7 +672,7 @@ export function createPlacementBinding(
 						support.z,
 						support.elevation,
 						support.choice,
-						snapStep
+						snapStep,
 					);
 				} else if (armed === null) {
 					session.previewPlace(
@@ -623,10 +681,17 @@ export function createPlacementBinding(
 						support.z,
 						support.elevation,
 						snapStep,
-						support.choice
+						support.choice,
 					);
 				} else {
-					session.previewPlaceModel(armed, support.x, support.z, support.elevation, snapStep, support.choice);
+					session.previewPlaceModel(
+						armed,
+						support.x,
+						support.z,
+						support.elevation,
+						snapStep,
+						support.choice,
+					);
 				}
 				return true;
 			}
@@ -672,9 +737,11 @@ export function createPlacementBinding(
 				releaseRefusal: livePlacementReleaseRefusal,
 				pointerRefusal: placementPointerRefusal,
 				sessionCandidate: () =>
-					sceneSurfaceFor(adapterContext.snapshot, adapterContext.evaluation)?.session.candidate() ??
-					null,
-				contact: (entity: SceneEntity) => objectContact(services, entity)
+					sceneSurfaceFor(
+						adapterContext.snapshot,
+						adapterContext.evaluation,
+					)?.session.candidate() ?? null,
+				contact: (entity: SceneEntity) => objectContact(services, entity),
 			};
 		},
 
@@ -726,6 +793,6 @@ export function createPlacementBinding(
 			if (owned === null) return;
 			owned.surface.session.cancel();
 			retireSceneSurface(owned.snapshot, owned.surface);
-		}
+		},
 	};
 }

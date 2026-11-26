@@ -19,7 +19,10 @@
 import type { AuthoringIntent } from '@portfolio/project-model/f4';
 import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 import { stageEnvelope, stageScene } from '$lib/authoring/stage/stage-adapter-host';
-import { sceneEntityLift, type SceneOperationContext } from '@portfolio/project-model/scene-planning';
+import {
+	sceneEntityLift,
+	type SceneOperationContext,
+} from '@portfolio/project-model/scene-planning';
 
 import { acceptFormCommand } from './form-card-command';
 import {
@@ -31,7 +34,7 @@ import {
 	sceneObjectScale,
 	sceneYawRadians,
 	type SceneObjectCardField,
-	type SceneObjectCardFieldId
+	type SceneObjectCardFieldId,
 } from './object-marks';
 import { localContactMinY, sceneEntityReference, sceneModelContactMinY } from './placement';
 import { formSizeMeasurement, previewFormSize } from './shape/form-size';
@@ -44,13 +47,17 @@ const FORM_SIZE_AXIS = { width: 0, height: 1, depth: 2 } as const;
 function formScaleFor(
 	entity: ReturnType<typeof stageScene>['entities'][number],
 	id: SceneObjectCardFieldId,
-	value: number
+	value: number,
 ): [number, number, number] | null {
 	if (entity.kind !== 'form' || !(id === 'width' || id === 'height' || id === 'depth')) return null;
 	const axis = FORM_SIZE_AXIS[id];
 	const handle = formSizeMeasurement(entity).handles.find((entry) => entry.axis === axis);
 	if (handle === undefined || !(handle.dimension > 0)) return null;
-	const scale: [number, number, number] = [entity.form.scale[0], entity.form.scale[1], entity.form.scale[2]];
+	const scale: [number, number, number] = [
+		entity.form.scale[0],
+		entity.form.scale[1],
+		entity.form.scale[2],
+	];
 	scale[axis] = (value / handle.dimension) * entity.form.scale[axis];
 	return scale;
 }
@@ -78,7 +85,8 @@ type Parsed =
 
 function parseNumber(text: string): Parsed {
 	const trimmed = text.trim();
-	if (trimmed.length === 0) return { ok: false, message: 'Enter a value; an empty field is not zero.' };
+	if (trimmed.length === 0)
+		return { ok: false, message: 'Enter a value; an empty field is not zero.' };
 	const value = Number(trimmed);
 	if (!Number.isFinite(value)) return { ok: false, message: 'The value must be finite.' };
 	return { ok: true, value };
@@ -86,15 +94,19 @@ function parseNumber(text: string): Parsed {
 
 export function sceneObjectCardController(
 	services: StageAdapterServices,
-	entityId: string
+	entityId: string,
 ): SceneObjectCardController | null {
-	const entity = stageScene(services.stage.snapshot()).entities.find((entry) => entry.id === entityId);
+	const entity = stageScene(services.stage.snapshot()).entities.find(
+		(entry) => entry.id === entityId,
+	);
 	if (!isSceneObjectEntity(entity)) return null;
 
 	const drafts = new Map<SceneObjectCardFieldId, { text: string; error: string | null }>();
 
 	function liveEntity() {
-		const next = stageScene(services.stage.snapshot()).entities.find((entry) => entry.id === entityId);
+		const next = stageScene(services.stage.snapshot()).entities.find(
+			(entry) => entry.id === entityId,
+		);
 		return isSceneObjectEntity(next) ? next : null;
 	}
 
@@ -102,7 +114,9 @@ export function sceneObjectCardController(
 		if (live === null) return null;
 		return localContactMinY(
 			live,
-			live.kind === 'model' ? sceneModelContactMinY(stageEnvelope(services.stage.snapshot()), live) : null
+			live.kind === 'model'
+				? sceneModelContactMinY(stageEnvelope(services.stage.snapshot()), live)
+				: null,
 		);
 	}
 
@@ -111,7 +125,7 @@ export function sceneObjectCardController(
 		return {
 			layout: stageEnvelope(snapshot).units.layout.data,
 			scene: stageScene(snapshot),
-			sourceContentId: snapshot.domain.unitRevisions.scene
+			sourceContentId: snapshot.domain.unitRevisions.scene,
 		};
 	}
 
@@ -158,7 +172,7 @@ export function sceneObjectCardController(
 				markId: SCENE_OBJECT_MARK.turn,
 				context: contextOf(),
 				entityId,
-				yaw: sceneYawRadians(value)
+				yaw: sceneYawRadians(value),
 			});
 			return result.kind === 'rejected' ? result.message : null;
 		}
@@ -172,7 +186,7 @@ export function sceneObjectCardController(
 				context: contextOf(),
 				entityId,
 				contactMinY,
-				lift: value
+				lift: value,
 			});
 			return result.kind === 'rejected' ? result.message : null;
 		}
@@ -189,7 +203,7 @@ export function sceneObjectCardController(
 				context: contextOf(),
 				entityId,
 				contactMinY,
-				scale: value
+				scale: value,
 			});
 			return result.kind === 'rejected' ? result.message : null;
 		}
@@ -198,7 +212,7 @@ export function sceneObjectCardController(
 			context: contextOf(),
 			entityId,
 			contactMinY,
-			worldXZ: id === 'position-x' ? [value, live.position[2]] : [live.position[0], value]
+			worldXZ: id === 'position-x' ? [value, live.position[2]] : [live.position[0], value],
 		});
 		return result.kind === 'rejected' ? result.message : null;
 	}
@@ -207,7 +221,7 @@ export function sceneObjectCardController(
 		id: SceneObjectCardFieldId,
 		live: NonNullable<ReturnType<typeof liveEntity>>,
 		value: number,
-		contactMinY: number
+		contactMinY: number,
 	): {
 		readonly kind: string;
 		readonly payload: AuthoringIntent['payload'];
@@ -219,20 +233,28 @@ export function sceneObjectCardController(
 					entityId,
 					yaw: sceneYawRadians(value),
 					frame: { origin: [0, 0, 0], yaw: 0 },
-					frameReference: { version: 1, kind: 'project-world' }
-				}
+					frameReference: { version: 1, kind: 'project-world' },
+				},
 			};
 		}
 		if (id === 'elevation') {
 			return { kind: 'set-lift', payload: { entityId, lift: value, contactMinY } };
 		}
 		if (id === 'width' || id === 'height' || id === 'depth') {
-			return { kind: 'set-form-size', payload: { entityId, scale: formScaleFor(live, id, value) ?? [...(live.kind === 'form' ? live.form.scale : [1, 1, 1])] } };
+			return {
+				kind: 'set-form-size',
+				payload: {
+					entityId,
+					scale: formScaleFor(live, id, value) ?? [
+						...(live.kind === 'form' ? live.form.scale : [1, 1, 1]),
+					],
+				},
+			};
 		}
 		if (id === 'size') {
 			return {
 				kind: 'resize-on-floor',
-				payload: { entityId, scale: value, contactMinY }
+				payload: { entityId, scale: value, contactMinY },
 			};
 		}
 		return {
@@ -242,8 +264,8 @@ export function sceneObjectCardController(
 				worldXZ: id === 'position-x' ? [value, live.position[2]] : [live.position[0], value],
 				frame: { origin: [0, 0, 0], yaw: 0 },
 				frameReference: { version: 1, kind: 'project-world' },
-				contactMinY
-			}
+				contactMinY,
+			},
 		};
 	}
 
@@ -256,7 +278,7 @@ export function sceneObjectCardController(
 			return sceneObjectCardFields(live, liftOf(live))
 				.filter((field) => field.id !== hidden)
 				.map((field) => {
-				const draft = drafts.get(field.id);
+					const draft = drafts.get(field.id);
 					return draft === undefined
 						? { ...field, error: null }
 						: { ...field, text: draft.text, error: draft.error };
@@ -272,7 +294,7 @@ export function sceneObjectCardController(
 			const parsed = parseNumber(text);
 			drafts.set(id, {
 				text,
-				error: parsed.ok ? preview(id, parsed.value) : parsed.message
+				error: parsed.ok ? preview(id, parsed.value) : parsed.message,
 			});
 		},
 		async commit(id) {
@@ -301,7 +323,7 @@ export function sceneObjectCardController(
 				services.stage.snapshot(),
 				entityId,
 				kind,
-				payload
+				payload,
 			);
 			if (outcome.kind === 'refused') {
 				drafts.set(id, { text: draft.text, error: outcome.message });
@@ -317,19 +339,19 @@ export function sceneObjectCardController(
 		},
 		blur(id) {
 			drafts.delete(id);
-		}
+		},
 	};
 }
 
 function contactForObject(
 	services: StageAdapterServices,
-	entity: ReturnType<typeof stageScene>['entities'][number]
+	entity: ReturnType<typeof stageScene>['entities'][number],
 ): number | null {
 	return localContactMinY(
 		entity,
 		entity.kind === 'model'
 			? sceneModelContactMinY(stageEnvelope(services.stage.snapshot()), entity)
-			: null
+			: null,
 	);
 }
 
@@ -345,7 +367,7 @@ export type SceneObjectCardCommandOutcome =
 export async function duplicateSceneObject(
 	services: StageAdapterServices,
 	snapshot: ReturnType<StageAdapterServices['stage']['snapshot']>,
-	entityId: string
+	entityId: string,
 ): Promise<SceneObjectCardCommandOutcome> {
 	const entity = stageScene(snapshot).entities.find((entry) => entry.id === entityId);
 	if (!isSceneObjectEntity(entity)) {
@@ -353,7 +375,10 @@ export async function duplicateSceneObject(
 	}
 	const contactMinY = contactForObject(services, entity);
 	if (contactMinY === null) {
-		return { kind: 'refused', message: 'The object has no verified contact to duplicate on the floor.' };
+		return {
+			kind: 'refused',
+			message: 'The object has no verified contact to duplicate on the floor.',
+		};
 	}
 	const allocatedId = `entity-${crypto.randomUUID()}`;
 	const outcome = await acceptFormCommand(
@@ -362,13 +387,13 @@ export async function duplicateSceneObject(
 		entityId,
 		'duplicate-one',
 		{ entityId, contactMinY },
-		allocatedId
+		allocatedId,
 	);
 	if (outcome.kind === 'refused') return { kind: 'refused', message: outcome.message };
 	if (outcome.kind === 'installed') {
 		const reference = sceneEntityReference(
 			allocatedId,
-			services.stage.snapshot().domain.unitRevisions.scene
+			services.stage.snapshot().domain.unitRevisions.scene,
 		);
 		services.stage.setSelection({ ordered: [{ reference }], primary: reference });
 	}
@@ -378,7 +403,7 @@ export async function duplicateSceneObject(
 export async function deleteSceneObject(
 	services: StageAdapterServices,
 	snapshot: ReturnType<StageAdapterServices['stage']['snapshot']>,
-	entityId: string
+	entityId: string,
 ): Promise<SceneObjectCardCommandOutcome> {
 	const entity = stageScene(snapshot).entities.find((entry) => entry.id === entityId);
 	if (!isSceneObjectEntity(entity)) {
@@ -393,11 +418,13 @@ export async function deleteSceneObject(
 export function sceneObjectCardAcceptedText(
 	services: StageAdapterServices,
 	entityId: string,
-	id: SceneObjectCardFieldId
+	id: SceneObjectCardFieldId,
 ): string {
-	const entity = stageScene(services.stage.snapshot()).entities.find((entry) => entry.id === entityId);
+	const entity = stageScene(services.stage.snapshot()).entities.find(
+		(entry) => entry.id === entityId,
+	);
 	return isSceneObjectEntity(entity)
-		? sceneObjectCardFields(entity).find((field) => field.id === id)?.text ?? ''
+		? (sceneObjectCardFields(entity).find((field) => field.id === id)?.text ?? '')
 		: '';
 }
 
@@ -409,9 +436,11 @@ export function sceneObjectCardAcceptedText(
 export async function saveSceneObjectToMyObjects(
 	services: StageAdapterServices,
 	entityId: string,
-	client?: FormLibraryClient
+	client?: FormLibraryClient,
 ): Promise<{ readonly kind: string; readonly message?: string }> {
-	const latest = stageScene(services.stage.snapshot()).entities.find((entry) => entry.id === entityId);
+	const latest = stageScene(services.stage.snapshot()).entities.find(
+		(entry) => entry.id === entityId,
+	);
 	if (latest?.kind !== 'form') {
 		return { kind: 'refused', message: 'That form is no longer accepted; nothing was saved.' };
 	}

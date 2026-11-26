@@ -36,7 +36,11 @@ export const ESCAPE_LADDER = [
 	{ rung: 'lift', owner: 'layout-readings' },
 	// The earlier tool rung keeps the cut. A later Escape puts it back.
 	{ rung: 'slice', owner: 'layout-readings' },
-] as const satisfies readonly { readonly rung: string; readonly owner: WorkspaceOwner; readonly feature?: true }[];
+] as const satisfies readonly {
+	readonly rung: string;
+	readonly owner: WorkspaceOwner;
+	readonly feature?: true;
+}[];
 
 export type EscapeRung = (typeof ESCAPE_LADDER)[number]['rung'];
 
@@ -48,13 +52,16 @@ type EscapeHandler = (context: EscapeContext) => EscapeResult;
 export type FeatureEscapeRegistration = {
 	[Owner in FeatureEscapeRow['owner']]: {
 		readonly id: Owner;
-		readonly escapeRungs: Record<Extract<FeatureEscapeRow, { owner: Owner }>['rung'], EscapeHandler>;
+		readonly escapeRungs: Record<
+			Extract<FeatureEscapeRow, { owner: Owner }>['rung'],
+			EscapeHandler
+		>;
 	};
 }[FeatureEscapeRow['owner']];
 
 export function compileEscapeLadder(
 	builtIn: Record<BuiltInEscapeRung, EscapeHandler>,
-	features: readonly FeatureEscapeRegistration[]
+	features: readonly FeatureEscapeRegistration[],
 ) {
 	const handlers = new Map(Object.entries(builtIn) as [string, EscapeHandler][]);
 	const expected = new Map<string, WorkspaceOwner>();

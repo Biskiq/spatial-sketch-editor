@@ -3,7 +3,16 @@ import { registerDeferredGeneratedField } from './delta';
 import type { Vec3 } from '../kernel/types';
 import type { LayoutVec2 } from './coordinates';
 import type { LayoutDocumentWallFirst } from '../wall/types';
-import type { CompiledCurveSample, CompiledFloor, CompiledOpening, CompiledQueryAabb, CompiledSolidSpan, CompilerFloorSource, LayoutBounds2, LayoutBounds3 } from './types';
+import type {
+	CompiledCurveSample,
+	CompiledFloor,
+	CompiledOpening,
+	CompiledQueryAabb,
+	CompiledSolidSpan,
+	CompilerFloorSource,
+	LayoutBounds2,
+	LayoutBounds3,
+} from './types';
 import { geometryId } from './types';
 import { countWork } from '../kernel/work-observer';
 import type { CacheKeyDependency } from './keys';
@@ -31,15 +40,31 @@ export function emitPhysicalWallQueryRecords(
 	openings: readonly CompiledOpening[],
 	solidSpans: readonly CompiledSolidSpan[],
 	/** Also return the records this Wall contributed (only a session needs them). */
-	collect: boolean
+	collect: boolean,
 ): RetainedQueryRecords | null {
 	const pointsStart = queryBuilder.points.length;
 	const spansStart = queryBuilder.spans.length;
 	const aabbsStart = queryBuilder.aabbs.length;
 	const wallKey = wall.id;
 	queryBuilder.points.push(
-		pointRecordPhysical(floor.id, wall.id, 'vertex', wall.id, 0, [...sampled.samples[0]!.point] as LayoutVec2, wallKey),
-		pointRecordPhysical(floor.id, wall.id, 'vertex', wall.id, 1, [...sampled.samples.at(-1)!.point] as LayoutVec2, wallKey)
+		pointRecordPhysical(
+			floor.id,
+			wall.id,
+			'vertex',
+			wall.id,
+			0,
+			[...sampled.samples[0]!.point] as LayoutVec2,
+			wallKey,
+		),
+		pointRecordPhysical(
+			floor.id,
+			wall.id,
+			'vertex',
+			wall.id,
+			1,
+			[...sampled.samples.at(-1)!.point] as LayoutVec2,
+			wallKey,
+		),
 	);
 	for (let index = 1; index < sampled.samples.length; index += 1) {
 		const start = sampled.samples[index - 1]!;
@@ -58,8 +83,8 @@ export function emitPhysicalWallQueryRecords(
 				undefined,
 				start.t,
 				end.t,
-				wallKey
-			)
+				wallKey,
+			),
 		);
 	}
 	for (const opening of openings) {
@@ -82,11 +107,16 @@ export function emitPhysicalWallQueryRecords(
 				// Canonical opening spans carry the document-global `wallKey`
 				// (`= wallId`) exactly like legacy wall/solid spans; snap/align/hit
 				// group by `wallKey ?? segmentId`, never `segmentId` alone.
-				wallKey
-			)
+				wallKey,
+			),
 		);
 		queryBuilder.aabbs.push(
-			aabb2Record('opening', opening.openingId, ['opening', floor.id, opening.openingId], opening.bounds2)
+			aabb2Record(
+				'opening',
+				opening.openingId,
+				['opening', floor.id, opening.openingId],
+				opening.bounds2,
+			),
 		);
 	}
 	for (const [index, span] of solidSpans.entries()) {
@@ -104,8 +134,8 @@ export function emitPhysicalWallQueryRecords(
 				undefined,
 				undefined,
 				undefined,
-				wallKey
-			)
+				wallKey,
+			),
 		);
 	}
 	if (!collect) return null;
@@ -115,50 +145,52 @@ export function emitPhysicalWallQueryRecords(
 		points: queryBuilder.points.slice(pointsStart),
 		spans: queryBuilder.spans.slice(spansStart),
 		polygons: [],
-		aabbs: queryBuilder.aabbs.slice(aabbsStart)
+		aabbs: queryBuilder.aabbs.slice(aabbsStart),
 	};
 }
 
-
 /** Append one entity's retained query records, preserving their order. */
-export function pushRetainedRecords(builder: QueryGeometryBuilder, records: RetainedQueryRecords): void {
+export function pushRetainedRecords(
+	builder: QueryGeometryBuilder,
+	records: RetainedQueryRecords,
+): void {
 	for (const record of records.points) builder.points.push(record);
 	for (const record of records.spans) builder.spans.push(record);
 	for (const record of records.polygons) builder.polygons.push(record);
 	for (const record of records.aabbs) builder.aabbs.push(record);
 }
 
-
 /** A Wall's own extent expanded by its resolved end geometry (plan). */
-export function expandBounds2(base: LayoutBounds2, expansion: { min: LayoutVec2; max: LayoutVec2 }): LayoutBounds2 {
+export function expandBounds2(
+	base: LayoutBounds2,
+	expansion: { min: LayoutVec2; max: LayoutVec2 },
+): LayoutBounds2 {
 	return {
 		min: [Math.min(base.min[0], expansion.min[0]), Math.min(base.min[1], expansion.min[1])],
-		max: [Math.max(base.max[0], expansion.max[0]), Math.max(base.max[1], expansion.max[1])]
+		max: [Math.max(base.max[0], expansion.max[0]), Math.max(base.max[1], expansion.max[1])],
 	};
 }
-
 
 /** A Wall's own extent expanded by its resolved end geometry (world). */
 export function expandBounds3(
 	base: LayoutBounds3,
 	expansion: { min: LayoutVec2; max: LayoutVec2 },
 	floorElevation: number,
-	height: number
+	height: number,
 ): LayoutBounds3 {
 	return {
 		min: [
 			Math.min(base.min[0], expansion.min[0]),
 			Math.min(base.min[1], floorElevation),
-			Math.min(base.min[2], expansion.min[1])
+			Math.min(base.min[2], expansion.min[1]),
 		],
 		max: [
 			Math.max(base.max[0], expansion.max[0]),
 			Math.max(base.max[1], floorElevation + height),
-			Math.max(base.max[2], expansion.max[1])
-		]
+			Math.max(base.max[2], expansion.max[1]),
+		],
 	};
 }
-
 
 function pointRecordPhysical(
 	floorId: string,
@@ -167,7 +199,7 @@ function pointRecordPhysical(
 	sourceId: string,
 	sourceIndex: number,
 	point: LayoutVec2,
-	wallKey?: string
+	wallKey?: string,
 ) {
 	const parts = ['query-point', floorId, segmentId, kind, sourceId];
 	return {
@@ -180,10 +212,9 @@ function pointRecordPhysical(
 		floorId,
 		segmentId,
 		sourceIndex,
-		...(wallKey ? { wallKey } : {})
+		...(wallKey ? { wallKey } : {}),
 	};
 }
-
 
 function spanRecordPhysical(
 	kind: 'wall' | 'opening' | 'solid',
@@ -198,9 +229,14 @@ function spanRecordPhysical(
 	openingId?: string,
 	startT?: number,
 	endT?: number,
-	wallKey?: string
+	wallKey?: string,
 ) {
-	const aabb = bounds2(Math.min(start[0], end[0]), Math.min(start[1], end[1]), Math.max(start[0], end[0]), Math.max(start[1], end[1]));
+	const aabb = bounds2(
+		Math.min(start[0], end[0]),
+		Math.min(start[1], end[1]),
+		Math.max(start[0], end[0]),
+		Math.max(start[1], end[1]),
+	);
 	return {
 		id: geometryId(parts),
 		cacheKey: cacheKeyOf([
@@ -214,7 +250,7 @@ function spanRecordPhysical(
 			sourceId,
 			floorId,
 			segmentId,
-			openingId
+			openingId,
 		]),
 		kind,
 		start,
@@ -228,12 +264,14 @@ function spanRecordPhysical(
 		floorId,
 		segmentId,
 		...(openingId ? { openingId } : {}),
-		...(wallKey ? { wallKey } : {})
+		...(wallKey ? { wallKey } : {}),
 	};
 }
 
-
-export function wallBounds2(samples: readonly CompiledCurveSample[], thickness: number): LayoutBounds2 {
+export function wallBounds2(
+	samples: readonly CompiledCurveSample[],
+	thickness: number,
+): LayoutBounds2 {
 	let minX = Infinity;
 	let minZ = Infinity;
 	let maxX = -Infinity;
@@ -248,16 +286,22 @@ export function wallBounds2(samples: readonly CompiledCurveSample[], thickness: 
 	return bounds2(minX, minZ, maxX, maxZ);
 }
 
-
-export function wallBounds3(samples: readonly CompiledCurveSample[], thickness: number, floorElevation: number, ceilingElevation: number): LayoutBounds3 {
+export function wallBounds3(
+	samples: readonly CompiledCurveSample[],
+	thickness: number,
+	floorElevation: number,
+	ceilingElevation: number,
+): LayoutBounds3 {
 	const bounds2 = wallBounds2(samples, thickness);
-	return { min: [bounds2.min[0], floorElevation, bounds2.min[1]], max: [bounds2.max[0], ceilingElevation, bounds2.max[1]] };
+	return {
+		min: [bounds2.min[0], floorElevation, bounds2.min[1]],
+		max: [bounds2.max[0], ceilingElevation, bounds2.max[1]],
+	};
 }
-
 
 export function roomBounds2FromWalls(
 	walls: readonly { readonly bounds2: LayoutBounds2 }[],
-	floorPolygon: readonly LayoutVec2[]
+	floorPolygon: readonly LayoutVec2[],
 ): LayoutBounds2 {
 	const floorBounds = polygonBounds2(floorPolygon);
 	if (!floorBounds) {
@@ -286,7 +330,6 @@ export function roomBounds2FromWalls(
 	return bounds2(minX, minZ, maxX, maxZ);
 }
 
-
 export function roomBounds3FromParts(
 	floorPolygon: readonly LayoutVec2[],
 	ceilingPolygon: readonly LayoutVec2[],
@@ -294,18 +337,18 @@ export function roomBounds3FromParts(
 	floorElevation: number,
 	ceilingElevation: number,
 
-	overhead: 'closed' | 'open-to-sky' = 'closed'
+	overhead: 'closed' | 'open-to-sky' = 'closed',
 ): LayoutBounds3 {
 	const min: Vec3 = [Infinity, Infinity, Infinity];
 	const max: Vec3 = [-Infinity, -Infinity, -Infinity];
 	for (const [x, z] of floorPolygon) includeBounds3(min, max, [x, floorElevation, z]);
-	if (overhead === 'closed') for (const [x, z] of ceilingPolygon) {
-		includeBounds3(min, max, [x, ceilingElevation, z]);
-	}
+	if (overhead === 'closed')
+		for (const [x, z] of ceilingPolygon) {
+			includeBounds3(min, max, [x, ceilingElevation, z]);
+		}
 	for (const wall of walls) includeBounds3(min, max, wall.bounds3.min, wall.bounds3.max);
 	return finiteBounds3(min, max) ?? { min: [0, floorElevation, 0], max: [0, ceilingElevation, 0] };
 }
-
 
 export function includeBounds3(min: Vec3, max: Vec3, ...points: readonly Vec3[]): void {
 	for (const point of points) {
@@ -318,12 +361,10 @@ export function includeBounds3(min: Vec3, max: Vec3, ...points: readonly Vec3[])
 	}
 }
 
-
 export function finiteBounds3(min: Vec3, max: Vec3): LayoutBounds3 | null {
 	if (![...min, ...max].every(Number.isFinite)) return null;
 	return { min: [...min] as Vec3, max: [...max] as Vec3 };
 }
-
 
 export function pointRecord(
 	floorId: string,
@@ -333,7 +374,7 @@ export function pointRecord(
 	sourceId: string,
 	sourceIndex: number,
 	point: LayoutVec2,
-	wallKey?: string
+	wallKey?: string,
 ) {
 	const parts = ['query-point', floorId, roomId, segmentId, kind, sourceId];
 	return {
@@ -347,10 +388,9 @@ export function pointRecord(
 		roomId,
 		segmentId,
 		sourceIndex,
-		...(wallKey ? { wallKey } : {})
+		...(wallKey ? { wallKey } : {}),
 	};
 }
-
 
 export function spanRecord(
 	kind: 'wall' | 'opening' | 'solid',
@@ -366,9 +406,14 @@ export function spanRecord(
 	openingId?: string,
 	startT?: number,
 	endT?: number,
-	wallKey?: string
+	wallKey?: string,
 ) {
-	const aabb = bounds2(Math.min(start[0], end[0]), Math.min(start[1], end[1]), Math.max(start[0], end[0]), Math.max(start[1], end[1]));
+	const aabb = bounds2(
+		Math.min(start[0], end[0]),
+		Math.min(start[1], end[1]),
+		Math.max(start[0], end[0]),
+		Math.max(start[1], end[1]),
+	);
 	// `wallKey` derives from parts already in the cache key (floor/room/
 	// segment), so it deliberately does not participate in the cache key:
 	// its presence never changes a cache key.
@@ -386,7 +431,7 @@ export function spanRecord(
 			floorId,
 			roomId,
 			segmentId,
-			openingId
+			openingId,
 		]),
 		kind,
 		start,
@@ -401,17 +446,16 @@ export function spanRecord(
 		roomId,
 		segmentId,
 		...(openingId ? { openingId } : {}),
-		...(wallKey ? { wallKey } : {})
+		...(wallKey ? { wallKey } : {}),
 	};
 }
-
 
 export function polygonRecord(
 	kind: 'room-floor' | 'object-footprint',
 	parts: readonly string[],
 	polygon: readonly LayoutVec2[],
 	sourceId: string,
-	metadata: { floorId?: string; roomId?: string; objectId?: string }
+	metadata: { floorId?: string; roomId?: string; objectId?: string },
 ) {
 	const aabb = polygonBounds2(polygon) ?? bounds2(0, 0, 0, 0);
 	return {
@@ -421,26 +465,34 @@ export function polygonRecord(
 		polygon: [...polygon] as LayoutVec2[],
 		aabb,
 		sourceId,
-		...metadata
+		...metadata,
 	};
 }
 
-
-export function aabbRecord(kind: CompiledQueryAabb['kind'], sourceId: string, parts: readonly string[], min: Vec3, max: Vec3): CompiledQueryAabb {
+export function aabbRecord(
+	kind: CompiledQueryAabb['kind'],
+	sourceId: string,
+	parts: readonly string[],
+	min: Vec3,
+	max: Vec3,
+): CompiledQueryAabb {
 	return aabb2Record(kind, sourceId, parts, bounds2(min[0], min[2], max[0], max[2]));
 }
 
-
-export function aabb2Record(kind: CompiledQueryAabb['kind'], sourceId: string, parts: readonly string[], aabb: LayoutBounds2): CompiledQueryAabb {
+export function aabb2Record(
+	kind: CompiledQueryAabb['kind'],
+	sourceId: string,
+	parts: readonly string[],
+	aabb: LayoutBounds2,
+): CompiledQueryAabb {
 	return {
 		id: geometryId(parts),
 		cacheKey: cacheKeyOf([...parts, aabb.min, aabb.max]),
 		kind,
 		aabb,
-		sourceId
+		sourceId,
 	};
 }
-
 
 export function emitBoundsAabb(
 	queryBuilder: QueryGeometryBuilder,
@@ -448,25 +500,25 @@ export function emitBoundsAabb(
 	sourceId: string,
 	parts: readonly string[],
 	min: Vec3,
-	max: Vec3
+	max: Vec3,
 ): void {
 	if (![...min, ...max].every(Number.isFinite)) return;
 	queryBuilder.aabbs.push(aabbRecord(kind, sourceId, parts, min, max));
 }
-
 
 export function buildWallFirstFloorAndAggregateAabbs(
 	floor: LayoutDocumentWallFirst['floor'],
 	floorRoomIds: readonly string[],
 	floorBounds: LayoutBounds3 | null,
 	documentBounds: LayoutBounds3 | null,
-	reuse?: LayoutCompileReuse
+	reuse?: LayoutCompileReuse,
 ): FloorAndAabbsUnit {
 	const retainedFloor = reuse?.retainedFloor ?? null;
 	const sameRoomIds =
 		retainedFloor !== null &&
-		(retainedFloor.roomIds === floorRoomIds || (retainedFloor.roomIds.length === floorRoomIds.length &&
-		retainedFloor.roomIds.every((id, index) => id === floorRoomIds[index])));
+		(retainedFloor.roomIds === floorRoomIds ||
+			(retainedFloor.roomIds.length === floorRoomIds.length &&
+				retainedFloor.roomIds.every((id, index) => id === floorRoomIds[index])));
 	const roomIdsDep: CacheKeyDependency =
 		sameRoomIds && retainedFloor !== null
 			? retainedFloor.roomIdsDep
@@ -490,13 +542,16 @@ export function buildWallFirstFloorAndAggregateAabbs(
 		compiledFloor = {
 			id: geometryId(['floor', floor.id]),
 			get cacheKey() {
-				if (floorKey === undefined) { countWork('cache-key:deferred-floor-built'); floorKey = cacheKeyOf(keyInputs); }
+				if (floorKey === undefined) {
+					countWork('cache-key:deferred-floor-built');
+					floorKey = cacheKeyOf(keyInputs);
+				}
 				return floorKey;
 			},
 			floorId: floor.id,
 			elevation: floor.elevation,
 			roomIds: floorRoomIds,
-			bounds3: floorBounds
+			bounds3: floorBounds,
 		};
 		registerDeferredGeneratedField(compiledFloor, 'cacheKey');
 		floorAabb = floorBounds
@@ -510,7 +565,7 @@ export function buildWallFirstFloorAndAggregateAabbs(
 				roomIdsDep,
 				bounds3: floorBounds,
 				compiled: compiledFloor,
-				aabb: floorAabb
+				aabb: floorAabb,
 			};
 		}
 	}

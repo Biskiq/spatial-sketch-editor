@@ -58,7 +58,7 @@ export function createPlanBoxIndex(boxes: readonly PlanBox[], cellSize?: number)
 		x0: Math.floor(box.minX / resolvedCell),
 		x1: Math.floor(box.maxX / resolvedCell),
 		z0: Math.floor(box.minZ / resolvedCell),
-		z1: Math.floor(box.maxZ / resolvedCell)
+		z1: Math.floor(box.maxZ / resolvedCell),
 	});
 
 	for (const [index, box] of boxes.entries()) {
@@ -130,13 +130,19 @@ export function createPlanBoxIndex(boxes: readonly PlanBox[], cellSize?: number)
 			} else {
 				// A query box that spans more cells than the scan bound: check every
 				// celled entry. Only a very large query pays this, and it pays once.
-				for (const list of cells.values()) { countWork('grid:cell-test'); for (const index of list) consider(index); }
+				for (const list of cells.values()) {
+					countWork('grid:cell-test');
+					for (const index of list) consider(index);
+				}
 			}
 			for (const index of wide) consider(index);
-			found.sort((a, b) => { countWork('grid:sort-compare'); return a - b; });
+			found.sort((a, b) => {
+				countWork('grid:sort-compare');
+				return a - b;
+			});
 			countWork('grid:result-record', found.length);
 			return found;
-		}
+		},
 	};
 }
 

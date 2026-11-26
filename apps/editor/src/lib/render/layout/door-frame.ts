@@ -27,6 +27,6 @@ export function doorFrameBoxes(input: {
 	return [
 		{ center: [-postX, postHeight / 2, 0], size: [member, postHeight, depth] },
 		{ center: [postX, postHeight / 2, 0], size: [member, postHeight, depth] },
-		{ center: [0, input.height - member / 2, 0], size: [input.width, member, depth] }
+		{ center: [0, input.height - member / 2, 0], size: [input.width, member, depth] },
 	];
 }

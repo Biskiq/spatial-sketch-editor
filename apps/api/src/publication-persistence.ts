@@ -67,7 +67,7 @@ const PUBLICATION_COLUMNS = `
 export async function getPublicationStatus(
 	db: Pick<DatabasePool, 'query'>,
 	ownerId: string,
-	projectId: string
+	projectId: string,
 ): Promise<PublicationStatus> {
 	const owned = await queryRows<{ latestVersion: unknown }>(
 		db,
@@ -78,7 +78,7 @@ WHERE p.id = $1 AND p.owner_id = $2
 		SELECT 1 FROM project_versions v
 		WHERE v.project_id = p.id AND v.source_format = $3
 	)`,
-		[projectId, ownerId, UNIT_ENVELOPE_SOURCE_FORMAT]
+		[projectId, ownerId, UNIT_ENVELOPE_SOURCE_FORMAT],
 	);
 	if (!owned[0]) throw new ProjectNotFoundError();
 	const rows = await queryRows<PublicationRow>(
@@ -86,7 +86,7 @@ WHERE p.id = $1 AND p.owner_id = $2
 		`SELECT ${PUBLICATION_COLUMNS}
 FROM publications p
 WHERE p.project_id = $1`,
-		[projectId]
+		[projectId],
 	);
 	return toStatus(rows[0] ?? null, readSafeInteger(owned[0].latestVersion));
 }
@@ -100,7 +100,7 @@ export async function unpublishVersion(
 	pool: DatabasePool,
 	ownerId: string,
 	projectId: string,
-	expectedRevision: number
+	expectedRevision: number,
 ): Promise<PublicationStatus> {
 	return withPublicationTransaction(pool, async (db) => {
 		const locked = await queryRows<{ latestVersion: unknown }>(
@@ -113,7 +113,7 @@ WHERE p.id = $1 AND p.owner_id = $2
 		WHERE v.project_id = p.id AND v.source_format = $3
 	)
 FOR UPDATE`,
-			[projectId, ownerId, UNIT_ENVELOPE_SOURCE_FORMAT]
+			[projectId, ownerId, UNIT_ENVELOPE_SOURCE_FORMAT],
 		);
 		if (!locked[0]) throw new ProjectNotFoundError();
 		const currentVersion = readSafeInteger(locked[0].latestVersion);
@@ -124,13 +124,14 @@ FOR UPDATE`,
 FROM publications p
 WHERE p.project_id = $1
 FOR UPDATE`,
-			[projectId]
+			[projectId],
 		);
 		const current = existing[0] ?? null;
 		if (!current) throw new PublicationNotFoundError();
 		const currentRevision = readSafeInteger(current.revision);
 		if (expectedRevision !== currentRevision) throw new PublicationConflictError(currentRevision);
-		if (readNullableVersion(current.activeVersion) === null) return toStatus(current, currentVersion);
+		if (readNullableVersion(current.activeVersion) === null)
+			return toStatus(current, currentVersion);
 
 		const updated = await queryRows<PublicationRow>(
 			db,
@@ -138,7 +139,7 @@ FOR UPDATE`,
 SET active_version = NULL, revision = revision + 1, updated_at = now()
 WHERE project_id = $1
 RETURNING ${PUBLICATION_COLUMNS}`,
-			[projectId]
+			[projectId],
 		);
 		if (!updated[0]) throw new Error('Publication update returned no row');
 		return toStatus(updated[0], currentVersion);
@@ -147,7 +148,7 @@ RETURNING ${PUBLICATION_COLUMNS}`,
 
 async function withPublicationTransaction<T>(
 	pool: DatabasePool,
-	work: (db: DatabaseClient) => Promise<T>
+	work: (db: DatabaseClient) => Promise<T>,
 ): Promise<T> {
 	if (!pool.connect) throw new Error('Database transactions are unavailable');
 	const db = await pool.connect();
@@ -176,7 +177,7 @@ function toStatus(row: PublicationRow | null, currentVersion: number): Publicati
 			revision: 0,
 			currentVersion,
 			createdAt: null,
-			updatedAt: null
+			updatedAt: null,
 		};
 	}
 	return {
@@ -185,18 +186,21 @@ function toStatus(row: PublicationRow | null, currentVersion: number): Publicati
 		revision: readSafeInteger(row.revision),
 		currentVersion,
 		createdAt: readTimestamp(row.createdAt),
-		updatedAt: readTimestamp(row.updatedAt)
+		updatedAt: readTimestamp(row.updatedAt),
 	};
 }
 
 function readString(value: unknown): string {
-	if (typeof value !== 'string' || value.length === 0) throw new Error('Database row contained an invalid string');
+	if (typeof value !== 'string' || value.length === 0)
+		throw new Error('Database row contained an invalid string');
 	return value;
 }
 
 function readSafeInteger(value: unknown): number {
-	const result = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN;
-	if (!Number.isSafeInteger(result) || result < 0) throw new Error('Database row contained an invalid version');
+	const result =
+		typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN;
+	if (!Number.isSafeInteger(result) || result < 0)
+		throw new Error('Database row contained an invalid version');
 	return result;
 }
 

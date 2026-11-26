@@ -23,18 +23,11 @@
  * the Paper layer is mounted only when Paper is the visible reading, and the
  * mat's mesh ink is a separate component that is unmounted instead.
  */
-import {
-	Color,
-	DoubleSide,
-	Group,
-	Mesh,
-	MeshBasicMaterial,
-	type Material
-} from 'three';
+import { Color, DoubleSide, Group, Mesh, MeshBasicMaterial, type Material } from 'three';
 import {
 	createPaperFillGeometry,
 	unionPaperFillPolygons,
-	type PaperFillPolygons
+	type PaperFillPolygons,
 } from './paper-fill-geometry';
 import { Line2NodeMaterial } from 'three/webgpu';
 import { Line2 } from 'three/addons/lines/webgpu/Line2.js';
@@ -53,7 +46,7 @@ import {
 	STAGE_OVERLAY_LAYER,
 	unionOutline,
 	type PaperPlanDrawing,
-	type PaperSegment
+	type PaperSegment,
 } from './paper-plan';
 
 /** PLATE's selection gold: the translucent fill under a selected subject. */
@@ -84,7 +77,7 @@ export const PAPER_MARK_LAYER = {
 	eraseHalo: PAPER_LAYER.sceneFootprint + 13,
 	erase: PAPER_LAYER.sceneFootprint + 14,
 	paintHalo: PAPER_LAYER.sceneFootprint + 13,
-	paint: PAPER_LAYER.sceneFootprint + 14
+	paint: PAPER_LAYER.sceneFootprint + 14,
 } as const;
 
 export type PaperMarkTone = 'selection' | 'hover' | 'erase' | 'paint';
@@ -130,12 +123,19 @@ const EMPTY_GEOMETRY: PaperMarkGeometry = { fills: [], contours: [] };
  * internal edges while the union outline supplies the real perimeter.
  */
 function unionSelectedFills(
-	fills: readonly PaperPlanDrawing['fills'][number][]
+	fills: readonly PaperPlanDrawing['fills'][number][],
 ): { readonly fill: PaperFillPolygons; readonly cut: boolean }[] {
-	const groups = new Map<string, { elevationMeters: number; cut: boolean; polygons: (readonly LayoutVec2[])[] }>();
+	const groups = new Map<
+		string,
+		{ elevationMeters: number; cut: boolean; polygons: (readonly LayoutVec2[])[] }
+	>();
 	for (const fill of fills) {
 		const key = `${fill.treatment}:${fill.elevationMeters}`;
-		const group = groups.get(key) ?? { elevationMeters: fill.elevationMeters, cut: fill.treatment === 'cut', polygons: [] };
+		const group = groups.get(key) ?? {
+			elevationMeters: fill.elevationMeters,
+			cut: fill.treatment === 'cut',
+			polygons: [],
+		};
 		group.polygons.push(...fill.polygons);
 		groups.set(key, group);
 	}
@@ -145,9 +145,9 @@ function unionSelectedFills(
 		unioned.push({
 			fill: {
 				elevationMeters: group.elevationMeters,
-				...(union ?? { polygons: group.polygons })
+				...(union ?? { polygons: group.polygons }),
 			},
-			cut: group.cut
+			cut: group.cut,
 		});
 	}
 	return unioned;
@@ -155,7 +155,7 @@ function unionSelectedFills(
 
 function groupByElevation<T>(
 	entries: readonly T[],
-	elevationOf: (entry: T) => number
+	elevationOf: (entry: T) => number,
 ): Map<number, T[]> {
 	const groups = new Map<number, T[]>();
 	for (const entry of entries) {
@@ -187,33 +187,53 @@ function geometryOf(drawing: PaperPlanDrawing, entry: StageSelectionEntry): Pape
 		const contours: PaperMarkContour[] = [];
 		for (const cut of [true, false]) {
 			const group = fills.filter((fill) => (fill.treatment === 'cut') === cut);
-			for (const [elevationMeters, level] of groupByElevation(group, (fill) => fill.elevationMeters)) {
+			for (const [elevationMeters, level] of groupByElevation(
+				group,
+				(fill) => fill.elevationMeters,
+			)) {
 				const segments = unionOutline(level.flatMap((fill) => fill.polygons));
 				const roomFloor = !cut && level.some((fill) => fill.treatment === 'room-floor');
-				contours.push({ elevationMeters, segments, ...(cut ? { cut } : {}), ...(roomFloor ? { roomFloor } : {}) });
+				contours.push({
+					elevationMeters,
+					segments,
+					...(cut ? { cut } : {}),
+					...(roomFloor ? { roomFloor } : {}),
+				});
 			}
 		}
 		// A cut line duplicates the fill boundary (and would draw one tick per
 		// compiled Wall span); projected, hidden and symbol lines are extra geometry
 		// the subject still owns, so they remain part of its identity.
-		const extra = fills.length > 0 ? lines.filter((candidate) => candidate.stream !== 'cut') : lines;
-		const lineGroups = new Map<string, { elevationMeters: number; dashed: boolean; segments: PaperSegment[] }>();
+		const extra =
+			fills.length > 0 ? lines.filter((candidate) => candidate.stream !== 'cut') : lines;
+		const lineGroups = new Map<
+			string,
+			{ elevationMeters: number; dashed: boolean; segments: PaperSegment[] }
+		>();
 		for (const line of extra) {
 			const dashed = line.dashed ?? PAPER_LINE_STYLE[line.treatment].dashed;
 			const key = `${line.elevationMeters}:${dashed}`;
-			const group = lineGroups.get(key) ?? { elevationMeters: line.elevationMeters, dashed, segments: [] };
+			const group = lineGroups.get(key) ?? {
+				elevationMeters: line.elevationMeters,
+				dashed,
+				segments: [],
+			};
 			group.segments.push(...line.segments);
 			lineGroups.set(key, group);
 		}
 		for (const group of lineGroups.values()) {
-			contours.push({ elevationMeters: group.elevationMeters, segments: group.segments, dashed: group.dashed });
+			contours.push({
+				elevationMeters: group.elevationMeters,
+				segments: group.segments,
+				dashed: group.dashed,
+			});
 		}
 		const painted = unionSelectedFills(fills);
 		return {
 			fills: painted.map((entry) => entry.fill),
 			cutFills: painted.filter((entry) => entry.cut).map((entry) => entry.fill),
 			contours,
-			...(entry.reference.subject.kind === 'opening' ? { selectedOpening: true } : {})
+			...(entry.reference.subject.kind === 'opening' ? { selectedOpening: true } : {}),
 		};
 	}
 	if (entry.reference.domain === 'scene') {
@@ -226,19 +246,19 @@ function geometryOf(drawing: PaperPlanDrawing, entry: StageSelectionEntry): Pape
 		// twice, and a single retained ring is drawn exactly as Paper kept it.
 		const fillable = footprints.filter((footprint) => footprint.polygons.length > 0);
 		const fills: PaperFillPolygons[] = [
-			...groupByElevation(fillable, (footprint) => footprint.elevationMeters)
+			...groupByElevation(fillable, (footprint) => footprint.elevationMeters),
 		].map(([elevationMeters, group]) => {
 			const polygons = group.flatMap((footprint) => footprint.polygons);
 			if (polygons.length === 1) return { elevationMeters, polygons };
 			const union = unionPaperFillPolygons(polygons);
 			return union === null ? { elevationMeters, polygons } : { elevationMeters, ...union };
 		});
-		const contours = [...groupByElevation(footprints, (footprint) => footprint.elevationMeters)].map(
-			([elevationMeters, group]) => ({
-				elevationMeters,
-				segments: group.flatMap((footprint) => footprint.segments)
-			})
-		);
+		const contours = [
+			...groupByElevation(footprints, (footprint) => footprint.elevationMeters),
+		].map(([elevationMeters, group]) => ({
+			elevationMeters,
+			segments: group.flatMap((footprint) => footprint.segments),
+		}));
 		return { fills, contours };
 	}
 	return EMPTY_GEOMETRY;
@@ -249,14 +269,24 @@ export function paperMarkSet(
 	drawing: PaperPlanDrawing,
 	selection: StageSelectionEntry | null,
 	hover: StageSelectionEntry | null,
-	hoverTone: 'hover' | 'erase' | 'paint' = 'hover'
+	hoverTone: 'hover' | 'erase' | 'paint' = 'hover',
 ): PaperMarkSet {
 	const selected = selection === null ? EMPTY_GEOMETRY : geometryOf(drawing, selection);
 	if (hoverTone === 'erase') {
-		return { selection: selected, hover: EMPTY_GEOMETRY, erase: hover === null ? EMPTY_GEOMETRY : geometryOf(drawing, hover), paint: EMPTY_GEOMETRY };
+		return {
+			selection: selected,
+			hover: EMPTY_GEOMETRY,
+			erase: hover === null ? EMPTY_GEOMETRY : geometryOf(drawing, hover),
+			paint: EMPTY_GEOMETRY,
+		};
 	}
 	if (hoverTone === 'paint') {
-		return { selection: selected, hover: EMPTY_GEOMETRY, erase: EMPTY_GEOMETRY, paint: hover === null ? EMPTY_GEOMETRY : geometryOf(drawing, hover) };
+		return {
+			selection: selected,
+			hover: EMPTY_GEOMETRY,
+			erase: EMPTY_GEOMETRY,
+			paint: hover === null ? EMPTY_GEOMETRY : geometryOf(drawing, hover),
+		};
 	}
 	const hovered =
 		hover === null || (selection !== null && sameReference(hover.reference, selection.reference))
@@ -272,10 +302,10 @@ export type PaperMarkSceneResources = {
 	dispose(): void;
 };
 
-type FadeEntry = { readonly material: Material & { opacity: number }; readonly baseOpacity: number;
+type FadeEntry = {
+	readonly material: Material & { opacity: number };
+	readonly baseOpacity: number;
 };
-
-
 
 function linePositions(geometry: PaperMarkGeometry): number[][] {
 	const positions: number[][] = [];
@@ -288,7 +318,7 @@ function linePositions(geometry: PaperMarkGeometry): number[][] {
 				start[1],
 				end[0],
 				contour.elevationMeters,
-				end[1]
+				end[1],
 			);
 		}
 		for (const chain of contourPolylines(segments)) positions.push(Array.from(chain));
@@ -305,7 +335,7 @@ function linePositions(geometry: PaperMarkGeometry): number[][] {
  */
 export function createPaperMarkScene(
 	marks: PaperMarkSet,
-	_resolution: readonly [number, number]
+	_resolution: readonly [number, number],
 ): PaperMarkSceneResources {
 	const group = new Group();
 	group.name = 'StagePaperMarks';
@@ -319,13 +349,13 @@ export function createPaperMarkScene(
 		widthCssPx: number,
 		opacity: number,
 		renderOrder: number,
-		dashed = false
+		dashed = false,
 	): void => {
 		for (const positions of linePositions(geometry)) {
 			const lineGeometry = new LineGeometry();
 			lineGeometry.setPositions(new Float32Array(positions));
 			const material = new Line2NodeMaterial({
-			fog: false,
+				fog: false,
 				color: new Color(ink).getHex(),
 				linewidth: widthCssPx,
 				transparent: true,
@@ -336,7 +366,7 @@ export function createPaperMarkScene(
 				toneMapped: false,
 				dashed,
 				// Dash lengths are world meters on the sheet.
-				...(dashed ? { dashSize: 0.12, gapSize: 0.08 } : {})
+				...(dashed ? { dashSize: 0.12, gapSize: 0.08 } : {}),
 			});
 			const object = new Line2(lineGeometry, material);
 			if (dashed) object.computeLineDistances();
@@ -351,19 +381,30 @@ export function createPaperMarkScene(
 
 	// Hover: a restrained light contour held by the vocabulary's dark halo, so it
 	// reads over vellum and over a cut band without ever borrowing selection gold.
-	const hoveredRoom = { fills: [], contours: marks.hover.contours.filter((contour) => contour.roomFloor) };
-	const hoverLines = { fills: [], contours: marks.hover.contours.filter((contour) => !contour.roomFloor) };
+	const hoveredRoom = {
+		fills: [],
+		contours: marks.hover.contours.filter((contour) => contour.roomFloor),
+	};
+	const hoverLines = {
+		fills: [],
+		contours: marks.hover.contours.filter((contour) => !contour.roomFloor),
+	};
 	addLine(hoverLines, PAPER_HOVER_INK, 2.5, 0.4, PAPER_MARK_LAYER.hoverHalo);
 	addLine(hoverLines, PAPER_HOVER_INK, 2.5, 1, PAPER_MARK_LAYER.hover);
 	addLine(hoveredRoom, PAPER_MARK_HALO_INK, 2, 0.5, PAPER_MARK_LAYER.roomContour);
 	// A Room's contour is under its Walls, so a faint tint is what shows the hover.
-	const roomHoverGeometry = hoveredRoom.contours.length > 0 ? createPaperFillGeometry(marks.hover.fills) : null;
+	const roomHoverGeometry =
+		hoveredRoom.contours.length > 0 ? createPaperFillGeometry(marks.hover.fills) : null;
 	if (roomHoverGeometry !== null) {
 		const material = new MeshBasicMaterial({
 			fog: false,
 			color: new Color(PAPER_MARK_HALO_INK).getHex(),
-			side: DoubleSide, transparent: true, opacity: 0.08,
-			depthTest: false, depthWrite: false, toneMapped: false
+			side: DoubleSide,
+			transparent: true,
+			opacity: 0.08,
+			depthTest: false,
+			depthWrite: false,
+			toneMapped: false,
 		});
 		const mesh = new Mesh(roomHoverGeometry, material);
 		mesh.renderOrder = PAPER_MARK_LAYER.selectionTint;
@@ -374,16 +415,19 @@ export function createPaperMarkScene(
 		fades.push({ material, baseOpacity: material.opacity });
 	}
 
-	const tintGeometry = createPaperFillGeometry(marks.selection.fills.filter(
-			(fill) => !marks.selection.cutFills?.includes(fill)
-		)
+	const tintGeometry = createPaperFillGeometry(
+		marks.selection.fills.filter((fill) => !marks.selection.cutFills?.includes(fill)),
 	);
 	if (tintGeometry !== null) {
 		const material = new MeshBasicMaterial({
 			fog: false,
 			color: new Color(PAPER_SELECTION_INK).getHex(),
-			side: DoubleSide, transparent: true, opacity: 0.22,
-			depthTest: false, depthWrite: false, toneMapped: false
+			side: DoubleSide,
+			transparent: true,
+			opacity: 0.22,
+			depthTest: false,
+			depthWrite: false,
+			toneMapped: false,
 		});
 		const mesh = new Mesh(tintGeometry, material);
 		mesh.renderOrder = PAPER_MARK_LAYER.selectionTint;
@@ -405,7 +449,7 @@ export function createPaperMarkScene(
 			opacity: 1,
 			depthTest: false,
 			depthWrite: false,
-			toneMapped: false
+			toneMapped: false,
 		});
 		const mesh = new Mesh(cutGeometry, material);
 		mesh.renderOrder = PAPER_MARK_LAYER.selectionHalo - 0.1;
@@ -422,7 +466,7 @@ export function createPaperMarkScene(
 		for (const dashed of [false, true]) {
 			const symbol = {
 				fills: [],
-				contours: marks.selection.contours.filter((contour) => contour.dashed === dashed)
+				contours: marks.selection.contours.filter((contour) => contour.dashed === dashed),
 			};
 			addLine(symbol, PAPER_SELECTION_INK, 2, 1, PAPER_MARK_LAYER.selectionLine, dashed);
 		}
@@ -430,16 +474,28 @@ export function createPaperMarkScene(
 		// Selection: the dark-gold edge over the same dark halo as
 		// hover. The tint above sits under the cut poché, so a subject's identity reads
 		// without hiding the Plan.
-		const room = { fills: [], contours: marks.selection.contours.filter((contour) => contour.roomFloor) };
+		const room = {
+			fills: [],
+			contours: marks.selection.contours.filter((contour) => contour.roomFloor),
+		};
 		addLine(room, PAPER_MARK_HALO_INK, 4.5, 0.9, PAPER_MARK_LAYER.roomContourHalo);
 		addLine(room, PAPER_SELECTION_EDGE_INK, 2.5, 1, PAPER_MARK_LAYER.roomContour);
-		const plain = { fills: [], contours: marks.selection.contours.filter((contour) => !contour.cut && !contour.roomFloor) };
+		const plain = {
+			fills: [],
+			contours: marks.selection.contours.filter((contour) => !contour.cut && !contour.roomFloor),
+		};
 		addLine(plain, PAPER_MARK_HALO_INK, 4.5, 0.9, PAPER_MARK_LAYER.selectionHalo);
 		addLine(plain, PAPER_SELECTION_EDGE_INK, 2.5, 1, PAPER_MARK_LAYER.selectionLine);
 		// A cut Wall: no tint, so its poché stays crisp black. Neither gold holds on both
 		// Paper and ink, so the contour is both.
 		const cut = { fills: [], contours: marks.selection.contours.filter((contour) => contour.cut) };
-		addLine(cut, PAPER_SELECTION_EDGE_INK, PAPER_CUT_SELECTION_EDGE_WIDTH_CSS, 1, PAPER_MARK_LAYER.selectionHalo);
+		addLine(
+			cut,
+			PAPER_SELECTION_EDGE_INK,
+			PAPER_CUT_SELECTION_EDGE_WIDTH_CSS,
+			1,
+			PAPER_MARK_LAYER.selectionHalo,
+		);
 	}
 
 	// Erase: red dashes over a dark halo, above the selection it may be naming.
@@ -460,6 +516,6 @@ export function createPaperMarkScene(
 			for (const disposable of disposables) disposable.dispose();
 			fades.length = 0;
 			disposables.length = 0;
-		}
+		},
 	};
 }

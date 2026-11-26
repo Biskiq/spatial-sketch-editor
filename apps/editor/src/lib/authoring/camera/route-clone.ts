@@ -10,17 +10,13 @@ import type { ResolvedCameraRoute } from '@portfolio/camera-core/camera';
 import type { Vec3 } from '$lib/types/scene';
 
 /** Tuple check — `Vector3Like` is either `{x,y,z}` or `[x,y,z]`. */
-export function isRoutePointTuple(
-	point: Vector3Like
-): point is readonly [number, number, number] {
+export function isRoutePointTuple(point: Vector3Like): point is readonly [number, number, number] {
 	return Array.isArray(point);
 }
 
 /** Materialize any `Vector3Like` into a 3-tuple (deep-clone safe). */
 export function cloneRoutePoint(point: Vector3Like): Vec3 {
-	return isRoutePointTuple(point)
-		? [point[0], point[1], point[2]]
-		: [point.x, point.y, point.z];
+	return isRoutePointTuple(point) ? [point[0], point[1], point[2]] : [point.x, point.y, point.z];
 }
 
 export function cloneResolvedCameraRoute(route: ResolvedCameraRoute): ResolvedCameraRoute {
@@ -30,12 +26,12 @@ export function cloneResolvedCameraRoute(route: ResolvedCameraRoute): ResolvedCa
 				? {
 						kind: part.kind,
 						points: part.points.map(cloneRoutePoint),
-						...(part.clearance === undefined ? {} : { clearance: part.clearance })
+						...(part.clearance === undefined ? {} : { clearance: part.clearance }),
 					}
 				: {
 						kind: part.kind,
-						anchors: part.anchors.map(cloneRoutePoint)
-					}
+						anchors: part.anchors.map(cloneRoutePoint),
+					},
 		),
 		targetPoints: route.targetPoints.map(cloneRoutePoint),
 		...(route.startFov === undefined ? {} : { startFov: route.startFov }),
@@ -48,7 +44,7 @@ export function cloneResolvedCameraRoute(route: ResolvedCameraRoute): ResolvedCa
 			toNodeId: edge.toNodeId,
 			positionSpan: {
 				start: { ...edge.positionSpan.start },
-				end: { ...edge.positionSpan.end }
+				end: { ...edge.positionSpan.end },
 			},
 			...(edge.viewTrack === undefined
 				? {}
@@ -56,28 +52,28 @@ export function cloneResolvedCameraRoute(route: ResolvedCameraRoute): ResolvedCa
 						viewTrack: {
 							start: {
 								cameraTarget: cloneRoutePoint(edge.viewTrack.start.cameraTarget),
-								fov: edge.viewTrack.start.fov
+								fov: edge.viewTrack.start.fov,
 							},
 							keyframes: edge.viewTrack.keyframes.map((keyframe) => ({
 								id: keyframe.id,
 								progress: keyframe.progress,
 								cameraTarget: cloneRoutePoint(keyframe.cameraTarget),
-								fov: keyframe.fov
+								fov: keyframe.fov,
 							})),
 							end: {
 								cameraTarget: cloneRoutePoint(edge.viewTrack.end.cameraTarget),
-								fov: edge.viewTrack.end.fov
+								fov: edge.viewTrack.end.fov,
 							},
 							...(edge.viewTrack.framingEnvelope === undefined
 								? {}
-								: { framingEnvelope: { ...edge.viewTrack.framingEnvelope } })
-						}
+								: { framingEnvelope: { ...edge.viewTrack.framingEnvelope } }),
+						},
 					}),
 			...(edge.automaticTargetPoints === undefined
 				? {}
 				: {
-						automaticTargetPoints: edge.automaticTargetPoints.map(cloneRoutePoint)
-					})
-		}))
+						automaticTargetPoints: edge.automaticTargetPoints.map(cloneRoutePoint),
+					}),
+		})),
 	};
 }

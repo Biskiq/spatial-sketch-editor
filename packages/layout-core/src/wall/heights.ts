@@ -69,14 +69,14 @@ export type WallHeightIssue = {
  */
 export function validateWallHeight(
 	wall: Pick<LayoutWall, 'id' | 'height'>,
-	path: string
+	path: string,
 ): WallHeightIssue | undefined {
 	if (!Number.isFinite(wall.height) || wall.height <= 0) {
 		return {
 			wallId: wall.id,
 			path,
 			code: 'wall_height_invalid',
-			message: `Wall '${wall.id}' height must be finite and greater than zero`
+			message: `Wall '${wall.id}' height must be finite and greater than zero`,
 		};
 	}
 	return undefined;
@@ -87,7 +87,7 @@ export function validateWallHeight(
  * `document.walls` order, one issue per Wall.
  */
 export function validateWallFirstWallHeights(
-	document: Pick<LayoutDocumentWallFirst, 'walls'>
+	document: Pick<LayoutDocumentWallFirst, 'walls'>,
 ): WallHeightIssue[] {
 	const issues: WallHeightIssue[] = [];
 	document.walls.forEach((wall, index) => {
@@ -107,7 +107,7 @@ export function validateWallFirstWallHeights(
  */
 export function uniqueIncidentWallHeight(
 	document: Pick<LayoutDocumentWallFirst, 'walls'>,
-	junctionId: string
+	junctionId: string,
 ): number | undefined {
 	const heights = new Set<number>();
 	for (const wall of document.walls) {
@@ -143,7 +143,7 @@ export function uniqueIncidentWallHeight(
 export function resolveWallBirthHeight(
 	document: Pick<LayoutDocumentWallFirst, 'walls'>,
 	startJunctionId: string | null,
-	explicitHeight?: number
+	explicitHeight?: number,
 ): number {
 	if (explicitHeight !== undefined) return explicitHeight;
 	if (startJunctionId === null) return WALL_AUTHORING_DEFAULT_HEIGHT;

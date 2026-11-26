@@ -34,8 +34,8 @@ const status = {
 	suites: REQUIRED_SUITES,
 	lanes: {
 		arch: readJson('tools/metrics/budgets.json').archFiles?.length ?? null,
-		canaries: readJson('tools/canaries/baseline.json')
-	}
+		canaries: readJson('tools/canaries/baseline.json'),
+	},
 };
 
 if (json) {

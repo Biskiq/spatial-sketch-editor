@@ -25,7 +25,11 @@ export const STAGE_MEASURE_TASK = 'host-measure';
 /** One resolved endpoint, with the domain subject it came from (or none: the datum). */
 export type StageMeasureEndpoint = {
 	readonly point: Vec3;
-	readonly source: { readonly adapterId: string; readonly sourceId: string; readonly sourceKind: string } | null;
+	readonly source: {
+		readonly adapterId: string;
+		readonly sourceId: string;
+		readonly sourceKind: string;
+	} | null;
 };
 
 export type StageMeasurement = {
@@ -39,8 +43,15 @@ export type StageMeasurement = {
 /** What the Stage draws: a settled measurement, or the live one from the first point. */
 export type StageMeasureView = StageMeasurement & { readonly live: boolean };
 
-export function measureBetween(from: StageMeasureEndpoint, to: StageMeasureEndpoint): StageMeasurement {
-	const meters = Math.hypot(to.point[0] - from.point[0], to.point[1] - from.point[1], to.point[2] - from.point[2]);
+export function measureBetween(
+	from: StageMeasureEndpoint,
+	to: StageMeasureEndpoint,
+): StageMeasurement {
+	const meters = Math.hypot(
+		to.point[0] - from.point[0],
+		to.point[1] - from.point[1],
+		to.point[2] - from.point[2],
+	);
 	return { from, to, meters, label: meters > 0 ? formatMeters(meters) : '0 m' };
 }
 
@@ -50,14 +61,22 @@ export function measureBetween(from: StageMeasureEndpoint, to: StageMeasureEndpo
  */
 export function resolveMeasureEndpoint(
 	facade: StageFacade,
-	query: { readonly css: readonly [number, number]; readonly evaluationId: string; readonly coarse?: boolean }
+	query: {
+		readonly css: readonly [number, number];
+		readonly evaluationId: string;
+		readonly coarse?: boolean;
+	},
 ): StageMeasureEndpoint | null {
 	const target = facade.hostToolTarget({ ...query, tool: 'measure' });
 	if (target.kind === 'failed') return null;
 	if (target.kind === 'hit' && target.refusal === null) {
 		return {
 			point: [target.hit.worldPoint[0], target.hit.worldPoint[1], target.hit.worldPoint[2]],
-			source: { adapterId: target.adapterId, sourceId: target.hit.sourceId, sourceKind: target.hit.sourceKind }
+			source: {
+				adapterId: target.adapterId,
+				sourceId: target.hit.sourceId,
+				sourceKind: target.hit.sourceKind,
+			},
 		};
 	}
 	const datum = target.datumPoint;
@@ -69,13 +88,31 @@ export function resolveMeasureEndpoint(
 
 export type StageMeasureController = {
 	/** Begin a press. `false` when the press names no place or another gesture owns the pointer. */
-	down(input: { readonly css: readonly [number, number]; readonly evaluationId: string; readonly coarse?: boolean }): boolean;
-	move(input: { readonly css: readonly [number, number]; readonly evaluationId: string; readonly coarse?: boolean }): void;
-	up(input: { readonly css: readonly [number, number]; readonly evaluationId: string; readonly coarse?: boolean }): void;
+	down(input: {
+		readonly css: readonly [number, number];
+		readonly evaluationId: string;
+		readonly coarse?: boolean;
+	}): boolean;
+	move(input: {
+		readonly css: readonly [number, number];
+		readonly evaluationId: string;
+		readonly coarse?: boolean;
+	}): void;
+	up(input: {
+		readonly css: readonly [number, number];
+		readonly evaluationId: string;
+		readonly coarse?: boolean;
+	}): void;
 	/** An interrupted press leaves no half measurement it started. */
 	cancel(): void;
 	/** An unpressed move after the first click previews the second point. */
-	hover(input: { readonly css: readonly [number, number]; readonly evaluationId: string; readonly coarse?: boolean } | null): void;
+	hover(
+		input: {
+			readonly css: readonly [number, number];
+			readonly evaluationId: string;
+			readonly coarse?: boolean;
+		} | null,
+	): void;
 	/** Escape and disarm: `true` when there was something to clear. */
 	clear(): boolean;
 	view(): StageMeasureView | null;
@@ -110,7 +147,7 @@ export function createStageMeasure(facade: StageFacade): StageMeasureController 
 				owner: STAGE_MEASURE_TASK,
 				evaluationId: input.evaluationId,
 				policy: 'cancel-on-reading-change',
-				navigation: true
+				navigation: true,
 			});
 			if (lease.kind !== 'granted') return false;
 			const opened = anchor === null;
@@ -134,7 +171,7 @@ export function createStageMeasure(facade: StageFacade): StageMeasureController 
 			const release = resolveMeasureEndpoint(facade, input) ?? hovered;
 			const dragged = isStageDrag(
 				{ x: current.origin[0], y: current.origin[1] },
-				{ x: input.css[0], y: input.css[1] }
+				{ x: input.css[0], y: input.css[1] },
 			);
 			endPress();
 			if (anchor === null || release === null) return;
@@ -167,11 +204,12 @@ export function createStageMeasure(facade: StageFacade): StageMeasureController 
 			return had;
 		},
 		view() {
-			if (anchor !== null && hovered !== null) return { ...measureBetween(anchor, hovered), live: true };
+			if (anchor !== null && hovered !== null)
+				return { ...measureBetween(anchor, hovered), live: true };
 			return result === null ? null : { ...result, live: false };
 		},
 		pressing() {
 			return press !== null;
-		}
+		},
 	};
 }

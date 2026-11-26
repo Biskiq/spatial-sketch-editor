@@ -77,6 +77,6 @@ export function observeFirstRenderedFrame(input: {
 			done = true;
 			if (handle !== null) input.cancelFrame(handle);
 			handle = null;
-		}
+		},
 	};
 }

@@ -19,7 +19,7 @@ import {
 	type CapAssemblyIssue,
 	type SectionBasis,
 	type SectionInput,
-	type SectionLoop
+	type SectionLoop,
 } from '../slice/mesh-plane-section';
 import { cutawaySeams, type CutawaySeam } from '$lib/layout/wall-cutaway-seams';
 
@@ -47,7 +47,7 @@ function wallIdOfIdentity(identity: string): string | null {
 /** Connected components of the cut set through shared Junctions. */
 function componentsOf(
 	junctions: readonly CompiledJunction[],
-	cut: ReadonlySet<string>
+	cut: ReadonlySet<string>,
 ): Map<string, string[]> {
 	const parent = new Map<string, string>();
 	for (const wallId of cut) parent.set(wallId, wallId);
@@ -133,7 +133,7 @@ function mergeSectionSeams(seams: readonly CutawaySeam[]): CutawaySeam[] {
 			merged.push({
 				...first,
 				from: [origin[0] + ux * start, origin[1] + uz * start],
-				to: [origin[0] + ux * end, origin[1] + uz * end]
+				to: [origin[0] + ux * end, origin[1] + uz * end],
 			});
 		};
 		for (let index = 1; index < intervals.length; index += 1) {
@@ -216,7 +216,10 @@ export function assembleCutawayCaps(input: {
 	const trimByWall = new Map<string, number>();
 	for (const junction of input.junctions) {
 		for (const join of junction.resolution.joins) {
-			trimByWall.set(join.wallId, Math.max(trimByWall.get(join.wallId) ?? 0, join.clipDistance ?? 0));
+			trimByWall.set(
+				join.wallId,
+				Math.max(trimByWall.get(join.wallId) ?? 0, join.clipDistance ?? 0),
+			);
 		}
 	}
 
@@ -228,7 +231,7 @@ export function assembleCutawayCaps(input: {
 			walls: input.walls,
 			cut: members,
 			stubTopY,
-			elevationOfWall
+			elevationOfWall,
 		});
 		const sources: SectionInput[] = [];
 		for (const wallId of members) {
@@ -239,7 +242,7 @@ export function assembleCutawayCaps(input: {
 				group,
 				positions: source.positions,
 				index: source.index,
-				matrix: source.matrix
+				matrix: source.matrix,
 			});
 		}
 		const seams = seamResult.seams.filter((seam) => members.has(seam.wallId));
@@ -273,7 +276,11 @@ export function assembleCutawayCaps(input: {
 				if (drop.length === 0 || drop.length >= active.size) continue;
 				const retry = new Set(wallIds.filter((wallId) => !drop.includes(wallId)));
 				const retried = buildComponent(group, retry);
-				if (retried !== null && retried.groupResult !== undefined && retried.groupResult.issue === null) {
+				if (
+					retried !== null &&
+					retried.groupResult !== undefined &&
+					retried.groupResult.issue === null
+				) {
 					active = retry;
 					attempt = retried;
 					dropped = drop;
@@ -299,7 +306,7 @@ export function assembleCutawayCaps(input: {
 			wallIds: [...active],
 			loops: groupResult.loops,
 			basis: result.basis,
-			seams
+			seams,
 		});
 	}
 	return { components, issues, failedWallIds, candidateTriangles };
@@ -311,9 +318,24 @@ export function seamEdgePositions(seams: readonly CutawaySeam[], stubTopY: numbe
 	for (const seam of seams) {
 		const bottom = Math.max(seam.bottomY, stubTopY);
 		positions.push(
-			seam.from[0], bottom, seam.from[1], seam.from[0], seam.topY, seam.from[1],
-			seam.to[0], bottom, seam.to[1], seam.to[0], seam.topY, seam.to[1],
-			seam.from[0], seam.topY, seam.from[1], seam.to[0], seam.topY, seam.to[1]
+			seam.from[0],
+			bottom,
+			seam.from[1],
+			seam.from[0],
+			seam.topY,
+			seam.from[1],
+			seam.to[0],
+			bottom,
+			seam.to[1],
+			seam.to[0],
+			seam.topY,
+			seam.to[1],
+			seam.from[0],
+			seam.topY,
+			seam.from[1],
+			seam.to[0],
+			seam.topY,
+			seam.to[1],
 		);
 	}
 	return positions;

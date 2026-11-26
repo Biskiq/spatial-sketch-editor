@@ -47,7 +47,8 @@ export function createExperienceRegionViews(deps: ExperienceRegionViewDeps) {
 	const onResolvePendingViewWrite = () => void binding.confirmPendingViewWrite();
 	const onCancelPendingViewWrite = () => binding.clearPendingViewWrite();
 	const onDismissWelcome = () => binding.dismissWelcome();
-	const onExperienceController = (controller: ExperienceController | null) => binding.setController(controller);
+	const onExperienceController = (controller: ExperienceController | null) =>
+		binding.setController(controller);
 	const onPlaceView = () => binding.togglePlaceView();
 	const onCapture = () => binding.capture();
 	const onToggleGuide = () => binding.toggleGuide();
@@ -59,34 +60,40 @@ export function createExperienceRegionViews(deps: ExperienceRegionViewDeps) {
 			const lookThroughActive = deps.lookThroughActive();
 			const viewEdit = binding.viewEdit;
 			return {
-				experienceMarks: binding.lensState === 'experience' && evaluation !== null && !lookThroughActive
-					? {
-						evaluation,
-						placementGhost: binding.placementGhost(),
-						liveEdit: viewEdit,
-						advanced: binding.advancedViewId !== null,
-						datum,
-						rig: binding.playback.status === 'idle' ? null : binding.playback.sample,
-						onLookThrough,
-						showMarkers: shell.showMarkers,
-						showFrustums: shell.showFrustums,
-						showPaths: shell.showPaths,
-						showLabels: shell.showLabels,
-						selectionOnly: shell.showMode === 'selection',
-						onPlanePoint: binding.pathAnchorPoint,
-						beginPathDragLease: binding.beginPathDragLease,
-						endPathDragLease: binding.endPathDragLease
-					}
-					: null,
-				viewEditTurn: viewEdit?.moved && !viewEdit.advanced && binding.viewEditPreview?.turn
-					? binding.viewEditPreview.turn
-					: null,
+				experienceMarks:
+					binding.lensState === 'experience' && evaluation !== null && !lookThroughActive
+						? {
+								evaluation,
+								placementGhost: binding.placementGhost(),
+								liveEdit: viewEdit,
+								advanced: binding.advancedViewId !== null,
+								datum,
+								rig: binding.playback.status === 'idle' ? null : binding.playback.sample,
+								onLookThrough,
+								showMarkers: shell.showMarkers,
+								showFrustums: shell.showFrustums,
+								showPaths: shell.showPaths,
+								showLabels: shell.showLabels,
+								selectionOnly: shell.showMode === 'selection',
+								onPlanePoint: binding.pathAnchorPoint,
+								beginPathDragLease: binding.beginPathDragLease,
+								endPathDragLease: binding.endPathDragLease,
+							}
+						: null,
+				viewEditTurn:
+					viewEdit?.moved && !viewEdit.advanced && binding.viewEditPreview?.turn
+						? binding.viewEditPreview.turn
+						: null,
 				pendingViewWrite: binding.pendingViewWrite,
 				onResolvePendingViewWrite,
 				onCancelPendingViewWrite,
-				welcome: binding.lensState === 'experience' && binding.welcome && !lookThroughActive && binding.experienceTool === 'select',
+				welcome:
+					binding.lensState === 'experience' &&
+					binding.welcome &&
+					!lookThroughActive &&
+					binding.experienceTool === 'select',
 				onDismissWelcome,
-				onExperienceController
+				onExperienceController,
 			};
 		},
 		get toolbars(): ExperienceToolbarView {
@@ -96,60 +103,65 @@ export function createExperienceRegionViews(deps: ExperienceRegionViewDeps) {
 				viewLine: previewActive
 					? null
 					: {
-						drafting: {
-							drafting: shell.drafting,
-							reading: shell.draftingReading,
-							gridWord: shell.draftingGridWord,
-							snapWord: shell.draftingSnapWord,
-							onReading: deps.setReading,
-							onPatch: deps.patchDrafting,
-							planAppearance: shell.preferences.planAppearance,
-							onPlanAppearance: (planAppearance: 'paper' | 'shaded') =>
-								shell.updatePreferences({ ...shell.preferences, planAppearance }),
-							measureActive: shell.activeWorldTool === 'measure',
-							onMeasure: () => deps.armWorldTool('measure'),
-							studioWhileEditing: deps.studioWhileEditing(),
-							onStudioWhileEditing: deps.setStudioWhileEditing,
-							roomLabels2d: shell.preferences.roomLabels2d,
-							roomLabels3d: shell.preferences.roomLabels3d,
-							paperTone2d: shell.preferences.paperTone2d,
-							paperTone3d: shell.preferences.paperTone3d,
-							onViewPreference: (patch) => {
-								shell.updatePreferences({ ...shell.preferences, ...patch });
-								deps.refresh();
+							drafting: {
+								drafting: shell.drafting,
+								reading: shell.draftingReading,
+								gridWord: shell.draftingGridWord,
+								snapWord: shell.draftingSnapWord,
+								onReading: deps.setReading,
+								onPatch: deps.patchDrafting,
+								planAppearance: shell.preferences.planAppearance,
+								onPlanAppearance: (planAppearance: 'paper' | 'shaded') =>
+									shell.updatePreferences({ ...shell.preferences, planAppearance }),
+								measureActive: shell.activeWorldTool === 'measure',
+								onMeasure: () => deps.armWorldTool('measure'),
+								studioWhileEditing: deps.studioWhileEditing(),
+								onStudioWhileEditing: deps.setStudioWhileEditing,
+								roomLabels2d: shell.preferences.roomLabels2d,
+								roomLabels3d: shell.preferences.roomLabels3d,
+								paperTone2d: shell.preferences.paperTone2d,
+								paperTone3d: shell.preferences.paperTone3d,
+								onViewPreference: (patch) => {
+									shell.updatePreferences({ ...shell.preferences, ...patch });
+									deps.refresh();
+								},
+								heightSheetSide: shell.heightSheetSide,
+								onHeightSheetSide: (side: 'left' | 'right') => shell.setHeightSheetSide(side),
+								reducedMotion: shell.reducedMotion,
+								onToggleReducedMotion: () => shell.toggleReducedMotion(),
+								motionSpeed: shell.preferences.motionSpeed,
+								onMotionSpeed: (motionSpeed) =>
+									shell.updatePreferences({ ...shell.preferences, motionSpeed }),
+								lift: deps.liftControl(),
+								nearWalls: deps.nearWallsControl(),
 							},
-							heightSheetSide: shell.heightSheetSide,
-							onHeightSheetSide: (side: 'left' | 'right') => shell.setHeightSheetSide(side),
-							reducedMotion: shell.reducedMotion,
-							onToggleReducedMotion: () => shell.toggleReducedMotion(),
-							motionSpeed: shell.preferences.motionSpeed,
-							onMotionSpeed: (motionSpeed) => shell.updatePreferences({ ...shell.preferences, motionSpeed }),
-							lift: deps.liftControl(),
-							nearWalls: deps.nearWallsControl()
-						}
-					},
-				experience: previewActive || binding.active === null
-					? null
-					: {
-						dock: {
-							captureDisabled: binding.captureReason() !== undefined,
-							captureReason: binding.captureReason(),
-							guideOpen: binding.guideOpen,
-							placeArmed: binding.experienceTool === 'place',
-							onPlaceView,
-							onCapture,
-							onToggleGuide
 						},
-						feedback: shell.notice || binding.feedback !== null
-							? {
-								text: shell.notice || binding.feedback!.text,
-								kind: shell.notice ? null : binding.feedback!.kind
-							}
-							: null,
-						guide: binding.guideOpen ? { onClose: onToggleGuide, playback: binding.playback } : null
-					}
+				experience:
+					previewActive || binding.active === null
+						? null
+						: {
+								dock: {
+									captureDisabled: binding.captureReason() !== undefined,
+									captureReason: binding.captureReason(),
+									guideOpen: binding.guideOpen,
+									placeArmed: binding.experienceTool === 'place',
+									onPlaceView,
+									onCapture,
+									onToggleGuide,
+								},
+								feedback:
+									shell.notice || binding.feedback !== null
+										? {
+												text: shell.notice || binding.feedback!.text,
+												kind: shell.notice ? null : binding.feedback!.kind,
+											}
+										: null,
+								guide: binding.guideOpen
+									? { onClose: onToggleGuide, playback: binding.playback }
+									: null,
+							},
 			};
-		}
+		},
 	};
 }
 
@@ -164,7 +176,7 @@ export function createExperienceRegionViews(deps: ExperienceRegionViewDeps) {
 export function experienceHomesView(
 	binding: StageExperienceBinding,
 	services: StageAdapterServices | null,
-	envelope: ProjectEnvelope | null
+	envelope: ProjectEnvelope | null,
 ): { readonly services: StageAdapterServices; readonly snapshot: ProjectEnvelope } | null {
 	return binding.lensState === 'experience' && services !== null && envelope !== null
 		? { services, snapshot: envelope }
@@ -173,12 +185,14 @@ export function experienceHomesView(
 
 export type ExperienceRegionViews = ReturnType<typeof createExperienceRegionViews>;
 
-
 /** The retained visitor surface reads its frozen entry and the live display options. */
 export function createExperiencePreviewView(input: {
 	readonly preview: ExperiencePreviewHost;
 	readonly assets: Pick<StageAssetLeases, 'urls' | 'textureScope'>;
-	readonly look: { readonly reducedMotion: () => boolean; readonly sky: () => ComponentProps<typeof VisitorPreviewSurface>['sky'] };
+	readonly look: {
+		readonly reducedMotion: () => boolean;
+		readonly sky: () => ComponentProps<typeof VisitorPreviewSurface>['sky'];
+	};
 }) {
 	const view = $derived.by(() => {
 		const { preview, assets, look } = input;
@@ -191,44 +205,63 @@ export function createExperiencePreviewView(input: {
 				geometry: read.geometry,
 				scene: read.scene,
 				graph: read.graph,
-				program: entry === null ? null : entry.kind === 'presentations' ? (entry.program ?? null) : entry.program,
-				experienceOptions: entry === null ? null : entry.kind === 'presentations' ? (entry.options ?? null) : entry.options,
+				program:
+					entry === null
+						? null
+						: entry.kind === 'presentations'
+							? (entry.program ?? null)
+							: entry.program,
+				experienceOptions:
+					entry === null
+						? null
+						: entry.kind === 'presentations'
+							? (entry.options ?? null)
+							: entry.options,
 				entryPresentationId: entry?.kind === 'program' ? entry.entryPresentationId : null,
 				runEpoch: preview.view?.epoch ?? 0,
 				active: preview.openState,
-				resolveTexture: (uri: string) => isAllowedShippedTextureUri(uri) ? uri : null,
+				resolveTexture: (uri: string) => (isAllowedShippedTextureUri(uri) ? uri : null),
 				modelUrls: assets.urls,
 				textureScope: assets.textureScope,
 				artworkScope: preview.artworkScope,
 				reducedMotion: look.reducedMotion(),
 				title: entry?.title ?? null,
 				experienceTitle: entry?.title ?? null,
-				startMode: preview.requestedMode ?? (entry?.kind === 'program' && entry.entryPresentationId !== null ? 'presentation' : 'welcome'),
+				startMode:
+					preview.requestedMode ??
+					(entry?.kind === 'program' && entry.entryPresentationId !== null
+						? 'presentation'
+						: 'welcome'),
 				guideStopCount: preview.stats.stops,
 				guideSeconds: preview.stats.seconds,
 				viewLabels: preview.labels,
 				onExit: preview.close,
-				sky: look.sky()
+				sky: look.sky(),
 			},
-			active: preview.openState
+			active: preview.openState,
 		};
 	});
 	return () => view;
 }
 
-
 export function createExperienceSourceViews(
 	ready: ReturnType<typeof createProjectReadyPort>,
 	binding: StageExperienceBinding,
-	services: () => StageAdapterServices | null
+	services: () => StageAdapterServices | null,
 ) {
 	const problems = $derived.by(() => {
 		const envelope = ready.envelope();
-		return envelope === null ? [] : experienceProblems(envelope, ready.snapshot()?.domain.diagnostics ?? []);
+		return envelope === null
+			? []
+			: experienceProblems(envelope, ready.snapshot()?.domain.diagnostics ?? []);
 	});
 	const homes = $derived(experienceHomesView(binding, services(), ready.envelope()));
 	return {
-		get problems() { return problems; },
-		get homes() { return homes; }
+		get problems() {
+			return problems;
+		},
+		get homes() {
+			return homes;
+		},
 	};
 }

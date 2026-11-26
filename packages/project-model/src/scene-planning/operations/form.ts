@@ -1,12 +1,33 @@
-import { canonicalizeWinding, evaluateProfile, extrudeProfile, GeometryCoreError, PROFILE_LIMITS, validateProfile, type ProfileAnchor } from '@portfolio/geometry-core';
+import {
+	canonicalizeWinding,
+	evaluateProfile,
+	extrudeProfile,
+	GeometryCoreError,
+	PROFILE_LIMITS,
+	validateProfile,
+	type ProfileAnchor,
+} from '@portfolio/geometry-core';
 import { type LayoutVec2 } from '@portfolio/layout-core/geometry';
 import { evaluateSceneForm, sceneFormContactMinY } from '../../form';
 import { readFormLibraryPayload, type FormLibraryPayload } from '../../library/form-library';
-import { cloneFormSource, type MaterialId, type SceneEntity, type SceneFormEntity, type SceneFormPlane, type Vec3 } from '../../scene';
+import {
+	cloneFormSource,
+	type MaterialId,
+	type SceneEntity,
+	type SceneFormEntity,
+	type SceneFormPlane,
+	type Vec3,
+} from '../../scene';
 import { finalize, fromFinalization } from './finalization';
 import { invalid, refusal } from './refusals';
 import { resolveSupport, restSupport, readObject } from './support';
-import { type SceneOperationResult, type SceneOperationContext, CONTACT_TOLERANCE_METERS, FORM_SCALE_SCOPE_FIELD, FORM_GENERATOR_SCOPE_FIELD } from './types';
+import {
+	type SceneOperationResult,
+	type SceneOperationContext,
+	CONTACT_TOLERANCE_METERS,
+	FORM_SCALE_SCOPE_FIELD,
+	FORM_GENERATOR_SCOPE_FIELD,
+} from './types';
 import { finalizeSceneCandidate } from '../record-scope';
 import { type SceneSupportChoice } from '../support';
 import { type CameraFreeSceneDocument as SceneDocument } from '../../units/types';
@@ -35,10 +56,13 @@ export function planCreateForm(input: {
 	readonly choice?: SceneSupportChoice | undefined;
 }): SceneOperationResult {
 	const scene = input.context.scene;
-	if (input.outline.length < PROFILE_LIMITS.minAnchors || input.outline.length > PROFILE_LIMITS.maxAnchors) {
+	if (
+		input.outline.length < PROFILE_LIMITS.minAnchors ||
+		input.outline.length > PROFILE_LIMITS.maxAnchors
+	) {
 		return invalid(
 			`A form outline needs ${PROFILE_LIMITS.minAnchors}–${PROFILE_LIMITS.maxAnchors} anchors.`,
-			['outline']
+			['outline'],
 		);
 	}
 	if (
@@ -54,7 +78,7 @@ export function planCreateForm(input: {
 	if (scene.entities.some((entity) => entity.id === input.entityId)) {
 		return invalid(
 			`Captured form id "${input.entityId}" is already used by the accepted source; it is never renamed.`,
-			['entityId', 'duplicate-entity-id']
+			['entityId', 'duplicate-entity-id'],
 		);
 	}
 
@@ -65,18 +89,18 @@ export function planCreateForm(input: {
 		key: index + 1,
 		u: anchor.u,
 		v: anchor.v,
-		smooth: anchor.smooth
+		smooth: anchor.smooth,
 	}));
 	const canonical = canonicalizeWinding(provisional).map((anchor, index) => ({
 		...anchor,
-		key: index + 1
+		key: index + 1,
 	}));
 	const profileIssues = validateProfile(canonical);
 	if (profileIssues.length > 0) {
 		const first = profileIssues[0]!;
 		return invalid(`The form outline refuses: ${first.code}.`, [
 			first.code,
-			...first.anchorKeys.map((key) => String(key))
+			...first.anchorKeys.map((key) => String(key)),
 		]);
 	}
 	let evaluated;
@@ -87,7 +111,7 @@ export function planCreateForm(input: {
 			error instanceof GeometryCoreError
 				? `The form outline refuses: ${error.issues[0]?.code ?? 'invalid-profile'}.`
 				: 'The form outline could not be evaluated.',
-			['outline']
+			['outline'],
 		);
 	}
 
@@ -99,7 +123,7 @@ export function planCreateForm(input: {
 	const outline = canonical.map((anchor) => ({
 		...anchor,
 		u: anchor.u - centreU,
-		v: anchor.v - centreV
+		v: anchor.v - centreV,
 	}));
 	let shifted;
 	try {
@@ -110,12 +134,14 @@ export function planCreateForm(input: {
 			profile: shifted,
 			extent: input.extent,
 			scale: [1, 1, 1],
-			plane: input.plane
+			plane: input.plane,
 		});
 	} catch (error) {
 		return invalid(
-			error instanceof GeometryCoreError ? error.message : 'The form body is outside the admitted limits.',
-			['outline', 'extent']
+			error instanceof GeometryCoreError
+				? error.message
+				: 'The form body is outside the admitted limits.',
+			['outline', 'extent'],
 		);
 	}
 
@@ -124,7 +150,7 @@ export function planCreateForm(input: {
 	const offsetV = input.plane === 'plan' ? centreV : 0;
 	const point: LayoutVec2 = [
 		input.position[0] + centreU * cos + offsetV * sin,
-		input.position[2] - centreU * sin + offsetV * cos
+		input.position[2] - centreU * sin + offsetV * cos,
 	];
 	if (!Number.isFinite(point[0]) || !Number.isFinite(point[1])) {
 		return invalid('The form base origin is not finite.', ['position']);
@@ -144,14 +170,14 @@ export function planCreateForm(input: {
 				kind: 'extrude',
 				plane: input.plane,
 				outline,
-				extent: input.extent
+				extent: input.extent,
 			},
 			scale: [1, 1, 1],
-			nextKey: outline.length + 1
+			nextKey: outline.length + 1,
 		},
 		materialId: input.materialId,
 		castShadow: true,
-		receiveShadow: true
+		receiveShadow: true,
 	};
 	const after: SceneDocument = { ...scene, entities: [...scene.entities, entity] };
 	const finalized = finalizeSceneCandidate({
@@ -163,8 +189,8 @@ export function planCreateForm(input: {
 			changedEntityFields: [],
 			createdEntityIds: [input.entityId],
 			removedEntityIds: [],
-			allowClusterCleanup: false
-		}
+			allowClusterCleanup: false,
+		},
 	});
 	if (finalized.kind === 'rejected') return fromFinalization(finalized);
 	return {
@@ -178,9 +204,9 @@ export function planCreateForm(input: {
 		worldPose: {
 			position: [...entity.position] as Vec3,
 			rotation: [...entity.rotation] as Vec3,
-			scale: 1
+			scale: 1,
 		},
-		diagnostics: []
+		diagnostics: [],
 	};
 }
 
@@ -207,14 +233,14 @@ export function planPlaceFormCopy(input: {
 	if (scene.entities.some((entity) => entity.id === input.entityId)) {
 		return invalid(
 			`Captured copy id "${input.entityId}" is already used by the accepted source; it is never renamed.`,
-			['entityId', 'duplicate-entity-id']
+			['entityId', 'duplicate-entity-id'],
 		);
 	}
 	const parsed = readFormLibraryPayload(input.item);
 	if (!parsed.success) {
 		return invalid(
 			`The saved form copy refuses: ${parsed.issues[0]?.message ?? 'invalid library item'}.`,
-			parsed.issues.map((issue) => `${issue.path}: ${issue.code}`)
+			parsed.issues.map((issue) => `${issue.path}: ${issue.code}`),
 		);
 	}
 	if (
@@ -226,7 +252,7 @@ export function planPlaceFormCopy(input: {
 		return invalid('A form copy needs a finite world X/Z, yaw and captured contact.', [
 			'worldXZ',
 			'yaw',
-			'contactMinY'
+			'contactMinY',
 		]);
 	}
 	let mesh;
@@ -234,17 +260,24 @@ export function planPlaceFormCopy(input: {
 		mesh = evaluateSceneForm(parsed.payload.form);
 	} catch (error) {
 		return invalid(
-			error instanceof GeometryCoreError ? error.message : 'The saved form body could not be evaluated.',
-			['item']
+			error instanceof GeometryCoreError
+				? error.message
+				: 'The saved form body could not be evaluated.',
+			['item'],
 		);
 	}
 	if (Math.abs(input.contactMinY - mesh.contactMinY) > CONTACT_TOLERANCE_METERS) {
 		return invalid(
 			`The captured contact ${input.contactMinY} disagrees with the saved form's evaluated contact ${mesh.contactMinY}.`,
-			['contactMinY']
+			['contactMinY'],
 		);
 	}
-	const support = resolveSupport(input.context, [input.worldXZ[0], input.worldXZ[1]], null, input.choice);
+	const support = resolveSupport(
+		input.context,
+		[input.worldXZ[0], input.worldXZ[1]],
+		null,
+		input.choice,
+	);
 	if (support.kind !== 'resolved') return support;
 
 	const entity: SceneFormEntity = {
@@ -256,7 +289,7 @@ export function planPlaceFormCopy(input: {
 		form: cloneFormSource(parsed.payload.form),
 		materialId: parsed.payload.materialId,
 		castShadow: parsed.payload.castShadow,
-		receiveShadow: parsed.payload.receiveShadow
+		receiveShadow: parsed.payload.receiveShadow,
 	};
 	const after: SceneDocument = { ...scene, entities: [...scene.entities, entity] };
 	const finalized = finalizeSceneCandidate({
@@ -268,8 +301,8 @@ export function planPlaceFormCopy(input: {
 			changedEntityFields: [],
 			createdEntityIds: [input.entityId],
 			removedEntityIds: [],
-			allowClusterCleanup: false
-		}
+			allowClusterCleanup: false,
+		},
 	});
 	if (finalized.kind === 'rejected') return fromFinalization(finalized);
 	return {
@@ -283,9 +316,9 @@ export function planPlaceFormCopy(input: {
 		worldPose: {
 			position: [...entity.position] as Vec3,
 			rotation: [...entity.rotation] as Vec3,
-			scale: 1
+			scale: 1,
 		},
-		diagnostics: []
+		diagnostics: [],
 	};
 }
 
@@ -309,7 +342,7 @@ export function planSetFormSize(input: {
 		return refusal(
 			'unsupported-transform',
 			`Entity "${input.entityId}" is not a native form; only forms are sized per axis.`,
-			[input.entityId]
+			[input.entityId],
 		);
 	}
 	const entity = target.entity;
@@ -320,17 +353,17 @@ export function planSetFormSize(input: {
 			(value) =>
 				!Number.isFinite(value) ||
 				value < PROFILE_LIMITS.minScale ||
-				value > PROFILE_LIMITS.maxScale
+				value > PROFILE_LIMITS.maxScale,
 		)
 	) {
 		return invalid(
 			`A form size needs three finite per-axis factors within [${PROFILE_LIMITS.minScale}, ${PROFILE_LIMITS.maxScale}].`,
-			['scale']
+			['scale'],
 		);
 	}
 	if (entity.form.scale.every((value, index) => value === scale[index])) {
 		return refusal('no_op', `Entity "${input.entityId}" already has scale ${scale.join(', ')}.`, [
-			'scale'
+			'scale',
 		]);
 	}
 	let profile;
@@ -340,12 +373,14 @@ export function planSetFormSize(input: {
 			profile,
 			extent: entity.form.generator.extent,
 			scale,
-			plane: entity.form.generator.plane
+			plane: entity.form.generator.plane,
 		});
 	} catch (error) {
 		return invalid(
-			error instanceof GeometryCoreError ? error.message : 'The form body is outside the admitted limits.',
-			['scale']
+			error instanceof GeometryCoreError
+				? error.message
+				: 'The form body is outside the admitted limits.',
+			['scale'],
 		);
 	}
 	const contact = entity.form.generator.plane === 'plan' ? 0 : profile.bounds.minV;
@@ -357,8 +392,12 @@ export function planSetFormSize(input: {
 
 	const next: SceneEntity = {
 		...entity,
-		position: [entity.position[0], support.support.elevation + rest.lift - nextContact, entity.position[2]],
-		form: { ...entity.form, scale: [scale[0], scale[1], scale[2]] }
+		position: [
+			entity.position[0],
+			support.support.elevation + rest.lift - nextContact,
+			entity.position[2],
+		],
+		form: { ...entity.form, scale: [scale[0], scale[1], scale[2]] },
 	};
 	return finalize({
 		context: input.context,
@@ -370,10 +409,10 @@ export function planSetFormSize(input: {
 			changedEntityFields: [FORM_SCALE_SCOPE_FIELD, 'position[1]'],
 			createdEntityIds: [],
 			removedEntityIds: [],
-			allowClusterCleanup: false
+			allowClusterCleanup: false,
 		},
 		correspondence: [{ relation: 'preserved', entityId: entity.id }],
-		support: support.support
+		support: support.support,
 	});
 }
 
@@ -411,7 +450,7 @@ export function planSetFormProfile(input: {
 		return refusal(
 			'unsupported-transform',
 			`Entity "${input.entityId}" is not a native form; only a form has an editable outline.`,
-			[input.entityId]
+			[input.entityId],
 		);
 	}
 	const entity = target.entity;
@@ -419,20 +458,16 @@ export function planSetFormProfile(input: {
 	if (!Array.isArray(input.outline) || input.outline.length !== existingOutline.length) {
 		return invalid(
 			`A profile revision keeps the form's ${existingOutline.length} existing anchors; adding or removing anchors is later work.`,
-			['outline', 'anchor-count']
+			['outline', 'anchor-count'],
 		);
 	}
 	for (let index = 0; index < input.outline.length; index += 1) {
 		const anchor = input.outline[index];
 		const existing = existingOutline[index]!;
-		if (
-			anchor === null ||
-			typeof anchor !== 'object' ||
-			anchor.key !== existing.key
-		) {
+		if (anchor === null || typeof anchor !== 'object' || anchor.key !== existing.key) {
 			return invalid(
 				'A profile revision keeps every existing outline key in its existing ring order; keys are never added, removed or reordered.',
-				['outline', 'keys']
+				['outline', 'keys'],
 			);
 		}
 	}
@@ -443,7 +478,7 @@ export function planSetFormProfile(input: {
 	) {
 		return invalid(
 			`A form extent must be finite and within [${PROFILE_LIMITS.minExtentMeters}, ${PROFILE_LIMITS.maxExtentMeters}] m.`,
-			['extent']
+			['extent'],
 		);
 	}
 
@@ -451,24 +486,21 @@ export function planSetFormProfile(input: {
 		key: anchor.key,
 		u: anchor.u,
 		v: anchor.v,
-		smooth: anchor.smooth
+		smooth: anchor.smooth,
 	}));
 	if (
 		input.extent === entity.form.generator.extent &&
 		outline.every((anchor, index) => {
 			const existing = existingOutline[index]!;
 			return (
-				anchor.u === existing.u &&
-				anchor.v === existing.v &&
-				anchor.smooth === existing.smooth
+				anchor.u === existing.u && anchor.v === existing.v && anchor.smooth === existing.smooth
 			);
 		})
 	) {
-		return refusal(
-			'no_op',
-			`Entity "${entity.id}" already has this outline and extent.`,
-			['outline', 'extent']
-		);
+		return refusal('no_op', `Entity "${entity.id}" already has this outline and extent.`, [
+			'outline',
+			'extent',
+		]);
 	}
 
 	const issues = validateProfile(outline);
@@ -476,7 +508,7 @@ export function planSetFormProfile(input: {
 		const first = issues[0]!;
 		return invalid(`The form outline refuses: ${first.code}.`, [
 			first.code,
-			...first.anchorKeys.map((key) => String(key))
+			...first.anchorKeys.map((key) => String(key)),
 		]);
 	}
 	let profile;
@@ -486,14 +518,14 @@ export function planSetFormProfile(input: {
 			profile,
 			extent: input.extent,
 			scale: entity.form.scale,
-			plane: entity.form.generator.plane
+			plane: entity.form.generator.plane,
 		});
 	} catch (error) {
 		return invalid(
 			error instanceof GeometryCoreError
 				? error.message
 				: 'The revised form body is outside the admitted limits.',
-			['outline', 'extent']
+			['outline', 'extent'],
 		);
 	}
 
@@ -503,11 +535,10 @@ export function planSetFormProfile(input: {
 		return refusal(
 			'unsupported-transform',
 			`Entity "${entity.id}" has no honest floor contact, so a profile revision cannot own its placement.`,
-			[entity.id]
+			[entity.id],
 		);
 	}
-	const nextContact =
-		plane === 'plan' ? 0 : profile.bounds.minV * entity.form.scale[1];
+	const nextContact = plane === 'plan' ? 0 : profile.bounds.minV * entity.form.scale[1];
 	const rest = restSupport(input.context, entity, currentContact, input.choice);
 	if (rest.kind !== 'resolved') return rest;
 
@@ -516,16 +547,16 @@ export function planSetFormProfile(input: {
 		position: [
 			entity.position[0],
 			rest.support.elevation + rest.lift - nextContact,
-			entity.position[2]
+			entity.position[2],
 		],
 		form: {
 			...entity.form,
 			generator: {
 				...entity.form.generator,
 				outline: outline.map((anchor) => ({ ...anchor })),
-				extent: input.extent
-			}
-		}
+				extent: input.extent,
+			},
+		},
 	};
 	return finalize({
 		context: input.context,
@@ -537,9 +568,9 @@ export function planSetFormProfile(input: {
 			changedEntityFields: [FORM_GENERATOR_SCOPE_FIELD, 'position[1]'],
 			createdEntityIds: [],
 			removedEntityIds: [],
-			allowClusterCleanup: false
+			allowClusterCleanup: false,
 		},
 		correspondence: [{ relation: 'preserved', entityId: entity.id }],
-		support: rest.support
+		support: rest.support,
 	});
 }

@@ -69,7 +69,7 @@ export function spotTarget(input: {
 			: LIGHT_SPOT_TARGET_FALLBACK_METERS;
 	const target: Vec3 =
 		hit !== null && distance === hit.distanceMeters
-			? [...hit.worldPoint] as Vec3
+			? ([...hit.worldPoint] as Vec3)
 			: add(input.position, scale(forward, distance));
 	return { distance, target, surfaceBound: hit !== null && distance === hit.distanceMeters };
 }
@@ -83,20 +83,12 @@ export function spotFootprintRadius(distance: number, angle: number): number {
  * The radius of the edge of full brightness, matching the renderer: three.js
  * is at full brightness inside `angle × (1 − penumbra)`.
  */
-export function spotInnerRadius(
-	distance: number,
-	angle: number,
-	penumbra: number
-): number {
+export function spotInnerRadius(distance: number, angle: number, penumbra: number): number {
 	return spotFootprintRadius(distance, angle * (1 - clamp(penumbra, 0, 1)));
 }
 
 /** The inverse of {@link spotInnerRadius}; the Card and the mark share it. */
-export function penumbraForInnerRadius(
-	distance: number,
-	angle: number,
-	radius: number
-): number {
+export function penumbraForInnerRadius(distance: number, angle: number, radius: number): number {
 	if (!(distance > 1e-6) || !(angle > 1e-6)) return 0;
 	return clamp(1 - Math.atan2(Math.max(radius, 0), distance) / angle, 0, 1);
 }
@@ -104,7 +96,7 @@ export function penumbraForInnerRadius(
 /** The authored Point reach where it meets the datum, or `null` when it does not. */
 export function pointReachRingRadius(
 	range: number,
-	height: number
+	height: number,
 ): { readonly radius: number; readonly onDatum: boolean } {
 	const h = Math.max(0, height);
 	if (range < h) return { radius: 0, onDatum: false };
@@ -162,20 +154,16 @@ export function lightPlacementBody(input: {
 export function lightDropStem(
 	position: Vec3,
 	datumMeters: number,
-	pick: (ray: { origin: Vec3; direction: Vec3 }) => LightRayHit | null
+	pick: (ray: { origin: Vec3; direction: Vec3 }) => LightRayHit | null,
 ): Vec3 {
 	const hit = pick({ origin: [...position] as Vec3, direction: [0, -1, 0] });
-	const y = hit !== null && hit.worldPoint[1] < position[1] - 1e-6
-		? hit.worldPoint[1]
-		: datumMeters;
+	const y =
+		hit !== null && hit.worldPoint[1] < position[1] - 1e-6 ? hit.worldPoint[1] : datumMeters;
 	return [position[0], y, position[2]];
 }
 
 /** The point where a ray meets a horizontal plane, or `null`. */
-export function pointOnPlane(
-	ray: { origin: Vec3; direction: Vec3 },
-	planeY: number
-): Vec3 | null {
+export function pointOnPlane(ray: { origin: Vec3; direction: Vec3 }, planeY: number): Vec3 | null {
 	const denominator = ray.direction[1];
 	if (Math.abs(denominator) < 1e-9) return null;
 	const distance = (planeY - ray.origin[1]) / denominator;
@@ -183,7 +171,7 @@ export function pointOnPlane(
 	return [
 		ray.origin[0] + ray.direction[0] * distance,
 		planeY,
-		ray.origin[2] + ray.direction[2] * distance
+		ray.origin[2] + ray.direction[2] * distance,
 	];
 }
 

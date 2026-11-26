@@ -15,7 +15,8 @@ export function createStudioStrips(input: {
 }) {
 	const scope = $derived.by((): StudioScopeView | null => {
 		const studio = input.controller();
-		if (studio === undefined || !studio.active || input.previewing() || input.lens() !== 'world') return null;
+		if (studio === undefined || !studio.active || input.previewing() || input.lens() !== 'world')
+			return null;
 		return {
 			phase: studio.phase,
 			origin: studio.origin,
@@ -29,13 +30,14 @@ export function createStudioStrips(input: {
 			onBackToProjects: () => studio.backToProjects(),
 			onOpenInWorld: () => studio.openInWorld(),
 			onPlaceCopy: () => void studio.placeCopyInWorld(),
-			placingCopy: studio.placingCopy
+			placingCopy: studio.placingCopy,
 		};
 	});
 
 	const root = $derived.by((): StudioRootView | null => {
 		const studio = input.controller();
-		if (studio === undefined || !studio.active || input.previewing() || input.lens() !== 'world') return null;
+		if (studio === undefined || !studio.active || input.previewing() || input.lens() !== 'world')
+			return null;
 		return {
 			phase: studio.phase,
 			roots: studio.roots,
@@ -47,12 +49,16 @@ export function createStudioStrips(input: {
 			onBackToWorld: () => studio.backToWorld(),
 			onBackToProjects: () => studio.backToProjects(),
 			onOpenInWorld: () => studio.openInWorld(),
-			onCancelCreation: () => studio.cancelCreation()
+			onCancelCreation: () => studio.cancelCreation(),
 		};
 	});
 
 	return {
-		get scope() { return scope; },
-		get root() { return root; }
+		get scope() {
+			return scope;
+		},
+		get root() {
+			return root;
+		},
 	};
 }

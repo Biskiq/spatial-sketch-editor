@@ -1,12 +1,35 @@
 import type { LayoutDocumentWallFirst, LayoutWallFirstRoom } from '../wall/types';
 import { geometryId } from '../geometry/types';
 import type { LayoutVec2 } from '../geometry/coordinates';
-import { spaceOutlineSelfIntersects, spaceOutlineSignedArea, spacePairIssue } from './space-outline';
+import {
+	spaceOutlineSelfIntersects,
+	spaceOutlineSignedArea,
+	spacePairIssue,
+} from './space-outline';
 import { rotateBoundaryToSeam, roundRoomSeamJunctionId } from './round-room';
 import type { FaceExtractionResult } from '../geometry/face-extraction';
 import type { CarriedSpaceEdge } from './reconciliation-survivors';
-import { carriedBoundaryEdges, carriedBoundaryParts, carriedCyclePolygon, chooseMergeSurvivor, chooseSplitSurvivor, failure, normalizeCarriedEdges, remapPortalRelations, roomOutlinePolygon, spliceCarriedEdges } from './reconciliation-survivors';
-import type { ComponentLineage, ReconciliationResult, RoomIdAllocator, RoomLineageRecord, SpaceLifecyclePolicy, SpaceRetirement, SpaceRetirementReason } from './reconciliation-types';
+import {
+	carriedBoundaryEdges,
+	carriedBoundaryParts,
+	carriedCyclePolygon,
+	chooseMergeSurvivor,
+	chooseSplitSurvivor,
+	failure,
+	normalizeCarriedEdges,
+	remapPortalRelations,
+	roomOutlinePolygon,
+	spliceCarriedEdges,
+} from './reconciliation-survivors';
+import type {
+	ComponentLineage,
+	ReconciliationResult,
+	RoomIdAllocator,
+	RoomLineageRecord,
+	SpaceLifecyclePolicy,
+	SpaceRetirement,
+	SpaceRetirementReason,
+} from './reconciliation-types';
 
 export function reconcileRooms(options: {
 	baseline: LayoutDocumentWallFirst;
@@ -41,7 +64,7 @@ export function reconcileRooms(options: {
 			return failure({
 				code: 'unsupported_component',
 				message: `Retire list references unknown predecessor room '${roomId}'`,
-				roomIds: [roomId]
+				roomIds: [roomId],
 			});
 		}
 	}
@@ -61,13 +84,13 @@ export function reconcileRooms(options: {
 			return failure({
 				code: 'unsupported_component',
 				message: `Room(s) ${component.predecessorRoomIds.join(', ')} are retired by intent but still claim candidate face(s); no replacement Room is born`,
-				roomIds: [...component.predecessorRoomIds]
+				roomIds: [...component.predecessorRoomIds],
 			});
 		}
 		if (predecessors.length === 0 && component.candidateFaceKeys.length === 0) continue;
 		effectiveComponents.push({
 			candidateFaceKeys: component.candidateFaceKeys,
-			predecessorRoomIds: predecessors
+			predecessorRoomIds: predecessors,
 		});
 	}
 
@@ -85,14 +108,14 @@ export function reconcileRooms(options: {
 			if (!facesByKey.has(faceKey)) {
 				return failure({
 					code: 'unsupported_component',
-					message: `Component claims unknown candidate face '${faceKey}'`
+					message: `Component claims unknown candidate face '${faceKey}'`,
 				});
 			}
 			if (claimedFaces.has(faceKey)) {
 				return failure({
 					code: 'ambiguous_room_correspondence',
 					message: `Candidate face '${faceKey}' is claimed by multiple components`,
-					faceKey
+					faceKey,
 				});
 			}
 			claimedFaces.add(faceKey);
@@ -101,14 +124,14 @@ export function reconcileRooms(options: {
 			if (!predecessorRooms.has(predecessorId)) {
 				return failure({
 					code: 'unsupported_component',
-					message: `Component references unknown predecessor room '${predecessorId}'`
+					message: `Component references unknown predecessor room '${predecessorId}'`,
 				});
 			}
 			if (claimedPredecessors.has(predecessorId)) {
 				return failure({
 					code: 'ambiguous_room_correspondence',
 					message: `Predecessor room '${predecessorId}' is claimed by multiple components`,
-					roomIds: [predecessorId]
+					roomIds: [predecessorId],
 				});
 			}
 			claimedPredecessors.add(predecessorId);
@@ -123,7 +146,7 @@ export function reconcileRooms(options: {
 			return failure({
 				code: 'unsupported_component',
 				message: `Candidate face '${face.key}' is not claimed by any lineage component`,
-				faceKey: face.key
+				faceKey: face.key,
 			});
 		}
 	}
@@ -140,7 +163,7 @@ export function reconcileRooms(options: {
 				const face = facesByKey.get(faceKey)!;
 				const roomId = allocator.nextRoomId(
 					{ ...candidateDocument, rooms: [...baseline.rooms, ...finalRooms] },
-					faceKey
+					faceKey,
 				);
 				const name = allocator.nextRoomName([...takenNames]);
 				takenNames.add(name);
@@ -150,8 +173,6 @@ export function reconcileRooms(options: {
 					boundary: [...face.boundary],
 					virtualEdges: [],
 					overhead: 'closed',
-
-
 				});
 				lineage.push({ faceKey, roomId, predecessorRoomIds: [], kind: 'created' });
 			}
@@ -174,7 +195,7 @@ export function reconcileRooms(options: {
 					return failure({
 						code: 'unsupported_component',
 						message: `Round Room '${predecessor.id}' has no resolvable seam Junction`,
-						roomIds: [predecessor.id]
+						roomIds: [predecessor.id],
 					});
 				}
 				const rotated = rotateBoundaryToSeam(boundary, seamJunctionId, candidateWallById);
@@ -182,7 +203,7 @@ export function reconcileRooms(options: {
 					return failure({
 						code: 'unsupported_component',
 						message: `Round Room '${predecessor.id}' cannot retain seam Junction '${seamJunctionId}'`,
-						roomIds: [predecessor.id]
+						roomIds: [predecessor.id],
 					});
 				}
 				boundary = rotated;
@@ -194,13 +215,13 @@ export function reconcileRooms(options: {
 				// A predecessor claimed by a face becomes enclosed: the face is its
 				// whole boundary, so no open side survives.
 				virtualEdges: [],
-				...(survivingRound !== undefined ? { round: survivingRound } : {})
+				...(survivingRound !== undefined ? { round: survivingRound } : {}),
 			});
 			lineage.push({
 				faceKey: face.key,
 				roomId: predecessor.id,
 				predecessorRoomIds: [predecessor.id],
-				kind: 'preserved'
+				kind: 'preserved',
 			});
 			continue;
 		}
@@ -212,19 +233,19 @@ export function reconcileRooms(options: {
 				predecessor,
 				candidates,
 				witness: predecessorWitnesses.get(predecessor.id),
-				overlapPolygons: predecessorPolygons
+				overlapPolygons: predecessorPolygons,
 			});
 			if (!winner) {
 				return failure({
 					code: 'ambiguous_room_correspondence',
 					message: `Split of room '${predecessor.id}' has no deterministic survivor`,
-					roomIds: [predecessor.id]
+					roomIds: [predecessor.id],
 				});
 			}
 			const loser = candidates.find((face) => face !== winner)!;
 			const newRoomId = allocator.nextRoomId(
 				{ ...candidateDocument, rooms: [...baseline.rooms, ...finalRooms] },
-				loser.key
+				loser.key,
 			);
 			const newName = allocator.nextRoomName([...takenNames]);
 			takenNames.add(newName);
@@ -233,7 +254,7 @@ export function reconcileRooms(options: {
 			finalRooms.push({
 				...predecessorWithoutRound,
 				boundary: [...winner.boundary],
-				virtualEdges: []
+				virtualEdges: [],
 			});
 			finalRooms.push({
 				id: newRoomId,
@@ -241,20 +262,18 @@ export function reconcileRooms(options: {
 				boundary: [...loser.boundary],
 				virtualEdges: [],
 				overhead: predecessor.overhead,
-
-
 			});
 			lineage.push({
 				faceKey: winner.key,
 				roomId: predecessor.id,
 				predecessorRoomIds: [predecessor.id],
-				kind: 'split-survivor'
+				kind: 'split-survivor',
 			});
 			lineage.push({
 				faceKey: loser.key,
 				roomId: newRoomId,
 				predecessorRoomIds: [predecessor.id],
-				kind: 'created'
+				kind: 'created',
 			});
 			continue;
 		}
@@ -265,14 +284,14 @@ export function reconcileRooms(options: {
 			const winner = chooseMergeSurvivor({
 				predecessors,
 				face,
-				overlapPolygons: predecessorPolygons
+				overlapPolygons: predecessorPolygons,
 			});
 			if (!winner) {
 				return failure({
 					code: 'ambiguous_room_correspondence',
 					message: `Merge into face '${face.key}' has no deterministic survivor`,
 					faceKey: face.key,
-					roomIds: predecessors.map((room) => room.id)
+					roomIds: predecessors.map((room) => room.id),
 				});
 			}
 			const retired = predecessors.find((room) => room.id !== winner.id)!;
@@ -281,13 +300,13 @@ export function reconcileRooms(options: {
 			finalRooms.push({
 				...winnerWithoutRound,
 				boundary: [...face.boundary],
-				virtualEdges: []
+				virtualEdges: [],
 			});
-		lineage.push({
-			faceKey: face.key,
-			roomId: winner.id,
+			lineage.push({
+				faceKey: face.key,
+				roomId: winner.id,
 				predecessorRoomIds: [predecessors[0]!.id, predecessors[1]!.id],
-				kind: 'merge-survivor'
+				kind: 'merge-survivor',
 			});
 			retiredRoomIds.push(retired.id);
 			continue;
@@ -296,7 +315,7 @@ export function reconcileRooms(options: {
 		return failure({
 			code: 'unsupported_component',
 			message: `Unsupported correspondence component ${predecessorCount}→${candidateCount}`,
-			roomIds: [...component.predecessorRoomIds]
+			roomIds: [...component.predecessorRoomIds],
 		});
 	}
 
@@ -310,7 +329,7 @@ export function reconcileRooms(options: {
 	const retireSpace = (
 		roomId: string,
 		reason: SpaceRetirementReason,
-		extra: { otherRoomIds?: readonly string[]; successorRoomId?: string } = {}
+		extra: { otherRoomIds?: readonly string[]; successorRoomId?: string } = {},
 	): void => {
 		if (!retiredForSpaceIds.has(roomId)) {
 			retiredForSpaceIds.add(roomId);
@@ -345,9 +364,10 @@ export function reconcileRooms(options: {
 			// Removals must compose the baseline boundary (the candidate records
 			// still name the erased Walls). Non-removal edits use the candidate
 			// record, which may already carry a split/joined boundary.
-			const candidateRoom = removedWallIds.size === 0
-				? options.candidateRooms?.find((record) => record.id === room.id)
-				: undefined;
+			const candidateRoom =
+				removedWallIds.size === 0
+					? options.candidateRooms?.find((record) => record.id === room.id)
+					: undefined;
 			const result = candidateRoom
 				? carriedBoundaryEdges(candidateDocument, candidateRoom, removedWallIds)
 				: carriedBoundaryEdges(baseline, room, removedWallIds);
@@ -355,10 +375,14 @@ export function reconcileRooms(options: {
 				return failure({
 					code: 'unsupported_component',
 					message: `Predecessor Space '${room.id}' cannot carry its boundary: ${result.message}`,
-					roomIds: [room.id]
+					roomIds: [room.id],
 				});
 			}
-			carried.push({ room: candidateRoom ?? room, edges: result.edges, predecessorRoomIds: [room.id] });
+			carried.push({
+				room: candidateRoom ?? room,
+				edges: result.edges,
+				predecessorRoomIds: [room.id],
+			});
 		}
 
 		// Open merge (ratified extended merge rule): a removed Wall referenced by
@@ -373,25 +397,27 @@ export function reconcileRooms(options: {
 			// Spaces the operation did not join and retire the wrong identity.
 			const owners = carried.filter((entry) =>
 				entry.edges.some(
-					(edge) => edge.kind === 'virtual' && edge.replacedWallId === removedWallId
-				)
+					(edge) => edge.kind === 'virtual' && edge.replacedWallId === removedWallId,
+				),
 			);
 			if (owners.length > 2) {
 				return failure({
 					code: 'unsupported_component',
 					message: `Wall '${removedWallId}' is shared by ${owners.length} Spaces; joining three or more is unsupported`,
-					roomIds: owners.map((owner) => owner.room.id)
+					roomIds: owners.map((owner) => owner.room.id),
 				});
 			}
 			if (owners.length !== 2) continue;
 			const first = owners[0]!;
 			const second = owners[1]!;
-			const mergedPredecessorIds = [...new Set([...first.predecessorRoomIds, ...second.predecessorRoomIds])];
+			const mergedPredecessorIds = [
+				...new Set([...first.predecessorRoomIds, ...second.predecessorRoomIds]),
+			];
 			if (mergedPredecessorIds.length > 2) {
 				return failure({
 					code: 'unsupported_component',
 					message: `Deleting this Wall set would join ${mergedPredecessorIds.length} Spaces in one operation; joining three or more is unsupported`,
-					roomIds: mergedPredecessorIds
+					roomIds: mergedPredecessorIds,
 				});
 			}
 			const spliced = spliceCarriedEdges(first.edges, second.edges, wall);
@@ -399,20 +425,20 @@ export function reconcileRooms(options: {
 				return failure({
 					code: 'unsupported_component',
 					message: `Wall '${removedWallId}' does not fall between the same two carried Spaces`,
-					roomIds: [first.room.id, second.room.id]
+					roomIds: [first.room.id, second.room.id],
 				});
 			}
 			const mergedPolygon = carriedCyclePolygon(candidateDocument, first.room.id, spliced) ?? [];
 			const winner = chooseMergeSurvivor({
 				predecessors: [first.room, second.room],
 				face: { polygon: mergedPolygon },
-				overlapPolygons: predecessorPolygons
+				overlapPolygons: predecessorPolygons,
 			});
 			if (!winner) {
 				return failure({
 					code: 'ambiguous_room_correspondence',
 					message: `Merge of Spaces '${first.room.id}' and '${second.room.id}' has no deterministic survivor`,
-					roomIds: [first.room.id, second.room.id]
+					roomIds: [first.room.id, second.room.id],
 				});
 			}
 			const winnerEntry = winner.id === first.room.id ? first : second;
@@ -427,19 +453,19 @@ export function reconcileRooms(options: {
 				faceKey: geometryId(['space-merge', ...mergedPredecessorIds.slice().sort()]),
 				roomId: winner.id,
 				predecessorRoomIds: mergedPredecessorIds,
-				kind: 'merge-survivor'
+				kind: 'merge-survivor',
 			});
 			// The survivor's overhead wins (ratified default); thicknesses were
 			// checked above.
 			retireSpace(loser.room.id, 'merged', {
 				otherRoomIds: [winner.id],
-				successorRoomId: winner.id
+				successorRoomId: winner.id,
 			});
 		}
 
 		const baselineIndex = new Map(baseline.rooms.map((room, index) => [room.id, index]));
 		const orderedCarried = [...carried].sort(
-			(a, b) => (baselineIndex.get(a.room.id) ?? 0) - (baselineIndex.get(b.room.id) ?? 0)
+			(a, b) => (baselineIndex.get(a.room.id) ?? 0) - (baselineIndex.get(b.room.id) ?? 0),
 		);
 		for (const entry of orderedCarried) {
 			const parts = carriedBoundaryParts(normalizeCarriedEdges(entry.edges));
@@ -449,7 +475,11 @@ export function reconcileRooms(options: {
 				continue;
 			}
 			const { round: _clearedCarriedRound, ...carriedBase } = entry.room;
-			carriedRooms.push({ ...carriedBase, boundary: parts.boundary, virtualEdges: parts.virtualEdges });
+			carriedRooms.push({
+				...carriedBase,
+				boundary: parts.boundary,
+				virtualEdges: parts.virtualEdges,
+			});
 		}
 
 		// Outline gate (I4/I7) over the provisional candidate. Carried Spaces are
@@ -458,7 +488,7 @@ export function reconcileRooms(options: {
 		// deterministic.
 		const provisional = [...finalRooms, ...carriedRooms];
 		const polygonCache = new Map<string, readonly LayoutVec2[] | null>();
-				const polygonOf = (room: LayoutWallFirstRoom): readonly LayoutVec2[] | null => {
+		const polygonOf = (room: LayoutWallFirstRoom): readonly LayoutVec2[] | null => {
 			if (!polygonCache.has(room.id)) {
 				polygonCache.set(room.id, roomOutlinePolygon(candidateDocument, room));
 			}
@@ -505,14 +535,13 @@ export function reconcileRooms(options: {
 			return failure({
 				code: 'space_outline_invalid',
 				message,
-				roomIds: otherRoomId ? [room.id, otherRoomId] : [room.id]
+				roomIds: otherRoomId ? [room.id, otherRoomId] : [room.id],
 			});
 		}
 		for (const room of carriedRooms) {
 			if (carriedRoomIds.includes(room.id)) finalRooms.push(room);
 		}
 	}
-
 
 	// --- layout-object semantic associations ------------------------
 	const roomIdMap = new Map<string, string>();
@@ -567,7 +596,7 @@ export function reconcileRooms(options: {
 		retiredRoomIds,
 		splitDescendants,
 		rooms: finalRooms,
-		openings: candidateDocument.openings
+		openings: candidateDocument.openings,
 	});
 	if (portalResult.kind === 'rejected') return portalResult;
 
@@ -576,15 +605,14 @@ export function reconcileRooms(options: {
 			...candidateDocument,
 			rooms: finalRooms,
 			objects: objects as LayoutDocumentWallFirst['objects'],
-			openings: portalResult.openings
+			openings: portalResult.openings,
 		},
 		lineage,
 		retiredRoomIds,
 		carriedRoomIds,
-		spaceRetirements
+		spaceRetirements,
 	};
 }
-
 
 /**
  * Alias kept for call-site readability: reconciliation with explicit baseline

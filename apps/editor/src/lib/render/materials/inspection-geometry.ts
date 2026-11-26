@@ -44,7 +44,7 @@ function roundedBlockGeometry(): BufferGeometry {
 		inner.set(
 			Math.max(-BLOCK_INNER, Math.min(BLOCK_INNER, point.x)),
 			Math.max(-BLOCK_INNER, Math.min(BLOCK_INNER, point.y)),
-			Math.max(-BLOCK_INNER, Math.min(BLOCK_INNER, point.z))
+			Math.max(-BLOCK_INNER, Math.min(BLOCK_INNER, point.z)),
 		);
 		displacement.copy(point).sub(inner).normalize();
 		// The corner/edge direction is the rounded surface's normal. A face-centre
@@ -75,7 +75,7 @@ export function inspectionGeometryFacts(kind: InspectionGeometryKind): Inspectio
 				kind,
 				uvMeters: [1, 1],
 				uvSets: [0],
-				surfaceMeters: [1, 1]
+				surfaceMeters: [1, 1],
 			};
 		case 'sphere':
 			return {
@@ -84,7 +84,7 @@ export function inspectionGeometryFacts(kind: InspectionGeometryKind): Inspectio
 				// Longitude × latitude reference spans (equator and meridian).
 				uvMeters: [Math.PI, Math.PI / 2],
 				uvSets: [0],
-				surfaceMeters: [Math.PI, Math.PI / 2]
+				surfaceMeters: [Math.PI, Math.PI / 2],
 			};
 		case 'block':
 			return {
@@ -92,7 +92,7 @@ export function inspectionGeometryFacts(kind: InspectionGeometryKind): Inspectio
 				kind,
 				uvMeters: [1, 1],
 				uvSets: [0],
-				surfaceMeters: [1, 1]
+				surfaceMeters: [1, 1],
 			};
 	}
 }
@@ -116,7 +116,7 @@ export function createInspectionGeometry(kind: InspectionGeometryKind): {
 export function inspectionTargetFacts(
 	kind: InspectionGeometryKind,
 	subject = `inspection:${kind}`,
-	revision = `inspection-${INSPECTION_GEOMETRY_VERSION}-${kind}`
+	revision = `inspection-${INSPECTION_GEOMETRY_VERSION}-${kind}`,
 ): TargetFacts {
 	const facts = inspectionGeometryFacts(kind);
 	return {
@@ -124,8 +124,8 @@ export function inspectionTargetFacts(
 		geometryRevision: revision,
 		metricBasis: {
 			uvMeters: [facts.uvMeters[0], facts.uvMeters[1]],
-			surfaceMeters: [facts.surfaceMeters[0], facts.surfaceMeters[1]]
+			surfaceMeters: [facts.surfaceMeters[0], facts.surfaceMeters[1]],
 		},
-		draws: [{ drawKey: 'reference', uvSets: [0], normalFrameSets: [0] }]
+		draws: [{ drawKey: 'reference', uvSets: [0], normalFrameSets: [0] }],
 	};
 }

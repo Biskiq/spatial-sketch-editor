@@ -28,21 +28,21 @@ export const SUITES = [
 		kind: 'vitest',
 		cwd: 'apps/editor',
 		args: ['npx', 'vitest', 'run', '--config', 'vitest.arch.config.ts'],
-		slug: 'test-arch'
+		slug: 'test-arch',
 	},
 	{
 		name: 'npm run test:fast',
 		kind: 'vitest',
 		cwd: 'apps/editor',
 		args: ['npx', 'vitest', 'run', '--config', 'vitest.fast.config.ts'],
-		slug: 'test-fast'
+		slug: 'test-fast',
 	},
 	{
 		name: 'npm run test:heavy',
 		kind: 'vitest',
 		cwd: 'apps/editor',
 		args: ['npx', 'vitest', 'run', '--config', 'vitest.heavy.config.ts'],
-		slug: 'test-heavy'
+		slug: 'test-heavy',
 	},
 	{ name: 'npm run build', kind: 'command', script: 'build', slug: 'build' },
 	{ name: 'npm run check:api', kind: 'command', script: 'check:api', slug: 'check-api' },
@@ -51,7 +51,7 @@ export const SUITES = [
 		kind: 'tap',
 		script: 'test:api',
 		slug: 'test-api',
-		needsDb: true
+		needsDb: true,
 	},
 	{
 		name: 'npm run check:camera-core',
@@ -59,7 +59,7 @@ export const SUITES = [
 		script: 'check:camera-core',
 		slug: 'check-camera-core',
 		group: 'package checks',
-		groupSlug: 'package-checks'
+		groupSlug: 'package-checks',
 	},
 	{
 		name: 'npm run check:layout-core',
@@ -67,7 +67,7 @@ export const SUITES = [
 		script: 'check:layout-core',
 		slug: 'check-layout-core',
 		group: 'package checks',
-		groupSlug: 'package-checks'
+		groupSlug: 'package-checks',
 	},
 	{
 		name: 'npm run check:geometry-core',
@@ -75,7 +75,7 @@ export const SUITES = [
 		script: 'check:geometry-core',
 		slug: 'check-geometry-core',
 		group: 'package checks',
-		groupSlug: 'package-checks'
+		groupSlug: 'package-checks',
 	},
 	{
 		name: 'npm run check:project-model',
@@ -83,8 +83,8 @@ export const SUITES = [
 		script: 'check:project-model',
 		slug: 'check-project-model',
 		group: 'package checks',
-		groupSlug: 'package-checks'
-	}
+		groupSlug: 'package-checks',
+	},
 ];
 
 /** Every suite the gate and the report require. */
@@ -95,7 +95,7 @@ export const FOCUSED_SUITE = {
 	kind: 'vitest',
 	cwd: 'apps/editor',
 	args: ['npx', 'vitest', 'run'],
-	slug: 'editor-focused'
+	slug: 'editor-focused',
 };
 
 export function requiredSuites(profile) {
@@ -105,16 +105,14 @@ export function requiredSuites(profile) {
 	throw new Error(`unknown verification profile: ${profile}`);
 }
 
-export const VITEST_SUITES = [...SUITES, FOCUSED_SUITE].filter((suite) => suite.kind === 'vitest').map(
-	(suite) => suite.name
-);
+export const VITEST_SUITES = [...SUITES, FOCUSED_SUITE]
+	.filter((suite) => suite.kind === 'vitest')
+	.map((suite) => suite.name);
 
-export const TAP_SUITES = SUITES.filter((suite) => suite.kind === 'tap').map(
-	(suite) => suite.name
-);
+export const TAP_SUITES = SUITES.filter((suite) => suite.kind === 'tap').map((suite) => suite.name);
 
 export const COMMAND_SUITES = SUITES.filter((suite) => suite.kind === 'command').map(
-	(suite) => suite.name
+	(suite) => suite.name,
 );
 
 /** How a production provenance record's command must start. */

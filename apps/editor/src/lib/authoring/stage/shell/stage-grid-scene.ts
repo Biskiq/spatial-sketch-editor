@@ -14,7 +14,7 @@ import {
 	Float32BufferAttribute,
 	Group,
 	LineBasicMaterial,
-	LineSegments
+	LineSegments,
 } from 'three';
 import { STAGE_OVERLAY_LAYER } from '../paper-plan';
 import { gridLinesFor, type GridPlan } from '../stage-grid';
@@ -52,9 +52,23 @@ export function createGridScene(plan: GridPlan): GridSceneResources {
 		const key = `${line.role}:${line.color}`;
 		const bucket = buckets.get(key) ?? { color: line.color, opacity: line.opacity, positions: [] };
 		if (line.axis === 'x') {
-			bucket.positions.push(line.atMeters, elevation, rect.minZ, line.atMeters, elevation, rect.maxZ);
+			bucket.positions.push(
+				line.atMeters,
+				elevation,
+				rect.minZ,
+				line.atMeters,
+				elevation,
+				rect.maxZ,
+			);
 		} else {
-			bucket.positions.push(rect.minX, elevation, line.atMeters, rect.maxX, elevation, line.atMeters);
+			bucket.positions.push(
+				rect.minX,
+				elevation,
+				line.atMeters,
+				rect.maxX,
+				elevation,
+				line.atMeters,
+			);
 		}
 		buckets.set(key, bucket);
 	}
@@ -84,7 +98,7 @@ export function createGridScene(plan: GridPlan): GridSceneResources {
 			// paper and mat values away from the shell's own tokens.
 			toneMapped: false,
 			depthTest: false,
-			depthWrite: false
+			depthWrite: false,
 		});
 		const object = new LineSegments(geometry, material);
 		object.renderOrder = PAPER_GRID_RENDER_ORDER;
@@ -119,6 +133,6 @@ export function createGridScene(plan: GridPlan): GridSceneResources {
 			materials.clear();
 			levelOpacity.clear();
 			for (const disposable of disposables) disposable.dispose();
-		}
+		},
 	};
 }

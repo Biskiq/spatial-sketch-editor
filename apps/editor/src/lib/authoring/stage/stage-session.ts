@@ -21,18 +21,31 @@
  * that resolves after the swap is refused rather than installed.
  */
 import { immutableF4Data, type F4JsonValue } from '@portfolio/project-model/f4';
-import { resolveReference, type SemanticReference, type AcceptedRevision } from '@portfolio/project-model/references';
+import {
+	resolveReference,
+	type SemanticReference,
+	type AcceptedRevision,
+} from '@portfolio/project-model/references';
 
 import { createStageSessionLens } from './stage-session-lens.svelte';
 import type { EntryRequalification } from './selection-requalification';
 import type { PlanSourceKind, PlanSourceRef } from '@portfolio/layout-core/world';
 import type { StageReadSnapshot } from './accepted-read';
-import { EMPTY_SELECTION, admitSelection, primaryEntry, layoutSelectionReference, sameReference, type StageSelectionState, type StageSelectionChange, type StageSelectionEntry } from './semantic-selection';
+import {
+	EMPTY_SELECTION,
+	admitSelection,
+	primaryEntry,
+	layoutSelectionReference,
+	sameReference,
+	type StageSelectionState,
+	type StageSelectionChange,
+	type StageSelectionEntry,
+} from './semantic-selection';
 import {
 	STAGE_DRAFTING_DEFAULTS,
 	applyDraftingPatch,
 	type StageDraftingPatch,
-	type StageDraftingState
+	type StageDraftingState,
 } from './stage-drafting';
 import { createStageHeightSheet, type StageHeightSheet } from './stage-height-sheet';
 
@@ -84,8 +97,13 @@ export type StageTask = {
 };
 
 /** One ordered entry the accepted change did not preserve, with the reason it went. */
-export type SelectionRemoval = { readonly reference: SemanticReference; readonly reason: 'subject-retired' | 'no-correspondence' };
-export type TaskResumeOutcome = { readonly kind: 'resumed' } | { readonly kind: 'refused'; readonly code: string; readonly message: string };
+export type SelectionRemoval = {
+	readonly reference: SemanticReference;
+	readonly reason: 'subject-retired' | 'no-correspondence';
+};
+export type TaskResumeOutcome =
+	| { readonly kind: 'resumed' }
+	| { readonly kind: 'refused'; readonly code: string; readonly message: string };
 export type TaskLifecycle = { readonly status: 'active' | 'inactive'; readonly task: StageTask };
 
 export type GestureTransitionPolicy =
@@ -119,7 +137,11 @@ export type GestureLease = {
 
 export type GestureAcquisition =
 	| { readonly kind: 'granted'; readonly lease: GestureLease }
-	| { readonly kind: 'refused'; readonly code: 'gesture-held' | 'stale-epoch'; readonly owner: string };
+	| {
+			readonly kind: 'refused';
+			readonly code: 'gesture-held' | 'stale-epoch';
+			readonly owner: string;
+	  };
 
 /**
  * One live **proposal**: work the creator has named but not yet accepted.
@@ -159,7 +181,9 @@ export type GestureReadingChange = {
  * correspondence knows whether a subject survived; the session validates nothing
  * about the mapping and never re-resolves a subject by coordinate or proximity.
  */
-export type SelectionRequalification = (selection: StageSelection) => StageSelection | null | Extract<SelectionRequalificationOutcome, { kind: 'cleared' }>;
+export type SelectionRequalification = (
+	selection: StageSelection,
+) => StageSelection | null | Extract<SelectionRequalificationOutcome, { kind: 'cleared' }>;
 
 /** What happened to the previous selection when content changed. */
 export type SelectionRequalificationOutcome =
@@ -212,9 +236,22 @@ export type ReplacementResult = {
 };
 
 export type StageMetadataAdoption =
-	| { readonly kind: 'adopted'; readonly previousSourceContentId: string; readonly sourceContentId: string }
+	| {
+			readonly kind: 'adopted';
+			readonly previousSourceContentId: string;
+			readonly sourceContentId: string;
+	  }
 	| { readonly kind: 'unchanged'; readonly sourceContentId: string }
-	| { readonly kind: 'refused'; readonly code: 'disposed' | 'no-current-source' | 'different-project' | 'stale-session' | 'domain-changed'; readonly message: string };
+	| {
+			readonly kind: 'refused';
+			readonly code:
+				| 'disposed'
+				| 'no-current-source'
+				| 'different-project'
+				| 'stale-session'
+				| 'domain-changed';
+			readonly message: string;
+	  };
 
 export type StageSession = {
 	readonly sessionEpoch: SessionEpoch;
@@ -246,7 +283,9 @@ export type StageSession = {
 	 */
 	heightSheet(): StageHeightSheet;
 	taskLifecycle(): TaskLifecycle | null;
-	resumeTask(validate: (task: StageTask, current: StageReadSnapshot) => TaskResumeOutcome): TaskResumeOutcome;
+	resumeTask(
+		validate: (task: StageTask, current: StageReadSnapshot) => TaskResumeOutcome,
+	): TaskResumeOutcome;
 	/** Invalidates lens/task-bound asynchronous writers without replacing accepted content. */
 	writerGeneration(): number;
 	/** Tracks deliberate task and lens choices, excluding automatic install closure. */
@@ -300,7 +339,13 @@ export type StageSession = {
 	 * replacement. Selection is requalified through the host's correspondence
 	 * mapping, or cleared with a reason when it does not survive.
 	 */
-	installAccepted(next: StageReadSnapshot, options?: { readonly requalify?: SelectionRequalification; readonly requalifyEntry?: (entry: StageSelectionEntry) => EntryRequalification }): AcceptedSlotInstall;
+	installAccepted(
+		next: StageReadSnapshot,
+		options?: {
+			readonly requalify?: SelectionRequalification;
+			readonly requalifyEntry?: (entry: StageSelectionEntry) => EntryRequalification;
+		},
+	): AcceptedSlotInstall;
 	/** Adopt project-level metadata while domain units and their representation stay identical. */
 	adoptMetadata(next: StageReadSnapshot): StageMetadataAdoption;
 	/** Register a disposer run exactly once at session teardown. */
@@ -324,7 +369,13 @@ export function createCancellationRegistry(): CancellationRegistry {
 		cancelKinds(kinds) {
 			const entries = [...live.entries()].filter(([, entry]) => kinds.includes(entry.kind));
 			for (const [id] of entries) live.delete(id);
-			for (const [, entry] of entries) { try { entry.cancel(); } catch { /* Finish all cancellations. */ } }
+			for (const [, entry] of entries) {
+				try {
+					entry.cancel();
+				} catch {
+					/* Finish all cancellations. */
+				}
+			}
 			return entries.length;
 		},
 		cancelAll() {
@@ -341,7 +392,7 @@ export function createCancellationRegistry(): CancellationRegistry {
 		},
 		get size() {
 			return live.size;
-		}
+		},
 	};
 }
 
@@ -361,7 +412,7 @@ export function createCancellationRegistry(): CancellationRegistry {
  */
 export async function runBoundLoad<T>(
 	session: StageSession,
-	start: (signal: AbortSignal) => Promise<T>
+	start: (signal: AbortSignal) => Promise<T>,
 ): Promise<T | null> {
 	const token = session.token();
 	const controller = new AbortController();
@@ -398,7 +449,9 @@ function freshSessionEpoch(): SessionEpoch {
 export const PROPOSAL_REASON =
 	'A proposal is live; finish or cancel it — Undo is available once it is accepted or refused.';
 
-export function createStageSession(options: { sessionEpoch?: SessionEpoch; epoch?: number } = {}): StageSession {
+export function createStageSession(
+	options: { sessionEpoch?: SessionEpoch; epoch?: number } = {},
+): StageSession {
 	let sessionEpoch = options.sessionEpoch ?? freshSessionEpoch();
 	let epoch = options.epoch ?? 0;
 	let current: StageReadSnapshot | null = null;
@@ -456,21 +509,58 @@ export function createStageSession(options: { sessionEpoch?: SessionEpoch; epoch
 	function layoutPrimary(): StageSelection | null {
 		const entry = primaryEntry(selectionValue);
 		const ref = entry?.representation;
-		return ref ? { sourceId: ref.sourceId, sourceKind: ref.sourceKind, generationId: ref.generationId, ref } : null;
+		return ref
+			? { sourceId: ref.sourceId, sourceKind: ref.sourceKind, generationId: ref.generationId, ref }
+			: null;
 	}
-/** What a convenience `select()` request did to the one selection value. */
-type LegacySelectionOutcome = 'admitted' | 'cleared' | 'refused';
+	/** What a convenience `select()` request did to the one selection value. */
+	type LegacySelectionOutcome = 'admitted' | 'cleared' | 'refused';
 
 	function setLegacy(next: StageSelection | null): LegacySelectionOutcome {
-		if (next === null) { selectionValue = EMPTY_SELECTION; return 'cleared'; }
-		if (current === null) { selectionValue = EMPTY_SELECTION; return 'refused'; }
+		if (next === null) {
+			selectionValue = EMPTY_SELECTION;
+			return 'cleared';
+		}
+		if (current === null) {
+			selectionValue = EMPTY_SELECTION;
+			return 'refused';
+		}
 		// Retained Layout helper shares the exact same owner and ordered value.
-		const reference = layoutSelectionReference(next.ref ?? { sourceId: next.sourceId, sourceKind: next.sourceKind, generationId: next.generationId, stream: 'projected', subRef: null }, current);
-		const admitted = admitSelection({ ordered: [{ reference, representation: next.ref ?? { sourceId: next.sourceId, sourceKind: next.sourceKind, generationId: next.generationId, stream: 'projected', subRef: null } }], primary: reference }, current);
+		const reference = layoutSelectionReference(
+			next.ref ?? {
+				sourceId: next.sourceId,
+				sourceKind: next.sourceKind,
+				generationId: next.generationId,
+				stream: 'projected',
+				subRef: null,
+			},
+			current,
+		);
+		const admitted = admitSelection(
+			{
+				ordered: [
+					{
+						reference,
+						representation: next.ref ?? {
+							sourceId: next.sourceId,
+							sourceKind: next.sourceKind,
+							generationId: next.generationId,
+							stream: 'projected',
+							subRef: null,
+						},
+					},
+				],
+				primary: reference,
+			},
+			current,
+		);
 		// A refused convenience request clears rather than retaining a value that
 		// names the previous revision: the caller re-reads the projection, and a
 		// stale ref would otherwise be shown as the subject just clicked.
-		if ('kind' in admitted) { selectionValue = EMPTY_SELECTION; return 'refused'; }
+		if ('kind' in admitted) {
+			selectionValue = EMPTY_SELECTION;
+			return 'refused';
+		}
 		selectionValue = admitted;
 		return 'admitted';
 	}
@@ -512,9 +602,16 @@ type LegacySelectionOutcome = 'admitted' | 'cleared' | 'refused';
 		selection: layoutPrimary,
 		selectionState: () => selectionValue,
 		hover: () => hoverValue,
-		setHover(entry) { if (!disposed) hoverValue = entry; },
+		setHover(entry) {
+			if (!disposed) hoverValue = entry;
+		},
 		setSelection(value) {
-			if (disposed || current === null) return { kind: 'refused', code: 'stale-session', message: 'Open a current source before selecting.' };
+			if (disposed || current === null)
+				return {
+					kind: 'refused',
+					code: 'stale-session',
+					message: 'Open a current source before selecting.',
+				};
 			const admitted = admitSelection(value, current);
 			if ('kind' in admitted) return admitted;
 			selectionValue = admitted;
@@ -523,7 +620,9 @@ type LegacySelectionOutcome = 'admitted' | 'cleared' | 'refused';
 		select: setLegacy,
 		lens: lens.read,
 		resizeHandles: () => resizeHandlesVisible,
-		setResizeHandles(visible) { if (!disposed) resizeHandlesVisible = visible; },
+		setResizeHandles(visible) {
+			if (!disposed) resizeHandlesVisible = visible;
+		},
 		drafting: () => draftingValue,
 		setDrafting(patch) {
 			if (disposed) return draftingValue;
@@ -546,7 +645,13 @@ type LegacySelectionOutcome = 'admitted' | 'cleared' | 'refused';
 			const parkedToken = token();
 			if (task !== null) taskStatus = 'inactive';
 			cancelAllWriters();
-			if (parked !== null && task === null && !disposed && token().sessionEpoch === parkedToken.sessionEpoch && token().epoch === parkedToken.epoch) {
+			if (
+				parked !== null &&
+				task === null &&
+				!disposed &&
+				token().sessionEpoch === parkedToken.sessionEpoch &&
+				token().epoch === parkedToken.epoch
+			) {
 				task = parked;
 				taskStatus = 'inactive';
 			}
@@ -566,11 +671,26 @@ type LegacySelectionOutcome = 'admitted' | 'cleared' | 'refused';
 			lens.write(next);
 			return true;
 		},
-		taskLifecycle: () => task === null ? null : { status: taskStatus, task },
+		taskLifecycle: () => (task === null ? null : { status: taskStatus, task }),
 		resumeTask(validate) {
-			if (disposed || current === null) return { kind: 'refused', code: 'stale-session', message: 'Open a current source before resuming a task.' };
-			if (task === null || taskStatus !== 'inactive') return { kind: 'refused', code: 'no-inactive-task', message: 'Choose an inactive task to resume.' };
-			if ((task.lens ?? 'world') !== lens.read()) return { kind: 'refused', code: 'wrong-lens', message: `Return to the ${task.lens ?? 'world'} lens before resuming.` };
+			if (disposed || current === null)
+				return {
+					kind: 'refused',
+					code: 'stale-session',
+					message: 'Open a current source before resuming a task.',
+				};
+			if (task === null || taskStatus !== 'inactive')
+				return {
+					kind: 'refused',
+					code: 'no-inactive-task',
+					message: 'Choose an inactive task to resume.',
+				};
+			if ((task.lens ?? 'world') !== lens.read())
+				return {
+					kind: 'refused',
+					code: 'wrong-lens',
+					message: `Return to the ${task.lens ?? 'world'} lens before resuming.`,
+				};
 			// Explicit identity requalification within this source; replacement clears tasks.
 			let target = task.target;
 			if (target) {
@@ -581,16 +701,36 @@ type LegacySelectionOutcome = 'admitted' | 'cleared' | 'refused';
 					revision: {
 						kind: 'exact',
 						contentRevision:
-							current.domain.unitRevisions[target.domain as keyof typeof current.domain.unitRevisions] ??
-							current.sourceContentId
-					}
+							current.domain.unitRevisions[
+								target.domain as keyof typeof current.domain.unitRevisions
+							] ?? current.sourceContentId,
+					},
 				};
 				const resolved = resolveReference(target, current.domain.references);
-				if (resolved.kind !== 'resolved') return { kind: 'refused', code: resolved.code, message: `${resolved.message} Choose another target or close this task.` };
+				if (resolved.kind !== 'resolved')
+					return {
+						kind: 'refused',
+						code: resolved.code,
+						message: `${resolved.message} Choose another target or close this task.`,
+					};
 			}
-			const candidate = immutableF4Data({ ...task, ...(target ? { target } : {}), targetRef: task.targetRef ? { ...task.targetRef, generationId: current.compileGeneration } : null });
+			const candidate = immutableF4Data({
+				...task,
+				...(target ? { target } : {}),
+				targetRef: task.targetRef
+					? { ...task.targetRef, generationId: current.compileGeneration }
+					: null,
+			});
 			let checked: TaskResumeOutcome;
-			try { checked = validate(candidate, current); } catch { checked = { kind: 'refused', code: 'invalid-configuration', message: 'Reconfigure this task before resuming.' }; }
+			try {
+				checked = validate(candidate, current);
+			} catch {
+				checked = {
+					kind: 'refused',
+					code: 'invalid-configuration',
+					message: 'Reconfigure this task before resuming.',
+				};
+			}
 			if (checked.kind !== 'resumed') return checked;
 			taskChoiceGeneration += 1;
 			task = candidate;
@@ -606,7 +746,12 @@ type LegacySelectionOutcome = 'admitted' | 'cleared' | 'refused';
 			taskChoiceGeneration += 1;
 			if (task !== null) cancelTaskWriters();
 			else writerGeneration += 1;
-			task = immutableF4Data({ ...next, target: next.target ?? (next.targetRef && current ? layoutSelectionReference(next.targetRef, current) : null) });
+			task = immutableF4Data({
+				...next,
+				target:
+					next.target ??
+					(next.targetRef && current ? layoutSelectionReference(next.targetRef, current) : null),
+			});
 			taskStatus = 'active';
 			return true;
 		},
@@ -629,7 +774,7 @@ type LegacySelectionOutcome = 'admitted' | 'cleared' | 'refused';
 					if (!internal.active) return;
 					internal.active = false;
 					liveProposals.delete(internal);
-				}
+				},
 			};
 			liveProposals.add(internal);
 			return internal;
@@ -663,7 +808,7 @@ type LegacySelectionOutcome = 'admitted' | 'cleared' | 'refused';
 					internal.released = true;
 					internal.active = false;
 					if (activeGesture?.lease === internal) activeGesture = null;
-				}
+				},
 			};
 			activeGesture = { lease: internal };
 			return { kind: 'granted', lease: internal };
@@ -681,114 +826,152 @@ type LegacySelectionOutcome = 'admitted' | 'cleared' | 'refused';
 			// the reading is a projection of the same accepted revision, so the captured
 			// operation is unchanged. Only a proposal would be withheld, and the session has no
 			// proposal writer — reported rather than silently assumed.
-			return { cancelled: false, suspended: lease.policy === 'suspend-proposal', owner: lease.owner };
+			return {
+				cancelled: false,
+				suspended: lease.policy === 'suspend-proposal',
+				owner: lease.owner,
+			};
 		},
 		installAccepted(next, options) {
-				if (disposed) {
-					return { kind: 'refused', code: 'disposed', message: 'the session is disposed and accepts no source' };
-				}
-				const active = current;
-				if (active === null) {
-					return {
-						kind: 'refused',
-						code: 'no-current-source',
-						message: 'no accepted source is installed, so there is no content to change'
-					};
-				}
-				if (active.acceptedRevision.projectId !== next.acceptedRevision.projectId) {
-					return {
-						kind: 'refused',
-						code: 'different-project',
-						message: 'a different project identity is a replacement, not a content change'
-					};
-				}
-				if (next.sessionEpoch !== sessionEpoch) {
-					// A content change is the same host lifetime. A snapshot admitted under
-					// another epoch is a different session's source, and installing it here
-					// would leave the output, the snapshot and the session disagreeing about
-					// which lifetime they belong to.
-					return {
-						kind: 'refused',
-						code: 'stale-session',
-						message: 'the source was admitted under another host session epoch'
-					};
-				}
-				if (active.sourceContentId === next.sourceContentId) {
-					return { kind: 'unchanged', sourceContentId: next.sourceContentId };
-				}
-				// Same project, new content: the slot swaps in place. The epoch does not
-				// advance, so a load, gesture or Camera completion started under it stays
-				// current — the source revision, not the epoch, is what changed.
-				const previousSelection = layoutPrimary();
-				const previousOrdered = selectionValue;
-				const closedTask = task !== null && taskStatus === 'active';
-				// The session has no operation-parameter revalidation, so a gesture lease whose
-				// revision just expired cannot legitimately continue: it is released and
-				// reported instead of silently carrying a stale proposal forward.
-				const lease = activeGesture?.lease;
-				const releasedGestures = lease !== undefined && lease.active ? 1 : 0;
-				if (lease !== undefined) lease.release();
-				activeGesture = null;
-				// Accepted content settles every proposal that was made against the
-				// previous source: the values they named are now either this document or
-				// nothing, and a lease that outlived its baseline could block history
-				// forever.
-				for (const proposal of [...liveProposals]) proposal.release();
-				// Selection is not cleared wholesale: the host asks the accepted
-				// correspondence whether the subject survived. A requalification that
-				// throws is a refusal to carry the selection, never a half-kept one.
-				let requalification: SelectionRequalificationOutcome = { kind: 'none' };
-				if (previousSelection !== null) {
-					let requalified: ReturnType<SelectionRequalification> = null;
-					try {
-						requalified = options?.requalify?.(previousSelection) ?? null;
-					} catch {
-						requalified = null;
-					}
-					requalification = requalified === null
-						? { kind: 'cleared', reason: 'no-correspondence' }
-						: 'kind' in requalified ? requalified : { kind: 'requalified', selection: requalified };
-				}
-				const selectionRemovals: { reference: SemanticReference; reason: 'subject-retired' | 'no-correspondence' }[] = [];
-				current = next;
-				if (options?.requalifyEntry) {
-					const ordered: StageSelectionEntry[] = [];
-					let primary: SemanticReference | null = null;
-					for (const entry of previousOrdered.ordered) {
-						let result: EntryRequalification;
-						try { result = options.requalifyEntry(entry); } catch { result = { kind: 'cleared', reason: 'no-correspondence' }; }
-						if (result.kind === 'cleared') selectionRemovals.push({ reference: entry.reference, reason: result.reason });
-						else {
-							ordered.push(result.entry);
-							if (previousOrdered.primary && sameReference(entry.reference, previousOrdered.primary)) primary = result.entry.reference;
-						}
-					}
-					selectionValue = immutableF4Data({ ordered, primary: primary ?? ordered[0]?.reference ?? null });
-				} else {
-					const admittedLegacy = setLegacy(requalification.kind === 'requalified' ? requalification.selection : null) === 'admitted';
-					// A convenience selection the new content refuses is gone even though the
-					// requalification said it survived; the three reported fields must agree
-					// instead of claiming a requalified selection that is no longer held.
-					if (!admittedLegacy) requalification = previousOrdered.ordered.length === 0 ? requalification : { kind: 'cleared', reason: 'no-correspondence' };
-					for (const entry of previousOrdered.ordered) if (requalification.kind !== 'requalified' || !admittedLegacy) selectionRemovals.push({ reference: entry.reference, reason: requalification.kind === 'cleared' ? requalification.reason : 'no-correspondence' });
-				}
-				// Accepted content closes an active task. Its writer callbacks are cancelled
-				// for real (not merely generation-invalidated), but the acceptance's own
-				// command writer must survive this install.
-				if (taskStatus === 'active') { task = null; cancelTaskWriters(); }
+			if (disposed) {
 				return {
-					kind: 'installed',
-					previousSourceContentId: active.sourceContentId,
-					sourceContentId: next.sourceContentId,
-					// A clear, not an emptiness: an install with nothing selected clears nothing.
-					clearedSelection: previousOrdered.ordered.length > 0 && selectionValue.ordered.length === 0,
-					closedTask,
-					releasedGestures,
-					requalification,
-					selectionRemovals
+					kind: 'refused',
+					code: 'disposed',
+					message: 'the session is disposed and accepts no source',
 				};
-			},
-			replace(admitted) {
+			}
+			const active = current;
+			if (active === null) {
+				return {
+					kind: 'refused',
+					code: 'no-current-source',
+					message: 'no accepted source is installed, so there is no content to change',
+				};
+			}
+			if (active.acceptedRevision.projectId !== next.acceptedRevision.projectId) {
+				return {
+					kind: 'refused',
+					code: 'different-project',
+					message: 'a different project identity is a replacement, not a content change',
+				};
+			}
+			if (next.sessionEpoch !== sessionEpoch) {
+				// A content change is the same host lifetime. A snapshot admitted under
+				// another epoch is a different session's source, and installing it here
+				// would leave the output, the snapshot and the session disagreeing about
+				// which lifetime they belong to.
+				return {
+					kind: 'refused',
+					code: 'stale-session',
+					message: 'the source was admitted under another host session epoch',
+				};
+			}
+			if (active.sourceContentId === next.sourceContentId) {
+				return { kind: 'unchanged', sourceContentId: next.sourceContentId };
+			}
+			// Same project, new content: the slot swaps in place. The epoch does not
+			// advance, so a load, gesture or Camera completion started under it stays
+			// current — the source revision, not the epoch, is what changed.
+			const previousSelection = layoutPrimary();
+			const previousOrdered = selectionValue;
+			const closedTask = task !== null && taskStatus === 'active';
+			// The session has no operation-parameter revalidation, so a gesture lease whose
+			// revision just expired cannot legitimately continue: it is released and
+			// reported instead of silently carrying a stale proposal forward.
+			const lease = activeGesture?.lease;
+			const releasedGestures = lease !== undefined && lease.active ? 1 : 0;
+			if (lease !== undefined) lease.release();
+			activeGesture = null;
+			// Accepted content settles every proposal that was made against the
+			// previous source: the values they named are now either this document or
+			// nothing, and a lease that outlived its baseline could block history
+			// forever.
+			for (const proposal of [...liveProposals]) proposal.release();
+			// Selection is not cleared wholesale: the host asks the accepted
+			// correspondence whether the subject survived. A requalification that
+			// throws is a refusal to carry the selection, never a half-kept one.
+			let requalification: SelectionRequalificationOutcome = { kind: 'none' };
+			if (previousSelection !== null) {
+				let requalified: ReturnType<SelectionRequalification> = null;
+				try {
+					requalified = options?.requalify?.(previousSelection) ?? null;
+				} catch {
+					requalified = null;
+				}
+				requalification =
+					requalified === null
+						? { kind: 'cleared', reason: 'no-correspondence' }
+						: 'kind' in requalified
+							? requalified
+							: { kind: 'requalified', selection: requalified };
+			}
+			const selectionRemovals: {
+				reference: SemanticReference;
+				reason: 'subject-retired' | 'no-correspondence';
+			}[] = [];
+			current = next;
+			if (options?.requalifyEntry) {
+				const ordered: StageSelectionEntry[] = [];
+				let primary: SemanticReference | null = null;
+				for (const entry of previousOrdered.ordered) {
+					let result: EntryRequalification;
+					try {
+						result = options.requalifyEntry(entry);
+					} catch {
+						result = { kind: 'cleared', reason: 'no-correspondence' };
+					}
+					if (result.kind === 'cleared')
+						selectionRemovals.push({ reference: entry.reference, reason: result.reason });
+					else {
+						ordered.push(result.entry);
+						if (previousOrdered.primary && sameReference(entry.reference, previousOrdered.primary))
+							primary = result.entry.reference;
+					}
+				}
+				selectionValue = immutableF4Data({
+					ordered,
+					primary: primary ?? ordered[0]?.reference ?? null,
+				});
+			} else {
+				const admittedLegacy =
+					setLegacy(requalification.kind === 'requalified' ? requalification.selection : null) ===
+					'admitted';
+				// A convenience selection the new content refuses is gone even though the
+				// requalification said it survived; the three reported fields must agree
+				// instead of claiming a requalified selection that is no longer held.
+				if (!admittedLegacy)
+					requalification =
+						previousOrdered.ordered.length === 0
+							? requalification
+							: { kind: 'cleared', reason: 'no-correspondence' };
+				for (const entry of previousOrdered.ordered)
+					if (requalification.kind !== 'requalified' || !admittedLegacy)
+						selectionRemovals.push({
+							reference: entry.reference,
+							reason:
+								requalification.kind === 'cleared' ? requalification.reason : 'no-correspondence',
+						});
+			}
+			// Accepted content closes an active task. Its writer callbacks are cancelled
+			// for real (not merely generation-invalidated), but the acceptance's own
+			// command writer must survive this install.
+			if (taskStatus === 'active') {
+				task = null;
+				cancelTaskWriters();
+			}
+			return {
+				kind: 'installed',
+				previousSourceContentId: active.sourceContentId,
+				sourceContentId: next.sourceContentId,
+				// A clear, not an emptiness: an install with nothing selected clears nothing.
+				clearedSelection: previousOrdered.ordered.length > 0 && selectionValue.ordered.length === 0,
+				closedTask,
+				releasedGestures,
+				requalification,
+				selectionRemovals,
+			};
+		},
+		replace(admitted) {
 			const previousToken = token();
 			// The admitted snapshot is the validation: an unadmitted source never
 			// reaches here, so cancellation and clearing cannot precede a failure.
@@ -816,25 +999,49 @@ type LegacySelectionOutcome = 'admitted' | 'cleared' | 'refused';
 				cancelledWriters,
 				clearedSelection,
 				closedTask,
-				releasedGestures
+				releasedGestures,
 			};
 		},
 		adoptMetadata(next) {
-			if (disposed) return { kind: 'refused', code: 'disposed', message: 'The session is disposed.' };
+			if (disposed)
+				return { kind: 'refused', code: 'disposed', message: 'The session is disposed.' };
 			const active = current;
-			if (active === null) return { kind: 'refused', code: 'no-current-source', message: 'No accepted source is installed.' };
+			if (active === null)
+				return {
+					kind: 'refused',
+					code: 'no-current-source',
+					message: 'No accepted source is installed.',
+				};
 			if (active.acceptedRevision.projectId !== next.acceptedRevision.projectId) {
-				return { kind: 'refused', code: 'different-project', message: 'Metadata adoption cannot change project identity.' };
+				return {
+					kind: 'refused',
+					code: 'different-project',
+					message: 'Metadata adoption cannot change project identity.',
+				};
 			}
 			if (next.sessionEpoch !== sessionEpoch) {
-				return { kind: 'refused', code: 'stale-session', message: 'Metadata belongs to another session.' };
+				return {
+					kind: 'refused',
+					code: 'stale-session',
+					message: 'Metadata belongs to another session.',
+				};
 			}
-			const sameUnits = (Object.keys(active.domain.unitRevisions) as (keyof typeof active.domain.unitRevisions)[])
-				.every((domain) => active.domain.unitRevisions[domain] === next.domain.unitRevisions[domain]);
+			const sameUnits = (
+				Object.keys(active.domain.unitRevisions) as (keyof typeof active.domain.unitRevisions)[]
+			).every(
+				(domain) => active.domain.unitRevisions[domain] === next.domain.unitRevisions[domain],
+			);
 			if (!sameUnits || active.compileGeneration !== next.compileGeneration) {
-				return { kind: 'refused', code: 'domain-changed', message: 'Project metadata adoption cannot change authored domain content.' };
+				return {
+					kind: 'refused',
+					code: 'domain-changed',
+					message: 'Project metadata adoption cannot change authored domain content.',
+				};
 			}
-			if (active.sourceContentId === next.sourceContentId && active.canonicalJson === next.canonicalJson) {
+			if (
+				active.sourceContentId === next.sourceContentId &&
+				active.canonicalJson === next.canonicalJson
+			) {
 				return { kind: 'unchanged', sourceContentId: active.sourceContentId };
 			}
 			// An in-progress gesture is revision-bound. End it without clearing the
@@ -873,7 +1080,7 @@ type LegacySelectionOutcome = 'admitted' | 'cleared' | 'refused';
 				}
 			}
 			current = null;
-		}
+		},
 	};
 	return session;
 }

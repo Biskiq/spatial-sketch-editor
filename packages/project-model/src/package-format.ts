@@ -147,9 +147,9 @@ export function buildPackageManifest(input: {
 			createdAt: input.createdAt.toISOString(),
 			generator: 'editor-5.4',
 			documentTitle: input.documentTitle || 'scene',
-			formatVersion: PACKAGE_MANIFEST_FORMAT_VERSION
+			formatVersion: PACKAGE_MANIFEST_FORMAT_VERSION,
 		},
-		textures: [...input.textures]
+		textures: [...input.textures],
 	};
 }
 

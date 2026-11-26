@@ -15,13 +15,7 @@
 import { dedupeMaterialIssues, type MaterialIssue } from './issues';
 import { deepFreeze } from './immutable';
 import { readRecipe, type RecipeReadResult } from './read';
-import {
-	MATERIAL_MAP_ROLES,
-	type Hash,
-	type LocalImage,
-	type MapRole,
-	type Recipe
-} from './types';
+import { MATERIAL_MAP_ROLES, type Hash, type LocalImage, type MapRole, type Recipe } from './types';
 
 export type MaterialResourceImage = {
 	readonly hash: Hash;
@@ -51,25 +45,33 @@ function isHash(value: unknown): value is Hash {
 	return typeof value === 'string' && /^sha256-[0-9a-f]{64}$/.test(value);
 }
 
-function readLocalImage(
-	input: unknown,
-	path: string,
-	issues: MaterialIssue[]
-): LocalImage | null {
+function readLocalImage(input: unknown, path: string, issues: MaterialIssue[]): LocalImage | null {
 	if (!isRecord(input)) {
-		issues.push({ code: 'invalid-local-image', path, action: 'Use one textureId or one shipped URI.' });
+		issues.push({
+			code: 'invalid-local-image',
+			path,
+			action: 'Use one textureId or one shipped URI.',
+		});
 		return null;
 	}
 	const keys = Object.keys(input);
 	const unknown = keys.filter((key) => !(SOURCE_KEYS as readonly string[]).includes(key));
 	if (unknown.length > 0) {
-		issues.push({ code: 'unknown-key', path: `${path}.${unknown[0]}`, action: 'Remove the unsupported field.' });
+		issues.push({
+			code: 'unknown-key',
+			path: `${path}.${unknown[0]}`,
+			action: 'Remove the unsupported field.',
+		});
 		return null;
 	}
 	const hasTexture = 'textureId' in input;
 	const hasShipped = 'shipped' in input;
 	if (hasTexture === hasShipped) {
-		issues.push({ code: 'wrong-role-selector', path, action: 'Use exactly one of textureId or shipped.' });
+		issues.push({
+			code: 'wrong-role-selector',
+			path,
+			action: 'Use exactly one of textureId or shipped.',
+		});
 		return null;
 	}
 	const value = hasTexture ? input.textureId : input.shipped;
@@ -77,7 +79,7 @@ function readLocalImage(
 		issues.push({
 			code: 'invalid-local-image',
 			path: hasTexture ? `${path}.textureId` : `${path}.shipped`,
-			action: 'Use a stable local identity without whitespace.'
+			action: 'Use a stable local identity without whitespace.',
 		});
 		return null;
 	}
@@ -109,22 +111,32 @@ export function readMaterialDefinition(input: unknown): MaterialDefinitionReadRe
 	if (!isRecord(input)) {
 		return {
 			success: false,
-			issues: [{ code: 'invalid-type', path: '$', action: 'Use a material definition object.' }]
+			issues: [{ code: 'invalid-type', path: '$', action: 'Use a material definition object.' }],
 		};
 	}
 	for (const key of Object.keys(input)) {
 		if (!(DEFINITION_KEYS as readonly string[]).includes(key)) {
-			issues.push({ code: 'unknown-key', path: `$.${key}`, action: 'Remove the unsupported field.' });
+			issues.push({
+				code: 'unknown-key',
+				path: `$.${key}`,
+				action: 'Remove the unsupported field.',
+			});
 		}
 	}
 	const recipeRead: RecipeReadResult = readRecipe(input.recipe);
 	if (!recipeRead.success) {
-		issues.push(...recipeRead.issues.map((issue) => ({ ...issue, path: `$.recipe${issue.path.slice(1)}` })));
+		issues.push(
+			...recipeRead.issues.map((issue) => ({ ...issue, path: `$.recipe${issue.path.slice(1)}` })),
+		);
 		return { success: false, issues: dedupeMaterialIssues(issues) };
 	}
 	const recipe = recipeRead.recipe;
 	if (!Array.isArray(input.images)) {
-		issues.push({ code: 'invalid-type', path: '$.images', action: 'Use an array of image mappings.' });
+		issues.push({
+			code: 'invalid-type',
+			path: '$.images',
+			action: 'Use an array of image mappings.',
+		});
 		return { success: false, issues: dedupeMaterialIssues(issues) };
 	}
 	const images: MaterialResourceImage[] = [];
@@ -137,11 +149,19 @@ export function readMaterialDefinition(input: unknown): MaterialDefinitionReadRe
 		}
 		for (const key of Object.keys(value)) {
 			if (!(IMAGE_KEYS as readonly string[]).includes(key)) {
-				issues.push({ code: 'unknown-key', path: `${path}.${key}`, action: 'Remove the unsupported field.' });
+				issues.push({
+					code: 'unknown-key',
+					path: `${path}.${key}`,
+					action: 'Remove the unsupported field.',
+				});
 			}
 		}
 		if (!isHash(value.hash)) {
-			issues.push({ code: 'invalid-hash', path: `${path}.hash`, action: 'Use a lowercase sha256-<64 hex> digest.' });
+			issues.push({
+				code: 'invalid-hash',
+				path: `${path}.hash`,
+				action: 'Use a lowercase sha256-<64 hex> digest.',
+			});
 			continue;
 		}
 		const source = readLocalImage(value.source, `${path}.source`, issues);
@@ -150,7 +170,7 @@ export function readMaterialDefinition(input: unknown): MaterialDefinitionReadRe
 			issues.push({
 				code: 'duplicate-image',
 				path: `${path}.hash`,
-				action: 'Keep exactly one local source per digest.'
+				action: 'Keep exactly one local source per digest.',
 			});
 			continue;
 		}
@@ -163,7 +183,7 @@ export function readMaterialDefinition(input: unknown): MaterialDefinitionReadRe
 			issues.push({
 				code: 'missing-image',
 				path: '$.images',
-				action: 'Map every recipe digest to one verified local image.'
+				action: 'Map every recipe digest to one verified local image.',
 			});
 		}
 	}
@@ -172,12 +192,14 @@ export function readMaterialDefinition(input: unknown): MaterialDefinitionReadRe
 			issues.push({
 				code: 'definition-image-coverage',
 				path: '$.images',
-				action: 'Remove the image mapping no recipe role names.'
+				action: 'Remove the image mapping no recipe role names.',
 			});
 		}
 	}
 	if (issues.length > 0) return { success: false, issues: dedupeMaterialIssues(issues) };
-	const sorted = [...images].sort((left, right) => (left.hash < right.hash ? -1 : left.hash > right.hash ? 1 : 0));
+	const sorted = [...images].sort((left, right) =>
+		left.hash < right.hash ? -1 : left.hash > right.hash ? 1 : 0,
+	);
 	const definition: MaterialDefinition = deepFreeze({ recipe, images: sorted });
 	return { success: true, definition };
 }

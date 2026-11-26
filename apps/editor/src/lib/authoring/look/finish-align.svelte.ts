@@ -8,14 +8,14 @@
 import {
 	baseRecipeOf,
 	type FinishPatchEdit,
-	type FinishSource
+	type FinishSource,
 } from '@portfolio/project-model/scene-planning';
 import {
 	MATERIAL_MAP_ROLES,
 	NEUTRAL_RECIPE,
 	type MapRole,
 	type Mapping,
-	type Recipe
+	type Recipe,
 } from '@portfolio/project-model/materials';
 import type { CompiledLayoutGeometry } from '@portfolio/layout-core/geometry';
 import type { LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
@@ -29,7 +29,7 @@ import {
 	wallSideChart,
 	withPlacement,
 	wrapRotation,
-	type AlignSurfaceChart
+	type AlignSurfaceChart,
 } from './align-chart';
 
 export function mod(value: number, period: number): number {
@@ -43,8 +43,12 @@ export function mod(value: number, period: number): number {
  */
 export function alignSetMapping(
 	source: FinishSource,
-	recipes: ReadonlyMap<string, Recipe>
-): { readonly mapping: Mapping; readonly base: Mapping; readonly separateRoles: readonly MapRole[] } {
+	recipes: ReadonlyMap<string, Recipe>,
+): {
+	readonly mapping: Mapping;
+	readonly base: Mapping;
+	readonly separateRoles: readonly MapRole[];
+} {
 	const base = baseRecipeOf({ id: '', name: '', base: source.base }, recipes) ?? NEUTRAL_RECIPE;
 	const mapping = source.overrides?.mapping ?? base.mapping;
 	const separate: MapRole[] = [];
@@ -62,10 +66,13 @@ export function alignPlacementEdits(
 	source: FinishSource,
 	recipes: ReadonlyMap<string, Recipe>,
 	rotation: number,
-	offset: readonly [number, number]
+	offset: readonly [number, number],
 ): FinishPatchEdit[] {
 	const { mapping, base } = alignSetMapping(source, recipes);
-	const next = withPlacement(mapping, wrapRotation(rotation), [mod(offset[0], 1) % 1, mod(offset[1], 1) % 1]);
+	const next = withPlacement(mapping, wrapRotation(rotation), [
+		mod(offset[0], 1) % 1,
+		mod(offset[1], 1) % 1,
+	]);
 	if (JSON.stringify(next) === JSON.stringify(mapping)) return [];
 	if (JSON.stringify(next) === JSON.stringify(base)) {
 		return source.overrides?.mapping === undefined ? [] : [{ field: 'mapping', op: 'reset' }];
@@ -76,7 +83,7 @@ export function alignPlacementEdits(
 /** One E4 `mapping` patch: no offset, no turn. */
 export function alignResetEdits(
 	source: FinishSource,
-	recipes: ReadonlyMap<string, Recipe>
+	recipes: ReadonlyMap<string, Recipe>,
 ): FinishPatchEdit[] {
 	return alignPlacementEdits(source, recipes, 0, [0, 0]);
 }
@@ -137,7 +144,10 @@ export type ActiveFinishAlign = {
  */
 export function alignOccluders(
 	active: Pick<ActiveFinishAlign, 'surface' | 'target' | 'corners' | 'toward'>,
-	walls: readonly { readonly wallId: string; readonly bounds3: { readonly min: readonly number[]; readonly max: readonly number[] } }[]
+	walls: readonly {
+		readonly wallId: string;
+		readonly bounds3: { readonly min: readonly number[]; readonly max: readonly number[] };
+	}[],
 ): string[] {
 	if (active.surface !== 'wall' || active.target.surface.kind !== 'wall-side') return [];
 	const faced = active.target.surface.wallId;
@@ -163,7 +173,10 @@ export function alignOccluders(
 function fitOf(chart: AlignSurfaceChart): AlignFit {
 	return {
 		center: chartToWorld(chart, [(chart.uMin + chart.uMax) / 2, (chart.vMin + chart.vMax) / 2]),
-		surfaceMeters: [(chart.uMax - chart.uMin) * chart.uvMeters[0], (chart.vMax - chart.vMin) * chart.uvMeters[1]]
+		surfaceMeters: [
+			(chart.uMax - chart.uMin) * chart.uvMeters[0],
+			(chart.vMax - chart.vMin) * chart.uvMeters[1],
+		],
 	};
 }
 
@@ -171,7 +184,14 @@ export function createFinishAlign() {
 	let active = $state.raw<ActiveFinishAlign | null>(null);
 	let refusal = $state<string | null>(null);
 	/** The last framing request, so a resize or a lane change can re-frame without a new standpoint. */
-	let framing: { readonly kind: 'wall'; readonly frame: WallFaceFrame; readonly fit: AlignFit } | { readonly kind: 'floor'; readonly bounds: { readonly min: AlignCorner; readonly max: AlignCorner }; readonly fit: AlignFit } | null = null;
+	let framing:
+		| { readonly kind: 'wall'; readonly frame: WallFaceFrame; readonly fit: AlignFit }
+		| {
+				readonly kind: 'floor';
+				readonly bounds: { readonly min: AlignCorner; readonly max: AlignCorner };
+				readonly fit: AlignFit;
+		  }
+		| null = null;
 
 	function refuse(message: string): { readonly ok: false; readonly message: string } {
 		refusal = message;
@@ -197,7 +217,8 @@ export function createFinishAlign() {
 				return refuse('Align needs a straight wall · use Pattern size and ↻ 90°');
 			}
 			const compiled = geometry.walls.find((w) => w.wallId === surface.wallId);
-			if (compiled === undefined || compiled.samples.length === 0) return refuse('That wall is not compiled yet.');
+			if (compiled === undefined || compiled.samples.length === 0)
+				return refuse('That wall is not compiled yet.');
 			const frame = wallSideFaceFrame(compiled, surface.side);
 			if (frame === null) return refuse('Could not frame that wall side.');
 			// The renderer's own chart: u is arc length from the wall's start on both
@@ -213,7 +234,7 @@ export function createFinishAlign() {
 				thickness: compiled.thickness,
 				length: compiled.length,
 				floorY: compiled.bounds3.min[1],
-				topY: compiled.bounds3.max[1]
+				topY: compiled.bounds3.max[1],
 			});
 			const fit = fitOf(chart);
 			const outcome = wallFace.face({ wallId: compiled.wallId, frame, fit });
@@ -231,7 +252,7 @@ export function createFinishAlign() {
 				corners,
 				toward,
 				occluders: alignOccluders({ surface: 'wall', target, corners, toward }, geometry.walls),
-				invoker: invoker ?? null
+				invoker: invoker ?? null,
 			};
 			return { ok: true };
 		}
@@ -249,10 +270,14 @@ export function createFinishAlign() {
 				if (z < minZ) minZ = z;
 				if (z > maxZ) maxZ = z;
 			}
-			if (!Number.isFinite(minX) || !(maxX > minX) || !(maxZ > minZ)) return refuse('Floor bounds could not be framed.');
+			if (!Number.isFinite(minX) || !(maxX > minX) || !(maxZ > minZ))
+				return refuse('Floor bounds could not be framed.');
 			const chart = floorChart({ floorY, minX, maxX, minZ, maxZ });
 			const fit = fitOf(chart);
-			const bounds = { min: [minX, floorY, minZ] as AlignCorner, max: [maxX, floorY + 0.05, maxZ] as AlignCorner };
+			const bounds = {
+				min: [minX, floorY, minZ] as AlignCorner,
+				max: [maxX, floorY + 0.05, maxZ] as AlignCorner,
+			};
 			const outcome = wallFace.faceFloor({ roomId: room.roomId, bounds, fit });
 			if (outcome.kind === 'refused') return refuse('Camera could not frame this floor right now.');
 			framing = { kind: 'floor', bounds, fit };
@@ -266,7 +291,7 @@ export function createFinishAlign() {
 				corners: chartCorners(chart).map((uv) => chartToWorld(chart, uv)),
 				toward: [0, 1, 0],
 				occluders: [],
-				invoker: invoker ?? null
+				invoker: invoker ?? null,
 			};
 			return { ok: true };
 		}
@@ -325,7 +350,7 @@ export function createFinishAlign() {
 		enter,
 		reframe,
 		putBack,
-		clear
+		clear,
 	};
 }
 

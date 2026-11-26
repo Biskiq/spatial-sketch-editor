@@ -4,67 +4,67 @@
  * `apps/editor/static/fonts`.
  */
 @font-face {
-	font-family: 'Fraunces';
+	font-family: "Fraunces";
 	font-style: normal;
 	font-weight: 400;
 	font-display: swap;
-	src: url('/fonts/fraunces-400.ttf') format('truetype');
+	src: url("/fonts/fraunces-400.ttf") format("truetype");
 }
 @font-face {
-	font-family: 'Fraunces';
+	font-family: "Fraunces";
 	font-style: normal;
 	font-weight: 500;
 	font-display: swap;
-	src: url('/fonts/fraunces-500.ttf') format('truetype');
+	src: url("/fonts/fraunces-500.ttf") format("truetype");
 }
 @font-face {
-	font-family: 'Fraunces';
+	font-family: "Fraunces";
 	font-style: normal;
 	font-weight: 600;
 	font-display: swap;
-	src: url('/fonts/fraunces-600.ttf') format('truetype');
+	src: url("/fonts/fraunces-600.ttf") format("truetype");
 }
 @font-face {
-	font-family: 'Fraunces';
+	font-family: "Fraunces";
 	font-style: normal;
 	font-weight: 700;
 	font-display: swap;
-	src: url('/fonts/fraunces-700.ttf') format('truetype');
+	src: url("/fonts/fraunces-700.ttf") format("truetype");
 }
 @font-face {
-	font-family: 'Instrument Sans';
+	font-family: "Instrument Sans";
 	font-style: normal;
 	font-weight: 400;
 	font-display: swap;
-	src: url('/fonts/instrument-sans-400.ttf') format('truetype');
+	src: url("/fonts/instrument-sans-400.ttf") format("truetype");
 }
 @font-face {
-	font-family: 'Instrument Sans';
+	font-family: "Instrument Sans";
 	font-style: normal;
 	font-weight: 500;
 	font-display: swap;
-	src: url('/fonts/instrument-sans-500.ttf') format('truetype');
+	src: url("/fonts/instrument-sans-500.ttf") format("truetype");
 }
 @font-face {
-	font-family: 'Instrument Sans';
+	font-family: "Instrument Sans";
 	font-style: normal;
 	font-weight: 600;
 	font-display: swap;
-	src: url('/fonts/instrument-sans-600.ttf') format('truetype');
+	src: url("/fonts/instrument-sans-600.ttf") format("truetype");
 }
 @font-face {
-	font-family: 'DM Mono';
+	font-family: "DM Mono";
 	font-style: normal;
 	font-weight: 400;
 	font-display: swap;
-	src: url('/fonts/dm-mono-400.ttf') format('truetype');
+	src: url("/fonts/dm-mono-400.ttf") format("truetype");
 }
 @font-face {
-	font-family: 'DM Mono';
+	font-family: "DM Mono";
 	font-style: normal;
 	font-weight: 500;
 	font-display: swap;
-	src: url('/fonts/dm-mono-500.ttf') format('truetype');
+	src: url("/fonts/dm-mono-500.ttf") format("truetype");
 }
 
 /*
@@ -240,11 +240,11 @@
 
 	/* Type. */
 	/* One UI face across the editor; Fraunces is display and branding only. */
-	--shell-sans: 'Instrument Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-	--shell-display: 'Fraunces', 'Iowan Old Style', Georgia, serif;
+	--shell-sans: "Instrument Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+	--shell-display: "Fraunces", "Iowan Old Style", Georgia, serif;
 	/* Legacy display alias: never a routine control's face. */
 	--shell-serif: var(--shell-display);
-	--shell-mono: 'DM Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+	--shell-mono: "DM Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 	/* A compact scale: title, body/control, label, metadata. */
 	--shell-text-title: 15px;
 	--shell-text-body: 12.5px;
@@ -282,7 +282,8 @@
 	--stage-ink: #1b201c;
 	--stage-ink-halo: none;
 	--stage-proposal: #2a62d6;
-	--stage-proposal-halo: drop-shadow(0 0 0.7px rgba(255, 255, 255, 0.95)) drop-shadow(0 0 1.4px rgba(255, 255, 255, 0.5));
+	--stage-proposal-halo: drop-shadow(0 0 0.7px rgba(255, 255, 255, 0.95))
+		drop-shadow(0 0 1.4px rgba(255, 255, 255, 0.5));
 	--stage-selection: #d4ad45;
 	--stage-hover: #4f8f6c;
 	--stage-erase: #d0412d;
@@ -315,7 +316,7 @@
  * Theme-private palette. Components consume the semantic `--shell-*` roles
  * below; the `--ld-*` names are this skin's source values, not a second API.
  */
-[data-shell='living-draft'] {
+[data-shell="living-draft"] {
 	/* The #285 prototype palette, used directly rather than tinted on top. */
 	--ld-forest: #13261b;
 	--ld-forest-deep: #0d1c13;
@@ -357,9 +358,9 @@
 	--ld-form: #b08a3e;
 	--ld-land: #6f8a3e;
 	--ld-furnish: #c08a2a;
-	--ld-serif: 'Fraunces', 'Iowan Old Style', Georgia, serif;
-	--ld-sans: 'Instrument Sans', system-ui, sans-serif;
-	--ld-mono: 'DM Mono', ui-monospace, monospace;
+	--ld-serif: "Fraunces", "Iowan Old Style", Georgia, serif;
+	--ld-sans: "Instrument Sans", system-ui, sans-serif;
+	--ld-mono: "DM Mono", ui-monospace, monospace;
 	/* The shell furniture this skin repaints; spatial --stage-* paint stays shared. */
 	--shell-forest: var(--ld-forest);
 	--shell-forest-raised: var(--ld-forest-2);

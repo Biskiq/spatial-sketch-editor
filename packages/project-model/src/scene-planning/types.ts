@@ -26,7 +26,7 @@ import type {
 	SceneCylinderDimensions,
 	SceneObjectFallback,
 	SceneSphereDimensions,
-	Vec3
+	Vec3,
 } from '../scene';
 
 /** A yaw-only local input frame, supplied explicitly by the caller. */

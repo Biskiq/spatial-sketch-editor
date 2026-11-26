@@ -25,7 +25,7 @@ import {
 	isPristineInstance,
 	materialInstanceById,
 	type FinishEntity,
-	type FinishScene
+	type FinishScene,
 } from './model';
 import { sameSceneValues } from '../record-scope';
 import {
@@ -33,7 +33,7 @@ import {
 	finishMaterialLabel,
 	generatedFinishName,
 	uniqueFinishName,
-	type FinishTreatmentFacts
+	type FinishTreatmentFacts,
 } from './treatment';
 
 /**
@@ -56,9 +56,14 @@ export type CoatSource = {
 	readonly name: string | null;
 };
 
-export type CoatRefusal = { readonly kind: 'refused'; readonly code: string; readonly message: string };
+export type CoatRefusal = {
+	readonly kind: 'refused';
+	readonly code: string;
+	readonly message: string;
+};
 
-export const MODEL_OWN_COAT_REFUSAL = "A model's own materials take no colour. Paint a material first.";
+export const MODEL_OWN_COAT_REFUSAL =
+	"A model's own materials take no colour. Paint a material first.";
 
 /** The recipe identity of a Finish: base plus canonical overrides, never id or name. */
 export type CoatRecipe = { readonly base: FinishBase; readonly overrides?: FinishOverrides };
@@ -74,7 +79,7 @@ function sourceOfInstance(instance: SceneMaterialInstance): CoatSource {
 		base: instance.base,
 		...(instance.overrides === undefined ? {} : { overrides: instance.overrides }),
 		projectId: pristine ? null : instance.id,
-		name: pristine ? null : instance.name
+		name: pristine ? null : instance.name,
 	};
 }
 
@@ -86,27 +91,41 @@ export function coatSourceOf(scene: FinishScene, target: CoatTarget): CoatSource
 			return { base: { catalogue: UNASSIGNED_SURFACE_COAT_BASE }, projectId: null, name: null };
 		}
 		const finish = assignment.finish;
-		if ('materialId' in finish) return { base: { catalogue: finish.materialId }, projectId: null, name: null };
+		if ('materialId' in finish)
+			return { base: { catalogue: finish.materialId }, projectId: null, name: null };
 		const instance = materialInstanceById(scene.materials, finish.materialInstanceId);
 		if (instance === undefined) {
-			return { kind: 'refused', code: 'unknown-finish', message: 'That surface’s Finish no longer exists.' };
+			return {
+				kind: 'refused',
+				code: 'unknown-finish',
+				message: 'That surface’s Finish no longer exists.',
+			};
 		}
 		return sourceOfInstance(instance);
 	}
 	const entity = scene.entities.find((candidate) => candidate.id === target.id);
 	if (entity === undefined) {
-		return { kind: 'refused', code: 'unknown-entity', message: `No Scene object "${target.id}" is in the current revision.` };
+		return {
+			kind: 'refused',
+			code: 'unknown-entity',
+			message: `No Scene object "${target.id}" is in the current revision.`,
+		};
 	}
 	if (!isFinishPaintable(entity)) {
 		return {
 			kind: 'refused',
 			code: 'not-paintable',
-			message: entity.kind === 'light' ? 'Lights have no Finish.' : 'That subject cannot be painted.'
+			message:
+				entity.kind === 'light' ? 'Lights have no Finish.' : 'That subject cannot be painted.',
 		};
 	}
-	const instance = materialInstanceById(scene.materials, (entity as FinishEntity).materialInstanceId);
+	const instance = materialInstanceById(
+		scene.materials,
+		(entity as FinishEntity).materialInstanceId,
+	);
 	if (instance !== undefined) return sourceOfInstance(instance);
-	if (entity.kind === 'model') return { kind: 'refused', code: 'not-paintable', message: MODEL_OWN_COAT_REFUSAL };
+	if (entity.kind === 'model')
+		return { kind: 'refused', code: 'not-paintable', message: MODEL_OWN_COAT_REFUSAL };
 	const materialId = (entity as FinishEntity).materialId;
 	if (materialId === undefined) {
 		return { kind: 'refused', code: 'not-paintable', message: 'That object has no Finish.' };
@@ -128,7 +147,7 @@ function baseRecipe(base: FinishBase, recipes: ReadonlyMap<string, Recipe>): Rec
 export function coatRecipe(
 	source: Pick<CoatSource, 'base' | 'overrides'>,
 	colour: SceneColor,
-	recipes: ReadonlyMap<string, Recipe> = new Map()
+	recipes: ReadonlyMap<string, Recipe> = new Map(),
 ): CoatRecipe {
 	const overrides = JSON.parse(JSON.stringify(source.overrides ?? {})) as Record<string, unknown>;
 	overrides.color = typeof colour === 'string' ? colour : { slot: colour.slot };
@@ -146,12 +165,15 @@ export function coatRecipe(
 export function sameCoatRecipe(left: CoatRecipe, right: CoatRecipe): boolean {
 	return sameSceneValues(
 		{ base: left.base, overrides: left.overrides ?? null },
-		{ base: right.base, overrides: right.overrides ?? null }
+		{ base: right.base, overrides: right.overrides ?? null },
 	);
 }
 
 /** Whether the source binds an image a coat keeps (relief or sheen). */
-export function coatKeepsRelief(source: Pick<CoatSource, 'base' | 'overrides'>, recipes: ReadonlyMap<string, Recipe> = new Map()): boolean {
+export function coatKeepsRelief(
+	source: Pick<CoatSource, 'base' | 'overrides'>,
+	recipes: ReadonlyMap<string, Recipe> = new Map(),
+): boolean {
 	const recipe = baseRecipe(source.base, recipes);
 	return (['normal', 'roughness', 'metalness', 'occlusion'] as const).some((role) => {
 		const override = source.overrides?.maps?.[role];
@@ -164,12 +186,15 @@ export function coatKeepsRelief(source: Pick<CoatSource, 'base' | 'overrides'>, 
 /** The material half of a coat's name: a catalogue label, or a resource Finish's material. */
 export function coatMaterialLabel(
 	source: Pick<CoatSource, 'base' | 'name'>,
-	labelForMaterial: (id: MaterialId) => string
+	labelForMaterial: (id: MaterialId) => string,
 ): string {
 	return finishMaterialLabel(source, labelForMaterial);
 }
 
-export function coatColourLabel(scene: Pick<FinishScene, 'palette'>, colour: SceneColor): string | null {
+export function coatColourLabel(
+	scene: Pick<FinishScene, 'palette'>,
+	colour: SceneColor,
+): string | null {
 	return finishColourLabel(scene.palette, colour);
 }
 
@@ -202,12 +227,14 @@ export function planColourCoats(
 		readonly labelForMaterial?: (id: MaterialId) => string;
 		/** Generated naming facts (sheen step words); labels come from `labelForMaterial`. */
 		readonly facts?: FinishTreatmentFacts;
-	}
+	},
 ): ColourCoatPlan {
 	const recipes = input.materialRecipes ?? new Map<string, Recipe>();
 	const colourLabel = coatColourLabel(scene, input.colour);
-	if (colourLabel === null) return { kind: 'refused', code: 'unknown-slot', message: 'That palette colour is gone.' };
-	if (input.targets.length === 0) return { kind: 'refused', code: 'invalid-value', message: 'Paint needs at least one target.' };
+	if (colourLabel === null)
+		return { kind: 'refused', code: 'unknown-slot', message: 'That palette colour is gone.' };
+	if (input.targets.length === 0)
+		return { kind: 'refused', code: 'invalid-value', message: 'Paint needs at least one target.' };
 	const candidates = scene.materials.filter((instance) => !isPristineInstance(instance));
 	const creates: (CoatRecipe & { name: string })[] = [];
 	const assignments: CoatAssignment[] = [];
@@ -217,7 +244,13 @@ export function planColourCoats(
 		if ('kind' in source) return source;
 		const recipe = coatRecipe(source, input.colour, recipes);
 		const existing = candidates.find((instance) =>
-			sameCoatRecipe({ base: instance.base, ...(instance.overrides === undefined ? {} : { overrides: instance.overrides }) }, recipe)
+			sameCoatRecipe(
+				{
+					base: instance.base,
+					...(instance.overrides === undefined ? {} : { overrides: instance.overrides }),
+				},
+				recipe,
+			),
 		);
 		if (existing !== undefined) {
 			assignments.push({ kind: 'existing', finishId: existing.id });
@@ -237,17 +270,19 @@ export function planColourCoats(
 			{
 				recipes,
 				...(scene.palette === undefined ? {} : { palette: scene.palette }),
-				facts: { ...input.facts, labelForMaterial: input.labelForMaterial ?? ((id) => id) }
-			}
+				facts: { ...input.facts, labelForMaterial: input.labelForMaterial ?? ((id) => id) },
+			},
 		);
-		const taken = [...scene.materials, ...creates.map((entry) => ({ name: entry.name }) as SceneMaterialInstance)];
+		const taken = [
+			...scene.materials,
+			...creates.map((entry) => ({ name: entry.name }) as SceneMaterialInstance),
+		];
 		const name = uniqueFinishName(label, taken);
 		creates.push({ ...recipe, name });
 		assignments.push({ kind: 'create', index: creates.length - 1 });
 	}
 	return { kind: 'planned', assignments, creates, already };
 }
-
 
 /**
  * Whether a Finish is a coat: it has a colour override and a coat of that same
@@ -256,10 +291,13 @@ export function planColourCoats(
  */
 export function coatColourOf(
 	instance: SceneMaterialInstance,
-	recipes: ReadonlyMap<string, Recipe> = new Map()
+	recipes: ReadonlyMap<string, Recipe> = new Map(),
 ): SceneColor | null {
 	const colour = instance.overrides?.color;
 	if (colour === undefined || isPristineInstance(instance)) return null;
-	const self: CoatRecipe = { base: instance.base, ...(instance.overrides === undefined ? {} : { overrides: instance.overrides }) };
+	const self: CoatRecipe = {
+		base: instance.base,
+		...(instance.overrides === undefined ? {} : { overrides: instance.overrides }),
+	};
 	return sameCoatRecipe(coatRecipe(self, colour, recipes), self) ? colour : null;
 }

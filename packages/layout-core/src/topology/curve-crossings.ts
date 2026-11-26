@@ -10,9 +10,18 @@ import type { PlanBox } from '../world/plan-box-index';
 import { createPlanBoxIndex } from '../world/plan-box-index';
 import { topologyComponentKeyByWallId } from '../room/topology-components';
 import type { SampledTopologyWall, TopologySegment } from '../wall/topology';
-import { sampledWallExtentsOverlap, sampledWallSelfIntersects, sampledWallsCross } from '../wall/topology';
+import {
+	sampledWallExtentsOverlap,
+	sampledWallSelfIntersects,
+	sampledWallsCross,
+} from '../wall/topology';
 import type { LayoutVec2 } from '../geometry/coordinates';
-import { chordPolyline, sampledPlanBox, sharedJunctionIds, wallEndpoints } from '../precision/document';
+import {
+	chordPolyline,
+	sampledPlanBox,
+	sharedJunctionIds,
+	wallEndpoints,
+} from '../precision/document';
 import type { WallFirstArchitectureCandidatePair } from '../precision/types';
 
 /**
@@ -22,7 +31,6 @@ import type { WallFirstArchitectureCandidatePair } from '../precision/types';
 export type WallCurveTopologyCrossing =
 	| { kind: 'self'; wallId: string }
 	| { kind: 'pair'; wallIds: [string, string]; sharedJunctionId?: string };
-
 
 /**
  * The canonical **curve-level** Wall-crossing gate.
@@ -66,14 +74,13 @@ export type WallCurveTopologyCrossingSubject = {
 	pairs?: readonly WallFirstArchitectureCandidatePair[];
 };
 
-
 export function detectWallCurveTopologyCrossings(
 	document: LayoutDocumentWallFirst,
 	wallSegments: ReadonlyMap<string, TopologySegment>,
 	sampling?: WallSamplingDerivation,
 	disableExtentPruneForTest?: boolean,
 	subject?: WallCurveTopologyCrossingSubject,
-	points?: ReadonlyMap<string, LayoutVec2>
+	points?: ReadonlyMap<string, LayoutVec2>,
 ): WallCurveTopologyCrossing | undefined {
 	const sampledWalls = new Map<string, SampledTopologyWall>();
 	for (const wall of document.walls) {
@@ -96,7 +103,7 @@ export function detectWallCurveTopologyCrossings(
 			id: wall.id,
 			startJunctionId: wall.startJunctionId,
 			endJunctionId: wall.endJunctionId,
-			samples
+			samples,
 		});
 	}
 	const selfCandidates = subject?.wallIds
@@ -153,7 +160,7 @@ export function detectWallCurveTopologyCrossings(
 				const sampledB = sampledWalls.get(b.id);
 				if (!sampledA || !sampledB) continue;
 				const shared = sharedJunctionIds(a, b)[0];
-					if (!sampledWallsCross(sampledA, sampledB, shared)) continue;
+				if (!sampledWallsCross(sampledA, sampledB, shared)) continue;
 				return shared
 					? { kind: 'pair', wallIds: [a.id, b.id], sharedJunctionId: shared }
 					: { kind: 'pair', wallIds: [a.id, b.id] };
@@ -199,12 +206,15 @@ export function detectWallCurveTopologyCrossings(
 	return undefined;
 }
 
-
-export function topologyFailure(firstId: string, secondId: string | undefined, message: string): LayoutGeometryIssue {
+export function topologyFailure(
+	firstId: string,
+	secondId: string | undefined,
+	message: string,
+): LayoutGeometryIssue {
 	return {
 		path: `topology.${firstId}`,
 		code: 'unsupported_wall_topology',
 		message,
-		targetId: secondId ?? firstId
+		targetId: secondId ?? firstId,
 	};
 }

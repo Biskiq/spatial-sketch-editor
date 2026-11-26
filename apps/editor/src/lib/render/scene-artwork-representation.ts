@@ -121,7 +121,7 @@ function placeGroup(group: Group, item: SceneArtworkItem): void {
 }
 
 export function createSceneArtworkRepresentation(
-	options: SceneArtworkRepresentationOptions
+	options: SceneArtworkRepresentationOptions,
 ): SceneArtworkRepresentation {
 	const { store, geometry } = options;
 	const ghost = options.ghost ?? false;
@@ -136,8 +136,12 @@ export function createSceneArtworkRepresentation(
 	/** A plain (untextured) body surface: frame, Mat or backing. */
 	function plain(color: string): LambertMaterialDescriptor {
 		return {
-			kind: 'lambert', color, transparent: ghost, opacity: ghost ? GHOST_OPACITY : 1, depthWrite: !ghost,
-			...(ghost ? { fog: false as const } : {})
+			kind: 'lambert',
+			color,
+			transparent: ghost,
+			opacity: ghost ? GHOST_OPACITY : 1,
+			depthWrite: !ghost,
+			...(ghost ? { fog: false as const } : {}),
 		};
 	}
 
@@ -152,7 +156,7 @@ export function createSceneArtworkRepresentation(
 			lease: GeometryLease,
 			material: MaterialLease,
 			z: number,
-			castShadow: boolean
+			castShadow: boolean,
 		): Mesh => {
 			geometries.push(lease);
 			materials.push(material);
@@ -176,19 +180,31 @@ export function createSceneArtworkRepresentation(
 					depthWrite: !loaded.transparent && !ghost,
 					opacity: ghost ? GHOST_OPACITY : 1,
 					...(ghost ? { fog: false as const } : {}),
-					...(loaded.transparent && !ghost ? { shadowAlpha: SHADOW_ALPHA_TEST } : {})
+					...(loaded.transparent && !ghost ? { shadowAlpha: SHADOW_ALPHA_TEST } : {}),
 				},
-				maps
+				maps,
 			),
 			0,
-			true
+			true,
 		);
 		image.scale.set(item.imageSize[0], item.imageSize[1], 1);
 		if (item.frame !== null) {
-			mesh('SceneArtworkFrame', geometry.acquire(item.frame.geometry), store.acquire(plain(item.frame.color)), item.frame.z, true);
+			mesh(
+				'SceneArtworkFrame',
+				geometry.acquire(item.frame.geometry),
+				store.acquire(plain(item.frame.color)),
+				item.frame.z,
+				true,
+			);
 		}
 		if (item.mat !== null) {
-			mesh('SceneArtworkMat', geometry.acquire(item.mat.geometry), store.acquire(plain(item.mat.color)), item.mat.z, false);
+			mesh(
+				'SceneArtworkMat',
+				geometry.acquire(item.mat.geometry),
+				store.acquire(plain(item.mat.color)),
+				item.mat.z,
+				false,
+			);
 		}
 		if (item.backing !== null) {
 			mesh(
@@ -196,7 +212,7 @@ export function createSceneArtworkRepresentation(
 				geometry.acquire(item.backing.geometry),
 				store.acquire(plain(item.backing.color)),
 				item.backing.z,
-				false
+				false,
 			);
 		}
 		return { geometries, materials };
@@ -256,7 +272,7 @@ export function createSceneArtworkRepresentation(
 			lease: null,
 			loaded: null,
 			body: null,
-			live: true
+			live: true,
 		};
 		if (scope === null) return entry;
 		const lease = scope.acquire(item.image);
@@ -270,8 +286,10 @@ export function createSceneArtworkRepresentation(
 			},
 			(error: unknown) => {
 				if (disposed || !entry.live) return;
-				options.onError?.(error instanceof Error ? error.message : 'Artwork could not be displayed.');
-			}
+				options.onError?.(
+					error instanceof Error ? error.message : 'Artwork could not be displayed.',
+				);
+			},
 		);
 		pending.add(job);
 		void job.then(() => pending.delete(job));
@@ -296,7 +314,11 @@ export function createSceneArtworkRepresentation(
 			for (const item of items) {
 				present.add(item.id);
 				const existing = entries.get(item.id);
-				if (existing !== undefined && existing.sourceKey === item.sourceKey && existing.scope === scope) {
+				if (
+					existing !== undefined &&
+					existing.sourceKey === item.sourceKey &&
+					existing.scope === scope
+				) {
 					const previous = existing.item;
 					existing.item = item;
 					if (previous.bodyKey !== item.bodyKey) {
@@ -343,6 +365,6 @@ export function createSceneArtworkRepresentation(
 			previousScope = null;
 			for (const entry of entries.values()) release(entry);
 			entries.clear();
-		}
+		},
 	};
 }

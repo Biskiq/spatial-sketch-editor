@@ -12,7 +12,11 @@
  * it does not add a second count. A lifted root's base is above the support and
  * does not count; an overhead region always counts zero.
  */
-import { FLOOR_SUPPORT_TOLERANCES, floorSupportSnapshotOf, queryFloorSupports } from '@portfolio/layout-core/room';
+import {
+	FLOOR_SUPPORT_TOLERANCES,
+	floorSupportSnapshotOf,
+	queryFloorSupports,
+} from '@portfolio/layout-core/room';
 import type { CompiledLayoutGeometry } from '@portfolio/layout-core/geometry';
 import type { SceneEntity, ScenePrimitiveEntity } from '../scene';
 import { sceneFormContactMinY } from '../form';
@@ -27,7 +31,7 @@ const UPRIGHT_TOLERANCE = 1e-9;
  */
 export function sceneRootContactMinY(
 	entity: SceneEntity,
-	modelContactMinY: number | null
+	modelContactMinY: number | null,
 ): number | null {
 	if (entity.kind === 'light' || entity.kind === 'artwork') return null;
 	const rotation = entity.rotation;
@@ -91,7 +95,7 @@ export function countSceneRootsOnFloorRegion(input: {
 		const queried = queryFloorSupports(snapshot, {
 			generationId: input.generationId,
 			x: entity.position[0],
-			z: entity.position[2]
+			z: entity.position[2],
 		});
 		if (queried.kind !== 'candidates') continue;
 		const supported = queried.candidates.some(
@@ -99,9 +103,8 @@ export function countSceneRootsOnFloorRegion(input: {
 				Math.abs(candidate.elevation - base) <= FLOOR_SUPPORT_TOLERANCES.coplanarElevationMeters &&
 				candidate.witnesses.some(
 					(witness) =>
-						witness.source.kind === 'region' &&
-						witness.source.regionId === input.regionId
-				)
+						witness.source.kind === 'region' && witness.source.regionId === input.regionId,
+				),
 		);
 		if (supported) count += 1;
 	}

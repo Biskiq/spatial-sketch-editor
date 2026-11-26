@@ -5,6 +5,8 @@ export function createStageSessionLens() {
 	let lens = $state<StageLens>('world');
 	return {
 		read: () => lens,
-		write: (next: StageLens) => { lens = next; }
+		write: (next: StageLens) => {
+			lens = next;
+		},
 	};
 }

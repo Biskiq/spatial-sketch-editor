@@ -4,7 +4,14 @@ import type { LayoutIdCapture } from '../id-capture';
 import { layoutWorkingLevelIssue } from '../id-capture';
 import type { RoomCopyDroppedRelation } from '../../room/isolation';
 import { resolveIsolatedRoomSubgraph, resolveRoomCopyEnclosure } from '../../room/isolation';
-import type { LayoutDocumentWallFirst, LayoutJunction, LayoutObject, LayoutWall, LayoutWallFirstRoom, LayoutWallOpening } from '../../wall/types';
+import type {
+	LayoutDocumentWallFirst,
+	LayoutJunction,
+	LayoutObject,
+	LayoutWall,
+	LayoutWallFirstRoom,
+	LayoutWallOpening,
+} from '../../wall/types';
 import type { LayoutVec2 } from '../../geometry/coordinates';
 import type { LayoutSurfaceLineage } from '../surface-reference';
 import { duplicateRoomSurfaceLineage } from '../surface-reference';
@@ -23,7 +30,6 @@ type ClonedRoomEnclosure = {
 	readonly droppedRoomRelations: readonly RoomCopyDroppedRelation[];
 	readonly roomCopyCorrespondence: RoomCopyCorrespondence;
 };
-
 
 /**
  * Clone one Room enclosure from an already-resolved boundary Wall set.
@@ -50,7 +56,7 @@ function cloneRoomEnclosure(
 	source: LayoutWallFirstRoom,
 	boundaryWallIds: readonly string[],
 	delta: LayoutVec2,
-	capture: LayoutIdCapture
+	capture: LayoutIdCapture,
 ): ClonedRoomEnclosure {
 	const [dx, dz] = delta;
 	const wallById = new Map(document.walls.map((wall) => [wall.id, wall]));
@@ -71,7 +77,7 @@ function cloneRoomEnclosure(
 			certified: cert.certified,
 			center: newCenter,
 			radius: cert.certified.radius,
-			seamDirection: cert.certified.seamDirection
+			seamDirection: cert.certified.seamDirection,
 		});
 	})();
 
@@ -90,7 +96,7 @@ function cloneRoomEnclosure(
 			const rebuiltPoint = roundRebuild?.junctionPoints.get(oldJunctionId);
 			clonedJunctions.push({
 				id: newId,
-				point: rebuiltPoint ?? [oldJunction.point[0] + dx, oldJunction.point[1] + dz]
+				point: rebuiltPoint ?? [oldJunction.point[0] + dx, oldJunction.point[1] + dz],
 			});
 		}
 	}
@@ -119,7 +125,7 @@ function cloneRoomEnclosure(
 			// document X/Z: leaving them at the source position would not
 			// preserve the shape (the curve would swing across the untranslated
 			// anchors and can cross a sibling Wall of the copy).
-			centerline: rebuiltCenterline ?? translateWallCenterline(wall.centerline, [dx, dz])
+			centerline: rebuiltCenterline ?? translateWallCenterline(wall.centerline, [dx, dz]),
 		});
 	}
 
@@ -134,7 +140,7 @@ function cloneRoomEnclosure(
 		if (opening.connectsRoomIds !== undefined) {
 			droppedRoomRelations.push({
 				openingId: opening.id,
-				roomIds: [opening.connectsRoomIds[0], opening.connectsRoomIds[1]]
+				roomIds: [opening.connectsRoomIds[0], opening.connectsRoomIds[1]],
 			});
 		}
 		clonedOpenings.push({
@@ -148,7 +154,7 @@ function cloneRoomEnclosure(
 			width: opening.width,
 			height: opening.height,
 			sillHeight: opening.sillHeight,
-			profile: opening.profile
+			profile: opening.profile,
 		});
 	}
 
@@ -166,11 +172,11 @@ function cloneRoomEnclosure(
 		name: newRoomName,
 		boundary: source.boundary.map((ref) => ({
 			wallId: wallIdMap.get(ref.wallId)!,
-			direction: ref.direction
+			direction: ref.direction,
 		})),
 		virtualEdges: source.virtualEdges.map((edge) => ({
 			startJunctionId: junctionIdMap.get(edge.startJunctionId)!,
-			endJunctionId: junctionIdMap.get(edge.endJunctionId)!
+			endJunctionId: junctionIdMap.get(edge.endJunctionId)!,
 		})),
 		overhead: source.overhead,
 		...(roundRebuild
@@ -179,10 +185,10 @@ function cloneRoomEnclosure(
 				? {
 						round: {
 							center: [source.round.center[0] + dx, source.round.center[1] + dz] as LayoutVec2,
-							radius: source.round.radius
-						}
+							radius: source.round.radius,
+						},
 					}
-				: {})
+				: {}),
 	};
 
 	// Associated Layout objects only: explicit roomId equals the source Room.
@@ -203,7 +209,7 @@ function cloneRoomEnclosure(
 			...cloneObject(object),
 			id: newId,
 			roomId: newRoomId,
-			position: [object.position[0] + dx, object.position[1], object.position[2] + dz]
+			position: [object.position[0] + dx, object.position[1], object.position[2] + dz],
 		});
 	}
 
@@ -214,7 +220,7 @@ function cloneRoomEnclosure(
 			walls: [...document.walls, ...clonedWalls],
 			rooms: [...document.rooms, clonedRoom],
 			openings: [...document.openings, ...clonedOpenings],
-			objects: [...document.objects, ...clonedObjects]
+			objects: [...document.objects, ...clonedObjects],
 		},
 		createdObjectIds,
 		createdOpeningIds: clonedOpenings.map((opening) => opening.id),
@@ -228,11 +234,10 @@ function cloneRoomEnclosure(
 			junctions: Array.from(junctionIdMap, ([sourceId, copyId]) => ({ sourceId, copyId })),
 			walls: Array.from(wallIdMap, ([sourceId, copyId]) => ({ sourceId, copyId })),
 			openings: Array.from(openingIdMap, ([sourceId, copyId]) => ({ sourceId, copyId })),
-			objects: Array.from(objectIdMap, ([sourceId, copyId]) => ({ sourceId, copyId }))
-		}
+			objects: Array.from(objectIdMap, ([sourceId, copyId]) => ({ sourceId, copyId })),
+		},
 	};
 }
-
 
 /**
  * Duplicate one **isolated** Room: its boundary Junctions, boundary Walls and
@@ -257,18 +262,17 @@ export function planDuplicateIsolatedRoom(
 	document: LayoutDocumentWallFirst,
 	intent: RoomDuplicateIntent,
 	capture: LayoutIdCapture,
-	levelId: string
+	levelId: string,
 ): DuplicatePlan {
 	const levelIssue = layoutWorkingLevelIssue(document, levelId);
 	if (levelIssue !== null) return reject('invalid_value', levelIssue, [intent.roomId]);
 	return guardedDuplicatePlan(() => planDuplicateIsolatedRoomInternal(document, intent, capture));
 }
 
-
 function planDuplicateIsolatedRoomInternal(
 	document: LayoutDocumentWallFirst,
 	intent: RoomDuplicateIntent,
-	capture: LayoutIdCapture
+	capture: LayoutIdCapture,
 ): DuplicatePlan {
 	const [dx, dz] = intent.delta;
 	if (document.rooms.some((candidate) => candidate.id === intent.roomId)) {
@@ -283,7 +287,7 @@ function planDuplicateIsolatedRoomInternal(
 		return reject(
 			isolation.rejection.code,
 			isolation.rejection.message,
-			isolation.rejection.targetIds
+			isolation.rejection.targetIds,
 		);
 	}
 	// The shared policy already rejected any read-only profile object.
@@ -297,10 +301,9 @@ function planDuplicateIsolatedRoomInternal(
 		createdRoomId: cloned.createdRoomId,
 		surfaceLineage: cloned.surfaceLineage,
 		droppedRoomRelations: cloned.droppedRoomRelations,
-		roomCopyCorrespondence: cloned.roomCopyCorrespondence
+		roomCopyCorrespondence: cloned.roomCopyCorrespondence,
 	});
 }
-
 
 /**
  * Duplicate **any** Room as a free island (A5): the Room's complete boundary
@@ -329,18 +332,17 @@ export function planDuplicateRoom(
 	document: LayoutDocumentWallFirst,
 	intent: RoomDuplicateIntent,
 	capture: LayoutIdCapture,
-	levelId: string
+	levelId: string,
 ): DuplicatePlan {
 	const levelIssue = layoutWorkingLevelIssue(document, levelId);
 	if (levelIssue !== null) return reject('invalid_value', levelIssue, [intent.roomId]);
 	return guardedDuplicatePlan(() => planDuplicateRoomInternal(document, intent, capture));
 }
 
-
 function planDuplicateRoomInternal(
 	document: LayoutDocumentWallFirst,
 	intent: RoomDuplicateIntent,
-	capture: LayoutIdCapture
+	capture: LayoutIdCapture,
 ): DuplicatePlan {
 	const [dx, dz] = intent.delta;
 	if (document.rooms.some((candidate) => candidate.id === intent.roomId)) {
@@ -355,17 +357,11 @@ function planDuplicateRoomInternal(
 		return reject(
 			resolved.rejection.code,
 			resolved.rejection.message,
-			resolved.rejection.targetIds
+			resolved.rejection.targetIds,
 		);
 	}
 	const { enclosure } = resolved;
-	const cloned = cloneRoomEnclosure(
-		document,
-		enclosure.room,
-		enclosure.wallIds,
-		[dx, dz],
-		capture
-	);
+	const cloned = cloneRoomEnclosure(document, enclosure.room, enclosure.wallIds, [dx, dz], capture);
 	return finalizeCandidate(cloned.candidate, 'room-duplicate', {
 		createdObjectIds: cloned.createdObjectIds,
 		createdOpeningIds: cloned.createdOpeningIds,
@@ -374,6 +370,6 @@ function planDuplicateRoomInternal(
 		createdRoomId: cloned.createdRoomId,
 		surfaceLineage: cloned.surfaceLineage,
 		droppedRoomRelations: cloned.droppedRoomRelations,
-		roomCopyCorrespondence: cloned.roomCopyCorrespondence
+		roomCopyCorrespondence: cloned.roomCopyCorrespondence,
 	});
 }

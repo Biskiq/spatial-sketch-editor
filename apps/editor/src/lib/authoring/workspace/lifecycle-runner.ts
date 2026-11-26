@@ -5,7 +5,7 @@ import type {
 	LifecycleEvent,
 	LifecycleHandler,
 	LifecycleRegistrar,
-	LifecycleRegistration
+	LifecycleRegistration,
 } from './protocol';
 
 const events = Object.keys(LIFECYCLE_ORDER) as LifecycleEvent[];
@@ -15,7 +15,10 @@ export function createFeatureLifecycle(input: {
 	readonly core: LifecycleRegistration<'core'>;
 	readonly features: readonly Exclude<LifecycleRegistrar, { id: 'core' }>[];
 }): FeatureLifecycle {
-	const registrars: readonly LifecycleRegistrar[] = [{ id: 'core', lifecycle: input.core }, ...input.features];
+	const registrars: readonly LifecycleRegistrar[] = [
+		{ id: 'core', lifecycle: input.core },
+		...input.features,
+	];
 
 	// The type system checks owner/event membership at registration sites. Check
 	// completeness and uniqueness here, where all registrations come together.
@@ -51,7 +54,8 @@ export function createFeatureLifecycle(input: {
 
 	for (const { id, lifecycle } of registrars) {
 		for (const event of Object.keys(lifecycle)) {
-			if (!Object.hasOwn(LIFECYCLE_ORDER, event)) throw new Error(`Unexpected lifecycle event ${id} → ${event}`);
+			if (!Object.hasOwn(LIFECYCLE_ORDER, event))
+				throw new Error(`Unexpected lifecycle event ${id} → ${event}`);
 		}
 	}
 	// Every key is emitted by the authoritative table. The event's argument

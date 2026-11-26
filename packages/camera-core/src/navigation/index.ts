@@ -53,10 +53,6 @@ export type {
 	GuideTimeWaitSegment,
 } from '../guide-time-map';
 
-export {
-	getNode,
-} from '../navigation';
+export { getNode } from '../navigation';
 
-export type {
-	CameraGraph,
-} from '../navigation';
+export type { CameraGraph } from '../navigation';

@@ -30,7 +30,7 @@ import {
 	type ProgramLocalTime,
 	type ProgramPresentation,
 	type ProgramStateDeclaration,
-	type ProgramStop
+	type ProgramStop,
 } from './types';
 
 const PROGRAM_KEYS = [
@@ -47,12 +47,20 @@ const PROGRAM_KEYS = [
 	'localTime',
 	'channels',
 	'lifecycle',
-	'profile'
+	'profile',
 ] as const;
 const CAPABILITY_KEYS = ['id', 'required'] as const;
 const PRESENTATION_KEYS = ['id', 'label', 'viewIds', 'steps', 'content', 'explorable'] as const;
 const CONTENT_KEYS = ['id', 'kind', 'text'] as const;
-const STOP_KEYS = ['id', 'presentationId', 'entryViewId', 'staySeconds', 'invitation', 'invocation', 'continuation'] as const;
+const STOP_KEYS = [
+	'id',
+	'presentationId',
+	'entryViewId',
+	'staySeconds',
+	'invitation',
+	'invocation',
+	'continuation',
+] as const;
 const INVITATION_KEYS = ['prompt'] as const;
 const PROGRAM_PROMPT_MAX_CODE_POINTS = 80;
 const INVOCATION_KEYS = ['kind', 'viewId', 'connectionId'] as const;
@@ -73,7 +81,7 @@ function readArray<T>(
 	reader: ShapeReader,
 	input: unknown,
 	path: string,
-	read: (entry: unknown, entryPath: string) => T | null
+	read: (entry: unknown, entryPath: string) => T | null,
 ): T[] | null {
 	if (!Array.isArray(input)) {
 		reader.problem(path, 'not-an-array', `${path} must be an array`);
@@ -88,7 +96,12 @@ function readArray<T>(
 	return values;
 }
 
-function uniqueIds(reader: ShapeReader, ids: readonly string[], path: string, describe: string): boolean {
+function uniqueIds(
+	reader: ShapeReader,
+	ids: readonly string[],
+	path: string,
+	describe: string,
+): boolean {
 	const seen = new Set<string>();
 	for (const id of ids) {
 		if (seen.has(id)) {
@@ -100,7 +113,11 @@ function uniqueIds(reader: ShapeReader, ids: readonly string[], path: string, de
 	return true;
 }
 
-function readCapability(reader: ShapeReader, input: unknown, path: string): ProgramCapability | null {
+function readCapability(
+	reader: ShapeReader,
+	input: unknown,
+	path: string,
+): ProgramCapability | null {
 	const record = reader.object(input, path, CAPABILITY_KEYS);
 	if (record === null) return null;
 	const id = reader.opaqueId(record.id, `${path}.id`);
@@ -121,7 +138,11 @@ function readCapability(reader: ShapeReader, input: unknown, path: string): Prog
 const PROGRAM_TEXT_MAX_CODE_POINTS = 4000;
 const PROGRAM_WELCOME_MAX_CODE_POINTS = 600;
 
-function readContent(reader: ShapeReader, input: unknown, path: string): ProgramContentRecord | null {
+function readContent(
+	reader: ShapeReader,
+	input: unknown,
+	path: string,
+): ProgramContentRecord | null {
 	const record = reader.object(input, path, CONTENT_KEYS);
 	if (record === null) return null;
 	const id = reader.opaqueId(record.id, `${path}.id`);
@@ -133,52 +154,94 @@ function readContent(reader: ShapeReader, input: unknown, path: string): Program
 		reader.problem(
 			`${path}.text`,
 			'text-too-long',
-			`${path}.text carries ${length} code points; presentation text is bounded at ${PROGRAM_TEXT_MAX_CODE_POINTS}`
+			`${path}.text carries ${length} code points; presentation text is bounded at ${PROGRAM_TEXT_MAX_CODE_POINTS}`,
 		);
 		return null;
 	}
 	return { id, kind: 'text', text };
 }
 
-function readPresentation(reader: ShapeReader, input: unknown, path: string): ProgramPresentation | null {
+function readPresentation(
+	reader: ShapeReader,
+	input: unknown,
+	path: string,
+): ProgramPresentation | null {
 	const record = reader.object(input, path, PRESENTATION_KEYS);
 	if (record === null) return null;
 	const id = reader.opaqueId(record.id, `${path}.id`);
 	const label = reader.string(record.label, `${path}.label`);
 	const viewIds = reader.opaqueIdArray(record.viewIds, `${path}.viewIds`);
-	const steps = readArray(reader, record.steps, `${path}.steps`, (entry, entryPath) => readInvocation(reader, entry, entryPath));
+	const steps = readArray(reader, record.steps, `${path}.steps`, (entry, entryPath) =>
+		readInvocation(reader, entry, entryPath),
+	);
 	const explorable = reader.boolean(record.explorable, `${path}.explorable`);
 	const content = readArray(reader, record.content, `${path}.content`, (entry, entryPath) =>
-		readContent(reader, entry, entryPath)
+		readContent(reader, entry, entryPath),
 	);
-	if (id === null || label === null || viewIds === null || steps === null || content === null || explorable === null) return null;
+	if (
+		id === null ||
+		label === null ||
+		viewIds === null ||
+		steps === null ||
+		content === null ||
+		explorable === null
+	)
+		return null;
 	if (!uniqueIds(reader, viewIds, `${path}.viewIds`, 'view')) return null;
 	if (viewIds.length === 0) {
-		reader.problem(`${path}.viewIds`, 'out-of-range', `${path}.viewIds must name at least one Camera view`);
+		reader.problem(
+			`${path}.viewIds`,
+			'out-of-range',
+			`${path}.viewIds must name at least one Camera view`,
+		);
 		return null;
 	}
 	if (steps.length !== viewIds.length - 1) {
-		reader.problem(`${path}.steps`, 'step-count', `${path}.steps must hold one step between each pair of neighbouring Views`);
+		reader.problem(
+			`${path}.steps`,
+			'step-count',
+			`${path}.steps must hold one step between each pair of neighbouring Views`,
+		);
 		return null;
 	}
 	for (const [index, step] of steps.entries()) {
 		if (step.kind === 'cut' && step.viewId !== viewIds[index + 1]) {
-			reader.problem(`${path}.steps[${index}].viewId`, 'view-mismatch', 'a Cut step must realize the View it steps into');
+			reader.problem(
+				`${path}.steps[${index}].viewId`,
+				'view-mismatch',
+				'a Cut step must realize the View it steps into',
+			);
 			return null;
 		}
 	}
-	if (!uniqueIds(reader, content.map((entry) => entry.id), `${path}.content`, 'content record')) return null;
+	if (
+		!uniqueIds(
+			reader,
+			content.map((entry) => entry.id),
+			`${path}.content`,
+			'content record',
+		)
+	)
+		return null;
 	return { id, label, viewIds, steps, content, explorable };
 }
 
-function readInvocation(reader: ShapeReader, input: unknown, path: string): ProgramInvocation | null {
+function readInvocation(
+	reader: ShapeReader,
+	input: unknown,
+	path: string,
+): ProgramInvocation | null {
 	const record = reader.object(input, path, INVOCATION_KEYS);
 	if (record === null) return null;
 	const kind = reader.tag(record.kind, `${path}.kind`, ['cut', 'travel']);
 	if (kind === null) return null;
 	if (kind === 'cut') {
 		if (record.connectionId !== undefined) {
-			reader.problem(`${path}.connectionId`, 'unknown-key', `${path}.connectionId is not part of a cut invocation`);
+			reader.problem(
+				`${path}.connectionId`,
+				'unknown-key',
+				`${path}.connectionId is not part of a cut invocation`,
+			);
 			return null;
 		}
 		const viewId = reader.opaqueId(record.viewId, `${path}.viewId`);
@@ -186,7 +249,11 @@ function readInvocation(reader: ShapeReader, input: unknown, path: string): Prog
 		return { kind: 'cut', viewId };
 	}
 	if (record.viewId !== undefined) {
-		reader.problem(`${path}.viewId`, 'unknown-key', `${path}.viewId is not part of a travel invocation`);
+		reader.problem(
+			`${path}.viewId`,
+			'unknown-key',
+			`${path}.viewId is not part of a travel invocation`,
+		);
 		return null;
 	}
 	const connectionId = reader.opaqueId(record.connectionId, `${path}.connectionId`);
@@ -194,14 +261,22 @@ function readInvocation(reader: ShapeReader, input: unknown, path: string): Prog
 	return { kind: 'travel', connectionId };
 }
 
-function readContinuation(reader: ShapeReader, input: unknown, path: string): ProgramContinuation | null {
+function readContinuation(
+	reader: ShapeReader,
+	input: unknown,
+	path: string,
+): ProgramContinuation | null {
 	const record = reader.object(input, path, CONTINUATION_KEYS);
 	if (record === null) return null;
 	const kind = reader.tag(record.kind, `${path}.kind`, ['sequence-next', 'stop', 'end']);
 	if (kind === null) return null;
 	if (kind !== 'stop') {
 		if (record.stopId !== undefined) {
-			reader.problem(`${path}.stopId`, 'unknown-key', `${path}.stopId is not part of the ${kind} continuation`);
+			reader.problem(
+				`${path}.stopId`,
+				'unknown-key',
+				`${path}.stopId is not part of the ${kind} continuation`,
+			);
 			return null;
 		}
 		return { kind: kind as 'sequence-next' | 'end' };
@@ -211,16 +286,31 @@ function readContinuation(reader: ShapeReader, input: unknown, path: string): Pr
 	return { kind: 'stop', stopId };
 }
 
-function readGuard(reader: ShapeReader, input: unknown, path: string, depth = 0): ProgramGuard | null {
+function readGuard(
+	reader: ShapeReader,
+	input: unknown,
+	path: string,
+	depth = 0,
+): ProgramGuard | null {
 	if (depth >= 32) {
 		reader.problem(path, 'guard-too-deep', 'a bounded guard may nest at most 32 expressions');
 		return null;
 	}
 	const record = reader.object(input, path, GUARD_KEYS);
 	if (record === null) return null;
-	const kind = reader.tag(record.kind, `${path}.kind`, ['literal', 'state', 'equals', 'conjunction']);
+	const kind = reader.tag(record.kind, `${path}.kind`, [
+		'literal',
+		'state',
+		'equals',
+		'conjunction',
+	]);
 	if (kind === null) return null;
-	const keys = { literal: ['kind', 'value'], state: ['kind', 'stateId'], equals: ['kind', 'stateId', 'value'], conjunction: ['kind', 'guards'] };
+	const keys = {
+		literal: ['kind', 'value'],
+		state: ['kind', 'stateId'],
+		equals: ['kind', 'stateId', 'value'],
+		conjunction: ['kind', 'guards'],
+	};
 	reader.object(record, path, keys[kind as keyof typeof keys]);
 	if (kind === 'literal') {
 		const value = reader.boolean(record.value, `${path}.value`);
@@ -241,10 +331,16 @@ function readGuard(reader: ShapeReader, input: unknown, path: string, depth = 0)
 		if (stateId === null || value === null) return null;
 		return { kind: 'equals', stateId, value };
 	}
-	const guards = readArray(reader, record.guards, `${path}.guards`, (entry, entryPath) => readGuard(reader, entry, entryPath, depth + 1));
+	const guards = readArray(reader, record.guards, `${path}.guards`, (entry, entryPath) =>
+		readGuard(reader, entry, entryPath, depth + 1),
+	);
 	if (guards === null) return null;
 	if (guards.length === 0) {
-		reader.problem(`${path}.guards`, 'empty-conjunction', `${path}.guards must contain at least one guard`);
+		reader.problem(
+			`${path}.guards`,
+			'empty-conjunction',
+			`${path}.guards must contain at least one guard`,
+		);
 		return null;
 	}
 	return { kind: 'conjunction', guards };
@@ -253,9 +349,21 @@ function readGuard(reader: ShapeReader, input: unknown, path: string, depth = 0)
 function readAction(reader: ShapeReader, input: unknown, path: string): ProgramAction | null {
 	const record = reader.object(input, path, ACTION_KEYS);
 	if (record === null) return null;
-	const kind = reader.tag(record.kind, `${path}.kind`, ['show-content', 'navigate-to', 'open-url', 'continue', 'set-state']);
+	const kind = reader.tag(record.kind, `${path}.kind`, [
+		'show-content',
+		'navigate-to',
+		'open-url',
+		'continue',
+		'set-state',
+	]);
 	if (kind === null) return null;
-	const keys = { 'show-content': ['kind', 'contentId'], 'navigate-to': ['kind', 'stopId'], 'open-url': ['kind', 'url'], continue: ['kind'], 'set-state': ['kind', 'stateId', 'value'] };
+	const keys = {
+		'show-content': ['kind', 'contentId'],
+		'navigate-to': ['kind', 'stopId'],
+		'open-url': ['kind', 'url'],
+		continue: ['kind'],
+		'set-state': ['kind', 'stateId', 'value'],
+	};
 	reader.object(record, path, keys[kind as keyof typeof keys]);
 	switch (kind) {
 		case 'show-content': {
@@ -272,7 +380,8 @@ function readAction(reader: ShapeReader, input: unknown, path: string): ProgramA
 			const url = reader.string(record.url, `${path}.url`);
 			if (url === null) return null;
 			try {
-				if (!['https:', 'http:'].includes(new URL(url).protocol)) throw new Error('unsupported protocol');
+				if (!['https:', 'http:'].includes(new URL(url).protocol))
+					throw new Error('unsupported protocol');
 			} catch {
 				reader.problem(`${path}.url`, 'invalid-url', 'OpenUrl requires an absolute HTTP(S) URL');
 				return null;
@@ -284,7 +393,9 @@ function readAction(reader: ShapeReader, input: unknown, path: string): ProgramA
 		default: {
 			const stateId = reader.opaqueId(record.stateId, `${path}.stateId`);
 			const value =
-				typeof record.value === 'boolean' ? record.value : reader.opaqueId(record.value, `${path}.value`);
+				typeof record.value === 'boolean'
+					? record.value
+					: reader.opaqueId(record.value, `${path}.value`);
 			if (stateId === null || value === null) return null;
 			return { kind: 'set-state', stateId, value };
 		}
@@ -306,37 +417,63 @@ export function validateExecutionProgram(input: unknown): ShapeValidation<Execut
 	const kind = reader.tag(record.kind, '$.kind', [EXECUTION_PROGRAM_KIND]);
 	if (kind === null) return failed(reader);
 	if (record.formatVersion !== EXECUTION_PROGRAM_FORMAT_VERSION) {
-		reader.problem('$.formatVersion', 'unsupported_format_version', `$.formatVersion must be ${EXECUTION_PROGRAM_FORMAT_VERSION}`);
+		reader.problem(
+			'$.formatVersion',
+			'unsupported_format_version',
+			`$.formatVersion must be ${EXECUTION_PROGRAM_FORMAT_VERSION}`,
+		);
 		return failed(reader);
 	}
-	const capabilities = readArray(reader, record.capabilities, '$.capabilities', (entry, entryPath) =>
-		readCapability(reader, entry, entryPath)
+	const capabilities = readArray(
+		reader,
+		record.capabilities,
+		'$.capabilities',
+		(entry, entryPath) => readCapability(reader, entry, entryPath),
 	);
 	const experienceId = reader.opaqueId(record.experienceId, '$.experienceId');
 	const welcome = record.welcome === null ? null : reader.string(record.welcome, '$.welcome');
-	const pacing = reader.tag(record.pacing, '$.pacing', ['automatic', 'manual']) as ExecutionProgram['pacing'] | null;
+	const pacing = reader.tag(record.pacing, '$.pacing', ['automatic', 'manual']) as
+		| ExecutionProgram['pacing']
+		| null;
 	if (welcome !== null && [...welcome].length > PROGRAM_WELCOME_MAX_CODE_POINTS) {
-		reader.problem('$.welcome', 'text-too-long', `welcome text is bounded at ${PROGRAM_WELCOME_MAX_CODE_POINTS} code points`);
+		reader.problem(
+			'$.welcome',
+			'text-too-long',
+			`welcome text is bounded at ${PROGRAM_WELCOME_MAX_CODE_POINTS} code points`,
+		);
 	}
-	const presentations = readArray(reader, record.presentations, '$.presentations', (entry, entryPath) =>
-		readPresentation(reader, entry, entryPath)
+	const presentations = readArray(
+		reader,
+		record.presentations,
+		'$.presentations',
+		(entry, entryPath) => readPresentation(reader, entry, entryPath),
 	);
-	const stops = readArray(reader, record.stops, '$.stops', (entry, entryPath) => readStop(reader, entry, entryPath));
-	const state = readArray(reader, record.state, '$.state', (entry, entryPath) => readState(reader, entry, entryPath));
+	const stops = readArray(reader, record.stops, '$.stops', (entry, entryPath) =>
+		readStop(reader, entry, entryPath),
+	);
+	const state = readArray(reader, record.state, '$.state', (entry, entryPath) =>
+		readState(reader, entry, entryPath),
+	);
 	const localTime = readArray(reader, record.localTime, '$.localTime', (entry, entryPath) =>
-		readLocalTime(reader, entry, entryPath)
+		readLocalTime(reader, entry, entryPath),
 	);
 	const channels = readArray(reader, record.channels, '$.channels', (entry, entryPath) =>
-		readChannel(reader, entry, entryPath)
+		readChannel(reader, entry, entryPath),
 	);
 	const lifecycle = readArray(reader, record.lifecycle, '$.lifecycle', (entry, entryPath) =>
-		readLifecycle(reader, entry, entryPath)
+		readLifecycle(reader, entry, entryPath),
 	);
 	const profileRecord = reader.object(record.profile, '$.profile', PROFILE_KEYS);
 	let profile: ExecutionProgram['profile'] | null = null;
 	if (profileRecord !== null) {
-		const reducedMotion = reader.tag(profileRecord.reducedMotion, '$.profile.reducedMotion', ['required']);
-		const semanticDomNavigation = reader.tag(profileRecord.semanticDomNavigation, '$.profile.semanticDomNavigation', ['required']);
+		const reducedMotion = reader.tag(profileRecord.reducedMotion, '$.profile.reducedMotion', [
+			'required',
+		]);
+		const semanticDomNavigation = reader.tag(
+			profileRecord.semanticDomNavigation,
+			'$.profile.semanticDomNavigation',
+			['required'],
+		);
 		if (reducedMotion !== null && semanticDomNavigation !== null) {
 			profile = { reducedMotion: 'required', semanticDomNavigation: 'required' };
 		}
@@ -360,12 +497,60 @@ export function validateExecutionProgram(input: unknown): ShapeValidation<Execut
 	}
 	if (reader.issues.length > 0) return failed(reader);
 
-	if (!uniqueIds(reader, capabilities.map((entry) => entry.id), '$.capabilities', 'capability')) return failed(reader);
-	if (!uniqueIds(reader, presentations.map((entry) => entry.id), '$.presentations', 'presentation')) return failed(reader);
-	if (!uniqueIds(reader, stops.map((entry) => entry.id), '$.stops', 'stop')) return failed(reader);
-	if (!uniqueIds(reader, state.map((entry) => entry.id), '$.state', 'state declaration')) return failed(reader);
-	if (!uniqueIds(reader, localTime.map((entry) => entry.stopId), '$.localTime', 'local-time mapping')) return failed(reader);
-	if (!uniqueIds(reader, channels.map((entry) => entry.id), '$.channels', 'channel policy')) return failed(reader);
+	if (
+		!uniqueIds(
+			reader,
+			capabilities.map((entry) => entry.id),
+			'$.capabilities',
+			'capability',
+		)
+	)
+		return failed(reader);
+	if (
+		!uniqueIds(
+			reader,
+			presentations.map((entry) => entry.id),
+			'$.presentations',
+			'presentation',
+		)
+	)
+		return failed(reader);
+	if (
+		!uniqueIds(
+			reader,
+			stops.map((entry) => entry.id),
+			'$.stops',
+			'stop',
+		)
+	)
+		return failed(reader);
+	if (
+		!uniqueIds(
+			reader,
+			state.map((entry) => entry.id),
+			'$.state',
+			'state declaration',
+		)
+	)
+		return failed(reader);
+	if (
+		!uniqueIds(
+			reader,
+			localTime.map((entry) => entry.stopId),
+			'$.localTime',
+			'local-time mapping',
+		)
+	)
+		return failed(reader);
+	if (
+		!uniqueIds(
+			reader,
+			channels.map((entry) => entry.id),
+			'$.channels',
+			'channel policy',
+		)
+	)
+		return failed(reader);
 
 	const presentationIds = new Set(presentations.map((entry) => entry.id));
 	const stopIds = new Set(stops.map((entry) => entry.id));
@@ -378,20 +563,34 @@ export function validateExecutionProgram(input: unknown): ShapeValidation<Execut
 	for (const [index, stop] of stops.entries()) {
 		const path = `$.stops[${index}]`;
 		if (!presentationIds.has(stop.presentationId)) {
-			reader.problem(`${path}.presentationId`, 'missing-presentation', `${path}.presentationId names no presentation`);
+			reader.problem(
+				`${path}.presentationId`,
+				'missing-presentation',
+				`${path}.presentationId names no presentation`,
+			);
 		}
 		const presentation = presentations.find((entry) => entry.id === stop.presentationId);
 		if (presentation !== undefined && !presentation.viewIds.includes(stop.entryViewId)) {
-			reader.problem(`${path}.entryViewId`, 'view-mismatch', 'a Stop enters at one of its Presentation\'s Views');
+			reader.problem(
+				`${path}.entryViewId`,
+				'view-mismatch',
+				"a Stop enters at one of its Presentation's Views",
+			);
 		}
 		if (stop.invocation.kind === 'cut' && stop.invocation.viewId !== stop.entryViewId) {
-			reader.problem(`${path}.invocation.viewId`, 'view-mismatch', 'a Cut must realize the entry View of this Stop');
+			reader.problem(
+				`${path}.invocation.viewId`,
+				'view-mismatch',
+				'a Cut must realize the entry View of this Stop',
+			);
 		}
 		if ((pacing === 'manual') !== (stop.staySeconds === null)) {
 			reader.problem(
 				`${path}.staySeconds`,
 				'stay-pacing-mismatch',
-				pacing === 'manual' ? 'a Manual program waits for Next: every stay is null' : 'an Automatic program times every Stop'
+				pacing === 'manual'
+					? 'a Manual program waits for Next: every stay is null'
+					: 'an Automatic program times every Stop',
 			);
 		}
 		// The entry Stop is the run's first arrival: no pose precedes it, so a Travel
@@ -400,19 +599,31 @@ export function validateExecutionProgram(input: unknown): ShapeValidation<Execut
 			reader.problem(
 				`${path}.invocation.kind`,
 				'entry-travel',
-				'the entry Stop is the first arrival and must Cut, not Travel from an unvisited predecessor'
+				'the entry Stop is the first arrival and must Cut, not Travel from an unvisited predecessor',
 			);
 		}
 		if (stop.continuation.kind === 'stop' && !stopIds.has(stop.continuation.stopId)) {
-			reader.problem(`${path}.continuation.stopId`, 'missing-stop', `${path}.continuation.stopId names no stop`);
+			reader.problem(
+				`${path}.continuation.stopId`,
+				'missing-stop',
+				`${path}.continuation.stopId names no stop`,
+			);
 		}
 	}
 	if (stops.length === 0) {
 		if (entryStopId !== null) {
-			reader.problem('$.entryStopId', 'missing-stop', '$.entryStopId must be null when the program carries no stops');
+			reader.problem(
+				'$.entryStopId',
+				'missing-stop',
+				'$.entryStopId must be null when the program carries no stops',
+			);
 		}
 	} else if (entryStopId === null || !stopIds.has(entryStopId)) {
-		reader.problem('$.entryStopId', 'missing-stop', '$.entryStopId must name one of the program stops');
+		reader.problem(
+			'$.entryStopId',
+			'missing-stop',
+			'$.entryStopId must name one of the program stops',
+		);
 	}
 	const mappedStays = new Set<string>();
 	for (const [index, mapping] of localTime.entries()) {
@@ -421,20 +632,33 @@ export function validateExecutionProgram(input: unknown): ShapeValidation<Execut
 		if (stop === undefined) {
 			reader.problem(`${path}.stopId`, 'missing-stop', `${path}.stopId names no stop`);
 		} else if (stop.staySeconds !== mapping.staySeconds) {
-			reader.problem(`${path}.staySeconds`, 'stay-mismatch', 'the local-time mapping must agree with its Stop stay');
+			reader.problem(
+				`${path}.staySeconds`,
+				'stay-mismatch',
+				'the local-time mapping must agree with its Stop stay',
+			);
 		}
 		mappedStays.add(mapping.stopId);
 	}
 	for (const [index, stop] of stops.entries()) {
 		if (stop.staySeconds !== null && !mappedStays.has(stop.id)) {
-			reader.problem(`$.stops[${index}].staySeconds`, 'missing-local-time', 'a timed Stop needs a local-time mapping');
+			reader.problem(
+				`$.stops[${index}].staySeconds`,
+				'missing-local-time',
+				'a timed Stop needs a local-time mapping',
+			);
 		}
 	}
 	for (const [index, entry] of lifecycle.entries()) {
 		const path = `$.lifecycle[${index}]`;
 		checkAction(reader, entry.action, `${path}.action`, { stopIds, stateIds, contentIds });
 		if (entry.action.kind === 'set-state') {
-			checkStateValue(reader, stateById.get(entry.action.stateId), entry.action.value, `${path}.action.value`);
+			checkStateValue(
+				reader,
+				stateById.get(entry.action.stateId),
+				entry.action.value,
+				`${path}.action.value`,
+			);
 		}
 		if (entry.guard !== null) checkGuard(reader, entry.guard, `${path}.guard`, stateById);
 	}
@@ -456,9 +680,11 @@ export function validateExecutionProgram(input: unknown): ShapeValidation<Execut
 			localTime,
 			channels,
 			lifecycle,
-			profile
+			profile,
 		},
-		ignoredOptionalExtensions: capabilities.filter((entry) => !entry.required).map((entry) => entry.id)
+		ignoredOptionalExtensions: capabilities
+			.filter((entry) => !entry.required)
+			.map((entry) => entry.id),
 	};
 }
 
@@ -468,10 +694,14 @@ function readStop(reader: ShapeReader, input: unknown, path: string): ProgramSto
 	const id = reader.opaqueId(record.id, `${path}.id`);
 	const presentationId = reader.opaqueId(record.presentationId, `${path}.presentationId`);
 	const entryViewId = reader.opaqueId(record.entryViewId, `${path}.entryViewId`);
-	const staySeconds = record.staySeconds === null
-		? null
-		: reader.numberAtLeast(record.staySeconds, `${path}.staySeconds`, 1, false);
-	const invitation = record.invitation === null ? null : readProgramInvitation(reader, record.invitation, `${path}.invitation`);
+	const staySeconds =
+		record.staySeconds === null
+			? null
+			: reader.numberAtLeast(record.staySeconds, `${path}.staySeconds`, 1, false);
+	const invitation =
+		record.invitation === null
+			? null
+			: readProgramInvitation(reader, record.invitation, `${path}.invitation`);
 	const invocation = readInvocation(reader, record.invocation, `${path}.invocation`);
 	const continuation = readContinuation(reader, record.continuation, `${path}.continuation`);
 	if (
@@ -488,20 +718,32 @@ function readStop(reader: ShapeReader, input: unknown, path: string): ProgramSto
 	return { id, presentationId, entryViewId, staySeconds, invitation, invocation, continuation };
 }
 
-function readProgramInvitation(reader: ShapeReader, input: unknown, path: string): ProgramInvitation | null {
+function readProgramInvitation(
+	reader: ShapeReader,
+	input: unknown,
+	path: string,
+): ProgramInvitation | null {
 	const record = reader.object(input, path, INVITATION_KEYS);
 	if (record === null) return null;
 	if (record.prompt === null) return { prompt: null };
 	const prompt = reader.string(record.prompt, `${path}.prompt`);
 	if (prompt === null) return null;
 	if ([...prompt].length > PROGRAM_PROMPT_MAX_CODE_POINTS) {
-		reader.problem(`${path}.prompt`, 'text-too-long', `an invitation prompt is bounded at ${PROGRAM_PROMPT_MAX_CODE_POINTS} code points`);
+		reader.problem(
+			`${path}.prompt`,
+			'text-too-long',
+			`an invitation prompt is bounded at ${PROGRAM_PROMPT_MAX_CODE_POINTS} code points`,
+		);
 		return null;
 	}
 	return { prompt };
 }
 
-function readState(reader: ShapeReader, input: unknown, path: string): ProgramStateDeclaration | null {
+function readState(
+	reader: ShapeReader,
+	input: unknown,
+	path: string,
+): ProgramStateDeclaration | null {
 	const record = reader.object(input, path, STATE_KEYS);
 	if (record === null) return null;
 	const id = reader.opaqueId(record.id, `${path}.id`);
@@ -509,12 +751,20 @@ function readState(reader: ShapeReader, input: unknown, path: string): ProgramSt
 	const values = reader.opaqueIdArray(record.values, `${path}.values`);
 	if (id === null || type === null || values === null) return null;
 	if (values.length !== new Set(values).size) {
-		reader.problem(`${path}.values`, 'duplicate-identity', `${path}.values repeats a declared value`);
+		reader.problem(
+			`${path}.values`,
+			'duplicate-identity',
+			`${path}.values repeats a declared value`,
+		);
 		return null;
 	}
 	if (type === 'boolean') {
 		if (values.length > 0) {
-			reader.problem(`${path}.values`, 'out-of-range', `${path}.values must be empty for a boolean state`);
+			reader.problem(
+				`${path}.values`,
+				'out-of-range',
+				`${path}.values must be empty for a boolean state`,
+			);
 			return null;
 		}
 		const initial = reader.boolean(record.initial, `${path}.initial`);
@@ -523,14 +773,22 @@ function readState(reader: ShapeReader, input: unknown, path: string): ProgramSt
 		return { id, type: 'boolean', values, initial, reset };
 	}
 	if (values.length === 0) {
-		reader.problem(`${path}.values`, 'out-of-range', `${path}.values must declare at least one value for a choice state`);
+		reader.problem(
+			`${path}.values`,
+			'out-of-range',
+			`${path}.values must declare at least one value for a choice state`,
+		);
 		return null;
 	}
 	const initial = reader.opaqueId(record.initial, `${path}.initial`);
 	const reset = reader.opaqueId(record.reset, `${path}.reset`);
 	if (initial === null || reset === null) return null;
 	if (!values.includes(initial) || !values.includes(reset)) {
-		reader.problem(`${path}.initial`, 'out-of-range', `${path}.initial and ${path}.reset must be declared values`);
+		reader.problem(
+			`${path}.initial`,
+			'out-of-range',
+			`${path}.initial and ${path}.reset must be declared values`,
+		);
 		return null;
 	}
 	return { id, type: 'choice', values, initial, reset };
@@ -545,7 +803,11 @@ function readLocalTime(reader: ShapeReader, input: unknown, path: string): Progr
 	return { stopId, staySeconds };
 }
 
-function readChannel(reader: ShapeReader, input: unknown, path: string): ProgramChannelPolicy | null {
+function readChannel(
+	reader: ShapeReader,
+	input: unknown,
+	path: string,
+): ProgramChannelPolicy | null {
 	const record = reader.object(input, path, CHANNEL_KEYS);
 	if (record === null) return null;
 	const id = reader.opaqueId(record.id, `${path}.id`);
@@ -555,7 +817,11 @@ function readChannel(reader: ShapeReader, input: unknown, path: string): Program
 	return { id, family, policy: policy as ProgramChannelPolicy['policy'] };
 }
 
-function readLifecycle(reader: ShapeReader, input: unknown, path: string): ProgramLifecycleAction | null {
+function readLifecycle(
+	reader: ShapeReader,
+	input: unknown,
+	path: string,
+): ProgramLifecycleAction | null {
 	const record = reader.object(input, path, LIFECYCLE_KEYS);
 	if (record === null) return null;
 	const event = reader.tag(record.event, `${path}.event`, PROGRAM_EVENTS);
@@ -569,35 +835,71 @@ function checkAction(
 	reader: ShapeReader,
 	action: ProgramAction,
 	path: string,
-	scope: { stopIds: ReadonlySet<string>; stateIds: ReadonlySet<string>; contentIds: ReadonlySet<string> }
+	scope: {
+		stopIds: ReadonlySet<string>;
+		stateIds: ReadonlySet<string>;
+		contentIds: ReadonlySet<string>;
+	},
 ): void {
 	if (action.kind === 'navigate-to' && !scope.stopIds.has(action.stopId)) {
 		reader.problem(`${path}.stopId`, 'missing-stop', `${path}.stopId names no stop`);
 	}
 	if (action.kind === 'show-content' && !scope.contentIds.has(action.contentId)) {
-		reader.problem(`${path}.contentId`, 'missing-content', `${path}.contentId names no content record`);
+		reader.problem(
+			`${path}.contentId`,
+			'missing-content',
+			`${path}.contentId names no content record`,
+		);
 	}
 	if (action.kind === 'set-state' && !scope.stateIds.has(action.stateId)) {
-		reader.problem(`${path}.stateId`, 'missing-state', `${path}.stateId names no state declaration`);
+		reader.problem(
+			`${path}.stateId`,
+			'missing-state',
+			`${path}.stateId names no state declaration`,
+		);
 	}
 }
 
-function checkStateValue(reader: ShapeReader, state: ProgramStateDeclaration | undefined, value: string | boolean, path: string): void {
+function checkStateValue(
+	reader: ShapeReader,
+	state: ProgramStateDeclaration | undefined,
+	value: string | boolean,
+	path: string,
+): void {
 	if (state === undefined) return; // the reference check reports the missing declaration
-	if (state.type === 'boolean' ? typeof value !== 'boolean' : typeof value !== 'string' || !state.values.includes(value)) {
+	if (
+		state.type === 'boolean'
+			? typeof value !== 'boolean'
+			: typeof value !== 'string' || !state.values.includes(value)
+	) {
 		reader.problem(path, 'out-of-range', 'the value is outside the referenced state declaration');
 	}
 }
 
-function checkGuard(reader: ShapeReader, guard: ProgramGuard, path: string, stateById: ReadonlyMap<string, ProgramStateDeclaration>): void {
+function checkGuard(
+	reader: ShapeReader,
+	guard: ProgramGuard,
+	path: string,
+	stateById: ReadonlyMap<string, ProgramStateDeclaration>,
+): void {
 	if (guard.kind === 'conjunction') {
 		guard.guards.forEach((child, index) => {
 			checkGuard(reader, child, `${path}.guards[${index}]`, stateById);
 		});
 	} else if (guard.kind === 'state' || guard.kind === 'equals') {
 		const state = stateById.get(guard.stateId);
-		if (state === undefined) reader.problem(`${path}.stateId`, 'missing-state', `the guard reads undeclared state "${guard.stateId}"`);
-		else if (guard.kind === 'state' && state.type !== 'boolean') reader.problem(`${path}.stateId`, 'out-of-range', 'a state-read guard requires boolean state');
+		if (state === undefined)
+			reader.problem(
+				`${path}.stateId`,
+				'missing-state',
+				`the guard reads undeclared state "${guard.stateId}"`,
+			);
+		else if (guard.kind === 'state' && state.type !== 'boolean')
+			reader.problem(
+				`${path}.stateId`,
+				'out-of-range',
+				'a state-read guard requires boolean state',
+			);
 		else if (guard.kind === 'equals') checkStateValue(reader, state, guard.value, `${path}.value`);
 	}
 }
@@ -627,8 +929,10 @@ export function serializeExecutionProgram(program: unknown): string {
 /** True when a capability the program requires is not in `supported`. */
 export function unsupportedRequiredCapabilities(
 	program: ExecutionProgram,
-	supported: readonly string[]
+	supported: readonly string[],
 ): string[] {
 	const admitted = new Set(supported);
-	return program.capabilities.filter((entry) => entry.required && !admitted.has(entry.id)).map((entry) => entry.id);
+	return program.capabilities
+		.filter((entry) => entry.required && !admitted.has(entry.id))
+		.map((entry) => entry.id);
 }

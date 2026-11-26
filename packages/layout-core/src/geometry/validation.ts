@@ -1,6 +1,21 @@
 import type { LayoutVec2 } from './coordinates';
-import type { CompilerBoundarySource, CompilerFloorSource, CompilerOpening, LayoutGeometryIssue } from './types';
-import { CURVE_ENDPOINT_EPSILON, CURVE_SELF_INTERSECTION_TOLERANCE, LayoutGeometrySamplingError, sampleSegment, sampledPolylineIntersects, sampledPolylineSelfIntersects, segmentVertexPoints, type SampleableSegment, type SampledSegment } from './curve';
+import type {
+	CompilerBoundarySource,
+	CompilerFloorSource,
+	CompilerOpening,
+	LayoutGeometryIssue,
+} from './types';
+import {
+	CURVE_ENDPOINT_EPSILON,
+	CURVE_SELF_INTERSECTION_TOLERANCE,
+	LayoutGeometrySamplingError,
+	sampleSegment,
+	sampledPolylineIntersects,
+	sampledPolylineSelfIntersects,
+	segmentVertexPoints,
+	type SampleableSegment,
+	type SampledSegment,
+} from './curve';
 import { LAYOUT_GEOMETRY_EPSILON, buildArchProfile, openingIntervals } from './openings';
 
 export type { LayoutGeometryIssue };
@@ -28,7 +43,7 @@ export type PreparedLayoutRoomGeometry = {
 export function prepareLayoutRoomSegments(
 	room: { id: string; boundary: CompilerBoundarySource },
 	path = `rooms.${room.id}`,
-	preSampled?: ReadonlyMap<SampleableSegment, SampledSegment>
+	preSampled?: ReadonlyMap<SampleableSegment, SampledSegment>,
 ): PreparedLayoutRoomGeometry {
 	const issues: LayoutGeometryIssue[] = [];
 	const segments = room.boundary.segments.map((segment, index) => {
@@ -45,7 +60,7 @@ export function prepareLayoutRoomSegments(
 				path: `${path}.boundary.segments[${index}]`,
 				code: samplingError?.code ?? 'sampling_failed',
 				message: samplingError?.message ?? 'Segment sampling failed.',
-				targetId: segment.id
+				targetId: segment.id,
 			});
 			return null;
 		}
@@ -83,12 +98,17 @@ export function validatePreparedLayoutRoomGeometry(
 	 * authoritative height). Absent falls back to the optional `floor.height`;
 	 * exactly one fit rule remains (this branch), never a second validator.
 	 */
-	openingHeightLimitBySegmentId?: Readonly<Record<string, number>>
+	openingHeightLimitBySegmentId?: Readonly<Record<string, number>>,
 ): LayoutGeometryIssue[] {
 	const issues: LayoutGeometryIssue[] = [];
 	const segments = room.boundary.segments;
 	if (floor.height !== undefined && (floor.height <= 0 || !Number.isFinite(floor.height))) {
-		issues.push({ path: 'floor.height', code: 'invalid_floor_height', message: 'Floor height must be finite and greater than zero', targetId: floor.id });
+		issues.push({
+			path: 'floor.height',
+			code: 'invalid_floor_height',
+			message: 'Floor height must be finite and greater than zero',
+			targetId: floor.id,
+		});
 	}
 	// A closed Wall is ONE segment whose start and end are the same point. Its
 	// boundary is genuinely closed and encloses area, so the three-segment floor
@@ -107,20 +127,35 @@ export function validatePreparedLayoutRoomGeometry(
 		pointsEqual(segmentEndpoints(segments[1]!).end, segmentEndpoints(segments[0]!).start);
 	const closedCurveBoundary = singleClosedCurve || twoWallLens;
 	if (segments.length < 3 && !closedCurveBoundary) {
-		issues.push({ path: `${path}.boundary.segments`, code: 'too_few_segments', message: 'A room boundary needs at least three segments', targetId: room.id });
+		issues.push({
+			path: `${path}.boundary.segments`,
+			code: 'too_few_segments',
+			message: 'A room boundary needs at least three segments',
+			targetId: room.id,
+		});
 	}
 
 	const sampled = new Map<string, SampledSegment>();
 	for (const [index, segment] of segments.entries()) {
 		if (!isFiniteSegment(segment)) {
-			issues.push({ path: `${path}.boundary.segments[${index}]`, code: 'non_finite_endpoint', message: 'Segment points and interior anchors must be finite', targetId: segment.id });
+			issues.push({
+				path: `${path}.boundary.segments[${index}]`,
+				code: 'non_finite_endpoint',
+				message: 'Segment points and interior anchors must be finite',
+				targetId: segment.id,
+			});
 			continue;
 		}
 		const sampledSegment = prepared[index];
 		if (sampledSegment) {
 			sampled.set(segment.id, sampledSegment);
 			if (sampledSegment.length <= CURVE_ENDPOINT_EPSILON) {
-				issues.push({ path: `${path}.boundary.segments[${index}]`, code: 'zero_length_segment', message: 'Segment must have non-zero effective length', targetId: segment.id });
+				issues.push({
+					path: `${path}.boundary.segments[${index}]`,
+					code: 'zero_length_segment',
+					message: 'Segment must have non-zero effective length',
+					targetId: segment.id,
+				});
 			}
 		}
 	}
@@ -130,13 +165,23 @@ export function validatePreparedLayoutRoomGeometry(
 			const current = segments[index]!;
 			const next = segments[(index + 1) % segments.length]!;
 			if (!pointsEqual(segmentEndpoints(current).end, segmentEndpoints(next).start)) {
-				issues.push({ path: `${path}.boundary.segments[${index}].end`, code: 'disconnected_boundary', message: `Segment does not connect to ${next.id}.`, targetId: current.id });
+				issues.push({
+					path: `${path}.boundary.segments[${index}].end`,
+					code: 'disconnected_boundary',
+					message: `Segment does not connect to ${next.id}.`,
+					targetId: current.id,
+				});
 			}
 		}
 		for (let first = 0; first < segments.length; first += 1) {
 			const firstSamples = sampled.get(segments[first]!.id)?.samples ?? [];
 			if (sampledPolylineSelfIntersects(firstSamples, CURVE_SELF_INTERSECTION_TOLERANCE)) {
-				issues.push({ path: `${path}.boundary.segments[${first}]`, code: 'self_intersection', message: `Segment ${segments[first]!.id} intersects itself.`, targetId: room.id });
+				issues.push({
+					path: `${path}.boundary.segments[${first}]`,
+					code: 'self_intersection',
+					message: `Segment ${segments[first]!.id} intersects itself.`,
+					targetId: room.id,
+				});
 			}
 			for (let second = first + 1; second < segments.length; second += 1) {
 				const secondSamples = sampled.get(segments[second]!.id)?.samples ?? [];
@@ -146,11 +191,25 @@ export function validatePreparedLayoutRoomGeometry(
 						: segmentEndpoints(segments[first]!).end
 					: undefined;
 				// A two-Wall lens shares BOTH endpoints, so both are legitimate joins.
-				const otherSharedEndpoint = twoWallLens && first === 0 && second === 1
-					? segmentEndpoints(segments[0]!).end
-					: undefined;
-				if (sampledPolylineIntersects(firstSamples, secondSamples, CURVE_SELF_INTERSECTION_TOLERANCE, sharedEndpoint, otherSharedEndpoint)) {
-					issues.push({ path: `${path}.boundary.segments`, code: 'self_intersection', message: `Segments ${segments[first]!.id} and ${segments[second]!.id} intersect.`, targetId: room.id });
+				const otherSharedEndpoint =
+					twoWallLens && first === 0 && second === 1
+						? segmentEndpoints(segments[0]!).end
+						: undefined;
+				if (
+					sampledPolylineIntersects(
+						firstSamples,
+						secondSamples,
+						CURVE_SELF_INTERSECTION_TOLERANCE,
+						sharedEndpoint,
+						otherSharedEndpoint,
+					)
+				) {
+					issues.push({
+						path: `${path}.boundary.segments`,
+						code: 'self_intersection',
+						message: `Segments ${segments[first]!.id} and ${segments[second]!.id} intersect.`,
+						targetId: room.id,
+					});
 				}
 			}
 		}
@@ -160,13 +219,42 @@ export function validatePreparedLayoutRoomGeometry(
 	for (const [index, opening] of room.openings.entries()) {
 		const segment = segments.find((candidate) => candidate.id === opening.segmentId);
 		if (!segment) {
-			issues.push({ path: `${path}.openings[${index}].segmentId`, code: 'opening_segment_invalid', message: 'Opening must reference a room boundary segment.', targetId: opening.id });
+			issues.push({
+				path: `${path}.openings[${index}].segmentId`,
+				code: 'opening_segment_invalid',
+				message: 'Opening must reference a room boundary segment.',
+				targetId: opening.id,
+			});
 			continue;
 		}
-		if (!Number.isFinite(opening.offset) || opening.offset < 0) issues.push({ path: `${path}.openings[${index}].offset`, code: 'opening_offset_invalid', message: 'Opening offset must be finite and non-negative.', targetId: opening.id });
-		if (!Number.isFinite(opening.width) || opening.width <= 0) issues.push({ path: `${path}.openings[${index}].width`, code: 'opening_width_invalid', message: 'Opening width must be finite and greater than zero.', targetId: opening.id });
-		if (!Number.isFinite(opening.height) || opening.height <= 0) issues.push({ path: `${path}.openings[${index}].height`, code: 'opening_height_invalid', message: 'Opening height must be finite and greater than zero.', targetId: opening.id });
-		if (!Number.isFinite(opening.sillHeight) || opening.sillHeight < 0) issues.push({ path: `${path}.openings[${index}].sillHeight`, code: 'opening_sill_invalid', message: 'Opening sill height must be finite and non-negative.', targetId: opening.id });
+		if (!Number.isFinite(opening.offset) || opening.offset < 0)
+			issues.push({
+				path: `${path}.openings[${index}].offset`,
+				code: 'opening_offset_invalid',
+				message: 'Opening offset must be finite and non-negative.',
+				targetId: opening.id,
+			});
+		if (!Number.isFinite(opening.width) || opening.width <= 0)
+			issues.push({
+				path: `${path}.openings[${index}].width`,
+				code: 'opening_width_invalid',
+				message: 'Opening width must be finite and greater than zero.',
+				targetId: opening.id,
+			});
+		if (!Number.isFinite(opening.height) || opening.height <= 0)
+			issues.push({
+				path: `${path}.openings[${index}].height`,
+				code: 'opening_height_invalid',
+				message: 'Opening height must be finite and greater than zero.',
+				targetId: opening.id,
+			});
+		if (!Number.isFinite(opening.sillHeight) || opening.sillHeight < 0)
+			issues.push({
+				path: `${path}.openings[${index}].sillHeight`,
+				code: 'opening_sill_invalid',
+				message: 'Opening sill height must be finite and non-negative.',
+				targetId: opening.id,
+			});
 		// Provenance comes from **source presence**, never numeric equality.
 		// Comparing `heightLimit === floor.height` mislabelled an Opening whose
 		// hosting Wall happens to be exactly as tall as a supplied storey height:
@@ -179,10 +267,24 @@ export function validatePreparedLayoutRoomGeometry(
 			Number.isFinite(opening.sillHeight) &&
 			Number.isFinite(opening.height) &&
 			opening.sillHeight + opening.height > heightLimit + LAYOUT_GEOMETRY_EPSILON
-		) issues.push({ path: `${path}.openings[${index}]`, code: 'opening_over_height', message: usesWallHeight ? `Opening top exceeds Wall '${opening.segmentId}' height ${heightLimit} m.` : 'Opening top exceeds floor height.', targetId: opening.id });
+		)
+			issues.push({
+				path: `${path}.openings[${index}]`,
+				code: 'opening_over_height',
+				message: usesWallHeight
+					? `Opening top exceeds Wall '${opening.segmentId}' height ${heightLimit} m.`
+					: 'Opening top exceeds floor height.',
+				targetId: opening.id,
+			});
 		if (Number.isFinite(opening.width) && Number.isFinite(opening.height)) {
 			const profileResult = buildArchProfile(opening.profile, opening.width, opening.height);
-			for (const profileIssue of profileResult.issues) issues.push({ path: `${path}.openings[${index}].profile`, code: profileIssue.code, message: profileIssue.message, targetId: opening.id });
+			for (const profileIssue of profileResult.issues)
+				issues.push({
+					path: `${path}.openings[${index}].profile`,
+					code: profileIssue.code,
+					message: profileIssue.message,
+					targetId: opening.id,
+				});
 		}
 		const sampledSegment = sampled.get(segment.id);
 		const endpoints = segmentEndpoints(segment);
@@ -195,7 +297,12 @@ export function validatePreparedLayoutRoomGeometry(
 				? opening.width >= sampledSegment.length - LAYOUT_GEOMETRY_EPSILON
 				: opening.offset + opening.width > sampledSegment.length + LAYOUT_GEOMETRY_EPSILON)
 		) {
-			issues.push({ path: `${path}.openings[${index}]`, code: 'opening_out_of_bounds', message: 'Opening interval exceeds its wall segment.', targetId: opening.id });
+			issues.push({
+				path: `${path}.openings[${index}]`,
+				code: 'opening_out_of_bounds',
+				message: 'Opening interval exceeds its wall segment.',
+				targetId: opening.id,
+			});
 		}
 		const existing = openingsBySegment.get(segment.id) ?? [];
 		existing.push(opening);
@@ -209,7 +316,13 @@ export function validatePreparedLayoutRoomGeometry(
 		for (let index = 1; index < intervals.length; index += 1) {
 			const previous = intervals[index - 1]!;
 			const current = intervals[index]!;
-			if (current.startDistance < previous.endDistance - LAYOUT_GEOMETRY_EPSILON) issues.push({ path: `${path}.openings`, code: 'opening_overlap', message: `Openings ${previous.openingId} and ${current.openingId} overlap.`, targetId: segmentId });
+			if (current.startDistance < previous.endDistance - LAYOUT_GEOMETRY_EPSILON)
+				issues.push({
+					path: `${path}.openings`,
+					code: 'opening_overlap',
+					message: `Openings ${previous.openingId} and ${current.openingId} overlap.`,
+					targetId: segmentId,
+				});
 		}
 	}
 	return issues;
@@ -225,7 +338,10 @@ export function isFiniteSegment(segment: SampleableSegment): boolean {
 }
 
 function pointsEqual(a: LayoutVec2, b: LayoutVec2): boolean {
-	return Math.abs(a[0] - b[0]) <= LAYOUT_GEOMETRY_EPSILON && Math.abs(a[1] - b[1]) <= LAYOUT_GEOMETRY_EPSILON;
+	return (
+		Math.abs(a[0] - b[0]) <= LAYOUT_GEOMETRY_EPSILON &&
+		Math.abs(a[1] - b[1]) <= LAYOUT_GEOMETRY_EPSILON
+	);
 }
 
 function areAdjacent(first: number, second: number, count: number): boolean {

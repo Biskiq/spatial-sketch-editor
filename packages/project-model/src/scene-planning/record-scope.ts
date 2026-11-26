@@ -121,7 +121,7 @@ export function finalizeSceneCandidate(input: {
 			kind: 'rejected',
 			code: 'record-scope-violation',
 			message: `The ${input.scope.operationKind} candidate changes records outside its scope: ${issues[0]!.message}`,
-			diagnostics: issues
+			diagnostics: issues,
 		};
 	}
 	const validation = validateCameraFreeScenePayload(input.after);
@@ -133,8 +133,8 @@ export function finalizeSceneCandidate(input: {
 			diagnostics: validation.issues.map((issue) => ({
 				path: issue.path,
 				code: issue.code,
-				message: issue.message
-			}))
+				message: issue.message,
+			})),
 		};
 	}
 	return { kind: 'ready', scene: input.after };
@@ -144,7 +144,7 @@ export function finalizeSceneCandidate(input: {
 export function checkSceneRecordScope(
 	before: SceneDocument,
 	after: SceneDocument,
-	scope: SceneRecordScope
+	scope: SceneRecordScope,
 ): readonly ShapeIssue[] {
 	const issues: ShapeIssue[] = [];
 	const changed = new Set(scope.changedEntityIds);
@@ -163,7 +163,7 @@ export function checkSceneRecordScope(
 			(field !== 'materials' || scope.materials === undefined) &&
 			(field !== 'textures' || scope.textures === undefined) &&
 			(field !== 'surfaceFinishes' || scope.surfaceFinishes === undefined) &&
-			(field !== 'palette' || scope.palette?.change !== 'slots')
+			(field !== 'palette' || scope.palette?.change !== 'slots'),
 	);
 	for (const field of carriedFields) {
 		if (
@@ -173,7 +173,7 @@ export function checkSceneRecordScope(
 			issues.push({
 				path: `$.scene.${field}`,
 				code: 'record-scope-violation',
-				message: `${field} is outside the ${scope.operationKind} operation's record scope`
+				message: `${field} is outside the ${scope.operationKind} operation's record scope`,
 			});
 		}
 	}
@@ -182,13 +182,19 @@ export function checkSceneRecordScope(
 	const previousLibrary = before.artworkLibrary ?? [];
 	const nextLibrary = after.artworkLibrary ?? [];
 	const nextByAsset = new Map(nextLibrary.map((entry) => [entry.assetId, entry]));
-	if (nextLibrary.length !== previousLibrary.length + additions.size ||
-		previousLibrary.some((entry) => additions.has(entry.assetId) ||
-			stableJson(nextByAsset.get(entry.assetId)) !== stableJson(entry)) ||
-		[...additions].some((id) => !nextByAsset.has(id))) {
+	if (
+		nextLibrary.length !== previousLibrary.length + additions.size ||
+		previousLibrary.some(
+			(entry) =>
+				additions.has(entry.assetId) ||
+				stableJson(nextByAsset.get(entry.assetId)) !== stableJson(entry),
+		) ||
+		[...additions].some((id) => !nextByAsset.has(id))
+	) {
 		issues.push({
-			path: '$.scene.artworkLibrary', code: 'record-scope-violation',
-			message: 'Artwork Library may only add the asset records granted by the operation'
+			path: '$.scene.artworkLibrary',
+			code: 'record-scope-violation',
+			message: 'Artwork Library may only add the asset records granted by the operation',
 		});
 	}
 
@@ -198,14 +204,14 @@ export function checkSceneRecordScope(
 
 	const expectedIds = [
 		...before.entities.filter((entity) => !removed.has(entity.id)).map((entity) => entity.id),
-		...scope.createdEntityIds
+		...scope.createdEntityIds,
 	];
 	const actualIds = after.entities.map((entity) => entity.id);
 	if (stableJson(expectedIds) !== stableJson(actualIds)) {
 		issues.push({
 			path: '$.scene.entities',
 			code: 'record-scope-violation',
-			message: `The entity sequence must be the accepted entities minus removals plus captured creations (expected ${JSON.stringify(expectedIds)}, received ${JSON.stringify(actualIds)})`
+			message: `The entity sequence must be the accepted entities minus removals plus captured creations (expected ${JSON.stringify(expectedIds)}, received ${JSON.stringify(actualIds)})`,
 		});
 	}
 
@@ -217,7 +223,7 @@ export function checkSceneRecordScope(
 				issues.push({
 					path: `$.scene.entities.${entity.id}`,
 					code: 'record-scope-violation',
-					message: `Captured entity id "${entity.id}" already exists in the accepted source`
+					message: `Captured entity id "${entity.id}" already exists in the accepted source`,
 				});
 			}
 			continue;
@@ -226,7 +232,7 @@ export function checkSceneRecordScope(
 			issues.push({
 				path: `$.scene.entities.${entity.id}`,
 				code: 'record-scope-violation',
-				message: `Entity "${entity.id}" is new but was not captured as a created record`
+				message: `Entity "${entity.id}" is new but was not captured as a created record`,
 			});
 			continue;
 		}
@@ -234,7 +240,7 @@ export function checkSceneRecordScope(
 			issues.push({
 				path: `$.scene.entities.${entity.id}`,
 				code: 'record-scope-violation',
-				message: `Entity "${entity.id}" is marked removed but is still present`
+				message: `Entity "${entity.id}" is marked removed but is still present`,
 			});
 			continue;
 		}
@@ -243,7 +249,7 @@ export function checkSceneRecordScope(
 				issues.push({
 					path: `$.scene.entities.${entity.id}`,
 					code: 'record-scope-violation',
-					message: `Entity "${entity.id}" is untargeted by this ${scope.operationKind} operation but was modified`
+					message: `Entity "${entity.id}" is untargeted by this ${scope.operationKind} operation but was modified`,
 				});
 			}
 			continue;
@@ -254,7 +260,7 @@ export function checkSceneRecordScope(
 			issues.push({
 				path: `$.scene.entities.${entity.id}`,
 				code: 'record-scope-violation',
-				message: `Entity "${entity.id}" changed fields this ${scope.operationKind} operation does not own (allowed: ${scope.changedEntityFields.join(', ') || 'none'})`
+				message: `Entity "${entity.id}" changed fields this ${scope.operationKind} operation does not own (allowed: ${scope.changedEntityFields.join(', ') || 'none'})`,
 			});
 		}
 	}
@@ -264,7 +270,7 @@ export function checkSceneRecordScope(
 			issues.push({
 				path: `$.scene.entities.${id}`,
 				code: 'record-scope-violation',
-				message: `Removed entity "${id}" was not part of the accepted source`
+				message: `Removed entity "${id}" was not part of the accepted source`,
 			});
 		}
 	}
@@ -276,7 +282,7 @@ export function checkSceneRecordScope(
 function checkMaterialScope(
 	before: SceneDocument,
 	after: SceneDocument,
-	scope: SceneRecordScope
+	scope: SceneRecordScope,
 ): readonly ShapeIssue[] {
 	if (scope.materials === undefined) return [];
 	const issues: ShapeIssue[] = [];
@@ -294,13 +300,13 @@ function checkMaterialScope(
 			.map((material) => material.id),
 		...after.materials
 			.filter((material) => added.has(material.id) && !beforeById.has(material.id))
-			.map((material) => material.id)
+			.map((material) => material.id),
 	];
 	if (stableJson(expectedIds) !== stableJson(after.materials.map((material) => material.id))) {
 		issues.push({
 			path: '$.scene.materials',
 			code: 'record-scope-violation',
-			message: `Material order must be the accepted order minus removals plus the granted appends (expected ${JSON.stringify(expectedIds)})`
+			message: `Material order must be the accepted order minus removals plus the granted appends (expected ${JSON.stringify(expectedIds)})`,
 		});
 	}
 	for (const id of added) {
@@ -308,14 +314,14 @@ function checkMaterialScope(
 			issues.push({
 				path: `$.scene.materials.${id}`,
 				code: 'record-scope-violation',
-				message: `Added Finish "${id}" already exists in the accepted source`
+				message: `Added Finish "${id}" already exists in the accepted source`,
 			});
 		}
 		if (!afterById.has(id)) {
 			issues.push({
 				path: `$.scene.materials.${id}`,
 				code: 'record-scope-violation',
-				message: `Granted Finish "${id}" was not added`
+				message: `Granted Finish "${id}" was not added`,
 			});
 		}
 	}
@@ -324,7 +330,7 @@ function checkMaterialScope(
 			issues.push({
 				path: `$.scene.materials.${id}`,
 				code: 'record-scope-violation',
-				message: `Changed Finish "${id}" must exist on both sides`
+				message: `Changed Finish "${id}" must exist on both sides`,
 			});
 		}
 	}
@@ -333,14 +339,14 @@ function checkMaterialScope(
 			issues.push({
 				path: `$.scene.materials.${id}`,
 				code: 'record-scope-violation',
-				message: `Removed Finish "${id}" was not part of the accepted source`
+				message: `Removed Finish "${id}" was not part of the accepted source`,
 			});
 		}
 		if (afterById.has(id)) {
 			issues.push({
 				path: `$.scene.materials.${id}`,
 				code: 'record-scope-violation',
-				message: `Removed Finish "${id}" is still present`
+				message: `Removed Finish "${id}" is still present`,
 			});
 		}
 	}
@@ -351,7 +357,7 @@ function checkMaterialScope(
 			issues.push({
 				path: `$.scene.materials.${material.id}`,
 				code: 'record-scope-violation',
-				message: `Finish "${material.id}" is outside the ${scope.operationKind} operation's material grant but was modified`
+				message: `Finish "${material.id}" is outside the ${scope.operationKind} operation's material grant but was modified`,
 			});
 		}
 	}
@@ -361,7 +367,7 @@ function checkMaterialScope(
 function checkTextureScope(
 	before: SceneDocument,
 	after: SceneDocument,
-	scope: SceneRecordScope
+	scope: SceneRecordScope,
 ): readonly ShapeIssue[] {
 	if (scope.textures === undefined) return [];
 	const issues: ShapeIssue[] = [];
@@ -373,13 +379,15 @@ function checkTextureScope(
 	// texture record is immutable once it exists, so a reorder is never a grant.
 	const expectedIds = [
 		...before.textures.map((texture) => texture.id),
-		...after.textures.filter((texture) => added.has(texture.id) && !beforeById.has(texture.id)).map((texture) => texture.id)
+		...after.textures
+			.filter((texture) => added.has(texture.id) && !beforeById.has(texture.id))
+			.map((texture) => texture.id),
 	];
 	if (stableJson(expectedIds) !== stableJson(after.textures.map((texture) => texture.id))) {
 		issues.push({
 			path: '$.scene.textures',
 			code: 'record-scope-violation',
-			message: `Texture order must be the accepted order plus the granted appends (expected ${JSON.stringify(expectedIds)})`
+			message: `Texture order must be the accepted order plus the granted appends (expected ${JSON.stringify(expectedIds)})`,
 		});
 	}
 	for (const id of added) {
@@ -387,14 +395,14 @@ function checkTextureScope(
 			issues.push({
 				path: `$.scene.textures.${id}`,
 				code: 'record-scope-violation',
-				message: `Added texture "${id}" already exists in the accepted source`
+				message: `Added texture "${id}" already exists in the accepted source`,
 			});
 		}
 		if (!afterById.has(id)) {
 			issues.push({
 				path: `$.scene.textures.${id}`,
 				code: 'record-scope-violation',
-				message: `Granted texture "${id}" was not added`
+				message: `Granted texture "${id}" was not added`,
 			});
 		}
 	}
@@ -405,7 +413,7 @@ function checkTextureScope(
 			issues.push({
 				path: `$.scene.textures.${texture.id}`,
 				code: 'record-scope-violation',
-				message: `Texture "${texture.id}" is new but was not granted by the operation`
+				message: `Texture "${texture.id}" is new but was not granted by the operation`,
 			});
 			continue;
 		}
@@ -413,7 +421,7 @@ function checkTextureScope(
 			issues.push({
 				path: `$.scene.textures.${texture.id}`,
 				code: 'record-scope-violation',
-				message: `Texture "${texture.id}" is outside the ${scope.operationKind} operation's texture grant but was modified`
+				message: `Texture "${texture.id}" is outside the ${scope.operationKind} operation's texture grant but was modified`,
 			});
 		}
 	}
@@ -422,7 +430,7 @@ function checkTextureScope(
 		issues.push({
 			path: `$.scene.textures.${texture.id}`,
 			code: 'record-scope-violation',
-			message: `Texture "${texture.id}" may not be removed by the ${scope.operationKind} operation`
+			message: `Texture "${texture.id}" may not be removed by the ${scope.operationKind} operation`,
 		});
 	}
 	return issues;
@@ -431,7 +439,7 @@ function checkTextureScope(
 function checkSurfaceFinishScope(
 	before: SceneDocument,
 	after: SceneDocument,
-	scope: SceneRecordScope
+	scope: SceneRecordScope,
 ): readonly ShapeIssue[] {
 	if (scope.surfaceFinishes === undefined) return [];
 	const issues: ShapeIssue[] = [];
@@ -451,8 +459,9 @@ function checkSurfaceFinishScope(
 		stableJson([...removed].sort()) !== stableJson([...actualRemoved].sort())
 	) {
 		issues.push({
-			path: '$.scene.surfaceFinishes', code: 'record-scope-violation',
-			message: `Surface Finish identity changes must match the explicit add/remove grant`
+			path: '$.scene.surfaceFinishes',
+			code: 'record-scope-violation',
+			message: `Surface Finish identity changes must match the explicit add/remove grant`,
 		});
 		return issues;
 	}
@@ -460,8 +469,9 @@ function checkSurfaceFinishScope(
 	for (const key of changed) {
 		if (!previousSet.has(key) || !nextSet.has(key)) {
 			issues.push({
-				path: `$.scene.surfaceFinishes.${key}`, code: 'record-scope-violation',
-				message: `Surface Finish "${key}" is not an existing assignment`
+				path: `$.scene.surfaceFinishes.${key}`,
+				code: 'record-scope-violation',
+				message: `Surface Finish "${key}" is not an existing assignment`,
 			});
 		}
 	}
@@ -470,21 +480,27 @@ function checkSurfaceFinishScope(
 		const candidate = nextByKey.get(key);
 		if (candidate === undefined) {
 			if (!removed.has(key)) {
-				issues.push({ path: `$.scene.surfaceFinishes.${key}`, code: 'record-scope-violation', message: `Surface Finish "${key}" was removed outside the grant` });
+				issues.push({
+					path: `$.scene.surfaceFinishes.${key}`,
+					code: 'record-scope-violation',
+					message: `Surface Finish "${key}" was removed outside the grant`,
+				});
 			}
 			continue;
 		}
 		if (changed.has(key)) {
 			if (stableJson(candidate.surface) !== stableJson(assignment.surface)) {
 				issues.push({
-					path: `$.scene.surfaceFinishes.${key}.surface`, code: 'record-scope-violation',
-					message: `Surface identity "${key}" is immutable during a Finish edit`
+					path: `$.scene.surfaceFinishes.${key}.surface`,
+					code: 'record-scope-violation',
+					message: `Surface identity "${key}" is immutable during a Finish edit`,
 				});
 			}
 		} else if (stableJson(candidate) !== stableJson(assignment)) {
 			issues.push({
-				path: `$.scene.surfaceFinishes.${key}`, code: 'record-scope-violation',
-				message: `Surface Finish "${key}" is outside the ${scope.operationKind} operation's grant`
+				path: `$.scene.surfaceFinishes.${key}`,
+				code: 'record-scope-violation',
+				message: `Surface Finish "${key}" is outside the ${scope.operationKind} operation's grant`,
 			});
 		}
 	}
@@ -492,7 +508,11 @@ function checkSurfaceFinishScope(
 		const key = surfaceKey(assignment.surface);
 		if (previousSet.has(key)) continue;
 		if (!added.has(key)) {
-			issues.push({ path: `$.scene.surfaceFinishes.${key}`, code: 'record-scope-violation', message: `Surface Finish "${key}" was added outside the grant` });
+			issues.push({
+				path: `$.scene.surfaceFinishes.${key}`,
+				code: 'record-scope-violation',
+				message: `Surface Finish "${key}" was added outside the grant`,
+			});
 		}
 	}
 	return issues;
@@ -505,7 +525,7 @@ function checkClusterScope(
 		readonly created: ReadonlySet<string>;
 		readonly removed: ReadonlySet<string>;
 		readonly scope: SceneRecordScope;
-	}
+	},
 ): readonly ShapeIssue[] {
 	const issues: ShapeIssue[] = [];
 	const beforeClusters = new Map((before.clusters ?? []).map((cluster) => [cluster.id, cluster]));
@@ -519,11 +539,14 @@ function checkClusterScope(
 			return cluster.memberIds.filter((memberId) => !input.removed.has(memberId)).length >= 2;
 		})
 		.map((cluster) => cluster.id);
-	if (stableJson(expectedClusterIds) !== stableJson((after.clusters ?? []).map((cluster) => cluster.id))) {
+	if (
+		stableJson(expectedClusterIds) !==
+		stableJson((after.clusters ?? []).map((cluster) => cluster.id))
+	) {
 		issues.push({
 			path: '$.scene.clusters',
 			code: 'record-scope-violation',
-			message: `Cluster order must be the accepted order minus any cluster the cleanup had to drop (expected ${JSON.stringify(expectedClusterIds)})`
+			message: `Cluster order must be the accepted order minus any cluster the cleanup had to drop (expected ${JSON.stringify(expectedClusterIds)})`,
 		});
 	}
 
@@ -533,14 +556,14 @@ function checkClusterScope(
 			issues.push({
 				path: `$.scene.clusters.${cluster.id}`,
 				code: 'record-scope-violation',
-				message: `Cluster "${cluster.id}" is new; a Scene operation may not create grouping`
+				message: `Cluster "${cluster.id}" is new; a Scene operation may not create grouping`,
 			});
 			continue;
 		}
 		// Derived like the top-level fields: a cluster field added to the format is
 		// compared the day it lands, not the day someone extends this list.
 		const clusterFields = [...new Set([...Object.keys(previous), ...Object.keys(cluster)])].filter(
-			(field) => field !== 'id' && field !== 'memberIds'
+			(field) => field !== 'id' && field !== 'memberIds',
 		);
 		for (const field of clusterFields) {
 			if (
@@ -550,7 +573,7 @@ function checkClusterScope(
 				issues.push({
 					path: `$.scene.clusters.${cluster.id}.${field}`,
 					code: 'record-scope-violation',
-					message: `Cluster "${cluster.id}" ${field} is outside the ${input.scope.operationKind} operation's scope`
+					message: `Cluster "${cluster.id}" ${field} is outside the ${input.scope.operationKind} operation's scope`,
 				});
 			}
 		}
@@ -561,14 +584,14 @@ function checkClusterScope(
 			issues.push({
 				path: `$.scene.clusters.${cluster.id}.memberIds`,
 				code: 'record-scope-violation',
-				message: `Cluster "${cluster.id}" membership may only lose the operation's removed entities`
+				message: `Cluster "${cluster.id}" membership may only lose the operation's removed entities`,
 			});
 		}
 		if (cluster.memberIds.length < 2) {
 			issues.push({
 				path: `$.scene.clusters.${cluster.id}.memberIds`,
 				code: 'record-scope-violation',
-				message: `Cluster "${cluster.id}" is below the Scene format's two-member minimum and must be removed, not kept`
+				message: `Cluster "${cluster.id}" is below the Scene format's two-member minimum and must be removed, not kept`,
 			});
 		}
 		for (const createdId of input.created) {
@@ -576,7 +599,7 @@ function checkClusterScope(
 				issues.push({
 					path: `$.scene.clusters.${cluster.id}.memberIds`,
 					code: 'record-scope-violation',
-					message: `Created entity "${createdId}" cannot join cluster "${cluster.id}" in the same operation`
+					message: `Created entity "${createdId}" cannot join cluster "${cluster.id}" in the same operation`,
 				});
 			}
 		}
@@ -589,7 +612,7 @@ function checkClusterScope(
 			issues.push({
 				path: `$.scene.clusters.${cluster.id}`,
 				code: 'record-scope-violation',
-				message: `Cluster "${cluster.id}" cannot be dropped by the ${input.scope.operationKind} operation`
+				message: `Cluster "${cluster.id}" cannot be dropped by the ${input.scope.operationKind} operation`,
 			});
 		}
 	}
@@ -636,7 +659,8 @@ function omitGrants(entity: object, grants: readonly string[]): Record<string, u
 	}
 	for (const [field, indexes] of componentGrants) {
 		const value = copy[field];
-		if (Array.isArray(value)) copy[field] = value.map((item, index) => (indexes.has(index) ? null : item));
+		if (Array.isArray(value))
+			copy[field] = value.map((item, index) => (indexes.has(index) ? null : item));
 	}
 	return copy;
 }

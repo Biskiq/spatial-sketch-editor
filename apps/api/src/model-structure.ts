@@ -63,7 +63,11 @@ function readDocument(bytes: Buffer, path: string): GltfDocument {
 	}
 	const version = (asset as Record<string, unknown>).version;
 	if (version !== GLTF_VERSION) {
-		fail(`${path}.asset.version`, 'unsupported-gltf-version', `${path} declares glTF version ${JSON.stringify(version)}; only ${GLTF_VERSION} is admitted`);
+		fail(
+			`${path}.asset.version`,
+			'unsupported-gltf-version',
+			`${path} declares glTF version ${JSON.stringify(version)}; only ${GLTF_VERSION} is admitted`,
+		);
 	}
 	return document;
 }
@@ -76,39 +80,61 @@ type GlbContainer = {
 
 /** Strict GLB container read: magic, version, declared length, JSON/BIN chunks. */
 function readGlb(bytes: Buffer, path: string): GlbContainer {
-	if (bytes.length < 20) fail(path, 'truncated-glb', `${path} is shorter than a GLB header and JSON chunk`);
-	if (bytes.readUInt32LE(0) !== GLB_MAGIC) fail(path, 'invalid-glb-magic', `${path} is not a GLB container`);
-	if (bytes.readUInt32LE(4) !== GLB_VERSION) fail(path, 'unsupported-glb-version', `${path} declares GLB version ${bytes.readUInt32LE(4)}; only ${GLB_VERSION} is admitted`);
+	if (bytes.length < 20)
+		fail(path, 'truncated-glb', `${path} is shorter than a GLB header and JSON chunk`);
+	if (bytes.readUInt32LE(0) !== GLB_MAGIC)
+		fail(path, 'invalid-glb-magic', `${path} is not a GLB container`);
+	if (bytes.readUInt32LE(4) !== GLB_VERSION)
+		fail(
+			path,
+			'unsupported-glb-version',
+			`${path} declares GLB version ${bytes.readUInt32LE(4)}; only ${GLB_VERSION} is admitted`,
+		);
 	const declaredLength = bytes.readUInt32LE(8);
 	if (declaredLength !== bytes.length) {
-		fail(path, 'invalid-glb-length', `${path} declares ${declaredLength} bytes and carries ${bytes.length}`);
+		fail(
+			path,
+			'invalid-glb-length',
+			`${path} declares ${declaredLength} bytes and carries ${bytes.length}`,
+		);
 	}
 	let offset = 12;
 	let json: GltfDocument | null = null;
 	let binLength: number | null = null;
 	let index = 0;
 	while (offset < bytes.length) {
-		if (offset + 8 > bytes.length) fail(path, 'truncated-glb-chunk', `${path} ends inside a chunk header`);
+		if (offset + 8 > bytes.length)
+			fail(path, 'truncated-glb-chunk', `${path} ends inside a chunk header`);
 		const chunkLength = bytes.readUInt32LE(offset);
 		const chunkType = bytes.readUInt32LE(offset + 4);
 		const start = offset + 8;
 		const end = start + chunkLength;
 		if (end > bytes.length) {
-			fail(path, 'invalid-glb-chunk-bounds', `${path} chunk ${index} declares ${chunkLength} bytes past the container end`);
+			fail(
+				path,
+				'invalid-glb-chunk-bounds',
+				`${path} chunk ${index} declares ${chunkLength} bytes past the container end`,
+			);
 		}
 		if (index === 0 && chunkType !== CHUNK_JSON) {
 			fail(path, 'missing-glb-json-chunk', `${path} must begin with a JSON chunk`);
 		}
 		if (chunkType === CHUNK_JSON) {
-			if (json !== null) fail(path, 'duplicate-glb-json-chunk', `${path} carries more than one JSON chunk`);
+			if (json !== null)
+				fail(path, 'duplicate-glb-json-chunk', `${path} carries more than one JSON chunk`);
 			json = readDocument(bytes.subarray(start, end), `${path}#json`);
 		} else if (chunkType === CHUNK_BIN) {
-			if (binLength !== null) fail(path, 'duplicate-glb-bin-chunk', `${path} carries more than one BIN chunk`);
+			if (binLength !== null)
+				fail(path, 'duplicate-glb-bin-chunk', `${path} carries more than one BIN chunk`);
 			binLength = chunkLength;
 		}
 		// Chunks are 4-byte aligned; a non-padded length is a structural defect.
 		if (chunkLength % 4 !== 0) {
-			fail(path, 'invalid-glb-chunk-align', `${path} chunk ${index} length ${chunkLength} is not 4-byte aligned`);
+			fail(
+				path,
+				'invalid-glb-chunk-align',
+				`${path} chunk ${index} length ${chunkLength} is not 4-byte aligned`,
+			);
 		}
 		offset = end;
 		index += 1;
@@ -125,14 +151,30 @@ function resolveRelativeUri(baseDirectory: string, uri: string, path: string): s
 	} catch {
 		fail(path, 'invalid-uri', `${path} carries an undecodable URI ${JSON.stringify(uri)}`);
 	}
-	if (decoded.startsWith('/') || decoded.startsWith('\\') || /^[A-Za-z][A-Za-z0-9+.-]*:/.test(decoded)) {
-		fail(path, 'external-uri', `${path} references ${JSON.stringify(uri)}, which is not a relative project file`);
+	if (
+		decoded.startsWith('/') ||
+		decoded.startsWith('\\') ||
+		/^[A-Za-z][A-Za-z0-9+.-]*:/.test(decoded)
+	) {
+		fail(
+			path,
+			'external-uri',
+			`${path} references ${JSON.stringify(uri)}, which is not a relative project file`,
+		);
 	}
-	const segments = [...(baseDirectory === '' ? [] : baseDirectory.split('/')), ...decoded.split('/')];
+	const segments = [
+		...(baseDirectory === '' ? [] : baseDirectory.split('/')),
+		...decoded.split('/'),
+	];
 	const resolved: string[] = [];
 	for (const segment of segments) {
 		if (segment === '' || segment === '.') continue;
-		if (segment === '..') fail(path, 'path-traversal', `${path} references ${JSON.stringify(uri)}, which escapes the import`);
+		if (segment === '..')
+			fail(
+				path,
+				'path-traversal',
+				`${path} references ${JSON.stringify(uri)}, which escapes the import`,
+			);
 		resolved.push(segment);
 	}
 	return resolved.join('/');
@@ -181,7 +223,8 @@ function isRequiredMeshoptFallback(document: GltfDocument, buffer: GltfDocument)
 	const required = document.extensionsRequired;
 	if (!Array.isArray(required) || !required.includes(MESHOPT_EXTENSION)) return false;
 	const extensions = buffer.extensions;
-	if (typeof extensions !== 'object' || extensions === null || Array.isArray(extensions)) return false;
+	if (typeof extensions !== 'object' || extensions === null || Array.isArray(extensions))
+		return false;
 	const meshopt = (extensions as Record<string, unknown>)[MESHOPT_EXTENSION];
 	if (typeof meshopt !== 'object' || meshopt === null || Array.isArray(meshopt)) return false;
 	return (meshopt as Record<string, unknown>).fallback === true;
@@ -197,7 +240,11 @@ function readMeshoptViewExtension(view: GltfDocument, viewPath: string): GltfDoc
 	const meshopt = (extensions as Record<string, unknown>)[MESHOPT_EXTENSION];
 	if (meshopt === undefined) return null;
 	if (typeof meshopt !== 'object' || meshopt === null || Array.isArray(meshopt)) {
-		fail(`${viewPath}.extensions.${MESHOPT_EXTENSION}`, 'invalid-document', `${viewPath}.extensions.${MESHOPT_EXTENSION} must be an object`);
+		fail(
+			`${viewPath}.extensions.${MESHOPT_EXTENSION}`,
+			'invalid-document',
+			`${viewPath}.extensions.${MESHOPT_EXTENSION} must be an object`,
+		);
 	}
 	return meshopt as GltfDocument;
 }
@@ -217,29 +264,62 @@ function checkMeshoptSource(input: {
 	const { meshopt, viewPath, bufferCount, fallbackBuffers, availableBytes } = input;
 	const extensionPath = `${viewPath}.extensions.${MESHOPT_EXTENSION}`;
 	const source = meshopt.buffer;
-	if (typeof source !== 'number' || !Number.isSafeInteger(source) || source < 0 || source >= bufferCount) {
-		fail(`${extensionPath}.buffer`, 'invalid-buffer-index', `${extensionPath}.buffer must name one of the document's buffers`);
+	if (
+		typeof source !== 'number' ||
+		!Number.isSafeInteger(source) ||
+		source < 0 ||
+		source >= bufferCount
+	) {
+		fail(
+			`${extensionPath}.buffer`,
+			'invalid-buffer-index',
+			`${extensionPath}.buffer must name one of the document's buffers`,
+		);
 	}
 	if (fallbackBuffers.has(source)) {
-		fail(`${extensionPath}.buffer`, 'meshopt-source-is-fallback', `${extensionPath}.buffer names fallback buffer ${source}, which holds no compressed bytes`);
+		fail(
+			`${extensionPath}.buffer`,
+			'meshopt-source-is-fallback',
+			`${extensionPath}.buffer names fallback buffer ${source}, which holds no compressed bytes`,
+		);
 	}
 	const sourceOffset = meshopt.byteOffset === undefined ? 0 : meshopt.byteOffset;
 	if (typeof sourceOffset !== 'number' || !Number.isSafeInteger(sourceOffset) || sourceOffset < 0) {
-		fail(`${extensionPath}.byteOffset`, 'invalid-buffer-offset', `${extensionPath}.byteOffset must be a non-negative safe integer`);
+		fail(
+			`${extensionPath}.byteOffset`,
+			'invalid-buffer-offset',
+			`${extensionPath}.byteOffset must be a non-negative safe integer`,
+		);
 	}
 	const sourceLength = meshopt.byteLength;
-	if (typeof sourceLength !== 'number' || !Number.isSafeInteger(sourceLength) || sourceLength <= 0) {
-		fail(`${extensionPath}.byteLength`, 'invalid-buffer-length', `${extensionPath}.byteLength must be a positive safe integer`);
+	if (
+		typeof sourceLength !== 'number' ||
+		!Number.isSafeInteger(sourceLength) ||
+		sourceLength <= 0
+	) {
+		fail(
+			`${extensionPath}.byteLength`,
+			'invalid-buffer-length',
+			`${extensionPath}.byteLength must be a positive safe integer`,
+		);
 	}
 	if (sourceOffset + sourceLength > availableBytes[source]!) {
-		fail(extensionPath, 'meshopt-source-out-of-bounds', `${extensionPath} reads ${sourceLength} bytes at ${sourceOffset} of buffer ${source}, which holds ${availableBytes[source]}`);
+		fail(
+			extensionPath,
+			'meshopt-source-out-of-bounds',
+			`${extensionPath} reads ${sourceLength} bytes at ${sourceOffset} of buffer ${source}, which holds ${availableBytes[source]}`,
+		);
 	}
 }
 
 function readByteLength(record: GltfDocument, path: string): number {
 	const value = record.byteLength;
 	if (typeof value !== 'number' || !Number.isSafeInteger(value) || value <= 0) {
-		fail(`${path}.byteLength`, 'invalid-buffer-length', `${path}.byteLength must be a positive safe integer`);
+		fail(
+			`${path}.byteLength`,
+			'invalid-buffer-length',
+			`${path}.byteLength must be a positive safe integer`,
+		);
 	}
 	return value;
 }
@@ -271,27 +351,47 @@ function checkGltfDocument(input: {
 		// Index 0 is the GLB binary buffer (or the first external buffer): the
 		// meshopt fallback is always a later declaration.
 		if (fallback && index === 0) {
-			fail(bufferPath, 'invalid-meshopt-fallback', `${bufferPath} is the first buffer and cannot be the meshopt fallback; only a later buffer may be one`);
+			fail(
+				bufferPath,
+				'invalid-meshopt-fallback',
+				`${bufferPath} is the first buffer and cannot be the meshopt fallback; only a later buffer may be one`,
+			);
 		}
 		if (fallback) fallbackBuffers.add(index);
 		if (uri === undefined) {
 			if (container === null) {
-				fail(bufferPath, 'missing-buffer-uri', `${bufferPath} carries no URI outside a GLB container`);
+				fail(
+					bufferPath,
+					'missing-buffer-uri',
+					`${bufferPath} carries no URI outside a GLB container`,
+				);
 			}
 			if (container.binLength === null) {
-				fail(bufferPath, 'missing-glb-bin-chunk', `${bufferPath} names the GLB binary buffer and the container has no BIN chunk`);
+				fail(
+					bufferPath,
+					'missing-glb-bin-chunk',
+					`${bufferPath} names the GLB binary buffer and the container has no BIN chunk`,
+				);
 			}
 			// A GLB stores only its first buffer. A later URI-less buffer is
 			// admissible only as a required meshopt fallback, whose bytes are not held.
 			if (index > 0 && !fallback) {
-				fail(bufferPath, 'glb-buffer-not-first', `${bufferPath} carries no URI; a GLB stores only its first buffer, and a later buffer must be a required meshopt fallback`);
+				fail(
+					bufferPath,
+					'glb-buffer-not-first',
+					`${bufferPath} carries no URI; a GLB stores only its first buffer, and a later buffer must be a required meshopt fallback`,
+				);
 			}
 			if (fallback) {
 				availableBytes.push(byteLength);
 				continue;
 			}
 			if (byteLength > container.binLength) {
-				fail(bufferPath, 'buffer-out-of-bounds', `${bufferPath} declares ${byteLength} bytes and the BIN chunk carries ${container.binLength}`);
+				fail(
+					bufferPath,
+					'buffer-out-of-bounds',
+					`${bufferPath} declares ${byteLength} bytes and the BIN chunk carries ${container.binLength}`,
+				);
 			}
 			availableBytes.push(container.binLength);
 			continue;
@@ -302,21 +402,37 @@ function checkGltfDocument(input: {
 		if (isDataUri(uri)) {
 			const carried = base64Bytes(uri);
 			if (carried < byteLength) {
-				fail(`${bufferPath}.uri`, 'buffer-out-of-bounds', `${bufferPath} declares ${byteLength} bytes and its data URI carries about ${carried}`);
+				fail(
+					`${bufferPath}.uri`,
+					'buffer-out-of-bounds',
+					`${bufferPath} declares ${byteLength} bytes and its data URI carries about ${carried}`,
+				);
 			}
 			availableBytes.push(byteLength);
 			continue;
 		}
 		if (requireSelfContained) {
-			fail(`${bufferPath}.uri`, 'external-buffer', `${bufferPath} references ${JSON.stringify(uri)}; the approved derivative must be self-contained`);
+			fail(
+				`${bufferPath}.uri`,
+				'external-buffer',
+				`${bufferPath} references ${JSON.stringify(uri)}; the approved derivative must be self-contained`,
+			);
 		}
 		const referenced = resolveRelativeUri(baseDirectory, uri, `${bufferPath}.uri`);
 		const fileBytes = files.get(referenced);
 		if (fileBytes === undefined) {
-			fail(`${bufferPath}.uri`, 'missing-referenced-file', `${bufferPath} references ${JSON.stringify(referenced)}, which the import does not declare`);
+			fail(
+				`${bufferPath}.uri`,
+				'missing-referenced-file',
+				`${bufferPath} references ${JSON.stringify(referenced)}, which the import does not declare`,
+			);
 		}
 		if (byteLength > fileBytes) {
-			fail(bufferPath, 'buffer-out-of-bounds', `${bufferPath} declares ${byteLength} bytes and ${referenced} carries ${fileBytes}`);
+			fail(
+				bufferPath,
+				'buffer-out-of-bounds',
+				`${bufferPath} declares ${byteLength} bytes and ${referenced} carries ${fileBytes}`,
+			);
 		}
 		availableBytes.push(fileBytes);
 	}
@@ -324,28 +440,59 @@ function checkGltfDocument(input: {
 	for (const [index, view] of views.entries()) {
 		const viewPath = `${path}.bufferViews[${index}]`;
 		const bufferIndex = view.buffer;
-		if (typeof bufferIndex !== 'number' || !Number.isSafeInteger(bufferIndex) || bufferIndex < 0 || bufferIndex >= buffers.length) {
-			fail(`${viewPath}.buffer`, 'invalid-buffer-index', `${viewPath}.buffer must name one of the document's buffers`);
+		if (
+			typeof bufferIndex !== 'number' ||
+			!Number.isSafeInteger(bufferIndex) ||
+			bufferIndex < 0 ||
+			bufferIndex >= buffers.length
+		) {
+			fail(
+				`${viewPath}.buffer`,
+				'invalid-buffer-index',
+				`${viewPath}.buffer must name one of the document's buffers`,
+			);
 		}
 		const byteOffset = view.byteOffset === undefined ? 0 : view.byteOffset;
 		if (typeof byteOffset !== 'number' || !Number.isSafeInteger(byteOffset) || byteOffset < 0) {
-			fail(`${viewPath}.byteOffset`, 'invalid-buffer-offset', `${viewPath}.byteOffset must be a non-negative safe integer`);
+			fail(
+				`${viewPath}.byteOffset`,
+				'invalid-buffer-offset',
+				`${viewPath}.byteOffset must be a non-negative safe integer`,
+			);
 		}
 		const byteLength = view.byteLength;
 		if (typeof byteLength !== 'number' || !Number.isSafeInteger(byteLength) || byteLength <= 0) {
-			fail(`${viewPath}.byteLength`, 'invalid-buffer-length', `${viewPath}.byteLength must be a positive safe integer`);
+			fail(
+				`${viewPath}.byteLength`,
+				'invalid-buffer-length',
+				`${viewPath}.byteLength must be a positive safe integer`,
+			);
 		}
 		const meshopt = readMeshoptViewExtension(view, viewPath);
 		// A view on the fallback reads bytes the container does not hold; only a
 		// compressed view (whose source is checked below) may name it.
 		if (fallbackBuffers.has(bufferIndex) && meshopt === null) {
-			fail(viewPath, 'fallback-view-not-compressed', `${viewPath} is bound to meshopt fallback buffer ${bufferIndex} without EXT_meshopt_compression; the container holds none of its bytes`);
+			fail(
+				viewPath,
+				'fallback-view-not-compressed',
+				`${viewPath} is bound to meshopt fallback buffer ${bufferIndex} without EXT_meshopt_compression; the container holds none of its bytes`,
+			);
 		}
 		if (byteOffset + byteLength > availableBytes[bufferIndex]!) {
-			fail(viewPath, 'buffer-view-out-of-bounds', `${viewPath} ends past its buffer's declared bytes`);
+			fail(
+				viewPath,
+				'buffer-view-out-of-bounds',
+				`${viewPath} ends past its buffer's declared bytes`,
+			);
 		}
 		if (meshopt !== null) {
-			checkMeshoptSource({ meshopt, viewPath, bufferCount: buffers.length, fallbackBuffers, availableBytes });
+			checkMeshoptSource({
+				meshopt,
+				viewPath,
+				bufferCount: buffers.length,
+				fallbackBuffers,
+				availableBytes,
+			});
 		}
 	}
 	const images = readRecordList(document.images, `${path}.images`);
@@ -354,8 +501,17 @@ function checkGltfDocument(input: {
 		const uri = image.uri;
 		if (uri === undefined) {
 			const view = image.bufferView;
-			if (typeof view !== 'number' || !Number.isSafeInteger(view) || view < 0 || view >= views.length) {
-				fail(`${imagePath}.bufferView`, 'invalid-buffer-view-index', `${imagePath}.bufferView must name one of the document's bufferViews`);
+			if (
+				typeof view !== 'number' ||
+				!Number.isSafeInteger(view) ||
+				view < 0 ||
+				view >= views.length
+			) {
+				fail(
+					`${imagePath}.bufferView`,
+					'invalid-buffer-view-index',
+					`${imagePath}.bufferView must name one of the document's bufferViews`,
+				);
 			}
 			continue;
 		}
@@ -364,11 +520,19 @@ function checkGltfDocument(input: {
 		}
 		if (isDataUri(uri)) continue;
 		if (requireSelfContained) {
-			fail(`${imagePath}.uri`, 'external-image', `${imagePath} references ${JSON.stringify(uri)}; the approved derivative must be self-contained`);
+			fail(
+				`${imagePath}.uri`,
+				'external-image',
+				`${imagePath} references ${JSON.stringify(uri)}; the approved derivative must be self-contained`,
+			);
 		}
 		const referenced = resolveRelativeUri(baseDirectory, uri, `${imagePath}.uri`);
 		if (!files.has(referenced)) {
-			fail(`${imagePath}.uri`, 'missing-referenced-file', `${imagePath} references ${JSON.stringify(referenced)}, which the import does not declare`);
+			fail(
+				`${imagePath}.uri`,
+				'missing-referenced-file',
+				`${imagePath} references ${JSON.stringify(referenced)}, which the import does not declare`,
+			);
 		}
 	}
 }
@@ -382,10 +546,18 @@ export function checkModelStructure(input: {
 	readonly derivative: Buffer;
 }): readonly ModelStructureIssue[] {
 	try {
-		const files = new Map<string, number>(input.sourceFiles.map((file) => [file.path, file.bytes.length]));
-		const roots = input.sourceFiles.filter((file) => file.path.endsWith('.glb') || file.path.endsWith('.gltf'));
+		const files = new Map<string, number>(
+			input.sourceFiles.map((file) => [file.path, file.bytes.length]),
+		);
+		const roots = input.sourceFiles.filter(
+			(file) => file.path.endsWith('.glb') || file.path.endsWith('.gltf'),
+		);
 		if (roots.length !== 1) {
-			fail('$.sourceFiles', 'ambiguous-root', 'An import declares exactly one .gltf or .glb source document');
+			fail(
+				'$.sourceFiles',
+				'ambiguous-root',
+				'An import declares exactly one .gltf or .glb source document',
+			);
 		}
 		const root = roots[0]!;
 		const rootBytes = input.sourceFiles.find((file) => file.path === root.path)!.bytes;
@@ -397,23 +569,33 @@ export function checkModelStructure(input: {
 				path: root.path,
 				container,
 				files,
-				requireSelfContained: true
+				requireSelfContained: true,
 			});
 		} else {
 			const document = readDocument(rootBytes, root.path);
-			checkGltfDocument({ document, path: root.path, container: null, files, requireSelfContained: false });
+			checkGltfDocument({
+				document,
+				path: root.path,
+				container: null,
+				files,
+				requireSelfContained: false,
+			});
 		}
 
 		const derivative = readGlb(input.derivative, '$.derivative');
 		if (derivative.binLength === null) {
-			fail('$.derivative', 'missing-glb-bin-chunk', 'The approved derivative carries no GLB binary chunk');
+			fail(
+				'$.derivative',
+				'missing-glb-bin-chunk',
+				'The approved derivative carries no GLB binary chunk',
+			);
 		}
 		checkGltfDocument({
 			document: derivative.json,
 			path: '$.derivative',
 			container: derivative,
 			files: new Map(),
-			requireSelfContained: true
+			requireSelfContained: true,
 		});
 		return [];
 	} catch (error) {

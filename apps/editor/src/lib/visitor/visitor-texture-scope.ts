@@ -28,7 +28,7 @@ export type ReleaseBytesEntry = {
 type ReleaseSourceLoader = (
 	uri: string,
 	slot: MaterialTextureSlot,
-	options?: { readonly policy: 'srgb' | 'raw' | string; readonly signal?: AbortSignal }
+	options?: { readonly policy: 'srgb' | 'raw' | string; readonly signal?: AbortSignal },
 ) => Promise<ThreeTexture>;
 
 export type ReleaseTextureScopeInit = {
@@ -96,7 +96,7 @@ export function createReleaseTextureScope(init: ReleaseTextureScopeInit): Releas
 	 */
 	const readShippedRaw = async (
 		uri: string,
-		signal: AbortSignal | undefined
+		signal: AbortSignal | undefined,
 	): Promise<{ bytes: Uint8Array; mime: string }> => {
 		if (!isAllowedShippedTextureUri(uri)) {
 			throw new Error(`Raw texture is not a shipped or release asset in ${releaseId}: ${uri}`);
@@ -118,7 +118,7 @@ export function createReleaseTextureScope(init: ReleaseTextureScopeInit): Releas
 		return async (
 			uri: string,
 			_slot: MaterialTextureSlot,
-			options?: { readonly policy: 'srgb' | 'raw' | string; readonly signal?: AbortSignal }
+			options?: { readonly policy: 'srgb' | 'raw' | string; readonly signal?: AbortSignal },
 		): Promise<ThreeTexture> => {
 			const resolved = resolveTexture(uri);
 			if (!resolved) throw new Error(`Texture not available in release ${releaseId}: ${uri}`);
@@ -128,15 +128,16 @@ export function createReleaseTextureScope(init: ReleaseTextureScopeInit): Releas
 					throw new Error(`Raw texture decoding is unavailable in release ${releaseId}: ${uri}`);
 				}
 				const privateEntry = init.bytesByUri.get(uri);
-				const raw = privateEntry === undefined
-					? await readShippedRaw(uri, options.signal)
-					: { bytes: privateEntry.bytes, mime: probeRawImage(privateEntry.bytes).mime };
+				const raw =
+					privateEntry === undefined
+						? await readShippedRaw(uri, options.signal)
+						: { bytes: privateEntry.bytes, mime: probeRawImage(privateEntry.bytes).mime };
 				// Preserve stored channels: refuse a non-8-bit, CMYK, animated or
 				// EXIF-oriented map before the browser allocates its bitmap.
 				const bitmap = await createImageBitmap(new Blob([raw.bytes.slice()], { type: raw.mime }), {
 					imageOrientation: 'none',
 					premultiplyAlpha: 'none',
-					colorSpaceConversion: 'none'
+					colorSpaceConversion: 'none',
 				});
 				if (disposed || options?.signal?.aborted) {
 					bitmap.close();
@@ -165,5 +166,12 @@ export function createReleaseTextureScope(init: ReleaseTextureScopeInit): Releas
 		revokeAll();
 	};
 
-	return { releaseId, scopeId: releaseId, objectUrlByUri, resolveTexture, createSourceLoader, dispose };
+	return {
+		releaseId,
+		scopeId: releaseId,
+		objectUrlByUri,
+		resolveTexture,
+		createSourceLoader,
+		dispose,
+	};
 }

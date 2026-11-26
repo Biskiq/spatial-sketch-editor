@@ -27,7 +27,6 @@ export type MergedWallSpan = {
 	samples: readonly CompiledQuerySpan[];
 };
 
-
 /**
  * Merge per-sample wall spans of one wall into the full-length span so
  * candidate generation works on authored walls, not sample boundaries.
@@ -65,9 +64,7 @@ export type MergedWallSpan = {
  * snapping to a curved wall means nearest-point on the actual curve, never
  * a straight chord through its interior.
  */
-export function dedupeWallSpans(
-	spans: readonly CompiledQuerySpan[]
-): MergedWallSpan[] {
+export function dedupeWallSpans(spans: readonly CompiledQuerySpan[]): MergedWallSpan[] {
 	const byWall = new Map<string, CompiledQuerySpan[]>();
 	for (const span of spans) {
 		const key = span.wallKey ?? span.segmentId;
@@ -82,12 +79,11 @@ export function dedupeWallSpans(
 	return merged;
 }
 
-
 /** Merge one wall group — already grouped by `wallKey ?? segmentId` — to its extent. */
 function mergeWallGroup(
 	key: string,
 	segmentId: string,
-	list: readonly CompiledQuerySpan[]
+	list: readonly CompiledQuerySpan[],
 ): MergedWallSpan {
 	const endpoints: LayoutVec2[] = [];
 	for (const span of list) endpoints.push(span.start, span.end);
@@ -105,13 +101,12 @@ function mergeWallGroup(
 	return mergedWall(key, segmentId, exact, withinChordTolerance(endpoints, exact), list);
 }
 
-
 function mergedWall(
 	key: string,
 	segmentId: string,
 	pair: [LayoutVec2, LayoutVec2],
 	straight: boolean,
-	samples: readonly CompiledQuerySpan[]
+	samples: readonly CompiledQuerySpan[],
 ): MergedWallSpan {
 	const ordered = lexicographicallySmaller(pair[0], pair[1], pair[1], pair[0])
 		? [pair[0], pair[1]]
@@ -122,10 +117,9 @@ function mergedWall(
 		start: [...ordered[0]],
 		end: [...ordered[1]],
 		straight,
-		samples
+		samples,
 	};
 }
-
 
 /** One traversal frame's proven extent: the outermost endpoint on each side. */
 type TraversalFrameExtent = {
@@ -134,7 +128,6 @@ type TraversalFrameExtent = {
 	maxEndDistance: number;
 	destination: LayoutVec2;
 };
-
 
 /**
  * Recover a wall group's authored extent in O(k) from the compiled distances,
@@ -154,7 +147,9 @@ type TraversalFrameExtent = {
  * traversal, which is exactly what hand-built spans with placeholder distances
  * look like. Anything else returns `null` and falls back to the exact scan.
  */
-function provenTraversalExtent(list: readonly CompiledQuerySpan[]): [LayoutVec2, LayoutVec2] | null {
+function provenTraversalExtent(
+	list: readonly CompiledQuerySpan[],
+): [LayoutVec2, LayoutVec2] | null {
 	const frames = new Map<string, TraversalFrameExtent>();
 	for (const span of list) {
 		const { startDistance, endDistance } = span;
@@ -167,7 +162,7 @@ function provenTraversalExtent(list: readonly CompiledQuerySpan[]): [LayoutVec2,
 				minStartDistance: startDistance,
 				origin: span.start,
 				maxEndDistance: endDistance,
-				destination: span.end
+				destination: span.end,
 			});
 			continue;
 		}
@@ -189,7 +184,6 @@ function provenTraversalExtent(list: readonly CompiledQuerySpan[]): [LayoutVec2,
 	for (const frame of frames.values()) outermost.push(frame.origin, frame.destination);
 	return farthestEndpointPair(outermost);
 }
-
 
 /**
  * Farthest endpoint pair, ties broken by lexicographic point order so the
@@ -222,7 +216,10 @@ function farthestEndpointPair(points: readonly LayoutVec2[]): [LayoutVec2, Layou
 			const dx = a[0] - b[0];
 			const dz = a[1] - b[1];
 			const squared = dx * dx + dz * dz;
-			if (squared > bestSquared || (squared === bestSquared && lexicographicallySmaller(a, b, best[0], best[1]))) {
+			if (
+				squared > bestSquared ||
+				(squared === bestSquared && lexicographicallySmaller(a, b, best[0], best[1]))
+			) {
 				bestSquared = squared;
 				best = [a, b];
 			}
@@ -230,7 +227,6 @@ function farthestEndpointPair(points: readonly LayoutVec2[]): [LayoutVec2, Layou
 	}
 	return best;
 }
-
 
 /**
  * Collinearity against the endpoint chord. Path-length comparison
@@ -244,7 +240,7 @@ function farthestEndpointPair(points: readonly LayoutVec2[]): [LayoutVec2, Layou
  */
 function withinChordTolerance(
 	points: readonly LayoutVec2[],
-	chord: readonly [LayoutVec2, LayoutVec2]
+	chord: readonly [LayoutVec2, LayoutVec2],
 ): boolean {
 	const chordX = chord[1][0] - chord[0][0];
 	const chordZ = chord[1][1] - chord[0][1];
@@ -256,19 +252,21 @@ function withinChordTolerance(
 	return true;
 }
 
-
 function samePoint(a: LayoutVec2, b: LayoutVec2): boolean {
 	return a[0] === b[0] && a[1] === b[1];
 }
 
-
-function lexicographicallySmaller(a: LayoutVec2, b: LayoutVec2, c: LayoutVec2, d: LayoutVec2): boolean {
+function lexicographicallySmaller(
+	a: LayoutVec2,
+	b: LayoutVec2,
+	c: LayoutVec2,
+	d: LayoutVec2,
+): boolean {
 	if (a[0] !== c[0]) return a[0] < c[0];
 	if (a[1] !== c[1]) return a[1] < c[1];
 	if (b[0] !== d[0]) return b[0] < d[0];
 	return b[1] < d[1];
 }
-
 
 /**
  * Footprint vertex-average center in world X/Z — used by alignment actions

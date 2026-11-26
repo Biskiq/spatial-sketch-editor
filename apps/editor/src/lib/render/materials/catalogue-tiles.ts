@@ -32,11 +32,14 @@ const resolved = new Map<MaterialId, { readonly key: string; readonly uri: strin
 
 /** The key the current catalogue entry's master must carry, or null when it cannot resolve. */
 export function catalogueTileKey(id: MaterialId): string | null {
-	return resolveSampleTile({ kind: 'catalogue', id }, materialThumbnailFraming[id] ?? 'default').key;
+	return resolveSampleTile({ kind: 'catalogue', id }, materialThumbnailFraming[id] ?? 'default')
+		.key;
 }
 
 /** The current 256 px master of one catalogue entry, or undefined when none is current. */
-export function catalogueTile(id: MaterialId): { readonly key: string; readonly uri: string } | undefined {
+export function catalogueTile(
+	id: MaterialId,
+): { readonly key: string; readonly uri: string } | undefined {
 	if (resolved.has(id)) return resolved.get(id);
 	const row = rows.get(id);
 	let tile: { readonly key: string; readonly uri: string } | undefined;

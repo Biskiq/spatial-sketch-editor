@@ -15,7 +15,7 @@ import {
 	type IncompatiblePendingCloudSave,
 	readPendingCloudSave,
 	writePendingCloudSave,
-	type PendingCloudSaveResult
+	type PendingCloudSaveResult,
 } from '$lib/platform/project-pending-save';
 import type { SaveRequest } from '@portfolio/project-model/save';
 

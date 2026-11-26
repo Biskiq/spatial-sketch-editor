@@ -1,12 +1,23 @@
 import { roomLabelFacts } from '$lib/authoring/stage/stage-adapter-host';
 import { readClosedWallCircle } from '@portfolio/layout-core/room';
-import { isClosedWall, type LayoutDocumentWallFirst, type LayoutRegion } from '@portfolio/layout-core/wall';
+import {
+	isClosedWall,
+	type LayoutDocumentWallFirst,
+	type LayoutRegion,
+} from '@portfolio/layout-core/wall';
 import type { LayoutVec2, CompiledRegion } from '@portfolio/layout-core/geometry';
 
 import { type StageAdapterContext } from '$lib/authoring/stage/stage-adapter-host';
 import { stageLayout } from '$lib/authoring/stage/stage-adapter-host';
 
-import { wallFrame, openWallFrame, wallStationFrame, type OpenWallFrame, type WallFrame, type WallStationFrame } from './precision-frames';
+import {
+	wallFrame,
+	openWallFrame,
+	wallStationFrame,
+	type OpenWallFrame,
+	type WallFrame,
+	type WallStationFrame,
+} from './precision-frames';
 import { type WallHandlePoints } from './wall-gesture';
 
 export type OpeningMarkSubject = {
@@ -23,21 +34,23 @@ export type OpeningMarkSubject = {
 /** The selected open Wall's sampled frame, straight or curved. */
 export function selectedOpenWall(
 	document: LayoutDocumentWallFirst,
-	adapterContext: StageAdapterContext
+	adapterContext: StageAdapterContext,
 ): { wallId: string; frame: OpenWallFrame } | null {
 	const primary = adapterContext.selectionState().primary;
-	if (primary === null || primary.domain !== 'layout' || primary.subject.kind !== 'wall') return null;
+	if (primary === null || primary.domain !== 'layout' || primary.subject.kind !== 'wall')
+		return null;
 	const frame = openWallFrame(document, primary.subject.id);
 	return frame === null ? null : { wallId: primary.subject.id, frame };
 }
 /** The selected closed Wall's persisted circle facts, or `null`. */
 export function selectedClosedWall(
-	adapterContext: StageAdapterContext
+	adapterContext: StageAdapterContext,
 ): { wallId: string; center: LayoutVec2; radius: number; seam: LayoutVec2 } | null {
 	const primary = adapterContext.selectionState().primary;
-	if (primary === null || primary.domain !== 'layout' || primary.subject.kind !== 'wall') return null;
+	if (primary === null || primary.domain !== 'layout' || primary.subject.kind !== 'wall')
+		return null;
 	const source = stageLayout(adapterContext.snapshot).walls.find(
-		(wall) => wall.id === primary.subject.id
+		(wall) => wall.id === primary.subject.id,
 	);
 	if (source === undefined || !isClosedWall(source)) return null;
 	const facts = readClosedWallCircle(stageLayout(adapterContext.snapshot), source.id);
@@ -48,7 +61,7 @@ export function selectedClosedWall(
 /** The selected **curved** open Wall, or `null` for a straight one. */
 export function selectedCurvedWall(
 	document: LayoutDocumentWallFirst,
-	adapterContext: StageAdapterContext
+	adapterContext: StageAdapterContext,
 ): { wallId: string; frame: OpenWallFrame } | null {
 	const selected = selectedOpenWall(document, adapterContext);
 	if (selected === null) return null;
@@ -57,7 +70,7 @@ export function selectedCurvedWall(
 }
 /** The straight Wall the canonical selection names, or `null`. */
 export function selectedWall(
-	adapterContext: StageAdapterContext
+	adapterContext: StageAdapterContext,
 ): { readonly wallId: string; readonly frame: WallFrame } | null {
 	const primary = adapterContext.selectionState().primary;
 	if (primary === null || primary.domain !== 'layout' || primary.subject.kind !== 'wall') {
@@ -69,12 +82,13 @@ export function selectedWall(
 /** The selected Opening and its host Wall's resolved frame, or `null`. */
 export function selectedOpening(
 	document: LayoutDocumentWallFirst,
-	adapterContext: StageAdapterContext
+	adapterContext: StageAdapterContext,
 ): OpeningMarkSubject | null {
 	const primary = adapterContext.selectionState().primary;
-	if (primary === null || primary.domain !== 'layout' || primary.subject.kind !== 'opening') return null;
+	if (primary === null || primary.domain !== 'layout' || primary.subject.kind !== 'opening')
+		return null;
 	const opening = stageLayout(adapterContext.snapshot).openings.find(
-		(candidate) => candidate.id === primary.subject.id
+		(candidate) => candidate.id === primary.subject.id,
 	);
 	if (opening === undefined) return null;
 	const span = openingSpanOf(document, opening.wallId);
@@ -86,31 +100,33 @@ export function selectedOpening(
 		station: span.station,
 		length: span.length,
 		offset: opening.offset,
-		width: opening.width
+		width: opening.width,
 	};
 }
 /** The selected authored region, with its compiled facts, or `null`. */
 export function selectedRegion(
 	document: LayoutDocumentWallFirst,
-	adapterContext: StageAdapterContext
+	adapterContext: StageAdapterContext,
 ): { readonly region: LayoutRegion; readonly compiled: CompiledRegion } | null {
 	const primary = adapterContext.selectionState().primary;
-	if (primary === null || primary.domain !== 'layout' || primary.subject.kind !== 'region') return null;
+	if (primary === null || primary.domain !== 'layout' || primary.subject.kind !== 'region')
+		return null;
 	const region = document.regions.find((candidate) => candidate.id === primary.subject.id);
 	if (region === undefined) return null;
 	const compiled = adapterContext.snapshot.domain.geometry.regions.find(
-		(candidate) => candidate.regionId === region.id
+		(candidate) => candidate.regionId === region.id,
 	);
 	if (compiled === undefined) return null;
 	return { region, compiled };
 }
 export function selectedRoomLabel(
-	ctx: StageAdapterContext
+	ctx: StageAdapterContext,
 ): { readonly roomId: string; readonly world: [number, number, number] } | null {
 	const primary = ctx.selectionState().primary;
-	if (primary === null || primary.domain !== 'layout' || primary.subject.kind !== 'room') return null;
+	if (primary === null || primary.domain !== 'layout' || primary.subject.kind !== 'room')
+		return null;
 	const fact = roomLabelFacts(ctx.snapshot.domain.geometry, stageLayout(ctx.snapshot).rooms).find(
-		(entry) => entry.id === primary.subject.id
+		(entry) => entry.id === primary.subject.id,
 	);
 	return fact === undefined ? null : { roomId: fact.id, world: fact.world };
 }
@@ -125,7 +141,11 @@ export function wallDirection(frame: WallFrame): readonly [number, number] | nul
 	return length > 0 ? [dx / length, dz / length] : null;
 }
 
-export function framePoint(frame: WallFrame, distance: number, y: number): [number, number, number] {
+export function framePoint(
+	frame: WallFrame,
+	distance: number,
+	y: number,
+): [number, number, number] {
 	const direction = wallDirection(frame);
 	if (direction === null) return [frame.start[0], y, frame.start[1]];
 	return [frame.start[0] + direction[0] * distance, y, frame.start[1] + direction[1] * distance];
@@ -141,7 +161,7 @@ export function framePoint(frame: WallFrame, distance: number, y: number): [numb
 export function projectWallHandles(
 	context: StageAdapterContext,
 	frame: WallFrame,
-	space: 'stage' | 'viewport' = 'viewport'
+	space: 'stage' | 'viewport' = 'viewport',
 ): WallHandlePoints | null {
 	const y = context.snapshot.domain.datumMeters;
 	const project = (point: readonly [number, number]) => {
@@ -153,7 +173,10 @@ export function projectWallHandles(
 	};
 	const start = project(frame.start);
 	const end = project(frame.end);
-	const middle = project([(frame.start[0] + frame.end[0]) / 2, (frame.start[1] + frame.end[1]) / 2]);
+	const middle = project([
+		(frame.start[0] + frame.end[0]) / 2,
+		(frame.start[1] + frame.end[1]) / 2,
+	]);
 	if (start === null || end === null || middle === null) return null;
 	return { start, end, middle };
 }
@@ -176,14 +199,14 @@ export function bodyFrameForOpenWall(frame: OpenWallFrame): WallFrame {
 		end: [frame.end[0], frame.end[1]],
 		direction: [dx / length, dz / length],
 		length,
-		angleRadians: Math.atan2(dz, dx)
+		angleRadians: Math.atan2(dz, dx),
 	};
 }
 
 /** The host Wall's frame and resolved length, when it has one. */
 export function openingSpanOf(
 	document: LayoutDocumentWallFirst,
-	wallId: string
+	wallId: string,
 ): { frame: WallFrame; length: number; station: WallStationFrame } | null {
 	// Surface 3: one station frame per host. An Opening mark, ghost or
 	// handle reads `station.pointAt`, which is exact arc length on a
@@ -199,7 +222,7 @@ export function openingSpanOf(
 		end: station.end,
 		direction: station.direction,
 		length: station.length,
-		angleRadians: Math.atan2(station.direction[1], station.direction[0])
+		angleRadians: Math.atan2(station.direction[1], station.direction[0]),
 	};
 	return station.length > 0 ? { frame, length: station.length, station } : null;
 }

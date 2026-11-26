@@ -35,10 +35,20 @@
  * Runtime-safe: no editor, renderer, Svelte or Three import.
  */
 
-import { REFERENCE_DOMAINS, type ReferenceReadContext, type SemanticReference } from '../references/types';
+import {
+	REFERENCE_DOMAINS,
+	type ReferenceReadContext,
+	type SemanticReference,
+} from '../references/types';
 import { resolveReference } from '../references/resolve';
 import type { ShapeIssue } from '../strict-shape';
-import { createPlannerRegistry, prepareIntent, type PlannerRegistry, type PrepareAdmission, type PrepareResult } from './prepare';
+import {
+	createPlannerRegistry,
+	prepareIntent,
+	type PlannerRegistry,
+	type PrepareAdmission,
+	type PrepareResult,
+} from './prepare';
 import type { IntentValidationOptions } from './intent';
 import type { AcceptedSnapshot, AuthoringIntent, CapturedInput } from './types';
 
@@ -71,13 +81,13 @@ export type UnitPlannerRegistryOptions = {
  * need, because `prepareUnitIntent` reads the profile the registry granted.
  */
 export function createUnitPlannerRegistry<Source>(
-	options: UnitPlannerRegistryOptions = {}
+	options: UnitPlannerRegistryOptions = {},
 ): PlannerRegistry<Source> {
 	return createPlannerRegistry<Source>({
 		domains: REFERENCE_DOMAINS,
 		compound: true,
 		units: true,
-		resources: options.resourceStaging === true
+		resources: options.resourceStaging === true,
 	});
 }
 
@@ -101,10 +111,10 @@ export function prepareUnitIntent<Source>(
 	intent: AuthoringIntent,
 	capturedInputs?: readonly CapturedInput[],
 	options: IntentValidationOptions = {},
-	admission: PrepareAdmission<Source> = {}
+	admission: PrepareAdmission<Source> = {},
 ): PrepareResult<Source> {
 	return prepareIntent(registry, snapshot, intent, capturedInputs, options, {
-		...(admission.inspectTargets === undefined ? {} : { inspectTargets: admission.inspectTargets })
+		...(admission.inspectTargets === undefined ? {} : { inspectTargets: admission.inspectTargets }),
 	});
 }
 
@@ -119,7 +129,7 @@ export function prepareUnitIntent<Source>(
  */
 export function validateUnitTargets(
 	targets: readonly SemanticReference[],
-	context: ReferenceReadContext
+	context: ReferenceReadContext,
 ): readonly ShapeIssue[] {
 	const issues: ShapeIssue[] = [];
 	for (const [index, target] of targets.entries()) {
@@ -128,7 +138,7 @@ export function validateUnitTargets(
 			issues.push({
 				path: `$.targets[${index}]`,
 				code: resolution.code,
-				message: `${resolution.reference.domain}:${resolution.reference.subject.kind}:${resolution.reference.subject.id} — ${resolution.message}`
+				message: `${resolution.reference.domain}:${resolution.reference.subject.kind}:${resolution.reference.subject.id} — ${resolution.message}`,
 			});
 		}
 	}
@@ -141,8 +151,7 @@ export function validateUnitTargets(
  * ambient lookup.
  */
 export function createUnitTargetInspector(
-	context: ReferenceReadContext
+	context: ReferenceReadContext,
 ): (intent: AuthoringIntent) => readonly ShapeIssue[] {
 	return (intent) => validateUnitTargets(intent.targets, context);
 }
-

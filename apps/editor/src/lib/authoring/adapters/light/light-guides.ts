@@ -15,7 +15,7 @@ import {
 	lightDropStem,
 	pointReachRingRadius,
 	spotFootprintRadius,
-	spotInnerRadius
+	spotInnerRadius,
 } from '../../look/light-presentation';
 import { add, cross, dot, normalize, scale, sub } from './light-math';
 import { lightRange, spotTargetFor, type Light } from './light-subjects';
@@ -36,7 +36,7 @@ export type LightGuide = {
 export function ringPhase(
 	adapterContext: StageAdapterContext,
 	axis: Vec3,
-	side: 'left' | 'right'
+	side: 'left' | 'right',
 ): Vec3 | undefined {
 	const view = normalize(sub(adapterContext.evaluation.pose.target, adapterContext.evaluation.eye));
 	const right = cross(view, [0, 1, 0]);
@@ -56,9 +56,11 @@ export function ringPhase(
 export function screenRingExtent(
 	adapterContext: StageAdapterContext,
 	position: Vec3,
-	pixels: number
+	pixels: number,
 ): number {
-	const forward = normalize(sub(adapterContext.evaluation.pose.target, adapterContext.evaluation.eye));
+	const forward = normalize(
+		sub(adapterContext.evaluation.pose.target, adapterContext.evaluation.eye),
+	);
 	const right = normalize(cross(forward, [0, 1, 0]));
 	const anchor = adapterContext.project(position);
 	const sample = adapterContext.project(add(position, right));
@@ -73,11 +75,7 @@ function ringSegments(center: Vec3, radius: number, y: number): [Vec3, Vec3][] {
 	const ring: Vec3[] = [];
 	for (let index = 0; index < 64; index += 1) {
 		const angle = (index / 64) * Math.PI * 2;
-		ring.push([
-			center[0] + Math.cos(angle) * radius,
-			y,
-			center[2] + Math.sin(angle) * radius
-		]);
+		ring.push([center[0] + Math.cos(angle) * radius, y, center[2] + Math.sin(angle) * radius]);
 	}
 	const segments: [Vec3, Vec3][] = [];
 	for (let index = 0; index < ring.length; index += 1) {
@@ -86,10 +84,7 @@ function ringSegments(center: Vec3, radius: number, y: number): [Vec3, Vec3][] {
 	return segments;
 }
 
-export function guideSegments(
-	light: Light,
-	adapterContext: StageAdapterContext
-): LightGuide {
+export function guideSegments(light: Light, adapterContext: StageAdapterContext): LightGuide {
 	const segments: [Vec3, Vec3][] = [];
 	const derivedSegments: [Vec3, Vec3][] = [];
 	const datumMeters = adapterContext.snapshot.domain.datumMeters;
@@ -111,9 +106,9 @@ export function guideSegments(
 					center,
 					add(
 						scale(right, Math.cos(angle) * footprintRadius),
-						scale(up, Math.sin(angle) * footprintRadius)
-					)
-				)
+						scale(up, Math.sin(angle) * footprintRadius),
+					),
+				),
 			);
 		}
 		const range = lightRange(light);
@@ -136,10 +131,7 @@ export function guideSegments(
 					const angle = (index / 48) * Math.PI * 2;
 					const point = add(
 						center,
-						add(
-							scale(right, Math.cos(angle) * inner),
-							scale(up, Math.sin(angle) * inner)
-						)
+						add(scale(right, Math.cos(angle) * inner), scale(up, Math.sin(angle) * inner)),
 					);
 					derivedSegments.push([
 						point,
@@ -147,9 +139,9 @@ export function guideSegments(
 							center,
 							add(
 								scale(right, Math.cos(((index + 1) / 48) * Math.PI * 2) * inner),
-								scale(up, Math.sin(((index + 1) / 48) * Math.PI * 2) * inner)
-							)
-						)
+								scale(up, Math.sin(((index + 1) / 48) * Math.PI * 2) * inner),
+							),
+						),
 					]);
 				}
 			}
@@ -157,10 +149,7 @@ export function guideSegments(
 		if (range !== undefined) {
 			const capCenter = add(light.position, scale(forward, range));
 			derivedSegments.push([light.position, capCenter]);
-			segments.push([
-				add(capCenter, scale(right, 0.07)),
-				add(capCenter, scale(right, -0.07))
-			]);
+			segments.push([add(capCenter, scale(right, 0.07)), add(capCenter, scale(right, -0.07))]);
 		}
 	} else if (light.light === 'point') {
 		const range = lightRange(light);
@@ -170,9 +159,7 @@ export function guideSegments(
 		// states a stored reach.
 		derivedSegments.push([
 			light.position,
-			lightDropStem(light.position, datumMeters, (ray) =>
-				adapterContext.pickScene(ray)
-			)
+			lightDropStem(light.position, datumMeters, (ray) => adapterContext.pickScene(ray)),
 		]);
 		if (range !== undefined) {
 			const ring = pointReachRingRadius(range, height);

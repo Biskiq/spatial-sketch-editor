@@ -1,6 +1,10 @@
 import { translateWallCenterline } from '../../wall/centerline';
 import { buildRoundRoomGeometryFromCertified, certifyRoundRoom } from '../round-room';
-import type { LayoutDocumentWallFirst, LayoutRoomRound, LayoutWallCenterline } from '../../wall/types';
+import type {
+	LayoutDocumentWallFirst,
+	LayoutRoomRound,
+	LayoutWallCenterline,
+} from '../../wall/types';
 import type { LayoutVec2 } from '../../geometry/coordinates';
 import { rotatePointAbout, sampleMovedWallProposals, transformWallCenterline } from './shared';
 
@@ -14,14 +18,12 @@ export type RoomUnitMoveSubgraph = {
 	associatedObjectIds?: readonly string[];
 };
 
-
 /** One moved Wall's overlay attempt: its canonical centerline, already transformed. */
 export type RoomUnitMoveProposalWall = {
 	wallId: string;
 	/** Sampled centerline points in document X/Z. Overlay truth only. */
 	points: LayoutVec2[];
 };
-
 
 /**
  * The **single** moving-set→candidate mapping shared by the release planner and
@@ -35,7 +37,7 @@ export type RoomUnitMoveProposalWall = {
 export function roomUnitMoveCandidate(
 	document: LayoutDocumentWallFirst,
 	subgraph: RoomUnitMoveSubgraph,
-	delta: LayoutVec2
+	delta: LayoutVec2,
 ): LayoutDocumentWallFirst {
 	const [dx, dz] = delta;
 	const movedJunctionIds = new Set(subgraph.junctionIds);
@@ -50,7 +52,7 @@ export function roomUnitMoveCandidate(
 	const updatedRoomRound = new Map<string, LayoutRoomRound>();
 	// Choose each shared Junction and Wall once, by stable Room identity rather
 	// than document array order. The release planner certifies all owners below.
-	for (const room of [...document.rooms].sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0)) {
+	for (const room of [...document.rooms].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))) {
 		if (!room.round) continue;
 		if (!room.boundary.every((ref) => movedWallIds.has(ref.wallId))) continue;
 		const cert = certifyRoundRoom(document, room);
@@ -61,10 +63,12 @@ export function roomUnitMoveCandidate(
 			certified: cert.certified,
 			center: newCenter,
 			radius: cert.certified.radius,
-			seamDirection: cert.certified.seamDirection
+			seamDirection: cert.certified.seamDirection,
 		});
-		for (const [id, pt] of rebuilt.junctionPoints) if (!roundJunctionPoints.has(id)) roundJunctionPoints.set(id, pt);
-		for (const [id, cl] of rebuilt.wallCenterlines) if (!roundWallCenterlines.has(id)) roundWallCenterlines.set(id, cl);
+		for (const [id, pt] of rebuilt.junctionPoints)
+			if (!roundJunctionPoints.has(id)) roundJunctionPoints.set(id, pt);
+		for (const [id, cl] of rebuilt.wallCenterlines)
+			if (!roundWallCenterlines.has(id)) roundWallCenterlines.set(id, cl);
 		updatedRoomRound.set(room.id, rebuilt.round);
 	}
 
@@ -76,7 +80,7 @@ export function roomUnitMoveCandidate(
 			return movedJunctionIds.has(junction.id)
 				? {
 						...junction,
-						point: [junction.point[0] + dx, junction.point[1] + dz] as LayoutVec2
+						point: [junction.point[0] + dx, junction.point[1] + dz] as LayoutVec2,
 					}
 				: junction;
 		}),
@@ -106,14 +110,13 @@ export function roomUnitMoveCandidate(
 						position: [
 							object.position[0] + dx,
 							object.position[1],
-							object.position[2] + dz
-						] as typeof object.position
+							object.position[2] + dz,
+						] as typeof object.position,
 					}
-				: object
-		)
+				: object,
+		),
 	};
 }
-
 
 /**
  * Derive the live preview of a rigid Room-unit **translation**, without
@@ -131,14 +134,13 @@ export function roomUnitMoveCandidate(
 export function proposeWallFirstRoomUnitGeometry(
 	document: LayoutDocumentWallFirst,
 	subgraph: RoomUnitMoveSubgraph,
-	delta: LayoutVec2
+	delta: LayoutVec2,
 ): RoomUnitMoveProposalWall[] {
 	return sampleMovedWallProposals(
 		roomUnitMoveCandidate(document, subgraph, delta),
-		subgraph.wallIds
+		subgraph.wallIds,
 	);
 }
-
 
 /**
  * The **rotation** partner of the candidate above: the same moving set rigidly
@@ -166,7 +168,7 @@ export function rotateRoomUnitMoveCandidate(
 	document: LayoutDocumentWallFirst,
 	subgraph: RoomUnitMoveSubgraph,
 	pivot: LayoutVec2,
-	yaw: number
+	yaw: number,
 ): LayoutDocumentWallFirst {
 	const rotate = (point: LayoutVec2): LayoutVec2 => rotatePointAbout(point, pivot, yaw);
 	const cos = Math.cos(yaw);
@@ -191,7 +193,7 @@ export function rotateRoomUnitMoveCandidate(
 			certified: cert.certified,
 			center: newCenter,
 			radius: cert.certified.radius,
-			seamDirection: rotatedDir
+			seamDirection: rotatedDir,
 		});
 		for (const [id, pt] of rebuilt.junctionPoints) roundJunctionPoints.set(id, pt);
 		for (const [id, cl] of rebuilt.wallCenterlines) roundWallCenterlines.set(id, cl);
@@ -234,22 +236,21 @@ export function rotateRoomUnitMoveCandidate(
 			return {
 				...object,
 				position: [x, object.position[1], z] as typeof object.position,
-				rotation: [object.rotation[0], object.rotation[1] + yaw, object.rotation[2]]
+				rotation: [object.rotation[0], object.rotation[1] + yaw, object.rotation[2]],
 			};
-		})
+		}),
 	};
 }
-
 
 /** The overlay attempt for a rigid Room-unit **rotation**. See the candidate above. */
 export function proposeWallFirstRoomUnitRotation(
 	document: LayoutDocumentWallFirst,
 	subgraph: RoomUnitMoveSubgraph,
 	pivot: LayoutVec2,
-	yaw: number
+	yaw: number,
 ): RoomUnitMoveProposalWall[] {
 	return sampleMovedWallProposals(
 		rotateRoomUnitMoveCandidate(document, subgraph, pivot, yaw),
-		subgraph.wallIds
+		subgraph.wallIds,
 	);
 }

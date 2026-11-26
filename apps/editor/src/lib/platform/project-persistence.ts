@@ -2,14 +2,20 @@ import {
 	isSavedBaseToken,
 	type SaveAcknowledgement,
 	type SaveRequest,
-	type SavePrecondition
+	type SavePrecondition,
 } from '@portfolio/project-model/save';
 import { PROJECT_ASSET_MAX_BYTES } from '$lib/platform/mime-sniff';
 import { perfMark, perfMeasureSync } from '$lib/platform/perf-marks';
 
 import { ProjectPersistenceError, type FetchLike, type ProjectAuth } from './project-identity';
-export { createProjectAuth, createProjectId, ProjectPersistenceError, type ProjectAuth, type ProjectLoginIntent, type ProjectPersistenceErrorCode } from './project-identity';
-
+export {
+	createProjectAuth,
+	createProjectId,
+	ProjectPersistenceError,
+	type ProjectAuth,
+	type ProjectLoginIntent,
+	type ProjectPersistenceErrorCode,
+} from './project-identity';
 
 export { PROJECT_ASSET_MAX_BYTES } from '$lib/platform/mime-sniff';
 
@@ -108,7 +114,10 @@ export type ProjectLifecycleActionResult =
 	| { kind: 'error'; message: string; retryable: boolean };
 
 export type SavedProject = Omit<ProjectSummary, 'id'> & { projectId: string };
-export type ProjectLifecyclePrecondition = Extract<SavePrecondition, { kind: 'expected-saved-base' }>;
+export type ProjectLifecyclePrecondition = Extract<
+	SavePrecondition,
+	{ kind: 'expected-saved-base' }
+>;
 export type RenameProjectRequest = {
 	name: string;
 	precondition: ProjectLifecyclePrecondition;
@@ -138,7 +147,6 @@ export type ProjectPersistenceConfig = {
 	fetch?: FetchLike;
 };
 
-
 export type ProjectApi = {
 	listProjects(signal?: AbortSignal): Promise<ProjectSummary[]>;
 	/** The one write: conditional `SaveAcceptedSource@1`, never a bare document. */
@@ -147,48 +155,59 @@ export type ProjectApi = {
 	renameProject(
 		projectId: string,
 		request: RenameProjectRequest,
-		signal?: AbortSignal
+		signal?: AbortSignal,
 	): Promise<SaveAcknowledgement>;
 	/** Delete after caller confirmation; pending means owned-byte cleanup still needs retry. */
 	deleteProject(
 		projectId: string,
 		request: DeleteProjectRequest,
-		signal?: AbortSignal
+		signal?: AbortSignal,
 	): Promise<DeleteProjectAcknowledgement>;
 	/** Owner-scoped publication read used to prevent a doomed delete confirmation. */
 	getPublicationStatus(projectId: string, signal?: AbortSignal): Promise<ProjectPublicationStatus>;
 	loadProject(projectId: string, signal?: AbortSignal): Promise<LoadedProject>;
 	listAssets(projectId: string, signal?: AbortSignal): Promise<ProjectAssetMetadata[]>;
-	registerAsset(projectId: string, name: string, signal?: AbortSignal): Promise<ProjectAssetMetadata>;
+	registerAsset(
+		projectId: string,
+		name: string,
+		signal?: AbortSignal,
+	): Promise<ProjectAssetMetadata>;
 	uploadAsset(
 		projectId: string,
 		assetId: string,
 		bytes: Uint8Array,
-		signal?: AbortSignal
+		signal?: AbortSignal,
 	): Promise<ProjectAssetMetadata>;
-	loadAssetContent(projectId: string, assetId: string, signal?: AbortSignal): Promise<ProjectAssetContent>;
+	loadAssetContent(
+		projectId: string,
+		assetId: string,
+		signal?: AbortSignal,
+	): Promise<ProjectAssetContent>;
 	/** Restore one saved image's exact bytes; the server derives the pin from the saved head. */
 	repairAsset(
 		projectId: string,
 		assetId: string,
 		bytes: Uint8Array,
 		request: ImageRepairRequest,
-		signal?: AbortSignal
+		signal?: AbortSignal,
 	): Promise<ImageRepairAcknowledgement>;
 };
 
 export function createProjectApi(
 	config: ProjectPersistenceConfig,
-	fetchImpl?: FetchLike
+	fetchImpl?: FetchLike,
 ): ProjectApi | null {
 	const origin = normalizeApiOrigin(config.apiOrigin ?? '');
 	if (!origin) return null;
 	const requestFetch = fetchImpl ?? config.fetch ?? globalThis.fetch?.bind(globalThis);
-	if (!requestFetch) throw new ProjectPersistenceError('configuration', 'Cloud requests are unavailable');
+	if (!requestFetch)
+		throw new ProjectPersistenceError('configuration', 'Cloud requests are unavailable');
 
 	return {
 		listProjects: (signal) =>
-			requestJson(requestFetch, origin, '/projects', { method: 'GET' }, signal).then(readProjectList),
+			requestJson(requestFetch, origin, '/projects', { method: 'GET' }, signal).then(
+				readProjectList,
+			),
 		saveAcceptedSource: (request, signal) => {
 			const body = perfMeasureSync('save.request-json', () => JSON.stringify(request));
 			return requestJson(
@@ -197,11 +216,14 @@ export function createProjectApi(
 				`/projects/${encodeURIComponent(request.capture.projectId)}`,
 				{ method: 'PUT', body },
 				signal,
-				() => perfMark('save:request', {
-					projectId: request.capture.projectId,
-					operationId: request.capture.operationId
-				})
-			).then((value) => perfMeasureSync('save.acknowledgement-decode', () => readSaveAcknowledgement(value)));
+				() =>
+					perfMark('save:request', {
+						projectId: request.capture.projectId,
+						operationId: request.capture.operationId,
+					}),
+			).then((value) =>
+				perfMeasureSync('save.acknowledgement-decode', () => readSaveAcknowledgement(value)),
+			);
 		},
 		renameProject: (projectId, request, signal) =>
 			requestJson(
@@ -209,7 +231,7 @@ export function createProjectApi(
 				origin,
 				`/projects/${encodeURIComponent(projectId)}`,
 				{ method: 'PATCH', body: JSON.stringify(request) },
-				signal
+				signal,
 			)
 				.then(readSaveAcknowledgement)
 				.then((acknowledgement) => {
@@ -227,7 +249,7 @@ export function createProjectApi(
 				origin,
 				`/projects/${encodeURIComponent(projectId)}`,
 				{ method: 'DELETE', body: JSON.stringify(request) },
-				signal
+				signal,
 			)
 				.then(readDeleteAcknowledgement)
 				.then((acknowledgement) => {
@@ -240,7 +262,7 @@ export function createProjectApi(
 				origin,
 				`/projects/${encodeURIComponent(projectId)}/publication`,
 				{ method: 'GET' },
-				signal
+				signal,
 			).then(readPublicationStatus),
 		loadProject: (projectId, signal) =>
 			requestJson(
@@ -248,23 +270,19 @@ export function createProjectApi(
 				origin,
 				`/projects/${encodeURIComponent(projectId)}`,
 				{ method: 'GET' },
-				signal
+				signal,
 			).then(readLoadedProject),
 		listAssets: (projectId, signal) =>
-			requestJson(
-				requestFetch,
-				origin,
-				`${assetPath(projectId)}`,
-				{ method: 'GET' },
-				signal
-			).then(readAssetList),
+			requestJson(requestFetch, origin, `${assetPath(projectId)}`, { method: 'GET' }, signal).then(
+				readAssetList,
+			),
 		registerAsset: (projectId, name, signal) =>
 			requestJson(
 				requestFetch,
 				origin,
 				`${assetPath(projectId)}`,
 				{ method: 'POST', body: JSON.stringify({ name }) },
-				signal
+				signal,
 			).then(readAssetMetadata),
 		uploadAsset: (projectId, assetId, bytes, signal) =>
 			requestAssetUpload(
@@ -272,7 +290,7 @@ export function createProjectApi(
 				origin,
 				`${assetPath(projectId)}/${encodeURIComponent(assetId)}/content`,
 				bytes,
-				signal
+				signal,
 			).then(readAssetMetadata),
 		loadAssetContent: (projectId, assetId, signal) =>
 			requestAssetBytes(
@@ -280,21 +298,21 @@ export function createProjectApi(
 				origin,
 				`${assetPath(projectId)}/${encodeURIComponent(assetId)}/content`,
 				{ method: 'GET' },
-				signal
+				signal,
 			),
 		repairAsset: (projectId, assetId, bytes, request, signal) => {
 			const query = new URLSearchParams({
 				expectedPin: request.expectedPin,
-				savedBase: request.savedBaseToken
+				savedBase: request.savedBaseToken,
 			});
 			return requestAssetUpload(
 				requestFetch,
 				origin,
 				`${assetPath(projectId)}/${encodeURIComponent(assetId)}/repair?${query.toString()}`,
 				bytes,
-				signal
+				signal,
 			).then(readImageRepairAcknowledgement);
-		}
+		},
 	};
 }
 
@@ -307,7 +325,7 @@ export type ProjectFingerprint = {
 export function projectFingerprint(
 	sceneCanonicalJson: string,
 	layoutCanonicalJson: string,
-	projectName: string
+	projectName: string,
 ): ProjectFingerprint {
 	return { sceneCanonicalJson, layoutCanonicalJson, projectName };
 }
@@ -334,7 +352,7 @@ async function requestJson(
 	path: string,
 	init: RequestInit,
 	signal?: AbortSignal,
-	onBeforeFetch?: () => void
+	onBeforeFetch?: () => void,
 ): Promise<unknown> {
 	let response: Response;
 	try {
@@ -347,13 +365,15 @@ async function requestJson(
 				headers: {
 					Accept: 'application/json',
 					...(init.body === undefined ? {} : { 'Content-Type': 'application/json' }),
-					...(init.headers ?? {})
-				}
+					...(init.headers ?? {}),
+				},
 			};
 			onBeforeFetch?.();
 			return fetchImpl(url, request);
 		};
-		const pendingResponse = onBeforeFetch ? perfMeasureSync('save.request-dispatch', dispatch) : dispatch();
+		const pendingResponse = onBeforeFetch
+			? perfMeasureSync('save.request-dispatch', dispatch)
+			: dispatch();
 		response = await pendingResponse;
 	} catch (error) {
 		if (isAbort(error, signal)) throw error;
@@ -377,7 +397,7 @@ async function requestAssetUpload(
 	origin: string,
 	path: string,
 	bytes: Uint8Array,
-	signal?: AbortSignal
+	signal?: AbortSignal,
 ): Promise<unknown> {
 	let response: Response;
 	try {
@@ -388,8 +408,8 @@ async function requestAssetUpload(
 			signal,
 			headers: {
 				Accept: 'application/json',
-				'Content-Type': 'application/octet-stream'
-			}
+				'Content-Type': 'application/octet-stream',
+			},
 		});
 	} catch (error) {
 		if (isAbort(error, signal)) throw error;
@@ -413,7 +433,7 @@ async function requestAssetBytes(
 	origin: string,
 	path: string,
 	init: RequestInit,
-	signal?: AbortSignal
+	signal?: AbortSignal,
 ): Promise<ProjectAssetContent> {
 	let response: Response;
 	try {
@@ -423,8 +443,8 @@ async function requestAssetBytes(
 			signal,
 			headers: {
 				Accept: 'image/png, image/webp, image/jpeg',
-				...(init.headers ?? {})
-			}
+				...(init.headers ?? {}),
+			},
 		});
 	} catch (error) {
 		if (isAbort(error, signal)) throw error;
@@ -462,7 +482,10 @@ function readAssetContentLength(value: string | null): number {
 	return length;
 }
 
-async function readBoundedAssetBody(response: Response, expectedLength: number): Promise<Uint8Array> {
+async function readBoundedAssetBody(
+	response: Response,
+	expectedLength: number,
+): Promise<Uint8Array> {
 	if (!response.body) throw invalidResponse();
 	const reader = response.body.getReader();
 	const chunks: Uint8Array[] = [];
@@ -502,9 +525,10 @@ function responseError(status: number, body: unknown): ProjectPersistenceError {
 	if (serverCode === 'project-busy' || serverCode === 'project_busy') {
 		return new ProjectPersistenceError(
 			'project-busy',
-			readErrorMessage(body) ?? 'Project cleanup is blocked by an active write; retry after it stops',
+			readErrorMessage(body) ??
+				'Project cleanup is blocked by an active write; retry after it stops',
 			status,
-			serverCode
+			serverCode,
 		);
 	}
 	if (serverCode === 'unpublish-first') {
@@ -512,32 +536,63 @@ function responseError(status: number, body: unknown): ProjectPersistenceError {
 			'unpublish-first',
 			readErrorMessage(body) ?? 'Unpublish this project before deleting it',
 			status,
-			serverCode
+			serverCode,
 		);
 	}
-	if (status === 401) return new ProjectPersistenceError('auth', 'Sign-in is required', status, serverCode);
-	if (status === 404) return new ProjectPersistenceError('not-found', 'Project not found', status, serverCode);
-	if (status === 413) return new ProjectPersistenceError('too-large', 'Project payload is too large', status, serverCode);
+	if (status === 401)
+		return new ProjectPersistenceError('auth', 'Sign-in is required', status, serverCode);
+	if (status === 404)
+		return new ProjectPersistenceError('not-found', 'Project not found', status, serverCode);
+	if (status === 413)
+		return new ProjectPersistenceError(
+			'too-large',
+			'Project payload is too large',
+			status,
+			serverCode,
+		);
 	// A gateway timeout is the ambiguous case the receipt protocol exists for: the
 	// server may have committed the Save, so the caller must retry the *same*
 	// captured operation and let its receipt decide instead of minting a fresh one
 	// from a base that has already moved. A throttle is the unambiguous twin: the
 	// write was not applied, and the same capture is still safe to resend.
-	if (status === 408) return new ProjectPersistenceError('network', 'Cloud request timed out', status, serverCode);
-	if (status === 429) return new ProjectPersistenceError('network', 'Cloud request was throttled', status, serverCode);
-	if (status >= 500) return new ProjectPersistenceError('server', 'Cloud service is unavailable', status, serverCode);
+	if (status === 408)
+		return new ProjectPersistenceError('network', 'Cloud request timed out', status, serverCode);
+	if (status === 429)
+		return new ProjectPersistenceError(
+			'network',
+			'Cloud request was throttled',
+			status,
+			serverCode,
+		);
+	if (status >= 500)
+		return new ProjectPersistenceError(
+			'server',
+			'Cloud service is unavailable',
+			status,
+			serverCode,
+		);
 	if (status === 409 && serverCode === 'conflict') {
-		return new ProjectPersistenceError('conflict', 'The saved base changed; reload before saving', status, serverCode);
+		return new ProjectPersistenceError(
+			'conflict',
+			'The saved base changed; reload before saving',
+			status,
+			serverCode,
+		);
 	}
 	if (status === 409 && serverCode === 'save_collision') {
-		return new ProjectPersistenceError('collision', 'A project with this ID already exists', status, serverCode);
+		return new ProjectPersistenceError(
+			'collision',
+			'A project with this ID already exists',
+			status,
+			serverCode,
+		);
 	}
 	return new ProjectPersistenceError(
 		'invalid',
 		readErrorMessage(body) ?? 'Cloud request was rejected',
 		status,
 		serverCode,
-		issues
+		issues,
 	);
 }
 
@@ -554,11 +609,7 @@ function readProjectList(value: unknown): ProjectSummary[] {
 }
 
 function readAssetList(value: unknown): ProjectAssetMetadata[] {
-	if (
-		!isRecord(value) ||
-		Object.keys(value).length !== 1 ||
-		!Array.isArray(value.assets)
-	) {
+	if (!isRecord(value) || Object.keys(value).length !== 1 || !Array.isArray(value.assets)) {
 		throw invalidResponse();
 	}
 	return value.assets.map(readAssetMetadata);
@@ -577,7 +628,7 @@ const PROJECT_ASSET_METADATA_KEYS = [
 	'sha256',
 	'importState',
 	'createdAt',
-	'updatedAt'
+	'updatedAt',
 ] as const;
 
 function readAssetMetadata(value: unknown): ProjectAssetMetadata {
@@ -601,7 +652,7 @@ function readAssetMetadata(value: unknown): ProjectAssetMetadata {
 		sha256: readNullableSha256(value.sha256),
 		importState: readEnum(value.importState, ['pending', 'ready', 'failed']),
 		createdAt: readString(value.createdAt),
-		updatedAt: readString(value.updatedAt)
+		updatedAt: readString(value.updatedAt),
 	};
 }
 
@@ -611,7 +662,7 @@ function readSavedProject(value: unknown): SavedProject {
 		projectId: readString(value.projectId),
 		name: readString(value.name),
 		version: readVersion(value.version),
-		updatedAt: readString(value.updatedAt)
+		updatedAt: readString(value.updatedAt),
 	};
 }
 
@@ -624,7 +675,7 @@ function readSaveAcknowledgement(value: unknown): SaveAcknowledgement {
 		...saved,
 		savedBaseToken,
 		savedRevision: readRevision(value.savedRevision),
-		sourceContentId: readContentId(value.sourceContentId)
+		sourceContentId: readContentId(value.sourceContentId),
 	};
 }
 
@@ -632,7 +683,7 @@ function readDeleteAcknowledgement(value: unknown): DeleteProjectAcknowledgement
 	if (!isRecord(value)) throw invalidResponse();
 	return {
 		projectId: readString(value.projectId),
-		cleanup: readEnum(value.cleanup, ['complete', 'pending'])
+		cleanup: readEnum(value.cleanup, ['complete', 'pending']),
 	};
 }
 
@@ -655,9 +706,9 @@ function readImageRepairAcknowledgement(value: unknown): ImageRepairAcknowledgem
 		pin: {
 			hash: readContentId(value.pin.hash),
 			mime: readAssetMime(value.pin.mime as string | null),
-			size: readNullableAssetByteSize(value.pin.size) as number
+			size: readNullableAssetByteSize(value.pin.size) as number,
 		},
-		replaced: value.replaced
+		replaced: value.replaced,
 	};
 }
 
@@ -670,13 +721,24 @@ function readLoadedProject(value: unknown): LoadedProject {
 		document: value.document,
 		savedBaseToken: readNullableSavedBaseToken(value.savedBaseToken),
 		savedRevision: readNullableRevision(value.savedRevision),
-		savedSourceContentId: readNullableContentId(value.savedSourceContentId)
+		savedSourceContentId: readNullableContentId(value.savedSourceContentId),
 	};
 }
 
 function readPublicationStatus(value: unknown): ProjectPublicationStatus {
-	const keys = ['publicationId', 'activeVersion', 'revision', 'currentVersion', 'createdAt', 'updatedAt'] as const;
-	if (!isRecord(value) || Object.keys(value).length !== keys.length || keys.some((key) => !(key in value))) {
+	const keys = [
+		'publicationId',
+		'activeVersion',
+		'revision',
+		'currentVersion',
+		'createdAt',
+		'updatedAt',
+	] as const;
+	if (
+		!isRecord(value) ||
+		Object.keys(value).length !== keys.length ||
+		keys.some((key) => !(key in value))
+	) {
 		throw invalidResponse();
 	}
 	return {
@@ -685,7 +747,7 @@ function readPublicationStatus(value: unknown): ProjectPublicationStatus {
 		revision: readVersion(value.revision),
 		currentVersion: readVersion(value.currentVersion),
 		createdAt: readNullableString(value.createdAt),
-		updatedAt: readNullableString(value.updatedAt)
+		updatedAt: readNullableString(value.updatedAt),
 	};
 }
 
@@ -721,12 +783,13 @@ function readSummary(value: unknown): ProjectSummary {
 		id: readString(value.id),
 		name: readString(value.name),
 		version: readVersion(value.version),
-		updatedAt: readString(value.updatedAt)
+		updatedAt: readString(value.updatedAt),
 	};
 }
 
 function readVersion(value: unknown): number {
-	if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) throw invalidResponse();
+	if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0)
+		throw invalidResponse();
 	return value;
 }
 
@@ -741,7 +804,10 @@ function readAssetId(value: unknown): string {
 	return id;
 }
 
-function readEnum<const Values extends readonly string[]>(value: unknown, values: Values): Values[number] {
+function readEnum<const Values extends readonly string[]>(
+	value: unknown,
+	values: Values,
+): Values[number] {
 	if (typeof value !== 'string' || !values.includes(value)) throw invalidResponse();
 	return value as Values[number];
 }
@@ -753,7 +819,7 @@ function readNullableString(value: unknown): string | null {
 
 function readNullableEnum<const Values extends readonly string[]>(
 	value: unknown,
-	values: Values
+	values: Values,
 ): Values[number] | null {
 	if (value === null) return null;
 	return readEnum(value, values);
@@ -798,20 +864,29 @@ function invalidResponse(): ProjectPersistenceError {
 }
 
 function readErrorMessage(value: unknown): string | null {
-	if (!isRecord(value) || !isRecord(value.error) || typeof value.error.message !== 'string') return null;
+	if (!isRecord(value) || !isRecord(value.error) || typeof value.error.message !== 'string')
+		return null;
 	return value.error.message;
 }
 
 function readErrorCode(value: unknown): string | undefined {
-	if (!isRecord(value) || !isRecord(value.error) || typeof value.error.code !== 'string') return undefined;
+	if (!isRecord(value) || !isRecord(value.error) || typeof value.error.code !== 'string')
+		return undefined;
 	return value.error.code;
 }
 
-function readErrorIssues(value: unknown): { path: string; code: string; message: string }[] | undefined {
+function readErrorIssues(
+	value: unknown,
+): { path: string; code: string; message: string }[] | undefined {
 	if (!isRecord(value) || !Array.isArray(value.issues)) return undefined;
 	const issues: { path: string; code: string; message: string }[] = [];
 	for (const issue of value.issues) {
-		if (!isRecord(issue) || typeof issue.path !== 'string' || typeof issue.code !== 'string' || typeof issue.message !== 'string') {
+		if (
+			!isRecord(issue) ||
+			typeof issue.path !== 'string' ||
+			typeof issue.code !== 'string' ||
+			typeof issue.message !== 'string'
+		) {
 			return undefined;
 		}
 		issues.push({ path: issue.path, code: issue.code, message: issue.message });

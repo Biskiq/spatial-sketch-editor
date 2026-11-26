@@ -22,7 +22,7 @@ import {
 	wallUnfoldNormaliseStation,
 	wallUnfoldOpeningAtStation,
 	wallUnfoldSideAngle,
-	type WallUnfoldState
+	type WallUnfoldState,
 } from '$lib/layout/wall-unfold';
 import type { WallUnfoldPick } from '$lib/layout/wall-unfold-pick';
 
@@ -41,9 +41,9 @@ const DEFAULT_ENTRY = {
 		target: [0, 0, 0] as [number, number, number],
 		azimuthRadians: 0,
 		elevationRadians: Math.PI / 4,
-		targetPlaneHeightMeters: 12
+		targetPlaneHeightMeters: 12,
 	},
-	reading: '3d' as const
+	reading: '3d' as const,
 };
 
 /** The declared camera transition, mirrored here only to time the sheet fold. */
@@ -62,7 +62,9 @@ class WallUnfoldStore {
 	 */
 	presentationAngle = $state(0);
 	/** The last pointer pick, session-only: it is evidence, never authored data. */
-	lastPick = $state<(WallUnfoldPick & { readonly pointerId: number; readonly sequence: number }) | null>(null);
+	lastPick = $state<
+		(WallUnfoldPick & { readonly pointerId: number; readonly sequence: number }) | null
+	>(null);
 	/** The Opening under the pin, or `null` when the pin rests on solid Wall. */
 	pinnedOpeningId = $state<string | null>(null);
 	/**
@@ -128,7 +130,7 @@ class WallUnfoldStore {
 			readonly floorY?: number;
 			readonly straight?: boolean;
 			readonly pinnedOpeningId?: string | null;
-		} = {}
+		} = {},
 	): void {
 		this.lastPick = null;
 		this.previewOpening = null;
@@ -146,12 +148,13 @@ class WallUnfoldStore {
 			// than inside an Opening's void.
 			openings: wall.openings.map((opening) => ({
 				start: opening.offset,
-				end: opening.offset + opening.width
-			}))
+				end: opening.offset + opening.width,
+			})),
 		});
 		this.state = state;
 		this.anchorsByWall = { ...this.anchorsByWall, [wall.wallId]: state.anchorStation };
-		this.pinnedOpeningId = options.pinnedOpeningId ?? wallUnfoldOpeningAtStation(wall, state.anchorStation);
+		this.pinnedOpeningId =
+			options.pinnedOpeningId ?? wallUnfoldOpeningAtStation(wall, state.anchorStation);
 		this.#cancelSideFrame();
 		this.presentationAngle = wallUnfoldSideAngle(state.side);
 		// Entry changes no Camera at all: no fit, no orientation change. The
@@ -166,12 +169,14 @@ class WallUnfoldStore {
 		this.animateTo(wall, 1);
 	}
 
-	setOpeningPreview(preview: {
-		readonly wallId: string;
-		readonly openingId: string;
-		readonly offset: number;
-		readonly width: number;
-	} | null): void {
+	setOpeningPreview(
+		preview: {
+			readonly wallId: string;
+			readonly openingId: string;
+			readonly offset: number;
+			readonly width: number;
+		} | null,
+	): void {
 		this.previewOpening = preview;
 	}
 
@@ -249,7 +254,8 @@ class WallUnfoldStore {
 	#animateSide(side: 1 | -1): void {
 		this.#cancelSideFrame();
 		const target = this.#sideTarget(side);
-		const reducedMotion = typeof window !== 'undefined' &&
+		const reducedMotion =
+			typeof window !== 'undefined' &&
 			typeof window.matchMedia === 'function' &&
 			window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 		if (reducedMotion || typeof requestAnimationFrame !== 'function') {
@@ -289,7 +295,8 @@ class WallUnfoldStore {
 
 	private animateTo(wall: CompiledPhysicalWall, target: 1 | 0, after?: () => void): void {
 		this.#cancelFrame();
-		const reducedMotion = typeof window !== 'undefined' &&
+		const reducedMotion =
+			typeof window !== 'undefined' &&
 			typeof window.matchMedia === 'function' &&
 			window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 		if (reducedMotion || typeof requestAnimationFrame !== 'function') {
@@ -332,7 +339,7 @@ class WallUnfoldStore {
 			pose: state.entry.pose,
 			reading: state.entry.reading,
 			entryAdjusted: state.entryAdjusted === true,
-			settled: state.settled ?? null
+			settled: state.settled ?? null,
 		});
 	}
 

@@ -36,7 +36,7 @@ export function studioProjectUrl(projectId: string, flags: StudioProjectFlags = 
 		flags.load === true ? 'load=1' : '',
 		`${STUDIO_ENTRY_PARAM}=${STUDIO_ENTRY_VALUE}`,
 		flags.object ? `${STUDIO_OBJECT_PARAM}=${encodeURIComponent(flags.object)}` : '',
-		flags.copy ? `${STUDIO_COPY_PARAM}=${encodeURIComponent(flags.copy)}` : ''
+		flags.copy ? `${STUDIO_COPY_PARAM}=${encodeURIComponent(flags.copy)}` : '',
 	].filter((part) => part !== '');
 	return `/project/${encodeURIComponent(projectId)}/spatial?${query.join('&')}`;
 }
@@ -67,7 +67,7 @@ export function studioEntryFromSearch(search: URLSearchParams): StudioEntryReque
 	return {
 		studio,
 		objectId: studio && object !== null && object !== '' ? object : null,
-		copyId: studio && copy !== null && copy !== '' ? copy : null
+		copyId: studio && copy !== null && copy !== '' ? copy : null,
 	};
 }
 

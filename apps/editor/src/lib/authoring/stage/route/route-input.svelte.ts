@@ -1,7 +1,9 @@
 import { placeCopyFromSearch, studioEntryFromSearch } from '$lib/platform/studio-entry';
 import { bootIntentFromSearch } from '../boot-state';
 
-export function createRouteInput(page: () => { readonly params: Record<string, string | undefined>; readonly url: URL }) {
+export function createRouteInput(
+	page: () => { readonly params: Record<string, string | undefined>; readonly url: URL },
+) {
 	const current = page();
 	const search = current.url.searchParams;
 
@@ -18,6 +20,6 @@ export function createRouteInput(page: () => { readonly params: Record<string, s
 		intent: bootIntentFromSearch(search),
 		studioEntry: studioEntryFromSearch(search),
 		placeCopyItem: placeCopyFromSearch(search),
-		url
+		url,
 	};
 }

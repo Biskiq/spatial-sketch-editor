@@ -8,7 +8,9 @@ type FinishesInput = Parameters<typeof createFinishAuthoring>[0];
  * The retry projection reads the authority's own open issues, so it belongs
  * beside the construction rather than in the feature entry.
  */
-export function createAppearanceFinishAuthority(input: Omit<FinishesInput, 'retryTextures'>): FinishAuthoring {
+export function createAppearanceFinishAuthority(
+	input: Omit<FinishesInput, 'retryTextures'>,
+): FinishAuthoring {
 	let finishes!: FinishAuthoring;
 	finishes = createFinishAuthoring({
 		...input,
@@ -16,7 +18,7 @@ export function createAppearanceFinishAuthority(input: Omit<FinishesInput, 'retr
 			for (const issue of finishes.issues.open) {
 				if (issue.assetId !== null) input.retryTexture?.(`project-asset://${issue.assetId}`);
 			}
-		}
+		},
 	});
 	return finishes;
 }

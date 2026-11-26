@@ -14,7 +14,7 @@
 import {
 	getCameraConnectionRoute,
 	getCameraMotionOptions,
-	type ResolvedCameraRoute
+	type ResolvedCameraRoute,
 } from './camera-route';
 import type { CameraMotionOptions, CameraPose } from './camera-motion';
 import type { CameraGraph } from './navigation';
@@ -68,7 +68,7 @@ function findStop(program: ExperienceControlProgram, stopId: string): Experience
 function previousStop(
 	program: ExperienceControlProgram,
 	stopId: string,
-	fromStopId: string | undefined
+	fromStopId: string | undefined,
 ): ExperienceControlStop | null {
 	if (fromStopId !== undefined) return findStop(program, fromStopId);
 	const index = program.stops.findIndex((stop) => stop.stopId === stopId);
@@ -86,11 +86,17 @@ export function guidedIntent(
 	program: ExperienceControlProgram,
 	graph: CameraGraph,
 	stopId: string,
-	fromStopId?: string
+	fromStopId?: string,
 ): GuidedCameraIntent {
 	const stop = findStop(program, stopId);
 	if (stop === null) {
-		return { kind: 'gap', stopId, fromViewId: null, toViewId: '', message: `no Stop "${stopId}" is declared` };
+		return {
+			kind: 'gap',
+			stopId,
+			fromViewId: null,
+			toViewId: '',
+			message: `no Stop "${stopId}" is declared`,
+		};
 	}
 	if (stop.invocation.kind === 'cut') {
 		return {
@@ -99,7 +105,7 @@ export function guidedIntent(
 			viewId: stop.invocation.viewId,
 			holdSeconds: stop.holdSeconds,
 			route: null,
-			motionOptions: null
+			motionOptions: null,
 		};
 	}
 	const previous = previousStop(program, stopId, fromStopId);
@@ -107,14 +113,16 @@ export function guidedIntent(
 	// Destructured after the Cut branch: the narrowing must not be lost inside
 	// the find callback below.
 	const invocation = stop.invocation;
-	const connection = graph.connections.find((candidate) => candidate.id === invocation.connectionId);
+	const connection = graph.connections.find(
+		(candidate) => candidate.id === invocation.connectionId,
+	);
 	if (connection === undefined) {
 		return {
 			kind: 'gap',
 			stopId,
 			fromViewId,
 			toViewId: stop.viewId,
-			message: `Travel over connection "${invocation.connectionId}" has no Camera connection`
+			message: `Travel over connection "${invocation.connectionId}" has no Camera connection`,
 		};
 	}
 	const forward = connection.fromNodeId === fromViewId && connection.toNodeId === stop.viewId;
@@ -128,7 +136,7 @@ export function guidedIntent(
 			message:
 				fromViewId === null
 					? 'Travel needs a previous occurrence View'
-					: `connection "${connection.id}" joins "${connection.fromNodeId}" and "${connection.toNodeId}", not "${fromViewId}" and "${stop.viewId}"`
+					: `connection "${connection.id}" joins "${connection.fromNodeId}" and "${connection.toNodeId}", not "${fromViewId}" and "${stop.viewId}"`,
 		};
 	}
 	const direction: CameraConnectionDirection = forward ? 'forward' : 'reverse';
@@ -140,7 +148,7 @@ export function guidedIntent(
 			direction,
 			holdSeconds: stop.holdSeconds,
 			route: getCameraConnectionRoute(connection.id, direction, graph),
-			motionOptions: getCameraMotionOptions(connection, direction)
+			motionOptions: getCameraMotionOptions(connection, direction),
 		};
 	} catch (error) {
 		return {
@@ -148,7 +156,7 @@ export function guidedIntent(
 			stopId,
 			fromViewId,
 			toViewId: stop.viewId,
-			message: error instanceof Error ? error.message : 'the Camera route could not be resolved'
+			message: error instanceof Error ? error.message : 'the Camera route could not be resolved',
 		};
 	}
 }
@@ -161,11 +169,11 @@ export type GuidedController = {
 /** Guided travel: the ordered program, evaluated through the Camera authority. */
 export function createGuidedController(
 	program: ExperienceControlProgram,
-	graph: CameraGraph
+	graph: CameraGraph,
 ): GuidedController {
 	return {
 		ownership: 'guided-navigation',
-		intentFor: (stopId, fromStopId) => guidedIntent(program, graph, stopId, fromStopId)
+		intentFor: (stopId, fromStopId) => guidedIntent(program, graph, stopId, fromStopId),
 	};
 }
 
@@ -203,9 +211,9 @@ export function createFreeController(program: ExperienceControlProgram): FreeCon
 				viewId: stop.viewId,
 				fromPose,
 				autoplay: 'paused',
-				ownership: 'free-navigation'
+				ownership: 'free-navigation',
 			};
-		}
+		},
 	};
 }
 
@@ -227,7 +235,9 @@ export type ReducedMotionController = {
  * every invocation resolves to a Cut of the target View, and no Travel is played.
  * The preference cannot be disabled by the visitor profile (AM-6 requires it).
  */
-export function createReducedMotionController(program: ExperienceControlProgram): ReducedMotionController {
+export function createReducedMotionController(
+	program: ExperienceControlProgram,
+): ReducedMotionController {
 	return {
 		ownership: 'guided-navigation',
 		travel: 'disabled',
@@ -236,6 +246,6 @@ export function createReducedMotionController(program: ExperienceControlProgram)
 			return stop === null
 				? null
 				: { kind: 'cut', stopId, viewId: stop.viewId, reducedMotion: true };
-		}
+		},
 	};
 }

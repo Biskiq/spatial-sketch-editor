@@ -49,23 +49,20 @@ import { loadEffectiveTextures, type TextureLoadScope } from './resources/textur
 import {
 	acquireFinishViews,
 	type FinishViewGeneration,
-	type FinishViewLease
+	type FinishViewLease,
 } from './resources/finish-views';
-import {
-	classifyFinishViewIssues,
-	type FinishOutcomeSink
-} from './resources/finish-outcome-sink';
+import { classifyFinishViewIssues, type FinishOutcomeSink } from './resources/finish-outcome-sink';
 import {
 	createArrivalGate,
 	modelLookFor,
 	nextModelEntityId,
 	texturesReady,
-	type ArrivalGate
+	type ArrivalGate,
 } from './models/model-presentation';
 import type {
 	ModelRealization,
 	ModelRealizationOptions,
-	ModelStyle
+	ModelStyle,
 } from './models/model-realization';
 
 /**
@@ -118,7 +115,10 @@ export type ModelTemplateLoader = {
 export type SceneModelSupport = {
 	createLoader(): ModelTemplateLoader;
 	realize(template: Object3D, options: ModelRealizationOptions): ModelRealization;
-	inspect(root: Object3D, animationNames: readonly string[]): { bounds: Box3; metrics: SceneModelMetrics };
+	inspect(
+		root: Object3D,
+		animationNames: readonly string[],
+	): { bounds: Box3; metrics: SceneModelMetrics };
 };
 
 export type SceneModelStatus = 'loading' | 'ready' | 'failed' | 'fallback';
@@ -259,7 +259,7 @@ function drawnFlags(item: SceneModelItem): string {
 }
 
 export function createSceneModelRepresentation(
-	options: SceneModelRepresentationOptions
+	options: SceneModelRepresentationOptions,
 ): SceneModelRepresentation {
 	const object3d = new Group();
 	object3d.name = 'SceneModels';
@@ -364,24 +364,21 @@ export function createSceneModelRepresentation(
 		current: Arrival,
 		look: Presentation,
 		textured: boolean,
-		views: FinishViewLease | null = null
+		views: FinishViewLease | null = null,
 	): void {
-		if (!entry.gate.accepts(current.token)) { views?.release(); return; }
+		if (!entry.gate.accepts(current.token)) {
+			views?.release();
+			return;
+		}
 		const style: ModelStyle = {
 			look:
 				look.look === null
 					? null
-					: modelLookFor(
-							look.look,
-							look.scope,
-							textured,
-							look.look.finish,
-							views?.views
-						),
+					: modelLookFor(look.look, look.scope, textured, look.look.finish, views?.views),
 			...(look.treatment === undefined ? {} : { treatment: look.treatment }),
 			wireframe: look.wireframe,
 			castShadow: look.castShadow,
-			receiveShadow: look.receiveShadow
+			receiveShadow: look.receiveShadow,
 		};
 		entry.textured = textured;
 		// View ids survive a Retry or a new pin; the textures under them do not.
@@ -391,7 +388,7 @@ export function createSceneModelRepresentation(
 			const next = current.support.realize(current.template, {
 				asset: current.url,
 				store: options.store,
-				...style
+				...style,
 			});
 			const inspection = current.support.inspect(next.root, current.animationNames);
 			entry.realization = next;
@@ -404,7 +401,7 @@ export function createSceneModelRepresentation(
 				status: 'ready',
 				metrics: inspection.metrics,
 				bounds: inspection.bounds,
-				animationNames: current.animationNames
+				animationNames: current.animationNames,
 			});
 			options.casters.publish({ kind: 'arrived', entity: entry.caster });
 			options.onDrawn?.(entry.id);
@@ -435,7 +432,7 @@ export function createSceneModelRepresentation(
 			scope: entry.scope,
 			wireframe: entry.item.wireframe,
 			castShadow: entry.item.castShadow,
-			receiveShadow: entry.item.receiveShadow
+			receiveShadow: entry.item.receiveShadow,
 		};
 		entry.generation += 1;
 		entry.textured = false;
@@ -453,14 +450,19 @@ export function createSceneModelRepresentation(
 			entry.controller = controller;
 			const targetKey = `entity:${entry.id}`;
 			if (active.finishKey !== undefined) {
-				options.onFinishOutcome?.({ targetKey, finishKey: active.finishKey, state: 'pending', issues: [] });
+				options.onFinishOutcome?.({
+					targetKey,
+					finishKey: active.finishKey,
+					state: 'pending',
+					issues: [],
+				});
 			}
 			track(
 				acquireFinishViews(
 					active.views ?? [],
 					look.scope,
 					controller.signal,
-					options.viewGeneration?.() ?? undefined
+					options.viewGeneration?.() ?? undefined,
 				)
 					.then((lease) => {
 						if (entry.controller === controller) entry.controller = null;
@@ -469,17 +471,19 @@ export function createSceneModelRepresentation(
 							return;
 						}
 						const named = new Set((active.views ?? []).map((source) => source.view));
-						const complete = lease.issues.length === 0 && Object.keys(lease.views).length === named.size;
+						const complete =
+							lease.issues.length === 0 && Object.keys(lease.views).length === named.size;
 						if (active.finishKey !== undefined) {
 							options.onFinishOutcome?.({
 								targetKey,
 								finishKey: active.finishKey,
 								state: classifyFinishViewIssues(lease.issues, complete),
-								issues: lease.issues
+								issues: lease.issues,
 							});
 						}
 						if (!complete && import.meta.env.DEV) {
-							for (const issue of lease.issues) console.warn(`[scene-model] ${entry.id}: ${issue.code}`, issue);
+							for (const issue of lease.issues)
+								console.warn(`[scene-model] ${entry.id}: ${issue.code}`, issue);
 						}
 						try {
 							show(entry, current, look, complete, complete ? lease : null);
@@ -490,7 +494,7 @@ export function createSceneModelRepresentation(
 							if (!complete) lease.release();
 						}
 					})
-					.catch(() => undefined)
+					.catch(() => undefined),
 			);
 			return;
 		}
@@ -501,7 +505,7 @@ export function createSceneModelRepresentation(
 				.then((result) => {
 					if (disposed || id !== entry.generation) return;
 					show(entry, current, look, texturesReady(result));
-				})
+				}),
 		);
 	}
 
@@ -520,7 +524,7 @@ export function createSceneModelRepresentation(
 						url,
 						support,
 						template: loaded.template,
-						animationNames: loaded.animationNames
+						animationNames: loaded.animationNames,
 					};
 					present(entry);
 				},
@@ -531,8 +535,8 @@ export function createSceneModelRepresentation(
 					if (import.meta.env.DEV) {
 						console.warn(`[scene-model] Failed to load ${entry.item.assetId} from ${url}`, error);
 					}
-				}
-			)
+				},
+			),
 		);
 	}
 
@@ -549,7 +553,10 @@ export function createSceneModelRepresentation(
 		return true;
 	}
 
-	function sourceOf(item: SceneModelItem, context: SceneModelContext): { key: string; url: string | null } {
+	function sourceOf(
+		item: SceneModelItem,
+		context: SceneModelContext,
+	): { key: string; url: string | null } {
 		const url = context.urls?.get(item.assetId) ?? item.catalogueUrl;
 		return { key: `${item.sourceKey}|${url ?? '-'}`, url };
 	}
@@ -589,7 +596,7 @@ export function createSceneModelRepresentation(
 			shown: null,
 			textured: false,
 			state: { status: source.url === null ? 'fallback' : 'loading' },
-			unregister: null
+			unregister: null,
 		};
 		place(entry, item);
 		presentation.rotation.set(...item.presentation.rotation);
@@ -630,7 +637,7 @@ export function createSceneModelRepresentation(
 					refallbacked: 0,
 					restyled: 0,
 					loads: 0,
-					released: 0
+					released: 0,
 				};
 			}
 			previous = { items, context };
@@ -705,7 +712,17 @@ export function createSceneModelRepresentation(
 				released += 1;
 			}
 
-			return { items: entries.size, built, kept, moved, replaced, refallbacked, restyled, loads, released };
+			return {
+				items: entries.size,
+				built,
+				kept,
+				moved,
+				replaced,
+				refallbacked,
+				restyled,
+				loads,
+				released,
+			};
 		},
 
 		objectOf(id) {
@@ -744,6 +761,6 @@ export function createSceneModelRepresentation(
 			// After every instance is released: the templates are no longer drawn.
 			loader?.dispose();
 			loader = null;
-		}
+		},
 	};
 }

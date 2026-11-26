@@ -18,21 +18,16 @@
  */
 import { inkSurface } from '../../adapters/layout/ink';
 import { type PlanEvaluation } from '@portfolio/layout-core/world';
-import type { StageCardActionRecord, StageFacade, } from '../stage-facade';
+import type { StageCardActionRecord, StageFacade } from '../stage-facade';
 import type { StageSession, StageTask } from '../stage-session';
 import { type StageSelectionEntry } from '../semantic-selection';
-import {
-	STAGE_ERASER_TASK
-} from '../stage-eraser';
+import { STAGE_ERASER_TASK } from '../stage-eraser';
 import { STAGE_PAINT_TASK } from '../stage-painter';
 import { STAGE_MEASURE_TASK } from '../stage-measure';
 import type { WorldToolId } from '$lib/authoring/world-toolbar/registry';
 import type { ExperienceController } from '$lib/authoring/experience/experience-controller.svelte';
 import type { ExperienceLens } from '$lib/authoring/experience/experience-lens.svelte';
-import {
-	STAGE_HOST_ADAPTER_ID,
-	type StageDockKey
-} from '../stage-contributions';
+import { STAGE_HOST_ADAPTER_ID, type StageDockKey } from '../stage-contributions';
 import type { StageDockSlot } from '../stage-input';
 import type { StageShellState } from './stage-shell-state.svelte';
 import { createStageShellSelection } from './stage-shell-selection';
@@ -90,7 +85,16 @@ export type StageShellCommandInput = {
 export function createStageShellCommands(input: StageShellCommandInput) {
 	const shell = input.shell;
 	const selection = createStageShellSelection({ ...input, armWorldTool: (id) => armWorldTool(id) });
-	const { syncPrimarySelection, selectHit, selectUnfoldedSubject, selectSource, selectStageReference, closeSelection, openSpaceCreated, closeCard } = selection;
+	const {
+		syncPrimarySelection,
+		selectHit,
+		selectUnfoldedSubject,
+		selectSource,
+		selectStageReference,
+		closeSelection,
+		openSpaceCreated,
+		closeCard,
+	} = selection;
 
 	/** `true` (and a word) when Object Studio does not offer this tool. */
 	function studioRefuses(allowed: boolean): boolean {
@@ -224,10 +228,14 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 
 	/** Arm one dock key (from the dock, its key or Find). */
 	function armDockKey(key: StageDockKey): void {
-		if (studioRefuses(
-			key.slot === 'select' || key.slot === 'library' ||
-			(key.adapterId === STAGE_HOST_ADAPTER_ID && key.id !== STAGE_PAINT_TASK)
-		)) return;
+		if (
+			studioRefuses(
+				key.slot === 'select' ||
+					key.slot === 'library' ||
+					(key.adapterId === STAGE_HOST_ADAPTER_ID && key.id !== STAGE_PAINT_TASK),
+			)
+		)
+			return;
 		shell.setFurnishStripOpen(false);
 		if (key.slot === 'slice') {
 			// Arming Slice opens the reading, not a task. Level is the immediate SL1
@@ -245,7 +253,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 			selectTool();
 		} else if (key.adapterId === STAGE_HOST_ADAPTER_ID) {
 			shell.setActiveWorldTool(
-				key.id === STAGE_MEASURE_TASK ? 'measure' : key.id === STAGE_PAINT_TASK ? 'paint' : 'erase'
+				key.id === STAGE_MEASURE_TASK ? 'measure' : key.id === STAGE_PAINT_TASK ? 'paint' : 'erase',
 			);
 			shell.setLibraryOpen(false);
 			armHostTool(key.id);
@@ -265,7 +273,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 
 	/** The World row tool an Ink reading belongs to: Wall is `walls`, Roof is `roofline`. */
 	function worldToolOfReading(
-		reading: 'wall' | 'opening' | 'room' | 'terrace' | 'roof'
+		reading: 'wall' | 'opening' | 'room' | 'terrace' | 'roof',
 	): WorldToolId {
 		return reading === 'wall' ? 'walls' : reading === 'roof' ? 'roofline' : reading;
 	}
@@ -287,7 +295,13 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 			selectTool();
 			return;
 		}
-		if (id === 'walls' || id === 'opening' || id === 'room' || id === 'terrace' || id === 'roofline') {
+		if (
+			id === 'walls' ||
+			id === 'opening' ||
+			id === 'room' ||
+			id === 'terrace' ||
+			id === 'roofline'
+		) {
 			const key = input.dockKeys().find((candidate) => candidate.slot === 'ink');
 			if (key === undefined) {
 				input.notice('Ink is not available in this project.');
@@ -329,7 +343,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 					? STAGE_MEASURE_TASK
 					: id === 'paint'
 						? STAGE_PAINT_TASK
-						: STAGE_ERASER_TASK
+						: STAGE_ERASER_TASK,
 			);
 			shell.setActiveWorldTool(id);
 			shell.setPaletteOpen(false);
@@ -357,15 +371,13 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 	 * the dock or `L` replaces a qualified Select-mode selection or browses.
 	 * Closing a Furnish visit returns to its quick strip.
 	 */
-	function toggleWorldLibrary(
-		opener: 'dock' | 'paint' | 'furnish' | 'card' = 'dock'
-	): void {
+	function toggleWorldLibrary(opener: 'dock' | 'paint' | 'furnish' | 'card' = 'dock'): void {
 		if (studioRefuses(false)) return;
 		if (shell.libraryOpen) {
 			const returnsToFurnish = shell.libraryInvocation.from === 'furnish';
 			shell.setLibraryOpen(false);
 			shell.setActiveWorldTool(
-				shell.toolBeforeLibrary === 'library' ? 'select' : shell.toolBeforeLibrary
+				shell.toolBeforeLibrary === 'library' ? 'select' : shell.toolBeforeLibrary,
 			);
 			if (returnsToFurnish) shell.setFurnishStripOpen(true);
 			return;
@@ -375,17 +387,19 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 				? 'paint'
 				: opener === 'card'
 					? 'swap'
-					: opener === 'dock' && shell.activeWorldTool === 'select' && input.libraryReplaceQualified?.() === true
+					: opener === 'dock' &&
+							shell.activeWorldTool === 'select' &&
+							input.libraryReplaceQualified?.() === true
 						? 'replace'
 						: 'browse';
 		shell.setLibraryInvocation({
 			intent,
 			kind: opener === 'furnish' ? 'objects' : intent === 'browse' ? null : 'materials',
-			from: opener
+			from: opener,
 		});
 		shell.setFurnishStripOpen(false);
 		shell.setToolBeforeLibrary(
-			shell.activeWorldTool === 'library' ? 'select' : shell.activeWorldTool
+			shell.activeWorldTool === 'library' ? 'select' : shell.activeWorldTool,
 		);
 		closeTask();
 		shell.setLibraryOpen(true);
@@ -427,7 +441,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 		input.notice(
 			assetId === ''
 				? 'Choose a placement in the Objects panel.'
-				: 'Choose the object in the Objects panel to place it.'
+				: 'Choose the object in the Objects panel to place it.',
 		);
 	}
 
@@ -437,7 +451,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 			task: shell.task,
 			armedHostTool: shell.armedHostTool,
 			armedTool: shell.armedTool,
-			dockKeys: input.dockKeys()
+			dockKeys: input.dockKeys(),
 		});
 		if (key.id === armedDockId && key.slot !== 'select') {
 			if (key.palette) shell.togglePalette();
@@ -620,7 +634,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 		if (selected === null || destructive.length !== 1) {
 			shell.setPendingDelete(null);
 			input.notice(
-				selected === null ? 'Select a subject to delete it.' : 'Nothing here can be deleted.'
+				selected === null ? 'Select a subject to delete it.' : 'Nothing here can be deleted.',
 			);
 			return;
 		}
@@ -641,7 +655,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 		shell.setPendingDelete({ subjectKey, actionId: record.id, detail });
 		const disclosed = record.detail ?? 'the owning domain disclosed no consequences';
 		input.notice(
-			`${record.label} — ${disclosed.endsWith('.') ? disclosed : `${disclosed}.`} Press Delete again to confirm, or Escape to keep it.`
+			`${record.label} — ${disclosed.endsWith('.') ? disclosed : `${disclosed}.`} Press Delete again to confirm, or Escape to keep it.`,
 		);
 	}
 
@@ -650,7 +664,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 		const outcome = await record.run();
 		if (shell.pendingDelete?.subjectKey === subjectKey) shell.setPendingDelete(null);
 		input.notice(
-			outcome.kind === 'accepted' ? '' : (outcome.message ?? `${record.label} was not applied.`)
+			outcome.kind === 'accepted' ? '' : (outcome.message ?? `${record.label} was not applied.`),
 		);
 	}
 
@@ -682,7 +696,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 		runPreferenceEntry,
 		runHeadFindEntry,
 		requestDelete,
-		runCardAction
+		runCardAction,
 	};
 }
 

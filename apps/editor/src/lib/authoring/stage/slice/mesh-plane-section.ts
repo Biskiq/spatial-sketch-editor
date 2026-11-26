@@ -149,11 +149,7 @@ function dot(a: SectionVec3, b: SectionVec3): number {
 }
 
 function cross(a: SectionVec3, b: SectionVec3): Vec3 {
-	return [
-		a[1] * b[2] - a[2] * b[1],
-		a[2] * b[0] - a[0] * b[2],
-		a[0] * b[1] - a[1] * b[0]
-	];
+	return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 }
 
 function normalize(v: SectionVec3): Vec3 {
@@ -312,22 +308,21 @@ function worldPoint(
 	x: number,
 	y: number,
 	z: number,
-	matrix: ArrayLike<number> | null | undefined
+	matrix: ArrayLike<number> | null | undefined,
 ): Vec3 {
 	if (matrix == null) return [x, y, z];
 	const e = matrix;
 	return [
 		e[0]! * x + e[4]! * y + e[8]! * z + e[12]!,
 		e[1]! * x + e[5]! * y + e[9]! * z + e[13]!,
-		e[2]! * x + e[6]! * y + e[10]! * z + e[14]!
+		e[2]! * x + e[6]! * y + e[10]! * z + e[14]!,
 	];
 }
-
 
 export function sectionMeshes(
 	inputs: readonly SectionInput[],
 	plane: SectionPlane,
-	options: SectionOptions = {}
+	options: SectionOptions = {},
 ): SectionResult {
 	const offset = plane.sectionOffsetMeters ?? SECTION_OFFSET_METERS;
 	// Moving the plane into the kept half-space means lowering the constant.
@@ -370,7 +365,7 @@ export function sectionMeshes(
 					const point: Vec3 = [
 						corner & 1 ? max[0] : min[0],
 						corner & 2 ? max[1] : min[1],
-						corner & 4 ? max[2] : min[2]
+						corner & 4 ? max[2] : min[2],
 					];
 					const distance = dot(basis.normal, point) + constant;
 					if (distance < lowest) lowest = distance;
@@ -391,9 +386,24 @@ export function sectionMeshes(
 				// Written out rather than mapped: this loop runs over every candidate
 				// triangle of every group, and three throwaway arrays per triangle were a
 				// fifth of the assembly's time (profiled on the eleven-Room fixture).
-				const w0 = worldPoint(positions[ia * 3]!, positions[ia * 3 + 1]!, positions[ia * 3 + 2]!, input.matrix);
-				const w1 = worldPoint(positions[ib * 3]!, positions[ib * 3 + 1]!, positions[ib * 3 + 2]!, input.matrix);
-				const w2 = worldPoint(positions[ic * 3]!, positions[ic * 3 + 1]!, positions[ic * 3 + 2]!, input.matrix);
+				const w0 = worldPoint(
+					positions[ia * 3]!,
+					positions[ia * 3 + 1]!,
+					positions[ia * 3 + 2]!,
+					input.matrix,
+				);
+				const w1 = worldPoint(
+					positions[ib * 3]!,
+					positions[ib * 3 + 1]!,
+					positions[ib * 3 + 2]!,
+					input.matrix,
+				);
+				const w2 = worldPoint(
+					positions[ic * 3]!,
+					positions[ic * 3 + 1]!,
+					positions[ic * 3 + 2]!,
+					input.matrix,
+				);
 				const l0: SectionPoint = [dot(w0, basis.u), dot(w0, basis.v)];
 				const l1: SectionPoint = [dot(w1, basis.u), dot(w1, basis.v)];
 				const l2: SectionPoint = [dot(w2, basis.u), dot(w2, basis.v)];
@@ -452,7 +462,7 @@ function assembleGroup(
 	welder: Welder,
 	segments: Segment[],
 	identities: string[],
-	tolerance: number
+	tolerance: number,
 ): SectionGroupResult {
 	const points = welder.points;
 	// Step 5 — split at welded vertices on a segment's interior (T-vertices) and at
@@ -481,7 +491,10 @@ function assembleGroup(
 			nets.set(edgeKey, net);
 		}
 		net.net += forward ? 1 : -1;
-		net.contributions.set(segment.identity, (net.contributions.get(segment.identity) ?? 0) + (forward ? 1 : -1));
+		net.contributions.set(
+			segment.identity,
+			(net.contributions.get(segment.identity) ?? 0) + (forward ? 1 : -1),
+		);
 	}
 	const keptNets: NetEdge[] = [];
 	for (const net of nets.values()) {
@@ -498,7 +511,7 @@ function assembleGroup(
 			a: net.net > 0 ? net.a : net.b,
 			b: net.net > 0 ? net.b : net.a,
 			net: net.net,
-			identity
+			identity,
 		});
 	}
 
@@ -519,7 +532,7 @@ function assembleGroup(
 			loops: [],
 			chains,
 			issue: { group, identity: identities[0] ?? group, unmatchedVertices: unmatched },
-			identities: [...new Set(identities)]
+			identities: [...new Set(identities)],
 		};
 	}
 
@@ -537,7 +550,7 @@ function assembleGroup(
 		// Right of a → b is (dz, -dx).
 		const probe: SectionPoint = [
 			(a[0] + b[0]) / 2 + dz * probeOffset,
-			(a[1] + b[1]) / 2 - dx * probeOffset
+			(a[1] + b[1]) / 2 - dx * probeOffset,
 		];
 		const right = winding.at(probe);
 		// The emitted direction is the majority direction, so crossing it from right
@@ -558,7 +571,7 @@ function assembleGroup(
 			loops: [],
 			chains: [],
 			issue: { group, identity: identities[0] ?? group, unmatchedVertices: 0 },
-			identities: [...new Set(identities)]
+			identities: [...new Set(identities)],
 		};
 	}
 	if (boundary.length > 0 && loops.length === 0) {
@@ -567,7 +580,7 @@ function assembleGroup(
 			loops: [],
 			chains: openChains(points, boundary),
 			issue: { group, identity: identities[0] ?? group, unmatchedVertices: boundary.length },
-			identities: [...new Set(boundary.map((edge) => edge.identity))]
+			identities: [...new Set(boundary.map((edge) => edge.identity))],
 		};
 	}
 	return {
@@ -575,7 +588,7 @@ function assembleGroup(
 		loops: loops.sort((a, b) => (a.role === b.role ? 0 : a.role === 'outer' ? -1 : 1)),
 		chains: [],
 		issue: null,
-		identities: [...new Set(boundary.map((edge) => edge.identity))]
+		identities: [...new Set(boundary.map((edge) => edge.identity))],
 	};
 }
 
@@ -587,7 +600,7 @@ function splitPass(
 	segments: readonly Segment[],
 	points: readonly SectionPoint[],
 	welder: Welder,
-	tolerance: number
+	tolerance: number,
 ): { segments: readonly Segment[]; added: boolean } {
 	if (segments.length === 0) return { segments: [], added: false };
 	const extra: number[][] = segments.map(() => []);
@@ -604,7 +617,7 @@ function splitPass(
 			Math.floor((Math.min(a[0], b[0]) - tolerance) / cell),
 			Math.floor((Math.max(a[0], b[0]) + tolerance) / cell),
 			Math.floor((Math.min(a[1], b[1]) - tolerance) / cell),
-			Math.floor((Math.max(a[1], b[1]) + tolerance) / cell)
+			Math.floor((Math.max(a[1], b[1]) + tolerance) / cell),
 		];
 	};
 	// One cell span per segment, reused by the grid and by the T-vertex walk (it was
@@ -683,7 +696,9 @@ function splitPass(
 	let added = false;
 	const next: Segment[] = [];
 	segments.forEach((segment, index) => {
-		const amounts = [...new Set([...extra[index]!, 0, 1].filter((amount) => amount >= 0 && amount <= 1))];
+		const amounts = [
+			...new Set([...extra[index]!, 0, 1].filter((amount) => amount >= 0 && amount <= 1)),
+		];
 		amounts.sort((a, b) => a - b);
 		if (amounts.length > 2) added = true;
 		let previous = welder.add(points[segment.a]!);
@@ -705,7 +720,7 @@ function amountAlong(
 	segment: Segment,
 	id: number,
 	points: readonly SectionPoint[],
-	tolerance: number
+	tolerance: number,
 ): number | null {
 	const a = points[segment.a]!;
 	const b = points[segment.b]!;
@@ -725,9 +740,14 @@ function amountAlong(
 function properCrossing(
 	first: Segment,
 	second: Segment,
-	points: readonly SectionPoint[]
+	points: readonly SectionPoint[],
 ): { first: number; second: number } | null {
-	if (first.a === second.a || first.a === second.b || first.b === second.a || first.b === second.b) {
+	if (
+		first.a === second.a ||
+		first.a === second.b ||
+		first.b === second.a ||
+		first.b === second.b
+	) {
 		return null;
 	}
 	const p = points[first.a]!;
@@ -766,7 +786,7 @@ function stitch(points: readonly SectionPoint[], edges: readonly NetEdge[]): Sec
 			// The closing edge is `first` and it is already used, so it must stay a
 			// candidate: filtering it out is what leaves every ring unclosed.
 			const candidates = (outgoing.get(edge.b) ?? []).filter(
-				(index) => index === first || !used[index]
+				(index) => index === first || !used[index],
 			);
 			const next = chooseNext(edge, candidates, edges, points);
 			if (next === null) break;
@@ -783,7 +803,7 @@ function stitch(points: readonly SectionPoint[], edges: readonly NetEdge[]): Sec
 			role: area > 0 ? 'outer' : 'hole',
 			points: ring,
 			edgeIdentities: identities,
-			signedArea: area
+			signedArea: area,
 		});
 	}
 	return loops;
@@ -793,7 +813,7 @@ function chooseNext(
 	from: NetEdge,
 	candidates: readonly number[],
 	edges: readonly NetEdge[],
-	points: readonly SectionPoint[]
+	points: readonly SectionPoint[],
 ): number | null {
 	if (candidates.length === 0) return null;
 	if (candidates.length === 1) return candidates[0]!;
@@ -842,7 +862,7 @@ function openChains(points: readonly SectionPoint[], edges: readonly NetEdge[]):
 		if (ids.length >= 2) {
 			chains.push({
 				points: ids.map((id) => points[id]!),
-				edgeIdentities: identities
+				edgeIdentities: identities,
 			});
 		}
 	}
@@ -874,6 +894,6 @@ export function loopsToPolygons(loops: readonly SectionLoop[]): readonly {
 	}
 	return outers.map((outer, index) => ({
 		outer: outer.points,
-		holes: parents[index]!
+		holes: parents[index]!,
 	}));
 }

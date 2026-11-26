@@ -205,8 +205,17 @@ export type CreatorImportStaging = {
 export type CreatorImportApproved = {
 	readonly revisionId: string;
 	readonly contentHash: string;
-	readonly derivative: { readonly hash: string; readonly mime: string; readonly size: number; readonly locator: string };
-	readonly source: { readonly manifestHash: string; readonly size: number; readonly fileCount: number };
+	readonly derivative: {
+		readonly hash: string;
+		readonly mime: string;
+		readonly size: number;
+		readonly locator: string;
+	};
+	readonly source: {
+		readonly manifestHash: string;
+		readonly size: number;
+		readonly fileCount: number;
+	};
 	readonly recipe: { readonly id: string; readonly version: number };
 	readonly reportDigest: string;
 	readonly placement: {

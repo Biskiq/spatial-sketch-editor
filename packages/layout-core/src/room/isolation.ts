@@ -41,7 +41,11 @@
  * Pure and read-only: no allocation, no document mutation, no persistence.
  */
 import type { LayoutObject } from '../wall/types';
-import type { LayoutDocumentWallFirst, LayoutWallFirstRoom, LayoutWallOpening } from '../wall/types';
+import type {
+	LayoutDocumentWallFirst,
+	LayoutWallFirstRoom,
+	LayoutWallOpening,
+} from '../wall/types';
 
 export type RoomIsolationRejectionCode =
 	| 'unknown_room'
@@ -136,7 +140,7 @@ export function isSupportedLayoutObject(object: Pick<LayoutObject, 'kind'>): boo
 function reject(
 	code: RoomIsolationRejectionCode,
 	message: string,
-	targetIds?: readonly string[]
+	targetIds?: readonly string[],
 ): { kind: 'rejected'; rejection: RoomIsolationRejection } {
 	return { kind: 'rejected', rejection: { code, message, ...(targetIds ? { targetIds } : {}) } };
 }
@@ -161,8 +165,10 @@ type BoundaryGraph = {
  */
 function collectBoundaryGraph(
 	document: LayoutDocumentWallFirst,
-	rooms: readonly LayoutWallFirstRoom[]
-): { kind: 'success'; graph: BoundaryGraph } | { kind: 'rejected'; rejection: RoomIsolationRejection } {
+	rooms: readonly LayoutWallFirstRoom[],
+):
+	| { kind: 'success'; graph: BoundaryGraph }
+	| { kind: 'rejected'; rejection: RoomIsolationRejection } {
 	const wallById = new Map(document.walls.map((wall) => [wall.id, wall]));
 	const junctionIdInDocument = new Set(document.junctions.map((junction) => junction.id));
 	const wallIds: string[] = [];
@@ -176,7 +182,7 @@ function collectBoundaryGraph(
 		if (missing.length > 0) {
 			return reject('invalid_reference', `Room '${room.id}' has unresolved boundary Walls`, [
 				room.id,
-				...missing
+				...missing,
 			]);
 		}
 		for (const ref of room.boundary) {
@@ -198,11 +204,10 @@ function collectBoundaryGraph(
 			.flatMap((edge) => [edge.startJunctionId, edge.endJunctionId])
 			.filter((junctionId) => !junctionIdInDocument.has(junctionId));
 		if (missingVirtualJunctions.length > 0) {
-			return reject(
-				'invalid_reference',
-				`Room '${room.id}' has unresolved open-side Junctions`,
-				[room.id, ...missingVirtualJunctions]
-			);
+			return reject('invalid_reference', `Room '${room.id}' has unresolved open-side Junctions`, [
+				room.id,
+				...missingVirtualJunctions,
+			]);
 		}
 		for (const edge of room.virtualEdges) {
 			for (const junctionId of [edge.startJunctionId, edge.endJunctionId]) {
@@ -221,9 +226,9 @@ function collectBoundaryGraph(
 			junctionIdSet,
 			hostedOpenings: document.openings.filter((opening) => wallIdSet.has(opening.wallId)),
 			associatedObjects: document.objects.filter(
-				(object) => object.roomId !== undefined && rooms.some((room) => room.id === object.roomId)
-			)
-		}
+				(object) => object.roomId !== undefined && rooms.some((room) => room.id === object.roomId),
+			),
+		},
 	};
 }
 
@@ -234,14 +239,14 @@ function collectBoundaryGraph(
  */
 function outsideIncidentWallIds(
 	document: LayoutDocumentWallFirst,
-	graph: Pick<BoundaryGraph, 'wallIdSet' | 'junctionIdSet'>
+	graph: Pick<BoundaryGraph, 'wallIdSet' | 'junctionIdSet'>,
 ): string[] {
 	return document.walls
 		.filter(
 			(wall) =>
 				!graph.wallIdSet.has(wall.id) &&
 				(graph.junctionIdSet.has(wall.startJunctionId) ||
-					graph.junctionIdSet.has(wall.endJunctionId))
+					graph.junctionIdSet.has(wall.endJunctionId)),
 		)
 		.map((wall) => wall.id);
 }
@@ -253,13 +258,13 @@ function outsideIncidentWallIds(
  */
 function externalPortalOpeningIds(
 	hostedOpenings: readonly LayoutWallOpening[],
-	memberRoomIds: ReadonlySet<string>
+	memberRoomIds: ReadonlySet<string>,
 ): string[] {
 	return hostedOpenings
 		.filter(
 			(opening) =>
 				opening.connectsRoomIds !== undefined &&
-				opening.connectsRoomIds.some((roomId) => !memberRoomIds.has(roomId))
+				opening.connectsRoomIds.some((roomId) => !memberRoomIds.has(roomId)),
 		)
 		.map((opening) => opening.id);
 }
@@ -276,10 +281,7 @@ function readOnlyProfileObjectIds(objects: readonly LayoutObject[]): string[] {
  *
  * Deterministic: the anchor first, then members in document order.
  */
-export function connectedRoomIds(
-	document: LayoutDocumentWallFirst,
-	roomId: string
-): string[] {
+export function connectedRoomIds(document: LayoutDocumentWallFirst, roomId: string): string[] {
 	const junctionToRooms = new Map<string, string[]>();
 	const wallById = new Map(document.walls.map((wall) => [wall.id, wall]));
 	for (const room of document.rooms) {
@@ -329,7 +331,10 @@ export function connectedRoomIds(
 		}
 	}
 	// Anchor first, then the rest in document order.
-	return [roomId, ...document.rooms.map((room) => room.id).filter((id) => id !== roomId && seen.has(id))];
+	return [
+		roomId,
+		...document.rooms.map((room) => room.id).filter((id) => id !== roomId && seen.has(id)),
+	];
 }
 
 /**
@@ -347,7 +352,7 @@ export function connectedRoomIds(
  */
 export function resolveIsolatedRoomSubgraph(
 	document: LayoutDocumentWallFirst,
-	roomId: string
+	roomId: string,
 ): IsolatedRoomSubgraphResult {
 	const room = document.rooms.find((candidate) => candidate.id === roomId);
 	if (!room) {
@@ -370,7 +375,7 @@ export function resolveIsolatedRoomSubgraph(
 			return reject(
 				'room_not_isolated',
 				`Room '${roomId}' shares Wall(s) ${shared.join(', ')} with Room '${other.id}'; shared-boundary Room duplicate is unsupported`,
-				[roomId, other.id, ...shared]
+				[roomId, other.id, ...shared],
 			);
 		}
 	}
@@ -381,7 +386,7 @@ export function resolveIsolatedRoomSubgraph(
 		return reject(
 			'room_not_isolated',
 			`Room '${roomId}' boundary junctions carry non-cloned wall(s) ${attachedOutsideWallIds.join(', ')}; the bounded subgraph is not isolated`,
-			[roomId, ...attachedOutsideWallIds]
+			[roomId, ...attachedOutsideWallIds],
 		);
 	}
 
@@ -392,7 +397,7 @@ export function resolveIsolatedRoomSubgraph(
 		return reject(
 			'external_portal_relation',
 			`Room '${roomId}' opening(s) ${relationOpeningIds.join(', ')} carry portal relations into non-cloned Rooms; resolve or remove them before duplicating`,
-			[roomId, ...relationOpeningIds]
+			[roomId, ...relationOpeningIds],
 		);
 	}
 
@@ -404,7 +409,7 @@ export function resolveIsolatedRoomSubgraph(
 		return reject(
 			'profile_object_read_only',
 			`Room '${roomId}' contains read-only profile object(s) ${profileObjectIds.join(', ')}; resolve or remove them before duplicating or moving`,
-			[roomId, ...profileObjectIds]
+			[roomId, ...profileObjectIds],
 		);
 	}
 
@@ -417,8 +422,8 @@ export function resolveIsolatedRoomSubgraph(
 			junctionIds: graph.junctionIds,
 			openingIds: graph.hostedOpenings.map((opening) => opening.id),
 			associatedObjectIds: graph.associatedObjects.map((object) => object.id),
-			profileObjectIds
-		}
+			profileObjectIds,
+		},
 	};
 }
 
@@ -443,7 +448,7 @@ export function resolveIsolatedRoomSubgraph(
  */
 export function resolveRoomCopyEnclosure(
 	document: LayoutDocumentWallFirst,
-	roomId: string
+	roomId: string,
 ): RoomCopyEnclosureResult {
 	const room = document.rooms.find((candidate) => candidate.id === roomId);
 	if (!room) {
@@ -459,7 +464,7 @@ export function resolveRoomCopyEnclosure(
 		return reject(
 			'profile_object_read_only',
 			`Room '${roomId}' contains read-only profile object(s) ${profileObjectIds.join(', ')}; resolve or remove them before duplicating`,
-			[roomId, ...profileObjectIds]
+			[roomId, ...profileObjectIds],
 		);
 	}
 
@@ -468,7 +473,7 @@ export function resolveRoomCopyEnclosure(
 		if (opening.connectsRoomIds === undefined) continue;
 		droppedRelations.push({
 			openingId: opening.id,
-			roomIds: [opening.connectsRoomIds[0], opening.connectsRoomIds[1]]
+			roomIds: [opening.connectsRoomIds[0], opening.connectsRoomIds[1]],
 		});
 	}
 
@@ -480,8 +485,8 @@ export function resolveRoomCopyEnclosure(
 			junctionIds: graph.junctionIds,
 			openingIds: graph.hostedOpenings.map((opening) => opening.id),
 			associatedObjectIds: graph.associatedObjects.map((object) => object.id),
-			droppedRelations
-		}
+			droppedRelations,
+		},
 	};
 }
 
@@ -504,7 +509,7 @@ export function resolveRoomCopyEnclosure(
 export function resolveIsolatedRoomGroupSubgraph(
 	document: LayoutDocumentWallFirst,
 	roomId: string,
-	options: { includePhysicalAttachments?: boolean } = {}
+	options: { includePhysicalAttachments?: boolean } = {},
 ): IsolatedRoomGroupSubgraphResult {
 	const anchor = document.rooms.find((candidate) => candidate.id === roomId);
 	if (!anchor) {
@@ -533,7 +538,10 @@ export function resolveIsolatedRoomGroupSubgraph(
 			const junctions = new Set<string>();
 			for (const ref of room.boundary) {
 				const wall = wallById.get(ref.wallId);
-				if (wall) { junctions.add(wall.startJunctionId); junctions.add(wall.endJunctionId); }
+				if (wall) {
+					junctions.add(wall.startJunctionId);
+					junctions.add(wall.endJunctionId);
+				}
 			}
 			for (const edge of room.virtualEdges) {
 				junctions.add(edge.startJunctionId);
@@ -550,7 +558,10 @@ export function resolveIsolatedRoomGroupSubgraph(
 		const junctionIds = new Set<string>();
 		const queue: string[] = [];
 		const addJunction = (id: string) => {
-			if (!junctionIds.has(id)) { junctionIds.add(id); queue.push(id); }
+			if (!junctionIds.has(id)) {
+				junctionIds.add(id);
+				queue.push(id);
+			}
 		};
 		const addRoom = (room: LayoutWallFirstRoom) => {
 			if (memberIdSet.has(room.id)) return;
@@ -568,18 +579,32 @@ export function resolveIsolatedRoomGroupSubgraph(
 				addJunction(wall.endJunctionId);
 			}
 		}
-		memberIds = [roomId, ...document.rooms.map((room) => room.id).filter((id) => id !== roomId && memberIdSet.has(id))];
-		const collected = collectBoundaryGraph(document, memberIds.map((id) => document.rooms.find((room) => room.id === id)!));
+		memberIds = [
+			roomId,
+			...document.rooms.map((room) => room.id).filter((id) => id !== roomId && memberIdSet.has(id)),
+		];
+		const collected = collectBoundaryGraph(
+			document,
+			memberIds.map((id) => document.rooms.find((room) => room.id === id)!),
+		);
 		if (collected.kind === 'rejected') return collected;
 		graph = collected.graph;
 		for (const wall of document.walls) {
 			if (!wallIds.has(wall.id)) continue;
-			if (!graph.wallIdSet.has(wall.id)) { graph.wallIdSet.add(wall.id); graph.wallIds.push(wall.id); }
+			if (!graph.wallIdSet.has(wall.id)) {
+				graph.wallIdSet.add(wall.id);
+				graph.wallIds.push(wall.id);
+			}
 			for (const id of [wall.startJunctionId, wall.endJunctionId]) {
-				if (!graph.junctionIdSet.has(id)) { graph.junctionIdSet.add(id); graph.junctionIds.push(id); }
+				if (!graph.junctionIdSet.has(id)) {
+					graph.junctionIdSet.add(id);
+					graph.junctionIds.push(id);
+				}
 			}
 		}
-		graph.hostedOpenings = document.openings.filter((opening) => graph.wallIdSet.has(opening.wallId));
+		graph.hostedOpenings = document.openings.filter((opening) =>
+			graph.wallIdSet.has(opening.wallId),
+		);
 	} else {
 		memberIds = connectedRoomIds(document, roomId);
 		for (const id of memberIds) memberIdSet.add(id);
@@ -602,7 +627,7 @@ export function resolveIsolatedRoomGroupSubgraph(
 			return reject(
 				'room_not_isolated',
 				`Room '${other.id}' shares Wall(s) ${shared.join(', ')} with the moving group; the group is not isolated`,
-				[roomId, other.id, ...shared]
+				[roomId, other.id, ...shared],
 			);
 		}
 	}
@@ -615,7 +640,7 @@ export function resolveIsolatedRoomGroupSubgraph(
 		return reject(
 			'room_not_isolated',
 			`Room group (${memberIds.join(', ')}) touches stationary wall(s) ${attachedOutsideWallIds.join(', ')}; the group is not isolated`,
-			[roomId, ...attachedOutsideWallIds]
+			[roomId, ...attachedOutsideWallIds],
 		);
 	}
 
@@ -626,7 +651,7 @@ export function resolveIsolatedRoomGroupSubgraph(
 		return reject(
 			'external_portal_relation',
 			`Room group (${memberIds.join(', ')}) opening(s) ${relationOpeningIds.join(', ')} carry portal relations outside the group; resolve or remove them before moving`,
-			[roomId, ...relationOpeningIds]
+			[roomId, ...relationOpeningIds],
 		);
 	}
 
@@ -635,7 +660,7 @@ export function resolveIsolatedRoomGroupSubgraph(
 		return reject(
 			'profile_object_read_only',
 			`Room group (${memberIds.join(', ')}) contains read-only profile object(s) ${profileObjectIds.join(', ')}; resolve or remove them before duplicating or moving`,
-			[roomId, ...profileObjectIds]
+			[roomId, ...profileObjectIds],
 		);
 	}
 
@@ -647,7 +672,7 @@ export function resolveIsolatedRoomGroupSubgraph(
 			junctionIds: graph.junctionIds,
 			openingIds: graph.hostedOpenings.map((opening) => opening.id),
 			associatedObjectIds: graph.associatedObjects.map((object) => object.id),
-			profileObjectIds
-		}
+			profileObjectIds,
+		},
 	};
 }

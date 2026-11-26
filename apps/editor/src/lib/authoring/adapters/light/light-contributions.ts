@@ -10,7 +10,7 @@
 import type {
 	StageAdapterBinding,
 	StageAdapterContext,
-	StageAdapterServices
+	StageAdapterServices,
 } from '$lib/authoring/stage/stage-adapter-host';
 import { stageScene } from '$lib/authoring/stage/stage-adapter-host';
 import { sceneEntityReference } from '../scene/placement';
@@ -20,7 +20,14 @@ import { guideSegments } from './light-guides';
 import { lightMarkDescriptors } from './light-marks';
 import type { LightRefusal } from './light-session-ports';
 import type { LightGestureSession } from './light-gesture-session';
-import { LIGHT_TASK, isLight, lightById, lightGlyphAt, selectedLight, type Light } from './light-subjects';
+import {
+	LIGHT_TASK,
+	isLight,
+	lightById,
+	lightGlyphAt,
+	selectedLight,
+	type Light,
+} from './light-subjects';
 import LightCardFields from './LightCardFields.svelte';
 
 export type LightContributionKeys =
@@ -73,14 +80,14 @@ export function createLightContributions(deps: LightContributionDeps): LightCont
 				// Marks beat placement: the selected light can be edited immediately
 				// after the install without a second trip to the dock.
 				marksWhileOpen: true,
-				order: 40
-			}
+				order: 40,
+			},
 		],
 		subjects: source.entities.filter(isLight).map((entity) => ({
 			id: `scene:entity:${entity.id}`,
 			label: entity.name,
 			reference: sceneEntityReference(entity.id, context.snapshot.domain.unitRevisions.scene),
-			worldPoint: entity.position
+			worldPoint: entity.position,
 		})),
 		pick(candidate, live) {
 			// A Light is not a form root: Object Studio's scope reaches no Light.
@@ -93,14 +100,14 @@ export function createLightContributions(deps: LightContributionDeps): LightCont
 					sourceKind: 'entity',
 					reference: sceneEntityReference(
 						nearest.light.id,
-						live.snapshot.domain.unitRevisions.scene
+						live.snapshot.domain.unitRevisions.scene,
 					),
-					worldPoint: [...nearest.light.position]
+					worldPoint: [...nearest.light.position],
 				},
 				refusal: null,
 				depthMeters: null,
 				planLayer: null,
-				cssDistance: nearest.distance
+				cssDistance: nearest.distance,
 			};
 		},
 		eraseAction(hit) {
@@ -131,8 +138,8 @@ export function createLightContributions(deps: LightContributionDeps): LightCont
 					id: 'light-guide',
 					role: 'selection' as const,
 					segments: guide.segments,
-					derivedSegments: guide.derivedSegments
-				}
+					derivedSegments: guide.derivedSegments,
+				},
 			];
 		},
 		cardWriter(subject) {
@@ -151,13 +158,13 @@ export function createLightContributions(deps: LightContributionDeps): LightCont
 					'reach',
 					'angle',
 					'soft-edge',
-					'shadow'
+					'shadow',
 				],
-				view: { component: LightCardFields, services }
+				view: { component: LightCardFields, services },
 			};
 		},
 		cardFacts: (subject) => lightCardFacts(services, subject, context),
 		cardName: (subject) => lightNameWriter(services, subject),
-		cardActions: (subject) => lightCardActions(services, subject)
+		cardActions: (subject) => lightCardActions(services, subject),
 	};
 }

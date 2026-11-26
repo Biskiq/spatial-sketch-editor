@@ -17,7 +17,7 @@ import { SUITES } from './suites.mjs';
 const LEAN = [
 	{ job: 'fast 1/2', slug: 'test-fast-1', suites: ['npm run test:fast'], shard: '1/2' },
 	{ job: 'fast 2/2', slug: 'test-fast-2', suites: ['npm run test:fast'], shard: '2/2' },
-	{ job: 'arch', slug: 'test-arch', suites: ['npm run test:arch'] }
+	{ job: 'arch', slug: 'test-arch', suites: ['npm run test:arch'] },
 ];
 
 /** @type {{job: string, slug: string, suites: string[]}[]} */

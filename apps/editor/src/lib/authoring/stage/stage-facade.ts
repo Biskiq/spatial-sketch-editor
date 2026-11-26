@@ -1,4 +1,9 @@
-import { intersectWorkingPlane, pointerRay, projectWorld, type PointerRay } from '@portfolio/camera-core/viewport';
+import {
+	intersectWorkingPlane,
+	pointerRay,
+	projectWorld,
+	type PointerRay,
+} from '@portfolio/camera-core/viewport';
 import type { Vec3 } from '@portfolio/camera-core/camera';
 import { requestCameraOutput } from '@portfolio/project-model/channels';
 import type { SceneRenderedHit } from '$lib/authoring/scene/scene-pick-source';
@@ -11,10 +16,21 @@ import { adapterForSelection, createSelectionPick } from './facade/selection-pic
 import type { StageSubject } from './facade/adapter-contract';
 import type { StageFacade } from './facade/view-contract';
 import { PLAN_DEFAULT_CUT_HEIGHT_METERS } from './plan-parameters';
-import { primaryEntry, type StageSelectionChange, type StageSelectionState } from './semantic-selection';
+import {
+	primaryEntry,
+	type StageSelectionChange,
+	type StageSelectionState,
+} from './semantic-selection';
 import type { StageLightPreview } from './stage-light-preview.svelte';
 import type { StageSelection, StageSession, StageTask } from './stage-session';
-import { SCOPE_HOST_OWNER, scopeAdmitsCardAction, scopeAdmitsEntity, scopeAdmitsOperation, type SubjectScope, type SubjectScopeCell } from './subject-scope';
+import {
+	SCOPE_HOST_OWNER,
+	scopeAdmitsCardAction,
+	scopeAdmitsEntity,
+	scopeAdmitsOperation,
+	type SubjectScope,
+	type SubjectScopeCell,
+} from './subject-scope';
 
 export { HOST_STAGE_CAPABILITIES, SKIP_REBIND_CONTROL } from './facade/adapter-bindings';
 export { datumWorkingPlane } from './facade/selection-pick';
@@ -30,8 +46,14 @@ export function createStageFacade(input: {
 	readonly session: StageSession;
 	readonly viewportId?: string;
 	readonly outputId?: string;
-	readonly scenePick?: (ray: PointerRay, scene: StageReadSnapshot['domain']['scene']) => SceneRenderedHit | null;
-	readonly sceneBounds?: (id: string, scene: StageReadSnapshot['domain']['scene']) => { readonly min: Vec3; readonly max: Vec3 } | null;
+	readonly scenePick?: (
+		ray: PointerRay,
+		scene: StageReadSnapshot['domain']['scene'],
+	) => SceneRenderedHit | null;
+	readonly sceneBounds?: (
+		id: string,
+		scene: StageReadSnapshot['domain']['scene'],
+	) => { readonly min: Vec3; readonly max: Vec3 } | null;
 	/** The session-only light preview the editor shell merges into its render. */
 	readonly lightPreview?: StageLightPreview | null;
 	/** Object Studio's session-only pick scope; absent leaves picking unscoped. */
@@ -45,7 +67,7 @@ export function createStageFacade(input: {
 		// The output identity is unique per *replacement lifetime*, not per epoch string:
 		// a host that re-admitted under the same session epoch still gets a fresh output,
 		// so a retained ticket from the previous project cannot qualify against it.
-		outputId: input.outputId ?? `output:${currentSnapshot.sessionEpoch}:${session.token().epoch}`
+		outputId: input.outputId ?? `output:${currentSnapshot.sessionEpoch}:${session.token().epoch}`,
 	});
 	/** The host's own inspection run order, minted strictly newer than every accepted epoch. */
 	let inspectionRun = 0;
@@ -90,9 +112,15 @@ export function createStageFacade(input: {
 			}
 		},
 		addDisposable: session.addDisposable,
-		invalidateSubjects: () => contributions.invalidateSubjects()
+		invalidateSubjects: () => contributions.invalidateSubjects(),
 	});
-	const { entries: adapters, adapterContext, ensureBindings, rebindAdapters, notifyAdaptersChanged } = bindings;
+	const {
+		entries: adapters,
+		adapterContext,
+		ensureBindings,
+		rebindAdapters,
+		notifyAdaptersChanged,
+	} = bindings;
 	const contributions = createContributionView({
 		adapters,
 		adapterContext,
@@ -110,7 +138,7 @@ export function createStageFacade(input: {
 		setResizeHandles: session.setResizeHandles,
 		adapterForSelection: (entry) => adapterForSelection(adapters, entry),
 		admitsCardAction: (adapterId, subjectId, actionId) =>
-			scopeAdmitsCardAction(input.subjectScope?.get() ?? null, adapterId, subjectId, actionId)
+			scopeAdmitsCardAction(input.subjectScope?.get() ?? null, adapterId, subjectId, actionId),
 	});
 	const picking = createSelectionPick({
 		adapters,
@@ -121,11 +149,11 @@ export function createStageFacade(input: {
 		idOf: evaluationIdOf,
 		selectionMarks: contributions.selectionMarks,
 		idleMarks: contributions.idleMarks,
-		toolOwner: () => contributedTaskOwner?.adapterId ?? null
+		toolOwner: () => contributedTaskOwner?.adapterId ?? null,
 	});
 	const planView = createPlanView({
 		snapshot: () => currentSnapshot,
-		target: () => camera.state().pose.target
+		target: () => camera.state().pose.target,
 	});
 	/** The Sheet's role registration; one per facade lifetime, released on dispose. */
 	let planCutUnsubscribe: (() => void) | null = null;
@@ -141,14 +169,31 @@ export function createStageFacade(input: {
 	}
 
 	function setSelection(value: StageSelectionState): StageSelectionChange {
-		if (!isLive()) return { kind: 'refused', code: 'stale-session', message: 'This Stage lifetime has ended.' };
+		if (!isLive())
+			return { kind: 'refused', code: 'stale-session', message: 'This Stage lifetime has ended.' };
 		const scope = input.subjectScope?.get() ?? null;
-		if (scope !== null && value.ordered.some((entry) =>
-			!scopeAdmitsEntity(scope, entry.reference.domain === 'scene' ? entry.reference.subject.id : null))) {
-			return { kind: 'refused', code: 'out-of-scope', message: 'That is outside Object Studio. Go back to the World to select it.' };
+		if (
+			scope !== null &&
+			value.ordered.some(
+				(entry) =>
+					!scopeAdmitsEntity(
+						scope,
+						entry.reference.domain === 'scene' ? entry.reference.subject.id : null,
+					),
+			)
+		) {
+			return {
+				kind: 'refused',
+				code: 'out-of-scope',
+				message: 'That is outside Object Studio. Go back to the World to select it.',
+			};
 		}
 		const result = session.setSelection(value);
-		if (result.kind === 'selected') { contributions.syncDisclosureSelection(); bindings.echoSelection(); notifyAdaptersChanged(); }
+		if (result.kind === 'selected') {
+			contributions.syncDisclosureSelection();
+			bindings.echoSelection();
+			notifyAdaptersChanged();
+		}
 		return result;
 	}
 
@@ -179,13 +224,17 @@ export function createStageFacade(input: {
 			scopedFrom = all;
 			scopedFor = scope.entityId;
 			scopedSubjectsCache = all.filter((subject) =>
-				scopeAdmitsEntity(scope, subject.reference.domain === 'scene' ? subject.reference.subject.id : null));
+				scopeAdmitsEntity(
+					scope,
+					subject.reference.domain === 'scene' ? subject.reference.subject.id : null,
+				),
+			);
 		}
 		return scopedSubjectsCache;
 	};
 	/** The operations Object Studio offers; unscoped, the contributions' own arrays. */
 	function scopedOperations<T extends { readonly adapterId: string; readonly id: string }>(
-		read: () => readonly T[]
+		read: () => readonly T[],
 	): () => readonly T[] {
 		let from: readonly T[] | null = null;
 		let admits: SubjectScope['admitsOperation'] | undefined;
@@ -209,14 +258,23 @@ export function createStageFacade(input: {
 		const scope = input.subjectScope?.get() ?? null;
 		if (scope === null || scope.admitsOperation === undefined) return entries;
 		const tasks = contributions.tasks();
-		return entries.filter((entry) => tasks.some((task) =>
-			task.adapterId === entry.adapterId && task.taskKind === entry.taskKind &&
-			scopeAdmitsOperation(scope, task.adapterId, task.id)));
+		return entries.filter((entry) =>
+			tasks.some(
+				(task) =>
+					task.adapterId === entry.adapterId &&
+					task.taskKind === entry.taskKind &&
+					scopeAdmitsOperation(scope, task.adapterId, task.id),
+			),
+		);
 	};
-	const outsideScope = (): { readonly kind: 'refused'; readonly code: 'unknown-task'; readonly message: string } => ({
+	const outsideScope = (): {
+		readonly kind: 'refused';
+		readonly code: 'unknown-task';
+		readonly message: string;
+	} => ({
 		kind: 'refused',
 		code: 'unknown-task',
-		message: 'That is not part of Object Studio. Go back to the World to use it.'
+		message: 'That is not part of Object Studio. Go back to the World to use it.',
 	});
 	const facade: StageFacade = {
 		snapshot: () => currentSnapshot,
@@ -232,7 +290,7 @@ export function createStageFacade(input: {
 				return {
 					kind: 'failed',
 					code: 'stale-evaluation',
-					message: 'the supplied evaluation id is not the current viewport output'
+					message: 'the supplied evaluation id is not the current viewport output',
 				};
 			}
 			return projectWorld(point, evaluation, evaluation.token);
@@ -243,7 +301,7 @@ export function createStageFacade(input: {
 				return {
 					kind: 'failed',
 					code: 'stale-evaluation',
-					message: 'the supplied evaluation id is not the current viewport output'
+					message: 'the supplied evaluation id is not the current viewport output',
 				};
 			}
 			return pointerRay(cssPoint, evaluation, evaluation.token);
@@ -254,13 +312,18 @@ export function createStageFacade(input: {
 				return {
 					kind: 'failed',
 					code: 'stale-evaluation',
-					message: 'the supplied evaluation id is not the current viewport output'
+					message: 'the supplied evaluation id is not the current viewport output',
 				};
 			}
 			return intersectWorkingPlane(ray, plane, evaluation, evaluation.token);
 		},
 		requestViewingIntent(intent, ticket, clockSeconds) {
-			if (!isLive()) return { kind: 'superseded', state: camera.state(), message: 'the Stage lifetime has ended' };
+			if (!isLive())
+				return {
+					kind: 'superseded',
+					state: camera.state(),
+					message: 'the Stage lifetime has ended',
+				};
 			// Ownership is the landed ticket protocol's answer, never a field
 			// comparison: a ticket for another output, host session or source revision,
 			// or one whose run epoch this output already spent, cannot drive it. A run
@@ -277,7 +340,7 @@ export function createStageFacade(input: {
 						decision.kind === 'refused'
 							? `the stage inspection output refused this ticket: ${decision.reason}`
 							: 'the inspection output is held by another run; acquire it before requesting a viewing intent',
-					...(decision.kind === 'refused' ? { reason: decision.reason } : {})
+					...(decision.kind === 'refused' ? { reason: decision.reason } : {}),
 				};
 			}
 			const result = camera.applyIntent(intent, clockSeconds);
@@ -306,7 +369,7 @@ export function createStageFacade(input: {
 			const highest = merged.length === 0 ? 0 : merged[merged.length - 1]!.heightMeters;
 			const sheet = session.heightSheet();
 			sheet.setMaxHeightMeters(
-				Math.max(PLAN_DEFAULT_CUT_HEIGHT_METERS + 1, highest + 1, sheet.height())
+				Math.max(PLAN_DEFAULT_CUT_HEIGHT_METERS + 1, highest + 1, sheet.height()),
 			);
 			return merged;
 		},
@@ -320,23 +383,34 @@ export function createStageFacade(input: {
 		inspectionTicket: () => camera.inspectionTicket(),
 		installAccepted(next, options) {
 			if (!isLive()) {
-				return { kind: 'refused', code: 'disposed', message: 'the stage is disposed and installs no source' };
+				return {
+					kind: 'refused',
+					code: 'disposed',
+					message: 'the stage is disposed and installs no source',
+				};
 			}
 			const previous = currentSnapshot;
 			if (next.acceptedRevision.projectId !== previous.acceptedRevision.projectId) {
 				return {
 					kind: 'refused',
 					code: 'different-project',
-					message: 'a different project identity is a replacement, not a content change'
+					message: 'a different project identity is a replacement, not a content change',
 				};
 			}
 			if (next.sourceContentId === previous.sourceContentId) {
 				// Identical content: the claim, the selection and the task all still mean
 				// what they meant, so nothing is rebased and nothing is re-acquired.
-				return { kind: 'unchanged', sourceContentId: next.sourceContentId, claim: camera.output().claim };
+				return {
+					kind: 'unchanged',
+					sourceContentId: next.sourceContentId,
+					claim: camera.output().claim,
+				};
 			}
 			const requalify = options?.requalify;
-			const installed = session.installAccepted(next, { requalify, requalifyEntry: options?.requalifyEntry });
+			const installed = session.installAccepted(next, {
+				requalify,
+				requalifyEntry: options?.requalifyEntry,
+			});
 			if (installed.kind !== 'installed') {
 				// The session holds one accepted-source slot, so this is the "nothing
 				// mounted yet" case; a disposed or divergent session is named as such.
@@ -351,13 +425,17 @@ export function createStageFacade(input: {
 					message:
 						installed.kind === 'refused'
 							? installed.message
-							: 'the session reports identical content for a changed source'
+							: 'the session reports identical content for a changed source',
 				};
 			}
 			const endedClaim = camera.output().claim;
 			// The source rebase ends the live claim (its intent was evaluated against the
 			// old content) without touching the pose, and the host re-acquires at once.
-			camera.rebaseSource(next.sourceContentId, next.domain.geometry.bounds ?? null, next.domain.datumMeters);
+			camera.rebaseSource(
+				next.sourceContentId,
+				next.domain.geometry.bounds ?? null,
+				next.domain.datumMeters,
+			);
 			currentSnapshot = next;
 			// A replacement closes disclosure: the grips it revealed belong to the
 			// source that was replaced, not to whatever now shares its identity.
@@ -368,7 +446,9 @@ export function createStageFacade(input: {
 			const reboundAdapters = options?.[SKIP_REBIND_CONTROL] === true ? [] : rebindAdapters();
 			// Static bindings receive the requalified selection before task and surface notifications.
 			bindings.echoStaticSelection(
-				installed.requalification.kind === 'requalified' ? installed.requalification.selection : null
+				installed.requalification.kind === 'requalified'
+					? installed.requalification.selection
+					: null,
 			);
 			const acquired = camera.acquireInspection('exclusive', nextInspectionRun());
 			// End the closed task's adapters before telling the surface, so a listener
@@ -394,17 +474,22 @@ export function createStageFacade(input: {
 				closedTask: installed.closedTask,
 				releasedGestures: installed.releasedGestures,
 				requalification: installed.requalification,
-				selectionRemovals: installed.selectionRemovals
+				selectionRemovals: installed.selectionRemovals,
 			};
 		},
 		adoptMetadata(next) {
-			if (!isLive()) return { kind: 'refused', code: 'disposed', message: 'The Stage session has ended.' };
+			if (!isLive())
+				return { kind: 'refused', code: 'disposed', message: 'The Stage session has ended.' };
 			const adopted = session.adoptMetadata(next);
 			if (adopted.kind !== 'adopted') return adopted;
 			// Metadata-only source bytes still get a fresh identity. Rebase the one
 			// camera output at its existing pose, then rebuild bound adapters against
 			// the new authored envelope while retaining the session's selection/task.
-			camera.rebaseSource(next.sourceContentId, next.domain.geometry.bounds ?? null, next.domain.datumMeters);
+			camera.rebaseSource(
+				next.sourceContentId,
+				next.domain.geometry.bounds ?? null,
+				next.domain.datumMeters,
+			);
 			currentSnapshot = next;
 			// Metadata still replaces the accepted bytes: a disclosed grip set belongs
 			// to the source it was opened against and must not survive the swap.
@@ -431,7 +516,8 @@ export function createStageFacade(input: {
 			if (!isLive()) return null;
 			ensureBindings();
 			const evaluation = camera.evaluation();
-			const allowed = intent.phase === 'move' &&
+			const allowed =
+				intent.phase === 'move' &&
 				session.task() === null &&
 				session.gesture() === null &&
 				intent.coarse !== true &&
@@ -452,13 +538,18 @@ export function createStageFacade(input: {
 						if (update === undefined) continue;
 						try {
 							contributed = update(intent, handle.context) || contributed;
-						} catch { /* A throwing idle-hover contribution names no mark. */ }
+						} catch {
+							/* A throwing idle-hover contribution names no mark. */
+						}
 					}
 				} else {
 					const cancel = { ...intent, phase: 'cancel' as const };
 					for (const entry of adapters.values()) {
-						try { entry.contributions.idleHoverIntent?.(cancel, handle.context); }
-						catch { /* Subscriber isolation. */ }
+						try {
+							entry.contributions.idleHoverIntent?.(cancel, handle.context);
+						} catch {
+							/* Subscriber isolation. */
+						}
 					}
 				}
 			} finally {
@@ -487,7 +578,8 @@ export function createStageFacade(input: {
 		openTask: (task) => {
 			if (!isLive()) return false;
 			// A host tool is an operation too: Object Studio offers only some of them.
-			if (!scopeAdmitsOperation(input.subjectScope?.get() ?? null, SCOPE_HOST_OWNER, task.kind)) return false;
+			if (!scopeAdmitsOperation(input.subjectScope?.get() ?? null, SCOPE_HOST_OWNER, task.kind))
+				return false;
 			contributedTaskOwner = null;
 			return session.openTask(task);
 		},
@@ -510,16 +602,39 @@ export function createStageFacade(input: {
 			return true;
 		},
 		resumeTask() {
-			if (!isLive()) return { kind: 'refused', code: 'stale-session', message: 'This Stage lifetime has ended.' };
+			if (!isLive())
+				return {
+					kind: 'refused',
+					code: 'stale-session',
+					message: 'This Stage lifetime has ended.',
+				};
 			ensureBindings();
 			const owner = contributedTaskOwner;
-			const entry = owner ? contributions.tasksOf().find((candidate) => candidate.adapterId === owner.adapterId && candidate.id === owner.taskId) : null;
+			const entry = owner
+				? contributions
+						.tasksOf()
+						.find(
+							(candidate) =>
+								candidate.adapterId === owner.adapterId && candidate.id === owner.taskId,
+						)
+				: null;
 			const result = session.resumeTask((task, snapshot) => {
 				// The owning adapter may simply not be bound right now (a lens whose view
 				// supplies no evaluation defers its bindings). Say so, instead of claiming
 				// the capability was removed from a live adapter.
-				if (owner && !entry) return { kind: 'refused', code: 'binding-unavailable', message: 'This capability is not bound in this lens. Return to its lens and resume again.' };
-				if (entry && !entry.revalidate) return { kind: 'refused', code: 'resume-unavailable', message: 'This adapter cannot revalidate its task. Close it and invoke it again.' };
+				if (owner && !entry)
+					return {
+						kind: 'refused',
+						code: 'binding-unavailable',
+						message:
+							'This capability is not bound in this lens. Return to its lens and resume again.',
+					};
+				if (entry && !entry.revalidate)
+					return {
+						kind: 'refused',
+						code: 'resume-unavailable',
+						message: 'This adapter cannot revalidate its task. Close it and invoke it again.',
+					};
 				return entry?.revalidate?.(task, snapshot) ?? { kind: 'resumed' };
 			});
 			if (result.kind === 'resumed') rebindAdapters();
@@ -539,9 +654,12 @@ export function createStageFacade(input: {
 		openInkReading(id, adapterId) {
 			if (!isLive()) return null;
 			ensureBindings();
-			const record = contributions.inkReadingsOf().find(
-				(candidate) => candidate.id === id && (adapterId === undefined || candidate.adapterId === adapterId)
-			);
+			const record = contributions
+				.inkReadingsOf()
+				.find(
+					(candidate) =>
+						candidate.id === id && (adapterId === undefined || candidate.adapterId === adapterId),
+				);
 			if (record === undefined) return null;
 			const reading = adapters
 				.get(record.adapterId)
@@ -556,13 +674,25 @@ export function createStageFacade(input: {
 		instrumentForTask(id, adapterId) {
 			if (!isLive() || session.task() === null) return null;
 			ensureBindings();
-			const entry = contributions.tasksOf().find((candidate) => candidate.id === id && (adapterId === undefined || candidate.adapterId === adapterId));
-			if (entry === undefined || session.task()?.kind !== entry.taskKind ||
-				contributedTaskOwner?.adapterId !== entry.adapterId || contributedTaskOwner.taskId !== entry.id) return null;
+			const entry = contributions
+				.tasksOf()
+				.find(
+					(candidate) =>
+						candidate.id === id && (adapterId === undefined || candidate.adapterId === adapterId),
+				);
+			if (
+				entry === undefined ||
+				session.task()?.kind !== entry.taskKind ||
+				contributedTaskOwner?.adapterId !== entry.adapterId ||
+				contributedTaskOwner.taskId !== entry.id
+			)
+				return null;
 			try {
-				const content = adapters.get(entry.adapterId)?.contributions.instrument?.({
-					kind: entry.taskKind, targetRef: entry.targetRef ?? null
-				}) ?? null;
+				const content =
+					adapters.get(entry.adapterId)?.contributions.instrument?.({
+						kind: entry.taskKind,
+						targetRef: entry.targetRef ?? null,
+					}) ?? null;
 				if (!content?.view) return content;
 				const services = content.view.services;
 				// **TD-8.** These services belong to the *contributed task instance*, not to
@@ -586,59 +716,134 @@ export function createStageFacade(input: {
 					session.task() === openedFor &&
 					contributedTaskOwner?.adapterId === taskOwner.adapterId &&
 					contributedTaskOwner.taskId === taskOwner.taskId;
-				return { ...content, view: { ...content.view, services: {
-					materialProofs: services.materialProofs,
-					targetAnalysis: services.targetAnalysis,
-					stage: { ...services.stage,
-						setSelection: (value) => active() ? setSelection(value) : { kind: 'refused', code: 'inactive-task', message: 'Resume the task before selecting.' },
-						select: (value) => { if (active()) select(value); },
-						acquireGesture: (request) => active() ? facade.acquireGesture(request) : { kind: 'refused', code: 'stale-epoch', owner: request.owner }
+				return {
+					...content,
+					view: {
+						...content.view,
+						services: {
+							materialProofs: services.materialProofs,
+							targetAnalysis: services.targetAnalysis,
+							stage: {
+								...services.stage,
+								setSelection: (value) =>
+									active()
+										? setSelection(value)
+										: {
+												kind: 'refused',
+												code: 'inactive-task',
+												message: 'Resume the task before selecting.',
+											},
+								select: (value) => {
+									if (active()) select(value);
+								},
+								acquireGesture: (request) =>
+									active()
+										? facade.acquireGesture(request)
+										: { kind: 'refused', code: 'stale-epoch', owner: request.owner },
+							},
+							authoring: {
+								...services.authoring,
+								accept: (intent) =>
+									active()
+										? services.authoring.accept(intent)
+										: Promise.resolve({
+												kind: 'refused',
+												code: 'inactive-task',
+												message: 'Resume the task before applying a proposal.',
+											}),
+							},
+						},
 					},
-					authoring: { ...services.authoring, accept: (intent) => active() ? services.authoring.accept(intent) : Promise.resolve({ kind: 'refused', code: 'inactive-task', message: 'Resume the task before applying a proposal.' }) }
-				} } };
-			} catch { return null; }
+				};
+			} catch {
+				return null;
+			}
 		},
 		openFindEntry(adapterId, id) {
 			ensureBindings();
-			const entry = contributions.findEntriesOf().find((candidate) => candidate.id === id && candidate.adapterId === adapterId);
-			const tasks = contributions.tasksOf().filter((candidate) => candidate.adapterId === adapterId && candidate.taskKind === entry?.taskKind);
-			if (tasks.length !== 1) return { kind: 'refused', code: 'unknown-task', message: 'Find requires one task of the declared kind in its owning adapter' };
+			const entry = contributions
+				.findEntriesOf()
+				.find((candidate) => candidate.id === id && candidate.adapterId === adapterId);
+			const tasks = contributions
+				.tasksOf()
+				.filter(
+					(candidate) =>
+						candidate.adapterId === adapterId && candidate.taskKind === entry?.taskKind,
+				);
+			if (tasks.length !== 1)
+				return {
+					kind: 'refused',
+					code: 'unknown-task',
+					message: 'Find requires one task of the declared kind in its owning adapter',
+				};
 			// The task is the operation: refuse before the entry's own side effect runs.
-			if (!scopeAdmitsOperation(input.subjectScope?.get() ?? null, adapterId, tasks[0]!.id)) return outsideScope();
+			if (!scopeAdmitsOperation(input.subjectScope?.get() ?? null, adapterId, tasks[0]!.id))
+				return outsideScope();
 			entry?.onInvoke?.();
 			return facade.openContributedTask(tasks[0]!.id, adapterId);
 		},
 		openContributedTask(id, adapterId) {
 			if (!isLive()) {
-				return { kind: 'refused', code: 'task-closed', message: 'the stage is disposed and opens no task' };
+				return {
+					kind: 'refused',
+					code: 'task-closed',
+					message: 'the stage is disposed and opens no task',
+				};
 			}
 			ensureBindings();
-			const entry = contributions.tasksOf().find((candidate) => candidate.id === id && (adapterId === undefined || candidate.adapterId === adapterId));
-			if (entry !== undefined && !scopeAdmitsOperation(input.subjectScope?.get() ?? null, entry.adapterId, entry.id)) return outsideScope();
+			const entry = contributions
+				.tasksOf()
+				.find(
+					(candidate) =>
+						candidate.id === id && (adapterId === undefined || candidate.adapterId === adapterId),
+				);
+			if (
+				entry !== undefined &&
+				!scopeAdmitsOperation(input.subjectScope?.get() ?? null, entry.adapterId, entry.id)
+			)
+				return outsideScope();
 			if (entry === undefined) {
-				return { kind: 'refused', code: 'unknown-task', message: `no adapter contributes a task "${id}"` };
+				return {
+					kind: 'refused',
+					code: 'unknown-task',
+					message: `no adapter contributes a task "${id}"`,
+				};
 			}
 			const lens = entry.lens ?? 'world';
 			if (lens !== session.lens()) {
 				// A lens-bound operation is not a disposed session: name the lens, so the
 				// creator returns there instead of reading "disposed" for a live Stage.
-				return { kind: 'refused', code: 'wrong-lens', message: `Return to the ${lens} lens before invoking ${entry.label}.` };
+				return {
+					kind: 'refused',
+					code: 'wrong-lens',
+					message: `Return to the ${lens} lens before invoking ${entry.label}.`,
+				};
 			}
 			// Opening a task ends the no-task surface too: a direct-manipulation gesture
 			// (a size ray) must not outlive the task that now owns the pointer. A
 			// replacement also closes its previous contributed task through the same
 			// taskClosed path as Esc, so no lease survives into the new task.
-			if (contributedTaskOwner === null ||
-				contributedTaskOwner.adapterId !== entry.adapterId || contributedTaskOwner.taskId !== entry.id) {
+			if (
+				contributedTaskOwner === null ||
+				contributedTaskOwner.adapterId !== entry.adapterId ||
+				contributedTaskOwner.taskId !== entry.id
+			) {
 				notifyTaskClosed();
 			}
 			const task: StageTask = {
 				kind: entry.taskKind,
 				label: entry.label,
-				targetRef: entry.targetRef ?? null, target: entry.target ?? null, configuration: entry.configuration ?? null, lens
+				targetRef: entry.targetRef ?? null,
+				target: entry.target ?? null,
+				configuration: entry.configuration ?? null,
+				lens,
 			};
 			if (!session.openTask(task)) {
-				return { kind: 'refused', code: 'task-closed', message: 'the session is disposed and opens no task' };
+				return {
+					kind: 'refused',
+					code: 'task-closed',
+					message: 'the session is disposed and opens no task',
+				};
 			}
 			contributedTaskOwner = { adapterId: entry.adapterId, taskId: entry.id };
 			notifyAdaptersChanged();
@@ -672,18 +877,27 @@ export function createStageFacade(input: {
 					return { claimed: false, adapterId: null };
 				}
 				// Direct manipulation belongs only to the primary selection's domain.
-				const admittedMark = intent.handleId === undefined
-					? undefined
-					: contributions.stageMarks().find((mark) =>
-						mark.id === intent.handleId &&
-						(intent.handleAdapterId === undefined || mark.adapterId === intent.handleAdapterId)
-					);
+				const admittedMark =
+					intent.handleId === undefined
+						? undefined
+						: contributions
+								.stageMarks()
+								.find(
+									(mark) =>
+										mark.id === intent.handleId &&
+										(intent.handleAdapterId === undefined ||
+											mark.adapterId === intent.handleAdapterId),
+								);
 				if (intent.handleId !== undefined && admittedMark === undefined) {
 					return { claimed: false, adapterId: null };
 				}
-				const adapterId = admittedMark?.adapterId ?? primaryEntry(session.selectionState())?.reference.domain;
+				const adapterId =
+					admittedMark?.adapterId ?? primaryEntry(session.selectionState())?.reference.domain;
 				const entry = adapterId === undefined ? undefined : adapters.get(adapterId);
-				const claim = entry?.contributions.pressWhenNoTask === true ? entry.contributions.pointerIntent : undefined;
+				const claim =
+					entry?.contributions.pressWhenNoTask === true
+						? entry.contributions.pointerIntent
+						: undefined;
 				if (claim !== undefined) {
 					try {
 						if (claim(intent, handle.context)) {
@@ -709,7 +923,11 @@ export function createStageFacade(input: {
 				pointerOwner = null;
 				return { claimed: false, adapterId: null };
 			}
-			try { entry.contributions.pointerIntent?.(intent, handle.context); } catch { /* Subscriber isolation. */ }
+			try {
+				entry.contributions.pointerIntent?.(intent, handle.context);
+			} catch {
+				/* Subscriber isolation. */
+			}
 			if (intent.phase !== 'move') {
 				// A writer that deliberately kept its gesture lease (numeric entry after
 				// pointer-up) also keeps the keyboard until Enter or Esc. A writer that
@@ -726,8 +944,15 @@ export function createStageFacade(input: {
 			ensureBindings();
 			const handle = adapterContext();
 			if (handle === null) return false;
-			try { return adapters.get(contributedTaskOwner.adapterId)?.contributions.hoverIntent?.(intent, handle.context) === true; }
-			catch { return false; }
+			try {
+				return (
+					adapters
+						.get(contributedTaskOwner.adapterId)
+						?.contributions.hoverIntent?.(intent, handle.context) === true
+				);
+			} catch {
+				return false;
+			}
 		},
 		keyboardIntent(intent) {
 			if (!isLive()) return { claimed: false, adapterId: null };
@@ -807,7 +1032,7 @@ export function createStageFacade(input: {
 				evaluationId: request.evaluationId,
 				acceptedRevision: currentSnapshot.acceptedRevision,
 				policy: request.policy,
-				...(request.navigation === true ? { navigation: true } : {})
+				...(request.navigation === true ? { navigation: true } : {}),
 			});
 			// **Never notify adapter listeners here.** A lease is not a registration or
 			// a binding change: a granted proposal changes what Undo reports, but the
@@ -825,7 +1050,7 @@ export function createStageFacade(input: {
 			bindings.dispose();
 			planCutUnsubscribe?.();
 			planCutUnsubscribe = null;
-		}
+		},
 	};
 
 	// The one v1 consumer of the height fact. Registration is at mount, the

@@ -18,10 +18,7 @@
  * on Escape at rest would read as flicker.
  */
 import type { CompiledPhysicalWall, CompiledRoom } from '@portfolio/layout-core/geometry';
-import {
-	classifyNearWalls,
-	type NearWallClassification
-} from './near-wall-classify';
+import { classifyNearWalls, type NearWallClassification } from './near-wall-classify';
 
 export type NearWallMode = 'cut' | 'whole';
 
@@ -49,11 +46,11 @@ export type NearWallEvaluation = {
 /** A pose key rounded to 1e-6 m, so float noise never re-classifies a still Camera. */
 function poseKeyOf(
 	eye: readonly [number, number, number],
-	target: readonly [number, number, number]
+	target: readonly [number, number, number],
 ): string {
 	const rounded = (value: number): number => Math.round(value * 1e6) / 1e6;
 	return `${rounded(eye[0])},${rounded(eye[1])},${rounded(eye[2])}|${rounded(target[0])},${rounded(
-		target[1]
+		target[1],
 	)},${rounded(target[2])}`;
 }
 
@@ -130,10 +127,18 @@ class NearWallCutawayStore {
 		// A geometry revision during a press is frozen; the next evaluation after
 		// release runs once. Pose changes still re-evaluate, because the Camera can
 		// move while a drag is active.
-		if (input.pressing && previous !== null && input.geometryRevision !== previous.geometryRevision) {
+		if (
+			input.pressing &&
+			previous !== null &&
+			input.geometryRevision !== previous.geometryRevision
+		) {
 			return false;
 		}
-		if (previous !== null && previous.poseKey === poseKey && previous.geometryRevision === input.geometryRevision) {
+		if (
+			previous !== null &&
+			previous.poseKey === poseKey &&
+			previous.geometryRevision === input.geometryRevision
+		) {
 			return false;
 		}
 		const classification: NearWallClassification = classifyNearWalls({
@@ -143,14 +148,14 @@ class NearWallCutawayStore {
 			walls: input.walls,
 			floors: input.floors,
 			previousSpaceId: previous?.spaceId ?? null,
-			previousCut: previous?.cut ?? EMPTY
+			previousCut: previous?.cut ?? EMPTY,
 		});
 		this.#decision = {
 			spaceId: classification.spaceId,
 			cut: classification.cut,
 			stubTopY: classification.stubTopY,
 			poseKey,
-			geometryRevision: input.geometryRevision
+			geometryRevision: input.geometryRevision,
 		};
 		// A pose change is the one moment a sticky exemption is released: the Wall
 		// re-enters ordinary classification.
@@ -216,6 +221,17 @@ export const nearWallCutaway = new NearWallCutawayStore();
 /** The public surface a route (or a test) needs, without exposing the class. */
 export type NearWallCutaway = Pick<
 	NearWallCutawayStore,
-	'mode' | 'held' | 'decision' | 'stubTopY' | 'spaceId' | 'classified' | 'sticky' |
-	'setMode' | 'setHeld' | 'evaluate' | 'setSelectionHosts' | 'effective' | 'reset'
+	| 'mode'
+	| 'held'
+	| 'decision'
+	| 'stubTopY'
+	| 'spaceId'
+	| 'classified'
+	| 'sticky'
+	| 'setMode'
+	| 'setHeld'
+	| 'evaluate'
+	| 'setSelectionHosts'
+	| 'effective'
+	| 'reset'
 >;

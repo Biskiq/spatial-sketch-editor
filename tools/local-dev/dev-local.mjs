@@ -37,7 +37,7 @@ import {
 	stateDirectory,
 	statePath,
 	validateState,
-	writeState
+	writeState,
 } from './stack.mjs';
 
 const REPO_ROOT = resolve(fileURLToPath(new URL('../..', import.meta.url)));
@@ -76,18 +76,24 @@ function dockerComposeArgs(state, args) {
 function compose(state, args, options = {}) {
 	return run('docker', dockerComposeArgs(state, args), {
 		env: buildComposeEnv(state),
-		allowFailure: options.allowFailure ?? false
+		allowFailure: options.allowFailure ?? false,
 	});
 }
 
 function assertDocker() {
 	const composeVersion = spawnSync('docker', ['compose', 'version'], { stdio: 'ignore' });
 	if (composeVersion.status !== 0) {
-		throw new Error('Docker with Compose v2 is required. Install Docker Desktop, then rerun npm run dev:local.');
+		throw new Error(
+			'Docker with Compose v2 is required. Install Docker Desktop, then rerun npm run dev:local.',
+		);
 	}
-	const daemon = spawnSync('docker', ['info', '--format', '{{.ServerVersion}}'], { stdio: 'ignore' });
+	const daemon = spawnSync('docker', ['info', '--format', '{{.ServerVersion}}'], {
+		stdio: 'ignore',
+	});
 	if (daemon.status !== 0) {
-		throw new Error('The Docker daemon is not running. Start Docker Desktop, then rerun npm run dev:local.');
+		throw new Error(
+			'The Docker daemon is not running. Start Docker Desktop, then rerun npm run dev:local.',
+		);
 	}
 }
 
@@ -135,7 +141,7 @@ async function acquireLock() {
 	const existing = await readLockPid();
 	if (existing && processAlive(existing) && looksLikeSupervisor(existing)) {
 		throw new Error(
-			`The local stack already has a running supervisor (pid ${existing}). Use npm run dev:local:stop first.`
+			`The local stack already has a running supervisor (pid ${existing}). Use npm run dev:local:stop first.`,
 		);
 	}
 	await rm(path, { force: true });
@@ -160,7 +166,7 @@ function persistChildren() {
 				return;
 			}
 			await writeFile(childrenPath(REPO_ROOT), `${JSON.stringify(running, null, 2)}\n`, {
-				mode: 0o600
+				mode: 0o600,
 			});
 		})
 		.catch(() => {});
@@ -171,7 +177,7 @@ function composePublishesPort(stack, port) {
 	const result = spawnSync(
 		'docker',
 		['ps', '--filter', `label=com.docker.compose.project=${stack}`, '--format', '{{.Ports}}'],
-		{ encoding: 'utf8' }
+		{ encoding: 'utf8' },
 	);
 	if (result.status !== 0 || typeof result.stdout !== 'string') return false;
 	return result.stdout.split('\n').some((line) => line.includes(`:${port}->`));
@@ -206,7 +212,9 @@ async function ensurePorts(state) {
 	used.add(next.editor);
 	if (Object.keys(next).some((name) => next[name] !== state.ports[name])) {
 		state.ports = next;
-		log(`reassigned local ports: db=${next.db} storage=${next.storage} api=${next.api} editor=${next.editor}`);
+		log(
+			`reassigned local ports: db=${next.db} storage=${next.storage} api=${next.api} editor=${next.editor}`,
+		);
 	}
 }
 
@@ -247,10 +255,8 @@ async function ensureState() {
 	}
 	const { editor, ...servicePorts } = preferredPorts(identity.hash);
 	const ports = await allocatePorts(servicePorts);
-	ports.editor = await findAvailablePort(
-		editor,
-		new Set(Object.values(ports)),
-		(port) => isPortAvailable(port, 'localhost')
+	ports.editor = await findAvailablePort(editor, new Set(Object.values(ports)), (port) =>
+		isPortAvailable(port, 'localhost'),
 	);
 	const state = createState(identity, ports);
 	await writeState(REPO_ROOT, state);
@@ -266,7 +272,9 @@ async function waitForHttp(label, url, record, timeoutMs = STARTUP_TIMEOUT_MS) {
 	while (Date.now() < deadline) {
 		assertNotInterrupted();
 		if (record?.exited) {
-			throw new Error(`${label} exited before becoming ready${record.code === null ? '' : ` (${record.code})`}`);
+			throw new Error(
+				`${label} exited before becoming ready${record.code === null ? '' : ` (${record.code})`}`,
+			);
 		}
 		try {
 			const response = await fetch(url, { signal: AbortSignal.timeout(2_000) });
@@ -285,7 +293,7 @@ function startChild(label, args, env) {
 		cwd: REPO_ROOT,
 		env,
 		stdio: 'inherit',
-		detached: process.platform !== 'win32'
+		detached: process.platform !== 'win32',
 	});
 	const record = { label, child, exited: false, code: null, signal: null };
 	record.exit = new Promise((resolveExit) => {
@@ -365,7 +373,8 @@ async function killRecordedChildren() {
 		const pid = entry?.pid;
 		if (!Number.isInteger(pid) || pid <= 0 || !processAlive(pid)) continue;
 		const command = processCommand(pid);
-		if (command.length > 0 && !/@biskiq\/api|@portfolio\/editor|vite|dev-local/.test(command)) continue;
+		if (command.length > 0 && !/@biskiq\/api|@portfolio\/editor|vite|dev-local/.test(command))
+			continue;
 		signalProcess(pid, 'SIGKILL');
 	}
 	await rm(childrenPath(REPO_ROOT), { force: true });
@@ -488,7 +497,9 @@ async function start() {
 		assertNotInterrupted();
 
 		log('initializing object storage...');
-		run(process.execPath, [resolve(REPO_ROOT, 'apps/api/scripts/init-local-object-store.mjs')], { env });
+		run(process.execPath, [resolve(REPO_ROOT, 'apps/api/scripts/init-local-object-store.mjs')], {
+			env,
+		});
 		assertNotInterrupted();
 
 		log('applying database migrations...');
@@ -509,9 +520,9 @@ async function start() {
 				'--',
 				'--port',
 				String(state.ports.editor),
-				'--strictPort'
+				'--strictPort',
 			],
-			env
+			env,
 		);
 		await waitForHttp('editor', `http://localhost:${state.ports.editor}/`, editor);
 
@@ -550,7 +561,7 @@ async function reset() {
 	const { identity, state, mismatch } = await loadCleanupState();
 	if (mismatch) {
 		throw new Error(
-			`Refusing to reset because the persisted state is not for this worktree: ${mismatch}. The state file was left in place.`
+			`Refusing to reset because the persisted state is not for this worktree: ${mismatch}. The state file was left in place.`,
 		);
 	}
 	await stopSupervisor();
@@ -558,9 +569,10 @@ async function reset() {
 	let removedCompose = false;
 	if (state) {
 		try {
-			removedCompose = compose(state, ['down', '--volumes', '--remove-orphans'], {
-				allowFailure: true
-			}).status === 0;
+			removedCompose =
+				compose(state, ['down', '--volumes', '--remove-orphans'], {
+					allowFailure: true,
+				}).status === 0;
 		} catch {
 			removedCompose = false;
 		}
@@ -570,7 +582,7 @@ async function reset() {
 		removeProjectVolumes(identity.stack);
 	} catch (error) {
 		throw new Error(
-			`Reset could not remove the local stack; the persisted state was left in place: ${error.message}`
+			`Reset could not remove the local stack; the persisted state was left in place: ${error.message}`,
 		);
 	}
 	await rm(lockPath(REPO_ROOT), { force: true });
@@ -599,7 +611,7 @@ async function status() {
 	compose(state, ['ps'], { allowFailure: true });
 	for (const [label, url] of [
 		['API', `http://127.0.0.1:${state.ports.api}/health/ready`],
-		['editor', `http://localhost:${state.ports.editor}/`]
+		['editor', `http://localhost:${state.ports.editor}/`],
 	]) {
 		try {
 			const response = await fetch(url, { signal: AbortSignal.timeout(2_000) });
@@ -622,7 +634,9 @@ if (!Object.hasOwn(COMMANDS, command)) {
 	try {
 		await COMMANDS[command]();
 	} catch (error) {
-		console.error(`[local] ${error instanceof Error ? error.message : 'local stack command failed'}`);
+		console.error(
+			`[local] ${error instanceof Error ? error.message : 'local stack command failed'}`,
+		);
 		process.exitCode = 1;
 	}
 }

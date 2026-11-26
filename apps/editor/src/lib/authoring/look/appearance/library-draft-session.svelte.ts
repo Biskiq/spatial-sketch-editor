@@ -35,19 +35,26 @@ export function createLibraryDraftSession(input: {
 				document: snapshot.domain.scene,
 				finishId,
 				revision: snapshot.sourceContentId,
-				scope: input.textureScope()
-			}
+				scope: input.textureScope(),
+			},
 		};
 	}
 	const finishShelf = $derived.by(() => {
 		void shell.contributionsVersion;
 		return input.finishes().libraryShelf();
 	});
-	const editorTreatmentFacts = materialTreatmentFacts((id) => (materialById.has(id) ? getMaterial(id).label : id));
+	const editorTreatmentFacts = materialTreatmentFacts((id) =>
+		materialById.has(id) ? getMaterial(id).label : id,
+	);
 
-	function baseSourceOfInstance(instance: { readonly base: { readonly catalogue: string } | { readonly material: string } }): FinishTileSource | null {
+	function baseSourceOfInstance(instance: {
+		readonly base: { readonly catalogue: string } | { readonly material: string };
+	}): FinishTileSource | null {
 		if ('catalogue' in instance.base) {
-			return { kind: 'catalogue', id: instance.base.catalogue as import('$lib/types/materials').MaterialId };
+			return {
+				kind: 'catalogue',
+				id: instance.base.catalogue as import('$lib/types/materials').MaterialId,
+			};
 		}
 		const snapshot = input.snapshot();
 		if (snapshot === null) return null;
@@ -61,13 +68,13 @@ export function createLibraryDraftSession(input: {
 					...scene,
 					materials: [
 						...scene.materials.filter((material) => material.id !== id),
-						{ id, name: 'Original', base: instance.base }
-					]
+						{ id, name: 'Original', base: instance.base },
+					],
 				},
 				finishId: id,
 				revision: `${snapshot.sourceContentId}#base:${instance.base.material}`,
-				scope: input.textureScope()
-			}
+				scope: input.textureScope(),
+			},
 		};
 	}
 
@@ -78,36 +85,41 @@ export function createLibraryDraftSession(input: {
 	});
 
 	/** The draft's own render subject for Compare: the patched Finish in a draft-only document. */
-	const libraryDraftRender = $derived.by((): { source: FinishTileSource | null; reason: string | null } => {
-		void shell.contributionsVersion;
-		const drafted = input.finishes().libraryDraftInstance();
-		if (drafted === null) return { source: null, reason: null };
-		if (!drafted.ok) return { source: null, reason: drafted.reason };
-		if (!drafted.changed) return { source: null, reason: null };
-		const snapshot = input.snapshot();
-		if (snapshot === null) {
-			return { source: null, reason: 'The project is not loaded.' };
-		}
-		const scene = snapshot.domain.scene;
-		const id = 'library-draft-inspection';
-		const editsSig = JSON.stringify(input.finishes().libraryDraft?.edits ?? []);
-		return {
-			reason: null,
-			source: {
-				kind: 'finish',
-				subject: {
-					kind: 'finish',
-					document: {
-						...scene,
-						materials: [...scene.materials.filter((material) => material.id !== id), { ...drafted.instance, id }]
-					},
-					finishId: id,
-					revision: `${snapshot.sourceContentId}#draft:${input.finishes().libraryDraft?.finishKey}:${editsSig}`,
-					scope: input.textureScope()
-				}
+	const libraryDraftRender = $derived.by(
+		(): { source: FinishTileSource | null; reason: string | null } => {
+			void shell.contributionsVersion;
+			const drafted = input.finishes().libraryDraftInstance();
+			if (drafted === null) return { source: null, reason: null };
+			if (!drafted.ok) return { source: null, reason: drafted.reason };
+			if (!drafted.changed) return { source: null, reason: null };
+			const snapshot = input.snapshot();
+			if (snapshot === null) {
+				return { source: null, reason: 'The project is not loaded.' };
 			}
-		};
-	});
+			const scene = snapshot.domain.scene;
+			const id = 'library-draft-inspection';
+			const editsSig = JSON.stringify(input.finishes().libraryDraft?.edits ?? []);
+			return {
+				reason: null,
+				source: {
+					kind: 'finish',
+					subject: {
+						kind: 'finish',
+						document: {
+							...scene,
+							materials: [
+								...scene.materials.filter((material) => material.id !== id),
+								{ ...drafted.instance, id },
+							],
+						},
+						finishId: id,
+						revision: `${snapshot.sourceContentId}#draft:${input.finishes().libraryDraft?.finishKey}:${editsSig}`,
+						scope: input.textureScope(),
+					},
+				},
+			};
+		},
+	);
 	const libraryDraftPreview = $derived.by(() => {
 		void input.finishes().libraryDraft;
 		void shell.contributionsVersion;
@@ -119,22 +131,25 @@ export function createLibraryDraftSession(input: {
 		return input.finishes().libraryDraftStatus();
 	});
 
-
 	function attachGuards(): void {
 		/**
 		 * The Customise… draft lives in the Material editor while Paint is armed for
 		 * its Stage retarget; putting Paint down discards it. Only Apply writes.
 		 */
 		$effect(() => {
-			if (input.finishes().libraryDraft !== null && shell.armedHostTool !== 'paint') input.finishes().cancelLibraryDraft();
+			if (input.finishes().libraryDraft !== null && shell.armedHostTool !== 'paint')
+				input.finishes().cancelLibraryDraft();
 		});
 		$effect(() => {
-			if (!shell.libraryOpen && input.finishes().librarySwap !== null) untrack(() => input.finishes().clearLibrarySwap());
+			if (!shell.libraryOpen && input.finishes().librarySwap !== null)
+				untrack(() => input.finishes().clearLibrarySwap());
 		});
 	}
 
 	function focusLibrary(): void {
-		void tick().then(() => document.querySelector<HTMLElement>('[data-world-library-key]')?.focus());
+		void tick().then(() =>
+			document.querySelector<HTMLElement>('[data-world-library-key]')?.focus(),
+		);
 	}
 
 	/** Leave the draft editor: discard the draft and hand focus back to the Library key. */
@@ -145,20 +160,28 @@ export function createLibraryDraftSession(input: {
 	}
 
 	function dismissMaterialEditor(): boolean {
-			if (input.finishes().editor.open) {
-				input.finishes().editor.close(true);
-				return true;
-			}
-			if (input.finishes().libraryDraft !== null) {
-				endLibraryDraft();
-				return true;
-			}
-			return false;
+		if (input.finishes().editor.open) {
+			input.finishes().editor.close(true);
+			return true;
 		}
+		if (input.finishes().libraryDraft !== null) {
+			endLibraryDraft();
+			return true;
+		}
+		return false;
+	}
 
-	function editorControls(): Pick<MaterialEditorProps,
-		'facts' | 'inspection' | 'onInspection' | 'display' | 'onDisplay' |
-		'lightTurnRadians' | 'onTurnLight' | 'compare' | 'onCompare'
+	function editorControls(): Pick<
+		MaterialEditorProps,
+		| 'facts'
+		| 'inspection'
+		| 'onInspection'
+		| 'display'
+		| 'onDisplay'
+		| 'lightTurnRadians'
+		| 'onTurnLight'
+		| 'compare'
+		| 'onCompare'
 	> {
 		const { editor } = input.finishes();
 		return {
@@ -170,7 +193,7 @@ export function createLibraryDraftSession(input: {
 			lightTurnRadians: editor.lightTurnRadians,
 			onTurnLight: editor.turnLight,
 			compare: editor.compare,
-			onCompare: editor.setCompare
+			onCompare: editor.setCompare,
 		};
 	}
 
@@ -212,7 +235,7 @@ export function createLibraryDraftSession(input: {
 				return accepted;
 			},
 			onPaintDraft: finishes.paintLibraryDraft,
-			onCancelDraft: endLibraryDraft
+			onCancelDraft: endLibraryDraft,
 		};
 	}
 
@@ -223,9 +246,10 @@ export function createLibraryDraftSession(input: {
 		if (view === null || !input.canShowEditor()) return null;
 		const scene = input.snapshot()?.domain.scene;
 		if (scene === undefined) return null;
-		const live = view.curated && 'catalogue' in view.instance.base
-			? { kind: 'catalogue' as const, id: view.instance.base.catalogue as MaterialId }
-			: finishTileSource(view.instance.id);
+		const live =
+			view.curated && 'catalogue' in view.instance.base
+				? { kind: 'catalogue' as const, id: view.instance.base.catalogue as MaterialId }
+				: finishTileSource(view.instance.id);
 		return {
 			...editorControls(),
 			mode: 'finish',
@@ -254,17 +278,24 @@ export function createLibraryDraftSession(input: {
 			onCancelPreview: finishes.editor.cancelPreview,
 			onCommit: (field, edits) => finishes.editor.commit(field, () => edits),
 			onResetAll: finishes.editor.resetAll,
-			onDone: () => finishes.editor.close(true)
+			onDone: () => finishes.editor.close(true),
 		};
 	}
 
 	const materialEditor = $derived(
-		input.finishes().libraryDraft !== null && input.canShowEditor() ? readDraft() : readFinish()
+		input.finishes().libraryDraft !== null && input.canShowEditor() ? readDraft() : readFinish(),
 	);
 	attachGuards();
-	return { endLibraryDraft, dismissMaterialEditor, finishTileSource,
+	return {
+		endLibraryDraft,
+		dismissMaterialEditor,
+		finishTileSource,
 		draftPreview: () => libraryDraftPreview,
-		get shelf() { return finishShelf; },
-		get materialEditor() { return materialEditor; }
+		get shelf() {
+			return finishShelf;
+		},
+		get materialEditor() {
+			return materialEditor;
+		},
 	};
 }

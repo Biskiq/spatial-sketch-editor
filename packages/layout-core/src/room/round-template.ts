@@ -19,7 +19,7 @@ export const UNIT_TEMPLATE_SCALARS: readonly UnitCubicScalar[] = Array.from(
 		const p2: LayoutVec2 = [c1 + TEMPLATE_HANDLE_K * s1, s1 - TEMPLATE_HANDLE_K * c1];
 		const p3: LayoutVec2 = [c1, s1];
 		return [p0, p1, p2, p3] as const;
-	}
+	},
 );
 
 /** Rotate and scale a seam-aligned unit scalar point to centre-local, then add `center` once. */
@@ -27,7 +27,7 @@ export function unitToWorldPoint(
 	unitPoint: LayoutVec2,
 	center: LayoutVec2,
 	radius: number,
-	seamDirection: LayoutVec2
+	seamDirection: LayoutVec2,
 ): LayoutVec2 {
 	const [ux, uz] = seamDirection;
 	const localX = radius * (unitPoint[0] * ux - unitPoint[1] * uz);

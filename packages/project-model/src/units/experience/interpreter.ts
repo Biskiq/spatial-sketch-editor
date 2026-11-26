@@ -47,8 +47,13 @@ export type {
 	ExperienceInterpreterOptions,
 	ExperienceEffect,
 	ExperienceReduceOutcome,
-	ExperienceReduceResult
+	ExperienceReduceResult,
 } from './interpreter/contracts';
 export { EXPERIENCE_RESUME_LEAD_IN_MS } from './interpreter/contracts';
-export { createExperienceRun, isExploring, reduceExperience, replayExperience } from './interpreter/reduce';
+export {
+	createExperienceRun,
+	isExploring,
+	reduceExperience,
+	replayExperience,
+} from './interpreter/reduce';
 export { createExperienceInterpreter } from './interpreter/session';

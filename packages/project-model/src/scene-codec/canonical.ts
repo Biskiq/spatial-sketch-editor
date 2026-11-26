@@ -16,26 +16,24 @@ import type {
 	SceneEntity,
 	SceneFormEntity,
 	ScenePrimitiveEntity,
-	SceneWaypoint
+	SceneWaypoint,
 } from '../scene';
 import type { SceneDocument } from '../scene';
 
 export function cloneWaypoint(value: SceneWaypoint): SceneWaypoint {
 	return {
-		position: [...value.position]
+		position: [...value.position],
 	};
 }
 
-export function cloneViewKeyframe(
-	value: SceneCameraViewKeyframe
-): SceneCameraViewKeyframe {
+export function cloneViewKeyframe(value: SceneCameraViewKeyframe): SceneCameraViewKeyframe {
 	return {
 		id: value.id,
 		progress: value.progress,
 		cameraTarget: [...value.cameraTarget],
 		fov: value.fov,
 		...(value.holdSeconds === undefined ? {} : { holdSeconds: value.holdSeconds }),
-		...(value.easing === undefined ? {} : { easing: value.easing })
+		...(value.easing === undefined ? {} : { easing: value.easing }),
 	};
 }
 
@@ -44,7 +42,7 @@ function cloneFramingEnvelope(value: CameraFramingEnvelope): CameraFramingEnvelo
 		enterStart: value.enterStart,
 		enterEnd: value.enterEnd,
 		exitStart: value.exitStart,
-		exitEnd: value.exitEnd
+		exitEnd: value.exitEnd,
 	};
 }
 
@@ -62,7 +60,7 @@ export function cloneEntity(entity: SceneEntity): SceneEntity {
 			...(entity.scale === undefined ? {} : { scale: entity.scale }),
 			...(entity.materialInstanceId === undefined
 				? {}
-				: { materialInstanceId: entity.materialInstanceId })
+				: { materialInstanceId: entity.materialInstanceId }),
 		};
 	}
 	if (entity.kind === 'primitive') {
@@ -80,7 +78,7 @@ export function cloneEntity(entity: SceneEntity): SceneEntity {
 			...(entity.scale === undefined ? {} : { scale: entity.scale }),
 			...(entity.materialInstanceId === undefined
 				? {}
-				: { materialInstanceId: entity.materialInstanceId })
+				: { materialInstanceId: entity.materialInstanceId }),
 		} as ScenePrimitiveEntity;
 	}
 	if (entity.kind === 'form') {
@@ -96,7 +94,7 @@ export function cloneEntity(entity: SceneEntity): SceneEntity {
 			receiveShadow: entity.receiveShadow,
 			...(entity.materialInstanceId === undefined
 				? {}
-				: { materialInstanceId: entity.materialInstanceId })
+				: { materialInstanceId: entity.materialInstanceId }),
 		} as SceneFormEntity;
 	}
 	if (entity.light === 'spot') {
@@ -113,7 +111,7 @@ export function cloneEntity(entity: SceneEntity): SceneEntity {
 			rotation: [...entity.rotation],
 			...(entity.scale === undefined ? {} : { scale: entity.scale }),
 			...(entity.range === undefined ? {} : { range: entity.range }),
-			...(entity.penumbra === undefined ? {} : { penumbra: entity.penumbra })
+			...(entity.penumbra === undefined ? {} : { penumbra: entity.penumbra }),
 		};
 	}
 	return {
@@ -127,7 +125,7 @@ export function cloneEntity(entity: SceneEntity): SceneEntity {
 		position: [...entity.position],
 		rotation: [...entity.rotation],
 		...(entity.scale === undefined ? {} : { scale: entity.scale }),
-		...(entity.range === undefined ? {} : { range: entity.range })
+		...(entity.range === undefined ? {} : { range: entity.range }),
 	};
 }
 
@@ -136,16 +134,23 @@ export function cloneEntity(entity: SceneEntity): SceneEntity {
  * pruned empty override containers, so this is a structural copy of the
  * portable grammar: the canonical serializer sorts keys for identity.
  */
-function cloneFinish(finish: SceneDocument['materials'][number]): SceneDocument['materials'][number] {
+function cloneFinish(
+	finish: SceneDocument['materials'][number],
+): SceneDocument['materials'][number] {
 	return {
 		id: finish.id,
 		name: finish.name,
-		base: 'catalogue' in finish.base
-			? { catalogue: finish.base.catalogue }
-			: { material: finish.base.material },
+		base:
+			'catalogue' in finish.base
+				? { catalogue: finish.base.catalogue }
+				: { material: finish.base.material },
 		...(finish.overrides === undefined
 			? {}
-			: { overrides: JSON.parse(JSON.stringify(finish.overrides)) as NonNullable<typeof finish.overrides> })
+			: {
+					overrides: JSON.parse(JSON.stringify(finish.overrides)) as NonNullable<
+						typeof finish.overrides
+					>,
+				}),
 	};
 }
 
@@ -157,12 +162,27 @@ export function canonicalDocument(document: SceneDocument): SceneDocument {
 		textures: document.textures.map((texture) => ({
 			id: texture.id,
 			name: texture.name,
-			uri: texture.uri
+			uri: texture.uri,
 		})),
 		materials: document.materials.map(cloneFinish),
 		entities: document.entities.map(cloneEntity),
-		...(document.clusters === undefined ? {} : { clusters: document.clusters.map((cluster) => ({ id: cluster.id, name: cluster.name, memberIds: [...cluster.memberIds] })) }),
-		navigationNodes: document.navigationNodes.map((node) => ({ id: node.id, label: node.label, position: [...node.position], cameraTarget: [...node.cameraTarget], fov: node.fov, connectedNodeIds: [...node.connectedNodeIds] })),
+		...(document.clusters === undefined
+			? {}
+			: {
+					clusters: document.clusters.map((cluster) => ({
+						id: cluster.id,
+						name: cluster.name,
+						memberIds: [...cluster.memberIds],
+					})),
+				}),
+		navigationNodes: document.navigationNodes.map((node) => ({
+			id: node.id,
+			label: node.label,
+			position: [...node.position],
+			cameraTarget: [...node.cameraTarget],
+			fov: node.fov,
+			connectedNodeIds: [...node.connectedNodeIds],
+		})),
 		connections: document.connections.map((connection) => ({
 			id: connection.id,
 			fromNodeId: connection.fromNodeId,
@@ -172,8 +192,8 @@ export function canonicalDocument(document: SceneDocument): SceneDocument {
 				kind: connection.positionPath.kind,
 				anchors: connection.positionPath.anchors.map((anchor) => ({
 					id: anchor.id,
-					...cloneWaypoint(anchor)
-				}))
+					...cloneWaypoint(anchor),
+				})),
 			},
 			...(connection.viewTracks === undefined
 				? {}
@@ -182,19 +202,27 @@ export function canonicalDocument(document: SceneDocument): SceneDocument {
 							forward: connection.viewTracks.forward.map(cloneViewKeyframe),
 							reverse: connection.viewTracks.reverse.map(cloneViewKeyframe),
 							...(connection.viewTracks.framingEnvelope?.forward === undefined &&
-								connection.viewTracks.framingEnvelope?.reverse === undefined
+							connection.viewTracks.framingEnvelope?.reverse === undefined
 								? {}
 								: {
 										framingEnvelope: {
 											...(connection.viewTracks.framingEnvelope.forward === undefined
 												? {}
-												: { forward: cloneFramingEnvelope(connection.viewTracks.framingEnvelope.forward) }),
+												: {
+														forward: cloneFramingEnvelope(
+															connection.viewTracks.framingEnvelope.forward,
+														),
+													}),
 											...(connection.viewTracks.framingEnvelope.reverse === undefined
 												? {}
-												: { reverse: cloneFramingEnvelope(connection.viewTracks.framingEnvelope.reverse) })
-										}
-									})
-						}
+												: {
+														reverse: cloneFramingEnvelope(
+															connection.viewTracks.framingEnvelope.reverse,
+														),
+													}),
+										},
+									}),
+						},
 					}),
 			...(connection.targetWaypoints === undefined
 				? {}
@@ -208,9 +236,9 @@ export function canonicalDocument(document: SceneDocument): SceneDocument {
 								: { forward: { ...connection.timing.forward } }),
 							...(connection.timing.reverse === undefined
 								? {}
-								: { reverse: { ...connection.timing.reverse } })
-						}
-					})
-		}))
+								: { reverse: { ...connection.timing.reverse } }),
+						},
+					}),
+		})),
 	};
 }

@@ -1,33 +1,64 @@
 import type { WallSamplingDerivation } from '../wall/centerline';
 import { isCanonicalWallSampling } from '../wall/centerline';
-import { readPassiveCompiledGeometry, recordPassiveCompiledGeometry, recordSessionlessCompile, seedReuseFromPassiveCompile, tryCompileWallFirstLayoutGeometryDelta } from './delta';
+import {
+	readPassiveCompiledGeometry,
+	recordPassiveCompiledGeometry,
+	recordSessionlessCompile,
+	seedReuseFromPassiveCompile,
+	tryCompileWallFirstLayoutGeometryDelta,
+} from './delta';
 import { layoutItem, layoutLength } from '../kernel/source-collections';
 import type { Vec3 } from '../kernel/types';
 import type { LayoutDocumentWallFirst } from '../wall/types';
-import type { CompiledFloor, CompiledLayoutGeometry, CompiledLayoutGeometryResult, CompiledRoom, CompilerRoomSource, CompilerSource, LayoutGeometryIssue } from './types';
+import type {
+	CompiledFloor,
+	CompiledLayoutGeometry,
+	CompiledLayoutGeometryResult,
+	CompiledRoom,
+	CompilerRoomSource,
+	CompilerSource,
+	LayoutGeometryIssue,
+} from './types';
 import { geometryId } from './types';
 import { countWork, p2311Measure } from '../kernel/work-observer';
 import { cacheKeyOf } from './keys';
 import type { LayoutCompileReuse } from './reuse';
 import { beginLayoutCompile, finishLayoutCompile, noQueryRecords, sameAuthored } from './reuse';
 import type { SampleableSegment, SampledSegment } from './curve';
-import { hasBlockingLayoutIssues, prepareLayoutRoomSegments, validatePreparedLayoutRoomGeometry } from './validation';
+import {
+	hasBlockingLayoutIssues,
+	prepareLayoutRoomSegments,
+	validatePreparedLayoutRoomGeometry,
+} from './validation';
 import { createQueryGeometryBuilder } from './queries';
 import { DELTA_BUILDERS } from './delta-builders';
 import { compileWallFirstWithPhysicalWalls, floorElevationOf } from './physical-walls';
-import { aabbRecord, emitBoundsAabb, finiteBounds3, includeBounds3, pushRetainedRecords } from './query-records';
-import { buildWallFirstRoomSource, compileRoom, openingsGroupedByWallId, spacePreflight } from './rooms'
+import {
+	aabbRecord,
+	emitBoundsAabb,
+	finiteBounds3,
+	includeBounds3,
+	pushRetainedRecords,
+} from './query-records';
+import {
+	buildWallFirstRoomSource,
+	compileRoom,
+	openingsGroupedByWallId,
+	spacePreflight,
+} from './rooms';
 import { compileObjects } from './room-objects';
 import type { LayoutGeometryCompileOptions } from './session';
 
-function compileSessionlessOnce(document: LayoutDocumentWallFirst, sampling?: WallSamplingDerivation): CompiledLayoutGeometryResult {
+function compileSessionlessOnce(
+	document: LayoutDocumentWallFirst,
+	sampling?: WallSamplingDerivation,
+): CompiledLayoutGeometryResult {
 	countWork('compile:walls', layoutLength(document, 'walls'));
 	countWork('compile:junctions', layoutLength(document, 'junctions'));
 	countWork('compile:openings', layoutLength(document, 'openings'));
 	countWork('compile:rooms', layoutLength(document, 'rooms'));
 	return p2311Measure('compile', () => compileWallFirstLayoutGeometryOnce(document, sampling));
 }
-
 
 /**
  * The cold oracle. Always compiles from the document, never reads nor
@@ -36,12 +67,11 @@ function compileSessionlessOnce(document: LayoutDocumentWallFirst, sampling?: Wa
  */
 export function compileWallFirstLayoutGeometryFresh(
 	document: LayoutDocumentWallFirst,
-	sampling?: WallSamplingDerivation
+	sampling?: WallSamplingDerivation,
 ): CompiledLayoutGeometryResult {
 	countWork('compile');
 	return compileSessionlessOnce(document, sampling);
 }
-
 
 /**
  * Compile the authored Layout once into render-neutral geometry consumed by
@@ -59,15 +89,24 @@ export function compileWallFirstLayoutGeometryFresh(
 export function compileWallFirstLayoutGeometry(
 	document: LayoutDocumentWallFirst,
 	sampling?: WallSamplingDerivation,
-	reuse?: LayoutCompileReuse
+	reuse?: LayoutCompileReuse,
 ): CompiledLayoutGeometryResult {
 	// Only the canonical derivation factory proves process-constant sampling.
 	// An injected wrapper stays on the cold authority and cannot seed caches
 	// which a later default derivation might accidentally inherit.
 	if (reuse && !isCanonicalWallSampling(sampling)) {
-		countWork('compile:custom-sampling-global-reset', reuse.walls.size + reuse.junctions.size + reuse.roomSources.size + reuse.objects.size);
-		reuse.walls.clear(); reuse.junctions.clear(); reuse.roomSources.clear(); reuse.objects.clear(); reuse.regions.clear();
-		reuse.world = null; reuse.retainedFloor = null; reuse.retainedDocAabb = null;
+		countWork(
+			'compile:custom-sampling-global-reset',
+			reuse.walls.size + reuse.junctions.size + reuse.roomSources.size + reuse.objects.size,
+		);
+		reuse.walls.clear();
+		reuse.junctions.clear();
+		reuse.roomSources.clear();
+		reuse.objects.clear();
+		reuse.regions.clear();
+		reuse.world = null;
+		reuse.retainedFloor = null;
+		reuse.retainedDocAabb = null;
 		beginLayoutCompile(reuse);
 		const result = compileWallFirstLayoutGeometry(document, sampling);
 		reuse.counters.wallsEvaluated = result.geometry.walls.length;
@@ -111,7 +150,7 @@ export function compileWallFirstLayoutGeometry(
 	beginLayoutCompile(reuse);
 	const deltaResult = !cold
 		? p2311Measure('compile-delta', () =>
-				tryCompileWallFirstLayoutGeometryDelta(document, sampling, reuse, DELTA_BUILDERS)
+				tryCompileWallFirstLayoutGeometryDelta(document, sampling, reuse, DELTA_BUILDERS),
 			)
 		: null;
 	let result: CompiledLayoutGeometryResult;
@@ -119,7 +158,9 @@ export function compileWallFirstLayoutGeometry(
 		result = deltaResult;
 	} else {
 		if (!cold) beginLayoutCompile(reuse);
-		result = p2311Measure('compile', () => compileWallFirstLayoutGeometryOnce(document, sampling, reuse));
+		result = p2311Measure('compile', () =>
+			compileWallFirstLayoutGeometryOnce(document, sampling, reuse),
+		);
 		if (isCanonicalWallSampling(sampling) && result.issues.length === 0) {
 			recordPassiveCompiledGeometry(document, result.geometry, result.issues);
 			reuse.world = null;
@@ -152,11 +193,10 @@ export function compileWallFirstLayoutGeometry(
 	return result;
 }
 
-
 function compileWallFirstLayoutGeometryOnce(
 	document: LayoutDocumentWallFirst,
 	sampling?: WallSamplingDerivation,
-	reuse?: LayoutCompileReuse
+	reuse?: LayoutCompileReuse,
 ): CompiledLayoutGeometryResult {
 	const pointById = new Map(document.junctions.map((junction) => [junction.id, junction.point]));
 	const junctionById = new Map(document.junctions.map((junction) => [junction.id, junction]));
@@ -220,113 +260,122 @@ function compileWallFirstLayoutGeometryOnce(
 	// The Room-input pass is its own span, because in an
 	// incremental compile it is the O(R) comparison term rather than the O(k)
 	// evaluation term, and the two must stay separable in an attribution.
-	const rooms: CompilerRoomSource[] = p2311Measure('incremental:room-inputs', () => document.rooms.filter((room) => !preflight.invalidRoomIds.has(room.id)).map((room) => {
-		// The retained Room **input** is compared before it
-		// is rebuilt. Everything below derives from the Room's own authored
-		// fields, its boundary Walls' authored centerlines and endpoint
-		// coordinates, those Walls' thickness/height (they reach the source as
-		// per-segment overrides) and the Openings those Walls host. When none of
-		// that moved, the previous source is still exactly what this loop would
-		// produce, so the segment construction, sampling and miroring are skipped.
-		const retentionKey = reuse
-			? [
-					room,
-					ceilingElevationByRoomId.get(room.id) ?? null,
-					floorElevationOf(document),
-					// The Floor datum is part of the Room's *compiled identity*
-					// (`geometryId(['room', floor.id, room.id])`), and the shared core
-					// derives the Floor's room list from these rooms, so a renamed Floor
-					// must re-evaluate every Room.
-					document.floor.id,
-					// The Room source carries the document's first Wall thickness as its
-					// fallback (`wallThickness: layoutItem(document, 'walls', 0)?.thickness ?? 0.1`),
-					// which lands in the compiled Room's own `wallThickness` and key.
-					// Editing that Wall therefore moves every Room's output, even when
-					// the edited Wall is not on this Room's boundary.
-					layoutItem(document, 'walls', 0)?.thickness ?? 0.1,
-					// A different sampling derivation is a different input: the retained
-					// source embeds `preSampled` only when one is supplied.
-					sampling !== undefined,
-					...room.boundary.map((ref) => {
-						const wall = wallById.get(ref.wallId);
-						return [
-							ref,
-							wall ?? null,
-							wall ? pointById.get(wall.startJunctionId) ?? null : null,
-							wall ? pointById.get(wall.endJunctionId) ?? null : null,
-							openingsByHostWallId.get(ref.wallId) ?? null
-						];
-					}),
-					// A virtual endpoint can move without changing a Wall record, so
-					// its resolved point is part of the Room's authored input too.
-					...room.virtualEdges.map((edge) => [
-						edge,
-						pointById.get(edge.startJunctionId) ?? null,
-						pointById.get(edge.endJunctionId) ?? null
-					])
-				]
-			: undefined;
-		if (reuse && retentionKey) {
-			reuse.counters.signatureVisits += 1;
-			reuse.counters.entities += 1;
-			const retained = reuse.roomSources.get(room.id);
-			if (retained && sameAuthored(retained.authored, retentionKey)) {
-				// No counter here: the shared core reports the Room's compile, which
-				// is the work this reuse removes. Counting the source build as well
-				// would report every Room twice.
-				return retained.source;
-			}
-		}
-		// One source builder serves the full and delta compiles, so a virtual
-		// edge can never reach one path and not the other. The composer owns the
-		// mixed order; this adapter only realizes it as sampleable segments.
-		const built = buildWallFirstRoomSource(document, room, {
-			junctionById,
-			pointById,
-			wallById,
-			openingsByHostWallId,
-			openingOrderById,
-			wallThicknessBySegmentId,
-			openingHeightLimitBySegmentId,
-			defaultWallThickness: layoutItem(document, 'walls', 0)?.thickness ?? 0.1,
-			...(sampling ? { sampling, preSampled } : {})
-		});
-		if ('issue' in built) {
-			// Unreachable: `spacePreflight` applied the same composer and removed
-			// this Room. Returning an empty source keeps the map total without
-			// inventing geometry; the preflight issue is already recorded.
-			return {
-				room: {
-					id: room.id,
-					wallThickness: layoutItem(document, 'walls', 0)?.thickness ?? 0.1,
+	const rooms: CompilerRoomSource[] = p2311Measure('incremental:room-inputs', () =>
+		document.rooms
+			.filter((room) => !preflight.invalidRoomIds.has(room.id))
+			.map((room) => {
+				// The retained Room **input** is compared before it
+				// is rebuilt. Everything below derives from the Room's own authored
+				// fields, its boundary Walls' authored centerlines and endpoint
+				// coordinates, those Walls' thickness/height (they reach the source as
+				// per-segment overrides) and the Openings those Walls host. When none of
+				// that moved, the previous source is still exactly what this loop would
+				// produce, so the segment construction, sampling and miroring are skipped.
+				const retentionKey = reuse
+					? [
+							room,
+							ceilingElevationByRoomId.get(room.id) ?? null,
+							floorElevationOf(document),
+							// The Floor datum is part of the Room's *compiled identity*
+							// (`geometryId(['room', floor.id, room.id])`), and the shared core
+							// derives the Floor's room list from these rooms, so a renamed Floor
+							// must re-evaluate every Room.
+							document.floor.id,
+							// The Room source carries the document's first Wall thickness as its
+							// fallback (`wallThickness: layoutItem(document, 'walls', 0)?.thickness ?? 0.1`),
+							// which lands in the compiled Room's own `wallThickness` and key.
+							// Editing that Wall therefore moves every Room's output, even when
+							// the edited Wall is not on this Room's boundary.
+							layoutItem(document, 'walls', 0)?.thickness ?? 0.1,
+							// A different sampling derivation is a different input: the retained
+							// source embeds `preSampled` only when one is supplied.
+							sampling !== undefined,
+							...room.boundary.map((ref) => {
+								const wall = wallById.get(ref.wallId);
+								return [
+									ref,
+									wall ?? null,
+									wall ? (pointById.get(wall.startJunctionId) ?? null) : null,
+									wall ? (pointById.get(wall.endJunctionId) ?? null) : null,
+									openingsByHostWallId.get(ref.wallId) ?? null,
+								];
+							}),
+							// A virtual endpoint can move without changing a Wall record, so
+							// its resolved point is part of the Room's authored input too.
+							...room.virtualEdges.map((edge) => [
+								edge,
+								pointById.get(edge.startJunctionId) ?? null,
+								pointById.get(edge.endJunctionId) ?? null,
+							]),
+						]
+					: undefined;
+				if (reuse && retentionKey) {
+					reuse.counters.signatureVisits += 1;
+					reuse.counters.entities += 1;
+					const retained = reuse.roomSources.get(room.id);
+					if (retained && sameAuthored(retained.authored, retentionKey)) {
+						// No counter here: the shared core reports the Room's compile, which
+						// is the work this reuse removes. Counting the source build as well
+						// would report every Room twice.
+						return retained.source;
+					}
+				}
+				// One source builder serves the full and delta compiles, so a virtual
+				// edge can never reach one path and not the other. The composer owns the
+				// mixed order; this adapter only realizes it as sampleable segments.
+				const built = buildWallFirstRoomSource(document, room, {
+					junctionById,
+					pointById,
+					wallById,
+					openingsByHostWallId,
+					openingOrderById,
+					wallThicknessBySegmentId,
+					openingHeightLimitBySegmentId,
+					defaultWallThickness: layoutItem(document, 'walls', 0)?.thickness ?? 0.1,
+					...(sampling ? { sampling, preSampled } : {}),
+				});
+				if ('issue' in built) {
+					// Unreachable: `spacePreflight` applied the same composer and removed
+					// this Room. Returning an empty source keeps the map total without
+					// inventing geometry; the preflight issue is already recorded.
+					return {
+						room: {
+							id: room.id,
+							wallThickness: layoutItem(document, 'walls', 0)?.thickness ?? 0.1,
 
-					overhead: room.overhead
-				},
-				boundary: { closed: true, segments: [] },
-				openings: []
-			};
-		}
-		const source = built.source;
-		if (reuse && retentionKey) reuse.roomSources.set(room.id, { authored: retentionKey, source });
-		return source;
-	}));
+							overhead: room.overhead,
+						},
+						boundary: { closed: true, segments: [] },
+						openings: [],
+					};
+				}
+				const source = built.source;
+				if (reuse && retentionKey)
+					reuse.roomSources.set(room.id, { authored: retentionKey, source });
+				return source;
+			}),
+	);
 
 	// Ceiling resolution is enforced inside the shared core: a Room with no derived ceiling is
 	// skipped there with a blocking `room_ceiling_undefined` issue, so no
 	// post-hoc issue append is needed here.
-	const result = compileWallFirstWithPhysicalWalls(document, {
-		floors: [{ floor: document.floor, rooms }],
-		objects: document.objects
-	}, sampling, reuse);
+	const result = compileWallFirstWithPhysicalWalls(
+		document,
+		{
+			floors: [{ floor: document.floor, rooms }],
+			objects: document.objects,
+		},
+		sampling,
+		reuse,
+	);
 	if (preflight.issues.length === 0) return result;
 	return { geometry: result.geometry, issues: [...preflight.issues, ...result.issues] };
 }
 
-
 export function compileLayoutGeometrySource(
 	source: CompilerSource,
 	options: LayoutGeometryCompileOptions = {},
-	reuse?: LayoutCompileReuse
+	reuse?: LayoutCompileReuse,
 ): CompiledLayoutGeometryResult {
 	const recordMode = options.queryRecords ?? 'room';
 	const issues: LayoutGeometryIssue[] = [];
@@ -362,7 +411,7 @@ export function compileLayoutGeometrySource(
 					path: `${path}.boundary`,
 					code: 'room_ceiling_undefined',
 					message: `Room '${roomSource.room.id}' has no resolvable boundary Wall to derive a ceiling from`,
-					targetId: roomSource.room.id
+					targetId: roomSource.room.id,
 				});
 				continue;
 			}
@@ -390,7 +439,7 @@ export function compileLayoutGeometrySource(
 			const prepared = prepareLayoutRoomSegments(
 				{ id: roomSource.room.id, boundary: roomSource.boundary },
 				path,
-				roomSource.preSampled
+				roomSource.preSampled,
 			);
 			const roomIssues = [
 				...prepared.issues,
@@ -398,13 +447,13 @@ export function compileLayoutGeometrySource(
 					{
 						id: roomSource.room.id,
 						boundary: roomSource.boundary,
-						openings: roomSource.openings
+						openings: roomSource.openings,
 					},
 					floor,
 					prepared.segments,
 					path,
-					roomSource.openingHeightLimitBySegmentId
-				)
+					roomSource.openingHeightLimitBySegmentId,
+				),
 			];
 			issues.push(...roomIssues);
 			if (hasBlockingLayoutIssues(roomIssues)) {
@@ -414,7 +463,7 @@ export function compileLayoutGeometrySource(
 						compiled: null,
 						stripped: null,
 						records: noQueryRecords(),
-						issues: roomIssues
+						issues: roomIssues,
 					});
 				}
 				continue;
@@ -428,7 +477,7 @@ export function compileLayoutGeometrySource(
 				floor,
 				prepared.segments as SampledSegment[],
 				roomQueryBuilder,
-				recordMode
+				recordMode,
 			);
 			pushRetainedRecords(queryBuilder, roomQueryBuilder);
 			if (reuse) {
@@ -437,7 +486,7 @@ export function compileLayoutGeometrySource(
 					compiled: compiledRoom,
 					stripped: { ...compiledRoom, walls: [], openings: [] },
 					records: roomQueryBuilder,
-					issues: roomIssues
+					issues: roomIssues,
 				});
 			}
 			rooms.push(compiledRoom);
@@ -452,7 +501,8 @@ export function compileLayoutGeometrySource(
 		for (const object of objects) {
 			if (!object.roomId) continue;
 			countWork('pairs:object-room', 1);
-			if (floorRoomIdSet.has(object.roomId)) includeBounds3(floorMin, floorMax, object.worldAabb.min, object.worldAabb.max);
+			if (floorRoomIdSet.has(object.roomId))
+				includeBounds3(floorMin, floorMax, object.worldAabb.min, object.worldAabb.max);
 		}
 
 		const compiledFloorBounds = finiteBounds3(floorMin, floorMax);
@@ -470,12 +520,12 @@ export function compileLayoutGeometrySource(
 							floor.elevation,
 							floor.height ?? floorCeilingDependencies,
 							floorRoomIds,
-							compiledFloorBounds
+							compiledFloorBounds,
 						]),
 			floorId: floor.id,
 			elevation: floor.elevation,
 			roomIds: floorRoomIds,
-			bounds3: compiledFloorBounds
+			bounds3: compiledFloorBounds,
 		});
 		if (recordMode !== 'physical-wall') {
 			emitBoundsAabb(queryBuilder, 'floor', floor.id, ['floor', floor.id], floorMin, floorMax);
@@ -484,11 +534,15 @@ export function compileLayoutGeometrySource(
 
 	let documentMin: Vec3 = [Infinity, Infinity, Infinity];
 	let documentMax: Vec3 = [-Infinity, -Infinity, -Infinity];
-	for (const room of rooms) includeBounds3(documentMin, documentMax, room.bounds3.min, room.bounds3.max);
-	for (const object of objects) includeBounds3(documentMin, documentMax, object.worldAabb.min, object.worldAabb.max);
+	for (const room of rooms)
+		includeBounds3(documentMin, documentMax, room.bounds3.min, room.bounds3.max);
+	for (const object of objects)
+		includeBounds3(documentMin, documentMax, object.worldAabb.min, object.worldAabb.max);
 	const documentBounds = finiteBounds3(documentMin, documentMax);
 	if (documentBounds && recordMode !== 'physical-wall') {
-		queryBuilder.aabbs.push(aabbRecord('document', 'document', ['document'], documentBounds.min, documentBounds.max));
+		queryBuilder.aabbs.push(
+			aabbRecord('document', 'document', ['document'], documentBounds.min, documentBounds.max),
+		);
 	}
 
 	const geometry: CompiledLayoutGeometry = {
@@ -501,9 +555,9 @@ export function compileLayoutGeometrySource(
 			points: queryBuilder.points,
 			spans: queryBuilder.spans,
 			polygons: queryBuilder.polygons,
-			aabbs: queryBuilder.aabbs
+			aabbs: queryBuilder.aabbs,
 		},
-		bounds: documentBounds
+		bounds: documentBounds,
 	};
 
 	return { geometry, issues };

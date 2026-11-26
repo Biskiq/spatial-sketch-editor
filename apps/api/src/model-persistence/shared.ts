@@ -25,7 +25,11 @@ export type ModelImport = {
 	readonly projectId: string;
 	readonly state: 'staging' | 'approved' | 'cancelled' | 'expired';
 	readonly expiresAt: string;
-	readonly source: { readonly manifestHash: string; readonly size: number; readonly fileCount: number };
+	readonly source: {
+		readonly manifestHash: string;
+		readonly size: number;
+		readonly fileCount: number;
+	};
 	readonly derivativeBytes: number;
 	readonly recipe: { readonly id: string; readonly version: number };
 	readonly files: readonly ModelStagedFile[];
@@ -35,8 +39,17 @@ export type ModelRevision = {
 	readonly revisionId: string;
 	readonly projectId: string;
 	readonly contentHash: string;
-	readonly derivative: { readonly hash: string; readonly mime: string; readonly size: number; readonly locator: string };
-	readonly source: { readonly manifestHash: string; readonly size: number; readonly fileCount: number };
+	readonly derivative: {
+		readonly hash: string;
+		readonly mime: string;
+		readonly size: number;
+		readonly locator: string;
+	};
+	readonly source: {
+		readonly manifestHash: string;
+		readonly size: number;
+		readonly fileCount: number;
+	};
 	readonly recipe: { readonly id: string; readonly version: number };
 	readonly reportDigest: string;
 	readonly placement: ModelPlacement;
@@ -61,7 +74,11 @@ export class ModelInputError extends Error {
 		| 'model_not_ready'
 		| 'model_structure_refused';
 
-	constructor(code: ModelInputError['code'], statusCode: ModelInputError['statusCode'], message: string) {
+	constructor(
+		code: ModelInputError['code'],
+		statusCode: ModelInputError['statusCode'],
+		message: string,
+	) {
 		super(message);
 		this.name = 'ModelInputError';
 		this.code = code;
@@ -78,7 +95,10 @@ export class ModelPinRefusalError extends Error {
 	readonly code = 'unapproved_model_resource' as const;
 	readonly issues: readonly { path: string; code: string; message: string }[];
 
-	constructor(message: string, issues: readonly { path: string; code: string; message: string }[] = []) {
+	constructor(
+		message: string,
+		issues: readonly { path: string; code: string; message: string }[] = [],
+	) {
 		super(message);
 		this.name = 'ModelPinRefusalError';
 		this.issues = issues;
@@ -187,7 +207,7 @@ export function importOf(row: ImportRow, files: readonly FileRow[]): ModelImport
 		source: {
 			manifestHash: readString(row.sourceManifestHash),
 			size: readSafeInteger(row.sourceBytes),
-			fileCount: files.filter((file) => readString(file.role) === 'source').length
+			fileCount: files.filter((file) => readString(file.role) === 'source').length,
 		},
 		derivativeBytes: readSafeInteger(row.derivativeBytes),
 		recipe: { id: readString(row.recipeId), version: readSafeInteger(row.recipeVersion) },
@@ -197,13 +217,16 @@ export function importOf(row: ImportRow, files: readonly FileRow[]): ModelImport
 			path: readString(file.path),
 			size: readSafeInteger(file.byteSize),
 			hash: readString(file.sha256),
-			uploadState: readEnum(file.uploadState, ['declared', 'uploaded', 'failed'])
-		}))
+			uploadState: readEnum(file.uploadState, ['declared', 'uploaded', 'failed']),
+		})),
 	};
 }
 
 export function revisionOf(row: RevisionRow): ModelRevision {
-	const derivative = { hash: readString(row.derivativeHash), size: readSafeInteger(row.derivativeBytes) };
+	const derivative = {
+		hash: readString(row.derivativeHash),
+		size: readSafeInteger(row.derivativeBytes),
+	};
 	const projectId = readString(row.projectId);
 	return {
 		revisionId: readString(row.id),
@@ -213,16 +236,16 @@ export function revisionOf(row: RevisionRow): ModelRevision {
 			hash: derivative.hash,
 			mime: readString(row.derivativeMime),
 			size: derivative.size,
-			locator: modelRevisionLocator(projectId, derivative.hash)
+			locator: modelRevisionLocator(projectId, derivative.hash),
 		},
 		source: {
 			manifestHash: readString(row.sourceManifestHash),
 			size: readSafeInteger(row.sourceBytes),
-			fileCount: readSafeInteger(row.sourceFileCount)
+			fileCount: readSafeInteger(row.sourceFileCount),
 		},
 		recipe: { id: readString(row.recipeId), version: readSafeInteger(row.recipeVersion) },
 		reportDigest: readString(row.reportDigest),
-		placement: readPlacement(row.placement)
+		placement: readPlacement(row.placement),
 	};
 }
 
@@ -233,23 +256,30 @@ export function modelRevisionLocator(projectId: string, derivativeHash: string):
 
 export function readPlacement(value: unknown): ModelPlacement {
 	const parsed = typeof value === 'string' ? (JSON.parse(value) as unknown) : value;
-	if (!isRecord(parsed) || !isRecord(parsed.footprint)) throw new Error('Model revision contained an invalid placement');
+	if (!isRecord(parsed) || !isRecord(parsed.footprint))
+		throw new Error('Model revision contained an invalid placement');
 	const pivot = parsed.pivot;
-	if (!Array.isArray(pivot) || pivot.length !== 3 || pivot.some((entry) => typeof entry !== 'number')) {
+	if (
+		!Array.isArray(pivot) ||
+		pivot.length !== 3 ||
+		pivot.some((entry) => typeof entry !== 'number')
+	) {
 		throw new Error('Model revision contained an invalid placement pivot');
 	}
-	if (parsed.placement !== 'floor') throw new Error('Model revision contained an invalid placement surface');
+	if (parsed.placement !== 'floor')
+		throw new Error('Model revision contained an invalid placement surface');
 	return {
 		metresPerSourceUnit: Number(parsed.metresPerSourceUnit),
 		pivot: [pivot[0] as number, pivot[1] as number, pivot[2] as number],
 		footprint: { width: Number(parsed.footprint.width), depth: Number(parsed.footprint.depth) },
 		contactMinY: Number(parsed.contactMinY),
-		placement: 'floor'
+		placement: 'floor',
 	};
 }
 
 export function readString(value: unknown): string {
-	if (typeof value !== 'string' || value.length === 0) throw new Error('Model row contained an invalid string');
+	if (typeof value !== 'string' || value.length === 0)
+		throw new Error('Model row contained an invalid string');
 	return value;
 }
 
@@ -258,14 +288,20 @@ export function readNullableString(value: unknown): string | null {
 	return readString(value);
 }
 
-export function readEnum<const Values extends readonly string[]>(value: unknown, values: Values): Values[number] {
-	if (typeof value !== 'string' || !values.includes(value)) throw new Error('Model row contained an invalid enum');
+export function readEnum<const Values extends readonly string[]>(
+	value: unknown,
+	values: Values,
+): Values[number] {
+	if (typeof value !== 'string' || !values.includes(value))
+		throw new Error('Model row contained an invalid enum');
 	return value as Values[number];
 }
 
 export function readSafeInteger(value: unknown): number {
-	const result = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN;
-	if (!Number.isSafeInteger(result) || result < 0) throw new Error('Model row contained an invalid integer');
+	const result =
+		typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN;
+	if (!Number.isSafeInteger(result) || result < 0)
+		throw new Error('Model row contained an invalid integer');
 	return result;
 }
 

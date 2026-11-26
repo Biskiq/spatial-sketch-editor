@@ -16,13 +16,13 @@ import {
 	creatorModelResourceEntry,
 	type CreatorModelResourceEntry,
 	type CreatorModelResourcePayload,
-	type NormalizedPlacementDefinition
+	type NormalizedPlacementDefinition,
 } from '@portfolio/project-model/scene-planning';
 
 import {
 	createModelImportClient,
 	ModelImportClientError,
-	type ModelImportClient
+	type ModelImportClient,
 } from '$lib/platform/model-import-client';
 
 import { sha256Hex } from './digest';
@@ -35,17 +35,11 @@ import {
 	type CreatorImportReport,
 	type CreatorImportSourceFile,
 	type CreatorImportStagedFile,
-	type CreatorImportStaging
+	type CreatorImportStaging,
 } from './types';
 import { createImportWorkerClient, type CreatorImportWorkerClient } from './worker-client';
 
-export type CreatorImportStep =
-	| 'idle'
-	| 'review'
-	| 'uploading'
-	| 'approved'
-	| 'refused'
-	| 'failed';
+export type CreatorImportStep = 'idle' | 'review' | 'uploading' | 'approved' | 'refused' | 'failed';
 
 export type CreatorImportSessionState = {
 	readonly step: CreatorImportStep;
@@ -87,7 +81,7 @@ type Listener = (state: CreatorImportSessionState) => void;
 
 const DEFAULT_PARAMETERS: CreatorImportParameters = {
 	metresPerSourceUnit: 1,
-	pivot: 'bottom-centre'
+	pivot: 'bottom-centre',
 };
 
 function stripDirectory(path: string): string {
@@ -103,14 +97,18 @@ function stripDirectory(path: string): string {
  * and keeps its name.
  */
 export function normalizeChosenPaths(
-	entries: readonly { path: string; bytes: Uint8Array }[]
+	entries: readonly { path: string; bytes: Uint8Array }[],
 ): readonly CreatorImportFile[] {
 	const gltf = entries.find((entry) => /\.gltf$/i.test(entry.path));
-	if (gltf === undefined) return entries.map((entry) => ({ path: stripDirectory(entry.path), bytes: entry.bytes }));
+	if (gltf === undefined)
+		return entries.map((entry) => ({ path: stripDirectory(entry.path), bytes: entry.bytes }));
 	const base = gltf.path.includes('/') ? gltf.path.slice(0, gltf.path.lastIndexOf('/') + 1) : '';
 	return entries.map((entry) => ({
-		path: base.length > 0 && entry.path.startsWith(base) ? entry.path.slice(base.length) : stripDirectory(entry.path),
-		bytes: entry.bytes
+		path:
+			base.length > 0 && entry.path.startsWith(base)
+				? entry.path.slice(base.length)
+				: stripDirectory(entry.path),
+		bytes: entry.bytes,
 	}));
 }
 
@@ -130,7 +128,7 @@ export class CreatorImportSession {
 		staging: null,
 		message: null,
 		code: null,
-		armed: null
+		armed: null,
 	};
 	private chosen: readonly CreatorImportFile[] = [];
 	private prepared: {
@@ -140,7 +138,11 @@ export class CreatorImportSession {
 		source: readonly CreatorImportSourceFile[];
 	} | null = null;
 	private preparedParameters: CreatorImportParameters | null = null;
-	private staging: { importId: string; files: readonly CreatorImportStagedFile[]; uploaded: ReadonlySet<string> } | null = null;
+	private staging: {
+		importId: string;
+		files: readonly CreatorImportStagedFile[];
+		uploaded: ReadonlySet<string>;
+	} | null = null;
 	private abort: AbortController | null = null;
 	private disposed = false;
 	/**
@@ -155,8 +157,7 @@ export class CreatorImportSession {
 		this.deps = deps;
 		this.projectId = deps.projectId;
 		this.mint = deps.mintId ?? (() => globalThis.crypto.randomUUID());
-		this.worker =
-			deps.worker ?? (deps.ingest === undefined ? createImportWorkerClient() : null);
+		this.worker = deps.worker ?? (deps.ingest === undefined ? createImportWorkerClient() : null);
 	}
 
 	state(): CreatorImportSessionState {
@@ -207,7 +208,7 @@ export class CreatorImportSession {
 			progress: null,
 			message: null,
 			code: null,
-			armed: null
+			armed: null,
 		});
 	}
 
@@ -223,29 +224,34 @@ export class CreatorImportSession {
 		const controller = new AbortController();
 		this.abort = controller;
 		const parameters = this.current.parameters;
-		this.set({ progress: { stage: 'validating', detail: 'Preparing the chosen files.' }, message: null, code: null, step: 'review' });
+		this.set({
+			progress: { stage: 'validating', detail: 'Preparing the chosen files.' },
+			message: null,
+			code: null,
+			step: 'review',
+		});
 		const run = async (): Promise<CreatorImportOutcome> => {
 			if (this.deps.ingest !== undefined) {
 				return this.deps.ingest({
 					files: this.chosen,
 					parameters,
-				onProgress: (progress) => this.set({ progress }),
-				signal: controller.signal
-			});
+					onProgress: (progress) => this.set({ progress }),
+					signal: controller.signal,
+				});
 			}
 			if (this.worker === null) {
 				return {
 					kind: 'refused',
 					code: 'malformed-source',
 					message: 'The import worker is unavailable in this environment.',
-					issues: []
+					issues: [],
 				};
 			}
 			return this.worker.run(
 				this.mint(),
 				{ files: this.chosen, parameters },
 				(progress) => this.set({ progress }),
-				controller.signal
+				controller.signal,
 			);
 		};
 		const promise = run()
@@ -254,7 +260,12 @@ export class CreatorImportSession {
 				if (outcome.kind === 'refused') {
 					this.prepared = null;
 					this.preparedParameters = null;
-					this.set({ step: 'refused', progress: null, message: outcome.message, code: outcome.code });
+					this.set({
+						step: 'refused',
+						progress: null,
+						message: outcome.message,
+						code: outcome.code,
+					});
 					return;
 				}
 				this.prepared = outcome;
@@ -265,7 +276,7 @@ export class CreatorImportSession {
 					report: outcome.report,
 					reportDigest: outcome.reportDigest,
 					message: null,
-					code: null
+					code: null,
 				});
 			})
 			.catch((error: unknown) => {
@@ -274,7 +285,7 @@ export class CreatorImportSession {
 					step: 'failed',
 					progress: null,
 					message: error instanceof Error ? error.message : 'The source could not be prepared.',
-					code: 'prepare-failed'
+					code: 'prepare-failed',
 				});
 			})
 			.finally(() => {
@@ -296,15 +307,26 @@ export class CreatorImportSession {
 	async approve(name: string): Promise<void> {
 		if (this.disposed || this.busy !== null) return;
 		const parameters = this.current.parameters;
-		if (this.prepared === null || this.preparedParameters === null || !sameParameters(this.preparedParameters, parameters)) {
+		if (
+			this.prepared === null ||
+			this.preparedParameters === null ||
+			!sameParameters(this.preparedParameters, parameters)
+		) {
 			await this.prepare();
 			if (this.prepared === null) return;
 		}
 		const prepared = this.prepared;
 		if (prepared === null) return;
-		const client = this.deps.client === undefined ? createModelImportClient(this.deps.apiOrigin) : this.deps.client;
+		const client =
+			this.deps.client === undefined
+				? createModelImportClient(this.deps.apiOrigin)
+				: this.deps.client;
 		if (client === null) {
-			this.set({ step: 'failed', message: 'The API origin is not configured, so a model cannot be uploaded.', code: 'configuration' });
+			this.set({
+				step: 'failed',
+				message: 'The API origin is not configured, so a model cannot be uploaded.',
+				code: 'configuration',
+			});
 			return;
 		}
 		const generation = this.generation;
@@ -318,7 +340,11 @@ export class CreatorImportSession {
 						projectId: this.projectId,
 						recipe: { id: CREATOR_IMPORT_RECIPE.id, version: CREATOR_IMPORT_RECIPE.version },
 						source: prepared.source,
-						derivative: { path: prepared.derivative.path, size: prepared.derivative.bytes.byteLength, hash: derivativeHash }
+						derivative: {
+							path: prepared.derivative.path,
+							size: prepared.derivative.bytes.byteLength,
+							hash: derivativeHash,
+						},
 					});
 				} catch (error) {
 					// Staging belongs to a project row the server knows. A brand-new
@@ -326,20 +352,22 @@ export class CreatorImportSession {
 					// creator what to do about it.
 					if (error instanceof ModelImportClientError && error.code === 'not-found') {
 						throw new Error(
-							'Save this project before importing a model: an import belongs to a saved project.'
+							'Save this project before importing a model: an import belongs to a saved project.',
 						);
 					}
 					throw error;
 				}
 				if (!live()) return;
 				this.staging = { importId: staged.importId, files: staged.files, uploaded: new Set() };
-				this.set({ staging: { importId: staged.importId, uploaded: 0, total: staged.files.length } });
+				this.set({
+					staging: { importId: staged.importId, uploaded: 0, total: staged.files.length },
+				});
 			}
 			const staging = this.staging;
 			if (staging === null || !live()) return;
 			const bytesByPath = new Map<string, Uint8Array>([
 				...this.chosen.map((file) => [file.path, file.bytes] as const),
-				[prepared.derivative.path, prepared.derivative.bytes]
+				[prepared.derivative.path, prepared.derivative.bytes],
 			]);
 			for (const file of staging.files) {
 				if (!live()) return;
@@ -352,10 +380,16 @@ export class CreatorImportSession {
 					projectId: this.projectId,
 					importId: staging.importId,
 					fileId: file.fileId,
-					bytes
+					bytes,
 				});
 				staging.uploaded = new Set([...staging.uploaded, file.fileId]);
-				this.set({ staging: { importId: staging.importId, uploaded: staging.uploaded.size, total: staging.files.length } });
+				this.set({
+					staging: {
+						importId: staging.importId,
+						uploaded: staging.uploaded.size,
+						total: staging.files.length,
+					},
+				});
 			}
 			if (!live()) return;
 			const approved = await client.approveImport({
@@ -367,8 +401,8 @@ export class CreatorImportSession {
 					pivot: [0, 0, 0],
 					footprint: prepared.report.placement.footprint,
 					contactMinY: prepared.report.placement.contactMinY,
-					placement: 'floor'
-				}
+					placement: 'floor',
+				},
 			});
 			if (!live()) return;
 			const resourceId = `model-${this.mint()}`;
@@ -377,24 +411,30 @@ export class CreatorImportSession {
 					hash: approved.derivative.hash,
 					mime: approved.derivative.mime,
 					size: approved.derivative.size,
-					locator: approved.derivative.locator
+					locator: approved.derivative.locator,
 				},
 				source: {
 					manifestHash: approved.source.manifestHash,
 					size: approved.source.size,
-					fileCount: approved.source.fileCount
+					fileCount: approved.source.fileCount,
 				},
 				recipe: { id: approved.recipe.id, version: approved.recipe.version },
 				reportDigest: approved.reportDigest,
 				placement: {
 					metresPerSourceUnit: approved.placement.metresPerSourceUnit,
-					pivot: [approved.placement.pivot[0], approved.placement.pivot[1], approved.placement.pivot[2]],
+					pivot: [
+						approved.placement.pivot[0],
+						approved.placement.pivot[1],
+						approved.placement.pivot[2],
+					],
 					footprint: approved.placement.footprint,
-					contactMinY: approved.placement.contactMinY
-				}
+					contactMinY: approved.placement.contactMinY,
+				},
 			};
 			if (payload.recipe.id !== CREATOR_IMPORT_RECIPE.id) {
-				throw new Error(`The server approved recipe "${payload.recipe.id}", not ${CREATOR_IMPORT_RECIPE.id}.`);
+				throw new Error(
+					`The server approved recipe "${payload.recipe.id}", not ${CREATOR_IMPORT_RECIPE.id}.`,
+				);
 			}
 			const entry = creatorModelResourceEntry(resourceId, payload);
 			if (entry === null) {
@@ -411,7 +451,11 @@ export class CreatorImportSession {
 				armed: { resourceId, name: displayName, definition, resource: entry },
 				message: null,
 				code: null,
-				staging: { importId: staging.importId, uploaded: staging.files.length, total: staging.files.length }
+				staging: {
+					importId: staging.importId,
+					uploaded: staging.files.length,
+					total: staging.files.length,
+				},
 			});
 		};
 		this.set({ step: 'uploading', message: null, code: null });
@@ -430,7 +474,7 @@ export class CreatorImportSession {
 			this.set({
 				step: 'failed',
 				message: error instanceof Error ? error.message : 'The model could not be approved.',
-				code: 'approve-failed'
+				code: 'approve-failed',
 			});
 		});
 		this.busy = promise;
@@ -443,7 +487,10 @@ export class CreatorImportSession {
 		this.generation += 1;
 		this.abort?.abort();
 		const staging = this.staging;
-		const client = this.deps.client === undefined ? createModelImportClient(this.deps.apiOrigin) : this.deps.client;
+		const client =
+			this.deps.client === undefined
+				? createModelImportClient(this.deps.apiOrigin)
+				: this.deps.client;
 		if (staging !== null && client !== null && this.current.step !== 'approved') {
 			try {
 				await client.cancelImport(this.projectId, staging.importId);
@@ -464,7 +511,7 @@ export class CreatorImportSession {
 			staging: null,
 			message: null,
 			code: null,
-			armed: null
+			armed: null,
 		});
 	}
 
@@ -490,5 +537,3 @@ function displayNameFor(files: readonly CreatorImportFile[], requested: string):
 	const base = source?.path.split('/').pop() ?? 'Imported model';
 	return base.replace(/\.[^.]+$/, '') || 'Imported model';
 }
-
-

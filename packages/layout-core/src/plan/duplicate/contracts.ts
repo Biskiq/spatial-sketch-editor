@@ -8,12 +8,7 @@ import type { LayoutSurfaceLineage } from '../surface-reference';
 /** Repeat-count cap. */
 export const LAYOUT_DUPLICATE_MAX_COPIES = 50 as const;
 
-
-export type DuplicateOperation =
-	| 'layout-object-repeat'
-	| 'wall-opening-repeat'
-	| 'room-duplicate';
-
+export type DuplicateOperation = 'layout-object-repeat' | 'wall-opening-repeat' | 'room-duplicate';
 
 export type DuplicateRejectionCode =
 	| 'unknown_object'
@@ -32,7 +27,6 @@ export type DuplicateRejectionCode =
 	| 'candidate_does_not_compile'
 	| 'captured_id_in_use';
 
-
 export type DuplicateRejection = {
 	code: DuplicateRejectionCode;
 	message: string;
@@ -42,7 +36,6 @@ export type DuplicateRejection = {
 	issues?: readonly (LayoutDocumentIssue | OpeningSetIssue)[];
 };
 
-
 /** Authored source-to-copy identities for one enclosure operation. */
 export type RoomCopyCorrespondence = {
 	readonly room: { readonly sourceId: string; readonly copyId: string };
@@ -51,7 +44,6 @@ export type RoomCopyCorrespondence = {
 	readonly openings: readonly { readonly sourceId: string; readonly copyId: string }[];
 	readonly objects: readonly { readonly sourceId: string; readonly copyId: string }[];
 };
-
 
 export type DuplicatePlan =
 	| {
@@ -73,7 +65,6 @@ export type DuplicatePlan =
 	  }
 	| { kind: 'rejected'; rejection: DuplicateRejection };
 
-
 // ---------------------------------------------------------------------------
 // Layout object duplicate / linear repeat
 // ---------------------------------------------------------------------------
@@ -86,7 +77,6 @@ export type LayoutObjectRepeatIntent = {
 	/** X/Z translation delta per copy index (meters). Y is preserved. */
 	delta: LayoutVec2;
 };
-
 
 // ---------------------------------------------------------------------------
 // Opening duplicate / linear repeat
@@ -104,7 +94,6 @@ export type WallOpeningRepeatIntent = {
 	 */
 	spacing: number;
 };
-
 
 // ---------------------------------------------------------------------------
 // Room duplicate: isolated path and the general copy enclosure

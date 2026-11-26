@@ -14,10 +14,14 @@ export type VisitorStartMode = 'welcome' | 'guided' | 'free' | 'presentation';
 
 export function initialVisitorSurfaceMode(
 	mode: 'preview' | 'public',
-	startMode: VisitorStartMode
+	startMode: VisitorStartMode,
 ): VisitorSurfaceMode {
 	if (mode === 'public') return startMode === 'free' ? 'free' : 'guided';
 	// An explicit Card action chooses its mode: guided enters the chosen Guide's
 	// run directly, never through the authoring welcome chooser.
-	return startMode === 'free' ? 'free' : startMode === 'guided' || startMode === 'presentation' ? 'guided' : 'welcome';
+	return startMode === 'free'
+		? 'free'
+		: startMode === 'guided' || startMode === 'presentation'
+			? 'guided'
+			: 'welcome';
 }

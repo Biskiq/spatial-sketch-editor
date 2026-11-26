@@ -17,16 +17,26 @@ import type { SemanticReference } from '@portfolio/project-model/references';
 import type {
 	ExperienceInvitation,
 	ExperiencePresentationView,
-	ProjectEnvelope
+	ProjectEnvelope,
 } from '@portfolio/project-model/units';
 import { type ExperienceTransitionKind } from '@portfolio/project-model/units';
-import { EXPERIENCE_CAPTURE_BIND_KIND, EXPERIENCE_CREATE_KIND, EXPERIENCE_GUIDE_CREATE_KIND, EXPERIENCE_GUIDE_ORDER_KIND, EXPERIENCE_PRESENTATION_UPDATE_KIND, EXPERIENCE_STOP_CREATE_KIND, EXPERIENCE_STOP_UPDATE_KIND, EXPERIENCE_UPDATE_KIND } from '@portfolio/project-model/units/planning';import {
+import {
+	EXPERIENCE_CAPTURE_BIND_KIND,
+	EXPERIENCE_CREATE_KIND,
+	EXPERIENCE_GUIDE_CREATE_KIND,
+	EXPERIENCE_GUIDE_ORDER_KIND,
+	EXPERIENCE_PRESENTATION_UPDATE_KIND,
+	EXPERIENCE_STOP_CREATE_KIND,
+	EXPERIENCE_STOP_UPDATE_KIND,
+	EXPERIENCE_UPDATE_KIND,
+} from '@portfolio/project-model/units/planning';
+import {
 	experienceMemberReference,
 	experienceReference,
 	intent,
 	sceneEntitySubject,
 	type CapturedViewPose,
-	type CommandIds
+	type CommandIds,
 } from './commands-references';
 
 export function createExperienceIntent(input: {
@@ -34,14 +44,9 @@ export function createExperienceIntent(input: {
 	readonly ids: CommandIds;
 	readonly label: string;
 }): AuthoringIntent {
-	return intent(
-		EXPERIENCE_CREATE_KIND,
-		input.ids,
-		input.revision,
-		[],
-		{ label: input.label },
-		[{ kind: 'experience', id: input.ids.experience! }]
-	);
+	return intent(EXPERIENCE_CREATE_KIND, input.ids, input.revision, [], { label: input.label }, [
+		{ kind: 'experience', id: input.ids.experience! },
+	]);
 }
 
 /**
@@ -71,7 +76,7 @@ export function captureBindIntent(input: {
 	const newExperienceLabel = input.newExperienceLabel ?? null;
 	const allocated: AuthoringIntent['allocatedIds'][number][] = [
 		{ kind: 'view', id: input.ids.view! },
-		{ kind: 'presentation', id: input.ids.presentation! }
+		{ kind: 'presentation', id: input.ids.presentation! },
 	];
 	if (input.guideId !== null) allocated.push({ kind: 'stop', id: input.ids.stop! });
 	if (newExperienceLabel !== null) allocated.push({ kind: 'experience', id: input.experienceId });
@@ -85,8 +90,10 @@ export function captureBindIntent(input: {
 			presentation: {
 				label: input.presentationLabel,
 				subject:
-					input.subjectEntityId === null ? null : sceneEntitySubject(input.envelope, input.subjectEntityId),
-				text: input.text
+					input.subjectEntityId === null
+						? null
+						: sceneEntitySubject(input.envelope, input.subjectEntityId),
+				text: input.text,
 			},
 			// A Guide-free capture sends no Stop at all; it never manufactures a Guide
 			// or a Stop to hang one on.
@@ -96,12 +103,12 @@ export function captureBindIntent(input: {
 						stop: {
 							guideId: input.guideId,
 							afterStopId: input.guideId === null ? null : input.afterStopId,
-							transition: 'cut'
-						}
+							transition: 'cut',
+						},
 					}),
-			...(newExperienceLabel === null ? {} : { newExperience: { label: newExperienceLabel } })
+			...(newExperienceLabel === null ? {} : { newExperience: { label: newExperienceLabel } }),
 		},
-		allocated
+		allocated,
 	);
 }
 
@@ -133,13 +140,13 @@ export function guideCreateIntent(input: {
 			presentationId: input.presentationId,
 			...(input.entryViewId === null ? {} : { entryViewId: input.entryViewId }),
 			...(input.staySeconds == null ? {} : { staySeconds: input.staySeconds }),
-			...(input.transition === null ? {} : { transition: input.transition })
+			...(input.transition === null ? {} : { transition: input.transition }),
 		},
 		[
 			{ kind: 'guide', id: input.ids.guide! },
 			{ kind: 'stop', id: input.ids.stop! },
-			...(input.ids.connections ?? []).map((id) => ({ kind: 'connection' as const, id }))
-		]
+			...(input.ids.connections ?? []).map((id) => ({ kind: 'connection' as const, id })),
+		],
 	);
 }
 
@@ -167,12 +174,12 @@ export function stopCreateIntent(input: {
 			afterStopId: input.afterStopId,
 			...(input.entryViewId === null ? {} : { entryViewId: input.entryViewId }),
 			...(input.staySeconds == null ? {} : { staySeconds: input.staySeconds }),
-			...(input.transition === null ? {} : { transition: input.transition })
+			...(input.transition === null ? {} : { transition: input.transition }),
 		},
 		[
 			{ kind: 'stop', id: input.ids.stop! },
-			...(input.ids.connections ?? []).map((id) => ({ kind: 'connection' as const, id }))
-		]
+			...(input.ids.connections ?? []).map((id) => ({ kind: 'connection' as const, id })),
+		],
 	);
 }
 
@@ -191,7 +198,7 @@ export function guideOrderIntent(input: {
 		input.revision,
 		[experienceReference(input.envelope, input.experienceId)],
 		{ guideId: input.guideId, stopIds: [...input.stopIds] },
-		(input.ids.connections ?? []).map((id) => ({ kind: 'connection' as const, id }))
+		(input.ids.connections ?? []).map((id) => ({ kind: 'connection' as const, id })),
 	);
 }
 
@@ -217,12 +224,20 @@ export function presentationUpdateIntent(input: {
 	/** View pairs a Travel step needs a straight Camera path for (one Undo). */
 	readonly travelPaths?: readonly { readonly fromViewId: string; readonly toViewId: string }[];
 }): AuthoringIntent {
-	const connectionIds = input.ids.connections ?? (input.ids.connection === undefined ? [] : [input.ids.connection]);
+	const connectionIds =
+		input.ids.connections ?? (input.ids.connection === undefined ? [] : [input.ids.connection]);
 	return intent(
 		EXPERIENCE_PRESENTATION_UPDATE_KIND,
 		input.ids,
 		input.revision,
-		[experienceMemberReference(input.envelope, input.experienceId, 'presentation', input.presentationId)],
+		[
+			experienceMemberReference(
+				input.envelope,
+				input.experienceId,
+				'presentation',
+				input.presentationId,
+			),
+		],
 		{
 			...(input.label === undefined ? {} : { label: input.label }),
 			...(input.subject === undefined ? {} : { subject: input.subject }),
@@ -232,14 +247,16 @@ export function presentationUpdateIntent(input: {
 			...(input.views === undefined ? {} : { views: input.views.map((view) => ({ ...view })) }),
 			...(input.travelPaths === undefined || input.travelPaths.length === 0
 				? {}
-				: { travelPaths: input.travelPaths.map((pair) => ({ ...pair })) })
+				: { travelPaths: input.travelPaths.map((pair) => ({ ...pair })) }),
 		},
 		[
 			...(input.view === undefined ? [] : [{ kind: 'view', id: input.ids.view! }]),
 			...(input.travelPaths === undefined && input.ids.connections === undefined
 				? []
-				: connectionIds.slice(0, input.travelPaths?.length ?? connectionIds.length).map((id) => ({ kind: 'connection', id })))
-		]
+				: connectionIds
+						.slice(0, input.travelPaths?.length ?? connectionIds.length)
+						.map((id) => ({ kind: 'connection', id }))),
+		],
 	);
 }
 
@@ -265,9 +282,9 @@ export function stopUpdateIntent(input: {
 			...(input.entryViewId === undefined ? {} : { entryViewId: input.entryViewId }),
 			...(input.staySeconds === undefined ? {} : { staySeconds: input.staySeconds }),
 			...(input.invitation === undefined ? {} : { invitation: input.invitation }),
-			...(input.transition === undefined ? {} : { transition: input.transition })
+			...(input.transition === undefined ? {} : { transition: input.transition }),
 		},
-		(input.ids.connections ?? []).map((id) => ({ kind: 'connection' as const, id }))
+		(input.ids.connections ?? []).map((id) => ({ kind: 'connection' as const, id })),
 	);
 }
 
@@ -291,9 +308,8 @@ export function experienceUpdateIntent(input: {
 		{
 			...(input.label === undefined ? {} : { label: input.label }),
 			...(input.entryGuideId === undefined ? {} : { entryGuideId: input.entryGuideId }),
-			...(input.welcome === undefined ? {} : { welcome: input.welcome })
+			...(input.welcome === undefined ? {} : { welcome: input.welcome }),
 		},
-		[]
+		[],
 	);
 }
-

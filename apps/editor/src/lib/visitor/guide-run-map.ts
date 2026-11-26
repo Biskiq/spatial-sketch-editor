@@ -21,11 +21,17 @@
  *
  * Pure: no editor state, no renderer, no writes, no editor import.
  */
-import { buildGuideTimeMap, type CameraGraph, type GuideTimeInvocation, type GuideTimeMapResult, type GuideTimeOccurrenceInput } from '@portfolio/camera-core/navigation';
+import {
+	buildGuideTimeMap,
+	type CameraGraph,
+	type GuideTimeInvocation,
+	type GuideTimeMapResult,
+	type GuideTimeOccurrenceInput,
+} from '@portfolio/camera-core/navigation';
 import type {
 	ExecutionProgram,
 	ExperienceProgramTransition,
-	ProgramInvocation
+	ProgramInvocation,
 } from '@portfolio/project-model/units';
 
 type ProgramStop = ExecutionProgram['stops'][number];
@@ -46,10 +52,10 @@ export type GuideRunResult =
 export function programTransitionFor(
 	transitions: readonly ExperienceProgramTransition[],
 	fromStopId: string,
-	toStopId: string
+	toStopId: string,
 ): ProgramInvocation | null {
 	const entry = transitions.find(
-		(candidate) => candidate.fromStopId === fromStopId && candidate.toStopId === toStopId
+		(candidate) => candidate.fromStopId === fromStopId && candidate.toStopId === toStopId,
 	);
 	return entry?.invocation ?? null;
 }
@@ -85,7 +91,11 @@ export function guideRunFromProgram(input: {
 	if (startStopId === null) return { kind: 'ready', occurrences: [] };
 	const first = stopById.get(startStopId);
 	if (first === undefined) {
-		return { kind: 'gap', reason: `The run's entry Stop "${startStopId}" is not in this program.`, stopId: startStopId };
+		return {
+			kind: 'gap',
+			reason: `The run's entry Stop "${startStopId}" is not in this program.`,
+			stopId: startStopId,
+		};
 	}
 	const occurrences: GuideTimeOccurrenceInput[] = [];
 	const visited = new Set<string>();
@@ -97,33 +107,36 @@ export function guideRunFromProgram(input: {
 			return {
 				kind: 'cycle',
 				reason: `The run revisits Stop "${current.id}", so a finite traversal cannot be represented.`,
-				stopId: current.id
+				stopId: current.id,
 			};
 		}
 		visited.add(current.id);
 		// A Travel with no authored transition for this approach plays as a Cut:
 		// the gap stays a problem on its own link (the Card names it) instead of
 		// making the whole Guide unplayable.
-		const authored = previous === null ? null : programTransitionFor(transitions, previous.id, current.id);
+		const authored =
+			previous === null ? null : programTransitionFor(transitions, previous.id, current.id);
 		const arrival: ProgramInvocation =
 			previous === null
 				? entryCut(current)
-				: authored ?? (current.invocation.kind === 'cut' ? current.invocation : entryCut(current));
+				: (authored ??
+					(current.invocation.kind === 'cut' ? current.invocation : entryCut(current)));
 		occurrences.push({
 			occurrenceId: `${index}:${current.id}`,
 			stopId: current.id,
 			presentationId: current.presentationId,
 			// One visit, one View: a stay in Automatic, a wait in Manual.
 			views: [{ viewId: current.entryViewId, holdSeconds: current.staySeconds, step: null }],
-			arrival: arrival as GuideTimeInvocation
+			arrival: arrival as GuideTimeInvocation,
 		});
 		const nextStopId = nextProgramStopId(program, current);
-		const next: ProgramStop | null = nextStopId === null ? null : (stopById.get(nextStopId) ?? null);
+		const next: ProgramStop | null =
+			nextStopId === null ? null : (stopById.get(nextStopId) ?? null);
 		if (nextStopId !== null && next === null) {
 			return {
 				kind: 'gap',
 				reason: `Stop "${current.id}" continues to "${nextStopId}", which is not in this program.`,
-				stopId: current.id
+				stopId: current.id,
 			};
 		}
 		previous = current;
@@ -152,8 +165,8 @@ export function guideTimeMapForProgram(input: {
 				waitCount: 0,
 				stopEntries: [],
 				occurrences: [],
-				boundaries: []
-			}
+				boundaries: [],
+			},
 		};
 	}
 	return buildGuideTimeMap({ occurrences: run.occurrences, graph: input.graph });

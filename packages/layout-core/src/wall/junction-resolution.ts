@@ -46,14 +46,14 @@ export {
 	tangentAnchorsAllowContinuation,
 	isFoldPair,
 	legEndBoundary,
-	joinsBounds2
+	joinsBounds2,
 } from './junction/geometry';
 export type { CornerSideResolution } from './junction/geometry';
 export {
 	endpointSolidBands,
 	resolveJunctionGeometry,
 	compiledJunctionId,
-	legJoinsByWall
+	legJoinsByWall,
 } from './junction/joins';
 export type { CompiledWallEnds } from './junction/joins';
 export { legSolidInBand } from './junction/surfaces';

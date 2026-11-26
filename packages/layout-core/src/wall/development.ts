@@ -34,7 +34,7 @@
 
 export {
 	WALL_DEVELOPMENT_TOLERANCE,
-	WALL_DEVELOPMENT_STATION_TOLERANCE
+	WALL_DEVELOPMENT_STATION_TOLERANCE,
 } from './development/types';
 export type {
 	WallDevelopmentRefusal,
@@ -57,9 +57,14 @@ export type {
 	WallDevelopmentDisplaySample,
 	WallDevelopmentInversePoint,
 	WallDevelopmentFaceFrame,
-	WallDevelopmentOpeningBand
+	WallDevelopmentOpeningBand,
 } from './development/types';
-export { isWallDevelopmentRefusal, prepareWallDevelopment, evaluateWallDevelopment, createWallDevelopmentBuffers } from './development/core';
+export {
+	isWallDevelopmentRefusal,
+	prepareWallDevelopment,
+	evaluateWallDevelopment,
+	createWallDevelopmentBuffers,
+} from './development/core';
 export {
 	createWallDevelopmentSheetBuffers,
 	evaluateWallDevelopmentSheet,
@@ -69,15 +74,23 @@ export {
 	developmentStationDistanceFromAnchor,
 	developmentSheetCoordinate,
 	developmentSheetToStation,
-	mapAttributedVertices
+	mapAttributedVertices,
 } from './development/sheet';
-export { developmentDisplaySamples, developmentInversePoint, developmentFaceFrame } from './development/display';
+export {
+	developmentDisplaySamples,
+	developmentInversePoint,
+	developmentFaceFrame,
+} from './development/display';
 export {
 	developmentOpeningTopAt,
 	developmentOpeningIdentity,
 	wallDevelopmentFaceLengths,
-	developmentOpeningFragments
+	developmentOpeningFragments,
 } from './development/openings';
 export { buildDevelopedWallMesh } from './development/mesh';
-export { validateWallDevelopment, validateDevelopedMesh, developmentOverlap } from './development/validate';
+export {
+	validateWallDevelopment,
+	validateDevelopedMesh,
+	developmentOverlap,
+} from './development/validate';
 export { spanForStation, orderedDevelopmentSamples } from './development/shared';

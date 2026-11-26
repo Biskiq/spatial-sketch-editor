@@ -24,7 +24,7 @@ import {
 	convertProjectionForBackend,
 	rendererCoordinateSystem,
 	type RealizableCamera,
-	type RendererBackend
+	type RendererBackend,
 } from './renderer-backend';
 
 type CoordinateSystem = NonNullable<RealizableCamera['coordinateSystem']>;
@@ -39,7 +39,7 @@ type CoordinateSystem = NonNullable<RealizableCamera['coordinateSystem']>;
 export function realizeEvaluatedCamera(
 	camera: RealizedCamera,
 	evaluation: ViewportEvaluation,
-	backend: RendererBackend
+	backend: RendererBackend,
 ): void {
 	const realizable = camera as RealizableCamera;
 	// Before the copy: the renderer must see its own convention here, or its

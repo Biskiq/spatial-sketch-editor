@@ -1,14 +1,20 @@
-import { ARTWORK_MAX_BYTES, ARTWORK_MAX_IMAGE_EDGE, probeArtworkImage, type ArtworkImage, type ArtworkLibraryEntry } from '@portfolio/project-model/artwork';
+import {
+	ARTWORK_MAX_BYTES,
+	ARTWORK_MAX_IMAGE_EDGE,
+	probeArtworkImage,
+	type ArtworkImage,
+	type ArtworkLibraryEntry,
+} from '@portfolio/project-model/artwork';
 import {
 	collectEnvelopeImageRequirements,
 	type ProjectImagePin,
-	type ProjectImageRequirement
+	type ProjectImageRequirement,
 } from '@portfolio/project-model/project-images';
 import type { CameraFreeSceneDocument, ProjectEnvelope } from '@portfolio/project-model/units';
 import type {
 	ProjectApi,
 	ProjectAssetContent,
-	ProjectAssetMetadata
+	ProjectAssetMetadata,
 } from '$lib/platform/project-persistence';
 import { ProjectPersistenceError } from '$lib/platform/project-identity';
 import { verifyArtworkDecode } from '$lib/render/artwork/artwork-decode';
@@ -41,14 +47,14 @@ export type ProjectImagePolicy = {
 export const ARTWORK_IMAGE_POLICY: ProjectImagePolicy = {
 	maxBytes: ARTWORK_MAX_BYTES,
 	maxLongEdge: ARTWORK_MAX_IMAGE_EDGE,
-	label: 'Artwork'
+	label: 'Artwork',
 };
 
 /** D3: the same bounded limits as Artwork; small images are accepted. */
 export const FINISH_IMAGE_POLICY: ProjectImagePolicy = {
 	maxBytes: ARTWORK_MAX_BYTES,
 	maxLongEdge: ARTWORK_MAX_IMAGE_EDGE,
-	label: 'Finish'
+	label: 'Finish',
 };
 
 export type ImportedProjectImage = {
@@ -85,15 +91,21 @@ const inflightImageUploads = new Map<string, Promise<string>>();
  */
 export function preferredProjectImageRow<T extends { readonly id: string }>(
 	rows: readonly T[],
-	prefer: ReadonlySet<string> | undefined
+	prefer: ReadonlySet<string> | undefined,
 ): T | undefined {
-	const sorted = [...rows].sort((left, right) => (left.id < right.id ? -1 : left.id > right.id ? 1 : 0));
+	const sorted = [...rows].sort((left, right) =>
+		left.id < right.id ? -1 : left.id > right.id ? 1 : 0,
+	);
 	return sorted.find((row) => prefer?.has(row.id) === true) ?? sorted[0];
 }
 
 function ready(asset: ProjectAssetMetadata | undefined): asset is ProjectAssetMetadata {
-	return asset?.kind === 'texture' && asset.storageKind === 'r2' &&
-		asset.sourceKind === 'upload' && asset.importState === 'ready';
+	return (
+		asset?.kind === 'texture' &&
+		asset.storageKind === 'r2' &&
+		asset.sourceKind === 'upload' &&
+		asset.importState === 'ready'
+	);
 }
 
 function tooLarge(policy: ProjectImagePolicy): string {
@@ -102,34 +114,56 @@ function tooLarge(policy: ProjectImagePolicy): string {
 }
 
 export async function readVerifiedArtwork(
-	api: ProjectApi, projectId: string, image: ArtworkImage, signal: AbortSignal,
-	metadata?: ProjectAssetMetadata
+	api: ProjectApi,
+	projectId: string,
+	image: ArtworkImage,
+	signal: AbortSignal,
+	metadata?: ProjectAssetMetadata,
 ) {
-	const row = metadata ?? (await api.listAssets(projectId, signal)).find((entry) => entry.id === image.assetId);
-	if (!ready(row) || row.id !== image.assetId || !row.byteSize || row.byteSize > ARTWORK_MAX_BYTES || !row.sha256) {
+	const row =
+		metadata ??
+		(await api.listAssets(projectId, signal)).find((entry) => entry.id === image.assetId);
+	if (
+		!ready(row) ||
+		row.id !== image.assetId ||
+		!row.byteSize ||
+		row.byteSize > ARTWORK_MAX_BYTES ||
+		!row.sha256
+	) {
 		throw new Error('Artwork image is unavailable in this project.');
 	}
 	const content = await api.loadAssetContent(projectId, image.assetId, signal);
 	signal.throwIfAborted();
 	const dimensions = probeArtworkImage(content.bytes);
-	if (content.mime !== row.mime || dimensions.mime !== row.mime ||
-		content.bytes.length !== row.byteSize || `sha256-${await imageSha256(content.bytes)}` !== row.sha256 ||
-		dimensions.pixelWidth !== image.pixelWidth || dimensions.pixelHeight !== image.pixelHeight) {
+	if (
+		content.mime !== row.mime ||
+		dimensions.mime !== row.mime ||
+		content.bytes.length !== row.byteSize ||
+		`sha256-${await imageSha256(content.bytes)}` !== row.sha256 ||
+		dimensions.pixelWidth !== image.pixelWidth ||
+		dimensions.pixelHeight !== image.pixelHeight
+	) {
 		throw new Error('Artwork image bytes do not match the saved project.');
 	}
 	return content;
 }
 
 export async function verifyArtworkLibrary(
-	api: ProjectApi, projectId: string, scene: CameraFreeSceneDocument, signal: AbortSignal
+	api: ProjectApi,
+	projectId: string,
+	scene: CameraFreeSceneDocument,
+	signal: AbortSignal,
 ): Promise<void> {
 	const shelf = scene.artworkLibrary ?? [];
 	if (!shelf.length) return;
 	const rows = new Map((await api.listAssets(projectId, signal)).map((row) => [row.id, row]));
-	const placed = new Set(scene.entities.flatMap((entity) => entity.kind === 'artwork' ? [entity.source.assetId] : []));
+	const placed = new Set(
+		scene.entities.flatMap((entity) => (entity.kind === 'artwork' ? [entity.source.assetId] : [])),
+	);
 	for (const image of shelf) {
 		const row = rows.get(image.assetId);
-		if (!ready(row)) throw new Error(`Artwork “${image.name}” is unavailable. Retry opening the project.`);
+		if (!ready(row))
+			throw new Error(`Artwork “${image.name}” is unavailable. Retry opening the project.`);
 		const content = await readVerifiedArtwork(api, projectId, image, signal, row);
 		if (placed.has(image.assetId)) await verifyArtworkDecode(content.bytes, content.mime, image);
 		signal.throwIfAborted();
@@ -169,7 +203,10 @@ export class ProjectImageLoadError extends Error {
 }
 
 function projectImageMessage(diagnostic: ProjectImageDiagnostic): string {
-	const subject = diagnostic.assetId === '' ? 'The saved project images' : `Project image “${diagnostic.assetId}”`;
+	const subject =
+		diagnostic.assetId === ''
+			? 'The saved project images'
+			: `Project image “${diagnostic.assetId}”`;
 	switch (diagnostic.code) {
 		case 'image-missing':
 			return `${subject} has no stored bytes in this project. ${diagnostic.action}`;
@@ -194,7 +231,7 @@ function diagnostic(
 	savedBase: string | null,
 	code: ProjectImageDiagnostic['code'],
 	action: string,
-	paths?: readonly string[]
+	paths?: readonly string[],
 ): ProjectImageDiagnostic {
 	return {
 		code,
@@ -203,7 +240,7 @@ function diagnostic(
 		assetId: requirement?.assetId ?? '',
 		expectedPin: requirement?.expectedPin ?? null,
 		paths: paths ?? requirement?.paths ?? [],
-		action
+		action,
 	};
 }
 
@@ -216,16 +253,36 @@ function persistenceDiagnostic(
 	error: unknown,
 	requirement: ProjectImageRequirement,
 	projectId: string,
-	savedBase: string | null
+	savedBase: string | null,
 ): ProjectImageDiagnostic {
 	if (error instanceof ProjectPersistenceError) {
-		if (error.code === 'auth') return diagnostic(requirement, projectId, savedBase, 'image-forbidden', 'Sign in again and retry.');
-		if (error.code === 'not-found') return diagnostic(requirement, projectId, savedBase, 'image-missing', REPAIR_ACTION);
+		if (error.code === 'auth')
+			return diagnostic(
+				requirement,
+				projectId,
+				savedBase,
+				'image-forbidden',
+				'Sign in again and retry.',
+			);
+		if (error.code === 'not-found')
+			return diagnostic(requirement, projectId, savedBase, 'image-missing', REPAIR_ACTION);
 		if (error.code === 'network' || error.code === 'server') {
-			return diagnostic(requirement, projectId, savedBase, 'image-unavailable', 'Retry opening the project.');
+			return diagnostic(
+				requirement,
+				projectId,
+				savedBase,
+				'image-unavailable',
+				'Retry opening the project.',
+			);
 		}
 	}
-	return diagnostic(requirement, projectId, savedBase, 'image-unavailable', 'Retry opening the project.');
+	return diagnostic(
+		requirement,
+		projectId,
+		savedBase,
+		'image-unavailable',
+		'Retry opening the project.',
+	);
 }
 
 /**
@@ -245,13 +302,20 @@ export async function verifyProjectImageClosure(
 	options: {
 		readonly savedBaseToken?: string | null;
 		readonly cache?: VerifiedProjectImageCache;
-	} = {}
+	} = {},
 ): Promise<readonly ProjectImageRequirement[]> {
 	const savedBase = options.savedBaseToken ?? null;
 	const closure = collectEnvelopeImageRequirements(envelope, 'private-load');
 	if (closure.issues[0] !== undefined) {
 		throw new ProjectImageLoadError(
-			diagnostic(null, projectId, savedBase, 'image-requirement-invalid', 'Reopen the saved project and correct the image reference.', [closure.issues[0].path])
+			diagnostic(
+				null,
+				projectId,
+				savedBase,
+				'image-requirement-invalid',
+				'Reopen the saved project and correct the image reference.',
+				[closure.issues[0].path],
+			),
 		);
 	}
 	if (closure.requirements.length === 0) return closure.requirements;
@@ -268,15 +332,15 @@ export async function verifyProjectImageClosure(
 				projectId,
 				savedBase,
 				forbidden ? 'image-forbidden' : 'image-unavailable',
-				forbidden ? 'Sign in with the project owner and retry.' : 'Retry opening the project.'
-			)
+				forbidden ? 'Sign in with the project owner and retry.' : 'Retry opening the project.',
+			),
 		);
 	}
 	const byId = new Map(rows.map((row) => [row.id, row]));
 	const placed = new Set(
 		envelope.units.scene.data.entities.flatMap((entity) =>
-			entity.kind === 'artwork' ? [entity.source.assetId] : []
-		)
+			entity.kind === 'artwork' ? [entity.source.assetId] : [],
+		),
 	);
 
 	for (const requirement of closure.requirements) {
@@ -284,7 +348,7 @@ export async function verifyProjectImageClosure(
 		const row = byId.get(requirement.assetId);
 		if (!ready(row)) {
 			throw new ProjectImageLoadError(
-				diagnostic(requirement, projectId, savedBase, 'image-missing', REPAIR_ACTION)
+				diagnostic(requirement, projectId, savedBase, 'image-missing', REPAIR_ACTION),
 			);
 		}
 		if (
@@ -294,7 +358,7 @@ export async function verifyProjectImageClosure(
 				row.byteSize !== requirement.expectedPin.size)
 		) {
 			throw new ProjectImageLoadError(
-				diagnostic(requirement, projectId, savedBase, 'image-pin-changed', REPAIR_ACTION)
+				diagnostic(requirement, projectId, savedBase, 'image-pin-changed', REPAIR_ACTION),
 			);
 		}
 
@@ -303,7 +367,9 @@ export async function verifyProjectImageClosure(
 			content = await api.loadAssetContent(projectId, requirement.assetId, signal);
 		} catch (error) {
 			if (signal.aborted) throw error;
-			throw new ProjectImageLoadError(persistenceDiagnostic(error, requirement, projectId, savedBase));
+			throw new ProjectImageLoadError(
+				persistenceDiagnostic(error, requirement, projectId, savedBase),
+			);
 		}
 		signal.throwIfAborted();
 
@@ -313,7 +379,7 @@ export async function verifyProjectImageClosure(
 			`sha256-${await imageSha256(content.bytes)}` !== row.sha256
 		) {
 			throw new ProjectImageLoadError(
-				diagnostic(requirement, projectId, savedBase, 'image-corrupt', REPAIR_ACTION)
+				diagnostic(requirement, projectId, savedBase, 'image-corrupt', REPAIR_ACTION),
 			);
 		}
 		let probe: ReturnType<typeof probeArtworkImage>;
@@ -321,12 +387,12 @@ export async function verifyProjectImageClosure(
 			probe = probeArtworkImage(content.bytes);
 		} catch {
 			throw new ProjectImageLoadError(
-				diagnostic(requirement, projectId, savedBase, 'image-incompatible', REIMPORT_ACTION)
+				diagnostic(requirement, projectId, savedBase, 'image-incompatible', REIMPORT_ACTION),
 			);
 		}
 		if (probe.mime !== content.mime) {
 			throw new ProjectImageLoadError(
-				diagnostic(requirement, projectId, savedBase, 'image-corrupt', REPAIR_ACTION)
+				diagnostic(requirement, projectId, savedBase, 'image-corrupt', REPAIR_ACTION),
 			);
 		}
 		if (
@@ -335,18 +401,18 @@ export async function verifyProjectImageClosure(
 				probe.pixelHeight !== requirement.artwork.pixelHeight)
 		) {
 			throw new ProjectImageLoadError(
-				diagnostic(requirement, projectId, savedBase, 'image-corrupt', REPAIR_ACTION)
+				diagnostic(requirement, projectId, savedBase, 'image-corrupt', REPAIR_ACTION),
 			);
 		}
 		if (requirement.artwork !== null && placed.has(requirement.assetId)) {
 			try {
 				await verifyArtworkDecode(content.bytes, content.mime, {
 					pixelWidth: requirement.artwork.pixelWidth,
-					pixelHeight: requirement.artwork.pixelHeight
+					pixelHeight: requirement.artwork.pixelHeight,
 				});
 			} catch {
 				throw new ProjectImageLoadError(
-					diagnostic(requirement, projectId, savedBase, 'image-incompatible', REIMPORT_ACTION)
+					diagnostic(requirement, projectId, savedBase, 'image-incompatible', REIMPORT_ACTION),
 				);
 			}
 			signal.throwIfAborted();
@@ -370,7 +436,7 @@ export async function importProjectImage(
 	file: File,
 	signal: AbortSignal,
 	policy: ProjectImagePolicy,
-	hooks: ProjectImageImportHooks = {}
+	hooks: ProjectImageImportHooks = {},
 ): Promise<ImportedProjectImage> {
 	if (file.size > policy.maxBytes) throw new Error(tooLarge(policy));
 	hooks.onPhase?.('checking');
@@ -386,7 +452,7 @@ export async function importProjectImage(
 	})();
 	if (Math.max(pixelWidth, pixelHeight) > policy.maxLongEdge) {
 		throw new Error(
-			`${policy.label} images support up to ${policy.maxLongEdge} px per edge. Resize the image and try again.`
+			`${policy.label} images support up to ${policy.maxLongEdge} px per edge. Resize the image and try again.`,
 		);
 	}
 	await verifyArtworkDecode(bytes, mime, { pixelWidth, pixelHeight });
@@ -413,7 +479,13 @@ export async function importProjectImage(
 		const prior = preferredProjectImageRow(rows.filter(matches), hooks.preferAssetIds);
 		hooks.onPhase?.('uploading');
 		if (prior) {
-			await readVerifiedArtwork(api, projectId, { assetId: prior.id, pixelWidth, pixelHeight }, signal, prior);
+			await readVerifiedArtwork(
+				api,
+				projectId,
+				{ assetId: prior.id, pixelWidth, pixelHeight },
+				signal,
+				prior,
+			);
 			return prior.id;
 		}
 		const reserved = await api.registerAsset(projectId, name, signal);
@@ -423,9 +495,17 @@ export async function importProjectImage(
 			if (!matches(uploaded)) throw new Error(`${policy.label} upload did not match the source.`);
 		} catch (error) {
 			signal.throwIfAborted();
-			const recovered = (await api.listAssets(projectId, signal)).find((row) => row.id === assetId && matches(row));
+			const recovered = (await api.listAssets(projectId, signal)).find(
+				(row) => row.id === assetId && matches(row),
+			);
 			if (!recovered) throw error;
-			await readVerifiedArtwork(api, projectId, { assetId, pixelWidth, pixelHeight }, signal, recovered);
+			await readVerifiedArtwork(
+				api,
+				projectId,
+				{ assetId, pixelWidth, pixelHeight },
+				signal,
+				recovered,
+			);
 		}
 		return assetId;
 	};
@@ -442,13 +522,16 @@ export async function importProjectImage(
 
 /** Artwork's unchanged import: the P20 image plus its shelf entry. */
 export async function importArtworkFile(
-	api: ProjectApi, projectId: string, file: File, signal: AbortSignal
+	api: ProjectApi,
+	projectId: string,
+	file: File,
+	signal: AbortSignal,
 ): Promise<ArtworkLibraryEntry> {
 	const imported = await importProjectImage(api, projectId, file, signal, ARTWORK_IMAGE_POLICY);
 	return {
 		assetId: imported.assetId,
 		name: imported.name,
 		pixelWidth: imported.pixelWidth,
-		pixelHeight: imported.pixelHeight
+		pixelHeight: imported.pixelHeight,
 	};
 }

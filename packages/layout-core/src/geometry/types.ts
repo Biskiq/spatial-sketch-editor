@@ -93,7 +93,6 @@ export type CompilerRoomShell = {
 	id: string;
 	wallThickness: number;
 
-
 	/** Authored overhead intent; absent keeps the closed lid. */
 	overhead?: 'closed' | 'open-to-sky';
 };
@@ -245,7 +244,6 @@ export type CompiledRoom = CompiledIdentity & {
 	openSides?: CompiledSpaceEdge[];
 	floorElevation: number;
 	ceilingElevation: number;
-
 
 	wallThickness: number;
 	floorPolygon: LayoutVec2[];

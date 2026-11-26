@@ -8,9 +8,7 @@ export {
 	resolveReference,
 } from './resolve';
 
-export type {
-	ReferenceResolverHost,
-} from './resolve';
+export type { ReferenceResolverHost } from './resolve';
 
 export {
 	isReferenceDomain,

@@ -7,22 +7,22 @@
  * closed mesh with regions, bounds, footprint and contact.
  */
 export {
-  GEOMETRY_CORE_EVALUATOR_VERSION,
-  PROFILE_LIMITS,
-  canonicalizeWinding,
-  evaluateProfile,
-  validateProfile,
-  type EvaluatedProfile,
-  type ProfileAnchor,
-  type ProfileBounds,
-  type ProfileIssue,
-  type ProfileIssueCode
+	GEOMETRY_CORE_EVALUATOR_VERSION,
+	PROFILE_LIMITS,
+	canonicalizeWinding,
+	evaluateProfile,
+	validateProfile,
+	type EvaluatedProfile,
+	type ProfileAnchor,
+	type ProfileBounds,
+	type ProfileIssue,
+	type ProfileIssueCode,
 } from './profile';
 export {
-  extrudeProfile,
-  type ExtrudeFormInput,
-  type FormBounds,
-  type FormMesh
+	extrudeProfile,
+	type ExtrudeFormInput,
+	type FormBounds,
+	type FormMesh,
 } from './extrude';
 export { formMeshDigest } from './digest';
 export { GeometryCoreError } from './errors';

@@ -1,8 +1,24 @@
 import type { LayoutVec2 } from '../../geometry/coordinates';
 import type { CompiledLayoutGeometry, CompiledQuerySpan } from '../../geometry/types';
 import { p2311Measure } from '../../kernel/work-observer';
-import { curvedSpanNearestCandidates, objectBoundsSnapCandidates, openingEdgeSnapCandidates, orthogonalGuideCandidates, pickSnapWinner, snapAcquisitionRadiusWorld, snapToGridStep, spanSnapCandidates, wallIntersectionSnapCandidates } from './features';
-import type { SnapCandidate, SnapGuide, SnapInputContext, SnapQueryContext, SnapResolution } from './types';
+import {
+	curvedSpanNearestCandidates,
+	objectBoundsSnapCandidates,
+	openingEdgeSnapCandidates,
+	orthogonalGuideCandidates,
+	pickSnapWinner,
+	snapAcquisitionRadiusWorld,
+	snapToGridStep,
+	spanSnapCandidates,
+	wallIntersectionSnapCandidates,
+} from './features';
+import type {
+	SnapCandidate,
+	SnapGuide,
+	SnapInputContext,
+	SnapQueryContext,
+	SnapResolution,
+} from './types';
 import { LAYOUT_PLAN_GRID_STEP, snapOwnerKey } from './types';
 import type { MergedWallSpan } from './walls';
 import { dedupeWallSpans } from './walls';
@@ -29,9 +45,7 @@ export type DerivedWallSnapIndex = {
 	walls: readonly MergedWallSpan[];
 };
 
-
 const derivedWallSnapIndex = new WeakMap<CompiledLayoutGeometry, DerivedWallSnapIndex>();
-
 
 /**
  * DEV-only input probe for the snap derivation: WHAT the derivation is handed,
@@ -66,9 +80,7 @@ export type P23B1SnapInputEntry = {
 	plainMs: number | null;
 };
 
-
 const SNAP_INPUT_LOG_LIMIT = 512;
-
 
 function snapInputProbeEnabled(): boolean {
 	const viteDev = (import.meta as ImportMeta & { env?: { DEV?: boolean } }).env?.DEV;
@@ -77,7 +89,6 @@ function snapInputProbeEnabled(): boolean {
 		(globalThis as { __P2311_SNAP_INPUT_PROBE__?: boolean }).__P2311_SNAP_INPUT_PROBE__ === true
 	);
 }
-
 
 function recordSnapInputProbe(spans: readonly CompiledQuerySpan[], givenMs: number): void {
 	const host = globalThis as { __P2311_SNAP_INPUT_LOG__?: P23B1SnapInputEntry[] };
@@ -104,10 +115,9 @@ function recordSnapInputProbe(spans: readonly CompiledQuerySpan[], givenMs: numb
 		maxEndpointsPerWall: endpoints[endpoints.length - 1] ?? 0,
 		endpointsP50: endpoints.length > 0 ? endpoints[Math.floor((endpoints.length - 1) / 2)]! : 0,
 		givenMs,
-		plainMs
+		plainMs,
 	});
 }
-
 
 /** The memoized Wall snap index of one compiled geometry. */
 export function wallSnapIndex(geometry: CompiledLayoutGeometry): DerivedWallSnapIndex {
@@ -117,19 +127,18 @@ export function wallSnapIndex(geometry: CompiledLayoutGeometry): DerivedWallSnap
 	const probeStarted = probing ? performance.now() : 0;
 	const derived: DerivedWallSnapIndex = {
 		walls: p2311Measure('snap-wall-index', () =>
-			dedupeWallSpans(geometry.queries.spans.filter((span) => span.kind === 'wall'))
-		)
+			dedupeWallSpans(geometry.queries.spans.filter((span) => span.kind === 'wall')),
+		),
 	};
 	if (probing) {
 		recordSnapInputProbe(
 			geometry.queries.spans.filter((span) => span.kind === 'wall'),
-			performance.now() - probeStarted
+			performance.now() - probeStarted,
 		);
 	}
 	derivedWallSnapIndex.set(geometry, derived);
 	return derived;
 }
-
 
 /**
  * Full resolution over the compiled query geometry: collect candidate
@@ -140,7 +149,7 @@ export function resolveLayoutSnap(
 	geometry: CompiledLayoutGeometry,
 	point: LayoutVec2,
 	context: SnapQueryContext,
-	input: SnapInputContext = {}
+	input: SnapInputContext = {},
 ): SnapResolution {
 	const radius = snapAcquisitionRadiusWorld(context);
 	if (radius <= 0) return { kind: 'none' };
@@ -167,7 +176,7 @@ export function resolveLayoutSnap(
 			kind: 'junction',
 			sourceId: queryPoint.sourceId,
 			ownerId,
-			distance
+			distance,
 		});
 	}
 
@@ -188,8 +197,8 @@ export function resolveLayoutSnap(
 					point,
 					radius,
 					wallOwner(merge.key),
-					merge.key
-				)
+					merge.key,
+				),
 			);
 			continue;
 		}
@@ -202,8 +211,8 @@ export function resolveLayoutSnap(
 					point,
 					radius,
 					wallOwner(merge.key),
-					merge.key
-				)
+					merge.key,
+				),
 			);
 		}
 	}
@@ -223,8 +232,8 @@ export function resolveLayoutSnap(
 			...openingEdgeSnapCandidates(
 				{ id: span.id, openingId: span.openingId, start: span.start, end: span.end },
 				point,
-				radius
-			)
+				radius,
+			),
 		);
 	}
 
@@ -233,7 +242,7 @@ export function resolveLayoutSnap(
 		if (polygon.kind !== 'object-footprint' || !polygon.objectId) continue;
 		footprintsById.set(
 			polygon.objectId,
-			polygon.polygon.map((vertex) => [vertex[0], vertex[1]] as LayoutVec2)
+			polygon.polygon.map((vertex) => [vertex[0], vertex[1]] as LayoutVec2),
 		);
 	}
 	for (const [objectId, footprint] of footprintsById) {
@@ -252,7 +261,7 @@ export function resolveLayoutSnap(
 			kind: 'grid',
 			sourceId: 'grid',
 			ownerId: 'grid',
-			distance: gridDistance
+			distance: gridDistance,
 		});
 	}
 
@@ -281,7 +290,6 @@ export function resolveLayoutSnap(
 	if (!winner) return { kind: 'none' };
 	return { kind: 'snap', candidate: winner, guides: guidesForCandidate(winner, anchor ?? null) };
 }
-
 
 /**
  * The alignment line the winner is *about*: at most one, and never degenerate.

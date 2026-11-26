@@ -9,7 +9,7 @@ import { ShapeReader } from '../../strict-shape';
 export function readNullableNumber(
 	reader: ShapeReader,
 	raw: unknown,
-	path: string
+	path: string,
 ): { readonly present: false } | { readonly present: true; readonly value: number | null } | null {
 	if (raw === undefined) return { present: false };
 	if (raw === null) return { present: true, value: null };
@@ -27,7 +27,11 @@ export function readPoint(reader: ShapeReader, input: unknown, path: string): La
 	return x === null || z === null ? null : [x, z];
 }
 
-export function readFrame(reader: ShapeReader, input: unknown, path: string): LocalInputFrame | null {
+export function readFrame(
+	reader: ShapeReader,
+	input: unknown,
+	path: string,
+): LocalInputFrame | null {
 	const record = reader.object(input, path, ['origin', 'yaw']);
 	if (record === null) return null;
 	const origin = reader.vector3(record.origin, `${path}.origin`);
@@ -52,7 +56,7 @@ export function readFrameReference(
 	reader: ShapeReader,
 	input: unknown,
 	path: string,
-	frame: LocalInputFrame | null
+	frame: LocalInputFrame | null,
 ): { readonly ok: true; readonly value: FrameReference } | { readonly ok: false } {
 	const validated = validateFrameReference(input);
 	if (!validated.success) {
@@ -66,7 +70,7 @@ export function readFrameReference(
 		reader.problem(
 			path,
 			'unsupported-frame',
-			`Frame "${validated.value.frameId}" is owner-qualified by "${validated.value.owner}"; its placement is only usable through that owner's frame resolver, and this reader admits none, so the supplied conversion is not verified`
+			`Frame "${validated.value.frameId}" is owner-qualified by "${validated.value.owner}"; its placement is only usable through that owner's frame resolver, and this reader admits none, so the supplied conversion is not verified`,
 		);
 		return { ok: false };
 	}
@@ -74,7 +78,7 @@ export function readFrameReference(
 		reader.problem(
 			path,
 			'frame-mismatch',
-			'a project-world frame reference must carry the identity conversion (zero origin and yaw)'
+			'a project-world frame reference must carry the identity conversion (zero origin and yaw)',
 		);
 		return { ok: false };
 	}
@@ -84,7 +88,7 @@ export function readFrameReference(
 export function readSupportChoice(
 	reader: ShapeReader,
 	input: unknown,
-	path: string
+	path: string,
 ): { readonly choice?: SceneSupportChoice } | undefined {
 	if (input === undefined) return {};
 	const record = reader.object(input, path, ['kind', 'orderKey', 'elevation', 'generationId']);
@@ -95,13 +99,25 @@ export function readSupportChoice(
 	if (kind === 'order-key') {
 		const orderKey = reader.opaqueId(record.orderKey, `${path}.orderKey`);
 		if (record.elevation !== undefined) {
-			reader.problem(`${path}.elevation`, 'unknown-key', `${path}.elevation belongs to an elevation choice`);
+			reader.problem(
+				`${path}.elevation`,
+				'unknown-key',
+				`${path}.elevation belongs to an elevation choice`,
+			);
 		}
-		return orderKey === null ? undefined : { choice: { kind: 'order-key', orderKey, generationId } };
+		return orderKey === null
+			? undefined
+			: { choice: { kind: 'order-key', orderKey, generationId } };
 	}
 	const elevation = reader.number(record.elevation, `${path}.elevation`);
 	if (record.orderKey !== undefined) {
-		reader.problem(`${path}.orderKey`, 'unknown-key', `${path}.orderKey belongs to an order-key choice`);
+		reader.problem(
+			`${path}.orderKey`,
+			'unknown-key',
+			`${path}.orderKey belongs to an order-key choice`,
+		);
 	}
-	return elevation === null ? undefined : { choice: { kind: 'elevation', elevation, generationId } };
+	return elevation === null
+		? undefined
+		: { choice: { kind: 'elevation', elevation, generationId } };
 }

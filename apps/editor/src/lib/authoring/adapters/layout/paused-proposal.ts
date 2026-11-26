@@ -37,7 +37,10 @@ export function publishPausedProposal(proposal: PausedWallProposal): void {
 	proposals.set(keyOf(proposal.sourceContentId, proposal.wallId), proposal);
 }
 
-export function pausedWallProposal(sourceContentId: string, wallId: string): PausedWallProposal | null {
+export function pausedWallProposal(
+	sourceContentId: string,
+	wallId: string,
+): PausedWallProposal | null {
 	return proposals.get(keyOf(sourceContentId, wallId)) ?? null;
 }
 

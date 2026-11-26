@@ -30,7 +30,7 @@ export function createLightLease(services: StageAdapterServices): LightLease {
 			const acquisition = services.stage.acquireGesture({
 				owner,
 				evaluationId,
-				policy: 'cancel-on-reading-change'
+				policy: 'cancel-on-reading-change',
 			});
 			if (acquisition.kind !== 'granted') return false;
 			lease = acquisition;
@@ -39,7 +39,7 @@ export function createLightLease(services: StageAdapterServices): LightLease {
 		release() {
 			if (lease?.kind === 'granted' && lease.lease.active) lease.lease.release();
 			lease = null;
-		}
+		},
 	};
 }
 
@@ -67,7 +67,7 @@ export function createLightRefusal(now: () => number = () => Date.now()): LightR
 		},
 		clear() {
 			refusal = null;
-		}
+		},
 	};
 }
 
@@ -89,7 +89,7 @@ export function createLightInstallWindow(): LightInstallWindow {
 		},
 		get isOpen() {
 			return open;
-		}
+		},
 	};
 }
 

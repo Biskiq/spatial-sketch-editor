@@ -21,7 +21,7 @@ export function createRegionRepresentation(
 	resolveSurfaceLook?: SceneSurfaceLookResolver,
 	treatment: MaterialTreatment | undefined = undefined,
 	viewGeneration?: () => FinishViewGeneration | null,
-	onFinishOutcome?: FinishOutcomeSink
+	onFinishOutcome?: FinishOutcomeSink,
 ) {
 	const object3d = new Group();
 	object3d.name = 'LayoutRegions';
@@ -35,20 +35,34 @@ export function createRegionRepresentation(
 	 */
 	function defaultDescriptors(active: MaterialTreatment | undefined) {
 		const floor = applyTreatment(active, {
-			color: DEFAULT_FLOOR_COLOR, roughness: 1, metalness: 0, slotUris: {}, normalScale: null
+			color: DEFAULT_FLOOR_COLOR,
+			roughness: 1,
+			metalness: 0,
+			slotUris: {},
+			normalScale: null,
 		});
 		const slab = applyTreatment(active, {
-			color: '#111018', roughness: 0.9, metalness: 0, slotUris: {}, normalScale: null
+			color: '#111018',
+			roughness: 0.9,
+			metalness: 0,
+			slotUris: {},
+			normalScale: null,
 		});
 		const top = {
-			kind: 'standard', color: floor.color, roughness: floor.roughness, metalness: floor.metalness
+			kind: 'standard',
+			color: floor.color,
+			roughness: floor.roughness,
+			metalness: floor.metalness,
 		} as const;
 		return {
 			top,
 			slab: {
-				kind: 'standard', color: slab.color, roughness: slab.roughness, metalness: slab.metalness
+				kind: 'standard',
+				color: slab.color,
+				roughness: slab.roughness,
+				metalness: slab.metalness,
 			} as const,
-			datumTop: { ...top, polygonOffset: [-2, -2] as const }
+			datumTop: { ...top, polygonOffset: [-2, -2] as const },
 		};
 	}
 	type RetainedRegion = {
@@ -71,7 +85,7 @@ export function createRegionRepresentation(
 			leases = [
 				store.acquire(descriptors.top),
 				store.acquire(descriptors.slab),
-				store.acquire(descriptors.datumTop)
+				store.acquire(descriptors.datumTop),
 			];
 		}
 		return leases;
@@ -79,11 +93,14 @@ export function createRegionRepresentation(
 	/** One slab's three face materials: a painted face wins, else its role default. */
 	function faceMaterials(id: string, role: CompiledRegion['role'], atDatum: boolean): Material[] {
 		const [top, slab, datumTop] = materials();
-		const defaultTop = role === 'floor' ? (atDatum ? datumTop!.material : top!.material) : slab!.material;
+		const defaultTop =
+			role === 'floor' ? (atDatum ? datumTop!.material : top!.material) : slab!.material;
 		return [
-			surfaceMaterials.materialFor({ kind: 'region-face', regionId: id, face: 'top' }) ?? defaultTop,
-			surfaceMaterials.materialFor({ kind: 'region-face', regionId: id, face: 'underside' }) ?? slab!.material,
-			slab!.material
+			surfaceMaterials.materialFor({ kind: 'region-face', regionId: id, face: 'top' }) ??
+				defaultTop,
+			surfaceMaterials.materialFor({ kind: 'region-face', regionId: id, face: 'underside' }) ??
+				slab!.material,
+			slab!.material,
 		];
 	}
 	let surfaceMaterials = createSceneSurfaceMaterials({
@@ -92,7 +109,7 @@ export function createRegionRepresentation(
 		onMaterialChange: refreshSurfaceMaterials,
 		resolveSurfaceLook,
 		viewGeneration,
-		onFinishOutcome
+		onFinishOutcome,
 	});
 	function refreshSurfaceMaterials(): void {
 		if (entries.size === 0) return;
@@ -109,7 +126,7 @@ export function createRegionRepresentation(
 			onMaterialChange: refreshSurfaceMaterials,
 			resolveSurfaceLook,
 			viewGeneration,
-			onFinishOutcome
+			onFinishOutcome,
 		});
 		refreshSurfaceMaterials();
 		previous.dispose();
@@ -145,7 +162,7 @@ export function createRegionRepresentation(
 				const origin: [number, number, number] = [x, region.bottomY, z];
 				const mesh = new Mesh(
 					buildRegionMeshGeometry(region, origin),
-					faceMaterials(id, region.role, biased) as Material[]
+					faceMaterials(id, region.role, biased) as Material[],
 				);
 				mesh.position.set(...origin);
 				mesh.name = `LayoutRegion:${id}`;
@@ -181,9 +198,13 @@ export function createRegionRepresentation(
 			lifted = new Set(ids);
 			return changed;
 		},
-		objectOf(id: string) { return entries.get(id)?.mesh ?? null; },
+		objectOf(id: string) {
+			return entries.get(id)?.mesh ?? null;
+		},
 		/** Ask again for the face images that failed, without rebuilding geometry. */
-		reloadTextures(): void { surfaceMaterials.reloadTextures(); },
+		reloadTextures(): void {
+			surfaceMaterials.reloadTextures();
+		},
 		/** Re-resolve Scene-owned Region faces without rebuilding geometry. */
 		setScene(next: object | null, scope: TextureLoadScope | null): boolean {
 			if (next === scene && scope === activeScope) return false;
@@ -205,13 +226,15 @@ export function createRegionRepresentation(
 			for (const lease of previous) lease.release();
 			return true;
 		},
-		*meshes() { for (const { mesh } of entries.values()) yield mesh; },
+		*meshes() {
+			for (const { mesh } of entries.values()) yield mesh;
+		},
 		dispose() {
 			for (const id of entries.keys()) remove(id);
 			surfaceMaterials.dispose();
 			releaseUnused();
 			compiled = undefined;
 			lifted = new Set();
-		}
+		},
 	};
 }

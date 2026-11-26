@@ -1,332 +1,332 @@
 {
-  "generatedAt": "2026-11-25T04:50:35.304Z",
-  "commit": "c0ac38a4498018f58486bc2f850acc048b9343a5",
-  "total": 46,
-  "killed": 46,
-  "survived": [],
-  "errors": [],
-  "results": [
-    {
-      "status": "killed",
-      "detail": "15 failing tests",
-      "id": "01-envelope-version",
-      "title": "Envelope reader accepts a newer format version",
-      "durationMs": 2133
-    },
-    {
-      "status": "killed",
-      "detail": "1 failing test",
-      "id": "02-scene-unit-version",
-      "title": "Scene unit reader accepts a newer payload version",
-      "durationMs": 2046
-    },
-    {
-      "status": "killed",
-      "detail": "14 failing tests",
-      "id": "03-camera-unit-version",
-      "title": "The admitted Camera unit version drifts from its codec",
-      "durationMs": 1856
-    },
-    {
-      "status": "killed",
-      "detail": "14 failing tests",
-      "id": "04-experience-unit-version",
-      "title": "The admitted Experience unit version drifts from its codec",
-      "durationMs": 1991
-    },
-    {
-      "status": "killed",
-      "detail": "14 failing tests",
-      "id": "05-resource-unit-version",
-      "title": "The admitted Resource unit version drifts from its codec",
-      "durationMs": 1932
-    },
-    {
-      "status": "killed",
-      "detail": "4 failing tests",
-      "id": "06-strict-shape-unknown-key",
-      "title": "Strict reader silently tolerates unknown keys instead of refusing them",
-      "durationMs": 2006
-    },
-    {
-      "status": "killed",
-      "detail": "1 failing test",
-      "id": "07-strict-shape-exclusive-bound",
-      "title": "A domain-scoped tool is routed to the wrong provider",
-      "durationMs": 981
-    },
-    {
-      "status": "killed",
-      "detail": "1 failing test",
-      "id": "08-strict-shape-identity-space",
-      "title": "Opaque identity check only refuses control whitespace, not a space in an id",
-      "durationMs": 2001
-    },
-    {
-      "status": "killed",
-      "detail": "14 failing tests",
-      "id": "09-strict-shape-number-finite",
-      "title": "Plan grid snapping outranks every semantic feature",
-      "durationMs": 1566
-    },
-    {
-      "status": "killed",
-      "detail": "1 failing test",
-      "id": "10-strict-shape-empty-string",
-      "title": "String reader admits an empty or whitespace-only value",
-      "durationMs": 2086
-    },
-    {
-      "status": "killed",
-      "detail": "6 failing tests",
-      "id": "11-orientation-sign",
-      "title": "The package orientation seam flips its sign convention",
-      "durationMs": 1842
-    },
-    {
-      "status": "killed",
-      "detail": "48 failing tests",
-      "id": "12-mesh-digest-multiplier",
-      "title": "The canonical mesh digest mixes the wrong FNV multiplier",
-      "durationMs": 1807
-    },
-    {
-      "status": "killed",
-      "detail": "1 failing test",
-      "id": "13-snap-junction-rank",
-      "title": "Snapping ranks a wall midpoint above a shared junction",
-      "durationMs": 1297
-    },
-    {
-      "status": "killed",
-      "detail": "5 failing tests",
-      "id": "14-snap-radius",
-      "title": "Pointer acquisition radius is no longer screen-stable",
-      "durationMs": 1714
-    },
-    {
-      "status": "killed",
-      "detail": "3 failing tests",
-      "id": "15-snap-grid-step",
-      "title": "Plan grid snapping uses a doubled step",
-      "durationMs": 1538
-    },
-    {
-      "status": "killed",
-      "detail": "1 failing test",
-      "id": "16-opening-full-circumference",
-      "title": "The recent-paint list keeps duplicate entries",
-      "durationMs": 1061
-    },
-    {
-      "status": "killed",
-      "detail": "1 failing test",
-      "id": "17-wall-thickness-limit",
-      "title": "A Save capture is reused even after its source changed",
-      "durationMs": 2060
-    },
-    {
-      "status": "killed",
-      "detail": "9 failing tests",
-      "id": "18-dimension-limit-tolerance",
-      "title": "The supported geometry envelope is silently widened tenfold",
-      "durationMs": 2563
-    },
-    {
-      "status": "killed",
-      "detail": "1 failing test",
-      "id": "19-region-edge-limit",
-      "title": "Region footprints accept edges beyond the geometry envelope",
-      "durationMs": 1895
-    },
-    {
-      "status": "killed",
-      "detail": "8 failing tests",
-      "id": "20-shared-junction-priority",
-      "title": "A wall span outranks a shared junction at equal distance",
-      "durationMs": 1513
-    },
-    {
-      "status": "killed",
-      "detail": "6 failing tests",
-      "id": "21-snap-opening-rank",
-      "title": "Save reports a saved project as dirty after a successful write",
-      "durationMs": 2217
-    },
-    {
-      "status": "killed",
-      "detail": "1 failing test",
-      "id": "22-reference-space-bound",
-      "title": "Reference allocation accepts one index past the allocation space",
-      "durationMs": 1642
-    },
-    {
-      "status": "killed",
-      "detail": "2 failing tests",
-      "id": "23-stage-pick-distance",
-      "title": "Stage pick returns the worst-ranked candidate instead of the best",
-      "durationMs": 957
-    },
-    {
-      "status": "killed",
-      "detail": "1 failing test",
-      "id": "24-stage-pick-plan-layer",
-      "title": "Plan picks favour the backmost layer instead of the frontmost",
-      "durationMs": 3641
-    },
-    {
-      "status": "killed",
-      "detail": "15 failing tests",
-      "id": "25-save-precondition-match",
-      "title": "A retained Save capture is never reused",
-      "durationMs": 2515
-    },
-    {
-      "status": "killed",
-      "detail": "2 failing tests",
-      "id": "26-save-precondition-kind",
-      "title": "The Save precondition is inverted: a saved project claims create-only",
-      "durationMs": 2102
-    },
-    {
-      "status": "killed",
-      "detail": "no failing test named",
-      "id": "27-api-origin-guard",
-      "title": "The API accepts an unsafe browser mutation from a foreign Origin",
-      "durationMs": 5279
-    },
-    {
-      "status": "killed",
-      "detail": "no failing test named",
-      "id": "28-api-cors-guard",
-      "title": "CORS preflight accepts a mismatched Origin",
-      "durationMs": 32921
-    },
-    {
-      "status": "killed",
-      "detail": "no failing test named",
-      "id": "29-api-material-owner",
-      "title": "The material read compares the owner id into the uuid column",
-      "durationMs": 5423
-    },
-    {
-      "status": "killed",
-      "detail": "1 failing test",
-      "id": "30-experience-duplicate-identity",
-      "title": "Experience creation refuses every identity except the one it must refuse",
-      "durationMs": 2033
-    },
-    {
-      "status": "killed",
-      "detail": "3 failing tests",
-      "id": "31-experience-stay-default",
-      "title": "A Stop without a stay defaults to zero seconds",
-      "durationMs": 1914
-    },
-    {
-      "status": "killed",
-      "detail": "1 failing test",
-      "id": "32-camera-ramp-clamp",
-      "title": "The camera pose epsilon is widened a hundredfold",
-      "durationMs": 3947
-    },
-    {
-      "status": "killed",
-      "detail": "1 failing test",
-      "id": "33-camera-enter-exit-weight",
-      "title": "The camera angular sample bound is widened sixfold",
-      "durationMs": 4618
-    },
-    {
-      "status": "killed",
-      "detail": "1 failing test",
-      "id": "34-paint-recent-limit",
-      "title": "The recent-paint list exceeds its bound",
-      "durationMs": 1085
-    },
-    {
-      "status": "killed",
-      "detail": "1 failing test",
-      "id": "35-paint-favourite-toggle",
-      "title": "Toggling a favourite adds a duplicate instead of removing it",
-      "durationMs": 961
-    },
-    {
-      "status": "killed",
-      "detail": "1 failing test",
-      "id": "36-library-source-filter",
-      "title": "The library browse ignores its material filters",
-      "durationMs": 1973
-    },
-    {
-      "status": "killed",
-      "detail": "2 failing tests",
-      "id": "37-library-search-trim",
-      "title": "An empty library query hides every card",
-      "durationMs": 1858
-    },
-    {
-      "status": "killed",
-      "detail": "1 failing test",
-      "id": "38-palette-duplicate-code",
-      "title": "A duplicate palette slot reports the wrong refusal code",
-      "durationMs": 1939
-    },
-    {
-      "status": "killed",
-      "detail": "1 failing test",
-      "id": "39-visitor-editor-import",
-      "title": "The Preview surface root imports editor authoring machinery",
-      "durationMs": 1898
-    },
-    {
-      "status": "killed",
-      "detail": "1 failing test",
-      "id": "40-stage-second-camera-authority",
-      "title": "The Stage shell imports an independent orbit controller",
-      "durationMs": 5757
-    },
-    {
-      "status": "killed",
-      "detail": "1 failing test",
-      "id": "41-envelope-generated-field",
-      "title": "Serialization writes a session timestamp into the authored envelope",
-      "durationMs": 1837
-    },
-    {
-      "status": "killed",
-      "detail": "2 failing tests",
-      "id": "42-snap-midpoint-rank",
-      "title": "A wall midpoint outranks a junction at equal distance",
-      "durationMs": 1502
-    },
-    {
-      "status": "killed",
-      "detail": "1 failing test",
-      "id": "43-surface-finish-duplicate",
-      "title": "Two Finish assignments for one surface are silently accepted",
-      "durationMs": 1935
-    },
-    {
-      "status": "killed",
-      "detail": "1 failing test",
-      "id": "44-paint-normalise-hex",
-      "title": "A three-digit hex colour expands to one repeated channel",
-      "durationMs": 3040
-    },
-    {
-      "status": "killed",
-      "detail": "1 failing test",
-      "id": "45-opening-set-invalid-code",
-      "title": "An invalid opening set reports a different refusal code",
-      "durationMs": 1624
-    },
-    {
-      "status": "killed",
-      "detail": "1 failing test",
-      "id": "46-room-duplicate-guard",
-      "title": "Room duplication no longer refuses a duplicate room id",
-      "durationMs": 1608
-    }
-  ]
+	"generatedAt": "2026-11-25T04:50:35.304Z",
+	"commit": "c0ac38a4498018f58486bc2f850acc048b9343a5",
+	"total": 46,
+	"killed": 46,
+	"survived": [],
+	"errors": [],
+	"results": [
+		{
+			"status": "killed",
+			"detail": "15 failing tests",
+			"id": "01-envelope-version",
+			"title": "Envelope reader accepts a newer format version",
+			"durationMs": 2133
+		},
+		{
+			"status": "killed",
+			"detail": "1 failing test",
+			"id": "02-scene-unit-version",
+			"title": "Scene unit reader accepts a newer payload version",
+			"durationMs": 2046
+		},
+		{
+			"status": "killed",
+			"detail": "14 failing tests",
+			"id": "03-camera-unit-version",
+			"title": "The admitted Camera unit version drifts from its codec",
+			"durationMs": 1856
+		},
+		{
+			"status": "killed",
+			"detail": "14 failing tests",
+			"id": "04-experience-unit-version",
+			"title": "The admitted Experience unit version drifts from its codec",
+			"durationMs": 1991
+		},
+		{
+			"status": "killed",
+			"detail": "14 failing tests",
+			"id": "05-resource-unit-version",
+			"title": "The admitted Resource unit version drifts from its codec",
+			"durationMs": 1932
+		},
+		{
+			"status": "killed",
+			"detail": "4 failing tests",
+			"id": "06-strict-shape-unknown-key",
+			"title": "Strict reader silently tolerates unknown keys instead of refusing them",
+			"durationMs": 2006
+		},
+		{
+			"status": "killed",
+			"detail": "1 failing test",
+			"id": "07-strict-shape-exclusive-bound",
+			"title": "A domain-scoped tool is routed to the wrong provider",
+			"durationMs": 981
+		},
+		{
+			"status": "killed",
+			"detail": "1 failing test",
+			"id": "08-strict-shape-identity-space",
+			"title": "Opaque identity check only refuses control whitespace, not a space in an id",
+			"durationMs": 2001
+		},
+		{
+			"status": "killed",
+			"detail": "14 failing tests",
+			"id": "09-strict-shape-number-finite",
+			"title": "Plan grid snapping outranks every semantic feature",
+			"durationMs": 1566
+		},
+		{
+			"status": "killed",
+			"detail": "1 failing test",
+			"id": "10-strict-shape-empty-string",
+			"title": "String reader admits an empty or whitespace-only value",
+			"durationMs": 2086
+		},
+		{
+			"status": "killed",
+			"detail": "6 failing tests",
+			"id": "11-orientation-sign",
+			"title": "The package orientation seam flips its sign convention",
+			"durationMs": 1842
+		},
+		{
+			"status": "killed",
+			"detail": "48 failing tests",
+			"id": "12-mesh-digest-multiplier",
+			"title": "The canonical mesh digest mixes the wrong FNV multiplier",
+			"durationMs": 1807
+		},
+		{
+			"status": "killed",
+			"detail": "1 failing test",
+			"id": "13-snap-junction-rank",
+			"title": "Snapping ranks a wall midpoint above a shared junction",
+			"durationMs": 1297
+		},
+		{
+			"status": "killed",
+			"detail": "5 failing tests",
+			"id": "14-snap-radius",
+			"title": "Pointer acquisition radius is no longer screen-stable",
+			"durationMs": 1714
+		},
+		{
+			"status": "killed",
+			"detail": "3 failing tests",
+			"id": "15-snap-grid-step",
+			"title": "Plan grid snapping uses a doubled step",
+			"durationMs": 1538
+		},
+		{
+			"status": "killed",
+			"detail": "1 failing test",
+			"id": "16-opening-full-circumference",
+			"title": "The recent-paint list keeps duplicate entries",
+			"durationMs": 1061
+		},
+		{
+			"status": "killed",
+			"detail": "1 failing test",
+			"id": "17-wall-thickness-limit",
+			"title": "A Save capture is reused even after its source changed",
+			"durationMs": 2060
+		},
+		{
+			"status": "killed",
+			"detail": "9 failing tests",
+			"id": "18-dimension-limit-tolerance",
+			"title": "The supported geometry envelope is silently widened tenfold",
+			"durationMs": 2563
+		},
+		{
+			"status": "killed",
+			"detail": "1 failing test",
+			"id": "19-region-edge-limit",
+			"title": "Region footprints accept edges beyond the geometry envelope",
+			"durationMs": 1895
+		},
+		{
+			"status": "killed",
+			"detail": "8 failing tests",
+			"id": "20-shared-junction-priority",
+			"title": "A wall span outranks a shared junction at equal distance",
+			"durationMs": 1513
+		},
+		{
+			"status": "killed",
+			"detail": "6 failing tests",
+			"id": "21-snap-opening-rank",
+			"title": "Save reports a saved project as dirty after a successful write",
+			"durationMs": 2217
+		},
+		{
+			"status": "killed",
+			"detail": "1 failing test",
+			"id": "22-reference-space-bound",
+			"title": "Reference allocation accepts one index past the allocation space",
+			"durationMs": 1642
+		},
+		{
+			"status": "killed",
+			"detail": "2 failing tests",
+			"id": "23-stage-pick-distance",
+			"title": "Stage pick returns the worst-ranked candidate instead of the best",
+			"durationMs": 957
+		},
+		{
+			"status": "killed",
+			"detail": "1 failing test",
+			"id": "24-stage-pick-plan-layer",
+			"title": "Plan picks favour the backmost layer instead of the frontmost",
+			"durationMs": 3641
+		},
+		{
+			"status": "killed",
+			"detail": "15 failing tests",
+			"id": "25-save-precondition-match",
+			"title": "A retained Save capture is never reused",
+			"durationMs": 2515
+		},
+		{
+			"status": "killed",
+			"detail": "2 failing tests",
+			"id": "26-save-precondition-kind",
+			"title": "The Save precondition is inverted: a saved project claims create-only",
+			"durationMs": 2102
+		},
+		{
+			"status": "killed",
+			"detail": "no failing test named",
+			"id": "27-api-origin-guard",
+			"title": "The API accepts an unsafe browser mutation from a foreign Origin",
+			"durationMs": 5279
+		},
+		{
+			"status": "killed",
+			"detail": "no failing test named",
+			"id": "28-api-cors-guard",
+			"title": "CORS preflight accepts a mismatched Origin",
+			"durationMs": 32921
+		},
+		{
+			"status": "killed",
+			"detail": "no failing test named",
+			"id": "29-api-material-owner",
+			"title": "The material read compares the owner id into the uuid column",
+			"durationMs": 5423
+		},
+		{
+			"status": "killed",
+			"detail": "1 failing test",
+			"id": "30-experience-duplicate-identity",
+			"title": "Experience creation refuses every identity except the one it must refuse",
+			"durationMs": 2033
+		},
+		{
+			"status": "killed",
+			"detail": "3 failing tests",
+			"id": "31-experience-stay-default",
+			"title": "A Stop without a stay defaults to zero seconds",
+			"durationMs": 1914
+		},
+		{
+			"status": "killed",
+			"detail": "1 failing test",
+			"id": "32-camera-ramp-clamp",
+			"title": "The camera pose epsilon is widened a hundredfold",
+			"durationMs": 3947
+		},
+		{
+			"status": "killed",
+			"detail": "1 failing test",
+			"id": "33-camera-enter-exit-weight",
+			"title": "The camera angular sample bound is widened sixfold",
+			"durationMs": 4618
+		},
+		{
+			"status": "killed",
+			"detail": "1 failing test",
+			"id": "34-paint-recent-limit",
+			"title": "The recent-paint list exceeds its bound",
+			"durationMs": 1085
+		},
+		{
+			"status": "killed",
+			"detail": "1 failing test",
+			"id": "35-paint-favourite-toggle",
+			"title": "Toggling a favourite adds a duplicate instead of removing it",
+			"durationMs": 961
+		},
+		{
+			"status": "killed",
+			"detail": "1 failing test",
+			"id": "36-library-source-filter",
+			"title": "The library browse ignores its material filters",
+			"durationMs": 1973
+		},
+		{
+			"status": "killed",
+			"detail": "2 failing tests",
+			"id": "37-library-search-trim",
+			"title": "An empty library query hides every card",
+			"durationMs": 1858
+		},
+		{
+			"status": "killed",
+			"detail": "1 failing test",
+			"id": "38-palette-duplicate-code",
+			"title": "A duplicate palette slot reports the wrong refusal code",
+			"durationMs": 1939
+		},
+		{
+			"status": "killed",
+			"detail": "1 failing test",
+			"id": "39-visitor-editor-import",
+			"title": "The Preview surface root imports editor authoring machinery",
+			"durationMs": 1898
+		},
+		{
+			"status": "killed",
+			"detail": "1 failing test",
+			"id": "40-stage-second-camera-authority",
+			"title": "The Stage shell imports an independent orbit controller",
+			"durationMs": 5757
+		},
+		{
+			"status": "killed",
+			"detail": "1 failing test",
+			"id": "41-envelope-generated-field",
+			"title": "Serialization writes a session timestamp into the authored envelope",
+			"durationMs": 1837
+		},
+		{
+			"status": "killed",
+			"detail": "2 failing tests",
+			"id": "42-snap-midpoint-rank",
+			"title": "A wall midpoint outranks a junction at equal distance",
+			"durationMs": 1502
+		},
+		{
+			"status": "killed",
+			"detail": "1 failing test",
+			"id": "43-surface-finish-duplicate",
+			"title": "Two Finish assignments for one surface are silently accepted",
+			"durationMs": 1935
+		},
+		{
+			"status": "killed",
+			"detail": "1 failing test",
+			"id": "44-paint-normalise-hex",
+			"title": "A three-digit hex colour expands to one repeated channel",
+			"durationMs": 3040
+		},
+		{
+			"status": "killed",
+			"detail": "1 failing test",
+			"id": "45-opening-set-invalid-code",
+			"title": "An invalid opening set reports a different refusal code",
+			"durationMs": 1624
+		},
+		{
+			"status": "killed",
+			"detail": "1 failing test",
+			"id": "46-room-duplicate-guard",
+			"title": "Room duplication no longer refuses a duplicate room id",
+			"durationMs": 1608
+		}
+	]
 }

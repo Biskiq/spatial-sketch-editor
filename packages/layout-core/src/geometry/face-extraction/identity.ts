@@ -12,18 +12,16 @@ import { geometryId } from '../types';
  * identity, and never a Room ID.
  */
 export function canonicalBoundaryCycleKey(
-	refs: ReadonlyArray<{ wallId: string; direction: 'forward' | 'reverse' }>
+	refs: ReadonlyArray<{ wallId: string; direction: 'forward' | 'reverse' }>,
 ): string {
 	return canonicalFaceKey(keyFloorlessTokens(refs));
 }
 
-
 export function keyFloorlessTokens(
-	boundary: ReadonlyArray<{ wallId: string; direction: 'forward' | 'reverse' }>
+	boundary: ReadonlyArray<{ wallId: string; direction: 'forward' | 'reverse' }>,
 ): string[] {
 	return boundary.map((ref) => `${ref.wallId}~${ref.direction === 'forward' ? 'F' : 'R'}`);
 }
-
 
 /**
  * Canonical face key from the oriented cycle: rotate so the

@@ -6,8 +6,10 @@ type ProbedDimensions = Dimensions & { orientation: number };
 export const ARTWORK_MAX_BYTES = 25 * 1024 * 1024;
 
 function matches(bytes: Uint8Array, offset: number, ascii: string): boolean {
-	return offset + ascii.length <= bytes.length &&
-		[...ascii].every((char, index) => bytes[offset + index] === char.charCodeAt(0));
+	return (
+		offset + ascii.length <= bytes.length &&
+		[...ascii].every((char, index) => bytes[offset + index] === char.charCodeAt(0))
+	);
 }
 
 function invalid(): never {
@@ -15,13 +17,15 @@ function invalid(): never {
 }
 
 function png(bytes: Uint8Array, view: DataView): ProbedDimensions {
-	if (bytes.length < 33 || view.getUint32(8) !== 13 || !matches(bytes, 12, 'IHDR')) return invalid();
+	if (bytes.length < 33 || view.getUint32(8) !== 13 || !matches(bytes, 12, 'IHDR'))
+		return invalid();
 	let hasData = false;
-	for (let offset = 8; offset + 12 <= bytes.length;) {
+	for (let offset = 8; offset + 12 <= bytes.length; ) {
 		const size = view.getUint32(offset);
 		const next = offset + 12 + size;
 		if (next > bytes.length) return invalid();
-		if (matches(bytes, offset + 4, 'acTL')) throw new Error('Animated images cannot be imported as Artwork.');
+		if (matches(bytes, offset + 4, 'acTL'))
+			throw new Error('Animated images cannot be imported as Artwork.');
 		if (matches(bytes, offset + 4, 'eXIf')) {
 			const orientation = exif(bytes.subarray(offset + 8, offset + 8 + size)) ?? 1;
 			if (orientation !== 1) throw new Error('Artwork supports embedded orientation in JPEG only.');
@@ -48,7 +52,8 @@ function exif(bytes: Uint8Array): number | undefined {
 	for (let index = 0; index < entries; index++) {
 		const offset = directory + 2 + index * 12;
 		if (view.getUint16(offset, little) !== 0x0112) continue;
-		if (view.getUint16(offset + 2, little) !== 3 || view.getUint32(offset + 4, little) !== 1) return invalid();
+		if (view.getUint16(offset + 2, little) !== 3 || view.getUint32(offset + 4, little) !== 1)
+			return invalid();
 		const orientation = view.getUint16(offset + 8, little);
 		return orientation >= 1 && orientation <= 8 ? orientation : invalid();
 	}
@@ -59,7 +64,7 @@ function jpeg(bytes: Uint8Array, view: DataView): ProbedDimensions {
 	let orientation: number | undefined;
 	let frame: Dimensions | undefined;
 	if (bytes[bytes.length - 2] !== 0xff || bytes[bytes.length - 1] !== 0xd9) return invalid();
-	for (let offset = 2; offset + 4 <= bytes.length;) {
+	for (let offset = 2; offset + 4 <= bytes.length; ) {
 		if (bytes[offset++] !== 0xff) return invalid();
 		while (bytes[offset] === 0xff) offset++;
 		const marker = bytes[offset++];
@@ -90,7 +95,7 @@ function webp(bytes: Uint8Array, view: DataView): ProbedDimensions {
 	if (view.getUint32(4, true) + 8 !== bytes.length) return invalid();
 	let canvas: Dimensions | undefined;
 	let image: Dimensions | undefined;
-	for (let offset = 12; offset + 8 <= bytes.length;) {
+	for (let offset = 12; offset + 8 <= bytes.length; ) {
 		const size = view.getUint32(offset + 4, true);
 		const start = offset + 8;
 		const next = start + size + (size % 2);
@@ -105,33 +110,47 @@ function webp(bytes: Uint8Array, view: DataView): ProbedDimensions {
 			}
 		}
 		if (matches(bytes, offset, 'VP8X') && size === 10) {
-			if ((view.getUint8(start) & 2) !== 0) throw new Error('Animated images cannot be imported as Artwork.');
+			if ((view.getUint8(start) & 2) !== 0)
+				throw new Error('Animated images cannot be imported as Artwork.');
 			canvas = {
 				pixelWidth: (view.getUint32(start + 4, true) & 0xffffff) + 1,
-				pixelHeight: view.getUint16(start + 7, true) + view.getUint8(start + 9) * 65536 + 1
+				pixelHeight: view.getUint16(start + 7, true) + view.getUint8(start + 9) * 65536 + 1,
 			};
 		}
-		if (matches(bytes, offset, 'VP8 ') && size >= 10 &&
-			view.getUint8(start + 3) === 0x9d && view.getUint8(start + 4) === 0x01 && view.getUint8(start + 5) === 0x2a) {
+		if (
+			matches(bytes, offset, 'VP8 ') &&
+			size >= 10 &&
+			view.getUint8(start + 3) === 0x9d &&
+			view.getUint8(start + 4) === 0x01 &&
+			view.getUint8(start + 5) === 0x2a
+		) {
 			image = {
 				pixelWidth: view.getUint16(start + 6, true) & 0x3fff,
-				pixelHeight: view.getUint16(start + 8, true) & 0x3fff
+				pixelHeight: view.getUint16(start + 8, true) & 0x3fff,
 			};
 		}
 		if (matches(bytes, offset, 'VP8L') && size >= 5 && view.getUint8(start) === 0x2f) {
 			const sizeBits = view.getUint32(start + 1, true);
-			image = { pixelWidth: (sizeBits & 0x3fff) + 1, pixelHeight: ((sizeBits >>> 14) & 0x3fff) + 1 };
+			image = {
+				pixelWidth: (sizeBits & 0x3fff) + 1,
+				pixelHeight: ((sizeBits >>> 14) & 0x3fff) + 1,
+			};
 		}
 		offset = next;
 	}
-	if (image === undefined || (canvas !== undefined &&
-		(canvas.pixelWidth !== image.pixelWidth || canvas.pixelHeight !== image.pixelHeight))) return invalid();
+	if (
+		image === undefined ||
+		(canvas !== undefined &&
+			(canvas.pixelWidth !== image.pixelWidth || canvas.pixelHeight !== image.pixelHeight))
+	)
+		return invalid();
 	return { ...image, orientation: 1 };
 }
 
 /** Bounded container metadata probe. The editor additionally confirms pixel decode at import. */
 export function probeArtworkImage(bytes: Uint8Array): ProbedDimensions & { mime: ArtworkMime } {
-	if (bytes.length > ARTWORK_MAX_BYTES) throw new Error('Artwork images must be 25 MiB or smaller.');
+	if (bytes.length > ARTWORK_MAX_BYTES)
+		throw new Error('Artwork images must be 25 MiB or smaller.');
 	if (bytes.length < 12) return invalid();
 	const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
 	let result: ProbedDimensions & { mime: ArtworkMime };
@@ -145,7 +164,9 @@ export function probeArtworkImage(bytes: Uint8Array): ProbedDimensions & { mime:
 		return invalid();
 	}
 	if (!isArtworkImageEdge(result.pixelWidth) || !isArtworkImageEdge(result.pixelHeight)) {
-		throw new Error(`Artwork currently supports images up to ${ARTWORK_MAX_IMAGE_EDGE} px per edge. Resize the image and try again.`);
+		throw new Error(
+			`Artwork currently supports images up to ${ARTWORK_MAX_IMAGE_EDGE} px per edge. Resize the image and try again.`,
+		);
 	}
 	return result;
 }

@@ -38,7 +38,7 @@ import {
 	type StageInkReadingRecord,
 	type StageInkReadingSession,
 	type StageKeyboardIntent,
-	type StagePointerIntent
+	type StagePointerIntent,
 } from '$lib/authoring/stage/stage-adapter-host';
 
 import { type CandidatePaperGeometry } from './candidate-preview';
@@ -54,7 +54,7 @@ import {
 	planChainDraft,
 	type ChainDraft,
 	type ChainDraftPoint,
-	type ChainPlanPreview
+	type ChainPlanPreview,
 } from './chain';
 import { wallChainCommitIntent } from './drawing-planners';
 import {
@@ -63,19 +63,25 @@ import {
 	publishInkSurface,
 	type InkController,
 	type InkPointerTarget,
-	type InkWallMode
+	type InkWallMode,
 } from './ink';
 import type { OpeningPlacementSession } from './opening-placement-session';
 import { parsePlacementXZ } from './precision';
 import type { LayoutSessionPorts } from './session-ports';
 import type { createSpaceCreateSession } from './space-create-session';
 import { type LayoutSnapWinner } from './snap';
-import { pointerDatumPoint, } from './stage-pointer';
+import { pointerDatumPoint } from './stage-pointer';
 import { createRegionInkSession } from './region-ink-session';
 import { createContributedInkReader } from './ink-contributed';
 import { previews as previewsOf } from './ink-previews';
-import { paletteReadings as paletteReadingsOf, snapshotForPalette as snapshotForPaletteOf } from './ink-palette';
-import { circleDraftPreview as circleDraftPreviewOf, planCircleDraft as planCircleDraftOf } from './ink-circle';
+import {
+	paletteReadings as paletteReadingsOf,
+	snapshotForPalette as snapshotForPaletteOf,
+} from './ink-palette';
+import {
+	circleDraftPreview as circleDraftPreviewOf,
+	planCircleDraft as planCircleDraftOf,
+} from './ink-circle';
 import { inkTargetAt as inkTargetAtOf } from './ink-targeting';
 import { commitCircle as commitCircleOf } from './ink-circle-commit';
 import {
@@ -85,7 +91,7 @@ import {
 	circlePreviewPoints as circlePreviewPointsOf,
 	linePreviewBase as linePreviewBaseOf,
 	linePreviewDraft as linePreviewDraftOf,
-	planInkDraft as planInkDraftOf
+	planInkDraft as planInkDraftOf,
 } from './ink-preview';
 
 const _EMPTY_CANDIDATE_GEOMETRY: CandidatePaperGeometry = { polygons: [], segments: [] };
@@ -104,10 +110,17 @@ export type InkSession = {
 	 */
 	key(intent: StageKeyboardIntent, adapterContext: StageAdapterContext): boolean;
 	/** The planner's live candidate for the current reading, in world coordinates. */
-	previews(adapterContext: StageAdapterContext, datumMeters: number): readonly StageCandidatePreview[];
-	overlay(adapterContext: StageAdapterContext): ReturnType<NonNullable<StageAdapterBinding['overlay']>>;
+	previews(
+		adapterContext: StageAdapterContext,
+		datumMeters: number,
+	): readonly StageCandidatePreview[];
+	overlay(
+		adapterContext: StageAdapterContext,
+	): ReturnType<NonNullable<StageAdapterBinding['overlay']>>;
 	/** A contributed reading's proposed body, drawn by the one Canvas. */
-	ghosts(adapterContext: StageAdapterContext): ReturnType<NonNullable<StageAdapterBinding['ghosts']>>;
+	ghosts(
+		adapterContext: StageAdapterContext,
+	): ReturnType<NonNullable<StageAdapterBinding['ghosts']>>;
 	/** The contributed reading currently selected, or `null` for a built-in. */
 	contributedReading(): StageInkReadingRecord | null;
 	/** Open the contributed reading's session against this binding when it is selected. */
@@ -123,7 +136,10 @@ export type InkSession = {
 };
 
 export function createInkSession(
-	ports: Omit<LayoutSessionPorts, 'publish'> & { readonly opening: OpeningPlacementSession; readonly room: ReturnType<typeof createSpaceCreateSession> }
+	ports: Omit<LayoutSessionPorts, 'publish'> & {
+		readonly opening: OpeningPlacementSession;
+		readonly room: ReturnType<typeof createSpaceCreateSession>;
+	},
 ): InkSession {
 	const { services, document, levelId, presenter, memory, opening, room } = ports;
 	const contributed = createContributedInkReader({ services, readingId: () => memory.reading });
@@ -139,7 +155,7 @@ export function createInkSession(
 		role: () => (memory.reading === 'roof' ? 'overhead' : 'floor'),
 		mode: () => memory.regionMode,
 		publish: () => publish(),
-		select: ports.select
+		select: ports.select,
 	});
 	/** The live chain draft, its hover target and its planner preview. */
 	let draft: ChainDraft = EMPTY_CHAIN_DRAFT;
@@ -191,14 +207,14 @@ export function createInkSession(
 		capture: () => chainCapture,
 		memory,
 		presenter,
-		levelId
+		levelId,
 	};
 	const circleDraftPreview = (circle: { center: ChainDraftPoint; rim: ChainDraftPoint }) =>
 		circleDraftPreviewOf(circlePlanInput, circle);
 	const planCircleDraft = (
 		center: ChainDraftPoint,
 		rim: ChainDraftPoint,
-		planCircle?: Parameters<typeof planCircleDraftOf>[3]
+		planCircle?: Parameters<typeof planCircleDraftOf>[3],
 	) => planCircleDraftOf(circlePlanInput, center, rim, planCircle);
 	const previewState = {
 		memory,
@@ -216,14 +232,18 @@ export function createInkSession(
 		room,
 		region,
 		opening,
-		ports
+		ports,
 	};
 	const previews = (adapterContext: StageAdapterContext, y: number) =>
 		previewsOf(previewState, adapterContext, y);
 
 	const paletteState = {
-		get memory() { return memory; },
-		get draft() { return draft; },
+		get memory() {
+			return memory;
+		},
+		get draft() {
+			return draft;
+		},
 		inkHover: () => inkHover,
 		inkArcApex: () => inkArcApex,
 		inkPreview: () => inkPreview,
@@ -235,7 +255,7 @@ export function createInkSession(
 		region,
 		opening,
 		room,
-		contributedReadings: () => services.stage.inkReadings()
+		contributedReadings: () => services.stage.inkReadings(),
 	};
 	const paletteReadings = () => paletteReadingsOf(services.stage.inkReadings());
 	const snapshotForPalette = () => snapshotForPaletteOf(paletteState);
@@ -245,7 +265,9 @@ export function createInkSession(
 		draft: () => draft,
 		document,
 		linePreviewBase,
-		setSnap: (winner: LayoutSnapWinner | null) => { inkSnapWinner = winner; }
+		setSnap: (winner: LayoutSnapWinner | null) => {
+			inkSnapWinner = winner;
+		},
 	};
 	const inkTargetAt = (adapterContext: StageAdapterContext, css: readonly [number, number]) =>
 		inkTargetAtOf(targetState, adapterContext, css);
@@ -255,12 +277,16 @@ export function createInkSession(
 		memory,
 		levelId,
 		inFlight: () => chainCommitInFlight,
-		setInFlight: (value: boolean) => { chainCommitInFlight = value; },
+		setInFlight: (value: boolean) => {
+			chainCommitInFlight = value;
+		},
 		capture: () => chainCapture,
 		planCircleDraft,
-		setNotice: (message: string) => { inkNotice = message; },
+		setNotice: (message: string) => {
+			inkNotice = message;
+		},
 		publish,
-		clearChain
+		clearChain,
 	};
 	const commitCircle = (center: ChainDraftPoint, rim: ChainDraftPoint) =>
 		commitCircleOf(circleCommitInput, center, rim);
@@ -280,7 +306,8 @@ export function createInkSession(
 			// reconciliation and source admission at release.
 			const circle = circlePreviewPoints();
 			inkPreview = circle === null ? null : circleDraftPreview(circle);
-			if (inkPreview !== null) inkNotice = inkPreview.kind === 'refused' ? inkPreview.message : null;
+			if (inkPreview !== null)
+				inkNotice = inkPreview.kind === 'refused' ? inkPreview.message : null;
 			return;
 		}
 		if (memory.reading === 'wall' && memory.wallMode === 'arc') {
@@ -313,7 +340,8 @@ export function createInkSession(
 			// stays readable until the pointer names a new box.
 			const box = boxPreviewDraft();
 			inkPreview = box === null ? null : planInkDraft(box);
-			if (inkPreview !== null) inkNotice = inkPreview.kind === 'refused' ? inkPreview.message : null;
+			if (inkPreview !== null)
+				inkNotice = inkPreview.kind === 'refused' ? inkPreview.message : null;
 			return;
 		}
 		const points = linePreviewDraft();
@@ -346,7 +374,7 @@ export function createInkSession(
 		inkProposal?.release();
 		inkProposal = services.stage.session.registerProposal({
 			owner: LAYOUT_INK_TASK,
-			reason: 'A Wall chain is live; finish it or cancel it — Undo is available once it settles.'
+			reason: 'A Wall chain is live; finish it or cancel it — Undo is available once it settles.',
 		});
 		inkNotice = null;
 		refreshInkPreview();
@@ -433,12 +461,17 @@ export function createInkSession(
 				services.stage.notifySurfaceChange();
 				publish();
 			},
-			drawOpenSide: () => { if (memory.reading === 'room') room.changeMode('draw'); },
-			followWall: () => { if (memory.reading === 'room') room.changeMode('follow'); },
+			drawOpenSide: () => {
+				if (memory.reading === 'room') room.changeMode('draw');
+			},
+			followWall: () => {
+				if (memory.reading === 'room') room.changeMode('follow');
+			},
 			setWallMode: (mode: InkWallMode) => {
 				if (mode === memory.wallMode) return;
 				if (draft.points.length > 0 || inkPress !== null) {
-					inkNotice = 'Finish or cancel the Wall chain before switching between Line, Arc, Box and Circle.';
+					inkNotice =
+						'Finish or cancel the Wall chain before switching between Line, Arc, Box and Circle.';
 					publish();
 					return;
 				}
@@ -467,7 +500,10 @@ export function createInkSession(
 			setOpeningOptions: (options) => opening.setOptions(options),
 			placeOpening: (offsetText) => opening.placeAtOffset(offsetText),
 			finish: () => {
-				if (memory.reading === 'room') { room.finish(); return; }
+				if (memory.reading === 'room') {
+					room.finish();
+					return;
+				}
 				if (memory.reading === 'terrace' || memory.reading === 'roof') {
 					region.finish();
 					return;
@@ -515,7 +551,8 @@ export function createInkSession(
 					return;
 				}
 				if (memory.reading === 'wall' && memory.wallMode === 'arc' && draft.points.length >= 2) {
-					inkNotice = 'An Arc takes its bulge from the Stage: move the pointer and click to finish.';
+					inkNotice =
+						'An Arc takes its bulge from the Stage: move the pointer and click to finish.';
 					publish();
 					return;
 				}
@@ -527,7 +564,7 @@ export function createInkSession(
 				memory.height = options.height;
 				refreshInkPreview();
 				publish();
-			}
+			},
 		};
 		publishInkSurface({ snapshot: snapshotForPalette, controller });
 	}
@@ -644,7 +681,7 @@ export function createInkSession(
 			hostSnaps: request.endpointHostSnaps,
 			thickness: memory.thickness,
 			height: memory.height,
-			...(arc === undefined ? {} : { arc })
+			...(arc === undefined ? {} : { arc }),
 		};
 		const planned = planChainDraft({
 			document,
@@ -653,7 +690,7 @@ export function createInkSession(
 			levelId,
 			...(memory.thickness === null ? {} : { thickness: memory.thickness }),
 			...(memory.height === null ? {} : { height: memory.height }),
-			...(arc === undefined ? {} : { arc })
+			...(arc === undefined ? {} : { arc }),
 		});
 		if (planned.kind === 'refused') {
 			// Refused in words, with a repair: the chain stays exactly as it was and
@@ -671,8 +708,8 @@ export function createInkSession(
 				projectId: snapshot.acceptedRevision.projectId,
 				revisionId: services.authoring.acceptedRevision().revisionId,
 				contentRevision: stageUnitRevision(snapshot, 'layout'),
-				levelId: snapshot.domain.layoutLevelId
-			})
+				levelId: snapshot.domain.layoutLevelId,
+			}),
 		);
 		if (outcome.kind === 'refused') {
 			inkNotice = outcome.message;
@@ -699,8 +736,8 @@ export function createInkSession(
 					sourceKind: 'wall',
 					generationId: fresh.compileGeneration,
 					stream: 'projected',
-					subRef: null
-				}
+					subRef: null,
+				},
 			});
 		}
 		services.stage.openContributedTask(LAYOUT_INK_ENTRY, 'layout');
@@ -710,7 +747,8 @@ export function createInkSession(
 	function endInkPress(): void {
 		const current = inkPress;
 		inkPress = null;
-		if (current?.lease?.kind === 'granted' && current.lease.lease.active) current.lease.lease.release();
+		if (current?.lease?.kind === 'granted' && current.lease.lease.active)
+			current.lease.lease.release();
 	}
 
 	/** The Ink half of the pointer contract. */
@@ -725,7 +763,7 @@ export function createInkSession(
 			const acquisition = services.stage.acquireGesture({
 				owner: LAYOUT_INK_TASK,
 				evaluationId: intent.evaluationId,
-				policy: 'cancel-on-reading-change'
+				policy: 'cancel-on-reading-change',
 			});
 			if (acquisition.kind !== 'granted') {
 				inkNotice = `The ${acquisition.owner} gesture owns the pointer; finish or cancel it first.`;
@@ -738,7 +776,7 @@ export function createInkSession(
 				lease: acquisition,
 				pressTarget: target,
 				hover: target,
-				dragging: false
+				dragging: false,
 			};
 			inkHover = target;
 			const pressedArcHover = pointerDatumPoint(adapterContext, intent.css);
@@ -769,7 +807,8 @@ export function createInkSession(
 			return true;
 		}
 		if (intent.phase === 'move') {
-			current.dragging = Math.hypot(intent.css[0] - current.origin[0], intent.css[1] - current.origin[1]) > 4;
+			current.dragging =
+				Math.hypot(intent.css[0] - current.origin[0], intent.css[1] - current.origin[1]) > 4;
 			const target = inkTargetAt(adapterContext, intent.css);
 			if (target !== null) {
 				current.hover = target;
@@ -788,10 +827,7 @@ export function createInkSession(
 		// Release: a tap names one point; a drag names a Wall — the point the press
 		// landed on and the point it was released on — and finishes it.
 		const release = inkTargetAt(adapterContext, intent.css) ?? current.hover;
-		const travel = Math.hypot(
-			intent.css[0] - current.origin[0],
-			intent.css[1] - current.origin[1]
-		);
+		const travel = Math.hypot(intent.css[0] - current.origin[0], intent.css[1] - current.origin[1]);
 		const pressTarget = current.pressTarget;
 		endInkPress();
 		inkHover = null;
@@ -804,7 +840,10 @@ export function createInkSession(
 			if (draft.points.length === 0) {
 				beginChain({ point: pressTarget.point, target: pressTarget.target });
 				if (travel > 4) {
-					const appended = appendChainPoint(draft, { point: release.point, target: release.target });
+					const appended = appendChainPoint(draft, {
+						point: release.point,
+						target: release.target,
+					});
 					if ('points' in appended) {
 						draft = appended;
 						inkArcApex = null;
@@ -839,7 +878,11 @@ export function createInkSession(
 			// Box: a drag names both corners; a tap names the first corner, and the
 			// next tap the opposite one.
 			const releasePoint: ChainDraftPoint = { point: release.point, target: release.target };
-			if (travel > 4) commitBox(draft.points[0] ?? { point: pressTarget.point, target: pressTarget.target }, releasePoint);
+			if (travel > 4)
+				commitBox(
+					draft.points[0] ?? { point: pressTarget.point, target: pressTarget.target },
+					releasePoint,
+				);
 			else if (draft.points.length === 0) beginChain(releasePoint);
 			else commitBox(draft.points[0]!, releasePoint);
 		} else if (memory.reading === 'wall' && memory.wallMode === 'circle') {
@@ -850,7 +893,7 @@ export function createInkSession(
 			if (travel > 4) {
 				void commitCircle(
 					draft.points[0] ?? { point: pressTarget.point, target: pressTarget.target },
-					releasePoint
+					releasePoint,
 				);
 			} else if (draft.points.length === 0) beginChain(releasePoint);
 			else void commitCircle(draft.points[0]!, releasePoint);
@@ -864,10 +907,16 @@ export function createInkSession(
 
 	/** The Ink hover: a contributed reading's, the Opening's, or the live chain's. */
 	function hover(intent: StagePointerIntent, adapterContext: StageAdapterContext): boolean {
-		if (memory.reading === 'terrace' || memory.reading === 'roof') return region.hover(intent, adapterContext);
-		if (memory.reading === 'room') { const claimed = room.hover(intent, adapterContext);
-			if (claimed) { services.stage.notifySurfaceChange(); publish(); }
-			return claimed; }
+		if (memory.reading === 'terrace' || memory.reading === 'roof')
+			return region.hover(intent, adapterContext);
+		if (memory.reading === 'room') {
+			const claimed = room.hover(intent, adapterContext);
+			if (claimed) {
+				services.stage.notifySurfaceChange();
+				publish();
+			}
+			return claimed;
+		}
 		if (memory.reading !== 'wall' && memory.reading !== 'opening') {
 			const session = ensureContributedSession();
 			if (session === null) return false;
@@ -893,10 +942,16 @@ export function createInkSession(
 
 	/** The pointer contract across readings: contributed, Opening, then Wall. */
 	function pointer(intent: StagePointerIntent, adapterContext: StageAdapterContext): boolean {
-		if (memory.reading === 'terrace' || memory.reading === 'roof') return region.pointer(intent, adapterContext);
-		if (memory.reading === 'room') { const claimed = room.pointer(intent, adapterContext);
-			if (claimed) { services.stage.notifySurfaceChange(); publish(); }
-			return claimed; }
+		if (memory.reading === 'terrace' || memory.reading === 'roof')
+			return region.pointer(intent, adapterContext);
+		if (memory.reading === 'room') {
+			const claimed = room.pointer(intent, adapterContext);
+			if (claimed) {
+				services.stage.notifySurfaceChange();
+				publish();
+			}
+			return claimed;
+		}
 		if (memory.reading !== 'wall' && memory.reading !== 'opening') {
 			const session = ensureContributedSession();
 			if (session === null) {
@@ -914,7 +969,9 @@ export function createInkSession(
 
 	function key(intent: StageKeyboardIntent, adapterContext: StageAdapterContext): boolean {
 		if (memory.reading === 'terrace' || memory.reading === 'roof') return region.key(intent);
-		if (memory.reading === 'room') { return room.key(intent); }
+		if (memory.reading === 'room') {
+			return room.key(intent);
+		}
 		if (memory.reading !== 'wall' && memory.reading !== 'opening') {
 			const session = ensureContributedSession();
 			if (session === null) return false;
@@ -940,8 +997,12 @@ export function createInkSession(
 		}
 	}
 
-	function overlay(adapterContext: StageAdapterContext): ReturnType<NonNullable<StageAdapterBinding['overlay']>> {
-		if (memory.reading === 'room') { return []; }
+	function overlay(
+		adapterContext: StageAdapterContext,
+	): ReturnType<NonNullable<StageAdapterBinding['overlay']>> {
+		if (memory.reading === 'room') {
+			return [];
+		}
 		if (memory.reading !== 'wall' && memory.reading !== 'opening') {
 			return contributed.current()?.overlay?.(adapterContext) ?? [];
 		}
@@ -951,14 +1012,17 @@ export function createInkSession(
 		return [];
 	}
 
-	function ghosts(adapterContext: StageAdapterContext): ReturnType<NonNullable<StageAdapterBinding['ghosts']>> {
+	function ghosts(
+		adapterContext: StageAdapterContext,
+	): ReturnType<NonNullable<StageAdapterBinding['ghosts']>> {
 		if (
 			memory.reading === 'wall' ||
 			memory.reading === 'opening' ||
 			memory.reading === 'room' ||
 			memory.reading === 'terrace' ||
 			memory.reading === 'roof'
-		) return [];
+		)
+			return [];
 		return contributed.current()?.ghosts?.(adapterContext) ?? [];
 	}
 
@@ -980,6 +1044,6 @@ export function createInkSession(
 			region.clear();
 			endContributedSession();
 			publishInkSurface(null);
-		}
+		},
 	};
 }

@@ -15,16 +15,23 @@ export type ExperienceLensToolsPorts = {
 
 export function createExperienceLensTools(ports: ExperienceLensToolsPorts) {
 	/** Manual placement state: the press, its ghost and Present this's aim. */
-	let placementPress = $state.raw<{ readonly pointerId: number; readonly start: StageTriple; readonly css: readonly [number, number] } | null>(null);
+	let placementPress = $state.raw<{
+		readonly pointerId: number;
+		readonly start: StageTriple;
+		readonly css: readonly [number, number];
+	} | null>(null);
 	let placementGhost = $state.raw<ReturnType<typeof viewPlacementPose>>(null);
 	let placementAim = $state<StageTriple | null>(null);
 	/** Look through is a provisional posture over one authored View. */
-	let lookThroughSession = $state<{ readonly viewId: string; readonly presentationId: string; readonly label: string } | null>(null);
+	let lookThroughSession = $state<{
+		readonly viewId: string;
+		readonly presentationId: string;
+		readonly label: string;
+	} | null>(null);
 	let lookThroughTick = $state(0);
 	let lookThroughConfirm = $state<readonly string[] | null>(null);
 	let lookThroughZoom: { pending: number; startedAt: number; applied: number } | null = null;
 	const lookThroughPointers = new Map<number, { x: number; y: number; truck: boolean }>();
-
 
 	function floorPlane() {
 		const datum = ports.host.floorDatum();
@@ -33,7 +40,7 @@ export function createExperienceLensTools(ports: ExperienceLensToolsPorts) {
 			normal: [0, 1, 0] as StageTriple,
 			yawRadians: 0,
 			datumMeters: datum,
-			supportedLocalExtent: null
+			supportedLocalExtent: null,
 		};
 	}
 
@@ -56,7 +63,7 @@ export function createExperienceLensTools(ports: ExperienceLensToolsPorts) {
 			minimumDragMeters: 0,
 			defaultAzimuthRadians: ports.host.evaluation()?.pose.azimuthRadians,
 			floorDatumMeters: ports.host.floorDatum(),
-			fovYDegrees: CAMERA_FOV.default
+			fovYDegrees: CAMERA_FOV.default,
 		});
 	}
 
@@ -68,7 +75,11 @@ export function createExperienceLensTools(ports: ExperienceLensToolsPorts) {
 			return;
 		}
 		if (!ports.host.capturePointer(event.currentTarget as HTMLElement, event.pointerId)) return;
-		placementPress = { pointerId: event.pointerId, start: point, css: ports.host.absoluteCss(event) };
+		placementPress = {
+			pointerId: event.pointerId,
+			start: point,
+			css: ports.host.absoluteCss(event),
+		};
 		placementGhost = placementPose(point, point);
 	}
 
@@ -87,7 +98,8 @@ export function createExperienceLensTools(ports: ExperienceLensToolsPorts) {
 		placementPress = null;
 		placementGhost = null;
 		const stageEl = ports.host.stageElement();
-		if (press !== null && stageEl?.hasPointerCapture?.(press.pointerId)) stageEl.releasePointerCapture(press.pointerId);
+		if (press !== null && stageEl?.hasPointerCapture?.(press.pointerId))
+			stageEl.releasePointerCapture(press.pointerId);
 	}
 
 	function endPlacement(): void {
@@ -98,25 +110,28 @@ export function createExperienceLensTools(ports: ExperienceLensToolsPorts) {
 		placementAim = null;
 		if (press === null) return;
 		const stageEl = ports.host.stageElement();
-		if (stageEl?.hasPointerCapture?.(press.pointerId)) stageEl.releasePointerCapture(press.pointerId);
+		if (stageEl?.hasPointerCapture?.(press.pointerId))
+			stageEl.releasePointerCapture(press.pointerId);
 		if (pose === null) {
 			ports.host.notice('The View needs a target away from its eye.');
 			return;
 		}
 		const controller = ports.host.activeController();
 		if (controller === null) return;
-		void controller.placeView({ eye: pose.eye, target: pose.target, fov: pose.fovYDegrees }).then((outcome) => {
-			if (outcome.kind === 'refused') {
-				ports.host.notice(outcome.message);
-				return;
-			}
-			if (outcome.createdPresentation) {
-				ports.host.renameRequest();
-				ports.host.notice('Presentation created; name it in the Card.');
-			} else {
-				ports.host.notice('');
-			}
-		});
+		void controller
+			.placeView({ eye: pose.eye, target: pose.target, fov: pose.fovYDegrees })
+			.then((outcome) => {
+				if (outcome.kind === 'refused') {
+					ports.host.notice(outcome.message);
+					return;
+				}
+				if (outcome.createdPresentation) {
+					ports.host.renameRequest();
+					ports.host.notice('Presentation created; name it in the Card.');
+				} else {
+					ports.host.notice('');
+				}
+			});
 	}
 
 	function togglePlaceView(): void {
@@ -138,16 +153,25 @@ export function createExperienceLensTools(ports: ExperienceLensToolsPorts) {
 	/** Wheel travel accumulates until one 0.25 m Camera step is owed. */
 	function queueLookThroughZoom(pixels: number, now: number): void {
 		if (lookThroughSession === null) return;
-		const remaining = lookThroughZoom === null ? 0 : lookThroughZoom.pending - lookThroughZoom.applied;
+		const remaining =
+			lookThroughZoom === null ? 0 : lookThroughZoom.pending - lookThroughZoom.applied;
 		lookThroughZoom = { pending: remaining - pixels * 0.004, startedAt: now, applied: 0 };
 		lookThroughTick += 1;
 	}
 
 	function beginReaim(event: PointerEvent): void {
 		if (event.button !== 0 && event.button !== 2) return;
-		if (lookThroughPointers.size >= 2 || (lookThroughPointers.size > 0 && event.pointerType !== 'touch')) return;
+		if (
+			lookThroughPointers.size >= 2 ||
+			(lookThroughPointers.size > 0 && event.pointerType !== 'touch')
+		)
+			return;
 		if (!ports.host.capturePointer(event.currentTarget as HTMLElement, event.pointerId)) return;
-		lookThroughPointers.set(event.pointerId, { x: event.clientX, y: event.clientY, truck: event.button === 2 });
+		lookThroughPointers.set(event.pointerId, {
+			x: event.clientX,
+			y: event.clientY,
+			truck: event.button === 2,
+		});
 	}
 
 	function moveReaim(event: PointerEvent): void {
@@ -187,7 +211,8 @@ export function createExperienceLensTools(ports: ExperienceLensToolsPorts) {
 		const zoom = lookThroughZoom;
 		const stage = ports.host.stage();
 		if (zoom === null || stage === null || lookThroughSession === null) return;
-		const progress = finish || ports.host.reducedMotion() ? 1 : Math.min(1, (now - zoom.startedAt) / 120);
+		const progress =
+			finish || ports.host.reducedMotion() ? 1 : Math.min(1, (now - zoom.startedAt) / 120);
 		const next = zoom.pending * (1 - (1 - progress) ** 3);
 		const delta = next - zoom.applied;
 		zoom.applied = next;
@@ -215,7 +240,7 @@ export function createExperienceLensTools(ports: ExperienceLensToolsPorts) {
 			label: facts.label,
 			eye: pose.eye,
 			target: pose.target,
-			fovYDegrees: pose.fov
+			fovYDegrees: pose.fov,
 		});
 		if (result.kind === 'refused') {
 			ports.host.notice(result.message);
@@ -272,7 +297,7 @@ export function createExperienceLensTools(ports: ExperienceLensToolsPorts) {
 			session.viewId,
 			{ eye: provisional.eye, target: provisional.target, fov: provisional.fovYDegrees },
 			session.presentationId,
-			{ confirmShared }
+			{ confirmShared },
 		);
 		if (outcome.kind === 'needs-confirmation') {
 			lookThroughConfirm = outcome.alsoIn;
@@ -292,7 +317,11 @@ export function createExperienceLensTools(ports: ExperienceLensToolsPorts) {
 		const controller = ports.host.activeController();
 		const provisional = ports.host.stage()?.camera.provisionalView() ?? null;
 		if (controller === null || provisional === null) return;
-		await controller.capturePose({ eye: provisional.eye, target: provisional.target, fov: provisional.fovYDegrees });
+		await controller.capturePose({
+			eye: provisional.eye,
+			target: provisional.target,
+			fov: provisional.fovYDegrees,
+		});
 	}
 
 	/** Frame the new View through Camera without changing the Stage's reading. */
@@ -301,30 +330,43 @@ export function createExperienceLensTools(ports: ExperienceLensToolsPorts) {
 		const controller = ports.host.activeController();
 		if (stage === null || controller === null) return;
 		const bounds = stage.sceneBounds(entityId);
-		if (stage.camera.state().reading === 'plan' || ports.host.evaluation()?.projectionKind === 'plan-orthographic') {
-			placementAim = bounds === null ? null : [
-				(bounds.min[0] + bounds.max[0]) / 2,
-				(bounds.min[1] + bounds.max[1]) / 2,
-				(bounds.min[2] + bounds.max[2]) / 2
-			];
+		if (
+			stage.camera.state().reading === 'plan' ||
+			ports.host.evaluation()?.projectionKind === 'plan-orthographic'
+		) {
+			placementAim =
+				bounds === null
+					? null
+					: [
+							(bounds.min[0] + bounds.max[0]) / 2,
+							(bounds.min[1] + bounds.max[1]) / 2,
+							(bounds.min[2] + bounds.max[2]) / 2,
+						];
 			ports.stopAndRestore();
 			ports.host.setTool('place');
 			ports.host.notice(`Place a View aimed at ${label}: click where the camera stands.`);
 			return;
 		}
 		const viewerEye = stage.evaluation()?.eye;
-		const framed = bounds === null || viewerEye === undefined ? null : frameSubjectPose({
-			bounds,
-			viewerEye,
-			eyeYMeters: ports.host.floorDatum() + EYE_HEIGHT_STEPS[1]!.metres,
-			fovYDegrees: LENS_STEPS[1]!.fovYDegrees,
-			aspect: 16 / 10
-		});
+		const framed =
+			bounds === null || viewerEye === undefined
+				? null
+				: frameSubjectPose({
+						bounds,
+						viewerEye,
+						eyeYMeters: ports.host.floorDatum() + EYE_HEIGHT_STEPS[1]!.metres,
+						fovYDegrees: LENS_STEPS[1]!.fovYDegrees,
+						aspect: 16 / 10,
+					});
 		if (framed === null) {
 			ports.host.notice('The Stage could not frame that subject.');
 			return;
 		}
-		await controller.presentThisFramed(entityId, label, { eye: framed.eye, target: framed.target, fov: framed.fovYDegrees });
+		await controller.presentThisFramed(entityId, label, {
+			eye: framed.eye,
+			target: framed.target,
+			fov: framed.fovYDegrees,
+		});
 	}
 
 	const lookThroughMoved = $derived.by(() => {
@@ -337,7 +379,10 @@ export function createExperienceLensTools(ports: ExperienceLensToolsPorts) {
 		const provisional = ports.host.stage()?.camera.provisionalView() ?? null;
 		return provisional === null
 			? null
-			: { fovYDegrees: provisional.fovYDegrees, eyeHeightMetres: provisional.eye[1] - ports.host.floorDatum() };
+			: {
+					fovYDegrees: provisional.fovYDegrees,
+					eyeHeightMetres: provisional.eye[1] - ports.host.floorDatum(),
+				};
 	});
 
 	// Leaving the lens ends the provisional posture; the entry standpoint is never
@@ -345,7 +390,6 @@ export function createExperienceLensTools(ports: ExperienceLensToolsPorts) {
 	$effect(() => {
 		if (ports.host.lens() !== 'experience' && lookThroughSession !== null) untrack(exitLookThrough);
 	});
-
 
 	return {
 		get placementPress() {
@@ -398,6 +442,6 @@ export function createExperienceLensTools(ports: ExperienceLensToolsPorts) {
 		setLookThroughEyeHeight,
 		updateLookThrough,
 		captureProvisional,
-		presentThis
+		presentThis,
 	};
 }

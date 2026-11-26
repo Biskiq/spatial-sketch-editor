@@ -3,7 +3,7 @@ import {
 	GetObjectCommand,
 	ListObjectsV2Command,
 	PutObjectCommand,
-	S3Client
+	S3Client,
 } from '@aws-sdk/client-s3';
 import type { Readable } from 'node:stream';
 
@@ -11,7 +11,7 @@ export type ObjectStore = {
 	put(
 		key: string,
 		body: Readable,
-		options: { contentType: string; contentLength: number; signal: AbortSignal }
+		options: { contentType: string; contentLength: number; signal: AbortSignal },
 	): Promise<void>;
 	get(key: string): Promise<{ body: Readable; contentLength: number } | null>;
 	/** List every key this application can see. Callers must scope their own prefix. */
@@ -39,8 +39,8 @@ export function createR2ObjectStore(config: R2ObjectStoreConfig): ObjectStore {
 		...(config.forcePathStyle ? { forcePathStyle: true } : {}),
 		credentials: {
 			accessKeyId: config.r2AccessKeyId,
-			secretAccessKey: config.r2SecretAccessKey
-		}
+			secretAccessKey: config.r2SecretAccessKey,
+		},
 	});
 
 	return {
@@ -51,18 +51,21 @@ export function createR2ObjectStore(config: R2ObjectStoreConfig): ObjectStore {
 					Key: key,
 					Body: body,
 					ContentType: options.contentType,
-					ContentLength: options.contentLength
+					ContentLength: options.contentLength,
 				}),
-				{ abortSignal: options.signal }
+				{ abortSignal: options.signal },
 			);
 		},
 		async get(key) {
 			try {
 				const result = await client.send(
-					new GetObjectCommand({ Bucket: config.r2Bucket, Key: key })
+					new GetObjectCommand({ Bucket: config.r2Bucket, Key: key }),
 				);
 				if (!result.Body) return null;
-				if (typeof result.ContentLength !== 'number' || !Number.isSafeInteger(result.ContentLength)) {
+				if (
+					typeof result.ContentLength !== 'number' ||
+					!Number.isSafeInteger(result.ContentLength)
+				) {
 					throw new Error('R2 object response had no safe content length');
 				}
 				return { body: result.Body as Readable, contentLength: result.ContentLength };
@@ -78,9 +81,9 @@ export function createR2ObjectStore(config: R2ObjectStoreConfig): ObjectStore {
 				const page = await client.send(
 					new ListObjectsV2Command({
 						Bucket: config.r2Bucket,
-						ContinuationToken: continuationToken
+						ContinuationToken: continuationToken,
 					}),
-					{ abortSignal: signal }
+					{ abortSignal: signal },
 				);
 				for (const object of page.Contents ?? []) {
 					if (typeof object.Key === 'string') keys.push(object.Key);
@@ -90,14 +93,13 @@ export function createR2ObjectStore(config: R2ObjectStoreConfig): ObjectStore {
 			return keys;
 		},
 		async delete(key, signal) {
-			await client.send(
-				new DeleteObjectCommand({ Bucket: config.r2Bucket, Key: key }),
-				{ abortSignal: signal }
-			);
+			await client.send(new DeleteObjectCommand({ Bucket: config.r2Bucket, Key: key }), {
+				abortSignal: signal,
+			});
 		},
 		close() {
 			client.destroy();
-		}
+		},
 	};
 }
 

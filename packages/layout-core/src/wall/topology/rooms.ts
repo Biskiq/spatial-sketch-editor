@@ -16,7 +16,7 @@ import { planWallRemovalSet } from './removal';
  */
 export function roomExclusiveBoundaryWallIds(
 	document: LayoutDocumentWallFirst,
-	roomId: string
+	roomId: string,
 ): string[] {
 	const room = document.rooms.find((candidate) => candidate.id === roomId);
 	if (!room) return [];
@@ -30,7 +30,6 @@ export function roomExclusiveBoundaryWallIds(
 	}
 	return [...boundaryWallIds].filter((wallId) => !sharedWallIds.has(wallId));
 }
-
 
 /**
  * Canonical "Remove Room": remove the Room and its exclusive
@@ -66,36 +65,40 @@ export function planRemoveRoom(
 	document: LayoutDocumentWallFirst,
 	roomId: string,
 	capture: LayoutIdCapture,
-	levelId: string
+	levelId: string,
 ): WallFirstOpPlan {
-	const reject = (rejection: WallFirstOpRejection): WallFirstOpPlan => ({ kind: 'rejected', rejection });
+	const reject = (rejection: WallFirstOpRejection): WallFirstOpPlan => ({
+		kind: 'rejected',
+		rejection,
+	});
 	const levelIssue = layoutWorkingLevelIssue(document, levelId);
-	if (levelIssue !== null) return reject({ code: 'invalid_value', message: levelIssue, roomIds: [roomId] });
+	if (levelIssue !== null)
+		return reject({ code: 'invalid_value', message: levelIssue, roomIds: [roomId] });
 	const room = document.rooms.find((candidate) => candidate.id === roomId);
 	if (!room) {
 		return reject({
 			code: 'unknown_room',
 			message: `Unknown room '${roomId}'`,
-			roomIds: [roomId]
+			roomIds: [roomId],
 		});
 	}
 	if (room.boundary.length === 0) {
 		return reject({
 			code: 'ambiguous_room_removal',
 			message: `Room '${roomId}' has no boundary Walls to remove`,
-			roomIds: [roomId]
+			roomIds: [roomId],
 		});
 	}
 	const boundaryWallIds = [...new Set(room.boundary.map((ref) => ref.wallId))];
 	const missing = boundaryWallIds.filter(
-		(wallId) => !document.walls.some((wall) => wall.id === wallId)
+		(wallId) => !document.walls.some((wall) => wall.id === wallId),
 	);
 	if (missing.length > 0) {
 		return reject({
 			code: 'wall_not_in_room_boundary',
 			message: `Room '${roomId}' references unknown Walls: ${missing.join(', ')}`,
 			wallIds: missing,
-			roomIds: [roomId]
+			roomIds: [roomId],
 		});
 	}
 	const exclusiveWallIds = roomExclusiveBoundaryWallIds(document, roomId);
@@ -104,22 +107,29 @@ export function planRemoveRoom(
 			code: 'ambiguous_room_removal',
 			message: `Every boundary Wall of room '${roomId}' is shared with a neighbouring room; delete the shared Walls explicitly`,
 			roomIds: [roomId],
-			wallIds: boundaryWallIds
+			wallIds: boundaryWallIds,
 		});
 	}
 	try {
 		return planWallRemovalSet(document, exclusiveWallIds, capture, {
 			invalidOutline: 'reject',
-			retireRoomIds: [roomId]
+			retireRoomIds: [roomId],
 		});
 	} catch (error) {
 		if (error instanceof LayoutIdCollisionError) {
-			return { kind: 'rejected', rejection: { code: 'captured_id_in_use', message: error.message, wallIds: exclusiveWallIds, roomIds: [roomId] } };
+			return {
+				kind: 'rejected',
+				rejection: {
+					code: 'captured_id_in_use',
+					message: error.message,
+					wallIds: exclusiveWallIds,
+					roomIds: [roomId],
+				},
+			};
 		}
 		throw error;
 	}
 }
-
 
 /**
  * Canonical **Remove space**: remove one open Space record without demolishing
@@ -131,11 +141,15 @@ export function planRemoveRoom(
 export function planRemoveSpace(
 	document: LayoutDocumentWallFirst,
 	roomId: string,
-	levelId: string
+	levelId: string,
 ): WallFirstOpPlan {
-	const reject = (rejection: WallFirstOpRejection): WallFirstOpPlan => ({ kind: 'rejected', rejection });
+	const reject = (rejection: WallFirstOpRejection): WallFirstOpPlan => ({
+		kind: 'rejected',
+		rejection,
+	});
 	const levelIssue = layoutWorkingLevelIssue(document, levelId);
-	if (levelIssue !== null) return reject({ code: 'invalid_value', message: levelIssue, roomIds: [roomId] });
+	if (levelIssue !== null)
+		return reject({ code: 'invalid_value', message: levelIssue, roomIds: [roomId] });
 	const room = document.rooms.find((candidate) => candidate.id === roomId);
 	if (!room) {
 		return reject({ code: 'unknown_room', message: `Unknown room '${roomId}'`, roomIds: [roomId] });
@@ -144,7 +158,7 @@ export function planRemoveSpace(
 		return reject({
 			code: 'not_open_space',
 			message: `Room '${roomId}' is enclosed; Remove space applies to open Spaces only`,
-			roomIds: [roomId]
+			roomIds: [roomId],
 		});
 	}
 
@@ -163,9 +177,9 @@ export function planRemoveSpace(
 		...document,
 		rooms: document.rooms.filter((candidate) => candidate.id !== roomId),
 		objects: document.objects.map((object) =>
-			object.roomId === roomId ? { ...object, roomId: undefined } : object
+			object.roomId === roomId ? { ...object, roomId: undefined } : object,
 		),
-		openings
+		openings,
 	};
 	const referencedJunctionIds = new Set<string>();
 	for (const wall of candidate.walls) {
@@ -179,7 +193,7 @@ export function planRemoveSpace(
 		}
 	}
 	candidate.junctions = document.junctions.filter(
-		(junction) => !releasedJunctionIds.has(junction.id) || referencedJunctionIds.has(junction.id)
+		(junction) => !releasedJunctionIds.has(junction.id) || referencedJunctionIds.has(junction.id),
 	);
 
 	return validateAndCompile(candidate, reject, (committed) => ({
@@ -188,10 +202,9 @@ export function planRemoveSpace(
 		lineage: [],
 		surfaceLineage: [],
 		retiredRoomIds: [roomId],
-		spaceRetirements: [{ roomId, reason: 'explicit-remove' }]
+		spaceRetirements: [{ roomId, reason: 'explicit-remove' }],
 	}));
 }
-
 
 /**
  * Convenience geometry helper for callers/tests: the submitted wall chain
@@ -220,7 +233,7 @@ export function closedChainWalls(options: {
 			endJunctionId: end,
 			thickness,
 			height,
-			centerline: { kind: 'line' } as const
-		}))
+			centerline: { kind: 'line' } as const,
+		})),
 	};
 }

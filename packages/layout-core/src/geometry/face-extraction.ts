@@ -28,7 +28,16 @@
  */
 
 export { ON_RING_TOLERANCE } from './face-extraction/contracts';
-export type { TopologyDiagnostic, DerivedCandidateFace, FaceExtractionResult } from './face-extraction/contracts';
+export type {
+	TopologyDiagnostic,
+	DerivedCandidateFace,
+	FaceExtractionResult,
+} from './face-extraction/contracts';
 export { extractBoundaryCandidateFaces } from './face-extraction/extract';
 export { canonicalBoundaryCycleKey } from './face-extraction/identity';
-export { faceArea, polygonIntersectionArea, polygonsShareInteriorArea, pointStrictlyInsidePolygon } from './face-extraction/polygons';
+export {
+	faceArea,
+	polygonIntersectionArea,
+	polygonsShareInteriorArea,
+	pointStrictlyInsidePolygon,
+} from './face-extraction/polygons';

@@ -1,12 +1,10 @@
 {
-  "id": "17-wall-thickness-limit",
-  "area": "conditional-save",
-  "citation": "section 3 — conditional Save",
-  "title": "A Save capture is reused even after its source changed",
-  "file": "apps/editor/src/lib/authoring/save/save-state.ts",
-  "find": "return sameSource ? pending : null;",
-  "replace": "return pending;",
-  "tests": [
-    "tests/lib/authoring/save-state.test.ts"
-  ]
+	"id": "17-wall-thickness-limit",
+	"area": "conditional-save",
+	"citation": "section 3 — conditional Save",
+	"title": "A Save capture is reused even after its source changed",
+	"file": "apps/editor/src/lib/authoring/save/save-state.ts",
+	"find": "return sameSource ? pending : null;",
+	"replace": "return pending;",
+	"tests": ["tests/lib/authoring/save-state.test.ts"]
 }

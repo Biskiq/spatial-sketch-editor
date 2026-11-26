@@ -37,18 +37,14 @@ export const DRAFTING_SNAP_METERS = 0.5;
 export const STAGE_DRAFTING_DEFAULTS: StageDraftingState = Object.freeze({
 	grid: true,
 	snap: true,
-	snapSuspended: false
+	snapSuspended: false,
 });
 
 /** A partial change the shell or a key may request. */
 export type StageDraftingPatch = Partial<StageDraftingState>;
 
 export function sameDraftingState(a: StageDraftingState, b: StageDraftingState): boolean {
-	return (
-		a.grid === b.grid &&
-		a.snap === b.snap &&
-		a.snapSuspended === b.snapSuspended
-	);
+	return a.grid === b.grid && a.snap === b.snap && a.snapSuspended === b.snapSuspended;
 }
 
 /**
@@ -58,13 +54,13 @@ export function sameDraftingState(a: StageDraftingState, b: StageDraftingState):
  */
 export function applyDraftingPatch(
 	current: StageDraftingState,
-	patch: StageDraftingPatch
+	patch: StageDraftingPatch,
 ): StageDraftingState {
 	const next: StageDraftingState = {
 		grid: typeof patch.grid === 'boolean' ? patch.grid : current.grid,
 		snap: typeof patch.snap === 'boolean' ? patch.snap : current.snap,
 		snapSuspended:
-			typeof patch.snapSuspended === 'boolean' ? patch.snapSuspended : current.snapSuspended
+			typeof patch.snapSuspended === 'boolean' ? patch.snapSuspended : current.snapSuspended,
 	};
 	return sameDraftingState(current, next) ? current : next;
 }
@@ -92,7 +88,7 @@ export function snapDraftingCoordinate(value: number, step: number): number {
 	const quotient = value / step;
 	// Rounds a half away from zero in both directions, so a grid mirrors about
 	// the origin instead of inheriting Math.round's asymmetry at negative halves.
-	const snapped = (Math.sign(quotient) * Math.round(Math.abs(quotient))) * step;
+	const snapped = Math.sign(quotient) * Math.round(Math.abs(quotient)) * step;
 	const cleaned = Math.round(snapped * 1e9) / 1e9;
 	return Object.is(cleaned, -0) ? 0 : cleaned;
 }
@@ -120,7 +116,7 @@ export type DraftingPlacement = {
  */
 export function snapDraftingPlacement(
 	point: readonly [number, number],
-	incrementMeters: number | null
+	incrementMeters: number | null,
 ): DraftingPlacement {
 	if (
 		incrementMeters === null ||
@@ -132,20 +128,20 @@ export function snapDraftingPlacement(
 		return {
 			x: cleanDraftingCoordinate(point[0]),
 			z: cleanDraftingCoordinate(point[1]),
-			snappedStep: null
+			snappedStep: null,
 		};
 	}
 	return {
 		x: snapDraftingCoordinate(point[0], incrementMeters),
 		z: snapDraftingCoordinate(point[1], incrementMeters),
-		snappedStep: incrementMeters
+		snappedStep: incrementMeters,
 	};
 }
 
 /** Round a datum-plane point to the shared increment; identity when Snap is off. */
 export function snapDraftingPoint(
 	point: readonly [number, number],
-	state: StageDraftingState
+	state: StageDraftingState,
 ): readonly [number, number] {
 	const snapped = snapDraftingPlacement(point, draftingSnapIncrementMeters(state));
 	return [snapped.x, snapped.z];
@@ -211,10 +207,14 @@ export function metersPerCssPixelForScaleRatio(ratio: number): number | null {
  */
 export function scaleDetentIntent(
 	ratio: number,
-	currentMetersPerCssPixel: number
+	currentMetersPerCssPixel: number,
 ): ViewingIntent | null {
 	const target = metersPerCssPixelForScaleRatio(ratio);
-	if (target === null || !Number.isFinite(currentMetersPerCssPixel) || currentMetersPerCssPixel <= 0) {
+	if (
+		target === null ||
+		!Number.isFinite(currentMetersPerCssPixel) ||
+		currentMetersPerCssPixel <= 0
+	) {
 		return null;
 	}
 	return { kind: 'zoom', scale: target / currentMetersPerCssPixel };
@@ -232,7 +232,7 @@ export const SCALE_DETENTS = [20, 50, 100, 200, 500] as const;
  */
 export function roundScaleBarLength(
 	metersPerCssPixel: number,
-	maxCssPx = 140
+	maxCssPx = 140,
 ): { readonly meters: number; readonly cssPx: number } | null {
 	if (!Number.isFinite(metersPerCssPixel) || metersPerCssPixel <= 0) return null;
 	const candidates: number[] = [];

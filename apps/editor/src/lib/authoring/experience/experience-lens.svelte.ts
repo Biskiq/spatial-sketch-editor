@@ -15,7 +15,11 @@ import { type ViewportCameraState } from '@portfolio/camera-core/viewport';
 import { createExperienceViewEditSession } from './experience-view-edit-session.svelte';
 import { createExperienceLensTools } from './experience-lens-tools.svelte';
 import type { StageFacade } from '../stage/stage-facade';
-import type { StagePostureClaim, StagePostureLayer, StagePostureMark } from '../stage/stage-adapter-host';
+import type {
+	StagePostureClaim,
+	StagePostureLayer,
+	StagePostureMark,
+} from '../stage/stage-adapter-host';
 import type { ExperienceController } from './experience-controller.svelte';
 import type { ExperienceGuideTransport, ExperienceHomes } from './experience-homes';
 import type { ExperienceSubject } from './experience-model';
@@ -81,25 +85,33 @@ export function createExperienceLens(host: ExperienceLensHost) {
 	/** The Stage that captured the standpoint; a replacement must never inherit it. */
 	let entryStage = $state.raw<object | null>(null);
 	/** A restore refused while a handoff owned the Camera; retry only on the same Stage. */
-	let restorePending = $state.raw<{ readonly stage: object; readonly standpoint: ViewportCameraState } | null>(null);
+	let restorePending = $state.raw<{
+		readonly stage: object;
+		readonly standpoint: ViewportCameraState;
+	} | null>(null);
 	let disposed = false;
 
 	const tools = createExperienceLensTools({
 		host,
 		stopAndRestore: () => stopAndRestore(),
-		viewEditActive: () => viewEditSession.active !== null
+		viewEditActive: () => viewEditSession.active !== null,
 	});
 
 	let advancedCamera = $state(false);
 	const advancedViewId = $derived(
-		advancedCamera && host.tool() === 'select' && tools.lookThroughSession === null &&
-			playback.status === 'idle' && !host.previewOpen() && !host.previewBusy()
-			? host.activeController()?.selectedView?.id ?? null : null
+		advancedCamera &&
+			host.tool() === 'select' &&
+			tools.lookThroughSession === null &&
+			playback.status === 'idle' &&
+			!host.previewOpen() &&
+			!host.previewBusy()
+			? (host.activeController()?.selectedView?.id ?? null)
+			: null,
 	);
 
 	const viewEditSession = createExperienceViewEditSession({
 		host,
-		advancedViewId: () => advancedViewId
+		advancedViewId: () => advancedViewId,
 	});
 
 	/** Playback is a Guide instrument: any takeover or armed tool ends it. */
@@ -112,7 +124,7 @@ export function createExperienceLens(host: ExperienceLensHost) {
 			tools.placementAim !== null ||
 			host.tool() === 'place' ||
 			host.lens() !== 'experience' ||
-			!host.guideOpen()
+			!host.guideOpen(),
 	);
 
 	/** Playback writes the one Camera through a set-view intent, never a pose copy. */
@@ -124,7 +136,7 @@ export function createExperienceLens(host: ExperienceLensHost) {
 		const result = stage.requestViewingIntent(
 			{ kind: 'set-view', eye: view.eye, target: view.target, fovYDegrees: view.fov },
 			ticket,
-			performance.now() / 1000
+			performance.now() / 1000,
 		);
 		return result.kind === 'accepted';
 	}
@@ -137,7 +149,7 @@ export function createExperienceLens(host: ExperienceLensHost) {
 			program: source.program,
 			transitions: source.transitions,
 			graph: source.graph,
-			entryStopId: source.entryStopId
+			entryStopId: source.entryStopId,
 		});
 		return map.kind === 'ready' ? map.map.totalSeconds : null;
 	}
@@ -191,7 +203,8 @@ export function createExperienceLens(host: ExperienceLensHost) {
 			tools.placementPress !== null ||
 			tools.placementAim !== null ||
 			host.tool() === 'place'
-		) return;
+		)
+			return;
 		controller.openGuide(guideId);
 		host.setGuideOpen(true);
 		void tick().then(() => {
@@ -242,11 +255,26 @@ export function createExperienceLens(host: ExperienceLensHost) {
 			tools.beginPlacement(event);
 			return true;
 		}
-		if (host.tool() === 'select' && event.button === 0 && mark !== null &&
-			(!event.shiftKey || mark.viewId === advancedViewId)) {
-			if (mark.kind === 'eye' || mark.kind === 'move' || mark.kind === 'turn' ||
-				mark.kind === 'lift' || mark.kind === 'tilt' || mark.kind === 'lens') {
-				viewEditSession.begin(event, mark.viewId, mark.kind === 'eye' ? 'move' : mark.kind, mark.mark);
+		if (
+			host.tool() === 'select' &&
+			event.button === 0 &&
+			mark !== null &&
+			(!event.shiftKey || mark.viewId === advancedViewId)
+		) {
+			if (
+				mark.kind === 'eye' ||
+				mark.kind === 'move' ||
+				mark.kind === 'turn' ||
+				mark.kind === 'lift' ||
+				mark.kind === 'tilt' ||
+				mark.kind === 'lens'
+			) {
+				viewEditSession.begin(
+					event,
+					mark.viewId,
+					mark.kind === 'eye' ? 'move' : mark.kind,
+					mark.mark,
+				);
 			}
 			// A 3D glyph is a click entry, not navigation: never claim the Stage
 			// pointer lease or capture on the Stage ancestor.
@@ -257,8 +285,10 @@ export function createExperienceLens(host: ExperienceLensHost) {
 
 	/** A Stage click belongs to the lens over a glyph, in Look through, or while placing. */
 	function ownsClick(overMark: boolean): boolean {
-		return host.lens() === 'experience' &&
-			(overMark || tools.lookThroughSession !== null || host.tool() === 'place');
+		return (
+			host.lens() === 'experience' &&
+			(overMark || tools.lookThroughSession !== null || host.tool() === 'place')
+		);
 	}
 
 	/** Move precedence after pinch: a marker edit, then re-aim, then placement. */
@@ -411,7 +441,8 @@ export function createExperienceLens(host: ExperienceLensHost) {
 		if (tools.lookThroughSession === null) return false;
 		const now = performance.now();
 		tools.advanceLookThroughZoom(now);
-		const pixels = event.deltaY * (event.deltaMode === 1 ? 40 : event.deltaMode === 2 ? viewportHeight : 1);
+		const pixels =
+			event.deltaY * (event.deltaMode === 1 ? 40 : event.deltaMode === 2 ? viewportHeight : 1);
 		tools.queueLookThroughZoom(pixels, now);
 		return true;
 	}
@@ -438,14 +469,16 @@ export function createExperienceLens(host: ExperienceLensHost) {
 			pickStageSubject: slots.pickStageSubject,
 			advancedCamera: {
 				on: () => advancedCamera,
-				set: (on) => { advancedCamera = on; },
+				set: (on) => {
+					advancedCamera = on;
+				},
 				eligible: (viewId) => advancedViewId === viewId,
 				busy: () => viewEditSession.active !== null || viewEditSession.pending !== null,
 				pose: (viewId) => {
 					const edit = viewEditSession.active;
 					return edit?.advanced && edit.viewId === viewId && edit.moved ? edit : null;
 				},
-				write: viewEditSession.setAdvancedFraming
+				write: viewEditSession.setAdvancedFraming,
 			},
 			lookThroughViewId: () => tools.lookThroughViewId,
 			lookThroughMoved: () => tools.lookThroughMoved,
@@ -461,64 +494,63 @@ export function createExperienceLens(host: ExperienceLensHost) {
 			previewMode: slots.previewMode,
 			guideSeconds,
 			guideForStop: slots.guideForStop,
-			playGuide
+			playGuide,
 		};
 	}
 
 	function install(): void {
-	$effect(() => {
-		const source = host.activeController()?.playbackSource ?? null;
-		playback.setReducedMotion(host.reducedMotion());
-		playback.setBlocked(suppressed);
-		if (source === null || host.lens() !== 'experience' || !host.guideOpen()) {
-			stopAndRestore();
-			return;
-		}
-		// Derive as soon as the Guide opens; an accepted edit derives a new map
-		// immediately and stops the old clock. Refused edits never reach here.
-		if (playback.source !== source || playback.map === null) {
-			if (playback.following) stopAndRestore();
-			playback.invalidate();
-			playback.prepare();
-		}
-	});
-	$effect(() => {
-		if (suppressed && playback.status !== 'idle') stopAndRestore();
-	});
-	$effect(() => {
-		if (playback.following && entryStandpoint === null && host.stage() !== null) {
-			entryStandpoint = host.stage()!.camera.captureStandpoint();
-			entryStage = host.stage();
-		}
-	});
-	$effect(() => {
-		if (!playback.following && entryStandpoint !== null) restoreEntry();
-	});
-	$effect(() => {
-		const stage = host.stage();
-		void tools.lookThroughSession !== null;
-		void host.previewOpen();
-		if (restorePending === null) return;
-		if (tools.lookThroughSession !== null || host.previewOpen()) return;
-		if (restorePending.stage !== stage) {
+		$effect(() => {
+			const source = host.activeController()?.playbackSource ?? null;
+			playback.setReducedMotion(host.reducedMotion());
+			playback.setBlocked(suppressed);
+			if (source === null || host.lens() !== 'experience' || !host.guideOpen()) {
+				stopAndRestore();
+				return;
+			}
+			// Derive as soon as the Guide opens; an accepted edit derives a new map
+			// immediately and stops the old clock. Refused edits never reach here.
+			if (playback.source !== source || playback.map === null) {
+				if (playback.following) stopAndRestore();
+				playback.invalidate();
+				playback.prepare();
+			}
+		});
+		$effect(() => {
+			if (suppressed && playback.status !== 'idle') stopAndRestore();
+		});
+		$effect(() => {
+			if (playback.following && entryStandpoint === null && host.stage() !== null) {
+				entryStandpoint = host.stage()!.camera.captureStandpoint();
+				entryStage = host.stage();
+			}
+		});
+		$effect(() => {
+			if (!playback.following && entryStandpoint !== null) restoreEntry();
+		});
+		$effect(() => {
+			const stage = host.stage();
+			void tools.lookThroughSession !== null;
+			void host.previewOpen();
+			if (restorePending === null) return;
+			if (tools.lookThroughSession !== null || host.previewOpen()) return;
+			if (restorePending.stage !== stage) {
+				restorePending = null;
+				return;
+			}
+			const pending = restorePending;
 			restorePending = null;
-			return;
-		}
-		const pending = restorePending;
-		restorePending = null;
-		restoreEntry(stage);
-		void pending;
-	});
-	$effect(() => {
-		// A replacement owns a new Camera: drop, never transplant, the old entry.
-		const stage = host.stage();
-		if (entryStage !== null && entryStage !== stage) {
-			entryStandpoint = null;
-			entryStage = null;
-		}
-		if (restorePending !== null && restorePending.stage !== stage) restorePending = null;
-	});
-
+			restoreEntry(stage);
+			void pending;
+		});
+		$effect(() => {
+			// A replacement owns a new Camera: drop, never transplant, the old entry.
+			const stage = host.stage();
+			if (entryStage !== null && entryStage !== stage) {
+				entryStandpoint = null;
+				entryStage = null;
+			}
+			if (restorePending !== null && restorePending.stage !== stage) restorePending = null;
+		});
 	}
 
 	/**
@@ -539,7 +571,7 @@ export function createExperienceLens(host: ExperienceLensHost) {
 		const accepted = applyView({
 			eye: [sample.eye[0], sample.eye[1], sample.eye[2]],
 			target: [sample.target[0], sample.target[1], sample.target[2]],
-			fov: sample.fov
+			fov: sample.fov,
 		});
 		// A refused write stops the run instead of letting the playhead drift on
 		// a Camera the Stage no longer owns.
@@ -570,13 +602,22 @@ export function createExperienceLens(host: ExperienceLensHost) {
 				playback.setFollow(false);
 				return;
 			}
-			if (event.key !== ' ' || !host.guideOpen() || host.lens() !== 'experience' || host.previewOpen()) return;
+			if (
+				event.key !== ' ' ||
+				!host.guideOpen() ||
+				host.lens() !== 'experience' ||
+				host.previewOpen()
+			)
+				return;
 			if (host.activeController()?.busy === true || suppressed) return;
 			const target = event.target;
 			if (
 				target instanceof HTMLElement &&
-				target.closest('input, textarea, select, button, a[href], [contenteditable="true"], [role="menu"], [role="slider"]') !== null
-			) return;
+				target.closest(
+					'input, textarea, select, button, a[href], [contenteditable="true"], [role="menu"], [role="slider"]',
+				) !== null
+			)
+				return;
 			event.preventDefault();
 			playback.playPause();
 		};
@@ -601,7 +642,7 @@ export function createExperienceLens(host: ExperienceLensHost) {
 		},
 		key,
 		deactivate,
-		dispose
+		dispose,
 	};
 
 	/** Idempotent: the first caller restores the entry and stops the session. */
@@ -668,11 +709,15 @@ export function createExperienceLens(host: ExperienceLensHost) {
 		presentThis: tools.presentThis,
 		// View edit
 		advancedCamera: () => advancedCamera,
-		setAdvancedCamera: (on: boolean) => { advancedCamera = on; },
+		setAdvancedCamera: (on: boolean) => {
+			advancedCamera = on;
+		},
 		advancedViewId: () => advancedViewId,
 		viewEdit: () => viewEditSession.active,
 		pendingViewWrite: () => viewEditSession.pending,
-		clearPendingViewWrite: () => { viewEditSession.clearPending(); },
+		clearPendingViewWrite: () => {
+			viewEditSession.clearPending();
+		},
 		beginViewEdit: viewEditSession.begin,
 		updateViewEdit: viewEditSession.update,
 		cancelViewEdit: viewEditSession.cancel,
@@ -681,7 +726,7 @@ export function createExperienceLens(host: ExperienceLensHost) {
 		confirmPendingViewWrite: viewEditSession.confirmPending,
 		advancePlayback,
 		stopAndRestore,
-		dispose
+		dispose,
 	};
 }
 

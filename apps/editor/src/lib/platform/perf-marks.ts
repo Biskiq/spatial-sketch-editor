@@ -69,7 +69,7 @@ function record(
 	kind: PerfRecordKind,
 	name: string,
 	detail?: Readonly<Record<string, unknown>>,
-	sequence = latestSequence
+	sequence = latestSequence,
 ): PerfRecord | null {
 	if (!perfMarksEnabled()) return null;
 	const entry: PerfRecord = {
@@ -77,7 +77,7 @@ function record(
 		name,
 		time: performance.now(),
 		sequence,
-		...(detail === undefined ? {} : { detail })
+		...(detail === undefined ? {} : { detail }),
 	};
 	const target = perfGlobal();
 	const records = (target.__BISKIQ_PERF_RECORDS__ ??= []);
@@ -85,7 +85,7 @@ function record(
 	if (records.length > PERF_RECORD_LIMIT) records.splice(0, records.length - PERF_RECORD_LIMIT);
 	try {
 		performance.mark(`biskiq:${kind}:${name}`, {
-			detail: { sequence: entry.sequence, ...detail }
+			detail: { sequence: entry.sequence, ...detail },
 		});
 	} catch {
 		// User timing is a convenience copy of the ledger, never its authority.
@@ -187,7 +187,7 @@ export type PerfTracePreview = {
 };
 
 export function perfTracePreview(
-	markers: readonly { id: string; css: readonly [number, number]; label: string }[]
+	markers: readonly { id: string; css: readonly [number, number]; label: string }[],
 ): PerfTracePreview | null {
 	if (!perfMarksEnabled() || perfGlobal().__BISKIQ_PERF__?.traceProof !== true) return null;
 	// Svelte may proxy $state arrays: user-timing detail must be structured-cloneable.
@@ -196,16 +196,24 @@ export function perfTracePreview(
 	const preview = snapshot.find((marker) => marker.id === 'layout-wall-preview');
 	if (!preview) return null;
 	const install = perfGlobal().__BISKIQ_PERF_RECORDS__?.findLast(
-		(entry) => entry.kind === 'install' && entry.name === 'wall-preview'
+		(entry) => entry.kind === 'install' && entry.name === 'wall-preview',
 	);
 	if (!install || install.sequence < 1 || install.sequence > 65535) return null;
 	// Hash the actual overlay snapshot, not a separately scheduled token. The
 	// full geometry remains in the ledger; the image also checks the marker pixel.
 	let signature = 0;
-	for (const character of serialized) signature = (signature * 31 + character.charCodeAt(0)) & 65535;
+	for (const character of serialized)
+		signature = (signature * 31 + character.charCodeAt(0)) & 65535;
 	const words = [0xb17e, install.sequence, signature, 0xb17e ^ install.sequence ^ signature];
-	const bits = words.flatMap((word) => Array.from({ length: 16 }, (_, index) => (word >>> (15 - index)) & 1));
+	const bits = words.flatMap((word) =>
+		Array.from({ length: 16 }, (_, index) => (word >>> (15 - index)) & 1),
+	);
 	const result = { sequence: install.sequence, signature, bits, css: preview.css };
-	record('mark', `trace:overlay:${install.sequence}:${signature}`, { ...result, markers: snapshot }, install.sequence);
+	record(
+		'mark',
+		`trace:overlay:${install.sequence}:${signature}`,
+		{ ...result, markers: snapshot },
+		install.sequence,
+	);
 	return result;
 }

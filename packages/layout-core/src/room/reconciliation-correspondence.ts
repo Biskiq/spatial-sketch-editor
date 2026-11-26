@@ -3,8 +3,20 @@ import type { LayoutVec2 } from '../geometry/coordinates';
 import { countWork } from '../kernel/work-observer';
 import { topologyComponentKeyByWallId } from './topology-components';
 import type { DerivedCandidateFace } from '../geometry/face-extraction';
-import { ON_RING_TOLERANCE, canonicalBoundaryCycleKey, pointStrictlyInsidePolygon, polygonsShareInteriorArea } from '../geometry/face-extraction';
-import { correspondencePairClassOf, emptyCorrespondenceObservation, recordInsideCall, recordObservationPairClass, recordOverlapCall, type CorrespondenceObserver } from './reconciliation-observation';
+import {
+	ON_RING_TOLERANCE,
+	canonicalBoundaryCycleKey,
+	pointStrictlyInsidePolygon,
+	polygonsShareInteriorArea,
+} from '../geometry/face-extraction';
+import {
+	correspondencePairClassOf,
+	emptyCorrespondenceObservation,
+	recordInsideCall,
+	recordObservationPairClass,
+	recordOverlapCall,
+	type CorrespondenceObserver,
+} from './reconciliation-observation';
 import type { ComponentLineage } from './reconciliation-types';
 
 /**
@@ -24,7 +36,6 @@ export type CorrespondenceAuthorization = {
 	 */
 	predecessorComponentKeysByRoomId: ReadonlyMap<string, ReadonlySet<string>>;
 };
-
 
 /**
  * Derive the D-12 authorization for one reconciliation pass.
@@ -69,7 +80,6 @@ export function correspondenceAuthorization(options: {
 	return { faceComponentKeyByKey, predecessorComponentKeysByRoomId };
 }
 
-
 /**
  * May this predecessor Room and this candidate face be unioned by EVIDENCE?
  *
@@ -96,7 +106,7 @@ export function correspondenceAuthorization(options: {
 function unionAuthorized(
 	authorization: CorrespondenceAuthorization,
 	predecessorRoomId: string,
-	faceKey: string
+	faceKey: string,
 ): boolean {
 	const predecessorKeys = authorization.predecessorComponentKeysByRoomId.get(predecessorRoomId);
 	const faceKeyValue = authorization.faceComponentKeyByKey.get(faceKey);
@@ -104,7 +114,6 @@ function unionAuthorized(
 	if (predecessorKeys === undefined || faceKeyValue === undefined) return false;
 	return predecessorKeys.has(faceKeyValue);
 }
-
 
 /**
  * M-1b — the coarse phase's own slack.
@@ -136,9 +145,7 @@ function unionAuthorized(
  */
 const CORRESPONDENCE_BOUNDS_RELATIVE_SLACK = 1e-12;
 
-
 type CorrespondenceBounds = { minX: number; maxX: number; minZ: number; maxZ: number };
-
 
 /** `null` when any coordinate is non-finite or the polygon is empty: never pruned. */
 function correspondenceBounds(polygon: readonly LayoutVec2[]): CorrespondenceBounds | null {
@@ -157,12 +164,10 @@ function correspondenceBounds(polygon: readonly LayoutVec2[]): CorrespondenceBou
 	return { minX, maxX, minZ, maxZ };
 }
 
-
 function correspondenceBoundsSlack(bounds: CorrespondenceBounds): number {
 	const extent = Math.max(bounds.maxX - bounds.minX, bounds.maxZ - bounds.minZ);
 	return ON_RING_TOLERANCE + extent * CORRESPONDENCE_BOUNDS_RELATIVE_SLACK;
 }
-
 
 /** True only when NO point the inflated box contains can be strictly inside the face. */
 function pointProvablyOutsideBounds(bounds: CorrespondenceBounds, point: LayoutVec2): boolean {
@@ -176,7 +181,6 @@ function pointProvablyOutsideBounds(bounds: CorrespondenceBounds, point: LayoutV
 	);
 }
 
-
 /** True only when the two inflated boxes are disjoint, so no shared point exists. */
 function boundsProvablyDisjoint(a: CorrespondenceBounds, b: CorrespondenceBounds): boolean {
 	const slack = correspondenceBoundsSlack(a) + correspondenceBoundsSlack(b);
@@ -188,7 +192,6 @@ function boundsProvablyDisjoint(a: CorrespondenceBounds, b: CorrespondenceBounds
 	);
 }
 
-
 /**
  * The pair classes the observer counts.
  *
@@ -198,7 +201,6 @@ function boundsProvablyDisjoint(a: CorrespondenceBounds, b: CorrespondenceBounds
  * `unionAuthorized`'s own label comparison, read for counting only.
  */
 export type CorrespondencePairClass = 'same-group' | 'cross-group' | 'undefined';
-
 
 /**
  * True correspondence components: connected components of the
@@ -249,7 +251,7 @@ export function buildCorrespondenceComponents(options: {
 	const authorization = correspondenceAuthorization({
 		baselineRooms: options.baselineRooms,
 		candidateDocument: options.candidateDocument,
-		faces
+		faces,
 	});
 	const faceCount = faces.length;
 	const predecessorCount = predecessorRoomIds.length;
@@ -448,7 +450,7 @@ export function buildCorrespondenceComponents(options: {
 	return [...groups.values()]
 		.map((group) => ({
 			candidateFaceKeys: [...group.faces].sort(),
-			predecessorRoomIds: [...group.predecessors].sort()
+			predecessorRoomIds: [...group.predecessors].sort(),
 		}))
 		.sort((a, b) => (a.candidateFaceKeys[0]! < b.candidateFaceKeys[0]! ? -1 : 1));
 }

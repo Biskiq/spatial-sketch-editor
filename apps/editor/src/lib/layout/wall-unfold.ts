@@ -12,8 +12,24 @@
  * compiled Wall, enforces the scrub rules and states the unfolded edit policy in
  * one place so the Card, the Stage and the adapter cannot disagree.
  */
-import { createWallDevelopmentBuffers, createWallDevelopmentSheetBuffers, evaluateWallDevelopment, evaluateWallDevelopmentSheet, prepareWallDevelopment, wallCenterlineCubics, type LayoutDocumentWallFirst, type WallDevelopment, type WallDevelopmentRefusal, type WallDevelopmentSourceSpan } from '@portfolio/layout-core/wall';
-import { cubicBezierArcLength, type CompiledPhysicalWall, type CurveSample, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import {
+	createWallDevelopmentBuffers,
+	createWallDevelopmentSheetBuffers,
+	evaluateWallDevelopment,
+	evaluateWallDevelopmentSheet,
+	prepareWallDevelopment,
+	wallCenterlineCubics,
+	type LayoutDocumentWallFirst,
+	type WallDevelopment,
+	type WallDevelopmentRefusal,
+	type WallDevelopmentSourceSpan,
+} from '@portfolio/layout-core/wall';
+import {
+	cubicBezierArcLength,
+	type CompiledPhysicalWall,
+	type CurveSample,
+	type LayoutVec2,
+} from '@portfolio/layout-core/geometry';
 import type { InspectionPose, ViewportReading } from '@portfolio/camera-core/viewport';
 
 /** The drag distance that reaches `u = 1`, in CSS pixels (the plan's rule). */
@@ -95,7 +111,7 @@ export type WallUnfoldState = {
 
 /** A compiled self-connected Wall is a closed Wall (one Junction, two legs). */
 export function isClosedCompiledWall(
-	wall: Pick<CompiledPhysicalWall, 'startJunctionId' | 'endJunctionId'>
+	wall: Pick<CompiledPhysicalWall, 'startJunctionId' | 'endJunctionId'>,
 ): boolean {
 	return wall.startJunctionId !== undefined && wall.startJunctionId === wall.endJunctionId;
 }
@@ -127,7 +143,7 @@ export function wallUnfoldSamples(wall: CompiledPhysicalWall): CurveSample[] {
 			distance: sample.distance,
 			tangent,
 			normal,
-			t: index / Math.max(1, wall.samples.length - 1)
+			t: index / Math.max(1, wall.samples.length - 1),
 		};
 	});
 }
@@ -139,7 +155,7 @@ export function wallUnfoldSamples(wall: CompiledPhysicalWall): CurveSample[] {
  */
 export function wallUnfoldNormaliseStation(
 	wall: Pick<CompiledPhysicalWall, 'length' | 'startJunctionId' | 'endJunctionId'>,
-	station: number
+	station: number,
 ): number {
 	const length = wall.length;
 	if (!(length > 0) || !Number.isFinite(station)) return 0;
@@ -154,7 +170,7 @@ export function wallUnfoldNormaliseStation(
 export function wallUnfoldTopPoint(
 	wall: Pick<CompiledPhysicalWall, 'length' | 'height' | 'samples'>,
 	station: number,
-	floorY = 0
+	floorY = 0,
 ): readonly [number, number, number] | null {
 	const samples = wall.samples;
 	if (samples.length === 0) return null;
@@ -173,7 +189,7 @@ export function wallUnfoldTopPoint(
 		return [
 			from.point[0] + (to.point[0] - from.point[0]) * amount,
 			height,
-			from.point[1] + (to.point[1] - from.point[1]) * amount
+			from.point[1] + (to.point[1] - from.point[1]) * amount,
 		];
 	}
 	const last = samples.at(-1)!;
@@ -194,10 +210,18 @@ export function wallUnfoldAnchor(input: {
 	/** A deliberate session pin; never inferred from the Camera. */
 	readonly pinStation?: number | null;
 }): number {
-	if (input.selectedOpeningCenter !== undefined && input.selectedOpeningCenter !== null && Number.isFinite(input.selectedOpeningCenter)) {
+	if (
+		input.selectedOpeningCenter !== undefined &&
+		input.selectedOpeningCenter !== null &&
+		Number.isFinite(input.selectedOpeningCenter)
+	) {
 		return wallUnfoldNormaliseStation(input.wall, input.selectedOpeningCenter);
 	}
-	if (input.pinStation !== undefined && input.pinStation !== null && Number.isFinite(input.pinStation)) {
+	if (
+		input.pinStation !== undefined &&
+		input.pinStation !== null &&
+		Number.isFinite(input.pinStation)
+	) {
 		return wallUnfoldNormaliseStation(input.wall, input.pinStation);
 	}
 	return 0;
@@ -217,16 +241,17 @@ export type WallUnfoldOpeningRange = {
 export function wallUnfoldCutStation(
 	anchorStation: number,
 	length: number,
-	openings: readonly WallUnfoldOpeningRange[] = []
+	openings: readonly WallUnfoldOpeningRange[] = [],
 ): number {
 	if (!(length > 0)) return 0;
 	const raw = wrap(anchorStation + length / 2, length);
-	const inOpening = (station: number): boolean => openings.some((opening) => {
-		const start = wrap(opening.start, length);
-		const width = Math.max(0, opening.end - opening.start);
-		const offset = wrap(station - start, length);
-		return offset <= width + 0.08 || offset >= length - 0.08;
-	});
+	const inOpening = (station: number): boolean =>
+		openings.some((opening) => {
+			const start = wrap(opening.start, length);
+			const width = Math.max(0, opening.end - opening.start);
+			const offset = wrap(station - start, length);
+			return offset <= width + 0.08 || offset >= length - 0.08;
+		});
 	if (!inOpening(raw)) return raw;
 	// Walk outwards in 5 cm steps and take the nearest station that is solid.
 	// A cut inside the void would make the free edge a jamb and the peel lie.
@@ -265,14 +290,14 @@ export function createWallUnfoldState(input: {
 		u: clamp(input.u ?? 1, 0, 1),
 		entry: input.entry,
 		entryAdjusted: false,
-		settled: null
+		settled: null,
 	};
 }
 
 /** The Opening whose canonical arc contains `station`, or `null` on solid Wall. */
 export function wallUnfoldOpeningAtStation(
 	wall: Pick<CompiledPhysicalWall, 'length' | 'openings' | 'startJunctionId' | 'endJunctionId'>,
-	station: number
+	station: number,
 ): string | null {
 	const length = wall.length;
 	if (!(length > 0) || !Number.isFinite(station)) return null;
@@ -294,21 +319,26 @@ export function wallUnfoldOpeningAtStation(
 export function setWallUnfoldAnchor(
 	state: WallUnfoldState,
 	wall: Pick<CompiledPhysicalWall, 'length' | 'openings' | 'startJunctionId' | 'endJunctionId'>,
-	station: number
+	station: number,
 ): WallUnfoldState {
 	const length = wall.length;
 	const closed = isClosedCompiledWall(wall);
 	const requested = Number.isFinite(station) ? station : state.anchorStation;
-	const anchorStation = length > 0 ? (closed ? wrap(requested, length) : clamp(requested, 0, length)) : 0;
+	const anchorStation =
+		length > 0 ? (closed ? wrap(requested, length) : clamp(requested, 0, length)) : 0;
 	return {
 		...state,
 		anchorStation,
 		cutStation: closed
-			? wallUnfoldCutStation(anchorStation, length, wall.openings.map((opening) => ({
-				start: opening.offset,
-				end: opening.offset + opening.width
-			})))
-			: null
+			? wallUnfoldCutStation(
+					anchorStation,
+					length,
+					wall.openings.map((opening) => ({
+						start: opening.offset,
+						end: opening.offset + opening.width,
+					})),
+				)
+			: null,
 	};
 }
 
@@ -364,15 +394,14 @@ export function wallUnfoldSideTowardCamera(input: {
 	}
 	const normal: LayoutVec2 = [-nearest.tangent[1], nearest.tangent[0]];
 	const dot =
-		(input.eye[0] - nearest.point[0]) * normal[0] +
-		(input.eye[2] - nearest.point[1]) * normal[1];
+		(input.eye[0] - nearest.point[0]) * normal[0] + (input.eye[2] - nearest.point[1]) * normal[1];
 	return dot >= 0 ? 1 : -1;
 }
 
 /** The canonical station nearest a world point (the view centre, not the eye). */
 export function wallUnfoldViewCentreStation(
 	wall: CompiledPhysicalWall,
-	target: readonly [number, number, number] | null
+	target: readonly [number, number, number] | null,
 ): number | null {
 	if (target === null || wall.samples.length === 0) return null;
 	let nearest = wall.samples[0]!;
@@ -421,7 +450,7 @@ export function wallUnfoldFitBounds(input: {
 		samples: wallUnfoldSamples(wall),
 		closed: isClosedCompiledWall(wall),
 		anchorStation: state.anchorStation,
-		cutStation: state.cutStation
+		cutStation: state.cutStation,
 	});
 	if (!('refused' in prepared)) {
 		if (isClosedCompiledWall(wall) && prepared.cutStation !== null) {
@@ -446,21 +475,20 @@ export function wallUnfoldFitBounds(input: {
 		}
 	} else {
 		for (const sample of wall.samples) {
-			include(sample.point[0] + sample.tangent[1] * wall.length, sample.point[1] - sample.tangent[0] * wall.length);
+			include(
+				sample.point[0] + sample.tangent[1] * wall.length,
+				sample.point[1] - sample.tangent[0] * wall.length,
+			);
 		}
 	}
 	return {
 		min: [minX, floorY - 0.2, minZ],
-		max: [maxX, floorY + wall.height + 0.2, maxZ]
+		max: [maxX, floorY + wall.height + 0.2, maxZ],
 	};
 }
 
 /** Compare two settled inspection poses; position and orientation only. */
-export function sameInspectionPose(
-	a: InspectionPose,
-	b: InspectionPose,
-	epsilon = 1e-4
-): boolean {
+export function sameInspectionPose(a: InspectionPose, b: InspectionPose, epsilon = 1e-4): boolean {
 	const near = (left: number, right: number): boolean => Math.abs(left - right) <= epsilon;
 	return (
 		near(a.target[0], b.target[0]) &&
@@ -539,9 +567,8 @@ export function chooseUnfoldAmount(input: {
 		const dx = end.css[0] - start.css[0];
 		const dy = end.css[1] - start.css[1];
 		const squared = dx * dx + dy * dy;
-		const raw = squared === 0
-			? 0
-			: ((targetX - start.css[0]) * dx + (targetY - start.css[1]) * dy) / squared;
+		const raw =
+			squared === 0 ? 0 : ((targetX - start.css[0]) * dx + (targetY - start.css[1]) * dy) / squared;
 		const amount = clamp(raw, 0, 1);
 		const pointX = start.css[0] + dx * amount;
 		const pointY = start.css[1] + dy * amount;
@@ -592,17 +619,20 @@ export function flipWallUnfoldSide(state: WallUnfoldState): WallUnfoldState {
 /** Prepare the Wall's development map for this session. */
 export function prepareWallUnfoldDevelopment(
 	state: WallUnfoldState,
-	wall: CompiledPhysicalWall
+	wall: CompiledPhysicalWall,
 ): WallDevelopment | WallDevelopmentRefusal {
 	if (wall.wallId !== state.wallId) {
-		return { refused: 'development_invalid_input', message: 'The unfold context names a different Wall.' };
+		return {
+			refused: 'development_invalid_input',
+			message: 'The unfold context names a different Wall.',
+		};
 	}
 	return prepareWallDevelopment({
 		wallId: wall.wallId,
 		samples: wallUnfoldSamples(wall),
 		closed: isClosedCompiledWall(wall),
 		anchorStation: state.anchorStation,
-		cutStation: state.cutStation
+		cutStation: state.cutStation,
 	});
 }
 
@@ -619,7 +649,7 @@ export function prepareWallUnfoldDevelopment(
 export function wallUnfoldSourceSpans(
 	layout: LayoutDocumentWallFirst,
 	wallId: string,
-	length: number
+	length: number,
 ): WallDevelopmentSourceSpan[] {
 	const wall = layout.walls.find((candidate) => candidate.id === wallId);
 	if (wall === undefined) return [];
@@ -631,8 +661,8 @@ export function wallUnfoldSourceSpans(
 				endKnotId: wall.endJunctionId,
 				startStation: 0,
 				endStation: length,
-				arcLength: length
-			}
+				arcLength: length,
+			},
 		];
 	}
 	const start = layout.junctions.find((junction) => junction.id === wall.startJunctionId)?.point;
@@ -645,12 +675,12 @@ export function wallUnfoldSourceSpans(
 		const arcLength = cubicBezierArcLength(cubic);
 		const span: WallDevelopmentSourceSpan = {
 			index,
-			startKnotId: index === 0 ? wall.startJunctionId : centerline.knots[index - 1]?.id ?? '',
+			startKnotId: index === 0 ? wall.startJunctionId : (centerline.knots[index - 1]?.id ?? ''),
 			endKnotId:
-				index === cubics.length - 1 ? wall.endJunctionId : centerline.knots[index]?.id ?? '',
+				index === cubics.length - 1 ? wall.endJunctionId : (centerline.knots[index]?.id ?? ''),
 			startStation: station,
 			endStation: station + arcLength,
-			arcLength
+			arcLength,
 		};
 		station += arcLength;
 		return span;
@@ -685,14 +715,14 @@ export function wallUnfoldEditPolicy(state: WallUnfoldState | null): WallUnfoldE
 			: { kind: 'refused', message: 'Fold the Wall back before editing bend points.' },
 		bodyBend: active
 			? { kind: 'refused', message: WALL_UNFOLD_SHAPE_REFUSAL }
-			: { kind: 'refused', message: 'Fold the Wall back before bending it.' }
+			: { kind: 'refused', message: 'Fold the Wall back before bending it.' },
 	};
 }
 
 /** Whether a shape edit must refuse for this session. */
 export function wallUnfoldRefusesShapeEdit(
 	state: WallUnfoldState | null,
-	edit: 'centerline' | 'knots' | 'bodyBend' = 'centerline'
+	edit: 'centerline' | 'knots' | 'bodyBend' = 'centerline',
 ): { readonly refused: boolean; readonly message: string | null } {
 	if (state === null) return { refused: false, message: null };
 	return { refused: true, message: wallUnfoldEditPolicy(state)[edit].message };
@@ -709,7 +739,7 @@ export function wallUnfoldRefusesShapeEdit(
 export function unfoldCanonicalStation(
 	state: WallUnfoldState,
 	wall: CompiledPhysicalWall,
-	sheetStation: number
+	sheetStation: number,
 ): number {
 	if (!Number.isFinite(sheetStation)) return 0;
 	if (isClosedCompiledWall(wall)) return wrap(state.anchorStation + sheetStation, wall.length);
@@ -732,6 +762,7 @@ export function wallUnfoldInvalidation(input: {
 }): WallUnfoldInvalidation {
 	if (input.state === null) return { kind: 'valid' };
 	if (input.documentReplaced === true) return { kind: 'invalidated', reason: 'document-replaced' };
-	if (!input.wallIds.has(input.state.wallId)) return { kind: 'invalidated', reason: 'wall-removed' };
+	if (!input.wallIds.has(input.state.wallId))
+		return { kind: 'invalidated', reason: 'wall-removed' };
 	return { kind: 'valid' };
 }

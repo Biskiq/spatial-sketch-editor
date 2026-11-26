@@ -4,20 +4,32 @@ import { shippedImage } from '../../materials/catalogue';
 import { MATERIAL_CAPABILITY, MATERIAL_MAP_ROLES } from '../../materials/types';
 import { validateAcceptedRevision } from '../../references/validate';
 import { ShapeReader } from '../../strict-shape';
-import { stopEntryViewId, UNIT_DOMAINS, UNIT_ENVELOPE_FORMAT_VERSION, type DependencyLock, type ExperienceStop, type ProjectUnits, type RequiredCapability, type TypedResource } from '../types';
+import {
+	stopEntryViewId,
+	UNIT_DOMAINS,
+	UNIT_ENVELOPE_FORMAT_VERSION,
+	type DependencyLock,
+	type ExperienceStop,
+	type ProjectUnits,
+	type RequiredCapability,
+	type TypedResource,
+} from '../types';
 import { isDeeplyFrozenPlainJson, freezePlainJsonSubgraph } from './frozen-json';
 import { validateDependencyLock, samePin } from './lock';
 import { readDomainUnit } from './payload';
-import { ENVELOPE_KEYS, type EnvelopeDiagnostic, type EnvelopeClosureFinding, type EnvelopeValidation } from './shared';
+import {
+	ENVELOPE_KEYS,
+	type EnvelopeDiagnostic,
+	type EnvelopeClosureFinding,
+	type EnvelopeValidation,
+} from './shared';
 
 export function sameCapabilities(
 	actual: readonly RequiredCapability[],
-	expected: RequiredCapability
+	expected: RequiredCapability,
 ): boolean {
 	return (
-		actual.length === 1 &&
-		actual[0]!.id === expected.id &&
-		actual[0]!.version === expected.version
+		actual.length === 1 && actual[0]!.id === expected.id && actual[0]!.version === expected.version
 	);
 }
 
@@ -56,25 +68,36 @@ export function validateProjectEnvelopeOnce(input: unknown): EnvelopeValidation 
 	const record = reader.object(input, '$', ENVELOPE_KEYS);
 	if (record === null) return { success: false, issues: reader.issues };
 	if (record.formatVersion !== UNIT_ENVELOPE_FORMAT_VERSION) {
-		reader.problem('$.formatVersion', 'unsupported_format_version', `$.formatVersion must be ${UNIT_ENVELOPE_FORMAT_VERSION}`);
+		reader.problem(
+			'$.formatVersion',
+			'unsupported_format_version',
+			`$.formatVersion must be ${UNIT_ENVELOPE_FORMAT_VERSION}`,
+		);
 		return { success: false, issues: reader.issues };
 	}
 	const id = reader.opaqueId(record.id, '$.id');
 	const name = reader.string(record.name, '$.name');
 	const acceptedRevision = validateAcceptedRevision(record.acceptedRevision);
 	if (!acceptedRevision.success) {
-		for (const issue of acceptedRevision.issues) reader.problem(`$.acceptedRevision${issue.path.slice(1)}`, issue.code, issue.message);
+		for (const issue of acceptedRevision.issues)
+			reader.problem(`$.acceptedRevision${issue.path.slice(1)}`, issue.code, issue.message);
 	}
 	const lock = validateDependencyLock(record.dependencyLock);
 	if (!lock.success) {
-		for (const issue of lock.issues) reader.problem(`$.dependencyLock${issue.path.slice(1)}`, issue.code, issue.message);
+		for (const issue of lock.issues)
+			reader.problem(`$.dependencyLock${issue.path.slice(1)}`, issue.code, issue.message);
 	}
 	const unitsRecord = reader.object(record.units, '$.units', UNIT_DOMAINS);
 	if (unitsRecord === null) return { success: false, issues: reader.issues };
 	const layout = readDomainUnit(reader, unitsRecord.layout, '$.units.layout', 'layout');
 	const scene = readDomainUnit(reader, unitsRecord.scene, '$.units.scene', 'scene');
 	const camera = readDomainUnit(reader, unitsRecord.camera, '$.units.camera', 'camera');
-	const experience = readDomainUnit(reader, unitsRecord.experience, '$.units.experience', 'experience');
+	const experience = readDomainUnit(
+		reader,
+		unitsRecord.experience,
+		'$.units.experience',
+		'experience',
+	);
 	const resources = readDomainUnit(reader, unitsRecord.resources, '$.units.resources', 'resources');
 	if (
 		reader.issues.length > 0 ||
@@ -91,7 +114,11 @@ export function validateProjectEnvelopeOnce(input: unknown): EnvelopeValidation 
 		return { success: false, issues: reader.issues };
 	}
 	if (acceptedRevision.value.projectId !== id) {
-		reader.problem('$.acceptedRevision.projectId', 'project-mismatch', 'the accepted revision must belong to this envelope');
+		reader.problem(
+			'$.acceptedRevision.projectId',
+			'project-mismatch',
+			'the accepted revision must belong to this envelope',
+		);
 		return { success: false, issues: reader.issues };
 	}
 	const units: ProjectUnits = { layout, scene, camera, experience, resources };
@@ -104,17 +131,17 @@ export function validateProjectEnvelopeOnce(input: unknown): EnvelopeValidation 
 			name,
 			acceptedRevision: acceptedRevision.value,
 			dependencyLock: lock.value,
-			units
+			units,
 		},
 		diagnostics: found.diagnostics,
 		closure: found.closure,
-		ignoredOptionalExtensions: acceptedRevision.ignoredOptionalExtensions
+		ignoredOptionalExtensions: acceptedRevision.ignoredOptionalExtensions,
 	};
 }
 
 export function envelopeFindings(
 	units: ProjectUnits,
-	lock: DependencyLock
+	lock: DependencyLock,
 ): { diagnostics: EnvelopeDiagnostic[]; closure: EnvelopeClosureFinding[] } {
 	const diagnostics: EnvelopeDiagnostic[] = [];
 	const closure: EnvelopeClosureFinding[] = [];
@@ -125,16 +152,14 @@ export function envelopeFindings(
 		connectionPairs.add(`${connection.toNodeId}\0${connection.fromNodeId}`);
 	}
 	const supportedTravel = (fromViewId: string | null, toViewId: string | null): boolean =>
-		fromViewId !== null &&
-		toViewId !== null &&
-		connectionPairs.has(`${fromViewId}\0${toViewId}`);
+		fromViewId !== null && toViewId !== null && connectionPairs.has(`${fromViewId}\0${toViewId}`);
 	const sceneEntities = new Set(units.scene.data.entities.map((entity) => entity.id));
 	for (const [index, assignment] of (units.scene.data.surfaceFinishes ?? []).entries()) {
 		if (resolveLayoutSurface(units.layout.data, assignment.surface) === 'retired') {
 			diagnostics.push({
 				path: `$.units.scene.data.surfaceFinishes[${index}].surface`,
 				code: 'unresolved-surface',
-				message: `surface "${surfaceKey(assignment.surface)}" is retired in the authored Layout`
+				message: `surface "${surfaceKey(assignment.surface)}" is retired in the authored Layout`,
 			});
 		}
 	}
@@ -148,7 +173,7 @@ export function envelopeFindings(
 					diagnostics.push({
 						path: `${viewPath}.viewId`,
 						code: 'unresolved-view',
-						message: `presentation "${presentation.id}" names camera view "${view.viewId}", which this envelope does not carry`
+						message: `presentation "${presentation.id}" names camera view "${view.viewId}", which this envelope does not carry`,
 					});
 				}
 				// A step leaves the View it is authored on and arrives at the next one.
@@ -157,7 +182,7 @@ export function envelopeFindings(
 					diagnostics.push({
 						path: `${viewPath}.transition`,
 						code: 'travel-gap',
-						message: `the Travel from "${view.viewId}" to "${next.viewId}" has no Camera connection`
+						message: `the Travel from "${view.viewId}" to "${next.viewId}" has no Camera connection`,
 					});
 				}
 			}
@@ -168,13 +193,13 @@ export function envelopeFindings(
 						diagnostics.push({
 							path: `${path}.presentations[${position}].subject`,
 							code: 'unresolved-subject',
-							message: `presentation "${presentation.id}" names a scene subject of kind "${subject.kind}"; Preview resolves scene entities only`
+							message: `presentation "${presentation.id}" names a scene subject of kind "${subject.kind}"; Preview resolves scene entities only`,
 						});
 					} else if (!sceneEntities.has(subject.id)) {
 						diagnostics.push({
 							path: `${path}.presentations[${position}].subject`,
 							code: 'unresolved-subject',
-							message: `presentation "${presentation.id}" names scene entity "${subject.id}", which this envelope does not carry`
+							message: `presentation "${presentation.id}" names scene entity "${subject.id}", which this envelope does not carry`,
 						});
 					}
 				} else {
@@ -184,14 +209,19 @@ export function envelopeFindings(
 					diagnostics.push({
 						path: `${path}.presentations[${position}].subject`,
 						code: 'unresolved-subject',
-						message: `presentation "${presentation.id}" names layout "${subject.kind}" subject "${subject.id}", which Preview does not resolve yet`
+						message: `presentation "${presentation.id}" names layout "${subject.kind}" subject "${subject.id}", which Preview does not resolve yet`,
 					});
 				}
 			}
 		}
-		const presentationIds = new Set(experience.presentations.map((presentation) => presentation.id));
-		const presentationById = new Map(experience.presentations.map((presentation) => [presentation.id, presentation]));
-		const entryOf = (stop: ExperienceStop): string | null => stopEntryViewId(stop, presentationById.get(stop.presentationId));
+		const presentationIds = new Set(
+			experience.presentations.map((presentation) => presentation.id),
+		);
+		const presentationById = new Map(
+			experience.presentations.map((presentation) => [presentation.id, presentation]),
+		);
+		const entryOf = (stop: ExperienceStop): string | null =>
+			stopEntryViewId(stop, presentationById.get(stop.presentationId));
 		const stopById = new Map<string, ExperienceStop>();
 		for (const stop of experience.stops) {
 			if (!stopById.has(stop.id)) stopById.set(stop.id, stop);
@@ -228,7 +258,7 @@ export function envelopeFindings(
 				diagnostics.push({
 					path: `${path}.stops[${position}].presentationId`,
 					code: 'unresolved-presentation',
-					message: `stop "${stop.id}" names presentation "${stop.presentationId}", which this Experience does not carry`
+					message: `stop "${stop.id}" names presentation "${stop.presentationId}", which this Experience does not carry`,
 				});
 			}
 			const entryViewId = stopEntryViewId(stop, presentationById.get(stop.presentationId));
@@ -236,7 +266,7 @@ export function envelopeFindings(
 				diagnostics.push({
 					path: `${path}.stops[${position}].entryViewId`,
 					code: 'unresolved-view',
-					message: `stop "${stop.id}" enters at camera view "${entryViewId}", which this envelope does not carry`
+					message: `stop "${stop.id}" enters at camera view "${entryViewId}", which this envelope does not carry`,
 				});
 			}
 			if (stop.transition === 'travel') {
@@ -251,7 +281,7 @@ export function envelopeFindings(
 						diagnostics.push({
 							path: `${path}.stops[${position}].transition`,
 							code: 'travel-gap',
-							message: `the Travel from stop "${stop.id}" has no Camera connection to the View of stop "${target.id}"`
+							message: `the Travel from stop "${stop.id}" has no Camera connection to the View of stop "${target.id}"`,
 						});
 					}
 				}
@@ -263,7 +293,7 @@ export function envelopeFindings(
 					diagnostics.push({
 						path: `${path}.guides[${position}].stopIds`,
 						code: 'unresolved-stop',
-						message: `guide "${guide.id}" orders stop "${stopId}", which this Experience does not carry`
+						message: `guide "${guide.id}" orders stop "${stopId}", which this Experience does not carry`,
 					});
 				}
 			}
@@ -272,13 +302,13 @@ export function envelopeFindings(
 			for (const [field, stopId] of [
 				['fromStopId', detour.fromStopId],
 				['toStopId', detour.toStopId],
-				['returnToStopId', detour.returnToStopId]
+				['returnToStopId', detour.returnToStopId],
 			] as const) {
 				if (!stops.has(stopId)) {
 					diagnostics.push({
 						path: `${path}.detours[${position}].${field}`,
 						code: 'unresolved-stop',
-						message: `detour "${detour.id}" names stop "${stopId}", which this Experience does not carry`
+						message: `detour "${detour.id}" names stop "${stopId}", which this Experience does not carry`,
 					});
 				}
 			}
@@ -290,12 +320,16 @@ export function envelopeFindings(
 	for (const [index, resource] of resources.entries()) {
 		const key = `${resource.kind}\0${resource.id}`;
 		if (!resourceByKindAndId.has(key)) resourceByKindAndId.set(key, resource);
-		if (resource.unresolved !== null) diagnostics.push({
-			path: `$.units.resources.data.resources[${index}].unresolved`,
-			code: resource.unresolved.status, message: resource.unresolved.message
-		});
+		if (resource.unresolved !== null)
+			diagnostics.push({
+				path: `$.units.resources.data.resources[${index}].unresolved`,
+				code: resource.unresolved.status,
+				message: resource.unresolved.message,
+			});
 	}
-	const modelResourceIds = new Set(resources.filter((resource) => resource.kind === 'model').map((resource) => resource.id));
+	const modelResourceIds = new Set(
+		resources.filter((resource) => resource.kind === 'model').map((resource) => resource.id),
+	);
 	// A Scene model names either a catalogue asset or a `model` resource of this
 	// envelope. The envelope cannot know the host's catalogue, so a catalogue id
 	// keeps the landed asset requirement while a `model` resource id is satisfied
@@ -304,22 +338,26 @@ export function envelopeFindings(
 		...units.scene.data.textures.map((texture) => ({ kind: 'texture', id: texture.id })),
 		...units.scene.data.entities
 			.filter((entity) => entity.kind === 'model')
-			.map((entity) => (modelResourceIds.has(entity.assetId)
-				? { kind: 'model', id: entity.assetId }
-				: { kind: 'asset', id: entity.assetId })),
+			.map((entity) =>
+				modelResourceIds.has(entity.assetId)
+					? { kind: 'model', id: entity.assetId }
+					: { kind: 'asset', id: entity.assetId },
+			),
 		// A Finish can only reach a resource-backed definition through its
 		// digest. The definition itself, its local image mappings and its exact
 		// lock are checked below; this entry is the executable reference.
 		...units.scene.data.materials.flatMap((material) =>
-			'material' in material.base ? [{ kind: 'material', id: material.base.material }] : []
-		)
+			'material' in material.base ? [{ kind: 'material', id: material.base.material }] : [],
+		),
 	];
 	for (const required of requiredResources) {
 		const resource = resourceByKindAndId.get(`${required.kind}\0${required.id}`);
-		if (resource === undefined || resource.unresolved !== null) closure.push({
-			path: '$.units.resources.data.resources', code: resource === undefined ? 'missing-resource' : 'unresolved-resource',
-			message: `Scene requires ${required.kind} "${required.id}" with resolved bytes`
-		});
+		if (resource === undefined || resource.unresolved !== null)
+			closure.push({
+				path: '$.units.resources.data.resources',
+				code: resource === undefined ? 'missing-resource' : 'unresolved-resource',
+				message: `Scene requires ${required.kind} "${required.id}" with resolved bytes`,
+			});
 	}
 
 	// A creator model is an approved external revision: the envelope must pin the
@@ -342,7 +380,7 @@ export function envelopeFindings(
 			closure.push({
 				path: '$.dependencyLock.entries',
 				code: 'missing-lock',
-				message: `model resource "${resource.id}" is not pinned by a dependency-lock entry`
+				message: `model resource "${resource.id}" is not pinned by a dependency-lock entry`,
 			});
 		}
 	}
@@ -361,12 +399,12 @@ export function envelopeFindings(
 				closure.push({
 					path: `$.units.scene.data.materials[${index}].overrides.maps.${role}.image.shipped`,
 					code: 'unknown-static-image',
-					message: `Finish "${material.id}" names shipped image "${binding.image.shipped}" outside the frozen manifest`
+					message: `Finish "${material.id}" names shipped image "${binding.image.shipped}" outside the frozen manifest`,
 				});
 			}
 		}
 	}
-	const materialLocks = new Map<string, typeof lock.entries[number][]>();
+	const materialLocks = new Map<string, (typeof lock.entries)[number][]>();
 	for (const entry of lock.entries) {
 		if (entry.domain !== 'resource:material') continue;
 		const entries = materialLocks.get(entry.subjectId) ?? [];
@@ -383,18 +421,37 @@ export function envelopeFindings(
 			closure.push({
 				path: '$.dependencyLock.entries',
 				code: 'missing-lock',
-				message: `material resource "${resource.id}" must have exactly one resource:material lock`
+				message: `material resource "${resource.id}" must have exactly one resource:material lock`,
 			});
 		} else {
 			const entry = materialLockEntries[0]!;
-			if (entry.subjectKind !== 'resource' || entry.instancePath.length !== 0 || entry.pin !== null) {
-				closure.push({ path: '$.dependencyLock.entries', code: 'material-lock-invalid', message: `material lock "${resource.id}" must be a root resource lock without an external pin` });
+			if (
+				entry.subjectKind !== 'resource' ||
+				entry.instancePath.length !== 0 ||
+				entry.pin !== null
+			) {
+				closure.push({
+					path: '$.dependencyLock.entries',
+					code: 'material-lock-invalid',
+					message: `material lock "${resource.id}" must be a root resource lock without an external pin`,
+				});
 			}
-			if (entry.contentRevision !== resource.id || entry.contentRevision !== resource.contentRevision) {
-				closure.push({ path: '$.dependencyLock.entries', code: 'resource-revision-mismatch', message: `material lock "${resource.id}" must pin the recipe identity` });
+			if (
+				entry.contentRevision !== resource.id ||
+				entry.contentRevision !== resource.contentRevision
+			) {
+				closure.push({
+					path: '$.dependencyLock.entries',
+					code: 'resource-revision-mismatch',
+					message: `material lock "${resource.id}" must pin the recipe identity`,
+				});
 			}
 			if (!sameCapabilities(entry.requiredCapabilities, MATERIAL_CAPABILITY)) {
-				closure.push({ path: '$.dependencyLock.entries', code: 'unsupported-capability', message: `material lock "${resource.id}" must require exactly ${MATERIAL_CAPABILITY.id}@${MATERIAL_CAPABILITY.version}` });
+				closure.push({
+					path: '$.dependencyLock.entries',
+					code: 'unsupported-capability',
+					message: `material lock "${resource.id}" must require exactly ${MATERIAL_CAPABILITY.id}@${MATERIAL_CAPABILITY.version}`,
+				});
 			}
 		}
 		for (const image of detail.images) {
@@ -404,9 +461,9 @@ export function envelopeFindings(
 					closure.push({
 						path,
 						code: 'unknown-static-image',
-						message: `material "${resource.id}" names shipped image "${image.source.shipped}" outside the frozen manifest or with a different digest`
+						message: `material "${resource.id}" names shipped image "${image.source.shipped}" outside the frozen manifest or with a different digest`,
 					});
-			}
+				}
 				continue;
 			}
 			const textureId = image.source.textureId;
@@ -415,16 +472,20 @@ export function envelopeFindings(
 				closure.push({
 					path,
 					code: 'missing-texture-record',
-					message: `material "${resource.id}" maps ${image.hash} to texture "${textureId}" with no agreeing Scene texture record`
+					message: `material "${resource.id}" maps ${image.hash} to texture "${textureId}" with no agreeing Scene texture record`,
 				});
 				continue;
 			}
 			const textureResource = resourceByKindAndId.get(`texture\0${textureId}`);
-			if (textureResource === undefined || textureResource.unresolved !== null || textureResource.pin === null) {
+			if (
+				textureResource === undefined ||
+				textureResource.unresolved !== null ||
+				textureResource.pin === null
+			) {
 				closure.push({
 					path,
 					code: 'missing-resource',
-					message: `material "${resource.id}" maps ${image.hash} to texture "${textureId}" with no resolved pin`
+					message: `material "${resource.id}" maps ${image.hash} to texture "${textureId}" with no resolved pin`,
 				});
 				continue;
 			}
@@ -432,7 +493,7 @@ export function envelopeFindings(
 				closure.push({
 					path,
 					code: 'material-image-pin-mismatch',
-					message: `material "${resource.id}" binds ${image.hash} and texture "${textureId}" pins ${textureResource.pin.hash}`
+					message: `material "${resource.id}" binds ${image.hash} and texture "${textureId}" pins ${textureResource.pin.hash}`,
 				});
 			}
 		}
@@ -445,30 +506,33 @@ export function envelopeFindings(
 		if (!entry.domain.startsWith('resource:')) continue;
 		const kind = entry.domain.slice('resource:'.length);
 		const path = `$.dependencyLock.entries[${index}]`;
-		const record = entry.subjectKind === 'resource' && entry.instancePath.length === 0
-			? resourceByKindAndId.get(`${kind}\0${entry.subjectId}`) : undefined;
+		const record =
+			entry.subjectKind === 'resource' && entry.instancePath.length === 0
+				? resourceByKindAndId.get(`${kind}\0${entry.subjectId}`)
+				: undefined;
 		if (record === undefined) {
 			closure.push({
 				path,
 				code: 'missing-resource',
-				message: `the lock requires ${entry.domain} "${entry.subjectId}" and the resource unit carries no such resource`
+				message: `the lock requires ${entry.domain} "${entry.subjectId}" and the resource unit carries no such resource`,
 			});
 			continue;
 		}
-		if (record.unresolved !== null) closure.push({ path, code: 'unresolved-resource', message: record.unresolved.message });
+		if (record.unresolved !== null)
+			closure.push({ path, code: 'unresolved-resource', message: record.unresolved.message });
 		const revision = record.contentRevision ?? record.pin?.hash ?? null;
 		if (revision !== null && revision !== entry.contentRevision) {
 			closure.push({
 				path,
 				code: 'resource-revision-mismatch',
-				message: `the lock pins "${entry.subjectId}" to ${entry.contentRevision} and the resource unit declares ${revision}`
+				message: `the lock pins "${entry.subjectId}" to ${entry.contentRevision} and the resource unit declares ${revision}`,
 			});
 		}
 		if (!samePin(record.pin, entry.pin)) {
 			closure.push({
 				path,
 				code: 'resource-pin-mismatch',
-				message: `the lock and the resource unit pin different bytes for "${entry.subjectId}"`
+				message: `the lock and the resource unit pin different bytes for "${entry.subjectId}"`,
 			});
 		}
 	}

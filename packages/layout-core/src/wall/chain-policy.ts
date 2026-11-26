@@ -34,11 +34,25 @@
 import type { LayoutVec2 } from '../geometry/coordinates';
 import type { LayoutDocumentWallFirst, LayoutWall } from './types';
 import type { WallEndpointHostSnap, WallEndpointJunctionSnap } from './wall-chain';
-import { CURVE_SELF_INTERSECTION_TOLERANCE, sampledPolylineIntersects, type CurveSample } from '../geometry/curve';
+import {
+	CURVE_SELF_INTERSECTION_TOLERANCE,
+	sampledPolylineIntersects,
+	type CurveSample,
+} from '../geometry/curve';
 import { coincidesAsJunction } from './junction-identity';
 import { wallCenterlineSamples } from './centerline';
-import { classifyWallIntersection, sampledWallExtentsOverlap, sampledWallsCross, type SampledTopologyWall, type TopologySegment } from './topology';
-import { topologyComponentKeyByJunctionId, topologyComponentKeyByWallId, type JunctionTopologyComponentKey } from '../room/topology-components';
+import {
+	classifyWallIntersection,
+	sampledWallExtentsOverlap,
+	sampledWallsCross,
+	type SampledTopologyWall,
+	type TopologySegment,
+} from './topology';
+import {
+	topologyComponentKeyByJunctionId,
+	topologyComponentKeyByWallId,
+	type JunctionTopologyComponentKey,
+} from '../room/topology-components';
 import { roomBoundaryPolygon } from '../room/reconciliation-boundary';
 
 export type WallChainPolicyRejectionCode =
@@ -108,7 +122,11 @@ function chainCloses(points: readonly LayoutVec2[], close: boolean): boolean {
 /** A plain even-odd point-in-polygon test; the boundary itself counts as inside. */
 function pointInsidePolygon(polygon: readonly LayoutVec2[], point: LayoutVec2): boolean {
 	let inside = false;
-	for (let index = 0, previous = polygon.length - 1; index < polygon.length; previous = index, index += 1) {
+	for (
+		let index = 0, previous = polygon.length - 1;
+		index < polygon.length;
+		previous = index, index += 1
+	) {
 		const current = polygon[index]!;
 		const prior = polygon[previous]!;
 		// On-edge counts as inside: a ring drawn exactly along a Room boundary is
@@ -148,7 +166,7 @@ function legPolyline(leg: TopologySegment): readonly CurveSample[] | null {
 		{ id: leg.id, centerline: { kind: 'line' } },
 		[leg.start[0], leg.start[1]],
 		[leg.end[0], leg.end[1]],
-		'forward'
+		'forward',
 	);
 	return sampled?.samples ?? null;
 }
@@ -179,16 +197,18 @@ function curvedHostContact(input: {
 	readonly legSamples: readonly CurveSample[];
 }): boolean {
 	const stationJunctionId =
-		coincidesAsJunction(input.leg.start, input.start) || coincidesAsJunction(input.leg.end, input.start)
+		coincidesAsJunction(input.leg.start, input.start) ||
+		coincidesAsJunction(input.leg.end, input.start)
 			? input.wall.startJunctionId
-			: coincidesAsJunction(input.leg.start, input.end) || coincidesAsJunction(input.leg.end, input.end)
+			: coincidesAsJunction(input.leg.start, input.end) ||
+					coincidesAsJunction(input.leg.end, input.end)
 				? input.wall.endJunctionId
 				: null;
 	if (stationJunctionId === null) {
 		return sampledPolylineIntersects(
 			input.samples,
 			input.legSamples,
-			CURVE_SELF_INTERSECTION_TOLERANCE
+			CURVE_SELF_INTERSECTION_TOLERANCE,
 		);
 	}
 	const station = stationJunctionId === input.wall.startJunctionId ? input.start : input.end;
@@ -200,12 +220,19 @@ function curvedHostContact(input: {
 		id: input.leg.id,
 		startJunctionId: stationJunctionId,
 		endJunctionId: `${input.leg.id}:open`,
-		samples: coincidesAsJunction(input.leg.end, station) ? [...input.legSamples].reverse() : input.legSamples
+		samples: coincidesAsJunction(input.leg.end, station)
+			? [...input.legSamples].reverse()
+			: input.legSamples,
 	};
 	return sampledWallsCross(
-		{ id: input.wall.id, startJunctionId: input.wall.startJunctionId, endJunctionId: input.wall.endJunctionId, samples: input.samples },
+		{
+			id: input.wall.id,
+			startJunctionId: input.wall.startJunctionId,
+			endJunctionId: input.wall.endJunctionId,
+			samples: input.samples,
+		},
 		leg,
-		stationJunctionId
+		stationJunctionId,
 	);
 }
 
@@ -227,7 +254,8 @@ function legAgainstHost(input: {
 		// Curved host: the canonical sampled authority, after the same conservative
 		// extent prune the topology gate runs (a pair whose swept boxes cannot overlap
 		// is one the predicate would reject anyway).
-		if (!sampledWallExtentsOverlap({ samples: input.samples }, { samples: input.legSamples })) return null;
+		if (!sampledWallExtentsOverlap({ samples: input.samples }, { samples: input.legSamples }))
+			return null;
 		if (
 			curvedHostContact({
 				wall,
@@ -235,13 +263,13 @@ function legAgainstHost(input: {
 				end: input.end,
 				samples: input.samples,
 				leg: input.leg,
-				legSamples: input.legSamples
+				legSamples: input.legSamples,
 			})
 		) {
 			return {
 				code: 'unconnected_crossing',
 				message: `The chain crosses Wall "${wall.id}" without a Junction. End the chain on that Wall to split it, or draw into the existing Junction.`,
-				wallIds: [wall.id]
+				wallIds: [wall.id],
 			};
 		}
 		return null;
@@ -249,14 +277,14 @@ function legAgainstHost(input: {
 	const host: TopologySegment = {
 		id: wall.id,
 		start: [input.start[0], input.start[1]],
-		end: [input.end[0], input.end[1]]
+		end: [input.end[0], input.end[1]],
 	};
 	const classified = classifyWallIntersection(input.leg, host, []);
 	if (classified.kind === 'proper-crossing' || classified.kind === 'collinear-overlap') {
 		return {
 			code: 'unconnected_crossing',
 			message: `The chain crosses Wall "${wall.id}" without a Junction. End the chain on that Wall to split it, or draw into the existing Junction.`,
-			wallIds: [wall.id]
+			wallIds: [wall.id],
 		};
 	}
 	if (
@@ -270,7 +298,7 @@ function legAgainstHost(input: {
 		return {
 			code: 'unconnected_interior_contact',
 			message: `A chain point lands on Wall "${wall.id}" without connecting to it. Target that Wall deliberately to split it there, or land on an existing Junction.`,
-			wallIds: [wall.id]
+			wallIds: [wall.id],
 		};
 	}
 	return null;
@@ -285,7 +313,7 @@ function legAgainstHost(input: {
  * refuses as a crossing), and both before any Room question.
  */
 export function detectUnsupportedChainConnections(
-	input: WallChainPolicyInput
+	input: WallChainPolicyInput,
 ): WallChainPolicyRejection | null {
 	const legs = chainLegs(input.points, input.close);
 	if (legs.length === 0) return null;
@@ -309,7 +337,7 @@ export function detectUnsupportedChainConnections(
 		const leg: TopologySegment = {
 			id: `draft:${legStart.join(',')}->${legEnd.join(',')}`,
 			start: legStart,
-			end: legEnd
+			end: legEnd,
 		};
 		return { leg, samples: legPolyline(leg) };
 	});
@@ -326,7 +354,7 @@ export function detectUnsupportedChainConnections(
 		const samples =
 			wall.centerline.kind === 'line'
 				? null
-				: wallCenterlineSamples(wall, hostStart, hostEnd, 'forward')?.samples ?? null;
+				: (wallCenterlineSamples(wall, hostStart, hostEnd, 'forward')?.samples ?? null);
 		for (const drafted of draftedLegs) {
 			const rejection = legAgainstHost({
 				wall,
@@ -334,7 +362,7 @@ export function detectUnsupportedChainConnections(
 				end: hostEnd,
 				samples,
 				leg: drafted.leg,
-				legSamples: drafted.samples
+				legSamples: drafted.samples,
 			});
 			if (rejection !== null) return rejection;
 		}
@@ -352,7 +380,9 @@ export function detectUnsupportedChainConnections(
 	) {
 		ring.pop();
 	}
-	const declaredJunctionIds = new Set((input.endpointJunctionSnaps ?? []).map((snap) => snap.junctionId));
+	const declaredJunctionIds = new Set(
+		(input.endpointJunctionSnaps ?? []).map((snap) => snap.junctionId),
+	);
 	for (const room of input.baseline.rooms) {
 		const polygon = roomBoundaryPolygon(input.baseline, room.id);
 		if (polygon === null || polygon.length < 3) continue;
@@ -373,7 +403,7 @@ export function detectUnsupportedChainConnections(
 		return {
 			code: 'nested_ring_without_shared_junction',
 			message: `The ring lies inside Room "${room.id}" without sharing a Junction with it. Connect the ring to that Room's boundary, or draw it outside the Room.`,
-			wallIds: room.boundary.map((ref) => ref.wallId)
+			wallIds: room.boundary.map((ref) => ref.wallId),
 		};
 	}
 	return null;

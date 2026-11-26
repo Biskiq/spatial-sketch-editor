@@ -2,7 +2,12 @@ import { untrack } from 'svelte';
 import { goto, replaceState } from '$app/navigation';
 import { PLACE_COPY_PARAM, studioProjectUrl } from '$lib/platform/studio-entry';
 import { requestFormCopyIntake } from '../adapters/scene/library/intake';
-import { copyLanded, endFormCopyTransfer, peekFormCopyTransfer, type FormCopyTransfer } from '../adapters/scene/library/transfer';
+import {
+	copyLanded,
+	endFormCopyTransfer,
+	peekFormCopyTransfer,
+	type FormCopyTransfer,
+} from '../adapters/scene/library/transfer';
 import type { StudioController } from './studio-controller.svelte';
 import type { StudioTransferView } from './studio-view';
 
@@ -18,7 +23,11 @@ export function createStudioEntrySession(input: {
 	readonly ready: () => boolean;
 	readonly projectId: string;
 	readonly intent: string;
-	readonly entry: { readonly studio: boolean; readonly objectId: string | null; readonly copyId: string | null };
+	readonly entry: {
+		readonly studio: boolean;
+		readonly objectId: string | null;
+		readonly copyId: string | null;
+	};
 	readonly placeCopyItem: string | null;
 	readonly renderRootsRevision: () => number;
 	readonly dockReady: () => boolean;
@@ -43,7 +52,7 @@ export function createStudioEntrySession(input: {
 			peekFormCopyTransfer()?.itemId === input.placeCopyItem &&
 			peekFormCopyTransfer()?.sourceProjectId !== input.projectId
 			? peekFormCopyTransfer()
-			: null
+			: null,
 	);
 
 	function runStudioEntry(id: string): void {
@@ -73,9 +82,11 @@ export function createStudioEntrySession(input: {
 	function returnToObject(): void {
 		if (transfer === null) return;
 		const back = transfer;
-		void goto(studioProjectUrl(back.sourceProjectId, { load: true, object: back.objectId })).then(() => {
-			endFormCopyTransfer();
-		});
+		void goto(studioProjectUrl(back.sourceProjectId, { load: true, object: back.objectId })).then(
+			() => {
+				endFormCopyTransfer();
+			},
+		);
 	}
 
 	function dismiss(): void {
@@ -108,7 +119,11 @@ export function createStudioEntrySession(input: {
 			if (input.entry.copyId !== null && input.intent === 'create') {
 				requestFormCopyIntake(input.projectId, { itemId: input.entry.copyId, mode: 'datum' });
 			}
-			untrack(() => input.controller()?.openFromEntry({ objectId: input.entry.objectId, minted: input.intent === 'create' }));
+			untrack(() =>
+				input
+					.controller()
+					?.openFromEntry({ objectId: input.entry.objectId, minted: input.intent === 'create' }),
+			);
 		});
 		// Place copy in World: arm the saved copy once the project is on the Stage; the creator
 		// then clicks where it goes, through the same Place session as My Objects.
@@ -117,7 +132,11 @@ export function createStudioEntrySession(input: {
 			if (!input.ready()) return;
 			if (!input.dockReady()) return;
 			placeCopyArmed = true;
-			requestFormCopyIntake(input.projectId, { itemId: input.placeCopyItem, mode: 'arm', entityId: transfer?.entityId });
+			requestFormCopyIntake(input.projectId, {
+				itemId: input.placeCopyItem,
+				mode: 'arm',
+				entityId: transfer?.entityId,
+			});
 			untrack(() => input.armObjects());
 			dismissTransferParam();
 		});
@@ -138,7 +157,7 @@ export function createStudioEntrySession(input: {
 			name: transfer.objectName,
 			armed: input.taskOpen() || input.activeWorldTool() === 'objects' || input.libraryOpen(),
 			onReturn: returnToObject,
-			onDismiss: dismiss
+			onDismiss: dismiss,
 		};
 	});
 
@@ -153,7 +172,11 @@ export function createStudioEntrySession(input: {
 			const studio = input.controller();
 			return studio !== undefined && studio.active && studio.backToWorld();
 		},
-		get transfer() { return transferProps; },
-		get transferState() { return transfer; }
+		get transfer() {
+			return transferProps;
+		},
+		get transferState() {
+			return transfer;
+		},
 	};
 }

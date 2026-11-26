@@ -64,18 +64,21 @@ export function buildFormGeometry(mesh: FormMesh, plane: SceneFormPlane): Buffer
 		if (point > 0) {
 			const previous = point - 1;
 			const du = source[point * 3]! - source[previous * 3]!;
-			const dv = plane === 'plan'
-				? source[point * 3 + 2]! - source[previous * 3 + 2]!
-				: source[point * 3 + 1]! - source[previous * 3 + 1]!;
+			const dv =
+				plane === 'plan'
+					? source[point * 3 + 2]! - source[previous * 3 + 2]!
+					: source[point * 3 + 1]! - source[previous * 3 + 1]!;
 			arclength[point] = arclength[previous]! + Math.sqrt(du * du + dv * dv);
 		}
 		ringIndex.set(profileKey(source, point, plane), point);
 	}
 	const closingDu = source[0]! - source[(profilePoints - 1) * 3]!;
-	const closingDv = plane === 'plan'
-		? source[2]! - source[(profilePoints - 1) * 3 + 2]!
-		: source[1]! - source[(profilePoints - 1) * 3 + 1]!;
-	arclength[profilePoints] = arclength[profilePoints - 1]! + Math.sqrt(closingDu * closingDu + closingDv * closingDv);
+	const closingDv =
+		plane === 'plan'
+			? source[2]! - source[(profilePoints - 1) * 3 + 2]!
+			: source[1]! - source[(profilePoints - 1) * 3 + 1]!;
+	arclength[profilePoints] =
+		arclength[profilePoints - 1]! + Math.sqrt(closingDu * closingDu + closingDv * closingDv);
 
 	const capVertexCount = profilePoints * 2;
 	for (let vertex = 0; vertex < vertexCount; vertex += 1) {

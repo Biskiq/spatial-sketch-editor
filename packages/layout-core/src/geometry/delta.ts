@@ -1,5 +1,3 @@
-
-
 export type {
 	EvaluatedRoomUnit,
 	EvaluatedWallBaseUnit,
@@ -10,12 +8,12 @@ export type {
 	CanonicalDeltaBuilders,
 	RoomSlot,
 	WallSlot,
-	RetainedCompileWorld
+	RetainedCompileWorld,
 } from './delta/units';
 export {
 	readPassiveCompiledGeometry,
 	recordPassiveCompiledGeometry,
-	recordSessionlessCompile
+	recordSessionlessCompile,
 } from './delta/passive';
 export { buildRetainedCompileWorldFromPass } from './delta/world';
 export { seedReuseFromPassiveCompile } from './delta/seed';
@@ -24,13 +22,13 @@ export {
 	restoreImmutableCompileSnapshot,
 	restoreImmutableCompileBaseline,
 	registerDeferredGeneratedField,
-	sealCompiledLayoutSnapshot
+	sealCompiledLayoutSnapshot,
 } from './delta/snapshots';
 export {
 	indexedCompiledWall,
 	indexedCompiledWallQueries,
 	forEachRetainedCompiledWall,
-	forEachRetainedCompiledRoom
+	forEachRetainedCompiledRoom,
 } from './delta/lookup';
 export { diffCompiledSources, diffCompiledWalls } from './delta/diff';
 export type { CompiledSourceDelta, CompiledWallPatch } from './delta/diff';

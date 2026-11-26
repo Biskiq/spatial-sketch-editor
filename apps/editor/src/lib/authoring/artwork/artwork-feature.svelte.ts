@@ -6,7 +6,7 @@ export function createArtworkFeature(deps: ArtworkDependencies) {
 	const interaction = createStageArtworkInteraction({
 		...deps.interaction,
 		canEdit: host.canPlace,
-		pickVisibleFace: host.pickVisibleFace
+		pickVisibleFace: host.pickVisibleFace,
 	});
 	const view = host.connect(interaction);
 	return {
@@ -21,13 +21,13 @@ export function createArtworkFeature(deps: ArtworkDependencies) {
 			arm: interaction.arm,
 			importFiles: interaction.importFiles,
 			dragOver: view.dragOver,
-			drop: interaction.drop
+			drop: interaction.drop,
 		},
 		regions: { canvas: view.canvas, overlay: view.overlay, viewport: view.viewport },
 		lifecycle: {
 			resetPresentation: { cancel: view.cancelAll },
 			settlePending: { cancel: view.cancel },
-			leaveProject: { dispose: interaction.dispose }
-		}
+			leaveProject: { dispose: interaction.dispose },
+		},
 	};
 }

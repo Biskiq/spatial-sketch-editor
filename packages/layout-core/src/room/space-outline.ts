@@ -52,7 +52,12 @@ export function pointOnRing(polygon: readonly LayoutVec2[], point: LayoutVec2): 
 }
 
 /** Two segments cross at a point interior to both; shared endpoints never count. */
-function segmentsCrossProperly(a: LayoutVec2, b: LayoutVec2, c: LayoutVec2, d: LayoutVec2): boolean {
+function segmentsCrossProperly(
+	a: LayoutVec2,
+	b: LayoutVec2,
+	c: LayoutVec2,
+	d: LayoutVec2,
+): boolean {
 	const o1 = orientXZ(a, b, c);
 	const o2 = orientXZ(a, b, d);
 	const o3 = orientXZ(c, d, a);
@@ -97,7 +102,7 @@ export function spaceOutlineSelfIntersects(polygon: readonly LayoutVec2[]): bool
 			if (collinearOverlap(a, b, c, d)) return true;
 			const contact = classifyWallIntersection(
 				{ id: 'first', start: a, end: b },
-				{ id: 'second', start: c, end: d }
+				{ id: 'second', start: c, end: d },
 			);
 			if (contact.kind === 'endpoint-on-interior') return true;
 		}
@@ -118,7 +123,7 @@ export function spaceOutlineSelfIntersects(polygon: readonly LayoutVec2[]): bool
  */
 export function polygonContainsPolygon(
 	outer: readonly LayoutVec2[],
-	inner: readonly LayoutVec2[]
+	inner: readonly LayoutVec2[],
 ): boolean {
 	if (inner.length < 3 || outer.length < 3) return false;
 	for (const point of inner) {
@@ -148,7 +153,7 @@ export function spacePairIssue(
 	polygonA: readonly LayoutVec2[],
 	polygonB: readonly LayoutVec2[],
 	openA: boolean,
-	openB: boolean
+	openB: boolean,
 ): 'space_overlap' | 'space_contains_space' | null {
 	if (!openA && !openB) return null;
 	if (!polygonsShareInteriorArea(polygonA, polygonB)) return null;

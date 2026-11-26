@@ -2,7 +2,11 @@ import type { LayoutDocumentIssue } from '../../plan/issue';
 import type { LayoutGeometryIssue } from '../../geometry/types';
 import type { OpeningSetIssue } from '../../wall/opening-set';
 import { spaceBoundaryCycleKey } from '../reconciliation-boundary';
-import type { ReconciliationFailure, ReconciliationResult, RoomIdAllocator } from '../reconciliation-types';
+import type {
+	ReconciliationFailure,
+	ReconciliationResult,
+	RoomIdAllocator,
+} from '../reconciliation-types';
 import { wallCenterlineSamples } from '../../wall/centerline';
 import type { LayoutDocumentWallFirst, LayoutWallFirstRoom } from '../../wall/types';
 import type { LayoutVec2 } from '../../geometry/coordinates';
@@ -11,24 +15,27 @@ import type { RoomMovePlan, RoomMoveRejectionCode } from './contracts';
 
 /** Result narrowing: `RoomReconciliation` carries no `kind` discriminant. */
 export function isReconciliationFailure(
-	result: ReconciliationResult
+	result: ReconciliationResult,
 ): result is ReconciliationFailure {
 	return 'kind' in result && result.kind === 'rejected';
 }
-
 
 export function reject(
 	code: RoomMoveRejectionCode,
 	message: string,
 	targetIds?: readonly string[],
-	issues?: readonly (LayoutDocumentIssue | LayoutGeometryIssue | OpeningSetIssue)[]
+	issues?: readonly (LayoutDocumentIssue | LayoutGeometryIssue | OpeningSetIssue)[],
 ): RoomMovePlan {
 	return {
 		kind: 'rejected',
-		rejection: { code, message, ...(targetIds ? { targetIds } : {}), ...(issues ? { issues } : {}) }
+		rejection: {
+			code,
+			message,
+			...(targetIds ? { targetIds } : {}),
+			...(issues ? { issues } : {}),
+		},
 	};
 }
-
 
 /**
  * Boundary-cycle key of a persisted Room. Enclosed Rooms keep the shipped
@@ -37,13 +44,12 @@ export function reject(
  */
 export function roomBoundaryCycleKey(
 	document: Pick<LayoutDocumentWallFirst, 'junctions' | 'walls'>,
-	room: Pick<LayoutWallFirstRoom, 'id' | 'boundary' | 'virtualEdges'>
+	room: Pick<LayoutWallFirstRoom, 'id' | 'boundary' | 'virtualEdges'>,
 ): string {
 	// The shared key is identical to `canonicalBoundaryCycleKey` for an enclosed
 	// Room and appends virtual-edge tokens for an open one.
 	return spaceBoundaryCycleKey(document, room) ?? `unresolved:${room.id}`;
 }
-
 
 /**
  * An allocator that must never be reached: a rigid move preserves global Room
@@ -60,10 +66,9 @@ export function guardedAllocator(attempted: { value: boolean }): RoomIdAllocator
 		nextRoomName() {
 			attempted.value = true;
 			return 'Unreachable Room Move';
-		}
+		},
 	};
 }
-
 
 /**
  * Rigid rotation of one point about `pivot`, in DOCUMENT X/Z.
@@ -87,7 +92,6 @@ export function rotatePointAbout(point: LayoutVec2, pivot: LayoutVec2, yaw: numb
 	return [pivot[0] + x * cos + z * sin, pivot[1] - x * sin + z * cos];
 }
 
-
 /**
  * Rigid-motion copy of one canonical centerline: every bend point and every span
  * control moves through `transform`. The rotation partner of
@@ -95,7 +99,7 @@ export function rotatePointAbout(point: LayoutVec2, pivot: LayoutVec2, yaw: numb
  */
 export function transformWallCenterline(
 	centerline: LayoutDocumentWallFirst['walls'][number]['centerline'],
-	transform: (point: LayoutVec2) => LayoutVec2
+	transform: (point: LayoutVec2) => LayoutVec2,
 ): LayoutDocumentWallFirst['walls'][number]['centerline'] {
 	if (centerline.kind === 'line') return { kind: 'line' };
 	return {
@@ -103,16 +107,15 @@ export function transformWallCenterline(
 		knots: centerline.knots.map((knot) => ({ id: knot.id, point: transform(knot.point) })),
 		spans: centerline.spans.map((span) => ({
 			handleOut: transform(span.handleOut),
-			handleIn: transform(span.handleIn)
-		}))
+			handleIn: transform(span.handleIn),
+		})),
 	};
 }
-
 
 /** Sample every moved Wall of a candidate through the one canonical sampler. */
 export function sampleMovedWallProposals(
 	candidate: LayoutDocumentWallFirst,
-	wallIds: readonly string[]
+	wallIds: readonly string[],
 ): RoomUnitMoveProposalWall[] {
 	const pointById = new Map(candidate.junctions.map((junction) => [junction.id, junction.point]));
 	const proposals: RoomUnitMoveProposalWall[] = [];
@@ -126,7 +129,7 @@ export function sampleMovedWallProposals(
 		if (!sampled) continue;
 		proposals.push({
 			wallId,
-			points: sampled.samples.map((sample) => [sample.point[0], sample.point[1]] as LayoutVec2)
+			points: sampled.samples.map((sample) => [sample.point[0], sample.point[1]] as LayoutVec2),
 		});
 	}
 	return proposals;

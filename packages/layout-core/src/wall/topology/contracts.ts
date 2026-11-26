@@ -28,7 +28,6 @@ export type WallFirstOpRejectionCode =
 	/* C2 Round repack conflict. */
 	| 'round_repack_conflict';
 
-
 export type WallFirstOpRejection = {
 	code: WallFirstOpRejectionCode;
 	message: string;
@@ -44,7 +43,6 @@ export type WallFirstOpRejection = {
 	/** The final canonical gate's issues, when validation rejects. */
 	issues?: readonly LayoutDocumentIssue[];
 };
-
 
 export type WallFirstOpPlan =
 	| {

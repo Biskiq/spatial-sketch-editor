@@ -1,6 +1,19 @@
 import { ProjectNotFoundError } from '../project-persistence.js';
-import { getPublicationStatus, PublicationConflictError, PublicationNotFoundError, unpublishVersion } from '../publication-persistence.js';
-import { errorBody, unauthorized, notFound, databaseFailure, sessionUserId, readExpectedPublicationRevision, publicationConflict } from '../http.js';
+import {
+	getPublicationStatus,
+	PublicationConflictError,
+	PublicationNotFoundError,
+	unpublishVersion,
+} from '../publication-persistence.js';
+import {
+	errorBody,
+	unauthorized,
+	notFound,
+	databaseFailure,
+	sessionUserId,
+	readExpectedPublicationRevision,
+	publicationConflict,
+} from '../http.js';
 
 import type { RouteDeps } from './deps.js';
 
@@ -44,7 +57,8 @@ export function registerPublicationRoutes(deps: RouteDeps): void {
 			return reply.code(400).send(errorBody('invalid_project_id', 'Invalid project ID'));
 		}
 		const revision = readExpectedPublicationRevision(request.body);
-		if (revision === null) return reply.code(400).send(errorBody('invalid_body', 'Expected a publication body'));
+		if (revision === null)
+			return reply.code(400).send(errorBody('invalid_body', 'Expected a publication body'));
 		try {
 			return await unpublishVersion(pool, userId, projectId, revision);
 		} catch (error) {
@@ -64,10 +78,11 @@ export function registerPublicationRoutes(deps: RouteDeps): void {
 		return notFound(reply);
 	});
 
-	app.get('/publications/:publicationId/versions/:version/assets/:assetId/content', async (_request, reply) => {
-		reply.header('Cache-Control', 'no-store');
-		return notFound(reply);
-	});
+	app.get(
+		'/publications/:publicationId/versions/:version/assets/:assetId/content',
+		async (_request, reply) => {
+			reply.header('Cache-Control', 'no-store');
+			return notFound(reply);
+		},
+	);
 }
-
-

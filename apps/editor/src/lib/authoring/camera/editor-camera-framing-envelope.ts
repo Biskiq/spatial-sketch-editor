@@ -21,9 +21,7 @@ export type CameraFramingEnvelopePolicyState = {
 };
 
 /** One local ordered-bounds predicate; never depends on codec error machinery. */
-export function isOrderedCameraFramingEnvelope(
-	envelope: CameraFramingEnvelope
-): boolean {
+export function isOrderedCameraFramingEnvelope(envelope: CameraFramingEnvelope): boolean {
 	return (
 		Number.isFinite(envelope.enterStart) &&
 		Number.isFinite(envelope.enterEnd) &&
@@ -51,17 +49,12 @@ function assertOrderedEnvelope(envelope: CameraFramingEnvelope, label: string) {
 function assertKeyProgresses(keyProgresses: readonly number[]) {
 	for (const progress of keyProgresses) {
 		if (!isValidCameraFramingEnvelopeKeyProgress(progress)) {
-			throw new Error(
-				'Framing envelope key progresses must be finite and strictly inside (0, 1)'
-			);
+			throw new Error('Framing envelope key progresses must be finite and strictly inside (0, 1)');
 		}
 	}
 }
 
-function envelopesEqual(
-	left: CameraFramingEnvelope,
-	right: CameraFramingEnvelope
-) {
+function envelopesEqual(left: CameraFramingEnvelope, right: CameraFramingEnvelope) {
 	return (
 		left.enterStart === right.enterStart &&
 		left.enterEnd === right.enterEnd &&
@@ -75,16 +68,10 @@ function envelopesEqual(
  * reaches the `w = 1` plateau without narrowing the ramp. The floor at 0 is the
  * only place the ramp may compress (bounds must stay non-negative).
  */
-function expandEnterBounds(
-	envelope: CameraFramingEnvelope,
-	earliestKeyProgress: number
-) {
+function expandEnterBounds(envelope: CameraFramingEnvelope, earliestKeyProgress: number) {
 	const enterWidth = envelope.enterEnd - envelope.enterStart;
 	const enterEnd = Math.min(envelope.enterEnd, earliestKeyProgress);
-	const enterStart = Math.max(
-		0,
-		Math.min(envelope.enterStart, enterEnd - enterWidth)
-	);
+	const enterStart = Math.max(0, Math.min(envelope.enterStart, enterEnd - enterWidth));
 	return { enterStart, enterEnd };
 }
 
@@ -96,12 +83,10 @@ function expandEnterBounds(
  */
 export function createAutoManagedFramingEnvelope(
 	firstKeyProgress: number,
-	seed: CameraFramingEnvelope
+	seed: CameraFramingEnvelope,
 ): CameraFramingEnvelopePolicyState {
 	if (!isValidCameraFramingEnvelopeKeyProgress(firstKeyProgress)) {
-		throw new Error(
-			'Framing envelope key progress must be finite and strictly inside (0, 1)'
-		);
+		throw new Error('Framing envelope key progress must be finite and strictly inside (0, 1)');
 	}
 	assertOrderedEnvelope(seed, 'Framing envelope seed');
 	const { enterStart, enterEnd } = expandEnterBounds(seed, firstKeyProgress);
@@ -110,9 +95,9 @@ export function createAutoManagedFramingEnvelope(
 			enterStart,
 			enterEnd,
 			exitStart: Math.max(seed.exitStart, firstKeyProgress),
-			exitEnd: 1
+			exitEnd: 1,
 		},
-		management: 'auto'
+		management: 'auto',
 	};
 }
 
@@ -125,7 +110,7 @@ export function createAutoManagedFramingEnvelope(
  */
 export function updateFramingEnvelopeForKeyProgresses(
 	state: CameraFramingEnvelopePolicyState,
-	keyProgresses: readonly number[]
+	keyProgresses: readonly number[],
 ): CameraFramingEnvelopePolicyState {
 	assertKeyProgresses(keyProgresses);
 	assertOrderedEnvelope(state.envelope, 'Framing envelope policy state');
@@ -140,7 +125,7 @@ export function updateFramingEnvelopeForKeyProgresses(
 		enterEnd,
 		exitStart: Math.max(current.exitStart, latest),
 		// Auto states pin exitEnd to 1 at creation; it only ever moves toward 1.
-		exitEnd: Math.max(current.exitEnd, 1)
+		exitEnd: Math.max(current.exitEnd, 1),
 	};
 	if (envelopesEqual(next, current)) return state;
 	return { envelope: next, management: 'auto' };
@@ -154,7 +139,7 @@ export function updateFramingEnvelopeForKeyProgresses(
  */
 export function updateFramingEnvelopeHandleValue(
 	state: CameraFramingEnvelopePolicyState,
-	edited: CameraFramingEnvelope
+	edited: CameraFramingEnvelope,
 ): CameraFramingEnvelopePolicyState {
 	assertOrderedEnvelope(edited, 'Framing envelope value');
 	if (envelopesEqual(edited, state.envelope)) return state;
@@ -166,7 +151,7 @@ export function updateFramingEnvelopeHandleValue(
  * bound changed. Marking an already-manual state preserves identity.
  */
 export function markFramingEnvelopeManual(
-	state: CameraFramingEnvelopePolicyState
+	state: CameraFramingEnvelopePolicyState,
 ): CameraFramingEnvelopePolicyState {
 	if (state.management === 'manual') return state;
 	return { envelope: { ...state.envelope }, management: 'manual' };

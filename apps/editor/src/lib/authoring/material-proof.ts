@@ -20,7 +20,7 @@ import {
 	type MaterialDigestProof,
 	type MaterialDigestProofEntry,
 	type MaterialIssue,
-	type Recipe
+	type Recipe,
 } from '@portfolio/project-model/materials';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
 
@@ -30,7 +30,9 @@ export type MaterialProofRegistry = {
 	/** The current immutable proof view for the synchronous planner. */
 	proof(): MaterialDigestProof;
 	/** Verify a new draft recipe before its registration intent is accepted. */
-	prepareFinishRegistration(recipe: Recipe): Promise<
+	prepareFinishRegistration(
+		recipe: Recipe,
+	): Promise<
 		| { readonly ok: true; readonly hash: Hash; readonly proof: MaterialDigestProof }
 		| { readonly ok: false; readonly issues: readonly MaterialIssue[] }
 	>;
@@ -46,7 +48,7 @@ function proofOf(entries: ReadonlyMap<Hash, MaterialDigestProofEntry>): Material
 		matches: (hash: Hash, recipe: Recipe) => {
 			const entry = frozen.get(hash);
 			return entry !== undefined && entry.canonicalJson === canonicalRecipeJson(recipe);
-		}
+		},
 	});
 }
 
@@ -74,12 +76,12 @@ export function createMaterialProofRegistry(): MaterialProofRegistry {
 		},
 		clear() {
 			entries.clear();
-		}
+		},
 	};
 }
 
 export async function proofForEnvelope(
-	envelope: ProjectEnvelope
+	envelope: ProjectEnvelope,
 ): Promise<
 	| { readonly ok: true; readonly proof: MaterialDigestProof }
 	| { readonly ok: false; readonly issues: readonly MaterialIssue[] }

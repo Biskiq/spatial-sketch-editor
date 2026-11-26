@@ -17,7 +17,7 @@ import type { Vec3 } from '@portfolio/project-model/scene';
 import type {
 	StageAdapterContext,
 	StageAdapterServices,
-	StagePointerIntent
+	StagePointerIntent,
 } from '$lib/authoring/stage/stage-adapter-host';
 import { acceptFormCommand } from '../scene/form-card-command';
 import { lightForward, rotationForLightDirection } from '../../look/light-aim';
@@ -25,7 +25,7 @@ import {
 	drawableSpotAngle,
 	LIGHT_MIN_RANGE_METERS,
 	penumbraForInnerRadius,
-	pointReachRingRadius
+	pointReachRingRadius,
 } from '../../look/light-presentation';
 import {
 	add,
@@ -35,7 +35,7 @@ import {
 	pointOf,
 	rayPlane,
 	scale,
-	sub
+	sub,
 } from './light-math';
 import {
 	LIGHT_DEFAULT_SPOT_ANGLE,
@@ -44,23 +44,17 @@ import {
 	selectedLight,
 	spotTargetFor,
 	viewportCss,
-	type Light
+	type Light,
 } from './light-subjects';
 import {
 	clearLightPreview,
 	publishLightPreview,
 	type LightInstallWindow,
 	type LightLease,
-	type LightRefusal
+	type LightRefusal,
 } from './light-session-ports';
 
-type GestureKind =
-	| 'move'
-	| 'aim'
-	| 'range'
-	| 'angle'
-	| 'penumbra'
-	| 'height';
+type GestureKind = 'move' | 'aim' | 'range' | 'angle' | 'penumbra' | 'height';
 
 type Gesture = {
 	readonly kind: GestureKind;
@@ -83,7 +77,7 @@ export type LightGestureSession = {
 	begin(
 		intent: StagePointerIntent,
 		adapterContext: StageAdapterContext,
-		shift: boolean
+		shift: boolean,
 	): LightGestureBegin;
 	/** Update the captured copy from the pointer and publish it as the session preview. */
 	move(intent: StagePointerIntent, adapterContext: StageAdapterContext): void;
@@ -111,7 +105,7 @@ export function createLightGestureSession(deps: LightGestureDeps): LightGestureS
 	function beginGesture(
 		handleId: string | undefined,
 		adapterContext: StageAdapterContext,
-		shift = false
+		shift = false,
 	): Gesture | null {
 		const entity = selectedLight(adapterContext);
 		if (entity === null) return null;
@@ -140,7 +134,7 @@ export function createLightGestureSession(deps: LightGestureDeps): LightGestureS
 				entity: cloneLight(entity),
 				pointRangePlaneY: supportPlaneReached
 					? adapterContext.snapshot.domain.datumMeters
-					: entity.position[1]
+					: entity.position[1],
 			};
 		}
 		const target =
@@ -150,14 +144,11 @@ export function createLightGestureSession(deps: LightGestureDeps): LightGestureS
 		return {
 			kind,
 			entity: cloneLight(entity),
-			...(target?.surfaceBound ? { fixedTarget: [...target.target] as Vec3 } : {})
+			...(target?.surfaceBound ? { fixedTarget: [...target.target] as Vec3 } : {}),
 		};
 	}
 
-	function updateGesture(
-		intent: StagePointerIntent,
-		adapterContext: StageAdapterContext
-	): void {
+	function updateGesture(intent: StagePointerIntent, adapterContext: StageAdapterContext): void {
 		if (gesture === null) return;
 		const ray = adapterContext.ray(viewportCss(intent.css, adapterContext));
 		if (ray === null) return;
@@ -177,7 +168,7 @@ export function createLightGestureSession(deps: LightGestureDeps): LightGestureS
 			current.position = [
 				current.position[0],
 				Math.max(adapterContext.snapshot.domain.datumMeters + 0.05, axis.point[1]),
-				current.position[2]
+				current.position[2],
 			];
 			return;
 		}
@@ -185,10 +176,7 @@ export function createLightGestureSession(deps: LightGestureDeps): LightGestureS
 			const drawn = adapterContext.pickScene(ray);
 			const rayPoint =
 				drawn?.worldPoint ??
-				add(
-					ray.origin,
-					scale(ray.direction, Math.max(3, distance(current.position, ray.origin)))
-				);
+				add(ray.origin, scale(ray.direction, Math.max(3, distance(current.position, ray.origin))));
 			current.rotation = rotationForLightDirection(sub(rayPoint, current.position));
 			// Aim writes rotation only. Reach is an authored cutoff and is
 			// independent of where the beam lands.
@@ -196,15 +184,14 @@ export function createLightGestureSession(deps: LightGestureDeps): LightGestureS
 		}
 		const forward = lightForward(current.rotation);
 		if (gesture.kind === 'range' && current.light === 'point') {
-			const planeY =
-				gesture.pointRangePlaneY ?? adapterContext.snapshot.domain.datumMeters;
+			const planeY = gesture.pointRangePlaneY ?? adapterContext.snapshot.domain.datumMeters;
 			const point = pointOf(ray, planeY);
 			if (point !== null) {
 				(current as { range?: number }).range = Math.max(
 					LIGHT_MIN_RANGE_METERS,
 					planeY === adapterContext.snapshot.domain.datumMeters
 						? distance(current.position, point)
-						: horizontalDistance(current.position, point)
+						: horizontalDistance(current.position, point),
 				);
 			}
 			return;
@@ -214,7 +201,7 @@ export function createLightGestureSession(deps: LightGestureDeps): LightGestureS
 			if (axis === null) return;
 			(current as { range?: number }).range = Math.max(
 				LIGHT_MIN_RANGE_METERS,
-				axis.distanceAlongAxis
+				axis.distanceAlongAxis,
 			);
 			return;
 		}
@@ -226,7 +213,7 @@ export function createLightGestureSession(deps: LightGestureDeps): LightGestureS
 			const radius = distance(point, planeCenter);
 			(current as { angle: number }).angle = Math.min(
 				drawableSpotAngle(Math.PI),
-				Math.max(Math.PI / 180, Math.atan2(radius, targetDistance))
+				Math.max(Math.PI / 180, Math.atan2(radius, targetDistance)),
 			);
 			return;
 		}
@@ -237,11 +224,7 @@ export function createLightGestureSession(deps: LightGestureDeps): LightGestureS
 			if (point === null) return;
 			(current as { penumbra: number }).penumbra = Math.min(
 				0.95,
-				penumbraForInnerRadius(
-					targetDistance,
-					current.angle,
-					distance(point, planeCenter)
-				)
+				penumbraForInnerRadius(targetDistance, current.angle, distance(point, planeCenter)),
 			);
 			return;
 		}
@@ -249,7 +232,7 @@ export function createLightGestureSession(deps: LightGestureDeps): LightGestureS
 
 	async function commitGesture(
 		current: Gesture,
-		adapterContext: StageAdapterContext
+		adapterContext: StageAdapterContext,
 	): Promise<void> {
 		const entity = current.entity;
 		const update =
@@ -258,7 +241,7 @@ export function createLightGestureSession(deps: LightGestureDeps): LightGestureS
 						position: [...entity.position],
 						...(entity.light === 'spot' && current.fixedTarget !== undefined
 							? { rotation: [...entity.rotation] }
-							: {})
+							: {}),
 					}
 				: current.kind === 'height'
 					? { position: [...entity.position] }
@@ -278,7 +261,7 @@ export function createLightGestureSession(deps: LightGestureDeps): LightGestureS
 				adapterContext.snapshot,
 				entity.id,
 				'update-light',
-				{ entityId: entity.id, ...update } as never
+				{ entityId: entity.id, ...update } as never,
 			);
 			if (outcome.kind === 'refused') refusal.note(outcome.message);
 		} finally {
@@ -328,6 +311,6 @@ export function createLightGestureSession(deps: LightGestureDeps): LightGestureS
 			const captured = gesture?.entity.id;
 			gesture = null;
 			return captured;
-		}
+		},
 	};
 }

@@ -36,7 +36,10 @@ export function drawnMeshesOf(objects: readonly Object3D[]): Mesh[] {
 }
 
 /** A surface-only index view over the existing buffers; the caller disposes the wrapper. */
-export function repairSurfaceGeometry(mesh: Mesh, surface: LayoutSurfaceRef): BufferGeometry | null {
+export function repairSurfaceGeometry(
+	mesh: Mesh,
+	surface: LayoutSurfaceRef,
+): BufferGeometry | null {
 	const source = mesh.geometry;
 	const identity = renderIdentityOf(mesh);
 	if (surface.kind === 'room-floor' || surface.kind === 'room-lid') {
@@ -53,16 +56,19 @@ export function repairSurfaceGeometry(mesh: Mesh, surface: LayoutSurfaceRef): Bu
 		if (identity?.kind !== 'wall' || identity.id !== surface.wallId) return null;
 		const ranges = source.userData.pickRanges as readonly Layout3dPickRange[] | undefined;
 		for (const range of ranges ?? []) {
-			if (range.segmentId === surface.wallId && range.paintSide === surface.side) add(range.start, range.count);
+			if (range.segmentId === surface.wallId && range.paintSide === surface.side)
+				add(range.start, range.count);
 		}
 	} else {
 		if (identity?.kind !== 'region' || identity.id !== surface.regionId) return null;
 		const faces = source.userData.regionSurfaces as readonly string[] | undefined;
-		for (const [triangle, face] of (faces ?? []).entries()) if (face === surface.face) add(triangle * 3, 3);
+		for (const [triangle, face] of (faces ?? []).entries())
+			if (face === surface.face) add(triangle * 3, 3);
 	}
 	if (indices.length === 0) return null;
 	const geometry = new BufferGeometry();
-	for (const [name, attribute] of Object.entries(source.attributes)) geometry.setAttribute(name, attribute);
+	for (const [name, attribute] of Object.entries(source.attributes))
+		geometry.setAttribute(name, attribute);
 	geometry.setIndex(new BufferAttribute(new Uint32Array(indices), 1));
 	return geometry;
 }
@@ -73,16 +79,23 @@ export function repairSurfaceGeometry(mesh: Mesh, surface: LayoutSurfaceRef): Bu
  * An empty array means "nothing draws this subject": a failed Wall resolves to its
  * failure surface (still an object), a missing one resolves to nothing.
  */
-export function selectionObjectsOf(scenePick: ScenePickSource, entry: StageSelectionEntry): Object3D[] {
+export function selectionObjectsOf(
+	scenePick: ScenePickSource,
+	entry: StageSelectionEntry,
+): Object3D[] {
 	const id = entry.reference.subject.id;
 	if (entry.reference.domain === 'layout') {
 		const kind = entry.reference.subject.kind;
 		const owned =
-			kind === 'wall' ? scenePick.layoutObjectOf('wall', id)
-			: kind === 'object' ? scenePick.layoutObjectOf('object', id)
-			: kind === 'region' ? scenePick.layoutObjectOf('region', id)
-			: kind === 'room' ? scenePick.layoutObjectOf('floor', id)
-			: null;
+			kind === 'wall'
+				? scenePick.layoutObjectOf('wall', id)
+				: kind === 'object'
+					? scenePick.layoutObjectOf('object', id)
+					: kind === 'region'
+						? scenePick.layoutObjectOf('region', id)
+						: kind === 'room'
+							? scenePick.layoutObjectOf('floor', id)
+							: null;
 		return owned === null ? [] : [owned];
 	}
 	const entity = scenePick.entityObject(id);
@@ -150,7 +163,10 @@ export function ghostSubjectOf(objects: readonly Object3D[]): SliceGhostSubject 
 	const max = bounds === null ? [0, 0, 0] : [...(bounds.max as [number, number, number])];
 	return {
 		triangles,
-		bounds: bounds === null ? null : { min: min as [number, number, number], max: max as [number, number, number] },
-		approximate
+		bounds:
+			bounds === null
+				? null
+				: { min: min as [number, number, number], max: max as [number, number, number] },
+		approximate,
 	};
 }

@@ -25,7 +25,7 @@ import {
 	type AuthoringIntent,
 	type CapturedIdAllocation,
 	type CapturedInput,
-	type F4JsonValue
+	type F4JsonValue,
 } from './types';
 
 const INTENT_KEYS = [
@@ -36,7 +36,7 @@ const INTENT_KEYS = [
 	'targets',
 	'payload',
 	'capturedInputs',
-	'allocatedIds'
+	'allocatedIds',
 ] as const;
 
 export type IntentValidationOptions = {
@@ -58,15 +58,22 @@ export type DeterminismProblem = ShapeIssue;
  */
 export function validateAuthoringIntent(
 	input: unknown,
-	options: IntentValidationOptions = {}
+	options: IntentValidationOptions = {},
 ): ShapeValidation<AuthoringIntent> {
 	const reader = new ShapeReader();
 	const problem = deterministicProblem(input, '$');
 	if (problem !== null) return { success: false, issues: [problem] };
 	// structuredClone refuses transparent proxies that reflection cannot identify.
 	// Capture once: getters are already refused and no caller alias reaches planning.
-	try { input = immutableF4Data(input); } catch {
-		return { success: false, issues: [{ path: '$', code: 'not-deterministic', message: 'Intent must be capturable plain data' }] };
+	try {
+		input = immutableF4Data(input);
+	} catch {
+		return {
+			success: false,
+			issues: [
+				{ path: '$', code: 'not-deterministic', message: 'Intent must be capturable plain data' },
+			],
+		};
 	}
 	const record = reader.object(input, '$', INTENT_KEYS);
 	if (record === null) return { success: false, issues: reader.issues };
@@ -86,7 +93,8 @@ export function validateAuthoringIntent(
 	const payload = readDeterministicValue(reader, record.payload, '$.payload');
 	const capturedInputs = readCapturedInputs(reader, record.capturedInputs);
 	const allocatedIds = readAllocatedIds(reader, record.allocatedIds);
-	if (reader.issues.length > 0 || !revision.success) return { success: false, issues: reader.issues };
+	if (reader.issues.length > 0 || !revision.success)
+		return { success: false, issues: reader.issues };
 
 	return {
 		success: true,
@@ -98,9 +106,9 @@ export function validateAuthoringIntent(
 			targets: targets!,
 			payload: payload!,
 			capturedInputs: capturedInputs!,
-			allocatedIds: allocatedIds!
+			allocatedIds: allocatedIds!,
 		}),
-		ignoredOptionalExtensions: []
+		ignoredOptionalExtensions: [],
 	};
 }
 
@@ -120,7 +128,8 @@ export function intentScope(intent: AuthoringIntent): IntentScope {
 	const resourceKinds = new Set<string>();
 	for (const target of intent.targets) {
 		if (isResourceDomain(target.domain)) resourceKinds.add(target.domain.slice('resource:'.length));
-		else if ((REFERENCE_DOMAINS as readonly string[]).includes(target.domain)) domains.add(target.domain as SemanticDomain);
+		else if ((REFERENCE_DOMAINS as readonly string[]).includes(target.domain))
+			domains.add(target.domain as SemanticDomain);
 	}
 	return { domains: [...domains].sort(), resourceKinds: [...resourceKinds].sort() };
 }
@@ -134,34 +143,64 @@ export function intentScope(intent: AuthoringIntent): IntentScope {
 export function deterministicProblem(value: unknown, path: string): DeterminismProblem | null {
 	const active = new Set<object>();
 	function visit(value: unknown, path: string, depth: number): DeterminismProblem | null {
-		const invalid = (message: string): DeterminismProblem => ({ path, code: 'not-deterministic', message });
+		const invalid = (message: string): DeterminismProblem => ({
+			path,
+			code: 'not-deterministic',
+			message,
+		});
 		if (value === null || typeof value === 'string' || typeof value === 'boolean') return null;
-		if (typeof value === 'number') return Number.isFinite(value) ? null : { path, code: 'non-finite-number', message: `${path} must be finite` };
+		if (typeof value === 'number')
+			return Number.isFinite(value)
+				? null
+				: { path, code: 'non-finite-number', message: `${path} must be finite` };
 		if (typeof value !== 'object') return invalid(`${path} must contain data only`);
-		if (depth > 128 || active.has(value)) return invalid(`${path} is cyclic or exceeds the capture depth`);
+		if (depth > 128 || active.has(value))
+			return invalid(`${path} is cyclic or exceeds the capture depth`);
 		const array = Array.isArray(value);
 		const prototype = Object.getPrototypeOf(value);
-		if (prototype !== (array ? Array.prototype : Object.prototype) && !(prototype === null && !array)) return invalid(`${path} must be a plain object or array`);
+		if (
+			prototype !== (array ? Array.prototype : Object.prototype) &&
+			!(prototype === null && !array)
+		)
+			return invalid(`${path} must be a plain object or array`);
 		const descriptors = Object.getOwnPropertyDescriptors(value);
-		if (array && Object.keys(descriptors).length !== (value as unknown[]).length + 1) return invalid(`${path} must be a dense data array`);
+		if (array && Object.keys(descriptors).length !== (value as unknown[]).length + 1)
+			return invalid(`${path} must be a dense data array`);
 		active.add(value);
 		for (const key of Reflect.ownKeys(descriptors)) {
 			if (array && key === 'length') continue;
 			const descriptor = descriptors[key as string];
-			if (typeof key !== 'string' || !descriptor || !('value' in descriptor) || !descriptor.enumerable) return invalid(`${path} must contain enumerable data properties only`);
-			if (array && !/^(0|[1-9][0-9]*)$/.test(key)) return invalid(`${path} has a non-index array property`);
+			if (
+				typeof key !== 'string' ||
+				!descriptor ||
+				!('value' in descriptor) ||
+				!descriptor.enumerable
+			)
+				return invalid(`${path} must contain enumerable data properties only`);
+			if (array && !/^(0|[1-9][0-9]*)$/.test(key))
+				return invalid(`${path} has a non-index array property`);
 			const problem = visit(descriptor.value, `${path}.${key}`, depth + 1);
 			if (problem) return problem;
 		}
 		active.delete(value);
 		return null;
 	}
-	try { return visit(value, path, 0); } catch {
-		return { path, code: 'not-deterministic', message: `${path} cannot be inspected as plain data` };
+	try {
+		return visit(value, path, 0);
+	} catch {
+		return {
+			path,
+			code: 'not-deterministic',
+			message: `${path} cannot be inspected as plain data`,
+		};
 	}
 }
 
-function readDeterministicValue(reader: ShapeReader, input: unknown, path: string): F4JsonValue | null {
+function readDeterministicValue(
+	reader: ShapeReader,
+	input: unknown,
+	path: string,
+): F4JsonValue | null {
 	const problem = deterministicProblem(input, path);
 	if (problem !== null) {
 		reader.problem(problem.path, problem.code, problem.message);
@@ -173,7 +212,7 @@ function readDeterministicValue(reader: ShapeReader, input: unknown, path: strin
 function readTargets(
 	reader: ShapeReader,
 	input: unknown,
-	options: IntentValidationOptions
+	options: IntentValidationOptions,
 ): AuthoringIntent['targets'] | null {
 	if (!Array.isArray(input)) {
 		reader.problem('$.targets', 'not-an-array', '$.targets must be an array');
@@ -211,7 +250,10 @@ function readCapturedInputs(reader: ShapeReader, input: unknown): readonly Captu
 	return captured.length === input.length ? captured : null;
 }
 
-function readAllocatedIds(reader: ShapeReader, input: unknown): readonly CapturedIdAllocation[] | null {
+function readAllocatedIds(
+	reader: ShapeReader,
+	input: unknown,
+): readonly CapturedIdAllocation[] | null {
 	if (!Array.isArray(input)) {
 		reader.problem('$.allocatedIds', 'not-an-array', '$.allocatedIds must be an array');
 		return null;

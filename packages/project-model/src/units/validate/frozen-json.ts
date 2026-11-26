@@ -1,4 +1,8 @@
-import { hasImmutableJsonProof as hasOwnedFrozenJsonProof, rememberImmutableJsonNode as rememberOwnedFrozenJson, countWork } from '@portfolio/layout-core/kernel';
+import {
+	hasImmutableJsonProof as hasOwnedFrozenJsonProof,
+	rememberImmutableJsonNode as rememberOwnedFrozenJson,
+	countWork,
+} from '@portfolio/layout-core/kernel';
 import { type ShapeValidation } from '../../strict-shape';
 import { type UnitPayload } from '../types';
 

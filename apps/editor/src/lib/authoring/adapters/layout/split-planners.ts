@@ -16,18 +16,35 @@
  * straight and curved Walls). The allocation is captured before evaluation:
  * Undo/Redo replays the same Wall and Junction ids.
  */
-import { allocateCapturedId, layoutIdCaptureInput, layoutWorkingLevelInput, readLayoutIdCapture, readLayoutWorkingLevel, type LayoutIdCapture } from '@portfolio/layout-core/plan';
-import { isClosedWall, planWallSplitAtPoint, type LayoutDocumentWallFirst, type NodingIdAllocator } from '@portfolio/layout-core/wall';
+import {
+	allocateCapturedId,
+	layoutIdCaptureInput,
+	layoutWorkingLevelInput,
+	readLayoutIdCapture,
+	readLayoutWorkingLevel,
+	type LayoutIdCapture,
+} from '@portfolio/layout-core/plan';
+import {
+	isClosedWall,
+	planWallSplitAtPoint,
+	type LayoutDocumentWallFirst,
+	type NodingIdAllocator,
+} from '@portfolio/layout-core/wall';
 import { materializeLayoutSourceForCapture } from '@portfolio/layout-core/kernel';
 import { recordPreparedCowCandidate } from '@portfolio/layout-core/world';
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
-import type { AuthoringIntent, DomainPlanner, PlannerOutcome, PreparedCandidate } from '@portfolio/project-model/f4';
+import type {
+	AuthoringIntent,
+	DomainPlanner,
+	PlannerOutcome,
+	PreparedCandidate,
+} from '@portfolio/project-model/f4';
 import {
 	canonicalUnitJson,
 	replaceUnitData,
 	UNIT_SOURCE_KIND,
 	UNIT_SOURCE_VERSION,
-	type ProjectEnvelope
+	type ProjectEnvelope,
 } from '@portfolio/project-model/units';
 
 import { wallStationFrame } from './precision-frames';
@@ -56,7 +73,8 @@ function readSplitPayload(payload: unknown): WallSplitPayload | { readonly messa
 	if (!isRecord(payload)) return { message: 'The Wall split payload must be an object.' };
 	const expected = ['wallId', 'distance'];
 	const unknown = Object.keys(payload).filter((key) => !expected.includes(key));
-	if (unknown.length > 0) return { message: `The Wall split payload cannot carry ${unknown.join(', ')}.` };
+	if (unknown.length > 0)
+		return { message: `The Wall split payload cannot carry ${unknown.join(', ')}.` };
 	for (const key of expected) {
 		if (!(key in payload)) return { message: `The Wall split payload is missing "${key}".` };
 	}
@@ -83,8 +101,12 @@ function capturedNodingAllocator(capture: LayoutIdCapture): NodingIdAllocator {
 			return allocateCapturedId(new Set(baseDocument.walls.map((wall) => wall.id)), seed, capture);
 		},
 		nextJunctionId(baseDocument: LayoutDocumentWallFirst, seed: string): string {
-			return allocateCapturedId(new Set(baseDocument.junctions.map((junction) => junction.id)), seed, capture);
-		}
+			return allocateCapturedId(
+				new Set(baseDocument.junctions.map((junction) => junction.id)),
+				seed,
+				capture,
+			);
+		},
 	};
 }
 
@@ -109,7 +131,11 @@ function wallSplitPlanner(): DomainPlanner<ProjectEnvelope> {
 			return refused('A Wall split addresses exactly one Wall.');
 		}
 		const target = request.intent.targets[0]!;
-		if (target.domain !== 'layout' || target.subject.kind !== 'wall' || target.subject.id !== wallId) {
+		if (
+			target.domain !== 'layout' ||
+			target.subject.kind !== 'wall' ||
+			target.subject.id !== wallId
+		) {
 			return refused(`The intent must address the Wall "${wallId}" it splits.`);
 		}
 		const wall = baseline.walls.find((candidate) => candidate.id === wallId);
@@ -127,26 +153,32 @@ function wallSplitPlanner(): DomainPlanner<ProjectEnvelope> {
 			wallId,
 			distance,
 			[at.point[0], at.point[1]] as LayoutVec2,
-			capturedNodingAllocator(capture)
+			capturedNodingAllocator(capture),
 		);
 		if (plan.kind === 'rejected') {
 			return {
 				kind: 'rejected',
 				code: plan.rejection.code,
 				message: wallSplitRefusalWords(plan.rejection.code, plan.rejection.message),
-				diagnostics: []
+				diagnostics: [],
 			};
 		}
 		const newWallId = plan.createdWallIds[0];
 		if (newWallId === undefined) return refused('The Wall split created no second fragment.');
 		const contentRevision = request.snapshot.domain.source.units.layout.header.contentRevision;
 		const movedOpenings = plan.document.openings.filter(
-			(opening) => opening.wallId === newWallId && baseline.openings.some((before) => before.id === opening.id)
+			(opening) =>
+				opening.wallId === newWallId &&
+				baseline.openings.some((before) => before.id === opening.id),
 		);
 		const affectedRoomIds = baseline.rooms
 			.filter((room) => room.boundary.some((ref) => ref.wallId === wallId))
 			.map((room) => room.id);
-		recordPreparedCowCandidate(request.intent.operationId, plan.document, canonicalUnitJson(request.intent));
+		recordPreparedCowCandidate(
+			request.intent.operationId,
+			plan.document,
+			canonicalUnitJson(request.intent),
+		);
 		materializeLayoutSourceForCapture(plan.document);
 		const candidate: PreparedCandidate<ProjectEnvelope> = {
 			operationId: request.intent.operationId,
@@ -156,43 +188,63 @@ function wallSplitPlanner(): DomainPlanner<ProjectEnvelope> {
 			changes: [
 				{
 					kind: LAYOUT_WALL_SPLIT_KIND,
-					subjectIds: [wallId, newWallId, plan.junctionId, ...movedOpenings.map((opening) => opening.id)],
-					fields: ['walls', 'junctions', 'openings', 'rooms']
-				}
+					subjectIds: [
+						wallId,
+						newWallId,
+						plan.junctionId,
+						...movedOpenings.map((opening) => opening.id),
+					],
+					fields: ['walls', 'junctions', 'openings', 'rooms'],
+				},
 			],
 			correspondence: [
 				// The start-side fragment keeps the source Wall's identity.
 				{
 					relation: 'preserved',
 					before: layoutSubjectReference({ kind: 'wall', id: wallId, contentRevision, levelId }),
-					after: layoutSubjectReference({ kind: 'wall', id: wallId, contentRevision, levelId })
+					after: layoutSubjectReference({ kind: 'wall', id: wallId, contentRevision, levelId }),
 				},
 				// The end-side fragment is a new Wall created from that source.
 				{
 					relation: 'created',
 					before: null,
-					after: layoutSubjectReference({ kind: 'wall', id: newWallId, contentRevision, levelId })
+					after: layoutSubjectReference({ kind: 'wall', id: newWallId, contentRevision, levelId }),
 				},
 				{
 					relation: 'created',
 					before: null,
-					after: layoutSubjectReference({ kind: 'junction', id: plan.junctionId, contentRevision, levelId })
+					after: layoutSubjectReference({
+						kind: 'junction',
+						id: plan.junctionId,
+						contentRevision,
+						levelId,
+					}),
 				},
 				// Openings keep their ids and positions; the ones re-based onto the new
 				// fragment are preserved, not recreated.
 				...movedOpenings.map((opening) => ({
 					relation: 'preserved' as const,
-					before: layoutSubjectReference({ kind: 'opening', id: opening.id, contentRevision, levelId }),
-					after: layoutSubjectReference({ kind: 'opening', id: opening.id, contentRevision, levelId })
+					before: layoutSubjectReference({
+						kind: 'opening',
+						id: opening.id,
+						contentRevision,
+						levelId,
+					}),
+					after: layoutSubjectReference({
+						kind: 'opening',
+						id: opening.id,
+						contentRevision,
+						levelId,
+					}),
 				})),
 				// Every Room whose boundary names the split Wall keeps its id.
 				...affectedRoomIds.map((roomId) => ({
 					relation: 'preserved' as const,
 					before: layoutSubjectReference({ kind: 'room', id: roomId, contentRevision, levelId }),
-					after: layoutSubjectReference({ kind: 'room', id: roomId, contentRevision, levelId })
-				}))
+					after: layoutSubjectReference({ kind: 'room', id: roomId, contentRevision, levelId }),
+				})),
 			],
-			diagnostics: []
+			diagnostics: [],
 		};
 		registerLayoutSurfaceLineage(candidate, plan.surfaceLineage);
 		return { kind: 'prepared', candidate };
@@ -224,11 +276,11 @@ export function wallSplitIntent(input: {
 				kind: 'wall',
 				id: input.wallId,
 				contentRevision: input.contentRevision,
-				levelId: input.levelId
-			})
+				levelId: input.levelId,
+			}),
 		],
 		payload: { wallId: input.wallId, distance: input.distance },
 		capturedInputs: [layoutWorkingLevelInput(input.levelId), layoutIdCaptureInput(input.capture)],
-		allocatedIds: []
+		allocatedIds: [],
 	};
 }

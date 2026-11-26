@@ -1,12 +1,10 @@
 {
-  "id": "11-orientation-sign",
-  "area": "geometry",
-  "citation": "hard rule 6 — one canonical architectural compiler",
-  "title": "The package orientation seam flips its sign convention",
-  "file": "packages/geometry-core/src/predicates.ts",
-  "find": "const sign = -orient2d(ax, ay, bx, by, cx, cy);",
-  "replace": "const sign = orient2d(ax, ay, bx, by, cx, cy);",
-  "tests": [
-    "tests/lib/geometry-core"
-  ]
+	"id": "11-orientation-sign",
+	"area": "geometry",
+	"citation": "hard rule 6 — one canonical architectural compiler",
+	"title": "The package orientation seam flips its sign convention",
+	"file": "packages/geometry-core/src/predicates.ts",
+	"find": "const sign = -orient2d(ax, ay, bx, by, cx, cy);",
+	"replace": "const sign = orient2d(ax, ay, bx, by, cx, cy);",
+	"tests": ["tests/lib/geometry-core"]
 }

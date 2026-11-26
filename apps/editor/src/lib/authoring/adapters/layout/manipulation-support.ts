@@ -1,10 +1,19 @@
-import { createWallFirstArchitectureVerdictScope, createWallSamplingDerivation, readWallFirstDragProposal, type WallFirstArchitectureProposalWall, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import {
+	createWallFirstArchitectureVerdictScope,
+	createWallSamplingDerivation,
+	readWallFirstDragProposal,
+	type WallFirstArchitectureProposalWall,
+	type LayoutDocumentWallFirst,
+} from '@portfolio/layout-core/wall';
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 import { type StageAdapterContext } from '$lib/authoring/stage/stage-adapter-host';
 import { isStageDrag } from '$lib/authoring/stage/stage-adapter-host';
 
-import { type PlanNumericField, type PlanNumericHost } from '$lib/authoring/layout/plan-numeric-entry';
+import {
+	type PlanNumericField,
+	type PlanNumericHost,
+} from '$lib/authoring/layout/plan-numeric-entry';
 import { type LayoutSnapWinner } from './snap';
 import { type CandidatePaperGeometry } from './candidate-preview';
 import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
@@ -13,7 +22,7 @@ import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-ho
 export function datumSnapDistance(
 	ctx: StageAdapterContext,
 	from: Readonly<LayoutVec2>,
-	to: Readonly<LayoutVec2>
+	to: Readonly<LayoutVec2>,
 ): number {
 	const y = ctx.snapshot.domain.datumMeters;
 	const a = ctx.project([from[0], y, from[1]]);
@@ -32,30 +41,32 @@ export function createWallDragReader(baseline: LayoutDocumentWallFirst) {
 }
 export function wallProposalPaper(
 	walls: readonly WallFirstArchitectureProposalWall[],
-	y: number
+	y: number,
 ): CandidatePaperGeometry {
 	return {
 		polygons: [],
 		segments: walls.flatMap(({ points }) =>
 			points.slice(1).map(([x, z], index) => [
 				[points[index]![0], y, points[index]![1]],
-				[x, y, z]
-			])
-		)
+				[x, y, z],
+			]),
+		),
 	};
 }
 /** The first real crossing or contact between an attempted network and untouched Walls. */
 export function attemptedConflictPoint(
 	attempt: readonly WallFirstArchitectureProposalWall[],
-	baseline: LayoutDocumentWallFirst
+	baseline: LayoutDocumentWallFirst,
 ): LayoutVec2 | null {
 	const attemptedIds = new Set(attempt.map((wall) => wall.wallId));
 	const attemptedSegments = attempt.flatMap((wall) =>
-		wall.points.slice(1).map((point, index) => [wall.points[index]!, point] as const)
+		wall.points.slice(1).map((point, index) => [wall.points[index]!, point] as const),
 	);
 	const baselineSegments = baseline.walls.flatMap((wall) => {
 		if (attemptedIds.has(wall.id)) return [];
-		const start = baseline.junctions.find((junction) => junction.id === wall.startJunctionId)?.point;
+		const start = baseline.junctions.find(
+			(junction) => junction.id === wall.startJunctionId,
+		)?.point;
 		const end = baseline.junctions.find((junction) => junction.id === wall.endJunctionId)?.point;
 		if (start === undefined || end === undefined) return [];
 		const points =
@@ -89,13 +100,13 @@ export function distanceToChord(point: LayoutVec2, start: LayoutVec2, end: Layou
 	if (lengthSquared === 0) return Math.hypot(point[0] - start[0], point[1] - start[1]);
 	const t = Math.max(
 		0,
-		Math.min(1, ((point[0] - start[0]) * dx + (point[1] - start[1]) * dz) / lengthSquared)
+		Math.min(1, ((point[0] - start[0]) * dx + (point[1] - start[1]) * dz) / lengthSquared),
 	);
 	return Math.hypot(point[0] - (start[0] + t * dx), point[1] - (start[1] + t * dz));
 }
 export function isPointerDrag(
 	origin: readonly [number, number],
-	point: readonly [number, number]
+	point: readonly [number, number],
 ): boolean {
 	return isStageDrag({ x: origin[0], y: origin[1] }, { x: point[0], y: point[1] });
 }
@@ -119,7 +130,7 @@ export function previewCoordinates(y: number) {
 	const world = (point: readonly [number, number], elevation = y): [number, number, number] => [
 		point[0],
 		elevation,
-		point[1]
+		point[1],
 	];
 	const snapOf = (winner: LayoutSnapWinner | null) =>
 		winner === null ? undefined : { world: world(winner.point), name: winner.name };

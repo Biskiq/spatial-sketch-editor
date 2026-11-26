@@ -29,10 +29,9 @@ export function createEmptyWallFirstLayoutDocument(): LayoutDocumentWallFirst {
 		regions: [],
 		// The canonical writers always emit the ledger; it stays optional
 		// on read because documents written before the ledger lack it.
-		identity: emptyLayoutIdentityLedger()
+		identity: emptyLayoutIdentityLedger(),
 	};
 }
-
 
 /**
  * Strict wall-first validation. Any issue rejects the whole document.
@@ -51,9 +50,7 @@ export function createEmptyWallFirstLayoutDocument(): LayoutDocumentWallFirst {
  * - `LayoutObject.roomId` still references a persistent Room — the optional
  *   semantic association survives the schema change unchanged.
  */
-export function validateWallFirstLayoutDocument(
-	input: unknown
-): WallFirstLayoutValidationResult {
+export function validateWallFirstLayoutDocument(input: unknown): WallFirstLayoutValidationResult {
 	const issues: LayoutDocumentIssue[] = [];
 	countWork('validation:layout-document');
 	const parsed = parseDocument(input, '$', issues);
@@ -78,10 +75,9 @@ export function validateWallFirstLayoutDocument(
 				memoizedCanonicalJson = JSON.stringify(parsed, null, 2) + '\n';
 			}
 			return memoizedCanonicalJson;
-		}
+		},
 	};
 }
-
 
 export function parseWallFirstLayoutDocumentJson(json: string): WallFirstLayoutValidationResult {
 	try {
@@ -93,13 +89,12 @@ export function parseWallFirstLayoutDocumentJson(json: string): WallFirstLayoutV
 				{
 					path: '$',
 					code: 'invalid_json',
-					message: invalidJsonMessage(error, json)
-				}
-			]
+					message: invalidJsonMessage(error, json),
+				},
+			],
 		};
 	}
 }
-
 
 /**
  * The canonical *writer* format requirement (S1b).
@@ -114,7 +109,7 @@ export function parseWallFirstLayoutDocumentJson(json: string): WallFirstLayoutV
  * validation owns that report.
  */
 export function wallFirstCanonicalFormatVersionIssue(
-	input: unknown
+	input: unknown,
 ): LayoutDocumentIssue | undefined {
 	if (typeof input !== 'object' || input === null || Array.isArray(input)) return undefined;
 	const declared = (input as { formatVersion?: unknown }).formatVersion;
@@ -123,11 +118,10 @@ export function wallFirstCanonicalFormatVersionIssue(
 		path: '$.formatVersion',
 		code: 'unsupported_format_version',
 		message: `Canonical Layout Save requires formatVersion ${LAYOUT_WALL_FIRST_FORMAT_VERSION}; got ${String(
-			declared
-		)}. Canonical writers never migrate a historical payload.`
+			declared,
+		)}. Canonical writers never migrate a historical payload.`,
 	};
 }
-
 
 /**
  * Canonical Layout serialization. Throws on invalid input.
@@ -145,11 +139,10 @@ export function serializeWallFirstLayoutDocument(document: unknown): string {
 	return result.canonicalJson;
 }
 
-
 /** True when oriented Wall references form one closed chain. */
 export function closedBoundaryChains(
 	boundary: readonly OrientedWallRef[],
-	wallById: ReadonlyMap<string, LayoutWall>
+	wallById: ReadonlyMap<string, LayoutWall>,
 ): boolean {
 	let firstStart: string | undefined;
 	let previousEnd: string | undefined;

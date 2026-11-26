@@ -1,6 +1,20 @@
 import type { LayoutVec2 } from './coordinates';
-import type { CompiledLayoutGeometry, CompiledPhysicalWall, CompiledQueryAabb, CompiledQueryPoint, CompiledQueryPolygon, CompiledQuerySpan, CompiledRegion, CompiledRoom, LayoutBounds2 } from './types';
-import { wallSideSurfaceRef, type LayoutWallSide, type LayoutWallSideSurfaceRef } from '../plan/surface-reference';
+import type {
+	CompiledLayoutGeometry,
+	CompiledPhysicalWall,
+	CompiledQueryAabb,
+	CompiledQueryPoint,
+	CompiledQueryPolygon,
+	CompiledQuerySpan,
+	CompiledRegion,
+	CompiledRoom,
+	LayoutBounds2,
+} from './types';
+import {
+	wallSideSurfaceRef,
+	type LayoutWallSide,
+	type LayoutWallSideSurfaceRef,
+} from '../plan/surface-reference';
 import type { LayoutDocumentWallFirst } from '../wall/types';
 import { polygonsShareInteriorArea } from './face-extraction';
 import { pointInPolygon } from './objects';
@@ -46,13 +60,19 @@ export type QueryProjection = {
 };
 
 /** Nearest-span projection over compiled query spans (linear reference). */
-export function projectPointToSpans(point: LayoutVec2, spans: readonly CompiledQuerySpan[]): QueryProjection | null {
+export function projectPointToSpans(
+	point: LayoutVec2,
+	spans: readonly CompiledQuerySpan[],
+): QueryProjection | null {
 	let best: QueryProjection | null = null;
 	for (const span of spans) {
 		const dx = span.end[0] - span.start[0];
 		const dz = span.end[1] - span.start[1];
 		const squared = dx * dx + dz * dz;
-		const rawT = squared > 0 ? ((point[0] - span.start[0]) * dx + (point[1] - span.start[1]) * dz) / squared : 0;
+		const rawT =
+			squared > 0
+				? ((point[0] - span.start[0]) * dx + (point[1] - span.start[1]) * dz) / squared
+				: 0;
 		const amount = Math.min(1, Math.max(0, rawT));
 		const projected: LayoutVec2 = [span.start[0] + dx * amount, span.start[1] + dz * amount];
 		const distanceToPath = Math.hypot(point[0] - projected[0], point[1] - projected[1]);
@@ -65,7 +85,10 @@ export function projectPointToSpans(point: LayoutVec2, spans: readonly CompiledQ
 	return best;
 }
 
-export function findPolygonContaining(point: LayoutVec2, polygons: readonly CompiledQueryPolygon[]): CompiledQueryPolygon | null {
+export function findPolygonContaining(
+	point: LayoutVec2,
+	polygons: readonly CompiledQueryPolygon[],
+): CompiledQueryPolygon | null {
 	for (const polygon of [...polygons].reverse()) {
 		if (pointInPolygon(point, polygon.polygon)) return polygon;
 	}
@@ -84,17 +107,17 @@ export function findPolygonContaining(point: LayoutVec2, polygons: readonly Comp
  * `findPolygonContaining` remains the reverse-order query for consumers that
  * have not migrated to Space identity.
  */
-export function spaceAtPoint(point: LayoutVec2, spaces: readonly CompiledRoom[]): CompiledRoom | null {
+export function spaceAtPoint(
+	point: LayoutVec2,
+	spaces: readonly CompiledRoom[],
+): CompiledRoom | null {
 	let best: CompiledRoom | null = null;
 	let bestArea = Infinity;
 	for (const space of spaces) {
 		if (space.floorPolygon.length < 3) continue;
 		if (!pointInPolygon(point, space.floorPolygon)) continue;
 		const area = Math.abs(signedPolygonArea(space.floorPolygon));
-		if (
-			area < bestArea ||
-			(area === bestArea && best !== null && space.roomId < best.roomId)
-		) {
+		if (area < bestArea || (area === bestArea && best !== null && space.roomId < best.roomId)) {
 			best = space;
 			bestArea = area;
 		}
@@ -165,7 +188,7 @@ export type OverheadSource = {
  */
 export function overheadSourcesOf(
 	compiled: CompiledLayoutGeometry,
-	scope: OverheadScope
+	scope: OverheadScope,
 ): readonly OverheadSource[] {
 	const rooms =
 		scope.kind === 'space'
@@ -186,17 +209,15 @@ export function overheadSourcesOf(
 				? -1
 				: left.key.roomId > right.key.roomId
 					? 1
-					: 0
+					: 0,
 	);
 	const regions = (
-		scope.kind === 'space'
-			? regionsOverSpace(compiled, scope.roomId)
-			: compiled.regions
+		scope.kind === 'space' ? regionsOverSpace(compiled, scope.roomId) : compiled.regions
 	)
 		.filter((region) => region.role === 'overhead')
 		.filter(regionFootprintUsable)
 		.sort((left, right) =>
-			left.regionId < right.regionId ? -1 : left.regionId > right.regionId ? 1 : 0
+			left.regionId < right.regionId ? -1 : left.regionId > right.regionId ? 1 : 0,
 		);
 	const regionSources = regions.flatMap((region): OverheadSource[] => {
 		const source = regionUndersideSource(region);
@@ -216,7 +237,7 @@ export function overheadSourcesOf(
  */
 export function regionsOverSpace(
 	compiled: CompiledLayoutGeometry,
-	roomId: string
+	roomId: string,
 ): readonly CompiledRegion[] {
 	const room = compiled.rooms.find((candidate) => candidate.roomId === roomId);
 	if (room === undefined || room.floorPolygon.length < 3) return [];
@@ -227,13 +248,16 @@ export function regionsOverSpace(
 		.filter((region) => {
 			const regionBounds = region.bounds2;
 			if (
-				regionBounds.max[0] <= bounds.min[0] || bounds.max[0] <= regionBounds.min[0] ||
-				regionBounds.max[1] <= bounds.min[1] || bounds.max[1] <= regionBounds.min[1]
-			) return false;
+				regionBounds.max[0] <= bounds.min[0] ||
+				bounds.max[0] <= regionBounds.min[0] ||
+				regionBounds.max[1] <= bounds.min[1] ||
+				bounds.max[1] <= regionBounds.min[1]
+			)
+				return false;
 			return polygonsShareInteriorArea(region.footprint, room.floorPolygon);
 		})
 		.sort((left, right) =>
-			left.regionId < right.regionId ? -1 : left.regionId > right.regionId ? 1 : 0
+			left.regionId < right.regionId ? -1 : left.regionId > right.regionId ? 1 : 0,
 		);
 }
 
@@ -249,7 +273,7 @@ function roomLidSource(room: CompiledRoom): OverheadSource | null {
 		key: { kind: 'room-lid', roomId: room.roomId },
 		subject: { kind: 'room', id: room.roomId },
 		outline: room.ceilingPolygon.map((point): LayoutVec2 => [point[0], point[1]]),
-		elevation: room.ceilingElevation
+		elevation: room.ceilingElevation,
 	};
 }
 
@@ -264,7 +288,7 @@ function regionUndersideSource(region: CompiledRegion): OverheadSource | null {
 		key: { kind: 'region', regionId: region.regionId },
 		subject: { kind: 'region', id: region.regionId },
 		outline: region.footprint.map((point): LayoutVec2 => [point[0], point[1]]),
-		elevation: region.bottomY
+		elevation: region.bottomY,
 	};
 }
 
@@ -307,7 +331,7 @@ export type LayoutRoomInteriorResolution =
 export function resolveLayoutRoomInterior(
 	document: Pick<LayoutDocumentWallFirst, 'rooms'>,
 	compiled: CompiledLayoutGeometry,
-	reference: LayoutRoomInteriorRef
+	reference: LayoutRoomInteriorRef,
 ): LayoutRoomInteriorResolution {
 	const room = document.rooms.find((candidate) => candidate.id === reference.roomId);
 	const compiledRoom = compiled.rooms.find((candidate) => candidate.roomId === reference.roomId);
@@ -316,7 +340,7 @@ export function resolveLayoutRoomInterior(
 			kind: 'unresolved',
 			reference,
 			code: 'missing-room',
-			message: `Room '${reference.roomId}' is not present in the Layout document or compiled geometry`
+			message: `Room '${reference.roomId}' is not present in the Layout document or compiled geometry`,
 		};
 	}
 	const physicalById = new Map(compiled.walls.map((w) => [w.wallId, w] as const));
@@ -328,7 +352,7 @@ export function resolveLayoutRoomInterior(
 				kind: 'unresolved',
 				reference,
 				code: 'missing-compiled-wall',
-				message: `Wall '${ref.wallId}' of Room '${reference.roomId}' has no compiled physical Wall`
+				message: `Wall '${ref.wallId}' of Room '${reference.roomId}' has no compiled physical Wall`,
 			};
 		}
 		const side: LayoutWallSide = ref.direction === 'forward' ? 'left' : 'right';
@@ -337,13 +361,13 @@ export function resolveLayoutRoomInterior(
 			wallId: ref.wallId,
 			side,
 			direction: ref.direction,
-			physical
+			physical,
 		});
 	}
 	return {
 		kind: 'resolved',
 		reference,
 		roomId: room.id,
-		wallSides
+		wallSides,
 	};
 }

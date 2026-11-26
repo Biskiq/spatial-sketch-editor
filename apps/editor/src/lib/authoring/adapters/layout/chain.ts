@@ -21,7 +21,18 @@ import { drawingRefusalWords } from './refusals';
  * coordinates happen to coincide with an existing Junction stays free, which is
  * exactly the planner's declared-vs-inferred rule.
  */
-import { coincidesAsJunction, detectUnsupportedChainConnections, JUNCTION_COINCIDENCE_EPSILON, planWallChain, wallCenterlineCarriesPoint, type LayoutDocumentWallFirst, type WallChainArc, type WallChainPlan, type WallEndpointHostSnap, type WallEndpointJunctionSnap } from '@portfolio/layout-core/wall';
+import {
+	coincidesAsJunction,
+	detectUnsupportedChainConnections,
+	JUNCTION_COINCIDENCE_EPSILON,
+	planWallChain,
+	wallCenterlineCarriesPoint,
+	type LayoutDocumentWallFirst,
+	type WallChainArc,
+	type WallChainPlan,
+	type WallEndpointHostSnap,
+	type WallEndpointJunctionSnap,
+} from '@portfolio/layout-core/wall';
 import { faceArea, type LayoutVec2 } from '@portfolio/layout-core/geometry';
 import { roomBoundaryPolygon } from '@portfolio/layout-core/room';
 import type { LayoutIdCapture } from '@portfolio/layout-core/plan';
@@ -46,7 +57,7 @@ export type ChainDraft = {
 
 export const EMPTY_CHAIN_DRAFT: ChainDraft = Object.freeze({
 	points: Object.freeze([]),
-	closed: false
+	closed: false,
 });
 
 export type ChainDraftRefusal = { readonly kind: 'refused'; readonly message: string };
@@ -64,7 +75,7 @@ function hasPoint(draft: ChainDraft, point: LayoutVec2): boolean {
  */
 export function appendChainPoint(
 	draft: ChainDraft,
-	next: ChainDraftPoint
+	next: ChainDraftPoint,
 ): ChainDraft | ChainDraftRefusal {
 	const last = draft.points[draft.points.length - 1];
 	if (last !== undefined && last.point[0] === next.point[0] && last.point[1] === next.point[1]) {
@@ -100,11 +111,14 @@ export function closeChainDraft(draft: ChainDraft): ChainDraft | ChainDraftRefus
  */
 export function classifyTypedChainPoint(
 	document: LayoutDocumentWallFirst,
-	point: LayoutVec2
+	point: LayoutVec2,
 ): ChainDraftPoint {
 	for (const junction of document.junctions) {
 		if (coincidesAsJunction(point, junction.point)) {
-			return { point: [junction.point[0], junction.point[1]], target: { kind: 'junction', junctionId: junction.id } };
+			return {
+				point: [junction.point[0], junction.point[1]],
+				target: { kind: 'junction', junctionId: junction.id },
+			};
 		}
 	}
 	const junctionById = new Map(document.junctions.map((junction) => [junction.id, junction]));
@@ -138,14 +152,17 @@ export function classifyTypedChainPoint(
 export function boxChainDraft(
 	document: LayoutDocumentWallFirst,
 	first: ChainDraftPoint,
-	opposite: ChainDraftPoint
+	opposite: ChainDraftPoint,
 ): ChainDraft | ChainDraftRefusal {
 	const [ax, az] = first.point;
 	const [cx, cz] = opposite.point;
-	if (Math.abs(cx - ax) <= JUNCTION_COINCIDENCE_EPSILON || Math.abs(cz - az) <= JUNCTION_COINCIDENCE_EPSILON) {
+	if (
+		Math.abs(cx - ax) <= JUNCTION_COINCIDENCE_EPSILON ||
+		Math.abs(cz - az) <= JUNCTION_COINCIDENCE_EPSILON
+	) {
 		return {
 			kind: 'refused',
-			message: 'A Box needs two corners apart on both axes; drag diagonally to open a rectangle.'
+			message: 'A Box needs two corners apart on both axes; drag diagonally to open a rectangle.',
 		};
 	}
 	return {
@@ -153,16 +170,14 @@ export function boxChainDraft(
 			{ point: [ax, az], target: first.target },
 			classifyTypedChainPoint(document, [cx, az]),
 			{ point: [cx, cz], target: opposite.target },
-			classifyTypedChainPoint(document, [ax, cz])
+			classifyTypedChainPoint(document, [ax, cz]),
 		],
-		closed: true
+		closed: true,
 	};
 }
 
 /** The planner input this draft names: points in order, plus its declarations. */
-export function chainPlanRequest(
-	draft: ChainDraft
-): {
+export function chainPlanRequest(draft: ChainDraft): {
 	readonly points: readonly LayoutVec2[];
 	readonly close: boolean;
 	readonly endpointJunctionSnaps: readonly WallEndpointJunctionSnap[];
@@ -235,7 +250,7 @@ function consequenceOf(
 	splitWallIds: readonly string[],
 	baselineRooms: number,
 	closedSpaces: readonly ClosedSpaceFacts[] = [],
-	absorbedSpaceNames: readonly string[] = []
+	absorbedSpaceNames: readonly string[] = [],
 ): ChainConsequence {
 	// Re-close is named for the Space it happens to: the identity the creator
 	// already sees, never a newly minted Room they have to rediscover. A stroke
@@ -248,22 +263,24 @@ function consequenceOf(
 		if (leftOutside > 0.005) {
 			return `${space.name} becomes a room · ${leftOutside.toFixed(2)} m² left outside.`;
 		}
-		const changed = Math.abs(leftOutside) > 0.005
-			? ` Area is now ${space.areaAfter.toFixed(2)} m².`
-			: '';
+		const changed =
+			Math.abs(leftOutside) > 0.005 ? ` Area is now ${space.areaAfter.toFixed(2)} m².` : '';
 		return `Closes ${space.name} — every side is a Wall again.${changed}`;
 	});
 	const closeNote = closeLines.length > 0 ? ` ${closeLines.join(' ')}` : '';
-	const absorbNote = absorbedSpaceNames.length > 0
-		? ` Extends ${absorbedSpaceNames.join(' and ')} — the Wall joins the open side.`
-		: '';
+	const absorbNote =
+		absorbedSpaceNames.length > 0
+			? ` Extends ${absorbedSpaceNames.join(' and ')} — the Wall joins the open side.`
+			: '';
 	if (buildingRoomIds.length > 0 && baselineRooms === 0) {
 		return {
 			kind: 'encloses',
 			summary:
 				(buildingRoomIds.length === 1
 					? 'Encloses one Room on finish.'
-					: `Encloses ${buildingRoomIds.length} Rooms on finish.`) + closeNote + absorbNote
+					: `Encloses ${buildingRoomIds.length} Rooms on finish.`) +
+				closeNote +
+				absorbNote,
 		};
 	}
 	if (buildingRoomIds.length > 0) {
@@ -272,7 +289,7 @@ function consequenceOf(
 			summary:
 				`Divides a Room — one accepted finish creates ${buildingRoomIds.length} Room${buildingRoomIds.length === 1 ? '' : 's'}.` +
 				closeNote +
-				absorbNote
+				absorbNote,
 		};
 	}
 	const hostNote =
@@ -288,18 +305,18 @@ function consequenceOf(
 		// Wall: the chain did close a ring even though it minted no new Room id.
 		return {
 			kind: 'closes',
-			summary: `${closeLines.join(' ')}${hostNote}${mergeNote}${absorbNote}`
+			summary: `${closeLines.join(' ')}${hostNote}${mergeNote}${absorbNote}`,
 		};
 	}
 	if (absorbedSpaceNames.length > 0) {
 		return {
 			kind: 'absorbs',
-			summary: `${absorbNote.trim()}${hostNote}${mergeNote}`
+			summary: `${absorbNote.trim()}${hostNote}${mergeNote}`,
 		};
 	}
 	return {
 		kind: 'free-standing',
-		summary: `Free-standing Wall — closes no ring.${hostNote}${mergeNote}`
+		summary: `Free-standing Wall — closes no ring.${hostNote}${mergeNote}`,
 	};
 }
 
@@ -311,13 +328,16 @@ export function refusedChainPreview(input: {
 }): Extract<ChainPlanPreview, { readonly kind: 'refused' }> {
 	const diagnostics = [
 		...(input.issues ?? []).map((issue) => ({ code: issue.code, message: issue.message })),
-		...(input.topology ?? []).map((diagnostic) => ({ code: diagnostic.code, message: diagnostic.message }))
+		...(input.topology ?? []).map((diagnostic) => ({
+			code: diagnostic.code,
+			message: diagnostic.message,
+		})),
 	];
 	return {
 		kind: 'refused',
 		code: input.code,
 		message: drawingRefusalWords(input.code),
-		...(diagnostics.length === 0 ? {} : { diagnostics })
+		...(diagnostics.length === 0 ? {} : { diagnostics }),
 	};
 }
 
@@ -340,7 +360,11 @@ export function planChainDraft(options: {
 }): ChainPlanPreview {
 	const request = chainPlanRequest(options.draft);
 	if (request.points.length < 2) {
-		return { kind: 'refused', code: 'insufficient_chain', message: 'A chain needs at least two points.' };
+		return {
+			kind: 'refused',
+			code: 'insufficient_chain',
+			message: 'A chain needs at least two points.',
+		};
 	}
 	// Drawing policy: the refusals the document
 	// format tolerates but a *drawing* gesture must not author are asked of the one
@@ -350,9 +374,10 @@ export function planChainDraft(options: {
 		points: request.points,
 		close: request.close,
 		endpointJunctionSnaps: request.endpointJunctionSnaps,
-		endpointHostSnaps: request.endpointHostSnaps
+		endpointHostSnaps: request.endpointHostSnaps,
 	});
-	if (policy !== null) return { kind: 'refused', code: policy.code, message: drawingRefusalWords(policy.code) };
+	if (policy !== null)
+		return { kind: 'refused', code: policy.code, message: drawingRefusalWords(policy.code) };
 	const plan: WallChainPlan = planWallChain({
 		roomNamePrefix: 'Room',
 		baseline: options.document,
@@ -364,17 +389,21 @@ export function planChainDraft(options: {
 		endpointHostSnaps: request.endpointHostSnaps,
 		...(options.thickness === undefined ? {} : { thickness: options.thickness }),
 		...(options.height === undefined ? {} : { height: options.height }),
-		...(options.arc === undefined || options.arc === null ? {} : { arc: options.arc })
+		...(options.arc === undefined || options.arc === null ? {} : { arc: options.arc }),
 	});
 	if (plan.kind === 'rejected') return refusedChainPreview(plan.rejection);
 	const createdRoomIds = plan.lineage.map((record) => record.roomId);
 	const resultRoomById = new Map(plan.document.rooms.map((room) => [room.id, room] as const));
 	const closedRoomIds = options.document.rooms
-		.filter((room) => room.virtualEdges.length > 0 && (resultRoomById.get(room.id)?.virtualEdges.length ?? -1) === 0)
+		.filter(
+			(room) =>
+				room.virtualEdges.length > 0 &&
+				(resultRoomById.get(room.id)?.virtualEdges.length ?? -1) === 0,
+		)
 		.map((room) => room.id);
 	const absorbedRoomIds = plan.absorbedRoomIds;
 	const absorbedSpaceNames = absorbedRoomIds.map(
-		(roomId) => options.document.rooms.find((room) => room.id === roomId)?.name ?? roomId
+		(roomId) => options.document.rooms.find((room) => room.id === roomId)?.name ?? roomId,
 	);
 	const areaOf = (document: LayoutDocumentWallFirst, roomId: string): number | null => {
 		const polygon = roomBoundaryPolygon(document, roomId);
@@ -383,7 +412,7 @@ export function planChainDraft(options: {
 	const closedSpaces = closedRoomIds.map((roomId) => ({
 		name: options.document.rooms.find((room) => room.id === roomId)?.name ?? roomId,
 		areaBefore: areaOf(options.document, roomId) ?? 0,
-		areaAfter: areaOf(plan.document, roomId) ?? 0
+		areaAfter: areaOf(plan.document, roomId) ?? 0,
 	}));
 	return {
 		kind: 'planned',
@@ -402,15 +431,15 @@ export function planChainDraft(options: {
 			plan.splitWallIds,
 			options.document.rooms.length,
 			closedSpaces,
-			absorbedSpaceNames
-		)
+			absorbedSpaceNames,
+		),
 	};
 }
 
 /** The straight legs of a **planned** candidate, for the ghost chain's overlay. */
 export function plannedLegs(
 	document: LayoutDocumentWallFirst,
-	wallIds: readonly string[]
+	wallIds: readonly string[],
 ): readonly { readonly id: string; readonly start: LayoutVec2; readonly end: LayoutVec2 }[] {
 	const junctionById = new Map(document.junctions.map((junction) => [junction.id, junction]));
 	const legs: { id: string; start: LayoutVec2; end: LayoutVec2 }[] = [];
@@ -428,7 +457,7 @@ export function plannedLegs(
 /** A pending leg's live length/angle facts for the overlay and the palette. */
 export function pendingLegFacts(
 	draft: ChainDraft,
-	point: LayoutVec2
+	point: LayoutVec2,
 ): { readonly length: number; readonly angleDegrees: number } | null {
 	const last = draft.points[draft.points.length - 1];
 	if (last === undefined) return null;
@@ -446,7 +475,11 @@ export function pendingLegFacts(
  * repeated final vertex as the implicit close, so the draft is closed here and
  * the duplicate vertex is never appended.
  */
-export function isDraftStart(draft: ChainDraft, point: LayoutVec2, toleranceMeters: number): boolean {
+export function isDraftStart(
+	draft: ChainDraft,
+	point: LayoutVec2,
+	toleranceMeters: number,
+): boolean {
 	const first = draft.points[0];
 	if (first === undefined) return false;
 	return Math.hypot(point[0] - first.point[0], point[1] - first.point[1]) <= toleranceMeters;

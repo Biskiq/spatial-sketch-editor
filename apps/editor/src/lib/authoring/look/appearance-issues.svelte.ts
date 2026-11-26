@@ -30,7 +30,7 @@ import {
 	isFinishPaintable,
 	isPristineInstance,
 	type FinishKey,
-	type InspectedFinishUser
+	type InspectedFinishUser,
 } from '@portfolio/project-model/scene-planning';
 import type { FinishTargetOutcome } from '$lib/render/resources/finish-outcome-sink';
 import type { FinishViewIssue } from '$lib/render/resources/finish-views';
@@ -55,7 +55,7 @@ const STATIC_REPAIR_CODES = new Set<string>([
 	'missing-pin',
 	'missing-uv',
 	'missing-normal-frame',
-	'mapping-requires-metric-basis'
+	'mapping-requires-metric-basis',
 ]);
 
 const PROJECT_ASSET_URI = /^project-asset:\/\/([^/?#]+)/;
@@ -112,7 +112,7 @@ export type AppearanceIssuesHost = {
 		assetId: string,
 		bytes: Uint8Array,
 		expectedPin: string,
-		signal?: AbortSignal
+		signal?: AbortSignal,
 	) => Promise<{ readonly ok: true } | { readonly ok: false; readonly message: string }>;
 	/** Invalidate cached GPU/store views for one project asset and trigger Stage re-acquire. */
 	readonly invalidateAndReloadAsset?: (assetId: string) => void;
@@ -134,12 +134,18 @@ export function classifyRuntimeFailure(issue: FinishViewIssue): RuntimeRepairCod
 
 function roleLabel(role: MapRole | null): string {
 	switch (role) {
-		case 'color': return 'colour';
-		case 'normal': return 'relief';
-		case 'roughness': return 'roughness';
-		case 'metalness': return 'metal';
-		case 'occlusion': return 'occlusion';
-		default: return 'image';
+		case 'color':
+			return 'colour';
+		case 'normal':
+			return 'relief';
+		case 'roughness':
+			return 'roughness';
+		case 'metalness':
+			return 'metal';
+		case 'occlusion':
+			return 'occlusion';
+		default:
+			return 'image';
 	}
 }
 
@@ -152,49 +158,52 @@ function disableLabelFor(role: MapRole | null): string {
 	return 'Turn off map';
 }
 
-function issueCopy(code: AppearanceIssueCode, role: MapRole | null): { readonly title: string; readonly text: string } {
+function issueCopy(
+	code: AppearanceIssueCode,
+	role: MapRole | null,
+): { readonly title: string; readonly text: string } {
 	const channel = roleLabel(role);
 	switch (code) {
 		case 'missing-image':
 		case 'image-unavailable':
 			return {
 				title: 'Missing image',
-				text: `The ${channel} image is not available to this session.`
+				text: `The ${channel} image is not available to this session.`,
 			};
 		case 'image-unreachable':
 			return {
 				title: 'Image unreachable',
-				text: `The ${channel} image could not be fetched right now.`
+				text: `The ${channel} image could not be fetched right now.`,
 			};
 		case 'image-mismatch':
 			return {
 				title: 'Image mismatch',
-				text: `The ${channel} image bytes do not match the saved pin.`
+				text: `The ${channel} image bytes do not match the saved pin.`,
 			};
 		case 'missing-pin':
 			return {
 				title: 'Unverified image',
-				text: `The ${channel} image has no saved integrity pin.`
+				text: `The ${channel} image has no saved integrity pin.`,
 			};
 		case 'image-undecodable':
 			return {
 				title: 'Unreadable image',
-				text: `The ${channel} image could not be decoded.`
+				text: `The ${channel} image could not be decoded.`,
 			};
 		case 'missing-uv':
 			return {
 				title: 'Incompatible mapping',
-				text: 'This model does not have the UV set this Finish expects.'
+				text: 'This model does not have the UV set this Finish expects.',
 			};
 		case 'missing-normal-frame':
 			return {
 				title: 'Missing relief frame',
-				text: 'This surface has no tangent frame for relief.'
+				text: 'This surface has no tangent frame for relief.',
 			};
 		case 'mapping-requires-metric-basis':
 			return {
 				title: 'Incompatible mapping',
-				text: 'Surface mapping needs metric UVs that this target does not provide.'
+				text: 'Surface mapping needs metric UVs that this target does not provide.',
 			};
 	}
 }
@@ -286,11 +295,11 @@ function activeFinishKeys(envelope: ProjectEnvelope): readonly FinishKey[] {
 
 function pinForAsset(
 	envelope: ProjectEnvelope,
-	assetId: string | null
+	assetId: string | null,
 ): { readonly pin: string | null; readonly file: string | null } {
 	if (assetId === null) return { pin: null, file: null };
 	const resource = (envelope.units.resources?.data.resources ?? []).find(
-		(entry) => entry.kind === 'texture' && entry.id === assetId
+		(entry) => entry.kind === 'texture' && entry.id === assetId,
 	);
 	if (resource === undefined) return { pin: null, file: assetId };
 	const record = resource as unknown as {
@@ -302,18 +311,20 @@ function pinForAsset(
 	};
 	return {
 		pin: record.pin?.hash ?? record.integrity?.hash ?? record.sha256 ?? null,
-		file: record.name ?? record.label ?? assetId
+		file: record.name ?? record.label ?? assetId,
 	};
 }
 
 function assetIdForFinishRole(
 	envelope: ProjectEnvelope,
 	finishKey: FinishKey,
-	role: MapRole | null
+	role: MapRole | null,
 ): string | null {
 	if (role === null || !finishKey.startsWith('project:')) return null;
 	const instanceId = finishKey.slice('project:'.length);
-	const instance = (envelope.units.scene.data.materials ?? []).find((entry) => entry.id === instanceId);
+	const instance = (envelope.units.scene.data.materials ?? []).find(
+		(entry) => entry.id === instanceId,
+	);
 	if (instance === undefined) return null;
 	const override = instance.overrides?.maps?.[role];
 	if (override !== undefined && override !== null && 'image' in override) {
@@ -323,8 +334,14 @@ function assetIdForFinishRole(
 	if ('material' in instance.base) {
 		const materialHash = instance.base.material;
 		const def = (envelope.units.resources?.data.resources ?? []).find(
-			(entry) => entry.kind === 'material' && entry.id === materialHash
-		) as unknown as { readonly maps?: Partial<Record<MapRole, { readonly image?: { readonly textureId?: string } }>> } | undefined;
+			(entry) => entry.kind === 'material' && entry.id === materialHash,
+		) as unknown as
+			| {
+					readonly maps?: Partial<
+						Record<MapRole, { readonly image?: { readonly textureId?: string } }>
+					>;
+			  }
+			| undefined;
 		const map = def?.maps?.[role];
 		if (map?.image?.textureId !== undefined) return map.image.textureId;
 	}
@@ -332,16 +349,32 @@ function assetIdForFinishRole(
 }
 
 /** Decode the canonical Layout surface key used in Finish issue targets. */
-export function repairSurfaceRef(targetKey: string): import('@portfolio/layout-core/plan').LayoutSurfaceRef | null {
+export function repairSurfaceRef(
+	targetKey: string,
+): import('@portfolio/layout-core/plan').LayoutSurfaceRef | null {
 	if (!targetKey.startsWith('surface:')) return null;
 	try {
 		const parts: unknown = JSON.parse(targetKey.slice('surface:'.length));
 		if (!Array.isArray(parts) || typeof parts[1] !== 'string' || !parts[1]) return null;
-		if (parts[0] === 'wall-side' && parts.length === 3 && (parts[2] === 'left' || parts[2] === 'right')) return { kind: 'wall-side', wallId: parts[1], side: parts[2] };
-		if (parts[0] === 'room-floor' && parts.length === 2) return { kind: 'room-floor', roomId: parts[1] };
-		if (parts[0] === 'room-lid' && parts.length === 2) return { kind: 'room-lid', roomId: parts[1] };
-		if (parts[0] === 'region-face' && parts.length === 3 && (parts[2] === 'top' || parts[2] === 'underside')) return { kind: 'region-face', regionId: parts[1], face: parts[2] };
-	} catch { /* Invalid target keys are not drawable surfaces. */ }
+		if (
+			parts[0] === 'wall-side' &&
+			parts.length === 3 &&
+			(parts[2] === 'left' || parts[2] === 'right')
+		)
+			return { kind: 'wall-side', wallId: parts[1], side: parts[2] };
+		if (parts[0] === 'room-floor' && parts.length === 2)
+			return { kind: 'room-floor', roomId: parts[1] };
+		if (parts[0] === 'room-lid' && parts.length === 2)
+			return { kind: 'room-lid', roomId: parts[1] };
+		if (
+			parts[0] === 'region-face' &&
+			parts.length === 3 &&
+			(parts[2] === 'top' || parts[2] === 'underside')
+		)
+			return { kind: 'region-face', regionId: parts[1], face: parts[2] };
+	} catch {
+		/* Invalid target keys are not drawable surfaces. */
+	}
 	return null;
 }
 
@@ -374,7 +407,7 @@ export function createAppearanceIssues(host: AppearanceIssuesHost) {
 					issue.role === outcome.issues[index]?.role &&
 					issue.phase === outcome.issues[index]?.phase &&
 					issue.httpStatus === outcome.issues[index]?.httpStatus &&
-					issue.uri === outcome.issues[index]?.uri
+					issue.uri === outcome.issues[index]?.uri,
 			)
 		) {
 			return;
@@ -428,7 +461,11 @@ export function createAppearanceIssues(host: AppearanceIssuesHost) {
 		for (const finishKey of keys) {
 			const ref = finishRefOfKey(finishKey);
 			if (ref === null || ref === 'model-own') continue;
-			const inspection = inspectFinish(envelope, ref, targetAnalysis === undefined ? {} : { analysis: targetAnalysis });
+			const inspection = inspectFinish(
+				envelope,
+				ref,
+				targetAnalysis === undefined ? {} : { analysis: targetAnalysis },
+			);
 			if (inspection === null) continue;
 			usersByFinish.set(finishKey, inspection.users);
 			nameByFinish.set(finishKey, inspection.name);
@@ -444,7 +481,9 @@ export function createAppearanceIssues(host: AppearanceIssuesHost) {
 				const role = issue.role ?? null;
 				const affectedUsers: InspectedFinishUser[] =
 					issue.target !== undefined
-						? (userBySubject.has(issue.target) ? [userBySubject.get(issue.target)!] : [])
+						? userBySubject.has(issue.target)
+							? [userBySubject.get(issue.target)!]
+							: []
 						: [...inspection.users];
 				if (affectedUsers.length === 0) continue;
 
@@ -459,7 +498,7 @@ export function createAppearanceIssues(host: AppearanceIssuesHost) {
 						source: 'static',
 						affected: new Set(),
 						assetId: assetIdForFinishRole(envelope, finishKey, role),
-						hasMetricBasis: false
+						hasMetricBasis: false,
 					};
 					buckets.set(id, bucket);
 				}
@@ -473,8 +512,8 @@ export function createAppearanceIssues(host: AppearanceIssuesHost) {
 								subject: analysisSubjectOf(user),
 								domain: 'scene',
 								entityId: user.entityId,
-								expectedGeometryRevision: envelope.units.scene.header.contentRevision
-							}
+								expectedGeometryRevision: envelope.units.scene.header.contentRevision,
+							},
 						]);
 						if (facts?.[0]?.metricBasis !== undefined) bucket.hasMetricBasis = true;
 					}
@@ -494,7 +533,9 @@ export function createAppearanceIssues(host: AppearanceIssuesHost) {
 				if (code === null) continue;
 				const role: MapRole | null = viewIssue.role ?? null;
 				const id = issueKey(finishKey, code, role);
-				const uriAssetId = viewIssue.uri ? (PROJECT_ASSET_URI.exec(viewIssue.uri)?.[1] ?? null) : null;
+				const uriAssetId = viewIssue.uri
+					? (PROJECT_ASSET_URI.exec(viewIssue.uri)?.[1] ?? null)
+					: null;
 				let bucket = buckets.get(id);
 				if (bucket === undefined) {
 					bucket = {
@@ -505,7 +546,7 @@ export function createAppearanceIssues(host: AppearanceIssuesHost) {
 						source: 'runtime',
 						affected: new Set(),
 						assetId: uriAssetId ?? assetIdForFinishRole(envelope, finishKey, role),
-						hasMetricBasis: false
+						hasMetricBasis: false,
 					};
 					buckets.set(id, bucket);
 				}
@@ -535,8 +576,8 @@ export function createAppearanceIssues(host: AppearanceIssuesHost) {
 					code: bucket.code,
 					role: bucket.role,
 					hasPin: pinInfo.pin !== null,
-					hasMetricBasis: bucket.hasMetricBasis
-				})
+					hasMetricBasis: bucket.hasMetricBasis,
+				}),
 			});
 		}
 		return result;
@@ -549,7 +590,7 @@ export function createAppearanceIssues(host: AppearanceIssuesHost) {
 			if (entry.history === 'authored' && openIds.has(entry.id)) droppedAuthored.add(entry.id);
 		}
 		return repairedList.filter(
-			(entry) => entry.history === 'none' || !droppedAuthored.has(entry.id)
+			(entry) => entry.history === 'none' || !droppedAuthored.has(entry.id),
 		);
 	});
 
@@ -582,10 +623,7 @@ export function createAppearanceIssues(host: AppearanceIssuesHost) {
 	}): void {
 		const id = issueKey(entry.finishKey, entry.code, entry.role);
 		droppedAuthored.delete(id);
-		repairedList = [
-			...repairedList.filter((item) => item.id !== id),
-			{ id, ...entry }
-		];
+		repairedList = [...repairedList.filter((item) => item.id !== id), { id, ...entry }];
 		if (refusal?.issueId === id) refusal = null;
 	}
 
@@ -608,7 +646,7 @@ export function createAppearanceIssues(host: AppearanceIssuesHost) {
 	async function relink(
 		issue: AppearanceIssue,
 		file: File,
-		signal?: AbortSignal
+		signal?: AbortSignal,
 	): Promise<{ readonly ok: true } | { readonly ok: false; readonly message: string }> {
 		if (issue.assetId === null || issue.expectedPin === null || host.repairAsset === undefined) {
 			const message = 'Exact-byte relink is unavailable for this image.';
@@ -654,7 +692,7 @@ export function createAppearanceIssues(host: AppearanceIssuesHost) {
 			code: issue.code,
 			role: issue.role,
 			action: 'relinked',
-			history: 'none'
+			history: 'none',
 		});
 		return { ok: true };
 	}
@@ -701,7 +739,7 @@ export function createAppearanceIssues(host: AppearanceIssuesHost) {
 		relink,
 		retry,
 		cancelRepairs,
-		reset
+		reset,
 	};
 }
 

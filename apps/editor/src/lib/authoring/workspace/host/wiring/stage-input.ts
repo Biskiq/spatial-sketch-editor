@@ -57,7 +57,8 @@ export function wireStageInput(input: StageInputWiring) {
 		setPaintHover: (entry) => input.shell.setPaintHover(entry),
 		// The refusal belongs to the armed Slice **tool**, not to a live cut: back on
 		// Select, the creator selects and drags everything below the cut.
-		sliceToolArmed: () => input.shell.activeWorldTool === 'slice' && !(input.sliceDraw()?.armed ?? false),
+		sliceToolArmed: () =>
+			input.shell.activeWorldTool === 'slice' && !(input.sliceDraw()?.armed ?? false),
 		sliceDraw: input.sliceDraw,
 		onNotice: (message) => input.shell.setNotice(message),
 		onRefreshHostTools: () => input.shell.refreshHostTools(),
@@ -66,6 +67,6 @@ export function wireStageInput(input: StageInputWiring) {
 		orbit: input.orbit,
 		zoom: input.zoom,
 		submit: input.submit,
-		nowSeconds: input.nowSeconds
+		nowSeconds: input.nowSeconds,
 	});
 }

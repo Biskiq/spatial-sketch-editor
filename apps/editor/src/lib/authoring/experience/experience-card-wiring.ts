@@ -25,7 +25,7 @@ export function removalItem(
 	controller: ExperienceController,
 	id: string,
 	label: string,
-	target: ExperienceRemovalTarget
+	target: ExperienceRemovalTarget,
 ): ExperienceCardMenuItem {
 	const withChoice = (choice: string | null): ExperienceRemovalTarget =>
 		target.kind === 'view' ? { ...target, newDefaultViewId: choice } : target;
@@ -46,12 +46,15 @@ export function removalItem(
 				return {
 					kind: 'ready',
 					lines: preview.lines,
-					choose: preview.chooseDefault === null ? null : { label: 'New Default View', options: preview.chooseDefault },
-					runnable: preview.runnable
+					choose:
+						preview.chooseDefault === null
+							? null
+							: { label: 'New Default View', options: preview.chooseDefault },
+					runnable: preview.runnable,
 				};
 			},
-			run: (choice) => controller.remove(withChoice(choice))
-		}
+			run: (choice) => controller.remove(withChoice(choice)),
+		},
 	};
 }
 
@@ -67,7 +70,7 @@ export type ExperienceCardBack = {
 export function backOf(
 	controller: ExperienceController,
 	parent: ExperienceSubject | null,
-	openCard: () => void
+	openCard: () => void,
 ): ExperienceCardBack {
 	const target = controller.backTarget;
 	if (target === null) return null;
@@ -80,14 +83,14 @@ export function backOf(
 		onBack: () => {
 			controller.back();
 			openCard();
-		}
+		},
 	};
 }
 
 /** The Experience rename fields commit on Enter or blur and refuse an empty name. */
 export function experienceNameWriter(
 	value: () => string,
-	commit: (name: string) => Promise<{ readonly kind: string; readonly message?: string }>
+	commit: (name: string) => Promise<{ readonly kind: string; readonly message?: string }>,
 ): NonNullable<ComponentProps<typeof EditorCard>['nameWriter']> {
 	return {
 		get value() {
@@ -95,7 +98,7 @@ export function experienceNameWriter(
 		},
 		commit,
 		commitOnBlur: true,
-		emptyMessage: NAME_NEEDED
+		emptyMessage: NAME_NEEDED,
 	};
 }
 
@@ -105,7 +108,7 @@ import {
 	stopCardModel,
 	subjectCardModel,
 	transitionCardModel,
-	viewCardModel
+	viewCardModel,
 } from './experience-card-model';
 import ExperiencePresentationWriter from './ExperiencePresentationWriter.svelte';
 import ExperienceViewWriter from './ExperienceViewWriter.svelte';
@@ -116,7 +119,11 @@ import ExperienceSubjectWriter from './ExperienceSubjectWriter.svelte';
 
 export type ExperienceShownCard = {
 	readonly identity: { sourceId: string; label: string; kind: string; status: string } | null;
-	readonly facts: readonly { readonly label: string; readonly value: string; readonly fieldId?: string }[];
+	readonly facts: readonly {
+		readonly label: string;
+		readonly value: string;
+		readonly fieldId?: string;
+	}[];
 	readonly nameWriter: NonNullable<ComponentProps<typeof EditorCard>['nameWriter']> | null;
 	readonly writer: unknown | null;
 	readonly actions: readonly unknown[];
@@ -137,7 +144,7 @@ export const NO_CARD: ExperienceShownCard = {
 	bringIntoView: null,
 	kindLink: null,
 	menu: null,
-	back: null
+	back: null,
 };
 
 export type ExperienceCardHost = {
@@ -167,7 +174,7 @@ export function experienceShownCardFor(input: ExperienceCardHost): ExperienceSho
 		summary,
 		adapterId: 'experience',
 		fieldIds: [],
-		view: { component, services }
+		view: { component, services },
 	});
 	const cardBack = (parent: ExperienceSubject | null) => backOf(controller, parent, input.openCard);
 	const subject = controller.subject;
@@ -182,17 +189,19 @@ export function experienceShownCardFor(input: ExperienceCardHost): ExperienceSho
 			hasSubject: reference !== null && subjectLabel !== null,
 			viewCount: presentation.views.length,
 			stopCount: (controller.stopUsage.get(presentation.id) ?? []).length,
-			hasDefaultView: presentation.views.length > 0
+			hasDefaultView: presentation.views.length > 0,
 		});
 		// Add to Guide ▸ — the Guides, the active one first, with *again* where the
 		// Presentation already has a Stop, then New Guide…, which asks the name inline.
 		const activeGuideId = controller.currentGuide?.id ?? controller.contextGuide?.id ?? null;
 		const guidesInOrder = [
 			...controller.guides.filter((guide) => guide.id === activeGuideId),
-			...controller.guides.filter((guide) => guide.id !== activeGuideId)
+			...controller.guides.filter((guide) => guide.id !== activeGuideId),
 		];
 		const presentationStops = new Set(controller.stopUsage.get(presentation.id) ?? []);
-		const busyReason = controller.busy ? { disabled: true, reason: 'Wait for the current change' } : {};
+		const busyReason = controller.busy
+			? { disabled: true, reason: 'Wait for the current change' }
+			: {};
 		const addToGuide: ExperienceCardMenuItem = {
 			id: 'add-to-guide',
 			label: 'Add to Guide',
@@ -200,17 +209,19 @@ export function experienceShownCardFor(input: ExperienceCardHost): ExperienceSho
 				...guidesInOrder.map((guide) => ({
 					id: `add-to-guide:${guide.id}`,
 					label: guide.label,
-					...(guide.stopIds.some((stopId) => presentationStops.has(stopId)) ? { hint: 'again' } : {}),
+					...(guide.stopIds.some((stopId) => presentationStops.has(stopId))
+						? { hint: 'again' }
+						: {}),
 					...busyReason,
-					run: () => void controller.addToGuide(presentation.id, guide.id)
+					run: () => void controller.addToGuide(presentation.id, guide.id),
 				})),
 				{
 					id: 'new-guide',
 					label: 'New Guide…',
 					...busyReason,
-					run: () => void controller.createGuide(presentation.id)
-				}
-			]
+					run: () => void controller.createGuide(presentation.id),
+				},
+			],
 		};
 		return {
 			...NO_CARD,
@@ -218,11 +229,14 @@ export function experienceShownCardFor(input: ExperienceCardHost): ExperienceSho
 			facts: model.facts,
 			nameWriter: experienceNameWriter(
 				() => controller.presentationDisplayName(presentation.id),
-				(name: string) => controller.renamePresentation(presentation.id, name)
+				(name: string) => controller.renamePresentation(presentation.id, name),
 			),
 			menu: [
 				addToGuide,
-				removalItem(controller, 'remove-presentation', 'Remove Presentation', { kind: 'presentation', presentationId: presentation.id })
+				removalItem(controller, 'remove-presentation', 'Remove Presentation', {
+					kind: 'presentation',
+					presentationId: presentation.id,
+				}),
 			],
 			back: cardBack(null),
 			writer: writerOf('Presentation', ExperiencePresentationWriter),
@@ -231,8 +245,8 @@ export function experienceShownCardFor(input: ExperienceCardHost): ExperienceSho
 					? null
 					: {
 							label: subjectLabel,
-							onOpen: () => input.selectStageReference(reference)
-						}
+							onOpen: () => input.selectStageReference(reference),
+						},
 		};
 	}
 	if (subject?.kind === 'view') {
@@ -241,7 +255,7 @@ export function experienceShownCardFor(input: ExperienceCardHost): ExperienceSho
 		const model = viewCardModel({
 			viewId: view.id,
 			label: view.label,
-			presentationLabel: controller.presentationLabel(view.presentationId)
+			presentationLabel: controller.presentationLabel(view.presentationId),
 		});
 		return {
 			...NO_CARD,
@@ -249,21 +263,21 @@ export function experienceShownCardFor(input: ExperienceCardHost): ExperienceSho
 			facts: model.facts,
 			nameWriter: experienceNameWriter(
 				() => view.label,
-				(name: string) => controller.renameView(view.id, name)
+				(name: string) => controller.renameView(view.id, name),
 			),
 			menu: [
 				removalItem(controller, 'remove-view', 'Remove View', {
 					kind: 'view',
 					presentationId: view.presentationId,
-					viewId: view.id
-				})
+					viewId: view.id,
+				}),
 			],
 			back: cardBack({ kind: 'presentation', presentationId: view.presentationId }),
 			writer: writerOf('View', ExperienceViewWriter),
 			kindLink: {
 				label: controller.presentationLabel(view.presentationId),
-				onOpen: () => input.select({ kind: 'presentation', presentationId: view.presentationId })
-			}
+				onOpen: () => input.select({ kind: 'presentation', presentationId: view.presentationId }),
+			},
 		};
 	}
 	if (subject?.kind === 'stop') {
@@ -277,40 +291,66 @@ export function experienceShownCardFor(input: ExperienceCardHost): ExperienceSho
 			presentationLabel: controller.presentationLabel(stop.presentationId),
 			position,
 			guideLength: order.length,
-			guideLabel: controller.contextGuide?.label ?? ''
+			guideLabel: controller.contextGuide?.label ?? '',
 		});
 		const items: ExperienceCardMenuItem[] = [
 			{
 				id: 'open-presentation',
 				label: 'Open Presentation',
-				run: () => input.select({ kind: 'presentation', presentationId: stop.presentationId })
-			}
+				run: () => input.select({ kind: 'presentation', presentationId: stop.presentationId }),
+			},
 		];
 		if (position !== null) {
 			const first = position === 1;
 			const last = position === order.length;
 			const busy = controller.busy;
 			const stuck = (atEnd: boolean, reason: string): { disabled: boolean; reason?: string } =>
-				busy ? { disabled: true, reason: 'Wait for the current change' } : atEnd ? { disabled: true, reason } : { disabled: false };
+				busy
+					? { disabled: true, reason: 'Wait for the current change' }
+					: atEnd
+						? { disabled: true, reason }
+						: { disabled: false };
 			items.push(
-				{ id: 'move-earlier', label: 'Move earlier', ...stuck(first, 'Already the first Stop'), run: () => void controller.moveStop(stop.id, -1) },
-				{ id: 'move-later', label: 'Move later', ...stuck(last, 'Already the last Stop'), run: () => void controller.moveStop(stop.id, 1) }
+				{
+					id: 'move-earlier',
+					label: 'Move earlier',
+					...stuck(first, 'Already the first Stop'),
+					run: () => void controller.moveStop(stop.id, -1),
+				},
+				{
+					id: 'move-later',
+					label: 'Move later',
+					...stuck(last, 'Already the last Stop'),
+					run: () => void controller.moveStop(stop.id, 1),
+				},
 			);
 			if (order.length > 6) {
 				items.push(
-					{ id: 'move-start', label: 'Move to the start', ...stuck(first, 'Already the first Stop'), run: () => void controller.moveStopTo(stop.id, 0) },
-					{ id: 'move-end', label: 'Move to the end', ...stuck(last, 'Already the last Stop'), run: () => void controller.moveStopTo(stop.id, order.length - 1) }
+					{
+						id: 'move-start',
+						label: 'Move to the start',
+						...stuck(first, 'Already the first Stop'),
+						run: () => void controller.moveStopTo(stop.id, 0),
+					},
+					{
+						id: 'move-end',
+						label: 'Move to the end',
+						...stuck(last, 'Already the last Stop'),
+						run: () => void controller.moveStopTo(stop.id, order.length - 1),
+					},
 				);
 			}
 		}
-		items.push(removalItem(controller, 'remove-stop', 'Remove Stop', { kind: 'stop', stopId: stop.id }));
+		items.push(
+			removalItem(controller, 'remove-stop', 'Remove Stop', { kind: 'stop', stopId: stop.id }),
+		);
 		return {
 			...NO_CARD,
 			identity: model.identity,
 			facts: model.facts,
 			writer: writerOf('Stop', ExperienceStopWriter),
 			menu: items,
-			back: cardBack(null)
+			back: cardBack(null),
 		};
 	}
 	if (subject?.kind === 'transition') {
@@ -323,14 +363,14 @@ export function experienceShownCardFor(input: ExperienceCardHost): ExperienceSho
 			stopId: stop.id,
 			fromPosition: at + 1,
 			guideLabel: controller.contextGuide?.label ?? '',
-			continuation
+			continuation,
 		});
 		return {
 			...NO_CARD,
 			identity: model.identity,
 			facts: model.facts,
 			writer: writerOf('Transition', ExperienceTransitionWriter),
-			back: cardBack({ kind: 'stop', stopId: stop.id })
+			back: cardBack({ kind: 'stop', stopId: stop.id }),
 		};
 	}
 	// D-2: with nothing selected the Card is the Experience Card. A Guide is never a
@@ -341,7 +381,7 @@ export function experienceShownCardFor(input: ExperienceCardHost): ExperienceSho
 		const model = experienceCardModel({
 			experienceId: current.id,
 			label: current.label,
-			guideCount: controller.guides.length
+			guideCount: controller.guides.length,
 		});
 		return {
 			...NO_CARD,
@@ -349,9 +389,9 @@ export function experienceShownCardFor(input: ExperienceCardHost): ExperienceSho
 			facts: model.facts,
 			nameWriter: experienceNameWriter(
 				() => current.label,
-				(name: string) => controller.renameExperience(name)
+				(name: string) => controller.renameExperience(name),
 			),
-			writer: writerOf('Experience', ExperienceExperienceWriter)
+			writer: writerOf('Experience', ExperienceExperienceWriter),
 		};
 	}
 	// No Experience subject, but a Stage pick is: the Stage selection is the Card.
@@ -364,7 +404,7 @@ export function experienceShownCardFor(input: ExperienceCardHost): ExperienceSho
 			identity: model.identity,
 			facts: model.facts,
 			writer: writerOf('Scene object', ExperienceSubjectWriter),
-			bringIntoView: input.bring
+			bringIntoView: input.bring,
 		};
 	}
 	// A Layout or other Stage subject: identity only, and the way back to its editing home.
@@ -372,6 +412,6 @@ export function experienceShownCardFor(input: ExperienceCardHost): ExperienceSho
 		...NO_CARD,
 		identity: input.cardIdentity,
 		bringIntoView: input.bring,
-		menu: [{ id: 'open-in-world', label: 'Open in World', run: input.changeLens }]
+		menu: [{ id: 'open-in-world', label: 'Open in World', run: input.changeLens }],
 	};
 }

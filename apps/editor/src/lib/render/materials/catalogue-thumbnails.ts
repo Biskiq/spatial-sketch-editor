@@ -25,7 +25,7 @@ export type CatalogueThumbnailRow = {
 };
 
 const rows = new Map(
-	(manifest.thumbnails as readonly CatalogueThumbnailRow[]).map((row) => [row.id, row])
+	(manifest.thumbnails as readonly CatalogueThumbnailRow[]).map((row) => [row.id, row]),
 );
 const resolved = new Map<MaterialId, string | undefined>();
 
@@ -38,7 +38,12 @@ export function catalogueThumbnailUri(id: MaterialId): string | undefined {
 		const { recipeKey } = resolveInspectionSubject({ kind: 'catalogue', id }, row.geometry);
 		if (
 			recipeKey !== null &&
-			inspectionThumbnailKey({ recipeKey, geometry: row.geometry, width: row.width, height: row.height }) === row.key
+			inspectionThumbnailKey({
+				recipeKey,
+				geometry: row.geometry,
+				width: row.width,
+				height: row.height,
+			}) === row.key
 		) {
 			uri = `/material-thumbnails/${row.file}`;
 		}

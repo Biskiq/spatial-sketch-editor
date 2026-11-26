@@ -20,7 +20,7 @@ import {
 	type FinishPatchEdit,
 	type FinishSheenReading,
 	type SceneFinishRef,
-	type SheenStepId
+	type SheenStepId,
 } from '@portfolio/project-model/scene-planning';
 import { pruneOverrides, type Recipe } from '@portfolio/project-model/materials';
 import type { SceneMaterialInstance } from '@portfolio/project-model/scene';
@@ -61,13 +61,16 @@ export type DerivedAssignPrediction =
 function defaultStep(reading: FinishSheenReading): SheenStepId {
 	if (reading.current !== null) return reading.current;
 	if (reading.original !== null) return reading.original;
-	return SHEEN_STEP_ORDER.find((id) => reading.steps.some((step) => step.id === id && !step.disabled)) ?? 'satin';
+	return (
+		SHEEN_STEP_ORDER.find((id) => reading.steps.some((step) => step.id === id && !step.disabled)) ??
+		'satin'
+	);
 }
 
 /** Open a draft. This is view state: no host call, no write. */
 export function beginLibraryDraft(
 	entry: LibraryDraftEntry,
-	step: SheenStepId = defaultStep(entry.reading)
+	step: SheenStepId = defaultStep(entry.reading),
 ): LibraryDraft {
 	return {
 		finishKey: entry.key,
@@ -78,7 +81,7 @@ export function beginLibraryDraft(
 		step,
 		reading: entry.reading,
 		edits: [],
-		users: [...entry.userKeys]
+		users: [...entry.userKeys],
 	};
 }
 
@@ -109,13 +112,16 @@ export function predictDerivedAssign(input: {
 	if ('catalogue' in derived.base && pruned === undefined) {
 		const catId = derived.base.catalogue;
 		const hasPristine = materials.some(
-			(instance) => isPristineInstance(instance) && 'catalogue' in instance.base && instance.base.catalogue === catId
+			(instance) =>
+				isPristineInstance(instance) &&
+				'catalogue' in instance.base &&
+				instance.base.catalogue === catId,
 		);
 		return {
 			ok: true,
 			existingKey: `curated:${catId}`,
 			allocates: includesModel && !hasPristine,
-			instance: { ...derived, overrides: undefined }
+			instance: { ...derived, overrides: undefined },
 		};
 	}
 	const identical = findIdenticalFinish(materials, derived.base, pruned);
@@ -124,14 +130,17 @@ export function predictDerivedAssign(input: {
 			ok: true,
 			existingKey: `project:${identical.id}`,
 			allocates: false,
-			instance: identical
+			instance: identical,
 		};
 	}
 	return {
 		ok: true,
 		existingKey: null,
 		allocates: true,
-		instance: pruned === undefined ? { ...derived, overrides: undefined } : { ...derived, overrides: pruned }
+		instance:
+			pruned === undefined
+				? { ...derived, overrides: undefined }
+				: { ...derived, overrides: pruned },
 	};
 }
 

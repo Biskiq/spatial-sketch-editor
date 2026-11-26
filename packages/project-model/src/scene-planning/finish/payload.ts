@@ -9,7 +9,7 @@ import { ShapeReader } from '../../strict-shape';
 export function readColor(
 	reader: ShapeReader,
 	raw: unknown,
-	path: string
+	path: string,
 ): { readonly ok: true; readonly value: SceneColor } | { readonly ok: false } {
 	if (typeof raw === 'string') {
 		if (!HEX_COLOR.test(raw)) {
@@ -32,7 +32,7 @@ export type AdoptionMappingEntry = {
 
 export function readAdoptionMapping(
 	reader: ShapeReader,
-	raw: unknown
+	raw: unknown,
 ): AdoptionMappingEntry[] | null {
 	if (!Array.isArray(raw)) {
 		reader.problem('$.payload.mapping', 'invalid-value', '$.payload.mapping must be a list');
@@ -56,10 +56,18 @@ export function readAdoptionMapping(
 	return entries;
 }
 
-export function readFinishRef(reader: ShapeReader, raw: unknown, path: string): SceneFinishRef | null {
+export function readFinishRef(
+	reader: ShapeReader,
+	raw: unknown,
+	path: string,
+): SceneFinishRef | null {
 	if (raw === 'model-own') return 'model-own';
 	if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
-		reader.problem(path, 'invalid-value', `${path} must name a curated Finish, a project Finish or Model's own`);
+		reader.problem(
+			path,
+			'invalid-value',
+			`${path} must name a curated Finish, a project Finish or Model's own`,
+		);
 		return null;
 	}
 	// Discriminate on the key before reading: reading both shapes would report the
@@ -74,7 +82,11 @@ export function readFinishRef(reader: ShapeReader, raw: unknown, path: string): 
 	const materialId = reader.string(curated.curated, `${path}.curated`);
 	if (materialId === null || !MATERIAL_ID.test(materialId)) {
 		if (materialId !== null) {
-			reader.problem(`${path}.curated`, 'unknown-catalogue', `${path}.curated must name a curated Finish`);
+			reader.problem(
+				`${path}.curated`,
+				'unknown-catalogue',
+				`${path}.curated must name a curated Finish`,
+			);
 		}
 		return null;
 	}
@@ -92,14 +104,18 @@ export function normalizeRotation(value: number): number {
 	return wrapped < 0 ? wrapped + TWO_PI : wrapped;
 }
 
-export function readFinishEdit(reader: ShapeReader, raw: unknown, path: string): SceneFinishEdit | null {
+export function readFinishEdit(
+	reader: ShapeReader,
+	raw: unknown,
+	path: string,
+): SceneFinishEdit | null {
 	const record = reader.object(raw, path, [
 		'color',
 		'roughness',
 		'metalness',
 		'colorMap',
 		'tileMeters',
-		'rotation'
+		'rotation',
 	]);
 	if (record === null) return null;
 	const edit: {
@@ -128,7 +144,11 @@ export function readFinishEdit(reader: ShapeReader, raw: unknown, path: string):
 		if (value === null) return null;
 		if (key === 'roughness') {
 			if (value < 0 || value > 1) {
-				reader.problem(`${path}.roughness`, 'invalid-value', `${path}.roughness must be within [0, 1]`);
+				reader.problem(
+					`${path}.roughness`,
+					'invalid-value',
+					`${path}.roughness must be within [0, 1]`,
+				);
 				return null;
 			}
 			edit.roughness = value;
@@ -152,20 +172,26 @@ export function readFinishEdit(reader: ShapeReader, raw: unknown, path: string):
 		if (record.tileMeters === null) edit.tileMeters = null;
 		else {
 			if (!Array.isArray(record.tileMeters) || record.tileMeters.length !== 2) {
-				reader.problem(`${path}.tileMeters`, 'invalid-value', `${path}.tileMeters must be a [width, height] pair`);
+				reader.problem(
+					`${path}.tileMeters`,
+					'invalid-value',
+					`${path}.tileMeters must be a [width, height] pair`,
+				);
 				return null;
 			}
 			const width = reader.number(record.tileMeters[0], `${path}.tileMeters[0]`);
 			const height = reader.number(record.tileMeters[1], `${path}.tileMeters[1]`);
 			if (width === null || height === null) return null;
 			if (
-				width < TILE_MIN_METERS || width > TILE_MAX_METERS ||
-				height < TILE_MIN_METERS || height > TILE_MAX_METERS
+				width < TILE_MIN_METERS ||
+				width > TILE_MAX_METERS ||
+				height < TILE_MIN_METERS ||
+				height > TILE_MAX_METERS
 			) {
 				reader.problem(
 					`${path}.tileMeters`,
 					'invalid-value',
-					`${path}.tileMeters must be within [${TILE_MIN_METERS}, ${TILE_MAX_METERS}] m`
+					`${path}.tileMeters must be within [${TILE_MIN_METERS}, ${TILE_MAX_METERS}] m`,
 				);
 				return null;
 			}
@@ -185,8 +211,12 @@ export function readFinishEdit(reader: ShapeReader, raw: unknown, path: string):
 		}
 	}
 	if (
-		!('color' in edit) && !('roughness' in edit) && !('metalness' in edit) &&
-		!('colorMap' in edit) && !('tileMeters' in edit) && !('rotation' in edit)
+		!('color' in edit) &&
+		!('roughness' in edit) &&
+		!('metalness' in edit) &&
+		!('colorMap' in edit) &&
+		!('tileMeters' in edit) &&
+		!('rotation' in edit)
 	) {
 		reader.problem(path, 'invalid-value', `${path} must change at least one Finish value`);
 		return null;
@@ -194,7 +224,11 @@ export function readFinishEdit(reader: ShapeReader, raw: unknown, path: string):
 	return edit;
 }
 
-export function readTexturePin(reader: ShapeReader, raw: unknown, path: string): FinishTexturePin | null {
+export function readTexturePin(
+	reader: ShapeReader,
+	raw: unknown,
+	path: string,
+): FinishTexturePin | null {
 	const record = reader.object(raw, path, ['hash', 'mime', 'size', 'locator']);
 	if (record === null) return null;
 	const hash = reader.string(record.hash, `${path}.hash`);
@@ -209,10 +243,14 @@ export function readEntityIdList(
 	reader: ShapeReader,
 	raw: unknown,
 	path: string,
-	allowEmpty: boolean
+	allowEmpty: boolean,
 ): string[] | null {
 	if (!Array.isArray(raw) || (!allowEmpty && raw.length === 0)) {
-		reader.problem(path, 'invalid-value', `${path} must be ${allowEmpty ? 'an' : 'a non-empty'} array of Scene entity ids`);
+		reader.problem(
+			path,
+			'invalid-value',
+			`${path} must be ${allowEmpty ? 'an' : 'a non-empty'} array of Scene entity ids`,
+		);
 		return null;
 	}
 	const ids: string[] = [];
@@ -228,7 +266,11 @@ export function readEntityIdList(
 	return ids;
 }
 
-export function readMaterialIdList(reader: ShapeReader, raw: unknown, path: string): string[] | null {
+export function readMaterialIdList(
+	reader: ShapeReader,
+	raw: unknown,
+	path: string,
+): string[] | null {
 	if (!Array.isArray(raw) || raw.length === 0) {
 		reader.problem(path, 'invalid-value', `${path} must be a non-empty array of Scene entity ids`);
 		return null;
@@ -268,7 +310,11 @@ export function readIndexPair(reader: ShapeReader, raw: unknown, path: string): 
 	return sets;
 }
 
-export function readMetrePair(reader: ShapeReader, raw: unknown, path: string): readonly [number, number] | null {
+export function readMetrePair(
+	reader: ShapeReader,
+	raw: unknown,
+	path: string,
+): readonly [number, number] | null {
 	if (!Array.isArray(raw) || raw.length !== 2) {
 		reader.problem(path, 'invalid-value', `${path} must be a [u, v] pair in metres`);
 		return null;

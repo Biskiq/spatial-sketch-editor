@@ -5,7 +5,10 @@
  * functions read the accepted snapshot, the session's snap step and its
  * one-shot completion listener; they never acquire a gesture or write.
  */
-import type { SceneOperationContext, SceneOperationResult } from '@portfolio/project-model/scene-planning';
+import type {
+	SceneOperationContext,
+	SceneOperationResult,
+} from '@portfolio/project-model/scene-planning';
 import type { SceneEntity, Vec3 } from '@portfolio/project-model/scene';
 import type { NormalizedPlacementDefinition } from '@portfolio/project-model/scene-planning';
 import { snapDraftingCoordinate } from '$lib/authoring/stage/stage-adapter-host';
@@ -35,7 +38,7 @@ export function createSceneSessionReads(input: {
 			return {
 				layout: input.snapshot.source.layout,
 				scene: input.snapshot.source.scene,
-				sourceContentId: input.snapshot.contentRevision
+				sourceContentId: input.snapshot.contentRevision,
 			};
 		},
 		entityOf(id) {
@@ -51,7 +54,7 @@ export function createSceneSessionReads(input: {
 			const step = input.snapStep();
 			if (step === null || !(step > 0)) return value;
 			return snapDraftingCoordinate(value, step);
-		}
+		},
 	};
 }
 
@@ -59,14 +62,15 @@ export function candidateFrom(
 	result: SceneOperationResult,
 	step: number | null,
 	contactOf: (entity: SceneEntity) => number | null,
-	clearCandidate: () => void
+	clearCandidate: () => void,
 ): SceneSessionOutcome {
 	if (result.kind === 'rejected') {
 		clearCandidate();
 		return { kind: 'refused', code: result.code, message: result.message };
 	}
 	const next = result.scene.entities.find((entry) => entry.id === result.entityId);
-	if (next === undefined) return { kind: 'refused', code: 'missing-target', message: 'The candidate entity vanished.' };
+	if (next === undefined)
+		return { kind: 'refused', code: 'missing-target', message: 'The candidate entity vanished.' };
 	const modelContactMinY = next.kind === 'model' ? contactOf(next) : null;
 	return {
 		kind: 'candidate',
@@ -85,12 +89,15 @@ export function candidateFrom(
 			yaw: next.rotation[1],
 			scale: typeof next.scale === 'number' && Number.isFinite(next.scale) ? next.scale : 1,
 			snappedStep: step,
-			...(modelContactMinY === null ? {} : { modelContactMinY })
-		}
+			...(modelContactMinY === null ? {} : { modelContactMinY }),
+		},
 	};
 }
 
-export function footprintOf(definition: NormalizedPlacementDefinition): { width: number; depth: number } {
+export function footprintOf(definition: NormalizedPlacementDefinition): {
+	width: number;
+	depth: number;
+} {
 	let minX = Infinity;
 	let maxX = -Infinity;
 	let minZ = Infinity;
@@ -103,6 +110,6 @@ export function footprintOf(definition: NormalizedPlacementDefinition): { width:
 	}
 	return {
 		width: Number.isFinite(maxX - minX) ? maxX - minX : 1,
-		depth: Number.isFinite(maxZ - minZ) ? maxZ - minZ : 1
+		depth: Number.isFinite(maxZ - minZ) ? maxZ - minZ : 1,
 	};
 }

@@ -9,7 +9,6 @@ export function createBootRepair(deps: {
 	let bootRepairBusy = $state(false);
 	let bootRepairError = $state<string | null>(null);
 
-
 	$effect(() => {
 		deps.projectId();
 		bootRepairError = null;
@@ -34,8 +33,12 @@ export function createBootRepair(deps: {
 	}
 
 	return {
-		get busy() { return bootRepairBusy; },
-		get error() { return bootRepairError; },
-		onFileChosen: onBootRepairFileChosen
+		get busy() {
+			return bootRepairBusy;
+		},
+		get error() {
+			return bootRepairError;
+		},
+		onFileChosen: onBootRepairFileChosen,
 	};
 }

@@ -30,15 +30,28 @@ export function createExperienceCreatePlanner(): DomainPlanner<ProjectEnvelope> 
 			const envelope = envelopeOf(request);
 			const reader = new ShapeReader();
 			const payload = reader.object(request.intent.payload, '$.payload', CREATE_PAYLOAD_KEYS);
-			if (payload === null) return refuse('invalid-payload', 'The Experience payload is not a valid shape', reader.issues);
+			if (payload === null)
+				return refuse(
+					'invalid-payload',
+					'The Experience payload is not a valid shape',
+					reader.issues,
+				);
 			const label = reader.string(payload.label, '$.payload.label');
-			if (label === null) return refuse('invalid-payload', 'The Experience payload is not a valid shape', reader.issues);
+			if (label === null)
+				return refuse(
+					'invalid-payload',
+					'The Experience payload is not a valid shape',
+					reader.issues,
+				);
 			const experienceId = capturedId(request.intent, 'experience');
 			if (experienceId === null) {
 				return refuse('unsupported-operation', 'the intent must capture exactly one experience id');
 			}
 			if (allIds(envelope).has(experienceId)) {
-				return refuse('duplicate-identity', `the captured id "${experienceId}" already names a subject in this envelope`);
+				return refuse(
+					'duplicate-identity',
+					`the captured id "${experienceId}" already names a subject in this envelope`,
+				);
 			}
 			const created: Experience = {
 				id: experienceId,
@@ -48,7 +61,7 @@ export function createExperienceCreatePlanner(): DomainPlanner<ProjectEnvelope> 
 				presentations: [],
 				stops: [],
 				guides: [],
-				detours: []
+				detours: [],
 			};
 			const candidate: ProjectEnvelope = {
 				...envelope,
@@ -58,21 +71,35 @@ export function createExperienceCreatePlanner(): DomainPlanner<ProjectEnvelope> 
 						header: { ...envelope.units.experience.header },
 						data: {
 							formatVersion: EXPERIENCE_UNIT_FORMAT_VERSION,
-							experiences: [...envelope.units.experience.data.experiences, created]
-						}
-					}
-				}
+							experiences: [...envelope.units.experience.data.experiences, created],
+						},
+					},
+				},
 			};
-			return prepared(request, candidate, [
-						{ kind: 'experience.created', subjectIds: [created.id], fields: ['label', 'entryGuideId'] }
-					], [
-						{
-							relation: 'created',
-							before: null,
-							after: reference('experience', 'experience', created.id, [], revisionOf(candidate, 'experience'))
-						}
-					]);
-		}
+			return prepared(
+				request,
+				candidate,
+				[
+					{
+						kind: 'experience.created',
+						subjectIds: [created.id],
+						fields: ['label', 'entryGuideId'],
+					},
+				],
+				[
+					{
+						relation: 'created',
+						before: null,
+						after: reference(
+							'experience',
+							'experience',
+							created.id,
+							[],
+							revisionOf(candidate, 'experience'),
+						),
+					},
+				],
+			);
+		},
 	};
 }
-

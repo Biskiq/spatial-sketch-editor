@@ -1,4 +1,7 @@
-import type { CorrespondenceAuthorization, CorrespondencePairClass } from './reconciliation-correspondence';
+import type {
+	CorrespondenceAuthorization,
+	CorrespondencePairClass,
+} from './reconciliation-correspondence';
 
 /**
  * One `buildCorrespondenceComponents` pass, as an optional observer sees it
@@ -94,10 +97,8 @@ export type CorrespondenceObservation = {
 	overlapDecisions: number;
 };
 
-
 /** One pass's report sink; omitted by production callers. */
 export type CorrespondenceObserver = (observation: CorrespondenceObservation) => void;
-
 
 /**
  * Optional per-pass controls. `exhaustive` runs the PRE-M-1 loop verbatim — both
@@ -109,9 +110,8 @@ export type CorrespondencePassOptions = {
 	exhaustive?: boolean;
 };
 
-
 export function emptyCorrespondenceObservation(
-	mode: CorrespondenceObservation['mode']
+	mode: CorrespondenceObservation['mode'],
 ): CorrespondenceObservation {
 	return {
 		mode,
@@ -135,16 +135,15 @@ export function emptyCorrespondenceObservation(
 		overlapCallsSameGroup: 0,
 		overlapCallsCrossGroup: 0,
 		overlapCallsUndefined: 0,
-		overlapDecisions: 0
+		overlapDecisions: 0,
 	};
 }
-
 
 /** The pair's D-12 class as `unionAuthorized` reads it; counting only. */
 export function correspondencePairClassOf(
 	authorization: CorrespondenceAuthorization,
 	predecessorRoomId: string,
-	faceKey: string
+	faceKey: string,
 ): CorrespondencePairClass {
 	const predecessorKeys = authorization.predecessorComponentKeysByRoomId.get(predecessorRoomId);
 	const faceKeyValue = authorization.faceComponentKeyByKey.get(faceKey);
@@ -152,10 +151,9 @@ export function correspondencePairClassOf(
 	return predecessorKeys.has(faceKeyValue) ? 'same-group' : 'cross-group';
 }
 
-
 export function recordObservationPairClass(
 	observation: CorrespondenceObservation,
-	pairClass: CorrespondencePairClass
+	pairClass: CorrespondencePairClass,
 ): void {
 	observation.pairs += 1;
 	if (pairClass === 'same-group') observation.sameGroupPairs += 1;
@@ -163,10 +161,9 @@ export function recordObservationPairClass(
 	else observation.undefinedPairs += 1;
 }
 
-
 export function recordInsideCall(
 	observation: CorrespondenceObservation,
-	pairClass: CorrespondencePairClass
+	pairClass: CorrespondencePairClass,
 ): void {
 	observation.insideCalls += 1;
 	if (pairClass === 'same-group') observation.insideCallsSameGroup += 1;
@@ -174,10 +171,9 @@ export function recordInsideCall(
 	else observation.insideCallsUndefined += 1;
 }
 
-
 export function recordOverlapCall(
 	observation: CorrespondenceObservation,
-	pairClass: CorrespondencePairClass
+	pairClass: CorrespondencePairClass,
 ): void {
 	observation.overlapCalls += 1;
 	if (pairClass === 'same-group') observation.overlapCallsSameGroup += 1;

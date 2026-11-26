@@ -10,12 +10,7 @@
  * always keeps the World's live noon heading, because a Look changes the light,
  * never which way the room faces.
  */
-import type {
-	SceneEnvironment,
-	ScenePaletteSlot,
-	SceneSky,
-	SceneTreatment
-} from '../scene';
+import type { SceneEnvironment, ScenePaletteSlot, SceneSky, SceneTreatment } from '../scene';
 
 export const SCENE_LOOK_IDS = ['riso', 'clay'] as const;
 
@@ -56,14 +51,14 @@ export const SCENE_LOOK_STARTS: readonly SceneLookStart[] = [
 			sunShadows: true,
 			moon: { ...LOOK_MOON },
 			skyColor: '#f4d35e',
-			groundColor: '#3d5a80'
+			groundColor: '#3d5a80',
 		},
 		treatment: 'flat-colour',
 		palette: [
 			{ name: 'Coral', color: '#ee6c4d' },
 			{ name: 'Ink', color: '#293241' },
-			{ name: 'Gold', color: '#f4d35e' }
-		]
+			{ name: 'Gold', color: '#f4d35e' },
+		],
 	},
 	{
 		id: 'clay',
@@ -80,11 +75,11 @@ export const SCENE_LOOK_STARTS: readonly SceneLookStart[] = [
 			sunShadows: true,
 			moon: { ...LOOK_MOON },
 			skyColor: '#e6e2da',
-			groundColor: '#d4cec2'
+			groundColor: '#d4cec2',
 		},
 		treatment: 'clay',
-		palette: []
-	}
+		palette: [],
+	},
 ];
 
 export function sceneLookStart(id: string): SceneLookStart | null {
@@ -93,15 +88,14 @@ export function sceneLookStart(id: string): SceneLookStart | null {
 
 /** The Look a World currently matches exactly, or `null` after any edit. */
 export function sceneLookOf(
-	environment: SceneEnvironment | null | undefined
+	environment: SceneEnvironment | null | undefined,
 ): SceneLookStart | null {
 	const sky = environment?.sky;
 	if (sky === undefined) return null;
 	return (
 		SCENE_LOOK_STARTS.find(
 			(look) =>
-				look.treatment === environment?.treatment &&
-				sameSkyIgnoringHeading(sky, look.atmosphere)
+				look.treatment === environment?.treatment && sameSkyIgnoringHeading(sky, look.atmosphere),
 		) ?? null
 	);
 }
@@ -135,6 +129,6 @@ export function sceneLookPaletteSlots(look: SceneLookStart): readonly ScenePalet
 	return look.palette.map((entry, index) => ({
 		id: `look-${look.id}-${index + 1}`,
 		name: entry.name,
-		color: entry.color
+		color: entry.color,
 	}));
 }

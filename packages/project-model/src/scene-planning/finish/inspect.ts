@@ -23,7 +23,7 @@ import {
 	mergeImageIndexes,
 	resolveFinish,
 	shippedImageIndex,
-	type ImageIndex
+	type ImageIndex,
 } from '../../materials/resolve';
 import type {
 	BoundInputs,
@@ -32,7 +32,7 @@ import type {
 	Hash,
 	TargetAnalysis,
 	TargetAnalysisRequest,
-	TargetFacts
+	TargetFacts,
 } from '../../materials/types';
 import type { ProjectEnvelope } from '../../units/types';
 import { materialRuntimeIndexOf } from '../../units/material-index';
@@ -44,7 +44,7 @@ import {
 	isPristineInstance,
 	materialInstanceById,
 	type FinishKey,
-	type SceneFinishRef
+	type SceneFinishRef,
 } from './model';
 
 /** A user's stable key within one revision. Never persisted. */
@@ -117,7 +117,7 @@ type FinishScene = ProjectEnvelope['units']['scene']['data'];
 export function finishUsersWithLifecycle(
 	scene: FinishScene,
 	key: FinishKey,
-	layout: LayoutDocumentWallFirst
+	layout: LayoutDocumentWallFirst,
 ): { readonly users: InspectedFinishUser[]; readonly storedReferences: InspectedFinishUser[] } {
 	const users: InspectedFinishUser[] = [];
 	const storedReferences: InspectedFinishUser[] = [];
@@ -127,7 +127,7 @@ export function finishUsersWithLifecycle(
 			kind: 'entity',
 			key: entityUserKey(entity.id),
 			entityId: entity.id,
-			entityKind: entity.kind as 'primitive' | 'form' | 'model'
+			entityKind: entity.kind as 'primitive' | 'form' | 'model',
 		});
 	}
 	for (const assignment of scene.surfaceFinishes ?? []) {
@@ -137,7 +137,7 @@ export function finishUsersWithLifecycle(
 			kind: 'surface',
 			key: surfaceUserKey(assignment.surface),
 			surface: assignment.surface,
-			lifecycle
+			lifecycle,
 		};
 		if (lifecycle === 'retired') storedReferences.push(user);
 		else users.push(user);
@@ -149,10 +149,12 @@ export function finishUsersWithLifecycle(
 export function finishIdIsReferenced(scene: FinishScene, id: string): boolean {
 	return (
 		scene.entities.some(
-			(entity: SceneEntity) => (entity as SceneEntity & { materialInstanceId?: string }).materialInstanceId === id
+			(entity: SceneEntity) =>
+				(entity as SceneEntity & { materialInstanceId?: string }).materialInstanceId === id,
 		) ||
 		(scene.surfaceFinishes ?? []).some(
-			(assignment) => 'materialInstanceId' in assignment.finish && assignment.finish.materialInstanceId === id
+			(assignment) =>
+				'materialInstanceId' in assignment.finish && assignment.finish.materialInstanceId === id,
 		)
 	);
 }
@@ -160,52 +162,69 @@ export function finishIdIsReferenced(scene: FinishScene, id: string): boolean {
 /** The verified image index of one admitted envelope. */
 export function envelopeImageIndex(envelope: ProjectEnvelope, definitionHash?: Hash): ImageIndex {
 	const index = materialRuntimeIndexOf(envelope.units.resources.data);
-	const definition = definitionHash === undefined ? [] : (index?.definitionImages.get(definitionHash) ?? []);
+	const definition =
+		definitionHash === undefined ? [] : (index?.definitionImages.get(definitionHash) ?? []);
 	return mergeImageIndexes(
 		shippedImageIndex(),
 		materialImageIndex(definition),
-		createImageIndex(index?.images ?? [])
+		createImageIndex(index?.images ?? []),
 	);
 }
 
 /** Resolve one Finish instance (or a curated base) against an admitted envelope. */
 export function resolveEnvelopeFinish(
 	envelope: ProjectEnvelope,
-	instance: SceneMaterialInstance
+	instance: SceneMaterialInstance,
 ): FinishResolution {
 	const scene = envelope.units.scene.data;
 	if ('catalogue' in instance.base) {
-		return resolveFinish({ catalogue: instance.base.catalogue }, instance.overrides, scene.palette, envelopeImageIndex(envelope));
+		return resolveFinish(
+			{ catalogue: instance.base.catalogue },
+			instance.overrides,
+			scene.palette,
+			envelopeImageIndex(envelope),
+		);
 	}
 	const hash = instance.base.material;
 	const recipe = materialRuntimeIndexOf(envelope.units.resources.data)?.definitions.get(hash);
 	if (recipe === undefined) {
 		return {
 			inputs: null,
-			issues: [{ code: 'missing-definition', path: '$.base.material', action: 'Restore the material definition or choose another Finish.' }]
+			issues: [
+				{
+					code: 'missing-definition',
+					path: '$.base.material',
+					action: 'Restore the material definition or choose another Finish.',
+				},
+			],
 		};
 	}
-	return resolveFinish({ material: recipe }, instance.overrides, scene.palette, envelopeImageIndex(envelope, hash));
+	return resolveFinish(
+		{ material: recipe },
+		instance.overrides,
+		scene.palette,
+		envelopeImageIndex(envelope, hash),
+	);
 }
 
 /** The analysis request one user needs at the current revisions. */
 export function analysisRequestOf(
 	envelope: ProjectEnvelope,
-	user: InspectedFinishUser
+	user: InspectedFinishUser,
 ): TargetAnalysisRequest {
 	if (user.kind === 'entity') {
 		return {
 			subject: user.entityId,
 			domain: 'scene',
 			entityId: user.entityId,
-			expectedGeometryRevision: envelope.units.scene.header.contentRevision
+			expectedGeometryRevision: envelope.units.scene.header.contentRevision,
 		};
 	}
 	return {
 		subject: surfaceKey(user.surface),
 		domain: 'layout',
 		surface: user.surface,
-		expectedGeometryRevision: envelope.units.layout.header.contentRevision
+		expectedGeometryRevision: envelope.units.layout.header.contentRevision,
 	};
 }
 
@@ -218,30 +237,42 @@ export function qualifyFinishUsers(
 	envelope: ProjectEnvelope,
 	resolution: FinishResolution,
 	users: readonly InspectedFinishUser[],
-	analysis: TargetAnalysis | undefined
-): { readonly issues: readonly MaterialIssue[]; readonly viable: readonly FinishUserKey[]; readonly failing: readonly FinishUserKey[] } {
+	analysis: TargetAnalysis | undefined,
+): {
+	readonly issues: readonly MaterialIssue[];
+	readonly viable: readonly FinishUserKey[];
+	readonly failing: readonly FinishUserKey[];
+} {
 	const drawing = users.filter((user) => user.kind === 'entity' || user.lifecycle === 'present');
 	if (drawing.length === 0 || resolution.inputs === null) {
 		return { issues: resolution.issues, viable: drawing.map((user) => user.key), failing: [] };
 	}
 	const requests = drawing.map((user) => analysisRequestOf(envelope, user));
 	const facts = analysis?.(requests) ?? null;
-	const bySubject = new Map<string, TargetFacts>((facts ?? []).map((entry) => [entry.subject, entry]));
+	const bySubject = new Map<string, TargetFacts>(
+		(facts ?? []).map((entry) => [entry.subject, entry]),
+	);
 	const qualification = qualifyAcrossTargets(
 		resolution,
 		drawing.map((user, index) => ({
 			subject: analysisSubjectOf(user),
 			facts: bySubject.get(analysisSubjectOf(user)) ?? null,
-			expectedGeometryRevision: requests[index]!.expectedGeometryRevision
-		}))
+			expectedGeometryRevision: requests[index]!.expectedGeometryRevision,
+		})),
 	);
 	const failingSubjects = new Set(
-		qualification.perTarget.filter((entry) => entry.issues.length > resolution.issues.length).map((entry) => entry.subject)
+		qualification.perTarget
+			.filter((entry) => entry.issues.length > resolution.issues.length)
+			.map((entry) => entry.subject),
 	);
 	return {
 		issues: qualification.issues,
-		viable: drawing.filter((user) => !failingSubjects.has(analysisSubjectOf(user))).map((user) => user.key),
-		failing: drawing.filter((user) => failingSubjects.has(analysisSubjectOf(user))).map((user) => user.key)
+		viable: drawing
+			.filter((user) => !failingSubjects.has(analysisSubjectOf(user)))
+			.map((user) => user.key),
+		failing: drawing
+			.filter((user) => failingSubjects.has(analysisSubjectOf(user)))
+			.map((user) => user.key),
 	};
 }
 
@@ -257,7 +288,7 @@ export function inspectFinish(
 		readonly analysis?: TargetAnalysis;
 		readonly treat?: (inputs: BoundInputs) => unknown;
 		readonly labelForMaterial?: (id: string) => string;
-	} = {}
+	} = {},
 ): FinishInspection | null {
 	const scene = envelope.units.scene.data;
 	const layout = envelope.units.layout.data;
@@ -275,13 +306,17 @@ export function inspectFinish(
 			users,
 			storedReferences,
 			operations: ['assign'],
-			issues: []
+			issues: [],
 		};
 	}
 	let instance: SceneMaterialInstance;
 	if ('curated' in ref) {
 		if (catalogueRecipe(ref.curated) === undefined) return null;
-		instance = { id: `curated:${ref.curated}`, name: options.labelForMaterial?.(ref.curated) ?? ref.curated, base: { catalogue: ref.curated } };
+		instance = {
+			id: `curated:${ref.curated}`,
+			name: options.labelForMaterial?.(ref.curated) ?? ref.curated,
+			base: { catalogue: ref.curated },
+		};
 	} else {
 		const found = materialInstanceById(scene.materials, ref.project);
 		if (found === undefined || isPristineInstance(found)) return null;
@@ -305,16 +340,20 @@ export function inspectFinish(
 		ref,
 		key,
 		name: instance.name,
-		definition: 'catalogue' in instance.base
-			? { kind: 'catalogue', id: instance.base.catalogue }
-			: { kind: 'material', hash: instance.base.material },
+		definition:
+			'catalogue' in instance.base
+				? { kind: 'catalogue', id: instance.base.catalogue }
+				: { kind: 'material', hash: instance.base.material },
 		provenance: resolution.inputs?.provenance ?? null,
 		untreated: resolution.inputs,
-		treated: resolution.inputs === null || options.treat === undefined ? null : options.treat(resolution.inputs),
+		treated:
+			resolution.inputs === null || options.treat === undefined
+				? null
+				: options.treat(resolution.inputs),
 		users,
 		storedReferences,
 		operations,
-		issues: qualification.issues
+		issues: qualification.issues,
 	};
 }
 

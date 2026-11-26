@@ -13,7 +13,12 @@
  */
 import { NEUTRAL_RECIPE } from '../materials/neutral';
 import { normalizeOffset, normalizeRotation, readRecipe } from '../materials/read';
-import { MATERIAL_MAP_ROLES, MATERIAL_PROFILE, type MapRole, type Mapping } from '../materials/types';
+import {
+	MATERIAL_MAP_ROLES,
+	MATERIAL_PROFILE,
+	type MapRole,
+	type Mapping,
+} from '../materials/types';
 import type {
 	CandidateCorrections,
 	ComposeResult,
@@ -21,7 +26,7 @@ import type {
 	DraftIssue,
 	DraftRoleEdit,
 	SetCandidate,
-	SetFileFact
+	SetFileFact,
 } from './types';
 
 /** The longest Finish display name, shared with the Scene planners. */
@@ -32,10 +37,18 @@ const FALLBACK_NAME = 'Imported material';
 function sortIssues(issues: DraftIssue[]): DraftIssue[] {
 	return issues.sort((left, right) =>
 		left.path !== right.path
-			? left.path < right.path ? -1 : 1
+			? left.path < right.path
+				? -1
+				: 1
 			: (left.role ?? '') !== (right.role ?? '')
-				? (left.role ?? '') < (right.role ?? '') ? -1 : 1
-				: left.code < right.code ? -1 : left.code > right.code ? 1 : 0
+				? (left.role ?? '') < (right.role ?? '')
+					? -1
+					: 1
+				: left.code < right.code
+					? -1
+					: left.code > right.code
+						? 1
+						: 0,
 	);
 }
 
@@ -47,7 +60,7 @@ export function normalizeDraftMapping(mapping: Mapping): Mapping {
 			set: mapping.set,
 			repeat: [mapping.repeat[0], mapping.repeat[1]],
 			rotation: normalizeRotation(mapping.rotation),
-			offset: [normalizeOffset(mapping.offset[0]), normalizeOffset(mapping.offset[1])]
+			offset: [normalizeOffset(mapping.offset[0]), normalizeOffset(mapping.offset[1])],
 		};
 	}
 	return {
@@ -55,8 +68,11 @@ export function normalizeDraftMapping(mapping: Mapping): Mapping {
 		metric: {
 			tileMeters: [mapping.metric.tileMeters[0], mapping.metric.tileMeters[1]],
 			rotation: normalizeRotation(mapping.metric.rotation),
-			offset: [normalizeOffset(mapping.metric.offset[0]), normalizeOffset(mapping.metric.offset[1])]
-		}
+			offset: [
+				normalizeOffset(mapping.metric.offset[0]),
+				normalizeOffset(mapping.metric.offset[1]),
+			],
+		},
 	};
 }
 
@@ -79,8 +95,10 @@ export function displayNameOfStem(stem: string): string {
  */
 export function draftFromCandidate(
 	candidate: SetCandidate,
-	corrections: CandidateCorrections = {}
-): { readonly ok: true; readonly edits: DraftEdits } | { readonly ok: false; readonly issues: readonly DraftIssue[] } {
+	corrections: CandidateCorrections = {},
+):
+	| { readonly ok: true; readonly edits: DraftEdits }
+	| { readonly ok: false; readonly issues: readonly DraftIssue[] } {
 	const issues: DraftIssue[] = [];
 	const excluded = new Set(corrections.exclude ?? []);
 	const acknowledged = new Set(corrections.acknowledge ?? []);
@@ -94,7 +112,7 @@ export function draftFromCandidate(
 					code: 'invalid-value',
 					path: `$.set.${role}`,
 					role,
-					action: `Bind the ${role} correction to the ${role} role.`
+					action: `Bind the ${role} correction to the ${role} role.`,
 				});
 				continue;
 			}
@@ -103,7 +121,12 @@ export function draftFromCandidate(
 		}
 		const conflict = candidate.conflicts.find((entry) => entry.role === role);
 		if (conflict !== undefined) {
-			issues.push({ code: 'unresolved-role', path: `$.roles.${role}`, role, action: conflict.action });
+			issues.push({
+				code: 'unresolved-role',
+				path: `$.roles.${role}`,
+				role,
+				action: conflict.action,
+			});
 			continue;
 		}
 		const choice = candidate.roleChoices.find((entry) => entry.role === role);
@@ -113,18 +136,19 @@ export function draftFromCandidate(
 				code: 'unacknowledged-guess',
 				path: `$.roles.${role}`,
 				role,
-				action: 'Confirm whether the normal map is OpenGL (+Y) or DirectX (−Y).'
+				action: 'Confirm whether the normal map is OpenGL (+Y) or DirectX (−Y).',
 			});
 			continue;
 		}
 		if (role === 'color') roles.color = { role: 'color', file: choice.file };
-		else if (role === 'normal') roles.normal = { role: 'normal', file: choice.file, convention: choice.convention ?? '+Y' };
+		else if (role === 'normal')
+			roles.normal = { role: 'normal', file: choice.file, convention: choice.convention ?? '+Y' };
 		else {
 			roles[role] = {
 				role,
 				file: choice.file,
 				component: choice.component ?? 'r',
-				invert: choice.invert ?? false
+				invert: choice.invert ?? false,
 			};
 		}
 	}
@@ -135,8 +159,8 @@ export function draftFromCandidate(
 			name: corrections.name ?? displayNameOfStem(candidate.stem),
 			...(corrections.factors === undefined ? {} : { factors: corrections.factors }),
 			...(corrections.mapping === undefined ? {} : { mapping: corrections.mapping }),
-			roles
-		}
+			roles,
+		},
 	};
 }
 
@@ -148,7 +172,7 @@ export function draftFromCandidate(
  */
 export function composeDraft(
 	edits: DraftEdits,
-	files: ReadonlyMap<string, SetFileFact>
+	files: ReadonlyMap<string, SetFileFact>,
 ): ComposeResult {
 	const issues: DraftIssue[] = [];
 	const name = edits.name.trim();
@@ -156,7 +180,7 @@ export function composeDraft(
 		issues.push({
 			code: 'invalid-name',
 			path: '$.name',
-			action: `Name the Finish with 1–${DRAFT_NAME_MAX_LENGTH} characters.`
+			action: `Name the Finish with 1–${DRAFT_NAME_MAX_LENGTH} characters.`,
 		});
 	}
 	const maps: Record<string, unknown> = {};
@@ -165,23 +189,41 @@ export function composeDraft(
 		const edit = edits.roles[role];
 		if (edit === undefined) continue;
 		if (edit.role !== role) {
-			issues.push({ code: 'invalid-value', path: `$.roles.${role}`, role, action: `Bind the ${role} edit to the ${role} role.` });
+			issues.push({
+				code: 'invalid-value',
+				path: `$.roles.${role}`,
+				role,
+				action: `Bind the ${role} edit to the ${role} role.`,
+			});
 			continue;
 		}
 		const fact = files.get(edit.file);
 		if (fact === undefined) {
-			issues.push({ code: 'unknown-file', path: `$.roles.${role}.file`, role, action: 'Select the file again.' });
+			issues.push({
+				code: 'unknown-file',
+				path: `$.roles.${role}.file`,
+				role,
+				action: 'Select the file again.',
+			});
 			continue;
 		}
 		const admission = role === 'color' ? fact.colour : fact.raw;
 		if (!admission.ok) {
-			issues.push({ code: 'unsupported-image-encoding', path: `$.roles.${role}.file`, role, action: admission.action });
+			issues.push({
+				code: 'unsupported-image-encoding',
+				path: `$.roles.${role}.file`,
+				role,
+				action: admission.action,
+			});
 			continue;
 		}
-		const mapping = edit.mapping === undefined ? {} : { mapping: normalizeDraftMapping(edit.mapping) };
+		const mapping =
+			edit.mapping === undefined ? {} : { mapping: normalizeDraftMapping(edit.mapping) };
 		if (edit.role === 'color') maps.color = { image: fact.hash, ...mapping };
-		else if (edit.role === 'normal') maps.normal = { image: fact.hash, convention: edit.convention, ...mapping };
-		else maps[role] = { image: fact.hash, component: edit.component, invert: edit.invert, ...mapping };
+		else if (edit.role === 'normal')
+			maps.normal = { image: fact.hash, convention: edit.convention, ...mapping };
+		else
+			maps[role] = { image: fact.hash, component: edit.component, invert: edit.invert, ...mapping };
 		// Two keys for the same digest are the same bytes; the first by key wins.
 		const existing = sources.get(fact.hash);
 		if (existing === undefined || fact.key < existing) sources.set(fact.hash, fact.key);
@@ -190,12 +232,14 @@ export function composeDraft(
 	const raw = {
 		profile: MATERIAL_PROFILE,
 		color: typeof factors.color === 'string' ? factors.color.toLowerCase() : NEUTRAL_RECIPE.color,
-		roughness: factors.roughness ?? (edits.roles.roughness !== undefined ? 1 : NEUTRAL_RECIPE.roughness),
-		metalness: factors.metalness ?? (edits.roles.metalness !== undefined ? 1 : NEUTRAL_RECIPE.metalness),
+		roughness:
+			factors.roughness ?? (edits.roles.roughness !== undefined ? 1 : NEUTRAL_RECIPE.roughness),
+		metalness:
+			factors.metalness ?? (edits.roles.metalness !== undefined ? 1 : NEUTRAL_RECIPE.metalness),
 		occlusionStrength: factors.occlusionStrength ?? NEUTRAL_RECIPE.occlusionStrength,
 		normalScale: factors.normalScale ?? NEUTRAL_RECIPE.normalScale,
 		mapping: normalizeDraftMapping(edits.mapping ?? NEUTRAL_RECIPE.mapping),
-		maps
+		maps,
 	};
 	if (issues.length > 0) return { ok: false, issues: sortIssues(issues) };
 	const read = readRecipe(raw);
@@ -207,9 +251,9 @@ export function composeDraft(
 					code: issue.code === 'out-of-range' ? 'out-of-range' : 'invalid-value',
 					path: issue.path,
 					...(issue.role === undefined ? {} : { role: issue.role }),
-					action: issue.action ?? 'Correct this value.'
-				}))
-			)
+					action: issue.action ?? 'Correct this value.',
+				})),
+			),
 		};
 	}
 	return { ok: true, draft: { name, recipe: read.recipe, files: sources } };

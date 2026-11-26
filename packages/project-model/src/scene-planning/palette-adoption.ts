@@ -81,15 +81,18 @@ export function planPaletteAdoption(scene: SceneDocument): PaletteAdoptionPlan {
 			slotName: row.slot.name,
 			slotColor: row.slot.color.toLowerCase(),
 			finishes: row.finishes,
-			objects: row.objects
+			objects: row.objects,
 		})),
 		slots: slots.length,
-		skipped: { inherited, imageTints }
+		skipped: { inherited, imageTints },
 	};
 }
 
 /** Nearest palette slot by CIE Lab ΔE76; document order breaks a tie. */
-export function nearestSlot(color: string, slots: readonly ScenePaletteSlot[]): ScenePaletteSlot | null {
+export function nearestSlot(
+	color: string,
+	slots: readonly ScenePaletteSlot[],
+): ScenePaletteSlot | null {
 	const target = hexToLab(color);
 	if (target === null) return null;
 	let best: ScenePaletteSlot | null = null;

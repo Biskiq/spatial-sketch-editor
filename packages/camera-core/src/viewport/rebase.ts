@@ -11,13 +11,20 @@ import type { ViewportCameraState, ViewportSourceRebase } from './types';
  * its declared endpoint first so a content change never leaves a half-flip behind.
  * Ownership itself is not rebased here: the ticket protocol owns the claim.
  */
-export function rebaseViewportSource(state: ViewportCameraState, sourceRevision: unknown): ViewportSourceRebase {
-	if (typeof sourceRevision !== 'string' || sourceRevision.trim() === '' || /\s/.test(sourceRevision)) {
+export function rebaseViewportSource(
+	state: ViewportCameraState,
+	sourceRevision: unknown,
+): ViewportSourceRebase {
+	if (
+		typeof sourceRevision !== 'string' ||
+		sourceRevision.trim() === '' ||
+		/\s/.test(sourceRevision)
+	) {
 		return {
 			kind: 'refused',
 			state,
 			reason: 'invalid-source-revision',
-			message: 'a source revision must be a nonempty opaque identity'
+			message: 'a source revision must be a nonempty opaque identity',
 		};
 	}
 	if (sourceRevision === state.sourceRevision) return { kind: 'unchanged', state };
@@ -27,6 +34,6 @@ export function rebaseViewportSource(state: ViewportCameraState, sourceRevision:
 		kind: 'rebased',
 		state: { ...settled, sourceRevision },
 		previousSourceRevision: state.sourceRevision,
-		posePreserved: true
+		posePreserved: true,
 	};
 }

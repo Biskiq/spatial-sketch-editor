@@ -21,12 +21,29 @@
  * This module owns no route, selection, source or Camera state. Every write
  * still goes through the route's one acceptance host.
  */
-import { SCENE_LOOK_STARTS, SCENE_SKY_DEFAULT, sceneLookOf, skyIsEdited, type SceneEnvironment, type SceneEnvironmentChoice, type SceneLookId, type SceneLookStart, type SceneSky, type SceneTreatment } from '@portfolio/project-model/units';
-import { SCENE_ENVIRONMENT_SET_KIND, SCENE_LOOK_APPLY_KIND, SCENE_LOOK_RESTORE_KIND, SCENE_SKY_UPDATE_KIND, SCENE_TREATMENT_SET_KIND } from '@portfolio/project-model/units/planning';
+import {
+	SCENE_LOOK_STARTS,
+	SCENE_SKY_DEFAULT,
+	sceneLookOf,
+	skyIsEdited,
+	type SceneEnvironment,
+	type SceneEnvironmentChoice,
+	type SceneLookId,
+	type SceneLookStart,
+	type SceneSky,
+	type SceneTreatment,
+} from '@portfolio/project-model/units';
+import {
+	SCENE_ENVIRONMENT_SET_KIND,
+	SCENE_LOOK_APPLY_KIND,
+	SCENE_LOOK_RESTORE_KIND,
+	SCENE_SKY_UPDATE_KIND,
+	SCENE_TREATMENT_SET_KIND,
+} from '@portfolio/project-model/units/planning';
 import type { SceneSkyUpdatePayload } from '@portfolio/project-model/units/planning';
 import {
 	planPaletteAdoption,
-	type PaletteAdoptionPlan
+	type PaletteAdoptionPlan,
 } from '@portfolio/project-model/scene-planning';
 import type { AcceptedRevision } from '@portfolio/project-model/references';
 import type { AuthoringIntent } from '@portfolio/project-model/f4';
@@ -37,7 +54,7 @@ import type {
 	StageCardActionRecord,
 	StageCardFact,
 	StageCardSubject,
-	StageCardWriterRecord
+	StageCardWriterRecord,
 } from '../stage/stage-facade';
 import type { StageMarkView } from '../stage/stage-handles';
 import { armLight, type ArmedLightKind } from './light-tool.svelte';
@@ -76,8 +93,8 @@ const LIGHT_SHELF: LookLibraryShelf = {
 	label: 'Lights',
 	entries: [
 		{ id: 'light:point', label: 'Point', summary: 'A light with no direction or beam.' },
-		{ id: 'light:spot', label: 'Spot', summary: 'A cone aimed at a surface.' }
-	]
+		{ id: 'light:spot', label: 'Spot', summary: 'A cone aimed at a surface.' },
+	],
 };
 
 /** One environment captured for Previous, tied to the project epoch it came from. */
@@ -112,8 +129,11 @@ export type LookPanelTab = 'sky' | 'looks';
 export function createLookAuthoring(host: LookAuthoringHost) {
 	const preferenceKey = 'biskiq:edit-on-paper';
 	function readStudioPreference(): boolean {
-		try { return localStorage.getItem(preferenceKey) === 'true'; }
-		catch { return false; }
+		try {
+			return localStorage.getItem(preferenceKey) === 'true';
+		} catch {
+			return false;
+		}
 	}
 	let studioWhileEditing = $state(readStudioPreference());
 	let environmentWrite = $state.raw<StageAdapterServices | null>(null);
@@ -128,25 +148,25 @@ export function createLookAuthoring(host: LookAuthoringHost) {
 	const environment = $derived(scene?.environment);
 	const sky = $derived(host.sky());
 	const shownSky = $derived(previewSky ?? sky ?? SCENE_SKY_DEFAULT);
-	const stageSky = $derived(studioWhileEditing ? null : previewSky ?? sky);
+	const stageSky = $derived(studioWhileEditing ? null : (previewSky ?? sky));
 	const busy = $derived(environmentWrite !== null && environmentWrite === host.services());
 	const revision = () => host.services()?.stage.snapshot().acceptedRevision;
 	const sessionKey = $derived(host.sessionKey?.() ?? '');
 	const previousEnvironment = $derived(
-		previous !== null && previous.sessionKey === sessionKey ? previous : null
+		previous !== null && previous.sessionKey === sessionKey ? previous : null,
 	);
 	const treatment = $derived(environment?.treatment);
 	const activeLook = $derived(sceneLookOf(environment));
 	const adoptionPlan = $derived(scene === null ? null : planPaletteAdoption(scene));
 	const canAdopt = $derived(
-		adoptionPlan !== null && adoptionPlan.slots > 0 && adoptionPlan.rows.length > 0
+		adoptionPlan !== null && adoptionPlan.slots > 0 && adoptionPlan.rows.length > 0,
 	);
 
 	function capture(): CapturedEnvironment {
 		return {
 			sky: environment?.sky ?? null,
 			treatment: environment?.treatment,
-			sessionKey
+			sessionKey,
 		};
 	}
 
@@ -154,22 +174,25 @@ export function createLookAuthoring(host: LookAuthoringHost) {
 		kind: string,
 		payload: AuthoringIntent['payload'],
 		expectedRevision = revision(),
-		previousBehaviour: PreviousBehaviour = 'keep'
+		previousBehaviour: PreviousBehaviour = 'keep',
 	): Promise<boolean> {
 		const services = host.services();
-		if (services === null || expectedRevision === undefined || environmentWrite === services) return false;
+		if (services === null || expectedRevision === undefined || environmentWrite === services)
+			return false;
 		const before = capture();
 		environmentWrite = services;
 		try {
 			const outcome = await services.authoring.accept({
 				version: 1,
 				kind,
-				operationId: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+				operationId:
+					globalThis.crypto?.randomUUID?.() ??
+					`${Date.now()}-${Math.random().toString(16).slice(2)}`,
 				expectedRevision,
 				targets: [],
 				payload,
 				allocatedIds: [],
-				capturedInputs: []
+				capturedInputs: [],
 			});
 			if (host.services() !== services) return false;
 			if (outcome.kind === 'refused') {
@@ -184,15 +207,22 @@ export function createLookAuthoring(host: LookAuthoringHost) {
 		}
 	}
 
-	function updateSky(patch: SceneSkyUpdatePayload, expectedRevision?: AcceptedRevision): Promise<boolean> {
+	function updateSky(
+		patch: SceneSkyUpdatePayload,
+		expectedRevision?: AcceptedRevision,
+	): Promise<boolean> {
 		return write(SCENE_SKY_UPDATE_KIND, patch, expectedRevision, 'clear');
 	}
 	const gesture = createSkyGesture({
 		sky: () => sky ?? SCENE_SKY_DEFAULT,
 		revision,
 		busy: () => busy,
-		preview: (value) => { previewSky = value; },
-		update: async (patch, expected) => { await updateSky(patch, expected); }
+		preview: (value) => {
+			previewSky = value;
+		},
+		update: async (patch, expected) => {
+			await updateSky(patch, expected);
+		},
 	});
 
 	function setEnvironment(preset: SceneEnvironmentChoice): Promise<boolean> {
@@ -227,10 +257,10 @@ export function createLookAuthoring(host: LookAuthoringHost) {
 			SCENE_LOOK_RESTORE_KIND,
 			{
 				sky: captured.sky,
-				...(captured.treatment === undefined ? {} : { treatment: captured.treatment })
+				...(captured.treatment === undefined ? {} : { treatment: captured.treatment }),
 			},
 			revision(),
-			'capture'
+			'capture',
 		);
 	}
 
@@ -254,11 +284,11 @@ export function createLookAuthoring(host: LookAuthoringHost) {
 				mapping: plan.rows.map((row) => ({
 					color: row.color,
 					slotId: row.slotId,
-					slotColor: row.slotColor
-				}))
+					slotColor: row.slotColor,
+				})),
 			},
 			revision(),
-			'keep'
+			'keep',
 		);
 		if (accepted) adoption = null;
 	}
@@ -309,11 +339,21 @@ export function createLookAuthoring(host: LookAuthoringHost) {
 		get stageSky() {
 			return stageSky;
 		},
-		get studioWhileEditing() { return studioWhileEditing; },
-		get previewSky() { return previewSky; },
-		get shownSky() { return shownSky; },
-		get edited() { return shownSky.preset !== 'studio' && skyIsEdited(shownSky); },
-		get panelOpen() { return panelOpen; },
+		get studioWhileEditing() {
+			return studioWhileEditing;
+		},
+		get previewSky() {
+			return previewSky;
+		},
+		get shownSky() {
+			return shownSky;
+		},
+		get edited() {
+			return shownSky.preset !== 'studio' && skyIsEdited(shownSky);
+		},
+		get panelOpen() {
+			return panelOpen;
+		},
 		setPanelOpen(open: boolean) {
 			panelOpen = open;
 			if (!open) {
@@ -328,7 +368,9 @@ export function createLookAuthoring(host: LookAuthoringHost) {
 			panelTab = tab;
 		},
 		gesture,
-		resetSky: () => { void setEnvironment(shownSky.preset); },
+		resetSky: () => {
+			void setEnvironment(shownSky.preset);
+		},
 		updateSky,
 		aimThroughWindows,
 		get busy() {
@@ -378,11 +420,14 @@ export function createLookAuthoring(host: LookAuthoringHost) {
 		adoptPalette,
 		setStudioWhileEditing(value: boolean) {
 			studioWhileEditing = value;
-			try { localStorage.setItem(preferenceKey, String(value)); }
-			catch { /* The session preference still works with storage disabled. */ }
+			try {
+				localStorage.setItem(preferenceKey, String(value));
+			} catch {
+				/* The session preference still works with storage disabled. */
+			}
 		},
 		pickMaterial,
-		pickLibraryEntry
+		pickLibraryEntry,
 	};
 }
 

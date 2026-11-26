@@ -10,10 +10,8 @@ export type ExperienceRunPhase =
 	| 'completed'
 	| 'cancelled';
 
-
 /** The lead-in a resumed stay keeps, so the tour never leaves the moment a visitor rejoins. */
 export const EXPERIENCE_RESUME_LEAD_IN_MS = 2000;
-
 
 export type ExperiencePanel = {
 	readonly presentationId: string;
@@ -21,14 +19,12 @@ export type ExperiencePanel = {
 	readonly content: readonly { readonly id: string; readonly text: string }[];
 };
 
-
 export type ExperienceVisit = {
 	readonly stopId: string;
 	readonly occurrenceId: string;
 	/** One-based visit order within the run. */
 	readonly index: number;
 };
-
 
 /**
  * A Stop occurrence that Explore suspended. `resume` restores exactly this: the
@@ -45,7 +41,6 @@ export type ExperienceSuspendedVisit = {
 	readonly paused: boolean;
 	readonly returnToStopId: string | null;
 };
-
 
 export type ExperienceRunState = {
 	readonly runId: string;
@@ -89,9 +84,11 @@ export type ExperienceRunState = {
 	readonly lastEvent: ProgramEvent | null;
 };
 
-
-type RunEvent<K extends string> = { readonly kind: K; readonly runId: string; readonly runEpoch: number };
-
+type RunEvent<K extends string> = {
+	readonly kind: K;
+	readonly runId: string;
+	readonly runEpoch: number;
+};
 
 export type ExperienceEvent =
 	| RunEvent<'enter'>
@@ -119,13 +116,11 @@ export type ExperienceEvent =
 	| (RunEvent<'navigate'> & { readonly stopId: string })
 	| (RunEvent<'set-state'> & { readonly stateId: string; readonly value: string | boolean });
 
-
 export type ExperienceDetourPolicy = {
 	readonly fromStopId: string;
 	readonly toStopId: string;
 	readonly returnToStopId: string;
 };
-
 
 /**
  * One validated runtime edge: the Camera invocation for arriving at `toStopId`
@@ -138,7 +133,6 @@ export type ExperienceTransition = {
 	readonly toStopId: string;
 	readonly invocation: ProgramInvocation;
 };
-
 
 export type ExperienceInterpreterOptions = {
 	readonly runId: string;
@@ -153,7 +147,6 @@ export type ExperienceInterpreterOptions = {
 	 */
 	readonly transitions?: readonly ExperienceTransition[];
 };
-
 
 export type ExperienceEffect =
 	| {
@@ -174,9 +167,7 @@ export type ExperienceEffect =
 			readonly message: string;
 	  };
 
-
 export type ExperienceReduceOutcome = 'accepted' | 'ignored' | 'stale';
-
 
 export type ExperienceReduceResult = {
 	readonly state: ExperienceRunState;

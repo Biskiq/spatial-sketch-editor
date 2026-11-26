@@ -27,11 +27,15 @@ import {
 	stageKeyAction,
 	stageKeyFromControl,
 	stageKeyFromTextEntry,
-	type StageDockSlot
+	type StageDockSlot,
 } from '../stage-input';
 import type { StageInterruptionReason } from '../stage-interruption';
 import type { ViewingIntent } from '@portfolio/camera-core/viewport';
-import { compileEscapeLadder, type BuiltInEscapeRung, type FeatureEscapeRegistration } from '../../workspace/escape-ladder';
+import {
+	compileEscapeLadder,
+	type BuiltInEscapeRung,
+	type FeatureEscapeRegistration,
+} from '../../workspace/escape-ladder';
 import type { EscapeContext, EscapeResult } from '../../workspace/protocol';
 
 export type StageKeyboardInput = {
@@ -145,7 +149,7 @@ export function createStageKeyboard(input: StageKeyboardInput): StageKeyboard {
 			input.clearPendingDelete();
 			return 'handled';
 		},
-		'finish-gesture': () => input.cancelFinishGesture?.() === true ? 'handled' : 'pass',
+		'finish-gesture': () => (input.cancelFinishGesture?.() === true ? 'handled' : 'pass'),
 		'adapter-gesture-cancel': (context) => {
 			context.stage = input.facade();
 			return context.stage?.gestureKeyIntent({ kind: 'cancel' }).claimed ? 'handled' : 'pass';
@@ -170,10 +174,10 @@ export function createStageKeyboard(input: StageKeyboardInput): StageKeyboard {
 			input.toggleLibrary();
 			return 'handled';
 		},
-		align: () => input.dismissAlign?.() === true ? 'handled' : 'pass',
-		'material-editor': () => input.dismissMaterialEditor?.() === true ? 'handled' : 'pass',
-		'material-import': () => input.dismissMaterialImport?.() === true ? 'handled' : 'pass',
-		'repair-drawer': () => input.dismissRepairDrawer?.() === true ? 'handled' : 'pass',
+		align: () => (input.dismissAlign?.() === true ? 'handled' : 'pass'),
+		'material-editor': () => (input.dismissMaterialEditor?.() === true ? 'handled' : 'pass'),
+		'material-import': () => (input.dismissMaterialImport?.() === true ? 'handled' : 'pass'),
+		'repair-drawer': () => (input.dismissRepairDrawer?.() === true ? 'handled' : 'pass'),
 		measure: (context) => {
 			context.armedHostTool = input.armedHostTool();
 			if (context.armedHostTool !== 'measure' || !input.measureTool()?.clear()) return 'pass';
@@ -201,7 +205,8 @@ export function createStageKeyboard(input: StageKeyboardInput): StageKeyboard {
 		},
 		palette: () => {
 			const armedKey = input.armedDockKey();
-			if (input.task() === null || armedKey?.palette !== true || !input.paletteOpen()) return 'pass';
+			if (input.task() === null || armedKey?.palette !== true || !input.paletteOpen())
+				return 'pass';
 			input.closePalette();
 			return 'handled';
 		},
@@ -234,7 +239,7 @@ export function createStageKeyboard(input: StageKeyboardInput): StageKeyboard {
 			context.claimed = input.activeLayer()?.key(context.event, 'unwind') === 'claimed';
 			return 'pass';
 		},
-		leave: ({ claimed }) => !claimed && input.leaveStudio?.() === true ? 'handled' : 'pass',
+		leave: ({ claimed }) => (!claimed && input.leaveStudio?.() === true ? 'handled' : 'pass'),
 		selection: ({ claimed }) => {
 			if (claimed || !input.selectionPresent()) return 'pass';
 			input.closeSelection();
@@ -249,14 +254,18 @@ export function createStageKeyboard(input: StageKeyboardInput): StageKeyboard {
 			if (claimed || !input.sliceActive()) return 'pass';
 			input.putBackSlice();
 			return 'handled';
-		}
+		},
 	};
 
 	const escapeSteps = compileEscapeLadder(builtInEscape, input.featureEscape);
 
 	function dismiss(event: KeyboardEvent): void {
 		const context: EscapeContext = {
-			event, stage: null, claimed: false, armedHostTool: null, toolbarFocus: false
+			event,
+			stage: null,
+			claimed: false,
+			armedHostTool: null,
+			toolbarFocus: false,
 		};
 		for (const handle of escapeSteps) {
 			if (handle(context) === 'handled') return;

@@ -4,7 +4,10 @@ import { readPoint, readSupportChoice } from './readers';
 import { type SceneOperationPayload } from './types';
 import { ShapeReader } from '../../strict-shape';
 
-export function readCreateFormPayload(reader: ShapeReader, raw: unknown): SceneOperationPayload | null {
+export function readCreateFormPayload(
+	reader: ShapeReader,
+	raw: unknown,
+): SceneOperationPayload | null {
 	const path = '$.payload';
 	const record = reader.object(raw, path, [
 		'plane',
@@ -14,7 +17,7 @@ export function readCreateFormPayload(reader: ShapeReader, raw: unknown): SceneO
 		'yaw',
 		'materialId',
 		'name',
-		'supportChoice'
+		'supportChoice',
 	]);
 	if (record === null) return null;
 	const plane = reader.tag(record.plane, `${path}.plane`, ['plan', 'elevation']);
@@ -69,18 +72,21 @@ export function readCreateFormPayload(reader: ShapeReader, raw: unknown): SceneO
 		yaw,
 		materialId: materialId as MaterialId,
 		name,
-		...(choice.choice === undefined ? {} : { choice: choice.choice })
+		...(choice.choice === undefined ? {} : { choice: choice.choice }),
 	};
 }
 
-export function readPlaceFormCopyPayload(reader: ShapeReader, raw: unknown): SceneOperationPayload | null {
+export function readPlaceFormCopyPayload(
+	reader: ShapeReader,
+	raw: unknown,
+): SceneOperationPayload | null {
 	const path = '$.payload';
 	const record = reader.object(raw, path, [
 		'item',
 		'worldXZ',
 		'yaw',
 		'contactMinY',
-		'supportChoice'
+		'supportChoice',
 	]);
 	if (record === null) return null;
 	const item = readFormLibraryItem(reader, record.item, `${path}.item`);
@@ -103,7 +109,7 @@ export function readPlaceFormCopyPayload(reader: ShapeReader, raw: unknown): Sce
 		worldXZ,
 		yaw,
 		contactMinY,
-		...(choice.choice === undefined ? {} : { choice: choice.choice })
+		...(choice.choice === undefined ? {} : { choice: choice.choice }),
 	};
 }
 
@@ -111,7 +117,7 @@ export function readPlaceFormCopyPayload(reader: ShapeReader, raw: unknown): Sce
 export function readFormLibraryItem(
 	reader: ShapeReader,
 	raw: unknown,
-	path: string
+	path: string,
 ): FormLibraryPayload | null {
 	const parsed = readFormLibraryPayload(raw);
 	if (parsed.success) return parsed.payload;
@@ -121,7 +127,10 @@ export function readFormLibraryItem(
 	return null;
 }
 
-export function readSetFormSizePayload(reader: ShapeReader, raw: unknown): SceneOperationPayload | null {
+export function readSetFormSizePayload(
+	reader: ShapeReader,
+	raw: unknown,
+): SceneOperationPayload | null {
 	const path = '$.payload';
 	const record = reader.object(raw, path, ['entityId', 'scale', 'supportChoice']);
 	if (record === null) return null;
@@ -131,7 +140,11 @@ export function readSetFormSizePayload(reader: ShapeReader, raw: unknown): Scene
 	if (scale !== null) {
 		for (const [index, value] of scale.entries()) {
 			if (value <= 0) {
-				reader.problem(`${path}.scale[${index}]`, 'out-of-range', `${path}.scale[${index}] must be greater than zero`);
+				reader.problem(
+					`${path}.scale[${index}]`,
+					'out-of-range',
+					`${path}.scale[${index}] must be greater than zero`,
+				);
 			}
 		}
 	}
@@ -140,7 +153,7 @@ export function readSetFormSizePayload(reader: ShapeReader, raw: unknown): Scene
 		kind: 'set-form-size',
 		entityId,
 		scale,
-		...(choice.choice === undefined ? {} : { choice: choice.choice })
+		...(choice.choice === undefined ? {} : { choice: choice.choice }),
 	};
 }
 
@@ -152,7 +165,10 @@ export function readSetFormSizePayload(reader: ShapeReader, raw: unknown): Scene
  * sequence is the accepted one. Plane, scale and `nextKey` are deliberately
  * absent: this intent cannot change them.
  */
-export function readSetFormProfilePayload(reader: ShapeReader, raw: unknown): SceneOperationPayload | null {
+export function readSetFormProfilePayload(
+	reader: ShapeReader,
+	raw: unknown,
+): SceneOperationPayload | null {
 	const path = '$.payload';
 	const record = reader.object(raw, path, ['entityId', 'outline', 'extent', 'supportChoice']);
 	if (record === null) return null;
@@ -192,6 +208,6 @@ export function readSetFormProfilePayload(reader: ShapeReader, raw: unknown): Sc
 		entityId,
 		outline,
 		extent,
-		...(choice.choice === undefined ? {} : { choice: choice.choice })
+		...(choice.choice === undefined ? {} : { choice: choice.choice }),
 	};
 }

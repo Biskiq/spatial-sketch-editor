@@ -9,7 +9,7 @@ export type DatabaseQueryResult<Row = Record<string, unknown>> = {
 export interface DatabaseClient {
 	query<Row = Record<string, unknown>>(
 		text: string,
-		values?: unknown[]
+		values?: unknown[],
 	): Promise<DatabaseQueryResult<Row>>;
 	release(error?: Error): void;
 }
@@ -34,7 +34,7 @@ export function createPool(config: ApiConfig): DatabasePool {
 		max: 5,
 		connectionTimeoutMillis: POSTGRES_TIMEOUT_MS,
 		query_timeout: POSTGRES_TIMEOUT_MS,
-		idleTimeoutMillis: 30_000
+		idleTimeoutMillis: 30_000,
 	});
 }
 

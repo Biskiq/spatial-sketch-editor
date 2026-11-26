@@ -51,7 +51,9 @@ const DIMENSION_LIMIT_TOLERANCE_METERS = 1e-6;
 
 /** True when `value` is finite and outside the supported envelope. */
 export function exceedsLayoutDimension(value: number): boolean {
-	return Number.isFinite(value) && value > MAX_LAYOUT_DIMENSION_METERS + DIMENSION_LIMIT_TOLERANCE_METERS;
+	return (
+		Number.isFinite(value) && value > MAX_LAYOUT_DIMENSION_METERS + DIMENSION_LIMIT_TOLERANCE_METERS
+	);
 }
 
 /** An import/read issue that names the oversized subject and its measured span. */
@@ -72,7 +74,7 @@ function distance(a: LayoutVec2, b: LayoutVec2): number {
  */
 export function layoutWallSpanMeters(
 	wall: Pick<LayoutWall, 'startJunctionId' | 'endJunctionId' | 'centerline'>,
-	pointById: ReadonlyMap<string, LayoutVec2>
+	pointById: ReadonlyMap<string, LayoutVec2>,
 ): number | null {
 	const start = pointById.get(wall.startJunctionId);
 	const end = pointById.get(wall.endJunctionId);
@@ -84,7 +86,10 @@ export function layoutWallSpanMeters(
 		const from = points[index];
 		const to = points[index + 1];
 		if (from === undefined || to === undefined) return null;
-		total += distance(from, span.handleOut) + distance(span.handleOut, span.handleIn) + distance(span.handleIn, to);
+		total +=
+			distance(from, span.handleOut) +
+			distance(span.handleOut, span.handleIn) +
+			distance(span.handleIn, to);
 	}
 	return total;
 }
@@ -94,7 +99,9 @@ export function layoutWallSpanMeters(
  * deterministic document order. Used by the canonical read validator, so an
  * imported source is refused before the compiler or the Stage samples it.
  */
-export function layoutDimensionLimitIssues(document: LayoutDocumentWallFirst): LayoutDocumentIssue[] {
+export function layoutDimensionLimitIssues(
+	document: LayoutDocumentWallFirst,
+): LayoutDocumentIssue[] {
 	const issues: LayoutDocumentIssue[] = [];
 	const pointById = new Map(document.junctions.map((junction) => [junction.id, junction.point]));
 	document.walls.forEach((wall, index) => {
@@ -105,7 +112,7 @@ export function layoutDimensionLimitIssues(document: LayoutDocumentWallFirst): L
 				issues.push({
 					path: `${path}.${field}`,
 					code: 'dimension_out_of_range',
-					message: layoutDimensionIssueMessage(`Wall '${wall.id}' ${field}`, value)
+					message: layoutDimensionIssueMessage(`Wall '${wall.id}' ${field}`, value),
 				});
 			}
 		}
@@ -114,7 +121,7 @@ export function layoutDimensionLimitIssues(document: LayoutDocumentWallFirst): L
 			issues.push({
 				path: `${path}.endJunctionId`,
 				code: 'dimension_out_of_range',
-				message: layoutDimensionIssueMessage(`Wall '${wall.id}' span`, span)
+				message: layoutDimensionIssueMessage(`Wall '${wall.id}' span`, span),
 			});
 		}
 	});
@@ -126,7 +133,7 @@ export function layoutDimensionLimitIssues(document: LayoutDocumentWallFirst): L
 				issues.push({
 					path: `${path}.${field}`,
 					code: 'dimension_out_of_range',
-					message: layoutDimensionIssueMessage(`Opening '${opening.id}' ${field}`, value)
+					message: layoutDimensionIssueMessage(`Opening '${opening.id}' ${field}`, value),
 				});
 			}
 		}

@@ -22,7 +22,7 @@ import type {
 	StageCardSubject,
 	StageCardWriterRecord,
 	StageFacade,
-	StageSubject
+	StageSubject,
 } from '../stage-facade';
 import type { StageSelectionEntry } from '../semantic-selection';
 import { stageCardActions, stageCardFacts, stageCardWriter } from '../stage-contributions';
@@ -32,13 +32,13 @@ import {
 	membershipLabel,
 	sceneKindWord,
 	type IndexLabel,
-	type IndexLabelInput
+	type IndexLabelInput,
 } from '../shell/index-labels';
 import {
 	createWorldIndexModel,
 	resolveWorldScope,
 	type WorldIndexModel,
-	type WorldScope
+	type WorldScope,
 } from '../shell/world-index-model';
 import { stageLayout, stageScene } from '../unit-stage-source';
 
@@ -63,7 +63,11 @@ export type StageCardIdentity = {
 
 /** The Card's contributed facts, name writer, field writer and scoped actions. */
 export type StageWorldCardView = {
-	readonly facts: readonly { readonly label: string; readonly value: string; readonly fieldId?: string }[];
+	readonly facts: readonly {
+		readonly label: string;
+		readonly value: string;
+		readonly fieldId?: string;
+	}[];
 	readonly nameWriter: ReturnType<StageFacade['cardNameWriter']> | null;
 	readonly writer: StageCardWriterRecord | null;
 	readonly actions: readonly StageCardActionRecord[];
@@ -77,7 +81,9 @@ export type StageIndexProjection = {
 	readonly labels: ReadonlyMap<string, IndexLabel>;
 	readonly entryMap: ReadonlyMap<string, StageIndexEntry>;
 	readonly worldIndex: WorldIndexModel;
-	readonly sceneEntityOf: (entityId: string) => ReturnType<typeof stageScene>['entities'][number] | null;
+	readonly sceneEntityOf: (
+		entityId: string,
+	) => ReturnType<typeof stageScene>['entities'][number] | null;
 };
 
 export type StageSelectionView = StageIndexProjection & {
@@ -111,7 +117,11 @@ export type StageWorldCardInput = {
 	readonly subject: StageCardSubject | null;
 	readonly datumMeters: number;
 	readonly look: {
-		readonly facts: readonly { readonly label: string; readonly value: string; readonly fieldId?: string }[];
+		readonly facts: readonly {
+			readonly label: string;
+			readonly value: string;
+			readonly fieldId?: string;
+		}[];
 		readonly writer: StageCardWriterRecord | null;
 		readonly actions: readonly StageCardActionRecord[];
 	};
@@ -128,7 +138,7 @@ function locatorOf(entry: StageSelectionEntry): string {
 /** The plan-space centre used by both selection reveal and Index bring-into-view. */
 function layoutWorldPoint(
 	plan: PlanEvaluation | null,
-	sourceId: string
+	sourceId: string,
 ): [number, number, number] | null {
 	if (plan === null) return null;
 	const fragment = planFragmentOf(plan, sourceId);
@@ -143,9 +153,9 @@ function layoutWorldPoint(
 	const center = points.reduce<[number, number]>(
 		(accumulator, point) => [
 			accumulator[0] + point[0] / points.length,
-			accumulator[1] + point[1] / points.length
+			accumulator[1] + point[1] / points.length,
 		],
-		[0, 0]
+		[0, 0],
 	);
 	return [center[0], fragment.elevationMeters, center[1]];
 }
@@ -237,43 +247,45 @@ export function createStageSelectionView() {
 					name: layoutNameOf(membership.sourceKind, membership.sourceId),
 					eligible: membership.eligible,
 					revealed: membership.revealed,
-					membership: membership.reason
+					membership: membership.reason,
 				});
 			}
 		}
 		for (const subject of input.subjects) {
-				const entity =
-					subject.reference.domain === 'scene' ? sceneEntityOf(subject.reference.subject.id) : null;
-				entries.push({
-					group: entity?.kind === 'light' ? 'light' : subject.reference.domain,
-					sourceId: subject.id,
-					kindWord: entity === null ? 'Subject' : sceneKindWord(entity.kind),
-					name: entity?.name ?? null,
-					eligible: true,
-					revealed: false,
-					membership: 'included'
-				});
-			}
+			const entity =
+				subject.reference.domain === 'scene' ? sceneEntityOf(subject.reference.subject.id) : null;
+			entries.push({
+				group: entity?.kind === 'light' ? 'light' : subject.reference.domain,
+				sourceId: subject.id,
+				kindWord: entity === null ? 'Subject' : sceneKindWord(entity.kind),
+				name: entity?.name ?? null,
+				eligible: true,
+				revealed: false,
+				membership: 'included',
+			});
+		}
 
 		const labels = indexLabels(
-				entries.map((entry): IndexLabelInput => ({
+			entries.map(
+				(entry): IndexLabelInput => ({
 					identity: entry.sourceId,
 					kind: entry.kindWord,
-					name: entry.name
-				}))
-			);
+					name: entry.name,
+				}),
+			),
+		);
 		const entryMap = new Map(entries.map((entry) => [entry.sourceId, entry] as const));
 
 		const worldIndex = worldIndexModel(
-				layoutPayload,
-				entries.map((entry) => ({
-					...entry,
-					label: labels.get(entry.sourceId)?.label ?? entry.kindWord,
-					authored: labels.get(entry.sourceId)?.authored ?? false,
-					kind: entry.kindWord
-				})),
-				input.snapshot?.domain.name ?? 'Project',
-				input.envelope === null ? new Map() : input.sceneRooms
+			layoutPayload,
+			entries.map((entry) => ({
+				...entry,
+				label: labels.get(entry.sourceId)?.label ?? entry.kindWord,
+				authored: labels.get(entry.sourceId)?.authored ?? false,
+				kind: entry.kindWord,
+			})),
+			input.snapshot?.domain.name ?? 'Project',
+			input.envelope === null ? new Map() : input.sceneRooms,
 		);
 
 		const value: StageIndexProjection = {
@@ -283,14 +295,14 @@ export function createStageSelectionView() {
 			labels,
 			entryMap,
 			worldIndex,
-			sceneEntityOf
+			sceneEntityOf,
 		};
 		indexKey = {
 			snapshot: input.snapshot,
 			envelope: input.envelope,
 			sceneRooms: input.sceneRooms,
 			planView: input.planView,
-			subjects: input.subjects
+			subjects: input.subjects,
 		};
 		indexValue = value;
 		return value;
@@ -299,9 +311,9 @@ export function createStageSelectionView() {
 	return {
 		read(input: StageSelectionViewInput): StageSelectionView {
 			const index = indexFor(input);
-			const { layoutPayload, scenePayload, entries, labels, entryMap, worldIndex, sceneEntityOf } = index;
-			const selectedLocatorId =
-				input.selection === null ? null : locatorOf(input.selection);
+			const { layoutPayload, scenePayload, entries, labels, entryMap, worldIndex, sceneEntityOf } =
+				index;
+			const selectedLocatorId = input.selection === null ? null : locatorOf(input.selection);
 			const resolvedScope = resolveWorldScope(worldIndex, input.scope);
 			const locationLabel = worldIndex.contexts
 				.filter((context) => context.id === 'project' || context.id === resolvedScope)
@@ -311,7 +323,8 @@ export function createStageSelectionView() {
 			const selectedMembership = ((): PlanMembershipReason | null => {
 				const selected = input.selection;
 				const plan = input.planView;
-				if (plan === null || selected === null || selected.reference.domain !== 'layout') return null;
+				if (plan === null || selected === null || selected.reference.domain !== 'layout')
+					return null;
 				return planMembershipOf(plan, selected.reference.subject.id)?.reason ?? null;
 			})();
 
@@ -331,7 +344,7 @@ export function createStageSelectionView() {
 							? domainWord
 							: selectedMembership !== null
 								? membershipLabel(selectedMembership)
-								: 'Not in the current Plan'
+								: 'Not in the current Plan',
 				};
 			})();
 
@@ -342,13 +355,15 @@ export function createStageSelectionView() {
 					sourceId: selected.reference.subject.id,
 					sourceKind: selected.reference.subject.kind,
 					reference: selected.reference,
-					ref: selected.representation ?? null
+					ref: selected.representation ?? null,
 				};
 			})();
 
 			const selectedArtwork = ((): SceneArtworkEntity | null => {
 				if (cardSubject?.reference?.domain !== 'scene') return null;
-				const entity = scenePayload?.entities.find((candidate) => candidate.id === cardSubject.sourceId);
+				const entity = scenePayload?.entities.find(
+					(candidate) => candidate.id === cardSubject.sourceId,
+				);
 				return entity?.kind === 'artwork' ? entity : null;
 			})();
 
@@ -365,7 +380,7 @@ export function createStageSelectionView() {
 					const subject = input.subjects.find(
 						(item) =>
 							item.reference.domain === selected.reference.domain &&
-							item.reference.subject.id === selected.reference.subject.id
+							item.reference.subject.id === selected.reference.subject.id,
 					);
 					return subject === undefined ? null : [...subject.worldPoint];
 				}
@@ -398,9 +413,9 @@ export function createStageSelectionView() {
 				referenceLabel,
 				selectedWorldPoint,
 				sourceWorldPoint,
-				sceneEntityOf
+				sceneEntityOf,
 			};
-		}
+		},
 	};
 }
 
@@ -416,19 +431,14 @@ export function stageWorldCardView(input: StageWorldCardInput): StageWorldCardVi
 		return { facts: [], nameWriter: null, writer: null, actions: [] };
 	}
 	const own =
-		reference.domain === 'layout'
-			? [{ label: 'Datum', value: `${input.datumMeters} m` }]
-			: [];
+		reference.domain === 'layout' ? [{ label: 'Datum', value: `${input.datumMeters} m` }] : [];
 	return {
-		facts: [
-			...stageCardFacts(input.facade, subject, own),
-			...input.look.facts
-		],
+		facts: [...stageCardFacts(input.facade, subject, own), ...input.look.facts],
 		nameWriter: input.facade?.cardNameWriter(subject) ?? null,
 		writer: input.look.writer ?? stageCardWriter(input.facade, subject),
 		actions: [
 			...(input.facade === null ? [] : stageCardActions(input.facade, subject)),
-			...input.look.actions
-		]
+			...input.look.actions,
+		],
 	};
 }

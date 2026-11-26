@@ -21,11 +21,19 @@ export function createAppearanceCanvasRegion(input: {
 	return (snapshot: StageReadSnapshot) => {
 		const card = input.card.canvasKeys(snapshot);
 		return contribution<'appearance', 'canvas'>()({
-			get scene() { return card.scene; },
-			get proposals() { return card.proposals; },
-			get alignHiddenWallIds() { return input.align.canvasKeys.alignHiddenWallIds; },
+			get scene() {
+				return card.scene;
+			},
+			get proposals() {
+				return card.proposals;
+			},
+			get alignHiddenWallIds() {
+				return input.align.canvasKeys.alignHiddenWallIds;
+			},
 			onFinishOutcome: input.repair.canvasKeys.onFinishOutcome,
-			get repairAffectedTargets() { return input.repair.canvasKeys.repairAffectedTargets; }
+			get repairAffectedTargets() {
+				return input.repair.canvasKeys.repairAffectedTargets;
+			},
 		});
 	};
 }

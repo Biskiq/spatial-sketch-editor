@@ -4,13 +4,17 @@ import type { SemanticReference } from '@portfolio/project-model/references';
 import type { StageAcceptanceHost } from './host-acceptance';
 import type { StageAdapter, StageAdapterRegistration, StageFacade } from './stage-facade';
 import type { StageSession } from './stage-session';
-import type { AppearanceIssue, AppearanceIssueActionKind, AppearanceIssuesService } from '../look/appearance-issues.svelte';
+import type {
+	AppearanceIssue,
+	AppearanceIssueActionKind,
+	AppearanceIssuesService,
+} from '../look/appearance-issues.svelte';
 import type { FinishCard, FinishCardTarget } from '../look/finish-card.svelte';
 import type { FinishEditor } from '../look/finish-editor.svelte';
 import { createMaterialProofRegistry } from '../material-proof';
 import {
 	createSceneTargetAnalysis,
-	type ModelDerivativeAnalysisProvider
+	type ModelDerivativeAnalysisProvider,
 } from '$lib/render/materials/target-analysis';
 import { stageEnvelope } from './unit-stage-source';
 
@@ -20,7 +24,13 @@ export { datumWorkingPlane } from './stage-facade';
 export { angleDeltaLabel, planarDeltaLabel, signed, sizeDeltaLabel } from './gesture-values';
 export { roomLabelFacts } from './room-labels';
 export { axisTravelFromRay } from './stage-axis-travel';
-export { DRAFTING_SNAP_METERS, draftingSnapIncrementMeters, snapDraftingCoordinate, snapDraftingPlacement, snapDraftingPoint } from './stage-drafting';
+export {
+	DRAFTING_SNAP_METERS,
+	draftingSnapIncrementMeters,
+	snapDraftingCoordinate,
+	snapDraftingPlacement,
+	snapDraftingPoint,
+} from './stage-drafting';
 export { isStageDrag, readingIntentClockSeconds } from './stage-input';
 export { sameSubject } from './semantic-selection';
 export { scopeAdmitsEntity } from './subject-scope';
@@ -30,11 +40,25 @@ export { compactMeasure } from './shell/compact-measure';
 export { indexLabels } from './shell/index-labels';
 export { default as ShellIcon } from './shell/ShellIcon.svelte';
 export type {
-	StageAdapter, StageAdapterBinding, StageAdapterContext, StageCardAction,
-	StageCardActionOutcome, StageCardFact, StageCardSubject, StageCandidatePreview, StagePaintAnswer, StagePaintSpaceScope,
-	StageDomainPick, StageGhostMesh, StageGuideContribution, StageInkReadingRecord,
-	StageInkReadingSession, StageInstrumentContent, StageKeyboardIntent, StageOverlayContribution,
-	StagePointerIntent
+	StageAdapter,
+	StageAdapterBinding,
+	StageAdapterContext,
+	StageCardAction,
+	StageCardActionOutcome,
+	StageCardFact,
+	StageCardSubject,
+	StageCandidatePreview,
+	StagePaintAnswer,
+	StagePaintSpaceScope,
+	StageDomainPick,
+	StageGhostMesh,
+	StageGuideContribution,
+	StageInkReadingRecord,
+	StageInkReadingSession,
+	StageInstrumentContent,
+	StageKeyboardIntent,
+	StageOverlayContribution,
+	StagePointerIntent,
 } from './stage-facade';
 export type { StageHandleDescriptor } from './stage-handles';
 export type { GestureAcquisition, GestureLease, ProposalLease } from './stage-session';
@@ -44,17 +68,37 @@ export type { StageAcceptOutcome } from './host-acceptance';
 export type { StageReadSnapshot } from './accepted-read';
 
 /** Only the task and proposal state adapter contributions use. */
-export type StageTaskPort = Pick<StageSession,
+export type StageTaskPort = Pick<
+	StageSession,
 	'task' | 'gesture' | 'writerGeneration' | 'taskChoiceGeneration' | 'registerProposal'
 >;
 
 /** The same runtime facade, narrowed to the operations used by adapters. */
-export type StageAdapterPort = Pick<StageFacade,
-	'snapshot' | 'evaluation' | 'evaluationId' | 'plan' | 'heightSheet' | 'heightTicks' |
-	'resolvePick' | 'hitMark' | 'selection' | 'selectionState' | 'setSelection' | 'select' |
-	'drafting' | 'sceneBounds' | 'onAdaptersChanged' | 'inkReadings' | 'openInkReading' |
-	'openContributedTask' | 'closeTask' | 'notifySurfaceChange' | 'postureScoped' | 'acquireGesture' |
-	'lightPreview'
+export type StageAdapterPort = Pick<
+	StageFacade,
+	| 'snapshot'
+	| 'evaluation'
+	| 'evaluationId'
+	| 'plan'
+	| 'heightSheet'
+	| 'heightTicks'
+	| 'resolvePick'
+	| 'hitMark'
+	| 'selection'
+	| 'selectionState'
+	| 'setSelection'
+	| 'select'
+	| 'drafting'
+	| 'sceneBounds'
+	| 'onAdaptersChanged'
+	| 'inkReadings'
+	| 'openInkReading'
+	| 'openContributedTask'
+	| 'closeTask'
+	| 'notifySurfaceChange'
+	| 'postureScoped'
+	| 'acquireGesture'
+	| 'lightPreview'
 > & { readonly session: StageTaskPort };
 
 /**
@@ -65,31 +109,61 @@ export type StageObjectStudio = {
 	/** Whether the posture can open now (World lens, not already in Studio). */
 	available(): boolean;
 	/** Enter Object Studio on one native form. Writes no document value. */
-	edit(entityId: string):
-		| { readonly kind: 'entered' }
-		| { readonly kind: 'refused'; readonly message: string };
+	edit(
+		entityId: string,
+	): { readonly kind: 'entered' } | { readonly kind: 'refused'; readonly message: string };
 };
 
 export type StageLightInspection = {
-	enter(lightId: string):
-		| { readonly kind: 'entered' }
-		| { readonly kind: 'refused'; readonly message: string };
+	enter(
+		lightId: string,
+	): { readonly kind: 'entered' } | { readonly kind: 'refused'; readonly message: string };
 };
 
 /** The shared Finish section consumes this narrow view of the Appearance session. */
 export type StageFinishCardPort = {
-	readonly card: Pick<FinishCard,
-		'cancel' | 'clearRequest' | 'focus' | 'giveOwnCopy' | 'previewColour' | 'refusalFor' |
-		'rename' | 'requested' | 'resetToOriginal' | 'selectAllUsers' | 'setColour' | 'setColourMode' |
-		'setReach' | 'setSheen' | 'stepPattern' | 'swap' | 'toggleFavourite' | 'turnPattern' | 'view'
+	readonly card: Pick<
+		FinishCard,
+		| 'cancel'
+		| 'clearRequest'
+		| 'focus'
+		| 'giveOwnCopy'
+		| 'previewColour'
+		| 'refusalFor'
+		| 'rename'
+		| 'requested'
+		| 'resetToOriginal'
+		| 'selectAllUsers'
+		| 'setColour'
+		| 'setColourMode'
+		| 'setReach'
+		| 'setSheen'
+		| 'stepPattern'
+		| 'swap'
+		| 'toggleFavourite'
+		| 'turnPattern'
+		| 'view'
 	>;
 	readonly editor: Pick<FinishEditor, 'openFor'>;
-	readonly issues: Pick<AppearanceIssuesService, 'hasIssuesForTarget' | 'issuesForTarget' | 'refusalFor'>;
-	requestAlign(target: FinishCardTarget, place: string, invoker?: HTMLElement | null): {
-		readonly ok: boolean; readonly message?: string;
+	readonly issues: Pick<
+		AppearanceIssuesService,
+		'hasIssuesForTarget' | 'issuesForTarget' | 'refusalFor'
+	>;
+	requestAlign(
+		target: FinishCardTarget,
+		place: string,
+		invoker?: HTMLElement | null,
+	): {
+		readonly ok: boolean;
+		readonly message?: string;
 	};
 	requestLibrarySwap(target: FinishCardTarget, place: string): boolean;
-	runIssueAction(issue: AppearanceIssue, kind: AppearanceIssueActionKind, target: FinishCardTarget, file?: File): Promise<boolean>;
+	runIssueAction(
+		issue: AppearanceIssue,
+		kind: AppearanceIssueActionKind,
+		target: FinishCardTarget,
+		file?: File,
+	): Promise<boolean>;
 };
 
 export type StageAdapterServices = {
@@ -105,7 +179,9 @@ export type StageAdapterServices = {
 	/** Open the Card for a freshly installed and selected Space. */
 	readonly openSpaceCreated?: (reference: SemanticReference) => void;
 	/** One epoch's F4 boundary. Planner registrations last for this epoch. */
-	readonly authoring: Pick<StageAcceptanceHost, 'accept' | 'acceptedRevision'> & { registerPlanner(planner: DomainPlanner<unknown>): RegistrationOutcome };
+	readonly authoring: Pick<StageAcceptanceHost, 'accept' | 'acceptedRevision'> & {
+		registerPlanner(planner: DomainPlanner<unknown>): RegistrationOutcome;
+	};
 	/**
 	 * The route's one Spot Look-through session. Absent in tests and in a host
 	 * that offers no inspection, so the Light Card simply omits its action.
@@ -180,7 +256,7 @@ export function createStageAdapterServices(
 	host: StageAcceptanceHost,
 	finishCard?: () => StageFinishCardPort | null,
 	materialProofs?: import('$lib/authoring/material-proof').MaterialProofRegistry,
-	targetSources?: StageTargetSources
+	targetSources?: StageTargetSources,
 ): StageAdapterServices {
 	return {
 		stage,
@@ -199,27 +275,32 @@ export function createStageAdapterServices(
 						if (digests === null) {
 							const pins = new Map<string, string>();
 							for (const resource of stageEnvelope(snapshot).units.resources.data.resources) {
-								if (resource.kind !== 'model' || resource.pin === null || resource.unresolved !== null) continue;
+								if (
+									resource.kind !== 'model' ||
+									resource.pin === null ||
+									resource.unresolved !== null
+								)
+									continue;
 								pins.set(resource.id, resource.pin.hash);
 							}
 							digests = pins;
 						}
 						return digests.get(assetId) ?? null;
-					}
+					},
 				};
 			},
-			...(targetSources?.models === undefined ? {} : { models: targetSources.models })
+			...(targetSources?.models === undefined ? {} : { models: targetSources.models }),
 		}),
 		finishCard: {
 			get current() {
 				return finishCard?.() ?? null;
-			}
+			},
 		},
 		authoring: {
 			registerPlanner: (planner) => host.registerPlanner(planner),
 			accept: (intent) => host.accept(intent),
-			acceptedRevision: () => host.acceptedRevision()
-		}
+			acceptedRevision: () => host.acceptedRevision(),
+		},
 	};
 }
 
@@ -235,9 +316,11 @@ export function mountStageAdapter(
 	 */
 	services?: StageAdapterServices,
 	/** Route-owned target sources, used only when composing a fresh services value. */
-	targetSources?: StageTargetSources
+	targetSources?: StageTargetSources,
 ): StageAdapterRegistration {
 	return stage.registerStageAdapter(
-		factory(services ?? createStageAdapterServices(stage, host, finishCard, undefined, targetSources))
+		factory(
+			services ?? createStageAdapterServices(stage, host, finishCard, undefined, targetSources),
+		),
 	);
 }

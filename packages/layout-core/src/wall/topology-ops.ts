@@ -23,23 +23,27 @@
  * The precision operations use the same candidate/validation discipline.
  */
 
-export type { WallFirstOpRejectionCode, WallFirstOpRejection, WallFirstOpPlan } from './topology/contracts';
+export type {
+	WallFirstOpRejectionCode,
+	WallFirstOpRejection,
+	WallFirstOpPlan,
+} from './topology/contracts';
 export {
 	createAuthoringRoomAllocator,
 	validateAndCompile,
-	planFirstEnclosureCreation
+	planFirstEnclosureCreation,
 } from './topology/birth';
 export { planDeleteWall, planDeleteWalls } from './topology/removal';
 export {
 	planRoomMetadataUpdate,
 	planWallMetadataUpdate,
-	planOpeningMetadataUpdate
+	planOpeningMetadataUpdate,
 } from './topology/metadata';
 export type { RoomMetadataPatch, OptionalNamePatch } from './topology/metadata';
 export {
 	roomExclusiveBoundaryWallIds,
 	planRemoveRoom,
 	planRemoveSpace,
-	closedChainWalls
+	closedChainWalls,
 } from './topology/rooms';
 export type { LayoutWallFirstRoom } from './types';

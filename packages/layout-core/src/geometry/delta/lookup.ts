@@ -2,19 +2,28 @@ import type { CompiledLayoutGeometry, CompiledPhysicalWall, CompiledRoom } from 
 import type { RetainedQueryRecords } from '../reuse';
 import { COMPILE_WORLD_BY_GEOMETRY } from './snapshots';
 
-export function indexedCompiledWall(geometry: CompiledLayoutGeometry, wallId: string): CompiledPhysicalWall | undefined {
- const world = COMPILE_WORLD_BY_GEOMETRY.get(geometry);
- if (!world) return geometry.walls.find((wall) => wall.wallId === wallId);
- const index = world.wallDocIndexById.get(wallId);
- return index === undefined ? undefined : world.wallSlots.get(index)?.compiled ?? undefined;
+export function indexedCompiledWall(
+	geometry: CompiledLayoutGeometry,
+	wallId: string,
+): CompiledPhysicalWall | undefined {
+	const world = COMPILE_WORLD_BY_GEOMETRY.get(geometry);
+	if (!world) return geometry.walls.find((wall) => wall.wallId === wallId);
+	const index = world.wallDocIndexById.get(wallId);
+	return index === undefined ? undefined : (world.wallSlots.get(index)?.compiled ?? undefined);
 }
 
-export function indexedCompiledWallQueries(geometry: CompiledLayoutGeometry, wallId: string): RetainedQueryRecords | undefined {
- const world = COMPILE_WORLD_BY_GEOMETRY.get(geometry);
- const index = world?.wallDocIndexById.get(wallId);
- if (!world || index === undefined) return undefined;
- const slot = world.wallSlots.get(index)!;
- return { ...slot.baseRecords, aabbs: [...slot.baseRecords.aabbs, ...(slot.wallAabb ? [slot.wallAabb] : [])] };
+export function indexedCompiledWallQueries(
+	geometry: CompiledLayoutGeometry,
+	wallId: string,
+): RetainedQueryRecords | undefined {
+	const world = COMPILE_WORLD_BY_GEOMETRY.get(geometry);
+	const index = world?.wallDocIndexById.get(wallId);
+	if (!world || index === undefined) return undefined;
+	const slot = world.wallSlots.get(index)!;
+	return {
+		...slot.baseRecords,
+		aabbs: [...slot.baseRecords.aabbs, ...(slot.wallAabb ? [slot.wallAabb] : [])],
+	};
 }
 
 /**
@@ -31,7 +40,7 @@ export function indexedCompiledWallQueries(geometry: CompiledLayoutGeometry, wal
  */
 export function forEachRetainedCompiledWall(
 	geometry: CompiledLayoutGeometry,
-	visit: (wall: CompiledPhysicalWall) => void
+	visit: (wall: CompiledPhysicalWall) => void,
 ): boolean {
 	const world = COMPILE_WORLD_BY_GEOMETRY.get(geometry);
 	if (!world) return false;
@@ -39,11 +48,10 @@ export function forEachRetainedCompiledWall(
 	return true;
 }
 
-
 /** The Room counterpart of {@link forEachRetainedCompiledWall}. */
 export function forEachRetainedCompiledRoom(
 	geometry: CompiledLayoutGeometry,
-	visit: (room: CompiledRoom) => void
+	visit: (room: CompiledRoom) => void,
 ): boolean {
 	const world = COMPILE_WORLD_BY_GEOMETRY.get(geometry);
 	if (!world) return false;

@@ -30,7 +30,12 @@
  * boundary. Viewport and scissor rectangles are CSS pixels with a **top-left**
  * origin on both backends — Three's WebGL2 backend converts Y internally.
  */
-import { NoToneMapping, SRGBColorSpace, WebGLCoordinateSystem, WebGPUCoordinateSystem } from 'three';
+import {
+	NoToneMapping,
+	SRGBColorSpace,
+	WebGLCoordinateSystem,
+	WebGPUCoordinateSystem,
+} from 'three';
 import type { Camera, Matrix4, WebGPURenderer } from 'three/webgpu';
 import { WebGPURenderer as ThreeWebGPURenderer } from 'three/webgpu';
 import { countWork } from '@portfolio/layout-core/kernel';
@@ -81,7 +86,7 @@ function asThree(renderer: WebGPURenderer): ThreeRenderer {
 export function createProductRenderer(
 	canvas: HTMLCanvasElement,
 	attempt: RendererAttempt,
-	surface: RendererSurface
+	surface: RendererSurface,
 ): WebGPURenderer {
 	const renderer = new ThreeWebGPURenderer({
 		canvas,
@@ -92,7 +97,7 @@ export function createProductRenderer(
 		// `false` is Three's automatic WebGPU-first request. A recovery retry may
 		// name the compatibility backend; the observed backend still decides what
 		// the generation reports.
-		forceWebGL: attempt === 'webgl2'
+		forceWebGL: attempt === 'webgl2',
 	});
 	renderer.outputColorSpace = SRGBColorSpace;
 	renderer.toneMapping = NoToneMapping;
@@ -148,7 +153,7 @@ export function disposeProductRenderer(renderer: WebGPURenderer): Promise<void> 
  */
 export function observeRendererDeviceLoss(
 	renderer: WebGPURenderer,
-	listener: () => void
+	listener: () => void,
 ): () => void {
 	const three = asThree(renderer);
 	if (three.backend.isWebGLBackend === true) {
@@ -196,7 +201,7 @@ export function rendererCoordinateSystem(backend: RendererBackend): number {
  */
 export function convertProjectionForBackend(
 	projection: Matrix4,
-	backend: RendererBackend
+	backend: RendererBackend,
 ): Matrix4 {
 	if (backend === 'webgl2') return projection;
 	const elements = projection.elements;

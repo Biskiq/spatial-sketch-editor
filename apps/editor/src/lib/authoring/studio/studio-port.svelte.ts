@@ -23,14 +23,16 @@ export function createStudioPort(input: {
 	const objectStudioPort: StageObjectStudio = {
 		available: () => {
 			const studio = input.controller();
-			return studio !== undefined && !studio.active && input.lens() === 'world' && !input.previewing();
+			return (
+				studio !== undefined && !studio.active && input.lens() === 'world' && !input.previewing()
+			);
 		},
 		edit: (entityId) => {
 			const studio = input.controller();
 			return studio !== undefined && studio.enterFromWorld(entityId, 'edit-in-studio')
 				? { kind: 'entered' }
 				: { kind: 'refused', message: 'That object cannot be edited in Object Studio.' };
-		}
+		},
 	};
 
 	function bumpRevision(): void {
@@ -63,7 +65,11 @@ export function createStudioPort(input: {
 		bumpRevision,
 		armCreation,
 		attachArm,
-		get revision() { return revision; },
-		get armPending() { return armPending; }
+		get revision() {
+			return revision;
+		},
+		get armPending() {
+			return armPending;
+		},
 	};
 }

@@ -23,7 +23,7 @@ export const CONNECTION_CREATE_PAYLOAD_KEYS: readonly string[] = [];
 export function sameUnorderedPair(
 	connection: { readonly fromNodeId: string; readonly toNodeId: string },
 	left: string,
-	right: string
+	right: string,
 ): boolean {
 	return (
 		(connection.fromNodeId === left && connection.toNodeId === right) ||
@@ -33,7 +33,7 @@ export function sameUnorderedPair(
 
 /** The two ordered `camera:view` targets a create names: from first, then to. */
 export function orderedViewTargets(
-	intent: PlannerRequest<ProjectEnvelope>['intent']
+	intent: PlannerRequest<ProjectEnvelope>['intent'],
 ): readonly [SemanticReference, SemanticReference] | null {
 	if (intent.targets.length !== 2) return null;
 	const [from, to] = intent.targets;
@@ -53,7 +53,11 @@ export function orderedViewTargets(
  * world-local `{id, position}` records: a Room-owned point or a duplicate id is
  * refused rather than normalized into a second coordinate basis.
  */
-export function readConnectionAnchors(reader: ShapeReader, input: unknown, path: string): ScenePathAnchor[] | null {
+export function readConnectionAnchors(
+	reader: ShapeReader,
+	input: unknown,
+	path: string,
+): ScenePathAnchor[] | null {
 	if (!Array.isArray(input)) {
 		reader.problem(path, 'not-an-array', `${path} must be an array of path anchors`);
 		return null;
@@ -75,7 +79,11 @@ export function readConnectionAnchors(reader: ShapeReader, input: unknown, path:
 			continue;
 		}
 		if (ids.has(id)) {
-			reader.problem(`${entryPath}.id`, 'duplicate-anchor', `Camera path anchor "${id}" appears more than once`);
+			reader.problem(
+				`${entryPath}.id`,
+				'duplicate-anchor',
+				`Camera path anchor "${id}" appears more than once`,
+			);
 			ok = false;
 			continue;
 		}
@@ -91,11 +99,18 @@ export type ConnectionTimingUpdate = {
 	readonly reverse?: { readonly durationSeconds: number | null };
 };
 
-export function readConnectionTiming(reader: ShapeReader, input: unknown, path: string): ConnectionTimingUpdate | null {
+export function readConnectionTiming(
+	reader: ShapeReader,
+	input: unknown,
+	path: string,
+): ConnectionTimingUpdate | null {
 	const record = reader.object(input, path, CONNECTION_TIMING_KEYS);
 	if (record === null) return null;
 	let ok = true;
-	const update: { forward?: { durationSeconds: number | null }; reverse?: { durationSeconds: number | null } } = {};
+	const update: {
+		forward?: { durationSeconds: number | null };
+		reverse?: { durationSeconds: number | null };
+	} = {};
 	for (const direction of ['forward', 'reverse'] as const) {
 		const raw = record[direction];
 		if (raw === undefined) continue;
@@ -118,7 +133,7 @@ export function readConnectionTiming(reader: ShapeReader, input: unknown, path: 
 			directionRecord.durationSeconds,
 			`${directionPath}.durationSeconds`,
 			0,
-			true
+			true,
 		);
 		if (duration === null) {
 			ok = false;
@@ -137,7 +152,7 @@ export function readConnectionTiming(reader: ShapeReader, input: unknown, path: 
 /** Apply duration-only changes, preserving every other field of both directions. */
 export function mergeConnectionTiming(
 	previous: SceneConnection['timing'],
-	update: ConnectionTimingUpdate
+	update: ConnectionTimingUpdate,
 ): SceneConnection['timing'] {
 	const next: NonNullable<SceneConnection['timing']> = { ...(previous ?? {}) };
 	for (const direction of ['forward', 'reverse'] as const) {
@@ -176,13 +191,20 @@ export function createCameraConnectionCreatePlanner(): DomainPlanner<ProjectEnve
 		prepare(request) {
 			const envelope = envelopeOf(request);
 			const reader = new ShapeReader();
-			const payload = reader.object(request.intent.payload, '$.payload', CONNECTION_CREATE_PAYLOAD_KEYS);
+			const payload = reader.object(
+				request.intent.payload,
+				'$.payload',
+				CONNECTION_CREATE_PAYLOAD_KEYS,
+			);
 			if (payload === null || reader.issues.length !== 0) {
 				return refuse('invalid-payload', 'The Camera path payload is not empty', reader.issues);
 			}
 			const pair = orderedViewTargets(request.intent);
 			if (pair === null) {
-				return refuse('unsupported-operation', 'camera-connection-create targets exactly two camera:view references, from then to');
+				return refuse(
+					'unsupported-operation',
+					'camera-connection-create targets exactly two camera:view references, from then to',
+				);
 			}
 			const [fromTarget, toTarget] = pair;
 			if (fromTarget.subject.id === toTarget.subject.id) {
@@ -195,27 +217,31 @@ export function createCameraConnectionCreatePlanner(): DomainPlanner<ProjectEnve
 				return refuse('missing-target', 'A Camera path endpoint is not a View in this envelope');
 			}
 			const existing = envelope.units.camera.data.connections.find((connection) =>
-				sameUnorderedPair(connection, fromView.id, toView.id)
+				sameUnorderedPair(connection, fromView.id, toView.id),
 			);
 			if (existing !== undefined) {
 				return refuse(
 					'path-already-exists',
-					`A Camera path already joins "${fromView.label}" and "${toView.label}"`
+					`A Camera path already joins "${fromView.label}" and "${toView.label}"`,
 				);
 			}
 			const connectionId = capturedId(request.intent, 'connection');
 			if (connectionId === null || allIds(envelope).has(connectionId)) {
-				return refuse('invalid-identity', 'The captured Camera connection id is missing or already used');
+				return refuse(
+					'invalid-identity',
+					'The captured Camera connection id is missing or already used',
+				);
 			}
 			const connection: SceneConnection = {
 				id: connectionId,
 				fromNodeId: fromView.id,
 				toNodeId: toView.id,
 				clearance: CAMERA_CONNECTION_DEFAULT_CLEARANCE,
-				positionPath: { kind: 'auto-bezier', anchors: [] }
+				positionPath: { kind: 'auto-bezier', anchors: [] },
 			};
 			const connected = views.map((view) => {
-				const other = view.id === fromView.id ? toView.id : view.id === toView.id ? fromView.id : null;
+				const other =
+					view.id === fromView.id ? toView.id : view.id === toView.id ? fromView.id : null;
 				if (other === null || view.connectedViewIds.includes(other)) return view;
 				return { ...view, connectedViewIds: [...view.connectedViewIds, other] };
 			});
@@ -228,25 +254,36 @@ export function createCameraConnectionCreatePlanner(): DomainPlanner<ProjectEnve
 						data: {
 							formatVersion: CAMERA_UNIT_FORMAT_VERSION,
 							views: connected,
-							connections: [...envelope.units.camera.data.connections, connection]
-						}
-					}
-				}
+							connections: [...envelope.units.camera.data.connections, connection],
+						},
+					},
+				},
 			};
-			return prepared(request, candidate, [
-						{
-							kind: 'camera.connection.created',
-							subjectIds: [connection.id],
-							fields: ['fromNodeId', 'toNodeId', 'clearance', 'positionPath']
-						}
-					], [
-						{
-							relation: 'created',
-							before: null,
-							after: reference('camera', 'connection', connection.id, [], revisionOf(candidate, 'camera'))
-						}
-					]);
-		}
+			return prepared(
+				request,
+				candidate,
+				[
+					{
+						kind: 'camera.connection.created',
+						subjectIds: [connection.id],
+						fields: ['fromNodeId', 'toNodeId', 'clearance', 'positionPath'],
+					},
+				],
+				[
+					{
+						relation: 'created',
+						before: null,
+						after: reference(
+							'camera',
+							'connection',
+							connection.id,
+							[],
+							revisionOf(candidate, 'camera'),
+						),
+					},
+				],
+			);
+		},
 	};
 }
 
@@ -270,47 +307,80 @@ export function createCameraConnectionUpdatePlanner(): DomainPlanner<ProjectEnve
 			const envelope = envelopeOf(request);
 			const reader = new ShapeReader();
 			const payload = reader.object(request.intent.payload, '$.payload', CONNECTION_UPDATE_KEYS);
-			if (payload === null) return refuse('invalid-payload', 'The Camera path payload is not a valid shape', reader.issues);
-			const anchors = payload.anchors === undefined
-				? undefined
-				: readConnectionAnchors(reader, payload.anchors, '$.payload.anchors');
-			const timing = payload.timing === undefined
-				? undefined
-				: readConnectionTiming(reader, payload.timing, '$.payload.timing');
+			if (payload === null)
+				return refuse(
+					'invalid-payload',
+					'The Camera path payload is not a valid shape',
+					reader.issues,
+				);
+			const anchors =
+				payload.anchors === undefined
+					? undefined
+					: readConnectionAnchors(reader, payload.anchors, '$.payload.anchors');
+			const timing =
+				payload.timing === undefined
+					? undefined
+					: readConnectionTiming(reader, payload.timing, '$.payload.timing');
 			if (
 				reader.issues.length !== 0 ||
 				(payload.anchors !== undefined && anchors === null) ||
 				(payload.timing !== undefined && timing === null)
 			) {
-				return refuse('invalid-payload', 'The Camera path payload is not a valid shape', reader.issues);
+				return refuse(
+					'invalid-payload',
+					'The Camera path payload is not a valid shape',
+					reader.issues,
+				);
 			}
 			if (anchors === undefined && timing === undefined) {
 				return refuse('invalid-payload', 'The Camera path payload names no field to change');
 			}
 			const target = targetOf(request.intent, 'camera', 'connection');
 			if (target === null) {
-				return refuse('unsupported-operation', 'camera-connection-update targets exactly one camera:connection reference');
+				return refuse(
+					'unsupported-operation',
+					'camera-connection-update targets exactly one camera:connection reference',
+				);
 			}
 			const index = envelope.units.camera.data.connections.findIndex(
-				(connection) => connection.id === target.subject.id
+				(connection) => connection.id === target.subject.id,
 			);
 			if (index === -1) {
-				return refuse('missing-target', `camera connection "${target.subject.id}" is not in this envelope`);
+				return refuse(
+					'missing-target',
+					`camera connection "${target.subject.id}" is not in this envelope`,
+				);
 			}
 			const previous = envelope.units.camera.data.connections[index]!;
 			const nextAnchors = anchors === undefined || anchors === null ? undefined : anchors;
-			const nextTiming = timing === undefined || timing === null ? previous.timing : mergeConnectionTiming(previous.timing, timing);
+			const nextTiming =
+				timing === undefined || timing === null
+					? previous.timing
+					: mergeConnectionTiming(previous.timing, timing);
 			const updated: SceneConnection = {
 				...previous,
-				...(nextAnchors === undefined ? {} : { positionPath: { ...previous.positionPath, anchors: nextAnchors } }),
-				...(timing === undefined || timing === null ? {} : nextTiming === undefined ? {} : { timing: nextTiming })
+				...(nextAnchors === undefined
+					? {}
+					: { positionPath: { ...previous.positionPath, anchors: nextAnchors } }),
+				...(timing === undefined || timing === null
+					? {}
+					: nextTiming === undefined
+						? {}
+						: { timing: nextTiming }),
 			};
-			if (timing !== undefined && nextTiming === undefined) delete (updated as { timing?: unknown }).timing;
+			if (timing !== undefined && nextTiming === undefined)
+				delete (updated as { timing?: unknown }).timing;
 			const changedFields: string[] = [];
-			if (anchors !== undefined && JSON.stringify(previous.positionPath) !== JSON.stringify(updated.positionPath)) {
+			if (
+				anchors !== undefined &&
+				JSON.stringify(previous.positionPath) !== JSON.stringify(updated.positionPath)
+			) {
 				changedFields.push('anchors');
 			}
-			if (timing !== undefined && JSON.stringify(previous.timing) !== JSON.stringify(updated.timing)) {
+			if (
+				timing !== undefined &&
+				JSON.stringify(previous.timing) !== JSON.stringify(updated.timing)
+			) {
 				changedFields.push('timing');
 			}
 			if (changedFields.length === 0) {
@@ -326,22 +396,38 @@ export function createCameraConnectionUpdatePlanner(): DomainPlanner<ProjectEnve
 							formatVersion: CAMERA_UNIT_FORMAT_VERSION,
 							views: envelope.units.camera.data.views,
 							connections: envelope.units.camera.data.connections.map((connection, position) =>
-								position === index ? updated : connection
-							)
-						}
-					}
-				}
+								position === index ? updated : connection,
+							),
+						},
+					},
+				},
 			};
-			return prepared(request, candidate, [{ kind: 'camera.connection.updated', subjectIds: [updated.id], fields: changedFields }], [
-						{
-							relation: 'preserved',
-							before: reference('camera', 'connection', previous.id, [], revisionOf(envelope, 'camera')),
-							after: reference('camera', 'connection', previous.id, [], revisionOf(candidate, 'camera'))
-						}
-					]);
-		}
+			return prepared(
+				request,
+				candidate,
+				[{ kind: 'camera.connection.updated', subjectIds: [updated.id], fields: changedFields }],
+				[
+					{
+						relation: 'preserved',
+						before: reference(
+							'camera',
+							'connection',
+							previous.id,
+							[],
+							revisionOf(envelope, 'camera'),
+						),
+						after: reference(
+							'camera',
+							'connection',
+							previous.id,
+							[],
+							revisionOf(candidate, 'camera'),
+						),
+					},
+				],
+			);
+		},
 	};
 }
 
 /* --- Experience and Guide fields -------------------------------- */
-

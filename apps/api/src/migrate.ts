@@ -2,7 +2,12 @@ import { readdir, readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 
-import { createPool, sanitizeDatabaseError, type DatabaseClient, type DatabasePool } from './database.js';
+import {
+	createPool,
+	sanitizeDatabaseError,
+	type DatabaseClient,
+	type DatabasePool,
+} from './database.js';
 import { ConfigError, readConfig } from './config.js';
 
 const MIGRATION_DIRECTORY = fileURLToPath(new URL('../migrations/', import.meta.url));
@@ -23,9 +28,10 @@ const LOCK_WAIT_TIMEOUT_MS = 30_000;
 async function acquireMigrationLock(db: DatabaseClient): Promise<void> {
 	const deadline = Date.now() + LOCK_WAIT_TIMEOUT_MS;
 	while (true) {
-		const result = await db.query<{ locked: boolean }>('SELECT pg_try_advisory_lock($1) AS locked', [
-			MIGRATION_LOCK_KEY
-		]);
+		const result = await db.query<{ locked: boolean }>(
+			'SELECT pg_try_advisory_lock($1) AS locked',
+			[MIGRATION_LOCK_KEY],
+		);
 		if (result.rows[0]?.locked === true) return;
 		if (Date.now() >= deadline) {
 			throw new Error('Timed out waiting for the migration advisory lock');
@@ -36,7 +42,7 @@ async function acquireMigrationLock(db: DatabaseClient): Promise<void> {
 
 export async function runMigrations(
 	pool: DatabasePool,
-	directory = MIGRATION_DIRECTORY
+	directory = MIGRATION_DIRECTORY,
 ): Promise<void> {
 	if (!pool.connect) throw new Error('Database transactions are unavailable');
 	const files = (await readdir(directory))
@@ -62,7 +68,7 @@ export async function runMigrations(
 		for (const file of files) {
 			const applied = await db.query<{ version: number }>(
 				'SELECT version FROM schema_migrations WHERE version = $1',
-				[file.version]
+				[file.version],
 			);
 			if (applied.rows.length > 0) continue;
 			const sql = await readFile(resolve(directory, file.name), 'utf8');
@@ -99,7 +105,11 @@ export async function main(): Promise<void> {
 		console.log('[api] migrations applied');
 	} catch (error) {
 		const safe = sanitizeDatabaseError(error);
-		console.error(error instanceof ConfigError ? `[api] ${error.message}` : `[api] migration failed (${safe.name})`);
+		console.error(
+			error instanceof ConfigError
+				? `[api] ${error.message}`
+				: `[api] migration failed (${safe.name})`,
+		);
 		process.exitCode = 1;
 	} finally {
 		await pool?.end();

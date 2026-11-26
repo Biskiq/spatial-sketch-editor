@@ -62,7 +62,12 @@ export type StageKeyboardWiring = Omit<
 	readonly libraryEscape: Pick<KeyboardInput, 'libraryOpen' | 'toggleLibrary'>;
 	readonly readingsEscape: Pick<
 		KeyboardInput,
-		'liftActive' | 'putBackLift' | 'sliceDraftActive' | 'cancelSliceDraft' | 'sliceActive' | 'putBackSlice'
+		| 'liftActive'
+		| 'putBackLift'
+		| 'sliceDraftActive'
+		| 'cancelSliceDraft'
+		| 'sliceActive'
+		| 'putBackSlice'
 	>;
 };
 
@@ -87,7 +92,10 @@ export function wireStageKeyboard(input: StageKeyboardWiring) {
 		requestDelete: input.requestDelete,
 		openCard: () => input.shell.setCardOpen(true),
 		pendingDelete: () => input.shell.pendingDelete !== null,
-		clearPendingDelete: () => { input.shell.setPendingDelete(null); input.shell.setNotice(''); },
+		clearPendingDelete: () => {
+			input.shell.setPendingDelete(null);
+			input.shell.setNotice('');
+		},
 		...input.appearanceRungs,
 		interrupt: input.interrupt,
 		task: () => input.shell.task,
@@ -104,7 +112,10 @@ export function wireStageKeyboard(input: StageKeyboardWiring) {
 		closePalette: () => input.shell.setPaletteOpen(false),
 		...input.libraryEscape,
 		activeWorldTool: () => input.shell.activeWorldTool,
-		clearWorldTool: () => { input.shell.setLibraryOpen(false); input.shell.setActiveWorldTool('select'); },
+		clearWorldTool: () => {
+			input.shell.setLibraryOpen(false);
+			input.shell.setActiveWorldTool('select');
+		},
 		worldPlateOpen: () => input.shell.worldPlateOpen,
 		closeWorldPlate: () => input.shell.setWorldPlateOpen(false),
 		furnishStripOpen: () => input.shell.furnishStripOpen,
@@ -116,6 +127,6 @@ export function wireStageKeyboard(input: StageKeyboardWiring) {
 		closeSelection: input.closeSelection,
 		leaveStudio: input.leaveStudio,
 		...input.readingsEscape,
-		setCutawayHeld: input.setCutawayHeld
+		setCutawayHeld: input.setCutawayHeld,
 	});
 }

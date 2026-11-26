@@ -95,7 +95,7 @@ export function createStageLightPreview(): StageLightPreview {
 			const run = pending;
 			pending = null;
 			run?.();
-		}
+		},
 	};
 }
 
@@ -108,13 +108,11 @@ export function createStageLightPreview(): StageLightPreview {
  */
 export function mergeLightPreview(
 	scene: RuntimeScene,
-	preview: Pick<StageLightPreview, 'overrides' | 'candidate'> | null
+	preview: Pick<StageLightPreview, 'overrides' | 'candidate'> | null,
 ): RuntimeScene {
 	if (preview === null) return scene;
 	if (preview.overrides.size === 0 && preview.candidate === null) return scene;
-	const entities = scene.entities.map(
-		(entity) => preview.overrides.get(entity.id) ?? entity
-	);
+	const entities = scene.entities.map((entity) => preview.overrides.get(entity.id) ?? entity);
 	if (preview.candidate !== null) {
 		entities.push({ ...preview.candidate, id: LIGHT_PREVIEW_CANDIDATE_ID });
 	}

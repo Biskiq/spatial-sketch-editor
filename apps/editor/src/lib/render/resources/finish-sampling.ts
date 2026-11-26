@@ -25,11 +25,7 @@
  * multiply or decode a second time. `colorNode`, `roughnessNode`,
  * `metalnessNode`, `aoNode` and `normalNode` carry the whole plan.
  */
-import {
-	MeshBasicNodeMaterial,
-	MeshStandardNodeMaterial,
-	type Texture
-} from 'three/webgpu';
+import { MeshBasicNodeMaterial, MeshStandardNodeMaterial, type Texture } from 'three/webgpu';
 import {
 	bitangentView,
 	color,
@@ -44,13 +40,13 @@ import {
 	texture,
 	uv,
 	vec2,
-	vec3
+	vec3,
 } from 'three/tsl';
 import type {
 	FinishMapRole,
 	FinishSamplingPlanEntry,
 	StandardFinishPlan,
-	StandardMaterialDescriptor
+	StandardMaterialDescriptor,
 } from './material-descriptor';
 
 /** The views a plan's entries name, by view key. */
@@ -67,7 +63,7 @@ type TslNode = any;
  */
 export function missingFinishViews(
 	descriptor: StandardMaterialDescriptor,
-	views: FinishTextureViews | undefined
+	views: FinishTextureViews | undefined,
 ): string[] {
 	const plan = descriptor.finish;
 	if (plan === undefined) return [];
@@ -92,7 +88,7 @@ function sampleUv(entry: FinishSamplingPlanEntry): TslNode {
 	const rotatedY = centred.x.mul(-sin).add(centred.y.mul(cos));
 	const transformed = vec2(
 		rotatedX.mul(repeat[0]).add(0.5 + offset[0]),
-		rotatedY.mul(repeat[1]).add(0.5 + offset[1])
+		rotatedY.mul(repeat[1]).add(0.5 + offset[1]),
 	);
 	return entry.origin === 'legacy' ? vec2(transformed.x, transformed.y.oneMinus()) : transformed;
 }
@@ -107,7 +103,7 @@ function frameUv(entry: FinishSamplingPlanEntry): TslNode {
 	const rotatedY = centred.x.mul(-sin).add(centred.y.mul(cos));
 	return vec2(
 		rotatedX.mul(entry.repeat[0]).add(0.5 + entry.offset[0]),
-		rotatedY.mul(entry.repeat[1]).add(0.5 + entry.offset[1])
+		rotatedY.mul(entry.repeat[1]).add(0.5 + entry.offset[1]),
 	);
 }
 
@@ -136,7 +132,7 @@ function sampleKey(entry: FinishSamplingPlanEntry): string {
 		entry.origin,
 		entry.repeat.join(','),
 		entry.rotation,
-		entry.offset.join(',')
+		entry.offset.join(','),
 	].join('|');
 }
 
@@ -173,7 +169,7 @@ function convertSample(entry: FinishSamplingPlanEntry, sample: TslNode): TslNode
 export function finishSampleNode(
 	entry: FinishSamplingPlanEntry,
 	view: Texture,
-	cache?: SampleCache
+	cache?: SampleCache,
 ): TslNode {
 	return convertSample(entry, rawSample(entry, view, cache));
 }
@@ -196,7 +192,7 @@ function normalNodeFor(
 	entry: FinishSamplingPlanEntry,
 	view: Texture,
 	normalScale: number,
-	cache?: SampleCache
+	cache?: SampleCache,
 ): TslNode {
 	const sampled = finishSampleNode(entry, view, cache);
 	const strength = float(normalScale);
@@ -218,7 +214,7 @@ function normalNodeFor(
 		const meshTangent: TslNode = tangentView;
 		const meshBitangent: TslNode = bitangentView;
 		const meshMapped = safeNormalize(
-			meshTangent.mul(scaled.x).add(meshBitangent.mul(scaled.y)).add(geometric.mul(scaled.z))
+			meshTangent.mul(scaled.x).add(meshBitangent.mul(scaled.y)).add(geometric.mul(scaled.z)),
 		);
 		// A zero-length tangent is the one degenerate mesh case; keep the
 		// geometric normal there instead of normalizing zero.
@@ -233,14 +229,14 @@ function normalNodeFor(
 	const duvdx: TslNode = dFdx(frame);
 	const duvdy: TslNode = dFdy(frame);
 	const tangent = safeNormalize(
-		cross(dpdy, geometric).mul(duvdx.x).add(cross(geometric, dpdx).mul(duvdy.x))
+		cross(dpdy, geometric).mul(duvdx.x).add(cross(geometric, dpdx).mul(duvdy.x)),
 	);
 	const bitangent = safeNormalize(
-		cross(dpdy, geometric).mul(duvdx.y).add(cross(geometric, dpdx).mul(duvdy.y))
+		cross(dpdy, geometric).mul(duvdx.y).add(cross(geometric, dpdx).mul(duvdy.y)),
 	);
 	const determinant = duvdx.x.mul(duvdy.y).sub(duvdy.x.mul(duvdx.y));
 	const mapped = safeNormalize(
-		tangent.mul(scaled.x).add(bitangent.mul(scaled.y)).add(geometric.mul(scaled.z))
+		tangent.mul(scaled.x).add(bitangent.mul(scaled.y)).add(geometric.mul(scaled.z)),
 	);
 	// Singularity is relative to the UV edge lengths, not an absolute
 	// screen-space area: a small but valid repeat (e.g. a 1 cm tile viewed from
@@ -254,7 +250,7 @@ function normalNodeFor(
 
 function entryFor(
 	plan: StandardFinishPlan,
-	role: FinishMapRole
+	role: FinishMapRole,
 ): FinishSamplingPlanEntry | undefined {
 	return plan.entries.find((entry) => entry.role === role);
 }
@@ -269,7 +265,7 @@ function entryFor(
  */
 export function createFinishMaterial(
 	descriptor: StandardMaterialDescriptor,
-	views: FinishTextureViews
+	views: FinishTextureViews,
 ): MeshStandardNodeMaterial {
 	const plan = descriptor.finish;
 	if (plan === undefined) throw new Error('createFinishMaterial needs a finish plan');
@@ -292,8 +288,8 @@ export function createFinishMaterial(
 			: {
 					polygonOffset: true,
 					polygonOffsetFactor: descriptor.polygonOffset[0],
-					polygonOffsetUnits: descriptor.polygonOffset[1]
-				})
+					polygonOffsetUnits: descriptor.polygonOffset[1],
+				}),
 	});
 
 	const samples: SampleCache = new Map();
@@ -302,19 +298,19 @@ export function createFinishMaterial(
 		// `colorNode` replaces `material.color`; multiply the resolved tint here so
 		// a creator's literal or palette follower still applies exactly once.
 		material.colorNode = color(descriptor.color).mul(
-			finishSampleNode(colorEntry, views[colorEntry.view]!, samples)
+			finishSampleNode(colorEntry, views[colorEntry.view]!, samples),
 		);
 	}
 	const roughnessEntry = entryFor(plan, 'roughness');
 	if (roughnessEntry !== undefined) {
 		material.roughnessNode = float(descriptor.roughness).mul(
-			finishSampleNode(roughnessEntry, views[roughnessEntry.view]!, samples)
+			finishSampleNode(roughnessEntry, views[roughnessEntry.view]!, samples),
 		);
 	}
 	const metalnessEntry = entryFor(plan, 'metalness');
 	if (metalnessEntry !== undefined) {
 		material.metalnessNode = float(descriptor.metalness).mul(
-			finishSampleNode(metalnessEntry, views[metalnessEntry.view]!, samples)
+			finishSampleNode(metalnessEntry, views[metalnessEntry.view]!, samples),
 		);
 	}
 	const occlusionEntry = entryFor(plan, 'occlusion');
@@ -328,7 +324,7 @@ export function createFinishMaterial(
 			normalEntry,
 			views[normalEntry.view]!,
 			plan.normalScale,
-			samples
+			samples,
 		);
 	}
 	return material;
@@ -345,7 +341,7 @@ export function createFinishMaterial(
 export function createFinishChannelMaterial(
 	descriptor: StandardMaterialDescriptor,
 	views: FinishTextureViews,
-	display: 'unlit-color' | { readonly solo: FinishMapRole }
+	display: 'unlit-color' | { readonly solo: FinishMapRole },
 ): MeshBasicNodeMaterial {
 	const material = new MeshBasicNodeMaterial({ toneMapped: false });
 	const plan = descriptor.finish;
@@ -361,7 +357,8 @@ export function createFinishChannelMaterial(
 	const role = display.solo;
 	const entry = plan === undefined ? undefined : entryFor(plan, role);
 	if (entry === undefined || views[entry.view] === undefined) {
-		const constant = role === 'color' ? color(descriptor.color) : role === 'normal' ? vec3(0.5, 0.5, 1) : float(1);
+		const constant =
+			role === 'color' ? color(descriptor.color) : role === 'normal' ? vec3(0.5, 0.5, 1) : float(1);
 		material.colorNode = role === 'color' ? constant : (vec3 as TslNode)(constant);
 		return material;
 	}

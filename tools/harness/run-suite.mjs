@@ -30,14 +30,21 @@ try {
 const directory = mkdtempSync(join(tmpdir(), 'biskiq-suite-'));
 const report = join(directory, 'report.json');
 const shard = process.env.MATRIX_SHARD;
-const command = suite.kind === 'vitest'
-	? [...suite.args, ...(shard ? [`--shard=${shard}`] : []), '--reporter=default', '--reporter=json', `--outputFile.json=${report}`]
-	: ['npm', 'run', suite.script];
+const command =
+	suite.kind === 'vitest'
+		? [
+				...suite.args,
+				...(shard ? [`--shard=${shard}`] : []),
+				'--reporter=default',
+				'--reporter=json',
+				`--outputFile.json=${report}`,
+			]
+		: ['npm', 'run', suite.script];
 
 console.log(`run-suite: ${command.join(' ')}`);
 const result = spawnSync(command[0], command.slice(1), {
 	cwd: suite.cwd ? join(process.cwd(), suite.cwd) : process.cwd(),
-	stdio: 'inherit'
+	stdio: 'inherit',
 });
 if (result.error) {
 	rmSync(directory, { recursive: true, force: true });

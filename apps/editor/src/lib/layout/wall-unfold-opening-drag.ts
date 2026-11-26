@@ -28,17 +28,22 @@ function wrapStation(station: number, length: number): number {
 export function sheetOpeningModeFromEdges(
 	leftDistanceCss: number,
 	rightDistanceCss: number,
-	thresholdCss = 12
+	thresholdCss = 12,
 ): SheetOpeningMode {
 	if (!(leftDistanceCss <= thresholdCss) && !(rightDistanceCss <= thresholdCss)) return 'slide';
 	return leftDistanceCss <= rightDistanceCss ? 'left' : 'right';
 }
 
 /** Shortest display-station delta, so a drag across a closed seam is continuous. */
-export function sheetStationDelta(from: number, to: number, length: number, closed: boolean): number {
+export function sheetStationDelta(
+	from: number,
+	to: number,
+	length: number,
+	closed: boolean,
+): number {
 	let delta = to - from;
 	if (closed && length > 0) {
-		delta = (((delta + length / 2) % length) + length) % length - length / 2;
+		delta = ((((delta + length / 2) % length) + length) % length) - length / 2;
 	}
 	return delta;
 }
@@ -52,7 +57,12 @@ export function mapSheetOpeningDrag(input: {
 	readonly length: number;
 	readonly closed: boolean;
 }): SheetOpeningEdit {
-	const delta = sheetStationDelta(input.grabStation, input.pointerStation, input.length, input.closed);
+	const delta = sheetStationDelta(
+		input.grabStation,
+		input.pointerStation,
+		input.length,
+		input.closed,
+	);
 	if (input.mode === 'slide') {
 		// A closed Wall is periodic: any authored offset in `[0, L)` is legal, so
 		// sliding wraps through the canonical seam instead of stopping at `L - width`.

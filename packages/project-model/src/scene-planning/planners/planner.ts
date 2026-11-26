@@ -1,4 +1,9 @@
-import type { DomainPlanner, PlannerOutcome, PlannerRequest, PreparedCandidate } from '../../f4/types';
+import type {
+	DomainPlanner,
+	PlannerOutcome,
+	PlannerRequest,
+	PreparedCandidate,
+} from '../../f4/types';
 import type { ShapeIssue } from '../../strict-shape';
 import { ShapeReader } from '../../strict-shape';
 import { replaceUnitData } from '../../units/envelope';
@@ -9,15 +14,44 @@ import type { SemanticReference } from '../../references/types';
 import { framePointToWorld } from '../frame';
 import { preparePlaceObjectCandidate } from '../place-object';
 import type { SceneOperationPayload } from '../intent-payload';
-import { readSceneOperationAllocation, readSceneOperationPayload, readSceneOperationSubject } from '../intent-payload';
-import type { SceneOperationContext, SceneOperationKind, SceneOperationResult } from '../operations';
-import { SCENE_OPERATION_KINDS, finalizePlacedEntity, planDeleteOne, planDuplicateOne, planMoveHorizontal, planPlaceOnFloor, planResizeOnFloor, planSetFormProfile, planSetFormSize, planSetLift, planSetName, planSetYaw } from '../operations';
+import {
+	readSceneOperationAllocation,
+	readSceneOperationPayload,
+	readSceneOperationSubject,
+} from '../intent-payload';
+import type {
+	SceneOperationContext,
+	SceneOperationKind,
+	SceneOperationResult,
+} from '../operations';
+import {
+	SCENE_OPERATION_KINDS,
+	finalizePlacedEntity,
+	planDeleteOne,
+	planDuplicateOne,
+	planMoveHorizontal,
+	planPlaceOnFloor,
+	planResizeOnFloor,
+	planSetFormProfile,
+	planSetFormSize,
+	planSetLift,
+	planSetName,
+	planSetYaw,
+} from '../operations';
 import { resolveSceneSupport } from '../support';
 import type { NormalizedPlacementDefinition } from '../types';
 import type { CreatorModelResourceEntry } from '../model-resource';
-import { creatorModelDefinitionKey, creatorModelResourceEntry, withCreatorModelResource } from '../model-resource';
+import {
+	creatorModelDefinitionKey,
+	creatorModelResourceEntry,
+	withCreatorModelResource,
+} from '../model-resource';
 import type { ScenePlannerOptions } from './contracts';
-import { SCENE_DELETE_ADMISSION, SCENE_PLACEMENT_ADMISSION, SCENE_PLANNER_ADMISSION } from './contracts';
+import {
+	SCENE_DELETE_ADMISSION,
+	SCENE_PLACEMENT_ADMISSION,
+	SCENE_PLANNER_ADMISSION,
+} from './contracts';
 import { planCreateFormIntent, planPlaceFormCopyIntent } from './forms';
 import { planCreateLightIntent, planDuplicateLightIntent, planUpdateLightIntent } from './light';
 
@@ -26,15 +60,14 @@ import { planCreateLightIntent, planDuplicateLightIntent, planUpdateLightIntent 
  * coordinator. One operation kind has exactly one planner.
  */
 export function createScenePlanners(
-	options: ScenePlannerOptions = {}
+	options: ScenePlannerOptions = {},
 ): readonly DomainPlanner<ProjectEnvelope>[] {
 	const definitions = options.definitions;
 	const definitionsOf = (): ReadonlyMap<string, NormalizedPlacementDefinition> =>
 		new Map(
-			(typeof definitions === 'function' ? definitions() : (definitions ?? [])).map((definition) => [
-				definition.definitionKey,
-				definition
-			])
+			(typeof definitions === 'function' ? definitions() : (definitions ?? [])).map(
+				(definition) => [definition.definitionKey, definition],
+			),
 		);
 	return SCENE_OPERATION_KINDS.map((kind) =>
 		scenePlanner(kind, (request) => {
@@ -45,14 +78,13 @@ export function createScenePlanners(
 			if (kind === 'update-light') return planUpdateLightIntent(request);
 			if (kind === 'duplicate-light') return planDuplicateLightIntent(request);
 			return planExistingObject(request, kind);
-		})
+		}),
 	);
 }
 
-
 function scenePlanner(
 	kind: SceneOperationKind,
-	prepare: (request: PlannerRequest<ProjectEnvelope>) => PlannerOutcome<ProjectEnvelope>
+	prepare: (request: PlannerRequest<ProjectEnvelope>) => PlannerOutcome<ProjectEnvelope>,
 ): DomainPlanner<ProjectEnvelope> {
 	return {
 		id: `scene.${kind}`,
@@ -65,14 +97,13 @@ function scenePlanner(
 					: SCENE_PLANNER_ADMISSION,
 		sourceKinds: [UNIT_SOURCE_KIND],
 		sourceVersions: [UNIT_SOURCE_VERSION],
-		prepare
+		prepare,
 	};
 }
 
-
 function planPlaceObject(
 	request: PlannerRequest<ProjectEnvelope>,
-	definitions: ReadonlyMap<string, NormalizedPlacementDefinition>
+	definitions: ReadonlyMap<string, NormalizedPlacementDefinition>,
 ): PlannerOutcome<ProjectEnvelope> {
 	const reader = new ShapeReader();
 	const payload = readSceneOperationPayload(reader, 'place-object', request.intent.payload);
@@ -82,13 +113,13 @@ function planPlaceObject(
 		kind: 'place-object',
 		targets: request.intent.targets,
 		payload,
-		sourceContentId: request.snapshot.domain.source.units.scene.header.contentRevision
+		sourceContentId: request.snapshot.domain.source.units.scene.header.contentRevision,
 	});
 	const allocation = readSceneOperationAllocation({
 		reader,
 		kind: 'place-object',
 		allocations: request.intent.allocatedIds,
-		scene: request.snapshot.domain.source.units.scene.data
+		scene: request.snapshot.domain.source.units.scene.data,
 	});
 	if (subject === null || allocation === null) return invalidPayload(reader.issues);
 	// `ShapeReader` records a problem (an unknown key, a mismatched choice
@@ -96,7 +127,11 @@ function planPlaceObject(
 	// checked here, not only when a reader gives up.
 	if (reader.issues.length > 0) return invalidPayload(reader.issues);
 	if (subject.kind !== 'none' || allocation.kind !== 'created') {
-		return rejected('invalid-value', 'A placement addresses no existing subject and captures one new id.', []);
+		return rejected(
+			'invalid-value',
+			'A placement addresses no existing subject and captures one new id.',
+			[],
+		);
 	}
 
 	const definition = definitions.get(payload.definitionKey);
@@ -104,14 +139,14 @@ function planPlaceObject(
 		return rejected(
 			'missing-definition',
 			`No admitted normalized definition "${payload.definitionKey}" was captured for this session.`,
-			[payload.definitionKey]
+			[payload.definitionKey],
 		);
 	}
 	if (definition.metadataContentId !== payload.metadataContentId) {
 		return rejected(
 			'definition-changed',
 			`The captured metadata identity of "${payload.definitionKey}" no longer matches the admitted definition; re-capture the object before placing it.`,
-			[definition.metadataContentId, payload.metadataContentId]
+			[definition.metadataContentId, payload.metadataContentId],
 		);
 	}
 
@@ -128,7 +163,12 @@ function planPlaceObject(
 			return rejected(
 				'invalid-value',
 				'The placement resource does not match the definition it is placed with.',
-				[payload.modelResource.id, definition.creationDefaults.kind === 'model' ? definition.creationDefaults.assetId : definition.definitionKey]
+				[
+					payload.modelResource.id,
+					definition.creationDefaults.kind === 'model'
+						? definition.creationDefaults.assetId
+						: definition.definitionKey,
+				],
 			);
 		}
 		resourceEntry = creatorModelResourceEntry(payload.modelResource.id, payload.modelResource);
@@ -136,7 +176,7 @@ function planPlaceObject(
 			return rejected(
 				'invalid-value',
 				'The approved model revision is not a well-formed creator model resource.',
-				[payload.modelResource.reportDigest]
+				[payload.modelResource.reportDigest],
 			);
 		}
 		// The definition and the introduced resource must describe the same object:
@@ -157,29 +197,38 @@ function planPlaceObject(
 			return rejected(
 				'invalid-value',
 				'The introduced model resource and the placement definition disagree about the approved footprint or contact.',
-				['model-resource-agreement']
+				['model-resource-agreement'],
 			);
 		}
-		if (request.snapshot.domain.source.units.resources.data.resources.some((resource) => resource.id === payload.modelResource!.id)) {
+		if (
+			request.snapshot.domain.source.units.resources.data.resources.some(
+				(resource) => resource.id === payload.modelResource!.id,
+			)
+		) {
 			return rejected(
 				'invalid-value',
 				`Model resource "${payload.modelResource.id}" is already in the accepted envelope; place another instance without introducing it again.`,
-				['duplicate-resource']
+				['duplicate-resource'],
 			);
 		}
 	}
 
 	const point = composedPoint(payload.worldXZ, payload.frame);
-	if (point === null) return rejected('invalid-value', 'The placement X/Z is not finite.', ['worldXZ']);
+	if (point === null)
+		return rejected('invalid-value', 'The placement X/Z is not finite.', ['worldXZ']);
 	const support = resolveSceneSupport({
 		layout: request.snapshot.domain.source.units.layout.data,
 		sourceContentId: request.snapshot.sourceContentId,
 		point,
 		requiredElevation: null,
-		...(payload.choice === undefined ? {} : { choice: payload.choice })
+		...(payload.choice === undefined ? {} : { choice: payload.choice }),
 	});
 	if (support.kind === 'refused') {
-		return rejected(support.code, support.message, support.candidates.map((candidate) => candidate.orderKey));
+		return rejected(
+			support.code,
+			support.message,
+			support.candidates.map((candidate) => candidate.orderKey),
+		);
 	}
 
 	const prepared = preparePlaceObjectCandidate({
@@ -194,7 +243,7 @@ function planPlaceObject(
 		yaw: payload.yaw,
 		frame: payload.frame,
 		generationId: support.generationId,
-		support: { kind: 'resolved', support: support.support }
+		support: { kind: 'resolved', support: support.support },
 	});
 	if (prepared.kind === 'refusal') {
 		return rejected(prepared.code, prepared.message, prepared.diagnostics);
@@ -204,14 +253,13 @@ function planPlaceObject(
 		context: {
 			layout: request.snapshot.domain.source.units.layout.data,
 			scene: request.snapshot.domain.source.units.scene.data,
-			sourceContentId: request.snapshot.sourceContentId
+			sourceContentId: request.snapshot.sourceContentId,
 		},
 		entityId: allocation.entityId,
-		scene: prepared.candidate.scene
+		scene: prepared.candidate.scene,
 	});
 	return toOutcome(request, 'place-object', result, resourceEntry);
 }
-
 
 /** The occupied X/Z extent of a definition's canonical footprint. */
 function definitionFootprintExtent(definition: NormalizedPlacementDefinition): {
@@ -231,19 +279,22 @@ function definitionFootprintExtent(definition: NormalizedPlacementDefinition): {
 	return { width: maxX - minX, depth: maxZ - minZ };
 }
 
-
 /** Confirmed metric facts compare at the precision the recipe records. */
 function sameMeter(left: number, right: number): boolean {
 	return Number.isFinite(left) && Number.isFinite(right) && Math.abs(left - right) <= 1e-9;
 }
 
-
 function planExistingObject(
 	request: PlannerRequest<ProjectEnvelope>,
 	kind: Exclude<
 		SceneOperationKind,
-		'place-object' | 'create-form' | 'place-form-copy' | 'create-light' | 'update-light' | 'duplicate-light'
-	>
+		| 'place-object'
+		| 'create-form'
+		| 'place-form-copy'
+		| 'create-light'
+		| 'update-light'
+		| 'duplicate-light'
+	>,
 ): PlannerOutcome<ProjectEnvelope> {
 	const reader = new ShapeReader();
 	const payload = readSceneOperationPayload(reader, kind, request.intent.payload);
@@ -263,13 +314,13 @@ function planExistingObject(
 		kind,
 		targets: request.intent.targets,
 		payload,
-		sourceContentId: request.snapshot.domain.source.units.scene.header.contentRevision
+		sourceContentId: request.snapshot.domain.source.units.scene.header.contentRevision,
 	});
 	const allocation = readSceneOperationAllocation({
 		reader,
 		kind,
 		allocations: request.intent.allocatedIds,
-		scene: request.snapshot.domain.source.units.scene.data
+		scene: request.snapshot.domain.source.units.scene.data,
 	});
 	if (subject === null || allocation === null) return invalidPayload(reader.issues);
 	if (reader.issues.length > 0) return invalidPayload(reader.issues);
@@ -282,14 +333,14 @@ function planExistingObject(
 			kind === 'duplicate-one'
 				? 'Duplicate needs exactly one captured scene-entity id for the new entity.'
 				: `${kind} creates no id and must not carry an allocation.`,
-			[]
+			[],
 		);
 	}
 
 	const context: SceneOperationContext = {
 		layout: request.snapshot.domain.source.units.layout.data,
 		scene: request.snapshot.domain.source.units.scene.data,
-		sourceContentId: request.snapshot.sourceContentId
+		sourceContentId: request.snapshot.sourceContentId,
 	};
 	let result: SceneOperationResult;
 	try {
@@ -298,7 +349,7 @@ function planExistingObject(
 		return rejected(
 			'invalid-value',
 			`The ${kind} planner failed: ${error instanceof Error ? error.message : 'unknown error'}`,
-			[]
+			[],
 		);
 	}
 	if (kind === 'delete-one' && result.kind === 'candidate') {
@@ -310,17 +361,21 @@ function planExistingObject(
 			kind,
 			result,
 			null,
-			removed.length === 0 ? null : unlinkPresentations(request, removed)
+			removed.length === 0 ? null : unlinkPresentations(request, removed),
 		);
 	}
 	return toOutcome(request, kind, result);
 }
 
-
 function planOperation(
 	kind: Exclude<
 		SceneOperationKind,
-		'place-object' | 'create-form' | 'place-form-copy' | 'create-light' | 'update-light' | 'duplicate-light'
+		| 'place-object'
+		| 'create-form'
+		| 'place-form-copy'
+		| 'create-light'
+		| 'update-light'
+		| 'duplicate-light'
 	>,
 	payload: Exclude<
 		SceneOperationPayload,
@@ -333,7 +388,7 @@ function planOperation(
 	>,
 	entityId: string,
 	allocation: { readonly kind: 'none' } | { readonly kind: 'created'; readonly entityId: string },
-	context: SceneOperationContext
+	context: SceneOperationContext,
 ): SceneOperationResult {
 	switch (kind) {
 		case 'move-horizontal':
@@ -344,7 +399,7 @@ function planOperation(
 				worldXZ: payload.worldXZ,
 				frame: payload.frame,
 				contactMinY: payload.contactMinY,
-				...(payload.choice === undefined ? {} : { choice: payload.choice })
+				...(payload.choice === undefined ? {} : { choice: payload.choice }),
 			});
 		case 'set-yaw':
 			if (payload.kind !== 'set-yaw') return payloadMismatch(kind);
@@ -358,7 +413,7 @@ function planOperation(
 				frame: payload.frame,
 				contactMinY: payload.contactMinY,
 				...(payload.yaw === undefined ? {} : { yaw: payload.yaw }),
-				...(payload.choice === undefined ? {} : { choice: payload.choice })
+				...(payload.choice === undefined ? {} : { choice: payload.choice }),
 			});
 		case 'set-form-size':
 			if (payload.kind !== 'set-form-size') return payloadMismatch(kind);
@@ -366,7 +421,7 @@ function planOperation(
 				context,
 				entityId,
 				scale: payload.scale,
-				...(payload.choice === undefined ? {} : { choice: payload.choice })
+				...(payload.choice === undefined ? {} : { choice: payload.choice }),
 			});
 		case 'set-form-profile':
 			if (payload.kind !== 'set-form-profile') return payloadMismatch(kind);
@@ -375,7 +430,7 @@ function planOperation(
 				entityId,
 				outline: payload.outline,
 				extent: payload.extent,
-				...(payload.choice === undefined ? {} : { choice: payload.choice })
+				...(payload.choice === undefined ? {} : { choice: payload.choice }),
 			});
 		case 'resize-on-floor':
 			if (payload.kind !== 'resize-on-floor') return payloadMismatch(kind);
@@ -384,19 +439,24 @@ function planOperation(
 				entityId,
 				scale: payload.scale,
 				contactMinY: payload.contactMinY,
-				...(payload.choice === undefined ? {} : { choice: payload.choice })
+				...(payload.choice === undefined ? {} : { choice: payload.choice }),
 			});
 		case 'duplicate-one':
 			if (payload.kind !== 'duplicate-one') return payloadMismatch(kind);
 			if (allocation.kind !== 'created') {
-				return { kind: 'rejected', code: 'invalid-value', message: 'Duplicate needs a captured new id.', diagnostics: [] };
+				return {
+					kind: 'rejected',
+					code: 'invalid-value',
+					message: 'Duplicate needs a captured new id.',
+					diagnostics: [],
+				};
 			}
 			return planDuplicateOne({
 				context,
 				entityId,
 				newEntityId: allocation.entityId,
 				contactMinY: payload.contactMinY,
-				...(payload.choice === undefined ? {} : { choice: payload.choice })
+				...(payload.choice === undefined ? {} : { choice: payload.choice }),
 			});
 		case 'set-lift':
 			if (payload.kind !== 'set-lift') return payloadMismatch(kind);
@@ -405,7 +465,7 @@ function planOperation(
 				entityId,
 				lift: payload.lift,
 				contactMinY: payload.contactMinY,
-				...(payload.choice === undefined ? {} : { choice: payload.choice })
+				...(payload.choice === undefined ? {} : { choice: payload.choice }),
 			});
 		case 'set-name':
 			if (payload.kind !== 'set-name') return payloadMismatch(kind);
@@ -416,10 +476,9 @@ function planOperation(
 	}
 }
 
-
 function unlinkPresentations(
 	request: PlannerRequest<ProjectEnvelope>,
-	removed: readonly { readonly entityId: string; readonly effectiveName: string }[]
+	removed: readonly { readonly entityId: string; readonly effectiveName: string }[],
 ): ExperienceUnitPayload | null {
 	const data = request.snapshot.domain.source.units.experience.data;
 	let changed = false;
@@ -431,27 +490,34 @@ function unlinkPresentations(
 	return changed ? { ...data, experiences } : null;
 }
 
-
 export function toOutcome(
 	request: PlannerRequest<ProjectEnvelope>,
 	kind: SceneOperationKind,
 	result: SceneOperationResult,
 	resourceEntry: CreatorModelResourceEntry | null = null,
-	unlinkedExperience: ExperienceUnitPayload | null = null
+	unlinkedExperience: ExperienceUnitPayload | null = null,
 ): PlannerOutcome<ProjectEnvelope> {
 	if (result.kind === 'rejected') {
-		return rejected(result.code, result.message, result.diagnostics.map((issue) => issue.message));
+		return rejected(
+			result.code,
+			result.message,
+			result.diagnostics.map((issue) => issue.message),
+		);
 	}
 	const sceneSource = replaceUnitData(request.snapshot.domain.source, 'scene', result.scene);
-	const experiencedSource = unlinkedExperience === null
-		? sceneSource
-		: replaceUnitData(sceneSource, 'experience', unlinkedExperience);
-	const source = resourceEntry === null ? experiencedSource : withCreatorModelResource(experiencedSource, resourceEntry);
+	const experiencedSource =
+		unlinkedExperience === null
+			? sceneSource
+			: replaceUnitData(sceneSource, 'experience', unlinkedExperience);
+	const source =
+		resourceEntry === null
+			? experiencedSource
+			: withCreatorModelResource(experiencedSource, resourceEntry);
 	if (source === null) {
 		return rejected(
 			'invalid-value',
 			'The model resource could not be added to the candidate envelope.',
-			[resourceEntry?.resource.id ?? 'model-resource']
+			[resourceEntry?.resource.id ?? 'model-resource'],
 		);
 	}
 	const candidate: PreparedCandidate<ProjectEnvelope> = {
@@ -463,7 +529,7 @@ export function toOutcome(
 			{
 				kind: `scene-${kind}`,
 				subjectIds: [result.entityId],
-				fields: [...result.fields]
+				fields: [...result.fields],
 			},
 			...(unlinkedExperience === null
 				? []
@@ -471,8 +537,8 @@ export function toOutcome(
 						{
 							kind: 'experience-presentations-unlinked',
 							subjectIds: [result.entityId],
-							fields: ['presentations']
-						}
+							fields: ['presentations'],
+						},
 					]),
 			...(resourceEntry === null
 				? []
@@ -480,59 +546,58 @@ export function toOutcome(
 						{
 							kind: 'resource-model-created',
 							subjectIds: [resourceEntry.resource.id],
-							fields: ['pin', 'model', 'lock']
-						}
-					])
+							fields: ['pin', 'model', 'lock'],
+						},
+					]),
 		],
 		correspondence: result.correspondence.map((entry) => ({
 			relation: entry.relation,
 			before: entry.relation === 'created' ? null : entityReference(request, entry.entityId),
-			after: entry.relation === 'retired' ? null : entityReference(request, entry.entityId)
+			after: entry.relation === 'retired' ? null : entityReference(request, entry.entityId),
 		})),
-		diagnostics: result.diagnostics
+		diagnostics: result.diagnostics,
 	};
 	return { kind: 'prepared', candidate };
 }
 
-
 function entityReference(
 	request: PlannerRequest<ProjectEnvelope>,
-	entityId: string
+	entityId: string,
 ): SemanticReference {
 	return {
 		version: 1,
 		domain: 'scene',
-		revision: { kind: 'exact', contentRevision: request.snapshot.domain.source.units.scene.header.contentRevision },
+		revision: {
+			kind: 'exact',
+			contentRevision: request.snapshot.domain.source.units.scene.header.contentRevision,
+		},
 		subject: { kind: 'entity', id: entityId },
 		instancePath: [],
 		location: { kind: 'project-root' },
 		componentId: null,
-		capabilityId: null
+		capabilityId: null,
 	};
 }
 
-
 function composedPoint(
 	worldXZ: readonly [number, number],
-	frame: { readonly origin: readonly [number, number, number]; readonly yaw: number }
+	frame: { readonly origin: readonly [number, number, number]; readonly yaw: number },
 ): [number, number] | null {
 	const point = framePointToWorld(
 		{ origin: [frame.origin[0], frame.origin[1], frame.origin[2]], yaw: frame.yaw },
-		[worldXZ[0], 0, worldXZ[1]]
+		[worldXZ[0], 0, worldXZ[1]],
 	);
 	return Number.isFinite(point[0]) && Number.isFinite(point[2]) ? [point[0], point[2]] : null;
 }
-
 
 function payloadMismatch(kind: string): SceneOperationResult {
 	return {
 		kind: 'rejected',
 		code: 'invalid-value',
 		message: `The ${kind} payload does not match its operation kind.`,
-		diagnostics: []
+		diagnostics: [],
 	};
 }
-
 
 export function invalidPayload(issues: readonly ShapeIssue[]): PlannerOutcome<ProjectEnvelope> {
 	// A structurally valid reference to a frame this reader cannot resolve is not
@@ -544,17 +609,21 @@ export function invalidPayload(issues: readonly ShapeIssue[]): PlannerOutcome<Pr
 			kind: 'rejected',
 			code: 'unsupported-frame',
 			message: unsupported.message,
-			diagnostics: issues
+			diagnostics: issues,
 		};
 	}
-	return { kind: 'rejected', code: 'invalid-value', message: 'The operation intent is not valid captured data.', diagnostics: issues };
+	return {
+		kind: 'rejected',
+		code: 'invalid-value',
+		message: 'The operation intent is not valid captured data.',
+		diagnostics: issues,
+	};
 }
-
 
 export function rejected(
 	code: string,
 	message: string,
-	diagnostics: readonly string[]
+	diagnostics: readonly string[],
 ): PlannerOutcome<ProjectEnvelope> {
 	return {
 		kind: 'rejected',
@@ -563,7 +632,7 @@ export function rejected(
 		diagnostics: diagnostics.map((entry) => ({
 			path: '$.payload',
 			code: 'planner-refusal',
-			message: entry
-		}))
+			message: entry,
+		})),
 	};
 }

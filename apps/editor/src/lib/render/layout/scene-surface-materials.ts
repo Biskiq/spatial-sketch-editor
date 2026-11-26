@@ -4,20 +4,23 @@ import {
 	acquireEffectiveVariant,
 	effectiveTextureVariantKey,
 	loadEffectiveTextures,
-	releaseEffectiveVariant
+	releaseEffectiveVariant,
 } from '$lib/render/resources/texture-store';
-import type { MaterialTextureSlotKey, StandardMaterialDescriptor } from '$lib/render/resources/material-descriptor';
+import type {
+	MaterialTextureSlotKey,
+	StandardMaterialDescriptor,
+} from '$lib/render/resources/material-descriptor';
 import { surfaceKey } from '@portfolio/layout-core/plan';
 import {
 	acquireFinishViews,
 	type FinishViewGeneration,
 	type FinishViewIssue,
-	type FinishViewLease
+	type FinishViewLease,
 } from '$lib/render/resources/finish-views';
 import {
 	classifyFinishViewIssues,
 	type FinishOutcomeSink,
-	type FinishTargetOutcomeState
+	type FinishTargetOutcomeState,
 } from '$lib/render/resources/finish-outcome-sink';
 import type { Material } from 'three';
 import type { SceneSurfaceLook, SceneSurfaceLookResolver, SceneSurfaceRef } from './surface-look';
@@ -27,7 +30,10 @@ type SurfaceLook = SceneSurfaceLook & {
 	views: FinishViewLease | null;
 	controller: AbortController | null;
 	readonly targets: Set<string>;
-	lastOutcome: { readonly state: FinishTargetOutcomeState; readonly issues: readonly FinishViewIssue[] } | null;
+	lastOutcome: {
+		readonly state: FinishTargetOutcomeState;
+		readonly issues: readonly FinishViewIssue[];
+	} | null;
 };
 type Variant = {
 	readonly seed: string;
@@ -49,13 +55,22 @@ export function createSceneSurfaceMaterials(input: {
 	readonly viewGeneration?: () => FinishViewGeneration | null;
 	/** Optional Stage-only sink for sampled Finish view outcomes. */
 	readonly onFinishOutcome?: FinishOutcomeSink;
-}): { materialFor(surface: SceneSurfaceRef): Material | null; materialKeys(): readonly string[]; reloadTextures(): void; dispose(): void } {
+}): {
+	materialFor(surface: SceneSurfaceRef): Material | null;
+	materialKeys(): readonly string[];
+	reloadTextures(): void;
+	dispose(): void;
+} {
 	const leases = new Map<string, ReturnType<MaterialStore['acquire']>>();
 	const variants = new Map<string, Variant>();
 	const looks = new Map<string, SurfaceLook>();
 	let disposed = false;
 
-	function emitOutcome(look: SurfaceLook, state: FinishTargetOutcomeState, issues: readonly FinishViewIssue[]): void {
+	function emitOutcome(
+		look: SurfaceLook,
+		state: FinishTargetOutcomeState,
+		issues: readonly FinishViewIssue[],
+	): void {
 		look.lastOutcome = { state, issues };
 		if (input.onFinishOutcome === undefined || look.finishKey === undefined) return;
 		for (const targetKey of look.targets) {
@@ -77,7 +92,7 @@ export function createSceneSurfaceMaterials(input: {
 						targetKey,
 						finishKey: existing.finishKey,
 						state: existing.lastOutcome.state,
-						issues: existing.lastOutcome.issues
+						issues: existing.lastOutcome.issues,
 					});
 				}
 			}
@@ -90,7 +105,7 @@ export function createSceneSurfaceMaterials(input: {
 			views: null,
 			controller: null,
 			targets: new Set([targetKey]),
-			lastOutcome: null
+			lastOutcome: null,
 		};
 		looks.set(key, look);
 		loadLook(look);
@@ -107,7 +122,7 @@ export function createSceneSurfaceMaterials(input: {
 				sources,
 				input.scope,
 				controller.signal,
-				input.viewGeneration?.() ?? undefined
+				input.viewGeneration?.() ?? undefined,
 			)
 				.then((lease) => {
 					if (look.controller === controller) look.controller = null;
@@ -116,7 +131,8 @@ export function createSceneSurfaceMaterials(input: {
 						return;
 					}
 					const named = new Set(sources.map((source) => source.view));
-					const complete = lease.issues.length === 0 && Object.keys(lease.views).length === named.size;
+					const complete =
+						lease.issues.length === 0 && Object.keys(lease.views).length === named.size;
 					emitOutcome(look, classifyFinishViewIssues(lease.issues, complete), lease.issues);
 					if (!complete) {
 						lease.release();
@@ -152,16 +168,31 @@ export function createSceneSurfaceMaterials(input: {
 		const texture = look.textures;
 		if (texture === null || !look.loaded) return { descriptor: look.material };
 		const key = effectiveTextureVariantKey(
-			texture.variantSeed, texture.repeat[0], texture.repeat[1], texture.rotation, input.scope, texture.offset
+			texture.variantSeed,
+			texture.repeat[0],
+			texture.repeat[1],
+			texture.rotation,
+			input.scope,
+			texture.offset,
 		);
 		let variant = variants.get(key);
 		if (variant === undefined) {
 			const maps = acquireEffectiveVariant(
-				texture, texture.repeat[0], texture.repeat[1], texture.rotation, input.scope, texture.offset
+				texture,
+				texture.repeat[0],
+				texture.repeat[1],
+				texture.rotation,
+				input.scope,
+				texture.offset,
 			) as MaterialTextureMaps;
 			variant = {
-				seed: texture.variantSeed, rx: texture.repeat[0], ry: texture.repeat[1],
-				rotation: texture.rotation, offset: texture.offset, scope: input.scope, maps
+				seed: texture.variantSeed,
+				rx: texture.repeat[0],
+				ry: texture.repeat[1],
+				rotation: texture.rotation,
+				offset: texture.offset,
+				scope: input.scope,
+				maps,
 			};
 			variants.set(key, variant);
 		}
@@ -200,7 +231,14 @@ export function createSceneSurfaceMaterials(input: {
 			disposed = true;
 			for (const lease of leases.values()) lease.release();
 			for (const variant of variants.values()) {
-				releaseEffectiveVariant(variant.seed, variant.rx, variant.ry, variant.rotation, variant.scope, variant.offset);
+				releaseEffectiveVariant(
+					variant.seed,
+					variant.rx,
+					variant.ry,
+					variant.rotation,
+					variant.scope,
+					variant.offset,
+				);
 			}
 			for (const look of looks.values()) {
 				look.controller?.abort();
@@ -209,6 +247,6 @@ export function createSceneSurfaceMaterials(input: {
 			leases.clear();
 			variants.clear();
 			looks.clear();
-		}
+		},
 	};
 }

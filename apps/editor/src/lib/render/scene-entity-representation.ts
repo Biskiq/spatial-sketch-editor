@@ -40,19 +40,19 @@ import type { GeometryLease, GeometryStore } from './resources/geometry-store';
 import {
 	MATERIAL_TEXTURE_SLOTS,
 	type MaterialTextureKeys,
-	type StandardMaterialDescriptor
+	type StandardMaterialDescriptor,
 } from './resources/material-descriptor';
 import type { SceneRenderDescription, SceneRenderItem } from './resources/scene-render-item';
 import {
 	createSceneArtworkRepresentation,
 	type ArtworkImageSource,
-	type SceneArtworkStats
+	type SceneArtworkStats,
 } from './scene-artwork-representation';
 import {
 	createSceneModelRepresentation,
 	type SceneModelState,
 	type SceneModelStats,
-	type SceneModelSupport
+	type SceneModelSupport,
 } from './scene-model-representation';
 import type { CasterChannel } from './resources/caster-channel';
 import {
@@ -61,17 +61,14 @@ import {
 	loadEffectiveTextures,
 	releaseEffectiveVariant,
 	type LoadedTextureMaps,
-	type TextureLoadScope
+	type TextureLoadScope,
 } from './resources/texture-store';
 import {
 	acquireFinishViews,
 	type FinishViewGeneration,
-	type FinishViewLease
+	type FinishViewLease,
 } from './resources/finish-views';
-import {
-	classifyFinishViewIssues,
-	type FinishOutcomeSink
-} from './resources/finish-outcome-sink';
+import { classifyFinishViewIssues, type FinishOutcomeSink } from './resources/finish-outcome-sink';
 
 /** What one update did, as counts — tests read these, never a stopwatch. */
 export type SceneEntityRepresentationStats = {
@@ -188,7 +185,7 @@ type RetainedItem = {
 function texturedDescriptor(
 	base: StandardMaterialDescriptor,
 	maps: LoadedTextureMaps,
-	variantKey: string
+	variantKey: string,
 ): StandardMaterialDescriptor | null {
 	const textures: Partial<Record<(typeof MATERIAL_TEXTURE_SLOTS)[number], string>> = {};
 	let bound = false;
@@ -207,11 +204,11 @@ const NO_CASTERS: CasterChannel = {
 	publish() {},
 	subscribe: () => () => {},
 	playing: () => 0,
-	dispose() {}
+	dispose() {},
 };
 
 export function createSceneEntityRepresentation(
-	options: SceneEntityRepresentationOptions
+	options: SceneEntityRepresentationOptions,
 ): SceneEntityRepresentation {
 	const object3d = new Group();
 	object3d.name = 'SceneEntities';
@@ -219,7 +216,7 @@ export function createSceneEntityRepresentation(
 		store: options.store,
 		geometry: options.geometry,
 		onArrival: (id) => options.onArtworkArrival?.(id),
-		onError: (message) => options.onArtworkError?.(message)
+		onError: (message) => options.onArtworkError?.(message),
 	});
 	object3d.add(artworks.object3d);
 	const models = createSceneModelRepresentation({
@@ -230,7 +227,7 @@ export function createSceneEntityRepresentation(
 		onRoot: (id, root) => options.onRoot?.(id, root),
 		onDrawn: (id) => options.onModelDrawn?.(id),
 		onState: (id, state) => options.onModelState?.(id, state),
-		onFinishOutcome: options.onFinishOutcome
+		onFinishOutcome: options.onFinishOutcome,
 	});
 	object3d.add(models.object3d);
 	const retained = new Map<string, RetainedItem>();
@@ -258,7 +255,7 @@ export function createSceneEntityRepresentation(
 				entry.variant.ry,
 				entry.variant.rotation,
 				entry.variant.scope,
-				entry.variant.offset
+				entry.variant.offset,
 			);
 			entry.variant = null;
 		}
@@ -281,13 +278,18 @@ export function createSceneEntityRepresentation(
 			entry.controller = controller;
 			const targetKey = `entity:${item.id}`;
 			if (item.finishKey !== undefined) {
-				options.onFinishOutcome?.({ targetKey, finishKey: item.finishKey, state: 'pending', issues: [] });
+				options.onFinishOutcome?.({
+					targetKey,
+					finishKey: item.finishKey,
+					state: 'pending',
+					issues: [],
+				});
 			}
 			const job: Promise<void> = acquireFinishViews(
 				sources,
 				scope,
 				controller.signal,
-				options.viewGeneration?.() ?? undefined
+				options.viewGeneration?.() ?? undefined,
 			)
 				.then((lease) => {
 					if (disposed || entry.generation !== generation) {
@@ -295,13 +297,14 @@ export function createSceneEntityRepresentation(
 						return;
 					}
 					const named = new Set(sources.map((source) => source.view));
-					const complete = lease.issues.length === 0 && Object.keys(lease.views).length === named.size;
+					const complete =
+						lease.issues.length === 0 && Object.keys(lease.views).length === named.size;
 					if (item.finishKey !== undefined) {
 						options.onFinishOutcome?.({
 							targetKey,
 							finishKey: item.finishKey,
 							state: classifyFinishViewIssues(lease.issues, complete),
-							issues: lease.issues
+							issues: lease.issues,
 						});
 					}
 					if (!complete) {
@@ -354,7 +357,7 @@ export function createSceneEntityRepresentation(
 					ry,
 					rotation,
 					scope,
-					offset
+					offset,
 				);
 				const descriptor = texturedDescriptor(item.material, maps, variantKey);
 				if (descriptor === null) {
@@ -392,7 +395,9 @@ export function createSceneEntityRepresentation(
 		const geometry = options.geometry.acquire(item.geometry);
 		const sampled = item.material.kind === 'standard' && item.material.finish !== undefined;
 		const { finish: _finish, textures: _textures, ...plain } = item.material;
-		const material = options.store.acquire(sampled ? (plain as StandardMaterialDescriptor) : item.material);
+		const material = options.store.acquire(
+			sampled ? (plain as StandardMaterialDescriptor) : item.material,
+		);
 		const mesh = new Mesh(geometry.geometry, material.material);
 		mesh.name = `SceneEntityBody:${item.id}`;
 		mesh.scale.set(...item.geometryScale);
@@ -414,7 +419,7 @@ export function createSceneEntityRepresentation(
 			views: null,
 			controller: null,
 			generation: 0,
-			unregister: options.onRoot?.(item.id, group) ?? null
+			unregister: options.onRoot?.(item.id, group) ?? null,
 		};
 		loadTextures(entry, item);
 		return entry;
@@ -434,7 +439,7 @@ export function createSceneEntityRepresentation(
 			const modelStats = models.update(description.models, {
 				support: options.modelSupport?.() ?? null,
 				urls: options.modelUrls?.() ?? null,
-				scope: options.scope?.() ?? null
+				scope: options.scope?.() ?? null,
 			});
 			if (previous === description) {
 				return {
@@ -445,7 +450,7 @@ export function createSceneEntityRepresentation(
 					forms: 0,
 					textured: 0,
 					artworks: artworkStats,
-					models: modelStats
+					models: modelStats,
 				};
 			}
 			previous = description;
@@ -482,15 +487,15 @@ export function createSceneEntityRepresentation(
 			}
 
 			return {
-					items: retained.size,
-					built,
-					retained: kept,
-					released,
-					forms,
-					textured,
-					artworks: artworkStats,
-					models: modelStats
-				};
+				items: retained.size,
+				built,
+				retained: kept,
+				released,
+				forms,
+				textured,
+				artworks: artworkStats,
+				models: modelStats,
+			};
 		},
 
 		reloadTextures() {
@@ -530,6 +535,6 @@ export function createSceneEntityRepresentation(
 			artworks.object3d.removeFromParent();
 			models.dispose();
 			models.object3d.removeFromParent();
-		}
+		},
 	};
 }

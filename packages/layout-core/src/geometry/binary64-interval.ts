@@ -43,6 +43,6 @@ export function ivMul(a: Iv, b: Iv): Iv {
 	const p4 = a.hi * b.hi;
 	return {
 		lo: nextDown(Math.min(p1, p2, p3, p4)),
-		hi: nextUp(Math.max(p1, p2, p3, p4))
+		hi: nextUp(Math.max(p1, p2, p3, p4)),
 	};
 }

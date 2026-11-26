@@ -1,12 +1,10 @@
 {
-  "id": "39-visitor-editor-import",
-  "area": "visitor-isolation",
-  "citation": "hard rules 4 and 5 — visitor isolation",
-  "title": "The Preview surface root imports editor authoring machinery",
-  "file": "apps/editor/src/lib/visitor/VisitorPreviewSurface.svelte",
-  "find": "<script lang=\"ts\">",
-  "replace": "<script lang=\"ts\">\n\timport { resolveStagePick } from '$lib/authoring/stage/stage-pick';",
-  "tests": [
-    "tests/lib/visitor/preview-surface-closure.test.ts"
-  ]
+	"id": "39-visitor-editor-import",
+	"area": "visitor-isolation",
+	"citation": "hard rules 4 and 5 — visitor isolation",
+	"title": "The Preview surface root imports editor authoring machinery",
+	"file": "apps/editor/src/lib/visitor/VisitorPreviewSurface.svelte",
+	"find": "<script lang=\"ts\">",
+	"replace": "<script lang=\"ts\">\n\timport { resolveStagePick } from '$lib/authoring/stage/stage-pick';",
+	"tests": ["tests/lib/visitor/preview-surface-closure.test.ts"]
 }

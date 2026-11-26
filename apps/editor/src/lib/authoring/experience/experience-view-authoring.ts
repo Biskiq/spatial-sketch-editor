@@ -1,5 +1,9 @@
 import type { OperationChange } from '@portfolio/project-model/f4';
-import type { Experience, ExperiencePresentation, ProjectEnvelope } from '@portfolio/project-model/units';
+import type {
+	Experience,
+	ExperiencePresentation,
+	ProjectEnvelope,
+} from '@portfolio/project-model/units';
 import type { StageAdapterServices } from '../stage/stage-adapter-host';
 import { viewUpdateIntent } from './commands-presentation';
 import { capturedFovDegrees, capturedViewPose, type CapturedViewPose } from './commands-references';
@@ -20,7 +24,10 @@ export type ExperienceViewPorts = {
 	readonly say: (kind: 'success' | 'info' | 'refusal', text: string) => void;
 	readonly newId: () => string;
 	readonly revision: () => Revision;
-	readonly run: (builder: () => Submission, success?: (changes: readonly OperationChange[]) => string) => Promise<boolean>;
+	readonly run: (
+		builder: () => Submission,
+		success?: (changes: readonly OperationChange[]) => string,
+	) => Promise<boolean>;
 	readonly focus: {
 		readonly openExperience: (experienceId: string) => void;
 		readonly select: (subject: ExperienceSubject) => void;
@@ -39,7 +46,12 @@ export type ExperienceViewPose = {
 };
 
 export type ExperiencePlacement =
-	| { readonly kind: 'placed'; readonly presentationId: string; readonly viewId: string; readonly createdPresentation: boolean }
+	| {
+			readonly kind: 'placed';
+			readonly presentationId: string;
+			readonly viewId: string;
+			readonly createdPresentation: boolean;
+	  }
 	| { readonly kind: 'refused'; readonly message: string };
 
 export type ExperienceViewUpdate =
@@ -48,7 +60,11 @@ export type ExperienceViewUpdate =
 	| { readonly kind: 'refused'; readonly message: string };
 
 export function createExperienceViewAuthoring(ports: ExperienceViewPorts) {
-	function stepExperience(): { readonly id: string; readonly presentations: number; readonly newLabel: string | null } {
+	function stepExperience(): {
+		readonly id: string;
+		readonly presentations: number;
+		readonly newLabel: string | null;
+	} {
 		const experience = ports.current();
 		return experience === null
 			? { id: ports.newId(), presentations: 0, newLabel: ports.draftLabel() }
@@ -58,13 +74,19 @@ export function createExperienceViewAuthoring(ports: ExperienceViewPorts) {
 	function currentCapturePose() {
 		const evaluation = ports.readServices().stage.evaluation();
 		if (evaluation === null) {
-			ports.say('refusal', 'The Stage has not evaluated a reading yet; wait for the reading to settle.');
+			ports.say(
+				'refusal',
+				'The Stage has not evaluated a reading yet; wait for the reading to settle.',
+			);
 			return null;
 		}
 		// Plan is orthographic: its eye/target would record a perspective View the
 		// creator never saw. Capture is a 3D-reading action.
 		if (evaluation.projectionKind !== 'perspective-3d') {
-			ports.say('refusal', 'Capture needs the 3D reading: switch to 3D, frame the View, then capture.');
+			ports.say(
+				'refusal',
+				'Capture needs the 3D reading: switch to 3D, frame the View, then capture.',
+			);
 			return null;
 		}
 		const fov = capturedFovDegrees(evaluation.projectionMatrix);
@@ -76,7 +98,7 @@ export function createExperienceViewAuthoring(ports: ExperienceViewPorts) {
 			label: `View ${ports.snapshot().units.camera.data.views.length + 1}`,
 			eye: evaluation.eye,
 			target: evaluation.target,
-			fov
+			fov,
 		});
 	}
 
@@ -87,7 +109,7 @@ export function createExperienceViewAuthoring(ports: ExperienceViewPorts) {
 	async function captureNewPresentation(
 		subjectEntityId: string | null,
 		presentationLabelText: string | null,
-		exactPose: CapturedViewPose | null = null
+		exactPose: CapturedViewPose | null = null,
 	): Promise<boolean> {
 		const view = exactPose ?? currentCapturePose();
 		if (view === null) return false;
@@ -107,8 +129,8 @@ export function createExperienceViewAuthoring(ports: ExperienceViewPorts) {
 				text: null,
 				guideId: null,
 				afterStopId: null,
-				newExperienceLabel: experience.newLabel
-			})
+				newExperienceLabel: experience.newLabel,
+			}),
 		);
 		if (accepted) {
 			if (experience.newLabel !== null) {
@@ -141,8 +163,8 @@ export function createExperienceViewAuthoring(ports: ExperienceViewPorts) {
 				ids: { operation: ports.newId(), view: ports.newId() },
 				experienceId: experience.id,
 				presentationId: target.id,
-				view
-			})
+				view,
+			}),
 		);
 		if (accepted && !hadDefault) {
 			ports.say('info', `${target.label} had no Default View, so this View is now its Default.`);
@@ -160,26 +182,45 @@ export function createExperienceViewAuthoring(ports: ExperienceViewPorts) {
 		return `View ${ports.snapshot().units.camera.data.views.length + 1}`;
 	}
 
-	async function capturePose(pose: { readonly eye: readonly [number, number, number]; readonly target: readonly [number, number, number]; readonly fov: number }): Promise<boolean> {
-		return captureView(capturedViewPose({ label: viewLabel(), eye: pose.eye, target: pose.target, fov: pose.fov }));
+	async function capturePose(pose: {
+		readonly eye: readonly [number, number, number];
+		readonly target: readonly [number, number, number];
+		readonly fov: number;
+	}): Promise<boolean> {
+		return captureView(
+			capturedViewPose({ label: viewLabel(), eye: pose.eye, target: pose.target, fov: pose.fov }),
+		);
 	}
 
 	async function presentThisFramed(
 		entityId: string,
 		_label: string,
-		pose: { readonly eye: readonly [number, number, number]; readonly target: readonly [number, number, number]; readonly fov: number }
+		pose: {
+			readonly eye: readonly [number, number, number];
+			readonly target: readonly [number, number, number];
+			readonly fov: number;
+		},
 	): Promise<boolean> {
 		// G24: the Presentation follows the object's live name; the copied label is gone.
 		return captureNewPresentation(
 			entityId,
 			null,
-			capturedViewPose({ label: viewLabel(), eye: pose.eye, target: pose.target, fov: pose.fov })
+			capturedViewPose({ label: viewLabel(), eye: pose.eye, target: pose.target, fov: pose.fov }),
 		);
 	}
 
-	async function placeView(pose: { readonly eye: readonly [number, number, number]; readonly target: readonly [number, number, number]; readonly fov: number }): Promise<ExperiencePlacement> {
+	async function placeView(pose: {
+		readonly eye: readonly [number, number, number];
+		readonly target: readonly [number, number, number];
+		readonly fov: number;
+	}): Promise<ExperiencePlacement> {
 		const viewId = ports.newId();
-		const view = capturedViewPose({ label: viewLabel(), eye: pose.eye, target: pose.target, fov: pose.fov });
+		const view = capturedViewPose({
+			label: viewLabel(),
+			eye: pose.eye,
+			target: pose.target,
+			fov: pose.fov,
+		});
 		const target = ports.selectedPresentation();
 		const focused = ports.current();
 		if (focused !== null && target !== null) {
@@ -191,9 +232,9 @@ export function createExperienceViewAuthoring(ports: ExperienceViewPorts) {
 						ids: { operation: ports.newId(), view: viewId },
 						experienceId: focused.id,
 						presentationId: target.id,
-						view
+						view,
 					}),
-				() => ''
+				() => '',
 			);
 			if (!accepted) return { kind: 'refused', message: ports.feedback() ?? '' };
 			ports.focus.select({ kind: 'view', viewId, presentationId: target.id });
@@ -214,9 +255,9 @@ export function createExperienceViewAuthoring(ports: ExperienceViewPorts) {
 					text: null,
 					guideId: null,
 					afterStopId: null,
-					newExperienceLabel: experience.newLabel
+					newExperienceLabel: experience.newLabel,
 				}),
-			() => ''
+			() => '',
 		);
 		if (!accepted) return { kind: 'refused', message: ports.feedback() ?? '' };
 		if (experience.newLabel !== null) {
@@ -229,15 +270,24 @@ export function createExperienceViewAuthoring(ports: ExperienceViewPorts) {
 
 	async function updateViewPose(
 		viewId: string,
-		pose: { readonly eye: readonly [number, number, number]; readonly target: readonly [number, number, number]; readonly fov: number },
+		pose: {
+			readonly eye: readonly [number, number, number];
+			readonly target: readonly [number, number, number];
+			readonly fov: number;
+		},
 		presentationId: string,
-		options: { readonly confirmShared?: boolean } = {}
+		options: { readonly confirmShared?: boolean } = {},
 	): Promise<ExperienceViewUpdate> {
-		const view = ports.snapshot().units.camera.data.views.find((candidate) => candidate.id === viewId);
+		const view = ports
+			.snapshot()
+			.units.camera.data.views.find((candidate) => candidate.id === viewId);
 		if (view === undefined) return { kind: 'refused', message: 'That View is not in this project' };
 		const shared = ports.alsoIn(viewId, presentationId);
 		if (shared.length > 0 && options.confirmShared !== true) {
-			return { kind: 'needs-confirmation', alsoIn: shared.map((presentation) => ports.presentationDisplayName(presentation.id)) };
+			return {
+				kind: 'needs-confirmation',
+				alsoIn: shared.map((presentation) => ports.presentationDisplayName(presentation.id)),
+			};
 		}
 		const accepted = await ports.run(
 			() =>
@@ -248,18 +298,23 @@ export function createExperienceViewAuthoring(ports: ExperienceViewPorts) {
 					view,
 					eye: pose.eye,
 					target: pose.target,
-					fov: pose.fov
+					fov: pose.fov,
 				}),
-			() => shared.length > 0 ? `View updated; it also changes ${shared.map((entry) => entry.label).join(', ')}.` : ''
+			() =>
+				shared.length > 0
+					? `View updated; it also changes ${shared.map((entry) => entry.label).join(', ')}.`
+					: '',
 		);
 		return accepted ? { kind: 'updated' } : { kind: 'refused', message: ports.feedback() ?? '' };
 	}
 
 	async function setViewFraming(
 		viewId: string,
-		framing: { readonly fov?: number; readonly eyeHeightMetres?: number }
+		framing: { readonly fov?: number; readonly eyeHeightMetres?: number },
 	): Promise<boolean> {
-		const view = ports.snapshot().units.camera.data.views.find((candidate) => candidate.id === viewId);
+		const view = ports
+			.snapshot()
+			.units.camera.data.views.find((candidate) => candidate.id === viewId);
 		if (view === undefined) {
 			ports.say('refusal', 'That View is not in this project.');
 			return false;
@@ -284,8 +339,17 @@ export function createExperienceViewAuthoring(ports: ExperienceViewPorts) {
 			target[1] += delta;
 		}
 		return ports.run(
-			() => viewUpdateIntent({ envelope: ports.snapshot(), revision: ports.revision(), ids: { operation: ports.newId() }, view, eye, target, fov }),
-			() => ''
+			() =>
+				viewUpdateIntent({
+					envelope: ports.snapshot(),
+					revision: ports.revision(),
+					ids: { operation: ports.newId() },
+					view,
+					eye,
+					target,
+					fov,
+				}),
+			() => '',
 		);
 	}
 
@@ -300,6 +364,6 @@ export function createExperienceViewAuthoring(ports: ExperienceViewPorts) {
 		presentThisFramed,
 		placeView,
 		updateViewPose,
-		setViewFraming
+		setViewFraming,
 	};
 }

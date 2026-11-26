@@ -23,7 +23,7 @@ import {
 	assertAllowedKeys,
 	isRecord,
 	readRequiredBoolean,
-	readRequiredString
+	readRequiredString,
 } from '../scene-codec/readers';
 import type { SceneDocumentIssue } from '../scene-codec/types';
 import { withSceneValidationOptions } from '../scene-validation';
@@ -81,9 +81,7 @@ export type FormLibraryReadResult =
  * The form source is cloned without renumbering keys or re-evaluating anything:
  * the authored controls, keys, scale and next key are stored verbatim.
  */
-export function canonicalFormLibraryPayload(
-	payload: FormLibraryPayload
-): FormLibraryPayload {
+export function canonicalFormLibraryPayload(payload: FormLibraryPayload): FormLibraryPayload {
 	return {
 		formatVersion: FORM_LIBRARY_PAYLOAD_FORMAT_VERSION,
 		kind: 'form',
@@ -96,16 +94,16 @@ export function canonicalFormLibraryPayload(
 					key: anchor.key,
 					u: anchor.u,
 					v: anchor.v,
-					smooth: anchor.smooth
+					smooth: anchor.smooth,
 				})),
-				extent: payload.form.generator.extent
+				extent: payload.form.generator.extent,
 			},
 			scale: [payload.form.scale[0], payload.form.scale[1], payload.form.scale[2]],
-			nextKey: payload.form.nextKey
+			nextKey: payload.form.nextKey,
 		},
 		materialId: payload.materialId,
 		castShadow: payload.castShadow,
-		receiveShadow: payload.receiveShadow
+		receiveShadow: payload.receiveShadow,
 	};
 }
 
@@ -128,7 +126,7 @@ export function formLibraryPayloadFromEntity(entity: SceneFormEntity): FormLibra
 		form: entity.form,
 		materialId: entity.materialId,
 		castShadow: entity.castShadow,
-		receiveShadow: entity.receiveShadow
+		receiveShadow: entity.receiveShadow,
 	});
 }
 
@@ -144,7 +142,10 @@ export function formLibraryPayloadFromEntity(entity: SceneFormEntity): FormLibra
 export function readFormLibraryPayload(input: unknown): FormLibraryReadResult {
 	const issues: SceneDocumentIssue[] = [];
 	if (!isRecord(input)) {
-		return { success: false, issues: [{ path: '$', code: 'invalid_type', message: 'Expected a form library item object' }] };
+		return {
+			success: false,
+			issues: [{ path: '$', code: 'invalid_type', message: 'Expected a form library item object' }],
+		};
 	}
 	if (input.formatVersion !== FORM_LIBRARY_PAYLOAD_FORMAT_VERSION) {
 		return {
@@ -153,16 +154,16 @@ export function readFormLibraryPayload(input: unknown): FormLibraryReadResult {
 				{
 					path: '$.formatVersion',
 					code: 'unsupported_format_version',
-					message: `Unsupported form library formatVersion ${JSON.stringify(input.formatVersion)}; recognized value: ${FORM_LIBRARY_PAYLOAD_FORMAT_VERSION}`
-				}
-			]
+					message: `Unsupported form library formatVersion ${JSON.stringify(input.formatVersion)}; recognized value: ${FORM_LIBRARY_PAYLOAD_FORMAT_VERSION}`,
+				},
+			],
 		};
 	}
 	assertAllowedKeys(
 		input,
 		['formatVersion', 'kind', 'name', 'form', 'materialId', 'castShadow', 'receiveShadow'],
 		'$',
-		issues
+		issues,
 	);
 	const kind = readRequiredString(input, 'kind', '$', issues);
 	if (kind !== undefined && kind !== 'form') {
@@ -178,7 +179,7 @@ export function readFormLibraryPayload(input: unknown): FormLibraryReadResult {
 				issues,
 				'$.name',
 				'name_too_long',
-				`A library item name is at most ${FORM_LIBRARY_NAME_MAX_LENGTH} characters`
+				`A library item name is at most ${FORM_LIBRARY_NAME_MAX_LENGTH} characters`,
 			);
 		}
 	}
@@ -192,7 +193,15 @@ export function readFormLibraryPayload(input: unknown): FormLibraryReadResult {
 	const castShadow = readRequiredBoolean(input, 'castShadow', '$', issues);
 	const receiveShadow = readRequiredBoolean(input, 'receiveShadow', '$', issues);
 	const form = parseFormSource(input.form, '$.form', issues);
-	if (issues.length > 0 || kind !== 'form' || name === undefined || materialId === undefined || castShadow === undefined || receiveShadow === undefined || form === undefined) {
+	if (
+		issues.length > 0 ||
+		kind !== 'form' ||
+		name === undefined ||
+		materialId === undefined ||
+		castShadow === undefined ||
+		receiveShadow === undefined ||
+		form === undefined
+	) {
 		return { success: false, issues };
 	}
 	const payload = canonicalFormLibraryPayload({
@@ -202,7 +211,7 @@ export function readFormLibraryPayload(input: unknown): FormLibraryReadResult {
 		form,
 		materialId: materialId as MaterialId,
 		castShadow,
-		receiveShadow
+		receiveShadow,
 	});
 	const canonicalJson = JSON.stringify(payload);
 	if (new TextEncoder().encode(canonicalJson).byteLength > FORM_LIBRARY_MAX_CANONICAL_BYTES) {
@@ -212,9 +221,9 @@ export function readFormLibraryPayload(input: unknown): FormLibraryReadResult {
 				{
 					path: '$',
 					code: 'payload_too_large',
-					message: `A library item is at most ${FORM_LIBRARY_MAX_CANONICAL_BYTES} canonical bytes`
-				}
-			]
+					message: `A library item is at most ${FORM_LIBRARY_MAX_CANONICAL_BYTES} canonical bytes`,
+				},
+			],
 		};
 	}
 	return { success: true, payload, canonicalJson };
@@ -230,7 +239,7 @@ export function readFormLibraryPayload(input: unknown): FormLibraryReadResult {
  */
 export async function readFormLibraryBytes(
 	bytes: Uint8Array,
-	options: { readonly contentId?: string } = {}
+	options: { readonly contentId?: string } = {},
 ): Promise<
 	| {
 			readonly success: true;
@@ -247,9 +256,9 @@ export async function readFormLibraryBytes(
 				{
 					path: '$',
 					code: 'payload_too_large',
-					message: `A library item is at most ${FORM_LIBRARY_MAX_CANONICAL_BYTES} canonical bytes`
-				}
-			]
+					message: `A library item is at most ${FORM_LIBRARY_MAX_CANONICAL_BYTES} canonical bytes`,
+				},
+			],
 		};
 	}
 	const contentId = await sha256Bytes(bytes);
@@ -260,9 +269,9 @@ export async function readFormLibraryBytes(
 				{
 					path: '$',
 					code: 'content_id_mismatch',
-					message: 'The item bytes do not match the content id they were read as'
-				}
-			]
+					message: 'The item bytes do not match the content id they were read as',
+				},
+			],
 		};
 	}
 	let input: unknown;
@@ -271,7 +280,7 @@ export async function readFormLibraryBytes(
 	} catch {
 		return {
 			success: false,
-			issues: [{ path: '$', code: 'invalid_json', message: 'The item bytes are not JSON' }]
+			issues: [{ path: '$', code: 'invalid_json', message: 'The item bytes are not JSON' }],
 		};
 	}
 	const parsed = readFormLibraryPayload(input);
@@ -290,9 +299,9 @@ export async function readFormLibraryBytes(
 				{
 					path: '$',
 					code: 'non_canonical_payload',
-					message: 'The item bytes are not the canonical serialization they claim to be'
-				}
-			]
+					message: 'The item bytes are not the canonical serialization they claim to be',
+				},
+			],
 		};
 	}
 	return { success: true, payload: parsed.payload, canonicalJson: parsed.canonicalJson, contentId };

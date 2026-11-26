@@ -15,10 +15,10 @@ export type WaitMarker = { readonly id: string; readonly left: number };
 export function coincidentWaitMarkers(
 	waits: readonly WaitMarker[],
 	fractionPercent: number,
-	tolerancePercent = 1.5
+	tolerancePercent = 1.5,
 ): readonly WaitMarker[] {
 	return waits.filter(
-		(wait) => Math.abs(wait.left - fractionPercent) <= Math.max(0, tolerancePercent)
+		(wait) => Math.abs(wait.left - fractionPercent) <= Math.max(0, tolerancePercent),
 	);
 }
 
@@ -33,7 +33,7 @@ export type SegmentLane = { readonly id: string; readonly widthFraction: number 
  */
 export function locateSegmentAt(
 	lanes: readonly SegmentLane[],
-	fraction: number
+	fraction: number,
 ): { readonly segmentId: string; readonly localFraction: number } | null {
 	const at = Math.max(0, Math.min(1, fraction));
 	let start = 0;
@@ -41,7 +41,10 @@ export function locateSegmentAt(
 		const width = Math.max(0, lane.widthFraction);
 		const end = start + width;
 		if (at < end || index === lanes.length - 1) {
-			return { segmentId: lane.id, localFraction: width <= 0 ? 0 : Math.max(0, Math.min(1, (at - start) / width)) };
+			return {
+				segmentId: lane.id,
+				localFraction: width <= 0 ? 0 : Math.max(0, Math.min(1, (at - start) / width)),
+			};
 		}
 		start = end;
 	}
@@ -62,8 +65,9 @@ export function resolveWaitScrub(input: {
 	const group = coincidentWaitMarkers(input.waits, input.fractionPercent, input.tolerancePercent);
 	if (group.length === 0) return null;
 	if (group.length === 1) return group[0]!.id;
-	const current = input.currentSegmentId === null
-		? -1
-		: group.findIndex((wait) => wait.id === input.currentSegmentId);
+	const current =
+		input.currentSegmentId === null
+			? -1
+			: group.findIndex((wait) => wait.id === input.currentSegmentId);
 	return group[(current + 1) % group.length]!.id;
 }

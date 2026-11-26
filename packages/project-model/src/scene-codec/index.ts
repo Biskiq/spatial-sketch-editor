@@ -23,11 +23,18 @@
  * directly.
  */
 import type { SceneValidationOptions } from '../scene-validation';
-import { SceneDocumentValidationError as ValidationError, type SceneDocumentValidationResult } from './types';
+import {
+	SceneDocumentValidationError as ValidationError,
+	type SceneDocumentValidationResult,
+} from './types';
 import { validateSceneDocument as validate } from './validate';
 
 export { cameraSceneConnectionTimingFailureReason } from './parse-document';
-export { SceneDocumentValidationError, type SceneDocumentIssue, type SceneDocumentValidationResult } from './types';
+export {
+	SceneDocumentValidationError,
+	type SceneDocumentIssue,
+	type SceneDocumentValidationResult,
+} from './types';
 export type { SceneValidationOptions } from '../scene-validation';
 export { validateArtworkLibrary, validateSceneDocument } from './validate';
 
@@ -44,18 +51,21 @@ function jsonErrorMessage(error: unknown, json: string) {
 
 export function parseSceneDocumentJson(
 	json: string,
-	options: SceneValidationOptions = {}
+	options: SceneValidationOptions = {},
 ): SceneDocumentValidationResult {
 	try {
 		return validate(JSON.parse(json), options);
 	} catch (error) {
-		return { success: false, issues: [{ path: '$', code: 'invalid_json', message: jsonErrorMessage(error, json) }] };
+		return {
+			success: false,
+			issues: [{ path: '$', code: 'invalid_json', message: jsonErrorMessage(error, json) }],
+		};
 	}
 }
 
 export function serializeSceneDocument(
 	document: unknown,
-	options: SceneValidationOptions = {}
+	options: SceneValidationOptions = {},
 ): string {
 	const result = validate(document, options);
 	if (!result.success) throw new ValidationError(result.issues[0]!);

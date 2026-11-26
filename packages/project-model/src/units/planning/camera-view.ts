@@ -9,7 +9,12 @@ export const CAMERA_VIEW_UPDATE_KIND = 'camera-view-update';
 
 export const VIEW_POSE_KEYS = ['label', 'eye', 'target', 'fov'] as const;
 
-export type ViewPose = { readonly label: string; readonly eye: [number, number, number]; readonly target: [number, number, number]; readonly fov: number };
+export type ViewPose = {
+	readonly label: string;
+	readonly eye: [number, number, number];
+	readonly target: [number, number, number];
+	readonly fov: number;
+};
 
 export function readViewPose(reader: ShapeReader, input: unknown, path: string): ViewPose | null {
 	const record = reader.object(input, path, VIEW_POSE_KEYS);
@@ -42,39 +47,73 @@ export function createCameraViewUpdatePlanner(): DomainPlanner<ProjectEnvelope> 
 			const envelope = envelopeOf(request);
 			const reader = new ShapeReader();
 			const pose = readViewPose(reader, request.intent.payload, '$.payload');
-			if (pose === null) return refuse('invalid-payload', 'The Camera View payload is not a valid pose', reader.issues);
+			if (pose === null)
+				return refuse(
+					'invalid-payload',
+					'The Camera View payload is not a valid pose',
+					reader.issues,
+				);
 			const target = targetOf(request.intent, 'camera', 'view');
 			if (target === null) {
-				return refuse('unsupported-operation', 'camera-view-update targets exactly one camera:view reference');
+				return refuse(
+					'unsupported-operation',
+					'camera-view-update targets exactly one camera:view reference',
+				);
 			}
-			const index = envelope.units.camera.data.views.findIndex((view) => view.id === target.subject.id);
+			const index = envelope.units.camera.data.views.findIndex(
+				(view) => view.id === target.subject.id,
+			);
 			if (index === -1) {
-				return refuse('missing-target', `camera view "${target.subject.id}" is not in this envelope`);
+				return refuse(
+					'missing-target',
+					`camera view "${target.subject.id}" is not in this envelope`,
+				);
 			}
 			const previous = envelope.units.camera.data.views[index]!;
 			const views = envelope.units.camera.data.views.map((view) =>
-				view.id === previous.id ? { ...view, label: pose.label, eye: pose.eye, target: pose.target, fov: pose.fov } : view
+				view.id === previous.id
+					? { ...view, label: pose.label, eye: pose.eye, target: pose.target, fov: pose.fov }
+					: view,
 			);
-			const cameraData = { formatVersion: CAMERA_UNIT_FORMAT_VERSION, views, connections: envelope.units.camera.data.connections };
+			const cameraData = {
+				formatVersion: CAMERA_UNIT_FORMAT_VERSION,
+				views,
+				connections: envelope.units.camera.data.connections,
+			};
 			const candidate: ProjectEnvelope = {
 				...envelope,
 				units: {
 					...envelope.units,
-					camera: { header: { ...envelope.units.camera.header }, data: cameraData }
-				}
+					camera: { header: { ...envelope.units.camera.header }, data: cameraData },
+				},
 			};
 			const changes: OperationChange[] = [
-				{ kind: 'camera.view.updated', subjectIds: [previous.id], fields: ['label', 'eye', 'target', 'fov'] }
+				{
+					kind: 'camera.view.updated',
+					subjectIds: [previous.id],
+					fields: ['label', 'eye', 'target', 'fov'],
+				},
 			];
 			const correspondence: CorrespondenceEntry[] = [
 				{
 					relation: 'preserved',
 					before: reference('camera', 'view', previous.id, [], revisionOf(envelope, 'camera')),
-					after: reference('camera', 'view', previous.id, [], revisionOf(candidate, 'camera'))
-				}
+					after: reference('camera', 'view', previous.id, [], revisionOf(candidate, 'camera')),
+				},
 			];
-			return { kind: 'prepared', candidate: { operationId: request.intent.operationId, sourceKind: request.snapshot.sourceKind, sourceVersion: request.snapshot.sourceVersion, source: candidate, changes, correspondence, diagnostics: [] } };
-		}
+			return {
+				kind: 'prepared',
+				candidate: {
+					operationId: request.intent.operationId,
+					sourceKind: request.snapshot.sourceKind,
+					sourceVersion: request.snapshot.sourceVersion,
+					source: candidate,
+					changes,
+					correspondence,
+					diagnostics: [],
+				},
+			};
+		},
 	};
 }
 

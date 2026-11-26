@@ -27,7 +27,7 @@ import type {
 	ModelTemplate,
 	ModelTemplateLease,
 	ModelTemplateLoader,
-	SceneModelSupport
+	SceneModelSupport,
 } from '../scene-model-representation';
 
 /** Where a template's bytes come from: a GLB URL in, a parsed scene out. */
@@ -40,7 +40,7 @@ function gltfFetch(): ModelTemplateFetch {
 		const gltf = await loader.loadAsync(url);
 		return {
 			template: gltf.scene,
-			animationNames: gltf.animations.map((animation) => animation.name).filter(Boolean)
+			animationNames: gltf.animations.map((animation) => animation.name).filter(Boolean),
 		};
 	};
 }
@@ -70,7 +70,9 @@ function freeTemplate(template: Object3D): void {
 	});
 }
 
-export function createModelTemplateLoader(fetch: ModelTemplateFetch = gltfFetch()): ModelTemplateLoader {
+export function createModelTemplateLoader(
+	fetch: ModelTemplateFetch = gltfFetch(),
+): ModelTemplateLoader {
 	const cache = new Map<string, CacheEntry>();
 	let requested = 0;
 	let failed = 0;
@@ -88,7 +90,7 @@ export function createModelTemplateLoader(fetch: ModelTemplateFetch = gltfFetch(
 				else entry.template = loaded.template;
 				return loaded;
 			}),
-			template: null
+			template: null,
 		};
 		entry.promise.catch(() => {
 			failed += 1;
@@ -110,7 +112,7 @@ export function createModelTemplateLoader(fetch: ModelTemplateFetch = gltfFetch(
 					if (released) return;
 					released = true;
 					leases -= 1;
-				}
+				},
 			};
 		},
 		stats() {
@@ -123,12 +125,12 @@ export function createModelTemplateLoader(fetch: ModelTemplateFetch = gltfFetch(
 			disposed = true;
 			for (const entry of cache.values()) if (entry.template !== null) freeTemplate(entry.template);
 			cache.clear();
-		}
+		},
 	};
 }
 
 export const sceneModelSupport: SceneModelSupport = {
 	createLoader: () => createModelTemplateLoader(),
 	realize: realizeModel,
-	inspect: (root, animationNames) => inspectModel(root, [...animationNames])
+	inspect: (root, animationNames) => inspectModel(root, [...animationNames]),
 };

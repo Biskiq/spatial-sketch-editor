@@ -7,13 +7,13 @@ import {
 	acquireEffectiveVariant,
 	effectiveTextureVariantKey,
 	loadEffectiveTextures,
-	releaseEffectiveVariant
+	releaseEffectiveVariant,
 } from '$lib/render/resources/texture-store';
 import type { SceneSurfaceLook, SceneSurfaceLookResolver } from './surface-look';
 import type {
 	MaterialTextureSlotKey,
 	MaterialTreatment,
-	StandardMaterialDescriptor
+	StandardMaterialDescriptor,
 } from '$lib/render/resources/material-descriptor';
 import { surfaceKey, type LayoutWallSide } from '@portfolio/layout-core/plan';
 import type { IndexedWallMesh } from '$lib/layout/wall-mesh-types';
@@ -21,12 +21,12 @@ import {
 	acquireFinishViews,
 	type FinishViewGeneration,
 	type FinishViewIssue,
-	type FinishViewLease
+	type FinishViewLease,
 } from '$lib/render/resources/finish-views';
 import {
 	classifyFinishViewIssues,
 	type FinishOutcomeSink,
-	type FinishTargetOutcomeState
+	type FinishTargetOutcomeState,
 } from '$lib/render/resources/finish-outcome-sink';
 import type { Texture } from 'three';
 
@@ -44,7 +44,10 @@ type SurfaceLook = SceneSurfaceLook & {
 	views: FinishViewLease | null;
 	controller: AbortController | null;
 	readonly targets: Set<string>;
-	lastOutcome: { readonly state: FinishTargetOutcomeState; readonly issues: readonly FinishViewIssue[] } | null;
+	lastOutcome: {
+		readonly state: FinishTargetOutcomeState;
+		readonly issues: readonly FinishViewIssue[];
+	} | null;
 };
 
 /**
@@ -68,7 +71,7 @@ export function createVisitorWallMaterialFactory(
 		readonly viewGeneration?: () => FinishViewGeneration | null;
 		/** Optional Stage-only sink for sampled Finish view outcomes. */
 		readonly onFinishOutcome?: FinishOutcomeSink;
-	} = {}
+	} = {},
 ): {
 	factory: WallMeshMaterialFactory;
 	reloadTextures: () => void;
@@ -94,21 +97,25 @@ export function createVisitorWallMaterialFactory(
 			roughness: defaultDefinition.roughness,
 			metalness: defaultDefinition.metalness,
 			slotUris: {},
-			normalScale: null
+			normalScale: null,
 		});
 		return {
 			material: {
-				kind: 'standard', color: treated.color, roughness: treated.roughness,
-				metalness: treated.metalness, emissive: treated.color, emissiveIntensity,
+				kind: 'standard',
+				color: treated.color,
+				roughness: treated.roughness,
+				metalness: treated.metalness,
+				emissive: treated.color,
+				emissiveIntensity,
 				toneMapped: emissiveIntensity === 0,
-				...(options.cutaway === true ? { cutaway: true as const } : {})
+				...(options.cutaway === true ? { cutaway: true as const } : {}),
 			},
 			textures: null,
 			loaded: true,
 			views: null,
 			controller: null,
 			targets: new Set(),
-			lastOutcome: null
+			lastOutcome: null,
 		};
 	}
 
@@ -117,7 +124,7 @@ export function createVisitorWallMaterialFactory(
 		if (look === null) return defaultLook(mesh);
 		const material: StandardMaterialDescriptor = {
 			...look.material,
-			...(options.cutaway === true ? { cutaway: true } : {})
+			...(options.cutaway === true ? { cutaway: true } : {}),
 		};
 		const sampled = material.kind === 'standard' && material.finish !== undefined;
 		return {
@@ -128,7 +135,7 @@ export function createVisitorWallMaterialFactory(
 			views: null,
 			controller: null,
 			targets: new Set(),
-			lastOutcome: null
+			lastOutcome: null,
 		};
 	}
 
@@ -136,7 +143,11 @@ export function createVisitorWallMaterialFactory(
 		return JSON.stringify([look.material, look.textures, look.finishKey ?? null]);
 	}
 
-	function emitOutcome(look: SurfaceLook, state: FinishTargetOutcomeState, issues: readonly FinishViewIssue[]): void {
+	function emitOutcome(
+		look: SurfaceLook,
+		state: FinishTargetOutcomeState,
+		issues: readonly FinishViewIssue[],
+	): void {
 		look.lastOutcome = { state, issues };
 		if (options.onFinishOutcome === undefined || look.finishKey === undefined) return;
 		for (const targetKey of look.targets) {
@@ -148,7 +159,8 @@ export function createVisitorWallMaterialFactory(
 		const candidate = sceneLook(mesh, side);
 		const key = keyForLook(candidate);
 		const wallId = mesh.wallRanges[0]?.segmentId;
-		const targetKey = wallId === undefined ? null : `surface:${surfaceKey({ kind: 'wall-side', wallId, side })}`;
+		const targetKey =
+			wallId === undefined ? null : `surface:${surfaceKey({ kind: 'wall-side', wallId, side })}`;
 		const existing = looks.get(key);
 		if (existing !== undefined) {
 			if (targetKey !== null && !existing.targets.has(targetKey)) {
@@ -158,7 +170,7 @@ export function createVisitorWallMaterialFactory(
 						targetKey,
 						finishKey: existing.finishKey,
 						state: existing.lastOutcome.state,
-						issues: existing.lastOutcome.issues
+						issues: existing.lastOutcome.issues,
 					});
 				}
 			}
@@ -171,7 +183,8 @@ export function createVisitorWallMaterialFactory(
 	}
 
 	function loadLook(candidate: SurfaceLook): void {
-		const sampled = candidate.material.kind === 'standard' && candidate.material.finish !== undefined;
+		const sampled =
+			candidate.material.kind === 'standard' && candidate.material.finish !== undefined;
 		if (sampled) {
 			const controller = new AbortController();
 			candidate.controller = controller;
@@ -180,7 +193,7 @@ export function createVisitorWallMaterialFactory(
 				candidate.textures?.views ?? [],
 				scope,
 				controller.signal,
-				options.viewGeneration?.() ?? undefined
+				options.viewGeneration?.() ?? undefined,
 			)
 				.then((lease) => {
 					if (candidate.controller === controller) candidate.controller = null;
@@ -189,7 +202,8 @@ export function createVisitorWallMaterialFactory(
 						return;
 					}
 					const named = new Set((candidate.textures?.views ?? []).map((source) => source.view));
-					const complete = lease.issues.length === 0 && Object.keys(lease.views).length === named.size;
+					const complete =
+						lease.issues.length === 0 && Object.keys(lease.views).length === named.size;
 					emitOutcome(candidate, classifyFinishViewIssues(lease.issues, complete), lease.issues);
 					if (!complete) {
 						lease.release();
@@ -224,15 +238,38 @@ export function createVisitorWallMaterialFactory(
 		}
 		const texture = look.textures;
 		if (texture === null || !look.loaded) return { descriptor: look.material };
-		const variantKey = effectiveTextureVariantKey(texture.variantSeed, texture.repeat[0], texture.repeat[1], texture.rotation, scope, texture.offset);
+		const variantKey = effectiveTextureVariantKey(
+			texture.variantSeed,
+			texture.repeat[0],
+			texture.repeat[1],
+			texture.rotation,
+			scope,
+			texture.offset,
+		);
 		let variant = variants.get(variantKey);
 		if (variant === undefined) {
-			const maps = acquireEffectiveVariant(texture, texture.repeat[0], texture.repeat[1], texture.rotation, scope, texture.offset) as MaterialTextureMaps;
-			variant = { seed: texture.variantSeed, rx: texture.repeat[0], ry: texture.repeat[1], rotation: texture.rotation, offset: texture.offset, scope, maps };
+			const maps = acquireEffectiveVariant(
+				texture,
+				texture.repeat[0],
+				texture.repeat[1],
+				texture.rotation,
+				scope,
+				texture.offset,
+			) as MaterialTextureMaps;
+			variant = {
+				seed: texture.variantSeed,
+				rx: texture.repeat[0],
+				ry: texture.repeat[1],
+				rotation: texture.rotation,
+				offset: texture.offset,
+				scope,
+				maps,
+			};
 			variants.set(variantKey, variant);
 		}
 		const textures: Partial<Record<MaterialTextureSlotKey, string>> = {};
-		for (const slot of Object.keys(variant.maps) as MaterialTextureSlotKey[]) textures[slot] = variantKey;
+		for (const slot of Object.keys(variant.maps) as MaterialTextureSlotKey[])
+			textures[slot] = variantKey;
 		return Object.keys(textures).length === 0
 			? { descriptor: look.material }
 			: { descriptor: { ...look.material, textures }, maps: variant.maps };
@@ -269,15 +306,22 @@ export function createVisitorWallMaterialFactory(
 			disposed = true;
 			for (const lease of leases.values()) lease.release();
 			for (const variant of variants.values()) {
-				releaseEffectiveVariant(variant.seed, variant.rx, variant.ry, variant.rotation, variant.scope, variant.offset);
+				releaseEffectiveVariant(
+					variant.seed,
+					variant.rx,
+					variant.ry,
+					variant.rotation,
+					variant.scope,
+					variant.offset,
+				);
 			}
 			for (const look of looks.values()) {
-			look.controller?.abort();
-			look.views?.release();
-		}
+				look.controller?.abort();
+				look.views?.release();
+			}
 			leases.clear();
 			variants.clear();
 			looks.clear();
-		}
+		},
 	};
 }

@@ -12,8 +12,21 @@
  * acceptance) sit on top of that shared predicate.
  */
 
-export { MAX_LAYOUT_REGION_POINTS, LAYOUT_SLICE_CONTACT_METERS, regionVerticalBand, regionFootprintBounds, regionGeometryIssues, carryRegionWallIntents } from './region-validation';
-export type { RegionPlannerOperation, RegionPlannerRejectionCode, RegionPlannerRejection, RegionPlan, RegionCreateIntent } from './region/contracts';
+export {
+	MAX_LAYOUT_REGION_POINTS,
+	LAYOUT_SLICE_CONTACT_METERS,
+	regionVerticalBand,
+	regionFootprintBounds,
+	regionGeometryIssues,
+	carryRegionWallIntents,
+} from './region-validation';
+export type {
+	RegionPlannerOperation,
+	RegionPlannerRejectionCode,
+	RegionPlannerRejection,
+	RegionPlan,
+	RegionCreateIntent,
+} from './region/contracts';
 export {
 	planCreateRegion,
 	planMoveRegion,
@@ -24,11 +37,11 @@ export {
 	planSetRegionIntendedGap,
 	planRenameRegion,
 	planRemoveRegion,
-	planDuplicateRegion
+	planDuplicateRegion,
 } from './region/edits';
 export {
 	planFitRegionToSpace,
 	planFitRegionEdgeToWall,
 	planFitRegionToWalls,
-	planFitWallsToRegion
+	planFitWallsToRegion,
 } from './region/fit';

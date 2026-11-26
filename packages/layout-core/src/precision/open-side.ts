@@ -1,5 +1,5 @@
-import { cowMoveJunctions } from '../world/cow'
-import { ensureLayoutWorldIndex, peekLayoutWorldIndex } from '../world/lookups';
+import { cowMoveJunctions } from '../world/cow';
+import { ensureLayoutWorldIndex } from '../world/lookups';
 import { wallFirstWallLength } from '../wall/opening-set';
 import { spacePlacementIssues } from '../room/space-placement';
 import { spaceOpenSideFrame } from '../room/space-open-side';
@@ -8,7 +8,12 @@ import { guardRoundRoomMemberGeometryEdit } from '../room/round-room';
 import type { NodingIdAllocator } from '../wall/noding';
 import { planWallSplitAtPoint } from '../wall/noding';
 import type { LayoutVec2 } from '../geometry/coordinates';
-import type { PrecisionOperation, PrecisionPlan, PrecisionRejection, SpaceOpenSideSlidePlan } from './types';
+import type {
+	PrecisionOperation,
+	PrecisionPlan,
+	PrecisionRejection,
+	SpaceOpenSideSlidePlan,
+} from './types';
 import { POINT_EPSILON } from '../vec2';
 import { wallEndpoints } from './document';
 import { finalizeWallGeometryCandidate } from './finalization';
@@ -33,24 +38,26 @@ export function planSpaceOpenSideOffset(
 	roomId: string,
 	startJunctionId: string,
 	endJunctionId: string,
-	offset: number
+	offset: number,
 ): PrecisionPlan {
 	if (!Number.isFinite(offset)) {
-		return reject('invalid_value', 'An open side offset must be one finite number of meters', [roomId]);
+		return reject('invalid_value', 'An open side offset must be one finite number of meters', [
+			roomId,
+		]);
 	}
 	const frame = spaceOpenSideFrame(document, roomId, startJunctionId, endJunctionId);
 	if (frame === null) {
 		return reject(
 			'unknown_open_side',
 			`Space '${roomId}' has no open side between '${startJunctionId}' and '${endJunctionId}'`,
-			[roomId]
+			[roomId],
 		);
 	}
 	if (Math.abs(offset) <= POINT_EPSILON) {
 		return reject('no_op', 'The open side is already at that position', [roomId]);
 	}
 	const roundHit = guardRoundRoomMemberGeometryEdit(document, {
-		junctionIds: [frame.startJunctionId, frame.endJunctionId]
+		junctionIds: [frame.startJunctionId, frame.endJunctionId],
 	});
 	if (roundHit) return rejectRoundMember(roundHit);
 	const worldIndex = ensureLayoutWorldIndex(document);
@@ -64,13 +71,21 @@ export function planSpaceOpenSideOffset(
 	const dz = frame.normal[1] * offset;
 	const targetPoints = new Map<string, LayoutVec2>([
 		[frame.startJunctionId, [start.point[0] + dx, start.point[1] + dz]],
-		[frame.endJunctionId, [end.point[0] + dx, end.point[1] + dz]]
+		[frame.endJunctionId, [end.point[0] + dx, end.point[1] + dz]],
 	]);
 	const changedJunctionIds = [frame.startJunctionId, frame.endJunctionId];
 	const changedWallIds = worldIndex
-		? [...new Set(changedJunctionIds.flatMap((id) => worldIndex.incidentWallIdsByJunctionId.get(id) ?? []))]
+		? [
+				...new Set(
+					changedJunctionIds.flatMap((id) => worldIndex.incidentWallIdsByJunctionId.get(id) ?? []),
+				),
+			]
 		: document.walls
-				.filter((wall) => changedJunctionIds.includes(wall.startJunctionId) || changedJunctionIds.includes(wall.endJunctionId))
+				.filter(
+					(wall) =>
+						changedJunctionIds.includes(wall.startJunctionId) ||
+						changedJunctionIds.includes(wall.endJunctionId),
+				)
 				.map((wall) => wall.id);
 	const candidate = cowMoveJunctions(document, targetPoints, changedWallIds, worldIndex);
 	return finalizeOpenSideCandidate({
@@ -79,10 +94,9 @@ export function planSpaceOpenSideOffset(
 		operation: 'open-side-offset',
 		changedJunctionIds,
 		changedWallIds,
-		roomId
+		roomId,
 	});
 }
-
 
 /**
  * SP1d / B2 — slide one open-side end into its adjoining Wall and split that
@@ -105,13 +119,23 @@ export function planSpaceOpenSideEndSlide(
 	wallId: string,
 	station: number,
 	point: LayoutVec2,
-	allocator: NodingIdAllocator
+	allocator: NodingIdAllocator,
 ): SpaceOpenSideSlidePlan {
 	if (end !== 'start' && end !== 'end') {
-		return { kind: 'rejected', rejection: { code: 'invalid_value', message: "An open side end is 'start' or 'end'." } };
+		return {
+			kind: 'rejected',
+			rejection: { code: 'invalid_value', message: "An open side end is 'start' or 'end'." },
+		};
 	}
 	if (!Number.isFinite(station) || station <= 0) {
-		return { kind: 'rejected', rejection: { code: 'invalid_value', message: 'A slide station must be one finite positive number of meters.', targetIds: [wallId] } };
+		return {
+			kind: 'rejected',
+			rejection: {
+				code: 'invalid_value',
+				message: 'A slide station must be one finite positive number of meters.',
+				targetIds: [wallId],
+			},
+		};
 	}
 	const frame = spaceOpenSideFrame(document, roomId, startJunctionId, endJunctionId);
 	if (frame === null) {
@@ -120,15 +144,15 @@ export function planSpaceOpenSideEndSlide(
 			rejection: {
 				code: 'unknown_open_side',
 				message: `Space '${roomId}' has no open side between '${startJunctionId}' and '${endJunctionId}'`,
-				targetIds: [roomId]
-			}
+				targetIds: [roomId],
+			},
 		};
 	}
 	const adjoining = end === 'start' ? frame.startWall : frame.endWall;
 	const endpoint = end === 'start' ? frame.startJunctionId : frame.endJunctionId;
 	const slideRoundHit = guardRoundRoomMemberGeometryEdit(document, {
 		wallIds: adjoining ? [adjoining.wallId] : [wallId],
-		junctionIds: [endpoint]
+		junctionIds: [endpoint],
 	});
 	if (slideRoundHit) {
 		return {
@@ -136,8 +160,8 @@ export function planSpaceOpenSideEndSlide(
 			rejection: {
 				code: 'round_room_member_locked',
 				message: slideRoundHit.message,
-				targetIds: [slideRoundHit.roomId, ...slideRoundHit.wallIds, ...slideRoundHit.junctionIds]
-			}
+				targetIds: [slideRoundHit.roomId, ...slideRoundHit.wallIds, ...slideRoundHit.junctionIds],
+			},
 		};
 	}
 	if (
@@ -152,13 +176,16 @@ export function planSpaceOpenSideEndSlide(
 			rejection: {
 				code: 'invalid_reference',
 				message: `Wall '${wallId}' is not the adjoining Wall of that open-side end`,
-				targetIds: [roomId, wallId]
-			}
+				targetIds: [roomId, wallId],
+			},
 		};
 	}
 	const wallLength = wallFirstWallLength(document, wallId);
 	if (wallLength === undefined) {
-		return { kind: 'rejected', rejection: { code: 'unknown_wall', message: `Unknown Wall '${wallId}'`, targetIds: [wallId] } };
+		return {
+			kind: 'rejected',
+			rejection: { code: 'unknown_wall', message: `Unknown Wall '${wallId}'`, targetIds: [wallId] },
+		};
 	}
 	if (!(station < wallLength) || station <= POINT_EPSILON) {
 		return {
@@ -166,8 +193,8 @@ export function planSpaceOpenSideEndSlide(
 			rejection: {
 				code: 'split_distance_out_of_range',
 				message: `Slide station ${station} is not inside Wall '${wallId}' (0, ${wallLength})`,
-				targetIds: [wallId]
-			}
+				targetIds: [wallId],
+			},
 		};
 	}
 	if (
@@ -181,13 +208,16 @@ export function planSpaceOpenSideEndSlide(
 			rejection: {
 				code: 'invalid_value',
 				message: 'A slide point must be two finite coordinates.',
-				targetIds: [wallId]
-			}
+				targetIds: [wallId],
+			},
 		};
 	}
 	const wall = document.walls.find((candidate) => candidate.id === wallId);
 	if (wall === undefined) {
-		return { kind: 'rejected', rejection: { code: 'unknown_wall', message: `Unknown Wall '${wallId}'`, targetIds: [wallId] } };
+		return {
+			kind: 'rejected',
+			rejection: { code: 'unknown_wall', message: `Unknown Wall '${wallId}'`, targetIds: [wallId] },
+		};
 	}
 	// A straight Wall's station is authoritative. A caller-supplied coordinate
 	// must never move the split off the centerline; curved Walls already ignore
@@ -197,8 +227,10 @@ export function planSpaceOpenSideEndSlide(
 		endpoints === undefined
 			? point
 			: [
-					endpoints.start[0] + ((endpoints.end[0] - endpoints.start[0]) * station) / endpoints.length,
-					endpoints.start[1] + ((endpoints.end[1] - endpoints.start[1]) * station) / endpoints.length
+					endpoints.start[0] +
+						((endpoints.end[0] - endpoints.start[0]) * station) / endpoints.length,
+					endpoints.start[1] +
+						((endpoints.end[1] - endpoints.start[1]) * station) / endpoints.length,
 				];
 	const split = planWallSplitAtPoint(document, wallId, station, splitPoint, allocator);
 	if (split.kind === 'rejected') {
@@ -207,23 +239,37 @@ export function planSpaceOpenSideEndSlide(
 			rejection: {
 				code: split.rejection.code,
 				message: split.rejection.message,
-				targetIds: split.rejection.wallId === undefined ? [wallId] : [split.rejection.wallId]
-			}
+				targetIds: split.rejection.wallId === undefined ? [wallId] : [split.rejection.wallId],
+			},
 		};
 	}
 	const createdWallId = split.createdWallIds[0];
 	if (createdWallId === undefined) {
-		return { kind: 'rejected', rejection: { code: 'geometry_invalid', message: 'The Wall split created no second fragment.', targetIds: [wallId] } };
+		return {
+			kind: 'rejected',
+			rejection: {
+				code: 'geometry_invalid',
+				message: 'The Wall split created no second fragment.',
+				targetIds: [wallId],
+			},
+		};
 	}
-	const stub = split.document.walls.find(
-		(wall) =>
-			wall.startJunctionId === split.junctionId && wall.endJunctionId === endpoint
-	) ?? split.document.walls.find(
-		(wall) =>
-			wall.endJunctionId === split.junctionId && wall.startJunctionId === endpoint
-	);
+	const stub =
+		split.document.walls.find(
+			(wall) => wall.startJunctionId === split.junctionId && wall.endJunctionId === endpoint,
+		) ??
+		split.document.walls.find(
+			(wall) => wall.endJunctionId === split.junctionId && wall.startJunctionId === endpoint,
+		);
 	if (stub === undefined) {
-		return { kind: 'rejected', rejection: { code: 'geometry_invalid', message: 'The Wall split lost the open side corner.', targetIds: [wallId] } };
+		return {
+			kind: 'rejected',
+			rejection: {
+				code: 'geometry_invalid',
+				message: 'The Wall split lost the open side corner.',
+				targetIds: [wallId],
+			},
+		};
 	}
 	const releasedOpenings = split.document.openings.filter((opening) => opening.wallId === stub.id);
 	if (releasedOpenings.length > 0) {
@@ -232,14 +278,21 @@ export function planSpaceOpenSideEndSlide(
 			rejection: {
 				code: 'opening_on_released_stub',
 				message: `The released Wall fragment '${stub.id}' still hosts an Opening`,
-				targetIds: [stub.id, ...releasedOpenings.map((opening) => opening.id)]
-			}
+				targetIds: [stub.id, ...releasedOpenings.map((opening) => opening.id)],
+			},
 		};
 	}
 	const keptWallId = stub.id === wallId ? createdWallId : wallId;
 	const splitRoom = split.document.rooms.find((room) => room.id === roomId);
 	if (splitRoom === undefined) {
-		return { kind: 'rejected', rejection: { code: 'unknown_room', message: `Unknown Space '${roomId}'`, targetIds: [roomId] } };
+		return {
+			kind: 'rejected',
+			rejection: {
+				code: 'unknown_room',
+				message: `Unknown Space '${roomId}'`,
+				targetIds: [roomId],
+			},
+		};
 	}
 	const stubRefs = splitRoom.boundary.filter((ref) => ref.wallId === stub.id);
 	if (stubRefs.length !== 1) {
@@ -248,12 +301,12 @@ export function planSpaceOpenSideEndSlide(
 			rejection: {
 				code: 'room_identity_lost',
 				message: `Space '${roomId}' does not reference the split-away Wall fragment exactly once`,
-				targetIds: [roomId]
-			}
+				targetIds: [roomId],
+			},
 		};
 	}
 	const movedEdge = splitRoom.virtualEdges.find(
-		(edge) => edge.startJunctionId === startJunctionId && edge.endJunctionId === endJunctionId
+		(edge) => edge.startJunctionId === startJunctionId && edge.endJunctionId === endJunctionId,
 	);
 	if (movedEdge === undefined) {
 		return {
@@ -261,8 +314,8 @@ export function planSpaceOpenSideEndSlide(
 			rejection: {
 				code: 'unknown_open_side',
 				message: `Space '${roomId}' lost its open side during the split`,
-				targetIds: [roomId]
-			}
+				targetIds: [roomId],
+			},
 		};
 	}
 	const candidate: LayoutDocumentWallFirst = {
@@ -277,12 +330,12 @@ export function planSpaceOpenSideEndSlide(
 							edge.startJunctionId === startJunctionId && edge.endJunctionId === endJunctionId
 								? {
 										startJunctionId: end === 'start' ? split.junctionId : edge.startJunctionId,
-										endJunctionId: end === 'end' ? split.junctionId : edge.endJunctionId
+										endJunctionId: end === 'end' ? split.junctionId : edge.endJunctionId,
 									}
-								: edge
-						)
-					}
-		)
+								: edge,
+						),
+					},
+		),
 	};
 	const finalized = finalizeWallGeometryCandidate({
 		baseline: document,
@@ -290,12 +343,12 @@ export function planSpaceOpenSideEndSlide(
 		operation: 'open-side-end-slide',
 		changedJunctionIds: [endpoint, split.junctionId],
 		changedWallIds: [wallId, createdWallId],
-		createdWallIds: [createdWallId]
+		createdWallIds: [createdWallId],
 	});
 	if (finalized.kind === 'rejected') {
 		return {
 			kind: 'rejected',
-			rejection: classifySpacePlacementRejection(finalized.rejection, candidate, roomId)
+			rejection: classifySpacePlacementRejection(finalized.rejection, candidate, roomId),
 		};
 	}
 	return {
@@ -309,10 +362,9 @@ export function planSpaceOpenSideEndSlide(
 		keptWallId,
 		stubWallId: stub.id,
 		surfaceLineage: split.surfaceLineage,
-		...(finalized.acceptance === undefined ? {} : { acceptance: finalized.acceptance })
+		...(finalized.acceptance === undefined ? {} : { acceptance: finalized.acceptance }),
 	};
 }
-
 
 /**
  * The shared acceptance path for a virtual-edge handle, with one addition: a
@@ -332,21 +384,24 @@ function finalizeOpenSideCandidate(options: {
 		candidate: options.candidate,
 		operation: options.operation,
 		changedJunctionIds: options.changedJunctionIds,
-		changedWallIds: options.changedWallIds
+		changedWallIds: options.changedWallIds,
 	});
 	if (finalized.kind === 'success') return finalized;
 	return {
 		kind: 'rejected',
-		rejection: classifySpacePlacementRejection(finalized.rejection, options.candidate, options.roomId)
+		rejection: classifySpacePlacementRejection(
+			finalized.rejection,
+			options.candidate,
+			options.roomId,
+		),
 	};
 }
-
 
 /** Reclassify the compiler's placement issue with the pair of Space ids it names. */
 function classifySpacePlacementRejection(
 	rejection: PrecisionRejection,
 	candidate: LayoutDocumentWallFirst,
-	roomId: string
+	roomId: string,
 ): PrecisionRejection {
 	// The acceptance compiler reports a placement conflict as
 	// `space_outline_invalid` (its one outline gate); the same issue carries the
@@ -360,6 +415,6 @@ function classifySpacePlacementRejection(
 		code: placement.code,
 		message: placement.message,
 		targetIds: [...placement.roomIds],
-		...(rejection.issues === undefined ? {} : { issues: rejection.issues })
+		...(rejection.issues === undefined ? {} : { issues: rejection.issues }),
 	};
 }

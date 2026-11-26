@@ -7,28 +7,41 @@ import {
 	UNIT_ENVELOPE_SOURCE_FORMAT,
 	UNIT_ENVELOPE_SOURCE_VERSION,
 	validateProjectEnvelope,
-	type ProjectEnvelope
+	type ProjectEnvelope,
 } from '@portfolio/project-model/units';
-import { SAVE_CONTENT_IDENTITY_SCHEME, type SaveAcknowledgement, type SavePrecondition } from '@portfolio/project-model/save';
+import {
+	SAVE_CONTENT_IDENTITY_SCHEME,
+	type SaveAcknowledgement,
+	type SavePrecondition,
+} from '@portfolio/project-model/save';
 
 import type { DatabasePool } from './database.js';
 import type { ObjectStore } from './object-store.js';
-import { ProjectNotFoundError, loadProject, queryRows, withTransaction } from './project-persistence.js';
+import {
+	ProjectNotFoundError,
+	loadProject,
+	queryRows,
+	withTransaction,
+} from './project-persistence.js';
 import { SaveRefusalError, saveAcceptedSource } from './save-persistence.js';
 import { verifyMaterialDefinitionHashes } from './material-integrity.js';
 import {
 	DEFAULT_PROJECT_LIFECYCLE_POLICY,
 	projectCleanupBoundMs,
 	withProjectAdvisoryLock,
-	type ProjectLifecyclePolicy
+	type ProjectLifecyclePolicy,
 } from './project-write-lease.js';
 
 const PROJECT_NAME_MAX_LENGTH = 128;
 const PROJECT_CLEANUP_OBJECT_TIMEOUT_MS = 30_000;
-const SAVED_BASE_PATTERN = /^saved-base:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const SAVED_BASE_PATTERN =
+	/^saved-base:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const CONTENT_ID_PATTERN = /^sha256-[0-9a-f]{64}$/;
 
-export type ProjectLifecyclePrecondition = Extract<SavePrecondition, { kind: 'expected-saved-base' }>;
+export type ProjectLifecyclePrecondition = Extract<
+	SavePrecondition,
+	{ kind: 'expected-saved-base' }
+>;
 export type RenameProjectRequest = { name: string; precondition: ProjectLifecyclePrecondition };
 export type DeleteProjectRequest = { precondition: ProjectLifecyclePrecondition };
 export type DeleteProjectAcknowledgement = { projectId: string; cleanup: 'complete' | 'pending' };
@@ -37,9 +50,15 @@ export const UNSUPPORTED_LAYOUT_FORMAT = 'unsupported_layout_format';
 export const UNSUPPORTED_LAYOUT_MESSAGE =
 	'This project was saved in a different Layout format. Open it with its original reader to recover the source.';
 
-export function hasUnsupportedLayoutFormat(issues: readonly { path: string; code: string }[]): boolean {
-	return issues.some(({ path, code }) => code === 'unsupported_format_version' &&
-		(path === '$.units.layout.header.formatVersion' || path === '$.units.layout.data.formatVersion'));
+export function hasUnsupportedLayoutFormat(
+	issues: readonly { path: string; code: string }[],
+): boolean {
+	return issues.some(
+		({ path, code }) =>
+			code === 'unsupported_format_version' &&
+			(path === '$.units.layout.header.formatVersion' ||
+				path === '$.units.layout.data.formatVersion'),
+	);
 }
 
 export class UnsupportedLayoutFormatError extends Error {
@@ -88,28 +107,48 @@ export type ParsedLifecycleRequest<T> =
 	| { kind: 'valid'; request: T }
 	| { kind: 'invalid'; code: 'invalid_body' | 'invalid_project_name'; message: string };
 
-export function parseRenameProjectRequest(input: unknown): ParsedLifecycleRequest<RenameProjectRequest> {
+export function parseRenameProjectRequest(
+	input: unknown,
+): ParsedLifecycleRequest<RenameProjectRequest> {
 	if (!isRecord(input) || !hasExactKeys(input, ['name', 'precondition'])) {
-		return { kind: 'invalid', code: 'invalid_body', message: 'Expected a project name and saved-base precondition' };
+		return {
+			kind: 'invalid',
+			code: 'invalid_body',
+			message: 'Expected a project name and saved-base precondition',
+		};
 	}
 	const name = normalizeProjectName(input.name);
 	if (name === null) {
-		return { kind: 'invalid', code: 'invalid_project_name', message: 'Project name must contain 1 to 128 characters' };
+		return {
+			kind: 'invalid',
+			code: 'invalid_project_name',
+			message: 'Project name must contain 1 to 128 characters',
+		};
 	}
 	const precondition = parseExpectedSavedBase(input.precondition);
 	if (!precondition) {
-		return { kind: 'invalid', code: 'invalid_body', message: 'Expected a valid saved-base precondition' };
+		return {
+			kind: 'invalid',
+			code: 'invalid_body',
+			message: 'Expected a valid saved-base precondition',
+		};
 	}
 	return { kind: 'valid', request: { name, precondition } };
 }
 
-export function parseDeleteProjectRequest(input: unknown): ParsedLifecycleRequest<DeleteProjectRequest> {
+export function parseDeleteProjectRequest(
+	input: unknown,
+): ParsedLifecycleRequest<DeleteProjectRequest> {
 	if (!isRecord(input) || !hasExactKeys(input, ['precondition'])) {
 		return { kind: 'invalid', code: 'invalid_body', message: 'Expected a saved-base precondition' };
 	}
 	const precondition = parseExpectedSavedBase(input.precondition);
 	if (!precondition) {
-		return { kind: 'invalid', code: 'invalid_body', message: 'Expected a valid saved-base precondition' };
+		return {
+			kind: 'invalid',
+			code: 'invalid_body',
+			message: 'Expected a valid saved-base precondition',
+		};
 	}
 	return { kind: 'valid', request: { precondition } };
 }
@@ -134,12 +173,13 @@ export async function renameProject(
 	ownerId: string,
 	projectId: string,
 	request: RenameProjectRequest,
-	store?: ObjectStore
+	store?: ObjectStore,
 ): Promise<SaveAcknowledgement> {
 	const loaded = await loadProject(pool, ownerId, projectId);
 	const validation = validateProjectEnvelope(loaded.document);
 	if (!validation.success || validation.envelope.id !== projectId) {
-		if (!validation.success && hasUnsupportedLayoutFormat(validation.issues)) throw new UnsupportedLayoutFormatError();
+		if (!validation.success && hasUnsupportedLayoutFormat(validation.issues))
+			throw new UnsupportedLayoutFormatError();
 		throw new Error('Stored project failed validation');
 	}
 	const envelope = validation.envelope;
@@ -160,25 +200,30 @@ export async function renameProject(
 			sourceContentId,
 			sourceKind: UNIT_ENVELOPE_SOURCE_KIND,
 			sourceVersion: UNIT_ENVELOPE_SOURCE_VERSION,
-			domain: { identity: { acceptedRevision, sourceContentId }, source: nextEnvelope }
+			domain: { identity: { acceptedRevision, sourceContentId }, source: nextEnvelope },
 		},
 		operationId: randomUUID(),
-		precondition: request.precondition
+		precondition: request.precondition,
 	});
 	if (captured.kind !== 'captured') {
 		throw new SaveRefusalError('invalid-project', captured.message, captured.issues ?? []);
 	}
-	return saveAcceptedSource(pool, ownerId, {
-		contentIdentityScheme: SAVE_CONTENT_IDENTITY_SCHEME,
-		capture: captured.capture
-	}, store);
+	return saveAcceptedSource(
+		pool,
+		ownerId,
+		{
+			contentIdentityScheme: SAVE_CONTENT_IDENTITY_SCHEME,
+			capture: captured.capture,
+		},
+		store,
+	);
 }
 
 async function renameNoOp(
 	pool: DatabasePool,
 	ownerId: string,
 	projectId: string,
-	request: RenameProjectRequest
+	request: RenameProjectRequest,
 ): Promise<SaveAcknowledgement> {
 	return withTransaction(pool, async (db) => {
 		const rows = await queryRows<{
@@ -192,13 +237,13 @@ async function renameNoOp(
 			document: unknown;
 		}>(
 			db,
-			"SELECT p.id AS \"projectId\", p.name, p.latest_version AS version, p.updated_at AS \"updatedAt\",\n" +
-				"p.saved_base_token AS \"savedBaseToken\", p.saved_revision AS \"savedRevision\",\n" +
-				"p.saved_source_content_id AS \"savedSourceContentId\", v.document\n" +
-				"FROM projects p JOIN project_versions v ON v.project_id = p.id AND v.version = p.latest_version\n" +
-				"WHERE p.id = $1 AND p.owner_id = $2 AND v.source_format = $3\n" +
-				"FOR UPDATE OF p",
-			[projectId, ownerId, UNIT_ENVELOPE_SOURCE_FORMAT]
+			'SELECT p.id AS "projectId", p.name, p.latest_version AS version, p.updated_at AS "updatedAt",\n' +
+				'p.saved_base_token AS "savedBaseToken", p.saved_revision AS "savedRevision",\n' +
+				'p.saved_source_content_id AS "savedSourceContentId", v.document\n' +
+				'FROM projects p JOIN project_versions v ON v.project_id = p.id AND v.version = p.latest_version\n' +
+				'WHERE p.id = $1 AND p.owner_id = $2 AND v.source_format = $3\n' +
+				'FOR UPDATE OF p',
+			[projectId, ownerId, UNIT_ENVELOPE_SOURCE_FORMAT],
 		);
 		const row = rows[0];
 		if (!row) throw new ProjectNotFoundError();
@@ -207,12 +252,17 @@ async function renameNoOp(
 			throw new SaveRefusalError('conflict', 'The saved base changed; reload before saving');
 		}
 		const current = validateProjectEnvelope(readJsonb(row.document));
-		if (!current.success || current.envelope.id !== projectId || current.envelope.name !== request.name) {
+		if (
+			!current.success ||
+			current.envelope.id !== projectId ||
+			current.envelope.name !== request.name
+		) {
 			throw new SaveRefusalError('conflict', 'The saved base changed; reload before saving');
 		}
 		const revision = readAcceptedRevision(row.savedRevision) ?? current.envelope.acceptedRevision;
 		const sourceContentId =
-			typeof row.savedSourceContentId === 'string' && CONTENT_ID_PATTERN.test(row.savedSourceContentId)
+			typeof row.savedSourceContentId === 'string' &&
+			CONTENT_ID_PATTERN.test(row.savedSourceContentId)
 				? row.savedSourceContentId
 				: await computeEnvelopeSourceContentId(current.envelope);
 		return {
@@ -222,7 +272,7 @@ async function renameNoOp(
 			updatedAt: readTimestamp(row.updatedAt),
 			savedBaseToken: token,
 			savedRevision: revision,
-			sourceContentId
+			sourceContentId,
 		};
 	});
 }
@@ -239,7 +289,7 @@ export async function deleteProject(
 	request: DeleteProjectRequest,
 	objectNamespace: string,
 	objectStore: ObjectStore | undefined,
-	policy: ProjectLifecyclePolicy = DEFAULT_PROJECT_LIFECYCLE_POLICY
+	policy: ProjectLifecyclePolicy = DEFAULT_PROJECT_LIFECYCLE_POLICY,
 ): Promise<DeleteProjectAcknowledgement> {
 	if (!objectStore?.list || !objectStore.delete) {
 		throw new Error('Project deletion requires object-store list and delete support');
@@ -251,12 +301,12 @@ export async function deleteProject(
 			savedBaseToken: unknown;
 		}>(
 			db,
-			"SELECT p.id, p.owner_id AS \"ownerId\", p.saved_base_token AS \"savedBaseToken\"\n" +
-				"FROM projects p\n" +
-				"WHERE p.id = $1 AND p.owner_id = $2\n" +
-				"AND EXISTS (SELECT 1 FROM project_versions v WHERE v.project_id = p.id AND v.source_format = $3)\n" +
-				"FOR UPDATE",
-			[projectId, ownerId, UNIT_ENVELOPE_SOURCE_FORMAT]
+			'SELECT p.id, p.owner_id AS "ownerId", p.saved_base_token AS "savedBaseToken"\n' +
+				'FROM projects p\n' +
+				'WHERE p.id = $1 AND p.owner_id = $2\n' +
+				'AND EXISTS (SELECT 1 FROM project_versions v WHERE v.project_id = p.id AND v.source_format = $3)\n' +
+				'FOR UPDATE',
+			[projectId, ownerId, UNIT_ENVELOPE_SOURCE_FORMAT],
 		);
 		const project = projectRows[0];
 		if (!project) {
@@ -272,7 +322,9 @@ export async function deleteProject(
 		// create-only request that waited behind a completed delete sees its fence.
 		const priorTombstone = await readDeletionRecord(db, projectId, ownerId);
 		if (priorTombstone) {
-			throw new ProjectDeletionInventoryError('A live project row conflicts with its deletion tombstone');
+			throw new ProjectDeletionInventoryError(
+				'A live project row conflicts with its deletion tombstone',
+			);
 		}
 		if (readString(project.savedBaseToken) !== request.precondition.token) {
 			throw new SaveRefusalError('conflict', 'The saved base changed; reload before saving');
@@ -280,21 +332,22 @@ export async function deleteProject(
 
 		const publication = await queryRows<{ activeVersion: unknown }>(
 			db,
-			"SELECT active_version AS \"activeVersion\" FROM publications WHERE project_id = $1 FOR UPDATE",
-			[projectId]
+			'SELECT active_version AS "activeVersion" FROM publications WHERE project_id = $1 FOR UPDATE',
+			[projectId],
 		);
-		if (publication[0] && publication[0].activeVersion !== null) throw new ActivePublicationDeleteError();
+		if (publication[0] && publication[0].activeVersion !== null)
+			throw new ActivePublicationDeleteError();
 
 		await db.query(
-			"UPDATE project_write_leases SET revoked_at = COALESCE(revoked_at, clock_timestamp())\n" +
-				"WHERE project_id = $1 AND released_at IS NULL AND deadline_at > clock_timestamp()",
-			[projectId]
+			'UPDATE project_write_leases SET revoked_at = COALESCE(revoked_at, clock_timestamp())\n' +
+				'WHERE project_id = $1 AND released_at IS NULL AND deadline_at > clock_timestamp()',
+			[projectId],
 		);
 		const live = await queryRows<{ count: unknown }>(
 			db,
-			"SELECT count(*)::int AS count FROM project_write_leases\n" +
-				"WHERE project_id = $1 AND released_at IS NULL AND deadline_at > clock_timestamp()",
-			[projectId]
+			'SELECT count(*)::int AS count FROM project_write_leases\n' +
+				'WHERE project_id = $1 AND released_at IS NULL AND deadline_at > clock_timestamp()',
+			[projectId],
 		);
 		if (readSafeInteger(live[0]?.count ?? 0) > 0) {
 			// Return a value so withTransaction commits revocation before the route
@@ -305,10 +358,10 @@ export async function deleteProject(
 		const prefix = projectPrefix(objectNamespace, projectId);
 		const inventory = await readOwnedProjectInventory(db, projectId, prefix);
 		await db.query(
-			"INSERT INTO project_deletions (\n" +
-				"project_id, owner_id, namespace, saved_base_token, status, key_inventory,\n" +
-				"sweep_dependent, fenced_at, handler_timeout_ms, lease_deadline_ms,\n" +
-				"renewal_interval_ms, abort_margin_ms, cleanup_bound_ms\n" +
+			'INSERT INTO project_deletions (\n' +
+				'project_id, owner_id, namespace, saved_base_token, status, key_inventory,\n' +
+				'sweep_dependent, fenced_at, handler_timeout_ms, lease_deadline_ms,\n' +
+				'renewal_interval_ms, abort_margin_ms, cleanup_bound_ms\n' +
 				") VALUES ($1, $2, $3, $4, 'pending', $5::jsonb, $6, clock_timestamp(), $7, $8, $9, $10, $11)",
 			[
 				projectId,
@@ -321,23 +374,23 @@ export async function deleteProject(
 				policy.leaseDeadlineMs,
 				policy.renewalIntervalMs,
 				policy.abortMarginMs,
-				projectCleanupBoundMs(policy)
-			]
+				projectCleanupBoundMs(policy),
+			],
 		);
 
 		// These records must be removed before their project/version parents. The
 		// object keys are already durably inventoried in the independent tombstone.
-		await db.query("DELETE FROM releases WHERE project_id = $1", [projectId]);
-		await db.query("DELETE FROM publications WHERE project_id = $1", [projectId]);
-		await db.query("DELETE FROM assets WHERE project_id = $1", [projectId]);
-		await db.query("DELETE FROM model_imports WHERE project_id = $1", [projectId]);
-		await db.query("DELETE FROM model_revisions WHERE project_id = $1", [projectId]);
-		await db.query("DELETE FROM save_receipts WHERE project_id = $1", [projectId]);
-		await db.query("DELETE FROM project_versions WHERE project_id = $1", [projectId]);
+		await db.query('DELETE FROM releases WHERE project_id = $1', [projectId]);
+		await db.query('DELETE FROM publications WHERE project_id = $1', [projectId]);
+		await db.query('DELETE FROM assets WHERE project_id = $1', [projectId]);
+		await db.query('DELETE FROM model_imports WHERE project_id = $1', [projectId]);
+		await db.query('DELETE FROM model_revisions WHERE project_id = $1', [projectId]);
+		await db.query('DELETE FROM save_receipts WHERE project_id = $1', [projectId]);
+		await db.query('DELETE FROM project_versions WHERE project_id = $1', [projectId]);
 		const removed = await queryRows<{ id: unknown }>(
 			db,
-			"DELETE FROM projects WHERE id = $1 AND owner_id = $2 RETURNING id",
-			[projectId, ownerId]
+			'DELETE FROM projects WHERE id = $1 AND owner_id = $2 RETURNING id',
+			[projectId, ownerId],
 		);
 		if (!removed[0]) throw new Error('Project deletion did not remove its locked project row');
 		return { kind: 'deleted', projectId };
@@ -360,26 +413,30 @@ type InventoryResult = { keys: string[]; sweepDependent: boolean };
 async function readOwnedProjectInventory(
 	db: Pick<DatabasePool, 'query'>,
 	projectId: string,
-	prefix: string
+	prefix: string,
 ): Promise<InventoryResult> {
 	const keys = new Set<string>();
 	const assets = await queryRows<{ key: unknown }>(
 		db,
-		"SELECT object_key AS key FROM assets WHERE project_id = $1 AND object_key IS NOT NULL",
-		[projectId]
+		'SELECT object_key AS key FROM assets WHERE project_id = $1 AND object_key IS NOT NULL',
+		[projectId],
 	);
 	const staging = await queryRows<{ key: unknown }>(
 		db,
-		"SELECT f.object_key AS key FROM model_import_files f\n" +
-			"JOIN model_imports i ON i.id = f.import_id\n" +
-			"WHERE i.project_id = $1 AND f.object_key IS NOT NULL",
-		[projectId]
+		'SELECT f.object_key AS key FROM model_import_files f\n' +
+			'JOIN model_imports i ON i.id = f.import_id\n' +
+			'WHERE i.project_id = $1 AND f.object_key IS NOT NULL',
+		[projectId],
 	);
-	const revisions = await queryRows<{ derivativeKey: unknown; sourceKeys: unknown; sourceFileCount: unknown }>(
+	const revisions = await queryRows<{
+		derivativeKey: unknown;
+		sourceKeys: unknown;
+		sourceFileCount: unknown;
+	}>(
 		db,
-		"SELECT derivative_key AS \"derivativeKey\", source_keys AS \"sourceKeys\",\n" +
-			"source_file_count AS \"sourceFileCount\" FROM model_revisions WHERE project_id = $1",
-		[projectId]
+		'SELECT derivative_key AS "derivativeKey", source_keys AS "sourceKeys",\n' +
+			'source_file_count AS "sourceFileCount" FROM model_revisions WHERE project_id = $1',
+		[projectId],
 	);
 	for (const row of assets) addOwnedKey(keys, row.key, prefix);
 	for (const row of staging) addOwnedKey(keys, row.key, prefix);
@@ -422,7 +479,7 @@ export async function runProjectDeletionCleanup(
 	pool: DatabasePool,
 	objectStore: ObjectStore | undefined,
 	projectId: string,
-	policy: ProjectLifecyclePolicy = DEFAULT_PROJECT_LIFECYCLE_POLICY
+	policy: ProjectLifecyclePolicy = DEFAULT_PROJECT_LIFECYCLE_POLICY,
 ): Promise<ProjectDeletionCleanupResult> {
 	if (!objectStore?.list || !objectStore.delete) {
 		throw new Error('Project cleanup requires object-store list and delete support');
@@ -432,7 +489,8 @@ export async function runProjectDeletionCleanup(
 		if (!row) throw new ProjectNotFoundError();
 		const prefix = projectPrefix(readString(row.namespace), readString(row.projectId));
 		const inventory = readJsonbArray(row.keyInventory).map((key) => {
-			if (typeof key !== 'string') throw new ProjectDeletionInventoryError('Deletion inventory contains a non-string key');
+			if (typeof key !== 'string')
+				throw new ProjectDeletionInventoryError('Deletion inventory contains a non-string key');
 			assertOwnedKey(key, prefix);
 			return key;
 		});
@@ -469,29 +527,29 @@ export async function runProjectDeletionCleanup(
 				if (lateKeys.size > 0) {
 					await db.query(
 						"UPDATE project_deletions SET status = 'pending', first_empty_at = NULL,\n" +
-							"completed_at = NULL, last_attempt_at = $2, attempt_count = attempt_count + 1,\n" +
-							"last_error = $3 WHERE project_id = $1",
-						[projectId, now, 'late-key-repaired']
+							'completed_at = NULL, last_attempt_at = $2, attempt_count = attempt_count + 1,\n' +
+							'last_error = $3 WHERE project_id = $1',
+						[projectId, now, 'late-key-repaired'],
 					);
 					return {
 						projectId,
 						status: 'pending',
 						sweepDependent: readBoolean(row.sweepDependent),
 						deletedKeys: [...deletedKeys],
-						repairedLateKeys: [...lateKeys]
+						repairedLateKeys: [...lateKeys],
 					};
 				}
 				await db.query(
-					"UPDATE project_deletions SET last_attempt_at = $2, attempt_count = attempt_count + 1,\n" +
+					'UPDATE project_deletions SET last_attempt_at = $2, attempt_count = attempt_count + 1,\n' +
 						"last_error = NULL WHERE project_id = $1 AND status = 'complete'",
-					[projectId, now]
+					[projectId, now],
 				);
 				return {
 					projectId,
 					status: 'complete',
 					sweepDependent: readBoolean(row.sweepDependent),
 					deletedKeys: [...deletedKeys],
-					repairedLateKeys: []
+					repairedLateKeys: [],
 				};
 			}
 			for (const key of inventory) {
@@ -507,22 +565,23 @@ export async function runProjectDeletionCleanup(
 			const now = policy.clock();
 			const fencedAt = readTimestampMs(row.fencedAt);
 			const cleanupBound = readSafeInteger(row.cleanupBoundMs);
-			const firstEmptyAt = row.firstEmptyAt === null || row.firstEmptyAt === undefined
-				? null
-				: readTimestampMs(row.firstEmptyAt);
+			const firstEmptyAt =
+				row.firstEmptyAt === null || row.firstEmptyAt === undefined
+					? null
+					: readTimestampMs(row.firstEmptyAt);
 			if (scopedKeys.length > 0) {
 				await db.query(
-					"UPDATE project_deletions SET first_empty_at = NULL, last_attempt_at = $2,\n" +
-						"attempt_count = attempt_count + 1, last_error = NULL\n" +
+					'UPDATE project_deletions SET first_empty_at = NULL, last_attempt_at = $2,\n' +
+						'attempt_count = attempt_count + 1, last_error = NULL\n' +
 						"WHERE project_id = $1 AND status = 'pending'",
-					[projectId, now]
+					[projectId, now],
 				);
 				return {
 					projectId,
 					status: 'pending',
 					sweepDependent: readBoolean(row.sweepDependent),
 					deletedKeys: [...deletedKeys],
-					repairedLateKeys: []
+					repairedLateKeys: [],
 				};
 			}
 
@@ -534,22 +593,22 @@ export async function runProjectDeletionCleanup(
 					status: 'pending',
 					sweepDependent: readBoolean(row.sweepDependent),
 					deletedKeys: [...deletedKeys],
-					repairedLateKeys: []
+					repairedLateKeys: [],
 				};
 			}
 			if (firstEmptyAt === null) {
 				await db.query(
-					"UPDATE project_deletions SET first_empty_at = $2, last_attempt_at = $2,\n" +
-						"attempt_count = attempt_count + 1, last_error = NULL\n" +
+					'UPDATE project_deletions SET first_empty_at = $2, last_attempt_at = $2,\n' +
+						'attempt_count = attempt_count + 1, last_error = NULL\n' +
 						"WHERE project_id = $1 AND status = 'pending' AND first_empty_at IS NULL",
-					[projectId, now]
+					[projectId, now],
 				);
 				return {
 					projectId,
 					status: 'pending',
 					sweepDependent: readBoolean(row.sweepDependent),
 					deletedKeys: [...deletedKeys],
-					repairedLateKeys: []
+					repairedLateKeys: [],
 				};
 			}
 			if (now.getTime() < firstEmptyAt + cleanupBound) {
@@ -559,59 +618,65 @@ export async function runProjectDeletionCleanup(
 					status: 'pending',
 					sweepDependent: readBoolean(row.sweepDependent),
 					deletedKeys: [...deletedKeys],
-					repairedLateKeys: []
+					repairedLateKeys: [],
 				};
 			}
 			await db.query(
 				"UPDATE project_deletions SET status = 'complete', completed_at = $2,\n" +
-					"last_attempt_at = $2, attempt_count = attempt_count + 1, last_error = NULL\n" +
+					'last_attempt_at = $2, attempt_count = attempt_count + 1, last_error = NULL\n' +
 					"WHERE project_id = $1 AND status = 'pending' AND first_empty_at = $3",
-				[projectId, now, new Date(firstEmptyAt)]
+				[projectId, now, new Date(firstEmptyAt)],
 			);
 			return {
 				projectId,
 				status: 'complete',
 				sweepDependent: readBoolean(row.sweepDependent),
 				deletedKeys: [...deletedKeys],
-				repairedLateKeys: []
+				repairedLateKeys: [],
 			};
 		} catch (error) {
-			await db.query(
-				"UPDATE project_deletions SET last_attempt_at = $2,\n" +
-					"attempt_count = attempt_count + 1, last_error = $3\n" +
-					"WHERE project_id = $1",
-				[projectId, policy.clock(), safeErrorName(error)]
-			).catch(() => undefined);
+			await db
+				.query(
+					'UPDATE project_deletions SET last_attempt_at = $2,\n' +
+						'attempt_count = attempt_count + 1, last_error = $3\n' +
+						'WHERE project_id = $1',
+					[projectId, policy.clock(), safeErrorName(error)],
+				)
+				.catch(() => undefined);
 			if (error instanceof ProjectDeletionInventoryError) throw error;
 			return {
 				projectId,
 				status: 'pending',
 				sweepDependent: readBoolean(row.sweepDependent),
 				deletedKeys: [...deletedKeys],
-				repairedLateKeys: []
+				repairedLateKeys: [],
 			};
 		}
 	});
 }
 
-async function recordPendingCleanupAttempt(db: Pick<DatabasePool, 'query'>, projectId: string, now: Date): Promise<void> {
+async function recordPendingCleanupAttempt(
+	db: Pick<DatabasePool, 'query'>,
+	projectId: string,
+	now: Date,
+): Promise<void> {
 	await db.query(
-		"UPDATE project_deletions SET last_attempt_at = $2, attempt_count = attempt_count + 1,\n" +
+		'UPDATE project_deletions SET last_attempt_at = $2, attempt_count = attempt_count + 1,\n' +
 			"last_error = NULL WHERE project_id = $1 AND status = 'pending'",
-		[projectId, now]
+		[projectId, now],
 	);
 }
 
 export async function listProjectDeletionIds(
 	pool: Pick<DatabasePool, 'query'>,
-	includeCompleted = false
+	includeCompleted = false,
 ): Promise<string[]> {
 	const rows = await queryRows<{ projectId: unknown }>(
 		pool,
-		"SELECT project_id AS \"projectId\" FROM project_deletions\n" +
+		'SELECT project_id AS "projectId" FROM project_deletions\n' +
 			"WHERE status = 'pending' OR ($1::boolean AND status = 'complete')\n" +
-			"ORDER BY fenced_at ASC, project_id ASC",
-		[includeCompleted]
+			'ORDER BY fenced_at ASC, project_id ASC',
+		[includeCompleted],
 	);
 	return rows.map((row) => readString(row.projectId));
 }
@@ -619,36 +684,42 @@ export async function listProjectDeletionIds(
 async function readDeletionRecord(
 	db: Pick<DatabasePool, 'query'>,
 	projectId: string,
-	ownerId?: string
+	ownerId?: string,
 ): Promise<DeletionRecordRow | null> {
 	const rows = await queryRows<DeletionRecordRow>(
 		db,
-		"SELECT project_id AS \"projectId\", owner_id AS \"ownerId\", namespace,\n" +
-			"saved_base_token AS \"savedBaseToken\", status, key_inventory AS \"keyInventory\",\n" +
-			"sweep_dependent AS \"sweepDependent\", fenced_at AS \"fencedAt\",\n" +
-			"cleanup_bound_ms AS \"cleanupBoundMs\", first_empty_at AS \"firstEmptyAt\"\n" +
-			"FROM project_deletions WHERE project_id = $1 AND ($2::text IS NULL OR owner_id = $2)",
-		[projectId, ownerId ?? null]
+		'SELECT project_id AS "projectId", owner_id AS "ownerId", namespace,\n' +
+			'saved_base_token AS "savedBaseToken", status, key_inventory AS "keyInventory",\n' +
+			'sweep_dependent AS "sweepDependent", fenced_at AS "fencedAt",\n' +
+			'cleanup_bound_ms AS "cleanupBoundMs", first_empty_at AS "firstEmptyAt"\n' +
+			'FROM project_deletions WHERE project_id = $1 AND ($2::text IS NULL OR owner_id = $2)',
+		[projectId, ownerId ?? null],
 	);
 	return rows[0] ?? null;
 }
 
 function projectPrefix(namespace: string, projectId: string): string {
-	if (!/^[a-z0-9][a-z0-9-]{0,31}$/.test(namespace) || !/^[A-Za-z0-9][A-Za-z0-9._:-]*$/.test(projectId)) {
+	if (
+		!/^[a-z0-9][a-z0-9-]{0,31}$/.test(namespace) ||
+		!/^[A-Za-z0-9][A-Za-z0-9._:-]*$/.test(projectId)
+	) {
 		throw new ProjectDeletionInventoryError('Project deletion namespace or ID is malformed');
 	}
 	return 'projects/' + namespace + '/' + projectId + '/';
 }
 
 function addOwnedKey(keys: Set<string>, value: unknown, prefix: string): void {
-	if (typeof value !== 'string') throw new ProjectDeletionInventoryError('Project row contains a malformed object key');
+	if (typeof value !== 'string')
+		throw new ProjectDeletionInventoryError('Project row contains a malformed object key');
 	assertOwnedKey(value, prefix);
 	keys.add(value);
 }
 
 function assertOwnedKey(key: string, prefix: string): void {
 	if (!key.startsWith(prefix) || key.length <= prefix.length || key.includes('\0')) {
-		throw new ProjectDeletionInventoryError('Project object inventory contains a foreign or malformed key');
+		throw new ProjectDeletionInventoryError(
+			'Project object inventory contains a foreign or malformed key',
+		);
 	}
 }
 
@@ -668,7 +739,10 @@ function parseExpectedSavedBase(value: unknown): ProjectLifecyclePrecondition | 
 function hasExactKeys(value: Record<string, unknown>, expected: readonly string[]): boolean {
 	const actual = Object.keys(value).sort();
 	const sortedExpected = [...expected].sort();
-	return actual.length === sortedExpected.length && actual.every((key, index) => key === sortedExpected[index]);
+	return (
+		actual.length === sortedExpected.length &&
+		actual.every((key, index) => key === sortedExpected[index])
+	);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -686,7 +760,8 @@ function readJsonb(value: unknown): unknown {
 
 function readJsonbArray(value: unknown): unknown[] {
 	const parsed = readJsonb(value);
-	if (!Array.isArray(parsed)) throw new ProjectDeletionInventoryError('Project deletion inventory is not an array');
+	if (!Array.isArray(parsed))
+		throw new ProjectDeletionInventoryError('Project deletion inventory is not an array');
 	return parsed;
 }
 
@@ -703,13 +778,16 @@ function readAcceptedRevision(value: unknown): { projectId: string; revisionId: 
 }
 
 function readString(value: unknown): string {
-	if (typeof value !== 'string' || value.length === 0) throw new Error('Database row contained an invalid string');
+	if (typeof value !== 'string' || value.length === 0)
+		throw new Error('Database row contained an invalid string');
 	return value;
 }
 
 function readSafeInteger(value: unknown): number {
-	const parsed = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : Number.NaN;
-	if (!Number.isSafeInteger(parsed) || parsed < 0) throw new Error('Database row contained an invalid integer');
+	const parsed =
+		typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : Number.NaN;
+	if (!Number.isSafeInteger(parsed) || parsed < 0)
+		throw new Error('Database row contained an invalid integer');
 	return parsed;
 }
 

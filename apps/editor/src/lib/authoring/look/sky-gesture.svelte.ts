@@ -36,8 +36,11 @@ export function createSkyGesture(host: Host) {
 
 	function current(): boolean {
 		const revision = host.revision();
-		return active !== null && active.revision.projectId === revision?.projectId &&
-			active.revision.revisionId === revision.revisionId;
+		return (
+			active !== null &&
+			active.revision.projectId === revision?.projectId &&
+			active.revision.revisionId === revision.revisionId
+		);
 	}
 
 	function begin(owner: string): boolean {
@@ -98,8 +101,15 @@ export function createSkyGesture(host: Host) {
 	});
 
 	return {
-		get owner() { return active?.owner ?? null; },
-		get value() { return active ? resolved() : host.sky(); },
-		begin, move, commit, cancel
+		get owner() {
+			return active?.owner ?? null;
+		},
+		get value() {
+			return active ? resolved() : host.sky();
+		},
+		begin,
+		move,
+		commit,
+		cancel,
 	};
 }

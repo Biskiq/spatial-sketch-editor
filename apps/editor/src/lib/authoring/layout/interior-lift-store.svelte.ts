@@ -12,7 +12,13 @@
  * representation's: this module is the shell's half of the split, and nothing
  * here knows what a Room lid is.
  */
-import { overheadSourcesOf, pointInPolygon, type CompiledLayoutGeometry, type OverheadScope, type OverheadSource } from '@portfolio/layout-core/geometry';
+import {
+	overheadSourcesOf,
+	pointInPolygon,
+	type CompiledLayoutGeometry,
+	type OverheadScope,
+	type OverheadSource,
+} from '@portfolio/layout-core/geometry';
 
 export type LiftScope = OverheadScope;
 

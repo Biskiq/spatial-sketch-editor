@@ -37,7 +37,7 @@ import {
 	openingFacePaper,
 	type CandidatePaperGeometry,
 	type LayoutCandidatePaper,
-	type OpeningGhostValues
+	type OpeningGhostValues,
 } from './candidate-preview';
 
 type Key = readonly unknown[];
@@ -69,17 +69,21 @@ export type LayoutCandidatePresenter = {
 		plan: PlanEvaluation,
 		datumMeters: number,
 		subjectIds: ReadonlySet<string>,
-		affectedIds: ReadonlySet<string>
+		affectedIds: ReadonlySet<string>,
 	): LayoutCandidatePaper;
 	/** The candidate Openings' compiled profile outlines on both Wall faces. */
-	face(document: LayoutDocumentWallFirst, openingIds: ReadonlySet<string>, datumMeters: number): CandidatePaperGeometry;
+	face(
+		document: LayoutDocumentWallFirst,
+		openingIds: ReadonlySet<string>,
+		datumMeters: number,
+	): CandidatePaperGeometry;
 	/** A refused Opening attempt at its raw values, in the Plan or the 3D reading. */
 	attempt(
 		reading: 'plan' | 'face',
 		accepted: LayoutDocumentWallFirst,
 		wallId: string,
 		values: OpeningGhostValues,
-		datumMeters: number
+		datumMeters: number,
 	): CandidatePaperGeometry;
 	/** A planner proposal keyed by its inputs; `compute` runs on a miss only. */
 	proposal<T>(key: Key, compute: () => T): T;
@@ -89,11 +93,14 @@ export type LayoutCandidatePresenter = {
 	held(): number;
 };
 
-export function createLayoutCandidatePresenter(context: LayoutCompileContext): LayoutCandidatePresenter {
+export function createLayoutCandidatePresenter(
+	context: LayoutCompileContext,
+): LayoutCandidatePresenter {
 	let presentation: Slot | null = null;
 	let proposal: Slot | null = null;
 
-	const compiled = (document: LayoutDocumentWallFirst): CompiledLayoutGeometry => context.compiled(document).geometry;
+	const compiled = (document: LayoutDocumentWallFirst): CompiledLayoutGeometry =>
+		context.compiled(document).geometry;
 
 	function present<T>(key: Key, build: () => T): T {
 		if (bypassForTest) return build();
@@ -116,25 +123,41 @@ export function createLayoutCandidatePresenter(context: LayoutCompileContext): L
 			if (proposal !== null && !proposal.consulted) proposal = null;
 		},
 		paper(document, plan, datumMeters, subjectIds, affectedIds) {
-			return present(['plan', document, plan, datumMeters, idsKey(subjectIds), idsKey(affectedIds)], () =>
-				buildCompiledLayoutCandidatePaper(compiled(document), plan, datumMeters, subjectIds, affectedIds)
+			return present(
+				['plan', document, plan, datumMeters, idsKey(subjectIds), idsKey(affectedIds)],
+				() =>
+					buildCompiledLayoutCandidatePaper(
+						compiled(document),
+						plan,
+						datumMeters,
+						subjectIds,
+						affectedIds,
+					),
 			);
 		},
 		face(document, openingIds, datumMeters) {
 			return present(['face', document, datumMeters, idsKey(openingIds)], () =>
-				openingFacePaper(compiled(document), openingIds, datumMeters)
+				openingFacePaper(compiled(document), openingIds, datumMeters),
 			);
 		},
 		attempt(reading, accepted, wallId, values, datumMeters) {
 			return present(
 				[
-					`attempt-${reading}`, accepted, wallId, datumMeters,
-					values.kind, values.profile, values.offset, values.width, values.height, values.sillHeight
+					`attempt-${reading}`,
+					accepted,
+					wallId,
+					datumMeters,
+					values.kind,
+					values.profile,
+					values.offset,
+					values.width,
+					values.height,
+					values.sillHeight,
 				],
 				() =>
 					reading === 'plan'
 						? openingAttemptPlanPaper(compiled(accepted), wallId, values, datumMeters)
-						: openingAttemptFacePaper(compiled(accepted), wallId, values, datumMeters)
+						: openingAttemptFacePaper(compiled(accepted), wallId, values, datumMeters),
 			);
 		},
 		proposal<T>(key: Key, compute: () => T): T {
@@ -155,6 +178,6 @@ export function createLayoutCandidatePresenter(context: LayoutCompileContext): L
 			presentation = null;
 			proposal = null;
 		},
-		held: () => (presentation === null ? 0 : 1) + (proposal === null ? 0 : 1)
+		held: () => (presentation === null ? 0 : 1) + (proposal === null ? 0 : 1),
 	};
 }

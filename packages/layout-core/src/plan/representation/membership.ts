@@ -1,59 +1,122 @@
 import type { CompiledLayoutGeometry } from '../../geometry/types';
 import { LAYOUT_SLICE_CONTACT_METERS } from '../../room/region-validation';
 import type { LayoutVec2 } from '../../geometry/coordinates';
-import { boundsOf, compareFragments, compareSourceIds, hasPlanGeometry, objectCandidates, openingCandidates, planDistance, regionCandidate, roomFloorCandidates, streamFor, wallCandidates } from './geometry';
-import type { Candidate, Evaluated, PlanEvaluation, PlanEvaluationResult, PlanFragment, PlanIssue, PlanMembershipReason, PlanParameters, PlanSourceContext, PlanSourceKind, PlanSourceMembership, PlanStream, PlanStreams, PlanSubRef, SourcePlan } from './types';
+import {
+	boundsOf,
+	compareFragments,
+	compareSourceIds,
+	hasPlanGeometry,
+	objectCandidates,
+	openingCandidates,
+	planDistance,
+	regionCandidate,
+	roomFloorCandidates,
+	streamFor,
+	wallCandidates,
+} from './geometry';
+import type {
+	Candidate,
+	Evaluated,
+	PlanEvaluation,
+	PlanEvaluationResult,
+	PlanFragment,
+	PlanIssue,
+	PlanMembershipReason,
+	PlanParameters,
+	PlanSourceContext,
+	PlanSourceKind,
+	PlanSourceMembership,
+	PlanStream,
+	PlanStreams,
+	PlanSubRef,
+	SourcePlan,
+} from './types';
 import { PLAN_SOURCE_KINDS } from './types';
 
 export function isFiniteNumber(value: number): boolean {
 	return typeof value === 'number' && Number.isFinite(value);
 }
 
-
 export function finiteVec2(value: LayoutVec2 | undefined): boolean {
 	return value !== undefined && isFiniteNumber(value[0]) && isFiniteNumber(value[1]);
 }
 
-
 /** Parameter validation is a defensive boundary, not a second schema for the family. */
-export function parameterIssues(parameters: PlanParameters, context: PlanSourceContext): PlanIssue[] {
+export function parameterIssues(
+	parameters: PlanParameters,
+	context: PlanSourceContext,
+): PlanIssue[] {
 	const issues: PlanIssue[] = [];
 	const push = (path: string, code: string, message: string): void => {
 		issues.push({ path, code, message });
 	};
 	if (!isFiniteNumber(parameters.cutHeightMeters)) {
-		push('$.cutHeightMeters', 'non-finite-number', 'the cut height must be a finite number of meters relative to the level datum');
+		push(
+			'$.cutHeightMeters',
+			'non-finite-number',
+			'the cut height must be a finite number of meters relative to the level datum',
+		);
 	}
 	if (!isFiniteNumber(parameters.depthMeters) || parameters.depthMeters <= 0) {
-		push('$.depthMeters', 'out-of-range', 'the depth is required and must be a finite number of meters greater than zero');
+		push(
+			'$.depthMeters',
+			'out-of-range',
+			'the depth is required and must be a finite number of meters greater than zero',
+		);
 	}
 	if (parameters.lateralSpanHalfWidthMeters !== null) {
-		if (!isFiniteNumber(parameters.lateralSpanHalfWidthMeters) || parameters.lateralSpanHalfWidthMeters <= 0) {
-			push('$.lateralSpanHalfWidthMeters', 'out-of-range', 'a declared lateral span must be a finite half-width greater than zero, or null for unbounded coverage');
+		if (
+			!isFiniteNumber(parameters.lateralSpanHalfWidthMeters) ||
+			parameters.lateralSpanHalfWidthMeters <= 0
+		) {
+			push(
+				'$.lateralSpanHalfWidthMeters',
+				'out-of-range',
+				'a declared lateral span must be a finite half-width greater than zero, or null for unbounded coverage',
+			);
 		}
 	}
 	if (parameters.sourceKindFilter !== null) {
 		if (parameters.sourceKindFilter.length === 0) {
-			push('$.sourceKindFilter', 'invalid-value', 'a declared source-kind filter must admit at least one kind, or be null for no filter');
+			push(
+				'$.sourceKindFilter',
+				'invalid-value',
+				'a declared source-kind filter must admit at least one kind, or be null for no filter',
+			);
 		}
 		for (const [index, kind] of parameters.sourceKindFilter.entries()) {
 			if (!(PLAN_SOURCE_KINDS as readonly string[]).includes(kind)) {
-				push(`$.sourceKindFilter[${index}]`, 'unknown-tag', `"${kind}" is not an admitted plan source kind`);
+				push(
+					`$.sourceKindFilter[${index}]`,
+					'unknown-tag',
+					`"${kind}" is not an admitted plan source kind`,
+				);
 			}
 		}
 	}
 	if (context.generationId.trim() === '') {
-		push('$.context.generationId', 'invalid-identity', 'the compile generation must be a nonempty identity');
+		push(
+			'$.context.generationId',
+			'invalid-identity',
+			'the compile generation must be a nonempty identity',
+		);
 	}
 	if (!finiteVec2(context.target)) {
-		push('$.context.target', 'invalid-vector', 'the inspection target must be a finite project-world XZ pair');
+		push(
+			'$.context.target',
+			'invalid-vector',
+			'the inspection target must be a finite project-world XZ pair',
+		);
 	}
 	if (!isFiniteNumber(context.datumMeters)) {
-		push('$.context.datumMeters', 'non-finite-number', 'the level datum must be a finite number of project-world meters');
+		push(
+			'$.context.datumMeters',
+			'non-finite-number',
+			'the level datum must be a finite number of project-world meters',
+		);
 	}
 	return issues;
 }
-
 
 /**
  * Source-indexed access to one evaluation, for the evaluator that produced it.
@@ -70,9 +133,7 @@ type PlanView = {
 	readonly membershipOf: (sourceId: string) => PlanSourceMembership | null;
 };
 
-
 export const PLAN_VIEWS = new WeakMap<PlanEvaluation, PlanView>();
-
 
 /**
  * Does this evaluation read `context.target` for anything but its own echo?
@@ -92,7 +153,6 @@ export function planDependsOnTarget(parameters: PlanParameters): boolean {
 	return parameters.lateralSpanHalfWidthMeters !== null;
 }
 
-
 /**
  * The same Plan evaluation with a live inspection target.
  *
@@ -110,14 +170,14 @@ export function planDependsOnTarget(parameters: PlanParameters): boolean {
  */
 export function planTargetsLiveView(
 	plan: PlanEvaluation,
-	readTarget: () => LayoutVec2
+	readTarget: () => LayoutVec2,
 ): PlanEvaluation {
 	const evaluatedTarget = plan.target;
 	// The descriptors are copied, **not** the values: a spread would force every lazy
 	// field of the evaluation it wraps, which is exactly the work a pan must not cause.
 	const live = Object.create(
 		Object.getPrototypeOf(plan) as object,
-		Object.getOwnPropertyDescriptors(plan)
+		Object.getOwnPropertyDescriptors(plan),
 	) as PlanEvaluation;
 	Object.defineProperty(live, 'target', {
 		configurable: true,
@@ -125,14 +185,13 @@ export function planTargetsLiveView(
 		get(): LayoutVec2 {
 			const current = readTarget();
 			return isFiniteNumber(current[0]) && isFiniteNumber(current[1]) ? current : evaluatedTarget;
-		}
+		},
 	});
 	// The live view answers the same source questions as the evaluation it wraps.
 	const view = PLAN_VIEWS.get(plan);
 	if (view !== undefined) PLAN_VIEWS.set(live, view);
 	return live;
 }
-
 
 /**
  * Everything one candidate's membership measurement reads, resolved once per
@@ -149,8 +208,10 @@ export type MeasurementContext = {
 	readonly target: LayoutVec2;
 };
 
-
-export function measurementContext(parameters: PlanParameters, context: PlanSourceContext): MeasurementContext {
+export function measurementContext(
+	parameters: PlanParameters,
+	context: PlanSourceContext,
+): MeasurementContext {
 	return {
 		datumMeters: context.datumMeters,
 		cutElevation: context.datumMeters + parameters.cutHeightMeters,
@@ -158,16 +219,21 @@ export function measurementContext(parameters: PlanParameters, context: PlanSour
 		lateralSpanHalfWidthMeters: parameters.lateralSpanHalfWidthMeters,
 		filter: parameters.sourceKindFilter === null ? null : new Set(parameters.sourceKindFilter),
 		reveal: new Set(parameters.reveal),
-		target: context.target
+		target: context.target,
 	};
 }
-
 
 /** Measure one candidate: the declared reason it earned, and the placement it places. */
 export function measureCandidate(candidate: Candidate, context: MeasurementContext): Evaluated {
 	const verticalExtent = candidate.extent.maxY - candidate.extent.minY;
-	const depthBelowCut = candidate.extent.maxY >= context.cutElevation ? null : context.cutElevation - candidate.extent.maxY;
-	const lateralDistance = context.lateralSpanHalfWidthMeters === null ? null : planDistance(context.target, candidate.plan);
+	const depthBelowCut =
+		candidate.extent.maxY >= context.cutElevation
+			? null
+			: context.cutElevation - candidate.extent.maxY;
+	const lateralDistance =
+		context.lateralSpanHalfWidthMeters === null
+			? null
+			: planDistance(context.target, candidate.plan);
 	const hasGeometry = hasPlanGeometry(candidate.plan);
 
 	// One declared reason per candidate, in a fixed precedence order, so a consumer never
@@ -176,7 +242,10 @@ export function measureCandidate(candidate: Candidate, context: MeasurementConte
 	let reason: PlanMembershipReason = 'included';
 	if (context.filter !== null && !context.filter.has(candidate.sourceKind)) {
 		reason = 'filtered-type';
-	} else if (depthBelowCut !== null && depthBelowCut > context.depthMeters + (candidate.regionRole ? LAYOUT_SLICE_CONTACT_METERS : 0)) {
+	} else if (
+		depthBelowCut !== null &&
+		depthBelowCut > context.depthMeters + (candidate.regionRole ? LAYOUT_SLICE_CONTACT_METERS : 0)
+	) {
 		reason = 'outside-depth';
 	} else if (
 		context.lateralSpanHalfWidthMeters !== null &&
@@ -206,28 +275,37 @@ export function measureCandidate(candidate: Candidate, context: MeasurementConte
 						stream === 'cut'
 							? context.cutElevation
 							: candidate.regionRole
-								? (stream === 'hidden' ? candidate.extent.minY : candidate.extent.maxY)
-							: stream === 'projected'
-								? candidate.extent.minY
-								: candidate.extent.maxY
+								? stream === 'hidden'
+									? candidate.extent.minY
+									: candidate.extent.maxY
+								: stream === 'projected'
+									? candidate.extent.minY
+									: candidate.extent.maxY,
 				};
 	if (candidate.regionRole && stream !== null) {
-		const face = stream === 'cut' ? 'edge'
-			: candidate.regionRole === 'overhead' && (stream === 'hidden' || context.cutElevation <= candidate.extent.minY + LAYOUT_SLICE_CONTACT_METERS)
-				? 'underside' : 'top';
+		const face =
+			stream === 'cut'
+				? 'edge'
+				: candidate.regionRole === 'overhead' &&
+						(stream === 'hidden' ||
+							context.cutElevation <= candidate.extent.minY + LAYOUT_SLICE_CONTACT_METERS)
+					? 'underside'
+					: 'top';
 		const plan = candidate.plan;
-		const outlined = stream === 'hidden' || (stream === 'projected' && candidate.regionRole === 'overhead');
+		const outlined =
+			stream === 'hidden' || (stream === 'projected' && candidate.regionRole === 'overhead');
 		candidate = {
 			...candidate,
 			subRef: { kind: 'component', componentId: face },
-			plan: outlined && plan.kind === 'polygon'
-				? { kind: 'polyline', polyline: [...plan.polygon, plan.polygon[0]!] } : plan
+			plan:
+				outlined && plan.kind === 'polygon'
+					? { kind: 'polyline', polyline: [...plan.polygon, plan.polygon[0]!] }
+					: plan,
 		};
 		if (placement && face === 'underside') placement.elevationMeters = candidate.extent.minY;
 	}
 	return { candidate, reason, depthBelowCut, lateralDistance, eligible, revealed, placement };
 }
-
 
 /**
  * One membership row for a source, from its measured candidates in declared order.
@@ -238,13 +316,20 @@ export function measureCandidate(candidate: Candidate, context: MeasurementConte
  * (else the first), the deepest extent that fell out of the depth window, and the
  * nearest witness to the inspection target.
  */
-export function sourceMembership(sourceId: string, entries: readonly Evaluated[]): PlanSourceMembership {
+export function sourceMembership(
+	sourceId: string,
+	entries: readonly Evaluated[],
+): PlanSourceMembership {
 	const first = entries[0]!;
 	const included = entries.find((entry) => entry.reason === 'included');
 	const reason = included?.reason ?? first.reason;
 	const revealed = entries.some((entry) => entry.revealed);
-	const depths = entries.map((entry) => entry.depthBelowCut).filter((value): value is number => value !== null);
-	const laterals = entries.map((entry) => entry.lateralDistance).filter((value): value is number => value !== null);
+	const depths = entries
+		.map((entry) => entry.depthBelowCut)
+		.filter((value): value is number => value !== null);
+	const laterals = entries
+		.map((entry) => entry.lateralDistance)
+		.filter((value): value is number => value !== null);
 	return {
 		sourceId,
 		sourceKind: first.candidate.sourceKind,
@@ -254,10 +339,9 @@ export function sourceMembership(sourceId: string, entries: readonly Evaluated[]
 		// The source-level measurements are the ones a consumer needs to act on: the
 		// deepest extent that fell out of the window, and the nearest witness to the target.
 		depthBelowCutMeters: depths.length > 0 ? Math.max(...depths) : null,
-		lateralDistanceMeters: laterals.length > 0 ? Math.min(...laterals) : null
+		lateralDistanceMeters: laterals.length > 0 ? Math.min(...laterals) : null,
 	};
 }
-
 
 /**
  * Evaluate the ordinary horizontal Plan for one compiled Layout.
@@ -274,12 +358,16 @@ export function sourceMembership(sourceId: string, entries: readonly Evaluated[]
 export function evaluateLayoutPlan(
 	compiled: CompiledLayoutGeometry,
 	parameters: PlanParameters,
-	context: PlanSourceContext
+	context: PlanSourceContext,
 ): PlanEvaluationResult {
 	const issues = parameterIssues(parameters, context);
 	if (issues.length > 0) {
 		const invalidContext = issues.every((issue) => issue.path.startsWith('$.context'));
-		return { kind: 'refused', code: invalidContext ? 'invalid-context' : 'invalid-parameters', issues };
+		return {
+			kind: 'refused',
+			code: invalidContext ? 'invalid-context' : 'invalid-parameters',
+			issues,
+		};
 	}
 
 	const measurement = measurementContext(parameters, context);
@@ -288,7 +376,9 @@ export function evaluateLayoutPlan(
 		...openingCandidates(compiled, context.datumMeters),
 		...objectCandidates(compiled),
 		...roomFloorCandidates(compiled),
-		...compiled.regions.map(regionCandidate).sort(compareSourceIds((candidate) => candidate.sourceId))
+		...compiled.regions
+			.map(regionCandidate)
+			.sort(compareSourceIds((candidate) => candidate.sourceId)),
 	];
 
 	const fragments: PlanFragment[] = [];
@@ -297,7 +387,9 @@ export function evaluateLayoutPlan(
 	// Stage one: measure each candidate independently and record the placement it earned.
 	// Nothing is emitted yet, because membership is a **per-source** fact while a compiled
 	// source can have several placements — a Wall has one row for all of its solid spans.
-	const evaluated: Evaluated[] = candidates.map((candidate) => measureCandidate(candidate, measurement));
+	const evaluated: Evaluated[] = candidates.map((candidate) =>
+		measureCandidate(candidate, measurement),
+	);
 
 	// Stage two: one membership row per source, and a fragment only where that source's
 	// eligible placement exists. A source is included when **any** of its placements is: the
@@ -330,8 +422,8 @@ export function evaluateLayoutPlan(
 					entry.candidate.plan,
 					entry.placement.stream,
 					row.reason,
-					entry.placement.elevationMeters
-				)
+					entry.placement.elevationMeters,
+				),
 			);
 		}
 	}
@@ -341,7 +433,7 @@ export function evaluateLayoutPlan(
 		cut: fragments.filter((fragment) => fragment.ref.stream === 'cut'),
 		projected: fragments.filter((fragment) => fragment.ref.stream === 'projected'),
 		hidden: fragments.filter((fragment) => fragment.ref.stream === 'hidden'),
-		symbol: fragments.filter((fragment) => fragment.ref.stream === 'symbol')
+		symbol: fragments.filter((fragment) => fragment.ref.stream === 'symbol'),
 	};
 
 	return {
@@ -354,7 +446,8 @@ export function evaluateLayoutPlan(
 			depthMeters: parameters.depthMeters,
 			lateralSpanHalfWidthMeters: parameters.lateralSpanHalfWidthMeters,
 			target: context.target,
-			sourceKindFilter: parameters.sourceKindFilter === null ? null : [...parameters.sourceKindFilter],
+			sourceKindFilter:
+				parameters.sourceKindFilter === null ? null : [...parameters.sourceKindFilter],
 			reveal: [...parameters.reveal],
 			streams,
 			fragments,
@@ -362,11 +455,10 @@ export function evaluateLayoutPlan(
 			// A reveal id matches when it names a compiled source. Every compiled source
 			// produces at least one candidate, so the candidate grouping is the same set.
 			unmatchedRevealIds: [...measurement.reveal].filter((id) => !bySource.has(id)).sort(),
-			bounds: boundsOf(fragments)
-		}
+			bounds: boundsOf(fragments),
+		},
 	};
 }
-
 
 /** One fragment, from the fields both evaluators already hold. */
 export function fragmentFor(
@@ -377,16 +469,15 @@ export function fragmentFor(
 	plan: SourcePlan,
 	stream: PlanStream,
 	membership: PlanMembershipReason,
-	elevationMeters: number
+	elevationMeters: number,
 ): PlanFragment {
 	return {
 		ref: { sourceId, sourceKind, generationId, stream, subRef },
 		elevationMeters,
 		geometry: plan,
-		membership
+		membership,
 	};
 }
-
 
 /**
  * Every fragment whose source is eligible for display and hit testing.
@@ -397,10 +488,11 @@ export function fragmentFor(
  * a filter each caller re-invents.
  */
 export function eligiblePlanFragments(plan: PlanEvaluation): readonly PlanFragment[] {
-	const eligible = new Set(plan.membership.filter((row) => row.eligible).map((row) => row.sourceId));
+	const eligible = new Set(
+		plan.membership.filter((row) => row.eligible).map((row) => row.sourceId),
+	);
 	return plan.fragments.filter((fragment) => eligible.has(fragment.ref.sourceId));
 }
-
 
 /**
  * One source's membership row, or `null` when it is not a compiled source.
@@ -409,10 +501,15 @@ export function eligiblePlanFragments(plan: PlanEvaluation): readonly PlanFragme
  * Inspector reports the selected source's eligibility), so it is indexed against the
  * membership array itself rather than scanning it.
  */
-export const membershipIndexes = new WeakMap<readonly PlanSourceMembership[], Map<string, PlanSourceMembership>>();
+export const membershipIndexes = new WeakMap<
+	readonly PlanSourceMembership[],
+	Map<string, PlanSourceMembership>
+>();
 
-
-export function planMembershipOf(plan: PlanEvaluation, sourceId: string): PlanSourceMembership | null {
+export function planMembershipOf(
+	plan: PlanEvaluation,
+	sourceId: string,
+): PlanSourceMembership | null {
 	const view = PLAN_VIEWS.get(plan);
 	if (view !== undefined) return view.membershipOf(sourceId);
 	let index = membershipIndexes.get(plan.membership);
@@ -423,7 +520,6 @@ export function planMembershipOf(plan: PlanEvaluation, sourceId: string): PlanSo
 	}
 	return index.get(sourceId) ?? null;
 }
-
 
 /**
  * One source's first fragment, or `undefined`.
@@ -436,7 +532,6 @@ export function planMembershipOf(plan: PlanEvaluation, sourceId: string): PlanSo
  * collectable with it.
  */
 export const fragmentIndexes = new WeakMap<readonly PlanFragment[], Map<string, PlanFragment>>();
-
 
 export function planFragmentOf(plan: PlanEvaluation, sourceId: string): PlanFragment | undefined {
 	const view = PLAN_VIEWS.get(plan);

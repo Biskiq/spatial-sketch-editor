@@ -18,22 +18,25 @@ import { buildRegionMeshGeometry } from '$lib/render/layout/region-mesh-builder'
 import { legJoinsByWall } from '@portfolio/layout-core/wall';
 import type { CompiledLayoutGeometry, CompiledRegion } from '@portfolio/layout-core/geometry';
 import type { LayoutSurfaceRef } from '@portfolio/layout-core/plan';
-import type { RuntimeScene, SceneEntity, SceneFormEntity, ScenePrimitiveEntity, SceneSurfaceRef } from '@portfolio/project-model/scene';
+import type {
+	RuntimeScene,
+	SceneEntity,
+	SceneFormEntity,
+	ScenePrimitiveEntity,
+	SceneSurfaceRef,
+} from '@portfolio/project-model/scene';
 import {
 	summarizeDrawGeometry,
 	type DrawGeometry,
 	type TargetAnalysis,
 	type TargetAnalysisRequest,
 	type TargetFacts,
-	type TargetMetricBasis
+	type TargetMetricBasis,
 } from '@portfolio/project-model/materials';
 import { ShapeUtils, Vector2, type BufferGeometry } from 'three';
 import { constructGeometry } from '../resources/geometry-store';
 import type { GeometrySpec } from '../resources/scene-render-item';
-import {
-	scenePrimitiveGeometry,
-	scenePrimitiveSurfaceMeters
-} from '../scene-render-description';
+import { scenePrimitiveGeometry, scenePrimitiveSurfaceMeters } from '../scene-render-description';
 
 export type { TargetAnalysis, TargetAnalysisRequest } from '@portfolio/project-model/materials';
 
@@ -53,9 +56,7 @@ export type ModelDerivativeAnalysis = {
  * for another revision is not an answer, and the analyzer also rejects a
  * returned analysis whose own digest disagrees.
  */
-export type ModelDerivativeAnalysisProvider = (
-	digest: string
-) => ModelDerivativeAnalysis | null;
+export type ModelDerivativeAnalysisProvider = (digest: string) => ModelDerivativeAnalysis | null;
 
 export type SceneTargetAnalysisInput = {
 	/** The currently accepted Scene, its compiled Layout and their exact revisions. */
@@ -76,7 +77,10 @@ export type SceneTargetAnalysisInput = {
 	readonly models?: ModelDerivativeAnalysisProvider;
 };
 
-function drawGeometryOf(geometry: BufferGeometry, drawKey: string): { drawKey: string; geometry: DrawGeometry } {
+function drawGeometryOf(
+	geometry: BufferGeometry,
+	drawKey: string,
+): { drawKey: string; geometry: DrawGeometry } {
 	const positions = geometry.getAttribute('position');
 	const uv0 = geometry.getAttribute('uv');
 	const uv1 = geometry.getAttribute('uv1');
@@ -88,8 +92,8 @@ function drawGeometryOf(geometry: BufferGeometry, drawKey: string): { drawKey: s
 			indices: index === null ? null : (index.array as ArrayLike<number>),
 			drawRange: { start: geometry.drawRange.start, count: geometry.drawRange.count },
 			groups: geometry.groups.map((group) => ({ start: group.start, count: group.count })),
-			uvs: [uv0 === undefined ? null : uv0.array, uv1 === undefined ? null : uv1.array]
-		}
+			uvs: [uv0 === undefined ? null : uv0.array, uv1 === undefined ? null : uv1.array],
+		},
 	};
 }
 
@@ -97,7 +101,7 @@ function factsFromSpec(
 	subject: string,
 	revision: string,
 	spec: GeometrySpec,
-	metricBasis: TargetMetricBasis | null
+	metricBasis: TargetMetricBasis | null,
 ): TargetFacts {
 	const geometry = constructGeometry(spec);
 	try {
@@ -106,7 +110,7 @@ function factsFromSpec(
 			subject,
 			geometryRevision: revision,
 			...(metricBasis === null ? {} : { metricBasis }),
-			draws: [draw]
+			draws: [draw],
 		};
 	} finally {
 		// The analyzer owns this buffer; disposing it frees nothing on the GPU
@@ -118,7 +122,7 @@ function factsFromSpec(
 function primitiveFacts(
 	entity: ScenePrimitiveEntity,
 	subject: string,
-	revision: string
+	revision: string,
 ): TargetFacts {
 	const { spec } = scenePrimitiveGeometry(entity);
 	const surface = scenePrimitiveSurfaceMeters(entity);
@@ -127,7 +131,7 @@ function primitiveFacts(
 	// draw cannot disagree about a metre tile.
 	return factsFromSpec(subject, revision, spec, {
 		uvMeters: [surface[0], surface[1]],
-		surfaceMeters: [surface[0], surface[1]]
+		surfaceMeters: [surface[0], surface[1]],
 	});
 }
 
@@ -141,10 +145,10 @@ function formFacts(entity: SceneFormEntity, subject: string, revision: string): 
 			kind: 'form',
 			evaluationKey: formEvaluationKey(entity.form),
 			mesh,
-			plane: entity.form.generator.plane
+			plane: entity.form.generator.plane,
 		},
 		// Form UVs are metres, so one native unit is one metre.
-		{ uvMeters: [1, 1], surfaceMeters: [1, 1] }
+		{ uvMeters: [1, 1], surfaceMeters: [1, 1] },
 	);
 }
 
@@ -153,7 +157,7 @@ function modelFacts(
 	subject: string,
 	revision: string,
 	current: NonNullable<ReturnType<SceneTargetAnalysisInput['read']>>,
-	provider: ModelDerivativeAnalysisProvider | undefined
+	provider: ModelDerivativeAnalysisProvider | undefined,
 ): TargetFacts | null {
 	const digest = current.modelDigest(entity.assetId);
 	if (digest === null) return null;
@@ -168,7 +172,7 @@ function modelFacts(
 		geometryRevision: revision,
 		// A model remap keeps the model's own UV chart; a metric tile has no
 		// basis it can claim. Explicit `uv` mapping remains available.
-		draws: derivative.draws.map((draw) => summarizeDrawGeometry(draw.drawKey, draw.geometry))
+		draws: derivative.draws.map((draw) => summarizeDrawGeometry(draw.drawKey, draw.geometry)),
 	};
 }
 
@@ -177,7 +181,7 @@ function wallSideFacts(
 	geometry: CompiledLayoutGeometry,
 	surface: Extract<LayoutSurfaceRef, { kind: 'wall-side' }>,
 	subject: string,
-	revision: string
+	revision: string,
 ): TargetFacts | null {
 	const wall = geometry.walls.find((candidate) => candidate.wallId === surface.wallId);
 	if (wall === undefined) return null;
@@ -186,19 +190,19 @@ function wallSideFacts(
 	const built = buildStandaloneWallMesh(
 		wall,
 		floor.elevation,
-		legJoinsByWall(geometry.junctions).get(wall.wallId) ?? null
+		legJoinsByWall(geometry.junctions).get(wall.wallId) ?? null,
 	);
 	if (built.mesh === undefined || built.mesh.indices.length === 0) return null;
 	const draw = summarizeDrawGeometry(subject, {
 		positions: built.mesh.positions,
 		indices: built.mesh.indices,
-		uvs: [built.mesh.uvs, null]
+		uvs: [built.mesh.uvs, null],
 	});
 	return {
 		subject,
 		geometryRevision: revision,
 		metricBasis: { uvMeters: [1, 1], surfaceMeters: [1, 1] },
-		draws: [draw]
+		draws: [draw],
 	};
 }
 
@@ -207,7 +211,7 @@ function roomPlaneFacts(
 	room: CompiledLayoutGeometry['rooms'][number],
 	surface: Extract<LayoutSurfaceRef, { kind: 'room-floor' | 'room-lid' }>,
 	subject: string,
-	revision: string
+	revision: string,
 ): TargetFacts | null {
 	if (surface.kind === 'room-lid' && room.overhead === 'open-to-sky') return null;
 	const polygon = surface.kind === 'room-floor' ? room.floorPolygon : room.ceilingPolygon;
@@ -215,7 +219,7 @@ function roomPlaneFacts(
 	const elevation = surface.kind === 'room-floor' ? room.floorElevation : room.ceilingElevation;
 	const triangles = ShapeUtils.triangulateShape(
 		polygon.map(([x, z]) => new Vector2(x, z)),
-		[]
+		[],
 	);
 	if (triangles.length === 0) return null;
 	const positions: number[] = [];
@@ -234,13 +238,13 @@ function roomPlaneFacts(
 	const draw = summarizeDrawGeometry(subject, {
 		positions,
 		indices,
-		uvs: [uvs, null]
+		uvs: [uvs, null],
 	});
 	return {
 		subject,
 		geometryRevision: revision,
 		metricBasis: { uvMeters: [1, 1], surfaceMeters: [1, 1] },
-		draws: [draw]
+		draws: [draw],
 	};
 }
 
@@ -249,7 +253,7 @@ function regionFaceFacts(
 	region: CompiledRegion,
 	surface: Extract<LayoutSurfaceRef, { kind: 'region-face' }>,
 	subject: string,
-	revision: string
+	revision: string,
 ): TargetFacts | null {
 	const built = buildRegionMeshGeometry(region);
 	try {
@@ -269,7 +273,7 @@ function regionFaceFacts(
 				subsetPositions.push(
 					positions.getX(vertex),
 					positions.getY(vertex),
-					positions.getZ(vertex)
+					positions.getZ(vertex),
 				);
 				subsetUvs.push(uvs?.getX(vertex) ?? 0, uvs?.getY(vertex) ?? 0);
 			}
@@ -277,13 +281,13 @@ function regionFaceFacts(
 		if (!matched || subsetPositions.length === 0) return null;
 		const draw = summarizeDrawGeometry(subject, {
 			positions: subsetPositions,
-			uvs: [subsetUvs, null]
+			uvs: [subsetUvs, null],
 		});
 		return {
 			subject,
 			geometryRevision: revision,
 			metricBasis: { uvMeters: [1, 1], surfaceMeters: [1, 1] },
-			draws: [draw]
+			draws: [draw],
 		};
 	} finally {
 		built.dispose();
@@ -294,7 +298,7 @@ function layoutSurfaceFacts(
 	geometry: CompiledLayoutGeometry,
 	surface: SceneSurfaceRef,
 	subject: string,
-	revision: string
+	revision: string,
 ): TargetFacts | null {
 	switch (surface.kind) {
 		case 'wall-side':
@@ -316,7 +320,7 @@ function analyzeEntity(
 	subject: string,
 	revision: string,
 	current: NonNullable<ReturnType<SceneTargetAnalysisInput['read']>>,
-	provider: ModelDerivativeAnalysisProvider | undefined
+	provider: ModelDerivativeAnalysisProvider | undefined,
 ): TargetFacts | null {
 	switch (entity.kind) {
 		case 'primitive':
@@ -349,7 +353,7 @@ export function createSceneTargetAnalysis(input: SceneTargetAnalysisInput): Targ
 					current.geometry,
 					surface,
 					request.subject,
-					current.layoutRevision
+					current.layoutRevision,
 				);
 				if (analyzed === null) return null;
 				facts.push(analyzed);
@@ -364,7 +368,7 @@ export function createSceneTargetAnalysis(input: SceneTargetAnalysisInput): Targ
 				request.subject,
 				current.sceneRevision,
 				current,
-				input.models
+				input.models,
 			);
 			if (analyzed === null) return null;
 			facts.push(analyzed);

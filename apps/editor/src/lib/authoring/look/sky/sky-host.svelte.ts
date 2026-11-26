@@ -1,6 +1,9 @@
 import type { ViewportEvaluation } from '@portfolio/camera-core/viewport';
 import { pointInPolygon } from '@portfolio/layout-core/geometry';
-import { sunMarkAnchor, WORLD_ENVIRONMENT_GROUND_RADIUS_METERS } from '$lib/render/world-environment';
+import {
+	sunMarkAnchor,
+	WORLD_ENVIRONMENT_GROUND_RADIUS_METERS,
+} from '$lib/render/world-environment';
 import { createStagePanelRects } from '../../stage/shell/stage-panel-rects.svelte';
 import type { StageAdapterServices } from '../../stage/stage-adapter-host';
 import type { StageFacade } from '../../stage/stage-facade';
@@ -27,9 +30,17 @@ export function createSkyHost(input: {
 	const look = createLookAuthoring(input.look);
 
 	const dialPlacement = $derived.by(() => {
-		if (!look.panelOpen || input.lens() !== 'world' || input.previewing() ||
-			input.taskActive() || input.toolArmed() || look.studioWhileEditing ||
-			look.sky?.preset === 'studio' || !look.sky) return null;
+		if (
+			!look.panelOpen ||
+			input.lens() !== 'world' ||
+			input.previewing() ||
+			input.taskActive() ||
+			input.toolArmed() ||
+			look.studioWhileEditing ||
+			look.sky?.preset === 'studio' ||
+			!look.sky
+		)
+			return null;
 		const evaluation = input.evaluation();
 		const facade = input.facade();
 		if (evaluation === null || facade === null) return null;
@@ -42,7 +53,7 @@ export function createSkyHost(input: {
 			...domain.scene.entities.flatMap((entity) => {
 				const bounds = facade.sceneBounds(entity.id);
 				return bounds ? [bounds] : [];
-			})
+			}),
 		];
 		// Client rects: placement tests them against `dialProject`, which is in the
 		// viewport frame (`camera.rect`), not the stage-local frame of the marks.
@@ -51,15 +62,33 @@ export function createSkyHost(input: {
 			return [{ left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom }];
 		});
 		const origin = sunMarkAnchor({ bounds: stageContentBounds, groundY: datum + 0.008 });
-		return placeCelestialDial(origin, evaluation, obstacles, ([x, , z]) => boxes.some(({ min, max }) =>
-			max[1] > datum + 0.05 && min[1] <= datum + 0.3 && x >= min[0] && x <= max[0] && z >= min[2] && z <= max[2]),
-		([x, , z]) => geometry.rooms.length === 0 || geometry.rooms.some(({ floorPolygon }) => pointInPolygon([x, z], floorPolygon)), geometry.bounds);
+		return placeCelestialDial(
+			origin,
+			evaluation,
+			obstacles,
+			([x, , z]) =>
+				boxes.some(
+					({ min, max }) =>
+						max[1] > datum + 0.05 &&
+						min[1] <= datum + 0.3 &&
+						x >= min[0] &&
+						x <= max[0] &&
+						z >= min[2] &&
+						z <= max[2],
+				),
+			([x, , z]) =>
+				geometry.rooms.length === 0 ||
+				geometry.rooms.some(({ floorPolygon }) => pointInPolygon([x, z], floorPolygon)),
+			geometry.bounds,
+		);
 	});
 	const dial = $derived(dialPlacement ? celestialDialModel(look.shownSky, dialPlacement) : null);
 	function attachSession(): void {
 		$effect(() => {
 			const services = input.services();
-			return services ? bindSkySession(services.stage.session, { look, dial: () => dial }) : undefined;
+			return services
+				? bindSkySession(services.stage.session, { look, dial: () => dial })
+				: undefined;
 		});
 	}
 
@@ -77,32 +106,53 @@ export function createSkyHost(input: {
 	}
 
 	const canvas = contribution<'sky', 'canvas'>()({
-		get dial() { return dial; },
-		get sky() { return look.stageSky; }
+		get dial() {
+			return dial;
+		},
+		get sky() {
+			return look.stageSky;
+		},
 	});
 	const overlay = contribution<'sky', 'overlay'>()({
 		get celestial() {
 			const camera = input.evaluation();
-			return dial && camera ? { dial, camera, haze: look.shownSky.haze, owner: look.gesture.owner } : null;
+			return dial && camera
+				? { dial, camera, haze: look.shownSky.haze, owner: look.gesture.owner }
+				: null;
 		},
-		get marks() { return look.stageMarks; }
+		get marks() {
+			return look.stageMarks;
+		},
 	});
 	const panels = contribution<'sky', 'panels'>()({
 		rects: skyRects,
 		get environment(): SkyPanel {
-			return input.services() !== null && input.lens() === 'world' ? { look, fading: input.fading() } : null;
-		}
+			return input.services() !== null && input.lens() === 'world'
+				? { look, fading: input.fading() }
+				: null;
+		},
 	});
 
 	attachSession();
 	return {
-		canvas, overlay, panels, attachSession, dismiss, groundReachMeters,
+		canvas,
+		overlay,
+		panels,
+		attachSession,
+		dismiss,
+		groundReachMeters,
 		cardStratum: look.cardStratum,
 		pickMaterial: look.pickMaterial,
 		pickLibraryEntry: look.pickLibraryEntry,
 		setStudioWhileEditing: look.setStudioWhileEditing,
-		get libraryShelf() { return look.libraryShelf; },
-		get studioWhileEditing() { return look.studioWhileEditing; },
-		get sky() { return look.sky; }
+		get libraryShelf() {
+			return look.libraryShelf;
+		},
+		get studioWhileEditing() {
+			return look.studioWhileEditing;
+		},
+		get sky() {
+			return look.sky;
+		},
 	};
 }

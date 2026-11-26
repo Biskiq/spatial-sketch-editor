@@ -1,7 +1,6 @@
-
 import type {
 	StageAdapterContext,
-	StageHandleDescriptor
+	StageHandleDescriptor,
 } from '$lib/authoring/stage/stage-adapter-host';
 import { lightForward } from '../../look/light-aim';
 import { radiansToDegrees } from '../../look/light-units';
@@ -11,7 +10,7 @@ import {
 	isWideBeam,
 	pointReachRingRadius,
 	spotFootprintRadius,
-	spotInnerRadius
+	spotInnerRadius,
 } from '../../look/light-presentation';
 import { add, normalize, scale, sub } from './light-math';
 import { ringPhase, screenRingExtent } from './light-guides';
@@ -23,7 +22,7 @@ import { lightRange, spotTargetFor, type Light } from './light-subjects';
 export function lightMarkDescriptors(
 	light: Light,
 	adapterContext: StageAdapterContext,
-	refusalNow: string | null
+	refusalNow: string | null,
 ): readonly StageHandleDescriptor[] {
 	const forward = lightForward(light.rotation);
 	const datum = adapterContext.snapshot.domain.datumMeters;
@@ -41,7 +40,7 @@ export function lightMarkDescriptors(
 			planner: 'update-light',
 			draw: { pointRadius: 6.5 },
 			value: `${formatMeters(light.position[0])}, ${formatMeters(light.position[2])}`,
-			refusal: refusalNow
+			refusal: refusalNow,
 		},
 		{
 			role: 'edit',
@@ -57,8 +56,8 @@ export function lightMarkDescriptors(
 			draw: { glyph: 'lift-knob' },
 			screen: { offset: [0, -26] },
 			value: formatMeters(height),
-			refusal: refusalNow
-		}
+			refusal: refusalNow,
+		},
 	];
 	if (light.light === 'spot') {
 		const target = spotTargetFor(light, adapterContext);
@@ -78,7 +77,7 @@ export function lightMarkDescriptors(
 			value: wide
 				? `Aim · ${target.distance.toFixed(2)} m · Beam ${formatDegrees(radiansToDegrees(light.angle), 0)} · wider than the guide`
 				: `Aim · ${target.distance.toFixed(2)} m`,
-			refusal: refusalNow
+			refusal: refusalNow,
 		});
 		if (range !== undefined) {
 			const capCenter = add(light.position, scale(forward, range));
@@ -97,7 +96,7 @@ export function lightMarkDescriptors(
 					range < target.distance
 						? `${formatMeters(range)} · stops before the target`
 						: formatMeters(range),
-				refusal: refusalNow
+				refusal: refusalNow,
 			});
 		}
 		if (!wide) {
@@ -116,13 +115,9 @@ export function lightMarkDescriptors(
 				verb: 'Beam {value}°',
 				planner: 'update-light',
 				value: formatDegrees(radiansToDegrees(light.angle), 0),
-				refusal: refusalNow
+				refusal: refusalNow,
 			});
-			const innerRadius = spotInnerRadius(
-				target.distance,
-				light.angle,
-				light.penumbra ?? 0
-			);
+			const innerRadius = spotInnerRadius(target.distance, light.angle, light.penumbra ?? 0);
 			handles.push({
 				role: 'edit',
 				id: 'light-penumbra',
@@ -136,7 +131,7 @@ export function lightMarkDescriptors(
 				verb: 'Soft edge {value}%',
 				planner: 'update-light',
 				value: `${Math.round((light.penumbra ?? 0) * 100)}%`,
-				refusal: refusalNow
+				refusal: refusalNow,
 			});
 		}
 	} else if (range !== undefined) {
@@ -157,13 +152,13 @@ export function lightMarkDescriptors(
 				verb: 'Reach {value} m',
 				planner: 'update-light',
 				value: `${formatMeters(range)} · fades to nothing here`,
-				refusal: refusalNow
+				refusal: refusalNow,
 			});
 		} else {
 			// The sphere does not meet the datum: a 30 px screen-facing ring
 			// around the glyph is the reach control.
 			const cameraForward = normalize(
-				sub(adapterContext.evaluation.pose.target, adapterContext.evaluation.eye)
+				sub(adapterContext.evaluation.pose.target, adapterContext.evaluation.eye),
 			);
 			handles.push({
 				role: 'edit',
@@ -178,7 +173,7 @@ export function lightMarkDescriptors(
 				verb: 'Reach {value} m',
 				planner: 'update-light',
 				value: `${formatMeters(range)} · does not reach the floor`,
-				refusal: refusalNow
+				refusal: refusalNow,
 			});
 		}
 	}

@@ -40,7 +40,7 @@ export function createStageCanvasViews(input: {
 		// The idle Unfold anchor was sampled with the source props.
 		const unfold = {
 			...Object.getOwnPropertyDescriptors(unfoldCanvas),
-			unfoldAnchorPin: { value: unfoldCanvas.unfoldAnchorPin, enumerable: true }
+			unfoldAnchorPin: { value: unfoldCanvas.unfoldAnchorPin, enumerable: true },
 		};
 		return Object.defineProperties(coreCanvas, {
 			...Object.getOwnPropertyDescriptors(features),
@@ -50,8 +50,16 @@ export function createStageCanvasViews(input: {
 			...Object.getOwnPropertyDescriptors(liftCanvas),
 			...Object.getOwnPropertyDescriptors(cutawayCanvas),
 			...Object.getOwnPropertyDescriptors(sliceCanvas),
-			...unfold
-		}) as typeof coreCanvas & typeof features & typeof appearanceCanvas & typeof input.sky.regions.canvas & typeof input.artwork.regions.canvas & typeof liftCanvas & typeof cutawayCanvas & typeof sliceCanvas & typeof unfoldCanvas;
+			...unfold,
+		}) as typeof coreCanvas &
+			typeof features &
+			typeof appearanceCanvas &
+			typeof input.sky.regions.canvas &
+			typeof input.artwork.regions.canvas &
+			typeof liftCanvas &
+			typeof cutawayCanvas &
+			typeof sliceCanvas &
+			typeof unfoldCanvas;
 	});
 
 	const lists = { core: input.coreRegions.overlay, ...input.overlayLists };
@@ -60,7 +68,7 @@ export function createStageCanvasViews(input: {
 		celestial: input.sky.regions.overlay.celestial,
 		marks: overlayList('marks', lists),
 		candidates: overlayList('candidates', lists),
-		sliceDraft: input.readings.regions.overlay.sliceDraft
+		sliceDraft: input.readings.regions.overlay.sliceDraft,
 	});
 
 	return {
@@ -69,6 +77,6 @@ export function createStageCanvasViews(input: {
 		},
 		get overlay() {
 			return overlay;
-		}
+		},
 	};
 }

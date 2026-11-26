@@ -12,9 +12,9 @@ const NEUTRAL_RECIPE_INPUT = {
 	normalScale: 1,
 	mapping: {
 		kind: 'target',
-		metric: { tileMeters: [1, 1], rotation: 0, offset: [0, 0] }
+		metric: { tileMeters: [1, 1], rotation: 0, offset: [0, 0] },
 	},
-	maps: {}
+	maps: {},
 } as const;
 
 export function buildNeutralRecipe(): Recipe {

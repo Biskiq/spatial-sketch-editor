@@ -1,12 +1,10 @@
 {
-  "id": "34-paint-recent-limit",
-  "area": "authoring",
-  "citation": "section 3 — Undo grouping, selection",
-  "title": "The recent-paint list exceeds its bound",
-  "file": "apps/editor/src/lib/authoring/look/paint-pick.ts",
-  "find": "return [key, ...list.filter((entry) => entry !== key)].slice(0, limit);",
-  "replace": "return [key, ...list.filter((entry) => entry !== key)].slice(0, limit + 1);",
-  "tests": [
-    "tests/lib/authoring/look/paint-pick.test.ts"
-  ]
+	"id": "34-paint-recent-limit",
+	"area": "authoring",
+	"citation": "section 3 — Undo grouping, selection",
+	"title": "The recent-paint list exceeds its bound",
+	"file": "apps/editor/src/lib/authoring/look/paint-pick.ts",
+	"find": "return [key, ...list.filter((entry) => entry !== key)].slice(0, limit);",
+	"replace": "return [key, ...list.filter((entry) => entry !== key)].slice(0, limit + 1);",
+	"tests": ["tests/lib/authoring/look/paint-pick.test.ts"]
 }

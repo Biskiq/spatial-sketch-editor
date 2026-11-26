@@ -51,7 +51,10 @@ export type ExperienceHomes = {
 	readonly lookThroughViewId: () => string | null;
 	readonly lookThroughMoved: () => boolean;
 	/** The live provisional framing while looking through: authored lens and floor-relative eye height. */
-	readonly lookThroughFraming: () => { readonly fovYDegrees: number; readonly eyeHeightMetres: number } | null;
+	readonly lookThroughFraming: () => {
+		readonly fovYDegrees: number;
+		readonly eyeHeightMetres: number;
+	} | null;
 	readonly lookThroughLens: (fovYDegrees: number) => boolean;
 	readonly lookThroughEyeHeight: (metres: number) => boolean;
 	readonly lookThrough: (viewId: string) => void;

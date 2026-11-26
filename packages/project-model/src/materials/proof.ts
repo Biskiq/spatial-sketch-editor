@@ -46,7 +46,7 @@ export const EMPTY_MATERIAL_PROOF: MaterialDigestProof = Object.freeze({
 	entries: new Map(),
 	has: () => false,
 	get: () => null,
-	matches: () => false
+	matches: () => false,
 });
 
 function proofOf(entries: Map<Hash, MaterialDigestProofEntry>): MaterialDigestProof {
@@ -59,7 +59,7 @@ function proofOf(entries: Map<Hash, MaterialDigestProofEntry>): MaterialDigestPr
 			const entry = frozen.get(hash);
 			if (entry === undefined) return false;
 			return entry.canonicalJson === canonicalRecipeJson(recipe);
-		}
+		},
 	});
 }
 
@@ -72,7 +72,7 @@ function proofOf(entries: Map<Hash, MaterialDigestProofEntry>): MaterialDigestPr
  * claiming one digest refuse the whole proof.
  */
 export async function buildMaterialDigestProof(
-	definitions: readonly { readonly hash: Hash; readonly recipe: Recipe }[]
+	definitions: readonly { readonly hash: Hash; readonly recipe: Recipe }[],
 ): Promise<MaterialProofResult> {
 	const entries = new Map<Hash, MaterialDigestProofEntry>();
 	const issues: MaterialIssue[] = [];
@@ -82,7 +82,7 @@ export async function buildMaterialDigestProof(
 			issues.push({
 				code: 'invalid-hash',
 				path: '$.recipe',
-				action: 'A definition identity must be the digest of its canonical recipe bytes.'
+				action: 'A definition identity must be the digest of its canonical recipe bytes.',
 			});
 			continue;
 		}
@@ -93,7 +93,7 @@ export async function buildMaterialDigestProof(
 				issues.push({
 					code: 'invalid-hash',
 					path: '$.recipe',
-					action: 'Two different recipes cannot share one identity.'
+					action: 'Two different recipes cannot share one identity.',
 				});
 			}
 			continue;
@@ -102,7 +102,7 @@ export async function buildMaterialDigestProof(
 			hash: computed,
 			recipe: definition.recipe,
 			canonicalBytes: canonicalRecipeBytes(definition.recipe),
-			canonicalJson: json
+			canonicalJson: json,
 		});
 	}
 	if (issues.length > 0) return { success: false, issues: dedupeMaterialIssues(issues) };
@@ -119,7 +119,7 @@ export async function buildMaterialDigestProof(
 export function verifyMaterialDigest(
 	proof: MaterialDigestProof,
 	hash: Hash,
-	recipe: Recipe
+	recipe: Recipe,
 ): { readonly ok: true } | { readonly ok: false; readonly issue: MaterialIssue } {
 	if (!proof.matches(hash, recipe)) {
 		return {
@@ -127,8 +127,8 @@ export function verifyMaterialDigest(
 			issue: {
 				code: proof.has(hash) ? 'invalid-hash' : 'missing-pin',
 				path: '$.recipe',
-				action: 'Verify this recipe at the external ingress before registering it.'
-			}
+				action: 'Verify this recipe at the external ingress before registering it.',
+			},
 		};
 	}
 	return { ok: true };

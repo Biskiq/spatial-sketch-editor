@@ -12,9 +12,7 @@ export {
 	proposeMaterialSet,
 } from './proposal';
 
-export type {
-	ParsedSetName,
-} from './proposal';
+export type { ParsedSetName } from './proposal';
 
 export type {
 	CandidateCorrections,

@@ -127,7 +127,7 @@ function apply(light: RealizedLight, descriptor: LightDescriptor): void {
 			const distance = Math.hypot(
 				descriptor.position[0] - descriptor.target[0],
 				fromY,
-				descriptor.position[2] - descriptor.target[2]
+				descriptor.position[2] - descriptor.target[2],
 			);
 			const vertical = distance > 0 && Math.abs(fromY / distance) > 0.999;
 			camera.up.set(0, vertical ? 0 : 1, vertical ? 1 : 0);
@@ -173,7 +173,9 @@ export function createLightStore(): LightStore {
 				update(next) {
 					if (released) throw new Error('light lease is released');
 					if (next.kind !== kind) {
-						throw new Error(`light lease is a ${kind}; a ${next.kind} replaces it (release, then acquire)`);
+						throw new Error(
+							`light lease is a ${kind}; a ${next.kind} replaces it (release, then acquire)`,
+						);
 					}
 					const nextKey = lightKey(next);
 					if (nextKey === key) return false;
@@ -190,7 +192,7 @@ export function createLightStore(): LightStore {
 					if (light instanceof DirectionalLight) light.target.removeFromParent();
 					light.dispose();
 					disposedCount += 1;
-				}
+				},
 			};
 			held.add(lease);
 			return lease;
@@ -202,6 +204,6 @@ export function createLightStore(): LightStore {
 			if (disposed) return;
 			disposed = true;
 			for (const lease of [...held]) lease.release();
-		}
+		},
 	};
 }

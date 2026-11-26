@@ -1,5 +1,3 @@
-
-
 export {
 	CURVE_ENDPOINT_EPSILON,
 	CURVE_FLATNESS_TOLERANCE,
@@ -9,7 +7,7 @@ export {
 	CURVE_ARC_LENGTH_MAX_DEPTH,
 	LAYOUT_AUTO_BEZIER_ALPHA,
 	MAX_CURVE_SAMPLES_PER_SEGMENT,
-	LayoutGeometrySamplingError
+	LayoutGeometrySamplingError,
 } from './curve/contracts';
 export type {
 	AutoBezierSegment,
@@ -21,7 +19,7 @@ export type {
 	LegacyBezierSegment,
 	CurveSample,
 	CurveDistanceResult,
-	SampledSegment
+	SampledSegment,
 } from './curve/contracts';
 export {
 	autoBezierAnchorPoints,
@@ -35,7 +33,7 @@ export {
 	cubicBezierArcLengthBetween,
 	cubicBezierArcLengthAt,
 	cubicBezierArcLength,
-	cubicBezierDerivative
+	cubicBezierDerivative,
 } from './curve/bezier';
 export {
 	segmentVertexPoints,
@@ -46,13 +44,13 @@ export {
 	pointAtDistance,
 	samplePolylineInRange,
 	pointAlongSamples,
-	projectPointToSampledSegment
+	projectPointToSampledSegment,
 } from './curve/samples';
 export { sampledPolylineIntersects, sampledPolylineSelfIntersects } from './curve/intersections';
 export {
 	OPENING_CENTER_EPSILON,
 	sampledIsClosed,
 	openingCenterFrame,
-	openingCenterPolyline
+	openingCenterPolyline,
 } from './curve/opening';
 export type { OpeningHostSamples, OpeningCenterMode } from './curve/opening';

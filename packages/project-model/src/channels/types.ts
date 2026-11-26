@@ -19,7 +19,7 @@ import type {
 	ReferenceLocation,
 	ReferenceReadContext,
 	ReferenceSubject,
-	SemanticReference
+	SemanticReference,
 } from '../references/types';
 import type { CameraOutputState } from './camera-output';
 
@@ -33,7 +33,13 @@ export type ChannelFamilyId = string;
 export type ChannelUnits = 'meters' | 'radians' | 'ratio' | null;
 
 /** The value kinds F.3 v1 admits. Each family declares one per property. */
-export const CHANNEL_VALUE_KINDS = ['number', 'vector3', 'identifier', 'identifier-set', 'source-set'] as const;
+export const CHANNEL_VALUE_KINDS = [
+	'number',
+	'vector3',
+	'identifier',
+	'identifier-set',
+	'source-set',
+] as const;
 
 export type ChannelValueKind = (typeof CHANNEL_VALUE_KINDS)[number];
 
@@ -68,7 +74,12 @@ export type ChannelScope = (typeof CHANNEL_SCOPES)[number];
  * Camera-output ticket protocol holds, so the channel reflects that one authority
  * instead of arbitrating ownership a second time.
  */
-export const CHANNEL_ARBITRATIONS = ['exclusive', 'ordered-replacement', 'union', 'camera-output'] as const;
+export const CHANNEL_ARBITRATIONS = [
+	'exclusive',
+	'ordered-replacement',
+	'union',
+	'camera-output',
+] as const;
 
 export type ChannelArbitration = (typeof CHANNEL_ARBITRATIONS)[number];
 
@@ -94,7 +105,7 @@ export const CHANNEL_INVALIDATION_INPUTS = [
 	'source-extent',
 	'source-kind-filter',
 	'reveal-set',
-	'epoch'
+	'epoch',
 ] as const;
 
 export type ChannelInvalidationInput = (typeof CHANNEL_INVALIDATION_INPUTS)[number];
@@ -264,7 +275,12 @@ export type ChannelEntry = { scope: ChannelPropertyScope; contribution: ChannelC
  * a run whose contribution merely **expired** (its content or generation changed)
  * may re-offer a re-evaluated value under the same run epoch.
  */
-export type ChannelEpochMark = { scope: ChannelPropertyScope; invocationId: string; runEpoch: number; retired: boolean };
+export type ChannelEpochMark = {
+	scope: ChannelPropertyScope;
+	invocationId: string;
+	runEpoch: number;
+	retired: boolean;
+};
 
 /**
  * Accepted channel state: the admitted contributions in acceptance order and the
@@ -301,7 +317,7 @@ export const CHANNEL_REJECTION_REASONS = [
 	'camera-output-not-held',
 	'competing-exclusive-contribution',
 	'stale-run-epoch',
-	'same-run-epoch-conflict'
+	'same-run-epoch-conflict',
 ] as const;
 
 export type ChannelRejectionReason = (typeof CHANNEL_REJECTION_REASONS)[number];
@@ -352,7 +368,13 @@ export type ChannelNegotiationOutcome =
 			reason: ChannelRejectionReason;
 			diagnostics: ChannelDiagnostic;
 	  }
-	| { kind: 'unavailable'; state: ChannelState; family: ChannelFamilyId; capability: ChannelCapability; message: string };
+	| {
+			kind: 'unavailable';
+			state: ChannelState;
+			family: ChannelFamilyId;
+			capability: ChannelCapability;
+			message: string;
+	  };
 
 /** One contributor to a read value: its own identity and provenance, never an aggregate. */
 export type ChannelContributor = {
@@ -370,10 +392,19 @@ export type ChannelContributor = {
  */
 export type ChannelPropertyRead =
 	| { kind: 'absent'; scope: ChannelPropertyScope }
-	| { kind: 'value'; scope: ChannelPropertyScope; value: ChannelValue; contributors: readonly ChannelContributor[] };
+	| {
+			kind: 'value';
+			scope: ChannelPropertyScope;
+			value: ChannelValue;
+			contributors: readonly ChannelContributor[];
+	  };
 
 /** What a contributor presents to withdraw its own contribution. */
-export type ChannelContributionHandle = { scope: ChannelPropertyScope; invocationId: string; runEpoch: number };
+export type ChannelContributionHandle = {
+	scope: ChannelPropertyScope;
+	invocationId: string;
+	runEpoch: number;
+};
 
 export type ChannelWithdrawal =
 	/** The invocation's contribution at exactly that run epoch was removed. */

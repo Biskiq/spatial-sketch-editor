@@ -9,13 +9,12 @@ import { LAYOUT_DUPLICATE_MAX_COPIES } from './contracts';
 export function allocateId(
 	taken: ReadonlySet<string>,
 	seed: string,
-	capture: LayoutIdCapture
+	capture: LayoutIdCapture,
 ): string {
 	const id = layoutCapturedId(capture, seed);
 	if (taken.has(id)) throw new LayoutIdCollisionError(id);
 	return id;
 }
-
 
 /** Run one duplicate plan, translating a captured-id collision into its own refusal. */
 export function guardedDuplicatePlan(run: () => DuplicatePlan): DuplicatePlan {
@@ -29,12 +28,11 @@ export function guardedDuplicatePlan(run: () => DuplicatePlan): DuplicatePlan {
 	}
 }
 
-
 export function reject(
 	code: DuplicateRejectionCode,
 	message: string,
 	targetIds?: readonly string[],
-	issues?: readonly (LayoutDocumentIssue | OpeningSetIssue)[]
+	issues?: readonly (LayoutDocumentIssue | OpeningSetIssue)[],
 ): DuplicatePlan {
 	return {
 		kind: 'rejected',
@@ -42,17 +40,12 @@ export function reject(
 			code,
 			message,
 			...(targetIds ? { targetIds } : {}),
-			...(issues ? { issues } : {})
-		}
+			...(issues ? { issues } : {}),
+		},
 	};
 }
 
-
 /** Is `count` a valid copy count (integer, `1..50`)? */
 export function isValidCopyCount(count: number): boolean {
-	return (
-		Number.isInteger(count) &&
-		count >= 1 &&
-		count <= LAYOUT_DUPLICATE_MAX_COPIES
-	);
+	return Number.isInteger(count) && count >= 1 && count <= LAYOUT_DUPLICATE_MAX_COPIES;
 }

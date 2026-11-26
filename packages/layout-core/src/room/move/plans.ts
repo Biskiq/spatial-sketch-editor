@@ -14,7 +14,7 @@ import { reject } from './shared';
 export function planWallFirstRoomMove(
 	document: LayoutDocumentWallFirst,
 	roomId: string,
-	delta: LayoutVec2
+	delta: LayoutVec2,
 ): RoomMovePlan {
 	const [dx, dz] = delta;
 	if (!Number.isFinite(dx) || !Number.isFinite(dz)) {
@@ -29,12 +29,14 @@ export function planWallFirstRoomMove(
 
 	// Round translation carries the complete attached physical component;
 	// ordinary Rooms retain the existing group isolation policy.
-	const isolation = resolveIsolatedRoomGroupSubgraph(document, roomId, { includePhysicalAttachments: true });
+	const isolation = resolveIsolatedRoomGroupSubgraph(document, roomId, {
+		includePhysicalAttachments: true,
+	});
 	if (isolation.kind === 'rejected') {
 		return reject(
 			isolation.rejection.code,
 			isolation.rejection.message,
-			isolation.rejection.targetIds
+			isolation.rejection.targetIds,
 		);
 	}
 	const { subgraph } = isolation;
@@ -55,7 +57,10 @@ export function planWallFirstRoomMove(
 		const junctions = new Set<string>();
 		for (const ref of room.boundary) {
 			const wall = wallById.get(ref.wallId);
-			if (wall) { junctions.add(wall.startJunctionId); junctions.add(wall.endJunctionId); }
+			if (wall) {
+				junctions.add(wall.startJunctionId);
+				junctions.add(wall.endJunctionId);
+			}
 		}
 		for (const id of junctions) {
 			const owners = ownersByJunction.get(id) ?? [];
@@ -67,22 +72,26 @@ export function planWallFirstRoomMove(
 		? [...ownersByJunction].filter(([, owners]) => owners.length > 1)
 		: [];
 	const sharedOwners = new Set(shared.flatMap(([, owners]) => owners));
-	for (const room of [...candidate.rooms].filter((entry) => sharedOwners.has(entry.id)).sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0)) {
+	for (const room of [...candidate.rooms]
+		.filter((entry) => sharedOwners.has(entry.id))
+		.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))) {
 		const certification = certifyRoundRoom(candidate, room);
 		if (certification.kind === 'invalid') {
-			const junctionIds = shared.filter(([, owners]) => owners.includes(room.id)).map(([id]) => id).sort();
+			const junctionIds = shared
+				.filter(([, owners]) => owners.includes(room.id))
+				.map(([id]) => id)
+				.sort();
 			return reject(
 				'invalid_candidate_document',
 				`Chosen shared Round Junction reconstruction cannot be certified for Room '${room.id}': ${certification.issue.message}`,
 				[room.id, ...junctionIds],
-				[certification.issue]
+				[certification.issue],
 			);
 		}
 	}
 
 	return finalizeRoomUnitMotion(document, roomId, subgraph, candidate, 'room-move');
 }
-
 
 /**
  * Plan one rigid rotation of a wall-first Room unit about `pivot`.
@@ -102,7 +111,7 @@ export function planWallFirstRoomRotation(
 	document: LayoutDocumentWallFirst,
 	roomId: string,
 	pivot: LayoutVec2,
-	yaw: number
+	yaw: number,
 ): RoomMovePlan {
 	if (!Number.isFinite(pivot[0]) || !Number.isFinite(pivot[1]) || !Number.isFinite(yaw)) {
 		return reject('invalid_value', 'Room rotation pivot and angle must be finite', [roomId]);
@@ -121,7 +130,7 @@ export function planWallFirstRoomRotation(
 		return reject(
 			isolation.rejection.code,
 			isolation.rejection.message,
-			isolation.rejection.targetIds
+			isolation.rejection.targetIds,
 		);
 	}
 	const { subgraph } = isolation;
@@ -131,6 +140,6 @@ export function planWallFirstRoomRotation(
 		roomId,
 		subgraph,
 		rotateRoomUnitMoveCandidate(document, subgraph, pivot, yaw),
-		'room-rotate'
+		'room-rotate',
 	);
 }

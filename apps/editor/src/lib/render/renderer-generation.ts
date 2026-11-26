@@ -30,7 +30,7 @@ import {
 	type GenerationFailure,
 	type RendererAttempt,
 	type RendererBackend,
-	type RendererSurface
+	type RendererSurface,
 } from './renderer-backend';
 
 export type GenerationSnapshot = {
@@ -70,7 +70,7 @@ const DEADLINE_MS = 10_000;
 function defaultTimer(): GenerationTimer {
 	return {
 		set: (callback, ms) => globalThis.setTimeout(callback, ms),
-		clear: (handle) => globalThis.clearTimeout(handle as ReturnType<typeof setTimeout>)
+		clear: (handle) => globalThis.clearTimeout(handle as ReturnType<typeof setTimeout>),
 	};
 }
 
@@ -78,7 +78,7 @@ function createFacade(
 	renderer: WebGPURenderer,
 	isReady: () => boolean,
 	retire: () => void,
-	counts: { forwarded: number; blocked: number; empty: number }
+	counts: { forwarded: number; blocked: number; empty: number },
 ): WebGPURenderer {
 	const facade = new Proxy(renderer, {
 		get(target, property, receiver) {
@@ -92,7 +92,8 @@ function createFacade(
 					// canvas is resized to zero. r187 would create a zero-sized depth
 					// texture and swapchain and log uncaptured validation errors; there
 					// is no frame to present, so refuse the draw instead.
-					const canvas = (target as { domElement?: { width?: number; height?: number } }).domElement;
+					const canvas = (target as { domElement?: { width?: number; height?: number } })
+						.domElement;
 					if ((canvas?.width ?? 0) === 0 || (canvas?.height ?? 0) === 0) {
 						counts.empty += 1;
 						return undefined;
@@ -110,7 +111,7 @@ function createFacade(
 		},
 		set(target, property, value, receiver) {
 			return Reflect.set(target, property, value, receiver);
-		}
+		},
 	});
 	return facade;
 }
@@ -156,7 +157,7 @@ export function createRendererGeneration(options: {
 		renderer,
 		() => state === 'ready' && !retiring,
 		() => void retire(),
-		counts
+		counts,
 	);
 
 	async function disposeOnce(): Promise<void> {
@@ -246,9 +247,9 @@ export function createRendererGeneration(options: {
 				() => {
 					clearDeadline();
 					fail('init-rejected');
-				}
+				},
 			);
 		},
-		retire
+		retire,
 	};
 }

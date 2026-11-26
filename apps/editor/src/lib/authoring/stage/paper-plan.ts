@@ -14,8 +14,21 @@
  * `PAPER_LAYER.sceneFootprint`; `resolveStagePick` therefore arbitrates with the
  * drawing's own order.
  */
-import { eligiblePlanFragments, createPlanBoxIndex, openingPlanSymbol, type PlanBox, type PlanEvaluation, type PlanFragment, type PlanStream } from '@portfolio/layout-core/world';
-import { indexedCompiledWall, type CompiledLayoutGeometry, type CompiledPhysicalWall, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import {
+	eligiblePlanFragments,
+	createPlanBoxIndex,
+	openingPlanSymbol,
+	type PlanBox,
+	type PlanEvaluation,
+	type PlanFragment,
+	type PlanStream,
+} from '@portfolio/layout-core/world';
+import {
+	indexedCompiledWall,
+	type CompiledLayoutGeometry,
+	type CompiledPhysicalWall,
+	type LayoutVec2,
+} from '@portfolio/layout-core/geometry';
 import { countWork } from '@portfolio/layout-core/kernel';
 import type { PlanSceneProjection } from '$lib/authoring/scene/plan-scene-footprint';
 import { SPATIAL_PAINT_ROLES } from '$lib/design/spatial-paint';
@@ -51,7 +64,7 @@ export const PAPER_GROUND_INK = SPATIAL_PAINT_ROLES.paper;
 export const PAPER_TONES = {
 	current: { label: 'Current', ink: PAPER_GROUND_INK },
 	cream: { label: 'Warm cream', ink: '#f3eee2' },
-	sage: { label: 'Deeper sage', ink: '#d9dfd4' }
+	sage: { label: 'Deeper sage', ink: '#d9dfd4' },
 } as const;
 export type PaperTone = keyof typeof PAPER_TONES;
 export const PAPER_TONE_IDS = Object.keys(PAPER_TONES) as readonly PaperTone[];
@@ -70,7 +83,7 @@ export const PAPER_LAYER = {
 	projected: 30,
 	cut: 40,
 	symbol: 50,
-	sceneFootprint: 60
+	sceneFootprint: 60,
 } as const;
 
 export type PaperLayer = (typeof PAPER_LAYER)[keyof typeof PAPER_LAYER];
@@ -92,18 +105,56 @@ export type PaperLineStyle = {
 export const PAPER_LINE_STYLE: {
 	readonly [Treatment in Exclude<PaperTreatment, 'room-floor'>]: PaperLineStyle;
 } = {
-	cut: { ink: PAPER_INK, widthCssPx: 0.5, opacity: 1, dashed: false, dashSizeMeters: 0.12, gapSizeMeters: 0.08 },
-	projected: { ink: PAPER_INK, widthCssPx: 1, opacity: 0.7, dashed: false, dashSizeMeters: 0.12, gapSizeMeters: 0.08 },
-	hidden: { ink: PAPER_INK, widthCssPx: 1, opacity: 0.45, dashed: true, dashSizeMeters: 0.12, gapSizeMeters: 0.08 },
-	symbol: { ink: PAPER_INK, widthCssPx: 1, opacity: 1, dashed: false, dashSizeMeters: 0.12, gapSizeMeters: 0.08 },
-	footprint: { ink: PAPER_INK, widthCssPx: 1.25, opacity: 1, dashed: false, dashSizeMeters: 0.12, gapSizeMeters: 0.08 }
+	cut: {
+		ink: PAPER_INK,
+		widthCssPx: 0.5,
+		opacity: 1,
+		dashed: false,
+		dashSizeMeters: 0.12,
+		gapSizeMeters: 0.08,
+	},
+	projected: {
+		ink: PAPER_INK,
+		widthCssPx: 1,
+		opacity: 0.7,
+		dashed: false,
+		dashSizeMeters: 0.12,
+		gapSizeMeters: 0.08,
+	},
+	hidden: {
+		ink: PAPER_INK,
+		widthCssPx: 1,
+		opacity: 0.45,
+		dashed: true,
+		dashSizeMeters: 0.12,
+		gapSizeMeters: 0.08,
+	},
+	symbol: {
+		ink: PAPER_INK,
+		widthCssPx: 1,
+		opacity: 1,
+		dashed: false,
+		dashSizeMeters: 0.12,
+		gapSizeMeters: 0.08,
+	},
+	footprint: {
+		ink: PAPER_INK,
+		widthCssPx: 1.25,
+		opacity: 1,
+		dashed: false,
+		dashSizeMeters: 0.12,
+		gapSizeMeters: 0.08,
+	},
 };
 
-export const PAPER_FILL_INK: { readonly cut: string; readonly 'room-floor': string; readonly 'region-floor': string;
+export const PAPER_FILL_INK: {
+	readonly cut: string;
+	readonly 'room-floor': string;
+	readonly 'region-floor': string;
 } = {
 	cut: PAPER_INK,
 	'room-floor': PAPER_GROUND_INK,
-	'region-floor': '#d1d8ca'
+	'region-floor': '#d1d8ca',
 };
 
 export type PaperSegment = readonly [LayoutVec2, LayoutVec2];
@@ -123,7 +174,10 @@ export type PaperLineDraw = {
 export type PaperFillDraw = {
 	readonly key: string;
 	readonly sourceId: string;
-	readonly layer: typeof PAPER_LAYER.roomFloor | typeof PAPER_LAYER.cut | typeof PAPER_LAYER.projected;
+	readonly layer:
+		| typeof PAPER_LAYER.roomFloor
+		| typeof PAPER_LAYER.cut
+		| typeof PAPER_LAYER.projected;
 	readonly treatment: 'room-floor' | 'region-floor' | 'cut';
 	readonly elevationMeters: number;
 	readonly polygons: readonly (readonly LayoutVec2[])[];
@@ -255,18 +309,23 @@ function wallPointAt(wall: CompiledPhysicalWall, distance: number): WallPointAt 
 		const span = end.distance - start.distance;
 		if (!(span > 1e-9)) return end;
 		const t = Math.min(1, Math.max(0, (distance - start.distance) / span));
-		const normal = normalized2(
-			start.normal[0] + (end.normal[0] - start.normal[0]) * t,
-			start.normal[1] + (end.normal[1] - start.normal[1]) * t
-		) ?? start.normal;
-		const tangent = normalized2(
-			start.tangent[0] + (end.tangent[0] - start.tangent[0]) * t,
-			start.tangent[1] + (end.tangent[1] - start.tangent[1]) * t
-		) ?? start.tangent;
+		const normal =
+			normalized2(
+				start.normal[0] + (end.normal[0] - start.normal[0]) * t,
+				start.normal[1] + (end.normal[1] - start.normal[1]) * t,
+			) ?? start.normal;
+		const tangent =
+			normalized2(
+				start.tangent[0] + (end.tangent[0] - start.tangent[0]) * t,
+				start.tangent[1] + (end.tangent[1] - start.tangent[1]) * t,
+			) ?? start.tangent;
 		return {
-			point: [start.point[0] + (end.point[0] - start.point[0]) * t, start.point[1] + (end.point[1] - start.point[1]) * t],
+			point: [
+				start.point[0] + (end.point[0] - start.point[0]) * t,
+				start.point[1] + (end.point[1] - start.point[1]) * t,
+			],
 			normal,
-			tangent
+			tangent,
 		};
 	}
 	return last;
@@ -286,9 +345,10 @@ function wallPointAt(wall: CompiledPhysicalWall, distance: number): WallPointAt 
  */
 export function cutWallBandsOf(
 	wall: CompiledPhysicalWall,
-	spans: readonly CutWallSpan[]
+	spans: readonly CutWallSpan[],
 ): readonly (readonly LayoutVec2[])[] {
-	if (!(wall.thickness > 0) || !Number.isFinite(wall.thickness) || wall.samples.length < 2) return [];
+	if (!(wall.thickness > 0) || !Number.isFinite(wall.thickness) || wall.samples.length < 2)
+		return [];
 	const total = wall.samples.at(-1)?.distance ?? wall.length;
 	if (!(total > 0)) return [];
 	const half = wall.thickness / 2;
@@ -313,18 +373,29 @@ export function cutWallBandsOf(
 		const endCap = Math.abs(endDistance - total) <= 1e-6 ? half : 0;
 		const startPoint: LayoutVec2 = [
 			start.point[0] - start.tangent[0] * startCap,
-			start.point[1] - start.tangent[1] * startCap
+			start.point[1] - start.tangent[1] * startCap,
 		];
 		const endPoint: LayoutVec2 = [
 			end.point[0] + end.tangent[0] * endCap,
-			end.point[1] + end.tangent[1] * endCap
+			end.point[1] + end.tangent[1] * endCap,
 		];
-		const left: LayoutVec2[] = [[startPoint[0] + start.normal[0] * half, startPoint[1] + start.normal[1] * half]];
-		const right: LayoutVec2[] = [[startPoint[0] - start.normal[0] * half, startPoint[1] - start.normal[1] * half]];
+		const left: LayoutVec2[] = [
+			[startPoint[0] + start.normal[0] * half, startPoint[1] + start.normal[1] * half],
+		];
+		const right: LayoutVec2[] = [
+			[startPoint[0] - start.normal[0] * half, startPoint[1] - start.normal[1] * half],
+		];
 		for (const sample of wall.samples) {
-			if (sample.distance <= startDistance + 1e-6 || sample.distance >= endDistance - 1e-6) continue;
-			left.push([sample.point[0] + sample.normal[0] * half, sample.point[1] + sample.normal[1] * half]);
-			right.push([sample.point[0] - sample.normal[0] * half, sample.point[1] - sample.normal[1] * half]);
+			if (sample.distance <= startDistance + 1e-6 || sample.distance >= endDistance - 1e-6)
+				continue;
+			left.push([
+				sample.point[0] + sample.normal[0] * half,
+				sample.point[1] + sample.normal[1] * half,
+			]);
+			right.push([
+				sample.point[0] - sample.normal[0] * half,
+				sample.point[1] - sample.normal[1] * half,
+			]);
 		}
 		left.push([endPoint[0] + end.normal[0] * half, endPoint[1] + end.normal[1] * half]);
 		right.push([endPoint[0] - end.normal[0] * half, endPoint[1] - end.normal[1] * half]);
@@ -361,7 +432,12 @@ function unionPolygonBounds(polygon: UnionPolygon): UnionPolygonBounds {
 		minZ,
 		maxX,
 		maxZ,
-		candidate: { minX: minX - padding, minZ: minZ - padding, maxX: maxX + padding, maxZ: maxZ + padding }
+		candidate: {
+			minX: minX - padding,
+			minZ: minZ - padding,
+			maxX: maxX + padding,
+			maxZ: maxZ + padding,
+		},
 	};
 }
 
@@ -376,12 +452,13 @@ function unionPolygonIndex(polygons: readonly UnionPolygon[]): {
 }
 
 function paddedEdgeBounds(a: LayoutVec2, b: LayoutVec2): PlanBox {
-	const padding = UNION_ON_EDGE_EPSILON + Math.hypot(b[0] - a[0], b[1] - a[1]) * UNION_SPLIT_EPSILON;
+	const padding =
+		UNION_ON_EDGE_EPSILON + Math.hypot(b[0] - a[0], b[1] - a[1]) * UNION_SPLIT_EPSILON;
 	return {
 		minX: Math.min(a[0], b[0]) - padding,
 		minZ: Math.min(a[1], b[1]) - padding,
 		maxX: Math.max(a[0], b[0]) + padding,
-		maxZ: Math.max(a[1], b[1]) + padding
+		maxZ: Math.max(a[1], b[1]) + padding,
 	};
 }
 
@@ -399,13 +476,13 @@ function pointInTriangle(point: LayoutVec2, a: LayoutVec2, b: LayoutVec2, c: Lay
 function pointInUnion(
 	point: LayoutVec2,
 	polygons: readonly UnionPolygon[],
-	index: ReturnType<typeof unionPolygonIndex>
+	index: ReturnType<typeof unionPolygonIndex>,
 ): boolean {
 	const candidates = index.overlaps({
 		minX: point[0] - 1e-9,
 		minZ: point[1] - 1e-9,
 		maxX: point[0] + 1e-9,
-		maxZ: point[1] + 1e-9
+		maxZ: point[1] + 1e-9,
 	});
 	for (const polygonIndex of candidates) {
 		const polygon = polygons[polygonIndex]!;
@@ -420,7 +497,9 @@ function pointInUnion(
 		for (let index = 0, previous = polygon.length - 1; index < polygon.length; previous = index++) {
 			const current = polygon[index]!;
 			const prior = polygon[previous]!;
-			const onEdge = (point[0] - prior[0]) * (current[1] - prior[1]) - (point[1] - prior[1]) * (current[0] - prior[0]);
+			const onEdge =
+				(point[0] - prior[0]) * (current[1] - prior[1]) -
+				(point[1] - prior[1]) * (current[0] - prior[0]);
 			const within =
 				Math.min(prior[0], current[0]) - 1e-9 <= point[0] &&
 				point[0] <= Math.max(prior[0], current[0]) + 1e-9 &&
@@ -429,7 +508,9 @@ function pointInUnion(
 			if (Math.abs(onEdge) <= 1e-9 && within) return true;
 			const crosses =
 				current[1] > point[1] !== prior[1] > point[1] &&
-				point[0] < ((prior[0] - current[0]) * (point[1] - current[1])) / (prior[1] - current[1]) + current[0];
+				point[0] <
+					((prior[0] - current[0]) * (point[1] - current[1])) / (prior[1] - current[1]) +
+						current[0];
 			if (crosses) inside = !inside;
 		}
 		if (inside) return true;
@@ -463,7 +544,10 @@ function edgeKey(a: LayoutVec2, b: LayoutVec2): string {
  * closed boundary for the drawing and for the selection re-stroke.
  */
 function mergeCollinear(segments: readonly PaperSegment[]): PaperSegment[] {
-	type Group = { readonly reference: LayoutVec2; readonly direction: LayoutVec2; readonly intervals: Array<[number, number]>;
+	type Group = {
+		readonly reference: LayoutVec2;
+		readonly direction: LayoutVec2;
+		readonly intervals: Array<[number, number]>;
 	};
 	const groups = new Map<string, Group>();
 	const round = (value: number): number => Math.round(value * 1e6) / 1e6;
@@ -479,8 +563,11 @@ function mergeCollinear(segments: readonly PaperSegment[]): PaperSegment[] {
 		const offset = start[0] * direction[1] - start[1] * direction[0];
 		const key = `${round(direction[0])},${round(direction[1])}|${round(offset)}`;
 		const group = groups.get(key) ?? { reference: start, direction, intervals: [] };
-		const t0 = (start[0] - group.reference[0]) * direction[0] + (start[1] - group.reference[1]) * direction[1];
-		const t1 = (end[0] - group.reference[0]) * direction[0] + (end[1] - group.reference[1]) * direction[1];
+		const t0 =
+			(start[0] - group.reference[0]) * direction[0] +
+			(start[1] - group.reference[1]) * direction[1];
+		const t1 =
+			(end[0] - group.reference[0]) * direction[0] + (end[1] - group.reference[1]) * direction[1];
 		group.intervals.push([Math.min(t0, t1), Math.max(t0, t1)]);
 		groups.set(key, group);
 	}
@@ -490,8 +577,14 @@ function mergeCollinear(segments: readonly PaperSegment[]): PaperSegment[] {
 		let [currentStart, currentEnd] = group.intervals[0]!;
 		const emit = (): void => {
 			merged.push([
-				[group.reference[0] + group.direction[0] * currentStart, group.reference[1] + group.direction[1] * currentStart],
-				[group.reference[0] + group.direction[0] * currentEnd, group.reference[1] + group.direction[1] * currentEnd]
+				[
+					group.reference[0] + group.direction[0] * currentStart,
+					group.reference[1] + group.direction[1] * currentStart,
+				],
+				[
+					group.reference[0] + group.direction[0] * currentEnd,
+					group.reference[1] + group.direction[1] * currentEnd,
+				],
 			]);
 		};
 		for (const [start, end] of group.intervals.slice(1)) {
@@ -560,7 +653,7 @@ function splitParametersOfEdge(
 	a: LayoutVec2,
 	b: LayoutVec2,
 	polygons: readonly UnionPolygon[],
-	index: ReturnType<typeof unionPolygonIndex>
+	index: ReturnType<typeof unionPolygonIndex>,
 ): number[] {
 	const parameters = [0, 1];
 	for (const polygonIndex of index.overlaps(paddedEdgeBounds(a, b))) {
@@ -582,7 +675,8 @@ function splitParametersOfEdge(
 	parameters.sort((left, right) => left - right);
 	const unique: number[] = [];
 	for (const parameter of parameters) {
-		if (unique.length === 0 || parameter - unique[unique.length - 1]! > UNION_SPLIT_EPSILON) unique.push(parameter);
+		if (unique.length === 0 || parameter - unique[unique.length - 1]! > UNION_SPLIT_EPSILON)
+			unique.push(parameter);
 	}
 	return unique;
 }
@@ -608,8 +702,16 @@ export function unionOutline(polygons: readonly UnionPolygon[]): PaperSegment[] 
 				const nz = dx / length;
 				const probe = Math.min(0.001, Math.max(1e-7, length * 1e-4));
 				const middle: LayoutVec2 = [(start[0] + end[0]) / 2, (start[1] + end[1]) / 2];
-				const left = pointInUnion([middle[0] + nx * probe, middle[1] + nz * probe], polygons, polygonIndex);
-				const right = pointInUnion([middle[0] - nx * probe, middle[1] - nz * probe], polygons, polygonIndex);
+				const left = pointInUnion(
+					[middle[0] + nx * probe, middle[1] + nz * probe],
+					polygons,
+					polygonIndex,
+				);
+				const right = pointInUnion(
+					[middle[0] - nx * probe, middle[1] - nz * probe],
+					polygons,
+					polygonIndex,
+				);
 				if (left === right) continue;
 				const key = edgeKey(start, end);
 				if (seen.has(key)) continue;
@@ -636,7 +738,7 @@ export function buildPaperPlan(
 	options: {
 		readonly isFootprintMounted?: (entityId: string) => boolean;
 		readonly datumMeters?: number;
-	} = {}
+	} = {},
 ): PaperPlanDrawing {
 	countWork('paper:plan-build');
 	const lines: PaperLineDraw[] = [];
@@ -656,15 +758,23 @@ export function buildPaperPlan(
 					layer: PAPER_LAYER.roomFloor,
 					treatment: 'room-floor',
 					elevationMeters: fragment.elevationMeters,
-					polygons: [polygon]
+					polygons: [polygon],
 				});
 			}
 			return;
 		}
-		if (fragment.ref.sourceKind === 'region' && treatment === 'projected' && fragment.geometry.kind === 'polygon') {
+		if (
+			fragment.ref.sourceKind === 'region' &&
+			treatment === 'projected' &&
+			fragment.geometry.kind === 'polygon'
+		) {
 			fills.push({
-				key, sourceId: fragment.ref.sourceId, layer: PAPER_LAYER.projected, treatment: 'region-floor',
-				elevationMeters: fragment.elevationMeters, polygons: [fragment.geometry.polygon]
+				key,
+				sourceId: fragment.ref.sourceId,
+				layer: PAPER_LAYER.projected,
+				treatment: 'region-floor',
+				elevationMeters: fragment.elevationMeters,
+				polygons: [fragment.geometry.polygon],
 			});
 		}
 		if (treatment === 'cut') {
@@ -682,7 +792,7 @@ export function buildPaperPlan(
 						layer,
 						treatment,
 						elevationMeters: fragment.elevationMeters,
-						spans: [{ startDistance: interval.start, endDistance: interval.end }]
+						spans: [{ startDistance: interval.start, endDistance: interval.end }],
 					});
 				} else {
 					group.spans.push({ startDistance: interval.start, endDistance: interval.end });
@@ -697,16 +807,20 @@ export function buildPaperPlan(
 					layer: PAPER_LAYER.cut,
 					treatment: 'cut',
 					elevationMeters: fragment.elevationMeters,
-					polygons: [polygon]
+					polygons: [polygon],
 				});
 			}
 		}
-		const opening = fragment.ref.sourceKind === 'opening'
-			? compiled.walls.flatMap((wall) => wall.openings
-				.filter((candidate) => candidate.openingId === fragment.ref.sourceId)
-				.map((candidate) => ({ opening: candidate, wall })))[0]
-			: undefined;
-		const symbol = opening === undefined ? null : openingPlanSymbol(opening.opening, opening.wall.thickness);
+		const opening =
+			fragment.ref.sourceKind === 'opening'
+				? compiled.walls.flatMap((wall) =>
+						wall.openings
+							.filter((candidate) => candidate.openingId === fragment.ref.sourceId)
+							.map((candidate) => ({ opening: candidate, wall })),
+					)[0]
+				: undefined;
+		const symbol =
+			opening === undefined ? null : openingPlanSymbol(opening.opening, opening.wall.thickness);
 		if (symbol === null) {
 			lines.push({
 				key,
@@ -715,7 +829,7 @@ export function buildPaperPlan(
 				layer,
 				treatment,
 				elevationMeters: fragment.elevationMeters,
-				segments: fragmentSegments(fragment)
+				segments: fragmentSegments(fragment),
 			});
 			return;
 		}
@@ -726,7 +840,7 @@ export function buildPaperPlan(
 			layer,
 			treatment,
 			elevationMeters: fragment.elevationMeters,
-			segments: symbol.segments
+			segments: symbol.segments,
 		});
 		if (symbol.dashedSegments.length > 0) {
 			lines.push({
@@ -737,7 +851,7 @@ export function buildPaperPlan(
 				treatment,
 				elevationMeters: fragment.elevationMeters,
 				segments: symbol.dashedSegments,
-				dashed: true
+				dashed: true,
 			});
 		}
 	});
@@ -752,7 +866,7 @@ export function buildPaperPlan(
 				layer: PAPER_LAYER.cut,
 				treatment: 'cut',
 				elevationMeters: line.elevationMeters,
-				polygons: [polygon]
+				polygons: [polygon],
 			});
 		});
 		lines.push({ ...line, segments: unionOutline(bands) });
@@ -761,27 +875,27 @@ export function buildPaperPlan(
 	const footprints: PaperFootprintDraw[] = projection.footprints
 		.filter((footprint) => options.isFootprintMounted?.(footprint.entityId) ?? true)
 		.map((footprint) => {
-		const polygons =
-			footprint.polygons !== undefined && footprint.polygons.length > 0
-				? footprint.polygons
-				: footprint.points.length >= 2
-					? [footprint.points]
-					: [];
-		const segments =
-			footprint.polygons !== undefined && footprint.polygons.length > 0
-				? unionOutline(footprint.polygons)
-				: ringSegments(footprint.points);
-		return {
-			key: `paper:footprint:${footprint.entityId}`,
-			entityId: footprint.entityId,
-			kind: footprint.kind,
-			layer: PAPER_LAYER.sceneFootprint,
-			treatment: 'footprint',
-			elevationMeters: options.datumMeters ?? 0,
-			segments,
-			polygons
-		};
-	});
+			const polygons =
+				footprint.polygons !== undefined && footprint.polygons.length > 0
+					? footprint.polygons
+					: footprint.points.length >= 2
+						? [footprint.points]
+						: [];
+			const segments =
+				footprint.polygons !== undefined && footprint.polygons.length > 0
+					? unionOutline(footprint.polygons)
+					: ringSegments(footprint.points);
+			return {
+				key: `paper:footprint:${footprint.entityId}`,
+				entityId: footprint.entityId,
+				kind: footprint.kind,
+				layer: PAPER_LAYER.sceneFootprint,
+				treatment: 'footprint',
+				elevationMeters: options.datumMeters ?? 0,
+				segments,
+				polygons,
+			};
+		});
 
 	return { lines, fills, footprints };
 }
@@ -832,29 +946,31 @@ function revealAmount(weight: number, [from, to]: readonly [number, number]): nu
  * build never lands in the visible part of the move.
  */
 export function paperRevealFor(
-	evaluation: { readonly renderedReading: string; readonly orthographicWeight: number;
-	} | null,
-	appearance: 'paper' | 'shaded'
+	evaluation: { readonly renderedReading: string; readonly orthographicWeight: number } | null,
+	appearance: 'paper' | 'shaded',
 ): PaperReveal | null {
-	if (appearance !== 'paper' || evaluation === null || evaluation.renderedReading === '3d') return null;
+	if (appearance !== 'paper' || evaluation === null || evaluation.renderedReading === '3d')
+		return null;
 	const weight = evaluation.orthographicWeight;
 	if (weight >= 1) return PAPER_REVEAL_SETTLED;
 	if (weight <= PAPER_REVEAL_LINES[0]) return PAPER_REVEAL_HIDDEN;
 	return {
 		lines: revealAmount(weight, PAPER_REVEAL_LINES),
 		sheet: revealAmount(weight, PAPER_REVEAL_SHEET),
-		poche: revealAmount(weight, PAPER_REVEAL_POCHE)
+		poche: revealAmount(weight, PAPER_REVEAL_POCHE),
 	};
 }
 
 /** Whether the Paper layer is the visible Plan drawing. */
 export function isPaperPlanVisible(
-	evaluation: { readonly renderedReading: string; readonly orthographicWeight: number;
-	} | null,
-	appearance: 'paper' | 'shaded'
+	evaluation: { readonly renderedReading: string; readonly orthographicWeight: number } | null,
+	appearance: 'paper' | 'shaded',
 ): boolean {
 	return (
-		appearance === 'paper' && evaluation !== null && evaluation.renderedReading === 'plan' && evaluation.orthographicWeight === 1
+		appearance === 'paper' &&
+		evaluation !== null &&
+		evaluation.renderedReading === 'plan' &&
+		evaluation.orthographicWeight === 1
 	);
 }
 
@@ -874,13 +990,17 @@ export type PaperStageComposition = {
 };
 
 export function paperStageComposition(input: {
-	readonly evaluation: { readonly renderedReading: string; readonly orthographicWeight: number } | null;
+	readonly evaluation: {
+		readonly renderedReading: string;
+		readonly orthographicWeight: number;
+	} | null;
 	readonly appearance: 'paper' | 'shaded';
 	/** A Look-through capture frame draws the world only. */
 	readonly framed: boolean;
 	readonly hasPlan: boolean;
 }): PaperStageComposition {
-	const reveal = !input.framed && input.hasPlan ? paperRevealFor(input.evaluation, input.appearance) : null;
+	const reveal =
+		!input.framed && input.hasPlan ? paperRevealFor(input.evaluation, input.appearance) : null;
 	const visible = reveal !== null && isPaperPlanVisible(input.evaluation, input.appearance);
 	return { reveal, visible, covers: visible && reveal.poche === 1 };
 }

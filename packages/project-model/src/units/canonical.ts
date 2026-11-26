@@ -39,7 +39,7 @@ import {
 	type ResourceUnitPayload,
 	type UnitDomain,
 	type PayloadOf,
-	type UnitHeader
+	type UnitHeader,
 } from './types';
 
 const CANONICAL_JSON_BY_FROZEN_OBJECT = new WeakMap<object, string>();
@@ -88,12 +88,16 @@ function canonicalizeTracked(value: unknown): CanonicalizedResult {
 		return { json: JSON.stringify(value), deeplyFrozen: true };
 	}
 	if (typeof value === 'number') {
-		if (!Number.isFinite(value)) throw new TypeError('A unit value may not contain a non-finite number');
+		if (!Number.isFinite(value))
+			throw new TypeError('A unit value may not contain a non-finite number');
 		return { json: JSON.stringify(value), deeplyFrozen: true };
 	}
 	if (Array.isArray(value)) {
 		const cached = CANONICAL_JSON_BY_FROZEN_OBJECT.get(value);
-		if (cached !== undefined) { countWork('canonical:substring-hit'); return { json: cached, deeplyFrozen: true }; }
+		if (cached !== undefined) {
+			countWork('canonical:substring-hit');
+			return { json: cached, deeplyFrozen: true };
+		}
 		let deeplyFrozen = Object.isFrozen(value) && isPlainJsonContainer(value);
 		countWork('canonical:array-slots', value.length);
 		const parts = new Array<string>(value.length);
@@ -109,7 +113,10 @@ function canonicalizeTracked(value: unknown): CanonicalizedResult {
 	}
 	if (typeof value === 'object') {
 		const cached = CANONICAL_JSON_BY_FROZEN_OBJECT.get(value);
-		if (cached !== undefined) { countWork('canonical:substring-hit'); return { json: cached, deeplyFrozen: true }; }
+		if (cached !== undefined) {
+			countWork('canonical:substring-hit');
+			return { json: cached, deeplyFrozen: true };
+		}
 		let deeplyFrozen = Object.isFrozen(value) && isPlainJsonContainer(value);
 		const record = value as Record<string, unknown>;
 		const keys = Object.keys(record)
@@ -141,7 +148,7 @@ export function canonicalUnitBytes(data: unknown): Uint8Array {
 export async function computeUnitContentRevision(
 	data: unknown,
 	instrumentation?: SaveWorkInstrumentation,
-	phase = 'unit-content'
+	phase = 'unit-content',
 ): Promise<string> {
 	if (typeof data === 'object' && data !== null) {
 		// The revision is a pure function of the canonical bytes, so a deeply frozen value
@@ -161,13 +168,15 @@ export async function computeUnitContentRevision(
 			const { json, deeplyFrozen } = canonicalizeTracked(data);
 			return { bytes: new TextEncoder().encode(json), deeplyFrozen };
 		};
-		const encoded = instrumentation ? instrumentation.sync(`${phase}.canonical-encode`, encode) : encode();
+		const encoded = instrumentation
+			? instrumentation.sync(`${phase}.canonical-encode`, encode)
+			: encode();
 		countWork('canonical:utf8-bytes', encoded.bytes.byteLength);
 		// One digest, measured as the Save-owned async wall when the caller asked for it.
 		const revision = instrumentation
 			? await instrumentation.async(`${phase}.sha256-wall`, () =>
-				sha256Bytes(encoded.bytes, instrumentation.sync, `${phase}.sha256`)
-			)
+					sha256Bytes(encoded.bytes, instrumentation.sync, `${phase}.sha256`),
+				)
 			: await sha256Bytes(encoded.bytes);
 		if (encoded.deeplyFrozen) UNIT_REVISION_BY_FROZEN_OBJECT.set(data, revision);
 		return revision;
@@ -175,7 +184,7 @@ export async function computeUnitContentRevision(
 	if (!instrumentation) return sha256Bytes(canonicalUnitBytes(data));
 	const bytes = instrumentation.sync(`${phase}.canonical-encode`, () => canonicalUnitBytes(data));
 	return instrumentation.async(`${phase}.sha256-wall`, () =>
-		sha256Bytes(bytes, instrumentation.sync, `${phase}.sha256`)
+		sha256Bytes(bytes, instrumentation.sync, `${phase}.sha256`),
 	);
 }
 
@@ -183,13 +192,13 @@ export async function computeUnitContentRevision(
 export async function createUnitHeader(
 	domain: UnitDomain,
 	unitId: string,
-	data: unknown
+	data: unknown,
 ): Promise<UnitHeader> {
 	return {
 		domain,
 		unitId,
 		formatVersion: ADMITTED_UNIT_VERSIONS[domain],
-		contentRevision: await computeUnitContentRevision(data)
+		contentRevision: await computeUnitContentRevision(data),
 	};
 }
 
@@ -197,7 +206,7 @@ export async function createUnitHeader(
 export async function createDomainUnit<D extends UnitDomain>(
 	domain: D,
 	unitId: string,
-	data: PayloadOf<D>
+	data: PayloadOf<D>,
 ): Promise<DomainUnit<PayloadOf<D>>> {
 	const result = validateUnitPayload(domain, data);
 	if (!result.success) {
@@ -220,7 +229,7 @@ export function envelopeSourceCore(envelope: ProjectEnvelope): unknown {
 		id: envelope.id,
 		name: envelope.name,
 		dependencyLock: envelope.dependencyLock,
-		units: unitCores(envelope.units)
+		units: unitCores(envelope.units),
 	};
 }
 
@@ -230,7 +239,7 @@ function unitCores(units: ProjectUnits): Record<string, unknown> {
 		const header = (unit as DomainUnit<unknown>).header;
 		core[domain] = {
 			header: { domain: header.domain, unitId: header.unitId, formatVersion: header.formatVersion },
-			data: (unit as DomainUnit<unknown>).data
+			data: (unit as DomainUnit<unknown>).data,
 		};
 	}
 	return core;
@@ -240,11 +249,15 @@ function unitCores(units: ProjectUnits): Record<string, unknown> {
 export async function computeEnvelopeSourceContentId(
 	envelope: ProjectEnvelope,
 	instrumentation?: SaveWorkInstrumentation,
-	phase = 'envelope-source'
+	phase = 'envelope-source',
 ): Promise<string> {
 	if (!instrumentation) return sha256Bytes(canonicalUnitBytes(envelopeSourceCore(envelope)));
-	const bytes = instrumentation.sync(`${phase}.canonical-encode`, () => canonicalUnitBytes(envelopeSourceCore(envelope)));
-	return instrumentation.async(`${phase}.sha256-wall`, () => sha256Bytes(bytes, instrumentation.sync, `${phase}.sha256`));
+	const bytes = instrumentation.sync(`${phase}.canonical-encode`, () =>
+		canonicalUnitBytes(envelopeSourceCore(envelope)),
+	);
+	return instrumentation.async(`${phase}.sha256-wall`, () =>
+		sha256Bytes(bytes, instrumentation.sync, `${phase}.sha256`),
+	);
 }
 
 export type ContentRevisionMismatch = {
@@ -261,14 +274,18 @@ export type ContentRevisionMismatch = {
  * self-verifying.
  */
 export async function verifyUnitContentRevisions(
-	envelope: ProjectEnvelope
+	envelope: ProjectEnvelope,
 ): Promise<ContentRevisionMismatch[]> {
 	const mismatches: ContentRevisionMismatch[] = [];
 	for (const domain of Object.keys(envelope.units) as Array<keyof ProjectUnits>) {
 		const unit = envelope.units[domain] as DomainUnit<unknown>;
 		const recomputed = await computeUnitContentRevision(unit.data);
 		if (recomputed !== unit.header.contentRevision) {
-			mismatches.push({ path: `$.units.${domain}`, declared: unit.header.contentRevision, recomputed });
+			mismatches.push({
+				path: `$.units.${domain}`,
+				declared: unit.header.contentRevision,
+				recomputed,
+			});
 		}
 	}
 	return mismatches;
@@ -297,7 +314,7 @@ export async function createProjectEnvelope(input: ProjectEnvelopeInput): Promis
 		createDomainUnit('scene', input.scene.unitId, input.scene.data),
 		createDomainUnit('camera', input.camera.unitId, input.camera.data),
 		createDomainUnit('experience', input.experience.unitId, input.experience.data),
-		createDomainUnit('resources', input.resources.unitId, input.resources.data)
+		createDomainUnit('resources', input.resources.unitId, input.resources.data),
 	]);
 	return {
 		formatVersion: 1,
@@ -305,6 +322,6 @@ export async function createProjectEnvelope(input: ProjectEnvelopeInput): Promis
 		name: input.name,
 		acceptedRevision: input.acceptedRevision,
 		dependencyLock: input.dependencyLock,
-		units: { layout, scene, camera, experience, resources }
+		units: { layout, scene, camera, experience, resources },
 	};
 }

@@ -1,11 +1,20 @@
 import type { WallSamplingDerivation } from '../wall/centerline';
 import { isCanonicalWallSampling } from '../wall/centerline';
-import { restoreImmutableCompileBaseline, restoreImmutableCompileSnapshot, seedReuseFromPassiveCompile } from './delta';
+import {
+	restoreImmutableCompileBaseline,
+	restoreImmutableCompileSnapshot,
+	seedReuseFromPassiveCompile,
+} from './delta';
 import { layoutLength } from '../kernel/source-collections';
 import type { LayoutDocumentWallFirst } from '../wall/types';
 import type { CompiledLayoutGeometryResult } from './types';
 import type { LayoutCompileStats } from './reuse';
-import { beginLayoutCompile, createLayoutCompileReuse, finishLayoutCompile, pruneLayoutCompileReuse } from './reuse';
+import {
+	beginLayoutCompile,
+	createLayoutCompileReuse,
+	finishLayoutCompile,
+	pruneLayoutCompileReuse,
+} from './reuse';
 import { compileWallFirstLayoutGeometry } from './compiler';
 import { DELTA_BUILDERS } from './delta-builders';
 
@@ -34,7 +43,10 @@ import { DELTA_BUILDERS } from './delta-builders';
  */
 export type LayoutCompileSession = {
 	/** Compile `document`, reusing every entity whose authored inputs are unchanged. */
-	compile(document: LayoutDocumentWallFirst, sampling?: WallSamplingDerivation): CompiledLayoutGeometryResult;
+	compile(
+		document: LayoutDocumentWallFirst,
+		sampling?: WallSamplingDerivation,
+	): CompiledLayoutGeometryResult;
 	/**
 	 * Prime this session from a clean passive compile result already recorded for
 	 * `document` (zero geometry sampling or cache-key construction).
@@ -50,14 +62,15 @@ export type LayoutCompileSession = {
 	retained(): { walls: number; junctions: number; rooms: number; objects: number };
 };
 
-
 /** Create one incremental session; it compiles once per call and never throws on reuse. */
 export function createLayoutCompileSession(): LayoutCompileSession {
 	let store = createLayoutCompileReuse();
 	let releasedUnits = 0;
 	return {
 		compile(document, sampling) {
-			const restored = isCanonicalWallSampling(sampling) ? restoreImmutableCompileSnapshot(document, store) : null;
+			const restored = isCanonicalWallSampling(sampling)
+				? restoreImmutableCompileSnapshot(document, store)
+				: null;
 			if (restored) {
 				beginLayoutCompile(store);
 				const world = store.world as import('./delta').RetainedCompileWorld;
@@ -66,7 +79,9 @@ export function createLayoutCompileSession(): LayoutCompileSession {
 				store.counters.roomsReused = world.validCeilingRoomCount;
 				store.counters.objectsReused = world.objectUnit.compiledObjects.length;
 				store.counters.regionsReused = world.regionUnit.regions.length;
-				finishLayoutCompile(store, false); releasedUnits = 0; return restored;
+				finishLayoutCompile(store, false);
+				releasedUnits = 0;
+				return restored;
 			}
 			if (isCanonicalWallSampling(sampling)) restoreImmutableCompileBaseline(document, store);
 			releasedUnits = pruneLayoutCompileReuse(store, document);
@@ -90,14 +105,22 @@ export function createLayoutCompileSession(): LayoutCompileSession {
 			// the same document report one fewer object only because the last compile
 			// went through a delta.
 			const world = store.world as import('./delta').RetainedCompileWorld | null;
-			return world ? {
-				walls: world.wallSlots.length, junctions: world.sortedJunctions.length,
-				rooms: world.roomSlots.length, objects: layoutLength(world.document, 'objects')
-			} : { walls: store.walls.size, junctions: store.junctions.size, rooms: store.roomSources.size, objects: store.objects.size };
-		}
+			return world
+				? {
+						walls: world.wallSlots.length,
+						junctions: world.sortedJunctions.length,
+						rooms: world.roomSlots.length,
+						objects: layoutLength(world.document, 'objects'),
+					}
+				: {
+						walls: store.walls.size,
+						junctions: store.junctions.size,
+						rooms: store.roomSources.size,
+						objects: store.objects.size,
+					};
+		},
 	};
 }
-
 
 /**
  * The session bound for the current synchronous authoring step, if any.
@@ -116,18 +139,19 @@ export function createLayoutCompileSession(): LayoutCompileSession {
  */
 let boundCompileSession: LayoutCompileSession | null = null;
 
-
 /** The session bound to this synchronous step, or `undefined` outside one. */
 export function activeLayoutCompileSession(): LayoutCompileSession | undefined {
 	return boundCompileSession ?? undefined;
 }
 
-
 /**
  * Run one synchronous authoring step with `session` bound to the canonical
  * compiler. Without a session the body simply runs (today's cold compile).
  */
-export function withLayoutCompileSession<T>(session: LayoutCompileSession | undefined, body: () => T): T {
+export function withLayoutCompileSession<T>(
+	session: LayoutCompileSession | undefined,
+	body: () => T,
+): T {
 	if (!session) return body();
 	if (boundCompileSession) {
 		throw new Error('a layout compile session is already bound to this synchronous step');
@@ -139,7 +163,6 @@ export function withLayoutCompileSession<T>(session: LayoutCompileSession | unde
 		boundCompileSession = null;
 	}
 }
-
 
 /**
  * Shared compile core (P23.0 compiler cutover): one geometry compiler/output

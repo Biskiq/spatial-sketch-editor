@@ -1,6 +1,9 @@
 import type { ScenePickSource } from '../scene/scene-pick-source';
 import { contribution } from '../workspace/region-ownership';
-import type { StageArtworkInteraction, StageArtworkInteractionInput } from '../stage/route/stage-artwork-interaction.svelte';
+import type {
+	StageArtworkInteraction,
+	StageArtworkInteractionInput,
+} from '../stage/route/stage-artwork-interaction.svelte';
 import type { ResolvedSlice } from '../stage/slice/slice-cut';
 import { pickVisibleFaceThroughSlice } from '../stage/slice/stage-slice-pick';
 import type { StageLens } from '../stage/stage-session';
@@ -32,7 +35,9 @@ export function createArtworkHost(input: ArtworkDependencies) {
 			const snapshot = stage.snapshot();
 			return artworkHangingGuides(snapshot.domain.scene, candidate, snapshot.domain.datumMeters);
 		});
-		const activeGuideId = $derived(candidate === null ? null : activeArtworkHangGuide(guides, candidate.position[1]));
+		const activeGuideId = $derived(
+			candidate === null ? null : activeArtworkHangGuide(guides, candidate.position[1]),
+		);
 
 		function cancel(): void {
 			interaction.cancel();
@@ -53,14 +58,18 @@ export function createArtworkHost(input: ArtworkDependencies) {
 		}
 
 		const canvas = contribution<'artwork', 'canvas'>()({
-			get artworkScope() { return input.artworkScope(); },
-			get artworkGhost() { return interaction.resizeGhost ?? interaction.ghost; },
-			onArtworkError: input.interaction.onNotice
+			get artworkScope() {
+				return input.artworkScope();
+			},
+			get artworkGhost() {
+				return interaction.resizeGhost ?? interaction.ghost;
+			},
+			onArtworkError: input.interaction.onNotice,
 		});
 		const overlay = contribution<'artwork', 'overlay'>()({
 			get candidates() {
 				return interaction.placementCandidate === null ? [] : [interaction.placementCandidate];
-			}
+			},
 		});
 		const viewport = contribution<'artwork', 'viewport'>()({
 			get hanging(): HangingOverlay {
@@ -73,8 +82,14 @@ export function createArtworkHost(input: ArtworkDependencies) {
 			get artwork(): ArtworkOverlay {
 				const stage = input.interaction.facade();
 				const evaluation = input.interaction.evaluation();
-				if (selected === null || stage === null || evaluation?.renderedReading !== '3d' ||
-					!canPlace() || interaction.armed) return null;
+				if (
+					selected === null ||
+					stage === null ||
+					evaluation?.renderedReading !== '3d' ||
+					!canPlace() ||
+					interaction.armed
+				)
+					return null;
 				return {
 					entity: interaction.resizeGhost ?? selected,
 					stage,
@@ -82,9 +97,9 @@ export function createArtworkHost(input: ArtworkDependencies) {
 					resizing: interaction.resizeGhost !== null,
 					blocked: interaction.resizeBlocked,
 					canTurn: !interaction.isHungNow(selected),
-					onStart: interaction.startResize
+					onStart: interaction.startResize,
 				};
-			}
+			},
 		});
 
 		return { cancel, cancelAll, dragOver, canvas, overlay, viewport };
@@ -94,6 +109,6 @@ export function createArtworkHost(input: ArtworkDependencies) {
 		canPlace,
 		// Artwork hangs on a drawn face, including the Wall behind a removed one.
 		pickVisibleFace: pickVisibleFaceThroughSlice(input.scenePick, input.resolvedSlice),
-		connect
+		connect,
 	};
 }

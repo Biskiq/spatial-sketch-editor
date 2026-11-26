@@ -1,5 +1,13 @@
 import { pointInPolygon } from '../../geometry/objects';
-import type { CompiledLayoutGeometry, CompiledLayoutObject, CompiledOpening, CompiledPhysicalWall, CompiledRegion, CompiledRoom, LayoutBounds2 } from '../../geometry/types';
+import type {
+	CompiledLayoutGeometry,
+	CompiledLayoutObject,
+	CompiledOpening,
+	CompiledPhysicalWall,
+	CompiledRegion,
+	CompiledRoom,
+	LayoutBounds2,
+} from '../../geometry/types';
 import { LAYOUT_SLICE_CONTACT_METERS } from '../../room/region-validation';
 import type { LayoutVec2 } from '../../geometry/coordinates';
 import { finiteVec2, isFiniteNumber } from './membership';
@@ -16,7 +24,6 @@ function distanceToSegment(point: LayoutVec2, start: LayoutVec2, end: LayoutVec2
 	return Math.hypot(point[0] - (start[0] + dx * amount), point[1] - (start[1] + dz * amount));
 }
 
-
 /** Minimum plan distance from the target to a source's extent; `null` when it has none. */
 export function planDistance(target: LayoutVec2, plan: SourcePlan): number | null {
 	switch (plan.kind) {
@@ -30,7 +37,10 @@ export function planDistance(target: LayoutVec2, plan: SourcePlan): number | nul
 			}
 			let best = Infinity;
 			for (let index = 1; index < plan.polyline.length; index += 1) {
-				best = Math.min(best, distanceToSegment(target, plan.polyline[index - 1]!, plan.polyline[index]!));
+				best = Math.min(
+					best,
+					distanceToSegment(target, plan.polyline[index - 1]!, plan.polyline[index]!),
+				);
 			}
 			return best;
 		}
@@ -49,7 +59,6 @@ export function planDistance(target: LayoutVec2, plan: SourcePlan): number | nul
 	}
 }
 
-
 function planPoints(plan: SourcePlan): readonly LayoutVec2[] {
 	switch (plan.kind) {
 		case 'span':
@@ -60,7 +69,6 @@ function planPoints(plan: SourcePlan): readonly LayoutVec2[] {
 			return plan.polygon;
 	}
 }
-
 
 /**
  * Whether a source's plan extent can produce a fragment at all.
@@ -82,7 +90,6 @@ export function hasPlanGeometry(plan: SourcePlan): boolean {
 	}
 }
 
-
 /** Running plan bound; the one place a fragment's points are folded into `bounds`. */
 type BoundsAccumulator = {
 	minX: number;
@@ -92,11 +99,9 @@ type BoundsAccumulator = {
 	seen: boolean;
 };
 
-
 export function emptyBounds(): BoundsAccumulator {
 	return { minX: Infinity, minZ: Infinity, maxX: -Infinity, maxZ: -Infinity, seen: false };
 }
-
 
 export function accumulateBounds(state: BoundsAccumulator, plan: SourcePlan): void {
 	for (const point of planPoints(plan)) {
@@ -109,19 +114,16 @@ export function accumulateBounds(state: BoundsAccumulator, plan: SourcePlan): vo
 	}
 }
 
-
 export function finishedBounds(state: BoundsAccumulator): LayoutBounds2 | null {
 	if (!state.seen) return null;
 	return { min: [state.minX, state.minZ], max: [state.maxX, state.maxZ] };
 }
-
 
 export function boundsOf(fragments: readonly PlanFragment[]): LayoutBounds2 | null {
 	const state = emptyBounds();
 	for (const fragment of fragments) accumulateBounds(state, fragment.geometry);
 	return finishedBounds(state);
 }
-
 
 /**
  * Stream placement of one source, from its vertical extent against the cut plane.
@@ -134,7 +136,10 @@ export function boundsOf(fragments: readonly PlanFragment[]): LayoutBounds2 | nu
  *   when their whole extent sits at or above the cut (a lintel, a high object).
  * - `hidden`: the whole extent is below the cut plane and is drawn hidden.
  */
-export function streamFor(candidate: Candidate, cutElevation: number): Exclude<PlanStream, 'symbol'> {
+export function streamFor(
+	candidate: Candidate,
+	cutElevation: number,
+): Exclude<PlanStream, 'symbol'> {
 	if (candidate.sourceKind === 'room-floor') return 'projected';
 	if (candidate.regionRole) {
 		const { minY, maxY } = candidate.extent;
@@ -147,7 +152,6 @@ export function streamFor(candidate: Candidate, cutElevation: number): Exclude<P
 	if (extent.minY < cutElevation && cutElevation <= extent.maxY) return 'cut';
 	return extent.minY >= cutElevation ? 'projected' : 'hidden';
 }
-
 
 /**
  * One compiled Wall's candidates, in the order its placements are declared.
@@ -166,11 +170,13 @@ export function wallCandidatesOf(wall: CompiledPhysicalWall, datumMeters: number
 				extent: { minY: datumMeters, maxY: datumMeters + wall.height },
 				plan: { kind: 'polyline', polyline: [] },
 				subRef: null,
-				symbolOnly: false
-			}
+				symbolOnly: false,
+			},
 		];
 	}
-	const spans = [...wall.solidSpans].sort((left, right) => left.startDistance - right.startDistance);
+	const spans = [...wall.solidSpans].sort(
+		(left, right) => left.startDistance - right.startDistance,
+	);
 	const candidates: Candidate[] = [];
 	for (const span of spans) {
 		candidates.push({
@@ -179,25 +185,26 @@ export function wallCandidatesOf(wall: CompiledPhysicalWall, datumMeters: number
 			extent: { minY: datumMeters + span.bottomY, maxY: datumMeters + span.topY },
 			plan: { kind: 'span', start: span.start, end: span.end },
 			subRef: { kind: 'interval', start: span.startDistance, end: span.endDistance },
-			symbolOnly: false
+			symbolOnly: false,
 		});
 	}
 	return candidates;
 }
 
-
 export function openingCandidate(opening: CompiledOpening, datumMeters: number): Candidate {
 	return {
 		sourceKind: 'opening',
 		sourceId: opening.openingId,
-		extent: { minY: datumMeters + opening.sillHeight, maxY: datumMeters + opening.sillHeight + opening.height },
+		extent: {
+			minY: datumMeters + opening.sillHeight,
+			maxY: datumMeters + opening.sillHeight + opening.height,
+		},
 		plan: { kind: 'polyline', polyline: opening.centerPolyline },
 		subRef: { kind: 'interval', start: opening.offset, end: opening.offset + opening.width },
 		// An Opening is a void with a plan symbol: it never becomes a cut stroke.
-		symbolOnly: true
+		symbolOnly: true,
 	};
 }
-
 
 export function objectCandidate(object: CompiledLayoutObject): Candidate {
 	return {
@@ -206,10 +213,9 @@ export function objectCandidate(object: CompiledLayoutObject): Candidate {
 		extent: { minY: object.worldAabb.min[1], maxY: object.worldAabb.max[1] },
 		plan: { kind: 'polygon', polygon: object.planFootprint },
 		subRef: null,
-		symbolOnly: false
+		symbolOnly: false,
 	};
 }
-
 
 export function roomFloorCandidate(room: CompiledRoom): Candidate {
 	return {
@@ -219,10 +225,9 @@ export function roomFloorCandidate(room: CompiledRoom): Candidate {
 		extent: { minY: room.floorElevation, maxY: room.floorElevation },
 		plan: { kind: 'polygon', polygon: room.floorPolygon },
 		subRef: null,
-		symbolOnly: false
+		symbolOnly: false,
 	};
 }
-
 
 export function regionCandidate(region: CompiledRegion): Candidate {
 	return {
@@ -233,20 +238,24 @@ export function regionCandidate(region: CompiledRegion): Candidate {
 		subRef: null,
 		symbolOnly: false,
 		regionRole: region.role,
-		regionKey: region.cacheKey
+		regionKey: region.cacheKey,
 	};
 }
 
-
 export function wallCandidates(geometry: CompiledLayoutGeometry, datumMeters: number): Candidate[] {
-	const walls: readonly CompiledPhysicalWall[] = [...geometry.walls].sort(compareSourceIds((wall) => wall.wallId));
+	const walls: readonly CompiledPhysicalWall[] = [...geometry.walls].sort(
+		compareSourceIds((wall) => wall.wallId),
+	);
 	const candidates: Candidate[] = [];
-	for (const wall of walls) for (const candidate of wallCandidatesOf(wall, datumMeters)) candidates.push(candidate);
+	for (const wall of walls)
+		for (const candidate of wallCandidatesOf(wall, datumMeters)) candidates.push(candidate);
 	return candidates;
 }
 
-
-export function openingCandidates(geometry: CompiledLayoutGeometry, datumMeters: number): Candidate[] {
+export function openingCandidates(
+	geometry: CompiledLayoutGeometry,
+	datumMeters: number,
+): Candidate[] {
 	const byId = new Map<string, CompiledOpening>();
 	for (const wall of geometry.walls) {
 		for (const opening of wall.openings) {
@@ -258,18 +267,19 @@ export function openingCandidates(geometry: CompiledLayoutGeometry, datumMeters:
 		.map((opening) => openingCandidate(opening, datumMeters));
 }
 
-
 export function objectCandidates(geometry: CompiledLayoutGeometry): Candidate[] {
-	const objects: readonly CompiledLayoutObject[] = [...geometry.objects].sort(compareSourceIds((object) => object.objectId));
+	const objects: readonly CompiledLayoutObject[] = [...geometry.objects].sort(
+		compareSourceIds((object) => object.objectId),
+	);
 	return objects.map((object) => objectCandidate(object));
 }
 
-
 export function roomFloorCandidates(geometry: CompiledLayoutGeometry): Candidate[] {
-	const rooms: readonly CompiledRoom[] = [...geometry.rooms].sort(compareSourceIds((room) => room.roomId));
+	const rooms: readonly CompiledRoom[] = [...geometry.rooms].sort(
+		compareSourceIds((room) => room.roomId),
+	);
 	return rooms.map((room) => roomFloorCandidate(room));
 }
-
 
 /** Ascending code-unit order on a source id — the only order a Plan may depend on. */
 export function compareSourceIds<T>(id: (record: T) => string): (left: T, right: T) => number {
@@ -280,7 +290,6 @@ export function compareSourceIds<T>(id: (record: T) => string): (left: T, right:
 	};
 }
 
-
 /**
  * The declared source order, **derived** from `PLAN_SOURCE_KINDS` rather than restated.
  *
@@ -289,15 +298,15 @@ export function compareSourceIds<T>(id: (record: T) => string): (left: T, right:
  * agreement structural instead of a convention three places must remember.
  */
 const SOURCE_KIND_ORDER: Readonly<Record<PlanSourceKind, number>> = Object.fromEntries(
-	PLAN_SOURCE_KINDS.map((kind, index) => [kind, index])
+	PLAN_SOURCE_KINDS.map((kind, index) => [kind, index]),
 ) as Record<PlanSourceKind, number>;
-
 
 export function compareFragments(left: PlanFragment, right: PlanFragment): number {
 	const leftKind = SOURCE_KIND_ORDER[left.ref.sourceKind];
 	const rightKind = SOURCE_KIND_ORDER[right.ref.sourceKind];
 	if (leftKind !== rightKind) return leftKind - rightKind;
-	if (left.ref.sourceId !== right.ref.sourceId) return left.ref.sourceId < right.ref.sourceId ? -1 : 1;
+	if (left.ref.sourceId !== right.ref.sourceId)
+		return left.ref.sourceId < right.ref.sourceId ? -1 : 1;
 	const leftStart = left.ref.subRef?.kind === 'interval' ? left.ref.subRef.start : 0;
 	const rightStart = right.ref.subRef?.kind === 'interval' ? right.ref.subRef.start : 0;
 	if (leftStart !== rightStart) return leftStart - rightStart;

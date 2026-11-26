@@ -2,10 +2,32 @@ import { expireAbandonedImageRepairs } from './cleanup.js';
 import { verifyHealthyRow, writeChunk, deleteStagedKey, forgetAttempt } from './shared.js';
 import { ARTWORK_MAX_BYTES, probeArtworkImage } from '@portfolio/project-model/artwork';
 import { type ProjectImagePin } from '@portfolio/project-model/project-images';
-import { UNIT_ENVELOPE_SOURCE_FORMAT, validateProjectEnvelope, type ProjectEnvelope } from '@portfolio/project-model/units';
-import { ArtworkAssetRefusal, ImageVerificationUnavailableError, readProjectImagePin, type ArtworkAssetPin } from '../artwork-persistence.js';
+import {
+	UNIT_ENVELOPE_SOURCE_FORMAT,
+	validateProjectEnvelope,
+	type ProjectEnvelope,
+} from '@portfolio/project-model/units';
+import {
+	ArtworkAssetRefusal,
+	ImageVerificationUnavailableError,
+	readProjectImagePin,
+	type ArtworkAssetPin,
+} from '../artwork-persistence.js';
 import { type DatabaseClient, type DatabasePool } from '../database.js';
-import { IMAGE_REPAIR_TTL_MS, type ImageRepairRequest, type ImageRepairAcknowledgement, ImageRepairError, pinOf, type ImageRequirement, requirementFor, asImageRepairError, createRepairKey, toBuffer, readNullableString, readSafeInteger } from './shared';
+import {
+	IMAGE_REPAIR_TTL_MS,
+	type ImageRepairRequest,
+	type ImageRepairAcknowledgement,
+	ImageRepairError,
+	pinOf,
+	type ImageRequirement,
+	requirementFor,
+	asImageRepairError,
+	createRepairKey,
+	toBuffer,
+	readNullableString,
+	readSafeInteger,
+} from './shared';
 import { type ObjectStore } from '../object-store.js';
 import { ProjectNotFoundError, queryRows, withTransaction } from '../project-persistence.js';
 import { withProjectWriteLease, type ProjectLifecyclePolicy } from '../project-write-lease.js';
@@ -21,7 +43,7 @@ export type ProjectLockRow = {
 export async function lockProject(
 	db: Pick<DatabasePool, 'query'>,
 	ownerId: string,
-	projectId: string
+	projectId: string,
 ): Promise<ProjectLockRow> {
 	const rows = await queryRows<ProjectLockRow>(
 		db,
@@ -29,7 +51,7 @@ export async function lockProject(
 FROM projects
 WHERE id = $1 AND owner_id = $2
 FOR UPDATE`,
-		[projectId, ownerId]
+		[projectId, ownerId],
 	);
 	const row = rows[0];
 	if (!row) throw new ProjectNotFoundError();
@@ -39,22 +61,30 @@ FOR UPDATE`,
 export async function readSavedHead(
 	db: Pick<DatabasePool, 'query'>,
 	projectId: string,
-	latestVersion: number
+	latestVersion: number,
 ): Promise<ProjectEnvelope> {
 	const rows = await queryRows<{ document: unknown; sourceFormat: unknown }>(
 		db,
 		`SELECT document, source_format AS "sourceFormat"
 FROM project_versions
 WHERE project_id = $1 AND version = $2 AND source_format = $3`,
-		[projectId, latestVersion, UNIT_ENVELOPE_SOURCE_FORMAT]
+		[projectId, latestVersion, UNIT_ENVELOPE_SOURCE_FORMAT],
 	);
 	const row = rows[0];
 	if (!row) {
-		throw new ImageRepairError(409, 'image_pin_changed', 'The saved head is unavailable; source recovery is required.');
+		throw new ImageRepairError(
+			409,
+			'image_pin_changed',
+			'The saved head is unavailable; source recovery is required.',
+		);
 	}
 	const validation = validateProjectEnvelope(row.document);
 	if (!validation.success) {
-		throw new ImageRepairError(409, 'image_pin_changed', 'The saved head cannot be verified; source recovery is required.');
+		throw new ImageRepairError(
+			409,
+			'image_pin_changed',
+			'The saved head cannot be verified; source recovery is required.',
+		);
 	}
 	return validation.envelope;
 }
@@ -95,11 +125,15 @@ export async function lockRepairState(
 	projectId: string,
 	assetId: string,
 	request: ImageRepairRequest,
-	prepared: RepairPreparation
+	prepared: RepairPreparation,
 ): Promise<{ readonly current: ArtworkAssetPin; readonly requirement: ImageRequirement }> {
 	const locked = await lockProject(db, ownerId, projectId);
 	if (readNullableString(locked.savedBaseToken) !== request.savedBaseToken) {
-		throw new ImageRepairError(409, 'conflict', 'The saved base changed; reload the project before repairing.');
+		throw new ImageRepairError(
+			409,
+			'conflict',
+			'The saved base changed; reload the project before repairing.',
+		);
 	}
 	const latestVersion = readSafeInteger(locked.latestVersion);
 	const envelope = await readSavedHead(db, projectId, latestVersion);
@@ -114,7 +148,7 @@ export async function lockRepairState(
 		throw new ImageRepairError(
 			409,
 			'image_pin_changed',
-			'The saved revision pins different image bytes; source recovery is required.'
+			'The saved revision pins different image bytes; source recovery is required.',
 		);
 	}
 	return { current, requirement };
@@ -133,7 +167,7 @@ export async function commitRepair(
 	request: ImageRepairRequest,
 	prepared: RepairPreparation,
 	attemptId: string,
-	stagingKey: string
+	stagingKey: string,
 ): Promise<RepairCommit> {
 	const { current, requirement } = await lockRepairState(
 		db,
@@ -141,7 +175,7 @@ export async function commitRepair(
 		projectId,
 		assetId,
 		request,
-		prepared
+		prepared,
 	);
 	if (current.objectKey !== prepared.oldObjectKey) {
 		return { kind: 'winner', candidate: observe(current) };
@@ -153,13 +187,13 @@ export async function commitRepair(
 		`DELETE FROM image_repair_attempts
 WHERE id = $1::uuid AND project_id = $2 AND owner_id = $3
 RETURNING id`,
-		[attemptId, projectId, ownerId]
+		[attemptId, projectId, ownerId],
 	);
 	if (!claimed[0]) {
 		throw new ImageRepairError(
 			409,
 			'conflict',
-			'The repair attempt expired before it could be committed; retry the repair.'
+			'The repair attempt expired before it could be committed; retry the repair.',
 		);
 	}
 	const updated = await queryRows<{ id: unknown }>(
@@ -168,7 +202,7 @@ RETURNING id`,
 SET object_key = $3, updated_at = now()
 WHERE id = $1::uuid AND project_id = $2 AND object_key = $4 AND import_state = 'ready'
 RETURNING id`,
-		[assetId, projectId, stagingKey, prepared.oldObjectKey]
+		[assetId, projectId, stagingKey, prepared.oldObjectKey],
 	);
 	if (!updated[0]) {
 		// Defensive: the row moved despite the update lock. Verify the winner
@@ -182,7 +216,7 @@ RETURNING id`,
 export async function verifyObservedBytes(
 	store: ObjectStore,
 	assetId: string,
-	observed: ObservedImage
+	observed: ObservedImage,
 ): Promise<void> {
 	await verifyHealthyRow(store, {
 		assetId,
@@ -192,7 +226,7 @@ export async function verifyObservedBytes(
 		objectKey: observed.objectKey,
 		paths: [],
 		expectedPin: observed.pin,
-		artwork: observed.artwork
+		artwork: observed.artwork,
 	});
 }
 
@@ -212,7 +246,7 @@ export async function acceptObservedImage(
 	prepared: RepairPreparation,
 	attemptId: string,
 	first: ObservedImage,
-	signal: AbortSignal
+	signal: AbortSignal,
 ): Promise<{ readonly pin: ProjectImagePin }> {
 	let candidate = first;
 	for (let round = 0; round < CONCURRENT_WINNER_ROUNDS; round += 1) {
@@ -224,7 +258,7 @@ export async function acceptObservedImage(
 				throw new ImageRepairError(
 					409,
 					'conflict',
-					'The image changed while repairing but its bytes do not match the saved pin; reload and retry.'
+					'The image changed while repairing but its bytes do not match the saved pin; reload and retry.',
 				);
 			}
 			throw asImageRepairError(error);
@@ -241,14 +275,18 @@ export async function acceptObservedImage(
 			}
 			await db.query(
 				'DELETE FROM image_repair_attempts WHERE id = $1::uuid AND project_id = $2 AND owner_id = $3',
-				[attemptId, projectId, ownerId]
+				[attemptId, projectId, ownerId],
 			);
 			return { kind: 'verified' as const, pin: candidate.pin };
 		});
 		if (revalidated.kind === 'verified') return { pin: revalidated.pin };
 		candidate = revalidated.candidate;
 	}
-	throw new ImageRepairError(409, 'conflict', 'The image keeps changing while repairing; reload and retry.');
+	throw new ImageRepairError(
+		409,
+		'conflict',
+		'The image keeps changing while repairing; reload and retry.',
+	);
 }
 
 /**
@@ -265,10 +303,14 @@ export async function streamRepairBytes(
 	key: string,
 	pin: ProjectImagePin,
 	artwork: ArtworkAssetPin['artwork'],
-	signal: AbortSignal
+	signal: AbortSignal,
 ): Promise<void> {
 	if (contentLength !== pin.size) {
-		throw new ImageRepairError(422, 'image_mismatch', 'The supplied file length does not match the pinned image.');
+		throw new ImageRepairError(
+			422,
+			'image_mismatch',
+			'The supplied file length does not match the pinned image.',
+		);
 	}
 	const output = new PassThrough();
 	output.on('error', () => {});
@@ -277,7 +319,8 @@ export async function streamRepairBytes(
 	let offset = 0;
 	let put: Promise<void> | undefined;
 	const onAbort = () => {
-		const error = signal.reason instanceof Error ? signal.reason : new Error('Image repair aborted');
+		const error =
+			signal.reason instanceof Error ? signal.reason : new Error('Image repair aborted');
 		source.destroy(error);
 		output.destroy(error);
 	};
@@ -288,7 +331,7 @@ export async function streamRepairBytes(
 		put = store.put(key, output, {
 			contentType: pin.mime,
 			contentLength,
-			signal
+			signal,
 		});
 		// A rejected storage put must not become an unhandled rejection while the
 		// request body is still being consumed; destroying the sink releases a
@@ -300,7 +343,11 @@ export async function streamRepairBytes(
 		for await (const value of source) {
 			const chunk = toBuffer(value);
 			if (offset + chunk.length > contentLength) {
-				throw new ImageRepairError(422, 'image_mismatch', 'The supplied file is longer than the pinned image.');
+				throw new ImageRepairError(
+					422,
+					'image_mismatch',
+					'The supplied file is longer than the pinned image.',
+				);
 			}
 			bytes.set(Uint8Array.from(chunk), offset);
 			offset += chunk.length;
@@ -309,28 +356,48 @@ export async function streamRepairBytes(
 			signal.throwIfAborted();
 		}
 		if (offset !== contentLength) {
-			throw new ImageRepairError(422, 'image_mismatch', 'The supplied file ended before the pinned length.');
+			throw new ImageRepairError(
+				422,
+				'image_mismatch',
+				'The supplied file ended before the pinned length.',
+			);
 		}
 		output.end();
 		await put;
 		const digest = `sha256-${hash.digest('hex')}`;
 		if (digest !== pin.hash) {
-			throw new ImageRepairError(422, 'image_mismatch', 'The supplied file is not the pinned image.');
+			throw new ImageRepairError(
+				422,
+				'image_mismatch',
+				'The supplied file is not the pinned image.',
+			);
 		}
 		let decoded: ReturnType<typeof probeArtworkImage>;
 		try {
 			decoded = probeArtworkImage(bytes);
 		} catch {
-			throw new ImageRepairError(422, 'image_mismatch', 'The supplied file is not a supported static image.');
+			throw new ImageRepairError(
+				422,
+				'image_mismatch',
+				'The supplied file is not a supported static image.',
+			);
 		}
 		if (decoded.mime !== pin.mime) {
-			throw new ImageRepairError(422, 'image_mismatch', 'The supplied file has a different image format.');
+			throw new ImageRepairError(
+				422,
+				'image_mismatch',
+				'The supplied file has a different image format.',
+			);
 		}
 		if (
 			artwork !== null &&
 			(decoded.pixelWidth !== artwork.pixelWidth || decoded.pixelHeight !== artwork.pixelHeight)
 		) {
-			throw new ImageRepairError(422, 'image_mismatch', 'The supplied file dimensions differ from the saved Artwork.');
+			throw new ImageRepairError(
+				422,
+				'image_mismatch',
+				'The supplied file dimensions differ from the saved Artwork.',
+			);
 		}
 	} catch (error) {
 		const streamError = error instanceof Error ? error : new Error('Image repair failed');
@@ -348,9 +415,15 @@ export async function streamRepairBytes(
 		signal.removeEventListener('abort', onAbort);
 		if (error instanceof ImageRepairError) throw error;
 		if (signal.aborted) {
-			throw signal.reason instanceof Error ? signal.reason : new ImageRepairError(503, 'service_unavailable', 'Image repair was aborted');
+			throw signal.reason instanceof Error
+				? signal.reason
+				: new ImageRepairError(503, 'service_unavailable', 'Image repair was aborted');
 		}
-		throw new ImageRepairError(503, 'service_unavailable', 'Image storage is unavailable; retry the repair.');
+		throw new ImageRepairError(
+			503,
+			'service_unavailable',
+			'Image storage is unavailable; retry the repair.',
+		);
 	} finally {
 		signal.removeEventListener('abort', onAbort);
 	}
@@ -374,11 +447,20 @@ export async function repairProjectImage(
 	body: Readable,
 	store: ObjectStore | undefined,
 	objectNamespace: string,
-	options: { parentSignal?: AbortSignal; policy?: ProjectLifecyclePolicy } = {}
+	options: { parentSignal?: AbortSignal; policy?: ProjectLifecyclePolicy } = {},
 ): Promise<ImageRepairAcknowledgement> {
-	if (!store) throw new ImageRepairError(503, 'service_unavailable', 'Image storage is unavailable');
-	if (!Number.isSafeInteger(contentLength) || contentLength < 1 || contentLength > ARTWORK_MAX_BYTES) {
-		throw new ImageRepairError(422, 'image_mismatch', 'The supplied file is outside the image size bounds.');
+	if (!store)
+		throw new ImageRepairError(503, 'service_unavailable', 'Image storage is unavailable');
+	if (
+		!Number.isSafeInteger(contentLength) ||
+		contentLength < 1 ||
+		contentLength > ARTWORK_MAX_BYTES
+	) {
+		throw new ImageRepairError(
+			422,
+			'image_mismatch',
+			'The supplied file is outside the image size bounds.',
+		);
 	}
 	try {
 		await expireAbandonedImageRepairs(pool, store, projectId, ownerId);
@@ -399,7 +481,11 @@ export async function repairProjectImage(
 				prepared = await withTransaction(pool, async (db) => {
 					const locked = await lockProject(db, ownerId, projectId);
 					if (readNullableString(locked.savedBaseToken) !== request.savedBaseToken) {
-						throw new ImageRepairError(409, 'conflict', 'The saved base changed; reload the project before repairing.');
+						throw new ImageRepairError(
+							409,
+							'conflict',
+							'The saved base changed; reload the project before repairing.',
+						);
 					}
 					const latestVersion = readSafeInteger(locked.latestVersion);
 					const envelope = await readSavedHead(db, projectId, latestVersion);
@@ -410,7 +496,7 @@ export async function repairProjectImage(
 						throw new ImageRepairError(
 							409,
 							'image_pin_changed',
-							'The saved revision pins different image bytes; source recovery is required.'
+							'The saved revision pins different image bytes; source recovery is required.',
 						);
 					}
 					await db.query(
@@ -426,8 +512,8 @@ VALUES ($1::uuid, $2, $3, $4::uuid, $5, $6, $7, now() + $8::interval)`,
 							authoritative.hash,
 							request.savedBaseToken,
 							stagingKey,
-							`${IMAGE_REPAIR_TTL_MS} milliseconds`
-						]
+							`${IMAGE_REPAIR_TTL_MS} milliseconds`,
+						],
 					);
 					return { pin: authoritative, oldObjectKey: pin.objectKey, artwork: pin.artwork };
 				});
@@ -447,7 +533,7 @@ VALUES ($1::uuid, $2, $3, $4::uuid, $5, $6, $7, now() + $8::interval)`,
 					objectKey: prepared.oldObjectKey,
 					paths: [],
 					expectedPin: prepared.pin,
-					artwork: prepared.artwork
+					artwork: prepared.artwork,
 				});
 				await forgetAttempt(pool, attemptId);
 				return { projectId, assetId, pin: prepared.pin, replaced: false };
@@ -460,7 +546,15 @@ VALUES ($1::uuid, $2, $3, $4::uuid, $5, $6, $7, now() + $8::interval)`,
 			}
 
 			try {
-				await streamRepairBytes(body, contentLength, store, stagingKey, prepared.pin, prepared.artwork, signal);
+				await streamRepairBytes(
+					body,
+					contentLength,
+					store,
+					stagingKey,
+					prepared.pin,
+					prepared.artwork,
+					signal,
+				);
 			} catch (error) {
 				if (await deleteStagedKey(store, stagingKey)) await forgetAttempt(pool, attemptId);
 				throw asImageRepairError(error);
@@ -469,7 +563,7 @@ VALUES ($1::uuid, $2, $3, $4::uuid, $5, $6, $7, now() + $8::interval)`,
 			let commit: RepairCommit;
 			try {
 				commit = await withTransaction(pool, (db) =>
-					commitRepair(db, ownerId, projectId, assetId, request, prepared, attemptId, stagingKey)
+					commitRepair(db, ownerId, projectId, assetId, request, prepared, attemptId, stagingKey),
 				);
 			} catch (error) {
 				if (await deleteStagedKey(store, stagingKey)) await forgetAttempt(pool, attemptId);
@@ -491,7 +585,7 @@ VALUES ($1::uuid, $2, $3, $4::uuid, $5, $6, $7, now() + $8::interval)`,
 						prepared,
 						attemptId,
 						commit.candidate,
-						signal
+						signal,
 					);
 				} catch (error) {
 					if (await deleteStagedKey(store, stagingKey)) await forgetAttempt(pool, attemptId);
@@ -514,6 +608,6 @@ VALUES ($1::uuid, $2, $3, $4::uuid, $5, $6, $7, now() + $8::interval)`,
 			}
 			return { projectId, assetId, pin: commit.pin, replaced: true };
 		},
-		options
+		options,
 	);
 }

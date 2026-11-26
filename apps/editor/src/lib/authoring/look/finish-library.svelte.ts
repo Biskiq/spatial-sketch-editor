@@ -1,5 +1,10 @@
 import type { SemanticReference } from '@portfolio/project-model/references';
-import type { MaterialId, SceneEntity, SceneMaterialInstance, SceneSurfaceRef } from '@portfolio/project-model/scene';
+import type {
+	MaterialId,
+	SceneEntity,
+	SceneMaterialInstance,
+	SceneSurfaceRef,
+} from '@portfolio/project-model/scene';
 import type { SceneFinishRef } from '@portfolio/project-model/scene-planning';
 import type { FinishPatchEdit } from '@portfolio/project-model/scene-planning';
 import {
@@ -14,10 +19,14 @@ import {
 	materialInstanceById,
 	sheenStepEdits,
 	usersOfFinish,
-	type FinishInstancePreview
+	type FinishInstancePreview,
 } from '@portfolio/project-model/scene-planning';
 import type { PaintDraftPick } from './paint-pick';
-import { buildFinishEditorFields, mergeDraftEdits, type EditorFieldsView } from './finish-editor.svelte';
+import {
+	buildFinishEditorFields,
+	mergeDraftEdits,
+	type EditorFieldsView,
+} from './finish-editor.svelte';
 import type { FinishCard, FinishCardTarget } from './finish-card.svelte';
 import { finishCardTargetKey } from './finish-card.svelte';
 import { finishImageWarning } from './finish-image.svelte';
@@ -25,8 +34,17 @@ import { getMaterial, materialById, materials } from '$lib/content/materials';
 import { materialFamilyOf, materialTreatmentFacts } from '$lib/content/material-presentation';
 import { catalogueRecipe } from '@portfolio/project-model/materials';
 import { libraryFamilyLabel, type LibraryFinishEntry } from '../library/library-catalogue';
-import { libraryTargetOf, libraryTargetOfPick, type LibraryTarget } from '../library/library-target';
-import { beginLibraryDraft, libraryDraftChanged, predictDerivedAssign, type LibraryDraft } from '../library/library-draft';
+import {
+	libraryTargetOf,
+	libraryTargetOfPick,
+	type LibraryTarget,
+} from '../library/library-target';
+import {
+	beginLibraryDraft,
+	libraryDraftChanged,
+	predictDerivedAssign,
+	type LibraryDraft,
+} from '../library/library-draft';
 import { stageEnvelope, type StageAdapterServices } from '../stage/stage-adapter-host';
 import {
 	entityReference,
@@ -38,7 +56,7 @@ import {
 	type FinishAuthoringHost,
 	type LibraryDraftPick,
 	type LibrarySwapRequest,
-	type PaintableSurface
+	type PaintableSurface,
 } from './finish-authoring-contract';
 
 type SceneNow = ReturnType<StageAdapterServices['stage']['snapshot']>['domain']['scene'];
@@ -55,10 +73,16 @@ export type FinishLibraryPorts = {
 	readonly labelOfKey: (key: string) => string;
 	readonly noteUsed: (key: string) => void;
 	readonly assign: (entityIds: readonly string[], ref: SceneFinishRef) => Promise<boolean>;
-	readonly assignSurfaces: (surfaces: readonly SurfaceTarget[], ref: Exclude<SceneFinishRef, 'model-own'>) => Promise<boolean>;
+	readonly assignSurfaces: (
+		surfaces: readonly SurfaceTarget[],
+		ref: Exclude<SceneFinishRef, 'model-own'>,
+	) => Promise<boolean>;
 	readonly accept: (input: FinishAcceptInput) => Promise<FinishAcceptOutcome>;
 	readonly entityOf: (entityId: string | null) => SceneEntity | null;
-	readonly textureIdFor: (instance: SceneMaterialInstance | undefined, role: 'normal' | 'color' | 'roughness' | 'metalness' | 'occlusion') => string | null;
+	readonly textureIdFor: (
+		instance: SceneMaterialInstance | undefined,
+		role: 'normal' | 'color' | 'roughness' | 'metalness' | 'occlusion',
+	) => string | null;
 	readonly colorOfKey: (key: string) => string;
 	readonly definitionOf: (instance: SceneMaterialInstance) => { readonly metalness: number } | null;
 	readonly pickMaterialKey: (key: string) => void;
@@ -73,11 +97,16 @@ export function createFinishLibraryAuthoring(ports: FinishLibraryPorts) {
 	/** The draft's last refusal, shown in place until the next edit or retarget. */
 	let draftRefusal = $state<string | null>(null);
 
-	const catalogueLabel = (id: MaterialId): string => (materialById.has(id) ? getMaterial(id).label : id);
+	const catalogueLabel = (id: MaterialId): string =>
+		materialById.has(id) ? getMaterial(id).label : id;
 	const treatmentFacts = materialTreatmentFacts(catalogueLabel);
 
 	function libraryShelf(): {
-		readonly curated: readonly { readonly id: MaterialId; readonly label: string; readonly color: string }[];
+		readonly curated: readonly {
+			readonly id: MaterialId;
+			readonly label: string;
+			readonly color: string;
+		}[];
 		readonly project: readonly {
 			readonly id: string;
 			readonly name: string;
@@ -91,14 +120,16 @@ export function createFinishLibraryAuthoring(ports: FinishLibraryPorts) {
 			curated: materials.map((material) => ({
 				id: material.id,
 				label: material.label,
-				color: material.swatchColor ?? material.fallbackColor
+				color: material.swatchColor ?? material.fallbackColor,
 			})),
 			project: (current?.materials ?? [])
 				.filter((instance) => !isPristineInstance(instance))
 				.map((instance) => {
 					const colorMapId = ports.textureIdFor(instance, 'color');
-					const dimensions = colorMapId === null ? null : (ports.host.imageDimensions?.(colorMapId) ?? null);
-					const textureRecordUri = colorMapId === null ? null : (ports.host.textureUri?.(colorMapId) ?? null);
+					const dimensions =
+						colorMapId === null ? null : (ports.host.imageDimensions?.(colorMapId) ?? null);
+					const textureRecordUri =
+						colorMapId === null ? null : (ports.host.textureUri?.(colorMapId) ?? null);
 					return {
 						id: instance.id,
 						name: instance.name,
@@ -110,11 +141,9 @@ export function createFinishLibraryAuthoring(ports: FinishLibraryPorts) {
 									? (ports.host.texturePreviewUri?.(colorMapId) ?? null)
 									: textureRecordUri,
 						warning:
-							dimensions === null
-								? null
-								: finishImageWarning(dimensions.width, dimensions.height)
+							dimensions === null ? null : finishImageWarning(dimensions.width, dimensions.height),
 					};
-				})
+				}),
 		};
 	}
 
@@ -127,7 +156,14 @@ export function createFinishLibraryAuthoring(ports: FinishLibraryPorts) {
 		const overrides = instance.overrides;
 		if (overrides === undefined) return 0;
 		let count = 0;
-		for (const field of ['color', 'roughness', 'metalness', 'occlusionStrength', 'normalScale', 'mapping'] as const) {
+		for (const field of [
+			'color',
+			'roughness',
+			'metalness',
+			'occlusionStrength',
+			'normalScale',
+			'mapping',
+		] as const) {
 			if (overrides[field] !== undefined) count += 1;
 		}
 		count += Object.values(overrides.maps ?? {}).filter((map) => map !== undefined).length;
@@ -160,9 +196,10 @@ export function createFinishLibraryAuthoring(ports: FinishLibraryPorts) {
 			const family = materialFamilyOf(material.id);
 			const familyLabel = libraryFamilyLabel(family);
 			const mapping = recipe?.mapping;
-			const tile = mapping !== undefined && mapping.kind !== 'uv'
-				? mapping.metric.tileMeters
-				: (material.defaultTileSizeMeters ?? [1, 1]);
+			const tile =
+				mapping !== undefined && mapping.kind !== 'uv'
+					? mapping.metric.tileMeters
+					: (material.defaultTileSizeMeters ?? [1, 1]);
 			const users = usersOfFinish(current, key, layout);
 			return {
 				key,
@@ -179,13 +216,15 @@ export function createFinishLibraryAuthoring(ports: FinishLibraryPorts) {
 				projectId: null,
 				favourite: favourite.has(key),
 				usage: users.length,
-				userKeys: users.map((user) => (user.kind === 'entity' ? `entity:${user.id}` : `surface:${user.key}`)),
+				userKeys: users.map((user) =>
+					user.kind === 'entity' ? `entity:${user.id}` : `surface:${user.key}`,
+				),
 				changes: 0,
 				reading,
 				sheen: reading.effective,
 				metalness: recipe?.metalness ?? material.metalness,
 				hasColourImage: finishHasColourImage(source, recipes),
-				warning: null
+				warning: null,
 			};
 		});
 		const project = current.materials
@@ -194,24 +233,27 @@ export function createFinishLibraryAuthoring(ports: FinishLibraryPorts) {
 				const key = `project:${instance.id}`;
 				const ref = { project: instance.id } as const;
 				const inspection = inspectFinish(envelope, ref, {
-					labelForMaterial: (id) => catalogueLabel(id as MaterialId)
+					labelForMaterial: (id) => catalogueLabel(id as MaterialId),
 				});
 				const users = inspection?.users ?? [];
 				const definition = ports.definitionOf(instance);
 				const baseId = catalogueBaseOf(instance);
 				const base = baseId === null ? null : catalogueRecipe(baseId);
-				const baseLabel = definition !== null
-					? 'Imported material'
-					: baseId !== null && materialById.has(baseId)
-						? getMaterial(baseId).label
-						: 'Imported material';
+				const baseLabel =
+					definition !== null
+						? 'Imported material'
+						: baseId !== null && materialById.has(baseId)
+							? getMaterial(baseId).label
+							: 'Imported material';
 				const family = baseId === null ? null : materialFamilyOf(baseId);
 				const changes = finishChangeCount(instance);
 				const source = { base: instance.base, overrides: instance.overrides } as const;
 				const reading = finishSheenReading(source, recipes, facts);
 				const colorMapId = ports.textureIdFor(instance, 'color');
-				const dimensions = colorMapId === null ? null : (ports.host.imageDimensions?.(colorMapId) ?? null);
-				const textureRecordUri = colorMapId === null ? null : (ports.host.textureUri?.(colorMapId) ?? null);
+				const dimensions =
+					colorMapId === null ? null : (ports.host.imageDimensions?.(colorMapId) ?? null);
+				const textureRecordUri =
+					colorMapId === null ? null : (ports.host.textureUri?.(colorMapId) ?? null);
 				return {
 					key,
 					source: 'project',
@@ -220,15 +262,16 @@ export function createFinishLibraryAuthoring(ports: FinishLibraryPorts) {
 					materialLabel: baseLabel,
 					family,
 					familyLabel: libraryFamilyLabel(family),
-					subline: changes === 0
-						? `from ${baseLabel}`
-						: `from ${baseLabel} · ${changes} change${changes === 1 ? '' : 's'}`,
+					subline:
+						changes === 0
+							? `from ${baseLabel}`
+							: `from ${baseLabel} · ${changes} change${changes === 1 ? '' : 's'}`,
 					color: ports.colorOfKey(key),
 					/* Only the project's scoped preview; a catalogue map is never a Library picture. */
-				imageUri:
-					textureRecordUri !== null && textureRecordUri.startsWith('/project-assets/')
-						? (ports.host.texturePreviewUri?.(colorMapId!) ?? null)
-						: null,
+					imageUri:
+						textureRecordUri !== null && textureRecordUri.startsWith('/project-assets/')
+							? (ports.host.texturePreviewUri?.(colorMapId!) ?? null)
+							: null,
 					curatedId: null,
 					projectId: instance.id,
 					favourite: favourite.has(key),
@@ -239,7 +282,8 @@ export function createFinishLibraryAuthoring(ports: FinishLibraryPorts) {
 					sheen: reading.effective,
 					metalness: instance.overrides?.metalness ?? definition?.metalness ?? base?.metalness ?? 0,
 					hasColourImage: finishHasColourImage(source, recipes),
-					warning: dimensions === null ? null : finishImageWarning(dimensions.width, dimensions.height)
+					warning:
+						dimensions === null ? null : finishImageWarning(dimensions.width, dimensions.height),
 				};
 			});
 		return [...project, ...curated];
@@ -294,11 +338,12 @@ export function createFinishLibraryAuthoring(ports: FinishLibraryPorts) {
 		}
 		libraryDraft = beginLibraryDraft(entry);
 		const target = libraryTarget();
-		libraryDraftPick = target === null
-			? null
-			: target.kind === 'entity'
-				? { kind: 'entity', entityId: target.entityId }
-				: { kind: 'surface', surface: target.surface };
+		libraryDraftPick =
+			target === null
+				? null
+				: target.kind === 'entity'
+					? { kind: 'entity', entityId: target.entityId }
+					: { kind: 'surface', surface: target.surface };
 		draftRefusal = null;
 		return true;
 	}
@@ -311,7 +356,10 @@ export function createFinishLibraryAuthoring(ports: FinishLibraryPorts) {
 		libraryDraft = {
 			...libraryDraft,
 			step,
-			edits: stepEdits.length === 0 ? libraryDraft.edits.filter((e) => e.field !== 'roughness') : mergeDraftEdits(libraryDraft.edits, stepEdits)
+			edits:
+				stepEdits.length === 0
+					? libraryDraft.edits.filter((e) => e.field !== 'roughness')
+					: mergeDraftEdits(libraryDraft.edits, stepEdits),
 		};
 		draftRefusal = null;
 	}
@@ -320,7 +368,7 @@ export function createFinishLibraryAuthoring(ports: FinishLibraryPorts) {
 		if (libraryDraft === null || incoming.length === 0) return;
 		libraryDraft = {
 			...libraryDraft,
-			edits: mergeDraftEdits(libraryDraft.edits, incoming)
+			edits: mergeDraftEdits(libraryDraft.edits, incoming),
 		};
 		draftRefusal = null;
 	}
@@ -335,15 +383,17 @@ export function createFinishLibraryAuthoring(ports: FinishLibraryPorts) {
 	function resetLibraryDraftStep(): void {
 		if (libraryDraft === null) return;
 		const entry = libraryBrowse().find((candidate) => candidate.key === libraryDraft!.finishKey);
-		libraryDraft = beginLibraryDraft(entry ?? {
-			key: libraryDraft.finishKey,
-			ref: libraryDraft.ref,
-			name: libraryDraft.name,
-			materialLabel: libraryDraft.baseLabel,
-			source: libraryDraft.source,
-			reading: libraryDraft.reading,
-			userKeys: libraryDraft.users
-		});
+		libraryDraft = beginLibraryDraft(
+			entry ?? {
+				key: libraryDraft.finishKey,
+				ref: libraryDraft.ref,
+				name: libraryDraft.name,
+				materialLabel: libraryDraft.baseLabel,
+				source: libraryDraft.source,
+				reading: libraryDraft.reading,
+				userKeys: libraryDraft.users,
+			},
+		);
 		draftRefusal = null;
 	}
 
@@ -371,9 +421,11 @@ export function createFinishLibraryAuthoring(ports: FinishLibraryPorts) {
 		const next = libraryTargetOfPick(pick, stageEnvelope(services.stage.snapshot()));
 		if (next === null) {
 			const kept = libraryDraftTarget();
-			ports.host.onNotice(kept === null
-				? 'That cannot take a Finish. Click a surface or object.'
-				: `That cannot take a Finish. The preview stays on ${kept.label}.`);
+			ports.host.onNotice(
+				kept === null
+					? 'That cannot take a Finish. Click a surface or object.'
+					: `That cannot take a Finish. The preview stays on ${kept.label}.`,
+			);
 			return false;
 		}
 		libraryDraftPick = pick;
@@ -386,36 +438,54 @@ export function createFinishLibraryAuthoring(ports: FinishLibraryPorts) {
 		const current = ports.scene();
 		if (current === null) return null;
 		return 'curated' in draft.ref
-			? { id: `curated:${draft.ref.curated}`, name: draft.name, base: { catalogue: draft.ref.curated } }
+			? {
+					id: `curated:${draft.ref.curated}`,
+					name: draft.name,
+					base: { catalogue: draft.ref.curated },
+				}
 			: (materialInstanceById(current.materials, draft.ref.project) ?? null);
 	}
 
 	/** What the draft would write, as a plan or a reason; no host call. */
 	function draftPlanNow():
 		| { readonly kind: 'assign'; readonly target: LibraryTarget }
-		| { readonly kind: 'derive'; readonly target: LibraryTarget; readonly allocates: boolean; readonly existingKey: string | null }
+		| {
+				readonly kind: 'derive';
+				readonly target: LibraryTarget;
+				readonly allocates: boolean;
+				readonly existingKey: string | null;
+		  }
 		| { readonly kind: 'refused'; readonly message: string } {
 		const draft = libraryDraft;
 		if (draft === null) return { kind: 'refused', message: 'No draft is open.' };
 		const target = libraryDraftTarget();
-		if (target === null) return { kind: 'refused', message: 'Click a surface or object to preview and apply.' };
+		if (target === null)
+			return { kind: 'refused', message: 'Click a surface or object to preview and apply.' };
 		const current = ports.scene();
 		const source = draftSourceInstance(draft);
-		if (current === null || source === null) return { kind: 'refused', message: 'That Finish is no longer in this project.' };
+		if (current === null || source === null)
+			return { kind: 'refused', message: 'That Finish is no longer in this project.' };
 		if (!libraryDraftChanged(draft)) {
 			if (target.finishKey === draft.finishKey) {
-				return { kind: 'refused', message: `${target.label} already wears ${draft.name}. Change a field or pick another surface.` };
+				return {
+					kind: 'refused',
+					message: `${target.label} already wears ${draft.name}. Change a field or pick another surface.`,
+				};
 			}
 			return { kind: 'assign', target };
 		}
-		const recipes = (current.materialIndex?.definitions ?? new Map()) as ReadonlyMap<string, import('@portfolio/project-model/materials').Recipe>;
-		const includesModel = target.kind === 'entity' && ports.entityOf(target.entityId)?.kind === 'model';
+		const recipes = (current.materialIndex?.definitions ?? new Map()) as ReadonlyMap<
+			string,
+			import('@portfolio/project-model/materials').Recipe
+		>;
+		const includesModel =
+			target.kind === 'entity' && ports.entityOf(target.entityId)?.kind === 'model';
 		const prediction = predictDerivedAssign({
 			materials: current.materials,
 			sourceInstance: source,
 			edits: draft.edits,
 			recipes,
-			includesModel
+			includesModel,
 		});
 		if (!prediction.ok) {
 			return { kind: 'refused', message: prediction.message };
@@ -423,7 +493,12 @@ export function createFinishLibraryAuthoring(ports: FinishLibraryPorts) {
 		if (prediction.existingKey !== null && target.finishKey === prediction.existingKey) {
 			return { kind: 'refused', message: `${target.label} already wears this.` };
 		}
-		return { kind: 'derive', target, allocates: prediction.allocates, existingKey: prediction.existingKey };
+		return {
+			kind: 'derive',
+			target,
+			allocates: prediction.allocates,
+			existingKey: prediction.existingKey,
+		};
 	}
 
 	/** What Apply would do, for the editor footer; no host call. */
@@ -438,7 +513,15 @@ export function createFinishLibraryAuthoring(ports: FinishLibraryPorts) {
 	} {
 		const draft = libraryDraft;
 		if (draft === null) {
-			return { active: false, canApply: false, changed: false, targetLabel: null, reason: null, canPaint: false, paintReason: null };
+			return {
+				active: false,
+				canApply: false,
+				changed: false,
+				targetLabel: null,
+				reason: null,
+				canPaint: false,
+				paintReason: null,
+			};
 		}
 		const target = libraryDraftTarget();
 		const changed = libraryDraftChanged(draft);
@@ -450,7 +533,7 @@ export function createFinishLibraryAuthoring(ports: FinishLibraryPorts) {
 			targetLabel: target?.label ?? null,
 			reason: draftRefusal ?? (plan.kind === 'refused' ? plan.message : null),
 			canPaint: !ports.busy(),
-			paintReason: null
+			paintReason: null,
 		};
 	}
 
@@ -465,7 +548,10 @@ export function createFinishLibraryAuthoring(ports: FinishLibraryPorts) {
 		if (draft === null || target === null || current === null) return null;
 		const instance = draftSourceInstance(draft);
 		if (instance === null) return null;
-		const recipes = (current.materialIndex?.definitions ?? new Map()) as ReadonlyMap<string, import('@portfolio/project-model/materials').Recipe>;
+		const recipes = (current.materialIndex?.definitions ?? new Map()) as ReadonlyMap<
+			string,
+			import('@portfolio/project-model/materials').Recipe
+		>;
 		if (draft.edits.length === 0) {
 			return target.finishKey === draft.finishKey ? null : { users: [target.key], instance };
 		}
@@ -490,7 +576,10 @@ export function createFinishLibraryAuthoring(ports: FinishLibraryPorts) {
 		if (instance === null) {
 			return { ok: false, reason: 'The Finish is no longer in the project.' };
 		}
-		const recipes = (current.materialIndex?.definitions ?? new Map()) as ReadonlyMap<string, import('@portfolio/project-model/materials').Recipe>;
+		const recipes = (current.materialIndex?.definitions ?? new Map()) as ReadonlyMap<
+			string,
+			import('@portfolio/project-model/materials').Recipe
+		>;
 		if (draft.edits.length === 0) return { ok: true, changed: false, instance };
 		const result = applyFinishPatch(instance, draft.edits, baseRecipeOf(instance, recipes));
 		if (!result.ok) {
@@ -510,9 +599,13 @@ export function createFinishLibraryAuthoring(ports: FinishLibraryPorts) {
 		const target = libraryDraftTarget();
 		const entityKind =
 			target !== null && target.kind === 'entity'
-				? ((ports.entityOf(target.entityId)?.kind as 'primitive' | 'form' | 'model' | undefined) ?? null)
+				? ((ports.entityOf(target.entityId)?.kind as 'primitive' | 'form' | 'model' | undefined) ??
+					null)
 				: null;
-		const recipes = (current.materialIndex?.definitions ?? new Map()) as ReadonlyMap<string, import('@portfolio/project-model/materials').Recipe>;
+		const recipes = (current.materialIndex?.definitions ?? new Map()) as ReadonlyMap<
+			string,
+			import('@portfolio/project-model/materials').Recipe
+		>;
 		return buildFinishEditorFields({
 			source: { base: resolved.instance.base, overrides: resolved.instance.overrides },
 			recipes,
@@ -520,7 +613,7 @@ export function createFinishLibraryAuthoring(ports: FinishLibraryPorts) {
 			entityKind,
 			facts: treatmentFacts,
 			materialLabel: draft.baseLabel,
-			curated: draft.source === 'curated'
+			curated: draft.source === 'curated',
 		});
 	}
 
@@ -539,9 +632,10 @@ export function createFinishLibraryAuthoring(ports: FinishLibraryPorts) {
 		}
 		if (plan.kind === 'assign') {
 			const target = plan.target;
-			const accepted = target.kind === 'entity'
-				? await ports.assign([target.entityId], draft.ref)
-				: await ports.assignSurfaces([target.surface], draft.ref);
+			const accepted =
+				target.kind === 'entity'
+					? await ports.assign([target.entityId], draft.ref)
+					: await ports.assignSurfaces([target.surface], draft.ref);
 			if (!accepted) {
 				draftRefusal = 'That change could not be made. Nothing changed.';
 				return false;
@@ -564,29 +658,44 @@ export function createFinishLibraryAuthoring(ports: FinishLibraryPorts) {
 			const isEntity = target.kind === 'entity';
 			const intentTargets: SemanticReference[] = isEntity
 				? [entityReference(services, target.entityId)]
-				: [{
-						version: 1,
-						domain: 'layout',
-						revision: { kind: 'exact', contentRevision: snapshot.domain.unitRevisions.layout },
-						subject: surfaceTargetSubject(target.surface as PaintableSurface),
-						instancePath: [],
-						location: { kind: 'layout-location', levelId: snapshot.domain.layoutLevelId, structureInstancePath: [] },
-						componentId: surfaceTargetComponent(target.surface as PaintableSurface),
-						capabilityId: null
-					}];
+				: [
+						{
+							version: 1,
+							domain: 'layout',
+							revision: { kind: 'exact', contentRevision: snapshot.domain.unitRevisions.layout },
+							subject: surfaceTargetSubject(target.surface as PaintableSurface),
+							instancePath: [],
+							location: {
+								kind: 'layout-location',
+								levelId: snapshot.domain.layoutLevelId,
+								structureInstancePath: [],
+							},
+							componentId: surfaceTargetComponent(target.surface as PaintableSurface),
+							capabilityId: null,
+						},
+					];
 			const outcome = await ports.accept({
 				kind: isEntity ? 'scene-finish-assign' : 'scene-surface-finish-assign',
 				payload: isEntity
-					? { finish: draft.ref, entityIds: [target.entityId], derive: { edits: draft.edits, identity: 'reuse' } }
-					: { finish: draft.ref, surfaces: [target.surface], derive: { edits: draft.edits, identity: 'reuse' } },
+					? {
+							finish: draft.ref,
+							entityIds: [target.entityId],
+							derive: { edits: draft.edits, identity: 'reuse' },
+						}
+					: {
+							finish: draft.ref,
+							surfaces: [target.surface],
+							derive: { edits: draft.edits, identity: 'reuse' },
+						},
 				targets: intentTargets,
-				allocatedIds: allocatedId === null ? [] : [newId('scene-finish', allocatedId)]
+				allocatedIds: allocatedId === null ? [] : [newId('scene-finish', allocatedId)],
 			});
 			if (outcome.kind !== 'accepted') {
 				draftRefusal = 'That change could not be made. Nothing changed.';
 				return false;
 			}
-			const resultingKey = plan.existingKey ?? (allocatedId !== null ? `project:${allocatedId}` : draft.finishKey);
+			const resultingKey =
+				plan.existingKey ?? (allocatedId !== null ? `project:${allocatedId}` : draft.finishKey);
 			ports.noteUsed(resultingKey);
 			ports.host.onNotice(`Applied ${draft.name} to ${target.label} · one undo`);
 			cancelLibraryDraft();
@@ -631,12 +740,13 @@ export function createFinishLibraryAuthoring(ports: FinishLibraryPorts) {
 			materialLabel: view.material.label,
 			currentId: view.material.catalogueId,
 			reach: view.reach.options === null ? null : view.reach.choice,
-			reachLine: view.reach.options === null
-				? view.reach.line
-				: view.reach.choice === 'all'
-					? view.reach.options.allLabel
-					: view.reach.options.thisLabel,
-			users: view.reach.users
+			reachLine:
+				view.reach.options === null
+					? view.reach.line
+					: view.reach.choice === 'all'
+						? view.reach.options.allLabel
+						: view.reach.options.thisLabel,
+			users: view.reach.users,
 		};
 		if (ports.host.openLibrarySwap === undefined) {
 			librarySwap = null;
@@ -654,7 +764,9 @@ export function createFinishLibraryAuthoring(ports: FinishLibraryPorts) {
 	 * Swap the captured target to a curated material through the Card's
 	 * treatment-preserving command. A stale target or reach refuses in place.
 	 */
-	async function applyLibrarySwap(materialId: MaterialId): Promise<{ readonly ok: true } | { readonly ok: false; readonly message: string }> {
+	async function applyLibrarySwap(
+		materialId: MaterialId,
+	): Promise<{ readonly ok: true } | { readonly ok: false; readonly message: string }> {
 		const request = librarySwap;
 		if (request === null) return { ok: false, message: 'Open Swap from a Finish Card first.' };
 		const view = ports.card.view(request.target, request.place);
@@ -662,26 +774,40 @@ export function createFinishLibraryAuthoring(ports: FinishLibraryPorts) {
 			return { ok: false, message: `${request.place} can no longer be swapped. Nothing changed.` };
 		}
 		if (view.reach.users !== request.users) {
-			return { ok: false, message: `Now used by ${view.reach.users} — reopen Swap from the Card. Nothing changed.` };
+			return {
+				ok: false,
+				message: `Now used by ${view.reach.users} — reopen Swap from the Card. Nothing changed.`,
+			};
 		}
 		if (view.material.catalogueId === materialId) {
 			return { ok: false, message: `${request.place} is already ${view.material.label}.` };
 		}
-		if (request.reach !== null && view.reach.choice !== request.reach) ports.card.setReach(request.target, request.reach);
+		if (request.reach !== null && view.reach.choice !== request.reach)
+			ports.card.setReach(request.target, request.reach);
 		ports.setBusy(true);
 		try {
 			const accepted = await ports.card.swap(request.target, materialId);
 			if (!accepted) {
-				return { ok: false, message: ports.card.refusalFor(request.target) ?? 'That swap could not be made. Nothing changed.' };
+				return {
+					ok: false,
+					message:
+						ports.card.refusalFor(request.target) ??
+						'That swap could not be made. Nothing changed.',
+				};
 			}
-			ports.host.onNotice(`Swapped ${request.place} to ${catalogueLabel(materialId)} — colour and sheen kept.`);
-			librarySwap = { ...request, currentId: materialId, materialLabel: catalogueLabel(materialId) };
+			ports.host.onNotice(
+				`Swapped ${request.place} to ${catalogueLabel(materialId)} — colour and sheen kept.`,
+			);
+			librarySwap = {
+				...request,
+				currentId: materialId,
+				materialLabel: catalogueLabel(materialId),
+			};
 			return { ok: true };
 		} finally {
 			ports.setBusy(false);
 		}
 	}
-
 
 	return {
 		libraryShelf,
@@ -710,7 +836,6 @@ export function createFinishLibraryAuthoring(ports: FinishLibraryPorts) {
 		},
 		requestLibrarySwap,
 		clearLibrarySwap,
-		applyLibrarySwap
+		applyLibrarySwap,
 	};
 }
-

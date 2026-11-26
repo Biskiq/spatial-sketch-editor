@@ -56,7 +56,7 @@ const MATERIAL_IDS = new Set([
 	'paper-aged',
 	// The technical base is a valid fallback for a resource-backed Finish and
 	// for a primitive whose project Finish supplies the authored signals.
-	'pbr-neutral-v1'
+	'pbr-neutral-v1',
 ]);
 
 const FALLBACKS = new Set<SceneObjectFallback>([
@@ -71,20 +71,21 @@ const FALLBACKS = new Set<SceneObjectFallback>([
 	'books',
 	'clock',
 	'rug',
-	'generic'
+	'generic',
 ]);
 
 export function withSceneValidationOptions(
-	options: SceneValidationOptions = {}
+	options: SceneValidationOptions = {},
 ): ResolvedSceneValidationOptions {
 	return {
 		connectivity: options.connectivity ?? 'single-component',
 		isKnownAssetId: options.isKnownAssetId ?? (() => true),
 		isKnownMaterialId: options.isKnownMaterialId ?? ((id) => MATERIAL_IDS.has(id)),
 		isSceneObjectFallback:
-			options.isSceneObjectFallback ?? ((value): value is SceneObjectFallback =>
+			options.isSceneObjectFallback ??
+			((value): value is SceneObjectFallback =>
 				typeof value === 'string' && FALLBACKS.has(value as SceneObjectFallback)),
-		isSafeTextureUri: options.isSafeTextureUri ?? isSafeTextureUri
+		isSafeTextureUri: options.isSafeTextureUri ?? isSafeTextureUri,
 	};
 }
 

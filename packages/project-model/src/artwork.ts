@@ -26,8 +26,12 @@ export function artworkHeight(widthMeters: number, image: ArtworkImage): number 
 
 export function isArtworkWidth(widthMeters: number, image: ArtworkImage): boolean {
 	const heightMeters = artworkHeight(widthMeters, image);
-	return widthMeters >= ARTWORK_MIN_METERS && widthMeters <= ARTWORK_MAX_METERS &&
-		heightMeters >= ARTWORK_MIN_METERS && heightMeters <= ARTWORK_MAX_METERS;
+	return (
+		widthMeters >= ARTWORK_MIN_METERS &&
+		widthMeters <= ARTWORK_MAX_METERS &&
+		heightMeters >= ARTWORK_MIN_METERS &&
+		heightMeters <= ARTWORK_MAX_METERS
+	);
 }
 
 export function artworkAssetUri(assetId: string): string {
@@ -36,6 +40,8 @@ export function artworkAssetUri(assetId: string): string {
 
 export function defaultArtworkWidth(image: ArtworkImage): number {
 	const inverseAspect = image.pixelWidth / image.pixelHeight;
-	return Math.max(ARTWORK_MIN_METERS * Math.max(1, inverseAspect),
-		Math.min(1, ARTWORK_MAX_METERS * Math.min(1, inverseAspect)));
+	return Math.max(
+		ARTWORK_MIN_METERS * Math.max(1, inverseAspect),
+		Math.min(1, ARTWORK_MAX_METERS * Math.min(1, inverseAspect)),
+	);
 }

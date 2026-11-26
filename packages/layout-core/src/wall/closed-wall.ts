@@ -27,7 +27,13 @@
  * without replacing the representation decision.
  */
 import type { LayoutVec2 } from '../geometry/coordinates';
-import type { LayoutDocumentWallFirst, LayoutWall, LayoutWallCenterline, LayoutWallCubicSpan, LayoutWallCurveKnot } from './types';
+import type {
+	LayoutDocumentWallFirst,
+	LayoutWall,
+	LayoutWallCenterline,
+	LayoutWallCubicSpan,
+	LayoutWallCurveKnot,
+} from './types';
 import { CLOSED_WALL_CIRCLE_KNOT_COUNT, CLOSED_WALL_CIRCLE_SPAN_COUNT } from './types';
 import { createEmptyWallFirstLayoutDocument } from './codec';
 import { wallCubicChain } from './centerline';
@@ -66,8 +72,8 @@ export const CLOSED_WALL_CIRCLE_ACCURACY: ClosedWallCircleAccuracy = {
 	maxLengthError: 2e-6,
 	measured: {
 		radialError: 3.3162019885679683e-7,
-		lengthError: 1.0715859062315758e-6
-	}
+		lengthError: 1.0715859062315758e-6,
+	},
 };
 
 export type ClosedWallCircleRejection = {
@@ -86,11 +92,7 @@ export type ClosedWallCircleConstruction =
 	| { kind: 'rejected'; rejection: ClosedWallCircleRejection };
 
 function finitePoint(point: LayoutVec2 | undefined): point is LayoutVec2 {
-	return (
-		point !== undefined &&
-		Number.isFinite(point[0]) &&
-		Number.isFinite(point[1])
-	);
+	return point !== undefined && Number.isFinite(point[0]) && Number.isFinite(point[1]);
 }
 
 /**
@@ -117,8 +119,8 @@ export function buildClosedWallCircleCenterlineFromRay(options: {
 			kind: 'rejected',
 			rejection: {
 				code: 'degenerate_radius',
-				message: 'A closed Wall needs a finite centre, seam direction and radius > 1e-9 m'
-			}
+				message: 'A closed Wall needs a finite centre, seam direction and radius > 1e-9 m',
+			},
 		};
 	}
 	const dirLen = Math.hypot(seamDirection[0], seamDirection[1]);
@@ -127,16 +129,14 @@ export function buildClosedWallCircleCenterlineFromRay(options: {
 			kind: 'rejected',
 			rejection: {
 				code: 'degenerate_radius',
-				message: 'A closed Wall needs a non-zero seam direction'
-			}
+				message: 'A closed Wall needs a non-zero seam direction',
+			},
 		};
 	}
 	const ray: LayoutVec2 = [seamDirection[0] / dirLen, seamDirection[1] / dirLen];
 	const toWorld = (point: LayoutVec2): LayoutVec2 => unitToWorldPoint(point, center, radius, ray);
 
-	const seam: LayoutVec2 = explicitSeam
-		? [explicitSeam[0], explicitSeam[1]]
-		: toWorld([1, 0]);
+	const seam: LayoutVec2 = explicitSeam ? [explicitSeam[0], explicitSeam[1]] : toWorld([1, 0]);
 
 	const knots: LayoutWallCurveKnot[] = [];
 	const spans: LayoutWallCubicSpan[] = [];
@@ -146,15 +146,19 @@ export function buildClosedWallCircleCenterlineFromRay(options: {
 		if (index < CLOSED_WALL_CIRCLE_SPAN_COUNT - 1) {
 			knots.push({
 				id: `${wallId}:knot:${index + 1}`,
-				point: toWorld(end)
+				point: toWorld(end),
 			});
 		}
 	}
-	if (knots.length !== CLOSED_WALL_CIRCLE_KNOT_COUNT || spans.length !== CLOSED_WALL_CIRCLE_SPAN_COUNT) {
+	if (
+		knots.length !== CLOSED_WALL_CIRCLE_KNOT_COUNT ||
+		spans.length !== CLOSED_WALL_CIRCLE_SPAN_COUNT
+	) {
 		throw new Error('closed Wall construction invariant failed');
 	}
 	const centerline = wallCubicChain(knots, spans);
-	if (centerline.kind !== 'cubic-chain') throw new Error('closed Wall construction invariant failed');
+	if (centerline.kind !== 'cubic-chain')
+		throw new Error('closed Wall construction invariant failed');
 	return { kind: 'success', centerline, radius, seam };
 }
 
@@ -175,7 +179,10 @@ export function buildClosedWallCircleCenterline(options: {
 	if (!finitePoint(center) || !finitePoint(rim)) {
 		return {
 			kind: 'rejected',
-			rejection: { code: 'degenerate_radius', message: 'A closed Wall needs finite centre and rim points' }
+			rejection: {
+				code: 'degenerate_radius',
+				message: 'A closed Wall needs finite centre and rim points',
+			},
 		};
 	}
 	const dx = rim[0] - center[0];
@@ -184,7 +191,10 @@ export function buildClosedWallCircleCenterline(options: {
 	if (!(radius > 1e-9) || !Number.isFinite(radius)) {
 		return {
 			kind: 'rejected',
-			rejection: { code: 'degenerate_radius', message: 'The authored rim must be farther than 1e-9 m from the centre' }
+			rejection: {
+				code: 'degenerate_radius',
+				message: 'The authored rim must be farther than 1e-9 m from the centre',
+			},
 		};
 	}
 	return buildClosedWallCircleCenterlineFromRay({
@@ -192,7 +202,7 @@ export function buildClosedWallCircleCenterline(options: {
 		radius,
 		seamDirection: [dx / radius, dz / radius],
 		wallId,
-		explicitSeam: rim
+		explicitSeam: rim,
 	});
 }
 
@@ -221,18 +231,13 @@ export function createClosedWallCircleDocument(options: {
 	height: number;
 }): ClosedWallCircleDocumentResult {
 	const { junctionId, wallId, thickness, height } = options;
-	if (
-		!Number.isFinite(thickness) ||
-		thickness <= 0 ||
-		!Number.isFinite(height) ||
-		height <= 0
-	) {
+	if (!Number.isFinite(thickness) || thickness <= 0 || !Number.isFinite(height) || height <= 0) {
 		return {
 			kind: 'rejected',
 			rejection: {
 				code: 'invalid_dimension',
-				message: 'A closed Wall needs a finite, strictly positive thickness and height'
-			}
+				message: 'A closed Wall needs a finite, strictly positive thickness and height',
+			},
 		};
 	}
 	const construction = buildClosedWallCircleCenterline(options);
@@ -245,7 +250,7 @@ export function createClosedWallCircleDocument(options: {
 		endJunctionId: junctionId,
 		thickness,
 		height,
-		centerline: construction.centerline
+		centerline: construction.centerline,
 	};
 	document.walls = [wall];
 	return {
@@ -253,6 +258,6 @@ export function createClosedWallCircleDocument(options: {
 		document,
 		wall,
 		seam: [construction.seam[0], construction.seam[1]],
-		radius: construction.radius
+		radius: construction.radius,
 	};
 }

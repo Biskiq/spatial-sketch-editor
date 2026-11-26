@@ -1,6 +1,14 @@
 import type { CompiledPhysicalWall } from '@portfolio/layout-core/geometry';
-import { wallUnfoldFreeEdgeStation, type WallUnfoldEdgeCandidate, type WallUnfoldState } from '$lib/layout/wall-unfold';
-import { buildWallUnfoldDisplay, evaluateWallUnfoldDisplay, unfoldDisplayPointAtStation } from '$lib/layout/wall-unfold-pick';
+import {
+	wallUnfoldFreeEdgeStation,
+	type WallUnfoldEdgeCandidate,
+	type WallUnfoldState,
+} from '$lib/layout/wall-unfold';
+import {
+	buildWallUnfoldDisplay,
+	evaluateWallUnfoldDisplay,
+	unfoldDisplayPointAtStation,
+} from '$lib/layout/wall-unfold-pick';
 import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
 import type { StageFacade } from '../stage-facade';
 
@@ -8,7 +16,7 @@ export function wallStationAtPointer(
 	wall: CompiledPhysicalWall,
 	datum: number,
 	stage: StageFacade,
-	event: PointerEvent
+	event: PointerEvent,
 ): number | null {
 	const projectionId = stage.evaluationId();
 	if (projectionId === null || wall.samples.length < 2) return null;
@@ -24,12 +32,19 @@ export function wallStationAtPointer(
 		const dx = b.css[0] - a.css[0];
 		const dy = b.css[1] - a.css[1];
 		const lengthSq = dx * dx + dy * dy;
-		const t = lengthSq <= 1e-9
-			? 0
-			: Math.min(1, Math.max(0, ((event.clientX - a.css[0]) * dx + (event.clientY - a.css[1]) * dy) / lengthSq));
+		const t =
+			lengthSq <= 1e-9
+				? 0
+				: Math.min(
+						1,
+						Math.max(
+							0,
+							((event.clientX - a.css[0]) * dx + (event.clientY - a.css[1]) * dy) / lengthSq,
+						),
+					);
 		const distance = Math.hypot(
 			event.clientX - (a.css[0] + dx * t),
-			event.clientY - (a.css[1] + dy * t)
+			event.clientY - (a.css[1] + dy * t),
 		);
 		if (distance < nearestDistance) {
 			nearestDistance = distance;
@@ -39,13 +54,12 @@ export function wallStationAtPointer(
 	return nearest;
 }
 
-
 export /** Sample the free edge across the peel range, then restore the live display. */
 function edgeCandidates(
 	display: ReturnType<typeof buildWallUnfoldDisplay>,
 	state: WallUnfoldState,
 	wall: CompiledPhysicalWall,
-	stage: StageFacade
+	stage: StageFacade,
 ): WallUnfoldEdgeCandidate[] {
 	if (display === null) return [];
 	const projectionId = stage.evaluationId();
@@ -58,7 +72,7 @@ function edgeCandidates(
 		const at = unfoldDisplayPointAtStation(display, station, wallUnfold.presentationAngle);
 		const projected = stage.projectWorld(
 			[at.point[0], display.floorY + display.height / 2, at.point[1]],
-			projectionId
+			projectionId,
 		);
 		if (projected.kind === 'projected') {
 			candidates.push({ u, css: [projected.css[0], projected.css[1]] });
@@ -67,4 +81,3 @@ function edgeCandidates(
 	evaluateWallUnfoldDisplay(display, state, wallUnfold.presentationAngle);
 	return candidates;
 }
-

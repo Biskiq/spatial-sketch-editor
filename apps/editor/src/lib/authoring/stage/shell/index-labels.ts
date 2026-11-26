@@ -89,11 +89,12 @@ export function indexLabels(inputs: readonly IndexLabelInput[]): ReadonlyMap<str
 export function layoutKindWord(
 	sourceKind: string,
 	openingKind?: 'door' | 'window',
-	openSpace = false
+	openSpace = false,
 ): string {
 	if (sourceKind === 'wall') return 'Wall';
 	if (sourceKind === 'opening') return openingKind === 'window' ? 'Window' : 'Door';
-	if (sourceKind === 'room-floor' || sourceKind === 'room') return openSpace ? 'Open space' : 'Room';
+	if (sourceKind === 'room-floor' || sourceKind === 'room')
+		return openSpace ? 'Open space' : 'Room';
 	if (sourceKind === 'object') return 'Object';
 	return sourceKind.charAt(0).toUpperCase() + sourceKind.slice(1);
 }
@@ -113,7 +114,7 @@ export const MEMBERSHIP_LABELS: Readonly<Record<string, string>> = {
 	'filtered-type': 'Hidden by the source-kind filter',
 	'outside-depth': 'Below the Plan depth',
 	'outside-span': 'Outside the Plan lateral span',
-	'no-meaningful-projection': 'No meaningful projection'
+	'no-meaningful-projection': 'No meaningful projection',
 };
 
 export function membershipLabel(membership: string): string {

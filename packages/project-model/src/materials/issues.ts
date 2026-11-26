@@ -37,7 +37,7 @@ export const MATERIAL_ISSUE_CODES = [
 	'empty-override',
 	'duplicate-image',
 	'definition-image-coverage',
-	'missing-definition'
+	'missing-definition',
 ] as const;
 
 export type MaterialIssueCode = (typeof MATERIAL_ISSUE_CODES)[number];

@@ -26,7 +26,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 		const registration = services.authoring.registerPlanner(planner);
 		if (registration.kind !== 'registered') {
 			throw new Error(
-				`Experience adapter planner "${planner.kind}" was refused: ${registration.reason} — ${registration.message}`
+				`Experience adapter planner "${planner.kind}" was refused: ${registration.reason} — ${registration.message}`,
 			);
 		}
 	}
@@ -43,8 +43,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				// lens refuses Resume, and stacking both would show two controls that
 				// cannot act on each other.
 				lens: 'experience',
-				order: 1
-			}
+				order: 1,
+			},
 		],
 		findEntries: [
 			{
@@ -53,16 +53,16 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				label: 'Experience authoring',
 				railFamily: 'experience',
 				capability: 'experience',
-				order: 1
-			}
+				order: 1,
+			},
 		],
 		instrument() {
 			// Exactly one writable Experience surface exists: the lens. Contributing a
 			// second copy here would put two draft editors over one accepted source.
 			return {
-				summary: 'Experience authoring is edited in the Experience lens.'
+				summary: 'Experience authoring is edited in the Experience lens.',
 			};
-		}
+		},
 	};
 	return adapter;
 };

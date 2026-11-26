@@ -31,14 +31,14 @@ import {
 	perfMark,
 	perfMarksEnabled,
 	perfTracePreview,
-	type PerfTracePreview
+	type PerfTracePreview,
 } from '$lib/platform/perf-marks';
 import type {
 	StageCandidatePreviewView,
 	StageFacade,
 	StageGhostMesh,
 	StageGuideView,
-	StageOverlayContribution
+	StageOverlayContribution,
 } from '../stage-facade';
 import type { StageMarkView } from '../stage-handles';
 import { projectRoomLabels, roomLabelFacts, type RoomLabelView } from '../room-labels';
@@ -84,7 +84,7 @@ export type StageViewportInput = {
 
 const browserScheduler: StageFrameScheduler = {
 	request: (callback) => requestAnimationFrame(callback),
-	cancel: (handle) => cancelAnimationFrame(handle)
+	cancel: (handle) => cancelAnimationFrame(handle),
 };
 
 function sameRect(left: ViewportRect, right: ViewportRect): boolean {
@@ -109,7 +109,6 @@ export function capturePointer(target: Element, pointerId: number): boolean {
 export function absoluteCss(event: PointerEvent): [number, number] {
 	return [event.clientX, event.clientY];
 }
-
 
 export function createStageViewport(input: StageViewportInput) {
 	const scheduler = input.scheduler ?? browserScheduler;
@@ -146,14 +145,15 @@ export function createStageViewport(input: StageViewportInput) {
 			top: bounds?.top ?? 0,
 			width,
 			height,
-			devicePixelRatio: window.devicePixelRatio || 1
+			devicePixelRatio: window.devicePixelRatio || 1,
 		};
 	}
 
 	/** The gold frame's content box: absolute for Camera, Stage-local for the scissor. */
-	function measureThroughFrame():
-		| { readonly absolute: ViewportRect; readonly local: StageFramedViewport }
-		| null {
+	function measureThroughFrame(): {
+		readonly absolute: ViewportRect;
+		readonly local: StageFramedViewport;
+	} | null {
 		const frameElement = input.throughFrameElement();
 		if (readElement() === undefined || frameElement === null) return null;
 		const stageRect = rect ?? measure();
@@ -169,9 +169,9 @@ export function createStageViewport(input: StageViewportInput) {
 				top,
 				width,
 				height,
-				devicePixelRatio: window.devicePixelRatio || 1
+				devicePixelRatio: window.devicePixelRatio || 1,
 			},
-			local: { left: left - stageRect.left, top: top - stageRect.top, width, height }
+			local: { left: left - stageRect.left, top: top - stageRect.top, width, height },
 		};
 	}
 
@@ -205,7 +205,7 @@ export function createStageViewport(input: StageViewportInput) {
 		const result = stage.camera.evaluate(
 			currentRect,
 			input.nowSeconds(),
-			input.groundReachMeters()
+			input.groundReachMeters(),
 		);
 		const nextEvaluation = result.kind === 'evaluated' ? result.evaluation : null;
 		// An evaluation is immutable and its identity names the output generation.
@@ -217,8 +217,7 @@ export function createStageViewport(input: StageViewportInput) {
 		// The Plan evaluation is recomputed only when it would actually differ, and
 		// **the facade is the authority on that**, not this presenter.
 		const parameters = { reveal: [...(input.revealed?.() ?? revealed)].sort() };
-		const parametersKey =
-			parameters.reveal.length === 0 ? '' : JSON.stringify(parameters.reveal);
+		const parametersKey = parameters.reveal.length === 0 ? '' : JSON.stringify(parameters.reveal);
 		if (parametersKey !== planParametersKey) {
 			planParametersKey = parametersKey;
 			stage.setPlanParameters(parameters);
@@ -249,7 +248,7 @@ export function createStageViewport(input: StageViewportInput) {
 			const overlayKey = nextMarkers
 				.map(
 					(marker) =>
-						`${marker.id}:${Math.round(marker.css[0] * 10)},${Math.round(marker.css[1] * 10)}`
+						`${marker.id}:${Math.round(marker.css[0] * 10)},${Math.round(marker.css[1] * 10)}`,
 				)
 				.join('|');
 			if (overlayKey !== lastOverlayKey) {
@@ -259,7 +258,7 @@ export function createStageViewport(input: StageViewportInput) {
 				// ledger's sequence says which input sample it belongs to.
 				perfMark('overlay:updated', {
 					markers: nextMarkers.length,
-					preview: nextMarkers.some((marker) => marker.id.endsWith('-preview'))
+					preview: nextMarkers.some((marker) => marker.id.endsWith('-preview')),
 				});
 			}
 		}
@@ -279,17 +278,15 @@ export function createStageViewport(input: StageViewportInput) {
 					: projectRoomLabels(
 							roomLabelFacts(
 								snapshot.domain.geometry,
-								stageEnvelope(snapshot).units.layout.data.rooms
+								stageEnvelope(snapshot).units.layout.data.rooms,
 							),
 							(point) => {
 								const projected = stage.projectWorld(point, evaluationId);
-								return projected.kind === 'projected' &&
-									projected.visibility === 'visible' &&
-									rect
+								return projected.kind === 'projected' && projected.visibility === 'visible' && rect
 									? [projected.css[0] - rect.left, projected.css[1] - rect.top]
 									: null;
 							},
-							nextEvaluation.targetPlaneMetersPerCssPixel
+							nextEvaluation.targetPlaneMetersPerCssPixel,
 						);
 			if (nextLabels !== roomLabels) roomLabels = nextLabels;
 		}
@@ -336,11 +333,17 @@ export function createStageViewport(input: StageViewportInput) {
 	}
 
 	return {
-		get stageElement() { return element; },
-		set stageElement(value: HTMLDivElement | undefined) { element = value; },
+		get stageElement() {
+			return element;
+		},
+		set stageElement(value: HTMLDivElement | undefined) {
+			element = value;
+		},
 		stageCss,
 		toggleReveal,
-		clearRevealed: () => { revealed = []; },
+		clearRevealed: () => {
+			revealed = [];
+		},
 		get evaluation(): ViewportEvaluation | null {
 			return evaluation;
 		},
@@ -404,7 +407,7 @@ export function createStageViewport(input: StageViewportInput) {
 				scheduler.cancel(frame);
 				frame = null;
 			}
-		}
+		},
 	};
 }
 

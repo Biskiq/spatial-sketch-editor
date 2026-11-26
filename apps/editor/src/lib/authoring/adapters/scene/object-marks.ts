@@ -17,7 +17,12 @@
  */
 import { angleDeltaLabel, planarDeltaLabel, signed } from '$lib/authoring/stage/stage-adapter-host';
 import type { AuthoringIntent } from '@portfolio/project-model/f4';
-import type { SceneEntity, SceneFormEntity, ScenePrimitiveEntity, Vec3 } from '@portfolio/project-model/scene';
+import type {
+	SceneEntity,
+	SceneFormEntity,
+	ScenePrimitiveEntity,
+	Vec3,
+} from '@portfolio/project-model/scene';
 import {
 	planPlaceOnFloor,
 	planResizeOnFloor,
@@ -25,7 +30,7 @@ import {
 	planSetYaw,
 	type SceneOperationContext,
 	type SceneOperationResult,
-	type SceneSupportChoice
+	type SceneSupportChoice,
 } from '@portfolio/project-model/scene-planning';
 import type { StageHandleDescriptor } from '$lib/authoring/stage/stage-adapter-host';
 import { sceneEntityReference, type SceneCandidate } from './placement';
@@ -37,7 +42,7 @@ import {
 	isSceneFormRayMarkId,
 	type FormMarkScreenHeight,
 	type FormSizeMeasurement,
-	type SceneFormRayMarkId
+	type SceneFormRayMarkId,
 } from './shape/form-size';
 
 /** The stable ids a Scene object publishes. The host owns disclosure state. */
@@ -46,7 +51,7 @@ export const SCENE_OBJECT_MARK = {
 	turn: 'scene-object-turn',
 	scalePoint: 'scene-object-scale-point',
 	size: 'scene-object-size',
-	lift: 'scene-object-lift'
+	lift: 'scene-object-lift',
 } as const;
 
 /**
@@ -86,11 +91,13 @@ export const SCENE_OBJECT_CARD_FIELD_IDS = [
 	'width',
 	'height',
 	'depth',
-	'elevation'
+	'elevation',
 ] as const;
 
 /** The size fields one kind holds: the only Card difference between kinds. */
-export function sceneObjectSizeFieldIds(kind: SceneEntity['kind']): readonly SceneObjectCardFieldId[] {
+export function sceneObjectSizeFieldIds(
+	kind: SceneEntity['kind'],
+): readonly SceneObjectCardFieldId[] {
 	return kind === 'form' ? ['width', 'height', 'depth'] : ['size'];
 }
 
@@ -144,7 +151,9 @@ export type SceneObjectEntity = Extract<
  * A Scene object is a primitive, a catalogue model or a drawn native form,
  * wherever it came from: one Card and one mark set. Lights are not objects.
  */
-export function isSceneObjectEntity(entity: SceneEntity | null | undefined): entity is SceneObjectEntity {
+export function isSceneObjectEntity(
+	entity: SceneEntity | null | undefined,
+): entity is SceneObjectEntity {
 	return entity?.kind === 'primitive' || entity?.kind === 'model' || entity?.kind === 'form';
 }
 
@@ -180,7 +189,7 @@ export function primitiveBounds(entity: ScenePrimitiveEntity): SceneObjectBounds
 		const halfZ = Math.abs(hx * sin) + Math.abs(hz * cos);
 		return {
 			min: [x - halfX, y - hy, z - halfZ],
-			max: [x + halfX, y + hy, z + halfZ]
+			max: [x + halfX, y + hy, z + halfZ],
 		};
 	};
 	switch (entity.primitive) {
@@ -188,7 +197,7 @@ export function primitiveBounds(entity: ScenePrimitiveEntity): SceneObjectBounds
 			return half([
 				(entity.dimensions.width / 2) * scale,
 				(entity.dimensions.height / 2) * scale,
-				(entity.dimensions.depth / 2) * scale
+				(entity.dimensions.depth / 2) * scale,
 			]);
 		case 'plane':
 			// A vertical plane has no floor footprint; the never-picked shape still
@@ -196,19 +205,19 @@ export function primitiveBounds(entity: ScenePrimitiveEntity): SceneObjectBounds
 			return half([
 				(entity.dimensions.width / 2) * scale,
 				(entity.dimensions.height / 2) * scale,
-				0.005
+				0.005,
 			]);
 		case 'cylinder':
 			return half([
 				entity.dimensions.radius * scale,
 				(entity.dimensions.height / 2) * scale,
-				entity.dimensions.radius * scale
+				entity.dimensions.radius * scale,
 			]);
 		case 'sphere':
 			return half([
 				entity.dimensions.radius * scale,
 				entity.dimensions.radius * scale,
-				entity.dimensions.radius * scale
+				entity.dimensions.radius * scale,
 			]);
 	}
 }
@@ -217,7 +226,7 @@ export function primitiveBounds(entity: ScenePrimitiveEntity): SceneObjectBounds
 export function boundsFootprint(bounds: SceneObjectBounds): SceneObjectFootprint {
 	return {
 		width: Math.max(0, bounds.max[0] - bounds.min[0]),
-		depth: Math.max(0, bounds.max[2] - bounds.min[2])
+		depth: Math.max(0, bounds.max[2] - bounds.min[2]),
 	};
 }
 
@@ -236,14 +245,14 @@ export function sizeRayGeometry(bounds: SceneObjectBounds): {
 	const diagonal: Vec3 = [
 		bounds.min[0] - bounds.max[0],
 		bounds.max[1] - bounds.min[1],
-		bounds.min[2] - bounds.max[2]
+		bounds.min[2] - bounds.max[2],
 	];
 	const axis = normalized(diagonal);
 	if (axis === null) return null;
 	return {
 		anchor: [bounds.max[0], bounds.min[1], bounds.max[2]],
 		axis,
-		extent: Math.hypot(diagonal[0], diagonal[1], diagonal[2])
+		extent: Math.hypot(diagonal[0], diagonal[1], diagonal[2]),
 	};
 }
 
@@ -268,7 +277,7 @@ export function sizeRayGeometry(bounds: SceneObjectBounds): {
 export function liveSceneObjectBounds(
 	entity: SceneObjectEntity,
 	bounds: SceneObjectBounds | null,
-	live: SceneObjectMarkLive | null
+	live: SceneObjectMarkLive | null,
 ): SceneObjectBounds | null {
 	if (bounds === null || live === null || entity.kind === 'form') return bounds;
 	if (entity.kind === 'primitive') {
@@ -276,7 +285,7 @@ export function liveSceneObjectBounds(
 			...entity,
 			position: [...live.position] as Vec3,
 			rotation: [entity.rotation[0], live.yaw, entity.rotation[2]],
-			scale: live.scale
+			scale: live.scale,
 		});
 	}
 	const acceptedScale = sceneObjectScale(entity);
@@ -358,7 +367,7 @@ export function sceneObjectMarkDescriptors(input: {
 		verb: 'Position',
 		planner: 'place-on-floor',
 		value: planarDeltaLabel(position[0] - entity.position[0], position[2] - entity.position[2]),
-		refusal: refusal(SCENE_OBJECT_MARK.move)
+		refusal: refusal(SCENE_OBJECT_MARK.move),
 	};
 	// The ring is last: it is drawn at the shared 30 px calibration, so a ring
 	// hit winning first would make the knobs inside it unreachable.
@@ -375,7 +384,7 @@ export function sceneObjectMarkDescriptors(input: {
 		planner: 'set-yaw',
 		phase: sceneTurnArrowPhase(yaw),
 		value: angleDeltaLabel(yaw, entity.rotation[1]),
-		refusal: refusal(SCENE_OBJECT_MARK.turn)
+		refusal: refusal(SCENE_OBJECT_MARK.turn),
 	};
 	// The lift knob is withheld in Plan (edge-on) and wherever no support lies
 	// beneath. It is the bottom of the chip's stem; for a form the same stem
@@ -401,7 +410,7 @@ export function sceneObjectMarkDescriptors(input: {
 			planner: 'set-lift',
 			disclosedBy: SCENE_OBJECT_MARK.scalePoint,
 			value: `Δ ${signed(liveLift - accepted.lift)} m · base ${liveLift.toFixed(2)} m`,
-			refusal: refusal(SCENE_OBJECT_MARK.lift)
+			refusal: refusal(SCENE_OBJECT_MARK.lift),
 		};
 	};
 
@@ -412,7 +421,7 @@ export function sceneObjectMarkDescriptors(input: {
 			...entity,
 			position: [...position] as Vec3,
 			rotation: [entity.rotation[0], yaw, entity.rotation[2]],
-			form: formMarks.form
+			form: formMarks.form,
 		};
 		const bounds = formMarks.measurement.bounds;
 		const rays = formSizeRayDescriptors({
@@ -422,7 +431,7 @@ export function sceneObjectMarkDescriptors(input: {
 			baseline: formMarks.baseline,
 			disclosedBy: SCENE_OBJECT_MARK.scalePoint,
 			refusal,
-			screenHeight: formMarks.screenHeight
+			screenHeight: formMarks.screenHeight,
 		});
 		if (bounds === null || rays === null) return [];
 		const chip: StageHandleDescriptor = {
@@ -432,7 +441,7 @@ export function sceneObjectMarkDescriptors(input: {
 			intent: 'resize',
 			anchor: formWorldPoint(pose, bounds.max),
 			label: 'Scale',
-			reveals: [...formSizeRayIds(input.reading), ...(lifting ? [SCENE_OBJECT_MARK.lift] : [])]
+			reveals: [...formSizeRayIds(input.reading), ...(lifting ? [SCENE_OBJECT_MARK.lift] : [])],
 		};
 		return [
 			chip,
@@ -442,12 +451,12 @@ export function sceneObjectMarkDescriptors(input: {
 						liftMark(
 							formWorldPoint(pose, [bounds.max[0], bounds.min[1], bounds.max[2]]),
 							formWorldPoint(pose, bounds.max),
-							bounds.max[1] - bounds.min[1]
-						)
+							bounds.max[1] - bounds.min[1],
+						),
 					]
 				: []),
 			move,
-			turn
+			turn,
 		];
 	}
 
@@ -467,15 +476,15 @@ export function sceneObjectMarkDescriptors(input: {
 			label: 'Scale',
 			value: `× ${(scale / acceptedScale).toFixed(2)}`,
 			refusal: refusal(SCENE_OBJECT_MARK.size),
-			reveals: [SCENE_OBJECT_MARK.lift]
+			reveals: [SCENE_OBJECT_MARK.lift],
 		},
 		liftMark(
 			[bounds.max[0], bounds.min[1], bounds.max[2]],
 			[bounds.max[0], bounds.max[1], bounds.max[2]],
-			bounds.max[1] - bounds.min[1]
+			bounds.max[1] - bounds.min[1],
 		),
 		move,
-		turn
+		turn,
 	];
 }
 
@@ -520,28 +529,28 @@ export function planSceneObjectMark(input: SceneObjectMarkPlanInput): SceneOpera
 				worldXZ: input.worldXZ,
 				frame: FRAME,
 				contactMinY: input.contactMinY,
-				...(input.choice === undefined ? {} : { choice: input.choice })
+				...(input.choice === undefined ? {} : { choice: input.choice }),
 			});
 		case SCENE_OBJECT_MARK.turn:
 			return planSetYaw({
 				context: input.context,
 				entityId: input.entityId,
 				yaw: input.yaw,
-				frame: FRAME
+				frame: FRAME,
 			});
 		case SCENE_OBJECT_MARK.size:
 			return planResizeOnFloor({
 				context: input.context,
 				entityId: input.entityId,
 				scale: input.scale,
-				contactMinY: input.contactMinY
+				contactMinY: input.contactMinY,
 			});
 		case SCENE_OBJECT_MARK.lift:
 			return planSetLift({
 				context: input.context,
 				entityId: input.entityId,
 				lift: input.lift,
-				contactMinY: input.contactMinY
+				contactMinY: input.contactMinY,
 			});
 	}
 }
@@ -579,7 +588,7 @@ export function sceneObjectMarkIntent(
 		readonly revisionId: string;
 		readonly sceneContentRevision: string;
 		readonly operationId: string;
-	}
+	},
 ): AuthoringIntent {
 	const payload: AuthoringIntent['payload'] =
 		input.markId === SCENE_OBJECT_MARK.move
@@ -589,25 +598,25 @@ export function sceneObjectMarkIntent(
 					frame: FRAME,
 					frameReference: PROJECT_WORLD,
 					contactMinY: input.contactMinY,
-					...(input.choice === undefined ? {} : { supportChoice: input.choice })
+					...(input.choice === undefined ? {} : { supportChoice: input.choice }),
 				}
 			: input.markId === SCENE_OBJECT_MARK.turn
 				? {
 						entityId: input.entityId,
 						yaw: input.yaw,
 						frame: FRAME,
-						frameReference: PROJECT_WORLD
+						frameReference: PROJECT_WORLD,
 					}
 				: input.markId === SCENE_OBJECT_MARK.lift
 					? {
 							entityId: input.entityId,
 							lift: input.lift,
-							contactMinY: input.contactMinY
+							contactMinY: input.contactMinY,
 						}
 					: {
 							entityId: input.entityId,
 							scale: input.scale,
-							contactMinY: input.contactMinY
+							contactMinY: input.contactMinY,
 						};
 	return {
 		version: 1,
@@ -624,7 +633,7 @@ export function sceneObjectMarkIntent(
 		targets: [sceneEntityReference(input.entityId, input.sceneContentRevision)],
 		payload,
 		capturedInputs: [],
-		allocatedIds: []
+		allocatedIds: [],
 	};
 }
 
@@ -648,7 +657,7 @@ export type SceneObjectCardField = {
 export function sceneObjectCardFields(
 	entity: SceneEntity,
 	/** The accepted lift above the support beneath; `null` withholds Elevation. */
-	lift: number | null = null
+	lift: number | null = null,
 ): readonly SceneObjectCardField[] {
 	if (!isSceneObjectEntity(entity)) return [];
 	const size: SceneObjectCardField[] =
@@ -658,17 +667,51 @@ export function sceneObjectCardFields(
 					label: handle.label,
 					unit: 'm' as const,
 					text: String(handle.dimension),
-					error: null
+					error: null,
 				}))
-			: [{ id: 'size', label: 'Size (uniform)', unit: '', text: String(sceneObjectScale(entity)), error: null }];
+			: [
+					{
+						id: 'size',
+						label: 'Size (uniform)',
+						unit: '',
+						text: String(sceneObjectScale(entity)),
+						error: null,
+					},
+				];
 	return [
-		{ id: 'position-x', label: 'X position', unit: 'm', text: String(entity.position[0]), error: null },
-		{ id: 'position-z', label: 'Z position', unit: 'm', text: String(entity.position[2]), error: null },
-		{ id: 'yaw', label: 'Yaw', unit: 'deg', text: String(sceneYawDegrees(entity.rotation[1])), error: null },
+		{
+			id: 'position-x',
+			label: 'X position',
+			unit: 'm',
+			text: String(entity.position[0]),
+			error: null,
+		},
+		{
+			id: 'position-z',
+			label: 'Z position',
+			unit: 'm',
+			text: String(entity.position[2]),
+			error: null,
+		},
+		{
+			id: 'yaw',
+			label: 'Yaw',
+			unit: 'deg',
+			text: String(sceneYawDegrees(entity.rotation[1])),
+			error: null,
+		},
 		...size,
 		...(lift === null
 			? []
-			: [{ id: 'elevation' as const, label: 'Elevation', unit: 'm' as const, text: String(quantizeLift(lift)), error: null }])
+			: [
+					{
+						id: 'elevation' as const,
+						label: 'Elevation',
+						unit: 'm' as const,
+						text: String(quantizeLift(lift)),
+						error: null,
+					},
+				]),
 	];
 }
 
@@ -702,7 +745,9 @@ export function sceneObjectCardFieldFacts(entity?: SceneEntity): readonly string
 		entity === undefined
 			? SCENE_OBJECT_CARD_FIELD_IDS
 			: SCENE_OBJECT_CARD_FIELD_IDS.filter(
-					(id) => !['size', 'width', 'height', 'depth'].includes(id) || sceneObjectSizeFieldIds(entity.kind).includes(id)
+					(id) =>
+						!['size', 'width', 'height', 'depth'].includes(id) ||
+						sceneObjectSizeFieldIds(entity.kind).includes(id),
 				);
 	return [...new Set(ids.map(cardFieldFact))];
 }
@@ -727,6 +772,6 @@ export function markCandidate(result: SceneOperationResult): SceneCandidate | nu
 		yaw: next.rotation[1],
 		scale: sceneObjectScale(next),
 		snappedStep: null,
-		...(next.kind === 'form' ? { form: next.form } : {})
+		...(next.kind === 'form' ? { form: next.form } : {}),
 	};
 }

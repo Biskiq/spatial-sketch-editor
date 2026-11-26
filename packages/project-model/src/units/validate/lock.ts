@@ -1,7 +1,12 @@
 import { isReferenceDomain } from '../../references/types';
 import { ShapeReader, type ShapeValidation } from '../../strict-shape';
 import { dependencyLockKey } from '../identity';
-import { UNIT_ENVELOPE_FORMAT_VERSION, type DependencyLock, type DependencyLockEntry, type ResourcePin } from '../types';
+import {
+	UNIT_ENVELOPE_FORMAT_VERSION,
+	type DependencyLock,
+	type DependencyLockEntry,
+	type ResourcePin,
+} from '../types';
 import { LOCK_KEYS, LOCK_ENTRY_KEYS, failed, readPin, readCapabilities } from './shared';
 
 /** The qualified identity/instance scope a lock entry is keyed by. */
@@ -22,7 +27,11 @@ export function validateDependencyLock(input: unknown): ShapeValidation<Dependen
 	const record = reader.object(input, '$', LOCK_KEYS);
 	if (record === null) return failed(reader);
 	if (record.formatVersion !== UNIT_ENVELOPE_FORMAT_VERSION) {
-		reader.problem('$.formatVersion', 'unsupported_format_version', `$.formatVersion must be ${UNIT_ENVELOPE_FORMAT_VERSION}`);
+		reader.problem(
+			'$.formatVersion',
+			'unsupported_format_version',
+			`$.formatVersion must be ${UNIT_ENVELOPE_FORMAT_VERSION}`,
+		);
 		return failed(reader);
 	}
 	if (!Array.isArray(record.entries)) {
@@ -37,13 +46,21 @@ export function validateDependencyLock(input: unknown): ShapeValidation<Dependen
 		if (entryRecord === null) return failed(reader);
 		const domain = reader.string(entryRecord.domain, `${path}.domain`);
 		if (domain !== null && !isReferenceDomain(domain)) {
-			reader.problem(`${path}.domain`, 'unknown-domain', `${path}.domain "${domain}" is not an admitted reference domain`);
+			reader.problem(
+				`${path}.domain`,
+				'unknown-domain',
+				`${path}.domain "${domain}" is not an admitted reference domain`,
+			);
 		}
 		const subjectKind = reader.opaqueId(entryRecord.subjectKind, `${path}.subjectKind`);
 		const subjectId = reader.opaqueId(entryRecord.subjectId, `${path}.subjectId`);
 		const instancePath = reader.opaqueIdArray(entryRecord.instancePath, `${path}.instancePath`);
 		const contentRevision = reader.opaqueId(entryRecord.contentRevision, `${path}.contentRevision`);
-		const capabilities = readCapabilities(reader, entryRecord.requiredCapabilities, `${path}.requiredCapabilities`);
+		const capabilities = readCapabilities(
+			reader,
+			entryRecord.requiredCapabilities,
+			`${path}.requiredCapabilities`,
+		);
 		const pin = entryRecord.pin === null ? null : readPin(reader, entryRecord.pin, `${path}.pin`);
 		if (
 			domain === null ||
@@ -63,7 +80,7 @@ export function validateDependencyLock(input: unknown): ShapeValidation<Dependen
 			instancePath,
 			contentRevision,
 			requiredCapabilities: capabilities,
-			pin
+			pin,
 		};
 		const key = lockKey(value);
 		const previous = byKey.get(key);
@@ -75,7 +92,7 @@ export function validateDependencyLock(input: unknown): ShapeValidation<Dependen
 				same ? 'duplicate-lock-entry' : 'conflicting-pins',
 				same
 					? `the lock already pins "${key}"; the lock is a set, not a list`
-					: `the lock pins "${key}" to two different contents (${previous.contentRevision} and ${value.contentRevision})`
+					: `the lock pins "${key}" to two different contents (${previous.contentRevision} and ${value.contentRevision})`,
 			);
 			return failed(reader);
 		}
@@ -83,10 +100,19 @@ export function validateDependencyLock(input: unknown): ShapeValidation<Dependen
 		entries.push(value);
 	}
 	if (reader.issues.length > 0) return failed(reader);
-	return { success: true, value: { formatVersion: UNIT_ENVELOPE_FORMAT_VERSION, entries }, ignoredOptionalExtensions: [] };
+	return {
+		success: true,
+		value: { formatVersion: UNIT_ENVELOPE_FORMAT_VERSION, entries },
+		ignoredOptionalExtensions: [],
+	};
 }
 
 export function samePin(left: ResourcePin | null, right: ResourcePin | null): boolean {
 	if (left === null || right === null) return left === right;
-	return left.hash === right.hash && left.mime === right.mime && left.size === right.size && left.locator === right.locator;
+	return (
+		left.hash === right.hash &&
+		left.mime === right.mime &&
+		left.size === right.size &&
+		left.locator === right.locator
+	);
 }

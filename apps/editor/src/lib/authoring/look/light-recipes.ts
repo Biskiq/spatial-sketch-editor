@@ -88,7 +88,7 @@ export function artworkLightRectangle(entity: SceneArtworkEntity): ArtworkRectan
 	const layout = artworkFrameLayout(
 		entity.widthMeters,
 		artworkHeight(entity.widthMeters, entity.source),
-		entity.frame
+		entity.frame,
 	);
 	const halfWidth = layout.outerWidth / 2;
 	const halfHeight = layout.outerHeight / 2;
@@ -98,7 +98,7 @@ export function artworkLightRectangle(entity: SceneArtworkEntity): ArtworkRectan
 		[-halfWidth, -halfHeight, 0],
 		[halfWidth, -halfHeight, 0],
 		[halfWidth, halfHeight, 0],
-		[-halfWidth, halfHeight, 0]
+		[-halfWidth, halfHeight, 0],
 	].map(([x, y, z]) => new Vector3(x, y, z).applyEuler(rotation).add(center).toArray() as Vec3);
 	return { center: center.toArray() as Vec3, halfWidth, halfHeight, corners };
 }
@@ -110,13 +110,13 @@ export function artworkLightBounds(entity: SceneArtworkEntity): LightItBounds {
 		min: [
 			Math.min(...corners.map((corner) => corner[0])),
 			Math.min(...corners.map((corner) => corner[1])),
-			Math.min(...corners.map((corner) => corner[2]))
+			Math.min(...corners.map((corner) => corner[2])),
 		] as Vec3,
 		max: [
 			Math.max(...corners.map((corner) => corner[0])),
 			Math.max(...corners.map((corner) => corner[1])),
-			Math.max(...corners.map((corner) => corner[2]))
-		] as Vec3
+			Math.max(...corners.map((corner) => corner[2])),
+		] as Vec3,
 	};
 }
 
@@ -139,15 +139,16 @@ export function pictureSpotRecipe(entity: SceneArtworkEntity): LightItRecipeOutc
 		add(scale(front, LIGHT_IT_PICTURE_SPOT_FRONT_METERS), [
 			0,
 			LIGHT_IT_PICTURE_SPOT_FRONT_METERS * Math.tan(elevation),
-			0
-		])
+			0,
+		]),
 	);
 	const direction = normalize(sub(rectangle.center, position));
 	const angle = fittedHalfAngle(position, direction, rectangle.corners);
 	if (angle === null) {
 		return {
 			kind: 'refused',
-			message: 'This Artwork is too large for a covered Picture spot at 1.4 m; its beam would exceed 80°.'
+			message:
+				'This Artwork is too large for a covered Picture spot at 1.4 m; its beam would exceed 80°.',
 		};
 	}
 	return {
@@ -161,8 +162,8 @@ export function pictureSpotRecipe(entity: SceneArtworkEntity): LightItRecipeOutc
 			range: spotCutoffForTargetDistance(farthestDistance(position, rectangle.corners)),
 			color: '#ffffff',
 			intensity: LIGHT_INTENSITY_REFERENCE,
-			castShadow: false
-		}
+			castShadow: false,
+		},
 	};
 }
 
@@ -186,17 +187,17 @@ export function washRecipe(input: {
 	const center: Vec3 = [
 		(bounds.min[0] + bounds.max[0]) / 2,
 		(bounds.min[1] + bounds.max[1]) / 2,
-		(bounds.min[2] + bounds.max[2]) / 2
+		(bounds.min[2] + bounds.max[2]) / 2,
 	];
 	const halfExtents: Vec3 = [
 		Math.max(0, (bounds.max[0] - bounds.min[0]) / 2),
 		Math.max(0, (bounds.max[1] - bounds.min[1]) / 2),
-		Math.max(0, (bounds.max[2] - bounds.min[2]) / 2)
+		Math.max(0, (bounds.max[2] - bounds.min[2]) / 2),
 	];
 	const radius = Math.hypot(...halfExtents);
 	const standoff = Math.max(
 		radius * LIGHT_IT_WASH_STANDOFF_RATIO,
-		LIGHT_IT_WASH_STANDOFF_MIN_METERS
+		LIGHT_IT_WASH_STANDOFF_MIN_METERS,
 	);
 	const front = horizontalFront(input.front);
 	const position = add(center, add(scale(front, standoff), [0, standoff, 0]));
@@ -206,7 +207,8 @@ export function washRecipe(input: {
 	if (angle === null) {
 		return {
 			kind: 'refused',
-			message: 'The selected bounds need a beam wider than 80°; move the subjects closer together or select a smaller group.'
+			message:
+				'The selected bounds need a beam wider than 80°; move the subjects closer together or select a smaller group.',
 		};
 	}
 	return {
@@ -220,29 +222,27 @@ export function washRecipe(input: {
 			range: spotCutoffForTargetDistance(farthestDistance(position, corners)),
 			color: '#ffffff',
 			intensity: LIGHT_INTENSITY_REFERENCE,
-			castShadow: false
-		}
+			castShadow: false,
+		},
 	};
 }
 
-export function unionLightItBounds(
-	bounds: readonly LightItBounds[]
-): LightItBounds | null {
+export function unionLightItBounds(bounds: readonly LightItBounds[]): LightItBounds | null {
 	if (bounds.length === 0) return null;
 	return bounds.reduce<LightItBounds>(
 		(union, entry) => ({
 			min: [
 				Math.min(union.min[0], entry.min[0]),
 				Math.min(union.min[1], entry.min[1]),
-				Math.min(union.min[2], entry.min[2])
+				Math.min(union.min[2], entry.min[2]),
 			],
 			max: [
 				Math.max(union.max[0], entry.max[0]),
 				Math.max(union.max[1], entry.max[1]),
-				Math.max(union.max[2], entry.max[2])
-			]
+				Math.max(union.max[2], entry.max[2]),
+			],
 		}),
-		{ min: [...bounds[0]!.min] as Vec3, max: [...bounds[0]!.max] as Vec3 }
+		{ min: [...bounds[0]!.min] as Vec3, max: [...bounds[0]!.max] as Vec3 },
 	);
 }
 
@@ -263,7 +263,7 @@ export function boundsCorners(bounds: LightItBounds): Vec3[] {
 		[bounds.max[0], bounds.min[1], bounds.min[2]],
 		[bounds.max[0], bounds.min[1], bounds.max[2]],
 		[bounds.max[0], bounds.max[1], bounds.min[2]],
-		[bounds.max[0], bounds.max[1], bounds.max[2]]
+		[bounds.max[0], bounds.max[1], bounds.max[2]],
 	];
 }
 
@@ -273,11 +273,7 @@ export function boundsCorners(bounds: LightItBounds): Vec3[] {
  * exceed the largest admitted angle; the caller must refuse with a reason
  * rather than silently writing a narrower light.
  */
-function fittedHalfAngle(
-	origin: Vec3,
-	direction: Vec3,
-	points: readonly Vec3[]
-): number | null {
+function fittedHalfAngle(origin: Vec3, direction: Vec3, points: readonly Vec3[]): number | null {
 	let widest = 0;
 	for (const point of points) {
 		const offset = sub(point, origin);

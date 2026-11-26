@@ -39,7 +39,7 @@ function productionRoots(): string[] {
 				} catch {
 					return false;
 				}
-			})
+			}),
 	];
 }
 
@@ -159,7 +159,13 @@ function resolveLocal(importer: string, specifier: string): string | null {
 			? path.resolve(path.dirname(importer), target)
 			: null;
 	if (base === null) return null;
-	for (const candidate of [base, `${base}.ts`, `${base}.svelte`, `${base}.js`, `${base}/index.ts`]) {
+	for (const candidate of [
+		base,
+		`${base}.ts`,
+		`${base}.svelte`,
+		`${base}.js`,
+		`${base}/index.ts`,
+	]) {
 		try {
 			if (statSync(candidate).isFile()) return candidate;
 		} catch {
@@ -205,14 +211,17 @@ export function measure(): Measurement {
 			}
 		}
 		if (file.startsWith(packageRoot)) {
-			for (const match of source.matchAll(/^export\s+(?:type\s+)?\*\s*(?:as\s+[\w$]+\s*)?from\s*['"]([^'"]+)['"]/gm)) {
+			for (const match of source.matchAll(
+				/^export\s+(?:type\s+)?\*\s*(?:as\s+[\w$]+\s*)?from\s*['"]([^'"]+)['"]/gm,
+			)) {
 				exportStars += 1;
 				if (match[1]!.startsWith('@portfolio/')) crossPackageReexports += 1;
 			}
 		}
 		if (file.startsWith(packageRoot)) {
 			for (const name of exportedNames(source)) {
-				if (/(?:ForTest|ForTests)$/.test(name) || /^__.*Tests?$/.test(name)) seams.add(`${rel}#${name}`);
+				if (/(?:ForTest|ForTests)$/.test(name) || /^__.*Tests?$/.test(name))
+					seams.add(`${rel}#${name}`);
 			}
 		}
 	}
@@ -222,12 +231,21 @@ export function measure(): Measurement {
 	// cycle; LOC-1 gives families their own entry points, and this check then
 	// guards the registry that joins them.
 	const entries = new Map([...graph].filter(([file]) => file.endsWith('index.ts')));
-	return { files, functions, exportStars, crossPackageReexports, seams: [...seams].sort(), cycles: findCycles(entries) };
+	return {
+		files,
+		functions,
+		exportStars,
+		crossPackageReexports,
+		seams: [...seams].sort(),
+		cycles: findCycles(entries),
+	};
 }
 
 function exportedNames(source: string): string[] {
 	const names: string[] = [];
-	for (const match of source.matchAll(/^export\s+(?:async\s+)?(?:function|const|let|class)\s+([A-Za-z_$][\w$]*)/gm)) {
+	for (const match of source.matchAll(
+		/^export\s+(?:async\s+)?(?:function|const|let|class)\s+([A-Za-z_$][\w$]*)/gm,
+	)) {
 		names.push(match[1]!);
 	}
 	return names;
@@ -276,12 +294,13 @@ export function readBudgets(): Budgets {
 	return JSON.parse(readFileSync(BUDGET_PATH, 'utf8')) as Budgets;
 }
 
-const REASON =
-	'Baseline exception recorded by LOC-0; the owning split packet removes this entry.';
+const REASON = 'Baseline exception recorded by LOC-0; the owning split packet removes this entry.';
 
 export function writeBudgets(measurement: Measurement, previous?: Budgets): Budgets {
 	const oldFiles = new Map((previous?.files ?? []).map((entry) => [entry.path, entry.reason]));
-	const oldFunctions = new Map((previous?.functions ?? []).map((entry) => [`${entry.file}#${entry.name}`, entry.reason]));
+	const oldFunctions = new Map(
+		(previous?.functions ?? []).map((entry) => [`${entry.file}#${entry.name}`, entry.reason]),
+	);
 	const budgets: Budgets = {
 		generatedFrom: 'LOC-0 baseline; shrink-only from here',
 		counts: {
@@ -291,7 +310,7 @@ export function writeBudgets(measurement: Measurement, previous?: Budgets): Budg
 			functionsOver200: measurement.functions.filter((entry) => entry.lines > 200).length,
 			exportStars: measurement.exportStars,
 			crossPackageReexports: measurement.crossPackageReexports,
-			seams: measurement.seams.length
+			seams: measurement.seams.length,
 		},
 		files: measurement.files
 			.filter((file) => file.lines > 600)
@@ -299,8 +318,11 @@ export function writeBudgets(measurement: Measurement, previous?: Budgets): Budg
 			.map((file) => ({ ...file, reason: oldFiles.get(file.path) ?? REASON })),
 		functions: measurement.functions
 			.filter((entry) => entry.lines > 200)
-			.map((entry) => ({ ...entry, reason: oldFunctions.get(`${entry.file}#${entry.name}`) ?? REASON })),
-		seams: measurement.seams
+			.map((entry) => ({
+				...entry,
+				reason: oldFunctions.get(`${entry.file}#${entry.name}`) ?? REASON,
+			})),
+		seams: measurement.seams,
 	};
 	return budgets;
 }
@@ -317,35 +339,66 @@ export function check(measurement: Measurement, budgets: Budgets): BudgetFailure
 	const allowedFiles = new Map(budgets.files.map((entry) => [entry.path, entry]));
 	for (const file of over600) {
 		const allowed = allowedFiles.get(file.path);
-		if (!allowed) failures.push({ rule: 'files', detail: `${file.path} is ${file.lines} lines and is not budgeted` });
+		if (!allowed)
+			failures.push({
+				rule: 'files',
+				detail: `${file.path} is ${file.lines} lines and is not budgeted`,
+			});
 		else if (file.lines > allowed.lines) {
-			failures.push({ rule: 'files', detail: `${file.path} grew from ${allowed.lines} to ${file.lines} lines` });
+			failures.push({
+				rule: 'files',
+				detail: `${file.path} grew from ${allowed.lines} to ${file.lines} lines`,
+			});
 		}
 	}
 	for (const entry of budgets.files) {
 		const measured = measurement.files.find((file) => file.path === entry.path);
-		if (!measured) failures.push({ rule: 'files', detail: `budgeted file ${entry.path} no longer exists` });
+		if (!measured)
+			failures.push({ rule: 'files', detail: `budgeted file ${entry.path} no longer exists` });
 		else if (measured.lines <= 600) {
-			failures.push({ rule: 'files', detail: `${entry.path} is now ${measured.lines} lines; remove its budget entry` });
+			failures.push({
+				rule: 'files',
+				detail: `${entry.path} is now ${measured.lines} lines; remove its budget entry`,
+			});
 		} else if (measured.lines < entry.lines) {
-			failures.push({ rule: 'files', detail: `${entry.path} shrank to ${measured.lines} lines; lower its budget` });
+			failures.push({
+				rule: 'files',
+				detail: `${entry.path} shrank to ${measured.lines} lines; lower its budget`,
+			});
 		}
 	}
 
-	const allowedFunctions = new Map(budgets.functions.map((entry) => [`${entry.file}#${entry.name}`, entry]));
+	const allowedFunctions = new Map(
+		budgets.functions.map((entry) => [`${entry.file}#${entry.name}`, entry]),
+	);
 	for (const entry of over200) {
 		const allowed = allowedFunctions.get(`${entry.file}#${entry.name}`);
-		if (!allowed) failures.push({ rule: 'functions', detail: `${entry.file}#${entry.name} is ${entry.lines} lines and is not budgeted` });
+		if (!allowed)
+			failures.push({
+				rule: 'functions',
+				detail: `${entry.file}#${entry.name} is ${entry.lines} lines and is not budgeted`,
+			});
 		else if (entry.lines > allowed.lines) {
-			failures.push({ rule: 'functions', detail: `${entry.file}#${entry.name} grew from ${allowed.lines} to ${entry.lines} lines` });
+			failures.push({
+				rule: 'functions',
+				detail: `${entry.file}#${entry.name} grew from ${allowed.lines} to ${entry.lines} lines`,
+			});
 		}
 	}
 	for (const entry of budgets.functions) {
-		const measured = over200.find((candidate) => candidate.file === entry.file && candidate.name === entry.name);
+		const measured = over200.find(
+			(candidate) => candidate.file === entry.file && candidate.name === entry.name,
+		);
 		if (!measured) {
-			failures.push({ rule: 'functions', detail: `${entry.file}#${entry.name} is no longer over 200 lines; remove its budget entry` });
+			failures.push({
+				rule: 'functions',
+				detail: `${entry.file}#${entry.name} is no longer over 200 lines; remove its budget entry`,
+			});
 		} else if (measured.lines < entry.lines) {
-			failures.push({ rule: 'functions', detail: `${entry.file}#${entry.name} shrank to ${measured.lines} lines; lower its budget` });
+			failures.push({
+				rule: 'functions',
+				detail: `${entry.file}#${entry.name} shrank to ${measured.lines} lines; lower its budget`,
+			});
 		}
 	}
 
@@ -355,19 +408,32 @@ export function check(measurement: Measurement, budgets: Budgets): BudgetFailure
 		['filesOver1500', over1500.length],
 		['functionsOver200', over200.length],
 		['exportStars', measurement.exportStars],
-		['crossPackageReexports', measurement.crossPackageReexports]
+		['crossPackageReexports', measurement.crossPackageReexports],
 	];
 	for (const [key, value] of counts) {
-		if (value > budgets.counts[key]) failures.push({ rule: 'counts', detail: `${key} is ${value}, above the budget ${budgets.counts[key]}` });
-		if (value < budgets.counts[key]) failures.push({ rule: 'counts', detail: `${key} is ${value}; lower the budget from ${budgets.counts[key]}` });
+		if (value > budgets.counts[key])
+			failures.push({
+				rule: 'counts',
+				detail: `${key} is ${value}, above the budget ${budgets.counts[key]}`,
+			});
+		if (value < budgets.counts[key])
+			failures.push({
+				rule: 'counts',
+				detail: `${key} is ${value}; lower the budget from ${budgets.counts[key]}`,
+			});
 	}
 
 	const seamSet = new Set(measurement.seams);
 	const budgetSeams = new Set(budgets.seams);
-	for (const seam of seamSet) if (!budgetSeams.has(seam)) failures.push({ rule: 'seams', detail: `new exported test seam ${seam}` });
-	for (const seam of budgetSeams) if (!seamSet.has(seam)) failures.push({ rule: 'seams', detail: `seam ${seam} is gone; remove it from the budget` });
+	for (const seam of seamSet)
+		if (!budgetSeams.has(seam))
+			failures.push({ rule: 'seams', detail: `new exported test seam ${seam}` });
+	for (const seam of budgetSeams)
+		if (!seamSet.has(seam))
+			failures.push({ rule: 'seams', detail: `seam ${seam} is gone; remove it from the budget` });
 	if (measurement.cycles.length > 0) {
-		for (const cycle of measurement.cycles) failures.push({ rule: 'cycles', detail: `import cycle: ${cycle.join(' -> ')}` });
+		for (const cycle of measurement.cycles)
+			failures.push({ rule: 'cycles', detail: `import cycle: ${cycle.join(' -> ')}` });
 	}
 	return failures;
 }
@@ -382,10 +448,15 @@ const READ_SET_MODULES = [
 	'packages/project-model/src/units/planning/experience/stop.ts',
 	'apps/editor/src/lib/authoring/look/finish-authoring.svelte.ts',
 	'apps/editor/src/lib/authoring/adapters/layout/precision.ts',
-	'apps/api/src/app.ts'
+	'apps/api/src/app.ts',
 ];
 
-export function readSets(): { module: string; own: number; definers: number; definerFiles: number }[] {
+export function readSets(): {
+	module: string;
+	own: number;
+	definers: number;
+	definerFiles: number;
+}[] {
 	return READ_SET_MODULES.map((module) => {
 		const absolute = path.join(REPO_ROOT, module);
 		let source = '';
@@ -409,13 +480,24 @@ export function readSets(): { module: string; own: number; definers: number; def
 
 function report(measurement: Measurement): void {
 	const over = (limit: number) => measurement.files.filter((file) => file.lines > limit);
-	console.log(`production files: ${measurement.files.length}, ${measurement.files.reduce((sum, file) => sum + file.lines, 0)} lines`);
-	console.log(`files > 600 / 1000 / 1500: ${over(600).length} / ${over(1000).length} / ${over(1500).length}`);
-	console.log(`functions > 200 lines: ${measurement.functions.filter((entry) => entry.lines > 200).length}`);
-	console.log(`export *: ${measurement.exportStars}; cross-package re-exports: ${measurement.crossPackageReexports}`);
-	console.log(`exported test seams: ${measurement.seams.length}; import cycles: ${measurement.cycles.length}`);
+	console.log(
+		`production files: ${measurement.files.length}, ${measurement.files.reduce((sum, file) => sum + file.lines, 0)} lines`,
+	);
+	console.log(
+		`files > 600 / 1000 / 1500: ${over(600).length} / ${over(1000).length} / ${over(1500).length}`,
+	);
+	console.log(
+		`functions > 200 lines: ${measurement.functions.filter((entry) => entry.lines > 200).length}`,
+	);
+	console.log(
+		`export *: ${measurement.exportStars}; cross-package re-exports: ${measurement.crossPackageReexports}`,
+	);
+	console.log(
+		`exported test seams: ${measurement.seams.length}; import cycles: ${measurement.cycles.length}`,
+	);
 	console.log('read sets (module, own, direct definers, definer files):');
-	for (const row of readSets()) console.log(`  ${row.module} ${row.own} ${row.definers} ${row.definerFiles}`);
+	for (const row of readSets())
+		console.log(`  ${row.module} ${row.own} ${row.definers} ${row.definerFiles}`);
 }
 
 function main(): void {
@@ -446,7 +528,10 @@ function main(): void {
 	report(measurement);
 	const jsonIndex = argv.indexOf('--json');
 	if (jsonIndex >= 0 && argv[jsonIndex + 1]) {
-		writeFileSync(path.resolve(REPO_ROOT, argv[jsonIndex + 1]!), `${JSON.stringify(measurement, null, 2)}\n`);
+		writeFileSync(
+			path.resolve(REPO_ROOT, argv[jsonIndex + 1]!),
+			`${JSON.stringify(measurement, null, 2)}\n`,
+		);
 	}
 }
 

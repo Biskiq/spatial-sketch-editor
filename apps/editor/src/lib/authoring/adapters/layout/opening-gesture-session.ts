@@ -2,13 +2,16 @@ import { previewOpeningRepeat } from './opening-repeat';
 import { openingRepeatProposal } from './opening-repeat-proposal';
 import type { LayoutCandidatePresenter } from './candidate-presenter';
 import { mintLayoutIdCapture } from '@portfolio/layout-core/plan';
-import { planUpdateWallFirstOpening, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import {
+	planUpdateWallFirstOpening,
+	type LayoutDocumentWallFirst,
+} from '@portfolio/layout-core/wall';
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 import {
 	type StageAdapterContext,
 	type StageCandidatePreview,
-	type StagePointerIntent
+	type StagePointerIntent,
 } from '$lib/authoring/stage/stage-adapter-host';
 import { stageLayout, stageUnitRevision } from '$lib/authoring/stage/stage-adapter-host';
 import type { GestureAcquisition } from '$lib/authoring/stage/stage-adapter-host';
@@ -20,7 +23,7 @@ import {
 	openingRefusalWords,
 	type OpeningResizeCorner,
 	type OpeningResizeEdge,
-	type OpeningResizePayload
+	type OpeningResizePayload,
 } from './opening-planners';
 import { pointerDatumPoint } from './stage-pointer';
 import type { SemanticReference } from '@portfolio/project-model/references';
@@ -29,9 +32,14 @@ import {
 	planNumericFields,
 	type PlanNumericEntryState,
 	type PlanNumericField,
-	type PlanNumericHost
+	type PlanNumericHost,
 } from '$lib/authoring/layout/plan-numeric-entry';
-import { wallStationAtPoint, wallStationNearPoint, type WallFrame, type WallStationFrame } from './precision-frames';
+import {
+	wallStationAtPoint,
+	wallStationNearPoint,
+	type WallFrame,
+	type WallStationFrame,
+} from './precision-frames';
 import { LAYOUT_OPENING_MEASURE_KIND, buildLayoutIntent } from './precision';
 import { resolveOpeningSlideSnap, resolveOpeningWidthSnap, type LayoutSnapWinner } from './snap';
 import { candidatePreviewOf } from './candidate-preview';
@@ -41,7 +49,7 @@ import {
 	numericWords,
 	previewCoordinates,
 	type LayoutManipulationPorts,
-	type NumericGestureTarget
+	type NumericGestureTarget,
 } from './manipulation-support';
 import { type LayoutSessionPorts } from './session-ports';
 
@@ -100,7 +108,7 @@ export function createOpeningGestureSession({
 	candidatePaper,
 	openingFace,
 	presenter,
-	planCandidate
+	planCandidate,
 }: OpeningGesturePorts) {
 	let openingGesture: OpeningMarkGesture | null = null;
 	/** The bounded Opening operation a cursor mark names, or `null`. */
@@ -129,10 +137,10 @@ export function createOpeningGestureSession({
 			location: {
 				kind: 'layout-location',
 				levelId: snapshot.domain.layoutLevelId,
-				structureInstancePath: []
+				structureInstancePath: [],
 			},
 			componentId: null,
-			capabilityId: null
+			capabilityId: null,
 		};
 	}
 
@@ -160,9 +168,9 @@ export function createOpeningGestureSession({
 				payload: {
 					openingId: request.openingId,
 					field: request.field,
-					value: request.value
-				}
-			})
+					value: request.value,
+				},
+			}),
 		);
 		publishRefusal(outcome.kind === 'refused' ? outcome.message : null);
 		services.stage.notifySurfaceChange();
@@ -180,8 +188,8 @@ export function createOpeningGestureSession({
 				projectId: snapshot.acceptedRevision.projectId,
 				revisionId: services.authoring.acceptedRevision().revisionId,
 				contentRevision: stageUnitRevision(snapshot, 'layout'),
-				levelId: snapshot.domain.layoutLevelId
-			})
+				levelId: snapshot.domain.layoutLevelId,
+			}),
 		);
 		publishRefusal(outcome.kind === 'refused' ? outcome.message : null);
 		services.stage.notifySurfaceChange();
@@ -191,14 +199,15 @@ export function createOpeningGestureSession({
 	function endOpeningGesture(): void {
 		const current = openingGesture;
 		openingGesture = null;
-		if (current?.lease?.kind === 'granted' && current.lease.lease.active) current.lease.lease.release();
+		if (current?.lease?.kind === 'granted' && current.lease.lease.active)
+			current.lease.lease.release();
 	}
 	/** The pointer's point on the same Wall face as the selected Opening marks. */
 	function openingPointerWorldAt(
 		adapterContext: StageAdapterContext,
 		css: readonly [number, number],
 		frame: WallFrame,
-		station: WallStationFrame
+		station: WallStationFrame,
 	): readonly [number, number, number] | null {
 		const datum = adapterContext.snapshot.domain.datumMeters;
 		if (adapterContext.evaluation.settledReading === 'plan') {
@@ -207,7 +216,7 @@ export function createOpeningGestureSession({
 		}
 		const ray = adapterContext.ray([
 			css[0] + adapterContext.evaluation.rect.left,
-			css[1] + adapterContext.evaluation.rect.top
+			css[1] + adapterContext.evaluation.rect.top,
 		]);
 		if (ray === null) return null;
 		if (station.curved) {
@@ -225,19 +234,19 @@ export function createOpeningGestureSession({
 				const side =
 					Math.sign(
 						(adapterContext.evaluation.eye[0] - local.point[0]) * tangentNormal[0] +
-							(adapterContext.evaluation.eye[2] - local.point[1]) * tangentNormal[1]
+							(adapterContext.evaluation.eye[2] - local.point[1]) * tangentNormal[1],
 					) || 1;
 				const faceOffset = (side * (wall?.thickness ?? 0)) / 2;
 				const hit = adapterContext.intersect(ray, {
 					originMeters: [
 						local.point[0] + tangentNormal[0] * faceOffset,
 						datum,
-						local.point[1] + tangentNormal[1] * faceOffset
+						local.point[1] + tangentNormal[1] * faceOffset,
 					],
 					normal: [tangentNormal[0], 0, tangentNormal[1]],
 					yawRadians: Math.atan2(tangent[0], tangent[1]),
 					datumMeters: datum,
-					supportedLocalExtent: null
+					supportedLocalExtent: null,
 				});
 				return hit.kind === 'intersected' ? hit.worldPoint : null;
 			}
@@ -249,19 +258,19 @@ export function createOpeningGestureSession({
 		const side =
 			Math.sign(
 				(adapterContext.evaluation.eye[0] - (frame.start[0] + frame.end[0]) / 2) * normal[0] +
-					(adapterContext.evaluation.eye[2] - (frame.start[1] + frame.end[1]) / 2) * normal[1]
+					(adapterContext.evaluation.eye[2] - (frame.start[1] + frame.end[1]) / 2) * normal[1],
 			) || 1;
 		const faceOffset = (side * (wall?.thickness ?? 0)) / 2;
 		const hit = adapterContext.intersect(ray, {
 			originMeters: [
 				frame.start[0] + normal[0] * faceOffset,
 				datum,
-				frame.start[1] + normal[1] * faceOffset
+				frame.start[1] + normal[1] * faceOffset,
 			],
 			normal: [normal[0], 0, normal[1]],
 			yawRadians: Math.atan2(direction[0], direction[1]),
 			datumMeters: datum,
-			supportedLocalExtent: null
+			supportedLocalExtent: null,
 		});
 		return hit.kind === 'intersected' ? hit.worldPoint : null;
 	}
@@ -269,23 +278,25 @@ export function createOpeningGestureSession({
 		intent: StagePointerIntent,
 		adapterContext: StageAdapterContext,
 		selectedOpeningSubject: OpeningMarkSubject,
-		markId: string
+		markId: string,
 	) {
 		const openingWorldAtPress = openingPointerWorldAt(
 			adapterContext,
 			intent.css,
 			selectedOpeningSubject.frame,
-			selectedOpeningSubject.station
+			selectedOpeningSubject.station,
 		);
 		if (openingWorldAtPress === null) return false;
 		const point: LayoutVec2 = [openingWorldAtPress[0], openingWorldAtPress[2]];
 		const acquisition = services.stage.acquireGesture({
 			owner: 'layout-precision',
 			evaluationId: intent.evaluationId,
-			policy: 'cancel-on-reading-change'
+			policy: 'cancel-on-reading-change',
 		});
 		if (acquisition.kind !== 'granted') {
-			publishRefusal(`The ${acquisition.owner} gesture owns the pointer; finish or cancel it first.`);
+			publishRefusal(
+				`The ${acquisition.owner} gesture owns the pointer; finish or cancel it first.`,
+			);
 			return false;
 		}
 		const action = openingMarkAction(markId);
@@ -294,13 +305,14 @@ export function createOpeningGestureSession({
 			return false;
 		}
 		const source = document.openings.find(
-			(candidate) => candidate.id === selectedOpeningSubject.openingId
+			(candidate) => candidate.id === selectedOpeningSubject.openingId,
 		);
 		if (source === undefined) {
 			acquisition.lease.release();
 			return false;
 		}
-		const numericHost: PlanNumericHost = action.kind === 'slide' ? 'opening-slide' : 'opening-resize';
+		const numericHost: PlanNumericHost =
+			action.kind === 'slide' ? 'opening-slide' : 'opening-resize';
 		const direction = wallDirection(selectedOpeningSubject.frame);
 		if (direction === null) {
 			acquisition.lease.release();
@@ -361,7 +373,7 @@ export function createOpeningGestureSession({
 			request: null,
 			snap: null,
 			previewDocument: null,
-			numeric: null
+			numeric: null,
 		};
 		services.stage.notifySurfaceChange();
 		return true;
@@ -381,7 +393,7 @@ export function createOpeningGestureSession({
 			adapterContext,
 			intent.css,
 			openingGesture.frame,
-			openingGesture.station
+			openingGesture.station,
 		);
 		if (openingWorldPoint === null) {
 			openingGesture.request = null;
@@ -393,7 +405,7 @@ export function createOpeningGestureSession({
 		const point: LayoutVec2 = [openingWorldPoint[0], openingWorldPoint[2]];
 		const direction = wallDirection(openingGesture.frame);
 		const source = openingGesture.baseline.openings.find(
-			(entry) => entry.id === openingGesture!.openingId
+			(entry) => entry.id === openingGesture!.openingId,
 		);
 		if (direction === null || source === undefined) return true;
 		const along = openingGesture.station.curved
@@ -404,7 +416,7 @@ export function createOpeningGestureSession({
 		const hostSpan = {
 			segmentId: openingGesture.wallId,
 			start: openingGesture.frame.start,
-			end: openingGesture.frame.end
+			end: openingGesture.frame.end,
 		};
 		const pixelsPerMeter = 1 / adapterContext.evaluation.targetPlaneMetersPerCssPixel;
 		const drafting = adapterContext.drafting();
@@ -419,7 +431,7 @@ export function createOpeningGestureSession({
 				pointerCenterOffset: along - openingGesture.grabOffsetAlong,
 				width: openingGesture.widthAtStart,
 				pixelsPerMeter,
-				drafting
+				drafting,
 			});
 			request = { kind: 'slide', value: snapped.offset };
 			patch = { offset: snapped.offset };
@@ -434,7 +446,7 @@ export function createOpeningGestureSession({
 					openingId: openingGesture.openingId,
 					pointerEdgeOffset: rawEdge,
 					pixelsPerMeter,
-					drafting
+					drafting,
 				});
 				value = snapped.edgeOffset;
 				winner = snapped.winner;
@@ -445,7 +457,7 @@ export function createOpeningGestureSession({
 				openingId: openingGesture.openingId,
 				kind: 'edge',
 				edge: openingGesture.action.edge,
-				value
+				value,
 			};
 			request = { kind: 'resize', payload };
 			patch = openingResizePatch(source, payload);
@@ -470,7 +482,7 @@ export function createOpeningGestureSession({
 				openingId: openingGesture.openingId,
 				kind: 'corner',
 				corner,
-				factor
+				factor,
 			};
 			request = { kind: 'resize', payload };
 			patch = openingResizePatch(source, payload);
@@ -478,7 +490,11 @@ export function createOpeningGestureSession({
 		openingGesture.snap = winner;
 		openingGesture.pointerPoint = [point[0], point[1]];
 		openingGesture.pointerWorld = openingWorldPoint;
-		const planned = planUpdateWallFirstOpening(openingGesture.baseline, openingGesture.openingId, patch);
+		const planned = planUpdateWallFirstOpening(
+			openingGesture.baseline,
+			openingGesture.openingId,
+			patch,
+		);
 		if (planned.kind === 'rejected') {
 			openingGesture.request = null;
 			openingGesture.previewDocument = null;
@@ -491,8 +507,8 @@ export function createOpeningGestureSession({
 					width: source.width,
 					height: source.height,
 					sillHeight: source.sillHeight,
-					...patch
-				})
+					...patch,
+				}),
 			);
 		} else {
 			openingGesture.request = request;
@@ -506,7 +522,7 @@ export function createOpeningGestureSession({
 	function release(
 		intent: StagePointerIntent,
 		adapterContext: StageAdapterContext,
-		refusal: string | null
+		refusal: string | null,
 	) {
 		if (openingGesture === null) return false;
 		const draggedOpening =
@@ -523,7 +539,7 @@ export function createOpeningGestureSession({
 				subject: { kind: 'opening', openingId },
 				contentRevision: adapterContext.snapshot.domain.unitRevisions.layout,
 				point: openingGesture.pointerPoint,
-				text: refusal
+				text: refusal,
 			});
 		}
 		endOpeningGesture();
@@ -543,7 +559,7 @@ export function createOpeningGestureSession({
 			host: opening.numericHost,
 			field: opening.numericField,
 			ownerId: opening.openingId,
-			candidates: { offset: opening.offsetAtStart, width: opening.widthAtStart }
+			candidates: { offset: opening.offsetAtStart, width: opening.widthAtStart },
 		};
 	}
 
@@ -580,15 +596,19 @@ export function createOpeningGestureSession({
 				adapterContext.evaluation.settledReading === 'plan'
 					? (candidatePaper(activeOpeningMark.previewDocument, y, subjectIds, new Set())?.paper
 							.subject ?? null)
-					: openingFace(activeOpeningMark.previewDocument, new Set([activeOpeningMark.openingId]), y);
+					: openingFace(
+							activeOpeningMark.previewDocument,
+							new Set([activeOpeningMark.openingId]),
+							y,
+						);
 			if (geometry !== null) {
 				return [
 					candidatePreviewOf({
 						id: 'layout-candidate-opening-mark',
 						role: 'subject',
 						geometry,
-						snap: snapOf(activeOpeningMark.snap)
-					})
+						snap: snapOf(activeOpeningMark.snap),
+					}),
 				];
 			}
 			return [];
@@ -601,10 +621,12 @@ export function createOpeningGestureSession({
 					role: 'refused',
 					geometry: {
 						polygons: [],
-						segments: [[world(activeOpeningMark.startPoint), world(activeOpeningMark.pointerPoint)]]
+						segments: [
+							[world(activeOpeningMark.startPoint), world(activeOpeningMark.pointerPoint)],
+						],
 					},
-					labels: [{ world: world(activeOpeningMark.pointerPoint), text: refusal }]
-				})
+					labels: [{ world: world(activeOpeningMark.pointerPoint), text: refusal }],
+				}),
 			];
 		}
 		return null;
@@ -612,7 +634,7 @@ export function createOpeningGestureSession({
 
 	function repeatPreviews(
 		adapterContext: StageAdapterContext,
-		y: number
+		y: number,
 	): readonly StageCandidatePreview[] | null {
 		// The Card's live Repeat proposal. Every copy comes from the
 		// planner's own candidate document, filtered to the Openings it created,
@@ -620,13 +642,19 @@ export function createOpeningGestureSession({
 		// owns the typed count/spacing; this is a read of the same proposal.
 		const activeRepeat = openingRepeatProposal(
 			adapterContext.snapshot.sourceContentId,
-			selectedOpening(document, adapterContext)?.openingId ?? ''
+			selectedOpening(document, adapterContext)?.openingId ?? '',
 		);
 		if (activeRepeat !== null) {
 			// One proposal per distinct (accepted, Opening, count, spacing); its
 			// minted preview ids stay pinned while the memo holds it.
 			const preview = presenter.proposal(
-				['opening-repeat', document, activeRepeat.openingId, activeRepeat.count, activeRepeat.spacing],
+				[
+					'opening-repeat',
+					document,
+					activeRepeat.openingId,
+					activeRepeat.count,
+					activeRepeat.spacing,
+				],
 				// The proposal's own validation compile runs through this project's
 				// session, as the Repeat planner's commit does.
 				() =>
@@ -635,9 +663,9 @@ export function createOpeningGestureSession({
 							document,
 							openingId: activeRepeat.openingId,
 							count: activeRepeat.count,
-							spacing: activeRepeat.spacing
-						})
-					)
+							spacing: activeRepeat.spacing,
+						}),
+					),
 			);
 			if (preview.kind === 'planned') {
 				const createdIds = new Set(preview.createdOpeningIds);
@@ -650,8 +678,8 @@ export function createOpeningGestureSession({
 						candidatePreviewOf({
 							id: 'layout-candidate-opening-repeat',
 							role: 'subject',
-							geometry
-						})
+							geometry,
+						}),
 					];
 				}
 			}
@@ -687,7 +715,7 @@ export function createOpeningGestureSession({
 						markId: openingGesture.markId,
 						numeric: openingGesture.numeric,
 						numericField: openingGesture.numericField,
-						previewDocument: openingGesture.previewDocument
-					}
+						previewDocument: openingGesture.previewDocument,
+					},
 	};
 }

@@ -41,7 +41,7 @@ export type LayoutTopologyComponent = {
  * references form a component of exactly themselves.
  */
 export function topologyComponentKeyByWallId(
-	document: Pick<LayoutDocumentWallFirst, 'walls'>
+	document: Pick<LayoutDocumentWallFirst, 'walls'>,
 ): Map<string, string> {
 	const parent = new Map<string, string>();
 	const find = (value: string): string => {
@@ -91,7 +91,7 @@ export function topologyComponentKeyByWallId(
 
 /** All components of the document's Wall graph, in first-member document order. */
 export function wallJunctionComponents(
-	document: LayoutDocumentWallFirst
+	document: LayoutDocumentWallFirst,
 ): LayoutTopologyComponent[] {
 	const keyByWallId = topologyComponentKeyByWallId(document);
 	const wallIdsByKey = new Map<string, string[]>();
@@ -132,7 +132,7 @@ export function wallJunctionComponents(
 		key,
 		wallIds,
 		junctionIds: junctionIdsByKey.get(key) ?? [],
-		roomIds: roomIdsByKey.get(key) ?? []
+		roomIds: roomIdsByKey.get(key) ?? [],
 	}));
 }
 
@@ -144,7 +144,7 @@ export function wallJunctionComponents(
  */
 export function topologyComponentKeyByRoomId(
 	document: LayoutDocumentWallFirst,
-	keyByWallId: Map<string, string> = topologyComponentKeyByWallId(document)
+	keyByWallId: Map<string, string> = topologyComponentKeyByWallId(document),
 ): Map<string, string> {
 	const keyByRoomId = new Map<string, string>();
 	for (const room of document.rooms) {
@@ -197,7 +197,7 @@ export type JunctionTopologyComponentKey = string | typeof UNATTACHED_JUNCTION_C
  */
 export function topologyComponentKeyByJunctionId(
 	document: LayoutDocumentWallFirst,
-	keyByWallId: Map<string, string> = topologyComponentKeyByWallId(document)
+	keyByWallId: Map<string, string> = topologyComponentKeyByWallId(document),
 ): Map<string, JunctionTopologyComponentKey> {
 	const keyByJunctionId = new Map<string, JunctionTopologyComponentKey>();
 	for (const wall of document.walls) {
@@ -219,7 +219,7 @@ export function topologyComponentKeyByJunctionId(
 export function junctionsShareTopologyComponent(
 	document: LayoutDocumentWallFirst,
 	firstJunctionId: string,
-	secondJunctionId: string
+	secondJunctionId: string,
 ): boolean {
 	if (firstJunctionId === secondJunctionId) return true;
 	const keyByJunctionId = topologyComponentKeyByJunctionId(document);
@@ -231,7 +231,7 @@ export function junctionsShareTopologyComponent(
 export function wallsShareTopologyComponent(
 	document: LayoutDocumentWallFirst,
 	firstWallId: string,
-	secondWallId: string
+	secondWallId: string,
 ): boolean {
 	if (firstWallId === secondWallId) return true;
 	const keyByWallId = topologyComponentKeyByWallId(document);
@@ -242,7 +242,7 @@ export function wallsShareTopologyComponent(
 /** Every Wall id in the same component as `wallId` (the Wall itself included). */
 export function wallIdsConnectedTo(
 	document: LayoutDocumentWallFirst,
-	wallId: string
+	wallId: string,
 ): readonly string[] {
 	const keyByWallId = topologyComponentKeyByWallId(document);
 	const key = keyByWallId.get(wallId);
@@ -259,7 +259,7 @@ export function wallIdsConnectedTo(
  */
 export function roomIdsConnectedByTopology(
 	document: LayoutDocumentWallFirst,
-	roomId: string
+	roomId: string,
 ): readonly string[] {
 	const keyByRoomId = topologyComponentKeyByRoomId(document);
 	const key = keyByRoomId.get(roomId);

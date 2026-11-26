@@ -57,7 +57,7 @@ export function createPaintTrayState() {
 		reset(): void {
 			expanded = false;
 			wheelOpen = false;
-		}
+		},
 	};
 }
 

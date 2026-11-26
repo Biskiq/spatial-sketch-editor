@@ -104,8 +104,8 @@ export type LayoutDerivedWallRole = 'bounding' | 'dividing' | 'free-standing';
 
 /** First-class connectivity point. Junction ID equality *is* connectivity. */
 export type LayoutJunction = {
-  id: string;
-  point: LayoutVec2;
+	id: string;
+	point: LayoutVec2;
 };
 
 /**
@@ -204,25 +204,25 @@ export type LayoutWallCenterline =
  * {@link deriveLayoutWallRole}.
  */
 export type LayoutWall = {
-  id: string;
-  startJunctionId: string;
-  endJunctionId: string;
-  thickness: number;
-  height: number;
-  centerline: LayoutWallCenterline;
-  /**
-   * Optional authored Wall name. Absence is the only representation of
-   * "unnamed" (a present-but-blank name is `invalid_value`), duplicates are
-   * legal, and a name is never display identity: the reference is. Wall naming
-   * does not touch canonical IDs, connectivity or geometry.
-   */
-  name?: string;
+	id: string;
+	startJunctionId: string;
+	endJunctionId: string;
+	thickness: number;
+	height: number;
+	centerline: LayoutWallCenterline;
+	/**
+	 * Optional authored Wall name. Absence is the only representation of
+	 * "unnamed" (a present-but-blank name is `invalid_value`), duplicates are
+	 * legal, and a name is never display identity: the reference is. Wall naming
+	 * does not touch canonical IDs, connectivity or geometry.
+	 */
+	name?: string;
 };
 
 /** Directed Wall reference used by persistent Room boundaries. */
 export type OrientedWallRef = {
-  wallId: string;
-  direction: 'forward' | 'reverse';
+	wallId: string;
+	direction: 'forward' | 'reverse';
 };
 
 /**
@@ -234,22 +234,22 @@ export type OrientedWallRef = {
  * adjacency contract is `validateWallFirstPortalRelations`, not this type.
  */
 export type LayoutWallOpening = {
-  id: string;
-  wallId: string;
-  kind: 'door' | 'window';
-  offset: number;
-  width: number;
-  height: number;
-  sillHeight: number;
-  profile: 'rectangular' | 'rounded' | 'pointed';
-  connectsRoomIds?: [string, string];
-  /**
-   * Optional authored Opening name, same policy as `LayoutWall.name`.
-   * The reference, not the name, is display identity, and a kind flip
-   * (door ↔ window) never changes either one.
-   */
-  name?: string;
-};/**
+	id: string;
+	wallId: string;
+	kind: 'door' | 'window';
+	offset: number;
+	width: number;
+	height: number;
+	sillHeight: number;
+	profile: 'rectangular' | 'rounded' | 'pointed';
+	connectsRoomIds?: [string, string];
+	/**
+	 * Optional authored Opening name, same policy as `LayoutWall.name`.
+	 * The reference, not the name, is display identity, and a kind flip
+	 * (door ↔ window) never changes either one.
+	 */
+	name?: string;
+}; /**
  * Floor descriptor — **canonical current (format 6)** shape, the
  * Working-level owner threaded as a captured intent input.
  *
@@ -286,31 +286,31 @@ export type LayoutWallFirstFloor = {
  * exact positive radius in metres. Omitted on ordinary Rooms and open Spaces.
  */
 export type LayoutRoomRound = {
-  center: LayoutVec2;
-  radius: number;
+	center: LayoutVec2;
+	radius: number;
 };
 
 export type LayoutWallFirstRoom = {
-  id: string;
-  name: string;
-  /** Wall sides only, in cycle order. At least one. */
-  boundary: OrientedWallRef[];
-  /**
-   * Stated straight segments that close the gaps between consecutive boundary
-   * Walls, in cycle order. Empty exactly when the Space is enclosed by its
-   * Walls. A virtual edge is a handle, not a subject: it has no id, no height,
-   * no thickness and no Opening, and it never takes part in noding or
-   * connectivity.
-   */
-  virtualEdges: LayoutSpaceVirtualEdge[];
-  /** Authored overhead intent. Geometry never changes it. */
-  overhead: LayoutSpaceOverhead;
-  /**
-   * Optional Round Room source fact. Presence states Round; omitted on
-   * ordinary Rooms and open Spaces. The first oriented start Junction of
-   * `boundary` anchors the canonical seam.
-   */
-  round?: LayoutRoomRound;
+	id: string;
+	name: string;
+	/** Wall sides only, in cycle order. At least one. */
+	boundary: OrientedWallRef[];
+	/**
+	 * Stated straight segments that close the gaps between consecutive boundary
+	 * Walls, in cycle order. Empty exactly when the Space is enclosed by its
+	 * Walls. A virtual edge is a handle, not a subject: it has no id, no height,
+	 * no thickness and no Opening, and it never takes part in noding or
+	 * connectivity.
+	 */
+	virtualEdges: LayoutSpaceVirtualEdge[];
+	/** Authored overhead intent. Geometry never changes it. */
+	overhead: LayoutSpaceOverhead;
+	/**
+	 * Optional Round Room source fact. Presence states Round; omitted on
+	 * ordinary Rooms and open Spaces. The first oriented start Junction of
+	 * `boundary` anchors the canonical seam.
+	 */
+	round?: LayoutRoomRound;
 };
 
 /**
@@ -319,8 +319,8 @@ export type LayoutWallFirstRoom = {
  * a moved Wall end and its open side cannot drift apart.
  */
 export type LayoutSpaceVirtualEdge = {
-  startJunctionId: string;
-  endJunctionId: string;
+	startJunctionId: string;
+	endJunctionId: string;
 };
 
 /**
@@ -345,7 +345,7 @@ export const LAYOUT_IDENTITY_FAMILIES = [
 	'junctions',
 	'walls',
 	'openings',
-	'regions'
+	'regions',
 ] as const satisfies readonly LayoutIdentityFamily[];
 
 /**
@@ -381,7 +381,7 @@ export type LayoutIdentityLedger = {
  * already-saved project and every already-published release predates it, and the
  * visitor path re-validates released documents with the same codec, so absence
  * must stay acceptable. The canonical writers always emit it.
- */export type LayoutDocumentWallFirst = {
+ */ export type LayoutDocumentWallFirst = {
 	units: 'meters';
 	/**
 	 * Canonical current format — narrowed to the constant's value, so no
@@ -393,25 +393,25 @@ export type LayoutIdentityLedger = {
 	 * multi-floor legacy payloads are compatibility-only. Carries no vertical extent — see
 	 * {@link LayoutWallFirstFloor}.
 	 */
-  floor: LayoutWallFirstFloor;
-  junctions: LayoutJunction[];
-  walls: LayoutWall[];
-  rooms: LayoutWallFirstRoom[];
-  openings: LayoutWallOpening[];
-  objects: LayoutObject[];
-  regions: LayoutRegion[];
-  identity?: LayoutIdentityLedger;
+	floor: LayoutWallFirstFloor;
+	junctions: LayoutJunction[];
+	walls: LayoutWall[];
+	rooms: LayoutWallFirstRoom[];
+	openings: LayoutWallOpening[];
+	objects: LayoutObject[];
+	regions: LayoutRegion[];
+	identity?: LayoutIdentityLedger;
 };
 
 /** Independent slab geometry on the project X/Z plane. */
 export type LayoutRegion = {
-  id: string;
-  role: 'floor' | 'overhead';
-  footprint: { kind: 'polygon'; points: LayoutVec2[] };
-  /** Floor-relative top (floor role) or underside (overhead role), in metres. */
-  elevation: number;
-  thickness: number;
-  form: { kind: 'flat' };
-  intendedGaps: string[];
-  name?: string;
+	id: string;
+	role: 'floor' | 'overhead';
+	footprint: { kind: 'polygon'; points: LayoutVec2[] };
+	/** Floor-relative top (floor role) or underside (overhead role), in metres. */
+	elevation: number;
+	thickness: number;
+	form: { kind: 'flat' };
+	intendedGaps: string[];
+	name?: string;
 };

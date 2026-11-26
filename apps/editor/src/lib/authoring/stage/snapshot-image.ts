@@ -60,7 +60,7 @@ export function linearByteToSrgbByte(value: number): number {
 export function encodeSnapshotPixels(
 	pixels: Uint8Array,
 	width: number,
-	height: number
+	height: number,
 ): Uint8Array {
 	if (!Number.isInteger(width) || width <= 0 || !Number.isInteger(height) || height <= 0) {
 		throw new Error(`snapshot size ${width}×${height} is not a positive integer grid`);
@@ -68,7 +68,7 @@ export function encodeSnapshotPixels(
 	const rowBytes = width * 4;
 	if (pixels.length !== rowBytes * height) {
 		throw new Error(
-			`snapshot readback is ${pixels.length} bytes, expected ${rowBytes * height} for ${width}×${height}`
+			`snapshot readback is ${pixels.length} bytes, expected ${rowBytes * height} for ${width}×${height}`,
 		);
 	}
 	const encoded = new Uint8Array(pixels.length);
@@ -90,11 +90,7 @@ export function encodeSnapshotPixels(
  * page has no 2D canvas). Encoding happens before `putImageData`, so the
  * canvas never sees a linear byte.
  */
-export function snapshotDataUrl(
-	pixels: Uint8Array,
-	width: number,
-	height: number
-): string | null {
+export function snapshotDataUrl(pixels: Uint8Array, width: number, height: number): string | null {
 	const encoded = encodeSnapshotPixels(pixels, width, height);
 	if (typeof document === 'undefined') return null;
 	const canvas = document.createElement('canvas');

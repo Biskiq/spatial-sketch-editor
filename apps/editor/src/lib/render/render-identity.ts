@@ -29,12 +29,19 @@ export type RenderIdentity = {
 const KEY = 'renderIdentity';
 
 /** A fresh plain tag, for a host that assigns `userData` declaratively. */
-export function renderIdentity(kind: RenderIdentityKind, id: string): { renderIdentity: RenderIdentity } {
+export function renderIdentity(
+	kind: RenderIdentityKind,
+	id: string,
+): { renderIdentity: RenderIdentity } {
 	return { [KEY]: { kind, id } };
 }
 
 /** Record `kind`/`id` on `object` and return it. */
-export function tagRenderIdentity<T extends Object3D>(object: T, kind: RenderIdentityKind, id: string): T {
+export function tagRenderIdentity<T extends Object3D>(
+	object: T,
+	kind: RenderIdentityKind,
+	id: string,
+): T {
 	object.userData[KEY] = { kind, id } satisfies RenderIdentity;
 	return object;
 }
@@ -71,7 +78,7 @@ export type LayoutIdentityIndex = {
 export function reconcileHidden(
 	current: ReadonlySet<string>,
 	next: ReadonlySet<string>,
-	setHidden: (id: string, hidden: boolean) => void
+	setHidden: (id: string, hidden: boolean) => void,
 ): Set<string> {
 	for (const id of current) if (!next.has(id)) setHidden(id, false);
 	for (const id of next) if (!current.has(id)) setHidden(id, true);

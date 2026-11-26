@@ -74,7 +74,7 @@ function segmentCrossesWall(
 	from: readonly [number, number, number],
 	to: readonly [number, number, number],
 	wall: CompiledPhysicalWall,
-	datum: number
+	datum: number,
 ): boolean {
 	// The compiler emits one span per sample segment. Merge touching spans with
 	// the same section and vertical extent first, so a route crossing exactly at
@@ -109,7 +109,7 @@ function segmentCrossesWall(
 		const uz = dz / length;
 		const half = Math.max(
 			(Number.isFinite(wall.thickness) ? Math.max(wall.thickness, 0) : 0) / 2,
-			1e-6
+			1e-6,
 		);
 		const u0 = (from[0] - start[0]) * ux + (from[2] - start[1]) * uz;
 		const u1 = (to[0] - start[0]) * ux + (to[2] - start[1]) * uz;
@@ -167,6 +167,6 @@ export function routeCrossesWall(input: RouteWallReadInput): RouteWallRead {
 	return {
 		crosses: hitWalls.size > 0,
 		wallIds: [...hitWalls],
-		crossingCount
+		crossingCount,
 	};
 }

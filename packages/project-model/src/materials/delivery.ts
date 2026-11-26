@@ -23,17 +23,9 @@ import {
 	mergeImageIndexes,
 	resolveFinish,
 	shippedImageIndex,
-	type ImageIndex
+	type ImageIndex,
 } from './resolve';
-import type {
-	Finish,
-	Hash,
-	MapRole,
-	Mapping,
-	PaletteSlot,
-	Recipe,
-	ResolvedImage
-} from './types';
+import type { Finish, Hash, MapRole, Mapping, PaletteSlot, Recipe, ResolvedImage } from './types';
 
 export type MaterialDeliveryImagePin = {
 	readonly hash: Hash;
@@ -90,7 +82,10 @@ export type MaterialDeliveryInput = {
 	 * Verified manifest pins for project bytes. Delivery requires a digest, MIME
 	 * and exact byte length; a missing entry refuses the subject.
 	 */
-	readonly projectImagePins?: ReadonlyMap<Hash, { readonly mime: string; readonly size: number; readonly locator?: string }>;
+	readonly projectImagePins?: ReadonlyMap<
+		Hash,
+		{ readonly mime: string; readonly size: number; readonly locator?: string }
+	>;
 	readonly subjects: readonly MaterialDeliverySubject[];
 };
 
@@ -98,7 +93,7 @@ function mappingRequirement(role: MapRole, mapping: Mapping): MaterialDeliveryMa
 	return {
 		role,
 		kind: mapping.kind,
-		...(mapping.kind === 'uv' ? { uvSet: mapping.set } : {})
+		...(mapping.kind === 'uv' ? { uvSet: mapping.set } : {}),
 	};
 }
 
@@ -118,7 +113,7 @@ function sourceKey(source: ResolvedImage['source']): string {
  * property of the shared definition.
  */
 export function materialDeliveryContribution(
-	input: MaterialDeliveryInput
+	input: MaterialDeliveryInput,
 ): MaterialDeliveryContribution {
 	const issues: MaterialIssue[] = [];
 	const definitions = new Map<Hash, Recipe>();
@@ -134,7 +129,7 @@ export function materialDeliveryContribution(
 				issues.push({
 					code: 'missing-image',
 					path: `$.images.${image.hash}`,
-					action: 'Use an image from the frozen static manifest.'
+					action: 'Use an image from the frozen static manifest.',
 				});
 				return;
 			}
@@ -143,7 +138,7 @@ export function materialDeliveryContribution(
 				source: image.source,
 				mime: shipped.mime,
 				size: shipped.byteSize,
-				locator: shipped.uri
+				locator: shipped.uri,
 			});
 			return;
 		}
@@ -152,7 +147,7 @@ export function materialDeliveryContribution(
 			issues.push({
 				code: 'missing-pin',
 				path: `$.images.${image.hash}`,
-				action: 'Verify the downloaded bytes and add their manifest digest, MIME and byte length.'
+				action: 'Verify the downloaded bytes and add their manifest digest, MIME and byte length.',
 			});
 			return;
 		}
@@ -161,7 +156,7 @@ export function materialDeliveryContribution(
 			source: image.source,
 			mime: pin.mime,
 			size: pin.size,
-			...(pin.locator === undefined ? {} : { locator: pin.locator })
+			...(pin.locator === undefined ? {} : { locator: pin.locator }),
 		});
 	};
 
@@ -171,28 +166,29 @@ export function materialDeliveryContribution(
 			finish === null
 				? { catalogue: subject.catalogue! }
 				: 'catalogue' in finish.base
-				? { catalogue: finish.base.catalogue }
-				: (() => {
-						const recipe = input.definitions.get(finish.base.material);
-						if (recipe === undefined) {
-							issues.push({
-								code: 'missing-definition',
-								path: `$.subjects.${subject.subject}.base.material`,
-								action: 'Include the definition this Finish names in the delivery closure.'
-							});
-							return null;
-						}
-						definitions.set(finish.base.material, recipe);
-						return { material: recipe };
-					})();
+					? { catalogue: finish.base.catalogue }
+					: (() => {
+							const recipe = input.definitions.get(finish.base.material);
+							if (recipe === undefined) {
+								issues.push({
+									code: 'missing-definition',
+									path: `$.subjects.${subject.subject}.base.material`,
+									action: 'Include the definition this Finish names in the delivery closure.',
+								});
+								return null;
+							}
+							definitions.set(finish.base.material, recipe);
+							return { material: recipe };
+						})();
 		if (base === null) continue;
-		const imageIndex = finish !== null && 'material' in finish.base
-			? mergeImageIndexes(
-					shippedImageIndex(),
-				materialImageIndex(input.definitionImages.get(finish.base.material) ?? []),
-				input.imageIndex
-				)
-			: input.imageIndex;
+		const imageIndex =
+			finish !== null && 'material' in finish.base
+				? mergeImageIndexes(
+						shippedImageIndex(),
+						materialImageIndex(input.definitionImages.get(finish.base.material) ?? []),
+						input.imageIndex,
+					)
+				: input.imageIndex;
 		const resolution = resolveFinish(base, finish?.overrides, subject.palette, imageIndex);
 		issues.push(...resolution.issues);
 		if (resolution.inputs === null) continue;
@@ -207,7 +203,7 @@ export function materialDeliveryContribution(
 			subject: subject.subject,
 			finishId: finish?.id ?? null,
 			resolvedInputs: resolution.inputs,
-			mappingRequirements: requirements
+			mappingRequirements: requirements,
 		});
 	}
 
@@ -217,7 +213,7 @@ export function materialDeliveryContribution(
 			definitions: [],
 			imagePins: [],
 			uses: [],
-			issues: dedupeMaterialIssues(issues)
+			issues: dedupeMaterialIssues(issues),
 		};
 	}
 	return {
@@ -227,9 +223,10 @@ export function materialDeliveryContribution(
 			.sort((left, right) => compareText(left.hash, right.hash)),
 		imagePins: [...pins.values()].sort(
 			(left, right) =>
-				compareText(left.hash, right.hash) || compareText(sourceKey(left.source), sourceKey(right.source))
+				compareText(left.hash, right.hash) ||
+				compareText(sourceKey(left.source), sourceKey(right.source)),
 		),
 		uses: uses.sort((left, right) => compareText(left.subject, right.subject)),
-		issues: []
+		issues: [],
 	};
 }

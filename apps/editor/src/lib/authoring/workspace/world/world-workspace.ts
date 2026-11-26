@@ -12,5 +12,5 @@ import WorldTrailing from './WorldTrailing.svelte';
 export const WORLD_WORKSPACE = {
 	id: 'world' as const,
 	leading: WorldLeading,
-	trailing: WorldTrailing
+	trailing: WorldTrailing,
 } as const;

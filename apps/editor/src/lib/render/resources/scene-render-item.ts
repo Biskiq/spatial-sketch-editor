@@ -24,7 +24,7 @@ import type { FormMesh } from '@portfolio/geometry-core';
 import type {
 	MaterialTextureSlotKey,
 	StandardFinishPlan,
-	StandardMaterialDescriptor
+	StandardMaterialDescriptor,
 } from './material-descriptor';
 
 export type SceneVec3 = readonly [number, number, number];
@@ -100,7 +100,11 @@ export type FrustumGeometrySpec = {
 };
 
 /** What shape to draw. Plain data: the store decides how to build it. */
-export type GeometrySpec = UnitGeometrySpec | FormGeometrySpec | ArtworkGeometrySpec | FrustumGeometrySpec;
+export type GeometrySpec =
+	| UnitGeometrySpec
+	| FormGeometrySpec
+	| ArtworkGeometrySpec
+	| FrustumGeometrySpec;
 
 /**
  * The canonical key of one geometry spec.

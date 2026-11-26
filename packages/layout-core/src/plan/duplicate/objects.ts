@@ -11,7 +11,12 @@ import type { RoomCopyDroppedRelation } from '../../room/isolation';
 import { isSupportedLayoutObject } from '../../room/isolation';
 import type { LayoutDocumentWallFirst, LayoutObject } from '../../wall/types';
 import type { LayoutSurfaceLineage } from '../surface-reference';
-import type { DuplicateOperation, DuplicatePlan, LayoutObjectRepeatIntent, RoomCopyCorrespondence } from './contracts';
+import type {
+	DuplicateOperation,
+	DuplicatePlan,
+	LayoutObjectRepeatIntent,
+	RoomCopyCorrespondence,
+} from './contracts';
 import { LAYOUT_DUPLICATE_MAX_COPIES } from './contracts';
 import { allocateId, guardedDuplicatePlan, isValidCopyCount, reject } from './shared';
 
@@ -55,7 +60,7 @@ export function finalizeCandidate(
 		surfaceLineage?: LayoutSurfaceLineage;
 		droppedRoomRelations?: readonly RoomCopyDroppedRelation[];
 		roomCopyCorrespondence?: RoomCopyCorrespondence;
-	}
+	},
 ): DuplicatePlan {
 	const structural = validateWallFirstLayoutDocument(candidate);
 	if (!structural.success) {
@@ -63,7 +68,7 @@ export function finalizeCandidate(
 			'invalid_candidate_document',
 			`Candidate failed wall-first validation: ${structural.issues[0]?.message ?? 'unknown issue'}`,
 			undefined,
-			structural.issues
+			structural.issues,
 		);
 	}
 	if ((created.createdWallIds?.length ?? 0) > 0) {
@@ -82,14 +87,14 @@ export function finalizeCandidate(
 		// document's existing one and the check is skipped.
 		const topologyIssue = validateWallFirstTopology(structural.document, {
 			openingSet: 'defer',
-			closedContactWallIds: new Set(created.createdWallIds)
+			closedContactWallIds: new Set(created.createdWallIds),
 		});
 		if (topologyIssue) {
 			return reject(
 				'topology_invalid',
 				topologyIssue.message,
 				topologyIssue.targetId ? [topologyIssue.targetId] : undefined,
-				[topologyIssue]
+				[topologyIssue],
 			);
 		}
 	}
@@ -113,7 +118,7 @@ export function finalizeCandidate(
 			'candidate_does_not_compile',
 			`Candidate document does not compile: ${compiled.issues[0]?.message ?? 'unknown geometry issue'}`,
 			undefined,
-			compiled.issues
+			compiled.issues,
 		);
 	}
 	return {
@@ -131,20 +136,18 @@ export function finalizeCandidate(
 			: {}),
 		...(created.roomCopyCorrespondence !== undefined
 			? { roomCopyCorrespondence: created.roomCopyCorrespondence }
-			: {})
+			: {}),
 	};
 }
-
 
 export function cloneObject(object: LayoutObject): LayoutObject {
 	return {
 		...object,
 		position: [...object.position] as typeof object.position,
 		rotation: [...object.rotation] as typeof object.rotation,
-		dimensions: [...object.dimensions] as typeof object.dimensions
+		dimensions: [...object.dimensions] as typeof object.dimensions,
 	};
 }
-
 
 /**
  * Shared supported-object predicate for the P23.4 duplicate paths. The one
@@ -153,7 +156,6 @@ export function cloneObject(object: LayoutObject): LayoutObject {
  * this alias keeps the duplicate-facing name for its callers.
  */
 export const isSupportedDuplicateLayoutObject = isSupportedLayoutObject;
-
 
 /**
  * Repeat one supported document-level Layout object: `count` copies at exact
@@ -166,35 +168,36 @@ export function planRepeatLayoutObject(
 	document: LayoutDocumentWallFirst,
 	intent: LayoutObjectRepeatIntent,
 	capture: LayoutIdCapture,
-	levelId: string
+	levelId: string,
 ): DuplicatePlan {
 	const levelIssue = layoutWorkingLevelIssue(document, levelId);
 	if (levelIssue !== null) return reject('invalid_value', levelIssue, [intent.objectId]);
 	return guardedDuplicatePlan(() => planRepeatLayoutObjectInternal(document, intent, capture));
 }
 
-
 function planRepeatLayoutObjectInternal(
 	document: LayoutDocumentWallFirst,
 	intent: LayoutObjectRepeatIntent,
-	capture: LayoutIdCapture
+	capture: LayoutIdCapture,
 ): DuplicatePlan {
 	const source = document.objects.find((candidate) => candidate.id === intent.objectId);
 	if (!source) {
-		return reject('unknown_object', `Unknown layout object '${intent.objectId}'`, [intent.objectId]);
+		return reject('unknown_object', `Unknown layout object '${intent.objectId}'`, [
+			intent.objectId,
+		]);
 	}
 	if (!isSupportedDuplicateLayoutObject(source)) {
 		return reject(
 			'profile_object_read_only',
 			`Profile object '${intent.objectId}' is read-only and cannot be duplicated`,
-			[intent.objectId]
+			[intent.objectId],
 		);
 	}
 	if (!isValidCopyCount(intent.count)) {
 		return reject(
 			'count_out_of_range',
 			`Copy count must be an integer between 1 and ${LAYOUT_DUPLICATE_MAX_COPIES}`,
-			[intent.objectId]
+			[intent.objectId],
 		);
 	}
 	const [dx, dz] = intent.delta;
@@ -213,12 +216,16 @@ function planRepeatLayoutObjectInternal(
 		copies.push({
 			...cloneObject(source),
 			id,
-			position: [source.position[0] + index * dx, source.position[1], source.position[2] + index * dz]
+			position: [
+				source.position[0] + index * dx,
+				source.position[1],
+				source.position[2] + index * dz,
+			],
 		});
 	}
 	const candidate: LayoutDocumentWallFirst = {
 		...document,
-		objects: [...document.objects, ...copies]
+		objects: [...document.objects, ...copies],
 	};
 	return finalizeCandidate(candidate, 'layout-object-repeat', { createdObjectIds });
 }

@@ -11,14 +11,19 @@
  * source; the chunk stays cached.
  */
 import { previewEntryFor, type EnterablePreviewEntry } from './preview-entry';
-import { enterPreview, nextPreviewRunEpoch, previewReturnToken, returnPreview } from './preview-handover';
+import {
+	enterPreview,
+	nextPreviewRunEpoch,
+	previewReturnToken,
+	returnPreview,
+} from './preview-handover';
 import { loweringProblem } from './experience-problems';
 import { guideTimeMapForProgram } from './playback-map';
 import type { StageFacade } from '../stage/stage-facade';
 
 import type { ArtworkScope } from '$lib/render/artwork/artwork-scope';
 
-type VisitorSurface = (typeof import('$lib/visitor/VisitorPreviewSurface.svelte'))['default'];
+type VisitorSurface = typeof import('$lib/visitor/VisitorPreviewSurface.svelte')['default'];
 
 export type ExperiencePreviewHost = {
 	/** The admitted source, or null while booting/failed. */
@@ -53,14 +58,19 @@ export function createExperiencePreview(host: ExperiencePreviewHost) {
 	 * once, so an older completion can neither drive the restored inspection
 	 * output nor be accepted by a newer run.
 	 */
-	let preview = $state<{ readonly entry: EnterablePreviewEntry; readonly epoch: number } | null>(null);
+	let preview = $state<{ readonly entry: EnterablePreviewEntry; readonly epoch: number } | null>(
+		null,
+	);
 	/**
 	 * The last entry a mounted visitor surface carries.
 	 *
 	 * The surface is built once and reused: leaving Preview hides it and ends its
 	 * Camera claim, but keeps the loaded chunk, renderer and scene alive.
 	 */
-	let previewView = $state<{ readonly entry: EnterablePreviewEntry; readonly epoch: number } | null>(null);
+	let previewView = $state<{
+		readonly entry: EnterablePreviewEntry;
+		readonly epoch: number;
+	} | null>(null);
 	/**
 	 * The read the mounted surface was built from, frozen at its entry.
 	 *
@@ -86,31 +96,42 @@ export function createExperiencePreview(host: ExperiencePreviewHost) {
 	/** The visitor-facing View labels Places reads; program ids stay the identity. */
 	const viewLabels = $derived.by(() => {
 		const envelope = host.envelope() as {
-			readonly units: { readonly camera: { readonly data: { readonly views: readonly { readonly id: string; readonly label: string }[] } } };
+			readonly units: {
+				readonly camera: {
+					readonly data: {
+						readonly views: readonly { readonly id: string; readonly label: string }[];
+					};
+				};
+			};
 		} | null;
-		return new Map<string, string>((envelope?.units.camera.data.views ?? []).map((view) => [view.id, view.label]));
+		return new Map<string, string>(
+			(envelope?.units.camera.data.views ?? []).map((view) => [view.id, view.label]),
+		);
 	});
 
 	/** The welcome chooser's guided estimate, from the one lowered time map. */
 	const guideStats = $derived.by(() => {
 		const view = previewView;
 		const graph = (previewViewRead as { readonly graph?: unknown } | null)?.graph ?? null;
-		if (view === null || view.entry.kind !== 'program' || graph === null) return { stops: 0, seconds: 0 };
+		if (view === null || view.entry.kind !== 'program' || graph === null)
+			return { stops: 0, seconds: 0 };
 		const read = guideTimeMapForProgram({
 			program: view.entry.program,
 			transitions: view.entry.transitions,
 			graph: graph as Parameters<typeof guideTimeMapForProgram>[0]['graph'],
-			entryStopId: view.entry.program.entryStopId
+			entryStopId: view.entry.program.entryStopId,
 		});
 		return {
 			stops: view.entry.program.stops.length,
-			seconds: read.kind === 'ready' ? read.map.totalSeconds : 0
+			seconds: read.kind === 'ready' ? read.map.totalSeconds : 0,
 		};
 	});
 
 	const available = $derived.by(() => {
 		const envelope = host.envelope() as {
-			readonly units: { readonly experience: { readonly data: { readonly experiences: readonly unknown[] } } };
+			readonly units: {
+				readonly experience: { readonly data: { readonly experiences: readonly unknown[] } };
+			};
 		} | null;
 		return envelope !== null && envelope.units.experience.data.experiences.length > 0;
 	});
@@ -141,7 +162,7 @@ export function createExperiencePreview(host: ExperiencePreviewHost) {
 				sourceContentId: snapshot.sourceContentId,
 				sessionEpoch: snapshot.sessionEpoch,
 				epoch: 0,
-				focus: host.focus() as Parameters<typeof previewEntryFor>[0]['focus']
+				focus: host.focus() as Parameters<typeof previewEntryFor>[0]['focus'],
 			});
 			if (entry.kind !== 'unavailable' && previewView === null) previewView = { entry, epoch: 0 };
 			host.perfMark('preview:warmed');
@@ -155,7 +176,13 @@ export function createExperiencePreview(host: ExperiencePreviewHost) {
 	// The Experience lens is the intent to author what Preview shows; building
 	// the hidden scene here means the first press is already warm.
 	$effect(() => {
-		if (host.lens() !== 'experience' || host.snapshot() === null || previewSurface !== null || preview !== null) return;
+		if (
+			host.lens() !== 'experience' ||
+			host.snapshot() === null ||
+			previewSurface !== null ||
+			preview !== null
+		)
+			return;
 		void warm();
 	});
 
@@ -179,7 +206,8 @@ export function createExperiencePreview(host: ExperiencePreviewHost) {
 		// subtree and would keep focus while invisible.
 		if (typeof document !== 'undefined') {
 			const focused = document.activeElement;
-			if (focused instanceof HTMLElement && focused.closest('.preview-takeover') !== null) focused.blur();
+			if (focused instanceof HTMLElement && focused.closest('.preview-takeover') !== null)
+				focused.blur();
 		}
 		if (active === null || stage === null) return;
 		const returned = returnPreview(stage.camera);
@@ -196,7 +224,10 @@ export function createExperiencePreview(host: ExperiencePreviewHost) {
 	 * The entry rule resolves first, then the isolated chunk loads, and only then
 	 * does the Stage hand its output to the Preview run.
 	 */
-	async function open(mode: 'guided' | 'free' | null = null, guideId: string | null = null): Promise<void> {
+	async function open(
+		mode: 'guided' | 'free' | null = null,
+		guideId: string | null = null,
+	): Promise<void> {
 		if (previewBusy || preview !== null || host.snapshot() === null) return;
 		host.perfMark('preview:press');
 		const stage = host.stage();
@@ -213,24 +244,30 @@ export function createExperiencePreview(host: ExperiencePreviewHost) {
 			const runEpoch = nextPreviewRunEpoch(stage.camera.output(), ++previewEpoch);
 			// A Card action names its own Guide; it must not inherit a selected Stop,
 			// another open Guide, or a previously focused Presentation.
-			const focus = guideId === null
-				? host.focus()
-				: { ...(host.focus() as Record<string, unknown>), guideId, stopId: null, presentationId: null };
+			const focus =
+				guideId === null
+					? host.focus()
+					: {
+							...(host.focus() as Record<string, unknown>),
+							guideId,
+							stopId: null,
+							presentationId: null,
+						};
 			const entry = previewEntryFor({
 				envelope: host.envelopeOf(snapshot) as Parameters<typeof previewEntryFor>[0]['envelope'],
 				sourceContentId: snapshot.sourceContentId,
 				sessionEpoch: snapshot.sessionEpoch,
 				epoch: runEpoch,
-				focus: focus as Parameters<typeof previewEntryFor>[0]['focus']
+				focus: focus as Parameters<typeof previewEntryFor>[0]['focus'],
 			});
 			if (entry.kind === 'unavailable') {
 				host.setProblem(
 					entry.refusal == null
 						? null
 						: loweringProblem(
-							host.envelopeOf(snapshot) as Parameters<typeof loweringProblem>[0],
-							entry.refusal
-						)
+								host.envelopeOf(snapshot) as Parameters<typeof loweringProblem>[0],
+								entry.refusal,
+							),
 				);
 				host.notice(entry.message);
 				return;
@@ -264,7 +301,9 @@ export function createExperiencePreview(host: ExperiencePreviewHost) {
 					artworkScope = ready;
 				} catch (error) {
 					if (!abort.signal.aborted && host.isCurrent(token)) {
-						host.notice(error instanceof Error ? error.message : 'Artwork could not be loaded for Preview.');
+						host.notice(
+							error instanceof Error ? error.message : 'Artwork could not be loaded for Preview.',
+						);
 					}
 					return;
 				} finally {
@@ -273,10 +312,7 @@ export function createExperiencePreview(host: ExperiencePreviewHost) {
 			}
 			const handover = enterPreview(stage.camera, {
 				runEpoch,
-				returnToken: previewReturnToken(
-					snapshot.sessionEpoch,
-					runEpoch
-				)
+				returnToken: previewReturnToken(snapshot.sessionEpoch, runEpoch),
 			});
 			if (handover.kind === 'refused') {
 				releaseArtwork();
@@ -309,7 +345,9 @@ export function createExperiencePreview(host: ExperiencePreviewHost) {
 	}
 
 	return {
-		get artworkScope() { return artworkScope; },
+		get artworkScope() {
+			return artworkScope;
+		},
 		get preview() {
 			return preview;
 		},
@@ -343,7 +381,7 @@ export function createExperiencePreview(host: ExperiencePreviewHost) {
 		warm,
 		open,
 		close,
-		reset
+		reset,
 	};
 }
 

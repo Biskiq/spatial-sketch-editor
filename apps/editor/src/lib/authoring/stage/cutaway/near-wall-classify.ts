@@ -22,7 +22,12 @@
  * when the Wall blocks, negative when the sight line passes above it. A Wall that
  * no sight line crosses has no margin (`-Infinity`) and is never cut.
  */
-import { pointInPolygon, type CompiledPhysicalWall, type CompiledRoom, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import {
+	pointInPolygon,
+	type CompiledPhysicalWall,
+	type CompiledRoom,
+	type LayoutVec2,
+} from '@portfolio/layout-core/geometry';
 
 /** The stub height above the inspected Space's floor. One height for every cut Wall. */
 export const STUB_HEIGHT_METERS = 1.0;
@@ -123,7 +128,7 @@ export function insetDistance(point: LayoutVec2, polygon: readonly LayoutVec2[])
 	for (let index = 0; index < polygon.length; index += 1) {
 		nearest = Math.min(
 			nearest,
-			distanceToSegment(point, polygon[index]!, polygon[(index + 1) % polygon.length]!)
+			distanceToSegment(point, polygon[index]!, polygon[(index + 1) % polygon.length]!),
 		);
 	}
 	return pointInPolygon(point, polygon) ? nearest : -nearest;
@@ -147,7 +152,10 @@ function innermostRoom(rooms: readonly CompiledRoom[]): CompiledRoom | null {
 	let bestArea = Infinity;
 	for (const room of rooms) {
 		const area = polygonArea(room.floorPolygon);
-		if (area < bestArea - 1e-9 || (Math.abs(area - bestArea) <= 1e-9 && best !== null && room.roomId < best.roomId)) {
+		if (
+			area < bestArea - 1e-9 ||
+			(Math.abs(area - bestArea) <= 1e-9 && best !== null && room.roomId < best.roomId)
+		) {
 			best = room;
 			bestArea = area;
 		}
@@ -171,7 +179,7 @@ export function inspectedSpace(input: InspectedSpaceInput): CompiledRoom | null 
 		(room) =>
 			room.floorElevation <= eye[1] &&
 			eye[1] <= room.ceilingElevation &&
-			pointInPolygon(eyeXZ, room.floorPolygon)
+			pointInPolygon(eyeXZ, room.floorPolygon),
 	);
 	if (occupied.length > 0) return innermostRoom(occupied);
 
@@ -179,12 +187,13 @@ export function inspectedSpace(input: InspectedSpaceInput): CompiledRoom | null 
 		(room) =>
 			room.floorElevation - 0.05 <= target[1] &&
 			target[1] <= room.ceilingElevation + 0.05 &&
-			pointInPolygon(targetXZ, room.floorPolygon)
+			pointInPolygon(targetXZ, room.floorPolygon),
 	);
 	const candidate = innermostRoom(containing);
-	const previous = input.previousRoomId === null
-		? null
-		: (rooms.find((room) => room.roomId === input.previousRoomId) ?? null);
+	const previous =
+		input.previousRoomId === null
+			? null
+			: (rooms.find((room) => room.roomId === input.previousRoomId) ?? null);
 	if (previous === null) return candidate;
 	if (candidate === null) {
 		// Outside every Room: keep the previous Space until the target is clearly out.
@@ -192,11 +201,15 @@ export function inspectedSpace(input: InspectedSpaceInput): CompiledRoom | null 
 	}
 	if (candidate.roomId === previous.roomId) return previous;
 	// A different Room only wins once the target is clearly inside it.
-	return insetDistance(targetXZ, candidate.floorPolygon) >= SPACE_SWITCH_INSET ? candidate : previous;
+	return insetDistance(targetXZ, candidate.floorPolygon) >= SPACE_SWITCH_INSET
+		? candidate
+		: previous;
 }
 
 /** The inspected Space's interior sight samples (§3.2). */
-export function sightSamples(space: Pick<CompiledRoom, 'floorPolygon' | 'floorElevation'>): readonly [number, number, number][] {
+export function sightSamples(
+	space: Pick<CompiledRoom, 'floorPolygon' | 'floorElevation'>,
+): readonly [number, number, number][] {
 	const centroid = floorCentroid(space.floorPolygon);
 	// The vertex mean is not guaranteed to be inside a concave Space. Only use it
 	// when it is; otherwise the inset vertex samples must supply the interior. With
@@ -209,7 +222,7 @@ export function sightSamples(space: Pick<CompiledRoom, 'floorPolygon' | 'floorEl
 		if (!(length > SAMPLE_INSET_METERS)) continue;
 		const moved: LayoutVec2 = [
 			vertex[0] + (dx / length) * SAMPLE_INSET_METERS,
-			vertex[1] + (dz / length) * SAMPLE_INSET_METERS
+			vertex[1] + (dz / length) * SAMPLE_INSET_METERS,
 		];
 		// Kept only if the inset sample is still inside; a very narrow Space keeps
 		// fewer samples rather than inventing points outside it.
@@ -243,7 +256,7 @@ function wallBandQuads(wall: NearWallWall): readonly (readonly LayoutVec2[])[] {
 				[a[0] + nx * half, a[1] + nz * half],
 				[b[0] + nx * half, b[1] + nz * half],
 				[b[0] - nx * half, b[1] - nz * half],
-				[a[0] - nx * half, a[1] - nz * half]
+				[a[0] - nx * half, a[1] - nz * half],
 			]);
 		}
 	}
@@ -258,7 +271,7 @@ function wallBandQuads(wall: NearWallWall): readonly (readonly LayoutVec2[])[] {
 function segmentQuadInterval(
 	p0: LayoutVec2,
 	p1: LayoutVec2,
-	quad: readonly LayoutVec2[]
+	quad: readonly LayoutVec2[],
 ): readonly [number, number] | null {
 	// The quad is built counter-clockwise; accept either winding by orienting on
 	// its own signed area once.
@@ -303,7 +316,7 @@ function segmentQuadInterval(
 export function obstructionMargin(
 	eye: readonly [number, number, number],
 	samples: readonly (readonly [number, number, number])[],
-	wall: NearWallWall
+	wall: NearWallWall,
 ): number {
 	const eyeXZ: LayoutVec2 = [eye[0], eye[2]];
 	const quads = wallBandQuads(wall);
@@ -337,17 +350,14 @@ function whollyInsideSpace(wall: NearWallWall, space: CompiledRoom): boolean {
 	return sawPoint;
 }
 
-function wallOf(
-	wall: CompiledPhysicalWall,
-	elevation: number
-): NearWallWall {
+function wallOf(wall: CompiledPhysicalWall, elevation: number): NearWallWall {
 	return {
 		wallId: wall.wallId,
 		floorElevation: elevation,
 		bottomY: elevation,
 		topY: elevation + wall.height,
 		thickness: wall.thickness,
-		centerlinePolylines: wall.solidCenterlinePolylines
+		centerlinePolylines: wall.solidCenterlinePolylines,
 	};
 }
 
@@ -365,7 +375,7 @@ export function classifyNearWalls(input: NearWallClassifyInput): NearWallClassif
 		eye: input.eye,
 		target: input.target,
 		rooms: input.rooms,
-		previousRoomId: input.previousSpaceId
+		previousRoomId: input.previousSpaceId,
 	});
 	if (space === null) return { spaceId: null, stubTopY: null, cut: new Set() };
 	const stubTopY = space.floorElevation + STUB_HEIGHT_METERS;
@@ -376,12 +386,14 @@ export function classifyNearWalls(input: NearWallClassifyInput): NearWallClassif
 	for (const compiled of input.walls) {
 		const elevation = elevationByFloor.get(compiled.floorId) ?? 0;
 		const wall = wallOf(compiled, elevation);
-		if (!(wall.topY > space.floorElevation + 1e-9 && wall.bottomY < space.ceilingElevation - 1e-9)) continue;
+		if (!(wall.topY > space.floorElevation + 1e-9 && wall.bottomY < space.ceilingElevation - 1e-9))
+			continue;
 		if (!(wall.topY > stubTopY + STUB_NOTHING_TO_REMOVE_METERS)) continue;
 		if (whollyInsideSpace(wall, space)) continue;
 		const margin = obstructionMargin(input.eye, samples, wall);
 		if (margin > CUT_MARGIN_METERS) cut.add(wall.wallId);
-		else if (margin >= WHOLE_MARGIN_METERS && input.previousCut.has(wall.wallId)) cut.add(wall.wallId);
+		else if (margin >= WHOLE_MARGIN_METERS && input.previousCut.has(wall.wallId))
+			cut.add(wall.wallId);
 	}
 	return { spaceId: space.roomId, stubTopY, cut };
 }

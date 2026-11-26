@@ -7,15 +7,12 @@
  * DOM, the project or the API.
  */
 import { ingestCreatorImport } from './ingest';
-import type {
-	CreatorImportWorkerRequest,
-	CreatorImportWorkerResponse
-} from './types';
+import type { CreatorImportWorkerRequest, CreatorImportWorkerResponse } from './types';
 
 const scope = globalThis as unknown as {
 	addEventListener(
 		type: 'message',
-		listener: (event: MessageEvent<CreatorImportWorkerRequest>) => void
+		listener: (event: MessageEvent<CreatorImportWorkerRequest>) => void,
 	): void;
 	postMessage(message: CreatorImportWorkerResponse): void;
 };
@@ -32,14 +29,14 @@ scope.addEventListener('message', (event) => {
 	controllers.set(message.id, controller);
 	void ingestCreatorImport(message.request, {
 		signal: controller.signal,
-		onProgress: (progress) => scope.postMessage({ kind: 'progress', id: message.id, progress })
+		onProgress: (progress) => scope.postMessage({ kind: 'progress', id: message.id, progress }),
 	})
 		.then((outcome) => scope.postMessage({ kind: 'outcome', id: message.id, outcome }))
 		.catch((error: unknown) => {
 			scope.postMessage({
 				kind: 'failed',
 				id: message.id,
-				message: error instanceof Error ? error.message : 'The import worker failed.'
+				message: error instanceof Error ? error.message : 'The import worker failed.',
 			});
 		})
 		.finally(() => controllers.delete(message.id));

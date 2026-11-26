@@ -92,9 +92,9 @@ export function finishSamplingPlanKey(plan: FinishSamplingPlan): string {
 					pairText(entry.offset),
 					entry.convention ?? '-',
 					entry.component ?? '-',
-					entry.invert === true ? '1' : '0'
-				].join(':')
-			)
+					entry.invert === true ? '1' : '0',
+				].join(':'),
+			),
 	].join('|');
 }
 
@@ -116,13 +116,13 @@ export function finishSamplingPlan(bound: {
 				offset: [sample.offset[0], sample.offset[1]],
 				...(sample.convention === undefined ? {} : { convention: sample.convention }),
 				...(sample.component === undefined ? {} : { component: sample.component }),
-				...(sample.invert === undefined ? {} : { invert: sample.invert })
-			})
+				...(sample.invert === undefined ? {} : { invert: sample.invert }),
+			}),
 		);
 	return Object.freeze({
 		profile: 'pbr-metallic-roughness/v1',
 		version: FINISH_SAMPLING_PLAN_VERSION,
-		entries: Object.freeze(entries)
+		entries: Object.freeze(entries),
 	});
 }
 

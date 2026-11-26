@@ -18,7 +18,7 @@ import { deriveIndexedWallRole } from '../world/lookups';
  * *same* Room is still one Room membership, so the count is per Room.
  */
 export function layoutWallRoomMemberships(
-	document: LayoutDocumentWallFirst
+	document: LayoutDocumentWallFirst,
 ): ReadonlyMap<string, readonly string[]> {
 	const roomsByWall = new Map<string, string[]>();
 	for (const room of document.rooms) {
@@ -41,7 +41,7 @@ export function layoutWallRoomMemberships(
  */
 export function deriveLayoutWallRole(
 	document: LayoutDocumentWallFirst,
-	wallId: string
+	wallId: string,
 ): LayoutDerivedWallRole | undefined {
 	const indexed = deriveIndexedWallRole(document, wallId);
 	if (indexed !== undefined) {
@@ -55,7 +55,7 @@ export function deriveLayoutWallRole(
 
 /** Every Wall's derived role, keyed by Wall id, in document order. */
 export function deriveLayoutWallRoles(
-	document: LayoutDocumentWallFirst
+	document: LayoutDocumentWallFirst,
 ): ReadonlyMap<string, LayoutDerivedWallRole> {
 	const memberships = layoutWallRoomMemberships(document);
 	const roles = new Map<string, LayoutDerivedWallRole>();

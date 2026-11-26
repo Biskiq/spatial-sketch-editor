@@ -24,16 +24,32 @@ export function skyBodyAt(time: number, heading: number, arcHeight: number): Sky
 	const hour = wrap24(time);
 	if (hour >= SUNRISE && hour <= SUNSET) {
 		const u = (hour - SUNRISE) / (SUNSET - SUNRISE);
-		return { phase: 'day', body: 'sun', u, az: wrap360(heading - 90 + 180 * u),
-			el: u === 0 || u === 1 ? 4 : 4 + (arcHeight - 4) * Math.sin(Math.PI * u) };
+		return {
+			phase: 'day',
+			body: 'sun',
+			u,
+			az: wrap360(heading - 90 + 180 * u),
+			el: u === 0 || u === 1 ? 4 : 4 + (arcHeight - 4) * Math.sin(Math.PI * u),
+		};
 	}
 	if (hour >= NIGHT_START || hour < DAWN_START) {
 		const u = wrap24(hour - NIGHT_START) / NIGHT_HOURS;
-		return { phase: 'night', body: 'moon', u, az: wrap360(heading - 90 + 180 * u),
-			el: 4 + (MOON_PEAK - 4) * Math.sin(Math.PI * u) };
+		return {
+			phase: 'night',
+			body: 'moon',
+			u,
+			az: wrap360(heading - 90 + 180 * u),
+			el: 4 + (MOON_PEAK - 4) * Math.sin(Math.PI * u),
+		};
 	}
 	const phase = hour > SUNSET ? 'dusk' : 'dawn';
-	return { phase, body: 'none', u: null, az: wrap360(heading + (phase === 'dusk' ? 90 : -90)), el: -4 };
+	return {
+		phase,
+		body: 'none',
+		u: null,
+		az: wrap360(heading + (phase === 'dusk' ? 90 : -90)),
+		el: -4,
+	};
 }
 
 export function skyDirection(azimuth: number, elevation: number): [number, number, number] {
@@ -48,9 +64,12 @@ export function phaseName(time: number): string {
 		case 'day':
 			if (Math.abs(hour - SOLAR_NOON) < 1 / 24) return 'Solar noon';
 			return hour < SOLAR_NOON ? 'Morning' : 'Afternoon';
-		case 'night': return 'Night · Moon';
-		case 'dusk': return 'Dusk · no direct light';
-		case 'dawn': return 'Dawn · no direct light';
+		case 'night':
+			return 'Night · Moon';
+		case 'dusk':
+			return 'Dusk · no direct light';
+		case 'dawn':
+			return 'Dawn · no direct light';
 	}
 }
 
@@ -69,7 +88,10 @@ export function adjacentPhaseStart(time: number, step: -1 | 1): number {
 	return phaseStarts.findLast((start) => start < hour) ?? NIGHT_START;
 }
 
-export function skyKind(body: SkyBody, haze: number): 'twilight' | 'moon' | 'overcast' | 'low' | 'sun' {
+export function skyKind(
+	body: SkyBody,
+	haze: number,
+): 'twilight' | 'moon' | 'overcast' | 'low' | 'sun' {
 	if (body.body === 'none') return 'twilight';
 	if (body.body === 'moon') return 'moon';
 	if (haze >= 80) return 'overcast';

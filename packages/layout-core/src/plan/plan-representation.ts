@@ -53,7 +53,7 @@ export {
 	PLAN_STREAMS,
 	PLAN_SOURCE_KINDS,
 	PLAN_MEMBERSHIP_REASONS,
-	PLAN_SUB_REF_KINDS
+	PLAN_SUB_REF_KINDS,
 } from './representation/types';
 export type {
 	PlanStream,
@@ -69,10 +69,21 @@ export type {
 	PlanStreams,
 	PlanEvaluation,
 	PlanIssue,
-	PlanEvaluationResult
+	PlanEvaluationResult,
 } from './representation/types';
-export { planDependsOnTarget, planTargetsLiveView, evaluateLayoutPlan, eligiblePlanFragments, planMembershipOf, planFragmentOf } from './representation/membership';
+export {
+	planDependsOnTarget,
+	planTargetsLiveView,
+	evaluateLayoutPlan,
+	eligiblePlanFragments,
+	planMembershipOf,
+	planFragmentOf,
+} from './representation/membership';
 export { createPlanRetainer } from './representation/retainer';
 export type { PlanRetainer } from './representation/retainer';
 export { openingPlanSymbol, openingAttemptSymbolSource } from './representation/symbols';
-export type { OpeningPlanSymbolSource, OpeningPlanSymbolSegment, OpeningPlanSymbol } from './representation/symbols';
+export type {
+	OpeningPlanSymbolSource,
+	OpeningPlanSymbolSegment,
+	OpeningPlanSymbol,
+} from './representation/symbols';

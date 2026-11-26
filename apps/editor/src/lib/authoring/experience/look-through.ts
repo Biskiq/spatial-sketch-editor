@@ -10,7 +10,7 @@
 import {
 	CAMERA_LENS_PRESETS,
 	findMatchingLensPreset,
-	type LensPreset
+	type LensPreset,
 } from '../camera/editor-camera-framing-authoring';
 import { lensMillimetres } from './experience-model';
 
@@ -22,9 +22,21 @@ export type LensStep = {
 
 /** Conservatory's three lens steps, in order, over the retained focal lengths. */
 export const LENS_STEPS: readonly LensStep[] = [
-	{ label: 'Wide', preset: CAMERA_LENS_PRESETS[0]!, fovYDegrees: CAMERA_LENS_PRESETS[0]!.verticalFovDegrees },
-	{ label: 'Normal', preset: CAMERA_LENS_PRESETS[1]!, fovYDegrees: CAMERA_LENS_PRESETS[1]!.verticalFovDegrees },
-	{ label: 'Close', preset: CAMERA_LENS_PRESETS[2]!, fovYDegrees: CAMERA_LENS_PRESETS[2]!.verticalFovDegrees }
+	{
+		label: 'Wide',
+		preset: CAMERA_LENS_PRESETS[0]!,
+		fovYDegrees: CAMERA_LENS_PRESETS[0]!.verticalFovDegrees,
+	},
+	{
+		label: 'Normal',
+		preset: CAMERA_LENS_PRESETS[1]!,
+		fovYDegrees: CAMERA_LENS_PRESETS[1]!.verticalFovDegrees,
+	},
+	{
+		label: 'Close',
+		preset: CAMERA_LENS_PRESETS[2]!,
+		fovYDegrees: CAMERA_LENS_PRESETS[2]!.verticalFovDegrees,
+	},
 ] as const;
 
 export type EyeHeightStep = {
@@ -36,7 +48,7 @@ export type EyeHeightStep = {
 export const EYE_HEIGHT_STEPS: readonly EyeHeightStep[] = [
 	{ label: 'Seated', metres: 1.15 },
 	{ label: 'Standing', metres: 1.65 },
-	{ label: 'Raised', metres: 2.5 }
+	{ label: 'Raised', metres: 2.5 },
 ] as const;
 
 /** The lens step an authored FOV matches, or null for a Custom lens. */
@@ -63,9 +75,7 @@ export function nearestLensStep(fovYDegrees: number): LensStep {
 /** One scroll step through the presets. Direction `-1` is wider, `1` is tighter. */
 export function nextLensStep(fovYDegrees: number, direction: -1 | 1): LensStep {
 	const current = lensStepOf(fovYDegrees);
-	const index = current === null
-		? nearestLensStep(fovYDegrees)
-		: current;
+	const index = current === null ? nearestLensStep(fovYDegrees) : current;
 	const at = LENS_STEPS.indexOf(index);
 	const next = Math.max(0, Math.min(LENS_STEPS.length - 1, at + direction));
 	return LENS_STEPS[next]!;
@@ -79,13 +89,16 @@ export function eyeHeightStepOf(metres: number): EyeHeightStep | null {
 /** One step through Seated, Standing and Raised. */
 export function nextEyeHeightStep(metres: number, direction: -1 | 1): EyeHeightStep {
 	const current = eyeHeightStepOf(metres);
-	const at = current === null
-		? EYE_HEIGHT_STEPS.reduce(
-				(best, step, index) =>
-					Math.abs(step.metres - metres) < Math.abs(EYE_HEIGHT_STEPS[best]!.metres - metres) ? index : best,
-				0
-			)
-		: EYE_HEIGHT_STEPS.indexOf(current);
+	const at =
+		current === null
+			? EYE_HEIGHT_STEPS.reduce(
+					(best, step, index) =>
+						Math.abs(step.metres - metres) < Math.abs(EYE_HEIGHT_STEPS[best]!.metres - metres)
+							? index
+							: best,
+					0,
+				)
+			: EYE_HEIGHT_STEPS.indexOf(current);
 	const next = Math.max(0, Math.min(EYE_HEIGHT_STEPS.length - 1, at + direction));
 	return EYE_HEIGHT_STEPS[next]!;
 }

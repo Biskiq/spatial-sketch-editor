@@ -4,9 +4,16 @@ import { cubicBezierPoint, projectPointToSampledSegment } from '../geometry/curv
 import type { TopologySegment } from './topology';
 import { classifyWallIntersection } from './topology';
 import type { JunctionTopologyComponentKey } from '../room/topology-components';
-import { topologyComponentKeyByJunctionId, topologyComponentKeyByWallId } from '../room/topology-components';
+import {
+	topologyComponentKeyByJunctionId,
+	topologyComponentKeyByWallId,
+} from '../room/topology-components';
 import type { NodingIdAllocator } from './noding';
-import { wallCenterlineCarriesPoint, wallCenterlineCubics, wallCenterlineSamples } from './centerline';
+import {
+	wallCenterlineCarriesPoint,
+	wallCenterlineCubics,
+	wallCenterlineSamples,
+} from './centerline';
 import { isClosedWall } from './closed-wall';
 import { JUNCTION_COINCIDENCE_EPSILON, coincidesAsJunction } from './junction-identity';
 import type { WallChainIdAllocator, WallChainRejection, WallEndpointHostSnap } from './chain-types';
@@ -57,13 +64,17 @@ export function validateEndpointHostSnaps(input: {
 }): { rejection: WallChainRejection } | { declaredHostByPointIndex: Map<number, string> } {
 	const { baseline, resolved, legs, declaredJunctionByPointIndex, hostSnaps } = input;
 	const invalid = (message: string): { rejection: WallChainRejection } => ({
-		rejection: { code: 'invalid_candidate_document', message }
+		rejection: { code: 'invalid_candidate_document', message },
 	});
 	const declaredHostByPointIndex = new Map<number, string>();
 	for (const snap of hostSnaps) {
-		if (!Number.isInteger(snap.pointIndex) || snap.pointIndex < 0 || snap.pointIndex >= resolved.length) {
+		if (
+			!Number.isInteger(snap.pointIndex) ||
+			snap.pointIndex < 0 ||
+			snap.pointIndex >= resolved.length
+		) {
 			return invalid(
-				`Declared host Wall '${snap.wallId}' names draft point ${snap.pointIndex}, which this chain does not have`
+				`Declared host Wall '${snap.wallId}' names draft point ${snap.pointIndex}, which this chain does not have`,
 			);
 		}
 		if (declaredHostByPointIndex.has(snap.pointIndex)) {
@@ -86,7 +97,7 @@ export function validateEndpointHostSnaps(input: {
 			const junctionKey = componentKeyByJunctionId.get(declaredJunctionId);
 			if (junctionKey === undefined || junctionKey !== componentKeyByWallId.get(wallId)) {
 				return invalid(
-					`Draft point ${pointIndex} declares a Junction and host Wall '${wallId}' in different connected components`
+					`Draft point ${pointIndex} declares a Junction and host Wall '${wallId}' in different connected components`,
 				);
 			}
 		}
@@ -124,7 +135,7 @@ export function validateEndpointHostSnaps(input: {
 	}
 	if (declarationComponentKeys.size > 1) {
 		const nonClosedComponentKeys = [...declarationComponentKeys].filter(
-			(key) => !targetedClosedComponentKeys.has(key)
+			(key) => !targetedClosedComponentKeys.has(key),
 		);
 		// C2 multi-host attachment: explicitly targeted closed Walls are isolated
 		// single-Wall components before first attachment, so bridging O–O (or R–O)
@@ -140,7 +151,7 @@ export function validateEndpointHostSnaps(input: {
 			const declaredHostWallIds = [...declaredHostByPointIndex.values()];
 			if (!declarationsRecloseOneOpenSpace(baseline, declaredJunctionIds, declaredHostWallIds)) {
 				return invalid(
-					'Chain declarations name more than one connected component; joining independent groups is a deliberate join operation'
+					'Chain declarations name more than one connected component; joining independent groups is a deliberate join operation',
 				);
 			}
 		}
@@ -170,8 +181,6 @@ export function validateEndpointHostSnaps(input: {
 	return { declaredHostByPointIndex };
 }
 
-
-
 /**
  * True when every declared Junction and host Wall belongs to the SAME open
  * Space's authored boundary. Such declarations re-close that one Space even
@@ -181,7 +190,7 @@ export function validateEndpointHostSnaps(input: {
 function declarationsRecloseOneOpenSpace(
 	baseline: LayoutDocumentWallFirst,
 	declaredJunctionIds: readonly string[],
-	declaredHostWallIds: readonly string[]
+	declaredHostWallIds: readonly string[],
 ): boolean {
 	const junctionIds = new Set(declaredJunctionIds);
 	const hostWallIds = new Set(declaredHostWallIds);
@@ -207,8 +216,6 @@ function declarationsRecloseOneOpenSpace(
 	return false;
 }
 
-
-
 /**
  * Whether a host declaration names a Wall this operation genuinely relates to:
  * the declared point sits on the host's centerline, or one of the operation's own
@@ -219,7 +226,7 @@ function declarationMeetsHost(
 	baseline: LayoutDocumentWallFirst,
 	legs: readonly { start: LayoutVec2; end: LayoutVec2 }[],
 	point: LayoutVec2,
-	wallId: string
+	wallId: string,
 ): boolean {
 	const host = wallById(baseline, wallId);
 	if (!host) return false;
@@ -275,20 +282,16 @@ function declarationMeetsHost(
 	return legs.some((leg) => legMeetsWall(host, endpoints, leg));
 }
 
-
-
 /** The canonical endpoint coordinates of `wall`, or `undefined` when unresolved. */
 function wallEndpointPoints(
 	baseline: LayoutDocumentWallFirst,
-	wall: LayoutWall
+	wall: LayoutWall,
 ): { start: LayoutVec2; end: LayoutVec2 } | undefined {
 	const start = baseline.junctions.find((junction) => junction.id === wall.startJunctionId);
 	const end = baseline.junctions.find((junction) => junction.id === wall.endJunctionId);
 	if (!start || !end) return undefined;
 	return { start: start.point, end: end.point };
 }
-
-
 
 /**
  * Does a straight draft leg meet this Wall? Straight hosts go through the
@@ -298,34 +301,39 @@ function wallEndpointPoints(
 function legMeetsWall(
 	host: LayoutWall,
 	endpoints: { start: LayoutVec2; end: LayoutVec2 },
-	leg: { start: LayoutVec2; end: LayoutVec2 }
+	leg: { start: LayoutVec2; end: LayoutVec2 },
 ): boolean {
 	const legSegment: TopologySegment = { id: 'declared-host:leg', start: leg.start, end: leg.end };
 	if (host.centerline.kind === 'line') {
 		return relates(
-			classifyWallIntersection(legSegment, { id: host.id, start: endpoints.start, end: endpoints.end }, [])
+			classifyWallIntersection(
+				legSegment,
+				{ id: host.id, start: endpoints.start, end: endpoints.end },
+				[],
+			),
 		);
 	}
 	const sampled = wallCenterlineSamples(host, endpoints.start, endpoints.end, 'forward');
 	if (!sampled) return false;
-	if (projectPointToSampledSegment(leg.start, sampled).distanceToPath <= JUNCTION_COINCIDENCE_EPSILON) return true;
-	if (projectPointToSampledSegment(leg.end, sampled).distanceToPath <= JUNCTION_COINCIDENCE_EPSILON) return true;
+	if (
+		projectPointToSampledSegment(leg.start, sampled).distanceToPath <= JUNCTION_COINCIDENCE_EPSILON
+	)
+		return true;
+	if (projectPointToSampledSegment(leg.end, sampled).distanceToPath <= JUNCTION_COINCIDENCE_EPSILON)
+		return true;
 	for (let index = 1; index < sampled.samples.length; index += 1) {
 		const from = sampled.samples[index - 1]!.point;
 		const to = sampled.samples[index]!.point;
-		if (relates(classifyWallIntersection(legSegment, { id: host.id, start: from, end: to }, []))) return true;
+		if (relates(classifyWallIntersection(legSegment, { id: host.id, start: from, end: to }, [])))
+			return true;
 	}
 	return false;
 }
-
-
 
 /** A classified pair relates when it is anything but disjoint or numerically unstable. */
 function relates(classification: { kind: string }): boolean {
 	return classification.kind !== 'none' && classification.kind !== 'invalid';
 }
-
-
 
 /**
  * The Junction this operation may ADOPT at `point`.
@@ -342,7 +350,7 @@ export function adoptableJunctionAt(
 	walls: readonly LayoutWall[],
 	point: LayoutVec2,
 	junctionComponentKeyById: ReadonlyMap<string, JunctionTopologyComponentKey>,
-	componentKeyByWallId: ReadonlyMap<string, string>
+	componentKeyByWallId: ReadonlyMap<string, string>,
 ): LayoutJunction | undefined {
 	const ownJunctionIds = new Set<string>();
 	const ownComponentKeys = new Set<string | symbol>();
@@ -353,7 +361,7 @@ export function adoptableJunctionAt(
 		if (key !== undefined) ownComponentKeys.add(key);
 	}
 	const coincident = document.junctions.filter((junction) =>
-		coincidesAsJunction(junction.point, point)
+		coincidesAsJunction(junction.point, point),
 	);
 	const ownEndpoint = coincident.find((junction) => ownJunctionIds.has(junction.id));
 	if (ownEndpoint) return ownEndpoint;
@@ -362,8 +370,6 @@ export function adoptableJunctionAt(
 		return key !== undefined && ownComponentKeys.has(key);
 	});
 }
-
-
 
 /**
  * Junction records the given walls reference at `point` that are **not**
@@ -382,7 +388,7 @@ export function duplicateJunctionsAt(
 	document: LayoutDocumentWallFirst,
 	walls: readonly LayoutWall[],
 	point: LayoutVec2,
-	keepJunctionId: string
+	keepJunctionId: string,
 ): string[] {
 	const duplicates = new Set<string>();
 	for (const wall of walls) {
@@ -396,8 +402,6 @@ export function duplicateJunctionsAt(
 	return [...duplicates];
 }
 
-
-
 /**
  * Node a relationship that lands on an existing Junction by splitting the wall
  * the Junction is strictly interior to and reusing it. Returns `undefined`
@@ -406,13 +410,13 @@ export function duplicateJunctionsAt(
  */
 export function teeThroughJunction(
 	segments: readonly TopologySegment[],
-	junction: LayoutJunction
+	junction: LayoutJunction,
 ): NodingFix | undefined {
 	for (const segment of segments) {
 		const length = Math.hypot(segment.end[0] - segment.start[0], segment.end[1] - segment.start[1]);
 		const splitDistance = Math.hypot(
 			junction.point[0] - segment.start[0],
-			junction.point[1] - segment.start[1]
+			junction.point[1] - segment.start[1],
 		);
 		if (splitDistance <= JUNCTION_COINCIDENCE_EPSILON) continue;
 		if (length - splitDistance <= JUNCTION_COINCIDENCE_EPSILON) continue;
@@ -421,29 +425,34 @@ export function teeThroughJunction(
 			interiorWallId: segment.id,
 			endpointJunctionId: junction.id,
 			splitDistance,
-			point: [junction.point[0], junction.point[1]]
+			point: [junction.point[0], junction.point[1]],
 		};
 	}
 	return undefined;
 }
 
-
-
-export function wallById(document: LayoutDocumentWallFirst, wallId: string): LayoutWall | undefined {
+export function wallById(
+	document: LayoutDocumentWallFirst,
+	wallId: string,
+): LayoutWall | undefined {
 	return document.walls.find((wall) => wall.id === wallId);
 }
 
-
-
 /** Oriented boundary polygon of a wall-first room (junction traversal order). */
 /** Adapt the chain allocator to the noding allocator contract. */
-export function nodingAllocatorAdapter(allocator: WallChainIdAllocator, _document: LayoutDocumentWallFirst): NodingIdAllocator {
+export function nodingAllocatorAdapter(
+	allocator: WallChainIdAllocator,
+	_document: LayoutDocumentWallFirst,
+): NodingIdAllocator {
 	return {
 		nextWallId(baseDocument, seed) {
 			return allocator.nextWallId(new Set(baseDocument.walls.map((wall) => wall.id)), seed);
 		},
 		nextJunctionId(baseDocument, seed) {
-			return allocator.nextJunctionId(new Set(baseDocument.junctions.map((junction) => junction.id)), seed);
-		}
+			return allocator.nextJunctionId(
+				new Set(baseDocument.junctions.map((junction) => junction.id)),
+				seed,
+			);
+		},
 	};
 }

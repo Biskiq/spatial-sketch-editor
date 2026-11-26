@@ -16,18 +16,17 @@ export function planRepeatWallOpening(
 	document: LayoutDocumentWallFirst,
 	intent: WallOpeningRepeatIntent,
 	capture: LayoutIdCapture,
-	levelId: string
+	levelId: string,
 ): DuplicatePlan {
 	const levelIssue = layoutWorkingLevelIssue(document, levelId);
 	if (levelIssue !== null) return reject('invalid_value', levelIssue, [intent.openingId]);
 	return guardedDuplicatePlan(() => planRepeatWallOpeningInternal(document, intent, capture));
 }
 
-
 function planRepeatWallOpeningInternal(
 	document: LayoutDocumentWallFirst,
 	intent: WallOpeningRepeatIntent,
-	capture: LayoutIdCapture
+	capture: LayoutIdCapture,
 ): DuplicatePlan {
 	const source = document.openings.find((candidate) => candidate.id === intent.openingId);
 	if (!source) {
@@ -37,7 +36,7 @@ function planRepeatWallOpeningInternal(
 		return reject(
 			'count_out_of_range',
 			`Copy count must be an integer between 1 and ${LAYOUT_DUPLICATE_MAX_COPIES}`,
-			[intent.openingId]
+			[intent.openingId],
 		);
 	}
 	if (!Number.isFinite(intent.spacing)) {
@@ -46,7 +45,7 @@ function planRepeatWallOpeningInternal(
 	if (!document.walls.some((wall) => wall.id === source.wallId)) {
 		return reject('invalid_reference', `Opening '${source.id}' has an unresolved hosting Wall`, [
 			source.id,
-			source.wallId
+			source.wallId,
 		]);
 	}
 
@@ -67,12 +66,12 @@ function planRepeatWallOpeningInternal(
 			// gate below re-proves the new-schema contract for every copy.
 			...(source.connectsRoomIds
 				? { connectsRoomIds: [...source.connectsRoomIds] as [string, string] }
-				: {})
+				: {}),
 		});
 	}
 	const candidate: LayoutDocumentWallFirst = {
 		...document,
-		openings: [...document.openings, ...copies]
+		openings: [...document.openings, ...copies],
 	};
 	return finalizeCandidate(candidate, 'wall-opening-repeat', { createdOpeningIds });
 }

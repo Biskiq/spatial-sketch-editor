@@ -1,5 +1,10 @@
 import type { WallFirstOpPlan, WallFirstOpRejection } from './contracts';
-import type { LayoutDocumentWallFirst, LayoutWall, LayoutWallFirstRoom, LayoutWallOpening } from '../types';
+import type {
+	LayoutDocumentWallFirst,
+	LayoutWall,
+	LayoutWallFirstRoom,
+	LayoutWallOpening,
+} from '../types';
 import { validateAndCompile } from './birth';
 
 /**
@@ -22,30 +27,30 @@ export type RoomMetadataPatch = {
 	name?: string;
 	/** Authored overhead intent; `closed` generates the lid, `open-to-sky` removes it. */
 	overhead?: 'closed' | 'open-to-sky';
-
-
 };
-
 
 export function planRoomMetadataUpdate(
 	document: LayoutDocumentWallFirst,
 	roomId: string,
-	patch: RoomMetadataPatch
+	patch: RoomMetadataPatch,
 ): WallFirstOpPlan {
-	const reject = (rejection: WallFirstOpRejection): WallFirstOpPlan => ({ kind: 'rejected', rejection });
+	const reject = (rejection: WallFirstOpRejection): WallFirstOpPlan => ({
+		kind: 'rejected',
+		rejection,
+	});
 	const room = document.rooms.find((candidate) => candidate.id === roomId);
 	if (!room) {
 		return reject({
 			code: 'unknown_room',
 			message: `Unknown room '${roomId}'`,
-			roomIds: [roomId]
+			roomIds: [roomId],
 		});
 	}
 	if (patch === null || typeof patch !== 'object' || Array.isArray(patch)) {
 		return reject({
 			code: 'invalid_patch',
 			message: 'Room metadata patch must be an object',
-			roomIds: [roomId]
+			roomIds: [roomId],
 		});
 	}
 	const allowedKeys = new Set(['name', 'overhead']);
@@ -54,17 +59,20 @@ export function planRoomMetadataUpdate(
 		return reject({
 			code: 'invalid_patch',
 			message: `Room metadata patch cannot change ${unknownKeys.join(', ')}; the boundary and virtual edges are correspondence-owned`,
-			roomIds: [roomId]
+			roomIds: [roomId],
 		});
 	}
 
-	const nextRoom: LayoutWallFirstRoom = { ...room, boundary: room.boundary.map((ref) => ({ ...ref })) };
+	const nextRoom: LayoutWallFirstRoom = {
+		...room,
+		boundary: room.boundary.map((ref) => ({ ...ref })),
+	};
 	if (patch.name !== undefined) {
 		if (typeof patch.name !== 'string' || patch.name.trim().length === 0) {
 			return reject({
 				code: 'invalid_value',
 				message: 'Room name cannot be empty',
-				roomIds: [roomId]
+				roomIds: [roomId],
 			});
 		}
 		nextRoom.name = patch.name.trim();
@@ -74,35 +82,31 @@ export function planRoomMetadataUpdate(
 			return reject({
 				code: 'invalid_value',
 				message: "Room overhead must be 'closed' or 'open-to-sky'",
-				roomIds: [roomId]
+				roomIds: [roomId],
 			});
 		}
 		nextRoom.overhead = patch.overhead;
 	}
-	if (
-		nextRoom.name === room.name &&
-		nextRoom.overhead === room.overhead
-	) {
+	if (nextRoom.name === room.name && nextRoom.overhead === room.overhead) {
 		return reject({
 			code: 'no_op',
 			message: `Room '${roomId}' already has those values`,
-			roomIds: [roomId]
+			roomIds: [roomId],
 		});
 	}
 
 	const candidate: LayoutDocumentWallFirst = {
 		...document,
-		rooms: document.rooms.map((entry) => (entry.id === roomId ? nextRoom : entry))
+		rooms: document.rooms.map((entry) => (entry.id === roomId ? nextRoom : entry)),
 	};
 	return validateAndCompile(candidate, reject, (committed) => ({
 		kind: 'success',
 		document: committed,
 		lineage: [],
 		surfaceLineage: [],
-		retiredRoomIds: []
+		retiredRoomIds: [],
 	}));
 }
-
 
 /**
  * The exact optional-name patch semantics shared by the Wall and
@@ -122,7 +126,6 @@ export function planRoomMetadataUpdate(
  */
 export type OptionalNamePatch = { name?: string | null };
 
-
 /**
  * Shared name-patch applier for the Wall/Opening metadata planners. Returns
  * the rejection to surface, or `undefined` when `name` was applied cleanly.
@@ -130,7 +133,7 @@ export type OptionalNamePatch = { name?: string | null };
 function applyOptionalNamePatch(
 	entity: { name?: string },
 	patch: OptionalNamePatch,
-	description: string
+	description: string,
 ): WallFirstOpRejection | undefined {
 	if (!('name' in patch)) return undefined;
 	const value = patch.name;
@@ -138,7 +141,7 @@ function applyOptionalNamePatch(
 		if (entity.name === undefined) {
 			return {
 				code: 'no_op',
-				message: `${description} is already unnamed`
+				message: `${description} is already unnamed`,
 			};
 		}
 		delete entity.name;
@@ -147,20 +150,19 @@ function applyOptionalNamePatch(
 	if (typeof value !== 'string' || value.trim().length === 0) {
 		return {
 			code: 'invalid_value',
-			message: `${description} name cannot be empty`
+			message: `${description} name cannot be empty`,
 		};
 	}
 	const trimmed = value.trim();
 	if (entity.name === trimmed) {
 		return {
 			code: 'no_op',
-			message: `${description} already has that name`
+			message: `${description} already has that name`,
 		};
 	}
 	entity.name = trimmed;
 	return undefined;
 }
-
 
 /**
  * Canonical Wall metadata update (optional name) through the one
@@ -172,22 +174,25 @@ function applyOptionalNamePatch(
 export function planWallMetadataUpdate(
 	document: LayoutDocumentWallFirst,
 	wallId: string,
-	patch: OptionalNamePatch
+	patch: OptionalNamePatch,
 ): WallFirstOpPlan {
-	const reject = (rejection: WallFirstOpRejection): WallFirstOpPlan => ({ kind: 'rejected', rejection });
+	const reject = (rejection: WallFirstOpRejection): WallFirstOpPlan => ({
+		kind: 'rejected',
+		rejection,
+	});
 	const wall = document.walls.find((candidate) => candidate.id === wallId);
 	if (!wall) {
 		return reject({
 			code: 'unknown_wall',
 			message: `Unknown wall '${wallId}'`,
-			wallIds: [wallId]
+			wallIds: [wallId],
 		});
 	}
 	if (patch === null || typeof patch !== 'object' || Array.isArray(patch)) {
 		return reject({
 			code: 'invalid_patch',
 			message: 'Wall metadata patch must be an object',
-			wallIds: [wallId]
+			wallIds: [wallId],
 		});
 	}
 	const allowedKeys = new Set(['name']);
@@ -196,7 +201,7 @@ export function planWallMetadataUpdate(
 		return reject({
 			code: 'invalid_patch',
 			message: `Wall metadata patch cannot change ${unknownKeys.join(', ')}; topology is owned by the topology planners`,
-			wallIds: [wallId]
+			wallIds: [wallId],
 		});
 	}
 
@@ -205,30 +210,26 @@ export function planWallMetadataUpdate(
 	if (nameRejection) {
 		return reject({ ...nameRejection, wallIds: [wallId] });
 	}
-	if (
-		nextWall.name === wall.name &&
-		'centerline' in nextWall === 'centerline' in wall
-	) {
+	if (nextWall.name === wall.name && 'centerline' in nextWall === 'centerline' in wall) {
 		return reject({
 			code: 'no_op',
 			message: `Wall '${wallId}' already has those values`,
-			wallIds: [wallId]
+			wallIds: [wallId],
 		});
 	}
 
 	const candidate: LayoutDocumentWallFirst = {
 		...document,
-		walls: document.walls.map((entry) => (entry.id === wallId ? nextWall : entry))
+		walls: document.walls.map((entry) => (entry.id === wallId ? nextWall : entry)),
 	};
 	return validateAndCompile(candidate, reject, (committed) => ({
 		kind: 'success',
 		document: committed,
 		lineage: [],
 		surfaceLineage: [],
-		retiredRoomIds: []
+		retiredRoomIds: [],
 	}));
 }
-
 
 /**
  * Canonical Opening metadata update (optional name) through the one
@@ -239,20 +240,23 @@ export function planWallMetadataUpdate(
 export function planOpeningMetadataUpdate(
 	document: LayoutDocumentWallFirst,
 	openingId: string,
-	patch: OptionalNamePatch
+	patch: OptionalNamePatch,
 ): WallFirstOpPlan {
-	const reject = (rejection: WallFirstOpRejection): WallFirstOpPlan => ({ kind: 'rejected', rejection });
+	const reject = (rejection: WallFirstOpRejection): WallFirstOpPlan => ({
+		kind: 'rejected',
+		rejection,
+	});
 	const opening = document.openings.find((candidate) => candidate.id === openingId);
 	if (!opening) {
 		return reject({
 			code: 'invalid_value',
-			message: `Unknown opening '${openingId}'`
+			message: `Unknown opening '${openingId}'`,
 		});
 	}
 	if (patch === null || typeof patch !== 'object' || Array.isArray(patch)) {
 		return reject({
 			code: 'invalid_patch',
-			message: 'Opening metadata patch must be an object'
+			message: 'Opening metadata patch must be an object',
 		});
 	}
 	const allowedKeys = new Set(['name']);
@@ -260,7 +264,7 @@ export function planOpeningMetadataUpdate(
 	if (unknownKeys.length > 0) {
 		return reject({
 			code: 'invalid_patch',
-			message: `Opening metadata patch cannot change ${unknownKeys.join(', ')}; geometry and kind are owned by the Opening planners`
+			message: `Opening metadata patch cannot change ${unknownKeys.join(', ')}; geometry and kind are owned by the Opening planners`,
 		});
 	}
 
@@ -272,19 +276,19 @@ export function planOpeningMetadataUpdate(
 	if (nextOpening.name === opening.name) {
 		return reject({
 			code: 'no_op',
-			message: `Opening '${openingId}' already has those values`
+			message: `Opening '${openingId}' already has those values`,
 		});
 	}
 
 	const candidate: LayoutDocumentWallFirst = {
 		...document,
-		openings: document.openings.map((entry) => (entry.id === openingId ? nextOpening : entry))
+		openings: document.openings.map((entry) => (entry.id === openingId ? nextOpening : entry)),
 	};
 	return validateAndCompile(candidate, reject, (committed) => ({
 		kind: 'success',
 		document: committed,
 		lineage: [],
 		surfaceLineage: [],
-		retiredRoomIds: []
+		retiredRoomIds: [],
 	}));
 }

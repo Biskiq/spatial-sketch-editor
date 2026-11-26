@@ -14,10 +14,7 @@
 
 import type { AuthoringIntent } from '@portfolio/project-model/f4';
 import type { SemanticReference } from '@portfolio/project-model/references';
-import type {
-	Experience,
-	ProjectEnvelope
-} from '@portfolio/project-model/units';
+import type { Experience, ProjectEnvelope } from '@portfolio/project-model/units';
 
 export type CapturedViewPose = {
 	readonly label: string;
@@ -63,7 +60,7 @@ export function intent(
 	revision: { readonly projectId: string; readonly revisionId: string },
 	targets: readonly SemanticReference[],
 	payload: AuthoringIntent['payload'],
-	allocatedIds: AuthoringIntent['allocatedIds']
+	allocatedIds: AuthoringIntent['allocatedIds'],
 ): AuthoringIntent {
 	return {
 		version: 1,
@@ -73,20 +70,25 @@ export function intent(
 		targets,
 		payload,
 		capturedInputs: [],
-		allocatedIds
+		allocatedIds,
 	};
 }
 
 /** The Experience a subject belongs to is the one its Presentation lives in. */
-export function experienceOf(envelope: ProjectEnvelope, experienceId: string | null): Experience | null {
+export function experienceOf(
+	envelope: ProjectEnvelope,
+	experienceId: string | null,
+): Experience | null {
 	if (experienceId === null) return null;
-	return envelope.units.experience.data.experiences.find((entry) => entry.id === experienceId) ?? null;
+	return (
+		envelope.units.experience.data.experiences.find((entry) => entry.id === experienceId) ?? null
+	);
 }
 
 /** `experience:experience` addressed by its authored identity. */
 export function experienceReference(
 	envelope: ProjectEnvelope,
-	experienceId: string
+	experienceId: string,
 ): SemanticReference {
 	return {
 		version: 1,
@@ -96,7 +98,7 @@ export function experienceReference(
 		instancePath: [],
 		location: { kind: 'project-root' },
 		componentId: null,
-		capabilityId: null
+		capabilityId: null,
 	};
 }
 
@@ -105,7 +107,7 @@ export function experienceMemberReference(
 	envelope: ProjectEnvelope,
 	experienceId: string,
 	kind: 'presentation' | 'stop' | 'guide',
-	id: string
+	id: string,
 ): SemanticReference {
 	return {
 		version: 1,
@@ -115,15 +117,12 @@ export function experienceMemberReference(
 		instancePath: [experienceId],
 		location: { kind: 'project-root' },
 		componentId: null,
-		capabilityId: null
+		capabilityId: null,
 	};
 }
 
 /** A Scene entity used as a Presentation subject, at its exact revision. */
-export function sceneEntitySubject(
-	envelope: ProjectEnvelope,
-	entityId: string
-): SemanticReference {
+export function sceneEntitySubject(envelope: ProjectEnvelope, entityId: string): SemanticReference {
 	return {
 		version: 1,
 		domain: 'scene',
@@ -132,13 +131,11 @@ export function sceneEntitySubject(
 		instancePath: [],
 		location: { kind: 'project-root' },
 		componentId: null,
-		capabilityId: null
+		capabilityId: null,
 	};
 }
 
-
 export type Revision = { readonly projectId: string; readonly revisionId: string };
-
 
 export function cameraViewReference(envelope: ProjectEnvelope, viewId: string): SemanticReference {
 	return {
@@ -149,10 +146,9 @@ export function cameraViewReference(envelope: ProjectEnvelope, viewId: string): 
 		instancePath: [],
 		location: { kind: 'project-root' },
 		componentId: null,
-		capabilityId: null
+		capabilityId: null,
 	};
 }
-
 
 export function capturedViewPose(input: {
 	readonly label: string;
@@ -164,7 +160,6 @@ export function capturedViewPose(input: {
 		label: input.label,
 		eye: [input.eye[0], input.eye[1], input.eye[2]],
 		target: [input.target[0], input.target[1], input.target[2]],
-		fov: input.fov
+		fov: input.fov,
 	};
 }
-

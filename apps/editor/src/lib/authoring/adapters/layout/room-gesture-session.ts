@@ -1,7 +1,10 @@
 import { selectedRoomLabel } from './layout-subjects';
 import { planarDeltaLabel } from '$lib/authoring/stage/stage-adapter-host';
 import { mintLayoutIdCapture, type LayoutIdCapture } from '@portfolio/layout-core/plan';
-import { resolveIsolatedRoomGroupSubgraph, resolveRoomCopyEnclosure } from '@portfolio/layout-core/room';
+import {
+	resolveIsolatedRoomGroupSubgraph,
+	resolveRoomCopyEnclosure,
+} from '@portfolio/layout-core/room';
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 import {
@@ -9,7 +12,7 @@ import {
 	type StageCardActionOutcome,
 	type StageCandidatePreview,
 	type StageKeyboardIntent,
-	type StagePointerIntent
+	type StagePointerIntent,
 } from '$lib/authoring/stage/stage-adapter-host';
 import { stageUnitRevision } from '$lib/authoring/stage/stage-adapter-host';
 import type { GestureAcquisition, ProposalLease } from '$lib/authoring/stage/stage-adapter-host';
@@ -18,12 +21,12 @@ import {
 	droppedRoomRelationWords,
 	roomDuplicateRefusalWords,
 	wallRefusalWords,
-	type RoomDuplicateRejection
+	type RoomDuplicateRejection,
 } from './refusals';
 import {
 	LAYOUT_ROOM_DUPLICATE_KIND,
 	roomDuplicateIntent,
-	roomDuplicateIsCoincident
+	roomDuplicateIsCoincident,
 } from './room-duplicate-planners';
 import { pointerDatumPoint } from './stage-pointer';
 import type { StageHandleDescriptor } from '$lib/authoring/stage/stage-adapter-host';
@@ -33,16 +36,20 @@ import {
 	buildCompiledLayoutCandidatePaper,
 	type CandidatePaperGeometry,
 	wallCenterlinePaper,
-	candidatePreviewOf
+	candidatePreviewOf,
 } from './candidate-preview';
-import { datumSnapDistance, isPointerDrag, type LayoutManipulationPorts } from './manipulation-support';
+import {
+	datumSnapDistance,
+	isPointerDrag,
+	type LayoutManipulationPorts,
+} from './manipulation-support';
 
 export function createRoomGestureSession({
 	services,
 	document,
 	levelId,
 	contentRevision,
-	settleRefusal
+	settleRefusal,
 }: LayoutManipulationPorts) {
 	type RoomMoveGesture = {
 		readonly roomId: string;
@@ -92,8 +99,8 @@ export function createRoomGestureSession({
 					current === null
 						? 'Δx 0.00 · Δz 0.00 m'
 						: `${planarDeltaLabel(current.delta[0], current.delta[1])}${current.movedRooms > 1 ? ` · ${current.movedRooms} Rooms` : ''}`,
-				refusal: current?.refusal ?? null
-			}
+				refusal: current?.refusal ?? null,
+			},
 		];
 	}
 	function roomMovePointer(intent: StagePointerIntent, ctx: StageAdapterContext): boolean {
@@ -105,7 +112,7 @@ export function createRoomGestureSession({
 			const lease = services.stage.acquireGesture({
 				owner: 'layout-room-move',
 				evaluationId: intent.evaluationId,
-				policy: 'cancel-on-reading-change'
+				policy: 'cancel-on-reading-change',
 			});
 			if (lease.kind !== 'granted') return false;
 			settleRefusal(null);
@@ -115,7 +122,7 @@ export function createRoomGestureSession({
 					? wallCenterlinePaper(
 							document,
 							new Set(isolation.subgraph.wallIds),
-							ctx.snapshot.domain.datumMeters
+							ctx.snapshot.domain.datumMeters,
 						)
 					: null;
 			roomMove = {
@@ -133,7 +140,7 @@ export function createRoomGestureSession({
 				refusal:
 					isolation.kind === 'rejected'
 						? wallRefusalWords(isolation.rejection.code, isolation.rejection.message)
-						: null
+						: null,
 			};
 			services.stage.notifySurfaceChange();
 			return true;
@@ -159,11 +166,11 @@ export function createRoomGestureSession({
 			const point = pointerDatumPoint(ctx, intent.css);
 			if (point === null) return true;
 			const snapped = resolvePlanarDragSnap(current.pressPoint, point, ctx.drafting(), (from, to) =>
-				datumSnapDistance(ctx, from, to)
+				datumSnapDistance(ctx, from, to),
 			);
 			const delta: [number, number] = [
 				Number((snapped.point[0] - current.pressPoint[0]).toFixed(9)),
-				Number((snapped.point[1] - current.pressPoint[1]).toFixed(9))
+				Number((snapped.point[1] - current.pressPoint[1]).toFixed(9)),
 			];
 			current.snap = snapped.winner;
 			current.delta = delta;
@@ -203,11 +210,11 @@ export function createRoomGestureSession({
 						instancePath: [],
 						location: { kind: 'layout-location', levelId, structureInstancePath: [] },
 						componentId: null,
-						capabilityId: null
-					}
+						capabilityId: null,
+					},
 				],
-				payload: { roomId: current.roomId, deltaX: current.delta[0], deltaZ: current.delta[1] }
-			})
+				payload: { roomId: current.roomId, deltaX: current.delta[0], deltaZ: current.delta[1] },
+			}),
 		);
 		if (
 			outcome.kind === 'refused' &&
@@ -222,7 +229,7 @@ export function createRoomGestureSession({
 			subject: { kind: 'room', roomId: current.roomId },
 			contentRevision,
 			point: [current.labelWorld[0] + current.delta[0], current.labelWorld[2] + current.delta[1]],
-			text
+			text,
 		});
 	}
 
@@ -240,17 +247,17 @@ export function createRoomGestureSession({
 			world: [
 				current.labelWorld[0] + current.delta[0],
 				current.labelWorld[1],
-				current.labelWorld[2] + current.delta[1]
+				current.labelWorld[2] + current.delta[1],
 			] as [number, number, number],
 			text:
 				current.refusal ??
-				`${planarDeltaLabel(current.delta[0], current.delta[1])}${current.movedRooms > 1 ? ` · ${current.movedRooms} Rooms` : ''}`
+				`${planarDeltaLabel(current.delta[0], current.delta[1])}${current.movedRooms > 1 ? ` · ${current.movedRooms} Rooms` : ''}`,
 		};
 		if (current.centerlines !== null) {
 			const shift = ([x, height, z]: [number, number, number]): [number, number, number] => [
 				x + current.delta[0],
 				height,
-				z + current.delta[1]
+				z + current.delta[1],
 			];
 			return [
 				candidatePreviewOf({
@@ -258,14 +265,16 @@ export function createRoomGestureSession({
 					role: 'subject',
 					geometry: {
 						polygons: [],
-						segments: current.centerlines.segments.map(([a, b]) => [shift(a), shift(b)])
+						segments: current.centerlines.segments.map(([a, b]) => [shift(a), shift(b)]),
 					},
 					labels: [label],
-					snap: current.snap === null ? undefined : { world: label.world, name: current.snap.name }
-				})
+					snap: current.snap === null ? undefined : { world: label.world, name: current.snap.name },
+				}),
 			];
 		}
-		const room = ctx.snapshot.domain.geometry.rooms.find((entry) => entry.roomId === current.roomId);
+		const room = ctx.snapshot.domain.geometry.rooms.find(
+			(entry) => entry.roomId === current.roomId,
+		);
 		if (room === undefined) return [];
 		const polygon = room.floorPolygon;
 		const segments: [[number, number, number], [number, number, number]][] = polygon.map(
@@ -273,17 +282,17 @@ export function createRoomGestureSession({
 				const next = polygon[(index + 1) % polygon.length]!;
 				return [
 					[point[0] + current.delta[0], y, point[1] + current.delta[1]],
-					[next[0] + current.delta[0], y, next[1] + current.delta[1]]
+					[next[0] + current.delta[0], y, next[1] + current.delta[1]],
 				];
-			}
+			},
 		);
 		return [
 			candidatePreviewOf({
 				id: 'layout-room-move-candidate',
 				role: 'refused',
 				geometry: { polygons: [], segments },
-				labels: [label]
-			})
+				labels: [label],
+			}),
 		];
 	}
 
@@ -329,7 +338,7 @@ export function createRoomGestureSession({
 
 	/** The compiled floor extent, with the authored boundary as a fallback. */
 	function roomDuplicateFrame(
-		roomId: string
+		roomId: string,
 	): { readonly center: LayoutVec2; readonly delta: LayoutVec2 } | null {
 		const compiled = services.stage
 			.snapshot()
@@ -359,7 +368,7 @@ export function createRoomGestureSession({
 			center: [(minX + maxX) / 2, (minZ + maxZ) / 2],
 			// One clear metre past the source's own extent. The planner never
 			// invents a delta; this is the adapter's initial proposal only.
-			delta: [Number((width + 1).toFixed(3)), 0]
+			delta: [Number((width + 1).toFixed(3)), 0],
 		};
 	}
 
@@ -394,16 +403,16 @@ export function createRoomGestureSession({
 				roomId,
 				...enclosure.wallIds,
 				...enclosure.openingIds,
-				...enclosure.associatedObjectIds
+				...enclosure.associatedObjectIds,
 			]),
 			paper: null,
-			snap: null
+			snap: null,
 		};
 		roomDuplicateNotice = null;
 		roomDuplicateProposal?.release();
 		roomDuplicateProposal = services.stage.session.registerProposal({
 			owner: LAYOUT_ROOM_DUPLICATE_KIND,
-			reason: 'A Room copy is live; place it or cancel it — Undo is available once it settles.'
+			reason: 'A Room copy is live; place it or cancel it — Undo is available once it settles.',
 		});
 		return true;
 	}
@@ -421,11 +430,11 @@ export function createRoomGestureSession({
 		}
 		const origin = current.origin;
 		const snapped = resolvePlanarDragSnap(origin, point, ctx.drafting(), (from, to) =>
-			datumSnapDistance(ctx, from, to)
+			datumSnapDistance(ctx, from, to),
 		);
 		current.delta = [
 			Number((current.defaultDelta[0] + snapped.point[0] - origin[0]).toFixed(9)),
-			Number((current.defaultDelta[1] + snapped.point[1] - origin[1]).toFixed(9))
+			Number((current.defaultDelta[1] + snapped.point[1] - origin[1]).toFixed(9)),
 		];
 		current.snap = snapped.winner;
 	}
@@ -494,8 +503,8 @@ export function createRoomGestureSession({
 					projectId: snapshot.acceptedRevision.projectId,
 					revisionId: current.revision,
 					contentRevision,
-					levelId
-				})
+					levelId,
+				}),
 			);
 			if (outcome.kind === 'refused') {
 				if (roomDuplicate !== current) return;
@@ -511,7 +520,10 @@ export function createRoomGestureSession({
 	}
 
 	/** The complete cloned Room as one proposal; a refusal carries its words. */
-	function roomDuplicatePreviews(ctx: StageAdapterContext, y: number): readonly StageCandidatePreview[] {
+	function roomDuplicatePreviews(
+		ctx: StageAdapterContext,
+		y: number,
+	): readonly StageCandidatePreview[] {
 		const current = roomDuplicate;
 		if (current === null) return [];
 		const rejection = roomDuplicateIsCoincident(current.delta)
@@ -536,7 +548,7 @@ export function createRoomGestureSession({
 				plan.cutHeightMeters,
 				plan.depthMeters,
 				plan.sourceKindFilter,
-				plan.reveal
+				plan.reveal,
 			]);
 			if (current.paper?.key !== key) {
 				current.paper = {
@@ -547,8 +559,8 @@ export function createRoomGestureSession({
 						y,
 						current.subjectIds,
 						new Set(),
-						null
-					).subject
+						null,
+					).subject,
 				};
 			}
 		}
@@ -556,7 +568,7 @@ export function createRoomGestureSession({
 		const shift = ([x, height, z]: [number, number, number]): [number, number, number] => [
 			x + current.delta[0],
 			height,
-			z + current.delta[1]
+			z + current.delta[1],
 		];
 		return [
 			candidatePreviewOf({
@@ -564,11 +576,11 @@ export function createRoomGestureSession({
 				role: refused === null ? 'subject' : 'refused',
 				geometry: {
 					polygons: paper?.polygons.map((polygon) => polygon.map(shift)) ?? [],
-					segments: paper?.segments.map(([a, b]) => [shift(a), shift(b)]) ?? []
+					segments: paper?.segments.map(([a, b]) => [shift(a), shift(b)]) ?? [],
 				},
 				labels: [{ world: anchor, text: label }],
-				snap: current.snap === null ? undefined : { world: anchor, name: current.snap.name }
-			})
+				snap: current.snap === null ? undefined : { world: anchor, name: current.snap.name },
+			}),
 		];
 	}
 	function requestDuplicate(roomId: string): StageCardActionOutcome {
@@ -580,7 +592,7 @@ export function createRoomGestureSession({
 		}
 		return {
 			kind: 'accepted',
-			message: 'Move the pointer, then click to place the copy. Escape cancels.'
+			message: 'Move the pointer, then click to place the copy. Escape cancels.',
 		};
 	}
 
@@ -605,7 +617,7 @@ export function createRoomGestureSession({
 					value:
 						room === undefined
 							? 'One Room, its Walls, Junctions and Openings'
-							: `${room.name}, its Walls, Junctions and Openings`
+							: `${room.name}, its Walls, Junctions and Openings`,
 				},
 				...(dropped === null ? [] : [{ label: 'Drops', value: dropped }]),
 				{
@@ -614,9 +626,9 @@ export function createRoomGestureSession({
 						? 'Move the pointer, then click. Escape cancels.'
 						: roomDuplicateNotice === null
 							? 'Select a Room and choose Duplicate.'
-							: roomDuplicateRefusalWords(document, roomDuplicateNotice)
-				}
-			]
+							: roomDuplicateRefusalWords(document, roomDuplicateNotice),
+				},
+			],
 		};
 	}
 
@@ -635,6 +647,6 @@ export function createRoomGestureSession({
 		roomDuplicateHover,
 		requestDuplicate,
 		duplicateInstrument,
-		previews
+		previews,
 	};
 }

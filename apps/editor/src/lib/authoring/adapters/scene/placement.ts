@@ -31,25 +31,25 @@
 import {
 	type CreatorModelResourceEntry,
 	type NormalizedPlacementDefinition,
-	type SceneSupportChoice
+	type SceneSupportChoice,
 } from '@portfolio/project-model/scene-planning';
 import type { AuthoringIntent } from '@portfolio/project-model/f4';
 import type { SceneEntity, SceneFormSource, Vec3 } from '@portfolio/project-model/scene';
 import type { FormLibraryPayload } from '@portfolio/project-model/library';
-import type {
-	CameraFreeSceneDocument,
-	LayoutUnitPayload,
-} from '@portfolio/project-model/units';
+import type { CameraFreeSceneDocument, LayoutUnitPayload } from '@portfolio/project-model/units';
 import type { GestureAcquisition } from '$lib/authoring/stage/stage-adapter-host';
 import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
-import { stageEnvelope, stageLayout, stageScene, stageUnitRevision } from '$lib/authoring/stage/stage-adapter-host';
 import {
-	snapDraftingPlacement
+	stageEnvelope,
+	stageLayout,
+	stageScene,
+	stageUnitRevision,
 } from '$lib/authoring/stage/stage-adapter-host';
+import { snapDraftingPlacement } from '$lib/authoring/stage/stage-adapter-host';
 
 import {
 	catalogueModelContactMinY,
-	type NativePlacementPrimitive
+	type NativePlacementPrimitive,
 } from '../../scene/object-definition-policy';
 
 import { createSceneSession } from './scene-session';
@@ -65,7 +65,7 @@ export {
 	publishSceneSurface,
 	retireSceneSurface,
 	type SceneComposeSupport,
-	type SceneSurface
+	type SceneSurface,
 } from './scene-placement-support';
 
 /**
@@ -77,7 +77,7 @@ export {
  */
 export function snapFreePlacement(
 	point: readonly [number, number],
-	incrementMeters: number | null
+	incrementMeters: number | null,
 ): { readonly x: number; readonly z: number; readonly snappedStep: number | null } {
 	return snapDraftingPlacement(point, incrementMeters);
 }
@@ -92,7 +92,10 @@ export type SceneWritePort = {
 	acquireGesture(request: {
 		readonly owner: string;
 		readonly evaluationId: string;
-		readonly policy: 'continue-after-revalidation' | 'suspend-proposal' | 'cancel-on-reading-change';
+		readonly policy:
+			| 'continue-after-revalidation'
+			| 'suspend-proposal'
+			| 'cancel-on-reading-change';
 	}): GestureAcquisition;
 };
 
@@ -189,7 +192,11 @@ export type SceneSessionOutcome =
 	| { readonly kind: 'candidate'; readonly candidate: SceneCandidate }
 	| { readonly kind: 'committed' }
 	| { readonly kind: 'refused'; readonly code: string; readonly message: string }
-	| { readonly kind: 'invalid'; readonly code: 'blank' | 'non-finite' | 'malformed'; readonly message: string }
+	| {
+			readonly kind: 'invalid';
+			readonly code: 'blank' | 'non-finite' | 'malformed';
+			readonly message: string;
+	  }
 	/** The acceptance transport itself failed; the proposal is withdrawn. */
 	| { readonly kind: 'failed'; readonly code: 'accept-failed'; readonly message: string }
 	| { readonly kind: 'idle' };
@@ -225,14 +232,14 @@ export type ScenePlacementSession = {
 		supportElevation: number,
 		choice?: SceneSupportChoice,
 		/** The increment the caller already applied; omission reports none. */
-		snappedStep?: number | null
+		snappedStep?: number | null,
 	): SceneSessionOutcome;
 	/** Place one My Objects copy at exact X/Z; the saved source is written verbatim. */
 	placeFormCopy(
 		copy: ArmedFormCopy,
 		x: number,
 		z: number,
-		choice?: SceneSupportChoice
+		choice?: SceneSupportChoice,
 	): Promise<SceneSessionOutcome>;
 	/** Begin one pointer placement of the armed creator model. */
 	beginPlaceModel(model: ArmedModelPlacement): SceneSessionOutcome;
@@ -245,7 +252,7 @@ export type ScenePlacementSession = {
 		/** The increment the caller already applied; omission reports none. */
 		snappedStep?: number | null,
 		/** The support the pointer preview showed, pinned for this commit. */
-		choice?: SceneSupportChoice
+		choice?: SceneSupportChoice,
 	): SceneSessionOutcome;
 	previewMove(x: number, z: number): SceneSessionOutcome;
 	previewYaw(radians: number): SceneSessionOutcome;
@@ -279,7 +286,7 @@ export type ScenePlacementSession = {
 		/** The increment the caller already applied; omission reports none. */
 		snappedStep?: number | null,
 		/** The support the pointer preview showed, pinned for this commit. */
-		choice?: SceneSupportChoice
+		choice?: SceneSupportChoice,
 	): SceneSessionOutcome;
 	/**
 	 * Withdraw the displayed candidate without ending the subject or the lease: a
@@ -352,11 +359,11 @@ export function sceneSessionFromServices(input: {
 			source,
 			contactMinYFor: (entity) =>
 				entity.kind === 'model'
-					? modelContacts.get(entity.assetId) ?? catalogueModelContactMinY(entity.assetId)
+					? (modelContacts.get(entity.assetId) ?? catalogueModelContactMinY(entity.assetId))
 					: null,
 			compileGeneration: snapshot.compileGeneration,
 			evaluationId: input.evaluationId,
-			currentEvaluationId: () => input.services.stage.evaluationId()
+			currentEvaluationId: () => input.services.stage.evaluationId(),
 		},
 		port: {
 			accept: async (intent) => {
@@ -371,9 +378,9 @@ export function sceneSessionFromServices(input: {
 				}
 			},
 			acceptedRevision: () => ({
-				revisionId: input.services.authoring.acceptedRevision().revisionId
+				revisionId: input.services.authoring.acceptedRevision().revisionId,
 			}),
-			acquireGesture: (request) => input.services.stage.acquireGesture(request)
-		}
+			acquireGesture: (request) => input.services.stage.acquireGesture(request),
+		},
 	});
 }

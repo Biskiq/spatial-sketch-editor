@@ -10,7 +10,10 @@ import { setResolvedSlice } from '../slice/slice-resolved';
 
 export function createSliceHost(input: {
 	readonly draw: Parameters<typeof createSliceDraw>[0];
-	readonly shell: Pick<StageShellState, 'heightMeters' | 'heightTicks' | 'activeWorldTool' | 'setActiveWorldTool'>;
+	readonly shell: Pick<
+		StageShellState,
+		'heightMeters' | 'heightTicks' | 'activeWorldTool' | 'setActiveWorldTool'
+	>;
 	readonly snapshot: () => StageReadSnapshot | null;
 	readonly lens: () => StageLens;
 	readonly evaluation: () => ViewportEvaluation | null;
@@ -29,7 +32,7 @@ export function createSliceHost(input: {
 		if (snapshot === null) return null;
 		return resolveSlice(reading, {
 			sheetHeight: shell.heightMeters,
-			datumMeters: snapshot.domain.datumMeters
+			datumMeters: snapshot.domain.datumMeters,
 		});
 	});
 
@@ -64,21 +67,19 @@ export function createSliceHost(input: {
 				items: [],
 				onDepth: () => {},
 				onFlip: () => sliceDraw.flip(),
-				onPutBack: () => putBackSlice()
+				onPutBack: () => putBackSlice(),
 			};
 		}
 		const items = sliceDepthItems({
 			reading,
 			sheetHeightMeters: shell.heightMeters,
-			ticks: shell.heightTicks
+			ticks: shell.heightTicks,
 		});
 		const depth = reading.depth;
 		const current =
 			depth.kind === 'below'
 				? items.find(
-						(item) =>
-							item.kind === 'below' &&
-							Math.abs(item.meters - depth.meters) <= 1e-3
+						(item) => item.kind === 'below' && Math.abs(item.meters - depth.meters) <= 1e-3,
 					)
 				: undefined;
 		const depthLabel =
@@ -91,16 +92,16 @@ export function createSliceHost(input: {
 			items: items.map((item) =>
 				item.kind === 'below'
 					? { kind: item.kind, label: item.label, checked: item.checked, meters: item.meters }
-					: { kind: item.kind, label: item.label, checked: item.checked }
+					: { kind: item.kind, label: item.label, checked: item.checked },
 			),
 			onDepth: (item: { readonly kind: 'to-floor' | 'below'; readonly meters?: number }) => {
 				sliceReading.setDepth(
 					item.kind === 'below' && item.meters !== undefined
 						? { kind: 'below', meters: item.meters }
-						: { kind: 'to-floor' }
+						: { kind: 'to-floor' },
 				);
 			},
-			onPutBack: () => putBackSlice()
+			onPutBack: () => putBackSlice(),
 		};
 	});
 
@@ -120,7 +121,9 @@ export function createSliceHost(input: {
 		const id = stage?.evaluationId() ?? null;
 		const rect = input.evaluation()?.rect ?? null;
 		if (draft === null || stage === null || id === null || rect === null) return null;
-		const project = (point: readonly [number, number, number]): readonly [number, number] | null => {
+		const project = (
+			point: readonly [number, number, number],
+		): readonly [number, number] | null => {
 			const projected = stage.projectWorld(point, id);
 			return projected.kind === 'projected'
 				? [projected.css[0] - rect.left, projected.css[1] - rect.top]
@@ -163,23 +166,40 @@ export function createSliceHost(input: {
 	}
 
 	const canvas = contribution<'layout-readings', 'canvas'>()({
-		get resolvedSlice() { return resolvedSlice; },
-		get sliceDraft() { return sliceDraftWorld; }
+		get resolvedSlice() {
+			return resolvedSlice;
+		},
+		get sliceDraft() {
+			return sliceDraftWorld;
+		},
 	});
 	const viewport = contribution<'layout-readings', 'viewport'>()({
-		get slice() { return slicePill; }
+		get slice() {
+			return slicePill;
+		},
 	});
 	const overlay = contribution<'layout-readings', 'overlay'>()({
-		get sliceDraft() { return sliceDraftOverlay; }
+		get sliceDraft() {
+			return sliceDraftOverlay;
+		},
 	});
 
 	attachTeardown();
 	return {
-		canvas, viewport, overlay, attachMirror, attachTeardown,
-		clear, level, draw, controller: sliceDraw,
+		canvas,
+		viewport,
+		overlay,
+		attachMirror,
+		attachTeardown,
+		clear,
+		level,
+		draw,
+		controller: sliceDraw,
 		resolved: () => resolvedSlice,
 		active: () => sliceReading.isActive(),
-		get mode() { return sliceReading.reading?.kind ?? null; },
-		putBack: putBackSlice
+		get mode() {
+			return sliceReading.reading?.kind ?? null;
+		},
+		putBack: putBackSlice,
 	};
 }

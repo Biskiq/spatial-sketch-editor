@@ -1,9 +1,22 @@
 import type { SubjectScope } from '../subject-scope';
 import type { Component, Snippet } from 'svelte';
-import type { PointerRay, ViewingIntent, ViewingIntentResult, ViewportCameraState, ViewportEvaluation, WorkingPlane, WorkingPlaneHit } from '@portfolio/camera-core/viewport';
+import type {
+	PointerRay,
+	ViewingIntent,
+	ViewingIntentResult,
+	ViewportCameraState,
+	ViewportEvaluation,
+	WorkingPlane,
+	WorkingPlaneHit,
+} from '@portfolio/camera-core/viewport';
 import type { Vec3 } from '@portfolio/camera-core/camera';
 import type { LayoutSurfaceRef, SpaceSurfaceExclusion } from '@portfolio/layout-core/plan';
-import type { PlanSourceKind, PlanSourceRef, PlanStream, PlanSubRef } from '@portfolio/layout-core/world';
+import type {
+	PlanSourceKind,
+	PlanSourceRef,
+	PlanStream,
+	PlanSubRef,
+} from '@portfolio/layout-core/world';
 import type { CameraOutputRefusal } from '@portfolio/project-model/channels';
 import type { F4JsonValue } from '@portfolio/project-model/f4';
 import type { SceneFormSource } from '@portfolio/project-model/scene';
@@ -48,20 +61,22 @@ export type StageDomainPick = {
 /** The Stage hit vocabulary: Plan sources plus the 3D-only Room lid. */
 export type StageHitSourceKind = PlanSourceKind | 'room-lid';
 
-export type StageSourceHit = {
-	readonly reference: SemanticReference;
-	readonly sourceId: string;
-	readonly sourceKind: 'entity';
-	readonly worldPoint: Vec3;
-} | {
-	readonly reference?: undefined;
-	readonly sourceId: string;
-	readonly sourceKind: StageHitSourceKind;
-	readonly generationId: string;
-	readonly stream: PlanStream;
-	readonly subRef: PlanSubRef | null;
-	readonly worldPoint: Vec3;
-};
+export type StageSourceHit =
+	| {
+			readonly reference: SemanticReference;
+			readonly sourceId: string;
+			readonly sourceKind: 'entity';
+			readonly worldPoint: Vec3;
+	  }
+	| {
+			readonly reference?: undefined;
+			readonly sourceId: string;
+			readonly sourceKind: StageHitSourceKind;
+			readonly generationId: string;
+			readonly stream: PlanStream;
+			readonly subRef: PlanSubRef | null;
+			readonly worldPoint: Vec3;
+	  };
 
 /** The evaluated Stage reading for a Paint query; it is not part of selection identity. */
 export type StagePaintReading = 'plan' | '3d';
@@ -103,7 +118,11 @@ export type StagePaintSpaceScope =
 
 export type StagePaintAnswer =
 	| { readonly kind: 'paintable'; readonly entityId: string }
-	| { readonly kind: 'paintable-surface'; readonly surface: LayoutSurfaceRef; readonly space: StagePaintSpaceScope }
+	| {
+			readonly kind: 'paintable-surface';
+			readonly surface: LayoutSurfaceRef;
+			readonly space: StagePaintSpaceScope;
+	  }
 	| { readonly kind: 'refused'; readonly message: string };
 
 export type StageOverlayContribution = {
@@ -581,7 +600,10 @@ export type StageAdapterBinding = {
 	 * which Scene entity does the hit name? Additive and optional; a binding that
 	 * declares `paint` but answers `null` paints nothing.
 	 */
-	readonly paintAnswer?: (hit: StageSourceHit, reading: StagePaintReading) => StagePaintAnswer | null;
+	readonly paintAnswer?: (
+		hit: StageSourceHit,
+		reading: StagePaintReading,
+	) => StagePaintAnswer | null;
 	/**
 	 * Claim a press for this adapter's open task. Returning `true` on `down` takes
 	 * the press from the host's navigation gesture; the same binding then receives

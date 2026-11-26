@@ -17,7 +17,7 @@ import {
 	clearLightPreview,
 	createLightInstallWindow,
 	createLightLease,
-	createLightRefusal
+	createLightRefusal,
 } from './light/light-session-ports';
 
 export const createAdapter: StageAdapterFactory = (services) => {
@@ -50,7 +50,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						const began = gesture.begin(
 							intent,
 							adapterContext,
-							!placement.taskOpen && intent.shift === true
+							!placement.taskOpen && intent.shift === true,
 						);
 						if (began === 'started') return true;
 						if (began === 'blocked' || !placement.taskOpen) return false;
@@ -92,9 +92,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					lease.release();
 					clearLightPreview(services);
 					placement.disarmUnlessInstalling();
-				}
+				},
 			};
-		}
+		},
 	};
 	return adapter;
 };

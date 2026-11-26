@@ -29,18 +29,21 @@ export type SectionWorldBasis = SectionBasis & {
 	readonly origin: readonly [number, number, number];
 };
 
-function worldInBasis(basis: SectionWorldBasis, [u, v]: readonly [number, number]): [number, number, number] {
+function worldInBasis(
+	basis: SectionWorldBasis,
+	[u, v]: readonly [number, number],
+): [number, number, number] {
 	return [
 		basis.origin[0] + u * basis.u[0] + v * basis.v[0],
 		basis.origin[1] + u * basis.u[1] + v * basis.v[1],
-		basis.origin[2] + u * basis.u[2] + v * basis.v[2]
+		basis.origin[2] + u * basis.u[2] + v * basis.v[2],
 	];
 }
 
 /** Independent world-space edge pairs through a full section basis (SL2). */
 export function sectionEdgeSegmentsWorld(
 	loops: readonly SectionLoop[],
-	basis: SectionWorldBasis
+	basis: SectionWorldBasis,
 ): SectionEdgeSegment[] {
 	const segments: SectionEdgeSegment[] = [];
 	for (const loop of loops) {
@@ -48,7 +51,7 @@ export function sectionEdgeSegmentsWorld(
 			const next = loop.points[(index + 1) % loop.points.length]!;
 			segments.push({
 				identity: loop.edgeIdentities[index] ?? '',
-				positions: [...worldInBasis(basis, point), ...worldInBasis(basis, next)]
+				positions: [...worldInBasis(basis, point), ...worldInBasis(basis, next)],
 			});
 		});
 	}
@@ -58,12 +61,15 @@ export function sectionEdgeSegmentsWorld(
 /** Open chain pairs through a full section basis (SL2). */
 export function openChainSegmentsWorld(
 	chains: readonly { readonly points: readonly (readonly [number, number])[] }[],
-	basis: SectionWorldBasis
+	basis: SectionWorldBasis,
 ): number[] {
 	const positions: number[] = [];
 	for (const chain of chains) {
 		for (let index = 0; index + 1 < chain.points.length; index += 1) {
-			positions.push(...worldInBasis(basis, chain.points[index]!), ...worldInBasis(basis, chain.points[index + 1]!));
+			positions.push(
+				...worldInBasis(basis, chain.points[index]!),
+				...worldInBasis(basis, chain.points[index + 1]!),
+			);
 		}
 	}
 	return positions;
@@ -73,12 +79,12 @@ export function sectionEdgeSegments(
 	loops: readonly SectionLoop[],
 	basis: SectionBasis,
 	y: number,
-	originXZ: readonly [number, number]
+	originXZ: readonly [number, number],
 ): SectionEdgeSegment[] {
 	const world = ([u, v]: readonly [number, number]): [number, number, number] => [
 		originXZ[0] + u * basis.u[0] + v * basis.v[0],
 		y,
-		originXZ[1] + u * basis.u[2] + v * basis.v[2]
+		originXZ[1] + u * basis.u[2] + v * basis.v[2],
 	];
 	const segments: SectionEdgeSegment[] = [];
 	for (const loop of loops) {
@@ -86,7 +92,7 @@ export function sectionEdgeSegments(
 			const next = loop.points[(index + 1) % loop.points.length]!;
 			segments.push({
 				identity: loop.edgeIdentities[index] ?? '',
-				positions: [...world(point), ...world(next)]
+				positions: [...world(point), ...world(next)],
 			});
 		});
 	}
@@ -98,12 +104,12 @@ export function openChainSegments(
 	chains: readonly { readonly points: readonly (readonly [number, number])[] }[],
 	basis: SectionBasis,
 	y: number,
-	originXZ: readonly [number, number]
+	originXZ: readonly [number, number],
 ): number[] {
 	const world = ([u, v]: readonly [number, number]): [number, number, number] => [
 		originXZ[0] + u * basis.u[0] + v * basis.v[0],
 		y,
-		originXZ[1] + u * basis.u[2] + v * basis.v[2]
+		originXZ[1] + u * basis.u[2] + v * basis.v[2],
 	];
 	const positions: number[] = [];
 	for (const chain of chains) {
@@ -128,7 +134,7 @@ export function appendSectionEdgesWorld(
 	collection: { readonly segments: SectionEdgeSegment[]; readonly open: number[] },
 	loops: readonly SectionLoop[],
 	chains: readonly { readonly points: readonly (readonly [number, number])[] }[],
-	basis: SectionWorldBasis
+	basis: SectionWorldBasis,
 ): void {
 	collection.segments.push(...sectionEdgeSegmentsWorld(loops, basis));
 	collection.open.push(...openChainSegmentsWorld(chains, basis));
@@ -140,7 +146,7 @@ export function appendSectionEdges(
 	chains: readonly { readonly points: readonly (readonly [number, number])[] }[],
 	basis: SectionBasis,
 	y: number,
-	originXZ: readonly [number, number]
+	originXZ: readonly [number, number],
 ): void {
 	collection.segments.push(...sectionEdgeSegments(loops, basis, y, originXZ));
 	collection.open.push(...openChainSegments(chains, basis, y, originXZ));

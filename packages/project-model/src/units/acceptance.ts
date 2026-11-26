@@ -48,7 +48,7 @@ import type {
 	SourceAdmission,
 	AuthoringIntent,
 	CapturedInput,
-	AcceptedSnapshot
+	AcceptedSnapshot,
 } from '../f4/types';
 import type { PlannerRegistry, PrepareResult } from '../f4/prepare';
 import { createUnitTargetInspector, prepareUnitIntent } from '../f4/unit-acceptance';
@@ -56,7 +56,7 @@ import { newlyRetiredSurfaceReferenceKeys } from '../surface-lineage';
 import {
 	computeEnvelopeSourceContentId,
 	computeUnitContentRevision,
-	type SaveWorkInstrumentation
+	type SaveWorkInstrumentation,
 } from './canonical';
 import { dependencyLockKey } from './identity';
 import {
@@ -64,9 +64,15 @@ import {
 	isDeeplyFrozenPlainJson,
 	serializeValidatedProjectEnvelope,
 	validateProjectEnvelope,
-	type EnvelopeClosureFinding
+	type EnvelopeClosureFinding,
 } from './validate';
-import { UNIT_DOMAINS, type DomainUnit, type ProjectEnvelope, type ProjectUnits, type UnitDomain } from './types';
+import {
+	UNIT_DOMAINS,
+	type DomainUnit,
+	type ProjectEnvelope,
+	type ProjectUnits,
+	type UnitDomain,
+} from './types';
 
 /** The exact capability scope this adapter serves. */
 export const UNIT_ACCEPTANCE_SCOPE = 'unit-acceptance-v1' as const;
@@ -111,7 +117,7 @@ function issue(path: string, code: string, message: string): ShapeIssue {
  */
 export async function normalizeUnitEnvelope(
 	envelope: ProjectEnvelope,
-	instrumentation?: SaveWorkInstrumentation
+	instrumentation?: SaveWorkInstrumentation,
 ): Promise<ProjectEnvelope> {
 	const declared = envelope.units;
 	const [layout, scene, camera, experience, resources] = await Promise.all([
@@ -119,15 +125,30 @@ export async function normalizeUnitEnvelope(
 		computeUnitContentRevision(declared.scene.data, instrumentation, 'save.unit.scene'),
 		computeUnitContentRevision(declared.camera.data, instrumentation, 'save.unit.camera'),
 		computeUnitContentRevision(declared.experience.data, instrumentation, 'save.unit.experience'),
-		computeUnitContentRevision(declared.resources.data, instrumentation, 'save.unit.resources')
+		computeUnitContentRevision(declared.resources.data, instrumentation, 'save.unit.resources'),
 	]);
 	const assemble = (): ProjectEnvelope => {
 		const units: ProjectUnits = {
-			layout: { header: { ...declared.layout.header, contentRevision: layout }, data: declared.layout.data },
-			scene: { header: { ...declared.scene.header, contentRevision: scene }, data: declared.scene.data },
-			camera: { header: { ...declared.camera.header, contentRevision: camera }, data: declared.camera.data },
-			experience: { header: { ...declared.experience.header, contentRevision: experience }, data: declared.experience.data },
-			resources: { header: { ...declared.resources.header, contentRevision: resources }, data: declared.resources.data }
+			layout: {
+				header: { ...declared.layout.header, contentRevision: layout },
+				data: declared.layout.data,
+			},
+			scene: {
+				header: { ...declared.scene.header, contentRevision: scene },
+				data: declared.scene.data,
+			},
+			camera: {
+				header: { ...declared.camera.header, contentRevision: camera },
+				data: declared.camera.data,
+			},
+			experience: {
+				header: { ...declared.experience.header, contentRevision: experience },
+				data: declared.experience.data,
+			},
+			resources: {
+				header: { ...declared.resources.header, contentRevision: resources },
+				data: declared.resources.data,
+			},
 		};
 		const unitRevision = (domain: UnitDomain): string => units[domain].header.contentRevision;
 		const entries = envelope.dependencyLock.entries.map((entry) => {
@@ -143,7 +164,9 @@ export async function normalizeUnitEnvelope(
 		: assemble();
 }
 
-function lockReference(entry: ProjectEnvelope['dependencyLock']['entries'][number]): SemanticReference {
+function lockReference(
+	entry: ProjectEnvelope['dependencyLock']['entries'][number],
+): SemanticReference {
 	return {
 		version: 1,
 		domain: entry.domain,
@@ -152,7 +175,7 @@ function lockReference(entry: ProjectEnvelope['dependencyLock']['entries'][numbe
 		instancePath: entry.instancePath,
 		location: { kind: 'project-root' },
 		componentId: null,
-		capabilityId: null
+		capabilityId: null,
 	};
 }
 
@@ -181,14 +204,18 @@ export type VerifyDependencyLocksOptions = {
  */
 export async function verifyUnitDependencyLocks(
 	envelope: ProjectEnvelope,
-	options: VerifyDependencyLocksOptions = {}
+	options: VerifyDependencyLocksOptions = {},
 ): Promise<ShapeIssue[]> {
 	const { knownSourceContentId, instrumentation } = options;
 	const sourceContentId =
 		knownSourceContentId ??
 		(await computeEnvelopeSourceContentId(envelope, instrumentation, 'save.lock-source-id'));
 	const verify = (): ShapeIssue[] => {
-		const context = createUnitReadContext({ envelope, sourceContentId, sessionEpoch: 'unit-lock-verification' });
+		const context = createUnitReadContext({
+			envelope,
+			sourceContentId,
+			sessionEpoch: 'unit-lock-verification',
+		});
 		const issues: ShapeIssue[] = [];
 		for (const [index, entry] of envelope.dependencyLock.entries.entries()) {
 			const path = `$.dependencyLock.entries[${index}]`;
@@ -205,14 +232,16 @@ export async function verifyUnitDependencyLocks(
 					issue(
 						path,
 						'lock-revision-mismatch',
-						`the lock pins "${entry.subjectId}" to ${entry.contentRevision} and the envelope resolves ${resolution.subject.contentRevision}`
-					)
+						`the lock pins "${entry.subjectId}" to ${entry.contentRevision} and the envelope resolves ${resolution.subject.contentRevision}`,
+					),
 				);
 			}
 		}
 		return issues;
 	};
-	return instrumentation ? instrumentation.sync('save.dependency-lock-resolution', verify) : verify();
+	return instrumentation
+		? instrumentation.sync('save.dependency-lock-resolution', verify)
+		: verify();
 }
 
 function closureIssues(closure: readonly EnvelopeClosureFinding[]): ShapeIssue[] {
@@ -220,12 +249,19 @@ function closureIssues(closure: readonly EnvelopeClosureFinding[]): ShapeIssue[]
 }
 
 function changedDomains(before: ProjectEnvelope, after: ProjectEnvelope): UnitDomain[] {
-	return UNIT_DOMAINS.filter((domain) => before.units[domain].header.contentRevision !== after.units[domain].header.contentRevision);
+	return UNIT_DOMAINS.filter(
+		(domain) =>
+			before.units[domain].header.contentRevision !== after.units[domain].header.contentRevision,
+	);
 }
 
 function lockChanged(before: ProjectEnvelope, after: ProjectEnvelope): boolean {
-	const left = before.dependencyLock.entries.filter((entry) => entry.domain.startsWith('resource:'));
-	const right = after.dependencyLock.entries.filter((entry) => entry.domain.startsWith('resource:'));
+	const left = before.dependencyLock.entries.filter((entry) =>
+		entry.domain.startsWith('resource:'),
+	);
+	const right = after.dependencyLock.entries.filter((entry) =>
+		entry.domain.startsWith('resource:'),
+	);
 	return JSON.stringify(left) !== JSON.stringify(right);
 }
 
@@ -251,8 +287,8 @@ function unitHeaderIssues(before: ProjectEnvelope, after: ProjectEnvelope): Shap
 				issue(
 					`$.units.${domain}.header.${field}`,
 					'unit-header-mismatch',
-					`an accepted operation cannot change the ${domain} unit header's ${field}`
-				)
+					`an accepted operation cannot change the ${domain} unit header's ${field}`,
+				),
 			);
 		}
 	}
@@ -271,7 +307,7 @@ function unitLockMetadata(entry: ProjectEnvelope['dependencyLock']['entries'][nu
 		subjectId: entry.subjectId,
 		instancePath: entry.instancePath,
 		requiredCapabilities: entry.requiredCapabilities,
-		pin: entry.pin
+		pin: entry.pin,
 	});
 }
 
@@ -293,8 +329,8 @@ function unitLockIssues(before: ProjectEnvelope, after: ProjectEnvelope): ShapeI
 			issue(
 				'$.dependencyLock.entries',
 				'lock-metadata-mismatch',
-				'an accepted operation cannot add or remove unit-scoped dependency lock entries'
-			)
+				'an accepted operation cannot add or remove unit-scoped dependency lock entries',
+			),
 		];
 	}
 	const issues: ShapeIssue[] = [];
@@ -305,8 +341,8 @@ function unitLockIssues(before: ProjectEnvelope, after: ProjectEnvelope): ShapeI
 			issue(
 				`$.dependencyLock.entries[${candidate.index}]`,
 				'lock-metadata-mismatch',
-				'an accepted operation cannot change a unit-scoped lock entry\'s subject, capabilities or pin'
-			)
+				"an accepted operation cannot change a unit-scoped lock entry's subject, capabilities or pin",
+			),
 		);
 	}
 	return issues;
@@ -332,7 +368,7 @@ function unitLockIssues(before: ProjectEnvelope, after: ProjectEnvelope): ShapeI
 const ADMITTED_BY_FROZEN_ENVELOPE = new WeakMap<object, SourceAdmission<ProjectEnvelope>>();
 
 export function createUnitAcceptanceAdapter(
-	options: UnitAcceptanceAdapterOptions = {}
+	options: UnitAcceptanceAdapterOptions = {},
 ): AcceptanceSourceAdapter<ProjectEnvelope> {
 	const compound = options.compound === true;
 	const resourceStaging = options.resourceStaging === true;
@@ -344,7 +380,12 @@ export function createUnitAcceptanceAdapter(
 		}
 		const validated = validateProjectEnvelope(input);
 		if (!validated.success) {
-			return { kind: 'rejected', code: 'invalid-envelope', message: 'The candidate is not a valid F.2 envelope', issues: validated.issues };
+			return {
+				kind: 'rejected',
+				code: 'invalid-envelope',
+				message: 'The candidate is not a valid F.2 envelope',
+				issues: validated.issues,
+			};
 		}
 		// Derived identity has exactly one author here: `normalizeUnitEnvelope` stamps
 		// every unit header from that unit's own data. Re-hashing the headers it just
@@ -356,16 +397,23 @@ export function createUnitAcceptanceAdapter(
 		// and is invariant under normalization, so no second envelope validation runs.
 		const normalized = await normalizeUnitEnvelope(validated.envelope);
 		const sourceContentId = await computeEnvelopeSourceContentId(normalized);
-		const lockIssues = await verifyUnitDependencyLocks(normalized, { knownSourceContentId: sourceContentId });
+		const lockIssues = await verifyUnitDependencyLocks(normalized, {
+			knownSourceContentId: sourceContentId,
+		});
 		if (lockIssues.length > 0) {
-			return { kind: 'rejected', code: 'lock-closure', message: 'The dependency lock does not resolve in this envelope', issues: lockIssues };
+			return {
+				kind: 'rejected',
+				code: 'lock-closure',
+				message: 'The dependency lock does not resolve in this envelope',
+				issues: lockIssues,
+			};
 		}
 		if (validated.closure.length > 0) {
 			return {
 				kind: 'rejected',
 				code: 'lock-closure',
 				message: 'The envelope cannot satisfy an executable resource requirement',
-				issues: closureIssues(validated.closure)
+				issues: closureIssues(validated.closure),
 			};
 		}
 		const canonicalJson = serializeValidatedProjectEnvelope(normalized);
@@ -382,7 +430,7 @@ export function createUnitAcceptanceAdapter(
 			source: normalized,
 			canonicalJson,
 			sourceContentId,
-			blockingIssues: []
+			blockingIssues: [],
 		};
 		if (typeof input === 'object' && input !== null && isDeeplyFrozenPlainJson(input)) {
 			ADMITTED_BY_FROZEN_ENVELOPE.set(input, admission);
@@ -441,13 +489,27 @@ export function createUnitAcceptanceAdapter(
 				const previous = baseline.dependencyLock.entries[index];
 				if (previous === undefined) return false;
 				return (
-					dependencyLockKey(entry.domain, entry.subjectKind, entry.subjectId, entry.instancePath) ===
-						dependencyLockKey(previous.domain, previous.subjectKind, previous.subjectId, previous.instancePath) &&
+					dependencyLockKey(
+						entry.domain,
+						entry.subjectKind,
+						entry.subjectId,
+						entry.instancePath,
+					) ===
+						dependencyLockKey(
+							previous.domain,
+							previous.subjectKind,
+							previous.subjectId,
+							previous.instancePath,
+						) &&
 					entry.contentRevision === previous.contentRevision &&
 					entry.requiredCapabilities.length === previous.requiredCapabilities.length &&
 					entry.requiredCapabilities.every((capability, position) => {
 						const pinned = previous.requiredCapabilities[position];
-						return pinned !== undefined && pinned.id === capability.id && pinned.version === capability.version;
+						return (
+							pinned !== undefined &&
+							pinned.id === capability.id &&
+							pinned.version === capability.version
+						);
 					}) &&
 					(entry.pin === previous.pin ||
 						(entry.pin !== null &&
@@ -461,14 +523,14 @@ export function createUnitAcceptanceAdapter(
 		const shared: ProjectEnvelope = {
 			...captured,
 			units: units as ProjectUnits,
-			dependencyLock: sameLock ? baseline.dependencyLock : captured.dependencyLock
+			dependencyLock: sameLock ? baseline.dependencyLock : captured.dependencyLock,
 		};
 		freezePlainJsonSubgraph(shared);
 		const admission = ADMITTED_BY_FROZEN_ENVELOPE.get(captured);
 		if (admission !== undefined && admission.kind === 'admitted') {
 			ADMITTED_BY_FROZEN_ENVELOPE.set(shared, {
 				...admission,
-				source: shared
+				source: shared,
 			});
 		}
 		return shared;
@@ -481,18 +543,39 @@ export function createUnitAcceptanceAdapter(
 		shareUnchanged,
 		validateChange(before, after, admission) {
 			const issues: ShapeIssue[] = [];
-			if (before.id !== after.id) issues.push(issue('$.id', 'project-mismatch', 'an accepted operation cannot change the project identity'));
+			if (before.id !== after.id)
+				issues.push(
+					issue(
+						'$.id',
+						'project-mismatch',
+						'an accepted operation cannot change the project identity',
+					),
+				);
 			// The envelope's own fields are not a unit's to change. A planner owns one
 			// domain unit (or an explicit resource lock); renaming the project or
 			// rewriting its format is a replacement, not an authored operation.
 			if (before.name !== after.name) {
-				issues.push(issue('$.name', 'project-mismatch', 'an accepted operation cannot rename the project'));
+				issues.push(
+					issue('$.name', 'project-mismatch', 'an accepted operation cannot rename the project'),
+				);
 			}
 			if (before.formatVersion !== after.formatVersion) {
-				issues.push(issue('$.formatVersion', 'project-mismatch', 'an accepted operation cannot change the envelope format'));
+				issues.push(
+					issue(
+						'$.formatVersion',
+						'project-mismatch',
+						'an accepted operation cannot change the envelope format',
+					),
+				);
 			}
 			if (before.acceptedRevision.projectId !== after.acceptedRevision.projectId) {
-				issues.push(issue('$.acceptedRevision.projectId', 'project-mismatch', 'an accepted operation cannot change the accepted project'));
+				issues.push(
+					issue(
+						'$.acceptedRevision.projectId',
+						'project-mismatch',
+						'an accepted operation cannot change the accepted project',
+					),
+				);
 			}
 			// The embedded revision is source provenance, not an operator-editable
 			// fact: the coordinator mints revision identity. A candidate that rewrites
@@ -502,8 +585,8 @@ export function createUnitAcceptanceAdapter(
 					issue(
 						'$.acceptedRevision.revisionId',
 						'baseline-revision-mismatch',
-						'an accepted operation cannot rewrite the baseline accepted revision'
-					)
+						'an accepted operation cannot rewrite the baseline accepted revision',
+					),
 				);
 			}
 			// A header or unit-lock rewrite changes no unit payload digest, so it
@@ -519,14 +602,16 @@ export function createUnitAcceptanceAdapter(
 				beforeScene: before.units.scene.data,
 				beforeLayout: before.units.layout.data,
 				afterScene: after.units.scene.data,
-				afterLayout: after.units.layout.data
+				afterLayout: after.units.layout.data,
 			});
 			if (newSurfaceOrphans.length > 0) {
-				issues.push(issue(
-					'$.units.scene.data.surfaceFinishes',
-					'surface-reference-orphaned',
-					`the candidate introduces retired surface reference "${newSurfaceOrphans[0]}"`
-				));
+				issues.push(
+					issue(
+						'$.units.scene.data.surfaceFinishes',
+						'surface-reference-orphaned',
+						`the candidate introduces retired surface reference "${newSurfaceOrphans[0]}"`,
+					),
+				);
 			}
 			// Two admissions hold, in this order: the host profile grants compound
 			// installs at all, and the producing planner's declaration says which
@@ -537,16 +622,16 @@ export function createUnitAcceptanceAdapter(
 					issue(
 						'$.units',
 						'unsupported-compound',
-						`this admission changes one domain per operation; the candidate changes ${changed.join(', ')}`
-					)
+						`this admission changes one domain per operation; the candidate changes ${changed.join(', ')}`,
+					),
 				);
 			}
 			const permitted = new Set<string>([
 				admission.domain,
-				...(admission.compound ? admission.writes ?? [] : []),
+				...(admission.compound ? (admission.writes ?? []) : []),
 				// A staged resource/lock change is the planner's resource grant plus the
 				// host's staging grant, never a declared semantic write domain.
-				...(resourceStaging && admission.resources ? ['resources'] : [])
+				...(resourceStaging && admission.resources ? ['resources'] : []),
 			]);
 			const outsideScope = changed.filter((changedDomain) => !permitted.has(changedDomain));
 			if (outsideScope.length > 0) {
@@ -554,18 +639,30 @@ export function createUnitAcceptanceAdapter(
 					issue(
 						'$.units',
 						'out-of-scope-domain',
-						`the producing planner declares writes in ${[...permitted].join(', ')}; the candidate also changes ${outsideScope.join(', ')}`
-					)
+						`the producing planner declares writes in ${[...permitted].join(', ')}; the candidate also changes ${outsideScope.join(', ')}`,
+					),
 				);
 			}
 			const resourceChange = changed.includes('resources') || lockChanged(before, after);
 			if (resourceChange && !resourceStaging) {
-				issues.push(issue('$.units.resources', 'unsupported-resource', 'this admission does not grant resource staging or lock mutation'));
+				issues.push(
+					issue(
+						'$.units.resources',
+						'unsupported-resource',
+						'this admission does not grant resource staging or lock mutation',
+					),
+				);
 			} else if (resourceChange && !admission.resources) {
-				issues.push(issue('$.units.resources', 'unsupported-resource', 'the producing planner does not declare resource staging'));
+				issues.push(
+					issue(
+						'$.units.resources',
+						'unsupported-resource',
+						'the producing planner does not declare resource staging',
+					),
+				);
 			}
 			return issues;
-		}
+		},
 	};
 }
 
@@ -579,7 +676,7 @@ export function createUnitAcceptancePreparation(options: UnitAcceptancePreparati
 	prepare(
 		snapshot: AcceptedSnapshot<ProjectEnvelope>,
 		intent: AuthoringIntent,
-		capturedInputs?: readonly CapturedInput[]
+		capturedInputs?: readonly CapturedInput[],
 	): PrepareResult<ProjectEnvelope>;
 } {
 	const { registry } = options;
@@ -592,12 +689,18 @@ export function createUnitAcceptancePreparation(options: UnitAcceptancePreparati
 				envelope: snapshot.domain.source,
 				acceptedRevision: snapshot.acceptedRevision,
 				sourceContentId: snapshot.sourceContentId,
-				sessionEpoch: options.sessionEpoch ?? 'unit-acceptance'
+				sessionEpoch: options.sessionEpoch ?? 'unit-acceptance',
 			});
-			return prepareUnitIntent(registry, snapshot, intent, capturedInputs, {}, {
-				inspectTargets: createUnitTargetInspector(context)
-			});
-		}
+			return prepareUnitIntent(
+				registry,
+				snapshot,
+				intent,
+				capturedInputs,
+				{},
+				{
+					inspectTargets: createUnitTargetInspector(context),
+				},
+			);
+		},
 	};
 }
-

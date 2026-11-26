@@ -22,7 +22,11 @@
  */
 import { getContext, setContext } from 'svelte';
 import { createGeometryStore, type GeometryStore } from './geometry-store';
-import { createMaterialStore, type MaterialStore, type MaterialStoreOptions } from './material-store';
+import {
+	createMaterialStore,
+	type MaterialStore,
+	type MaterialStoreOptions,
+} from './material-store';
 import { createCasterChannel, type CasterChannel } from './caster-channel';
 import { createLightStore, type LightStore } from './light-store';
 
@@ -68,7 +72,7 @@ export function provideRenderResources(options: MaterialStoreOptions = {}): Rend
 			casters.dispose();
 			geometry.dispose();
 			materials.dispose();
-		}
+		},
 	};
 	setContext(KEY, resources);
 	return resources;
@@ -79,7 +83,7 @@ export function useRenderResources(): RenderResources {
 	const resources = getContext<RenderResources | undefined>(KEY);
 	if (resources === undefined) {
 		throw new Error(
-			'render resources are missing: mount this world content inside StageCanvas or VisitorPreviewSurface'
+			'render resources are missing: mount this world content inside StageCanvas or VisitorPreviewSurface',
 		);
 	}
 	return resources;

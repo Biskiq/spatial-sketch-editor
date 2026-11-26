@@ -28,7 +28,12 @@ import { sealCompiledLayoutSnapshot } from '@portfolio/layout-core/geometry';
  * Runtime-safe, pure and read-only: nothing here writes a project, calls
  * `saveProject`, or mutates the supplied payload.
  */
-import { hasBlockingLayoutIssues, type CompiledLayoutGeometry, type LayoutCompileSession, type LayoutGeometryIssue } from '@portfolio/layout-core/geometry';
+import {
+	hasBlockingLayoutIssues,
+	type CompiledLayoutGeometry,
+	type LayoutCompileSession,
+	type LayoutGeometryIssue,
+} from '@portfolio/layout-core/geometry';
 import { layoutDatumElevation } from '@portfolio/layout-core/room';
 import { measureWorkAsync, p2311Measure } from '@portfolio/layout-core/kernel';
 import { freezeF4Data } from '@portfolio/project-model/f4';
@@ -45,7 +50,7 @@ import {
 	type ProjectEnvelope,
 	type RetainedUnitRuntime,
 	type UnitDomain,
-	type UnitRuntimeReady
+	type UnitRuntimeReady,
 } from '@portfolio/project-model/units';
 
 import { CATALOGUE_SCENE_VALIDATION_OPTIONS } from '$lib/content/scene-validation';
@@ -82,7 +87,13 @@ export type AdmissionContext = {
 	readonly materialProofs?: MaterialProofRegistry;
 };
 
-const UNIT_DOMAINS: readonly UnitDomain[] = ['layout', 'scene', 'camera', 'experience', 'resources'];
+const UNIT_DOMAINS: readonly UnitDomain[] = [
+	'layout',
+	'scene',
+	'camera',
+	'experience',
+	'resources',
+];
 
 /**
  * The level datum of one compiled Layout, in project-world meters.
@@ -101,10 +112,10 @@ function domainOf(
 	envelope: ProjectEnvelope,
 	sourceContentId: string,
 	context: AdmissionContext,
-	runtime: UnitRuntimeReady
+	runtime: UnitRuntimeReady,
 ): StageDomainRead {
 	const unitRevisions = Object.fromEntries(
-		UNIT_DOMAINS.map((domain) => [domain, envelope.units[domain].header.contentRevision])
+		UNIT_DOMAINS.map((domain) => [domain, envelope.units[domain].header.contentRevision]),
 	) as Record<UnitDomain, string>;
 	return {
 		name: envelope.name,
@@ -113,7 +124,7 @@ function domainOf(
 			acceptedRevision: context.acceptedRevision,
 			sourceContentId,
 			sessionEpoch: context.sessionEpoch,
-			generationId: compileGenerationOf(sourceContentId)
+			generationId: compileGenerationOf(sourceContentId),
 		}),
 		geometry: runtime.geometry,
 		layoutLevelId: envelope.units.layout.data.floor.id,
@@ -123,7 +134,7 @@ function domainOf(
 		unitRevisions,
 		warnings: runtime.issues.filter((issue) => issue.severity === 'warning'),
 		diagnostics: runtime.diagnostics,
-		closure: runtime.closure
+		closure: runtime.closure,
 	};
 }
 
@@ -132,7 +143,7 @@ function snapshotOf(
 	sourceContentId: string,
 	canonicalJson: string,
 	context: AdmissionContext,
-	domain: StageDomainRead
+	domain: StageDomainRead,
 ): StageReadSnapshot {
 	void canonicalJson;
 	return attachUnitStageSource(
@@ -144,9 +155,9 @@ function snapshotOf(
 			sourceKind: UNIT_ENVELOPE_SOURCE_KIND,
 			sourceVersion: UNIT_ENVELOPE_SOURCE_VERSION,
 			compileGeneration: compileGenerationOf(sourceContentId),
-			domain
+			domain,
 		},
-		envelope
+		envelope,
 	);
 }
 
@@ -163,13 +174,13 @@ function sceneOptionsFor(envelope: ProjectEnvelope): typeof HOST_SCENE_OPTIONS {
 	const modelIds = new Set(
 		envelope.units.resources.data.resources
 			.filter((resource) => resource.kind === 'model' && resource.pin !== null)
-			.map((resource) => resource.id)
+			.map((resource) => resource.id),
 	);
 	if (modelIds.size === 0) return HOST_SCENE_OPTIONS;
 	const catalogue = HOST_SCENE_OPTIONS.isKnownAssetId;
 	return {
 		...HOST_SCENE_OPTIONS,
-		isKnownAssetId: (assetId: string) => catalogue(assetId) || modelIds.has(assetId)
+		isKnownAssetId: (assetId: string) => catalogue(assetId) || modelIds.has(assetId),
 	};
 }
 
@@ -185,7 +196,10 @@ function projectIssues(issues: readonly ShapeIssue[]): ProjectIssue[] {
  */
 type PreparedLayout = {
 	readonly data: ProjectEnvelope['units']['layout']['data'];
-	readonly compiled: { readonly geometry: CompiledLayoutGeometryResult['geometry']; readonly issues: readonly LayoutGeometryIssue[] };
+	readonly compiled: {
+		readonly geometry: CompiledLayoutGeometryResult['geometry'];
+		readonly issues: readonly LayoutGeometryIssue[];
+	};
 };
 
 export async function admitSource(
@@ -214,7 +228,7 @@ export async function admitSource(
 		 * visitor runtime prepare cold.
 		 */
 		readonly previousRuntime?: RetainedUnitRuntime;
-	} = {}
+	} = {},
 ): Promise<AdmissionOutcome> {
 	// Harness-gated stage span (inert without the work observer).
 	return measureWorkAsync('admission', () =>
@@ -224,8 +238,8 @@ export async function admitSource(
 			options.compileSession,
 			options.knownIdentity,
 			options.preparedLayout,
-			options.previousRuntime
-		)
+			options.previousRuntime,
+		),
 	);
 }
 
@@ -238,7 +252,7 @@ async function admitSourceOnce(
 		readonly canonicalJson: string;
 	},
 	preparedLayout?: PreparedLayout,
-	previousRuntime?: RetainedUnitRuntime
+	previousRuntime?: RetainedUnitRuntime,
 ): Promise<AdmissionOutcome> {
 	// Read the envelope once so the host policy can see its model registry before
 	// Scene resolution, then prepare **that validated value**: preparation splits
@@ -250,7 +264,8 @@ async function admitSourceOnce(
 		// respect. Keep that distinct from a format refusal so the host can show
 		// the canonical geometry message rather than "not the current format".
 		const reason =
-			read.issues.length > 0 && read.issues.every((issue) => issue.code === 'dimension_out_of_range')
+			read.issues.length > 0 &&
+			read.issues.every((issue) => issue.code === 'dimension_out_of_range')
 				? 'dimension-limit'
 				: 'invalid-format';
 		return { kind: 'refused', reason, issues: projectIssues(read.issues) };
@@ -259,17 +274,28 @@ async function admitSourceOnce(
 	// validation, then runtime preparation. Give input/paint a task boundary
 	// between them rather than joining their CPU work into one long task.
 	// Accepted installs already carry knownIdentity and keep their existing path.
-	const coldForms = knownIdentity === undefined && read.envelope.units.scene.data.entities.filter((entity) => entity.kind === 'form').length >= 32;
+	const coldForms =
+		knownIdentity === undefined &&
+		read.envelope.units.scene.data.entities.filter((entity) => entity.kind === 'form').length >= 32;
 	const yieldTask = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 	if (coldForms) await yieldTask();
 	const prepared = p2311Measure('admission:runtime', () =>
 		prepareValidatedUnitRuntime(
-			read, sceneOptionsFor(read.envelope),
-			preparedLayout && compileSession && areEquivalentLayoutClones(preparedLayout.data, read.envelope.units.layout.data)
-				? { ...compileSession, compile: () => ({ geometry: preparedLayout.compiled.geometry, issues: [...preparedLayout.compiled.issues] }) }
+			read,
+			sceneOptionsFor(read.envelope),
+			preparedLayout &&
+				compileSession &&
+				areEquivalentLayoutClones(preparedLayout.data, read.envelope.units.layout.data)
+				? {
+						...compileSession,
+						compile: () => ({
+							geometry: preparedLayout.compiled.geometry,
+							issues: [...preparedLayout.compiled.issues],
+						}),
+					}
 				: compileSession,
-			previousRuntime
-		)
+			previousRuntime,
+		),
 	);
 	if (prepared.kind === 'rejected') {
 		return { kind: 'refused', reason: 'invalid-format', issues: projectIssues(prepared.issues) };
@@ -285,15 +311,15 @@ async function admitSourceOnce(
 				{
 					path: '$.id',
 					code: 'project_mismatch',
-					message: `the source names project "${envelope.id}", not "${context.acceptedRevision.projectId}"`
-				}
-			]
+					message: `the source names project "${envelope.id}", not "${context.acceptedRevision.projectId}"`,
+				},
+			],
 		};
 	}
 	if (hasBlockingLayoutIssues(prepared.issues)) {
 		return {
 			kind: 'diagnostics',
-			issues: prepared.issues.filter((issue) => issue.severity !== 'warning')
+			issues: prepared.issues.filter((issue) => issue.severity !== 'warning'),
 		};
 	}
 
@@ -301,7 +327,9 @@ async function admitSourceOnce(
 	// hashing the canonical bytes asynchronously. That proof is retained for this
 	// exact admitted envelope value and is the only source `registerFinish` may
 	// trust during synchronous F4 planning.
-	const materialProof = await measureWorkAsync('admission:material-proof', () => proofForEnvelope(envelope));
+	const materialProof = await measureWorkAsync('admission:material-proof', () =>
+		proofForEnvelope(envelope),
+	);
 	if (!materialProof.ok) {
 		return {
 			kind: 'refused',
@@ -309,8 +337,8 @@ async function admitSourceOnce(
 			issues: materialProof.issues.map((issue) => ({
 				path: issue.path,
 				code: issue.code,
-				message: issue.action ?? issue.code
-			}))
+				message: issue.action ?? issue.code,
+			})),
 		};
 	}
 	context.materialProofs?.remember(materialProof.proof);
@@ -331,7 +359,10 @@ async function admitSourceOnce(
 		sealCompiledLayoutSnapshot(domain.geometry);
 		freezeF4Data(domain);
 	});
-	return { kind: 'admitted', snapshot: snapshotOf(envelope, sourceContentId, canonicalJson, context, domain) };
+	return {
+		kind: 'admitted',
+		snapshot: snapshotOf(envelope, sourceContentId, canonicalJson, context, domain),
+	};
 }
 
 /**
@@ -343,7 +374,7 @@ async function admitSourceOnce(
  */
 export async function admitSourceJson(
 	json: string,
-	context: AdmissionContext
+	context: AdmissionContext,
 ): Promise<AdmissionOutcome> {
 	let parsed: unknown;
 	try {
@@ -353,7 +384,7 @@ export async function admitSourceJson(
 		return {
 			kind: 'refused',
 			reason: 'invalid-json',
-			issues: [{ path: '$', code: 'invalid_json', message }]
+			issues: [{ path: '$', code: 'invalid_json', message }],
 		};
 	}
 	return admitSource(parsed, context);

@@ -50,13 +50,24 @@ const cylinder = (
 	radiusBottom: number,
 	height: number,
 	radialSegments: number,
-	openEnded = false
-): FallbackPrimitive => ({ shape: 'cylinder', radiusTop, radiusBottom, height, radialSegments, openEnded });
-const sphere = (radius: number, widthSegments: number, heightSegments: number): FallbackPrimitive => ({
+	openEnded = false,
+): FallbackPrimitive => ({
+	shape: 'cylinder',
+	radiusTop,
+	radiusBottom,
+	height,
+	radialSegments,
+	openEnded,
+});
+const sphere = (
+	radius: number,
+	widthSegments: number,
+	heightSegments: number,
+): FallbackPrimitive => ({
 	shape: 'sphere',
 	radius,
 	widthSegments,
-	heightSegments
+	heightSegments,
 });
 
 function part(
@@ -64,7 +75,7 @@ function part(
 	position: Vec3,
 	materialId: MaterialId,
 	tint?: string,
-	rotation: Vec3 = ZERO
+	rotation: Vec3 = ZERO,
 ): FallbackPart {
 	return tint === undefined
 		? { primitive, position, rotation, materialId }
@@ -78,9 +89,9 @@ const piano = (): FallbackPart[] => [
 	part(box([1.5, 0.17, 0.38]), [0, 0.69, 0.91], 'wood-walnut', '#18120e'),
 	part(box([1.28, 0.04, 0.28]), [0, 0.79, 1.03], 'paper-aged', '#ded4bb'),
 	...[-0.58, 0.58].map((x) =>
-		part(cylinder(0.055, 0.075, 0.68, 10), [x, 0.34, 0.78], 'wood-walnut', '#130f0d')
+		part(cylinder(0.055, 0.075, 0.68, 10), [x, 0.34, 0.78], 'wood-walnut', '#130f0d'),
 	),
-	part(cylinder(0.06, 0.085, 0.68, 10), [0, 0.34, -0.72], 'wood-walnut', '#130f0d')
+	part(cylinder(0.06, 0.085, 0.68, 10), [0, 0.34, -0.72], 'wood-walnut', '#130f0d'),
 ];
 
 const chair = (): FallbackPart[] => [
@@ -91,8 +102,8 @@ const chair = (): FallbackPart[] => [
 		[-0.24, -0.2],
 		[0.24, -0.2],
 		[-0.24, 0.2],
-		[0.24, 0.2]
-	].map(([x, z]) => part(box([0.045, 0.42, 0.045]), [x!, 0.21, z!], 'wood-walnut'))
+		[0.24, 0.2],
+	].map(([x, z]) => part(box([0.045, 0.42, 0.045]), [x!, 0.21, z!], 'wood-walnut')),
 ];
 
 const sofa = (): FallbackPart[] => [
@@ -104,15 +115,15 @@ const sofa = (): FallbackPart[] => [
 		[-1.06, -0.28],
 		[1.06, -0.28],
 		[-1.06, 0.28],
-		[1.06, 0.28]
-	].map(([x, z]) => part(box([0.07, 0.32, 0.07]), [x!, 0.16, z!], 'wood-walnut'))
+		[1.06, 0.28],
+	].map(([x, z]) => part(box([0.07, 0.32, 0.07]), [x!, 0.16, z!], 'wood-walnut')),
 ];
 
 const table = (): FallbackPart[] => [
 	// Compact round salon table: 0.95 m diameter x 0.69 m high.
 	part(cylinder(0.475, 0.475, 0.08, 32), [0, 0.65, 0], 'wood-walnut'),
 	part(cylinder(0.08, 0.11, 0.58, 18), [0, 0.34, 0], 'wood-walnut', '#2e1b13'),
-	part(cylinder(0.27, 0.31, 0.08, 24), [0, 0.04, 0], 'wood-walnut', '#2e1b13')
+	part(cylinder(0.27, 0.31, 0.08, 24), [0, 0.04, 0], 'wood-walnut', '#2e1b13'),
 ];
 
 const chandelier = (): FallbackPart[] => [
@@ -125,12 +136,12 @@ const chandelier = (): FallbackPart[] => [
 			[0.28, -1.08, 0],
 			[-0.28, -1.08, 0],
 			[0, -1.08, 0.28],
-			[0, -1.08, -0.28]
+			[0, -1.08, -0.28],
 		] as Vec3[]
 	).flatMap((arm) => [
 		part(sphere(0.055, 12, 8), arm, 'brass-aged'),
-		part(cylinder(0.035, 0.05, 0.3, 12), [arm[0], -1.25, arm[2]], 'paper-aged', '#f1d7a5')
-	])
+		part(cylinder(0.035, 0.05, 0.3, 12), [arm[0], -1.25, arm[2]], 'paper-aged', '#f1d7a5'),
+	]),
 ];
 
 const desk = (): FallbackPart[] => [
@@ -141,15 +152,15 @@ const desk = (): FallbackPart[] => [
 		[-0.59, -0.25],
 		[0.59, -0.25],
 		[-0.59, 0.25],
-		[0.59, 0.25]
-	].map(([x, z]) => part(box([0.07, 0.67, 0.07]), [x!, 0.335, z!], 'wood-walnut'))
+		[0.59, 0.25],
+	].map(([x, z]) => part(box([0.07, 0.67, 0.07]), [x!, 0.335, z!], 'wood-walnut')),
 ];
 
 const lamp = (): FallbackPart[] => [
 	// Compact 0.55 m table lamp.
 	part(cylinder(0.13, 0.16, 0.05, 20), [0, 0.025, 0], 'brass-aged'),
 	part(cylinder(0.018, 0.024, 0.42, 12), [0, 0.25, 0], 'brass-aged'),
-	part(cylinder(0.1, 0.16, 0.24, 20, true), [0, 0.43, 0], 'paper-aged', '#e8d1a4')
+	part(cylinder(0.1, 0.16, 0.24, 20, true), [0, 0.43, 0], 'paper-aged', '#e8d1a4'),
 ];
 
 const frame = (): FallbackPart[] => [
@@ -158,44 +169,50 @@ const frame = (): FallbackPart[] => [
 		[0, 0.49, 0.85, 0.07],
 		[0, -0.49, 0.85, 0.07],
 		[-0.39, 0, 0.07, 0.91],
-		[0.39, 0, 0.07, 0.91]
+		[0.39, 0, 0.07, 0.91],
 	].map(([x, y, w, h]) => part(box([w!, h!, 0.07]), [x!, y!, 0], 'brass-aged')),
-	part(box([0.71, 0.91, 0.015]), [0, 0, -0.025], 'paper-aged', '#7c6c5b')
+	part(box([0.71, 0.91, 0.015]), [0, 0, -0.025], 'paper-aged', '#7c6c5b'),
 ];
 
-const book = (): FallbackPart[] => [part(box([0.18, 0.04, 0.25]), [0, 0.02, 0], 'paper-aged', '#7b3032')];
+const book = (): FallbackPart[] => [
+	part(box([0.18, 0.04, 0.25]), [0, 0.02, 0], 'paper-aged', '#7b3032'),
+];
 
 const books = (): FallbackPart[] => [
 	// Three-volume stack fits 0.48 m x 0.15 m x 0.3 m.
 	part(box([0.42, 0.05, 0.3]), [0, 0.025, 0], 'paper-aged', '#5f3428', [0, 0.04, 0]),
 	part(box([0.48, 0.05, 0.26]), [-0.01, 0.075, 0], 'paper-aged', '#31434a', [0, -0.035, 0]),
-	part(box([0.36, 0.05, 0.24]), [0.015, 0.125, 0], 'paper-aged', '#7b3032', [0, 0.07, 0])
+	part(box([0.36, 0.05, 0.24]), [0.015, 0.125, 0], 'paper-aged', '#7b3032', [0, 0.07, 0]),
 ];
 
 const clock = (): FallbackPart[] => [
 	// Grandfather clock: 0.38 m wide x 2.11 m high x 0.5 m deep.
 	part(box([0.34, 1.8, 0.42]), [0, 0.93, 0], 'wood-walnut'),
-	part(cylinder(0.14, 0.14, 0.025, 28), [0, 1.76, 0.225], 'paper-aged', '#e3dcc8', [Math.PI / 2, 0, 0]),
-	part(box([0.38, 0.09, 0.5]), [0, 0.045, 0], 'wood-walnut', '#2a1912')
+	part(cylinder(0.14, 0.14, 0.025, 28), [0, 1.76, 0.225], 'paper-aged', '#e3dcc8', [
+		Math.PI / 2,
+		0,
+		0,
+	]),
+	part(box([0.38, 0.09, 0.5]), [0, 0.045, 0], 'wood-walnut', '#2a1912'),
 ];
 
 const decor = (): FallbackPart[] => [
 	// Small ceramic-vase stand-in.
 	part(sphere(0.11, 20, 14), [0, 0.11, 0], 'marble-light', '#9fa6a2'),
-	part(cylinder(0.045, 0.075, 0.16, 18), [0, 0.3, 0], 'marble-light', '#9fa6a2')
+	part(cylinder(0.045, 0.075, 0.16, 18), [0, 0.3, 0], 'marble-light', '#9fa6a2'),
 ];
 
 const rug = (): FallbackPart[] => [
 	part({ shape: 'plane', width: 2.6, height: 1.8 }, [0, 0.0075, 0], 'velvet-dark', '#54232d', [
 		-Math.PI / 2,
 		0,
-		0
-	])
+		0,
+	]),
 ];
 
 /** Creator model placeholder: its approved footprint in plan; height is neutral. */
 const generic = (dimensions: Vec3): FallbackPart[] => [
-	part(box(dimensions), [0, dimensions[1] / 2, 0], 'plaster-warm', '#c4b4a0')
+	part(box(dimensions), [0, dimensions[1] / 2, 0], 'plaster-warm', '#c4b4a0'),
 ];
 
 const SHAPES: Record<Exclude<AssetFallbackKind, 'generic'>, () => FallbackPart[]> = {
@@ -211,7 +228,7 @@ const SHAPES: Record<Exclude<AssetFallbackKind, 'generic'>, () => FallbackPart[]
 	books,
 	clock,
 	decor,
-	rug
+	rug,
 };
 
 /**
@@ -219,6 +236,9 @@ const SHAPES: Record<Exclude<AssetFallbackKind, 'generic'>, () => FallbackPart[]
  * `dimensions` sizes the generic box (a creator model's approved footprint) and is
  * ignored by every catalogue kind.
  */
-export function fallbackPartsFor(kind: AssetFallbackKind, dimensions: Vec3): readonly FallbackPart[] {
+export function fallbackPartsFor(
+	kind: AssetFallbackKind,
+	dimensions: Vec3,
+): readonly FallbackPart[] {
 	return kind === 'generic' ? generic(dimensions) : SHAPES[kind]();
 }

@@ -48,12 +48,18 @@ import {
 	type FinishPatchEdit,
 	type FinishSheenReading,
 	type FinishSource,
-	type SheenStepId
+	type SheenStepId,
 } from '@portfolio/project-model/scene-planning';
-import type { MaterialId, SceneColor, SceneEntity, SceneMaterialInstance, SceneSurfaceRef } from '@portfolio/project-model/scene';
+import type {
+	MaterialId,
+	SceneColor,
+	SceneEntity,
+	SceneMaterialInstance,
+	SceneSurfaceRef,
+} from '@portfolio/project-model/scene';
 import type { MapRole, Mapping, Recipe } from '@portfolio/project-model/materials';
 import { surfaceKey } from '@portfolio/layout-core/plan';
-import { stageEnvelope, } from '../stage/stage-adapter-host';
+import { stageEnvelope } from '../stage/stage-adapter-host';
 import type { StageSelectionEntry } from '../stage/semantic-selection';
 import { layoutSurfaceTarget } from './colour-coat-port';
 import { materialFamilies, materialFamilyOf } from '$lib/content/material-presentation';
@@ -67,7 +73,7 @@ import type {
 	FinishReachChoice,
 	FinishRoleImage,
 	FinishWritePlan,
-	Inspected
+	Inspected,
 } from './finish-card-contract';
 import {
 	RATIO,
@@ -83,7 +89,7 @@ import {
 	recipeOfSource,
 	roleImageBinding,
 	subjectKeyOfSurface,
-	userKind
+	userKind,
 } from './finish-card-contract';
 export type {
 	FinishCardColour,
@@ -94,14 +100,14 @@ export type {
 	FinishCardView,
 	FinishReachChoice,
 	FinishRoleImage,
-	FinishWritePlan
+	FinishWritePlan,
 } from './finish-card-contract';
 export {
 	defaultReach,
 	finishCardTargetKey,
 	finishTargetWord,
 	finishWritePlan,
-	roleImageBinding
+	roleImageBinding,
 } from './finish-card-contract';
 
 export function createFinishCard(host: FinishCardHost) {
@@ -119,7 +125,9 @@ export function createFinishCard(host: FinishCardHost) {
 	let pendingPreview: { target: FinishCardTarget; edits: readonly FinishPatchEdit[] } | null = null;
 	let frame: number | null = null;
 
-	function inspect(target: FinishCardTarget): Inspected | { kind: 'none' | 'model-own'; targetKey: string } | null {
+	function inspect(
+		target: FinishCardTarget,
+	): Inspected | { kind: 'none' | 'model-own'; targetKey: string } | null {
 		const services = host.services();
 		const shot = services?.stage.snapshot();
 		if (services === null || services === undefined || shot === undefined) return null;
@@ -140,11 +148,17 @@ export function createFinishCard(host: FinishCardHost) {
 		const ref = finishRefOfKey(key);
 		if (ref === null || ref === 'model-own') return { kind: 'none', targetKey };
 		const envelope = stageEnvelope(shot);
-		const inspection = inspectFinish(envelope, ref, { labelForMaterial: (id) => host.labelForMaterial(id as MaterialId) });
+		const inspection = inspectFinish(envelope, ref, {
+			labelForMaterial: (id) => host.labelForMaterial(id as MaterialId),
+		});
 		if (inspection === null) return { kind: 'none', targetKey };
 		const instance: SceneMaterialInstance =
 			'curated' in ref
-				? { id: `curated:${ref.curated}`, name: host.labelForMaterial(ref.curated), base: { catalogue: ref.curated } }
+				? {
+						id: `curated:${ref.curated}`,
+						name: host.labelForMaterial(ref.curated),
+						base: { catalogue: ref.curated },
+					}
 				: (materialInstanceById(scene.materials, ref.project) as SceneMaterialInstance);
 		return {
 			target,
@@ -155,18 +169,24 @@ export function createFinishCard(host: FinishCardHost) {
 			users: inspection.users,
 			palette: scene.palette ?? [],
 			recipes: scene.materialIndex?.definitions ?? new Map(),
-			entityKind: entity === null ? null : (entity.kind as 'primitive' | 'form' | 'model')
+			entityKind: entity === null ? null : (entity.kind as 'primitive' | 'form' | 'model'),
 		};
 	}
 
 	function choiceFor(inspected: Inspected): FinishReachChoice {
-		return focusKey === inspected.targetKey && choice !== null ? choice : defaultReach('curated' in inspected.ref);
+		return focusKey === inspected.targetKey && choice !== null
+			? choice
+			: defaultReach('curated' in inspected.ref);
 	}
 
 	function planOf(inspected: Inspected): FinishWritePlan {
 		return finishWritePlan(
-			{ curated: 'curated' in inspected.ref, users: inspected.users.map((user) => user.key), targetKey: inspected.targetKey },
-			choiceFor(inspected)
+			{
+				curated: 'curated' in inspected.ref,
+				users: inspected.users.map((user) => user.key),
+				targetKey: inspected.targetKey,
+			},
+			choiceFor(inspected),
 		);
 	}
 
@@ -176,7 +196,9 @@ export function createFinishCard(host: FinishCardHost) {
 
 	function materialLabelOf(inspected: Inspected): string {
 		const base = inspected.instance.base;
-		return 'catalogue' in base ? host.labelForMaterial(base.catalogue as MaterialId) : 'Imported material';
+		return 'catalogue' in base
+			? host.labelForMaterial(base.catalogue as MaterialId)
+			: 'Imported material';
 	}
 
 	function reachOf(inspected: Inspected, label: string): FinishCardReach {
@@ -185,17 +207,34 @@ export function createFinishCard(host: FinishCardHost) {
 		const current = choiceFor(inspected);
 		const word = finishTargetWord(inspected.target);
 		if (users.length <= 1) {
-			return { users: users.length, line: `On ${label} · only here`, shared: false, options: null, choice: current, keepNote: null };
+			return {
+				users: users.length,
+				line: `On ${label} · only here`,
+				shared: false,
+				options: null,
+				choice: current,
+				keepNote: null,
+			};
 		}
 		const sameKind = users.filter((key) => userKind(key) === userKind(inspected.targetKey));
 		const others = users.length - sameKind.length;
 		const line = `Shared by ${users.length}`;
 		if (curated && sameKind.length <= 1) {
 			// Nothing of this kind to reach: the edit is this user's alone.
-			return { users: users.length, line, shared: true, options: null, choice: 'this', keepNote: null };
+			return {
+				users: users.length,
+				line,
+				shared: true,
+				options: null,
+				choice: 'this',
+				keepNote: null,
+			};
 		}
 		const count = curated ? sameKind.length : users.length;
-		const otherNoun = userKind(inspected.targetKey) === 'entity' ? ['wall or floor', 'walls and floors'] : ['object', 'objects'];
+		const otherNoun =
+			userKind(inspected.targetKey) === 'entity'
+				? ['wall or floor', 'walls and floors']
+				: ['object', 'objects'];
 		const keepNote =
 			curated && others > 0 && current === 'all'
 				? `${others} ${others === 1 ? otherNoun[0] : otherNoun[1]} ${others === 1 ? 'keeps' : 'keep'} ${materialLabelOf(inspected)}.`
@@ -209,10 +248,10 @@ export function createFinishCard(host: FinishCardHost) {
 				allLabel: `All ${count}`,
 				allTitle: curated
 					? `Every ${userKind(inspected.targetKey) === 'entity' ? 'object' : 'wall and floor'} using ${materialLabelOf(inspected)} gets one new Finish — cobalt on the Stage`
-					: 'Every user of this Finish changes — cobalt on the Stage'
+					: 'Every user of this Finish changes — cobalt on the Stage',
 			},
 			choice: current,
-			keepNote
+			keepNote,
 		};
 	}
 
@@ -221,9 +260,18 @@ export function createFinishCard(host: FinishCardHost) {
 		const hasImage = finishHasColourImage(source, inspected.recipes);
 		const mode = finishColourMode(source, inspected.recipes);
 		const colour = mode === 'natural' ? null : (source.overrides?.color ?? null);
-		const slot = colour !== null && typeof colour === 'object' ? inspected.palette.find((entry) => entry.id === colour.slot) : undefined;
-		const hex = colour === null ? null : typeof colour === 'string' ? colour : (slot?.color ?? null);
-		const caption = colour === null ? 'Original' : typeof colour === 'string' ? colour.toUpperCase() : `${slot?.name ?? 'Palette'} · palette`;
+		const slot =
+			colour !== null && typeof colour === 'object'
+				? inspected.palette.find((entry) => entry.id === colour.slot)
+				: undefined;
+		const hex =
+			colour === null ? null : typeof colour === 'string' ? colour : (slot?.color ?? null);
+		const caption =
+			colour === null
+				? 'Original'
+				: typeof colour === 'string'
+					? colour.toUpperCase()
+					: `${slot?.name ?? 'Palette'} · palette`;
 		return {
 			modes: hasImage ? ['natural', 'stained', 'painted'] : ['natural', 'painted'],
 			mode,
@@ -234,9 +282,9 @@ export function createFinishCard(host: FinishCardHost) {
 				id: entry.id,
 				name: entry.name,
 				color: entry.color,
-				active: colour !== null && typeof colour === 'object' && colour.slot === entry.id
+				active: colour !== null && typeof colour === 'object' && colour.slot === entry.id,
 			})),
-			custom: typeof colour === 'string'
+			custom: typeof colour === 'string',
 		};
 	}
 
@@ -248,7 +296,10 @@ export function createFinishCard(host: FinishCardHost) {
 			: step !== undefined
 				? step.label
 				: `Custom · r ${reading.effective.toFixed(2)}`;
-		return { ...reading, caption: reading.scan.approximate && reading.changed ? `${caption} · approximate` : caption };
+		return {
+			...reading,
+			caption: reading.scan.approximate && reading.changed ? `${caption} · approximate` : caption,
+		};
 	}
 
 	function patternOf(inspected: Inspected): FinishCardPattern | null {
@@ -257,14 +308,22 @@ export function createFinishCard(host: FinishCardHost) {
 		const real = baseTileMeters(source, inspected.recipes);
 		const mapping = mappingOf(source, inspected.recipes);
 		const recipe = recipeOfSource(source, inspected.recipes);
-		const textured = recipe === undefined || Object.keys(recipe.maps).length > 0 || Object.keys(source.overrides?.maps ?? {}).some((role) => source.overrides?.maps?.[role as 'color'] !== null);
+		const textured =
+			recipe === undefined ||
+			Object.keys(recipe.maps).length > 0 ||
+			Object.keys(source.overrides?.maps ?? {}).some(
+				(role) => source.overrides?.maps?.[role as 'color'] !== null,
+			);
 		if (real === null || mapping === undefined || mapping.kind === 'uv' || !textured) return null;
 		const tile = mapping.metric.tileMeters[0];
 		const k = Math.log2(tile / real[0]);
 		const exact = Math.abs(k - Math.round(k)) < 0.01;
 		const step = exact ? Math.round(k) : null;
 		const degrees = Math.round(((((mapping.metric.rotation * 180) / Math.PI) % 360) + 360) % 360);
-		const size = step === 0 ? `Real size ${formatMeters(real[0])}` : `${formatMeters(tile)}${step !== null && RATIO[String(step)] ? ` · ${RATIO[String(step)]}× real` : ''}`;
+		const size =
+			step === 0
+				? `Real size ${formatMeters(real[0])}`
+				: `${formatMeters(tile)}${step !== null && RATIO[String(step)] ? ` · ${RATIO[String(step)]}× real` : ''}`;
 		return {
 			realMeters: real[0],
 			tileMeters: tile,
@@ -272,7 +331,7 @@ export function createFinishCard(host: FinishCardHost) {
 			degrees,
 			caption: degrees === 0 ? size : `${size} · ${degrees}°`,
 			canSmaller: (step ?? Math.floor(k)) > -3,
-			canLarger: (step ?? Math.ceil(k)) < 3
+			canLarger: (step ?? Math.ceil(k)) < 3,
 		};
 	}
 
@@ -283,7 +342,9 @@ export function createFinishCard(host: FinishCardHost) {
 			const image = (binding as { readonly image?: unknown } | undefined)?.image;
 			if (typeof image === 'string') images.add(image);
 		}
-		return images.size === 0 ? `Imported Finish · from ${materialLabel}` : `Imported Finish · ${plural(images.size, 'image file')}`;
+		return images.size === 0
+			? `Imported Finish · from ${materialLabel}`
+			: `Imported Finish · ${plural(images.size, 'image file')}`;
 	}
 
 	/** The raw material's family and source, as the prototype's Material row reads them. */
@@ -300,8 +361,16 @@ export function createFinishCard(host: FinishCardHost) {
 		if (inspected === null) return null;
 		if ('kind' in inspected && !('ref' in inspected)) {
 			return inspected.kind === 'model-own'
-				? { kind: 'model-own', targetKey: inspected.targetKey, message: "A model's own materials take no edits. Paint a material first." }
-				: { kind: 'none', targetKey: inspected.targetKey, message: 'No Finish here yet. Paint a material first.' };
+				? {
+						kind: 'model-own',
+						targetKey: inspected.targetKey,
+						message: "A model's own materials take no edits. Paint a material first.",
+					}
+				: {
+						kind: 'none',
+						targetKey: inspected.targetKey,
+						message: 'No Finish here yet. Paint a material first.',
+					};
 		}
 		const found = inspected as Inspected;
 		const curated = 'curated' in found.ref;
@@ -311,7 +380,8 @@ export function createFinishCard(host: FinishCardHost) {
 		const sheen = sheenOf(found);
 		const pattern = patternOf(found);
 		const mapping = mappingOf(source, found.recipes);
-		const effectiveMetal = source.overrides?.metalness ?? recipeOfSource(source, found.recipes)?.metalness ?? 0;
+		const effectiveMetal =
+			source.overrides?.metalness ?? recipeOfSource(source, found.recipes)?.metalness ?? 0;
 		const _users = found.users.length;
 		const resetCount = curated ? 0 : editsToward(source.overrides, undefined).length;
 		return {
@@ -322,7 +392,9 @@ export function createFinishCard(host: FinishCardHost) {
 			curated,
 			name: found.instance.name,
 			canRename: !curated,
-			renameTitle: curated ? 'Curated names stay fixed — your first change makes a Finish you can rename' : 'Rename (Enter)',
+			renameTitle: curated
+				? 'Curated names stay fixed — your first change makes a Finish you can rename'
+				: 'Rename (Enter)',
 			// The prototype's meta line (`finish.js`); the use count lives on the reach line.
 			meta: curated
 				? 'Curated material · your first change makes a Finish'
@@ -333,9 +405,16 @@ export function createFinishCard(host: FinishCardHost) {
 				source: curated && catalogueId !== null ? { kind: 'catalogue', id: catalogueId } : null,
 				color:
 					colourOf(found).hex ??
-					(catalogueId !== null ? (host.swatchOf?.(catalogueId) ?? '#c4b4a0') : (recipeOfSource(source, found.recipes)?.color ?? '#c4b4a0'))
+					(catalogueId !== null
+						? (host.swatchOf?.(catalogueId) ?? '#c4b4a0')
+						: (recipeOfSource(source, found.recipes)?.color ?? '#c4b4a0')),
 			},
-			material: { label: materialLabel, sub: materialSubOf(catalogueId), catalogueId, swappable: true },
+			material: {
+				label: materialLabel,
+				sub: materialSubOf(catalogueId),
+				catalogueId,
+				swappable: true,
+			},
 			reach: reachOf(found, label),
 			colour: colourOf(found),
 			sheen,
@@ -350,12 +429,18 @@ export function createFinishCard(host: FinishCardHost) {
 				roughness: sheen.effective,
 				roughnessMax: Math.min(1, sheen.scan.mean),
 				metal: effectiveMetal >= 0.5,
-				tileMeters: mapping !== undefined && mapping.kind !== 'uv' && found.entityKind !== 'model' ? mapping.metric.tileMeters[0] : null,
-				degrees: mapping !== undefined && mapping.kind !== 'uv' && found.entityKind !== 'model' ? pattern?.degrees ?? Math.round((mapping.metric.rotation * 180) / Math.PI) : null,
-				canReplaceImage: target.kind === 'entity' && host.replaceImage !== undefined
+				tileMeters:
+					mapping !== undefined && mapping.kind !== 'uv' && found.entityKind !== 'model'
+						? mapping.metric.tileMeters[0]
+						: null,
+				degrees:
+					mapping !== undefined && mapping.kind !== 'uv' && found.entityKind !== 'model'
+						? (pattern?.degrees ?? Math.round((mapping.metric.rotation * 180) / Math.PI))
+						: null,
+				canReplaceImage: target.kind === 'entity' && host.replaceImage !== undefined,
 			},
 			resetCount,
-			favourite: host.isFavourite?.(found.finishKey) ?? false
+			favourite: host.isFavourite?.(found.finishKey) ?? false,
 		};
 	}
 
@@ -382,11 +467,16 @@ export function createFinishCard(host: FinishCardHost) {
 	}
 
 	function refusalFor(target: FinishCardTarget): string | null {
-		return refusal !== null && refusal.targetKey === finishCardTargetKey(target) ? refusal.message : null;
+		return refusal !== null && refusal.targetKey === finishCardTargetKey(target)
+			? refusal.message
+			: null;
 	}
 
 	/** The users *All* adds, outlined in cobalt on the Stage while it is chosen. */
-	function proposals(target: FinishCardTarget | null): { readonly entityIds: readonly string[]; readonly surfaces: readonly SceneSurfaceRef[] } {
+	function proposals(target: FinishCardTarget | null): {
+		readonly entityIds: readonly string[];
+		readonly surfaces: readonly SceneSurfaceRef[];
+	} {
 		const empty = { entityIds: [], surfaces: [] };
 		if (target === null) return empty;
 		const inspected = inspect(target);
@@ -416,7 +506,10 @@ export function createFinishCard(host: FinishCardHost) {
 		const found = proposals(openTarget);
 		if (found.entityIds.length === 0 && found.surfaces.length === 0) return [];
 		const shot = services.stage.snapshot();
-		const own = openTarget.kind === 'entity' ? `scene:${openTarget.entityId}` : subjectKeyOfSurface(openTarget.surface);
+		const own =
+			openTarget.kind === 'entity'
+				? `scene:${openTarget.entityId}`
+				: subjectKeyOfSurface(openTarget.surface);
 		const seen = new Set<string>([own]);
 		const entries: StageSelectionEntry[] = [];
 		for (const entityId of found.entityIds) {
@@ -431,8 +524,8 @@ export function createFinishCard(host: FinishCardHost) {
 					instancePath: [],
 					location: { kind: 'project-root' },
 					componentId: null,
-					capabilityId: null
-				}
+					capabilityId: null,
+				},
 			});
 		}
 		for (const surface of found.surfaces) {
@@ -462,7 +555,7 @@ export function createFinishCard(host: FinishCardHost) {
 			readonly base?: { readonly catalogue: MaterialId };
 			/** Image registrations the edits bind (the S4 import's record and pin). */
 			readonly images?: readonly unknown[];
-		} | null
+		} | null,
 	): Promise<boolean> {
 		clearPreview();
 		const services = host.services();
@@ -487,10 +580,12 @@ export function createFinishCard(host: FinishCardHost) {
 					selectedUsers: plan.selectedUsers,
 					expectedUsers: found.users.map((user) => user.key),
 					...(built.base === undefined ? {} : { base: built.base }),
-					...(built.images === undefined || built.images.length === 0 ? {} : { images: built.images })
+					...(built.images === undefined || built.images.length === 0
+						? {}
+						: { images: built.images }),
 				} as never,
 				capturedInputs: [],
-				allocatedIds: plan.allocates ? [{ kind: 'scene-finish', id: crypto.randomUUID() }] : []
+				allocatedIds: plan.allocates ? [{ kind: 'scene-finish', id: crypto.randomUUID() }] : [],
 			});
 			if (outcome.kind === 'installed') {
 				refusal = null;
@@ -504,10 +599,16 @@ export function createFinishCard(host: FinishCardHost) {
 					const latest = inspect(target);
 					const count = latest !== null && 'ref' in latest ? (latest as Inspected).users.length : 0;
 					choice = null;
-					refusal = { targetKey: found.targetKey, message: `Now used by ${count} — reach updated. Nothing changed.` };
+					refusal = {
+						targetKey: found.targetKey,
+						message: `Now used by ${count} — reach updated. Nothing changed.`,
+					};
 					return false;
 				}
-				refusal = { targetKey: found.targetKey, message: outcome.message ?? 'That change could not be made.' };
+				refusal = {
+					targetKey: found.targetKey,
+					message: outcome.message ?? 'That change could not be made.',
+				};
 			}
 			return false;
 		} finally {
@@ -516,16 +617,27 @@ export function createFinishCard(host: FinishCardHost) {
 	}
 
 	/** One completed control: a list of typed edits, one patch, one Undo. */
-	function edit(target: FinishCardTarget, edits: (source: FinishSource, recipes: ReadonlyMap<string, Recipe>) => readonly FinishPatchEdit[]): Promise<boolean> {
+	function edit(
+		target: FinishCardTarget,
+		edits: (
+			source: FinishSource,
+			recipes: ReadonlyMap<string, Recipe>,
+		) => readonly FinishPatchEdit[],
+	): Promise<boolean> {
 		return write(target, (inspected) => ({ edits: edits(sourceOf(inspected), inspected.recipes) }));
 	}
 
 	function setColourMode(target: FinishCardTarget, mode: FinishColourMode): Promise<boolean> {
 		return write(target, (inspected) => {
 			const source = sourceOf(inspected);
-			if (mode === 'natural') return { edits: colourModeEdits(source, 'natural', null, inspected.recipes) };
-			const current = finishColourMode(source, inspected.recipes) === 'natural' ? null : (source.overrides?.color ?? null);
-			const fallback: SceneColor = inspected.palette[0] !== undefined ? { slot: inspected.palette[0].id } : '#9aa58c';
+			if (mode === 'natural')
+				return { edits: colourModeEdits(source, 'natural', null, inspected.recipes) };
+			const current =
+				finishColourMode(source, inspected.recipes) === 'natural'
+					? null
+					: (source.overrides?.color ?? null);
+			const fallback: SceneColor =
+				inspected.palette[0] !== undefined ? { slot: inspected.palette[0].id } : '#9aa58c';
 			return { edits: colourModeEdits(source, mode, current ?? fallback, inspected.recipes) };
 		});
 	}
@@ -547,7 +659,10 @@ export function createFinishCard(host: FinishCardHost) {
 
 	function setSheen(target: FinishCardTarget, id: SheenStepId): Promise<boolean> {
 		return write(target, (inspected) => ({
-			edits: sheenStepEdits(finishSheenReading(sourceOf(inspected), inspected.recipes, host.facts), id)
+			edits: sheenStepEdits(
+				finishSheenReading(sourceOf(inspected), inspected.recipes, host.facts),
+				id,
+			),
 		}));
 	}
 
@@ -555,7 +670,12 @@ export function createFinishCard(host: FinishCardHost) {
 	function roughnessEdits(inspected: Inspected, effective: number): FinishPatchEdit[] {
 		const source = sourceOf(inspected);
 		const mean = finishSheenReading(source, inspected.recipes, host.facts).scan.mean;
-		return factorEdits(source, inspected.recipes, 'roughness', Math.min(1, Math.max(0, effective / mean)));
+		return factorEdits(
+			source,
+			inspected.recipes,
+			'roughness',
+			Math.min(1, Math.max(0, effective / mean)),
+		);
 	}
 
 	function setRoughness(target: FinishCardTarget, effective: number): Promise<boolean> {
@@ -563,17 +683,26 @@ export function createFinishCard(host: FinishCardHost) {
 	}
 
 	function setMetal(target: FinishCardTarget, on: boolean): Promise<boolean> {
-		return write(target, (inspected) => ({ edits: factorEdits(sourceOf(inspected), inspected.recipes, 'metalness', on ? 1 : 0) }));
+		return write(target, (inspected) => ({
+			edits: factorEdits(sourceOf(inspected), inspected.recipes, 'metalness', on ? 1 : 0),
+		}));
 	}
 
-	function metricMapping(inspected: Inspected, change: (metric: { tileMeters: [number, number]; rotation: number; offset: [number, number] }) => void): FinishPatchEdit[] {
+	function metricMapping(
+		inspected: Inspected,
+		change: (metric: {
+			tileMeters: [number, number];
+			rotation: number;
+			offset: [number, number];
+		}) => void,
+	): FinishPatchEdit[] {
 		const source = sourceOf(inspected);
 		const mapping = mappingOf(source, inspected.recipes);
 		if (mapping === undefined || mapping.kind === 'uv') return [];
 		const metric = {
 			tileMeters: [mapping.metric.tileMeters[0], mapping.metric.tileMeters[1]] as [number, number],
 			rotation: mapping.metric.rotation,
-			offset: [mapping.metric.offset[0], mapping.metric.offset[1]] as [number, number]
+			offset: [mapping.metric.offset[0], mapping.metric.offset[1]] as [number, number],
 		};
 		change(metric);
 		return mappingEdits(source, inspected.recipes, { kind: mapping.kind, metric } as Mapping);
@@ -588,12 +717,21 @@ export function createFinishCard(host: FinishCardHost) {
 			if (real === null || pattern === null) return null;
 			const k = Math.log2(pattern.tileMeters / real[0]);
 			const exact = Math.abs(k - Math.round(k)) < 0.01;
-			const next = Math.max(-3, Math.min(3, exact ? Math.round(k) + direction : direction < 0 ? Math.floor(k) : Math.ceil(k)));
+			const next = Math.max(
+				-3,
+				Math.min(
+					3,
+					exact ? Math.round(k) + direction : direction < 0 ? Math.floor(k) : Math.ceil(k),
+				),
+			);
 			const scale = 2 ** next;
 			return {
 				edits: metricMapping(inspected, (metric) => {
-					metric.tileMeters = [Number((real[0] * scale).toFixed(4)), Number((real[1] * scale).toFixed(4))];
-				})
+					metric.tileMeters = [
+						Number((real[0] * scale).toFixed(4)),
+						Number((real[1] * scale).toFixed(4)),
+					];
+				}),
 			};
 		});
 	}
@@ -604,7 +742,7 @@ export function createFinishCard(host: FinishCardHost) {
 			edits: metricMapping(inspected, (metric) => {
 				const aspect = metric.tileMeters[1] / metric.tileMeters[0];
 				metric.tileMeters = [meters, Number((meters * aspect).toFixed(4))];
-			})
+			}),
 		}));
 	}
 
@@ -613,7 +751,7 @@ export function createFinishCard(host: FinishCardHost) {
 		return write(target, (inspected) => ({
 			edits: metricMapping(inspected, (metric) => {
 				metric.rotation = ((((degrees % 360) + 360) % 360) * Math.PI) / 180;
-			})
+			}),
 		}));
 	}
 
@@ -632,7 +770,9 @@ export function createFinishCard(host: FinishCardHost) {
 	}
 
 	function resetToOriginal(target: FinishCardTarget): Promise<boolean> {
-		return write(target, (inspected) => ({ edits: editsToward(inspected.instance.overrides, undefined) }));
+		return write(target, (inspected) => ({
+			edits: editsToward(inspected.instance.overrides, undefined),
+		}));
 	}
 
 	/** Give this surface/object its own independent copy (`derive` with `identity: 'fresh'`). */
@@ -652,12 +792,15 @@ export function createFinishCard(host: FinishCardHost) {
 				? {
 						version: 1 as const,
 						domain: 'scene' as const,
-						revision: { kind: 'exact' as const, contentRevision: stageEnvelope(shot).units.scene.header.contentRevision },
+						revision: {
+							kind: 'exact' as const,
+							contentRevision: stageEnvelope(shot).units.scene.header.contentRevision,
+						},
 						subject: { kind: 'entity' as const, id: target.entityId },
 						instancePath: [],
 						location: { kind: 'project-root' as const },
 						componentId: null,
-						capabilityId: null
+						capabilityId: null,
 					}
 				: layoutSurfaceTarget(shot, target.surface);
 			if (intentTarget === null) return false;
@@ -668,10 +811,18 @@ export function createFinishCard(host: FinishCardHost) {
 				expectedRevision: shot.acceptedRevision,
 				targets: [intentTarget],
 				payload: (isEntity
-					? { finish: found.ref, entityIds: [target.entityId], derive: { edits: [], identity: 'fresh' } }
-					: { finish: found.ref, surfaces: [target.surface], derive: { edits: [], identity: 'fresh' } }) as never,
+					? {
+							finish: found.ref,
+							entityIds: [target.entityId],
+							derive: { edits: [], identity: 'fresh' },
+						}
+					: {
+							finish: found.ref,
+							surfaces: [target.surface],
+							derive: { edits: [], identity: 'fresh' },
+						}) as never,
 				capturedInputs: [],
-				allocatedIds: [{ kind: 'scene-finish', id: freshId }]
+				allocatedIds: [{ kind: 'scene-finish', id: freshId }],
 			});
 			if (outcome.kind === 'installed') {
 				refusal = null;
@@ -681,7 +832,10 @@ export function createFinishCard(host: FinishCardHost) {
 				return true;
 			}
 			if (outcome.kind === 'refused') {
-				refusal = { targetKey: found.targetKey, message: outcome.message ?? 'Could not make a separate copy.' };
+				refusal = {
+					targetKey: found.targetKey,
+					message: outcome.message ?? 'Could not make a separate copy.',
+				};
 			}
 			return false;
 		} finally {
@@ -708,7 +862,10 @@ export function createFinishCard(host: FinishCardHost) {
 		if (!('project' in found.ref)) return false;
 		const trimmed = name.trim();
 		if (trimmed.length === 0 || trimmed.length > FINISH_NAME_MAX_LENGTH) {
-			refusal = { targetKey: found.targetKey, message: `A Finish name must be 1-${FINISH_NAME_MAX_LENGTH} characters.` };
+			refusal = {
+				targetKey: found.targetKey,
+				message: `A Finish name must be 1-${FINISH_NAME_MAX_LENGTH} characters.`,
+			};
 			return false;
 		}
 		if (trimmed === found.instance.name) return true;
@@ -720,15 +877,22 @@ export function createFinishCard(host: FinishCardHost) {
 			targets: [],
 			payload: { finish: found.ref, name: trimmed } as never,
 			capturedInputs: [],
-			allocatedIds: []
+			allocatedIds: [],
 		});
 		if (outcome.kind === 'installed') {
 			refusal = null;
 			reopenAfterInstall(found.targetKey);
 			return true;
 		}
-		if (outcome.kind === 'refused' && outcome.code !== 'no-change' && outcome.reason !== 'no-change') {
-			refusal = { targetKey: found.targetKey, message: outcome.message ?? 'That name could not be used.' };
+		if (
+			outcome.kind === 'refused' &&
+			outcome.code !== 'no-change' &&
+			outcome.reason !== 'no-change'
+		) {
+			refusal = {
+				targetKey: found.targetKey,
+				message: outcome.message ?? 'That name could not be used.',
+			};
 		}
 		return false;
 	}
@@ -738,37 +902,73 @@ export function createFinishCard(host: FinishCardHost) {
 	 * binds the S4-imported image and registers its record and pin, so it is one
 	 * undo and Undo restores the old binding (and its issue) exactly.
 	 */
-	function replaceRoleImage(target: FinishCardTarget, role: MapRole, image: FinishRoleImage): Promise<boolean> {
+	function replaceRoleImage(
+		target: FinishCardTarget,
+		role: MapRole,
+		image: FinishRoleImage,
+	): Promise<boolean> {
 		return write(target, (inspected) => {
 			const scene = host.services()?.stage.snapshot().domain.scene;
-			const resources = host.services() === null ? [] : stageEnvelope(host.services()!.stage.snapshot()).units.resources.data.resources;
+			const resources =
+				host.services() === null
+					? []
+					: stageEnvelope(host.services()!.stage.snapshot()).units.resources.data.resources;
 			const recorded = scene?.textures.some((texture) => texture.id === image.assetId) ?? false;
 			const pinned = resources.some(
-				(resource) => resource.kind === 'texture' && resource.id === image.assetId && resource.pin?.hash === image.sha256
+				(resource) =>
+					resource.kind === 'texture' &&
+					resource.id === image.assetId &&
+					resource.pin?.hash === image.sha256,
 			);
 			return {
-				edits: [{ field: `maps.${role}` as const, op: 'set', value: roleImageBinding(sourceOf(inspected), inspected.recipes, role, image.assetId) }],
+				edits: [
+					{
+						field: `maps.${role}` as const,
+						op: 'set',
+						value: roleImageBinding(sourceOf(inspected), inspected.recipes, role, image.assetId),
+					},
+				],
 				images: [
 					{
 						hash: image.sha256,
 						source: { textureId: image.assetId },
-						...(recorded && pinned ? {} : { texture: { name: image.name, pin: { hash: image.sha256, mime: image.mime, size: image.byteSize } } })
-					}
-				]
+						...(recorded && pinned
+							? {}
+							: {
+									texture: {
+										name: image.name,
+										pin: { hash: image.sha256, mime: image.mime, size: image.byteSize },
+									},
+								}),
+					},
+				],
 			};
 		});
 	}
 
-	function replaceImage(target: FinishCardTarget, file: File): Promise<import('./finish-image.svelte').FinishImageOutcome> {
-		if (target.kind !== 'entity' || host.replaceImage === undefined) return Promise.resolve({ kind: 'refused', message: 'Replacing this surface image is not available yet.' });
+	function replaceImage(
+		target: FinishCardTarget,
+		file: File,
+	): Promise<import('./finish-image.svelte').FinishImageOutcome> {
+		if (target.kind !== 'entity' || host.replaceImage === undefined)
+			return Promise.resolve({
+				kind: 'refused',
+				message: 'Replacing this surface image is not available yet.',
+			});
 		const inspected = inspect(target);
-		if (inspected === null || !('ref' in inspected)) return Promise.resolve({ kind: 'refused', message: 'That Finish is no longer available.' });
+		if (inspected === null || !('ref' in inspected))
+			return Promise.resolve({ kind: 'refused', message: 'That Finish is no longer available.' });
 		const found = inspected as Inspected;
 		const plan = planOf(found);
 		// The From-image flow names one object's reach: a D5 subset it cannot
 		// express narrows to *This*.
-		const mode = plan.mode === 'just-this' && plan.selectedUsers.length > 1 ? 'just-this' : plan.mode;
-		return host.replaceImage(target.entityId, file, found.users.length <= 1 && 'curated' in found.ref ? 'just-this' : mode);
+		const mode =
+			plan.mode === 'just-this' && plan.selectedUsers.length > 1 ? 'just-this' : plan.mode;
+		return host.replaceImage(
+			target.entityId,
+			file,
+			found.users.length <= 1 && 'curated' in found.ref ? 'just-this' : mode,
+		);
 	}
 
 	// ---------------------------------------------------------------- preview
@@ -795,7 +995,11 @@ export function createFinishCard(host: FinishCardHost) {
 			return;
 		}
 		const found = inspected as Inspected;
-		const result = applyFinishPatch(found.instance, pending.edits, baseRecipeOf(found.instance, found.recipes));
+		const result = applyFinishPatch(
+			found.instance,
+			pending.edits,
+			baseRecipeOf(found.instance, found.recipes),
+		);
 		if (!result.ok) {
 			preview = null;
 			return;
@@ -803,12 +1007,16 @@ export function createFinishCard(host: FinishCardHost) {
 		preview = { users: planOf(found).reached, instance: result.instance };
 	}
 
-	function schedulePreview(target: FinishCardTarget, edits: (inspected: Inspected) => readonly FinishPatchEdit[]): void {
+	function schedulePreview(
+		target: FinishCardTarget,
+		edits: (inspected: Inspected) => readonly FinishPatchEdit[],
+	): void {
 		const inspected = inspect(target);
 		if (inspected === null || !('ref' in inspected)) return;
 		pendingPreview = { target, edits: edits(inspected as Inspected) };
 		if (frame === null) {
-			frame = typeof requestAnimationFrame === 'function' ? requestAnimationFrame(flushPreview) : null;
+			frame =
+				typeof requestAnimationFrame === 'function' ? requestAnimationFrame(flushPreview) : null;
 			if (frame === null) flushPreview();
 		}
 	}
@@ -816,7 +1024,10 @@ export function createFinishCard(host: FinishCardHost) {
 	/** Generic render-only preview over any typed Finish patch (reused by editor and Align). */
 	function previewEdits(
 		target: FinishCardTarget,
-		edits: (source: FinishSource, recipes: ReadonlyMap<string, Recipe>) => readonly FinishPatchEdit[]
+		edits: (
+			source: FinishSource,
+			recipes: ReadonlyMap<string, Recipe>,
+		) => readonly FinishPatchEdit[],
 	): void {
 		schedulePreview(target, (inspected) => edits(sourceOf(inspected), inspected.recipes));
 	}
@@ -903,7 +1114,7 @@ export function createFinishCard(host: FinishCardHost) {
 			return { ...found, reach: choiceFor(found) };
 		},
 		toggleFavourite: (finishKey: string) => host.toggleFavourite?.(finishKey),
-		surfaceKeyOf: (surface: SceneSurfaceRef) => surfaceKey(surface)
+		surfaceKeyOf: (surface: SceneSurfaceRef) => surfaceKey(surface),
 	};
 }
 

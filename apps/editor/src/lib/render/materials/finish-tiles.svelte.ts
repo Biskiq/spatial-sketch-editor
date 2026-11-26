@@ -25,11 +25,7 @@ import { materialThumbnailFraming } from '$lib/content/material-presentation';
 import type { InspectionSubject } from './inspection-subject';
 import type { InspectionRequest, InspectionState, InspectionThumbnail } from './inspection-host';
 import { resolveSampleTile } from './sample-tile-resolve';
-import {
-	deriveTile,
-	tileDerivativeFor,
-	type TileDerivative
-} from './sample-tile-derivatives';
+import { deriveTile, tileDerivativeFor, type TileDerivative } from './sample-tile-derivatives';
 import { SAMPLE_TILE_MASTER_SIZE, type SampleTileFraming } from './sample-tile';
 
 export type FinishTileSubject = Extract<InspectionSubject, { kind: 'finish' }>;
@@ -42,7 +38,7 @@ export type FinishTileSource =
 /** Draw one master through the Stage's inspection host. */
 export type FinishTileRender = (
 	request: { readonly subject: InspectionSubject; readonly framing: SampleTileFraming | 'default' },
-	signal?: AbortSignal
+	signal?: AbortSignal,
 ) => Promise<InspectionThumbnail>;
 
 /**
@@ -52,7 +48,7 @@ export type FinishTileRender = (
  */
 export type FinishTileInspect = ((
 	request: InspectionRequest,
-	onState: (state: InspectionState) => void
+	onState: (state: InspectionState) => void,
 ) => () => void) & {
 	readonly retry?: () => void;
 };
@@ -113,7 +109,9 @@ function subjectOf(source: FinishTileSource): InspectionSubject {
 }
 
 function framingOf(source: FinishTileSource): SampleTileFraming | 'default' {
-	return source.kind === 'catalogue' ? (materialThumbnailFraming[source.id] ?? 'default') : 'default';
+	return source.kind === 'catalogue'
+		? (materialThumbnailFraming[source.id] ?? 'default')
+		: 'default';
 }
 
 function startJob<T>(run: (signal: AbortSignal) => Promise<T | null>): Job<T> {
@@ -122,7 +120,7 @@ function startJob<T>(run: (signal: AbortSignal) => Promise<T | null>): Job<T> {
 		promise: Promise.resolve(null),
 		holders: 0,
 		settled: false,
-		controller
+		controller,
 	};
 	(job as { promise: Promise<T | null> }).promise = run(controller.signal)
 		.catch(() => null)
@@ -163,7 +161,11 @@ function hold<T>(job: Job<T>, signal?: AbortSignal): Promise<T | null> {
 
 export type FinishTiles = ReturnType<typeof createFinishTiles>;
 
-export function createFinishTiles(options: { readonly fetchMaster?: (uri: string, signal?: AbortSignal) => Promise<Blob | null> } = {}) {
+export function createFinishTiles(
+	options: {
+		readonly fetchMaster?: (uri: string, signal?: AbortSignal) => Promise<Blob | null>;
+	} = {},
+) {
 	const fetchMaster =
 		options.fetchMaster ??
 		(async (uri: string, signal?: AbortSignal) => {
@@ -237,7 +239,13 @@ export function createFinishTiles(options: { readonly fetchMaster?: (uri: string
 		reap(entry);
 	}
 
-	function remember<T>(map: Map<string, T>, key: string, value: T, limit: number, release?: (value: T) => void): void {
+	function remember<T>(
+		map: Map<string, T>,
+		key: string,
+		value: T,
+		limit: number,
+		release?: (value: T) => void,
+	): void {
 		map.delete(key);
 		map.set(key, value);
 		while (map.size > limit) {
@@ -279,7 +287,11 @@ export function createFinishTiles(options: { readonly fetchMaster?: (uri: string
 		}
 	}
 
-	function entryOf(source: FinishTileSource, cssPx: number, devicePixelRatio: number): Entry | null {
+	function entryOf(
+		source: FinishTileSource,
+		cssPx: number,
+		devicePixelRatio: number,
+	): Entry | null {
 		if (disposed) return null;
 		const derivative: TileDerivative = tileDerivativeFor(cssPx, devicePixelRatio);
 		const namespace = namespaceOf(source);
@@ -300,7 +312,7 @@ export function createFinishTiles(options: { readonly fetchMaster?: (uri: string
 			refs: 0,
 			waiters: 0,
 			dead: false,
-			revoked: false
+			revoked: false,
 		};
 		entry.job = startJob<Picture>(async (signal) => {
 			let master = masters.get(masterKey);
@@ -370,7 +382,7 @@ export function createFinishTiles(options: { readonly fetchMaster?: (uri: string
 				released = true;
 				entry.refs -= 1;
 				reap(entry);
-			}
+			},
 		};
 	}
 
@@ -401,7 +413,10 @@ export function createFinishTiles(options: { readonly fetchMaster?: (uri: string
 		 * Observe one interactive inspection through the Stage's host. Returns the
 		 * release, or null when no Stage renderer is registered (read `epoch`).
 		 */
-		inspect(request: InspectionRequest, onState: (state: InspectionState) => void): (() => void) | null {
+		inspect(
+			request: InspectionRequest,
+			onState: (state: InspectionState) => void,
+		): (() => void) | null {
 			if (disposed || inspector === null) return null;
 			return inspector(request, onState);
 		},
@@ -414,7 +429,11 @@ export function createFinishTiles(options: { readonly fetchMaster?: (uri: string
 		 * A picture already made, held now and synchronously (no flash on a re-render);
 		 * null when it still has to be made.
 		 */
-		leaseNow(source: FinishTileSource, cssPx: number, devicePixelRatio: number): FinishTileLease | null {
+		leaseNow(
+			source: FinishTileSource,
+			cssPx: number,
+			devicePixelRatio: number,
+		): FinishTileLease | null {
 			if (disposed) return null;
 			const key = keyOf(source);
 			if (key === null) return null;
@@ -432,7 +451,7 @@ export function createFinishTiles(options: { readonly fetchMaster?: (uri: string
 			source: FinishTileSource,
 			cssPx: number,
 			devicePixelRatio: number,
-			signal?: AbortSignal
+			signal?: AbortSignal,
 		): Promise<FinishTileLease | null> {
 			const entry = entryOf(source, cssPx, devicePixelRatio);
 			if (entry === null) return null;
@@ -469,7 +488,8 @@ export function createFinishTiles(options: { readonly fetchMaster?: (uri: string
 		},
 		stats() {
 			let urls = 0;
-			for (const entry of pictures.values()) if (entry.owned && entry.url !== null && !entry.revoked) urls += 1;
+			for (const entry of pictures.values())
+				if (entry.owned && entry.url !== null && !entry.revoked) urls += 1;
 			return {
 				masters: masters.size,
 				pictures: pictures.size,
@@ -477,7 +497,7 @@ export function createFinishTiles(options: { readonly fetchMaster?: (uri: string
 				renderer: render !== null,
 				drawing,
 				drawQueued: waiting.length,
-				peakDrawing
+				peakDrawing,
 			};
 		},
 		dispose(): void {
@@ -490,6 +510,6 @@ export function createFinishTiles(options: { readonly fetchMaster?: (uri: string
 			for (const entry of pictures.values()) retire(entry, true);
 			pictures.clear();
 			while (waiting.length > 0) waiting.shift()?.(null);
-		}
+		},
 	};
 }

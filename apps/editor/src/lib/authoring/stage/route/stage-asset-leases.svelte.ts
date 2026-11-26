@@ -30,25 +30,21 @@ import type { ArtworkImage } from '@portfolio/project-model/artwork';
 import {
 	approvedModelPins,
 	resolveApprovedModels,
-	type ApprovedModelSources
+	type ApprovedModelSources,
 } from '$lib/authoring/scene/model-bytes';
 import {
 	createProjectTextureScope,
 	type ProjectTexturePin,
 	type ProjectTextureResolution,
 	type ProjectTextureScope,
-	type TextureDimensions
+	type TextureDimensions,
 } from '$lib/render/resources/project-texture-scope';
 import {
 	createArtworkScope,
 	type ArtworkBytes,
-	type ArtworkScope
+	type ArtworkScope,
 } from '$lib/render/artwork/artwork-scope';
-import {
-	runBoundLoad,
-	type ReplacementEpochToken,
-	type StageSession
-} from '../stage-session';
+import { runBoundLoad, type ReplacementEpochToken, type StageSession } from '../stage-session';
 import { stageEnvelope } from '../unit-stage-source';
 import type { StageReadSnapshot } from '../accepted-read';
 
@@ -64,13 +60,20 @@ export type StageAssetLeaseInput = {
 	readonly projectId: string;
 	readonly resolveArtwork: (image: ArtworkImage, signal: AbortSignal) => Promise<ArtworkBytes>;
 	/** Authenticated project texture bytes for a Finish image (S4b). */
-	readonly resolveTexture?: (assetId: string, signal: AbortSignal) => Promise<ProjectTextureResolution>;
+	readonly resolveTexture?: (
+		assetId: string,
+		signal: AbortSignal,
+	) => Promise<ProjectTextureResolution>;
 	/**
 	 * Observe one approved derivative's exact bytes so the route can derive the
 	 * target analysis Finish registration reads. It runs before the URLs install;
 	 * a failure never blocks the model's own rendering.
 	 */
-	readonly analyzeModel?: (assetId: string, digest: string, bytes: Uint8Array) => Promise<void> | void;
+	readonly analyzeModel?: (
+		assetId: string,
+		digest: string,
+		bytes: Uint8Array,
+	) => Promise<void> | void;
 	readonly notice: StageAssetLeaseNotice;
 	/** Deterministic test seams; production uses the existing modules. */
 	readonly resolveModels?: typeof resolveApprovedModels;
@@ -91,27 +94,29 @@ export function createStageAssetLeases(input: StageAssetLeaseInput) {
 	/** Bumped after a decode so a Card reading dimensions/a preview re-renders. */
 	let textureAssetsRevision = $state(0);
 	let textureDisposed = false;
-	const textureScope: ProjectTextureScope = (input.createTextureScope ?? createProjectTextureScope)({
-		scopeId: `project:${input.projectId}`,
-		load: (assetId, signal) =>
-			input.resolveTexture === undefined
-				? Promise.reject(new Error('Finish image storage is unavailable.'))
-				: input.resolveTexture(assetId, signal),
-		pins: () => texturePins,
-		onFailure: (uri, message) => {
-			if (textureFailures.has(uri) && textureFailures.get(uri) === message) return;
-			const next = new Map(textureFailures);
-			next.set(uri, message);
-			textureFailures = next;
+	const textureScope: ProjectTextureScope = (input.createTextureScope ?? createProjectTextureScope)(
+		{
+			scopeId: `project:${input.projectId}`,
+			load: (assetId, signal) =>
+				input.resolveTexture === undefined
+					? Promise.reject(new Error('Finish image storage is unavailable.'))
+					: input.resolveTexture(assetId, signal),
+			pins: () => texturePins,
+			onFailure: (uri, message) => {
+				if (textureFailures.has(uri) && textureFailures.get(uri) === message) return;
+				const next = new Map(textureFailures);
+				next.set(uri, message);
+				textureFailures = next;
+			},
+			onSuccess: (uri) => {
+				textureAssetsRevision += 1;
+				if (!textureFailures.has(uri)) return;
+				const next = new Map(textureFailures);
+				next.delete(uri);
+				textureFailures = next;
+			},
 		},
-		onSuccess: (uri) => {
-			textureAssetsRevision += 1;
-			if (!textureFailures.has(uri)) return;
-			const next = new Map(textureFailures);
-			next.delete(uri);
-			textureFailures = next;
-		}
-	});
+	);
 
 	let modelUrls = $state.raw<ReadonlyMap<string, string>>(new Map());
 	let modelFailures = $state.raw<ReadonlyMap<string, string>>(new Map());
@@ -169,7 +174,9 @@ export function createStageAssetLeases(input: StageAssetLeaseInput) {
 			// without naming them in an override. Those local mappings are still the
 			// faces' bytes, so lease the definition's exact texture records too.
 			const materialBases = new Set(
-				scene.materials.flatMap((material) => ('material' in material.base ? [material.base.material] : []))
+				scene.materials.flatMap((material) =>
+					'material' in material.base ? [material.base.material] : [],
+				),
 			);
 			for (const resource of envelope.units.resources.data.resources) {
 				if (resource.kind !== 'material' || resource.material === undefined) continue;
@@ -183,13 +190,14 @@ export function createStageAssetLeases(input: StageAssetLeaseInput) {
 				if (!usedTextureIds.has(texture.id)) continue;
 				if (!texture.uri.startsWith('/project-assets/')) continue;
 				const resource = envelope.units.resources.data.resources.find(
-					(candidate) => candidate.kind === 'texture' && candidate.id === texture.id
+					(candidate) => candidate.kind === 'texture' && candidate.id === texture.id,
 				);
-				if (resource === undefined || resource.pin === null || resource.unresolved !== null) continue;
+				if (resource === undefined || resource.pin === null || resource.unresolved !== null)
+					continue;
 				pinsByUri.set(texture.uri, {
 					hash: resource.pin.hash,
 					mime: resource.pin.mime,
-					size: resource.pin.size
+					size: resource.pin.size,
 				});
 			}
 			const textureSignature = [...pinsByUri]
@@ -222,7 +230,12 @@ export function createStageAssetLeases(input: StageAssetLeaseInput) {
 		// The same pins may also be retained while a request for them is genuinely
 		// current. A request cancelled by a project replacement is not current: the
 		// new epoch must start its own installable read instead of returning early.
-		if (inFlight !== null && inFlight.signature === signature && input.session.isCurrent(inFlight.token)) return;
+		if (
+			inFlight !== null &&
+			inFlight.signature === signature &&
+			input.session.isCurrent(inFlight.token)
+		)
+			return;
 		const request = { signature, token: input.session.token() };
 		inFlight = request;
 		const generation = ++modelGeneration;
@@ -249,9 +262,8 @@ export function createStageAssetLeases(input: StageAssetLeaseInput) {
 						...(input.analyzeModel === undefined
 							? {}
 							: {
-								onBytes: ({ assetId, hash, bytes }) =>
-									input.analyzeModel!(assetId, hash, bytes)
-							})
+									onBytes: ({ assetId, hash, bytes }) => input.analyzeModel!(assetId, hash, bytes),
+								}),
 					});
 					return landed.value;
 				})) !== null;
@@ -376,6 +388,6 @@ export function createStageAssetLeases(input: StageAssetLeaseInput) {
 		retryTexture,
 		resolve,
 		disposeArtwork,
-		dispose
+		dispose,
 	};
 }

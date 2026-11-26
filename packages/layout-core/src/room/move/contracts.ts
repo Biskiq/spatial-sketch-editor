@@ -20,7 +20,6 @@ export type RoomMoveRejectionCode =
 	| 'invalid_candidate_document'
 	| 'candidate_does_not_compile';
 
-
 export type RoomMoveRejection = {
 	code: RoomMoveRejectionCode;
 	message: string;
@@ -29,7 +28,6 @@ export type RoomMoveRejection = {
 	/** Canonical-gate issues, when validation rejected the candidate. */
 	issues?: readonly (LayoutDocumentIssue | LayoutGeometryIssue | OpeningSetIssue)[];
 };
-
 
 export type RoomMovePlan =
 	| {

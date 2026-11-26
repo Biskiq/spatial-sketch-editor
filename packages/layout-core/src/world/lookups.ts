@@ -1,6 +1,13 @@
 import type { LayoutVec2 } from '../geometry/coordinates';
 import { exceedsLayoutDimension, layoutWallSpanMeters } from '../geometry/limits';
-import type { LayoutDerivedWallRole, LayoutDocumentWallFirst, LayoutJunction, LayoutObject, LayoutWall, LayoutWallOpening } from '../wall/types';
+import type {
+	LayoutDerivedWallRole,
+	LayoutDocumentWallFirst,
+	LayoutJunction,
+	LayoutObject,
+	LayoutWall,
+	LayoutWallOpening,
+} from '../wall/types';
 import { layoutCollectionRef, layoutItem, layoutLength } from '../kernel/source-collections';
 import { buildCertifiedWorldIndex } from './certified-index';
 import { WORLD_INDEX_BY_DOC, getCowDocumentDelta, matchesArrayRefs } from './cow';
@@ -8,14 +15,13 @@ import type { DocumentWorldIndex } from './index-types';
 
 /** Peek an already-materialized clean world index without triggering a build. */
 export function peekLayoutWorldIndex(
-	document: LayoutDocumentWallFirst
+	document: LayoutDocumentWallFirst,
 ): DocumentWorldIndex | undefined {
 	const existing = WORLD_INDEX_BY_DOC.get(document);
 	if (!existing || existing === 'invalid') return undefined;
 	if (!matchesArrayRefs(document, existing)) return undefined;
 	return existing;
 }
-
 
 function peekOrParentWorldIndex(document: LayoutDocumentWallFirst): DocumentWorldIndex | undefined {
 	const direct = peekLayoutWorldIndex(document);
@@ -27,7 +33,6 @@ function peekOrParentWorldIndex(document: LayoutDocumentWallFirst): DocumentWorl
 	}
 	return undefined;
 }
-
 
 /**
  * Ensure `document` has a certified-clean `DocumentWorldIndex`, returning
@@ -42,7 +47,7 @@ function peekOrParentWorldIndex(document: LayoutDocumentWallFirst): DocumentWorl
  * proxy is copied by `PersistentVector.from` (it is never frozen), not indexed.
  */
 export function ensureLayoutWorldIndex(
-	document: LayoutDocumentWallFirst
+	document: LayoutDocumentWallFirst,
 ): DocumentWorldIndex | undefined {
 	const cached = WORLD_INDEX_BY_DOC.get(document);
 	if (cached === 'invalid') return undefined;
@@ -50,17 +55,15 @@ export function ensureLayoutWorldIndex(
 		return cached;
 	}
 
-
 	const built = buildCertifiedWorldIndex(document);
 	WORLD_INDEX_BY_DOC.set(document, built ?? 'invalid');
 	return built;
 }
 
-
 /** Wall lookup through the ID directory and persistent source root: O(log N), with a linear unindexed fallback. */
 export function lookupIndexedWall(
 	document: LayoutDocumentWallFirst,
-	wallId: string
+	wallId: string,
 ): LayoutWall | undefined {
 	const idx = peekOrParentWorldIndex(document);
 	if (idx && idx.wallsRef.length === layoutLength(document, 'walls')) {
@@ -72,11 +75,10 @@ export function lookupIndexedWall(
 	return document.walls.find((entry) => entry.id === wallId);
 }
 
-
 /** Junction lookup through the ID directory and persistent source root: O(log N), with a linear unindexed fallback. */
 export function lookupIndexedJunction(
 	document: LayoutDocumentWallFirst,
-	junctionId: string
+	junctionId: string,
 ): LayoutJunction | undefined {
 	const idx = peekOrParentWorldIndex(document);
 	if (idx && idx.junctionsRef.length === layoutLength(document, 'junctions')) {
@@ -88,11 +90,10 @@ export function lookupIndexedJunction(
 	return document.junctions.find((entry) => entry.id === junctionId);
 }
 
-
 /** Opening lookup through the ID directory and persistent source root: O(log N), with a linear unindexed fallback. */
 export function lookupIndexedOpening(
 	document: LayoutDocumentWallFirst,
-	openingId: string
+	openingId: string,
 ): LayoutWallOpening | undefined {
 	const idx = peekOrParentWorldIndex(document);
 	if (idx && idx.openingsRef.length === layoutLength(document, 'openings')) {
@@ -104,11 +105,10 @@ export function lookupIndexedOpening(
 	return document.openings.find((entry) => entry.id === openingId);
 }
 
-
 /** Object lookup through the ID directory and persistent source root: O(log N), with a linear unindexed fallback. */
 export function lookupIndexedObject(
 	document: LayoutDocumentWallFirst,
-	objectId: string
+	objectId: string,
 ): LayoutObject | undefined {
 	const idx = peekOrParentWorldIndex(document);
 	if (idx && idx.objectsRef.length === layoutLength(document, 'objects')) {
@@ -120,7 +120,6 @@ export function lookupIndexedObject(
 	return document.objects.find((entry) => entry.id === objectId);
 }
 
-
 /**
  * Incident Wall lookup in authored order: O(d log N + d log d) for degree d
  * (or COW-derived with unchanged topology); returns `undefined` when unindexed so
@@ -128,7 +127,7 @@ export function lookupIndexedObject(
  */
 export function lookupIncidentWallsOrdered(
 	document: LayoutDocumentWallFirst,
-	junctionIds: readonly string[]
+	junctionIds: readonly string[],
 ): readonly LayoutWall[] | undefined {
 	const idx = peekOrParentWorldIndex(document);
 	if (!idx || idx.wallsRef.length !== layoutLength(document, 'walls')) return undefined;
@@ -148,7 +147,6 @@ export function lookupIncidentWallsOrdered(
 	return sortedIndices.map((wIdx) => layoutItem(document, 'walls', wIdx)!);
 }
 
-
 /**
  * Derive a Wall's format-6 role in O(1) when `document` has an active world
  * index (or COW parent with unchanged Rooms), falling back to `undefined` when
@@ -156,12 +154,16 @@ export function lookupIncidentWallsOrdered(
  */
 export function deriveIndexedWallRole(
 	document: LayoutDocumentWallFirst,
-	wallId: string
+	wallId: string,
 ): LayoutDerivedWallRole | 'missing-wall' | undefined {
 	let idx = peekLayoutWorldIndex(document);
 	if (!idx) {
 		const cow = getCowDocumentDelta(document);
-		if (cow && cow.changedRoomIds.length === 0 && layoutCollectionRef(cow.baseline, 'rooms') === layoutCollectionRef(document, 'rooms')) {
+		if (
+			cow &&
+			cow.changedRoomIds.length === 0 &&
+			layoutCollectionRef(cow.baseline, 'rooms') === layoutCollectionRef(document, 'rooms')
+		) {
 			idx = peekLayoutWorldIndex(cow.baseline);
 		}
 	}
@@ -172,7 +174,6 @@ export function deriveIndexedWallRole(
 	return count === 0 ? 'free-standing' : count === 1 ? 'bounding' : 'dividing';
 }
 
-
 /**
  * True when any named Wall's authored span is outside the supported envelope.
  *
@@ -182,7 +183,7 @@ export function deriveIndexedWallRole(
  */
 export function exceedsLayoutWallSpan(
 	document: LayoutDocumentWallFirst,
-	wallIds: readonly string[]
+	wallIds: readonly string[],
 ): boolean {
 	for (const wallId of wallIds) {
 		const wall = lookupIndexedWall(document, wallId);
@@ -192,14 +193,13 @@ export function exceedsLayoutWallSpan(
 		if (start === undefined || end === undefined) continue;
 		const pointById = new Map([
 			[start.id, start.point],
-			[end.id, end.point]
+			[end.id, end.point],
 		]);
 		const span = layoutWallSpanMeters(wall, pointById);
 		if (span !== null && exceedsLayoutDimension(span)) return true;
 	}
 	return false;
 }
-
 
 /**
  * True when moving one Junction to `point` would stretch any incident Wall
@@ -209,12 +209,12 @@ export function exceedsLayoutWallSpan(
 export function exceedsLayoutWallSpanAfterJunctionMove(
 	document: LayoutDocumentWallFirst,
 	junctionId: string,
-	point: LayoutVec2
+	point: LayoutVec2,
 ): boolean {
 	const walls =
 		lookupIncidentWallsOrdered(document, [junctionId]) ??
 		document.walls.filter(
-			(wall) => wall.startJunctionId === junctionId || wall.endJunctionId === junctionId
+			(wall) => wall.startJunctionId === junctionId || wall.endJunctionId === junctionId,
 		);
 	for (const wall of walls) {
 		const startPoint =
@@ -230,11 +230,10 @@ export function exceedsLayoutWallSpanAfterJunctionMove(
 			wall,
 			new Map([
 				[wall.startJunctionId, startPoint],
-				[wall.endJunctionId, endPoint]
-			])
+				[wall.endJunctionId, endPoint],
+			]),
 		);
 		if (span !== null && exceedsLayoutDimension(span)) return true;
 	}
 	return false;
 }
-

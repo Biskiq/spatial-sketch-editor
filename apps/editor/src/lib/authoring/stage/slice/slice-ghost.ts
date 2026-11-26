@@ -35,7 +35,7 @@ import {
 	sliceHides,
 	type HiddenPiece,
 	type ResolvedSlice,
-	type SliceVec3
+	type SliceVec3,
 } from './slice-cut';
 
 export type SlicePoint3 = SliceVec3;
@@ -71,7 +71,12 @@ export type SliceGhostSubject = {
 
 type PieceId = HiddenPiece['kind'];
 
-function pieceIdOf(x: number, y: number, z: number, pieces: readonly HiddenPiece[]): PieceId | null {
+function pieceIdOf(
+	x: number,
+	y: number,
+	z: number,
+	pieces: readonly HiddenPiece[],
+): PieceId | null {
 	for (const piece of pieces) if (pieceContainsPoint(piece, x, y, z, 0)) return piece.kind;
 	return null;
 }
@@ -114,11 +119,13 @@ function boundsFullyVisible(bounds: SliceBounds, resolved: ResolvedSlice): boole
 			[bounds.min[0], bounds.min[2]],
 			[bounds.max[0], bounds.min[2]],
 			[bounds.max[0], bounds.max[2]],
-			[bounds.min[0], bounds.max[2]]
+			[bounds.min[0], bounds.max[2]],
 		];
 		for (const cell of drawnHiddenPlanCells(resolved)) {
 			for (let index = 0; index < 4; index += 1) {
-				if (segmentIntervalInHalfPlanes(rectangle[index]!, rectangle[(index + 1) % 4]!, cell) !== null) {
+				if (
+					segmentIntervalInHalfPlanes(rectangle[index]!, rectangle[(index + 1) % 4]!, cell) !== null
+				) {
 					return false;
 				}
 			}
@@ -128,7 +135,7 @@ function boundsFullyVisible(bounds: SliceBounds, resolved: ResolvedSlice): boole
 	const center: SliceVec3 = [
 		(bounds.min[0] + bounds.max[0]) / 2,
 		(bounds.min[1] + bounds.max[1]) / 2,
-		(bounds.min[2] + bounds.max[2]) / 2
+		(bounds.min[2] + bounds.max[2]) / 2,
 	];
 	for (const point of [...cornersOf(bounds), center]) {
 		if (sliceHides(resolved, point[0], point[1], point[2], 0)) return false;

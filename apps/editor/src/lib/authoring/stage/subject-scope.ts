@@ -38,7 +38,9 @@ export function createSubjectScope(): SubjectScopeCell {
 	let value: SubjectScope | null = null;
 	return {
 		get: () => value,
-		set: (next) => { value = next; }
+		set: (next) => {
+			value = next;
+		},
 	};
 }
 
@@ -48,8 +50,14 @@ export function scopeAdmitsEntity(scope: SubjectScope | null, entityId: string |
 }
 
 /** Whether an operation (task, Find entry or host tool) is inside the scope. */
-export function scopeAdmitsOperation(scope: SubjectScope | null, adapterId: string, id: string): boolean {
-	return scope === null || scope.admitsOperation === undefined || scope.admitsOperation(adapterId, id);
+export function scopeAdmitsOperation(
+	scope: SubjectScope | null,
+	adapterId: string,
+	id: string,
+): boolean {
+	return (
+		scope === null || scope.admitsOperation === undefined || scope.admitsOperation(adapterId, id)
+	);
 }
 
 /**
@@ -64,7 +72,11 @@ export function scopeAdmitsCardAction(
 	scope: SubjectScope | null,
 	adapterId: string,
 	subjectId: string,
-	actionId?: string
+	actionId?: string,
 ): boolean {
-	return scope === null || scope.admitsCardAction === undefined || scope.admitsCardAction(adapterId, subjectId, actionId);
+	return (
+		scope === null ||
+		scope.admitsCardAction === undefined ||
+		scope.admitsCardAction(adapterId, subjectId, actionId)
+	);
 }

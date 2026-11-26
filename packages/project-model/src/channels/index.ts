@@ -42,9 +42,7 @@ export {
 	LAYOUT_PLAN_FAMILY_ID,
 } from './families';
 
-export type {
-	ChannelHost,
-} from './families';
+export type { ChannelHost } from './families';
 
 export {
 	beginExperienceNavigation,

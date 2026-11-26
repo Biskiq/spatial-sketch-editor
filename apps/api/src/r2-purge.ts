@@ -54,12 +54,12 @@ export type R2PurgeResult = {
 export function applicationObjectKeyPattern(namespace: string): RegExp {
 	if (!APPLICATION_OBJECT_NAMESPACE_PATTERN.test(namespace)) {
 		throw new R2PurgeRefusal(
-			'R2 purge requires a configured object namespace of 1-32 lowercase letters, digits or hyphens'
+			'R2 purge requires a configured object namespace of 1-32 lowercase letters, digits or hyphens',
 		);
 	}
 	const escaped = namespace.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 	return new RegExp(
-		`^projects/${escaped}/[A-Za-z0-9][A-Za-z0-9._:-]*/assets/[0-9a-f-]{36}/[0-9a-f]{32}$`
+		`^projects/${escaped}/[A-Za-z0-9][A-Za-z0-9._:-]*/assets/[0-9a-f-]{36}/[0-9a-f]{32}$`,
 	);
 }
 
@@ -76,7 +76,7 @@ export function applicationObjectPrefix(namespace: string): string {
  */
 export async function verifyApplicationOwnedObjects(
 	store: ObjectStore,
-	namespace: string
+	namespace: string,
 ): Promise<{ keys: string[] }> {
 	const prefix = applicationObjectPrefix(namespace);
 	const pattern = applicationObjectKeyPattern(namespace);
@@ -87,7 +87,7 @@ export async function verifyApplicationOwnedObjects(
 	const foreign = keys.filter((key) => !pattern.test(key));
 	if (foreign.length > 0) {
 		throw new R2PurgeRefusal(
-			`R2 bucket is not owned by namespace "${namespace}": ${foreign.length} object(s) fall outside ${prefix} or its key shape`
+			`R2 bucket is not owned by namespace "${namespace}": ${foreign.length} object(s) fall outside ${prefix} or its key shape`,
 		);
 	}
 	return { keys };
@@ -101,18 +101,18 @@ export async function verifyApplicationOwnedObjects(
 export async function purgeUnreferencedObjects(
 	pool: Pick<DatabasePool, 'query'>,
 	store: ObjectStore,
-	options: { namespace: string }
+	options: { namespace: string },
 ): Promise<R2PurgeResult> {
 	const { namespace } = options;
 	const prefix = applicationObjectPrefix(namespace);
 	const pattern = applicationObjectKeyPattern(namespace);
 
 	const epoch = (await pool.query('SELECT 1 FROM schema_migrations WHERE version = $1 LIMIT 1', [
-		SCHEMA_BASELINE_MIGRATION
+		SCHEMA_BASELINE_MIGRATION,
 	])) as { rows?: unknown[] };
 	if ((epoch.rows ?? []).length === 0) {
 		throw new R2PurgeRefusal(
-			`R2 purge requires migration ${SCHEMA_BASELINE_MIGRATION}, the current schema baseline`
+			`R2 purge requires migration ${SCHEMA_BASELINE_MIGRATION}, the current schema baseline`,
 		);
 	}
 
@@ -122,13 +122,13 @@ export async function purgeUnreferencedObjects(
 	const releases = (await pool.query('SELECT 1 FROM releases LIMIT 1')) as { rows?: unknown[] };
 	if ((releases.rows ?? []).length > 0) {
 		throw new R2PurgeRefusal(
-			'R2 purge requires the clean-source reset: releases still reference object bytes'
+			'R2 purge requires the clean-source reset: releases still reference object bytes',
 		);
 	}
 
 	const { keys } = await verifyApplicationOwnedObjects(store, namespace);
 	const result = (await pool.query(
-		'SELECT object_key AS "objectKey" FROM assets WHERE object_key IS NOT NULL'
+		'SELECT object_key AS "objectKey" FROM assets WHERE object_key IS NOT NULL',
 	)) as { rows?: Array<{ objectKey?: unknown }> };
 	const referenced = new Set<string>();
 	for (const row of result.rows ?? []) {
@@ -137,7 +137,7 @@ export async function purgeUnreferencedObjects(
 			// pointed at the wrong storage configuration; refuse rather than skip.
 			if (!pattern.test(row.objectKey)) {
 				throw new R2PurgeRefusal(
-					`R2 purge configuration mismatch: a remaining asset references an object outside ${prefix}`
+					`R2 purge configuration mismatch: a remaining asset references an object outside ${prefix}`,
 				);
 			}
 			referenced.add(row.objectKey);

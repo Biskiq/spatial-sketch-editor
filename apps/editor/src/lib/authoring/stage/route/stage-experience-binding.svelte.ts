@@ -21,15 +21,18 @@ import { untrack } from 'svelte';
 import { experienceFocus } from '$lib/authoring/experience/focus.svelte';
 import {
 	createExperienceLens,
-	type ExperienceLens
+	type ExperienceLens,
 } from '$lib/authoring/experience/experience-lens.svelte';
 import { provideExperienceHomes } from '$lib/authoring/experience/experience-homes';
 import { experienceIndexFor } from '$lib/authoring/experience/experience-index';
 import {
 	experienceShownCardFor,
-	type ExperienceShownCard
+	type ExperienceShownCard,
 } from '$lib/authoring/experience/experience-card-wiring';
-import { rememberWelcomeDismissed, welcomeDismissed } from '$lib/authoring/experience/experience-welcome';
+import {
+	rememberWelcomeDismissed,
+	welcomeDismissed,
+} from '$lib/authoring/experience/experience-welcome';
 import type { ExperienceController } from '$lib/authoring/experience/experience-controller.svelte';
 import type { ExperienceSubject } from '$lib/authoring/experience/experience-model';
 import type { ExperienceProblem } from '$lib/authoring/experience/experience-problems';
@@ -147,14 +150,14 @@ export function createStageExperienceBinding(input: StageExperienceBindingInput)
 		evaluation: () => input.evaluation(),
 		refresh: () => input.refresh(),
 		renameRequest: () => input.renameRequest(),
-		notice: (message) => input.notice(message)
+		notice: (message) => input.notice(message),
 	});
 	lens.install();
 	/** The playback object is one session reference; keep it across lens teardown. */
 	const playback = lens.playback;
 	/** The one active posture; World dispatches to adapters and navigation directly. */
 	const activeLayer = $derived<StagePostureLayer | null>(
-		lensState === 'experience' ? lens.posture : null
+		lensState === 'experience' ? lens.posture : null,
 	);
 	/** The controller the homes read; null outside the Experience lens. */
 	const activeExperience = $derived(lensState === 'experience' ? controller : null);
@@ -169,7 +172,7 @@ export function createStageExperienceBinding(input: StageExperienceBindingInput)
 		}
 		return {
 			entityId: selected.reference.subject.id,
-			label: input.cardIdentity()?.label ?? 'Object'
+			label: input.cardIdentity()?.label ?? 'Object',
 		};
 	});
 
@@ -186,9 +189,9 @@ export function createStageExperienceBinding(input: StageExperienceBindingInput)
 				normal: [0, 1, 0],
 				yawRadians: 0,
 				datumMeters: input.floorDatum(),
-				supportedLocalExtent: null
+				supportedLocalExtent: null,
 			},
-			id
+			id,
 		);
 		return hit.kind === 'intersected' ? hit.worldPoint : null;
 	}
@@ -200,7 +203,7 @@ export function createStageExperienceBinding(input: StageExperienceBindingInput)
 		const outcome = stage.acquireGesture({
 			owner: 'experience-path-point',
 			evaluationId: id,
-			policy: 'cancel-on-reading-change'
+			policy: 'cancel-on-reading-change',
 		});
 		if (outcome.kind !== 'granted') return false;
 		pathDragLease = outcome.lease;
@@ -232,7 +235,7 @@ export function createStageExperienceBinding(input: StageExperienceBindingInput)
 		if (stage === null || id === null || edit === null || origin === null) return null;
 		const local = (point: readonly [number, number]): [number, number] => [
 			point[0] - origin.left,
-			point[1] - origin.top
+			point[1] - origin.top,
 		];
 		const eye = stage.projectWorld(edit.eye, id);
 		if (eye.kind !== 'projected') return null;
@@ -265,7 +268,7 @@ export function createStageExperienceBinding(input: StageExperienceBindingInput)
 				const turnedYaw = yawFromEye(edit.start, edit.target);
 				const yawChange = startYaw === null || turnedYaw === null ? 0 : turnedYaw - startYaw;
 				const degrees = Math.round(
-					(Math.abs(Math.atan2(Math.sin(yawChange), Math.cos(yawChange))) * 180) / Math.PI
+					(Math.abs(Math.atan2(Math.sin(yawChange), Math.cos(yawChange))) * 180) / Math.PI,
 				);
 				turn = {
 					wedge: `M${eyeCss[0]},${eyeCss[1]}L${at(a1 - half, length)}A${length},${length} 0 0 1 ${at(a1 + half, length)}Z`,
@@ -273,8 +276,8 @@ export function createStageExperienceBinding(input: StageExperienceBindingInput)
 					label: `${degrees}°`,
 					labelAt: [
 						eyeCss[0] + Math.cos(a0 + delta / 2) * (arcRadius + 16),
-						eyeCss[1] + Math.sin(a0 + delta / 2) * (arcRadius + 16)
-					]
+						eyeCss[1] + Math.sin(a0 + delta / 2) * (arcRadius + 16),
+					],
 				};
 			}
 		}
@@ -296,8 +299,8 @@ export function createStageExperienceBinding(input: StageExperienceBindingInput)
 			setCardOpen: (open) => input.shell().setCardOpen(open),
 			setGuideOpen: (open) => {
 				experienceGuideOpen = open;
-			}
-		})
+			},
+		}),
 	);
 
 	function changeLens(next: 'world' | 'experience'): void {
@@ -365,8 +368,8 @@ export function createStageExperienceBinding(input: StageExperienceBindingInput)
 				return true;
 			},
 			previewMode: (mode, guideId) => void input.preview().open(mode, guideId),
-			guideForStop: (stopId) => controller?.guideForStop(stopId) ?? null
-		})
+			guideForStop: (stopId) => controller?.guideForStop(stopId) ?? null,
+		}),
 	);
 
 	// The controller can set a subject itself (a Capture, an added Stop); the Stage
@@ -491,7 +494,12 @@ export function createStageExperienceBinding(input: StageExperienceBindingInput)
 			readonly services: unknown;
 			readonly selection: StageSelectionEntry | null;
 			readonly sceneSubject: { readonly entityId: string; readonly label: string } | null;
-			readonly cardIdentity: { readonly sourceId: string; readonly label: string; readonly kind: string; readonly status: string } | null;
+			readonly cardIdentity: {
+				readonly sourceId: string;
+				readonly label: string;
+				readonly kind: string;
+				readonly status: string;
+			} | null;
 			readonly bring: () => void;
 			readonly selectStageReference: (reference: StageSelectionEntry['reference']) => void;
 			readonly referenceLabel: (reference: StageSelectionEntry['reference']) => string | null;
@@ -508,7 +516,7 @@ export function createStageExperienceBinding(input: StageExperienceBindingInput)
 					bringIntoView: null,
 					kindLink: null,
 					menu: null,
-					back: null
+					back: null,
 				};
 			}
 			return experienceShownCardFor({
@@ -522,7 +530,7 @@ export function createStageExperienceBinding(input: StageExperienceBindingInput)
 				bring: slots.bring,
 				selectStageReference: slots.selectStageReference,
 				referenceLabel: slots.referenceLabel,
-				openCard: () => input.shell().setCardOpen(true)
+				openCard: () => input.shell().setCardOpen(true),
 			});
 		},
 		get viewEdit() {
@@ -562,7 +570,7 @@ export function createStageExperienceBinding(input: StageExperienceBindingInput)
 			return activeExperience?.feedback ?? null;
 		},
 		start,
-		dispose
+		dispose,
 	};
 }
 

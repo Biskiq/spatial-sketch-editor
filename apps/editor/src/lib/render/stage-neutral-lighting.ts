@@ -10,6 +10,12 @@ export const STAGE_NEUTRAL_DIRECTIONALS: readonly {
 	readonly position: readonly [number, number, number];
 	readonly intensity: number;
 }[] = Object.freeze([
-	Object.freeze({ position: Object.freeze([6, 12, 8]) as readonly [number, number, number], intensity: 1.1 }),
-	Object.freeze({ position: Object.freeze([-8, 6, -6]) as readonly [number, number, number], intensity: 0.35 })
+	Object.freeze({
+		position: Object.freeze([6, 12, 8]) as readonly [number, number, number],
+		intensity: 1.1,
+	}),
+	Object.freeze({
+		position: Object.freeze([-8, 6, -6]) as readonly [number, number, number],
+		intensity: 0.35,
+	}),
 ]);

@@ -9,10 +9,16 @@
  * Card's field error must say the same thing.
  */
 import { LAYOUT_DIMENSION_LIMIT_MESSAGE } from '@portfolio/layout-core/geometry';
-import { wallFirstWallLength, type LayoutDocumentWallFirst, type LayoutWallOpening, type WallOpeningRejection } from '@portfolio/layout-core/wall';
+import {
+	wallFirstWallLength,
+	type LayoutDocumentWallFirst,
+	type LayoutWallOpening,
+	type WallOpeningRejection,
+} from '@portfolio/layout-core/wall';
 import type { RoomCopyDroppedRelation } from '@portfolio/layout-core/room';
 
-const CLOSED_WALL_CONTACT_WORDS = 'This would touch or cross a circular Wall. Move it clear of the circle.';
+const CLOSED_WALL_CONTACT_WORDS =
+	'This would touch or cross a circular Wall. Move it clear of the circle.';
 
 /**
  * SP1d — the open-side handles' refusals.
@@ -25,7 +31,7 @@ const CLOSED_WALL_CONTACT_WORDS = 'This would touch or cross a circular Wall. Mo
 export function openSideRefusalWords(
 	code: string,
 	message = '',
-	otherSpaceName: string | null = null
+	otherSpaceName: string | null = null,
 ): string {
 	if (code === 'space_overlap' || code === 'space_contains_space') {
 		return otherSpaceName === null ? 'Stops at another Space' : `Stops at ${otherSpaceName}`;
@@ -233,10 +239,11 @@ function meters(value: number): string {
 export function openingRefusalWords(
 	document: LayoutDocumentWallFirst,
 	rejection: WallOpeningRejection,
-	attempt: OpeningRefusalAttempt = {}
+	attempt: OpeningRefusalAttempt = {},
 ): string {
 	const wallId = attempt.wallId ?? rejection.targetIds?.[0];
-	const wall = wallId === undefined ? undefined : document.walls.find((entry) => entry.id === wallId);
+	const wall =
+		wallId === undefined ? undefined : document.walls.find((entry) => entry.id === wallId);
 	const length = wallId === undefined ? undefined : wallFirstWallLength(document, wallId);
 	const kind = attempt.kind === undefined ? 'Opening' : kindWords(attempt.kind);
 	const issue = rejection.issues?.[0]?.code;
@@ -245,10 +252,13 @@ export function openingRefusalWords(
 	if (attempt.offset !== undefined && attempt.offset < 0) {
 		return `This ${kind} would start before the Wall. Move it onto the Wall.`;
 	}
-	if (rejection.code === 'unknown_wall') return 'That Wall is gone. Aim at a Wall that is still there.';
-	if (rejection.code === 'unknown_opening') return 'That Opening is gone. Select its Wall and try again.';
+	if (rejection.code === 'unknown_wall')
+		return 'That Wall is gone. Aim at a Wall that is still there.';
+	if (rejection.code === 'unknown_opening')
+		return 'That Opening is gone. Select its Wall and try again.';
 	if (rejection.code === 'no_op') return 'That Opening already has those values.';
-	if (rejection.code === 'captured_id_in_use') return 'That identity is already taken. Start again.';
+	if (rejection.code === 'captured_id_in_use')
+		return 'That identity is already taken. Start again.';
 	if (issue === 'opening_exceeds_wall') {
 		if (length !== undefined && attempt.offset !== undefined && attempt.width !== undefined) {
 			const overrun = attempt.offset + attempt.width - length;
@@ -261,10 +271,16 @@ export function openingRefusalWords(
 			? `This ${meters(attempt.height)} ${kind} with a ${meters(attempt.sillHeight)} sill exceeds the ${meters(wall.height)} Wall. Shorten it or raise the Wall.`
 			: `This ${kind} is taller than its Wall. Shorten it or raise the Wall.`;
 	}
-	if (issue === 'opening_overlap') return `This ${kind} overlaps another Opening. Aim clear or narrow it.`;
-	if (issue === 'opening_host_wall_unresolved') return 'That Wall has no resolvable span. Repair it or pick another Wall.';
-	if (rejection.code === 'invalid_value') return 'Check the Offset and size: offset and sill non-negative, width and height positive.';
-	if (rejection.code === 'candidate_does_not_compile' || rejection.code === 'invalid_candidate_document') {
+	if (issue === 'opening_overlap')
+		return `This ${kind} overlaps another Opening. Aim clear or narrow it.`;
+	if (issue === 'opening_host_wall_unresolved')
+		return 'That Wall has no resolvable span. Repair it or pick another Wall.';
+	if (rejection.code === 'invalid_value')
+		return 'Check the Offset and size: offset and sill non-negative, width and height positive.';
+	if (
+		rejection.code === 'candidate_does_not_compile' ||
+		rejection.code === 'invalid_candidate_document'
+	) {
 		return `That Wall cannot carry this ${kind}. Pick another Wall or adjust its size.`;
 	}
 	return `That ${kind} was refused. Adjust its host or size and try again.`;
@@ -302,7 +318,7 @@ export type RoomDuplicateRejection = {
 export function droppedRoomRelationWords(
 	document: LayoutDocumentWallFirst,
 	sourceRoomId: string,
-	relations: readonly RoomCopyDroppedRelation[]
+	relations: readonly RoomCopyDroppedRelation[],
 ): string | null {
 	if (relations.length === 0) return null;
 	const parts = relations.map((relation) => {
@@ -324,7 +340,7 @@ export function droppedRoomRelationWords(
 
 export function roomDuplicateRefusalWords(
 	document: LayoutDocumentWallFirst,
-	rejection: RoomDuplicateRejection
+	rejection: RoomDuplicateRejection,
 ): string {
 	if (rejection.message?.includes('(closed_wall_isolated)')) return CLOSED_WALL_CONTACT_WORDS;
 	switch (rejection.code) {
@@ -386,10 +402,14 @@ export function drawingRefusalWords(code: string): string {
 function drawingRefusalFallback(code: string): string {
 	switch (code) {
 		case 'unconnected_crossing':
-		case 'unconnected_interior_contact': return 'End this line on the wall.';
+		case 'unconnected_interior_contact':
+			return 'End this line on the wall.';
 		case 'nested_room':
-		case 'unconnected_nested_ring': return 'Connect this outline to the room boundary.';
-		case 'insufficient_chain': return 'Add another point.';
-		default: return wallRefusalWords(code);
+		case 'unconnected_nested_ring':
+			return 'Connect this outline to the room boundary.';
+		case 'insufficient_chain':
+			return 'Add another point.';
+		default:
+			return wallRefusalWords(code);
 	}
 }

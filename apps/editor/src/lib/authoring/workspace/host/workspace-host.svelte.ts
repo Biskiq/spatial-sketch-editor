@@ -14,11 +14,17 @@ import { env } from '$env/dynamic/public';
 import { aimThroughWindows } from '$lib/authoring/look/aim-through-windows';
 import { perfMark } from '$lib/platform/perf-marks';
 import { installPerfWorkObserver } from '$lib/platform/perf-work';
-import { createExperiencePreviewView, createExperienceSourceViews } from '$lib/authoring/experience/experience-region-views.svelte';
+import {
+	createExperiencePreviewView,
+	createExperienceSourceViews,
+} from '$lib/authoring/experience/experience-region-views.svelte';
 import { createStageSession } from '$lib/authoring/stage/stage-session';
 import { createLightInspectionFeature } from '$lib/authoring/look/light-inspection-feature.svelte';
 import { createStageFacade } from '$lib/authoring/stage/stage-facade';
-import { createCoreRegionViews, createViewportInput } from '$lib/authoring/stage/route/core-region-views';
+import {
+	createCoreRegionViews,
+	createViewportInput,
+} from '$lib/authoring/stage/route/core-region-views';
 import { createRouteInput } from '$lib/authoring/stage/route/route-input.svelte';
 import { createProjectReadyPort } from '$lib/authoring/stage/route/project-ready-port.svelte';
 import { createStageViewing } from '$lib/authoring/stage/route/stage-viewing';
@@ -30,7 +36,11 @@ import { createStageHistoryCommand } from '$lib/authoring/stage/route/stage-hist
 import { createStageWindowListeners } from '$lib/authoring/stage/route/stage-window-listeners';
 import { createBootRepair } from '$lib/authoring/stage/route/boot-repair.svelte';
 import { createStageCursor } from '$lib/authoring/stage/route/stage-cursor';
-import { createCoreLifecycleSteps, installLeaveProject, installStageMount } from '$lib/authoring/stage/route/core-lifecycle-steps.svelte';
+import {
+	createCoreLifecycleSteps,
+	installLeaveProject,
+	installStageMount,
+} from '$lib/authoring/stage/route/core-lifecycle-steps.svelte';
 import { absoluteCss, capturePointer } from '$lib/authoring/stage/route/stage-viewport.svelte';
 import { wireStageViewport } from '$lib/authoring/workspace/host/wiring/stage-viewport';
 import { createArtworkFeature } from '$lib/authoring/artwork/artwork-feature.svelte';
@@ -43,7 +53,7 @@ import { createStageAssetLeases } from '$lib/authoring/stage/route/stage-asset-l
 import { provideFinishTiles } from '$lib/authoring/look/finish-tiles-provider';
 import {
 	analyzeModelDerivativeBytes,
-	createModelAnalysisCache
+	createModelAnalysisCache,
 } from '$lib/render/materials/model-derivative-analysis';
 import { createVerifiedProjectImageCache } from '$lib/authoring/artwork/project-image-cache';
 import { wireStageProjectEpoch } from '$lib/authoring/workspace/host/wiring/stage-project-epoch';
@@ -63,9 +73,17 @@ import type { ExperienceProblem } from '$lib/authoring/experience/experience-pro
 import { createExperienceFeature } from '$lib/authoring/experience/experience-feature.svelte';
 import { createExperiencePreviewHost } from '$lib/authoring/experience/experience-preview-host';
 import { wireProjectSession } from '$lib/authoring/workspace/host/wiring/project-session';
-import { createProjectApi, createProjectAuth, type ProjectApi } from '$lib/platform/project-persistence';
+import {
+	createProjectApi,
+	createProjectAuth,
+	type ProjectApi,
+} from '$lib/platform/project-persistence';
 import { stageEnvelope } from '$lib/authoring/stage/unit-stage-source';
-import { createStageSelectionPresentation, createStageSelectionReadout, installStageCardRenameGuard } from '$lib/authoring/stage/route/stage-selection-presentation.svelte';
+import {
+	createStageSelectionPresentation,
+	createStageSelectionReadout,
+	installStageCardRenameGuard,
+} from '$lib/authoring/stage/route/stage-selection-presentation.svelte';
 import { createStageContributionViews } from '$lib/authoring/stage/route/stage-contribution-views.svelte';
 import { wireStageShellState } from '$lib/authoring/workspace/host/wiring/stage-shell-state';
 import { createMaterialProofRegistry } from '$lib/authoring/material-proof';
@@ -111,7 +129,11 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 	 * back change what a click can select without re-creating the facade or its
 	 * adapters. With no reading the wrapper is the unwrapped pick exactly.
 	 */
-	const stagePick = pickThroughSlice(scenePick, () => readings.ports.resolvedSlice(), subjectScope.get);
+	const stagePick = pickThroughSlice(
+		scenePick,
+		() => readings.ports.resolvedSlice(),
+		subjectScope.get,
+	);
 
 	/**
 	 * The cold-load scope's verified bytes. `verifyProjectImageClosure` fills this
@@ -129,17 +151,22 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		projectId,
 		resolveArtwork: async (image, signal) => {
 			if (api === null) throw new Error('Artwork storage is unavailable.');
-			return verifiedImages.take(projectId, image.assetId) ?? readVerifiedArtwork(api, projectId, image, signal);
+			return (
+				verifiedImages.take(projectId, image.assetId) ??
+				readVerifiedArtwork(api, projectId, image, signal)
+			);
 		},
 		resolveTexture: async (assetId, signal) => {
 			if (api === null) throw new Error('Finish image storage is unavailable.');
-			return verifiedImages.take(projectId, assetId) ?? api.loadAssetContent(projectId, assetId, signal);
+			return (
+				verifiedImages.take(projectId, assetId) ?? api.loadAssetContent(projectId, assetId, signal)
+			);
 		},
 		analyzeModel: async (_assetId, digest, bytes) => {
 			if (modelAnalyses.has(digest)) return;
 			modelAnalyses.register(await analyzeModelDerivativeBytes(bytes, digest));
 		},
-		notice: { read: () => shell.notice, write: (message) => shell.setNotice(message) }
+		notice: { read: () => shell.notice, write: (message) => shell.setNotice(message) },
 	});
 
 	const studioPorts = createStudioStagePorts({
@@ -159,7 +186,7 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		studioCreating: () => studio.creating,
 		settlePending: () => lifecycle.settlePending(),
 		bumpRevision: () => studioFeature.ports.bumpRevision(),
-		armCreation: () => studioFeature.ports.armCreation()
+		armCreation: () => studioFeature.ports.armCreation(),
 	});
 	const studioFeature = createStudioFeature({
 		ports: studioPorts,
@@ -176,7 +203,7 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		taskOpen: () => shell.task !== null,
 		activeWorldTool: () => shell.activeWorldTool,
 		libraryOpen: () => shell.libraryOpen,
-		navigate: (href) => void goto(href)
+		navigate: (href) => void goto(href),
 	});
 	const studio = studioFeature.controller;
 
@@ -192,35 +219,41 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		openSpaceCreated: () => commands.openSpaceCreated,
 		projectSession: () => projectSession,
 		preview: () => previewController,
-		createFacade: (snapshot) => createStageFacade({
-			snapshot,
-			session,
-			scenePick: stagePick,
-			sceneBounds: scenePick.bounds,
-			lightPreview,
-			subjectScope
-		}),
+		createFacade: (snapshot) =>
+			createStageFacade({
+				snapshot,
+				session,
+				scenePick: stagePick,
+				sceneBounds: scenePick.bounds,
+				lightPreview,
+				subjectScope,
+			}),
 		adapterFactories: stageAdapterFactories,
 		targetSources: { models: modelAnalyses.provider },
 		lifecycle: lifecycleCell.get,
 		onNotice: (message) => shell.setNotice(message),
 		refresh: () => refresh(),
-		isActiveProject: () => ready.active()
+		isActiveProject: () => ready.active(),
 	});
 
 	const projectSession = wireProjectSession({
-		projectId, intent, api, auth, session, images: verifiedImages, materialProofs,
+		projectId,
+		intent,
+		api,
+		auth,
+		session,
+		images: verifiedImages,
+		materialProofs,
 		url: routeInput.url,
 		acceptance: () => stageEpoch.acceptance,
 		tornDown: () => stageEpoch.tornDown,
 		activate: (snapshot) => stageEpoch.activate(snapshot),
 		readNotice: () => shell.notice,
-		writeNotice: (value) => shell.setNotice(value)
+		writeNotice: (value) => shell.setNotice(value),
 	});
 	const ready = createProjectReadyPort(() => projectSession.boot);
-	const {
-		requestReplacement, runReplacement, resumePendingSave, dismissResumeOffer
-	} = projectSession;
+	const { requestReplacement, runReplacement, resumePendingSave, dismissResumeOffer } =
+		projectSession;
 
 	const selected = createStageSelectionPresentation();
 
@@ -234,7 +267,7 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		lens: session.lens,
 		selection: selected.get,
 		finishes: () => finishes,
-		selectSource: (id) => commands.selectSource(id)
+		selectSource: (id) => commands.selectSource(id),
 	});
 	const experienceBinding = createStageExperienceBinding({
 		session,
@@ -261,7 +294,7 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		gestureActive: () => session.gesture() !== null,
 		notice: (message) => shell.setNotice(message),
 		setPreviewProblem: (problem) => shell.setPreviewProblem(problem),
-		setStagePickPresentationId: (id) => shell.setStagePickPresentationId(id)
+		setStagePickPresentationId: (id) => shell.setStagePickPresentationId(id),
 	});
 
 	const previewController = createExperiencePreviewHost({
@@ -288,7 +321,7 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		snapSuspended: () => shell.drafting.snapSuspended,
 		patchDrafting: (patch) => shell.patchDrafting(patch),
 		notice: (message) => shell.setNotice(message),
-		perfMark: (name, data) => perfMark(name, data)
+		perfMark: (name, data) => perfMark(name, data),
 	});
 	const experienceFeature = createExperienceFeature({
 		binding: experienceBinding,
@@ -303,7 +336,7 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 			},
 			selectStageReference: (reference) => commands.selectStageReference(reference),
 			referenceLabel: (reference) => selectionView().referenceLabel(reference),
-			datumMeters: ready.datumMeters
+			datumMeters: ready.datumMeters,
 		},
 		regions: {
 			shell: () => shell,
@@ -317,8 +350,8 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 			setStudioWhileEditing: (value) => sky.ports.setStudioWhileEditing(value),
 			liftControl: () => readings.liftControl,
 			nearWallsControl: () => readings.nearWallsControl,
-			refresh
-		}
+			refresh,
+		},
 	});
 	const experience = experienceFeature.ports.binding;
 
@@ -334,7 +367,7 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		capturePointer,
 		stageElement: () => stageViewport.stageElement,
 		evaluation: () => stageViewport.evaluation,
-		previewing: () => previewController.openState
+		previewing: () => previewController.openState,
 	});
 
 	const viewing = createStageViewing({
@@ -344,11 +377,19 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		shell,
 		session,
 		lifecycle: lifecycleCell.get,
-		refresh
+		refresh,
 	});
 	const {
-		submit, setReading, requestScaleDetent, fit,
-		zoomIn, zoomOut, bringIntoView, zoom, pan, orbit
+		submit,
+		setReading,
+		requestScaleDetent,
+		fit,
+		zoomIn,
+		zoomOut,
+		bringIntoView,
+		zoom,
+		pan,
+		orbit,
 	} = viewing;
 
 	const stageViewport = wireStageViewport({
@@ -366,7 +407,7 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 			stageEpoch.refreshHistory();
 			shell.syncGestureFade(session.gesture());
 		},
-		onAfterRefresh: () => shell.refreshHostTools()
+		onAfterRefresh: () => shell.refreshHostTools(),
 	});
 	const sourceViews = createExperienceSourceViews(ready, experience, () => stageEpoch.services);
 
@@ -375,68 +416,73 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		light: () => lightInspection.frame,
 		lightActive: lightInspection.ports.active,
 		lightSession: lightInspection.ports.session,
-		refresh
+		refresh,
 	});
 
 	const appearance = createAppearanceFeature({
 		finishes: {
-	services: () => stageEpoch.services,
-	api: () => api,
-	projectId: () => projectId,
-	canEdit: () => artwork.ports.canPlace(),
-	isSaved: () => projectSession.headSave?.snapshot().savedBaseToken != null,
-	imageAspect: (textureId) => stageAssets.textureAspect(textureId),
-	imageDimensions: (textureId) => stageAssets.textureDimensions(textureId),
-	textureUri: (textureId) => {
-		const scene = ready.snapshot()?.domain.scene ?? null;
-		return scene?.textures.find((texture) => texture.id === textureId)?.uri ?? null;
-	},
-	texturePreviewUri: (textureId) => stageAssets.texturePreviewUri(textureId),
-	textureFailed: (uri) => stageAssets.textureFailed(uri),
-	retryTexture: (uri) => stageAssets.retryTexture(uri),
-	onNotice: (message) => shell.setNotice(message),
-	openFinishes: () => {
-		if (!shell.libraryOpen) commands.toggleWorldLibrary();
-		shell.setWorldPlateOpen(true);
-	},
-	// The Card's Swap… opens the Library on its Swap intent (a fresh invocation).
-	openLibrarySwap: () => {
-		if (shell.libraryOpen) commands.toggleWorldLibrary();
-		commands.toggleWorldLibrary('card');
-	},
-	isPaintArmed: () => shell.armedHostTool === 'paint',
-	armPaint: () => commands.armWorldTool('paint'),
-	colourCoat: createColourCoatPort({
-		services: () => stageEpoch.services,
-		onNotice: (message) => shell.setNotice(message),
-		labelForMaterial: (id) => (materialById.has(id) ? getMaterial(id).label : id)
-	}),
-	repairAsset: (assetId, bytes, expectedPin, signal) =>
-		projectSession.repairProjectAsset(assetId, bytes, expectedPin, signal),
-	invalidateAndReloadAsset: (assetId) => {
-		const uri = `project-asset://${assetId}`;
-		const scopeId = stageAssets.textureScope?.scopeId ?? null;
-		if (scopeId !== null) invalidateFinishViewsForSource(scopeId, uri);
-		invalidateTextureSource(scopeId, uri);
-		stageAssets.retryTexture(uri);
-	},
-},
+			services: () => stageEpoch.services,
+			api: () => api,
+			projectId: () => projectId,
+			canEdit: () => artwork.ports.canPlace(),
+			isSaved: () => projectSession.headSave?.snapshot().savedBaseToken != null,
+			imageAspect: (textureId) => stageAssets.textureAspect(textureId),
+			imageDimensions: (textureId) => stageAssets.textureDimensions(textureId),
+			textureUri: (textureId) => {
+				const scene = ready.snapshot()?.domain.scene ?? null;
+				return scene?.textures.find((texture) => texture.id === textureId)?.uri ?? null;
+			},
+			texturePreviewUri: (textureId) => stageAssets.texturePreviewUri(textureId),
+			textureFailed: (uri) => stageAssets.textureFailed(uri),
+			retryTexture: (uri) => stageAssets.retryTexture(uri),
+			onNotice: (message) => shell.setNotice(message),
+			openFinishes: () => {
+				if (!shell.libraryOpen) commands.toggleWorldLibrary();
+				shell.setWorldPlateOpen(true);
+			},
+			// The Card's Swap… opens the Library on its Swap intent (a fresh invocation).
+			openLibrarySwap: () => {
+				if (shell.libraryOpen) commands.toggleWorldLibrary();
+				commands.toggleWorldLibrary('card');
+			},
+			isPaintArmed: () => shell.armedHostTool === 'paint',
+			armPaint: () => commands.armWorldTool('paint'),
+			colourCoat: createColourCoatPort({
+				services: () => stageEpoch.services,
+				onNotice: (message) => shell.setNotice(message),
+				labelForMaterial: (id) => (materialById.has(id) ? getMaterial(id).label : id),
+			}),
+			repairAsset: (assetId, bytes, expectedPin, signal) =>
+				projectSession.repairProjectAsset(assetId, bytes, expectedPin, signal),
+			invalidateAndReloadAsset: (assetId) => {
+				const uri = `project-asset://${assetId}`;
+				const scopeId = stageAssets.textureScope?.scopeId ?? null;
+				if (scopeId !== null) invalidateFinishViewsForSource(scopeId, uri);
+				invalidateTextureSource(scopeId, uri);
+				stageAssets.retryTexture(uri);
+			},
+		},
 		card: {
 			selection: selected.get,
-			snapshot: ready.snapshot
+			snapshot: ready.snapshot,
 		},
 		draft: {
 			snapshot: ready.snapshot,
 			textureScope: () => stageAssets.textureScope,
 			selection: selected.get,
 			shell,
-			canShowEditor: () => !previewController.openState && experience.lensState === 'world' && stageEpoch.services !== null,
+			canShowEditor: () =>
+				!previewController.openState &&
+				experience.lensState === 'world' &&
+				stageEpoch.services !== null,
 			entries: () => library.view.props.entries,
 			tileSource: (entry) => library.ports.tileSource(entry),
-			armWorldTool: (tool) => commands.armWorldTool(tool)
+			armWorldTool: (tool) => commands.armWorldTool(tool),
 		},
 		materialImport: {
-			api, projectId, materialProofs,
+			api,
+			projectId,
+			materialProofs,
 			snapshot: ready.snapshot,
 			services: () => stageEpoch.services,
 			onNotice: (message) => shell.setNotice(message),
@@ -444,7 +490,7 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		paint: {
 			shell,
 			previewing: () => previewController.openState,
-			openLibrary: () => commands.toggleWorldLibrary('paint')
+			openLibrary: () => commands.toggleWorldLibrary('paint'),
 		},
 		align: {
 			shell,
@@ -455,11 +501,11 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 			facade: () => stageEpoch.facade,
 			evaluation: () => stageViewport.evaluation,
 			snapshot: ready.snapshot,
-			alignHiddenWallIds: () => readings.alignHiddenWallIds
+			alignHiddenWallIds: () => readings.alignHiddenWallIds,
 		},
 		repair: {
 			projectId,
-		}
+		},
 	});
 	const selectionView = createStageSelectionReadout({
 		ready,
@@ -468,14 +514,14 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		selection: selected.get,
 		viewport: stageViewport,
 		shell,
-		studioActive: () => studio.active
+		studioActive: () => studio.active,
 	});
 	const contributions = createStageContributionViews({
 		facade: () => stageEpoch.facade,
 		selection: selectionView,
 		lens: session.lens,
 		shell,
-		studio: () => studioFeature.regions.find
+		studio: () => studioFeature.regions.find,
 	});
 	const library = createLibraryFeature({
 		shell,
@@ -491,7 +537,7 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		armArtwork: (entry) => artwork.ports.arm(entry),
 		importArtwork: (files) => artwork.ports.importFiles(files),
 		importMaterial: (files, invoker) => appearance.ports.importMaterial(files, invoker),
-		pickLook: (id) => sky.ports.pickLibraryEntry(id)
+		pickLook: (id) => sky.ports.pickLibraryEntry(id),
 	});
 
 	const heightSheet = session.heightSheet();
@@ -501,8 +547,9 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 			scene: () => ready.envelope()?.units.scene.data ?? null,
 			sessionKey: () => ready.snapshot()?.sessionEpoch ?? '',
 			services: () => stageEpoch.services,
-			windowHeading: () => stageEpoch.facade ? aimThroughWindows(stageEpoch.facade.snapshot().domain.geometry) : null,
-			onNotice: (message) => shell.setNotice(message)
+			windowHeading: () =>
+				stageEpoch.facade ? aimThroughWindows(stageEpoch.facade.snapshot().domain.geometry) : null,
+			onNotice: (message) => shell.setNotice(message),
 		},
 		lens: () => experience.lensState,
 		previewing: () => previewController.openState,
@@ -512,7 +559,7 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		evaluation: () => stageViewport.evaluation,
 		bounds: () => contentBounds.stage,
 		services: () => stageEpoch.services,
-		fading: () => shell.stageGesturing || stageInput.drag?.mode === 'orbit'
+		fading: () => shell.stageGesturing || stageInput.drag?.mode === 'orbit',
 	});
 
 	installStageCardRenameGuard({ facade: () => stageEpoch.facade, selection: selected.get, shell });
@@ -544,14 +591,14 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		isStudioTool: isStudioWorldTool,
 		studioActive: () => studio?.active === true,
 		libraryReplaceQualified: () => appearance.ports.finishes().libraryTarget() != null,
-		runStudioEntry: studioFeature.ports.runStudioEntry
+		runStudioEntry: studioFeature.ports.runStudioEntry,
 	});
 
 	const finishes = appearance.ports.finishes();
 	const bootRepair = createBootRepair({
 		boot: () => projectSession.boot,
 		projectId: () => projectId,
-		repair: projectSession.repairBootImage
+		repair: projectSession.repairBootImage,
 	});
 
 	const readings = createLayoutReadingsFeature({
@@ -573,30 +620,38 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 				press,
 				capturePointer,
 				clearHover,
-				onNotice: (message) => shell.setNotice(message)
-			}
+				onNotice: (message) => shell.setNotice(message),
+			},
 		},
 		slice: {
 			draw: {
 				facade: () => stageEpoch.facade,
 				evaluationId: () => stageEpoch.facade?.evaluationId() ?? null,
-				renderedReading: () => (stageViewport.evaluation?.renderedReading === 'plan' ? 'plan' : stageViewport.evaluation?.renderedReading === '3d' ? '3d' : null),
-				eye: () => (stageViewport.evaluation === null ? null : eyeOfInspectionPose(stageViewport.evaluation.pose)),
+				renderedReading: () =>
+					stageViewport.evaluation?.renderedReading === 'plan'
+						? 'plan'
+						: stageViewport.evaluation?.renderedReading === '3d'
+							? '3d'
+							: null,
+				eye: () =>
+					stageViewport.evaluation === null
+						? null
+						: eyeOfInspectionPose(stageViewport.evaluation.pose),
 				bounds: () => contentBounds.stage,
 				datumMeters: ready.datumMeters,
-				notice: (message) => shell.setNotice(message)
+				notice: (message) => shell.setNotice(message),
 			},
 			shell,
 			snapshot: ready.snapshot,
 			lens: () => experience.lensState,
-			evaluation: () => stageViewport.evaluation
+			evaluation: () => stageViewport.evaluation,
 		},
 		lift: {
 			snapshot: ready.snapshot,
 			envelope: ready.envelope,
 			evaluation: () => stageViewport.evaluation,
 			selection: selected.get,
-			notice: shell.setNotice
+			notice: shell.setNotice,
 		},
 		cutaway: {
 			snapshot: ready.snapshot,
@@ -608,7 +663,7 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 			scenePick,
 			pressing: () => stageInput.drag !== null,
 			previewing: () => previewController.openState,
-			alignCutaway: appearance.ports.alignCutaway
+			alignCutaway: appearance.ports.alignCutaway,
 		},
 		wallFace: {
 			facade: () => stageEpoch.facade,
@@ -616,8 +671,8 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 			alignFraming: appearance.ports.alignFraming,
 			reducedMotion: () => shell.reducedMotion,
 			nowSeconds: shell.nowSeconds,
-			submit
-		}
+			submit,
+		},
 	});
 	const artwork = createArtworkFeature({
 		interaction: {
@@ -634,7 +689,7 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 			capturePointer,
 			onNotice: (message) => shell.setNotice(message),
 			onSelect: (services, id) => commands.selectStageReference(artworkReference(services, id)),
-			selectTool: () => commands.selectTool()
+			selectTool: () => commands.selectTool(),
 		},
 		ready: ready.active,
 		lens: () => experience.lensState,
@@ -642,7 +697,7 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		unfoldActive: () => readings.ports.unfoldActive(),
 		resolvedSlice: () => readings.ports.resolvedSlice(),
 		scenePick,
-		artworkScope: () => stageAssets.artworkScope
+		artworkScope: () => stageAssets.artworkScope,
 	});
 
 	const sliceDraw = readings.ports.sliceDraw;
@@ -654,7 +709,8 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		measure: () => stageViewport.measure(),
 		stageElement: () => stageViewport.stageElement,
 		session,
-		activeLayer: () => experience.posture ?? (lightInspection.ports.active() ? lightInspection.posture : null),
+		activeLayer: () =>
+			experience.posture ?? (lightInspection.ports.active() ? lightInspection.posture : null),
 		artwork: artwork.ports.input,
 		unfold: readings.ports.unfold,
 		stageCss: (event) => stageViewport.stageCss(event),
@@ -671,7 +727,7 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		orbit,
 		zoom,
 		submit,
-		nowSeconds: shell.nowSeconds
+		nowSeconds: shell.nowSeconds,
 	});
 
 	const stageKeyboard = wireStageKeyboard({
@@ -680,7 +736,8 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		artworkEscape: artwork.ports.escape,
 		previewActive: () => previewController.openState,
 		closePreview: () => previewController.close(),
-		activeLayer: () => experience.posture ?? (lightInspection.ports.active() ? lightInspection.posture : null),
+		activeLayer: () =>
+			experience.posture ?? (lightInspection.ports.active() ? lightInspection.posture : null),
 		pressing: () => stageInput.pressing,
 		dragMode: () => stageInput.drag?.mode ?? null,
 		facade: () => stageEpoch.facade,
@@ -700,24 +757,26 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		libraryEscape: library.escape,
 		toolbarFocused: () => {
 			const active = document.activeElement;
-			return active instanceof HTMLElement &&
+			return (
+				active instanceof HTMLElement &&
 				active.closest('[data-world-toolbar], [data-paint-tray]') !== null &&
-				!active.matches('[data-world-select]');
+				!active.matches('[data-world-select]')
+			);
 		},
-		focusSelectKey: () => document.querySelector<HTMLElement>('[data-world-toolbar] [data-world-select]')?.focus(),
+		focusSelectKey: () =>
+			document.querySelector<HTMLElement>('[data-world-toolbar] [data-world-select]')?.focus(),
 		lens: () => experience.lensState,
 		selectionPresent: () => selected.get() !== null,
 		closeSelection: () => commands.closeSelection(),
 		leaveStudio: studioFeature.ports.leaveStudio,
 		readingsEscape: readings.escape,
-		setCutawayHeld: readings.ports.setCutawayHeld
+		setCutawayHeld: readings.ports.setCutawayHeld,
 	});
-
 
 	const contentBounds = createStageContentBounds({
 		scenePick,
 		snapshot: ready.snapshot,
-		facade: () => stageEpoch.facade
+		facade: () => stageEpoch.facade,
 	});
 
 	installLeaveProject(lifecycleCell);
@@ -742,28 +801,36 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		facade: () => stageEpoch.facade,
 		bringIntoView,
 		lookThroughActive: lookThrough.active,
-		toggleReveal: stageViewport.toggleReveal
+		toggleReveal: stageViewport.toggleReveal,
 	});
 
 	projectSession.bindNavigation();
-
 
 	const history = createStageHistoryCommand({ epoch: stageEpoch, lifecycle: lifecycleCell.get });
 	const listeners = createStageWindowListeners({
 		keyboard: stageKeyboard,
 		suspendSnap: shell.suspendSnap,
-		lifecycle: lifecycleCell.get
+		lifecycle: lifecycleCell.get,
 	});
 	installStageMount(lifecycleCell);
 
 	const core = createCoreLifecycleSteps({
-		projectId, intent, projectSession, stageEpoch, session,
+		projectId,
+		intent,
+		projectSession,
+		stageEpoch,
+		session,
 		facade: () => stageEpoch.facade,
 		setSelection: selected.set,
 		clearRevealed: stageViewport.clearRevealed,
 		assets: stageAssets,
-		shell, commands, stageInput, history, viewing, listeners,
-		viewport: stageViewport
+		shell,
+		commands,
+		stageInput,
+		history,
+		viewing,
+		listeners,
+		viewport: stageViewport,
 	});
 	const lifecycle = createFeatureLifecycle({
 		core,
@@ -773,8 +840,8 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 			{ id: 'experience', lifecycle: experienceFeature.lifecycle },
 			studioFeature,
 			readings,
-			artwork
-		]
+			artwork,
+		],
 	});
 
 	lifecycleCell.set(lifecycle);
@@ -785,13 +852,19 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		experience: experienceFeature.ports.cursor,
 		stageInput,
 		shell,
-		lookThroughActive: lookThrough.active
+		lookThroughActive: lookThrough.active,
 	});
 
 	const viewportInput = createViewportInput(stageInput, artwork.ports, lookThrough.active);
 
 	const coreRegions = createCoreRegionViews({
-		projectId, heightSheet, project: projectSession, shell, history, scenePick, lightPreview,
+		projectId,
+		heightSheet,
+		project: projectSession,
+		shell,
+		history,
+		scenePick,
+		lightPreview,
 		facade: () => stageEpoch.facade,
 		snapshot: ready.snapshot,
 		viewport: stageViewport,
@@ -821,7 +894,7 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		inactiveTask: () => regionModels.inactiveTaskRegion,
 		worldToolbar: () => regionModels.worldRegion,
 		instrument: () => regionModels.instrumentRegion,
-		show: () => regionModels.showRegion
+		show: () => regionModels.showRegion,
 	});
 
 	const canvasViews = createStageCanvasViews({
@@ -832,13 +905,13 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		readings,
 		sky,
 		artwork,
-		studioFeature
+		studioFeature,
 	});
 
 	const viewportPreview = createExperiencePreviewView({
 		preview: previewController,
 		assets: stageAssets,
-		look: { reducedMotion: () => shell.reducedMotion, sky: () => sky.sky }
+		look: { reducedMotion: () => shell.reducedMotion, sky: () => sky.sky },
 	});
 
 	return {
@@ -913,7 +986,7 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		},
 		set throughFrameEl(value) {
 			lookThrough.element = value;
-		}
+		},
 	};
 }
 

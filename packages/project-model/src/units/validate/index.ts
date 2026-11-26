@@ -16,7 +16,7 @@ export {
 	readInvitation,
 	readPresentationViews,
 	readStaySeconds,
-	validateExperiencePayload
+	validateExperiencePayload,
 } from './experience';
 export { validateResourcePayload } from './resources';
 export { freezePlainJsonSubgraph, isDeeplyFrozenPlainJson } from './frozen-json';

@@ -26,7 +26,7 @@ export type StageScissor = {
 
 export function stageFrameScissor(
 	frame: StageFrameRect | null,
-	size: { readonly x: number; readonly y: number }
+	size: { readonly x: number; readonly y: number },
 ): StageScissor | null {
 	if (frame === null) return null;
 	return {
@@ -35,6 +35,6 @@ export function stageFrameScissor(
 		// and a frame that starts inside the surface keeps its own top.
 		y: Math.max(0, Math.min(frame.top, Math.max(0, size.y - frame.height))),
 		width: frame.width,
-		height: frame.height
+		height: frame.height,
 	};
 }

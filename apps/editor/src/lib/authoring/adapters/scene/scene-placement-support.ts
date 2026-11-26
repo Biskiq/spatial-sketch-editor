@@ -79,7 +79,7 @@ export function retireSceneSurface(snapshot: object, surface: SceneSurface): voi
  */
 export function sceneSurfaceFor(
 	snapshot: object,
-	evaluation: ViewportEvaluation
+	evaluation: ViewportEvaluation,
 ): SceneSurface | null {
 	const surface = surfaces.get(snapshot) ?? null;
 	return surface !== null && surface.reading === sceneReadingKey(evaluation) ? surface : null;
@@ -103,15 +103,21 @@ export function sceneEntityReference(entityId: string, contentRevision: string):
 		instancePath: [],
 		location: { kind: 'project-root' },
 		componentId: null,
-		capabilityId: null
+		capabilityId: null,
 	};
 }
 
-export function parseNumber(text: string): { ok: true; value: number } | { ok: false; code: 'blank' | 'non-finite' | 'malformed'; reason: string } {
+export function parseNumber(
+	text: string,
+):
+	| { ok: true; value: number }
+	| { ok: false; code: 'blank' | 'non-finite' | 'malformed'; reason: string } {
 	const trimmed = text.trim();
-	if (trimmed.length === 0) return { ok: false, code: 'blank', reason: 'Enter a value; an empty field is not zero.' };
+	if (trimmed.length === 0)
+		return { ok: false, code: 'blank', reason: 'Enter a value; an empty field is not zero.' };
 	const value = Number(trimmed);
-	if (!Number.isFinite(value)) return { ok: false, code: 'non-finite', reason: 'The value must be finite.' };
+	if (!Number.isFinite(value))
+		return { ok: false, code: 'non-finite', reason: 'The value must be finite.' };
 	return { ok: true, value };
 }
 
@@ -121,7 +127,10 @@ export function parseNumber(text: string): { ok: true; value: number } | { ok: f
  * A creator model's contact is the approved resource's recorded contact, passed
  * in by the caller that can read the envelope; it is never measured here.
  */
-export function localContactMinY(entity: SceneEntity, modelContactMinY?: number | null): number | null {
+export function localContactMinY(
+	entity: SceneEntity,
+	modelContactMinY?: number | null,
+): number | null {
 	if (entity.kind === 'model') {
 		return typeof modelContactMinY === 'number' && Number.isFinite(modelContactMinY)
 			? modelContactMinY
@@ -169,14 +178,19 @@ export type SceneComposeSupport = {
  */
 export function sceneComposeSupport(
 	entity: SceneEntity,
-	modelContactMinY?: number | null
+	modelContactMinY?: number | null,
 ): SceneComposeSupport {
 	// The planner's own gate first: lights, vertical planes, tilted primitives and
 	// primitives with no analytic contact are unsupported there, so the UI must not
 	// offer them either.
 	const planner = floorTransformSupport(entity);
 	if (!planner.supported) {
-		return { resize: false, duplicate: false, code: 'unsupported-transform', reason: planner.message };
+		return {
+			resize: false,
+			duplicate: false,
+			code: 'unsupported-transform',
+			reason: planner.message,
+		};
 	}
 	if (localContactMinY(entity, modelContactMinY) === null) {
 		return {
@@ -188,7 +202,7 @@ export function sceneComposeSupport(
 					? 'A light has no verified floor contact; Resize and Duplicate are unavailable.'
 					: entity.kind === 'form'
 						? 'A form needs an evaluable source before it can be duplicated on the floor.'
-						: 'A model needs a verified contact before it can be resized or duplicated on the floor.'
+						: 'A model needs a verified contact before it can be resized or duplicated on the floor.',
 		};
 	}
 	if (entity.kind === 'form') {
@@ -196,9 +210,9 @@ export function sceneComposeSupport(
 			resize: false,
 			duplicate: true,
 			code: 'unsupported-transform',
-			reason: 'A native form is sized per axis through its own source; uniform Resize is unavailable.'
+			reason:
+				'A native form is sized per axis through its own source; uniform Resize is unavailable.',
 		};
 	}
 	return { resize: true, duplicate: true, code: null, reason: null };
 }
-

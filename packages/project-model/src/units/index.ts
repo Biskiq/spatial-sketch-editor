@@ -42,18 +42,14 @@ export type {
 	VerifyDependencyLocksOptions,
 } from './acceptance';
 
-export {
-	stageUnitResources,
-} from './acceptance-staging';
+export { stageUnitResources } from './acceptance-staging';
 
 export type {
 	StagedUnitResource,
 	UnitResourceStaging,
 } from './acceptance-staging';
 
-export {
-	CAMERA_UNIT_SCENE_VALIDATION,
-} from './camera-connectivity';
+export { CAMERA_UNIT_SCENE_VALIDATION } from './camera-connectivity';
 
 export {
 	canonicalUnitBytes,
@@ -110,9 +106,7 @@ export type {
 	ExperienceTravelPair,
 } from './experience-structure';
 
-export {
-	buildExperienceCompanion,
-} from './experience/companion';
+export { buildExperienceCompanion } from './experience/companion';
 
 export type {
 	CompanionDestination,
@@ -143,9 +137,7 @@ export type {
 	ExperienceVisit,
 } from './experience/interpreter';
 
-export {
-	lowerExperienceProgram,
-} from './experience/lowering';
+export { lowerExperienceProgram } from './experience/lowering';
 
 export type {
 	ExperienceLoweringAction,
@@ -155,9 +147,7 @@ export type {
 	ExperienceProgramTransition,
 } from './experience/lowering';
 
-export {
-	deriveExperienceRuntimePolicy,
-} from './experience/policy';
+export { deriveExperienceRuntimePolicy } from './experience/policy';
 
 export type {
 	ExperienceRuntimePolicy,
@@ -184,17 +174,9 @@ export {
 	verifyEnvelopeMaterialDigests,
 } from './material-digests';
 
-export type {
-	EnvelopeMaterialProofResult,
-} from './material-digests';
+export type { EnvelopeMaterialProofResult } from './material-digests';
 
-export {
-	materialRuntimeIndexOf,
-} from './material-index';
-
-
-
-
+export { materialRuntimeIndexOf } from './material-index';
 
 export {
 	prepareUnitRuntime,

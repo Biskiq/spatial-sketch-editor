@@ -39,7 +39,7 @@ export function visitorProgressFor(
 		readonly travelProgress?: number;
 		/** Stops whose arrival is a Travel. */
 		readonly arrivesByTravel?: ReadonlySet<string>;
-	} = {}
+	} = {},
 ): VisitorProgress {
 	const stopById = new Map(program.stops.map((stop) => [stop.id, stop]));
 	const orderedStops = (options.order ?? program.stops.map((stop) => stop.id)).flatMap((stopId) => {
@@ -47,12 +47,11 @@ export function visitorProgressFor(
 		return stop === undefined ? [] : [stop];
 	});
 	const activeStopId = state.resume?.stopId ?? state.stopId;
-	const currentIndex = activeStopId === null
-		? null
-		: orderedStops.findIndex((stop) => stop.id === activeStopId);
+	const currentIndex =
+		activeStopId === null ? null : orderedStops.findIndex((stop) => stop.id === activeStopId);
 	const visitedStops = new Set(state.visited.map((visit) => visit.stopId));
 	const presentationLabels = new Map(
-		program.presentations.map((presentation) => [presentation.id, presentation.label])
+		program.presentations.map((presentation) => [presentation.id, presentation.label]),
 	);
 	const wait = state.resume?.holdRemainingMs ?? state.holdRemainingMs;
 	const travelProgress = clampFraction(options.travelProgress ?? 0);
@@ -65,7 +64,13 @@ export function visitorProgressFor(
 		// Only departed occurrences use the full, passed-segment treatment.
 		let fill = visited && (!current || state.phase === 'completed') ? 1 : 0;
 		if (current && program.pacing === 'manual') fill = 0;
-		if (current && visited && program.pacing === 'automatic' && state.phase !== 'traveling' && state.phase !== 'completed') {
+		if (
+			current &&
+			visited &&
+			program.pacing === 'automatic' &&
+			state.phase !== 'traveling' &&
+			state.phase !== 'completed'
+		) {
 			const stay = stop.staySeconds;
 			fill = stay === null || wait === null ? 0 : clampFraction(1 - wait / (stay * 1000));
 		}
@@ -77,12 +82,12 @@ export function visitorProgressFor(
 			outline: current && program.pacing === 'manual',
 			fill,
 			travelFill,
-			travels: index > 0 && (options.arrivesByTravel?.has(stop.id) ?? false)
+			travels: index > 0 && (options.arrivesByTravel?.has(stop.id) ?? false),
 		};
 	});
 	return {
 		segments,
 		visitedCount: new Set(state.visited.map((visit) => visit.stopId)).size,
-		currentIndex: currentIndex === null || currentIndex < 0 ? null : currentIndex
+		currentIndex: currentIndex === null || currentIndex < 0 ? null : currentIndex,
 	};
 }

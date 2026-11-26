@@ -39,6 +39,6 @@ export function installPerfWorkObserver(): void {
 		},
 		count(name, amount) {
 			ledger.counts[name] = (ledger.counts[name] ?? 0) + amount;
-		}
+		},
 	});
 }

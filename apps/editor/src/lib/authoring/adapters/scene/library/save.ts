@@ -23,7 +23,7 @@ import { FormLibraryClientError, createFormLibraryClient, type FormLibraryClient
  */
 export async function saveFormCopyToMyObjects(
 	entity: SceneFormEntity,
-	options: { readonly client?: FormLibraryClient } = {}
+	options: { readonly client?: FormLibraryClient } = {},
 ): Promise<
 	| { readonly kind: 'saved'; readonly itemId: string; readonly name: string }
 	| { readonly kind: 'refused'; readonly message: string }
@@ -35,13 +35,16 @@ export async function saveFormCopyToMyObjects(
 		return { kind: 'saved', itemId: summary.id, name: summary.name };
 	} catch (cause) {
 		if (cause instanceof FormLibraryClientError) return { kind: 'refused', message: cause.message };
-		return { kind: 'refused', message: 'The save could not be confirmed; refresh My Objects before retrying.' };
+		return {
+			kind: 'refused',
+			message: 'The save could not be confirmed; refresh My Objects before retrying.',
+		};
 	}
 }
 
 export async function saveFormToMyObjects(
 	entity: SceneFormEntity,
-	options: { readonly client?: FormLibraryClient } = {}
+	options: { readonly client?: FormLibraryClient } = {},
 ): Promise<StageCardActionOutcome> {
 	const client =
 		options.client ?? createFormLibraryClient({ apiOrigin: env.PUBLIC_API_ORIGIN ?? '' });
@@ -49,7 +52,7 @@ export async function saveFormToMyObjects(
 		const summary = await client.save(formLibraryPayloadFromEntity(entity));
 		return {
 			kind: 'accepted',
-			message: `Saved “${summary.name}” to My Objects. It is available in every project.`
+			message: `Saved “${summary.name}” to My Objects. It is available in every project.`,
 		};
 	} catch (cause) {
 		if (cause instanceof FormLibraryClientError) {
@@ -61,7 +64,7 @@ export async function saveFormToMyObjects(
 		// failure, so never claim nothing was saved.
 		return {
 			kind: 'refused',
-			message: 'The save could not be confirmed; refresh My Objects before retrying.'
+			message: 'The save could not be confirmed; refresh My Objects before retrying.',
 		};
 	}
 }

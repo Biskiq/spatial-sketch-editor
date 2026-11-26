@@ -55,7 +55,9 @@ export class LayoutIdCollisionError extends Error {
 	readonly id: string;
 
 	constructor(id: string) {
-		super(`Captured Layout id '${id}' is already in use; capture a fresh identity for this operation`);
+		super(
+			`Captured Layout id '${id}' is already in use; capture a fresh identity for this operation`,
+		);
 		this.name = 'LayoutIdCollisionError';
 		this.id = id;
 	}
@@ -67,7 +69,7 @@ export class LayoutIdCollisionError extends Error {
  * identity, and the same intent must replay to the same ids.
  */
 export function mintLayoutIdCapture(
-	mint: () => string = () => globalThis.crypto.randomUUID()
+	mint: () => string = () => globalThis.crypto.randomUUID(),
 ): LayoutIdCapture {
 	const nonce = mint();
 	if (!NONCE_PATTERN.test(nonce)) {
@@ -110,15 +112,16 @@ export function assertCapturedIdUnused(taken: ReadonlySet<string>, id: string): 
 export function allocateCapturedId(
 	taken: ReadonlySet<string>,
 	seed: string,
-	capture: LayoutIdCapture
+	capture: LayoutIdCapture,
 ): string {
 	return assertCapturedIdUnused(taken, layoutCapturedId(capture, seed));
 }
 
 /** The captured input an intent carries for one capture. */
-export function layoutIdCaptureInput(
-	capture: LayoutIdCapture
-): { readonly name: typeof LAYOUT_ID_NONCE_INPUT; readonly value: string } {
+export function layoutIdCaptureInput(capture: LayoutIdCapture): {
+	readonly name: typeof LAYOUT_ID_NONCE_INPUT;
+	readonly value: string;
+} {
 	if (!isLayoutIdCapture(capture)) {
 		throw new RangeError('A Layout identity capture must carry a valid nonce');
 	}
@@ -127,7 +130,7 @@ export function layoutIdCaptureInput(
 
 /** Read the operation's capture from its explicit intent inputs. */
 export function readLayoutIdCapture(
-	inputs: readonly LayoutCapturedInput[]
+	inputs: readonly LayoutCapturedInput[],
 ): LayoutIdCapture | null {
 	const entry = inputs.find((input) => input.name === LAYOUT_ID_NONCE_INPUT);
 	return entry !== undefined && typeof entry.value === 'string' && NONCE_PATTERN.test(entry.value)
@@ -136,9 +139,10 @@ export function readLayoutIdCapture(
 }
 
 /** The captured working-level input a planner requires. */
-export function layoutWorkingLevelInput(
-	levelId: string
-): { readonly name: typeof LAYOUT_WORKING_LEVEL_INPUT; readonly value: string } {
+export function layoutWorkingLevelInput(levelId: string): {
+	readonly name: typeof LAYOUT_WORKING_LEVEL_INPUT;
+	readonly value: string;
+} {
 	if (typeof levelId !== 'string' || levelId.length === 0) {
 		throw new RangeError('A Layout working level must be a non-empty id');
 	}
@@ -146,9 +150,7 @@ export function layoutWorkingLevelInput(
 }
 
 /** Read the planner's working level from its explicit intent inputs. */
-export function readLayoutWorkingLevel(
-	inputs: readonly LayoutCapturedInput[]
-): string | null {
+export function readLayoutWorkingLevel(inputs: readonly LayoutCapturedInput[]): string | null {
 	const entry = inputs.find((input) => input.name === LAYOUT_WORKING_LEVEL_INPUT);
 	return entry !== undefined && typeof entry.value === 'string' && entry.value.length > 0
 		? entry.value
@@ -156,7 +158,13 @@ export function readLayoutWorkingLevel(
 }
 
 /** Explicit working level: null when `levelId` names the document's level, else the refusal message. */
-export function layoutWorkingLevelIssue(document: { readonly floor: { readonly id: string } }, levelId: string): string | null {
-	if (typeof levelId !== 'string' || levelId.length === 0) return 'A Layout planner requires an explicit working level';
-	return levelId === document.floor.id ? null : `Working level '${levelId}' is not this document's level '${document.floor.id}'`;
+export function layoutWorkingLevelIssue(
+	document: { readonly floor: { readonly id: string } },
+	levelId: string,
+): string | null {
+	if (typeof levelId !== 'string' || levelId.length === 0)
+		return 'A Layout planner requires an explicit working level';
+	return levelId === document.floor.id
+		? null
+		: `Working level '${levelId}' is not this document's level '${document.floor.id}'`;
 }

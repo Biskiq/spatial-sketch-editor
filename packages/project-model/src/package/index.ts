@@ -18,17 +18,11 @@ export type {
 	SupportedMimeList,
 } from '../package-format';
 
-export {
-	sha256Bytes,
-} from '../package-sha';
+export { sha256Bytes } from '../package-sha';
 
-export type {
-	SynchronousWorkMeasure,
-} from '../package-sha';
+export type { SynchronousWorkMeasure } from '../package-sha';
 
-export type {
-	ProjectIssue,
-} from '../project-types';
+export type { ProjectIssue } from '../project-types';
 
 export {
 	getShippedMaterialById,

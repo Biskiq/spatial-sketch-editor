@@ -1,7 +1,14 @@
-
-import type { SceneDocument, SceneConnection, ScenePathAnchor } from '@portfolio/project-model/scene';
+import type {
+	SceneDocument,
+	SceneConnection,
+	ScenePathAnchor,
+} from '@portfolio/project-model/scene';
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
-import { createCameraPositionPath, type CameraPositionPathPart, type Vector3Like } from '@portfolio/camera-core/camera';
+import {
+	createCameraPositionPath,
+	type CameraPositionPathPart,
+	type Vector3Like,
+} from '@portfolio/camera-core/camera';
 import type { Vec3 } from '$lib/types/scene';
 import type { CameraConnectionDirection } from '$lib/types/scene';
 import { CurvePath, MathUtils, Vector3 } from 'three';
@@ -13,20 +20,13 @@ export const EDITOR_CAMERA_PATH_COARSE_STEPS = 128;
 export const EDITOR_CAMERA_PATH_REFINEMENT_STEPS = 12;
 export const EDITOR_CAMERA_PATH_MOVE_EPSILON = 1e-4;
 
-function isVectorTuple(
-	value: Vector3Like
-): value is readonly [number, number, number] {
+function isVectorTuple(value: Vector3Like): value is readonly [number, number, number] {
 	return Array.isArray(value);
 }
 
 function cloneFiniteVec3(value: Vector3Like, label: string): Vec3 {
-	const components = isVectorTuple(value)
-		? value
-		: [value.x, value.y, value.z];
-	if (
-		components.length !== 3 ||
-		components.some((component) => !Number.isFinite(component))
-	) {
+	const components = isVectorTuple(value) ? value : [value.x, value.y, value.z];
+	if (components.length !== 3 || components.some((component) => !Number.isFinite(component))) {
 		throw new Error(`${label} must contain exactly three finite numbers`);
 	}
 	return [components[0], components[1], components[2]];
@@ -36,10 +36,7 @@ function resolveScenePoint(point: { position: Vec3 }): Vec3 {
 	return [...point.position];
 }
 
-function getDraftConnection(
-	document: SceneDocument,
-	connectionId: string
-): SceneConnection {
+function getDraftConnection(document: SceneDocument, connectionId: string): SceneConnection {
 	const connection = document.connections.find((candidate) => candidate.id === connectionId);
 	if (!connection) throw new Error(`Unknown scene connection: ${connectionId}`);
 	return connection;
@@ -57,7 +54,7 @@ function getDraftNode(document: SceneDocument, nodeId: string) {
  */
 export function resolveDraftConnectionPathPart(
 	document: SceneDocument,
-	connectionId: string
+	connectionId: string,
 ): CameraPositionPathPart {
 	const connection = getDraftConnection(document, connectionId);
 	const fromNode = getDraftNode(document, connection.fromNodeId);
@@ -66,14 +63,14 @@ export function resolveDraftConnectionPathPart(
 		// A Scene is world-local: endpoints are already project/world space.
 		resolveScenePoint(fromNode),
 		...connection.positionPath.anchors.map((anchor) => resolveScenePoint(anchor)),
-		resolveScenePoint(toNode)
+		resolveScenePoint(toNode),
 	];
 
 	return connection.positionPath.kind === 'rounded-polyline'
 		? {
 				kind: 'rounded-polyline',
 				points,
-				clearance: connection.clearance
+				clearance: connection.clearance,
 			}
 		: { kind: 'auto-bezier', anchors: points };
 }
@@ -82,7 +79,7 @@ export function resolveDraftConnectionPathPart(
 export function createDraftConnectionPositionPath(
 	document: SceneDocument,
 	connectionId: string,
-	direction: CameraConnectionDirection
+	direction: CameraConnectionDirection,
 ) {
 	const part = resolveDraftConnectionPathPart(document, connectionId);
 	if (direction === 'reverse') {
@@ -90,12 +87,12 @@ export function createDraftConnectionPositionPath(
 			part.kind === 'rounded-polyline'
 				? {
 						...part,
-						points: [...part.points].reverse()
+						points: [...part.points].reverse(),
 					}
 				: {
 						...part,
-						anchors: [...part.anchors].reverse()
-					}
+						anchors: [...part.anchors].reverse(),
+					},
 		]);
 	}
 	return createCameraPositionPath([part]);
@@ -104,7 +101,7 @@ export function createDraftConnectionPositionPath(
 /** Smallest free deterministic ID, keeping two digits until index 100. */
 export function allocateCameraPathAnchorId(
 	connectionId: string,
-	existingAnchorIds: Iterable<string>
+	existingAnchorIds: Iterable<string>,
 ) {
 	const occupied = new Set(existingAnchorIds);
 	for (let index = 1; ; index += 1) {
@@ -117,23 +114,21 @@ export function allocateCameraPathAnchorId(
 export function findScenePathAnchor(
 	document: SceneDocument,
 	connectionId: string,
-	anchorId: string
+	anchorId: string,
 ): ScenePathAnchor | null {
 	const connection = document.connections.find((candidate) => candidate.id === connectionId);
 	return connection?.positionPath.anchors.find((anchor) => anchor.id === anchorId) ?? null;
 }
 
 /** Read an authored anchor in world space. */
-export function getScenePathAnchorWorldPosition(
-	anchor: ScenePathAnchor
-): Vec3 {
+export function getScenePathAnchorWorldPosition(anchor: ScenePathAnchor): Vec3 {
 	return resolveScenePoint(anchor);
 }
 
 /** Update one authored anchor from world space (a Scene is world-local). */
 export function writeScenePathAnchorWorldPosition(
 	anchor: ScenePathAnchor,
-	worldPosition: Vector3Like
+	worldPosition: Vector3Like,
 ) {
 	anchor.position = cloneFiniteVec3(worldPosition, 'Camera path anchor position');
 	return anchor;
@@ -142,7 +137,7 @@ export function writeScenePathAnchorWorldPosition(
 /** New anchors are world-space: a Scene carries no Room frame. */
 export function createScenePathAnchorAtWorldPoint(
 	id: string,
-	worldPosition: Vector3Like
+	worldPosition: Vector3Like,
 ): ScenePathAnchor {
 	return { id, position: cloneFiniteVec3(worldPosition, 'Camera path anchor position') };
 }
@@ -151,7 +146,7 @@ function sampleDistanceSquared(
 	path: CurvePath<Vector3>,
 	progress: number,
 	target: Vector3,
-	output: Vector3
+	output: Vector3,
 ) {
 	path.getPointAt(progress, output);
 	return Number.isFinite(output.x) && Number.isFinite(output.y) && Number.isFinite(output.z)
@@ -163,10 +158,7 @@ function sampleDistanceSquared(
  * Find nearest normalized visitor-sampling progress: 128 coarse intervals followed by
  * 12 ternary refinements inside the winning interval's two-neighbour bracket.
  */
-export function findNearestCurveProgress(
-	path: CurvePath<Vector3>,
-	worldPosition: Vector3Like
-) {
+export function findNearestCurveProgress(path: CurvePath<Vector3>, worldPosition: Vector3Like) {
 	const targetTuple = cloneFiniteVec3(worldPosition, 'Camera path pick position');
 	const target = new Vector3(...targetTuple);
 	const sample = new Vector3();
@@ -207,7 +199,7 @@ export function findNearestCurveProgress(
 		(left + right) / 2,
 		right,
 		0,
-		1
+		1,
 	];
 	let nearestProgress = candidates[0];
 	let nearestDistance = Number.POSITIVE_INFINITY;
@@ -225,10 +217,7 @@ export function findNearestCurveProgress(
  * Convert normalized CurvePath progress to the interior-anchor array index for the
  * containing curve segment. Auto-Bézier paths contain one curve per authored span.
  */
-export function getCameraPathInsertionIndex(
-	path: CurvePath<Vector3>,
-	progress: number
-) {
+export function getCameraPathInsertionIndex(path: CurvePath<Vector3>, progress: number) {
 	if (!Number.isFinite(progress)) {
 		throw new Error('Camera path progress must be finite');
 	}
@@ -237,18 +226,15 @@ export function getCameraPathInsertionIndex(
 	const clampedProgress = MathUtils.clamp(progress, 0, 1);
 	const pathLength = path.getLength();
 	if (!Number.isFinite(pathLength) || pathLength <= Number.EPSILON) {
-		return Math.min(
-			Math.floor(clampedProgress * path.curves.length),
-			path.curves.length - 1
-		);
+		return Math.min(Math.floor(clampedProgress * path.curves.length), path.curves.length - 1);
 	}
 
 	// three.js runtime makes `distance` optional, despite @types/three declaring it required.
 	// CurvePath.getPointAt(progress) first maps `progress` to this `t`, then getPoint(t)
 	// selects a child curve at `t * pathLength`; mirror that exact visitor sampling path.
-	const mappedProgress = (
-		path.getUtoTmapping as (u: number, distance?: number) => number
-	)(clampedProgress);
+	const mappedProgress = (path.getUtoTmapping as (u: number, distance?: number) => number)(
+		clampedProgress,
+	);
 	const distance = mappedProgress * pathLength;
 	const cumulativeLengths = path.getCurveLengths();
 	const index = cumulativeLengths.findIndex((curveEnd) => distance <= curveEnd);
@@ -262,7 +248,7 @@ export function getCameraPathInsertionIndex(
  */
 export function sampleDraftConnectionPath2D(
 	document: SceneDocument,
-	connectionId: string
+	connectionId: string,
 ): LayoutVec2[] {
 	const path = createDraftConnectionPositionPath(document, connectionId, 'forward');
 	const count = getCameraPathVisualSampleCount(path);
@@ -280,9 +266,5 @@ export function getCameraPathVisualSampleCount(path: CurvePath<Vector3>) {
 	const requested = Number.isFinite(length)
 		? Math.ceil(Math.max(0, length) * EDITOR_CAMERA_PATH_SAMPLES_PER_METER)
 		: EDITOR_CAMERA_PATH_MIN_SAMPLES;
-	return MathUtils.clamp(
-		requested,
-		EDITOR_CAMERA_PATH_MIN_SAMPLES,
-		EDITOR_CAMERA_PATH_MAX_SAMPLES
-	);
+	return MathUtils.clamp(requested, EDITOR_CAMERA_PATH_MIN_SAMPLES, EDITOR_CAMERA_PATH_MAX_SAMPLES);
 }

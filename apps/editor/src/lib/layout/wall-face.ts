@@ -29,13 +29,13 @@ import type { Vec3 } from '@portfolio/camera-core/camera';
 import {
 	buildWallUnfoldDisplay,
 	unfoldDisplayPointAtStation,
-	type WallUnfoldDisplay
+	type WallUnfoldDisplay,
 } from './wall-unfold-pick';
 import {
 	wallUnfoldSideTowardCamera,
 	wallUnfoldViewCentreStation,
 	type WallUnfoldSide,
-	type WallUnfoldState
+	type WallUnfoldState,
 } from './wall-unfold';
 
 /**
@@ -60,7 +60,10 @@ function unitHorizontal(x: number, z: number): Vec3 | null {
  * positive height. A degenerate compiled Wall refuses rather than asking the
  * Camera to frame a line or a point.
  */
-function orderedBounds(min: readonly [number, number, number], max: readonly [number, number, number]): {
+function orderedBounds(
+	min: readonly [number, number, number],
+	max: readonly [number, number, number],
+): {
 	readonly min: Vec3;
 	readonly max: Vec3;
 } | null {
@@ -80,7 +83,10 @@ function orderedBounds(min: readonly [number, number, number], max: readonly [nu
  * and the far one are framed by the same padding. The target therefore moves to
  * the face, not the box's middle — which is the face being faced.
  */
-function facePlaneBounds(bounds: { readonly min: Vec3; readonly max: Vec3 }, look: Vec3): {
+function facePlaneBounds(
+	bounds: { readonly min: Vec3; readonly max: Vec3 },
+	look: Vec3,
+): {
 	readonly min: Vec3;
 	readonly max: Vec3;
 } {
@@ -90,12 +96,15 @@ function facePlaneBounds(bounds: { readonly min: Vec3; readonly max: Vec3 }, loo
 	const shift: Vec3 = [-look[0] * eyeSideDepth, 0, -look[2] * eyeSideDepth];
 	return {
 		min: [bounds.min[0] + shift[0], bounds.min[1], bounds.min[2] + shift[2]],
-		max: [bounds.max[0] + shift[0], bounds.max[1], bounds.max[2] + shift[2]]
+		max: [bounds.max[0] + shift[0], bounds.max[1], bounds.max[2] + shift[2]],
 	};
 }
 
 /** The canonical station nearest the view centre, or the middle of the Wall. */
-function faceStation(wall: CompiledPhysicalWall, target: readonly [number, number, number]): number {
+function faceStation(
+	wall: CompiledPhysicalWall,
+	target: readonly [number, number, number],
+): number {
 	const nearest = wallUnfoldViewCentreStation(wall, target);
 	if (nearest !== null) return nearest;
 	const middle = wall.samples[Math.floor(wall.samples.length / 2)];
@@ -109,13 +118,13 @@ function faceStation(wall: CompiledPhysicalWall, target: readonly [number, numbe
  */
 export function wallFaceSide(
 	wall: CompiledPhysicalWall,
-	camera: Pick<ViewportCameraState, 'pose' | 'reading'>
+	camera: Pick<ViewportCameraState, 'pose' | 'reading'>,
 ): WallUnfoldSide {
 	return wallUnfoldSideTowardCamera({
 		wall,
 		eye: eyeOfInspectionPose(camera.pose),
 		reading: camera.reading,
-		anchorStation: faceStation(wall, camera.pose.target)
+		anchorStation: faceStation(wall, camera.pose.target),
 	});
 }
 
@@ -126,7 +135,7 @@ export function wallFaceSide(
  */
 export function wallFaceFrame(
 	wall: CompiledPhysicalWall,
-	camera: Pick<ViewportCameraState, 'pose' | 'reading'>
+	camera: Pick<ViewportCameraState, 'pose' | 'reading'>,
 ): WallFaceFrame | null {
 	const samples = wall.samples;
 	if (samples.length === 0) return null;
@@ -157,7 +166,7 @@ export function wallFaceFrame(
  */
 export function wallSideFaceFrame(
 	wall: CompiledPhysicalWall,
-	surfaceSide: 'left' | 'right'
+	surfaceSide: 'left' | 'right',
 ): WallFaceFrame | null {
 	const samples = wall.samples;
 	if (samples.length === 0) return null;
@@ -208,7 +217,7 @@ export function wallSheetFaceFrame(input: {
 }): WallFaceFrame | null {
 	const display = buildWallUnfoldDisplay(input.wall, input.state, {
 		floorY: input.floorY,
-		sideAngle: input.sideAngle
+		sideAngle: input.sideAngle,
 	});
 	if (display === null) return null;
 	return sheetFaceFrame(display, input.state.anchorStation);

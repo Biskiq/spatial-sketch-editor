@@ -21,7 +21,7 @@ import {
 	type SectionGroupResult,
 	type SectionInput,
 	type SectionLoop,
-	type SectionResult
+	type SectionResult,
 } from './mesh-plane-section';
 import type { DrawnResolvedSlice, ResolvedSlice } from './slice-cut';
 import {
@@ -29,7 +29,7 @@ import {
 	pointOnSegment,
 	ringSignedArea,
 	segmentIntervalInHalfPlanes,
-	type ClipHalfPlane
+	type ClipHalfPlane,
 } from './slice-clip-2d';
 
 export type SliceSection = {
@@ -53,7 +53,7 @@ function basisUOf(basis: SectionBasis, point: readonly [number, number, number])
 function extentHalfPlanes(uMin: number, uMax: number): readonly ClipHalfPlane[] {
 	return [
 		{ nx: -1, ny: 0, c: -uMin },
-		{ nx: 1, ny: 0, c: uMax }
+		{ nx: 1, ny: 0, c: uMax },
 	];
 }
 
@@ -72,12 +72,12 @@ function extentHalfPlanes(uMin: number, uMax: number): readonly ClipHalfPlane[] 
 export function clipLoopsToExtent(
 	loops: readonly SectionLoop[],
 	uMin: number,
-	uMax: number
+	uMax: number,
 ): SectionLoop[] | null {
 	if (!(uMax > uMin)) return [];
 	const result = clipRegionToHalfPlanes(
 		loops.map((loop) => ({ points: loop.points, tags: loop.edgeIdentities })),
-		extentHalfPlanes(uMin, uMax)
+		extentHalfPlanes(uMin, uMax),
 	);
 	if (result.kind === 'invalid') return null;
 	return result.rings.map((ring) => {
@@ -86,7 +86,7 @@ export function clipLoopsToExtent(
 			role: area > 0 ? 'outer' : 'hole',
 			points: ring.points,
 			edgeIdentities: ring.tags,
-			signedArea: area
+			signedArea: area,
 		};
 	});
 }
@@ -98,11 +98,7 @@ export function clipLoopsToExtent(
  * inside the extent is kept whole. An open chain is a warning, and a warning edge
  * that silently disappears hides the very defect it reports.
  */
-export function clipChainToExtent(
-	chain: SectionChain,
-	uMin: number,
-	uMax: number
-): SectionChain[] {
+export function clipChainToExtent(chain: SectionChain, uMin: number, uMax: number): SectionChain[] {
 	const halves = extentHalfPlanes(uMin, uMax);
 	const out: SectionChain[] = [];
 	for (let index = 0; index + 1 < chain.points.length; index += 1) {
@@ -115,7 +111,7 @@ export function clipChainToExtent(
 		if (Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) <= 1e-9) continue;
 		out.push({
 			points: [p0, p1],
-			edgeIdentities: [chain.edgeIdentities[index] ?? '']
+			edgeIdentities: [chain.edgeIdentities[index] ?? ''],
 		});
 	}
 	return out;
@@ -125,7 +121,7 @@ export function clipChainToExtent(
 function loopsAsChains(loops: readonly SectionLoop[]): SectionChain[] {
 	return loops.map((loop) => ({
 		points: [...loop.points, loop.points[0]!],
-		edgeIdentities: [...loop.edgeIdentities]
+		edgeIdentities: [...loop.edgeIdentities],
 	}));
 }
 
@@ -138,7 +134,7 @@ function drawnPlane(resolved: DrawnResolvedSlice): {
 	const normal: readonly [number, number, number] = [
 		-resolved.hiddenNormal[0],
 		-resolved.hiddenNormal[1],
-		-resolved.hiddenNormal[2]
+		-resolved.hiddenNormal[2],
 	];
 	return {
 		normal,
@@ -147,12 +143,16 @@ function drawnPlane(resolved: DrawnResolvedSlice): {
 			normal[1] * resolved.origin[1] +
 			normal[2] * resolved.origin[2]
 		),
-		sectionOffsetMeters: LAYOUT_SLICE_CONTACT_METERS
+		sectionOffsetMeters: LAYOUT_SLICE_CONTACT_METERS,
 	};
 }
 
 /** A slab that only touches the actual cut plane contributes no cap. */
-function slabStraddlesSection(input: SectionInput, normal: readonly [number, number, number], constant: number): boolean {
+function slabStraddlesSection(
+	input: SectionInput,
+	normal: readonly [number, number, number],
+	constant: number,
+): boolean {
 	if (!input.group?.startsWith('layout-region:')) return true;
 	const m = input.matrix;
 	const [x, y, z] = normal;
@@ -163,7 +163,11 @@ function slabStraddlesSection(input: SectionInput, normal: readonly [number, num
 	let shown = false;
 	let hidden = false;
 	for (let i = 0; i < input.positions.length; i += 3) {
-		const distance = origin + dx * input.positions[i]! + dy * input.positions[i + 1]! + dz * input.positions[i + 2]!;
+		const distance =
+			origin +
+			dx * input.positions[i]! +
+			dy * input.positions[i + 1]! +
+			dz * input.positions[i + 2]!;
 		shown ||= distance > LAYOUT_SLICE_CONTACT_METERS;
 		hidden ||= distance < -LAYOUT_SLICE_CONTACT_METERS;
 		if (shown && hidden) return true;
@@ -180,15 +184,21 @@ function slabStraddlesSection(input: SectionInput, normal: readonly [number, num
  */
 export function sectionForSlice(
 	inputs: readonly SectionInput[],
-	resolved: ResolvedSlice
+	resolved: ResolvedSlice,
 ): SliceSection {
 	if (resolved.kind === 'level') {
 		const normal = [0, -1, 0] as const;
-		const result = sectionMeshes(inputs.filter((input) => slabStraddlesSection(input, normal, resolved.cutY)), { normal, constant: resolved.cutY });
+		const result = sectionMeshes(
+			inputs.filter((input) => slabStraddlesSection(input, normal, resolved.cutY)),
+			{ normal, constant: resolved.cutY },
+		);
 		return { result, basis: result.basis, extent: null };
 	}
 	const plane = drawnPlane(resolved);
-	const result = sectionMeshes(inputs.filter((input) => slabStraddlesSection(input, plane.normal, plane.constant)), plane);
+	const result = sectionMeshes(
+		inputs.filter((input) => slabStraddlesSection(input, plane.normal, plane.constant)),
+		plane,
+	);
 	const uStart = basisUOf(result.basis, resolved.start);
 	const uEnd = basisUOf(result.basis, resolved.end);
 	const uMin = Math.min(uStart, uEnd);
@@ -203,7 +213,7 @@ export function sectionForSlice(
 		const issue: CapAssemblyIssue = group.issue ?? {
 			group: group.group,
 			identity: group.identities[0] ?? group.group,
-			unmatchedVertices: 0
+			unmatchedVertices: 0,
 		};
 		if (group.issue === null) issues.push(issue);
 		return {
@@ -211,14 +221,14 @@ export function sectionForSlice(
 			loops: [],
 			chains: [
 				...chains,
-				...loopsAsChains(group.loops).flatMap((chain) => clipChainToExtent(chain, uMin, uMax))
+				...loopsAsChains(group.loops).flatMap((chain) => clipChainToExtent(chain, uMin, uMax)),
 			],
-			issue
+			issue,
 		};
 	});
 	return {
 		result: { ...result, groups, issues },
 		basis: result.basis,
-		extent: { min: uMin, max: uMax }
+		extent: { min: uMin, max: uMax },
 	};
 }

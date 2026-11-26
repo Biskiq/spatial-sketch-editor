@@ -18,7 +18,7 @@ import {
 	DEFAULT_EDITOR_PORT,
 	preferredPorts,
 	stackIdentity,
-	validateState
+	validateState,
 } from './stack.mjs';
 
 test('identity is stable per worktree and distinct between worktrees', () => {
@@ -52,7 +52,7 @@ test('preferred ports keep dynamic services isolated and use the editor default'
 test('the allocator skips used and occupied ports and keeps all four distinct', async () => {
 	const ports = await allocatePorts(
 		{ db: 50_000, storage: 50_001, api: 50_002, editor: 50_003 },
-		async (port) => port !== 50_001 && port !== 50_004
+		async (port) => port !== 50_001 && port !== 50_004,
 	);
 	assert.deepEqual(ports, { db: 50_000, storage: 50_002, api: 50_003, editor: 50_005 });
 });
@@ -64,20 +64,23 @@ test('state validation rejects another worktree, stale identity and duplicate po
 
 	assert.throws(
 		() => validateState({ ...state, worktree: '/tmp/worktrees/beta' }, identity),
-		/belongs to/
+		/belongs to/,
 	);
-	assert.throws(() => validateState({ ...state, stack: 'biskiq-dev-deadbeef' }, identity), /stale stack/);
+	assert.throws(
+		() => validateState({ ...state, stack: 'biskiq-dev-deadbeef' }, identity),
+		/stale stack/,
+	);
 	assert.throws(
 		() => validateState({ ...state, ports: { ...state.ports, editor: state.ports.api } }, identity),
-		/reuses a port/
+		/reuses a port/,
 	);
 	assert.throws(
 		() =>
 			validateState(
 				{ ...state, credentials: { ...state.credentials, sessionKey: 'short' } },
-				identity
+				identity,
 			),
-		/invalid sessionKey|invalid session key/
+		/invalid sessionKey|invalid session key/,
 	);
 });
 
@@ -112,7 +115,7 @@ test('cleanup reports a Docker failure instead of treating the stack as gone', (
 	assert.throws(() => removeProjectVolumes('local', run), /docker volume rm failed.*in use/);
 	assert.deepEqual(calls, [
 		['volume', 'ls', '-q'],
-		['volume', 'rm', 'local_pgdata', 'local_s3data']
+		['volume', 'rm', 'local_pgdata', 'local_s3data'],
 	]);
 });
 
@@ -145,13 +148,16 @@ test('stack environment replaces inherited production values with loopback ones'
 		R2_ACCESS_KEY_ID: 'production-key',
 		R2_SECRET_ACCESS_KEY: 'production-secret',
 		BISKIQ_STACK: 'production-stack',
-		TRUST_PROXY: '10.0.0.0/8'
+		TRUST_PROXY: '10.0.0.0/8',
 	});
 
 	assert.equal(env.PATH, '/bin');
 	assert.equal(env.HOME, '/tmp');
 	assert.equal(env.NODE_ENV, 'development');
-	assert.equal(env.DATABASE_URL, `postgresql://biskiq:${state.credentials.dbPassword}@127.0.0.1:50000/biskiq`);
+	assert.equal(
+		env.DATABASE_URL,
+		`postgresql://biskiq:${state.credentials.dbPassword}@127.0.0.1:50000/biskiq`,
+	);
 	assert.equal(env.PORT, '50002');
 	assert.equal(env.API_ORIGIN, 'http://localhost:50002');
 	assert.equal(env.EDITOR_ORIGIN, 'http://localhost:50003');
@@ -175,7 +181,7 @@ test('compose environment carries the worktree stack, ports and credentials only
 	const env = buildComposeEnv(state, {
 		PATH: '/bin',
 		R2_SECRET_ACCESS_KEY: 'production-secret',
-		BISKIQ_STACK: 'production-stack'
+		BISKIQ_STACK: 'production-stack',
 	});
 	assert.equal(env.BISKIQ_LOCAL_STACK, state.stack);
 	assert.equal(env.BISKIQ_LOCAL_DB_PORT, '50000');

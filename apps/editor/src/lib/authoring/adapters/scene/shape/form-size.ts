@@ -15,7 +15,7 @@ import { Euler, Vector3 } from 'three';
 import { sizeDeltaLabel } from '$lib/authoring/stage/stage-adapter-host';
 import {
 	planSetFormSize,
-	type SceneOperationResult
+	type SceneOperationResult,
 } from '@portfolio/project-model/scene-planning';
 import type { SceneFormEntity } from '@portfolio/project-model/scene';
 import type { Vec3 } from '@portfolio/camera-core/camera';
@@ -32,7 +32,7 @@ export const FORM_SIZE_AXES: readonly {
 }[] = [
 	{ axis: 0, label: 'Width' },
 	{ axis: 1, label: 'Height' },
-	{ axis: 2, label: 'Depth' }
+	{ axis: 2, label: 'Depth' },
 ];
 
 export type FormSizeHandle = {
@@ -91,14 +91,14 @@ export function formSizeMeasurement(entity: SceneFormEntity): FormSizeMeasuremen
 			world: formWorldPoint(entity, local),
 			factor: centred ? 2 : 1,
 			dimension,
-			baseDimension
+			baseDimension,
 		};
 	});
 	return {
 		handles,
 		bounds: { min, max },
 		contactMinY: min[1],
-		footprint: { width: max[0] - min[0], depth: max[2] - min[2] }
+		footprint: { width: max[0] - min[0], depth: max[2] - min[2] },
 	};
 }
 
@@ -138,7 +138,7 @@ export function formSizeScaleFromTravel(input: {
 	const scale: [number, number, number] = [
 		input.entity.form.scale[0],
 		input.entity.form.scale[1],
-		input.entity.form.scale[2]
+		input.entity.form.scale[2],
 	];
 	scale[input.handle.axis] = raw;
 	if (scale.every((value, index) => value === input.entity.form.scale[index])) return null;
@@ -156,11 +156,9 @@ export function previewFormSize(input: {
 	const result = planSetFormSize({
 		context: input.context,
 		entityId: input.entityId,
-		scale: input.scale
+		scale: input.scale,
 	});
-	return result.kind === 'candidate'
-		? { candidate: result }
-		: { refusal: result.message };
+	return result.kind === 'candidate' ? { candidate: result } : { refusal: result.message };
 }
 
 /**
@@ -171,13 +169,15 @@ export function previewFormSize(input: {
 export const SCENE_FORM_MARK = {
 	width: 'scene-form-mark-width',
 	height: 'scene-form-mark-height',
-	depth: 'scene-form-mark-depth'
+	depth: 'scene-form-mark-depth',
 } as const;
 
 export type SceneFormRayMarkId = (typeof SCENE_FORM_MARK)[keyof typeof SCENE_FORM_MARK];
 
 export function isSceneFormRayMarkId(id: string | undefined): id is SceneFormRayMarkId {
-	return id === SCENE_FORM_MARK.width || id === SCENE_FORM_MARK.height || id === SCENE_FORM_MARK.depth;
+	return (
+		id === SCENE_FORM_MARK.width || id === SCENE_FORM_MARK.height || id === SCENE_FORM_MARK.depth
+	);
 }
 
 /**
@@ -211,22 +211,16 @@ export function formMoveScreenOffset(input: {
 	readonly gapPx?: number;
 }): { readonly offset: readonly [number, number] } {
 	const gap =
-		input.gapPx !== undefined && Number.isFinite(input.gapPx) && input.gapPx > 0
-			? input.gapPx
-			: 24;
+		input.gapPx !== undefined && Number.isFinite(input.gapPx) && input.gapPx > 0 ? input.gapPx : 24;
 	const yaw = input.entity.rotation[1];
 	const base: Vec3 = [
 		input.entity.position[0],
 		input.entity.position[1] + input.measurement.contactMinY,
-		input.entity.position[2]
+		input.entity.position[2],
 	];
 	const axis: Vec3 = [Math.cos(yaw), 0, -Math.sin(yaw)];
 	const start = input.project(base);
-	const end = input.project([
-		base[0] + axis[0] * 0.5,
-		base[1],
-		base[2] + axis[2] * 0.5
-	]);
+	const end = input.project([base[0] + axis[0] * 0.5, base[1], base[2] + axis[2] * 0.5]);
 	if (start === null || end === null) return { offset: [0, gap] };
 	const dx = end[0] - start[0];
 	const dy = end[1] - start[1];
@@ -238,7 +232,7 @@ export function formMoveScreenOffset(input: {
 	const depthEnd = input.project([
 		base[0] + Math.sin(yaw) * 0.5,
 		base[1],
-		base[2] + Math.cos(yaw) * 0.5
+		base[2] + Math.cos(yaw) * 0.5,
 	]);
 	if (depthEnd !== null) {
 		const depthX = depthEnd[0] - start[0];
@@ -258,13 +252,15 @@ export function formMoveScreenOffset(input: {
 const FORM_SIZE_RAY_ORDER: readonly {
 	readonly axis: FormSizeAxis;
 	readonly id:
-		| typeof SCENE_FORM_MARK.width | typeof SCENE_FORM_MARK.height | typeof SCENE_FORM_MARK.depth;
+		| typeof SCENE_FORM_MARK.width
+		| typeof SCENE_FORM_MARK.height
+		| typeof SCENE_FORM_MARK.depth;
 	readonly label: string;
 	readonly note: string;
 }[] = [
 	{ axis: 1, id: SCENE_FORM_MARK.height, label: 'Height', note: ' · base stays' },
 	{ axis: 0, id: SCENE_FORM_MARK.width, label: 'Width', note: '' },
-	{ axis: 2, id: SCENE_FORM_MARK.depth, label: 'Depth', note: '' }
+	{ axis: 2, id: SCENE_FORM_MARK.depth, label: 'Depth', note: '' },
 ];
 
 /** The rays the chip discloses in a reading: Plan cannot show Height. */
@@ -317,7 +313,7 @@ export function formSizeRayDescriptors(input: {
 			...(top
 				? {
 						stem: formWorldPoint(pose, [bounds.max[0], bounds.min[1], bounds.max[2]]),
-						screen: { offset: [26, 0] as const }
+						screen: { offset: [26, 0] as const },
 					}
 				: {}),
 			axis: formWorldAxis(pose, ray.axis),
@@ -329,10 +325,11 @@ export function formSizeRayDescriptors(input: {
 			disclosedBy: input.disclosedBy,
 			value: sizeDeltaLabel(
 				handle.dimension,
-				input.baseline.handles.find((entry) => entry.axis === ray.axis)?.dimension ?? handle.dimension
+				input.baseline.handles.find((entry) => entry.axis === ray.axis)?.dimension ??
+					handle.dimension,
 			),
 			...(top && input.screenHeight != null ? { screen: input.screenHeight } : {}),
-			refusal: input.refusal(ray.id)
+			refusal: input.refusal(ray.id),
 		});
 	}
 	return descriptors;

@@ -49,7 +49,7 @@ function defaultClock(): LifecycleClock {
 	return {
 		now: () => Date.now(),
 		set: (callback, ms) => globalThis.setTimeout(callback, ms),
-		clear: (handle) => globalThis.clearTimeout(handle as ReturnType<typeof setTimeout>)
+		clear: (handle) => globalThis.clearTimeout(handle as ReturnType<typeof setTimeout>),
 	};
 }
 
@@ -66,11 +66,13 @@ export class CanvasLifecycle {
 	private episodeTimer: unknown = null;
 	private episodeOpen = false;
 
-	constructor(options: {
-		readonly clock?: LifecycleClock;
-		readonly episodeMs?: number;
-		readonly onChange?: (snapshot: LifecycleSnapshot) => void;
-	} = {}) {
+	constructor(
+		options: {
+			readonly clock?: LifecycleClock;
+			readonly episodeMs?: number;
+			readonly onChange?: (snapshot: LifecycleSnapshot) => void;
+		} = {},
+	) {
 		this.clock = options.clock ?? defaultClock();
 		this.episodeMs = options.episodeMs ?? EPISODE_MS;
 		this.onChange = options.onChange;
@@ -83,7 +85,7 @@ export class CanvasLifecycle {
 			generation: this.generation,
 			backend: this.backend,
 			failure: this.failure,
-			episodeLosses: this.episodeLosses
+			episodeLosses: this.episodeLosses,
 		};
 	}
 

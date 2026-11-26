@@ -1,13 +1,57 @@
-import type { LayoutFormatVersion, LayoutIdentityFamily, LayoutIdentityLedger, LayoutJunction, LayoutRegion, LayoutRoomRound, LayoutSpaceVirtualEdge, LayoutWall, LayoutWallCenterline, LayoutWallCubicSpan, LayoutWallCurveKnot, LayoutWallFirstFloor, LayoutWallFirstRoom } from '../types';
-import { CLOSED_WALL_CIRCLE_KNOT_COUNT, CLOSED_WALL_CIRCLE_SPAN_COUNT, KNOWN_LAYOUT_FORMAT_VERSIONS, LAYOUT_IDENTITY_FAMILIES } from '../types';
+import type {
+	LayoutFormatVersion,
+	LayoutIdentityFamily,
+	LayoutIdentityLedger,
+	LayoutJunction,
+	LayoutRegion,
+	LayoutRoomRound,
+	LayoutSpaceVirtualEdge,
+	LayoutWall,
+	LayoutWallCenterline,
+	LayoutWallCubicSpan,
+	LayoutWallCurveKnot,
+	LayoutWallFirstFloor,
+	LayoutWallFirstRoom,
+} from '../types';
+import {
+	CLOSED_WALL_CIRCLE_KNOT_COUNT,
+	CLOSED_WALL_CIRCLE_SPAN_COUNT,
+	KNOWN_LAYOUT_FORMAT_VERSIONS,
+	LAYOUT_IDENTITY_FAMILIES,
+} from '../types';
 import { LAYOUT_REFERENCE_PREFIX, parseLayoutReference } from '../../plan/identity';
 import type { LayoutDocumentIssue } from '../../plan/issue';
 import { MAX_LAYOUT_REGION_POINTS } from '../../room/region-validation';
 import { MAX_LAYOUT_DIMENSION_METERS } from '../../geometry/limits';
 import { parseBoundaryRefs, parseVirtualEdge } from './parse-contents';
-import { addIssue, assertAllowedKeys, isRecord, parseArray, readEnum, readId, readNonEmptyString, readNonNegativeInteger, readNumber, readPositiveNumber, readRecord, readString, readVec2, validateUniqueIds } from './readers';
+import {
+	addIssue,
+	assertAllowedKeys,
+	isRecord,
+	parseArray,
+	readEnum,
+	readId,
+	readNonEmptyString,
+	readNonNegativeInteger,
+	readNumber,
+	readPositiveNumber,
+	readRecord,
+	readString,
+	readVec2,
+	validateUniqueIds,
+} from './readers';
 import type { ParsedValue } from './schema';
-import { FLOOR_KEYS_V5, IDENTITY_KEYS, JUNCTION_KEYS, ROOM_KEYS, ROOM_ROUND_KEYS, SPACE_OVERHEAD_VALUES, WALL_CURVE_KNOT_KEYS, WALL_CURVE_SPAN_KEYS, WALL_KEYS } from './schema';
+import {
+	FLOOR_KEYS_V5,
+	IDENTITY_KEYS,
+	JUNCTION_KEYS,
+	ROOM_KEYS,
+	ROOM_ROUND_KEYS,
+	SPACE_OVERHEAD_VALUES,
+	WALL_CURVE_KNOT_KEYS,
+	WALL_CURVE_SPAN_KEYS,
+	WALL_KEYS,
+} from './schema';
 
 /**
  * Parse the optional reference ledger.
@@ -27,7 +71,7 @@ import { FLOOR_KEYS_V5, IDENTITY_KEYS, JUNCTION_KEYS, ROOM_KEYS, ROOM_ROUND_KEYS
 export function parseIdentityLedger(
 	input: unknown,
 	path: string,
-	issues: LayoutDocumentIssue[]
+	issues: LayoutDocumentIssue[],
 ): ParsedValue<LayoutIdentityLedger> {
 	if (input === undefined) return undefined;
 	const record = readRecord(input, path, issues);
@@ -43,7 +87,7 @@ export function parseIdentityLedger(
 		junctions: {},
 		walls: {},
 		openings: {},
-		regions: {}
+		regions: {},
 	};
 	let failed = false;
 	for (const family of LAYOUT_IDENTITY_FAMILIES) {
@@ -61,7 +105,7 @@ export function parseIdentityLedger(
 					issues,
 					entryPath,
 					'invalid_value',
-					`Expected a ${LAYOUT_REFERENCE_PREFIX[family]} reference (e.g. ${LAYOUT_REFERENCE_PREFIX[family]}-2QUS)`
+					`Expected a ${LAYOUT_REFERENCE_PREFIX[family]} reference (e.g. ${LAYOUT_REFERENCE_PREFIX[family]}-2QUS)`,
 				);
 				failed = true;
 				continue;
@@ -72,7 +116,7 @@ export function parseIdentityLedger(
 					issues,
 					entryPath,
 					'duplicate_reference',
-					`Reference '${token}' is already assigned to '${previous}'`
+					`Reference '${token}' is already assigned to '${previous}'`,
 				);
 				failed = true;
 				continue;
@@ -85,22 +129,20 @@ export function parseIdentityLedger(
 	return { cursor, ...assignments };
 }
 
-
 /** Optional authored name: absent means unnamed, blank rejects. */
 export function parseOptionalName(
 	input: unknown,
 	path: string,
-	issues: LayoutDocumentIssue[]
+	issues: LayoutDocumentIssue[],
 ): string | undefined {
 	if (input === undefined) return undefined;
 	return readNonEmptyString(input, path, issues);
 }
 
-
 export function readFormatVersion(
 	input: unknown,
 	path: string,
-	issues: LayoutDocumentIssue[]
+	issues: LayoutDocumentIssue[],
 ): LayoutFormatVersion | undefined {
 	if (typeof input !== 'number' || !Number.isInteger(input)) {
 		addIssue(issues, path, 'invalid_type', 'Expected an integer formatVersion');
@@ -111,19 +153,18 @@ export function readFormatVersion(
 			issues,
 			path,
 			'unsupported_format_version',
-			`Unsupported Layout formatVersion ${input}. Recognized versions: ${KNOWN_LAYOUT_FORMAT_VERSIONS.join(', ')}`
+			`Unsupported Layout formatVersion ${input}. Recognized versions: ${KNOWN_LAYOUT_FORMAT_VERSIONS.join(', ')}`,
 		);
 		return undefined;
 	}
 	return input as LayoutFormatVersion;
 }
 
-
 /** Canonical Floor: `id`/`name`/`elevation` only. */
 export function parseFloorV5(
 	input: unknown,
 	path: string,
-	issues: LayoutDocumentIssue[]
+	issues: LayoutDocumentIssue[],
 ): ParsedValue<LayoutWallFirstFloor> {
 	const record = readRecord(input, path, issues);
 	if (!record) return undefined;
@@ -135,11 +176,10 @@ export function parseFloorV5(
 	return { id, name, elevation };
 }
 
-
 export function parseJunction(
 	input: unknown,
 	path: string,
-	issues: LayoutDocumentIssue[]
+	issues: LayoutDocumentIssue[],
 ): ParsedValue<LayoutJunction> {
 	const record = readRecord(input, path, issues);
 	if (!record) return undefined;
@@ -151,7 +191,6 @@ export function parseJunction(
 	return { id, point };
 }
 
-
 /**
  * `height` is finite and strictly positive with no Floor-relative cap; the shared
  * Layout geometry envelope applies its 1,000 m global maximum after decoding.
@@ -160,7 +199,7 @@ export function parseJunction(
 export function parseWall(
 	input: unknown,
 	path: string,
-	issues: LayoutDocumentIssue[]
+	issues: LayoutDocumentIssue[],
 ): ParsedValue<LayoutWall> {
 	const record = readRecord(input, path, issues);
 	if (!record) return undefined;
@@ -198,7 +237,7 @@ export function parseWall(
 				issues,
 				`${path}.centerline`,
 				'invalid_value',
-				'A closed Wall must use a 16-span cubic-chain centerline'
+				'A closed Wall must use a 16-span cubic-chain centerline',
 			);
 		} else if (
 			centerline.knots.length !== CLOSED_WALL_CIRCLE_KNOT_COUNT ||
@@ -208,7 +247,7 @@ export function parseWall(
 				issues,
 				`${path}.centerline`,
 				'invalid_value',
-				`A closed Wall must carry exactly ${CLOSED_WALL_CIRCLE_SPAN_COUNT} cubic spans (${CLOSED_WALL_CIRCLE_KNOT_COUNT} bend points)`
+				`A closed Wall must carry exactly ${CLOSED_WALL_CIRCLE_SPAN_COUNT} cubic spans (${CLOSED_WALL_CIRCLE_KNOT_COUNT} bend points)`,
 			);
 		}
 	}
@@ -219,10 +258,9 @@ export function parseWall(
 		thickness,
 		height,
 		centerline,
-		...(name !== undefined ? { name } : {})
+		...(name !== undefined ? { name } : {}),
 	};
 }
-
 
 /**
  * Parse the canonical Wall centerline union. `line` carries no
@@ -238,7 +276,7 @@ export function parseWall(
 function parseWallCenterline(
 	input: unknown,
 	path: string,
-	issues: LayoutDocumentIssue[]
+	issues: LayoutDocumentIssue[],
 ): ParsedValue<LayoutWallCenterline> {
 	if (!isRecord(input)) {
 		addIssue(issues, path, 'invalid_type', 'Expected a centerline object');
@@ -263,24 +301,28 @@ function parseWallCenterline(
 				issues,
 				`${path}.spans`,
 				'invalid_value',
-				`A cubic-chain centerline needs exactly one span per cubic: expected ${knots.length + 1} for ${knots.length} knot(s), got ${spans.length}`
+				`A cubic-chain centerline needs exactly one span per cubic: expected ${knots.length + 1} for ${knots.length} knot(s), got ${spans.length}`,
 			);
 			return undefined;
 		}
 		return { kind: 'cubic-chain', knots, spans };
 	}
 	if (kind !== undefined) {
-		addIssue(issues, `${path}.kind`, 'unsupported_value', `Unsupported wall centerline kind '${kind}'`);
+		addIssue(
+			issues,
+			`${path}.kind`,
+			'unsupported_value',
+			`Unsupported wall centerline kind '${kind}'`,
+		);
 	}
 	return undefined;
 }
-
 
 /** One `cubic-chain` bend point: stable unique ID + finite X/Z point. */
 function parseWallCurveKnot(
 	input: unknown,
 	path: string,
-	issues: LayoutDocumentIssue[]
+	issues: LayoutDocumentIssue[],
 ): ParsedValue<LayoutWallCurveKnot> {
 	const record = readRecord(input, path, issues);
 	if (!record) return undefined;
@@ -291,7 +333,6 @@ function parseWallCurveKnot(
 	return { id, point };
 }
 
-
 /**
  * One `cubic-chain` span: two finite control points and no identity. The
  * allowed-key set is what keeps spans unaddressable — a span has no ID field
@@ -300,7 +341,7 @@ function parseWallCurveKnot(
 function parseWallCubicSpan(
 	input: unknown,
 	path: string,
-	issues: LayoutDocumentIssue[]
+	issues: LayoutDocumentIssue[],
 ): ParsedValue<LayoutWallCubicSpan> {
 	const record = readRecord(input, path, issues);
 	if (!record) return undefined;
@@ -311,11 +352,10 @@ function parseWallCubicSpan(
 	return { handleOut, handleIn };
 }
 
-
 export function parseRoom(
 	input: unknown,
 	path: string,
-	issues: LayoutDocumentIssue[]
+	issues: LayoutDocumentIssue[],
 ): ParsedValue<LayoutWallFirstRoom> {
 	const record = readRecord(input, path, issues);
 	if (!record) return undefined;
@@ -328,12 +368,7 @@ export function parseRoom(
 	// no missing-field tolerance. An absent field is `invalid_type`, exactly as
 	// an absent `centerline` is on a Wall.
 	const virtualEdges = parseVirtualEdges(record.virtualEdges, `${path}.virtualEdges`, issues);
-	const overhead = readEnum(
-		record.overhead,
-		`${path}.overhead`,
-		SPACE_OVERHEAD_VALUES,
-		issues
-	);
+	const overhead = readEnum(record.overhead, `${path}.overhead`, SPACE_OVERHEAD_VALUES, issues);
 	const round = parseRoomRound(record.round, `${path}.round`, issues);
 	// A canonical Room with zero boundary references is not a
 	// degenerate architecture, it is invalid state: the codec previously accepted
@@ -345,7 +380,7 @@ export function parseRoom(
 			issues,
 			`${path}.boundary`,
 			'room_boundary_empty',
-			'A canonical Room boundary must reference at least one Wall'
+			'A canonical Room boundary must reference at least one Wall',
 		);
 	}
 	if (
@@ -364,15 +399,14 @@ export function parseRoom(
 		boundary,
 		virtualEdges,
 		overhead,
-		...(round ? { round } : {})
+		...(round ? { round } : {}),
 	};
 }
-
 
 function parseRoomRound(
 	input: unknown,
 	path: string,
-	issues: LayoutDocumentIssue[]
+	issues: LayoutDocumentIssue[],
 ): ParsedValue<LayoutRoomRound> {
 	if (input === undefined) return undefined;
 	const record = readRecord(input, path, issues);
@@ -384,11 +418,19 @@ function parseRoomRound(
 	return { center, radius };
 }
 
-
-export function parseRegion(input: unknown, path: string, issues: LayoutDocumentIssue[]): ParsedValue<LayoutRegion> {
+export function parseRegion(
+	input: unknown,
+	path: string,
+	issues: LayoutDocumentIssue[],
+): ParsedValue<LayoutRegion> {
 	const record = readRecord(input, path, issues);
 	if (!record) return undefined;
-	assertAllowedKeys(record, ['id', 'role', 'footprint', 'elevation', 'thickness', 'form', 'intendedGaps', 'name'], path, issues);
+	assertAllowedKeys(
+		record,
+		['id', 'role', 'footprint', 'elevation', 'thickness', 'form', 'intendedGaps', 'name'],
+		path,
+		issues,
+	);
 	const id = readId(record.id, `${path}.id`, issues);
 	const role = readEnum(record.role, `${path}.role`, ['floor', 'overhead'], issues);
 	const elevation = readNumber(record.elevation, `${path}.elevation`, issues);
@@ -402,42 +444,79 @@ export function parseRegion(input: unknown, path: string, issues: LayoutDocument
 	if (!footprint) return undefined;
 	assertAllowedKeys(footprint, ['kind', 'points'], `${path}.footprint`, issues);
 	readEnum(footprint.kind, `${path}.footprint.kind`, ['polygon'], issues);
-	if (Array.isArray(footprint.points) &&
-		(footprint.points.length < 3 || footprint.points.length > MAX_LAYOUT_REGION_POINTS)) {
-		addIssue(issues, `${path}.footprint.points`, 'region_point_count', 'A region requires 3 to 1024 footprint points');
+	if (
+		Array.isArray(footprint.points) &&
+		(footprint.points.length < 3 || footprint.points.length > MAX_LAYOUT_REGION_POINTS)
+	) {
+		addIssue(
+			issues,
+			`${path}.footprint.points`,
+			'region_point_count',
+			'A region requires 3 to 1024 footprint points',
+		);
 		return undefined;
 	}
 	const points = parseArray(footprint.points, `${path}.footprint.points`, issues, readVec2);
 	const intendedGaps = parseArray(record.intendedGaps, `${path}.intendedGaps`, issues, readId);
 	const name = parseOptionalName(record.name, `${path}.name`, issues);
-	if (!id || !role || elevation === undefined || thickness === undefined || !points || !intendedGaps || !form) return undefined;
-	if (Math.abs(elevation) > MAX_LAYOUT_DIMENSION_METERS || thickness > MAX_LAYOUT_DIMENSION_METERS) {
-		addIssue(issues, path, 'dimension_out_of_range', 'Region elevation and thickness are limited to 1000 m');
+	if (
+		!id ||
+		!role ||
+		elevation === undefined ||
+		thickness === undefined ||
+		!points ||
+		!intendedGaps ||
+		!form
+	)
+		return undefined;
+	if (
+		Math.abs(elevation) > MAX_LAYOUT_DIMENSION_METERS ||
+		thickness > MAX_LAYOUT_DIMENSION_METERS
+	) {
+		addIssue(
+			issues,
+			path,
+			'dimension_out_of_range',
+			'Region elevation and thickness are limited to 1000 m',
+		);
 	}
 	if (elevation < 0 || (role === 'overhead' && elevation === 0)) {
-		addIssue(issues, `${path}.elevation`, 'invalid_value', 'Floor elevation must be nonnegative and overhead elevation must be positive');
+		addIssue(
+			issues,
+			`${path}.elevation`,
+			'invalid_value',
+			'Floor elevation must be nonnegative and overhead elevation must be positive',
+		);
 	}
 	if (intendedGaps.some((wallId, index) => index > 0 && wallId <= intendedGaps[index - 1]!)) {
-		addIssue(issues, `${path}.intendedGaps`, 'invalid_value', 'Wall ids must be in ordinal order and unique');
+		addIssue(
+			issues,
+			`${path}.intendedGaps`,
+			'invalid_value',
+			'Wall ids must be in ordinal order and unique',
+		);
 	}
 	return {
-		id, role, footprint: { kind: 'polygon', points }, elevation, thickness, form: { kind: 'flat' },
-		intendedGaps, ...(name === undefined ? {} : { name })
+		id,
+		role,
+		footprint: { kind: 'polygon', points },
+		elevation,
+		thickness,
+		form: { kind: 'flat' },
+		intendedGaps,
+		...(name === undefined ? {} : { name }),
 	};
 }
-
 
 function parseVirtualEdges(
 	input: unknown,
 	path: string,
-	issues: LayoutDocumentIssue[]
+	issues: LayoutDocumentIssue[],
 ): LayoutSpaceVirtualEdge[] | undefined {
 	if (!Array.isArray(input)) {
 		addIssue(issues, path, 'invalid_type', 'Expected an array');
 		return undefined;
 	}
-	const edges = input.map((value, index) =>
-		parseVirtualEdge(value, `${path}[${index}]`, issues)
-	);
+	const edges = input.map((value, index) => parseVirtualEdge(value, `${path}[${index}]`, issues));
 	return edges.every((edge) => edge !== undefined) ? edges : undefined;
 }

@@ -17,7 +17,7 @@ const EXPECTED = {
 	minimal: ['prepare'],
 	focused: ['prepare', 'lint', 'focused'],
 	lean: ['prepare', 'lint', 'suite', 'checks', 'build'],
-	full: ['prepare', 'lint', 'suite', 'api', 'goldens', 'checks', 'build']
+	full: ['prepare', 'lint', 'suite', 'api', 'goldens', 'checks', 'build'],
 };
 
 function fail(message) {

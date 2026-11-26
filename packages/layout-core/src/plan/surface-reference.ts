@@ -59,10 +59,13 @@ function oppositeWallSide(side: LayoutWallSide): LayoutWallSide {
 }
 
 /** Split copies each authored side identity to the new fragment. */
-export function splitWallSurfaceLineage(wallId: string, createdWallId: string): LayoutSurfaceLineage {
+export function splitWallSurfaceLineage(
+	wallId: string,
+	createdWallId: string,
+): LayoutSurfaceLineage {
 	return (['left', 'right'] as const).map((side) => ({
 		to: wallSideSurfaceRef(createdWallId, side),
-		from: [wallSideSurfaceRef(wallId, side)]
+		from: [wallSideSurfaceRef(wallId, side)],
 	}));
 }
 
@@ -79,9 +82,15 @@ export function joinWallSurfaceLineage(input: {
 	return (['left', 'right'] as const).map((side) => ({
 		to: wallSideSurfaceRef(input.survivorWallId, side),
 		from: [
-			wallSideSurfaceRef(input.survivorWallId, input.survivorForward ? side : oppositeWallSide(side)),
-			wallSideSurfaceRef(input.absorbedWallId, input.absorbedForward ? side : oppositeWallSide(side))
-		]
+			wallSideSurfaceRef(
+				input.survivorWallId,
+				input.survivorForward ? side : oppositeWallSide(side),
+			),
+			wallSideSurfaceRef(
+				input.absorbedWallId,
+				input.absorbedForward ? side : oppositeWallSide(side),
+			),
+		],
 	}));
 }
 
@@ -92,37 +101,47 @@ export function joinWallSurfaceLineage(input: {
  */
 export function repackWallSurfaceLineage(input: {
 	readonly survivorWallId: string;
-	readonly members: readonly { readonly wallId: string; readonly direction: 'forward' | 'reverse' }[];
+	readonly members: readonly {
+		readonly wallId: string;
+		readonly direction: 'forward' | 'reverse';
+	}[];
 }): LayoutSurfaceLineage {
 	const ordered = [
 		...input.members.filter((member) => member.wallId === input.survivorWallId),
-		...input.members.filter((member) => member.wallId !== input.survivorWallId)
+		...input.members.filter((member) => member.wallId !== input.survivorWallId),
 	];
 	return (['left', 'right'] as const).map((side) => ({
 		to: wallSideSurfaceRef(input.survivorWallId, side),
 		from: ordered.map((member) =>
-			wallSideSurfaceRef(member.wallId, member.direction === 'forward' ? side : oppositeWallSide(side))
-		)
+			wallSideSurfaceRef(
+				member.wallId,
+				member.direction === 'forward' ? side : oppositeWallSide(side),
+			),
+		),
 	}));
 }
 
 /** Convert Room reconciliation correspondence into deterministic plane lineage. */
-export function roomSurfaceLineage(records: readonly {
-	readonly roomId: string;
-	readonly predecessorRoomIds: readonly string[];
-	readonly kind: 'preserved' | 'split-survivor' | 'merge-survivor' | 'created';
-}[]): LayoutSurfaceLineage {
+export function roomSurfaceLineage(
+	records: readonly {
+		readonly roomId: string;
+		readonly predecessorRoomIds: readonly string[];
+		readonly kind: 'preserved' | 'split-survivor' | 'merge-survivor' | 'created';
+	}[],
+): LayoutSurfaceLineage {
 	const result: LayoutSurfaceLineageEntry[] = [];
 	for (const record of records) {
-		const sources = record.kind === 'merge-survivor'
-			? [record.roomId, ...record.predecessorRoomIds.filter((id) => id !== record.roomId)]
-			: (record.kind === 'created' || record.kind === 'split-survivor') && record.predecessorRoomIds.length === 1
-				? [...record.predecessorRoomIds]
-				: [];
+		const sources =
+			record.kind === 'merge-survivor'
+				? [record.roomId, ...record.predecessorRoomIds.filter((id) => id !== record.roomId)]
+				: (record.kind === 'created' || record.kind === 'split-survivor') &&
+						record.predecessorRoomIds.length === 1
+					? [...record.predecessorRoomIds]
+					: [];
 		if (sources.length === 0) continue;
 		for (const makeRef of [
 			(roomId: string): LayoutSurfaceRef => ({ kind: 'room-floor', roomId }),
-			(roomId: string): LayoutSurfaceRef => ({ kind: 'room-lid', roomId })
+			(roomId: string): LayoutSurfaceRef => ({ kind: 'room-lid', roomId }),
 		]) {
 			result.push({ to: makeRef(record.roomId), from: sources.map(makeRef) });
 		}
@@ -136,11 +155,11 @@ export function roomSurfaceLineage(records: readonly {
  */
 export function duplicateRegionSurfaceLineage(
 	sourceRegionId: string,
-	createdRegionId: string
+	createdRegionId: string,
 ): LayoutSurfaceLineage {
 	return (['top', 'underside'] as const).map((face) => ({
 		to: { kind: 'region-face', regionId: createdRegionId, face },
-		from: [{ kind: 'region-face', regionId: sourceRegionId, face }]
+		from: [{ kind: 'region-face', regionId: sourceRegionId, face }],
 	}));
 }
 
@@ -148,15 +167,21 @@ export function duplicateRegionSurfaceLineage(
 export function duplicateRoomSurfaceLineage(
 	wallIdMap: ReadonlyMap<string, string>,
 	sourceRoomId: string,
-	createdRoomId: string
+	createdRoomId: string,
 ): LayoutSurfaceLineage {
 	const result: LayoutSurfaceLineageEntry[] = [];
 	for (const [sourceWallId, createdWallId] of wallIdMap) {
 		result.push(...splitWallSurfaceLineage(sourceWallId, createdWallId));
 	}
 	result.push(
-		{ to: { kind: 'room-floor', roomId: createdRoomId }, from: [{ kind: 'room-floor', roomId: sourceRoomId }] },
-		{ to: { kind: 'room-lid', roomId: createdRoomId }, from: [{ kind: 'room-lid', roomId: sourceRoomId }] }
+		{
+			to: { kind: 'room-floor', roomId: createdRoomId },
+			from: [{ kind: 'room-floor', roomId: sourceRoomId }],
+		},
+		{
+			to: { kind: 'room-lid', roomId: createdRoomId },
+			from: [{ kind: 'room-lid', roomId: sourceRoomId }],
+		},
 	);
 	return result;
 }
@@ -184,14 +209,19 @@ export type LayoutSurfaceResolution =
 	| {
 			readonly kind: 'unresolved';
 			readonly reference: LayoutGeometrySurfaceRef;
-			readonly code: 'missing-region' | 'missing-space' | 'open-to-sky' | 'missing-face' | 'degenerate';
+			readonly code:
+				| 'missing-region'
+				| 'missing-space'
+				| 'open-to-sky'
+				| 'missing-face'
+				| 'degenerate';
 			readonly message: string;
 	  };
 
 /** Resolve V1d Space and region face identities against canonical compiled output. */
 export function resolveLayoutSurfaceReference(
 	compiled: CompiledLayoutGeometry,
-	reference: LayoutGeometrySurfaceRef
+	reference: LayoutGeometrySurfaceRef,
 ): LayoutSurfaceResolution {
 	return reference.kind === 'region-face'
 		? resolveRegionSurface(compiled, reference)
@@ -200,55 +230,82 @@ export function resolveLayoutSurfaceReference(
 
 function resolveRegionSurface(
 	compiled: CompiledLayoutGeometry,
-	reference: LayoutRegionSurfaceRef
+	reference: LayoutRegionSurfaceRef,
 ): LayoutSurfaceResolution {
 	const region = compiled.regions.find((candidate) => candidate.regionId === reference.regionId);
 	if (!region) {
 		return {
-			kind: 'unresolved', reference, code: 'missing-region',
-			message: `Region "${reference.regionId}" is not part of this compiled Layout.`
+			kind: 'unresolved',
+			reference,
+			code: 'missing-region',
+			message: `Region "${reference.regionId}" is not part of this compiled Layout.`,
 		};
 	}
 	const faces = region.faces
 		.filter((face) => face.surface === reference.face)
-		.map((face): LayoutSurfaceFace => ({
-			surface: face.surface,
-			polygon: face.polygon.map((point): Vec3 => [point[0], point[1], point[2]]),
-			normal: [face.normal[0], face.normal[1], face.normal[2]]
-		}));
+		.map(
+			(face): LayoutSurfaceFace => ({
+				surface: face.surface,
+				polygon: face.polygon.map((point): Vec3 => [point[0], point[1], point[2]]),
+				normal: [face.normal[0], face.normal[1], face.normal[2]],
+			}),
+		);
 	if (faces.length === 0) {
 		return {
-			kind: 'unresolved', reference, code: 'missing-face',
-			message: `Region "${reference.regionId}" has no compiled ${reference.face} face.`
+			kind: 'unresolved',
+			reference,
+			code: 'missing-face',
+			message: `Region "${reference.regionId}" has no compiled ${reference.face} face.`,
 		};
 	}
 	return {
-		kind: 'resolved', reference, subject: { kind: 'region', id: region.regionId }, faces,
-		elevation: regionSurfaceElevation(region, reference.face)
+		kind: 'resolved',
+		reference,
+		subject: { kind: 'region', id: region.regionId },
+		faces,
+		elevation: regionSurfaceElevation(region, reference.face),
 	};
 }
 
 function resolveSpaceSurface(
 	compiled: CompiledLayoutGeometry,
-	reference: LayoutSpaceSurfaceRef
+	reference: LayoutSpaceSurfaceRef,
 ): LayoutSurfaceResolution {
 	const room = compiled.rooms.find((candidate) => candidate.roomId === reference.roomId);
 	if (!room) {
 		return {
-			kind: 'unresolved', reference, code: 'missing-space',
-			message: `Space "${reference.roomId}" is not part of this compiled Layout.`
+			kind: 'unresolved',
+			reference,
+			code: 'missing-space',
+			message: `Space "${reference.roomId}" is not part of this compiled Layout.`,
 		};
 	}
 	if (reference.kind === 'room-lid') {
 		if (room.overhead === 'open-to-sky') {
 			return {
-				kind: 'unresolved', reference, code: 'open-to-sky',
-				message: `Space "${reference.roomId}" is open to the sky, so it has no lid.`
+				kind: 'unresolved',
+				reference,
+				code: 'open-to-sky',
+				message: `Space "${reference.roomId}" is open to the sky, so it has no lid.`,
 			};
 		}
-		return horizontalSpaceFace(room, reference, 'lid', room.ceilingPolygon, room.ceilingElevation, [0, -1, 0]);
+		return horizontalSpaceFace(
+			room,
+			reference,
+			'lid',
+			room.ceilingPolygon,
+			room.ceilingElevation,
+			[0, -1, 0],
+		);
 	}
-	return horizontalSpaceFace(room, reference, 'floor', room.floorPolygon, room.floorElevation, [0, 1, 0]);
+	return horizontalSpaceFace(
+		room,
+		reference,
+		'floor',
+		room.floorPolygon,
+		room.floorElevation,
+		[0, 1, 0],
+	);
 }
 
 function horizontalSpaceFace(
@@ -257,29 +314,39 @@ function horizontalSpaceFace(
 	surface: 'floor' | 'lid',
 	polygon: readonly LayoutVec2[],
 	elevation: number,
-	normal: Vec3
+	normal: Vec3,
 ): LayoutSurfaceResolution {
 	if (
-		polygon.length < 3 || !Number.isFinite(elevation) ||
+		polygon.length < 3 ||
+		!Number.isFinite(elevation) ||
 		polygon.some((point) => !Number.isFinite(point[0]) || !Number.isFinite(point[1]))
 	) {
 		return {
-			kind: 'unresolved', reference, code: 'degenerate',
-			message: `Space "${room.roomId}" has no usable compiled ${surface} polygon.`
+			kind: 'unresolved',
+			reference,
+			code: 'degenerate',
+			message: `Space "${room.roomId}" has no usable compiled ${surface} polygon.`,
 		};
 	}
 	return {
-		kind: 'resolved', reference, subject: { kind: 'room', id: room.roomId },
-		faces: [{
-			surface,
-			polygon: polygon.map((point): Vec3 => [point[0], elevation, point[1]]),
-			normal: [normal[0], normal[1], normal[2]]
-		}],
-		elevation
+		kind: 'resolved',
+		reference,
+		subject: { kind: 'room', id: room.roomId },
+		faces: [
+			{
+				surface,
+				polygon: polygon.map((point): Vec3 => [point[0], elevation, point[1]]),
+				normal: [normal[0], normal[1], normal[2]],
+			},
+		],
+		elevation,
 	};
 }
 
-function regionSurfaceElevation(region: CompiledRegion, surface: LayoutRegionSurfaceRef['face']): number | null {
+function regionSurfaceElevation(
+	region: CompiledRegion,
+	surface: LayoutRegionSurfaceRef['face'],
+): number | null {
 	if (surface === 'top') return region.topY;
 	if (surface === 'underside') return region.bottomY;
 	return null;
@@ -288,7 +355,7 @@ function regionSurfaceElevation(region: CompiledRegion, surface: LayoutRegionSur
 /** Read the identity lifecycle from authored Layout data only. */
 export function resolveLayoutSurface(
 	document: LayoutDocumentWallFirst,
-	reference: LayoutSurfaceRef
+	reference: LayoutSurfaceRef,
 ): LayoutSurfaceLifecycle {
 	switch (reference.kind) {
 		case 'wall-side':
@@ -297,20 +364,30 @@ export function resolveLayoutSurface(
 			return document.rooms.some((room) => room.id === reference.roomId) ? 'present' : 'retired';
 		case 'room-lid': {
 			const room = document.rooms.find((candidate) => candidate.id === reference.roomId);
-			return room === undefined ? 'retired' : room.overhead === 'open-to-sky' ? 'dormant' : 'present';
+			return room === undefined
+				? 'retired'
+				: room.overhead === 'open-to-sky'
+					? 'dormant'
+					: 'present';
 		}
 		case 'region-face':
-			return document.regions.some((region) => region.id === reference.regionId) ? 'present' : 'retired';
+			return document.regions.some((region) => region.id === reference.regionId)
+				? 'present'
+				: 'retired';
 	}
 }
 
 /** Stable structural identity string, used only for equality and sorting. */
 export function surfaceKey(reference: LayoutSurfaceRef): string {
 	switch (reference.kind) {
-		case 'wall-side': return JSON.stringify(['wall-side', reference.wallId, reference.side]);
-		case 'room-floor': return JSON.stringify(['room-floor', reference.roomId]);
-		case 'room-lid': return JSON.stringify(['room-lid', reference.roomId]);
-		case 'region-face': return JSON.stringify(['region-face', reference.regionId, reference.face]);
+		case 'wall-side':
+			return JSON.stringify(['wall-side', reference.wallId, reference.side]);
+		case 'room-floor':
+			return JSON.stringify(['room-floor', reference.roomId]);
+		case 'room-lid':
+			return JSON.stringify(['room-lid', reference.roomId]);
+		case 'region-face':
+			return JSON.stringify(['region-face', reference.regionId, reference.face]);
 	}
 }
 
@@ -342,7 +419,10 @@ export function normalizeLayoutSurfaceLineage(input: {
 		const targetKey = surfaceKey(entry.to);
 		if (resolveLayoutSurface(input.afterLayout, entry.to) === 'retired') {
 			if (referencedTargets.has(targetKey)) continue;
-			return { kind: 'rejected', message: `Surface lineage target "${targetKey}" is retired in the candidate Layout.` };
+			return {
+				kind: 'rejected',
+				message: `Surface lineage target "${targetKey}" is retired in the candidate Layout.`,
+			};
 		}
 
 		const sources: LayoutSurfaceRef[] = [];
@@ -385,10 +465,11 @@ export function normalizeLayoutSurfaceLineage(input: {
 export function wallSideAt(
 	compiled: CompiledLayoutGeometry,
 	wallId: string,
-	point: LayoutVec2
+	point: LayoutVec2,
 ): LayoutWallSide | null {
 	const wall = compiled.walls.find((candidate) => candidate.wallId === wallId);
-	if (!wall || !Number.isFinite(point[0]) || !Number.isFinite(point[1]) || wall.samples.length < 2) return null;
+	if (!wall || !Number.isFinite(point[0]) || !Number.isFinite(point[1]) || wall.samples.length < 2)
+		return null;
 	let bestDistanceSq = Infinity;
 	let bestOffset = 0;
 	let ambiguous = false;
@@ -399,7 +480,10 @@ export function wallSideAt(
 		const dz = b.point[1] - a.point[1];
 		const lengthSq = dx * dx + dz * dz;
 		if (!(lengthSq > 0) || !Number.isFinite(lengthSq)) continue;
-		const t = Math.max(0, Math.min(1, ((point[0] - a.point[0]) * dx + (point[1] - a.point[1]) * dz) / lengthSq));
+		const t = Math.max(
+			0,
+			Math.min(1, ((point[0] - a.point[0]) * dx + (point[1] - a.point[1]) * dz) / lengthSq),
+		);
 		const nearestX = a.point[0] + dx * t;
 		const nearestZ = a.point[1] + dz * t;
 		const offset = (dx * (point[1] - nearestZ) - dz * (point[0] - nearestX)) / Math.sqrt(lengthSq);
@@ -408,7 +492,10 @@ export function wallSideAt(
 			bestDistanceSq = distanceSq;
 			bestOffset = offset;
 			ambiguous = false;
-		} else if (Math.abs(distanceSq - bestDistanceSq) <= 1e-12 && Math.sign(offset) !== Math.sign(bestOffset)) {
+		} else if (
+			Math.abs(distanceSq - bestDistanceSq) <= 1e-12 &&
+			Math.sign(offset) !== Math.sign(bestOffset)
+		) {
 			ambiguous = true;
 		}
 	}
@@ -416,7 +503,10 @@ export function wallSideAt(
 	return bestOffset > 0 ? 'left' : 'right';
 }
 
-export type SpaceSurfaceExclusion = { readonly ref: LayoutRegionSurfaceRef; readonly reason: 'spans-spaces' };
+export type SpaceSurfaceExclusion = {
+	readonly ref: LayoutRegionSurfaceRef;
+	readonly reason: 'spans-spaces';
+};
 export type SurfacesOfSpace = {
 	readonly surfaces: readonly LayoutSurfaceRef[];
 	readonly excluded: readonly SpaceSurfaceExclusion[];
@@ -425,24 +515,30 @@ export type SurfacesOfSpace = {
 /** The one containment rule shared by Region membership and Space scope. */
 function regionFootprintWhollyInsideSpace(
 	outline: readonly LayoutVec2[],
-	footprint: readonly LayoutVec2[]
+	footprint: readonly LayoutVec2[],
 ): boolean {
-	return footprint.length >= 3 && outline.length >= 3 &&
+	return (
+		footprint.length >= 3 &&
+		outline.length >= 3 &&
 		polygonContainsPolygon(outline, footprint) &&
-		footprint.every((point) => pointStrictlyInsidePolygon(outline, point));
+		footprint.every((point) => pointStrictlyInsidePolygon(outline, point))
+	);
 }
 
 /** The same expansion over one accepted compiled reading. */
 function surfacesOfSpaceFrom(
 	document: LayoutDocumentWallFirst,
 	roomId: string,
-	compiled: CompiledLayoutGeometry
+	compiled: CompiledLayoutGeometry,
 ): SurfacesOfSpace {
 	const room = document.rooms.find((candidate) => candidate.id === roomId);
 	if (!room) return { surfaces: [], excluded: [] };
-	const outline = compiled.rooms.find((candidate) => candidate.roomId === roomId)?.floorPolygon ?? [];
+	const outline =
+		compiled.rooms.find((candidate) => candidate.roomId === roomId)?.floorPolygon ?? [];
 	const surfaces: LayoutSurfaceRef[] = room.boundary.map((boundary) => ({
-		kind: 'wall-side', wallId: boundary.wallId, side: boundary.direction === 'forward' ? 'left' : 'right'
+		kind: 'wall-side',
+		wallId: boundary.wallId,
+		side: boundary.direction === 'forward' ? 'left' : 'right',
 	}));
 	surfaces.push({ kind: 'room-floor', roomId });
 	if (resolveLayoutSurface(document, { kind: 'room-lid', roomId }) === 'present') {
@@ -451,12 +547,17 @@ function surfacesOfSpaceFrom(
 	const excluded: SpaceSurfaceExclusion[] = [];
 	for (const region of document.regions) {
 		const reference: LayoutRegionSurfaceRef = {
-			kind: 'region-face', regionId: region.id,
-			face: region.role === 'floor' ? 'top' : 'underside'
+			kind: 'region-face',
+			regionId: region.id,
+			face: region.role === 'floor' ? 'top' : 'underside',
 		};
 		const footprint = region.footprint.points;
 		if (regionFootprintWhollyInsideSpace(outline, footprint)) surfaces.push(reference);
-		else if (footprint.length >= 3 && outline.length >= 3 && polygonIntersectionArea(outline, footprint) > 1e-9) {
+		else if (
+			footprint.length >= 3 &&
+			outline.length >= 3 &&
+			polygonIntersectionArea(outline, footprint) > 1e-9
+		) {
 			excluded.push({ ref: reference, reason: 'spans-spaces' });
 		}
 	}
@@ -464,8 +565,12 @@ function surfacesOfSpaceFrom(
 }
 
 /** Expand the Wall sides and face identities owned by one authored Space. */
-export function surfacesOfSpace(document: LayoutDocumentWallFirst, roomId: string): SurfacesOfSpace {
-	if (!document.rooms.some((candidate) => candidate.id === roomId)) return { surfaces: [], excluded: [] };
+export function surfacesOfSpace(
+	document: LayoutDocumentWallFirst,
+	roomId: string,
+): SurfacesOfSpace {
+	if (!document.rooms.some((candidate) => candidate.id === roomId))
+		return { surfaces: [], excluded: [] };
 	return surfacesOfSpaceFrom(document, roomId, compileWallFirstLayoutGeometry(document).geometry);
 }
 
@@ -486,7 +591,7 @@ export type SpaceOfSurface =
 function membershipOf(
 	document: LayoutDocumentWallFirst,
 	reference: LayoutSurfaceRef,
-	compiled: () => CompiledLayoutGeometry
+	compiled: () => CompiledLayoutGeometry,
 ): SpaceOfSurface {
 	if (reference.kind === 'room-floor' || reference.kind === 'room-lid') {
 		return document.rooms.some((room) => room.id === reference.roomId)
@@ -496,24 +601,34 @@ function membershipOf(
 	if (reference.kind === 'region-face') {
 		const region = document.regions.find((candidate) => candidate.id === reference.regionId);
 		if (region === undefined) return { kind: 'none' };
-		const roomIds = compiled().rooms
-			.filter((room) => regionFootprintWhollyInsideSpace(room.floorPolygon, region.footprint.points))
+		const roomIds = compiled()
+			.rooms.filter((room) =>
+				regionFootprintWhollyInsideSpace(room.floorPolygon, region.footprint.points),
+			)
 			.map((room) => room.roomId);
 		if (roomIds.length === 0) return { kind: 'none' };
 		if (roomIds.length > 1) return { kind: 'ambiguous', roomIds };
 		return { kind: 'unique', roomId: roomIds[0]! };
 	}
-	const roomIds = document.rooms.filter((room) => room.boundary.some((boundary) =>
-		boundary.wallId === reference.wallId &&
-		reference.side === (boundary.direction === 'forward' ? 'left' : 'right')
-	)).map((room) => room.id);
+	const roomIds = document.rooms
+		.filter((room) =>
+			room.boundary.some(
+				(boundary) =>
+					boundary.wallId === reference.wallId &&
+					reference.side === (boundary.direction === 'forward' ? 'left' : 'right'),
+			),
+		)
+		.map((room) => room.id);
 	if (roomIds.length === 0) return { kind: 'none' };
 	if (roomIds.length > 1) return { kind: 'ambiguous', roomIds };
 	return { kind: 'unique', roomId: roomIds[0]! };
 }
 
 /** One pick from one authored surface; compiles only when a Region face asks. */
-export function spaceOfSurface(document: LayoutDocumentWallFirst, reference: LayoutSurfaceRef): SpaceOfSurface {
+export function spaceOfSurface(
+	document: LayoutDocumentWallFirst,
+	reference: LayoutSurfaceRef,
+): SpaceOfSurface {
 	let reading: CompiledLayoutGeometry | null = null;
 	return membershipOf(document, reference, () => {
 		if (reading !== null) return reading;
@@ -531,7 +646,7 @@ export function spaceOfSurface(document: LayoutDocumentWallFirst, reference: Lay
  */
 export function spacePaintReading(
 	document: LayoutDocumentWallFirst,
-	reference: LayoutSurfaceRef
+	reference: LayoutSurfaceRef,
 ): { readonly membership: SpaceOfSurface; readonly scope: SurfacesOfSpace } {
 	let reading: CompiledLayoutGeometry | null = null;
 	const compiled = (): CompiledLayoutGeometry => {
@@ -543,8 +658,9 @@ export function spacePaintReading(
 	const membership = membershipOf(document, reference, compiled);
 	return {
 		membership,
-		scope: membership.kind === 'unique'
-			? surfacesOfSpaceFrom(document, membership.roomId, compiled())
-			: { surfaces: [], excluded: [] }
+		scope:
+			membership.kind === 'unique'
+				? surfacesOfSpaceFrom(document, membership.roomId, compiled())
+				: { surfaces: [], excluded: [] },
 	};
 }

@@ -36,17 +36,14 @@ import type {
 	StageAdapterFactory,
 	StageLightInspection,
 	StageObjectStudio,
-	StageTargetSources
+	StageTargetSources,
 } from '../stage-adapter-host';
-import {
-	createStageAdapterServices,
-	mountStageAdapter
-} from '../stage-adapter-host';
+import { createStageAdapterServices, mountStageAdapter } from '../stage-adapter-host';
 import type { StageFacade } from '../stage-facade';
 import {
 	createStageAcceptanceHost,
 	type StageAcceptanceHost,
-	type StageHistoryState
+	type StageHistoryState,
 } from '../host-acceptance';
 import type { StageSession } from '../stage-session';
 import { stageEnvelope } from '../unit-stage-source';
@@ -87,11 +84,20 @@ export type StageProjectEpochInput = {
 		readonly lightInspection?: () => StageLightInspection | null;
 		readonly objectStudio?: () => StageObjectStudio | null;
 		readonly finishCard?: () => StageFinishCardPort | null;
-		readonly openSpaceCreated?: () => ReturnType<typeof createStageAdapterServices>['openSpaceCreated'];
+		readonly openSpaceCreated?: () => ReturnType<
+			typeof createStageAdapterServices
+		>['openSpaceCreated'];
 	};
-	readonly lifecycle: () => Pick<FeatureLifecycle,
-		'interruptForReplacement' | 'resetFocus' | 'resetPresentationBeforeSwap' | 'resetPresentation' |
-		'facadeMounted' | 'adaptersChanged' | 'accepted' | 'historyInstalled'
+	readonly lifecycle: () => Pick<
+		FeatureLifecycle,
+		| 'interruptForReplacement'
+		| 'resetFocus'
+		| 'resetPresentationBeforeSwap'
+		| 'resetPresentation'
+		| 'facadeMounted'
+		| 'adaptersChanged'
+		| 'accepted'
+		| 'historyInstalled'
 	>;
 	readonly onNotice: (message: string) => void;
 	/** Publish the mounted view after a history command completes. */
@@ -116,7 +122,7 @@ const EMPTY_HISTORY: StageHistoryState = {
 	depth: 1,
 	position: 0,
 	undoUnavailableReason: 'Nothing to undo yet — no change has been accepted.',
-	redoUnavailableReason: 'Nothing to redo.'
+	redoUnavailableReason: 'Nothing to redo.',
 };
 
 function sameHistory(left: StageHistoryState, right: StageHistoryState): boolean {
@@ -152,7 +158,7 @@ export function createStageProjectEpoch(input: StageProjectEpochInput) {
 				depth: 1,
 				position: 0,
 				undoUnavailableReason: 'History belongs to the mounted project.',
-				redoUnavailableReason: 'History belongs to the mounted project.'
+				redoUnavailableReason: 'History belongs to the mounted project.',
 			}
 		);
 	}
@@ -211,9 +217,9 @@ export function createStageProjectEpoch(input: StageProjectEpochInput) {
 				// The baseline's bytes must be the snapshot's own canonical form: the F4
 				// adapter re-admits them on Undo and refuses a different serialization.
 				canonicalJson: snapshot.canonicalJson,
-				sourceContentId: snapshot.sourceContentId
+				sourceContentId: snapshot.sourceContentId,
 			},
-			facade: nextFacade
+			facade: nextFacade,
 		});
 		// The baseline released the previous epoch's subscription only after the new
 		// host exists; keep that exact point.
@@ -223,7 +229,8 @@ export function createStageProjectEpoch(input: StageProjectEpochInput) {
 		// The mounted facade is the epoch's source. The mark is the anchor the
 		// performance harness uses for the first architectural frame (F1/F2).
 		perfMark('build:identity', {
-			version: typeof __BISKIQ_BUILD_REVISION__ === 'string' ? __BISKIQ_BUILD_REVISION__ : 'unverified'
+			version:
+				typeof __BISKIQ_BUILD_REVISION__ === 'string' ? __BISKIQ_BUILD_REVISION__ : 'unverified',
 		});
 		perfMark('stage:activated', { sourceContentId: snapshot.sourceContentId });
 		acceptance = mounted;
@@ -232,7 +239,7 @@ export function createStageProjectEpoch(input: StageProjectEpochInput) {
 			mounted,
 			input.ports?.finishCard,
 			materialProofs,
-			input.targetSources
+			input.targetSources,
 		);
 		const inspection = input.ports?.lightInspection?.() ?? null;
 		const studio = input.ports?.objectStudio?.() ?? null;
@@ -241,11 +248,13 @@ export function createStageProjectEpoch(input: StageProjectEpochInput) {
 			...createdServices,
 			...(inspection === null ? {} : { lightInspection: inspection }),
 			...(studio === null ? {} : { objectStudio: studio }),
-			...(openSpaceCreated === undefined ? {} : {
-				openSpaceCreated: (reference: Parameters<typeof openSpaceCreated>[0]) => {
-					if (acceptance === mounted && !tornDown) openSpaceCreated(reference);
-				}
-			})
+			...(openSpaceCreated === undefined
+				? {}
+				: {
+						openSpaceCreated: (reference: Parameters<typeof openSpaceCreated>[0]) => {
+							if (acceptance === mounted && !tornDown) openSpaceCreated(reference);
+						},
+					}),
 		};
 		services = mountedServices;
 		void input.assets.resolve(snapshot);
@@ -304,13 +313,13 @@ export function createStageProjectEpoch(input: StageProjectEpochInput) {
 			input.onNotice(
 				outcome.reason === 'live-proposal'
 					? `A proposal is live; ${label} runs once it settles.`
-					: `Nothing to ${direction}.`
+					: `Nothing to ${direction}.`,
 			);
 		} else if (outcome.kind === 'refused') {
 			input.onNotice(
 				outcome.compensation === 'failed'
 					? `${outcome.message} The history could not be rolled back to match what is shown.`
-					: outcome.message
+					: outcome.message,
 			);
 		}
 		refreshHistory();
@@ -366,6 +375,6 @@ export function createStageProjectEpoch(input: StageProjectEpochInput) {
 		redo: () => runHistory('redo'),
 		refreshHistory,
 		markTornDown,
-		dispose
+		dispose,
 	};
 }

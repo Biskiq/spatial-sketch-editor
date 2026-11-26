@@ -38,7 +38,7 @@ export function formEvaluationKey(form: SceneFormSource): string {
 		String(form.generator.extent),
 		form.scale.map(String).join(','),
 		String(form.nextKey),
-		anchors
+		anchors,
 	].join('|');
 }
 

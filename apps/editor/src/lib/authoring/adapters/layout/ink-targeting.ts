@@ -8,7 +8,12 @@
 import type { LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 import type { StageAdapterContext } from '$lib/authoring/stage/stage-adapter-host';
 import type { ChainDraft } from './chain';
-import { INK_JUNCTION_HIT_CSS_PX, classifyInkPointerTarget, pointOnWallCenterline, type InkPointerTarget } from './ink';
+import {
+	INK_JUNCTION_HIT_CSS_PX,
+	classifyInkPointerTarget,
+	pointOnWallCenterline,
+	type InkPointerTarget,
+} from './ink';
 import { freePointWouldCreateContact } from './ink-preview';
 import { resolveInkPointSnap, type LayoutSnapWinner } from './snap';
 import { pointerDatumPoint, projectedScene } from './stage-pointer';
@@ -21,8 +26,6 @@ export type InkTargetState = {
 	readonly setSnap: (winner: LayoutSnapWinner | null) => void;
 };
 
-
-
 /**
  * The deliberate target one Stage-local pointer position names, in world
  * coordinates. `null` when the working plane cannot be resolved there.
@@ -30,23 +33,36 @@ export type InkTargetState = {
 export function inkTargetAt(
 	state: InkTargetState,
 	adapterContext: StageAdapterContext,
-	css: readonly [number, number]
+	css: readonly [number, number],
 ): InkPointerTarget | null {
 	const memory = state.memory;
 	const draft = state.draft();
 	const document = state.document;
 	const linePreviewBase = state.linePreviewBase;
-	const start = memory.wallMode === 'line' && draft.points.length >= 3 ? draft.points[0] : undefined;
+	const start =
+		memory.wallMode === 'line' && draft.points.length >= 3 ? draft.points[0] : undefined;
 	if (start !== undefined) {
 		const { left, top } = adapterContext.evaluation.rect;
-		const projected = adapterContext.project([start.point[0], adapterContext.snapshot.domain.datumMeters, start.point[1]]);
-		if (projected !== null && Math.hypot(css[0] + left - projected[0], css[1] + top - projected[1]) <= INK_JUNCTION_HIT_CSS_PX) {
+		const projected = adapterContext.project([
+			start.point[0],
+			adapterContext.snapshot.domain.datumMeters,
+			start.point[1],
+		]);
+		if (
+			projected !== null &&
+			Math.hypot(css[0] + left - projected[0], css[1] + top - projected[1]) <=
+				INK_JUNCTION_HIT_CSS_PX
+		) {
 			state.setSnap({ point: start.point, kind: 'junction', name: 'Junction' });
 			return { ...start, css };
 		}
 	}
 	const projected = projectedScene(document, adapterContext);
-	const hit = classifyInkPointerTarget({ css, junctions: projected.junctions, walls: projected.walls });
+	const hit = classifyInkPointerTarget({
+		css,
+		junctions: projected.junctions,
+		walls: projected.walls,
+	});
 	if (hit?.kind === 'junction') {
 		const junction = projected.junctions.find((candidate) => candidate.id === hit.junctionId);
 		if (junction === undefined) return null;
@@ -75,17 +91,22 @@ export function inkTargetAt(
 		point: [point[0], point[1]],
 		pixelsPerMeter: 1 / adapterContext.evaluation.targetPlaneMetersPerCssPixel,
 		anchor: linePreviewBase().points.at(-1)?.point ?? null,
-		drafting
+		drafting,
 	});
 	if (winner !== null) {
 		if (winner.kind === 'junction') {
 			const junction = projected.junctions.find(
 				(candidate) =>
-					Math.hypot(candidate.point[0] - winner.point[0], candidate.point[1] - winner.point[1]) <= 1e-9
+					Math.hypot(candidate.point[0] - winner.point[0], candidate.point[1] - winner.point[1]) <=
+					1e-9,
 			);
 			if (junction !== undefined) {
 				state.setSnap(winner);
-				return { target: { kind: 'junction', junctionId: junction.id }, point: junction.point, css };
+				return {
+					target: { kind: 'junction', junctionId: junction.id },
+					point: junction.point,
+					css,
+				};
 			}
 		}
 		if (winner.kind === 'wall-span' && winner.wallId !== undefined) {

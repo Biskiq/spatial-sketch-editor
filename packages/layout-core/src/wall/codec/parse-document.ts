@@ -5,15 +5,30 @@ import { validateRoundRooms } from '../../room/round-room';
 import type { LayoutDocumentIssue } from '../../plan/issue';
 import { closedBoundaryChains } from './document';
 import { parseObject, parseOpening } from './parse-contents';
-import { parseFloorV5, parseIdentityLedger, parseJunction, parseRegion, parseRoom, parseWall, readFormatVersion } from './parse-structure';
-import { addIssue, assertAllowedKeys, parseArray, readRecord, readString, validateUniqueIds } from './readers';
+import {
+	parseFloorV5,
+	parseIdentityLedger,
+	parseJunction,
+	parseRegion,
+	parseRoom,
+	parseWall,
+	readFormatVersion,
+} from './parse-structure';
+import {
+	addIssue,
+	assertAllowedKeys,
+	parseArray,
+	readRecord,
+	readString,
+	validateUniqueIds,
+} from './readers';
 import type { ParsedValue } from './schema';
 import { ROOT_KEYS, UNITS } from './schema';
 
 export function parseDocument(
 	input: unknown,
 	path: string,
-	issues: LayoutDocumentIssue[]
+	issues: LayoutDocumentIssue[],
 ): ParsedValue<LayoutDocumentWallFirst> {
 	const record = readRecord(input, path, issues);
 	if (!record) return undefined;
@@ -44,15 +59,7 @@ export function parseDocument(
 	// tokens and duplicate values reject.
 	const identity = parseIdentityLedger(record.identity, `${path}.identity`, issues);
 	if (record.identity !== undefined && !identity) return undefined;
-	if (
-		!floor ||
-		!junctions ||
-		!walls ||
-		!rooms ||
-		!openings ||
-		!objects ||
-		!regions
-	) {
+	if (!floor || !junctions || !walls || !rooms || !openings || !objects || !regions) {
 		return undefined;
 	}
 
@@ -70,10 +77,17 @@ export function parseDocument(
 		for (const subject of [...openings, ...objects]) occupied.add(subject.id);
 		for (const [index, region] of regions.entries()) {
 			const regionPath = `${path}.regions[${index}]`;
-			if (occupied.has(region.id)) addIssue(issues, `${regionPath}.id`, 'duplicate_id', `Duplicate Layout id '${region.id}'`);
+			if (occupied.has(region.id))
+				addIssue(issues, `${regionPath}.id`, 'duplicate_id', `Duplicate Layout id '${region.id}'`);
 			occupied.add(region.id);
 			for (const [gapIndex, id] of region.intendedGaps.entries()) {
-				if (!wallIds.has(id)) addIssue(issues, `${regionPath}.intendedGaps[${gapIndex}]`, 'missing_reference', `Unknown wallId '${id}'`);
+				if (!wallIds.has(id))
+					addIssue(
+						issues,
+						`${regionPath}.intendedGaps[${gapIndex}]`,
+						'missing_reference',
+						`Unknown wallId '${id}'`,
+					);
 			}
 		}
 	}
@@ -99,7 +113,7 @@ export function parseDocument(
 				issues,
 				`${path}.walls[${index}]`,
 				'duplicate_wall_pair',
-				`Duplicate Wall between junctions '${wall.startJunctionId}' and '${wall.endJunctionId}'`
+				`Duplicate Wall between junctions '${wall.startJunctionId}' and '${wall.endJunctionId}'`,
 			);
 		}
 		if (previous === undefined) seenWallPairs.set(pairKey, { wall, count: 1 });
@@ -112,7 +126,7 @@ export function parseDocument(
 				issues,
 				`${path}.walls[${index}].startJunctionId`,
 				'missing_reference',
-				`Unknown junctionId '${wall.startJunctionId}'`
+				`Unknown junctionId '${wall.startJunctionId}'`,
 			);
 		}
 		if (!junctionIds.has(wall.endJunctionId)) {
@@ -120,7 +134,7 @@ export function parseDocument(
 				issues,
 				`${path}.walls[${index}].endJunctionId`,
 				'missing_reference',
-				`Unknown junctionId '${wall.endJunctionId}'`
+				`Unknown junctionId '${wall.endJunctionId}'`,
 			);
 			continue;
 		}
@@ -138,19 +152,17 @@ export function parseDocument(
 					issues,
 					`${path}.rooms[${index}].boundary[${refIndex}].wallId`,
 					'missing_reference',
-					`Unknown wallId '${ref.wallId}'`
+					`Unknown wallId '${ref.wallId}'`,
 				);
 			}
 		}
-		const directedKeys = new Set(
-			room.boundary.map((ref) => `${ref.wallId}:${ref.direction}`)
-		);
+		const directedKeys = new Set(room.boundary.map((ref) => `${ref.wallId}:${ref.direction}`));
 		if (directedKeys.size !== room.boundary.length) {
 			addIssue(
 				issues,
 				`${path}.rooms[${index}].boundary`,
 				'duplicate_boundary_reference',
-				'A Room boundary may not reference the same Wall in the same direction twice'
+				'A Room boundary may not reference the same Wall in the same direction twice',
 			);
 		}
 		// I6 — a Wall side belongs to at most one Space. Unlike today's
@@ -166,7 +178,7 @@ export function parseDocument(
 					issues,
 					`${path}.rooms[${index}].boundary[${refIndex}]`,
 					'duplicate_wall_side_reference',
-					`Wall side '${sideKey}' is already referenced by Room '${owner}'`
+					`Wall side '${sideKey}' is already referenced by Room '${owner}'`,
 				);
 			}
 		}
@@ -180,7 +192,7 @@ export function parseDocument(
 					issues,
 					`${path}.rooms[${index}].virtualEdges[${edgeIndex}].startJunctionId`,
 					'missing_reference',
-					`Unknown junctionId '${edge.startJunctionId}'`
+					`Unknown junctionId '${edge.startJunctionId}'`,
 				);
 			}
 			if (!junctionIds.has(edge.endJunctionId)) {
@@ -189,7 +201,7 @@ export function parseDocument(
 					issues,
 					`${path}.rooms[${index}].virtualEdges[${edgeIndex}].endJunctionId`,
 					'missing_reference',
-					`Unknown junctionId '${edge.endJunctionId}'`
+					`Unknown junctionId '${edge.endJunctionId}'`,
 				);
 			}
 		}
@@ -206,7 +218,8 @@ export function parseDocument(
 		if (composed.kind === 'failed') {
 			const issue = composed.issue;
 			const issuePath =
-				issue.code === 'space_virtual_edge_unconsumed' || issue.code === 'duplicate_virtual_edge_origin'
+				issue.code === 'space_virtual_edge_unconsumed' ||
+				issue.code === 'duplicate_virtual_edge_origin'
 					? `${path}.rooms[${index}].virtualEdges`
 					: issue.code === 'space_virtual_edge_degenerate'
 						? `${path}.rooms[${index}].virtualEdges[${issue.index ?? 0}]`
@@ -221,7 +234,7 @@ export function parseDocument(
 				issues,
 				`${path}.openings[${index}].wallId`,
 				'missing_reference',
-				`Unknown wallId '${opening.wallId}'`
+				`Unknown wallId '${opening.wallId}'`,
 			);
 		}
 		const relation = opening.connectsRoomIds;
@@ -231,7 +244,7 @@ export function parseDocument(
 				issues,
 				`${path}.openings[${index}].connectsRoomIds`,
 				'invalid_value',
-				'Only door openings may define portal relations'
+				'Only door openings may define portal relations',
 			);
 		}
 		if (!roomIds.has(relation[0])) {
@@ -239,7 +252,7 @@ export function parseDocument(
 				issues,
 				`${path}.openings[${index}].connectsRoomIds[0]`,
 				'missing_reference',
-				`Unknown roomId '${relation[0]}'`
+				`Unknown roomId '${relation[0]}'`,
 			);
 		}
 		if (!roomIds.has(relation[1])) {
@@ -247,7 +260,7 @@ export function parseDocument(
 				issues,
 				`${path}.openings[${index}].connectsRoomIds[1]`,
 				'missing_reference',
-				`Unknown roomId '${relation[1]}'`
+				`Unknown roomId '${relation[1]}'`,
 			);
 		}
 	}
@@ -258,7 +271,7 @@ export function parseDocument(
 				issues,
 				`${path}.objects[${index}].roomId`,
 				'missing_reference',
-				`Unknown roomId '${object.roomId}'`
+				`Unknown roomId '${object.roomId}'`,
 			);
 		}
 	}
@@ -282,6 +295,6 @@ export function parseDocument(
 		openings,
 		objects,
 		regions,
-		...(identity ? { identity } : {})
+		...(identity ? { identity } : {}),
 	};
 }

@@ -13,7 +13,12 @@ export type ExperienceHostPortsDeps = {
 	readonly binding: StageExperienceBinding;
 	readonly services: () => unknown;
 	readonly selection: () => StageSelectionEntry | null;
-	readonly cardIdentity: () => { readonly sourceId: string; readonly label: string; readonly kind: string; readonly status: string } | null;
+	readonly cardIdentity: () => {
+		readonly sourceId: string;
+		readonly label: string;
+		readonly kind: string;
+		readonly status: string;
+	} | null;
 	readonly bring: () => void;
 	readonly selectStageReference: (reference: StageSelectionEntry['reference']) => void;
 	readonly referenceLabel: (reference: StageSelectionEntry['reference']) => string | null;
@@ -21,15 +26,18 @@ export type ExperienceHostPortsDeps = {
 };
 
 export function createExperienceHostPorts(deps: ExperienceHostPortsDeps) {
-	const shownCard = $derived.by((): ExperienceShownCard => deps.binding.cardView({
-		services: deps.services(),
-		selection: deps.selection(),
-		sceneSubject: deps.binding.sceneSubject,
-		cardIdentity: deps.cardIdentity(),
-		bring: deps.bring,
-		selectStageReference: deps.selectStageReference,
-		referenceLabel: deps.referenceLabel
-	}));
+	const shownCard = $derived.by(
+		(): ExperienceShownCard =>
+			deps.binding.cardView({
+				services: deps.services(),
+				selection: deps.selection(),
+				sceneSubject: deps.binding.sceneSubject,
+				cardIdentity: deps.cardIdentity(),
+				bring: deps.bring,
+				selectStageReference: deps.selectStageReference,
+				referenceLabel: deps.referenceLabel,
+			}),
+	);
 	const floorDatum = $derived(deps.datumMeters());
 	return {
 		get shownCard() {
@@ -41,9 +49,9 @@ export function createExperienceHostPorts(deps: ExperienceHostPortsDeps) {
 		/** The two precedence reads `readStageCursor` takes from Experience. */
 		cursor: {
 			viewEditKind: () => deps.binding.viewEdit?.kind ?? null,
-			placingView: () => deps.binding.experienceTool === 'place'
+			placingView: () => deps.binding.experienceTool === 'place',
 		},
-		lookThroughSession: () => deps.binding.lookThroughSession()
+		lookThroughSession: () => deps.binding.lookThroughSession(),
 	};
 }
 

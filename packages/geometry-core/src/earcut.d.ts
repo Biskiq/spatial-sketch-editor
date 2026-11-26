@@ -3,9 +3,9 @@
  * is declared: a flat coordinate list, optional hole indices and a dimension.
  */
 declare module 'earcut' {
-  export default function earcut(
-    data: ArrayLike<number>,
-    holeIndices?: ArrayLike<number> | null,
-    dim?: number
-  ): number[];
+	export default function earcut(
+		data: ArrayLike<number>,
+		holeIndices?: ArrayLike<number> | null,
+		dim?: number,
+	): number[];
 }

@@ -16,7 +16,7 @@ import {
 	CLAY_COLOR,
 	CLAY_ROUGHNESS,
 	FLAT_MIN_ROUGHNESS,
-	type MaterialTreatment
+	type MaterialTreatment,
 } from '$lib/render/resources/material-descriptor';
 
 // The frozen values live in the dependency-free descriptor module so the one
@@ -40,7 +40,7 @@ export type TreatmentSubject = {
  */
 export function applyTreatment(
 	treatment: MaterialTreatment | undefined,
-	subject: TreatmentSubject
+	subject: TreatmentSubject,
 ): TreatmentSubject {
 	if (treatment === undefined) return subject;
 	if (treatment === 'clay') {
@@ -49,7 +49,7 @@ export function applyTreatment(
 			roughness: CLAY_ROUGHNESS,
 			metalness: 0,
 			slotUris: {},
-			normalScale: null
+			normalScale: null,
 		};
 	}
 	return {
@@ -57,6 +57,6 @@ export function applyTreatment(
 		roughness: Math.max(subject.roughness, FLAT_MIN_ROUGHNESS),
 		metalness: 0,
 		slotUris: {},
-		normalScale: null
+		normalScale: null,
 	};
 }

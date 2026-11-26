@@ -75,6 +75,6 @@ export function createCasterChannel(): CasterChannel {
 			disposed = true;
 			listeners = [];
 			playingEntities.clear();
-		}
+		},
 	};
 }

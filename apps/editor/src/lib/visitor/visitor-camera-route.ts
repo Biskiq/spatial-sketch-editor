@@ -18,7 +18,12 @@
  * requested destination, and reports the origin it actually used. It never
  * accepts an arbitrary endpoint, finishes the stale Travel first, or pathfinds.
  */
-import { getCameraConnectionRoute, getCameraRoute, type CameraConnectionDirection, type ResolvedCameraRoute } from '@portfolio/camera-core/camera';
+import {
+	getCameraConnectionRoute,
+	getCameraRoute,
+	type CameraConnectionDirection,
+	type ResolvedCameraRoute,
+} from '@portfolio/camera-core/camera';
 import type { CameraGraph } from '@portfolio/camera-core/navigation';
 import type { ProgramInvocation } from '@portfolio/project-model/units';
 
@@ -41,7 +46,7 @@ export function resolveVisitorCameraRoute({
 	toViewId,
 	invocation,
 	graph,
-	handoffFromViewId = null
+	handoffFromViewId = null,
 }: {
 	readonly fromViewId: string;
 	readonly toViewId: string;
@@ -52,11 +57,13 @@ export function resolveVisitorCameraRoute({
 }): VisitorCameraRoute {
 	try {
 		if (invocation.kind === 'travel') {
-			const connection = graph.connections.find((candidate) => candidate.id === invocation.connectionId);
+			const connection = graph.connections.find(
+				(candidate) => candidate.id === invocation.connectionId,
+			);
 			if (!connection) {
 				return {
 					kind: 'gap',
-					reason: `The program requested Camera connection "${invocation.connectionId}", which this graph does not carry.`
+					reason: `The program requested Camera connection "${invocation.connectionId}", which this graph does not carry.`,
 				};
 			}
 			// The normal case: the authored connection leaves the Camera's settled
@@ -67,9 +74,10 @@ export function resolveVisitorCameraRoute({
 			// handoff: accepting it would realize an editorial transition the
 			// Experience never requested. Any other endpoint pairing is a genuine
 			// gap.
-			const origin = handoffFromViewId !== null && handoffFromViewId !== fromViewId
-				? handoffFromViewId
-				: fromViewId;
+			const origin =
+				handoffFromViewId !== null && handoffFromViewId !== fromViewId
+					? handoffFromViewId
+					: fromViewId;
 			let direction: CameraConnectionDirection | null = null;
 			if (connection.fromNodeId === origin && connection.toNodeId === toViewId) {
 				direction = 'forward';
@@ -81,24 +89,24 @@ export function resolveVisitorCameraRoute({
 					kind: 'route',
 					route: getCameraConnectionRoute(connection.id, direction, graph),
 					connectionId: connection.id,
-					originViewId: origin
+					originViewId: origin,
 				};
 			}
 			return {
 				kind: 'gap',
-				reason: `Camera connection "${connection.id}" does not join "${origin}" to "${toViewId}".`
+				reason: `Camera connection "${connection.id}" does not join "${origin}" to "${toViewId}".`,
 			};
 		}
 		return {
 			kind: 'route',
 			route: getCameraRoute(fromViewId, toViewId, graph),
 			connectionId: null,
-			originViewId: fromViewId
+			originViewId: fromViewId,
 		};
 	} catch (error) {
 		return {
 			kind: 'gap',
-			reason: error instanceof Error ? error.message : 'The Camera route is unavailable.'
+			reason: error instanceof Error ? error.message : 'The Camera route is unavailable.',
 		};
 	}
 }

@@ -11,6 +11,6 @@ export function createStageHistoryCommand(input: {
 		run(direction: 'undo' | 'redo'): void {
 			if (direction === 'undo') void input.epoch.undo();
 			else void input.epoch.redo();
-		}
+		},
 	};
 }

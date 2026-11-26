@@ -8,5 +8,5 @@ export const CATALOGUE_SCENE_VALIDATION_OPTIONS = {
 	isKnownAssetId: (assetId: string) => getAssetById(assetId) !== undefined,
 	isKnownMaterialId: (materialId: string) => isMaterialId(materialId),
 	isSceneObjectFallback,
-	isSafeTextureUri
+	isSafeTextureUri,
 } satisfies SceneValidationOptions;

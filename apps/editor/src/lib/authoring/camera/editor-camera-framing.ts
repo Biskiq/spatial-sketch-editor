@@ -36,13 +36,13 @@ export function clampEditorCameraFrustumDepth(distance: number) {
 	}
 	return Math.min(
 		EDITOR_CAMERA_FRUSTUM_MAX_DEPTH,
-		Math.max(EDITOR_CAMERA_FRUSTUM_MIN_DEPTH, distance)
+		Math.max(EDITOR_CAMERA_FRUSTUM_MIN_DEPTH, distance),
 	);
 }
 
 export function createEditorCameraFramingBasis(
 	position: CameraFramingPoint,
-	target: CameraFramingPoint
+	target: CameraFramingPoint,
 ) {
 	const eye = finiteVector(position, 'Camera position');
 	const aim = finiteVector(target, 'Camera target');
@@ -51,8 +51,7 @@ export function createEditorCameraFramingBasis(
 		throw new Error('Camera position and target must differ');
 	}
 	forward.normalize();
-	const referenceUp =
-		Math.abs(forward.dot(WORLD_UP)) > 0.999 ? FALLBACK_UP : WORLD_UP;
+	const referenceUp = Math.abs(forward.dot(WORLD_UP)) > 0.999 ? FALLBACK_UP : WORLD_UP;
 	const right = forward.clone().cross(referenceUp).normalize();
 	const up = right.clone().cross(forward).normalize();
 	return { eye, forward, right, up };
@@ -70,12 +69,11 @@ export function createEditorCameraFramingBasis(
 export function setEditorCameraFramingOrientation(
 	object: Object3D,
 	eye: Vector3,
-	target: Vector3
+	target: Vector3,
 ): void {
 	if (eye.distanceToSquared(target) <= 1e-12) return;
 	const { forward, right, up } = createEditorCameraFramingBasis(eye, target);
-	const isCamera =
-		(object as unknown as { isCamera?: unknown }).isCamera === true;
+	const isCamera = (object as unknown as { isCamera?: unknown }).isCamera === true;
 	// Both branches are right-handed rotations matching three's `lookAt`
 	// convention (mesh +Z toward the target, camera −Z toward it):
 	// `right × up = −forward`, so the camera takes (right, up, −forward)
@@ -90,13 +88,9 @@ export function createEditorCameraFramingGeometry(
 	position: CameraFramingPoint,
 	target: CameraFramingPoint,
 	fov: number,
-	aspect: number
+	aspect: number,
 ): EditorCameraFramingGeometry {
-	if (
-		!Number.isFinite(fov) ||
-		fov < CAMERA_FOV.min ||
-		fov > CAMERA_FOV.max
-	) {
+	if (!Number.isFinite(fov) || fov < CAMERA_FOV.min || fov > CAMERA_FOV.max) {
 		throw new Error('Camera FOV is outside the supported range');
 	}
 	if (!Number.isFinite(aspect) || aspect <= 0) {
@@ -114,19 +108,14 @@ export function createEditorCameraFramingGeometry(
 		center.clone().addScaledVector(basis.right, -halfWidth).addScaledVector(basis.up, halfHeight),
 		center.clone().addScaledVector(basis.right, halfWidth).addScaledVector(basis.up, halfHeight),
 		center.clone().addScaledVector(basis.right, halfWidth).addScaledVector(basis.up, -halfHeight),
-		center.clone().addScaledVector(basis.right, -halfWidth).addScaledVector(basis.up, -halfHeight)
+		center.clone().addScaledVector(basis.right, -halfWidth).addScaledVector(basis.up, -halfHeight),
 	] as const;
 	return {
 		depth,
 		center: center.toArray(),
 		topHandle: topHandle.toArray(),
 		bottomHandle: bottomHandle.toArray(),
-		corners: corners.map((corner) => corner.toArray()) as [
-			Vec3,
-			Vec3,
-			Vec3,
-			Vec3
-		]
+		corners: corners.map((corner) => corner.toArray()) as [Vec3, Vec3, Vec3, Vec3],
 	};
 }
 
@@ -138,7 +127,7 @@ export function createEditorCameraFramingGeometry(
  */
 export function createEditorCameraFrustumLinePoints(
 	eye: CameraFramingPoint,
-	geometry: EditorCameraFramingGeometry
+	geometry: EditorCameraFramingGeometry,
 ): Vector3[] {
 	const origin = finiteVector(eye, 'Camera position');
 	const corners = geometry.corners.map((corner) => new Vector3(...corner));
@@ -156,8 +145,7 @@ export function createEditorCameraFrustumLinePoints(
  * Allocate the position buffer once, write in place, never rebuild per tick.
  */
 export const EDITOR_CAMERA_FRUSTUM_VOLUME_VERTEX_COUNT = 5;
-export const EDITOR_CAMERA_FRUSTUM_VOLUME_FLOATS =
-	EDITOR_CAMERA_FRUSTUM_VOLUME_VERTEX_COUNT * 3;
+export const EDITOR_CAMERA_FRUSTUM_VOLUME_FLOATS = EDITOR_CAMERA_FRUSTUM_VOLUME_VERTEX_COUNT * 3;
 export const EDITOR_CAMERA_FRUSTUM_VOLUME_INDEX: readonly number[] = [
 	// Left face: [Eye, TopLeft, BottomLeft]
 	0, 1, 4,
@@ -168,13 +156,13 @@ export const EDITOR_CAMERA_FRUSTUM_VOLUME_INDEX: readonly number[] = [
 	// Bottom face: [Eye, BottomLeft, BottomRight]
 	0, 4, 3,
 	// Far-plane cap (winding consistent with the side faces)
-	1, 2, 3, 1, 3, 4
+	1, 2, 3, 1, 3, 4,
 ];
 
 export function writeEditorCameraFrustumVolumePositions(
 	out: Float32Array,
 	eye: CameraFramingPoint,
-	geometry: EditorCameraFramingGeometry
+	geometry: EditorCameraFramingGeometry,
 ): void {
 	if (out.length < EDITOR_CAMERA_FRUSTUM_VOLUME_FLOATS) {
 		throw new Error('Frustum volume buffer is too small');
@@ -202,7 +190,7 @@ export const EDITOR_CAMERA_FRUSTUM_LINE_FLOATS = EDITOR_CAMERA_FRUSTUM_LINE_POIN
 export function writeEditorCameraFrustumLinePositions(
 	out: Float32Array,
 	eye: CameraFramingPoint,
-	geometry: EditorCameraFramingGeometry
+	geometry: EditorCameraFramingGeometry,
 ): void {
 	if (out.length < EDITOR_CAMERA_FRUSTUM_LINE_FLOATS) {
 		throw new Error('Frustum line buffer is too small');
@@ -225,7 +213,7 @@ export function writeEditorCameraFrustumLinePositions(
 export function verticalFovFromEditorCameraFrustumPoint(
 	position: CameraFramingPoint,
 	target: CameraFramingPoint,
-	point: CameraFramingPoint
+	point: CameraFramingPoint,
 ) {
 	const basis = createEditorCameraFramingBasis(position, target);
 	const distance = basis.eye.distanceTo(finiteVector(target, 'Camera target'));
@@ -268,10 +256,7 @@ function sub3(a: Vec3, b: Vec3): Vec3 {
 
 function isFiniteVec3(value: Vec3 | null | undefined): value is Vec3 {
 	return (
-		!!value &&
-		Number.isFinite(value[0]) &&
-		Number.isFinite(value[1]) &&
-		Number.isFinite(value[2])
+		!!value && Number.isFinite(value[0]) && Number.isFinite(value[1]) && Number.isFinite(value[2])
 	);
 }
 
@@ -295,8 +280,7 @@ export function createEditorCameraFovDragBasis(args: {
 			: 0;
 	// Ill-conditioned (grazing) or missing grab point → virtual-slider
 	// fallback for the whole gesture; never switch mid-gesture.
-	const useSlider =
-		!(alignment >= EDITOR_CAMERA_FOV_DRAG_ALIGNMENT_THRESHOLD) || !isFiniteVec3(p0);
+	const useSlider = !(alignment >= EDITOR_CAMERA_FOV_DRAG_ALIGNMENT_THRESHOLD) || !isFiniteVec3(p0);
 	return {
 		eye: [...eye],
 		forward: [...forward],
@@ -307,7 +291,7 @@ export function createEditorCameraFovDragBasis(args: {
 		p0: isFiniteVec3(p0) ? [...p0] : null,
 		startClientY,
 		useSlider,
-		lastValidFov: fov0
+		lastValidFov: fov0,
 	};
 }
 
@@ -329,10 +313,11 @@ export function evaluateEditorCameraFovDrag(
 	basis: EditorCameraFovDragBasis,
 	pCurrent: Vec3 | null,
 	clientY: number,
-	movementRayDirection?: Vec3 | null
+	movementRayDirection?: Vec3 | null,
 ): number {
 	if (basis.useSlider) {
-		const dragged = basis.fov0 - (clientY - basis.startClientY) * EDITOR_CAMERA_FOV_DRAG_SLIDER_DEGREES_PER_PX;
+		const dragged =
+			basis.fov0 - (clientY - basis.startClientY) * EDITOR_CAMERA_FOV_DRAG_SLIDER_DEGREES_PER_PX;
 		const fov = Math.min(CAMERA_FOV.max, Math.max(CAMERA_FOV.min, dragged));
 		basis.lastValidFov = fov;
 		return fov;
@@ -341,7 +326,7 @@ export function evaluateEditorCameraFovDrag(
 		const rayLength = Math.hypot(
 			movementRayDirection[0],
 			movementRayDirection[1],
-			movementRayDirection[2]
+			movementRayDirection[2],
 		);
 		const normalLength = Math.hypot(basis.forward[0], basis.forward[1], basis.forward[2]);
 		const alignment =
@@ -357,7 +342,7 @@ export function evaluateEditorCameraFovDrag(
 	const eyeToCurrent = Math.hypot(
 		pCurrent[0] - basis.eye[0],
 		pCurrent[1] - basis.eye[1],
-		pCurrent[2] - basis.eye[2]
+		pCurrent[2] - basis.eye[2],
 	);
 	if (!(eyeToCurrent <= basis.depth * 1000)) return basis.lastValidFov;
 	const half0 = (basis.fov0 * Math.PI) / 360;
@@ -397,7 +382,7 @@ export function pickShellScale(
 	depthZ: number,
 	effectiveFovDegrees: number,
 	viewportHeightCSS: number,
-	shellBaseRadius: number
+	shellBaseRadius: number,
 ): number {
 	if (
 		!Number.isFinite(depthZ) ||
@@ -410,8 +395,7 @@ export function pickShellScale(
 	if (depthZ <= 0 || viewportHeightCSS <= 0 || shellBaseRadius <= 0) return 1;
 	const halfFov = (effectiveFovDegrees * Math.PI) / 360;
 	const required =
-		(depthZ * Math.tan(halfFov) * EDITOR_CAMERA_PICK_MIN_DIAMETER_PX) /
-		viewportHeightCSS;
+		(depthZ * Math.tan(halfFov) * EDITOR_CAMERA_PICK_MIN_DIAMETER_PX) / viewportHeightCSS;
 	if (!Number.isFinite(required) || required <= 0) return 1;
 	return Math.max(1, required / shellBaseRadius);
 }

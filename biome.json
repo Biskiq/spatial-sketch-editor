@@ -6,14 +6,17 @@
 		"useIgnoreFile": true
 	},
 	"files": {
-		"includes": [
-			"apps/*/src/**",
-			"packages/*/src/**",
-			"tools/**"
-		]
+		"includes": ["apps/*/src/**", "packages/*/src/**", "tools/**"]
 	},
 	"formatter": {
-		"enabled": false
+		"enabled": true,
+		"indentStyle": "tab",
+		"lineWidth": 100
+	},
+	"javascript": {
+		"formatter": {
+			"quoteStyle": "single"
+		}
 	},
 	"assist": {
 		"enabled": false

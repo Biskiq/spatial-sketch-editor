@@ -9,7 +9,10 @@
 import type { LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 
-import { datumWorkingPlane, type StageAdapterContext } from '$lib/authoring/stage/stage-adapter-host';
+import {
+	datumWorkingPlane,
+	type StageAdapterContext,
+} from '$lib/authoring/stage/stage-adapter-host';
 
 import type { ProjectedJunction, ProjectedWall } from './ink';
 
@@ -24,7 +27,7 @@ import type { ProjectedJunction, ProjectedWall } from './ink';
  */
 export function pointerDatumPoint(
 	context: StageAdapterContext,
-	css: readonly [number, number]
+	css: readonly [number, number],
 ): readonly [number, number] | null {
 	return pointerWorkingPlanePoint(context, css, context.snapshot.domain.datumMeters);
 }
@@ -44,20 +47,14 @@ export function pointerDatumPoint(
  * translation `pointerWorkingPlanePoint` applies; passing Stage-local CSS
  * straight to `context.ray` shifts the ray by the surface offset.
  */
-export function pointerViewportRay(
-	context: StageAdapterContext,
-	css: readonly [number, number]
-) {
-	return context.ray([
-		css[0] + context.evaluation.rect.left,
-		css[1] + context.evaluation.rect.top
-	]);
+export function pointerViewportRay(context: StageAdapterContext, css: readonly [number, number]) {
+	return context.ray([css[0] + context.evaluation.rect.left, css[1] + context.evaluation.rect.top]);
 }
 
 export function pointerWorkingPlanePoint(
 	context: StageAdapterContext,
 	css: readonly [number, number],
-	elevationMeters: number
+	elevationMeters: number,
 ): readonly [number, number] | null {
 	const ray = pointerViewportRay(context, css);
 	if (ray === null) return null;
@@ -68,7 +65,7 @@ export function pointerWorkingPlanePoint(
 /** Every Junction and Wall of the accepted source, projected once. */
 export function projectedScene(
 	document: LayoutDocumentWallFirst,
-	adapterContext: StageAdapterContext
+	adapterContext: StageAdapterContext,
 ): {
 	junctions: readonly ProjectedJunction[];
 	walls: readonly ProjectedWall[];
@@ -81,8 +78,11 @@ export function projectedScene(
 		if (css === null) continue;
 		junctions.push({
 			id: junction.id,
-			css: [css[0] - adapterContext.evaluation.rect.left, css[1] - adapterContext.evaluation.rect.top],
-			point: [junction.point[0], junction.point[1]]
+			css: [
+				css[0] - adapterContext.evaluation.rect.left,
+				css[1] - adapterContext.evaluation.rect.top,
+			],
+			point: [junction.point[0], junction.point[1]],
 		});
 	}
 	const walls: ProjectedWall[] = [];
@@ -90,11 +90,11 @@ export function projectedScene(
 	// Stage actually drew. A chord between their endpoints would miss the
 	// body entirely and turn an aimed Opening or T-junction into a free point.
 	const compiledByWallId = new Map(
-		adapterContext.snapshot.domain.geometry.walls.map((compiled) => [compiled.wallId, compiled])
+		adapterContext.snapshot.domain.geometry.walls.map((compiled) => [compiled.wallId, compiled]),
 	);
 	const localCss = (css: readonly [number, number]): readonly [number, number] => [
 		css[0] - adapterContext.evaluation.rect.left,
-		css[1] - adapterContext.evaluation.rect.top
+		css[1] - adapterContext.evaluation.rect.top,
 	];
 	for (const wall of document.walls) {
 		const start = junctionById.get(wall.startJunctionId)?.point;
@@ -109,7 +109,7 @@ export function projectedScene(
 			const compiled = compiledByWallId.get(wall.id);
 			if (compiled !== undefined && compiled.samples.length >= 2) {
 				const worldPath = compiled.samples.map(
-					(sample) => [sample.point[0], sample.point[1]] as LayoutVec2
+					(sample) => [sample.point[0], sample.point[1]] as LayoutVec2,
 				);
 				// The compiled run is canonical, but a Wall's Junction is the authored
 				// endpoint. Keep the host path joined to it even at sampling tolerance.
@@ -138,7 +138,7 @@ export function projectedScene(
 			endCss: localCss(endCss),
 			start: [start[0], start[1]],
 			end: [end[0], end[1]],
-			...(path === undefined || pathCss === undefined ? {} : { path, pathCss })
+			...(path === undefined || pathCss === undefined ? {} : { path, pathCss }),
 		});
 	}
 	return { junctions, walls };

@@ -41,7 +41,7 @@ import {
 	vec2,
 	vec3,
 	vec4,
-	varying
+	varying,
 } from 'three/tsl';
 import { MAT_BACKGROUND_INK, PAPER_GROUND_INK } from '../paper-plan';
 import { GRID_MAJOR_METERS, GRID_MINOR_METERS } from '../stage-drafting';
@@ -51,7 +51,7 @@ import {
 	GRID_SUPPRESS_SPACING_CSS_PX,
 	PAPER_GRID_INK,
 	type GridRect,
-	type MatGround
+	type MatGround,
 } from '../stage-grid';
 
 /**
@@ -129,7 +129,7 @@ function levelFade(spacingCssPx: Tsl): Tsl {
 			.sub(GRID_SUPPRESS_SPACING_CSS_PX)
 			.div(GRID_FULL_SPACING_CSS_PX - GRID_SUPPRESS_SPACING_CSS_PX),
 		0,
-		1
+		1,
 	);
 }
 
@@ -142,7 +142,7 @@ function metreSpacingCssPx(meters: Tsl, uPixelRatio: Tsl): Tsl {
 /** A one-device-pixel antialiased line at every whole cell. */
 function lineCoverage(cells: Tsl): Tsl {
 	const distance: Tsl = abs(fract(cells.sub(0.5)).sub(0.5)).div(
-		max(abs(dFdx(cells)), abs(dFdy(cells))).max(1e-9)
+		max(abs(dFdx(cells)), abs(dFdy(cells))).max(1e-9),
 	);
 	return clamp(float(1).sub(min(distance, 1)), 0, 1);
 }
@@ -160,7 +160,7 @@ export function createMatGridMaterial(): MatMaterial {
 
 	// The unit plane is rotated −90° about X: local (x, y) is world (x, −z).
 	const vLattice = varying(
-		vec2(positionGeometry.x, positionGeometry.y.negate()).mul(uSize).add(uLatticeOffset)
+		vec2(positionGeometry.x, positionGeometry.y.negate()).mul(uSize).add(uLatticeOffset),
 	);
 
 	const colorNode = (() => {
@@ -168,24 +168,26 @@ export function createMatGridMaterial(): MatMaterial {
 		// directions always leave together.
 		const metre: Tsl = min(
 			metreSpacingCssPx(vLattice.x, uPixelRatio),
-			metreSpacingCssPx(vLattice.y, uPixelRatio)
+			metreSpacingCssPx(vLattice.y, uPixelRatio),
 		);
 		const minorWeight: Tsl = levelFade(metre.mul(GRID_MINOR_METERS));
 		const majorWeight: Tsl = levelFade(metre.mul(GRID_MAJOR_METERS));
-		const coarseWeight: Tsl = levelFade(metre.mul(GRID_COARSE_METERS)).mul(float(1).sub(majorWeight));
+		const coarseWeight: Tsl = levelFade(metre.mul(GRID_COARSE_METERS)).mul(
+			float(1).sub(majorWeight),
+		);
 		const minorLine: Tsl = max(
 			lineCoverage(vLattice.x.div(GRID_MINOR_METERS)).mul(minorWeight),
-			lineCoverage(vLattice.y.div(GRID_MINOR_METERS)).mul(minorWeight)
+			lineCoverage(vLattice.y.div(GRID_MINOR_METERS)).mul(minorWeight),
 		);
 		const majorLine: Tsl = max(
 			max(
 				lineCoverage(vLattice.x.div(GRID_MAJOR_METERS)).mul(majorWeight),
-				lineCoverage(vLattice.x.div(GRID_COARSE_METERS)).mul(coarseWeight)
+				lineCoverage(vLattice.x.div(GRID_COARSE_METERS)).mul(coarseWeight),
 			),
 			max(
 				lineCoverage(vLattice.y.div(GRID_MAJOR_METERS)).mul(majorWeight),
-				lineCoverage(vLattice.y.div(GRID_COARSE_METERS)).mul(coarseWeight)
-			)
+				lineCoverage(vLattice.y.div(GRID_COARSE_METERS)).mul(coarseWeight),
+			),
 		);
 		// Lines exist only on the plate; beyond it the Stage is plain forest.
 		const plate: Tsl = plateCoverage(vLattice, uPlate);
@@ -210,7 +212,7 @@ export function createMatGridMaterial(): MatMaterial {
 		polygonOffset: true,
 		polygonOffsetFactor: 0,
 		polygonOffsetUnits: -4,
-		toneMapped: false
+		toneMapped: false,
 	});
 	material.colorNode = colorNode;
 	return {
@@ -225,8 +227,8 @@ export function createMatGridMaterial(): MatMaterial {
 			uPlateMinorOpacity,
 			uPlateMajorOpacity,
 			uPlateInk: uniform(new Color(PAPER_GROUND_INK)) as { value: Color },
-			uMatInk: uniform(new Color(MAT_BACKGROUND_INK)) as { value: Color }
-		}
+			uMatInk: uniform(new Color(MAT_BACKGROUND_INK)) as { value: Color },
+		},
 	};
 }
 
@@ -242,19 +244,19 @@ export function createMatGroundMaterial(): MatMaterial {
 	const uPlateInk: Tsl = uniform(new Color(PAPER_GROUND_INK));
 	const uMatInk: Tsl = uniform(new Color(MAT_BACKGROUND_INK));
 	const vLattice = varying(
-		vec2(positionGeometry.x, positionGeometry.y.negate()).mul(uSize).add(uLatticeOffset)
+		vec2(positionGeometry.x, positionGeometry.y.negate()).mul(uSize).add(uLatticeOffset),
 	);
 	const plate: Tsl = plateCoverage(vLattice, uPlate);
 	const colorNode: Tsl = vec4(
 		(mix as (a: Tsl, b: Tsl, t: Tsl) => Tsl)(uMatInk, uPlateInk, plate),
-		1
+		1,
 	);
 
 	const material = new MeshBasicNodeMaterial({
 		polygonOffset: true,
 		polygonOffsetFactor: 0,
 		polygonOffsetUnits: MAT_GROUND_POLYGON_OFFSET_UNITS,
-		toneMapped: false
+		toneMapped: false,
 	});
 	material.colorNode = colorNode;
 	return {
@@ -269,8 +271,8 @@ export function createMatGroundMaterial(): MatMaterial {
 			uPlateMinorOpacity: uniform(PAPER_GRID_INK.minorOpacity),
 			uPlateMajorOpacity: uniform(PAPER_GRID_INK.majorOpacity),
 			uPlateInk,
-			uMatInk
-		}
+			uMatInk,
+		},
 	};
 }
 
@@ -278,7 +280,7 @@ export function createMatGroundMaterial(): MatMaterial {
 export function updateMatMaterial(material: MatMaterial, ground: MatGround, plate: GridRect): void {
 	const [originX, originZ] = [
 		ground.centerXZ[0] - ground.latticeOffsetXZ[0],
-		ground.centerXZ[1] - ground.latticeOffsetXZ[1]
+		ground.centerXZ[1] - ground.latticeOffsetXZ[1],
 	];
 	material.uniforms.uSize.value = 2 * ground.halfExtentMeters;
 	material.uniforms.uLatticeOffset.value.set(ground.latticeOffsetXZ[0], ground.latticeOffsetXZ[1]);
@@ -287,7 +289,7 @@ export function updateMatMaterial(material: MatMaterial, ground: MatGround, plat
 		plate.minX - originX,
 		plate.minZ - originZ,
 		plate.maxX - originX,
-		plate.maxZ - originZ
+		plate.maxZ - originZ,
 	);
 }
 
@@ -296,7 +298,7 @@ export function updateMatGridMaterial(
 	material: MatMaterial,
 	ground: MatGround,
 	pixelRatio: number,
-	plate: GridRect
+	plate: GridRect,
 ): void {
 	updateMatMaterial(material, ground, plate);
 	material.uniforms.uPixelRatio.value = pixelRatio > 0 ? pixelRatio : 1;
@@ -309,5 +311,5 @@ export const MAT_GRID_FADE = {
 	minor: GRID_MINOR_METERS,
 	major: GRID_MAJOR_METERS,
 	coarse: GRID_COARSE_METERS,
-	corner: GROUND_PLATE_CORNER_METERS
+	corner: GROUND_PLATE_CORNER_METERS,
 } as const;

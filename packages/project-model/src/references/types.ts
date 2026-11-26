@@ -161,7 +161,12 @@ export type DerivedSubRef =
 
 /** Reusable repair action offered with a failure result. Resolvers perform none. */
 export type ReferenceRepairAction = {
-	kind: 'choose-subject' | 'reacquire-reference' | 'restore-source' | 'request-access' | 'reload-snapshot';
+	kind:
+		| 'choose-subject'
+		| 'reacquire-reference'
+		| 'restore-source'
+		| 'request-access'
+		| 'reload-snapshot';
 	description: string;
 };
 
@@ -170,7 +175,7 @@ export const REFERENCE_FAILURE_CODES = [
 	'removed',
 	'incompatible',
 	'unauthorized',
-	'repair-required'
+	'repair-required',
 ] as const;
 
 export type ReferenceFailureCode = (typeof REFERENCE_FAILURE_CODES)[number];
@@ -257,7 +262,11 @@ export type ReferenceResolver = {
 /** What an owner-qualified frame resolver answers with. */
 export type FrameResolverOutcome =
 	| { kind: 'resolved'; placement: FramePlacement }
-	| { kind: 'missing' | 'incompatible' | 'unauthorized'; message: string; repairs?: readonly ReferenceRepairAction[] };
+	| {
+			kind: 'missing' | 'incompatible' | 'unauthorized';
+			message: string;
+			repairs?: readonly ReferenceRepairAction[];
+	  };
 
 export type FrameResolver = {
 	readonly id: string;

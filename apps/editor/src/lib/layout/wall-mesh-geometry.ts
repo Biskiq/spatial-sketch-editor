@@ -3,7 +3,7 @@ import type {
 	CompiledWall,
 	CompiledWallSection,
 	CurveSample,
-	LayoutGeometryIssue
+	LayoutGeometryIssue,
 } from '@portfolio/layout-core/geometry';
 import { archProfileTopAt, LAYOUT_GEOMETRY_EPSILON } from '@portfolio/layout-core/geometry';
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
@@ -12,7 +12,8 @@ import type { ClipSample, Corner, CornerSide, V3 } from './wall-mesh-types';
 import { WINDING_DEGENERATE_AREA } from './wall-mesh-types';
 
 export function sectionBottomAt(section: CompiledWallSection, distance: number): number {
-	if (section.kind !== 'lintel' || !section.profile || section.profile.kind === 'rectangular') return section.bottomY;
+	if (section.kind !== 'lintel' || !section.profile || section.profile.kind === 'rectangular')
+		return section.bottomY;
 	const local = clamp(distance - section.startDistance, 0, section.profile.width);
 	const top = archProfileTopAt(section.profile, local);
 	return Math.min(section.topY, (section.profileBaseY ?? 0) + top);
@@ -26,7 +27,9 @@ export function wallOpensAtStart(wall: CompiledWall): boolean {
 /** True when a wall carries an opening that ends exactly at its last sample (offset + width === length). */
 export function wallOpensAtEnd(wall: CompiledWall): boolean {
 	const length = wall.samples.at(-1)?.distance ?? 0;
-	return wall.openings.some((opening) => opening.offset + opening.width >= length - LAYOUT_GEOMETRY_EPSILON);
+	return wall.openings.some(
+		(opening) => opening.offset + opening.width >= length - LAYOUT_GEOMETRY_EPSILON,
+	);
 }
 
 /**
@@ -40,10 +43,13 @@ export function roomHeightBreakpoints(room: CompiledRoom): number[] {
 	const breakpoints = new Set<number>();
 	for (const wall of room.walls) {
 		for (const opening of wall.openings) {
-			const springHeight = opening.profileShape ? opening.profileShape.height - opening.profileShape.rise : opening.height;
+			const springHeight = opening.profileShape
+				? opening.profileShape.height - opening.profileShape.rise
+				: opening.height;
 			if (opening.sillHeight > LAYOUT_GEOMETRY_EPSILON) breakpoints.add(opening.sillHeight);
 			const spring = opening.sillHeight + springHeight;
-			if (spring > LAYOUT_GEOMETRY_EPSILON && spring < wallHeight - LAYOUT_GEOMETRY_EPSILON) breakpoints.add(spring);
+			if (spring > LAYOUT_GEOMETRY_EPSILON && spring < wallHeight - LAYOUT_GEOMETRY_EPSILON)
+				breakpoints.add(spring);
 		}
 	}
 	return [...breakpoints].sort((a, b) => a - b);
@@ -54,7 +60,12 @@ export function roomHeightBreakpoints(room: CompiledRoom): number[] {
  * span [min(bottomA, bottomB), top] at every room breakpoint inside it. The
  * returned list always includes the span's own minimum and top.
  */
-export function segmentBands(bottomA: number, bottomB: number, top: number, roomBreakpoints: readonly number[]): number[] {
+export function segmentBands(
+	bottomA: number,
+	bottomB: number,
+	top: number,
+	roomBreakpoints: readonly number[],
+): number[] {
 	const min = Math.min(bottomA, bottomB);
 	const candidates = [min, top];
 	for (const y of roomBreakpoints) {
@@ -72,11 +83,10 @@ export function segmentBands(bottomA: number, bottomB: number, top: number, room
 	return bands;
 }
 
-
 export function computeCorners(
 	walls: readonly CompiledWall[],
 	miterLimit: number,
-	room: CompiledRoom
+	room: CompiledRoom,
 ): { corners: Corner[]; issues: LayoutGeometryIssue[] } {
 	const count = walls.length;
 	const corners: Corner[] = [];
@@ -97,7 +107,7 @@ export function computeCorners(
 				path: `rooms.${room.roomId}.walls.${cur.segmentId}`,
 				code: 'wall_corner_fold',
 				message: 'Wall junction folds back on itself (180° turn); offset regions would overlap.',
-				targetId: cur.segmentId
+				targetId: cur.segmentId,
 			});
 		}
 		corners.push({ front, back });
@@ -119,7 +129,7 @@ export function cornerSide(
 	dirB: LayoutVec2,
 	nB: LayoutVec2,
 	signHalf: number,
-	miterLimit: number
+	miterLimit: number,
 ): CornerSide {
 	// One rule, two callers. The offset-line intersection, the miter
 	// limit and the fold refusal live in `layout-core`
@@ -129,16 +139,33 @@ export function cornerSide(
 	// room loop passes the same half for both sides.
 	const half = Math.abs(signHalf);
 	const sign: 1 | -1 = signHalf >= 0 ? 1 : -1;
-	const resolved = resolveSharedCornerSide(junction, dirA, nA, half, dirB, nB, half, sign, miterLimit);
+	const resolved = resolveSharedCornerSide(
+		junction,
+		dirA,
+		nA,
+		half,
+		dirB,
+		nB,
+		half,
+		sign,
+		miterLimit,
+	);
 	if (resolved.kind === 'side') return resolved.side;
 	const a0: LayoutVec2 = [junction[0] + sign * half * nA[0], junction[1] + sign * half * nA[1]];
 	const b0: LayoutVec2 = [junction[0] + sign * half * nB[0], junction[1] + sign * half * nB[1]];
 	return { kind: 'fold', a0, b0 };
 }
 
-export function cornerPoint(sample: ClipSample, half: number, cornerStart: Corner, cornerEnd: Corner): LayoutVec2 {
-	if (sample.corner === 'start') return sidePoint(cornerStart, half >= 0 ? 'front' : 'back', 'current');
-	if (sample.corner === 'end') return sidePoint(cornerEnd, half >= 0 ? 'front' : 'back', 'previous');
+export function cornerPoint(
+	sample: ClipSample,
+	half: number,
+	cornerStart: Corner,
+	cornerEnd: Corner,
+): LayoutVec2 {
+	if (sample.corner === 'start')
+		return sidePoint(cornerStart, half >= 0 ? 'front' : 'back', 'current');
+	if (sample.corner === 'end')
+		return sidePoint(cornerEnd, half >= 0 ? 'front' : 'back', 'previous');
 	return [sample.point[0] + half * sample.normal[0], sample.point[1] + half * sample.normal[1]];
 }
 
@@ -149,12 +176,15 @@ export function cornerPoint(sample: ClipSample, half: number, cornerStart: Corne
  * offset line is what lets the bevel bridge weld without dragging a wall off
  * its line.
  */
-export function sidePoint(corner: Corner, side: 'front' | 'back', wall: 'previous' | 'current'): LayoutVec2 {
+export function sidePoint(
+	corner: Corner,
+	side: 'front' | 'back',
+	wall: 'previous' | 'current',
+): LayoutVec2 {
 	const s = corner[side];
 	if (s.kind === 'miter') return s.apex;
 	return wall === 'previous' ? s.a0 : s.b0;
 }
-
 
 /** Unconstrained back-side miter apex: the corner of the exterior void. */
 export function backMiterApex(prevWall: CompiledWall, wall: CompiledWall): LayoutVec2 {
@@ -180,12 +210,20 @@ export function backMiterApex(prevWall: CompiledWall, wall: CompiledWall): Layou
  * evaluate at the endpoint (arch spring height at the corner), so no 2D arch
  * polygon is needed.
  */
-export function endpointProfileIntervals(wall: CompiledWall, atEnd: boolean): Array<[number, number]> {
+export function endpointProfileIntervals(
+	wall: CompiledWall,
+	atEnd: boolean,
+): Array<[number, number]> {
 	const distance = atEnd ? (wall.samples.at(-1)?.distance ?? 0) : 0;
 	const intervals: Array<[number, number]> = [];
 	for (const section of wall.sections) {
-		if (distance < section.startDistance - LAYOUT_GEOMETRY_EPSILON || distance > section.endDistance + LAYOUT_GEOMETRY_EPSILON) continue;
-		if (section.kind === 'lintel') intervals.push([sectionBottomAt(section, distance), section.topY]);
+		if (
+			distance < section.startDistance - LAYOUT_GEOMETRY_EPSILON ||
+			distance > section.endDistance + LAYOUT_GEOMETRY_EPSILON
+		)
+			continue;
+		if (section.kind === 'lintel')
+			intervals.push([sectionBottomAt(section, distance), section.topY]);
 		else intervals.push([section.bottomY, section.topY]);
 	}
 	intervals.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
@@ -199,21 +237,29 @@ export function endpointProfileIntervals(wall: CompiledWall, atEnd: boolean): Ar
 	return merged;
 }
 
-export function profileCovers(profile: ReadonlyArray<[number, number]>, lo: number, hi: number): boolean {
-	return profile.some(([pLo, pHi]) => lo >= pLo - LAYOUT_GEOMETRY_EPSILON && hi <= pHi + LAYOUT_GEOMETRY_EPSILON);
+export function profileCovers(
+	profile: ReadonlyArray<[number, number]>,
+	lo: number,
+	hi: number,
+): boolean {
+	return profile.some(
+		([pLo, pHi]) => lo >= pLo - LAYOUT_GEOMETRY_EPSILON && hi <= pHi + LAYOUT_GEOMETRY_EPSILON,
+	);
 }
-
 
 export function clipSectionSamples(
 	samples: readonly CurveSample[],
 	start: number,
 	end: number,
-	extraDistances: readonly number[] = []
+	extraDistances: readonly number[] = [],
 ): ClipSample[] {
 	const length = samples.at(-1)!.distance;
 	const interior: number[] = [];
 	for (const sample of samples) {
-		if (sample.distance > start + LAYOUT_GEOMETRY_EPSILON && sample.distance < end - LAYOUT_GEOMETRY_EPSILON) {
+		if (
+			sample.distance > start + LAYOUT_GEOMETRY_EPSILON &&
+			sample.distance < end - LAYOUT_GEOMETRY_EPSILON
+		) {
 			interior.push(sample.distance);
 		}
 	}
@@ -250,12 +296,16 @@ export function lintelProfileKnotDistances(section: CompiledWallSection): number
  */
 export function lintelBandIntersectionDistances(
 	section: CompiledWallSection,
-	roomBreakpoints: readonly number[]
+	roomBreakpoints: readonly number[],
 ): number[] {
-	if (section.kind !== 'lintel' || !section.profile || section.profile.kind === 'rectangular') return [];
+	if (section.kind !== 'lintel' || !section.profile || section.profile.kind === 'rectangular')
+		return [];
 	const span = [section.startDistance];
 	for (const distance of lintelProfileKnotDistances(section)) {
-		if (distance > section.startDistance + LAYOUT_GEOMETRY_EPSILON && distance < section.endDistance - LAYOUT_GEOMETRY_EPSILON) {
+		if (
+			distance > section.startDistance + LAYOUT_GEOMETRY_EPSILON &&
+			distance < section.endDistance - LAYOUT_GEOMETRY_EPSILON
+		) {
 			span.push(distance);
 		}
 	}
@@ -278,16 +328,36 @@ export function lintelBandIntersectionDistances(
 	return result;
 }
 
-export function makeClipSample(samples: readonly CurveSample[], distance: number, length: number): ClipSample {
+export function makeClipSample(
+	samples: readonly CurveSample[],
+	distance: number,
+	length: number,
+): ClipSample {
 	const sample = sampleAt(samples, distance);
-	return { ...sample, corner: distance <= LAYOUT_GEOMETRY_EPSILON ? 'start' : distance >= length - LAYOUT_GEOMETRY_EPSILON ? 'end' : null };
+	return {
+		...sample,
+		corner:
+			distance <= LAYOUT_GEOMETRY_EPSILON
+				? 'start'
+				: distance >= length - LAYOUT_GEOMETRY_EPSILON
+					? 'end'
+					: null,
+	};
 }
 
-export function sampleAt(samples: readonly CurveSample[], distance: number): { point: LayoutVec2; tangent: LayoutVec2; normal: LayoutVec2; distance: number } {
+export function sampleAt(
+	samples: readonly CurveSample[],
+	distance: number,
+): { point: LayoutVec2; tangent: LayoutVec2; normal: LayoutVec2; distance: number } {
 	if (samples.length === 0) return { point: [0, 0], tangent: [1, 0], normal: [0, 1], distance: 0 };
 	if (samples.length === 1) {
 		const s = samples[0]!;
-		return { point: [...s.point] as LayoutVec2, tangent: s.tangent, normal: s.normal, distance: s.distance };
+		return {
+			point: [...s.point] as LayoutVec2,
+			tangent: s.tangent,
+			normal: s.normal,
+			distance: s.distance,
+		};
 	}
 	const last = samples.at(-1)!;
 	const target = Math.min(last.distance, Math.max(0, distance));
@@ -303,17 +373,21 @@ export function sampleAt(samples: readonly CurveSample[], distance: number): { p
 			return {
 				point: [
 					start.point[0] + (end.point[0] - start.point[0]) * amount,
-					start.point[1] + (end.point[1] - start.point[1]) * amount
+					start.point[1] + (end.point[1] - start.point[1]) * amount,
 				],
 				tangent: [tx / magnitude, tz / magnitude],
 				normal: [-tz / magnitude, tx / magnitude],
-				distance: target
+				distance: target,
 			};
 		}
 	}
-	return { point: [...last.point] as LayoutVec2, tangent: last.tangent, normal: last.normal, distance: last.distance };
+	return {
+		point: [...last.point] as LayoutVec2,
+		tangent: last.tangent,
+		normal: last.normal,
+		distance: last.distance,
+	};
 }
-
 
 /** Unit geometric normal of a quad's first triangle (right-hand rule), matching its winding. */
 export function quadNormal(a: V3, b: V3, c: V3): V3 {
@@ -331,8 +405,6 @@ export function quadNormal(a: V3, b: V3, c: V3): V3 {
 	return [nx / magnitude, ny / magnitude, nz / magnitude];
 }
 
-
 export function clamp(value: number, min: number, max: number): number {
 	return Math.min(max, Math.max(min, value));
 }
-

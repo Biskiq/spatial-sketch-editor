@@ -15,18 +15,29 @@ export {
 	rotateBoundaryToSeam,
 	findEnclosingRoundRoomForWall,
 	isEnclosedClosedCircleBoundary,
-	certifyRoundRoom
+	certifyRoundRoom,
 } from './round-room/certify';
-export type { CertifiedRoundSubspan, CertifiedRoundRoom, RoundCertificationResult } from './round-room/certify';
+export type {
+	CertifiedRoundSubspan,
+	CertifiedRoundRoom,
+	RoundCertificationResult,
+} from './round-room/certify';
 export { validateRoundRooms, buildRoundRoomGeometryFromCertified } from './round-room/build';
-export { ROUND_ROOM_MEMBER_EDIT_MESSAGE, guardRoundRoomMemberGeometryEdit, findRoundRoomSeamOwner } from './round-room/guard';
+export {
+	ROUND_ROOM_MEMBER_EDIT_MESSAGE,
+	guardRoundRoomMemberGeometryEdit,
+	findRoundRoomSeamOwner,
+} from './round-room/guard';
 export type { RoundRoomMemberGuardHit } from './round-room/guard';
 export type {
 	RoundOperationRoomCorrespondence,
 	RoundOperationWallCorrespondence,
 	RoundOperationJunctionCorrespondence,
 	RoundOperationOpeningCorrespondence,
-	RoundOperationCorrespondence
+	RoundOperationCorrespondence,
 } from './round-room/correspondence';
-export { enumerateClosedWallSafeCutStations, partitionClosedWallChainAtStations } from './round-room/partitions';
+export {
+	enumerateClosedWallSafeCutStations,
+	partitionClosedWallChainAtStations,
+} from './round-room/partitions';
 export type { ClosedWallSafeCutSearch, ClosedWallPartitionSegment } from './round-room/partitions';

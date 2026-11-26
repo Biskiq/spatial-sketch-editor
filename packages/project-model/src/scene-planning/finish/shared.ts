@@ -7,17 +7,19 @@ import { type MaterialId } from '../../scene';
 import { type Result } from './context';
 import { type FinishNameContext, type FinishTreatmentFacts } from './treatment';
 import { type SceneRecordScope } from '../record-scope';
-import { type CameraFreeSceneDocument as SceneDocument, type ProjectEnvelope } from '../../units/types';
+import {
+	type CameraFreeSceneDocument as SceneDocument,
+	type ProjectEnvelope,
+} from '../../units/types';
 
 export const MATERIAL_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 export const HEX_COLOR = /^#[0-9a-f]{6}$/;
-
 
 export function materialRecipesOf(envelope: ProjectEnvelope): ReadonlyMap<string, Recipe> {
 	return new Map(
 		envelope.units.resources.data.resources
 			.filter((resource) => resource.kind === 'material' && resource.material !== undefined)
-			.map((resource) => [resource.id, resource.material!.recipe])
+			.map((resource) => [resource.id, resource.material!.recipe]),
 	);
 }
 
@@ -62,12 +64,12 @@ export function labelOf(options: FinishPlannerOptions, materialId: MaterialId): 
 export function nameContextOf(
 	options: FinishPlannerOptions,
 	recipes: ReadonlyMap<string, Recipe>,
-	palette: SceneDocument['palette']
+	palette: SceneDocument['palette'],
 ): FinishNameContext {
 	return {
 		recipes,
 		...(palette === undefined ? {} : { palette }),
-		facts: { ...options.treatmentFacts, labelForMaterial: (id) => labelOf(options, id) }
+		facts: { ...options.treatmentFacts, labelForMaterial: (id) => labelOf(options, id) },
 	};
 }
 
@@ -76,7 +78,7 @@ export type MaterialGrant = NonNullable<SceneRecordScope['materials']>;
 export function allocationOf(
 	request: PlannerRequest<ProjectEnvelope>,
 	allowedKinds: readonly string[],
-	required: boolean
+	required: boolean,
 ): { readonly id: string | null } | { readonly missing: string } {
 	const allocations = request.allocatedIds;
 	if (allocations.length === 0) {

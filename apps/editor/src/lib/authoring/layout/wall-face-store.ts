@@ -37,7 +37,10 @@ export type WallFaceFit = {
 	readonly surfaceMeters: readonly [number, number];
 };
 
-type FloorBounds = { readonly min: readonly [number, number, number]; readonly max: readonly [number, number, number] };
+type FloorBounds = {
+	readonly min: readonly [number, number, number];
+	readonly max: readonly [number, number, number];
+};
 
 export type WallFaceCameraPort = {
 	standpoint(): ViewportCameraState | null;
@@ -69,7 +72,11 @@ class WallFaceStore {
 	}
 
 	/** Face one Wall. A refused Camera writes no reading and moves nothing. */
-	face(input: { readonly wallId: string; readonly frame: WallFaceFrame; readonly fit?: WallFaceFit }): WallFaceOutcome {
+	face(input: {
+		readonly wallId: string;
+		readonly frame: WallFaceFrame;
+		readonly fit?: WallFaceFit;
+	}): WallFaceOutcome {
 		const port = this.#port;
 		if (port === null) return { kind: 'refused', reason: 'no-camera' };
 		const entry = port.standpoint();
@@ -88,10 +95,12 @@ class WallFaceStore {
 		readonly fit?: WallFaceFit;
 	}): WallFaceOutcome {
 		const port = this.#port;
-		if (port === null || port.frameFloor === undefined) return { kind: 'refused', reason: 'no-camera' };
+		if (port === null || port.frameFloor === undefined)
+			return { kind: 'refused', reason: 'no-camera' };
 		const entry = port.standpoint();
 		if (entry === null) return { kind: 'refused', reason: 'no-camera' };
-		if (!port.frameFloor(input.bounds, input.fit)) return { kind: 'refused', reason: 'camera-refused' };
+		if (!port.frameFloor(input.bounds, input.fit))
+			return { kind: 'refused', reason: 'camera-refused' };
 		this.#reading = { wallId: `floor:${input.roomId}`, entry };
 		return { kind: 'applied' };
 	}
@@ -100,13 +109,17 @@ class WallFaceStore {
 	 * Re-frame the live reading (a resized or re-laned Stage). The captured entry
 	 * standpoint is kept, so Put back still returns to where Face started.
 	 */
-	reframe(input: { readonly frame: WallFaceFrame; readonly fit?: WallFaceFit } | { readonly floor: FloorBounds; readonly fit?: WallFaceFit }): WallFaceOutcome {
+	reframe(
+		input:
+			| { readonly frame: WallFaceFrame; readonly fit?: WallFaceFit }
+			| { readonly floor: FloorBounds; readonly fit?: WallFaceFit },
+	): WallFaceOutcome {
 		if (this.#reading === null) return { kind: 'refused', reason: 'not-facing' };
 		const port = this.#port;
 		if (port === null) return { kind: 'refused', reason: 'no-camera' };
 		const ok =
 			'floor' in input
-				? port.frameFloor?.(input.floor, input.fit) ?? false
+				? (port.frameFloor?.(input.floor, input.fit) ?? false)
 				: input.fit === undefined
 					? port.face(input.frame)
 					: port.face(input.frame, input.fit);

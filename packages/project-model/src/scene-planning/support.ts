@@ -25,8 +25,21 @@
  * filters and resolves by identity/elevation, so reordering the query's polygon
  * records cannot change the answer.
  */
-import { FLOOR_SUPPORT_TOLERANCES, chooseFloorSupport, datumSupportCandidate, floorSupportSnapshotOf, layoutDatumElevation, queryFloorSupports, type FloorSupportCandidate, type FloorSupportQueryResult } from '@portfolio/layout-core/room';
-import { compileWallFirstLayoutGeometry, type CompiledLayoutGeometry, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import {
+	FLOOR_SUPPORT_TOLERANCES,
+	chooseFloorSupport,
+	datumSupportCandidate,
+	floorSupportSnapshotOf,
+	layoutDatumElevation,
+	queryFloorSupports,
+	type FloorSupportCandidate,
+	type FloorSupportQueryResult,
+} from '@portfolio/layout-core/room';
+import {
+	compileWallFirstLayoutGeometry,
+	type CompiledLayoutGeometry,
+	type LayoutVec2,
+} from '@portfolio/layout-core/geometry';
 import type { LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 
 /** The compile/support generation of one accepted snapshot. */
@@ -83,13 +96,13 @@ export function selectSceneSupport(input: {
 		return {
 			kind: 'unsupported',
 			code: 'invalid-value',
-			message: 'A required resting elevation must be a finite number.'
+			message: 'A required resting elevation must be a finite number.',
 		};
 	}
 	if (choice !== undefined && choice.generationId !== generationId) {
 		return {
 			kind: 'stale-generation',
-			message: `The captured support choice was made against generation "${choice.generationId}" and this snapshot is "${generationId}".`
+			message: `The captured support choice was made against generation "${choice.generationId}" and this snapshot is "${generationId}".`,
 		};
 	}
 
@@ -99,7 +112,7 @@ export function selectSceneSupport(input: {
 			: candidates.filter(
 					(candidate) =>
 						Math.abs(candidate.elevation - requiredElevation) <=
-						FLOOR_SUPPORT_TOLERANCES.coplanarElevationMeters
+						FLOOR_SUPPORT_TOLERANCES.coplanarElevationMeters,
 				);
 
 	if (choice !== undefined) {
@@ -111,7 +124,7 @@ export function selectSceneSupport(input: {
 				return {
 					kind: 'no-support',
 					message: `The captured support choice is no longer usable (${chosen.kind === 'choice-required' ? 'it is ambiguous' : chosen.message}) and no floor supports the required elevation ${requiredElevation} m.`,
-					availableElevations: elevationsOf(candidates)
+					availableElevations: elevationsOf(candidates),
 				};
 			}
 			return {
@@ -120,7 +133,7 @@ export function selectSceneSupport(input: {
 				message:
 					chosen.kind === 'choice-required'
 						? 'The captured support choice is ambiguous.'
-						: `The captured support choice is no longer yielded by this snapshot (${chosen.message})`
+						: `The captured support choice is no longer yielded by this snapshot (${chosen.message})`,
 			};
 		}
 		if (
@@ -131,7 +144,7 @@ export function selectSceneSupport(input: {
 			return {
 				kind: 'no-support',
 				message: `This operation must keep its contact at elevation ${requiredElevation} m, and the chosen support is at ${chosen.support.elevation} m. Reseating on another floor is an explicit Place on floor.`,
-				availableElevations: elevationsOf(candidates)
+				availableElevations: elevationsOf(candidates),
 			};
 		}
 		return { kind: 'resolved', support: chosen.support };
@@ -141,14 +154,14 @@ export function selectSceneSupport(input: {
 		return {
 			kind: 'no-support',
 			message: `Nothing supports this point at ${requiredElevation === null ? 'any elevation' : `${requiredElevation} m`}; an object keeps its height when it moves.`,
-			availableElevations: elevationsOf(candidates)
+			availableElevations: elevationsOf(candidates),
 		};
 	}
 	if (eligible.length === 1) return { kind: 'resolved', support: eligible[0]! };
 	return {
 		kind: 'choice-required',
 		candidates: eligible,
-		message: `${eligible.length} floor contexts or elevations support this point; the creator must choose one.`
+		message: `${eligible.length} floor contexts or elevations support this point; the creator must choose one.`,
 	};
 }
 
@@ -160,7 +173,11 @@ export type SceneSupportResolution =
 	  }
 	| {
 			readonly kind: 'refused';
-			readonly code: 'no-support' | 'support-choice-required' | 'stale-generation' | 'unsupported-surface';
+			readonly code:
+				| 'no-support'
+				| 'support-choice-required'
+				| 'stale-generation'
+				| 'unsupported-surface';
 			readonly message: string;
 			readonly candidates: readonly FloorSupportCandidate[];
 	  };
@@ -205,19 +222,22 @@ export function resolveSceneSupportOnGeometry(input: {
 		generationId,
 		...(input.choice === undefined ? {} : { evidenceGenerationId: input.choice.generationId }),
 		x: point[0],
-		z: point[1]
+		z: point[1],
 	});
-	const withDatum: FloorSupportQueryResult = queried.kind === 'none'
-		? {
-			kind: 'candidates',
-			candidates: [datumSupportCandidate({
-				elevation: layoutDatumElevation(geometry),
-				generationId,
-				x: point[0],
-				z: point[1]
-			})]
-		}
-		: queried;
+	const withDatum: FloorSupportQueryResult =
+		queried.kind === 'none'
+			? {
+					kind: 'candidates',
+					candidates: [
+						datumSupportCandidate({
+							elevation: layoutDatumElevation(geometry),
+							generationId,
+							x: point[0],
+							z: point[1],
+						}),
+					],
+				}
+			: queried;
 	return fromQuery(withDatum, generationId, input.requiredElevation, input.choice);
 }
 
@@ -225,17 +245,22 @@ function fromQuery(
 	queried: FloorSupportQueryResult,
 	generationId: string,
 	requiredElevation: number | null,
-	choice: SceneSupportChoice | undefined
+	choice: SceneSupportChoice | undefined,
 ): SceneSupportResolution {
 	if (queried.kind === 'none') {
-		return { kind: 'refused', code: 'no-support', message: 'Nothing supports this point.', candidates: [] };
+		return {
+			kind: 'refused',
+			code: 'no-support',
+			message: 'Nothing supports this point.',
+			candidates: [],
+		};
 	}
 	if (queried.kind === 'invalid-input') {
 		return {
 			kind: 'refused',
 			code: 'unsupported-surface',
 			message: queried.message,
-			candidates: []
+			candidates: [],
 		};
 	}
 	if (queried.kind === 'stale-generation') {
@@ -243,7 +268,7 @@ function fromQuery(
 			kind: 'refused',
 			code: 'stale-generation',
 			message: queried.message,
-			candidates: []
+			candidates: [],
 		};
 	}
 	if (queried.kind === 'unsupported') {
@@ -251,7 +276,7 @@ function fromQuery(
 			kind: 'refused',
 			code: 'unsupported-surface',
 			message: queried.message,
-			candidates: []
+			candidates: [],
 		};
 	}
 
@@ -259,7 +284,7 @@ function fromQuery(
 		candidates: queried.candidates,
 		generationId,
 		requiredElevation,
-		...(choice === undefined ? {} : { choice })
+		...(choice === undefined ? {} : { choice }),
 	});
 	switch (selection.kind) {
 		case 'resolved':
@@ -269,32 +294,34 @@ function fromQuery(
 				kind: 'refused',
 				code: 'support-choice-required',
 				message: selection.message,
-				candidates: selection.candidates
+				candidates: selection.candidates,
 			};
 		case 'no-support':
 			return {
 				kind: 'refused',
 				code: 'no-support',
 				message: selection.message,
-				candidates: queried.candidates
+				candidates: queried.candidates,
 			};
 		case 'stale-generation':
 			return {
 				kind: 'refused',
 				code: 'stale-generation',
 				message: selection.message,
-				candidates: queried.candidates
+				candidates: queried.candidates,
 			};
 		case 'unsupported':
 			return {
 				kind: 'refused',
 				code: 'unsupported-surface',
 				message: selection.message,
-				candidates: queried.candidates
+				candidates: queried.candidates,
 			};
 	}
 }
 
 function elevationsOf(candidates: readonly FloorSupportCandidate[]): readonly number[] {
-	return [...new Set(candidates.map((candidate) => candidate.elevation))].sort((left, right) => left - right);
+	return [...new Set(candidates.map((candidate) => candidate.elevation))].sort(
+		(left, right) => left - right,
+	);
 }

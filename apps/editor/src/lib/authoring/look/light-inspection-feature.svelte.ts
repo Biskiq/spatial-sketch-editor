@@ -2,7 +2,7 @@ import type { ViewportEvaluation } from '@portfolio/camera-core/viewport';
 import {
 	createLightLookThrough,
 	lookThroughCone,
-	type LightLookThroughHost
+	type LightLookThroughHost,
 } from '../stage/route/light-look-through.svelte';
 import { createLightCoverage } from './light-inspection/light-coverage';
 import { createLightInspectionGuards } from './light-inspection/light-inspection-guards.svelte';
@@ -18,24 +18,28 @@ export function createLightInspectionFeature(deps: LightInspectionDependencies) 
 		stage: deps.stage,
 		evaluation: deps.evaluation,
 		session: inspection.session,
-		cone: lookThroughCone
+		cone: lookThroughCone,
 	});
 	const guards = createLightInspectionGuards({
 		inspection,
 		lens: deps.lens,
 		previewing: deps.previewing,
-		readCoverage: coverage.read
+		readCoverage: coverage.read,
 	});
 	return {
 		id: 'light-inspection' as const,
-		get frame() { return guards.frame; },
-		get posture() { return inspection.posture; },
+		get frame() {
+			return guards.frame;
+		},
+		get posture() {
+			return inspection.posture;
+		},
 		ports: {
 			card: guards.card,
 			session: inspection.session,
 			active: inspection.active,
 			cancel: guards.cancel,
-			lightArmed: guards.lightArmed
+			lightArmed: guards.lightArmed,
 		},
 		regions: { viewport: guards.viewport },
 		lifecycle: {
@@ -44,7 +48,7 @@ export function createLightInspectionFeature(deps: LightInspectionDependencies) 
 			accepted: { reconcile: inspection.reconcile },
 			historyInstalled: { reconcile: inspection.reconcile },
 			leaveLens: { cancel: guards.cancel },
-			dispose: { dispose: inspection.dispose }
-		}
+			dispose: { dispose: inspection.dispose },
+		},
 	};
 }

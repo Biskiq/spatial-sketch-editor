@@ -29,16 +29,20 @@ import {
 	Vector3,
 	type Material,
 	type Texture,
-	type WebGLRenderer
+	type WebGLRenderer,
 } from 'three';
 import { SRGBColorSpace } from 'three';
 import type { WebGPURenderer } from 'three/webgpu';
-import { createViewportCameraState, evaluateViewport, inspectionPoseFromView } from '@portfolio/camera-core/viewport';
+import {
+	createViewportCameraState,
+	evaluateViewport,
+	inspectionPoseFromView,
+} from '@portfolio/camera-core/viewport';
 import { realizeEvaluatedCamera } from '$lib/render/camera-realization';
 import { rendererBackendOf } from '$lib/render/renderer-backend';
 import type {
 	StandardFinishPlan,
-	StandardMaterialDescriptor
+	StandardMaterialDescriptor,
 } from '$lib/render/resources/material-descriptor';
 import type { FinishMapRole } from '$lib/render/resources/material-descriptor';
 import {
@@ -46,12 +50,12 @@ import {
 	createInspectionGeometry,
 	inspectionGeometryFacts,
 	inspectionTargetFacts,
-	type InspectionGeometryKind
+	type InspectionGeometryKind,
 } from './inspection-geometry';
 import {
 	INSPECTION_LIGHTING_VERSION,
 	createInspectionLighting,
-	type InspectionRig
+	type InspectionRig,
 } from './inspection-lighting';
 
 export const INSPECTION_VERSION = 2 as const;
@@ -80,10 +84,16 @@ export type InspectionChannelState = {
  */
 export function inspectionChannels(
 	descriptor: StandardMaterialDescriptor,
-	views: Readonly<Record<string, Texture>> | undefined
+	views: Readonly<Record<string, Texture>> | undefined,
 ): readonly InspectionChannelState[] {
 	const plan: StandardFinishPlan | undefined = descriptor.finish;
-	const roles: readonly FinishMapRole[] = ['color', 'normal', 'roughness', 'metalness', 'occlusion'];
+	const roles: readonly FinishMapRole[] = [
+		'color',
+		'normal',
+		'roughness',
+		'metalness',
+		'occlusion',
+	];
 	return roles.map((role) => {
 		const entry = plan?.entries.find((candidate) => candidate.role === role);
 		if (entry === undefined) return { role, state: 'constant' as const };
@@ -96,7 +106,7 @@ export function inspectionChannels(
 			view: entry.view,
 			...(entry.component === undefined ? {} : { component: entry.component }),
 			...(entry.invert === undefined ? {} : { invert: entry.invert }),
-			...(entry.convention === undefined ? {} : { convention: entry.convention })
+			...(entry.convention === undefined ? {} : { convention: entry.convention }),
 		};
 	});
 }
@@ -129,8 +139,7 @@ function subjectRadius(kind: InspectionGeometryKind): number {
  */
 export function inspectionPose(kind: InspectionGeometryKind, aspect = 1): InspectionPose {
 	const target: [number, number, number] = [0, 0, 0];
-	const direction =
-		kind === 'plane' ? new Vector3(0, 0, 1) : new Vector3(1, 0.65, 1.5).normalize();
+	const direction = kind === 'plane' ? new Vector3(0, 0, 1) : new Vector3(1, 0.65, 1.5).normalize();
 	const fov = 35;
 	const verticalHalf = (fov * Math.PI) / 360;
 	const half =
@@ -148,7 +157,7 @@ export function inspectionPose(kind: InspectionGeometryKind, aspect = 1): Inspec
 export function createInspectionCamera(
 	kind: InspectionGeometryKind,
 	aspect: number,
-	backend: InspectionRenderBackend
+	backend: InspectionRenderBackend,
 ): PerspectiveCamera {
 	const { eye, target, fovYDegrees } = inspectionPose(kind, aspect);
 	// Camera converts authored Views up to 1 km of extent, and a 1:2048 request needs
@@ -162,12 +171,19 @@ export function createInspectionCamera(
 		reading: '3d',
 		pose: {
 			...view,
-			targetPlaneHeightMeters: view.targetPlaneHeightMeters * (Math.hypot(...eye) / Math.hypot(...square))
+			targetPlaneHeightMeters:
+				view.targetPlaneHeightMeters * (Math.hypot(...eye) / Math.hypot(...square)),
 		},
-		sceneRadiusMeters: 2 * subjectRadius(kind)
+		sceneRadiusMeters: 2 * subjectRadius(kind),
 	});
-	const result = evaluateViewport(state, { left: 0, top: 0, width: aspect, height: 1, devicePixelRatio: 1 }, 0, 1);
-	if (result.kind !== 'evaluated') throw new Error(`The inspection camera is unavailable: ${result.reason}`);
+	const result = evaluateViewport(
+		state,
+		{ left: 0, top: 0, width: aspect, height: 1, devicePixelRatio: 1 },
+		0,
+		1,
+	);
+	if (result.kind !== 'evaluated')
+		throw new Error(`The inspection camera is unavailable: ${result.reason}`);
 	const camera = new PerspectiveCamera(fovYDegrees, aspect);
 	realizeEvaluatedCamera(camera, result.evaluation, backend);
 	// The realized matrices draw; position and rotation only mirror them for readers.
@@ -196,14 +212,18 @@ export function normalizeInspectionRows(
 	pixels: ArrayLike<number>,
 	width: number,
 	height: number,
-	backend: InspectionRenderBackend
+	backend: InspectionRenderBackend,
 ): Uint8Array {
-	const source = pixels instanceof Uint8Array ? pixels : Uint8Array.from(pixels as ArrayLike<number>);
+	const source =
+		pixels instanceof Uint8Array ? pixels : Uint8Array.from(pixels as ArrayLike<number>);
 	if (backend === 'webgpu') return source;
 	const rowBytes = width * 4;
 	const flipped = new Uint8Array(source.length);
 	for (let y = 0; y < height; y += 1) {
-		flipped.set(source.subarray((height - 1 - y) * rowBytes, (height - y) * rowBytes), y * rowBytes);
+		flipped.set(
+			source.subarray((height - 1 - y) * rowBytes, (height - y) * rowBytes),
+			y * rowBytes,
+		);
 	}
 	return flipped;
 }
@@ -223,7 +243,7 @@ export function settledOrAborted<T>(promise: Promise<T>, signal?: AbortSignal): 
 			(error: unknown) => {
 				signal.removeEventListener('abort', abort);
 				reject(error);
-			}
+			},
 		);
 	});
 }
@@ -253,7 +273,7 @@ export async function renderInspectionFrame(input: {
 	const target = new RenderTarget(width, height, {
 		type: UnsignedByteType,
 		samples: 0,
-		depthBuffer: true
+		depthBuffer: true,
 	});
 	target.texture.colorSpace = SRGBColorSpace;
 	// The two backends share this surface but disagree in their TypeScript
@@ -276,7 +296,9 @@ export async function renderInspectionFrame(input: {
 		renderer.autoClear = true;
 		renderer.clear();
 		renderer.render(input.scene, input.camera);
-		copy = renderer.readRenderTargetPixelsAsync(target, 0, 0, width, height) as Promise<ArrayLike<number>>;
+		copy = renderer.readRenderTargetPixelsAsync(target, 0, 0, width, height) as Promise<
+			ArrayLike<number>
+		>;
 	} catch {
 		target.dispose();
 		return null;
@@ -300,7 +322,7 @@ export async function renderInspectionFrame(input: {
 			pixels: normalizeInspectionRows(pixels, width, height, backend),
 			width,
 			height,
-			backend
+			backend,
 		};
 	} catch {
 		return null;
@@ -342,7 +364,7 @@ export function createInspectionScene(input: {
 		dispose: () => {
 			geometry.dispose();
 			lighting.dispose();
-		}
+		},
 	};
 }
 
@@ -388,7 +410,7 @@ export function inspectionThumbnailKey(input: {
 		`${width}x${height}`,
 		INSPECTION_THUMBNAIL_BACKGROUND,
 		`exposure=${INSPECTION_THUMBNAIL_EXPOSURE}`,
-		INSPECTION_THUMBNAIL_PROFILE
+		INSPECTION_THUMBNAIL_PROFILE,
 	].join('|');
 	return `thumb-${stableHash(text)}`;
 }
@@ -426,10 +448,7 @@ export type InspectionObservation =
  */
 export function createInspectionObserver(options: {
 	readonly generation: () => number;
-	readonly draw: (
-		signal: AbortSignal,
-		generation: number
-	) => Promise<InspectionFrame | null>;
+	readonly draw: (signal: AbortSignal, generation: number) => Promise<InspectionFrame | null>;
 	readonly onResult: (result: InspectionObservation) => void;
 }): { request(): void; cancel(): void; dispose(): void; readonly active: boolean } {
 	let serial = 0;
@@ -504,6 +523,6 @@ export function createInspectionObserver(options: {
 		},
 		get active() {
 			return running || wanted;
-		}
+		},
 	};
 }

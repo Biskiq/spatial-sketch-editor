@@ -1,6 +1,12 @@
 import type { LayoutVec2 } from '../geometry/coordinates';
 import { cloneWallCenterline, translateWallCenterline } from '../wall/centerline';
-import type { LayoutDocumentWallFirst, LayoutObject, LayoutWall, LayoutWallCenterline, LayoutWallOpening } from '../wall/types';
+import type {
+	LayoutDocumentWallFirst,
+	LayoutObject,
+	LayoutWall,
+	LayoutWallCenterline,
+	LayoutWallOpening,
+} from '../wall/types';
 import { countWork } from '../kernel/work-observer';
 import { layoutCollectionRef, layoutVector, withLayoutVectors } from '../kernel/source-collections';
 import { sourceRecordViews } from './certified-index';
@@ -16,22 +22,30 @@ export type CowDocumentDelta = {
 	readonly changedObjectIds: readonly string[];
 };
 
-
 export type IndexedOpeningEntry = {
 	readonly opening: LayoutWallOpening;
 	readonly index: number;
 };
 
-
-type WeakCowDelta = Omit<CowDocumentDelta, 'baseline'> & { readonly parent: WeakRef<LayoutDocumentWallFirst> };
+type WeakCowDelta = Omit<CowDocumentDelta, 'baseline'> & {
+	readonly parent: WeakRef<LayoutDocumentWallFirst>;
+};
 
 const COW_DELTA_BY_DOC = new WeakMap<LayoutDocumentWallFirst, WeakCowDelta>();
 
-export const WORLD_INDEX_BY_DOC = new WeakMap<LayoutDocumentWallFirst, DocumentWorldIndex | 'invalid'>();
+export const WORLD_INDEX_BY_DOC = new WeakMap<
+	LayoutDocumentWallFirst,
+	DocumentWorldIndex | 'invalid'
+>();
 
 const EQUIVALENT_ROOT_BY_DOC = new WeakMap<LayoutDocumentWallFirst, object>();
 
-type PreparedCow = { operationId: string; candidate: LayoutDocumentWallFirst; baselineToken: object; proofKey?: string };
+type PreparedCow = {
+	operationId: string;
+	candidate: LayoutDocumentWallFirst;
+	baselineToken: object;
+	proofKey?: string;
+};
 
 const PREPARED_COW_CANDIDATES = new Map<number, PreparedCow>();
 
@@ -39,24 +53,24 @@ let preparedCowSequence = 0;
 
 const MAX_PREPARED_COW_OPS = 16;
 
-
 function canonicalCloneRoot(document: LayoutDocumentWallFirst): object {
 	let token = EQUIVALENT_ROOT_BY_DOC.get(document);
-	if (!token) { token = {}; EQUIVALENT_ROOT_BY_DOC.set(document, token); }
+	if (!token) {
+		token = {};
+		EQUIVALENT_ROOT_BY_DOC.set(document, token);
+	}
 	return token;
 }
 
-
 export function areEquivalentLayoutClones(
 	left: LayoutDocumentWallFirst,
-	right: LayoutDocumentWallFirst
+	right: LayoutDocumentWallFirst,
 ): boolean {
 	return left === right || canonicalCloneRoot(left) === canonicalCloneRoot(right);
 }
 
-
 export function getCowDocumentDelta(
-	document: LayoutDocumentWallFirst
+	document: LayoutDocumentWallFirst,
 ): CowDocumentDelta | undefined {
 	const stored = COW_DELTA_BY_DOC.get(document);
 	const baseline = stored?.parent.deref();
@@ -65,15 +79,13 @@ export function getCowDocumentDelta(
 	return { ...ids, baseline };
 }
 
-
 export function registerCowDocumentDelta(
 	document: LayoutDocumentWallFirst,
-	delta: CowDocumentDelta
+	delta: CowDocumentDelta,
 ): void {
 	const { baseline, ...ids } = delta;
 	COW_DELTA_BY_DOC.set(document, { ...ids, parent: new WeakRef(baseline) });
 }
-
 
 /**
  * Propagate verified COW lineage and persistent world-index roots from a planner
@@ -81,7 +93,7 @@ export function registerCowDocumentDelta(
  */
 export function linkClonedCowCandidate(
 	originalCandidate: LayoutDocumentWallFirst,
-	clonedCandidate: LayoutDocumentWallFirst
+	clonedCandidate: LayoutDocumentWallFirst,
 ): void {
 	if (originalCandidate === clonedCandidate) return;
 	const root = canonicalCloneRoot(originalCandidate);
@@ -101,11 +113,10 @@ export function linkClonedCowCandidate(
 			wallsRef: layoutCollectionRef(clonedCandidate, 'walls'),
 			roomsRef: layoutCollectionRef(clonedCandidate, 'rooms'),
 			openingsRef: layoutCollectionRef(clonedCandidate, 'openings'),
-			objectsRef: layoutCollectionRef(clonedCandidate, 'objects')
+			objectsRef: layoutCollectionRef(clonedCandidate, 'objects'),
 		});
 	}
 }
-
 
 /**
  * Record a prepared COW Layout candidate by `operationId` so the Stage host can
@@ -113,42 +124,59 @@ export function linkClonedCowCandidate(
  * is constant root work; a first write to an unowned mutable source may copy N slots.
  */
 export function recordPreparedCowCandidate(
- operationId: string, document: LayoutDocumentWallFirst, proofKey?: string
+	operationId: string,
+	document: LayoutDocumentWallFirst,
+	proofKey?: string,
 ): void {
- const delta = getCowDocumentDelta(document);
- if (!operationId || !delta) return;
- const baselineToken = canonicalCloneRoot(delta.baseline);
- for (const [key, entry] of PREPARED_COW_CANDIDATES) {
-  countWork('session:prepared-cache-test');
-  if (entry.operationId === operationId && entry.baselineToken === baselineToken && entry.proofKey === proofKey) PREPARED_COW_CANDIDATES.delete(key);
- }
- if (PREPARED_COW_CANDIDATES.size >= MAX_PREPARED_COW_OPS) {
-  const oldestKey = PREPARED_COW_CANDIDATES.keys().next().value;
-  if (oldestKey !== undefined) PREPARED_COW_CANDIDATES.delete(oldestKey);
- }
- PREPARED_COW_CANDIDATES.set(preparedCowSequence++, { operationId, candidate: document, baselineToken, proofKey });
+	const delta = getCowDocumentDelta(document);
+	if (!operationId || !delta) return;
+	const baselineToken = canonicalCloneRoot(delta.baseline);
+	for (const [key, entry] of PREPARED_COW_CANDIDATES) {
+		countWork('session:prepared-cache-test');
+		if (
+			entry.operationId === operationId &&
+			entry.baselineToken === baselineToken &&
+			entry.proofKey === proofKey
+		)
+			PREPARED_COW_CANDIDATES.delete(key);
+	}
+	if (PREPARED_COW_CANDIDATES.size >= MAX_PREPARED_COW_OPS) {
+		const oldestKey = PREPARED_COW_CANDIDATES.keys().next().value;
+		if (oldestKey !== undefined) PREPARED_COW_CANDIDATES.delete(oldestKey);
+	}
+	PREPARED_COW_CANDIDATES.set(preparedCowSequence++, {
+		operationId,
+		candidate: document,
+		baselineToken,
+		proofKey,
+	});
 }
-
 
 /** A bounded artifact lookup. Production qualifies both the captured baseline
  * and canonical intent data; equal operation IDs in other hosts cannot alias.
  * Baseline-only consumption is for terminal cleanup, never a reuse proof. */
 export function consumePreparedCowCandidate(
- operationId: string, proof?: { readonly baseline: LayoutDocumentWallFirst; readonly key?: string }
+	operationId: string,
+	proof?: { readonly baseline: LayoutDocumentWallFirst; readonly key?: string },
 ): LayoutDocumentWallFirst | undefined {
- const token = proof ? canonicalCloneRoot(proof.baseline) : undefined;
- for (const [key, entry] of PREPARED_COW_CANDIDATES) {
-  countWork('session:prepared-cache-test');
-  if (entry.operationId !== operationId || (proof && entry.baselineToken !== token) || (proof?.key !== undefined && entry.proofKey !== proof.key)) continue;
-  PREPARED_COW_CANDIDATES.delete(key); return entry.candidate;
- }
- return undefined;
+	const token = proof ? canonicalCloneRoot(proof.baseline) : undefined;
+	for (const [key, entry] of PREPARED_COW_CANDIDATES) {
+		countWork('session:prepared-cache-test');
+		if (
+			entry.operationId !== operationId ||
+			(proof && entry.baselineToken !== token) ||
+			(proof?.key !== undefined && entry.proofKey !== proof.key)
+		)
+			continue;
+		PREPARED_COW_CANDIDATES.delete(key);
+		return entry.candidate;
+	}
+	return undefined;
 }
-
 
 export function matchesArrayRefs(
 	document: LayoutDocumentWallFirst,
-	index: DocumentWorldIndex
+	index: DocumentWorldIndex,
 ): boolean {
 	return (
 		layoutCollectionRef(document, 'junctions') === index.junctionsRef &&
@@ -159,7 +187,6 @@ export function matchesArrayRefs(
 	);
 }
 
-
 // =====================================================================
 // Copy-on-Write (COW) Candidate Builders
 // =====================================================================
@@ -168,7 +195,7 @@ export function cowMoveJunctions(
 	baseline: LayoutDocumentWallFirst,
 	targetPoints: ReadonlyMap<string, LayoutVec2>,
 	changedWallIds: readonly string[],
-	worldIndex?: DocumentWorldIndex
+	worldIndex?: DocumentWorldIndex,
 ): LayoutDocumentWallFirst {
 	let nextJunctions = layoutVector(baseline, 'junctions');
 	if (worldIndex) {
@@ -207,7 +234,7 @@ export function cowMoveJunctions(
 	}
 	const candidate = withLayoutVectors(baseline, {
 		junctions: nextJunctions,
-		walls: nextWalls
+		walls: nextWalls,
 	});
 	registerCowDocumentDelta(candidate, {
 		baseline,
@@ -215,11 +242,10 @@ export function cowMoveJunctions(
 		changedWallIds: [...changedWallIds],
 		changedOpeningIds: [],
 		changedRoomIds: [],
-		changedObjectIds: []
+		changedObjectIds: [],
 	});
 	return candidate;
 }
-
 
 export function cowMoveRigidWall(
 	baseline: LayoutDocumentWallFirst,
@@ -227,7 +253,7 @@ export function cowMoveRigidWall(
 	delta: LayoutVec2,
 	changedJunctionIds: readonly string[],
 	changedWallIds: readonly string[],
-	worldIndex?: DocumentWorldIndex
+	worldIndex?: DocumentWorldIndex,
 ): LayoutDocumentWallFirst {
 	let nextJunctions = layoutVector(baseline, 'junctions');
 	if (worldIndex) {
@@ -237,7 +263,7 @@ export function cowMoveRigidWall(
 				const j = nextJunctions.get(idx)!;
 				nextJunctions = nextJunctions.set(idx, {
 					id: j.id,
-					point: [j.point[0] + delta[0], j.point[1] + delta[1]]
+					point: [j.point[0] + delta[0], j.point[1] + delta[1]],
 				});
 			}
 		}
@@ -248,7 +274,7 @@ export function cowMoveRigidWall(
 			if (jSet.has(j.id)) {
 				nextJunctions = nextJunctions.set(i, {
 					id: j.id,
-					point: [j.point[0] + delta[0], j.point[1] + delta[1]]
+					point: [j.point[0] + delta[0], j.point[1] + delta[1]],
 				});
 			}
 		}
@@ -283,7 +309,7 @@ export function cowMoveRigidWall(
 
 	const candidate = withLayoutVectors(baseline, {
 		junctions: nextJunctions,
-		walls: nextWalls
+		walls: nextWalls,
 	});
 	registerCowDocumentDelta(candidate, {
 		baseline,
@@ -291,17 +317,16 @@ export function cowMoveRigidWall(
 		changedWallIds: [...changedWallIds],
 		changedOpeningIds: [],
 		changedRoomIds: [],
-		changedObjectIds: []
+		changedObjectIds: [],
 	});
 	return candidate;
 }
-
 
 export function cowSetWallCenterline(
 	baseline: LayoutDocumentWallFirst,
 	wallId: string,
 	centerline: LayoutWallCenterline,
-	worldIndex?: DocumentWorldIndex
+	worldIndex?: DocumentWorldIndex,
 ): LayoutDocumentWallFirst {
 	let nextWalls = layoutVector(baseline, 'walls');
 	const clonedCenterline = cloneWallCenterline(centerline);
@@ -317,7 +342,7 @@ export function cowSetWallCenterline(
 		}
 	}
 	const candidate = withLayoutVectors(baseline, {
-		walls: nextWalls
+		walls: nextWalls,
 	});
 	registerCowDocumentDelta(candidate, {
 		baseline,
@@ -325,17 +350,16 @@ export function cowSetWallCenterline(
 		changedWallIds: [wallId],
 		changedOpeningIds: [],
 		changedRoomIds: [],
-		changedObjectIds: []
+		changedObjectIds: [],
 	});
 	return candidate;
 }
-
 
 export function cowSetWallScalar(
 	baseline: LayoutDocumentWallFirst,
 	wallId: string,
 	patch: { thickness?: number; height?: number },
-	worldIndex?: DocumentWorldIndex
+	worldIndex?: DocumentWorldIndex,
 ): LayoutDocumentWallFirst {
 	let nextWalls = layoutVector(baseline, 'walls');
 	const updateAt = (idx: number): void => {
@@ -347,7 +371,7 @@ export function cowSetWallScalar(
 			thickness: patch.thickness ?? w.thickness,
 			height: patch.height ?? w.height,
 			centerline: cloneWallCenterline(w.centerline),
-			...(w.name !== undefined ? { name: w.name } : {})
+			...(w.name !== undefined ? { name: w.name } : {}),
 		});
 	};
 	if (worldIndex) {
@@ -358,7 +382,7 @@ export function cowSetWallScalar(
 		if (idx !== -1) updateAt(idx);
 	}
 	const candidate = withLayoutVectors(baseline, {
-		walls: nextWalls
+		walls: nextWalls,
 	});
 	registerCowDocumentDelta(candidate, {
 		baseline,
@@ -366,19 +390,18 @@ export function cowSetWallScalar(
 		changedWallIds: [wallId],
 		changedOpeningIds: [],
 		changedRoomIds: [],
-		changedObjectIds: []
+		changedObjectIds: [],
 	});
 	return candidate;
 }
 
-
 export function cowCreateObject(
 	baseline: LayoutDocumentWallFirst,
-	object: LayoutObject
+	object: LayoutObject,
 ): LayoutDocumentWallFirst {
 	const freshObject = cloneObjectRecord(object);
 	const candidate = buildCowWrapper(baseline, {
-		objects: [...baseline.objects, freshObject]
+		objects: [...baseline.objects, freshObject],
 	});
 	registerCowDocumentDelta(candidate, {
 		baseline,
@@ -386,17 +409,16 @@ export function cowCreateObject(
 		changedWallIds: [],
 		changedOpeningIds: [],
 		changedRoomIds: [],
-		changedObjectIds: [freshObject.id]
+		changedObjectIds: [freshObject.id],
 	});
 	return candidate;
 }
-
 
 export function cowUpdateObject(
 	baseline: LayoutDocumentWallFirst,
 	objectId: string,
 	updater: (existing: LayoutObject) => LayoutObject,
-	worldIndex?: DocumentWorldIndex
+	worldIndex?: DocumentWorldIndex,
 ): LayoutDocumentWallFirst {
 	let nextObjects = layoutVector(baseline, 'objects');
 	if (worldIndex) {
@@ -411,7 +433,7 @@ export function cowUpdateObject(
 		}
 	}
 	const candidate = withLayoutVectors(baseline, {
-		objects: nextObjects
+		objects: nextObjects,
 	});
 	registerCowDocumentDelta(candidate, {
 		baseline,
@@ -419,18 +441,17 @@ export function cowUpdateObject(
 		changedWallIds: [],
 		changedOpeningIds: [],
 		changedRoomIds: [],
-		changedObjectIds: [objectId]
+		changedObjectIds: [objectId],
 	});
 	return candidate;
 }
-
 
 export function cowDeleteObject(
 	baseline: LayoutDocumentWallFirst,
-	objectId: string
+	objectId: string,
 ): LayoutDocumentWallFirst {
 	const candidate = buildCowWrapper(baseline, {
-		objects: baseline.objects.filter((entry) => entry.id !== objectId)
+		objects: baseline.objects.filter((entry) => entry.id !== objectId),
 	});
 	registerCowDocumentDelta(candidate, {
 		baseline,
@@ -438,17 +459,16 @@ export function cowDeleteObject(
 		changedWallIds: [],
 		changedOpeningIds: [],
 		changedRoomIds: [],
-		changedObjectIds: [objectId]
+		changedObjectIds: [objectId],
 	});
 	return candidate;
 }
-
 
 export function cowUpdateOpening(
 	baseline: LayoutDocumentWallFirst,
 	openingId: string,
 	nextOpening: LayoutWallOpening,
-	worldIndex?: DocumentWorldIndex
+	worldIndex?: DocumentWorldIndex,
 ): LayoutDocumentWallFirst {
 	let nextOpenings = layoutVector(baseline, 'openings');
 	const freshOpening: LayoutWallOpening = {
@@ -463,7 +483,7 @@ export function cowUpdateOpening(
 		...(nextOpening.name !== undefined ? { name: nextOpening.name } : {}),
 		...(nextOpening.connectsRoomIds !== undefined
 			? { connectsRoomIds: [nextOpening.connectsRoomIds[0], nextOpening.connectsRoomIds[1]] }
-			: {})
+			: {}),
 	};
 	if (worldIndex) {
 		const idx = worldIndex.openingIndexById.get(openingId);
@@ -484,17 +504,16 @@ export function cowUpdateOpening(
 		changedWallIds: [],
 		changedOpeningIds: [openingId],
 		changedRoomIds: [],
-		changedObjectIds: []
+		changedObjectIds: [],
 	});
 	return candidate;
 }
-
 
 function buildCowWrapper(
 	baseline: LayoutDocumentWallFirst,
 	overrides: Partial<
 		Pick<LayoutDocumentWallFirst, 'junctions' | 'walls' | 'rooms' | 'openings' | 'objects'>
-	>
+	>,
 ): LayoutDocumentWallFirst {
 	return {
 		units: baseline.units,
@@ -506,10 +525,9 @@ function buildCowWrapper(
 		openings: overrides.openings ?? baseline.openings,
 		objects: overrides.objects ?? baseline.objects,
 		regions: baseline.regions,
-		...(baseline.identity !== undefined ? { identity: baseline.identity } : {})
+		...(baseline.identity !== undefined ? { identity: baseline.identity } : {}),
 	};
 }
-
 
 function cloneWallRecord(wall: LayoutWall, centerline: LayoutWallCenterline): LayoutWall {
 	return {
@@ -519,10 +537,9 @@ function cloneWallRecord(wall: LayoutWall, centerline: LayoutWallCenterline): La
 		thickness: wall.thickness,
 		height: wall.height,
 		centerline,
-		...(wall.name !== undefined ? { name: wall.name } : {})
+		...(wall.name !== undefined ? { name: wall.name } : {}),
 	};
 }
-
 
 function cloneObjectRecord(object: LayoutObject): LayoutObject {
 	return {
@@ -544,19 +561,19 @@ function cloneObjectRecord(object: LayoutObject): LayoutObject {
 										end: [segment.end[0], segment.end[1]] as LayoutVec2,
 										interiorAnchors: segment.interiorAnchors.map((anchor) => ({
 											id: anchor.id,
-											point: [anchor.point[0], anchor.point[1]] as LayoutVec2
-										}))
+											point: [anchor.point[0], anchor.point[1]] as LayoutVec2,
+										})),
 									}
 								: {
 										id: segment.id,
 										kind: 'line' as const,
 										start: [segment.start[0], segment.start[1]] as LayoutVec2,
-										end: [segment.end[0], segment.end[1]] as LayoutVec2
-									}
-						)
-					}
+										end: [segment.end[0], segment.end[1]] as LayoutVec2,
+									},
+						),
+					},
 				}
 			: {}),
-		...(object.roomId !== undefined ? { roomId: object.roomId } : {})
+		...(object.roomId !== undefined ? { roomId: object.roomId } : {}),
 	};
 }

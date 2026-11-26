@@ -22,13 +22,28 @@
  * cache) so the geometry store can build its one buffer without an evaluator of
  * its own; when the lazy form kernel has not arrived yet, form items are omitted.
  */
-import { isSceneFormEntity, isSceneModelEntity, isScenePrimitiveEntity } from '@portfolio/project-model/scene';
+import {
+	isSceneFormEntity,
+	isSceneModelEntity,
+	isScenePrimitiveEntity,
+} from '@portfolio/project-model/scene';
 import { getAssetById } from '$lib/content/assets';
 import { getMaterial } from '$lib/content/materials';
-import { fallbackDimensionsFor, fallbackKindFor, type AssetFallbackKind } from '$lib/render/assets/fallbacks';
+import {
+	fallbackDimensionsFor,
+	fallbackKindFor,
+	type AssetFallbackKind,
+} from '$lib/render/assets/fallbacks';
 import { fallbackPartsFor, type FallbackPart } from '$lib/render/assets/fallback-shapes';
 import { artworkFrameLayout, artworkHeight } from '@portfolio/project-model/artwork';
-import type { RuntimeScene, SceneArtworkEntity, SceneFormEntity, SceneFormSource, SceneModelEntity, ScenePrimitiveEntity } from '@portfolio/project-model/scene';
+import type {
+	RuntimeScene,
+	SceneArtworkEntity,
+	SceneFormEntity,
+	SceneFormSource,
+	SceneModelEntity,
+	ScenePrimitiveEntity,
+} from '@portfolio/project-model/scene';
 import type { FormMesh } from '@portfolio/geometry-core';
 import { materialKey } from './resources/material-descriptor';
 import {
@@ -41,7 +56,7 @@ import {
 	type SceneRenderDescription,
 	type SceneRenderItem,
 	type SceneTransform,
-	type SceneVec3
+	type SceneVec3,
 } from './resources/scene-render-item';
 import { sceneFinishFor } from '$lib/render/materials/scene-instance-material';
 import type { StandardMaterialDescriptor } from './resources/material-descriptor';
@@ -70,7 +85,11 @@ const descriptions = new WeakMap<
 	Map<SceneFormSupport | null, SceneRenderDescription>
 >();
 
-function cached(scene: RuntimeScene, forms: SceneFormSupport | null, build: () => SceneRenderDescription): SceneRenderDescription {
+function cached(
+	scene: RuntimeScene,
+	forms: SceneFormSupport | null,
+	build: () => SceneRenderDescription,
+): SceneRenderDescription {
 	let bySupport = descriptions.get(scene);
 	if (bySupport === undefined) {
 		bySupport = new Map();
@@ -91,19 +110,23 @@ export function scenePrimitiveGeometry(entity: ScenePrimitiveEntity): {
 		case 'box':
 			return {
 				spec: { kind: 'unit', shape: 'box' },
-				scale: [entity.dimensions.width, entity.dimensions.height, entity.dimensions.depth]
+				scale: [entity.dimensions.width, entity.dimensions.height, entity.dimensions.depth],
 			};
 		case 'plane':
 			return {
 				spec: { kind: 'unit', shape: 'plane' },
-				scale: [entity.dimensions.width, entity.dimensions.height, 1]
+				scale: [entity.dimensions.width, entity.dimensions.height, 1],
 			};
 		case 'cylinder':
 			// A unit cylinder scaled to `(2r, h, 2r)` matches a cylinder built at
 			// size, vertex for vertex (the geometry parity test proves it).
 			return {
 				spec: { kind: 'unit', shape: 'cylinder', radialSegments: 32 },
-				scale: [entity.dimensions.radius * 2, entity.dimensions.height, entity.dimensions.radius * 2]
+				scale: [
+					entity.dimensions.radius * 2,
+					entity.dimensions.height,
+					entity.dimensions.radius * 2,
+				],
 			};
 		case 'sphere':
 			return {
@@ -111,8 +134,8 @@ export function scenePrimitiveGeometry(entity: ScenePrimitiveEntity): {
 				scale: [
 					entity.dimensions.radius * 2,
 					entity.dimensions.radius * 2,
-					entity.dimensions.radius * 2
-				]
+					entity.dimensions.radius * 2,
+				],
 			};
 	}
 }
@@ -149,12 +172,12 @@ export function scenePrimitiveSurfaceMeters(entity: ScenePrimitiveEntity): [numb
 
 function entityTransform(
 	entity: ScenePrimitiveEntity | SceneFormEntity,
-	scale: number
+	scale: number,
 ): SceneTransform {
 	return {
 		position: [entity.position[0], entity.position[1], entity.position[2]],
 		rotation: [entity.rotation[0], entity.rotation[1], entity.rotation[2]],
-		scale: [scale, scale, scale]
+		scale: [scale, scale, scale],
 	};
 }
 
@@ -172,7 +195,7 @@ function itemKey(
 	textures: SceneRenderItem['textures'],
 	transform: SceneTransform,
 	castShadow: boolean,
-	receiveShadow: boolean
+	receiveShadow: boolean,
 ): string {
 	return [
 		id,
@@ -181,14 +204,16 @@ function itemKey(
 		materialKey(material),
 		textures === null
 			? 'none'
-			: `${textures.variantSeed}@${textures.repeat[0]}x${textures.repeat[1]}@${textures.rotation}@${textures.offset[0]}x${textures.offset[1]}@${(textures.views ?? [])
+			: `${textures.variantSeed}@${textures.repeat[0]}x${textures.repeat[1]}@${textures.rotation}@${textures.offset[0]}x${textures.offset[1]}@${(
+					textures.views ?? []
+				)
 					.map((view) => `${view.view}=${view.uri}`)
 					.join(',')}`,
 		...transform.position,
 		...transform.rotation,
 		...transform.scale,
 		castShadow ? 1 : 0,
-		receiveShadow ? 1 : 0
+		receiveShadow ? 1 : 0,
 	].join('|');
 }
 
@@ -205,39 +230,43 @@ export function describeSceneArtwork(entity: SceneArtworkEntity): SceneArtworkIt
 	const layout = artworkFrameLayout(width, height, entity.frame);
 	const frame =
 		layout.faceMeters > 0 && layout.frameColor !== null
-			? {
+			? ({
 					geometry: {
 						kind: 'artwork-frame',
 						outerWidth: layout.outerWidth,
 						outerHeight: layout.outerHeight,
 						faceMeters: layout.faceMeters,
-						depth: layout.depth
+						depth: layout.depth,
 					},
 					color: layout.frameColor,
-					z: 0
-				} as const
+					z: 0,
+				} as const)
 			: null;
 	const mat =
 		layout.mat !== null
-			? {
+			? ({
 					geometry: {
 						kind: 'artwork-mat',
 						width: layout.mat.width,
 						height: layout.mat.height,
 						innerWidth: layout.mat.innerWidth,
-						innerHeight: layout.mat.innerHeight
+						innerHeight: layout.mat.innerHeight,
 					},
 					color: layout.matColor,
-					z: layout.mat.z
-				} as const
+					z: layout.mat.z,
+				} as const)
 			: null;
 	const backing =
 		layout.backing !== null && layout.backingColor !== null
-			? {
-					geometry: { kind: 'artwork-backing', width: layout.backing.width, height: layout.backing.height },
+			? ({
+					geometry: {
+						kind: 'artwork-backing',
+						width: layout.backing.width,
+						height: layout.backing.height,
+					},
 					color: layout.backingColor,
-					z: layout.backing.z
-				} as const
+					z: layout.backing.z,
+				} as const)
 			: null;
 	const position: SceneVec3 = [entity.position[0], entity.position[1], entity.position[2]];
 	const rotation: SceneVec3 = [entity.rotation[0], entity.rotation[1], entity.rotation[2]];
@@ -254,7 +283,7 @@ export function describeSceneArtwork(entity: SceneArtworkEntity): SceneArtworkIt
 		imageSize: [width, height],
 		frame,
 		mat,
-		backing
+		backing,
 	};
 }
 
@@ -271,7 +300,10 @@ function fallbackGeometry(primitive: FallbackPart['primitive']): {
 		case 'box':
 			return { spec: { kind: 'unit', shape: 'box' }, scale: [...primitive.size] };
 		case 'plane':
-			return { spec: { kind: 'unit', shape: 'plane' }, scale: [primitive.width, primitive.height, 1] };
+			return {
+				spec: { kind: 'unit', shape: 'plane' },
+				scale: [primitive.width, primitive.height, 1],
+			};
 		case 'sphere': {
 			const d = primitive.radius * 2;
 			return {
@@ -279,9 +311,9 @@ function fallbackGeometry(primitive: FallbackPart['primitive']): {
 					kind: 'unit',
 					shape: 'sphere',
 					widthSegments: primitive.widthSegments,
-					heightSegments: primitive.heightSegments
+					heightSegments: primitive.heightSegments,
 				},
-				scale: [d, d, d]
+				scale: [d, d, d],
 			};
 		}
 		case 'cylinder': {
@@ -289,7 +321,7 @@ function fallbackGeometry(primitive: FallbackPart['primitive']): {
 				const d = primitive.radiusTop * 2;
 				return {
 					spec: { kind: 'unit', shape: 'cylinder', radialSegments: primitive.radialSegments },
-					scale: [d, primitive.height, d]
+					scale: [d, primitive.height, d],
 				};
 			}
 			return {
@@ -299,9 +331,9 @@ function fallbackGeometry(primitive: FallbackPart['primitive']): {
 					radiusBottom: primitive.radiusBottom,
 					height: primitive.height,
 					radialSegments: primitive.radialSegments,
-					openEnded: primitive.openEnded
+					openEnded: primitive.openEnded,
 				},
-				scale: [1, 1, 1]
+				scale: [1, 1, 1],
 			};
 		}
 	}
@@ -319,7 +351,7 @@ function fallbackDescriptor(part: FallbackPart, wireframe: boolean): StandardMat
 		roughness: definition.roughness,
 		metalness: definition.metalness,
 		toneMapped: true,
-		...(wireframe ? { wireframe: true } : {})
+		...(wireframe ? { wireframe: true } : {}),
 	};
 }
 
@@ -367,7 +399,7 @@ export function describeSceneModel(input: SceneModelInput): SceneModelItem {
 			geometryScale: geometry.scale,
 			position: [...part.position],
 			rotation: [...part.rotation],
-			material: fallbackDescriptor(part, wireframe)
+			material: fallbackDescriptor(part, wireframe),
 		};
 	});
 	const fallbackCast = shadows && (asset?.castShadow ?? false);
@@ -375,31 +407,39 @@ export function describeSceneModel(input: SceneModelInput): SceneModelItem {
 	const castShadow = shadows && (asset?.castShadow ?? true);
 	const receiveShadow = shadows && (asset?.receiveShadow ?? true);
 	const catalogueUrl =
-		asset?.productionFile !== undefined && (asset.status === 'approved' || asset.status === 'testing')
+		asset?.productionFile !== undefined &&
+		(asset.status === 'approved' || asset.status === 'testing')
 			? asset.productionFile
 			: null;
 	const presentation = {
 		rotation: [...(asset?.defaultRotation ?? [0, 0, 0])] as unknown as SceneVec3,
-		scale: asset?.defaultScale ?? 1
+		scale: asset?.defaultScale ?? 1,
 	};
 	const transform: SceneTransform = {
 		position: [...input.position],
 		rotation: [...input.rotation],
-		scale: [input.scale, input.scale, input.scale]
+		scale: [input.scale, input.scale, input.scale],
 	};
 	const look = input.look;
 	return {
 		id: input.id,
 		assetId: input.assetId,
 		catalogueUrl,
-		sourceKey: [input.assetId, catalogueUrl ?? '-', ...presentation.rotation, presentation.scale].join('|'),
-		placementKey: [...transform.position, ...transform.rotation, input.scale, visible ? 1 : 0].join('|'),
+		sourceKey: [
+			input.assetId,
+			catalogueUrl ?? '-',
+			...presentation.rotation,
+			presentation.scale,
+		].join('|'),
+		placementKey: [...transform.position, ...transform.rotation, input.scale, visible ? 1 : 0].join(
+			'|',
+		),
 		fallbackKey: [
 			kind,
 			...dimensions,
 			wireframe ? 1 : 0,
 			fallbackCast ? 1 : 0,
-			fallbackReceive ? 1 : 0
+			fallbackReceive ? 1 : 0,
 		].join('|'),
 		styleKey: [
 			look?.variantSeed ?? '-',
@@ -420,7 +460,7 @@ export function describeSceneModel(input: SceneModelInput): SceneModelItem {
 			input.treatment ?? '-',
 			wireframe,
 			castShadow,
-			receiveShadow
+			receiveShadow,
 		].join('|'),
 		transform,
 		visible,
@@ -430,13 +470,13 @@ export function describeSceneModel(input: SceneModelInput): SceneModelItem {
 			dimensions: [...dimensions],
 			parts,
 			castShadow: fallbackCast,
-			receiveShadow: fallbackReceive
+			receiveShadow: fallbackReceive,
 		},
 		look,
 		...(input.treatment === undefined ? {} : { treatment: input.treatment }),
 		wireframe,
 		castShadow,
-		receiveShadow
+		receiveShadow,
 	};
 }
 
@@ -451,20 +491,21 @@ function sceneModelItem(entity: SceneModelEntity, scene: RuntimeScene): SceneMod
 				scene,
 				{
 					materialInstanceId: entity.materialInstanceId,
-					fallbackCatalogueId: 'paper-aged'
+					fallbackCatalogueId: 'paper-aged',
 				},
 				// A legacy model remap keeps identity UV0: the model's own chart is the
 				// coordinate owner and the Finish's metric tile does not apply. The
 				// GLB has not arrived yet, so both UV sets are provisionally admitted;
 				// `model-realization` re-checks the actual draw before binding.
-				{ kind: 'legacy', uvSets: [0, 1], normalFrameSets: [0, 1] }
+				{ kind: 'legacy', uvSets: [0, 1], normalFrameSets: [0, 1] },
 			)
 		: null;
 	const look: SceneModelLook | null =
 		effective === null
 			? null
 			: {
-					color: typeof effective.material.color === 'string' ? effective.material.color : '#ffffff',
+					color:
+						typeof effective.material.color === 'string' ? effective.material.color : '#ffffff',
 					roughness: effective.material.roughness,
 					metalness: effective.material.metalness,
 					variantSeed: effective.textures?.variantSeed ?? 'v-legacy',
@@ -476,7 +517,7 @@ function sceneModelItem(entity: SceneModelEntity, scene: RuntimeScene): SceneMod
 					...(effective.textures?.views === undefined ? {} : { views: effective.textures.views }),
 					...(entity.materialInstanceId !== undefined
 						? { finishKey: `project:${entity.materialInstanceId}` }
-						: {})
+						: {}),
 				};
 	const footprint = scene.modelFootprints?.get(entity.assetId);
 	return describeSceneModel({
@@ -490,13 +531,13 @@ function sceneModelItem(entity: SceneModelEntity, scene: RuntimeScene): SceneMod
 		look,
 		...(scene.environment?.treatment === undefined
 			? {}
-			: { treatment: scene.environment.treatment })
+			: { treatment: scene.environment.treatment }),
 	});
 }
 
 export function describeSceneRender(
 	scene: RuntimeScene,
-	forms: SceneFormSupport | null = null
+	forms: SceneFormSupport | null = null,
 ): SceneRenderDescription {
 	return cached(scene, forms, () => {
 		const items: SceneRenderItem[] = [];
@@ -519,11 +560,15 @@ export function describeSceneRender(
 					scene,
 					{
 						materialInstanceId: entity.materialInstanceId ?? null,
-						fallbackCatalogueId: entity.materialId
+						fallbackCatalogueId: entity.materialId,
 					},
 					// A primitive's UV0 is 0..1 per face, so one UV unit spans the
 					// rendered surface in each axis; the box approximation is retained.
-					{ kind: 'metric', uvMeters: [surface[0], surface[1]], surfaceMeters: [surface[0], surface[1]] }
+					{
+						kind: 'metric',
+						uvMeters: [surface[0], surface[1]],
+						surfaceMeters: [surface[0], surface[1]],
+					},
 				);
 				const transform = entityTransform(entity, entity.scale ?? 1);
 				items.push({
@@ -536,7 +581,7 @@ export function describeSceneRender(
 						look.textures,
 						transform,
 						entity.castShadow,
-						entity.receiveShadow
+						entity.receiveShadow,
 					),
 					geometry: geometry.spec,
 					geometryScale: geometry.scale,
@@ -548,7 +593,7 @@ export function describeSceneRender(
 							: `curated:${entity.materialId}`,
 					transform,
 					castShadow: entity.castShadow,
-					receiveShadow: entity.receiveShadow
+					receiveShadow: entity.receiveShadow,
 				});
 				continue;
 			}
@@ -562,16 +607,16 @@ export function describeSceneRender(
 				scene,
 				{
 					materialInstanceId: entity.materialInstanceId ?? null,
-					fallbackCatalogueId: entity.materialId
+					fallbackCatalogueId: entity.materialId,
 				},
 				// Form UVs are metres, so one native unit is one metre.
-				{ kind: 'metric', uvMeters: [1, 1], surfaceMeters: [1, 1] }
+				{ kind: 'metric', uvMeters: [1, 1], surfaceMeters: [1, 1] },
 			);
 			const geometry: GeometrySpec = {
 				kind: 'form',
 				evaluationKey: form.evaluationKey,
 				mesh: form.mesh,
-				plane: form.plane
+				plane: form.plane,
 			};
 			const scale: SceneVec3 = [1, 1, 1];
 			const transform = entityTransform(entity, 1);
@@ -585,7 +630,7 @@ export function describeSceneRender(
 					look.textures,
 					transform,
 					entity.castShadow,
-					entity.receiveShadow
+					entity.receiveShadow,
 				),
 				geometry,
 				geometryScale: scale,
@@ -597,7 +642,7 @@ export function describeSceneRender(
 						: `curated:${entity.materialId}`,
 				transform,
 				castShadow: entity.castShadow,
-				receiveShadow: entity.receiveShadow
+				receiveShadow: entity.receiveShadow,
 			});
 		}
 

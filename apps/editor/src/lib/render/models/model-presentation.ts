@@ -9,7 +9,10 @@
  * are plain data and live here, so the handler never imports the realization's
  * values.
  */
-import type { StandardFinishPlan, StandardMaterialDescriptor } from '../resources/material-descriptor';
+import type {
+	StandardFinishPlan,
+	StandardMaterialDescriptor,
+} from '../resources/material-descriptor';
 import type { TextureLoadScope } from '../resources/texture-store';
 import type { TextureVariantSource } from '../resources/texture-variant';
 import type { Texture } from 'three';
@@ -60,7 +63,7 @@ export function modelLookFor(
 	scope: TextureLoadScope | null,
 	textured: boolean,
 	finish?: StandardFinishPlan,
-	views?: Readonly<Record<string, Texture>>
+	views?: Readonly<Record<string, Texture>>,
 ): ModelLook {
 	return {
 		material: {
@@ -68,12 +71,13 @@ export function modelLookFor(
 			roughness: effective.roughness,
 			metalness: effective.metalness,
 			...(effective.normalScale == null ? {} : { normalScale: effective.normalScale }),
-			...(finish === undefined ? {} : { finish })
+			...(finish === undefined ? {} : { finish }),
 		},
 		// A sampled look never binds a stock map slot; the plan's views replace
 		// every map, including the normal the scale belongs to.
-		texture: finish !== undefined ? null : textured ? { source: effective, repeat: [1, 1], scope } : null,
-		...(views === undefined ? {} : { views })
+		texture:
+			finish !== undefined ? null : textured ? { source: effective, repeat: [1, 1], scope } : null,
+		...(views === undefined ? {} : { views }),
 	};
 }
 
@@ -101,6 +105,6 @@ export function createArrivalGate(): ArrivalGate {
 		},
 		close() {
 			current += 1;
-		}
+		},
 	};
 }

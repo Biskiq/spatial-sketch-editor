@@ -30,12 +30,17 @@ import {
 	dot3,
 	round1,
 	signedArea,
-	unit3
+	unit3,
 } from './experience-camera-mesh';
 import type { Vec3 } from '@portfolio/camera-core/camera';
 import type { CameraView, Experience, ExperienceGuide } from '@portfolio/project-model/units';
 
-import { experiencePathOccurrences, occurrenceKey, resolvePathOccurrence, type ExperiencePathOccurrence } from './experience-paths';
+import {
+	experiencePathOccurrences,
+	occurrenceKey,
+	resolvePathOccurrence,
+	type ExperiencePathOccurrence,
+} from './experience-paths';
 import { stopEntryViewId } from './experience-model';
 
 export type ExperienceMarkState = 'selected' | 'strong' | 'normal' | 'dim';
@@ -43,7 +48,6 @@ export type ExperienceMarkKind = 'eye' | 'turn' | 'glyph';
 
 /** left, top, right, bottom in Stage-local CSS pixels. */
 export type StageBox = readonly [number, number, number, number];
-
 
 export type ExperienceCameraFace = {
 	readonly points: readonly StagePoint[];
@@ -118,7 +122,7 @@ export type ExperienceMarkModel = {
 
 export const EXPERIENCE_MARK_CAPS = {
 	labels: 12,
-	frustums: 24
+	frustums: 24,
 } as const;
 
 /** Plan wedge lengths in CSS pixels: quiet, on the tour, and the selected View's full cone. */
@@ -157,13 +161,20 @@ const CAMERA_STEM_MIN_METRES = 0.02;
  * camera's depth range clips (`clipped`) still marks. In an empty Plan the depth
  * range hugs the Floor, and every View at eye height was dropped.
  */
-function projectStage(evaluation: ViewportEvaluation, point: V3, requireVisible: boolean): StagePoint | null {
+function projectStage(
+	evaluation: ViewportEvaluation,
+	point: V3,
+	requireVisible: boolean,
+): StagePoint | null {
 	const projected = projectWorld(point, evaluation, evaluation.token);
 	if (projected.kind !== 'projected') return null;
 	if (projected.visibility === 'behind') return null;
 	if (requireVisible && projected.visibility === 'outside-frame') return null;
 	// projectWorld is absolute viewport CSS; Stage SVG ink is Stage-local.
-	return [round1(projected.css[0] - evaluation.rect.left), round1(projected.css[1] - evaluation.rect.top)];
+	return [
+		round1(projected.css[0] - evaluation.rect.left),
+		round1(projected.css[1] - evaluation.rect.top),
+	];
 }
 
 function stateRank(state: ExperienceMarkState): number {
@@ -200,7 +211,7 @@ function cameraGlyph(
 	fovDegrees: number,
 	wire: boolean,
 	wireMetres: number = CAMERA_FRUSTUM_FAR_METRES,
-	datum = 0
+	datum = 0,
 ): ExperienceCameraGlyph | null {
 	const forward = unit3(sub3(aim, eye)) ?? [0, 0, -1];
 	const reference: V3 = Math.abs(forward[1]) > 0.999 ? [0, 0, 1] : [0, 1, 0];
@@ -212,7 +223,7 @@ function cameraGlyph(
 	const toWorld = (p: LocalPoint): V3 => [
 		eye[0] + p[0] * forward[0] + p[1] * right[0] + p[2] * up[0],
 		eye[1] + p[0] * forward[1] + p[1] * right[1] + p[2] * up[1],
-		eye[2] + p[0] * forward[2] + p[1] * right[2] + p[2] * up[2]
+		eye[2] + p[0] * forward[2] + p[1] * right[2] + p[2] * up[2],
 	];
 
 	const world = CAMERA_MESH.points.map(toWorld);
@@ -243,7 +254,7 @@ function cameraGlyph(
 		const dz = cz / n - evaluation.eye[2];
 		visible.push({
 			face: { points: face.ids.map((index) => screen[index]!), shade: face.shade },
-			depth: dx * dx + dy * dy + dz * dz
+			depth: dx * dx + dy * dy + dz * dz,
 		});
 	}
 	visible.sort((a, b) => b.depth - a.depth);
@@ -257,7 +268,15 @@ function cameraGlyph(
 	const floorCss = projectStage(evaluation, floorWorld, false);
 	let shadow: ExperienceCameraGlyph['shadow'] = null;
 	if (floorCss !== null) {
-		const offsetX = projectStage(evaluation, [floorWorld[0] + right[0] * CAMERA_SHADOW_RADIUS_METRES, datum, floorWorld[2] + right[2] * CAMERA_SHADOW_RADIUS_METRES], false);
+		const offsetX = projectStage(
+			evaluation,
+			[
+				floorWorld[0] + right[0] * CAMERA_SHADOW_RADIUS_METRES,
+				datum,
+				floorWorld[2] + right[2] * CAMERA_SHADOW_RADIUS_METRES,
+			],
+			false,
+		);
 		if (offsetX !== null) {
 			const radius = Math.hypot(offsetX[0] - floorCss[0], offsetX[1] - floorCss[1]);
 			shadow = { center: floorCss, rx: radius, ry: radius * 0.55 };
@@ -273,7 +292,12 @@ function cameraGlyph(
 		const halfWidth = halfHeight * CAMERA_FRUSTUM_ASPECT;
 		const tip = CAMERA_MESH.lensTip;
 		const corners: StagePoint[] = [];
-		for (const [sx, sy] of [[-1, 1], [1, 1], [1, -1], [-1, -1]] as const) {
+		for (const [sx, sy] of [
+			[-1, 1],
+			[1, 1],
+			[1, -1],
+			[-1, -1],
+		] as const) {
 			const local: LocalPoint = [tip[0] + wireMetres, sx * halfWidth, sy * halfHeight];
 			const css = projectStage(evaluation, toWorld(local), false);
 			if (css === null) break;
@@ -282,7 +306,7 @@ function cameraGlyph(
 		if (apexCss !== null && corners.length === 4) {
 			frustum = {
 				apex: apexCss,
-				corners: [corners[0]!, corners[1]!, corners[2]!, corners[3]!]
+				corners: [corners[0]!, corners[1]!, corners[2]!, corners[3]!],
 			};
 		}
 	}
@@ -297,7 +321,7 @@ function cameraGlyph(
 		shadow,
 		stem: showStem ? [eyeCss!, floorCss!] : null,
 		floor: floorCss,
-		frustum
+		frustum,
 	};
 }
 
@@ -330,7 +354,7 @@ function planFrustum(
 	eye: StagePoint,
 	target: StagePoint,
 	fov: number,
-	length: number
+	length: number,
 ): ExperienceFrustum | null {
 	const dx = target[0] - eye[0];
 	const dy = target[1] - eye[1];
@@ -342,10 +366,23 @@ function planFrustum(
 	const right = rotate2(direction, half);
 	// The wedge's apex is the glyph's lens front (sheet §23), not the camera's centre.
 	const lens = PLAN_LENS_PX * (state === 'selected' ? PLAN_SELECTED_SCALE : 1);
-	const apex: StagePoint = [round1(eye[0] + direction[0] * lens), round1(eye[1] + direction[1] * lens)];
-	const point = (along: StagePoint): StagePoint =>
-		[round1(apex[0] + along[0] * length), round1(apex[1] + along[1] * length)];
-	return { viewId, state, eye: apex, left: point(left), right: point(right), tip: point(direction), length };
+	const apex: StagePoint = [
+		round1(eye[0] + direction[0] * lens),
+		round1(eye[1] + direction[1] * lens),
+	];
+	const point = (along: StagePoint): StagePoint => [
+		round1(apex[0] + along[0] * length),
+		round1(apex[1] + along[1] * length),
+	];
+	return {
+		viewId,
+		state,
+		eye: apex,
+		left: point(left),
+		right: point(right),
+		tip: point(direction),
+		length,
+	};
 }
 
 /** The same View glyph and frustum at the provisional pose, without an authored View or hit target. */
@@ -355,9 +392,16 @@ export function projectPlacementGhost(evaluation: ViewportEvaluation, pose: Plac
 	if (evaluation.projectionKind !== 'plan-orthographic') {
 		return {
 			eye,
-			camera: cameraGlyph(evaluation, pose.eye, pose.target, pose.fovYDegrees, true, CAMERA_FRUSTUM_FAR_METRES),
+			camera: cameraGlyph(
+				evaluation,
+				pose.eye,
+				pose.target,
+				pose.fovYDegrees,
+				true,
+				CAMERA_FRUSTUM_FAR_METRES,
+			),
 			heading: null,
-			wedge: null
+			wedge: null,
 		};
 	}
 	const target = projectStage(evaluation, pose.target, false);
@@ -365,7 +409,17 @@ export function projectPlacementGhost(evaluation: ViewportEvaluation, pose: Plac
 		eye,
 		camera: null,
 		heading: target === null ? null : planHeading(eye, target),
-		wedge: target === null ? null : planFrustum('placement', 'selected', eye, target, pose.fovYDegrees, PLAN_WEDGE_SELECTED_PX)
+		wedge:
+			target === null
+				? null
+				: planFrustum(
+						'placement',
+						'selected',
+						eye,
+						target,
+						pose.fovYDegrees,
+						PLAN_WEDGE_SELECTED_PX,
+					),
 	};
 }
 
@@ -373,7 +427,7 @@ export function projectPlacementGhost(evaluation: ViewportEvaluation, pose: Plac
 export function relatedToSelection(
 	selection: MarkSelection,
 	experience: Experience,
-	guide: ExperienceGuide | null
+	guide: ExperienceGuide | null,
 ): { readonly views: ReadonlySet<string>; readonly paths: ReadonlySet<string> } {
 	const views = new Set<string>();
 	const paths = new Set<string>();
@@ -391,15 +445,21 @@ export function relatedToSelection(
 		const entry = stop === undefined ? null : stopEntryViewId(experience, stop);
 		if (entry !== null) views.add(entry);
 	} else if (selection.presentationId != null) {
-		for (const view of experience.presentations.find((entry) => entry.id === selection.presentationId)?.views ?? []) {
+		for (const view of experience.presentations.find(
+			(entry) => entry.id === selection.presentationId,
+		)?.views ?? []) {
 			views.add(view.viewId);
 		}
 	}
 
 	if (selection.path == null && (selection.viewId != null || selection.stopId != null)) {
 		for (const path of experiencePathOccurrences(experience, guide)) {
-			if (path.stopId === selection.stopId || path.toStopId === selection.stopId ||
-				path.fromViewId === selection.viewId || path.toViewId === selection.viewId) {
+			if (
+				path.stopId === selection.stopId ||
+				path.toStopId === selection.stopId ||
+				path.fromViewId === selection.viewId ||
+				path.toViewId === selection.viewId
+			) {
 				paths.add(occurrenceKey(path.occurrence));
 			}
 		}
@@ -413,9 +473,19 @@ export function experienceMarkModel(input: MarkInput): ExperienceMarkModel {
 	if (experience === null) return { marks: [], frustums: [] };
 	// Review round 3 (sheet §23): a live marker drag draws the View at its provisional
 	// pose, so the camera itself follows the pointer. The authored View is untouched.
-	const views = livePose == null
-		? input.views
-		: input.views.map((view) => view.id === livePose.viewId ? { ...view, eye: [...livePose.eye], target: [...livePose.target], fov: livePose.fov } as CameraView : view);
+	const views =
+		livePose == null
+			? input.views
+			: input.views.map((view) =>
+					view.id === livePose.viewId
+						? ({
+								...view,
+								eye: [...livePose.eye],
+								target: [...livePose.target],
+								fov: livePose.fov,
+							} as CameraView)
+						: view,
+				);
 
 	const presentationOf = new Map<string, string[]>();
 	for (const presentation of experience.presentations) {
@@ -424,16 +494,20 @@ export function experienceMarkModel(input: MarkInput): ExperienceMarkModel {
 		}
 	}
 	const related = relatedToSelection(selection, experience, guide);
-	const guidedStop = selection.path != null || selection.stopId === null || selection.stopId === undefined
-		? null
-		: experience.stops.find((stop) => stop.id === selection.stopId) ?? null;
+	const guidedStop =
+		selection.path != null || selection.stopId === null || selection.stopId === undefined
+			? null
+			: (experience.stops.find((stop) => stop.id === selection.stopId) ?? null);
 	const numbered = new Map<string, number>();
 	// A Stop's mark is its entry View, numbered 1: one visit, one View.
 	const guidedEntry = guidedStop === null ? null : stopEntryViewId(experience, guidedStop);
 	if (guidedEntry !== null) numbered.set(guidedEntry, 1);
 	const guided = new Set(numbered.keys());
 	const nothingSelected =
-		(selection.presentationId ?? null) === null && (selection.viewId ?? null) === null && selection.stopId == null && selection.path == null;
+		(selection.presentationId ?? null) === null &&
+		(selection.viewId ?? null) === null &&
+		selection.stopId == null &&
+		selection.path == null;
 
 	const ordered: {
 		readonly view: CameraView;
@@ -460,7 +534,8 @@ export function experienceMarkModel(input: MarkInput): ExperienceMarkModel {
 	const labelCandidates = ordered
 		.filter((entry) => entry.state === 'selected' || entry.state === 'strong')
 		.sort((left, right) => stateRank(left.state) - stateRank(right.state));
-	for (const entry of labelCandidates.slice(0, EXPERIENCE_MARK_CAPS.labels)) labelsAvailable.add(entry.view.id);
+	for (const entry of labelCandidates.slice(0, EXPERIENCE_MARK_CAPS.labels))
+		labelsAvailable.add(entry.view.id);
 
 	const marks: ExperienceMark[] = [];
 	const frustums: ExperienceFrustum[] = [];
@@ -477,11 +552,29 @@ export function experienceMarkModel(input: MarkInput): ExperienceMarkModel {
 
 		if (!plan) {
 			const wire = wires < EXPERIENCE_MARK_CAPS.frustums;
-			const camera = cameraGlyph(evaluation, view.eye as Vec3, view.target as Vec3, view.fov, wire, state === 'selected' ? CAMERA_FRUSTUM_FAR_METRES : CAMERA_FRUSTUM_QUIET_METRES, datum);
+			const camera = cameraGlyph(
+				evaluation,
+				view.eye as Vec3,
+				view.target as Vec3,
+				view.fov,
+				wire,
+				state === 'selected' ? CAMERA_FRUSTUM_FAR_METRES : CAMERA_FRUSTUM_QUIET_METRES,
+				datum,
+			);
 			if (camera?.frustum) wires += 1;
 			const box: StageBox = camera
-				? [camera.bounds[0] - CAMERA_BRACKET_PAD_PX, camera.bounds[1] - CAMERA_BRACKET_PAD_PX, camera.bounds[2] + CAMERA_BRACKET_PAD_PX, camera.bounds[3] + CAMERA_BRACKET_PAD_PX]
-				: [eye[0] - PLAN_BOX_HALF_PX, eye[1] - PLAN_BOX_HALF_PX, eye[0] + PLAN_BOX_HALF_PX, eye[1] + PLAN_BOX_HALF_PX];
+				? [
+						camera.bounds[0] - CAMERA_BRACKET_PAD_PX,
+						camera.bounds[1] - CAMERA_BRACKET_PAD_PX,
+						camera.bounds[2] + CAMERA_BRACKET_PAD_PX,
+						camera.bounds[3] + CAMERA_BRACKET_PAD_PX,
+					]
+				: [
+						eye[0] - PLAN_BOX_HALF_PX,
+						eye[1] - PLAN_BOX_HALF_PX,
+						eye[0] + PLAN_BOX_HALF_PX,
+						eye[1] + PLAN_BOX_HALF_PX,
+					];
 			marks.push({
 				id: `view:${view.id}:glyph`,
 				viewId: view.id,
@@ -494,7 +587,7 @@ export function experienceMarkModel(input: MarkInput): ExperienceMarkModel {
 				tagAt: [eye[0], box[1] - 14],
 				numberAt: camera ? [box[0] - 6, box[1] - 4] : [eye[0] - 11, eye[1] - 11],
 				box,
-				camera
+				camera,
 			});
 			continue;
 		}
@@ -503,7 +596,12 @@ export function experienceMarkModel(input: MarkInput): ExperienceMarkModel {
 		// (a panned Plan, a far look point) without hiding the View.
 		const target = projectStage(evaluation, view.target as Vec3, false);
 		if (target === null) continue;
-		const box: StageBox = [eye[0] - PLAN_BOX_HALF_PX, eye[1] - PLAN_BOX_HALF_PX, eye[0] + PLAN_BOX_HALF_PX, eye[1] + PLAN_BOX_HALF_PX];
+		const box: StageBox = [
+			eye[0] - PLAN_BOX_HALF_PX,
+			eye[1] - PLAN_BOX_HALF_PX,
+			eye[0] + PLAN_BOX_HALF_PX,
+			eye[1] + PLAN_BOX_HALF_PX,
+		];
 		marks.push({
 			id: `view:${view.id}:eye`,
 			viewId: view.id,
@@ -517,10 +615,15 @@ export function experienceMarkModel(input: MarkInput): ExperienceMarkModel {
 			numberAt: [eye[0] - 15, eye[1] - 15],
 			box,
 			camera: null,
-			heading: planHeading(eye, target)
+			heading: planHeading(eye, target),
 		});
 
-		const length = state === 'selected' ? PLAN_WEDGE_SELECTED_PX : (onTour || state === 'strong') ? PLAN_WEDGE_TOUR_PX : PLAN_WEDGE_QUIET_PX;
+		const length =
+			state === 'selected'
+				? PLAN_WEDGE_SELECTED_PX
+				: onTour || state === 'strong'
+					? PLAN_WEDGE_TOUR_PX
+					: PLAN_WEDGE_QUIET_PX;
 		const wedge = planFrustum(view.id, state, eye, target, view.fov, length);
 		if (wedge === null) continue;
 		if (frustums.length < EXPERIENCE_MARK_CAPS.frustums) frustums.push(wedge);
@@ -538,7 +641,7 @@ export function experienceMarkModel(input: MarkInput): ExperienceMarkModel {
 				tagAt: tip,
 				numberAt: tip,
 				box,
-				camera: null
+				camera: null,
 			});
 		}
 	}
@@ -554,7 +657,12 @@ type MarkInput = {
 	readonly selection: MarkSelection;
 	/** A live marker drag's provisional pose for one View; never authored. */
 	readonly datum?: number;
-	readonly livePose?: { readonly viewId: string; readonly eye: Vec3; readonly target: Vec3; readonly fov: number } | null;
+	readonly livePose?: {
+		readonly viewId: string;
+		readonly eye: Vec3;
+		readonly target: Vec3;
+		readonly fov: number;
+	} | null;
 };
 
 type MarkSelection = {

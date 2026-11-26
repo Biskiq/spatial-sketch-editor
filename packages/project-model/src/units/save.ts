@@ -25,17 +25,25 @@
  */
 
 import { fullSourceHash, type SaveAcceptedSource, type SavePrecondition } from '../save/protocol';
-import type { PreparedSaveSource, SaveSourceHandler, SaveSourcePreparation } from '../save/admission';
+import type {
+	PreparedSaveSource,
+	SaveSourceHandler,
+	SaveSourcePreparation,
+} from '../save/admission';
 import type { ShapeIssue } from '../strict-shape';
 import type { AcceptedSnapshot } from '../f4/types';
 import {
 	computeEnvelopeSourceContentId,
 	verifyUnitContentRevisions,
-	type SaveWorkInstrumentation
+	type SaveWorkInstrumentation,
 } from './canonical';
 import { verifyUnitDependencyLocks } from './acceptance';
 import { serializeProjectEnvelope, validateProjectEnvelope } from './validate';
-import { normalizeUnitEnvelope, UNIT_ENVELOPE_SOURCE_KIND, UNIT_ENVELOPE_SOURCE_VERSION } from './acceptance';
+import {
+	normalizeUnitEnvelope,
+	UNIT_ENVELOPE_SOURCE_KIND,
+	UNIT_ENVELOPE_SOURCE_VERSION,
+} from './acceptance';
 import type { ProjectEnvelope } from './types';
 
 export const UNIT_SAVE_SOURCE_KIND = UNIT_ENVELOPE_SOURCE_KIND;
@@ -51,7 +59,9 @@ export type UnitSaveRefusal = {
 	readonly issues: readonly ShapeIssue[];
 };
 
-export type UnitSaveCapture = { readonly kind: 'captured'; readonly capture: SaveAcceptedSource } | UnitSaveRefusal;
+export type UnitSaveCapture =
+	| { readonly kind: 'captured'; readonly capture: SaveAcceptedSource }
+	| UnitSaveRefusal;
 
 /**
  * Read one captured canonical envelope. `canonicalJson` must be exactly what
@@ -59,17 +69,27 @@ export type UnitSaveCapture = { readonly kind: 'captured'; readonly capture: Sav
  * reformatted envelope is refused rather than hashed into a different identity.
  */
 export async function readUnitEnvelopeForSave(
-	canonicalJson: string
+	canonicalJson: string,
 ): Promise<{ readonly kind: 'read'; readonly envelope: ProjectEnvelope } | UnitSaveRefusal> {
 	let parsed: unknown;
 	try {
 		parsed = JSON.parse(canonicalJson);
 	} catch {
-		return { kind: 'refused', code: 'invalid-project', message: 'The captured envelope is not valid JSON', issues: [] };
+		return {
+			kind: 'refused',
+			code: 'invalid-project',
+			message: 'The captured envelope is not valid JSON',
+			issues: [],
+		};
 	}
 	const validated = validateProjectEnvelope(parsed);
 	if (!validated.success) {
-		return { kind: 'refused', code: 'invalid-project', message: 'The captured envelope is not a valid F.2 envelope', issues: validated.issues };
+		return {
+			kind: 'refused',
+			code: 'invalid-project',
+			message: 'The captured envelope is not a valid F.2 envelope',
+			issues: validated.issues,
+		};
 	}
 	const mismatches = await verifyUnitContentRevisions(validated.envelope);
 	if (mismatches.length > 0) {
@@ -80,8 +100,8 @@ export async function readUnitEnvelopeForSave(
 			issues: mismatches.map((mismatch) => ({
 				path: mismatch.path,
 				code: 'content-revision-mismatch',
-				message: `declared ${mismatch.declared}, recomputed ${mismatch.recomputed}`
-			}))
+				message: `declared ${mismatch.declared}, recomputed ${mismatch.recomputed}`,
+			})),
 		};
 	}
 	if (serializeProjectEnvelope(validated.envelope) !== canonicalJson) {
@@ -89,7 +109,7 @@ export async function readUnitEnvelopeForSave(
 			kind: 'refused',
 			code: 'content-identity-mismatch',
 			message: 'The captured envelope is not the canonical encoding of its contents',
-			issues: []
+			issues: [],
 		};
 	}
 	if (validated.closure.length > 0) {
@@ -97,12 +117,21 @@ export async function readUnitEnvelopeForSave(
 			kind: 'refused',
 			code: 'invalid-project',
 			message: 'The envelope cannot satisfy an executable resource requirement',
-			issues: validated.closure.map((finding) => ({ path: finding.path, code: finding.code, message: finding.message }))
+			issues: validated.closure.map((finding) => ({
+				path: finding.path,
+				code: finding.code,
+				message: finding.message,
+			})),
 		};
 	}
 	const lockIssues = await verifyUnitDependencyLocks(validated.envelope);
 	if (lockIssues.length > 0) {
-		return { kind: 'refused', code: 'invalid-project', message: 'The dependency lock does not resolve', issues: lockIssues };
+		return {
+			kind: 'refused',
+			code: 'invalid-project',
+			message: 'The dependency lock does not resolve',
+			issues: lockIssues,
+		};
 	}
 	return { kind: 'read', envelope: validated.envelope };
 }
@@ -113,18 +142,26 @@ export async function readUnitEnvelopeForSave(
  * The snapshot is the accepted source; its `acceptedRevision` is the revision
  * the Save is recorded under, and the authored content is copied unchanged.
  */
-export async function captureUnitSave(input: {
-	readonly snapshot: AcceptedSnapshot<ProjectEnvelope>;
-	readonly operationId: string;
-	readonly precondition: SavePrecondition;
-}, instrumentation?: SaveWorkInstrumentation): Promise<UnitSaveCapture> {
+export async function captureUnitSave(
+	input: {
+		readonly snapshot: AcceptedSnapshot<ProjectEnvelope>;
+		readonly operationId: string;
+		readonly precondition: SavePrecondition;
+	},
+	instrumentation?: SaveWorkInstrumentation,
+): Promise<UnitSaveCapture> {
 	const source = input.snapshot.domain.source;
 	const stamped: ProjectEnvelope = { ...source, acceptedRevision: input.snapshot.acceptedRevision };
 	const validated = instrumentation
 		? instrumentation.sync('save.capture-validate', () => validateProjectEnvelope(stamped))
 		: validateProjectEnvelope(stamped);
 	if (!validated.success) {
-		return { kind: 'refused', code: 'invalid-project', message: 'The accepted envelope does not validate', issues: validated.issues };
+		return {
+			kind: 'refused',
+			code: 'invalid-project',
+			message: 'The accepted envelope does not validate',
+			issues: validated.issues,
+		};
 	}
 	// Executable closure is the same answer the Save reader gives: an envelope the
 	// registry cannot satisfy must not become a captured write. Repairable authored
@@ -134,7 +171,11 @@ export async function captureUnitSave(input: {
 			kind: 'refused',
 			code: 'invalid-project',
 			message: 'The envelope cannot satisfy an executable resource requirement',
-			issues: validated.closure.map((finding) => ({ path: finding.path, code: finding.code, message: finding.message }))
+			issues: validated.closure.map((finding) => ({
+				path: finding.path,
+				code: finding.code,
+				message: finding.message,
+			})),
 		};
 	}
 	// The accepted source installed by the unit adapter is already normalized; this
@@ -142,13 +183,24 @@ export async function captureUnitSave(input: {
 	// cannot capture a revision that disagrees with its data.
 	const normalized = await normalizeUnitEnvelope(validated.envelope, instrumentation);
 	const canonicalJson = instrumentation
-		? instrumentation.sync('save.capture-serialize-envelope', () => serializeProjectEnvelope(normalized))
+		? instrumentation.sync('save.capture-serialize-envelope', () =>
+				serializeProjectEnvelope(normalized),
+			)
 		: serializeProjectEnvelope(normalized);
 	const lockIssues = await verifyUnitDependencyLocks(normalized, { instrumentation });
 	if (lockIssues.length > 0) {
-		return { kind: 'refused', code: 'invalid-project', message: 'The dependency lock does not resolve', issues: lockIssues };
+		return {
+			kind: 'refused',
+			code: 'invalid-project',
+			message: 'The dependency lock does not resolve',
+			issues: lockIssues,
+		};
 	}
-	const sourceContentId = await computeEnvelopeSourceContentId(normalized, instrumentation, 'save.capture-source-id');
+	const sourceContentId = await computeEnvelopeSourceContentId(
+		normalized,
+		instrumentation,
+		'save.capture-source-id',
+	);
 	return {
 		kind: 'captured',
 		capture: {
@@ -160,8 +212,8 @@ export async function captureUnitSave(input: {
 			sourceVersion: UNIT_SAVE_SOURCE_VERSION,
 			acceptedRevision: normalized.acceptedRevision,
 			sourceContentId,
-			canonicalJson
-		}
+			canonicalJson,
+		},
 	};
 }
 
@@ -174,18 +226,22 @@ async function prepareUnitSource(capture: SaveAcceptedSource): Promise<SaveSourc
 		return {
 			kind: 'refused',
 			code: 'content-identity-mismatch',
-			message: 'The captured envelope does not carry the captured accepted revision'
+			message: 'The captured envelope does not carry the captured accepted revision',
 		};
 	}
 	if (envelope.id !== capture.projectId) {
-		return { kind: 'refused', code: 'invalid-save-request', message: 'The captured envelope belongs to a different project' };
+		return {
+			kind: 'refused',
+			code: 'invalid-save-request',
+			message: 'The captured envelope belongs to a different project',
+		};
 	}
 	const sourceContentId = await computeEnvelopeSourceContentId(envelope);
 	if (sourceContentId !== capture.sourceContentId) {
 		return {
 			kind: 'refused',
 			code: 'content-identity-mismatch',
-			message: 'The recomputed envelope content identity does not match the capture'
+			message: 'The recomputed envelope content identity does not match the capture',
 		};
 	}
 	const prepared: PreparedSaveSource = {
@@ -194,7 +250,7 @@ async function prepareUnitSource(capture: SaveAcceptedSource): Promise<SaveSourc
 		projectId: envelope.id,
 		name: envelope.name,
 		sourceContentId,
-		fullSourceHash: await fullSourceHash(canonicalJson)
+		fullSourceHash: await fullSourceHash(canonicalJson),
 	};
 	return { kind: 'prepared', source: prepared };
 }
@@ -220,10 +276,14 @@ export function createUnitSaveHandler(): SaveSourceHandler {
 				again.source.sourceContentId !== prepared.sourceContentId ||
 				again.source.fullSourceHash !== prepared.fullSourceHash
 			) {
-				return { kind: 'refused', code: 'content-identity-mismatch', message: 'The envelope changed between capture and admission' };
+				return {
+					kind: 'refused',
+					code: 'content-identity-mismatch',
+					message: 'The envelope changed between capture and admission',
+				};
 			}
 			return again;
 		},
-		baseline: async () => []
+		baseline: async () => [],
 	};
 }

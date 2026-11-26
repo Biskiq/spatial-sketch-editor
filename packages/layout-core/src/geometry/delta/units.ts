@@ -1,8 +1,29 @@
 import type { CompiledRegionUnit } from '../../room/region-compile';
 import type { LayoutVec2 } from '../coordinates';
-import type { CompiledFloor, CompiledJunction, CompiledJunctionLeg, CompiledLayoutObject, CompiledLegJoin, CompiledPhysicalWall, CompiledQueryAabb, CompiledQueryPolygon, CompiledRoom, CompilerRoomSource, LayoutBounds2, LayoutBounds3, LayoutGeometryIssue } from '../types';
+import type {
+	CompiledFloor,
+	CompiledJunction,
+	CompiledJunctionLeg,
+	CompiledLayoutObject,
+	CompiledLegJoin,
+	CompiledPhysicalWall,
+	CompiledQueryAabb,
+	CompiledQueryPolygon,
+	CompiledRoom,
+	CompilerRoomSource,
+	LayoutBounds2,
+	LayoutBounds3,
+	LayoutGeometryIssue,
+} from '../types';
 import type { LayoutCompileReuse, RetainedQueryRecords } from '../reuse';
-import type { LayoutDerivedWallRole, LayoutDocumentWallFirst, LayoutJunction, LayoutObject, LayoutWall, LayoutWallOpening } from '../../wall/types';
+import type {
+	LayoutDerivedWallRole,
+	LayoutDocumentWallFirst,
+	LayoutJunction,
+	LayoutObject,
+	LayoutWall,
+	LayoutWallOpening,
+} from '../../wall/types';
 import { PersistentMap, PersistentVector } from '../../kernel/persistent-store';
 import type { ChunkSummary } from './world';
 
@@ -17,7 +38,6 @@ export type EvaluatedRoomUnit = {
 	readonly bounds3: LayoutBounds3 | null;
 };
 
-
 export type EvaluatedWallBaseUnit = {
 	readonly baseCompiled: CompiledPhysicalWall;
 	readonly baseBounds2: LayoutBounds2;
@@ -29,19 +49,16 @@ export type EvaluatedWallBaseUnit = {
 	readonly openingsCount: number;
 };
 
-
 export type ExpandedWallUnit = {
 	readonly compiled: CompiledPhysicalWall;
 	readonly wallAabb: CompiledQueryAabb;
 };
-
 
 export type ResolvedJunctionUnit = {
 	readonly compiled: CompiledJunction;
 	readonly issues: readonly LayoutGeometryIssue[];
 	readonly evaluated: boolean;
 };
-
 
 export type CompiledObjectsUnit = {
 	readonly compiledObjects: CompiledLayoutObject[];
@@ -52,13 +69,11 @@ export type CompiledObjectsUnit = {
 	readonly floorRoomBounds3: LayoutBounds3 | null;
 };
 
-
 export type FloorAndAabbsUnit = {
 	readonly floor: CompiledFloor;
 	readonly floorAabb: CompiledQueryAabb | null;
 	readonly docAabb: CompiledQueryAabb | null;
 };
-
 
 export type CanonicalDeltaBuilders = {
 	junctionInputs(
@@ -66,7 +81,7 @@ export type CanonicalDeltaBuilders = {
 		point: LayoutVec2,
 		legs: readonly CompiledJunctionLeg[],
 		wallById: ReadonlyMap<string, LayoutWall>,
-		pointById: ReadonlyMap<string, LayoutVec2>
+		pointById: ReadonlyMap<string, LayoutVec2>,
 	): { authored: readonly unknown[] };
 	evaluateRoom(
 		document: LayoutDocumentWallFirst,
@@ -76,14 +91,14 @@ export type CanonicalDeltaBuilders = {
 		wallById: ReadonlyMap<string, LayoutWall>,
 		openingsByHostWallId: ReadonlyMap<string, readonly LayoutWallOpening[]>,
 		openingOrderById: ReadonlyMap<string, number>,
-		defaultWallThickness: number
+		defaultWallThickness: number,
 	): EvaluatedRoomUnit;
 	evaluateWallBase(
 		document: LayoutDocumentWallFirst,
 		wall: LayoutWall,
 		pointById: ReadonlyMap<string, LayoutVec2>,
 		hostedOpenings: readonly LayoutWallOpening[],
-		derivedRole: LayoutDerivedWallRole
+		derivedRole: LayoutDerivedWallRole,
 	): EvaluatedWallBaseUnit | null;
 	resolveJunction(
 		document: LayoutDocumentWallFirst,
@@ -92,7 +107,7 @@ export type CanonicalDeltaBuilders = {
 		sortedLegs: CompiledJunctionLeg[],
 		reuse: LayoutCompileReuse,
 		wallById: ReadonlyMap<string, LayoutWall>,
-		pointById: ReadonlyMap<string, LayoutVec2>
+		pointById: ReadonlyMap<string, LayoutVec2>,
 	): ResolvedJunctionUnit;
 	expandWall(
 		floorId: string,
@@ -104,26 +119,25 @@ export type CanonicalDeltaBuilders = {
 		baseBounds3: LayoutBounds3,
 		currentCompiled: CompiledPhysicalWall,
 		currentWallAabb: CompiledQueryAabb,
-		joins: readonly CompiledLegJoin[] | undefined
+		joins: readonly CompiledLegJoin[] | undefined,
 	): ExpandedWallUnit;
 	compileObjects(
 		objects: readonly LayoutObject[],
 		documentRoomIds: ReadonlySet<string>,
-		reuse: LayoutCompileReuse
+		reuse: LayoutCompileReuse,
 	): CompiledObjectsUnit;
 	buildFloorAndAabbs(
 		floor: LayoutDocumentWallFirst['floor'],
 		floorRoomIds: readonly string[],
 		floorBounds: LayoutBounds3 | null,
 		documentBounds: LayoutBounds3 | null,
-		reuse: LayoutCompileReuse
+		reuse: LayoutCompileReuse,
 	): FloorAndAabbsUnit;
 	computeWallBaseBounds(
 		wall: CompiledPhysicalWall,
-		floorElevation: number
+		floorElevation: number,
 	): { readonly bounds2: LayoutBounds2; readonly bounds3: LayoutBounds3 };
 };
-
 
 export type RoomSlot = {
 	readonly roomId: string;
@@ -134,7 +148,6 @@ export type RoomSlot = {
 	readonly issues: readonly LayoutGeometryIssue[];
 	readonly bounds3: LayoutBounds3 | null;
 };
-
 
 export type WallSlot = {
 	readonly wallId: string;
@@ -148,7 +161,6 @@ export type WallSlot = {
 	readonly wallAabb: CompiledQueryAabb | null;
 	readonly issues: readonly LayoutGeometryIssue[];
 };
-
 
 export type RetainedCompileWorld = {
 	document: LayoutDocumentWallFirst;

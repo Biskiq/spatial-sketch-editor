@@ -1,5 +1,13 @@
 import type { Vec3 } from '@portfolio/camera-core/camera';
-import { createPlanRetainer, eligiblePlanFragments, planDependsOnTarget, planTargetsLiveView, type PlanEvaluationResult, type PlanFragment, type PlanParameters } from '@portfolio/layout-core/world';
+import {
+	createPlanRetainer,
+	eligiblePlanFragments,
+	planDependsOnTarget,
+	planTargetsLiveView,
+	type PlanEvaluationResult,
+	type PlanFragment,
+	type PlanParameters,
+} from '@portfolio/layout-core/world';
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import type { StageReadSnapshot } from '../accepted-read';
 import { planParameters, type PlanParameterOverrides } from '../plan-parameters';
@@ -66,9 +74,16 @@ export function createPlanView(input: {
 	 * no reveal) does no serialization at all — and a non-empty list cannot be made
 	 * ambiguous by a source id containing the separator.
 	 */
-	function planRetentionKey(snapshot: PlanSource, parameters: PlanParameters, target: LayoutVec2, targetMatters: boolean): string {
+	function planRetentionKey(
+		snapshot: PlanSource,
+		parameters: PlanParameters,
+		target: LayoutVec2,
+		targetMatters: boolean,
+	): string {
 		const span =
-			parameters.lateralSpanHalfWidthMeters === null ? 'u' : `b${parameters.lateralSpanHalfWidthMeters}`;
+			parameters.lateralSpanHalfWidthMeters === null
+				? 'u'
+				: `b${parameters.lateralSpanHalfWidthMeters}`;
 		const filter =
 			parameters.sourceKindFilter === null ? '' : `f${JSON.stringify(parameters.sourceKindFilter)}`;
 		const reveal = parameters.reveal.length === 0 ? '' : `r${JSON.stringify(parameters.reveal)}`;
@@ -80,15 +95,23 @@ export function createPlanView(input: {
 			span,
 			filter,
 			reveal,
-			targetMatters ? `t${target[0]}:${target[1]}` : ''
+			targetMatters ? `t${target[0]}:${target[1]}` : '',
 		].join('|');
 	}
 
 	/** The effective Plan parameters, as the retention key sees them. */
-	function effectivePlanContext(): { parameters: PlanParameters; target: LayoutVec2; finiteTarget: boolean } {
+	function effectivePlanContext(): {
+		parameters: PlanParameters;
+		target: LayoutVec2;
+		finiteTarget: boolean;
+	} {
 		const parameters = planParameters(planOverrides);
 		const target = liveTarget();
-		return { parameters, target, finiteTarget: Number.isFinite(target[0]) && Number.isFinite(target[1]) };
+		return {
+			parameters,
+			target,
+			finiteTarget: Number.isFinite(target[0]) && Number.isFinite(target[1]),
+		};
 	}
 
 	function planFor(overrides?: PlanParameterOverrides): PlanEvaluationResult {
@@ -103,7 +126,7 @@ export function createPlanView(input: {
 			const result = planRetainer.evaluate(currentSnapshot.domain.geometry, parameters, {
 				generationId: currentSnapshot.compileGeneration,
 				target,
-				datumMeters: currentSnapshot.domain.datumMeters
+				datumMeters: currentSnapshot.domain.datumMeters,
 			});
 			const retained: PlanEvaluationResult =
 				result.kind === 'evaluated' && !targetMatters
@@ -117,7 +140,7 @@ export function createPlanView(input: {
 		return planRetainer.evaluate(currentSnapshot.domain.geometry, parameters, {
 			generationId: currentSnapshot.compileGeneration,
 			target,
-			datumMeters: currentSnapshot.domain.datumMeters
+			datumMeters: currentSnapshot.domain.datumMeters,
 		});
 	}
 
@@ -143,6 +166,6 @@ export function createPlanView(input: {
 		plan: planFor,
 		planDependencyKey,
 		setPlanParameters,
-		eligibleFragments
+		eligibleFragments,
 	};
 }

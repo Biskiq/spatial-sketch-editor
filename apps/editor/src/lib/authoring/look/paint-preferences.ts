@@ -26,7 +26,7 @@ export const EMPTY_PAINT_PREFERENCES: PaintPreferences = Object.freeze({
 	favouriteColours: [],
 	recentColours: [],
 	favouriteMaterials: [],
-	recentMaterials: []
+	recentMaterials: [],
 });
 
 export const PAINT_PREFERENCES_STORAGE_KEY = 'biskiq.paint-preferences';
@@ -49,12 +49,12 @@ export function sanitisePaintPreferences(raw: unknown): PaintPreferences {
 		favouriteColours: keys(record.favouriteColours, PAINT_FAVOURITES_LIMIT),
 		recentColours: keys(record.recentColours, PAINT_RECENTS_LIMIT),
 		favouriteMaterials: keys(record.favouriteMaterials, PAINT_FAVOURITES_LIMIT),
-		recentMaterials: keys(record.recentMaterials, PAINT_RECENTS_LIMIT)
+		recentMaterials: keys(record.recentMaterials, PAINT_RECENTS_LIMIT),
 	};
 }
 
 export function createMemoryPaintPreferences(
-	initial: PaintPreferences = EMPTY_PAINT_PREFERENCES
+	initial: PaintPreferences = EMPTY_PAINT_PREFERENCES,
 ): PaintPreferenceStore & { readonly saved: () => PaintPreferences } {
 	let current = initial;
 	return {
@@ -62,7 +62,7 @@ export function createMemoryPaintPreferences(
 		save: (next) => {
 			current = next;
 		},
-		saved: () => current
+		saved: () => current,
 	};
 }
 
@@ -76,7 +76,7 @@ function deviceStorage(): Storage | null {
 
 export function createDevicePaintPreferences(
 	storage: Storage | null = deviceStorage(),
-	storageKey: string = PAINT_PREFERENCES_STORAGE_KEY
+	storageKey: string = PAINT_PREFERENCES_STORAGE_KEY,
 ): PaintPreferenceStore {
 	return {
 		load() {
@@ -95,6 +95,6 @@ export function createDevicePaintPreferences(
 			} catch {
 				/* a full or blocked store loses a convenience, never a paint */
 			}
-		}
+		},
 	};
 }

@@ -1,13 +1,60 @@
 import type { CompiledSourceDelta } from '../../geometry/delta';
-import { diffCompiledSources, forEachRetainedCompiledRoom, forEachRetainedCompiledWall } from '../../geometry/delta';
+import {
+	diffCompiledSources,
+	forEachRetainedCompiledRoom,
+	forEachRetainedCompiledWall,
+} from '../../geometry/delta';
 import { PersistentMap } from '../../kernel/persistent-store';
 import { countWork } from '../../kernel/work-observer';
-import type { CompiledLayoutGeometry, CompiledLayoutObject, CompiledOpening, CompiledPhysicalWall, CompiledRegion, CompiledRoom, LayoutBounds2 } from '../../geometry/types';
+import type {
+	CompiledLayoutGeometry,
+	CompiledLayoutObject,
+	CompiledOpening,
+	CompiledPhysicalWall,
+	CompiledRegion,
+	CompiledRoom,
+	LayoutBounds2,
+} from '../../geometry/types';
 import type { LayoutVec2 } from '../../geometry/coordinates';
-import { accumulateBounds, emptyBounds, finishedBounds, objectCandidate, openingCandidate, regionCandidate, roomFloorCandidate, wallCandidatesOf } from './geometry';
+import {
+	accumulateBounds,
+	emptyBounds,
+	finishedBounds,
+	objectCandidate,
+	openingCandidate,
+	regionCandidate,
+	roomFloorCandidate,
+	wallCandidatesOf,
+} from './geometry';
 import type { MeasurementContext } from './membership';
-import { PLAN_VIEWS, evaluateLayoutPlan, fragmentFor, fragmentIndexes, measureCandidate, measurementContext, membershipIndexes, parameterIssues, planDependsOnTarget, sourceMembership } from './membership';
-import type { Candidate, PlanEvaluation, PlanEvaluationResult, PlanFragment, PlanMembershipReason, PlanParameters, PlanSourceContext, PlanSourceKind, PlanSourceMembership, PlanStream, PlanStreams, PlanSubRef, SourceExtent, SourcePlan } from './types';
+import {
+	PLAN_VIEWS,
+	evaluateLayoutPlan,
+	fragmentFor,
+	fragmentIndexes,
+	measureCandidate,
+	measurementContext,
+	membershipIndexes,
+	parameterIssues,
+	planDependsOnTarget,
+	sourceMembership,
+} from './membership';
+import type {
+	Candidate,
+	PlanEvaluation,
+	PlanEvaluationResult,
+	PlanFragment,
+	PlanMembershipReason,
+	PlanParameters,
+	PlanSourceContext,
+	PlanSourceKind,
+	PlanSourceMembership,
+	PlanStream,
+	PlanStreams,
+	PlanSubRef,
+	SourceExtent,
+	SourcePlan,
+} from './types';
 import { PLAN_SOURCE_KINDS } from './types';
 
 /* ------------------------------------------------------------------------- *
@@ -35,7 +82,6 @@ type PlanEntry = {
 	readonly placement: { readonly stream: PlanStream; readonly elevationMeters: number } | null;
 };
 
-
 /** One source's retained derivation: its membership row and its placements. */
 type SourceRecord = {
 	readonly entries: readonly PlanEntry[];
@@ -43,7 +89,6 @@ type SourceRecord = {
 	/** The reconciliation pass that last confirmed this record; duplicate detection only. */
 	stamp: number;
 };
-
 
 type KindIndex = {
 	/**
@@ -63,7 +108,6 @@ type KindIndex = {
 	byId: PersistentMap<string, SourceRecord>;
 };
 
-
 /**
  * Two placements of one source, in the order the fragment comparator declares.
  *
@@ -80,11 +124,9 @@ function compareEntries(left: PlanEntry, right: PlanEntry): number {
 	return leftEnd - rightEnd;
 }
 
-
 function compareCodeUnits(left: string, right: string): number {
 	return left < right ? -1 : left > right ? 1 : 0;
 }
-
 
 /** The index `id` occupies in a sorted id list, by binary search (`ids` stays sorted). */
 function insertionPoint(ids: readonly string[], id: string): number {
@@ -98,11 +140,9 @@ function insertionPoint(ids: readonly string[], id: string): number {
 	return low;
 }
 
-
 function samePoint(left: LayoutVec2, right: LayoutVec2): boolean {
 	return left[0] === right[0] && left[1] === right[1];
 }
-
 
 function samePoints(left: readonly LayoutVec2[], right: readonly LayoutVec2[]): boolean {
 	if (left === right) return true;
@@ -114,7 +154,6 @@ function samePoints(left: readonly LayoutVec2[], right: readonly LayoutVec2[]): 
 	}
 	return true;
 }
-
 
 /**
  * Does a retained Wall still describe this compiled Wall?
@@ -132,7 +171,11 @@ function samePoints(left: readonly LayoutVec2[], right: readonly LayoutVec2[]): 
  * is why an untouched Wall is proved unchanged rather than re-derived. The positional pass
  * exists because it allocates nothing and is the common case.
  */
-function wallUnchanged(entries: readonly PlanEntry[], wall: CompiledPhysicalWall, datumMeters: number): boolean {
+function wallUnchanged(
+	entries: readonly PlanEntry[],
+	wall: CompiledPhysicalWall,
+	datumMeters: number,
+): boolean {
 	if (wall.solidSpans.length === 0) {
 		// A solid-less Wall still has a **declared height**, and the derivation reads it
 		// for the candidate's extent — which is what the depth window measures. Checking
@@ -177,24 +220,31 @@ function wallUnchanged(entries: readonly PlanEntry[], wall: CompiledPhysicalWall
 	return true;
 }
 
-
 /** Does this retained placement still describe that compiled span, field for field? */
 function spanMatchesEntry(
 	entry: PlanEntry,
 	span: CompiledPhysicalWall['solidSpans'][number],
-	datumMeters: number
+	datumMeters: number,
 ): boolean {
-	if (entry.extent.minY !== datumMeters + span.bottomY || entry.extent.maxY !== datumMeters + span.topY) return false;
-	if (entry.subRef?.kind !== 'interval' || entry.subRef.start !== span.startDistance || entry.subRef.end !== span.endDistance) return false;
+	if (
+		entry.extent.minY !== datumMeters + span.bottomY ||
+		entry.extent.maxY !== datumMeters + span.topY
+	)
+		return false;
+	if (
+		entry.subRef?.kind !== 'interval' ||
+		entry.subRef.start !== span.startDistance ||
+		entry.subRef.end !== span.endDistance
+	)
+		return false;
 	const plan = entry.plan;
 	return plan.kind === 'span' && samePoint(plan.start, span.start) && samePoint(plan.end, span.end);
 }
 
-
 function openingUnchanged(
 	entries: readonly PlanEntry[],
 	opening: CompiledOpening,
-	datumMeters: number
+	datumMeters: number,
 ): boolean {
 	if (entries.length !== 1) return false;
 	const entry = entries[0]!;
@@ -210,7 +260,6 @@ function openingUnchanged(
 	);
 }
 
-
 function objectUnchanged(entries: readonly PlanEntry[], object: CompiledLayoutObject): boolean {
 	if (entries.length !== 1) return false;
 	const entry = entries[0]!;
@@ -223,7 +272,6 @@ function objectUnchanged(entries: readonly PlanEntry[], object: CompiledLayoutOb
 		samePoints(plan.polygon, object.planFootprint)
 	);
 }
-
 
 function roomFloorUnchanged(entries: readonly PlanEntry[], room: CompiledRoom): boolean {
 	if (entries.length !== 1) return false;
@@ -238,7 +286,6 @@ function roomFloorUnchanged(entries: readonly PlanEntry[], room: CompiledRoom): 
 	);
 }
 
-
 /** A retainer's handle; see `createPlanRetainer`. */
 export type PlanRetainer = {
 	/** The Plan for this compiled Layout, parameters and context — exactly what
@@ -246,12 +293,11 @@ export type PlanRetainer = {
 	evaluate(
 		compiled: CompiledLayoutGeometry,
 		parameters: PlanParameters,
-		context: PlanSourceContext
+		context: PlanSourceContext,
 	): PlanEvaluationResult;
 	/** Drop every retained record; the next evaluation derives every source again. */
 	clear(): void;
 };
-
 
 /**
  * Create an evaluator that retains what the previous evaluation derived.
@@ -272,10 +318,10 @@ export type PlanRetainer = {
  *
  * - *Nothing changed* — same derivation inputs, same generation, same compiled object —
  *   returns the retained result: `O(1)`.	 * - *New generation, same derivation inputs* (every accepted edit): asks the compiler's
-	 *   root difference which records changed and re-derives exactly those; with no provable
-	 *   difference it walks every source once instead. **No sort of any kind**: the declared
-	 *   order is maintained with the records, so the fragment array is produced by walking
-	 *   it, not by sorting into it — and it is produced only if someone reads it.
+ *   root difference which records changed and re-derives exactly those; with no provable
+ *   difference it walks every source once instead. **No sort of any kind**: the declared
+ *   order is maintained with the records, so the fragment array is produced by walking
+ *   it, not by sorting into it — and it is produced only if someone reads it.
  * - *Parameters changed* (cut height, depth, lateral span, filter, reveal): re-derives
  *   every source — the order is still maintained, so nothing is sorted.
  * - *Source ids added or removed*: the id list is updated by binary-search insertion when
@@ -354,7 +400,12 @@ export function createPlanRetainer(): PlanRetainer {
 	 * merges into one membership row and this retainer does not model.
 	 */
 	/** Derive one source's entries and membership row from its candidates, and retain it. */
-	function derive(kind: PlanSourceKind, id: string, candidates: readonly Candidate[], measurement: MeasurementContext): void {
+	function derive(
+		kind: PlanSourceKind,
+		id: string,
+		candidates: readonly Candidate[],
+		measurement: MeasurementContext,
+	): void {
 		const measured = candidates.map((candidate) => measureCandidate(candidate, measurement));
 		const entries: PlanEntry[] = measured.map((entry) => ({
 			reason: entry.reason,
@@ -362,25 +413,32 @@ export function createPlanRetainer(): PlanRetainer {
 			subRef: entry.candidate.subRef,
 			plan: entry.candidate.plan,
 			extent: entry.candidate.extent,
-			placement: entry.placement
+			placement: entry.placement,
 		}));
 		// Within one source every placement sorts by the same interval the fragment
 		// comparator uses, so the maintained order is the declared order.
 		entries.sort(compareEntries);
-		indexes.get(kind)!.byId.set(id, { entries, membership: sourceMembership(id, measured), stamp: pass });
+		indexes
+			.get(kind)!
+			.byId.set(id, { entries, membership: sourceMembership(id, measured), stamp: pass });
 		countWork('plan:source-derived');
 		countWork(`plan:source-derived:${kind}`);
 	}
 
-	function walkWalls(geometry: CompiledLayoutGeometry, visit: (wall: CompiledPhysicalWall) => void): void {
+	function walkWalls(
+		geometry: CompiledLayoutGeometry,
+		visit: (wall: CompiledPhysicalWall) => void,
+	): void {
 		// The retained world iterates its persistent root in slot order — the same order as
 		// `geometry.walls` — without allocating the legacy array. Hand-built snapshots have
 		// no world, so they fall back to the array property.
-		if (!forEachRetainedCompiledWall(geometry, visit)) for (const wall of geometry.walls) visit(wall);
+		if (!forEachRetainedCompiledWall(geometry, visit))
+			for (const wall of geometry.walls) visit(wall);
 	}
 
 	function walkRooms(geometry: CompiledLayoutGeometry, visit: (room: CompiledRoom) => void): void {
-		if (!forEachRetainedCompiledRoom(geometry, visit)) for (const room of geometry.rooms) visit(room);
+		if (!forEachRetainedCompiledRoom(geometry, visit))
+			for (const room of geometry.rooms) visit(room);
 	}
 
 	function reconcileKind<T>(
@@ -390,7 +448,7 @@ export function createPlanRetainer(): PlanRetainer {
 		candidatesOf: (record: T) => readonly Candidate[],
 		unchanged: (previous: readonly PlanEntry[], record: T) => boolean,
 		measurement: MeasurementContext,
-		rederive: boolean
+		rederive: boolean,
 	): string[] | null {
 		const index = indexes.get(kind)!;
 		const walked: string[] = [];
@@ -472,7 +530,7 @@ export function createPlanRetainer(): PlanRetainer {
 	function assemble(
 		parameters: PlanParameters,
 		context: PlanSourceContext,
-		measurement: MeasurementContext
+		measurement: MeasurementContext,
 	): PlanEvaluation {
 		let membershipRows: PlanSourceMembership[] | null = null;
 		let fragmentRows: PlanFragment[] | null = null;
@@ -490,7 +548,9 @@ export function createPlanRetainer(): PlanRetainer {
 
 		// Kinds in declared order, ids in ascending order, placements in interval order:
 		// the maintained order *is* the order a whole-population sort would produce.
-		const eachSource = (visit: (kind: PlanSourceKind, id: string, record: SourceRecord) => void): void => {
+		const eachSource = (
+			visit: (kind: PlanSourceKind, id: string, record: SourceRecord) => void,
+		): void => {
 			for (const source of sources) {
 				for (const id of source.ids) {
 					const record = source.byId.get(id);
@@ -516,7 +576,7 @@ export function createPlanRetainer(): PlanRetainer {
 						entry.plan,
 						placement.stream,
 						record.membership.reason,
-						placement.elevationMeters
+						placement.elevationMeters,
 					);
 					firstFragment.set(sourceId, fragment);
 					return fragment;
@@ -534,7 +594,8 @@ export function createPlanRetainer(): PlanRetainer {
 			depthMeters: parameters.depthMeters,
 			lateralSpanHalfWidthMeters: parameters.lateralSpanHalfWidthMeters,
 			target: context.target,
-			sourceKindFilter: parameters.sourceKindFilter === null ? null : [...parameters.sourceKindFilter],
+			sourceKindFilter:
+				parameters.sourceKindFilter === null ? null : [...parameters.sourceKindFilter],
 			reveal: [...parameters.reveal],
 			get streams(): PlanStreams {
 				if (streamRows === null) {
@@ -543,7 +604,7 @@ export function createPlanRetainer(): PlanRetainer {
 						cut: all.filter((fragment) => fragment.ref.stream === 'cut'),
 						projected: all.filter((fragment) => fragment.ref.stream === 'projected'),
 						hidden: all.filter((fragment) => fragment.ref.stream === 'hidden'),
-						symbol: all.filter((fragment) => fragment.ref.stream === 'symbol')
+						symbol: all.filter((fragment) => fragment.ref.stream === 'symbol'),
 					};
 				}
 				return streamRows;
@@ -572,7 +633,7 @@ export function createPlanRetainer(): PlanRetainer {
 								entry.plan,
 								placement.stream,
 								record.membership.reason,
-								placement.elevationMeters
+								placement.elevationMeters,
 							);
 						if (first) firstFragment.set(id, fragment);
 						rows.push(fragment);
@@ -611,13 +672,14 @@ export function createPlanRetainer(): PlanRetainer {
 				if (!boundsReady) {
 					const state = emptyBounds();
 					eachSource((_kind, _id, record) => {
-						for (const entry of record.entries) if (entry.placement !== null) accumulateBounds(state, entry.plan);
+						for (const entry of record.entries)
+							if (entry.placement !== null) accumulateBounds(state, entry.plan);
 					});
 					bounds = finishedBounds(state);
 					boundsReady = true;
 				}
 				return bounds;
-			}
+			},
 		};
 		PLAN_VIEWS.set(plan, {
 			fragmentOf,
@@ -627,7 +689,7 @@ export function createPlanRetainer(): PlanRetainer {
 					if (record !== undefined) return record.membership;
 				}
 				return null;
-			}
+			},
 		});
 		return plan;
 	}
@@ -653,7 +715,7 @@ export function createPlanRetainer(): PlanRetainer {
 	function applyDelta(
 		delta: CompiledSourceDelta,
 		measurement: MeasurementContext,
-		datumMeters: number
+		datumMeters: number,
 	): boolean {
 		if (!openingsAreUnique) return false;
 		const walls = indexes.get('wall')!.byId;
@@ -668,7 +730,8 @@ export function createPlanRetainer(): PlanRetainer {
 			for (const opening of wall.openings) if (!openings.has(opening.openingId)) return false;
 		}
 		for (const room of delta.rooms) if (!rooms.has(room.roomId)) return false;
-		if (delta.objects !== null) for (const object of delta.objects) if (!objects.has(object.objectId)) return false;
+		if (delta.objects !== null)
+			for (const object of delta.objects) if (!objects.has(object.objectId)) return false;
 
 		// 2. Derive exactly what the records say changed.
 		for (const wall of delta.walls) {
@@ -680,7 +743,12 @@ export function createPlanRetainer(): PlanRetainer {
 			for (const opening of wall.openings) {
 				const retained = openings.get(opening.openingId)!;
 				if (!openingUnchanged(retained.entries, opening, datumMeters)) {
-					derive('opening', opening.openingId, [openingCandidate(opening, datumMeters)], measurement);
+					derive(
+						'opening',
+						opening.openingId,
+						[openingCandidate(opening, datumMeters)],
+						measurement,
+					);
 				}
 			}
 		}
@@ -707,7 +775,7 @@ export function createPlanRetainer(): PlanRetainer {
 	function reconcileAll(
 		compiled: CompiledLayoutGeometry,
 		measurement: MeasurementContext,
-		rederive: boolean
+		rederive: boolean,
 	): boolean {
 		const openingList: CompiledOpening[] = [];
 		const openingIds = new Set<string>();
@@ -722,18 +790,76 @@ export function createPlanRetainer(): PlanRetainer {
 				openingList.push(opening);
 			}
 		});
-		const walls = reconcileKind<CompiledPhysicalWall>('wall', (visit) => walkWalls(compiled, visit), (wall) => wall.wallId, (wall) => wallCandidatesOf(wall, measurement.datumMeters), (previous, wall) => wallUnchanged(previous, wall, measurement.datumMeters), measurement, rederive);
-		const openingsAdded = walls === null ? null : reconcileKind<CompiledOpening>('opening', (visit) => { for (const opening of openingList) visit(opening); }, (opening) => opening.openingId, (opening) => [openingCandidate(opening, measurement.datumMeters)], (previous, opening) => openingUnchanged(previous, opening, measurement.datumMeters), measurement, rederive);
-		const objectsAdded = openingsAdded === null ? null : reconcileKind<CompiledLayoutObject>('object', (visit) => { for (const object of compiled.objects) visit(object); }, (object) => object.objectId, (object) => [objectCandidate(object)], objectUnchanged, measurement, rederive);
-		const roomsAdded = objectsAdded === null ? null : reconcileKind<CompiledRoom>('room-floor', (visit) => walkRooms(compiled, visit), (room) => room.roomId, (room) => [roomFloorCandidate(room)], roomFloorUnchanged, measurement, rederive);
-		const regionsAdded = roomsAdded === null ? null : reconcileKind<CompiledRegion>(
-			'region', (visit) => compiled.regions.forEach(visit), (region) => region.regionId,
-			(region) => [regionCandidate(region)], (entries, region) => entries[0]?.regionKey === region.cacheKey,
-			measurement, rederive
+		const walls = reconcileKind<CompiledPhysicalWall>(
+			'wall',
+			(visit) => walkWalls(compiled, visit),
+			(wall) => wall.wallId,
+			(wall) => wallCandidatesOf(wall, measurement.datumMeters),
+			(previous, wall) => wallUnchanged(previous, wall, measurement.datumMeters),
+			measurement,
+			rederive,
 		);
+		const openingsAdded =
+			walls === null
+				? null
+				: reconcileKind<CompiledOpening>(
+						'opening',
+						(visit) => {
+							for (const opening of openingList) visit(opening);
+						},
+						(opening) => opening.openingId,
+						(opening) => [openingCandidate(opening, measurement.datumMeters)],
+						(previous, opening) => openingUnchanged(previous, opening, measurement.datumMeters),
+						measurement,
+						rederive,
+					);
+		const objectsAdded =
+			openingsAdded === null
+				? null
+				: reconcileKind<CompiledLayoutObject>(
+						'object',
+						(visit) => {
+							for (const object of compiled.objects) visit(object);
+						},
+						(object) => object.objectId,
+						(object) => [objectCandidate(object)],
+						objectUnchanged,
+						measurement,
+						rederive,
+					);
+		const roomsAdded =
+			objectsAdded === null
+				? null
+				: reconcileKind<CompiledRoom>(
+						'room-floor',
+						(visit) => walkRooms(compiled, visit),
+						(room) => room.roomId,
+						(room) => [roomFloorCandidate(room)],
+						roomFloorUnchanged,
+						measurement,
+						rederive,
+					);
+		const regionsAdded =
+			roomsAdded === null
+				? null
+				: reconcileKind<CompiledRegion>(
+						'region',
+						(visit) => compiled.regions.forEach(visit),
+						(region) => region.regionId,
+						(region) => [regionCandidate(region)],
+						(entries, region) => entries[0]?.regionKey === region.cacheKey,
+						measurement,
+						rederive,
+					);
 		// A source id shared by two kinds is merged into one membership row by the
 		// reference and by nothing else; ask it rather than modelling that here.
-		const addedIds = [...(walls ?? []), ...(openingsAdded ?? []), ...(objectsAdded ?? []), ...(roomsAdded ?? []), ...(regionsAdded ?? [])];
+		const addedIds = [
+			...(walls ?? []),
+			...(openingsAdded ?? []),
+			...(objectsAdded ?? []),
+			...(roomsAdded ?? []),
+			...(regionsAdded ?? []),
+		];
 		return (
 			regionsAdded !== null &&
 			!addedIds.some((id) => {
@@ -749,7 +875,11 @@ export function createPlanRetainer(): PlanRetainer {
 			const issues = parameterIssues(parameters, context);
 			if (issues.length > 0) {
 				const invalidContext = issues.every((issue) => issue.path.startsWith('$.context'));
-				return { kind: 'refused', code: invalidContext ? 'invalid-context' : 'invalid-parameters', issues };
+				return {
+					kind: 'refused',
+					code: invalidContext ? 'invalid-context' : 'invalid-parameters',
+					issues,
+				};
 			}
 
 			// Everything the derivation reads, in one unambiguous string. The generation is
@@ -761,7 +891,7 @@ export function createPlanRetainer(): PlanRetainer {
 				parameters.lateralSpanHalfWidthMeters,
 				parameters.sourceKindFilter,
 				parameters.reveal,
-				planDependsOnTarget(parameters) ? context.target : null
+				planDependsOnTarget(parameters) ? context.target : null,
 			]);
 			if (
 				result !== null &&
@@ -785,13 +915,16 @@ export function createPlanRetainer(): PlanRetainer {
 				return evaluateLayoutPlan(compiled, parameters, context);
 			}
 
-			const evaluated: PlanEvaluationResult = { kind: 'evaluated', plan: assemble(parameters, context, measurement) };
+			const evaluated: PlanEvaluationResult = {
+				kind: 'evaluated',
+				plan: assemble(parameters, context, measurement),
+			};
 			derivation = nextDerivation;
 			generation = context.generationId;
 			rememberSource(compiled);
 			result = evaluated;
 			return evaluated;
 		},
-		clear
+		clear,
 	};
 }

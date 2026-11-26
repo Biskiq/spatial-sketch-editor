@@ -1,16 +1,33 @@
 import { readFinish } from '../../materials/read';
-import type { SceneBoxDimensions, SceneColor, SceneCylinderDimensions, SceneMaterialInstance, ScenePlaneDimensions, ScenePrimitiveEntity, ScenePrimitiveKind, SceneSphereDimensions, SceneTextureAsset } from '../../scene';
+import type {
+	SceneBoxDimensions,
+	SceneColor,
+	SceneCylinderDimensions,
+	SceneMaterialInstance,
+	ScenePlaneDimensions,
+	ScenePrimitiveEntity,
+	ScenePrimitiveKind,
+	SceneSphereDimensions,
+	SceneTextureAsset,
+} from '../../scene';
 import type { ResolvedSceneValidationOptions } from '../../scene-validation';
 import type { SceneDocumentIssue } from '../types';
 import type { JsonRecord } from '../readers';
-import { LOWER_HEX_COLOR_PATTERN, addIssue, assertAllowedKeys, isRecord, readRequiredNumber, readRequiredString } from '../readers';
+import {
+	LOWER_HEX_COLOR_PATTERN,
+	addIssue,
+	assertAllowedKeys,
+	isRecord,
+	readRequiredNumber,
+	readRequiredString,
+} from '../readers';
 import { FINISH_COLOR_SLOT_MAX_LENGTH, PROJECT_ASSET_URI_PATTERN } from './contracts';
 
 export function parseTextureAsset(
 	input: unknown,
 	path: string,
 	issues: SceneDocumentIssue[],
-	validation: ResolvedSceneValidationOptions
+	validation: ResolvedSceneValidationOptions,
 ): SceneTextureAsset | undefined {
 	if (!isRecord(input)) {
 		addIssue(issues, path, 'invalid_type', 'Expected a texture asset object');
@@ -26,7 +43,7 @@ export function parseTextureAsset(
 			issues,
 			`${path}.uri`,
 			'unsafe_texture_uri',
-			'Texture URI must be a safe root-relative public path'
+			'Texture URI must be a safe root-relative public path',
 		);
 	}
 	// One P20 image has exactly one texture record, so every Finish made from
@@ -37,14 +54,13 @@ export function parseTextureAsset(
 			issues,
 			`${path}.id`,
 			'texture_id_mismatch',
-			`A project texture's id must equal its asset id: ${assetMatch[1]}`
+			`A project texture's id must equal its asset id: ${assetMatch[1]}`,
 		);
 		return undefined;
 	}
 	if (!id || !name || !uri || !safeUri) return undefined;
 	return { id, name, uri };
 }
-
 
 /**
  * A finish colour: a lowercase `#rrggbb` literal or a `{ slot }` follower. The
@@ -54,7 +70,7 @@ export function parseTextureAsset(
 export function parseSceneColor(
 	input: unknown,
 	path: string,
-	issues: SceneDocumentIssue[]
+	issues: SceneDocumentIssue[],
 ): SceneColor | undefined {
 	if (typeof input === 'string') {
 		if (!LOWER_HEX_COLOR_PATTERN.test(input)) {
@@ -68,7 +84,7 @@ export function parseSceneColor(
 			issues,
 			path,
 			'invalid_type',
-			'Expected a lowercase #rrggbb color string or a palette slot reference'
+			'Expected a lowercase #rrggbb color string or a palette slot reference',
 		);
 		return undefined;
 	}
@@ -80,13 +96,12 @@ export function parseSceneColor(
 			issues,
 			`${path}.slot`,
 			'invalid_value',
-			`A palette slot id is at most ${FINISH_COLOR_SLOT_MAX_LENGTH} characters`
+			`A palette slot id is at most ${FINISH_COLOR_SLOT_MAX_LENGTH} characters`,
 		);
 		return undefined;
 	}
 	return { slot };
 }
-
 
 /**
  * Read one Scene 12 material instance through the portable Finish reader.
@@ -101,7 +116,7 @@ export function parseMaterialInstance(
 	input: unknown,
 	path: string,
 	issues: SceneDocumentIssue[],
-	validation: ResolvedSceneValidationOptions
+	validation: ResolvedSceneValidationOptions,
 ): SceneMaterialInstance | undefined {
 	if (!isRecord(input)) {
 		addIssue(issues, path, 'invalid_type', 'Expected a Finish object');
@@ -114,7 +129,7 @@ export function parseMaterialInstance(
 				issues,
 				issue.path === '$' ? path : `${path}${issue.path.slice(1)}`,
 				issue.code,
-				issue.action ?? issue.code
+				issue.action ?? issue.code,
 			);
 		}
 		return undefined;
@@ -125,7 +140,7 @@ export function parseMaterialInstance(
 			issues,
 			`${path}.base.catalogue`,
 			'unknown_material',
-			`Unknown material: ${finish.base.catalogue}`
+			`Unknown material: ${finish.base.catalogue}`,
 		);
 		return undefined;
 	}
@@ -136,23 +151,27 @@ export function readPositiveDimension(
 	value: JsonRecord,
 	key: string,
 	path: string,
-	issues: SceneDocumentIssue[]
+	issues: SceneDocumentIssue[],
 ): number | undefined {
 	const number = readRequiredNumber(value, key, path, issues);
 	if (number === undefined) return undefined;
 	if (!Number.isFinite(number) || number <= 0) {
-		addIssue(issues, `${path}.${key}`, 'invalid_dimension', `${key} must be a finite number greater than zero`);
+		addIssue(
+			issues,
+			`${path}.${key}`,
+			'invalid_dimension',
+			`${key} must be a finite number greater than zero`,
+		);
 		return undefined;
 	}
 	return number;
 }
 
-
 export function parsePrimitiveDimensions(
 	primitive: ScenePrimitiveKind,
 	input: unknown,
 	path: string,
-	issues: SceneDocumentIssue[]
+	issues: SceneDocumentIssue[],
 ): ScenePrimitiveEntity['dimensions'] | undefined {
 	if (!isRecord(input)) {
 		addIssue(issues, path, 'invalid_type', 'Expected a dimensions object');

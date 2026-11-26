@@ -65,7 +65,9 @@ export type PlanPickBox = {
 };
 
 /** Projects one project-world point to CSS, or `null` when it is not projectable. */
-export type PlanPickProject = (point: readonly [number, number, number]) => readonly [number, number] | null;
+export type PlanPickProject = (
+	point: readonly [number, number, number],
+) => readonly [number, number] | null;
 
 export type PlanPickIndex = {
 	/** Every indexed entry, in the caller's order. */
@@ -77,7 +79,7 @@ export type PlanPickIndex = {
 	candidates(
 		pointerCss: readonly [number, number],
 		toleranceCss: number,
-		project: PlanPickProject
+		project: PlanPickProject,
 	): readonly number[];
 	/** The tree's depth, for the count oracle in tests and evidence. */
 	readonly depth: number;
@@ -107,7 +109,12 @@ type Node = {
  * its children — which is exactly the shape of bug a broad phase cannot afford,
  * because it silently prunes real hits.
  */
-function unionBox(order: Int32Array, boxes: readonly PlanPickBox[], from: number, to: number): PlanPickBox {
+function unionBox(
+	order: Int32Array,
+	boxes: readonly PlanPickBox[],
+	from: number,
+	to: number,
+): PlanPickBox {
 	let minX = Infinity;
 	let minY = Infinity;
 	let minZ = Infinity;
@@ -141,7 +148,7 @@ function partitionByAxis(
 	boxes: readonly PlanPickBox[],
 	from: number,
 	to: number,
-	axis: 'x' | 'y' | 'z'
+	axis: 'x' | 'y' | 'z',
 ): number {
 	const centre = (index: number): number => {
 		const box = boxes[index]!;
@@ -174,7 +181,12 @@ function partitionByAxis(
 	return left > from && left < to ? left : middle;
 }
 
-function buildNode(order: Int32Array, boxes: readonly PlanPickBox[], from: number, to: number): Node {
+function buildNode(
+	order: Int32Array,
+	boxes: readonly PlanPickBox[],
+	from: number,
+	to: number,
+): Node {
 	const box = unionBox(order, boxes, from, to);
 	if (to - from <= LEAF_SIZE) {
 		return { box, from, to, left: null, right: null, height: 1 };
@@ -215,7 +227,7 @@ function projectBox(box: PlanPickBox, project: PlanPickProject): ProjectedSpan |
 		const point: readonly [number, number, number] = [
 			(corner & 1) === 0 ? box.minX : box.maxX,
 			(corner & 2) === 0 ? box.minY : box.maxY,
-			(corner & 4) === 0 ? box.minZ : box.maxZ
+			(corner & 4) === 0 ? box.minZ : box.maxZ,
 		];
 		const css = project(point);
 		countWork('plan-pick:projection');
@@ -229,7 +241,12 @@ function projectBox(box: PlanPickBox, project: PlanPickProject): ProjectedSpan |
 	return { minX, minY, maxX, maxY };
 }
 
-function reachable(span: ProjectedSpan | null, pointerX: number, pointerY: number, tolerance: number): boolean {
+function reachable(
+	span: ProjectedSpan | null,
+	pointerX: number,
+	pointerY: number,
+	tolerance: number,
+): boolean {
 	if (span === null) return true;
 	return !(
 		span.maxX < pointerX - tolerance ||
@@ -289,6 +306,6 @@ export function createPlanPickIndex(boxes: readonly PlanPickBox[]): PlanPickInde
 			found.sort((left, right) => left - right);
 			countWork('plan-pick:candidate', found.length);
 			return found;
-		}
+		},
 	};
 }

@@ -1,6 +1,10 @@
 import type { TargetAnalysis } from '@portfolio/project-model/materials';
 import type { AcceptedRevision } from '@portfolio/project-model/references';
-import type { MaterialId, SceneMaterialInstance, SceneSurfaceRef } from '@portfolio/project-model/scene';
+import type {
+	MaterialId,
+	SceneMaterialInstance,
+	SceneSurfaceRef,
+} from '@portfolio/project-model/scene';
 import type { FinishKey, SceneFinishRef } from '@portfolio/project-model/scene-planning';
 import type { ProjectApi } from '$lib/platform/project-persistence';
 import type { StageAdapterServices } from '../stage/stage-adapter-host';
@@ -32,21 +36,31 @@ export type FinishAcceptOutcome = {
 	readonly message?: string;
 };
 
-export function surfaceTargetSubject(surface: PaintableSurface): { kind: 'wall' | 'room' | 'region'; id: string } {
+export function surfaceTargetSubject(surface: PaintableSurface): {
+	kind: 'wall' | 'room' | 'region';
+	id: string;
+} {
 	switch (surface.kind) {
-		case 'wall-side': return { kind: 'wall', id: surface.wallId };
+		case 'wall-side':
+			return { kind: 'wall', id: surface.wallId };
 		case 'room-floor':
-		case 'room-lid': return { kind: 'room', id: surface.roomId };
-		case 'region-face': return { kind: 'region', id: surface.regionId };
+		case 'room-lid':
+			return { kind: 'room', id: surface.roomId };
+		case 'region-face':
+			return { kind: 'region', id: surface.regionId };
 	}
 }
 
 export function surfaceTargetComponent(surface: PaintableSurface): string {
 	switch (surface.kind) {
-		case 'wall-side': return `side:${surface.side}`;
-		case 'room-floor': return 'floor';
-		case 'room-lid': return 'lid';
-		case 'region-face': return surface.face;
+		case 'wall-side':
+			return `side:${surface.side}`;
+		case 'room-floor':
+			return 'floor';
+		case 'room-lid':
+			return 'lid';
+		case 'region-face':
+			return surface.face;
 	}
 }
 
@@ -93,7 +107,7 @@ export type FinishAuthoringHost = {
 		assetId: string,
 		bytes: Uint8Array,
 		expectedPin: string,
-		signal?: AbortSignal
+		signal?: AbortSignal,
 	) => Promise<{ readonly ok: true } | { readonly ok: false; readonly message: string }>;
 	/** Invalidate cached GPU/store views for one project asset and reload Stage textures. */
 	readonly invalidateAndReloadAsset?: (assetId: string) => void;
@@ -110,7 +124,9 @@ export type FinishAuthoringHost = {
 	/** Decoded width ÷ height of a project texture, or `null` until it loads. */
 	readonly imageAspect?: (textureId: string) => number | null;
 	/** Decoded pixel size, for the D3 low-resolution warning. */
-	readonly imageDimensions?: (textureId: string) => { readonly width: number; readonly height: number } | null;
+	readonly imageDimensions?: (
+		textureId: string,
+	) => { readonly width: number; readonly height: number } | null;
 	/** The texture record's URI, if the image is a project texture. */
 	readonly textureUri?: (textureId: string) => string | null;
 	/** A retained, verified preview URL for that project texture (CSS only). */
@@ -177,14 +193,22 @@ export type PaintColourPort = {
 	/** One acceptance: coat these objects with the colour. */
 	readonly paintEntities: (entityIds: readonly string[], colour: PaintColour) => Promise<boolean>;
 	/** One acceptance: coat these Layout surfaces with the colour. */
-	readonly paintSurfaces: (surfaces: readonly SceneSurfaceRef[], colour: PaintColour) => Promise<boolean>;
+	readonly paintSurfaces: (
+		surfaces: readonly SceneSurfaceRef[],
+		colour: PaintColour,
+	) => Promise<boolean>;
 	/** Whether every target already wears this colour (no write, no history entry). */
 	readonly isAlready?: (
-		targets: { readonly entityIds: readonly string[]; readonly surfaces: readonly SceneSurfaceRef[] },
-		colour: PaintColour
+		targets: {
+			readonly entityIds: readonly string[];
+			readonly surfaces: readonly SceneSurfaceRef[];
+		},
+		colour: PaintColour,
 	) => boolean;
 	/** What a colour does to one target: refuse in place, or coat it keeping the named relief. */
-	readonly read?: (target: { readonly entityId: string } | { readonly surface: SceneSurfaceRef }) => CoatReading | null;
+	readonly read?: (
+		target: { readonly entityId: string } | { readonly surface: SceneSurfaceRef },
+	) => CoatReading | null;
 };
 
 export type PaintSwatch = {
@@ -206,7 +230,11 @@ export type PaintTrayView = {
 	readonly dropper: boolean;
 	readonly colours: {
 		readonly row: readonly PaintSwatch[];
-		readonly palette: readonly { readonly id: string; readonly name: string; readonly color: string }[];
+		readonly palette: readonly {
+			readonly id: string;
+			readonly name: string;
+			readonly color: string;
+		}[];
 	};
 	readonly materials: {
 		readonly row: readonly PaintSwatch[];
@@ -214,7 +242,6 @@ export type PaintTrayView = {
 		readonly curated: readonly PaintSwatch[];
 	};
 };
-
 
 export function entityReference(services: StageAdapterServices, entityId: string) {
 	const snapshot = services.stage.snapshot();
@@ -226,11 +253,10 @@ export function entityReference(services: StageAdapterServices, entityId: string
 		instancePath: [],
 		location: { kind: 'project-root' as const },
 		componentId: null,
-		capabilityId: null
+		capabilityId: null,
 	};
 }
 
 export function newId(kind: string, id: string) {
 	return { kind, id };
 }
-

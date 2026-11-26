@@ -18,7 +18,7 @@ import {
 	type FinishLibraryDraft,
 	type MaterialLibraryIssue,
 	type MaterialLibraryItemSummary,
-	type MaterialLibraryTransfer
+	type MaterialLibraryTransfer,
 } from '@portfolio/project-model/library';
 import type { Recipe } from '@portfolio/project-model/materials';
 import { isFinishTarget, SCENE_FINISH_REGISTER } from '@portfolio/project-model/scene-planning';
@@ -29,7 +29,11 @@ import { encodeInspectionPng, type InspectionFrame } from '$lib/render/materials
 import { MaterialLibraryClientError, type MaterialLibraryClient } from './material-client';
 
 export type FinishLibrarySaveResult =
-	| { readonly ok: true; readonly summary: MaterialLibraryItemSummary; readonly draft: FinishLibraryDraft }
+	| {
+			readonly ok: true;
+			readonly summary: MaterialLibraryItemSummary;
+			readonly draft: FinishLibraryDraft;
+	  }
 	| { readonly ok: false; readonly issues: readonly MaterialLibraryIssue[] };
 
 /** The exact local image dependencies of one accepted Scene Finish. */
@@ -44,13 +48,13 @@ export function finishLibraryImages(source: ProjectEnvelope, materialId?: string
 						resource.material !== undefined &&
 						(materialId === undefined || resource.id === materialId)
 							? resource.material.images
-							: []
+							: [],
 					),
 		textureImages: resources.flatMap((resource) =>
 			resource.kind === 'texture' && resource.pin !== null
 				? [{ hash: resource.pin.hash, source: { textureId: resource.id } }]
-				: []
-		)
+				: [],
+		),
 	};
 }
 
@@ -65,11 +69,19 @@ export async function saveFinishToLibrary(input: {
 	readonly client: MaterialLibraryClient;
 	readonly signal?: AbortSignal;
 }): Promise<FinishLibrarySaveResult> {
-	const finish = input.source.units.scene.data.materials.find((entry) => entry.id === input.finishId);
+	const finish = input.source.units.scene.data.materials.find(
+		(entry) => entry.id === input.finishId,
+	);
 	if (finish === undefined) {
 		return {
 			ok: false,
-			issues: [{ path: '$.finish', code: 'missing-finish', message: 'That Finish is not in the current revision.' }]
+			issues: [
+				{
+					path: '$.finish',
+					code: 'missing-finish',
+					message: 'That Finish is not in the current revision.',
+				},
+			],
 		};
 	}
 	const resources = input.source.units.resources.data.resources;
@@ -86,7 +98,7 @@ export async function saveFinishToLibrary(input: {
 		textureImages: images.textureImages,
 		...(input.source.units.scene.data.palette === undefined
 			? {}
-			: { palette: input.source.units.scene.data.palette })
+			: { palette: input.source.units.scene.data.palette }),
 	});
 	if (!draft.ok) return draft;
 	input.signal?.throwIfAborted();
@@ -95,9 +107,9 @@ export async function saveFinishToLibrary(input: {
 			payload: draft.draft.payload,
 			operationId: input.operationId,
 			sourceProjectId: input.source.id,
-			images: draft.draft.images
+			images: draft.draft.images,
 		},
-		input.signal
+		input.signal,
 	);
 	return { ok: true, summary, draft: draft.draft };
 }
@@ -117,10 +129,7 @@ export async function uploadFinishThumbnail(input: {
 	readonly client: MaterialLibraryClient;
 	readonly signal?: AbortSignal;
 }): Promise<boolean> {
-	if (
-		input.frame.width !== input.frame.height ||
-		!THUMBNAIL_EDGES.includes(input.frame.width)
-	) {
+	if (input.frame.width !== input.frame.height || !THUMBNAIL_EDGES.includes(input.frame.width)) {
 		throw new Error('A material thumbnail must be a 256×256 master or a 192×192 frame.');
 	}
 	const bytes = await encodeInspectionPng(input.frame);
@@ -144,7 +153,11 @@ export type InsertFinishResult =
 			readonly ok: false;
 			readonly code: InsertFinishRefusal;
 			readonly message: string;
-			readonly issues: readonly { readonly path: string; readonly code: string; readonly message: string }[];
+			readonly issues: readonly {
+				readonly path: string;
+				readonly code: string;
+				readonly message: string;
+			}[];
 	  };
 
 export type InsertFinishHost = {
@@ -159,7 +172,10 @@ export type InsertFinishHost = {
 		readonly message?: string;
 	}>;
 	readonly entityReference: (source: ProjectEnvelope, entityId: string) => SemanticReference;
-	readonly surfaceReference: (source: ProjectEnvelope, surface: DraftTargets['surfaces'][number]) => SemanticReference;
+	readonly surfaceReference: (
+		source: ProjectEnvelope,
+		surface: DraftTargets['surfaces'][number],
+	) => SemanticReference;
 	/** The session proof registry the F4 planner reads synchronously. */
 	readonly materialProofs: MaterialProofRegistry;
 };
@@ -187,7 +203,10 @@ export async function insertFinishFromLibrary(input: {
 }): Promise<InsertFinishResult> {
 	if (input.signal.aborted) return refused('aborted', 'Cancelled. Nothing was inserted.');
 	if (input.targets.entityIds.length > 0 && input.targets.surfaces.length > 0) {
-		return refused('refused', 'Assign the inserted Finish to objects or to surfaces first, then paint the rest.');
+		return refused(
+			'refused',
+			'Assign the inserted Finish to objects or to surfaces first, then paint the rest.',
+		);
 	}
 	const beforeState = input.host.current();
 	const expectedRevision = input.expectedRevision ?? beforeState.revision;
@@ -196,10 +215,15 @@ export async function insertFinishFromLibrary(input: {
 		beforeState.revision.projectId !== expectedRevision.projectId ||
 		beforeState.revision.revisionId !== expectedRevision.revisionId
 	) {
-		return refused('stale-revision', 'The destination project changed before insertion started. Try again.');
+		return refused(
+			'stale-revision',
+			'The destination project changed before insertion started. Try again.',
+		);
 	}
 	for (const entityId of input.targets.entityIds) {
-		const entity = beforeState.source.units.scene.data.entities.find((entry) => entry.id === entityId);
+		const entity = beforeState.source.units.scene.data.entities.find(
+			(entry) => entry.id === entityId,
+		);
 		if (entity === undefined) {
 			return refused('refused', `Target entity "${entityId}" is not in the current revision.`);
 		}
@@ -218,16 +242,21 @@ export async function insertFinishFromLibrary(input: {
 			input.item,
 			input.destinationProjectId,
 			input.operationId,
-			input.signal
+			input.signal,
 		);
 	} catch (error) {
 		if (input.signal.aborted) return refused('aborted', 'Cancelled. Nothing was inserted.');
 		if (error instanceof MaterialLibraryClientError) {
 			const code: InsertFinishRefusal =
-				error.code === 'stale' ? 'stale-revision' : error.code === 'conflict' ? 'conflict' : 'refused';
+				error.code === 'stale'
+					? 'stale-revision'
+					: error.code === 'conflict'
+						? 'conflict'
+						: 'refused';
 			return refused(code, error.message);
 		}
-		const message = error instanceof Error ? error.message : 'The saved material could not be inserted.';
+		const message =
+			error instanceof Error ? error.message : 'The saved material could not be inserted.';
 		return refused('refused', message);
 	}
 	if (transfer.finishId !== draftFinishId(input.operationId)) {
@@ -242,14 +271,15 @@ export async function insertFinishFromLibrary(input: {
 			issues: prepared.issues.map((issue) => ({
 				path: issue.path,
 				code: issue.code,
-				message: issue.action ?? issue.code
-			}))
+				message: issue.action ?? issue.code,
+			})),
 		};
 	}
 	if (prepared.hash !== transfer.recipeHash) {
 		return refused('conflict', 'The saved material recipe does not match its pinned revision.');
 	}
-	if (input.signal.aborted) return refused('aborted', 'Cancelled. The inserted images stay reusable in this project.');
+	if (input.signal.aborted)
+		return refused('aborted', 'Cancelled. The inserted images stay reusable in this project.');
 	const afterState = input.host.current();
 	if (
 		afterState.source.id !== input.destinationProjectId ||
@@ -258,7 +288,7 @@ export async function insertFinishFromLibrary(input: {
 	) {
 		return refused(
 			'stale-revision',
-			'The project changed while the material was being prepared. Try inserting it again.'
+			'The project changed while the material was being prepared. Try inserting it again.',
 		);
 	}
 	const after = afterState.source;
@@ -276,7 +306,7 @@ export async function insertFinishFromLibrary(input: {
 				resource.id === textureId &&
 				resource.pin?.hash === image.hash &&
 				resource.pin.mime === image.mime &&
-				resource.pin.size === image.byteSize
+				resource.pin.size === image.byteSize,
 		);
 		return {
 			hash: image.hash,
@@ -285,10 +315,12 @@ export async function insertFinishFromLibrary(input: {
 				? {}
 				: {
 						texture: {
-							name: image.name ?? `library-${image.hash.slice('sha256-'.length, 'sha256-'.length + 12)}`,
-							pin: { hash: image.hash, mime: image.mime, size: image.byteSize }
-						}
-					})
+							name:
+								image.name ??
+								`library-${image.hash.slice('sha256-'.length, 'sha256-'.length + 12)}`,
+							pin: { hash: image.hash, mime: image.mime, size: image.byteSize },
+						},
+					}),
 		};
 	});
 	const outcome = await input.host.accept({
@@ -298,7 +330,7 @@ export async function insertFinishFromLibrary(input: {
 		expectedRevision,
 		targets: [
 			...input.targets.entityIds.map((id) => input.host.entityReference(after, id)),
-			...input.targets.surfaces.map((surface) => input.host.surfaceReference(after, surface))
+			...input.targets.surfaces.map((surface) => input.host.surfaceReference(after, surface)),
 		],
 		payload: {
 			name: transfer.name,
@@ -307,10 +339,10 @@ export async function insertFinishFromLibrary(input: {
 			images,
 			entityIds: [...input.targets.entityIds],
 			...(input.targets.surfaces.length === 0 ? {} : { surfaces: [...input.targets.surfaces] }),
-			targetFacts: []
+			targetFacts: [],
 		},
 		capturedInputs: [],
-		allocatedIds: [{ kind: 'scene-finish', id: transfer.finishId }]
+		allocatedIds: [{ kind: 'scene-finish', id: transfer.finishId }],
 	} as AuthoringIntent);
 	if (outcome.kind !== 'accepted') {
 		const reason = outcome.reason ?? outcome.code ?? outcome.kind;
@@ -326,7 +358,7 @@ export async function insertFinishFromLibrary(input: {
 			ok: false,
 			code,
 			message: outcome.message ?? 'The saved material could not be added.',
-			issues: [{ path: '$', code: reason, message: outcome.message ?? outcome.kind }]
+			issues: [{ path: '$', code: reason, message: outcome.message ?? outcome.kind }],
 		};
 	}
 	return { ok: true, finishId: transfer.finishId, transfer };

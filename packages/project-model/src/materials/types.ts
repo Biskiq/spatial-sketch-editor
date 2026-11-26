@@ -25,8 +25,8 @@ export type MaterialProfile = typeof MATERIAL_PROFILE;
 
 /** The capability a consumer declares for a material resource. */
 export const MATERIAL_CAPABILITY = {
-  id: 'pbr-metallic-roughness',
-  version: '1'
+	id: 'pbr-metallic-roughness',
+	version: '1',
 } as const;
 
 /**
@@ -41,9 +41,7 @@ export type MaterialNeutralBaseId = typeof MATERIAL_NEUTRAL_BASE_ID;
 export type Hash = string;
 
 /** One project texture record, or one allowlisted immutable shipped texture. */
-export type LocalImage =
-	| { readonly textureId: string }
-	| { readonly shipped: string };
+export type LocalImage = { readonly textureId: string } | { readonly shipped: string };
 
 /** Authored physical tiling: one tile's real size, rotation and shift. */
 export type Metric = {
@@ -106,7 +104,7 @@ export const MATERIAL_MAP_ROLES = [
 	'normal',
 	'roughness',
 	'metalness',
-	'occlusion'
+	'occlusion',
 ] as const;
 export type MapRole = (typeof MATERIAL_MAP_ROLES)[number];
 
@@ -216,12 +214,7 @@ export type FieldProvenance = {
 	readonly paletteSlot?: string;
 };
 
-export type ScalarField =
-	| 'color'
-	| 'roughness'
-	| 'metalness'
-	| 'occlusionStrength'
-	| 'normalScale';
+export type ScalarField = 'color' | 'roughness' | 'metalness' | 'occlusionStrength' | 'normalScale';
 
 export type FinishProvenance = {
 	readonly color: FieldProvenance;
@@ -303,7 +296,7 @@ export type TargetAnalysisRequest = {
 
 /** Facts derived by the host, keyed by the subject the caller selected. */
 export type TargetAnalysis = (
-	requests: readonly TargetAnalysisRequest[]
+	requests: readonly TargetAnalysisRequest[],
 ) => readonly TargetFacts[] | null;
 
 /** One role's resolved sampling instruction for a bound draw. */

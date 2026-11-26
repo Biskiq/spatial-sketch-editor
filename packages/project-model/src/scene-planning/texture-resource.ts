@@ -88,9 +88,9 @@ export function finishTextureResource(input: {
 			hash: pin.hash,
 			mime: pin.mime,
 			size: pin.size,
-			locator: pin.locator
+			locator: pin.locator,
 		} satisfies ResourcePin,
-		unresolved: null
+		unresolved: null,
 	};
 }
 
@@ -114,7 +114,7 @@ export function sameFinishTexturePin(left: ResourcePin | null, right: ResourcePi
  */
 export function withFinishTextureResource(
 	envelope: ProjectEnvelope,
-	resource: TypedResource
+	resource: TypedResource,
 ): ProjectEnvelope | null {
 	if (resource.kind !== 'texture' || resource.pin === null) return null;
 	const resources = envelope.units.resources.data.resources;
@@ -129,9 +129,9 @@ export function withFinishTextureResource(
 				header: { ...envelope.units.resources.header },
 				data: {
 					formatVersion: envelope.units.resources.data.formatVersion,
-					resources: [...resources, resource]
-				}
-			}
-		}
+					resources: [...resources, resource],
+				},
+			},
+		},
 	};
 }

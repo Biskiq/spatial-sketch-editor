@@ -12,7 +12,7 @@ import type {
 	CreatorImportProgress,
 	CreatorImportRequest,
 	CreatorImportWorkerRequest,
-	CreatorImportWorkerResponse
+	CreatorImportWorkerResponse,
 } from './types';
 
 export type ImportWorkerRun = {
@@ -30,7 +30,7 @@ export type CreatorImportWorkerClient = {
 		requestId: string,
 		request: CreatorImportRequest,
 		onProgress?: (progress: CreatorImportProgress) => void,
-		signal?: AbortSignal
+		signal?: AbortSignal,
 	): Promise<CreatorImportOutcome>;
 	cancel(requestId: string): void;
 	dispose(): void;
@@ -45,7 +45,7 @@ function mintWorker(): Worker {
  * message protocol without a browser worker.
  */
 export function createImportWorkerClient(
-	createWorker: () => Worker = mintWorker
+	createWorker: () => Worker = mintWorker,
 ): CreatorImportWorkerClient {
 	let worker: Worker | null = null;
 	let disposed = false;
@@ -81,7 +81,7 @@ export function createImportWorkerClient(
 				kind: 'refused',
 				code: 'cancelled',
 				message: 'The import session ended before the source was prepared.',
-				issues: []
+				issues: [],
 			});
 		}
 	}
@@ -95,11 +95,15 @@ export function createImportWorkerClient(
 						kind: 'refused',
 						code: 'cancelled',
 						message: 'The import session has ended.',
-						issues: []
+						issues: [],
 					});
 					return;
 				}
-				pending.set(requestId, { resolve, reject, ...(onProgress === undefined ? {} : { onProgress }) });
+				pending.set(requestId, {
+					resolve,
+					reject,
+					...(onProgress === undefined ? {} : { onProgress }),
+				});
 				const cancel = (): void => {
 					if (!pending.has(requestId)) return;
 					const message: CreatorImportWorkerRequest = { kind: 'cancel', id: requestId };
@@ -120,6 +124,6 @@ export function createImportWorkerClient(
 			settleAllAsCancelled();
 			worker?.terminate();
 			worker = null;
-		}
+		},
 	};
 }

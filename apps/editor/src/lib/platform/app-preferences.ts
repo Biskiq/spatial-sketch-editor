@@ -20,7 +20,7 @@ export const DEFAULT_APP_PREFERENCES: AppPreferences = {
 	roomLabels2d: true,
 	roomLabels3d: false,
 	paperTone2d: 'current',
-	paperTone3d: 'current'
+	paperTone3d: 'current',
 };
 
 function toneOf(value: unknown): PaperToneId {
@@ -40,11 +40,14 @@ export function readAppPreferences(): AppPreferences {
 		return {
 			planAppearance: record.planAppearance === 'shaded' ? 'shaded' : 'paper',
 			reducedMotion: typeof record.reducedMotion === 'boolean' ? record.reducedMotion : null,
-			motionSpeed: record.motionSpeed === 'slow' || record.motionSpeed === 'fast' ? record.motionSpeed : 'normal',
+			motionSpeed:
+				record.motionSpeed === 'slow' || record.motionSpeed === 'fast'
+					? record.motionSpeed
+					: 'normal',
 			roomLabels2d: typeof record.roomLabels2d === 'boolean' ? record.roomLabels2d : true,
 			roomLabels3d: typeof record.roomLabels3d === 'boolean' ? record.roomLabels3d : false,
 			paperTone2d: toneOf(record.paperTone2d),
-			paperTone3d: toneOf(record.paperTone3d)
+			paperTone3d: toneOf(record.paperTone3d),
 		};
 	} catch {
 		return { ...DEFAULT_APP_PREFERENCES };

@@ -10,7 +10,11 @@ import { wallCenterlineSamples } from './centerline';
 import type { ResolvedWallSplitResult } from './curve-algebra';
 import { resolveWallCurveSplit, wallCurveChainLength } from './curve-algebra';
 import { isClosedWall } from './closed-wall';
-import { certifyRoundRoom, enumerateClosedWallSafeCutStations, findEnclosingRoundRoomForWall } from '../room/round-room';
+import {
+	certifyRoundRoom,
+	enumerateClosedWallSafeCutStations,
+	findEnclosingRoundRoomForWall,
+} from '../room/round-room';
 import { coincidesAsJunction } from './junction-identity';
 import { wallChainArcCenterline } from './chain-arcs';
 import type { ClosedToRingSpec } from './chain-execute';
@@ -32,8 +36,6 @@ export function cloneWallFirstDocument(document: LayoutDocumentWallFirst): Layou
 	return JSON.parse(JSON.stringify(document)) as LayoutDocumentWallFirst;
 }
 
-
-
 /**
  * Plan a sketched Wall/Partition chain over `baseline` (P23B.11 S1 mark boundary:
  * `p2311:wall-chain-plan` encloses the whole planner run, including every early
@@ -46,20 +48,22 @@ export function planWallChain(options: WallChainPlanOptions): WallChainPlan {
 		if (error instanceof LayoutIdCollisionError) {
 			return {
 				kind: 'rejected',
-				rejection: { code: 'captured_id_in_use', message: error.message }
+				rejection: { code: 'captured_id_in_use', message: error.message },
 			};
 		}
 		throw error;
 	}
 }
 
-
-
 function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 	const thickness = options.thickness ?? WALL_CHAIN_DEFAULTS.thickness;
-	const reject = (rejection: WallChainRejection): WallChainPlan => ({ kind: 'rejected', rejection });
+	const reject = (rejection: WallChainRejection): WallChainPlan => ({
+		kind: 'rejected',
+		rejection,
+	});
 	const levelIssue = layoutWorkingLevelIssue(options.baseline, options.levelId);
-	if (levelIssue !== null) return reject({ code: 'invalid_candidate_document', message: levelIssue });
+	if (levelIssue !== null)
+		return reject({ code: 'invalid_candidate_document', message: levelIssue });
 
 	// P23.6I birth semantics. `planWallChain` is the **bounded compound** planner
 	// (Rectangle/Polygon and explicit multi-point callers): the whole generated
@@ -90,13 +94,15 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 	// A declared anchor that no longer coincides with its draft point is a stale
 	// caller claim, not a hint: the chain REFUSES rather than silently building
 	// topology the caller did not ask for.
-	const baselineJunctionById = new Map(options.baseline.junctions.map((junction) => [junction.id, junction]));
+	const baselineJunctionById = new Map(
+		options.baseline.junctions.map((junction) => [junction.id, junction]),
+	);
 	const declaredAnchorByPointIndex = new Map<number, string>();
 	for (const snap of options.endpointJunctionSnaps ?? []) {
 		if (declaredAnchorByPointIndex.has(snap.pointIndex)) {
 			return reject({
 				code: 'invalid_candidate_document',
-				message: `Draft point ${snap.pointIndex} declares more than one Junction anchor`
+				message: `Draft point ${snap.pointIndex} declares more than one Junction anchor`,
 			});
 		}
 		declaredAnchorByPointIndex.set(snap.pointIndex, snap.junctionId);
@@ -107,22 +113,24 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 		if (!declared || !point) {
 			return reject({
 				code: 'invalid_candidate_document',
-				message: `Declared Junction anchor '${junctionId}' names draft point ${pointIndex}, which this chain does not have`
+				message: `Declared Junction anchor '${junctionId}' names draft point ${pointIndex}, which this chain does not have`,
 			});
 		}
 		if (!coincidesAsJunction(declared.point, point)) {
 			return reject({
 				code: 'invalid_candidate_document',
-				message: `Declared Junction anchor '${junctionId}' does not coincide with draft point ${pointIndex}`
+				message: `Declared Junction anchor '${junctionId}' does not coincide with draft point ${pointIndex}`,
 			});
 		}
 	}
-	const resolved: Array<{ junctionId: string | null; point: LayoutVec2 }> = points.map((point, pointIndex) => {
-		const declaredId = declaredAnchorByPointIndex.get(pointIndex);
-		if (declaredId === undefined) return { junctionId: null, point };
-		const declared = baselineJunctionById.get(declaredId)!;
-		return { junctionId: declared.id, point: [...declared.point] as LayoutVec2 };
-	});
+	const resolved: Array<{ junctionId: string | null; point: LayoutVec2 }> = points.map(
+		(point, pointIndex) => {
+			const declaredId = declaredAnchorByPointIndex.get(pointIndex);
+			if (declaredId === undefined) return { junctionId: null, point };
+			const declared = baselineJunctionById.get(declaredId)!;
+			return { junctionId: declared.id, point: [...declared.point] as LayoutVec2 };
+		},
+	);
 
 	// A final point coinciding with the chain's own first point closes the
 	// chain implicitly (the duplicate leg would be zero-length anyway).
@@ -142,12 +150,15 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 			code: 'insufficient_chain',
 			message: close
 				? 'A closed chain needs at least three distinct vertices'
-				: 'An open chain needs at least two distinct vertices'
+				: 'An open chain needs at least two distinct vertices',
 		});
 	}
 
 	// Chain legs: consecutive resolved points, wrapping when closed.
-	const legEndpoints: Array<{ start: { junctionId: string | null; point: LayoutVec2 }; end: { junctionId: string | null; point: LayoutVec2 } }> = [];
+	const legEndpoints: Array<{
+		start: { junctionId: string | null; point: LayoutVec2 };
+		end: { junctionId: string | null; point: LayoutVec2 };
+	}> = [];
 	const legCount = close ? resolved.length : resolved.length - 1;
 	for (let index = 0; index < legCount; index += 1) {
 		const start = resolved[index]!;
@@ -158,7 +169,11 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 		// Refuse an oversized leg before noding, Room reconciliation or a compile
 		// samples it. 1,000 m is the measured supported span; see
 		// layout-geometry-limits.
-		if (exceedsLayoutDimension(Math.hypot(end.point[0] - start.point[0], end.point[1] - start.point[1]))) {
+		if (
+			exceedsLayoutDimension(
+				Math.hypot(end.point[0] - start.point[0], end.point[1] - start.point[1]),
+			)
+		) {
 			return reject({ code: 'dimension_out_of_range', message: LAYOUT_DIMENSION_LIMIT_MESSAGE });
 		}
 		legEndpoints.push({ start, end });
@@ -170,13 +185,16 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 	// A3 — validate the one drawn Arc before any Wall is built. The leg keeps
 	// the same two resolved points; only its centerline differs, so noding, Room
 	// reconciliation and the canonical gates below see ordinary architecture.
-	let arcLeg: { readonly pointIndex: number; readonly centerline: LayoutWall['centerline'] } | null = null;
+	let arcLeg: {
+		readonly pointIndex: number;
+		readonly centerline: LayoutWall['centerline'];
+	} | null = null;
 	if (options.arc !== undefined && options.arc !== null) {
 		const { pointIndex, apex } = options.arc;
 		if (!Number.isInteger(pointIndex) || pointIndex < 0 || pointIndex >= legEndpoints.length) {
 			return reject({
 				code: 'invalid_candidate_document',
-				message: `Arc leg ${pointIndex} is not a leg this chain has`
+				message: `Arc leg ${pointIndex} is not a leg this chain has`,
 			});
 		}
 		const leg = legEndpoints[pointIndex]!;
@@ -184,7 +202,7 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 		if (built === null) {
 			return reject({
 				code: 'arc_rise_out_of_range',
-				message: 'An Arc bulge must be positive and no more than half its chord'
+				message: 'An Arc bulge must be positive and no more than half its chord',
 			});
 		}
 		arcLeg = { pointIndex, centerline: built.centerline };
@@ -200,7 +218,7 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 		resolved,
 		legs: legEndpoints.map((leg) => ({ start: leg.start.point, end: leg.end.point })),
 		declaredJunctionByPointIndex: declaredAnchorByPointIndex,
-		hostSnaps: options.endpointHostSnaps ?? []
+		hostSnaps: options.endpointHostSnaps ?? [],
 	});
 	if ('rejection' in hostValidation) return reject(hostValidation.rejection);
 	const declaredHostByPointIndex = hostValidation.declaredHostByPointIndex;
@@ -213,7 +231,8 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 		for (let second = first + 1; second < legEndpoints.length; second += 1) {
 			const a = legEndpoints[first]!;
 			const b = legEndpoints[second]!;
-			const adjacent = second === first + 1 || (close && first === 0 && second === legEndpoints.length - 1);
+			const adjacent =
+				second === first + 1 || (close && first === 0 && second === legEndpoints.length - 1);
 			// Linear adjacency shares a.end/b.start; the closing pair shares
 			// a.start/b.end (the chain first vertex). IDs are only set for
 			// pre-existing junctions here, so coordinate equality guards the test.
@@ -232,16 +251,22 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 			const classified = classifyWallIntersection(
 				{ id: `chain:${first}`, start: a.start.point, end: a.end.point },
 				{ id: `chain:${second}`, start: b.start.point, end: b.end.point },
-				shared
+				shared,
 			);
-			if (classified.kind === 'collinear-overlap' || classified.kind === 'collinear-endpoint-touch') {
+			if (
+				classified.kind === 'collinear-overlap' ||
+				classified.kind === 'collinear-endpoint-touch'
+			) {
 				return reject({
 					code: 'collinear_overlap',
-					message: 'Chain legs overlap on one line; trim or redraw the overlapping span'
+					message: 'Chain legs overlap on one line; trim or redraw the overlapping span',
 				});
 			}
 			if (classified.kind === 'proper-crossing' || classified.kind === 'endpoint-on-interior') {
-				return reject({ code: 'self_intersecting_chain', message: 'Chain crosses itself; split the sketch into separate chains' });
+				return reject({
+					code: 'self_intersecting_chain',
+					message: 'Chain crosses itself; split the sketch into separate chains',
+				});
 			}
 		}
 	}
@@ -268,7 +293,11 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 		const sortedClosedWallIds = [...targetedClosedWallIds].sort();
 		type SnappedClosedPoint =
 			| { readonly pointIndex: number; readonly kind: 'seam' }
-			| { readonly pointIndex: number; readonly kind: 'interior'; readonly split: ResolvedWallSplitResult };
+			| {
+					readonly pointIndex: number;
+					readonly kind: 'interior';
+					readonly split: ResolvedWallSplitResult;
+			  };
 		type PreparedClosedHost = {
 			readonly closedWall: LayoutWall;
 			readonly roundRoomId: string;
@@ -286,7 +315,7 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 				return reject({
 					code: 'closed_wall_isolated',
 					message: `Closed Wall '${closedWallId}' has no enclosing Round Room`,
-					wallIds: [closedWallId]
+					wallIds: [closedWallId],
 				});
 			}
 			const cert = certifyRoundRoom(options.baseline, roundRoom);
@@ -294,14 +323,14 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 				return reject({
 					code: 'invalid_candidate_document',
 					message: cert.issue.message,
-					wallIds: [closedWallId]
+					wallIds: [closedWallId],
 				});
 			}
 			if (closedWall.centerline.kind !== 'cubic-chain') {
 				return reject({
 					code: 'invalid_candidate_document',
 					message: `Closed Wall '${closedWallId}' must be a cubic-chain`,
-					wallIds: [closedWallId]
+					wallIds: [closedWallId],
 				});
 			}
 			const seamPoint = cert.certified.seamPoint;
@@ -309,19 +338,19 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 				startPoint: seamPoint,
 				endPoint: seamPoint,
 				knots: closedWall.centerline.knots,
-				spans: closedWall.centerline.spans
+				spans: closedWall.centerline.spans,
 			};
 			const closedLength = wallCurveChainLength(closedChain);
 			const safeCuts = enumerateClosedWallSafeCutStations(
 				options.baseline.openings,
 				closedWallId,
-				closedLength
+				closedLength,
 			);
 			if (safeCuts.seamOccupied) {
 				return reject({
 					code: 'noding_rejected',
 					message: `Opening '${safeCuts.seamBlockingOpeningIds.join(', ')}' spans the seam of closed Wall '${closedWallId}'; move it off the seam before attaching`,
-					wallIds: [closedWallId]
+					wallIds: [closedWallId],
 				});
 			}
 			const sampledClosed = wallCenterlineSamples(closedWall, seamPoint, seamPoint, 'forward');
@@ -329,7 +358,7 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 				return reject({
 					code: 'noding_rejected',
 					message: `Closed Wall '${closedWallId}' cannot be sampled`,
-					wallIds: [closedWallId]
+					wallIds: [closedWallId],
 				});
 			}
 
@@ -361,7 +390,7 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 					return reject({
 						code: 'noding_rejected',
 						message: splitRes.message,
-						wallIds: [closedWallId]
+						wallIds: [closedWallId],
 					});
 				}
 				snappedPoints.push({ pointIndex, kind: 'interior', split: splitRes.result });
@@ -369,10 +398,17 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 
 			const uniqueInteriorCuts: ResolvedWallSplitResult[] = [];
 			const interiorEntries = snappedPoints
-				.filter((entry): entry is Extract<SnappedClosedPoint, { kind: 'interior' }> => entry.kind === 'interior')
+				.filter(
+					(entry): entry is Extract<SnappedClosedPoint, { kind: 'interior' }> =>
+						entry.kind === 'interior',
+				)
 				.sort((a, b) => a.split.distance - b.split.distance);
 			for (const entry of interiorEntries) {
-				if (!uniqueInteriorCuts.some((existing) => coincidesAsJunction(existing.point, entry.split.point))) {
+				if (
+					!uniqueInteriorCuts.some((existing) =>
+						coincidesAsJunction(existing.point, entry.split.point),
+					)
+				) {
 					uniqueInteriorCuts.push(entry.split);
 				}
 			}
@@ -392,7 +428,7 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 					return reject({
 						code: 'noding_rejected',
 						message: `No admissible second cut found to attach at seam of closed Wall '${closedWallId}'`,
-						wallIds: [closedWallId]
+						wallIds: [closedWallId],
 					});
 				}
 			}
@@ -403,7 +439,7 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 				seamPoint,
 				closedLength,
 				snappedPoints,
-				stationCandidates
+				stationCandidates,
 			});
 		}
 
@@ -429,7 +465,11 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 				if (combinations.length >= MAX_SEAM_CANDIDATE_COMBINATIONS) return;
 			}
 		};
-		for (let targetSum = 0; targetSum <= maxSum && combinations.length < MAX_SEAM_CANDIDATE_COMBINATIONS; targetSum += 1) {
+		for (
+			let targetSum = 0;
+			targetSum <= maxSum && combinations.length < MAX_SEAM_CANDIDATE_COMBINATIONS;
+			targetSum += 1
+		) {
 			collectWithSum(0, targetSum, []);
 		}
 
@@ -441,7 +481,7 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 				seamPoint: host.seamPoint,
 				closedLength: host.closedLength,
 				stations: host.stationCandidates[combo[hostIdx]!]!,
-				snappedPoints: host.snappedPoints
+				snappedPoints: host.snappedPoints,
 			}));
 			const attempt = executeWallChainCandidate(
 				options,
@@ -452,17 +492,30 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 				close,
 				arcLeg,
 				declaredHostByPointIndex,
-				closedSpecs
+				closedSpecs,
 			);
 			if (attempt.kind === 'success') return attempt;
 			firstRejection ??= attempt;
 		}
-		return firstRejection ?? reject({
-			code: 'noding_rejected',
-			message: `No admissible second cut found to attach at seam of closed Wall '${sortedClosedWallIds[0]!}'`,
-			wallIds: sortedClosedWallIds
-		});
+		return (
+			firstRejection ??
+			reject({
+				code: 'noding_rejected',
+				message: `No admissible second cut found to attach at seam of closed Wall '${sortedClosedWallIds[0]!}'`,
+				wallIds: sortedClosedWallIds,
+			})
+		);
 	}
 
-	return executeWallChainCandidate(options, thickness, height, resolved, legEndpoints, close, arcLeg, declaredHostByPointIndex, []);
+	return executeWallChainCandidate(
+		options,
+		thickness,
+		height,
+		resolved,
+		legEndpoints,
+		close,
+		arcLeg,
+		declaredHostByPointIndex,
+		[],
+	);
 }

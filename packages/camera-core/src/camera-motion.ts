@@ -1,9 +1,83 @@
 export { compileAutoBezierPositionPart } from './camera/auto-bezier';
-export { EDITOR_CARDINAL_SNAP_DURATION_MS, createEditorCardinalSnapMotion } from './camera/cardinal';
-export { applyCameraFramingGuard, compileCameraFramingGuard, sphericalDirectionLerp } from './camera/framing-guard';
-export { CAMERA_FOV_UPDATE_EPSILON, CAMERA_FRAMING_GUARD_POLICY, CAMERA_MOTION_DEFAULT_EASING, CAMERA_MOTION_PATH, CAMERA_MOTION_TIMING, CAMERA_POSE_EPSILON, VISITOR_CAMERA_PROJECTION, cameraApplyEasing, cameraInverseEasing, createCameraMotion, createCameraMotionSample, readCameraFramingGuardStatus, resolveCameraMotionDuration, resolveCameraMotionEasing, sampleFramingEnvelopeWeight, smootherstep01, smootherstepRamp } from './camera/motion';
-export { clonePoints, compileCameraPositionPath, compilePreparedPositionPath, countOrderedPositionPoints, createCameraPositionPath, createRoundedPath, preparePositionParts, prepareRouteEdge, readFov, readVector3, replacePreparedStartPosition } from './camera/paths';
+export {
+	EDITOR_CARDINAL_SNAP_DURATION_MS,
+	createEditorCardinalSnapMotion,
+} from './camera/cardinal';
+export {
+	applyCameraFramingGuard,
+	compileCameraFramingGuard,
+	sphericalDirectionLerp,
+} from './camera/framing-guard';
+export {
+	CAMERA_FOV_UPDATE_EPSILON,
+	CAMERA_FRAMING_GUARD_POLICY,
+	CAMERA_MOTION_DEFAULT_EASING,
+	CAMERA_MOTION_PATH,
+	CAMERA_MOTION_TIMING,
+	CAMERA_POSE_EPSILON,
+	VISITOR_CAMERA_PROJECTION,
+	cameraApplyEasing,
+	cameraInverseEasing,
+	createCameraMotion,
+	createCameraMotionSample,
+	readCameraFramingGuardStatus,
+	resolveCameraMotionDuration,
+	resolveCameraMotionEasing,
+	sampleFramingEnvelopeWeight,
+	smootherstep01,
+	smootherstepRamp,
+} from './camera/motion';
+export {
+	clonePoints,
+	compileCameraPositionPath,
+	compilePreparedPositionPath,
+	countOrderedPositionPoints,
+	createCameraPositionPath,
+	createRoundedPath,
+	preparePositionParts,
+	prepareRouteEdge,
+	readFov,
+	readVector3,
+	replacePreparedStartPosition,
+} from './camera/paths';
 export type { CompiledPositionPart } from './camera/paths';
-export { cameraMotionEdgeProgressAtProgress, cameraMotionProgressAtEdgeProgress, collectAdaptiveFramingSamples, findActiveEdgeIndex, getEdgeLocalProgress, sampleAuthoredView } from './camera/progress';
+export {
+	cameraMotionEdgeProgressAtProgress,
+	cameraMotionProgressAtEdgeProgress,
+	collectAdaptiveFramingSamples,
+	findActiveEdgeIndex,
+	getEdgeLocalProgress,
+	sampleAuthoredView,
+} from './camera/progress';
 export { sampleCameraMotion } from './camera/sample';
-export type { CameraFramingBypass, CameraFramingGuard, CameraFramingGuardCompileContext, CameraFramingGuardStatus, CameraMotion, CameraMotionEdgeView, CameraMotionOptions, CameraMotionSample, CameraMotionViewPoint, CameraPose, CameraPositionDistanceSpan, CameraPositionEdgeDistanceSpan, CameraPositionPathLocation, CameraPositionPathPart, CameraPositionPathSpan, CameraRoute, CameraRouteEdge, CameraRouteView, CameraRouteViewKeyframe, CameraRouteViewTrack, CardinalSnapMotion, CardinalSnapMotionSample, CompiledCameraPositionPath, PreparedCameraRouteEdge, PreparedCameraRouteView, PreparedCameraRouteViewTrack, PreparedPositionPathPart, RawCameraFramingGuardSample, Vector3Like } from './camera/types';
+export type {
+	CameraFramingBypass,
+	CameraFramingGuard,
+	CameraFramingGuardCompileContext,
+	CameraFramingGuardStatus,
+	CameraMotion,
+	CameraMotionEdgeView,
+	CameraMotionOptions,
+	CameraMotionSample,
+	CameraMotionViewPoint,
+	CameraPose,
+	CameraPositionDistanceSpan,
+	CameraPositionEdgeDistanceSpan,
+	CameraPositionPathLocation,
+	CameraPositionPathPart,
+	CameraPositionPathSpan,
+	CameraRoute,
+	CameraRouteEdge,
+	CameraRouteView,
+	CameraRouteViewKeyframe,
+	CameraRouteViewTrack,
+	CardinalSnapMotion,
+	CardinalSnapMotionSample,
+	CompiledCameraPositionPath,
+	PreparedCameraRouteEdge,
+	PreparedCameraRouteView,
+	PreparedCameraRouteViewTrack,
+	PreparedPositionPathPart,
+	RawCameraFramingGuardSample,
+	Vector3Like,
+} from './camera/types';

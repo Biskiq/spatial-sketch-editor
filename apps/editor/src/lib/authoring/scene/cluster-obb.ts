@@ -45,9 +45,7 @@ export function computeRootLocalBox(root: Object3D): Box3 {
 
 // Box3 corner offsets in (x, y, z) flags matching `obb-util.ts`'s
 // VERTEX_OFFSETS — index order used by `localCornersInto` and `OBB_EDGE_INDICES`.
-const CORNER_FLAGS: readonly number[] = [
-	0b000, 0b001, 0b011, 0b010, 0b100, 0b101, 0b111, 0b110
-];
+const CORNER_FLAGS: readonly number[] = [0b000, 0b001, 0b011, 0b010, 0b100, 0b101, 0b111, 0b110];
 
 /**
  * Cluster OBB — tight, rotation-aware box around every member root.
@@ -150,13 +148,11 @@ function xzPrincipalAxis(points: Vector3[]): { axis: Vector3; centroid: Vector3 
 
 	return {
 		axis: new Vector3(vx, 0, vz),
-		centroid: new Vector3(cx, 0, cz)
+		centroid: new Vector3(cx, 0, cz),
 	};
 }
 
-export function computeClusterOBB(
-	roots: readonly Object3D[]
-): ClusterOBB | null {
+export function computeClusterOBB(roots: readonly Object3D[]): ClusterOBB | null {
 	if (roots.length === 0) return null;
 
 	// 1. Stream world corners.
@@ -171,7 +167,7 @@ export function computeClusterOBB(
 			TMP_CORNER.set(
 				(flags & 0b001) !== 0 ? max.x : min.x,
 				(flags & 0b010) !== 0 ? max.y : min.y,
-				(flags & 0b100) !== 0 ? max.z : min.z
+				(flags & 0b100) !== 0 ? max.z : min.z,
 			).applyMatrix4(root.matrixWorld);
 			_worldCorners.push(new Vector3(TMP_CORNER.x, TMP_CORNER.y, TMP_CORNER.z));
 		}
@@ -210,20 +206,15 @@ export function computeClusterOBB(
 	// 4. World position = XZ centroid + mid-Y.
 	const position = new Vector3(centroid.x, (yMin + yMax) * 0.5, centroid.z);
 	// 5. Basis matrix: (x, y, z) → position + x*forward + y*up + z*right.
-	const frameMatrix = new Matrix4()
-		.makeBasis(axis, WORLD_UP, right)
-		.setPosition(position);
+	const frameMatrix = new Matrix4().makeBasis(axis, WORLD_UP, right).setPosition(position);
 
-	const localBox = new Box3(
-		new Vector3(fMin, yMin, rMin),
-		new Vector3(fMax, yMax, rMax)
-	);
+	const localBox = new Box3(new Vector3(fMin, yMin, rMin), new Vector3(fMax, yMax, rMax));
 
 	return {
 		position,
 		forward: axis,
 		right,
 		localBox,
-		frameMatrix
+		frameMatrix,
 	};
 }

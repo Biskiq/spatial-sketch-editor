@@ -27,27 +27,21 @@ import type {
 	StageAdapterFactory,
 	StageAdapterServices,
 	StageCandidatePreview,
-	StageGhostMesh
+	StageGhostMesh,
 } from '$lib/authoring/stage/stage-adapter-host';
-import type {
-	StageAdapter,
-	StageAdapterBinding
-} from '$lib/authoring/stage/stage-adapter-host';
-import {
-	createProfileRevisionBinding,
-	publishProfileRevision
-} from './scene/profile-revision';
+import type { StageAdapter, StageAdapterBinding } from '$lib/authoring/stage/stage-adapter-host';
+import { createProfileRevisionBinding, publishProfileRevision } from './scene/profile-revision';
 import {
 	NATIVE_PLACEMENT_PRIMITIVES,
 	admittedCatalogueModelAssets,
 	catalogueModelDefinition,
-	nativePlacementDefinition
+	nativePlacementDefinition,
 } from '$lib/authoring/scene/object-definition-policy';
 import {
 	createFinishPlanners,
 	createScenePlanners,
 	createArtworkPlanners,
-	type NormalizedPlacementDefinition
+	type NormalizedPlacementDefinition,
 } from '@portfolio/project-model/scene-planning';
 import { getMaterial, materialById } from '$lib/content/materials';
 import { materialTreatmentFacts } from '$lib/content/material-presentation';
@@ -60,7 +54,7 @@ import {
 	presentGhosts,
 	presentMarkOutline,
 	presentOverlay,
-	presentPlacementPreview
+	presentPlacementPreview,
 } from './scene/candidate-presenter';
 import { createObjectMarkSession } from './scene/object-mark-session';
 import { liveProjectId } from './scene/object-readings';
@@ -70,10 +64,11 @@ import {
 	SCENE_COMPOSE_TASK,
 	SCENE_IMPORT_KIND,
 	SCENE_PLACE_KIND,
-	SCENE_PROFILE_REVISION_KIND
+	SCENE_PROFILE_REVISION_KIND,
 } from './scene/scene-task-ids';
 
-const catalogueLabel = (id: MaterialId): string => (materialById.has(id) ? getMaterial(id).label : id);
+const catalogueLabel = (id: MaterialId): string =>
+	materialById.has(id) ? getMaterial(id).label : id;
 
 export const createAdapter: StageAdapterFactory = (services: StageAdapterServices) => {
 	// Every planner is registered once, and the placement planner's definitions
@@ -91,34 +86,35 @@ export const createAdapter: StageAdapterFactory = (services: StageAdapterService
 			labelForMaterial: catalogueLabel,
 			treatmentFacts: materialTreatmentFacts(catalogueLabel),
 			materialProof: () => services.materialProofs.proof(),
-			targetAnalysis: services.targetAnalysis
+			targetAnalysis: services.targetAnalysis,
 		}),
 		...createScenePlanners({
-		definitions: () => {
-			// The approved model a creator has armed is an admitted definition even
-			// before its first placement installs the resource. A rebind (a drawing
-			// install replaces the accepted source) clears the captured procedure
-			// definitions, so the arm itself must keep the model placeable.
-			const armed = armedModelDefinition(liveProjectId(services));
-			return [...admitted, ...creatorDefinitions(), ...(armed === null ? [] : [armed])];
-		}
-	})];
+			definitions: () => {
+				// The approved model a creator has armed is an admitted definition even
+				// before its first placement installs the resource. A rebind (a drawing
+				// install replaces the accepted source) clears the captured procedure
+				// definitions, so the arm itself must keep the model placeable.
+				const armed = armedModelDefinition(liveProjectId(services));
+				return [...admitted, ...creatorDefinitions(), ...(armed === null ? [] : [armed])];
+			},
+		}),
+	];
 	for (const planner of planners) {
 		const registration = services.authoring.registerPlanner(planner);
 		if (registration.kind !== 'registered') {
 			throw new Error(
-				`Scene adapter planner "${planner.kind}" was refused: ${registration.reason} — ${registration.message}`
+				`Scene adapter planner "${planner.kind}" was refused: ${registration.reason} — ${registration.message}`,
 			);
 		}
 	}
 	void Promise.all([
 		...NATIVE_PLACEMENT_PRIMITIVES.map((primitive) => nativePlacementDefinition(primitive)),
-		...admittedCatalogueModelAssets().map((asset) => catalogueModelDefinition(asset.id))
+		...admittedCatalogueModelAssets().map((asset) => catalogueModelDefinition(asset.id)),
 	]).then((definitions) => {
 		admitted.push(
 			...definitions.filter(
-				(definition): definition is NormalizedPlacementDefinition => definition !== null
-			)
+				(definition): definition is NormalizedPlacementDefinition => definition !== null,
+			),
 		);
 	});
 
@@ -193,7 +189,7 @@ export const createAdapter: StageAdapterFactory = (services: StageAdapterService
 					if (placement.drawing()) {
 						return presentDrawnCandidate(
 							placement.drawPreview(adapterContext),
-							adapterContext.snapshot.domain.datumMeters
+							adapterContext.snapshot.domain.datumMeters,
 						);
 					}
 					// Plan hides the Canvas ghost, so a mark gesture's proposal is drawn
@@ -206,8 +202,13 @@ export const createAdapter: StageAdapterFactory = (services: StageAdapterService
 					if (
 						adapterContext.evaluation.settledReading !== 'plan' ||
 						adapterContext.evaluation.renderedReading !== 'plan'
-					) return [];
-					return presentPlacementPreview(adapterContext, placement.view(adapterContext), marks.candidate());
+					)
+						return [];
+					return presentPlacementPreview(
+						adapterContext,
+						placement.view(adapterContext),
+						marks.candidate(),
+					);
 				},
 				// The captured candidate is shown through the existing overlay surface,
 				// so Plan and 3D present the same pose the planner would commit.
@@ -252,7 +253,7 @@ export const createAdapter: StageAdapterFactory = (services: StageAdapterService
 					if (task.kind === SCENE_IMPORT_KIND) {
 						return {
 							summary: 'Import a model',
-							view: { component: ImportModelInstrumentLazy, services }
+							view: { component: ImportModelInstrumentLazy, services },
 						};
 					}
 					return {
@@ -262,7 +263,7 @@ export const createAdapter: StageAdapterFactory = (services: StageAdapterService
 								: task.kind === SCENE_COMPOSE_TASK
 									? 'Compose'
 									: 'Import model',
-						view: { component: SceneTransformInstrument, services }
+						view: { component: SceneTransformInstrument, services },
 					};
 				},
 				dispose() {
@@ -270,9 +271,9 @@ export const createAdapter: StageAdapterFactory = (services: StageAdapterService
 					placement.dispose();
 					profile.dispose();
 					publishProfileRevision(null, profile.session);
-				}
+				},
 			};
-		}
+		},
 	};
 	return adapter;
 };

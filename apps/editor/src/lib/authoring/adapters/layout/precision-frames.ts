@@ -7,7 +7,14 @@
  * and the gesture sessions can read them without loading the operation set.
  */
 import { lookupIndexedJunction, lookupIndexedWall } from '@portfolio/layout-core/world';
-import { planConvertWallToLine, planDeleteWallCurveKnot, projectPointToWallCenterline, wallCenterlineSamples, type FixedWallEndpoint, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import {
+	planConvertWallToLine,
+	planDeleteWallCurveKnot,
+	projectPointToWallCenterline,
+	wallCenterlineSamples,
+	type FixedWallEndpoint,
+	type LayoutDocumentWallFirst,
+} from '@portfolio/layout-core/wall';
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 /**
@@ -49,7 +56,7 @@ export function wallFrame(document: LayoutDocumentWallFirst, wallId: string): Wa
 		end: [end[0], end[1]],
 		direction: [dx / length, dz / length],
 		length,
-		angleRadians: Math.atan2(dz, dx)
+		angleRadians: Math.atan2(dz, dx),
 	};
 }
 
@@ -84,7 +91,10 @@ export type OpenWallFrame = CurvedWallFrame;
  * resolves a straight Wall, because a body press must bend it on the spot; the
  * sampled length of a `line` centerline is its chord.
  */
-export function openWallFrame(document: LayoutDocumentWallFirst, wallId: string): OpenWallFrame | null {
+export function openWallFrame(
+	document: LayoutDocumentWallFirst,
+	wallId: string,
+): OpenWallFrame | null {
 	const wall = lookupIndexedWall(document, wallId);
 	if (wall === undefined) return null;
 	const start = lookupIndexedJunction(document, wall.startJunctionId)?.point;
@@ -95,7 +105,7 @@ export function openWallFrame(document: LayoutDocumentWallFirst, wallId: string)
 		{ id: wall.id, centerline: wall.centerline },
 		[start[0], start[1]],
 		[end[0], end[1]],
-		'forward'
+		'forward',
 	);
 	if (sampled === undefined || !(sampled.length > 0) || sampled.samples.length < 2) return null;
 	return {
@@ -108,12 +118,15 @@ export function openWallFrame(document: LayoutDocumentWallFirst, wallId: string)
 		samples: sampled.samples.map((sample) => ({
 			point: [sample.point[0], sample.point[1]] as LayoutVec2,
 			distance: sample.distance,
-			tangent: [sample.tangent[0], sample.tangent[1]] as LayoutVec2
-		}))
+			tangent: [sample.tangent[0], sample.tangent[1]] as LayoutVec2,
+		})),
 	};
 }
 
-export function curvedWallFrame(document: LayoutDocumentWallFirst, wallId: string): CurvedWallFrame | null {
+export function curvedWallFrame(
+	document: LayoutDocumentWallFirst,
+	wallId: string,
+): CurvedWallFrame | null {
 	const wall = lookupIndexedWall(document, wallId);
 	if (wall === undefined || wall.centerline.kind === 'line') return null;
 	const start = lookupIndexedJunction(document, wall.startJunctionId)?.point;
@@ -123,7 +136,7 @@ export function curvedWallFrame(document: LayoutDocumentWallFirst, wallId: strin
 		{ id: wall.id, centerline: wall.centerline },
 		[start[0], start[1]],
 		[end[0], end[1]],
-		'forward'
+		'forward',
 	);
 	if (sampled === undefined || !(sampled.length > 0) || sampled.samples.length < 2) return null;
 	return {
@@ -136,8 +149,8 @@ export function curvedWallFrame(document: LayoutDocumentWallFirst, wallId: strin
 		samples: sampled.samples.map((sample) => ({
 			point: [sample.point[0], sample.point[1]] as LayoutVec2,
 			distance: sample.distance,
-			tangent: [sample.tangent[0], sample.tangent[1]] as LayoutVec2
-		}))
+			tangent: [sample.tangent[0], sample.tangent[1]] as LayoutVec2,
+		})),
 	};
 }
 
@@ -150,7 +163,7 @@ export function curvedWallFrame(document: LayoutDocumentWallFirst, wallId: strin
  */
 export function curvedWallPointAt(
 	frame: CurvedWallFrame,
-	distance: number
+	distance: number,
 ): { readonly point: LayoutVec2; readonly tangent: LayoutVec2 } | null {
 	if (!Number.isFinite(distance) || distance < 0 || distance > frame.length) return null;
 	for (let index = 1; index < frame.samples.length; index += 1) {
@@ -162,12 +175,12 @@ export function curvedWallPointAt(
 		return {
 			point: [
 				previous.point[0] + (next.point[0] - previous.point[0]) * t,
-				previous.point[1] + (next.point[1] - previous.point[1]) * t
+				previous.point[1] + (next.point[1] - previous.point[1]) * t,
 			],
 			tangent: [
 				previous.tangent[0] + (next.tangent[0] - previous.tangent[0]) * t,
-				previous.tangent[1] + (next.tangent[1] - previous.tangent[1]) * t
-			]
+				previous.tangent[1] + (next.tangent[1] - previous.tangent[1]) * t,
+			],
 		};
 	}
 	const last = frame.samples.at(-1)!;
@@ -185,7 +198,7 @@ export function curvedWallPointAt(
 export function wallLengthFromPointer(
 	frame: WallFrame,
 	fixed: FixedWallEndpoint,
-	point: readonly [number, number]
+	point: readonly [number, number],
 ): number {
 	const fixedPoint = fixed === 'start' ? frame.start : frame.end;
 	// Signed distance **from the fixed endpoint toward the moving one**. The
@@ -195,14 +208,15 @@ export function wallLengthFromPointer(
 	// install a Wall the pointer never named). Negative means the pointer crossed
 	// the fixed endpoint; the adapter refuses it instead of clamping.
 	const along =
-		(point[0] - fixedPoint[0]) * frame.direction[0] + (point[1] - fixedPoint[1]) * frame.direction[1];
+		(point[0] - fixedPoint[0]) * frame.direction[0] +
+		(point[1] - fixedPoint[1]) * frame.direction[1];
 	return fixed === 'start' ? along : -along;
 }
 
 export function wallAngleFromPointer(
 	fixedPoint: readonly [number, number],
 	point: readonly [number, number],
-	fixed: FixedWallEndpoint
+	fixed: FixedWallEndpoint,
 ): number {
 	// The planner's angle is always the Wall's canonical **start → end**
 	// direction. With `start` fixed, the pointer names that direction directly.
@@ -238,10 +252,15 @@ export type WallStationFrame = {
 	readonly length: number;
 	readonly direction: LayoutVec2;
 	readonly curved: boolean;
-	readonly pointAt: (distance: number) => { readonly point: LayoutVec2; readonly tangent: LayoutVec2 } | null;
+	readonly pointAt: (
+		distance: number,
+	) => { readonly point: LayoutVec2; readonly tangent: LayoutVec2 } | null;
 };
 
-export function wallStationFrame(document: LayoutDocumentWallFirst, wallId: string): WallStationFrame | null {
+export function wallStationFrame(
+	document: LayoutDocumentWallFirst,
+	wallId: string,
+): WallStationFrame | null {
 	const curved = curvedWallFrame(document, wallId);
 	if (curved !== null) {
 		return {
@@ -250,11 +269,13 @@ export function wallStationFrame(document: LayoutDocumentWallFirst, wallId: stri
 			end: curved.end,
 			length: curved.length,
 			direction: [
-				(curved.end[0] - curved.start[0]) / Math.hypot(curved.end[0] - curved.start[0], curved.end[1] - curved.start[1]),
-				(curved.end[1] - curved.start[1]) / Math.hypot(curved.end[0] - curved.start[0], curved.end[1] - curved.start[1])
+				(curved.end[0] - curved.start[0]) /
+					Math.hypot(curved.end[0] - curved.start[0], curved.end[1] - curved.start[1]),
+				(curved.end[1] - curved.start[1]) /
+					Math.hypot(curved.end[0] - curved.start[0], curved.end[1] - curved.start[1]),
 			],
 			curved: true,
-			pointAt: (distance) => curvedWallPointAt(curved, distance)
+			pointAt: (distance) => curvedWallPointAt(curved, distance),
 		};
 	}
 	const straight = wallFrame(document, wallId);
@@ -272,10 +293,10 @@ export function wallStationFrame(document: LayoutDocumentWallFirst, wallId: stri
 				: {
 						point: [
 							straight.start[0] + straight.direction[0] * distance,
-							straight.start[1] + straight.direction[1] * distance
+							straight.start[1] + straight.direction[1] * distance,
 						],
-						tangent: straight.direction
-					}
+						tangent: straight.direction,
+					},
 	};
 }
 
@@ -286,7 +307,7 @@ export function wallStationFrame(document: LayoutDocumentWallFirst, wallId: stri
 export function wallStationAtPoint(
 	document: LayoutDocumentWallFirst,
 	wallId: string,
-	point: readonly [number, number]
+	point: readonly [number, number],
 ): number | null {
 	const wall = lookupIndexedWall(document, wallId);
 	if (wall === undefined) return null;
@@ -297,7 +318,7 @@ export function wallStationAtPoint(
 		{ id: wall.id, centerline: wall.centerline },
 		[start[0], start[1]],
 		[end[0], end[1]],
-		[point[0], point[1]]
+		[point[0], point[1]],
 	);
 	return projected === undefined ? null : projected.distance;
 }
@@ -315,7 +336,7 @@ export function wallStationNearPoint(
 	document: LayoutDocumentWallFirst,
 	wallId: string,
 	point: readonly [number, number],
-	maxDistanceToPath: number
+	maxDistanceToPath: number,
 ): number | null {
 	const wall = lookupIndexedWall(document, wallId);
 	if (wall === undefined) return null;
@@ -326,7 +347,7 @@ export function wallStationNearPoint(
 		{ id: wall.id, centerline: wall.centerline },
 		[start[0], start[1]],
 		[end[0], end[1]],
-		[point[0], point[1]]
+		[point[0], point[1]],
 	);
 	if (projected === undefined || projected.distanceToPath > maxDistanceToPath) return null;
 	return projected.distance;
@@ -340,7 +361,7 @@ export function wallStationNearPoint(
 export function previewWallKnotDelete(
 	document: LayoutDocumentWallFirst,
 	wallId: string,
-	knotId: string
+	knotId: string,
 ):
 	| { readonly kind: 'planned'; readonly document: LayoutDocumentWallFirst }
 	| { readonly kind: 'refused'; readonly code: string; readonly message: string } {
@@ -353,7 +374,7 @@ export function previewWallKnotDelete(
 /** The exact Straighten candidate, or its refusal. */
 export function previewWallStraighten(
 	document: LayoutDocumentWallFirst,
-	wallId: string
+	wallId: string,
 ):
 	| { readonly kind: 'planned'; readonly document: LayoutDocumentWallFirst }
 	| { readonly kind: 'refused'; readonly code: string; readonly message: string } {

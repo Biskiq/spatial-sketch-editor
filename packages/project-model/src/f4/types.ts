@@ -28,7 +28,7 @@ import type {
 	SemanticDomain,
 	SemanticReference,
 	SessionEpoch,
-	SnapshotIdentity
+	SnapshotIdentity,
 } from '../references/types';
 
 /** The exact F.4 shape version this module implements. */
@@ -270,14 +270,21 @@ export type SourceAdmission<Source> =
 export type AcceptanceSourceAdapter<Source> = {
 	readonly sourceKind: string;
 	readonly sourceVersion: number;
-	admit(candidate: unknown, baselineBlockingIssues: readonly AdmissionIssue[]): Promise<SourceAdmission<Source>>;
+	admit(
+		candidate: unknown,
+		baselineBlockingIssues: readonly AdmissionIssue[],
+	): Promise<SourceAdmission<Source>>;
 	/**
 	 * Adapter-owned unchanged-domain/resource guard, applied to the admitted
 	 * candidate. It receives the **producing planner's whole admission**, not only
 	 * its primary domain, so the guard can hold the candidate to that planner's
 	 * declared write set instead of to what the host grants.
 	 */
-	validateChange?(before: Source, after: Source, admission: PlannerAdmission): readonly ShapeIssue[];
+	validateChange?(
+		before: Source,
+		after: Source,
+		admission: PlannerAdmission,
+	): readonly ShapeIssue[];
 	/**
 	 * Adapter-owned structural sharing for capture and history (D.4/H5).
 	 *

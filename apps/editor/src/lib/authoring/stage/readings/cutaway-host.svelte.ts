@@ -28,7 +28,7 @@ export function createCutawayHost(input: {
 	/** X2's two-way switch, under Lift in the reading control's ▾ (never a pill). */
 	const nearWallsControl = $derived({
 		mode: nearWallCutaway.mode,
-		set: (mode: 'cut' | 'whole') => nearWallCutaway.setMode(mode)
+		set: (mode: 'cut' | 'whole') => nearWallCutaway.setMode(mode),
 	});
 
 	// Preview is an isolated visitor run: a held `W` never leaks into it.
@@ -56,7 +56,8 @@ export function createCutawayHost(input: {
 			if (subject.kind === 'wall') hosts.add(subject.id);
 			else if (subject.kind === 'opening') {
 				for (const wall of geometry.walls) {
-					if (wall.openings.some((opening) => opening.openingId === subject.id)) hosts.add(wall.wallId);
+					if (wall.openings.some((opening) => opening.openingId === subject.id))
+						hosts.add(wall.wallId);
 				}
 			}
 		}
@@ -68,10 +69,11 @@ export function createCutawayHost(input: {
 			// (plan §3.6 step 8).
 			const hit = artworkBackWallHit(artwork.position, artwork.rotation[1], (ray) =>
 				input.scenePick.pickVisibleFace(ray, snapshot.domain.scene, (candidate) =>
-					isArtworkWallFace(candidate, snapshot.domain.geometry)
-				)
+					isArtworkWallFace(candidate, snapshot.domain.geometry),
+				),
 			);
-			if (hit !== null && hit.wallId !== undefined && hit.distanceMeters <= 0.01) hosts.add(hit.wallId);
+			if (hit !== null && hit.wallId !== undefined && hit.distanceMeters <= 0.01)
+				hosts.add(hit.wallId);
 		}
 		return hosts;
 	});
@@ -97,18 +99,24 @@ export function createCutawayHost(input: {
 	 * the hold key and the classifier are ignored for the session, as Paper is
 	 * during floor Align; no preference changes.
 	 */
-	const alignCutaway = $derived.by((): { readonly ids: readonly string[]; readonly top: number } | null => {
-		const aligned = input.alignCutaway();
-		if (aligned === null) return null;
-		const ids = aligned.ids.filter((wallId) => !cutawayFailedIds.has(wallId));
-		return { ids, top: aligned.top };
-	});
+	const alignCutaway = $derived.by(
+		(): { readonly ids: readonly string[]; readonly top: number } | null => {
+			const aligned = input.alignCutaway();
+			if (aligned === null) return null;
+			const ids = aligned.ids.filter((wallId) => !cutawayFailedIds.has(wallId));
+			return { ids, top: aligned.top };
+		},
+	);
 	const cutawayWallIds = $derived.by(() => {
 		if (alignCutaway !== null) return alignCutaway.ids;
 		const unfolded = wallUnfold.state?.wallId ?? null;
 		return [...cutawayEffective].filter((wallId) => wallId !== unfolded).sort();
 	});
-	const cutawayStubTopY = $derived(alignCutaway !== null && alignCutaway.ids.length > 0 ? alignCutaway.top : nearWallCutaway.stubTopY);
+	const cutawayStubTopY = $derived(
+		alignCutaway !== null && alignCutaway.ids.length > 0
+			? alignCutaway.top
+			: nearWallCutaway.stubTopY,
+	);
 
 	function attachClassification(): void {
 		/**
@@ -138,7 +146,7 @@ export function createCutawayHost(input: {
 				floors: geometry.floors,
 				renderedReading: reading,
 				geometryRevision: snapshot.domain.unitRevisions.layout,
-				pressing: input.pressing()
+				pressing: input.pressing(),
 			});
 			// A new decision is the moment a D12 failure is retried.
 			if (changed && cutawayFailedIds.size > 0) cutawayFailedIds = new Set();
@@ -153,7 +161,7 @@ export function createCutawayHost(input: {
 			const ids = cutawayWallIds;
 			const top = cutawayStubTopY;
 			setResolvedCutaway(
-				ids.length > 0 && top !== null ? { wallIds: new Set(ids), stubTopY: top } : null
+				ids.length > 0 && top !== null ? { wallIds: new Set(ids), stubTopY: top } : null,
 			);
 		});
 	}
@@ -168,19 +176,33 @@ export function createCutawayHost(input: {
 	}
 
 	const canvas = contribution<'layout-readings', 'canvas'>()({
-		get cutawayWallIds() { return cutawayWallIds; },
-		get cutawayStubTopY() { return cutawayStubTopY; },
+		get cutawayWallIds() {
+			return cutawayWallIds;
+		},
+		get cutawayStubTopY() {
+			return cutawayStubTopY;
+		},
 		onCutawayFailure: (wallIds: readonly string[]) => {
 			cutawayFailedIds = new Set([...cutawayFailedIds, ...wallIds]);
-		}
+		},
 	});
 
 	return {
-		canvas, attachPreviewHold, attachClassification, reset, clearMirror,
-		get control() { return nearWallsControl; },
-		get alignHiddenWallIds() { return alignCutaway?.ids ?? []; },
+		canvas,
+		attachPreviewHold,
+		attachClassification,
+		reset,
+		clearMirror,
+		get control() {
+			return nearWallsControl;
+		},
+		get alignHiddenWallIds() {
+			return alignCutaway?.ids ?? [];
+		},
 		setHeld: (held: boolean) => nearWallCutaway.setHeld(held),
 		releaseHold: () => nearWallCutaway.setHeld(false),
-		clearFailures: () => { cutawayFailedIds = new Set(); }
+		clearFailures: () => {
+			cutawayFailedIds = new Set();
+		},
 	};
 }

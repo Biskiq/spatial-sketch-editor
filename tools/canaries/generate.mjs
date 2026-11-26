@@ -32,7 +32,8 @@ for (const canary of catalog) {
 	}
 	if (canary.find === canary.replace) problems.push(`${canary.id}: replacement is a no-op`);
 }
-if (catalog.length < 40) problems.push(`catalog has ${catalog.length} canaries; VER-0 requires at least 40`);
+if (catalog.length < 40)
+	problems.push(`catalog has ${catalog.length} canaries; VER-0 requires at least 40`);
 if (problems.length > 0) {
 	console.error(`canary catalog is invalid:\n- ${problems.join('\n- ')}`);
 	process.exit(1);
@@ -47,4 +48,6 @@ if (!check) {
 		writeFileSync(resolve(PATCH_DIR, `${canary.id}.json`), `${JSON.stringify(canary, null, 2)}\n`);
 	}
 }
-console.log(`canaries: ${catalog.length} patches ${check ? 'validated' : 'written'} (${catalog.filter((entry) => entry.kind === 'api').length} API)`);
+console.log(
+	`canaries: ${catalog.length} patches ${check ? 'validated' : 'written'} (${catalog.filter((entry) => entry.kind === 'api').length} API)`,
+);

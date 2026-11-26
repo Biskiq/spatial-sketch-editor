@@ -19,6 +19,6 @@ export function createProjectReadyPort(boot: () => BootState) {
 		envelope: () => envelope,
 		findings: () => sourceFindings,
 		active: () => snapshot !== null,
-		datumMeters: () => snapshot?.domain.datumMeters ?? 0
+		datumMeters: () => snapshot?.domain.datumMeters ?? 0,
 	};
 }

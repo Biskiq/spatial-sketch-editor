@@ -13,7 +13,7 @@
 export const OUTLINE_DEPTH_BIAS = {
 	polygonOffset: true,
 	polygonOffsetFactor: -4,
-	polygonOffsetUnits: -16
+	polygonOffsetUnits: -16,
 } as const;
 
 /** `EdgesGeometry`'s own welding precision. */
@@ -39,13 +39,13 @@ export type WallSilhouetteExtent = readonly [number, number, number];
  */
 export function wallSilhouetteHullScale(
 	extent: WallSilhouetteExtent,
-	width = WALL_SILHOUETTE_METRES
+	width = WALL_SILHOUETTE_METRES,
 ): [number, number, number] {
 	const grow = Math.max(width, 1e-4) * 2;
 	return [
 		1 + grow / Math.max(extent[0], 1e-4),
 		1 + grow / Math.max(extent[1], 1e-4),
-		1 + grow / Math.max(extent[2], 1e-4)
+		1 + grow / Math.max(extent[2], 1e-4),
 	];
 }
 
@@ -193,7 +193,7 @@ export function contourPolylines(positions: ArrayLike<number>): Float32Array[] {
 type TriangleEdge = { a: Point; b: Point; normals: Point[] };
 
 function collectTriangleEdges(triangles: ArrayLike<number>): Map<string, TriangleEdge> {
-	const keyOf = (p: Point) => p.map(v => Math.round(v * WELD)).join(',');
+	const keyOf = (p: Point) => p.map((v) => Math.round(v * WELD)).join(',');
 	const edges = new Map<string, TriangleEdge>();
 	for (let at = 0; at + 8 < triangles.length; at += 9) {
 		const a: Point = [triangles[at]!, triangles[at + 1]!, triangles[at + 2]!];
@@ -201,14 +201,25 @@ function collectTriangleEdges(triangles: ArrayLike<number>): Map<string, Triangl
 		const c: Point = [triangles[at + 6]!, triangles[at + 7]!, triangles[at + 8]!];
 		const u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
 		const v = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
-		const cross: Point = [u[1]! * v[2]! - u[2]! * v[1]!, u[2]! * v[0]! - u[0]! * v[2]!, u[0]! * v[1]! - u[1]! * v[0]!];
+		const cross: Point = [
+			u[1]! * v[2]! - u[2]! * v[1]!,
+			u[2]! * v[0]! - u[0]! * v[2]!,
+			u[0]! * v[1]! - u[1]! * v[0]!,
+		];
 		const normal = directionBetween([0, 0, 0], cross);
 		if (!normal) continue;
-		for (const [from, to] of [[a, b], [b, c], [c, a]] as const) {
+		for (const [from, to] of [
+			[a, b],
+			[b, c],
+			[c, a],
+		] as const) {
 			const key = [keyOf(from), keyOf(to)].sort().join('|');
 			let edge = edges.get(key);
-			if (!edge) { edge = { a: from, b: to, normals: [] }; edges.set(key, edge); }
-			const opposite = edge.normals.findIndex(n => dot(n, normal) < -STRAIGHT_COSINE);
+			if (!edge) {
+				edge = { a: from, b: to, normals: [] };
+				edges.set(key, edge);
+			}
+			const opposite = edge.normals.findIndex((n) => dot(n, normal) < -STRAIGHT_COSINE);
 			if (opposite >= 0) edge.normals.splice(opposite, 1);
 			else edge.normals.push(normal);
 		}
@@ -220,16 +231,16 @@ function edgeFacing(edge: TriangleEdge, eye: Point): number[] {
 	const view: Point = [
 		eye[0] - (edge.a[0] + edge.b[0]) / 2,
 		eye[1] - (edge.a[1] + edge.b[1]) / 2,
-		eye[2] - (edge.a[2] + edge.b[2]) / 2
+		eye[2] - (edge.a[2] + edge.b[2]) / 2,
 	];
-	return edge.normals.map(n => dot(n, view));
+	return edge.normals.map((n) => dot(n, view));
 }
 
 export function visibleIdentityContour(triangles: ArrayLike<number>, eye: Point): Float32Array {
 	const segments: number[] = [];
 	for (const edge of collectTriangleEdges(triangles).values()) {
 		const facing = edgeFacing(edge, eye);
-		if (facing.some(v => v > 1e-8) && (facing.length === 1 || facing.some(v => v <= 1e-8))) {
+		if (facing.some((v) => v > 1e-8) && (facing.length === 1 || facing.some((v) => v <= 1e-8))) {
 			segments.push(...edge.a, ...edge.b);
 		}
 	}
@@ -249,7 +260,7 @@ export function visibleRimContour(triangles: ArrayLike<number>, eye: Point): Flo
 	const segments: number[] = [];
 	for (const edge of collectTriangleEdges(triangles).values()) {
 		const facing = edgeFacing(edge, eye);
-		if (!facing.some(v => v > 1e-8)) continue;
+		if (!facing.some((v) => v > 1e-8)) continue;
 		if (edge.normals.length > 1) {
 			let sharp = false;
 			for (let i = 0; i < edge.normals.length && !sharp; i += 1) {

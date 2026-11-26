@@ -45,7 +45,7 @@ export function describeLayoutObject(object: LayoutObject): LayoutObjectDescript
 			object.position,
 			object.rotation,
 			object.dimensions,
-			object.roomId
+			object.roomId,
 		]),
 		objectId: object.id,
 		kind: object.kind,
@@ -55,13 +55,13 @@ export function describeLayoutObject(object: LayoutObject): LayoutObjectDescript
 		...(object.roomId ? { roomId: object.roomId } : {}),
 		readonly: object.kind === 'profile',
 		worldAabb: { min, max },
-		planFootprint
+		planFootprint,
 	};
 }
 
 export function findHitLayoutObject(
 	descriptors: readonly LayoutObjectDescriptor[],
-	point: LayoutVec2
+	point: LayoutVec2,
 ): LayoutObjectDescriptor | null {
 	for (const descriptor of [...descriptors].reverse()) {
 		if (pointInPolygon(point, descriptor.planFootprint)) return descriptor;
@@ -80,11 +80,14 @@ export function transformObjectPoint(point: Vec3, object: LayoutObject): Vec3 {
 	return [
 		rotated[0] + object.position[0],
 		rotated[1] + object.position[1],
-		rotated[2] + object.position[2]
+		rotated[2] + object.position[2],
 	];
 }
 
-export function pointInPolygon(point: Readonly<LayoutVec2>, polygon: readonly Readonly<LayoutVec2>[]): boolean {
+export function pointInPolygon(
+	point: Readonly<LayoutVec2>,
+	polygon: readonly Readonly<LayoutVec2>[],
+): boolean {
 	let inside = false;
 	for (let index = 0, previous = polygon.length - 1; index < polygon.length; previous = index++) {
 		const currentPoint = polygon[index]!;
@@ -103,9 +106,9 @@ export function pointInPolygon(point: Readonly<LayoutVec2>, polygon: readonly Re
 }
 
 export function convexHull(points: readonly LayoutVec2[]): LayoutVec2[] {
-	const unique = [...new Map(points.map((point) => [`${point[0]}:${point[1]}`, point])).values()].sort(
-		(a, b) => a[0] - b[0] || a[1] - b[1]
-	);
+	const unique = [
+		...new Map(points.map((point) => [`${point[0]}:${point[1]}`, point])).values(),
+	].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
 	if (unique.length <= 2) return unique.map((point) => [...point]);
 	const cross = (origin: LayoutVec2, a: LayoutVec2, b: LayoutVec2) =>
 		(a[0] - origin[0]) * (b[1] - origin[1]) - (a[1] - origin[1]) * (b[0] - origin[0]);
@@ -135,7 +138,11 @@ function transformedObjectCorners(object: LayoutObject): Vec3[] {
 	return corners;
 }
 
-function transformedSphereSamples(object: LayoutObject, radialSteps = 64, latitudeSteps = 32): Vec3[] {
+function transformedSphereSamples(
+	object: LayoutObject,
+	radialSteps = 64,
+	latitudeSteps = 32,
+): Vec3[] {
 	const [sx, sy, sz] = sphereRenderScale(object.dimensions);
 	const halfX = sx / 2;
 	const halfY = sy / 2;
@@ -147,11 +154,12 @@ function transformedSphereSamples(object: LayoutObject, radialSteps = 64, latitu
 		const y = Math.sin(latitude) * halfY;
 		for (let radialIndex = 0; radialIndex < radialSteps; radialIndex += 1) {
 			const angle = (radialIndex / radialSteps) * Math.PI * 2;
-			samples.push(transformObjectPoint([
-				Math.cos(angle) * ring * halfX,
-				y,
-				Math.sin(angle) * ring * halfZ
-			], object));
+			samples.push(
+				transformObjectPoint(
+					[Math.cos(angle) * ring * halfX, y, Math.sin(angle) * ring * halfZ],
+					object,
+				),
+			);
 		}
 	}
 	return samples;
@@ -163,11 +171,9 @@ function transformedCylinderSamples(object: LayoutObject, radialSteps = 64): Vec
 	for (const y of [-halfY, halfY]) {
 		for (let radialIndex = 0; radialIndex < radialSteps; radialIndex += 1) {
 			const angle = (radialIndex / radialSteps) * Math.PI * 2;
-			samples.push(transformObjectPoint([
-				Math.cos(angle) * halfX,
-				y,
-				Math.sin(angle) * halfZ
-			], object));
+			samples.push(
+				transformObjectPoint([Math.cos(angle) * halfX, y, Math.sin(angle) * halfZ], object),
+			);
 		}
 	}
 	return samples;
@@ -186,8 +192,8 @@ export function rotateXyz([x, y, z]: Vec3, [rx, ry, rz]: Vec3): Vec3 {
 	const be = b * e;
 	const bf = b * f;
 	return [
-		c * e * x + (-c * f) * y + d * z,
+		c * e * x + -c * f * y + d * z,
 		(af + be * d) * x + (ae - bf * d) * y - b * c * z,
-		(bf - ae * d) * x + (be + af * d) * y + a * c * z
+		(bf - ae * d) * x + (be + af * d) * y + a * c * z,
 	];
 }

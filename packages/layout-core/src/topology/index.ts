@@ -4,7 +4,10 @@
  */
 export { detectWallCurveTopologyCrossings } from './curve-crossings';
 
-export type { WallCurveTopologyCrossing, WallCurveTopologyCrossingSubject } from './curve-crossings';
+export type {
+	WallCurveTopologyCrossing,
+	WallCurveTopologyCrossingSubject,
+} from './curve-crossings';
 
 export { validateClosedWallContacts, validateWallFirstTopology } from './wall-first';
 

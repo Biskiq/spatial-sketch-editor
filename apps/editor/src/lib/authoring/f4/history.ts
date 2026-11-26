@@ -49,7 +49,9 @@ export class AuthoringHistory<Source> {
 
 	constructor(initial: HistoryState<Source>, limit: number = AUTHORING_HISTORY_LIMIT) {
 		if (!Number.isInteger(limit) || limit < 2 || limit > AUTHORING_HISTORY_LIMIT) {
-			throw new RangeError(`History limit must be an integer from 2 to 100, received ${String(limit)}`);
+			throw new RangeError(
+				`History limit must be an integer from 2 to 100, received ${String(limit)}`,
+			);
 		}
 		this.#limit = limit;
 		this.#states = [initial];
@@ -83,7 +85,8 @@ export class AuthoringHistory<Source> {
 		if (states.length < 1 || states.length > this.#limit) {
 			throw new RangeError(`History must retain between 1 and ${this.#limit} states`);
 		}
-		if (this.#cursor >= states.length) throw new RangeError('History cursor is outside the retained states');
+		if (this.#cursor >= states.length)
+			throw new RangeError('History cursor is outside the retained states');
 		this.#states = [...states];
 	}
 

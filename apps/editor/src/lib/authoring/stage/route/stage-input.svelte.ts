@@ -28,28 +28,22 @@
  * typed reads/callbacks only; it never imports the route, the acceptance host or
  * a domain planner.
  */
-import type { ViewingIntent, ViewportEvaluation, ViewportRect } from '@portfolio/camera-core/viewport';
+import type {
+	ViewingIntent,
+	ViewportEvaluation,
+	ViewportRect,
+} from '@portfolio/camera-core/viewport';
 import type { PlanEvaluation } from '@portfolio/layout-core/world';
-import {
-	perfInput,
-	perfMark,
-	perfMarksEnabled
-} from '$lib/platform/perf-marks';
+import { perfInput, perfMark, perfMarksEnabled } from '$lib/platform/perf-marks';
 import type { StagePostureLayer, StagePostureMark } from '../stage-adapter-host';
 import { createStageHover } from './stage-hover.svelte';
-import type {
-	StageFacade,
-	StageIntentResult,
-	StageSourceHit
-} from '../stage-facade';
+import type { StageFacade, StageIntentResult, StageSourceHit } from '../stage-facade';
 import type { StageSession, StageTask } from '../stage-session';
 import type { StageMeasureController } from '../stage-measure';
 import type { StageEraserController } from '../stage-eraser';
 import type { StagePaintController } from '../stage-painter';
 import type { SliceDrawController } from '../slice/slice-draw.svelte';
-import {
-	type StageSelectionEntry
-} from '../semantic-selection';
+import { type StageSelectionEntry } from '../semantic-selection';
 import { isStageDrag, slicePressRefusal, type StagePressTracker } from '../stage-input';
 import { stageWheelZoom } from '../stage-wheel-zoom';
 import type { StageInterruptionReason } from '../stage-interruption';
@@ -101,15 +95,20 @@ export type StageInputArbiterInput = {
 export type StageInputArbiter = ReturnType<typeof createStageInputArbiter>;
 
 export function createStageInputArbiter(input: StageInputArbiterInput) {
-	let drag = $state<{ x: number; y: number; mode: 'pan' | 'orbit' | 'adapter' | 'host' | 'slice-draw' } | null>(null);
+	let drag = $state<{
+		x: number;
+		y: number;
+		mode: 'pan' | 'orbit' | 'adapter' | 'host' | 'slice-draw';
+	} | null>(null);
 	const hover = createStageHover({
 		input,
 		dragging: () => drag !== null,
-		hostDragging: () => drag?.mode === 'host'
+		hostDragging: () => drag?.mode === 'host',
 	});
 
 	let adapterMarkPress = false;
-	let disclosurePress: { readonly id: string; readonly x: number; readonly y: number } | null = null;
+	let disclosurePress: { readonly id: string; readonly x: number; readonly y: number } | null =
+		null;
 	/**
 	 * The evaluation a claimed adapter press was measured in.
 	 *
@@ -187,14 +186,24 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 	function interrupt(reason: StageInterruptionReason): void {
 		if (input.unfold.interrupt()) return;
 		if (input.activeLayer()?.interrupt?.() === 'claimed') return;
-		if (pinch !== null) { endPinch(); hover.clear(); return; }
+		if (pinch !== null) {
+			endPinch();
+			hover.clear();
+			return;
+		}
 		const pointerId = input.press.owner();
-		if (pointerId === null || drag === null) { hover.clear(); return; }
+		if (pointerId === null || drag === null) {
+			hover.clear();
+			return;
+		}
 		perfMark('input:interruption', { reason });
 		if (drag.mode === 'adapter') {
 			const id = adapterEvaluationId ?? input.facade()?.evaluationId() ?? null;
 			const currentRect = input.rect();
-			const css: [number, number] = [drag.x - (currentRect?.left ?? 0), drag.y - (currentRect?.top ?? 0)];
+			const css: [number, number] = [
+				drag.x - (currentRect?.left ?? 0),
+				drag.y - (currentRect?.top ?? 0),
+			];
 			if (id !== null) input.facade()?.pointerIntent({ phase: 'cancel', css, evaluationId: id });
 		}
 		if (drag.mode === 'host') {
@@ -207,7 +216,8 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 		abortGesture();
 		hover.clear();
 		const stageEl = input.stageElement();
-		if (reason !== 'second-pointer' && stageEl?.hasPointerCapture?.(pointerId)) stageEl.releasePointerCapture(pointerId);
+		if (reason !== 'second-pointer' && stageEl?.hasPointerCapture?.(pointerId))
+			stageEl.releasePointerCapture(pointerId);
 	}
 
 	function pointerDown(event: PointerEvent): void {
@@ -219,20 +229,36 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 			if (input.activeLayer()?.pinch(event) === 'claimed') return;
 			const first: [number, number] = [drag.x, drag.y];
 			interrupt('second-pointer');
-			input.press.refuse(firstId); input.press.refuse(event.pointerId);
-			const acquisition = stage.acquireGesture({ owner: 'stage-pinch', evaluationId: stage.evaluationId() ?? '', policy: 'continue-after-revalidation', navigation: true });
+			input.press.refuse(firstId);
+			input.press.refuse(event.pointerId);
+			const acquisition = stage.acquireGesture({
+				owner: 'stage-pinch',
+				evaluationId: stage.evaluationId() ?? '',
+				policy: 'continue-after-revalidation',
+				navigation: true,
+			});
 			if (acquisition.kind === 'granted') {
-				pinch = new Map([[firstId, first], [event.pointerId, [event.clientX, event.clientY]]]);
+				pinch = new Map([
+					[firstId, first],
+					[event.pointerId, [event.clientX, event.clientY]],
+				]);
 				const surface = event.currentTarget as HTMLElement;
 				// A pointer may already have ended.
-				try { surface.setPointerCapture(event.pointerId); } catch { /* captured elsewhere */ }
+				try {
+					surface.setPointerCapture(event.pointerId);
+				} catch {
+					/* captured elsewhere */
+				}
 			} else {
 				const stageEl = input.stageElement();
 				if (stageEl?.hasPointerCapture?.(firstId)) stageEl.releasePointerCapture(firstId);
 			}
 			return;
 		}
-		if (pinch !== null) { input.press.refuse(event.pointerId); return; }
+		if (pinch !== null) {
+			input.press.refuse(event.pointerId);
+			return;
+		}
 		// Primary, unmodified presses address the developed sheet while a Wall is
 		// unfolded. Shift/secondary presses stay navigation, which is how the
 		// creator can still orbit the sheet.
@@ -249,14 +275,16 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 				const claimed = sliceDrawTool.down({
 					css,
 					evaluationId: pointerEvaluationId,
-					coarse: event.pointerType !== 'mouse'
+					coarse: event.pointerType !== 'mouse',
 				});
 				if (claimed) {
 					if (!input.capturePointer(event.currentTarget as HTMLElement, event.pointerId)) {
 						sliceDrawTool.cancel();
 						return;
 					}
-					if (input.press.begin({ x: event.clientX, y: event.clientY }, event.pointerId) === 'refused') {
+					if (
+						input.press.begin({ x: event.clientX, y: event.clientY }, event.pointerId) === 'refused'
+					) {
 						sliceDrawTool.cancel();
 						return;
 					}
@@ -287,19 +315,20 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 			// An armed host tool asks every declaring domain for its winner.
 			// A press that names nothing to measure or erase stays the host's navigation.
 			const armedHostTool = input.armedHostTool();
-			const hostTool = armedHostTool === 'measure'
-				? input.measureTool()
-				: armedHostTool === 'erase'
-					? input.eraserTool()
-					: armedHostTool === 'paint'
-						? input.paintTool()
-						: null;
+			const hostTool =
+				armedHostTool === 'measure'
+					? input.measureTool()
+					: armedHostTool === 'erase'
+						? input.eraserTool()
+						: armedHostTool === 'paint'
+							? input.paintTool()
+							: null;
 			if (hostTool !== null) {
 				const claimed = hostTool.down({
 					css,
 					evaluationId: pointerEvaluationId,
 					coarse,
-					...(armedHostTool === 'paint' ? { shift: event.shiftKey, alt: event.altKey } : {})
+					...(armedHostTool === 'paint' ? { shift: event.shiftKey, alt: event.altKey } : {}),
 				});
 				input.onRefreshHostTools();
 				if (claimed) {
@@ -308,7 +337,9 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 						input.onRefreshHostTools();
 						return;
 					}
-					if (input.press.begin({ x: event.clientX, y: event.clientY }, event.pointerId) === 'refused') {
+					if (
+						input.press.begin({ x: event.clientX, y: event.clientY }, event.pointerId) === 'refused'
+					) {
 						hostTool.cancel();
 						input.onRefreshHostTools();
 						return;
@@ -338,13 +369,21 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 					ctrlKey: event.ctrlKey,
 					coarse,
 					...(handleId === undefined ? {} : { handleId }),
-					...(handleAdapterId === undefined ? {} : { handleAdapterId })
+					...(handleAdapterId === undefined ? {} : { handleAdapterId }),
 				}).claimed;
 				if (!claimed) return false;
 				const captured = input.capturePointer(event.currentTarget as HTMLElement, event.pointerId);
-				const began = captured ? input.press.begin({ x: event.clientX, y: event.clientY }, event.pointerId) : null;
+				const began = captured
+					? input.press.begin({ x: event.clientX, y: event.clientY }, event.pointerId)
+					: null;
 				if (!captured || began === 'refused') {
-					stage.pointerIntent({ phase: 'cancel', css, evaluationId: pointerEvaluationId, shift: event.shiftKey, coarse });
+					stage.pointerIntent({
+						phase: 'cancel',
+						css,
+						evaluationId: pointerEvaluationId,
+						shift: event.shiftKey,
+						coarse,
+					});
 					return true;
 				}
 				adapterEvaluationId = pointerEvaluationId;
@@ -355,7 +394,13 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 			if (mark?.role === 'disclose') {
 				// The W·D·H chip: the adapter owns the press so a drag scales; a
 				// release inside click tolerance still toggles the grips.
-				stage.idleHoverIntent({ phase: 'cancel', css, evaluationId: pointerEvaluationId, shift: event.shiftKey, coarse });
+				stage.idleHoverIntent({
+					phase: 'cancel',
+					css,
+					evaluationId: pointerEvaluationId,
+					shift: event.shiftKey,
+					coarse,
+				});
 				if (claimAdapterPress(mark.id, mark.adapterId)) {
 					disclosurePress = { id: mark.id, x: event.clientX, y: event.clientY };
 					return;
@@ -365,20 +410,45 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 				return;
 			}
 			if (mark?.role === 'edit') {
-				stage.idleHoverIntent({ phase: 'cancel', css, evaluationId: pointerEvaluationId, shift: event.shiftKey, coarse });
+				stage.idleHoverIntent({
+					phase: 'cancel',
+					css,
+					evaluationId: pointerEvaluationId,
+					shift: event.shiftKey,
+					coarse,
+				});
 				if (claimAdapterPress(mark.id, mark.adapterId)) return;
 			} else {
 				// Hit priority: a selected subject body gets the press before an idle
 				// Junction can offer its overlapping point mark.
 				if (claimAdapterPress()) {
-					stage.idleHoverIntent({ phase: 'cancel', css, evaluationId: pointerEvaluationId, shift: event.shiftKey, coarse });
+					stage.idleHoverIntent({
+						phase: 'cancel',
+						css,
+						evaluationId: pointerEvaluationId,
+						shift: event.shiftKey,
+						coarse,
+					});
 					return;
 				}
 				if (mark === null) {
-					const idleMark = stage.idleHoverIntent({ phase: 'move', css, evaluationId: pointerEvaluationId, shift: event.shiftKey, coarse });
-					if (idleMark?.role === 'edit' && claimAdapterPress(idleMark.id, idleMark.adapterId)) return;
+					const idleMark = stage.idleHoverIntent({
+						phase: 'move',
+						css,
+						evaluationId: pointerEvaluationId,
+						shift: event.shiftKey,
+						coarse,
+					});
+					if (idleMark?.role === 'edit' && claimAdapterPress(idleMark.id, idleMark.adapterId))
+						return;
 				} else {
-					stage.idleHoverIntent({ phase: 'cancel', css, evaluationId: pointerEvaluationId, shift: event.shiftKey, coarse });
+					stage.idleHoverIntent({
+						phase: 'cancel',
+						css,
+						evaluationId: pointerEvaluationId,
+						shift: event.shiftKey,
+						coarse,
+					});
 				}
 			}
 		}
@@ -392,13 +462,15 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 			policy: 'continue-after-revalidation',
 			// The host's own press is navigation, not authored work: it explicitly
 			// declares so, which is why a pan never blocks Undo.
-			navigation: true
+			navigation: true,
 		});
 		if (acquisition.kind !== 'granted') {
 			// This pointer is not ours: record it so its click cannot select, and leave the
 			// holder's press and lease untouched.
 			input.press.refuse(event.pointerId);
-			input.onNotice(`The ${acquisition.owner} gesture owns the pointer; finish or cancel it first.`);
+			input.onNotice(
+				`The ${acquisition.owner} gesture owns the pointer; finish or cancel it first.`,
+			);
 			return;
 		}
 		// A capture that throws (the pointer already ended) must hand the lease back,
@@ -411,7 +483,11 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 			input.session.gesture()?.release();
 			return;
 		}
-		drag = { x: event.clientX, y: event.clientY, mode: event.button === 0 && !event.shiftKey ? 'pan' : 'orbit' };
+		drag = {
+			x: event.clientX,
+			y: event.clientY,
+			mode: event.button === 0 && !event.shiftKey ? 'pan' : 'orbit',
+		};
 	}
 
 	function pointerMove(event: PointerEvent): void {
@@ -419,20 +495,33 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 		if (input.unfold.pointerMove(event)) return;
 		if (pinch !== null) {
 			if (!pinch.has(event.pointerId)) return;
-			if (input.session.gesture() === null) { endPinch(); return; }
+			if (input.session.gesture() === null) {
+				endPinch();
+				return;
+			}
 			const before = [...pinch.values()];
 			pinch.set(event.pointerId, [event.clientX, event.clientY]);
 			const after = [...pinch.values()];
 			const oldDistance = Math.hypot(before[0]![0] - before[1]![0], before[0]![1] - before[1]![1]);
 			const newDistance = Math.hypot(after[0]![0] - after[1]![0], after[0]![1] - after[1]![1]);
-			input.pan((after[0]![0] + after[1]![0] - before[0]![0] - before[1]![0]) / 2, (after[0]![1] + after[1]![1] - before[0]![1] - before[1]![1]) / 2);
+			input.pan(
+				(after[0]![0] + after[1]![0] - before[0]![0] - before[1]![0]) / 2,
+				(after[0]![1] + after[1]![1] - before[0]![1] - before[1]![1]) / 2,
+			);
 			if (oldDistance > 0 && newDistance > 0) input.zoom(oldDistance / newDistance);
 			return;
 		}
 		if (input.activeLayer()?.pointerMove(event) === 'claimed') return;
 		if (drag === null) {
-			if (event.pointerType === 'touch' || input.session.gesture() !== null) { hover.clear(); return; }
-			hover.sample(input.stageCss(event) as [number, number], event.shiftKey, event.pointerType !== 'mouse');
+			if (event.pointerType === 'touch' || input.session.gesture() !== null) {
+				hover.clear();
+				return;
+			}
+			hover.sample(
+				input.stageCss(event) as [number, number],
+				event.shiftKey,
+				event.pointerType !== 'mouse',
+			);
 			return;
 		}
 		if (drag.mode === 'host') {
@@ -443,7 +532,11 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 			}
 			const id = input.facade()?.evaluationId() ?? null;
 			if (id === null) return;
-			const toolInput = { css: input.stageCss(event), evaluationId: id, coarse: event.pointerType !== 'mouse' };
+			const toolInput = {
+				css: input.stageCss(event),
+				evaluationId: id,
+				coarse: event.pointerType !== 'mouse',
+			};
 			const armed = input.armedHostTool();
 			if (armed === 'measure') input.measureTool()?.move(toolInput);
 			else if (armed === 'erase') input.eraserTool()?.move(toolInput);
@@ -457,7 +550,11 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 			const id = input.facade()?.evaluationId() ?? null;
 			const tool = input.sliceDraw();
 			if (id === null || tool === null) return;
-			tool.move({ css: input.stageCss(event), evaluationId: id, coarse: event.pointerType !== 'mouse' });
+			tool.move({
+				css: input.stageCss(event),
+				evaluationId: id,
+				coarse: event.pointerType !== 'mouse',
+			});
 			drag = { x: event.clientX, y: event.clientY, mode: 'slice-draw' };
 			return;
 		}
@@ -477,10 +574,15 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 			if (input.adapterTapOnly?.() && isStageDrag(drag, { x: event.clientX, y: event.clientY })) {
 				stage.pointerIntent({ phase: 'cancel', css: input.stageCss(event), evaluationId: id });
 				const navigation = stage.acquireGesture({
-					owner: 'stage-pointer', evaluationId: stage.evaluationId() ?? id,
-					policy: 'continue-after-revalidation', navigation: true
+					owner: 'stage-pointer',
+					evaluationId: stage.evaluationId() ?? id,
+					policy: 'continue-after-revalidation',
+					navigation: true,
 				});
-				if (navigation.kind !== 'granted') { interrupt('reading-change'); return; }
+				if (navigation.kind !== 'granted') {
+					interrupt('reading-change');
+					return;
+				}
 				adapterEvaluationId = null;
 				input.pan(event.clientX - drag.x, event.clientY - drag.y);
 				drag = { x: event.clientX, y: event.clientY, mode: 'pan' };
@@ -488,8 +590,22 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 			}
 			// One monotonic sequence per continuous input sample. The
 			// adapter's preview installation and the accepted result inherit it.
-			if (perfMarksEnabled()) perfInput('pointermove', { wallMode: true, eventTimeStamp: event.timeStamp, timeOrigin: performance.timeOrigin });
-			stage.pointerIntent({ phase: 'move', css: input.stageCss(event), evaluationId: id, shift: event.shiftKey, altKey: event.altKey, metaKey: event.metaKey, ctrlKey: event.ctrlKey, coarse: event.pointerType !== 'mouse' });
+			if (perfMarksEnabled())
+				perfInput('pointermove', {
+					wallMode: true,
+					eventTimeStamp: event.timeStamp,
+					timeOrigin: performance.timeOrigin,
+				});
+			stage.pointerIntent({
+				phase: 'move',
+				css: input.stageCss(event),
+				evaluationId: id,
+				shift: event.shiftKey,
+				altKey: event.altKey,
+				metaKey: event.metaKey,
+				ctrlKey: event.ctrlKey,
+				coarse: event.pointerType !== 'mouse',
+			});
 			if (!input.adapterTapOnly?.()) drag = { x: event.clientX, y: event.clientY, mode: 'adapter' };
 			return;
 		}
@@ -515,7 +631,10 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 		if (input.artwork.pointerUp(event)) return;
 		if (input.unfold.pointerUp(event)) return;
 		if (input.activeLayer()?.pointerUp(event) === 'claimed') return;
-		if (pinch?.has(event.pointerId)) { endPinch(); return; }
+		if (pinch?.has(event.pointerId)) {
+			endPinch();
+			return;
+		}
 		// A normal ending: the click that follows decides by distance, so the press is
 		// ended, not aborted. Only the owning pointer may end it — a refused second
 		// pointer's release must not release the first pointer's lease.
@@ -528,7 +647,11 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 			drag = null;
 			adapterEvaluationId = null;
 			if (tool !== null && id !== null) {
-				tool.up({ css: input.stageCss(event), evaluationId: id, coarse: event.pointerType !== 'mouse' });
+				tool.up({
+					css: input.stageCss(event),
+					evaluationId: id,
+					coarse: event.pointerType !== 'mouse',
+				});
 			}
 			return;
 		}
@@ -541,20 +664,25 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 			drag = null;
 			adapterEvaluationId = null;
 			const armed = input.armedHostTool();
-			const tool = armed === 'measure'
-				? input.measureTool()
-				: armed === 'erase'
-					? input.eraserTool()
-					: armed === 'paint'
-						? input.paintTool()
-						: null;
+			const tool =
+				armed === 'measure'
+					? input.measureTool()
+					: armed === 'erase'
+						? input.eraserTool()
+						: armed === 'paint'
+							? input.paintTool()
+							: null;
 			if (tool === null) return;
 			if (input.session.gesture() === null || id === null) {
 				tool.cancel();
 				input.onRefreshHostTools();
 				return;
 			}
-			const toolInput = { css: input.stageCss(event), evaluationId: id, coarse: event.pointerType !== 'mouse' };
+			const toolInput = {
+				css: input.stageCss(event),
+				evaluationId: id,
+				coarse: event.pointerType !== 'mouse',
+			};
 			void Promise.resolve(tool.up(toolInput)).then(() => input.onRefreshHostTools());
 			input.onRefreshHostTools();
 			return;
@@ -579,13 +707,23 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 				// rather than released, so no stale projection commits.
 				const phase = input.session.gesture() === null ? 'cancel' : 'up';
 				perfMark('input:release', { phase });
-				stage.pointerIntent({ phase, css: input.stageCss(event), evaluationId: id, shift: event.shiftKey, altKey: event.altKey, metaKey: event.metaKey, ctrlKey: event.ctrlKey, coarse: event.pointerType !== 'mouse' });
+				stage.pointerIntent({
+					phase,
+					css: input.stageCss(event),
+					evaluationId: id,
+					shift: event.shiftKey,
+					altKey: event.altKey,
+					metaKey: event.metaKey,
+					ctrlKey: event.ctrlKey,
+					coarse: event.pointerType !== 'mouse',
+				});
 				if (
 					chip !== null &&
 					phase === 'up' &&
 					!isStageDrag(chip, { x: event.clientX, y: event.clientY }) &&
 					stage.activateDisclosure(chip.id)
-				) stage.notifySurfaceChange();
+				)
+					stage.notifySurfaceChange();
 			}
 			return;
 		}
@@ -596,14 +734,16 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 		if (input.artwork.pointerCancel(event)) return;
 		if (input.unfold.pointerCancel(event)) return;
 		if (input.activeLayer()?.pointerCancel(event) === 'claimed') return;
-		if (pinch?.has(event.pointerId) || input.press.ownsPointer(event.pointerId)) interrupt('pointercancel');
+		if (pinch?.has(event.pointerId) || input.press.ownsPointer(event.pointerId))
+			interrupt('pointercancel');
 	}
 
 	function lostPointerCapture(event: PointerEvent): void {
 		if (input.artwork.lostCapture(event)) return;
 		if (input.unfold.lostCapture(event)) return;
 		if (input.activeLayer()?.lostCapture(event) === 'claimed') return;
-		if (pinch?.has(event.pointerId) || (input.press.ownsPointer(event.pointerId) && drag !== null)) interrupt('lostpointercapture');
+		if (pinch?.has(event.pointerId) || (input.press.ownsPointer(event.pointerId) && drag !== null))
+			interrupt('lostpointercapture');
 	}
 
 	/** A click's pointer id, when the event carries one (a `PointerEvent` click does). */
@@ -637,7 +777,10 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 		const id = stage?.evaluationId() ?? null;
 		const currentRect = input.rect();
 		if (stage === null || id === null || currentRect === null) return;
-		const css: [number, number] = [event.clientX - currentRect.left, event.clientY - currentRect.top];
+		const css: [number, number] = [
+			event.clientX - currentRect.left,
+			event.clientY - currentRect.top,
+		];
 		const hit = stage.resolveSourceHit({ evaluationId: id, css });
 		if (hit.kind === 'resolved') {
 			input.selectHit(hit.hit);
@@ -651,7 +794,9 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 			// ordinary empty click says nothing.
 			const planView = input.planView();
 			if (planView !== null && planView.membership.some((row) => !row.eligible)) {
-				input.onNotice('Nothing selectable there — some subjects are excluded from this Plan; Reveal one from the Index.');
+				input.onNotice(
+					'Nothing selectable there — some subjects are excluded from this Plan; Reveal one from the Index.',
+				);
 			}
 			return;
 		}
@@ -660,15 +805,27 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 
 	function wheel(event: WheelEvent): void {
 		event.preventDefault();
-		if (input.activeLayer()?.wheel(event, input.evaluation()?.rect.height ?? 1) === 'claimed') return;
+		if (input.activeLayer()?.wheel(event, input.evaluation()?.rect.height ?? 1) === 'claimed')
+			return;
 		const scale = Math.exp(event.deltaY * 0.001);
 		const stage = input.facade();
-		if (stage && stage.camera.lookThrough() === null && drag === null &&
-			pinch === null && input.session.gesture() === null) {
-			input.submit(stageWheelZoom(
-				scale, [event.clientX, event.clientY], stage.evaluation(),
-				stage.snapshot().domain.scene, input.pick
-			), input.nowSeconds());
+		if (
+			stage &&
+			stage.camera.lookThrough() === null &&
+			drag === null &&
+			pinch === null &&
+			input.session.gesture() === null
+		) {
+			input.submit(
+				stageWheelZoom(
+					scale,
+					[event.clientX, event.clientY],
+					stage.evaluation(),
+					stage.snapshot().domain.scene,
+					input.pick,
+				),
+				input.nowSeconds(),
+			);
 			return;
 		}
 		input.zoom(scale);
@@ -717,6 +874,6 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 		},
 		dispose(): void {
 			hover.clear();
-		}
+		},
 	};
 }

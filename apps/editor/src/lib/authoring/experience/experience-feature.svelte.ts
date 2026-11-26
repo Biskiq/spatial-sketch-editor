@@ -9,9 +9,15 @@
  */
 import type { StageExperienceBinding } from '../stage/route/stage-experience-binding.svelte';
 import { experienceFocus } from './focus.svelte';
-import { createExperienceHostPorts, type ExperienceHostPortsDeps } from './experience-host-ports.svelte';
+import {
+	createExperienceHostPorts,
+	type ExperienceHostPortsDeps,
+} from './experience-host-ports.svelte';
 import type { ExperiencePreviewHost } from './experience-preview-host';
-import { createExperienceRegionViews, type ExperienceRegionViewDeps } from './experience-region-views.svelte';
+import {
+	createExperienceRegionViews,
+	type ExperienceRegionViewDeps,
+} from './experience-region-views.svelte';
 
 export type ExperienceFeatureDeps = {
 	readonly binding: StageExperienceBinding;
@@ -26,7 +32,7 @@ export function createExperienceFeature(deps: ExperienceFeatureDeps) {
 	const views = createExperienceRegionViews({
 		binding: deps.binding,
 		previewActive: () => preview.openState,
-		...deps.regions
+		...deps.regions,
 	});
 	return {
 		ports: {
@@ -45,15 +51,15 @@ export function createExperienceFeature(deps: ExperienceFeatureDeps) {
 				},
 				get toolbars() {
 					return views.toolbars;
-				}
-			}
+				},
+			},
 		},
 		lifecycle: {
 			resetFocus: { 'reset-focus': () => experienceFocus.reset() },
 			leaveLens: { 'change-lens': deps.binding.changeLens },
 			start: { start: deps.binding.start },
-			dispose: { dispose: deps.binding.dispose }
-		}
+			dispose: { dispose: deps.binding.dispose },
+		},
 	};
 }
 

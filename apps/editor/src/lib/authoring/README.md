@@ -26,7 +26,7 @@ The spatial route composes the Stage, its adapters and the Experience authoring 
   - **Pending work settles or refuses before any transition** (root switch, lens change, return,
     navigation); nothing is silently dropped. Escape unwinds gesture, task and tool first, then a
     World-entered Studio; a standalone Studio leaves through Back to Projects.
-  - **Cross-project reuse uses the library.** *Open editable copy* and *Place copy in World* move an
+  - **Cross-project reuse uses the library.** _Open editable copy_ and _Place copy in World_ move an
     immutable form payload through the form library and the Place instrument's ordinary typed
     Place (`adapters/scene/library/intake.ts`); the source project is saved before the switch, and a
     failed Save or library write keeps the creator in place with a retry message. The journey

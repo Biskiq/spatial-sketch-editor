@@ -20,7 +20,12 @@
  * is roughness R, metallic G, occlusion B. Gloss proposes roughness with
  * inversion. A generic `normal` proposes `+Y` and must be acknowledged.
  */
-import { MATERIAL_MAP_ROLES, type MapRole, type NormalConvention, type ScalarComponent } from '../materials/types';
+import {
+	MATERIAL_MAP_ROLES,
+	type MapRole,
+	type NormalConvention,
+	type ScalarComponent,
+} from '../materials/types';
 import type {
 	ProposalConflict,
 	ProposalSource,
@@ -29,7 +34,7 @@ import type {
 	SetCandidate,
 	SetFileFact,
 	SetProposal,
-	UnassignedFile
+	UnassignedFile,
 } from './types';
 
 type Family =
@@ -68,11 +73,13 @@ const ALIASES: readonly { readonly tokens: readonly string[]; readonly family: F
 	{ tokens: ['height'], family: 'unsupported' },
 	{ tokens: ['displacement'], family: 'unsupported' },
 	{ tokens: ['bump'], family: 'unsupported' },
-	{ tokens: ['beauty'], family: 'unsupported' }
+	{ tokens: ['beauty'], family: 'unsupported' },
 ];
 
 /** Longest alias first so `normal gl` wins over `normal`, `base color` over nothing. */
-const ALIASES_BY_LENGTH = [...ALIASES].sort((left, right) => right.tokens.length - left.tokens.length);
+const ALIASES_BY_LENGTH = [...ALIASES].sort(
+	(left, right) => right.tokens.length - left.tokens.length,
+);
 
 const RESOLUTION = /^(?:1|2|4)k$/;
 const SEPARATORS = /[ _.-]+/;
@@ -107,8 +114,8 @@ export function parseSetFileName(name: string): ParsedSetName {
 		(candidate) =>
 			candidate.tokens.length <= tokens.length &&
 			candidate.tokens.every(
-				(token, index) => tokens[tokens.length - candidate.tokens.length + index] === token
-			)
+				(token, index) => tokens[tokens.length - candidate.tokens.length + index] === token,
+			),
 	);
 	if (alias === undefined) {
 		const suffix = tokens.pop() ?? null;
@@ -136,7 +143,7 @@ function scalar(
 	role: 'roughness' | 'metalness' | 'occlusion',
 	component: ScalarComponent,
 	source: ProposalSource,
-	invert = false
+	invert = false,
 ): Omit<Proposed, 'fact' | 'packed'> {
 	return { role, component, invert, source };
 }
@@ -163,20 +170,20 @@ function proposalsOf(family: Family): readonly Omit<Proposed, 'fact' | 'packed'>
 					role: 'normal',
 					convention: '+Y' as NormalConvention,
 					source: 'alias',
-					acknowledge: 'normal-convention'
-				}
+					acknowledge: 'normal-convention',
+				},
 			];
 		case 'orm':
 			return [
 				scalar('occlusion', 'r', 'packed-orm'),
 				scalar('roughness', 'g', 'packed-orm'),
-				scalar('metalness', 'b', 'packed-orm')
+				scalar('metalness', 'b', 'packed-orm'),
 			];
 		case 'rma':
 			return [
 				scalar('roughness', 'r', 'packed-rma'),
 				scalar('metalness', 'g', 'packed-rma'),
-				scalar('occlusion', 'b', 'packed-rma')
+				scalar('occlusion', 'b', 'packed-rma'),
 			];
 		case 'unsupported':
 			return [];
@@ -191,12 +198,14 @@ function choiceKey(proposed: Proposed): string {
 		proposed.component ?? '',
 		proposed.invert === undefined ? '' : String(proposed.invert),
 		proposed.convention ?? '',
-		proposed.acknowledge ?? ''
+		proposed.acknowledge ?? '',
 	].join('\0');
 }
 
 function byNameThenHash(left: SetFileFact, right: SetFileFact): number {
-	return compare(left.name, right.name) || compare(left.hash, right.hash) || compare(left.key, right.key);
+	return (
+		compare(left.name, right.name) || compare(left.hash, right.hash) || compare(left.key, right.key)
+	);
 }
 
 function toChoice(proposed: Proposed): RoleChoice {
@@ -208,13 +217,19 @@ function toChoice(proposed: Proposed): RoleChoice {
 function sortChoices(choices: RoleChoice[]): RoleChoice[] {
 	return choices.sort(
 		(left, right) =>
-			compare(left.role, right.role) || compare(left.name, right.name) || compare(left.hash, right.hash)
+			compare(left.role, right.role) ||
+			compare(left.name, right.name) ||
+			compare(left.hash, right.hash),
 	);
 }
 
-const ENCODING_ACTION = 'Re-export the map as an 8-bit, single-frame PNG, JPEG or WebP and select it again.';
+const ENCODING_ACTION =
+	'Re-export the map as an 8-bit, single-frame PNG, JPEG or WebP and select it again.';
 
-function candidateOf(stem: string, members: readonly { fact: SetFileFact; parsed: ParsedSetName }[]): SetCandidate {
+function candidateOf(
+	stem: string,
+	members: readonly { fact: SetFileFact; parsed: ParsedSetName }[],
+): SetCandidate {
 	const sorted = [...members].sort((left, right) => byNameThenHash(left.fact, right.fact));
 	const proposed: Proposed[] = [];
 	const unassigned: UnassignedFile[] = [];
@@ -224,8 +239,11 @@ function candidateOf(stem: string, members: readonly { fact: SetFileFact; parsed
 				file: fact.key,
 				name: fact.name,
 				reason: 'unknown-suffix',
-				detail: parsed.suffix === null ? 'The name has no role suffix.' : `“${parsed.suffix}” is not a recognized map role.`,
-				action: 'Assign the file to a role, or leave it out.'
+				detail:
+					parsed.suffix === null
+						? 'The name has no role suffix.'
+						: `“${parsed.suffix}” is not a recognized map role.`,
+				action: 'Assign the file to a role, or leave it out.',
 			});
 			continue;
 		}
@@ -234,8 +252,9 @@ function candidateOf(stem: string, members: readonly { fact: SetFileFact; parsed
 				file: fact.key,
 				name: fact.name,
 				reason: 'unsupported-signal',
-				detail: 'Height, bump and beauty maps need a different evaluator than pbr-metallic-roughness/v1.',
-				action: 'Leave it out of this Finish.'
+				detail:
+					'Height, bump and beauty maps need a different evaluator than pbr-metallic-roughness/v1.',
+				action: 'Leave it out of this Finish.',
 			});
 			continue;
 		}
@@ -250,7 +269,7 @@ function candidateOf(stem: string, members: readonly { fact: SetFileFact; parsed
 					reason: 'unsupported-image-encoding',
 					role: role.role,
 					detail: admission.reason,
-					action: admission.action || ENCODING_ACTION
+					action: admission.action || ENCODING_ACTION,
 				});
 				continue;
 			}
@@ -291,7 +310,7 @@ function candidateOf(stem: string, members: readonly { fact: SetFileFact; parsed
 			files,
 			action: mixed
 				? `Choose the packed or the separate ${role} map, then exclude the other.`
-				: `Choose one ${role} map, then exclude the others.`
+				: `Choose one ${role} map, then exclude the others.`,
 		});
 	}
 
@@ -303,17 +322,27 @@ function candidateOf(stem: string, members: readonly { fact: SetFileFact; parsed
 				code: 'lossy-data',
 				role: choice.role,
 				files: [choice.file],
-				detail: 'A lossy JPEG changes data values; prefer a PNG export for normals and scalar maps.'
+				detail:
+					'A lossy JPEG changes data values; prefer a PNG export for normals and scalar maps.',
 			});
 		}
 	}
 
-	const resolutions = [...new Set(sorted.map((member) => member.parsed.resolution).filter((value): value is string => value !== null))].sort();
+	const resolutions = [
+		...new Set(
+			sorted
+				.map((member) => member.parsed.resolution)
+				.filter((value): value is string => value !== null),
+		),
+	].sort();
 	if (resolutions.length > 1) {
 		warnings.push({
 			code: 'multiple-resolutions',
-			files: sorted.filter((member) => member.parsed.resolution !== null).map((member) => member.fact.key).sort(),
-			detail: `The selection mixes ${resolutions.join(', ')} files.`
+			files: sorted
+				.filter((member) => member.parsed.resolution !== null)
+				.map((member) => member.fact.key)
+				.sort(),
+			detail: `The selection mixes ${resolutions.join(', ')} files.`,
 		});
 	}
 	const chosenFiles = [...new Set(choices.map((choice) => choice.file))].sort();
@@ -321,37 +350,41 @@ function candidateOf(stem: string, members: readonly { fact: SetFileFact; parsed
 		chosenFiles.map((key) => {
 			const fact = sorted.find((member) => member.fact.key === key)!.fact;
 			return `${fact.width}x${fact.height}`;
-		})
+		}),
 	);
 	if (sizes.size > 1) {
 		warnings.push({
 			code: 'dimension-mismatch',
 			files: chosenFiles,
-			detail: 'The chosen maps have different pixel dimensions; check that their texels align.'
+			detail: 'The chosen maps have different pixel dimensions; check that their texels align.',
 		});
 	}
 	if (stem.length === 0) {
 		warnings.push({
 			code: 'empty-stem',
 			files: sorted.map((member) => member.fact.key).sort(),
-			detail: 'These names have no shared stem; name the Finish before accepting it.'
+			detail: 'These names have no shared stem; name the Finish before accepting it.',
 		});
 	}
 
 	return {
 		stem,
 		roleChoices: sortChoices(choices),
-		conflicts: conflicts.sort((left, right) => compare(left.role, right.role) || compare(left.code, right.code)),
+		conflicts: conflicts.sort(
+			(left, right) => compare(left.role, right.role) || compare(left.code, right.code),
+		),
 		unassigned: unassigned.sort(
 			(left, right) =>
-				compare(left.name, right.name) || compare(left.file, right.file) || compare(left.role ?? '', right.role ?? '')
+				compare(left.name, right.name) ||
+				compare(left.file, right.file) ||
+				compare(left.role ?? '', right.role ?? ''),
 		),
 		warnings: warnings.sort(
 			(left, right) =>
 				compare(left.code, right.code) ||
 				compare(left.role ?? '', right.role ?? '') ||
-				compare(left.files.join(','), right.files.join(','))
-		)
+				compare(left.files.join(','), right.files.join(',')),
+		),
 	};
 }
 
@@ -364,7 +397,7 @@ function candidateOf(stem: string, members: readonly { fact: SetFileFact; parsed
  */
 export function proposeMaterialSet(
 	files: readonly SetFileFact[],
-	expectedRevision: string
+	expectedRevision: string,
 ): SetProposal {
 	const keys = new Set<string>();
 	for (const file of files) {

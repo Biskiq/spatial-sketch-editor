@@ -5,12 +5,23 @@ import type { StageReadSnapshot } from '$lib/authoring/stage/stage-adapter-host'
 import { perfMark } from '$lib/platform/perf-marks';
 import { sceneEntityReference } from './placement';
 
-export function acceptFormCommand(services: StageAdapterServices, snapshot: StageReadSnapshot,
-	entityId: string, kind: string, payload: AuthoringIntent['payload'], allocatedId?: string) {
+export function acceptFormCommand(
+	services: StageAdapterServices,
+	snapshot: StageReadSnapshot,
+	entityId: string,
+	kind: string,
+	payload: AuthoringIntent['payload'],
+	allocatedId?: string,
+) {
 	perfMark('command:scene-form', { operation: kind, entityId });
 	return services.authoring.accept({
-		version: 1, kind, operationId: crypto.randomUUID(), expectedRevision: snapshot.acceptedRevision,
-		targets: [sceneEntityReference(entityId, snapshot.domain.unitRevisions.scene)], payload,
-		capturedInputs: [], allocatedIds: allocatedId === undefined ? [] : [{ kind: 'scene-entity', id: allocatedId }]
+		version: 1,
+		kind,
+		operationId: crypto.randomUUID(),
+		expectedRevision: snapshot.acceptedRevision,
+		targets: [sceneEntityReference(entityId, snapshot.domain.unitRevisions.scene)],
+		payload,
+		capturedInputs: [],
+		allocatedIds: allocatedId === undefined ? [] : [{ kind: 'scene-entity', id: allocatedId }],
 	});
 }

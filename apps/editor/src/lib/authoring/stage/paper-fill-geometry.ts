@@ -16,7 +16,9 @@ export type PaperFillPolygons = {
 	readonly holes?: readonly (readonly (readonly LayoutVec2[])[])[];
 };
 
-export function createPaperFillGeometry(fills: readonly PaperFillPolygons[]): BufferGeometry | null {
+export function createPaperFillGeometry(
+	fills: readonly PaperFillPolygons[],
+): BufferGeometry | null {
 	const parts: BufferGeometry[] = [];
 	try {
 		for (const fill of fills) {
@@ -33,7 +35,9 @@ export function createPaperFillGeometry(fills: readonly PaperFillPolygons[]): Bu
 					for (const point of hole.slice(1)) path.lineTo(point[0], point[1]);
 					shape.holes.push(path);
 				}
-				parts.push(new ShapeGeometry(shape).rotateX(Math.PI / 2).translate(0, fill.elevationMeters, 0));
+				parts.push(
+					new ShapeGeometry(shape).rotateX(Math.PI / 2).translate(0, fill.elevationMeters, 0),
+				);
 			});
 		}
 		if (parts.length === 0) return null;
@@ -76,8 +80,9 @@ function pointInRing(point: LayoutVec2, ring: readonly LayoutVec2[]): boolean {
 		const current = ring[index]!;
 		const prior = ring[previous]!;
 		const crosses =
-			(current[1] > point[1]) !== (prior[1] > point[1]) &&
-			point[0] < ((prior[0] - current[0]) * (point[1] - current[1])) / (prior[1] - current[1]) + current[0];
+			current[1] > point[1] !== prior[1] > point[1] &&
+			point[0] <
+				((prior[0] - current[0]) * (point[1] - current[1])) / (prior[1] - current[1]) + current[0];
 		if (crosses) inside = !inside;
 	}
 	return inside;
@@ -104,7 +109,11 @@ function ownerEdgesOf(polygons: readonly (readonly LayoutVec2[])[]): OwnerEdge[]
  * boundary piece that merges two sides of a touching point. The caller then keeps
  * the raw polygons instead of guessing an orientation.
  */
-function insideSideOf(start: LayoutVec2, end: LayoutVec2, owners: readonly OwnerEdge[]): 1 | -1 | null {
+function insideSideOf(
+	start: LayoutVec2,
+	end: LayoutVec2,
+	owners: readonly OwnerEdge[],
+): 1 | -1 | null {
 	const length = Math.hypot(end[0] - start[0], end[1] - start[1]);
 	if (!(length > RING_EPSILON)) return null;
 	const ux = (end[0] - start[0]) / length;
@@ -115,7 +124,8 @@ function insideSideOf(start: LayoutVec2, end: LayoutVec2, owners: readonly Owner
 		const az = owner.a[1] - start[1];
 		const bx = owner.b[0] - start[0];
 		const bz = owner.b[1] - start[1];
-		if (Math.abs(ux * az - uz * ax) > RING_EPSILON || Math.abs(ux * bz - uz * bx) > RING_EPSILON) continue;
+		if (Math.abs(ux * az - uz * ax) > RING_EPSILON || Math.abs(ux * bz - uz * bx) > RING_EPSILON)
+			continue;
 		const ta = ax * ux + az * uz;
 		const tb = bx * ux + bz * uz;
 		const overlap = Math.min(Math.max(ta, tb), length) - Math.max(Math.min(ta, tb), 0);
@@ -142,11 +152,15 @@ function insideSideOf(start: LayoutVec2, end: LayoutVec2, owners: readonly Owner
  * not close consistently (no positive-area input, unmatched or conflicting pieces).
  * It never throws.
  */
-export function unionPaperFillPolygons(polygons: readonly (readonly LayoutVec2[])[]): PaperFillUnion | null {
+export function unionPaperFillPolygons(
+	polygons: readonly (readonly LayoutVec2[])[],
+): PaperFillUnion | null {
 	// A zero-area polygon (a vertical face's projected sliver) covers no region, so
 	// dropping it cannot change the union, and its collinear vertices never reach
 	// the boundary's containment probes.
-	const solid = polygons.filter((polygon) => polygon.length >= 3 && Math.abs(signedArea(polygon)) > AREA_EPSILON);
+	const solid = polygons.filter(
+		(polygon) => polygon.length >= 3 && Math.abs(signedArea(polygon)) > AREA_EPSILON,
+	);
 	if (solid.length === 0) return null;
 	const boundary = unionOutline(solid);
 	if (boundary.length === 0) return null;

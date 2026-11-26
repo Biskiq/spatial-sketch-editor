@@ -12,14 +12,10 @@ import type { ViewportRect } from '@portfolio/camera-core/viewport';
 import {
 	layoutSelectionReference,
 	sameReference,
-	type StageSelectionEntry
+	type StageSelectionEntry,
 } from '../semantic-selection';
 import { planSourceKindOf } from './plan-source-kind';
-import type {
-	StageFacade,
-	StageInstrumentContent,
-	StageSourceHit
-} from '../stage-facade';
+import type { StageFacade, StageInstrumentContent, StageSourceHit } from '../stage-facade';
 import type { StageTask } from '../stage-session';
 import type { StageEraseCandidate } from '../stage-eraser';
 import type { StageEraserController } from '../stage-eraser';
@@ -28,9 +24,7 @@ import type { StagePaintCandidate, StagePaintController } from '../stage-painter
 import { STAGE_ERASER_TASK } from '../stage-eraser';
 import { STAGE_MEASURE_TASK } from '../stage-measure';
 import { STAGE_PAINT_TASK } from '../stage-painter';
-import {
-	SCALE_DETENTS
-} from '../stage-drafting';
+import { SCALE_DETENTS } from '../stage-drafting';
 import {
 	stageDockKeys,
 	stageDockTools,
@@ -38,7 +32,7 @@ import {
 	STAGE_HOST_ADAPTER_ID,
 	type StageContributionRow,
 	type StageDockKey,
-	type StageDockTool
+	type StageDockTool,
 } from '../stage-contributions';
 import type { WorldIndexModel } from '../shell/world-index-model';
 
@@ -71,7 +65,10 @@ export function stageFindView(input: {
 	readonly dockKeys: readonly StageDockKey[];
 	/** Object Studio's Find vocabulary; absent in a plain World. */
 	readonly studio?: StudioFindState | null;
-}): { readonly contributions: readonly StageContributionRow[]; readonly entries: readonly StageHeadFindEntry[] } {
+}): {
+	readonly contributions: readonly StageContributionRow[];
+	readonly entries: readonly StageHeadFindEntry[];
+} {
 	void input.revision;
 	const contributions = stageFindEntries(input.facade);
 	const needle = input.query.trim().toLowerCase();
@@ -81,24 +78,35 @@ export function stageFindView(input: {
 		...(studio === null ? [] : studioFindEntries(studio)),
 		// Object Studio keeps to one object: a starter replacement, the World's rooms
 		// and its other locators are the World's own and are not offered here.
-		...(inStudio ? [] : [{ id: 'starter', adapterId: 'project-replacement', label: 'Use enclosed room starter', verb: 'Replace' }]),
+		...(inStudio
+			? []
+			: [
+					{
+						id: 'starter',
+						adapterId: 'project-replacement',
+						label: 'Use enclosed room starter',
+						verb: 'Replace',
+					},
+				]),
 		...input.worldIndex.rows.map((row) => ({
 			id: row.sourceId,
 			adapterId: 'subject',
 			label: row.label,
-			verb: 'Select'
+			verb: 'Select',
 		})),
-		...(inStudio ? [] : input.worldIndex.contexts.map((context) => ({
-			id: context.id,
-			adapterId: 'scope',
-			label: context.label,
-			verb: 'Go to'
-		}))),
+		...(inStudio
+			? []
+			: input.worldIndex.contexts.map((context) => ({
+					id: context.id,
+					adapterId: 'scope',
+					label: context.label,
+					verb: 'Go to',
+				}))),
 		...['Zoom in', 'Zoom out', 'Fit'].map((label, index) => ({
 			id: String(index),
 			adapterId: 'view-command',
 			label,
-			verb: 'Run'
+			verb: 'Run',
 		})),
 		...input.dockKeys
 			.filter((key) => !key.unavailableReason)
@@ -106,13 +114,13 @@ export function stageFindView(input: {
 				id: key.id,
 				adapterId: key.adapterId,
 				label: key.label,
-				verb: 'Arm'
+				verb: 'Arm',
 			})),
 		...contributions.map((entry) => ({
 			id: entry.id,
 			adapterId: entry.adapterId,
 			label: entry.label,
-			verb: 'Invoke'
+			verb: 'Invoke',
 		})),
 		// The Scale detents stay reachable after the Scale word leaves the
 		// toolbar. They are the same existing zoom intent, not a second control.
@@ -120,7 +128,7 @@ export function stageFindView(input: {
 			id: `scale:${ratio}`,
 			adapterId: 'scale',
 			label: `Scale 1:${ratio}`,
-			verb: 'Zoom'
+			verb: 'Zoom',
 		})),
 		// The former ☰ menu's capabilities keep a Find entry beside their
 		// permanent homes, and Keys, which has no other home.
@@ -129,11 +137,14 @@ export function stageFindView(input: {
 		...(input.lens === 'experience'
 			? [{ id: 'tips', adapterId: 'experience', label: 'Show Experience tips', verb: '' }]
 			: []),
-		...HEAD_PROJECT_ENTRIES
+		...HEAD_PROJECT_ENTRIES,
 	];
 	return {
 		contributions,
-		entries: needle === '' ? entries : entries.filter((entry) => entry.label.toLowerCase().includes(needle))
+		entries:
+			needle === ''
+				? entries
+				: entries.filter((entry) => entry.label.toLowerCase().includes(needle)),
 	};
 }
 
@@ -151,8 +162,10 @@ export type StudioFindState = {
 function studioFindEntries(studio: StudioFindState): readonly StageHeadFindEntry[] {
 	if (!studio.active) {
 		return [
-			...(studio.canEdit ? [{ id: 'edit', adapterId: 'studio', label: 'Edit in Studio', verb: 'Open' }] : []),
-			{ id: 'new-object-project', adapterId: 'studio', label: 'New object', verb: 'Create' }
+			...(studio.canEdit
+				? [{ id: 'edit', adapterId: 'studio', label: 'Edit in Studio', verb: 'Open' }]
+				: []),
+			{ id: 'new-object-project', adapterId: 'studio', label: 'New object', verb: 'Create' },
 		];
 	}
 	return [
@@ -163,11 +176,13 @@ function studioFindEntries(studio: StudioFindState): readonly StageHeadFindEntry
 			? [{ id: 'open-in-world', adapterId: 'studio', label: 'Open in World', verb: 'Open' }]
 			: []),
 		{ id: 'new-object-here', adapterId: 'studio', label: 'New object here', verb: 'Create' },
-		...(studio.rootCount > 1 ? [{ id: 'choose-object', adapterId: 'studio', label: 'Choose object', verb: 'Choose' }] : []),
+		...(studio.rootCount > 1
+			? [{ id: 'choose-object', adapterId: 'studio', label: 'Choose object', verb: 'Choose' }]
+			: []),
 		studio.context === 'world'
 			? { id: 'context-mat', adapterId: 'studio', label: 'Studio context: Mat', verb: 'Set' }
 			: { id: 'context-world', adapterId: 'studio', label: 'Studio context: World', verb: 'Set' },
-		{ id: 'new-object-project', adapterId: 'studio', label: 'New object project', verb: 'Create' }
+		{ id: 'new-object-project', adapterId: 'studio', label: 'New object project', verb: 'Create' },
 	];
 }
 
@@ -189,8 +204,13 @@ export const HEAD_PREFERENCE_ENTRIES: readonly StageHeadFindEntry[] = [
 	{ id: 'height-sheet:left', adapterId: 'preference', label: 'Height Sheet: Left', verb: 'Set' },
 	{ id: 'reduce-motion', adapterId: 'preference', label: 'Reduce motion', verb: 'Toggle' },
 	{ id: 'motion-speed:slow', adapterId: 'preference', label: 'Motion speed: Slow', verb: 'Set' },
-	{ id: 'motion-speed:normal', adapterId: 'preference', label: 'Motion speed: Normal', verb: 'Set' },
-	{ id: 'motion-speed:fast', adapterId: 'preference', label: 'Motion speed: Fast', verb: 'Set' }
+	{
+		id: 'motion-speed:normal',
+		adapterId: 'preference',
+		label: 'Motion speed: Normal',
+		verb: 'Set',
+	},
+	{ id: 'motion-speed:fast', adapterId: 'preference', label: 'Motion speed: Fast', verb: 'Set' },
 ];
 
 /**
@@ -202,7 +222,7 @@ export const HEAD_PROJECT_ENTRIES: readonly StageHeadFindEntry[] = [
 	{ id: 'rename', adapterId: 'project-menu', label: 'Rename project', verb: 'Run' },
 	{ id: 'delete', adapterId: 'project-menu', label: 'Delete project', verb: 'Run' },
 	{ id: 'download', adapterId: 'project-menu', label: 'Download source JSON', verb: 'Run' },
-	{ id: 'source', adapterId: 'project-menu', label: 'Open source JSON', verb: 'Replace' }
+	{ id: 'source', adapterId: 'project-menu', label: 'Open source JSON', verb: 'Replace' },
 ];
 
 /** The armed host tool, read from the one task the session holds. */
@@ -237,7 +257,7 @@ export function stageArmedDockId(input: {
 	}
 	return (
 		input.dockKeys.find(
-			(key) => key.taskKind === input.task?.kind && key.adapterId !== STAGE_HOST_ADAPTER_ID
+			(key) => key.taskKind === input.task?.kind && key.adapterId !== STAGE_HOST_ADAPTER_ID,
 		)?.id ?? ''
 	);
 }
@@ -251,8 +271,10 @@ export function stageContributedInstrument(input: {
 	void input.revision;
 	return input.contributedTaskId === null
 		? null
-		: (input.facade?.instrumentForTask(input.contributedTaskId.id, input.contributedTaskId.adapterId) ??
-				null);
+		: (input.facade?.instrumentForTask(
+				input.contributedTaskId.id,
+				input.contributedTaskId.adapterId,
+			) ?? null);
 }
 
 /** A parked task, offered only where it can actually be resumed in this lens. */
@@ -286,7 +308,7 @@ export function stageTaskHost(input: {
 		targetLabel:
 			input.task.targetRef === null
 				? null
-				: sourceLabel(input.task.targetRef.sourceId, input.task.targetRef.sourceKind)
+				: sourceLabel(input.task.targetRef.sourceId, input.task.targetRef.sourceKind),
 	};
 }
 
@@ -373,24 +395,23 @@ export function stageHostToolOverlay(input: {
 					sourceKind: planKind!,
 					generationId: hit.generationId,
 					stream: hit.stream,
-					subRef: hit.subRef
+					subRef: hit.subRef,
 				}
 			: undefined;
-	const reference =
-		hit.reference ?? layoutSelectionReference(representation!, stage.snapshot());
+	const reference = hit.reference ?? layoutSelectionReference(representation!, stage.snapshot());
 	const hover: StageSelectionEntry =
 		representation === undefined ? { reference } : { reference, representation };
 	return {
 		overlay,
 		eraseHover: input.armedHostTool === 'erase' ? hover : null,
-		paintHover: input.armedHostTool === 'paint' ? hover : null
+		paintHover: input.armedHostTool === 'paint' ? hover : null,
 	};
 }
 
 /** Whether the Eraser's current winner is the one already shown. */
 export function sameEraseHover(
 	current: StageSelectionEntry | null,
-	next: StageSelectionEntry | null
+	next: StageSelectionEntry | null,
 ): boolean {
 	if (current === null || next === null) return current === next;
 	return sameReference(current.reference, next.reference);

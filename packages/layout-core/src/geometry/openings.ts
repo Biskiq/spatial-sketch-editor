@@ -1,7 +1,13 @@
 import type { LayoutVec2 } from './coordinates';
 import type { CompilerOpening } from './types';
 import type { CompiledArchProfile, CompiledWallSection } from './types';
-import { pointAlongSamples, sampleSegment, type CurveSample, type SampledSegment, type SampleableSegment } from './curve';
+import {
+	pointAlongSamples,
+	sampleSegment,
+	type CurveSample,
+	type SampledSegment,
+	type SampleableSegment,
+} from './curve';
 
 export const ARCH_PROFILE_EPSILON = 1e-6;
 export const LAYOUT_GEOMETRY_EPSILON = 1e-6;
@@ -34,19 +40,80 @@ export function buildArchProfile(
 	kind: CompilerOpening['profile'],
 	width: number,
 	height: number,
-	epsilon = ARCH_PROFILE_EPSILON
+	epsilon = ARCH_PROFILE_EPSILON,
 ): ArchProfileResult {
-	if (!Number.isFinite(width) || width <= epsilon) return { profile: null, issues: [{ code: 'arch_profile_width_invalid', message: 'Arch profile width must be finite and greater than zero.' }] };
-	if (!Number.isFinite(height) || height <= epsilon) return { profile: null, issues: [{ code: 'arch_profile_height_invalid', message: 'Arch profile height must be finite and greater than zero.' }] };
+	if (!Number.isFinite(width) || width <= epsilon)
+		return {
+			profile: null,
+			issues: [
+				{
+					code: 'arch_profile_width_invalid',
+					message: 'Arch profile width must be finite and greater than zero.',
+				},
+			],
+		};
+	if (!Number.isFinite(height) || height <= epsilon)
+		return {
+			profile: null,
+			issues: [
+				{
+					code: 'arch_profile_height_invalid',
+					message: 'Arch profile height must be finite and greater than zero.',
+				},
+			],
+		};
 	const rise = width / 2;
-	if (kind === 'rounded' && rise > height + epsilon) return { profile: null, issues: [{ code: 'rounded_arch_rise_exceeds_height', message: 'Rounded arch rise exceeds opening height.' }] };
-	if (kind === 'pointed' && rise > height + epsilon) return { profile: null, issues: [{ code: 'pointed_arch_rise_exceeds_height', message: 'Pointed arch rise exceeds opening height.' }] };
+	if (kind === 'rounded' && rise > height + epsilon)
+		return {
+			profile: null,
+			issues: [
+				{
+					code: 'rounded_arch_rise_exceeds_height',
+					message: 'Rounded arch rise exceeds opening height.',
+				},
+			],
+		};
+	if (kind === 'pointed' && rise > height + epsilon)
+		return {
+			profile: null,
+			issues: [
+				{
+					code: 'pointed_arch_rise_exceeds_height',
+					message: 'Pointed arch rise exceeds opening height.',
+				},
+			],
+		};
 	if (kind === 'rectangular') {
-		return { profile: { kind, width, height, rise: height, topBoundary: [[0, height], [width, height]] }, issues: [] };
+		return {
+			profile: {
+				kind,
+				width,
+				height,
+				rise: height,
+				topBoundary: [
+					[0, height],
+					[width, height],
+				],
+			},
+			issues: [],
+		};
 	}
 	const springHeight = height - rise;
 	if (kind === 'pointed') {
-		return { profile: { kind, width, height, rise, topBoundary: [[0, springHeight], [width / 2, height], [width, springHeight]] }, issues: [] };
+		return {
+			profile: {
+				kind,
+				width,
+				height,
+				rise,
+				topBoundary: [
+					[0, springHeight],
+					[width / 2, height],
+					[width, springHeight],
+				],
+			},
+			issues: [],
+		};
 	}
 	const radius = width / 2;
 	const points: LayoutVec2[] = [];
@@ -80,7 +147,7 @@ export function archProfileTopAt(profile: ArchProfile, x: number): number {
 export function openingIntervals(
 	segment: SampleableSegment,
 	openings: readonly CompilerOpening[],
-	length?: number
+	length?: number,
 ): WallOpeningInterval[] {
 	const intervals: WallOpeningInterval[] = [];
 	for (const opening of openings) {
@@ -97,7 +164,7 @@ export function openingIntervals(
 				endDistance: end - length,
 				sillHeight: opening.sillHeight,
 				height: opening.height,
-				profile: opening.profile
+				profile: opening.profile,
 			});
 			intervals.push({
 				openingId: opening.id,
@@ -105,7 +172,7 @@ export function openingIntervals(
 				endDistance: length,
 				sillHeight: opening.sillHeight,
 				height: opening.height,
-				profile: opening.profile
+				profile: opening.profile,
 			});
 		} else {
 			intervals.push({
@@ -114,11 +181,13 @@ export function openingIntervals(
 				endDistance: end,
 				sillHeight: opening.sillHeight,
 				height: opening.height,
-				profile: opening.profile
+				profile: opening.profile,
 			});
 		}
 	}
-	return intervals.sort((a, b) => a.startDistance - b.startDistance || a.openingId.localeCompare(b.openingId));
+	return intervals.sort(
+		(a, b) => a.startDistance - b.startDistance || a.openingId.localeCompare(b.openingId),
+	);
 }
 
 /**
@@ -130,7 +199,7 @@ export function openingIntervals(
 export function splitWallAroundOpenings(
 	segment: SampleableSegment,
 	openings: readonly CompilerOpening[],
-	wallHeight: number
+	wallHeight: number,
 ): CompiledWallSection[] {
 	return splitSampledWallAroundOpenings(sampleSegment(segment), segment, openings, wallHeight);
 }
@@ -139,7 +208,7 @@ export function splitSampledWallAroundOpenings(
 	sampled: SampledSegment,
 	segment: SampleableSegment,
 	openings: readonly CompilerOpening[],
-	wallHeight: number
+	wallHeight: number,
 ): CompiledWallSection[] {
 	const length = sampled.length;
 	const intervals = openingIntervals(segment, openings, length);
@@ -152,7 +221,13 @@ export function splitSampledWallAroundOpenings(
 		if (end <= start + LAYOUT_GEOMETRY_EPSILON) continue;
 
 		if (start > cursor + LAYOUT_GEOMETRY_EPSILON) {
-			sections.push({ kind: 'side', startDistance: cursor, endDistance: start, bottomY: 0, topY: wallHeight });
+			sections.push({
+				kind: 'side',
+				startDistance: cursor,
+				endDistance: start,
+				bottomY: 0,
+				topY: wallHeight,
+			});
 		}
 
 		if (interval.sillHeight > LAYOUT_GEOMETRY_EPSILON) {
@@ -162,12 +237,17 @@ export function splitSampledWallAroundOpenings(
 				endDistance: end,
 				bottomY: 0,
 				topY: Math.min(interval.sillHeight, wallHeight),
-				openingId: interval.openingId
+				openingId: interval.openingId,
 			});
 		}
 
-		const profileResult = buildArchProfile(interval.profile, interval.endDistance - interval.startDistance, interval.height);
-		const profile = interval.profile === 'rectangular' ? undefined : (profileResult.profile ?? undefined);
+		const profileResult = buildArchProfile(
+			interval.profile,
+			interval.endDistance - interval.startDistance,
+			interval.height,
+		);
+		const profile =
+			interval.profile === 'rectangular' ? undefined : (profileResult.profile ?? undefined);
 		const lintelBottom = Math.min(interval.sillHeight + interval.height, wallHeight);
 		if (lintelBottom < wallHeight - LAYOUT_GEOMETRY_EPSILON) {
 			sections.push({
@@ -177,14 +257,20 @@ export function splitSampledWallAroundOpenings(
 				bottomY: lintelBottom,
 				topY: wallHeight,
 				openingId: interval.openingId,
-				...(profile ? { profile, profileBaseY: interval.sillHeight } : {})
+				...(profile ? { profile, profileBaseY: interval.sillHeight } : {}),
 			});
 		}
 		cursor = Math.max(cursor, end);
 	}
 
 	if (cursor < length - LAYOUT_GEOMETRY_EPSILON) {
-		sections.push({ kind: 'side', startDistance: cursor, endDistance: length, bottomY: 0, topY: wallHeight });
+		sections.push({
+			kind: 'side',
+			startDistance: cursor,
+			endDistance: length,
+			bottomY: 0,
+			topY: wallHeight,
+		});
 	}
 
 	return sections;
@@ -194,7 +280,7 @@ export function offsetInsideOpeningIntervals(
 	offset: number,
 	openings: readonly Pick<CompilerOpening, 'offset' | 'width'>[],
 	epsilon = 1e-6,
-	wallLength?: number
+	wallLength?: number,
 ): boolean {
 	return openings.some((opening) => {
 		const start = opening.offset;
@@ -213,7 +299,7 @@ export function offsetInsideOpeningIntervals(
  */
 export function wallPolylinesAroundOpenings(
 	samples: readonly CurveSample[],
-	openings: readonly Pick<CompilerOpening, 'offset' | 'width'>[]
+	openings: readonly Pick<CompilerOpening, 'offset' | 'width'>[],
 ): LayoutVec2[][] {
 	if (samples.length === 0) return [];
 	if (samples.length === 1) return [[[...samples[0]!.point] as LayoutVec2]];
@@ -240,7 +326,7 @@ export function wallPolylinesAroundOpenings(
 export function samplesInDistanceRange(
 	samples: readonly CurveSample[],
 	startDistance: number,
-	endDistance: number
+	endDistance: number,
 ): LayoutVec2[] {
 	if (samples.length === 0 || endDistance <= startDistance + 1e-6) return [];
 	const points: LayoutVec2[] = [pointAlongSamples(samples, startDistance)];

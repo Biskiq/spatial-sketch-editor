@@ -17,7 +17,7 @@ export {
 	parseSceneColor,
 	parseMaterialInstance,
 	readPositiveDimension,
-	parsePrimitiveDimensions
+	parsePrimitiveDimensions,
 } from './parse-entities/materials';
 export { parseFormSource, parseFormEntity } from './parse-entities/forms';
 export {
@@ -27,5 +27,5 @@ export {
 	parseLightEntity,
 	parseArtworkLibraryEntry,
 	parseEntity,
-	parseCluster
+	parseCluster,
 } from './parse-entities/entities';

@@ -19,13 +19,16 @@ import { capFillsOf } from './slice-cap-shapes';
 import { sectionForSlice } from './slice-section';
 
 /** What the Stage facade and its adapters call; the options stay internal. */
-export type SlicePick = (ray: PointerRay, scene: RuntimeScene) => ReturnType<ScenePickSource['pick']>;
+export type SlicePick = (
+	ray: PointerRay,
+	scene: RuntimeScene,
+) => ReturnType<ScenePickSource['pick']>;
 
 export function pickThroughSlice(
 	source: ScenePickSource,
 	resolved: () => ResolvedSlice | null,
 	scope: () => SubjectScope | null = () => null,
-	cutaway: () => ResolvedCutaway | null = resolvedCutawayNow
+	cutaway: () => ResolvedCutaway | null = resolvedCutawayNow,
 ): SlicePick {
 	return (ray, scene) => {
 		const hit = source.pick(ray, scene, optionsOf(resolved, scope, cutaway));
@@ -42,27 +45,45 @@ function regionSectionHit(
 	pointer: PointerRay,
 	inputs: Parameters<typeof sectionForSlice>[0],
 	slice: ResolvedSlice,
-	occluder: SceneRenderedHit | null
+	occluder: SceneRenderedHit | null,
 ): SceneRenderedHit | null {
 	const { result, basis } = sectionForSlice(inputs, slice);
 	if (result.groups.length === 0) return null;
 	const origin = new Vector3(...basis.origin);
 	const normal = new Vector3(...basis.normal);
 	const ray = new Ray(new Vector3(...pointer.origin), new Vector3(...pointer.direction));
-	const point = ray.intersectPlane(new Plane().setFromNormalAndCoplanarPoint(normal, origin), new Vector3());
+	const point = ray.intersectPlane(
+		new Plane().setFromNormalAndCoplanarPoint(normal, origin),
+		new Vector3(),
+	);
 	if (point === null) return null;
 	const distanceMeters = ray.origin.distanceTo(point);
 	if (occluder && distanceMeters >= occluder.distanceMeters) return null;
 	const local = point.clone().sub(origin);
-	const sectionPoint: LayoutVec2 = [local.dot(new Vector3(...basis.u)), local.dot(new Vector3(...basis.v))];
+	const sectionPoint: LayoutVec2 = [
+		local.dot(new Vector3(...basis.u)),
+		local.dot(new Vector3(...basis.v)),
+	];
 	for (const group of result.groups) {
 		if (group.issue !== null) continue;
-		if (!capFillsOf(group.loops).some(({ outer, holes }) =>
-			pointInPolygon(sectionPoint, outer) && !holes.some((hole) => pointInPolygon(sectionPoint, hole))
-		)) continue;
+		if (
+			!capFillsOf(group.loops).some(
+				({ outer, holes }) =>
+					pointInPolygon(sectionPoint, outer) &&
+					!holes.some((hole) => pointInPolygon(sectionPoint, hole)),
+			)
+		)
+			continue;
 		return {
-			entityId: null, kind: 'layout', distanceMeters, worldPoint: point.toArray(),
-			region: { kind: 'region-face', regionId: group.group.slice('layout-region:'.length), face: 'edge' }
+			entityId: null,
+			kind: 'layout',
+			distanceMeters,
+			worldPoint: point.toArray(),
+			region: {
+				kind: 'region-face',
+				regionId: group.group.slice('layout-region:'.length),
+				face: 'edge',
+			},
 		};
 	}
 	return null;
@@ -72,14 +93,14 @@ function regionSectionHit(
 export type SliceFacePick = (
 	ray: PointerRay,
 	scene: RuntimeScene,
-	accept: Parameters<ScenePickSource['pickVisibleFace']>[2]
+	accept: Parameters<ScenePickSource['pickVisibleFace']>[2],
 ) => ReturnType<ScenePickSource['pickVisibleFace']>;
 
 export function pickVisibleFaceThroughSlice(
 	source: ScenePickSource,
 	resolved: () => ResolvedSlice | null,
 	scope: () => SubjectScope | null = () => null,
-	cutaway: () => ResolvedCutaway | null = resolvedCutawayNow
+	cutaway: () => ResolvedCutaway | null = resolvedCutawayNow,
 ): SliceFacePick {
 	return (ray, scene, accept) =>
 		source.pickVisibleFace(ray, scene, accept, optionsOf(resolved, scope, cutaway));
@@ -89,7 +110,7 @@ export function pickVisibleFaceThroughSlice(
 function optionsOf(
 	resolved: () => ResolvedSlice | null,
 	scope: () => SubjectScope | null,
-	cutaway: () => ResolvedCutaway | null
+	cutaway: () => ResolvedCutaway | null,
 ): PickOptions {
 	const current = scope();
 	const hidden = hiddenAtOf(resolved, cutaway);
@@ -102,13 +123,13 @@ function optionsOf(
  */
 function hiddenAtOf(
 	resolved: () => ResolvedSlice | null,
-	cutaway: () => ResolvedCutaway | null
+	cutaway: () => ResolvedCutaway | null,
 ): { hiddenAt(point: readonly [number, number, number], object: Object3D): boolean } {
 	return {
 		hiddenAt: (point, object) => {
 			const slice = resolved();
 			if (slice !== null && sliceHides(slice, point[0], point[1], point[2])) return true;
 			return cutawayHides(point, object, cutaway());
-		}
+		},
 	};
 }

@@ -72,7 +72,7 @@ import {
 	type ChannelSourceIdentity,
 	type ChannelState,
 	type ChannelValue,
-	type ChannelWithdrawal
+	type ChannelWithdrawal,
 } from './types';
 
 /** An empty accepted-contribution state. */
@@ -86,13 +86,20 @@ function samePath(left: readonly string[], right: readonly string[]): boolean {
 }
 
 function sameLocation(left: ReferenceLocation, right: ReferenceLocation): boolean {
-	if (left.kind === 'project-root' || right.kind === 'project-root') return left.kind === right.kind;
-	return left.levelId === right.levelId && samePath(left.structureInstancePath, right.structureInstancePath);
+	if (left.kind === 'project-root' || right.kind === 'project-root')
+		return left.kind === right.kind;
+	return (
+		left.levelId === right.levelId &&
+		samePath(left.structureInstancePath, right.structureInstancePath)
+	);
 }
 
 function sameFrame(left: FrameReference, right: FrameReference): boolean {
-	if (left.kind === 'project-world' || right.kind === 'project-world') return left.kind === right.kind;
-	return left.owner === right.owner && left.frameId === right.frameId && left.revision === right.revision;
+	if (left.kind === 'project-world' || right.kind === 'project-world')
+		return left.kind === right.kind;
+	return (
+		left.owner === right.owner && left.frameId === right.frameId && left.revision === right.revision
+	);
 }
 
 function sameOwner(left: ChannelOwnerIdentity, right: ChannelOwnerIdentity): boolean {
@@ -121,12 +128,18 @@ function sameScopeInstance(left: ChannelPropertyScope, right: ChannelPropertySco
 }
 
 /** Structural property-scope equality: the one contention boundary of F.3. */
-export function sameChannelPropertyScope(left: ChannelPropertyScope, right: ChannelPropertyScope): boolean {
+export function sameChannelPropertyScope(
+	left: ChannelPropertyScope,
+	right: ChannelPropertyScope,
+): boolean {
 	return left.propertyId === right.propertyId && sameScopeInstance(left, right);
 }
 
 /** Structural source-identity equality: distinct opaque id paths always differ. */
-export function sameChannelSourceIdentity(left: ChannelSourceIdentity, right: ChannelSourceIdentity): boolean {
+export function sameChannelSourceIdentity(
+	left: ChannelSourceIdentity,
+	right: ChannelSourceIdentity,
+): boolean {
 	return (
 		left.domain === right.domain &&
 		left.subject.kind === right.subject.kind &&
@@ -148,7 +161,10 @@ function comparePaths(left: readonly string[], right: readonly string[]): number
 }
 
 /** Stable ID order over source identities, so a union read is deterministic. */
-function compareSourceIdentities(left: ChannelSourceIdentity, right: ChannelSourceIdentity): number {
+function compareSourceIdentities(
+	left: ChannelSourceIdentity,
+	right: ChannelSourceIdentity,
+): number {
 	return (
 		compareIds(left.domain, right.domain) ||
 		compareIds(left.subject.kind, right.subject.kind) ||
@@ -164,9 +180,14 @@ function sameMembers(left: readonly string[], right: readonly string[]): boolean
 	return right.every((identifier) => members.has(identifier));
 }
 
-function sameIdentities(left: readonly ChannelSourceIdentity[], right: readonly ChannelSourceIdentity[]): boolean {
+function sameIdentities(
+	left: readonly ChannelSourceIdentity[],
+	right: readonly ChannelSourceIdentity[],
+): boolean {
 	if (left.length !== right.length) return false;
-	return left.every((identity) => right.some((candidate) => sameChannelSourceIdentity(candidate, identity)));
+	return left.every((identity) =>
+		right.some((candidate) => sameChannelSourceIdentity(candidate, identity)),
+	);
 }
 
 /**
@@ -181,8 +202,10 @@ function sameValue(left: ChannelValue, right: ChannelValue): boolean {
 		return left.value.every((component, index) => component === right.value[index]);
 	}
 	if (left.kind === 'identifier' && right.kind === 'identifier') return left.value === right.value;
-	if (left.kind === 'identifier-set' && right.kind === 'identifier-set') return sameMembers(left.value, right.value);
-	if (left.kind === 'source-set' && right.kind === 'source-set') return sameIdentities(left.value, right.value);
+	if (left.kind === 'identifier-set' && right.kind === 'identifier-set')
+		return sameMembers(left.value, right.value);
+	if (left.kind === 'source-set' && right.kind === 'source-set')
+		return sameIdentities(left.value, right.value);
 	return false;
 }
 
@@ -193,14 +216,16 @@ function sameValue(left: ChannelValue, right: ChannelValue): boolean {
 function unionValues(values: readonly ChannelValue[]): ChannelValue {
 	if (values[0]?.kind === 'identifier-set') {
 		const members = new Set<string>();
-		for (const value of values) if (value.kind === 'identifier-set') for (const member of value.value) members.add(member);
+		for (const value of values)
+			if (value.kind === 'identifier-set') for (const member of value.value) members.add(member);
 		return { kind: 'identifier-set', value: [...members].sort(compareIds) };
 	}
 	const members: ChannelSourceIdentity[] = [];
 	for (const value of values) {
 		if (value.kind !== 'source-set') continue;
 		for (const identity of value.value) {
-			if (!members.some((existing) => sameChannelSourceIdentity(existing, identity))) members.push(identity);
+			if (!members.some((existing) => sameChannelSourceIdentity(existing, identity)))
+				members.push(identity);
 		}
 	}
 	return { kind: 'source-set', value: members.sort(compareSourceIdentities) };
@@ -226,7 +251,7 @@ export function resolveChannelPropertyScope(
 	family: ChannelFamily,
 	address: ChannelAddress,
 	scopeId: string,
-	context: ChannelEvaluationContext
+	context: ChannelEvaluationContext,
 ): ChannelScopeResolution {
 	const owner = address.ownerReference;
 	const admission = family.admission;
@@ -235,15 +260,21 @@ export function resolveChannelPropertyScope(
 			kind: 'refused',
 			reason: 'inadmissible-address',
 			message: `family "${family.id}" is owned by ${admission.ownerSubjectKinds.map((kind) => `"${kind}"`).join(' or ')} subjects, not "${owner.subject.kind}"`,
-			action: 'Address the property to a subject the family is owned by.'
+			action: 'Address the property to a subject the family is owned by.',
 		};
 	}
-	if (!admission.qualifiedAddresses && (address.instancePath.length > 0 || address.componentId !== null || address.capabilityId !== null)) {
+	if (
+		!admission.qualifiedAddresses &&
+		(address.instancePath.length > 0 ||
+			address.componentId !== null ||
+			address.capabilityId !== null)
+	) {
 		return {
 			kind: 'refused',
 			reason: 'inadmissible-address',
 			message: `family "${family.id}" declares no instance, component or capability qualification below its owner`,
-			action: 'Address the property to its owner with an empty instance path and no component or capability.'
+			action:
+				'Address the property to its owner with an empty instance path and no component or capability.',
 		};
 	}
 	if (!admission.frameKinds.includes(address.frame.kind)) {
@@ -251,7 +282,7 @@ export function resolveChannelPropertyScope(
 			kind: 'refused',
 			reason: 'inadmissible-address',
 			message: `family "${family.id}" admits ${admission.frameKinds.join(' or ')} frames, not "${address.frame.kind}"`,
-			action: 'Express the value in a frame the family admits.'
+			action: 'Express the value in a frame the family admits.',
 		};
 	}
 	const resolution = resolveReference(owner, context.read);
@@ -260,7 +291,8 @@ export function resolveChannelPropertyScope(
 			kind: 'refused',
 			reason: 'unresolved-owner-reference',
 			message: `the owner reference does not resolve in the supplied snapshot (${resolution.code}): ${resolution.message}`,
-			action: resolution.repairs[0]?.description ?? 'Re-resolve the owner from the current snapshot.'
+			action:
+				resolution.repairs[0]?.description ?? 'Re-resolve the owner from the current snapshot.',
 		};
 	}
 	// A resolved owner already names the current content of its owning unit: the
@@ -275,7 +307,7 @@ export function resolveChannelPropertyScope(
 				kind: 'refused',
 				reason: 'unresolved-frame',
 				message: `the ${address.frame.owner} frame "${address.frame.frameId}" does not resolve (${frame.code}): ${frame.message}`,
-				action: frame.repairs[0]?.description ?? 'Express the value in a frame its owner resolves.'
+				action: frame.repairs[0]?.description ?? 'Express the value in a frame its owner resolves.',
 			};
 		}
 	}
@@ -290,19 +322,23 @@ export function resolveChannelPropertyScope(
 				instancePath: [...subject.instancePath],
 				location: subject.location,
 				componentId: subject.componentId,
-				capabilityId: subject.capabilityId
+				capabilityId: subject.capabilityId,
 			},
 			instancePath: [...address.instancePath],
 			componentId: address.componentId,
 			capabilityId: address.capabilityId,
 			frame: address.frame,
 			propertyId: address.propertyId,
-			scopeId
-		}
+			scopeId,
+		},
 	};
 }
 
-export type ChannelStaleness = { reason: 'stale-contribution' | 'camera-output-not-held'; message: string; action: string };
+export type ChannelStaleness = {
+	reason: 'stale-contribution' | 'camera-output-not-held';
+	message: string;
+	action: string;
+};
 
 /**
  * The one freshness rule: does a contribution still belong to this context? It is
@@ -314,7 +350,7 @@ export type ChannelStaleness = { reason: 'stale-contribution' | 'camera-output-n
  */
 export function channelContributionStaleness(
 	contribution: ChannelContribution,
-	context: ChannelEvaluationContext
+	context: ChannelEvaluationContext,
 ): ChannelStaleness | null {
 	const invalidation = contribution.descriptor.invalidation;
 	const content = context.read.snapshot.sourceContentId;
@@ -324,7 +360,7 @@ export function channelContributionStaleness(
 			return {
 				reason: 'stale-contribution',
 				message: `the contribution was computed from content "${computed ?? 'none'}" and the accepted snapshot is content "${content}"`,
-				action: 'Recompute the contribution from the supplied accepted snapshot.'
+				action: 'Recompute the contribution from the supplied accepted snapshot.',
 			};
 		}
 	}
@@ -334,34 +370,42 @@ export function channelContributionStaleness(
 			return {
 				reason: 'stale-contribution',
 				message: `the contribution was computed from generation "${computed ?? 'none'}" and the active generation is "${context.read.generationId ?? 'none'}"`,
-				action: 'Re-derive the contribution from the active representation generation.'
+				action: 'Re-derive the contribution from the active representation generation.',
 			};
 		}
 	}
 	if (contribution.descriptor.arbitration === 'camera-output') {
-		const outputs = context.cameraOutputs.filter((output) => output.outputId === contribution.scopeId);
+		const outputs = context.cameraOutputs.filter(
+			(output) => output.outputId === contribution.scopeId,
+		);
 		const notHeld = (message: string): ChannelStaleness => ({
 			reason: 'camera-output-not-held',
 			message,
-			action: 'Acquire the Camera output first, then contribute under the ticket that holds it.'
+			action: 'Acquire the Camera output first, then contribute under the ticket that holds it.',
 		});
 		if (outputs.length !== 1) {
 			return notHeld(
 				outputs.length === 0
 					? `no Camera output "${contribution.scopeId}" is supplied to this context`
-					: `Camera output "${contribution.scopeId}" is supplied more than once, so no one claim holds it`
+					: `Camera output "${contribution.scopeId}" is supplied more than once, so no one claim holds it`,
 			);
 		}
 		const output = outputs[0]!;
 		if (output.sessionEpoch !== context.read.sessionEpoch || output.sourceRevision !== content) {
-			return notHeld(`Camera output "${output.outputId}" belongs to another host session or source than this context reads`);
+			return notHeld(
+				`Camera output "${output.outputId}" belongs to another host session or source than this context reads`,
+			);
 		}
 		const claim = output.claim;
-		if (claim === null || claim.ticket.ownerId !== contribution.invocationId || claim.ticket.runEpoch !== contribution.runEpoch) {
+		if (
+			claim === null ||
+			claim.ticket.ownerId !== contribution.invocationId ||
+			claim.ticket.runEpoch !== contribution.runEpoch
+		) {
 			return notHeld(
 				claim === null
 					? `Camera output "${output.outputId}" is free`
-					: `Camera output "${output.outputId}" is held by run ${claim.ticket.runEpoch} of "${claim.ticket.ownerId}", not run ${contribution.runEpoch} of "${contribution.invocationId}"`
+					: `Camera output "${output.outputId}" is held by run ${claim.ticket.runEpoch} of "${claim.ticket.ownerId}", not run ${contribution.runEpoch} of "${contribution.invocationId}"`,
 			);
 		}
 	}
@@ -376,32 +420,54 @@ function diagnostic(
 	address: ChannelAddress | null,
 	owners: readonly string[],
 	message: string,
-	action: string
+	action: string,
 ): ChannelDiagnostic {
 	return { domain, address, owners, message, action };
 }
 
-function rejected(state: ChannelState, reason: ChannelRejectionReason, diagnostics: ChannelDiagnostic): ChannelNegotiationOutcome {
+function rejected(
+	state: ChannelState,
+	reason: ChannelRejectionReason,
+	diagnostics: ChannelDiagnostic,
+): ChannelNegotiationOutcome {
 	return { kind: 'rejected', state, reason, diagnostics };
 }
 
-const RESOLVE_CHOICE = 'Yield one contribution, stop the other writer, or apply a supported combination.';
+const RESOLVE_CHOICE =
+	'Yield one contribution, stop the other writer, or apply a supported combination.';
 
-function markFor(state: ChannelState, scope: ChannelPropertyScope, invocationId: string): ChannelEpochMark | null {
-	return state.marks.find((mark) => mark.invocationId === invocationId && sameChannelPropertyScope(mark.scope, scope)) ?? null;
+function markFor(
+	state: ChannelState,
+	scope: ChannelPropertyScope,
+	invocationId: string,
+): ChannelEpochMark | null {
+	return (
+		state.marks.find(
+			(mark) => mark.invocationId === invocationId && sameChannelPropertyScope(mark.scope, scope),
+		) ?? null
+	);
 }
 
 /** The highest run epoch any invocation has had accepted in a scope, or `-1`. */
 function scopeFloor(state: ChannelState, scope: ChannelPropertyScope): ChannelEpochMark | null {
 	let highest: ChannelEpochMark | null = null;
 	for (const mark of state.marks) {
-		if (sameChannelPropertyScope(mark.scope, scope) && (highest === null || mark.runEpoch > highest.runEpoch)) highest = mark;
+		if (
+			sameChannelPropertyScope(mark.scope, scope) &&
+			(highest === null || mark.runEpoch > highest.runEpoch)
+		)
+			highest = mark;
 	}
 	return highest;
 }
 
 function withMark(marks: readonly ChannelEpochMark[], next: ChannelEpochMark): ChannelEpochMark[] {
-	const kept = marks.filter((mark) => !(mark.invocationId === next.invocationId && sameChannelPropertyScope(mark.scope, next.scope)));
+	const kept = marks.filter(
+		(mark) =>
+			!(
+				mark.invocationId === next.invocationId && sameChannelPropertyScope(mark.scope, next.scope)
+			),
+	);
 	return [...kept, next];
 }
 
@@ -415,12 +481,16 @@ export function channelFamilySatisfaction(
 	family: ChannelFamily,
 	state: ChannelState,
 	scope: ChannelPropertyScope,
-	context: ChannelEvaluationContext
+	context: ChannelEvaluationContext,
 ): { satisfied: boolean; missingRequiredProperties: readonly string[] } {
 	const present = new Set(
 		state.entries
-			.filter((entry) => sameScopeInstance(entry.scope, scope) && channelContributionStaleness(entry.contribution, context) === null)
-			.map((entry) => entry.scope.propertyId)
+			.filter(
+				(entry) =>
+					sameScopeInstance(entry.scope, scope) &&
+					channelContributionStaleness(entry.contribution, context) === null,
+			)
+			.map((entry) => entry.scope.propertyId),
 	);
 	const missing = family.requiredProperties.filter((propertyId) => !present.has(propertyId));
 	return { satisfied: missing.length === 0, missingRequiredProperties: missing };
@@ -436,7 +506,7 @@ export function negotiateChannelContribution(
 	host: ChannelHost,
 	state: ChannelState,
 	input: unknown,
-	context: ChannelEvaluationContext
+	context: ChannelEvaluationContext,
 ): ChannelNegotiationOutcome {
 	const admittedFamilies = host.families.map((family) => family.id);
 	const validation = validateChannelContribution(input, { admittedFamilies });
@@ -450,7 +520,8 @@ export function negotiateChannelContribution(
 		const issues: readonly ShapeIssue[] = validation.issues;
 		const unsupported = issues.find((issue) => issue.code === 'unsupported-required-family');
 		const first = unsupported ?? issues[0];
-		const reason: ChannelRejectionReason = unsupported === undefined ? 'invalid-contribution' : 'unsupported-required-family';
+		const reason: ChannelRejectionReason =
+			unsupported === undefined ? 'invalid-contribution' : 'unsupported-required-family';
 		return rejected(
 			state,
 			reason,
@@ -461,8 +532,8 @@ export function negotiateChannelContribution(
 				first?.message ?? 'the contribution is not a valid inspection-v1 value',
 				reason === 'unsupported-required-family'
 					? 'Use an admitted family, or declare the family reference optional.'
-					: 'Correct the contribution before offering it again.'
-			)
+					: 'Correct the contribution before offering it again.',
+			),
 		);
 	}
 	const contribution = validation.value;
@@ -473,16 +544,29 @@ export function negotiateChannelContribution(
 			state,
 			family: unavailable,
 			capability: contribution.descriptor.capability,
-			message: `family "${unavailable}" is declared optional and is not admitted by this reader`
+			message: `family "${unavailable}" is declared optional and is not admitted by this reader`,
 		};
 	}
 	const contributionDomain = contribution.address.ownerReference.domain;
-	const refuse = (reason: ChannelRejectionReason, message: string, action: string, owners: readonly string[] = []) =>
-		rejected(state, reason, diagnostic(contributionDomain, contribution.address, owners, message, action));
+	const refuse = (
+		reason: ChannelRejectionReason,
+		message: string,
+		action: string,
+		owners: readonly string[] = [],
+	) =>
+		rejected(
+			state,
+			reason,
+			diagnostic(contributionDomain, contribution.address, owners, message, action),
+		);
 
 	const family = host.families.find((candidate) => candidate.id === contribution.descriptor.family);
 	if (family === undefined) {
-		return refuse('unknown-family', `family "${contribution.descriptor.family}" is not declared by this reader`, 'Offer the property through a declared family.');
+		return refuse(
+			'unknown-family',
+			`family "${contribution.descriptor.family}" is not declared by this reader`,
+			'Offer the property through a declared family.',
+		);
 	}
 	// Domain-owned meaning: the family's authority and the address's owner must be the
 	// same authority, or neither is authoritative for the property.
@@ -490,7 +574,7 @@ export function negotiateChannelContribution(
 		return refuse(
 			'domain-mismatch',
 			`family "${family.id}" is owned by domain "${family.domain}" and the address is qualified by owner domain "${contributionDomain}"`,
-			'Address the property under the owner domain that declares it.'
+			'Address the property under the owner domain that declares it.',
 		);
 	}
 	const declared = declaredProperty(family, contribution.address.propertyId);
@@ -498,19 +582,25 @@ export function negotiateChannelContribution(
 		return refuse(
 			'undeclared-property',
 			`family "${family.id}" does not declare property "${contribution.address.propertyId}"`,
-			'Offer a property the family publishes.'
+			'Offer a property the family publishes.',
 		);
 	}
 	if (!sameDescriptor(declared, contribution.descriptor)) {
 		return refuse(
 			'descriptor-mismatch',
 			`the descriptor does not match the declared "${family.id}" property "${declared.propertyId}"`,
-			'Use the family declaration for this property.'
+			'Use the family declaration for this property.',
 		);
 	}
 
-	const resolution = resolveChannelPropertyScope(family, contribution.address, contribution.scopeId, context);
-	if (resolution.kind !== 'resolved') return refuse(resolution.reason, resolution.message, resolution.action);
+	const resolution = resolveChannelPropertyScope(
+		family,
+		contribution.address,
+		contribution.scopeId,
+		context,
+	);
+	if (resolution.kind !== 'resolved')
+		return refuse(resolution.reason, resolution.message, resolution.action);
 	const scope = resolution.scope;
 
 	const staleness = channelContributionStaleness(contribution, context);
@@ -518,28 +608,32 @@ export function negotiateChannelContribution(
 
 	const arbitration = contribution.descriptor.arbitration;
 	if (arbitration === 'camera-output' && family.controllerProperty === scope.propertyId) {
-		const output = context.cameraOutputs.find((candidate) => candidate.outputId === contribution.scopeId)!;
+		const output = context.cameraOutputs.find(
+			(candidate) => candidate.outputId === contribution.scopeId,
+		)!;
 		const role = output.claim!.role;
 		if (contribution.value.kind !== 'identifier' || contribution.value.value !== role) {
 			return refuse(
 				'invalid-value',
 				`the output's resolved controller is the claim's role "${role}"`,
 				'Contribute the role the Camera output claim holds, or acquire the output for another role.',
-				[output.claim!.ticket.ownerId]
+				[output.claim!.ticket.ownerId],
 			);
 		}
 	}
 
 	// Everything in this scope that no longer belongs to the context expires here.
 	const inScope = state.entries.filter((entry) => sameChannelPropertyScope(entry.scope, scope));
-	const expired = inScope.filter((entry) => channelContributionStaleness(entry.contribution, context) !== null);
+	const expired = inScope.filter(
+		(entry) => channelContributionStaleness(entry.contribution, context) !== null,
+	);
 	const live = inScope.filter((entry) => !expired.includes(entry));
 	const others = state.entries.filter((entry) => !inScope.includes(entry));
 	const expiredContributions = expired.map((entry) => entry.contribution);
 
 	const accept = (
 		replacedEntries: readonly ChannelEntry[],
-		marks: readonly ChannelEpochMark[]
+		marks: readonly ChannelEpochMark[],
 	): ChannelNegotiationOutcome => {
 		const kept = live.filter((entry) => !replacedEntries.includes(entry));
 		const next: ChannelState = { entries: [...others, ...kept, { scope, contribution }], marks };
@@ -552,11 +646,12 @@ export function negotiateChannelContribution(
 			expired: expiredContributions,
 			idempotent: false,
 			unavailableFamilies: [],
-			...channelFamilySatisfaction(family, next, scope, context)
+			...channelFamilySatisfaction(family, next, scope, context),
 		};
 	};
 	const idempotent = (entry: ChannelEntry): ChannelNegotiationOutcome => {
-		const next: ChannelState = expired.length === 0 ? state : { entries: [...others, ...live], marks: state.marks };
+		const next: ChannelState =
+			expired.length === 0 ? state : { entries: [...others, ...live], marks: state.marks };
 		return {
 			kind: 'accepted',
 			state: next,
@@ -566,15 +661,25 @@ export function negotiateChannelContribution(
 			expired: expiredContributions,
 			idempotent: true,
 			unavailableFamilies: [],
-			...channelFamilySatisfaction(family, next, scope, context)
+			...channelFamilySatisfaction(family, next, scope, context),
 		};
 	};
 	const ownMark = markFor(state, scope, contribution.invocationId);
 	const advanced = (retire: readonly ChannelEntry[] = []): ChannelEpochMark[] => {
-		let marks = withMark(state.marks, { scope, invocationId: contribution.invocationId, runEpoch: contribution.runEpoch, retired: false });
+		let marks = withMark(state.marks, {
+			scope,
+			invocationId: contribution.invocationId,
+			runEpoch: contribution.runEpoch,
+			retired: false,
+		});
 		for (const entry of retire) {
 			if (entry.contribution.invocationId === contribution.invocationId) continue;
-			marks = withMark(marks, { scope, invocationId: entry.contribution.invocationId, runEpoch: entry.contribution.runEpoch, retired: true });
+			marks = withMark(marks, {
+				scope,
+				invocationId: entry.contribution.invocationId,
+				runEpoch: entry.contribution.runEpoch,
+				retired: true,
+			});
 		}
 		return marks;
 	};
@@ -583,25 +688,30 @@ export function negotiateChannelContribution(
 			'stale-run-epoch',
 			`run epoch ${contribution.runEpoch} cannot supersede the accepted run epoch ${floor} on "${scope.propertyId}"`,
 			RESOLVE_CHOICE,
-			owners
+			owners,
 		);
 	const sameEpochConflict = (owners: readonly string[]) =>
 		refuse(
 			'same-run-epoch-conflict',
 			`run epoch ${contribution.runEpoch} is already accepted for "${scope.propertyId}" with a different value`,
 			RESOLVE_CHOICE,
-			owners
+			owners,
 		);
 	/**
 	 * One invocation's own ordering: an older run is stale; the same run may re-offer
 	 * its value idempotently, or re-offer after its contribution expired, but not
 	 * after it was withdrawn or replaced.
 	 */
-	const ownOrder = (own: ChannelEntry | undefined): ChannelNegotiationOutcome | 'newer' | 'reoffer' => {
+	const ownOrder = (
+		own: ChannelEntry | undefined,
+	): ChannelNegotiationOutcome | 'newer' | 'reoffer' => {
 		if (ownMark === null || contribution.runEpoch > ownMark.runEpoch) return 'newer';
-		if (contribution.runEpoch < ownMark.runEpoch || ownMark.retired) return staleRun(ownMark.runEpoch, [contribution.invocationId]);
+		if (contribution.runEpoch < ownMark.runEpoch || ownMark.retired)
+			return staleRun(ownMark.runEpoch, [contribution.invocationId]);
 		if (own !== undefined && own.contribution.runEpoch === contribution.runEpoch) {
-			return sameValue(own.contribution.value, contribution.value) ? idempotent(own) : sameEpochConflict([contribution.invocationId]);
+			return sameValue(own.contribution.value, contribution.value)
+				? idempotent(own)
+				: sameEpochConflict([contribution.invocationId]);
 		}
 		return 'reoffer';
 	};
@@ -617,7 +727,8 @@ export function negotiateChannelContribution(
 		// Freshness proved this run holds the output, and every live entry in the scope is
 		// fresh, so the one live entry (if any) is this same claim run's earlier value.
 		const holder = live[0];
-		if (holder !== undefined && sameValue(holder.contribution.value, contribution.value)) return idempotent(holder);
+		if (holder !== undefined && sameValue(holder.contribution.value, contribution.value))
+			return idempotent(holder);
 		return accept(holder === undefined ? [] : [holder], state.marks);
 	}
 
@@ -630,7 +741,7 @@ export function negotiateChannelContribution(
 				'competing-exclusive-contribution',
 				`"${scope.propertyId}" is exclusively controlled by another invocation`,
 				RESOLVE_CHOICE,
-				[holder.contribution.invocationId, contribution.invocationId]
+				[holder.contribution.invocationId, contribution.invocationId],
 			);
 		}
 		const order = ownOrder(holder);
@@ -641,15 +752,26 @@ export function negotiateChannelContribution(
 	// ordered-replacement: one run order across every invocation in the scope.
 	const floor = scopeFloor(state, scope);
 	if (floor !== null && contribution.runEpoch <= floor.runEpoch) {
-		if (contribution.runEpoch < floor.runEpoch || floor.retired) return staleRun(floor.runEpoch, holder === undefined ? [] : [holder.contribution.invocationId]);
-		if (floor.invocationId !== contribution.invocationId) return sameEpochConflict([floor.invocationId, contribution.invocationId]);
+		if (contribution.runEpoch < floor.runEpoch || floor.retired)
+			return staleRun(
+				floor.runEpoch,
+				holder === undefined ? [] : [holder.contribution.invocationId],
+			);
+		if (floor.invocationId !== contribution.invocationId)
+			return sameEpochConflict([floor.invocationId, contribution.invocationId]);
 		const order = ownOrder(holder);
 		if (typeof order !== 'string') return order;
 	}
-	return accept(holder === undefined ? [] : [holder], advanced(holder === undefined ? [] : [holder]));
+	return accept(
+		holder === undefined ? [] : [holder],
+		advanced(holder === undefined ? [] : [holder]),
+	);
 }
 
-function sameDescriptor(left: ChannelContribution['descriptor'], right: ChannelContribution['descriptor']): boolean {
+function sameDescriptor(
+	left: ChannelContribution['descriptor'],
+	right: ChannelContribution['descriptor'],
+): boolean {
 	return (
 		left.version === right.version &&
 		left.family === right.family &&
@@ -680,16 +802,22 @@ function sameDescriptor(left: ChannelContribution['descriptor'], right: ChannelC
 export function readChannelProperty(
 	state: ChannelState,
 	scope: ChannelPropertyScope,
-	context: ChannelEvaluationContext
+	context: ChannelEvaluationContext,
 ): ChannelPropertyRead {
 	const current = state.entries
-		.filter((entry) => sameChannelPropertyScope(entry.scope, scope) && channelContributionStaleness(entry.contribution, context) === null)
-		.sort((left, right) => compareIds(left.contribution.invocationId, right.contribution.invocationId));
+		.filter(
+			(entry) =>
+				sameChannelPropertyScope(entry.scope, scope) &&
+				channelContributionStaleness(entry.contribution, context) === null,
+		)
+		.sort((left, right) =>
+			compareIds(left.contribution.invocationId, right.contribution.invocationId),
+		);
 	if (current.length === 0) return { kind: 'absent', scope };
 	const contributors = current.map((entry) => ({
 		invocationId: entry.contribution.invocationId,
 		runEpoch: entry.contribution.runEpoch,
-		computedFrom: entry.contribution.computedFrom
+		computedFrom: entry.contribution.computedFrom,
 	}));
 	const value =
 		current[0]!.contribution.descriptor.arbitration === 'union'
@@ -706,9 +834,14 @@ export function readChannelProperty(
  * nor an older run of the invocation can re-enter the scope afterwards — including
  * when its contribution had already expired and been pruned (`retired`).
  */
-export function withdrawChannelContribution(state: ChannelState, handle: ChannelContributionHandle): ChannelWithdrawal {
+export function withdrawChannelContribution(
+	state: ChannelState,
+	handle: ChannelContributionHandle,
+): ChannelWithdrawal {
 	const own = state.entries.find(
-		(entry) => entry.contribution.invocationId === handle.invocationId && sameChannelPropertyScope(entry.scope, handle.scope)
+		(entry) =>
+			entry.contribution.invocationId === handle.invocationId &&
+			sameChannelPropertyScope(entry.scope, handle.scope),
 	);
 	if (own === undefined) {
 		// Expiry permits re-evaluation; explicit withdrawal retires the run. A run whose
@@ -722,27 +855,35 @@ export function withdrawChannelContribution(state: ChannelState, handle: Channel
 						kind: 'ignored',
 						state,
 						reason: 'stale-run-epoch',
-						message: `run ${handle.runEpoch} of "${handle.invocationId}" is older than its accepted run ${mark.runEpoch} on "${handle.scope.propertyId}"`
+						message: `run ${handle.runEpoch} of "${handle.invocationId}" is older than its accepted run ${mark.runEpoch} on "${handle.scope.propertyId}"`,
 					}
 				: { kind: 'absent', state };
 		}
-		return { kind: 'retired', state: { entries: state.entries, marks: withMark(state.marks, { ...mark, retired: true }) } };
+		return {
+			kind: 'retired',
+			state: { entries: state.entries, marks: withMark(state.marks, { ...mark, retired: true }) },
+		};
 	}
 	if (own.contribution.runEpoch !== handle.runEpoch) {
 		return {
 			kind: 'ignored',
 			state,
 			reason: 'stale-run-epoch',
-			message: `run ${handle.runEpoch} of "${handle.invocationId}" does not hold "${handle.scope.propertyId}"; run ${own.contribution.runEpoch} does`
+			message: `run ${handle.runEpoch} of "${handle.invocationId}" does not hold "${handle.scope.propertyId}"; run ${own.contribution.runEpoch} does`,
 		};
 	}
 	return {
 		kind: 'withdrawn',
 		state: {
 			entries: state.entries.filter((entry) => entry !== own),
-			marks: withMark(state.marks, { scope: own.scope, invocationId: handle.invocationId, runEpoch: handle.runEpoch, retired: true })
+			marks: withMark(state.marks, {
+				scope: own.scope,
+				invocationId: handle.invocationId,
+				runEpoch: handle.runEpoch,
+				retired: true,
+			}),
 		},
-		contribution: own.contribution
+		contribution: own.contribution,
 	};
 }
 
@@ -754,12 +895,17 @@ export function withdrawChannelContribution(state: ChannelState, handle: Channel
  */
 export function pruneChannelState(
 	state: ChannelState,
-	context: ChannelEvaluationContext
+	context: ChannelEvaluationContext,
 ): { state: ChannelState; expired: readonly ChannelContribution[] } {
-	const expired = state.entries.filter((entry) => channelContributionStaleness(entry.contribution, context) !== null);
+	const expired = state.entries.filter(
+		(entry) => channelContributionStaleness(entry.contribution, context) !== null,
+	);
 	if (expired.length === 0) return { state, expired: [] };
 	return {
-		state: { entries: state.entries.filter((entry) => !expired.includes(entry)), marks: state.marks },
-		expired: expired.map((entry) => entry.contribution)
+		state: {
+			entries: state.entries.filter((entry) => !expired.includes(entry)),
+			marks: state.marks,
+		},
+		expired: expired.map((entry) => entry.contribution),
 	};
 }

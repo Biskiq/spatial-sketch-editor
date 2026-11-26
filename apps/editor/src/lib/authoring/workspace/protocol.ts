@@ -49,12 +49,17 @@ export type FeatureLifecycle = {
 
 export type LifecycleRegistration<Owner extends WorkspaceOwner> = {
 	[Event in LifecycleEvent]?: {
-		[Step in LifecycleStep<Event> as Step extends `${Owner}:${infer Name}` ? Name : never]?: LifecycleHandler<Event>;
+		[Step in LifecycleStep<Event> as Step extends `${Owner}:${infer Name}`
+			? Name
+			: never]?: LifecycleHandler<Event>;
 	};
 };
 
 export type LifecycleRegistrar = {
-	[Owner in WorkspaceOwner]: { readonly id: Owner; readonly lifecycle: LifecycleRegistration<Owner> };
+	[Owner in WorkspaceOwner]: {
+		readonly id: Owner;
+		readonly lifecycle: LifecycleRegistration<Owner>;
+	};
 }[WorkspaceOwner];
 
 export type EscapeResult = 'handled' | 'pass';
@@ -79,10 +84,9 @@ export function late<Value>() {
 		set(value: Value): void {
 			if (cell !== undefined) throw new Error('Workspace lifecycle is already installed');
 			cell = { value };
-		}
+		},
 	};
 }
-
 
 export type StageBootPanelView = {
 	readonly boot: BootState;

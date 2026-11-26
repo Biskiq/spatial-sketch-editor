@@ -42,7 +42,7 @@ import {
 	finishTextureKey,
 	loadFinishTexture,
 	releaseFinishTexture,
-	type TextureScopeKey
+	type TextureScopeKey,
 } from './texture-store';
 import type { FinishTextureViews } from './finish-sampling';
 import { isImageLoadFailure, type ImageLoadFailurePhase } from './image-load-failure';
@@ -203,7 +203,8 @@ function dimensionsOf(texture: Texture): { width: number; height: number } | nul
 
 /** Set the single v1 ceiling. Tests force a tiny ceiling; the product uses 256 MiB. */
 export function setFinishViewBudget(bytes: number): void {
-	if (!Number.isFinite(bytes) || bytes < 0) throw new Error('finish view budget must be finite and non-negative');
+	if (!Number.isFinite(bytes) || bytes < 0)
+		throw new Error('finish view budget must be finite and non-negative');
 	budgetBytes = bytes;
 }
 
@@ -248,7 +249,7 @@ export function finishViewStats(): FinishViewStats {
 		released,
 		bytes: heldBytes(),
 		generations: Object.fromEntries(ownerGenerations),
-		refused
+		refused,
 	};
 }
 
@@ -344,7 +345,11 @@ function loseHold(hold: SourceHold, reason: 'changed' | 'closed'): void {
 	hold.lost = reason;
 }
 
-function holdSource(source: FinishViewSource, scope: TextureScopeKey | null, scopeId: string): SourceHold {
+function holdSource(
+	source: FinishViewSource,
+	scope: TextureScopeKey | null,
+	scopeId: string,
+): SourceHold {
 	const key = finishTextureKey(source.uri, source.role, scope);
 	let hold = holds.get(key);
 	if (hold === undefined) {
@@ -388,7 +393,11 @@ function releaseHold(hold: SourceHold): void {
  * Removing that texture's Finish source key makes a later acquire reload bytes
  * rather than hand back a disposed texture; a newer source under the key stays.
  */
-function disposeUnused(texture: Texture, source: FinishViewSource, scope: TextureScopeKey | null): void {
+function disposeUnused(
+	texture: Texture,
+	source: FinishViewSource,
+	scope: TextureScopeKey | null,
+): void {
 	for (const entry of entries.values()) {
 		if (entry.texture === texture) return;
 	}
@@ -464,7 +473,7 @@ function waitForDecodeSlot(scopeId: string, signal: AbortSignal | undefined): Pr
 async function withDecodeSlot<T>(
 	scopeId: string,
 	task: () => Promise<T>,
-	signal?: AbortSignal
+	signal?: AbortSignal,
 ): Promise<T> {
 	// The wake queue is per scope: a woken waiter whose own scope is full must not
 	// starve a different scope with both of its slots free.
@@ -507,7 +516,7 @@ export async function acquireFinishViews(
 	sources: readonly FinishViewSource[],
 	scope: TextureLoadScope | null,
 	signal?: AbortSignal,
-	viewGeneration?: FinishViewGeneration
+	viewGeneration?: FinishViewGeneration,
 ): Promise<FinishViewLease> {
 	const unique = new Map<string, FinishViewSource>();
 	for (const source of sources) {
@@ -544,7 +553,7 @@ export async function acquireFinishViews(
 			key,
 			issues,
 			leaseCount: () => 0,
-			release() {}
+			release() {},
 		};
 	};
 
@@ -569,7 +578,7 @@ export async function acquireFinishViews(
 	if (viewGeneration !== undefined && latestGeneration(owner) !== startedGeneration) {
 		issues.push({
 			code: 'generation-mismatch',
-			action: 'Wait for the recovered Canvas, then requalify.'
+			action: 'Wait for the recovered Canvas, then requalify.',
 		});
 		return abort();
 	}
@@ -598,7 +607,9 @@ export async function acquireFinishViews(
 				code: signal?.aborted ? 'cancelled' : 'generation-mismatch',
 				view: source.view,
 				role: source.role,
-				action: signal?.aborted ? 'Retry when visible.' : 'Wait for the recovered Canvas, then requalify.'
+				action: signal?.aborted
+					? 'Retry when visible.'
+					: 'Wait for the recovered Canvas, then requalify.',
 			});
 			return abort();
 		}
@@ -611,7 +622,7 @@ export async function acquireFinishViews(
 					if (hold.lost !== null) throw new Error('The source was released before it loaded.');
 					return loadFinishTexture(source.uri, source.role, scope, signal);
 				},
-				signal
+				signal,
 			);
 			// A lost source was already disposed by the store, or detached to the entry that names it.
 			if (hold.lost === null) handToHold(hold, texture);
@@ -620,7 +631,7 @@ export async function acquireFinishViews(
 					code: 'generation-mismatch',
 					view: source.view,
 					role: source.role,
-					action: 'Wait for the recovered Canvas, then requalify.'
+					action: 'Wait for the recovered Canvas, then requalify.',
 				});
 				return abort();
 			}
@@ -631,7 +642,10 @@ export async function acquireFinishViews(
 			const interruption = interrupted();
 			if (interruption !== null) return interruption;
 			const dimensions = dimensionsOf(texture);
-			loadedBytes.set(source.view, dimensions === null ? 0 : rgba8MipChainBytes(dimensions.width, dimensions.height));
+			loadedBytes.set(
+				source.view,
+				dimensions === null ? 0 : rgba8MipChainBytes(dimensions.width, dimensions.height),
+			);
 			views[source.view] = texture;
 		} catch (error) {
 			if (signal?.aborted) {
@@ -649,9 +663,9 @@ export async function acquireFinishViews(
 				...(isImageLoadFailure(error)
 					? {
 							phase: error.phase,
-							...(error.httpStatus === undefined ? {} : { httpStatus: error.httpStatus })
+							...(error.httpStatus === undefined ? {} : { httpStatus: error.httpStatus }),
 						}
-					: {})
+					: {}),
 			});
 			return abort();
 		}
@@ -676,7 +690,7 @@ export async function acquireFinishViews(
 			code: 'texture-budget',
 			required,
 			available,
-			action: 'Close another preview or lower the working set, then retry.'
+			action: 'Close another preview or lower the working set, then retry.',
 		});
 		return abort();
 	}
@@ -701,7 +715,7 @@ export async function acquireFinishViews(
 			source,
 			refCount: 1,
 			lastUsed: ++access,
-			retired: false
+			retired: false,
 		};
 		entries.set(entryKeyForView, entry);
 		created += 1;
@@ -719,6 +733,6 @@ export async function acquireFinishViews(
 			if (releasedOnce) return;
 			releasedOnce = true;
 			for (const entry of acquired) releaseEntry(entry);
-		}
+		},
 	};
 }

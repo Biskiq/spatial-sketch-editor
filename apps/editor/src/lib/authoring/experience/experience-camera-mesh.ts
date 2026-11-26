@@ -46,25 +46,61 @@ export function buildCameraMesh(): CameraMesh {
 		const normal = newell(ids.map((index) => points[index]!));
 		return dot3(normal, outward) < 0 ? [...ids].reverse() : ids;
 	};
-	const shadeOf = (normal: V3): CameraFaceShade => (normal[0] > 0 || normal[2] > 0 ? 'light' : 'side');
+	const shadeOf = (normal: V3): CameraFaceShade =>
+		normal[0] > 0 || normal[2] > 0 ? 'light' : 'side';
 	const box = (
-		a0: number, a1: number, b0: number, b1: number, c0: number, c1: number,
-		shade: (normal: V3) => CameraFaceShade
+		a0: number,
+		a1: number,
+		b0: number,
+		b1: number,
+		c0: number,
+		c1: number,
+		shade: (normal: V3) => CameraFaceShade,
 	): void => {
 		const v = [
-			at(a0, b0, c0), at(a1, b0, c0), at(a1, b1, c0), at(a0, b1, c0),
-			at(a0, b0, c1), at(a1, b0, c1), at(a1, b1, c1), at(a0, b1, c1)
+			at(a0, b0, c0),
+			at(a1, b0, c0),
+			at(a1, b1, c0),
+			at(a0, b1, c0),
+			at(a0, b0, c1),
+			at(a1, b0, c1),
+			at(a1, b1, c1),
+			at(a0, b1, c1),
 		];
 		const quads: readonly [readonly number[], V3][] = [
-			[[0, 1, 2, 3], [0, 0, -1]],
-			[[4, 5, 6, 7], [0, 0, 1]],
-			[[0, 1, 5, 4], [0, -1, 0]],
-			[[3, 2, 6, 7], [0, 1, 0]],
-			[[0, 3, 7, 4], [-1, 0, 0]],
-			[[1, 2, 6, 5], [1, 0, 0]]
+			[
+				[0, 1, 2, 3],
+				[0, 0, -1],
+			],
+			[
+				[4, 5, 6, 7],
+				[0, 0, 1],
+			],
+			[
+				[0, 1, 5, 4],
+				[0, -1, 0],
+			],
+			[
+				[3, 2, 6, 7],
+				[0, 1, 0],
+			],
+			[
+				[0, 3, 7, 4],
+				[-1, 0, 0],
+			],
+			[
+				[1, 2, 6, 5],
+				[1, 0, 0],
+			],
 		];
 		for (const [quad, normal] of quads) {
-			faces.push({ ids: orient(quad.map((index) => v[index]!), normal), shade: shade(normal) });
+			faces.push({
+				ids: orient(
+					quad.map((index) => v[index]!),
+					normal,
+				),
+				shade: shade(normal),
+			});
 		}
 	};
 
@@ -85,7 +121,7 @@ export function buildCameraMesh(): CameraMesh {
 		const normal: V3 = [0, Math.cos(t), Math.sin(t)];
 		faces.push({
 			ids: orient([near[index]!, near[next]!, far[next]!, far[index]!], normal),
-			shade: 'barrel'
+			shade: 'barrel',
 		});
 	}
 	faces.push({ ids: orient(far, [1, 0, 0]), shade: 'cap' });
@@ -98,7 +134,7 @@ export function buildCameraMesh(): CameraMesh {
 		faces,
 		glass,
 		glint: [(BARREL_END + 0.002) * s, -BARREL_RADIUS * 0.25 * s, BARREL_RADIUS * 0.3 * s],
-		lensTip: [BARREL_END * s, 0, 0]
+		lensTip: [BARREL_END * s, 0, 0],
 	};
 }
 
@@ -153,13 +189,21 @@ export function convexHull(points: readonly StagePoint[]): StagePoint[] {
 		(a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
 	const lower: StagePoint[] = [];
 	for (const point of sorted) {
-		while (lower.length >= 2 && cross(lower[lower.length - 2]!, lower[lower.length - 1]!, point) <= 0) lower.pop();
+		while (
+			lower.length >= 2 &&
+			cross(lower[lower.length - 2]!, lower[lower.length - 1]!, point) <= 0
+		)
+			lower.pop();
 		lower.push(point);
 	}
 	const upper: StagePoint[] = [];
 	for (let index = sorted.length - 1; index >= 0; index -= 1) {
 		const point = sorted[index]!;
-		while (upper.length >= 2 && cross(upper[upper.length - 2]!, upper[upper.length - 1]!, point) <= 0) upper.pop();
+		while (
+			upper.length >= 2 &&
+			cross(upper[upper.length - 2]!, upper[upper.length - 1]!, point) <= 0
+		)
+			upper.pop();
 		upper.push(point);
 	}
 	return [...lower.slice(0, -1), ...upper.slice(0, -1)];
@@ -168,4 +212,3 @@ export function convexHull(points: readonly StagePoint[]): StagePoint[] {
 export function round1(value: number): number {
 	return Math.round(value * 10) / 10;
 }
-

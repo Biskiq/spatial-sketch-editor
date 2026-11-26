@@ -49,30 +49,32 @@ function plural(count: number, one: string, many: string): string {
 export function removalLines(
 	target: ExperienceRemovalTarget,
 	consequences: readonly ExperienceRemovalConsequence[],
-	names: RemovalNames
+	names: RemovalNames,
 ): string[] {
 	const lines: string[] = [];
 	const removedStops = consequences.filter((entry) => entry.kind === 'stop-removed');
 	const deletedViews = consequences.filter((entry) => entry.kind === 'view-deleted');
 	const deletedPaths = consequences.filter((entry) => entry.kind === 'connection-deleted');
 	if (target.kind === 'stop') {
-		lines.push(`Removes ${names.stop(target.stopId)}. ${names.presentation(removedStops[0]?.presentationId ?? '')} stays.`);
+		lines.push(
+			`Removes ${names.stop(target.stopId)}. ${names.presentation(removedStops[0]?.presentationId ?? '')} stays.`,
+		);
 	} else if (target.kind === 'guide') {
 		lines.push(
 			removedStops.length === 0
 				? `Removes ${names.guide(target.guideId)}. Its Stops stay in the other Guides.`
-				: `Removes ${names.guide(target.guideId)} and its ${plural(removedStops.length, 'Stop', 'Stops')}. Presentations stay.`
+				: `Removes ${names.guide(target.guideId)} and its ${plural(removedStops.length, 'Stop', 'Stops')}. Presentations stay.`,
 		);
 	} else if (target.kind === 'presentation') {
 		const extras = [
 			removedStops.length > 0 ? `its ${plural(removedStops.length, 'Stop', 'Stops')}` : null,
 			deletedViews.length > 0 ? plural(deletedViews.length, 'Camera View', 'Camera Views') : null,
-			deletedPaths.length > 0 ? plural(deletedPaths.length, 'Camera path', 'Camera paths') : null
+			deletedPaths.length > 0 ? plural(deletedPaths.length, 'Camera path', 'Camera paths') : null,
 		].filter((entry): entry is string => entry !== null);
 		lines.push(
 			extras.length === 0
 				? `Removes ${names.presentation(target.presentationId)}.`
-				: `Removes ${names.presentation(target.presentationId)} and ${extras.join(', ')}.`
+				: `Removes ${names.presentation(target.presentationId)} and ${extras.join(', ')}.`,
 		);
 	} else {
 		const camera =
@@ -81,7 +83,9 @@ export function removalLines(
 				: deletedPaths.length === 0
 					? ' and deletes its Camera View'
 					: ` and deletes its Camera View and ${plural(deletedPaths.length, 'Camera path', 'Camera paths')}`;
-		lines.push(`Removes ${names.view(target.viewId)} from ${names.presentation(target.presentationId)}${camera}.`);
+		lines.push(
+			`Removes ${names.view(target.viewId)} from ${names.presentation(target.presentationId)}${camera}.`,
+		);
 	}
 	for (const consequence of consequences) {
 		switch (consequence.kind) {
@@ -90,7 +94,7 @@ export function removalLines(
 				break;
 			case 'view-kept':
 				lines.push(
-					`${names.view(consequence.viewId)} stays: still used by ${consequence.usedByPresentationIds.map((id) => names.presentation(id)).join(', ')}.`
+					`${names.view(consequence.viewId)} stays: still used by ${consequence.usedByPresentationIds.map((id) => names.presentation(id)).join(', ')}.`,
 				);
 				break;
 			case 'stop-entry-fallback':
@@ -103,7 +107,7 @@ export function removalLines(
 				lines.push(
 					consequence.toGuideId === null
 						? 'No Guide is left: the Experience opens on no tour.'
-						: `${names.guide(consequence.toGuideId)} becomes the Opening Guide.`
+						: `${names.guide(consequence.toGuideId)} becomes the Opening Guide.`,
 				);
 				break;
 			default:
