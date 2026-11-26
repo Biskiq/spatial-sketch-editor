@@ -15,6 +15,11 @@ function source(file: string): string {
 	return readFileSync(`src/lib/authoring/${file}.svelte`, 'utf8');
 }
 
+/** The Index's row and field rules are shared global CSS, scoped by its landmark. */
+function indexCss(): string {
+	return readFileSync('src/lib/authoring/stage/shell/editor-index.css', 'utf8');
+}
+
 /** The declarations of the first rule whose selector list is exactly `selector`. */
 function rule(text: string, selector: string): string {
 	const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -65,15 +70,15 @@ describe('R217.S26 visual tokens', () => {
 		// The Card title is the compact sans title; its rename field inherits it.
 		expect(rule(card, '.name')).toMatch(/font:\s*600 var\(--shell-text-title\)\/1\.3 var\(--shell-sans/);
 		expect(card).toMatch(/\.rename-input \{[^}]*font: inherit/);
-		const index = source('stage/shell/EditorIndex');
-		expect(rule(index, '.exp-open')).toMatch(/font:\s*400 var\(--shell-text-body\)\/1\.35 var\(--shell-sans/);
-		expect(rule(index, '.crumb-input')).toMatch(/font:\s*600 var\(--shell-text-control\)\/1\.3 var\(--shell-sans/);
-		expect(rule(index, '.crumb-error')).toMatch(/color:\s*var\(--shell-refuse/);
+		const index = indexCss();
+		expect(rule(index, '.plate-index .exp-open')).toMatch(/font:\s*400 var\(--shell-text-body\)\/1\.35 var\(--shell-sans/);
+		expect(rule(index, '.plate-index .crumb-input')).toMatch(/font:\s*600 var\(--shell-text-control\)\/1\.3 var\(--shell-sans/);
+		expect(rule(index, '.plate-index .crumb-error')).toMatch(/color:\s*var\(--shell-refuse/);
 	});
 
 	it('opens is a mono 10 px tag; the strip has no Start tag', () => {
 		expect(source('experience/ExperienceGuide')).not.toContain('.start-tag');
-		expect(rule(source('stage/shell/EditorIndex'), '.opens-tag')).toMatch(/font:\s*500 var\(--shell-text-meta\)\/[\d.]+ var\(--shell-mono/);
+		expect(rule(indexCss(), '.plate-index .opens-tag')).toMatch(/font:\s*500 var\(--shell-text-meta\)\/[\d.]+ var\(--shell-mono/);
 	});
 
 	it('the strip and View rail mark reorders with a quiet light line, never gold', () => {
@@ -96,7 +101,7 @@ describe('R217.S26 visual tokens', () => {
 			expect(card).toContain(selector);
 		}
 		expect(card).toMatch(/min-height:\s*44px/);
-		expect(coarse(source('stage/shell/EditorIndex'))).toMatch(/input\s*\{|input,|\binput\b/);
+		expect(coarse(indexCss())).toMatch(/input\s*\{|input,|\binput\b/);
 		const view = coarse(source('experience/ExperienceViewWriter'));
 		expect(view).toContain('button.also-link');
 		expect(view).toMatch(/min-height:\s*44px/);

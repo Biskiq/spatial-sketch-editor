@@ -1,37 +1,29 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	import type { ArtworkLibraryEntry } from '@portfolio/project-model/artwork';
 	import type { MaterialId } from '@portfolio/project-model/scene';
 	import type { FinishTileSource } from '$lib/render/materials/finish-tiles.svelte';
 	import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte';
 	import FinishTile from '$lib/authoring/look/FinishTile.svelte';
-	import FinishInspectionView from './FinishInspectionView.svelte';
-	import type { LibraryInspectionSettings } from './library-inspection';
 	import type {
 		LibraryCard,
 		LibraryCategory,
 		LibraryFinishEntry,
 		LibrarySource
 	} from './library-catalogue';
-	import type { LibraryTarget } from './library-target';
 
-	type Intent = 'browse' | 'paint' | 'replace' | 'swap';
 	type LibraryKind = 'materials' | 'objects' | 'artwork' | 'lights';
-	type CapturedTarget = LibraryTarget | null;
 
 	const SHELF_MAX = 8;
 
 	let {
-		kind = $bindable(),
-		category = $bindable(),
-		source = $bindable(),
-		query = $bindable(),
-		selectedKey = $bindable(),
-		intent,
-		capturedTarget,
-		target,
+		kind,
+		category,
+		source,
+		selectedKey,
+		swapMode,
 		working,
 		busy,
-		needle,
 		hasProject,
 		groups,
 		cards,
@@ -40,45 +32,33 @@
 		objects,
 		artwork,
 		looks,
-		filteredObjects,
-		filteredArtwork,
-		filteredLooks,
-		selectedCard,
-		inspection,
-		onInspection,
 		tileSource,
-		tileSizeOf,
 		selectKind,
 		selectCategory,
 		clearFilters,
-		closeDetail,
 		toggleDetail,
 		switchVariant,
 		choose,
-		cardKeydown,
 		verb,
-		variantLabel,
 		selectUsers,
-		onUseForPaint,
-		onApplyToTarget,
-		onCustomise,
 		onToggleFavourite,
 		onObject,
 		onArtwork,
 		onLook,
-		openArtworkImport
+		openArtworkImport,
+		onShowProject,
+		onBrowseCurated,
+		onClearSearch,
+		query,
+		detail
 	}: {
 		kind: LibraryKind;
 		category: LibraryCategory;
 		source: LibrarySource;
-		query: string;
 		selectedKey: string | null;
-		intent: Intent;
-		capturedTarget: CapturedTarget;
-		target: LibraryTarget | null;
+		swapMode: boolean;
 		working: boolean;
 		busy: boolean;
-		needle: string;
 		hasProject: boolean;
 		groups: ReturnType<typeof import('./library-catalogue').browseLibrary>;
 		cards: readonly LibraryCard[];
@@ -87,39 +67,48 @@
 		objects: readonly { readonly id: string; readonly name: string }[];
 		artwork: readonly ArtworkLibraryEntry[] | null;
 		looks: LookLibraryShelf | null;
-		filteredObjects: readonly { readonly id: string; readonly name: string }[];
-		filteredArtwork: readonly ArtworkLibraryEntry[];
-		filteredLooks: NonNullable<LookLibraryShelf['entries']>;
-		selectedCard: LibraryCard | null;
-		inspection: LibraryInspectionSettings;
-		onInspection: (next: LibraryInspectionSettings) => void;
 		tileSource: (entry: LibraryFinishEntry) => FinishTileSource | null;
-		tileSizeOf: (entry: LibraryFinishEntry) => string;
 		selectKind: (next: LibraryKind) => void;
 		selectCategory: (next: LibraryCategory) => void;
 		clearFilters: () => void;
-		closeDetail: () => void;
 		toggleDetail: (card: LibraryCard) => void;
 		switchVariant: (card: LibraryCard, id: MaterialId) => void;
 		choose: (entry: LibraryFinishEntry, keepOpen: boolean) => void;
-		cardKeydown: (event: KeyboardEvent, entry: LibraryFinishEntry) => void;
 		verb: (entry: LibraryFinishEntry) => string;
-		variantLabel: (card: LibraryCard) => string;
 		selectUsers: (entry: LibraryFinishEntry) => Promise<void>;
-		onUseForPaint: (entry: LibraryFinishEntry) => void;
-		onApplyToTarget: (entry: LibraryFinishEntry) => void;
-		onCustomise: (entry: LibraryFinishEntry) => void;
 		onToggleFavourite: (key: string) => void;
 		onObject: (assetId: string) => void;
 		onArtwork: (entry: ArtworkLibraryEntry) => void;
 		onLook: (id: string) => void;
 		openArtworkImport: () => void;
+		onShowProject: () => void;
+		onBrowseCurated: () => void;
+		onClearSearch: () => void;
+		query: string;
+		detail?: Snippet;
 	} = $props();
+
+	const needle = $derived(query.trim().toLowerCase());
+	const filteredObjects = $derived(objects.filter((object) => object.name.toLowerCase().includes(needle)));
+	const filteredArtwork = $derived((artwork ?? []).filter((entry) => entry.name.toLowerCase().includes(needle)));
+	const filteredLooks = $derived(
+		(looks?.entries ?? []).filter((entry) => `${entry.label} ${entry.summary ?? ''}`.toLowerCase().includes(needle))
+	);
+
+	function variantLabel(card: LibraryCard): string {
+		return card.variant === null ? '' : `, ${card.variants.find((variant) => variant.id === card.variant)?.label ?? ''}`;
+	}
+
+	function cardKeydown(event: KeyboardEvent, entry: LibraryFinishEntry): void {
+		if (event.key !== 'Enter' && event.key !== ' ') return;
+		event.preventDefault();
+		choose(entry, event.shiftKey);
+	}
 </script>
 
 {#snippet card(item: LibraryCard, shelf: boolean)}
 	{@const entry = item.entry}
-	{@const blocked = intent === 'swap' && (entry.source !== 'curated' || entry.curatedId === null)}
+	{@const blocked = swapMode && (entry.source !== 'curated' || entry.curatedId === null)}
 	<article class="mc" class:open={selectedKey === item.key} class:blocked data-library-card={item.key} data-library-shelf={shelf ? 'project' : undefined}>
 		<button
 			type="button"
@@ -188,7 +177,7 @@
 {/snippet}
 
 
-	<div class="lb-b" class:with-detail={selectedCard !== null && kind === 'materials'}>
+	<div class="lb-b" class:with-detail={detail !== undefined}>
 		<nav class="lb-rail" aria-label="Library kinds">
 			<button
 				type="button"
@@ -259,7 +248,7 @@
 						{#if !hasProject && source === 'project'}
 							<strong>No project Finishes yet.</strong>
 							<span>Paint a material onto a surface, then customise it here.</span>
-							<button type="button" onclick={() => { source = 'curated'; }}>Browse curated materials</button>
+							<button type="button" onclick={onBrowseCurated}>Browse curated materials</button>
 						{:else}
 							<strong>No materials match.</strong>
 							<span>Try another source, family or filter, or clear the search.</span>
@@ -274,7 +263,7 @@
 								<h3 class="lb-g">
 									{group.label}<span>{group.cards.length}</span>
 									{#if shelf && group.cards.length > 1}
-										<button type="button" class="see" class:overflowing={group.cards.length > SHELF_MAX} data-library-see-all="project" onclick={() => { source = 'project'; selectedKey = null; }}>See all {group.cards.length} ›</button>
+										<button type="button" class="see" class:overflowing={group.cards.length > SHELF_MAX} data-library-see-all="project" onclick={onShowProject}>See all {group.cards.length} ›</button>
 									{/if}
 								</h3>
 							{/if}
@@ -294,7 +283,7 @@
 				{/if}
 			{:else if kind === 'objects'}
 				{#if filteredObjects.length === 0}
-					<div class="lb-empty"><strong>No objects match.</strong><span>Clear the search to see every approved object.</span><button type="button" onclick={() => (query = '')}>Clear search</button></div>
+					<div class="lb-empty"><strong>No objects match.</strong><span>Clear the search to see every approved object.</span><button type="button" onclick={onClearSearch}>Clear search</button></div>
 				{:else}
 					<div class="lb-grid">
 						{#each filteredObjects as object (object.id)}
@@ -315,7 +304,7 @@
 						{#if artwork === null || artwork.length === 0}
 							<button type="button" onclick={openArtworkImport}>Import artwork</button>
 						{:else}
-							<button type="button" onclick={() => (query = '')}>Clear search</button>
+							<button type="button" onclick={onClearSearch}>Clear search</button>
 						{/if}
 					</div>
 				{:else}
@@ -332,7 +321,7 @@
 				{/if}
 			{:else}
 				{#if filteredLooks.length === 0}
-					<div class="lb-empty"><strong>No lights match.</strong><span>Clear the search to see every light.</span><button type="button" onclick={() => (query = '')}>Clear search</button></div>
+					<div class="lb-empty"><strong>No lights match.</strong><span>Clear the search to see every light.</span><button type="button" onclick={onClearSearch}>Clear search</button></div>
 				{:else}
 					<div class="lb-grid">
 						{#each filteredLooks as entry (entry.id)}
@@ -348,101 +337,7 @@
 			{/if}
 		</div>
 
-		{#if selectedCard !== null && kind === 'materials'}
-			{@const entry = selectedCard.entry}
-			{@const swappable = entry.source === 'curated' && entry.curatedId !== null}
-			<aside class="lb-d" aria-label={`${selectedCard.title} details`} data-library-detail={selectedCard.key}>
-				<div class="lbd-h">
-					<button type="button" class="back" data-library-detail-back onclick={closeDetail}>‹ Back</button>
-					<div class="tt">
-						<span class="k">{entry.source === 'curated' ? 'Material' : 'Finish'}</span>
-						<h3>{selectedCard.title}</h3>
-					</div>
-					<button
-						type="button"
-						class="star big"
-						class:on={entry.favourite}
-						aria-pressed={entry.favourite}
-						aria-label="Favourite"
-						title={entry.favourite ? 'In your Paint tray' : 'Keep in your Paint tray'}
-						onclick={() => onToggleFavourite(entry.key)}
-					>★</button>
-					<button type="button" class="lbd-x" aria-label="Close detail" data-library-detail-close onclick={closeDetail}>×</button>
-				</div>
-
-				<FinishInspectionView
-					source={tileSource(entry)}
-					color={entry.color}
-					imageUri={entry.imageUri}
-					label={selectedCard.title}
-					materialKey={entry.key}
-					settings={inspection}
-					onSettings={onInspection}
-				/>
-
-				{#if selectedCard.variants.length > 0}
-					<div class="detail-variants" role="group" aria-label="Variant">
-						{#each selectedCard.variants as variant (variant.id)}
-							<button
-								type="button"
-								class:on={selectedCard.variant === variant.id}
-								aria-pressed={selectedCard.variant === variant.id}
-								onclick={() => switchVariant(selectedCard, variant.id)}
-							>{variant.label}</button>
-						{/each}
-					</div>
-					<p class="note-sm">Two presets of one image set that differ only in sheen; the chip says which you get.</p>
-				{/if}
-
-				<dl class="facts">
-					<dt>{entry.source === 'curated' ? 'Material' : 'From'}</dt>
-					<dd>{entry.source === 'curated' ? entry.familyLabel : `${entry.materialLabel}${entry.changes > 0 ? ` · ${entry.changes} change${entry.changes === 1 ? '' : 's'}` : ''}`}</dd>
-					<dt>Real size</dt><dd>{tileSizeOf(entry)}</dd>
-					<dt>Sheen</dt><dd>{entry.reading.steps.find((step) => step.id === entry.reading.current)?.label ?? 'Custom'} · r {entry.sheen.toFixed(2)}{entry.metalness >= 0.5 ? ' · metal' : ''}</dd>
-					<dt>Maps</dt><dd>{entry.hasColourImage ? 'colour · relief · sheen' : 'relief · sheen'}</dd>
-					<dt>Source</dt><dd>{entry.source === 'curated' ? 'Curated · CC0 source' : 'In this project'}</dd>
-					<dt>Used by</dt><dd>{entry.usage === 0 ? 'nothing' : `${entry.usage} ${entry.usage === 1 ? 'surface' : 'surfaces'}`}</dd>
-					{#if entry.warning !== null}<dt class="warn">Image</dt><dd class="warn">{entry.warning}</dd>{/if}
-				</dl>
-
-				<div class="acts">
-					{#if intent === 'swap'}
-						<button
-							type="button"
-							class="btn pri"
-							disabled={!swappable || working || busy}
-							title={swappable ? 'Keeps its colour and sheen' : 'Swap takes a curated material.'}
-							data-library-detail-primary
-							onclick={(event) => choose(entry, event.shiftKey)}
-						>Swap to this</button>
-					{:else if intent === 'replace' && capturedTarget !== null}
-						<button type="button" class="btn pri" disabled={working || busy} data-library-detail-primary onclick={(event) => choose(entry, event.shiftKey)}>Apply to {capturedTarget.label}</button>
-						<button type="button" class="btn" onclick={() => onUseForPaint(entry)}>Use for Paint</button>
-					{:else}
-						<button type="button" class="btn pri" data-library-detail-primary onclick={() => onUseForPaint(entry)}>Use for Paint</button>
-						{#if target !== null}
-							<button
-								type="button"
-								class="btn"
-								disabled={working || busy}
-								data-library-detail-apply
-								onclick={() => onApplyToTarget(entry)}
-							>Apply to {target.label}</button>
-						{/if}
-					{/if}
-					<button
-						type="button"
-						class="btn"
-						title="Open it in the Material editor as a draft — nothing is written until you apply"
-						data-library-customise
-						onclick={() => onCustomise(entry)}
-					>Customise…</button>
-					{#if entry.usage > 0}
-						<button type="button" class="btn ghost" disabled={working} onclick={() => void selectUsers(entry)}>Select all {entry.usage}</button>
-					{/if}
-				</div>
-			</aside>
-		{/if}
+		{@render detail?.()}
 	</div>
 
 <style>
@@ -639,7 +534,7 @@
 		font-size: 12px;
 	}
 	.lb-empty strong { color: var(--shell-ink); }
-	.lb-empty button, .btn {
+	.lb-empty button {
 		border: 1px solid var(--shell-hairline-strong);
 		background: var(--shell-card);
 		color: var(--shell-ink);
@@ -650,75 +545,6 @@
 		min-height: 30px;
 		cursor: pointer;
 	}
-	.btn.pri { background: var(--shell-forest); border-color: var(--shell-forest); color: var(--shell-ivory); }
-	.btn.ghost { border-color: transparent; text-decoration: underline; }
-	.btn:disabled { opacity: 0.5; cursor: not-allowed; }
-	.btn:focus-visible { outline: 2px solid var(--shell-forest); outline-offset: 1px; }
-	.lb-d {
-		border-left: 1px solid var(--shell-hairline);
-		overflow: auto;
-		padding: 12px;
-		display: flex;
-		flex-direction: column;
-		gap: 10px;
-		background: var(--shell-ivory);
-		min-height: 0;
-	}
-	.lb-d > :global(*) { flex: none; }
-	.lbd-h { display: flex; gap: 6px; align-items: flex-start; }
-	.back {
-		display: none;
-		flex: none;
-		border: 1px solid var(--shell-hairline-strong);
-		background: var(--shell-card);
-		color: var(--shell-ink);
-		border-radius: 7px;
-		padding: 4px 9px;
-		font: inherit;
-		font-size: 12px;
-		min-height: 30px;
-		cursor: pointer;
-	}
-	.back:focus-visible { outline: 2px solid var(--shell-forest); }
-	.tt { flex: 1; min-width: 0; }
-	.k { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--shell-ink-2); }
-	.tt h3 { margin: 0; font-size: 16px; overflow-wrap: anywhere; }
-	.star.big {
-		border: 1px solid var(--shell-hairline-strong);
-		background: var(--shell-card);
-		width: 30px;
-		height: 30px;
-		border-radius: 8px;
-		cursor: pointer;
-		color: var(--shell-ink-2);
-	}
-	.star.big.on { color: #b8892a; }
-	.detail-variants { display: flex; gap: 4px; }
-	.detail-variants button {
-		border: 1px solid var(--shell-hairline-strong);
-		border-radius: 999px;
-		padding: 3px 10px;
-		font-size: 11px;
-		background: transparent;
-		color: var(--shell-ink-2);
-		cursor: pointer;
-	}
-	.detail-variants button.on { background: var(--shell-forest); color: var(--shell-ivory); border-color: var(--shell-forest); }
-	.facts { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-size: 12px; margin: 0; }
-	.facts dt { color: var(--shell-ink-2); }
-	.facts dd { margin: 0; overflow-wrap: anywhere; }
-	.facts .warn { color: var(--shell-caution); }
-	.acts { display: flex; gap: 6px; flex-wrap: wrap; }
-	.lbd-x {
-		border: 0;
-		background: transparent;
-		color: var(--shell-ink-2);
-		font-size: 18px;
-		line-height: 1;
-		cursor: pointer;
-	}
-	.lbd-x:hover { background: var(--shell-paper); }
-	.note-sm { font-size: 11px; color: var(--shell-ink-2); margin: 0; }
 	@container library (width < 780px) {
 		.lb-b { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
 		.lb-b.with-detail { grid-template-columns: minmax(0, 1fr) minmax(250px, 280px); grid-template-rows: auto minmax(0, 1fr); }
@@ -738,17 +564,9 @@
 		.lb-b.with-detail { grid-template-columns: minmax(0, 1fr); }
 		.lb-b.with-detail .lb-rail,
 		.lb-b.with-detail .lb-grid-wrap { visibility: hidden; }
-		.lb-d {
-			position: absolute;
-			inset: 0;
-			z-index: 2;
-			border-left: 0;
-		}
-		.back { display: inline-flex; align-items: center; }
 	}
 	@media (pointer: coarse) {
-		.ix, .lb-empty button, .btn { min-height: 44px; }
+		.ix, .lb-empty button { min-height: 44px; }
 		.mc .star, .mc .xp { width: 36px; height: 36px; }
-		.lbd-x { width: 44px; height: 44px; }
 	}
 </style>

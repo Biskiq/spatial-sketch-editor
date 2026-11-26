@@ -42,4 +42,7 @@
 			max-width: 130px;
 		}
 	}
+	@media (pointer: coarse) {
+		.location { min-width: 44px; min-height: 44px; }
+	}
 </style>

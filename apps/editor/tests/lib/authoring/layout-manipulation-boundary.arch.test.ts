@@ -119,9 +119,7 @@ const allowed = new Map<string, readonly string[]>([
 			'./candidate-preview',
 			'./layout-subjects',
 			'./manipulation-support',
-			'./opening-planners',
 			'./paused-proposal',
-			'./precision',
 			'./precision-frames',
 			'./precision-intents',
 			'./refusals',
@@ -129,6 +127,23 @@ const allowed = new Map<string, readonly string[]>([
 			'./snap',
 			'./stage-pointer',
 			'./wall-gesture',
+			'./wall-scalar-session',
+			core
+		]
+	],
+	[
+		path.join(layout, 'wall-scalar-session.ts'),
+		[
+			numeric,
+			host,
+			'./candidate-preview',
+			'./layout-subjects',
+			'./manipulation-support',
+			'./opening-planners',
+			'./precision',
+			'./precision-frames',
+			'./refusals',
+			'./session-ports',
 			core
 		]
 	],
@@ -305,7 +320,8 @@ describe('Layout manipulation ownership', () => {
 
 	it('declares each live capture only in its session', () => {
 		const owners = {
-			'wall-gesture-session.ts': ['gesture', 'scalarGesture', 'pausedProposal'],
+			'wall-gesture-session.ts': ['gesture', 'pausedProposal'],
+			'wall-scalar-session.ts': ['scalarGesture'],
 			'curve-gesture-session.ts': [
 				'bendGesture',
 				'circleRadiusGesture',

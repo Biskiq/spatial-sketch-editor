@@ -3,7 +3,7 @@
 	import { perfMark } from '$lib/platform/perf-marks';
 	import { onDestroy, onMount, untrack } from 'svelte';
 	import { provideRenderResources } from '$lib/render/resources/render-resources';
-import type { ArtworkScope } from '$lib/render/artwork/artwork-scope';
+	import type { ArtworkScope } from '$lib/render/artwork/artwork-scope';
 	import { T } from '@threlte/core';
 	import type { RuntimeScene } from '@portfolio/project-model/scene';
 	import type { NavigationGraph } from '@portfolio/project-model/scene';
@@ -12,7 +12,10 @@ import type { ArtworkScope } from '$lib/render/artwork/artwork-scope';
 	import { createVisitorRuntimeState } from './visitor-runtime-state.svelte';
 	import { visitorProgressFor } from './visitor-progress';
 	import { guideRunFromProgram, guideTimeMapForProgram } from './guide-run-map';
-	import VisitorOverlay from './VisitorOverlay.svelte';
+	import VisitorEntryCard from './VisitorEntryCard.svelte';
+	import VisitorTourHud from './VisitorTourHud.svelte';
+	import VisitorExploration from './VisitorExploration.svelte';
+	import './visitor-overlay.css';
 	import { initialVisitorSurfaceMode } from './visitor-entry';
 	import type { TextureLoadScope } from '$lib/render/resources/texture-store';
 	import VisitorCameraDirector from './VisitorCameraDirector.svelte';
@@ -113,18 +116,6 @@ import type { ArtworkScope } from '$lib/render/artwork/artwork-scope';
 	/** The authored run is over and the end screen owns the surface. */
 	let showEnd = $state(false);
 	const freePresentations = $derived(visitorState?.freePresentations ?? []);
-	const currentStopNumber = $derived.by(() => {
-		const stopId = visitorState?.state.stopId ?? null;
-		return stopId === null || visitorState === null
-			? 0
-			: visitorState.program.stops.findIndex((stop) => stop.id === stopId) + 1;
-	});
-	const resumeStopNumber = $derived.by(() => {
-		const resume = visitorState?.state.resume ?? null;
-		return resume === null || visitorState === null
-			? 0
-			: visitorState.program.stops.findIndex((stop) => stop.id === resume.stopId) + 1;
-	});
 	$effect(() => {
 		// A new run starts at its own entry surface, never a previous run's mode.
 		void runEpoch;
@@ -268,10 +259,6 @@ import type { ArtworkScope } from '$lib/render/artwork/artwork-scope';
 		else if (command === 'view-previous') exploreStep(-1);
 		else exploreStep(1);
 	}
-	const exploringPresentation = $derived(
-		visitorState !== null && visitorState.state.stopId === null ? visitorState.currentPresentation : null
-	);
-	const currentExploreViewId = $derived(visitorState?.state.viewId ?? null);
 	const atStop = $derived(
 		visitorState !== null &&
 			visitorState.state.stopId !== null &&
@@ -283,32 +270,6 @@ import type { ArtworkScope } from '$lib/render/artwork/artwork-scope';
 			visitorState.invitation !== null &&
 			!dismissedInvitations.has(visitorState.state.occurrenceId ?? '')
 	);
-	const stopViewCount = $derived(
-		visitorState?.currentStop === null || visitorState === null
-			? 0
-			: visitorState.program.presentations.find((entry) => entry.id === visitorState.currentStop?.presentationId)?.viewIds.length ?? 0
-	);
-	const invitationText = $derived.by(() => {
-		const prompt = visitorState?.invitation?.prompt?.trim() ?? '';
-		if (prompt !== '') return prompt;
-		const more = stopViewCount - 1;
-		return more > 0 ? `Take a closer look · ${more} more ${more === 1 ? 'view' : 'views'}` : 'Look around';
-	});
-	const remainingText = $derived.by(() => {
-		if (visitorState === null || visitorState.state.stopId === null) return '';
-		if (visitorState.traveling) return `Moving to Stop ${currentStopNumber}`;
-		if (visitorState.pacing === 'manual') return "Press Next when you're ready";
-		const left = Math.max(0, Math.ceil((visitorState.state.holdRemainingMs ?? 0) / 1000));
-		return visitorState.paused ? `Paused · ${left} s left here` : `${left} s left here`;
-	});
-	const resumeClock = $derived.by(() => {
-		const resume = visitorState?.state.resume ?? null;
-		if (resume === null || visitorState === null) return '';
-		const stop = visitorState.program.stops.find((entry) => entry.id === resume.stopId);
-		if (stop === undefined || stop.staySeconds === null || resume.holdRemainingMs === null) return '';
-		return `, ${Math.max(0, Math.ceil(resume.holdRemainingMs / 1000))} s left`;
-	});
-	const isLastStop = $derived(visitorState !== null && currentStopNumber === visitorState.program.stops.length);
 	const guideOrder = $derived.by(() => {
 		if (visitorState === null) return undefined;
 		const run = guideRunFromProgram({
@@ -477,48 +438,63 @@ import type { ArtworkScope } from '$lib/render/artwork/artwork-scope';
 			<button type="button" class="visitor-exit" onclick={onExit}>✕ Exit preview <kbd>Esc</kbd></button>
 		{/if}
 	{/if}
-	<VisitorOverlay
-		{mode}
-		title={experienceTitle ?? publicTitle}
-		{visitorState}
-		{surfaceMode}
-		{showEnd}
-		bind:placesOpen
-		{invitationShown}
-		{invitationText}
-		{remainingText}
-		{resumeClock}
-		{progress}
-		{timelineMap}
-		{freePresentations}
-		{exploringPresentation}
-		{currentExploreViewId}
-		{lookingAround}
-		{viewLabels}
-		{cameraGap}
-		{canvasDescription}
-		{guideSeconds}
-		{guideStopCount}
-		{currentStopNumber}
-		{stopViewCount}
-		{resumeStopNumber}
-		{isLastStop}
-		{chooseGuided}
-		{chooseFree}
-		{startAgain}
-		{explore}
-		{dismissInvitation}
-		{backToTheTour}
-		{startGuidedFromFree}
-		{backToSavedView}
-		{choosePlace}
-		{chooseView}
-		{goPrevious}
-		{goNext}
-		{toggleTourPlayback}
-		{exploreStep}
-		{exploreTo}
-	/>
+	{#if surfaceMode === 'welcome' && mode === 'preview'}
+		<VisitorEntryCard
+			welcome={{
+				title: experienceTitle ?? publicTitle,
+				body: visitorState?.program.welcome ?? null,
+				canStartTour: visitorState !== null && visitorState.program.entryStopId !== null,
+				manualPacing: visitorState?.pacing === 'manual',
+				guideSeconds,
+				guideStopCount,
+				chooseGuided
+			}}
+			placeCount={freePresentations.length}
+			{chooseFree}
+			{startAgain}
+		/>
+	{/if}
+	{#if surfaceMode === 'guided' && visitorState !== null && (mode === 'preview' || !visitorState.ended) && visitorState.state.stopId !== null}
+		<VisitorTourHud
+			{mode}
+			{visitorState}
+			{invitationShown}
+			{progress}
+			{timelineMap}
+			{explore}
+			{dismissInvitation}
+			{goPrevious}
+			{goNext}
+			{toggleTourPlayback}
+			seekTimeline={(map, cursor) => visitorState?.seek(map, cursor)}
+			playTimeline={() => visitorState?.play()}
+			toggleTimeline={() => visitorState?.togglePause()}
+		/>
+	{/if}
+	{#if surfaceMode !== 'welcome' && showEnd}
+		<VisitorEntryCard welcome={null} placeCount={freePresentations.length} {chooseFree} {startAgain} />
+	{/if}
+	{#if visitorState !== null && (surfaceMode === 'free' || (surfaceMode === 'guided' && visitorState.state.stopId === null))}
+		<VisitorExploration
+			{visitorState}
+			{placesOpen}
+			{freePresentations}
+			{lookingAround}
+			{viewLabels}
+			{backToTheTour}
+			{startGuidedFromFree}
+			{backToSavedView}
+			{choosePlace}
+			{chooseView}
+			{exploreStep}
+			{exploreTo}
+			onPlacesOpen={(open) => (placesOpen = open)}
+		/>
+	{/if}
+	{#if cameraGap}
+		<p class="visitor-camera-gap" role="status">{cameraGap}</p>
+	{/if}
+	<p id="visitor-preview-help" class="visitor-help">{canvasDescription}</p>
 </div>
 
 <style>
@@ -655,5 +631,26 @@ import type { ArtworkScope } from '$lib/render/artwork/artwork-scope';
 		.visitor-exit {
 			right: 12px;
 		}
+	}
+	.visitor-camera-gap {
+		position: absolute;
+		left: 0.75rem;
+		bottom: 3rem;
+		max-width: 32rem;
+		margin: 0;
+		padding: 0.4rem 0.6rem;
+		border: 1px solid #a86b2a;
+		border-radius: 6px;
+		background: var(--visitor-glass);
+		color: #f4d7a8;
+		font: 500 0.72rem/1.35 var(--visitor-sans);
+		z-index: 5;
+	}
+	.visitor-help {
+		position: absolute;
+		left: -9999px;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
 	}
 </style>

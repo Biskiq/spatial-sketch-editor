@@ -652,15 +652,14 @@
 	.switch-row {
 		display: flex;
 		align-items: center;
-		justify-content: space-between;
 		gap: 8px;
 		font-size: 12px;
-		color: var(--shell-ink-2);
+		cursor: pointer;
 	}
 	.switch {
 		position: relative;
-		flex: none;
-		width: 34px;
+		flex: 0 0 auto;
+		width: 36px;
 		height: 20px;
 		padding: 0;
 		border: 1px solid var(--shell-hairline-strong);
@@ -676,7 +675,7 @@
 		width: 14px;
 		height: 14px;
 		border-radius: 50%;
-		background: var(--shell-card);
+		background: var(--shell-field);
 		transition: transform 120ms ease;
 	}
 	.switch[aria-checked='true'] { background: var(--shell-action); border-color: var(--shell-action); }

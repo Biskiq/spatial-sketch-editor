@@ -44,6 +44,7 @@
 	} from './library-catalogue';
 	import type { LibraryTarget } from './library-target';
 	import StageLibraryBody from './StageLibraryBody.svelte';
+	import StageLibraryDetail from './StageLibraryDetail.svelte';
 
 	type LibraryKind = StageLibraryView['kind'];
 	type Intent = 'browse' | 'paint' | 'replace' | 'swap';
@@ -161,13 +162,6 @@
 	const allCount = $derived(librarySourceCount(entries, 'all', variantChoice));
 	const hasProject = $derived(entries.some((entry) => entry.source === 'project'));
 	const keepable = $derived(intent !== 'browse');
-
-	const needle = $derived(query.trim().toLowerCase());
-	const filteredObjects = $derived(objects.filter((object) => object.name.toLowerCase().includes(needle)));
-	const filteredArtwork = $derived((artwork ?? []).filter((entry) => entry.name.toLowerCase().includes(needle)));
-	const filteredLooks = $derived(
-		(looks?.entries ?? []).filter((entry) => `${entry.label} ${entry.summary ?? ''}`.toLowerCase().includes(needle))
-	);
 
 	// The browse view outlives the sheet (session state), detail does not.
 	$effect(() => {
@@ -295,12 +289,6 @@
 		await run(async () => ((await onSelectUsers(entry)) ? { ok: true } : { ok: false, message: `No present surface uses ${entry.name}.` }));
 	}
 
-	function cardKeydown(event: KeyboardEvent, entry: LibraryFinishEntry): void {
-		if (event.key !== 'Enter' && event.key !== ' ') return;
-		event.preventDefault();
-		choose(entry, event.shiftKey);
-	}
-
 	function chooseArtwork(files: FileList | null): void {
 		if (files === null || files.length === 0) return;
 		onArtworkImport(Array.from(files));
@@ -341,20 +329,13 @@
 		}
 	}
 
-	function variantLabel(card: LibraryCard): string {
-		return card.variant === null ? '' : `, ${card.variants.find((variant) => variant.id === card.variant)?.label ?? ''}`;
-	}
-
-	function tileSizeOf(entry: LibraryFinishEntry): string {
-		return entry.subline.split('·').at(-1)?.trim() ?? '—';
-	}
 </script>
 
 <button class="scrim" type="button" tabindex="-1" aria-label="Close Library" onclick={onClose}></button>
 
 <div
 	class="library"
-		bind:this={sectionEl}
+	bind:this={sectionEl}
 	role="dialog"
 	tabindex="-1"
 	aria-modal="true"
@@ -482,18 +463,39 @@
 		<p class="kept" role="status" data-library-note>{note}</p>
 	{/if}
 
+	{#snippet materialDetail()}
+		{#if selectedCard !== null}
+			<StageLibraryDetail
+				swapMode={intent === 'swap'}
+				replaceTarget={intent === 'replace' ? capturedTarget : null}
+				{target}
+				{working}
+				{busy}
+				{selectedCard}
+				{inspection}
+				{onInspection}
+				{tileSource}
+				{closeDetail}
+				{switchVariant}
+				{choose}
+				{selectUsers}
+				{onCustomise}
+				{onToggleFavourite}
+				onUseForPaint={(entry) => onPaint(entry, false)}
+				onApplyToTarget={(entry) => void run(() => onReplace(entry, false))}
+			/>
+		{/if}
+	{/snippet}
+
 	<StageLibraryBody
-		bind:kind
-		bind:source
-		bind:query
-		bind:selectedKey
-		bind:category
-		{intent}
-		{capturedTarget}
-		{target}
+		{kind}
+		{source}
+		{query}
+		{selectedKey}
+		{category}
+		swapMode={intent === 'swap'}
 		{working}
 		{busy}
-		{needle}
 		{hasProject}
 		{groups}
 		{cards}
@@ -502,32 +504,23 @@
 		{objects}
 		{artwork}
 		{looks}
-		{filteredObjects}
-		{filteredArtwork}
-		{filteredLooks}
-		{selectedCard}
-		{inspection}
-		{onInspection}
 		{tileSource}
-		{tileSizeOf}
 		{selectKind}
 		{selectCategory}
 		{clearFilters}
-		{closeDetail}
 		{toggleDetail}
 		{switchVariant}
 		{choose}
-		{cardKeydown}
 		{verb}
-		{variantLabel}
 		{selectUsers}
-		onUseForPaint={(entry) => onPaint(entry, false)}
-		onApplyToTarget={(entry) => void run(() => onReplace(entry, false))}
-		onCustomise={onCustomise}
 		onToggleFavourite={onToggleFavourite}
 		onObject={onObject}
 		onArtwork={onArtwork}
 		onLook={onLook}
+		detail={selectedCard !== null && kind === 'materials' ? materialDetail : undefined}
+		onShowProject={() => { source = 'project'; selectedKey = null; }}
+		onBrowseCurated={() => (source = 'curated')}
+		onClearSearch={() => (query = '')}
 		openArtworkImport={() => artworkInput?.click()}
 	/>
 

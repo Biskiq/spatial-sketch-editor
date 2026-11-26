@@ -1,8 +1,8 @@
 {
   "generatedFrom": "LOC-0 baseline; shrink-only from here",
   "counts": {
-    "filesOver600": 103,
-    "filesOver1000": 6,
+    "filesOver600": 100,
+    "filesOver1000": 4,
     "filesOver1500": 0,
     "functionsOver200": 81,
     "exportStars": 0,
@@ -12,18 +12,8 @@
   "files": [
     {
       "path": "apps/editor/src/lib/authoring/look/finish-authoring.svelte.ts",
-      "lines": 1479,
+      "lines": 1252,
       "reason": "The Paint entry composes the Card, editor, align and Library sub-owners and keeps one accepted-revision write path for the active pick, dropper, palette and surface painting."
-    },
-    {
-      "path": "apps/editor/src/lib/authoring/adapters/layout/wall-gesture-session.ts",
-      "lines": 1390,
-      "reason": "One claimed wall gesture: press, preview and release share the captured Wall, station map and one lease."
-    },
-    {
-      "path": "apps/editor/src/lib/authoring/stage/shell/EditorIndex.svelte",
-      "lines": 1317,
-      "reason": "The Index root: scope rows, selection and Camera requests share one accepted source and one ephemeral locator."
     },
     {
       "path": "apps/editor/src/lib/render/resources/texture-store.ts",
@@ -49,6 +39,11 @@
       "path": "packages/project-model/src/materials/catalogue.ts",
       "lines": 982,
       "reason": "One frozen shipped-material catalogue: ids, images and legacy aliases are one data table and must stay in one read order."
+    },
+    {
+      "path": "apps/editor/src/lib/authoring/adapters/layout/wall-gesture-session.ts",
+      "lines": 959,
+      "reason": "One claimed wall gesture: press, preview and release share the captured Wall, station map and one lease."
     },
     {
       "path": "apps/editor/src/lib/authoring/adapters/scene/scene-session.ts",
@@ -197,13 +192,8 @@
     },
     {
       "path": "apps/editor/src/lib/authoring/library/LibraryMaterialEditor.svelte",
-      "lines": 757,
+      "lines": 756,
       "reason": "One Material editor: Finish and material modes share the open material, compare state and one accepted write path."
-    },
-    {
-      "path": "apps/editor/src/lib/authoring/library/StageLibraryBody.svelte",
-      "lines": 754,
-      "reason": "The Library body: rail, grouped grid and detail pane share one browse result, one selection and the one card action."
     },
     {
       "path": "apps/editor/src/lib/authoring/stage/host-acceptance.ts",
@@ -246,16 +236,6 @@
       "reason": "One Opening placement controller: preference, candidate and commit share one captured pointer or typed intent."
     },
     {
-      "path": "apps/editor/src/lib/authoring/library/StageLibrary.svelte",
-      "lines": 734,
-      "reason": "The Library sheet root: search, filters and selection share one sheet session and one route into the Material editor."
-    },
-    {
-      "path": "apps/editor/src/lib/visitor/VisitorOverlay.svelte",
-      "lines": 734,
-      "reason": "The Visitor overlay: welcome, guided HUD, Places, free exploration and end card share the live run state and one entry route."
-    },
-    {
       "path": "apps/editor/src/lib/authoring/adapters/scene/object-marks.ts",
       "lines": 732,
       "reason": "The Scene mark half: mark ids, candidate planning and intent share one object-reading contract."
@@ -274,6 +254,11 @@
       "path": "apps/editor/src/lib/authoring/adapters/scene/profile-revision.ts",
       "lines": 727,
       "reason": "One pending outline revision: generator candidate, preview and acceptance share one selected object."
+    },
+    {
+      "path": "apps/editor/src/lib/authoring/library/StageLibrary.svelte",
+      "lines": 727,
+      "reason": "The Library sheet root: search, filters and selection share one sheet session and one route into the Material editor."
     },
     {
       "path": "apps/editor/src/lib/authoring/look/FinishCardSection.svelte",
@@ -361,6 +346,11 @@
       "reason": "One round-room certification: the witness search, interval proof and seam proof share one boundary walk and span table."
     },
     {
+      "path": "apps/editor/src/lib/authoring/library/LibraryMaterialEditorFields.svelte",
+      "lines": 683,
+      "reason": "The exact Finish fields own the shared colour, surface and mapping controls and their live slider previews; the shell keeps maps, target and one write foot."
+    },
+    {
       "path": "apps/editor/src/lib/authoring/adapters/scene/object-mark-session.ts",
       "lines": 682,
       "reason": "One no-task Scene mark gesture: press, preview and release share one baseline, lease and planner."
@@ -374,11 +364,6 @@
       "path": "packages/project-model/src/units/experience/interpreter/session.ts",
       "lines": 681,
       "reason": "One interpreter session: every transition reads and rewrites the same run, visit and hold state in one table."
-    },
-    {
-      "path": "apps/editor/src/lib/authoring/library/LibraryMaterialEditorFields.svelte",
-      "lines": 680,
-      "reason": "The exact Finish fields own the shared colour, surface and mapping controls and their live slider previews; the shell keeps maps, target and one write foot."
     },
     {
       "path": "packages/project-model/src/scene-planning/record-scope.ts",
@@ -402,7 +387,7 @@
     },
     {
       "path": "apps/editor/src/lib/visitor/VisitorPreviewSurface.svelte",
-      "lines": 659,
+      "lines": 656,
       "reason": "One visitor run: surface, camera director and cards share the interpreter entry, guide state and one cleanup path."
     },
     {
@@ -530,8 +515,8 @@
     {
       "file": "apps/editor/src/lib/authoring/look/finish-authoring.svelte.ts",
       "name": "createFinishAuthoring",
-      "line": 123,
-      "lines": 1355,
+      "line": 124,
+      "lines": 1127,
       "reason": "One Paint composition root: the active pick, dropper, palette writes, surface painting and the sub-owner wiring share one accepted revision and one busy gate."
     },
     {

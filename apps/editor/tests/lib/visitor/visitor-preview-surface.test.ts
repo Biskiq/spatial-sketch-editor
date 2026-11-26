@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { mount, tick, unmount } from 'svelte';
+import { tick } from 'svelte';
+import { mountWithProps } from '../../kit/dom';
 import { computeEnvelopeSourceContentId, lowerExperienceProgram, prepareUnitRuntime } from '@portfolio/project-model/units';
 import VisitorPreviewSurface from '$lib/visitor/VisitorPreviewSurface.svelte';
 import { experienceEnvelope, LOWERING_OPTIONS } from '../experience/fixtures';
@@ -12,7 +13,7 @@ vi.hoisted(() => {
 // The Canvas is a closed renderer boundary; controls run against the real runtime and time map.
 vi.mock('@threlte/core', async (importOriginal) => ({ ...await importOriginal<typeof import('@threlte/core')>(), Canvas: (await import('./fixtures/MockOrbitControls.svelte')).default }));
 let cleanup: (() => void) | null = null;
-afterEach(() => { cleanup?.(); cleanup = null; document.body.replaceChildren(); });
+afterEach(() => { cleanup?.(); cleanup = null; });
 
 async function mounted(mode: 'preview' | 'public' = 'preview', startMode: 'guided' | 'welcome' = 'guided') {
 	const envelope = await experienceEnvelope();
@@ -21,13 +22,12 @@ async function mounted(mode: 'preview' | 'public' = 'preview', startMode: 'guide
 	const sourceContentId = await computeEnvelopeSourceContentId(envelope);
 	const lowered = lowerExperienceProgram(envelope, { ...LOWERING_OPTIONS, sourceContentId });
 	if (lowered.kind !== 'lowered') throw Error(lowered.message);
-	const target = document.createElement('div'); document.body.append(target);
-	const component = mount(VisitorPreviewSurface, { target, props: {
+	const { target, unmount } = mountWithProps(VisitorPreviewSurface, {
 		scene: ready.runtimeScene, geometry: ready.geometry, graph: ready.graph,
 		program: lowered.program, experienceOptions: { runId: 'run-surface', runEpoch: 1, sourceContentId, transitions: lowered.transitions },
 		resolveTexture: () => null, startMode, mode
-	} });
-	cleanup = () => unmount(component);
+	});
+	cleanup = unmount;
 	await tick(); await tick();
 	return target;
 }

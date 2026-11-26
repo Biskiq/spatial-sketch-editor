@@ -243,13 +243,13 @@
     "arrows": 17
   },
   "src/lib/authoring/look/finish-authoring.svelte.ts": {
-    "lines": 1480,
-    "imports": 20,
+    "lines": 1253,
+    "imports": 21,
     "state": 6,
     "derived": 0,
     "effects": 0,
-    "functions": 48,
-    "arrows": 84
+    "functions": 39,
+    "arrows": 71
   },
   "src/lib/authoring/workspace/host/wiring/stage-canvas-views.svelte.ts": {
     "lines": 75,

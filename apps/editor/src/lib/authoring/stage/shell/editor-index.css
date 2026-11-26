@@ -1,0 +1,602 @@
+/* The World and Experience views share the Index row and control styles.
+ * The landmark prefix provides the specificity of the original Svelte scope. */
+.plate-index button {
+	display: inline-flex;
+	align-items: center;
+	gap: 7px;
+	min-height: 26px;
+	border: 0;
+	border-radius: 6px;
+	background: transparent;
+	color: inherit;
+	font: inherit;
+	cursor: pointer;
+}
+.plate-index button:hover {
+	background: var(--shell-hover);
+}
+
+.plate-index .index-search {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	padding: 8px 6px 6px 8px;
+}
+.plate-index .index-search label {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	flex: 1;
+	min-width: 0;
+	height: 28px;
+	padding: 0 7px;
+	background: var(--shell-field);
+	border: 1px solid var(--shell-field-line);
+	border-radius: 7px;
+	color: var(--shell-ink-3);
+}
+.plate-index input {
+	min-width: 0;
+	width: 100%;
+	border: 0;
+	background: none;
+	color: var(--shell-ink);
+	font: var(--shell-text-control) var(--shell-sans);
+}
+
+/* Experience review 1 — the Experiences list, in the Index's own row grammar. */
+.plate-index .group-title-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding-right: 6px;
+}
+.plate-index .group-add {
+	display: grid;
+	place-items: center;
+	width: 22px;
+	height: 22px;
+	min-height: 22px;
+	padding: 0;
+	border-radius: 6px;
+	color: var(--shell-ink-3);
+}
+.plate-index .group-add:hover:not(:disabled) {
+	background: var(--shell-hover);
+	color: var(--shell-ink);
+}
+.plate-index .exp-list.scrolls {
+	max-height: 224px;
+	overflow-y: auto;
+	box-shadow: inset 0 -8px 8px -8px rgb(0 0 0 / 0.12);
+}
+.plate-index .exp-row {
+	display: flex;
+	align-items: center;
+	min-height: 28px;
+}
+.plate-index .exp-row.current {
+	background: var(--shell-selected);
+}
+.plate-index .exp-open {
+	flex: 1;
+	min-width: 0;
+	min-height: 28px;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 4px 8px 4px 12px;
+	border-radius: 0;
+	text-align: left;
+	font: 400 var(--shell-text-body)/1.35 var(--shell-sans);
+}
+.plate-index .exp-row:not(.current) .exp-open:hover {
+	background: var(--shell-hover);
+}
+.plate-index .exp-ic {
+	flex: none;
+	width: 9px;
+	height: 9px;
+	border: 1.5px solid var(--shell-ink-3);
+	border-radius: 2px;
+}
+.plate-index .exp-row.current .exp-ic {
+	border-color: var(--shell-forest);
+	background: var(--shell-forest);
+}
+.plate-index .exp-name {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.plate-index .exp-row.current .exp-name {
+	font-weight: 600;
+}
+.plate-index .exp-row.draft .exp-name {
+	font-style: italic;
+	color: var(--shell-ink-2);
+}
+.plate-index .exp-meta {
+	flex: none;
+	color: var(--shell-ink-3);
+	font-size: var(--shell-text-label);
+}
+.plate-index .exp-more {
+	width: 26px;
+	padding: 0;
+	justify-content: center;
+	opacity: 0;
+}
+.plate-index .exp-row:hover .exp-more,
+.plate-index .exp-row:focus-within .exp-more {
+	opacity: 1;
+}
+.plate-index .exp-row .crumb-input {
+	margin: 3px 8px 3px 12px;
+	border: 0;
+	border-bottom: 2px solid var(--shell-leaf);
+	border-radius: 0;
+	background: none;
+	font: 600 var(--shell-text-identity)/1.35 var(--shell-sans);
+	outline: none;
+}
+.plate-index .exp-filter {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin: 2px 8px 4px;
+	padding: 0 8px;
+	height: 26px;
+	border: 1px solid var(--shell-field-line);
+	border-radius: 7px;
+	background: var(--shell-field);
+	color: var(--shell-ink-3);
+}
+.plate-index .exp-more-toggle {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	width: 100%;
+	min-height: 26px;
+	padding: 0 12px;
+	color: var(--shell-ink-3);
+	font: 500 var(--shell-text-control) var(--shell-sans);
+}
+.plate-index .exp-more-toggle:hover {
+	background: var(--shell-hover);
+	color: var(--shell-ink);
+}
+/* The crumb's inline rename uses the crumb's own metrics. */
+.plate-index .crumb-input {
+	box-sizing: border-box;
+	min-width: 0;
+	flex: 1 1 auto;
+	padding: 1px 4px;
+	border: 1px solid var(--shell-hairline-strong);
+	border-radius: 5px;
+	font: 600 var(--shell-text-control)/1.3 var(--shell-sans);
+	color: inherit;
+}
+.plate-index .crumb-error {
+	margin: -2px 10px 6px;
+	color: var(--shell-refuse);
+	font-size: var(--shell-text-utility);
+}
+.plate-index .opens-tag {
+	flex: none;
+	padding: 0 4px;
+	border: 1px solid var(--shell-hairline-strong);
+	border-radius: 3px;
+	color: var(--shell-ink-2);
+	font: 500 var(--shell-text-meta)/1.5 var(--shell-mono);
+	letter-spacing: 0.02em;
+}
+
+
+.plate-index .world-search input { font-size: var(--shell-text-body); }
+.plate-index .world-search > button { width: 28px; height: 28px; padding: 0; justify-content: center; }
+.plate-index .crumbs {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 2px 3px;
+	padding: 0 10px 6px;
+	font-size: var(--shell-text-control);
+	color: var(--shell-ink-3);
+}
+.plate-index .crumb { display: inline-flex; align-items: center; }
+.plate-index .crumb > button,
+.plate-index .crumb.current { padding: 2px 4px; }
+.plate-index .crumb > button { min-height: 0; color: var(--shell-ink-2); border-radius: 5px; }
+.plate-index .crumb > .current,
+.plate-index .crumb.current { color: var(--shell-ink); font-weight: 600; }
+.plate-index .crumb > .location-toggle { padding: 2px; color: var(--shell-ink-3); }
+.plate-index .location-list {
+	flex: none;
+	margin: 0 10px 6px;
+	padding: 3px;
+	max-height: 220px;
+	overflow: auto;
+	background: var(--shell-popover);
+	border: 1px solid var(--shell-hairline);
+	border-radius: 8px;
+	box-shadow: 0 1px 2px #0001, 0 8px 24px #0002;
+}
+.plate-index .location-list button { width: 100%; padding: 4px 8px; min-height: 0; text-align: left; font-size: var(--shell-text-control); }
+.plate-index .location-list [aria-current] { background: var(--shell-leaf-tint); font-weight: 600; }
+.plate-index .world-list { flex: 1; overflow: auto; padding-bottom: 14px; }
+.plate-index .world-group { display: flex; justify-content: space-between; }
+.plate-index .world-list .item-row { color: var(--shell-ink-3); font-weight: 400; }
+.plate-index .world-list .item-name { color: var(--shell-ink); }
+.plate-index .world-list .selected .item-name { font-weight: 600; }
+.plate-index .world-list .item:hover:not(.selected) { background: rgb(0 0 0 / 3.5%); }
+.plate-index .world-list .item-row:hover { background: transparent; }
+.plate-index .world-more { margin: 4px 10px 4px 12px; font-size: var(--shell-text-control); color: var(--shell-forest-raised); }
+.plate-index .facets {
+	display: flex;
+	gap: 2px;
+	margin: 0 8px 4px;
+	padding: 2px;
+	border-radius: 7px;
+	background: var(--shell-surface-sunken);
+}
+.plate-index .facets button {
+	flex: 1;
+	display: grid;
+	place-items: center;
+	font-size: var(--shell-text-utility);
+	height: 24px;
+	min-height: 24px;
+	padding: 0 4px;
+	color: var(--shell-ink-3);
+}
+.plate-index .facets [aria-pressed='true'] {
+	background: var(--shell-field-focus);
+	color: var(--shell-ink);
+	box-shadow: 0 0 0 1px var(--shell-hairline-strong);
+}
+.plate-index .group-items {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+}
+
+.plate-index .item-head {
+	display: flex;
+	align-items: center;
+}
+.plate-index .item-row {
+	flex: 1;
+	min-width: 0;
+	min-height: 28px;
+	padding: 4px 6px 4px 10px;
+	border-radius: 0;
+	text-align: left;
+}
+
+.plate-index .item-name {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+/* Index selection mirrors the Stage; gold stays on the drawing itself. */
+.plate-index .item.selected,
+.plate-index .item-head.selected {
+	background: var(--shell-selected);
+}
+.plate-index .item.selected .item-name {
+	font-weight: 600;
+}
+
+.plate-index .item-actions-toggle {
+	opacity: 0;
+	padding: 0;
+	width: 26px;
+	justify-content: center;
+}
+.plate-index .item:hover .item-actions-toggle,
+.plate-index .item:focus-within .item-actions-toggle {
+	opacity: 1;
+}
+
+.plate-index .badge {
+	font-size: var(--shell-text-meta);
+	color: var(--shell-ink-3);
+}
+.plate-index .group {
+	display: flex;
+	flex-direction: column;
+}
+/* Round 2 igroup: 10 px uppercase labels. */
+.plate-index .group-title {
+	margin: 0;
+	padding: 8px 10px 2px 12px;
+	color: var(--shell-ink-3);
+	font: 600 var(--shell-text-meta) var(--shell-sans);
+	letter-spacing: 0.07em;
+	text-transform: uppercase;
+}
+.plate-index .index-search .hide-index {
+	margin-left: auto;
+}
+.plate-index .group-title .count {
+	margin-left: 4px;
+	letter-spacing: 0;
+}
+.plate-index .item-text {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	gap: 1px;
+	min-width: 0;
+}
+.plate-index .item-meta {
+	overflow: hidden;
+	color: var(--shell-ink-3);
+	font-size: var(--shell-text-label);
+	line-height: 1.3;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.plate-index .item-name.muted {
+	color: var(--shell-ink-3);
+}
+.plate-index .free-tag {
+	padding: 0 4px;
+	border: 1px dashed var(--shell-hairline-strong);
+	border-radius: 4px;
+	font-size: var(--shell-text-meta);
+}
+.plate-index .chip {
+	flex: none;
+	padding: 0 6px;
+	border: 1px solid var(--shell-leaf);
+	border-radius: 999px;
+	background: var(--shell-surface-raised);
+	color: var(--shell-forest-3);
+	font-size: var(--shell-text-meta);
+	line-height: 15px;
+	font-weight: 600;
+}
+/* An open Guide is a leaf state; the gold role stays with selection alone. */
+.plate-index .item.open:not(.selected) {
+	background: var(--shell-leaf-tint);
+}
+/* Round 2 irow: one 28 px line, the stop count on the right. */
+.plate-index .guide-line {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+}
+.plate-index .guide-line .guide-row {
+	flex: 1;
+	min-width: 0;
+}
+.plate-index .guide-menu-wrap {
+	position: relative;
+	display: inline-flex;
+	flex: none;
+}
+.plate-index .guide-actions-toggle {
+	width: 24px;
+	height: 24px;
+	min-height: 24px;
+	padding: 0;
+	justify-content: center;
+	opacity: 0;
+}
+.plate-index .item:hover .guide-actions-toggle,
+.plate-index .item:focus-within .guide-actions-toggle {
+	opacity: 1;
+}
+.plate-index .guide-menu {
+	position: absolute;
+	top: calc(100% + 2px);
+	right: 0;
+	z-index: 20;
+	display: grid;
+	min-width: 148px;
+	padding: 4px;
+	border: 1px solid var(--shell-hairline-strong);
+	border-radius: 8px;
+	background: var(--shell-popover);
+	box-shadow: var(--shell-shadow);
+}
+.plate-index .guide-menu button {
+	justify-content: flex-start;
+	min-height: 26px;
+	padding: 4px 7px;
+	border: 0;
+	border-radius: 5px;
+	background: transparent;
+	font-size: var(--shell-text-utility);
+	text-align: left;
+}
+.plate-index .guide-menu button:hover,
+.plate-index .guide-menu button:focus-visible {
+	background: var(--shell-hover);
+}
+.plate-index .guide-menu button.danger {
+	color: var(--shell-refuse);
+}
+.plate-index .guide-rename-input {
+	box-sizing: border-box;
+	width: 100%;
+	min-height: 28px;
+	margin: 2px 0;
+	padding: 3px 7px;
+	border: 1px solid var(--shell-field-line-strong);
+	border-radius: 5px;
+	background: var(--shell-field);
+	color: var(--shell-ink);
+	font: inherit;
+}
+.plate-index .guide-row {
+	width: 100%;
+	min-height: 28px;
+	padding: 4px 6px 4px 10px;
+	gap: 7px;
+	border-radius: 0;
+	text-align: left;
+}
+.plate-index .guide-row .item-text {
+	flex-direction: row;
+	align-items: center;
+	gap: 7px;
+}
+.plate-index .guide-row .item-name {
+	flex: 1;
+}
+.plate-index .guide-row .item-meta {
+	flex: none;
+}
+/* Selecting a Presentation opens its Views (Round 2); the twist only reveals on hover or focus. */
+.plate-index .twist {
+	flex: none;
+	width: 26px;
+	height: 26px;
+	margin-right: 4px;
+	padding: 0;
+	justify-content: center;
+	border-radius: 6px;
+	color: var(--shell-ink-3);
+	opacity: 0;
+}
+.plate-index .item-head:hover .twist:enabled,
+.plate-index .twist:focus-visible {
+	opacity: 1;
+}
+.plate-index .twist:hover {
+	background: rgb(0 0 0 / 0.07);
+	color: var(--shell-ink);
+}
+.plate-index .twist:disabled {
+	visibility: hidden;
+}
+.plate-index .presentation-row {
+	min-height: 28px;
+	padding: 4px 6px 4px 10px;
+	gap: 7px;
+	cursor: default;
+}
+/* Round 2 Index rows read in the sans at 13 px; only the selected row is bold. */
+.plate-index .presentation-row .item-name {
+	font: 400 var(--shell-text-body)/1.35 var(--shell-sans);
+}
+.plate-index .item-head.selected .item-name {
+	font-weight: 600;
+}
+.plate-index .view-list {
+	display: grid;
+	gap: 0;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+/* Round 2 nested irow: 14 px indent, then the row's own 10 px. */
+.plate-index .view-line {
+	display: flex;
+	align-items: center;
+}
+.plate-index .view-line .view-row {
+	flex: 1;
+	min-width: 0;
+}
+.plate-index .view-add {
+	flex: none;
+	min-height: 24px;
+	padding: 0 6px;
+	border: 0;
+	border-radius: 5px;
+	background: transparent;
+	color: var(--shell-ink-3);
+	font: 500 10.5px/1 var(--shell-sans);
+	white-space: nowrap;
+	opacity: 0;
+}
+.plate-index .view-line:hover .view-add,
+.plate-index .view-add:focus-visible {
+	opacity: 1;
+	color: var(--shell-forest-3);
+}
+.plate-index .view-add:hover {
+	background: var(--shell-hover);
+}
+.plate-index .view-row {
+	width: 100%;
+	min-height: 28px;
+	padding: 4px 6px 4px 24px;
+	gap: 7px;
+	border-radius: 0;
+	text-align: left;
+	color: var(--shell-ink);
+	font-size: var(--shell-text-body);
+}
+.plate-index .view-row:hover {
+	background: rgb(0 0 0 / 0.035);
+}
+.plate-index .view-row.selected {
+	background: var(--shell-selected);
+	font-weight: 600;
+}
+.plate-index .view-name {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.plate-index .tour-mark {
+	flex: none;
+	width: 8px;
+	height: 8px;
+	/* Sits in the 14 px icon slot of a Round 2 row. */
+	margin: 0 3px;
+	border: 1.5px solid var(--shell-ink-3);
+	border-radius: 50%;
+}
+.plate-index .tour-mark.on {
+	border-color: var(--shell-leaf);
+	background: var(--shell-leaf);
+}
+.plate-index .default-mark {
+	flex: none;
+	color: var(--shell-ink-3);
+	font-size: var(--shell-text-meta);
+}
+.plate-index .view-more {
+	width: 100%;
+	min-height: 28px;
+	padding: 3px 6px 3px 24px;
+	border-radius: 6px;
+	color: var(--shell-ink-3);
+	font-size: var(--shell-text-control);
+	text-align: left;
+}
+.plate-index .index-empty {
+	padding: 10px;
+	font-size: var(--shell-text-control);
+	color: var(--shell-ink-3);
+}
+@media (pointer: coarse) {
+	.plate-index button,
+	.plate-index .facets button,
+	.plate-index .crumb > button,
+	.plate-index .location-list button,
+	.plate-index .index-search label,
+	.plate-index input {
+		min-height: 44px;
+	}
+	.plate-index .item-actions-toggle {
+		min-width: 44px;
+		opacity: 1;
+	}
+	.plate-index .facets {
+		flex-wrap: wrap;
+	}
+	.plate-index .facets button {
+		min-width: 44px;
+	}
+}

@@ -667,12 +667,15 @@
 	}
 	.eds { display: grid; gap: 6px; }
 	.eds h6 {
-		margin: 0;
+		margin: 0 0 2px;
+		font-family: var(--shell-mono);
 		font-size: 10px;
-		font-weight: 700;
-		letter-spacing: 0.09em;
+		font-weight: 500;
 		text-transform: uppercase;
-		color: var(--shell-ink-3);
+		letter-spacing: 0.08em;
+		color: var(--shell-ink-2);
+		display: flex;
+		gap: 6px;
 	}
 	@media (pointer: coarse) {
 		.mseg button { min-height: var(--shell-touch-target); }
