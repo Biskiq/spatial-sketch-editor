@@ -208,6 +208,48 @@ describe('Library browsing and activation', () => {
 		expect(fx.q('[data-library-refusal]')?.textContent).toMatch(/My library is unavailable here/);
 	});
 
+	it('a saved shelf activation refuses after the captured target changed', async () => {
+		const saved: LibraryFinishEntry = {
+			...oak,
+			key: 'mine:saved',
+			source: 'mine',
+			ref: null,
+			curatedId: null,
+			projectId: null,
+			name: 'Saved oak',
+			libraryItem: { id: 'saved', savedAt: '2026-11-01', savedFrom: '', flattened: [], imageCount: 0 }
+		};
+		const fx = render({ entries: [saved, oak], intent: 'replace', target: target('entity:a', 'Chair') });
+		fx.props.target = target('entity:b', 'Table');
+		flushSync();
+		fx.q<HTMLButtonElement>('[data-library-choose="mine:saved"]')?.click();
+		await settle();
+		expect(fx.onReplace).not.toHaveBeenCalled();
+		expect(fx.q('[data-library-refusal]')?.textContent).toMatch(/selection changed/);
+	});
+
+	it('saved detail Apply refuses after the captured target changed', async () => {
+		const saved: LibraryFinishEntry = {
+			...oak,
+			key: 'mine:saved',
+			source: 'mine',
+			ref: null,
+			curatedId: null,
+			projectId: null,
+			name: 'Saved oak',
+			libraryItem: { id: 'saved', savedAt: '2026-11-01', savedFrom: '', flattened: [], imageCount: 0 }
+		};
+		const fx = render({ entries: [saved, oak], intent: 'replace', target: target('entity:a', 'Chair') });
+		fx.q<HTMLButtonElement>(`[data-library-detail-open="${saved.key}"]`)?.click();
+		flushSync();
+		fx.props.target = target('entity:b', 'Table');
+		flushSync();
+		fx.q<HTMLButtonElement>('[data-library-detail-apply]')?.click();
+		await settle();
+		expect(fx.onReplace).not.toHaveBeenCalled();
+		expect(fx.q('[data-library-refusal]')?.textContent).toMatch(/selection changed/);
+	});
+
 	it('Swap shows the target and reach, takes curated materials only', async () => {
 		const swap = { place: 'Chair', reachLine: 'Just this one', target: { kind: 'entity', entityId: 'a' }, targetKey: 'entity:a', finishName: 'Oak', materialLabel: 'Oak Veneer', currentId: 'wood-oak-veneer', reach: 'this', users: 2 };
 		const fx = render({ intent: 'swap', swap });

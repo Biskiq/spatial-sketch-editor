@@ -16,7 +16,7 @@
  * failed one falls back to the swatch.
  */
 import { env } from '$env/dynamic/public';
-import type { AcceptedRevision, SemanticReference } from '@portfolio/project-model/references';
+import type { SemanticReference } from '@portfolio/project-model/references';
 import type { Finish } from '@portfolio/project-model/materials';
 import type { FinishTileSource } from '$lib/render/materials/finish-tiles.svelte';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
@@ -59,7 +59,10 @@ function entityReferenceOf(source: ProjectEnvelope, entityId: string): SemanticR
 	return {
 		version: 1 as const,
 		domain: 'scene' as const,
-		revision: { kind: 'exact' as const, contentRevision: source.units.scene.header.contentRevision },
+		revision: {
+			kind: 'exact' as const,
+			contentRevision: source.units.scene.header.contentRevision,
+		},
 		subject: { kind: 'entity' as const, id: entityId },
 		instancePath: [],
 		location: { kind: 'project-root' as const },
@@ -75,7 +78,10 @@ function surfaceReferenceOf(
 	return {
 		version: 1 as const,
 		domain: 'layout' as const,
-		revision: { kind: 'exact' as const, contentRevision: source.units.layout.header.contentRevision },
+		revision: {
+			kind: 'exact' as const,
+			contentRevision: source.units.layout.header.contentRevision,
+		},
 		subject:
 			surface.kind === 'wall-side'
 				? { kind: 'wall' as const, id: surface.wallId }
@@ -111,6 +117,8 @@ export function createPrivateLibrarySession(input: {
 	let listed = false;
 	let sequencer = 0;
 	let disposed = false;
+	const lifecycle = new AbortController();
+	const signal = lifecycle.signal;
 	const thumbnails = $state<Record<string, string>>({});
 	const thumbnailPending = new Set<string>();
 	const removedIds = new Set<string>();
@@ -132,7 +140,7 @@ export function createPrivateLibrarySession(input: {
 			if (thumbnails[item.summary.id] !== undefined) continue;
 			thumbnailPending.add(item.summary.id);
 			void client
-				.thumbnail(item.summary.id)
+				.thumbnail(item.summary.id, signal)
 				.then((bytes) => {
 					if (disposed || removedIds.has(item.summary.id)) return;
 					const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: 'image/png' }));
@@ -143,44 +151,46 @@ export function createPrivateLibrarySession(input: {
 		}
 	}
 
-	async function hydrate(list: readonly PrivateLibraryItem[]): Promise<void> {
+	async function hydrate(list: readonly PrivateLibraryItem[], ticket: number): Promise<void> {
 		const next = await Promise.all(
 			list.map(async (item) => {
 				if (item.payload !== undefined) return item;
 				try {
-					const read = await client.read(item.summary);
+					const read = await client.read(item.summary, signal);
 					return { ...item, payload: read.payload };
 				} catch {
 					return item;
 				}
 			}),
 		);
-		if (disposed) return;
+		if (disposed || signal.aborted || ticket !== sequencer) return;
 		const listedIds = new Set(next.map((item) => item.summary.id));
 		items = [
-			...items.filter((item) => !listedIds.has(item.summary.id) && !removedIds.has(item.summary.id)),
+			...items.filter(
+				(item) => !listedIds.has(item.summary.id) && !removedIds.has(item.summary.id),
+			),
 			...next.filter((item) => !removedIds.has(item.summary.id)),
 		];
 		thumbnailsOf(items);
 	}
 
 	async function load(force = false): Promise<void> {
-		if (loading) return;
+		if (disposed || loading) return;
 		if (!force && status === 'ready' && listed) return;
 		const ticket = ++sequencer;
 		loading = true;
 		status = 'loading';
 		error = null;
 		try {
-			const summaries = await client.list();
-			if (disposed || ticket !== sequencer) return;
+			const summaries = await client.list(signal);
+			if (disposed || signal.aborted || ticket !== sequencer) return;
 			items = summaries.map((summary) => ({ summary }));
 			listed = true;
 			status = 'ready';
 			thumbnailsOf(items);
-			void hydrate(items);
+			void hydrate(items, ticket);
 		} catch (cause) {
-			if (disposed || ticket !== sequencer) return;
+			if (disposed || signal.aborted || ticket !== sequencer) return;
 			status = 'offline';
 			error = messageOf(cause, 'My library could not be read.');
 		} finally {
@@ -189,14 +199,17 @@ export function createPrivateLibrarySession(input: {
 	}
 
 	function ensureLoaded(): void {
-		if (status === 'idle' || !listed) void load();
+		if (!disposed && (status === 'idle' || !listed)) void load();
 	}
 
 	function entries(): LibraryFinishEntry[] {
 		return items.map((item) => privateLibraryEntry(item, thumbnails[item.summary.id] ?? null));
 	}
 
-	function finishOf(snapshot: ReturnType<StageAdapterServices['stage']['snapshot']>, id: string): Finish | null {
+	function finishOf(
+		snapshot: ReturnType<StageAdapterServices['stage']['snapshot']>,
+		id: string,
+	): Finish | null {
 		return snapshot.domain.scene.materials.find((finish) => finish.id === id) ?? null;
 	}
 
@@ -217,13 +230,19 @@ export function createPrivateLibrarySession(input: {
 		summary: PrivateLibraryItem['summary'],
 		source: FinishTileSource | null,
 	): Promise<void> {
-		if (source === null || input.thumbnailBytes === undefined) return;
+		if (source === null || input.thumbnailBytes === undefined || disposed) return;
 		try {
 			const master = await input.thumbnailBytes(source);
-			if (master === null) return;
+			if (master === null || disposed || signal.aborted) return;
 			const bytes = new Uint8Array(await master.arrayBuffer());
-			const uploaded = await uploadFinishThumbnailBytes({ item: summary, bytes, client });
-			if (!uploaded) return;
+			if (disposed || signal.aborted) return;
+			const uploaded = await uploadFinishThumbnailBytes({
+				item: summary,
+				bytes,
+				client,
+				signal,
+			});
+			if (!uploaded || disposed || signal.aborted) return;
 			const existing = items.find((item) => item.summary.id === summary.id);
 			if (existing === undefined) return;
 			replaceItem({
@@ -241,6 +260,7 @@ export function createPrivateLibrarySession(input: {
 		readonly source: ProjectEnvelope;
 		readonly tileSource: FinishTileSource | null;
 	}): Promise<PrivateLibraryOutcome> {
+		if (disposed) return { ok: false, message: 'My library closed before the save finished.' };
 		const operationId = crypto.randomUUID();
 		try {
 			const result = await saveFinishToLibrary({
@@ -248,7 +268,10 @@ export function createPrivateLibrarySession(input: {
 				finish: inputRecord.finish,
 				operationId,
 				client,
+				signal,
 			});
+			if (disposed || signal.aborted)
+				return { ok: false, message: 'My library closed before the save finished.' };
 			if (!result.ok) {
 				return {
 					ok: false,
@@ -274,6 +297,8 @@ export function createPrivateLibrarySession(input: {
 			input.onNotice(message);
 			return { ok: true, message };
 		} catch (cause) {
+			if (disposed || signal.aborted)
+				return { ok: false, message: 'My library closed before the save finished.' };
 			const message = messageOf(cause, 'That Finish could not be saved.');
 			if (cause instanceof MaterialLibraryClientError && cause.code === 'network')
 				status = 'offline';
@@ -324,10 +349,12 @@ export function createPrivateLibrarySession(input: {
 		target: LibraryTarget | null,
 		mode: 'paint' | 'apply',
 	): Promise<PrivateLibraryOutcome> {
+		if (disposed) return { ok: false, message: 'My library closed before the insert finished.' };
 		const id = entryKey.startsWith('mine:') ? entryKey.slice('mine:'.length) : entryKey;
 		const item = items.find((candidate) => candidate.summary.id === id);
 		const services = input.services();
-		if (item === undefined) return { ok: false, message: 'That saved material is no longer listed.' };
+		if (item === undefined)
+			return { ok: false, message: 'That saved material is no longer listed.' };
 		if (services === null) return { ok: false, message: 'The Stage is still opening.' };
 		const snapshot = services.stage.snapshot();
 		const source = stageEnvelope(snapshot);
@@ -355,8 +382,10 @@ export function createPrivateLibrarySession(input: {
 				surfaceReference: surfaceReferenceOf,
 				materialProofs: services.materialProofs,
 			},
-			signal: new AbortController().signal,
+			signal,
 		});
+		if (disposed || signal.aborted)
+			return { ok: false, message: 'My library closed before the insert finished.' };
 		if (!outcome.ok) return { ok: false, message: outcome.message };
 		const finishKey = `project:${outcome.finishId}`;
 		input.onInserted(finishKey);
@@ -370,8 +399,10 @@ export function createPrivateLibrarySession(input: {
 	}
 
 	async function remove(id: string): Promise<PrivateLibraryOutcome> {
+		if (disposed) return { ok: false, message: 'My library closed before the item was removed.' };
 		try {
 			await client.remove(id);
+			if (disposed) return { ok: false, message: 'My library closed before the item was removed.' };
 			removedIds.add(id);
 			const url = thumbnails[id];
 			delete thumbnails[id];
@@ -406,9 +437,14 @@ export function createPrivateLibrarySession(input: {
 		},
 		dispose(): void {
 			disposed = true;
+			lifecycle.abort();
 			sequencer += 1;
 			for (const url of Object.values(thumbnails)) revoke(url);
 			items = [];
+			listed = false;
+			loading = false;
+			status = 'idle';
+			error = null;
 		},
 	};
 }

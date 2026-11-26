@@ -33,7 +33,11 @@ import { getMaterial, materialById, materials } from '$lib/content/materials';
 import { materialFamilyOf, materialTreatmentFacts } from '$lib/content/material-presentation';
 import { catalogueRecipe } from '@portfolio/project-model/materials';
 import { libraryFamilyLabel, type LibraryFinishEntry } from '../library/library-catalogue';
-import { libraryTargetOf, libraryTargetOfPick, type LibraryTarget } from '../library/library-target';
+import {
+	libraryTargetOf,
+	libraryTargetOfPick,
+	type LibraryTarget,
+} from '../library/library-target';
 import {
 	beginLibraryDraft,
 	draftEntryOf,
@@ -820,7 +824,9 @@ export function createFinishLibraryAuthoring(ports: FinishLibraryPorts) {
 		cancelLibraryDraft,
 		libraryDraftStatus,
 		applyLibraryDraft,
-		get draft() { return libraryDraft; },
+		get draft() {
+			return libraryDraft;
+		},
 		libraryDraftTarget,
 		libraryDraftPreview,
 		libraryDraftInstance,

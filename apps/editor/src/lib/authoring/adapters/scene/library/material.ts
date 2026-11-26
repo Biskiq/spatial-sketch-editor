@@ -358,7 +358,7 @@ export async function insertFinishFromLibrary(input: {
 		capturedInputs: [],
 		allocatedIds: [{ kind: 'scene-finish', id: transfer.finishId }],
 	} as AuthoringIntent);
-	if (outcome.kind !== 'accepted') {
+	if (outcome.kind !== 'accepted' && outcome.kind !== 'installed') {
 		const reason = outcome.reason ?? outcome.code ?? outcome.kind;
 		const code: InsertFinishRefusal =
 			reason === 'target-pending'

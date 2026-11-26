@@ -215,7 +215,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 			activeKey,
 			activeColour,
 			colourEnabled: host.colourCoat !== undefined,
-			dropper: dropper !== null,
+			dropper,
 		});
 	}
 

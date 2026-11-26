@@ -28,10 +28,13 @@ import type { LibraryFinishEntry } from './library-catalogue';
 
 export const SHEEN_STEP_ORDER: readonly SheenStepId[] = ['matte', 'satin', 'gloss'];
 
-export type LibraryDraftEntry = Omit<Pick<
-	LibraryFinishEntry,
-	'key' | 'ref' | 'name' | 'materialLabel' | 'source' | 'reading' | 'userKeys'
->, 'ref' | 'source'> & {
+export type LibraryDraftEntry = Omit<
+	Pick<
+		LibraryFinishEntry,
+		'key' | 'ref' | 'name' | 'materialLabel' | 'source' | 'reading' | 'userKeys'
+	>,
+	'ref' | 'source'
+> & {
 	readonly ref: Exclude<SceneFinishRef, 'model-own'>;
 	readonly source: 'curated' | 'project';
 };

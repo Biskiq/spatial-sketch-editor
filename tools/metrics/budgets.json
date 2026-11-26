@@ -157,7 +157,7 @@
 		},
 		{
 			"path": "apps/editor/src/lib/authoring/look/finish-library.svelte.ts",
-			"lines": 837,
+			"lines": 843,
 			"reason": "One Library draft session: browse, draft fields, target requalification, refusal and the swap hand-off share one draft and one Apply path."
 		},
 		{
@@ -332,7 +332,7 @@
 		},
 		{
 			"path": "apps/editor/src/lib/authoring/library/StageLibrary.svelte",
-			"lines": 723,
+			"lines": 738,
 			"reason": "The Library sheet root: search, filters and selection share one sheet session and one route into the Material editor."
 		},
 		{
@@ -684,7 +684,7 @@
 			"file": "apps/editor/src/lib/authoring/look/finish-library.svelte.ts",
 			"name": "createFinishLibraryAuthoring",
 			"line": 92,
-			"lines": 750,
+			"lines": 752,
 			"reason": "One Library draft session: its runes, planning reads, target and swap share one draft state machine."
 		},
 		{

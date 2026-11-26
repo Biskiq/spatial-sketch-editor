@@ -25,7 +25,10 @@ export type AppearanceDependencies = {
 	/** Appearance's one Finish authority; the entry constructs it. */
 	readonly finishes: Omit<FinishesInput, 'retryTextures'>;
 	readonly card: Omit<Parameters<typeof createCardSession>[0], 'draftPreview' | 'finishes'>;
-	readonly draft: Omit<Parameters<typeof createLibraryDraftSession>[0], 'finishes' | 'privateLibrary'>;
+	readonly draft: Omit<
+		Parameters<typeof createLibraryDraftSession>[0],
+		'finishes' | 'privateLibrary'
+	>;
 	readonly materialImport: Omit<
 		Parameters<typeof createAppearanceImportSession>[0],
 		'previewing' | 'lens' | 'finishes'

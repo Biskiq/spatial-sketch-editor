@@ -140,7 +140,8 @@ export function createLibraryHost(input: {
 			input.commands().armWorldTool('paint');
 		},
 		async onReplace(entry, keepOpen) {
-			if (entry.ref === null) return { ok: false, message: 'Saved items are inserted, not replaced.' };
+			if (entry.ref === null)
+				return { ok: false, message: 'Saved items are inserted, not replaced.' };
 			const accepted = await input.finishes().applyLibraryFinish(entry.ref);
 			if (!accepted) {
 				return {

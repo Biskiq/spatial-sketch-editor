@@ -155,6 +155,13 @@
 
 	/** Replace writes to the target the sheet opened with, or refuses. */
 	const capturedTarget = untrack(() => (intent === 'replace' ? target : null));
+	const targetChanged = 'The selection changed since the Library opened. Nothing changed.';
+	function capturedTargetRefusal(next: LibraryTarget | null): string | null {
+		return capturedTarget === null || target === null || next === null ||
+			target.key !== capturedTarget.key || next.key !== capturedTarget.key
+			? targetChanged
+			: null;
+	}
 
 	const privateEntries = $derived(privateLibrary?.entries() ?? []);
 	const allEntries = $derived([...entries, ...privateEntries]);
@@ -278,9 +285,9 @@
 			return;
 		}
 		if (intent === 'replace') {
-			const stale = capturedTarget === null || target === null || target.key !== capturedTarget.key;
-			if (stale) {
-				refusal = 'The selection changed since the Library opened. Nothing changed.';
+			const stale = capturedTargetRefusal(capturedTarget);
+			if (stale !== null) {
+				refusal = stale;
 				return;
 			}
 			if (entry.source === 'mine')
@@ -309,11 +316,19 @@
 	/** Inserting a saved item is one G transfer and one independent F4 Finish. */
 	async function insertMine(
 		entry: LibraryFinishEntry,
-		target: LibraryTarget | null,
+		mineTarget: LibraryTarget | null,
 		keep: boolean,
 	): Promise<Outcome> {
+		if (intent === 'replace' && mineTarget !== null) {
+			const stale = capturedTargetRefusal(mineTarget);
+			if (stale !== null) return { ok: false, message: stale };
+		}
 		if (privateLibrary === null) return { ok: false, message: 'My library is unavailable here.' };
-		const outcome = await privateLibrary.insert(entry.key, target, target === null ? 'paint' : 'apply');
+		const outcome = await privateLibrary.insert(
+			entry.key,
+			mineTarget,
+			mineTarget === null ? 'paint' : 'apply',
+		);
 		if (!outcome.ok) return { ok: false, message: outcome.message };
 		if (!keep) onClose();
 		return { ok: true };
