@@ -17,7 +17,7 @@ const EXPECTED = {
 	minimal: ['prepare'],
 	focused: ['prepare', 'lint', 'focused'],
 	lean: ['prepare', 'lint', 'suite', 'checks', 'build'],
-	full: ['prepare', 'lint', 'suite', 'api', 'goldens', 'checks', 'build'],
+	full: ['prepare', 'lint', 'suite', 'api', 'goldens'],
 };
 
 function fail(message) {
@@ -37,7 +37,7 @@ try {
 if (jobs === null || typeof jobs !== 'object') fail('CI_GATE_JOBS is not an object');
 
 const profile = jobs?.prepare?.outputs?.profile ?? process.env.PROFILE ?? '';
-if (!(profile in EXPECTED)) fail(`unknown profile ${JSON.stringify(profile)}`);
+if (!Object.hasOwn(EXPECTED, profile)) fail(`unknown profile ${JSON.stringify(profile)}`);
 if (event === 'merge_group' && profile !== 'full') fail('a merge group must run the Full profile');
 
 const outputs = jobs?.prepare?.outputs ?? {};

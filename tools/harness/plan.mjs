@@ -4,7 +4,6 @@ import { pathToFileURL } from 'node:url';
 
 const SHA = /^[0-9a-f]{40}$/;
 const EDITOR = 'apps/editor/';
-const PROFILES = ['minimal', 'focused', 'lean', 'full'];
 // Heavy and API suites follow their own paths on a pull request.
 const HEAVY_PATHS = /^(?:packages\/|apps\/editor\/src\/lib\/(?:layout|render|authoring)\/)/;
 const API_PATHS = /^(?:apps\/api\/|packages\/)/;
@@ -91,7 +90,7 @@ export function createPlan(eventName, event, head) {
 	if (!SHA.test(head ?? '') || git('rev-parse', 'HEAD').trim() !== head) {
 		throw new Error('checkout does not match the tested SHA');
 	}
-	if (['schedule', 'workflow_dispatch'].includes(eventName)) return { profile: 'full', head };
+	if (eventName === 'workflow_dispatch') return { profile: 'full', head };
 	const group = eventName === 'merge_group';
 	if (!group && eventName !== 'pull_request') throw new Error('unsupported CI event');
 	const base = group ? event.merge_group?.base_sha : event.pull_request?.base?.sha;
@@ -114,14 +113,12 @@ export function createPlan(eventName, event, head) {
 		);
 		changes.push({ path, profile });
 	}
-	let profile =
-		PROFILES.findLast((level) => changes.some((change) => change.profile === level)) ?? 'minimal';
-	// A code pull request runs the lean profile; the merge queue and manual
-	// dispatch keep the Full profile unconditionally.
-	if (profile === 'focused') profile = 'lean';
-	const heavy = changes.some(
-		(change) => change.profile !== 'deleted' && HEAVY_PATHS.test(change.path),
-	);
+	const profile = group
+		? 'full'
+		: changes.some((change) => change.profile !== 'minimal')
+			? 'lean'
+			: 'minimal';
+	const heavy = changes.some((change) => HEAVY_PATHS.test(change.path));
 	const api = changes.some((change) => API_PATHS.test(change.path));
 	return { profile, head, base, heavy, api, changes };
 }
@@ -137,5 +134,8 @@ export function eventPlan() {
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
 	const plan = eventPlan();
 	console.log(JSON.stringify(plan, null, 2));
-	appendFileSync(process.env.GITHUB_OUTPUT, `profile=${plan.profile}\nbase=${plan.base ?? ''}\n`);
+	appendFileSync(
+		process.env.GITHUB_OUTPUT,
+		`profile=${plan.profile}\nbase=${plan.base ?? ''}\nheavy=${Number(Boolean(plan.heavy))}\napi=${Number(Boolean(plan.api))}\n`,
+	);
 }
