@@ -25,6 +25,20 @@ import {
 } from '$lib/authoring/experience/playback.svelte';
 import { guideTimeMapForProgram } from '$lib/authoring/experience/playback-map';
 
+/** The Guide's shell and its extracted regions share these contracts. */
+function guideSource(): string {
+	return [
+		'ExperienceGuide.svelte',
+		'ExperienceGuideHeader.svelte',
+		'ExperienceGuideCards.svelte',
+		'ExperienceGuideTrack.svelte',
+		'ExperienceStopCard.svelte',
+		'ExperienceStopConnector.svelte'
+	]
+		.map((file) => readFileSync(`src/lib/authoring/experience/${file}`, 'utf8'))
+		.join('\n');
+}
+
 async function source(pacing: 'automatic' | 'manual' = 'automatic'): Promise<PlaybackSource> {
 	const envelope = await experienceEnvelope({
 		experience: {
@@ -150,7 +164,7 @@ describe('R217.S30 playback', () => {
 		const routeCode = stripComments(readFileSync(route, 'utf8'));
 		const binding = path.join(EDITOR_LIB, 'authoring/stage/route/stage-experience-binding.svelte.ts');
 		const bindingCode = stripComments(readFileSync(binding, 'utf8'));
-		const guide = readFileSync('src/lib/authoring/experience/ExperienceGuide.svelte', 'utf8');
+		const guide = guideSource();
 		expect(page).toContain('createExperiencePlayback');
 		expect(page).toContain('shouldWritePlaybackSample');
 		expect(page).toContain('captureStandpoint');
@@ -185,7 +199,7 @@ describe('R217.S30 playback', () => {
 	});
 
 	it('carries the shell roles, type and 8 px / 44 px target metrics', () => {
-		const guide = readFileSync('src/lib/authoring/experience/ExperienceGuide.svelte', 'utf8');
+		const guide = guideSource();
 		expect(guide).toContain('data-playback-timeline');
 		expect(guide).toContain('data-playback-total');
 		// Owner review (5 Nov): the strip's highlight is gold, and its one track is a 3 px rail.
@@ -218,7 +232,7 @@ describe('Review round 3 — the Guide reads like a video timeline', () => {
 	});
 
 	it('has no Play-from menu: ▶ plays from the playhead, and pressing a Stop or a move seeks', () => {
-		const guide = readFileSync('src/lib/authoring/experience/ExperienceGuide.svelte', 'utf8');
+		const guide = guideSource();
 		expect(guide).not.toContain('Play from…');
 		expect(guide).not.toContain('transport-menu');
 		expect(guide).toContain("playback.seekStop(stopId, 'start')");

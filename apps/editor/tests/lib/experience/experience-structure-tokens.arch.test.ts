@@ -77,7 +77,7 @@ describe('R217.S26 visual tokens', () => {
 	});
 
 	it('the strip and View rail mark reorders with a quiet light line, never gold', () => {
-		const guide = source('experience/ExperienceGuide');
+		const guide = source('experience/ExperienceGuideCards');
 		const guideCaret = rule(guide, '.caret');
 		for (const declaration of ['width: 3px', 'border-radius: 2px', 'var(--shell-leaf-soft)']) {
 			expect(guideCaret).toContain(declaration);

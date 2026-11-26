@@ -369,7 +369,7 @@ describe('Stage shell composition', () => {
 		// every other composed component so extracting route markup cannot hide a
 		// new, unguarded Stage capture in the lens layer.
 		const pathsFile = join(EDITOR_SRC, 'lib', 'authoring', 'experience', 'ExperiencePaths.svelte');
-		const guideFile = join(EDITOR_SRC, 'lib', 'authoring', 'experience', 'ExperienceGuide.svelte');
+		const guideFile = join(EDITOR_SRC, 'lib', 'authoring', 'experience', 'ExperienceGuideTrack.svelte');
 		const host = composedSpatialHost().map(({ file, code }) => ({ file, code: stripComments(code) }));
 		const paths = host.filter(({ file }) => file === pathsFile);
 		expect(paths).toHaveLength(1);
@@ -546,14 +546,18 @@ describe('Stage shell composition', () => {
 		// component so moving the lens markup cannot hide a new Stage measurement.
 		const experienceDir = join(EDITOR_SRC, 'lib', 'authoring', 'experience');
 		const allowed: Record<string, readonly (readonly [string, number])[]> = {
-			'ExperienceGuide.svelte': [
-				['element.getBoundingClientRect()', 1],
-				['(rowEl ?? barEl).getBoundingClientRect()', 1],
-				['barEl.getBoundingClientRect()', 2],
+			'ExperienceGuide.svelte': [],
+			'ExperienceGuideCards.svelte': [
+				['barEl.getBoundingClientRect()', 1],
 				['els[index]!.getBoundingClientRect()', 1],
 				['scroller.getBoundingClientRect()', 1],
-				['scroller.clientWidth', 6],
+				['scroller.clientWidth', 5],
 				[' scale(.9)', 1]
+			],
+			'ExperienceGuideTrack.svelte': [
+				['element.getBoundingClientRect()', 1],
+				['(row ?? barEl).getBoundingClientRect()', 1],
+				['barEl.getBoundingClientRect()', 1]
 			],
 			'ExperienceViewRail.svelte': [['(event.currentTarget as HTMLElement).getBoundingClientRect()', 1]],
 			'ExperienceMarks.svelte': [[' scale(${scale})', 1]]

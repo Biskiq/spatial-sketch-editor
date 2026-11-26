@@ -1,20 +1,15 @@
 {
   "generatedFrom": "LOC-0 baseline; shrink-only from here",
   "counts": {
-    "filesOver600": 102,
-    "filesOver1000": 7,
-    "filesOver1500": 1,
+    "filesOver600": 103,
+    "filesOver1000": 6,
+    "filesOver1500": 0,
     "functionsOver200": 81,
     "exportStars": 0,
     "crossPackageReexports": 0,
     "seams": 8
   },
   "files": [
-    {
-      "path": "apps/editor/src/lib/authoring/experience/ExperienceGuide.svelte",
-      "lines": 1983,
-      "reason": "One mounted Guide surface: every row editor shares the Guide id, the one selection and the Card writer."
-    },
     {
       "path": "apps/editor/src/lib/authoring/look/finish-authoring.svelte.ts",
       "lines": 1479,
@@ -396,6 +391,11 @@
       "reason": "The Scene adapter's read-only projections: subjects, marks and card facts share one snapshot reader."
     },
     {
+      "path": "apps/editor/src/lib/authoring/experience/ExperienceGuideCards.svelte",
+      "lines": 669,
+      "reason": "The Stop-order strip owns card drag, insertion, selection and DOM measurement around the shared Guide timeline."
+    },
+    {
       "path": "apps/editor/src/lib/authoring/adapters/scene/support-occlusion.ts",
       "lines": 663,
       "reason": "Floor support resolution: ray, floor plane and occluders share the same drawn geometry."
@@ -424,6 +424,11 @@
       "path": "packages/layout-core/src/geometry/types.ts",
       "lines": 649,
       "reason": "One compiled-geometry type vocabulary; the types must stay together so no consumer imports half a contract."
+    },
+    {
+      "path": "apps/editor/src/lib/authoring/experience/ExperienceGuideHeader.svelte",
+      "lines": 648,
+      "reason": "The Guide header owns rename, pacing, Guide actions and the + Stop menu against the shared controller."
     },
     {
       "path": "apps/editor/src/lib/authoring/adapters/layout/instrument.ts",

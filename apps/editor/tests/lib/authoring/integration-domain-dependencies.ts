@@ -7,6 +7,7 @@ const domainToCore: readonly [source: string, targets: readonly string[]][] = [
 
 	// Experience components share the editor's glyphs and snapshot handoff.
 	['experience/ExperienceMarks.svelte', ['shell/StageSticker.svelte']],
+	['experience/ExperienceGuideHeader.svelte', ['shell/ShellIcon.svelte']],
 	['experience/ExperiencePathMovement.svelte', ['shell/ShellIcon.svelte']],
 	['experience/ExperiencePresentationWriter.svelte', ['shell/ShellIcon.svelte']],
 	['experience/ExperienceSnapshot.svelte', ['shell/ShellIcon.svelte', 'stage-snapshots.ts']],
