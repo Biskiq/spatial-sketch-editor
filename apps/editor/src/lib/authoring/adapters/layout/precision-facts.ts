@@ -78,16 +78,19 @@ export function openSideRunCount(
  * arc's Card offers one step back to the whole, and the Wall's own identity
  * already names the subject.
  */
-export function wallBoundingRoundRooms(
+export function wallBoundedRooms(
 	document: LayoutDocumentWallFirst,
 	wallId: string,
 ): readonly { readonly roomId: string; readonly name: string }[] {
-	return document.rooms
-		.filter(
-			(room) =>
-				room.round !== undefined && room.boundary.some((ref) => ref.wallId === wallId),
-		)
-		.map((room) => ({ roomId: room.id, name: room.name ?? 'Room' }));
+	const rooms = document.rooms.filter((room) =>
+		room.boundary.some((ref) => ref.wallId === wallId),
+	);
+	// Only a Wall that bounds a Round Room is a ring member. An ordinary shared
+	// Wall keeps its Card unchanged; a ring arc that also bounds an ordinary
+	// neighbour offers both destinations, because the creator needs a way back
+	// to every Space the member separates.
+	if (!rooms.some((room) => room.round !== undefined)) return [];
+	return rooms.map((room) => ({ roomId: room.id, name: room.name ?? 'Room' }));
 }
 
 /**
@@ -190,7 +193,7 @@ export function layoutFacts(
 			{ label: 'Thickness', value: formatMeters(wall.thickness), fieldId: 'thickness' },
 		];
 		const roundRoom = findEnclosingRoundRoomForWall(document, wall.id);
-		const bounding = wallBoundingRoundRooms(document, wall.id);
+		const bounding = wallBoundedRooms(document, wall.id);
 		if (bounding.length > 0) {
 			facts.push({
 				label: 'Bounds',

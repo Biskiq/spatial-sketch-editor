@@ -36,6 +36,7 @@ const allowed = new Map<string, readonly string[]>([
 			'./precision-intents',
 			'./refusals',
 			'./session-ports',
+			'./snap',
 			'./stage-pointer',
 			core
 		]

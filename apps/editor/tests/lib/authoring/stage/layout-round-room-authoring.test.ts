@@ -39,7 +39,12 @@ import {
 import { planDuplicateRoom } from '@portfolio/layout-core/plan';
 import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core/geometry';
 import { mintLayoutIdCapture } from '@portfolio/layout-core/plan';
-import { captureUnitSave, readUnitEnvelopeForSave, type ProjectEnvelope } from '@portfolio/project-model/units';
+import {
+	captureUnitSave,
+	prepareUnitRuntime,
+	readUnitEnvelopeForSave,
+	type ProjectEnvelope
+} from '@portfolio/project-model/units';
 
 import { admitSource } from '$lib/authoring/stage/source-admission';
 import { createStageSession, type StageSession } from '$lib/authoring/stage/stage-session';
@@ -53,6 +58,7 @@ import {
 	stageCardWriter
 } from '$lib/authoring/stage/stage-contributions';
 import { createAdapter } from '$lib/authoring/adapters/layout.adapter';
+import { wallCenterlinePaper } from '$lib/authoring/adapters/layout/candidate-preview';
 import {
 	roundRoomRadiusIntent,
 	roundRoomReleaseIntent
@@ -65,7 +71,6 @@ import { freshCapture } from '../../../../../../packages/layout-core/tests/__fix
 
 const RECT = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };
 const PROJECT_ID = 'project-layout-c4-connected-curves';
-const ELEVATION = 0.5;
 
 type Ring = {
 	readonly document: LayoutDocumentWallFirst;
@@ -163,6 +168,67 @@ function connectedRing(options: { center?: [number, number]; radius?: number } =
 	};
 }
 
+type AttachedGallery = Ring & {
+	readonly galleryId: string;
+	readonly sharedWallId: string;
+	readonly doorId: string;
+};
+
+/** J6's shape: a Rotunda attached to an ordinary Gallery by one shared arc and door. */
+function attachedGallery(): AttachedGallery {
+	const rot = rotunda({ center: [0, 0], radius: 5, seed: 'c4-gallery', name: 'Rotunda' });
+	const attach = planWallChain({
+		baseline: rot.document,
+		points: [
+			[0, 5],
+			[0, 10],
+			[10, 10],
+			[10, 0],
+			[5, 0]
+		],
+		close: false,
+		endpointHostSnaps: [{ pointIndex: 0, wallId: rot.wallId }],
+		endpointJunctionSnaps: [{ pointIndex: 4, junctionId: rot.junctionId }],
+		capture: cap('c4-gallery-annex'),
+		levelId: rot.document.floor.id
+	});
+	if (attach.kind !== 'success') throw new Error(`gallery attach refused: ${attach.rejection.message}`);
+	const rotundaRoom = attach.document.rooms.find((room) => room.id === rot.roomId)!;
+	const galleryRoom = attach.document.rooms.find((room) => room.id !== rot.roomId)!;
+	const shared = rotundaRoom.boundary.find((ref) =>
+		galleryRoom.boundary.some((other) => other.wallId === ref.wallId)
+	)!;
+	const door = planCreateWallFirstOpening(
+		attach.document,
+		{
+			wallId: shared.wallId,
+			kind: 'door',
+			offset: 1,
+			width: 0.8,
+			connectsRoomIds: [rot.roomId, galleryRoom.id]
+		},
+		cap('c4-gallery-door'),
+		attach.document.floor.id
+	);
+	if (door.kind === 'rejected') throw new Error(`gallery door refused: ${door.rejection.message}`);
+	const document = door.document;
+	const finalRotunda = document.rooms.find((room) => room.id === rot.roomId)!;
+	return {
+		document,
+		roomId: rot.roomId,
+		seamJunctionId: roundRoomSeamJunctionId(
+			finalRotunda,
+			new Map(document.walls.map((wall) => [wall.id, wall]))
+		)!,
+		memberWallIds: finalRotunda.boundary.map((ref) => ref.wallId),
+		outsideWallIds: attach.authoredWallIds,
+		openingId: door.changedOpeningIds[0]!,
+		galleryId: galleryRoom.id,
+		sharedWallId: shared.wallId,
+		doorId: door.changedOpeningIds[0]!
+	};
+}
+
 type Mounted = {
 	readonly facade: StageFacade;
 	readonly session: StageSession;
@@ -243,9 +309,18 @@ function selectRoom(facade: StageFacade, roomId: string): void {
 }
 
 function stageCss(facade: StageFacade, point: readonly [number, number]): readonly [number, number] {
+	// The drag target is read by the working-plane ray, so project it at the
+	// document's own datum rather than a guessed Paper elevation.
+	return projectWorldCss(facade, [point[0], facade.snapshot().domain.datumMeters, point[1]]);
+}
+
+function projectWorldCss(
+	facade: StageFacade,
+	point: readonly [number, number, number]
+): readonly [number, number] {
 	const evaluationId = facade.evaluationId();
 	if (evaluationId === null) throw new Error('the mounted fixture has no evaluation');
-	const projected = facade.projectWorld([point[0], ELEVATION, point[1]], evaluationId);
+	const projected = facade.projectWorld(point, evaluationId);
 	if (projected.kind !== 'projected') throw new Error('the fixture point did not project');
 	return [projected.css[0] - RECT.left, projected.css[1] - RECT.top];
 }
@@ -340,10 +415,11 @@ describe('C4 · connected curve authoring', () => {
 
 		const ray = mounted.facade.marks().find((mark) => mark.id === 'layout-round-room-radius-mark')!;
 		const evaluationId = mounted.facade.evaluationId()!;
-		// The pointer must not snap: the assertion pins the exact typed radius.
-		mounted.session.setDrafting({ snap: false });
+		// Snap is the shared scalar-grip contract: a knob 5 cm off the 0.5 m grid
+		// acquires the cell, and the candidate names the family it acquired.
+		mounted.session.setDrafting({ snap: true });
 		const knob = ray.tip!;
-		const target = stageCss(mounted.facade, [6, 0]);
+		const target = stageCss(mounted.facade, [6.05, 0]);
 
 		mounted.facade.pointerIntent({ phase: 'down', css: knob, evaluationId, handleId: ray.id });
 		mounted.facade.pointerIntent({ phase: 'move', css: target, evaluationId, handleId: ray.id });
@@ -352,9 +428,33 @@ describe('C4 · connected curve authoring', () => {
 		expect(preview).toHaveLength(1);
 		expect(preview[0]!.id).toBe('layout-round-room-radius-candidate');
 		expect(preview[0]!.role).toBe('subject');
+		expect(preview[0]!.snap?.name).toBe('Grid');
 		const shownRadius = Number(/Radius ([0-9.]+) m/.exec(preview[0]!.labels[0]!.text)![1]);
-		expect(Number.isFinite(shownRadius)).toBe(true);
+		expect(shownRadius).toBe(6);
 		expect(preview[0]!.segments.length).toBeGreaterThan(0);
+
+		// The preview is the complete candidate the release will write: every
+		// segment projects the same planner document at the same snapped radius.
+		const snappedPlan = planResizeRoundRoomRadius({
+			document: before,
+			roomId: ring.roomId,
+			radius: shownRadius
+		});
+		if (snappedPlan.kind !== 'success') throw new Error('the snapped candidate was refused');
+		const candidateSegments = wallCenterlinePaper(
+			snappedPlan.document,
+			new Set(snappedPlan.changedWallIds),
+			mounted.facade.snapshot().domain.datumMeters
+		).segments.map(([from, to]) => [projectWorldCss(mounted.facade, from), projectWorldCss(mounted.facade, to)] as const);
+		expect(preview[0]!.segments).toHaveLength(candidateSegments.length);
+		for (let index = 0; index < candidateSegments.length; index += 1) {
+			const shown = preview[0]!.segments[index]!;
+			const planned = candidateSegments[index]!;
+			for (const end of [0, 1] as const) {
+				expect(shown[end][0]).toBeCloseTo(planned[end][0], 5);
+				expect(shown[end][1]).toBeCloseTo(planned[end][1], 5);
+			}
+		}
 
 		mounted.facade.pointerIntent({ phase: 'up', css: target, evaluationId, handleId: ray.id });
 		await eventually(() => mounted.host.history().depth === beforeHistory.depth + 1);
@@ -372,8 +472,7 @@ describe('C4 · connected curve authoring', () => {
 		// Identity, exact radius, seam and the Opening's angular station survive.
 		const roomAfter = after.rooms.find((room) => room.id === ring.roomId)!;
 		const committedRadius = roomAfter.round!.radius;
-		expect(committedRadius).toBeGreaterThan(shownRadius - 0.005);
-		expect(committedRadius).toBeLessThan(shownRadius + 0.005);
+		expect(committedRadius).toBe(shownRadius);
 		expect(roomAfter.name).toBe(before.rooms.find((room) => room.id === ring.roomId)!.name);
 		expect(roundRoomSeamJunctionId(roomAfter, new Map(after.walls.map((wall) => [wall.id, wall])))).toBe(
 			ring.seamJunctionId
@@ -644,5 +743,181 @@ describe('C4 · connected curve authoring', () => {
 			before.floor.id
 		);
 		expect(planned.kind).not.toBe('rejected');
+	});
+
+	it('draws a refused radius, keeps the accepted bytes and writes nothing', async () => {
+		const gallery = attachedGallery();
+		const mounted = await mount(gallery.document);
+		settle(mounted.facade, 2);
+		selectRoom(mounted.facade, gallery.roomId);
+		settle(mounted.facade, 2);
+		const before = acceptedLayout(mounted.facade);
+		const beforeBytes = mounted.facade.snapshot().canonicalJson;
+		const beforeHistory = mounted.host.history();
+		mounted.session.setDrafting({ snap: true });
+		const ray = mounted.facade.marks().find(
+			(mark) => mark.id === 'layout-round-room-radius-mark'
+		)!;
+		const evaluationId = mounted.facade.evaluationId()!;
+		const target = stageCss(mounted.facade, [12, 0]);
+
+		const planned = planResizeRoundRoomRadius({
+			document: before,
+			roomId: gallery.roomId,
+			radius: 12
+		});
+		expect(planned.kind).toBe('rejected');
+		if (planned.kind !== 'rejected') return;
+
+		mounted.facade.pointerIntent({ phase: 'down', css: ray.tip!, evaluationId, handleId: ray.id });
+		mounted.facade.pointerIntent({ phase: 'move', css: target, evaluationId, handleId: ray.id });
+		settle(mounted.facade, 2);
+		const preview = mounted.facade.candidatePreviews();
+		expect(preview).toHaveLength(1);
+		expect(preview[0]!.role).toBe('refused');
+		expect(preview[0]!.labels[0]!.text).toBe(planned.rejection.message);
+		expect(preview[0]!.segments).toEqual([]);
+
+		mounted.facade.pointerIntent({ phase: 'up', css: target, evaluationId, handleId: ray.id });
+		settle(mounted.facade, 2);
+		expect(mounted.facade.snapshot().canonicalJson).toBe(beforeBytes);
+		expect(mounted.host.history()).toEqual(beforeHistory);
+		// The release discloses the refusal; it never leaves a live geometry proposal.
+		expect(mounted.facade.candidatePreviews().some((candidate) => candidate.role === 'subject')).toBe(false);
+	});
+
+	it('drops a revoked, cancelled or stale radius gesture without writing', async () => {
+		const ring = connectedRing();
+		const mounted = await mount(ring.document);
+		settle(mounted.facade, 2);
+		selectRoom(mounted.facade, ring.roomId);
+		settle(mounted.facade, 2);
+		const beforeBytes = mounted.facade.snapshot().canonicalJson;
+		const beforeHistory = mounted.host.history();
+		mounted.session.setDrafting({ snap: true });
+		const ray = mounted.facade.marks().find(
+			(mark) => mark.id === 'layout-round-room-radius-mark'
+		)!;
+		const evaluationId = mounted.facade.evaluationId()!;
+		const knob = ray.tip!;
+		const target = stageCss(mounted.facade, [8, 0]);
+
+		const arm = (): void => {
+			mounted.facade.pointerIntent({ phase: 'down', css: knob, evaluationId, handleId: ray.id });
+			mounted.facade.pointerIntent({ phase: 'move', css: target, evaluationId, handleId: ray.id });
+			settle(mounted.facade, 2);
+			expect(mounted.facade.candidatePreviews()).toHaveLength(1);
+		};
+
+		// Cancel: the candidate is dismissed, and the release that follows the
+		// cancel names no radius to write.
+		arm();
+		mounted.facade.pointerIntent({ phase: 'cancel', css: target, evaluationId, handleId: ray.id });
+		mounted.facade.pointerIntent({ phase: 'up', css: target, evaluationId, handleId: ray.id });
+		settle(mounted.facade, 2);
+		expect(mounted.facade.snapshot().canonicalJson).toBe(beforeBytes);
+		expect(mounted.host.history()).toEqual(beforeHistory);
+		expect(mounted.facade.candidatePreviews()).toEqual([]);
+
+		// Revoked: a reading change releases the lease under the session while its
+		// captured candidate is still live. The next pointer event must drop it.
+		arm();
+		expect(mounted.session.gesture()).not.toBeNull();
+		expect(mounted.session.applyReadingChange()).toMatchObject({ cancelled: true });
+		mounted.facade.pointerIntent({ phase: 'move', css: target, evaluationId, handleId: ray.id });
+		mounted.facade.pointerIntent({ phase: 'up', css: target, evaluationId, handleId: ray.id });
+		settle(mounted.facade, 2);
+		expect(mounted.facade.snapshot().canonicalJson).toBe(beforeBytes);
+		expect(mounted.host.history()).toEqual(beforeHistory);
+		expect(mounted.facade.candidatePreviews()).toEqual([]);
+
+		// Stale: an intent from another evaluation can never finish this gesture.
+		arm();
+		mounted.facade.pointerIntent({
+			phase: 'move',
+			css: target,
+			evaluationId: 'stale-evaluation',
+			handleId: ray.id
+		});
+		mounted.facade.pointerIntent({
+			phase: 'up',
+			css: target,
+			evaluationId: 'stale-evaluation',
+			handleId: ray.id
+		});
+		settle(mounted.facade, 2);
+		expect(mounted.facade.snapshot().canonicalJson).toBe(beforeBytes);
+		expect(mounted.host.history()).toEqual(beforeHistory);
+		expect(mounted.session.gesture()).toBeNull();
+	});
+
+	it('navigates to every Room a round member bounds, including its ordinary neighbour', async () => {
+		const gallery = attachedGallery();
+		const mounted = await mount(gallery.document);
+		settle(mounted.facade, 2);
+		const actions = stageCardActions(mounted.facade, wallSubject(gallery.sharedWallId));
+		const rotunda = actions.find((action) => action.id === `layout-wall-bounds:${gallery.roomId}`);
+		const neighbour = actions.find((action) => action.id === `layout-wall-bounds:${gallery.galleryId}`);
+		expect(rotunda).toBeDefined();
+		expect(neighbour).toBeDefined();
+		const name = gallery.document.rooms.find((room) => room.id === gallery.galleryId)!.name ?? 'Room';
+		expect(neighbour!.label).toBe(`Go to ${name}`);
+		expect((await neighbour!.run()).kind).toBe('accepted');
+		settle(mounted.facade, 2);
+		expect(mounted.facade.selection()).toMatchObject({
+			sourceId: gallery.galleryId,
+			sourceKind: 'room-floor'
+		});
+	});
+
+	it('prepares identical visitor geometry and portal relations after a radius edit', async () => {
+		const gallery = attachedGallery();
+		const mounted = await mount(gallery.document);
+		settle(mounted.facade, 2);
+		const before = mounted.facade.snapshot();
+		const outcome = await mounted.services.authoring.accept(
+			roundRoomRadiusIntent({
+				roomId: gallery.roomId,
+				radius: 5.6,
+				operationId: 'c4-visitor-radius',
+				projectId: before.acceptedRevision.projectId,
+				revisionId: before.acceptedRevision.revisionId,
+				contentRevision: before.domain.unitRevisions.layout,
+				levelId: before.domain.layoutLevelId
+			})
+		);
+		expect(outcome.kind).toBe('installed');
+		settle(mounted.facade, 2);
+		const after = acceptedLayout(mounted.facade);
+		expect(after.rooms.find((room) => room.id === gallery.roomId)!.round?.radius).toBe(5.6);
+		const door = after.openings.find((opening) => opening.id === gallery.doorId)!;
+		expect(door.connectsRoomIds).toEqual([gallery.roomId, gallery.galleryId]);
+
+		const captured = await captureUnitSave({
+			snapshot: mounted.host.coordinator().acceptedSnapshot(),
+			operationId: 'c4-visitor-roundtrip',
+			precondition: { kind: 'create-only' }
+		});
+		expect(captured.kind).toBe('captured');
+		if (captured.kind !== 'captured') throw new Error(`Save capture refused: ${captured.message}`);
+		const reloaded = await readUnitEnvelopeForSave(captured.capture.canonicalJson);
+		expect(reloaded.kind).toBe('read');
+		if (reloaded.kind !== 'read') throw new Error(`Save reload refused: ${reloaded.message}`);
+		const prepared = prepareUnitRuntime(reloaded.envelope);
+		expect(prepared.kind).toBe('ready');
+		if (prepared.kind !== 'ready') throw new Error('the visitor runtime refused the saved source');
+
+		const editorGeometry = mounted.facade.snapshot().domain.geometry;
+		expect(JSON.stringify(prepared.geometry.walls)).toBe(JSON.stringify(editorGeometry.walls));
+		expect(JSON.stringify(prepared.geometry.rooms)).toBe(JSON.stringify(editorGeometry.rooms));
+		const portal = prepared.geometry.walls
+			.find((wall) => wall.wallId === gallery.sharedWallId)!
+			.openings.find((opening) => opening.openingId === gallery.doorId)!;
+		expect(portal.kind).toBe('door');
+		expect(portal.connectsRoomIds).toEqual([gallery.roomId, gallery.galleryId]);
+		expect(
+			prepared.envelope.units.layout.data.openings.find((opening) => opening.id === gallery.doorId)
+		).toEqual(door);
+		expect(prepared.issues.filter((issue) => /portal|relation/i.test(issue.code))).toEqual([]);
 	});
 });

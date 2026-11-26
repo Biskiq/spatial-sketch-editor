@@ -10,7 +10,10 @@
  * `room.round` fact with the same planner.
  *
  * A refused candidate publishes its own reason and keeps the accepted document
- * untouched. A cancelled gesture or a stale baseline writes nothing.
+ * untouched. A cancelled gesture, a revoked lease or a stale baseline writes
+ * nothing. The radius honours the shared drafting-snap contract: Snap rounds
+ * the knob to the same 0.5 m grid every scalar grip uses, and the candidate
+ * names the winning family.
  */
 import { planResizeRoundRoomRadius } from '@portfolio/layout-core/room';
 import type { LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
@@ -24,6 +27,7 @@ import type { GestureAcquisition } from '$lib/authoring/stage/stage-adapter-host
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 
 import { candidatePreviewOf, wallCenterlinePaper } from './candidate-preview';
+import { snapRadius } from './snap';
 import { pointerDatumPoint } from './stage-pointer';
 import { selectedRoundRoom } from './layout-subjects';
 import { roundRoomRadiusIntent } from './round-room-planners';
@@ -43,6 +47,7 @@ type RoundRoomRadiusGesture = {
 	changedWallIds: ReadonlySet<string>;
 	radius: number | null;
 	refusal: string | null;
+	snap: { readonly world: [number, number, number]; readonly name: string } | null;
 };
 
 export function createRoundRoomRadiusSession({
@@ -99,11 +104,21 @@ export function createRoundRoomRadiusSession({
 				changedWallIds: new Set(),
 				radius: null,
 				refusal: null,
+				snap: null,
 			};
 			services.stage.notifySurfaceChange();
 			return true;
 		}
 
+		// A reading change may revoke the lease while this session still holds its
+		// captured candidate. A revoked lease is stale by definition: drop the
+		// gesture without writing, exactly like a cancel.
+		if (!active.lease.lease.active) {
+			end();
+			publishRefusal(null);
+			services.stage.notifySurfaceChange();
+			return true;
+		}
 		if (intent.phase === 'cancel' || intent.evaluationId !== active.evaluationId) {
 			end();
 			publishRefusal(null);
@@ -115,21 +130,30 @@ export function createRoundRoomRadiusSession({
 				active.preview = null;
 				active.radius = null;
 				active.refusal = null;
+				active.snap = null;
 				publishRefusal(null);
 				services.stage.notifySurfaceChange();
 				return true;
 			}
 			const point = pointerDatumPoint(ctx, intent.css);
 			if (point === null) return true;
-			const radius = Math.hypot(point[0] - active.center[0], point[1] - active.center[1]);
+			const drafted = snapRadius(active.center, point, ctx);
+			const radius = drafted.radius;
 			if (!(radius > 0)) {
 				active.preview = null;
 				active.radius = null;
+				active.snap = null;
 				active.refusal = 'A radius must be greater than zero.';
 				publishRefusal(active.refusal);
 				services.stage.notifySurfaceChange();
 				return true;
 			}
+			const knob: [number, number, number] = [
+				active.center[0] + active.direction[0] * radius,
+				ctx.snapshot.domain.datumMeters,
+				active.center[1] + active.direction[1] * radius,
+			];
+			active.snap = drafted.snapped ? { world: knob, name: 'Grid' } : null;
 			const planned = planResizeRoundRoomRadius({
 				document: stageLayout(ctx.snapshot),
 				roomId: active.roomId,
@@ -139,6 +163,7 @@ export function createRoundRoomRadiusSession({
 				active.preview = null;
 				active.changedWallIds = new Set();
 				active.radius = null;
+				active.snap = null;
 				active.refusal = planned.rejection.message;
 			} else {
 				active.preview = planned.document;
@@ -223,6 +248,7 @@ export function createRoundRoomRadiusSession({
 						text: `Radius ${(current.radius ?? 0).toFixed(2)} m`,
 					},
 				],
+				...(current.snap === null ? {} : { snap: current.snap }),
 			}),
 		];
 	}

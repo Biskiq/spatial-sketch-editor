@@ -15,7 +15,7 @@ import type {
 } from '$lib/authoring/stage/stage-adapter-host';
 import { stageUnitRevision } from '$lib/authoring/stage/stage-adapter-host';
 
-import { wallBoundingRoundRooms } from './precision-facts';
+import { wallBoundedRooms } from './precision-facts';
 import { roundRoomReleaseIntent } from './round-room-planners';
 
 type RoomFact = {
@@ -88,7 +88,7 @@ export function wallBoundingRoomActions(
 	document: LayoutDocumentWallFirst,
 	wallId: string,
 ): StageCardAction[] {
-	return wallBoundingRoundRooms(document, wallId).map((room) => ({
+	return wallBoundedRooms(document, wallId).map((room) => ({
 		id: `layout-wall-bounds:${room.roomId}`,
 		label: `Go to ${room.name}`,
 		group: 'secondary',
