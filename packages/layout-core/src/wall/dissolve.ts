@@ -65,7 +65,13 @@ import { validateWallFirstPortalRelations } from './portals';
 import { joinWallSurfaceLineage, type LayoutSurfaceLineage } from '../plan/surface-reference';
 import { findRoundRoomSeamOwner, ROUND_ROOM_MEMBER_EDIT_MESSAGE } from '../room/round-room';
 import { tangentAnchorsAllowContinuation } from './junction-resolution';
-import { WALL_TOP_NOT_JOINABLE_CODE, wallTopIsLevel } from './wall-top';
+import {
+	mergeWallTops,
+	reverseWallTop,
+	WALL_TOP_NOT_JOINABLE_CODE,
+	wallTopIsLevel,
+	type WallTopJoinPart,
+} from './wall-top';
 
 /** Dissolve-only rejection codes; stable machine codes per operation. */
 export type DissolveSpecificRejectionCode =
@@ -86,7 +92,7 @@ export type DissolveSpecificRejectionCode =
 	| 'invalid_candidate_document'
 	| 'captured_id_in_use'
 	| 'round_room_member_locked'
-	/** A joined Wall's top would be silently re-sloped (exact join arithmetic is V2b). */
+	/** The two Walls' tops do not merge into one level, slope or gable. */
 	| typeof WALL_TOP_NOT_JOINABLE_CODE;
 
 /**
@@ -263,24 +269,13 @@ export function planDissolveJunction(
 		});
 	}
 
-	// A sloped or gabled top cannot be merged until V2b lands the exact join
-	// arithmetic: keeping the survivor's top over the longer span would silently
-	// re-slope the Wall. Only two level tops join.
-	const profiled = [first, second].filter((wall) => !wallTopIsLevel(wall.top));
-	if (profiled.length > 0) {
-		return reject({
-			code: WALL_TOP_NOT_JOINABLE_CODE,
-			message: `Wall${profiled.length > 1 ? 's' : ''} ${profiled.map((wall) => `'${wall.id}'`).join(' and ')} ${profiled.length > 1 ? 'have' : 'has'} a sloped or gabled top; joining needs exact top arithmetic that arrives with V2b. Make the top level first.`,
-			junctionIds: [junctionId],
-			wallIds: [first.id, second.id],
-		});
-	}
-
-	// Compatibility: dimensions and naming must agree (exact equality — merging
-	// across a mismatch would invent or drop authored data). Format 6 has no
-	// authored role to compare: the joined Wall's role is derived from the Rooms
-	// the merged containment ends up forming.
-	if (first.thickness !== second.thickness || first.height !== second.height) {
+	// Compatibility: thickness and naming must agree (exact equality — merging
+	// across a mismatch would invent or drop authored data). Two level tops still
+	// need one height; a profiled pair is instead judged by whether its tops meet
+	// continuously at the joint, which is the join's own gate below.
+	const levelHeightMismatch =
+		wallTopIsLevel(first.top) && wallTopIsLevel(second.top) && first.height !== second.height;
+	if (first.thickness !== second.thickness || levelHeightMismatch) {
 		return reject({
 			code: 'incompatible_wall_pair',
 			message: `Walls '${first.id}' and '${second.id}' disagree on thickness or height and cannot join`,
@@ -449,14 +444,36 @@ export function planDissolveJunction(
 		return { ...opening, wallId: survivor.id, offset };
 	});
 
+	// Exact top join in the joined Wall's canonical direction. A side traversed in
+	// reverse mirrors its own rises and apex station first, so the merge always
+	// reads start → joint → end. The merged shape is the one level, slope or gable
+	// the two tops form; anything else refuses whole.
+	const part = (wall: LayoutWall, length: number, forward: boolean): WallTopJoinPart => ({
+		height: wall.height,
+		top: forward ? wall.top : reverseWallTop(wall.top, length),
+		length,
+	});
+	const mergedTop = mergeWallTops(
+		part(survivor, survivorLength, survivorForward),
+		part(other, otherLength, otherForward),
+	);
+	if (!mergedTop) {
+		return reject({
+			code: WALL_TOP_NOT_JOINABLE_CODE,
+			message: `Walls '${first.id}' and '${second.id}' have tops that do not form one level, slope or gable at junction '${junctionId}'; adjust their tops or make them level`,
+			junctionIds: [junctionId],
+			wallIds: [first.id, second.id],
+		});
+	}
+
 	const joinedName = survivor.name ?? other.name;
 	const joinedWall: LayoutWall = {
 		id: survivor.id,
 		startJunctionId: joinedStartId,
 		endJunctionId: joinedEndId,
 		thickness: survivor.thickness,
-		height: survivor.height,
-		top: survivor.top,
+		height: mergedTop.height,
+		top: mergedTop.top,
 		centerline: joinedCenterline,
 		...(joinedName !== undefined ? { name: joinedName } : {}),
 	};

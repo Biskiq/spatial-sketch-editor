@@ -1269,10 +1269,13 @@ describe('T1 Wave 4 · C2 Topology and Radius Core', () => {
 			expect(exactStartPlan.document.openings[0]!.offset).toBeCloseTo(0, 6);
 		});
 
-		it('refuses a repack and a radius edit whole while a ring member has a profiled top, and keeps level rings unchanged', () => {
+		it('refuses a repack of a profiled member and scales its apex on a radius edit', () => {
 			const ring = createConnectedRing({ seed: 'repack-top' });
 			const room = ring.document.rooms.find((r) => r.id === ring.roomId)!;
 			const memberId = room.boundary[1]!.wallId;
+			const memberLength = wallFirstWallLength(ring.document, memberId)!;
+			const apexOffset = memberLength / 2;
+			const profiledTop: LayoutWall['top'] = { kind: 'gable', startRise: 0, endRise: 0, apexRise: 1, apexOffset };
 			const withTop = (document: LayoutDocumentWallFirst, top: LayoutWall['top']): LayoutDocumentWallFirst => ({
 				...document,
 				walls: document.walls.map((wall) => (wall.id === memberId ? { ...wall, top } : wall))
@@ -1286,24 +1289,31 @@ describe('T1 Wave 4 · C2 Topology and Radius Core', () => {
 			expect(expectSuccess(detachAll(ring.document)).repackedRoundRoomIds).toEqual([ring.roomId]);
 
 			// A profiled member refuses the repack rather than flattening it.
-			const sloped = withTop(ring.document, { kind: 'slope', startRise: 0, endRise: 1 });
-			const refused = detachAll(sloped);
+			const profiled = withTop(ring.document, profiledTop);
+			const refused = detachAll(profiled);
 			expect(refused.kind).toBe('rejected');
 			if (refused.kind === 'rejected') {
 				expect(refused.rejection.code).toBe('round_repack_conflict');
 				expect(refused.rejection.message).toContain(`'${memberId}'`);
-				expect(refused.rejection.message).toContain('slope top');
+				expect(refused.rejection.message).toContain('gable top');
 			}
 
-			// A radius edit refuses whole on the same ring; the level ring still resizes.
-			const before = JSON.stringify(sloped);
-			const resized = planResizeRoundRoomRadius({ document: sloped, roomId: ring.roomId, radius: 6 });
-			expect(resized.kind).toBe('rejected');
-			if (resized.kind === 'rejected') {
-				expect(resized.rejection.code).toBe('wall_top_profile_unsupported');
-				expect(resized.rejection.wallIds).toEqual([memberId]);
+			// A radius edit keeps the apex's angular station by scaling it with the
+			// circumference, exactly as it scales an Opening offset; the source is
+			// unchanged and the level ring still resizes.
+			const before = JSON.stringify(profiled);
+			const oldRadius = room.round!.radius;
+			const resized = planResizeRoundRoomRadius({ document: profiled, roomId: ring.roomId, radius: 6 });
+			expect(JSON.stringify(profiled)).toBe(before);
+			expect(resized.kind).toBe('success');
+			if (resized.kind === 'success') {
+				const member = resized.document.walls.find((wall) => wall.id === memberId)!;
+				expect(member.top.kind).toBe('gable');
+				if (member.top.kind === 'gable') {
+					expect(member.top.apexRise).toBe(1);
+					expect(member.top.apexOffset).toBeCloseTo((apexOffset * 6) / oldRadius, 9);
+				}
 			}
-			expect(JSON.stringify(sloped)).toBe(before);
 			expect(planResizeRoundRoomRadius({ document: ring.document, roomId: ring.roomId, radius: 6 }).kind).toBe('success');
 		});
 

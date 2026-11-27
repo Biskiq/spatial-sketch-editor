@@ -78,6 +78,8 @@ export type PrecisionOperation =
 	| 'wall-move'
 	| 'wall-thickness'
 	| 'wall-height'
+	/** Authored Wall top shape and rises (planner: `planSetWallTop`). */
+	| 'wall-top'
 	| 'wall-role'
 	/** Canonical Wall deletion (planner: `planDeleteWall`). */
 	| 'wall-delete'
@@ -150,6 +152,16 @@ export type PrecisionRejection = {
 		 * rejection so the message stays actionable.
 		 */
 		| 'wall_height_below_opening'
+		/** A Wall-top intent has a non-finite or negative rise. */
+		| 'wall_top_rise_invalid'
+		/** A Wall-top gable apex is not above both ends, or has no offset. */
+		| 'wall_top_apex_invalid'
+		/** A gable apex falls outside the Wall's derived length after an edit. */
+		| 'wall_top_apex_outside'
+		/** A closed Wall is level only. */
+		| 'closed_wall_level_only'
+		/** The authored top would leave a hosted Opening above it. */
+		| 'wall_top_below_opening'
 		| 'geometry_invalid'
 		| 'no_op'
 		| 'split_at_existing_endpoint'

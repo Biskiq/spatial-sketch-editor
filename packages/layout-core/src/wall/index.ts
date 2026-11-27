@@ -253,6 +253,7 @@ export {
 	planInsertWallCurveKnot,
 	planMoveWallCurveKnot,
 	planRigidWallMove,
+	planSetWallTop,
 	planSpaceOpenSideEndSlide,
 	planSpaceOpenSideOffset,
 	planWallSubdivision,
@@ -340,6 +341,10 @@ export {
 	compiledWallTopPeak,
 	compiledWallTopProfile,
 	compiledWallTopRange,
+	mergeWallTops,
+	normalizeWallTop,
+	reverseWallTop,
+	sliceWallTop,
 	wallIsClosed,
 	wallTopAt,
 	wallTopBreakpoints,
@@ -358,7 +363,7 @@ export {
 	WALL_TOP_STATION_EPSILON,
 } from './wall-top';
 
-export type { WallTopBreakpoint, WallTopIssue } from './wall-top';
+export type { WallTopBreakpoint, WallTopIssue, WallTopJoinPart, WallTopSlice } from './wall-top';
 
 export {
 	CLOSED_WALL_CIRCLE_KNOT_COUNT,

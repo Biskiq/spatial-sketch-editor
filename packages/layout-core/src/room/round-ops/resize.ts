@@ -26,7 +26,7 @@ import type {
 	LayoutWallOpening,
 } from '../../wall/types';
 import { validateWallFirstPortalRelations } from '../../wall/portals';
-import { WALL_TOP_PROFILE_UNSUPPORTED_CODE, wallTopIsLevel } from '../../wall/wall-top';
+import { WALL_TOP_STATION_EPSILON } from '../../wall/wall-top';
 
 // ---------------------------------------------------------------------------
 // Whole-radius resize for isolated circles and connected Round rings
@@ -48,8 +48,8 @@ export type RoundRoomRadiusRejectionCode =
 	| 'portal_relation_invalid'
 	| 'invalid_candidate_document'
 	| 'candidate_does_not_compile'
-	/** A member arc carries a sloped or gabled top; its apex scaling arrives with V2b. */
-	| 'wall_top_profile_unsupported';
+	/** A scaled apex offset would fall outside its member arc's new length. */
+	| 'wall_top_apex_outside';
 
 export type RoundRoomRadiusRejection = {
 	readonly code: RoundRoomRadiusRejectionCode;
@@ -161,16 +161,6 @@ export function planResizeRoundRoomRadius(options: {
 				},
 			);
 		}
-		// A radius edit scales every member arc, so an authored apex offset would
-		// stay at its old metre station while the Wall changes length. The scaling
-		// rule arrives with V2b; until then a non-level member refuses whole.
-		if (!wallTopIsLevel(wall.top)) {
-			return rejectRadius(
-				WALL_TOP_PROFILE_UNSUPPORTED_CODE,
-				`Wall '${wall.id}' has a ${wall.top.kind} top; resizing Round Room '${roomId}' needs exact top arithmetic that arrives with V2b. Make the top level first.`,
-				{ roomIds: [roomId], wallIds: [wall.id] },
-			);
-		}
 		if (!(radius > wall.thickness * 0.5 + 1e-6)) {
 			return rejectRadius(
 				'invalid_radius',
@@ -228,9 +218,23 @@ export function planResizeRoundRoomRadius(options: {
 	});
 	const nextPointById = new Map(nextJunctions.map((j) => [j.id, j.point] as const));
 
+	// A radius edit scales every member arc, so an authored apex offset keeps its
+	// angular station by scaling with the circumference — the same rule an Opening
+	// offset follows. Its physical width and every rise are unchanged.
+	const ratio = radius / certified.radius;
 	const nextWalls: LayoutWall[] = document.walls.map((w) => {
 		const nextCenterline = rebuilt.wallCenterlines.get(w.id);
-		return nextCenterline ? { ...w, centerline: nextCenterline } : w;
+		const nextTop =
+			ringWallIds.has(w.id) && w.top.kind === 'gable'
+				? { ...w.top, apexOffset: w.top.apexOffset * ratio }
+				: w.top;
+		const topChanged = nextTop !== w.top;
+		if (!nextCenterline && !topChanged) return w;
+		return {
+			...w,
+			...(nextCenterline ? { centerline: nextCenterline } : {}),
+			...(topChanged ? { top: nextTop } : {}),
+		};
 	});
 	const nextWallById = new Map(nextWalls.map((w) => [w.id, w] as const));
 
@@ -259,9 +263,19 @@ export function planResizeRoundRoomRadius(options: {
 				wallIds: [w.id],
 			});
 		}
+		if (
+			w.top.kind === 'gable' &&
+			(w.top.apexOffset <= WALL_TOP_STATION_EPSILON ||
+				w.top.apexOffset >= spanLength - WALL_TOP_STATION_EPSILON)
+		) {
+			return rejectRadius(
+				'wall_top_apex_outside',
+				`Wall '${w.id}' apex would fall outside its ${spanLength} m arc at radius ${radius} m`,
+				{ roomIds: [roomId], wallIds: [w.id] },
+			);
+		}
 	}
 
-	const ratio = radius / certified.radius;
 	const closedNewLengths = new Map<string, number>();
 	for (const wallId of ringWallIds) {
 		const w = nextWallById.get(wallId)!;

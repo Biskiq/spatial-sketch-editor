@@ -37,7 +37,7 @@ import { coincidesAsJunction } from './junction-identity';
 import { CURVE_ARC_LENGTH_TOLERANCE } from '../geometry/curve';
 import { resolveWallCurveSplit } from './curve-algebra';
 import { wallCubicChain } from './centerline';
-import { WALL_TOP_PROFILE_UNSUPPORTED_CODE, wallTopIsLevel } from './wall-top';
+import { sliceWallTop } from './wall-top';
 
 /** Exact straight-segment length between two points. */
 function segmentSpanLength(start: LayoutVec2, end: LayoutVec2): number {
@@ -69,12 +69,7 @@ export type NodingRejection = {
 		| 'curved_wall_unsupported'
 		/** A closed Wall is one canonical loop and cannot be subdivided. */
 		| 'closed_wall_isolated'
-		| 'junction_point_mismatch'
-		/**
-		 * A Wall with a sloped or gabled top cannot be subdivided until V2b lands
-		 * the exact split arithmetic; it refuses whole rather than copy the top.
-		 */
-		| typeof WALL_TOP_PROFILE_UNSUPPORTED_CODE;
+		| 'junction_point_mismatch';
 	message: string;
 	/** Involved authored IDs where available. */
 	wallId?: string;
@@ -229,16 +224,12 @@ function planWallSplitInternal(
 		fragmentB = wallCubicChain(result.fragments.b.knots, result.fragments.b.spans);
 	}
 
-	// A profiled top cannot be copied onto both fragments (a slope would saw-tooth
-	// and a gable apex would leave one fragment). Exact fragment tops arrive with
-	// V2b, so until then a split of a non-level Wall refuses whole.
-	if (!wallTopIsLevel(wall.top)) {
-		return rejected({
-			code: WALL_TOP_PROFILE_UNSUPPORTED_CODE,
-			message: `Wall '${wallId}' has a ${wall.top.kind} top; splitting it needs exact top arithmetic that arrives with V2b. Make the top level first.`,
-			wallId,
-		});
-	}
+	// Exact fragment tops: each fragment's ends take `wallTopAt` at the cut and
+	// each fragment is re-normalised to its own lowest end, so a fragment's
+	// `height` may differ from its source's. The rise is linear in station, so a
+	// slice through a gable apex is a gable and a slice on one side is a slope.
+	const topA = sliceWallTop(wall, 0, resolvedDistance, wallLength);
+	const topB = sliceWallTop(wall, resolvedDistance, wallLength, wallLength);
 
 	// Opening rebasing on the baseline wall, measured against the
 	// RESOLVED distance along the wall's true arc. Rejects before any candidate
@@ -293,16 +284,20 @@ function planWallSplitInternal(
 		// Each fragment takes its chain straight from the resolved
 		// partition: the Wall ID stays on `A → X`, the new ID carries `X → B`,
 		// and a split curve keeps its exact geometry across the two.
-		walls.push({ ...candidate, endJunctionId: junctionId, centerline: fragmentA });
+		walls.push({
+			...candidate,
+			endJunctionId: junctionId,
+			height: topA.height,
+			top: topA.top,
+			centerline: fragmentA,
+		});
 		walls.push({
 			id: newWallId,
 			startJunctionId: junctionId,
 			endJunctionId: candidate.endJunctionId,
 			thickness: candidate.thickness,
-			height: candidate.height,
-			// Only a level Wall reaches here (a profiled top refuses above), so
-			// both fragments are level.
-			top: candidate.top,
+			height: topB.height,
+			top: topB.top,
 			centerline: fragmentB,
 		});
 	}

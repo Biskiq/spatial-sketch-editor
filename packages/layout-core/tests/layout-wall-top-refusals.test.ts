@@ -1,30 +1,25 @@
 /**
- * T1 V2a — operations whose exact top arithmetic arrives with V2b refuse whole.
+ * T1 V2b — the one Wall-top refusal that survives the exact planner arithmetic.
  *
- * Split, crossing noding, subdivision, join/dissolve and the roof fit must either
- * be correct for a sloped or gabled Wall or refuse with a named code, the
- * document byte-identical. Each refusal is paired with the level-Wall behaviour
- * it must not change. Round repack and radius edits live in
- * `layout-connected-curves.test.ts` beside the Round ring fixtures; region
- * relations live here because they read the compiled top over covered stations.
+ * V2a refused every operation that needed top interpolation before V2b landed:
+ * split, subdivision, crossing noding, join/dissolve and the Round radius. Those
+ * now have exact planners (`layout-wall-top-planners.test.ts`). The remaining
+ * refusal is the overhead-region Wall fit: sealing every point of a Wall top
+ * under a roof slab needs V3's roof-form arithmetic, so it still refuses whole.
+ *
+ * Region relations are also here because they read the compiled top over the
+ * stations a footprint covers; that is V1 behaviour V2a made profile-aware.
  */
 import { describe, expect, it } from 'vitest';
 
 import { compileWallFirstLayoutGeometryFresh, type LayoutVec2 } from '@portfolio/layout-core/geometry';
 import {
-	WALL_TOP_NOT_JOINABLE_CODE,
 	WALL_TOP_PROFILE_UNSUPPORTED_CODE,
 	createEmptyWallFirstLayoutDocument,
-	planDissolveJunction,
 	planWallChain,
-	planWallCrossing,
-	planWallSplit,
-	planWallSubdivision,
 	validateWallFirstLayoutDocument,
 	type LayoutDocumentWallFirst,
-	type LayoutWall,
-	type LayoutWallTop,
-	type NodingIdAllocator
+	type LayoutWallTop
 } from '@portfolio/layout-core/wall';
 import {
 	planCreateRegion,
@@ -38,195 +33,91 @@ import { captureFor, freshCapture } from './__fixtures__/layout-id-capture';
 const SLOPE: LayoutWallTop = { kind: 'slope', startRise: 0, endRise: 2 };
 const GABLE: LayoutWallTop = { kind: 'gable', startRise: 0, endRise: 0, apexRise: 2, apexOffset: 5 };
 
-const allocator: NodingIdAllocator = {
-	nextWallId: (_document, seed) => `${seed}-frag`,
-	nextJunctionId: (_document, seed) => `${seed}-j`
-};
-
-function wall(id: string, start: string, end: string, overrides: Partial<LayoutWall> = {}): LayoutWall {
-	return {
-		id,
-		startJunctionId: start,
-		endJunctionId: end,
-		thickness: 0.2,
-		height: 3,
-		top: { kind: 'level' },
-		centerline: { kind: 'line' },
-		...overrides
-	};
-}
-
-function documentOf(points: Record<string, LayoutVec2>, walls: readonly LayoutWall[]): LayoutDocumentWallFirst {
-	const document = createEmptyWallFirstLayoutDocument();
-	for (const [id, point] of Object.entries(points)) document.junctions.push({ id, point });
-	document.walls.push(...walls);
-	return document;
-}
-
 function expectUnchanged(document: LayoutDocumentWallFirst, run: () => unknown): void {
 	const before = JSON.stringify(document);
 	run();
 	expect(JSON.stringify(document)).toBe(before);
 }
 
-describe.each([
-	['slope', SLOPE],
-	['gable', GABLE]
-] as const)('V2a · a %s Wall refuses subdivision whole', (_name, top) => {
-	const single = (wallTop: LayoutWallTop) =>
-		documentOf({ a: [0, 0], b: [10, 0] }, [wall('w1', 'a', 'b', { top: wallTop })]);
+const RECT: LayoutVec2[] = [[0, 0], [10, 0], [10, 6], [0, 6]];
 
-	it('planWallSplit refuses, naming the Wall, and leaves the document unchanged', () => {
-		const document = single(top);
-		expectUnchanged(document, () => {
-			const plan = planWallSplit(document, 'w1', 4, allocator);
-			expect(plan.kind).toBe('rejected');
-			if (plan.kind !== 'rejected') return;
-			expect(plan.rejection.code).toBe(WALL_TOP_PROFILE_UNSUPPORTED_CODE);
-			expect(plan.rejection.wallId).toBe('w1');
-			expect(plan.rejection.message).toContain("'w1'");
-			expect(plan.rejection.message).toContain('V2b');
-		});
+function enclosure(): LayoutDocumentWallFirst {
+	const baseline = createEmptyWallFirstLayoutDocument();
+	const plan = planWallChain({
+		baseline,
+		points: RECT,
+		close: true,
+		capture: freshCapture(),
+		levelId: baseline.floor.id,
+		height: 3
 	});
+	if (plan.kind !== 'success') throw new Error(plan.rejection.message);
+	return plan.document;
+}
 
-	it('planWallSubdivision refuses with the same code', () => {
-		const document = single(top);
-		expectUnchanged(document, () => {
-			const plan = planWallSubdivision(document, 'w1', 4, allocator);
-			expect(plan.kind).toBe('rejected');
-			if (plan.kind !== 'rejected') return;
-			expect(plan.rejection.code).toBe(WALL_TOP_PROFILE_UNSUPPORTED_CODE);
-			expect(plan.rejection.targetIds).toEqual(['w1']);
-		});
+function southWallId(document: LayoutDocumentWallFirst): string {
+	const point = (id: string) => document.junctions.find((junction) => junction.id === id)!.point;
+	return document.walls.find((candidate) => {
+		const a = point(candidate.startJunctionId);
+		const b = point(candidate.endJunctionId);
+		return a[1] === 0 && b[1] === 0;
+	})!.id;
+}
+
+function withTop(document: LayoutDocumentWallFirst, wallId: string, top: LayoutWallTop): LayoutDocumentWallFirst {
+	return {
+		...document,
+		walls: document.walls.map((entry) => (entry.id === wallId ? { ...entry, top } : entry))
+	};
+}
+
+function canopy(document: LayoutDocumentWallFirst, footprint: LayoutVec2[], elevation: number) {
+	const plan = planCreateRegion({
+		baseline: document,
+		capture: captureFor('region-a'),
+		intent: { role: 'overhead', footprint, elevation, thickness: 0.2 }
 	});
+	if (plan.kind !== 'success') throw new Error(plan.rejection.message);
+	return plan;
+}
 
-	it('planWallCrossing refuses when either crossing Wall is profiled', () => {
-		const crossing = (first: LayoutWallTop, second: LayoutWallTop) =>
-			documentOf({ a: [0, 0], b: [10, 0], c: [5, -5], d: [5, 5] }, [
-				wall('w1', 'a', 'b', { top: first }),
-				wall('w2', 'c', 'd', { top: second })
-			]);
-		for (const document of [
-			crossing(top, { kind: 'level' }),
-			crossing({ kind: 'level' }, top)
-		]) {
-			expectUnchanged(document, () => {
-				const plan = planWallCrossing(document, ['w1', 'w2'], [5, 0], allocator);
-				expect(plan.kind).toBe('rejected');
-				if (plan.kind !== 'rejected') return;
-				expect(plan.rejection.code).toBe(WALL_TOP_PROFILE_UNSUPPORTED_CODE);
-			});
-		}
-	});
-});
+function readingOf(document: LayoutDocumentWallFirst, regionId: string, wallId: string) {
+	const geometry = compileWallFirstLayoutGeometryFresh(document).geometry;
+	const result = regionWallRelations(geometry, document.regions.find((entry) => entry.id === regionId)!);
+	if (result.kind !== 'relations') throw new Error(result.message);
+	return result.relations.find((entry) => entry.wallId === wallId)!;
+}
 
-describe('V2a · level Walls still split, subdivide and cross as before', () => {
-	it('splits a level Wall into two level fragments', () => {
-		const document = documentOf({ a: [0, 0], b: [10, 0] }, [wall('w1', 'a', 'b')]);
-		const plan = planWallSplit(document, 'w1', 4, allocator);
-		expect(plan.kind).toBe('success');
-		if (plan.kind !== 'success') return;
-		expect(plan.document.walls.map((candidate) => candidate.top)).toEqual([{ kind: 'level' }, { kind: 'level' }]);
-		expect(planWallSubdivision(document, 'w1', 4, allocator).kind).toBe('success');
-	});
-
-	it('nodes a level crossing', () => {
-		const document = documentOf({ a: [0, 0], b: [10, 0], c: [5, -5], d: [5, 5] }, [
-			wall('w1', 'a', 'b'),
-			wall('w2', 'c', 'd')
-		]);
-		const plan = planWallCrossing(document, ['w1', 'w2'], [5, 0], allocator);
-		expect(plan.kind).toBe('success');
-	});
-
-	it('still reports an endpoint split before the top refusal', () => {
-		const document = documentOf({ a: [0, 0], b: [10, 0] }, [wall('w1', 'a', 'b', { top: SLOPE })]);
-		const plan = planWallSplit(document, 'w1', 0, allocator);
-		expect(plan.kind === 'rejected' && plan.rejection.code).toBe('split_at_existing_endpoint');
-	});
-});
-
-describe('V2a · dissolve joins only level tops', () => {
-	const joined = (first: LayoutWallTop, second: LayoutWallTop, firstHeight = 3, secondHeight = 3) =>
-		documentOf({ a: [0, 0], b: [5, 0], c: [10, 0] }, [
-			wall('w1', 'a', 'b', { top: first, height: firstHeight }),
-			wall('w2', 'b', 'c', { top: second, height: secondHeight })
-		]);
-	const dissolve = (document: LayoutDocumentWallFirst) =>
-		planDissolveJunction(document, 'b', freshCapture(), document.floor.id);
-
-	it('refuses two sloped Walls of equal height instead of keeping the survivor slope', () => {
-		const document = joined(
-			{ kind: 'slope', startRise: 0, endRise: 1 },
-			{ kind: 'slope', startRise: 1, endRise: 0 }
-		);
-		expectUnchanged(document, () => {
-			const plan = dissolve(document);
-			expect(plan.kind).toBe('rejected');
-			if (plan.kind !== 'rejected') return;
-			expect(plan.rejection.code).toBe(WALL_TOP_NOT_JOINABLE_CODE);
-			expect(plan.rejection.message).toContain("'w1' and 'w2'");
-		});
-	});
-
-	it('refuses one profiled Wall joined to a level Wall, and a gable pair', () => {
-		for (const document of [joined(SLOPE, { kind: 'level' }), joined(GABLE, GABLE)]) {
-			const plan = dissolve(document);
-			expect(plan.kind === 'rejected' && plan.rejection.code).toBe(WALL_TOP_NOT_JOINABLE_CODE);
-		}
-	});
-
-	it('still joins two level Walls into one level Wall', () => {
-		const plan = dissolve(joined({ kind: 'level' }, { kind: 'level' }));
-		expect(plan.kind).toBe('success');
-		if (plan.kind !== 'success') return;
-		expect(plan.document.walls).toHaveLength(1);
-		expect(plan.document.walls[0]!.top).toEqual({ kind: 'level' });
-	});
-});
-
-describe('V2a · region fits and relations read the Wall top', () => {
-	const RECT: LayoutVec2[] = [[0, 0], [10, 0], [10, 6], [0, 6]];
-	function enclosure(): LayoutDocumentWallFirst {
-		const baseline = createEmptyWallFirstLayoutDocument();
-		const plan = planWallChain({
-			baseline,
-			points: RECT,
-			close: true,
-			capture: freshCapture(),
-			levelId: baseline.floor.id,
-			height: 3
-		});
-		if (plan.kind !== 'success') throw new Error(plan.rejection.message);
-		return plan.document;
-	}
-	function southWallId(document: LayoutDocumentWallFirst): string {
-		const point = (id: string) => document.junctions.find((junction) => junction.id === id)!.point;
-		return document.walls.find((candidate) => {
-			const a = point(candidate.startJunctionId);
-			const b = point(candidate.endJunctionId);
-			return a[1] === 0 && b[1] === 0;
-		})!.id;
-	}
-	function withTop(document: LayoutDocumentWallFirst, wallId: string, top: LayoutWallTop): LayoutDocumentWallFirst {
-		return { ...document, walls: document.walls.map((entry) => (entry.id === wallId ? { ...entry, top } : entry)) };
-	}
-	function canopy(document: LayoutDocumentWallFirst, footprint: LayoutVec2[], elevation: number) {
-		const plan = planCreateRegion({
-			baseline: document,
-			capture: captureFor('region-a'),
-			intent: { role: 'overhead', footprint, elevation, thickness: 0.2 }
-		});
-		if (plan.kind !== 'success') throw new Error(plan.rejection.message);
-		return plan;
-	}
-	function readingOf(document: LayoutDocumentWallFirst, regionId: string, wallId: string) {
+describe('V2b · the remaining region-fit Wall-top refusal', () => {
+	it('Fit walls to roof refuses a profiled Wall whole, naming it, and leaves the document unchanged', () => {
+		const base = enclosure();
+		const wallId = southWallId(base);
+		const { document, regionId } = canopy(withTop(base, wallId, SLOPE), [[-1, -1], [11, -1], [11, 1], [-1, 1]], 3.5);
 		const geometry = compileWallFirstLayoutGeometryFresh(document).geometry;
-		const result = regionWallRelations(geometry, document.regions.find((entry) => entry.id === regionId)!);
-		if (result.kind !== 'relations') throw new Error(result.message);
-		return result.relations.find((entry) => entry.wallId === wallId)!;
-	}
+		expectUnchanged(document, () => {
+			const plan = planFitWallsToRegion(document, geometry, regionId, [wallId]);
+			expect(plan.kind).toBe('rejected');
+			if (plan.kind !== 'rejected') return;
+			expect(plan.rejection.code).toBe(WALL_TOP_PROFILE_UNSUPPORTED_CODE);
+			expect(plan.rejection.message).toContain(`'${wallId}'`);
+			expect(plan.rejection.targetIds).toContain(wallId);
+		});
+		expect(validateWallFirstLayoutDocument(document).success).toBe(true);
+	});
 
+	it('Fit walls to roof still fits a level Wall', () => {
+		const base = enclosure();
+		const wallId = southWallId(base);
+		const { document, regionId } = canopy(base, [[-1, -1], [11, -1], [11, 1], [-1, 1]], 3.5);
+		const geometry = compileWallFirstLayoutGeometryFresh(document).geometry;
+		const plan = planFitWallsToRegion(document, geometry, regionId, [wallId]);
+		expect(plan.kind).toBe('success');
+		if (plan.kind !== 'success') return;
+		expect(plan.document.walls.find((entry) => entry.id === wallId)!.height).toBeCloseTo(3.5, 9);
+	});
+});
+
+describe('V2b · region relations read the compiled top over covered stations', () => {
 	it('evaluates the compiled top over a station interval, including an apex inside it', () => {
 		const plain = enclosure();
 		const wallId = southWallId(plain);
@@ -270,7 +161,16 @@ describe('V2a · region fits and relations read the Wall top', () => {
 	// bridge south of the Wall; the apex (5 m at station 5) lies outside the
 	// footprint. Each covered interval peaks at 4.2 m, so reading their continuous
 	// hull would wrongly reach the apex.
-	const U_CANOPY: LayoutVec2[] = [[1, -3], [9, -3], [9, 1], [7, 1], [7, -2], [3, -2], [3, 1], [1, 1]];
+	const U_CANOPY: LayoutVec2[] = [
+		[1, -3],
+		[9, -3],
+		[9, 1],
+		[7, 1],
+		[7, -2],
+		[3, -2],
+		[3, 1],
+		[1, 1]
+	];
 
 	it('reads a concave canopy over each covered interval, never their hull through the apex', () => {
 		const base = enclosure();
@@ -296,25 +196,28 @@ describe('V2a · region fits and relations read the Wall top', () => {
 	it.each([
 		['rising', SLOPE],
 		['falling', { kind: 'slope', startRise: 2, endRise: 0 } as LayoutWallTop]
-	] as const)('reads an edge canopy along a %s face over the whole contact, not one contact point', (_name, top) => {
-		const base = enclosure();
-		const wallId = southWallId(base);
-		const sloped = withTop(base, wallId, top);
-		const compiled = compileWallFirstLayoutGeometryFresh(sloped).geometry.walls.find((entry) => entry.wallId === wallId)!;
-		const face = -compiled.thickness / 2;
-		// The canopy boundary lies on the outer face over stations 1..9, where the
-		// slope spans 3.2 m to 4.8 m; its underside at 5 m leaves a 0.2 m gap.
-		const footprint: LayoutVec2[] = [[1, -3], [9, -3], [9, face], [1, face]];
-		const { document, regionId } = canopy(sloped, footprint, 5);
-		const relation = readingOf(document, regionId, wallId);
-		expect(relation).toMatchObject({ planClass: 'edge', reading: 'gap', measureAxis: 'vertical' });
-		expect(relation.measureMeters!).toBeCloseTo(0.2, 9);
-		const geometry = compileWallFirstLayoutGeometryFresh(document).geometry;
-		const plan = planFitRegionToWalls(document, geometry, regionId, [wallId]);
-		expect(plan.kind).toBe('success');
-		if (plan.kind !== 'success') return;
-		expect(plan.document.regions.find((entry) => entry.id === regionId)!.elevation).toBeCloseTo(4.8, 9);
-	});
+	] as const)(
+		'reads an edge canopy along a %s face over the whole contact, not one contact point',
+		(_name, top) => {
+			const base = enclosure();
+			const wallId = southWallId(base);
+			const sloped = withTop(base, wallId, top);
+			const compiled = compileWallFirstLayoutGeometryFresh(sloped).geometry.walls.find((entry) => entry.wallId === wallId)!;
+			const face = -compiled.thickness / 2;
+			// The canopy boundary lies on the outer face over stations 1..9, where the
+			// slope spans 3.2 m to 4.8 m; its underside at 5 m leaves a 0.2 m gap.
+			const footprint: LayoutVec2[] = [[1, -3], [9, -3], [9, face], [1, face]];
+			const { document, regionId } = canopy(sloped, footprint, 5);
+			const relation = readingOf(document, regionId, wallId);
+			expect(relation).toMatchObject({ planClass: 'edge', reading: 'gap', measureAxis: 'vertical' });
+			expect(relation.measureMeters!).toBeCloseTo(0.2, 9);
+			const geometry = compileWallFirstLayoutGeometryFresh(document).geometry;
+			const plan = planFitRegionToWalls(document, geometry, regionId, [wallId]);
+			expect(plan.kind).toBe('success');
+			if (plan.kind !== 'success') return;
+			expect(plan.document.regions.find((entry) => entry.id === regionId)!.elevation).toBeCloseTo(4.8, 9);
+		}
+	);
 
 	it('Fit roof reaches the apex of a covered gable', () => {
 		const base = enclosure();
@@ -325,32 +228,5 @@ describe('V2a · region fits and relations read the Wall top', () => {
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') return;
 		expect(plan.document.regions.find((entry) => entry.id === regionId)!.elevation).toBeCloseTo(5, 9);
-	});
-
-	it('Fit walls to roof refuses a profiled Wall whole, naming it, and leaves the document unchanged', () => {
-		const base = enclosure();
-		const wallId = southWallId(base);
-		const { document, regionId } = canopy(withTop(base, wallId, SLOPE), [[-1, -1], [11, -1], [11, 1], [-1, 1]], 3.5);
-		const geometry = compileWallFirstLayoutGeometryFresh(document).geometry;
-		expectUnchanged(document, () => {
-			const plan = planFitWallsToRegion(document, geometry, regionId, [wallId]);
-			expect(plan.kind).toBe('rejected');
-			if (plan.kind !== 'rejected') return;
-			expect(plan.rejection.code).toBe(WALL_TOP_PROFILE_UNSUPPORTED_CODE);
-			expect(plan.rejection.message).toContain(`'${wallId}'`);
-			expect(plan.rejection.targetIds).toContain(wallId);
-		});
-		expect(validateWallFirstLayoutDocument(document).success).toBe(true);
-	});
-
-	it('Fit walls to roof still fits a level Wall', () => {
-		const base = enclosure();
-		const wallId = southWallId(base);
-		const { document, regionId } = canopy(base, [[-1, -1], [11, -1], [11, 1], [-1, 1]], 3.5);
-		const geometry = compileWallFirstLayoutGeometryFresh(document).geometry;
-		const plan = planFitWallsToRegion(document, geometry, regionId, [wallId]);
-		expect(plan.kind).toBe('success');
-		if (plan.kind !== 'success') return;
-		expect(plan.document.walls.find((entry) => entry.id === wallId)!.height).toBeCloseTo(3.5, 9);
 	});
 });

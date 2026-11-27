@@ -39,11 +39,18 @@ export const WALL_TOP_APEX_INVALID_CODE = 'wall_top_apex_invalid';
 export const WALL_TOP_APEX_OUTSIDE_CODE = 'wall_top_apex_outside';
 export const CLOSED_WALL_LEVEL_ONLY_CODE = 'closed_wall_level_only';
 
+/** A Wall top with its own `height` and shape; the result of a slice or a merge. */
+export type WallTopSlice = { height: number; top: LayoutWallTop };
+
+/** One side of a join: a top plus the canonical centerline length it spans. */
+export type WallTopJoinPart = WallTopSlice & { length: number };
+
 /**
- * V2a temporary refusals: an operation whose exact arithmetic arrives with V2b
- * refuses whole, naming the profiled Wall, until then.
+ * A refusal that still applies outside V2b: an overhead-region Wall fit keeps
+ * every point of a Wall top under the slab, which is V3's roof-form arithmetic.
  */
 export const WALL_TOP_PROFILE_UNSUPPORTED_CODE = 'wall_top_profile_unsupported';
+/** Two Wall tops that do not merge into one level, slope or gable. */
 export const WALL_TOP_NOT_JOINABLE_CODE = 'wall_top_not_joinable';
 
 export type WallTopIssue = { code: string; message: string };
@@ -252,6 +259,219 @@ export function wallTopRange(
 		return { min: top, max: top };
 	}
 	return { min, max };
+}
+
+/**
+ * Re-base a top so its lowest end rise is exactly `0`, moving that rise into
+ * `height` (P1).
+ *
+ * This is the one normalisation every writer shares: a caller may state both
+ * ends above the eave (for example a top measured from a neighbour), and the
+ * canonical encoding is recovered by lowering `height` to the lowest end. The
+ * caller owns value validity; a non-finite or negative rise is refused before
+ * this runs.
+ */
+export function normalizeWallTop(height: number, top: LayoutWallTop): WallTopSlice {
+	if (top.kind === 'level') return { height, top: { kind: 'level' } };
+	const lowest = Math.min(top.startRise, top.endRise);
+	const base = height + lowest;
+	if (top.kind === 'slope') {
+		return {
+			height: base,
+			top: {
+				kind: 'slope',
+				startRise: top.startRise - lowest,
+				endRise: top.endRise - lowest,
+			},
+		};
+	}
+	return {
+		height: base,
+		top: {
+			kind: 'gable',
+			startRise: top.startRise - lowest,
+			endRise: top.endRise - lowest,
+			apexRise: top.apexRise - lowest,
+			apexOffset: top.apexOffset,
+		},
+	};
+}
+
+/**
+ * The exact top of the sub-interval `[from, to]` of one Wall, re-based to its
+ * own lowest end (P1).
+ *
+ * The parent's rise is linear in station, so a slice contains at most one
+ * breakpoint: the apex. A slice through the apex is a gable; a slice on one side
+ * of it is a slope; a level parent stays level. Rises are taken in the parent's
+ * rise frame and only the re-basing rise is subtracted, so a fragment that keeps
+ * the parent's lowest end keeps its authored rise numbers exactly — which is what
+ * makes a split followed by a join reproduce the source bytes.
+ */
+export function sliceWallTop(
+	wall: Pick<LayoutWall, 'height' | 'top'>,
+	from: number,
+	to: number,
+	length: number,
+): WallTopSlice {
+	const start = Math.min(from, to);
+	const end = Math.max(from, to);
+	const startRise = wallTopRiseAt(wall.top, start, length);
+	const endRise = wallTopRiseAt(wall.top, end, length);
+	const lowest = Math.min(startRise, endRise);
+	const height = wall.height + lowest;
+	const startOut = startRise - lowest;
+	const endOut = endRise - lowest;
+	if (wall.top.kind === 'gable') {
+		const apex = wall.top.apexOffset;
+		if (apex > start && apex < end) {
+			return {
+				height,
+				top: {
+					kind: 'gable',
+					startRise: startOut,
+					endRise: endOut,
+					apexRise: wall.top.apexRise - lowest,
+					apexOffset: apex - start,
+				},
+			};
+		}
+	}
+	if (startOut === 0 && endOut === 0) return { height, top: { kind: 'level' } };
+	return { height, top: { kind: 'slope', startRise: startOut, endRise: endOut } };
+}
+
+/**
+ * The same top read against the opposite Wall orientation.
+ *
+ * Joining may traverse one side in reverse; that side's rise and apex offset are
+ * mirrored in its own length, exactly as an Opening offset is mirrored.
+ */
+export function reverseWallTop(top: LayoutWallTop, length: number): LayoutWallTop {
+	if (top.kind === 'level') return { kind: 'level' };
+	if (top.kind === 'slope') {
+		return { kind: 'slope', startRise: top.endRise, endRise: top.startRise };
+	}
+	return {
+		kind: 'gable',
+		startRise: top.endRise,
+		endRise: top.startRise,
+		apexRise: top.apexRise,
+		apexOffset: length - top.apexOffset,
+	};
+}
+
+/** An end rise of a shape, without evaluating its station. */
+function endRise(top: LayoutWallTop, atEnd: boolean): number {
+	if (top.kind === 'level') return 0;
+	return atEnd ? top.endRise : top.startRise;
+}
+
+/** Top of a straight join line between two absolute samples at two stations. */
+function lineTop(
+	fromStation: number,
+	fromTop: number,
+	toStation: number,
+	toTop: number,
+	at: number,
+): number {
+	const span = toStation - fromStation;
+	if (!(span > 0)) return toTop;
+	return fromTop + ((toTop - fromTop) * (at - fromStation)) / span;
+}
+
+/**
+ * The one top that two Walls meeting at a joint can become, or `null`.
+ *
+ * `first` starts at the joined Wall's canonical start; `second` ends at its
+ * canonical end. The joint is continuous within {@link WALL_HEIGHT_EPSILON}, and
+ * the merged rise is linear in station, so it is a level, a slope, or a gable
+ * whose one peak is either an original apex or the joint itself. Anything else —
+ * a valley, a kink away from the peak, two peaks, or a near-flat step that is
+ * neither level nor a slope — has no encoding and refuses.
+ *
+ * The `height`/rise conversion keeps a fragment's authored numbers whenever that
+ * fragment owns the merged lowest end, so the inverse of {@link sliceWallTop} is
+ * exact for the bytes a split produced.
+ */
+export function mergeWallTops(
+	first: WallTopJoinPart,
+	second: WallTopJoinPart,
+): WallTopSlice | null {
+	const total = first.length + second.length;
+	if (!(total > 0)) return null;
+	const startTop = wallTopAt(first, 0, first.length);
+	const jointFirst = wallTopAt(first, first.length, first.length);
+	const jointSecond = wallTopAt(second, 0, second.length);
+	const endTop = wallTopAt(second, second.length, second.length);
+	if (![startTop, jointFirst, jointSecond, endTop].every(Number.isFinite)) return null;
+	if (Math.abs(jointFirst - jointSecond) > WALL_HEIGHT_EPSILON) return null;
+	const jointTop = jointFirst;
+	const base = Math.min(startTop, endTop);
+	const startRise = first.height === base ? endRise(first.top, false) : startTop - base;
+	const endRiseOut = second.height === base ? endRise(second.top, true) : endTop - base;
+	const firstApex =
+		first.top.kind === 'gable'
+			? {
+					station: first.top.apexOffset,
+					top: first.height + first.top.apexRise,
+					authored: first.top.apexRise,
+					height: first.height,
+				}
+			: null;
+	const secondApex =
+		second.top.kind === 'gable'
+			? {
+					station: first.length + second.top.apexOffset,
+					top: second.height + second.top.apexRise,
+					authored: second.top.apexRise,
+					height: second.height,
+				}
+			: null;
+	if (firstApex && secondApex) return null;
+	const apex = firstApex ?? secondApex;
+	if (apex) {
+		if (!(apex.top > startTop + WALL_HEIGHT_EPSILON)) return null;
+		if (!(apex.top > endTop + WALL_HEIGHT_EPSILON)) return null;
+		// The joint must lie on the straight run from the apex to the far end on
+		// the other side; otherwise the merged rise has a second kink.
+		const jointOnLine =
+			firstApex !== null
+				? lineTop(apex.station, apex.top, total, endTop, first.length)
+				: lineTop(0, startTop, apex.station, apex.top, first.length);
+		if (Math.abs(jointTop - jointOnLine) > WALL_HEIGHT_EPSILON) return null;
+		return {
+			height: base,
+			top: {
+				kind: 'gable',
+				startRise,
+				endRise: endRiseOut,
+				apexRise: apex.height === base ? apex.authored : apex.top - base,
+				apexOffset: apex.station,
+			},
+		};
+	}
+	if (startTop === jointTop && jointTop === endTop) {
+		return { height: startTop, top: { kind: 'level' } };
+	}
+	const onLine = total > 0 ? lineTop(0, startTop, total, endTop, first.length) : startTop;
+	if (Math.abs(jointTop - onLine) <= WALL_HEIGHT_EPSILON) {
+		if (!(Math.abs(endTop - startTop) > WALL_HEIGHT_EPSILON)) return null;
+		return { height: base, top: { kind: 'slope', startRise, endRise: endRiseOut } };
+	}
+	// The joint is the one peak.
+	if (!(jointTop > startTop + WALL_HEIGHT_EPSILON)) return null;
+	if (!(jointTop > endTop + WALL_HEIGHT_EPSILON)) return null;
+	return {
+		height: base,
+		top: {
+			kind: 'gable',
+			startRise,
+			endRise: endRiseOut,
+			apexRise: jointTop - base,
+			apexOffset: first.length,
+		},
+	};
 }
 
 /**

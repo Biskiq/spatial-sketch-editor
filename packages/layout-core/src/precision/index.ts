@@ -48,6 +48,8 @@ export {
 	planWallSubdivision,
 } from './scalar-edits';
 
+export { planSetWallTop } from './wall-top-edits';
+
 export { MAX_WALL_CURVE_KNOTS } from './types';
 
 export { planBendWallCurveKnot, prepareWallBend, proposeWallKnotRemoval } from './wall-bends';

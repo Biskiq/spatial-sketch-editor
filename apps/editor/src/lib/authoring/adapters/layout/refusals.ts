@@ -76,8 +76,16 @@ export function wallRefusalWords(code: string, message = ''): string {
 		case 'arch_profile_height_invalid':
 			return 'An Opening would no longer fit this Wall.';
 		case 'wall_top_profile_unsupported':
+			return 'A sloped or gabled Wall top cannot be fitted under a roof yet. Make the top level first.';
 		case 'wall_top_not_joinable':
-			return 'A sloped or gabled Wall top cannot be split, joined or resized yet. Make the top level first.';
+			return 'These Walls’ tops do not meet as one level, slope or gable. Align or level them to join.';
+		case 'wall_top_apex_outside':
+			return 'This change would move the top’s apex past the end of the Wall. Make the Wall longer or move the apex first.';
+		case 'wall_top_below_opening':
+		case 'wall_top_rise_invalid':
+		case 'wall_top_apex_invalid':
+		case 'closed_wall_level_only':
+			return 'This top does not fit the Wall. Check its Rise and Apex position.';
 		case 'duplicate_junction_point':
 		case 'duplicate_joined_wall':
 		case 'junction_point_mismatch':

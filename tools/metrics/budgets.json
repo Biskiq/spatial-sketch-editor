@@ -437,8 +437,8 @@
 		},
 		{
 			"path": "packages/layout-core/src/wall/dissolve.ts",
-			"lines": 698,
-			"reason": "One dissolve planner: the candidate, port remap and checks share one mutable candidate document. Format 11 adds the required authored Wall top. V2a: a profiled join refuses with `wall_top_not_joinable` until V2b."
+			"lines": 715,
+			"reason": "One dissolve planner: the candidate, port remap and checks share one mutable candidate document. Format 11 adds the required authored Wall top. V2b adds the exact join: each side is oriented, continuity is checked at the joint, and one level/slope/gable merge is emitted."
 		},
 		{
 			"path": "packages/layout-core/src/room/isolation.ts",
@@ -477,8 +477,8 @@
 		},
 		{
 			"path": "packages/layout-core/src/wall/chain-execute.ts",
-			"lines": 668,
-			"reason": "Baseline exception: the owning split removes this entry. Format 11 requires `top` on every Wall the chain writes. V2a: a profiled Wall refuses with its own code."
+			"lines": 664,
+			"reason": "Baseline exception: the owning split removes this entry. Format 11 requires `top` on every Wall the chain writes. V2b: noding splits profiled Walls exactly, so a chain noding refusal stays `noding_rejected`."
 		},
 		{
 			"path": "apps/api/src/asset-persistence.ts",
@@ -821,8 +821,8 @@
 			"file": "packages/layout-core/src/wall/dissolve.ts",
 			"name": "planDissolveJunction",
 			"line": 135,
-			"lines": 481,
-			"reason": "One dissolve planner: the candidate, the port remap and the checks share one mutable candidate."
+			"lines": 492,
+			"reason": "One dissolve planner: the candidate, the port remap, the top merge and the checks share one mutable candidate."
 		},
 		{
 			"file": "packages/layout-core/src/wall/chain-plan.ts",

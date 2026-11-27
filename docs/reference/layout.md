@@ -72,11 +72,27 @@ sections still split only at Openings, never at the apex: a section's `topY` is 
 the top over its span, so every height bound stays conservative, and a consumer needing the true
 edge reads `topProfile` (the mesh adds the apex and any band crossing as clip knots). The Floor carries a
 horizontal datum only (`id`, `name`, `elevation`, no vertical extent), so there is no Floor-relative
-cap and a Room ceiling is the maximum of its boundary Wall heights. New and split Walls take height
-from layout-core's birth/inheritance rule: explicit height, else the unique incident Wall height, else
-the named authoring default; existing Wall writers carry the authored top unchanged. Until V2b, split,
-crossing noding, subdivision, Round repack/radius, region fit-walls (`wall_top_profile_unsupported`)
-and join/dissolve (`wall_top_not_joinable`) refuse a sloped or gabled Wall whole. Region relations
+cap and a Room ceiling is the maximum of its boundary Wall heights. New Walls are `level`; new and
+split Walls take `height` from layout-core's birth/inheritance rule: explicit height, else the unique
+incident Wall height, else the named authoring default. `planSetWallTop` is the one top writer: it
+normalises the stated rises to P1 by moving the lowest into `height`, and refuses P2/P3 values
+(`wall_top_rise_invalid`, `wall_top_apex_invalid`), an apex outside the derived length
+(`wall_top_apex_outside`), a closed Wall (`closed_wall_level_only`), the envelope and an Opening the
+new top would no longer clear (`wall_top_below_opening`). `planExactWallHeight` keeps its signature
+and shifts the whole top rigidly.
+
+Split and crossing noding are exact: each fragment's ends take `wallTopAt` at the cut and each
+fragment is re-normalised to its own lowest end, so a fragment's `height` may differ from its
+source's; a gable cut at its apex gives two slopes and elsewhere a gable and a slope. Join and
+dissolve accept the pair only when the tops are continuous at the joint within the height epsilon
+and merge into one level, slope or gable — the joint may be that gable's one peak — otherwise they
+refuse with `wall_top_not_joinable`; a split followed by a join restores the source bytes. A length
+or Junction edit keeps `apexOffset` in metres and refuses whole when the apex leaves the Wall.
+Duplicate, Room move and bend/straighten carry the top unchanged, and P4 reads it on the new
+centerline. Within a Round Room, member arcs may carry tops: repacking to one closed Wall still
+requires every member level and equal (P5), and a radius edit scales each `apexOffset` with the
+circumference exactly as it scales an Opening offset. Region fit-walls still refuses a profiled Wall
+(`wall_top_profile_unsupported`) until V3's roof-form arithmetic. Region relations
 and the roof fit read a Wall's top over each station interval the footprint covers, never the
 continuous hull of disjoint intervals. The landed model
 is one floor; a multi-floor payload is not accepted. Canonical reads accept format 11 only.
