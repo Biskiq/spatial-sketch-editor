@@ -13,10 +13,13 @@ import {
 	groupMemberEligible,
 	planDuplicateOne,
 	planMoveHorizontal,
+	planPlaceOnFloor,
+	planSetLift,
 	rigidPivot,
 	rigidTurnPosition,
 	rigidYawAdd,
 	rotationForwardVector,
+	sceneSupportGenerationId,
 	type SceneGroupMemberContact,
 } from '@portfolio/project-model/scene-planning';
 import type { SceneLightEntity } from '@portfolio/project-model/scene';
@@ -748,6 +751,295 @@ describe('group planners', () => {
 			},
 		});
 		expect(groupDuplicate.kind).toBe('prepared');
+	});
+
+	it('keeps a pose on a platform seam operable by the next Move and Duplicate', async () => {
+		const base = groupedSceneFixture();
+		const ground: LayoutRegion = {
+			id: 'region-seam-ground',
+			role: 'floor',
+			footprint: {
+				kind: 'polygon',
+				points: [
+					[4, 0],
+					[8, 0],
+					[8, 2],
+					[4, 2],
+				],
+			},
+			elevation: 0,
+			thickness: 0.1,
+			form: { kind: 'flat' },
+			intendedGaps: [],
+			name: 'Seam ground',
+		};
+		// Two platform tops 1.6e-6 apart meet at x = 6.3. Both are within the 1e-6
+		// coplanar tolerance of the 0.7 m base, but only the upper one is the
+		// highest support at or below it — the destination rule admits this pose.
+		const leftTop: LayoutRegion = {
+			...ground,
+			id: 'region-seam-left',
+			name: 'Seam left top',
+			elevation: 0.6999992,
+			footprint: {
+				kind: 'polygon',
+				points: [
+					[5.8, 0],
+					[6.3, 0],
+					[6.3, 1.4],
+					[5.8, 1.4],
+				],
+			},
+		};
+		const rightTop: LayoutRegion = {
+			...ground,
+			id: 'region-seam-right',
+			name: 'Seam right top',
+			elevation: 0.7000008,
+			footprint: {
+				kind: 'polygon',
+				points: [
+					[6.3, 0],
+					[7.4, 0],
+					[7.4, 1.4],
+					[6.3, 1.4],
+				],
+			},
+		};
+		const carried: CameraFreeSceneDocument['entities'][number] = {
+			kind: 'primitive',
+			primitive: 'box',
+			id: 'seam-box',
+			name: 'Seam box',
+			dimensions: { width: 1, height: 1, depth: 1 },
+			materialId: 'plaster-warm',
+			castShadow: true,
+			receiveShadow: true,
+			position: [5, 1.2, 0.5],
+			rotation: [0, 0, 0],
+			scale: 1,
+		};
+		const companion: CameraFreeSceneDocument['entities'][number] = {
+			...carried,
+			id: 'seam-companion',
+			name: 'Seam companion',
+			position: [4.6, 0.5, 0.4],
+		};
+		const fixture = {
+			...base,
+			layout: { ...base.layout, regions: [ground, leftTop, rightTop] },
+			scene: {
+				...base.scene,
+				entities: [...base.scene.entities, carried, companion],
+			},
+			contacts: {
+				...base.contacts,
+				'seam-box': -0.5,
+				'seam-companion': -0.5,
+			},
+		};
+		const { snapshot } = await snapshotOf(fixture);
+		const context = {
+			layout: fixture.layout,
+			sourceContentId: snapshot.sourceContentId,
+			scene: snapshot.domain.source.units.scene.data,
+		};
+
+		// The origin sees only the 0 m ground, so this Move is lifted by 0.7 m. The
+		// destination is the seam: the upper top is the one support at the highest
+		// elevation within tolerance, so the destination rule accepts it.
+		const firstMove = planMoveHorizontal({
+			context,
+			entityId: 'seam-box',
+			worldXZ: [6.3, 0.5],
+			frame: { origin: [0, 0, 0], yaw: 0 },
+			contactMinY: -0.5,
+		});
+		expect(firstMove.kind).toBe('candidate');
+		if (firstMove.kind !== 'candidate') return;
+		expect(
+			firstMove.scene.entities.find((entity) => entity.id === 'seam-box')!.position[1],
+		).toBe(1.2);
+
+		// From the accepted seam both platform tops are within tolerance of the
+		// base, so the exact query alone is ambiguous. The upper top the destination
+		// admitted is the support, so the pose must stay operable.
+		const accepted = { ...context, scene: firstMove.scene };
+		const secondMove = planMoveHorizontal({
+			context: accepted,
+			entityId: 'seam-box',
+			worldXZ: [5.9, 0.5],
+			frame: { origin: [0, 0, 0], yaw: 0 },
+			contactMinY: -0.5,
+		});
+		expect(secondMove.kind).toBe('candidate');
+		const duplicate = planDuplicateOne({
+			context: accepted,
+			entityId: 'seam-box',
+			newEntityId: 'seam-box-copy',
+			contactMinY: -0.5,
+		});
+		expect(duplicate.kind).toBe('candidate');
+
+		const groupedScene = {
+			...accepted.scene,
+			clusters: [
+				...(accepted.scene.clusters ?? []),
+				{ id: 'cluster-seam', name: 'Seam', memberIds: [carried.id, companion.id] },
+			],
+		};
+		const groupedSnapshot = await snapshotOf({ ...fixture, scene: groupedScene });
+		const groupMove = prepare({
+			kind: 'scene-group-transform',
+			snapshot: groupedSnapshot.snapshot,
+			clusterId: 'cluster-seam',
+			payload: transformPayload(fixture, 'cluster-seam', { kind: 'move', deltaXZ: [-0.4, 0] }, [
+				'seam-box',
+				'seam-companion',
+			]),
+		});
+		expect(groupMove.kind).toBe('prepared');
+		const groupDuplicate = prepare({
+			kind: 'scene-group-duplicate',
+			snapshot: groupedSnapshot.snapshot,
+			clusterId: 'cluster-seam',
+			payload: {
+				clusterId: 'cluster-seam',
+				copies: [
+					{ sourceEntityId: 'seam-box', entityId: 'seam-box-copy-2' },
+					{ sourceEntityId: 'seam-companion', entityId: 'seam-companion-copy' },
+				],
+				newClusterId: 'cluster-seam-copy',
+				contacts: [
+					{ entityId: 'seam-box', contactMinY: -0.5 },
+					{ entityId: 'seam-companion', contactMinY: -0.5 },
+				],
+			},
+		});
+		expect(groupDuplicate.kind).toBe('prepared');
+	});
+
+	it('keeps explicit reseating and a captured destination choice unchanged', async () => {
+		const base = groupedSceneFixture();
+		const ground: LayoutRegion = {
+			id: 'region-reseat-ground',
+			role: 'floor',
+			footprint: {
+				kind: 'polygon',
+				points: [
+					[5.2, 0],
+					[7.2, 0],
+					[7.2, 2],
+					[5.2, 2],
+				],
+			},
+			elevation: 0,
+			thickness: 0.1,
+			form: { kind: 'flat' },
+			intendedGaps: [],
+			name: 'Reseat ground',
+		};
+		const mezzanine: LayoutRegion = {
+			...ground,
+			id: 'region-reseat-mezzanine',
+			name: 'Reseat mezzanine',
+			elevation: 0.9,
+			footprint: {
+				kind: 'polygon',
+				points: [
+					[6, 0],
+					[7, 0],
+					[7, 1],
+					[6, 1],
+				],
+			},
+		};
+		const platform: LayoutRegion = {
+			...ground,
+			id: 'region-reseat-platform',
+			name: 'Reseat platform',
+			elevation: 0.4,
+			footprint: {
+				kind: 'polygon',
+				points: [
+					[5.5, 0],
+					[6.5, 0],
+					[6.5, 1],
+					[5.5, 1],
+				],
+			},
+		};
+		const box: CameraFreeSceneDocument['entities'][number] = {
+			kind: 'primitive',
+			primitive: 'box',
+			id: 'reseat-box',
+			name: 'Reseat box',
+			dimensions: { width: 1, height: 1, depth: 1 },
+			materialId: 'plaster-warm',
+			castShadow: true,
+			receiveShadow: true,
+			position: [6.3, 1.2, 0.7],
+			rotation: [0, 0, 0],
+			scale: 1,
+		};
+		const fixture = {
+			...base,
+			layout: { ...base.layout, regions: [ground, mezzanine, platform] },
+			scene: { ...base.scene, entities: [...base.scene.entities, box] },
+			contacts: { ...base.contacts, 'reseat-box': -0.5 },
+		};
+		const { snapshot } = await snapshotOf(fixture);
+		const context = {
+			layout: fixture.layout,
+			sourceContentId: snapshot.sourceContentId,
+			scene: snapshot.domain.source.units.scene.data,
+		};
+
+		// Under the 0.9 m mezzanine the unconstrained origin query is ambiguous, so
+		// Place on floor reseats on the destination instead of carrying a lift.
+		const placed = planPlaceOnFloor({
+			context,
+			entityId: 'reseat-box',
+			worldXZ: [4, 0],
+			frame: { origin: [0, 0, 0], yaw: 0 },
+			contactMinY: -0.5,
+		});
+		expect(placed.kind).toBe('candidate');
+		if (placed.kind !== 'candidate') return;
+		expect(
+			placed.scene.entities.find((entity) => entity.id === 'reseat-box')!.position[1],
+		).toBe(0.5);
+		// `set-lift` keeps the same reading: an ambiguous origin is not a lift.
+		const reseated = planSetLift({
+			context,
+			entityId: 'reseat-box',
+			lift: 0,
+			contactMinY: -0.5,
+		});
+		expect(reseated.kind).toBe('rejected');
+		if (reseated.kind === 'rejected') expect(reseated.code).toBe('no-support');
+
+		// A 0 m captured choice is valid at both endpoints even though the origin
+		// also has the 0.4 m platform beneath it. The destination resolves the
+		// choice; the origin must not veto it.
+		const choice = {
+			kind: 'elevation' as const,
+			elevation: 0,
+			generationId: sceneSupportGenerationId(snapshot.sourceContentId),
+		};
+		const moved = planMoveHorizontal({
+			context,
+			entityId: 'reseat-box',
+			worldXZ: [4, 0.5],
+			frame: { origin: [0, 0, 0], yaw: 0 },
+			contactMinY: -0.5,
+			choice,
+		});
+		expect(moved.kind).toBe('candidate');
+		if (moved.kind !== 'candidate') return;
+		expect(
+			moved.scene.entities.find((entity) => entity.id === 'reseat-box')!.position[1],
+		).toBe(1.2);
 	});
 
 	it('keeps a near-gimbal spot aimed within 1e-6 through a group Turn', async () => {

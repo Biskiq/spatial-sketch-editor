@@ -153,6 +153,41 @@ describe('rigid group pose — probe', () => {
 		expectMatrixClose(eulerXyzToMatrix(eulerXyzFromMatrix(gimbal)), gimbal, 12);
 	});
 
+	it('keeps an Artwork’s right and up vectors rigid at the singularity', () => {
+		const turn = 37 * DEGREES;
+		const rotations: Array<readonly [number, number, number]> = [
+			// Ends exactly on the XYZ singularity. The third-column pair is then
+			// cancellation-dominated, so the declared branch recovers yaw and roll
+			// together instead of reading a meaningless roll out of that pair.
+			[0, Math.PI / 2 - turn, 1.6],
+			[0, Math.PI / 2 - turn - 1e-12, 1.6],
+			// Beside the singularity the stable branch is conditioned; it must also
+			// preserve the full orientation, not only the spotlight’s forward aim.
+			[0, Math.PI / 2 - turn - 2e-4, 1.6],
+			[0.35, Math.PI / 2 - turn - 1e-3, -0.7],
+		];
+		for (const rotation of rotations) {
+			const composed = multiplyRotationMatrices(yawMatrix(turn), eulerXyzToMatrix(rotation));
+			const nextMatrix = eulerXyzToMatrix(rigidTurnRotation(rotation, turn));
+			for (let row = 0; row < 3; row += 1) {
+				for (let column = 0; column < 3; column += 1) {
+					expect(
+						Math.abs(nextMatrix[row]![column]! - composed[row]![column]!),
+						`rotation ${rotation.join(',')} component ${row},${column}`,
+					).toBeLessThan(1e-8);
+				}
+			}
+			// Right and up are the first two columns; assert them independently of the
+			// matrix comparison so a future tolerance cannot hide a twisted roll.
+			for (let row = 0; row < 3; row += 1) {
+				expect(
+					Math.hypot(nextMatrix[row]![0]! - composed[row]![0], nextMatrix[row]![1]! - composed[row]![1]),
+					`rotation ${rotation.join(',')} right/up row ${row}`,
+				).toBeLessThan(1e-8);
+			}
+		}
+	});
+
 	it('keeps every Euler XYZ matrix orthonormal and its forward vector rigid', () => {
 		const rotations = [...AIMED_ROTATIONS, ...seededRotations(32)];
 		for (const rotation of rotations) {

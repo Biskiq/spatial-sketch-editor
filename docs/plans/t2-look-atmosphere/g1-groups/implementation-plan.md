@@ -197,7 +197,10 @@ clusters: {
 - An upright floor member's rotation is composed by an exact yaw add that keeps its sub-tolerance
   pitch and roll, as `set-yaw` does. A light or Artwork is composed as `Ry(θ)·R` and decomposed back
   to Euler XYZ, with a declared branch at |m₀₂| ≈ 1. Tests compare rotation matrices and forward
-  vectors, never Euler components.
+  vectors, never Euler components. The whole orientation — right and up as well as forward — is the
+  rigid image; inside the last `1e-8` of the singular band the declared branch reconstructs it to
+  `O(cos y)`, and outside it the stable branch stays conditioned there, so both bounds sit well
+  inside the 1e-6 target tolerance.
 - **Probe first:** a property test over spot aims (including straight down and the gimbal branch)
   and Artwork poses proves the round-trip, and that each light's forward vector and target point
   are the rigid image within 1e-6, before any planner uses the helper.
@@ -211,9 +214,13 @@ destination point *p*:
   tolerance of its unchanged base elevation. This is `move-horizontal`'s rule today.
 - **Lifted:** its support at *p* is the highest candidate at or below its unchanged base, within the
   coplanar tolerance, and it refuses when there is none. A candidate above the base, such as a
-  mezzanine top, is not its support and is ignored. **This corrects the defect in §1**, and the same
-  helper replaces the lifted branch of `move-horizontal` and `duplicate-one`, so single and group
-  moves cannot disagree (G-6, approved).
+  mezzanine top, is not its support and is ignored. The origin applies this same rule from the
+  encoded pose; a support within the coplanar tolerance of the base, including a platform top just
+  above it at a seam, is what it rests on. **This corrects the defect in §1**, and one shared
+  destination helper (`resolveDestinationSupport`) replaces the lifted branch of `move-horizontal`
+  and `duplicate-one`, so single and group moves cannot disagree (G-6, approved). The captured
+  choice is checked at the destination, never at the origin: an ambiguity cannot strand an accepted
+  pose, and an origin with a higher support beneath it cannot veto a choice the destination yields.
 - **Explicit reseating is unchanged.** *Place on floor*, `set-lift` and placement keep their current
   semantics and remain the only operations that change a member's Y.
 - Whether a body intersects a slab or a wall is collision. Support candidates carry no thickness,

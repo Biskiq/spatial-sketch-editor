@@ -97,11 +97,16 @@ Scene authority; no dangling member survives.
   roll are preserved). Lights and Artwork move rigidly with no support check. Every other member
   revalidates support from the accepted Layout: a resting member must find its unchanged base at
   the destination; a lifted member takes the highest support at or below its base and ignores a
-  surface above it. **Resting or lifted is decided at the origin by the same rule:** a base that no
-  support meets is lifted above the highest support at or below it, so an accepted pose remains
-  operable by the next Move or Duplicate. A captured support choice is still honoured, and a stale
-  one refuses. Any member failure refuses the whole operation and names the member, the destination
-  and the available elevations. Turn does not re-ground.
+  surface above it. **Resting or lifted is decided at the origin by that rule, from the encoded
+  pose alone:** a base that no support meets is lifted above the highest support at or below it,
+  and a support within the coplanar tolerance of the base — including a platform top just above it
+  at a seam — is the support it rests on, so an accepted pose remains operable by the next Move or
+  Duplicate. The captured support choice is applied at the destination only; an origin that also
+  has a higher support beneath it cannot veto a choice the destination yields, and a stale choice
+  still refuses. Explicit reseating is unchanged: *Place on floor*, `set-lift` and placement keep
+  their prior origin reading and remain the only operations that change a member's Y. Any member
+  failure refuses the whole operation and names the member, the destination and the available
+  elevations. Turn does not re-ground.
 - **Duplicate** is member duplication, not group duplication: it appends one independent copy per
   member at the deterministic **+0.5 world X/Z** offset, each copy's captured id paired to its
   source member, then appends one cluster with the captured id and the same name. Copies preserve Y, rotation, material sharing and

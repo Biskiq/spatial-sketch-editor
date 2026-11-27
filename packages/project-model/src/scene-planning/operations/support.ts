@@ -1,4 +1,5 @@
 import { type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { FLOOR_SUPPORT_TOLERANCES } from '@portfolio/layout-core/room';
 import { sceneFormContactMinY } from '../../form';
 import { type SceneEntity, type ScenePrimitiveEntity } from '../../scene';
 import { framePointToWorld, frameYawToWorld } from '../frame';
@@ -44,6 +45,10 @@ export function resolveSupport(
  * (the `move-horizontal` rule). A lifted member must find the highest support
  * at or below its unchanged base; a surface above the base is not its support
  * and is ignored. The single and group planners share this one rule (G-6).
+ *
+ * The captured choice is applied at the **destination only**. The origin is read
+ * from the encoded pose by `movableSupport`, so a choice the destination yields
+ * is never vetoed by an origin that also has a higher support beneath it.
  */
 export function resolveDestinationSupport(input: {
 	readonly context: SceneOperationContext;
@@ -54,7 +59,7 @@ export function resolveDestinationSupport(input: {
 }):
 	| { readonly kind: 'resolved'; readonly support: SceneOperationSupportEvidence }
 	| SceneOperationRefusal {
-	const rest = restSupport(input.context, input.entity, input.contactMinY, input.choice);
+	const rest = movableSupport(input.context, input.entity, input.contactMinY);
 	if (rest.kind !== 'resolved') return rest;
 	if (rest.lift <= CONTACT_TOLERANCE_METERS) {
 		return resolveSupport(input.context, input.point, rest.resting, input.choice);
@@ -251,6 +256,53 @@ export function restingElevation(entity: SceneEntity, contactMinY: number): numb
 }
 
 /**
+ * The support a Move or Duplicate keeps its unchanged Y over, with its lift.
+ *
+ * This is the destination rule's origin half. A base that meets a support is
+ * resting; any other base is lifted above the highest support at or below it. A
+ * support within the platform's coplanar tolerance of the base counts as
+ * resting even when it lies just above — a platform seam both sides of which a
+ * destination query accepts. The captured choice belongs to the destination and
+ * is not an input here.
+ */
+function movableSupport(
+	context: SceneOperationContext,
+	entity: SceneEntity,
+	contactMinY: number,
+):
+	| {
+			readonly kind: 'resolved';
+			readonly support: SceneOperationSupportEvidence;
+			readonly resting: number;
+			readonly lift: number;
+	  }
+	| SceneOperationRefusal {
+	const point: LayoutVec2 = [entity.position[0], entity.position[2]];
+	const resting = restingElevation(entity, contactMinY);
+	const onIt = resolveSupport(context, point, resting, undefined);
+	if (onIt.kind === 'resolved')
+		return { kind: 'resolved', support: onIt.support, resting, lift: 0 };
+	const beneath = resolveSceneSupportAtOrBelow({
+		layout: context.layout,
+		sourceContentId: context.sourceContentId,
+		point,
+		ceiling: resting,
+	});
+	if (beneath.kind === 'resolved') {
+		const lift = resting - beneath.support.elevation;
+		if (lift > CONTACT_TOLERANCE_METERS) {
+			return { kind: 'resolved', support: beneath.support, resting, lift };
+		}
+		// A seam admits a support just above the base; it is the same support the
+		// destination query accepts, so the pose is resting on it, not stranded.
+		if (Math.abs(lift) <= FLOOR_SUPPORT_TOLERANCES.coplanarElevationMeters) {
+			return { kind: 'resolved', support: beneath.support, resting, lift: 0 };
+		}
+	}
+	return onIt;
+}
+
+/**
  * The accepted lift of one entity above the support beneath it, or `null` when
  * neither its resting base nor anything beneath it resolves. Read-only: the
  * lift knob and the Card's Elevation field show this; `set-lift` changes it.
@@ -265,18 +317,18 @@ export function sceneEntityLift(
 }
 
 /**
- * The support an object's base is on, or — when it is lifted — the highest
- * support at or below that base, with the lift between them.
+ * The support an object rests on, or — when it is lifted — the support directly
+ * beneath it, with the lift between them.
  *
- * A resting base resolves exactly (its elevation must be a support). A base that
- * no support meets is lifted above the highest candidate at or below it; a
- * candidate above the base, such as a mezzanine top, never becomes its support.
- * This is the same at-or-below rule the destination uses, so a pose this helper
- * classifies stays operable by the next Move or Duplicate instead of becoming an
- * ambiguous origin those operations cannot leave. A captured choice is still
- * honoured: a stale or no-longer-yielded choice refuses instead of silently
- * reclassifying the object. A form's `contactMinY` already includes its per-axis
- * scale, so its entity scale is 1.
+ * A resting object resolves exactly as before (its resting elevation must be a
+ * support). Only when that fails and a support lies strictly below the base is
+ * the object lifted from it; any other failure is the original refusal. A form's
+ * `contactMinY` already includes its per-axis scale, so its entity scale is 1.
+ *
+ * This is the explicit-reseating reading: `place-on-floor`, `resize-on-floor`
+ * and `set-lift` keep their pre-G1 semantics, including a capture that the
+ * unconstrained query cannot disambiguate. Move and Duplicate use
+ * `movableSupport` instead.
  */
 export function restSupport(
 	context: SceneOperationContext,
@@ -296,13 +348,7 @@ export function restSupport(
 	const onIt = resolveSupport(context, point, resting, choice);
 	if (onIt.kind === 'resolved')
 		return { kind: 'resolved', support: onIt.support, resting, lift: 0 };
-	const beneath = resolveSceneSupportAtOrBelow({
-		layout: context.layout,
-		sourceContentId: context.sourceContentId,
-		point,
-		ceiling: resting,
-		...(choice === undefined ? {} : { choice }),
-	});
+	const beneath = resolveSupport(context, point, null, choice);
 	if (
 		beneath.kind === 'resolved' &&
 		resting > beneath.support.elevation + CONTACT_TOLERANCE_METERS

@@ -13,10 +13,10 @@
  * - An **upright floor object** adds the Turn angle to its stored yaw and keeps
  *   its sub-tolerance pitch and roll byte-for-byte, exactly as `set-yaw` does.
  * - A **light or Artwork** rotates by `Ry(θ)·R` and decomposes back to Euler
- *   XYZ. The decomposition stays on the stable branch through the whole
- *   near-singular band, where the third column still determines pitch and aim
- *   exactly; only at the exact singularity (`cos y = 0`) is a branch declared,
- *   with yaw and roll describing the same rotation.
+ *   XYZ. The decomposition stays on the stable branch through the near-singular
+ *   band, where the third column still determines pitch and aim; inside the last
+ *   `1e-8` of the singularity a declared branch reconstructs the rotation to the
+ *   same tolerance, because there the recovered roll is cancellation-dominated.
  *
  * Tests compare matrices and forward vectors, never Euler components: two
  * Euler triples may describe the same rotation, and only the rotation is truth.
@@ -31,6 +31,15 @@ export type RotationMatrix = readonly [
 
 /** A rotation or position the rigid helper reads; it never mutates its input. */
 export type RigidVec3 = readonly [number, number, number];
+
+/**
+ * The third-column pair length below which the recovered roll is dominated by
+ * cancellation in the composed entries. The declared singular branch's
+ * `O(cos y)` error and the stable branch's `1 / cos y` conditioning are both
+ * under 1e-8 at this boundary, so every pose stays far inside the rigid-pose
+ * tolerance.
+ */
+const NEAR_SINGULAR_COS_Y = 1e-8;
 
 /** The XZ centre of the members' horizontal extent: the group Turn pivot (G-5). */
 export function rigidPivot(
@@ -131,18 +140,19 @@ export function eulerXyzToMatrix(rotation: RigidVec3): RotationMatrix {
  * For a rotation, `cos(y)` is the length of the third column pair
  * `(m₁₂, m₂₂)`, so `atan2(m₀₂, cos y)` recovers pitch without the saturation
  * `asin(m₀₂)` suffers near ±1. The third column then fixes `x` and `y`, and the
- * first two columns fix `z`: a near-gimbal rotation is recovered exactly rather
- * than flattened to a declared roll of zero, so a light keeps its aim and an
- * Artwork its orientation. Only when `cos y` is exactly zero do yaw and roll
- * describe the same rotation — the declared `|m₀₂| ≈ 1` branch — where `z` is
- * zero and `x` comes from the remaining column pair. The returned matrix is the
- * same rotation in both cases.
+ * first two columns fix `z`: a near-gimbal rotation is recovered rather than
+ * flattened to a declared roll of zero, so a light keeps its aim and an Artwork
+ * its orientation. Once `cos y` is small enough that the recovered roll is
+ * dominated by the cancellation of those entries, the declared `|m₀₂| ≈ 1`
+ * branch is used instead: `z` is zero and `x` comes from the remaining column
+ * pair, which reconstructs the rotation to `O(cos y)`. The returned matrix is
+ * the same rotation in both cases.
  */
 export function eulerXyzFromMatrix(matrix: RotationMatrix): Vec3 {
 	const m02 = matrix[0][2];
 	const cosY = Math.hypot(matrix[1][2], matrix[2][2]);
 	const y = Math.atan2(m02, cosY);
-	if (cosY > 0) {
+	if (cosY > NEAR_SINGULAR_COS_Y) {
 		return [Math.atan2(-matrix[1][2], matrix[2][2]), y, Math.atan2(-matrix[0][1], matrix[0][0])];
 	}
 	return [Math.atan2(matrix[2][1], matrix[1][1]), y, 0];
