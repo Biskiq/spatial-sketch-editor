@@ -1,0 +1,475 @@
+{
+  "host": {
+    "date": "2026-11-26",
+    "cpu": "Apple M2",
+    "memoryGiB": 16,
+    "macOS": "15.8.2"
+  },
+  "verification": {
+    "localNode": {
+      "node": "v26.7.0",
+      "engine": "14.6.202.34-node.28",
+      "platform": "darwin",
+      "arch": "arm64"
+    },
+    "linuxX64Node": {
+      "node": "v22.23.4",
+      "engine": "12.4.254.21-node.57",
+      "platform": "linux",
+      "arch": "x64",
+      "container": "node:22-bookworm-slim",
+      "emulated": true
+    },
+    "chromium": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/158.0.0.0 Safari/537.36",
+    "gecko": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:135.0) Gecko/20100101 Firefox/135.0",
+    "exactMatches": "goldens.json"
+  },
+  "artifact": {
+    "release": "manifold-3d@3.5.4",
+    "sourceCommit": "ce50d78021d64507f89e8c9fc2c2e51018117857",
+    "sha256": {
+      "manifold.js": "ca3c8a88df63bb3083013d1eb7f700bf23216594f6e98a2566e34f55d7341ce8",
+      "manifold.wasm": "73e3b419ad31294f6b1cc478173944e50efc4a34bfdeeff0107bdfc12975f11c"
+    },
+    "assets": {
+      "manifold.js": {
+        "bytes": 82371,
+        "brotliBytes": 17223
+      },
+      "manifold.wasm": {
+        "bytes": 541470,
+        "brotliBytes": 158724
+      }
+    }
+  },
+  "timing": {
+    "node": {
+      "initMs": 9.08,
+      "performance": {
+        "vitrine": {
+          "reps": 100,
+          "triangles": 60,
+          "meshMs": [0.513, 1.035],
+          "oracleMs": [0.917, 2.183],
+          "directMs": [1.398, 2.636]
+        },
+        "8 cuts": {
+          "reps": 60,
+          "triangles": 172,
+          "meshMs": [1.716, 3.486],
+          "oracleMs": [8.72, 11.489],
+          "directMs": [34.197, 39.326]
+        },
+        "40 cuts (beyond scope)": {
+          "reps": 30,
+          "triangles": 812,
+          "meshMs": [14.787, 16.05],
+          "oracleMs": null,
+          "directMs": null
+        }
+      }
+    },
+    "chromium": {
+      "pageInitMs": 19.799999952316284,
+      "workerInitMs": 7.5,
+      "workerCorpusMs": 994.8000000715256,
+      "performance": {
+        "vitrine": {
+          "reps": 100,
+          "triangles": 60,
+          "meshMs": [0.5, 1],
+          "oracleMs": [0.8, 1.6],
+          "directMs": [0.9, 2.1]
+        },
+        "8 cuts": {
+          "reps": 60,
+          "triangles": 172,
+          "meshMs": [1.5, 3.3],
+          "oracleMs": [7, 9.7],
+          "directMs": [25.4, 30.3]
+        },
+        "40 cuts (beyond scope)": {
+          "reps": 30,
+          "triangles": 812,
+          "meshMs": [13.4, 14.9],
+          "oracleMs": null,
+          "directMs": null
+        }
+      },
+      "workerRoundTripMs": 4097.299999952316
+    },
+    "gecko": {
+      "pageInitMs": 59,
+      "workerInitMs": 37,
+      "workerCorpusMs": 1268,
+      "performance": {
+        "vitrine": {
+          "reps": 100,
+          "triangles": 60,
+          "meshMs": [1, 2],
+          "oracleMs": [1, 3],
+          "directMs": [1, 4]
+        },
+        "8 cuts": {
+          "reps": 60,
+          "triangles": 172,
+          "meshMs": [2, 5],
+          "oracleMs": [15, 20],
+          "directMs": [29, 39]
+        },
+        "40 cuts (beyond scope)": {
+          "reps": 30,
+          "triangles": 812,
+          "meshMs": [23, 38],
+          "oracleMs": null,
+          "directMs": null
+        }
+      },
+      "workerRoundTripMs": 5800
+    }
+  },
+  "observations": [
+    {"name": "vitrine", "preflight": "ok", "ambiguousTiles": 0, "exactVolume": 0.08131026121245172, "kernelVolume": 0.08131026121245175, "geometry": true, "provenance": true, "status": "NoError", "triangles": 60, "shellComponents": 1, "euler": 2, "volumeError": 4.555150326379653e-09, "coordinateError": 2.622604367008563e-08, "defects": [], "reversed": {"geometry": true, "provenance": true, "status": "NoError", "triangles": 60, "shellComponents": 1, "euler": 2, "volumeError": 4.555150326379653e-09, "coordinateError": 2.622604367008563e-08, "defects": []}, "identicalOrderVariant": false},
+    {"name": "ordered-cut-add", "preflight": "ok", "ambiguousTiles": 0, "exactVolume": 0.9838, "kernelVolume": 0.9838, "geometry": true, "provenance": true, "status": "NoError", "triangles": 44, "shellComponents": 1, "euler": 2, "volumeError": 3.391505187799737e-09, "coordinateError": 4.768371586472142e-08, "defects": [], "reversed": {"geometry": true, "provenance": true, "status": "NoError", "triangles": 44, "shellComponents": 1, "euler": 2, "volumeError": 3.391505187799737e-09, "coordinateError": 4.768371586472142e-08, "defects": []}, "identicalOrderVariant": false},
+    {"name": "ordered-add-cut", "preflight": "ok", "ambiguousTiles": 0, "exactVolume": 0.8956, "kernelVolume": 0.8956, "geometry": true, "provenance": true, "status": "NoError", "triangles": 28, "shellComponents": 1, "euler": 2, "volumeError": 8.243322580092638e-09, "coordinateError": 2.1457672083613488e-08, "defects": [], "reversed": {"geometry": true, "provenance": true, "status": "NoError", "triangles": 28, "shellComponents": 1, "euler": 2, "volumeError": 8.243322580092638e-09, "coordinateError": 2.1457672083613488e-08, "defects": []}, "identicalOrderVariant": true},
+    {"name": "sealed-void", "preflight": "sealed-void", "ambiguousTiles": 0, "exactVolume": 1.0104000000000002, "kernelVolume": 1.0104, "geometry": false, "provenance": true, "status": "NoError", "triangles": 40, "shellComponents": 2, "euler": 4, "volumeError": 2.0515918963681656e-08, "coordinateError": 2.384185793236071e-08, "defects": [], "reversed": {"geometry": false, "provenance": true, "status": "NoError", "triangles": 40, "shellComponents": 2, "euler": 4, "volumeError": 2.0515918963681656e-08, "coordinateError": 2.384185793236071e-08, "defects": []}, "identicalOrderVariant": false},
+    {"name": "overlapping-add", "preflight": "ok", "ambiguousTiles": 0, "exactVolume": 1.0412500000000002, "kernelVolume": 1.04125, "geometry": true, "provenance": true, "status": "NoError", "triangles": 28, "shellComponents": 1, "euler": 2, "volumeError": 1.0840594422134586e-08, "coordinateError": 2.384185793236071e-08, "defects": [], "reversed": {"geometry": true, "provenance": true, "status": "NoError", "triangles": 28, "shellComponents": 1, "euler": 2, "volumeError": 1.0840594866223796e-08, "coordinateError": 2.384185793236071e-08, "defects": []}, "identicalOrderVariant": false},
+    {"name": "through-cut", "preflight": "ok", "ambiguousTiles": 0, "exactVolume": 0.75, "kernelVolume": 0.75, "geometry": true, "provenance": true, "status": "NoError", "triangles": 32, "shellComponents": 1, "euler": 0, "volumeError": 7.45058070794613e-09, "coordinateError": 1.1920928966180355e-08, "defects": []},
+    {"name": "open-sided-rebate", "preflight": "ok", "ambiguousTiles": 0, "exactVolume": 0.8530000000000002, "kernelVolume": 0.853, "geometry": true, "provenance": true, "status": "NoError", "triangles": 28, "shellComponents": 1, "euler": 2, "volumeError": 5.528331126214425e-09, "coordinateError": 1.1920928910669204e-08, "defects": []},
+    {"name": "thin-back-1mm", "preflight": "ok", "ambiguousTiles": 0, "exactVolume": 0.75025, "kernelVolume": 0.75025, "geometry": true, "provenance": true, "status": "NoError", "triangles": 28, "shellComponents": 1, "euler": 2, "volumeError": 7.455004280565447e-09, "coordinateError": 1.1920928966180355e-08, "defects": []},
+    {"name": "role-split-trench", "preflight": "ok", "ambiguousTiles": 0, "exactVolume": 0.8499999999999999, "kernelVolume": 0.8499999999999999, "geometry": true, "provenance": true, "status": "NoError", "triangles": 28, "shellComponents": 1, "euler": 2, "volumeError": 5.960464677379207e-09, "coordinateError": 1.1920928966180355e-08, "defects": [], "stockTopPatches": 2},
+    {"name": "role-vanished-top", "preflight": "ok", "ambiguousTiles": 0, "exactVolume": 0.7, "kernelVolume": 0.7, "geometry": true, "provenance": true, "status": "NoError", "triangles": 12, "shellComponents": 1, "euler": 2, "volumeError": 1.1920928910669204e-08, "coordinateError": 1.1920928910669204e-08, "defects": [], "stockTopPatches": 0},
+    {"name": "coplanar-role-tie", "preflight": "coincident-planes", "ambiguousTiles": 1, "exactVolume": 1.0100000000000002, "kernelVolume": 1.01, "geometry": true, "provenance": true, "status": "NoError", "triangles": 30, "shellComponents": 1, "euler": 2, "volumeError": 4.7683719195390495e-09, "coordinateError": 4.768371586472142e-08, "defects": [], "reversed": {"geometry": true, "provenance": true, "status": "NoError", "triangles": 30, "shellComponents": 1, "euler": 2, "volumeError": 4.7683719195390495e-09, "coordinateError": 4.768371586472142e-08, "defects": []}, "identicalOrderVariant": false, "topAttribution": [{"stock/z+": 5, "tool/z+": 3}, {"stock/z+": 5, "tool/z+": 3}]},
+    {"name": "closed-cavity", "preflight": "interior-cut", "ambiguousTiles": 0, "exactVolume": 0.8750000000000001, "kernelVolume": 0.875, "geometry": false, "provenance": true, "status": "NoError", "triangles": 24, "shellComponents": 2, "euler": 4, "volumeError": 1.1175870562318835e-08, "coordinateError": 2.384185793236071e-08, "defects": []},
+    {"name": "contained-add", "preflight": "ineffective", "ambiguousTiles": 0, "exactVolume": 1, "kernelVolume": 1, "geometry": true, "provenance": true, "status": "NoError", "triangles": 12, "shellComponents": 1, "euler": 2, "volumeError": 1.1102230246251565e-16, "coordinateError": 0, "defects": [], "reversed": {"geometry": true, "provenance": true, "status": "NoError", "triangles": 12, "shellComponents": 1, "euler": 2, "volumeError": 1.1102230246251565e-16, "coordinateError": 0, "defects": []}, "identicalOrderVariant": true},
+    {"name": "boundary-wall-0.9mm", "preflight": "near-planes", "ambiguousTiles": 0, "exactVolume": 0.7502249999999999, "kernelVolume": 0.7502249999999999, "geometry": true, "provenance": true, "status": "NoError", "triangles": 28, "shellComponents": 1, "euler": 2, "volumeError": 7.440009941461767e-09, "coordinateError": 1.1920928966180355e-08, "defects": []},
+    {"name": "equal-cap-through", "preflight": "coincident-planes", "ambiguousTiles": 0, "exactVolume": 0.75, "kernelVolume": 0.75, "geometry": true, "provenance": true, "status": "NoError", "triangles": 32, "shellComponents": 1, "euler": 0, "volumeError": 7.45058070794613e-09, "coordinateError": 1.1920928966180355e-08, "defects": []},
+    {"name": "full-face-stack", "preflight": "coincident-planes", "ambiguousTiles": 0, "exactVolume": 2, "kernelVolume": 2, "geometry": true, "provenance": true, "status": "NoError", "triangles": 20, "shellComponents": 1, "euler": 2, "volumeError": 0, "coordinateError": 0, "defects": [], "reversed": {"geometry": true, "provenance": true, "status": "NoError", "triangles": 20, "shellComponents": 1, "euler": 2, "volumeError": 0, "coordinateError": 0, "defects": []}, "identicalOrderVariant": true},
+    {"name": "partial-face-stack", "preflight": "coincident-planes", "ambiguousTiles": 0, "exactVolume": 1.2, "kernelVolume": 1.2, "geometry": true, "provenance": true, "status": "NoError", "triangles": 28, "shellComponents": 1, "euler": 2, "volumeError": 1.043081243601307e-08, "coordinateError": 2.384185793236071e-08, "defects": [], "reversed": {"geometry": true, "provenance": true, "status": "NoError", "triangles": 28, "shellComponents": 1, "euler": 2, "volumeError": 1.043081243601307e-08, "coordinateError": 2.384185793236071e-08, "defects": []}, "identicalOrderVariant": false},
+    {"name": "coplanar-overlap", "preflight": "coincident-planes", "ambiguousTiles": 1, "exactVolume": 1, "kernelVolume": 1, "geometry": true, "provenance": true, "status": "NoError", "triangles": 12, "shellComponents": 1, "euler": 2, "volumeError": 1.1102230246251565e-16, "coordinateError": 0, "defects": [], "reversed": {"geometry": true, "provenance": true, "status": "NoError", "triangles": 12, "shellComponents": 1, "euler": 2, "volumeError": 1.1102230246251565e-16, "coordinateError": 0, "defects": []}, "identicalOrderVariant": true},
+    {"name": "edge-only-add", "preflight": "coincident-planes", "ambiguousTiles": 0, "exactVolume": 1.6, "kernelVolume": 1.6, "geometry": false, "provenance": true, "status": "NoError", "triangles": 24, "shellComponents": 2, "euler": 4, "volumeError": 8.940696627490752e-09, "coordinateError": 1.1920928910669204e-08, "defects": [["edgeIncidences", 2]], "reversed": {"geometry": false, "provenance": true, "status": "NoError", "triangles": 24, "shellComponents": 2, "euler": 4, "volumeError": 8.940696627490752e-09, "coordinateError": 1.1920928910669204e-08, "defects": [["edgeIncidences", 2]]}, "identicalOrderVariant": true},
+    {"name": "point-only-add", "preflight": "coincident-planes", "ambiguousTiles": 0, "exactVolume": 2, "kernelVolume": 2, "geometry": false, "provenance": true, "status": "NoError", "triangles": 24, "shellComponents": 2, "euler": 4, "volumeError": 2.220446049250313e-16, "coordinateError": 0, "defects": [["coincidentVertices", 1]], "reversed": {"geometry": false, "provenance": true, "status": "NoError", "triangles": 24, "shellComponents": 2, "euler": 4, "volumeError": 2.220446049250313e-16, "coordinateError": 0, "defects": [["coincidentVertices", 1]]}, "identicalOrderVariant": false},
+    {"name": "face-only-cut", "preflight": "coincident-planes", "ambiguousTiles": 1, "exactVolume": 1, "kernelVolume": 1, "geometry": true, "provenance": true, "status": "NoError", "triangles": 12, "shellComponents": 1, "euler": 2, "volumeError": 1.1102230246251565e-16, "coordinateError": 0, "defects": []},
+    {"name": "disjoint-add", "preflight": "disjoint-add", "ambiguousTiles": 0, "exactVolume": 1.2475, "kernelVolume": 1.2474999999999998, "geometry": true, "provenance": true, "status": "NoError", "triangles": 24, "shellComponents": 2, "euler": 4, "volumeError": 4.991889124283944e-09, "coordinateError": 1.1920928966180355e-08, "defects": [], "reversed": {"geometry": true, "provenance": true, "status": "NoError", "triangles": 24, "shellComponents": 2, "euler": 4, "volumeError": 4.991889124283944e-09, "coordinateError": 1.1920928966180355e-08, "defects": []}, "identicalOrderVariant": true},
+    {"name": "disjoint-cut", "preflight": "ineffective", "ambiguousTiles": 0, "exactVolume": 1, "kernelVolume": 1, "geometry": true, "provenance": true, "status": "NoError", "triangles": 12, "shellComponents": 1, "euler": 2, "volumeError": 1.1102230246251565e-16, "coordinateError": 0, "defects": []},
+    {"name": "split-cut", "preflight": "split", "ambiguousTiles": 0, "exactVolume": 0.5, "kernelVolume": 0.5, "geometry": true, "provenance": true, "status": "NoError", "triangles": 24, "shellComponents": 2, "euler": 4, "volumeError": 1.4901161082825354e-08, "coordinateError": 1.1920928910669204e-08, "defects": []},
+    {"name": "self-cut", "preflight": "empty", "ambiguousTiles": 0, "exactVolume": 0, "kernelVolume": 0, "geometry": true, "provenance": true, "status": "NoError", "triangles": 0, "shellComponents": 0, "euler": 0, "volumeError": 0, "coordinateError": 0, "defects": []},
+    {"name": "surround-cut", "preflight": "empty", "ambiguousTiles": 0, "exactVolume": 0, "kernelVolume": 0, "geometry": true, "provenance": true, "status": "NoError", "triangles": 0, "shellComponents": 0, "euler": 0, "volumeError": 0, "coordinateError": 0, "defects": []},
+    {"name": "retained-L-collinear", "preflight": "profile", "ambiguousTiles": 0, "exactVolume": 4.874999999999999, "kernelVolume": 4.875, "geometry": true, "provenance": true, "status": "NoError", "triangles": 40, "shellComponents": 1, "euler": 2, "volumeError": 3.7252920748187535e-09, "coordinateError": 1.1920928966180355e-08, "defects": []},
+    {"name": "retained-pierced-panel", "preflight": "profile", "ambiguousTiles": 0, "exactVolume": 7.400000000000002, "kernelVolume": 7.4, "geometry": true, "provenance": true, "status": "NoError", "triangles": 48, "shellComponents": 1, "euler": 0, "volumeError": 8.940696183401542e-09, "coordinateError": 4.7683715642676816e-08, "defects": []},
+    {"name": "offset-thin-back", "preflight": "near-planes", "ambiguousTiles": 0, "exactVolume": 0.7502499999999994, "kernelVolume": 0.7502499999999996, "geometry": true, "provenance": true, "status": "NoError", "triangles": 28, "shellComponents": 1, "euler": 2, "volumeError": 1.3732910120189956e-07, "coordinateError": 7.629394502828291e-07, "defects": []},
+    {"name": "offset-thin-back-margin", "preflight": "ok", "ambiguousTiles": 0, "exactVolume": 6.0020000000000024, "kernelVolume": 6.002000000000008, "geometry": true, "provenance": true, "status": "NoError", "triangles": 28, "shellComponents": 1, "euler": 2, "volumeError": 1.0986328167206239e-06, "coordinateError": 1.5258789076710855e-06, "defects": []},
+    {"name": "nonfinite", "preflight": "bounds"},
+    {"name": "operation-budget", "preflight": "operation-budget"},
+    {"name": "eight-cuts", "preflight": "ok", "ambiguousTiles": 0, "exactVolume": 17.280000000000012, "kernelVolume": 17.28, "geometry": true, "provenance": true, "status": "NoError", "triangles": 172, "shellComponents": 1, "euler": -14, "volumeError": 6.875395577310428e-07, "coordinateError": 1.1444091807533141e-07, "defects": []}
+  ],
+  "direct": {
+    "vitrine": {
+      "triangles": 492,
+      "volumeError": 4.163336342344337e-17,
+      "sections": {
+        "maxAreaError": 3.885780586188048e-16,
+        "volumeError": 1.3877787807814457e-17
+      }
+    },
+    "ordered-cut-add": {
+      "triangles": 260,
+      "volumeError": 1.1102230246251565e-16
+    },
+    "ordered-add-cut": {
+      "triangles": 244,
+      "volumeError": 1.1102230246251565e-16
+    },
+    "overlapping-add": {
+      "triangles": 92,
+      "volumeError": 2.220446049250313e-16
+    },
+    "through-cut": {
+      "triangles": 64,
+      "volumeError": 2.220446049250313e-16
+    },
+    "open-sided-rebate": {
+      "triangles": 68,
+      "volumeError": 0
+    },
+    "thin-back-1mm": {
+      "triangles": 92,
+      "volumeError": 5.551115123125783e-16
+    },
+    "role-split-trench": {
+      "triangles": 44,
+      "volumeError": 3.3306690738754696e-16
+    },
+    "role-vanished-top": {
+      "triangles": 12,
+      "volumeError": 0
+    },
+    "offset-thin-back-margin": {
+      "triangles": 92,
+      "volumeError": 0
+    },
+    "eight-cuts": {
+      "triangles": 1324,
+      "volumeError": 3.552713678800501e-15
+    }
+  },
+  "roleEvidence": {
+    "stock/z-": {
+      "triangles": 8,
+      "backside": false,
+      "materialToken": "stock-swab"
+    },
+    "stock/y-": {
+      "triangles": 2,
+      "backside": false,
+      "materialToken": "stock-swab"
+    },
+    "stock/x-": {
+      "triangles": 2,
+      "backside": false,
+      "materialToken": "stock-swab"
+    },
+    "stock/z+": {
+      "triangles": 8,
+      "backside": false,
+      "materialToken": "stock-swab"
+    },
+    "stock/y+": {
+      "triangles": 2,
+      "backside": false,
+      "materialToken": "stock-swab"
+    },
+    "stock/x+": {
+      "triangles": 2,
+      "backside": false,
+      "materialToken": "stock-swab"
+    },
+    "recess/z-": {
+      "triangles": 2,
+      "backside": true,
+      "materialToken": "recess-swab"
+    },
+    "recess/x-": {
+      "triangles": 2,
+      "backside": true,
+      "materialToken": "recess-swab"
+    },
+    "recess/y-": {
+      "triangles": 2,
+      "backside": true,
+      "materialToken": "recess-swab"
+    },
+    "recess/y+": {
+      "triangles": 2,
+      "backside": true,
+      "materialToken": "recess-swab"
+    },
+    "recess/x+": {
+      "triangles": 2,
+      "backside": true,
+      "materialToken": "recess-swab"
+    },
+    "rebate/x-": {
+      "triangles": 2,
+      "backside": true,
+      "materialToken": "rebate-swab"
+    },
+    "rebate/z-": {
+      "triangles": 8,
+      "backside": true,
+      "materialToken": "rebate-swab"
+    },
+    "rebate/y-": {
+      "triangles": 2,
+      "backside": true,
+      "materialToken": "rebate-swab"
+    },
+    "rebate/y+": {
+      "triangles": 2,
+      "backside": true,
+      "materialToken": "rebate-swab"
+    },
+    "rebate/x+": {
+      "triangles": 2,
+      "backside": true,
+      "materialToken": "rebate-swab"
+    },
+    "mount-pad/x-": {
+      "triangles": 2,
+      "backside": false,
+      "materialToken": "mount-pad-swab"
+    },
+    "mount-pad/y-": {
+      "triangles": 2,
+      "backside": false,
+      "materialToken": "mount-pad-swab"
+    },
+    "mount-pad/z-": {
+      "triangles": 2,
+      "backside": false,
+      "materialToken": "mount-pad-swab"
+    },
+    "mount-pad/y+": {
+      "triangles": 2,
+      "backside": false,
+      "materialToken": "mount-pad-swab"
+    },
+    "mount-pad/x+": {
+      "triangles": 2,
+      "backside": false,
+      "materialToken": "mount-pad-swab"
+    }
+  },
+  "precision": {
+    "mesh64Exposed": false,
+    "vertexType": "Float32Array",
+    "indexType": "Uint32Array",
+    "transformType": "Float32Array",
+    "internalType": "Float64Array",
+    "exportedStockX": 0.9234567880630493,
+    "internalStockX": 0.923456789,
+    "expectedStockX": 0.923456789,
+    "kernelTolerance": 9.23456789e-13
+  },
+  "revisions": {
+    "results": {
+      "replay": [
+        {"revision": 1, "matchesReplay": true, "exactReversal": null, "geometry": true, "provenance": true, "status": "NoError", "triangles": 60, "shellComponents": 1, "euler": 2, "volumeError": 1.4480437723896067e-08, "coordinateError": 5.812908931979166e-08, "defects": []},
+        {"revision": 2, "matchesReplay": true, "exactReversal": true, "geometry": true, "provenance": true, "status": "NoError", "triangles": 60, "shellComponents": 1, "euler": 2, "volumeError": 4.555150326379653e-09, "coordinateError": 2.622604367008563e-08, "defects": []},
+        {"revision": 3, "matchesReplay": true, "exactReversal": null, "geometry": true, "provenance": true, "status": "NoError", "triangles": 60, "shellComponents": 1, "euler": 2, "volumeError": 1.4480437723896067e-08, "coordinateError": 5.812908931979166e-08, "defects": []},
+        {"revision": 4, "matchesReplay": true, "exactReversal": true, "geometry": true, "provenance": true, "status": "NoError", "triangles": 60, "shellComponents": 1, "euler": 2, "volumeError": 4.555150326379653e-09, "coordinateError": 2.622604367008563e-08, "defects": []},
+        {"revision": 5, "matchesReplay": true, "exactReversal": null, "geometry": true, "provenance": true, "status": "NoError", "triangles": 60, "shellComponents": 1, "euler": 2, "volumeError": 1.4480437723896067e-08, "coordinateError": 5.812908931979166e-08, "defects": []},
+        {"revision": 6, "matchesReplay": true, "exactReversal": true, "geometry": true, "provenance": true, "status": "NoError", "triangles": 60, "shellComponents": 1, "euler": 2, "volumeError": 4.555150326379653e-09, "coordinateError": 2.622604367008563e-08, "defects": []},
+        {"revision": 7, "matchesReplay": true, "exactReversal": null, "geometry": true, "provenance": true, "status": "NoError", "triangles": 60, "shellComponents": 1, "euler": 2, "volumeError": 1.4480437723896067e-08, "coordinateError": 5.812908931979166e-08, "defects": []},
+        {"revision": 8, "matchesReplay": true, "exactReversal": true, "geometry": true, "provenance": true, "status": "NoError", "triangles": 60, "shellComponents": 1, "euler": 2, "volumeError": 4.555150326379653e-09, "coordinateError": 2.622604367008563e-08, "defects": []},
+        {"revision": 9, "matchesReplay": true, "exactReversal": null, "geometry": true, "provenance": true, "status": "NoError", "triangles": 60, "shellComponents": 1, "euler": 2, "volumeError": 1.4480437723896067e-08, "coordinateError": 5.812908931979166e-08, "defects": []},
+        {"revision": 10, "matchesReplay": true, "exactReversal": true, "geometry": true, "provenance": true, "status": "NoError", "triangles": 60, "shellComponents": 1, "euler": 2, "volumeError": 4.555150326379653e-09, "coordinateError": 2.622604367008563e-08, "defects": []},
+        {"revision": 11, "matchesReplay": true, "exactReversal": null, "geometry": true, "provenance": true, "status": "NoError", "triangles": 60, "shellComponents": 1, "euler": 2, "volumeError": 1.4480437723896067e-08, "coordinateError": 5.812908931979166e-08, "defects": []},
+        {"revision": 12, "matchesReplay": true, "exactReversal": true, "geometry": true, "provenance": true, "status": "NoError", "triangles": 60, "shellComponents": 1, "euler": 2, "volumeError": 4.555150326379653e-09, "coordinateError": 2.622604367008563e-08, "defects": []},
+        {"revision": 13, "matchesReplay": true, "exactReversal": null, "geometry": true, "provenance": true, "status": "NoError", "triangles": 60, "shellComponents": 1, "euler": 2, "volumeError": 1.4480437723896067e-08, "coordinateError": 5.812908931979166e-08, "defects": []},
+        {"revision": 14, "matchesReplay": true, "exactReversal": true, "geometry": true, "provenance": true, "status": "NoError", "triangles": 60, "shellComponents": 1, "euler": 2, "volumeError": 4.555150326379653e-09, "coordinateError": 2.622604367008563e-08, "defects": []},
+        {"revision": 15, "matchesReplay": true, "exactReversal": null, "geometry": true, "provenance": true, "status": "NoError", "triangles": 60, "shellComponents": 1, "euler": 2, "volumeError": 1.4480437723896067e-08, "coordinateError": 5.812908931979166e-08, "defects": []},
+        {"revision": 16, "matchesReplay": true, "exactReversal": true, "geometry": true, "provenance": true, "status": "NoError", "triangles": 60, "shellComponents": 1, "euler": 2, "volumeError": 4.555150326379653e-09, "coordinateError": 2.622604367008563e-08, "defects": []},
+        {"revision": 17, "matchesReplay": true, "exactReversal": null, "geometry": true, "provenance": true, "status": "NoError", "triangles": 60, "shellComponents": 1, "euler": 2, "volumeError": 1.4480437723896067e-08, "coordinateError": 5.812908931979166e-08, "defects": []},
+        {"revision": 18, "matchesReplay": true, "exactReversal": true, "geometry": true, "provenance": true, "status": "NoError", "triangles": 60, "shellComponents": 1, "euler": 2, "volumeError": 4.555150326379653e-09, "coordinateError": 2.622604367008563e-08, "defects": []},
+        {"revision": 19, "matchesReplay": true, "exactReversal": null, "geometry": true, "provenance": true, "status": "NoError", "triangles": 60, "shellComponents": 1, "euler": 2, "volumeError": 1.4480437723896067e-08, "coordinateError": 5.812908931979166e-08, "defects": []},
+        {"revision": 20, "matchesReplay": true, "exactReversal": true, "geometry": true, "provenance": true, "status": "NoError", "triangles": 60, "shellComponents": 1, "euler": 2, "volumeError": 4.555150326379653e-09, "coordinateError": 2.622604367008563e-08, "defects": []}
+      ],
+      "kernelInternalChain": [
+        {"revision": 1, "matchesReplay": false, "exactReversal": null, "geometry": true, "provenance": false, "status": "NoError", "triangles": 76, "shellComponents": 1, "euler": 2, "volumeError": 1.4480437682262703e-08, "coordinateError": 5.812908931979166e-08, "defects": [["wrongRole", 0.9183183691763578]]},
+        {"revision": 2, "matchesReplay": false, "exactReversal": false, "geometry": true, "provenance": false, "status": "NoError", "triangles": 84, "shellComponents": 1, "euler": 2, "volumeError": 4.555150298624078e-09, "coordinateError": 2.622604367008563e-08, "defects": [["wrongRole", 0.6079124662812104]]},
+        {"revision": 3, "matchesReplay": false, "exactReversal": null, "geometry": true, "provenance": false, "status": "NoError", "triangles": 80, "shellComponents": 1, "euler": 2, "volumeError": 1.4480437710018279e-08, "coordinateError": 5.812908931979166e-08, "defects": [["wrongRole", 0.9434031692084462]]},
+        {"revision": 4, "matchesReplay": false, "exactReversal": false, "geometry": true, "provenance": false, "status": "NoError", "triangles": 88, "shellComponents": 1, "euler": 2, "volumeError": 4.5551503125018655e-09, "coordinateError": 2.622604367008563e-08, "defects": [["wrongRole", 0.6079133101478047]]},
+        {"revision": 5, "matchesReplay": false, "exactReversal": null, "geometry": true, "provenance": false, "status": "NoError", "triangles": 80, "shellComponents": 1, "euler": 2, "volumeError": 1.4480437710018279e-08, "coordinateError": 5.812908931979166e-08, "defects": [["wrongRole", 0.9434031692084462]]},
+        {"revision": 6, "matchesReplay": false, "exactReversal": false, "geometry": true, "provenance": false, "status": "NoError", "triangles": 88, "shellComponents": 1, "euler": 2, "volumeError": 4.5551503125018655e-09, "coordinateError": 2.622604367008563e-08, "defects": [["wrongRole", 0.6079133101478047]]},
+        {"revision": 7, "matchesReplay": false, "exactReversal": null, "geometry": true, "provenance": false, "status": "NoError", "triangles": 80, "shellComponents": 1, "euler": 2, "volumeError": 1.4480437710018279e-08, "coordinateError": 5.812908931979166e-08, "defects": [["wrongRole", 0.9434031692084462]]},
+        {"revision": 8, "matchesReplay": false, "exactReversal": false, "geometry": true, "provenance": false, "status": "NoError", "triangles": 88, "shellComponents": 1, "euler": 2, "volumeError": 4.5551503125018655e-09, "coordinateError": 2.622604367008563e-08, "defects": [["wrongRole", 0.6079133101478047]]},
+        {"revision": 9, "matchesReplay": false, "exactReversal": null, "geometry": true, "provenance": false, "status": "NoError", "triangles": 80, "shellComponents": 1, "euler": 2, "volumeError": 1.4480437710018279e-08, "coordinateError": 5.812908931979166e-08, "defects": [["wrongRole", 0.9434031692084462]]},
+        {"revision": 10, "matchesReplay": false, "exactReversal": false, "geometry": true, "provenance": false, "status": "NoError", "triangles": 88, "shellComponents": 1, "euler": 2, "volumeError": 4.5551503125018655e-09, "coordinateError": 2.622604367008563e-08, "defects": [["wrongRole", 0.6079133101478047]]},
+        {"revision": 11, "matchesReplay": false, "exactReversal": null, "geometry": true, "provenance": false, "status": "NoError", "triangles": 80, "shellComponents": 1, "euler": 2, "volumeError": 1.4480437710018279e-08, "coordinateError": 5.812908931979166e-08, "defects": [["wrongRole", 0.9434031692084462]]},
+        {"revision": 12, "matchesReplay": false, "exactReversal": false, "geometry": true, "provenance": false, "status": "NoError", "triangles": 88, "shellComponents": 1, "euler": 2, "volumeError": 4.5551503125018655e-09, "coordinateError": 2.622604367008563e-08, "defects": [["wrongRole", 0.6079133101478047]]},
+        {"revision": 13, "matchesReplay": false, "exactReversal": null, "geometry": true, "provenance": false, "status": "NoError", "triangles": 80, "shellComponents": 1, "euler": 2, "volumeError": 1.4480437710018279e-08, "coordinateError": 5.812908931979166e-08, "defects": [["wrongRole", 0.9434031692084462]]},
+        {"revision": 14, "matchesReplay": false, "exactReversal": false, "geometry": true, "provenance": false, "status": "NoError", "triangles": 88, "shellComponents": 1, "euler": 2, "volumeError": 4.5551503125018655e-09, "coordinateError": 2.622604367008563e-08, "defects": [["wrongRole", 0.6079133101478047]]},
+        {"revision": 15, "matchesReplay": false, "exactReversal": null, "geometry": true, "provenance": false, "status": "NoError", "triangles": 80, "shellComponents": 1, "euler": 2, "volumeError": 1.4480437710018279e-08, "coordinateError": 5.812908931979166e-08, "defects": [["wrongRole", 0.9434031692084462]]},
+        {"revision": 16, "matchesReplay": false, "exactReversal": false, "geometry": true, "provenance": false, "status": "NoError", "triangles": 88, "shellComponents": 1, "euler": 2, "volumeError": 4.5551503125018655e-09, "coordinateError": 2.622604367008563e-08, "defects": [["wrongRole", 0.6079133101478047]]},
+        {"revision": 17, "matchesReplay": false, "exactReversal": null, "geometry": true, "provenance": false, "status": "NoError", "triangles": 80, "shellComponents": 1, "euler": 2, "volumeError": 1.4480437710018279e-08, "coordinateError": 5.812908931979166e-08, "defects": [["wrongRole", 0.9434031692084462]]},
+        {"revision": 18, "matchesReplay": false, "exactReversal": false, "geometry": true, "provenance": false, "status": "NoError", "triangles": 88, "shellComponents": 1, "euler": 2, "volumeError": 4.5551503125018655e-09, "coordinateError": 2.622604367008563e-08, "defects": [["wrongRole", 0.6079133101478047]]},
+        {"revision": 19, "matchesReplay": false, "exactReversal": null, "geometry": true, "provenance": false, "status": "NoError", "triangles": 80, "shellComponents": 1, "euler": 2, "volumeError": 1.4480437710018279e-08, "coordinateError": 5.812908931979166e-08, "defects": [["wrongRole", 0.9434031692084462]]},
+        {"revision": 20, "matchesReplay": false, "exactReversal": false, "geometry": true, "provenance": false, "status": "NoError", "triangles": 88, "shellComponents": 1, "euler": 2, "volumeError": 4.5551503125018655e-09, "coordinateError": 2.622604367008563e-08, "defects": [["wrongRole", 0.6079133101478047]]}
+      ],
+      "float32ExportChain": [
+        {"revision": 1, "matchesReplay": false, "exactReversal": null, "geometry": false, "provenance": false, "status": "NoError", "triangles": 74, "shellComponents": 1, "euler": 2, "volumeError": 1.4480437682262703e-08, "coordinateError": 5.812908931979166e-08, "defects": [["excess", 0.012622940696707033], ["wrongRole", 0.9144628987128445]]},
+        {"revision": 2, "matchesReplay": false, "exactReversal": false, "geometry": false, "provenance": false, "status": "NoError", "triangles": 82, "shellComponents": 1, "euler": 2, "volumeError": 4.5551503125018655e-09, "coordinateError": 2.622604367008563e-08, "defects": [["coincidentVertices", 1], ["excess", 0.0063114691972069314], ["overlaps", 0.006311469197206792], ["wrongRole", 0.5963693376455137]]},
+        {"revision": 3, "matchesReplay": false, "exactReversal": null, "geometry": false, "provenance": false, "status": "NoError", "triangles": 82, "shellComponents": 1, "euler": 2, "volumeError": 1.4480437710018279e-08, "coordinateError": 5.812908931979166e-08, "defects": [["excess", 0.012622940696707028], ["wrongRole", 0.931859199008448]]},
+        {"revision": 4, "matchesReplay": false, "exactReversal": false, "geometry": false, "provenance": false, "status": "NoError", "triangles": 82, "shellComponents": 1, "euler": 2, "volumeError": 4.5551503125018655e-09, "coordinateError": 2.622604367008563e-08, "defects": [["coincidentVertices", 1], ["excess", 0.0063114691972069314], ["overlaps", 0.006311469197206792], ["wrongRole", 0.5963693376455137]]},
+        {"revision": 5, "matchesReplay": false, "exactReversal": null, "geometry": false, "provenance": false, "status": "NoError", "triangles": 82, "shellComponents": 1, "euler": 2, "volumeError": 1.4480437710018279e-08, "coordinateError": 5.812908931979166e-08, "defects": [["excess", 0.012622940696707028], ["wrongRole", 0.931859199008448]]},
+        {"revision": 6, "matchesReplay": false, "exactReversal": false, "geometry": false, "provenance": false, "status": "NoError", "triangles": 82, "shellComponents": 1, "euler": 2, "volumeError": 4.5551503125018655e-09, "coordinateError": 2.622604367008563e-08, "defects": [["coincidentVertices", 1], ["excess", 0.0063114691972069314], ["overlaps", 0.006311469197206792], ["wrongRole", 0.5963693376455137]]},
+        {"revision": 7, "matchesReplay": false, "exactReversal": null, "geometry": false, "provenance": false, "status": "NoError", "triangles": 82, "shellComponents": 1, "euler": 2, "volumeError": 1.4480437710018279e-08, "coordinateError": 5.812908931979166e-08, "defects": [["excess", 0.012622940696707028], ["wrongRole", 0.931859199008448]]},
+        {"revision": 8, "matchesReplay": false, "exactReversal": false, "geometry": false, "provenance": false, "status": "NoError", "triangles": 82, "shellComponents": 1, "euler": 2, "volumeError": 4.5551503125018655e-09, "coordinateError": 2.622604367008563e-08, "defects": [["coincidentVertices", 1], ["excess", 0.0063114691972069314], ["overlaps", 0.006311469197206792], ["wrongRole", 0.5963693376455137]]},
+        {"revision": 9, "matchesReplay": false, "exactReversal": null, "geometry": false, "provenance": false, "status": "NoError", "triangles": 82, "shellComponents": 1, "euler": 2, "volumeError": 1.4480437710018279e-08, "coordinateError": 5.812908931979166e-08, "defects": [["excess", 0.012622940696707028], ["wrongRole", 0.931859199008448]]},
+        {"revision": 10, "matchesReplay": false, "exactReversal": false, "geometry": false, "provenance": false, "status": "NoError", "triangles": 82, "shellComponents": 1, "euler": 2, "volumeError": 4.5551503125018655e-09, "coordinateError": 2.622604367008563e-08, "defects": [["coincidentVertices", 1], ["excess", 0.0063114691972069314], ["overlaps", 0.006311469197206792], ["wrongRole", 0.5963693376455137]]},
+        {"revision": 11, "matchesReplay": false, "exactReversal": null, "geometry": false, "provenance": false, "status": "NoError", "triangles": 82, "shellComponents": 1, "euler": 2, "volumeError": 1.4480437710018279e-08, "coordinateError": 5.812908931979166e-08, "defects": [["excess", 0.012622940696707028], ["wrongRole", 0.931859199008448]]},
+        {"revision": 12, "matchesReplay": false, "exactReversal": false, "geometry": false, "provenance": false, "status": "NoError", "triangles": 82, "shellComponents": 1, "euler": 2, "volumeError": 4.5551503125018655e-09, "coordinateError": 2.622604367008563e-08, "defects": [["coincidentVertices", 1], ["excess", 0.0063114691972069314], ["overlaps", 0.006311469197206792], ["wrongRole", 0.5963693376455137]]},
+        {"revision": 13, "matchesReplay": false, "exactReversal": null, "geometry": false, "provenance": false, "status": "NoError", "triangles": 82, "shellComponents": 1, "euler": 2, "volumeError": 1.4480437710018279e-08, "coordinateError": 5.812908931979166e-08, "defects": [["excess", 0.012622940696707028], ["wrongRole", 0.931859199008448]]},
+        {"revision": 14, "matchesReplay": false, "exactReversal": false, "geometry": false, "provenance": false, "status": "NoError", "triangles": 82, "shellComponents": 1, "euler": 2, "volumeError": 4.5551503125018655e-09, "coordinateError": 2.622604367008563e-08, "defects": [["coincidentVertices", 1], ["excess", 0.0063114691972069314], ["overlaps", 0.006311469197206792], ["wrongRole", 0.5963693376455137]]},
+        {"revision": 15, "matchesReplay": false, "exactReversal": null, "geometry": false, "provenance": false, "status": "NoError", "triangles": 82, "shellComponents": 1, "euler": 2, "volumeError": 1.4480437710018279e-08, "coordinateError": 5.812908931979166e-08, "defects": [["excess", 0.012622940696707028], ["wrongRole", 0.931859199008448]]},
+        {"revision": 16, "matchesReplay": false, "exactReversal": false, "geometry": false, "provenance": false, "status": "NoError", "triangles": 82, "shellComponents": 1, "euler": 2, "volumeError": 4.5551503125018655e-09, "coordinateError": 2.622604367008563e-08, "defects": [["coincidentVertices", 1], ["excess", 0.0063114691972069314], ["overlaps", 0.006311469197206792], ["wrongRole", 0.5963693376455137]]},
+        {"revision": 17, "matchesReplay": false, "exactReversal": null, "geometry": false, "provenance": false, "status": "NoError", "triangles": 82, "shellComponents": 1, "euler": 2, "volumeError": 1.4480437710018279e-08, "coordinateError": 5.812908931979166e-08, "defects": [["excess", 0.012622940696707028], ["wrongRole", 0.931859199008448]]},
+        {"revision": 18, "matchesReplay": false, "exactReversal": false, "geometry": false, "provenance": false, "status": "NoError", "triangles": 82, "shellComponents": 1, "euler": 2, "volumeError": 4.5551503125018655e-09, "coordinateError": 2.622604367008563e-08, "defects": [["coincidentVertices", 1], ["excess", 0.0063114691972069314], ["overlaps", 0.006311469197206792], ["wrongRole", 0.5963693376455137]]},
+        {"revision": 19, "matchesReplay": false, "exactReversal": null, "geometry": false, "provenance": false, "status": "NoError", "triangles": 82, "shellComponents": 1, "euler": 2, "volumeError": 1.4480437710018279e-08, "coordinateError": 5.812908931979166e-08, "defects": [["excess", 0.012622940696707028], ["wrongRole", 0.931859199008448]]},
+        {"revision": 20, "matchesReplay": false, "exactReversal": false, "geometry": false, "provenance": false, "status": "NoError", "triangles": 82, "shellComponents": 1, "euler": 2, "volumeError": 4.5551503125018655e-09, "coordinateError": 2.622604367008563e-08, "defects": [["coincidentVertices", 1], ["excess", 0.0063114691972069314], ["overlaps", 0.006311469197206792], ["wrongRole", 0.5963693376455137]]}
+      ]
+    },
+    "sections": {
+      "maxAreaError": 6.443158362401391e-08,
+      "maxVolumeError": 1.4480437682262703e-08
+    },
+    "hashes": ["e03e26541a5452e0cc9f9e81f3ecfa68f650aef56755a818510cdc1803d8bf52", "f0b406e51168faf8819cefbf8e7f6b9ea0e06b5946c0173083d041cf041e1cb7", "e03e26541a5452e0cc9f9e81f3ecfa68f650aef56755a818510cdc1803d8bf52", "f0b406e51168faf8819cefbf8e7f6b9ea0e06b5946c0173083d041cf041e1cb7", "e03e26541a5452e0cc9f9e81f3ecfa68f650aef56755a818510cdc1803d8bf52", "f0b406e51168faf8819cefbf8e7f6b9ea0e06b5946c0173083d041cf041e1cb7", "e03e26541a5452e0cc9f9e81f3ecfa68f650aef56755a818510cdc1803d8bf52", "f0b406e51168faf8819cefbf8e7f6b9ea0e06b5946c0173083d041cf041e1cb7", "e03e26541a5452e0cc9f9e81f3ecfa68f650aef56755a818510cdc1803d8bf52", "f0b406e51168faf8819cefbf8e7f6b9ea0e06b5946c0173083d041cf041e1cb7", "e03e26541a5452e0cc9f9e81f3ecfa68f650aef56755a818510cdc1803d8bf52", "f0b406e51168faf8819cefbf8e7f6b9ea0e06b5946c0173083d041cf041e1cb7", "e03e26541a5452e0cc9f9e81f3ecfa68f650aef56755a818510cdc1803d8bf52", "f0b406e51168faf8819cefbf8e7f6b9ea0e06b5946c0173083d041cf041e1cb7", "e03e26541a5452e0cc9f9e81f3ecfa68f650aef56755a818510cdc1803d8bf52", "f0b406e51168faf8819cefbf8e7f6b9ea0e06b5946c0173083d041cf041e1cb7", "e03e26541a5452e0cc9f9e81f3ecfa68f650aef56755a818510cdc1803d8bf52", "f0b406e51168faf8819cefbf8e7f6b9ea0e06b5946c0173083d041cf041e1cb7", "e03e26541a5452e0cc9f9e81f3ecfa68f650aef56755a818510cdc1803d8bf52", "f0b406e51168faf8819cefbf8e7f6b9ea0e06b5946c0173083d041cf041e1cb7"],
+    "authority": "f0b406e51168faf8819cefbf8e7f6b9ea0e06b5946c0173083d041cf041e1cb7",
+    "refused": {
+      "code": "near-planes",
+      "operation": "recess"
+    },
+    "counterexample": {
+      "uv": [[0.08987654000520706, 0.0712345689535141], [0.2199999988079071, 0.0712345689535141], [0.0734567865729332, 0.8399999737739563]],
+      "sign": -1,
+      "plane": "1:0.55",
+      "area": 0.0056042889269600285
+    },
+    "sourceSha256": "7683e8fe5107336f602d8199c8be39fe88bece9d6d678463205856b7be163f3e"
+  },
+  "issue": {
+    "two-literal": [
+      {"order": [0, 1], "kernelVolume": 16807.70929709818, "referenceVolume": 16807.709297113135, "relativeError": -8.898137522239752e-13, "meshVolume": 16807.70817572771, "unsupported": 0, "invalid": 0, "shellComponents": 1, "coincidentVertices": 0, "status": "NoError", "tolerance": 4.066207213231363e-11},
+      {"order": [1, 0], "kernelVolume": 16807.70929710614, "referenceVolume": 16807.709297113135, "relativeError": -4.1622764425363767e-13, "meshVolume": 16807.708175736334, "unsupported": 0, "invalid": 1, "shellComponents": 1, "coincidentVertices": 0, "status": "NoError", "tolerance": 4.066207213231363e-11}
+    ],
+    "two-local-scale": [
+      {"order": [0, 1], "kernelVolume": 2.100963662137273, "referenceVolume": 2.100963662139142, "relativeError": -8.894620257955238e-13, "meshVolume": 2.100963965443516, "unsupported": 0, "invalid": 0, "shellComponents": 1, "coincidentVertices": 0, "status": "NoError", "tolerance": 2.033103606615682e-12},
+      {"order": [1, 0], "kernelVolume": 2.100963662138268, "referenceVolume": 2.100963662139142, "relativeError": -4.159841413416328e-13, "meshVolume": 2.1009639654445946, "unsupported": 0, "invalid": 1, "shellComponents": 1, "coincidentVertices": 0, "status": "NoError", "tolerance": 2.033103606615682e-12}
+    ],
+    "two-translated": [
+      {"order": [0, 1], "kernelVolume": 16807.709297100264, "referenceVolume": 16807.709297113135, "relativeError": -7.657896023761675e-13, "meshVolume": 16807.708175758224, "unsupported": 0, "invalid": 0, "shellComponents": 1, "coincidentVertices": 0, "status": "NoError", "tolerance": 4.266207213231363e-11},
+      {"order": [1, 0], "kernelVolume": 16807.709297106143, "referenceVolume": 16807.709297113135, "relativeError": -4.1601119722074443e-13, "meshVolume": 16807.708175758224, "unsupported": 0, "invalid": 4, "shellComponents": 1, "coincidentVertices": 2, "status": "NoError", "tolerance": 4.266207213231363e-11}
+    ],
+    "three-rotated-internal": [
+      {"order": [0, 1, 2], "kernelVolume": 6.437681354426084, "referenceVolume": 6.437681354432108, "relativeError": -9.358205057288666e-13, "meshVolume": 6.437680955624869, "unsupported": 0, "invalid": 0, "shellComponents": 3, "coincidentVertices": 2, "status": "NoError", "tolerance": 5.159362767941674e-12},
+      {"order": [0, 2, 1], "kernelVolume": 6.437681354425136, "referenceVolume": 6.437681354432108, "relativeError": -1.0830297759061775e-12, "meshVolume": 6.437680955624869, "unsupported": 0, "invalid": 0, "shellComponents": 3, "coincidentVertices": 2, "status": "NoError", "tolerance": 5.159362767941674e-12},
+      {"order": [1, 0, 2], "kernelVolume": 6.437681354426084, "referenceVolume": 6.437681354432108, "relativeError": -9.358205057288666e-13, "meshVolume": 6.437680955624869, "unsupported": 0, "invalid": 0, "shellComponents": 3, "coincidentVertices": 2, "status": "NoError", "tolerance": 5.159362767941674e-12},
+      {"order": [1, 2, 0], "kernelVolume": 6.4376813544260845, "referenceVolume": 6.437681354432108, "relativeError": -9.356825401523178e-13, "meshVolume": 6.437680955624871, "unsupported": 0, "invalid": 0, "shellComponents": 3, "coincidentVertices": 2, "status": "NoError", "tolerance": 5.159362767941674e-12},
+      {"order": [2, 0, 1], "kernelVolume": 6.437681354425136, "referenceVolume": 6.437681354432108, "relativeError": -1.0830297759061775e-12, "meshVolume": 6.437680955624869, "unsupported": 0, "invalid": 0, "shellComponents": 3, "coincidentVertices": 2, "status": "NoError", "tolerance": 5.159362767941674e-12},
+      {"order": [2, 1, 0], "kernelVolume": 6.437681354425136, "referenceVolume": 6.437681354432108, "relativeError": -1.0830297759061775e-12, "meshVolume": 6.437680955624871, "unsupported": 0, "invalid": 0, "shellComponents": 3, "coincidentVertices": 2, "status": "NoError", "tolerance": 5.159362767941674e-12}
+    ],
+    "three-rotated-f32-reimport": [
+      {"order": [0, 1, 2], "kernelVolume": 6.437680955624869, "referenceVolume": 6.437681354432108, "relativeError": -6.194889383796773e-08, "meshVolume": 6.437680955624869, "unsupported": 0, "invalid": 0, "shellComponents": 3, "coincidentVertices": 2, "status": "NoError", "tolerance": 8.08056142886926e-07},
+      {"order": [0, 2, 1], "kernelVolume": 6.437680955624869, "referenceVolume": 6.437681354432108, "relativeError": -6.194889383796773e-08, "meshVolume": 6.437680955624871, "unsupported": 0, "invalid": 0, "shellComponents": 3, "coincidentVertices": 2, "status": "NoError", "tolerance": 8.08056142886926e-07},
+      {"order": [1, 0, 2], "kernelVolume": 6.437680955624869, "referenceVolume": 6.437681354432108, "relativeError": -6.194889383796773e-08, "meshVolume": 6.437680955624869, "unsupported": 0, "invalid": 0, "shellComponents": 3, "coincidentVertices": 2, "status": "NoError", "tolerance": 8.08056142886926e-07},
+      {"order": [1, 2, 0], "kernelVolume": 6.437680955624869, "referenceVolume": 6.437681354432108, "relativeError": -6.194889383796773e-08, "meshVolume": 6.437680955624871, "unsupported": 0, "invalid": 0, "shellComponents": 3, "coincidentVertices": 2, "status": "NoError", "tolerance": 8.08056142886926e-07},
+      {"order": [2, 0, 1], "kernelVolume": 6.437680955624869, "referenceVolume": 6.437681354432108, "relativeError": -6.194889383796773e-08, "meshVolume": 6.437680955624871, "unsupported": 0, "invalid": 0, "shellComponents": 3, "coincidentVertices": 2, "status": "NoError", "tolerance": 8.08056142886926e-07},
+      {"order": [2, 1, 0], "kernelVolume": 6.437680955624869, "referenceVolume": 6.437681354432108, "relativeError": -6.194889383796773e-08, "meshVolume": 6.437680955624871, "unsupported": 0, "invalid": 0, "shellComponents": 3, "coincidentVertices": 2, "status": "NoError", "tolerance": 8.08056142886926e-07}
+    ],
+    "five-regression-internal": [
+      {"order": [0, 1, 2, 3, 4], "kernelVolume": 10.729468924078576, "referenceVolume": 10.72946892408213, "relativeError": -3.3128294240751304e-13, "meshVolume": 10.729469206499049, "unsupported": 0, "invalid": 2, "shellComponents": 3, "coincidentVertices": 3, "status": "NoError", "tolerance": 7.27810406919183e-12},
+      {"order": [4, 3, 2, 1, 0], "kernelVolume": 10.729468924073991, "referenceVolume": 10.72946892408213, "relativeError": -7.58589926092566e-13, "meshVolume": 10.729469185326373, "unsupported": 0, "invalid": 0, "shellComponents": 3, "coincidentVertices": 4, "status": "NoError", "tolerance": 7.27810406919183e-12}
+    ],
+    "five-regression-f32-reimport": [
+      {"order": [0, 1, 2, 3, 4], "kernelVolume": 10.72946920649905, "referenceVolume": 10.72946892408213, "relativeError": 2.632161219445416e-08, "meshVolume": 10.729469206499049, "unsupported": 0, "invalid": 0, "shellComponents": 3, "coincidentVertices": 2, "status": "NoError", "tolerance": 8.676176435074012e-07},
+      {"order": [4, 3, 2, 1, 0], "kernelVolume": 10.72946920649905, "referenceVolume": 10.72946892408213, "relativeError": 2.632161219445416e-08, "meshVolume": 10.729469206499049, "unsupported": 0, "invalid": 0, "shellComponents": 3, "coincidentVertices": 2, "status": "NoError", "tolerance": 8.676176435074012e-07}
+    ],
+    "clearanceSweep": [
+      {"overlap": 0.001, "orders": [{"order": [0, 1], "kernelVolume": 2.0625870665317145, "referenceVolume": 2.062587066531715, "relativeError": -2.1530689155188406e-16, "meshVolume": 2.062586943459003, "unsupported": 0, "invalid": 0, "shellComponents": 1, "coincidentVertices": 0, "status": "NoError", "tolerance": 2e-12}, {"order": [1, 0], "kernelVolume": 2.0625870665317145, "referenceVolume": 2.062587066531715, "relativeError": -2.1530689155188406e-16, "meshVolume": 2.0625869434590034, "unsupported": 0, "invalid": 0, "shellComponents": 1, "coincidentVertices": 0, "status": "NoError", "tolerance": 2e-12}]},
+      {"overlap": 1e-06, "orders": [{"order": [0, 1], "kernelVolume": 2.0625870665317145, "referenceVolume": 2.062587066531715, "relativeError": -2.1530689155188406e-16, "meshVolume": 2.062586943459003, "unsupported": 0, "invalid": 0, "shellComponents": 1, "coincidentVertices": 0, "status": "NoError", "tolerance": 2e-12}, {"order": [1, 0], "kernelVolume": 2.0625870665317145, "referenceVolume": 2.062587066531715, "relativeError": -2.1530689155188406e-16, "meshVolume": 2.0625869434590034, "unsupported": 0, "invalid": 0, "shellComponents": 1, "coincidentVertices": 0, "status": "NoError", "tolerance": 2e-12}]},
+      {"overlap": 1e-08, "orders": [{"order": [0, 1], "kernelVolume": 2.0625870665317145, "referenceVolume": 2.062587066531715, "relativeError": -2.1530689155188406e-16, "meshVolume": 2.062586943459003, "unsupported": 0, "invalid": 0, "shellComponents": 1, "coincidentVertices": 0, "status": "NoError", "tolerance": 2e-12}, {"order": [1, 0], "kernelVolume": 2.0625870665317145, "referenceVolume": 2.062587066531715, "relativeError": -2.1530689155188406e-16, "meshVolume": 2.0625869434590034, "unsupported": 0, "invalid": 0, "shellComponents": 1, "coincidentVertices": 0, "status": "NoError", "tolerance": 2e-12}]},
+      {"overlap": 1e-10, "orders": [{"order": [0, 1], "kernelVolume": 2.0625870665317145, "referenceVolume": 2.062587066531715, "relativeError": -2.1530689155188406e-16, "meshVolume": 2.062586943459003, "unsupported": 0, "invalid": 0, "shellComponents": 1, "coincidentVertices": 0, "status": "NoError", "tolerance": 2e-12}, {"order": [1, 0], "kernelVolume": 2.0625870665317145, "referenceVolume": 2.062587066531715, "relativeError": -2.1530689155188406e-16, "meshVolume": 2.062586943459003, "unsupported": 0, "invalid": 0, "shellComponents": 1, "coincidentVertices": 0, "status": "NoError", "tolerance": 2e-12}]},
+      {"overlap": 0, "orders": [{"order": [0, 1], "kernelVolume": 2.0625870665317145, "referenceVolume": 2.062587066531715, "relativeError": -2.1530689155188406e-16, "meshVolume": 2.062586943459003, "unsupported": 0, "invalid": 0, "shellComponents": 1, "coincidentVertices": 0, "status": "NoError", "tolerance": 2e-12}, {"order": [1, 0], "kernelVolume": 2.0625870665317145, "referenceVolume": 2.062587066531715, "relativeError": -2.1530689155188406e-16, "meshVolume": 2.0625869434590034, "unsupported": 0, "invalid": 0, "shellComponents": 1, "coincidentVertices": 0, "status": "NoError", "tolerance": 2e-12}]},
+      {"overlap": -1e-10, "orders": [{"order": [0, 1], "kernelVolume": 2.06258706643019, "referenceVolume": 2.06258706643019, "relativeError": 0, "meshVolume": 2.062586943459003, "unsupported": 0, "invalid": 0, "shellComponents": 2, "coincidentVertices": 0, "status": "NoError", "tolerance": 2e-12}, {"order": [1, 0], "kernelVolume": 2.06258706643019, "referenceVolume": 2.06258706643019, "relativeError": 0, "meshVolume": 2.062586943459003, "unsupported": 0, "invalid": 0, "shellComponents": 2, "coincidentVertices": 0, "status": "NoError", "tolerance": 2e-12}]},
+      {"overlap": -1e-08, "orders": [{"order": [0, 1], "kernelVolume": 2.0625870563792477, "referenceVolume": 2.0625870563792477, "relativeError": 0, "meshVolume": 2.062586943459003, "unsupported": 0, "invalid": 0, "shellComponents": 2, "coincidentVertices": 0, "status": "NoError", "tolerance": 2e-12}, {"order": [1, 0], "kernelVolume": 2.0625870563792477, "referenceVolume": 2.0625870563792477, "relativeError": 0, "meshVolume": 2.062586943459003, "unsupported": 0, "invalid": 0, "shellComponents": 2, "coincidentVertices": 0, "status": "NoError", "tolerance": 2e-12}]},
+      {"overlap": -1e-06, "orders": [{"order": [0, 1], "kernelVolume": 2.0625860512849723, "referenceVolume": 2.0625860512849723, "relativeError": 0, "meshVolume": 2.0625859752443234, "unsupported": 0, "invalid": 0, "shellComponents": 2, "coincidentVertices": 0, "status": "NoError", "tolerance": 2e-12}, {"order": [1, 0], "kernelVolume": 2.0625860512849723, "referenceVolume": 2.0625860512849723, "relativeError": 0, "meshVolume": 2.0625859752443234, "unsupported": 0, "invalid": 0, "shellComponents": 2, "coincidentVertices": 0, "status": "NoError", "tolerance": 2e-12}]},
+      {"overlap": -0.001, "orders": [{"order": [0, 1], "kernelVolume": 2.061571819788946, "referenceVolume": 2.061571819788946, "relativeError": 0, "meshVolume": 2.0615716493407406, "unsupported": 0, "invalid": 0, "shellComponents": 2, "coincidentVertices": 0, "status": "NoError", "tolerance": 2e-12}, {"order": [1, 0], "kernelVolume": 2.061571819788946, "referenceVolume": 2.061571819788946, "relativeError": 0, "meshVolume": 2.0615716493407406, "unsupported": 0, "invalid": 0, "shellComponents": 2, "coincidentVertices": 0, "status": "NoError", "tolerance": 2e-12}]}
+    ]
+  },
+  "stress": {
+    "acceptedStress": 64,
+    "maximumStressError": 1.9028969120427064e-06,
+    "stressRefusals": []
+  }
+}
