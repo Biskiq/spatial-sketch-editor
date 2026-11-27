@@ -14,6 +14,8 @@ import { legJoinsByWall, type LayoutDocumentWallFirst, type LayoutWall,
 	LAYOUT_WALL_FIRST_FORMAT_VERSION,
 } from '@portfolio/layout-core/wall';
 import { assertWindingAgreesWithNormals } from '$lib/layout/wall-mesh-emit';
+import { compileRoom } from '../../helpers/wall-mesh-fixtures';
+import { buildRoomWallMesh } from '$lib/layout/wall-mesh-room';
 import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-standalone';
 import type { IndexedWallMesh } from '$lib/layout/wall-mesh-types';
 
@@ -296,16 +298,149 @@ describe('physical Wall solids', () => {
 		});
 
 		it('a slope steps the mitre at the exact Junction end top', () => {
-			const meshesAt = meshes(
+			const [sloped] = meshes(
 				layout({ a: [0, 0], b: [5, 0], c: [5, 4] }, [wall('w1', 'a', 'b', { top: slope(0, 2) }), wall('w2', 'b', 'c')])
 			);
-			const sloped = meshesAt[0]!;
-			// Every vertex at the Junction face is at the Wall's own end top, 5 m.
-			for (let index = 0; index < sloped.positions.length / 3; index += 1) {
-				const x = sloped.positions[index * 3]!;
-				if (Math.abs(x - 5) > 1e-6) continue;
-				expect(sloped.positions[index * 3 + 1]!).toBeCloseTo(5, 9);
+			// The mitre's two end apexes: the inner corner at x = 4.9, the outer at 5.1.
+			const atEnd: number[] = [];
+			for (let index = 0; index < sloped!.positions.length / 3; index += 1) {
+				const x = sloped!.positions[index * 3]!;
+				if (Math.abs(x - 4.9) < 1e-6 || Math.abs(x - 5.1) < 1e-6) atEnd.push(sloped!.positions[index * 3 + 1]!);
 			}
+			// Without this the loop below is vacuous: the end face must exist.
+			expect(atEnd.length).toBeGreaterThanOrEqual(4);
+			// Every vertex on the end is on the floor, at the level neighbour's 3 m top, or at
+			// the Wall's own end top, 5 m: the 3 -> 5 step is the existing heights-differ seam.
+			for (const y of atEnd) expect([0, 3, 5].some((level) => Math.abs(y - level) < 1e-9)).toBe(true);
+			expect(Math.max(...atEnd)).toBeCloseTo(5, 9);
+		});
+
+		/**
+		 * Opening above the eave: the Opening's spring and jambs belong to the profile's
+		 * peak, not to `wall.height`. The closed-solid oracle plus the analytic volume
+		 * (wall prism under the sloped top, less the void) catch a clamp to the eave,
+		 * a missing breakpoint, or a top edge that stair-steps through a band.
+		 */
+		describe('Openings above the eave', () => {
+			const T = 0.2;
+			const window = (id: string, offset: number, width: number, sillHeight: number, height: number) => ({
+				id,
+				wallId: 'w1',
+				kind: 'window',
+				offset,
+				width,
+				height,
+				sillHeight,
+				profile: 'rectangular'
+			});
+			const closedVolume = (document: LayoutDocumentWallFirst, expected: number, digits = 6): void => {
+				const tris = triangles(meshes(document));
+				expect(openEdges(tris)).toEqual([]);
+				expect(vectorArea(tris)).toBeLessThan(1e-6);
+				expect(Math.abs(signedVolume(tris))).toBeCloseTo(expected, digits);
+			};
+
+			it('a window wholly above the eave of a slope is closed and exact', () => {
+				// Tops run 3 -> 5 over 5 m: area 20 m2; the 1 x 1 window (sill 3.2, top 4.2) is below the top at x = 3.5 (4.4).
+				closedVolume(
+					layout({ a: [0, 0], b: [5, 0] }, [wall('w1', 'a', 'b', { top: slope(0, 2) })], [window('o1', 3.5, 1, 3.2, 1)]),
+					T * 20 - T * 1
+				);
+			});
+
+			it('the sloped top crosses a band breakpoint between samples without a gap', () => {
+				// The sill 4.05 and spring 4.55 are band breakpoints the top crosses at x = 2.625 and 3.875:
+				// stations between the 0.25 m samples, so only an exact knot keeps the front face on the line.
+				const document = layout(
+					{ a: [0, 0], b: [5, 0] },
+					[wall('w1', 'a', 'b', { top: slope(0, 2) })],
+					[window('o1', 3.9, 0.8, 4.05, 0.5)]
+				);
+				closedVolume(document, T * 20 - T * 0.8 * 0.5);
+				const front = triangles(meshes(document)).filter((tri) => tri.every((p) => Math.abs(Math.abs(p[2]) - 0.1) < 1e-6 && Math.sign(p[2]) === Math.sign(tri[0]![2])));
+				// Both faces are exactly the area under the sloped top, less the window.
+				const area = front.reduce((sum, [a, b, c]) => sum + Math.abs((b[0] - a[0]) * (c[1] - a[1]) - (c[0] - a[0]) * (b[1] - a[1])) / 2, 0);
+				expect(area).toBeCloseTo(2 * (20 - 0.8 * 0.5), 6);
+				expect(front.some((tri) => tri.some((p) => Math.abs(p[0] - 2.625) < 1e-6 && Math.abs(p[1] - 4.05) < 1e-6))).toBe(true);
+				for (const tri of front) for (const p of tri) expect(p[1]).toBeLessThanOrEqual(3 + 0.4 * p[0] + 1e-5);
+			});
+
+			it('a Room-bound slope ring keeps a window above the Room eave, closed and exact', () => {
+				const document = layout(
+					square,
+					[
+						wall('w1', 'a', 'b', { top: slope(0, 2) }),
+						wall('w2', 'b', 'c', { top: slope(2, 0) }),
+						wall('w3', 'c', 'd', { top: slope(0, 2) }),
+						wall('w4', 'd', 'a', { top: slope(2, 0) })
+					],
+					[window('o1', 3.5, 1, 3.2, 1)]
+				);
+				(document as { rooms: unknown[] }).rooms = [
+					{
+						id: 'r1',
+						name: 'Room',
+						virtualEdges: [],
+						boundary: ['w1', 'w2', 'w3', 'w4'].map((wallId) => ({ wallId, direction: 'forward' }))
+					}
+				];
+				expect(compileWallFirstLayoutGeometry(document).issues ?? []).toEqual([]);
+				const room = compileRoom(document);
+				// The Room's eave ceiling is 3 m; the window springs above it.
+				expect(room.ceilingElevation).toBe(3);
+				const built = buildRoomWallMesh(room, { assertWinding: true });
+				expect(built.issues).toEqual([]);
+				const tris = triangles([built.mesh!]);
+				expect(openEdges(tris)).toEqual([]);
+				expect(vectorArea(tris)).toBeLessThan(1e-6);
+				// Room ring volume: every Wall is a slope with a 4 m mean top, less the 1 x 1 window
+				// void. The four tops meet at the corners, so the ring closes (a Room ring whose
+				// neighbouring Walls differ in top is open on `main` too, level or profiled).
+				const expected = T * (4 * (5 + 4 + 5 + 4) - 1);
+				// A mitre adds corner material, so compare within 1.5%.
+				expect(Math.abs(signedVolume(tris))).toBeGreaterThan(expected * 0.985);
+				expect(Math.abs(signedVolume(tris))).toBeLessThan(expected * 1.015);
+			});
+
+			it('a gable Opening straddling the apex is closed and exact', () => {
+				// Tops run 3 -> 5 -> 3: area 5 * 3 + 5 = 20 m2; the window spans the apex at 2.5.
+				closedVolume(
+					layout(
+						{ a: [0, 0], b: [5, 0] },
+						[wall('w1', 'a', 'b', { top: { kind: 'gable', startRise: 0, endRise: 0, apexRise: 2, apexOffset: 2.5 } })],
+						[window('o1', 2, 1, 3.2, 1)]
+					),
+					T * 20 - T * 1
+				);
+			});
+
+			it('a curved profiled Wall with an Opening above the eave is closed, and its volume follows the arc length', () => {
+				const document = layout({ a: [0, 0], b: [10, 0] }, [
+					wall('w1', 'a', 'b', {
+						height: 2,
+						top: slope(0, 3),
+						centerline: {
+							kind: 'cubic-chain',
+							knots: [{ id: 'k1', point: [5, 3] }],
+							spans: [
+								{ handleOut: [2, 0], handleIn: [3, 3] },
+								{ handleOut: [7, 3], handleIn: [8, 0] }
+							]
+						} as LayoutWall['centerline']
+					})
+				]);
+				const length = compileWallFirstLayoutGeometry(document).geometry.walls[0]!.length;
+				const withWindow = layout(document.junctions.reduce<Record<string, LayoutVec2>>((all, j) => ({ ...all, [j.id]: j.point }), {}), document.walls, [
+					window('o1', 0.6 * length, 1, 2.2, 0.5)
+				]);
+				const tris = triangles(meshes(withWindow));
+				expect(openEdges(tris)).toEqual([]);
+				expect(vectorArea(tris)).toBeLessThan(1e-6);
+				// Mean top 3.5 along the arc, less the 1 x 0.5 void, within the polyline error.
+				const expected = T * (length * 3.5 - 0.5);
+				expect(Math.abs(signedVolume(tris))).toBeGreaterThan(expected * 0.97);
+				expect(Math.abs(signedVolume(tris))).toBeLessThan(expected * 1.03);
+			});
 		});
 	});
 

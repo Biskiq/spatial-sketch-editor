@@ -1,3 +1,4 @@
+import { compiledWallTopAt, compiledWallTopPeak } from '../wall-top';
 import { DEVELOPMENT_EPSILON, orderedDevelopmentSamples, spanForStation, wrap } from './shared';
 import type {
 	WallDevelopment,
@@ -20,6 +21,11 @@ export function buildDevelopedWallMesh(
 	options: WallDevelopmentMeshOptions,
 ): WallDevelopmentMesh {
 	const half = options.thickness / 2;
+	// A profiled Wall's top is read by station; a level Wall reads `height`.
+	const profile = options.topProfile;
+	const peak = profile ? compiledWallTopPeak(profile, options.height) : options.height;
+	const topOf = (station: number): number =>
+		profile ? compiledWallTopAt(profile, station) : options.height;
 	const vertices: WallDevelopmentMeshVertex[] = [];
 	const triangles: WallDevelopmentMeshTriangle[] = [];
 	const stations: Array<{ station: number; sheet: number; spanIndex: number }> = [];
@@ -50,7 +56,7 @@ export function buildDevelopedWallMesh(
 		bounds.min[1] = Math.min(bounds.min[1], -half);
 		bounds.max[1] = Math.max(bounds.max[1], half);
 		bounds.min[2] = Math.min(bounds.min[2], 0);
-		bounds.max[2] = Math.max(bounds.max[2], options.height);
+		bounds.max[2] = Math.max(bounds.max[2], peak);
 		return index;
 	};
 
@@ -100,23 +106,6 @@ export function buildDevelopedWallMesh(
 		});
 	}
 	const openings = options.openings ?? [];
-	const topAt = (hole: WallDevelopmentMeshHole, sheet: number): number => {
-		if (hole.topBoundary === undefined || hole.topBoundary.length === 0) return hole.headHeight;
-		const width = hole.sheetEnd - hole.sheetStart;
-		const local = Math.min(width, Math.max(0, sheet - hole.sheetStart));
-		const points = hole.topBoundary;
-		if (local <= points[0]![0]! + DEVELOPMENT_EPSILON) return hole.sillHeight + points[0]![1]!;
-		for (let pointIndex = 1; pointIndex < points.length; pointIndex += 1) {
-			const previous = points[pointIndex - 1]!;
-			const current = points[pointIndex]!;
-			if (local > current[0]! + DEVELOPMENT_EPSILON) continue;
-			const span = current[0]! - previous[0]!;
-			const amount = span > DEVELOPMENT_EPSILON ? (local - previous[0]!) / span : 0;
-			return hole.sillHeight + previous[1]! + (current[1]! - previous[1]!) * amount;
-		}
-		return hole.sillHeight + points.at(-1)![1]!;
-	};
-
 	for (let index = 1; index < ordered.length; index += 1) {
 		const previous = ordered[index - 1]!;
 		if (ordered[index]!.sheet - previous.sheet <= DEVELOPMENT_EPSILON) continue;
@@ -129,6 +118,15 @@ export function buildDevelopedWallMesh(
 		// a real absence of triangles, and the arch boundary is carried by the same
 		// sampled top boundary the canonical renderer uses.
 		const sheetCuts = new Set<number>([start.sheet, end.sheet]);
+		// A profiled top bends at its apex: cut there so each piece's top is one line.
+		for (const point of profile?.slice(1, -1) ?? []) {
+			const amount = (point.distance - start.station) / (end.station - start.station);
+			if (!(amount > 0 && amount < 1)) continue;
+			const sheet = start.sheet + amount * (end.sheet - start.sheet);
+			if (sheet > start.sheet + DEVELOPMENT_EPSILON && sheet < end.sheet - DEVELOPMENT_EPSILON) {
+				sheetCuts.add(sheet);
+			}
+		}
 		for (const hole of openings) {
 			if (hole.sheetEnd <= start.sheet + DEVELOPMENT_EPSILON) continue;
 			if (hole.sheetStart >= end.sheet - DEVELOPMENT_EPSILON) continue;
@@ -158,10 +156,10 @@ export function buildDevelopedWallMesh(
 					hole.sheetEnd > sheet0 + DEVELOPMENT_EPSILON,
 			);
 			const addSideBand = (bottom0: number, bottom1: number, top0: number, top1: number): void => {
-				const low0 = Math.max(0, Math.min(options.height, bottom0));
-				const low1 = Math.max(0, Math.min(options.height, bottom1));
-				const high0 = Math.max(0, Math.min(options.height, top0));
-				const high1 = Math.max(0, Math.min(options.height, top1));
+				const low0 = Math.max(0, Math.min(peak, bottom0));
+				const low1 = Math.max(0, Math.min(peak, bottom1));
+				const high0 = Math.max(0, Math.min(peak, top0));
+				const high1 = Math.max(0, Math.min(peak, top1));
 				if (high0 - low0 <= DEVELOPMENT_EPSILON && high1 - low1 <= DEVELOPMENT_EPSILON) return;
 				for (const [lateral, face] of [
 					[-half, 'left'],
@@ -181,26 +179,28 @@ export function buildDevelopedWallMesh(
 					}
 				}
 			};
+			const wallTop0 = topOf(station0);
+			const wallTop1 = topOf(station1);
 			if (active.length === 0) {
-				addSideBand(0, 0, options.height, options.height);
+				addSideBand(0, 0, wallTop0, wallTop1);
 			} else {
 				for (const hole of active) {
 					if (hole.sillHeight > DEVELOPMENT_EPSILON)
 						addSideBand(0, 0, hole.sillHeight, hole.sillHeight);
 					const top0 = topAt(hole, sheet0);
 					const top1 = topAt(hole, sheet1);
-					addSideBand(top0, top1, options.height, options.height);
+					addSideBand(top0, top1, wallTop0, wallTop1);
 				}
 			}
 			const topSolid = active.every(
-				(hole) => topAt(hole, sheetMid) < options.height - DEVELOPMENT_EPSILON,
+				(hole) => topAt(hole, sheetMid) < topOf((station0 + station1) / 2) - DEVELOPMENT_EPSILON,
 			);
 			const bottomSolid = active.every((hole) => hole.sillHeight > DEVELOPMENT_EPSILON);
 			if (topSolid) {
-				const lt0 = pushVertex(station0, sheet0, -half, options.height);
-				const rt0 = pushVertex(station0, sheet0, half, options.height);
-				const lt1 = pushVertex(station1, sheet1, -half, options.height);
-				const rt1 = pushVertex(station1, sheet1, half, options.height);
+				const lt0 = pushVertex(station0, sheet0, -half, wallTop0);
+				const rt0 = pushVertex(station0, sheet0, half, wallTop0);
+				const lt1 = pushVertex(station1, sheet1, -half, wallTop1);
+				const rt1 = pushVertex(station1, sheet1, half, wallTop1);
 				pushTriangle(lt0, rt0, rt1, 'top', station0, station1, sheet0, sheet1);
 				pushTriangle(lt0, rt1, lt1, 'top', station0, station1, sheet0, sheet1);
 			}
@@ -219,6 +219,24 @@ export function buildDevelopedWallMesh(
 	// one pick-only centre quad per hole keeps the inverse map and Opening
 	// identity working without drawing a second contour or a false surface.
 	return { vertices, triangles, stations, trianglesByFace, bounds };
+}
+
+/** An Opening hole's top at one sheet coordinate: its head, or its sampled arch boundary. */
+function topAt(hole: WallDevelopmentMeshHole, sheet: number): number {
+	if (hole.topBoundary === undefined || hole.topBoundary.length === 0) return hole.headHeight;
+	const width = hole.sheetEnd - hole.sheetStart;
+	const local = Math.min(width, Math.max(0, sheet - hole.sheetStart));
+	const points = hole.topBoundary;
+	if (local <= points[0]![0]! + DEVELOPMENT_EPSILON) return hole.sillHeight + points[0]![1]!;
+	for (let pointIndex = 1; pointIndex < points.length; pointIndex += 1) {
+		const previous = points[pointIndex - 1]!;
+		const current = points[pointIndex]!;
+		if (local > current[0]! + DEVELOPMENT_EPSILON) continue;
+		const span = current[0]! - previous[0]!;
+		const amount = span > DEVELOPMENT_EPSILON ? (local - previous[0]!) / span : 0;
+		return hole.sillHeight + previous[1]! + (current[1]! - previous[1]!) * amount;
+	}
+	return hole.sillHeight + points.at(-1)![1]!;
 }
 
 export const FACE_NORMALS: Record<WallDevelopmentFace, [number, number, number]> = {

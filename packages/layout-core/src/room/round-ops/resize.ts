@@ -26,6 +26,7 @@ import type {
 	LayoutWallOpening,
 } from '../../wall/types';
 import { validateWallFirstPortalRelations } from '../../wall/portals';
+import { WALL_TOP_PROFILE_UNSUPPORTED_CODE, wallTopIsLevel } from '../../wall/wall-top';
 
 // ---------------------------------------------------------------------------
 // Whole-radius resize for isolated circles and connected Round rings
@@ -46,7 +47,9 @@ export type RoundRoomRadiusRejectionCode =
 	| 'room_identity_lost'
 	| 'portal_relation_invalid'
 	| 'invalid_candidate_document'
-	| 'candidate_does_not_compile';
+	| 'candidate_does_not_compile'
+	/** A member arc carries a sloped or gabled top; its apex scaling arrives with V2b. */
+	| 'wall_top_profile_unsupported';
 
 export type RoundRoomRadiusRejection = {
 	readonly code: RoundRoomRadiusRejectionCode;
@@ -156,6 +159,16 @@ export function planResizeRoundRoomRadius(options: {
 					roomIds: [roomId],
 					wallIds: [wallId],
 				},
+			);
+		}
+		// A radius edit scales every member arc, so an authored apex offset would
+		// stay at its old metre station while the Wall changes length. The scaling
+		// rule arrives with V2b; until then a non-level member refuses whole.
+		if (!wallTopIsLevel(wall.top)) {
+			return rejectRadius(
+				WALL_TOP_PROFILE_UNSUPPORTED_CODE,
+				`Wall '${wall.id}' has a ${wall.top.kind} top; resizing Round Room '${roomId}' needs exact top arithmetic that arrives with V2b. Make the top level first.`,
+				{ roomIds: [roomId], wallIds: [wall.id] },
 			);
 		}
 		if (!(radius > wall.thickness * 0.5 + 1e-6)) {

@@ -102,8 +102,8 @@
 		},
 		{
 			"path": "packages/layout-core/src/plan/representation/retainer.ts",
-			"lines": 930,
-			"reason": "One incremental Plan retainer: reuse, proven deltas, assembly and stamps share one retained source index."
+			"lines": 931,
+			"reason": "One incremental Plan retainer: reuse, proven deltas, assembly and stamps share one retained source index. V2a: the retainer match reads the peak."
 		},
 		{
 			"path": "packages/project-model/src/channels/negotiate.ts",
@@ -267,8 +267,8 @@
 		},
 		{
 			"path": "apps/editor/src/lib/layout/wall-unfold.ts",
-			"lines": 768,
-			"reason": "The unfold session: anchor, display and opening drag share one session-only Wall reading."
+			"lines": 784,
+			"reason": "The unfold session: anchor, display and opening drag share one session-only Wall reading. V2a: the pin and fit bounds follow the compiled top."
 		},
 		{
 			"path": "apps/editor/src/lib/authoring/adapters/scene/import/ingest.ts",
@@ -437,8 +437,8 @@
 		},
 		{
 			"path": "packages/layout-core/src/wall/dissolve.ts",
-			"lines": 682,
-			"reason": "One dissolve planner: the candidate, port remap and checks share one mutable candidate document. Format 11 adds the required authored Wall top."
+			"lines": 698,
+			"reason": "One dissolve planner: the candidate, port remap and checks share one mutable candidate document. Format 11 adds the required authored Wall top. V2a: a profiled join refuses with `wall_top_not_joinable` until V2b."
 		},
 		{
 			"path": "packages/layout-core/src/room/isolation.ts",
@@ -477,8 +477,8 @@
 		},
 		{
 			"path": "packages/layout-core/src/wall/chain-execute.ts",
-			"lines": 664,
-			"reason": "Baseline exception: the owning split removes this entry. Format 11 requires `top` on every Wall the chain writes."
+			"lines": 668,
+			"reason": "Baseline exception: the owning split removes this entry. Format 11 requires `top` on every Wall the chain writes. V2a: a profiled Wall refuses with its own code."
 		},
 		{
 			"path": "apps/api/src/asset-persistence.ts",
@@ -517,13 +517,13 @@
 		},
 		{
 			"path": "apps/editor/src/lib/layout/wall-mesh-standalone.ts",
-			"lines": 648,
-			"reason": "Baseline exception: the owning split removes this entry. Format 11 makes the end bridge read the Wall's own end top."
+			"lines": 651,
+			"reason": "Baseline exception: the owning split removes this entry. Format 11 makes the end bridge read the Wall's own end top. V2a: the Opening spring limit reads the profile peak."
 		},
 		{
 			"path": "packages/layout-core/src/geometry/types.ts",
-			"lines": 651,
-			"reason": "One compiled-geometry type vocabulary; the types must stay together so no consumer imports half a contract. Format 11 adds the compiled top profile."
+			"lines": 671,
+			"reason": "One compiled-geometry type vocabulary; the types must stay together so no consumer imports half a contract. Format 11 adds the compiled top profile. V2a: the Room Opening limit carries the Wall top."
 		},
 		{
 			"path": "apps/editor/src/lib/authoring/adapters/layout/layout-card-actions.ts",
@@ -547,8 +547,8 @@
 		},
 		{
 			"path": "apps/editor/src/lib/layout/wall-unfold-pick.ts",
-			"lines": 635,
-			"reason": "Baseline exception: the owning split removes this entry."
+			"lines": 638,
+			"reason": "Baseline exception: the owning split removes this entry. V2a: the Unroll strip reads the compiled top profile."
 		},
 		{
 			"path": "packages/layout-core/src/wall/centerline.ts",
@@ -562,8 +562,8 @@
 		},
 		{
 			"path": "packages/layout-core/src/wall/topology/removal.ts",
-			"lines": 632,
-			"reason": "Baseline exception: the owning split removes this entry."
+			"lines": 643,
+			"reason": "Baseline exception: the owning split removes this entry. V2a: a profiled repack refuses until V2b."
 		},
 		{
 			"path": "packages/project-model/src/scene-planning/finish/model.ts",
@@ -572,8 +572,8 @@
 		},
 		{
 			"path": "packages/layout-core/src/room/region-relations.ts",
-			"lines": 628,
-			"reason": "One region-wall relation reading: plan class, gap and reach are measured from one footprint/segment pair."
+			"lines": 692,
+			"reason": "One region-wall relation reading: plan class, gap and reach are measured from one footprint/segment pair. V2a: region relations read the top over the covered stations."
 		},
 		{
 			"path": "apps/editor/src/lib/authoring/adapters/light/LightAdvancedGroups.svelte",
@@ -637,8 +637,8 @@
 		},
 		{
 			"path": "packages/layout-core/src/geometry/rooms.ts",
-			"lines": 605,
-			"reason": "Baseline exception: the owning split removes this entry."
+			"lines": 624,
+			"reason": "Baseline exception: the owning split removes this entry. V2a: a Room-bound limit carries the boundary Wall's top and direction."
 		},
 		{
 			"path": "apps/editor/src/lib/authoring/stage/shell/StageHeightSheet.svelte",
@@ -826,7 +826,7 @@
 			"file": "packages/layout-core/src/wall/dissolve.ts",
 			"name": "planDissolveJunction",
 			"line": 135,
-			"lines": 468,
+			"lines": 481,
 			"reason": "One dissolve planner: the candidate, the port remap and the checks share one mutable candidate."
 		},
 		{
@@ -1190,7 +1190,7 @@
 			"file": "packages/layout-core/src/geometry/validation.ts",
 			"name": "validatePreparedLayoutRoomGeometry",
 			"line": 83,
-			"lines": 247,
+			"lines": 251,
 			"reason": "Baseline exception: the owning split removes this entry."
 		},
 		{
@@ -1295,7 +1295,7 @@
 			"file": "packages/layout-core/src/wall/development/mesh.ts",
 			"name": "buildDevelopedWallMesh",
 			"line": 18,
-			"lines": 205,
+			"lines": 204,
 			"reason": "Baseline exception: the owning split removes this entry."
 		},
 		{

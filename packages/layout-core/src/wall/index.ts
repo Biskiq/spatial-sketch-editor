@@ -339,6 +339,7 @@ export {
 	compiledWallTopKnots,
 	compiledWallTopPeak,
 	compiledWallTopProfile,
+	compiledWallTopRange,
 	wallIsClosed,
 	wallTopAt,
 	wallTopBreakpoints,
@@ -351,6 +352,8 @@ export {
 	wallTopSourceIssues,
 	WALL_TOP_APEX_INVALID_CODE,
 	WALL_TOP_APEX_OUTSIDE_CODE,
+	WALL_TOP_NOT_JOINABLE_CODE,
+	WALL_TOP_PROFILE_UNSUPPORTED_CODE,
 	WALL_TOP_RISE_INVALID_CODE,
 	WALL_TOP_STATION_EPSILON,
 } from './wall-top';

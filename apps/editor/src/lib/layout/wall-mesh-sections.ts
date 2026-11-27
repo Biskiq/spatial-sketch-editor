@@ -5,6 +5,7 @@ import type {
 	CompiledWallSection,
 } from '@portfolio/layout-core/geometry';
 import { LAYOUT_GEOMETRY_EPSILON } from '@portfolio/layout-core/geometry';
+import { compiledWallTopAt } from '@portfolio/layout-core/wall';
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import type {
 	ClipSample,
@@ -27,6 +28,7 @@ import {
 	segmentBands,
 	wallOpensAtEnd,
 	wallOpensAtStart,
+	wallPeakTop,
 	wallTopClipDistances,
 } from './wall-mesh-geometry';
 import { quadNormal } from './wall-mesh-geometry';
@@ -77,9 +79,9 @@ export function buildSectionFaces(
 	// the clip: the underside and front-face bottom edge tessellate at profile
 	// resolution instead of the (coarser) wall-sample spacing, and the pointed
 	// apex lands exactly on a knot rather than vanishing between samples.
-	// A profiled Wall adds its apex station: each clip interval then lies on one
-	// straight run of the top, so the ruled top quad is exact.
-	const topKnots = wallTopClipDistances(wall);
+	// A profiled Wall adds its apex and band-crossing stations: each clip interval
+	// then lies on one straight run of the top, so the ruled top quad is exact.
+	const topKnots = wallTopClipDistances(wall, section, roomBreakpoints);
 	const clip = clipSectionSamples(wall.samples, spanStart, spanEnd, [
 		...lintelProfileKnotDistances(section),
 		...lintelBandIntersectionDistances(section, roomBreakpoints),
@@ -322,11 +324,13 @@ export function buildRevealFaces(
 		? opening.profileShape.height - opening.profileShape.rise
 		: opening.height;
 	const revealBottom = opening.sillHeight;
-	const revealTop = Math.min(opening.sillHeight + springHeight, wallHeight);
+	// A profiled Wall's jamb rises to the Wall's own top at its station, so an
+	// Opening above the eave is not clamped to it; a level Wall keeps `wallHeight`.
+	const revealLimit = wallPeakTop(wall, wallHeight);
+	const revealTop = Math.min(opening.sillHeight + springHeight, revealLimit);
 	if (revealTop <= revealBottom + LAYOUT_GEOMETRY_EPSILON) return [];
 
 	const faces: Face[] = [];
-	const bands = segmentBands(revealBottom, revealBottom, revealTop, roomBreakpoints);
 	const sides: Array<{ distance: number; sign: number }> = [
 		{ distance: Math.max(opening.offset, endClip?.start ?? 0), sign: 1 },
 		{ distance: Math.min(opening.offset + opening.width, endClip?.end ?? Infinity), sign: -1 },
@@ -373,6 +377,11 @@ export function buildRevealFaces(
 				: endClip?.freeEnd && side.distance >= length - LAYOUT_GEOMETRY_EPSILON
 		)
 			continue;
+		const sideTop = wall.topProfile
+			? Math.min(revealTop, compiledWallTopAt(wall.topProfile, side.distance))
+			: revealTop;
+		if (sideTop <= revealBottom + LAYOUT_GEOMETRY_EPSILON) continue;
+		const bands = segmentBands(revealBottom, revealBottom, sideTop, roomBreakpoints);
 		const sample = sampleAt(wall.samples, side.distance);
 		const clip: ClipSample = {
 			...sample,

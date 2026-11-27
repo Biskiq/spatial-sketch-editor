@@ -67,7 +67,10 @@ a gable's apex must exceed both ends and lie inside the Wall's derived length
 (`wall_top_apex_outside`, blocking). A closed Wall must be level (`closed_wall_level_only`).
 `height + maximum rise` is within the geometry envelope, and an Opening must fit under the **lowest**
 top over its own interval, not one scalar for the Wall. The compiled top profile exists only for a
-non-level top, so a level Wall keeps its records, cache key and mesh buffers. The Floor carries a
+non-level top, so a level Wall keeps its records, cache key and mesh buffers. Compiled Wall
+sections still split only at Openings, never at the apex: a section's `topY` is the **maximum** of
+the top over its span, so every height bound stays conservative, and a consumer needing the true
+edge reads `topProfile` (the mesh adds the apex and any band crossing as clip knots). The Floor carries a
 horizontal datum only (`id`, `name`, `elevation`, no vertical extent), so there is no Floor-relative
 cap and a Room ceiling is the maximum of its boundary Wall heights. New and split Walls take height
 from layout-core's birth/inheritance rule: explicit height, else the unique incident Wall height, else

@@ -14,6 +14,7 @@
  */
 import {
 	buildDevelopedWallMesh,
+	compiledWallTopPeak,
 	createWallDevelopmentBuffers,
 	spanForStation,
 	createWallDevelopmentSheetBuffers,
@@ -236,6 +237,7 @@ export function buildWallUnfoldDisplay(
 	const mesh = buildDevelopedWallMesh(development, {
 		thickness: wall.thickness,
 		height: wall.height,
+		...(wall.topProfile ? { topProfile: wall.topProfile } : {}),
 		spans,
 		openings: openingHoles,
 	});
@@ -261,7 +263,8 @@ export function buildWallUnfoldDisplay(
 		u: state.u,
 		sideAngle,
 		floorY,
-		height: wall.height,
+		// The sheet's full extent: a profiled Wall frames to its peak, not its eave.
+		height: wall.topProfile ? compiledWallTopPeak(wall.topProfile, wall.height) : wall.height,
 		development,
 		buffers,
 		sheetBuffers,

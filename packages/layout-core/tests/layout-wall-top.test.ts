@@ -461,6 +461,77 @@ describe('V2a · an Opening fits under the lowest top over its interval (P7)', (
 	});
 });
 
+describe('V2a · a Room-bound Opening fits under the lowest top over its interval (P7)', () => {
+	const roomDocument = (
+		wallOpening: LayoutWallOpening,
+		direction: 'forward' | 'reverse' = 'forward'
+	): LayoutDocumentWallFirst => {
+		const document = documentOf(
+			{ a: [0, 0], b: [10, 0], c: [10, 6], d: [0, 6] },
+			[
+				wall('w1', 'a', 'b', { height: 2, top: { kind: 'slope', startRise: 0, endRise: 2 } }),
+				wall('w2', 'b', 'c'),
+				wall('w3', 'c', 'd'),
+				wall('w4', 'd', 'a')
+			],
+			[wallOpening]
+		);
+		document.rooms.push({
+			id: 'room',
+			name: 'Room',
+			boundary:
+				direction === 'forward'
+					? [
+							{ wallId: 'w1', direction: 'forward' },
+							{ wallId: 'w2', direction: 'forward' },
+							{ wallId: 'w3', direction: 'forward' },
+							{ wallId: 'w4', direction: 'forward' }
+						]
+					: [
+							{ wallId: 'w4', direction: 'reverse' },
+							{ wallId: 'w3', direction: 'reverse' },
+							{ wallId: 'w2', direction: 'reverse' },
+							{ wallId: 'w1', direction: 'reverse' }
+						],
+			virtualEdges: [],
+			overhead: 'closed'
+		});
+		return document;
+	};
+	const window = (id: string, offset: number) =>
+		opening({ id, wallId: 'w1', kind: 'window', offset, width: 1, sillHeight: 3, height: 0.5 });
+	const overHeightIssues = (document: LayoutDocumentWallFirst) =>
+		compileWallFirstLayoutGeometry(document).issues.filter((issue) => issue.code === 'opening_over_height');
+
+	it('accepts an Opening above the eave under the high end and refuses it under the low end', () => {
+		// Top at x = 8..9 is 3.6..3.8, so a window topped at 3.5 fits; at 0..1 the top is 2..2.2.
+		expect(overHeightIssues(roomDocument(window('high', 8)))).toEqual([]);
+		const low = overHeightIssues(roomDocument(window('low', 0)));
+		expect(low).toHaveLength(1);
+		expect(low[0]!.targetId).toBe('low');
+		expect(low[0]!.message).toContain("Wall 'w1' top 2 m");
+	});
+
+	it('reads the Wall station, not the Room traversal offset, for a reverse boundary reference', () => {
+		expect(overHeightIssues(roomDocument(window('high', 8), 'reverse'))).toEqual([]);
+		expect(overHeightIssues(roomDocument(window('low', 0), 'reverse'))).toHaveLength(1);
+	});
+
+	it('agrees with the Opening-set validator on the same document', () => {
+		for (const offset of [0, 8]) {
+			const document = roomDocument(window('w', offset));
+			expect(validateWallFirstOpeningSet(document).length > 0).toBe(overHeightIssues(document).length > 0);
+		}
+	});
+
+	it('keeps the level-Wall message byte-identical', () => {
+		const document = roomDocument(opening({ id: 'tall', wallId: 'w2', offset: 1, width: 1, sillHeight: 2.5, height: 1 }));
+		const issues = overHeightIssues(document);
+		expect(issues).toHaveLength(1);
+		expect(issues[0]!.message).toBe("Opening top exceeds Wall 'w2' height 3 m.");
+	});
+});
+
 describe('V2a · Save and Load keep the canonical top bytes', () => {
 	it('round-trips slope and gable Walls byte-identically', () => {
 		const document = documentOf(

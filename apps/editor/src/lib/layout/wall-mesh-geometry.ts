@@ -11,6 +11,7 @@ import {
 	compiledWallEndTop,
 	compiledWallTopAt,
 	compiledWallTopKnots,
+	compiledWallTopPeak,
 	resolveSharedCornerSide,
 } from '@portfolio/layout-core/wall';
 import type { ClipSample, Corner, CornerSide, V3 } from './wall-mesh-types';
@@ -44,9 +45,63 @@ export function sectionTopAt(
 	return Math.min(section.topY, compiledWallTopAt(profile, distance));
 }
 
-/** Stations where a Wall's top changes slope, so a face top edge is one line. */
-export function wallTopClipDistances(wall: Pick<CompiledWall, 'topProfile'>): number[] {
-	return compiledWallTopKnots(wall.topProfile);
+/**
+ * Stations where a Wall's top changes slope, plus where it crosses a band
+ * breakpoint, so a face's top edge is one line inside every band.
+ */
+export function wallTopClipDistances(
+	wall: Pick<CompiledWall, 'topProfile'>,
+	section: Pick<CompiledWallSection, 'topY'>,
+	roomBreakpoints: readonly number[],
+): number[] {
+	return [
+		...compiledWallTopKnots(wall.topProfile),
+		...wallTopBandIntersectionDistances(wall, section, roomBreakpoints),
+	];
+}
+
+/**
+ * Highest point of a Wall's top above the Floor datum, never below `floor`. A
+ * level Wall returns `floor` itself, so a level Wall's breakpoints and bands are
+ * exactly what they were before profiles existed. A profiled Wall's Openings may
+ * sit above its eave, so every height limit that means "the top of the Wall"
+ * reads this peak, never the eave.
+ */
+export function wallPeakTop(wall: Pick<CompiledWall, 'topProfile'>, floor: number): number {
+	const profile = wall.topProfile;
+	return profile ? Math.max(floor, compiledWallTopPeak(profile, floor)) : floor;
+}
+
+/**
+ * Centerline distances where a profiled top crosses a vertical band breakpoint
+ * (or the section's own top). The front/back faces split into bands at those
+ * heights; without a knot at the exact crossing the clamped top edge of a band
+ * stair-steps and leaves singly-owned edges beside the slope. The mirror of
+ * `lintelBandIntersectionDistances` for a sloped top instead of an arch bottom.
+ */
+export function wallTopBandIntersectionDistances(
+	wall: Pick<CompiledWall, 'topProfile'>,
+	section: Pick<CompiledWallSection, 'topY'>,
+	roomBreakpoints: readonly number[],
+): number[] {
+	const profile = wall.topProfile;
+	if (!profile) return [];
+	const levels = [...roomBreakpoints, section.topY];
+	const result: number[] = [];
+	for (let index = 1; index < profile.length; index += 1) {
+		const from = profile[index - 1]!;
+		const to = profile[index]!;
+		if (Math.abs(to.topY - from.topY) <= LAYOUT_GEOMETRY_EPSILON) continue;
+		const lo = Math.min(from.topY, to.topY);
+		const hi = Math.max(from.topY, to.topY);
+		for (const y of levels) {
+			if (y <= lo + LAYOUT_GEOMETRY_EPSILON || y >= hi - LAYOUT_GEOMETRY_EPSILON) continue;
+			result.push(
+				from.distance + ((y - from.topY) / (to.topY - from.topY)) * (to.distance - from.distance),
+			);
+		}
+	}
+	return result;
 }
 
 export function sectionBottomAt(section: CompiledWallSection, distance: number): number {
@@ -80,13 +135,15 @@ export function roomHeightBreakpoints(room: CompiledRoom): number[] {
 	const wallHeight = room.ceilingElevation - room.floorElevation;
 	const breakpoints = new Set<number>();
 	for (const wall of room.walls) {
+		// A profiled Wall's Openings may spring above the Room's eave ceiling.
+		const limit = wallPeakTop(wall, wallHeight);
 		for (const opening of wall.openings) {
 			const springHeight = opening.profileShape
 				? opening.profileShape.height - opening.profileShape.rise
 				: opening.height;
 			if (opening.sillHeight > LAYOUT_GEOMETRY_EPSILON) breakpoints.add(opening.sillHeight);
 			const spring = opening.sillHeight + springHeight;
-			if (spring > LAYOUT_GEOMETRY_EPSILON && spring < wallHeight - LAYOUT_GEOMETRY_EPSILON)
+			if (spring > LAYOUT_GEOMETRY_EPSILON && spring < limit - LAYOUT_GEOMETRY_EPSILON)
 				breakpoints.add(spring);
 		}
 	}

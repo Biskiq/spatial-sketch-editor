@@ -75,6 +75,9 @@ export function wallRefusalWords(code: string, message = ''): string {
 		case 'arch_profile_width_invalid':
 		case 'arch_profile_height_invalid':
 			return 'An Opening would no longer fit this Wall.';
+		case 'wall_top_profile_unsupported':
+		case 'wall_top_not_joinable':
+			return 'A sloped or gabled Wall top cannot be split, joined or resized yet. Make the top level first.';
 		case 'duplicate_junction_point':
 		case 'duplicate_joined_wall':
 		case 'junction_point_mismatch':

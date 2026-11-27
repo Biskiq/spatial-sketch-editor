@@ -1269,6 +1269,44 @@ describe('T1 Wave 4 · C2 Topology and Radius Core', () => {
 			expect(exactStartPlan.document.openings[0]!.offset).toBeCloseTo(0, 6);
 		});
 
+		it('refuses a repack and a radius edit whole while a ring member has a profiled top, and keeps level rings unchanged', () => {
+			const ring = createConnectedRing({ seed: 'repack-top' });
+			const room = ring.document.rooms.find((r) => r.id === ring.roomId)!;
+			const memberId = room.boundary[1]!.wallId;
+			const withTop = (document: LayoutDocumentWallFirst, top: LayoutWall['top']): LayoutDocumentWallFirst => ({
+				...document,
+				walls: document.walls.map((wall) => (wall.id === memberId ? { ...wall, top } : wall))
+			});
+			const detachAll = (document: LayoutDocumentWallFirst) => {
+				const first = expectSuccess(planDeleteWall(document, ring.outsideWallIds[0]!, cap('top-del-1'), document.floor.id));
+				return planDeleteWall(first.document, ring.outsideWallIds[1]!, cap('top-del-2'), first.document.floor.id);
+			};
+
+			// A level ring still repacks.
+			expect(expectSuccess(detachAll(ring.document)).repackedRoundRoomIds).toEqual([ring.roomId]);
+
+			// A profiled member refuses the repack rather than flattening it.
+			const sloped = withTop(ring.document, { kind: 'slope', startRise: 0, endRise: 1 });
+			const refused = detachAll(sloped);
+			expect(refused.kind).toBe('rejected');
+			if (refused.kind === 'rejected') {
+				expect(refused.rejection.code).toBe('round_repack_conflict');
+				expect(refused.rejection.message).toContain(`'${memberId}'`);
+				expect(refused.rejection.message).toContain('slope top');
+			}
+
+			// A radius edit refuses whole on the same ring; the level ring still resizes.
+			const before = JSON.stringify(sloped);
+			const resized = planResizeRoundRoomRadius({ document: sloped, roomId: ring.roomId, radius: 6 });
+			expect(resized.kind).toBe('rejected');
+			if (resized.kind === 'rejected') {
+				expect(resized.rejection.code).toBe('wall_top_profile_unsupported');
+				expect(resized.rejection.wallIds).toEqual([memberId]);
+			}
+			expect(JSON.stringify(sloped)).toBe(before);
+			expect(planResizeRoundRoomRadius({ document: ring.document, roomId: ring.roomId, radius: 6 }).kind).toBe('success');
+		});
+
 		it('automatically repacks on uniform last detach, rehosting Openings from reversed/later arcs, and refuses mixed attributes', () => {
 			const ring = createConnectedRing({ seed: 'repack-uniform' });
 			const room = ring.document.rooms.find((r) => r.id === ring.roomId)!;

@@ -8,6 +8,7 @@ import type {
 	CompiledRoom,
 	LayoutBounds2,
 } from '../../geometry/types';
+import { compiledWallTopPeak } from '../../wall/wall-top';
 import { LAYOUT_SLICE_CONTACT_METERS } from '../../room/region-validation';
 import type { LayoutVec2 } from '../../geometry/coordinates';
 import { finiteVec2, isFiniteNumber } from './membership';
@@ -153,6 +154,11 @@ export function streamFor(
 	return extent.minY >= cutElevation ? 'projected' : 'hidden';
 }
 
+/** A Wall's highest point above the datum frame: the peak of a profiled top, else `height`. */
+export function wallPeakHeight(wall: Pick<CompiledPhysicalWall, 'height' | 'topProfile'>): number {
+	return wall.topProfile ? compiledWallTopPeak(wall.topProfile, wall.height) : wall.height;
+}
+
 /**
  * One compiled Wall's candidates, in the order its placements are declared.
  *
@@ -167,7 +173,7 @@ export function wallCandidatesOf(wall: CompiledPhysicalWall, datumMeters: number
 			{
 				sourceKind: 'wall',
 				sourceId: wall.wallId,
-				extent: { minY: datumMeters, maxY: datumMeters + wall.height },
+				extent: { minY: datumMeters, maxY: datumMeters + wallPeakHeight(wall) },
 				plan: { kind: 'polyline', polyline: [] },
 				subRef: null,
 				symbolOnly: false,

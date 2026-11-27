@@ -39,6 +39,13 @@ export const WALL_TOP_APEX_INVALID_CODE = 'wall_top_apex_invalid';
 export const WALL_TOP_APEX_OUTSIDE_CODE = 'wall_top_apex_outside';
 export const CLOSED_WALL_LEVEL_ONLY_CODE = 'closed_wall_level_only';
 
+/**
+ * V2a temporary refusals: an operation whose exact arithmetic arrives with V2b
+ * refuses whole, naming the profiled Wall, until then.
+ */
+export const WALL_TOP_PROFILE_UNSUPPORTED_CODE = 'wall_top_profile_unsupported';
+export const WALL_TOP_NOT_JOINABLE_CODE = 'wall_top_not_joinable';
+
 export type WallTopIssue = { code: string; message: string };
 
 /** True when this top is the one shape that compiles to the pre-bump output. */
@@ -280,6 +287,31 @@ export function compiledWallTopAt(profile: WallTopProfile, station: number): num
 		}
 	}
 	return profile.at(-1)!.topY;
+}
+
+/**
+ * Lowest and highest compiled top over `[from, to]` (any order, clamped to the
+ * Wall). The maximum includes a gable apex that lies inside the interval.
+ */
+export function compiledWallTopRange(
+	profile: WallTopProfile,
+	from: number,
+	to: number,
+): { min: number; max: number } {
+	const low = Math.min(from, to);
+	const high = Math.max(from, to);
+	let min = Infinity;
+	let max = -Infinity;
+	const read = (station: number): void => {
+		const top = compiledWallTopAt(profile, station);
+		if (top < min) min = top;
+		if (top > max) max = top;
+	};
+	read(low);
+	read(high);
+	for (const point of profile)
+		if (point.distance > low && point.distance < high) read(point.distance);
+	return { min, max };
 }
 
 /** Highest point of a compiled top profile. */

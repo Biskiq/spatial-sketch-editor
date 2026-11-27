@@ -6,9 +6,8 @@
  * region. It is never stored, never compiled per edit and never writes a
  * document. The only authored relation fact is the region's `intendedGaps` list.
  *
- * This module is V1's **flat** reading. Walls are level today, so the evaluator
- * seam below returns one world top for any station; V2 replaces that body with
- * `wallTopAt`/`wallTopRange` from `layout-wall-top.ts` and no caller changes.
+ * The evaluator seam below reads a level Wall's one top, or a profiled Wall's
+ * compiled top over the stations the region actually covers.
  */
 import type { LayoutVec2 } from '../geometry/coordinates';
 import { pointStrictlyInsidePolygon } from '../geometry/face-extraction';
@@ -18,6 +17,7 @@ import type {
 	CompiledRegion,
 } from '../geometry/types';
 import type { LayoutRegion } from '../wall/types';
+import { compiledWallTopRange } from '../wall/wall-top';
 
 /** The support query's coplanar tolerance, shared by every relation comparison. */
 export const REGION_WALL_RELATION_EPSILON = 1e-6;
@@ -37,18 +37,85 @@ export type RegionWallPlanReading = {
 /**
  * The one Wall-top evaluator region relations and fits read.
  *
- * V1 Walls are level, so every station has the same top. `fromStation` and
- * `toStation` are accepted now so V2's profiled evaluator can replace this body
- * without changing a caller.
+ * A level Wall has the same top at every station. A profiled Wall reads its
+ * compiled top profile over `[fromStation, toStation]` (clamped to the Wall, any
+ * order), and the maximum includes a gable apex that lies inside the interval.
+ * Omitting both stations reads the whole Wall.
  */
 export function regionWallTopRangeY(
-	wall: Pick<CompiledPhysicalWall, 'height'>,
+	wall: Pick<CompiledPhysicalWall, 'height' | 'topProfile'>,
 	floorElevation: number,
-	_fromStation = 0,
-	_toStation = 0,
+	fromStation = 0,
+	toStation = Infinity,
 ): { minY: number; maxY: number } {
-	const topY = floorElevation + wall.height;
-	return { minY: topY, maxY: topY };
+	const profile = wall.topProfile;
+	if (profile === undefined || profile.length === 0) {
+		const topY = floorElevation + wall.height;
+		return { minY: topY, maxY: topY };
+	}
+	const range = compiledWallTopRange(profile, fromStation, toStation);
+	return { minY: floorElevation + range.min, maxY: floorElevation + range.max };
+}
+
+/**
+ * The centerline stations a region actually reads a Wall over: the span both
+ * faces lie inside the footprint for a `through` Wall, and the station of the
+ * nearest contact for an `edge` or `near` Wall. The whole Wall when no better
+ * span is known.
+ */
+export function regionWallReadStations(
+	footprint: readonly LayoutVec2[],
+	wall: Pick<
+		CompiledPhysicalWall,
+		'samples' | 'thickness' | 'startJunctionId' | 'endJunctionId' | 'length'
+	>,
+	planClass: RegionWallPlanClass,
+): { from: number; to: number } {
+	const whole = { from: 0, to: wall.length };
+	if (planClass === 'none' || wall.samples.length < 2) return whole;
+	const half = wall.thickness / 2;
+	const left = facePolyline(wall, half);
+	const right = facePolyline(wall, -half);
+	if (planClass === 'through') {
+		const leftIntervals = insideIntervals(footprint, left);
+		const rightIntervals = insideIntervals(footprint, right);
+		let from = Infinity;
+		let to = -Infinity;
+		for (const [a0, a1] of leftIntervals) {
+			for (const [b0, b1] of rightIntervals) {
+				const start = Math.max(a0, b0);
+				const end = Math.min(a1, b1);
+				if (end - start > 1e-9) {
+					from = Math.min(from, start);
+					to = Math.max(to, end);
+				}
+			}
+		}
+		return from <= to ? { from, to } : whole;
+	}
+	const nearest = nearestBodyStripPair(footprint, left, right, wall);
+	if (nearest === null) return whole;
+	const station = stationOfPoint(wall.samples, nearest.wall);
+	return { from: station, to: station };
+}
+
+/** Centerline station of the sampled point nearest to `point`. */
+function stationOfPoint(samples: CompiledPhysicalWall['samples'], point: LayoutVec2): number {
+	let best = Infinity;
+	let station = 0;
+	for (let index = 0; index + 1 < samples.length; index++) {
+		const a = samples[index]!;
+		const b = samples[index + 1]!;
+		const projected = projectPointOnSegment(point, a.point, b.point);
+		const distance = distanceBetween(point, projected);
+		if (distance < best) {
+			best = distance;
+			const span = distanceBetween(a.point, b.point);
+			const along = span > 0 ? distanceBetween(a.point, projected) / span : 0;
+			station = a.distance + (b.distance - a.distance) * along;
+		}
+	}
+	return station;
 }
 
 export type RegionWallMeasureSegment = {
@@ -158,12 +225,9 @@ export function regionWallRelations(
 	for (const wall of compiled.walls) {
 		const plan = regionWallPlanClass(compiledRegion.footprint, wall);
 		if (plan.planClass === 'none') continue;
-		const reading = regionWallReading(
-			plan,
-			regionWallTopRangeY(wall, floor.elevation),
-			compiledRegion,
-			region.role,
-		);
+		const stations = regionWallReadStations(compiledRegion.footprint, wall, plan.planClass);
+		const topRange = regionWallTopRangeY(wall, floor.elevation, stations.from, stations.to);
+		const reading = regionWallReading(plan, topRange, compiledRegion, region.role);
 		if (reading === null) continue;
 		const intended = reading.reading === 'gap' && region.intendedGaps.includes(wall.wallId);
 		relations.push({
@@ -181,7 +245,7 @@ export function regionWallRelations(
 					wall,
 				),
 				compiledRegion,
-				floor.elevation + wall.height,
+				topRange.maxY,
 				region.role,
 			),
 			intended,
