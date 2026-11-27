@@ -256,14 +256,27 @@ U7 review found that a saved item has no **Customise…** action. G's format-1 p
 
 U6's in-flight plan file was retired on merge as its own status required. Retirement removes the plan, not its acceptance rule. Full visual, interaction and functional parity with the approved #399 design at desktop, 1024 and narrow/coarse-pointer viewports remains an outstanding U6 acceptance obligation, tracked through [#405](https://github.com/Biskiq/spatial-sketch-editor/issues/405). Passing functional tests alone did not accept U6, and any known U6 parity gap stays with U6 rather than moving to a later recovery PR.
 
-### Outstanding S8 acceptance obligations (2026-11-26)
+### Outstanding S8 acceptance obligations (updated 2026-11-27)
 
-The owner conditionally accepted U7 and confirmed that these obligations stay open for S8; U7 does not claim them as delivered. Each is tracked through [#405](https://github.com/Biskiq/spatial-sketch-editor/issues/405).
+[#405](https://github.com/Biskiq/spatial-sketch-editor/issues/405) remains the owner's acceptance ledger. The integrated pass in [#426](https://github.com/Biskiq/spatial-sketch-editor/pull/426) does not close it, does not accept S8 as a whole and does not move any row below to another PR.
 
-- **Creator-uploaded texture transfer.** G's exit asks for a palette-following three-file ORM Finish saved from one owned project and inserted into another. U7 Task 3 exercised the shipped Oak Veneer material because the current UI does not expose a three-file custom ORM set within reasonable scope, so the creator-uploaded path is unproven end to end even though the transfer mechanism itself is exercised.
-- **Coarse-pointer QA.** The `@media (pointer: coarse)` rules were not exercised on a real coarse-pointer device; the narrow 720 px state and the extracted source switch were verified, but touch targets, gestures and the narrow bottom-sheet states still need a coarse-pointer pass.
-- **U6 parity.** Full visual, interaction and functional parity with the approved #399 design at desktop, 1024 and narrow/coarse-pointer viewports remains outstanding, as stated above.
-- **Catalogue distinctness.** F's deferred catalogue-distinctness revalidation remains outstanding, as recorded in the owner-approved deferral above; F's catalogue intake is not fully accepted.
+- **U6 parity.** Full visual, interaction and functional parity with the approved #399 design at desktop, 1024 and narrow/coarse-pointer viewports remains outstanding, as stated above. [#426](https://github.com/Biskiq/spatial-sketch-editor/pull/426) compared representative states; that is not full U6 visual sign-off.
+- **Repair and UV mismatch.** The signed-in live repair drawer and the targeted UV-mismatch journey remain unexercised end to end. DB-backed missing/corrupt-object tests and the blocked-image boot panel do not replace those browser journeys.
+- **Physical iPad.** Chromium touch emulation exercised the `@media (pointer: coarse)` rules at 820×1180 — coarse pointer, five touch points and 44 px source buttons — but touch behaviour on physical iPad hardware remains unverified.
+- **Catalogue distinctness.** F's deferred catalogue-distinctness revalidation remains outstanding, including the small-size miss recorded in the deferral above; F's catalogue intake is not fully accepted.
+
+**Satisfied since 2026-11-26.** G's creator-uploaded texture-transfer exit is demonstrated in [#426](https://github.com/Biskiq/spatial-sketch-editor/pull/426). A palette-following three-file ORM Finish (albedo, +Y normal, packed ORM) was imported into project A, painted, saved to **My library** and inserted into project B. The destination held exactly three ready image rows, every SHA-256 pin matched project A, and **Sphere + Grazing** readback matched all 480×480 RGBA pixels. Editing one inserted copy left the sibling unchanged; removing the saved item and deleting project A left project B cold-opening with both copies and all three project-owned images while the library endpoint was blocked.
+
+### Remaining owner design decisions (2026-11-27)
+
+These need an owner ruling before their row can close. None authorizes further work in [#426](https://github.com/Biskiq/spatial-sketch-editor/pull/426). Saved-item **Customise** is not among them: it stays deferred to Creator Experience Convergence as recorded above.
+
+| Decision | Evidence | Blocks |
+| --- | --- | --- |
+| Small-size catalogue treatment | `metal-stainless-satin` / `metal-stainless-brushed` misses the E7 threshold at 56, 32 and 24 px; at 56 px it measures ΔE00 2.556 and SSIM 0.954. Apply an approved small-size treatment or take F's existing alternate. | Catalogue distinctness and the 20-card shelf |
+| D4 master density | The approved 256 px D4 master supplies fewer than 2 source pixels per CSS pixel on cards wider than 128 CSS px. Keep D4 with the approved fluid layout, or raise the master. | Thumbnail revalidation item 2 |
+| 1024 px Import and the Index lane | The approved #399 Import is centred with a scrim, and production matches its 940 px width and modal hit testing. The shared #408 rule reserves the Index lanes; at `x=40,y=72` both the prototype scrim and the live backdrop intercept that lane. Rule whether the blocking-Import exception applies or the approved modal changes. | U6 Import parity at 1024 px |
+| Paint and Library together | Shift-pick from ordinary Browse retains the previous active tool, while #399 arms Paint behind the shelf. Decide whether Paint and the Library may stay active together in this Stage shell. | U6 and Library interaction parity |
 
 ## Integrated acceptance and handoff
 
