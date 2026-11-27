@@ -483,7 +483,7 @@ verification in the PR that implements it; the technical boundaries below are th
 | **A1 Artwork** | Import, the Artwork object, wall magnet and free placement, real-unit sizing, transparency, Visitor Preview, save and reopen, release pinning | P0 · S0 items 1 and 7 | **bump** |
 | **A2 Framing and hanging** | Four frame styles, Mat, frame colour; eye-line and neighbour guides; Replace image | A1 | — |
 | **S7 Light it** | Picture spot and Wash aimed at the selection, frustum fitted to an artwork's frame, one light for a multi-selection, one undo | S3 (richer with A1) | — |
-| **G1 Groups** | Group as one unit for every object kind: click group then member, rigid actions, group Card, *Group with …*; the Showcase rig | S3 | — |
+| **G1 Groups** | Group as one unit for every object kind: click group then member, rigid actions, group Card, *Group with …*; the Showcase rig. [Implementation plan](./g1-groups/implementation-plan.md) (G1a semantic foundation, approved specimen, G1b creator interaction with Showcase) | S3 · S7 | **bump** (Scene 13: admits Artwork members) |
 | **S1 Look schema** | Types, codec, validation for §4 and §6 fields | D2, D11 · S0 report | **bump** |
 | **S2 Sky dials** | Environment control, Sky panel, Celestial Dial, edited / Reset | P0 · S0 · S1 | Scene 9 |
 | **S4 Finish** | Card row, free colour, Sheen, Paint for objects (S4a, landed); From image, Scale, Direction, creator-image delivery (S4b, in review) | P0 · S0 · S1 | — |
@@ -493,7 +493,7 @@ verification in the PR that implements it; the technical boundaries below are th
 | **S8 Catalogue and depth** | Original milestone covers manual maps, set import, catalogue depth and gated optics. The [professional material foundation plan](./s8-professional-material-foundation/implementation-plan.md) (#386) delivers revisioned material assets, channel-aware sampling, mapping, reusable libraries and inspection. A–G and U1–U8 have landed. [Integrated acceptance](https://github.com/Biskiq/spatial-sketch-editor/issues/405) remains open. | S4 · S5/S6 integration · merged WebGPU/WebGL2 cutover · D8 for assets · G1 on the separate fixture/rig track | Scene 12 / resources 3 (D, #390) |
 
 ```text
-now      P0 seams ─┬─▶ S3 Lights ──┬─▶ S7 Light it ─▶ G1 Groups   (no format change)
+now      P0 seams ─┬─▶ S3 Lights ──┬─▶ S7 Light it ─▶ G1 Groups   (Scene bump for Artwork members)
          S0 gate ──┤               │
                    ├─▶ A1 Artwork ─┴─▶ A2 Framing and hanging   (own bump, own plan)
                    │
