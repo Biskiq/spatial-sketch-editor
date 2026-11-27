@@ -95,29 +95,43 @@ describe('Material import session over E5 (T2.S8 U6)', () => {
 		});
 		await session.start([pngFile('oak_albedo.png')], []);
 		const original = proofs.prepareFinishRegistration.bind(proofs);
-		const pending: Array<() => void> = [];
-		const spy = vi.spyOn(proofs, 'prepareFinishRegistration').mockImplementation(async (recipe) => {
-			const result = await original(recipe);
-			await new Promise<void>((resolve) => pending.push(resolve));
+		const pending: Array<{
+			release: () => void;
+			result: ReturnType<typeof original>;
+		}> = [];
+		const spy = vi.spyOn(proofs, 'prepareFinishRegistration').mockImplementation((recipe) => {
+			let release!: () => void;
+			const gate = new Promise<void>((resolve) => {
+				release = resolve;
+			});
+			const result = Promise.all([original(recipe), gate]).then(([proof]) => proof);
+			pending.push({ release, result });
 			return result;
 		});
+		async function finishPreparation(index: number) {
+			const { release, result } = pending[index]!;
+			release();
+			await result;
+			// Let the session consume the settled proof through prepareDraft.
+			await Promise.resolve();
+		}
 
 		session.setName('Earlier');
 		session.setName('Later');
-		await vi.waitFor(() => expect(pending).toHaveLength(2));
-		pending[1]!();
-		await vi.waitFor(() => expect(session.prepared?.name).toBe('Later'));
-		pending[0]!();
-		await vi.waitFor(() => expect(session.prepared?.name).toBe('Later'));
+		expect(pending).toHaveLength(2);
+		await finishPreparation(1);
+		expect(session.prepared?.name).toBe('Later');
+		await finishPreparation(0);
+		expect(session.prepared?.name).toBe('Later');
 
 		session.setName('Cancelled');
-		await vi.waitFor(() => expect(pending).toHaveLength(3));
+		expect(pending).toHaveLength(3);
 		session.cancel(false);
 		spy.mockRestore();
 		await session.start([pngFile('maple_albedo.png')], []);
 		expect(session.prepared?.name).toBe('Maple');
-		pending[2]!();
-		await vi.waitFor(() => expect(session.prepared?.name).toBe('Maple'));
+		await finishPreparation(2);
+		expect(session.prepared?.name).toBe('Maple');
 		session.cancel(false);
 	});
 
