@@ -68,6 +68,94 @@ export function shippedModelContentRevision(pin: ShippedModelPin): string {
 	return `sha256-${pin.sha256}`;
 }
 
+function samePin(left: ShippedModelPin, right: ShippedModelPin): boolean {
+	return (
+		left.sha256 === right.sha256 && left.byteSize === right.byteSize && left.mime === right.mime
+	);
+}
+
+/**
+ * Compare the current registry and ledger with the baseline landed on the base
+ * branch (read from git, never from the working tree).
+ *
+ * This is the independent append-only guard: even if a change updates the
+ * registry, the ledger and the production bytes together, an existing baseline
+ * id must still exist with the same pin and a production file, and the current
+ * ledger must still carry that pin. New ids may be appended; baseline ids may
+ * never be removed, repointed or downgraded to fallback-only.
+ */
+export function shippedModelPinBaselineIssues(
+	baseline: unknown,
+	registry: readonly {
+		readonly assetId: string;
+		readonly pin: ShippedModelPin | null;
+		readonly productionFile?: string | null;
+		readonly fallbackOnly?: boolean;
+	}[],
+	ledger: unknown,
+): string[] {
+	if (typeof baseline !== 'object' || baseline === null || Array.isArray(baseline)) {
+		return ['baseline:not-an-object'];
+	}
+	const record = baseline as { readonly models?: unknown };
+	if (typeof record.models !== 'object' || record.models === null || Array.isArray(record.models)) {
+		return ['baseline:models-not-an-object'];
+	}
+	const ledgerRecord =
+		typeof ledger === 'object' && ledger !== null && !Array.isArray(ledger)
+			? (ledger as { readonly models?: unknown })
+			: null;
+	const ledgerModels =
+		typeof ledgerRecord?.models === 'object' &&
+		ledgerRecord.models !== null &&
+		!Array.isArray(ledgerRecord.models)
+			? (ledgerRecord.models as Record<string, unknown>)
+			: null;
+	const registryById = new Map(registry.map((entry) => [entry.assetId, entry]));
+	const issues: string[] = [];
+	if (ledgerModels === null) issues.push('baseline:ledger-not-an-object');
+	for (const [assetId, value] of Object.entries(record.models as Record<string, unknown>)) {
+		const baselinePin = value as Partial<ShippedModelPin> | null;
+		if (
+			typeof baselinePin !== 'object' ||
+			baselinePin === null ||
+			typeof baselinePin.sha256 !== 'string' ||
+			!SHA256_HEX.test(baselinePin.sha256) ||
+			baselinePin.mime !== 'model/gltf-binary' ||
+			!Number.isSafeInteger(baselinePin.byteSize) ||
+			(baselinePin.byteSize ?? 0) <= 0
+		) {
+			issues.push(`baseline:malformed-pin:${assetId}`);
+			continue;
+		}
+		const entry = registryById.get(assetId);
+		if (entry === undefined) {
+			issues.push(`baseline:missing-registry:${assetId}`);
+		} else if (entry.pin === null) {
+			issues.push(`baseline:fallback-only:${assetId}`);
+		} else if (!samePin(entry.pin, baselinePin as ShippedModelPin)) {
+			issues.push(`baseline:changed-registry-pin:${assetId}`);
+		}
+		if (entry !== undefined && (entry.productionFile === null || entry.fallbackOnly === true)) {
+			issues.push(`baseline:missing-production-file:${assetId}`);
+		}
+		if (ledgerModels === null) continue;
+		if (!Object.hasOwn(ledgerModels, assetId)) {
+			issues.push(`baseline:missing-ledger:${assetId}`);
+			continue;
+		}
+		const ledgerPin = ledgerModels[assetId] as Partial<ShippedModelPin>;
+		if (
+			ledgerPin.sha256 !== baselinePin.sha256 ||
+			ledgerPin.byteSize !== baselinePin.byteSize ||
+			ledgerPin.mime !== baselinePin.mime
+		) {
+			issues.push(`baseline:changed-ledger-pin:${assetId}`);
+		}
+	}
+	return issues;
+}
+
 /**
  * Compare a committed pin ledger with the registry.
  *

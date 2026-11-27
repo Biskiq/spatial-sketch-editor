@@ -16,6 +16,7 @@ import {
 } from '@portfolio/project-model/package';
 
 const STATIC_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../../static');
+const PRODUCTION_MODEL_FILE = /^\/(?:museum\/models|models\/fixtures)\/.+\.glb$/;
 
 describe('shipped model production files', () => {
 	it('declares a pin exactly when a production file exists', () => {
@@ -23,12 +24,20 @@ describe('shipped model production files', () => {
 			expect(entry.pin === null, entry.assetId).toBe(entry.productionFile === null);
 			expect(entry.fallbackOnly, entry.assetId).toBe(entry.productionFile === null);
 			if (entry.productionFile !== null) {
-				expect(entry.productionFile, entry.assetId).toMatch(/^\/museum\/models\/.+\.glb$/);
+				// D8c ships fixtures from `/models/fixtures/`; museum models stay under
+				// `/museum/models/`. Both are production static paths.
+				expect(entry.productionFile, entry.assetId).toMatch(PRODUCTION_MODEL_FILE);
 				expect(existsSync(resolve(STATIC_ROOT, entry.productionFile.slice(1))), entry.assetId).toBe(
 					true,
 				);
 			}
 		}
+	});
+
+	it('accepts both production model directories, including D8c fixtures', () => {
+		expect('/museum/models/furniture/chair/salon-chair.glb').toMatch(PRODUCTION_MODEL_FILE);
+		expect('/models/fixtures/salon-chair.glb').toMatch(PRODUCTION_MODEL_FILE);
+		expect('/models/salon-chair.glb').not.toMatch(PRODUCTION_MODEL_FILE);
 	});
 
 	it('hashes every shipped GLB against its exact pin', () => {
