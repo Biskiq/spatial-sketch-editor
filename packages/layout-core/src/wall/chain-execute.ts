@@ -32,7 +32,6 @@ import {
 	topologyComponentKeyByWallId,
 } from '../room/topology-components';
 import { planWallCrossing, planWallSplitAtPoint } from './noding';
-import { WALL_TOP_PROFILE_UNSUPPORTED_CODE } from './wall-top';
 import { wallCubicChain } from './centerline';
 import type { ResolvedWallSplitResult } from './curve-algebra';
 import type {
@@ -379,18 +378,14 @@ export function executeWallChainCandidate(
 						fix.splitDistance,
 						fix.point,
 						nodingAllocatorAdapter(allocator, candidate),
-						{
-							existingJunctionId: fix.endpointJunctionId,
-						},
+						{ existingJunctionId: fix.endpointJunctionId },
 					);
 		if (plan.kind === 'rejected') {
+			const { code, message, wallId } = plan.rejection;
 			return reject({
-				code:
-					plan.rejection.code === WALL_TOP_PROFILE_UNSUPPORTED_CODE
-						? WALL_TOP_PROFILE_UNSUPPORTED_CODE
-						: 'noding_rejected',
-				message: plan.rejection.message,
-				wallIds: plan.rejection.wallId ? [plan.rejection.wallId] : undefined,
+				code: code === 'wall_top_split_degenerate' ? code : 'noding_rejected',
+				message,
+				wallIds: wallId ? [wallId] : undefined,
 			});
 		}
 		nodingSurfaceLineage.push(...plan.surfaceLineage);

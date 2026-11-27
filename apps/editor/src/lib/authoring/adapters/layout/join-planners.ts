@@ -15,8 +15,8 @@
  * the kernel: the Wall that **ends** at the Joint survives (the exact inverse of
  * split, whose start-side fragment kept its id); when both or neither end there,
  * the lexicographically smaller Wall id survives. The survivor keeps its id,
- * thickness, height, name and Opening stations. The other Wall and the Joint
- * retire, and every Opening keeps its id with a rebased station. A curved join
+ * thickness and name. The merged top sets the new height. The other Wall and
+ * the Joint retire, and every Opening keeps its id with a rebased station. A curved join
  * mints one interior knot whose id comes from the captured nonce, so Undo/Redo
  * replay the same id.
  */
@@ -46,7 +46,7 @@ import {
 
 import { layoutPlanner, registerLayoutSurfaceLineage } from './precision';
 import { layoutSubjectReference } from './drawing-planners';
-import { wallJoinRefusalWords } from './refusals';
+import { dissolveRefusalWords } from './refusals';
 
 export const LAYOUT_WALL_JOIN_KIND = 'layout-wall-join';
 
@@ -114,7 +114,7 @@ function wallJoinPlanner(): DomainPlanner<ProjectEnvelope> {
 			return {
 				kind: 'rejected',
 				code: plan.rejection.code,
-				message: wallJoinRefusalWords(plan.rejection.code, plan.rejection.message),
+				message: dissolveRefusalWords(baseline, plan.rejection),
 				diagnostics: [],
 			};
 		}

@@ -78,6 +78,8 @@ export type PrecisionOperation =
 	| 'wall-move'
 	| 'wall-thickness'
 	| 'wall-height'
+	/** Authored Wall top shape and rises (planner: `planSetWallTop`). */
+	| 'wall-top'
 	| 'wall-role'
 	/** Canonical Wall deletion (planner: `planDeleteWall`). */
 	| 'wall-delete'
@@ -150,6 +152,20 @@ export type PrecisionRejection = {
 		 * rejection so the message stays actionable.
 		 */
 		| 'wall_height_below_opening'
+		/** A Wall-top intent has a non-finite or negative rise. */
+		| 'wall_top_rise_invalid'
+		/** A Wall-top gable apex is not above both ends, or has no offset. */
+		| 'wall_top_apex_invalid'
+		/** A gable apex falls outside the Wall's derived length after an edit. */
+		| 'wall_top_apex_outside'
+		/** A closed Wall is level only. */
+		| 'closed_wall_level_only'
+		/** The authored top would leave a hosted Opening above it. */
+		| 'wall_top_below_opening'
+		/** A split fragment's top would fall below the P2/P3 tolerances. */
+		| 'wall_top_split_degenerate'
+		/** Split or Join would move a bounded Room's derived ceiling. */
+		| 'room_ceiling_changed'
 		| 'geometry_invalid'
 		| 'no_op'
 		| 'split_at_existing_endpoint'
@@ -172,7 +188,7 @@ export type PrecisionRejection = {
 		| 'opening_on_released_stub'
 		/** A member Wall or rim Junction of a Round Room cannot be edited directly. */
 		| 'round_room_member_locked'
-		/** A sloped or gabled Wall top cannot be subdivided until V2b. */
+		/** An overhead-region fit cannot yet keep a sloped or gabled Wall top under it (V3). */
 		| 'wall_top_profile_unsupported'
 		/** Two joined Walls' tops do not merge into one valid top. */
 		| 'wall_top_not_joinable';

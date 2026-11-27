@@ -159,7 +159,7 @@ function splitEnclosureFixture(): {
 	const wallId = chained.document.walls[0]!.id;
 	const split = planWallSplit(chained.document, wallId, 3, allocator);
 	if (split.kind !== 'success') throw new Error('the A2 split fixture was refused');
-	const otherWallId = split.document.walls.find((wall) => wall.id !== wallId)!.id;
+	const otherWallId = split.createdWallIds[0]!;
 	const opening = planCreateWallFirstOpening(
 		split.document,
 		{ wallId: otherWallId, kind: 'window', offset: 1, width: 1, height: 1.2, sillHeight: 1 },
@@ -490,7 +490,14 @@ describe('Join walls', () => {
 		expect(stageEnvelope(readmitted.snapshot).units).toEqual(stageEnvelope(mounted.facade.snapshot()).units);
 	});
 
-	it(' refuses a corner, unequal height, unequal thickness and a mixed pair in words, writing nothing and adding no history', async () => {
+	it('explains refused Joins in words without writing source or adding history', async () => {
+		const { document, survivorWallId, retiredWallId } = splitEnclosureFixture();
+		document.rooms[0]!.name = 'Workshop';
+		const first = document.walls.find((wall) => wall.id === survivorWallId)!;
+		const second = document.walls.find((wall) => wall.id === retiredWallId)!;
+		first.top = { kind: 'slope', startRise: 0, endRise: 1 };
+		second.height = 3.5;
+		second.top = { kind: 'slope', startRise: 0.5, endRise: 0 };
 		const cases: Array<{
 			readonly label: string;
 			readonly document: LayoutDocumentWallFirst;
@@ -520,6 +527,13 @@ describe('Join walls', () => {
 				joint: [3, 0],
 				to: [4, 0],
 				words: MISMATCH_WORDS
+			},
+			{
+				label: 'lower Room ceiling',
+				document,
+				joint: [3, 0],
+				to: [4, 0],
+				words: 'Joining here would lower the ceiling of "Workshop".'
 			},
 			{
 				label: 'mixed straight and curved',

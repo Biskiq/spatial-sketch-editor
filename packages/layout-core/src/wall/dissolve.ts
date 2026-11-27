@@ -65,7 +65,14 @@ import { validateWallFirstPortalRelations } from './portals';
 import { joinWallSurfaceLineage, type LayoutSurfaceLineage } from '../plan/surface-reference';
 import { findRoundRoomSeamOwner, ROUND_ROOM_MEMBER_EDIT_MESSAGE } from '../room/round-room';
 import { tangentAnchorsAllowContinuation } from './junction-resolution';
-import { WALL_TOP_NOT_JOINABLE_CODE, wallTopIsLevel } from './wall-top';
+import {
+	mergeWallTops,
+	reverseWallTop,
+	WALL_TOP_NOT_JOINABLE_CODE,
+	wallTopIsLevel,
+	type WallTopJoinPart,
+} from './wall-top';
+import { findRoomCeilingChange, ROOM_CEILING_CHANGED_CODE } from './heights';
 
 /** Dissolve-only rejection codes; stable machine codes per operation. */
 export type DissolveSpecificRejectionCode =
@@ -86,8 +93,10 @@ export type DissolveSpecificRejectionCode =
 	| 'invalid_candidate_document'
 	| 'captured_id_in_use'
 	| 'round_room_member_locked'
-	/** A joined Wall's top would be silently re-sloped (exact join arithmetic is V2b). */
-	| typeof WALL_TOP_NOT_JOINABLE_CODE;
+	/** The two Walls' tops do not merge into one level, slope or gable. */
+	| typeof WALL_TOP_NOT_JOINABLE_CODE
+	/** The joined Wall's height would move a bounded Room's derived ceiling. */
+	| typeof ROOM_CEILING_CHANGED_CODE;
 
 /**
  * Dissolve rejection: the shared topology rejection shape plus the
@@ -164,8 +173,7 @@ export function planDissolveJunction(
 	}
 	const junctionPoint: LayoutVec2 = [junction.point[0], junction.point[1]];
 
-	// An open side's end is an ordinary Junction that must survive (I8): join
-	// would dissolve it and leave the Space's virtual edge dangling.
+	// An open side's end must survive so its virtual edge stays attached (I8).
 	const virtualEdgeOwner = document.rooms.find((room) =>
 		room.virtualEdges.some(
 			(edge) => edge.startJunctionId === junctionId || edge.endJunctionId === junctionId,
@@ -180,9 +188,7 @@ export function planDissolveJunction(
 		});
 	}
 
-	// A self-connected Wall is one canonical loop. Check it before degree:
-	// the loop is the only incident Wall, so a generic degree-2 diagnostic would
-	// misdescribe the refusal as an unrelated topology count.
+	// Check canonical loops before degree, since a loop is the only incident Wall.
 	const closedIncident = document.walls.find(
 		(wall) => wall.startJunctionId === junctionId && wall.endJunctionId === junctionId,
 	);
@@ -219,9 +225,7 @@ export function planDissolveJunction(
 	}
 	const [first, second] = incident as [LayoutWall, LayoutWall];
 
-	// Degenerate pairs: a self-loop is not a degree-2 path, and walls sharing
-	// both endpoints would join into a zero-span loop (the codec requires two
-	// distinct endpoint Junctions per Wall).
+	// A self-loop or a pair sharing both endpoints cannot form a degree-2 through-path.
 	const firstIsLoop = first.startJunctionId === junctionId && first.endJunctionId === junctionId;
 	const secondIsLoop = second.startJunctionId === junctionId && second.endJunctionId === junctionId;
 	if (firstIsLoop || secondIsLoop) {
@@ -245,8 +249,7 @@ export function planDissolveJunction(
 		});
 	}
 
-	// A third wall already spanning the joined endpoints would collide with the
-	// joined Wall (the codec forbids duplicate walls between one junction pair).
+	// The codec forbids duplicate Walls spanning the same endpoint pair.
 	const pairIds = new Set([first.id, second.id]);
 	const duplicate = document.walls.find(
 		(wall) =>
@@ -263,24 +266,13 @@ export function planDissolveJunction(
 		});
 	}
 
-	// A sloped or gabled top cannot be merged until V2b lands the exact join
-	// arithmetic: keeping the survivor's top over the longer span would silently
-	// re-slope the Wall. Only two level tops join.
-	const profiled = [first, second].filter((wall) => !wallTopIsLevel(wall.top));
-	if (profiled.length > 0) {
-		return reject({
-			code: WALL_TOP_NOT_JOINABLE_CODE,
-			message: `Wall${profiled.length > 1 ? 's' : ''} ${profiled.map((wall) => `'${wall.id}'`).join(' and ')} ${profiled.length > 1 ? 'have' : 'has'} a sloped or gabled top; joining needs exact top arithmetic that arrives with V2b. Make the top level first.`,
-			junctionIds: [junctionId],
-			wallIds: [first.id, second.id],
-		});
-	}
-
-	// Compatibility: dimensions and naming must agree (exact equality — merging
-	// across a mismatch would invent or drop authored data). Format 6 has no
-	// authored role to compare: the joined Wall's role is derived from the Rooms
-	// the merged containment ends up forming.
-	if (first.thickness !== second.thickness || first.height !== second.height) {
+	// Compatibility: thickness and naming must agree (exact equality — merging
+	// across a mismatch would invent or drop authored data). Two level tops still
+	// need one height; a profiled pair is instead judged by whether its tops meet
+	// continuously at the joint, which is the join's own gate below.
+	const levelHeightMismatch =
+		wallTopIsLevel(first.top) && wallTopIsLevel(second.top) && first.height !== second.height;
+	if (first.thickness !== second.thickness || levelHeightMismatch) {
 		return reject({
 			code: 'incompatible_wall_pair',
 			message: `Walls '${first.id}' and '${second.id}' disagree on thickness or height and cannot join`,
@@ -362,16 +354,12 @@ export function planDissolveJunction(
 		}
 		joinedCenterline = { kind: 'line' };
 	} else {
-		// Each side walks toward the joined direction through the single
-		// traversal-orientation owner — a reverse-traversed side contributes
-		// mirrored spans in reversed order, never raw stored order.
+		// Orient both curves in the joined direction, including their spans.
 		const survivorTraversal: WallCenterlineTraversal = survivorForward ? 'forward' : 'reverse';
 		const otherTraversal: WallCenterlineTraversal = otherForward ? 'forward' : 'reverse';
 		const orientedSurvivor = orientedWallChainKnotsAndSpans(survivor.centerline, survivorTraversal);
 		const orientedOther = orientedWallChainKnotsAndSpans(other.centerline, otherTraversal);
-		// Tangency at the Junction: the exact inverse of a curved split, where the
-		// two fragments share one tangent. A real arc corner fails this by a
-		// visible angle and refuses; only floating-point noise passes.
+		// Tangency is the inverse of a curved split and allows only floating-point noise.
 		const arrivingControl = orientedSurvivor.spans[orientedSurvivor.spans.length - 1]!;
 		const departingControl = orientedOther.spans[0]!;
 		if (
@@ -388,10 +376,7 @@ export function planDissolveJunction(
 				wallIds: [first.id, second.id],
 			});
 		}
-		// The demoted knot's id comes from the operation's capture, never from
-		// occupancy: counting renamed a `{wallId}:knot:{n}` a captured tombstone
-		// may already have retired. Every pre-existing knot keeps
-		// its id; only this fresh one is derived.
+		// Derive only the demoted knot's ID from the capture, which accounts for tombstones.
 		try {
 			createdKnotId = allocateCapturedId(
 				new Set([
@@ -449,14 +434,33 @@ export function planDissolveJunction(
 		return { ...opening, wallId: survivor.id, offset };
 	});
 
+	// Orient both tops before merging them in canonical start → joint → end order.
+	const part = (wall: LayoutWall, length: number, forward: boolean): WallTopJoinPart => ({
+		height: wall.height,
+		top: forward ? wall.top : reverseWallTop(wall.top, length),
+		length,
+	});
+	const mergedTop = mergeWallTops(
+		part(survivor, survivorLength, survivorForward),
+		part(other, otherLength, otherForward),
+	);
+	if (!mergedTop) {
+		return reject({
+			code: WALL_TOP_NOT_JOINABLE_CODE,
+			message: `Walls '${first.id}' and '${second.id}' have tops that do not form one level, slope or gable at junction '${junctionId}'; adjust their tops or make them level`,
+			junctionIds: [junctionId],
+			wallIds: [first.id, second.id],
+		});
+	}
+
 	const joinedName = survivor.name ?? other.name;
 	const joinedWall: LayoutWall = {
 		id: survivor.id,
 		startJunctionId: joinedStartId,
 		endJunctionId: joinedEndId,
 		thickness: survivor.thickness,
-		height: survivor.height,
-		top: survivor.top,
+		height: mergedTop.height,
+		top: mergedTop.top,
 		centerline: joinedCenterline,
 		...(joinedName !== undefined ? { name: joinedName } : {}),
 	};
@@ -572,9 +576,19 @@ export function planDissolveJunction(
 		candidate.openings = result.document.openings;
 	}
 
-	// Rebased Openings survive (unlike wall-delete), so the shared
-	// Opening-set and portal gates run on the reconciled candidate with the
-	// same codes as the precision path — shared calls, not a new authority.
+	// The joined Wall's lowest end can be below the fragment that set the ceiling.
+	const ceilingChange = findRoomCeilingChange(document, candidate);
+	if (ceilingChange) {
+		return reject({
+			code: ROOM_CEILING_CHANGED_CODE,
+			message: `Joining Walls '${first.id}' and '${second.id}' would move the ceiling of Room '${ceilingChange.roomId}' from ${ceilingChange.before} m to ${ceilingChange.after} m; a join keeps every Room's ceiling`,
+			junctionIds: [junctionId],
+			wallIds: [first.id, second.id],
+			roomIds: [ceilingChange.roomId],
+		});
+	}
+
+	// Validate rebased Openings and portals on the reconciled candidate.
 	const setIssues = validateWallFirstOpeningSet(candidate);
 	if (setIssues.length > 0) {
 		const problem = setIssues[0]!;

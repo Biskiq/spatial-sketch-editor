@@ -7,6 +7,7 @@ import { activeLayoutCompileSession } from '../geometry/session';
 import { compileWallFirstLayoutGeometry } from '../geometry/compiler';
 import { p2311Measure } from '../kernel/work-observer';
 import { hasBlockingLayoutIssues } from '../geometry/validation';
+import type { LayoutGeometryIssue } from '../geometry/types';
 import { LAYOUT_DIMENSION_LIMIT_MESSAGE } from '../geometry/limits';
 import { serializeWallFirstLayoutDocument, validateWallFirstLayoutDocument } from '../wall/codec';
 import { exceedsLayoutWallSpan } from '../world/lookups';
@@ -24,7 +25,30 @@ import type { LayoutDocumentWallFirst } from '../wall/types';
 import { createWallSamplingDerivation } from '../wall/centerline';
 import type { PrecisionOperation, PrecisionPlan, PrecisionRejection } from './types';
 import { validateWallFirstTopology } from '../topology/wall-first';
+import { WALL_TOP_APEX_OUTSIDE_CODE } from '../wall/wall-top';
 import { isReconciliationFailure, reject } from './rejections';
+
+/**
+ * The one geometry-gate refusal for a compile with blocking issues.
+ *
+ * An edit that shortens a Wall can move a gable apex off it. The compiler owns
+ * that derived-length rule; this maps its issue back to the precision code so a
+ * Junction move, length, angle, bend or subdivision refuses whole with a named
+ * reason instead of the generic compile sentence.
+ */
+function blockingCompileRejection(issues: readonly LayoutGeometryIssue[]): PrecisionPlan | null {
+	const blocking = issues.find((issue) => issue.severity !== 'warning');
+	if (!blocking) return null;
+	if (blocking.code === WALL_TOP_APEX_OUTSIDE_CODE) {
+		return reject(
+			'wall_top_apex_outside',
+			blocking.message,
+			blocking.targetId !== undefined ? [blocking.targetId] : undefined,
+			issues,
+		);
+	}
+	return reject('geometry_invalid', blocking.message, undefined, issues);
+}
 
 export function finalizeCandidate(
 	candidate: LayoutDocumentWallFirst,
@@ -191,14 +215,8 @@ export function finalizeWallGeometryCandidate(options: {
 						? compileSession.compile(candidate, fastSampling)
 						: compileWallFirstLayoutGeometry(candidate, fastSampling),
 				);
-				if (hasBlockingLayoutIssues(compiled.issues)) {
-					return reject(
-						'geometry_invalid',
-						compiled.issues[0]?.message ?? 'Candidate geometry does not compile',
-						undefined,
-						compiled.issues,
-					);
-				}
+				const blocking = blockingCompileRejection(compiled.issues);
+				if (blocking) return blocking;
 				let memoizedDocJson: string | undefined;
 				return {
 					kind: 'success',
@@ -374,14 +392,8 @@ export function finalizeWallGeometryCandidate(options: {
 			? compileSession.compile(structural.document, sampling)
 			: compileWallFirstLayoutGeometry(structural.document, sampling),
 	);
-	if (hasBlockingLayoutIssues(compiled.issues)) {
-		return reject(
-			'geometry_invalid',
-			compiled.issues[0]?.message ?? 'Candidate geometry does not compile',
-			undefined,
-			compiled.issues,
-		);
-	}
+	const blocking = blockingCompileRejection(compiled.issues);
+	if (blocking) return blocking;
 	return {
 		kind: 'success',
 		document: structural.document,

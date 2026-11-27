@@ -79,8 +79,8 @@ export type WallChainRejectionCode =
 	| 'collinear_overlap'
 	| 'self_intersecting_chain'
 	| 'noding_rejected'
-	/** The noding would subdivide a Wall with a sloped or gabled top (exact split is V2b). */
-	| 'wall_top_profile_unsupported'
+	/** A noded fragment's top would fall below the P2/P3 tolerances (§6.3). */
+	| 'wall_top_split_degenerate'
 	| 'room_reconciliation_rejected'
 	| 'captured_id_in_use'
 	| 'invalid_candidate_document'

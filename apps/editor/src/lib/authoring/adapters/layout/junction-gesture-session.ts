@@ -25,7 +25,7 @@ import {
 } from '$lib/authoring/stage/stage-adapter-host';
 import type { GestureAcquisition } from '$lib/authoring/stage/stage-adapter-host';
 
-import { wallJoinRefusalWords, wallRefusalWords } from './refusals';
+import { dissolveRefusalWords, wallJoinRefusalWords, wallRefusalWords } from './refusals';
 import { LAYOUT_WALL_JOIN_KIND, wallJoinIntent } from './join-planners';
 import { pointerDatumPoint } from './stage-pointer';
 import type { StageHandleDescriptor } from '$lib/authoring/stage/stage-adapter-host';
@@ -341,11 +341,7 @@ export function createJunctionGestureSession({
 		];
 	}
 
-	/**
-	 * Commit one joint removal through the join intent. The capture was minted at
-	 * the press, so the candidate the creator previewed and the document that
-	 * lands describe the same ids — Undo and Redo replay them.
-	 */
+	/** Commit with the press capture so Preview, Undo and Redo share the same IDs. */
 	async function commitJoin(junctionId: string, capture: LayoutIdCapture): Promise<void> {
 		const snapshot = services.stage.snapshot();
 		const outcome = await services.authoring.accept(
@@ -360,7 +356,11 @@ export function createJunctionGestureSession({
 			}),
 		);
 		publishRefusal(
-			outcome.kind === 'refused' ? wallJoinRefusalWords(outcome.code, outcome.message) : null,
+			outcome.kind !== 'refused'
+				? null
+				: outcome.code === 'room_ceiling_changed'
+					? outcome.message
+					: wallJoinRefusalWords(outcome.code, outcome.message),
 		);
 		services.stage.notifySurfaceChange();
 	}
@@ -447,11 +447,8 @@ export function createJunctionGestureSession({
 		const free = snapDraftingPlacement(aimed, null);
 		const snappedPoint = snap ? gridPoint : [free.x, free.z];
 		junctionGesture.pointerPoint = [point[0], point[1]];
-		// **Remove joint.** A degree-2 joint dragged onto the chord between its
-		// neighbours' far ends names the join, exactly as a bend point dragged
-		// onto its neighbours' line names the knot removal. The preview is the
-		// real dissolve candidate; a refusal keeps the attempted chord and its
-		// words, and release writes nothing.
+		// A degree-2 Joint dragged onto the chord previews the real dissolve.
+		// A refusal keeps the attempted chord and its words without writing source.
 		const armed = jointRemovalArmed(junctionGesture, document, [
 			snappedPoint[0],
 			snappedPoint[1],
@@ -476,7 +473,7 @@ export function createJunctionGestureSession({
 						point: [snappedPoint[0], snappedPoint[1]] as LayoutVec2,
 					}) ?? null;
 				junctionGesture.refusalPoint = [snappedPoint[0], snappedPoint[1]];
-				publishRefusal(wallJoinRefusalWords(dissolved.rejection.code, dissolved.rejection.message));
+				publishRefusal(dissolveRefusalWords(document, dissolved.rejection));
 			} else {
 				junctionGesture.joinPreview = dissolved;
 				junctionGesture.attempt = joinedPreview(dissolved);

@@ -11,6 +11,7 @@
 import { LAYOUT_DIMENSION_LIMIT_MESSAGE } from '@portfolio/layout-core/geometry';
 import {
 	wallFirstWallLength,
+	type DissolveRejection,
 	type LayoutDocumentWallFirst,
 	type LayoutWallOpening,
 	type WallOpeningRejection,
@@ -19,6 +20,54 @@ import type { RoomCopyDroppedRelation } from '@portfolio/layout-core/room';
 
 const CLOSED_WALL_CONTACT_WORDS =
 	'This would touch or cross a circular Wall. Move it clear of the circle.';
+
+/**
+ * Authored names a refusal may quote. The planner's rejection carries ids; the
+ * caller resolves them against the document it planned on, so the sentence
+ * names the creator's own Opening or Room instead of an id.
+ */
+export type RefusalSubjects = {
+	readonly openingName?: string;
+	readonly roomName?: string;
+};
+
+/** The first Opening and the first Room among a rejection's ids, by their creator-facing names. */
+export function refusalSubjects(
+	document: LayoutDocumentWallFirst,
+	ids: readonly string[] | undefined,
+): RefusalSubjects {
+	let openingName: string | undefined;
+	let roomName: string | undefined;
+	for (const id of ids ?? []) {
+		if (openingName === undefined) {
+			const opening = document.openings.find((entry) => entry.id === id);
+			if (opening) openingName = opening.name ?? (opening.kind === 'window' ? 'Window' : 'Door');
+		}
+		if (roomName === undefined) {
+			const room = document.rooms.find((entry) => entry.id === id);
+			if (room) roomName = room.name;
+		}
+	}
+	return {
+		...(openingName !== undefined ? { openingName } : {}),
+		...(roomName !== undefined ? { roomName } : {}),
+	};
+}
+
+function quoted(name: string | undefined, fallback: string): string {
+	return name === undefined ? fallback : `"${name}"`;
+}
+
+export function dissolveRefusalWords(
+	document: LayoutDocumentWallFirst,
+	rejection: DissolveRejection,
+): string {
+	return wallJoinRefusalWords(
+		rejection.code,
+		rejection.message,
+		refusalSubjects(document, 'roomIds' in rejection ? rejection.roomIds : undefined),
+	);
+}
 
 /**
  * The open-side handles' refusals.
@@ -52,7 +101,11 @@ export function openSideRefusalWords(
 	return wallRefusalWords(code, message);
 }
 
-export function wallRefusalWords(code: string, message = ''): string {
+export function wallRefusalWords(
+	code: string,
+	message = '',
+	subjects: RefusalSubjects = {},
+): string {
 	if (message.includes('(closed_wall_isolated)')) return CLOSED_WALL_CONTACT_WORDS;
 	switch (code) {
 		case 'dimension_out_of_range':
@@ -76,8 +129,22 @@ export function wallRefusalWords(code: string, message = ''): string {
 		case 'arch_profile_height_invalid':
 			return 'An Opening would no longer fit this Wall.';
 		case 'wall_top_profile_unsupported':
+			return 'A sloped or gabled Wall top cannot be fitted under a roof yet. Make the top level first.';
 		case 'wall_top_not_joinable':
-			return 'A sloped or gabled Wall top cannot be split, joined or resized yet. Make the top level first.';
+			return 'These Walls’ tops do not meet as one level, slope or gable. Align or level them to join.';
+		case 'wall_top_apex_outside':
+			return 'This change would move the top’s apex past the end of the Wall. Make the Wall longer or move the apex first.';
+		case 'wall_top_below_opening':
+			return `This top would cut into ${quoted(subjects.openingName, 'an Opening')}. Raise the top there or lower the Opening.`;
+		case 'closed_wall_level_only':
+			return 'A circular Wall keeps a level top.';
+		case 'wall_top_rise_invalid':
+		case 'wall_top_apex_invalid':
+			return 'This top does not fit the Wall. Check its Rise and Apex position.';
+		case 'wall_top_split_degenerate':
+			return 'This point is too close to the top’s apex or its low end to cut exactly. Cut at the apex or a little further away.';
+		case 'room_ceiling_changed':
+			return `This would change the ceiling of ${quoted(subjects.roomName, 'a Room')}. Adjust the Wall’s top first.`;
 		case 'duplicate_junction_point':
 		case 'duplicate_joined_wall':
 		case 'junction_point_mismatch':
@@ -157,7 +224,11 @@ export function wallRefusalWords(code: string, message = ''): string {
  * are the split's own clear feedback; everything else falls back to the
  * shared Wall map.
  */
-export function wallSplitRefusalWords(code: string, message = ''): string {
+export function wallSplitRefusalWords(
+	code: string,
+	message = '',
+	subjects: RefusalSubjects = {},
+): string {
 	switch (code) {
 		case 'split_through_opening_interior':
 			return 'A split cannot pass through an Opening. Choose a clear point on the Wall.';
@@ -167,8 +238,10 @@ export function wallSplitRefusalWords(code: string, message = ''): string {
 			return "Choose a point between the Wall's ends.";
 		case 'split_distance_out_of_range':
 			return 'Choose a point along the open Wall.';
+		case 'room_ceiling_changed':
+			return `Splitting here would raise the ceiling of ${quoted(subjects.roomName, 'its Room')}. Split where the top is no higher than the ceiling, or make the top level first.`;
 		default:
-			return wallRefusalWords(code, message);
+			return wallRefusalWords(code, message, subjects);
 	}
 }
 
@@ -179,7 +252,11 @@ export function wallSplitRefusalWords(code: string, message = ''): string {
  * a three-Wall joint, a mismatched pair or a non-tangent arc pair cannot join,
  * in the creator's terms. Every other code falls back to the shared Wall map.
  */
-export function wallJoinRefusalWords(code: string, message = ''): string {
+export function wallJoinRefusalWords(
+	code: string,
+	message = '',
+	subjects: RefusalSubjects = {},
+): string {
 	switch (code) {
 		case 'non_collinear_straight_pair':
 			return 'These Walls meet at a corner. Drag the joint onto the line between their ends to join them.';
@@ -207,8 +284,10 @@ export function wallJoinRefusalWords(code: string, message = ''): string {
 			return 'Joining here would change a Room boundary. Keep the joint on the Room side.';
 		case 'captured_id_in_use':
 			return 'That identity is already taken. Start again.';
+		case 'room_ceiling_changed':
+			return `Joining here would lower the ceiling of ${quoted(subjects.roomName, 'its Room')}. Adjust the Walls’ tops first.`;
 		default:
-			return wallRefusalWords(code, message);
+			return wallRefusalWords(code, message, subjects);
 	}
 }
 
