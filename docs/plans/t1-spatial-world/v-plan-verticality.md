@@ -505,6 +505,13 @@ makes both Walls at a corner evaluate exactly their end height, so corner seams 
   disabled (OD-6).
 - Top edits are height-family edits and stay allowed while a Wall is unrolled, as Wall height is.
 - Nothing in Plan changes.
+- **Relation cue station (open from the V2a review).** A vertical gap's measure is correct: the
+  region underside minus the highest Wall top over the covered station intervals. Its
+  `measureSegment` is still anchored at the nearest footprint/body contact point, not at the station
+  that sets that highest top. On a sloped or gabled Wall, the cue can therefore stand where the
+  actual top is lower than the measured end. V2c draws the cue at the governing station, inside a
+  covered interval. V3 keeps the same rule once the underside varies with the form: the cue sits at
+  the station that sets the measured gap.
 
 ## 7. V3 — shed and gable forms
 
