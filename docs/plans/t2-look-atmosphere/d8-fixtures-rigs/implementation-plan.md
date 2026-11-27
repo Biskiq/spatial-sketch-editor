@@ -1,8 +1,8 @@
 # T2 · D8 — Visible fixtures and reusable lighting rigs
 
-**Status:** proposed for owner review (2026-11-27). Nothing here is implemented, no dependency is
-admitted and no asset is ingested. The plan grants permission only for the slices in §10, after the
-owner settles the product decisions in §12.1.
+**Status:** direction and P1–P5 accepted by the owner (2026-11-27), with the bounded corrections
+folded in below; P6 remains the owner's visual gate. Nothing here is implemented, no dependency is
+admitted and no asset is ingested. The plan grants permission only for the slices in §10.
 
 **Inputs:** the [T2 roadmap](../README.md) (§5 Lights, Groups and Rigs, D8, D12, D18, §9 Homes),
 the landed [G1 groups](../g1-groups/implementation-plan.md), [S8](../s8-professional-material-foundation/implementation-plan.md)'s
@@ -14,8 +14,8 @@ fixture/rig track line, the [T5 umbrella](../../t5-expressive-geometry/umbrella-
 | Build | Leave out |
 | --- | --- |
 | A small curated set of CC0 fixture models, each one ordinary catalogue model grouped with one ordinary point or spot light | Live-linked rigs or instances, articulated heads, new light kinds, area/linear lights, emitter-linked glow |
-| Placement of a fixture on a ceiling, wall or floor as one write, one Undo | Group nesting or merging, a parent transform, Scene-surface support (a lamp on a table) |
-| Save any eligible group to My Objects; insert it into any project as a detached, editable copy | Artwork, creator models or project Finishes inside a saved group; offered library updates |
+| Placement of a fixture on a ceiling or wall as one write, one Undo | Floor-standing fixtures (none on the approved shortlist), group nesting or merging, a parent transform, Scene-surface support (a lamp on a table), a second ceiling-resolution authority |
+| Save any eligible group to My Objects; insert it into any project as a detached, editable copy | Artwork, planes, creator models or models without admitted contact inside a saved group; carrying project Finishes (§4.2 Finish rule); offered library updates |
 | The missing shipped-asset closure, so a catalogue model can be placed in a new project | A resources or Scene format bump, a new resource kind, a transfer route for groups |
 | One shared group-template source shape, reused by curated fixtures and saved groups | Any abstraction shared with T5 object definitions beyond the library seams in §3 |
 
@@ -46,7 +46,13 @@ Investigated on `ad8b1bdc0`. The facts that shape the design, starting with the 
    surface and reads its normal: floor-like hits hang at 2.2 m, walls and ceilings use a standoff
    ([light-presentation.ts](../../../../apps/editor/src/lib/authoring/look/light-presentation.ts)).
    `artwork-place` accepts an editor-derived wall pose without a planner wall check and stores no wall
-   relation. Compiled Layout rooms expose `ceilingElevation`.
+   relation. For ceilings, T1 already owns the authority: `queryOverheadSupports`
+   ([floor-support.ts](../../../../packages/layout-core/src/room/floor-support.ts)) returns closed-Space
+   lids and overhead-region undersides at an X/Z point, ordered by elevation, from compiled records
+   only, with the same tolerances, witnesses and generation checks as the floor query Scene planners
+   already call (`scene-planning/support.ts`). No Scene code consumes it yet. V3 shed and gable forms
+   are sequenced but unplanned, so no sloped overhead is published today; today's overhead-region fit
+   refuses a sloped Wall top beneath it.
 5. **Groups are flat clusters with no frame.** `SceneObjectCluster {id, name, memberIds≥2}`, with one
    group per entity. Groups are not nested or merged (`group-operations.ts` refuses a second
    membership). A group has no origin, no saved pose and no resource identity, so the cluster alone
@@ -68,8 +74,16 @@ Investigated on `ad8b1bdc0`. The facts that shape the design, starting with the 
 8. **The current catalogue is unusable for D8.** Its lamp and chandelier are CC BY 4.0. Only Sofa 03
    (Poly Haven) is CC0. The admission inventory
    ([object-definition-policy.ts](../../../../apps/editor/src/lib/authoring/scene/object-definition-policy.ts))
-   admits one verified floor model, and its contacts come from recorded loader verification, never
-   live bounds.
+   admits one verified floor model (the salon chair), and its contacts come from recorded loader
+   verification, never live bounds. A shipped file is therefore necessary but not sufficient for a
+   model to be placed: without an admitted definition and recorded contact the planner refuses
+   `missing-definition` or `missing-contact-metadata`.
+12. **Existing asset records are few and unchecked.** No production path writes an `asset` resource,
+    so persisted records come only from test fixtures or hand-built projects. The s17 fixture derives
+    `sha256-…` from the bytes on disk at test time. One editor test builds `{kind:'asset', id,
+    unresolved:null}` with no revision. Nothing compares an asset revision with bytes: the runtime
+    loads `productionFile` by path, and the API checks only that the id is shipped. Reprocessing a
+    file in place today would silently change every copy that names its id.
 9. **Visitor and release accept only shipped catalogue models.** The cold runtime refuses unknown
    asset ids, and the API's `isKnownAssetId` reads `SHIPPED_MODELS`. Publish still returns
    `prepared-reader-required` until T4; visitor Preview shares the runtime evaluators.
@@ -95,8 +109,8 @@ Card and Undo.
 This is the smallest foundation that satisfies both outcomes. The challenges considered:
 
 - **Rigs do not need fixtures.** A lights-only rig, such as a saved Showcase, needs no asset
-  ingestion and no shipped-asset closure. The rig track (D8b → D8e → D8f) can ship without the
-  fixture track (D8a → D8c → D8d), and the reverse also holds. Only D8b is shared.
+  ingestion. The rig track (D8e → D8f) and the fixture track (D8c → D8d) share only the foundation
+  (D8a → D8b → D8p) and neither depends on the other (§11).
 - **A fixture does not need a new entity kind or field.** The model gains no light type, the light
   gains no host, and the cluster gains no `fixture` flag. Emitter alignment is the light member's
   frame-local pose, which rigid group transforms already preserve.
@@ -107,7 +121,8 @@ This is the smallest foundation that satisfies both outcomes. The challenges con
   and an object definition cannot hold lights. §3 records what is shared.
 - **Deliberately small:**
   - one emitter per curated fixture;
-  - ceiling, wall and floor mounts only, with no table-top support;
+  - ceiling and wall mounts only, because the approved shortlist has no floor fixture; a floor
+    fixture later is an additive catalogue entry using the `support` origin saved groups already use;
   - no thumbnails for saved groups;
   - no refactor of `create-light-rig`. Showcase keeps its planner. A later multi-light recipe may
     express itself as a template if one appears.
@@ -136,10 +151,17 @@ This is the smallest foundation that satisfies both outcomes. The challenges con
 
 ## 4. Source contracts
 
-### 4.1 Shipped model pin and asset grant (D8a)
+### 4.1 Shipped model identity, pin and asset grant (D8a)
+
+**Invariant: one shipped asset id names one byte revision, forever.** Once an id ships with a pin,
+its pin and its production file bytes never change. Reprocessing an asset (a new decimation, a
+texture fix, a re-derived pivot) ships a **new id** with a new file and a new pin. Existing copies keep
+the old id and the old bytes, and new placements use the new id. The old file stays served while
+its id is in the registry, and the registry is append-only. So a copy's appearance changes only
+through an authored edit.
 
 ```ts
-// shipped-static.ts — append-only; existing entries gain their pin in D8a.
+// shipped-static.ts — append-only by id; a pin, once set, is immutable.
 type ShippedModelPin = { sha256: string; byteSize: number; mime: 'model/gltf-binary' };
 type ShippedModelEntry = {
   assetId: string;
@@ -155,17 +177,36 @@ shippedModelResourceEntry(assetId): { resource: TypedResource; lock: DependencyL
 //             contentRevision, requiredCapabilities: [], pin: null }
 ```
 
-**Grant rule**, used by `place-object` for catalogue models and by `place-group-copy`:
+**Guards** (all D8a, all tests rather than runtime checks):
 
-- When a held, resolved `asset` resource exists, reuse it unchanged.
-- When it is absent, add the resource and its lock in the same accepted result as the entity.
-- When the held resource is unresolved, or its lock pins a different revision, refuse
-  `incompatible-resource`.
-- An unused asset resource stays. Closure permits it, and Undo restores the whole envelope.
+- a committed pin ledger (`shipped-model-pins.json`, id → pin) that a test compares with
+  `SHIPPED_MODELS`: removing an id or changing an existing pin fails; appending passes;
+- a test that hashes every shipped production file against its pin.
 
-**Pin check.** Save and cold Load verify that any non-null `asset` `contentRevision` equals the
-shipped pin, and refuse `asset-revision-mismatch` otherwise. A test lane hashes every shipped file
-against its pin.
+**Grant rule**, used by `place-object` for an admitted catalogue model and by `place-group-copy`:
+
+| Held `asset` resource for the id | Result |
+| --- | --- |
+| None | Add the resource and its lock with the entity, in the same accepted result |
+| Resolved, revision equals the pin (with or without a lock) | Reuse unchanged; add the lock if absent |
+| Resolved, revision differs from the pin, or a lock pins another revision | Refuse `incompatible-resource`; never rewrite |
+| Unresolved, or no revision | Refuse `incompatible-resource`; never resolve silently |
+
+An unused asset resource stays. Closure permits it, and Undo restores the whole envelope.
+
+**Compatibility before tightening.** Save and Load do not refuse on asset revisions until compatibility
+with existing records is established. D8a is split:
+
+1. **Audit.** Run a read-only script over the repository's fixtures and seeds and over the owner's
+   development database. For each `asset` resource, compare the revision with the new pin and classify
+   it as *matches*, *no revision* or *differs*. Commit the report summary to the PR, not to `docs/`.
+2. **Pins, ledger, grant.** Land them regardless of the audit. The grant never rewrites a held record,
+   so it is compatible with any record the audit finds.
+3. **Tighten.** Only when the audit finds nothing outside *matches*, add the Save and cold-Load check
+   that a resolved `asset` revision equals its pin (`asset-revision-mismatch`). Fix test fixtures that
+   lack a revision in the same change. If the development database holds any other class, stop and
+   ask the owner: changing persisted projects is a destructive data action. The check is a guard, not a
+   D8 dependency, and D8 proceeds without it.
 
 **No format change:** resources stay format 3, Scene stays 13. Required asset locks are not added,
 because tightening closure would be a format change with no D8 consumer.
@@ -180,8 +221,8 @@ type GroupTemplate = {
   name: string;                    // 1–120 characters, trimmed, as form items
   members: GroupTemplateMember[];  // 2–64; order is the cluster's member order
 };
-// Each member is a Scene entity record without `id` and without `materialInstanceId`,
-// with `position` and `rotation` in the template frame (metres, Euler XYZ).
+// Each member is a Scene entity record without `id` and without `materialInstanceId` (the Finish
+// rule below), with `position` and `rotation` in the template frame (metres, Euler XYZ).
 type GroupTemplateMember =
   | Omit<SceneLightEntity, 'id'>                                    // point | spot, all light fields
   | Omit<SceneModelEntity, 'id' | 'materialInstanceId'>             // assetId, fallback, scale?
@@ -194,9 +235,17 @@ type GroupTemplateMember =
 - **Additional refusals:**
   - Artwork (its image is project-private);
   - planes (no honest floor contact);
-  - a model whose `assetId` has no shipped pin, including creator `model` resources;
+  - a model that is not an **admitted shipped model**: its `assetId` must have a shipped pin
+    (§4.1) *and* an admitted host definition with recorded `contactMinY`
+    (`missing-definition` / `missing-contact-metadata`). A pin alone is not eligibility. This
+    excludes creator `model` resources and every catalogue model whose contact is unverified;
+    today only the salon chair qualifies;
   - any non-upright form, primitive or model (G1's `floorTransformSupport` rule);
   - unknown keys.
+- **Finish rule** (the one policy used everywhere in this plan): a project Finish is never carried.
+  `materialInstanceId` is dropped when a template is made. A form or primitive keeps its catalogue
+  `materialId`, and a model keeps its own materials. A Finish never makes a member ineligible, and
+  Save discloses the drop (§7). This is the landed `formLibraryPayloadFromEntity` precedent.
 - **Canonical bytes** follow the library precedent: sorted keys, finite numbers, member order
   preserved.
 - **The template frame** is axis-aligned with the World it came from:
@@ -223,12 +272,13 @@ payload: {
   name: string;                                // cluster name; the editor applies G1's nextGroupName
   origin:
     | { kind: 'support'; worldXZ: [number, number]; supportChoice?: SceneSupportChoice }
-    | { kind: 'point'; position: Vec3 };
+    | { kind: 'overhead'; worldXZ: [number, number]; supportChoice?: SceneSupportChoice }
+    | { kind: 'wall'; position: Vec3 };        // editor-derived, the Artwork precedent
   yaw: number;                                 // radians about +Y at the origin
   frame; frameReference;                       // as place-object
   entityIds: string[];                         // captured, one per member, in member order
   clusterId: string;                           // captured
-  contacts: (number | null)[];                 // captured contactMinY per member; null for lights
+  contacts: (number | null)[];                 // captured admitted contactMinY per member; null for lights
 }
 ```
 
@@ -236,9 +286,16 @@ payload: {
 
 1. **Read.** Strictly read the template. Require `entityIds` and `clusterId` to be fresh, distinct
    and absent from the accepted Scene, with `entityIds` the same length as `members`.
-2. **Resolve the origin.** For `support`, use the `place-object` destination rule at `worldXZ`, with
-   the same `supportChoice` semantics, and set Y to the support elevation. For `point`, take the
-   position as given.
+2. **Resolve the origin.**
+   - `support`: use the `place-object` destination rule at `worldXZ`, with the same `supportChoice`
+     semantics, and set Y to the support elevation.
+   - `overhead`: resolve the floor support at `worldXZ` as for `support`. Then call T1's
+     `queryOverheadSupports` on the same snapshot compile and generation, with `aboveElevation` set to
+     that floor elevation, and set Y to the lowest candidate's elevation. `none` refuses
+     `no-overhead-support`, and `unsupported`, `stale-generation` or `invalid-input` refuse with the
+     query's own code. No hit Y, `ceilingElevation` read or mesh face enters the pose, so Scene adds
+     no ceiling authority. Whatever V3 publishes through this query is consumed unchanged; see §6.1.
+   - `wall`: take the position as given, as `artwork-place` does. Its wall relation is not stored.
 3. **Compose each member** with G1's rigid helpers about the origin:
    - position = origin + `Ry(yaw)` · local;
    - light rotation = `Ry(yaw)` · R, decomposed with G1's declared branch;
@@ -248,7 +305,9 @@ payload: {
    - The member must rest on, or be lifted above, a support at or below it
      (`resolveDestinationSupport`).
    - Contacts follow `readContactMinY`: analytic for forms and primitives, the host-captured
-     admitted value for models (as in G1 duplicate).
+     admitted value for models (as in G1 duplicate). A model member whose host definition is not
+     admitted, or has no recorded contact, refuses `missing-definition` or
+     `missing-contact-metadata`, even if its asset is pinned.
    - Any failure refuses the whole operation and names the member.
 5. **Grant assets.** Apply the §4.1 grant for each distinct model `assetId`.
 6. **Build and append.** Build entities with the existing builders (`buildLightEntity` and the
@@ -291,7 +350,7 @@ Each fixture is an editor-side catalogue entry in `$lib/content/fixtures.ts`, ap
 type CuratedFixture = {
   id: string;                      // e.g. 'fixture-hanging-industrial'
   label: string; summary: string;  // Library tile text
-  mount: 'ceiling' | 'wall' | 'floor';
+  mount: 'ceiling' | 'wall';       // a floor mount is admissible later with a qualified asset
   template: GroupTemplate;         // exactly one model member and one light member
   provenance: { work: string; creator: string; source: 'Poly Haven'; sourceUrl: string;
                 licence: 'CC0-1.0'; record: string /* assets-source/licenses/<file>.md */ };
@@ -333,7 +392,8 @@ A test proves the template's light pose equals the recorded anchor and axis.
 
 These sources remain admissible later through the same gate.
 
-**Shortlist** (metadata read from `api.polyhaven.com/info`; nothing downloaded):
+**Shortlist approved for qualification** (P1; metadata read from `api.polyhaven.com/info`; nothing
+downloaded):
 
 | Candidate | Creator | Mount | Reported size (mm) | Poly Haven polycount | Materials | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -341,7 +401,7 @@ These sources remain admissible later through the same gate.
 | Modern Ceiling Lamp 01 | James Ray Cock | ceiling | 432 × 432 × 952 | 5,602 | glass, metal | Glass globe; conditional on the glass probe |
 | Lantern Chandelier 01 | Kirill Sannikov | ceiling | 579 × 575 × 878 | 5,971 | brass, glass | Fits the salon World; one emitter only |
 | Industrial Wall Sconce | Ulan Cabanilla | wall | 150 × 252 × 342 | 9,826 | brass, metal | Wall mount |
-| Street Lamp 02 *(optional)* | Josh Dean | floor | 386 × 807 × 1,675 | 20,338 | metal, glass | Exterior Worlds only; over the triangle budget unless decimation qualifies |
+| ~~Street Lamp 02~~ *(not selected)* | Josh Dean | floor | 386 × 807 × 1,675 | 20,338 | metal, glass | Exterior only; over budget. Not on the approved shortlist, so D8 ships no floor fixture |
 
 **Excluded:**
 
@@ -363,14 +423,13 @@ Poly Haven has no picture light; the Picture spot recipe remains the gallery ans
   metrics.
 - Add a row to `assets-source/models/fixtures-acquisition-manifest.json`.
 
-**Derivation.** Add `fixture-ceiling`, `fixture-wall` and `fixture-floor` recipes to
+**Derivation.** Add `fixture-ceiling` and `fixture-wall` recipes to
 `normalize-asset.sh`, keeping it hash-in/hash-out and atomic:
 
 - Metres, +Y up, front +Z.
 - The pivot is the mount datum, so no `renderNormalization` or `defaultScale` correction is needed:
   - ceiling: the centre top of the canopy, `--pivot above`;
-  - wall: the centre of the back plate on Z = 0, a recorded translation;
-  - floor: the base, as `furniture-floor`.
+  - wall: the centre of the back plate on Z = 0, a recorded translation.
 - Meshopt, embedded WebP textures and MikkTSpace tangents, as Sofa 03.
 - Baked emission handled per P2, and the change recorded.
 - Production files go to `static/models/fixtures/<id>.glb`, not under `/museum`.
@@ -382,13 +441,24 @@ materials, at most 1 MiB GLB, textures at most 1K, qualified at 512 where texel 
 
 ### 6.1 Mount datum and fixture geometry
 
-| Mount | Template origin | `contactMinY` | How the editor derives the intent origin |
+| Mount | Template origin | `contactMinY` | Intent origin |
 | --- | --- | --- | --- |
-| Ceiling | Canopy top centre on the ceiling plane | Negative (drop length) | A ceiling hit with normal·Y ≤ −0.5 uses `point` = hit. A floor-like hit hangs from the compiled `ceilingElevation` of the room containing the hit X/Z. With no room ceiling above, it refuses `no-ceiling`. |
-| Wall | Back-plate centre on the wall plane, +Z out | Negative (lowest point below the datum) | A near-vertical hit (\|normal.y\| ≤ 0.2) uses `point` = hit and `yaw` = heading of the normal. Anything else refuses `not-a-wall`. |
-| Floor | Base centre | 0 | `support` at the hit X/Z, with `yaw` 0 |
+| Ceiling | Canopy top centre on the overhead plane | Negative (drop length) | `overhead` at the pointer's X/Z, from any hit (floor, ceiling, region underside). The planner resolves Y through T1's overhead query (§4.3). The ghost previews the same query read-only, so editor and planner cannot disagree. |
+| Wall | Back-plate centre on the wall plane, +Z out | Negative (lowest point below the datum) | `wall`. A near-vertical hit (\|normal.y\| ≤ 0.2) gives the position and `yaw` = heading of the normal. Anything else refuses `not-a-wall` in the editor. |
 
-- **Pose.** Every fixture body is an upright model that is lifted, or resting for floor fixtures.
+A saved group inserts with a `support` origin. A floor fixture, if one is qualified later, would
+use the same origin.
+
+- **Sloped overheads (V3).** D8 hangs fixtures plumb from the elevation that the overhead query
+  returns at the canopy's X/Z. It claims nothing about a canopy sitting flush on a slope.
+  - Today the query returns only flat lids and region undersides.
+  - When V3 lands, it decides how a shed or gable underside is published through this query: as an
+    elevation at X/Z, or as `unsupported`. D8 follows that decision with no change.
+  - D8 adds no slope evaluator and reads no rendered face. If V3 publishes a non-vertical
+    `downNormal`, the canopy still hangs plumb. Flush mounting on a slope is admissible later and
+    belongs to whichever slice introduces a mount relation.
+
+- **Pose.** Every fixture body is an upright model that is lifted below its overhead or beside its wall.
   Its base must sit at or above a support (§4.3 step 4), so a pendant longer than the room is tall
   refuses rather than passing through the floor.
 - **Collisions.** Body-to-wall and body-to-ceiling intersections are not checked; no Scene
@@ -438,7 +508,7 @@ unchanged.
    - Open the Library's *Lights*. Beside *Point* and *Spot*, a *Fixtures* row appears only once at
      least one qualified fixture ships (D18).
    - Choosing a fixture arms placement. The ghost follows the mount rule in §6.1 and reads its
-     refusal in words: "No ceiling above here", "Point at a wall".
+     refusal in words: "Nothing overhead to hang from here", "Point at a wall".
    - A click writes one `place-group-copy` and selects the new group, named after the fixture.
      Undo removes the body, light, cluster and any newly granted asset resource together.
 2. **Adjust.**
@@ -454,9 +524,11 @@ unchanged.
 4. **Save.**
    - A group's Card foot offers **Save to My Objects** when every member is eligible. Otherwise the
      action is present and refuses with the first reason: "Artwork stays in this project", "Imported
-     models stay in this project", "Planes cannot be saved in a group".
-   - When any member has a project Finish, the confirmation says "Finishes stay in this project; the
-     copy uses each object's base material". This is the form precedent.
+     models stay in this project", "Planes cannot be saved in a group", "<name> cannot be saved
+     yet" (a catalogue model without admitted contact).
+   - When any member has a project Finish, the save still proceeds, under the §4.2 Finish rule. The
+     confirmation says "Finishes stay in this project; the copy uses each object's base material".
+     This is the form precedent.
    - Save writes no revision, history entry or dirty flag.
 5. **Insert anywhere.**
    - In any project, *My objects* lists saved groups beside forms. *Place copy in World* arms a
@@ -477,8 +549,9 @@ unchanged.
   - A copy's only external dependencies are shipped, pinned catalogue models (granted by §4.1) and
     catalogue materials (already shipped).
   - Nothing is copied between projects, so groups need no transfer route or byte copy.
-  - Anything private is refused at Save, never copied incompletely: Artwork images, creator model
-    revisions, project Finishes and Finish images.
+  - Private dependencies are never copied. Artwork and creator models make a member ineligible
+    and refuse at Save. Project Finishes, with their images, are dropped under the §4.2 Finish rule
+    and disclosed; they never cause a refusal.
 - **Identity.** Members are identified only by order inside the payload, and carry no internal
   references. This is why T5.4's rule that "names and order do not supply the remapping" does not
   bind here.
@@ -491,13 +564,14 @@ unchanged.
 | --- | --- | --- |
 | `invalid-template` | planner, reader | "This group cannot be read." (issue paths in diagnostics) |
 | `unsupported_format_version` | insertion | "Made with an earlier development version; remove it or save it again." |
-| `ineligible-member` | Save | Names the member and its reason (§7) |
+| `ineligible-member` | Save | Names the member and its reason (§7), including a model without admitted contact |
 | `group-too-large` | Save | "Groups of more than 64 items cannot be saved." |
 | `no-support` | Save, planner | "Nothing below to stand on here." / names the member |
-| `no-ceiling` / `not-a-wall` | fixture placement (editor) | "No ceiling above here." / "Point at a wall." |
-| `unknown_asset` / `missing-definition` | planner | "This fixture is not available in this version." |
+| `no-overhead-support` (and the overhead query's own codes) | planner | "Nothing overhead to hang from here." |
+| `not-a-wall` | fixture placement (editor) | "Point at a wall." |
+| `unknown_asset` / `missing-definition` / `missing-contact-metadata` | planner | "This object is not available in this version." |
 | `incompatible-resource` | planner | "This project holds a different copy of <name>." |
-| `asset-revision-mismatch` | Save, cold Load | Existing closure refusal envelope |
+| `asset-revision-mismatch` | Save, cold Load, only after D8a step 3 | Existing closure refusal envelope |
 | `stale_revision`, library full, payload too large, not found | existing | Unchanged |
 
 Any member failure refuses the whole write. Nothing is partly placed.
@@ -506,38 +580,49 @@ Any member failure refuses the whole write. Nothing is partly placed.
 
 | Slice | Delivers | Depends on | Runs in parallel with |
 | --- | --- | --- | --- |
-| **D8a Shipped-asset closure** | §4.1 pins and grant; `place-object` grants catalogue assets; Save/Load pin check; the Objects panel lists admitted catalogue models in every project | — | D8s, D8c acquisition |
-| **D8s Specimen** | Amends the approved Light & Sky and Appearance targets: Fixtures row and tile, three mount ghosts and refusals, fixture group Card, Save to My Objects on the group Card, My objects group tile, Place copy | — | D8a, D8b, D8c |
-| **D8b Group template and `place-group-copy`** | §4.2 codec, `groupTemplateFromCluster`, §4.3 planner, rigid composition about an origin | D8a (grant helper) | D8c, D8s |
+| **D8a Shipped-asset closure** | §4.1 audit, identity invariant and pin ledger, grant; `place-object` grants admitted catalogue assets; the Objects panel lists admitted catalogue models in every project; the Save/Load check only after the audit clears | — | D8s, D8c acquisition |
+| **D8s Specimen** | Amends the approved Light & Sky and Appearance targets: Fixtures row and tile, ceiling and wall ghosts and refusals, group placement ghost, fixture group Card, Save to My Objects on the group Card, My objects group tile, Place copy | — | D8a, D8b, D8c |
+| **D8b Group template and `place-group-copy`** | §4.2 codec, `groupTemplateFromCluster`, §4.3 planner with `support`, `overhead` and `wall` origins, rigid composition about an origin | D8a (grant helper) | D8c, D8s |
+| **D8p Group placement session** | The editor's one `group-copy-placement-session`: template ghost, origin derivation for all three origins, one gesture lease, the `place-group-copy` accept, selection of the new group. No Library entry point, so no inert control; it is exercised through the session harness | D8b · D8s ghost marks | D8c, D8e |
 | **D8c Fixture qualification** | Acquisition evidence, visual probe report, derivation recipes, 3–4 ingested fixtures with pins, verification records, curated templates | D8a (pin shape); owner P1–P3 | D8b, D8e |
-| **D8d Fixture placement** | Lights › Fixtures row (D18), fixture placement session (§6.1), selection of the new group | D8b, D8c, D8s | D8e |
+| **D8d Fixture placement** | Lights › Fixtures row (D18) arming D8p with a curated template | D8p, D8c, D8s | D8e, D8f |
 | **D8e Library `group` kind** | §4.4 reader and dispatch, API acceptance, migration `002`, DB-backed tests | D8b (template codec) | D8c, D8d |
-| **D8f Save and insert groups** | Group Card Save with eligibility and Finish disclosure; My objects group tiles; floor-anchored copy placement; integrated acceptance and closeout | D8d (shared ghost session), D8e, D8s | — |
+| **D8f Save and insert groups** | Group Card Save with eligibility and Finish disclosure; My objects group tiles arming D8p with a `support` origin; integrated acceptance | D8p, D8e, D8s | D8c, D8d |
+| **Closeout** | Contract updates, plan retirement, roadmap rows | the later of D8d and D8f | — |
 
 ### D8a — Shipped-asset closure
 
 - **Changes:**
-  - `shipped-static.ts`: the pin field, with pins for every existing production file;
+  - step 1: the read-only audit script and its report on the PR (§4.1);
+  - `shipped-static.ts`: the pin field, with pins for every existing production file, and the
+    committed pin ledger;
   - `scene-planning/shipped-asset-resource.ts`;
-  - the `place-object` grant for a catalogue `creationDefaults.kind === 'model'` definition;
-  - Save and cold-Load pin verification;
-  - `visibleCatalogueModels` stops filtering by held resource;
-  - the s17 fixture uses the production helper.
+  - the `place-object` grant for an admitted catalogue `creationDefaults.kind === 'model'`
+    definition;
+  - `visibleCatalogueModels` lists admitted definitions, those with recorded contact, regardless of
+    held resources;
+  - the s17 fixture uses the production helper;
+  - step 3, only if the audit clears: Save and cold-Load revision verification.
 - **Acceptance:**
   - In a blank project, placing the verified salon chair installs the entity, the asset resource
     and the `resource:asset` lock in one result.
   - Undo removes all three.
   - A second placement reuses the resource.
   - Save and reopen preserve it, and visitor Preview renders it.
-  - A tampered `contentRevision` refuses at Save. A held, unresolved or differently locked resource
-    refuses `incompatible-resource`.
-  - A pin test hashes every shipped GLB.
+  - Each grant-rule row in §4.1 has a test. A held record without a revision, or with a different
+    one, refuses and is left byte-identical.
+  - A pinned catalogue model without admitted contact is not listed and refuses
+    `missing-contact-metadata`.
+  - The ledger test fails on a changed or removed pin and passes on an append. The hash test covers
+    every shipped GLB.
+  - After step 3 only, a tampered `contentRevision` refuses at Save.
 - **Lanes:**
   - project-model unit tests;
   - editor vitest groups, run one at a time;
   - `check:api` and zero-skip DB-backed `test:api` for the Save check;
   - `test:arch`.
-- **Stop if** a format bump becomes necessary.
+- **Stop if** a format bump becomes necessary, or the audit finds development-database records that
+  a check would refuse (owner decision; destructive data action).
 
 ### D8s — Specimen
 
@@ -545,12 +630,12 @@ Any member failure refuses the whole write. Nothing is partly placed.
   mount ghosts, fixture group Card) and `prototypes/appearance-ux/` (My objects group tile, Place
   copy, Save on the group Card).
 - **Decides:**
-  - tile imagery: a pre-rendered fixture tile derived reproducibly at ingestion and pinned in the
-    fixture record is recommended;
+  - tile imagery: a pre-rendered fixture tile, derived reproducibly at ingestion and pinned in the
+    fixture record, is recommended;
   - ghost marks within the Stage mark grammar;
   - refusal copy.
-- **Acceptance:** the owner approves it. No console errors on static serve, and the `test:arch`
-  links pass.
+- **Acceptance:** the owner approves it (P6, a visual gate D8p, D8d and D8f wait on). No console
+  errors on static serve, and the `test:arch` links pass.
 
 ### D8b — Group template and `place-group-copy`
 
@@ -568,13 +653,32 @@ Any member failure refuses the whole write. Nothing is partly placed.
   - At yaw θ, every spot forward vector and target point is the rigid image within 1e-6 (G1's
     property set, including straight down and the gimbal branch).
   - A support origin on a raised platform keeps heights above the floor.
+  - An overhead origin under a closed-Space lid, under an overhead region inside that Space, and
+    with no overhead resolves to the lid, to the region underside (the lowest above the floor) and to
+    `no-overhead-support` respectively. A stale generation refuses. The pose never depends on a hit
+    Y.
+  - A model member with a pin but no admitted contact refuses `missing-contact-metadata`.
   - A lifted member over a void refuses and names the member, and nothing changes.
   - Ids already in the Scene refuse.
-  - Artwork, plane, creator-model and non-upright members refuse at template read.
+  - Artwork, plane, creator-model and non-upright members refuse at template read. A
+    Finish-bearing source member yields a template with no `materialInstanceId`.
   - Asset grants are added once per distinct asset and reused when held.
   - One Undo restores the envelope byte-for-byte.
   - The record scope is exact.
 - **Lanes:** project-model unit tests, `test:arch`, and budgets (new modules stay under 600 lines).
+
+### D8p — Group placement session
+
+- **Changes:** `group-copy-placement-session` in the scene adapter area. It takes a template, an origin
+  mode (`support | overhead | wall`) and a name, then renders the ghost, derives the origin (§6.1),
+  holds one gesture lease and writes one `place-group-copy`. It also adds the accept wiring and selects
+  the new group.
+- **Acceptance**, through the session harness:
+  - Each origin mode writes exactly one intent with the expected origin.
+  - Escape cancels with no write. A refusal shows its words and writes nothing.
+  - The overhead ghost uses the planner's query result.
+  - The new group is selected.
+- **Lanes:** editor vitest groups one at a time, `test:arch`.
 
 ### D8c — Fixture qualification
 
@@ -602,14 +706,13 @@ Any member failure refuses the whole write. Nothing is partly placed.
 
 ### D8d — Fixture placement
 
-- **Changes:**
-  - `LIGHT_SHELF` gains a Fixtures group, shown only when `CURATED_FIXTURES` is non-empty;
-  - a `group-copy-placement-session` in the light adapter area, which owns the ghost, mount
-    derivation and one gesture lease;
-  - a `place-group-copy` accept;
-  - selection of the new group.
+- **Changes:** `LIGHT_SHELF` gains a Fixtures group, shown only when `CURATED_FIXTURES` is non-empty.
+  Choosing a fixture arms D8p with its template and mount origin.
 - **Acceptance**, on the live Stage against the D8s target:
-  - one fixture of each mount is placed in the Salon World;
+  - one qualified ceiling fixture and the qualified wall fixture are placed in the Salon World;
+    a ceiling fixture also hangs under an overhead region;
+  - the mounts tested are exactly those on the qualified shortlist. No asset is ingested to cover
+    a mount, and the floor `support` origin is covered by D8f;
   - Undo, Duplicate, Turn and Ungroup work, and re-aiming the emitter leaves the body unmoved;
   - refusals read in words;
   - Save and reopen, then visitor Preview parity: the same bodies and light, with no glyphs and no
@@ -641,21 +744,27 @@ Any member failure refuses the whole write. Nothing is partly placed.
   - group Card Save to My Objects, with eligibility and Finish disclosure;
   - a My objects section for group items;
   - the client fetch and strict read;
-  - a floor-anchored copy placement that reuses D8d's session;
-  - contract updates in Scene and Resources (My Objects group item, `place-group-copy`, shipped-asset
-    grant);
-  - closeout.
+  - My objects tiles arm D8p with a `support` origin.
 - **Acceptance:**
   - Save Showcase in project A and insert it twice in project B: two independent groups with
     distinct ids.
   - Edit one copy; the other copy and the item are unchanged.
   - Delete the item; both copies survive Save and reopen.
-  - A group with a fixture body grants its asset in B.
-  - A group with Artwork or a creator model refuses at Save in words.
-  - A Finish-bearing form saves with the disclosure and inserts on its base material.
+  - A saved group containing the admitted salon chair grants its asset in B. Fixture bodies are
+    covered too once D8c has landed, but this case does not wait for D8c.
+  - A group with Artwork, a plane, a creator model or a model without admitted contact refuses at
+    Save in words.
+  - A Finish-bearing form or primitive saves with the disclosure and inserts on its catalogue
+    `materialId`.
   - An older-format item is listed and offers Remove only.
   - Visitor Preview parity in B.
-- **Closeout:**
+### Closeout
+
+Lands after both D8d and D8f; it is a separate small PR, or folds into whichever of them is later.
+
+- **Changes:**
+  - contract updates in Scene and Resources (My Objects group item, `place-group-copy` and its
+    origins, the shipped-asset identity invariant and grant);
   - delete this plan and the completed G1 plan;
   - update the T2 README D8 row and the plans index;
   - S8's deletion condition then waits only on integrated S8 acceptance.
@@ -663,31 +772,33 @@ Any member failure refuses the whole write. Nothing is partly placed.
 ## 11. Execution order
 
 ```text
-now ─┬─ D8a shipped-asset closure ─┬─ D8b template + place-group-copy ─┬─ D8e library kind ────────┐
-     │                             │                                   │                           ├─ D8f save/insert
-     ├─ D8s specimen (owner) ──────┼───────────────────────────────────┼─ D8d fixture placement ───┘
-     │                             │                                   │       ▲
-     └─ owner P1–P3 ───────────────┴─ D8c probe ─▶ D8c ingest ─────────┴───────┘
+now ─┬─ D8a closure ─▶ D8b template + planner ─▶ D8p placement session ─┬─ D8f save/insert ─┐
+     │                        │                       ▲                 │   ▲               ├─ closeout
+     │                        └─▶ D8e library kind ───┼─────────────────┼───┘               │
+     ├─ D8s specimen (P6) ────────────────────────────┴─────────────────┼─ D8d fixtures ────┘
+     │                                                                  │   ▲
+     └─ D8c probe ─▶ D8c ingest ────────────────────────────────────────┴───┘
 ```
 
-- **Independent from the start:** D8a, D8s and D8c step 1. The step-1 probe needs no repository
-  change.
-- **The rig track** (D8a → D8b → D8e → D8f) can finish without D8c. Without D8c, D8f's fixture-body
-  acceptance case moves to D8d.
-- **The fixture track** (D8a → D8c → D8d) can finish without D8e.
+- **Independent from the start:** D8a, D8s and D8c step 1. The probe needs no repository change.
+- **Shared foundation:** D8a → D8b → D8p. D8p is the only editor piece both tracks use, and it lands
+  before either entry point.
+- **Rig track:** D8e → D8f. It needs neither D8c nor D8d.
+- **Fixture track:** D8c → D8d. It needs neither D8e nor D8f.
+- **Closeout** waits for both tracks.
 
 ## 12. Decisions
 
 ### 12.1 Product decisions for the owner
 
-| # | Decision | Recommendation |
+| # | Decision | Owner outcome (2026-11-27) |
 | --- | --- | --- |
-| P1 | The first fixture set | Hanging Industrial Lamp, Lantern Chandelier 01 and Industrial Wall Sconce. Add Modern Ceiling Lamp 01 if the glass probe passes. Street Lamp 02 only if exterior Worlds need a fixture now. No picture light: Picture spot remains the gallery answer. |
-| P2 | Baked emission in fixture bodies | **Strip it.** A baked glow does not follow Brightness or Off, which would make Off untruthful. Emitter-linked glow waits for an authored relation and the Glow family. |
-| P3 | Fixed directional heads (track cans, spots on stands) | **Exclude** until articulation. Re-aiming the beam without the head would contradict the body. |
-| P4 | Which groups may be saved | **Any eligible group**, with or without a light. It is the same contract, and a light-only rule would add a refusal with no technical reason. |
-| P5 | Library homes | Curated fixtures under **Lights › Fixtures**; saved groups under **My objects** only (the My Objects precedent). |
-| P6 | Specimen approval (D8s) | Approve before D8d and D8f, as G1 did. |
+| P1 | The first fixture set | **Accepted for qualification:** Hanging Industrial Lamp, Lantern Chandelier 01 and Industrial Wall Sconce. Modern Ceiling Lamp 01 joins only if the glass probe passes. Street Lamp 02 is not selected, so there is no floor fixture. No picture light: Picture spot remains the gallery answer. |
+| P2 | Baked emission in fixture bodies | **Accepted: strip it.** A baked glow does not follow Brightness or Off, which would make Off untruthful. Emitter-linked glow waits for an authored relation and the Glow family. |
+| P3 | Fixed directional heads (track cans, spots on stands) | **Accepted: defer** until articulation. Re-aiming the beam without the head would contradict the body. |
+| P4 | Which groups may be saved | **Accepted: any eligible group**, with or without a light. |
+| P5 | Library homes | **Accepted:** curated fixtures under **Lights › Fixtures**; saved groups under **My objects** only. |
+| P6 | Specimen approval (D8s) | **Open, owner visual gate.** D8p, D8d and D8f wait for it, as G1 did. |
 
 ### 12.2 Engineering decisions resolved here
 
@@ -695,19 +806,21 @@ now ─┬─ D8a shipped-asset closure ─┬─ D8b template + place-group-cop
 | --- | --- |
 | E1 | One `GroupTemplate` codec for curated fixtures, saved groups and the intent; Scene stores no template, link or provenance. |
 | E2 | `place-group-copy` is a new Scene operation. `create-light-rig` and group Duplicate stay as they are; the new planner reuses `rigid.ts`, the entity builders and `resolveDestinationSupport`. |
-| E3 | Origins are `support` (planner-resolved Y) or `point` (editor-derived, support-revalidated). Mount is editor-side catalogue metadata, not payload. |
+| E3 | Origins are `support` (planner-resolved floor Y), `overhead` (planner-resolved through T1's `queryOverheadSupports`; no second ceiling authority) or `wall` (editor-derived, support-revalidated, the Artwork precedent). Mount is editor-side catalogue metadata, not payload. |
 | E4 | A saved template's frame is world-axis-aligned. Its origin is the pivot X/Z (`rigidPivot`) at the support beneath the lowest point. |
 | E5 | Members are bounded at 2–64 and identified by order. Ids are captured in the payload as in G1 duplicate. |
-| E6 | Project Finishes are dropped at Save with a disclosure. Artwork, planes and creator models are refused. |
-| E7 | No format bump. Shipped-model pins live in the code registry; asset grants reuse held resources; closure is not tightened. |
+| E6 | The §4.2 Finish rule: project Finishes are always dropped with a disclosure and never refuse. Artwork, planes, creator models and models without admitted contact are refused. |
+| E7 | No format bump. Shipped-model pins live in the code registry under the one-id-one-revision invariant, guarded by a committed ledger. Grants reuse only matching records and never rewrite. The Save/Load check waits for the audit. Closure is not tightened. |
 | E8 | Library: one additive numbered migration, with no receipts, staging, transfer or thumbnail for groups. |
 | E9 | Fixture assets are `castShadow: false` with a single emitter whose Shadow is off by default; the Shadow control stays live (D9). |
 | E10 | The pivot is normalised to the mount datum at ingestion, so there is no `renderNormalization`. Production files live at `static/models/fixtures/`. |
 | E11 | Anchors and contacts come from recorded loader verification, never live bounds. |
-| E12 | Fixture bodies are admitted for `place-group-copy` only. |
+| E12 | Fixture bodies are admitted for `place-group-copy` only. Model eligibility anywhere in D8 means admitted definition plus recorded contact plus shipped pin. |
 | E13 | Budgets: at most 15k triangles, at most 3 materials, at most 1 MiB, textures at most 1K. No new performance gate. |
 | E14 | Wall and ceiling attachment is placement convenience with no stored relation (the Artwork precedent). |
 | E15 | The `002` migration name and the `form_library_items` table name stay; renaming is churn. |
+| E16 | One editor placement session (D8p) serves fixtures and saved groups; neither entry slice owns it. |
+| E17 | D8 ships ceiling and wall mounts only; the acceptance gates follow the qualified shortlist, and no asset is ingested to satisfy a test. |
 
 ## 13. Risks and stop conditions
 
@@ -720,8 +833,12 @@ now ─┬─ D8a shipped-asset closure ─┬─ D8b template + place-group-cop
   The render-cost calibration's light curves are the reference, and no budget is promised.
 - **Ceiling height.** Fixed-length pendants may be too long for low rooms. The support rule refuses
   a body that would cross the floor, but a body crossing the ceiling is not checked.
+- **Overhead regions.** A pendant hangs from the lowest overhead above the pointer's floor, so a
+  canopy region in the room takes precedence over the lid above it. This is T1's ordering, used
+  unchanged. A creator who wants the lid moves the pointer or the region.
 - **Stop** if:
   - any slice needs a Scene or resources format change, a new resource kind, a stored relation
-    between body and emitter, nested groups, or a selection model beyond G1's;
+    between body and emitter, nested groups, a selection model beyond G1's, or a ceiling or slope
+    resolution outside T1's overhead query;
   - a dependency is needed beyond the admitted `@gltf-transform` toolchain;
   - a candidate's rights are below A.
