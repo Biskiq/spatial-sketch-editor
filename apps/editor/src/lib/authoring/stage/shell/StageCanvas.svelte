@@ -112,6 +112,7 @@ import StageMatGround from './StageMatGround.svelte';
 		/** The live candidate's extent; the sheet grows to include it. */
 		datumMeters = 0,
 		selection = null,
+		selectionSet = [],
 		hover = null,
 		hoverTone = 'hover',
 		proposals = [],
@@ -184,6 +185,7 @@ import StageMatGround from './StageMatGround.svelte';
 		datumMeters?: number;
 		/** Canonical primary selection and pointer hover; ink is Stage-owned. */
 		selection?: StageSelectionEntry | null;
+		selectionSet?: readonly StageSelectionEntry[];
 		hover?: StageSelectionEntry | null;
 		/** The armed Eraser draws its winner in red dashes instead of hover. */
 		hoverTone?: 'hover' | 'erase' | 'paint';
@@ -257,18 +259,6 @@ import StageMatGround from './StageMatGround.svelte';
 		clipMasks: (cutaway) => stageClip.clipMasks(cutaway)
 	});
 	onDestroy(() => resources.dispose());
-	/**
-	 * The selected subject **when the cut hides all of it**, or null.
-	 *
-	 * The Index can select anything, including a body the Slice removes from the frame
-	 * entirely (a ceiling light above the cut). That selection must stay visible and
-	 * editable, so the Slice layer draws it as a ghost and the selection ink draws its
-	 * gold contour unclipped (§2.4). A partly cut subject is **not** ghosted: its stub
-	 * and cap are visible and pickable already.
-	 *
-	 * Recomputed on selection, reading or geometry change only — `subjectWhollyHidden`
-	 * walks the subject's own triangles, never the scene.
-	 */
 	const ghostSubject = $derived.by(() => {
 		// A representation rebuild changes the drawn body without changing the object, so
 		// the bake follows the revisions as well as the selection. Without these reads the
@@ -570,6 +560,7 @@ import StageMatGround from './StageMatGround.svelte';
 			{resolvedSlice}
 			{datumMeters}
 			{selection}
+			{selectionSet}
 			{hover}
 			{hoverTone}
 			{clusterMembers}
@@ -589,6 +580,7 @@ import StageMatGround from './StageMatGround.svelte';
 			eye={evaluation ? [evaluation.inverseViewMatrix[12]!, evaluation.inverseViewMatrix[13]!, evaluation.inverseViewMatrix[14]!] : [0, 10, 10]}
 			{cutawayWallIds}
 			{selection}
+			{selectionSet}
 			{hover}
 			{hoverTone}
 			{proposals}

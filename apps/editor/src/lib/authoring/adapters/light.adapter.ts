@@ -1,3 +1,4 @@
+import { reconcileGroupWithOffer } from './scene/group-offer';
 /**
  * Light authoring adapter — registration, composition and dispatch.
  *
@@ -102,7 +103,15 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					}
 					return false;
 				},
-				selectionChanged() {
+				selectionChanged(selection) {
+					const selected = selection.ordered.length === 1 ? selection.ordered[0]?.reference : null;
+					reconcileGroupWithOffer(
+						services.stage.session,
+						selected?.domain === 'scene' && selected.subject.kind === 'entity'
+							? selected.subject.id
+							: null,
+					);
+
 					// A capture belongs to the light it was pressed on: a new selection
 					// replaces it, so its stale release must not write. The task is left
 					// as it was, so an armed Lights task stays armed.

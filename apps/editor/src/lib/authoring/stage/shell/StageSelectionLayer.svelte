@@ -61,6 +61,7 @@
 
 	let {
 		selection,
+		selectionSet = [],
 		hover,
 		hoverTone = 'hover',
 		proposals = [],
@@ -75,6 +76,7 @@
 		cutawayWallIds = []
 	}: {
 		selection: StageSelectionEntry | null;
+		selectionSet?: readonly StageSelectionEntry[];
 		hover: StageSelectionEntry | null;
 		/** The armed Eraser's winner reads as red dashes, never gold. */
 		hoverTone?: 'hover' | 'erase' | 'paint';
@@ -466,6 +468,7 @@
 		fades.length = 0;
 		releaseAll();
 		apply(selection, 'selection');
+		for (const entry of selectionSet) apply(entry, 'selection');
 		for (const proposal of proposals) {
 			if (selection !== null && sameSubject(proposal.reference, selection.reference)) continue;
 			apply(proposal, 'paint');
@@ -490,6 +493,7 @@
 
 	$effect(() => {
 		selection;
+		selectionSet;
 		hover;
 		hoverTone;
 		proposals;

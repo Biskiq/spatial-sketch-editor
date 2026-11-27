@@ -284,9 +284,19 @@ export function paperMarkSet(
 	hover: StageSelectionEntry | null,
 	hoverTone: 'hover' | 'erase' | 'paint' = 'hover',
 	clusterMembers: (clusterId: string) => readonly string[] = () => [],
+	selectionSet: readonly StageSelectionEntry[] = [],
 ): PaperMarkSet {
+	const marks = selectionSet.map((entry) => geometryOf(drawing, entry, clusterMembers));
 	const selected =
-		selection === null ? EMPTY_GEOMETRY : geometryOf(drawing, selection, clusterMembers);
+		selection !== null
+			? geometryOf(drawing, selection, clusterMembers)
+			: marks.length === 0
+				? EMPTY_GEOMETRY
+				: {
+						fills: marks.flatMap((mark) => mark.fills),
+						cutFills: marks.flatMap((mark) => mark.cutFills ?? []),
+						contours: marks.flatMap((mark) => mark.contours),
+					};
 	if (hoverTone === 'erase') {
 		return {
 			selection: selected,

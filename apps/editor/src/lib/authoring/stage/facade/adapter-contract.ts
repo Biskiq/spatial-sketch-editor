@@ -65,7 +65,7 @@ export type StageSourceHit =
 	| {
 			readonly reference: SemanticReference;
 			readonly sourceId: string;
-			readonly sourceKind: 'entity';
+			readonly sourceKind: 'entity' | 'cluster';
 			readonly worldPoint: Vec3;
 	  }
 	| {
@@ -137,14 +137,6 @@ export type StageOverlayContribution = {
 	readonly label: string;
 };
 
-/**
- * A persistent, world-space guide contributed by a domain binding.
- *
- * Unlike a candidate preview, this is not an uncommitted proposal: it stays
- * while its subject is selected. The Stage projects both segment lists once
- * through the same evaluation as the candidate layer, so the guide can never
- * disagree with the geometry it describes.
- */
 export type StageGuideContribution = {
 	readonly id: string;
 	/**
@@ -156,6 +148,7 @@ export type StageGuideContribution = {
 	readonly segments: readonly (readonly [Vec3, Vec3])[];
 	/** Derived helpers (unbounded reach, stems) are drawn differently. */
 	readonly derivedSegments?: readonly (readonly [Vec3, Vec3])[];
+	readonly emitter?: Vec3;
 	/**
 	 * A guide's own label, e.g. the selected instrument's name at its centre.
 	 * It is never a permanent subject label: the host draws it in the live-tag
@@ -470,6 +463,11 @@ export type StageCardAction = {
 	readonly label: string;
 	/** A shorter Card-foot verb, when the full label is too long for the row. */
 	readonly compactLabel?: string;
+	readonly disabled?: boolean;
+	/** Recipes accessible from the action's adjacent disclosure. */
+	readonly options?: readonly StageCardAction[];
+	/** Menu label for the default action, when the primary button uses a verb. */
+	readonly optionLabel?: string;
 	/**
 	 * Words the creator reads **before** the action is taken: the planner-derived
 	 * consequences (hosted Openings, Room merge/open). Required for a destructive
@@ -479,6 +477,7 @@ export type StageCardAction = {
 	readonly detail?: string;
 	/** A destructive action states so, and the Card confirms before running it. */
 	readonly destructive?: boolean;
+	readonly confirmInCard?: boolean;
 	/**
 	 * `primary` (the default) stays in the Card's action row. `secondary` moves into the
 	 * Card's More disclosure. Only `destructive: true` gets destructive styling, so a
@@ -528,12 +527,13 @@ export type StageInstrumentContent = {
 		readonly component: Component<{
 			services: StageAdapterServices;
 			detailOpen?: boolean;
-			footer?: Snippet<[string?]>;
+			footer?: Snippet<[(string | false)?]>;
 			secondary?: Snippet<[Snippet?]>;
 			more?: Snippet<[Snippet?]>;
 			/** The subject's scoped actions, so a writer can place a primary one in its foot. */
 			actions?: readonly StageCardActionRecord[];
 			onAction?: (action: StageCardActionRecord) => void;
+			actionControl?: Snippet<[StageCardActionRecord]>;
 		}>;
 		readonly services: StageAdapterServices;
 	};

@@ -1,3 +1,4 @@
+import { sceneClusterMembers, selectedSceneClusterId } from '../../scene/selection-target';
 /**
  * The Light binding's read-only contributions.
  *
@@ -131,16 +132,22 @@ export function createLightContributions(deps: LightContributionDeps): LightCont
 		},
 		guides(adapterContext) {
 			const light = effectiveLight(adapterContext);
-			if (light === null) return [];
-			const guide = guideSegments(light, adapterContext);
-			return [
-				{
-					id: 'light-guide',
+			const group = selectedSceneClusterId(
+				adapterContext.selectionState().ordered.map((entry) => entry.reference),
+			);
+			const members =
+				group === null ? [] : sceneClusterMembers(stageScene(adapterContext.snapshot), group);
+			const lights = light === null ? members.filter(isLight) : [light];
+			return lights.map((member) => {
+				const guide = guideSegments(member, adapterContext);
+				return {
+					id: group === null ? 'light-guide' : `light-guide:${member.id}`,
 					role: 'selection' as const,
 					segments: guide.segments,
 					derivedSegments: guide.derivedSegments,
-				},
-			];
+					emitter: group === null ? undefined : member.position,
+				};
+			});
 		},
 		cardWriter(subject) {
 			if (subject.reference?.domain !== 'scene') return null;

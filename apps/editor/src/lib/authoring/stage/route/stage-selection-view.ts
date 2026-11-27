@@ -167,6 +167,17 @@ function layoutWorldPoint(
 	return [center[0], fragment.elevationMeters, center[1]];
 }
 
+function sceneIndexRelation(
+	cluster: ReturnType<typeof sceneClusterById>,
+	entity: ReturnType<typeof stageScene>['entities'][number] | null,
+	scene: ReturnType<typeof stageScene> | null,
+): Pick<StageIndexEntry, 'relation'> {
+	if (cluster !== null) return { relation: `Group · ${cluster.memberIds.length} items` };
+	if (entity === null || scene === null) return {};
+	const group = sceneClusterOf(scene, entity.id);
+	return group === null ? {} : { relation: `${sceneKindWord(entity.kind)} · in ${group.name}` };
+}
+
 /**
  * The read-only selection projection for one frame.
  *
@@ -283,14 +294,7 @@ export function createStageSelectionView() {
 				eligible: true,
 				revealed: false,
 				membership: 'included',
-				...(entity !== null && scenePayload !== null
-					? (() => {
-							const group = sceneClusterOf(scenePayload, entity.id);
-							return group === null
-								? {}
-								: { relation: `${sceneKindWord(entity.kind)} · in ${group.name}` };
-						})()
-					: {}),
+				...sceneIndexRelation(cluster, entity, scenePayload),
 			});
 		}
 
@@ -365,7 +369,7 @@ export function createStageSelectionView() {
 						sourceId: 'selection-set',
 						label: `${selectionSet.length} selected`,
 						kind: 'Selection',
-						status: 'No primary',
+						status: 'Scene',
 					};
 				const selected = input.selection;
 				if (selected === null) return null;
@@ -387,7 +391,7 @@ export function createStageSelectionView() {
 						? (entry?.kindWord ?? domainWord)
 						: selected.reference.subject.kind === 'cluster'
 							? `Group · ${cluster.memberIds.length} items`
-							: `${entry?.kindWord ?? domainWord} · in ${cluster.name}`;
+							: `${entry?.kindWord ?? domainWord} · in`;
 				return {
 					sourceId: selected.reference.subject.id,
 					label: label?.label ?? entry?.kindWord ?? domainWord,

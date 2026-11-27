@@ -122,6 +122,7 @@ export type StageHostToolTarget =
 
 /** One guide after the facade projects it into Stage CSS space. */
 export type StageGuideView = {
+	readonly emitter?: readonly [number, number] | null;
 	readonly id: string;
 	readonly role: StageGuideContribution['role'];
 	readonly segments: readonly (readonly [readonly [number, number], readonly [number, number]])[];

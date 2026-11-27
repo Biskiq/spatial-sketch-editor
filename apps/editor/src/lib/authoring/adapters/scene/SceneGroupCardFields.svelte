@@ -7,6 +7,7 @@
 	 * second selection model. The rows are read-only facts about membership; the
 	 * group's name and actions belong to the Card shell and the adapter.
 	 */
+	import type { Snippet } from 'svelte';
 	import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 	import { stageScene } from '$lib/authoring/stage/stage-adapter-host';
 	import {
@@ -15,7 +16,11 @@
 		sceneEntityTargetReference,
 	} from '../../scene/selection-target';
 
-	let { services }: { services: StageAdapterServices } = $props();
+	let { services, footer, secondary }: {
+		services: StageAdapterServices;
+		footer?: Snippet<[(string | false)?]>;
+		secondary?: Snippet;
+	} = $props();
 
 	function cluster() {
 		const primary = services.stage.selectionState().primary;
@@ -59,6 +64,8 @@
 			{/each}
 		</div>
 	</div>
+	{#if footer}{@render footer(false)}{/if}
+	{#if secondary}{@render secondary()}{/if}
 {/if}
 
 <style>

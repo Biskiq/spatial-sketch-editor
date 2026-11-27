@@ -121,6 +121,11 @@ export function createCoreRegionViews(input: {
 			get selection() {
 				return input.selection();
 			},
+			get selectionSet() {
+				if (input.selection() !== null) return [];
+				void shell.contributionsVersion;
+				return input.facade()?.selectionState().ordered ?? [];
+			},
 			get hover() {
 				return shell.armedHostTool === 'erase'
 					? shell.eraseHover
@@ -176,6 +181,11 @@ export function createCoreRegionViews(input: {
 		},
 		get hostTools() {
 			return shell.hostToolOverlay;
+		},
+		get selectMore() {
+			return input.lens() === 'world' && shell.selectMore
+				? { onDone: () => shell.setSelectMore(false) }
+				: null;
 		},
 		get lightGround() {
 			return paperVisible() || viewport.evaluation?.renderedReading === '3d';

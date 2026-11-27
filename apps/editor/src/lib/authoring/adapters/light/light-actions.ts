@@ -27,8 +27,8 @@ import {
 	type LightItRecipeOutcome,
 } from '../../look/light-recipes';
 import { entityById, lightById, nextEntityName, type Light } from './light-subjects';
-import { groupWithAction, rememberGroupWithOffer } from '../scene/group-card';
-import { sceneClusterOf } from '../../scene/selection-target';
+import { groupWithAction, rememberGroupWithOffer, showcaseAction } from '../scene/group-card';
+import { sceneClusterOf, sceneMemberEraseNotice } from '../../scene/selection-target';
 import { stageScene } from '$lib/authoring/stage/stage-adapter-host';
 
 type LightItSelectionRecipe = LightItRecipeOutcome;
@@ -103,6 +103,15 @@ export function lightItAction(
 		id: 'light-it',
 		label: 'Light it',
 		detail: lightItDetail(entity, selectedCount),
+		inline: true,
+		optionLabel: entity.kind === 'artwork' ? 'Picture spot' : 'Wash',
+		options: [
+			showcaseAction(services, {
+				entities: [entity],
+				front: entity.rotation,
+				subjectNames: entity.name,
+			}),
+		],
 		async run() {
 			const selectedOne = services.stage.selectionState().ordered.length === 1;
 			const prepared = lightItSelectionRecipe(services);
@@ -222,7 +231,7 @@ export function deleteLightAction(services: StageAdapterServices, light: Light):
 		label: 'Delete light',
 		compactLabel: 'Delete',
 		destructive: true,
-		detail: `Remove ${light.name}. Undo restores it.`,
+		detail: `Remove ${light.name}.${sceneMemberEraseNotice(stageScene(services.stage.snapshot()), light.id)} Undo restores it.`,
 		async run() {
 			const outcome = await acceptFormCommand(
 				services,

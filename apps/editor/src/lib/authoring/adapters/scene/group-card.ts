@@ -24,11 +24,13 @@ import {
 	horizontalFront,
 	type LightItBounds,
 } from '../../look/light-recipes';
+import { objectContact } from './object-readings';
 import { nextEntityName } from '../../scene/entity-names';
 import {
 	sceneClusterById,
 	sceneClusterMemberIds,
 	sceneClusterMembers,
+	sceneClusterOf,
 	sceneClusterReference,
 	sceneEntityTargetReference,
 } from '../../scene/selection-target';
@@ -82,8 +84,8 @@ function contactsOf(
 	const contacts: { readonly entityId: string; readonly contactMinY: number }[] = [];
 	for (const member of members) {
 		if (member.kind === 'light' || member.kind === 'artwork') continue;
-		const contact = services.stage.sceneBounds(member.id)?.min[1];
-		if (contact === undefined || !Number.isFinite(contact)) return null;
+		const contact = objectContact(services, member);
+		if (contact === null) return null;
 		contacts.push({ entityId: member.id, contactMinY: contact });
 	}
 	return contacts;
@@ -159,7 +161,7 @@ function duplicateGroupAction(
 	return {
 		id: 'scene-group-duplicate',
 		label: 'Duplicate',
-		group: 'secondary',
+		inline: true,
 		detail: `Add one copy of ${cluster.name}'s ${members.length} items, as a new group. Each item keeps its kind. Undo removes them.`,
 		async run() {
 			const contacts = contactsOf(services, members);
@@ -196,7 +198,7 @@ function ungroupAction(
 	return {
 		id: 'scene-group-ungroup',
 		label: 'Ungroup',
-		group: 'primary',
+		inline: true,
 		detail: `Dissolve ${cluster.name}; its ${cluster.memberIds.length} items stay selected as a set. One Undo restores the group.`,
 		async run() {
 			const outcome = await acceptGroup(
@@ -222,8 +224,9 @@ function eraseGroupAction(
 	const names = members.map((member) => member.name);
 	return {
 		id: 'scene-group-erase',
-		label: 'Erase group',
+		label: `Erase group · ${members.length} items`,
 		destructive: true,
+		confirmInCard: true,
 		detail: `Erases ${cluster.name} and its ${members.length} items: ${names.join(', ')}. One Undo restores them.`,
 		async run() {
 			const outcome = await acceptGroup(services, 'scene-group-erase', { clusterId: cluster.id }, [
@@ -239,7 +242,7 @@ function eraseGroupAction(
 }
 
 /** Showcase: Key, Fill and Rim as a new group; the subject stays out of it. */
-function showcaseAction(
+export function showcaseAction(
 	services: StageAdapterServices,
 	input: {
 		readonly entities: readonly SceneEntity[];
@@ -259,7 +262,7 @@ function showcaseAction(
 			if (prepared.kind === 'refused') return { kind: 'refused', message: prepared.message };
 			const live = services.stage.snapshot();
 			const clusterId = `cluster-${globalThis.crypto.randomUUID()}`;
-			const lights = prepared.recipes.map((recipe, index) => ({
+			const lights = prepared.recipes.map((recipe) => ({
 				entityId: `light-${globalThis.crypto.randomUUID()}`,
 				light: 'spot' as const,
 				name: nextEntityName(stageScene(live), recipe.name),
@@ -270,7 +273,6 @@ function showcaseAction(
 				rotation: [...recipe.rotation],
 				angle: recipe.angle,
 				range: recipe.range,
-				...(index === -1 ? {} : {}),
 			}));
 			const outcome = await acceptGroup(
 				services,
@@ -281,7 +283,6 @@ function showcaseAction(
 					lights,
 				},
 				[],
-				lights.map((light) => ({ kind: 'scene-entity' as const, id: light.entityId })),
 			);
 			if (outcome.kind === 'refused')
 				return { kind: 'refused', message: outcome.message ?? 'The Showcase was refused.' };
@@ -298,17 +299,23 @@ function lightItAction(
 	entities: readonly SceneEntity[],
 	subjectNames: string,
 ): StageCardAction {
+	const single = entities.length === 1 ? entities[0] : undefined;
+	const picture = single?.kind === 'artwork';
 	return {
 		id: 'scene-light-it',
 		label: 'Light it',
-		detail: `Places one Wash covering ${subjectNames}. It is not grouped. One undo.`,
+		inline: true,
+		optionLabel: picture ? 'Picture spot' : 'Wash',
+		detail: picture
+			? 'Places a Picture spot 1.4 m in front and 30° above, fitted to the Artwork. One Undo.'
+			: `Places one Wash covering ${subjectNames}. One Undo.`,
+		options: [showcaseAction(services, { entities, front: entities[0]?.rotation, subjectNames })],
 		async run() {
 			const bounds = boundsOf(services, entities);
 			if (bounds === null)
 				return { kind: 'refused', message: 'The selection has no evaluated bounds to light.' };
-			const single = entities.length === 1 ? entities[0]! : null;
 			const prepared =
-				single !== null && single.kind === 'artwork'
+				single?.kind === 'artwork'
 					? pictureSpotRecipe(single)
 					: washRecipe({ bounds, front: horizontalFront(single?.rotation) });
 			if (prepared.kind === 'refused') return { kind: 'refused', message: prepared.message };
@@ -349,18 +356,10 @@ function lightItForGroup(
 	services: StageAdapterServices,
 	members: readonly SceneEntity[],
 ): readonly StageCardAction[] {
-	const lit = members.some((member) => member.kind !== 'light');
-	if (!lit) return [];
-	const subjectNames = members.map((member) => member.name).join(', ');
-	const frontMember = members.find((member) => member.kind !== 'light') ?? members[0]!;
-	return [
-		lightItAction(services, members, subjectNames),
-		showcaseAction(services, {
-			entities: members,
-			front: frontMember.rotation,
-			subjectNames,
-		}),
-	];
+	const subjects = members.filter((member) => member.kind !== 'light');
+	return subjects.length === 0
+		? []
+		: [lightItAction(services, subjects, subjects.map((subject) => subject.name).join(', '))];
 }
 
 export function groupCardActions(
@@ -392,7 +391,7 @@ export function groupSetActions(services: StageAdapterServices): readonly StageC
 		if (reference.subject.kind === 'cluster') {
 			for (const id of sceneClusterMemberIds(scene, reference.subject.id)) {
 				const member = scene.entities.find((entity) => entity.id === id);
-				if (member !== undefined) entities.push(member);
+				if (member !== undefined && member.kind !== 'light') entities.push(member);
 			}
 		} else if (reference.subject.kind === 'entity') {
 			memberIds.push(reference.subject.id);
@@ -410,7 +409,8 @@ export function groupSetActions(services: StageAdapterServices): readonly StageC
 		{
 			id: 'scene-group-create',
 			label: 'Group',
-			group: 'primary',
+			inline: true,
+			disabled: groupBlocked,
 			detail: groupBlocked
 				? `Group: a group can’t hold another group. Ungroup ${groupNames} first.`
 				: `Group the ${entities.length} selected items as one rigid group. Each keeps its own kind and pose. One Undo.`,
@@ -439,28 +439,25 @@ export function groupSetActions(services: StageAdapterServices): readonly StageC
 				return { kind: 'accepted' };
 			},
 		},
-		...(lightBlocked
+		...(lightBlocked || entities.length === 0
 			? [
 					{
 						id: 'scene-light-it',
 						label: 'Light it',
-						detail: 'Light it: a light cannot be lit; select Artwork or an object.',
+						inline: true,
+						disabled: true,
+						detail: lightBlocked
+							? 'Light it: a light cannot be lit; select Artwork or an object.'
+							: 'Light it: select at least one object or Artwork.',
 						async run() {
 							return {
 								kind: 'refused' as const,
-								message: 'A light cannot be lit; select Artwork or an object.',
+								message: 'Select Artwork or an object to light.',
 							};
 						},
 					},
 				]
-			: [
-					lightItAction(services, entities, names),
-					showcaseAction(services, {
-						entities,
-						front: entities[0]?.rotation,
-						subjectNames: names,
-					}),
-				]),
+			: [lightItAction(services, entities, names)]),
 	];
 }
 
@@ -470,7 +467,7 @@ export function groupWithAction(
 	lightId: string,
 ): StageCardAction | null {
 	const snapshot = services.stage.snapshot();
-	const offer = groupWithOfferFor(snapshot.acceptedRevision.projectId, lightId);
+	const offer = groupWithOfferFor(services.stage.session, lightId);
 	if (offer === null) return null;
 	// The offer lives only while its own light is the selection.
 	const primary = services.stage.selectionState().primary;
@@ -482,11 +479,18 @@ export function groupWithAction(
 		return null;
 	const scene = stageScene(snapshot);
 	const subject = scene.entities.find((entity) => entity.id === offer.subjectId);
-	if (subject === undefined) return null;
+	const light = scene.entities.find((entity) => entity.id === lightId && entity.kind === 'light');
+	if (
+		subject === undefined ||
+		light === undefined ||
+		sceneClusterOf(scene, subject.id) ||
+		sceneClusterOf(scene, lightId)
+	)
+		return null;
 	return {
 		id: 'scene-group-with',
 		label: `Group with “${subject.name}”`,
-		detail: `Groups ${subject.name} and ${offer.subjectName} and selects the group. One undo.`,
+		detail: `Groups ${subject.name} and ${light.name} and selects the group. One Undo.`,
 		async run() {
 			const clusterId = `cluster-${globalThis.crypto.randomUUID()}`;
 			const outcome = await acceptGroup(
@@ -514,10 +518,5 @@ export function rememberGroupWithOffer(
 	lightId: string,
 	subject: SceneEntity,
 ): void {
-	setGroupWithOffer({
-		projectId: services.stage.snapshot().acceptedRevision.projectId,
-		lightId,
-		subjectId: subject.id,
-		subjectName: subject.name,
-	});
+	setGroupWithOffer(services.stage.session, { lightId, subjectId: subject.id });
 }

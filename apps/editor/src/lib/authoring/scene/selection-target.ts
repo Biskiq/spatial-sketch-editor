@@ -1,12 +1,8 @@
 /**
  * Group-first selection targets.
  *
- * A Scene group owns its members' selection: a click, an Index row or a hover
- * resolves a member to the group, and a member is only addressed once the
- * creator has drilled into the group (or the member is already the single
- * selection). These are read-only questions over the accepted Scene document, so
- * the Stage, the Index and the marks all agree on one answer. Nothing here
- * writes, plans or holds a lifetime.
+ * Stage clicks and hover address the group until the creator drills in. Index
+ * rows address members directly. Additive selection addresses top-level targets.
  */
 import type {
 	SceneDocument,
@@ -84,8 +80,11 @@ export function sceneClusterMembers(
 	scene: SceneGroupScope,
 	clusterId: string,
 ): readonly SceneEntity[] {
-	const ids = new Set(sceneClusterMemberIds(scene, clusterId));
-	return scene.entities.filter((entity) => ids.has(entity.id));
+	const entities = new Map(scene.entities.map((entity) => [entity.id, entity]));
+	return sceneClusterMemberIds(scene, clusterId).flatMap((id) => {
+		const member = entities.get(id);
+		return member === undefined ? [] : [member];
+	});
 }
 
 /**
@@ -129,7 +128,7 @@ export function topLevelSceneReference(
 }
 
 /**
- * The reference a Stage or Index hit selects.
+ * The reference a Stage hit selects.
  *
  * Group-first is the default. A treated member is an **addressed** member:
  *
@@ -178,6 +177,17 @@ export function selectedSceneClusterId(selected: readonly SemanticReference[]): 
 	if (selected.length !== 1) return null;
 	const only = selected[0]!;
 	return only.domain === 'scene' && only.subject.kind === 'cluster' ? only.subject.id : null;
+}
+
+/** Describe the membership consequence of deleting one member. */
+export function sceneMemberEraseNotice(scene: SceneGroupScope, entityId: string): string {
+	const group = sceneClusterOf(scene, entityId);
+	if (group === null) return '';
+	const remaining = sceneClusterMembers(scene, group.id).filter((member) => member.id !== entityId);
+	const names = remaining.map((member) => member.name || member.id).join(', ');
+	return remaining.length < 2
+		? ` ${group.name} dissolves. ${names} stays on the Stage, ungrouped.`
+		: ` ${group.name} keeps ${names}.`;
 }
 
 /** Whether every entry is a Scene entity with no group (the one Group with… case). */

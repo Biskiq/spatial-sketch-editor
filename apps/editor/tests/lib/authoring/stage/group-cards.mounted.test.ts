@@ -3,8 +3,7 @@
  * G1b — the Group and Set Cards, mounted.
  *
  * The Set Card lists every identity a primary-less set holds, states why Group
- * and Light it cannot run, and a row press is the one canonical single-subject
- * write. The Group Card lists membership in the group's own order and a member
+ * and Light it cannot run. The Group Card lists membership in the group's own order and a member
  * press drills into that member, never into a second selection model.
  */
 import { afterEach, describe, expect, it } from 'vitest';
@@ -13,8 +12,10 @@ import SceneSelectionSetFields from '$lib/authoring/adapters/scene/SceneSelectio
 import SceneGroupCardFields from '$lib/authoring/adapters/scene/SceneGroupCardFields.svelte';
 import { admitSelection, type StageSelectionState } from '$lib/authoring/stage/semantic-selection';
 import { sceneEntityReference } from '$lib/authoring/adapters/scene/placement';
-import { sceneClusterReference } from '$lib/authoring/scene/selection-target';
-import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
+import { showcaseAction } from '$lib/authoring/adapters/scene/group-card';
+import type { AuthoringIntent } from '@portfolio/project-model/f4';
+import { sceneClusterReference, sceneMemberEraseNotice } from '$lib/authoring/scene/selection-target';
+import { stageScene, type StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 import { bootProject, sceneUnitWith } from '../../../kit';
 import type { SceneEntity } from '@portfolio/project-model/scene';
 
@@ -60,17 +61,18 @@ async function stage() {
 				light('key'),
 				entity('loose'),
 			]),
-			clusters: [{ id: 'still-life', name: 'Still life', memberIds: ['still-a', 'still-b'] }],
+			clusters: [{ id: 'still-life', name: 'Still life', memberIds: ['still-b', 'still-a'] }],
 		},
 	});
 	const revision = snapshot.domain.unitRevisions.scene;
 	const group = sceneClusterReference('still-life', revision);
 	const a = sceneEntityReference('still-a', revision);
+	const loose = sceneEntityReference('loose', revision);
 	const b = sceneEntityReference('still-b', revision);
 	const key = sceneEntityReference('key', revision);
 	const writes: StageSelectionState[] = [];
 	let state = admitSelection(
-		{ ordered: [{ reference: group }, { reference: a }], primary: null },
+		{ ordered: [{ reference: group }, { reference: loose }], primary: null },
 		snapshot,
 	) as StageSelectionState;
 	const services = {
@@ -98,13 +100,13 @@ async function stage() {
 }
 
 describe('Set Card fields', () => {
-	it('lists a group and its member as two identities and explains both refusals', async () => {
+	it('lists each group and loose subject and explains the Group refusal', async () => {
 		const fixture = await stage();
 		const target = fixture.mountFields(SceneSelectionSetFields);
 		const rows = [...target.querySelectorAll('[data-set-row]')].map((row) =>
 			row.getAttribute('data-set-row'),
 		);
-		expect(rows).toEqual(['cluster:still-life', 'entity:still-a']);
+		expect(rows).toEqual(['cluster:still-life', 'entity:loose']);
 		expect(target.textContent).toContain('Still life');
 		expect(target.textContent).toContain('Group · 2 items');
 		expect(target.querySelector('[role="note"]')?.textContent).toContain(
@@ -128,15 +130,11 @@ describe('Set Card fields', () => {
 		expect(target.textContent).toContain('Light');
 	});
 
-	it('presses a row into one canonical single-subject selection', async () => {
+	it('keeps the rows informational and leaves selection unchanged', async () => {
 		const fixture = await stage();
 		const target = fixture.mountFields(SceneSelectionSetFields);
-		target.querySelector<HTMLButtonElement>('[data-set-row="cluster:still-life"]')!.click();
-		expect(fixture.writes).toHaveLength(1);
-		const write = fixture.writes[0]!;
-		expect(write.ordered).toHaveLength(1);
-		expect(write.primary).not.toBeNull();
-		expect(write.primary?.subject).toMatchObject({ kind: 'cluster', id: 'still-life' });
+		expect(target.querySelector('button[data-set-row]')).toBeNull();
+		expect(fixture.writes).toHaveLength(0);
 	});
 });
 
@@ -150,8 +148,8 @@ describe('Group Card members', () => {
 			) as StageSelectionState,
 		);
 		const target = fixture.mountFields(SceneGroupCardFields);
-		expect(target.textContent).toContain('still-a');
-		expect(target.textContent).toContain('still-b');
+		expect([...target.querySelectorAll('[data-group-member]')].map((row) => row.getAttribute('data-group-member')))
+			.toEqual(['still-b', 'still-a']);
 		const memberButton = [...target.querySelectorAll('button')].find((button) =>
 			button.textContent?.includes('still-b'),
 		)!;
@@ -159,5 +157,50 @@ describe('Group Card members', () => {
 		const write = fixture.writes.at(-1)!;
 		expect(write.ordered).toHaveLength(1);
 		expect(write.primary?.subject).toMatchObject({ kind: 'entity', id: 'still-b' });
+	});
+});
+
+it('states that erasing a member of a pair dissolves the group and preserves its sibling', async () => {
+	const { snapshot } = await stage();
+	const scene = stageScene(snapshot);
+	expect(sceneMemberEraseNotice(scene, 'still-b')).toContain(
+		'Still life dissolves. still-a stays on the Stage, ungrouped.',
+	);
+	expect(sceneMemberEraseNotice(scene, 'loose')).toBe('');
+});
+
+describe('Showcase action', () => {
+	it('captures all rig IDs in the single group intent', async () => {
+		const fixture = await stage();
+		const intents: AuthoringIntent[] = [];
+		const services = {
+			...fixture.services,
+			stage: {
+				...fixture.services.stage,
+				sceneBounds: () => ({ min: [-0.5, 0, -0.5], max: [0.5, 1, 0.5] }),
+				notifySurfaceChange: () => {},
+			},
+			authoring: { accept: async (intent: AuthoringIntent) => {
+				intents.push(intent);
+				return { kind: 'installed' };
+			} },
+		} as unknown as StageAdapterServices;
+		const action = showcaseAction(services, {
+			entities: [entity('loose')],
+			front: undefined,
+			subjectNames: 'loose',
+		});
+
+		expect(await action.run()).toEqual({ kind: 'accepted' });
+		expect(intents).toHaveLength(1);
+		expect(intents[0]).toMatchObject({
+			kind: 'create-light-rig',
+			allocatedIds: [],
+			payload: { name: 'Showcase', lights: [
+				{ entityId: expect.any(String), name: 'Key' },
+				{ entityId: expect.any(String), name: 'Fill' },
+				{ entityId: expect.any(String), name: 'Rim' },
+			] },
+		});
 	});
 });

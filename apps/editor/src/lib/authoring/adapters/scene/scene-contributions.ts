@@ -48,6 +48,7 @@ import { sceneGroupGeometry, sceneGroupMarkDescriptors } from './group-marks';
 import {
 	sceneClusterById,
 	sceneClusterMembers,
+	sceneMemberEraseNotice,
 	sceneClusterReference,
 } from '../../scene/selection-target';
 import { requestObjectsPrecision } from './shape/armed-tile';
@@ -368,9 +369,7 @@ export function createSceneContributions(
 		const entity = scene.entities.find((entity) => entity.id === subject.sourceId);
 		if (entity === undefined) return [];
 		if (!isSceneObjectEntity(entity)) return [];
-		// The object's exact fields are on the Card; the existing
-		// immediate commands stay beside them, so the creator does not have to
-		// open Compose to duplicate or delete the selected object.
+		// Immediate commands sit beside the object writer’s exact fields.
 		const studio = services.objectStudio;
 		return [
 			// The scoped root's generator revision is a Studio task; the World offers
@@ -431,7 +430,7 @@ export function createSceneContributions(
 				id: 'scene-object-delete',
 				label: 'Delete object',
 				destructive: true,
-				detail: `Remove ${entity.name}. Undo restores it.`,
+				detail: `Remove ${entity.name}.${sceneMemberEraseNotice(scene, entity.id)} Undo restores it.`,
 				async run() {
 					return deleteSceneObject(services, services.stage.snapshot(), entity.id);
 				},
@@ -487,16 +486,15 @@ export function createSceneContributions(
 		eraseAction(hit) {
 			if (hit.reference?.domain !== 'scene') return null;
 			const scene = stageScene(services.stage.snapshot());
-			const cluster = scene.entities.some((entity) => entity.id === hit.sourceId)
-				? (scene.clusters ?? []).find((entry) => entry.memberIds.includes(hit.sourceId))
-				: undefined;
-			if (cluster !== undefined) {
+			const cluster =
+				hit.reference.subject.kind === 'cluster' ? sceneClusterById(scene, hit.sourceId) : null;
+			if (cluster !== null) {
 				const groupAction = groupCardActions(services, cluster).find(
 					(candidate) => candidate.destructive === true,
 				);
 				return groupAction === undefined
 					? { kind: 'refused', message: 'That group cannot be erased.' }
-					: { kind: 'action', action: groupAction, confirm: false };
+					: { kind: 'action', action: groupAction, confirm: true };
 			}
 			const action = cardActions({
 				sourceId: hit.sourceId,
@@ -731,7 +729,7 @@ export function createSceneContributions(
 					const bounds = members
 						.map((member) => objectBounds(adapterContext, member))
 						.filter((entry): entry is { min: Vec3; max: Vec3 } => entry !== null);
-					const geometry = sceneGroupGeometry(bounds);
+					const geometry = sceneGroupGeometry(members, bounds);
 					if (geometry !== null)
 						return sceneGroupMarkDescriptors({
 							cluster,

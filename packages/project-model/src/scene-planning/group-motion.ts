@@ -41,6 +41,7 @@ export function planGroupTransform(input: {
 	readonly clusterId: string;
 	readonly motion: SceneGroupMotion;
 	readonly contacts: readonly SceneGroupMemberContact[];
+	readonly onProposed?: (members: readonly SceneEntity[]) => void;
 }): SceneGroupOperationResult {
 	const scene = input.context.scene;
 	const read = readCluster(scene, input.clusterId);
@@ -72,44 +73,40 @@ export function planGroupTransform(input: {
 		return refusal('no_op', 'A group Turn of zero leaves the accepted source unchanged.', ['yaw']);
 	}
 
-	const moved = new Map<string, SceneEntity>();
-	for (const entity of read.entities) {
-		const floorMember = entity.kind !== 'light' && entity.kind !== 'artwork';
-		const contactMinY = floorMember ? contacts.byId.get(entity.id) : undefined;
-		if (floorMember && contactMinY === undefined) {
+	const proposed = read.entities.map((entity): SceneEntity => {
+		if (input.motion.kind === 'move') {
+			return { ...entity, position: rigidMovePosition(entity.position, input.motion.deltaXZ) };
+		}
+		const free = entity.kind === 'light' || entity.kind === 'artwork';
+		return {
+			...entity,
+			position: rigidTurnPosition(entity.position, pivot!, input.motion.yaw),
+			rotation: free
+				? rigidTurnRotation(entity.rotation, input.motion.yaw)
+				: rigidYawAdd(entity.rotation, input.motion.yaw),
+		};
+	});
+	input.onProposed?.(proposed);
+	for (const [index, entity] of read.entities.entries()) {
+		if (entity.kind === 'light' || entity.kind === 'artwork') continue;
+		const contactMinY = contacts.byId.get(entity.id);
+		if (contactMinY === undefined) {
 			return refusal(
 				'missing-contact-metadata',
 				`Group member "${entity.name}" (${entity.id}) has no captured contact height.`,
 				[entity.id, 'contactMinY'],
 			);
 		}
-		let position: Vec3;
-		let rotation = entity.rotation;
-		if (input.motion.kind === 'move') {
-			position = rigidMovePosition(entity.position, input.motion.deltaXZ);
-		} else {
-			position = rigidTurnPosition(entity.position, pivot!, input.motion.yaw);
-			rotation = floorMember
-				? rigidYawAdd(entity.rotation, input.motion.yaw)
-				: rigidTurnRotation(entity.rotation, input.motion.yaw);
-		}
-		if (floorMember) {
-			const support = resolveDestinationSupport({
-				context: input.context,
-				entity,
-				contactMinY: contactMinY!,
-				point: [position[0], position[2]],
-			});
-			if (support.kind !== 'resolved') {
-				return groupSupportRefusal(entity, [position[0], position[2]], support);
-			}
-		}
-		moved.set(entity.id, {
-			...entity,
-			position,
-			rotation: [rotation[0], rotation[1], rotation[2]] as Vec3,
+		const [x, , z] = proposed[index]!.position;
+		const support = resolveDestinationSupport({
+			context: input.context,
+			entity,
+			contactMinY,
+			point: [x, z],
 		});
+		if (support.kind !== 'resolved') return groupSupportRefusal(entity, [x, z], support);
 	}
+	const moved = new Map(proposed.map((member) => [member.id, member]));
 
 	const entities = scene.entities.map((entity) => moved.get(entity.id) ?? entity);
 	const scope: Omit<SceneRecordScope, 'operationKind'> = {

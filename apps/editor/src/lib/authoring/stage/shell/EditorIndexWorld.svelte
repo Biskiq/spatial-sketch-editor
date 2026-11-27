@@ -10,7 +10,7 @@
 		onScope: (scope: WorldScope) => void;
 		selectionId: string | null;
 		query: string;
-		onSelect: (id: string) => void;
+		onSelect: (id: string, additive?: boolean) => void;
 		onReveal: (id: string) => void;
 		onRename: (id: string) => void;
 		locationsOpen: boolean;
@@ -169,8 +169,8 @@
 						aria-disabled={!item.eligible}
 						aria-label={accessibleName(item)}
 						title={item.eligible ? item.label : membershipLabel(item.membership)}
-						onclick={() => {
-							if (item.eligible) onSelect(item.sourceId);
+						onclick={(event) => {
+							if (item.eligible) onSelect(item.sourceId, event.shiftKey);
 						}}
 						ondblclick={() => {
 							if (!item.eligible) return;
@@ -179,7 +179,7 @@
 						}}
 					>
 						<ShellIcon
-							name={rowKind(item.group)?.icon ?? 'dot'}
+							name={item.sourceId.startsWith('scene:cluster:') ? 'group' : (rowKind(item.group)?.icon ?? 'dot')}
 							size={15}
 						/>
 						<span class="item-name" class:generated={!item.authored}>{item.label}</span>

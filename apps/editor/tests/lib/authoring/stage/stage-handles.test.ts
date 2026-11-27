@@ -604,7 +604,7 @@ describe('disclosure through the Stage host', () => {
 			'utf8'
 		);
 		expect(paper).toContain(
-			'paperMarkSet(drawing, selection, hover, hoverTone, clusterMembers)'
+			'paperMarkSet(drawing, selection, hover, hoverTone, clusterMembers, selectionSet)'
 		);
 		expect(paper).toContain('createPaperMarkScene(marks');
 		const marks = readFileSync(

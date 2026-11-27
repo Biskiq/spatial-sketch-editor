@@ -8,6 +8,7 @@
  * `scene-group-transform` planner; admission, projection and hit testing stay
  * with the host's one mark vocabulary.
  */
+import { rigidPivot } from '@portfolio/project-model/scene-planning';
 import type { Vec3 } from '@portfolio/project-model/scene';
 import type { SceneObjectCluster } from '@portfolio/project-model/scene';
 import type { StageHandleDescriptor } from '$lib/authoring/stage/stage-adapter-host';
@@ -42,25 +43,23 @@ export type SceneGroupGeometry = {
 
 /** The union geometry of the group's evaluated member bounds. */
 export function sceneGroupGeometry(
+	members: readonly { readonly position: Vec3 }[],
 	bounds: readonly { readonly min: Vec3; readonly max: Vec3 }[],
 ): SceneGroupGeometry | null {
-	if (bounds.length === 0) return null;
-	let minX = Infinity;
-	let maxX = -Infinity;
-	let minY = Infinity;
-	let minZ = Infinity;
-	let maxZ = -Infinity;
-	for (const entry of bounds) {
-		minX = Math.min(minX, entry.min[0]);
-		maxX = Math.max(maxX, entry.max[0]);
-		minY = Math.min(minY, entry.min[1]);
-		minZ = Math.min(minZ, entry.min[2]);
-		maxZ = Math.max(maxZ, entry.max[2]);
-	}
-	if (![minX, maxX, minY, minZ, maxZ].every(Number.isFinite)) return null;
-	const center: Vec3 = [(minX + maxX) / 2, minY, (minZ + maxZ) / 2];
-	const radius = Math.max(0.2, Math.max(maxX - minX, maxZ - minZ) / 2);
-	return { center, baseY: minY, radius };
+	const pivot = rigidPivot(members.map((member) => member.position));
+	if (pivot === null) return null;
+	const { x, z } = pivot;
+	const baseY = Math.min(...members.map((member) => member.position[1]));
+	const radius = Math.max(
+		0.2,
+		...bounds.flatMap(({ min, max }) => [
+			Math.abs(x - min[0]),
+			Math.abs(max[0] - x),
+			Math.abs(z - min[2]),
+			Math.abs(max[2] - z),
+		]),
+	);
+	return { center: [x, baseY, z], baseY, radius };
 }
 
 export function sceneGroupMarkDescriptors(input: {

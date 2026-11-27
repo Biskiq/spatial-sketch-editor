@@ -106,6 +106,7 @@ export type StageKeyboardInput = {
 	readonly selectionPresent: () => boolean;
 	readonly closeSelection: () => void;
 	/** A single drilled member returns to its group; false leaves the rung. */
+	readonly exitSelectMore?: () => boolean;
 	readonly drillOutOfGroup?: () => boolean;
 	/** ⌘G groups the set; ⇧⌘G ungroups the selected group. */
 	readonly groupSelection?: (ungroup: boolean) => void;
@@ -207,6 +208,7 @@ export function createStageKeyboard(input: StageKeyboardInput): StageKeyboard {
 			input.cancelSliceDraft?.();
 			return 'handled';
 		},
+		'select-more': () => (input.exitSelectMore?.() === true ? 'handled' : 'pass'),
 		palette: () => {
 			const armedKey = input.armedDockKey();
 			if (input.task() === null || armedKey?.palette !== true || !input.paletteOpen())
@@ -315,8 +317,6 @@ export function createStageKeyboard(input: StageKeyboardInput): StageKeyboard {
 			input.groupSelection?.(event.shiftKey === true);
 			return;
 		}
-		// Esc precedence: a live marker gesture, then place, then Look through,
-		// then the Card's own unwinding.
 		const activeLayer = input.activeLayer();
 		if (event.key === 'Escape' && activeLayer !== null) {
 			if (activeLayer.key(event, 'capture') === 'claimed') {

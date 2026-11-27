@@ -187,7 +187,7 @@
 		},
 		{
 			"path": "apps/editor/src/lib/authoring/stage/shell/EditorCard.svelte",
-			"lines": 798,
+			"lines": 792,
 			"reason": "The Card root: identity, writer, actions and one confirmation share one selected subject and one close/focus protocol."
 		},
 		{
@@ -362,7 +362,7 @@
 		},
 		{
 			"path": "apps/editor/src/lib/authoring/adapters/scene/scene-contributions.ts",
-			"lines": 822,
+			"lines": 820,
 			"reason": "The Scene adapter's read-only projections: subjects, marks and card facts share one snapshot reader."
 		},
 		{
@@ -392,7 +392,7 @@
 		},
 		{
 			"path": "apps/editor/src/lib/authoring/stage/route/stage-shell-commands.ts",
-			"lines": 751,
+			"lines": 748,
 			"reason": "The shell command entry keeps tool arming and task lifecycle; hit/source selection and its card links live in stage-shell-selection."
 		},
 		{
@@ -402,7 +402,7 @@
 		},
 		{
 			"path": "apps/editor/src/lib/authoring/stage/shell/StageCanvas.svelte",
-			"lines": 705,
+			"lines": 697,
 			"reason": "The one persistent Stage Canvas: renderer, reading and lens share one mounted Threlte canvas."
 		},
 		{
@@ -667,7 +667,7 @@
 			"file": "apps/editor/src/lib/authoring/stage/route/stage-input.svelte.ts",
 			"name": "createStageInputArbiter",
 			"line": 97,
-			"lines": 785,
+			"lines": 784,
 			"reason": "The one mounted Stage dispatcher: press, move, release, hover and interruption share a single precedence order and press tracker; extracting a phase would duplicate the ordering contract."
 		},
 		{
@@ -716,7 +716,7 @@
 			"file": "apps/editor/src/lib/authoring/stage/route/stage-shell-commands.ts",
 			"name": "createStageShellCommands",
 			"line": 85,
-			"lines": 665,
+			"lines": 662,
 			"reason": "One command surface: the armed dock/world tool, contributed tasks and their instrument share the shell state; selection delegates to its own factory."
 		},
 		{
@@ -814,7 +814,7 @@
 			"file": "apps/editor/src/lib/authoring/adapters/scene/scene-contributions.ts",
 			"name": "createSceneContributions",
 			"line": 243,
-			"lines": 554,
+			"lines": 551,
 			"reason": "The Scene adapter's read-only projections over one snapshot reader."
 		},
 		{
@@ -975,7 +975,7 @@
 			"file": "apps/editor/src/lib/authoring/stage/route/stage-keyboard.ts",
 			"name": "createStageKeyboard",
 			"line": 132,
-			"lines": 355,
+			"lines": 354,
 			"reason": "The Stage keyboard router over one precedence ladder and one active gesture."
 		},
 		{
@@ -1150,7 +1150,7 @@
 			"file": "apps/editor/src/lib/authoring/stage/route/stage-selection-view.ts",
 			"name": "createStageSelectionView",
 			"line": 169,
-			"lines": 300,
+			"lines": 293,
 			"reason": "The Stage selection view over one canonical selection and one facade read."
 		},
 		{
@@ -1220,7 +1220,7 @@
 			"file": "apps/editor/src/lib/authoring/workspace/host/wiring/stage-region-models.svelte.ts",
 			"name": "createStageRegionModels",
 			"line": 51,
-			"lines": 272,
+			"lines": 258,
 			"reason": "Baseline exception: the owning split removes this entry."
 		},
 		{
@@ -1283,7 +1283,7 @@
 			"file": "apps/editor/src/lib/authoring/adapters/scene.adapter.ts",
 			"name": "catalogueLabel",
 			"line": 70,
-			"lines": 221,
+			"lines": 220,
 			"reason": "The catalogue label projection over one material vocabulary."
 		},
 		{
@@ -1304,7 +1304,7 @@
 			"file": "apps/editor/src/lib/authoring/stage/route/stage-shell-selection.ts",
 			"name": "createStageShellSelection",
 			"line": 22,
-			"lines": 305,
+			"lines": 295,
 			"reason": "The shell selection commands over one canonical selection slot."
 		},
 		{
@@ -1332,7 +1332,7 @@
 			"file": "apps/editor/src/lib/authoring/adapters/scene/group-session.ts",
 			"name": "createSceneGroupSession",
 			"line": 125,
-			"lines": 361,
+			"lines": 360,
 			"reason": "The rigid group Move/Turn session: gesture lease, member candidate previews and the one atomic group acceptance share one planned motion and one release path."
 		}
 	],

@@ -1,9 +1,11 @@
 <script lang="ts">
 	import ShellIcon from './ShellIcon.svelte';
+	import EditorCardActionButton from './EditorCardActionButton.svelte';
 	import type { StageCardActionRecord } from '../stage-facade';
 
 	let {
 		advanced,
+		showAdvanced,
 		moreOpen,
 		onToggleMore,
 		onBringIntoView,
@@ -15,6 +17,7 @@
 		onCancel
 	}: {
 		advanced?: string;
+		showAdvanced: boolean;
 		moreOpen: boolean;
 		onToggleMore: () => void;
 		onBringIntoView?: () => void;
@@ -30,17 +33,14 @@
 <div class="footer">
 	<div class="footer-lead">
 		{#if onBringIntoView}<button type="button" aria-label="Bring into view" title="Bring into view" onclick={() => onBringIntoView?.()}><ShellIcon name="fit" size={15} /></button>{/if}
-		<button type="button" class="more" aria-expanded={moreOpen} data-card-more onclick={onToggleMore}
+		{#if showAdvanced}<button type="button" class="more" aria-expanded={moreOpen} data-card-more onclick={onToggleMore}
 			title={advanced === undefined ? 'Advanced' : `Advanced: ${advanced}`}
-			><span>Advanced</span>{#if advanced}<span class="more-summary">{advanced}</span>{/if}<span class="chev" class:open={moreOpen} aria-hidden="true">⌄</span></button>
+			><span>Advanced</span>{#if advanced}<span class="more-summary">{advanced}</span>{/if}<span class="chev" class:open={moreOpen} aria-hidden="true">⌄</span></button>{/if}
 	</div>
 	{#if footerActions.length > 0}
 		<div class="footer-actions">
 			{#each footerActions as action (`${action.adapterId}:${action.id}`)}
-				<button type="button" class="footer-action" class:danger={action.destructive === true}
-					data-card-footer-action={action.id} disabled={actionBusy}
-					title={action.detail}
-					onclick={(event) => onRunAction(action, event.currentTarget)}>{action.compactLabel ?? action.label}</button>
+				<EditorCardActionButton {action} {actionBusy} {onRunAction} />
 			{/each}
 		</div>
 	{/if}
@@ -73,7 +73,7 @@
 	button:hover {
 		background: var(--shell-hover);
 	}
-	.footer button:not(.more):not(.footer-action) {
+	.footer button:not(.more) {
 		width: 24px;
 		padding: 0;
 	}
@@ -112,16 +112,8 @@
 		display: flex;
 		align-items: center;
 		gap: 2px;
-		flex: none;
-	}
-	.footer .footer-action {
-		width: auto;
-		padding: 0 5px;
-		font-size: var(--shell-text-utility);
-		color: var(--shell-ink);
-	}
-	.footer .footer-action.danger {
-		color: var(--shell-refuse);
+		flex-wrap: wrap;
+		justify-content: flex-end;
 	}
 	.chev {
 		display: inline-block;

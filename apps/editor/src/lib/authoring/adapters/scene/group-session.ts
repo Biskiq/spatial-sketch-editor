@@ -33,6 +33,7 @@ import {
 import type { SceneEntity, SceneObjectCluster, Vec3 } from '@portfolio/project-model/scene';
 import {
 	planGroupTransform,
+	rigidPivot,
 	type SceneGroupMemberContact,
 	type SceneGroupMotion,
 } from '@portfolio/project-model/scene-planning';
@@ -44,7 +45,8 @@ import {
 	isSceneGroupMarkId,
 	SCENE_GROUP_MARK,
 } from './group-marks';
-import { objectContact } from './object-readings';
+import { admittedModelFootprint, objectContact } from './object-readings';
+import { groupFreeMemberPreview } from './group-preview';
 import { type SceneCandidate } from './placement';
 
 const FRAME = { origin: [0, 0, 0] as Vec3, yaw: 0 };
@@ -80,11 +82,9 @@ type GroupGesture = {
 	/** A press on the group's body, not one of its marks. */
 	readonly bodyPress: boolean;
 	readonly markId: 'move' | 'turn';
-	readonly members: readonly SceneEntity[];
 	readonly contacts: readonly SceneGroupMemberContact[];
 	/** The group's base plane at the press, in metres. */
 	readonly baseY: number;
-	/** The group centre's world XZ at the press. */
 	readonly centerXZ: readonly [number, number];
 	/** The pointer's world XZ on the base plane at the press. */
 	readonly grabXZ: readonly [number, number];
@@ -169,21 +169,17 @@ export function createSceneGroupSession(
 	}
 
 	function applyPlan(current: GroupGesture, context: StageAdapterContext): void {
+		current.candidate = null;
 		const result = planGroupTransform({
 			context: operationContext(context),
 			clusterId: current.clusterId,
 			motion: current.motion,
 			contacts: current.contacts,
+			onProposed: (members) => {
+				current.candidate = members;
+			},
 		});
-		if (result.kind === 'rejected') {
-			current.candidate = null;
-			current.refusal = result.message;
-			return;
-		}
-		current.candidate = current.members.map(
-			(member) => result.scene.entities.find((entity) => entity.id === member.id) ?? member,
-		);
-		current.refusal = null;
+		current.refusal = result.kind === 'rejected' && result.code !== 'no_op' ? result.message : null;
 	}
 
 	function pointer(intent: StagePointerIntent, context: StageAdapterContext): boolean {
@@ -206,8 +202,6 @@ export function createSceneGroupSession(
 					tool: null,
 					...(intent.coarse === undefined ? {} : { coarse: intent.coarse }),
 				});
-				// A press anywhere on a member is a press on the group, because the
-				// group is the identity the Stage addresses while it is selected.
 				if (
 					picked.kind !== 'resolved' ||
 					picked.hit.reference?.domain !== 'scene' ||
@@ -234,10 +228,9 @@ export function createSceneGroupSession(
 				contacts.push({ entityId: member.id, contactMinY });
 			}
 			if (!Number.isFinite(baseY)) return false;
-			const centerXZ: [number, number] = [
-				members.reduce((sum, member) => sum + member.position[0], 0) / members.length,
-				members.reduce((sum, member) => sum + member.position[2], 0) / members.length,
-			];
+			const pivot = rigidPivot(members.map((member) => member.position));
+			if (pivot === null) return false;
+			const centerXZ = [pivot.x, pivot.z] as const;
 			const grabXZ = planePoint(context, intent.css, baseY);
 			if (grabXZ === null) return false;
 			const acquisition = services.stage.acquireGesture({
@@ -262,7 +255,6 @@ export function createSceneGroupSession(
 				pressCss: [intent.css[0], intent.css[1]],
 				bodyPress,
 				markId,
-				members,
 				contacts,
 				baseY,
 				centerXZ,
@@ -330,8 +322,10 @@ export function createSceneGroupSession(
 					current.candidate = null;
 					current.refusal = 'The pointer is not on the turn plane.';
 				} else {
-					const delta = normalizeAngle(bearingAt(point, current.centerXZ) - current.startAngle);
-					current.motion = { kind: 'turn', yaw: Number(delta.toFixed(9)) };
+					const delta = normalizeAngle(current.startAngle - bearingAt(point, current.centerXZ));
+					const step = Math.PI / 12;
+					const yaw = intent.altKey ? delta : Math.round(delta / step) * step;
+					current.motion = { kind: 'turn', yaw: Number(yaw.toFixed(9)) };
 					applyPlan(current, context);
 				}
 			}
@@ -339,18 +333,15 @@ export function createSceneGroupSession(
 			return true;
 		}
 
-		// Release: one captured rigid candidate, one F4 intent, one history entry.
 		const preview = current;
 		end();
 		if (preview.bodyPress && !movedEnough(preview.pressCss, intent.css)) {
 			services.stage.notifySurfaceChange();
 			return true;
 		}
-		if (preview.candidate === null) {
-			refusal = {
-				clusterId: preview.clusterId,
-				message: preview.refusal ?? 'That drag named no rigid transform.',
-			};
+		if (preview.candidate === null || preview.refusal !== null) {
+			if (preview.refusal !== null)
+				refusal = { clusterId: preview.clusterId, message: preview.refusal };
 			services.stage.notifySurfaceChange();
 			return true;
 		}
@@ -404,16 +395,12 @@ export function createSceneGroupSession(
 		return Math.hypot(release[0] - press[0], release[1] - press[1]) >= 4;
 	}
 
-	function memberCandidates(adapterContext: StageAdapterContext): readonly SceneCandidate[] {
+	function memberCandidates(): readonly SceneCandidate[] {
 		prune();
 		const current = gesture;
 		if (current?.candidate === null || current?.candidate === undefined) return [];
-		const scene = stageScene(adapterContext.snapshot);
-		const candidates: SceneCandidate[] = [];
-		for (const planned of current.candidate) {
-			const accepted = scene.entities.find((entity) => entity.id === planned.id);
-			if (accepted === undefined) continue;
-			candidates.push({
+		return current.candidate.map(
+			(planned): SceneCandidate => ({
 				kind: current.motion.kind === 'move' ? 'move' : 'yaw',
 				entityId: planned.id,
 				primitive: null,
@@ -421,12 +408,11 @@ export function createSceneGroupSession(
 				rotation: [...planned.rotation] as Vec3,
 				worldXZ: [planned.position[0], planned.position[2]],
 				yaw: planned.rotation[1],
-				scale: 1,
+				scale: planned.kind === 'primitive' || planned.kind === 'model' ? (planned.scale ?? 1) : 1,
 				snappedStep: null,
 				...(planned.kind === 'form' ? { form: planned.form } : {}),
-			});
-		}
-		return candidates;
+			}),
+		);
 	}
 
 	return {
@@ -460,7 +446,7 @@ export function createSceneGroupSession(
 		ghosts(adapterContext) {
 			prune();
 			const current = gesture;
-			const candidates = memberCandidates(adapterContext);
+			const candidates = memberCandidates();
 			if (current === null) return [];
 			const scene = stageScene(adapterContext.snapshot);
 			const ghosts: StageGhostMesh[] = [];
@@ -468,7 +454,12 @@ export function createSceneGroupSession(
 				const entity = scene.entities.find((entry) => entry.id === candidate.entityId);
 				if (entity === undefined) continue;
 				const ghost = candidateGhost(entity, candidate, {
-					modelFootprint: null,
+					modelFootprint:
+						entity.kind === 'model'
+							? admittedModelFootprint(adapterContext.snapshot, entity.assetId)
+							: null,
+					modelContactMinY: current.contacts.find((entry) => entry.entityId === entity.id)
+						?.contactMinY,
 					treatment: current.refusal === null ? 'subject' : 'refused',
 				});
 				if (ghost !== null) ghosts.push({ ...ghost, id: `scene-group-${candidate.entityId}` });
@@ -477,10 +468,18 @@ export function createSceneGroupSession(
 		},
 		candidatePreviews(adapterContext) {
 			prune();
-			if (gesture === null) return [];
-			return memberCandidates(adapterContext).flatMap((candidate) => {
-				const outline = presentCandidate(adapterContext, candidate);
-				return outline === null ? [] : [outline];
+			const current = gesture;
+			if (current?.candidate == null) return [];
+			const role = current.refusal === null ? 'subject' : 'refused';
+			const plan = adapterContext.evaluation.renderedReading === 'plan';
+			return memberCandidates().flatMap((candidate, index) => {
+				const member = current.candidate![index]!;
+				const outline =
+					groupFreeMemberPreview(member, adapterContext) ??
+					(plan ? presentCandidate(adapterContext, candidate) : null);
+				return outline === null
+					? []
+					: [{ ...outline, id: `scene-group-outline:${member.id}`, role }];
 			});
 		},
 	};

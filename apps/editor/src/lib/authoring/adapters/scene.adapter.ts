@@ -197,13 +197,12 @@ export const createAdapter: StageAdapterFactory = (services: StageAdapterService
 							adapterContext.snapshot.domain.datumMeters,
 						);
 					}
+					const groupOutlines = group.candidatePreviews(adapterContext);
+					if (groupOutlines.length > 0) return groupOutlines;
 					// Plan hides the Canvas ghost, so a mark gesture's proposal is drawn
 					// there as its dashed footprint in the ghost colour.
 					if (adapterContext.evaluation.settledReading === 'plan') {
 						marks.prune();
-						group.prune();
-						const groupOutlines = group.candidatePreviews(adapterContext);
-						if (groupOutlines.length > 0) return groupOutlines;
 						const markOutline = presentMarkOutline(adapterContext, marks.candidate());
 						if (markOutline !== null) return [markOutline];
 					}

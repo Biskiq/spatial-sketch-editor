@@ -19,6 +19,7 @@ export type StageInputWiring = Omit<
 	| 'task'
 	| 'dockToolArmed'
 	| 'adapterTapOnly'
+	| 'selectMore'
 	| 'eraseHover'
 	| 'setEraseHover'
 	| 'setPaintHover'
@@ -48,6 +49,7 @@ export function wireStageInput(input: StageInputWiring) {
 		paintTool: () => input.shell.paintTool,
 		task: () => input.shell.task,
 		dockToolArmed: () => input.shell.armedTool !== null,
+		selectMore: () => input.shell.selectMore,
 		adapterTapOnly: () => input.shell.activeWorldTool === 'room',
 		planView: input.planView,
 		previewing: input.previewing,

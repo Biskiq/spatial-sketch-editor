@@ -21,6 +21,7 @@ export const ESCAPE_LADDER = [
 	{ rung: 'paint-tool', owner: 'appearance' },
 	// Return to the last committed segment before putting the cut back.
 	{ rung: 'slice-draft', owner: 'layout-readings' },
+	{ rung: 'select-more', owner: 'core' },
 	{ rung: 'palette', owner: 'core' },
 	// Read the focus before closing a task or strip so Select can take it.
 	{ rung: 'task', owner: 'core' },

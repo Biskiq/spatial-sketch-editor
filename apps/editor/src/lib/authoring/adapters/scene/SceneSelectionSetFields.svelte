@@ -4,17 +4,15 @@
 	 *
 	 * A set has no primary, so its Card lists every identity it holds: a group
 	 * reads as `Group · N items`, an object as its kind, and a light as `Light`.
-	 * Pressing a row selects that one subject, which is the same canonical write
-	 * the Stage uses. The reasons a set cannot Group or Light it are stated here,
-	 * in the owning domain's words, and never as a disabled control with no
-	 * explanation.
+	 * Disabled actions keep their explanation beside the list.
 	 */
 	import type { Snippet } from 'svelte';
 	import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 	import { stageScene } from '$lib/authoring/stage/stage-adapter-host';
-	import { sceneClusterById, sceneClusterMemberIds } from '../../scene/selection-target';
+	import { groupSetActions } from './group-card';
+	import { sceneClusterById } from '../../scene/selection-target';
 
-	let { services, secondary }: { services: StageAdapterServices; secondary?: Snippet<[Snippet?]> } =
+	let { services, footer }: { services: StageAdapterServices; footer?: Snippet<[(string | false)?]> } =
 		$props();
 
 	const scene = () => stageScene(services.stage.snapshot());
@@ -50,62 +48,26 @@
 		});
 	}
 
-	function reasons(): readonly string[] {
-		const selection = services.stage.selectionState();
-		const current = scene();
-		const lines: string[] = [];
-		const groups = selection.ordered
-			.filter(
-				(entry) =>
-					entry.reference.domain === 'scene' && entry.reference.subject.kind === 'cluster',
-			)
-			.map((entry) => sceneClusterById(current, entry.reference.subject.id)?.name ?? 'a group');
-		if (groups.length > 0)
-			lines.push(
-				`Group: a group can’t hold another group. Ungroup ${groups.join(', ')} first.`,
-			);
-		const hasLight = selection.ordered.some((entry) => {
-			if (entry.reference.domain !== 'scene') return false;
-			if (entry.reference.subject.kind === 'cluster') {
-				return sceneClusterMemberIds(current, entry.reference.subject.id).some(
-					(id) => current.entities.find((entity) => entity.id === id)?.kind === 'light',
-				);
-			}
-			return (
-				current.entities.find((entity) => entity.id === entry.reference.subject.id)?.kind ===
-				'light'
-			);
-		});
-		if (hasLight) lines.push('Light it: a light cannot be lit; select Artwork or an object.');
-		return lines;
-	}
-
-	function select(reference: (ReturnType<typeof rows>)[number]['reference']): void {
-		services.stage.setSelection({ ordered: [{ reference }], primary: reference });
+	function reasons(): string[] {
+		return groupSetActions(services).flatMap((action) =>
+			action.disabled && action.detail !== undefined ? [action.detail] : []);
 	}
 </script>
 
 <div class="set-fields" data-selection-set-card-fields aria-label="Selected subjects">
 	<div class="rows">
 		{#each rows() as row (row.id)}
-			<button
-				type="button"
-				class="row"
-				data-set-row={row.id}
-				title={`Select ${row.name}`}
-				onclick={() => select(row.reference)}
-			>
+			<div class="row" data-set-row={row.id}>
 				<span class="name">{row.name}</span>
 				<span class="kind">{row.kind}</span>
-				<span class="go" aria-hidden="true">›</span>
-			</button>
+			</div>
 		{/each}
 	</div>
 	{#if reasons().length > 0}
 		<p class="why" role="note">{reasons().join(' ')}</p>
 	{/if}
-	{#if secondary}{@render secondary()}{/if}
 </div>
+{#if footer}{@render footer(false)}{/if}
 
 <style>
 	.set-fields {
@@ -127,10 +89,6 @@
 		color: var(--shell-ink);
 		font: 12px var(--shell-sans);
 		text-align: left;
-		cursor: pointer;
-	}
-	.row:hover {
-		background: var(--shell-field);
 	}
 	.row .name {
 		flex: 1;
@@ -141,9 +99,6 @@
 	.row .kind {
 		color: var(--shell-ink-2);
 		font-size: 10.5px;
-	}
-	.row .go {
-		color: var(--shell-ink-3);
 	}
 	.why {
 		margin: 6px 6px 0;

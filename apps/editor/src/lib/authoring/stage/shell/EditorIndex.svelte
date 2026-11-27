@@ -31,7 +31,7 @@
 		selectionId: string | null;
 		query: string;
 		onQuery: (q: string) => void;
-		onSelect: (id: string) => void;
+		onSelect: (id: string, additive?: boolean) => void;
 		onBringIntoView: (id: string) => void;
 		onReveal: (id: string) => void;
 		/** Double-click on a row renames through the selected subject's Card writer. */

@@ -87,6 +87,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 	const selection = createStageShellSelection({
 		...input,
 		armWorldTool: (id) => armWorldTool(id),
+		notice: input.notice,
 		selectMore: () => input.shell.selectMore,
 		setSelectMore: (value) => input.shell.setSelectMore(value),
 	});
@@ -96,9 +97,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 		selectUnfoldedSubject,
 		selectSource,
 		selectStageReference,
-		applySelection,
 		drillOutOfGroup,
-		selectMember,
 		closeSelection,
 		openSpaceCreated,
 		closeCard,
@@ -642,7 +641,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 		if (selected === null || destructive.length !== 1) {
 			shell.setPendingDelete(null);
 			input.notice(
-				selected === null ? 'Select a subject to delete it.' : 'Nothing here can be deleted.',
+				selected === null ? 'Select one subject or a group.' : 'Nothing here can be deleted.',
 			);
 			return;
 		}
@@ -719,9 +718,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 		selectUnfoldedSubject,
 		selectSource,
 		selectStageReference,
-		applySelection,
 		drillOutOfGroup,
-		selectMember,
 		groupSelection,
 		closeSelection,
 		closeCard,

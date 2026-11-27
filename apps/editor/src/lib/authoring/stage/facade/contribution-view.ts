@@ -383,6 +383,7 @@ export function createContributionView(input: ContributionViewPort) {
 			try {
 				return (entry.contributions.guides?.(handle.context) ?? []).map((guide) => ({
 					id: guide.id,
+					...(guide.emitter === undefined ? {} : { emitter: project(guide.emitter) }),
 					role: guide.role,
 					segments: segmentsOf(guide.segments),
 					derivedSegments: segmentsOf(guide.derivedSegments ?? []),
@@ -625,7 +626,6 @@ export function createContributionView(input: ContributionViewPort) {
 		}
 		return null;
 	};
-
 	function resetMarks(): void {
 		openDisclosures.clear();
 		markHover = null;

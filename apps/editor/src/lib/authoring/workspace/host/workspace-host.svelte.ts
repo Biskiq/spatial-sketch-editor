@@ -757,6 +757,7 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		pressDockSlot: (slot) => commands.pressDockSlot(slot),
 		requestDelete: () => commands.requestDelete(),
 		groupSelection: commands.groupSelection,
+		drillOutOfGroup: commands.drillOutOfGroup,
 		interrupt: interruptPress,
 		shell,
 		closeTask: () => commands.closeTask(),
@@ -773,7 +774,7 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		focusSelectKey: () =>
 			document.querySelector<HTMLElement>('[data-world-toolbar] [data-world-select]')?.focus(),
 		lens: () => experience.lensState,
-		selectionPresent: () => selected.get() !== null,
+		selectionPresent: () => (stageEpoch.facade?.selectionState().ordered.length ?? 0) > 0,
 		closeSelection: () => commands.closeSelection(),
 		leaveStudio: studioFeature.ports.leaveStudio,
 		readingsEscape: readings.escape,
@@ -785,7 +786,6 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		snapshot: ready.snapshot,
 		facade: () => stageEpoch.facade,
 	});
-
 	installLeaveProject(lifecycleCell);
 
 	const regionModels = createStageRegionModels({

@@ -7,6 +7,7 @@
 	import { untrack, tick, type Snippet } from 'svelte';
 	import ShellIcon from './ShellIcon.svelte';
 	import EditorCardFooter from './EditorCardFooter.svelte';
+	import EditorCardActionButton from './EditorCardActionButton.svelte';
 	import EditorCardMore from './EditorCardMore.svelte';
 	import EditorCardBody from './EditorCardBody.svelte';
 	import type {
@@ -18,11 +19,6 @@
 	/** Fields the identity header itself shows; a fact for one of them is not repeated. */
 	const HEADER_FIELD_IDS: ReadonlySet<string> = new Set(['name', 'kind']);
 
-	/**
-	 * Review pass 2 §4: `•••` holds the subject's *functions*. The ones not built
-	 * yet are shown, disabled, with a quiet `Soon`, so the menu already reads as
-	 * what it will become; Erase (the contributed destructive action) is last.
-	 */
 	const FUNCTIONS: Readonly<Record<'wall' | 'room' | 'opening' | 'object', readonly string[]>> = {
 		// Face this wall is built: the Layout adapter contributes it as a real Card
 		// action, so the disabled placeholder would duplicate it.
@@ -198,10 +194,6 @@
 		if (functions !== null) return functions;
 		return identity === null ? [] : FUNCTIONS[functionKind(identity.kind)];
 	});
-	/**
-	 * A writer that owns its primary actions shows them in the foot: Duplicate and
-	 * Delete sit beside Advanced instead of inside the subject menu.
-	 */
 	const footerActions = $derived(actions.filter((action) => writer?.inlineActions === true || action.inline === true));
 	const overflowActions = $derived(actions.filter((action) => !(writer?.inlineActions === true || action.inline === true)));
 	/** `•••` is shown only when the subject has a function or an action to hold. */
@@ -241,14 +233,6 @@
 	let nameDraft = $state('');
 	let nameError = $state<string | null>(null);
 	let nameBusy = $state(false);
-	/**
-	 * What an open confirmation was disclosed **for**: one exact action of one
-	 * subject — the subject, the owning adapter, the action and that adapter's own
-	 * words. A different subject, a different action (including the same id
-	 * contributed by another adapter) or the same action disclosed differently all
-	 * invalidate it, so `Confirm` can only run the action whose disclosure the
-	 * creator actually read. The Card holds no second opinion about any of it.
-	 */
 	function confirmationKeyOf(action: StageCardActionRecord): string {
 		return `${identity?.sourceId ?? ''}\u0000${action.adapterId}\u0000${action.id}\u0000${action.detail ?? ''}`;
 	}
@@ -257,8 +241,8 @@
 	/** The key whose consequence is currently disclosed and awaiting confirmation. */
 	let confirming = $state<string | null>(null);
 	/** A destructive foot action confirms in the foot, not in the closed menu. */
-	const footerConfirmingAction = $derived(
-		footerActions.find((action) => confirming === confirmationKeyOf(action)) ?? null
+	const shownConfirmation = $derived(
+		actions.find((action) => confirming === confirmationKeyOf(action)) ?? null
 	);
 	let actionMessage = $state<string | null>(null);
 	let actionBusy = $state(false);
@@ -272,12 +256,6 @@
 	}
 
 	$effect(() => {
-		// The disclosure belongs to one action of one subject: switching subject,
-		// losing that action (a rebuilt adapter registry) or changing what its adapter
-		// discloses drops the pending confirmation and its words, so the next press
-		// discloses the live consequences rather than offering to run the ones the
-		// creator read a moment ago. Only the key set is tracked — a press must not
-		// re-trigger this and clear what it just opened.
 		const keys = liveConfirmationKeys;
 		untrack(() => {
 			if (confirming === null || keys.includes(confirming)) return;
@@ -286,14 +264,6 @@
 		});
 	});
 
-	/**
-	 * A destructive action runs only after **its own** disclosure has been read: the
-	 * first press opens that action's consequence, the second confirms it. A second
-	 * destructive action beside it is a different subject of confirmation, so it
-	 * discloses rather than inheriting the confirmation its neighbour opened. A
-	 * non-destructive action runs directly.
-	 */
-	/** A writer's own foot runs the same contributed action, including its disclosure. */
 	function runWriterAction(action: StageCardActionRecord): void {
 		if (action.destructive === true) detailOpen = true;
 		void runAction(action);
@@ -442,19 +412,24 @@
 
 <svelte:window onpointerdowncapture={onOutside} />
 
-{#snippet footer(advanced?: string)}
+{#snippet footer(advanced?: string | false)}
 	<EditorCardFooter
-		{advanced}
+		advanced={advanced || undefined}
+		showAdvanced={advanced !== false}
 		{moreOpen}
 		onToggleMore={toggleMore}
 		onBringIntoView={onBringIntoView ?? undefined}
 		{footerActions}
 		{actionBusy}
 		onRunAction={(action, trigger) => void runAction(action, trigger)}
-		{footerConfirmingAction}
+		footerConfirmingAction={shownConfirmation && footerActions.includes(shownConfirmation) ? shownConfirmation : null}
 		{actionMessage}
 		onCancel={cancelInlineAction}
 	/>
+{/snippet}
+
+{#snippet actionControl(action: StageCardActionRecord)}
+	<EditorCardActionButton {action} {actionBusy} onRunAction={(record, button) => void runAction(record, button)} />
 {/snippet}
 
 {#snippet more(content?: Snippet)}
@@ -499,11 +474,18 @@
 			{#each overflowActions.filter((action) => action.destructive === true) as action (`${action.adapterId}:${action.id}`)}
 				<button type="button" class="destructive" data-card-action={action.id} aria-label={action.label}
 					disabled={actionBusy}
-					onclick={(event) => void runAction(action, event.currentTarget)}>
-					{confirming === confirmationKeyOf(action) ? 'Confirm erase' : 'Erase'}
+					onclick={(event) => {
+						void runAction(action, event.currentTarget);
+						if (action.confirmInCard) {
+							detailOpen = false;
+							inlineActionTrigger = actionTrigger;
+							void tick().then(() => cardNode?.querySelector<HTMLElement>('[data-card-overflow-confirm]')?.focus());
+						}
+					}}>
+					{!action.confirmInCard && confirming === confirmationKeyOf(action) ? 'Confirm erase' : 'Erase'}
 				</button>
 			{/each}
-			{#if confirming !== null}<button type="button" onclick={cancelInlineAction}>Cancel</button>{/if}
+			{#if shownConfirmation && !shownConfirmation.confirmInCard && overflowActions.includes(shownConfirmation)}<button type="button" onclick={cancelInlineAction}>Cancel</button>{/if}
 			{#if actionMessage}<p class="error" role="alert">{actionMessage}</p>{/if}
 		</div>
 	{/if}
@@ -522,6 +504,7 @@
 			if (event.key !== 'Escape' || event.defaultPrevented) return;
 			if (detailOpen) { event.preventDefault(); event.stopPropagation(); closePanel(); }
 			// Escape collapses More before it is left to the shell to close the Card.
+			else if (confirming !== null) { event.preventDefault(); event.stopPropagation(); void cancelInlineAction(); }
 			else if (moreOpen) { event.preventDefault(); event.stopPropagation(); toggleMore(); }
 		}}
 		onpointerdown={event => event.stopPropagation()}
@@ -587,10 +570,21 @@
 				</div>
 			</section>
 		{/if}
+		{#if actionMessage && shownConfirmation === null && !detailOpen}<p class="error" role="alert">{actionMessage}</p>{/if}
+		{#if shownConfirmation?.confirmInCard && overflowActions.includes(shownConfirmation)}
+			{@const action = shownConfirmation}
+			<section class="consequence" aria-label={action.label}>
+				<p>{action.detail}</p>
+				<div class="consequence-actions">
+					<button type="button" class="remove" data-card-overflow-confirm onclick={() => void runAction(action)}>Remove</button>
+					<button type="button" onclick={cancelInlineAction}>Cancel</button>
+				</div>
+			</section>
+		{/if}
 		{#if writer?.view}
 			<div class="writer" data-card-writer={writer.summary}>
 				<writer.view.component services={writer.view.services} detailOpen={moreOpen} {footer} {secondary} {more}
-					actions={actions} onAction={runWriterAction} />
+					actions={actions} onAction={runWriterAction} {actionControl} />
 			</div>
 		{:else}
 			<EditorCardBody {ordinaryFacts} {footer} {more} {secondary} />

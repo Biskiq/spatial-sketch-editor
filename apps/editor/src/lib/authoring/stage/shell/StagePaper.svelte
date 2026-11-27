@@ -39,6 +39,7 @@
 		resolvedSlice = null,
 		datumMeters = 0,
 		selection = null,
+		selectionSet = [],
 		hover = null,
 		hoverTone = 'hover',
 		clusterMembers = () => [],
@@ -59,6 +60,7 @@
 		datumMeters?: number;
 		/** The canonical primary selection; its Paper ink is a re-stroke, never a pick root. */
 		selection?: StageSelectionEntry | null;
+		selectionSet?: readonly StageSelectionEntry[];
 		/** The hovered subject; quiet neutral contour, suppressed for the selection itself. */
 		hover?: StageSelectionEntry | null;
 		/** `erase` re-strokes the hovered subject in the Eraser's red dashes. */
@@ -84,7 +86,7 @@
 	// The selection is a filter over the drawing Paper already owns; a pan does not
 	// rebuild it, and the entries can never disagree with what is drawn underneath.
 	const marks = $derived.by(() =>
-		paperMarkSet(drawing, selection, hover, hoverTone, clusterMembers)
+		paperMarkSet(drawing, selection, hover, hoverTone, clusterMembers, selectionSet)
 	);
 
 

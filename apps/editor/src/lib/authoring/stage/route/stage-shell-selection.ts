@@ -25,6 +25,7 @@ type SelectionInput = Pick<
 > & {
 	readonly armWorldTool: (id: WorldToolId) => void;
 	/** Coarse-pointer Select more: an unmodified tap toggles instead of replacing. */
+	readonly notice: (message: string) => void;
 	readonly selectMore: () => boolean;
 	readonly setSelectMore: (value: boolean) => void;
 };
@@ -93,7 +94,6 @@ export function createStageShellSelection(input: SelectionInput) {
 		if (stage === null) return false;
 		const additive = tap.additive === true || input.selectMore();
 		const previous = stage.selectionState();
-		const ordered = previous.ordered.map((entry) => entry.reference);
 		if (!additive) {
 			const change = stage.setSelection({ ordered: [{ reference }], primary: reference });
 			if (change.kind === 'refused') return false;
@@ -103,6 +103,16 @@ export function createStageShellSelection(input: SelectionInput) {
 			shell.setCardOpen(true);
 			return true;
 		}
+		if (reference.domain !== 'scene') {
+			input.notice('Only Scene objects, Artwork, lights and groups can join a selection set.');
+			return false;
+		}
+		const scene = stageScene(stage.snapshot());
+		reference = topLevelSceneReference(scene, reference);
+		const ordered = previous.ordered
+			.map((entry) => entry.reference)
+			.filter((entry) => entry.domain === 'scene')
+			.map((entry) => topLevelSceneReference(scene, entry));
 		const present = ordered.some((entry) => sameReference(entry, reference));
 		const next = present
 			? ordered.filter((entry) => !sameReference(entry, reference))
@@ -168,6 +178,10 @@ export function createStageShellSelection(input: SelectionInput) {
 			if (reference !== null) applySelection(reference, tap);
 			return;
 		}
+		if (tap.additive === true || input.selectMore()) {
+			input.notice('Only Scene objects, Artwork, lights and groups can join a selection set.');
+			return;
+		}
 		const selected: StageSelection = {
 			sourceId: hit.sourceId,
 			sourceKind: planKind!,
@@ -223,25 +237,23 @@ export function createStageShellSelection(input: SelectionInput) {
 	function selectSource(sourceId: string, tap: SelectionTap = {}): void {
 		const stage = input.facade();
 		const plan = input.planView();
-		if (stage === null || plan === null) return;
+		if (stage === null) return;
 		shell.setCardOpen(true);
 		const subject = stage.subjects().find((item) => item.id === sourceId);
 		if (subject !== undefined) {
-			if (subject.reference.domain === 'scene') {
-				applySelection(
-					topLevelSceneReference(stageScene(stage.snapshot()), subject.reference),
-					tap,
-				);
-				return;
-			}
 			applySelection(subject.reference, tap);
 			return;
 		}
+		if (plan === null) return;
 		const layoutId = sourceId.startsWith('layout:')
 			? sourceId.slice(sourceId.indexOf(':', 7) + 1)
 			: sourceId;
 		const fragment = planFragmentOf(plan, layoutId);
 		if (fragment === undefined) return;
+		if (tap.additive === true || input.selectMore()) {
+			input.notice('Only Scene objects, Artwork, lights and groups can join a selection set.');
+			return;
+		}
 		stage.select({
 			sourceId: layoutId,
 			sourceKind: fragment.ref.sourceKind,
@@ -282,28 +294,9 @@ export function createStageShellSelection(input: SelectionInput) {
 		return true;
 	}
 
-	/** The group Card's member row: select one member inside its group (a drill). */
-	function selectMember(entityId: string): void {
-		const stage = input.facade();
-		if (stage === null) return;
-		const scene = stageScene(stage.snapshot());
-		const entity = scene.entities.find((entry) => entry.id === entityId);
-		if (entity === undefined) return;
-		const revision = stage.snapshot().domain.unitRevisions.scene;
-		applySelection({
-			version: 1,
-			domain: 'scene',
-			revision: { kind: 'exact', contentRevision: revision },
-			subject: { kind: 'entity', id: entityId },
-			instancePath: [],
-			location: { kind: 'project-root' },
-			componentId: null,
-			capabilityId: null,
-		});
-	}
-
 	/** Clearing the selection does reopen the Card for the next subject. */
 	function closeSelection(): void {
+		input.setSelectMore(false);
 		input.facade()?.select(null);
 		input.setSelection(null);
 		input.clearExperienceFocus();
@@ -331,9 +324,7 @@ export function createStageShellSelection(input: SelectionInput) {
 		selectUnfoldedSubject,
 		selectSource,
 		selectStageReference,
-		applySelection,
 		drillOutOfGroup,
-		selectMember,
 		closeSelection,
 		openSpaceCreated,
 		closeCard,

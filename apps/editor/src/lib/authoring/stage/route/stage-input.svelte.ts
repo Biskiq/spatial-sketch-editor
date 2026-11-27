@@ -76,6 +76,7 @@ export type StageInputArbiterInput = {
 	readonly paintTool: () => StagePaintController | null;
 	readonly task: () => StageTask | null;
 	readonly dockToolArmed: () => boolean;
+	readonly selectMore?: () => boolean;
 	readonly adapterTapOnly?: () => boolean;
 	readonly planView: () => PlanEvaluation | null;
 	readonly previewing: () => boolean;
@@ -310,10 +311,6 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 			input.onNotice(sliceRefusal);
 			return;
 		}
-		// The adapters get the press first: the binding that owns an open task (a
-		// Scene transform, an armed Ink chain) may claim it, and so may a binding
-		// that offers direct manipulation with no task at all (a selected Wall's
-		// handles). Only a refusal falls through to navigation.
 		const pointerEvaluationId = stage.evaluationId();
 		if (pointerEvaluationId !== null) {
 			const css = input.stageCss(event);
@@ -355,7 +352,9 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 					return;
 				}
 			}
-			const mark = stage.hitMark({ css, coarse });
+			// Additive presses in Select build a set, even over a selected body's grips.
+			const additive = input.task() === null && (event.shiftKey || input.selectMore?.() === true);
+			const mark = additive ? null : stage.hitMark({ css, coarse });
 			// A disclosure is a press, not a drag: it reveals grips while the same
 			// gesture context stays selected, and no adapter may claim the pointer for it.
 			if (mark?.role === 'disclose' && mark.mark.drags !== true) {
@@ -364,7 +363,8 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 				return;
 			}
 			const claimAdapterPress = (handleId?: string, handleAdapterId?: string): boolean => {
-				if (input.adapterTapOnly?.() && (event.button !== 0 || event.shiftKey)) return false;
+				if (additive || (input.adapterTapOnly?.() && (event.button !== 0 || event.shiftKey)))
+					return false;
 				const claimed = stage.pointerIntent({
 					phase: 'down',
 					css,
@@ -437,7 +437,7 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 					});
 					return;
 				}
-				if (mark === null) {
+				if (mark === null && !additive) {
 					const idleMark = stage.idleHoverIntent({
 						phase: 'move',
 						css,
@@ -791,8 +791,8 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 		if (hit.kind === 'resolved') {
 			// Shift is the fine-pointer set gesture; on a coarse pointer the shell's
 			// Select more mode supplies the same additive intent.
-			input.selectHit(hit.hit, { additive: event.shiftKey });
 			input.onNotice('');
+			input.selectHit(hit.hit, { additive: event.shiftKey });
 			return;
 		}
 		if (hit.kind === 'none') {

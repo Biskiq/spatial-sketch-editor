@@ -70,6 +70,7 @@ async function route() {
 		clearExperienceFocus: () => {},
 		experience: { active: () => null, lens: { selectSubject: () => {} } } as never,
 		armWorldTool: () => {},
+		notice: () => {},
 		selectMore: () => false,
 		setSelectMore: () => {}
 	});
@@ -118,6 +119,18 @@ describe('group-first Stage selection', () => {
 		fixture.selection.selectHit(fixture.hit('loose'), { additive: true });
 		expect(fixture.selectedIds()).toEqual(['cluster:still-life', 'loose']);
 		expect(fixture.state().primary).toBeNull();
+	});
+
+	it('normalizes an already drilled member when adding a loose subject', async () => {
+		const fixture = await route();
+		fixture.selection.selectHit(fixture.hit('a'));
+		fixture.selection.selectHit(fixture.hit('a'));
+		fixture.selection.selectHit(fixture.hit('loose'), { additive: true });
+		expect(fixture.selectedIds()).toEqual(['cluster:still-life', 'loose']);
+
+		fixture.selection.selectHit(fixture.hit('b'), { additive: true });
+		expect(fixture.selectedIds()).toEqual(['loose']);
+		expect(fixture.state().primary?.subject.id).toBe('loose');
 	});
 
 	it('returns a drilled member to its group on the member → group Escape rung', async () => {
