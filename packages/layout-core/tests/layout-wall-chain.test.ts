@@ -118,6 +118,7 @@ describe('P23.9 open wall chains', () => {
 				endJunctionId: 'j-b',
 				thickness: 0.2,
 				height: 3,
+				top: { kind: 'level' },
 				centerline: wallCubicChain(
 					[{ id: 'wall-top:knot:1', point: [3, 2] }],
 					deriveChainSpans([[0, 0], [3, 2], [6, 0]])

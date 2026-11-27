@@ -367,8 +367,8 @@
 		},
 		{
 			"path": "packages/layout-core/src/room/round-ops/release.ts",
-			"lines": 713,
-			"reason": "One release planner: split inference, seam reconciliation and refusal ordering share one candidate graph."
+			"lines": 715,
+			"reason": "One release planner: split inference, seam reconciliation and refusal ordering share one candidate graph. Format 11 adds the required authored Wall top."
 		},
 		{
 			"path": "apps/editor/src/lib/authoring/adapters/scene/object-mark-session.ts",
@@ -437,8 +437,8 @@
 		},
 		{
 			"path": "packages/layout-core/src/wall/dissolve.ts",
-			"lines": 681,
-			"reason": "One dissolve planner: the candidate, port remap and checks share one mutable candidate document."
+			"lines": 682,
+			"reason": "One dissolve planner: the candidate, port remap and checks share one mutable candidate document. Format 11 adds the required authored Wall top."
 		},
 		{
 			"path": "packages/layout-core/src/room/isolation.ts",
@@ -477,8 +477,8 @@
 		},
 		{
 			"path": "packages/layout-core/src/wall/chain-execute.ts",
-			"lines": 662,
-			"reason": "Baseline exception: the owning split removes this entry."
+			"lines": 664,
+			"reason": "Baseline exception: the owning split removes this entry. Format 11 requires `top` on every Wall the chain writes."
 		},
 		{
 			"path": "apps/api/src/asset-persistence.ts",
@@ -517,13 +517,13 @@
 		},
 		{
 			"path": "apps/editor/src/lib/layout/wall-mesh-standalone.ts",
-			"lines": 647,
-			"reason": "Baseline exception: the owning split removes this entry."
+			"lines": 648,
+			"reason": "Baseline exception: the owning split removes this entry. Format 11 makes the end bridge read the Wall's own end top."
 		},
 		{
 			"path": "packages/layout-core/src/geometry/types.ts",
-			"lines": 647,
-			"reason": "One compiled-geometry type vocabulary; the types must stay together so no consumer imports half a contract."
+			"lines": 651,
+			"reason": "One compiled-geometry type vocabulary; the types must stay together so no consumer imports half a contract. Format 11 adds the compiled top profile."
 		},
 		{
 			"path": "apps/editor/src/lib/authoring/adapters/layout/layout-card-actions.ts",
@@ -597,7 +597,7 @@
 		},
 		{
 			"path": "packages/layout-core/src/geometry/physical-walls.ts",
-			"lines": 620,
+			"lines": 618,
 			"reason": "Baseline exception: the owning split removes this entry."
 		},
 		{
@@ -805,7 +805,7 @@
 			"file": "packages/layout-core/src/geometry/physical-walls.ts",
 			"name": "compileWallFirstWithPhysicalWalls",
 			"line": 68,
-			"lines": 504,
+			"lines": 501,
 			"reason": "One compile pass: Wall, Junction and Opening phases share the accumulating compiler source."
 		},
 		{
@@ -826,7 +826,7 @@
 			"file": "packages/layout-core/src/wall/dissolve.ts",
 			"name": "planDissolveJunction",
 			"line": 135,
-			"lines": 467,
+			"lines": 468,
 			"reason": "One dissolve planner: the candidate, the port remap and the checks share one mutable candidate."
 		},
 		{
@@ -1239,7 +1239,7 @@
 			"file": "apps/editor/src/lib/layout/wall-mesh-sections.ts",
 			"name": "buildSectionFaces",
 			"line": 33,
-			"lines": 226,
+			"lines": 221,
 			"reason": "Baseline exception: the owning split removes this entry."
 		},
 		{

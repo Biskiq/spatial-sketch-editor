@@ -254,6 +254,7 @@ export function foldedPartitionDocument(anchor: LayoutVec2 = [3, 2]): LayoutDocu
 			endJunctionId: 'j-p2',
 			thickness: THICK,
 			height: 3,
+			top: { kind: 'level' },
 			centerline: wallCubicChain([knot], deriveChainSpans([[0, 0], knot.point, [CHORD, 0]]))
 		}
 	];

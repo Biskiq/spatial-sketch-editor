@@ -138,6 +138,7 @@ function curvedFixture(): Fixture {
 			endJunctionId: 'curve-end',
 			thickness: 0.2,
 			height: 3,
+			top: { kind: 'level' },
 			centerline: {
 				kind: 'cubic-chain',
 				knots: [],

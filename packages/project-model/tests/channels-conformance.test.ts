@@ -40,8 +40,10 @@ const DOCUMENT = await createUnitProject({
 			{ id: 'junction-3', point: [5, 4] }
 		];
 		layout.walls = [
-			{ id: 'wall-1', startJunctionId: 'junction-1', endJunctionId: 'junction-2', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
-			{ id: 'wall-2', startJunctionId: 'junction-2', endJunctionId: 'junction-3', thickness: 0.1, height: 3, centerline: { kind: 'line' } }
+			{ id: 'wall-1', startJunctionId: 'junction-1', endJunctionId: 'junction-2', thickness: 0.2, height: 3,
+			top: { kind: 'level' }, centerline: { kind: 'line' } },
+			{ id: 'wall-2', startJunctionId: 'junction-2', endJunctionId: 'junction-3', thickness: 0.1, height: 3,
+			top: { kind: 'level' }, centerline: { kind: 'line' } }
 		];
 		return layout;
 	})(),

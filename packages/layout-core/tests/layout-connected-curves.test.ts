@@ -2327,7 +2327,8 @@ describe('C3 · scope closure and refusal', () => {
 		const junctions = Array.from({ length: 200 }, (_, index) => ({ id: `chain-j-${index}`, point: [0, 20 + index] as LayoutVec2 }));
 		const walls: LayoutWall[] = junctions.map((junction, index) => ({
 			id: `chain-w-${index}`, startJunctionId: junctions[index - 1]?.id ?? anchor,
-			endJunctionId: junction.id, height: 3, thickness: 0.2, centerline: { kind: 'line' }
+			endJunctionId: junction.id, height: 3,
+			top: { kind: 'level' }, thickness: 0.2, centerline: { kind: 'line' }
 		}));
 		for (const ordered of [walls, [...walls].reverse()]) {
 			const document = { ...ring.document, junctions: [...ring.document.junctions, ...junctions], walls: [...ring.document.walls, ...ordered] };

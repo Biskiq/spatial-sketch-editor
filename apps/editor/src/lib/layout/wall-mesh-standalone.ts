@@ -36,6 +36,7 @@ import {
 	endpointProfileIntervals,
 	profileCovers,
 	segmentBands,
+	wallEndTopAt,
 	wallOpensAtEnd,
 	wallOpensAtStart,
 } from './wall-mesh-geometry';
@@ -428,7 +429,7 @@ export function buildStandaloneEndBridge(
 	const prevProfile = prevIsOwn ? ownProfile : neighborProfile;
 	const curProfile = prevIsOwn ? neighborProfile : ownProfile;
 	const neighborTop = neighbor.endpointSolidBands.at(-1)?.topY ?? wallHeight;
-	const top = Math.max(wallHeight, neighborTop);
+	const top = Math.max(wallEndTopAt(wall, wallHeight, atEnd), neighborTop);
 
 	const edges = new Set<number>([0, top]);
 	for (const [lo, hi] of [...prevProfile, ...curProfile]) {

@@ -63,6 +63,7 @@ function document(
 		endJunctionId,
 		thickness: 0.2,
 		height: options.height ?? WALL_AUTHORING_DEFAULT_HEIGHT,
+		top: { kind: 'level' },
 		centerline: { kind: 'line' } as const
 	}));
 	if (options.extraWall) {
@@ -72,6 +73,7 @@ function document(
 			endJunctionId: 'j6',
 			thickness: 0.2,
 			height: options.height ?? WALL_AUTHORING_DEFAULT_HEIGHT,
+			top: { kind: 'level' },
 			centerline: { kind: 'line' } as const
 		});
 	}

@@ -103,6 +103,7 @@ function appendRoom(
 			endJunctionId: junctionIds[(edge + 1) % vertices.length]!,
 			thickness: 0.2,
 			height: 3,
+			top: { kind: 'level' },
 			centerline: curved ? curve(start, end, midpoint, `${wallId}:knot:1`) : { kind: 'line' }
 		});
 	}
@@ -145,6 +146,7 @@ function appendRectangle(
 			endJunctionId: junctionIds[(edge + 1) % points.length]!,
 			thickness: 0.2,
 			height: 3,
+			top: { kind: 'level' },
 			centerline: { kind: 'line' }
 		});
 	}
@@ -186,8 +188,10 @@ function buildN2Fixture(sameComponent: boolean): LayoutDocumentWallFirst {
 			{ id: 'j-b', point: [6, 4] }
 		);
 		document.walls.push(
-			{ id: 'wall-straight', startJunctionId: 'j-a', endJunctionId: 'j-m', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
-			{ id: 'wall-curved', startJunctionId: 'j-m', endJunctionId: 'j-b', thickness: 0.2, height: 3, centerline: curve([6, 0], [6, 4], [1, -2], 'wall-curved:knot:1') }
+			{ id: 'wall-straight', startJunctionId: 'j-a', endJunctionId: 'j-m', thickness: 0.2, height: 3,
+			top: { kind: 'level' }, centerline: { kind: 'line' } },
+			{ id: 'wall-curved', startJunctionId: 'j-m', endJunctionId: 'j-b', thickness: 0.2, height: 3,
+			top: { kind: 'level' }, centerline: curve([6, 0], [6, 4], [1, -2], 'wall-curved:knot:1') }
 		);
 		return document;
 	}
@@ -198,8 +202,10 @@ function buildN2Fixture(sameComponent: boolean): LayoutDocumentWallFirst {
 		{ id: 'j-d', point: [8, 4] }
 	);
 	document.walls.push(
-		{ id: 'wall-straight', startJunctionId: 'j-a', endJunctionId: 'j-b', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
-		{ id: 'wall-curved', startJunctionId: 'j-c', endJunctionId: 'j-d', thickness: 0.2, height: 3, centerline: curve([0, 4], [8, 4], [4, -4], 'wall-curved:knot:1') }
+		{ id: 'wall-straight', startJunctionId: 'j-a', endJunctionId: 'j-b', thickness: 0.2, height: 3,
+		top: { kind: 'level' }, centerline: { kind: 'line' } },
+		{ id: 'wall-curved', startJunctionId: 'j-c', endJunctionId: 'j-d', thickness: 0.2, height: 3,
+		top: { kind: 'level' }, centerline: curve([0, 4], [8, 4], [4, -4], 'wall-curved:knot:1') }
 	);
 	return document;
 }
@@ -209,7 +215,8 @@ function buildSelfIntersectionFixture(): LayoutDocumentWallFirst {
 	document.junctions.push({ id: 'j-a', point: [0, 0] }, { id: 'j-b', point: [1, 0] });
 	document.walls.push({
 		id: 'wall-self-crossing', startJunctionId: 'j-a', endJunctionId: 'j-b',
-		thickness: 0.2, height: 3, centerline: curve([0, 0], [1, 0], [5, 0], 'wall-self-crossing:knot:1')
+		thickness: 0.2, height: 3,
+		top: { kind: 'level' }, centerline: curve([0, 0], [1, 0], [5, 0], 'wall-self-crossing:knot:1')
 	});
 	return document;
 }
@@ -219,7 +226,8 @@ function buildZeroLengthFixture(): LayoutDocumentWallFirst {
 	document.junctions.push({ id: 'j-a', point: [0, 0] }, { id: 'j-b', point: [0, 0] });
 	document.walls.push({
 		id: 'wall-zero-length', startJunctionId: 'j-a', endJunctionId: 'j-b',
-		thickness: 0.2, height: 3, centerline: { kind: 'line' }
+		thickness: 0.2, height: 3,
+		top: { kind: 'level' }, centerline: { kind: 'line' }
 	});
 	return document;
 }
@@ -232,7 +240,8 @@ function buildOpenRoomBoundaryFixture(): LayoutDocumentWallFirst {
 	for (let edge = 0; edge < wallIds.length; edge += 1) {
 		document.walls.push({
 			id: wallIds[edge]!, startJunctionId: `j-${edge}`, endJunctionId: `j-${edge + 1}`,
-			thickness: 0.2, height: 3, centerline: { kind: 'line' }
+			thickness: 0.2, height: 3,
+			top: { kind: 'level' }, centerline: { kind: 'line' }
 		});
 	}
 	document.rooms.push({
@@ -254,11 +263,13 @@ function buildComponentDuplicateJunctionFixture(): LayoutDocumentWallFirst {
 		['p-c1', 'p-c', 'p-d'], ['p-d1', 'p-d', 'p-a']
 	] as const;
 	for (const [id, startJunctionId, endJunctionId] of boundaryWalls) {
-		document.walls.push({ id, startJunctionId, endJunctionId, thickness: 0.2, height: 3, centerline: { kind: 'line' } });
+		document.walls.push({ id, startJunctionId, endJunctionId, thickness: 0.2, height: 3,
+		top: { kind: 'level' }, centerline: { kind: 'line' } });
 	}
 	document.walls.push({
 		id: 'p-fold', startJunctionId: 'p-a', endJunctionId: 'p-dup',
-		thickness: 0.2, height: 3, centerline: { kind: 'line' }
+		thickness: 0.2, height: 3,
+		top: { kind: 'level' }, centerline: { kind: 'line' }
 	});
 	document.rooms.push({
 		id: 'room-p', name: 'Room p', boundary: boundaryWalls.map(([wallId]) => ({ wallId, direction: 'forward' })),

@@ -283,6 +283,9 @@ function planWallSplitInternal(
 			endJunctionId: candidate.endJunctionId,
 			thickness: candidate.thickness,
 			height: candidate.height,
+			// A split fragment copies the source top; V2b owns exact split
+			// arithmetic for a profiled top.
+			top: candidate.top,
 			centerline: fragmentB,
 		});
 	}

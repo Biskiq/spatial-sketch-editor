@@ -19,7 +19,8 @@ function run(prefix: string, points: LayoutVec2[], closed = false): LayoutDocume
 		const i = junctions.indexOf(end);
 		return {
 			id: `${prefix}w${i}`, startJunctionId: junctions.at(i - 1)!.id, endJunctionId: end.id,
-			height: 3, thickness: 0.2, centerline: { kind: 'line' as const }
+			height: 3,
+			top: { kind: 'level' } as const, thickness: 0.2, centerline: { kind: 'line' as const }
 		};
 	});
 	return { ...createEmptyWallFirstLayoutDocument(), junctions, walls };

@@ -20,6 +20,7 @@ function wall(id: string, start: string, end: string): LayoutDocumentWallFirst['
 		endJunctionId: end,
 		thickness: 0.2,
 		height: 3,
+		top: { kind: 'level' },
 		centerline: { kind: 'line' }
 	};
 }
@@ -187,6 +188,7 @@ function curvedChasmRoom(): LayoutDocumentWallFirst {
 				endJunctionId: 'j-b',
 				thickness: 0.2,
 				height: 3,
+				top: { kind: 'level' },
 				centerline: wallCubicChain(
 					[{ id: 'wall-curved:knot:1', point: [4, -2] }],
 					deriveChainSpans([points['j-a'], [4, -2], points['j-b']])

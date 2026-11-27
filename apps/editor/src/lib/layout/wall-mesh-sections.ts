@@ -23,12 +23,35 @@ import {
 	lintelProfileKnotDistances,
 	sampleAt,
 	sectionBottomAt,
+	sectionTopAt,
 	segmentBands,
 	wallOpensAtEnd,
 	wallOpensAtStart,
+	wallTopClipDistances,
 } from './wall-mesh-geometry';
 import { quadNormal } from './wall-mesh-geometry';
+import { pushTopFace } from './wall-mesh-top';
 import { pushBandFace, quad, vertex } from './wall-mesh-emit';
+
+function sectionInterfaceDistances(
+	section: CompiledWallSection,
+	suppressions: readonly ResolvedFaceSuppression[],
+): number[] {
+	const distances: number[] = [];
+	for (const suppression of suppressions) {
+		if (
+			suppression.fromDistance > section.startDistance &&
+			suppression.fromDistance < section.endDistance
+		)
+			distances.push(suppression.fromDistance);
+		if (
+			suppression.toDistance > section.startDistance &&
+			suppression.toDistance < section.endDistance
+		)
+			distances.push(suppression.toDistance);
+	}
+	return distances;
+}
 
 export function buildSectionFaces(
 	room: CompiledRoom,
@@ -48,31 +71,20 @@ export function buildSectionFaces(
 	const spanStart = Math.max(section.startDistance, endClip?.start ?? 0);
 	const spanEnd = Math.min(section.endDistance, endClip?.end ?? Infinity);
 	if (spanEnd - spanStart <= LAYOUT_GEOMETRY_EPSILON) return [];
-	// Interfaces split the section at their own interval edges so a covered strip
-	// is a whole face, never a half-covered quad.
-	const interfaceDistances: number[] = [];
-	for (const suppression of suppressions) {
-		if (
-			suppression.fromDistance > section.startDistance &&
-			suppression.fromDistance < section.endDistance
-		) {
-			interfaceDistances.push(suppression.fromDistance);
-		}
-		if (
-			suppression.toDistance > section.startDistance &&
-			suppression.toDistance < section.endDistance
-		) {
-			interfaceDistances.push(suppression.toDistance);
-		}
-	}
+	// Interfaces split the section at their own edges: a covered strip is one face.
+	const interfaceDistances = sectionInterfaceDistances(section, suppressions);
 	// Lintel bottoms follow the arch profile, so merge its topBoundary knots into
 	// the clip: the underside and front-face bottom edge tessellate at profile
 	// resolution instead of the (coarser) wall-sample spacing, and the pointed
 	// apex lands exactly on a knot rather than vanishing between samples.
+	// A profiled Wall adds its apex station: each clip interval then lies on one
+	// straight run of the top, so the ruled top quad is exact.
+	const topKnots = wallTopClipDistances(wall);
 	const clip = clipSectionSamples(wall.samples, spanStart, spanEnd, [
 		...lintelProfileKnotDistances(section),
 		...lintelBandIntersectionDistances(section, roomBreakpoints),
 		...interfaceDistances,
+		...topKnots,
 	]);
 	if (clip.length < 2) return [];
 	const faces: Face[] = [];
@@ -80,26 +92,17 @@ export function buildSectionFaces(
 	const topY = section.topY;
 	const floorElevation = room.floorElevation;
 
-	// pick identity for every face this section emits. A lintel splits
-	// into band/top ('lintel') and underside ('arch-reveal') surfaces; the sill
-	// strip (side + openingId) is the opening's 'sill'; a plain side section is
-	// the wall's 'side'. Lintels always carry an openingId from the compiler,
-	// but a defensively-missing one falls back to wall 'lintel' so no face is
-	// ever left untagged.
-	const sectionPick: FacePick = isLintel
-		? section.openingId
-			? { kind: 'opening', openingId: section.openingId, surface: 'lintel' }
-			: { kind: 'wall', surface: 'lintel' }
-		: section.openingId
-			? { kind: 'opening', openingId: section.openingId, surface: 'sill' }
-			: { kind: 'wall', surface: 'side' };
+	// Pick identity: a lintel splits into band/top and the arch reveal, a sill
+	// strip is the opening's sill, and a plain side section is the Wall's side.
+	const sectionPick: FacePick = section.openingId
+		? { kind: 'opening', openingId: section.openingId, surface: isLintel ? 'lintel' : 'sill' }
+		: { kind: 'wall', surface: isLintel ? 'lintel' : 'side' };
 	const frontSectionPick: FacePick = { ...sectionPick, paintSide: 'left' };
 	const backSectionPick: FacePick = { ...sectionPick, paintSide: 'right' };
-	const undersidePick: FacePick = isLintel
-		? section.openingId
+	const undersidePick: FacePick =
+		isLintel && section.openingId
 			? { kind: 'opening', openingId: section.openingId, surface: 'arch-reveal' }
-			: { kind: 'wall', surface: 'lintel' }
-		: sectionPick;
+			: sectionPick;
 
 	for (let index = 1; index < clip.length; index += 1) {
 		// (attribution is applied to the completed faces below)
@@ -113,7 +116,11 @@ export function buildSectionFaces(
 		const backA = cornerPoint(a, -half, cornerStart, cornerEnd);
 		const backB = cornerPoint(b, -half, cornerStart, cornerEnd);
 
-		const yTop = floorElevation + topY;
+		// The true top per vertex; a level Wall reads the section scalar instead.
+		const topA = sectionTopAt(wall, section, a.distance);
+		const topB = sectionTopAt(wall, section, b.distance);
+		const yTopA = floorElevation + topA;
+		const yTopB = floorElevation + topB;
 		const yBottomA = floorElevation + bottomA;
 		const yBottomB = floorElevation + bottomB;
 
@@ -129,12 +136,18 @@ export function buildSectionFaces(
 			const hi = bands[k]!;
 			const yLoA = clamp(bottomA, lo, hi);
 			const yLoB = clamp(bottomB, lo, hi);
-			// A sloped (arch) bottom spans the band even when only one endpoint is
-			// below `hi`; skip only when BOTH clamped bottoms reach the band top.
-			if (hi - Math.min(yLoA, yLoB) <= LAYOUT_GEOMETRY_EPSILON) continue;
+			// Mirror of the sloped-bottom rule: clamp each top into the band so a
+			// band straddling a rising or falling edge keeps its true edge.
+			const yTopBandA = clamp(topA, lo, hi);
+			const yTopBandB = clamp(topB, lo, hi);
+			// A sloped (arch) bottom or top spans the band even when only one
+			// endpoint is inside it; skip only when the whole band is degenerate.
+			if (Math.max(yTopBandA, yTopBandB) - Math.min(yLoA, yLoB) <= LAYOUT_GEOMETRY_EPSILON)
+				continue;
 			const yLoAWorld = floorElevation + yLoA;
 			const yLoBWorld = floorElevation + yLoB;
-			const yHiWorld = floorElevation + hi;
+			const yHiAWorld = floorElevation + yTopBandA;
+			const yHiBWorld = floorElevation + yTopBandB;
 			// A resolved internal interface means the corrected region is
 			// interior to the Junction material, so the Wall's own face is omitted
 			// there. Both offset faces are tested by their own outward normal.
@@ -151,32 +164,37 @@ export function buildSectionFaces(
 			if (!frontOmitted)
 				pushBandFace(
 					faces,
-					vertex(frontA[0], yHiWorld, frontA[1], nA[0], 0, nA[1], a.distance, hi),
+					vertex(frontA[0], yHiAWorld, frontA[1], nA[0], 0, nA[1], a.distance, yTopBandA),
 					vertex(frontA[0], yLoAWorld, frontA[1], nA[0], 0, nA[1], a.distance, yLoA),
 					vertex(frontB[0], yLoBWorld, frontB[1], nB[0], 0, nB[1], b.distance, yLoB),
-					vertex(frontB[0], yHiWorld, frontB[1], nB[0], 0, nB[1], b.distance, hi),
+					vertex(frontB[0], yHiBWorld, frontB[1], nB[0], 0, nB[1], b.distance, yTopBandB),
 					frontSectionPick,
 				);
 			if (!backOmitted)
 				pushBandFace(
 					faces,
-					vertex(backB[0], yHiWorld, backB[1], -nB[0], 0, -nB[1], b.distance, hi),
+					vertex(backB[0], yHiBWorld, backB[1], -nB[0], 0, -nB[1], b.distance, yTopBandB),
 					vertex(backB[0], yLoBWorld, backB[1], -nB[0], 0, -nB[1], b.distance, yLoB),
 					vertex(backA[0], yLoAWorld, backA[1], -nA[0], 0, -nA[1], a.distance, yLoA),
-					vertex(backA[0], yHiWorld, backA[1], -nA[0], 0, -nA[1], a.distance, hi),
+					vertex(backA[0], yHiAWorld, backA[1], -nA[0], 0, -nA[1], a.distance, yTopBandA),
 					backSectionPick,
 				);
 		}
 
-		// Top face (at topY, +Y).
-		faces.push(
-			quad(
-				vertex(frontA[0], yTop, frontA[1], 0, 1, 0, a.distance, wall.thickness),
-				vertex(frontB[0], yTop, frontB[1], 0, 1, 0, b.distance, wall.thickness),
-				vertex(backB[0], yTop, backB[1], 0, 1, 0, b.distance, 0),
-				vertex(backA[0], yTop, backA[1], 0, 1, 0, a.distance, 0),
-				sectionPick,
-			),
+		// Top face: the same four corners; a profile makes it a ruled quad.
+		pushTopFace(
+			faces,
+			[
+				[frontA[0], yTopA, frontA[1]],
+				[frontB[0], yTopB, frontB[1]],
+				[backB[0], yTopB, backB[1]],
+				[backA[0], yTopA, backA[1]],
+			],
+			sectionPick,
+			a.distance,
+			b.distance,
+			wall.thickness,
+			wall.topProfile !== undefined,
 		);
 
 		// Bottom face: floor for side sections, arch underside for lintels. The

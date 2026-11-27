@@ -440,6 +440,7 @@ export function planDissolveJunction(
 		endJunctionId: joinedEndId,
 		thickness: survivor.thickness,
 		height: survivor.height,
+		top: survivor.top,
 		centerline: joinedCenterline,
 		...(joinedName !== undefined ? { name: joinedName } : {}),
 	};

@@ -64,6 +64,7 @@ function documentOf(centerline: LayoutWall['centerline'], start: LayoutVec2, end
       endJunctionId: 'j-b',
       thickness: 0.2,
       height: 3,
+      top: { kind: 'level' },
       centerline
     } as LayoutWall
   ];

@@ -116,6 +116,9 @@ function cloneRoomEnclosure(
 			endJunctionId: junctionIdMap.get(wall.endJunctionId)!,
 			thickness: wall.thickness,
 			height: wall.height,
+			// A duplicate copies the authored top unchanged: it is the same shape
+			// at the copy's own height, never re-interpolated.
+			top: wall.top,
 			// Explicit duplicate copies the optional authored name
 			// unchanged (new references are minted at the install seam).
 			...(wall.name !== undefined ? { name: wall.name } : {}),

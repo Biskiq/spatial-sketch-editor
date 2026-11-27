@@ -15,10 +15,13 @@
  * plan added (thickness step, height step) rather than re-testing the Junction
  * solve itself (that lives in `layout-junction-resolution.test.ts`).
  */
-import { describe, expect, it } from 'vitest';
+import {
+	describe, expect, it } from 'vitest';
 
 import { compileWallFirstLayoutGeometry, type CompiledPhysicalWall, type LayoutVec2 } from '@portfolio/layout-core/geometry';
-import { legJoinsByWall, type LayoutDocumentWallFirst, type LayoutWall } from '@portfolio/layout-core/wall';
+import { legJoinsByWall, type LayoutDocumentWallFirst, type LayoutWall,
+	LAYOUT_WALL_FIRST_FORMAT_VERSION,
+} from '@portfolio/layout-core/wall';
 import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-standalone';
 import type { IndexedWallMesh } from '$lib/layout/wall-mesh-types';
 
@@ -34,6 +37,7 @@ function wall(
 		endJunctionId,
 		thickness: options.thickness ?? 0.2,
 		height: options.height ?? 3,
+		top: { kind: 'level' },
 		centerline: { kind: 'line' }
 	} as LayoutWall;
 }
@@ -41,7 +45,7 @@ function wall(
 function document(junctions: Array<{ id: string; point: LayoutVec2 }>, walls: LayoutWall[]): LayoutDocumentWallFirst {
 	return {
 		units: 'meters',
-		formatVersion: 10,
+		formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
 		floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 		junctions,
 		walls,

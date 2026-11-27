@@ -18,11 +18,14 @@
  * Threlte is mocked only for `T` and `useThrelte`; there is no Canvas in jsdom.
  * The cap assembly, geometry, SectionInputs and material representation are real.
  */
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+	afterEach, describe, expect, it, vi } from 'vitest';
 import { flushSync, mount, unmount } from 'svelte';
 import type { Mesh } from 'three';
 import { compileWallFirstLayoutGeometry, type LayoutVec2 } from '@portfolio/layout-core/geometry';
-import { legJoinsByWall, type LayoutDocumentWallFirst, type LayoutWall } from '@portfolio/layout-core/wall';
+import { legJoinsByWall, type LayoutDocumentWallFirst, type LayoutWall,
+	LAYOUT_WALL_FIRST_FORMAT_VERSION,
+} from '@portfolio/layout-core/wall';
 import { setWorkObserver } from '@portfolio/layout-core/kernel';
 import { createMaterialStore } from '$lib/render/resources/material-store';
 import { createWallRepresentation } from '$lib/render/layout-wall-representation';
@@ -60,7 +63,7 @@ function scene(walls: readonly WallSeed[]): LayoutDocumentWallFirst {
 	}
 	return {
 		units: 'meters',
-		formatVersion: 10,
+		formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
 		floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 		junctions: [...junctionById].map(([id, point]) => ({ id, point })),
 		walls: walls.map(
@@ -71,6 +74,7 @@ function scene(walls: readonly WallSeed[]): LayoutDocumentWallFirst {
 					endJunctionId: wall.end[0],
 					thickness: 0.2,
 					height: 3,
+					top: { kind: 'level' },
 					centerline: { kind: 'line' }
 				}) as LayoutWall
 		),

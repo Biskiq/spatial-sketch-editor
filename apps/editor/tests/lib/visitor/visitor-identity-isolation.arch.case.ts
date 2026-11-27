@@ -15,20 +15,23 @@
  * code at all), moved here from `layout-render-safe-validation.test.ts` so the
  * unconditional arch lane owns it.
  */
-import { readFileSync } from 'node:fs';
+import {
+	readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { readdirSync, statSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { validateWallFirstLayoutDocument, serializeWallFirstLayoutDocument, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import { validateWallFirstLayoutDocument, serializeWallFirstLayoutDocument, type LayoutDocumentWallFirst,
+	LAYOUT_WALL_FIRST_FORMAT_VERSION,
+} from '@portfolio/layout-core/wall';
 
 const LINE = { kind: 'line' } as const;
 
 function squareDocument(withMetadata: boolean): LayoutDocumentWallFirst {
 	const base: LayoutDocumentWallFirst = {
 		units: 'meters',
-		formatVersion: 10,
+		formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
 		floor: { id: 'floor', name: 'Floor', elevation: 0 },
 		junctions: [
 			{ id: 'A', point: [0, 0] },
@@ -37,10 +40,14 @@ function squareDocument(withMetadata: boolean): LayoutDocumentWallFirst {
 			{ id: 'D', point: [0, 3] }
 		],
 		walls: [
-			{ id: 'w1', startJunctionId: 'A', endJunctionId: 'B', thickness: 0.2, height: 3, centerline: LINE },
-			{ id: 'w2', startJunctionId: 'B', endJunctionId: 'C', thickness: 0.2, height: 3, centerline: LINE },
-			{ id: 'w3', startJunctionId: 'C', endJunctionId: 'D', thickness: 0.2, height: 3, centerline: LINE },
-			{ id: 'w4', startJunctionId: 'D', endJunctionId: 'A', thickness: 0.2, height: 3, centerline: LINE }
+			{ id: 'w1', startJunctionId: 'A', endJunctionId: 'B', thickness: 0.2, height: 3,
+			top: { kind: 'level' }, centerline: LINE },
+			{ id: 'w2', startJunctionId: 'B', endJunctionId: 'C', thickness: 0.2, height: 3,
+			top: { kind: 'level' }, centerline: LINE },
+			{ id: 'w3', startJunctionId: 'C', endJunctionId: 'D', thickness: 0.2, height: 3,
+			top: { kind: 'level' }, centerline: LINE },
+			{ id: 'w4', startJunctionId: 'D', endJunctionId: 'A', thickness: 0.2, height: 3,
+			top: { kind: 'level' }, centerline: LINE }
 		],
 		rooms: [
 			{

@@ -23,11 +23,14 @@
  * one-history-entry and Undo/Redo semantics they proved are recorded as a T3
  * F.4 acceptance obligation.
  */
-import { describe, expect, it } from 'vitest';
+import {
+	describe, expect, it } from 'vitest';
 
 import { extractBoundaryCandidateFaces } from '@portfolio/layout-core/geometry';
 import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core/geometry';
-import { validateWallFirstLayoutDocument } from '@portfolio/layout-core/wall';
+import { validateWallFirstLayoutDocument,
+	LAYOUT_WALL_FIRST_FORMAT_VERSION,
+} from '@portfolio/layout-core/wall';
 import type { LayoutDocumentWallFirst, LayoutWallFirstRoom } from '@portfolio/layout-core/wall';
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import { planDeleteWall as planDeleteWallWithCapture, planRemoveRoom as planRemoveRoomWithCapture, planRoomMetadataUpdate, roomExclusiveBoundaryWallIds, type WallFirstOpPlan } from '@portfolio/layout-core/wall';
@@ -78,7 +81,7 @@ function twoRoomDocument(): LayoutDocumentWallFirst {
 	];
 	const shell = {
 		units: 'meters' as const,
-		formatVersion: 10 as const,
+		formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
 		floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 		junctions: junctions.map(([id, x, z]) => ({ id, point: [x, z] as LayoutVec2 })),
 		walls: walls.map((wall) => ({
@@ -87,6 +90,7 @@ function twoRoomDocument(): LayoutDocumentWallFirst {
 			endJunctionId: wall.end,
 			thickness: 0.2,
 			height: 3,
+			top: { kind: 'level' } as const,
 			centerline: { kind: 'line' } as const,
 		})),
 		openings: [] as LayoutDocumentWallFirst['openings'],
@@ -159,7 +163,7 @@ function nestedOuterInnerDocument(): LayoutDocumentWallFirst {
 	];
 	const shell = {
 		units: 'meters' as const,
-		formatVersion: 10 as const,
+		formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
 		floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 		junctions: junctions.map(([id, x, z]) => ({ id, point: [x, z] as LayoutVec2 })),
 		walls: walls.map((wall) => ({
@@ -168,6 +172,7 @@ function nestedOuterInnerDocument(): LayoutDocumentWallFirst {
 			endJunctionId: wall.end,
 			thickness: 0.2,
 			height: 3,
+			top: { kind: 'level' } as const,
 			centerline: { kind: 'line' } as const,
 		})),
 		openings: [] as LayoutDocumentWallFirst['openings'],

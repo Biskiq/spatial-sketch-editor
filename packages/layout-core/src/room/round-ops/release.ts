@@ -366,6 +366,7 @@ export function planReleaseRoundRoom(options: {
 				endJunctionId: seamJunctionId,
 				thickness: closedWall.thickness,
 				height: closedWall.height,
+				top: closedWall.top,
 				centerline: wallCubicChain(segB.knots, segB.spans),
 				...(closedWall.name !== undefined ? { name: closedWall.name } : {}),
 			};
@@ -534,6 +535,7 @@ export function planReleaseRoundRoom(options: {
 				endJunctionId: junction2Id,
 				thickness: closedWall.thickness,
 				height: closedWall.height,
+				top: closedWall.top,
 				centerline: wallCubicChain(seg1.knots, seg1.spans),
 				...(closedWall.name !== undefined ? { name: closedWall.name } : {}),
 			};

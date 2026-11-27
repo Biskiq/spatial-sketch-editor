@@ -40,10 +40,14 @@ function singleRoomDocument(): LayoutDocumentWallFirst {
 			{ id: 'j-d', point: [0, 4] }
 		],
 		walls: [
-			{ id: 'wall-bottom', startJunctionId: 'j-a', endJunctionId: 'j-b', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
-			{ id: 'wall-right', startJunctionId: 'j-b', endJunctionId: 'j-c', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
-			{ id: 'wall-top', startJunctionId: 'j-c', endJunctionId: 'j-d', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
-			{ id: 'wall-left', startJunctionId: 'j-d', endJunctionId: 'j-a', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const}
+			{ id: 'wall-bottom', startJunctionId: 'j-a', endJunctionId: 'j-b', thickness: 0.2, height: 3,
+			top: { kind: 'level' }, centerline: { kind: 'line' } as const},
+			{ id: 'wall-right', startJunctionId: 'j-b', endJunctionId: 'j-c', thickness: 0.2, height: 3,
+			top: { kind: 'level' }, centerline: { kind: 'line' } as const},
+			{ id: 'wall-top', startJunctionId: 'j-c', endJunctionId: 'j-d', thickness: 0.2, height: 3,
+			top: { kind: 'level' }, centerline: { kind: 'line' } as const},
+			{ id: 'wall-left', startJunctionId: 'j-d', endJunctionId: 'j-a', thickness: 0.2, height: 3,
+			top: { kind: 'level' }, centerline: { kind: 'line' } as const}
 		],
 		rooms: [
 			{
@@ -195,6 +199,7 @@ describe('planWallSplit — T noding (H3 §9.1 / P23.8 identity rules)', () => {
 			endJunctionId: 'j-d',
 			thickness: 0.1,
 			height: 3,
+			top: { kind: 'level' },
 			centerline: { kind: 'line' } as const,
 		});
 		const frozenAttachedWall = structuredClone(baseline.walls.at(-1));
@@ -228,7 +233,8 @@ describe('planWallCrossing — X noding (H3 §9.2)', () => {
 			{ id: 'j-p2', point: [2, 3] }
 		);
 		baseline.walls.push(
-			{ id: 'a-partition', startJunctionId: 'j-p1', endJunctionId: 'j-p2', thickness: 0.1, height: 3, centerline: { kind: 'line' } as const}
+			{ id: 'a-partition', startJunctionId: 'j-p1', endJunctionId: 'j-p2', thickness: 0.1, height: 3,
+			top: { kind: 'level' }, centerline: { kind: 'line' } as const}
 		);
 		const plan = planWallCrossing(baseline, ['wall-bottom', 'a-partition'], [2, 0], nodingAllocator());
 		expect(plan.kind).toBe('success');
@@ -256,7 +262,8 @@ describe('planWallCrossing — X noding (H3 §9.2)', () => {
 			{ id: 'j-p2', point: [2, 3] }
 		);
 		baseline.walls.push(
-			{ id: 'a-partition', startJunctionId: 'j-p1', endJunctionId: 'j-p2', thickness: 0.1, height: 3, centerline: { kind: 'line' } as const}
+			{ id: 'a-partition', startJunctionId: 'j-p1', endJunctionId: 'j-p2', thickness: 0.1, height: 3,
+			top: { kind: 'level' }, centerline: { kind: 'line' } as const}
 		);
 		const first = planWallCrossing(baseline, ['wall-bottom', 'a-partition'], [2, 0], nodingAllocator());
 		const second = planWallCrossing(baseline, ['a-partition', 'wall-bottom'], [2, 0], nodingAllocator());
@@ -270,7 +277,8 @@ describe('planWallCrossing — X noding (H3 §9.2)', () => {
 			{ id: 'j-p2', point: [0, 3] }
 		);
 		baseline.walls.push(
-			{ id: 'a-partition', startJunctionId: 'j-p1', endJunctionId: 'j-p2', thickness: 0.1, height: 3, centerline: { kind: 'line' } as const}
+			{ id: 'a-partition', startJunctionId: 'j-p1', endJunctionId: 'j-p2', thickness: 0.1, height: 3,
+			top: { kind: 'level' }, centerline: { kind: 'line' } as const}
 		);
 		// Crossing at (0,0) = j-a = wall-bottom's start endpoint.
 		const plan = planWallCrossing(baseline, ['wall-bottom', 'a-partition'], [0, 0], nodingAllocator());

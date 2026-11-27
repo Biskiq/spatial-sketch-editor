@@ -10,8 +10,11 @@
  * tested removed behaviour and is gone with its subject. The history
  * semantics it proved are recorded as a T3 F.4 acceptance obligation.
  */
-import { describe, expect, it } from 'vitest';
-import { createEmptyWallFirstLayoutDocument, planDissolveJunction as planDissolveJunctionWithCapture, validateWallFirstLayoutDocument } from '@portfolio/layout-core/wall';
+import {
+	describe, expect, it } from 'vitest';
+import { createEmptyWallFirstLayoutDocument, planDissolveJunction as planDissolveJunctionWithCapture, validateWallFirstLayoutDocument,
+	LAYOUT_WALL_FIRST_FORMAT_VERSION,
+} from '@portfolio/layout-core/wall';
 import type { LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import { freshCapture } from './__fixtures__/layout-id-capture';
@@ -24,7 +27,7 @@ const dissolve = (document: LayoutDocumentWallFirst, junctionId: string) =>
 function seed(): LayoutDocumentWallFirst {
 	return {
 		units: 'meters',
-		formatVersion: 10,
+		formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
 		floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 		junctions: [
 			{ id: 'A', point: [0, 0] as LayoutVec2 },
@@ -34,11 +37,16 @@ function seed(): LayoutDocumentWallFirst {
 			{ id: 'D', point: [0, 3] as LayoutVec2 }
 		],
 		walls: [
-			{ id: 'w1a', startJunctionId: 'A', endJunctionId: 'M', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
-			{ id: 'w1b', startJunctionId: 'M', endJunctionId: 'B', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
-			{ id: 'w2', startJunctionId: 'B', endJunctionId: 'C', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
-			{ id: 'w3', startJunctionId: 'C', endJunctionId: 'D', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
-			{ id: 'w4', startJunctionId: 'D', endJunctionId: 'A', thickness: 0.2, height: 3, centerline: { kind: 'line' } }
+			{ id: 'w1a', startJunctionId: 'A', endJunctionId: 'M', thickness: 0.2, height: 3,
+			top: { kind: 'level' }, centerline: { kind: 'line' } },
+			{ id: 'w1b', startJunctionId: 'M', endJunctionId: 'B', thickness: 0.2, height: 3,
+			top: { kind: 'level' }, centerline: { kind: 'line' } },
+			{ id: 'w2', startJunctionId: 'B', endJunctionId: 'C', thickness: 0.2, height: 3,
+			top: { kind: 'level' }, centerline: { kind: 'line' } },
+			{ id: 'w3', startJunctionId: 'C', endJunctionId: 'D', thickness: 0.2, height: 3,
+			top: { kind: 'level' }, centerline: { kind: 'line' } },
+			{ id: 'w4', startJunctionId: 'D', endJunctionId: 'A', thickness: 0.2, height: 3,
+			top: { kind: 'level' }, centerline: { kind: 'line' } }
 		],
 		rooms: [
 			{
@@ -89,8 +97,10 @@ describe('planDissolveJunction — kernel output', () => {
 		// Both stored walls start at the joint. The smaller-id Wall survives, and
 		// the joined Wall starts at its far end, reversing that survivor in place.
 		document.walls = [
-			{ id: 'a-survivor', startJunctionId: 'joint', endJunctionId: 'west', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
-			{ id: 'b-absorbed', startJunctionId: 'joint', endJunctionId: 'east', thickness: 0.2, height: 3, centerline: { kind: 'line' } }
+			{ id: 'a-survivor', startJunctionId: 'joint', endJunctionId: 'west', thickness: 0.2, height: 3,
+			top: { kind: 'level' }, centerline: { kind: 'line' } },
+			{ id: 'b-absorbed', startJunctionId: 'joint', endJunctionId: 'east', thickness: 0.2, height: 3,
+			top: { kind: 'level' }, centerline: { kind: 'line' } }
 		];
 		const plan = dissolve(document, 'joint');
 		if (plan.kind !== 'success') throw new Error(`expected reversed join to succeed: ${JSON.stringify(plan)}`);

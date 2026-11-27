@@ -9,9 +9,11 @@
  * ordering, outward frames, mixed thickness/height, endpoint Opening facts and
  * the "no invented junction" rule.
  */
-import { describe, expect, it } from 'vitest';
+import {
+	describe, expect, it } from 'vitest';
 
 import { compileWallFirstLayoutGeometry, type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { LAYOUT_WALL_FIRST_FORMAT_VERSION } from '@portfolio/layout-core/wall';
 import type { LayoutDocumentWallFirst, LayoutWall } from '@portfolio/layout-core/wall';
 
 function wall(
@@ -26,6 +28,7 @@ function wall(
 		endJunctionId,
 		thickness: options.thickness ?? 0.2,
 		height: options.height ?? 3,
+		top: { kind: 'level' },
 		centerline: { kind: 'line' }
 	} as LayoutWall;
 }
@@ -37,7 +40,7 @@ function document(
 ): LayoutDocumentWallFirst {
 	return {
 		units: 'meters',
-		formatVersion: 10,
+		formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
 		floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 		junctions,
 		walls,

@@ -31,7 +31,8 @@ function box(id: string): SceneEntity {
 async function harness() {
 	const layout = createEmptyWallFirstLayoutDocument();
 	layout.junctions = [{ id: 'a', point: [0, 0] }, { id: 'b', point: [4, 0] }];
-	layout.walls = [{ id: 'wall', startJunctionId: 'a', endJunctionId: 'b', thickness: 0.2, height: 3, centerline: { kind: 'line' } }];
+	layout.walls = [{ id: 'wall', startJunctionId: 'a', endJunctionId: 'b', thickness: 0.2, height: 3,
+	top: { kind: 'level' }, centerline: { kind: 'line' } }];
 	const project = await createUnitProject({
 		id: 'project-port', name: 'Port', layout,
 		scene: { formatVersion: SCENE_UNIT_FORMAT_VERSION, textures: [], materials: [], entities: [box('a'), box('b')], palette: [SAGE] }

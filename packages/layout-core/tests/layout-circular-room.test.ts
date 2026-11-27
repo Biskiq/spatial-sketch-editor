@@ -6,11 +6,14 @@
  * editor intents call, and they read the persisted document rather than a
  * parallel circle model.
  */
-import { describe, expect, it } from 'vitest';
+import {
+	describe, expect, it } from 'vitest';
 
 import { compileWallFirstLayoutGeometry, hasBlockingLayoutIssues } from '@portfolio/layout-core/geometry';
 import { mintLayoutIdCapture } from '@portfolio/layout-core/plan';
-import { parseWallFirstLayoutDocumentJson, planBendWallCurveKnot, planCreateWallFirstOpening, planUpdateWallFirstOpening, planWallChain, serializeWallFirstLayoutDocument, validateWallFirstLayoutDocument, validateWallFirstOpeningSet, wallFirstWallLength, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import { parseWallFirstLayoutDocumentJson, planBendWallCurveKnot, planCreateWallFirstOpening, planUpdateWallFirstOpening, planWallChain, serializeWallFirstLayoutDocument, validateWallFirstLayoutDocument, validateWallFirstOpeningSet, wallFirstWallLength, type LayoutDocumentWallFirst,
+	LAYOUT_WALL_FIRST_FORMAT_VERSION,
+} from '@portfolio/layout-core/wall';
 import { planCreateCircularRoom, planResizeClosedWallRadius, planTranslateClosedWall, planWallFirstRoomMove, readClosedWallCircle } from '@portfolio/layout-core/room';
 
 const CENTER = [0, 0] as const;
@@ -36,7 +39,7 @@ function awaitEmptyDocument(): LayoutDocumentWallFirst {
 	// A zero-Wall current-format document: the same shape the editor boots.
 	return {
 		units: 'meters',
-		formatVersion: 10,
+		formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
 		floor: { id: 'floor', name: 'Floor', elevation: 0 },
 		junctions: [],
 		walls: [],

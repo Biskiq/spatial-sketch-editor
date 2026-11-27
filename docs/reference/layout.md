@@ -56,13 +56,23 @@ rigid translation remains unrestricted. Exactly 1,000 m is accepted; an over-lim
 without changing source or history, and canonical reads refuse an imported Layout before compilation
 or Stage admission with a subject-specific issue.
 
-**Vertical model.** `LayoutWall.height` is the only authored vertical extent, measured upward from
-the Floor elevation (`bottomY = floor.elevation`, `topY = floor.elevation + wall.height`); it is
-finite, strictly positive and within the geometry envelope. The Floor carries a horizontal datum
-only (`id`, `name`, `elevation`, no vertical extent), so there is no Floor-relative cap and a Room
-ceiling is the maximum of its boundary Wall heights. New and split Walls take height from
-layout-core's birth/inheritance rule: explicit height, else the unique incident Wall height, else the
-named authoring default. The landed model is one floor; a multi-floor payload is not accepted.
+**Vertical model.** `LayoutWall.height` is the Wall's **eave** and `LayoutWall.top` is its required
+authored shape: `top(s) = height + rise(s)`, measured upward from the Floor elevation, so
+`bottomY = floor.elevation` and `topY(s) = floor.elevation + wall.height + top.rise(s)`. `top` is one
+of `level` (no payload), `slope` (`startRise`, `endRise`) or `gable` (`startRise`, `endRise`,
+`apexRise`, `apexOffset`). Rise is at least `0`, linear in centerline **station** between
+breakpoints, and the smallest end rise is exactly `0`, so `height` is always the lowest point of the
+top and each shape has one encoding. A slope has one zero end and one end above the height epsilon;
+a gable's apex must exceed both ends and lie inside the Wall's derived length
+(`wall_top_apex_outside`, blocking). A closed Wall must be level (`closed_wall_level_only`).
+`height + maximum rise` is within the geometry envelope, and an Opening must fit under the **lowest**
+top over its own interval, not one scalar for the Wall. The compiled top profile exists only for a
+non-level top, so a level Wall keeps its records, cache key and mesh buffers. The Floor carries a
+horizontal datum only (`id`, `name`, `elevation`, no vertical extent), so there is no Floor-relative
+cap and a Room ceiling is the maximum of its boundary Wall heights. New and split Walls take height
+from layout-core's birth/inheritance rule: explicit height, else the unique incident Wall height, else
+the named authoring default; existing Wall writers carry the authored top unchanged. The landed model
+is one floor; a multi-floor payload is not accepted. Canonical reads accept format 11 only.
 
 ## Spaces (persisted Room records)
 

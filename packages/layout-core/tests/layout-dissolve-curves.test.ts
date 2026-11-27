@@ -54,6 +54,7 @@ function curvedWall(
 		endJunctionId: end,
 		thickness: 0.2,
 		height: 3,
+		top: { kind: 'level' },
 		// Spans are derived here only to author the fixture; the dissolve
 		// planner never re-derives them.
 		centerline: {
@@ -139,6 +140,7 @@ function tangentPair(
 		endJunctionId: 'E1',
 		thickness: 0.2,
 		height: 3,
+		top: { kind: 'level' },
 		centerline: wallCubicChain(storedLeft.knots, storedLeft.spans)
 	};
 	const wallB: LayoutDocumentWallFirst['walls'][number] = {
@@ -147,6 +149,7 @@ function tangentPair(
 		endJunctionId: 'E2',
 		thickness: 0.2,
 		height: 3,
+		top: { kind: 'level' },
 		centerline: wallCubicChain(
 			rightKnots.map(([knotId, knotPoint]) => ({
 				id: knotId,
@@ -395,10 +398,14 @@ describe('curve dissolve', () => {
 				{ id: 'D', point: [0, 3] }
 			],
 			walls: [
-				{ id: 'w1', startJunctionId: 'A', endJunctionId: 'B', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
-				{ id: 'w2', startJunctionId: 'B', endJunctionId: 'C', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
-				{ id: 'w3', startJunctionId: 'C', endJunctionId: 'D', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
-				{ id: 'w4', startJunctionId: 'D', endJunctionId: 'A', thickness: 0.2, height: 3, centerline: { kind: 'line' } }
+				{ id: 'w1', startJunctionId: 'A', endJunctionId: 'B', thickness: 0.2, height: 3,
+				top: { kind: 'level' }, centerline: { kind: 'line' } },
+				{ id: 'w2', startJunctionId: 'B', endJunctionId: 'C', thickness: 0.2, height: 3,
+				top: { kind: 'level' }, centerline: { kind: 'line' } },
+				{ id: 'w3', startJunctionId: 'C', endJunctionId: 'D', thickness: 0.2, height: 3,
+				top: { kind: 'level' }, centerline: { kind: 'line' } },
+				{ id: 'w4', startJunctionId: 'D', endJunctionId: 'A', thickness: 0.2, height: 3,
+				top: { kind: 'level' }, centerline: { kind: 'line' } }
 			],
 			rooms: [
 				{
@@ -455,6 +462,7 @@ describe('curve dissolve', () => {
 				endJunctionId: 'E2',
 				thickness: 0.2,
 				height: 3,
+				top: { kind: 'level' },
 				centerline: { kind: 'line' }
 			}
 		]);
@@ -478,6 +486,7 @@ describe('curve dissolve', () => {
 				endJunctionId: 'J',
 				thickness: 0.2,
 				height: 3,
+				top: { kind: 'level' },
 				centerline: { kind: 'line' }
 			},
 			wallB

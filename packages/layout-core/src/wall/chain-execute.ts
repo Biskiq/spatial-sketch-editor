@@ -149,6 +149,7 @@ export function executeWallChainCandidate(
 				endJunctionId: endJ,
 				thickness: closedWall.thickness,
 				height: closedWall.height,
+				top: closedWall.top,
 				centerline: wallCubicChain(seg.knots, seg.spans),
 				...(closedWall.name !== undefined ? { name: closedWall.name } : {}),
 			});
@@ -264,6 +265,7 @@ export function executeWallChainCandidate(
 			endJunctionId: endId,
 			thickness,
 			height,
+			top: { kind: 'level' },
 			// Authored chain legs are straight; A3 is the one bounded
 			// exception: the drawn Arc's leg carries the canonical cubic-chain the
 			// curve planners already read, and every other leg stays `line`.

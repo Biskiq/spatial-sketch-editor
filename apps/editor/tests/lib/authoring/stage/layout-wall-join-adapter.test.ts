@@ -89,6 +89,7 @@ function documentOf(
 		endJunctionId: wall.end,
 		thickness: wall.thickness ?? 0.2,
 		height: wall.height ?? 3,
+		top: { kind: 'level' },
 		centerline: wall.centerline ?? { kind: 'line' as const }
 	}));
 	return base;
@@ -605,6 +606,7 @@ describe('Join walls', () => {
 				endJunctionId: 'c2',
 				thickness: 0.2,
 				height: 3,
+				top: { kind: 'level' },
 				centerline: {
 					kind: 'cubic-chain',
 					knots: [],

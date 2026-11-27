@@ -60,6 +60,7 @@ function documentOf(
 			endJunctionId: 'j-b',
 			thickness: 0.2,
 			height,
+			top: { kind: 'level' },
 			centerline
 		} as LayoutWall
 	];

@@ -58,8 +58,9 @@ function buildDocument(options: {
 				startJunctionId: wall.start,
 				endJunctionId: wall.end,
 				thickness: wall.thickness ?? 0.2,
-				height: wall.height ?? 3,
-				centerline: { kind: 'line' },
+									height: wall.height ?? 3,
+					top: { kind: 'level' },
+					centerline: { kind: 'line' },
 				...(wall.name !== undefined ? { name: wall.name } : {})
 			})
 		),

@@ -50,6 +50,7 @@ function validDocumentWithRooms(count: number): LayoutDocumentWallFirst {
 				endJunctionId: ids[(side + 1) % 4]!,
 				thickness: 0.16,
 				height: 2.6,
+				top: { kind: 'level' },
 				centerline: { kind: 'line' }
 			});
 		}
@@ -146,6 +147,7 @@ describe('P23.12 allocation and ledger', () => {
 				endJunctionId: 'junction-2',
 				thickness: 0.16,
 				height: 2.6,
+				top: { kind: 'level' },
 				centerline: { kind: 'line' }
 			}
 		];

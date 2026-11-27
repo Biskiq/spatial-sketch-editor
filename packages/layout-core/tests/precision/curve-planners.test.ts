@@ -64,16 +64,21 @@ function documentOf(
 			endJunctionId: 'j-b',
 			thickness: 0.2,
 			height: 3,
+			top: { kind: 'level' },
 			centerline
 		},
-		{ id: 'wall-x', startJunctionId: 'j-c', endJunctionId: 'j-d', thickness: 0.2, height: 3, centerline: LINE }
+		{ id: 'wall-x', startJunctionId: 'j-c', endJunctionId: 'j-d', thickness: 0.2, height: 3,
+		top: { kind: 'level' }, centerline: LINE }
 	];
 	if (options.withRoom) {
 		document.walls = [
 			document.walls[0]!,
-			{ id: 'wall-b', startJunctionId: 'j-b', endJunctionId: 'j-c', thickness: 0.2, height: 3, centerline: LINE },
-			{ id: 'wall-c', startJunctionId: 'j-c', endJunctionId: 'j-d', thickness: 0.2, height: 3, centerline: LINE },
-			{ id: 'wall-d', startJunctionId: 'j-d', endJunctionId: 'j-a', thickness: 0.2, height: 3, centerline: LINE }
+			{ id: 'wall-b', startJunctionId: 'j-b', endJunctionId: 'j-c', thickness: 0.2, height: 3,
+			top: { kind: 'level' }, centerline: LINE },
+			{ id: 'wall-c', startJunctionId: 'j-c', endJunctionId: 'j-d', thickness: 0.2, height: 3,
+			top: { kind: 'level' }, centerline: LINE },
+			{ id: 'wall-d', startJunctionId: 'j-d', endJunctionId: 'j-a', thickness: 0.2, height: 3,
+			top: { kind: 'level' }, centerline: LINE }
 		];
 		document.rooms = [
 			{
@@ -705,6 +710,7 @@ describe('exact curved-Wall split', () => {
 			endJunctionId: 'j-c',
 			thickness: 0.2,
 			height: 3,
+			top: { kind: 'level' },
 			centerline: LINE
 		});
 		expect(planWallCrossing(document, ['wall-a', 'wall-e'], [5, 0], allocator())).toMatchObject({

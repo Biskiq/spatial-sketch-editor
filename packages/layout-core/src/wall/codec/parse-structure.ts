@@ -12,6 +12,7 @@ import type {
 	LayoutWallCurveKnot,
 	LayoutWallFirstFloor,
 	LayoutWallFirstRoom,
+	LayoutWallTop,
 } from '../types';
 import {
 	CLOSED_WALL_CIRCLE_KNOT_COUNT,
@@ -23,6 +24,7 @@ import { LAYOUT_REFERENCE_PREFIX, parseLayoutReference } from '../../plan/identi
 import type { LayoutDocumentIssue } from '../../plan/issue';
 import { MAX_LAYOUT_REGION_POINTS } from '../../room/region-validation';
 import { MAX_LAYOUT_DIMENSION_METERS } from '../../geometry/limits';
+import { wallTopSourceIssues } from '../wall-top';
 import { parseBoundaryRefs, parseVirtualEdge } from './parse-contents';
 import {
 	addIssue,
@@ -33,6 +35,7 @@ import {
 	readId,
 	readNonEmptyString,
 	readNonNegativeInteger,
+	readNonNegativeNumber,
 	readNumber,
 	readPositiveNumber,
 	readRecord,
@@ -51,6 +54,8 @@ import {
 	WALL_CURVE_KNOT_KEYS,
 	WALL_CURVE_SPAN_KEYS,
 	WALL_KEYS,
+	WALL_TOP_KEYS,
+	WALL_TOP_LEVEL_KEYS,
 } from './schema';
 
 /**
@@ -195,6 +200,11 @@ export function parseJunction(
  * `height` is finite and strictly positive with no Floor-relative cap; the shared
  * Layout geometry envelope applies its 1,000 m global maximum after decoding.
  * The canonical Floor carries no vertical extent to clamp against.
+ *
+ * `top` is required on every Wall (format 11): `height` is the lowest point of
+ * the top and `top` states the rise above it. The shape rules and the 1,000 m
+ * peak envelope are refused here; the apex-versus-length rule is the compiler's,
+ * because the length is derived.
  */
 export function parseWall(
 	input: unknown,
@@ -210,6 +220,7 @@ export function parseWall(
 	const endJunctionId = readId(record.endJunctionId, `${path}.endJunctionId`, issues);
 	const thickness = readPositiveNumber(record.thickness, `${path}.thickness`, issues);
 	const height = readPositiveNumber(record.height, `${path}.height`, issues);
+	const top = parseWallTop(record.top, `${path}.top`, issues);
 	// The centerline is required on every Wall (fresh-authority
 	// policy: no migration, no missing-field tolerance).
 	const centerline = parseWallCenterline(record.centerline, `${path}.centerline`, issues);
@@ -222,10 +233,20 @@ export function parseWall(
 		!endJunctionId ||
 		thickness === undefined ||
 		height === undefined ||
+		!top ||
 		!centerline ||
 		(record.name !== undefined && name === undefined)
 	) {
 		return undefined;
+	}
+	for (const issue of wallTopSourceIssues({
+		id,
+		height,
+		top,
+		startJunctionId,
+		endJunctionId,
+	})) {
+		addIssue(issues, `${path}.top`, issue.code, issue.message);
 	}
 	// A self-connected Wall is the canonical closed representation, not an
 	// accident. It is legal only as the approved 16-span cubic chain: a straight
@@ -257,9 +278,45 @@ export function parseWall(
 		endJunctionId,
 		thickness,
 		height,
+		top,
 		centerline,
 		...(name !== undefined ? { name } : {}),
 	};
+}
+
+/**
+ * Parse the required Wall top union. `level` carries `kind` only; `slope` and
+ * `gable` state their rises. A key that does not belong to the stated shape is
+ * `unknown_key`, so there is no second spelling of a level top.
+ */
+function parseWallTop(
+	input: unknown,
+	path: string,
+	issues: LayoutDocumentIssue[],
+): ParsedValue<LayoutWallTop> {
+	const record = readRecord(input, path, issues);
+	if (!record) return undefined;
+	const kind = readEnum(record.kind, `${path}.kind`, ['level', 'slope', 'gable'], issues);
+	if (kind === 'level') {
+		assertAllowedKeys(record, WALL_TOP_LEVEL_KEYS, path, issues);
+		return { kind: 'level' };
+	}
+	if (kind === undefined) return undefined;
+	assertAllowedKeys(record, WALL_TOP_KEYS, path, issues);
+	const startRise = readNonNegativeNumber(record.startRise, `${path}.startRise`, issues);
+	const endRise = readNonNegativeNumber(record.endRise, `${path}.endRise`, issues);
+	if (startRise === undefined || endRise === undefined) return undefined;
+	if (kind === 'slope') {
+		if (record.apexRise !== undefined)
+			addIssue(issues, `${path}.apexRise`, 'unknown_key', "A slope has no 'apexRise'");
+		if (record.apexOffset !== undefined)
+			addIssue(issues, `${path}.apexOffset`, 'unknown_key', "A slope has no 'apexOffset'");
+		return { kind: 'slope', startRise, endRise };
+	}
+	const apexRise = readNonNegativeNumber(record.apexRise, `${path}.apexRise`, issues);
+	const apexOffset = readNumber(record.apexOffset, `${path}.apexOffset`, issues);
+	if (apexRise === undefined || apexOffset === undefined) return undefined;
+	return { kind: 'gable', startRise, endRise, apexRise, apexOffset };
 }
 
 /**

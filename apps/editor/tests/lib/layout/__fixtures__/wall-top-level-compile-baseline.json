@@ -1,0 +1,989 @@
+{
+  "g1-rectangle": {
+    "compiledDigest": "403304ed03f64d413b03281afc3048fc7bd3dbda2b5f514325d019ecb41c4920",
+    "junctionCacheKeys": [
+      [
+        "room-rectangle:j0",
+        "s17:compiled-junctions12:floor-grounds17:room-rectangle:j0j5:[0,0]j404:[{\"wallId\":\"room-rectangle:wall:0\",\"end\":\"start\",\"tangentOut\":[1,0],\"normalOut\":[0,1],\"thickness\":0.16,\"bottomY\":0,\"topY\":3,\"role\":\"bounding\",\"endpointOpen\":false,\"endpointSolidBands\":[[0,3,true,null]]},{\"wallId\":\"room-rectangle:wall:3\",\"end\":\"end\",\"tangentOut\":[0,1],\"normalOut\":[-1,0],\"thickness\":0.16,\"bottomY\":0,\"topY\":3,\"role\":\"bounding\",\"endpointOpen\":false,\"endpointSolidBands\":[[0,3,true,null]]}]"
+      ],
+      [
+        "room-rectangle:j1",
+        "s17:compiled-junctions12:floor-grounds17:room-rectangle:j1j5:[6,0]j406:[{\"wallId\":\"room-rectangle:wall:0\",\"end\":\"end\",\"tangentOut\":[-1,0],\"normalOut\":[0,-1],\"thickness\":0.16,\"bottomY\":0,\"topY\":3,\"role\":\"bounding\",\"endpointOpen\":false,\"endpointSolidBands\":[[0,3,true,null]]},{\"wallId\":\"room-rectangle:wall:1\",\"end\":\"start\",\"tangentOut\":[0,1],\"normalOut\":[-1,0],\"thickness\":0.16,\"bottomY\":0,\"topY\":3,\"role\":\"bounding\",\"endpointOpen\":false,\"endpointSolidBands\":[[0,3,true,null]]}]"
+      ],
+      [
+        "room-rectangle:j2",
+        "s17:compiled-junctions12:floor-grounds17:room-rectangle:j2j5:[6,4]j406:[{\"wallId\":\"room-rectangle:wall:1\",\"end\":\"end\",\"tangentOut\":[0,-1],\"normalOut\":[1,0],\"thickness\":0.16,\"bottomY\":0,\"topY\":3,\"role\":\"bounding\",\"endpointOpen\":false,\"endpointSolidBands\":[[0,3,true,null]]},{\"wallId\":\"room-rectangle:wall:2\",\"end\":\"start\",\"tangentOut\":[-1,0],\"normalOut\":[0,-1],\"thickness\":0.16,\"bottomY\":0,\"topY\":3,\"role\":\"bounding\",\"endpointOpen\":false,\"endpointSolidBands\":[[0,3,true,null]]}]"
+      ],
+      [
+        "room-rectangle:j3",
+        "s17:compiled-junctions12:floor-grounds17:room-rectangle:j3j5:[0,4]j404:[{\"wallId\":\"room-rectangle:wall:3\",\"end\":\"start\",\"tangentOut\":[0,-1],\"normalOut\":[1,0],\"thickness\":0.16,\"bottomY\":0,\"topY\":3,\"role\":\"bounding\",\"endpointOpen\":false,\"endpointSolidBands\":[[0,3,true,null]]},{\"wallId\":\"room-rectangle:wall:2\",\"end\":\"end\",\"tangentOut\":[1,0],\"normalOut\":[0,1],\"thickness\":0.16,\"bottomY\":0,\"topY\":3,\"role\":\"bounding\",\"endpointOpen\":false,\"endpointSolidBands\":[[0,3,true,null]]}]"
+      ]
+    ],
+    "wallCacheKeys": [
+      [
+        "room-rectangle:wall:0",
+        "s13:physical-walls12:floor-grounds21:room-rectangle:wall:0j70:{\"id\":\"room-rectangle:wall:0\",\"kind\":\"line\",\"start\":[0,0],\"end\":[6,0]}j2:[]n4:0.16n1:0n1:3"
+      ],
+      [
+        "room-rectangle:wall:1",
+        "s13:physical-walls12:floor-grounds21:room-rectangle:wall:1j70:{\"id\":\"room-rectangle:wall:1\",\"kind\":\"line\",\"start\":[6,0],\"end\":[6,4]}j2:[]n4:0.16n1:0n1:3"
+      ],
+      [
+        "room-rectangle:wall:2",
+        "s13:physical-walls12:floor-grounds21:room-rectangle:wall:2j70:{\"id\":\"room-rectangle:wall:2\",\"kind\":\"line\",\"start\":[6,4],\"end\":[0,4]}j2:[]n4:0.16n1:0n1:3"
+      ],
+      [
+        "room-rectangle:wall:3",
+        "s13:physical-walls12:floor-grounds21:room-rectangle:wall:3j70:{\"id\":\"room-rectangle:wall:3\",\"kind\":\"line\",\"start\":[0,4],\"end\":[0,0]}j2:[]n4:0.16n1:0n1:3"
+      ]
+    ],
+    "meshes": [
+      {
+        "wallId": "room-rectangle:wall:0",
+        "cacheKey": "s13:physical-walls12:floor-grounds21:room-rectangle:wall:0j70:{\"id\":\"room-rectangle:wall:0\",\"kind\":\"line\",\"start\":[0,0],\"end\":[6,0]}j2:[]n4:0.16n1:0n1:3",
+        "positions": "685f2bf55a8f8636043fc5988d63594a74d1754f7060ce8873329cd3aebd1ff0",
+        "normals": "80633c67f95b674793818ac447909b2bc1fa6d08c3a7d40de7598c3c69e13d0a",
+        "uvs": "1c995cad23a48c898c62bcfd5d2e999c0a3adefd53de7c67d192814bde6b0ca3",
+        "indices": "a32dec1fc0d8f27dc8967f1a9047a724d16663a37e54d796afcfbb71c7217177",
+        "materialGroups": [
+          {
+            "surfaceKey": "side",
+            "start": 0,
+            "count": 288
+          },
+          {
+            "surfaceKey": "side",
+            "paintSide": "left",
+            "start": 288,
+            "count": 144
+          },
+          {
+            "surfaceKey": "side",
+            "paintSide": "right",
+            "start": 432,
+            "count": 144
+          }
+        ],
+        "pickRanges": 3,
+        "bounds": {
+          "min": [
+            -0.08,
+            0,
+            -0.08
+          ],
+          "max": [
+            6.08,
+            3,
+            0.08
+          ]
+        },
+        "vertexCount": 200,
+        "triangleCount": 192
+      },
+      {
+        "wallId": "room-rectangle:wall:1",
+        "cacheKey": "s13:physical-walls12:floor-grounds21:room-rectangle:wall:1j70:{\"id\":\"room-rectangle:wall:1\",\"kind\":\"line\",\"start\":[6,0],\"end\":[6,4]}j2:[]n4:0.16n1:0n1:3",
+        "positions": "b8e86aecb00faf223514eca53c8f8c6cdad46e704b63a9c0d12d2d471a993050",
+        "normals": "aec84b9be90d1bdaadcb6bb279818978dc87647bdcce5ab8e72d810804eae1f1",
+        "uvs": "f89f7a657a2f842120a1095689ce772fa78ad5536055cd4a7b149aac90a7d945",
+        "indices": "e61b960b3b32af0b245cb89e0a7ea612acb6e23268d7bbd68070e7bafb9fb66c",
+        "materialGroups": [
+          {
+            "surfaceKey": "side",
+            "start": 0,
+            "count": 192
+          },
+          {
+            "surfaceKey": "side",
+            "paintSide": "left",
+            "start": 192,
+            "count": 96
+          },
+          {
+            "surfaceKey": "side",
+            "paintSide": "right",
+            "start": 288,
+            "count": 96
+          }
+        ],
+        "pickRanges": 3,
+        "bounds": {
+          "min": [
+            5.92,
+            0,
+            -0.08
+          ],
+          "max": [
+            6.08,
+            3,
+            4.08
+          ]
+        },
+        "vertexCount": 136,
+        "triangleCount": 128
+      },
+      {
+        "wallId": "room-rectangle:wall:2",
+        "cacheKey": "s13:physical-walls12:floor-grounds21:room-rectangle:wall:2j70:{\"id\":\"room-rectangle:wall:2\",\"kind\":\"line\",\"start\":[6,4],\"end\":[0,4]}j2:[]n4:0.16n1:0n1:3",
+        "positions": "ac78755444bc32a728d185d2c042ed6949e34c1250875deb0a3f922fb18150e5",
+        "normals": "f78480e5845fc33a6d468fe55cc70542a32904634ff7194a6910787259ea318c",
+        "uvs": "1c995cad23a48c898c62bcfd5d2e999c0a3adefd53de7c67d192814bde6b0ca3",
+        "indices": "a32dec1fc0d8f27dc8967f1a9047a724d16663a37e54d796afcfbb71c7217177",
+        "materialGroups": [
+          {
+            "surfaceKey": "side",
+            "start": 0,
+            "count": 288
+          },
+          {
+            "surfaceKey": "side",
+            "paintSide": "left",
+            "start": 288,
+            "count": 144
+          },
+          {
+            "surfaceKey": "side",
+            "paintSide": "right",
+            "start": 432,
+            "count": 144
+          }
+        ],
+        "pickRanges": 3,
+        "bounds": {
+          "min": [
+            -0.08,
+            0,
+            3.92
+          ],
+          "max": [
+            6.08,
+            3,
+            4.08
+          ]
+        },
+        "vertexCount": 200,
+        "triangleCount": 192
+      },
+      {
+        "wallId": "room-rectangle:wall:3",
+        "cacheKey": "s13:physical-walls12:floor-grounds21:room-rectangle:wall:3j70:{\"id\":\"room-rectangle:wall:3\",\"kind\":\"line\",\"start\":[0,4],\"end\":[0,0]}j2:[]n4:0.16n1:0n1:3",
+        "positions": "c16c9cee7206554060b13269add43c66b164cea37d5d204475cb94bce6f12cac",
+        "normals": "8fc2292c4e813c598c750164d964d03e59052efc6dd2133c63fd129d44ea243a",
+        "uvs": "f89f7a657a2f842120a1095689ce772fa78ad5536055cd4a7b149aac90a7d945",
+        "indices": "e61b960b3b32af0b245cb89e0a7ea612acb6e23268d7bbd68070e7bafb9fb66c",
+        "materialGroups": [
+          {
+            "surfaceKey": "side",
+            "start": 0,
+            "count": 192
+          },
+          {
+            "surfaceKey": "side",
+            "paintSide": "left",
+            "start": 192,
+            "count": 96
+          },
+          {
+            "surfaceKey": "side",
+            "paintSide": "right",
+            "start": 288,
+            "count": 96
+          }
+        ],
+        "pickRanges": 3,
+        "bounds": {
+          "min": [
+            -0.08,
+            0,
+            -0.08
+          ],
+          "max": [
+            0.08,
+            3,
+            4.08
+          ]
+        },
+        "vertexCount": 136,
+        "triangleCount": 128
+      }
+    ]
+  },
+  "g1-l-shaped": {
+    "compiledDigest": "d7bbc5d0dc64ee21c705ced575dc009d645ff9809c6abc36d692f501d540d5fb",
+    "junctionCacheKeys": [
+      [
+        "room-l:j0",
+        "s17:compiled-junctions12:floor-grounds9:room-l:j0j5:[0,0]j388:[{\"wallId\":\"room-l:wall:0\",\"end\":\"start\",\"tangentOut\":[1,0],\"normalOut\":[0,1],\"thickness\":0.16,\"bottomY\":0,\"topY\":3,\"role\":\"bounding\",\"endpointOpen\":false,\"endpointSolidBands\":[[0,3,true,null]]},{\"wallId\":\"room-l:wall:5\",\"end\":\"end\",\"tangentOut\":[0,1],\"normalOut\":[-1,0],\"thickness\":0.16,\"bottomY\":0,\"topY\":3,\"role\":\"bounding\",\"endpointOpen\":false,\"endpointSolidBands\":[[0,3,true,null]]}]"
+      ],
+      [
+        "room-l:j1",
+        "s17:compiled-junctions12:floor-grounds9:room-l:j1j5:[6,0]j390:[{\"wallId\":\"room-l:wall:0\",\"end\":\"end\",\"tangentOut\":[-1,0],\"normalOut\":[0,-1],\"thickness\":0.16,\"bottomY\":0,\"topY\":3,\"role\":\"bounding\",\"endpointOpen\":false,\"endpointSolidBands\":[[0,3,true,null]]},{\"wallId\":\"room-l:wall:1\",\"end\":\"start\",\"tangentOut\":[0,1],\"normalOut\":[-1,0],\"thickness\":0.16,\"bottomY\":0,\"topY\":3,\"role\":\"bounding\",\"endpointOpen\":false,\"endpointSolidBands\":[[0,3,true,null]]}]"
+      ],
+      [
+        "room-l:j2",
+        "s17:compiled-junctions12:floor-grounds9:room-l:j2j5:[6,3]j390:[{\"wallId\":\"room-l:wall:1\",\"end\":\"end\",\"tangentOut\":[0,-1],\"normalOut\":[1,0],\"thickness\":0.16,\"bottomY\":0,\"topY\":3,\"role\":\"bounding\",\"endpointOpen\":false,\"endpointSolidBands\":[[0,3,true,null]]},{\"wallId\":\"room-l:wall:2\",\"end\":\"start\",\"tangentOut\":[-1,0],\"normalOut\":[0,-1],\"thickness\":0.16,\"bottomY\":0,\"topY\":3,\"role\":\"bounding\",\"endpointOpen\":false,\"endpointSolidBands\":[[0,3,true,null]]}]"
+      ],
+      [
+        "room-l:j3",
+        "s17:compiled-junctions12:floor-grounds9:room-l:j3j5:[3,3]j388:[{\"wallId\":\"room-l:wall:2\",\"end\":\"end\",\"tangentOut\":[1,0],\"normalOut\":[0,1],\"thickness\":0.16,\"bottomY\":0,\"topY\":3,\"role\":\"bounding\",\"endpointOpen\":false,\"endpointSolidBands\":[[0,3,true,null]]},{\"wallId\":\"room-l:wall:3\",\"end\":\"start\",\"tangentOut\":[0,1],\"normalOut\":[-1,0],\"thickness\":0.16,\"bottomY\":0,\"topY\":3,\"role\":\"bounding\",\"endpointOpen\":false,\"endpointSolidBands\":[[0,3,true,null]]}]"
+      ],
+      [
+        "room-l:j4",
+        "s17:compiled-junctions12:floor-grounds9:room-l:j4j5:[3,6]j390:[{\"wallId\":\"room-l:wall:3\",\"end\":\"end\",\"tangentOut\":[0,-1],\"normalOut\":[1,0],\"thickness\":0.16,\"bottomY\":0,\"topY\":3,\"role\":\"bounding\",\"endpointOpen\":false,\"endpointSolidBands\":[[0,3,true,null]]},{\"wallId\":\"room-l:wall:4\",\"end\":\"start\",\"tangentOut\":[-1,0],\"normalOut\":[0,-1],\"thickness\":0.16,\"bottomY\":0,\"topY\":3,\"role\":\"bounding\",\"endpointOpen\":false,\"endpointSolidBands\":[[0,3,true,null]]}]"
+      ],
+      [
+        "room-l:j5",
+        "s17:compiled-junctions12:floor-grounds9:room-l:j5j5:[0,6]j388:[{\"wallId\":\"room-l:wall:5\",\"end\":\"start\",\"tangentOut\":[0,-1],\"normalOut\":[1,0],\"thickness\":0.16,\"bottomY\":0,\"topY\":3,\"role\":\"bounding\",\"endpointOpen\":false,\"endpointSolidBands\":[[0,3,true,null]]},{\"wallId\":\"room-l:wall:4\",\"end\":\"end\",\"tangentOut\":[1,0],\"normalOut\":[0,1],\"thickness\":0.16,\"bottomY\":0,\"topY\":3,\"role\":\"bounding\",\"endpointOpen\":false,\"endpointSolidBands\":[[0,3,true,null]]}]"
+      ]
+    ],
+    "wallCacheKeys": [
+      [
+        "room-l:wall:0",
+        "s13:physical-walls12:floor-grounds13:room-l:wall:0j62:{\"id\":\"room-l:wall:0\",\"kind\":\"line\",\"start\":[0,0],\"end\":[6,0]}j2:[]n4:0.16n1:0n1:3"
+      ],
+      [
+        "room-l:wall:1",
+        "s13:physical-walls12:floor-grounds13:room-l:wall:1j62:{\"id\":\"room-l:wall:1\",\"kind\":\"line\",\"start\":[6,0],\"end\":[6,3]}j2:[]n4:0.16n1:0n1:3"
+      ],
+      [
+        "room-l:wall:2",
+        "s13:physical-walls12:floor-grounds13:room-l:wall:2j62:{\"id\":\"room-l:wall:2\",\"kind\":\"line\",\"start\":[6,3],\"end\":[3,3]}j2:[]n4:0.16n1:0n1:3"
+      ],
+      [
+        "room-l:wall:3",
+        "s13:physical-walls12:floor-grounds13:room-l:wall:3j62:{\"id\":\"room-l:wall:3\",\"kind\":\"line\",\"start\":[3,3],\"end\":[3,6]}j2:[]n4:0.16n1:0n1:3"
+      ],
+      [
+        "room-l:wall:4",
+        "s13:physical-walls12:floor-grounds13:room-l:wall:4j62:{\"id\":\"room-l:wall:4\",\"kind\":\"line\",\"start\":[3,6],\"end\":[0,6]}j2:[]n4:0.16n1:0n1:3"
+      ],
+      [
+        "room-l:wall:5",
+        "s13:physical-walls12:floor-grounds13:room-l:wall:5j62:{\"id\":\"room-l:wall:5\",\"kind\":\"line\",\"start\":[0,6],\"end\":[0,0]}j2:[]n4:0.16n1:0n1:3"
+      ]
+    ],
+    "meshes": [
+      {
+        "wallId": "room-l:wall:0",
+        "cacheKey": "s13:physical-walls12:floor-grounds13:room-l:wall:0j62:{\"id\":\"room-l:wall:0\",\"kind\":\"line\",\"start\":[0,0],\"end\":[6,0]}j2:[]n4:0.16n1:0n1:3",
+        "positions": "685f2bf55a8f8636043fc5988d63594a74d1754f7060ce8873329cd3aebd1ff0",
+        "normals": "80633c67f95b674793818ac447909b2bc1fa6d08c3a7d40de7598c3c69e13d0a",
+        "uvs": "1c995cad23a48c898c62bcfd5d2e999c0a3adefd53de7c67d192814bde6b0ca3",
+        "indices": "a32dec1fc0d8f27dc8967f1a9047a724d16663a37e54d796afcfbb71c7217177",
+        "materialGroups": [
+          {
+            "surfaceKey": "side",
+            "start": 0,
+            "count": 288
+          },
+          {
+            "surfaceKey": "side",
+            "paintSide": "left",
+            "start": 288,
+            "count": 144
+          },
+          {
+            "surfaceKey": "side",
+            "paintSide": "right",
+            "start": 432,
+            "count": 144
+          }
+        ],
+        "pickRanges": 3,
+        "bounds": {
+          "min": [
+            -0.08,
+            0,
+            -0.08
+          ],
+          "max": [
+            6.08,
+            3,
+            0.08
+          ]
+        },
+        "vertexCount": 200,
+        "triangleCount": 192
+      },
+      {
+        "wallId": "room-l:wall:1",
+        "cacheKey": "s13:physical-walls12:floor-grounds13:room-l:wall:1j62:{\"id\":\"room-l:wall:1\",\"kind\":\"line\",\"start\":[6,0],\"end\":[6,3]}j2:[]n4:0.16n1:0n1:3",
+        "positions": "035d74a1c0c703762318ed5463cb2bda88e96281599658b84f7a9f6deae48884",
+        "normals": "21a5d81c19c03a05c549be93bb7058de3d21b75e558b237a411e2740b5afde88",
+        "uvs": "b41c5dfedf0e62d7711ba23484e07eaee28d4e3522d2479f0cca31202d5c6b86",
+        "indices": "36edbf79d9ce8257089d7e7a1f55546db9125c0e2cbb9b16be7a3d8ca3d2c33f",
+        "materialGroups": [
+          {
+            "surfaceKey": "side",
+            "start": 0,
+            "count": 144
+          },
+          {
+            "surfaceKey": "side",
+            "paintSide": "left",
+            "start": 144,
+            "count": 72
+          },
+          {
+            "surfaceKey": "side",
+            "paintSide": "right",
+            "start": 216,
+            "count": 72
+          }
+        ],
+        "pickRanges": 3,
+        "bounds": {
+          "min": [
+            5.92,
+            0,
+            -0.08
+          ],
+          "max": [
+            6.08,
+            3,
+            3.08
+          ]
+        },
+        "vertexCount": 104,
+        "triangleCount": 96
+      },
+      {
+        "wallId": "room-l:wall:2",
+        "cacheKey": "s13:physical-walls12:floor-grounds13:room-l:wall:2j62:{\"id\":\"room-l:wall:2\",\"kind\":\"line\",\"start\":[6,3],\"end\":[3,3]}j2:[]n4:0.16n1:0n1:3",
+        "positions": "85aae2d12effa871f07f195879914ababe951b9f4bd999bb430c976971c09e8e",
+        "normals": "bc880a7dc0f234d2b268f0133f93f3626c58a2795476b3267f9bb3bace209df9",
+        "uvs": "b41c5dfedf0e62d7711ba23484e07eaee28d4e3522d2479f0cca31202d5c6b86",
+        "indices": "36edbf79d9ce8257089d7e7a1f55546db9125c0e2cbb9b16be7a3d8ca3d2c33f",
+        "materialGroups": [
+          {
+            "surfaceKey": "side",
+            "start": 0,
+            "count": 144
+          },
+          {
+            "surfaceKey": "side",
+            "paintSide": "left",
+            "start": 144,
+            "count": 72
+          },
+          {
+            "surfaceKey": "side",
+            "paintSide": "right",
+            "start": 216,
+            "count": 72
+          }
+        ],
+        "pickRanges": 3,
+        "bounds": {
+          "min": [
+            2.92,
+            0,
+            2.92
+          ],
+          "max": [
+            6.08,
+            3,
+            3.08
+          ]
+        },
+        "vertexCount": 104,
+        "triangleCount": 96
+      },
+      {
+        "wallId": "room-l:wall:3",
+        "cacheKey": "s13:physical-walls12:floor-grounds13:room-l:wall:3j62:{\"id\":\"room-l:wall:3\",\"kind\":\"line\",\"start\":[3,3],\"end\":[3,6]}j2:[]n4:0.16n1:0n1:3",
+        "positions": "f52f1c6cd886838777e6ce1f5530a1f252b4e2d97a7600683cbac3f986c8052d",
+        "normals": "21a5d81c19c03a05c549be93bb7058de3d21b75e558b237a411e2740b5afde88",
+        "uvs": "b41c5dfedf0e62d7711ba23484e07eaee28d4e3522d2479f0cca31202d5c6b86",
+        "indices": "36edbf79d9ce8257089d7e7a1f55546db9125c0e2cbb9b16be7a3d8ca3d2c33f",
+        "materialGroups": [
+          {
+            "surfaceKey": "side",
+            "start": 0,
+            "count": 144
+          },
+          {
+            "surfaceKey": "side",
+            "paintSide": "left",
+            "start": 144,
+            "count": 72
+          },
+          {
+            "surfaceKey": "side",
+            "paintSide": "right",
+            "start": 216,
+            "count": 72
+          }
+        ],
+        "pickRanges": 3,
+        "bounds": {
+          "min": [
+            2.92,
+            0,
+            2.92
+          ],
+          "max": [
+            3.08,
+            3,
+            6.08
+          ]
+        },
+        "vertexCount": 104,
+        "triangleCount": 96
+      },
+      {
+        "wallId": "room-l:wall:4",
+        "cacheKey": "s13:physical-walls12:floor-grounds13:room-l:wall:4j62:{\"id\":\"room-l:wall:4\",\"kind\":\"line\",\"start\":[3,6],\"end\":[0,6]}j2:[]n4:0.16n1:0n1:3",
+        "positions": "dde9f3a8e4f21050e68f4c6c0e4be6c5d625e4b7fd9ef6d0970aa93a6bbf7742",
+        "normals": "bc880a7dc0f234d2b268f0133f93f3626c58a2795476b3267f9bb3bace209df9",
+        "uvs": "b41c5dfedf0e62d7711ba23484e07eaee28d4e3522d2479f0cca31202d5c6b86",
+        "indices": "36edbf79d9ce8257089d7e7a1f55546db9125c0e2cbb9b16be7a3d8ca3d2c33f",
+        "materialGroups": [
+          {
+            "surfaceKey": "side",
+            "start": 0,
+            "count": 144
+          },
+          {
+            "surfaceKey": "side",
+            "paintSide": "left",
+            "start": 144,
+            "count": 72
+          },
+          {
+            "surfaceKey": "side",
+            "paintSide": "right",
+            "start": 216,
+            "count": 72
+          }
+        ],
+        "pickRanges": 3,
+        "bounds": {
+          "min": [
+            -0.08,
+            0,
+            5.92
+          ],
+          "max": [
+            3.08,
+            3,
+            6.08
+          ]
+        },
+        "vertexCount": 104,
+        "triangleCount": 96
+      },
+      {
+        "wallId": "room-l:wall:5",
+        "cacheKey": "s13:physical-walls12:floor-grounds13:room-l:wall:5j62:{\"id\":\"room-l:wall:5\",\"kind\":\"line\",\"start\":[0,6],\"end\":[0,0]}j2:[]n4:0.16n1:0n1:3",
+        "positions": "c2764459e4a4ad1bda5834230fcdc21c01e3775f0540ac7d7addf3f73e80dd86",
+        "normals": "3bfb2560bf0d9bd38560c2325bcf02bbacbd1fa65643163f089f61ddf4d78e8f",
+        "uvs": "1c995cad23a48c898c62bcfd5d2e999c0a3adefd53de7c67d192814bde6b0ca3",
+        "indices": "a32dec1fc0d8f27dc8967f1a9047a724d16663a37e54d796afcfbb71c7217177",
+        "materialGroups": [
+          {
+            "surfaceKey": "side",
+            "start": 0,
+            "count": 288
+          },
+          {
+            "surfaceKey": "side",
+            "paintSide": "left",
+            "start": 288,
+            "count": 144
+          },
+          {
+            "surfaceKey": "side",
+            "paintSide": "right",
+            "start": 432,
+            "count": 144
+          }
+        ],
+        "pickRanges": 3,
+        "bounds": {
+          "min": [
+            -0.08,
+            0,
+            -0.08
+          ],
+          "max": [
+            0.08,
+            3,
+            6.08
+          ]
+        },
+        "vertexCount": 200,
+        "triangleCount": 192
+      }
+    ]
+  },
+  "g1-multiple-openings": {
+    "compiledDigest": "0fab057d5d8d13db06fbcb1c3bae13075a2b256610136f5722da9ec68f98bae1",
+    "junctionCacheKeys": [
+      [
+        "room-openings:j0",
+        "s17:compiled-junctions12:floor-grounds16:room-openings:j0j5:[0,0]j402:[{\"wallId\":\"room-openings:wall:0\",\"end\":\"start\",\"tangentOut\":[1,0],\"normalOut\":[0,1],\"thickness\":0.16,\"bottomY\":0,\"topY\":3,\"role\":\"bounding\",\"endpointOpen\":false,\"endpointSolidBands\":[[0,3,true,null]]},{\"wallId\":\"room-openings:wall:3\",\"end\":\"end\",\"tangentOut\":[0,1],\"normalOut\":[-1,0],\"thickness\":0.16,\"bottomY\":0,\"topY\":3,\"role\":\"bounding\",\"endpointOpen\":false,\"endpointSolidBands\":[[0,3,true,null]]}]"
+      ],
+      [
+        "room-openings:j1",
+        "s17:compiled-junctions12:floor-grounds16:room-openings:j1j6:[10,0]j404:[{\"wallId\":\"room-openings:wall:0\",\"end\":\"end\",\"tangentOut\":[-1,0],\"normalOut\":[0,-1],\"thickness\":0.16,\"bottomY\":0,\"topY\":3,\"role\":\"bounding\",\"endpointOpen\":false,\"endpointSolidBands\":[[0,3,true,null]]},{\"wallId\":\"room-openings:wall:1\",\"end\":\"start\",\"tangentOut\":[0,1],\"normalOut\":[-1,0],\"thickness\":0.16,\"bottomY\":0,\"topY\":3,\"role\":\"bounding\",\"endpointOpen\":false,\"endpointSolidBands\":[[0,3,true,null]]}]"
+      ],
+      [
+        "room-openings:j2",
+        "s17:compiled-junctions12:floor-grounds16:room-openings:j2j6:[10,4]j404:[{\"wallId\":\"room-openings:wall:1\",\"end\":\"end\",\"tangentOut\":[0,-1],\"normalOut\":[1,0],\"thickness\":0.16,\"bottomY\":0,\"topY\":3,\"role\":\"bounding\",\"endpointOpen\":false,\"endpointSolidBands\":[[0,3,true,null]]},{\"wallId\":\"room-openings:wall:2\",\"end\":\"start\",\"tangentOut\":[-1,0],\"normalOut\":[0,-1],\"thickness\":0.16,\"bottomY\":0,\"topY\":3,\"role\":\"bounding\",\"endpointOpen\":false,\"endpointSolidBands\":[[0,3,true,null]]}]"
+      ],
+      [
+        "room-openings:j3",
+        "s17:compiled-junctions12:floor-grounds16:room-openings:j3j5:[0,4]j402:[{\"wallId\":\"room-openings:wall:3\",\"end\":\"start\",\"tangentOut\":[0,-1],\"normalOut\":[1,0],\"thickness\":0.16,\"bottomY\":0,\"topY\":3,\"role\":\"bounding\",\"endpointOpen\":false,\"endpointSolidBands\":[[0,3,true,null]]},{\"wallId\":\"room-openings:wall:2\",\"end\":\"end\",\"tangentOut\":[1,0],\"normalOut\":[0,1],\"thickness\":0.16,\"bottomY\":0,\"topY\":3,\"role\":\"bounding\",\"endpointOpen\":false,\"endpointSolidBands\":[[0,3,true,null]]}]"
+      ]
+    ],
+    "wallCacheKeys": [
+      [
+        "room-openings:wall:0",
+        "s13:physical-walls12:floor-grounds20:room-openings:wall:0j70:{\"id\":\"room-openings:wall:0\",\"kind\":\"line\",\"start\":[0,0],\"end\":[10,0]}j349:[{\"id\":\"door-1\",\"kind\":\"door\",\"offset\":1,\"width\":0.9,\"height\":2.1,\"sillHeight\":0,\"profile\":\"rectangular\",\"wallId\":\"room-openings:wall:0\",\"segmentId\":\"room-openings:wall:0\"},{\"id\":\"window-1\",\"kind\":\"window\",\"offset\":4,\"width\":1.2,\"height\":1.2,\"sillHeight\":1,\"profile\":\"rectangular\",\"wallId\":\"room-openings:wall:0\",\"segmentId\":\"room-openings:wall:0\"}]n4:0.16n1:0n1:3"
+      ],
+      [
+        "room-openings:wall:1",
+        "s13:physical-walls12:floor-grounds20:room-openings:wall:1j71:{\"id\":\"room-openings:wall:1\",\"kind\":\"line\",\"start\":[10,0],\"end\":[10,4]}j175:[{\"id\":\"door-2\",\"kind\":\"door\",\"offset\":0.5,\"width\":0.9,\"height\":2.1,\"sillHeight\":0,\"profile\":\"rectangular\",\"wallId\":\"room-openings:wall:1\",\"segmentId\":\"room-openings:wall:1\"}]n4:0.16n1:0n1:3"
+      ],
+      [
+        "room-openings:wall:2",
+        "s13:physical-walls12:floor-grounds20:room-openings:wall:2j70:{\"id\":\"room-openings:wall:2\",\"kind\":\"line\",\"start\":[10,4],\"end\":[0,4]}j2:[]n4:0.16n1:0n1:3"
+      ],
+      [
+        "room-openings:wall:3",
+        "s13:physical-walls12:floor-grounds20:room-openings:wall:3j69:{\"id\":\"room-openings:wall:3\",\"kind\":\"line\",\"start\":[0,4],\"end\":[0,0]}j2:[]n4:0.16n1:0n1:3"
+      ]
+    ],
+    "meshes": [
+      {
+        "wallId": "room-openings:wall:0",
+        "cacheKey": "s13:physical-walls12:floor-grounds20:room-openings:wall:0j70:{\"id\":\"room-openings:wall:0\",\"kind\":\"line\",\"start\":[0,0],\"end\":[10,0]}j349:[{\"id\":\"door-1\",\"kind\":\"door\",\"offset\":1,\"width\":0.9,\"height\":2.1,\"sillHeight\":0,\"profile\":\"rectangular\",\"wallId\":\"room-openings:wall:0\",\"segmentId\":\"room-openings:wall:0\"},{\"id\":\"window-1\",\"kind\":\"window\",\"offset\":4,\"width\":1.2,\"height\":1.2,\"sillHeight\":1,\"profile\":\"rectangular\",\"wallId\":\"room-openings:wall:0\",\"segmentId\":\"room-openings:wall:0\"}]n4:0.16n1:0n1:3",
+        "positions": "cc9c52e1e2ed46d6f6bb580e5e07e38ebe69d7e324c8b9c7498d3e0047da14f9",
+        "normals": "c33acb598987d4ef600172fbb1e4fff1ddf9f3afedacc30f1179f25ff46b9e7a",
+        "uvs": "2e174518578315237981c350f4f086cf71dd35ca1a6f7b54e333ce2659c25ab3",
+        "indices": "76f5feafb41fa820ef34c52b7261676027f0a7c99357e97d0044cca048e8c70e",
+        "materialGroups": [
+          {
+            "surfaceKey": "side",
+            "start": 0,
+            "count": 504
+          },
+          {
+            "surfaceKey": "side",
+            "paintSide": "left",
+            "start": 504,
+            "count": 822
+          },
+          {
+            "surfaceKey": "side",
+            "paintSide": "right",
+            "start": 1326,
+            "count": 822
+          },
+          {
+            "surfaceKey": "lintel",
+            "start": 2148,
+            "count": 108
+          },
+          {
+            "surfaceKey": "lintel",
+            "paintSide": "left",
+            "start": 2256,
+            "count": 78
+          },
+          {
+            "surfaceKey": "lintel",
+            "paintSide": "right",
+            "start": 2334,
+            "count": 78
+          }
+        ],
+        "pickRanges": 33,
+        "bounds": {
+          "min": [
+            -0.08,
+            0,
+            -0.08
+          ],
+          "max": [
+            10.08,
+            3,
+            0.08
+          ]
+        },
+        "vertexCount": 634,
+        "triangleCount": 804
+      },
+      {
+        "wallId": "room-openings:wall:1",
+        "cacheKey": "s13:physical-walls12:floor-grounds20:room-openings:wall:1j71:{\"id\":\"room-openings:wall:1\",\"kind\":\"line\",\"start\":[10,0],\"end\":[10,4]}j175:[{\"id\":\"door-2\",\"kind\":\"door\",\"offset\":0.5,\"width\":0.9,\"height\":2.1,\"sillHeight\":0,\"profile\":\"rectangular\",\"wallId\":\"room-openings:wall:1\",\"segmentId\":\"room-openings:wall:1\"}]n4:0.16n1:0n1:3",
+        "positions": "cfb0e2e3b922ebfa361bf80de1e1a27fb72750323e6f6b569e702ee6612a26aa",
+        "normals": "fcae6df01cb588f16a08c4f6cc82eadd89e7cecb7e85ac65cdbe7caa3f25f9c6",
+        "uvs": "14f0285b3c30ae20aa1b6b6039f948c867e567983fc39e98c2b3b31f4320204e",
+        "indices": "c8c2f5cb36e02d4ec70e6bf4de6af37dc42dff085e20cc14e8bf207dd4a572b8",
+        "materialGroups": [
+          {
+            "surfaceKey": "side",
+            "start": 0,
+            "count": 168
+          },
+          {
+            "surfaceKey": "side",
+            "paintSide": "left",
+            "start": 168,
+            "count": 156
+          },
+          {
+            "surfaceKey": "side",
+            "paintSide": "right",
+            "start": 324,
+            "count": 156
+          },
+          {
+            "surfaceKey": "lintel",
+            "start": 480,
+            "count": 48
+          },
+          {
+            "surfaceKey": "lintel",
+            "paintSide": "left",
+            "start": 528,
+            "count": 24
+          },
+          {
+            "surfaceKey": "lintel",
+            "paintSide": "right",
+            "start": 552,
+            "count": 24
+          }
+        ],
+        "pickRanges": 14,
+        "bounds": {
+          "min": [
+            9.92,
+            0,
+            -0.08
+          ],
+          "max": [
+            10.08,
+            3,
+            4.08
+          ]
+        },
+        "vertexCount": 186,
+        "triangleCount": 192
+      },
+      {
+        "wallId": "room-openings:wall:2",
+        "cacheKey": "s13:physical-walls12:floor-grounds20:room-openings:wall:2j70:{\"id\":\"room-openings:wall:2\",\"kind\":\"line\",\"start\":[10,4],\"end\":[0,4]}j2:[]n4:0.16n1:0n1:3",
+        "positions": "978c4a5e8c9cddb0245af869d40d7749291960606aa9fab491e2d9917fd1cd94",
+        "normals": "b9e05ee1c23be4beb4c11ca1615d4b2bc4145850ed854296d41a3b21f4fcfd27",
+        "uvs": "112f6c4a235cc546829d1dfa4a9522c5d4b49c253baf2031aad4d2752923157f",
+        "indices": "a10d847d320b705696d672cb27343176d3824d47da7aaa7b6d2c58317865581d",
+        "materialGroups": [
+          {
+            "surfaceKey": "side",
+            "start": 0,
+            "count": 480
+          },
+          {
+            "surfaceKey": "side",
+            "paintSide": "left",
+            "start": 480,
+            "count": 240
+          },
+          {
+            "surfaceKey": "side",
+            "paintSide": "right",
+            "start": 720,
+            "count": 240
+          }
+        ],
+        "pickRanges": 3,
+        "bounds": {
+          "min": [
+            -0.08,
+            0,
+            3.92
+          ],
+          "max": [
+            10.08,
+            3,
+            4.08
+          ]
+        },
+        "vertexCount": 328,
+        "triangleCount": 320
+      },
+      {
+        "wallId": "room-openings:wall:3",
+        "cacheKey": "s13:physical-walls12:floor-grounds20:room-openings:wall:3j69:{\"id\":\"room-openings:wall:3\",\"kind\":\"line\",\"start\":[0,4],\"end\":[0,0]}j2:[]n4:0.16n1:0n1:3",
+        "positions": "c16c9cee7206554060b13269add43c66b164cea37d5d204475cb94bce6f12cac",
+        "normals": "8fc2292c4e813c598c750164d964d03e59052efc6dd2133c63fd129d44ea243a",
+        "uvs": "f89f7a657a2f842120a1095689ce772fa78ad5536055cd4a7b149aac90a7d945",
+        "indices": "e61b960b3b32af0b245cb89e0a7ea612acb6e23268d7bbd68070e7bafb9fb66c",
+        "materialGroups": [
+          {
+            "surfaceKey": "side",
+            "start": 0,
+            "count": 192
+          },
+          {
+            "surfaceKey": "side",
+            "paintSide": "left",
+            "start": 192,
+            "count": 96
+          },
+          {
+            "surfaceKey": "side",
+            "paintSide": "right",
+            "start": 288,
+            "count": 96
+          }
+        ],
+        "pickRanges": 3,
+        "bounds": {
+          "min": [
+            -0.08,
+            0,
+            -0.08
+          ],
+          "max": [
+            0.08,
+            3,
+            4.08
+          ]
+        },
+        "vertexCount": 136,
+        "triangleCount": 128
+      }
+    ]
+  },
+  "g1-profile-matrix": {
+    "compiledDigest": "77fd36a5ff4675c59a22f75d6b3393fefb50916dd4dd11460e8837cf242203eb",
+    "junctionCacheKeys": [
+      [
+        "room-profiles:j0",
+        "s17:compiled-junctions12:floor-grounds16:room-profiles:j0j5:[0,0]j402:[{\"wallId\":\"room-profiles:wall:0\",\"end\":\"start\",\"tangentOut\":[1,0],\"normalOut\":[0,1],\"thickness\":0.16,\"bottomY\":0,\"topY\":3,\"role\":\"bounding\",\"endpointOpen\":false,\"endpointSolidBands\":[[0,3,true,null]]},{\"wallId\":\"room-profiles:wall:3\",\"end\":\"end\",\"tangentOut\":[0,1],\"normalOut\":[-1,0],\"thickness\":0.16,\"bottomY\":0,\"topY\":3,\"role\":\"bounding\",\"endpointOpen\":false,\"endpointSolidBands\":[[0,3,true,null]]}]"
+      ],
+      [
+        "room-profiles:j1",
+        "s17:compiled-junctions12:floor-grounds16:room-profiles:j1j6:[12,0]j404:[{\"wallId\":\"room-profiles:wall:0\",\"end\":\"end\",\"tangentOut\":[-1,0],\"normalOut\":[0,-1],\"thickness\":0.16,\"bottomY\":0,\"topY\":3,\"role\":\"bounding\",\"endpointOpen\":false,\"endpointSolidBands\":[[0,3,true,null]]},{\"wallId\":\"room-profiles:wall:1\",\"end\":\"start\",\"tangentOut\":[0,1],\"normalOut\":[-1,0],\"thickness\":0.16,\"bottomY\":0,\"topY\":3,\"role\":\"bounding\",\"endpointOpen\":false,\"endpointSolidBands\":[[0,3,true,null]]}]"
+      ],
+      [
+        "room-profiles:j2",
+        "s17:compiled-junctions12:floor-grounds16:room-profiles:j2j6:[12,4]j404:[{\"wallId\":\"room-profiles:wall:1\",\"end\":\"end\",\"tangentOut\":[0,-1],\"normalOut\":[1,0],\"thickness\":0.16,\"bottomY\":0,\"topY\":3,\"role\":\"bounding\",\"endpointOpen\":false,\"endpointSolidBands\":[[0,3,true,null]]},{\"wallId\":\"room-profiles:wall:2\",\"end\":\"start\",\"tangentOut\":[-1,0],\"normalOut\":[0,-1],\"thickness\":0.16,\"bottomY\":0,\"topY\":3,\"role\":\"bounding\",\"endpointOpen\":false,\"endpointSolidBands\":[[0,3,true,null]]}]"
+      ],
+      [
+        "room-profiles:j3",
+        "s17:compiled-junctions12:floor-grounds16:room-profiles:j3j5:[0,4]j402:[{\"wallId\":\"room-profiles:wall:3\",\"end\":\"start\",\"tangentOut\":[0,-1],\"normalOut\":[1,0],\"thickness\":0.16,\"bottomY\":0,\"topY\":3,\"role\":\"bounding\",\"endpointOpen\":false,\"endpointSolidBands\":[[0,3,true,null]]},{\"wallId\":\"room-profiles:wall:2\",\"end\":\"end\",\"tangentOut\":[1,0],\"normalOut\":[0,1],\"thickness\":0.16,\"bottomY\":0,\"topY\":3,\"role\":\"bounding\",\"endpointOpen\":false,\"endpointSolidBands\":[[0,3,true,null]]}]"
+      ]
+    ],
+    "wallCacheKeys": [
+      [
+        "room-profiles:wall:0",
+        "s13:physical-walls12:floor-grounds20:room-profiles:wall:0j70:{\"id\":\"room-profiles:wall:0\",\"kind\":\"line\",\"start\":[0,0],\"end\":[12,0]}j515:[{\"id\":\"rect\",\"kind\":\"door\",\"offset\":0.5,\"width\":1.4,\"height\":2.4,\"sillHeight\":0,\"profile\":\"rectangular\",\"wallId\":\"room-profiles:wall:0\",\"segmentId\":\"room-profiles:wall:0\"},{\"id\":\"rounded\",\"kind\":\"window\",\"offset\":4,\"width\":1.4,\"height\":1.8,\"sillHeight\":1,\"profile\":\"rounded\",\"wallId\":\"room-profiles:wall:0\",\"segmentId\":\"room-profiles:wall:0\"},{\"id\":\"pointed\",\"kind\":\"window\",\"offset\":8,\"width\":1.4,\"height\":1.8,\"sillHeight\":1,\"profile\":\"pointed\",\"wallId\":\"room-profiles:wall:0\",\"segmentId\":\"room-profiles:wall:0\"}]n4:0.16n1:0n1:3"
+      ],
+      [
+        "room-profiles:wall:1",
+        "s13:physical-walls12:floor-grounds20:room-profiles:wall:1j71:{\"id\":\"room-profiles:wall:1\",\"kind\":\"line\",\"start\":[12,0],\"end\":[12,4]}j2:[]n4:0.16n1:0n1:3"
+      ],
+      [
+        "room-profiles:wall:2",
+        "s13:physical-walls12:floor-grounds20:room-profiles:wall:2j70:{\"id\":\"room-profiles:wall:2\",\"kind\":\"line\",\"start\":[12,4],\"end\":[0,4]}j2:[]n4:0.16n1:0n1:3"
+      ],
+      [
+        "room-profiles:wall:3",
+        "s13:physical-walls12:floor-grounds20:room-profiles:wall:3j69:{\"id\":\"room-profiles:wall:3\",\"kind\":\"line\",\"start\":[0,4],\"end\":[0,0]}j2:[]n4:0.16n1:0n1:3"
+      ]
+    ],
+    "meshes": [
+      {
+        "wallId": "room-profiles:wall:0",
+        "cacheKey": "s13:physical-walls12:floor-grounds20:room-profiles:wall:0j70:{\"id\":\"room-profiles:wall:0\",\"kind\":\"line\",\"start\":[0,0],\"end\":[12,0]}j515:[{\"id\":\"rect\",\"kind\":\"door\",\"offset\":0.5,\"width\":1.4,\"height\":2.4,\"sillHeight\":0,\"profile\":\"rectangular\",\"wallId\":\"room-profiles:wall:0\",\"segmentId\":\"room-profiles:wall:0\"},{\"id\":\"rounded\",\"kind\":\"window\",\"offset\":4,\"width\":1.4,\"height\":1.8,\"sillHeight\":1,\"profile\":\"rounded\",\"wallId\":\"room-profiles:wall:0\",\"segmentId\":\"room-profiles:wall:0\"},{\"id\":\"pointed\",\"kind\":\"window\",\"offset\":8,\"width\":1.4,\"height\":1.8,\"sillHeight\":1,\"profile\":\"pointed\",\"wallId\":\"room-profiles:wall:0\",\"segmentId\":\"room-profiles:wall:0\"}]n4:0.16n1:0n1:3",
+        "positions": "2fd830ed6deff9057d26a125461e8efb5cafe6948ad15341fb9e7e7e19b7cb63",
+        "normals": "53a4419dcb3b9010648cd2db99914da2d4fcbd6098df5cdcb586f780b966c898",
+        "uvs": "f6f7bf7760bf85064845453ce4edcd7aa796c55eaf8fc598ed81994cfc1c8cd5",
+        "indices": "e1e46389ec57759cb593624f2eff709519ae47fb3b4dce4da5457d10a705ed0f",
+        "materialGroups": [
+          {
+            "surfaceKey": "side",
+            "start": 0,
+            "count": 600
+          },
+          {
+            "surfaceKey": "side",
+            "paintSide": "left",
+            "start": 600,
+            "count": 864
+          },
+          {
+            "surfaceKey": "side",
+            "paintSide": "right",
+            "start": 1464,
+            "count": 864
+          },
+          {
+            "surfaceKey": "lintel",
+            "start": 2328,
+            "count": 456
+          },
+          {
+            "surfaceKey": "lintel",
+            "paintSide": "left",
+            "start": 2784,
+            "count": 252
+          },
+          {
+            "surfaceKey": "lintel",
+            "paintSide": "right",
+            "start": 3036,
+            "count": 252
+          }
+        ],
+        "pickRanges": 100,
+        "bounds": {
+          "min": [
+            -0.08,
+            0,
+            -0.08
+          ],
+          "max": [
+            12.08,
+            3,
+            0.08
+          ]
+        },
+        "vertexCount": 966,
+        "triangleCount": 1096
+      },
+      {
+        "wallId": "room-profiles:wall:1",
+        "cacheKey": "s13:physical-walls12:floor-grounds20:room-profiles:wall:1j71:{\"id\":\"room-profiles:wall:1\",\"kind\":\"line\",\"start\":[12,0],\"end\":[12,4]}j2:[]n4:0.16n1:0n1:3",
+        "positions": "84fe80e271c685e27cb98b290fd398c3c77bcfc2b3ac9bd40a95c49409ec93db",
+        "normals": "aec84b9be90d1bdaadcb6bb279818978dc87647bdcce5ab8e72d810804eae1f1",
+        "uvs": "f89f7a657a2f842120a1095689ce772fa78ad5536055cd4a7b149aac90a7d945",
+        "indices": "e61b960b3b32af0b245cb89e0a7ea612acb6e23268d7bbd68070e7bafb9fb66c",
+        "materialGroups": [
+          {
+            "surfaceKey": "side",
+            "start": 0,
+            "count": 192
+          },
+          {
+            "surfaceKey": "side",
+            "paintSide": "left",
+            "start": 192,
+            "count": 96
+          },
+          {
+            "surfaceKey": "side",
+            "paintSide": "right",
+            "start": 288,
+            "count": 96
+          }
+        ],
+        "pickRanges": 3,
+        "bounds": {
+          "min": [
+            11.92,
+            0,
+            -0.08
+          ],
+          "max": [
+            12.08,
+            3,
+            4.08
+          ]
+        },
+        "vertexCount": 136,
+        "triangleCount": 128
+      },
+      {
+        "wallId": "room-profiles:wall:2",
+        "cacheKey": "s13:physical-walls12:floor-grounds20:room-profiles:wall:2j70:{\"id\":\"room-profiles:wall:2\",\"kind\":\"line\",\"start\":[12,4],\"end\":[0,4]}j2:[]n4:0.16n1:0n1:3",
+        "positions": "3baf4e7a04fa58494f265e0582cb437258c2a4ed9e1cbf43d12fdbbad6a23012",
+        "normals": "251c2ebcb495fa074a7dca8b25fb64af64b73b6cfb7458ed419a355210903ca9",
+        "uvs": "0ba5a66157668770b94e025c5e5348c36ce03da9c9530aefb028744044ab71bf",
+        "indices": "48cbbdae26d863b760dd42df4cb33db469282395627ffa8e0eccc8928455dd51",
+        "materialGroups": [
+          {
+            "surfaceKey": "side",
+            "start": 0,
+            "count": 576
+          },
+          {
+            "surfaceKey": "side",
+            "paintSide": "left",
+            "start": 576,
+            "count": 288
+          },
+          {
+            "surfaceKey": "side",
+            "paintSide": "right",
+            "start": 864,
+            "count": 288
+          }
+        ],
+        "pickRanges": 3,
+        "bounds": {
+          "min": [
+            -0.08,
+            0,
+            3.92
+          ],
+          "max": [
+            12.08,
+            3,
+            4.08
+          ]
+        },
+        "vertexCount": 392,
+        "triangleCount": 384
+      },
+      {
+        "wallId": "room-profiles:wall:3",
+        "cacheKey": "s13:physical-walls12:floor-grounds20:room-profiles:wall:3j69:{\"id\":\"room-profiles:wall:3\",\"kind\":\"line\",\"start\":[0,4],\"end\":[0,0]}j2:[]n4:0.16n1:0n1:3",
+        "positions": "c16c9cee7206554060b13269add43c66b164cea37d5d204475cb94bce6f12cac",
+        "normals": "8fc2292c4e813c598c750164d964d03e59052efc6dd2133c63fd129d44ea243a",
+        "uvs": "f89f7a657a2f842120a1095689ce772fa78ad5536055cd4a7b149aac90a7d945",
+        "indices": "e61b960b3b32af0b245cb89e0a7ea612acb6e23268d7bbd68070e7bafb9fb66c",
+        "materialGroups": [
+          {
+            "surfaceKey": "side",
+            "start": 0,
+            "count": 192
+          },
+          {
+            "surfaceKey": "side",
+            "paintSide": "left",
+            "start": 192,
+            "count": 96
+          },
+          {
+            "surfaceKey": "side",
+            "paintSide": "right",
+            "start": 288,
+            "count": 96
+          }
+        ],
+        "pickRanges": 3,
+        "bounds": {
+          "min": [
+            -0.08,
+            0,
+            -0.08
+          ],
+          "max": [
+            0.08,
+            3,
+            4.08
+          ]
+        },
+        "vertexCount": 136,
+        "triangleCount": 128
+      }
+    ]
+  }
+}

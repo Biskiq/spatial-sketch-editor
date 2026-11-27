@@ -20,9 +20,12 @@
  * this catches an unmatched Wall edge, a seam that misses the cap, a cap edge
  * with no closure, and duplicate/overlapping seam faces.
  */
-import { describe, expect, it } from 'vitest';
+import {
+	describe, expect, it } from 'vitest';
 import { compileWallFirstLayoutGeometry, deriveChainSpans, type LayoutVec2 } from '@portfolio/layout-core/geometry';
-import { legJoinsByWall, wallCubicChain, type LayoutDocumentWallFirst, type LayoutWall, type LayoutWallCurveKnot } from '@portfolio/layout-core/wall';
+import { legJoinsByWall, wallCubicChain, type LayoutDocumentWallFirst, type LayoutWall, type LayoutWallCurveKnot,
+	LAYOUT_WALL_FIRST_FORMAT_VERSION,
+} from '@portfolio/layout-core/wall';
 import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-standalone';
 import { assembleCutawayCaps, type CutawayComponent } from '$lib/authoring/stage/cutaway/cutaway-caps';
 import { capFillsOf } from '$lib/authoring/stage/slice/slice-cap-shapes';
@@ -241,7 +244,7 @@ function scene(walls: WallSeed[]): LayoutDocumentWallFirst {
 	}
 	return {
 		units: 'meters',
-		formatVersion: 10,
+		formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
 		floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 		junctions: [...junctionById].map(([id, point]) => ({ id, point })),
 		walls: walls.map(
@@ -252,6 +255,7 @@ function scene(walls: WallSeed[]): LayoutDocumentWallFirst {
 					endJunctionId: wall.end[0],
 					thickness: wall.thickness ?? 0.2,
 					height: wall.height ?? 3,
+					top: { kind: 'level' },
 					centerline: wall.centerline ?? { kind: 'line' }
 				}) as LayoutWall
 		),

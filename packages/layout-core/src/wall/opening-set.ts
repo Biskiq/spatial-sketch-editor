@@ -30,6 +30,7 @@ import type { LayoutDocumentWallFirst, LayoutWall, LayoutWallOpening } from './t
 import type { LayoutVec2 } from '../geometry/coordinates';
 import { countWork } from '../kernel/work-observer';
 import { isClosedWall } from './closed-wall';
+import { wallTopRange } from './wall-top';
 
 /** Fit tolerance shared with the precision gates (unchanged semantics). */
 export const OPENING_SET_EPSILON = LAYOUT_GEOMETRY_EPSILON;
@@ -248,16 +249,24 @@ function validateIndexedOpeningRecords(
 				message: `Opening '${opening.id}' does not fit on Wall '${opening.wallId}'`,
 			});
 		}
-		// Vertical fit is measured against the hosting Wall, not the
-		// Floor: a partial-height Wall legitimately caps its own Openings while a
-		// full-height Wall keeps the historical Floor-envelope behavior.
-		if (opening.sillHeight + opening.height > wall.height + OPENING_SET_EPSILON) {
+		// Vertical fit is measured against the hosting Wall's **lowest top over
+		// the Opening's own interval**, not one scalar for the whole Wall: a
+		// sloped or gabled top caps the Opening where it actually passes, and a
+		// partial-height Wall legitimately caps its own Openings. A level Wall's
+		// range is its `height`, so the historical rule is unchanged.
+		const topOverInterval = wallTopRange(
+			wall,
+			opening.offset,
+			opening.offset + opening.width,
+			span.length,
+		);
+		if (opening.sillHeight + opening.height > topOverInterval.min + OPENING_SET_EPSILON) {
 			issues.push({
 				openingId: opening.id,
 				wallId: opening.wallId,
 				path,
 				code: 'opening_exceeds_wall_height',
-				message: `Opening '${opening.id}' (sill ${opening.sillHeight} m + height ${opening.height} m) does not fit Wall '${wall.id}' height ${wall.height} m`,
+				message: `Opening '${opening.id}' (sill ${opening.sillHeight} m + height ${opening.height} m) does not fit under Wall '${wall.id}' top ${topOverInterval.min} m`,
 			});
 		}
 		const profileResult = buildArchProfile(opening.profile, opening.width, opening.height);

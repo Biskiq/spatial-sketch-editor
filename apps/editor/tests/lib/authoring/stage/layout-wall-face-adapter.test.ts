@@ -68,6 +68,7 @@ function straightDocument(): LayoutDocumentWallFirst {
 			endJunctionId: 'j-b',
 			thickness: 0.2,
 			height: 3,
+			top: { kind: 'level' },
 			centerline: { kind: 'line' }
 		} as LayoutWall
 	];
@@ -84,6 +85,7 @@ function curvedDocument(): LayoutDocumentWallFirst {
 			endJunctionId: 'j-b',
 			thickness: 0.2,
 			height: 3,
+			top: { kind: 'level' },
 			centerline: wallCubicChain(knotsOf(...points.slice(1, -1)), deriveChainSpans(points))
 		} as LayoutWall
 	];

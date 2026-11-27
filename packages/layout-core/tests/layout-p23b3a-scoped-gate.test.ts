@@ -83,6 +83,7 @@ function documentOf(options: {
 				endJunctionId: seed.end,
 				thickness: 0.2,
 				height: 3,
+				top: { kind: 'level' },
 				centerline: seed.centerline ?? LINE
 			})
 		),

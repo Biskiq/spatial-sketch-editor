@@ -55,6 +55,7 @@ function rectangleDocument(options: { elevation?: number; wallHeight?: number } 
 			endJunctionId,
 			thickness: 0.2,
 			height: options.wallHeight ?? WALL_AUTHORING_DEFAULT_HEIGHT,
+			top: { kind: 'level' },
 			centerline: { kind: 'line' } as const
 		})),
 		rooms: [

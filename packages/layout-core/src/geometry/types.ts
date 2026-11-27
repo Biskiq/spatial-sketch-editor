@@ -1,6 +1,6 @@
 import type { Vec3 } from '../kernel/types';
 import type { LayoutVec2 } from './coordinates';
-import type { LayoutObject, LayoutDerivedWallRole } from '../wall/types';
+import type { LayoutObject, LayoutDerivedWallRole, WallTopProfile } from '../wall/types';
 import type { SampleableSegment, SampledSegment } from './curve';
 
 /**
@@ -215,6 +215,8 @@ export type CompiledWall = CompiledIdentity & {
 	segmentId: string;
 	thickness: number;
 	length: number;
+	/** Compiled top above the Floor datum; absent for a level top. */
+	topProfile?: WallTopProfile;
 	samples: CompiledCurveSample[];
 	sections: CompiledWallSection[];
 	solidSpans: CompiledSolidSpan[];
@@ -375,6 +377,8 @@ export type CompiledPhysicalWall = CompiledIdentity & {
 	 * `[floor.elevation, floor.elevation + height]`.
 	 */
 	height: number;
+	/** Compiled top above the Floor datum; absent for a level top. */
+	topProfile?: WallTopProfile;
 	length: number;
 	samples: CompiledCurveSample[];
 	sections: CompiledWallSection[];

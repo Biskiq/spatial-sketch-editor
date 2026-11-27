@@ -14,10 +14,13 @@
  * coverage. Every code is pinned with a constructed fixture, and the four codes
  * are also exercised end to end through a document the compiler refuses.
  */
-import { describe, expect, it } from 'vitest';
+import {
+	describe, expect, it } from 'vitest';
 
 import { compileWallFirstLayoutGeometry, type CompiledJunctionSurface, type CompiledJunctionLeg, type CompiledJunctionResolution, type CompiledLegJoin, type LayoutVec2 } from '@portfolio/layout-core/geometry';
-import { joinSeamFailure, junctionSeamFailureOf, legJoinsByWall, resolveJunctionGeometry, wallEndsSeamFailure, type LayoutDocumentWallFirst, type LayoutWall } from '@portfolio/layout-core/wall';
+import { joinSeamFailure, junctionSeamFailureOf, legJoinsByWall, resolveJunctionGeometry, wallEndsSeamFailure, type LayoutDocumentWallFirst, type LayoutWall,
+	LAYOUT_WALL_FIRST_FORMAT_VERSION,
+} from '@portfolio/layout-core/wall';
 import { buildStandaloneWallMesh as buildEditorWallMesh } from '$lib/layout/wall-mesh-standalone';
 import { buildStandaloneWallMesh as buildMuseumWallMesh } from '$lib/layout/wall-mesh-standalone';
 
@@ -28,6 +31,7 @@ function wall(id: string, startJunctionId: string, endJunctionId: string): Layou
 		endJunctionId,
 		thickness: 0.2,
 		height: 3,
+		top: { kind: 'level' },
 		centerline: { kind: 'line' }
 	} as LayoutWall;
 }
@@ -35,7 +39,7 @@ function wall(id: string, startJunctionId: string, endJunctionId: string): Layou
 function document(junctions: Array<{ id: string; point: LayoutVec2 }>, walls: LayoutWall[]): LayoutDocumentWallFirst {
 	return {
 		units: 'meters',
-		formatVersion: 10,
+		formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
 		floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 		junctions,
 		walls,

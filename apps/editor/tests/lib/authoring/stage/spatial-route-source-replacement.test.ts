@@ -18,7 +18,8 @@
  * abandoned — it installs no source, adopts no saved base and reports neither a
  * success nor a refusal over the project the creator now has.
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+	afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const harness = vi.hoisted(() => ({
 	document: null as unknown,
@@ -194,6 +195,7 @@ vi.mock('$lib/authoring/stage/boot-state', async (importOriginal) => {
 
 import { mount, tick, unmount } from 'svelte';
 import { LAYOUT_DIMENSION_LIMIT_MESSAGE } from '@portfolio/layout-core/geometry';
+import { LAYOUT_WALL_FIRST_FORMAT_VERSION } from '@portfolio/layout-core/wall';
 import type { LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 import { createEmptyUnitSceneDocument, serializeProjectEnvelope, type ProjectEnvelope } from '@portfolio/project-model/units';
 import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
@@ -492,7 +494,7 @@ describe('spatial route source replacement', () => {
 		const originalCanvas = stageCanvas();
 		const layout: LayoutDocumentWallFirst = {
 			units: 'meters',
-			formatVersion: 10,
+			formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
 			floor: { id: 'floor', name: 'Floor', elevation: 0 },
 			junctions: [
 				{ id: 'j-1', point: [0, 0] },
@@ -505,6 +507,7 @@ describe('spatial route source replacement', () => {
 					endJunctionId: 'j-2',
 					thickness: 0.2,
 					height: 3,
+					top: { kind: 'level' },
 					centerline: { kind: 'line' }
 				}
 			],

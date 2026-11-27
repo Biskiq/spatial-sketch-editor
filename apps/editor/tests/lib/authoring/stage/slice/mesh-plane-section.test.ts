@@ -19,10 +19,13 @@
  * union have the same area — which makes this a real oracle for mitered Junctions,
  * not a restatement of the builder.
  */
-import { describe, expect, it } from 'vitest';
+import {
+	describe, expect, it } from 'vitest';
 import { deriveChainSpans } from '@portfolio/layout-core/geometry';
 import { compileWallFirstLayoutGeometry, type LayoutVec2 } from '@portfolio/layout-core/geometry';
-import { legJoinsByWall, type LayoutDocumentWallFirst, type LayoutWall } from '@portfolio/layout-core/wall';
+import { legJoinsByWall, type LayoutDocumentWallFirst, type LayoutWall,
+	LAYOUT_WALL_FIRST_FORMAT_VERSION,
+} from '@portfolio/layout-core/wall';
 import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-standalone';
 import type { WallMeshOptions } from '$lib/layout/wall-mesh-types';
 import {
@@ -54,7 +57,7 @@ function scene(walls: readonly WallSeed[], extra: Partial<LayoutDocumentWallFirs
 	}
 	return {
 		units: 'meters',
-		formatVersion: 10,
+		formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
 		floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 		junctions: [...junctionById].map(([id, point]) => ({ id, point })),
 		walls: walls.map(
@@ -65,6 +68,7 @@ function scene(walls: readonly WallSeed[], extra: Partial<LayoutDocumentWallFirs
 					endJunctionId: wall.end[0],
 					thickness: wall.thickness ?? 0.2,
 					height: wall.height ?? 3,
+					top: { kind: 'level' },
 					centerline: { kind: 'line' }
 				}) as LayoutWall
 		),

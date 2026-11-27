@@ -115,7 +115,8 @@ function wallLayout(ids: readonly string[] = ['wall-a']): LayoutDocumentWallFirs
 		{ id: `${id}:end`, point: [index * 5 + 4, 0] as [number, number] }
 	]);
 	layout.walls = ids.map((id) => ({
-		id, startJunctionId: `${id}:start`, endJunctionId: `${id}:end`, thickness: 0.2, height: 3, centerline: { kind: 'line' }
+		id, startJunctionId: `${id}:start`, endJunctionId: `${id}:end`, thickness: 0.2, height: 3,
+		top: { kind: 'level' }, centerline: { kind: 'line' }
 	}));
 	return layout;
 }

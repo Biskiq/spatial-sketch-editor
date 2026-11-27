@@ -29,6 +29,7 @@ function ring(prefix: string, pts: Pt[], height: number) {
 		role: 'boundary',
 		thickness: 0.2,
 		height,
+		top: { kind: 'level' },
 		centerline: { kind: 'line' }
 	}));
 	const room = {
@@ -128,7 +129,8 @@ describe('P0 format-5 behaviour that constrains C1', () => {
 	});
 
 	it('two collinear overlapping Walls in independent components (duplicate physical solid at one datum)', () => {
-		const wall = (id: string, a: string, b: string): LayoutWall => ({ id, startJunctionId: a, endJunctionId: b, role: 'partition', thickness: 0.2, height: 3, centerline: { kind: 'line' } });
+		const wall = (id: string, a: string, b: string): LayoutWall => ({ id, startJunctionId: a, endJunctionId: b, role: 'partition', thickness: 0.2, height: 3,
+		top: { kind: 'level' }, centerline: { kind: 'line' } });
 		const d: LayoutDocumentWallFirst = {
 			units: 'meters', formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION, floor: { id: 'floor', name: 'Floor', elevation: 0 },
 			junctions: [{ id: 'a0', point: [0, 0] }, { id: 'a1', point: [6, 0] }, { id: 'b0', point: [3, 0] }, { id: 'b1', point: [9, 0] }],

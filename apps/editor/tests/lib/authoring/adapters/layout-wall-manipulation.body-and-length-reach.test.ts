@@ -360,7 +360,8 @@ describe('body and length reach', () => {
 			{ id: 'free-end', point: [4, 0] }
 		];
 		document.walls = [
-			{ id: 'free-wall', startJunctionId: 'free-start', endJunctionId: 'free-end', thickness: 0.2, height: 3, centerline: { kind: 'line' } }
+			{ id: 'free-wall', startJunctionId: 'free-start', endJunctionId: 'free-end', thickness: 0.2, height: 3,
+			top: { kind: 'level' }, centerline: { kind: 'line' } }
 		];
 		const mounted = await mount({ document, wallId: 'free-wall', openingId: '' });
 		settle(mounted.facade, 2);

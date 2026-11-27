@@ -7,9 +7,47 @@ import type {
 } from '@portfolio/layout-core/geometry';
 import { archProfileTopAt, LAYOUT_GEOMETRY_EPSILON } from '@portfolio/layout-core/geometry';
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
-import { resolveSharedCornerSide } from '@portfolio/layout-core/wall';
+import {
+	compiledWallEndTop,
+	compiledWallTopAt,
+	compiledWallTopKnots,
+	resolveSharedCornerSide,
+} from '@portfolio/layout-core/wall';
 import type { ClipSample, Corner, CornerSide, V3 } from './wall-mesh-types';
 import { WINDING_DEGENERATE_AREA } from './wall-mesh-types';
+
+/**
+ * Wall-local top of one compiled section at one station.
+ *
+ * A profiled Wall's section `topY` is the **maximum** over its span, so every
+ * bound stays conservative; the true edge is the compiled top profile at that
+ * station, clamped by the section's own top (a sill or lintel section is lower
+ * than the Wall). A level Wall has no profile and returns `section.topY`
+ * unchanged.
+ */
+/** A compiled Wall's own top at one of its ends, above the Floor datum. */
+export function wallEndTopAt(
+	wall: Pick<CompiledWall, 'topProfile' | 'samples'>,
+	height: number,
+	atEnd: boolean,
+): number {
+	return compiledWallEndTop(wall.topProfile, height, atEnd, wall.samples.at(-1)?.distance ?? 0);
+}
+
+export function sectionTopAt(
+	wall: Pick<CompiledWall, 'topProfile'>,
+	section: Pick<CompiledWallSection, 'topY'>,
+	distance: number,
+): number {
+	const profile = wall.topProfile;
+	if (!profile) return section.topY;
+	return Math.min(section.topY, compiledWallTopAt(profile, distance));
+}
+
+/** Stations where a Wall's top changes slope, so a face top edge is one line. */
+export function wallTopClipDistances(wall: Pick<CompiledWall, 'topProfile'>): number[] {
+	return compiledWallTopKnots(wall.topProfile);
+}
 
 export function sectionBottomAt(section: CompiledWallSection, distance: number): number {
 	if (section.kind !== 'lintel' || !section.profile || section.profile.kind === 'rectangular')
@@ -215,6 +253,7 @@ export function endpointProfileIntervals(
 	atEnd: boolean,
 ): Array<[number, number]> {
 	const distance = atEnd ? (wall.samples.at(-1)?.distance ?? 0) : 0;
+	const endpointTop = wall.topProfile ? compiledWallTopAt(wall.topProfile, distance) : Infinity;
 	const intervals: Array<[number, number]> = [];
 	for (const section of wall.sections) {
 		if (
@@ -222,9 +261,9 @@ export function endpointProfileIntervals(
 			distance > section.endDistance + LAYOUT_GEOMETRY_EPSILON
 		)
 			continue;
-		if (section.kind === 'lintel')
-			intervals.push([sectionBottomAt(section, distance), section.topY]);
-		else intervals.push([section.bottomY, section.topY]);
+		const top = Math.min(endpointTop, sectionTopAt(wall, section, distance));
+		if (section.kind === 'lintel') intervals.push([sectionBottomAt(section, distance), top]);
+		else intervals.push([section.bottomY, top]);
 	}
 	intervals.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
 	const merged: Array<[number, number]> = [];

@@ -43,6 +43,7 @@ describe('P23.11 fix 6 — clearance predicate audit', () => {
 				endJunctionId: 'j-p2',
 				thickness,
 				height: 3,
+				top: { kind: 'level' },
 				centerline: wallCubicChain([knot], deriveChainSpans([[0, 0], knot.point, [6, 0]]))
 			} as LayoutWall
 		];
@@ -75,6 +76,7 @@ describe('P23.11 fix 6 — clearance predicate audit', () => {
 				endJunctionId: 'j-u2',
 				thickness,
 				height: 3,
+				top: { kind: 'level' },
 				centerline: wallCubicChain([], [
 					{ handleOut: [0.2, 5], handleIn: [7.2, 1] } satisfies LayoutWallCubicSpan
 				])

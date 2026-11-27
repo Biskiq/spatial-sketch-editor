@@ -243,6 +243,8 @@ describe('[cap:layout.canonical-compiler core] G1 geometry boundary', () => {
 			'layout/wall-mesh-room.ts',
 			'layout/wall-mesh-sections.ts',
 			'layout/wall-mesh-standalone.ts',
+			// V2a's top-face seam: profile values in, one ruled quad out.
+			'layout/wall-mesh-top.ts',
 			'layout/wall-mesh-types.ts',
 			'layout/wall-unfold-opening-drag.ts',
 			'layout/wall-unfold-pick.ts',

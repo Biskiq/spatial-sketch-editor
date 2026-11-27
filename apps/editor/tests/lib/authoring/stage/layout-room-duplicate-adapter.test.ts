@@ -157,13 +157,20 @@ function sharedWallFixture(): Fixture {
 		{ id: 'j-d', point: [0, 4] }
 	];
 	base.walls = [
-		{ id: 'wall-a1', startJunctionId: 'j-a', endJunctionId: 'j-m', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
-		{ id: 'wall-a2', startJunctionId: 'j-m', endJunctionId: 'j-b', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
-		{ id: 'wall-b', startJunctionId: 'j-b', endJunctionId: 'j-c', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
-		{ id: 'wall-c1', startJunctionId: 'j-c', endJunctionId: 'j-n', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
-		{ id: 'wall-c2', startJunctionId: 'j-n', endJunctionId: 'j-d', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
-		{ id: 'wall-d', startJunctionId: 'j-d', endJunctionId: 'j-a', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
-		{ id: 'wall-e', startJunctionId: 'j-m', endJunctionId: 'j-n', thickness: 0.2, height: 3, centerline: { kind: 'line' }, name: 'Party wall' }
+		{ id: 'wall-a1', startJunctionId: 'j-a', endJunctionId: 'j-m', thickness: 0.2, height: 3,
+		top: { kind: 'level' }, centerline: { kind: 'line' } },
+		{ id: 'wall-a2', startJunctionId: 'j-m', endJunctionId: 'j-b', thickness: 0.2, height: 3,
+		top: { kind: 'level' }, centerline: { kind: 'line' } },
+		{ id: 'wall-b', startJunctionId: 'j-b', endJunctionId: 'j-c', thickness: 0.2, height: 3,
+		top: { kind: 'level' }, centerline: { kind: 'line' } },
+		{ id: 'wall-c1', startJunctionId: 'j-c', endJunctionId: 'j-n', thickness: 0.2, height: 3,
+		top: { kind: 'level' }, centerline: { kind: 'line' } },
+		{ id: 'wall-c2', startJunctionId: 'j-n', endJunctionId: 'j-d', thickness: 0.2, height: 3,
+		top: { kind: 'level' }, centerline: { kind: 'line' } },
+		{ id: 'wall-d', startJunctionId: 'j-d', endJunctionId: 'j-a', thickness: 0.2, height: 3,
+		top: { kind: 'level' }, centerline: { kind: 'line' } },
+		{ id: 'wall-e', startJunctionId: 'j-m', endJunctionId: 'j-n', thickness: 0.2, height: 3,
+		top: { kind: 'level' }, centerline: { kind: 'line' }, name: 'Party wall' }
 	];
 	const extraction = extractBoundaryCandidateFaces(base);
 	const left = extraction.faces.find((candidate) => candidate.boundary.some((ref) => ref.wallId === 'wall-a1'));

@@ -209,10 +209,18 @@ export function splitSampledWallAroundOpenings(
 	segment: SampleableSegment,
 	openings: readonly CompilerOpening[],
 	wallHeight: number,
+	topMax?: (startDistance: number, endDistance: number) => number,
 ): CompiledWallSection[] {
 	const length = sampled.length;
 	const intervals = openingIntervals(segment, openings, length);
 	const sections: CompiledWallSection[] = [];
+	// A profiled Wall's section top is the **maximum** over its own span, so
+	// every existing bound stays conservative and the true edge is read from the
+	// compiled profile. `topMax` evaluates the top over the span, so a gable's
+	// apex is included even when it is not a section boundary. A level Wall (no
+	// `topMax`) keeps the exact scalar it always had, byte for byte.
+	const spanTop = (start: number, end: number): number =>
+		topMax ? topMax(start, end) : wallHeight;
 	let cursor = 0;
 
 	for (const interval of intervals) {
@@ -226,17 +234,18 @@ export function splitSampledWallAroundOpenings(
 				startDistance: cursor,
 				endDistance: start,
 				bottomY: 0,
-				topY: wallHeight,
+				topY: spanTop(cursor, start),
 			});
 		}
 
+		const intervalTop = spanTop(start, end);
 		if (interval.sillHeight > LAYOUT_GEOMETRY_EPSILON) {
 			sections.push({
 				kind: 'side',
 				startDistance: start,
 				endDistance: end,
 				bottomY: 0,
-				topY: Math.min(interval.sillHeight, wallHeight),
+				topY: Math.min(interval.sillHeight, intervalTop),
 				openingId: interval.openingId,
 			});
 		}
@@ -248,14 +257,14 @@ export function splitSampledWallAroundOpenings(
 		);
 		const profile =
 			interval.profile === 'rectangular' ? undefined : (profileResult.profile ?? undefined);
-		const lintelBottom = Math.min(interval.sillHeight + interval.height, wallHeight);
-		if (lintelBottom < wallHeight - LAYOUT_GEOMETRY_EPSILON) {
+		const lintelBottom = Math.min(interval.sillHeight + interval.height, intervalTop);
+		if (lintelBottom < intervalTop - LAYOUT_GEOMETRY_EPSILON) {
 			sections.push({
 				kind: 'lintel',
 				startDistance: start,
 				endDistance: end,
 				bottomY: lintelBottom,
-				topY: wallHeight,
+				topY: intervalTop,
 				openingId: interval.openingId,
 				...(profile ? { profile, profileBaseY: interval.sillHeight } : {}),
 			});
@@ -269,7 +278,7 @@ export function splitSampledWallAroundOpenings(
 			startDistance: cursor,
 			endDistance: length,
 			bottomY: 0,
-			topY: wallHeight,
+			topY: spanTop(cursor, length),
 		});
 	}
 

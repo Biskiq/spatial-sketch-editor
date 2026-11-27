@@ -10,10 +10,14 @@
  * thickness variation) live in the heavy lane; this file keeps the representative
  * pairs, the targeted regressions and the architecture acceptance cases A–I.
  */
-import { describe, expect, it } from 'vitest';
+import {
+	describe, expect, it } from 'vitest';
 
 import { compileWallFirstLayoutGeometry, type LayoutVec2 } from '@portfolio/layout-core/geometry';
-import { legJoinsByWall, type LayoutDocumentWallFirst, type LayoutWall } from '@portfolio/layout-core/wall';
+import { legJoinsByWall, type LayoutDocumentWallFirst, type LayoutWall, type LayoutWallTop,
+	LAYOUT_WALL_FIRST_FORMAT_VERSION,
+} from '@portfolio/layout-core/wall';
+import { assertWindingAgreesWithNormals } from '$lib/layout/wall-mesh-emit';
 import { buildStandaloneWallMesh as buildEditorWallMesh } from '$lib/layout/wall-mesh-standalone';
 import { buildStandaloneWallMesh as buildMuseumWallMesh } from '$lib/layout/wall-mesh-standalone';
 import {
@@ -30,6 +34,7 @@ type WallSeed = {
 	end: [string, LayoutVec2];
 	thickness?: number;
 	height?: number;
+	top?: LayoutWallTop;
 		opening?: { id: string; offset: number; width: number; height: number };
 };
 
@@ -41,7 +46,7 @@ function scene(walls: WallSeed[]): LayoutDocumentWallFirst {
 	}
 	return {
 		units: 'meters',
-		formatVersion: 10,
+		formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
 		floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 		junctions: [...junctionById].map(([id, point]) => ({ id, point })),
 		walls: walls.map(
@@ -52,6 +57,7 @@ function scene(walls: WallSeed[]): LayoutDocumentWallFirst {
 					endJunctionId: wall.end[0],
 					thickness: wall.thickness ?? 0.2,
 					height: wall.height ?? 3,
+					top: wall.top ?? { kind: 'level' },
 					centerline: { kind: 'line' }
 				}) as LayoutWall
 		),
@@ -361,5 +367,127 @@ describe('P23.15 Task 6 — Junction matrix (fast lane)', () => {
 		).toEqual(owners);
 		// No two joins claim the same sector.
 		expect(new Set(owners.map((entry) => entry.split(':')[2])).size).toBe(owners.length);
+	});
+});
+
+/**
+ * T1 V2a · T-P3 — profiled Wall tops at degrees 2, 3 and 4.
+ *
+ * The tops move where a leg's end top is, not whether the Junction closes. Each
+ * fixture runs through the same landed union contract as the level matrix above
+ * (`assertUnionManifoldWithBoundary`, byte parity between the two builder
+ * copies, no degenerate triangles) and then adds the two V2a obligations: the
+ * winding still agrees with the normals the sloped quads emit, and the junction
+ * is still covered at sampled heights below the lowest eave.
+ */
+describe('V2a profiled Junction tops (T-P3)', () => {
+	const slope = (startRise: number, endRise: number): LayoutWallTop => ({ kind: 'slope', startRise, endRise });
+	const gable = (apexRise: number): LayoutWallTop => ({ kind: 'gable', startRise: 0, endRise: 0, apexRise, apexOffset: 2 });
+	const door = { id: 'door', offset: 0, width: 0.9, height: 2 };
+
+	const CASES: Array<[string, WallSeed[], LayoutVec2, number[]]> = [
+		[
+			'degree 2, slope meets level',
+			[
+				{ id: 'w1', start: ['a', [0, 0]], end: ['j', [4, 0]], top: slope(0, 2) },
+				{ id: 'w2', start: ['j', [4, 0]], end: ['b', [4, 4]] }
+			],
+			[4, 0],
+			[0.4, 1.5, 2.5]
+		],
+		[
+			'degree 2, slope meets a taller level Wall',
+			[
+				{ id: 'w1', start: ['a', [0, 0]], end: ['j', [4, 0]], top: slope(0, 1) },
+				{ id: 'w2', start: ['j', [4, 0]], end: ['b', [4, 4]], height: 5 }
+			],
+			[4, 0],
+			[0.4, 1.5, 2.5]
+		],
+		[
+			'degree 2, two slopes meet at one top',
+			[
+				{ id: 'w1', start: ['a', [0, 0]], end: ['j', [4, 0]], top: slope(0, 2) },
+				{ id: 'w2', start: ['j', [4, 0]], end: ['b', [4, 4]], top: slope(2, 0) }
+			],
+			[4, 0],
+			[0.4, 1.5, 2.5]
+		],
+		[
+			'degree 2, gable eave meets a level Wall',
+			[
+				{ id: 'w1', start: ['a', [0, 0]], end: ['j', [4, 0]], top: gable(2) },
+				{ id: 'w2', start: ['j', [4, 0]], end: ['b', [4, 4]] }
+			],
+			[4, 0],
+			[0.4, 1.5, 2.5]
+		],
+		[
+			'degree 3, sloped stem into a level through Wall',
+			[
+				{ id: 'wa', start: ['ja', [-4, 0]], end: ['j', [0, 0]] },
+				{ id: 'wb', start: ['j', [0, 0]], end: ['jb', [4, 0]] },
+				{ id: 'ws', start: ['j', [0, 0]], end: ['js', [0, 4]], top: slope(0, 2) }
+			],
+			[0, 0],
+			[0.4, 1.5, 2.5]
+		],
+		[
+			'degree 3, sloped through Wall with a level stem',
+			[
+				{ id: 'wa', start: ['ja', [-4, 0]], end: ['j', [0, 0]], top: slope(2, 0) },
+				{ id: 'wb', start: ['j', [0, 0]], end: ['jb', [4, 0]], top: slope(0, 2) },
+				{ id: 'ws', start: ['j', [0, 0]], end: ['js', [0, 4]] }
+			],
+			[0, 0],
+			[0.4, 1.5, 2.5]
+		],
+		[
+			'degree 4, cross with mixed tops',
+			[
+				{ id: 'wn', start: ['j', [0, 0]], end: ['jn', [0, 4]], height: 5 },
+				{ id: 'ws', start: ['j', [0, 0]], end: ['js', [0, -4]], top: slope(1, 0) },
+				{ id: 'we', start: ['j', [0, 0]], end: ['je', [4, 0]], top: slope(0, 2) },
+				{ id: 'ww', start: ['j', [0, 0]], end: ['jw', [-4, 0]], top: gable(1.5) }
+			],
+			[0, 0],
+			[0.4, 1.5, 2.5]
+		],
+		[
+			'degree 4, cross with an end door on a sloped arm',
+			[
+				{ id: 'wn', start: ['j', [0, 0]], end: ['jn', [0, 4]], height: 5 },
+				{ id: 'ws', start: ['j', [0, 0]], end: ['js', [0, -4]], top: slope(1, 0) },
+				{ id: 'we', start: ['j', [0, 0]], end: ['je', [4, 0]], top: slope(0, 2), opening: { ...door, id: 'door-e' } },
+				{ id: 'ww', start: ['j', [0, 0]], end: ['jw', [-4, 0]], top: gable(1.5) }
+			],
+			[0, 0],
+			[2.5]
+		],
+		[
+			'degree 2, end door on the sloped Wall',
+			[
+				{ id: 'w1', start: ['a', [0, 0]], end: ['j', [4, 0]], top: slope(0, 2), opening: { ...door, id: 'door-j' } },
+				{ id: 'w2', start: ['j', [4, 0]], end: ['b', [4, 4]] }
+			],
+			[4, 0],
+			[2.5]
+		]
+	];
+
+	it.each(CASES)('%s stays manifold, winds outward and covers the Junction', (_name, walls, center, heights) => {
+		const documentValue = scene(walls);
+		const { union } = buildUnion(documentValue);
+		for (const mesh of union) assertWindingAgreesWithNormals(mesh);
+		assertCoverage(documentValue, union, center, heights);
+	});
+
+	it('reads each profiled leg at its own end top', () => {
+		const documentValue = scene(CASES[6]![1]);
+		const junction = compileWallFirstLayoutGeometry(documentValue).geometry.junctions!.find(
+			(entry) => entry.junctionId === 'j'
+		)!;
+		const tops = Object.fromEntries(junction.legs.map((leg) => [leg.wallId, leg.topY]));
+		expect(tops).toEqual({ wn: 5, ws: 4, we: 3, ww: 3 });
 	});
 });

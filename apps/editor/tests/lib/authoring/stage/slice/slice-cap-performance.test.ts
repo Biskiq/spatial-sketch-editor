@@ -20,9 +20,12 @@
  * stays a single bounded pass with a correct result, and that the figure stays
  * visible to whoever picks up the performance work.
  */
-import { describe, expect, it } from 'vitest';
+import {
+	describe, expect, it } from 'vitest';
 import { compileWallFirstLayoutGeometry, type LayoutVec2 } from '@portfolio/layout-core/geometry';
-import { legJoinsByWall, type LayoutDocumentWallFirst, type LayoutWall } from '@portfolio/layout-core/wall';
+import { legJoinsByWall, type LayoutDocumentWallFirst, type LayoutWall,
+	LAYOUT_WALL_FIRST_FORMAT_VERSION,
+} from '@portfolio/layout-core/wall';
 import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-standalone';
 import { LAYOUT_STRUCTURE_GROUP } from '$lib/authoring/scene/scene-pick-source';
 import { sectionMeshes, type SectionInput } from '$lib/authoring/stage/slice/mesh-plane-section';
@@ -65,7 +68,7 @@ function roomDocument(rooms: number): LayoutDocumentWallFirst {
 	}
 	return {
 		units: 'meters',
-		formatVersion: 10,
+		formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
 		floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 		junctions: [...junctionById].map(([id, point]) => ({ id, point })),
 		walls: walls.map(
@@ -76,6 +79,7 @@ function roomDocument(rooms: number): LayoutDocumentWallFirst {
 					endJunctionId: wall.end[0],
 					thickness: 0.2,
 					height: 3,
+					top: { kind: 'level' },
 					centerline: { kind: 'line' }
 				}) as LayoutWall
 		),
