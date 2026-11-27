@@ -270,7 +270,7 @@ export function planResizeRoundRoomRadius(options: {
 		) {
 			return rejectRadius(
 				'wall_top_apex_outside',
-				`Wall '${w.id}' apex would fall outside its ${spanLength} m arc at radius ${radius} m`,
+				`Wall '${w.id}' apex would fall outside its ${spanLength} m length at radius ${radius} m`,
 				{ roomIds: [roomId], wallIds: [w.id] },
 			);
 		}

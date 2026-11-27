@@ -358,6 +358,7 @@ export {
 	WALL_TOP_APEX_INVALID_CODE,
 	WALL_TOP_APEX_OUTSIDE_CODE,
 	WALL_TOP_NOT_JOINABLE_CODE,
+	WALL_TOP_SPLIT_DEGENERATE_CODE,
 	WALL_TOP_PROFILE_UNSUPPORTED_CODE,
 	WALL_TOP_RISE_INVALID_CODE,
 	WALL_TOP_STATION_EPSILON,
@@ -374,7 +375,10 @@ export {
 } from './types';
 
 export {
+	findRoomCeilingChange,
 	resolveWallBirthHeight,
+	ROOM_CEILING_CHANGED_CODE,
+	roomCeilingHeight,
 	uniqueIncidentWallHeight,
 	validateWallFirstWallHeights,
 	validateWallHeight,
@@ -382,11 +386,17 @@ export {
 	WALL_HEIGHT_EPSILON,
 } from './heights';
 
-export type { WallHeightIssue, WallHeightIssueCode } from './heights';
+export type { RoomCeilingChange, WallHeightIssue, WallHeightIssueCode } from './heights';
 
 export { planWallCrossing, planWallSplit, planWallSplitAtPoint } from './noding';
 
-export type { NodingIdAllocator, NodingPlan, NodingPlanSuccess, NodingRejection } from './noding';
+export type {
+	NodingIdAllocator,
+	NodingPlan,
+	NodingPlanSuccess,
+	NodingRejection,
+	WallSplitOptions,
+} from './noding';
 
 export {
 	minPolylineDistance,

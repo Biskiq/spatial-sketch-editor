@@ -402,9 +402,17 @@ export function planWallSubdivision(
 	// Curved Walls split exactly through the same noder: the split
 	// measures the canonical arc, resolves once, and hands both fragments their
 	// own partition of the chain, so no flatten can happen here.
-	const planned: NodingPlan = planWallSplit(document, wallId, splitDistance, allocator);
+	// Split moves no geometry, so it keeps every Room's derived ceiling.
+	const planned: NodingPlan = planWallSplit(document, wallId, splitDistance, allocator, {
+		keepRoomCeilings: true,
+	});
 	if (planned.kind === 'rejected') {
-		return reject(planned.rejection.code, planned.rejection.message, [wallId]);
+		const { roomId } = planned.rejection;
+		return reject(
+			planned.rejection.code,
+			planned.rejection.message,
+			roomId !== undefined ? [wallId, roomId] : [wallId],
+		);
 	}
 	return finalizeWallGeometryCandidate({
 		baseline: document,

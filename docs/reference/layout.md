@@ -81,13 +81,20 @@ normalises the stated rises to P1 by moving the lowest into `height`, and refuse
 new top would no longer clear (`wall_top_below_opening`). `planExactWallHeight` keeps its signature
 and shifts the whole top rigidly.
 
-Split and crossing noding are exact: each fragment's ends take `wallTopAt` at the cut and each
-fragment is re-normalised to its own lowest end, so a fragment's `height` may differ from its
-source's; a gable cut at its apex gives two slopes and elsewhere a gable and a slope. Join and
-dissolve accept the pair only when the tops are continuous at the joint within the height epsilon
-and merge into one level, slope or gable — the joint may be that gable's one peak — otherwise they
-refuse with `wall_top_not_joinable`; a split followed by a join restores the source bytes. A length
-or Junction edit keeps `apexOffset` in metres and refuses whole when the apex leaves the Wall.
+Split and crossing noding evaluate fragment ends in the source Wall's station frame and
+re-normalise each fragment to its own lowest end. A cut within `WALL_TOP_STATION_EPSILON` (1 nm)
+of a gable's apex takes the authored peak height at the cut and produces two slopes. A cut
+farther from the apex produces a gable and a slope. If either fragment fails the rise or apex
+tolerances, the split refuses atomically with `wall_top_split_degenerate`.
+Join and dissolve require continuity within `WALL_HEIGHT_EPSILON` and one merged level, slope
+or gable. The joint may be the gable's peak. A pair that cannot be merged refuses with
+`wall_top_not_joinable`. A successful Split → Join preserves the top within the height epsilon
+apart from the bounded apex station snap and produces deterministic canonical bytes. Undo and
+Redo restore the captured authored bytes. Explicit Split and Join also refuse
+`room_ceiling_changed` if a surviving Room's derived ceiling would move by more than the
+height epsilon. Noding during Wall drawing, Space claims and open-side end slides may redefine
+Rooms and move their ceilings. A length or Junction edit keeps `apexOffset` in metres and
+refuses whole when the apex leaves the Wall.
 Duplicate, Room move and bend/straighten carry the top unchanged, and P4 reads it on the new
 centerline. Within a Round Room, member arcs may carry tops: repacking to one closed Wall still
 requires every member level and equal (P5), and a radius edit scales each `apexOffset` with the

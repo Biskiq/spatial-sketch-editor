@@ -52,6 +52,12 @@ export type WallTopJoinPart = WallTopSlice & { length: number };
 export const WALL_TOP_PROFILE_UNSUPPORTED_CODE = 'wall_top_profile_unsupported';
 /** Two Wall tops that do not merge into one level, slope or gable. */
 export const WALL_TOP_NOT_JOINABLE_CODE = 'wall_top_not_joinable';
+/**
+ * A split whose fragment top would fall below the P2/P3 tolerances: a cut just
+ * outside the station tolerance of the apex, or a piece of top whose whole rise
+ * is within the height epsilon. Refused whole, never snapped in height.
+ */
+export const WALL_TOP_SPLIT_DEGENERATE_CODE = 'wall_top_split_degenerate';
 
 export type WallTopIssue = { code: string; message: string };
 
@@ -212,9 +218,13 @@ export function wallTopRiseAt(top: LayoutWallTop, station: number, length: numbe
 	const s = Math.min(length, Math.max(0, station));
 	if (top.kind === 'slope') {
 		if (!(length > 0)) return top.startRise;
+		// Every breakpoint returns its authored rise, so both Walls at a corner read
+		// exactly their own end heights and a fragment keeps its parent's end rise.
+		if (s === length) return top.endRise;
 		return top.startRise + ((top.endRise - top.startRise) * s) / length;
 	}
 	const apex = Math.min(length, Math.max(0, top.apexOffset));
+	if (s === apex) return top.apexRise;
 	if (s <= apex) {
 		return apex > 0 ? top.startRise + ((top.apexRise - top.startRise) * s) / apex : top.apexRise;
 	}
@@ -305,8 +315,12 @@ export function normalizeWallTop(height: number, top: LayoutWallTop): WallTopSli
  * breakpoint: the apex. A slice through the apex is a gable; a slice on one side
  * of it is a slope; a level parent stays level. Rises are taken in the parent's
  * rise frame and only the re-basing rise is subtracted, so a fragment that keeps
- * the parent's lowest end keeps its authored rise numbers exactly — which is what
- * makes a split followed by a join reproduce the source bytes.
+ * the parent's lowest end keeps its authored rise numbers exactly.
+ *
+ * A slice end within the station tolerance of the apex takes the authored peak
+ * rise. Other endpoints match the parent top within floating-point rounding.
+ * When the resulting rise or apex falls outside the P2/P3 tolerances, the split
+ * refuses atomically ({@link WALL_TOP_SPLIT_DEGENERATE_CODE}).
  */
 export function sliceWallTop(
 	wall: Pick<LayoutWall, 'height' | 'top'>,
@@ -316,26 +330,36 @@ export function sliceWallTop(
 ): WallTopSlice {
 	const start = Math.min(from, to);
 	const end = Math.max(from, to);
-	const startRise = wallTopRiseAt(wall.top, start, length);
-	const endRise = wallTopRiseAt(wall.top, end, length);
-	const lowest = Math.min(startRise, endRise);
+	// One station rule, the P3 station tolerance: an apex within it of a slice end
+	// IS that end (the rise there is the authored apex rise and the fragment is a
+	// slope); an apex further inside is the fragment's own apex. Both tests read
+	// the same two differences, so exactly one holds for an apex on the slice.
+	const gable = wall.top.kind === 'gable' ? wall.top : null;
+	const riseAt = (station: number): number =>
+		gable !== null && Math.abs(gable.apexOffset - station) <= WALL_TOP_STATION_EPSILON
+			? gable.apexRise
+			: wallTopRiseAt(wall.top, station, length);
+	const startRise = riseAt(start);
+	const endRiseAtEnd = riseAt(end);
+	const lowest = Math.min(startRise, endRiseAtEnd);
 	const height = wall.height + lowest;
 	const startOut = startRise - lowest;
-	const endOut = endRise - lowest;
-	if (wall.top.kind === 'gable') {
-		const apex = wall.top.apexOffset;
-		if (apex > start && apex < end) {
-			return {
-				height,
-				top: {
-					kind: 'gable',
-					startRise: startOut,
-					endRise: endOut,
-					apexRise: wall.top.apexRise - lowest,
-					apexOffset: apex - start,
-				},
-			};
-		}
+	const endOut = endRiseAtEnd - lowest;
+	if (
+		gable !== null &&
+		gable.apexOffset - start > WALL_TOP_STATION_EPSILON &&
+		end - gable.apexOffset > WALL_TOP_STATION_EPSILON
+	) {
+		return {
+			height,
+			top: {
+				kind: 'gable',
+				startRise: startOut,
+				endRise: endOut,
+				apexRise: gable.apexRise - lowest,
+				apexOffset: gable.apexOffset - start,
+			},
+		};
 	}
 	if (startOut === 0 && endOut === 0) return { height, top: { kind: 'level' } };
 	return { height, top: { kind: 'slope', startRise: startOut, endRise: endOut } };
@@ -391,8 +415,9 @@ function lineTop(
  * neither level nor a slope — has no encoding and refuses.
  *
  * The `height`/rise conversion keeps a fragment's authored numbers whenever that
- * fragment owns the merged lowest end, so the inverse of {@link sliceWallTop} is
- * exact for the bytes a split produced.
+ * fragment owns the merged lowest end. Split followed by Join encodes the same
+ * geometry deterministically within the height tolerance and apex station snap.
+ * Undo and Redo restore the captured bytes.
  */
 export function mergeWallTops(
 	first: WallTopJoinPart,
@@ -462,13 +487,20 @@ export function mergeWallTops(
 	// The joint is the one peak.
 	if (!(jointTop > startTop + WALL_HEIGHT_EPSILON)) return null;
 	if (!(jointTop > endTop + WALL_HEIGHT_EPSILON)) return null;
+	// Preserve the authored rise when it evaluates to the joint height we validated.
+	const jointRise =
+		first.height === base
+			? endRise(first.top, true)
+			: second.height === base && jointSecond === jointTop
+				? endRise(second.top, false)
+				: jointTop - base;
 	return {
 		height: base,
 		top: {
 			kind: 'gable',
 			startRise,
 			endRise: endRiseOut,
-			apexRise: jointTop - base,
+			apexRise: jointRise,
 			apexOffset: first.length,
 		},
 	};
@@ -501,7 +533,7 @@ export function compiledWallTopAt(profile: WallTopProfile, station: number): num
 		const current = profile[index]!;
 		if (station <= current.distance) {
 			const span = current.distance - previous.distance;
-			if (!(span > 0)) return current.topY;
+			if (!(span > 0) || station === current.distance) return current.topY;
 			const amount = (station - previous.distance) / span;
 			return previous.topY + (current.topY - previous.topY) * amount;
 		}

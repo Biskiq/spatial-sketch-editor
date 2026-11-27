@@ -9,14 +9,15 @@
  * 3. the Card always uses the Wall midpoint, even after a press elsewhere on
  *    the Wall; pointer-specific placement belongs to the deferred context menu;
  * 4. straight and curved open Walls both split exactly;
- * 5. a split through an Opening and a split of a closed circular Wall refuse in
- *    words, write nothing and add no history;
+ * 5. a split through an Opening, a split of a closed circular Wall and a split
+ *    that would raise its Room's ceiling refuse in words, write nothing and add
+ *    no history;
  * 6. one split is one history entry; Undo/Redo replay the captured ids; the
  *    accepted split round-trips through Save/Load unchanged.
  */
 import { describe, expect, it } from 'vitest';
 import { eventually } from '../../../kit/index';
-import { createEmptyWallFirstLayoutDocument, planCreateWallFirstOpening, planWallChain, wallFirstWallLength, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import { createEmptyWallFirstLayoutDocument, planCreateWallFirstOpening, planSetWallTop, planWallChain, wallFirstWallLength, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 import { planCreateCircularRoom } from '@portfolio/layout-core/room';
 import { surfaceKey } from '@portfolio/layout-core/plan';
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
@@ -511,6 +512,36 @@ describe('Split wall', () => {
 		const outcome = await split.run();
 		expect(outcome.kind).toBe('refused');
 		expect(outcome.message).toContain('A split cannot pass through an Opening');
+		expect(mounted.facade.snapshot().canonicalJson).toBe(beforeBytes);
+		expect(mounted.host.history()).toEqual(beforeHistory);
+	});
+
+	it('refuses a split that would raise its Room ceiling, naming the Room, writing nothing', async () => {
+		const enclosure = enclosureFixture(4);
+		const sloped = planSetWallTop(enclosure.document, enclosure.wallId, {
+			kind: 'slope',
+			startRise: 0,
+			endRise: 1
+		});
+		if (sloped.kind !== 'success') throw new Error(`slope fixture refused: ${sloped.rejection.message}`);
+		const fixture = { ...enclosure, document: sloped.document };
+		const roomName = sloped.document.rooms.find((room) => room.id === fixture.roomId)!.name;
+		const mounted = await mount(fixture);
+		selectWall(mounted.facade, fixture.wallId);
+		settle(mounted.facade, 2);
+		const beforeBytes = mounted.facade.snapshot().canonicalJson;
+		const beforeHistory = mounted.host.history();
+
+		const split = stageCardActions(mounted.facade, {
+			sourceId: fixture.wallId,
+			sourceKind: 'wall',
+			ref: null
+		}).find((action) => action.id === 'layout-wall-split')!;
+		const outcome = await split.run();
+		expect(outcome.kind).toBe('refused');
+		expect(outcome.message).toBe(
+			`Splitting here would raise the ceiling of "${roomName}". Split where the top is no higher than the ceiling, or make the top level first.`
+		);
 		expect(mounted.facade.snapshot().canonicalJson).toBe(beforeBytes);
 		expect(mounted.host.history()).toEqual(beforeHistory);
 	});

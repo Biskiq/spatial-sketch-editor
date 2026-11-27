@@ -3,6 +3,7 @@ import type { LayoutVec2 } from './coordinates';
 import type { LayoutDocumentWallFirst } from '../wall/types';
 import type { LayoutWall } from '../wall/types';
 import type { LayoutWallFirstRoom } from '../wall/types';
+import { roomCeilingHeight } from '../wall/heights';
 import {
 	composeSpaceBoundary,
 	spaceBoundaryPolygonFromEdges,
@@ -168,18 +169,9 @@ export function buildWallFirstRoomSource(
 		};
 	}
 
-	const heights: number[] = [];
-	let resolved = room.boundary.length > 0;
-	for (const ref of room.boundary) {
-		const wall = maps.wallById.get(ref.wallId);
-		if (!wall || !Number.isFinite(wall.height)) {
-			resolved = false;
-			break;
-		}
-		heights.push(wall.height);
-	}
+	const ceilingHeight = roomCeilingHeight(room.boundary, maps.wallById);
 	const derivedCeiling =
-		resolved && heights.length > 0 ? document.floor.elevation + Math.max(...heights) : undefined;
+		ceilingHeight !== undefined ? document.floor.elevation + ceilingHeight : undefined;
 
 	return {
 		source: {

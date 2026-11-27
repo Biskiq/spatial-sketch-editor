@@ -25,7 +25,6 @@
 import { carryRegionWallIntents } from '../room/region';
 import type {
 	LayoutDocumentWallFirst,
-	LayoutJunction,
 	LayoutWall,
 	LayoutWallOpening,
 	LayoutWallFirstRoom,
@@ -37,7 +36,8 @@ import { coincidesAsJunction } from './junction-identity';
 import { CURVE_ARC_LENGTH_TOLERANCE } from '../geometry/curve';
 import { resolveWallCurveSplit } from './curve-algebra';
 import { wallCubicChain } from './centerline';
-import { sliceWallTop } from './wall-top';
+import { sliceWallTop, WALL_TOP_SPLIT_DEGENERATE_CODE, wallTopIssues } from './wall-top';
+import { findRoomCeilingChange, ROOM_CEILING_CHANGED_CODE } from './heights';
 
 /** Exact straight-segment length between two points. */
 function segmentSpanLength(start: LayoutVec2, end: LayoutVec2): number {
@@ -69,10 +69,16 @@ export type NodingRejection = {
 		| 'curved_wall_unsupported'
 		/** A closed Wall is one canonical loop and cannot be subdivided. */
 		| 'closed_wall_isolated'
-		| 'junction_point_mismatch';
+		| 'junction_point_mismatch'
+		/** A fragment top would fall below the P2/P3 tolerances (§6.3). */
+		| typeof WALL_TOP_SPLIT_DEGENERATE_CODE
+		/** An explicit Split would move a bounded Room's derived ceiling. */
+		| typeof ROOM_CEILING_CHANGED_CODE;
 	message: string;
 	/** Involved authored IDs where available. */
 	wallId?: string;
+	/** The Room whose ceiling the split would move. */
+	roomId?: string;
 };
 
 export type NodingPlanSuccess = {
@@ -89,6 +95,18 @@ export type NodingPlanSuccess = {
 };
 
 export type NodingPlan = NodingPlanSuccess | { kind: 'rejected'; rejection: NodingRejection };
+
+/** Per-call split options. */
+export type WallSplitOptions = {
+	/** Reuse this Junction at the split point (the T-junction rule). */
+	existingJunctionId?: string;
+	/**
+	 * Refuse with `room_ceiling_changed` when a bounded Room's derived ceiling
+	 * would move. Explicit Split sets it; noding inside Wall drawing, Space
+	 * claims and open-side slides may redefine the Room and does not.
+	 */
+	keepRoomCeilings?: boolean;
+};
 
 /** Deterministic allocator contract supplied by the caller. */
 export type NodingIdAllocator = {
@@ -111,9 +129,33 @@ export function planWallSplit(
 	wallId: string,
 	splitDistance: number,
 	allocator: NodingIdAllocator,
-	options: { existingJunctionId?: string } = {},
+	options: WallSplitOptions = {},
 ): NodingPlan {
 	return planWallSplitInternal(document, wallId, splitDistance, allocator, options, undefined);
+}
+
+function splitWallTops(wall: LayoutWall, resolvedDistance: number, wallLength: number) {
+	const topA = sliceWallTop(wall, 0, resolvedDistance, wallLength);
+	const topB = sliceWallTop(wall, resolvedDistance, wallLength, wallLength);
+	// The slice already treats an apex within the station tolerance of the cut as
+	// the cut. A fragment still below the P2/P3 tolerances (a cut just outside
+	// that tolerance, or a piece of top whose whole rise is within the height
+	// epsilon) refuses whole: snapping it in height could move the top by more
+	// than the epsilon on an asymmetric gable.
+	for (const [label, slice, length] of [
+		['first', topA, resolvedDistance],
+		['second', topB, wallLength - resolvedDistance],
+	] as const) {
+		const issue = wallTopIssues({ ...wall, height: slice.height, top: slice.top }, length)[0];
+		if (issue) {
+			return rejected({
+				code: WALL_TOP_SPLIT_DEGENERATE_CODE,
+				message: `Splitting Wall '${wall.id}' at ${resolvedDistance} m leaves a ${label} piece whose top is below the Wall-top tolerances (${issue.code}); cut at the apex or further from it`,
+				wallId: wall.id,
+			});
+		}
+	}
+	return { topA, topB };
 }
 
 /**
@@ -137,7 +179,7 @@ function planWallSplitInternal(
 	wallId: string,
 	splitDistance: number,
 	allocator: NodingIdAllocator,
-	options: { existingJunctionId?: string },
+	options: WallSplitOptions,
 	overridePoint: LayoutVec2 | undefined,
 ): NodingPlan {
 	const wall = document.walls.find((candidate) => candidate.id === wallId);
@@ -217,23 +259,17 @@ function planWallSplitInternal(
 		const { result } = resolution;
 		wallLength = result.totalLength;
 		resolvedDistance = result.distance;
-		// The curve is the authority for where a curved Wall can be cut: a caller
-		// supplied coordinate cannot move the split off the canonical centerline.
+		// A curved split stays on the canonical centerline.
 		splitPoint = result.point;
 		fragmentA = wallCubicChain(result.fragments.a.knots, result.fragments.a.spans);
 		fragmentB = wallCubicChain(result.fragments.b.knots, result.fragments.b.spans);
 	}
 
-	// Exact fragment tops: each fragment's ends take `wallTopAt` at the cut and
-	// each fragment is re-normalised to its own lowest end, so a fragment's
-	// `height` may differ from its source's. The rise is linear in station, so a
-	// slice through a gable apex is a gable and a slice on one side is a slope.
-	const topA = sliceWallTop(wall, 0, resolvedDistance, wallLength);
-	const topB = sliceWallTop(wall, resolvedDistance, wallLength, wallLength);
+	const tops = splitWallTops(wall, resolvedDistance, wallLength);
+	if ('rejection' in tops) return tops;
+	const { topA, topB } = tops;
 
-	// Opening rebasing on the baseline wall, measured against the
-	// RESOLVED distance along the wall's true arc. Rejects before any candidate
-	// construction when a split would pass through an opening.
+	// Refuse cuts through Openings using the resolved arc distance.
 	const rebased = rebaseOpenings(document.openings, wallId, resolvedDistance, wallLength);
 	if (typeof rebased === 'string') {
 		return rejected({
@@ -246,32 +282,21 @@ function planWallSplitInternal(
 	const junctionId =
 		options.existingJunctionId ?? allocator.nextJunctionId(document, `${wallId}-split`);
 	const newWallId = allocator.nextWallId(document, `${wallId}-b`);
-	// Candidate documents: replace W with [W (A→X), W2 (X→B)]. The junction
-	// record is inserted when newly allocated; a supplied existing junction is
-	// reused as-is when present, or inserted at the resolved point when the
-	// caller names a junction that does not exist yet (X crossings: the first
-	// split introduces the shared junction). Existing Junction coordinates are
-	// canonical: a tolerant identity match permits reuse but never moves the
-	// Junction or other authored geometry already attached to it.
-	let junctions: LayoutJunction[] = document.junctions;
-	if (!options.existingJunctionId) {
-		junctions = [...document.junctions, { id: junctionId, point: splitPoint }];
-	} else {
-		const existing = document.junctions.find(
-			(junction) => junction.id === options.existingJunctionId,
-		);
-		if (existing) {
-			if (!coincidesAsJunction(existing.point, splitPoint)) {
-				return rejected({
-					code: 'junction_point_mismatch',
-					message: `Junction '${junctionId}' exists at a different coordinate than the requested split point`,
-					wallId,
-				});
-			}
-		} else {
-			junctions = [...document.junctions, { id: junctionId, point: splitPoint }];
-		}
+	// An existing Junction keeps its canonical point. The first X-crossing split
+	// may introduce the shared Junction at the resolved point.
+	const existing = options.existingJunctionId
+		? document.junctions.find((junction) => junction.id === junctionId)
+		: undefined;
+	if (existing && !coincidesAsJunction(existing.point, splitPoint)) {
+		return rejected({
+			code: 'junction_point_mismatch',
+			message: `Junction '${junctionId}' exists at a different coordinate than the requested split point`,
+			wallId,
+		});
 	}
+	const junctions = existing
+		? document.junctions
+		: [...document.junctions, { id: junctionId, point: splitPoint }];
 	const walls: LayoutWall[] = [];
 	const openings: LayoutWallOpening[] = [];
 	const retainedOpenings = rebased.retained;
@@ -281,9 +306,6 @@ function planWallSplitInternal(
 			walls.push(candidate);
 			continue;
 		}
-		// Each fragment takes its chain straight from the resolved
-		// partition: the Wall ID stays on `A → X`, the new ID carries `X → B`,
-		// and a split curve keeps its exact geometry across the two.
 		walls.push({
 			...candidate,
 			endJunctionId: junctionId,
@@ -322,6 +344,17 @@ function planWallSplitInternal(
 		...room,
 		boundary: rewriteBoundaryForSplit(room.boundary, wallId, newWallId),
 	}));
+	if (options.keepRoomCeilings) {
+		const change = findRoomCeilingChange(document, { walls, rooms });
+		if (change) {
+			return rejected({
+				code: ROOM_CEILING_CHANGED_CODE,
+				message: `Splitting Wall '${wallId}' would move the ceiling of Room '${change.roomId}' from ${change.before} m to ${change.after} m; a split keeps every Room's ceiling`,
+				wallId,
+				roomId: change.roomId,
+			});
+		}
+	}
 
 	return {
 		kind: 'success',
@@ -353,7 +386,7 @@ export function planWallSplitAtPoint(
 	splitDistance: number,
 	point: LayoutVec2,
 	allocator: NodingIdAllocator,
-	options: { existingJunctionId?: string } = {},
+	options: WallSplitOptions = {},
 ): NodingPlan {
 	return planWallSplitInternal(document, wallId, splitDistance, allocator, options, point);
 }
@@ -502,7 +535,7 @@ function rewriteBoundaryForSplit(
 	return rewritten;
 }
 
-function rejected(rejection: NodingRejection): NodingPlan {
+function rejected(rejection: NodingRejection): Extract<NodingPlan, { kind: 'rejected' }> {
 	return { kind: 'rejected', rejection };
 }
 

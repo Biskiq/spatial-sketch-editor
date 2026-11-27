@@ -50,7 +50,7 @@ import {
 import { wallStationFrame } from './precision-frames';
 import { layoutPlanner, registerLayoutSurfaceLineage } from './precision';
 import { layoutSubjectReference } from './drawing-planners';
-import { wallSplitRefusalWords } from './refusals';
+import { refusalSubjects, wallSplitRefusalWords } from './refusals';
 
 export const LAYOUT_WALL_SPLIT_KIND = 'layout-wall-split';
 
@@ -154,12 +154,21 @@ function wallSplitPlanner(): DomainPlanner<ProjectEnvelope> {
 			distance,
 			[at.point[0], at.point[1]] as LayoutVec2,
 			capturedNodingAllocator(capture),
+			// Split moves no geometry, so it keeps every Room's derived ceiling.
+			{ keepRoomCeilings: true },
 		);
 		if (plan.kind === 'rejected') {
 			return {
 				kind: 'rejected',
 				code: plan.rejection.code,
-				message: wallSplitRefusalWords(plan.rejection.code, plan.rejection.message),
+				message: wallSplitRefusalWords(
+					plan.rejection.code,
+					plan.rejection.message,
+					refusalSubjects(
+						baseline,
+						plan.rejection.roomId !== undefined ? [plan.rejection.roomId] : [],
+					),
+				),
 				diagnostics: [],
 			};
 		}

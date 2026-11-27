@@ -149,3 +149,62 @@ export function resolveWallBirthHeight(
 	if (startJunctionId === null) return WALL_AUTHORING_DEFAULT_HEIGHT;
 	return uniqueIncidentWallHeight(document, startJunctionId) ?? WALL_AUTHORING_DEFAULT_HEIGHT;
 }
+
+/**
+ * A Room's derived ceiling height above the Floor datum: the highest `height`
+ * (eave, the lowest top) among its boundary Walls. `undefined` when the boundary
+ * is empty or names a Wall that is missing or has a non-finite height. The
+ * compiler and the topology ceiling guard read this one rule.
+ */
+export function roomCeilingHeight(
+	boundary: readonly { wallId: string }[],
+	wallById: ReadonlyMap<string, Pick<LayoutWall, 'height'>>,
+): number | undefined {
+	if (boundary.length === 0) return undefined;
+	let ceiling = -Infinity;
+	for (const ref of boundary) {
+		const wall = wallById.get(ref.wallId);
+		if (!wall || !Number.isFinite(wall.height)) return undefined;
+		if (wall.height > ceiling) ceiling = wall.height;
+	}
+	return ceiling;
+}
+
+/** A geometry-preserving topology edit would move a Room's derived ceiling. */
+export const ROOM_CEILING_CHANGED_CODE = 'room_ceiling_changed';
+
+/** One Room whose derived ceiling height differs between two documents. */
+export type RoomCeilingChange = {
+	roomId: string;
+	before: number;
+	after: number;
+};
+
+/**
+ * The first Room (baseline order) present in both documents whose derived
+ * ceiling height moved by more than {@link WALL_HEIGHT_EPSILON}, or `null`.
+ *
+ * Split and Join call this on their own candidate: neither moves geometry, so
+ * every surviving Room is otherwise unchanged, and a profiled fragment's
+ * re-normalised `height` must not raise or lower its generated lid. Source-only:
+ * no compile, one pass over the boundary refs.
+ */
+export function findRoomCeilingChange(
+	baseline: Pick<LayoutDocumentWallFirst, 'walls' | 'rooms'>,
+	candidate: Pick<LayoutDocumentWallFirst, 'walls' | 'rooms'>,
+): RoomCeilingChange | null {
+	const baselineWalls = new Map(baseline.walls.map((wall) => [wall.id, wall]));
+	const candidateWalls = new Map(candidate.walls.map((wall) => [wall.id, wall]));
+	const candidateRooms = new Map(candidate.rooms.map((room) => [room.id, room]));
+	for (const room of baseline.rooms) {
+		const next = candidateRooms.get(room.id);
+		if (!next) continue;
+		const before = roomCeilingHeight(room.boundary, baselineWalls);
+		const after = roomCeilingHeight(next.boundary, candidateWalls);
+		if (before === undefined || after === undefined) continue;
+		if (Math.abs(after - before) > WALL_HEIGHT_EPSILON) {
+			return { roomId: room.id, before, after };
+		}
+	}
+	return null;
+}

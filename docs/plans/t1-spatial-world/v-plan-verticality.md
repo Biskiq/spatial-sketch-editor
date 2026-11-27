@@ -474,7 +474,9 @@ makes both Walls at a corner evaluate exactly their end height, so corner seams 
   `wallTopAt` at the vertex's station; the top face is a ruled quad with its normal from geometry;
   band clamping gains the mirror of the Wall mesh's sloped-bottom rule. With no
   `topProfile` the builder takes today's code path untouched.
-- Room ceilings stay `max(boundary Wall heights)`, the eave heights. A gable does not raise a lid.
+- A Room ceiling is `max(boundary Wall heights)`, using each Wall’s lowest top height.
+  Explicit Split and Join refuse if re-normalising the boundary Wall heights would move a
+  surviving Room’s ceiling by more than `WALL_HEIGHT_EPSILON`.
 - Openings: `opening_exceeds_wall_height` compares against `wallTopRange(...).min` over the
   Opening's interval, with the existing epsilon. An arch is tested by its bounding height.
 - Development: the Wall mesh develops through its existing station/offset/height attribution. The
@@ -486,8 +488,8 @@ makes both Walls at a corner evaluate exactly their end height, so corner seams 
 | --- | --- |
 | `planSetWallTop` | Writes kind and values, normalising to P1 (moving the lowest rise into `height`). Refuses P3, P5, P6, P7, each naming the Wall or Opening |
 | `planExactWallHeight` | Unchanged signature; shifts the whole top rigidly |
-| Split | Exact: each fragment's ends take `wallTopAt` at the cut; a gable split at its apex gives two slopes, elsewhere a gable and a slope; each fragment is re-normalised, so a fragment's `height` may differ from its source's |
-| Join, dissolve | Accepted when the tops are continuous at the joint (within the height epsilon) and the merged top is a level, a slope or a gable: the interpolated height at the joint must equal the joint height within the epsilon, or the joint is the one peak. Otherwise `wall_top_not_joinable`. A split followed by a join round-trips |
+| Split | Evaluate each fragment's ends in the source Wall's station frame and re-normalise to its own lowest end. An apex within `WALL_TOP_STATION_EPSILON` of the cut becomes the shared endpoint at the authored peak height, yielding two slopes. A cut farther from the apex yields a gable and a slope. A fragment that fails the rise or apex tolerances refuses the whole split with `wall_top_split_degenerate`. Explicit Split also refuses `room_ceiling_changed` |
+| Join, dissolve | Accept when the tops are continuous at the joint within `WALL_HEIGHT_EPSILON` and form one level, slope or gable. The interpolated height at the joint must match within that epsilon, or the joint must be the single peak. Otherwise refuse `wall_top_not_joinable`. A change to a surviving Room's ceiling beyond the height epsilon refuses `room_ceiling_changed`. See T-P2 for the round-trip contract |
 | Length or Junction move | `apexOffset` stays in metres, as an Opening offset does. A move that leaves the apex outside the Wall refuses whole |
 | Duplicate, Room move | Copy the top unchanged |
 | Bend, straighten | Keep the top; P4 makes it valid on the new centerline |
@@ -863,7 +865,7 @@ V3c follows V3b, with the Face dependency scoped to the Section segment in §7.2
 | T-V13 | Mounted gesture boundary: a corner drag and a body drag show a preview with no full compile and no history write; release installs the same proposal once; Escape restores | The adapter calls a planner per pointer move |
 | T-V14 | The new codec rejects either legacy Room key in an otherwise current payload. Save/Load round-trips the new shape with authored region thickness. Open/re-close and the lid toggle preserve identity and the existing association and surface-reference rules. Split and duplicate keep their lineage and overhead behavior. SP2 Room creation/claim and SP1d open-side edits preserve the new source, associations and F4 lifecycle. Run the enclosed and open thickness-conflict merge fixtures in the new shape and assert the existing survivor and overhead rules, with exact Undo. No operation synthesizes a physical region from Room metadata | The cutover drops unrelated Space behavior, leaves an obsolete refusal or turns generated planes into physical slabs |
 | T-P1 | For every existing fixture, with every Wall `level`: compiled Walls, Junctions, cache keys and Wall mesh buffers are byte-identical to the pre-bump output | The new code path is taken for level Walls, or the key gained a field |
-| T-P2 | A gable Wall split off its apex, at its apex, and rejoined: tops are exact at every cut and the round trip restores the original bytes | Split re-interpolates, or join compares gradients loosely |
+| T-P2 | A gable Wall split off or at its apex and rejoined preserves the top within `WALL_HEIGHT_EPSILON` apart from the bounded station snap in §17. Straight and curved round-trip fixtures hold heights within 1e-12 m away from the snap and verify that the canonical encoding is deterministic. Undo and Redo restore the captured authored bytes | A planner adds avoidable rounding, compares heights too loosely, or produces inconsistent encodings for the same input |
 | T-P3 | Corners where a sloped Wall meets a level, a taller and another sloped Wall, at degree 2, 3 and 4: the mesh is watertight and winding agrees with normals | Top heights at mitre vertices are extrapolated |
 | T-P4 | An Opening under the low end of a slope refuses when it would exceed the top there; the same Opening under the high end is accepted; lowering the eave below an Opening refuses naming it | Fit is still tested against one scalar |
 | T-P5 | A curved slope Wall: the sheet at amount 1 shows a straight top line; picking the top edge on the sheet resolves to the canonical station | The top is linear in chord, not station |
@@ -977,3 +979,14 @@ acceptance paths.
     roof") is not built here.
 10. **Closed circular Room certification** remains tracked in #370. V1 uses valid compiled Space
     outlines and carries the existing certification case unchanged.
+11. **Ceiling guard scope.** Explicit Split and Join preserve the ceiling of a surviving Room.
+    Noding during Wall drawing, Space claims and open-side end slides can redefine Rooms and
+    can move the ceiling. Broader ceiling handling is deferred to V3/R.
+12. **Apex station tolerance.** A cut within `WALL_TOP_STATION_EPSILON` moves the apex by at most
+    1 nm along the Wall and preserves its exact rise. On a steep profile the resulting height
+    difference can exceed the height epsilon. Its bound is the maximum absolute gradient of
+    the source top times the station displacement. Fragments outside this snap rule that fail
+    the rise or apex tolerances refuse atomically.
+13. **Opening refusal in the editor.** `planSetWallTop` returns the offending Opening's ID in
+    `targetIds`. The V2c Top Card must pass those IDs to the editor's refusal formatter to
+    show the Opening's name.

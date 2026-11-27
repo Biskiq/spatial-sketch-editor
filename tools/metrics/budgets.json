@@ -352,7 +352,7 @@
 		},
 		{
 			"path": "apps/editor/src/lib/authoring/adapters/layout/junction-gesture-session.ts",
-			"lines": 714,
+			"lines": 711,
 			"reason": "One unselected Junction gesture: hover admission, preview and release share the same junction candidate."
 		},
 		{
@@ -437,7 +437,7 @@
 		},
 		{
 			"path": "packages/layout-core/src/wall/dissolve.ts",
-			"lines": 715,
+			"lines": 712,
 			"reason": "One dissolve planner: the candidate, port remap and checks share one mutable candidate document. Format 11 adds the required authored Wall top. V2b adds the exact join: each side is oriented, continuity is checked at the joint, and one level/slope/gable merge is emitted."
 		},
 		{
@@ -477,8 +477,8 @@
 		},
 		{
 			"path": "packages/layout-core/src/wall/chain-execute.ts",
-			"lines": 664,
-			"reason": "Baseline exception: the owning split removes this entry. Format 11 requires `top` on every Wall the chain writes. V2b: noding splits profiled Walls exactly, so a chain noding refusal stays `noding_rejected`."
+			"lines": 663,
+			"reason": "Baseline exception: the owning split removes this entry. Format 11 requires `top` on every Wall the chain writes. V2b passes through the degenerate Wall-top refusal and reports other split failures as `noding_rejected`."
 		},
 		{
 			"path": "apps/api/src/asset-persistence.ts",
@@ -632,7 +632,7 @@
 		},
 		{
 			"path": "packages/layout-core/src/geometry/rooms.ts",
-			"lines": 624,
+			"lines": 616,
 			"reason": "Baseline exception: the owning split removes this entry. V2a: a Room-bound limit carries the boundary Wall's top and direction."
 		},
 		{
@@ -821,7 +821,7 @@
 			"file": "packages/layout-core/src/wall/dissolve.ts",
 			"name": "planDissolveJunction",
 			"line": 135,
-			"lines": 492,
+			"lines": 486,
 			"reason": "One dissolve planner: the candidate, the port remap, the top merge and the checks share one mutable candidate."
 		},
 		{

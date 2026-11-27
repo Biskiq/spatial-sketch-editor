@@ -378,15 +378,14 @@ export function executeWallChainCandidate(
 						fix.splitDistance,
 						fix.point,
 						nodingAllocatorAdapter(allocator, candidate),
-						{
-							existingJunctionId: fix.endpointJunctionId,
-						},
+						{ existingJunctionId: fix.endpointJunctionId },
 					);
 		if (plan.kind === 'rejected') {
+			const { code, message, wallId } = plan.rejection;
 			return reject({
-				code: 'noding_rejected',
-				message: plan.rejection.message,
-				wallIds: plan.rejection.wallId ? [plan.rejection.wallId] : undefined,
+				code: code === 'wall_top_split_degenerate' ? code : 'noding_rejected',
+				message,
+				wallIds: wallId ? [wallId] : undefined,
 			});
 		}
 		nodingSurfaceLineage.push(...plan.surfaceLineage);
