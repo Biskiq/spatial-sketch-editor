@@ -66,15 +66,18 @@ export type LayoutObject = {
  * dividing or free-standing because of the topology it is part of, never because a
  * field says so.
  *
- * **`10` is the only recognized version.** Format 8 introduced open Spaces.
+ * **`11` is the only recognized version.** Format 8 introduced open Spaces.
  * Format 9 kept their Wall, virtual-edge and overhead fields, removed Room
  * padding, and added independently authored Horizontal Regions and their names.
  * Format 10 adds the optional `round: { center, radius }` fact on Rooms and
  * replaces the legacy fixed-tolerance closed-circle check with centre-local
- * binary64 uncertainty-aware Round certification.
+ * binary64 uncertainty-aware Round certification. Format 11 adds the required
+ * Wall `top` profile: a Wall's top is `level`, `slope` or `gable`, and `height`
+ * is the lowest point of that top. A level Wall compiles to the format-10 output
+ * byte for byte.
  * Other versions fail as `unsupported_format_version`.
  */
-export const LAYOUT_WALL_FIRST_FORMAT_VERSION = 10 as const;
+export const LAYOUT_WALL_FIRST_FORMAT_VERSION = 11 as const;
 
 /**
  * The approved closed-Wall representation is exactly 16 symmetric cubic
@@ -169,6 +172,39 @@ export type LayoutWallCenterline =
 	  };
 
 /**
+ * The authored top profile of one Wall, above its authored `height`.
+ *
+ * `height` is always the **lowest** point of the top, and `rise` is measured
+ * upward from it, so every shape has exactly one encoding and every existing
+ * reader of `wall.height` keeps reading the eave. The smallest end rise is
+ * exactly `0`; a gable's apex rises above both ends by more than the Wall-height
+ * epsilon. Rise is linear in canonical centerline **station** between
+ * breakpoints, on straight and curved Walls alike, and a closed Wall is `level`
+ * only.
+ *
+ * `apexOffset` is metres from the canonical Wall start, like an Opening offset,
+ * so a resized Wall keeps its apex where the creator put it.
+ */
+/** One point of a compiled Wall top; `topY` is above the Floor datum. */
+export type WallTopProfilePoint = { distance: number; topY: number };
+
+/** A compiled Wall top profile, present only for a non-level top. */
+export type WallTopProfile = WallTopProfilePoint[];
+
+export type LayoutWallTop =
+	| { kind: 'level' }
+	| { kind: 'slope'; startRise: number; endRise: number }
+	| {
+			kind: 'gable';
+			startRise: number;
+			endRise: number;
+			/** Metres above `height` at the apex. */
+			apexRise: number;
+			/** Metres from the canonical Wall start. */
+			apexOffset: number;
+	  };
+
+/**
  * One physical Wall between two explicit Junctions. A Wall exists once even
  * when it bounds two Rooms; no Wall stores or infers Room ownership.
  *
@@ -178,12 +214,12 @@ export type LayoutWallCenterline =
  * isolated; the topology gate refuses a second Wall at the seam and any
  * crossing or endpoint attachment.
  *
- * `height` is the **authoritative physical height** of this Wall,
- * measured upward from the Floor elevation:
+ * `height` is the **authoritative eave height** of this Wall, measured upward
+ * from the Floor elevation; `top` adds the rise above it:
  *
  * ```text
  * bottomY = floor.elevation
- * topY = floor.elevation + wall.height
+ * topY(s) = floor.elevation + wall.height + top.rise(s)
  * ```
  *
  * It is finite and strictly positive, per physical Wall, shared by both sides of
@@ -209,6 +245,12 @@ export type LayoutWall = {
 	endJunctionId: string;
 	thickness: number;
 	height: number;
+	/**
+	 * Required top profile above `height` (format 11). `height` is the lowest
+	 * point of the top; `top` states the rise above it. A level Wall is the only
+	 * shape a closed Wall admits.
+	 */
+	top: LayoutWallTop;
 	centerline: LayoutWallCenterline;
 	/**
 	 * Optional authored Wall name. Absence is the only representation of

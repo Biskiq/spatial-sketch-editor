@@ -13,6 +13,8 @@
  * one place so the Card, the Stage and the adapter cannot disagree.
  */
 import {
+	compiledWallTopAt,
+	compiledWallTopPeak,
 	createWallDevelopmentBuffers,
 	createWallDevelopmentSheetBuffers,
 	evaluateWallDevelopment,
@@ -162,20 +164,28 @@ export function wallUnfoldNormaliseStation(
 	return isClosedCompiledWall(wall) ? wrap(station, length) : clamp(station, 0, length);
 }
 
+/** The Wall's own top at one station, above its Floor datum; a profiled top bends, `height` does not. */
+export function wallUnfoldTopY(
+	wall: Pick<CompiledPhysicalWall, 'height' | 'topProfile'>,
+	station: number,
+): number {
+	return wall.topProfile ? compiledWallTopAt(wall.topProfile, station) : wall.height;
+}
+
 /**
  * The world point of the pin on the as-built Wall's top edge. The idle pin and
  * the active sheet pin both use this point, so press and release cannot make
  * the handle jump between two representations.
  */
 export function wallUnfoldTopPoint(
-	wall: Pick<CompiledPhysicalWall, 'length' | 'height' | 'samples'>,
+	wall: Pick<CompiledPhysicalWall, 'length' | 'height' | 'samples' | 'topProfile'>,
 	station: number,
 	floorY = 0,
 ): readonly [number, number, number] | null {
 	const samples = wall.samples;
 	if (samples.length === 0) return null;
 	const target = Math.min(wall.length, Math.max(0, Number.isFinite(station) ? station : 0));
-	const height = floorY + wall.height + 0.09;
+	const height = floorY + wallUnfoldTopY(wall, target) + 0.09;
 	const first = samples[0]!;
 	if (samples.length === 1 || target <= first.distance + 1e-9) {
 		return [first.point[0], height, first.point[1]];
@@ -483,7 +493,13 @@ export function wallUnfoldFitBounds(input: {
 	}
 	return {
 		min: [minX, floorY - 0.2, minZ],
-		max: [maxX, floorY + wall.height + 0.2, maxZ],
+		max: [
+			maxX,
+			floorY +
+				(wall.topProfile ? compiledWallTopPeak(wall.topProfile, wall.height) : wall.height) +
+				0.2,
+			maxZ,
+		],
 	};
 }
 

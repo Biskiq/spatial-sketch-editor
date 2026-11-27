@@ -23,6 +23,7 @@ import type {
 	CompilerBoundarySource,
 	CompilerFloorSource,
 	CompilerOpening,
+	CompilerOpeningHeightLimit,
 	CompilerRoomSource,
 	LayoutBounds2,
 	LayoutBounds3,
@@ -149,6 +150,24 @@ export function buildWallFirstRoomSource(
 			(maps.openingOrderById.get(right.id) ?? Number.MAX_SAFE_INTEGER),
 	);
 
+	// A profiled Wall's Opening limit is its top over the Opening's own interval,
+	// which depends on this Room's traversal direction; level Walls keep the
+	// shared scalar record untouched.
+	let openingHeightLimits: Readonly<Record<string, CompilerOpeningHeightLimit>> =
+		maps.openingHeightLimitBySegmentId;
+	for (const ref of room.boundary) {
+		const wall = maps.wallById.get(ref.wallId);
+		if (!wall || wall.top.kind === 'level') continue;
+		if (openingHeightLimits === maps.openingHeightLimitBySegmentId) {
+			openingHeightLimits = { ...maps.openingHeightLimitBySegmentId };
+		}
+		(openingHeightLimits as Record<string, CompilerOpeningHeightLimit>)[wall.id] = {
+			height: wall.height,
+			top: wall.top,
+			reversed: ref.direction === 'reverse',
+		};
+	}
+
 	const heights: number[] = [];
 	let resolved = room.boundary.length > 0;
 	for (const ref of room.boundary) {
@@ -175,7 +194,7 @@ export function buildWallFirstRoomSource(
 			...(virtualSegmentIds.length > 0 ? { virtualSegmentIds } : {}),
 			...(maps.sampling && maps.preSampled ? { preSampled: maps.preSampled } : {}),
 			wallThicknessBySegmentId: maps.wallThicknessBySegmentId,
-			openingHeightLimitBySegmentId: maps.openingHeightLimitBySegmentId,
+			openingHeightLimitBySegmentId: openingHeightLimits,
 			...(derivedCeiling !== undefined ? { ceilingElevation: derivedCeiling } : {}),
 		},
 	};

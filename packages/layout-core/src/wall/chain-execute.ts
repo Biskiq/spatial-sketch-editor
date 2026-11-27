@@ -32,6 +32,7 @@ import {
 	topologyComponentKeyByWallId,
 } from '../room/topology-components';
 import { planWallCrossing, planWallSplitAtPoint } from './noding';
+import { WALL_TOP_PROFILE_UNSUPPORTED_CODE } from './wall-top';
 import { wallCubicChain } from './centerline';
 import type { ResolvedWallSplitResult } from './curve-algebra';
 import type {
@@ -149,6 +150,7 @@ export function executeWallChainCandidate(
 				endJunctionId: endJ,
 				thickness: closedWall.thickness,
 				height: closedWall.height,
+				top: closedWall.top,
 				centerline: wallCubicChain(seg.knots, seg.spans),
 				...(closedWall.name !== undefined ? { name: closedWall.name } : {}),
 			});
@@ -264,6 +266,7 @@ export function executeWallChainCandidate(
 			endJunctionId: endId,
 			thickness,
 			height,
+			top: { kind: 'level' },
 			// Authored chain legs are straight; A3 is the one bounded
 			// exception: the drawn Arc's leg carries the canonical cubic-chain the
 			// curve planners already read, and every other leg stays `line`.
@@ -382,7 +385,10 @@ export function executeWallChainCandidate(
 					);
 		if (plan.kind === 'rejected') {
 			return reject({
-				code: 'noding_rejected',
+				code:
+					plan.rejection.code === WALL_TOP_PROFILE_UNSUPPORTED_CODE
+						? WALL_TOP_PROFILE_UNSUPPORTED_CODE
+						: 'noding_rejected',
 				message: plan.rejection.message,
 				wallIds: plan.rejection.wallId ? [plan.rejection.wallId] : undefined,
 			});

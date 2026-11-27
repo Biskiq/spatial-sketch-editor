@@ -1,6 +1,7 @@
 import type { CompiledPhysicalWall } from '@portfolio/layout-core/geometry';
 import {
 	wallUnfoldFreeEdgeStation,
+	wallUnfoldTopPoint,
 	type WallUnfoldEdgeCandidate,
 	type WallUnfoldState,
 } from '$lib/layout/wall-unfold';
@@ -20,14 +21,13 @@ export function wallStationAtPointer(
 ): number | null {
 	const projectionId = stage.evaluationId();
 	if (projectionId === null || wall.samples.length < 2) return null;
-	const height = datum + wall.height + 0.09;
 	let nearest: number | null = null;
 	let nearestDistance = Number.POSITIVE_INFINITY;
 	for (let index = 0; index < wall.samples.length - 1; index += 1) {
 		const from = wall.samples[index]!;
 		const to = wall.samples[index + 1]!;
-		const a = stage.projectWorld([from.point[0], height, from.point[1]], projectionId);
-		const b = stage.projectWorld([to.point[0], height, to.point[1]], projectionId);
+		const a = stage.projectWorld(wallUnfoldTopPoint(wall, from.distance, datum)!, projectionId);
+		const b = stage.projectWorld(wallUnfoldTopPoint(wall, to.distance, datum)!, projectionId);
 		if (a.kind !== 'projected' || b.kind !== 'projected') continue;
 		const dx = b.css[0] - a.css[0];
 		const dy = b.css[1] - a.css[1];

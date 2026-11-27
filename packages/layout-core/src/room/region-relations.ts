@@ -6,9 +6,8 @@
  * region. It is never stored, never compiled per edit and never writes a
  * document. The only authored relation fact is the region's `intendedGaps` list.
  *
- * This module is V1's **flat** reading. Walls are level today, so the evaluator
- * seam below returns one world top for any station; V2 replaces that body with
- * `wallTopAt`/`wallTopRange` from `layout-wall-top.ts` and no caller changes.
+ * A Wall's top is read over the stations the region actually covers
+ * (`region-wall-coverage.ts`): each covered interval on its own, never their hull.
  */
 import type { LayoutVec2 } from '../geometry/coordinates';
 import { pointStrictlyInsidePolygon } from '../geometry/face-extraction';
@@ -18,6 +17,18 @@ import type {
 	CompiledRegion,
 } from '../geometry/types';
 import type { LayoutRegion } from '../wall/types';
+import {
+	cross,
+	distanceBetween,
+	distancePointSegment,
+	facePolyline,
+	insideIntervals,
+	type ProjectedPoint,
+	pointNearBoundary,
+	projectPointOnSegment,
+	regionWallCoveredStations,
+	regionWallTopOverStations,
+} from './region-wall-coverage';
 
 /** The support query's coplanar tolerance, shared by every relation comparison. */
 export const REGION_WALL_RELATION_EPSILON = 1e-6;
@@ -35,20 +46,36 @@ export type RegionWallPlanReading = {
 };
 
 /**
- * The one Wall-top evaluator region relations and fits read.
- *
- * V1 Walls are level, so every station has the same top. `fromStation` and
- * `toStation` are accepted now so V2's profiled evaluator can replace this body
- * without changing a caller.
+ * The Wall's top over the stations `footprint` actually covers for `planClass`:
+ * each covered interval read on its own, never their continuous hull.
  */
-export function regionWallTopRangeY(
-	wall: Pick<CompiledPhysicalWall, 'height'>,
+export function regionWallCoveredTopRangeY(
+	footprint: readonly LayoutVec2[],
+	wall: Pick<
+		CompiledPhysicalWall,
+		| 'samples'
+		| 'thickness'
+		| 'startJunctionId'
+		| 'endJunctionId'
+		| 'length'
+		| 'height'
+		| 'topProfile'
+	>,
+	planClass: RegionWallPlanClass,
 	floorElevation: number,
-	_fromStation = 0,
-	_toStation = 0,
 ): { minY: number; maxY: number } {
-	const topY = floorElevation + wall.height;
-	return { minY: topY, maxY: topY };
+	if (planClass === 'none' || wall.samples.length < 2) {
+		return regionWallTopOverStations(wall, floorElevation, []);
+	}
+	const half = wall.thickness / 2;
+	const left = facePolyline(wall, half);
+	const right = facePolyline(wall, -half);
+	const contact =
+		planClass === 'through'
+			? null
+			: (nearestBodyStripPair(footprint, left, right, wall)?.wall ?? null);
+	const intervals = regionWallCoveredStations(footprint, wall, left, right, planClass, contact);
+	return regionWallTopOverStations(wall, floorElevation, intervals);
 }
 
 export type RegionWallMeasureSegment = {
@@ -158,12 +185,13 @@ export function regionWallRelations(
 	for (const wall of compiled.walls) {
 		const plan = regionWallPlanClass(compiledRegion.footprint, wall);
 		if (plan.planClass === 'none') continue;
-		const reading = regionWallReading(
-			plan,
-			regionWallTopRangeY(wall, floor.elevation),
-			compiledRegion,
-			region.role,
+		const topRange = regionWallCoveredTopRangeY(
+			compiledRegion.footprint,
+			wall,
+			plan.planClass,
+			floor.elevation,
 		);
+		const reading = regionWallReading(plan, topRange, compiledRegion, region.role);
 		if (reading === null) continue;
 		const intended = reading.reading === 'gap' && region.intendedGaps.includes(wall.wallId);
 		relations.push({
@@ -181,7 +209,7 @@ export function regionWallRelations(
 					wall,
 				),
 				compiledRegion,
-				floor.elevation + wall.height,
+				topRange.maxY,
 				region.role,
 			),
 			intended,
@@ -268,21 +296,6 @@ function regionWallReading(
 	};
 }
 
-type ProjectedPoint = { point: LayoutVec2; station: number };
-
-function facePolyline(
-	wall: Pick<CompiledPhysicalWall, 'samples' | 'thickness'>,
-	offset: number,
-): ProjectedPoint[] {
-	return wall.samples.map((sample) => ({
-		point: [
-			sample.point[0] + sample.normal[0] * offset,
-			sample.point[1] + sample.normal[1] * offset,
-		] as LayoutVec2,
-		station: sample.distance,
-	}));
-}
-
 function intersectsCommonInterval(
 	footprint: readonly LayoutVec2[],
 	left: readonly ProjectedPoint[],
@@ -297,50 +310,6 @@ function intersectsCommonInterval(
 		}
 	}
 	return false;
-}
-
-function insideIntervals(
-	footprint: readonly LayoutVec2[],
-	face: readonly ProjectedPoint[],
-): Array<[number, number]> {
-	const intervals: Array<[number, number]> = [];
-	for (let index = 0; index + 1 < face.length; index++) {
-		const start = face[index]!;
-		const end = face[index + 1]!;
-		const splits = [0, 1];
-		for (let edge = 0; edge < footprint.length; edge++) {
-			const a = footprint[edge]!;
-			const b = footprint[(edge + 1) % footprint.length]!;
-			splits.push(...segmentParameters(start.point, end.point, a, b));
-		}
-		splits.sort((left, right) => left - right);
-		for (let split = 0; split + 1 < splits.length; split++) {
-			const t0 = Math.max(0, splits[split]!);
-			const t1 = Math.min(1, splits[split + 1]!);
-			if (t1 - t0 <= 1e-12) continue;
-			const midT = (t0 + t1) / 2;
-			const midpoint: LayoutVec2 = [
-				start.point[0] + (end.point[0] - start.point[0]) * midT,
-				start.point[1] + (end.point[1] - start.point[1]) * midT,
-			];
-			if (!pointStrictlyInsidePolygon(footprint, midpoint)) continue;
-			if (pointNearBoundary(footprint, midpoint, 1e-9)) continue;
-			const s0 = start.station + (end.station - start.station) * t0;
-			const s1 = start.station + (end.station - start.station) * t1;
-			intervals.push([Math.min(s0, s1), Math.max(s0, s1)]);
-		}
-	}
-	intervals.sort((left, right) => left[0] - right[0] || left[1] - right[1]);
-	const merged: Array<[number, number]> = [];
-	for (const interval of intervals) {
-		const previous = merged.at(-1);
-		if (previous !== undefined && interval[0] <= previous[1] + 1e-9) {
-			previous[1] = Math.max(previous[1], interval[1]);
-		} else {
-			merged.push([interval[0], interval[1]]);
-		}
-	}
-	return merged;
 }
 
 /**
@@ -540,35 +509,6 @@ function segmentIntersectionPoint(
 	return [a[0] + r[0] * t, a[1] + r[1] * t];
 }
 
-function projectPointOnSegment(point: LayoutVec2, start: LayoutVec2, end: LayoutVec2): LayoutVec2 {
-	const dx = end[0] - start[0];
-	const dz = end[1] - start[1];
-	const squared = dx * dx + dz * dz;
-	if (!(squared > 0)) return [start[0], start[1]];
-	const t = Math.min(
-		1,
-		Math.max(0, ((point[0] - start[0]) * dx + (point[1] - start[1]) * dz) / squared),
-	);
-	return [start[0] + dx * t, start[1] + dz * t];
-}
-
-function distanceBetween(a: LayoutVec2, b: LayoutVec2): number {
-	return Math.hypot(a[0] - b[0], a[1] - b[1]);
-}
-
-function pointNearBoundary(
-	footprint: readonly LayoutVec2[],
-	point: LayoutVec2,
-	tolerance: number,
-): boolean {
-	for (let index = 0; index < footprint.length; index++) {
-		const a = footprint[index]!;
-		const b = footprint[(index + 1) % footprint.length]!;
-		if (distancePointSegment(point, a, b) <= tolerance) return true;
-	}
-	return false;
-}
-
 function _segmentsIntersect(a: LayoutVec2, b: LayoutVec2, c: LayoutVec2, d: LayoutVec2): boolean {
 	const r: LayoutVec2 = [b[0] - a[0], b[1] - a[1]];
 	const s: LayoutVec2 = [d[0] - c[0], d[1] - c[1]];
@@ -589,40 +529,4 @@ function collinearOverlap(a: LayoutVec2, b: LayoutVec2, c: LayoutVec2, d: Layout
 	const [a0, a1] = [coordinate(a), coordinate(b)].sort((left, right) => left - right);
 	const [c0, c1] = [coordinate(c), coordinate(d)].sort((left, right) => left - right);
 	return Math.min(a1, c1) - Math.max(a0, c0) >= -1e-12;
-}
-
-function segmentParameters(a: LayoutVec2, b: LayoutVec2, c: LayoutVec2, d: LayoutVec2): number[] {
-	const r: LayoutVec2 = [b[0] - a[0], b[1] - a[1]];
-	const s: LayoutVec2 = [d[0] - c[0], d[1] - c[1]];
-	const denominator = cross(r, s);
-	const difference: LayoutVec2 = [c[0] - a[0], c[1] - a[1]];
-	if (Math.abs(denominator) <= 1e-12) {
-		if (Math.abs(cross(difference, r)) > 1e-12) return [];
-		const rr = r[0] * r[0] + r[1] * r[1];
-		if (rr <= 0) return [];
-		return [c, d]
-			.map((point) => ((point[0] - a[0]) * r[0] + (point[1] - a[1]) * r[1]) / rr)
-			.filter((t) => t > 0 && t < 1);
-	}
-	const t = cross(difference, s) / denominator;
-	const u = cross(difference, r) / denominator;
-	return t >= -1e-12 && t <= 1 + 1e-12 && u >= -1e-12 && u <= 1 + 1e-12
-		? [Math.min(1, Math.max(0, t))]
-		: [];
-}
-
-function distancePointSegment(point: LayoutVec2, start: LayoutVec2, end: LayoutVec2): number {
-	const dx = end[0] - start[0];
-	const dz = end[1] - start[1];
-	const squared = dx * dx + dz * dz;
-	if (!(squared > 0)) return Math.hypot(point[0] - start[0], point[1] - start[1]);
-	const t = Math.min(
-		1,
-		Math.max(0, ((point[0] - start[0]) * dx + (point[1] - start[1]) * dz) / squared),
-	);
-	return Math.hypot(point[0] - (start[0] + dx * t), point[1] - (start[1] + dz * t));
-}
-
-function cross(left: LayoutVec2, right: LayoutVec2): number {
-	return left[0] * right[1] - left[1] * right[0];
 }

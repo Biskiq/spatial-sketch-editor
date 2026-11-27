@@ -119,7 +119,7 @@ describe('C1 · Source, codec and seam contract', () => {
 		const parsed = parseWallFirstLayoutDocumentJson(json);
 		expect(parsed.success).toBe(true);
 		if (!parsed.success) return;
-		expect(parsed.document.formatVersion).toBe(10);
+		expect(parsed.document.formatVersion).toBe(LAYOUT_WALL_FIRST_FORMAT_VERSION);
 		expect(parsed.document.rooms[0]!.round).toEqual({ center: [1.5, -2.25], radius: exactRadius });
 		expect(parsed.canonicalJson).toBe(json);
 
@@ -602,6 +602,7 @@ describe('C1 · Translation and numerical consistency falsifiers', () => {
 						endJunctionId: 'j-corner',
 						thickness: 0.2,
 						height: 3,
+						top: { kind: 'level' },
 						centerline: { kind: 'line' }
 					},
 					{
@@ -610,6 +611,7 @@ describe('C1 · Translation and numerical consistency falsifiers', () => {
 						endJunctionId: 'j-end',
 						thickness: 0.2,
 						height: 3,
+						top: { kind: 'level' },
 						centerline: { kind: 'line' }
 					}
 				]

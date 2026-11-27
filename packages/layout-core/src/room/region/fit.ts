@@ -5,11 +5,12 @@ import { MAX_LAYOUT_DIMENSION_METERS } from '../../geometry/limits';
 import type { CompiledLayoutGeometry, CompiledPhysicalWall } from '../../geometry/types';
 import { hasBlockingLayoutIssues } from '../../geometry/validation';
 import { validateWallFirstOpeningSet } from '../../wall/opening-set';
+import { WALL_TOP_PROFILE_UNSUPPORTED_CODE } from '../../wall/wall-top';
 import {
 	REGION_WALL_RELATION_EPSILON,
+	regionWallCoveredTopRangeY,
 	regionWallPlanClass,
 	regionWallRelations,
-	regionWallTopRangeY,
 } from '../region-relations';
 import { MAX_LAYOUT_REGION_POINTS } from '../region-validation';
 import { validateWallFirstLayoutDocument } from '../../wall/codec';
@@ -290,7 +291,12 @@ export function planFitRegionToWalls(
 	}
 	let highest = -Infinity;
 	for (const wall of qualifying) {
-		highest = Math.max(highest, regionWallTopRangeY(wall, floor.elevation).maxY);
+		const plan = regionWallPlanClass(compiledRegion.footprint, wall);
+		highest = Math.max(
+			highest,
+			regionWallCoveredTopRangeY(compiledRegion.footprint, wall, plan.planClass, floor.elevation)
+				.maxY,
+		);
 	}
 	const elevation = highest - floor.elevation;
 	if (
@@ -390,6 +396,18 @@ export function planFitWallsToRegion(
 			regionId,
 			...skippedWallIds,
 		]);
+	}
+	// Fitting sets `height` to the roof underside. A sloped or gabled Wall's peak
+	// would then rise above the region, and the fit that keeps every point of its
+	// top under the roof arrives with V3; refuse whole, naming each such Wall.
+	const profiled = eligible.filter((wall) => wall.topProfile !== undefined);
+	if (profiled.length > 0) {
+		const names = profiled.map((wall) => `'${wall.wallId}'`).join(', ');
+		return reject(
+			WALL_TOP_PROFILE_UNSUPPORTED_CODE,
+			`Wall${profiled.length > 1 ? 's' : ''} ${names} ${profiled.length > 1 ? 'have' : 'has'} a sloped or gabled top, so fitting to region '${regionId}' would push its peak through the roof. Make the top level first.`,
+			[regionId, ...profiled.map((wall) => wall.wallId)],
+		);
 	}
 	const changes = eligible.filter((wall) => Math.abs(wall.height - targetHeight) > 1e-12);
 	if (changes.length === 0) {

@@ -17,6 +17,7 @@ import {
 	resolveJunctionGeometry,
 	tangentAnchorsAllowContinuation,
 } from '../wall/junction-resolution';
+import { compiledWallEndTop } from '../wall/wall-top';
 import { cacheKeyOf } from './keys';
 import type { LayoutCompileReuse } from './reuse';
 import { sameAuthored } from './reuse';
@@ -234,6 +235,12 @@ export function junctionLeg(wall: CompiledPhysicalWall, end: 'start' | 'end'): C
 	const normalOut: LayoutVec2 = [sign * normal[0], sign * normal[1]];
 	const atDistance = end === 'start' ? 0 : (last.distance ?? 0);
 	const length = last.distance ?? 0;
+	// Format 11 — a profiled Wall's leg ends at **its own end top**, not at the
+	// eave `height` and not at the peak. The Junction solve then closes the
+	// corner from local facts: two equal end tops meet flush, and unequal ones
+	// use the existing band/step logic. `endpointSolidBands` is clamped to the
+	// same value so a band never extends above this Wall's actual top there.
+	const endTop = compiledWallEndTop(wall.topProfile, wall.height, end === 'end', length);
 	const endpointOpen =
 		end === 'start'
 			? wall.openings.some((opening) => opening.offset <= JUNCTION_BAND_EPSILON)
@@ -249,10 +256,10 @@ export function junctionLeg(wall: CompiledPhysicalWall, end: 'start' | 'end'): C
 		thickness: wall.thickness,
 		halfThickness: wall.thickness / 2,
 		bottomY: 0,
-		topY: wall.height,
+		topY: endTop,
 		role: wall.role,
 		endpointOpen,
-		endpointSolidBands: endpointSolidBands(wall.sections, atDistance, wall.height),
+		endpointSolidBands: endpointSolidBands(wall.sections, atDistance, endTop),
 	};
 }
 

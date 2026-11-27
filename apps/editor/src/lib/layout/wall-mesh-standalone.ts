@@ -36,8 +36,10 @@ import {
 	endpointProfileIntervals,
 	profileCovers,
 	segmentBands,
+	wallEndTopAt,
 	wallOpensAtEnd,
 	wallOpensAtStart,
+	wallPeakTop,
 } from './wall-mesh-geometry';
 import { assertWindingAgreesWithNormals, emitMesh, vertex } from './wall-mesh-emit';
 import { pushOrientedFace } from './wall-mesh-corners';
@@ -303,13 +305,15 @@ export function standaloneHeightBreakpoints(
 	wallHeight: number,
 ): number[] {
 	const breakpoints = new Set<number>();
+	// A profiled Wall's Openings may spring above its eave: the limit is the peak.
+	const limit = wallPeakTop(wall, wallHeight);
 	for (const opening of wall.openings) {
 		const springHeight = opening.profileShape
 			? opening.profileShape.height - opening.profileShape.rise
 			: opening.height;
 		if (opening.sillHeight > LAYOUT_GEOMETRY_EPSILON) breakpoints.add(opening.sillHeight);
 		const spring = opening.sillHeight + springHeight;
-		if (spring > LAYOUT_GEOMETRY_EPSILON && spring < wallHeight - LAYOUT_GEOMETRY_EPSILON)
+		if (spring > LAYOUT_GEOMETRY_EPSILON && spring < limit - LAYOUT_GEOMETRY_EPSILON)
 			breakpoints.add(spring);
 	}
 	return [...breakpoints].sort((a, b) => a - b);
@@ -428,7 +432,7 @@ export function buildStandaloneEndBridge(
 	const prevProfile = prevIsOwn ? ownProfile : neighborProfile;
 	const curProfile = prevIsOwn ? neighborProfile : ownProfile;
 	const neighborTop = neighbor.endpointSolidBands.at(-1)?.topY ?? wallHeight;
-	const top = Math.max(wallHeight, neighborTop);
+	const top = Math.max(wallEndTopAt(wall, wallHeight, atEnd), neighborTop);
 
 	const edges = new Set<number>([0, top]);
 	for (const [lo, hi] of [...prevProfile, ...curProfile]) {

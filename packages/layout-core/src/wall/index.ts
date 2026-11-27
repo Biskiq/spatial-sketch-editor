@@ -325,9 +325,40 @@ export type {
 	LayoutWallFirstFloor,
 	LayoutWallFirstRoom,
 	LayoutWallOpening,
+	LayoutWallTop,
+	WallTopProfile,
+	WallTopProfilePoint,
 	LayoutWallFirstRoom as NodingRoom,
 	OrientedWallRef,
 } from './types';
+
+export {
+	CLOSED_WALL_LEVEL_ONLY_CODE,
+	compiledWallEndTop,
+	compiledWallTopAt,
+	compiledWallTopKnots,
+	compiledWallTopPeak,
+	compiledWallTopProfile,
+	compiledWallTopRange,
+	wallIsClosed,
+	wallTopAt,
+	wallTopBreakpoints,
+	wallTopIssues,
+	wallTopIsLevel,
+	wallTopMaxRise,
+	wallTopRange,
+	wallTopRiseAt,
+	wallTopShapeIssues,
+	wallTopSourceIssues,
+	WALL_TOP_APEX_INVALID_CODE,
+	WALL_TOP_APEX_OUTSIDE_CODE,
+	WALL_TOP_NOT_JOINABLE_CODE,
+	WALL_TOP_PROFILE_UNSUPPORTED_CODE,
+	WALL_TOP_RISE_INVALID_CODE,
+	WALL_TOP_STATION_EPSILON,
+} from './wall-top';
+
+export type { WallTopBreakpoint, WallTopIssue } from './wall-top';
 
 export {
 	CLOSED_WALL_CIRCLE_KNOT_COUNT,

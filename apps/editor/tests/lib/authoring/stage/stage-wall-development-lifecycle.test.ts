@@ -40,6 +40,7 @@ function wallDocument(height: number): LayoutDocumentWallFirst {
 			endJunctionId: 'j-b',
 			thickness: 0.2,
 			height,
+			top: { kind: 'level' },
 			centerline: { kind: 'line' }
 		} as LayoutWall
 	];

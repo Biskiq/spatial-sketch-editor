@@ -316,8 +316,9 @@ export const CALL_OWNERS = [
 	['artworkPlacement', authoring + 'artwork/artwork-placement.ts', [core + 'stage-artwork-interaction.svelte.ts']],
 	['pickWallUnfold', 'src/lib/layout/wall-unfold-pick.ts', [core + 'stage-unfold-gestures.svelte.ts']],
 	['mapSheetOpeningDrag', 'src/lib/layout/wall-unfold-opening-drag.ts', [core + 'stage-unfold-gestures.svelte.ts']],
-	// The shell places the projected pin using the same pure geometry as the gesture owner.
-	['wallUnfoldTopPoint', 'src/lib/layout/wall-unfold.ts', [core + 'stage-unfold-gestures.svelte.ts', shell + 'StageWallDevelopment.svelte']],
+	// The shell places the projected pin using the same pure geometry as the gesture owner, and the
+	// pointer station search projects the same top edge (a profiled top bends it).
+	['wallUnfoldTopPoint', 'src/lib/layout/wall-unfold.ts', [core + 'stage-unfold-pick-geometry.ts', core + 'stage-unfold-gestures.svelte.ts', shell + 'StageWallDevelopment.svelte']],
 	['setResolvedSlice', stage + 'slice/slice-resolved.ts', [readings + 'slice-host.svelte.ts']],
 	['setResolvedCutaway', stage + 'cutaway/cutaway-resolved.ts', [readings + 'cutaway-host.svelte.ts']]
 ] as const;

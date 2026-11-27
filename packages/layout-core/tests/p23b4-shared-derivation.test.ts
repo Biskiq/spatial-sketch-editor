@@ -246,11 +246,16 @@ describe('P23B.4 OR-8 — differential case families for the shared derivation',
 			...createEmptyWallFirstLayoutDocument(),
 			junctions,
 			walls: [
-				{ id: 'wall-straight', startJunctionId: 'j-a', endJunctionId: 'j-b', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
-				{ id: 'wall-single', startJunctionId: 'j-a', endJunctionId: 'j-b', thickness: 0.2, height: 3, centerline: chain([{ id: 'k1', point: single[1]! }], deriveChainSpans(single)) },
-				{ id: 'wall-multi', startJunctionId: 'j-c', endJunctionId: 'j-d', thickness: 0.2, height: 3, centerline: chain(multi.slice(1, -1).map((point, index) => ({ id: `km${index}`, point })), deriveChainSpans(multi)) },
-				{ id: 'wall-deep', startJunctionId: 'j-e', endJunctionId: 'j-f', thickness: 0.2, height: 3, centerline: chain([{ id: 'kdeep', point: deep[1]! }], deriveChainSpans(deep)) },
-				{ id: 'wall-tiny', startJunctionId: 'j-g', endJunctionId: 'j-h', thickness: 0.2, height: 3, centerline: { kind: 'line' } }
+				{ id: 'wall-straight', startJunctionId: 'j-a', endJunctionId: 'j-b', thickness: 0.2, height: 3,
+				top: { kind: 'level' }, centerline: { kind: 'line' } },
+				{ id: 'wall-single', startJunctionId: 'j-a', endJunctionId: 'j-b', thickness: 0.2, height: 3,
+				top: { kind: 'level' }, centerline: chain([{ id: 'k1', point: single[1]! }], deriveChainSpans(single)) },
+				{ id: 'wall-multi', startJunctionId: 'j-c', endJunctionId: 'j-d', thickness: 0.2, height: 3,
+				top: { kind: 'level' }, centerline: chain(multi.slice(1, -1).map((point, index) => ({ id: `km${index}`, point })), deriveChainSpans(multi)) },
+				{ id: 'wall-deep', startJunctionId: 'j-e', endJunctionId: 'j-f', thickness: 0.2, height: 3,
+				top: { kind: 'level' }, centerline: chain([{ id: 'kdeep', point: deep[1]! }], deriveChainSpans(deep)) },
+				{ id: 'wall-tiny', startJunctionId: 'j-g', endJunctionId: 'j-h', thickness: 0.2, height: 3,
+				top: { kind: 'level' }, centerline: { kind: 'line' } }
 			]
 		};
 		const lookup = new Map(junctions.map((junction) => [junction.id, junction.point]));

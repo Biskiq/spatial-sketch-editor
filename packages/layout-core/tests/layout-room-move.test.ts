@@ -43,6 +43,7 @@ function shell(options: {
 			endJunctionId: wall.end,
 			thickness: wall.thickness ?? 0.2,
 			height: wall.height ?? 3,
+			top: { kind: 'level' },
 			centerline: { kind: 'line' } as const,
 		})),
 		rooms: options.rooms ?? [],
@@ -591,6 +592,7 @@ describe('P23.6a — isolation policy (shared with P23.4 duplicate)', () => {
 					endJunctionId: 'j-t',
 					thickness: 0.2,
 					height: 3,
+					top: { kind: 'level' },
 					centerline: { kind: 'line' } as const,
 				}
 			]
@@ -627,10 +629,14 @@ describe('P23.6a — isolation policy (shared with P23.4 duplicate)', () => {
 			],
 			walls: [
 				...document.walls,
-				{ id: 'wall-o1', startJunctionId: 'j-o1', endJunctionId: 'j-o2', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const },
-				{ id: 'wall-o2', startJunctionId: 'j-o2', endJunctionId: 'j-o3', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const },
-				{ id: 'wall-o3', startJunctionId: 'j-o3', endJunctionId: 'j-o4', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const },
-				{ id: 'wall-o4', startJunctionId: 'j-o4', endJunctionId: 'j-o1', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const }
+				{ id: 'wall-o1', startJunctionId: 'j-o1', endJunctionId: 'j-o2', thickness: 0.2, height: 3,
+				top: { kind: 'level' }, centerline: { kind: 'line' } as const },
+				{ id: 'wall-o2', startJunctionId: 'j-o2', endJunctionId: 'j-o3', thickness: 0.2, height: 3,
+				top: { kind: 'level' }, centerline: { kind: 'line' } as const },
+				{ id: 'wall-o3', startJunctionId: 'j-o3', endJunctionId: 'j-o4', thickness: 0.2, height: 3,
+				top: { kind: 'level' }, centerline: { kind: 'line' } as const },
+				{ id: 'wall-o4', startJunctionId: 'j-o4', endJunctionId: 'j-o1', thickness: 0.2, height: 3,
+				top: { kind: 'level' }, centerline: { kind: 'line' } as const }
 			],
 			rooms: [
 				...document.rooms,

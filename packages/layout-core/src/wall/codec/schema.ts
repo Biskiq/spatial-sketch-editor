@@ -64,9 +64,16 @@ export const WALL_KEYS = [
 	'endJunctionId',
 	'thickness',
 	'height',
+	'top',
 	'centerline',
 	'name',
 ] as const;
+
+/** The level top: the only shape a closed Wall admits and the default shape. */
+export const WALL_TOP_LEVEL_KEYS = ['kind'] as const;
+
+/** Every key a non-level top may carry; the parser rejects an extra key. */
+export const WALL_TOP_KEYS = ['kind', 'startRise', 'endRise', 'apexRise', 'apexOffset'] as const;
 
 /** One bend point of a Wall `cubic-chain` centerline. */
 export const WALL_CURVE_KNOT_KEYS = ['id', 'point'] as const;

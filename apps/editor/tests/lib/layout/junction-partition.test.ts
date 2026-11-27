@@ -14,10 +14,13 @@
  * against independent oracles (authored boxes + per-mesh ray parity), never by
  * re-reading the production partition.
  */
-import { describe, expect, it } from 'vitest';
+import {
+	describe, expect, it } from 'vitest';
 
 import { compileWallFirstLayoutGeometry, deriveChainSpans, type CompiledJunctionSurface, type LayoutVec2 } from '@portfolio/layout-core/geometry';
-import { legJoinsByWall, type LayoutDocumentWallFirst, type LayoutWall } from '@portfolio/layout-core/wall';
+import { legJoinsByWall, type LayoutDocumentWallFirst, type LayoutWall,
+	LAYOUT_WALL_FIRST_FORMAT_VERSION,
+} from '@portfolio/layout-core/wall';
 import { buildStandaloneWallMesh as buildEditorWallMesh } from '$lib/layout/wall-mesh-standalone';
 import { buildStandaloneWallMesh as buildMuseumWallMesh } from '$lib/layout/wall-mesh-standalone';
 import {
@@ -47,7 +50,7 @@ function scene(walls: WallSeed[]): LayoutDocumentWallFirst {
 	}
 	return {
 		units: 'meters',
-		formatVersion: 10,
+		formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
 		floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 		junctions: [...junctionById].map(([id, point]) => ({ id, point })),
 		walls: walls.map((wall): LayoutWall => {
@@ -67,6 +70,7 @@ function scene(walls: WallSeed[]): LayoutDocumentWallFirst {
 				endJunctionId: wall.end[0],
 				thickness: wall.thickness ?? 0.2,
 				height: wall.height ?? 3,
+				top: { kind: 'level' },
 				centerline
 			} as LayoutWall;
 		}),
@@ -160,7 +164,7 @@ describe('P23.15 correction — Junction partition and curved Junctions', () => 
 		]);
 		const documentValue: LayoutDocumentWallFirst = {
 			units: 'meters',
-			formatVersion: 10,
+			formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
 			floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 			junctions: [...junctionById].map(([id, point]) => ({ id, point })),
 			walls: [
@@ -170,6 +174,7 @@ describe('P23.15 correction — Junction partition and curved Junctions', () => 
 					endJunctionId: 'j',
 					thickness: 0.2,
 					height: 3,
+					top: { kind: 'level' },
 					centerline: {
 						kind: 'cubic-chain',
 						knots: [{ id: 'k1', point: chain[1]! }],
@@ -182,6 +187,7 @@ describe('P23.15 correction — Junction partition and curved Junctions', () => 
 					endJunctionId: 'jb',
 					thickness: 0.2,
 					height: 3,
+					top: { kind: 'level' },
 					centerline: {
 						kind: 'cubic-chain',
 						knots: [{ id: 'k2', point: chain[3]! }],

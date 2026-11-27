@@ -42,6 +42,7 @@ function document(): LayoutDocumentWallFirst {
 				endJunctionId: corners[(index + 1) % corners.length]![0],
 				thickness: 0.2,
 				height: 3,
+				top: { kind: 'level' },
 				centerline: { kind: 'line' }
 			} as LayoutWall);
 		}

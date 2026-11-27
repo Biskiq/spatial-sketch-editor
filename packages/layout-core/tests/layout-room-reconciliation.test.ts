@@ -26,6 +26,7 @@ function document(
 			endJunctionId: wall.end,
 			thickness: 0.2,
 			height: 3,
+			top: { kind: 'level' } as const,
 			centerline: { kind: 'line' } as const,
 		})),
 		openings: [],
@@ -320,6 +321,7 @@ describe('Room reconciliation — safe components (P23.8 / H5)', () => {
 				endJunctionId: wall.end,
 				thickness: 0.2,
 				height: 3,
+				top: { kind: 'level' } as const,
 				centerline: { kind: 'line' } as const,
 			}))],
 			rooms: [
@@ -368,6 +370,7 @@ describe('Room reconciliation — safe components (P23.8 / H5)', () => {
 				endJunctionId: wall.end,
 				thickness: 0.2,
 				height: 3,
+				top: { kind: 'level' } as const,
 				centerline: { kind: 'line' } as const,
 			}))],
 			rooms: [

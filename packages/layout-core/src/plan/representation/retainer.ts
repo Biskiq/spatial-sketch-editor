@@ -25,6 +25,7 @@ import {
 	regionCandidate,
 	roomFloorCandidate,
 	wallCandidatesOf,
+	wallPeakHeight,
 } from './geometry';
 import type { MeasurementContext } from './membership';
 import {
@@ -187,7 +188,7 @@ function wallUnchanged(
 			entry !== undefined &&
 			entry.plan.kind === 'polyline' &&
 			entry.extent.minY === datumMeters &&
-			entry.extent.maxY === datumMeters + wall.height
+			entry.extent.maxY === datumMeters + wallPeakHeight(wall)
 		);
 	}
 	if (entries.length !== wall.solidSpans.length) return false;

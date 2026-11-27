@@ -29,6 +29,7 @@ function wall(id: string, start: string, end: string): LayoutDocumentWallFirst['
 		endJunctionId: end,
 		thickness: 0.2,
 		height: 3,
+		top: { kind: 'level' },
 		centerline: { kind: 'line' }
 	};
 }

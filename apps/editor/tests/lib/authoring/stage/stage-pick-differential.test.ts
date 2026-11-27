@@ -1,4 +1,5 @@
-import { readFileSync, writeFileSync } from 'node:fs';
+import {
+	readFileSync, writeFileSync } from 'node:fs';
 import { tagRenderIdentity } from '$lib/render/render-identity';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -143,10 +144,10 @@ describe('S03 recorded pre-change selection differential', () => {
 			// the Scene unit format moves from 10 to 11. Every winner, point and
 			// pick field is unchanged (266 generationId values; 16 shared Scene
 			// contentRevision values).
-			// Layout 10 (T1 Wave 4 C1) updates only generation IDs because the
-			// canonical Layout document now serializes `formatVersion: 10`. Every
-			// winner, point and pick field is unchanged (266 generationId values;
-			// 0 non-generationId diffs across all 2,400 samples).
+			// Layout 11 (T1 V2a) updates only generation IDs because the canonical
+			// Layout document now serializes `formatVersion: 11` and every Wall
+			// `top`. Every winner, point and pick field is unchanged (266
+			// generationId values; 0 non-generationId diffs across 2,400 samples).
 			expect(actual).toEqual(expected);
 		}
 	});

@@ -1,6 +1,11 @@
 import type { Vec3 } from '../kernel/types';
 import type { LayoutVec2 } from './coordinates';
-import type { LayoutObject, LayoutDerivedWallRole } from '../wall/types';
+import type {
+	LayoutObject,
+	LayoutDerivedWallRole,
+	LayoutWallTop,
+	WallTopProfile,
+} from '../wall/types';
 import type { SampleableSegment, SampledSegment } from './curve';
 
 /**
@@ -98,6 +103,21 @@ export type CompilerRoomShell = {
 };
 
 /** One Room's worth of compiler input: shell, boundary chain and its Openings. */
+/**
+ * One boundary segment's Opening vertical limit. A level Wall supplies its
+ * `height` scalar (the historical rule); a profiled Wall supplies its authored
+ * top and this Room's traversal direction so the fit is measured against the
+ * lowest top over the Opening's own interval (P7), in the Wall's own stations.
+ */
+export type CompilerOpeningHeightLimit =
+	| number
+	| {
+			readonly height: number;
+			readonly top: LayoutWallTop;
+			/** True when the Room walks the Wall end to start (offsets are mirrored). */
+			readonly reversed: boolean;
+	  };
+
 export type CompilerRoomSource = {
 	room: CompilerRoomShell;
 	boundary: CompilerBoundarySource;
@@ -119,7 +139,7 @@ export type CompilerRoomSource = {
 	 * (the wall-first adapter supplies each Wall's authoritative `height`).
 	 * Absent keeps the `floor.height` rule.
 	 */
-	openingHeightLimitBySegmentId?: Readonly<Record<string, number>>;
+	openingHeightLimitBySegmentId?: Readonly<Record<string, CompilerOpeningHeightLimit>>;
 	/**
 	 * Explicit derived Room ceiling elevation (wall-first), computed once
 	 * by the adapter as `floor.elevation + max(boundary Wall heights)`. Absent means
@@ -215,6 +235,8 @@ export type CompiledWall = CompiledIdentity & {
 	segmentId: string;
 	thickness: number;
 	length: number;
+	/** Compiled top above the Floor datum; absent for a level top. */
+	topProfile?: WallTopProfile;
 	samples: CompiledCurveSample[];
 	sections: CompiledWallSection[];
 	solidSpans: CompiledSolidSpan[];
@@ -375,6 +397,8 @@ export type CompiledPhysicalWall = CompiledIdentity & {
 	 * `[floor.elevation, floor.elevation + height]`.
 	 */
 	height: number;
+	/** Compiled top above the Floor datum; absent for a level top. */
+	topProfile?: WallTopProfile;
 	length: number;
 	samples: CompiledCurveSample[];
 	sections: CompiledWallSection[];

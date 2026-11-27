@@ -37,6 +37,7 @@ import { coincidesAsJunction } from './junction-identity';
 import { CURVE_ARC_LENGTH_TOLERANCE } from '../geometry/curve';
 import { resolveWallCurveSplit } from './curve-algebra';
 import { wallCubicChain } from './centerline';
+import { WALL_TOP_PROFILE_UNSUPPORTED_CODE, wallTopIsLevel } from './wall-top';
 
 /** Exact straight-segment length between two points. */
 function segmentSpanLength(start: LayoutVec2, end: LayoutVec2): number {
@@ -68,7 +69,12 @@ export type NodingRejection = {
 		| 'curved_wall_unsupported'
 		/** A closed Wall is one canonical loop and cannot be subdivided. */
 		| 'closed_wall_isolated'
-		| 'junction_point_mismatch';
+		| 'junction_point_mismatch'
+		/**
+		 * A Wall with a sloped or gabled top cannot be subdivided until V2b lands
+		 * the exact split arithmetic; it refuses whole rather than copy the top.
+		 */
+		| typeof WALL_TOP_PROFILE_UNSUPPORTED_CODE;
 	message: string;
 	/** Involved authored IDs where available. */
 	wallId?: string;
@@ -223,6 +229,17 @@ function planWallSplitInternal(
 		fragmentB = wallCubicChain(result.fragments.b.knots, result.fragments.b.spans);
 	}
 
+	// A profiled top cannot be copied onto both fragments (a slope would saw-tooth
+	// and a gable apex would leave one fragment). Exact fragment tops arrive with
+	// V2b, so until then a split of a non-level Wall refuses whole.
+	if (!wallTopIsLevel(wall.top)) {
+		return rejected({
+			code: WALL_TOP_PROFILE_UNSUPPORTED_CODE,
+			message: `Wall '${wallId}' has a ${wall.top.kind} top; splitting it needs exact top arithmetic that arrives with V2b. Make the top level first.`,
+			wallId,
+		});
+	}
+
 	// Opening rebasing on the baseline wall, measured against the
 	// RESOLVED distance along the wall's true arc. Rejects before any candidate
 	// construction when a split would pass through an opening.
@@ -283,6 +300,9 @@ function planWallSplitInternal(
 			endJunctionId: candidate.endJunctionId,
 			thickness: candidate.thickness,
 			height: candidate.height,
+			// Only a level Wall reaches here (a profiled top refuses above), so
+			// both fragments are level.
+			top: candidate.top,
 			centerline: fragmentB,
 		});
 	}

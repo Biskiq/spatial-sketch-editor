@@ -357,7 +357,8 @@ describe('F.2 unit acceptance — authored envelope metadata is not planner-writ
 		];
 		layout.walls = [{
 			id: 'wall-live', startJunctionId: 'j-live-a', endJunctionId: 'j-live-b',
-			thickness: 0.2, height: 3, centerline: { kind: 'line' }
+			thickness: 0.2, height: 3,
+			top: { kind: 'level' }, centerline: { kind: 'line' }
 		}];
 		const withLayout = await normalizeUnitEnvelope(replaceUnitData(base, 'layout', layout));
 		const oldOrphan: SceneSurfaceFinish = {

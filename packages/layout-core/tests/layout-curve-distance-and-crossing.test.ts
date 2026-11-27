@@ -77,6 +77,7 @@ function documentOf(centerline: LayoutWallCenterline): LayoutDocumentWallFirst {
 			endJunctionId: 'j-b',
 			thickness: 0.2,
 			height: 3,
+			top: { kind: 'level' },
 			centerline
 		} as LayoutWall
 	];
@@ -267,6 +268,7 @@ function curvedWallDocument(): LayoutDocumentWallFirst {
 			endJunctionId: 'c-b',
 			thickness: 0.2,
 			height: 3,
+			top: { kind: 'level' },
 			centerline: chainOf([0, 0], [6, 0], [3, 3])
 		} as LayoutWall
 	];
@@ -282,9 +284,12 @@ function curvedBoundaryHostDocument(
 		{ id: 'c-d', point: [0, 4] }
 	);
 	document.walls.push(
-		{ id: 'wall-right', startJunctionId: 'c-b', endJunctionId: 'c-c', thickness: 0.2, height: 3, centerline: LINE },
-		{ id: 'wall-top', startJunctionId: 'c-c', endJunctionId: 'c-d', thickness: 0.2, height: 3, centerline: LINE },
-		{ id: 'wall-left', startJunctionId: 'c-d', endJunctionId: 'c-a', thickness: 0.2, height: 3, centerline: LINE }
+		{ id: 'wall-right', startJunctionId: 'c-b', endJunctionId: 'c-c', thickness: 0.2, height: 3,
+		top: { kind: 'level' }, centerline: LINE },
+		{ id: 'wall-top', startJunctionId: 'c-c', endJunctionId: 'c-d', thickness: 0.2, height: 3,
+		top: { kind: 'level' }, centerline: LINE },
+		{ id: 'wall-left', startJunctionId: 'c-d', endJunctionId: 'c-a', thickness: 0.2, height: 3,
+		top: { kind: 'level' }, centerline: LINE }
 	);
 	document.rooms = [
 		{
@@ -433,7 +438,8 @@ describe('P23.11 fix 3 — authoring crosses a curved Wall only where the compon
 			{ id: 's-b', point: [8, 0] }
 		];
 		document.walls = [
-			{ id: 'host', startJunctionId: 's-a', endJunctionId: 's-b', thickness: 0.2, height: 3, centerline: LINE }
+			{ id: 'host', startJunctionId: 's-a', endJunctionId: 's-b', thickness: 0.2, height: 3,
+			top: { kind: 'level' }, centerline: LINE }
 		];
 		// P23B.3a S6 — the author's chain attaches to the host Wall (the declaration a
 		// wall-span snap makes), so the X crossing is a WITHIN-GROUP relation and is
@@ -464,7 +470,8 @@ describe('P23.11 fix 3 — authoring crosses a curved Wall only where the compon
 			{ id: 's-b', point: [8, 0] }
 		];
 		document.walls = [
-			{ id: 'host', startJunctionId: 's-a', endJunctionId: 's-b', thickness: 0.2, height: 3, centerline: LINE }
+			{ id: 'host', startJunctionId: 's-a', endJunctionId: 's-b', thickness: 0.2, height: 3,
+			top: { kind: 'level' }, centerline: LINE }
 		];
 		const plan = planWallChainCaptured({
 			baseline: document,

@@ -407,13 +407,13 @@ describe('P22.1 cold runtime + asset seam', () => {
 		const current = await createUnitProject({ id: 'project:outgoing-layout', name: 'Outgoing source' });
 		const outgoing = structuredClone(current);
 		const oldLayout = {
-			header: { ...outgoing.units.layout.header, formatVersion: 8 },
-			data: { ...outgoing.units.layout.data, formatVersion: 8 }
+			header: { ...outgoing.units.layout.header, formatVersion: 10 },
+			data: { ...outgoing.units.layout.data, formatVersion: 10 }
 		};
 		expect(() => composeColdReleaseBundle({
 			document: { ...outgoing, units: { ...outgoing.units, layout: oldLayout } },
 			manifest: { releaseId: `${outgoing.id}@v1`, bytesByUri: new Map() }
-		})).toThrow('$.units.layout.header.formatVersion must be 10 for the layout unit');
+		})).toThrow('$.units.layout.header.formatVersion must be 11 for the layout unit');
 	});
 
 	it('composes an empty project store-free and disposes cleanly', async () => {

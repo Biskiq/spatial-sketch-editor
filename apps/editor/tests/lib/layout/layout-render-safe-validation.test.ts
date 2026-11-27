@@ -65,6 +65,7 @@ function thickWallDocument(anchor: LayoutVec2, thickness = THICK): LayoutDocumen
 			endJunctionId: 'j-p2',
 			thickness,
 			height: 3,
+			top: { kind: 'level' },
 			centerline: wallCubicChain([knot], deriveChainSpans([[0, 0], knot.point, [CHORD, 0]]))
 		} as LayoutWall
 	];

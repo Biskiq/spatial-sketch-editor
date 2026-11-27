@@ -327,9 +327,12 @@ describe('Wall direct manipulation', () => {
 			{ id: 'junction-south', point: [-1.5, -2.5] }
 		];
 		document.walls = [
-			{ id: 'wall-east', startJunctionId: 'junction-centre', endJunctionId: 'junction-east', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
-			{ id: 'wall-north', startJunctionId: 'junction-centre', endJunctionId: 'junction-north', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
-			{ id: 'wall-south', startJunctionId: 'junction-centre', endJunctionId: 'junction-south', thickness: 0.2, height: 3, centerline: { kind: 'line' } }
+			{ id: 'wall-east', startJunctionId: 'junction-centre', endJunctionId: 'junction-east', thickness: 0.2, height: 3,
+			top: { kind: 'level' }, centerline: { kind: 'line' } },
+			{ id: 'wall-north', startJunctionId: 'junction-centre', endJunctionId: 'junction-north', thickness: 0.2, height: 3,
+			top: { kind: 'level' }, centerline: { kind: 'line' } },
+			{ id: 'wall-south', startJunctionId: 'junction-centre', endJunctionId: 'junction-south', thickness: 0.2, height: 3,
+			top: { kind: 'level' }, centerline: { kind: 'line' } }
 		];
 		const plan = planExactJunctionMove(document, 'junction-centre', [0.5, 0.75]);
 		if (plan.kind === 'rejected') throw new Error(plan.rejection.message);

@@ -3,6 +3,7 @@ import type {
 	CompilerBoundarySource,
 	CompilerFloorSource,
 	CompilerOpening,
+	CompilerOpeningHeightLimit,
 	LayoutGeometryIssue,
 } from './types';
 import {
@@ -17,6 +18,7 @@ import {
 	type SampledSegment,
 } from './curve';
 import { LAYOUT_GEOMETRY_EPSILON, buildArchProfile, openingIntervals } from './openings';
+import { wallTopRange } from '../wall/wall-top';
 
 export type { LayoutGeometryIssue };
 
@@ -69,6 +71,27 @@ export function prepareLayoutRoomSegments(
 }
 
 /**
+ * The height a boundary Wall allows one Opening, with the words that name it.
+ * A level Wall is its one height. A profiled Wall caps the Opening at the lowest
+ * top over the Opening's own interval; the Room walks a Wall `reversed` when it
+ * traverses it end to start, which mirrors the Opening's offset.
+ */
+function openingWallLimit(
+	entry: CompilerOpeningHeightLimit | undefined,
+	opening: Pick<CompilerOpening, 'offset' | 'width'>,
+	length: number | undefined,
+): { limit: number | undefined; words: string } {
+	if (typeof entry !== 'object') return { limit: entry, words: `height ${entry} m` };
+	const end = opening.offset + opening.width;
+	let limit = entry.height;
+	if (length !== undefined && Number.isFinite(end)) {
+		const from = entry.reversed ? length - end : opening.offset;
+		limit = wallTopRange(entry, from, from + opening.width, length).min;
+	}
+	return { limit, words: `top ${limit} m over its span` };
+}
+
+/**
  * The compiler-source Room slice room validation reads: identity,
  * the boundary chain and its segment-hosted Openings. It is the same record the
  * shared compile core holds, so validation and compilation can never disagree
@@ -98,7 +121,7 @@ export function validatePreparedLayoutRoomGeometry(
 	 * authoritative height). Absent falls back to the optional `floor.height`;
 	 * exactly one fit rule remains (this branch), never a second validator.
 	 */
-	openingHeightLimitBySegmentId?: Readonly<Record<string, number>>,
+	openingHeightLimitBySegmentId?: Readonly<Record<string, CompilerOpeningHeightLimit>>,
 ): LayoutGeometryIssue[] {
 	const issues: LayoutGeometryIssue[] = [];
 	const segments = room.boundary.segments;
@@ -259,7 +282,11 @@ export function validatePreparedLayoutRoomGeometry(
 		// Comparing `heightLimit === floor.height` mislabelled an Opening whose
 		// hosting Wall happens to be exactly as tall as a supplied storey height:
 		// the Opening is still constrained by its Wall and must name it.
-		const wallHeightLimit = openingHeightLimitBySegmentId?.[opening.segmentId];
+		const { limit: wallHeightLimit, words } = openingWallLimit(
+			openingHeightLimitBySegmentId?.[opening.segmentId],
+			opening,
+			sampled.get(segment.id)?.length,
+		);
 		const heightLimit = wallHeightLimit ?? floor.height;
 		const usesWallHeight = wallHeightLimit !== undefined;
 		if (
@@ -272,7 +299,7 @@ export function validatePreparedLayoutRoomGeometry(
 				path: `${path}.openings[${index}]`,
 				code: 'opening_over_height',
 				message: usesWallHeight
-					? `Opening top exceeds Wall '${opening.segmentId}' height ${heightLimit} m.`
+					? `Opening top exceeds Wall '${opening.segmentId}' ${words}.`
 					: 'Opening top exceeds floor height.',
 				targetId: opening.id,
 			});

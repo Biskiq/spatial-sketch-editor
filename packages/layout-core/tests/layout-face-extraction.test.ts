@@ -24,6 +24,7 @@ type WallSeed = {
 			endJunctionId: wall.end,
 			thickness: 0.2,
 			height: 3,
+			top: { kind: 'level' },
 			centerline: { kind: 'line' } as const,
 		})),
 		rooms: [],
@@ -100,6 +101,7 @@ function curvedDepartureDocument(): LayoutDocumentWallFirst {
 				endJunctionId: 'j-1',
 				thickness: 0.2,
 				height: 3,
+				top: { kind: 'level' },
 				centerline: { kind: 'line' }
 			},
 			{
@@ -108,6 +110,7 @@ function curvedDepartureDocument(): LayoutDocumentWallFirst {
 				endJunctionId: 'j-2',
 				thickness: 0.2,
 				height: 3,
+				top: { kind: 'level' },
 				centerline: {
 					kind: 'cubic-chain',
 					knots: [],
@@ -125,6 +128,7 @@ function curvedDepartureDocument(): LayoutDocumentWallFirst {
 				endJunctionId: 'j-3',
 				thickness: 0.2,
 				height: 3,
+				top: { kind: 'level' },
 				centerline: { kind: 'line' }
 			},
 			{
@@ -133,6 +137,7 @@ function curvedDepartureDocument(): LayoutDocumentWallFirst {
 				endJunctionId: 'j-0',
 				thickness: 0.2,
 				height: 3,
+				top: { kind: 'level' },
 				centerline: { kind: 'line' }
 			},
 			{
@@ -141,6 +146,7 @@ function curvedDepartureDocument(): LayoutDocumentWallFirst {
 				endJunctionId: 'j-3',
 				thickness: 0.2,
 				height: 3,
+				top: { kind: 'level' },
 				centerline: { kind: 'line' }
 			}
 		],

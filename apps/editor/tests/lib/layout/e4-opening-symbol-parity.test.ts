@@ -24,7 +24,8 @@ function singleWall(centerline: LayoutWall['centerline']): LayoutDocumentWallFir
 		{ id: 'j-a', point: [0, 0] },
 		{ id: 'j-b', point: [CHORD, 0] }
 	];
-	document.walls = [{ id: 'wall-a', startJunctionId: 'j-a', endJunctionId: 'j-b', thickness: 0.2, height: 3, centerline }];
+	document.walls = [{ id: 'wall-a', startJunctionId: 'j-a', endJunctionId: 'j-b', thickness: 0.2, height: 3,
+	top: { kind: 'level' }, centerline }];
 	return document;
 }
 

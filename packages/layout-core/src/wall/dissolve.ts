@@ -65,6 +65,7 @@ import { validateWallFirstPortalRelations } from './portals';
 import { joinWallSurfaceLineage, type LayoutSurfaceLineage } from '../plan/surface-reference';
 import { findRoundRoomSeamOwner, ROUND_ROOM_MEMBER_EDIT_MESSAGE } from '../room/round-room';
 import { tangentAnchorsAllowContinuation } from './junction-resolution';
+import { WALL_TOP_NOT_JOINABLE_CODE, wallTopIsLevel } from './wall-top';
 
 /** Dissolve-only rejection codes; stable machine codes per operation. */
 export type DissolveSpecificRejectionCode =
@@ -84,7 +85,9 @@ export type DissolveSpecificRejectionCode =
 	| 'wall_height_below_opening'
 	| 'invalid_candidate_document'
 	| 'captured_id_in_use'
-	| 'round_room_member_locked';
+	| 'round_room_member_locked'
+	/** A joined Wall's top would be silently re-sloped (exact join arithmetic is V2b). */
+	| typeof WALL_TOP_NOT_JOINABLE_CODE;
 
 /**
  * Dissolve rejection: the shared topology rejection shape plus the
@@ -257,6 +260,19 @@ export function planDissolveJunction(
 			message: `Wall '${duplicate.id}' already spans the joined endpoints; dissolving '${junctionId}' would duplicate it`,
 			junctionIds: [junctionId],
 			wallIds: [first.id, second.id, duplicate.id],
+		});
+	}
+
+	// A sloped or gabled top cannot be merged until V2b lands the exact join
+	// arithmetic: keeping the survivor's top over the longer span would silently
+	// re-slope the Wall. Only two level tops join.
+	const profiled = [first, second].filter((wall) => !wallTopIsLevel(wall.top));
+	if (profiled.length > 0) {
+		return reject({
+			code: WALL_TOP_NOT_JOINABLE_CODE,
+			message: `Wall${profiled.length > 1 ? 's' : ''} ${profiled.map((wall) => `'${wall.id}'`).join(' and ')} ${profiled.length > 1 ? 'have' : 'has'} a sloped or gabled top; joining needs exact top arithmetic that arrives with V2b. Make the top level first.`,
+			junctionIds: [junctionId],
+			wallIds: [first.id, second.id],
 		});
 	}
 
@@ -440,6 +456,7 @@ export function planDissolveJunction(
 		endJunctionId: joinedEndId,
 		thickness: survivor.thickness,
 		height: survivor.height,
+		top: survivor.top,
 		centerline: joinedCenterline,
 		...(joinedName !== undefined ? { name: joinedName } : {}),
 	};

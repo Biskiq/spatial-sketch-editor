@@ -43,6 +43,7 @@ function singleWallDocument(centerline: LayoutWall['centerline']): LayoutDocumen
 			endJunctionId: 'j-b',
 			thickness: 0.2,
 			height: 3,
+			top: { kind: 'level' },
 			centerline
 		}
 	];
@@ -114,6 +115,7 @@ function enclosureDocument(
 			endJunctionId: 'j-b',
 			thickness: 0.2,
 			height: 3,
+			top: { kind: 'level' },
 			centerline
 		},
 		{
@@ -122,6 +124,7 @@ function enclosureDocument(
 			endJunctionId: 'j-c',
 			thickness: 0.2,
 			height: 3,
+			top: { kind: 'level' },
 			centerline: straight
 		},
 		{
@@ -130,6 +133,7 @@ function enclosureDocument(
 			endJunctionId: 'j-d',
 			thickness: 0.2,
 			height: 3,
+			top: { kind: 'level' },
 			centerline: straight
 		},
 		{
@@ -138,6 +142,7 @@ function enclosureDocument(
 			endJunctionId: 'j-a',
 			thickness: 0.2,
 			height: 3,
+			top: { kind: 'level' },
 			centerline: straight
 		}
 	];

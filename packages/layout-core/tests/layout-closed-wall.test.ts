@@ -286,6 +286,7 @@ describe('C2 foundation — self-loop topology and D6 closed Bézier Wall', () =
 			endJunctionId: 'j-out',
 			thickness: 0.2,
 			height: 3,
+			top: { kind: 'level' },
 			centerline: { kind: 'line' }
 		});
 		const connectedIssue = validateWallFirstTopology(connected);
@@ -300,6 +301,7 @@ describe('C2 foundation — self-loop topology and D6 closed Bézier Wall', () =
 			endJunctionId: 'j-b',
 			thickness: 0.2,
 			height: 3,
+			top: { kind: 'level' },
 			centerline: { kind: 'line' }
 		});
 		const crossingIssue = validateWallFirstTopology(crossing);
@@ -313,6 +315,7 @@ describe('C2 foundation — self-loop topology and D6 closed Bézier Wall', () =
 			endJunctionId: 'j-out',
 			thickness: 0.2,
 			height: 3,
+			top: { kind: 'level' },
 			centerline: { kind: 'line' }
 		});
 		const attachedIssue = validateWallFirstTopology(attached);

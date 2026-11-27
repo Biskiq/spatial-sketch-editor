@@ -65,11 +65,15 @@ function curvedRoomDocument(
 			endJunctionId: 'j-b',
 			thickness: 0.2,
 			height: 3,
+			top: { kind: 'level' },
 			centerline: chainOf([0, 0], [CHORD, 0], [3, 2], [8, -1])
 		},
-		{ id: 'wall-b', startJunctionId: 'j-b', endJunctionId: 'j-c', thickness: 0.2, height: 3, centerline: LINE },
-		{ id: 'wall-c', startJunctionId: 'j-c', endJunctionId: 'j-d', thickness: 0.2, height: 3, centerline: LINE },
-		{ id: 'wall-d', startJunctionId: 'j-d', endJunctionId: 'j-a', thickness: 0.2, height: 3, centerline: LINE }
+		{ id: 'wall-b', startJunctionId: 'j-b', endJunctionId: 'j-c', thickness: 0.2, height: 3,
+		top: { kind: 'level' }, centerline: LINE },
+		{ id: 'wall-c', startJunctionId: 'j-c', endJunctionId: 'j-d', thickness: 0.2, height: 3,
+		top: { kind: 'level' }, centerline: LINE },
+		{ id: 'wall-d', startJunctionId: 'j-d', endJunctionId: 'j-a', thickness: 0.2, height: 3,
+		top: { kind: 'level' }, centerline: LINE }
 	];
 	document.rooms = [
 		{

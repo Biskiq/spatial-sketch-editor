@@ -19,13 +19,20 @@ function wallFirstDocument(): LayoutDocumentWallFirst {
 			{ id: 'j-f', point: [6, -4] }
 		],
 		walls: [
-			{ id: 'wall-a', startJunctionId: 'j-a', endJunctionId: 'j-b', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const },
-			{ id: 'wall-b', startJunctionId: 'j-b', endJunctionId: 'j-c', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const },
-			{ id: 'wall-c', startJunctionId: 'j-c', endJunctionId: 'j-d', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const },
-			{ id: 'wall-d', startJunctionId: 'j-d', endJunctionId: 'j-a', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const },
-			{ id: 'wall-e', startJunctionId: 'j-f', endJunctionId: 'j-b', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const },
-			{ id: 'wall-f', startJunctionId: 'j-e', endJunctionId: 'j-f', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const },
-			{ id: 'wall-g', startJunctionId: 'j-a', endJunctionId: 'j-e', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const }
+			{ id: 'wall-a', startJunctionId: 'j-a', endJunctionId: 'j-b', thickness: 0.2, height: 3,
+			top: { kind: 'level' }, centerline: { kind: 'line' } as const },
+			{ id: 'wall-b', startJunctionId: 'j-b', endJunctionId: 'j-c', thickness: 0.2, height: 3,
+			top: { kind: 'level' }, centerline: { kind: 'line' } as const },
+			{ id: 'wall-c', startJunctionId: 'j-c', endJunctionId: 'j-d', thickness: 0.2, height: 3,
+			top: { kind: 'level' }, centerline: { kind: 'line' } as const },
+			{ id: 'wall-d', startJunctionId: 'j-d', endJunctionId: 'j-a', thickness: 0.2, height: 3,
+			top: { kind: 'level' }, centerline: { kind: 'line' } as const },
+			{ id: 'wall-e', startJunctionId: 'j-f', endJunctionId: 'j-b', thickness: 0.2, height: 3,
+			top: { kind: 'level' }, centerline: { kind: 'line' } as const },
+			{ id: 'wall-f', startJunctionId: 'j-e', endJunctionId: 'j-f', thickness: 0.2, height: 3,
+			top: { kind: 'level' }, centerline: { kind: 'line' } as const },
+			{ id: 'wall-g', startJunctionId: 'j-a', endJunctionId: 'j-e', thickness: 0.2, height: 3,
+			top: { kind: 'level' }, centerline: { kind: 'line' } as const }
 		],
 		rooms: [
 			{
@@ -141,6 +148,7 @@ describe('wall-first layout codec (P23.0a scaffolding)', () => {
 			endJunctionId: 'j-a',
 			thickness: 0.2,
 			height: 3,
+			top: { kind: 'level' },
 			centerline: { kind: 'line' } as const,
 		});
 		expect(issueCodes(validateWallFirstLayoutDocument(document))).toContain('duplicate_wall_pair');

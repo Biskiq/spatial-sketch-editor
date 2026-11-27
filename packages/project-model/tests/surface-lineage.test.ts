@@ -20,6 +20,7 @@ function wallLayout(ids: readonly string[]): LayoutDocumentWallFirst {
 		endJunctionId: `${id}:end`,
 		thickness: 0.2,
 		height: 3,
+		top: { kind: 'level' },
 		centerline: { kind: 'line' as const }
 	}));
 	return layout;

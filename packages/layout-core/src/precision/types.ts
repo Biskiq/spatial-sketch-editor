@@ -171,7 +171,11 @@ export type PrecisionRejection = {
 		/** An end slide would release a fragment that still hosts an Opening. */
 		| 'opening_on_released_stub'
 		/** A member Wall or rim Junction of a Round Room cannot be edited directly. */
-		| 'round_room_member_locked';
+		| 'round_room_member_locked'
+		/** A sloped or gabled Wall top cannot be subdivided until V2b. */
+		| 'wall_top_profile_unsupported'
+		/** Two joined Walls' tops do not merge into one valid top. */
+		| 'wall_top_not_joinable';
 	message: string;
 	targetIds?: readonly string[];
 	issues?: readonly (LayoutDocumentIssue | LayoutGeometryIssue)[];

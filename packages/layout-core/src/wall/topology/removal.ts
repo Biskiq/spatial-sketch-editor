@@ -36,6 +36,7 @@ import { wallCurveChainLength } from '../curve-algebra';
 import type { LayoutIdCapture } from '../../plan/id-capture';
 import { LayoutIdCollisionError, layoutWorkingLevelIssue } from '../../plan/id-capture';
 import { createAuthoringRoomAllocator, validateAndCompile } from './birth';
+import { wallTopIsLevel } from '../wall-top';
 
 /**
  * Shared Wall-removal pipeline: delete a SET of physical
@@ -248,6 +249,16 @@ export function planWallRemovalSet(
 					message: `Round Room '${afterRoom.id}' member Wall '${ref.wallId}' is missing`,
 					roomIds: [afterRoom.id],
 					wallIds: [ref.wallId],
+				});
+			}
+			// A repack rebuilds ONE closed Wall, and a closed Wall is level (P5): a
+			// member that carries a sloped or gabled top would be flattened silently.
+			if (!wallTopIsLevel(w.top)) {
+				return reject({
+					code: 'round_repack_conflict',
+					message: `Cannot repack Round Room '${afterRoom.id}': member Wall '${w.id}' has a ${w.top.kind} top and a closed Wall is level. Make its top level or Release round before detaching.`,
+					roomIds: [afterRoom.id],
+					wallIds: [w.id],
 				});
 			}
 			if (

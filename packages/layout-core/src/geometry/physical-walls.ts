@@ -32,7 +32,8 @@ import {
 	WALL_OFFSET_OVERLAP_MESSAGE,
 	wallOffsetClearanceFailure,
 } from '../wall/offset-clearance';
-import { splitSampledWallAroundOpenings, wallPolylinesAroundOpenings } from './openings';
+import { compilePhysicalWallTop } from './physical-wall-top';
+import { wallPolylinesAroundOpenings } from './openings';
 import type { QueryGeometryBuilder } from './queries';
 import { compileLayoutGeometrySource } from './compiler';
 import { compileWallFirstJunctions, junctionJoinsByWall, junctionLeg } from './junctions';
@@ -119,9 +120,8 @@ export function compileWallFirstWithPhysicalWalls(
 	const authoredByWallId = new Map<string, readonly unknown[]>();
 	const recordsByWallId = new Map<string, RetainedQueryRecords>();
 	const issuesByWallId = new Map<string, readonly LayoutGeometryIssue[]>();
-	// Render-safe acceptance issues (see the per-Wall clearance gate below),
-	// appended to the shared compile result so every caller's existing
-	// blocking-issue check rejects without a second acceptance path.
+	// Render-safe acceptance issues, appended to the shared compile result so
+	// every caller's existing blocking-issue check rejects.
 	const wallIssues: LayoutGeometryIssue[] = [];
 	let documentMin: Vec3 | null = geometry.bounds ? ([...geometry.bounds.min] as Vec3) : null;
 	let documentMax: Vec3 | null = geometry.bounds ? ([...geometry.bounds.max] as Vec3) : null;
@@ -139,13 +139,10 @@ export function compileWallFirstWithPhysicalWalls(
 			const start = pointById.get(wall.startJunctionId);
 			const end = pointById.get(wall.endJunctionId);
 			if (!start || !end) continue;
-			// The retained Wall is compared on exactly the
-			// inputs its compiled output is a function of: the authored Wall, its two
-			// endpoint coordinates, the Floor datum, the Openings it hosts, the derived
-			// role (a Room boundary change re-roles a Wall) and whether this compile
-			// runs on a shared sampling derivation. When all are unchanged the body
-			// below — centerline construction, sampling, section splitting, Opening
-			// compilation, polylines, bounds and the clearance gate — is skipped.
+			// The retained Wall is compared on exactly the inputs its compiled output
+			// depends on: the authored Wall, its endpoints, the Floor datum, its
+			// Openings, the derived role and whether sampling is shared. Unchanged
+			// inputs skip the whole body below.
 			const hostedOpenings = openingsByHostWallId.get(wall.id) ?? [];
 			const derivedRole = derivedWallRoles.get(wall.id) ?? 'free-standing';
 			// The comparison array is built only for a session compile: a cold
@@ -224,6 +221,8 @@ export function compileWallFirstWithPhysicalWalls(
 			// (authored centerline plus endpoint coordinates), the Floor datum and
 			// the Wall's thickness/height. It costs one key per Wall, not one per
 			// Opening, because the result is embedded by reference below.
+			// Format 11 — the top is derived once; a level Wall keeps the old path.
+			const top = compilePhysicalWallTop(wall, sampled, segment, wallOpenings, floorElevation);
 			const wallGeometryDependency = cacheKeyDependency(
 				cacheKeyOf([
 					'physical-wall-geometry',
@@ -233,13 +232,10 @@ export function compileWallFirstWithPhysicalWalls(
 					wall.thickness,
 					wall.height,
 					floor.elevation,
+					...top.keyPart,
 				]),
 			);
-			// The Wall's own authoritative height decides its physical
-			// vertical extent (`topY = floor.elevation + wall.height`). Room/Floor
-			// envelopes stay Floor-derived; a partial-height Wall never lowers them.
-			const wallTop = floorElevation + wall.height;
-			const sections = splitSampledWallAroundOpenings(sampled, segment, wallOpenings, wall.height);
+			const { sections, wallTop } = top;
 			const compiledOpenings = wallOpenings.map((opening) =>
 				compileOpening(opening, sampled, floor.id, wall.id, wallGeometryDependency),
 			);
@@ -263,12 +259,14 @@ export function compileWallFirstWithPhysicalWalls(
 					wall.thickness,
 					floor.elevation,
 					wall.height,
+					...top.keyPart,
 				]),
 				wallId: wall.id,
 				role: derivedRole,
 				floorId: floor.id,
 				thickness: wall.thickness,
 				height: wall.height,
+				...(top.profile ? { topProfile: top.profile } : {}),
 				length: sampled.length,
 				samples: sampled.samples,
 				sections,
@@ -289,7 +287,7 @@ export function compileWallFirstWithPhysicalWalls(
 			// identical tangents, so neither branch of the predicate can fire.
 			// The gate's results are collected per Wall so they can be retained with it
 			// and replayed in document order by a reused Wall.
-			const wallClearanceIssues: LayoutGeometryIssue[] = [];
+			const wallClearanceIssues: LayoutGeometryIssue[] = [...top.issues];
 			if (wall.centerline.kind !== 'line') {
 				const clearance = p2311Measure('finite-thickness', () =>
 					wallOffsetClearanceFailure(compiled.samples, wall.thickness),

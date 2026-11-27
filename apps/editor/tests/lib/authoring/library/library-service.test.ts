@@ -57,7 +57,8 @@ async function harness(input: {
 		{ id: 'b', point: [4, 0] }
 	];
 	layout.walls = [
-		{ id: 'wall', startJunctionId: 'a', endJunctionId: 'b', thickness: 0.2, height: 3, centerline: { kind: 'line' } }
+		{ id: 'wall', startJunctionId: 'a', endJunctionId: 'b', thickness: 0.2, height: 3,
+		top: { kind: 'level' }, centerline: { kind: 'line' } }
 	];
 	const project = await createUnitProject({
 		id: 'project-library',

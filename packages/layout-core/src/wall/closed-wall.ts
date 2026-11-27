@@ -250,6 +250,8 @@ export function createClosedWallCircleDocument(options: {
 		endJunctionId: junctionId,
 		thickness,
 		height,
+		// A closed Wall is level: the one shape the seam can close.
+		top: { kind: 'level' },
 		centerline: construction.centerline,
 	};
 	document.walls = [wall];

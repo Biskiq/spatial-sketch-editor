@@ -58,6 +58,7 @@ function rectangleDocument(options: {
 			endJunctionId,
 			thickness: 0.2,
 			height: options.wallHeights?.[index] ?? wallHeight,
+			top: { kind: 'level' },
 			centerline: { kind: 'line' } as const
 		})),
 		rooms: [

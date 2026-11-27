@@ -63,6 +63,7 @@ function documentOf(
 		endJunctionId: wall.end,
 		thickness: 0.2,
 		height: 3,
+		top: { kind: 'level' },
 		centerline: wall.centerline ?? LINE
 	}));
 	document.rooms = rooms;
@@ -341,6 +342,7 @@ describe('P23.11 slice 3 — curved Room face polygons', () => {
 			endJunctionId: 'j-b',
 			thickness: 0.2,
 			height: 3,
+			top: { kind: 'level' },
 			centerline: curve([0, 0], [6, 0], [2, 2], [4, 2])
 		};
 		// Canonical endpoints + traversal flag: the flag alone is the direction

@@ -40,7 +40,9 @@ describe('Wall bend refusals', () => {
 		'closed_wall_isolated',
 		'invalid_endpoint',
 		'invalid_reference',
-		'geometry_invalid'
+		'geometry_invalid',
+		'wall_top_profile_unsupported',
+		'wall_top_not_joinable'
 	])('never falls back to the generic sentence for %s', (code) => {
 		expect(wallRefusalWords(code)).not.toBe('This change cannot be applied.');
 	});

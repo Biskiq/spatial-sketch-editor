@@ -370,6 +370,8 @@ export function cowSetWallScalar(
 			endJunctionId: w.endJunctionId,
 			thickness: patch.thickness ?? w.thickness,
 			height: patch.height ?? w.height,
+			// A scalar edit shifts the whole top rigidly: the rises are unchanged.
+			top: w.top,
 			centerline: cloneWallCenterline(w.centerline),
 			...(w.name !== undefined ? { name: w.name } : {}),
 		});
@@ -536,6 +538,7 @@ function cloneWallRecord(wall: LayoutWall, centerline: LayoutWallCenterline): La
 		endJunctionId: wall.endJunctionId,
 		thickness: wall.thickness,
 		height: wall.height,
+		top: wall.top,
 		centerline,
 		...(wall.name !== undefined ? { name: wall.name } : {}),
 	};

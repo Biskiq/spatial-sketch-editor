@@ -12,9 +12,12 @@
  * metadata. Pinned here: containment evidence for near-identical rings, plus
  * the end-to-end `reconcileRooms` path keeping the predecessor's ID.
  */
-import { describe, expect, it } from 'vitest';
+import {
+	describe, expect, it } from 'vitest';
 
-import { planWallSegment, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import { planWallSegment, type LayoutDocumentWallFirst,
+	LAYOUT_WALL_FIRST_FORMAT_VERSION,
+} from '@portfolio/layout-core/wall';
 import { polygonsShareInteriorArea, type LayoutVec2 } from '@portfolio/layout-core/geometry';
 import { roomBoundaryPolygon } from '@portfolio/layout-core/room';
 import { freshCapture } from './__fixtures__/layout-id-capture';
@@ -101,7 +104,7 @@ describe('P23.6e review — unchanged concave Room keeps its ID end-to-end', () 
 		// is a genuine reconciled cycle, exactly as the editor produces it.
 		const shell = {
 			units: 'meters' as const,
-			formatVersion: 10 as const,
+			formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
 			floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 			junctions: [
 				{ id: 'j1', point: p(0, 0) },
@@ -112,12 +115,18 @@ describe('P23.6e review — unchanged concave Room keeps its ID end-to-end', () 
 				{ id: 'j6', point: p(0, 12) }
 			],
 			walls: [
-				{ id: 'w1', startJunctionId: 'j1', endJunctionId: 'j2', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
-				{ id: 'w2', startJunctionId: 'j2', endJunctionId: 'j3', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
-				{ id: 'w3', startJunctionId: 'j3', endJunctionId: 'j4', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
-				{ id: 'w4', startJunctionId: 'j4', endJunctionId: 'j5', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
-				{ id: 'w5', startJunctionId: 'j5', endJunctionId: 'j6', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
-				{ id: 'w6', startJunctionId: 'j6', endJunctionId: 'j1', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const}
+				{ id: 'w1', startJunctionId: 'j1', endJunctionId: 'j2', thickness: 0.2, height: 3,
+				top: { kind: 'level' }, centerline: { kind: 'line' } as const},
+				{ id: 'w2', startJunctionId: 'j2', endJunctionId: 'j3', thickness: 0.2, height: 3,
+				top: { kind: 'level' }, centerline: { kind: 'line' } as const},
+				{ id: 'w3', startJunctionId: 'j3', endJunctionId: 'j4', thickness: 0.2, height: 3,
+				top: { kind: 'level' }, centerline: { kind: 'line' } as const},
+				{ id: 'w4', startJunctionId: 'j4', endJunctionId: 'j5', thickness: 0.2, height: 3,
+				top: { kind: 'level' }, centerline: { kind: 'line' } as const},
+				{ id: 'w5', startJunctionId: 'j5', endJunctionId: 'j6', thickness: 0.2, height: 3,
+				top: { kind: 'level' }, centerline: { kind: 'line' } as const},
+				{ id: 'w6', startJunctionId: 'j6', endJunctionId: 'j1', thickness: 0.2, height: 3,
+				top: { kind: 'level' }, centerline: { kind: 'line' } as const}
 			],
 			openings: [],
 			objects: [

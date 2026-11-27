@@ -36,6 +36,7 @@ function wall(id: string, startJunctionId: string, endJunctionId: string): Layou
 		endJunctionId,
 		thickness: 0.2,
 		height: 3,
+		top: { kind: 'level' },
 		centerline: { kind: 'line' }
 	};
 }

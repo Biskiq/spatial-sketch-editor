@@ -6,7 +6,8 @@ import { createEmptyWallFirstLayoutDocument, deriveLayoutWallRole, deriveLayoutW
 const p = (x: number, z: number): [number, number] => [x, z];
 
 function wall(id: string, start: string, end: string): LayoutWall {
-	return { id, startJunctionId: start, endJunctionId: end, thickness: 0.2, height: 3, centerline: { kind: 'line' } };
+	return { id, startJunctionId: start, endJunctionId: end, thickness: 0.2, height: 3,
+	top: { kind: 'level' }, centerline: { kind: 'line' } };
 }
 
 /**

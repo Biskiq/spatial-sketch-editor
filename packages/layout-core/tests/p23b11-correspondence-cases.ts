@@ -225,6 +225,7 @@ function facesOnlyDocument(): LayoutDocumentWallFirst {
 			endJunctionId: corners[(edge + 1) % corners.length]!,
 			thickness: 0.2,
 			height: 3,
+			top: { kind: 'level' },
 			centerline: LINE
 		});
 	}

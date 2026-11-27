@@ -406,6 +406,7 @@ describe('bend point gestures', () => {
 				endJunctionId: 'stale-b',
 				thickness: 0.2,
 				height: 3,
+				top: { kind: 'level' },
 				centerline: {
 					kind: 'cubic-chain',
 					knots: [],
@@ -513,6 +514,7 @@ describe('bend point gestures', () => {
 				endJunctionId: 'c-b',
 				thickness: 0.2,
 				height: 3,
+				top: { kind: 'level' },
 				centerline: {
 					kind: 'cubic-chain',
 					knots: [],
@@ -587,7 +589,8 @@ describe('bend point gestures', () => {
 		base.junctions = [{ id: 'bend-start', point: [0, 0] }, { id: 'bend-end', point: [6, 0] }];
 		base.walls = [{
 			id: 'bend-wall', startJunctionId: 'bend-start', endJunctionId: 'bend-end',
-			thickness: 0.2, height: 3, centerline: { kind: 'line' }
+			thickness: 0.2, height: 3,
+			top: { kind: 'level' }, centerline: { kind: 'line' }
 		}];
 		const circle = planCreateCircularRoom({
 			baseline: base, center: [3, 4.5], rim: [3.6, 4.5],
@@ -644,6 +647,7 @@ describe('bend point gestures', () => {
 				endJunctionId: 'c-b',
 				thickness: 0.2,
 				height: 3,
+				top: { kind: 'level' },
 				centerline: {
 					kind: 'cubic-chain',
 					knots: [],
@@ -710,6 +714,7 @@ describe('bend point gestures', () => {
 				endJunctionId: 'c-b',
 				thickness: 0.2,
 				height: 3,
+				top: { kind: 'level' },
 				centerline: { kind: 'cubic-chain', knots: [], spans: [{ handleOut: [2, 3], handleIn: [4, 3] }] }
 			} satisfies LayoutWall,
 			{
@@ -718,6 +723,7 @@ describe('bend point gestures', () => {
 				endJunctionId: 'c-c',
 				thickness: 0.2,
 				height: 3,
+				top: { kind: 'level' },
 				centerline: { kind: 'line' }
 			} satisfies LayoutWall
 		];

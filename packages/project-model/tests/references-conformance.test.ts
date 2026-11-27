@@ -477,6 +477,7 @@ function unitLayout(): LayoutUnitPayload {
 			endJunctionId: 'junction-2',
 			thickness: 0.2,
 			height: 3,
+			top: { kind: 'level' },
 			centerline: { kind: 'line' },
 			name: 'perimeter-wall'
 		},
@@ -487,6 +488,7 @@ function unitLayout(): LayoutUnitPayload {
 			endJunctionId: 'junction-3',
 			thickness: 0.1,
 			height: 3,
+			top: { kind: 'level' },
 			centerline: { kind: 'line' },
 			name: 'wall-1'
 		},
@@ -496,6 +498,7 @@ function unitLayout(): LayoutUnitPayload {
 			endJunctionId: 'junction-4',
 			thickness: 0.2,
 			height: 3,
+			top: { kind: 'level' },
 			centerline: { kind: 'line' }
 		},
 		{
@@ -504,6 +507,7 @@ function unitLayout(): LayoutUnitPayload {
 			endJunctionId: 'junction-1',
 			thickness: 0.2,
 			height: 3,
+			top: { kind: 'level' },
 			centerline: { kind: 'line' }
 		}
 	];

@@ -33,6 +33,7 @@ export function p2311Fixture(spec: BendFixtureSpec): LayoutDocumentWallFirst {
 		const id = `w${index}`;
 		document.walls.push({
 			id, startJunctionId, endJunctionId, thickness: 0.2, height: 3,
+			top: { kind: 'level' },
 			centerline: { kind: 'line' }
 		});
 		return id;
@@ -53,7 +54,8 @@ export function p2311Fixture(spec: BendFixtureSpec): LayoutDocumentWallFirst {
 				if (edge < 3) document.junctions.push({ id: bId, point: vertices[edge + 1]! });
 				const id = `w${base + edge}`;
 				ids.push(id);
-				document.walls.push({ id, startJunctionId: aId, endJunctionId: bId, thickness: 0.2, height: 3, centerline: { kind: 'line' } });
+				document.walls.push({ id, startJunctionId: aId, endJunctionId: bId, thickness: 0.2, height: 3,
+				top: { kind: 'level' }, centerline: { kind: 'line' } });
 			}
 			document.rooms.push({
 				id: `room${roomIndex}`,

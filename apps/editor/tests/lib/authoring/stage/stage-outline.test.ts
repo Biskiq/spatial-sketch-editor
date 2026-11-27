@@ -2,12 +2,15 @@
  * The 3D outline draws one fat line per straight run, so no joint can show as a
  * tick, and it clears the face it sits on without leaving depth testing.
  */
-import { readFileSync } from 'node:fs';
+import {
+	readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { BufferAttribute, BufferGeometry, EdgesGeometry } from 'three';
 import { describe, expect, it } from 'vitest';
 import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core/geometry';
-import { legJoinsByWall, type LayoutDocumentWallFirst, type LayoutWall, type LayoutWallOpening } from '@portfolio/layout-core/wall';
+import { legJoinsByWall, type LayoutDocumentWallFirst, type LayoutWall, type LayoutWallOpening,
+	LAYOUT_WALL_FIRST_FORMAT_VERSION,
+} from '@portfolio/layout-core/wall';
 import {
 	contourPolylines,
 	mergeStraightEdgeRuns,
@@ -23,7 +26,7 @@ import { EDITOR_ROOT } from '../../../helpers/import-closure';
 function bodyOf(points: Record<string, [number, number]>, walls: LayoutWall[], wallId: string, openings: LayoutWallOpening[] = []): BufferGeometry {
 	const document = {
 		units: 'meters',
-		formatVersion: 10,
+		formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
 		floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 		junctions: Object.entries(points).map(([id, point]) => ({ id, point })),
 		walls,
@@ -50,7 +53,8 @@ function edgesOf(points: Record<string, [number, number]>, walls: LayoutWall[], 
 }
 
 function wall(id: string, start: string, end: string, centerline: unknown = { kind: 'line' }): LayoutWall {
-	return { id, startJunctionId: start, endJunctionId: end, thickness: 0.2, height: 3, centerline } as LayoutWall;
+	return { id, startJunctionId: start, endJunctionId: end, thickness: 0.2, height: 3,
+	top: { kind: 'level' }, centerline } as LayoutWall;
 }
 
 function totalLength(positions: ArrayLike<number>): number {

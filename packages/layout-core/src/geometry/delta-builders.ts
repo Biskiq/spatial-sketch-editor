@@ -34,7 +34,9 @@ import {
 	WALL_OFFSET_OVERLAP_MESSAGE,
 	wallOffsetClearanceFailure,
 } from '../wall/offset-clearance';
-import { splitSampledWallAroundOpenings, wallPolylinesAroundOpenings } from './openings';
+import { wallPolylinesAroundOpenings } from './openings';
+import { compilePhysicalWallTop } from './physical-wall-top';
+import { compiledWallTopPeak } from '../wall/wall-top';
 import {
 	hasBlockingLayoutIssues,
 	prepareLayoutRoomSegments,
@@ -195,6 +197,9 @@ export const DELTA_BUILDERS: CanonicalDeltaBuilders = {
 			...opening,
 			segmentId: opening.wallId,
 		}));
+		// Format 11 — the same derivation the cold path uses, so a retained Wall's
+		// profile, sections, bounds, key parts and top issues are identical.
+		const top = compilePhysicalWallTop(wall, sampled, segment, wallOpenings, floorElevation);
 		const wallGeometryDependency = cacheKeyDependency(
 			cacheKeyOf([
 				'physical-wall-geometry',
@@ -204,10 +209,10 @@ export const DELTA_BUILDERS: CanonicalDeltaBuilders = {
 				wall.thickness,
 				wall.height,
 				floor.elevation,
+				...top.keyPart,
 			]),
 		);
-		const wallTop = floorElevation + wall.height;
-		const sections = splitSampledWallAroundOpenings(sampled, segment, wallOpenings, wall.height);
+		const { sections, wallTop } = top;
 		const compiledOpenings = wallOpenings.map((opening) =>
 			compileOpening(opening, sampled, floor.id, wall.id, wallGeometryDependency),
 		);
@@ -226,12 +231,14 @@ export const DELTA_BUILDERS: CanonicalDeltaBuilders = {
 				wall.thickness,
 				floor.elevation,
 				wall.height,
+				...top.keyPart,
 			]),
 			wallId: wall.id,
 			role: derivedRole,
 			floorId: floor.id,
 			thickness: wall.thickness,
 			height: wall.height,
+			...(top.profile ? { topProfile: top.profile } : {}),
 			length: sampled.length,
 			samples: sampled.samples,
 			sections,
@@ -243,7 +250,7 @@ export const DELTA_BUILDERS: CanonicalDeltaBuilders = {
 			startJunctionId: wall.startJunctionId,
 			endJunctionId: wall.endJunctionId,
 		};
-		const wallClearanceIssues: LayoutGeometryIssue[] = [];
+		const wallClearanceIssues: LayoutGeometryIssue[] = [...top.issues];
 		if (wall.centerline.kind !== 'line') {
 			const clearance = p2311Measure('finite-thickness', () =>
 				wallOffsetClearanceFailure(baseCompiled.samples, wall.thickness),
@@ -488,7 +495,8 @@ export const DELTA_BUILDERS: CanonicalDeltaBuilders = {
 				wall.samples,
 				wall.thickness,
 				floorElevation,
-				floorElevation + wall.height,
+				floorElevation +
+					(wall.topProfile ? compiledWallTopPeak(wall.topProfile, wall.height) : wall.height),
 			),
 		};
 	},

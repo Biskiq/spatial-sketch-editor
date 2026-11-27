@@ -168,6 +168,7 @@ function appendRoom(
 				endJunctionId: junctionIds[(edge + 1) % corners.length]!,
 				thickness: WALL_THICKNESS,
 				height: WALL_HEIGHT,
+				top: { kind: 'level' },
 				centerline: wallCubicChain(
 					[{ id: `${wallId}:knot:0`, point: knot }],
 					deriveChainSpans([start, knot, end])
@@ -181,6 +182,7 @@ function appendRoom(
 			endJunctionId: junctionIds[(edge + 1) % corners.length]!,
 			thickness: WALL_THICKNESS,
 			height: WALL_HEIGHT,
+			top: { kind: 'level' },
 			centerline: { kind: 'line' }
 		});
 	}

@@ -77,7 +77,8 @@ export function emptyDoc(
 }
 
 export function lineWall(id: string, start: string, end: string): LayoutWall {
-	return { id, startJunctionId: start, endJunctionId: end, role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } };
+	return { id, startJunctionId: start, endJunctionId: end, role: 'boundary', thickness: 0.2, height: 3,
+	top: { kind: 'level' }, centerline: { kind: 'line' } };
 }
 
 export function curvedWall(
@@ -95,6 +96,7 @@ export function curvedWall(
 		role: 'boundary',
 		thickness: 0.2,
 		height: 3,
+		top: { kind: 'level' },
 		centerline: { kind: 'cubic-chain', knots, spans: deriveChainSpans([points[start]!, ...interior, points[end]!]) }
 	};
 }

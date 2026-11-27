@@ -1,4 +1,5 @@
 import type { LayoutVec2 } from '../../geometry/coordinates';
+import type { WallTopProfile } from '../types';
 
 /** Absolute station/geometry tolerance for the committed proof suite. */
 export const WALL_DEVELOPMENT_TOLERANCE = 1e-6;
@@ -159,7 +160,13 @@ export type WallDevelopmentMeshHole = {
 
 export type WallDevelopmentMeshOptions = {
 	thickness: number;
+	/** The Wall's eave: its authored `height`, the lowest point of its top. */
 	height: number;
+	/**
+	 * The compiled top profile of a profiled Wall, in the same station frame as
+	 * the sheet's stations. Omitted for a level Wall, whose top is `height`.
+	 */
+	readonly topProfile?: WallTopProfile;
 	spans: readonly WallDevelopmentSourceSpan[];
 	/** Real voids in the developed sheet; omitted leaves the original strip unchanged. */
 	readonly openings?: readonly WallDevelopmentMeshHole[];

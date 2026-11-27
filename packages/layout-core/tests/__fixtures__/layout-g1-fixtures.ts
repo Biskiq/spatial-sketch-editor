@@ -98,6 +98,7 @@ function appendRoom(
 			endJunctionId: junctionFor(edge.end),
 			thickness: roomSpec.wallThickness ?? DEFAULT_WALL_THICKNESS,
 			height: roomSpec.wallHeight ?? options.wallHeight ?? DEFAULT_WALL_HEIGHT,
+			top: { kind: 'level' },
 			centerline: edge.knot ? g1CurvedCenterline(edge.start, edge.end, edge.knot, wallIds[index]!) : { kind: 'line' }
 		});
 	});
