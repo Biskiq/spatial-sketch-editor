@@ -256,6 +256,37 @@ describe('T2.S8 U7 — private-library session', () => {
 		expect(session.entries()).toEqual([]);
 	});
 
+	it('arms Paint with the key of the newly registered Finish', async () => {
+		const stage = await services();
+		const armPaint = vi.fn();
+		const session = createPrivateLibrarySession({
+			services: () => stage,
+			onNotice: vi.fn(),
+			onInserted: vi.fn(),
+			armPaint,
+			client: fakeClient({
+				list: vi.fn(async () => [summary]),
+				transfer: vi.fn(async (_item, _destination, operationId) => ({
+					itemId: summary.id,
+					contentId: summary.contentId,
+					finishId: draftFinishId(operationId),
+					name: summary.name,
+					recipe,
+					recipeHash: 'sha256-transfer',
+					images: [],
+					savedBase: null,
+				})),
+			}),
+		});
+		await session.load();
+
+		const outcome = await session.insert('mine:item-1', null, 'paint');
+
+		expect(outcome).toMatchObject({ ok: true, finishKey: expect.stringMatching(/^project:finish-/) });
+		expect(armPaint).toHaveBeenCalledOnce();
+		expect(armPaint).toHaveBeenCalledWith(outcome.ok ? outcome.finishKey : undefined);
+	});
+
 	it('ignores an obsolete transfer completion after disposal', async () => {
 		const stage = await services();
 		const transfer = deferred<MaterialLibraryTransfer>();

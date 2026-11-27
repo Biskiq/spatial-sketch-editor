@@ -98,10 +98,10 @@ function surfaceReferenceOf(
 export function createPrivateLibrarySession(input: {
 	readonly services: () => StageAdapterServices | null;
 	readonly onNotice: (message: string) => void;
-	/** Make an inserted Finish the active Paint pick. */
+	/** Record the inserted Finish in recents. */
 	readonly onInserted: (finishKey: string) => void;
-	/** Arm the Stage's Paint tool after an insert. */
-	readonly armPaint: () => void;
+	/** Pick the inserted Finish and arm Paint. */
+	readonly armPaint: (finishKey: string) => void;
 	/** The Stage's 256 px sample-tile master, when it can draw one. */
 	readonly thumbnailBytes?: (source: FinishTileSource) => Promise<Blob | null>;
 	readonly apiOrigin?: string;
@@ -389,7 +389,7 @@ export function createPrivateLibrarySession(input: {
 		if (!outcome.ok) return { ok: false, message: outcome.message };
 		const finishKey = `project:${outcome.finishId}`;
 		input.onInserted(finishKey);
-		if (mode === 'paint') input.armPaint();
+		if (mode === 'paint') input.armPaint(finishKey);
 		const message =
 			target === null
 				? `Inserted “${item.summary.name}” · an independent Finish`

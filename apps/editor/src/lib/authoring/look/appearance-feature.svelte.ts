@@ -49,7 +49,10 @@ export function createAppearanceFeature(deps: AppearanceDependencies) {
 		services: deps.finishes.services,
 		onNotice: deps.finishes.onNotice,
 		onInserted: (key) => finishes.noteUsedFinish(key),
-		armPaint: () => deps.finishes.armPaint({ kind: 'paint' }),
+		armPaint: (key) => {
+			finishes.pickMaterialKey(key);
+			deps.finishes.armPaint({ kind: 'paint' });
+		},
 		...(deps.thumbnailBytes === undefined ? {} : { thumbnailBytes: deps.thumbnailBytes }),
 	});
 	const card = createCardSession({

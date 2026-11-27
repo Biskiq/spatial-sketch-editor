@@ -332,7 +332,7 @@
 		},
 		{
 			"path": "apps/editor/src/lib/authoring/library/StageLibrary.svelte",
-			"lines": 738,
+			"lines": 726,
 			"reason": "The Library sheet root: search, filters and selection share one sheet session and one route into the Material editor."
 		},
 		{
