@@ -452,10 +452,12 @@
 	.mseg button[aria-pressed='true'] { background: var(--shell-action); color: var(--shell-on-action); }
 	.field-blk { display: grid; gap: 5px; }
 	.flb { font-size: 11px; color: var(--shell-ink-2); font-weight: 600; }
-	.g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+	.g2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 	.fldrow { display: flex; align-items: center; gap: 6px; }
 	.fld {
-		height: 28px;
+		box-sizing: border-box;
+		min-width: 0;
+		height: 30px;
 		padding: 0 8px;
 		border: 1px solid var(--shell-field-line-strong);
 		border-radius: 7px;

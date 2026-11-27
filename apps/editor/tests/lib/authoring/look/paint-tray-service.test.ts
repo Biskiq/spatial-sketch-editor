@@ -34,6 +34,20 @@ describe('T2.S8 U2 — Paint tray service', () => {
 		expect(store.saved().recentMaterials).toEqual([]);
 	});
 
+	it('reports Sample as pressed only while the dropper is armed', async () => {
+		const { finishes } = service();
+		expect(finishes.paintTray().dropper).toBe(false);
+
+		finishes.armDropper();
+		expect(finishes.paintTray().dropper).toBe(true);
+		finishes.cancelDropper();
+		expect(finishes.paintTray().dropper).toBe(false);
+
+		finishes.armDropper();
+		expect(await finishes.copyFrom('unpainted-target')).toBe(false);
+		expect(finishes.paintTray().dropper).toBe(false);
+	});
+
 	it('offers one tab until a colour-coat port exists, and ignores colour picks without it', () => {
 		const { finishes } = service();
 		expect(finishes.paintTray().colourEnabled).toBe(false);

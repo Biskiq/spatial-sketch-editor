@@ -87,6 +87,8 @@
 	@container library (width < 780px) {
 		.sources { display: none; }
 		.sources-menu { display: block; }
-		.sources button { min-height: 44px; }
+	}
+	@media (pointer: coarse) {
+		.sources button, .sources-menu select { min-height: 44px; }
 	}
 </style>

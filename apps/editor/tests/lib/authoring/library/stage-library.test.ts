@@ -126,9 +126,12 @@ describe('Library browsing and activation', () => {
 		expect(fx.q('[data-library-source="project"]')?.getAttribute('aria-pressed')).toBe('true');
 	});
 
-	it('Paint arms with no write; Shift keeps the sheet open', () => {
-		const fx = render({ intent: 'paint' });
-		expect(fx.q('[data-library-context]')?.textContent).toMatch(/Pick for Paint/);
+	it.each([
+		['paint', /Pick for Paint/],
+		['browse', /Browse/]
+	] as const)('arms Paint from %s without a write and preserves Shift-click', (intent, context) => {
+		const fx = render({ intent });
+		expect(fx.q('[data-library-context]')?.textContent).toMatch(context);
 		fx.q<HTMLButtonElement>(`[data-library-choose="${oak.key}"]`)?.click();
 		expect(fx.onPaint).toHaveBeenCalledWith(oak, false);
 		fx.q<HTMLButtonElement>(`[data-library-choose="${walnut.key}"]`)?.dispatchEvent(new MouseEvent('click', { bubbles: true, shiftKey: true }));

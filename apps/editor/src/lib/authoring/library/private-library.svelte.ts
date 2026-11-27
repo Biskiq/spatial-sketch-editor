@@ -199,7 +199,7 @@ export function createPrivateLibrarySession(input: {
 	}
 
 	function ensureLoaded(): void {
-		if (!disposed && (status === 'idle' || !listed)) void load();
+		if (!disposed && !listed && status !== 'offline') void load();
 	}
 
 	function entries(): LibraryFinishEntry[] {

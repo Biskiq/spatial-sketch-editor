@@ -519,6 +519,45 @@ describe('surface Finish reach', () => {
 		}]);
 	});
 
+	it('resets a mixed model and Wall-side subset to their respective pristine forms', async () => {
+		const original = {
+			id: 'shared-finish',
+			name: 'Tinted Plaster',
+			base: { catalogue: 'plaster-warm' },
+			overrides: { color: '#aabbcc' }
+		} as const;
+		const surface = { kind: 'wall-side', wallId: 'wall-a', side: 'left' } as const;
+		const wallUser = `surface:${surfaceKey(surface)}`;
+		const outcome = await directPlan(
+			{
+				entities: [model('model-a', original.id), box('other-user', 'plaster-warm', original.id)],
+				layout: wallLayout(),
+				materials: [original],
+				surfaceFinishes: [{ surface, finish: { materialInstanceId: original.id } }]
+			},
+			'scene-finish-patch',
+			{
+				finish: { project: original.id },
+				mode: 'just-this',
+				selectedUsers: ['entity:model-a', wallUser],
+				expectedUsers: ['entity:model-a', 'entity:other-user', wallUser],
+				edits: [{ field: 'color', op: 'reset' }]
+			},
+			[],
+			[{ kind: 'scene-finish', id: 'pristine-clone' }]
+		);
+		const after = plannedScene(outcome);
+		expect(after.entities).toEqual([
+			model('model-a', 'pristine-clone'),
+			box('other-user', 'plaster-warm', original.id)
+		]);
+		expect(after.surfaceFinishes).toEqual([{ surface, finish: { materialId: 'plaster-warm' } }]);
+		expect(after.materials).toEqual([
+			original,
+			{ id: 'pristine-clone', name: expect.any(String), base: original.base }
+		]);
+	});
+
 	it('counts present and dormant surfaces but excludes retired loaded assignments from reach and edits', async () => {
 		const layout = wallLayout();
 		const space = g1RoomPolygon('roof-room', [[8, 0], [12, 0], [12, 3], [8, 3]]);
