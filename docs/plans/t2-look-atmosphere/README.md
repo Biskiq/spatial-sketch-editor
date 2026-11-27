@@ -483,7 +483,7 @@ verification in the PR that implements it; the technical boundaries below are th
 | **A1 Artwork** | Import, the Artwork object, wall magnet and free placement, real-unit sizing, transparency, Visitor Preview, save and reopen, release pinning | P0 · S0 items 1 and 7 | **bump** |
 | **A2 Framing and hanging** | Four frame styles, Mat, frame colour; eye-line and neighbour guides; Replace image | A1 | — |
 | **S7 Light it** | Picture spot and Wash aimed at the selection, frustum fitted to an artwork's frame, one light for a multi-selection, one undo | S3 (richer with A1) | — |
-| **G1 Groups** | Group as one unit for every object kind: click group then member, rigid actions, group Card, *Group with …*; the Showcase rig. [Implementation plan](./g1-groups/implementation-plan.md) (G1a model, G1b interaction, G1c Showcase) | S3 · S7 | **bump** (Scene 13: admits Artwork members) |
+| **G1 Groups** | Group as one unit for every object kind: click group then member, rigid actions, group Card, *Group with …*; the Showcase rig. [Implementation plan](./g1-groups/implementation-plan.md) (G1a semantic foundation, approved specimen, G1b creator interaction with Showcase) | S3 · S7 | **bump** (Scene 13: admits Artwork members) |
 | **S1 Look schema** | Types, codec, validation for §4 and §6 fields | D2, D11 · S0 report | **bump** |
 | **S2 Sky dials** | Environment control, Sky panel, Celestial Dial, edited / Reset | P0 · S0 · S1 | Scene 9 |
 | **S4 Finish** | Card row, free colour, Sheen, Paint for objects (S4a, landed); From image, Scale, Direction, creator-image delivery (S4b, in review) | P0 · S0 · S1 | — |
