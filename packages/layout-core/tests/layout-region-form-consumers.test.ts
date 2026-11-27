@@ -1,9 +1,9 @@
 /**
- * T1 V3a — flat-era consumers fed admitted shed and gable Regions.
+ * T1 V3a/V3b — flat-era consumers fed admitted shed and gable Regions.
  *
- * V3a admits sloped forms but certifies neither the sloped fits nor the sloped
- * vertical Wall relation (V3b owns both), so each consumer either reads the form
- * exactly or refuses explicitly. Nothing may fall back to the flat reading.
+ * Each consumer reads the form exactly: the vertical Wall relation reads the
+ * certified extrema of the covered Wall strip (V3b), the horizontal relation is
+ * unchanged, and nothing falls back to the flat reading.
  */
 import { describe, expect, it } from 'vitest';
 import { compileWallFirstLayoutGeometryFresh, type LayoutVec2 } from '@portfolio/layout-core/geometry';
@@ -19,7 +19,6 @@ import {
 	planFitRegionToWalls,
 	planFitWallsToRegion,
 	planRotateRegion,
-	REGION_FORM_FIT_UNSUPPORTED_CODE,
 	regionTopAt,
 	regionUndersideAt,
 	regionWallRelations
@@ -81,26 +80,58 @@ function relationsOf(document: LayoutDocumentWallFirst, regionId: string) {
 	return result.relations;
 }
 
-describe('V3a — sloped vertical Wall relations are explicitly unread', () => {
+/**
+ * Independent expectation for the mitred 8 x 6 enclosure (0.2 m Walls) under
+ * the COVER footprint: each Wall's strip spans its outer mitre corners, so its
+ * plan extent along the slope is known in closed form.
+ */
+function expectedClearance(form: LayoutRegionForm, wallId: string, height: number, eave: number) {
+	const half = 0.1;
+	const along = (from: number, to: number) => ({ from, to });
+	// Strip extents: index 0..3 follow RECT's edges (south, east, north, west).
+	const x = [along(-half, 8 + half), along(8 - half, 8 + half), along(-half, 8 + half), along(-half, half)];
+	const z = [along(-half, half), along(-half, 6 + half), along(6 - half, 6 + half), along(-half, 6 + half)];
+	const index = Number(wallId.match(/(\d+)$/)?.[1] ?? 0) % 4;
+	const underside = (q: number) =>
+		form.kind === 'shed'
+			? eave + (form.rise * (q + 1)) / 10
+			: form.kind === 'gable'
+				? eave + (form.rise * (q <= 3 ? q + 1 : 7 - q)) / 4
+				: eave;
+	const span = form.kind === 'shed' ? x[index]! : z[index]!;
+	const values = [underside(span.from), underside(span.to)];
+	if (form.kind === 'gable' && span.from < 3 && span.to > 3) values.push(underside(3));
+	return { contact: Math.min(...values) - height, gap: Math.max(...values) - height };
+}
+
+describe('V3b — sloped vertical Wall relations read certified strip extrema', () => {
 	for (const [form, height] of [
 		[SHED, 3],
 		[SHED, 3.5],
 		[GABLE, 2.5]
 	] as const) {
-		it(`reads every covered Wall as unavailable under a ${form.kind} with Walls at ${height}`, () => {
+		it(`reads every covered Wall from its extrema under a ${form.kind} with Walls at ${height}`, () => {
 			const { document, regionId } = withRoof(enclosure(height), form, 3);
 			const relations = relationsOf(document, regionId);
 			expect(relations).toHaveLength(4);
+			const wallIds = document.walls.map((wall) => wall.id);
 			for (const relation of relations) {
 				expect(['through', 'edge']).toContain(relation.planClass);
-				expect(relation).toMatchObject({
-					reading: 'unavailable',
-					measureMeters: null,
-					measureAxis: null,
-					measureSegment: null,
-					intended: false,
-					fit: null
-				});
+				const expected = expectedClearance(form, `w${wallIds.indexOf(relation.wallId)}`, height, 3);
+				const overrun = -expected.contact - THICKNESS;
+				if (relation.planClass === 'through' && overrun > 1e-6) {
+					expect(relation.reading).toBe('crosses');
+					expect(relation.measureMeters).toBeNull();
+				} else if (expected.gap > 1e-6) {
+					expect(relation.reading).toBe('gap');
+					expect(relation.measureAxis).toBe('vertical');
+					expect(relation.measureMeters).toBeCloseTo(expected.gap, 9);
+					const segment = relation.measureSegment!;
+					expect(segment.to[1] - segment.from[1]).toBeCloseTo(expected.gap, 9);
+					expect(relation.fit).toBe(Math.abs(expected.contact) > 1e-6 ? 'fit-roof-to-walls' : null);
+				} else {
+					expect(relation.reading).toBe('meets');
+				}
 			}
 		});
 	}
@@ -125,23 +156,23 @@ describe('V3a — sloped vertical Wall relations are explicitly unread', () => {
 	});
 });
 
-describe('V3a — flat-only fits refuse a sloped Region atomically', () => {
+describe('V3b — both fits follow a sloped Region', () => {
 	for (const form of [SHED, GABLE]) {
-		it(`refuses both fits under a ${form.kind} and leaves the document unchanged`, () => {
+		it(`fits the roof, then the walls, under a ${form.kind} until every Wall meets`, () => {
 			const { document, regionId } = withRoof(enclosure(2.5), form, 3);
 			const before = serializeWallFirstLayoutDocument(document);
-			const geometry = compile(document);
 			const ids = document.walls.map((wall) => wall.id);
-			for (const plan of [
-				planFitRegionToWalls(document, geometry, regionId, ids),
-				planFitWallsToRegion(document, geometry, regionId, ids)
-			]) {
-				expect(plan.kind).not.toBe('success');
-				if (plan.kind === 'success') continue;
-				expect(plan.rejection.code).toBe(REGION_FORM_FIT_UNSUPPORTED_CODE);
-				expect(plan.rejection.message).toContain(form.kind);
-			}
+			const roof = planFitRegionToWalls(document, compile(document), regionId, ids);
+			if (roof.kind !== 'success') throw new Error(roof.rejection.message);
 			expect(serializeWallFirstLayoutDocument(document)).toBe(before);
+			for (const relation of relationsOf(roof.document, regionId)) {
+				expect(['gap', 'meets']).toContain(relation.reading);
+			}
+			const walls = planFitWallsToRegion(roof.document, compile(roof.document), regionId, ids);
+			if (walls.kind !== 'success') throw new Error(walls.rejection.message);
+			for (const relation of relationsOf(walls.document, regionId)) {
+				expect(relation.reading).toBe('meets');
+			}
 		});
 	}
 });

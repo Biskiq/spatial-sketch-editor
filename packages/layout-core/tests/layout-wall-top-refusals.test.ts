@@ -1,11 +1,11 @@
 /**
- * T1 V2b — the one Wall-top refusal that survives the exact planner arithmetic.
+ * T1 V2b/V3b — region fits and relations over profiled Wall tops.
  *
  * V2a refused every operation that needed top interpolation before V2b landed:
  * split, subdivision, crossing noding, join/dissolve and the Round radius. Those
- * now have exact planners (`layout-wall-top-planners.test.ts`). The remaining
- * refusal is the overhead-region Wall fit: sealing every point of a Wall top
- * under a roof slab needs V3's roof-form arithmetic, so it still refuses whole.
+ * now have exact planners (`layout-wall-top-planners.test.ts`). The last
+ * refusal, the overhead-region Wall fit, is lifted in V3b: under a flat Region
+ * a profiled Wall is written level at the underside.
  *
  * Region relations are also here because they read the compiled top over the
  * stations a footprint covers; that is V1 behaviour V2a made profile-aware.
@@ -14,7 +14,6 @@ import { describe, expect, it } from 'vitest';
 
 import { compileWallFirstLayoutGeometryFresh, type LayoutVec2 } from '@portfolio/layout-core/geometry';
 import {
-	WALL_TOP_PROFILE_UNSUPPORTED_CODE,
 	createEmptyWallFirstLayoutDocument,
 	planWallChain,
 	validateWallFirstLayoutDocument,
@@ -32,12 +31,6 @@ import { captureFor, freshCapture } from './__fixtures__/layout-id-capture';
 
 const SLOPE: LayoutWallTop = { kind: 'slope', startRise: 0, endRise: 2 };
 const GABLE: LayoutWallTop = { kind: 'gable', startRise: 0, endRise: 0, apexRise: 2, apexOffset: 5 };
-
-function expectUnchanged(document: LayoutDocumentWallFirst, run: () => unknown): void {
-	const before = JSON.stringify(document);
-	run();
-	expect(JSON.stringify(document)).toBe(before);
-}
 
 const RECT: LayoutVec2[] = [[0, 0], [10, 0], [10, 6], [0, 6]];
 
@@ -88,21 +81,20 @@ function readingOf(document: LayoutDocumentWallFirst, regionId: string, wallId: 
 	return result.relations.find((entry) => entry.wallId === wallId)!;
 }
 
-describe('V2b · the remaining region-fit Wall-top refusal', () => {
-	it('Fit walls to roof refuses a profiled Wall whole, naming it, and leaves the document unchanged', () => {
+describe('V3b · Fit walls to roof under a flat Region levels a profiled Wall', () => {
+	it('writes a profiled Wall level at the flat underside, in one acceptance', () => {
 		const base = enclosure();
 		const wallId = southWallId(base);
 		const { document, regionId } = canopy(withTop(base, wallId, SLOPE), [[-1, -1], [11, -1], [11, 1], [-1, 1]], 3.5);
 		const geometry = compileWallFirstLayoutGeometryFresh(document).geometry;
-		expectUnchanged(document, () => {
-			const plan = planFitWallsToRegion(document, geometry, regionId, [wallId]);
-			expect(plan.kind).toBe('rejected');
-			if (plan.kind !== 'rejected') return;
-			expect(plan.rejection.code).toBe(WALL_TOP_PROFILE_UNSUPPORTED_CODE);
-			expect(plan.rejection.message).toContain(`'${wallId}'`);
-			expect(plan.rejection.targetIds).toContain(wallId);
-		});
-		expect(validateWallFirstLayoutDocument(document).success).toBe(true);
+		const plan = planFitWallsToRegion(document, geometry, regionId, [wallId]);
+		expect(plan.kind).toBe('success');
+		if (plan.kind !== 'success') return;
+		const fitted = plan.document.walls.find((entry) => entry.id === wallId)!;
+		expect(fitted.top).toEqual({ kind: 'level' });
+		expect(fitted.height).toBeCloseTo(3.5, 9);
+		expect(plan.changedWallIds).toContain(wallId);
+		expect(validateWallFirstLayoutDocument(plan.document).success).toBe(true);
 	});
 
 	it('Fit walls to roof still fits a level Wall', () => {

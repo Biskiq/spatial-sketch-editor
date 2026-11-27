@@ -52,5 +52,27 @@ export {
 	planFitRegionEdgeToWall,
 	planFitRegionToWalls,
 	planFitWallsToRegion,
-	REGION_FORM_FIT_UNSUPPORTED_CODE,
 } from './region/fit';
+export { planSetRegionForm } from './region/form-edit';
+export type { RegionFormInput } from './region/contracts';
+export {
+	REGION_FIT_CLOSED_WALL_CODE,
+	REGION_FIT_CURVED_WALL_NOT_LEVEL_CODE,
+	REGION_FIT_WALL_OVERRUN_CODE,
+} from './region/fit-sloped';
+export { compiledWallStrip } from './region/wall-strip';
+export type {
+	WallStripCell,
+	WallStripEnds,
+	WallStripPatch,
+	WallStripPiece,
+} from './region/wall-strip';
+export {
+	regionWallVerticalExtrema,
+	REGION_WALL_EXTREMA_TOLERANCE_METERS,
+	REGION_WALL_EXTREMA_UNCERTIFIED_CODE,
+} from './region/wall-extrema';
+export type {
+	RegionWallVerticalExtrema,
+	RegionWallVerticalPoint,
+} from './region/wall-extrema';

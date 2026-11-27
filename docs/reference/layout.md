@@ -98,9 +98,10 @@ refuses whole when the apex leaves the Wall.
 Duplicate, Room move and bend/straighten carry the top unchanged, and P4 reads it on the new
 centerline. Within a Round Room, member arcs may carry tops: repacking to one closed Wall still
 requires every member level and equal (P5), and a radius edit scales each `apexOffset` with the
-circumference exactly as it scales an Opening offset. Region fit-walls still refuses a profiled Wall
-(`wall_top_profile_unsupported`) until V3's roof-form arithmetic. Region relations
-and the roof fit read a Wall's top over each station interval the footprint covers, never the
+circumference exactly as it scales an Opening offset. Under a flat Region, fit-walls writes a
+profiled Wall level at the fitted height; under a sloped Region it derives the top from the form
+(§ Horizontal Regions). Flat Region relations
+and the flat roof fit read a Wall's top over each station interval the footprint covers, never the
 continuous hull of disjoint intervals. The landed model
 is one floor; a multi-floor payload is not accepted. Canonical reads accept format 12 only.
 
@@ -291,6 +292,37 @@ overlap interval is the same conservative rise band; an overlap under the high s
 even where the true underside is above the other slab. Declared intentional gaps keep their Wall references through
 topology splits and dissolves and lose the reference when that Wall is removed. No Room edit creates
 a Region.
+
+**Form edits.** `planSetRegionForm` sets one Region's form. Omitted values keep the current ones
+within a kind and take deterministic defaults on a kind change: the azimuth follows the longest
+footprint edge (endpoints ordered by `(x, z)`, ties broken by the smallest ordered endpoint pair,
+`θ = atan2(Δz, Δx)`), a shed rising along `θ` and a gable turned a quarter so its ridge parallels
+that edge; `ridgeOffset` is 0; the rise is `tan 30°` times the run (the whole run for a shed, the
+longer ridge side for a gable). A sloped form on a floor Region refuses
+(`region_form_requires_overhead`). Resize keeps an explicit azimuth; rotation turns it with the
+footprint.
+
+**Vertical relations under a sloped form.** With `D(p) = underside(p) − wallTopY(p)` over the whole
+covered Wall body strip (both faces, resolved ends, mitres and bevel or keel junction pieces),
+`contact = min D`, `gap = max D` and `overrun = −contact − thickness`. A `through` Wall reads
+**Crosses** when `overrun > ε`; otherwise a `through` or `edge` Wall reads a vertical **Gap** of
+`gap` when `gap > ε`, and **Meets** otherwise; `near` keeps the horizontal rule. The extrema are
+certified, not sampled: each strip cell is a ruled quad whose top is linear between Wall-top knots,
+so `D` is bilinear on each side of the ridge, and the certifier enumerates cell corners, footprint
+vertices, cell-edge and footprint-edge crossings, ridge crossings and the closed-form stationary
+points along each footprint edge's preimage, within `1e-9` m. A folded cell or any other unproven
+case reads **Not certified** (`unavailable`) and refuses both fits
+(`region_wall_extrema_uncertified`).
+
+**Vertical fits under a sloped form.** Fit roof to walls moves the eave by `−min contact`, to first
+contact. Fit walls to roof takes every chosen Wall whose centerline lies in the footprint (others
+are named and left alone), derives a level, slope or one-apex gable top from the underside at the
+ends and any interior ridge crossing, raises it by the uniform sealing allowance `max(0, gap)` and
+admits it only when every fitted Wall then reads **Meets**. It refuses the whole selection, naming
+its subject, for a closed Wall (`region_fit_closed_wall`), a curved Wall whose top would not be level
+(`region_fit_curved_wall_not_level`), a sealed top that would project through the roof
+(`region_fit_wall_overrun`, with the overrun in metres) and an Opening above the new top
+(`opening_set_invalid`). Neither fit stores a constraint.
 
 **Authoring.** **Terrace** creates a floor region and **Roof › Flat** an overhead region; sloped
 forms are format- and compiler-ready in V3a, while their creator interactions are V3c. Both use

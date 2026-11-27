@@ -5,7 +5,6 @@ import { MAX_LAYOUT_DIMENSION_METERS } from '../../geometry/limits';
 import type { CompiledLayoutGeometry, CompiledPhysicalWall } from '../../geometry/types';
 import { hasBlockingLayoutIssues } from '../../geometry/validation';
 import { validateWallFirstOpeningSet } from '../../wall/opening-set';
-import { WALL_TOP_PROFILE_UNSUPPORTED_CODE } from '../../wall/wall-top';
 import {
 	REGION_WALL_RELATION_EPSILON,
 	regionWallCoveredTopRangeY,
@@ -16,6 +15,7 @@ import { MAX_LAYOUT_REGION_POINTS } from '../region-validation';
 import { validateWallFirstLayoutDocument } from '../../wall/codec';
 import type { LayoutDocumentWallFirst } from '../../wall/types';
 import type { RegionPlan } from './contracts';
+import { planSlopedFitWalls, slopedRoofElevation } from './fit-sloped';
 import {
 	centerlineWithinFootprint,
 	copyPoints,
@@ -26,25 +26,6 @@ import {
 	segmentDistance,
 	translatePoints,
 } from './shared';
-
-/**
- * Both fits read the roof as one level underside. A shed or gable needs the
- * certified Wall-strip extrema of §7.3, which arrive with V3b; until then a
- * sloped roof refuses the whole fit and writes nothing, like a profiled Wall top.
- */
-export const REGION_FORM_FIT_UNSUPPORTED_CODE = 'region_form_fit_unsupported';
-
-function slopedFormRefusal(
-	region: { readonly id: string; readonly form: { readonly kind: string } },
-	verb: string,
-): RegionPlan | null {
-	if (region.form.kind === 'flat') return null;
-	return reject(
-		REGION_FORM_FIT_UNSUPPORTED_CODE,
-		`${verb} cannot follow a ${region.form.kind} roof yet. Make the roof flat to fit it, or set the heights directly.`,
-		[region.id],
-	);
-}
 
 /**
  * Fit to space: the footprint becomes the compiled Space's centerline outline.
@@ -259,9 +240,11 @@ function nearestFootprintEdge(
 }
 
 /**
- * Fit roof to walls: move one overhead region vertically to first contact with
- * the highest chosen Wall top. Only chosen Walls whose compiled body touches or
- * overlaps the footprint take part; the rest are reported as skipped.
+ * Fit roof to walls: move one overhead region vertically to first contact. A
+ * flat region meets the highest covered chosen Wall top; a sloped one moves by
+ * the certified minimum contact over every chosen Wall's covered strip (§7.3).
+ * Only chosen Walls whose compiled body touches or overlaps the footprint take
+ * part; the rest are reported as skipped.
  */
 export function planFitRegionToWalls(
 	document: LayoutDocumentWallFirst,
@@ -277,8 +260,6 @@ export function planFitRegionToWalls(
 			regionId,
 		]);
 	}
-	const roofSloped = slopedFormRefusal(region, 'Fit roof to walls');
-	if (roofSloped !== null) return roofSloped;
 	const floor = compiled.floors[0];
 	const compiledRegion = compiled.regions.find((candidate) => candidate.regionId === regionId);
 	if (floor === undefined || compiledRegion === undefined) {
@@ -310,16 +291,30 @@ export function planFitRegionToWalls(
 			...skippedWallIds,
 		]);
 	}
-	let highest = -Infinity;
-	for (const wall of qualifying) {
-		const plan = regionWallPlanClass(compiledRegion.footprint, wall);
-		highest = Math.max(
-			highest,
-			regionWallCoveredTopRangeY(compiledRegion.footprint, wall, plan.planClass, floor.elevation)
-				.maxY,
+	let elevation: number;
+	if (region.form.kind === 'flat') {
+		let highest = -Infinity;
+		for (const wall of qualifying) {
+			const plan = regionWallPlanClass(compiledRegion.footprint, wall);
+			highest = Math.max(
+				highest,
+				regionWallCoveredTopRangeY(compiledRegion.footprint, wall, plan.planClass, floor.elevation)
+					.maxY,
+			);
+		}
+		elevation = highest - floor.elevation;
+	} else {
+		// A sloped roof moves straight down or up to first contact (§7.3).
+		const sloped = slopedRoofElevation(
+			compiled,
+			compiledRegion,
+			region,
+			floor.elevation,
+			qualifying,
 		);
+		if ('refusal' in sloped) return sloped.refusal;
+		elevation = sloped.elevation;
 	}
-	const elevation = highest - floor.elevation;
 	if (
 		!Number.isFinite(elevation) ||
 		Math.abs(elevation) > MAX_LAYOUT_DIMENSION_METERS ||
@@ -350,10 +345,12 @@ export function planFitRegionToWalls(
 }
 
 /**
- * Fit walls to roof: set each eligible chosen Wall's height to the overhead
- * region's underside. A Wall qualifies only when its entire compiled centerline
- * lies inside or on the footprint; partly covered Walls are listed as skipped.
- * All heights and Opening gates are validated together before one acceptance.
+ * Fit walls to roof: give each eligible chosen Wall the top that meets the
+ * overhead region's underside — level at a flat region's datum, or under a
+ * sloped form the canonical profile plus the uniform sealing allowance (§7.3).
+ * A Wall qualifies only when its entire compiled centerline lies inside or on
+ * the footprint; partly covered Walls are listed as skipped. All tops, overrun
+ * bounds and Opening gates are validated together before one acceptance.
  */
 export function planFitWallsToRegion(
 	document: LayoutDocumentWallFirst,
@@ -369,8 +366,6 @@ export function planFitWallsToRegion(
 			regionId,
 		]);
 	}
-	const wallsSloped = slopedFormRefusal(region, 'Fit walls to roof');
-	if (wallsSloped !== null) return wallsSloped;
 	const floor = compiled.floors[0];
 	const compiledRegion = compiled.regions.find((candidate) => candidate.regionId === regionId);
 	if (floor === undefined || compiledRegion === undefined) {
@@ -388,18 +383,22 @@ export function planFitWallsToRegion(
 			return reject('unknown_wall', `Unknown wall '${wallId}'`, [wallId]);
 		}
 	}
+	// A flat underside is one target height for every Wall, read before
+	// eligibility exactly as before V3b; a sloped one is derived per Wall.
 	const targetHeight = compiledRegion.bottomY - floor.elevation;
-	if (!Number.isFinite(targetHeight) || targetHeight <= 0) {
-		return reject(
-			'invalid_value',
-			`Region '${regionId}' underside sits at or below the Floor datum, so no Wall can reach it`,
-			[regionId],
-		);
-	}
-	if (targetHeight > MAX_LAYOUT_DIMENSION_METERS) {
-		return reject('invalid_value', 'Fitted Wall height exceeds the 1000 m Layout envelope', [
-			regionId,
-		]);
+	if (region.form.kind === 'flat') {
+		if (!Number.isFinite(targetHeight) || targetHeight <= 0) {
+			return reject(
+				'invalid_value',
+				`Region '${regionId}' underside sits at or below the Floor datum, so no Wall can reach it`,
+				[regionId],
+			);
+		}
+		if (targetHeight > MAX_LAYOUT_DIMENSION_METERS) {
+			return reject('invalid_value', 'Fitted Wall height exceeds the 1000 m Layout envelope', [
+				regionId,
+			]);
+		}
 	}
 	const eligible: CompiledPhysicalWall[] = [];
 	const skippedWallIds: string[] = [];
@@ -420,19 +419,22 @@ export function planFitWallsToRegion(
 			...skippedWallIds,
 		]);
 	}
-	// Fitting sets `height` to the roof underside. A sloped or gabled Wall's peak
-	// would then rise above the region, and the fit that keeps every point of its
-	// top under the roof arrives with V3; refuse whole, naming each such Wall.
-	const profiled = eligible.filter((wall) => wall.topProfile !== undefined);
-	if (profiled.length > 0) {
-		const names = profiled.map((wall) => `'${wall.wallId}'`).join(', ');
-		return reject(
-			WALL_TOP_PROFILE_UNSUPPORTED_CODE,
-			`Wall${profiled.length > 1 ? 's' : ''} ${names} ${profiled.length > 1 ? 'have' : 'has'} a sloped or gabled top, so fitting to region '${regionId}' would push its peak through the roof. Make the top level first.`,
-			[regionId, ...profiled.map((wall) => wall.wallId)],
-		);
+	if (region.form.kind !== 'flat') {
+		return planSlopedFitWalls({
+			document,
+			compiled,
+			region,
+			compiledRegion,
+			floorElevation: floor.elevation,
+			eligible,
+			skippedWallIds,
+		});
 	}
-	const changes = eligible.filter((wall) => Math.abs(wall.height - targetHeight) > 1e-12);
+	// A flat underside is one level: every fitted Wall, profiled or not, takes a
+	// level top at it, so no peak can rise into the roof.
+	const changes = eligible.filter(
+		(wall) => Math.abs(wall.height - targetHeight) > 1e-12 || wall.topProfile !== undefined,
+	);
 	if (changes.length === 0) {
 		return reject('no_op', `Chosen Walls already meet region '${regionId}'`, [regionId]);
 	}
@@ -440,7 +442,7 @@ export function planFitWallsToRegion(
 	const candidate: LayoutDocumentWallFirst = {
 		...document,
 		walls: document.walls.map((wall) =>
-			heights.has(wall.id) ? { ...wall, height: targetHeight } : wall,
+			heights.has(wall.id) ? { ...wall, height: targetHeight, top: { kind: 'level' } } : wall,
 		),
 	};
 	const structural = validateWallFirstLayoutDocument(candidate);
