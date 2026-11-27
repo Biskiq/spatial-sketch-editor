@@ -802,6 +802,28 @@ describe('Layout scalar Stage grips',()=>{
   else {for(const key of '0')facade.gestureKeyIntent({kind:'type',key});facade.gestureKeyIntent({kind:'finish'});facade.pointerIntent({phase:'cancel',css:mark.tip!,evaluationId});}
   expect(facade.snapshot().canonicalJson).toBe(before);expect(host.history()).toMatchObject({depth:1,position:0});expect(facade.session.gesture()).toBeNull();facade.dispose();
  });
+	it('names the blocking Opening when the Height grip is refused', async () => {
+		const { facade, host, wallId, openingId } = await mount(gableFixture());
+		selectWall(facade, wallId);
+		expect(facade.activateDisclosure('layout-wall-size-chip')).toBe(true);
+		const height = facade.marks().find((mark) => mark.id === 'layout-wall-height')!;
+		const before = facade.snapshot().canonicalJson;
+		const history = host.history();
+		const evaluationId = facade.evaluationId()!;
+		expect(facade.pointerIntent({ phase: 'down', handleId: height.id, css: height.tip!, evaluationId }).claimed).toBe(true);
+		for (const key of '1.5') expect(facade.gestureKeyIntent({ kind: 'type', key }).claimed).toBe(true);
+		facade.gestureKeyIntent({ kind: 'finish' });
+		const refused = facade.marks().find((mark) => mark.id === 'layout-wall-height')!;
+		const opening = stageEnvelope(facade.snapshot()).units.layout.data.openings.find((entry) => entry.id === openingId)!;
+		const openingName = opening.name ?? (opening.kind === 'window' ? 'Window' : 'Door');
+		expect(refused.refusal).toContain(openingName);
+		expect(refused.refusal).not.toContain('an Opening');
+		expect(facade.snapshot().canonicalJson).toBe(before);
+		expect(host.history()).toMatchObject({ depth: history.depth, position: history.position });
+		facade.gestureKeyIntent({ kind: 'cancel' });
+		facade.pointerIntent({ phase: 'cancel', css: height.tip!, evaluationId });
+		facade.dispose();
+	});
 	it('admits the three gable top knobs on a straight Wall without Unroll and drags the apex', async () => {
 		const { facade, host, wallId } = await mount(gableFixture());
 		selectWall(facade, wallId);

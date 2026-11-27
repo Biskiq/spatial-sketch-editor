@@ -98,11 +98,11 @@ function wallHeightPlanner(): DomainPlanner<ProjectEnvelope> {
 }
 
 /**
- * The top planner's refusal words, with the Opening its ids name.
+ * The top and height planners' refusal words, with the Opening their ids name.
  *
- * `planSetWallTop` reports an Opening id in `targetIds` when a lowered top would
- * cut into it; resolving that here is what keeps the Card and the Stage grip
- * from saying "an Opening" after V2c made the shape editable.
+ * Both report an Opening id in `targetIds` when a lowered edit would cut into it;
+ * resolving it here keeps the Card and both Stage grips from saying
+ * "an Opening".
  */
 export function wallTopRejectionWords(
 	document: LayoutDocumentWallFirst,

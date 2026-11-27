@@ -42,7 +42,7 @@ import {
 	buildLayoutIntent,
 } from './precision';
 import { curvedWallPointAt } from './precision-frames';
-import { refusalSubjects, wallRefusalWords } from './refusals';
+import { wallTopRejectionWords } from './precision-planners';
 import type { LayoutSessionPorts } from './session-ports';
 import { wallTopForKnobDrag, type WallTopKnob } from './wall-top-edits';
 import { wallHeightKnobSpot, wallTopBreakpointSpots } from './wall-top-frame';
@@ -285,11 +285,7 @@ export function createWallScalarSession({
 				current.value = null;
 				current.candidate = null;
 				current.top = null;
-				current.refusal = wallRefusalWords(
-					plan.rejection.code,
-					plan.rejection.message,
-					refusalSubjects(document, plan.rejection.targetIds, plan.rejection.message),
-				);
+				current.refusal = wallTopRejectionWords(document, plan.rejection);
 				return false;
 			}
 			current.value = value;
@@ -305,7 +301,7 @@ export function createWallScalarSession({
 		if (plan.kind === 'rejected') {
 			current.value = null;
 			current.candidate = null;
-			current.refusal = wallRefusalWords(plan.rejection.code, plan.rejection.message);
+			current.refusal = wallTopRejectionWords(document, plan.rejection);
 			return false;
 		}
 		current.value = value;

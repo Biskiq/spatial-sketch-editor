@@ -587,7 +587,7 @@
 		},
 		{
 			"path": "apps/editor/src/lib/authoring/adapters/layout/wall-scalar-session.ts",
-			"lines": 622,
+			"lines": 618,
 			"reason": "One Wall scalar gesture: height, thickness and top knobs share the captured Wall, scalars and one lease."
 		},
 		{
