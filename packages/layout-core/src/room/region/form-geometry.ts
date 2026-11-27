@@ -19,6 +19,14 @@
  *    split at the same crossings. Top, underside and edge faces therefore share
  *    identical vertex values: no cracks, no T-junctions and an exact ridge.
  *
+ * Exact closure rests on one classification. A vertex whose station is within
+ * rounding of the ridge is snapped onto it (`ridgeSnapTolerance`), so it is a
+ * ridge vertex on both sides and no crossing is ever created a few ulps from a
+ * vertex. Every other crossing is then strictly interior to its edge. The clip,
+ * the perimeter split and the piece filter all read that one classification and
+ * never drop a piece or segment by length or area, so every directed edge has
+ * its opposite.
+ *
  * The profile is affine on each side of the ridge, so each merged loop is
  * planar. The top is the same plan loop offset by `thickness`, so the slab has a
  * constant vertical thickness everywhere. This is a bounded geometric
@@ -26,7 +34,6 @@
  * `regionUndersideAtStation`.
  */
 import type { LayoutVec2 } from '../../geometry/coordinates';
-import { LAYOUT_GEOMETRY_EPSILON } from '../../geometry/openings';
 import { orientXZ } from '../../geometry/robust-orientation';
 import { spaceOutlineSignedArea } from '../space-outline';
 import type { Vec3 } from '../../kernel/types';
@@ -152,14 +159,6 @@ function earClip(ring: readonly LayoutVec2[]): number[][] | null {
 	return triangles;
 }
 
-/** Signed area of a plan loop; positive is the face orientation. */
-function loopArea(
-	loop: readonly PointKey[],
-	coordinates: ReadonlyMap<PointKey, LayoutVec2>,
-): number {
-	return spaceOutlineSignedArea(loop.map((key) => coordinates.get(key)!));
-}
-
 /**
  * Merge sub-triangle boundaries into the maximal boundary loops of one side.
  *
@@ -168,10 +167,7 @@ function loopArea(
  * boundary of a concave half-plane cut is several loops; tracing each loop
  * separately is what keeps a U-shaped footprint from becoming a weak polygon.
  */
-function boundaryLoops(
-	pieces: readonly (readonly PointKey[])[],
-	coordinates: ReadonlyMap<PointKey, LayoutVec2>,
-): PointKey[][] | null {
+function boundaryLoops(pieces: readonly (readonly PointKey[])[]): PointKey[][] | null {
 	const counts = new Map<string, number>();
 	const order: Array<[PointKey, PointKey]> = [];
 	for (const piece of pieces) {
@@ -218,10 +214,10 @@ function boundaryLoops(
 				current = next;
 			}
 			if (!closed) return null;
+			// A half-plane piece of a simple polygon has no holes, so every loop is
+			// an outer boundary; none is dropped by area, or closure would break.
 			for (const loop of splitAtRepeats(path)) {
-				if (loop.length < 3) continue;
-				if (!(loopArea(loop, coordinates) > 0)) continue;
-				loops.push(loop);
+				if (loop.length >= 3) loops.push(loop);
 			}
 		}
 	}
@@ -252,6 +248,19 @@ function splitAtRepeats(path: readonly PointKey[]): PointKey[][] {
 		if (!split && current.length >= 3) loops.push(current);
 	}
 	return loops;
+}
+
+/**
+ * The station band treated as "on the ridge". It is a few hundred ulps of the
+ * footprint's coordinate scale: wide enough to absorb the rounding of
+ * `x cos + z sin` (for example `cos(pi / 2) = 6e-17`), and far below any
+ * authored distance, so a snapped vertex moves its height by at most
+ * `slope * tolerance`.
+ */
+function ridgeSnapTolerance(points: readonly LayoutVec2[]): number {
+	let scale = 1;
+	for (const [x, z] of points) scale = Math.max(scale, Math.abs(x) + Math.abs(z));
+	return 256 * Number.EPSILON * scale;
 }
 
 function normalized(vector: Vec3): Vec3 {
@@ -295,7 +304,10 @@ function appendPerimeterFaces(
 			const dx = toPoint[0] - fromPoint[0];
 			const dz = toPoint[1] - fromPoint[1];
 			const length = Math.hypot(dx, dz);
-			if (!(length > LAYOUT_GEOMETRY_EPSILON)) continue;
+			// Snapping keeps every crossing strictly inside its edge, so a segment
+			// is never empty; this guards the normal only and never drops a face
+			// the top and underside loops still reference.
+			if (!(length > 0)) continue;
 			faces.push({
 				surface: 'edge',
 				polygon: [
@@ -344,7 +356,11 @@ export function compileRegionFormFaces(
 
 	const cos = Math.cos(profile.azimuth);
 	const sin = Math.sin(profile.azimuth);
-	const stationOf = (point: LayoutVec2): number => point[0] * cos + point[1] * sin;
+	const snap = ridgeSnapTolerance(cleaned);
+	const stationOf = (point: LayoutVec2): number => {
+		const station = point[0] * cos + point[1] * sin;
+		return Math.abs(station - profile.qRidge) <= snap ? profile.qRidge : station;
+	};
 	const stationByKey = new Map<PointKey, number>();
 	const coordinates = new Map<PointKey, LayoutVec2>();
 	const underside = new Map<PointKey, number>();
@@ -378,12 +394,20 @@ export function compileRegionFormFaces(
 
 	const belowPieces: PointKey[][] = [];
 	const abovePieces: PointKey[][] = [];
+	// A shed's `qRidge` is its high eave, so it has no above side.
+	const sides =
+		form.kind === 'shed'
+			? ([[belowPieces, true]] as const)
+			: ([
+					[belowPieces, true],
+					[abovePieces, false],
+				] as const);
 	for (const triangle of triangles) {
 		const keys = triangle.map(keyOfVertex);
-		for (const [side, keepNegative] of [
-			[belowPieces, true],
-			[abovePieces, false],
-		] as const) {
+		// A sliver lying wholly on the ridge belongs to one side only.
+		const onRidge = keys.every((key) => stationByKey.get(key) === profile.qRidge);
+		for (const [side, keepNegative] of sides) {
+			if (onRidge && !keepNegative) continue;
 			const inside = (key: PointKey): boolean =>
 				keepNegative
 					? stationByKey.get(key)! <= profile.qRidge
@@ -406,36 +430,36 @@ export function compileRegionFormFaces(
 			const deduped = piece.filter(
 				(key, index) => key !== piece[(index + piece.length - 1) % piece.length],
 			);
-			if (deduped.length < 3) continue;
-			if (!(loopArea(deduped, coordinates) > 0)) continue;
+			// Fewer than three keys is the far side's touch of a vertex or edge on
+			// the ridge. Area is never a filter: dropping a rounding-thin piece on
+			// one side only would leave its shared edges unmatched.
+			if (new Set(deduped).size < 3) continue;
 			side.push(deduped);
 		}
 	}
 
-	const belowLoops = boundaryLoops(belowPieces, coordinates);
-	const aboveLoops = boundaryLoops(abovePieces, coordinates);
+	const belowLoops = boundaryLoops(belowPieces);
+	const aboveLoops = boundaryLoops(abovePieces);
 	if (belowLoops === null && aboveLoops === null) {
 		return { kind: 'failed', message: 'Region form split produced no faces' };
 	}
 
-	const loopSlope = (loop: readonly PointKey[]): number | null => {
-		if (form.kind === 'shed') return form.rise / profile.runBelow;
-		for (const key of loop) {
-			const station = stationByKey.get(key)!;
-			if (station < profile.qRidge) return form.rise / profile.runBelow;
-			if (station > profile.qRidge) return -form.rise / profile.runAbove;
-		}
-		return null;
-	};
+	// The side a loop came from fixes its slope; a loop's vertices may all lie
+	// on the ridge when it is a rounding-thin sliver.
+	const sideSlope = (below: boolean): number =>
+		form.kind === 'shed' || below ? form.rise / profile.runBelow : -form.rise / profile.runAbove;
 	const topNormal = (slope: number): Vec3 => normalized([-slope * cos, 1, -slope * sin]);
 	const undersideNormal = (slope: number): Vec3 => normalized([slope * cos, -1, slope * sin]);
 
 	const faces: Face[] = [];
-	const addSide = (loops: readonly (readonly PointKey[])[] | null, top: boolean): void => {
+	const addSide = (
+		loops: readonly (readonly PointKey[])[] | null,
+		below: boolean,
+		top: boolean,
+	): void => {
 		if (loops === null) return;
+		const slope = sideSlope(below);
 		for (const loop of loops) {
-			const slope = loopSlope(loop);
-			if (slope === null) continue;
 			if (top) {
 				faces.push({
 					surface: 'top',
@@ -462,10 +486,10 @@ export function compileRegionFormFaces(
 	// Top first, then underside, matching the flat path's face order. Both are
 	// emitted per planar piece, and every top vertex is exactly `thickness` above
 	// its underside vertex.
-	addSide(belowLoops, true);
-	addSide(aboveLoops, true);
-	addSide(belowLoops, false);
-	addSide(aboveLoops, false);
+	addSide(belowLoops, true, true);
+	addSide(aboveLoops, false, true);
+	addSide(belowLoops, true, false);
+	addSide(aboveLoops, false, false);
 
 	appendPerimeterFaces(
 		cleaned,

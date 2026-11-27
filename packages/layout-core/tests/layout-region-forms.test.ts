@@ -518,6 +518,56 @@ describe('V3a — planar, watertight compiled forms', () => {
 	});
 });
 
+describe('V3a — exact closure where footprint vertices sit on or near the ridge', () => {
+	const triangle: LayoutVec2[] = [[0, 0], [4, 0], [2, 3]];
+	const hexagon: LayoutVec2[] = [[0, 0], [4, 0], [5, 1], [4, 2], [0, 2], [-1, 1]];
+	const chevron: LayoutVec2[] = [[0, 0], [2, 1], [4, 0], [4, 3], [0, 3]];
+	const notch: LayoutVec2[] = [[0, 0], [6, 0], [6, 4], [4, 4], [4, 2], [2, 2], [2, 4], [0, 4]];
+	const shift = (points: LayoutVec2[], dx: number, dz: number): LayoutVec2[] =>
+		points.map(([x, z]) => [x + dx, z + dz]);
+	const cases: [string, LayoutVec2[], LayoutRegionForm][] = [
+		...[1e-7, -1e-7, 1e-9, 1e-12, 1e-15, 0].map(
+			(offset): [string, LayoutVec2[], LayoutRegionForm] => [
+				`triangle apex ${offset} off the ridge`,
+				triangle,
+				{ kind: 'gable', rise: 1, azimuth: 0, ridgeOffset: offset }
+			]
+		),
+		['hexagon vertices on a pi/2 ridge', hexagon, { kind: 'gable', rise: 1, azimuth: Math.PI / 2, ridgeOffset: 0 }],
+		[
+			'translated hexagon on a pi/2 ridge',
+			shift(hexagon, 1e5, 3e5),
+			{ kind: 'gable', rise: 1, azimuth: Math.PI / 2, ridgeOffset: 0 }
+		],
+		['chevron pinch on the ridge', chevron, { kind: 'gable', rise: 1, azimuth: Math.PI / 2, ridgeOffset: -0.5 }],
+		[
+			'chevron pinch 1e-9 off the ridge',
+			chevron,
+			{ kind: 'gable', rise: 1, azimuth: Math.PI / 2, ridgeOffset: -0.5 + 1e-9 }
+		],
+		['notch edge on the ridge', notch, { kind: 'gable', rise: 1, azimuth: Math.PI / 2, ridgeOffset: 0 }],
+		['notch under an oblique ridge', notch, { kind: 'gable', rise: 1, azimuth: (3 * Math.PI) / 4, ridgeOffset: 0 }]
+	];
+	for (const [name, footprint, form] of cases) {
+		it(`stays on the evaluator and exactly watertight: ${name}`, () => {
+			const { document, regionId } = roofDocument(footprint, form);
+			const region = regionOf(compile(document), regionId);
+			expectWatertight(region.faces);
+			// A sliver face 1e-7 wide makes a plane fit ill-conditioned, so each
+			// vertex is checked against the shared evaluator instead.
+			const factsValue: RegionFormFacts = { role: 'overhead', form, footprint, datumY: 3, thickness: 0.2 };
+			for (const face of region.faces) {
+				if (face.surface === 'edge') continue;
+				for (const [x, y, z] of face.polygon) {
+					const expected =
+						face.surface === 'top' ? regionTopAt(factsValue, [x, z]) : regionUndersideAt(factsValue, [x, z]);
+					expect(Math.abs(y - expected), `${face.surface} at ${x},${z}`).toBeLessThan(1e-9);
+				}
+			}
+		});
+	}
+});
+
 describe('V3a — flat compilation is unchanged', () => {
 	it('emits the exact pre-V3a top, underside and edge faces in order', () => {
 		const { document, regionId } = roofDocument(

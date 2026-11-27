@@ -9,11 +9,11 @@ import {
 	objectCandidates,
 	openingCandidates,
 	planDistance,
-	regionCandidate,
 	roomFloorCandidates,
 	streamFor,
 	wallCandidates,
 } from './geometry';
+import { regionCandidatesOf, regionSectionPlan } from './region-section';
 import type {
 	Candidate,
 	Evaluated,
@@ -291,7 +291,8 @@ export function measureCandidate(candidate: Candidate, context: MeasurementConte
 							context.cutElevation <= candidate.extent.minY + LAYOUT_SLICE_CONTACT_METERS)
 					? 'underside'
 					: 'top';
-		const plan = candidate.plan;
+		const plan =
+			stream === 'cut' ? regionSectionPlan(candidate, context.cutElevation) : candidate.plan;
 		const outlined =
 			stream === 'hidden' || (stream === 'projected' && candidate.regionRole === 'overhead');
 		candidate = {
@@ -377,7 +378,7 @@ export function evaluateLayoutPlan(
 		...objectCandidates(compiled),
 		...roomFloorCandidates(compiled),
 		...compiled.regions
-			.map(regionCandidate)
+			.flatMap(regionCandidatesOf)
 			.sort(compareSourceIds((candidate) => candidate.sourceId)),
 	];
 

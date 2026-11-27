@@ -22,11 +22,11 @@ import {
 	finishedBounds,
 	objectCandidate,
 	openingCandidate,
-	regionCandidate,
 	roomFloorCandidate,
 	wallCandidatesOf,
 	wallPeakHeight,
 } from './geometry';
+import { regionCandidatesOf } from './region-section';
 import type { MeasurementContext } from './membership';
 import {
 	PLAN_VIEWS,
@@ -847,7 +847,7 @@ export function createPlanRetainer(): PlanRetainer {
 						'region',
 						(visit) => compiled.regions.forEach(visit),
 						(region) => region.regionId,
-						(region) => [regionCandidate(region)],
+						regionCandidatesOf,
 						(entries, region) => entries[0]?.regionKey === region.cacheKey,
 						measurement,
 						rederive,

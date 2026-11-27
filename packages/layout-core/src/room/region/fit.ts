@@ -28,6 +28,25 @@ import {
 } from './shared';
 
 /**
+ * Both fits read the roof as one level underside. A shed or gable needs the
+ * certified Wall-strip extrema of §7.3, which arrive with V3b; until then a
+ * sloped roof refuses the whole fit and writes nothing, like a profiled Wall top.
+ */
+export const REGION_FORM_FIT_UNSUPPORTED_CODE = 'region_form_fit_unsupported';
+
+function slopedFormRefusal(
+	region: { readonly id: string; readonly form: { readonly kind: string } },
+	verb: string,
+): RegionPlan | null {
+	if (region.form.kind === 'flat') return null;
+	return reject(
+		REGION_FORM_FIT_UNSUPPORTED_CODE,
+		`${verb} cannot follow a ${region.form.kind} roof yet. Make the roof flat to fit it, or set the heights directly.`,
+		[region.id],
+	);
+}
+
+/**
  * Fit to space: the footprint becomes the compiled Space's centerline outline.
  * A curved Space contributes the compiler's own samples; the point cap still
  * governs how many vertices a region can store.
@@ -258,6 +277,8 @@ export function planFitRegionToWalls(
 			regionId,
 		]);
 	}
+	const roofSloped = slopedFormRefusal(region, 'Fit roof to walls');
+	if (roofSloped !== null) return roofSloped;
 	const floor = compiled.floors[0];
 	const compiledRegion = compiled.regions.find((candidate) => candidate.regionId === regionId);
 	if (floor === undefined || compiledRegion === undefined) {
@@ -348,6 +369,8 @@ export function planFitWallsToRegion(
 			regionId,
 		]);
 	}
+	const wallsSloped = slopedFormRefusal(region, 'Fit walls to roof');
+	if (wallsSloped !== null) return wallsSloped;
 	const floor = compiled.floors[0];
 	const compiledRegion = compiled.regions.find((candidate) => candidate.regionId === regionId);
 	if (floor === undefined || compiledRegion === undefined) {

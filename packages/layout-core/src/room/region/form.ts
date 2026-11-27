@@ -50,7 +50,12 @@ export type RegionFormFacts = {
 	readonly role: LayoutRegion['role'];
 	readonly form: LayoutRegionForm;
 	readonly footprint: readonly LayoutVec2[];
-	/** World Y of the datum face at its lowest point: the eave. */
+	/**
+	 * World Y of the authored `elevation` (`floor.elevation + elevation`), as
+	 * `CompiledRegion.datumY` carries it. For an overhead Region it is the
+	 * underside at its lowest point, the eave; for a floor Region it is the
+	 * walking top, and the underside is `thickness` below it.
+	 */
 	readonly datumY: number;
 	readonly thickness: number;
 };
@@ -166,7 +171,9 @@ export function regionUndersideAtStation(
  */
 export function regionUndersideAt(facts: RegionFormFacts, point: LayoutVec2): number {
 	const { form } = facts;
-	if (form.kind === 'flat') return facts.datumY;
+	if (form.kind === 'flat') {
+		return facts.role === 'floor' ? facts.datumY - facts.thickness : facts.datumY;
+	}
 	const profile = regionFormProfile(form, facts.footprint);
 	if (profile === null) return facts.datumY;
 	const q = point[0] * Math.cos(profile.azimuth) + point[1] * Math.sin(profile.azimuth);

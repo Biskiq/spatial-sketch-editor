@@ -52,4 +52,5 @@ export {
 	planFitRegionEdgeToWall,
 	planFitRegionToWalls,
 	planFitWallsToRegion,
+	REGION_FORM_FIT_UNSUPPORTED_CODE,
 } from './region/fit';

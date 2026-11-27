@@ -229,7 +229,7 @@ order and flags. A region-only operation never calls `reconcileRooms`.
 | --- | --- | --- |
 | `planCreateRegion` | Role, footprint, elevation, thickness, optional name; id from the capture | G1–G5 |
 | `planMoveRegion` | Translates every point by one delta | G5 |
-| `planRotateRegion` | Rotates every point about the footprint's area centroid; in V3 adds the angle to `azimuth` | G1 (precision), G5 |
+| `planRotateRegion` | Rotates every point about the footprint's area centroid; in V3 turns `azimuth` with the points: `rotatePoint` maps a plan direction at `a` to `a − angle`, so `azimuth` becomes `normalize(azimuth − angle)` and `ridgeOffset` is unchanged | G1 (precision), G5 |
 | `planSetRegionFootprint` | Replaces the points: corner move, corner insert, corner remove, typed size | G1, G5 |
 | `planSetRegionElevation`, `planSetRegionThickness` | Scalars | G2, G3, G5 |
 | `planSetRegionIntendedGap` | Adds or removes one Wall id | Unknown Wall; no gap to mark |
@@ -400,6 +400,9 @@ type CompiledRegion = CompiledIdentity & {
   overheads. Keep the existing depth, span, filter and reveal contracts. Use `component` subRefs
   with stable face roles. Assign the cut polygon to `edge` and the above-cut outline to
   `underside` for overheads or `top` for floor regions. Keep existing Wall/Opening/object/Room stream behavior.
+  In V3 a shed or gable Region feeds one candidate per compiled planar underside piece, each
+  with its own extent, and a `cut` piece draws only its band where
+  `underside ≤ cutY ≤ underside + thickness`; a flat Region keeps its single footprint candidate.
 - **Slice.** Level Slice hides slabs wholly above the cut or below its depth window; it uses the
   same footprint for section ink through the interior and clips hits at the same resolved limits.
   Drawn Slice clips the same rendered mesh and the same Plan polygon using the existing clip
@@ -558,8 +561,8 @@ top(p) = underside(p) + thickness
   edge traversal yields the same choice.
 - A new gable defaults to `ridgeOffset: 0`. Default rise is `tan(30°)` times the full projected run
   for a shed, or the longer of the two projected eave-to-ridge runs for a gable. These defaults
-  apply when the form is set. Footprint edits keep the stored azimuth, and rotation adds the
-  rotation angle as in §5.3.
+  apply when the form is set. Footprint edits keep the stored azimuth, and rotation turns it with
+  the footprint as in §5.3.
 - **Edit shape** (PLATE, the grammar's Roof row): a roof-local section perpendicular to the ridge,
   drawn on the roof with joint points.
 

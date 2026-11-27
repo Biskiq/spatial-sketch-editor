@@ -30,6 +30,7 @@ import {
 	regionWallTopGoverningStation,
 	regionWallTopOverStations,
 } from './region-wall-coverage';
+import { slopedRegionWallReading, type SlopedRegionWallReading } from './region-sloped-reading';
 
 /** The support query's coplanar tolerance, shared by every relation comparison. */
 export const REGION_WALL_RELATION_EPSILON = 1e-6;
@@ -217,7 +218,15 @@ export function regionWallRelations(
 		// covered intervals, where the clearance actually is; a level Wall keeps
 		// the retained nearest-contact cue.
 		const governing = regionWallTopGoverningStation(wall, floor.elevation, coverage.intervals);
-		const reading = regionWallReading(plan, topRange, compiledRegion, region.role);
+		const planClass = plan.planClass;
+		const sloped =
+			planClass === 'through' || planClass === 'edge'
+				? slopedRegionWallReading(compiledRegion, wall, floor.elevation, coverage.intervals)
+				: null;
+		const reading =
+			sloped === null || planClass === 'near'
+				? regionWallReading(plan, topRange, compiledRegion, region.role)
+				: slopedReading(planClass, sloped);
 		if (reading === null) continue;
 		const intended = reading.reading === 'gap' && region.intendedGaps.includes(wall.wallId);
 		relations.push({
@@ -226,14 +235,22 @@ export function regionWallRelations(
 			reading: reading.reading,
 			measureMeters: reading.measureMeters,
 			measureAxis: reading.measureAxis,
-			measureSegment: regionWallMeasureSegment(
-				reading,
-				coverage.pair,
-				compiledRegion,
-				topRange.maxY,
-				region.role,
-				governing,
-			),
+			measureSegment:
+				sloped !== null
+					? reading.reading === 'gap'
+						? {
+								from: [sloped.gapPoint[0], sloped.gapWallTopY, sloped.gapPoint[1]],
+								to: [sloped.gapPoint[0], sloped.gapUndersideY, sloped.gapPoint[1]],
+							}
+						: null
+					: regionWallMeasureSegment(
+							reading,
+							coverage.pair,
+							compiledRegion,
+							topRange.maxY,
+							region.role,
+							governing,
+						),
 			intended,
 			fit: intended ? null : reading.fit,
 		});
@@ -285,6 +302,21 @@ type Reading = {
 	measureAxis: 'vertical' | 'horizontal' | null;
 	fit: 'meet-wall' | 'fit-roof-to-walls' | null;
 };
+
+/**
+ * §7.3 under a shed or gable: a `through` Wall crosses when any covered point
+ * rises above the roof top, even if another part shows a gap; otherwise it reads
+ * the largest clearance. A sloped roof offers no one-shot fit until V3b.
+ */
+function slopedReading(planClass: 'through' | 'edge', sloped: SlopedRegionWallReading): Reading {
+	if (planClass === 'through' && sloped.overrun > REGION_WALL_RELATION_EPSILON) {
+		return { reading: 'crosses', measureMeters: null, measureAxis: null, fit: null };
+	}
+	if (sloped.gap > REGION_WALL_RELATION_EPSILON) {
+		return { reading: 'gap', measureMeters: sloped.gap, measureAxis: 'vertical', fit: null };
+	}
+	return { reading: 'meets', measureMeters: null, measureAxis: null, fit: null };
+}
 
 function regionWallReading(
 	plan: RegionWallPlanReading,

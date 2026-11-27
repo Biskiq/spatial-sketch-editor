@@ -1,3 +1,4 @@
+import type { RegionSlabPiece } from './region-section';
 import type { CompiledRegion, LayoutBounds2 } from '../../geometry/types';
 import type { LayoutVec2 } from '../../geometry/coordinates';
 
@@ -174,6 +175,8 @@ export type Candidate = {
 	readonly symbolOnly: boolean;
 	readonly regionRole?: CompiledRegion['role'];
 	readonly regionKey?: string;
+	/** A sloped Region's planar piece: per-vertex underside Y for its cut section. */
+	readonly regionSlab?: RegionSlabPiece;
 };
 
 /** One candidate after the membership stages: measurement plus the placement it earned. */

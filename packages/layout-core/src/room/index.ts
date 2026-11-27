@@ -59,6 +59,7 @@ export {
 	planFitRegionToSpace,
 	planFitRegionToWalls,
 	planFitWallsToRegion,
+	REGION_FORM_FIT_UNSUPPORTED_CODE,
 	planMoveRegion,
 	planRemoveRegion,
 	planRenameRegion,

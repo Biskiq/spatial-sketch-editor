@@ -4,7 +4,6 @@ import type {
 	CompiledLayoutObject,
 	CompiledOpening,
 	CompiledPhysicalWall,
-	CompiledRegion,
 	CompiledRoom,
 	LayoutBounds2,
 } from '../../geometry/types';
@@ -232,19 +231,6 @@ export function roomFloorCandidate(room: CompiledRoom): Candidate {
 		plan: { kind: 'polygon', polygon: room.floorPolygon },
 		subRef: null,
 		symbolOnly: false,
-	};
-}
-
-export function regionCandidate(region: CompiledRegion): Candidate {
-	return {
-		sourceKind: 'region',
-		sourceId: region.regionId,
-		extent: { minY: region.bottomY, maxY: region.topY },
-		plan: { kind: 'polygon', polygon: region.footprint },
-		subRef: null,
-		symbolOnly: false,
-		regionRole: region.role,
-		regionKey: region.cacheKey,
 	};
 }
 

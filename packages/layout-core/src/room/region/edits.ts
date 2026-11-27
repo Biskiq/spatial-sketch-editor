@@ -10,6 +10,7 @@ import {
 import { regionWallRelations } from '../region-relations';
 import type { LayoutDocumentWallFirst, LayoutRegion } from '../../wall/types';
 import type { RegionCreateIntent, RegionPlan } from './contracts';
+import { normalizeRegionAzimuth } from './form';
 import {
 	copyPoints,
 	finalizeRegionCandidate,
@@ -122,6 +123,17 @@ export function planMoveRegion(
 }
 
 /** Rotate every footprint point about the footprint's area centroid. */
+/**
+ * The form turns with its footprint (§5.3, §7.2). `rotatePoint` maps a plan
+ * direction at angle `a` to `a - angle`, so the azimuth follows the same way;
+ * the ridge offset is relative to the projected extent's midpoint and therefore
+ * unchanged by a rigid turn about the centroid.
+ */
+function rotatedForm(form: LayoutRegion['form'], angle: number): LayoutRegion['form'] {
+	if (form.kind === 'flat') return form;
+	return { ...form, azimuth: normalizeRegionAzimuth(form.azimuth - angle) };
+}
+
 export function planRotateRegion(
 	document: LayoutDocumentWallFirst,
 	regionId: string,
@@ -143,6 +155,7 @@ export function planRotateRegion(
 			kind: 'polygon',
 			points: region.footprint.points.map((point) => rotatePoint(point, centroid, angle)),
 		},
+		form: rotatedForm(region.form, angle),
 	};
 	return finalizeRegionCandidate(
 		{
