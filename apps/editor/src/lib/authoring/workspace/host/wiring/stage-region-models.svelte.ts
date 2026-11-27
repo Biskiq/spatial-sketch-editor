@@ -76,8 +76,42 @@ export function createStageRegionModels(input: StageRegionInput) {
 	);
 	const shownCard = $derived.by(() => {
 		if (input.experience.lensState === 'experience') return input.experienceFeature.ports.shownCard;
+		const identity = input.selectionViewView().cardIdentity;
+		// A set has no primary subject: its Card lists the identities and offers
+		// only what a set can do as a whole (Group, Light it, Clear).
+		if (input.selectionViewView().isSelectionSet) {
+			void input.shell.contributionsVersion;
+			const more = coarsePointer()
+				? [
+						{
+							id: 'selection-select-more',
+							label: input.shell.selectMore ? 'Done selecting' : '＋ Select more',
+							adapterId: 'host',
+							run: async () => {
+								input.shell.setSelectMore(!input.shell.selectMore);
+								return { kind: 'accepted' as const };
+							},
+						},
+					]
+				: [];
+			return {
+				identity,
+				facts: [],
+				nameWriter: null,
+				writer: input.facade()?.setWriter() ?? null,
+				actions: [...(input.facade()?.setActions() ?? []), ...more],
+				functions: [],
+				kindLink: null,
+				menu: null,
+				back: null,
+				bringIntoView: () => {
+					const target = input.selectionViewView().selectedWorldPoint();
+					if (target !== null) input.bringIntoView(target);
+				},
+			};
+		}
 		return {
-			identity: input.selectionViewView().cardIdentity,
+			identity,
 			facts: worldCard.facts,
 			nameWriter: worldCard.nameWriter,
 			writer: worldCard.writer,
@@ -94,6 +128,11 @@ export function createStageRegionModels(input: StageRegionInput) {
 			},
 		};
 	});
+
+	/** Coarse pointers get the Card's own Select more control. */
+	function coarsePointer(): boolean {
+		return typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
+	}
 
 	function artworkShelf() {
 		const scene = input.selectionViewView().scenePayload;

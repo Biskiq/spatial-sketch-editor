@@ -113,10 +113,22 @@ export function admitSelection(
 			return { kind: 'refused', code: resolvedPrimary.code, message: resolvedPrimary.message };
 		primary = canonicalReference(resolvedPrimary.subject);
 	}
-	if (
-		(ordered.length === 0) !== (primary === null) ||
-		(primary !== null && !ordered.some((entry) => sameReference(entry.reference, primary!)))
-	) {
+	if (ordered.length === 0) {
+		if (primary !== null) {
+			return {
+				kind: 'refused',
+				code: 'invalid-primary',
+				message: 'Choose a primary identity from the ordered selection.',
+			};
+		}
+		return immutableF4Data({ ordered, primary: null });
+	}
+	// A **set** is more than one ordered identity and, structurally, none of
+	// them is primary. A caller that supplies one is normalized to the set
+	// rather than refused: the invariant is the shape, so every consumer can
+	// read `primary === null` as "this selection is a set".
+	if (ordered.length >= 2) return immutableF4Data({ ordered, primary: null });
+	if (primary === null || !sameReference(ordered[0]!.reference, primary)) {
 		return {
 			kind: 'refused',
 			code: 'invalid-primary',
@@ -124,6 +136,19 @@ export function admitSelection(
 		};
 	}
 	return immutableF4Data({ ordered, primary });
+}
+
+/**
+ * A selection set: two or more identities and no primary.
+ *
+ * This is the one predicate every consumer may use to tell a set from a single
+ * subject; it is structural, not a second selection model.
+ */
+export function isSelectionSet(selection: {
+	readonly ordered: readonly StageSelectionEntry[];
+	readonly primary: SemanticReference | null;
+}): boolean {
+	return selection.ordered.length >= 2 && selection.primary === null;
 }
 
 /** Explicit Layout convenience conversion; no Scene identity is forced into a PlanSourceRef. */

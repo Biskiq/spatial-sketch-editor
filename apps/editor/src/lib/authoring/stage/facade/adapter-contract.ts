@@ -650,6 +650,14 @@ export type StageAdapterBinding = {
 	readonly cardWriter?: (subject: StageCardSubject) => StageInstrumentContent | null;
 	/** The subject's scoped Card actions (a delete and its disclosure). */
 	readonly cardActions?: (subject: StageCardSubject) => readonly StageCardAction[];
+	/**
+	 * The Set Card's actions: what a multi-identity selection can do as a whole
+	 * (Group, Light it). Additive and optional; a binding with no set operation
+	 * contributes none, and the shell still offers Clear.
+	 */
+	readonly setActions?: () => readonly StageCardAction[];
+	/** The Set Card's writer: the selection's own rows and reasons, or `null`. */
+	readonly setWriter?: () => StageInstrumentContent | null;
 	/** The subject's name writer, or `null` when this adapter does not own one. */
 	readonly cardName?: (subject: StageCardSubject) => StageCardNameTarget | null;
 	/**

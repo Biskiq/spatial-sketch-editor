@@ -930,7 +930,9 @@ export function createStageSession(
 				}
 				selectionValue = immutableF4Data({
 					ordered,
-					primary: primary ?? ordered[0]?.reference ?? null,
+					// A set survives as a set: more than one requalified entry has no
+					// primary, exactly as `admitSelection` normalizes it.
+					primary: ordered.length >= 2 ? null : (primary ?? ordered[0]?.reference ?? null),
 				});
 			} else {
 				const admittedLegacy =

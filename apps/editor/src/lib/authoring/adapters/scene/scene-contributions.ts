@@ -40,6 +40,16 @@ import { evaluateFormMesh } from '$lib/content/form-evaluation';
 import { planSceneFootprintsFor } from '$lib/authoring/scene/plan-scene-footprint';
 import { pickPlanSceneSubject } from '$lib/authoring/scene/plan-scene-hit';
 import SceneObjectCardFields from './SceneObjectCardFields.svelte';
+import SceneGroupCardFields from './SceneGroupCardFields.svelte';
+import SceneSelectionSetFields from './SceneSelectionSetFields.svelte';
+import { groupCardActions, groupCardFacts, groupCardName, groupSetActions } from './group-card';
+import { groupLiveMark, type SceneGroupSession } from './group-session';
+import { sceneGroupGeometry, sceneGroupMarkDescriptors } from './group-marks';
+import {
+	sceneClusterById,
+	sceneClusterMembers,
+	sceneClusterReference,
+} from '../../scene/selection-target';
 import { requestObjectsPrecision } from './shape/armed-tile';
 import { acceptFormCommand } from './form-card-command';
 import { deleteSceneObject, duplicateSceneObject } from './object-card';
@@ -80,6 +90,20 @@ import {
 
 const FORM_PLAN_HEIGHT_MARKER_GAP_CSS_PX = 24;
 
+/** One group row's Index point: the members' planar centre on their base plane. */
+function clusterWorldPoint(members: readonly SceneEntity[]): Vec3 {
+	if (members.length === 0) return [0, 0, 0];
+	let x = 0;
+	let y = Infinity;
+	let z = 0;
+	for (const member of members) {
+		x += member.position[0];
+		y = Math.min(y, member.position[1]);
+		z += member.position[2];
+	}
+	return [x / members.length, Number.isFinite(y) ? y : 0, z / members.length];
+}
+
 /** What the mark descriptors read of the live mark session; never a handle on its state. */
 export type ObjectMarkReading = {
 	/** Drop a gesture whose lease ended under it, before it is read. */
@@ -104,6 +128,8 @@ export type SceneContributions = Required<
 		| 'cardWriter'
 		| 'cardName'
 		| 'cardActions'
+		| 'setActions'
+		| 'setWriter'
 		| 'cardFacts'
 	>
 >;
@@ -244,12 +270,16 @@ export function createSceneContributions(
 	services: StageAdapterServices,
 	context: StageAdapterContext,
 	marks: ObjectMarkReading,
+	group: SceneGroupSession,
 ): SceneContributions {
 	const source = stageScene(context.snapshot);
 	// The same projection Paper draws: the accepted runtime Scene the route hands
 	// to the Canvas, not a second projection of the authored unit document.
 	const runtimeScene = context.snapshot.domain.scene;
 	const footprints = planSceneFootprintsFor(runtimeScene, runtimeScene.modelFootprints).footprints;
+	/** The live group, or `null` when it is no longer in the accepted Scene. */
+	const clusterById = (clusterId: string) =>
+		sceneClusterById(stageScene(services.stage.snapshot()), clusterId);
 
 	function objectMarkLive(entity: SceneEntity): SceneObjectMarkLive | null {
 		const current = marks.gesture();
@@ -330,7 +360,12 @@ export function createSceneContributions(
 		// Read the live accepted source: an immediate command can install a
 		// copy whose action row is requested before the next binding rebuild.
 		const snapshot = services.stage.snapshot();
-		const entity = stageScene(snapshot).entities.find((entity) => entity.id === subject.sourceId);
+		const scene = stageScene(snapshot);
+		if (subject.reference.subject.kind === 'cluster') {
+			const cluster = sceneClusterById(scene, subject.reference.subject.id);
+			return cluster === null ? [] : groupCardActions(services, cluster);
+		}
+		const entity = scene.entities.find((entity) => entity.id === subject.sourceId);
 		if (entity === undefined) return [];
 		if (!isSceneObjectEntity(entity)) return [];
 		// The object's exact fields are on the Card; the existing
@@ -409,14 +444,24 @@ export function createSceneContributions(
 		heightTicks(adapterContext: StageAdapterContext): readonly StageHeightTick[] {
 			return heightTicksFor(adapterContext);
 		},
-		subjects: source.entities
-			.filter((entity) => entity.kind !== 'light')
-			.map((entity) => ({
-				id: `scene:entity:${entity.id}`,
-				label: entity.name,
-				reference: sceneEntityReference(entity.id, context.snapshot.domain.unitRevisions.scene),
-				worldPoint: entity.kind !== 'form' ? entity.position : formCenter(entity),
+		subjects: [
+			...source.entities
+				.filter((entity) => entity.kind !== 'light')
+				.map((entity) => ({
+					id: `scene:entity:${entity.id}`,
+					label: entity.name,
+					reference: sceneEntityReference(entity.id, context.snapshot.domain.unitRevisions.scene),
+					worldPoint: entity.kind !== 'form' ? entity.position : formCenter(entity),
+				})),
+			...(source.clusters ?? []).map((cluster) => ({
+				id: `scene:cluster:${cluster.id}`,
+				label: cluster.name,
+				reference: sceneClusterReference(cluster.id, context.snapshot.domain.unitRevisions.scene),
+				worldPoint: clusterWorldPoint(
+					source.entities.filter((entity) => cluster.memberIds.includes(entity.id)),
+				),
 			})),
+		],
 		hostTools: ['erase', 'measure', 'paint'],
 		/**
 		 * Paint assigns a whole Scene object. Artwork keeps its own surface, and a
@@ -434,11 +479,25 @@ export function createSceneContributions(
 		},
 		/**
 		 * The Eraser reuses the Card's own delete for a model, primitive or form:
-		 * `delete-one`, one F4 entry, and Undo restores the same id. Lights are
-		 * never picked, so they never reach here.
+		 * `delete-one`, one F4 entry, and Undo restores the same id. A grouped
+		 * member erases its **group**, because the group is the identity the Stage
+		 * addresses: one F4 entry that removes every member and the group itself.
+		 * Lights are never picked, so they never reach here.
 		 */
 		eraseAction(hit) {
 			if (hit.reference?.domain !== 'scene') return null;
+			const scene = stageScene(services.stage.snapshot());
+			const cluster = scene.entities.some((entity) => entity.id === hit.sourceId)
+				? (scene.clusters ?? []).find((entry) => entry.memberIds.includes(hit.sourceId))
+				: undefined;
+			if (cluster !== undefined) {
+				const groupAction = groupCardActions(services, cluster).find(
+					(candidate) => candidate.destructive === true,
+				);
+				return groupAction === undefined
+					? { kind: 'refused', message: 'That group cannot be erased.' }
+					: { kind: 'action', action: groupAction, confirm: false };
+			}
 			const action = cardActions({
 				sourceId: hit.sourceId,
 				sourceKind: hit.sourceKind,
@@ -661,11 +720,40 @@ export function createSceneContributions(
 		 * says which facts and planner each one names.
 		 */
 		handles(adapterContext: StageAdapterContext): readonly StageHandleDescriptor[] {
+			// A group publishes one rigid Move cross and one Turn ring; an object
+			// publishes its own marks. The selection is the one identity that decides.
+			const primary = adapterContext.selectionState().primary;
+			if (primary?.domain === 'scene' && primary.subject.kind === 'cluster') {
+				const scene = stageScene(adapterContext.snapshot);
+				const cluster = sceneClusterById(scene, primary.subject.id);
+				if (cluster !== null) {
+					const members = sceneClusterMembers(scene, cluster.id);
+					const bounds = members
+						.map((member) => objectBounds(adapterContext, member))
+						.filter((entry): entry is { min: Vec3; max: Vec3 } => entry !== null);
+					const geometry = sceneGroupGeometry(bounds);
+					if (geometry !== null)
+						return sceneGroupMarkDescriptors({
+							cluster,
+							geometry,
+							live: groupLiveMark(group, cluster.id),
+						});
+				}
+			}
 			// One mark set for every Scene object; a form adds its per-axis rays.
 			return objectMarkDescriptors(adapterContext);
 		},
 		cardWriter(subject) {
 			if (subject.reference?.domain !== 'scene') return null;
+			if (subject.reference.subject.kind === 'cluster') {
+				return clusterById(subject.reference.subject.id) === null
+					? null
+					: {
+							summary: 'Group members',
+							fieldIds: [],
+							view: { component: SceneGroupCardFields, services },
+						};
+			}
 			const entity = source.entities.find((entry) => entry.id === subject.sourceId);
 			// Every Scene object — model, primitive or drawn form — gets the one
 			// writer; only its size row differs by kind.
@@ -682,6 +770,10 @@ export function createSceneContributions(
 		 */
 		cardName(subject) {
 			if (subject.reference?.domain !== 'scene') return null;
+			if (subject.reference.subject.kind === 'cluster') {
+				const cluster = clusterById(subject.reference.subject.id);
+				return cluster === null ? null : groupCardName(services, cluster);
+			}
 			const entity = stageScene(services.stage.snapshot()).entities.find(
 				(entry) => entry.id === subject.sourceId,
 			);
@@ -703,7 +795,24 @@ export function createSceneContributions(
 			};
 		},
 		cardActions,
+		/** The Set Card's own operations: Group, Light it and Showcase. */
+		setActions: () => groupSetActions(services),
+		/** The set's rows and its domain-stated reasons, in the adapter's own words. */
+		setWriter: () => ({
+			summary: 'Selection',
+			fieldIds: [],
+			view: { component: SceneSelectionSetFields, services },
+		}),
 		cardFacts(cardSubject) {
+			// A reference from another domain is that domain's subject. A Scene
+			// subject may arrive without one (the Card asks by sourceId only), so the
+			// document lookup below still answers for it.
+			if (cardSubject.reference !== undefined && cardSubject.reference.domain !== 'scene')
+				return [];
+			if (cardSubject.reference?.subject.kind === 'cluster') {
+				const cluster = clusterById(cardSubject.reference.subject.id);
+				return cluster === null ? [] : groupCardFacts(cluster);
+			}
 			// Only a Scene entity subject claims Scene facts; a Layout subject keeps
 			// the Layout adapter's facts.
 			if (cardSubject.sourceKind !== 'entity') return [];

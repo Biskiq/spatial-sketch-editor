@@ -105,6 +105,10 @@ export type StageKeyboardInput = {
 	readonly lens: () => 'world' | 'experience';
 	readonly selectionPresent: () => boolean;
 	readonly closeSelection: () => void;
+	/** A single drilled member returns to its group; false leaves the rung. */
+	readonly drillOutOfGroup?: () => boolean;
+	/** ⌘G groups the set; ⇧⌘G ungroups the selected group. */
+	readonly groupSelection?: (ungroup: boolean) => void;
 	/**
 	 * Object Studio's own rung: after every pending gesture, task and tool has unwound,
 	 * Escape leaves a World-entered Studio. Returns whether it left (false: not in
@@ -240,6 +244,8 @@ export function createStageKeyboard(input: StageKeyboardInput): StageKeyboard {
 			return 'pass';
 		},
 		leave: ({ claimed }) => (!claimed && input.leaveStudio?.() === true ? 'handled' : 'pass'),
+		'group-drill': ({ claimed }) =>
+			claimed || input.drillOutOfGroup?.() !== true ? 'pass' : 'handled',
 		selection: ({ claimed }) => {
 			if (claimed || !input.selectionPresent()) return 'pass';
 			input.closeSelection();
@@ -296,6 +302,17 @@ export function createStageKeyboard(input: StageKeyboardInput): StageKeyboard {
 		// Preview is an isolated visitor run: Stage viewing keys do not apply there.
 		if (input.previewActive()) {
 			if (event.key === 'Escape') input.closePreview();
+			return;
+		}
+		// Group and Ungroup are the two chorded keys of the group interaction.
+		if (
+			(event.key === 'g' || event.key === 'G') &&
+			(event.metaKey || event.ctrlKey) &&
+			!event.altKey &&
+			!stageKeyFromTextEntry(event.target)
+		) {
+			event.preventDefault();
+			input.groupSelection?.(event.shiftKey === true);
 			return;
 		}
 		// Esc precedence: a live marker gesture, then place, then Look through,

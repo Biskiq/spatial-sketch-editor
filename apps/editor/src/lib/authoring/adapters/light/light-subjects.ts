@@ -92,18 +92,12 @@ export function lightGlyphAt(
 	return nearest;
 }
 
-export function nextEntityName(snapshot: StageReadSnapshot, base: string): string {
-	const names = new Set(stageScene(snapshot).entities.map((entity) => entity.name));
-	if (!names.has(base)) return base;
-	for (let index = 2; index < 10_000; index += 1) {
-		const candidate = `${base} ${index}`;
-		if (!names.has(candidate)) return candidate;
-	}
-	return `${base} ${Date.now()}`;
-}
+import { nextEntityName } from '../../scene/entity-names';
+
+export { nextEntityName };
 
 export function nextLightName(snapshot: StageReadSnapshot, kind: Light['light']): string {
-	return nextEntityName(snapshot, lightKindLabel(kind));
+	return nextEntityName(stageScene(snapshot), lightKindLabel(kind));
 }
 
 export function entityById(snapshot: StageReadSnapshot, id: string): SceneEntity | null {

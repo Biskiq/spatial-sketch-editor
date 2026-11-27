@@ -39,12 +39,17 @@ export function createStageSelectionReadout(input: {
 		void input.shell.contributionsVersion;
 		return input.facade()?.subjects() ?? [];
 	});
+	const selectionSet = $derived.by(() => {
+		void input.shell.contributionsVersion;
+		return input.facade()?.selectionState().ordered ?? [];
+	});
 	const readout = $derived(
 		selectionView.read({
 			snapshot: input.ready.snapshot(),
 			envelope: input.envelope(),
 			sceneRooms,
 			selection: input.selection(),
+			selectionSet,
 			planView: input.studioActive() ? null : input.viewport.planView,
 			subjects,
 			scope: input.shell.worldScope,

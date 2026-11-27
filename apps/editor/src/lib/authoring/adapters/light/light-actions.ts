@@ -27,6 +27,9 @@ import {
 	type LightItRecipeOutcome,
 } from '../../look/light-recipes';
 import { entityById, lightById, nextEntityName, type Light } from './light-subjects';
+import { groupWithAction, rememberGroupWithOffer } from '../scene/group-card';
+import { sceneClusterOf } from '../../scene/selection-target';
+import { stageScene } from '$lib/authoring/stage/stage-adapter-host';
 
 type LightItSelectionRecipe = LightItRecipeOutcome;
 
@@ -101,6 +104,7 @@ export function lightItAction(
 		label: 'Light it',
 		detail: lightItDetail(entity, selectedCount),
 		async run() {
+			const selectedOne = services.stage.selectionState().ordered.length === 1;
 			const prepared = lightItSelectionRecipe(services);
 			if (prepared.kind === 'refused') return { kind: 'refused', message: prepared.message };
 			const live = services.stage.snapshot();
@@ -116,7 +120,7 @@ export function lightItAction(
 					targets: [],
 					payload: {
 						light: 'spot',
-						name: nextEntityName(live, recipe.name),
+						name: nextEntityName(stageScene(live), recipe.name),
 						color: recipe.color,
 						intensity: recipe.intensity,
 						castShadow: recipe.castShadow,
@@ -137,6 +141,11 @@ export function lightItAction(
 					services.stage.snapshot().domain.unitRevisions.scene,
 				);
 				services.stage.setSelection({ ordered: [{ reference }], primary: reference });
+				// The specimen's one offer: Light it on one ungrouped subject leaves
+				// `Group with “X”` on the new light's Card. Session only.
+				if (selectedOne && sceneClusterOf(stageScene(live), entity.id) === null) {
+					rememberGroupWithOffer(services, allocatedId, entity);
+				}
 				return { kind: 'accepted' };
 			}
 			return outcome.kind === 'refused'
@@ -241,7 +250,9 @@ export function lightCardActions(
 	const light = lightById(snapshot, subject.sourceId);
 	if (light !== null) {
 		const lookThrough = lightLookThroughAction(services, light);
+		const groupWith = groupWithAction(services, light.id);
 		return [
+			...(groupWith === null ? [] : [groupWith]),
 			...(lookThrough === null ? [] : [lookThrough]),
 			duplicateLightAction(services, light),
 			deleteLightAction(services, light),

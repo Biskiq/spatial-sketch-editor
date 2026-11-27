@@ -10,6 +10,8 @@ export type WorldIndexItem = {
 	revealed: boolean;
 	membership: string;
 	group: string;
+	/** A secondary reading such as `Artwork · in Still life`; absent for a top-level row. */
+	relation?: string;
 	context?: WorldScope;
 	relations: readonly string[];
 };

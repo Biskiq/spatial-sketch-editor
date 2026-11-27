@@ -40,8 +40,12 @@ export const LIGHT_IT_MAX_HALF_ANGLE_RADIANS = (80 * Math.PI) / 180;
 
 export const LIGHT_IT_PICTURE_SPOT_NAME = 'Picture spot';
 export const LIGHT_IT_WASH_NAME = 'Wash';
+export const LIGHT_IT_SHOWCASE_NAME = 'Showcase';
+export const LIGHT_IT_SHOWCASE_KEY_NAME = 'Key';
+export const LIGHT_IT_SHOWCASE_FILL_NAME = 'Fill';
+export const LIGHT_IT_SHOWCASE_RIM_NAME = 'Rim';
 
-export type LightItRecipeKind = 'picture-spot' | 'wash';
+export type LightItRecipeKind = 'picture-spot' | 'wash' | 'showcase';
 
 export type LightItBounds = {
 	readonly min: Vec3;
@@ -67,6 +71,11 @@ export type LightItRecipe = {
 /** A recipe is ready to submit, or it cannot cover the target within S7's limits. */
 export type LightItRecipeOutcome =
 	| { readonly kind: 'ready'; readonly recipe: LightItRecipe }
+	| { readonly kind: 'refused'; readonly message: string };
+
+/** A Showcase is the three-light rig the group owns; one Undo removes all of it. */
+export type LightItShowcaseOutcome =
+	| { readonly kind: 'ready'; readonly recipes: readonly LightItRecipe[] }
 	| { readonly kind: 'refused'; readonly message: string };
 
 type ArtworkRectangle = {
@@ -225,6 +234,73 @@ export function washRecipe(input: {
 			castShadow: false,
 		},
 	};
+}
+
+/**
+ * A Showcase: Key, Fill and Rim spots around one bounds union.
+ *
+ * The approved specimen's rig: the key sits front-left above the subject, the
+ * fill front-right lower, and the rim behind it higher, all aimed at the same
+ * centre. The three lights are returned as ordinary S3 spots so the group
+ * planner writes them exactly as any other light; the subject stays out of the
+ * new group. An invalid bounds or an unfittable cone refuses the whole rig — a
+ * Showcase never writes two of its three lights.
+ */
+export function showcaseRecipe(input: {
+	readonly bounds: LightItBounds;
+	readonly front?: Vec3;
+}): LightItShowcaseOutcome {
+	const { bounds } = input;
+	const center: Vec3 = [
+		(bounds.min[0] + bounds.max[0]) / 2,
+		(bounds.min[1] + bounds.max[1]) / 2,
+		(bounds.min[2] + bounds.max[2]) / 2,
+	];
+	const halfExtents: Vec3 = [
+		Math.max(0, (bounds.max[0] - bounds.min[0]) / 2),
+		Math.max(0, (bounds.max[1] - bounds.min[1]) / 2),
+		Math.max(0, (bounds.max[2] - bounds.min[2]) / 2),
+	];
+	if (![...center, ...halfExtents].every(Number.isFinite)) {
+		return { kind: 'refused', message: 'The selected bounds are not finite.' };
+	}
+	const radius = Math.hypot(...halfExtents);
+	const standoff = Math.max(
+		radius * LIGHT_IT_WASH_STANDOFF_RATIO,
+		LIGHT_IT_WASH_STANDOFF_MIN_METERS,
+	);
+	const front = horizontalFront(input.front);
+	// The rig's right: the front turned a quarter turn on the floor plane.
+	const right: Vec3 = [front[2], 0, -front[0]];
+	const corners = boundsCorners(bounds);
+	const leg = (name: string, ahead: number, side: number, up: number): LightItRecipe | null => {
+		const position = add(center, add(scale(front, ahead), add(scale(right, side), [0, up, 0])));
+		const direction = normalize(sub(center, position));
+		const angle = fittedHalfAngle(position, direction, corners);
+		if (angle === null) return null;
+		return {
+			recipe: 'showcase',
+			name,
+			position,
+			rotation: rotationForLightDirection(direction),
+			angle,
+			range: spotCutoffForTargetDistance(farthestDistance(position, corners)),
+			color: '#ffffff',
+			intensity: LIGHT_INTENSITY_REFERENCE,
+			castShadow: false,
+		};
+	};
+	const key = leg(LIGHT_IT_SHOWCASE_KEY_NAME, standoff * 0.9, standoff * 0.55, standoff * 0.9);
+	const fill = leg(LIGHT_IT_SHOWCASE_FILL_NAME, standoff, -standoff * 0.7, standoff * 0.5);
+	const rim = leg(LIGHT_IT_SHOWCASE_RIM_NAME, standoff * 0.2, -standoff * 0.5, standoff);
+	if (key === null || fill === null || rim === null) {
+		return {
+			kind: 'refused',
+			message:
+				'The selected bounds need a beam wider than 80°; select a smaller group for Showcase.',
+		};
+	}
+	return { kind: 'ready', recipes: [key, fill, rim] };
 }
 
 export function unionLightItBounds(bounds: readonly LightItBounds[]): LightItBounds | null {

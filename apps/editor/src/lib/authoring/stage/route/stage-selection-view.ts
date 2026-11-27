@@ -41,6 +41,7 @@ import {
 	type WorldScope,
 } from '../shell/world-index-model';
 import { stageLayout, stageScene } from '../unit-stage-source';
+import { sceneClusterById, sceneClusterOf } from '$lib/authoring/scene/selection-target';
 
 /** One Index row before search: membership or a located subject. */
 export type StageIndexEntry = {
@@ -51,6 +52,7 @@ export type StageIndexEntry = {
 	readonly eligible: boolean;
 	readonly revealed: boolean;
 	readonly membership: string;
+	relation?: string;
 };
 
 /** The Card's identity line: authored/generated name, kind and Plan status. */
@@ -88,6 +90,9 @@ export type StageIndexProjection = {
 
 export type StageSelectionView = StageIndexProjection & {
 	readonly selectedLocatorId: string | null;
+	/** The canonical multi-identity selection; empty or one for a single subject. */
+	readonly selectionSet: readonly StageSelectionEntry[];
+	readonly isSelectionSet: boolean;
 	readonly resolvedScope: WorldScope;
 	readonly locationLabel: string;
 	readonly selectedMembership: PlanMembershipReason | null;
@@ -107,6 +112,8 @@ export type StageSelectionViewInput = {
 	/** Accepted Scene→Room membership, read once by the route from the envelope. */
 	readonly sceneRooms: ReadonlyMap<string, string>;
 	readonly selection: StageSelectionEntry | null;
+	/** The canonical ordered selection, so a set (no primary) still has a Card. */
+	readonly selectionSet?: readonly StageSelectionEntry[];
 	readonly planView: PlanEvaluation | null;
 	readonly subjects: readonly StageSubject[];
 	readonly scope: WorldScope;
@@ -252,16 +259,38 @@ export function createStageSelectionView() {
 			}
 		}
 		for (const subject of input.subjects) {
+			const cluster =
+				subject.reference.domain === 'scene' && subject.reference.subject.kind === 'cluster'
+					? scenePayload === null
+						? null
+						: sceneClusterById(scenePayload, subject.reference.subject.id)
+					: null;
 			const entity =
-				subject.reference.domain === 'scene' ? sceneEntityOf(subject.reference.subject.id) : null;
+				subject.reference.domain === 'scene' && subject.reference.subject.kind === 'entity'
+					? sceneEntityOf(subject.reference.subject.id)
+					: null;
 			entries.push({
-				group: entity?.kind === 'light' ? 'light' : subject.reference.domain,
+				group:
+					cluster !== null
+						? 'scene'
+						: entity?.kind === 'light'
+							? 'light'
+							: subject.reference.domain,
 				sourceId: subject.id,
-				kindWord: entity === null ? 'Subject' : sceneKindWord(entity.kind),
-				name: entity?.name ?? null,
+				kindWord:
+					cluster !== null ? 'Group' : entity === null ? 'Subject' : sceneKindWord(entity.kind),
+				name: cluster?.name ?? entity?.name ?? null,
 				eligible: true,
 				revealed: false,
 				membership: 'included',
+				...(entity !== null && scenePayload !== null
+					? (() => {
+							const group = sceneClusterOf(scenePayload, entity.id);
+							return group === null
+								? {}
+								: { relation: `${sceneKindWord(entity.kind)} · in ${group.name}` };
+						})()
+					: {}),
 			});
 		}
 
@@ -328,17 +357,41 @@ export function createStageSelectionView() {
 				return planMembershipOf(plan, selected.reference.subject.id)?.reason ?? null;
 			})();
 
+			const selectionSet = input.selectionSet ?? [];
+			const isSelectionSet = input.selection === null && selectionSet.length >= 2;
 			const cardIdentity = ((): StageCardIdentity | null => {
+				if (isSelectionSet)
+					return {
+						sourceId: 'selection-set',
+						label: `${selectionSet.length} selected`,
+						kind: 'Selection',
+						status: 'No primary',
+					};
 				const selected = input.selection;
 				if (selected === null) return null;
 				const key = selectedLocatorId ?? '';
 				const entry = entryMap.get(key);
 				const label = labels.get(key);
 				const domainWord = selected.reference.domain === 'layout' ? 'Layout' : 'Scene';
+				const cluster =
+					selected.reference.domain === 'scene' && scenePayload !== null
+						? selected.reference.subject.kind === 'cluster'
+							? sceneClusterById(scenePayload, selected.reference.subject.id)
+							: selected.reference.subject.kind === 'entity'
+								? sceneClusterOf(scenePayload, selected.reference.subject.id)
+								: null
+						: null;
+				// A group's kind line is its size; a member's names the group it is drilled in.
+				const kind =
+					cluster === null
+						? (entry?.kindWord ?? domainWord)
+						: selected.reference.subject.kind === 'cluster'
+							? `Group · ${cluster.memberIds.length} items`
+							: `${entry?.kindWord ?? domainWord} · in ${cluster.name}`;
 				return {
 					sourceId: selected.reference.subject.id,
 					label: label?.label ?? entry?.kindWord ?? domainWord,
-					kind: entry?.kindWord ?? domainWord,
+					kind,
 					status:
 						selected.reference.domain !== 'layout'
 							? domainWord
@@ -350,7 +403,7 @@ export function createStageSelectionView() {
 
 			const cardSubject = ((): StageCardSubject | null => {
 				const selected = input.selection;
-				if (selected === null) return null;
+				if (selected === null || isSelectionSet) return null;
 				return {
 					sourceId: selected.reference.subject.id,
 					sourceKind: selected.reference.subject.kind,
@@ -403,6 +456,8 @@ export function createStageSelectionView() {
 				labels,
 				entryMap,
 				selectedLocatorId,
+				selectionSet,
+				isSelectionSet,
 				worldIndex,
 				resolvedScope,
 				locationLabel,

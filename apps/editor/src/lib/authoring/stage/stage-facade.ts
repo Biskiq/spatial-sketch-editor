@@ -1024,6 +1024,8 @@ export function createStageFacade(input: {
 		postureScoped: () => (input.subjectScope?.get() ?? null) !== null,
 		cardWriter: contributions.cardWriter,
 		cardActions: contributions.cardActions,
+		setActions: contributions.setActions,
+		setWriter: contributions.setWriter,
 		cardNameWriter: contributions.cardNameWriter,
 		acquireGesture(request) {
 			if (!isLive()) return { kind: 'refused', code: 'stale-epoch', owner: request.owner };

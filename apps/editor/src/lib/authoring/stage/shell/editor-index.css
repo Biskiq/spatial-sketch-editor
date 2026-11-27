@@ -277,6 +277,15 @@
 .plate-index .world-list .selected .item-name {
 	font-weight: 600;
 }
+/* A member's secondary reading: `Artwork · in Still life`. */
+.plate-index .world-list .item-relation {
+	margin-left: 6px;
+	color: var(--shell-ink-2);
+	font-size: 10.5px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
 .plate-index .world-list .item:hover:not(.selected) {
 	background: rgb(0 0 0 / 3.5%);
 }

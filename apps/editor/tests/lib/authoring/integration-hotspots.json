@@ -144,31 +144,31 @@
 		"arrows": 23
 	},
 	"src/lib/authoring/stage/route/stage-shell-state.svelte.ts": {
-		"lines": 853,
+		"lines": 865,
 		"imports": 27,
-		"state": 44,
+		"state": 45,
 		"derived": 10,
 		"effects": 3,
 		"functions": 25,
 		"arrows": 40
 	},
 	"src/lib/authoring/stage/route/stage-shell-commands.ts": {
-		"lines": 704,
+		"lines": 752,
 		"imports": 18,
 		"state": 0,
 		"derived": 0,
 		"effects": 0,
-		"functions": 23,
-		"arrows": 33
+		"functions": 24,
+		"arrows": 37
 	},
 	"src/lib/authoring/stage/route/stage-keyboard.ts": {
-		"lines": 474,
+		"lines": 491,
 		"imports": 11,
 		"state": 0,
 		"derived": 0,
 		"effects": 0,
 		"functions": 6,
-		"arrows": 87
+		"arrows": 90
 	},
 	"src/lib/authoring/stage/route/stage-project-epoch.svelte.ts": {
 		"lines": 381,
@@ -261,13 +261,13 @@
 		"arrows": 2
 	},
 	"src/lib/authoring/workspace/host/wiring/stage-region-models.svelte.ts": {
-		"lines": 284,
+		"lines": 323,
 		"imports": 15,
 		"state": 0,
 		"derived": 9,
 		"effects": 0,
-		"functions": 2,
-		"arrows": 53
+		"functions": 3,
+		"arrows": 55
 	},
 	"src/lib/authoring/look/finish-library.svelte.ts": {
 		"lines": 847,
@@ -441,7 +441,7 @@
 		"arrows": 1
 	},
 	"src/lib/authoring/stage/route/stage-input.svelte.ts": {
-		"lines": 880,
+		"lines": 882,
 		"imports": 18,
 		"state": 1,
 		"derived": 0,
@@ -477,13 +477,13 @@
 		"arrows": 2
 	},
 	"src/lib/authoring/stage/facade/contribution-view.ts": {
-		"lines": 675,
+		"lines": 709,
 		"imports": 12,
 		"state": 0,
 		"derived": 0,
 		"effects": 0,
 		"functions": 15,
-		"arrows": 56
+		"arrows": 59
 	},
 	"src/lib/authoring/stage/facade/contribution-view-entries.ts": {
 		"lines": 58,

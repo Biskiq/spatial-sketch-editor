@@ -84,7 +84,7 @@ export type StageInputArbiterInput = {
 	readonly sliceDraw: () => SliceDrawController | null;
 	readonly onNotice: (message: string) => void;
 	readonly onRefreshHostTools: () => void;
-	readonly selectHit: (hit: StageSourceHit) => void;
+	readonly selectHit: (hit: StageSourceHit, tap?: { readonly additive?: boolean }) => void;
 	readonly pan: (dx: number, dy: number) => void;
 	readonly orbit: (dAzimuth: number, dElevation: number) => void;
 	readonly zoom: (scale: number) => void;
@@ -783,7 +783,9 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 		];
 		const hit = stage.resolveSourceHit({ evaluationId: id, css });
 		if (hit.kind === 'resolved') {
-			input.selectHit(hit.hit);
+			// Shift is the fine-pointer set gesture; on a coarse pointer the shell's
+			// Select more mode supplies the same additive intent.
+			input.selectHit(hit.hit, { additive: event.shiftKey });
 			input.onNotice('');
 			return;
 		}
