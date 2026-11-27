@@ -198,6 +198,7 @@ export const SINGLETONS = [
 			[layoutAdapter + 'curve-gesture-session.ts']: ['isActive'],
 			[layoutAdapter + 'layout-contributions.ts']: ['isActive', 'state', 'presentationAngle'],
 			[layoutAdapter + 'layout-marks.ts']: ['isActive'],
+			[layoutAdapter + 'wall-scalar-session.ts']: ['isActive', 'state', 'presentationAngle'],
 			[layoutAdapter + 'layout-card-actions.ts']: ['isActive', 'state', 'presentationAngle'],
 			[core + 'stage-unfold-pick-geometry.ts']: ['presentationAngle', 'state'],
 			[core + 'stage-unfold-gestures.svelte.ts']: [

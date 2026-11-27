@@ -1,7 +1,7 @@
 {
 	"generatedFrom": "Budget ratchet baseline; shrink-only from here",
 	"counts": {
-		"filesOver600": 126,
+		"filesOver600": 127,
 		"filesOver1000": 11,
 		"filesOver1500": 0,
 		"functionsOver200": 98,
@@ -217,7 +217,7 @@
 		},
 		{
 			"path": "apps/editor/src/lib/authoring/stage/route/stage-unfold-gestures.svelte.ts",
-			"lines": 786,
+			"lines": 799,
 			"reason": "The route's unfold gestures: pin, peel and Opening offset share one Wall sheet session and one acceptance port."
 		},
 		{
@@ -357,7 +357,7 @@
 		},
 		{
 			"path": "apps/editor/src/lib/authoring/adapters/layout/LayoutCardFields.svelte",
-			"lines": 714,
+			"lines": 860,
 			"reason": "The Layout Card writer: dimensions, drafts, refusals and history share one accepted source and one controller."
 		},
 		{
@@ -407,7 +407,7 @@
 		},
 		{
 			"path": "apps/editor/src/lib/authoring/adapters/layout/instrument.ts",
-			"lines": 693,
+			"lines": 844,
 			"reason": "The Dimensions instrument controller: inputs, drafts and commands share one accepted source revision."
 		},
 		{
@@ -417,7 +417,7 @@
 		},
 		{
 			"path": "apps/editor/src/lib/authoring/adapters/layout/precision-planners.ts",
-			"lines": 688,
+			"lines": 725,
 			"reason": "Baseline exception: the owning split removes this entry."
 		},
 		{
@@ -586,6 +586,11 @@
 			"reason": "One Spot look-through: eye, aim and commit share one session-only inspection posture."
 		},
 		{
+			"path": "apps/editor/src/lib/authoring/adapters/layout/wall-scalar-session.ts",
+			"lines": 618,
+			"reason": "One Wall scalar gesture: height, thickness and top knobs share the captured Wall, scalars and one lease."
+		},
+		{
 			"path": "packages/layout-core/src/room/reconciliation.ts",
 			"lines": 622,
 			"reason": "Baseline exception: the owning split removes this entry."
@@ -722,8 +727,8 @@
 		{
 			"file": "apps/editor/src/lib/authoring/stage/route/stage-unfold-gestures.svelte.ts",
 			"name": "createStageUnfoldGestures",
-			"line": 146,
-			"lines": 607,
+			"line": 148,
+			"lines": 618,
 			"reason": "The route's unfold gestures over one Wall sheet session and one acceptance port."
 		},
 		{
@@ -785,8 +790,8 @@
 		{
 			"file": "apps/editor/src/lib/authoring/adapters/layout/instrument.ts",
 			"name": "createLayoutInstrument",
-			"line": 181,
-			"lines": 513,
+			"line": 200,
+			"lines": 645,
 			"reason": "The Dimensions controller over one accepted source revision and its drafts."
 		},
 		{

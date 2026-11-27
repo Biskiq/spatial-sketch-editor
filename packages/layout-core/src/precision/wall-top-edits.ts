@@ -14,10 +14,15 @@
  * - P6's envelope (`dimension_out_of_range`, naming the Wall);
  * - P7's Opening fit (`wall_top_below_opening`, naming the Opening and Wall).
  *
- * A height edit (`planExactWallHeight`) is the rigid shift of this top and keeps
- * its existing signature; it does not pass through here.
+ * A caller may also state the requested eave in the same intent. Direct
+ * manipulation uses that to move one breakpoint while keeping every breakpoint
+ * that did not move exactly where it was; the requested eave is normalised with
+ * the profile (P1) and the candidate is validated as one Wall, Openings included.
+ * The Card's Height edit (`planExactWallHeight`) remains the rigid shift of this
+ * top and keeps its existing signature; it does not pass through here.
  */
 import { ensureLayoutWorldIndex } from '../world/lookups';
+import { LAYOUT_DIMENSION_LIMIT_MESSAGE, exceedsLayoutDimension } from '../geometry/limits';
 import type { LayoutDocumentWallFirst, LayoutWall, LayoutWallTop } from '../wall/types';
 import {
 	WALL_TOP_APEX_INVALID_CODE,
@@ -30,7 +35,7 @@ import {
 import { wallFirstWallLength, validateWallFirstOpeningSet } from '../wall/opening-set';
 import type { PrecisionPlan, PrecisionRejection } from './types';
 import { finalizeCandidate } from './finalization';
-import { reject } from './rejections';
+import { finitePositive, reject } from './rejections';
 
 /** The first value-layer problem with an intent, if any. */
 function topValueIssue(
@@ -91,13 +96,20 @@ function sameTop(first: LayoutWallTop, second: LayoutWallTop): boolean {
  * Set one Wall's authored top, normalising it to P1.
  *
  * The intent may state both ends above the eave (rises measured from a
- * neighbour); the lowest rise moves into `height`. A `level` intent flattens the
- * top at the current eave and leaves `height` alone.
+ * neighbour); the lowest rise moves into `height`. A direct-manipulation intent
+ * also states the requested eave; the rises are measured from that, so every
+ * breakpoint the caller did not move keeps its absolute top. A `level` intent
+ * flattens the top at the requested eave (or the current one).
+ *
+ * The candidate Wall and all of its Openings are validated together before the
+ * plan is returned.
  */
 export function planSetWallTop(
 	document: LayoutDocumentWallFirst,
 	wallId: string,
 	top: LayoutWallTop,
+	/** The requested eave above the floor; absent keeps the Wall's current one. */
+	height?: number,
 ): PrecisionPlan {
 	const worldIndex = ensureLayoutWorldIndex(document);
 	const wall: LayoutWall | undefined = worldIndex
@@ -110,8 +122,14 @@ export function planSetWallTop(
 			wallId,
 		]);
 	}
+	if (height !== undefined && !finitePositive(height)) {
+		return reject('invalid_value', 'Wall height must be finite and greater than zero', [wallId]);
+	}
+	if (height !== undefined && exceedsLayoutDimension(height)) {
+		return reject('dimension_out_of_range', LAYOUT_DIMENSION_LIMIT_MESSAGE, [wallId]);
+	}
 
-	const normalized = normalizeWallTop(wall.height, top);
+	const normalized = normalizeWallTop(height ?? wall.height, top);
 	const candidate: LayoutDocumentWallFirst = {
 		...document,
 		walls: document.walls.map((candidateWall) =>

@@ -19,6 +19,7 @@ import {
 	planRemoveSpace,
 	planRigidWallMove,
 	planRoomMetadataUpdate,
+	planSetWallTop,
 	planUpdateWallFirstOpening,
 	planWallMetadataUpdate,
 } from '@portfolio/layout-core/wall';
@@ -30,7 +31,7 @@ import {
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import type { DomainPlanner } from '@portfolio/project-model/f4';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
-import { openingRefusalWords, wallRefusalWords } from './refusals';
+import { openingRefusalWords, wallEditRejectionWords, wallRefusalWords } from './refusals';
 import {
 	LAYOUT_ENTITY_NAME_KIND,
 	LAYOUT_JUNCTION_MOVE_KIND,
@@ -47,13 +48,16 @@ import {
 	LAYOUT_WALL_MOVE_KIND,
 	LAYOUT_WALL_STRAIGHTEN_KIND,
 	LAYOUT_WALL_THICKNESS_KIND,
+	LAYOUT_WALL_TOP_KIND,
 	addressedSubject,
 	capturedWorkingLevel,
 	finiteNonNegative,
 	finiteNumber,
 	finitePositive,
 	isFixedEndpoint,
+	isOptionalPositive,
 	isLayoutOpeningField,
+	isLayoutWallTop,
 	layoutPlanner,
 	opaqueId,
 	preparedLayoutCandidate,
@@ -74,13 +78,12 @@ function wallHeightPlanner(): DomainPlanner<ProjectEnvelope> {
 		}
 		const addressed = addressedSubject(request, 'wall', wallId);
 		if (!addressed.ok) return rejected('invalid-value', addressed.message);
-		const plan = planExactWallHeight(
-			request.snapshot.domain.source.units.layout.data,
-			wallId,
-			height,
-		);
+		const baseline = request.snapshot.domain.source.units.layout.data;
+		const plan = planExactWallHeight(baseline, wallId, height);
 		if (plan.kind === 'rejected') {
-			return rejected(plan.rejection.code, plan.rejection.message);
+			// A shorter Wall can cut into a hosted Opening. The V2b formatter names
+			// that Opening, so Height and the top grip say the same words.
+			return rejected(plan.rejection.code, wallEditRejectionWords(baseline, plan.rejection));
 		}
 		return preparedLayoutCandidate(
 			request,
@@ -88,6 +91,39 @@ function wallHeightPlanner(): DomainPlanner<ProjectEnvelope> {
 			{ kind: 'wall', id: wallId },
 			plan.document,
 			['height'],
+			{ surfaceLineage: [] },
+		);
+	});
+}
+
+/**
+ * The V2c top shape: Level, Slope or Gable in one retained write.
+ *
+ * `planSetWallTop` owns normalisation and every refusal, including the Opening
+ * that a lowered top would cut into. Its `targetIds` name that Opening, so the
+ * V2b refusal formatter can say which one instead of "an Opening".
+ */
+function wallTopPlanner(): DomainPlanner<ProjectEnvelope> {
+	return layoutPlanner(LAYOUT_WALL_TOP_KIND, (request) => {
+		const payload = readPayload(LAYOUT_WALL_TOP_KIND, request.intent.payload);
+		if ('message' in payload) return rejected('invalid-value', payload.message);
+		const { wallId, top, height } = payload.value;
+		if (!opaqueId(wallId) || !isLayoutWallTop(top) || !isOptionalPositive(height)) {
+			return rejected('invalid-value', 'Need a Wall id, a shape and an optional eave.');
+		}
+		const addressed = addressedSubject(request, 'wall', wallId);
+		if (!addressed.ok) return rejected('invalid-value', addressed.message);
+		const baseline = request.snapshot.domain.source.units.layout.data;
+		const plan = planSetWallTop(baseline, wallId, top, height);
+		if (plan.kind === 'rejected') {
+			return rejected(plan.rejection.code, wallEditRejectionWords(baseline, plan.rejection));
+		}
+		return preparedLayoutCandidate(
+			request,
+			'layout-wall-top',
+			{ kind: 'wall', id: wallId },
+			plan.document,
+			['top', 'height'],
 			{ surfaceLineage: [] },
 		);
 	});
@@ -670,6 +706,7 @@ function plinthPlanner(): DomainPlanner<ProjectEnvelope> {
 export function createLayoutPlanners(): readonly DomainPlanner<ProjectEnvelope>[] {
 	return [
 		wallHeightPlanner(),
+		wallTopPlanner(),
 		wallThicknessPlanner(),
 		wallLengthPlanner(),
 		wallAnglePlanner(),

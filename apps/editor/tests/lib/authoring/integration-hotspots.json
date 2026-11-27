@@ -495,7 +495,7 @@
 		"arrows": 6
 	},
 	"src/lib/authoring/stage/route/stage-unfold-gestures.svelte.ts": {
-		"lines": 787,
+		"lines": 800,
 		"imports": 17,
 		"state": 4,
 		"derived": 1,

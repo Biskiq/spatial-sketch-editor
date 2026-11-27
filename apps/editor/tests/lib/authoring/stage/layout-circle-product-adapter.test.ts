@@ -5,7 +5,7 @@
  * Stage marks. Radius and diameter are exact captured intents; the radius grip
  * is the only shape mark a closed Wall publishes; no bend point is offered.
  */
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { createEmptyWallFirstLayoutDocument, isClosedWall, planCreateWallFirstOpening, wallFirstWallLength, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 import { mintLayoutIdCapture } from '@portfolio/layout-core/plan';
 import { planCreateCircularRoom, readClosedWallCircle } from '@portfolio/layout-core/room';
@@ -22,6 +22,8 @@ import { createUnitProject } from '../__fixtures__/unit-envelope-fixtures';
 import { createAdapter } from '$lib/authoring/adapters/layout.adapter';
 import { inkSurface } from '$lib/authoring/adapters/layout/ink';
 import { createCardFieldsInstrument } from '$lib/authoring/adapters/layout/adapter-support';
+import { LAYOUT_WALL_HEIGHT_KIND } from '$lib/authoring/adapters/layout/precision';
+import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
 import { freshCapture } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 
 const RECT = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };
@@ -154,6 +156,8 @@ function selectWall(facade: StageFacade, sourceId: string): void {
 	facade.setSelection({ ordered: [{ reference, representation }], primary: reference });
 }
 
+afterEach(() => wallUnfold.exit());
+
 describe('C2 product — closed Wall Card and Stage', () => {
 	it('offers radius and diameter fields and publishes only the radius grip', async () => {
 		const { facade, services, wallId } = await mount();
@@ -181,6 +185,23 @@ describe('C2 product — closed Wall Card and Stage', () => {
 		expect(marks.some((mark) => mark.id === 'layout-wall-height')).toBe(true);
 		expect(marks.some((mark) => mark.id === 'layout-circle-radius-mark')).toBe(true);
 		expect(marks.some((mark) => mark.id === 'layout-wall-length')).toBe(false);
+	});
+
+	it('keeps the Height grip on the Unroll sheet while the canonical Wall marks are withheld', async () => {
+		const { facade, wallId } = await mount();
+		selectWall(facade, wallId);
+		const wall = facade.snapshot().domain.geometry.walls.find((entry) => entry.wallId === wallId)!;
+		wallUnfold.enter(wall, 0);
+		facade.notifySurfaceChange();
+		const marks = facade.marks();
+		// The sheet replaces the Wall's canonical editing surface, including the
+		// size-chip disclosure; Height is still admitted on the developed top edge.
+		expect(marks.some((mark) => mark.id === 'layout-wall-size-chip')).toBe(false);
+		expect(marks.find((mark) => mark.id === 'layout-wall-height')).toMatchObject({
+			planner: LAYOUT_WALL_HEIGHT_KIND,
+			hidden: false
+		});
+		expect(marks.find((mark) => mark.id === 'layout-wall-height')!.tip).not.toBeNull();
 	});
 
 	it('creates a Circle from a centre → rim drag with the seam at the authored rim', async () => {

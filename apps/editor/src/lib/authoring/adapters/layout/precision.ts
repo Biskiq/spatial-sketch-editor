@@ -12,6 +12,7 @@
  * | Operation | Kind | Retained planner |
  * | --- | --- | --- |
  * | Wall height | `layout-wall-height` | `planExactWallHeight` |
+ * | Wall top shape | `layout-wall-top` | `planSetWallTop` |
  * | Wall thickness | `layout-wall-thickness` | `planExactWallThickness` |
  * | Wall length (fixed endpoint) | `layout-wall-length` | `planExactWallLength` |
  * | Wall angle (fixed endpoint) | `layout-wall-angle` | `planExactWallAngle` |
@@ -29,7 +30,11 @@
  */
 
 import { materializeLayoutSourceForCapture } from '@portfolio/layout-core/kernel';
-import { type FixedWallEndpoint, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import {
+	type FixedWallEndpoint,
+	type LayoutDocumentWallFirst,
+	type LayoutWallTop,
+} from '@portfolio/layout-core/wall';
 import {
 	layoutIdCaptureInput,
 	layoutWorkingLevelInput,
@@ -63,6 +68,8 @@ import {
 } from '@portfolio/project-model/units';
 
 export const LAYOUT_WALL_HEIGHT_KIND = 'layout-wall-height';
+/** The one shape write: Level, Slope or Gable, with its exact rises and apex. */
+export const LAYOUT_WALL_TOP_KIND = 'layout-wall-top';
 export const LAYOUT_WALL_THICKNESS_KIND = 'layout-wall-thickness';
 export const LAYOUT_OPENING_MEASURE_KIND = 'layout-opening-measure';
 export const LAYOUT_ENTITY_NAME_KIND = 'layout-entity-name';
@@ -113,8 +120,14 @@ export type LayoutSubject = {
 /** A Room is addressed only by the name planner; it has no field instrument. */
 export type LayoutRoomSubject = { readonly kind: 'room'; readonly id: string };
 
+/** Keys an operation accepts but never requires; a Wall top may carry the eave. */
+const OPTIONAL_PAYLOAD_KEYS: Readonly<Record<string, readonly string[]>> = {
+	[LAYOUT_WALL_TOP_KIND]: ['height'],
+};
+
 const PAYLOAD_KEYS: Readonly<Record<string, readonly string[]>> = {
 	[LAYOUT_WALL_HEIGHT_KIND]: ['wallId', 'height'],
+	[LAYOUT_WALL_TOP_KIND]: ['wallId', 'top'],
 	[LAYOUT_WALL_THICKNESS_KIND]: ['wallId', 'thickness'],
 	[LAYOUT_WALL_LENGTH_KIND]: ['wallId', 'length', 'fixed'],
 	[LAYOUT_WALL_ANGLE_KIND]: ['wallId', 'angleRadians', 'fixed'],
@@ -132,9 +145,10 @@ const PAYLOAD_KEYS: Readonly<Record<string, readonly string[]>> = {
 };
 
 /**
- * A payload with exactly the keys its operation owns. An unknown key is refused
- * rather than ignored: a UI that starts sending `keepBottom` must be told the
- * operation does not support it, not silently have it dropped.
+ * A payload with exactly the keys its operation owns, required plus optional. An
+ * unknown key is refused rather than ignored: a UI that starts sending
+ * `keepBottom` must be told the operation does not support it, not silently have
+ * it dropped.
  */
 export function readPayload(
 	kind: string,
@@ -145,7 +159,8 @@ export function readPayload(
 	}
 	const record = payload as Record<string, unknown>;
 	const expected = PAYLOAD_KEYS[kind]!;
-	const unknown = Object.keys(record).filter((key) => !expected.includes(key));
+	const allowed = [...expected, ...(OPTIONAL_PAYLOAD_KEYS[kind] ?? [])];
+	const unknown = Object.keys(record).filter((key) => !allowed.includes(key));
 	if (unknown.length > 0) {
 		return { message: `The ${kind} payload cannot carry ${unknown.join(', ')}.` };
 	}
@@ -158,6 +173,9 @@ export function readPayload(
 export function finitePositive(value: unknown): value is number {
 	return typeof value === 'number' && Number.isFinite(value) && value > 0;
 }
+
+export const isOptionalPositive = (value: unknown): value is number | undefined =>
+	value === undefined || finitePositive(value);
 
 export function finiteNonNegative(value: unknown): value is number {
 	return typeof value === 'number' && Number.isFinite(value) && value >= 0;
@@ -173,6 +191,27 @@ export function isFixedEndpoint(value: unknown): value is FixedWallEndpoint {
 
 export function finiteNumber(value: unknown): value is number {
 	return typeof value === 'number' && Number.isFinite(value);
+}
+
+/** The authored top shape, with every field the canonical encoding owns. */
+export function isLayoutWallTop(value: unknown): value is LayoutWallTop {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+	const top = value as Record<string, unknown>;
+	switch (top.kind) {
+		case 'level':
+			return true;
+		case 'slope':
+			return finiteNumber(top.startRise) && finiteNumber(top.endRise);
+		case 'gable':
+			return (
+				finiteNumber(top.startRise) &&
+				finiteNumber(top.endRise) &&
+				finiteNumber(top.apexRise) &&
+				finiteNumber(top.apexOffset)
+			);
+		default:
+			return false;
+	}
 }
 
 export function isLayoutOpeningField(value: unknown): value is LayoutOpeningField {

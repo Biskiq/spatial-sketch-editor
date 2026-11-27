@@ -249,6 +249,71 @@ describe('§6.3 · planSetWallTop normalises to P1', () => {
 			expect(plan.rejection.message).toContain("Opening 'window'");
 		});
 	});
+
+	it('applies a requested eave and keeps every other breakpoint', () => {
+		const document = documentOf({ a: [0, 0], b: [10, 0] }, [wall('w1', 'a', 'b', { top: GABLE })]);
+		const before = wallById(document, 'w1');
+		if (before.top.kind !== 'gable') throw new Error('the fixture is not a gable');
+		// The eave drops to 0.25 m while the end (4 m) and apex (7 m) stay put.
+		const plan = planSetWallTop(
+			document,
+			'w1',
+			{
+				kind: 'gable',
+				startRise: 0,
+				endRise: before.height - 0.25 + before.top.endRise,
+				apexRise: before.height - 0.25 + before.top.apexRise,
+				apexOffset: before.top.apexOffset
+			},
+			0.25
+		);
+		expect(plan.kind).toBe('success');
+		if (plan.kind !== 'success') return;
+		const after = wallById(plan.document, 'w1');
+		expect(after.height).toBeCloseTo(0.25, 12);
+		expect(after.top).toEqual({
+			kind: 'gable',
+			startRise: 0,
+			endRise: 3.75,
+			apexRise: 6.75,
+			apexOffset: 4
+		});
+	});
+
+	it('refuses a requested eave that leaves a hosted Opening above it, naming the Opening', () => {
+		const base = documentOf({ a: [0, 0], b: [10, 0] }, [wall('w1', 'a', 'b', { top: GABLE })]);
+		base.openings.push({
+			id: 'window',
+			wallId: 'w1',
+			kind: 'window',
+			offset: 0.1,
+			width: 0.8,
+			height: 0.8,
+			sillHeight: 1,
+			profile: 'rectangular'
+		});
+		// The gable at 3 m clears the window; lowering the start eave cuts it.
+		expect(compileWallFirstLayoutGeometry(base).issues).toEqual([]);
+		unchanged(base, () => {
+			const plan = planSetWallTop(
+				base,
+				'w1',
+				{
+					kind: 'gable',
+					startRise: 0,
+					endRise: 3.75,
+					apexRise: 6.75,
+					apexOffset: 4
+				},
+				0.25
+			);
+			expect(plan.kind).toBe('rejected');
+			if (plan.kind !== 'rejected') return;
+			expect(plan.rejection.code).toBe('wall_top_below_opening');
+			expect(plan.rejection.targetIds).toContain('window');
+			expect(plan.rejection.message).toContain("Opening 'window'");
+		});
+	});
 });
 
 describe('§6.3 · planExactWallHeight shifts the whole top rigidly', () => {
