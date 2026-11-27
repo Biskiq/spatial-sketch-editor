@@ -47,7 +47,8 @@ export type SceneOperationRefusalCode =
 	| 'stale-revision'
 	| 'record-scope-violation'
 	| 'missing-definition'
-	| 'definition-changed';
+	| 'definition-changed'
+	| 'incompatible-resource';
 
 export type SceneOperationRefusal = {
 	readonly kind: 'rejected';

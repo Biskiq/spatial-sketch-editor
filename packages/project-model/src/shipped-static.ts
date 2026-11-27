@@ -1,3 +1,5 @@
+import { SHIPPED_MODEL_PINS, type ShippedModelPin } from './shipped-model-pins';
+
 /**
  * Canonical shipped-static compatibility registry.
  *
@@ -285,48 +287,63 @@ export type ShippedModelEntry = {
 	/** Deployed static file, or null for fallback-only placeholders (no bytes). */
 	productionFile: string | null;
 	fallbackOnly: boolean;
+	/** Null exactly when `productionFile` is null. */
+	pin: ShippedModelPin | null;
 };
 
+/**
+ * The frozen shipped-model registry, append-only by `assetId`.
+ *
+ * A id that has shipped may not be removed or renamed, and its file bytes and
+ * pin may not change. A fallback-only entry has no bytes and therefore no pin.
+ */
 export const SHIPPED_MODELS: readonly ShippedModelEntry[] = [
 	{
 		assetId: 'paris-grand-piano',
 		productionFile: '/museum/models/piano/grand-piano.glb',
 		fallbackOnly: false,
+		pin: SHIPPED_MODEL_PINS['paris-grand-piano'],
 	},
 	{
 		assetId: 'paris-salon-chair',
 		productionFile: '/museum/models/furniture/chair/salon-chair.glb',
 		fallbackOnly: false,
+		pin: SHIPPED_MODEL_PINS['paris-salon-chair'],
 	},
 	{
 		assetId: 'paris-salon-sofa',
 		productionFile: '/museum/models/furniture/sofa/sofa-03.glb',
 		fallbackOnly: false,
+		pin: SHIPPED_MODEL_PINS['paris-salon-sofa'],
 	},
 	{
 		assetId: 'paris-salon-table',
 		productionFile: '/museum/models/furniture/table/salon-table.glb',
 		fallbackOnly: false,
+		pin: SHIPPED_MODEL_PINS['paris-salon-table'],
 	},
 	{
 		assetId: 'paris-chandelier',
 		productionFile: '/museum/models/decor/chandelier/chandelier2.glb',
 		fallbackOnly: false,
+		pin: SHIPPED_MODEL_PINS['paris-chandelier'],
 	},
 	{
 		assetId: 'paris-table-lamp',
 		productionFile: '/museum/models/decor/oil-lamp/victorian-oil-lamp.glb',
 		fallbackOnly: false,
+		pin: SHIPPED_MODEL_PINS['paris-table-lamp'],
 	},
 	{
 		assetId: 'paris-grandfather-clock',
 		productionFile: '/museum/models/decor/clock/grandfather-clock.glb',
 		fallbackOnly: false,
+		pin: SHIPPED_MODEL_PINS['paris-grandfather-clock'],
 	},
-	{ assetId: 'paris-writing-desk', productionFile: null, fallbackOnly: true },
-	{ assetId: 'paris-portrait-frame', productionFile: null, fallbackOnly: true },
-	{ assetId: 'paris-book', productionFile: null, fallbackOnly: true },
-	{ assetId: 'paris-salon-rug', productionFile: null, fallbackOnly: true },
+	{ assetId: 'paris-writing-desk', productionFile: null, fallbackOnly: true, pin: null },
+	{ assetId: 'paris-portrait-frame', productionFile: null, fallbackOnly: true, pin: null },
+	{ assetId: 'paris-book', productionFile: null, fallbackOnly: true, pin: null },
+	{ assetId: 'paris-salon-rug', productionFile: null, fallbackOnly: true, pin: null },
 ];
 
 const SHIPPED_MODEL_BY_ASSET = new Map(SHIPPED_MODELS.map((entry) => [entry.assetId, entry]));

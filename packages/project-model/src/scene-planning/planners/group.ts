@@ -28,7 +28,8 @@ import {
 } from '../group-operations';
 import { planGroupDuplicate, planGroupTransform } from '../group-motion';
 import { frameYawToWorld } from '../frame';
-import { invalidPayload, rejected } from './planner';
+import { invalidPayload } from './planner';
+import { rejected } from './outcome';
 
 /**
  * The seven G1a group intents.

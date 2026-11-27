@@ -1,16 +1,9 @@
-import type {
-	DomainPlanner,
-	PlannerOutcome,
-	PlannerRequest,
-	PreparedCandidate,
-} from '../../f4/types';
+import type { DomainPlanner, PlannerOutcome, PlannerRequest } from '../../f4/types';
 import type { ShapeIssue } from '../../strict-shape';
 import { ShapeReader } from '../../strict-shape';
-import { replaceUnitData } from '../../units/envelope';
 import { unlinkSceneSubjects } from '../../units/experience-structure';
 import type { ExperienceUnitPayload, ProjectEnvelope } from '../../units/types';
 import { UNIT_SOURCE_KIND, UNIT_SOURCE_VERSION } from '../../units/source';
-import type { SemanticReference } from '../../references/types';
 import { framePointToWorld } from '../frame';
 import { preparePlaceObjectCandidate } from '../place-object';
 import type { SceneOperationPayload } from '../intent-payload';
@@ -41,17 +34,19 @@ import {
 import { resolveSceneSupport } from '../support';
 import type { NormalizedPlacementDefinition } from '../types';
 import type { CreatorModelResourceEntry } from '../model-resource';
+import { creatorModelDefinitionKey, creatorModelResourceEntry } from '../model-resource';
 import {
-	creatorModelDefinitionKey,
-	creatorModelResourceEntry,
-	withCreatorModelResource,
-} from '../model-resource';
+	grantShippedAssetResources,
+	shippedModelResourceEntry,
+	type ShippedAssetGrant,
+} from '../shipped-asset-resource';
 import type { ScenePlannerOptions } from './contracts';
 import {
 	SCENE_DELETE_ADMISSION,
 	SCENE_PLACEMENT_ADMISSION,
 	SCENE_PLANNER_ADMISSION,
 } from './contracts';
+import { rejected, toOutcome } from './outcome';
 import { planCreateFormIntent, planPlaceFormCopyIntent } from './forms';
 import { planGroupIntent } from './group';
 import { planCreateLightIntent, planDuplicateLightIntent, planUpdateLightIntent } from './light';
@@ -236,6 +231,25 @@ function planPlaceObject(
 		);
 	}
 
+	// A catalogue model's first placement grants its shipped asset resource and
+	// exact lock in the same accepted result as the entity. The grant reuses a
+	// matching held record and refuses any other one without rewriting it; a
+	// creator model is introduced by its own payload instead.
+	let shippedGrant: ShippedAssetGrant | null = null;
+	if (definition.creationDefaults.kind === 'model') {
+		const assetId = definition.creationDefaults.assetId;
+		const heldModelResource = request.snapshot.domain.source.units.resources.data.resources.some(
+			(resource) => resource.kind === 'model' && resource.id === assetId,
+		);
+		if (!heldModelResource && shippedModelResourceEntry(assetId) !== null) {
+			const grant = grantShippedAssetResources(request.snapshot.domain.source, [assetId]);
+			if (grant.kind === 'refused') {
+				return rejected(grant.code, grant.message, grant.diagnostics);
+			}
+			shippedGrant = grant;
+		}
+	}
+
 	const prepared = preparePlaceObjectCandidate({
 		document: request.snapshot.domain.source.units.scene.data,
 		snapshot: request.snapshot.domain.identity,
@@ -263,7 +277,7 @@ function planPlaceObject(
 		entityId: allocation.entityId,
 		scene: prepared.candidate.scene,
 	});
-	return toOutcome(request, 'place-object', result, resourceEntry);
+	return toOutcome(request, 'place-object', result, resourceEntry, shippedGrant);
 }
 
 /** The occupied X/Z extent of a definition's canonical footprint. */
@@ -366,6 +380,7 @@ function planExistingObject(
 			request,
 			kind,
 			result,
+			null,
 			null,
 			removed.length === 0 ? null : unlinkPresentations(request, removed),
 		);
@@ -497,95 +512,6 @@ function unlinkPresentations(
 	return changed ? { ...data, experiences } : null;
 }
 
-export function toOutcome(
-	request: PlannerRequest<ProjectEnvelope>,
-	kind: SceneOperationKind,
-	result: SceneOperationResult,
-	resourceEntry: CreatorModelResourceEntry | null = null,
-	unlinkedExperience: ExperienceUnitPayload | null = null,
-): PlannerOutcome<ProjectEnvelope> {
-	if (result.kind === 'rejected') {
-		return rejected(
-			result.code,
-			result.message,
-			result.diagnostics.map((issue) => issue.message),
-		);
-	}
-	const sceneSource = replaceUnitData(request.snapshot.domain.source, 'scene', result.scene);
-	const experiencedSource =
-		unlinkedExperience === null
-			? sceneSource
-			: replaceUnitData(sceneSource, 'experience', unlinkedExperience);
-	const source =
-		resourceEntry === null
-			? experiencedSource
-			: withCreatorModelResource(experiencedSource, resourceEntry);
-	if (source === null) {
-		return rejected(
-			'invalid-value',
-			'The model resource could not be added to the candidate envelope.',
-			[resourceEntry?.resource.id ?? 'model-resource'],
-		);
-	}
-	const candidate: PreparedCandidate<ProjectEnvelope> = {
-		operationId: request.intent.operationId,
-		sourceKind: request.snapshot.sourceKind,
-		sourceVersion: request.snapshot.sourceVersion,
-		source,
-		changes: [
-			{
-				kind: `scene-${kind}`,
-				subjectIds: [result.entityId],
-				fields: [...result.fields],
-			},
-			...(unlinkedExperience === null
-				? []
-				: [
-						{
-							kind: 'experience-presentations-unlinked',
-							subjectIds: [result.entityId],
-							fields: ['presentations'],
-						},
-					]),
-			...(resourceEntry === null
-				? []
-				: [
-						{
-							kind: 'resource-model-created',
-							subjectIds: [resourceEntry.resource.id],
-							fields: ['pin', 'model', 'lock'],
-						},
-					]),
-		],
-		correspondence: result.correspondence.map((entry) => ({
-			relation: entry.relation,
-			before: entry.relation === 'created' ? null : entityReference(request, entry.entityId),
-			after: entry.relation === 'retired' ? null : entityReference(request, entry.entityId),
-		})),
-		diagnostics: result.diagnostics,
-	};
-	return { kind: 'prepared', candidate };
-}
-
-function entityReference(
-	request: PlannerRequest<ProjectEnvelope>,
-	entityId: string,
-): SemanticReference {
-	return {
-		version: 1,
-		domain: 'scene',
-		revision: {
-			kind: 'exact',
-			contentRevision: request.snapshot.domain.source.units.scene.header.contentRevision,
-		},
-		subject: { kind: 'entity', id: entityId },
-		instancePath: [],
-		location: { kind: 'project-root' },
-		componentId: null,
-		capabilityId: null,
-	};
-}
-
 function composedPoint(
 	worldXZ: readonly [number, number],
 	frame: { readonly origin: readonly [number, number, number]; readonly yaw: number },
@@ -624,22 +550,5 @@ export function invalidPayload(issues: readonly ShapeIssue[]): PlannerOutcome<Pr
 		code: 'invalid-value',
 		message: 'The operation intent is not valid captured data.',
 		diagnostics: issues,
-	};
-}
-
-export function rejected(
-	code: string,
-	message: string,
-	diagnostics: readonly string[],
-): PlannerOutcome<ProjectEnvelope> {
-	return {
-		kind: 'rejected',
-		code,
-		message,
-		diagnostics: diagnostics.map((entry) => ({
-			path: '$.payload',
-			code: 'planner-refusal',
-			message: entry,
-		})),
 	};
 }

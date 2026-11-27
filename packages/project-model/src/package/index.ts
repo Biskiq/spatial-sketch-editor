@@ -47,6 +47,15 @@ export type {
 	ShippedTextureEntry,
 } from '../shipped-static';
 
+export {
+	SHIPPED_MODEL_PIN_LEDGER_VERSION,
+	SHIPPED_MODEL_PINS,
+	shippedModelContentRevision,
+	shippedModelPinLedgerIssues,
+} from '../shipped-model-pins';
+
+export type { ShippedModelPin } from '../shipped-model-pins';
+
 export type {
 	ShapeIssue,
 	ShapeValidation,

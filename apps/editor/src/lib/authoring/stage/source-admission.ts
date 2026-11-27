@@ -259,6 +259,22 @@ async function admitSourceOnce(
 	// into a validating entry point and this validated half, so admission's own
 	// validation is not immediately repeated over the same bytes (D.1/H2).
 	const read = validateProjectEnvelope(input);
+	if (read.success) {
+		// A shipped asset's revision is immutable. A cold source whose resolved
+		// asset record names another revision is refused before it can replace the
+		// open session; the finding comes from the shared envelope closure, so Save,
+		// acceptance and release answer the same way.
+		const assetRevision = read.closure.filter(
+			(finding) => finding.code === 'asset-revision-mismatch',
+		);
+		if (assetRevision.length > 0) {
+			return {
+				kind: 'refused',
+				reason: 'invalid-format',
+				issues: projectIssues(assetRevision),
+			};
+		}
+	}
 	if (!read.success) {
 		// A source refused only for unsupported dimensions is valid in every other
 		// respect. Keep that distinct from a format refusal so the host can show

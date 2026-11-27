@@ -1,0 +1,40 @@
+{
+  "formatVersion": 1,
+  "models": {
+    "paris-grand-piano": {
+      "sha256": "a360b6fcbad835f5b82fe0ba7d347538695230974d27767483a4d6fd4a08d660",
+      "byteSize": 245788,
+      "mime": "model/gltf-binary"
+    },
+    "paris-salon-chair": {
+      "sha256": "480698dafa0c4d17960db4d218e7db462a327ea86a8e7d22a8f49fb25ab6ff9e",
+      "byteSize": 298300,
+      "mime": "model/gltf-binary"
+    },
+    "paris-salon-sofa": {
+      "sha256": "a16592847a589c3edd658f076845f9bae4b53c299f3740822f27c77a6798eb9b",
+      "byteSize": 307128,
+      "mime": "model/gltf-binary"
+    },
+    "paris-salon-table": {
+      "sha256": "454a5a35caa3fd49e4173e029f634d342d92be4a54ea0bb422e7c4ae2bae3cd0",
+      "byteSize": 198956,
+      "mime": "model/gltf-binary"
+    },
+    "paris-chandelier": {
+      "sha256": "83e188c2179e8aa15a2ae87d46c8ab62a0cdc824d184903f8b25d3c2fb8e2fde",
+      "byteSize": 567424,
+      "mime": "model/gltf-binary"
+    },
+    "paris-table-lamp": {
+      "sha256": "c093a2d3b32e5f2e1be71a7efe8a5109c384735d06a789bac7af2a8251553fc2",
+      "byteSize": 264424,
+      "mime": "model/gltf-binary"
+    },
+    "paris-grandfather-clock": {
+      "sha256": "c44bfabd45da819470038502130b56f7bc6863daaadc0d48909c9d14e6361420",
+      "byteSize": 532884,
+      "mime": "model/gltf-binary"
+    }
+  }
+}

@@ -113,11 +113,7 @@
 	function openImport(): void {
 		services.stage.openContributedTask('scene-import', 'scene');
 	}
-	/**
-	 * Verified catalogue models this project can actually hold. A catalogue entity
-	 * needs its asset resource in the envelope, which only a project that already
-	 * carries it has; listing the others would offer a placement that always refuses.
-	 */
+	/** Admitted catalogue models; placement grants the shipped asset resource. */
 	/** Object Studio offers no model import and no World Library; read at each surface change. */
 	let inStudio = $state(untrack(() => services.stage.postureScoped()));
 	$effect(() => {
@@ -126,7 +122,7 @@
 			inStudio = services.stage.postureScoped();
 		});
 	});
-	const catalogueModels = $derived(visibleCatalogueModels(services.stage.snapshot(), inStudio));
+	const catalogueModels = $derived(visibleCatalogueModels(inStudio));
 	let candidate = $state<SceneCandidate | null>(null);
 	let message = $state('');
 

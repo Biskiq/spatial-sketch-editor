@@ -8,7 +8,8 @@ import {
 } from '../intent-payload';
 import type { SceneOperationResult } from '../operations';
 import { planCreateForm, planPlaceFormCopy } from '../operations';
-import { invalidPayload, rejected, toOutcome } from './planner';
+import { invalidPayload } from './planner';
+import { rejected, toOutcome } from './outcome';
 
 export function planCreateFormIntent(
 	request: PlannerRequest<ProjectEnvelope>,

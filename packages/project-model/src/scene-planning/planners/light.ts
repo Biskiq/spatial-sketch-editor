@@ -9,7 +9,8 @@ import {
 import type { SceneOperationResult } from '../operations';
 import type { LightUpdate } from '../light-operations';
 import { planCreateLight, planDuplicateLight, planUpdateLight } from '../light-operations';
-import { invalidPayload, rejected, toOutcome } from './planner';
+import { invalidPayload } from './planner';
+import { rejected, toOutcome } from './outcome';
 
 export function planCreateLightIntent(
 	request: PlannerRequest<ProjectEnvelope>,

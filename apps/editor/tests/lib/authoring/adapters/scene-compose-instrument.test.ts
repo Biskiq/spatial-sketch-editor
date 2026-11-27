@@ -18,7 +18,10 @@ import {
 	UNIT_SOURCE_VERSION,
 	type ProjectEnvelope
 } from '@portfolio/project-model/units';
-import { creatorModelResourceEntry } from '@portfolio/project-model/scene-planning';
+import {
+	creatorModelResourceEntry,
+	shippedModelResourceEntry
+} from '@portfolio/project-model/scene-planning';
 
 import SceneTransformInstrument from '$lib/authoring/adapters/scene/SceneTransformInstrument.svelte';
 import {
@@ -120,7 +123,10 @@ const MODEL_SNAPSHOT = attachUnitStageSource(
 			},
 			resources: {
 				header: { formatVersion: 3, contentRevision: 'sha256-resources' },
-				data: { formatVersion: 3, resources: [MODEL_RESOURCE, { kind: 'asset', id: 'paris-salon-chair', unresolved: null }] }
+				data: {
+					formatVersion: 3,
+					resources: [MODEL_RESOURCE, shippedModelResourceEntry('paris-salon-chair')!.resource]
+				}
 			}
 		}
 	} as unknown as ProjectEnvelope

@@ -264,6 +264,21 @@ export {
 export type { DefinitionMetadataFacts } from './metadata-identity';
 
 export {
+	grantShippedAssetResources,
+	shippedAssetLockEntry,
+	shippedModelResourceEntry,
+	SHIPPED_ASSET_LOCK_DOMAIN,
+	withShippedAssetGrant,
+} from './shipped-asset-resource';
+
+export type {
+	ShippedAssetGrant,
+	ShippedAssetGrantRefusal,
+	ShippedAssetGrantResult,
+	ShippedAssetResourceEntry,
+} from './shipped-asset-resource';
+
+export {
 	approvedModelResources,
 	CREATOR_MODEL_RECIPE,
 	creatorModelDefinition,
