@@ -46,7 +46,7 @@ function oversizedProjectDocument(projectId) {
 	const document = projectDocument('Oversized project', { id: projectId });
 	const layout = {
 		units: 'meters',
-		formatVersion: 11,
+		formatVersion: 12,
 		floor: { id: 'floor', name: 'Floor', elevation: 0 },
 		junctions: [
 			{ id: 'j-1', point: [0, 0] },

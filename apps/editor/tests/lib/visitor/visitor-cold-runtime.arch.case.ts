@@ -413,7 +413,7 @@ describe('P22.1 cold runtime + asset seam', () => {
 		expect(() => composeColdReleaseBundle({
 			document: { ...outgoing, units: { ...outgoing.units, layout: oldLayout } },
 			manifest: { releaseId: `${outgoing.id}@v1`, bytesByUri: new Map() }
-		})).toThrow('$.units.layout.header.formatVersion must be 11 for the layout unit');
+		})).toThrow('$.units.layout.header.formatVersion must be 12 for the layout unit');
 	});
 
 	it('composes an empty project store-free and disposes cleanly', async () => {

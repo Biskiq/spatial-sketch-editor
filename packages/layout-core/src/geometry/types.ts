@@ -3,6 +3,7 @@ import type { LayoutVec2 } from './coordinates';
 import type {
 	LayoutObject,
 	LayoutDerivedWallRole,
+	LayoutRegionForm,
 	LayoutWallTop,
 	WallTopProfile,
 } from '../wall/types';
@@ -618,6 +619,12 @@ export type CompiledRegion = CompiledIdentity & {
 	regionId: string;
 	role: 'floor' | 'overhead';
 	footprint: LayoutVec2[];
+	/** Authored form; absent means flat (a hand-built record). */
+	form?: LayoutRegionForm;
+	/** Datum-face world Y (floor top or overhead eave); absent derives it. */
+	datumY?: number;
+	thickness?: number;
+	/** Conservative band: lowest underside to highest top over the footprint. */
 	bottomY: number;
 	topY: number;
 	faces: { surface: 'top' | 'underside' | 'edge'; polygon: Vec3[]; normal: Vec3 }[];
@@ -629,16 +636,7 @@ export type CompiledLayoutGeometry = {
 	regions: CompiledRegion[];
 	floors: CompiledFloor[];
 	rooms: CompiledRoom[];
-	/**
-	 * Canonical physical Walls independent of Room ownership (wall-first
-	 * only; empty for legacy). Each document-global Wall appears exactly
-	 * once, keyed by `wallId` — including Walls referenced by Rooms.
-	 * Wall-first Rooms keep identity + floor/ceiling semantics + floor
-	 * polygons with empty `walls`/`openings`; Plan/3D/query consumers read
-	 * physical Walls here, never per-Room duplicates. Never invent fake
-	 * `roomId` ownership for these records — query spans/points for
-	 * physical Walls carry no `roomId`.
-	 */
+	/** Canonical physical Walls keyed by `wallId`, independent of Room ownership. */
 	walls: CompiledPhysicalWall[];
 	/**
 	 * Compiled Junction topology (wall-first only; empty/absent for

@@ -24,6 +24,7 @@ import { LAYOUT_REFERENCE_PREFIX, parseLayoutReference } from '../../plan/identi
 import type { LayoutDocumentIssue } from '../../plan/issue';
 import { MAX_LAYOUT_REGION_POINTS } from '../../room/region-validation';
 import { MAX_LAYOUT_DIMENSION_METERS } from '../../geometry/limits';
+import { parseRegionForm } from './parse-region-form';
 import { wallTopSourceIssues } from '../wall-top';
 import { parseBoundaryRefs, parseVirtualEdge } from './parse-contents';
 import {
@@ -493,11 +494,7 @@ export function parseRegion(
 	const elevation = readNumber(record.elevation, `${path}.elevation`, issues);
 	const thickness = readPositiveNumber(record.thickness, `${path}.thickness`, issues);
 	const footprint = readRecord(record.footprint, `${path}.footprint`, issues);
-	const form = readRecord(record.form, `${path}.form`, issues);
-	if (form) {
-		assertAllowedKeys(form, ['kind'], `${path}.form`, issues);
-		readEnum(form.kind, `${path}.form.kind`, ['flat'], issues);
-	}
+	const form = parseRegionForm(record.form, `${path}.form`, issues, role);
 	if (!footprint) return undefined;
 	assertAllowedKeys(footprint, ['kind', 'points'], `${path}.footprint`, issues);
 	readEnum(footprint.kind, `${path}.footprint.kind`, ['polygon'], issues);
@@ -559,7 +556,7 @@ export function parseRegion(
 		footprint: { kind: 'polygon', points },
 		elevation,
 		thickness,
-		form: { kind: 'flat' },
+		form,
 		intendedGaps,
 		...(name === undefined ? {} : { name }),
 	};

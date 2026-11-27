@@ -102,7 +102,7 @@ circumference exactly as it scales an Opening offset. Region fit-walls still ref
 (`wall_top_profile_unsupported`) until V3's roof-form arithmetic. Region relations
 and the roof fit read a Wall's top over each station interval the footprint covers, never the
 continuous hull of disjoint intervals. The landed model
-is one floor; a multi-floor payload is not accepted. Canonical reads accept format 11 only.
+is one floor; a multi-floor payload is not accepted. Canonical reads accept format 12 only.
 
 ## Spaces (persisted Room records)
 
@@ -250,22 +250,51 @@ session reading, never serialized, never in history, never in Preview, a snapsho
 
 ## Horizontal Regions
 
-A Horizontal Region is an independent, flat Layout slab with a counterclockwise polygon footprint,
-datum-relative elevation and positive thickness. **A floor region's elevation is its top; an
-overhead region's elevation is its underside.** The distinction is the elevation datum, not a
-second kind. A Region can span Spaces or sit outside them; its volume may touch another region at a
-boundary. Slabs with overlapping footprint interiors and elevation intervals refuse. Generated Room
-planes remain derived at their own elevations and may coincide with a Region surface.
+A Horizontal Region is an independent Layout slab with a counterclockwise polygon footprint,
+datum-relative elevation and positive thickness. Its authored `form` is **flat**, **shed** or
+**gable**. A floor Region is always flat; a sloped form is admitted only on an overhead Region
+(G7). **A floor region's elevation is its top; an overhead region's elevation is its underside at
+its lowest point, the eave.** The distinction is the elevation datum, not a second kind. A Region
+can span Spaces or sit outside them; its volume may touch another region at a boundary. Generated
+Room planes remain derived at their own elevations and may coincide with a Region surface.
+
+A sloped form is one profile extruded across the footprint and clipped by it: no hips, valleys,
+dormers or further joints. Let `d = (cos azimuth, sin azimuth)`, `q(p) = p · d`, and `qMin`/`qMax`
+the footprint's projected extremes. `azimuth` is stored canonically in `(-π, π]`; it points uphill
+for a shed and perpendicular to the ridge for a gable. `rise` is metres above the eave. A gable's
+`ridgeOffset` is metres from the projected mid-extent toward `qMax` and must lie strictly inside the
+half extent. With `qr = (qMin + qMax) / 2 + ridgeOffset`:
+
+```text
+shed   underside(p) = eave + rise * (q(p) - qMin) / (qMax - qMin)
+gable  underside(p) = eave + rise * (q(p) - qMin) / (qr - qMin)       q(p) <= qr
+                    = eave + rise * (qMax - q(p)) / (qMax - qr)       q(p) >= qr
+top(p) = underside(p) + thickness
+```
+
+A flat Region has no form parameters and evaluates at its datum everywhere. `regionUndersideAt` and
+`regionTopAt` are the shared evaluator pair: the codec/compiler, overhead-support query and V3b fits
+all read the same functions. `regionUndersideNormalAt` derives the true downward normal from the same
+profile, including the slope reversal across an off-centre ridge.
 
 Layout compiles each Region once into bounds, Plan records and a closed slab shared by Stage and
-Visitor representations. Top, underside and boundary edges have stable surface references. A Region
-wins a coincident generated floor pick. Declared intentional gaps keep their Wall references through
+Visitor representations. A sloped slab's top and underside are emitted as maximal planar faces on
+each side of the ridge; every crossing is shared exactly, perimeter faces are vertical, and every
+top vertex is exactly `thickness` above its underside. A concave footprint or a ridge through a
+notch may produce several faces per side. `bounds3` is conservative over the whole footprint
+(`[eave, eave + rise + thickness]`); Plan records and pick polygons keep the authored footprint. A
+flat Region keeps its format-11 face order, winding, cache key and mesh buffers byte for byte. A
+Region wins a coincident generated floor pick.
+
+Slabs with overlapping footprint interiors and elevation intervals refuse. An overhead Region's
+overlap interval is the same conservative rise band; an overlap under the high side still refuses
+even where the true underside is above the other slab. Declared intentional gaps keep their Wall references through
 topology splits and dissolves and lose the reference when that Wall is removed. No Room edit creates
 a Region.
 
-**Authoring.** **Terrace** creates a floor region and **Roof › Flat** an overhead region; other Roof
-options are deferred. Both use Ink: **Box** names two plan corners, **Line** takes corner points
-until Finish closes the ring. The Height Sheet supplies elevation; an overhead drawn at the Floor
+**Authoring.** **Terrace** creates a floor region and **Roof › Flat** an overhead region; sloped
+forms are format- and compiler-ready in V3a, while their creator interactions are V3c. Both use
+Ink: **Box** names two plan corners, **Line** takes corner points until Finish closes the ring. The Height Sheet supplies elevation; an overhead drawn at the Floor
 datum takes the Wall creation default (3 m); a new Region starts **0.10 m** thick. Creation is one
 captured, accepted Layout operation with the id derived from that capture; Undo removes it and Redo
 reuses the id.
@@ -299,7 +328,10 @@ present. `surfacesOfSpace` and `spaceOfSurface` read the oriented authored bound
 membership, each Space's floor and present lid, and whole-footprint containment for Region faces (a
 face in several Spaces is ambiguous; a straddling Region is excluded and named).
 `queryOverheadSupports` is the matching downward geometry query: closed lids and overhead-region
-undersides; open-to-sky is no lid.
+undersides; open-to-sky is no lid. For a sloped Region it evaluates the underside at the queried
+point and reports that point's true downward normal; a flat face reports exactly `(0, -1, 0)`.
+Height Sheet ticks and surface references continue to name the whole Region face, not one split
+piece.
 
 ## Canonical compiler and representation
 

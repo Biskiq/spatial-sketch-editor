@@ -99,7 +99,7 @@ describe('V2a · the Wall top source contract (P1–P6)', () => {
 	it('round-trips a level Wall canonically at the new format', () => {
 		const document = documentOf(line(), [wall('w1', 'a', 'b')]);
 		expect(document.formatVersion).toBe(LAYOUT_WALL_FIRST_FORMAT_VERSION);
-		expect(LAYOUT_WALL_FIRST_FORMAT_VERSION).toBe(11);
+		expect(LAYOUT_WALL_FIRST_FORMAT_VERSION).toBe(12);
 		const json = serializeWallFirstLayoutDocument(document);
 		expect(json).toMatch(/"top": \{\s*"kind": "level"\s*\}/);
 		const parsed = parseWallFirstLayoutDocumentJson(json);
@@ -189,7 +189,20 @@ describe('V2a · the Wall top source contract (P1–P6)', () => {
 		if (parsed.success) return;
 		expect(parsed.issues[0]!.code).toBe('unsupported_format_version');
 		expect(parsed.issues[0]!.path).toBe('$.formatVersion');
-		expect(parsed.issues[0]!.message).toContain('Recognized versions: 11');
+		expect(parsed.issues[0]!.message).toContain('Recognized versions: 12');
+	});
+
+	it('refuses the frozen format-11 payload outright', () => {
+		const v11 = readFileSync(
+			fileURLToPath(new URL('./fixtures/layout-v11-refusal.json', import.meta.url)),
+			'utf8'
+		);
+		const parsed = parseWallFirstLayoutDocumentJson(v11);
+		expect(parsed.success).toBe(false);
+		if (parsed.success) return;
+		expect(parsed.issues[0]!.code).toBe('unsupported_format_version');
+		expect(parsed.issues[0]!.path).toBe('$.formatVersion');
+		expect(parsed.issues[0]!.message).toContain('Recognized versions: 12');
 	});
 });
 

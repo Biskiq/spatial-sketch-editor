@@ -66,7 +66,7 @@ export type LayoutObject = {
  * dividing or free-standing because of the topology it is part of, never because a
  * field says so.
  *
- * **`11` is the only recognized version.** Format 8 introduced open Spaces.
+ * **`12` is the only recognized version.** Format 8 introduced open Spaces.
  * Format 9 kept their Wall, virtual-edge and overhead fields, removed Room
  * padding, and added independently authored Horizontal Regions and their names.
  * Format 10 adds the optional `round: { center, radius }` fact on Rooms and
@@ -74,10 +74,12 @@ export type LayoutObject = {
  * binary64 uncertainty-aware Round certification. Format 11 adds the required
  * Wall `top` profile: a Wall's top is `level`, `slope` or `gable`, and `height`
  * is the lowest point of that top. A level Wall compiles to the format-10 output
- * byte for byte.
+ * byte for byte. Format 12 widens an overhead Region's `form` from `flat` to
+ * `shed` and `gable`; a flat Region keeps its format-11 faces, cache key and
+ * mesh buffers byte for byte.
  * Other versions fail as `unsupported_format_version`.
  */
-export const LAYOUT_WALL_FIRST_FORMAT_VERSION = 11 as const;
+export const LAYOUT_WALL_FIRST_FORMAT_VERSION = 12 as const;
 
 /**
  * The approved closed-Wall representation is exactly 16 symmetric cubic
@@ -453,7 +455,23 @@ export type LayoutRegion = {
 	/** Floor-relative top (floor role) or underside (overhead role), in metres. */
 	elevation: number;
 	thickness: number;
-	form: { kind: 'flat' };
+	form: LayoutRegionForm;
 	intendedGaps: string[];
 	name?: string;
 };
+
+/**
+ * One Region's authored shape (format 12).
+ *
+ * A form is a profile extruded across the footprint and clipped by it: no hips,
+ * valleys, dormers or further joints. `azimuth` is a canonical plan angle in
+ * `(-pi, pi]`; it points uphill for a shed and is perpendicular to the ridge for
+ * a gable. `rise` is metres above `elevation`, the Region's eave. A gable's
+ * `ridgeOffset` is metres from the footprint's projected mid-extent toward
+ * `qMax`, and is strictly inside the half extent. Only an overhead Region may
+ * carry a non-flat form.
+ */
+export type LayoutRegionForm =
+	| { kind: 'flat' }
+	| { kind: 'shed'; rise: number; azimuth: number }
+	| { kind: 'gable'; rise: number; azimuth: number; ridgeOffset: number };

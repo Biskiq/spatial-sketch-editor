@@ -11,6 +11,7 @@ import {
 	type LayoutGeometryIssue,
 } from '../geometry/types';
 import { regionGeometryIssues, regionVerticalBand } from './region-validation';
+import { compileRegionFormFaces } from './region/form-geometry';
 import type { LayoutDocumentWallFirst, LayoutRegion } from '../wall/types';
 
 export type RetainedRegion = {
@@ -41,21 +42,20 @@ export function regionUnitBounds(regions: readonly CompiledRegion[]): LayoutBoun
 	return { min, max };
 }
 
-function compileRegion(
+/**
+ * The flat faces are deliberately built here, in the format-11 order and
+ * winding, rather than through the form compiler. T-R1 requires every flat
+ * fixture to compile to the same faces before and after V3a: a flat Region is
+ * never a zero-rise shed.
+ */
+function flatRegionFaces(
 	region: LayoutRegion,
 	floor: LayoutDocumentWallFirst['floor'],
-	authored: readonly unknown[],
-): RetainedRegion {
-	const { id: regionId, role } = region;
-	const footprint = region.footprint.points.map(([x, z]): [number, number] => [x, z]);
+): { faces: CompiledRegion['faces']; bottomY: number; topY: number } {
+	const footprint = region.footprint.points;
 	const [bottomY, topY] = regionVerticalBand(region, floor.elevation);
 	const top = footprint.map(([x, z]): Vec3 => [x, topY, z]);
 	const bottom = footprint.map(([x, z]): Vec3 => [x, bottomY, z]);
-	const bounds2 = polygonBounds2(footprint)!;
-	const bounds3: LayoutBounds3 = {
-		min: [bounds2.min[0], bottomY, bounds2.min[1]],
-		max: [bounds2.max[0], topY, bounds2.max[1]],
-	};
 	const faces: CompiledRegion['faces'] = [
 		{ surface: 'top', polygon: [...top].reverse(), normal: [0, 1, 0] },
 		{ surface: 'underside', polygon: bottom, normal: [0, -1, 0] },
@@ -71,6 +71,46 @@ function compileRegion(
 			normal: [dz / length, 0, -dx / length],
 		});
 	}
+	return { faces, bottomY, topY };
+}
+
+function compileRegion(
+	region: LayoutRegion,
+	floor: LayoutDocumentWallFirst['floor'],
+	authored: readonly unknown[],
+	index: number,
+): RetainedRegion | { readonly issue: LayoutGeometryIssue } {
+	const { id: regionId, role } = region;
+	const footprint = region.footprint.points.map(([x, z]): [number, number] => [x, z]);
+	const datumY = floor.elevation + region.elevation;
+	const compiledForm =
+		region.form.kind === 'flat'
+			? { kind: 'flat' as const, ...flatRegionFaces(region, floor) }
+			: compileRegionFormFaces(
+					{
+						role,
+						form: region.form,
+						thickness: region.thickness,
+						footprint: region.footprint.points,
+					},
+					datumY,
+				);
+	if (compiledForm.kind === 'failed') {
+		return {
+			issue: {
+				path: `$.regions[${index}].form`,
+				code: 'region_form_geometry_failed',
+				message: `Region '${regionId}' could not be compiled: ${compiledForm.message}`,
+				targetId: regionId,
+			},
+		};
+	}
+	const { faces, bottomY, topY } = compiledForm;
+	const bounds2 = polygonBounds2(footprint)!;
+	const bounds3: LayoutBounds3 = {
+		min: [bounds2.min[0], bottomY, bounds2.min[1]],
+		max: [bounds2.max[0], topY, bounds2.max[1]],
+	};
 	const parts = ['region', floor.id, regionId];
 	const cacheKey = cacheKeyOf([...parts, ...authored]);
 	const compiled: CompiledRegion = {
@@ -79,6 +119,9 @@ function compileRegion(
 		regionId,
 		role,
 		footprint,
+		form: region.form,
+		datumY,
+		thickness: region.thickness,
 		bottomY,
 		topY,
 		faces,
@@ -125,7 +168,7 @@ export function compileRegions(
 	const issues = regionGeometryIssues(document.regions);
 	if (issues.length) return { regions, polygons, aabbs, bounds3: null, issues };
 	const live = new Set<string>();
-	for (const region of document.regions) {
+	for (const [index, region] of document.regions.entries()) {
 		const authored = [
 			document.floor.id,
 			document.floor.elevation,
@@ -139,7 +182,11 @@ export function compileRegions(
 		if (retained && sameAuthored(retained.authored, authored)) {
 			reuse!.counters.regionsReused++;
 		} else {
-			retained = compileRegion(region, document.floor, authored);
+			const compiled = compileRegion(region, document.floor, authored, index);
+			if ('issue' in compiled) {
+				return { regions: [], polygons: [], aabbs: [], bounds3: null, issues: [compiled.issue] };
+			}
+			retained = compiled;
 			if (reuse) {
 				reuse.regions.set(region.id, retained);
 				reuse.counters.regionsEvaluated++;

@@ -4,7 +4,7 @@
 		"filesOver600": 127,
 		"filesOver1000": 11,
 		"filesOver1500": 0,
-		"functionsOver200": 99,
+		"functionsOver200": 98,
 		"exportStars": 0,
 		"crossPackageReexports": 0,
 		"seams": 0
@@ -522,8 +522,8 @@
 		},
 		{
 			"path": "packages/layout-core/src/geometry/types.ts",
-			"lines": 671,
-			"reason": "One compiled-geometry type vocabulary; the types must stay together so no consumer imports half a contract. Format 11 adds the compiled top profile. V2a: the Room Opening limit carries the Wall top."
+			"lines": 669,
+			"reason": "One compiled-geometry type vocabulary; the types must stay together so no consumer imports half a contract. Format 12 adds the compiled Region form facts."
 		},
 		{
 			"path": "apps/editor/src/lib/authoring/adapters/layout/layout-card-actions.ts",
@@ -1164,13 +1164,6 @@
 			"line": 95,
 			"lines": 250,
 			"reason": "The Scene object Card controller over one selected entity and one writer."
-		},
-		{
-			"file": "packages/layout-core/src/room/floor-support/overhead.ts",
-			"name": "queryOverheadSupports",
-			"line": 104,
-			"lines": 250,
-			"reason": "One overhead support query: witness collection, ordering and refusal share one candidate set."
 		},
 		{
 			"file": "apps/editor/src/lib/authoring/experience/experience-card-wiring.ts",
