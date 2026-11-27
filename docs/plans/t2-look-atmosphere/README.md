@@ -143,8 +143,8 @@ Decisions inside this:
 
 **Emitter versus fixture.** An *emitter* is the Scene light entity. Visitors never see it; they see
 its light. A *fixture* is a visible object grouped with an emitter. The model gains no new light
-type. Emitters ship now; fixture models are an asset decision (D8) and follow D8 and G1 on S8's
-separate fixture/rig track.
+type. Emitters ship now; fixture models are an asset decision (D8) on S8's separate fixture/rig
+track, planned with reusable rigs in the [D8 plan](./d8-fixtures-rigs/implementation-plan.md).
 
 **Free placement, camera-style.** A light is not bound to a ceiling or a wall. Like a Camera View
 it is a body somewhere in space plus the thing it looks at. Surfaces are a magnet during placement,
@@ -483,7 +483,8 @@ verification in the PR that implements it; the technical boundaries below are th
 | **A1 Artwork** | Import, the Artwork object, wall magnet and free placement, real-unit sizing, transparency, Visitor Preview, save and reopen, release pinning | P0 · S0 items 1 and 7 | **bump** |
 | **A2 Framing and hanging** | Four frame styles, Mat, frame colour; eye-line and neighbour guides; Replace image | A1 | — |
 | **S7 Light it** | Picture spot and Wash aimed at the selection, frustum fitted to an artwork's frame, one light for a multi-selection, one undo | S3 (richer with A1) | — |
-| **G1 Groups** | Group as one unit for every object kind: click group then member, rigid actions, group Card, *Group with …*; the Showcase rig. [Implementation plan](./g1-groups/implementation-plan.md) (G1a semantic foundation, approved specimen, G1b creator interaction with Showcase) | S3 · S7 | **bump** (Scene 13: admits Artwork members) |
+| **G1 Groups** | Group as one unit for every object kind: click group then member, rigid actions, group Card, *Group with …*; the Showcase rig. [Implementation plan](./g1-groups/implementation-plan.md) (G1a semantic foundation, approved specimen, G1b creator interaction with Showcase). Landed (#432, #434); the plan retires at D8 close | S3 · S7 | **bump** (Scene 13: admits Artwork members) |
+| **D8 Fixtures and rigs** | A small curated set of CC0 fixture models (one catalogue model grouped with one emitter), hung from a ceiling (through T1's overhead query) or a wall; any eligible group saved to My Objects and inserted as a detached, editable copy in any project; the shipped-asset closure catalogue models need. [Implementation plan](./d8-fixtures-rigs/implementation-plan.md) (D8a–D8f, D8p) | G1 · S8 My Objects | — (library `group` kind; API migration `002`) |
 | **S1 Look schema** | Types, codec, validation for §4 and §6 fields | D2, D11 · S0 report | **bump** |
 | **S2 Sky dials** | Environment control, Sky panel, Celestial Dial, edited / Reset | P0 · S0 · S1 | Scene 9 |
 | **S4 Finish** | Card row, free colour, Sheen, Paint for objects (S4a, landed); From image, Scale, Direction, creator-image delivery (S4b, in review) | P0 · S0 · S1 | — |
