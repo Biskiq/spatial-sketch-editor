@@ -1,6 +1,8 @@
 # T2.G1 · Groups
 
-**Status:** implementation plan, revision 2. The owner has decided G-1 to G-5 and Scene 13 (§9).
+**Status:** **accepted** implementation plan, revision 2. The owner has decided G-1 to G-7, Scene 13
+and the coarse-pointer set interaction (§9). After this plan merges, G1a and the specimen proceed
+independently and in parallel.
 This plan covers the G1 slice of the [T2 planning baseline](../README.md#capability-slices) and turns
 D12 and §5 *Groups* into operations, selection rules and acceptance criteria. It grants no
 implementation permission beyond G1 and creates no authority beside
@@ -73,10 +75,13 @@ it.
   domain) as a group drag. Light and Artwork handles are offered only to a drilled member. Light
   guides of the members of a selected group stay visible.
 
-### 2.3 Sets (Shift-click)
+### 2.3 Sets (Shift-click and coarse pointer)
 
 - **Normalized targets.** A set holds only top-level targets: an ungrouped Scene entity or a whole
   group. Shift-click and Index Shift-click map the hit to its top-level target and toggle it. A
+  coarse pointer has no Shift key, so the specimen defines one touch gesture for adding and removing
+  a target. Its exact form is the specimen's to choose; G1b implements the approved gesture through
+  the same toggle and the same normalization. A
   drilled member is first normalized to its group, so a set never holds both a group and one of its
   members, or two members of one group. Layout subjects are not admitted to a set; Shift-click on
   one refuses with a reason. A set that falls to one target becomes an ordinary single selection.
@@ -208,7 +213,9 @@ destination point *p*:
   coplanar tolerance, and it refuses when there is none. A candidate above the base, such as a
   mezzanine top, is not its support and is ignored. **This corrects the defect in §1**, and the same
   helper replaces the lifted branch of `move-horizontal` and `duplicate-one`, so single and group
-  moves cannot disagree.
+  moves cannot disagree (G-6, approved).
+- **Explicit reseating is unchanged.** *Place on floor*, `set-lift` and placement keep their current
+  semantics and remain the only operations that change a member's Y.
 - Whether a body intersects a slab or a wall is collision. Support candidates carry no thickness,
   and no Scene operation checks collision today; G1 adds none.
 - Lights and Artwork have no support check.
@@ -235,13 +242,16 @@ unchanged); and Turn sweeping a member off the platform (refused).
   capture keeps its exact bytes and is offered for download or explicit discard, and a sign-in
   handoff cannot overwrite it. A test seeds a Scene 12 capture under the Scene 13 reader and proves
   it is not deleted.
-- **Activation and inventory:** deploying the Scene 13 reader to any non-disposable store is an
-  owner action. Before it, G1a records on its PR a read-only inventory of the Scene 12 heads,
-  revisions, pending captures and releases in each such store, and the disposition proposed under
-  disposable alpha: left in place and unreadable by the new reader; never converted or deleted.
-  Restore is redeploying the outgoing build. Its stated losses: the outgoing reader refuses Scene 13
-  source written after activation, and its pending-Save path still deletes a capture whose
-  non-Layout stamp it cannot read. There is no migration, converter or dual reader.
+- **Activation and inventory (G-7, approved):** deploying the Scene 13 reader to any
+  non-disposable store is an owner action. Before it, G1a records on its PR a read-only inventory of
+  the Scene 12 heads, revisions, pending captures and releases in each affected store. The
+  disposition, under disposable alpha, is: stored source stays in place, unreadable by the new
+  reader and never converted or deleted; an incompatible pending capture is preserved byte for byte
+  until it is explicitly exported or discarded.
+- **Rollback:** restore is redeploying the outgoing build. The outgoing reader refuses Scene 13
+  source written after activation, and its pending-Save path would delete a capture whose non-Layout
+  stamp it cannot read. **Incompatible pending captures must therefore be exported before any
+  rollback.** There is no migration, converter or dual reader.
 
 ## 4. Fixtures
 
@@ -275,7 +285,8 @@ implementation starts (G-4). It is a design-only change that can run in parallel
 | Step | Accepted increment | Requires | Gates |
 | --- | --- | --- | --- |
 | **G1a · Semantic foundation** | §3 and §4: Scene 13; exact record scope; the rigid helper (probe first); the corrected lifted rule; the seven planners registered and accepted through F4 with history; G-3 member duplicates; pending-Save recovery for any unit; Scene.md *Clusters* rewritten; the inventory and disposition on the PR. Headless, so it claims no creator journey | — | project-model and editor unit tests, `check:api`, zero-skip DB-backed `test:api`, the version-refusal family, `test:arch` |
-| **Specimen** | A *Groups* section in the [World interaction sheet](../../../design-system/world-interaction-sheet.html): group and drill marks, hover, set selection, the group, member and set Cards, the Index row, the Erase disclosure and *Group with …*. The [Light & Sky UX](../../../../prototypes/light-and-sky-ux/index.html) *Light it* foot gains Showcase | Owner approval | Static page, no console errors, `test:arch` doc links |
+| **Specimen** | A *Groups* section in the [World interaction sheet](../../../design-system/world-interaction-sheet.html): group and drill marks, hover, set selection with both pointer and **coarse-pointer** set
+building, the group, member and set Cards, the Index row, the Erase disclosure and *Group with …*. The [Light & Sky UX](../../../../prototypes/light-and-sky-ux/index.html) *Light it* foot gains Showcase | Owner approval | Static page, no console errors, `test:arch` doc links |
 | **G1b · Creator interaction** | §2: sets with no primary plus the audit; the mapping, drill-down and Escape rung; group marks, gizmo and candidate preview; the Cards; the Index row; Erase, Duplicate and Delete routing; *Group with …*; *Light it* on a group or set; Showcase (the recipe in `light-recipes.ts` and the Light it choice); keyboard ⌘G / ⇧⌘G if free; adoption or removal of the orphan helpers | G1a; the approved specimen | Editor unit and mounted-route tests, `test:arch` (visitor isolation and the `.primary` rule), focused browser QA on the live Stage against the specimen |
 
 **Why not a separate G1c:** Showcase is one recipe in an existing module, one planner already in
@@ -327,7 +338,8 @@ or the specimen approval separates the two, Showcase moves to its own PR, and on
     disclosure, one Undo.
 14. Shift-click two paintings → *Light it* → one ungrouped Wash. Shift-click a drilled painting and
     a vase → the set holds the group and the vase, never the painting alone. With a set, every
-    audited command writes nothing, and the audit and `.primary` architecture tests pass.
+    audited command writes nothing, and the audit and `.primary` architecture tests pass. At coarse
+    pointer, the approved touch gesture builds the same normalized set.
 15. *Light it* on an ungrouped painting → *Group with “Painting”* → the group is selected. The offer
     is absent when either party is grouped and after any selection change. *Light it ▾ Showcase*
     makes three lights and one group in one Undo, none grouped with the subject.
@@ -338,7 +350,8 @@ or the specimen approval separates the two, Showcase moves to its own PR, and on
 
 - **G1a is ready to implement** once this plan merges. Everything it touches exists on main, the
   riskiest assumption (the rigid rotation helper) is probed first inside the PR, and the only
-  external step is the owner's activation and disposition at deploy.
+  external step is the owner's activation at deploy under the approved G-7 disposition.
+- **The specimen proceeds in parallel with G1a** and needs nothing from it.
 - **G1b is blocked only on the specimen.** The selection-invariant change (a set has no primary)
   is the widest edit. It is bounded by the audit test and the architecture rule, and it is
   implemented first within G1b.
@@ -353,8 +366,9 @@ or the specimen approval separates the two, Showcase moves to its own PR, and on
 | G-4 | Visual target | **Decided:** approved specimens before interaction implementation (§6) |
 | G-5 | Pivot | **Decided:** the centre of the XZ extent of the member positions |
 | Format | Scene 13 | **Decided:** strict policy; obligations in §3.5 |
-| G-6 | The lifted-support defect also affects single-object move and duplicate | **Recommended:** fix it once in G1a for both, because a group rule that differs from the single-object rule would let preview, Duplicate and Move disagree. This changes landed behaviour from "accepted inside a slab" to a refusal |
-| G-7 | Disposition of the stored Scene 12 source at activation | **Owner, at G1a deploy:** the inventory and the proposed disposition in §3.5 |
+| G-6 | Lifted support | **Decided:** corrected consistently for single and group Move/Duplicate. No collision detection; explicit reseating unchanged (§3.4) |
+| G-7 | Stored Scene 12 source at activation | **Decided:** the disposable-alpha disposition in §3.5: stored source and incompatible pending captures preserved, inventory recorded for affected stores, captures exported before any rollback |
+| G-8 | Coarse-pointer sets | **Decided:** the specimen includes a coarse-pointer set interaction (§2.3, §6) |
 
 **Contracts amended on landing:** Scene (*Clusters*, membership integrity, the duplicate rules and
 the lifted-support rule in G1a; selection and set rules in G1b); Persistence (pending recovery for
