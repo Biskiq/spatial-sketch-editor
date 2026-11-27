@@ -164,6 +164,67 @@ svg.stage:focus-visible{box-shadow:0 0 0 2px var(--leaf)}
 .op-toolbar #op-view{margin-left:auto}
 #s-opening button:focus-visible,#s-opening summary:focus-visible{outline:2px solid var(--leaf);outline-offset:2px}
 @media(max-width:850px){.op-layout{grid-template-columns:1fr}.op-layout .card{max-width:400px}}
+/* Groups (G1) reuses the Card, tag, glyph, ghost and emitter vocabulary. New here: the Index group row,
+   member rows, the set Card, the Group with offer, the Select more toggle and its Stage pill. */
+.grp-toolbar{gap:8px 12px}
+.grp-toolbar .reset{float:none}
+.grp-layout{display:grid;grid-template-columns:190px minmax(0,1fr) 340px;gap:16px;align-items:start}
+.grp-stagewrap{position:relative}
+#sv-grp .g-hov{fill:none;stroke:#4f8f6c;stroke-width:2;stroke-linejoin:round}
+#sv-grp .g-ers{fill:none;stroke:#d0412d;stroke-width:2.2;stroke-linejoin:round}
+#sv-grp .g-ref{fill:none;stroke:rgba(27,32,28,.5);stroke-width:1.1;stroke-linejoin:round}
+#sv-grp .g-case{fill:none;stroke:#fbfaf6;stroke-opacity:.7;stroke-width:3.6;stroke-linecap:round}
+#sv-grp .g-ray{fill:none;stroke:#1f2a24;stroke-opacity:.62;stroke-width:1.25;stroke-linecap:round}
+.grp-pill{position:absolute;left:50%;top:10px;transform:translateX(-50%);display:flex;align-items:center;gap:8px;padding:4px 4px 4px 12px;border-radius:20px;background:rgba(14,30,25,.8);color:#eef1ec;font-size:12px;box-shadow:0 8px 20px rgba(0,0,0,.28);white-space:nowrap;z-index:2}
+.grp-pill button{height:28px;padding:0 11px;border:0;border-radius:14px;background:#f3f0e4;color:#1f2f2a;font:600 12px system-ui;cursor:pointer}
+.grp-pill[hidden]{display:none}
+.ix{background:#fbfbf8;border:1px solid var(--hair);border-radius:12px;padding:0 0 8px;font-size:13px;overflow:hidden}
+.ix .ix-cap{margin:0;padding:8px 12px 6px;font:600 12px system-ui;color:var(--ink2);border-bottom:1px solid var(--hair)}
+.ix h3{display:flex;justify-content:space-between;margin:0;padding:8px 10px 2px 12px;color:var(--mute);font:600 10.5px system-ui;letter-spacing:.07em;text-transform:uppercase}
+.ix ul{list-style:none;margin:0;padding:0}
+.ix button{display:flex;align-items:center;gap:7px;width:100%;min-height:28px;border:0;background:none;padding:4px 8px 4px 12px;font:inherit;font-size:13px;color:var(--mute);text-align:left;cursor:pointer}
+.ix li:hover:not(.on){background:rgba(0,0,0,.035)}
+.ix li.on{background:#e8eee7}
+.ix .nm{color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.ix li.on .nm{font-weight:600}
+.ix .of{white-space:nowrap;flex:none}
+.ix .badge{margin-left:auto;font-size:11px;flex:none}
+#s-groups .ix svg,#s-groups .mrow svg{flex:none;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;color:var(--ink2)}
+#s-groups .c-list{display:grid;padding:0 12px 10px 18px}
+#s-groups .mrow{display:flex;align-items:center;gap:8px;min-height:32px;border:0;background:none;padding:5px 8px;margin:0 -8px;border-radius:7px;font:inherit;font-size:14px;color:var(--ink);text-align:left;cursor:pointer}
+#s-groups button.mrow:hover{background:var(--hover)}
+#s-groups .mrow.static{cursor:default}
+#s-groups .mrow .nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#s-groups .mrow .k{color:var(--mute);font-size:12.5px;white-space:nowrap}
+#s-groups .mrow .go{color:var(--mute);font-size:17px;line-height:1}
+#s-groups .split{display:inline-flex;align-items:center}
+#s-groups .split .chev{padding:6px 4px}
+#s-groups .cbtn:disabled{color:#a5aaa4;cursor:default}
+#s-groups .cbtn:disabled:hover{background:none}
+#s-groups .cbtn.on{background:var(--goldtint);color:var(--ink);font-weight:600}
+#s-groups .c-why{padding:0 18px 8px;font-size:12px;color:var(--mute)}
+#s-groups .c-hint{font-size:12px;color:var(--mute);padding-right:6px}
+#s-groups .offer{display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid var(--hair);padding:5px 10px 5px 18px;font-size:13px;color:var(--ink2);background:#fbfaf3}
+#s-groups .offer .cbtn{font-weight:600;color:var(--ink)}
+#s-groups .consequence{display:grid;gap:6px;margin:0 12px 10px;padding:8px 10px;border:1px solid var(--problem);border-radius:8px;background:#e9ece6;font-size:13px}
+#s-groups .consequence p{margin:0;line-height:1.4}
+#s-groups .consequence .acts{display:flex;gap:6px}
+#s-groups .consequence button{min-height:28px;padding:0 11px;border:1px solid var(--hair2);border-radius:7px;background:#fff;font:600 13px system-ui;color:var(--ink);cursor:pointer}
+#s-groups .consequence .remove{background:var(--problem);border-color:var(--problem);color:#fff}
+#s-groups .menu .det{display:block;font-size:12px;color:var(--mute);font-weight:400;margin-top:2px;line-height:1.35}
+#s-groups .menu b{font-weight:600}
+#s-groups.coarse .cbtn,#s-groups.coarse .mrow,#s-groups.coarse .consequence button,#s-groups.coarse .ix button{min-height:44px}
+#s-groups.coarse .ib{width:44px;height:44px}
+#s-groups.coarse .grp-pill button{height:44px;border-radius:22px;padding:0 16px}
+.grp-esc{font:11.5px ui-monospace,Menlo,monospace;color:var(--ink2)}
+.grp-drift{margin-top:14px}
+.grp-drift summary{cursor:pointer;font-weight:600;font-size:13px}
+.grp-table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:8px}
+.grp-table th,.grp-table td{border-top:1px solid var(--hair);padding:6px 8px;text-align:left;vertical-align:top}
+.grp-table th{color:var(--mute);font-weight:600}
+.grp-table code{font:11.5px ui-monospace,Menlo,monospace}
+@media(max-width:1180px){.grp-layout{grid-template-columns:180px minmax(0,1fr)}.grp-layout>.cardwrap{grid-column:2}}
+@media(max-width:720px){.grp-layout{grid-template-columns:minmax(0,1fr)}.grp-layout>.cardwrap{grid-column:auto}.grp-table{display:block;overflow-x:auto}}
 
 nav.toc{max-width:1160px;margin:16px auto;display:flex;gap:8px;flex-wrap:wrap;padding:0 16px}nav.toc a{color:var(--ink);border:1px solid var(--hair);background:white;border-radius:999px;padding:5px 12px;text-decoration:none;font-size:12px}header>span{color:#b6c9bd;font-size:12px}section{scroll-margin-top:90px;min-width:0}.cardrow{grid-template-columns:minmax(0,1fr)}.cardwrap{max-width:380px}button:focus-visible,a:focus-visible{outline:2px solid var(--leaf);outline-offset:2px}
 @media(max-width:720px){header{position:static;align-items:flex-start;flex-direction:column}main{grid-template-columns:minmax(0,1fr);padding:10px}.labrow,.cardrow,.op-layout{grid-template-columns:minmax(0,1fr)}.gearcol,.card,.mini{min-width:0;max-width:100%}.op-toolbar{flex-wrap:wrap}.op-toolbar #op-view{margin-left:0}.op-toolbar .seg{flex-wrap:wrap}h2{flex-wrap:wrap}.intro{padding:0 16px}.stage{max-width:100%}section{overflow:hidden}}
@@ -174,7 +235,7 @@ nav.toc{max-width:1160px;margin:16px auto;display:flex;gap:8px;flex-wrap:wrap;pa
 <header><h1>World — interaction sheet</h1><span>Visual and interaction reference</span></header>
 
 
-<nav aria-label="World demonstrations" class="toc"><a href="#s-key">Glyph set</a><a href="#s-draw">Draw</a><a href="#s-ghost">Drag preview</a><a href="#s-obj">Object gizmo</a><a href="#s-wall">Wall handles</a><a href="#s-ruler">Ruler</a><a href="#s-labels">Gear</a><a href="#s-card">Card</a><a href="#s-tx">Transform ghosts</a><a href="#s-opening">Door &amp; Window</a></nav><p class="intro">Accepted World controls, marks, drawing and transform feedback. Drag, draw and select in the live examples. Black ink marks drawing; cobalt dashes show a proposal; red dashes show refusal; gold marks selection. <b>Production code and tests remain the behavioral authority.</b> This sheet illustrates the visual and interaction language; its local state and schematic SVG are demonstration mechanisms.</p>
+<nav aria-label="World demonstrations" class="toc"><a href="#s-key">Glyph set</a><a href="#s-draw">Draw</a><a href="#s-ghost">Drag preview</a><a href="#s-obj">Object gizmo</a><a href="#s-wall">Wall handles</a><a href="#s-ruler">Ruler</a><a href="#s-labels">Gear</a><a href="#s-card">Card</a><a href="#s-tx">Transform ghosts</a><a href="#s-opening">Door &amp; Window</a><a href="#s-groups">Groups</a></nav><p class="intro">Accepted World controls, marks, drawing and transform feedback. Drag, draw and select in the live examples. Black ink marks drawing; cobalt dashes show a proposal; red dashes show refusal; gold marks selection. <b>Production code and tests remain the behavioral authority.</b> This sheet illustrates the visual and interaction language; its local state and schematic SVG are demonstration mechanisms.</p>
 <main>
 <section class="wide" id="s-key">
 <h2>Glyph set <small>the same control shapes on the four surfaces they must read on</small></h2>
@@ -280,6 +341,37 @@ nav.toc{max-width:1160px;margin:16px auto;display:flex;gap:8px;flex-wrap:wrap;pa
 <div class="card"><div class="c-head"><div class="grow"><div class="c-kind">Opening · Wall 1</div><div class="c-name" id="op-title">Door</div></div></div><div class="c-fields two" id="op-fields"></div><div class="c-acts"><button class="cbtn" id="op-place">Place</button><button class="cbtn" id="op-cancel">Cancel</button><span class="sp"></span><button aria-expanded="false" class="cbtn" id="op-more">More ▾</button></div><div class="c-more" hidden="" id="op-secondary"><div class="c-fields two" id="op-extra-fields"></div><div class="rel"><div><span>Host</span><span>Wall 1 · 8.00 m</span></div><div><span>Head</span><span id="op-head"></span></div><div><span>Profile</span><span id="op-profile-name">Rectangular</span></div><p class="note">Width and height stay at hand. Sill and offset are in More; their Stage grips offer direct manipulation.</p></div></div></div></div>
 <p class="note" style="max-width:none">The Opening specimen uses the real Layout planners, production Plan symbols and refusal wording with a schematic SVG projection and local state. It illustrates placement, slide, edge resize, height and sill controls; production tests own the full editor behavior.</p>
 
+</section>
+<section class="wide" id="s-groups">
+<h2>Groups <small>group first, drill to a member, sets with no primary (G1)</small> <button class="reset" id="grp-reset">Reset</button></h2>
+<p class="lede">Clicking a member selects its <b>group</b>; clicking it again <b>drills</b> to that member. A selected group marks every member in gold and offers one move cross on its pivot and one bent arrow; a member's own handles appear only when drilled. <kbd>Shift</kbd>-click builds a <b>set</b> of whole groups and ungrouped subjects, with no primary, so a set offers only Group, Light it and Clear. Everything here reuses this sheet's marks; new are the Index group row, member rows, the set Card, the <i>Group with …</i> offer and <i>Select more</i> for a coarse pointer.</p>
+<div class="opts grp-toolbar">
+<span>Tool</span><div aria-label="Tool" class="seg" id="grp-tool" role="group"><button data-v="select">Select</button><button data-v="erase">Erase</button></div>
+<span>Pointer</span><div aria-label="Pointer" class="seg" id="grp-ptr" role="group"><button data-v="fine">Fine</button><button data-v="coarse">Coarse</button></div>
+<button class="reset" id="grp-undo">Undo</button>
+</div>
+<div class="grp-layout">
+<div aria-label="Index, World, mock" class="ix" id="grp-index" role="group"></div>
+<div><div class="grp-stagewrap"><svg aria-label="Groups stage: a Still life group on a raised platform, a Pair of stools, an ungrouped vase and painting" class="stage" id="sv-grp" tabindex="0" viewbox="0 0 600 430"></svg><div class="grp-pill" hidden="" id="grp-pill"></div></div>
+<p aria-live="polite" class="hint" id="grp-status" role="status"></p>
+<p class="hint"><span class="grp-esc" id="grp-esc"></span></p></div>
+<div class="cardwrap" id="grp-card"></div>
+</div>
+<p class="hint">Click a member → its group · click again → that member · <kbd>Esc</kbd> → its group → clear · <kbd>Shift</kbd>-click toggles a whole group or subject (the tag says which) · drag any member body or ✥ of a selected group to move it all · drag the bent arrow to turn about the pivot (15° steps, <kbd>Alt</kbd> free) · <kbd>⌘G</kbd> groups a set, <kbd>⇧⌘G</kbd> ungroups · Coarse: <b>Select more</b> on the Card, then tap.</p>
+<p class="note" style="max-width:none">Marks: gold = selected; leaf ink = hover, drawn on what a click would select; thin ink = the drilled member's siblings; cobalt dashed = proposal; red dashed = refusal with its reason; red line = the Erase tool's target. Lights draw nothing when idle; their emitter and beam guide appear on hover, selection and while their group is selected (Light &amp; Sky §2). Plinth rests on the Layout platform, so turning Still life 180° or dragging it off the edge refuses.</p>
+<details class="grp-drift" open=""><summary>Drift this specimen found (for Creator Experience Convergence, not fixed here)</summary>
+<table class="grp-table"><thead><tr><th>Where</th><th>Conflict</th><th>Specimen</th></tr></thead><tbody>
+<tr><td>Wall-hung Artwork in a group</td><td>Plan §2.4 moves, turns and duplicates groups rigidly by +0.5 m X/Z with no check for Artwork. A wall-hung member leaves its wall. Single Artwork Duplicate offsets 0.15 m along the image so it stays on the wall (<code>artwork-planners.ts</code>).</td><td>Shows the plan literally: drag Still life forward, turn it 90° or Duplicate Pears. <b>Owner decision before G1b:</b> refuse when a wall-hung member would leave its host, or keep the plan.</td></tr>
+<tr><td>Hover ink</td><td><code>design-system.md</code> names a neutral <code>#F3F4EE</code> hover; production <code>spatial-paint.ts</code> hovers in leaf <code>#4f8f6c</code>; the Light &amp; Sky emitter hover is a pale disc with olive keyline.</td><td>Production leaf contour for bodies, the Light &amp; Sky disc for emitters.</td></tr>
+<tr><td>Erase on the group Card</td><td>Plan §2.5 puts Erase on the Card foot. <code>EditorCard</code> and the Card section above keep Erase as the last ••• danger item, disclosed in the Card with Remove and Cancel.</td><td>Erase stays in •••, with the group's consequence in the Card.</td></tr>
+<tr><td>Light &amp; Sky group strata</td><td>Light &amp; Sky §6 keeps a <i>Light group</i> slot and §8 decision 6 defers a group Brightness multiplier to grouping. G-2 shows no shared strata on a group.</td><td>No strata on the group Card; the Light &amp; Sky rows now point here.</td></tr>
+<tr><td>Escape order</td><td>Light &amp; Sky §6 lists five Escape rungs. G1 adds the drilled-member rung, and Select more adds one.</td><td>Live drag → disclosure → Select more → armed tool → member to its group → clear. The line under the Stage names the next rung.</td></tr>
+<tr><td>Member context line</td><td>Plan §2.5: <i>In “Still life” · Select group</i>. The Card here already writes context as a kind-line link (<i>Object · on Room 2</i>).</td><td><i>Artwork · in <u>Still life</u></i>; the link selects the group.</td></tr>
+<tr><td>Card foot</td><td>The Card section above keeps functions in •••; production <code>EditorCardFooter</code> carries adapter actions on the foot after <i>Advanced ⌄</i>.</td><td>Foot actions as production, named by plan §2.5; More and ••• as above.</td></tr>
+<tr><td>Gold</td><td>This sheet and <code>design-system.md</code> use <code>#d4ad45</code>; the Light &amp; Sky emitter uses <code>#d9a521</code>.</td><td>Each glyph keeps its own source.</td></tr>
+<tr><td>Group boundary helper</td><td><code>cluster-obb.ts</code> has no importers; the plan adopts it only if the approved mark needs a boundary.</td><td>No boundary: gold member contours plus the pivot cross. G1b can delete the helper.</td></tr>
+<tr><td>Group icon</td><td><code>shell-icons.ts</code> has no group glyph.</td><td>Proposes two stacked squares for the Index row and set Card.</td></tr>
+</tbody></table></details>
 </section>
 </main>
 <script>
@@ -1065,5 +1157,6 @@ document.querySelectorAll('[data-reset]').forEach((b) => b.addEventListener('cli
 renderAll();
 </script>
 <script src="world-interaction-sheet/opening.bundle.js"></script>
+<script src="world-interaction-sheet/groups.js"></script>
 </body>
 </html>
