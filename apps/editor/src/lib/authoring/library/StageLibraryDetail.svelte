@@ -60,10 +60,6 @@
 	const swappable = $derived(entry.source === 'curated' && entry.curatedId !== null);
 	const saved = $derived(entry.source === 'mine');
 
-	function tileSizeOf(entry: LibraryFinishEntry): string {
-		if (entry.source === 'mine') return '—';
-		return entry.subline.split('·').at(-1)?.trim() ?? '—';
-	}
 </script>
 
 <aside class="lb-d" aria-label={`${selectedCard.title} details`} data-library-detail={selectedCard.key}>
@@ -112,7 +108,7 @@
 	<dl class="facts">
 		<dt>{entry.source === 'curated' ? 'Material' : 'From'}</dt>
 		<dd>{entry.source === 'curated' ? entry.familyLabel : entry.source === 'mine' ? entry.materialLabel : `${entry.materialLabel}${entry.changes > 0 ? ` · ${entry.changes} change${entry.changes === 1 ? '' : 's'}` : ''}`}</dd>
-		<dt>Real size</dt><dd>{tileSizeOf(entry)}</dd>
+		<dt>Real size</dt><dd>{entry.tileSize ?? '—'}</dd>
 		<dt>Sheen</dt><dd>{entry.reading.steps.find((step) => step.id === entry.reading.current)?.label ?? 'Custom'} · r {entry.sheen.toFixed(2)}{entry.metalness >= 0.5 ? ' · metal' : ''}</dd>
 		<dt>Maps</dt><dd>{entry.hasColourImage ? 'colour · relief · sheen' : 'relief · sheen'}</dd>
 		<dt>Source</dt><dd>{entry.source === 'curated' ? 'Curated · CC0 source' : entry.source === 'mine' ? `My library${entry.libraryItem === undefined ? '' : ` · saved ${entry.libraryItem.savedAt}`}` : 'In this project'}</dd>

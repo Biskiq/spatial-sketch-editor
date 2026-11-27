@@ -38,6 +38,7 @@ function curated(id: MaterialId): LibraryFinishEntry {
 		family,
 		familyLabel: family ?? 'Other',
 		subline: 'Wood · 1 m',
+		tileSize: '1 m',
 		color: material.swatchColor ?? material.fallbackColor,
 		imageUri: null,
 		curatedId: id,
@@ -139,6 +140,15 @@ describe('Library browsing and activation', () => {
 		expect(fx.onPaint).toHaveBeenLastCalledWith(walnut, true);
 		expect(fx.q('[data-library-note]')?.textContent).toMatch(/stays open/);
 		expect(fx.onReplace).not.toHaveBeenCalled();
+	});
+
+	it('shows the measured tile size independently of a Finish card’s change count', () => {
+		const fx = render();
+		fx.q<HTMLButtonElement>(`[data-library-detail-open="${project.key}"]`)?.click();
+		flushSync();
+		const detail = fx.q(`[data-library-detail="${project.key}"]`);
+		const label = [...(detail?.querySelectorAll('dt') ?? [])].find((term) => term.textContent === 'Real size');
+		expect(label?.nextElementSibling?.textContent).toBe('1 m');
 	});
 
 	it('the detail control opens detail and never chooses; Escape closes detail first', () => {

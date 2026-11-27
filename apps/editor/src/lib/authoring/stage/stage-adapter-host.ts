@@ -9,6 +9,7 @@ import type {
 	AppearanceIssueActionKind,
 	AppearanceIssuesService,
 } from '../look/appearance-issues.svelte';
+import type { FinishAlign } from '../look/finish-align.svelte';
 import type { FinishCard, FinishCardTarget } from '../look/finish-card.svelte';
 import type { FinishEditor } from '../look/finish-editor.svelte';
 import { createMaterialProofRegistry } from '../material-proof';
@@ -122,6 +123,7 @@ export type StageLightInspection = {
 
 /** The shared Finish section consumes this narrow view of the Appearance session. */
 export type StageFinishCardPort = {
+	readonly align: Pick<FinishAlign, 'active'>;
 	readonly card: Pick<
 		FinishCard,
 		| 'cancel'

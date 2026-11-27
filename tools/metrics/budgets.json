@@ -157,7 +157,7 @@
 		},
 		{
 			"path": "apps/editor/src/lib/authoring/look/finish-library.svelte.ts",
-			"lines": 843,
+			"lines": 846,
 			"reason": "One Library draft session: browse, draft fields, target requalification, refusal and the swap hand-off share one draft and one Apply path."
 		},
 		{
@@ -679,7 +679,7 @@
 			"file": "apps/editor/src/lib/authoring/look/finish-library.svelte.ts",
 			"name": "createFinishLibraryAuthoring",
 			"line": 92,
-			"lines": 752,
+			"lines": 751,
 			"reason": "One Library draft session: its runes, planning reads, target and swap share one draft state machine."
 		},
 		{

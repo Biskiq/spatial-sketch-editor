@@ -46,6 +46,7 @@ export type LibraryFinishEntry = {
 	readonly familyLabel: string;
 	/** `Wood · 0.5 m` or `from Oak Veneer · 2 changes`. */
 	readonly subline: string;
+	readonly tileSize: string | null;
 	readonly color: string;
 	readonly imageUri: string | null;
 	readonly curatedId: MaterialId | null;
@@ -70,6 +71,11 @@ export type LibraryFinishEntry = {
 		readonly imageCount: number;
 	};
 };
+
+export function libraryTileLabel(tile: readonly [number, number]): string {
+	const value = (meters: number): string => `${Math.round(meters * 100) / 100} m`;
+	return tile[0] === tile[1] ? value(tile[0]) : `${value(tile[0])} × ${value(tile[1])}`;
+}
 
 /** One grid card. A D1 card keeps a stable key while its variant changes. */
 export type LibraryCard = {
