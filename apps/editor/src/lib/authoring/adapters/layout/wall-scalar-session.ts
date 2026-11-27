@@ -1,8 +1,11 @@
 import {
 	planExactWallHeight,
 	planExactWallThickness,
+	planSetWallTop,
 	planUpdateWallFirstOpening,
+	wallFirstWallLength,
 	type LayoutDocumentWallFirst,
+	type LayoutWallTop,
 } from '@portfolio/layout-core/wall';
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import {
@@ -35,11 +38,15 @@ import {
 	LAYOUT_OPENING_MEASURE_KIND,
 	LAYOUT_WALL_HEIGHT_KIND,
 	LAYOUT_WALL_THICKNESS_KIND,
+	LAYOUT_WALL_TOP_KIND,
 	buildLayoutIntent,
 } from './precision';
 import { curvedWallPointAt } from './precision-frames';
-import { wallRefusalWords } from './refusals';
+import { refusalSubjects, wallRefusalWords } from './refusals';
 import type { LayoutSessionPorts } from './session-ports';
+import { wallTopForKnobDrag, type WallTopKnob } from './wall-top-edits';
+import { wallHeightKnobSpot, wallTopBreakpointSpots } from './wall-top-frame';
+import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
 
 /** One captured Wall measure edit, shared by the grip and its numeric entry. */
 export function createWallScalarSession({
@@ -56,7 +63,11 @@ export function createWallScalarSession({
 			id: string;
 			subject: 'wall' | 'opening';
 			subjectId: string;
-			field: 'height' | 'thickness';
+			field: 'height' | 'thickness' | 'top';
+			/** Which top breakpoint a `top` knob drags. */
+			topKnob?: WallTopKnob;
+			/** The Wall's span, captured with the spec for the top's normalization. */
+			length: number;
 			value: number;
 			anchor: [number, number, number];
 			axis: [number, number, number];
@@ -71,6 +82,8 @@ export function createWallScalarSession({
 		lease: Extract<GestureAcquisition, { kind: 'granted' }>;
 		value: number | null;
 		candidate: LayoutDocumentWallFirst | null;
+		/** The exact top a `top` knob drag previews and commits. */
+		top: LayoutWallTop | null;
 		numeric: PlanNumericEntryState | null;
 		refusal: string | null;
 	};
@@ -80,7 +93,6 @@ export function createWallScalarSession({
 		scalarGesture = null;
 		if (current?.lease.lease.active) current.lease.lease.release();
 	}
-	const WALL_TOP_KNOB_REACH_METERS = 0.45;
 	/** The selected Wall's cap and local tangent, for straight, curved or closed. */
 	function selectedScalarTarget(adapterContext: StageAdapterContext): {
 		readonly wallId: string;
@@ -117,44 +129,87 @@ export function createWallScalarSession({
 		if (target === null) return [];
 		const source = document.walls.find((wall) => wall.id === target.wallId);
 		if (source === undefined) return [];
+		const compiled = ctx.snapshot.domain.geometry.walls.find((wall) => wall.wallId === source.id);
+		if (compiled === undefined) return [];
+		const length = wallFirstWallLength(document, source.id);
+		if (length === undefined) return [];
 		const y = ctx.snapshot.domain.datumMeters;
 		const planReading = ctx.evaluation.settledReading === 'plan';
 		const normal: LayoutVec2 = [-target.tangent[1], target.tangent[0]];
-		const knob: LayoutVec2 = [
-			target.cap[0] + target.tangent[0] * WALL_TOP_KNOB_REACH_METERS,
-			target.cap[1] + target.tangent[1] * WALL_TOP_KNOB_REACH_METERS,
-		];
-		return [
-			{
+		const unfoldState = wallUnfold.isActive(source.id) ? wallUnfold.state : null;
+		const frame = {
+			wall: compiled,
+			layout: document,
+			datumMeters: y,
+			eye: ctx.evaluation.eye,
+			unfold:
+				unfoldState === null
+					? null
+					: { state: unfoldState, sideAngle: wallUnfold.presentationAngle },
+		};
+		const specs: ScalarGesture['spec'][] = [];
+		// Height (the eave) stays reachable in both readings; while unrolled it sits
+		// on the sheet top edge instead of the hidden Wall face, so it needs no size
+		// chip disclosure.
+		const heightSpot = wallHeightKnobSpot({ ...frame, top: source.top, height: source.height });
+		if (heightSpot !== null) {
+			specs.push({
 				id: 'layout-wall-height',
 				subject: 'wall',
 				subjectId: source.id,
 				field: 'height',
+				length,
 				value: source.height,
-				// The top knob stands just past the Wall's cap on a stem from its
-				// base, clear of the body and the thickness grip. Travel is vertical,
-				// so the drawn offset never changes the planned height.
-				anchor: [knob[0], y + source.height, knob[1]],
-				stem: [knob[0], y, knob[1]],
+				anchor: [heightSpot.anchor[0], heightSpot.anchor[1], heightSpot.anchor[2]],
+				stem: [heightSpot.stem[0], heightSpot.stem[1], heightSpot.stem[2]],
 				axis: [0, 1, 0],
-			},
-			{
+			});
+		}
+		// The shape knobs: one at each end and (for a gable) one at the apex, on
+		// the same development map the Wall and the sheet draw.
+		for (const spot of wallTopBreakpointSpots({
+			...frame,
+			top: source.top,
+			height: source.height,
+		})) {
+			specs.push({
+				id: `layout-wall-top-${spot.knob}`,
+				subject: 'wall',
+				subjectId: source.id,
+				field: 'top',
+				topKnob: spot.knob as WallTopKnob,
+				length,
+				value: spot.topLocal,
+				anchor: [spot.anchor[0], spot.anchor[1], spot.anchor[2]],
+				stem: [spot.stem[0], spot.stem[1], spot.stem[2]],
+				axis: [0, 1, 0],
+			});
+		}
+		// Thickness has no sheet reading: a developed strip has one authored
+		// thickness, so the grip would be an invisible control on the canonical body.
+		if (unfoldState === null) {
+			specs.push({
 				id: 'layout-wall-thickness',
 				subject: 'wall',
 				subjectId: source.id,
 				field: 'thickness',
+				length,
 				value: source.thickness,
 				anchor: [target.cap[0], planReading ? y : y + source.height, target.cap[1]],
 				axis: [normal[0], 0, normal[1]],
-			},
-		];
+			});
+		}
+		return specs;
 	}
 	function scalarTravel(
 		ctx: StageAdapterContext,
 		spec: ScalarGesture['spec'],
 		css: readonly [number, number],
 	): number | null {
-		if (spec.field === 'height' && ctx.evaluation.settledReading === 'plan')
+		if (
+			(spec.field === 'height' || spec.field === 'top') &&
+			ctx.evaluation.settledReading === 'plan'
+		)
 			return -css[1] * ctx.evaluation.targetPlaneMetersPerCssPixel;
 		const ray = ctx.ray([css[0] + ctx.evaluation.rect.left, css[1] + ctx.evaluation.rect.top]);
 		return ray === null
@@ -194,6 +249,34 @@ export function createWallScalarSession({
 			current.refusal = null;
 			return true;
 		}
+		if (current.spec.field === 'top') {
+			const wall = document.walls.find((candidate) => candidate.id === current.spec.subjectId);
+			if (wall === undefined || current.spec.topKnob === undefined) return false;
+			const dragged = wallTopForKnobDrag({
+				current: wall.top,
+				height: wall.height,
+				knob: current.spec.topKnob,
+				topLocal: value,
+				length: current.spec.length,
+			});
+			const plan = planSetWallTop(document, current.spec.subjectId, dragged.top);
+			if (plan.kind === 'rejected') {
+				current.value = null;
+				current.candidate = null;
+				current.top = null;
+				current.refusal = wallRefusalWords(
+					plan.rejection.code,
+					plan.rejection.message,
+					refusalSubjects(document, plan.rejection.targetIds, plan.rejection.message),
+				);
+				return false;
+			}
+			current.value = value;
+			current.candidate = plan.document;
+			current.top = dragged.top;
+			current.refusal = null;
+			return true;
+		}
 		const plan =
 			current.spec.field === 'height'
 				? planExactWallHeight(document, current.spec.subjectId, value)
@@ -216,6 +299,7 @@ export function createWallScalarSession({
 		const subject = current.spec.subject;
 		const id = current.spec.subjectId;
 		const field = current.spec.field;
+		if (field === 'top' && current.top === null) return;
 		const outcome = await services.authoring.accept(
 			buildLayoutIntent({
 				kind:
@@ -223,7 +307,9 @@ export function createWallScalarSession({
 						? LAYOUT_OPENING_MEASURE_KIND
 						: field === 'height'
 							? LAYOUT_WALL_HEIGHT_KIND
-							: LAYOUT_WALL_THICKNESS_KIND,
+							: field === 'top'
+								? LAYOUT_WALL_TOP_KIND
+								: LAYOUT_WALL_THICKNESS_KIND,
 				operationId: globalThis.crypto.randomUUID(),
 				projectId: snapshot.acceptedRevision.projectId,
 				revisionId: current.revision,
@@ -248,7 +334,9 @@ export function createWallScalarSession({
 				payload:
 					subject === 'opening'
 						? { openingId: id, field: 'height', value }
-						: { wallId: id, [field]: value },
+						: field === 'top'
+							? { wallId: id, top: current.top }
+							: { wallId: id, [field]: value },
 			}),
 		);
 		publishRefusal(outcome.kind === 'refused' ? outcome.message : null);
@@ -276,6 +364,7 @@ export function createWallScalarSession({
 				lease,
 				value: null,
 				candidate: null,
+				top: null,
 				numeric: null,
 				refusal: null,
 			};
@@ -304,7 +393,7 @@ export function createWallScalarSession({
 			if (step !== null) {
 				const raw = value;
 				value = Math.round(value / step) * step;
-				if (current.spec.field === 'height') {
+				if (current.spec.field === 'height' || current.spec.field === 'top') {
 					const sill =
 						current.spec.subject === 'opening'
 							? (document.openings.find((o) => o.id === current.spec.subjectId)?.sillHeight ?? 0)
@@ -353,10 +442,10 @@ export function createWallScalarSession({
 			const key = intent.key;
 			if (key === '\t') return true;
 			if (current.numeric === null) {
-				const field = current.spec.field;
+				const numericField = current.spec.field === 'top' ? 'height' : current.spec.field;
 				const opened = planNumericEntryOpen(
-					{ host: field, fieldId: field, ownerId: current.spec.subjectId },
-					{ [field]: current.value ?? current.spec.value },
+					{ host: numericField, fieldId: numericField, ownerId: current.spec.subjectId },
+					{ [numericField]: current.value ?? current.spec.value },
 				);
 				current.numeric = planNumericEntryInput(opened, key);
 			} else current.numeric = planNumericEntryInput(current.numeric, current.numeric.text + key);
@@ -368,7 +457,8 @@ export function createWallScalarSession({
 				current.numeric = result.state;
 				current.refusal = 'Enter a positive measure.';
 			} else if (result.kind !== 'ignored') {
-				const value = result.values[current.spec.field];
+				const numericField = current.spec.field === 'top' ? 'height' : current.spec.field;
+				const value = result.values[numericField];
 				if (value !== undefined && previewScalar(value)) {
 					endScalar();
 					void commitScalar(current, value);
@@ -385,14 +475,19 @@ export function createWallScalarSession({
 	function scalarDescriptors(adapterContext: StageAdapterContext) {
 		return scalarSpecs(adapterContext)
 			.filter(
-				(spec) => spec.field !== 'height' || adapterContext.evaluation.settledReading !== 'plan',
+				(spec) =>
+					adapterContext.evaluation.settledReading !== 'plan' ||
+					(spec.field !== 'height' && spec.field !== 'top'),
 			)
-			.map(
-				(spec): StageHandleDescriptor => ({
+			.map((spec): StageHandleDescriptor => {
+				const unfolded = wallUnfold.isActive(spec.subjectId);
+				return {
 					id: spec.id,
 					kind: 'ray',
 					role: 'edit',
-					disclosedBy: 'layout-wall-size-chip',
+					...(spec.field === 'top' || (spec.field === 'height' && unfolded)
+						? {}
+						: { disclosedBy: 'layout-wall-size-chip' }),
 					anchor: spec.anchor,
 					axis: spec.axis,
 					extent: spec.value,
@@ -406,26 +501,37 @@ export function createWallScalarSession({
 					...(spec.stem === undefined ? {} : { stem: spec.stem }),
 					bothWays: spec.field === 'thickness',
 					screen:
-						spec.field === 'height'
+						spec.field === 'height' || spec.field === 'top'
 							? {
 									axis: [0, -1],
-									...(adapterContext.evaluation.settledReading === 'plan'
+									...(adapterContext.evaluation.settledReading === 'plan' && spec.field === 'height'
 										? { offset: [0, -24] as const }
 										: {}),
 								}
 							: undefined,
-					label: spec.field === 'height' ? 'Height' : 'Thickness',
+					label:
+						spec.field === 'height'
+							? 'Height'
+							: spec.field === 'top'
+								? spec.topKnob === 'apex'
+									? 'Apex top'
+									: spec.topKnob === 'start'
+										? 'Top at start'
+										: 'Top at end'
+								: 'Thickness',
 					fact: spec.field,
-					verb: spec.field,
+					verb: spec.field === 'top' ? 'Top' : spec.field,
 					planner:
 						spec.subject === 'opening'
 							? LAYOUT_OPENING_MEASURE_KIND
 							: spec.field === 'height'
 								? LAYOUT_WALL_HEIGHT_KIND
-								: LAYOUT_WALL_THICKNESS_KIND,
+								: spec.field === 'top'
+									? LAYOUT_WALL_TOP_KIND
+									: LAYOUT_WALL_THICKNESS_KIND,
 					value:
 						scalarGesture?.spec.id === spec.id && scalarGesture.numeric
-							? `${spec.field} ${scalarGesture.numeric.text}`
+							? `${spec.field === 'top' ? 'Top' : spec.field} ${scalarGesture.numeric.text}`
 							: sizeDeltaLabel(
 									scalarGesture?.spec.id === spec.id
 										? (scalarGesture.value ?? spec.value)
@@ -433,8 +539,8 @@ export function createWallScalarSession({
 									spec.value,
 								),
 					refusal: scalarGesture?.spec.id === spec.id ? scalarGesture.refusal : null,
-				}),
-			);
+				};
+			});
 	}
 
 	function scalarPreviews(y: number) {

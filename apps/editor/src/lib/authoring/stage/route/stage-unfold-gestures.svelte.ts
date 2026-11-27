@@ -56,6 +56,8 @@ import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
 import {
 	buildLayoutIntent,
 	LAYOUT_OPENING_MEASURE_KIND,
+	LAYOUT_WALL_HEIGHT_KIND,
+	LAYOUT_WALL_TOP_KIND,
 } from '$lib/authoring/adapters/layout/precision';
 import { LAYOUT_OPENING_RESIZE_KIND } from '$lib/authoring/adapters/layout/opening-planners';
 import { stageUnitRevision } from '../unit-stage-source';
@@ -245,6 +247,17 @@ export function createStageUnfoldGestures(input: StageUnfoldGesturesInput) {
 		const current = input.evaluation();
 		const layout = input.layout();
 		if (stage === null || current === null || layout === null || input.task() !== null)
+			return false;
+		// Height-family knobs are admitted as Stage marks in both readings; a press
+		// on one belongs to the Layout adapter, never to the sheet pin or peel.
+		const mark = stage.hitMark({
+			css: input.stageCss(event),
+			coarse: event.pointerType !== 'mouse',
+		});
+		if (
+			mark !== null &&
+			(mark.mark.planner === LAYOUT_WALL_HEIGHT_KIND || mark.mark.planner === LAYOUT_WALL_TOP_KIND)
+		)
 			return false;
 		if (state === null) {
 			// Before Unroll the pin is the only developed-sheet gesture: it seeds the

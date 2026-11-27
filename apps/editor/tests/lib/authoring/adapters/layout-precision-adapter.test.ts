@@ -18,7 +18,7 @@
  *    retired Dimensions task contributes nothing and opens nothing.
  */
 import { describe, expect, it } from 'vitest';
-import { createEmptyWallFirstLayoutDocument, planCreateWallFirstOpening, planWallChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import { createEmptyWallFirstLayoutDocument, planCreateWallFirstOpening, planWallChain, wallFirstWallLength, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 import { nextLayoutPresetObjectId, surfaceKey } from '@portfolio/layout-core/plan';
 import { setWorkObserver } from '@portfolio/layout-core/kernel';
 import type { PlanSourceRef } from '@portfolio/layout-core/world';
@@ -48,7 +48,7 @@ import { createUnitProject } from '../__fixtures__/unit-envelope-fixtures';
 import { createAdapter } from '$lib/authoring/adapters/layout.adapter';
 import { createLayoutInstrument } from '$lib/authoring/adapters/layout/instrument';
 import { createLayoutPlanners } from '$lib/authoring/adapters/layout/precision-planners';
-import { layoutPlanner, layoutSubjectOf, registerLayoutSurfaceLineage } from '$lib/authoring/adapters/layout/precision';
+import { LAYOUT_WALL_TOP_KIND, layoutPlanner, layoutSubjectOf, registerLayoutSurfaceLineage } from '$lib/authoring/adapters/layout/precision';
 import {
 	createDrawingPlanners,
 	LAYOUT_CIRCLE_RADIUS_KIND,
@@ -122,8 +122,35 @@ function fixtureDocument(): { document: LayoutDocumentWallFirst; wallId: string;
 	return { document: opening.document, wallId, openingId: opening.changedOpeningIds[0]! };
 }
 
-async function mount(): Promise<Mounted> {
-	const { document, wallId, openingId } = fixtureDocument();
+/** The same enclosure with its south Wall already gabled; no Unroll is entered. */
+function gableFixture(): { document: LayoutDocumentWallFirst; wallId: string; openingId: string } {
+	const fixture = fixtureDocument();
+	const length = wallFirstWallLength(fixture.document, fixture.wallId);
+	if (length === undefined) throw new Error('the gable fixture Wall has no length');
+	return {
+		...fixture,
+		document: {
+			...fixture.document,
+			walls: fixture.document.walls.map((wall) =>
+				wall.id === fixture.wallId
+					? {
+							...wall,
+							top: {
+								kind: 'gable' as const,
+								startRise: 0,
+								endRise: 0,
+								apexRise: 2,
+								apexOffset: length / 2
+							}
+						}
+					: wall
+			)
+		}
+	};
+}
+
+async function mount(fixture = fixtureDocument()): Promise<Mounted> {
+	const { document, wallId, openingId } = fixture;
 	const project: ProjectEnvelope = await createUnitProject({
 		id: PROJECT_ID,
 		name: 'S04 precision',
@@ -203,7 +230,8 @@ describe('Layout precision', () => {
 			'layout-wall-length',
 			'layout-wall-move',
 			'layout-wall-straighten',
-			'layout-wall-thickness'
+			'layout-wall-thickness',
+			'layout-wall-top'
 		]);
 		// C2 — Circle creation, exact radius and rigid body move are retained
 		// planners beside the two S02 drawing operations, not a second write path.
@@ -263,7 +291,7 @@ describe('Layout precision', () => {
 		).toBe(document.walls.find((wall) => wall.id === wallId)!.height);
 	});
 
-	it('rejects a Wall shortened below its Opening with the retained reason and writes nothing', async () => {
+	it('rejects a Wall shortened below its Opening with the Opening named and writes nothing', async () => {
 		const { facade, host, services, document, wallId, openingId } = await mount();
 		const instrument = createLayoutInstrument({
 			subject: { kind: 'wall', id: wallId },
@@ -274,10 +302,12 @@ describe('Layout precision', () => {
 		});
 		instrument.edit('height', '1.2');
 		const outcome = await instrument.commit('height');
-		// The coordinator names the refusal class; the retained planner's own reason is
-		// carried through unchanged, which is what the Instrument shows.
+		// The coordinator names the refusal class; the Height path formats it through
+		// the same V2b words as the top grip, so the Opening is named, not its id.
 		expect(outcome).toMatchObject({ kind: 'refused', code: 'planner-rejected' });
-		expect((outcome as { message: string }).message).toContain('does not fit Wall');
+		expect((outcome as { message: string }).message).toBe(
+			'This top would cut into "Window". Raise the top there or lower the Opening.'
+		);
 		// The baseline is entry one; a refused proposal adds none and moves nothing.
 		expect(host.history()).toMatchObject({ depth: 1, position: 0 });
 		expect(
@@ -772,6 +802,32 @@ describe('Layout scalar Stage grips',()=>{
   else {for(const key of '0')facade.gestureKeyIntent({kind:'type',key});facade.gestureKeyIntent({kind:'finish'});facade.pointerIntent({phase:'cancel',css:mark.tip!,evaluationId});}
   expect(facade.snapshot().canonicalJson).toBe(before);expect(host.history()).toMatchObject({depth:1,position:0});expect(facade.session.gesture()).toBeNull();facade.dispose();
  });
+	it('admits the three gable top knobs on a straight Wall without Unroll and drags the apex', async () => {
+		const { facade, host, wallId } = await mount(gableFixture());
+		selectWall(facade, wallId);
+		const marks = facade.marks();
+		for (const knob of ['start', 'apex', 'end'])
+			expect(marks.find((mark) => mark.id === `layout-wall-top-${knob}`)).toMatchObject({
+				planner: LAYOUT_WALL_TOP_KIND,
+				hidden: false
+			});
+		const apex = marks.find((mark) => mark.id === 'layout-wall-top-apex')!;
+		const before = stageEnvelope(facade.snapshot()).units.layout.data.walls.find((wall) => wall.id === wallId)!;
+		if (before.top.kind !== 'gable') throw new Error('the gable was not installed');
+		const evaluationId = facade.evaluationId()!;
+		expect(facade.pointerIntent({ phase: 'down', handleId: apex.id, css: apex.tip!, evaluationId }).claimed).toBe(true);
+		facade.pointerIntent({ phase: 'move', css: [apex.tip![0], apex.tip![1] - 30], evaluationId });
+		facade.pointerIntent({ phase: 'up', css: [apex.tip![0], apex.tip![1] - 30], evaluationId });
+		await expect.poll(() => host.history().position).toBe(1);
+		const after = stageEnvelope(facade.snapshot()).units.layout.data.walls.find((wall) => wall.id === wallId)!;
+		if (after.top.kind !== 'gable') throw new Error('the gable was lost');
+		expect(after.top.apexRise).toBeGreaterThan(before.top.apexRise);
+		expect(after.top.apexOffset).toBeCloseTo(before.top.apexOffset, 9);
+		expect((await host.undo()).kind).toBe('installed');
+		expect(stageEnvelope(facade.snapshot()).units.layout.data.walls.find((wall) => wall.id === wallId)!.top).toEqual(before.top);
+		facade.dispose();
+	});
+
 	it('keeps Opening height in the Card and exposes the 3D top-edge cursor only',async()=>{
 	  const {facade,services,openingId}=await mount();const snapshot=facade.snapshot();
   const reference={version:1 as const,domain:'layout' as const,subject:{kind:'opening' as const,id:openingId},revision:{kind:'exact' as const,contentRevision:snapshot.domain.unitRevisions.layout},instancePath:[],location:{kind:'layout-location' as const,levelId:snapshot.domain.layoutLevelId,structureInstancePath:[]},componentId:null,capabilityId:null};

@@ -18,7 +18,9 @@ import {
 import {
 	deriveLayoutWallRole,
 	isClosedWall,
+	wallTopMaxRise,
 	type LayoutDocumentWallFirst,
+	type LayoutWall,
 } from '@portfolio/layout-core/wall';
 import {
 	lookupIndexedObject,
@@ -300,6 +302,18 @@ export type LayoutWritableFact =
 	| { readonly id: string; readonly label: string; readonly value: number; readonly unit: 'deg' }
 	| { readonly id: string; readonly label: string; readonly value: string; readonly unit: 'text' };
 
+/** The top's shape fields: Rise for a profile, Apex position for a gable. */
+function wallTopWritableFacts(wall: LayoutWall): LayoutWritableFact[] {
+	if (wall.top.kind === 'level') return [];
+	const facts: LayoutWritableFact[] = [
+		{ id: 'rise', label: 'Rise', value: wallTopMaxRise(wall.top), unit: 'm' },
+	];
+	if (wall.top.kind === 'gable') {
+		facts.push({ id: 'apex', label: 'Apex position', value: wall.top.apexOffset, unit: 'm' });
+	}
+	return facts;
+}
+
 export function layoutWritableFacts(
 	document: LayoutDocumentWallFirst,
 	subject: LayoutSubject,
@@ -315,6 +329,7 @@ export function layoutWritableFacts(
 			const dimensions: LayoutWritableFact[] = [
 				{ id: 'name', label: 'Name', value: wall.name ?? '', unit: 'text' },
 				{ id: 'height', label: 'Height', value: wall.height, unit: 'm' },
+				...wallTopWritableFacts(wall),
 				{ id: 'thickness', label: 'Thickness', value: wall.thickness, unit: 'm' },
 			];
 			if (circle !== null) {
@@ -332,6 +347,7 @@ export function layoutWritableFacts(
 			return [
 				{ id: 'name', label: 'Name', value: wall.name ?? '', unit: 'text' },
 				{ id: 'height', label: 'Height', value: wall.height, unit: 'm' },
+				...wallTopWritableFacts(wall),
 				{ id: 'thickness', label: 'Thickness', value: wall.thickness, unit: 'm' },
 			];
 		}
@@ -343,12 +359,14 @@ export function layoutWritableFacts(
 			return [
 				{ id: 'name', label: 'Name', value: wall.name ?? '', unit: 'text' },
 				{ id: 'height', label: 'Height', value: wall.height, unit: 'm' },
+				...wallTopWritableFacts(wall),
 				{ id: 'thickness', label: 'Thickness', value: wall.thickness, unit: 'm' },
 			];
 		}
 		return [
 			{ id: 'name', label: 'Name', value: wall.name ?? '', unit: 'text' },
 			{ id: 'height', label: 'Height', value: wall.height, unit: 'm' },
+			...wallTopWritableFacts(wall),
 			{ id: 'thickness', label: 'Thickness', value: wall.thickness, unit: 'm' },
 			{ id: 'length', label: 'Length', value: frame.length, unit: 'm' },
 			{ id: 'angle', label: 'Angle', value: (frame.angleRadians * 180) / Math.PI, unit: 'deg' },

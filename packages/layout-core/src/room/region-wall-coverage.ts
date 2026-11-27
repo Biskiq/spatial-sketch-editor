@@ -10,7 +10,7 @@
 import type { LayoutVec2 } from '../geometry/coordinates';
 import { pointStrictlyInsidePolygon } from '../geometry/face-extraction';
 import type { CompiledPhysicalWall } from '../geometry/types';
-import { compiledWallTopRange } from '../wall/wall-top';
+import { compiledWallTopAt, compiledWallTopRange } from '../wall/wall-top';
 
 /** A closed centerline station interval, `from <= to`. */
 export type RegionWallStationInterval = readonly [from: number, to: number];
@@ -46,6 +46,62 @@ export function regionWallTopRangeY(
 }
 
 /** Lowest and highest top over every covered interval, each read on its own. */
+/**
+ * The station inside the covered intervals whose compiled top is highest.
+ *
+ * A vertical clearance cue must be drawn where it governs: a gable's apex or a
+ * slope's high end, not a nearest contact point that may sit metres away under a
+ * lower part of the top. Ties keep the earliest station so a level top's cue
+ * stays at the start of its first covered interval. A level Wall reports `null`
+ * and keeps the existing nearest-contact cue unchanged.
+ */
+export function regionWallTopGoverningStation(
+	wall: Pick<CompiledPhysicalWall, 'samples' | 'topProfile'>,
+	floorElevation: number,
+	intervals: readonly RegionWallStationInterval[],
+): { readonly station: number; readonly point: LayoutVec2; readonly topY: number } | null {
+	const profile = wall.topProfile;
+	if (profile === undefined || profile.length === 0 || intervals.length === 0) return null;
+	let station = intervals[0]![0];
+	let top = -Infinity;
+	for (const [from, to] of intervals) {
+		const candidates = [from, to, ...profile.map((point) => point.distance)];
+		for (const candidate of candidates) {
+			if (candidate < from - 1e-9 || candidate > to + 1e-9) continue;
+			const value = compiledWallTopAt(profile, candidate);
+			if (value > top + 1e-12) {
+				top = value;
+				station = Math.min(to, Math.max(from, candidate));
+			}
+		}
+	}
+	if (!Number.isFinite(top)) return null;
+	const point = wallSamplePointAt(wall.samples, station);
+	return point === null ? null : { station, point, topY: floorElevation + top };
+}
+
+/** Linear station → point on the compiled samples, clamped to the Wall's span. */
+function wallSamplePointAt(
+	samples: CompiledPhysicalWall['samples'],
+	station: number,
+): LayoutVec2 | null {
+	const last = samples[samples.length - 1];
+	if (last === undefined) return null;
+	const target = Math.min(last.distance, Math.max(0, station));
+	for (let index = 1; index < samples.length; index += 1) {
+		const from = samples[index - 1]!;
+		const to = samples[index]!;
+		if (target > to.distance + 1e-9) continue;
+		const span = to.distance - from.distance;
+		const t = span <= 1e-12 ? 0 : (target - from.distance) / span;
+		return [
+			from.point[0] + (to.point[0] - from.point[0]) * t,
+			from.point[1] + (to.point[1] - from.point[1]) * t,
+		];
+	}
+	return [...last.point] as LayoutVec2;
+}
+
 export function regionWallTopOverStations(
 	wall: Pick<CompiledPhysicalWall, 'height' | 'topProfile'>,
 	floorElevation: number,

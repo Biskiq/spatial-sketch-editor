@@ -219,6 +219,47 @@ describe('V2b · region relations read the compiled top over covered stations', 
 		}
 	);
 
+	it('draws a vertical cue at the governing station of the covered intervals', () => {
+		const base = enclosure();
+		const wallId = southWallId(base);
+		// The canopy covers stations 3..7 and its underside is 1 m above the 5 m apex.
+		const { document, regionId } = canopy(withTop(base, wallId, GABLE), [[3, -1], [7, -1], [7, 1], [3, 1]], 6);
+		const relation = readingOf(document, regionId, wallId);
+		expect(relation.measureMeters!).toBeCloseTo(1, 9);
+		expect(relation.measureSegment!.from[0]).toBeCloseTo(5, 9);
+		expect(relation.measureSegment!.from[1]).toBeCloseTo(5, 9);
+		expect(relation.measureSegment!.to[1]).toBeCloseTo(6, 9);
+	});
+
+	it('uses the highest covered station of a slope, not the nearest contact', () => {
+		const base = enclosure();
+		const wallId = southWallId(base);
+		// Covered stations 1..3 read the slope at 3.2 m to 3.6 m; the underside at 4.5
+		// leaves 0.9 m, governed by the high end at station 3.
+		const { document, regionId } = canopy(withTop(base, wallId, SLOPE), [[1, -1], [3, -1], [3, 1], [1, 1]], 4.5);
+		const relation = readingOf(document, regionId, wallId);
+		expect(relation.measureMeters!).toBeCloseTo(0.9, 9);
+		expect(relation.measureSegment!.from[0]).toBeCloseTo(3, 9);
+		expect(relation.measureSegment!.from[1]).toBeCloseTo(3.6, 9);
+		const dx = relation.measureSegment!.to[0] - relation.measureSegment!.from[0];
+		const dy = relation.measureSegment!.to[1] - relation.measureSegment!.from[1];
+		const dz = relation.measureSegment!.to[2] - relation.measureSegment!.from[2];
+		expect(Math.hypot(dx, dy, dz)).toBeCloseTo(relation.measureMeters!, 9);
+	});
+
+	it('keeps a level Wall cue at its nearest contact', () => {
+		const base = enclosure();
+		const wallId = southWallId(base);
+		const { document, regionId } = canopy(base, [[3, -1], [7, -1], [7, 1], [3, 1]], 4);
+		const relation = readingOf(document, regionId, wallId);
+		expect(relation.measureMeters!).toBeCloseTo(1, 9);
+		expect(relation.measureSegment!.from[1]).toBeCloseTo(3, 9);
+		const dx = relation.measureSegment!.to[0] - relation.measureSegment!.from[0];
+		const dy = relation.measureSegment!.to[1] - relation.measureSegment!.from[1];
+		const dz = relation.measureSegment!.to[2] - relation.measureSegment!.from[2];
+		expect(Math.hypot(dx, dy, dz)).toBeCloseTo(1, 9);
+	});
+
 	it('Fit roof reaches the apex of a covered gable', () => {
 		const base = enclosure();
 		const wallId = southWallId(base);

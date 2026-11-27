@@ -15,10 +15,11 @@
 	 * the DOM never turns an empty field into zero.
 	 */
 	import { onDestroy, untrack, type Snippet } from 'svelte';
-	import type { FixedWallEndpoint } from '@portfolio/layout-core/wall';
+	import { wallFirstWallLength, type FixedWallEndpoint } from '@portfolio/layout-core/wall';
 	import { compactMeasure, indexLabels, stageLayout } from '$lib/authoring/stage/stage-adapter-host';
 	import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 	import type { LayoutFieldState, LayoutInstrument } from './instrument';
+	import type { LayoutSubject } from './precision';
 	import type { PausedWallProposal } from './paused-proposal';
 	import { createCardFieldsInstrument } from './adapter-support';
 	import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
@@ -29,6 +30,11 @@
 		wallUnfoldOpeningAtStation,
 		wallUnfoldViewCentreStation
 	} from '$lib/layout/wall-unfold';
+	import {
+		WALL_TOP_SHAPES,
+		wallTopApexIsCentred,
+		type WallTopShape
+	} from './wall-top-edits';
 	import LayoutWallUnfold from './LayoutWallUnfold.svelte';
 	import LayoutOpeningRepeat from './LayoutOpeningRepeat.svelte';
 	import FinishCardSection, { type FinishCardPart } from '$lib/authoring/look/FinishCardSection.svelte';
@@ -289,15 +295,40 @@
 				field.id !== 'startX' && field.id !== 'startZ' && field.id !== 'endX' && field.id !== 'endZ'
 		)
 	);
+	/** The selected Wall's authored top, re-read after every accepted shape edit. */
+	const subjectWall = $derived.by(() => {
+		const document = layoutDocument;
+		const subject = instrument?.subject;
+		if (document === null || subject === undefined || subject.kind !== 'wall') return null;
+		return document.walls.find((wall) => wall.id === subject.id) ?? null;
+	});
+	const topKind = $derived(subjectWall?.top.kind ?? 'level');
+	/** A closed Wall keeps a level top, so it offers no shape choice. */
+	const topShown = $derived(
+		subjectWall !== null && !ordinaryFields.some((field) => field.id === 'radius')
+	);
+	const subjectLength = $derived(
+		layoutDocument === null || subjectWall === null
+			? null
+			: wallFirstWallLength(layoutDocument, subjectWall.id) ?? null
+	);
+	const apexCentred = $derived(
+		subjectWall !== null &&
+			subjectWall.top.kind === 'gable' &&
+			subjectLength !== null &&
+			wallTopApexIsCentred(subjectWall.top, subjectLength)
+	);
 	const primaryFields = $derived.by(() => {
 		// A closed Wall has no straight length/angle writer; its primary physical
 		// facts are radius and diameter, and both are exact Card edits.
 		const closedWall = ordinaryFields.some((field) => field.id === 'radius');
+		const shapeFields =
+			topKind === 'gable' ? ['rise', 'apex'] : topKind === 'slope' ? ['rise'] : [];
 		const ids =
 			instrument?.subject.kind === 'wall'
 				? closedWall
 					? ['radius', 'diameter', 'height']
-					: ['length', 'height']
+					: ['length', 'height', ...shapeFields]
 				: ['width', 'height'];
 		return ids.flatMap((id) => ordinaryFields.filter((field) => field.id === id));
 	});
@@ -378,11 +409,53 @@
 	});
 
 
+	/**
+	 * The same subject is still selected after an await.
+	 *
+	 * A refused edit can still rebuild the controller; the refusal it returned
+	 * belongs to this Card and must be shown. Only a selection change discards it.
+	 */
+	function stillOn(subject: LayoutSubject | undefined): boolean {
+		const current = currentController;
+		return (
+			alive &&
+			subject !== undefined &&
+			current?.subject.kind === subject.kind &&
+			current.subject.id === subject.id
+		);
+	}
+
 	async function commit(id: string): Promise<void> {
 		error = null;
 		const current = currentController;
+		const subject = current?.subject;
 		const outcome = await current?.commit(id);
-		if (!alive || current !== currentController) return;
+		if (!stillOn(subject)) return;
+		if (outcome !== undefined && (outcome.kind === 'invalid' || outcome.kind === 'refused')) {
+			error = outcome.message;
+		}
+		refresh();
+	}
+
+	/** One shape write per click; the planner owns normalization and refusal words. */
+	async function chooseTopKind(shape: WallTopShape): Promise<void> {
+		error = null;
+		const current = currentController;
+		const subject = current?.subject;
+		const outcome = await current?.setTopKind(shape);
+		if (!stillOn(subject)) return;
+		if (outcome !== undefined && (outcome.kind === 'invalid' || outcome.kind === 'refused')) {
+			error = outcome.message;
+		}
+		refresh();
+	}
+
+	async function centreApex(): Promise<void> {
+		error = null;
+		const current = currentController;
+		const subject = current?.subject;
+		const outcome = await current?.centreApex();
+		if (!stillOn(subject)) return;
 		if (outcome !== undefined && (outcome.kind === 'invalid' || outcome.kind === 'refused')) {
 			error = outcome.message;
 		}
@@ -392,8 +465,9 @@
 	async function resumePaused(): Promise<void> {
 		error = null;
 		const current = currentController;
+		const subject = current?.subject;
 		const outcome = await current?.resumePaused();
-		if (!alive || current !== currentController) return;
+		if (!stillOn(subject)) return;
 		if (outcome !== undefined && (outcome.kind === 'invalid' || outcome.kind === 'refused')) {
 			error = outcome.message;
 		}
@@ -490,6 +564,32 @@
 					field
 				)}{/each}
 		</div>
+		<!-- Level, Slope and Gable are authored shape choices, not a second
+		     geometry writer: each click submits one canonical Wall-top intent. -->
+		{#if topShown}
+			<div class="top-shape" data-layout-wall-top-shape>
+				<span class="top-shape-label">Top</span>
+				<span class="top-segmented" role="group" aria-label="Wall top shape">
+					{#each WALL_TOP_SHAPES as shape (shape.kind)}
+						<button
+							type="button"
+							data-wall-top-kind={shape.kind}
+							aria-pressed={topKind === shape.kind}
+							onclick={() => chooseTopKind(shape.kind)}
+						>{shape.label}</button>
+					{/each}
+				</span>
+				{#if topKind === 'gable'}
+					<button
+						type="button"
+						class="centre-apex"
+						data-centre-apex
+												disabled={apexCentred}
+						onclick={centreApex}
+					>Centre apex</button>
+				{/if}
+			</div>
+		{/if}
 		<!-- Repeat is an Opening operation in the Card's own writer, not a
 		     new tool: count, spacing and the planner's proposal in one place. -->
 		{#if instrument.subject.kind === 'opening'}
@@ -543,13 +643,12 @@
 		{#snippet details()}
 			<div class="precision">
 				{#if instrument.subject.kind === 'wall'}
-					<!-- Base and Top are foreseen, not built: shown, disabled, never a working field. -->
-					{#each ['Base', 'Top'] as label (label)}
-						<label class="field placeholder" title="{label} is coming soon">
-							<span>{label}</span>
-							<input type="text" value="—" disabled aria-disabled="true" data-field-placeholder={label.toLowerCase()} />
-						</label>
-					{/each}
+					<!-- Base (the Floor-side elevation) is foreseen, not built: shown,
+					     disabled, never a working field. Top is authored above. -->
+					<label class="field placeholder" title="Base is coming soon">
+						<span>Base</span>
+						<input type="text" value="—" disabled aria-disabled="true" data-field-placeholder="base" />
+					</label>
 				{/if}
 				{#each ordinaryFields.filter(field => instrument.subject.kind === 'wall' ? field.id === 'thickness' : field.id === 'offset' || field.id === 'sillHeight') as field (field.id)}
 					{@render fieldRow(field.id === 'thickness' ? { ...field, label: 'Thick' } : field)}
@@ -585,6 +684,53 @@
 		display: grid;
 		grid-template-columns: 1fr 1fr;
 		gap: 2px;
+	}
+	.top-shape {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 6px;
+		padding: 0 12px 8px;
+	}
+	.top-shape-label {
+		color: var(--shell-ink-2);
+		font-size: 10.5px;
+	}
+	.top-segmented {
+		display: inline-grid;
+		grid-auto-flow: column;
+		gap: 2px;
+		padding: 2px;
+		border: 1px solid var(--shell-field-line);
+		border-radius: 7px;
+		background: var(--shell-field);
+	}
+	.top-segmented button {
+		height: 22px;
+		min-height: 22px;
+		padding: 0 8px;
+		border: 1px solid transparent;
+		border-radius: 5px;
+		background: transparent;
+		color: var(--shell-ink-quiet);
+		font: 10.5px var(--shell-mono);
+		line-height: 1;
+	}
+	.top-segmented button[aria-pressed='true'] {
+		background: var(--shell-field-focus);
+		border-color: var(--shell-field-line-strong);
+		color: var(--shell-ink);
+	}
+	.centre-apex {
+		height: 22px;
+		min-height: 22px;
+		padding: 0 8px;
+		color: var(--shell-ink-2);
+		font: 10.5px var(--shell-mono);
+	}
+	.centre-apex:disabled {
+		opacity: 0.45;
+		cursor: default;
 	}
 	.fixed-end-option {
 		height: 18px;

@@ -27,6 +27,7 @@ import {
 	pointNearBoundary,
 	projectPointOnSegment,
 	regionWallCoveredStations,
+	regionWallTopGoverningStation,
 	regionWallTopOverStations,
 } from './region-wall-coverage';
 
@@ -64,18 +65,43 @@ export function regionWallCoveredTopRangeY(
 	planClass: RegionWallPlanClass,
 	floorElevation: number,
 ): { minY: number; maxY: number } {
-	if (planClass === 'none' || wall.samples.length < 2) {
-		return regionWallTopOverStations(wall, floorElevation, []);
-	}
-	const half = wall.thickness / 2;
-	const left = facePolyline(wall, half);
-	const right = facePolyline(wall, -half);
-	const contact =
-		planClass === 'through'
-			? null
-			: (nearestBodyStripPair(footprint, left, right, wall)?.wall ?? null);
-	const intervals = regionWallCoveredStations(footprint, wall, left, right, planClass, contact);
-	return regionWallTopOverStations(wall, floorElevation, intervals);
+	return regionWallTopOverStations(
+		wall,
+		floorElevation,
+		regionWallCoverage(footprint, wall, planClass).intervals,
+	);
+}
+
+/**
+ * The covered station intervals and nearest contact of one region/Wall pair,
+ * read once per relation. The contact is the Wall-face point a horizontal cue
+ * uses; `through` relations still keep the nearest pair for that cue but do not
+ * hand it to `regionWallCoveredStations` as a boundary contact.
+ */
+function regionWallCoverage(
+	footprint: readonly LayoutVec2[],
+	wall: Pick<
+		CompiledPhysicalWall,
+		'samples' | 'thickness' | 'startJunctionId' | 'endJunctionId' | 'length'
+	>,
+	planClass: RegionWallPlanClass,
+): {
+	readonly pair: {
+		readonly distance: number;
+		readonly region: LayoutVec2;
+		readonly wall: LayoutVec2;
+	} | null;
+	readonly intervals: ReturnType<typeof regionWallCoveredStations>;
+} {
+	if (planClass === 'none' || wall.samples.length < 2) return { pair: null, intervals: [] };
+	const left = facePolyline(wall, wall.thickness / 2);
+	const right = facePolyline(wall, -wall.thickness / 2);
+	const pair = nearestBodyStripPair(footprint, left, right, wall);
+	const contact = planClass === 'through' ? null : (pair?.wall ?? null);
+	return {
+		pair,
+		intervals: regionWallCoveredStations(footprint, wall, left, right, planClass, contact),
+	};
 }
 
 export type RegionWallMeasureSegment = {
@@ -185,12 +211,12 @@ export function regionWallRelations(
 	for (const wall of compiled.walls) {
 		const plan = regionWallPlanClass(compiledRegion.footprint, wall);
 		if (plan.planClass === 'none') continue;
-		const topRange = regionWallCoveredTopRangeY(
-			compiledRegion.footprint,
-			wall,
-			plan.planClass,
-			floor.elevation,
-		);
+		const coverage = regionWallCoverage(compiledRegion.footprint, wall, plan.planClass);
+		const topRange = regionWallTopOverStations(wall, floor.elevation, coverage.intervals);
+		// A profiled top's vertical cue is drawn at the governing station of the
+		// covered intervals, where the clearance actually is; a level Wall keeps
+		// the retained nearest-contact cue.
+		const governing = regionWallTopGoverningStation(wall, floor.elevation, coverage.intervals);
 		const reading = regionWallReading(plan, topRange, compiledRegion, region.role);
 		if (reading === null) continue;
 		const intended = reading.reading === 'gap' && region.intendedGaps.includes(wall.wallId);
@@ -202,15 +228,11 @@ export function regionWallRelations(
 			measureAxis: reading.measureAxis,
 			measureSegment: regionWallMeasureSegment(
 				reading,
-				nearestBodyStripPair(
-					compiledRegion.footprint,
-					facePolyline(wall, wall.thickness / 2),
-					facePolyline(wall, -wall.thickness / 2),
-					wall,
-				),
+				coverage.pair,
 				compiledRegion,
 				topRange.maxY,
 				region.role,
+				governing,
 			),
 			intended,
 			fit: intended ? null : reading.fit,
@@ -239,13 +261,15 @@ function regionWallMeasureSegment(
 	region: Pick<CompiledRegion, 'bottomY' | 'topY'>,
 	wallTopY: number,
 	role: LayoutRegion['role'],
+	governing: { readonly point: LayoutVec2; readonly topY: number } | null = null,
 ): RegionWallMeasureSegment | null {
 	if (reading.reading !== 'gap' || reading.measureAxis === null || pair === null) return null;
 	if (reading.measureAxis === 'vertical') {
-		return {
-			from: [pair.region[0], wallTopY, pair.region[1]],
-			to: [pair.region[0], region.bottomY, pair.region[1]],
-		};
+		const from: [number, number, number] =
+			governing === null
+				? [pair.region[0], wallTopY, pair.region[1]]
+				: [governing.point[0], governing.topY, governing.point[1]];
+		return { from, to: [from[0], region.bottomY, from[2]] };
 	}
 	// A horizontal gap is a plan distance; draw it on the face the slab shows.
 	const y = role === 'floor' ? region.topY : region.bottomY;

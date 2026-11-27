@@ -27,7 +27,13 @@ import {
 } from '@portfolio/layout-core/geometry';
 import { exceedsLayoutWallSpanAfterJunctionMove } from '@portfolio/layout-core/world';
 import { mintLayoutIdCapture, nextLayoutPresetObjectId } from '@portfolio/layout-core/plan';
-import type { FixedWallEndpoint, LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
+import {
+	wallFirstWallLength,
+	type FixedWallEndpoint,
+	type LayoutDocumentWallFirst,
+	type LayoutWall,
+	type LayoutWallTop,
+} from '@portfolio/layout-core/wall';
 import type { AuthoringIntent } from '@portfolio/project-model/f4';
 import type { SemanticReference } from '@portfolio/project-model/references';
 import { perfMark } from '$lib/platform/perf-marks';
@@ -45,6 +51,7 @@ import {
 	LAYOUT_PLINTH_PLACE_KIND,
 	LAYOUT_WALL_HEIGHT_KIND,
 	LAYOUT_WALL_THICKNESS_KIND,
+	LAYOUT_WALL_TOP_KIND,
 	buildLayoutIntent,
 	isLayoutOpeningField,
 	parseMeasureInput,
@@ -52,6 +59,14 @@ import {
 	type LayoutSubject,
 } from './precision';
 import { wallManipulationIntent } from './precision-intents';
+import {
+	wallTopApexIsCentred,
+	wallTopForShape,
+	wallTopWithApexPosition,
+	wallTopWithCentredApex,
+	wallTopWithRise,
+	type WallTopShape,
+} from './wall-top-edits';
 import { wallRefusalWords } from './refusals';
 import { circleRadiusIntent } from './drawing-planners';
 
@@ -119,6 +134,10 @@ export type LayoutInstrument = {
 	/** The endpoint an exact length/angle edit keeps fixed. Explicit, never inferred. */
 	fixedEndpoint(): FixedWallEndpoint;
 	setFixedEndpoint(endpoint: FixedWallEndpoint): void;
+	/** The V2c shape write: Level, Slope or Gable, in one history entry. */
+	setTopKind(shape: WallTopShape): Promise<LayoutInstrumentOutcome>;
+	/** The V2c one-shot: keep the gable's rises and put its apex at mid-length. */
+	centreApex(): Promise<LayoutInstrumentOutcome>;
 	/** The current raw placement inputs (working-plane X/Z). */
 	placement(): { readonly x: string; readonly z: string; readonly error: string | null };
 	setPlacement(x: string, z: string): void;
@@ -194,6 +213,14 @@ export function createLayoutInstrument(options: LayoutInstrumentOptions): Layout
 	let proposal = false;
 	/** The explicit fixed endpoint for the next exact length/angle edit. */
 	let fixedEndpoint: FixedWallEndpoint = 'start';
+	/**
+	 * The shape this controller has accepted, so a second click on the active
+	 * shape is a true no-op before the adapter rebinds to the new source.
+	 */
+	let authoredTop: LayoutWallTop | null =
+		options.subject.kind === 'wall'
+			? (options.document.walls.find((wall) => wall.id === options.subject.id)?.top ?? null)
+			: null;
 
 	/**
 	 * The first keystroke of a proposal takes the host lease; it is not history.
@@ -234,6 +261,44 @@ export function createLayoutInstrument(options: LayoutInstrumentOptions): Layout
 			text: text.get(id) ?? '',
 			error: errors.get(id) ?? null,
 		};
+	}
+
+	function subjectWall(): LayoutWall | null {
+		if (options.subject.kind !== 'wall') return null;
+		return options.document.walls.find((wall) => wall.id === options.subject.id) ?? null;
+	}
+
+	function wallTopIntent(top: LayoutWallTop): AuthoringIntent {
+		return buildLayoutIntent({
+			kind: LAYOUT_WALL_TOP_KIND,
+			operationId: mint(),
+			projectId: options.projectId,
+			revisionId: options.port.acceptedRevision().revisionId,
+			contentRevision: options.contentRevision,
+			levelId,
+			targets: [reference()],
+			payload: { wallId: options.subject.id, top },
+		});
+	}
+
+	function sameTop(left: LayoutWallTop, right: LayoutWallTop): boolean {
+		return JSON.stringify(left) === JSON.stringify(right);
+	}
+
+	async function submitWallTop(top: LayoutWallTop): Promise<LayoutInstrumentOutcome> {
+		if (inFlight) {
+			releaseProposal();
+			return { kind: 'busy' };
+		}
+		beginProposal();
+		try {
+			const outcome = await submit(wallTopIntent(top));
+			if (outcome.kind === 'refused') errors.set('top', outcome.message);
+			else if (outcome.kind === 'accepted') authoredTop = top;
+			return outcome;
+		} finally {
+			releaseProposal();
+		}
 	}
 
 	function reference(): SemanticReference {
@@ -277,6 +342,51 @@ export function createLayoutInstrument(options: LayoutInstrumentOptions): Layout
 		fixedEndpoint: () => fixedEndpoint,
 		setFixedEndpoint(endpoint) {
 			if (endpoint === 'start' || endpoint === 'end') fixedEndpoint = endpoint;
+		},
+		async setTopKind(shape) {
+			const wall = subjectWall();
+			const currentTop = authoredTop;
+			if (wall === null || currentTop === null) return { kind: 'unknown-subject' };
+			if (currentTop.kind === shape) return { kind: 'accepted' };
+			const length = wallFirstWallLength(options.document, wall.id);
+			if (length === undefined) {
+				return {
+					kind: 'refused',
+					code: 'unavailable',
+					message: 'This Wall has no measurable length to shape.',
+				};
+			}
+			const top = wallTopForShape(shape, length, currentTop);
+			if (sameTop(top, currentTop)) return { kind: 'accepted' };
+			return submitWallTop(top);
+		},
+		async centreApex() {
+			const wall = subjectWall();
+			const currentTop = authoredTop;
+			if (wall === null || currentTop === null) return { kind: 'unknown-subject' };
+			if (currentTop.kind !== 'gable') {
+				return {
+					kind: 'refused',
+					code: 'unavailable',
+					message: 'Only a gable top has an Apex position to centre.',
+				};
+			}
+			const length = wallFirstWallLength(options.document, wall.id);
+			if (length === undefined)
+				return {
+					kind: 'refused',
+					code: 'unavailable',
+					message: 'This Wall has no measurable length.',
+				};
+			if (wallTopApexIsCentred(currentTop, length)) return { kind: 'accepted' };
+			const top = wallTopWithCentredApex(currentTop, length);
+			if (top === null)
+				return {
+					kind: 'refused',
+					code: 'unavailable',
+					message: 'Only a gable top has an Apex position.',
+				};
+			return submitWallTop(top);
 		},
 		fields() {
 			return layoutWritableFacts(options.document, options.subject)
@@ -359,6 +469,8 @@ export function createLayoutInstrument(options: LayoutInstrumentOptions): Layout
 					id === 'radius' ||
 					id === 'diameter' ||
 					id === 'height' ||
+					id === 'rise' ||
+					id === 'apex' ||
 					id === 'thickness' ||
 					isLayoutOpeningField(id);
 				if (dimension && exceedsLayoutDimension(parsed.value)) {
@@ -368,6 +480,45 @@ export function createLayoutInstrument(options: LayoutInstrumentOptions): Layout
 						code: 'dimension_out_of_range',
 						message: LAYOUT_DIMENSION_LIMIT_MESSAGE,
 					};
+				}
+
+				// **The V2c top shape.** Rise and Apex position are not independent
+				// scalar writes: each one is the exact top it implies, submitted through
+				// `planSetWallTop`, so the authored shape stays one normalized record and
+				// a lowered top's Opening refusal names the Opening.
+				if (options.subject.kind === 'wall' && (id === 'rise' || id === 'apex')) {
+					const wall = subjectWall();
+					const currentTop = authoredTop;
+					if (wall === null || currentTop === null) return { kind: 'unknown-subject' };
+					if (currentTop.kind === 'level') {
+						const reason =
+							id === 'rise'
+								? 'A level top has no Rise. Choose Slope or Gable first.'
+								: 'Only a gable top has an Apex position.';
+						errors.set(id, reason);
+						return { kind: 'refused', code: 'unavailable', message: reason };
+					}
+					if (parsed.value <= 0) {
+						const reason = 'Enter a value greater than zero.';
+						errors.set(id, reason);
+						return { kind: 'invalid', code: 'malformed', message: reason };
+					}
+					const top =
+						id === 'rise'
+							? wallTopWithRise(currentTop, parsed.value)
+							: wallTopWithApexPosition(currentTop, parsed.value);
+					if (top === null) {
+						const reason = `"${current.label}" has no writer on this top shape.`;
+						errors.set(id, reason);
+						return { kind: 'refused', code: 'unavailable', message: reason };
+					}
+					const outcome = await submit(wallTopIntent(top));
+					if (outcome.kind === 'refused') errors.set(id, outcome.message);
+					else if (outcome.kind === 'accepted') {
+						authoredTop = top;
+						updateAccepted(id, parsed.value);
+					}
+					return outcome;
 				}
 
 				// A closed Wall's radius and diameter are exact physical writes.

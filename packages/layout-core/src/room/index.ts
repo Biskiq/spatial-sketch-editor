@@ -87,6 +87,7 @@ export {
 export {
 	type RegionWallStationInterval,
 	regionWallCoveredStations,
+	regionWallTopGoverningStation,
 	regionWallTopOverStations,
 	regionWallTopRangeY,
 } from './region-wall-coverage';

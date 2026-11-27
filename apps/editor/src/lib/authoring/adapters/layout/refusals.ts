@@ -35,6 +35,7 @@ export type RefusalSubjects = {
 export function refusalSubjects(
 	document: LayoutDocumentWallFirst,
 	ids: readonly string[] | undefined,
+	message = '',
 ): RefusalSubjects {
 	let openingName: string | undefined;
 	let roomName: string | undefined;
@@ -47,6 +48,13 @@ export function refusalSubjects(
 			const room = document.rooms.find((entry) => entry.id === id);
 			if (room) roomName = room.name;
 		}
+	}
+	// A topology rejection names only the Wall, but its diagnostic still quotes
+	// the Opening id. Resolve that id so the creator reads the Opening's name.
+	if (openingName === undefined) {
+		const quotedId = /Opening '([^']+)'/.exec(message)?.[1];
+		const opening = quotedId ? document.openings.find((entry) => entry.id === quotedId) : undefined;
+		if (opening) openingName = opening.name ?? (opening.kind === 'window' ? 'Window' : 'Door');
 	}
 	return {
 		...(openingName !== undefined ? { openingName } : {}),
@@ -123,7 +131,6 @@ export function wallRefusalWords(
 		case 'opening_host_wall_unresolved':
 		case 'opening_set_invalid':
 		case 'opening_over_height':
-		case 'wall_height_below_opening':
 		case 'opening_dimensions_invalid':
 		case 'arch_profile_width_invalid':
 		case 'arch_profile_height_invalid':
@@ -134,6 +141,7 @@ export function wallRefusalWords(
 			return 'These Walls’ tops do not meet as one level, slope or gable. Align or level them to join.';
 		case 'wall_top_apex_outside':
 			return 'This change would move the top’s apex past the end of the Wall. Make the Wall longer or move the apex first.';
+		case 'wall_height_below_opening':
 		case 'wall_top_below_opening':
 			return `This top would cut into ${quoted(subjects.openingName, 'an Opening')}. Raise the top there or lower the Opening.`;
 		case 'closed_wall_level_only':
