@@ -259,7 +259,7 @@ describe('P23.3 canonical Opening domain operations', () => {
 		);
 		const rejected = rejection(plan);
 		expect(rejected.code).toBe('opening_set_invalid');
-		expect(rejected.message).toContain("does not fit under Wall 'wall-e'");
+		expect(rejected.message).toContain("does not fit Wall 'wall-e' top");
 	});
 
 	it('updates exact fields, preserves the host/Wall ID, and rejects no-ops', () => {

@@ -457,7 +457,7 @@ describe('V2a · an Opening fits under the lowest top over its interval (P7)', (
 		expect(issues[0]!.openingId).toBe('window');
 		expect(issues[0]!.wallId).toBe('w1');
 		expect(issues[0]!.message).toContain("Opening 'window'");
-		expect(issues[0]!.message).toContain("under Wall 'w1' top");
+		expect(issues[0]!.message).toContain("does not fit Wall 'w1' top");
 	});
 });
 
