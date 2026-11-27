@@ -73,6 +73,8 @@ export function createWallScalarSession({
 			axis: [number, number, number];
 			/** A top knob's stem foot (review pass 2 §6); absent for plain rays. */
 			stem?: [number, number, number];
+			/** A legibility-only screen shift; the world anchor stays canonical. */
+			screenOffset?: readonly [number, number];
 		};
 		evaluationId: string;
 		revision: string;
@@ -184,6 +186,25 @@ export function createWallScalarSession({
 				stem: [spot.stem[0], spot.stem[1], spot.stem[2]],
 				axis: [0, 1, 0],
 			});
+		}
+		// A profiled Wall's eave is also its start or end breakpoint, so the Height
+		// grip and that top knob would otherwise share one point and hide each
+		// other. Shift only the Height glyph in screen space: its world station and
+		// value stay canonical, and both grips keep their own hit target.
+		const heightSpec = specs.find((spec) => spec.field === 'height');
+		if (
+			heightSpec !== undefined &&
+			specs.some(
+				(spec) =>
+					spec.field === 'top' &&
+					Math.hypot(
+						spec.anchor[0] - heightSpec.anchor[0],
+						spec.anchor[1] - heightSpec.anchor[1],
+						spec.anchor[2] - heightSpec.anchor[2],
+					) < 1e-6,
+			)
+		) {
+			heightSpec.screenOffset = [-30, 0];
 		}
 		// Thickness has no sheet reading: a developed strip has one authored
 		// thickness, so the grip would be an invisible control on the canonical body.
@@ -506,7 +527,9 @@ export function createWallScalarSession({
 									axis: [0, -1],
 									...(adapterContext.evaluation.settledReading === 'plan' && spec.field === 'height'
 										? { offset: [0, -24] as const }
-										: {}),
+										: spec.screenOffset !== undefined
+											? { offset: spec.screenOffset }
+											: {}),
 								}
 							: undefined,
 					label:

@@ -805,12 +805,21 @@ describe('Layout scalar Stage grips',()=>{
 	it('admits the three gable top knobs on a straight Wall without Unroll and drags the apex', async () => {
 		const { facade, host, wallId } = await mount(gableFixture());
 		selectWall(facade, wallId);
+		expect(facade.activateDisclosure('layout-wall-size-chip')).toBe(true);
 		const marks = facade.marks();
 		for (const knob of ['start', 'apex', 'end'])
 			expect(marks.find((mark) => mark.id === `layout-wall-top-${knob}`)).toMatchObject({
 				planner: LAYOUT_WALL_TOP_KIND,
 				hidden: false
 			});
+		// The Height grip shares the eave with Top at start: it keeps the canonical
+		// world anchor but is shifted in screen space so neither glyph hides the other.
+		const heightMark = marks.find((mark) => mark.id === 'layout-wall-height')!;
+		const startMark = marks.find((mark) => mark.id === 'layout-wall-top-start')!;
+		expect(heightMark.hidden).toBe(false);
+		expect(Math.abs(heightMark.anchor[0] - startMark.anchor[0])).toBeGreaterThanOrEqual(30);
+		expect(facade.hitMark({ css: heightMark.anchor, coarse: false })?.id).toBe('layout-wall-height');
+		expect(facade.hitMark({ css: startMark.anchor, coarse: false })?.id).toBe('layout-wall-top-start');
 		const apex = marks.find((mark) => mark.id === 'layout-wall-top-apex')!;
 		const before = stageEnvelope(facade.snapshot()).units.layout.data.walls.find((wall) => wall.id === wallId)!;
 		if (before.top.kind !== 'gable') throw new Error('the gable was not installed');
