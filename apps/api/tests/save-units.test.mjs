@@ -17,6 +17,7 @@ import test, { after, before } from 'node:test';
 
 import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core/wall';
 import { collectEnvelopeImageRequirements } from '@portfolio/project-model/project-images';
+import { shippedModelResourceEntry } from '@portfolio/project-model/scene-planning';
 import { readRecipe, recipeHash } from '@portfolio/project-model/materials';
 import { SAVE_CONTENT_IDENTITY_SCHEME, readSaveRequest } from '@portfolio/project-model/save';
 import {
@@ -1010,4 +1011,91 @@ test('Artwork Save verifies project bytes and release preparation pins each plac
 	assert.equal(saved.version, 2);
 	store.objects.delete(pins[0].objectKey);
 	assert.deepEqual(await saveAcceptedSource(pool, owner, request, store), saved);
+});
+
+test('a shipped asset record at its production pin saves and round-trips', async () => {
+	const projectId = nextProjectId();
+	createdProjects.push(projectId);
+	const entry = shippedModelResourceEntry('paris-salon-chair');
+	assert.ok(entry, 'the salon chair has a production pin');
+	const envelope = await unitEnvelope(projectId, 'Pinned shipped asset', {
+		resources: [entry.resource],
+		lockEntries: [entry.lock],
+		sceneEntities: [
+			{
+				id: 'entity-salon-chair',
+				kind: 'model',
+				name: 'Salon chair',
+				assetId: 'paris-salon-chair',
+				fallback: 'generic',
+				position: [0, 0, 0],
+				rotation: [0, 0, 0]
+			}
+		]
+	});
+	const read = await readUnitEnvelopeForSave(serializeProjectEnvelope(envelope));
+	assert.equal(read.kind, 'read');
+	const acknowledgement = await save(pool, `owner:${randomUUID()}`, await requestFor(envelope));
+	assert.equal(acknowledgement.version, 1);
+	const stored = await pool.query('SELECT document FROM project_versions WHERE project_id = $1 AND version = 1', [projectId]);
+	assert.deepEqual(
+		stored.rows[0].document.units.resources.data.resources.find((resource) => resource.id === 'paris-salon-chair'),
+		entry.resource
+	);
+});
+
+// shipped-asset-audit: intentional-mismatch — this fixture exists to prove the refusal.
+test('a shipped asset record whose revision is not the production pin refuses before any write', async () => {
+	const projectId = nextProjectId();
+	const tampered = `sha256-${'0'.repeat(64)}`;
+	const envelope = await unitEnvelope(projectId, 'Tampered shipped asset', {
+		resources: [
+			{ kind: 'asset', id: 'paris-salon-chair', contentRevision: tampered, pin: null, unresolved: null }
+		],
+		lockEntries: [
+			{
+				domain: 'resource:asset',
+				subjectKind: 'resource',
+				subjectId: 'paris-salon-chair',
+				instancePath: [],
+				contentRevision: tampered,
+				requiredCapabilities: [],
+				pin: null
+			}
+		],
+		sceneEntities: [
+			{
+				id: 'entity-tampered-chair',
+				kind: 'model',
+				name: 'Salon chair',
+				assetId: 'paris-salon-chair',
+				fallback: 'generic',
+				position: [0, 0, 0],
+				rotation: [0, 0, 0]
+			}
+		]
+	});
+	const read = await readUnitEnvelopeForSave(serializeProjectEnvelope(envelope));
+	assert.equal(read.kind, 'refused');
+	assert.equal(read.code, 'invalid-project');
+	assert.ok(read.issues.some((issue) => issue.code === 'asset-revision-mismatch'));
+	const captured = await captureUnitSave({
+		snapshot: {
+			acceptedRevision: envelope.acceptedRevision,
+			sourceContentId: await computeEnvelopeSourceContentId(envelope),
+			sourceKind: 'unit-envelope',
+			sourceVersion: UNIT_ENVELOPE_SOURCE_VERSION,
+			domain: {
+				identity: { acceptedRevision: envelope.acceptedRevision, sourceContentId: 'unused' },
+				source: envelope
+			}
+		},
+		operationId: 'op-tampered-shipped-asset',
+		precondition: { kind: 'create-only' }
+	});
+	assert.equal(captured.kind, 'refused');
+	assert.equal(captured.code, 'invalid-project');
+	assert.ok(captured.issues.some((issue) => issue.code === 'asset-revision-mismatch'));
+	const exists = await pool.query('SELECT 1 FROM projects WHERE id = $1', [projectId]);
+	assert.equal(exists.rows.length, 0);
 });

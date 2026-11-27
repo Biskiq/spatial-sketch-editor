@@ -6,31 +6,24 @@
  * resource builder. The only direct Layout edit is the fixture's deliberately
  * low partition height, which is the authored fact this mixed case must carry.
  */
-import { createHash } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { createEmptyWallFirstLayoutDocument, planCommitLayoutObjectPreset, planCreateWallFirstOpening, planWallChain } from '@portfolio/layout-core/wall';
 import { nextLayoutPresetObjectId } from '@portfolio/layout-core/plan';
 import type { SceneEntity, SceneFormEntity, ScenePrimitiveEntity } from '@portfolio/project-model/scene';
 import {
-	creatorModelResourceEntry
+	creatorModelResourceEntry,
+	shippedModelResourceEntry
 } from '@portfolio/project-model/scene-planning';
 import {
 	SCENE_UNIT_FORMAT_VERSION,
-	type DependencyLockEntry,
 	type ProjectEnvelope,
-	type ResourceUnitPayload,
-	type TypedResource
+	type ResourceUnitPayload
 } from '@portfolio/project-model/units';
-import { getAssetById } from '$lib/content/assets';
 import { CATALOGUE_MODEL_CONTACT_RECORDS } from '$lib/authoring/scene/object-definition-policy';
 import { createUnitProject } from './unit-envelope-fixtures';
 import { freshCapture } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 
 const PROJECT_ID = 'project-r217-s17-mixed';
 const CREATOR_MODEL_ID = 's17-approved-creator-model';
-const EDITOR_STATIC_ROOT = fileURLToPath(new URL('../../../../static/', import.meta.url));
 
 const APPROVAL = {
 	derivative: {
@@ -114,34 +107,11 @@ function requireLayout<T extends { readonly kind: string; readonly rejection?: {
 	return result as Extract<T, { readonly kind: 'success' }>;
 }
 
-/** Pin shipped catalogue bytes by their actual content, not a guessed revision. */
-async function catalogueAssetResource(assetId: string): Promise<{
-	readonly resource: TypedResource;
-	readonly lock: DependencyLockEntry;
-}> {
-	const asset = getAssetById(assetId);
-	if (asset?.productionFile === undefined) throw new Error(`S17 catalogue asset "${assetId}" has no shipped file`);
-	const bytes = await readFile(resolve(EDITOR_STATIC_ROOT, `.${asset.productionFile}`));
-	const contentRevision = `sha256-${createHash('sha256').update(new Uint8Array(bytes)).digest('hex')}`;
-	const resource: TypedResource = {
-		kind: 'asset',
-		id: assetId,
-		contentRevision,
-		pin: null,
-		unresolved: null
-	};
-	return {
-		resource,
-		lock: {
-			domain: 'resource:asset',
-			subjectKind: 'resource',
-			subjectId: assetId,
-			instancePath: [],
-			contentRevision,
-			requiredCapabilities: [],
-			pin: null
-		}
-	};
+/** The production shipped-asset record and exact lock for one catalogue model. */
+function catalogueAssetResource(assetId: string) {
+	const entry = shippedModelResourceEntry(assetId);
+	if (entry === null) throw new Error(`S17 catalogue asset "${assetId}" has no shipped production pin`);
+	return entry;
 }
 
 /** Build the same mixed subject set consumed by S17 and the S11 final gate. */
@@ -230,10 +200,10 @@ export async function buildS17MixedProject(projectId = PROJECT_ID): Promise<{
 	}
 	const creatorEntry = creatorModelResourceEntry(CREATOR_MODEL_ID, APPROVAL);
 	if (creatorEntry === null) throw new Error('the approved creator-model fixture was refused');
-	const catalogueEntries = await Promise.all([
+	const catalogueEntries = [
 		catalogueAssetResource(catalogueRecord.assetId),
 		catalogueAssetResource(unapprovedRecord.assetId)
-	]);
+	];
 	const sceneEntities: SceneEntity[] = [
 		primitive('s17-table-075', '0.75 m Table', 1.1, 0.75, 0.7, [0.65, 0.375, 1.15]),
 		primitive('s17-native-box', 'Native box', 0.45, 0.45, 0.45, [2, 0.225, 0.55]),

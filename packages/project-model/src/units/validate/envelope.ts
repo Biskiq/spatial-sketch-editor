@@ -3,6 +3,8 @@ import { resolveLayoutSurface, surfaceKey } from '@portfolio/layout-core/plan';
 import { shippedImage } from '../../materials/catalogue';
 import { MATERIAL_CAPABILITY, MATERIAL_MAP_ROLES } from '../../materials/types';
 import { validateAcceptedRevision } from '../../references/validate';
+import { shippedModelContentRevision } from '../../shipped-model-pins';
+import { getShippedModelByAssetId } from '../../shipped-static';
 import { ShapeReader } from '../../strict-shape';
 import {
 	stopEntryViewId,
@@ -326,6 +328,26 @@ export function envelopeFindings(
 				code: resource.unresolved.status,
 				message: resource.unresolved.message,
 			});
+	}
+	// One shipped asset id names one byte revision forever. A resolved `asset`
+	// record that disagrees with its shipped pin is executable closure, not a
+	// repairable diagnostic: Save, cold Load, acceptance and release all refuse it
+	// from this one finding, and nothing rewrites the record. An unresolved record
+	// already answers as its own diagnostic; an id outside the registry is the
+	// host catalogue's concern.
+	for (const [index, resource] of resources.entries()) {
+		if (resource.kind !== 'asset' || resource.unresolved !== null) continue;
+		const shipped = getShippedModelByAssetId(resource.id);
+		if (shipped === undefined || shipped.pin === null) continue;
+		const expected = shippedModelContentRevision(shipped.pin);
+		const declared = resource.contentRevision ?? resource.pin?.hash ?? null;
+		if (declared !== expected) {
+			closure.push({
+				path: `$.units.resources.data.resources[${index}]`,
+				code: 'asset-revision-mismatch',
+				message: `asset "${resource.id}" declares ${declared ?? 'no content revision'} and the shipped pin is ${expected}`,
+			});
+		}
 	}
 	const modelResourceIds = new Set(
 		resources.filter((resource) => resource.kind === 'model').map((resource) => resource.id),

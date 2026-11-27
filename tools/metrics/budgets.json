@@ -1,7 +1,7 @@
 {
 	"generatedFrom": "Budget ratchet baseline; shrink-only from here",
 	"counts": {
-		"filesOver600": 127,
+		"filesOver600": 126,
 		"filesOver1000": 11,
 		"filesOver1500": 0,
 		"functionsOver200": 98,
@@ -192,7 +192,7 @@
 		},
 		{
 			"path": "apps/editor/src/lib/authoring/adapters/scene/SceneTransformInstrument.svelte",
-			"lines": 797,
+			"lines": 793,
 			"reason": "The Scene instrument: place, compose and import tasks share one selected object, draft and accepted write path."
 		},
 		{
@@ -538,11 +538,6 @@
 		{
 			"path": "apps/editor/src/lib/authoring/layout/plan-pick-provider.ts",
 			"lines": 642,
-			"reason": "Baseline exception: the owning split removes this entry."
-		},
-		{
-			"path": "packages/project-model/src/scene-planning/planners/planner.ts",
-			"lines": 645,
 			"reason": "Baseline exception: the owning split removes this entry."
 		},
 		{
