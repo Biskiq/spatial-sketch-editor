@@ -1,6 +1,6 @@
 # World interaction sheet assets
 
-> **Covers:** the accepted World visual/interaction sheet and its offline Opening specimen.
+> **Covers:** the accepted World visual/interaction sheet, its offline Opening specimen and the G1 Groups specimen.
 > **Authority:** visual and interaction evidence only; production code/tests own behavior.
 
 The [World interaction sheet](../world-interaction-sheet.html) is the accepted visual reference for
@@ -10,6 +10,13 @@ clocks in the sheet are demonstration mechanisms, not Camera/runtime or persiste
 `opening.js` imports the real Layout planners, production Plan symbols and refusal wording, then
 packages them into `opening.bundle.js` so the sheet opens directly from disk. Keep the source and
 bundle together.
+
+`groups.js` draws the *Groups* section (G1): group selection and drill, hover and Erase marks, rigid
+group transforms with the support refusal, sets with fine and coarse pointers, the group, member and
+set Cards, Index membership, *Group with …* and Showcase. It is a plain script with no build step. It
+reuses the sheet's inline drawing helpers, so it loads after them. The
+[G1 plan](../../plans/t2-look-atmosphere/g1-groups/implementation-plan.md) §2 owns the rules it
+illustrates.
 
 ## Rebuild the Opening specimen
 
