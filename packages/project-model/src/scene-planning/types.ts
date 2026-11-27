@@ -56,15 +56,23 @@ export type ObjectContactProvenance =
 	| { kind: 'verified-model'; verificationId: string };
 
 /**
+ * The Scene operations one definition may be placed through.
+ *
+ * `place-object` places the definition alone; `place-group-copy` places it as a
+ * group member. A curated fixture is admitted for the group copy only, because
+ * its body is never offered alone on the Objects shelf.
+ */
+export type ObjectDefinitionOperation = 'place-object' | 'place-group-copy';
+
+/**
  * What one normalized definition is admitted for.
  *
- * `operations` is pinned to `place-object`: this slice prepares one placement
- * and registers no other operation kind. `supportedSurfaces` and `uprightOnly`
- * are checked by the planner, so a policy that admits anything else gets a
- * typed `unsupported-surface` refusal rather than an upright assumption.
+ * `supportedSurfaces` and `uprightOnly` are checked by the planner, so a policy
+ * that admits anything else gets a typed `unsupported-surface` refusal rather
+ * than an upright assumption.
  */
 export type ObjectDefinitionAdmission = {
-	operations: readonly ['place-object'];
+	operations: readonly ObjectDefinitionOperation[];
 	supportedSurfaces: readonly PlacementSurface[];
 	uprightOnly: boolean;
 	provenance: ObjectContactProvenance;

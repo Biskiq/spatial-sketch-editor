@@ -94,6 +94,26 @@ export function rigidTurnPosition(
 	return [x, position[1], z];
 }
 
+/**
+ * The rigid image of one template member's frame-local position about an
+ * origin: `origin + Ry(θ)·local`.
+ *
+ * A zero yaw returns the plain sum, so a round trip through a template at the
+ * captured yaw cannot introduce a floating-point rewrite of the member pose.
+ */
+export function rigidOriginPosition(local: RigidVec3, origin: RigidVec3, yaw: number): Vec3 {
+	if (yaw === 0) {
+		return [origin[0] + local[0], origin[1] + local[1], origin[2] + local[2]];
+	}
+	const cos = Math.cos(yaw);
+	const sin = Math.sin(yaw);
+	return [
+		origin[0] + cos * local[0] + sin * local[2],
+		origin[1] + local[1],
+		origin[2] - sin * local[0] + cos * local[2],
+	];
+}
+
 /** The exact yaw add an upright floor object uses; pitch and roll are carried unchanged. */
 export function rigidYawAdd(rotation: RigidVec3, yaw: number): Vec3 {
 	return [rotation[0], rotation[1] + yaw, rotation[2]];

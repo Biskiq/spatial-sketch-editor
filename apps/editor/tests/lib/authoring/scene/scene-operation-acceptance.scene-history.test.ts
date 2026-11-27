@@ -260,7 +260,7 @@ function now(coordinator: AcceptanceCoordinator<ProjectEnvelope>) {
 }
 
 describe('scene history', () => {
-	it('registers the twenty-three Scene planners beside the conformance Layout planner', async () => {
+	it('registers the twenty-four Scene planners beside the conformance Layout planner', async () => {
 		const { coordinator } = await boot();
 		expect(coordinator.planners().map((planner) => planner.kind).sort()).toEqual(
 			[
@@ -287,6 +287,7 @@ describe('scene history', () => {
 				'scene-group-duplicate',
 				'scene-group-erase',
 				'create-light-rig',
+				'place-group-copy',
 				PROOF_LAYOUT_TRANSFORM_KIND
 			].sort()
 		);

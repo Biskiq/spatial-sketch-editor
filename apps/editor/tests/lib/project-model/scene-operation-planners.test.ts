@@ -400,7 +400,7 @@ function supportCandidates(
 }
 
 describe('scene operation planners — registration', () => {
-	it('registers exactly the twenty-three Scene operations as single-domain planners', () => {
+	it('registers exactly the twenty-four Scene operations as single-domain planners', () => {
 		const planners = createScenePlanners({ definitions: [nativeBoxDefinition()] });
 		expect(
 			planners.flatMap((planner) =>
@@ -432,7 +432,8 @@ describe('scene operation planners — registration', () => {
 			'scene-group-transform',
 			'scene-group-duplicate',
 			'scene-group-erase',
-			'create-light-rig'
+			'create-light-rig',
+			'place-group-copy'
 		]);
 		for (const planner of planners) {
 			// `place-object` is the single Scene planner that declares typed-resource
@@ -447,7 +448,7 @@ describe('scene operation planners — registration', () => {
 							domain: 'scene',
 							compound: false,
 							units: false,
-							resources: planner.kind === 'place-object'
+							resources: planner.kind === 'place-object' || planner.kind === 'place-group-copy'
 						}
 			);
 			expect(planner.sourceKinds).toEqual([UNIT_SOURCE_KIND]);

@@ -1,5 +1,6 @@
 import { type LayoutVec2 } from '@portfolio/layout-core/geometry';
 import { type FormLibraryPayload } from '../../library/form-library';
+import { type GroupTemplate } from '../group-template';
 import { type FrameReference } from '../../references/types';
 import { type MaterialId, type SceneFormPlane, type Vec3 } from '../../scene';
 import { type CreatorModelResourcePayload } from '../model-resource';
@@ -30,6 +31,32 @@ export type SceneOperationPayload =
 			readonly yaw: number;
 			readonly contactMinY: number;
 			readonly choice?: SceneSupportChoice;
+	  }
+	| {
+			readonly kind: 'place-group-copy';
+			readonly template: GroupTemplate;
+			/** The cluster name; the editor applies G1's nextGroupName on collision. */
+			readonly name: string;
+			readonly origin:
+				| {
+						readonly kind: 'support';
+						readonly worldXZ: LayoutVec2;
+						readonly choice?: SceneSupportChoice;
+				  }
+				| {
+						readonly kind: 'overhead';
+						readonly worldXZ: LayoutVec2;
+						readonly choice?: SceneSupportChoice;
+				  }
+				| { readonly kind: 'wall'; readonly position: Vec3 };
+			readonly yaw: number;
+			readonly frame: LocalInputFrame;
+			readonly frameReference: FrameReference;
+			/** Captured ids, one per member, in member order. */
+			readonly entityIds: readonly string[];
+			readonly clusterId: string;
+			/** Captured admitted contact per member; `null` for a light. */
+			readonly contacts: readonly (number | null)[];
 	  }
 	| {
 			readonly kind: 'set-form-size';

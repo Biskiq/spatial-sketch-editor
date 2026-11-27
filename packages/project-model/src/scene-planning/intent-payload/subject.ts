@@ -22,6 +22,7 @@ export function readSceneOperationSubject(input: {
 		kind === 'place-object' ||
 		kind === 'create-form' ||
 		kind === 'place-form-copy' ||
+		kind === 'place-group-copy' ||
 		kind === 'create-light' ||
 		kind === 'scene-group-create' ||
 		kind === 'create-light-rig'
@@ -48,6 +49,7 @@ export function readSceneOperationSubject(input: {
 		payload.kind === 'place-object' ||
 		payload.kind === 'create-form' ||
 		payload.kind === 'place-form-copy' ||
+		payload.kind === 'place-group-copy' ||
 		payload.kind === 'create-light' ||
 		payload.kind === 'scene-group-create' ||
 		payload.kind === 'create-light-rig'

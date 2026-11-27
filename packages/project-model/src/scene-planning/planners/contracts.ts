@@ -2,12 +2,14 @@ import type { PlannerAdmission } from '../../f4/types';
 import type { NormalizedPlacementDefinition } from '../types';
 
 /**
- * Every Scene planner except `place-object` changes Scene only.
+ * Every Scene planner except the two placement kinds changes Scene only.
  *
- * `place-object` is the **single** planner granted typed-resource staging: a
- * creator model's first placement installs its `model` resource, exact lock and
- * entity in one accepted result. No other Scene operation may write resources,
- * and the host's own admission must grant staging independently.
+ * Only `place-object` and `place-group-copy` are granted typed-resource staging,
+ * and each for one reason: a creator model's first placement installs its
+ * `model` resource and exact lock, and a group copy grants the pinned shipped
+ * `asset` resource and lock every catalogue model member needs. No other Scene
+ * operation may write resources, and the host's own admission must grant
+ * staging independently.
  */
 export const SCENE_PLANNER_ADMISSION: PlannerAdmission = Object.freeze({
 	domain: 'scene',

@@ -49,6 +49,7 @@ import {
 import { rejected, toOutcome } from './outcome';
 import { planCreateFormIntent, planPlaceFormCopyIntent } from './forms';
 import { planGroupIntent } from './group';
+import { planPlaceGroupCopyIntent } from './group-copy';
 import { planCreateLightIntent, planDuplicateLightIntent, planUpdateLightIntent } from './light';
 import { SCENE_GROUP_OPERATION_KINDS, type SceneGroupOperationKind } from '../group-operations';
 
@@ -74,6 +75,7 @@ export function createScenePlanners(
 			if (kind === 'place-object') return planPlaceObject(request, definitionsOf());
 			if (kind === 'create-form') return planCreateFormIntent(request);
 			if (kind === 'place-form-copy') return planPlaceFormCopyIntent(request);
+			if (kind === 'place-group-copy') return planPlaceGroupCopyIntent(request, definitionsOf());
 			if (kind === 'create-light') return planCreateLightIntent(request);
 			if (kind === 'update-light') return planUpdateLightIntent(request);
 			if (kind === 'duplicate-light') return planDuplicateLightIntent(request);
@@ -90,7 +92,7 @@ function scenePlanner(
 		id: `scene.${kind}`,
 		kind,
 		admission:
-			kind === 'place-object'
+			kind === 'place-object' || kind === 'place-group-copy'
 				? SCENE_PLACEMENT_ADMISSION
 				: kind === 'delete-one' || kind === 'scene-group-erase'
 					? SCENE_DELETE_ADMISSION
@@ -310,6 +312,7 @@ function planExistingObject(
 		| 'place-object'
 		| 'create-form'
 		| 'place-form-copy'
+		| 'place-group-copy'
 		| 'create-light'
 		| 'update-light'
 		| 'duplicate-light'
@@ -323,6 +326,7 @@ function planExistingObject(
 		payload.kind === 'place-object' ||
 		payload.kind === 'create-form' ||
 		payload.kind === 'place-form-copy' ||
+		payload.kind === 'place-group-copy' ||
 		payload.kind === 'create-light' ||
 		payload.kind === 'update-light' ||
 		payload.kind === 'duplicate-light'
@@ -394,6 +398,7 @@ function planOperation(
 		| 'place-object'
 		| 'create-form'
 		| 'place-form-copy'
+		| 'place-group-copy'
 		| 'create-light'
 		| 'update-light'
 		| 'duplicate-light'
@@ -404,6 +409,7 @@ function planOperation(
 		| { kind: 'place-object' }
 		| { kind: 'create-form' }
 		| { kind: 'place-form-copy' }
+		| { kind: 'place-group-copy' }
 		| { kind: 'create-light' }
 		| { kind: 'update-light' }
 		| { kind: 'duplicate-light' }

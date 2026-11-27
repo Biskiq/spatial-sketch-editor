@@ -245,6 +245,35 @@ export {
 
 export { planGroupDuplicate, planGroupTransform } from './group-motion';
 
+export {
+	admittedModelContact,
+	canonicalGroupTemplate,
+	canonicalGroupTemplateBytes,
+	canonicalGroupTemplateJson,
+	groupTemplateFromCluster,
+	GROUP_TEMPLATE_MAX_MEMBERS,
+	GROUP_TEMPLATE_MIN_MEMBERS,
+	GROUP_TEMPLATE_NAME_MAX_LENGTH,
+	readGroupTemplate,
+} from './group-template';
+
+export type {
+	GroupTemplate,
+	GroupTemplateExtraction,
+	GroupTemplateIssue,
+	GroupTemplateMember,
+	GroupTemplateReadResult,
+} from './group-template';
+
+export { prepareGroupCopyCandidate } from './group-copy';
+
+export type {
+	SceneGroupCopyCandidate,
+	SceneGroupCopyCorrespondence,
+	SceneGroupCopyOrigin,
+	SceneGroupCopyResult,
+} from './group-copy';
+
 export type { SceneGroupMotion } from './group-motion';
 
 export type {
@@ -380,6 +409,7 @@ export {
 	multiplyRotationMatrices,
 	rigidPivot,
 	rigidMovePosition,
+	rigidOriginPosition,
 	rigidTurnPosition,
 	rigidTurnRotation,
 	rigidYawAdd,
@@ -391,6 +421,8 @@ export {
 export type { RotationMatrix } from './rigid';
 
 export {
+	resolveSceneOverheadSupport,
+	resolveSceneOverheadSupportOnGeometry,
 	resolveSceneSupport,
 	resolveSceneSupportAtOrBelow,
 	resolveSceneSupportAtOrBelowOnGeometry,
@@ -400,6 +432,7 @@ export {
 } from './support';
 
 export type {
+	SceneOverheadSupportResolution,
 	SceneSupportChoice,
 	SceneSupportResolution,
 	SceneSupportSelection,
@@ -427,6 +460,7 @@ export type {
 	ObjectContactProvenance,
 	ObjectCreationDefaults,
 	ObjectDefinitionAdmission,
+	ObjectDefinitionOperation,
 	ObjectDefinitionExclusion,
 	PlacementSurface,
 	RenderNormalizationIdentity,
