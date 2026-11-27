@@ -59,6 +59,7 @@ export {
 	planFitRegionToSpace,
 	planFitRegionToWalls,
 	planFitWallsToRegion,
+	REGION_FORM_FIT_UNSUPPORTED_CODE,
 	planMoveRegion,
 	planRemoveRegion,
 	planRenameRegion,
@@ -109,6 +110,14 @@ export {
 	regionGeometryIssues,
 	regionVerticalBand,
 } from './region-validation';
+export {
+	normalizeRegionAzimuth,
+	regionFormProfile,
+	regionTopAt,
+	regionUndersideAt,
+	regionUndersideNormalAt,
+} from './region/form';
+export type { RegionFormFacts, RegionFormProfile } from './region/form';
 
 export {
 	connectedRoomIds,

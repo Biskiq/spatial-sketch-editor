@@ -19,6 +19,7 @@ import {
 import type { FloorSupportWitness } from './contracts';
 import { FLOOR_SUPPORT_TOLERANCES, OVERHEAD_SUPPORT_DOWN_NORMAL } from './contracts';
 import { polygonContainsWithTolerance } from './floor';
+import { regionUndersideAt, regionUndersideNormalAt, type RegionFormFacts } from '../region/form';
 
 /**
  * The downward query: closed-Space lids and overhead-region undersides at one
@@ -44,7 +45,16 @@ export type OverheadSupportSnapshot = {
 	>[];
 	regions: readonly Pick<
 		CompiledRegion,
-		'regionId' | 'id' | 'cacheKey' | 'role' | 'bottomY' | 'topY' | 'footprint'
+		| 'regionId'
+		| 'id'
+		| 'cacheKey'
+		| 'role'
+		| 'bottomY'
+		| 'topY'
+		| 'footprint'
+		| 'form'
+		| 'datumY'
+		| 'thickness'
 	>[];
 	queryPolygons: readonly OverheadSupportQueryPolygon[];
 };
@@ -70,6 +80,129 @@ export type OverheadSupportQueryInput = {
 };
 
 export type OverheadSupportWitness = FloorSupportWitness;
+
+type OverheadSupportRegionFacts = OverheadSupportSnapshot['regions'][number];
+
+type RegionSupportOutcome =
+	| { kind: 'witness'; witness: OverheadSupportWitness; normal: Vec3 }
+	| {
+			kind: 'unsupported';
+			code: 'missing-support-facts' | 'contradictory-support-facts';
+			message: string;
+	  };
+
+/**
+ * Verify one containing region-underside record and evaluate it at the query
+ * point. Extracted from `queryOverheadSupports` so the query itself stays a
+ * readable collection/choice loop; the checks are the same contract.
+ */
+function regionSupportOutcome(
+	polygon: OverheadSupportQueryPolygon,
+	regionFacts: readonly OverheadSupportRegionFacts[],
+	point: LayoutVec2,
+	elevationBySource: Map<string, number>,
+	witnessByKey: Map<string, OverheadSupportWitness>,
+): RegionSupportOutcome {
+	if (regionFacts.some((region) => region.bottomY !== regionFacts[0]?.bottomY)) {
+		return {
+			kind: 'unsupported',
+			code: 'contradictory-support-facts',
+			message: `Compiled record "${polygon.id}" has conflicting facts for one region identity.`,
+		};
+	}
+	const region = regionFacts[regionFacts.length - 1];
+	if (
+		polygon.floorId === undefined ||
+		region === undefined ||
+		!Number.isFinite(region.bottomY) ||
+		!Number.isFinite(region.topY)
+	) {
+		return {
+			kind: 'unsupported',
+			code: 'missing-support-facts',
+			message: `Compiled region-underside record "${polygon.id}" has no compiled region with finite slab facts.`,
+		};
+	}
+	if (region.role !== 'overhead') {
+		return {
+			kind: 'unsupported',
+			code: 'contradictory-support-facts',
+			message: `Compiled region-underside record "${polygon.id}" names "${region.regionId}", which is not an overhead-role region.`,
+		};
+	}
+	if (
+		polygon.elevation === undefined ||
+		!Number.isFinite(polygon.elevation) ||
+		Math.abs(polygon.elevation - region.bottomY) > FLOOR_SUPPORT_TOLERANCES.coplanarElevationMeters
+	) {
+		return {
+			kind: 'unsupported',
+			code: 'contradictory-support-facts',
+			message: `Compiled region-underside record "${polygon.id}" reports elevation ${String(polygon.elevation)} and region "${region.regionId}" has underside ${region.bottomY}.`,
+		};
+	}
+	// The support a sloped underside offers at the queried point is the
+	// evaluator's value there, not the conservative `bottomY` band edge. The
+	// normal comes from the same profile, so an off-centre gable reports its true
+	// sloped face rather than a flat-down approximation.
+	const facts: RegionFormFacts = {
+		role: 'overhead',
+		form: region.form ?? { kind: 'flat' },
+		datumY: region.datumY ?? region.bottomY,
+		thickness: region.thickness ?? region.topY - region.bottomY,
+		footprint: region.footprint,
+	};
+	const surfaceY = regionUndersideAt(facts, point);
+	const normal = regionUndersideNormalAt(facts, point);
+	if (!Number.isFinite(surfaceY)) {
+		return {
+			kind: 'unsupported',
+			code: 'missing-support-facts',
+			message: `Compiled region "${region.regionId}" has no finite underside at the queried point.`,
+		};
+	}
+	if (
+		surfaceY < region.bottomY - FLOOR_SUPPORT_TOLERANCES.coplanarElevationMeters ||
+		surfaceY > region.topY + FLOOR_SUPPORT_TOLERANCES.coplanarElevationMeters
+	) {
+		return {
+			kind: 'unsupported',
+			code: 'contradictory-support-facts',
+			message: `Compiled region "${region.regionId}" evaluates to ${surfaceY} outside its compiled band [${region.bottomY}, ${region.topY}].`,
+		};
+	}
+	const known = elevationBySource.get(`region:${region.regionId}`);
+	if (
+		known !== undefined &&
+		Math.abs(known - surfaceY) > FLOOR_SUPPORT_TOLERANCES.coplanarElevationMeters
+	) {
+		return {
+			kind: 'unsupported',
+			code: 'contradictory-support-facts',
+			message: `Region "${region.regionId}" appears in two containing compiled records with elevations ${known} and ${surfaceY}.`,
+		};
+	}
+	elevationBySource.set(`region:${region.regionId}`, surfaceY);
+	const orderKey = geometryId([polygon.sourceId, region.regionId, polygon.floorId, polygon.id]);
+	const witnessKey = geometryId([polygon.floorId, 'region-underside', region.regionId, polygon.id]);
+	const witness: OverheadSupportWitness = {
+		source: { kind: 'region', regionId: region.regionId },
+		floorId: polygon.floorId,
+		recordId: polygon.id,
+		cacheKey: polygon.cacheKey,
+		sourceId: polygon.sourceId,
+		orderKey,
+		elevation: surfaceY,
+	};
+	if (!registerWitness(witnessByKey, witnessKey, witness)) {
+		return {
+			kind: 'unsupported',
+			code: 'contradictory-support-facts',
+			message: `Compiled record "${polygon.id}" has conflicting source correspondence.`,
+		};
+	}
+	return { kind: 'witness', witness, normal };
+}
 
 export type OverheadSupportCandidate = {
 	queryPoint: LayoutVec2;
@@ -142,9 +275,15 @@ export function queryOverheadSupports(
 	const point: LayoutVec2 = [input.x, input.z];
 	const floorByFloorId = new Map(snapshot.floors.map((floor) => [floor.floorId, floor]));
 	const _roomById = new Map(snapshot.rooms.map((room) => [room.roomId, room]));
-	const regionById = new Map(snapshot.regions.map((region) => [region.regionId, region]));
+	const regionFactsBySource = new Map<string, OverheadSupportRegionFacts[]>();
+	for (const region of snapshot.regions) {
+		const facts = regionFactsBySource.get(region.regionId);
+		if (facts === undefined) regionFactsBySource.set(region.regionId, [region]);
+		else facts.push(region);
+	}
 	const elevationBySource = new Map<string, number>();
 	const witnessByKey = new Map<string, OverheadSupportWitness>();
+	const normalByWitness = new Map<OverheadSupportWitness, Vec3>();
 
 	for (const room of snapshot.rooms) {
 		// Open to sky removes the generated lid and nothing else.
@@ -213,6 +352,11 @@ export function queryOverheadSupports(
 			};
 		}
 		elevationBySource.set(`room-lid:${room.roomId}`, room.ceilingElevation);
+		normalByWitness.set(witness, [
+			OVERHEAD_SUPPORT_DOWN_NORMAL[0],
+			OVERHEAD_SUPPORT_DOWN_NORMAL[1],
+			OVERHEAD_SUPPORT_DOWN_NORMAL[2],
+		]);
 	}
 
 	for (const polygon of snapshot.queryPolygons) {
@@ -249,76 +393,15 @@ export function queryOverheadSupports(
 				message: `Compiled region-underside record "${polygon.id}" has no compiled floor with a finite datum.`,
 			};
 		}
-		const regionFacts = snapshot.regions.filter((region) => region.regionId === polygon.sourceId);
-		if (regionFacts.some((region) => region.bottomY !== regionFacts[0]!.bottomY)) {
-			return {
-				kind: 'unsupported',
-				code: 'contradictory-support-facts',
-				message: `Compiled record "${polygon.id}" has conflicting facts for one region identity.`,
-			};
-		}
-		const region = regionById.get(polygon.sourceId);
-		if (region === undefined || !Number.isFinite(region.bottomY) || !Number.isFinite(region.topY)) {
-			return {
-				kind: 'unsupported',
-				code: 'missing-support-facts',
-				message: `Compiled region-underside record "${polygon.id}" has no compiled region with finite slab facts.`,
-			};
-		}
-		if (region.role !== 'overhead') {
-			return {
-				kind: 'unsupported',
-				code: 'contradictory-support-facts',
-				message: `Compiled region-underside record "${polygon.id}" names "${region.regionId}", which is not an overhead-role region.`,
-			};
-		}
-		if (
-			polygon.elevation === undefined ||
-			!Number.isFinite(polygon.elevation) ||
-			Math.abs(polygon.elevation - region.bottomY) >
-				FLOOR_SUPPORT_TOLERANCES.coplanarElevationMeters
-		) {
-			return {
-				kind: 'unsupported',
-				code: 'contradictory-support-facts',
-				message: `Compiled region-underside record "${polygon.id}" reports elevation ${String(polygon.elevation)} and region "${region.regionId}" has underside ${region.bottomY}.`,
-			};
-		}
-		const known = elevationBySource.get(`region:${region.regionId}`);
-		if (
-			known !== undefined &&
-			Math.abs(known - region.bottomY) > FLOOR_SUPPORT_TOLERANCES.coplanarElevationMeters
-		) {
-			return {
-				kind: 'unsupported',
-				code: 'contradictory-support-facts',
-				message: `Region "${region.regionId}" appears in two containing compiled records with elevations ${known} and ${region.bottomY}.`,
-			};
-		}
-		elevationBySource.set(`region:${region.regionId}`, region.bottomY);
-		const orderKey = geometryId([polygon.sourceId, region.regionId, polygon.floorId, polygon.id]);
-		const witnessKey = geometryId([
-			polygon.floorId,
-			'region-underside',
-			region.regionId,
-			polygon.id,
-		]);
-		const witness: OverheadSupportWitness = {
-			source: { kind: 'region', regionId: region.regionId },
-			floorId: polygon.floorId,
-			recordId: polygon.id,
-			cacheKey: polygon.cacheKey,
-			sourceId: polygon.sourceId,
-			orderKey,
-			elevation: region.bottomY,
-		};
-		if (!registerWitness(witnessByKey, witnessKey, witness)) {
-			return {
-				kind: 'unsupported',
-				code: 'contradictory-support-facts',
-				message: `Compiled record "${polygon.id}" has conflicting source correspondence.`,
-			};
-		}
+		const support = regionSupportOutcome(
+			polygon,
+			regionFactsBySource.get(polygon.sourceId) ?? [],
+			point,
+			elevationBySource,
+			witnessByKey,
+		);
+		if (support.kind === 'unsupported') return support;
+		normalByWitness.set(support.witness, support.normal);
 	}
 
 	const groups = groupWitnessesByElevation(witnessByKey);
@@ -330,14 +413,11 @@ export function queryOverheadSupports(
 		)
 			continue;
 		const first = group.witnesses[0]!;
+		const normal = normalByWitness.get(first) ?? OVERHEAD_SUPPORT_DOWN_NORMAL;
 		candidates.push({
 			queryPoint: [input.x, input.z],
 			elevation: group.elevation,
-			downNormal: [
-				OVERHEAD_SUPPORT_DOWN_NORMAL[0],
-				OVERHEAD_SUPPORT_DOWN_NORMAL[1],
-				OVERHEAD_SUPPORT_DOWN_NORMAL[2],
-			] as Vec3,
+			downNormal: [normal[0], normal[1], normal[2]] as Vec3,
 			generationId: input.generationId,
 			witnesses: group.witnesses,
 			orderKey: first.orderKey,

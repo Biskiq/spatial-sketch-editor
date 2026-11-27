@@ -6,6 +6,7 @@ import type { LayoutDocumentIssue } from '../plan/issue';
 import { orientXZ } from '../geometry/robust-orientation';
 import { spaceOutlineSelfIntersects, spaceOutlineSignedArea } from './space-outline';
 import type { LayoutRegion } from '../wall/types';
+import { normalizeRegionAzimuth, regionFormProfile } from './region/form';
 
 /**
  * Region admission predicates shared by the canonical reader and the compiler.
@@ -19,17 +20,18 @@ export const MAX_LAYOUT_REGION_POINTS = 1024;
 export const LAYOUT_SLICE_CONTACT_METERS = 1e-4;
 
 /**
- * World-relative vertical band of one flat region.
+ * World-relative vertical band of one region.
  *
  * `datum` is the Floor elevation. A floor region's top is its datum face and its
  * body extends down; an overhead region's underside is its datum face and its
- * body extends up (§5.1).
+ * body extends up (§5.1). A sloped overhead region's band is the conservative
+ * `[eave, eave + rise + thickness]` (§3.2), which is what G5 overlaps compare.
  */
 export function regionVerticalBand(region: LayoutRegion, datum: number): [number, number] {
 	const face = datum + region.elevation;
-	return region.role === 'floor'
-		? [face - region.thickness, face]
-		: [face, face + region.thickness];
+	if (region.role === 'floor') return [face - region.thickness, face];
+	const rise = region.form.kind === 'flat' ? 0 : region.form.rise;
+	return [face, face + rise + region.thickness];
 }
 
 export function regionFootprintBounds(points: readonly LayoutVec2[]) {
@@ -56,6 +58,90 @@ export function regionGeometryIssues(regions: readonly LayoutRegion[]): LayoutDo
 		const { points } = region.footprint;
 		const path = `$.regions[${index}].footprint.points`;
 		const reject = (code: string, message: string) => issues.push({ path, code, message });
+		const form = region.form;
+		const rejectForm = (code: string, message: string) =>
+			issues.push({ path: `$.regions[${index}].form`, code, message });
+		if (form === undefined || form === null || typeof form !== 'object') {
+			rejectForm('invalid_value', 'Region form is required');
+			continue;
+		}
+		// Read through an `unknown` view so a hand-built document with an
+		// unrecognized kind is refused here as well as in the codec.
+		const kind: unknown = (form as { kind?: unknown }).kind;
+		if (kind !== 'flat' && kind !== 'shed' && kind !== 'gable') {
+			rejectForm('invalid_value', `Unknown Region form '${String(kind)}'`);
+			continue;
+		}
+		if (form.kind !== 'flat') {
+			if (region.role !== 'overhead') {
+				rejectForm(
+					'region_form_requires_overhead',
+					'A sloped Region form requires an overhead role',
+				);
+				continue;
+			}
+			if (!Number.isFinite(form.rise) || form.rise <= 0) {
+				rejectForm(
+					'region_form_rise_invalid',
+					'Region form rise must be finite and greater than zero',
+				);
+				continue;
+			}
+			if (form.rise > MAX_LAYOUT_DIMENSION_METERS) {
+				rejectForm('dimension_out_of_range', 'Region form rise is limited to 1000 m');
+				continue;
+			}
+			if (!Number.isFinite(form.azimuth)) {
+				rejectForm('region_form_azimuth_invalid', 'Region form azimuth must be finite');
+				continue;
+			}
+			if (normalizeRegionAzimuth(form.azimuth) !== form.azimuth) {
+				rejectForm('region_form_azimuth_invalid', 'Region form azimuth must be canonical');
+				continue;
+			}
+			if (form.kind === 'gable' && !Number.isFinite(form.ridgeOffset)) {
+				rejectForm('region_form_ridge_invalid', 'Region gable ridge offset must be finite');
+				continue;
+			}
+			if (form.kind === 'gable') {
+				const cosine = Math.cos(form.azimuth);
+				const sine = Math.sin(form.azimuth);
+				let min = Infinity;
+				let max = -Infinity;
+				for (const [x, z] of points) {
+					const q = x * cosine + z * sine;
+					if (q < min) min = q;
+					if (q > max) max = q;
+				}
+				const half = (max - min) / 2;
+				if (!(half > LAYOUT_GEOMETRY_EPSILON)) {
+					rejectForm(
+						'region_form_projection_degenerate',
+						'Region form has no usable projected extent',
+					);
+					continue;
+				}
+				if (!(half - Math.abs(form.ridgeOffset) > LAYOUT_GEOMETRY_EPSILON)) {
+					rejectForm(
+						'region_ridge_outside',
+						'Region gable ridge must lie strictly inside the footprint half extent',
+					);
+					continue;
+				}
+			}
+			const profile = regionFormProfile(form, points);
+			if (profile === null) {
+				rejectForm(
+					'region_form_projection_degenerate',
+					'Region form has no usable projected extent',
+				);
+				continue;
+			}
+			if (region.elevation + form.rise + region.thickness > MAX_LAYOUT_DIMENSION_METERS) {
+				rejectForm('dimension_out_of_range', 'Region form top is limited to 1000 m');
+				continue;
+			}
+		}
 		if (points.length < 3 || points.length > MAX_LAYOUT_REGION_POINTS) {
 			reject('region_point_count', 'A region requires 3 to 1024 footprint points');
 			continue;

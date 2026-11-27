@@ -22,18 +22,18 @@ import {
 	finishedBounds,
 	objectCandidate,
 	openingCandidate,
-	regionCandidate,
 	roomFloorCandidate,
 	wallCandidatesOf,
 	wallPeakHeight,
 } from './geometry';
+import { regionCandidatesOf } from './region-section';
 import type { MeasurementContext } from './membership';
 import {
 	PLAN_VIEWS,
 	evaluateLayoutPlan,
 	fragmentFor,
 	fragmentIndexes,
-	measureCandidate,
+	measureCandidates,
 	measurementContext,
 	membershipIndexes,
 	parameterIssues,
@@ -407,7 +407,7 @@ export function createPlanRetainer(): PlanRetainer {
 		candidates: readonly Candidate[],
 		measurement: MeasurementContext,
 	): void {
-		const measured = candidates.map((candidate) => measureCandidate(candidate, measurement));
+		const measured = measureCandidates(candidates, measurement);
 		const entries: PlanEntry[] = measured.map((entry) => ({
 			reason: entry.reason,
 			regionKey: entry.candidate.regionKey,
@@ -847,7 +847,7 @@ export function createPlanRetainer(): PlanRetainer {
 						'region',
 						(visit) => compiled.regions.forEach(visit),
 						(region) => region.regionId,
-						(region) => [regionCandidate(region)],
+						regionCandidatesOf,
 						(entries, region) => entries[0]?.regionKey === region.cacheKey,
 						measurement,
 						rederive,

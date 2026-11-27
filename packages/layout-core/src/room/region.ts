@@ -20,6 +20,14 @@ export {
 	regionGeometryIssues,
 	carryRegionWallIntents,
 } from './region-validation';
+export {
+	normalizeRegionAzimuth,
+	regionFormProfile,
+	regionTopAt,
+	regionUndersideAt,
+	regionUndersideNormalAt,
+} from './region/form';
+export type { RegionFormFacts, RegionFormProfile } from './region/form';
 export type {
 	RegionPlannerOperation,
 	RegionPlannerRejectionCode,
@@ -44,4 +52,5 @@ export {
 	planFitRegionEdgeToWall,
 	planFitRegionToWalls,
 	planFitWallsToRegion,
+	REGION_FORM_FIT_UNSUPPORTED_CODE,
 } from './region/fit';

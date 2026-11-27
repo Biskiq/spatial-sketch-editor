@@ -38,7 +38,12 @@ export const REGION_WALL_RELATION_EPSILON = 1e-6;
 export const REGION_WALL_RELATION_REACH_METERS = 1;
 
 export type RegionWallPlanClass = 'through' | 'edge' | 'near' | 'none';
-export type RegionWallReading = 'gap' | 'meets' | 'crosses';
+/**
+ * `unavailable`: the vertical relation of a Wall under a shed or gable Region is
+ * not certified in V3a (V3b reads it over the whole covered Wall strip), so it
+ * is reported as unread rather than approximated or read as if flat.
+ */
+export type RegionWallReading = 'gap' | 'meets' | 'crosses' | 'unavailable';
 
 export type RegionWallPlanReading = {
 	planClass: RegionWallPlanClass;
@@ -217,7 +222,11 @@ export function regionWallRelations(
 		// covered intervals, where the clearance actually is; a level Wall keeps
 		// the retained nearest-contact cue.
 		const governing = regionWallTopGoverningStation(wall, floor.elevation, coverage.intervals);
-		const reading = regionWallReading(plan, topRange, compiledRegion, region.role);
+		const sloped = compiledRegion.form !== undefined && compiledRegion.form.kind !== 'flat';
+		const reading =
+			sloped && (plan.planClass === 'through' || plan.planClass === 'edge')
+				? UNAVAILABLE_READING
+				: regionWallReading(plan, topRange, compiledRegion, region.role);
 		if (reading === null) continue;
 		const intended = reading.reading === 'gap' && region.intendedGaps.includes(wall.wallId);
 		relations.push({
@@ -284,6 +293,14 @@ type Reading = {
 	measureMeters: number | null;
 	measureAxis: 'vertical' | 'horizontal' | null;
 	fit: 'meet-wall' | 'fit-roof-to-walls' | null;
+};
+
+/** A sloped Region's uncertified vertical reading: no measure, cue or fit. */
+const UNAVAILABLE_READING: Reading = {
+	reading: 'unavailable',
+	measureMeters: null,
+	measureAxis: null,
+	fit: null,
 };
 
 function regionWallReading(

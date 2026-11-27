@@ -316,6 +316,7 @@ export type {
 	LayoutJunction,
 	LayoutObject,
 	LayoutRegion,
+	LayoutRegionForm,
 	LayoutRoomRound,
 	LayoutSpaceOverhead,
 	LayoutSpaceVirtualEdge,
