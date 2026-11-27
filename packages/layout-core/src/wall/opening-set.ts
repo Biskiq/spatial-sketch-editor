@@ -266,7 +266,7 @@ function validateIndexedOpeningRecords(
 				wallId: opening.wallId,
 				path,
 				code: 'opening_exceeds_wall_height',
-				message: `Opening '${opening.id}' (sill ${opening.sillHeight} m + height ${opening.height} m) does not fit under Wall '${wall.id}' top ${topOverInterval.min} m`,
+				message: `Opening '${opening.id}' (sill ${opening.sillHeight} m + height ${opening.height} m) does not fit Wall '${wall.id}' top ${topOverInterval.min} m`,
 			});
 		}
 		const profileResult = buildArchProfile(opening.profile, opening.width, opening.height);

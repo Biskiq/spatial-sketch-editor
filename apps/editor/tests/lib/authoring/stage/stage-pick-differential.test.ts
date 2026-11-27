@@ -8,9 +8,7 @@ import { createWallRepresentation } from '$lib/render/layout-wall-representation
 import { createObjectRepresentation } from '$lib/render/layout-object-representation';
 import { createMaterialStore } from '$lib/render/resources/material-store';
 import { createGeometryStore } from '$lib/render/resources/geometry-store';
-import { createEmptyWallFirstLayoutDocument, planWallChain,
-	LAYOUT_WALL_FIRST_FORMAT_VERSION,
-} from '@portfolio/layout-core/wall';
+import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core/wall';
 import type { SceneEntity } from '@portfolio/project-model/scene';
 import { createUnitProject } from '../__fixtures__/unit-envelope-fixtures';
 import { captureFor } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
@@ -146,10 +144,10 @@ describe('S03 recorded pre-change selection differential', () => {
 			// the Scene unit format moves from 10 to 11. Every winner, point and
 			// pick field is unchanged (266 generationId values; 16 shared Scene
 			// contentRevision values).
-			// Layout 10 (T1 Wave 4 C1) updates only generation IDs because the
-			// canonical Layout document now serializes `formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION`. Every
-			// winner, point and pick field is unchanged (266 generationId values;
-			// 0 non-generationId diffs across all 2,400 samples).
+			// Layout 11 (T1 V2a) updates only generation IDs because the canonical
+			// Layout document now serializes `formatVersion: 11` and every Wall
+			// `top`. Every winner, point and pick field is unchanged (266
+			// generationId values; 0 non-generationId diffs across 2,400 samples).
 			expect(actual).toEqual(expected);
 		}
 	});
