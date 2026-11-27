@@ -13,7 +13,7 @@ import {
 	streamFor,
 	wallCandidates,
 } from './geometry';
-import { regionCandidatesOf, regionSectionPlan } from './region-section';
+import { regionCandidatesAt, regionCandidatesOf } from './region-section';
 import type {
 	Candidate,
 	Evaluated,
@@ -223,6 +223,14 @@ export function measurementContext(
 	};
 }
 
+/** Measure every candidate at the cut, a sloped Region as its parts there (cold and retained). */
+export function measureCandidates(candidates: readonly Candidate[], context: MeasurementContext) {
+	const cut = context.cutElevation;
+	return candidates
+		.flatMap((c) => regionCandidatesAt(c, cut))
+		.map((c) => measureCandidate(c, context));
+}
+
 /** Measure one candidate: the declared reason it earned, and the placement it places. */
 export function measureCandidate(candidate: Candidate, context: MeasurementContext): Evaluated {
 	const verticalExtent = candidate.extent.maxY - candidate.extent.minY;
@@ -291,8 +299,7 @@ export function measureCandidate(candidate: Candidate, context: MeasurementConte
 							context.cutElevation <= candidate.extent.minY + LAYOUT_SLICE_CONTACT_METERS)
 					? 'underside'
 					: 'top';
-		const plan =
-			stream === 'cut' ? regionSectionPlan(candidate, context.cutElevation) : candidate.plan;
+		const plan = candidate.plan;
 		const outlined =
 			stream === 'hidden' || (stream === 'projected' && candidate.regionRole === 'overhead');
 		candidate = {
@@ -388,9 +395,7 @@ export function evaluateLayoutPlan(
 	// Stage one: measure each candidate independently and record the placement it earned.
 	// Nothing is emitted yet, because membership is a **per-source** fact while a compiled
 	// source can have several placements — a Wall has one row for all of its solid spans.
-	const evaluated: Evaluated[] = candidates.map((candidate) =>
-		measureCandidate(candidate, measurement),
-	);
+	const evaluated = measureCandidates(candidates, measurement);
 
 	// Stage two: one membership row per source, and a fragment only where that source's
 	// eligible placement exists. A source is included when **any** of its placements is: the

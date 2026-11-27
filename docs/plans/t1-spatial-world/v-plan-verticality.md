@@ -400,9 +400,13 @@ type CompiledRegion = CompiledIdentity & {
   overheads. Keep the existing depth, span, filter and reveal contracts. Use `component` subRefs
   with stable face roles. Assign the cut polygon to `edge` and the above-cut outline to
   `underside` for overheads or `top` for floor regions. Keep existing Wall/Opening/object/Room stream behavior.
-  In V3 a shed or gable Region feeds one candidate per compiled planar underside piece, each
-  with its own extent, and a `cut` piece draws only its band where
-  `underside ≤ cutY ≤ underside + thickness`; a flat Region keeps its single footprint candidate.
+  In V3 a shed or gable Region is partitioned at the cut by its underside `u` into three parts:
+  below (`u + thickness ≤ cutY`, projected top), band (`u ≤ cutY ≤ u + thickness`, cut edge) and
+  above (`u ≥ cutY`, hidden or tangent-projected underside). The parts come from the compiler's own
+  exact ridge partition split at `cutY` and `cutY − thickness`; each maximal loop is one candidate
+  with its own extent, so a concave footprint yields disjoint parts. Nothing falls back to the
+  full footprint: an empty part has no candidate and an unbuildable partition draws nothing. A flat
+  Region keeps its single footprint candidate.
 - **Slice.** Level Slice hides slabs wholly above the cut or below its depth window; it uses the
   same footprint for section ink through the interior and clips hits at the same resolved limits.
   Drawn Slice clips the same rendered mesh and the same Plan polygon using the existing clip
@@ -844,7 +848,12 @@ V3c follows V3b, with the Face dependency scoped to the Section segment in §7.2
 - **V2c.** The approved V2 sentence holds: a Wall top can be level, sloped or gabled; Openings,
   mesh and the Unroll sheet agree with it. A straight gable end is edited on its face.
 - **V3a.** The previous format is refused. Flat regions compile unchanged (T-R1). Shed and gable
-  fixtures compile to planar faces that close without gaps (T-R2).
+  fixtures compile to planar faces that close without gaps (T-R2). Ridge snapping is certified:
+  a station moves onto the ridge only when slope times displacement stays within 1e-6 m, and a
+  form too steep for its position refuses with `region_form_geometry_failed` rather than bend.
+  Until V3b certifies §7.3's extrema, a sloped Region reads its `through`/`edge` Walls as
+  **unavailable** (no measure or fit), keeps `near` relations on the horizontal rule, and both
+  fits refuse explicitly.
 - **V3b.** Both fits pass T-R3 to T-R6, T-R8 and T-R9. Form defaults pass T-R7.
 - **V3c.** The approved V3 sentence holds, and J8 passes with two explicit fits. A thin-roof
   refusal identifies the blocking Wall and the measured overrun, with no history entry.

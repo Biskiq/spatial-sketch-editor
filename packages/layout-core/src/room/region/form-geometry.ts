@@ -1,48 +1,33 @@
 /**
- * `layout-region-form-geometry.ts` — the compiled faces of one shed or gable
- * Region.
+ * `form-geometry.ts` — the compiled faces of one shed or gable Region.
  *
- * The form is a profile extruded across the footprint and clipped by it. A
- * footprint may be concave, so the region on one side of the ridge is not one
- * ring: a U, a spiral or a ridge through a notch yields several plan pieces.
- * This module builds an exact partition instead of guessing a ring:
+ * The form is a profile extruded across the footprint and clipped by it. The
+ * exact plan partition at the ridge comes from `form-partition.ts`, which the
+ * Plan section shares; this module turns its pieces into faces:
  *
- * 1. The footprint is ear-clipped into triangles (collinear boundary points are
- *    dropped first; they are not corners).
- * 2. Each triangle is clipped against the ridge half-planes. A triangle is
- *    convex, so the clip is exact and every crossing is computed once per
- *    undirected triangulation edge.
- * 3. The sub-triangles of each side are merged back by cancelling shared
- *    directed edges. The remaining boundary loops are the maximal planar
- *    pieces of that side, and they include every ridge crossing once.
- * 4. The triangulation's own boundary edges give the vertical perimeter faces,
- *    split at the same crossings. Top, underside and edge faces therefore share
- *    identical vertex values: no cracks, no T-junctions and an exact ridge.
+ * - the pieces of each side merge into maximal planar loops (the profile is
+ *   affine on each side), emitted as underside and as a top offset by
+ *   `thickness`, so the slab has a constant vertical thickness;
+ * - the vertical perimeter faces are split at the same cached ridge crossings.
  *
- * Exact closure rests on one classification. A vertex whose station is within
- * rounding of the ridge is snapped onto it (`ridgeSnapTolerance`), so it is a
- * ridge vertex on both sides and no crossing is ever created a few ulps from a
- * vertex. Every other crossing is then strictly interior to its edge. The clip,
- * the perimeter split and the piece filter all read that one classification and
- * never drop a piece or segment by length or area, so every directed edge has
- * its opposite.
- *
- * The profile is affine on each side of the ridge, so each merged loop is
- * planar. The top is the same plan loop offset by `thickness`, so the slab has a
- * constant vertical thickness everywhere. This is a bounded geometric
- * derivation, not a second form model: heights come only from
- * `regionUndersideAtStation`.
+ * Top, underside and edge faces therefore share identical vertex values: no
+ * cracks, no T-junctions and an exact ridge. Heights come only from
+ * `regionUndersideAtStation`; this is a bounded derivation, not a second model.
  */
 import type { LayoutVec2 } from '../../geometry/coordinates';
-import { orientXZ } from '../../geometry/robust-orientation';
-import { spaceOutlineSignedArea } from '../space-outline';
 import type { Vec3 } from '../../kernel/types';
 import type { CompiledRegion } from '../../geometry/types';
 import type { LayoutRegion } from '../../wall/types';
-import { regionFormProfile, regionUndersideAtStation, type RegionFormProfile } from './form';
+import { regionUndersideAtStation } from './form';
+import {
+	boundaryLoops,
+	edgeKeysAtLevel,
+	partitionRegionForm,
+	vertexKey,
+	type PointKey,
+} from './form-partition';
 
 type Face = CompiledRegion['faces'][number];
-type PointKey = string;
 
 /** The input facts the compiler holds for one authored region. */
 export type RegionFormSource = Pick<LayoutRegion, 'role' | 'form' | 'thickness'> & {
@@ -60,261 +45,50 @@ export type RegionFormCompilation =
 	  }
 	| { readonly kind: 'failed'; readonly message: string };
 
-function keyOfVertex(index: number): PointKey {
-	return `v:${index}`;
-}
-
-function keyOfCrossing(a: number, b: number): PointKey {
-	return `e:${Math.min(a, b)}:${Math.max(a, b)}`;
-}
-
-function pointInTriangleInclusive(
-	point: LayoutVec2,
-	a: LayoutVec2,
-	b: LayoutVec2,
-	c: LayoutVec2,
-): boolean {
-	return orientXZ(a, b, point) >= 0 && orientXZ(b, c, point) >= 0 && orientXZ(c, a, point) >= 0;
-}
-
-/**
- * Drop boundary points that are not corners.
- *
- * A point on the straight run between its neighbours adds no shape and makes a
- * zero-area ear, so it is removed before triangulation. The authored footprint
- * itself is untouched: bounds, Plan records and the Region query polygon still
- * use every authored point.
- */
-function cleanRing(points: readonly LayoutVec2[]): LayoutVec2[] | null {
-	if (points.length < 3) return null;
-	const ring = points.map(([x, z]): LayoutVec2 => [x, z]);
-	let changed = true;
-	while (changed && ring.length >= 3) {
-		changed = false;
-		for (let index = 0; index < ring.length; index++) {
-			const count = ring.length;
-			const before = ring[(index + count - 1) % count]!;
-			const point = ring[index]!;
-			const after = ring[(index + 1) % count]!;
-			if (orientXZ(before, point, after) !== 0) continue;
-			// Only a between point is a redundant boundary point; a spike is an
-			// invalid footprint and the shared admission refuses it before here.
-			const between =
-				(before[0] - point[0]) * (after[0] - point[0]) +
-					(before[1] - point[1]) * (after[1] - point[1]) <=
-				0;
-			if (!between) continue;
-			ring.splice(index, 1);
-			changed = true;
-			break;
-		}
-	}
-	if (ring.length < 3) return null;
-	if (!(spaceOutlineSignedArea(ring) > 0)) return null;
-	return ring;
-}
-
-/**
- * Ear clipping over a simple CCW ring with no collinear corners.
- *
- * The ear test is inclusive: a vertex exactly on the candidate triangle's
- * boundary blocks that ear, so every emitted triangle's edges are real
- * diagonals or boundary edges. That is what makes the later shared-edge
- * cancellation exact. The two-ears theorem guarantees an ear for every simple
- * polygon with no three consecutive collinear vertices.
- */
-function earClip(ring: readonly LayoutVec2[]): number[][] | null {
-	const count = ring.length;
-	const remaining = ring.map((_, index) => index);
-	const triangles: number[][] = [];
-	let guard = 0;
-	while (remaining.length > 3) {
-		if (++guard > count * count + 4) return null;
-		let found = false;
-		const size = remaining.length;
-		for (let position = 0; position < size; position++) {
-			const a = remaining[(position + size - 1) % size]!;
-			const b = remaining[position]!;
-			const c = remaining[(position + 1) % size]!;
-			if (orientXZ(ring[a]!, ring[b]!, ring[c]!) <= 0) continue;
-			let blocked = false;
-			for (const other of remaining) {
-				if (other === a || other === b || other === c) continue;
-				if (pointInTriangleInclusive(ring[other]!, ring[a]!, ring[b]!, ring[c]!)) {
-					blocked = true;
-					break;
-				}
-			}
-			if (blocked) continue;
-			triangles.push([a, b, c]);
-			remaining.splice(position, 1);
-			found = true;
-			break;
-		}
-		if (!found) return null;
-	}
-	const [a, b, c] = remaining as [number, number, number];
-	if (orientXZ(ring[a]!, ring[b]!, ring[c]!) <= 0) return null;
-	triangles.push([a, b, c]);
-	return triangles;
-}
-
-/**
- * Merge sub-triangle boundaries into the maximal boundary loops of one side.
- *
- * Every interior edge of a valid triangulation appears once in each direction,
- * so cancelling opposite directed edges leaves exactly the outer boundary. The
- * boundary of a concave half-plane cut is several loops; tracing each loop
- * separately is what keeps a U-shaped footprint from becoming a weak polygon.
- */
-function boundaryLoops(pieces: readonly (readonly PointKey[])[]): PointKey[][] | null {
-	const counts = new Map<string, number>();
-	const order: Array<[PointKey, PointKey]> = [];
-	for (const piece of pieces) {
-		for (let index = 0; index < piece.length; index++) {
-			const from = piece[index]!;
-			const to = piece[(index + 1) % piece.length]!;
-			const key = `${from}|${to}`;
-			if (!counts.has(key)) order.push([from, to]);
-			counts.set(key, (counts.get(key) ?? 0) + 1);
-		}
-	}
-	const outgoing = new Map<PointKey, PointKey[]>();
-	let edgeCount = 0;
-	for (const [from, to] of order) {
-		const forward = counts.get(`${from}|${to}`) ?? 0;
-		const reverse = counts.get(`${to}|${from}`) ?? 0;
-		for (let index = 0; index < forward - reverse; index++) {
-			let destinations = outgoing.get(from);
-			if (destinations === undefined) {
-				destinations = [];
-				outgoing.set(from, destinations);
-			}
-			destinations.push(to);
-			edgeCount++;
-		}
-	}
-	if (edgeCount === 0) return null;
-
-	const loops: PointKey[][] = [];
-	for (const [start, destinations] of outgoing) {
-		while (destinations.length > 0) {
-			const path: PointKey[] = [start];
-			let current = start;
-			let closed = false;
-			for (let step = 0; step <= edgeCount; step++) {
-				const list = outgoing.get(current);
-				if (list === undefined || list.length === 0) break;
-				const next = list.shift()!;
-				if (next === start) {
-					closed = true;
-					break;
-				}
-				path.push(next);
-				current = next;
-			}
-			if (!closed) return null;
-			// A half-plane piece of a simple polygon has no holes, so every loop is
-			// an outer boundary; none is dropped by area, or closure would break.
-			for (const loop of splitAtRepeats(path)) {
-				if (loop.length >= 3) loops.push(loop);
-			}
-		}
-	}
-	return loops.length > 0 ? loops : null;
-}
-
-/**
- * A boundary walk may touch a pinch vertex twice. Splitting at the repeat keeps
- * every emitted face a simple ring, which is what the mesh builder triangulates.
- */
-function splitAtRepeats(path: readonly PointKey[]): PointKey[][] {
-	const loops: PointKey[][] = [];
-	const pending: PointKey[][] = [path.slice()];
-	for (let index = 0; index < pending.length; index++) {
-		const current = pending[index]!;
-		let split = false;
-		for (let first = 0; first < current.length && !split; first++) {
-			for (let second = first + 2; second < current.length; second++) {
-				if (current[first] !== current[second]) continue;
-				const loop = current.slice(first, second);
-				if (loop.length >= 3) loops.push(loop);
-				const rest = [...current.slice(0, first + 1), ...current.slice(second + 1)];
-				if (rest.length >= 3) pending.push(rest);
-				split = true;
-				break;
-			}
-		}
-		if (!split && current.length >= 3) loops.push(current);
-	}
-	return loops;
-}
-
-/**
- * The station band treated as "on the ridge". It is a few hundred ulps of the
- * footprint's coordinate scale: wide enough to absorb the rounding of
- * `x cos + z sin` (for example `cos(pi / 2) = 6e-17`), and far below any
- * authored distance, so a snapped vertex moves its height by at most
- * `slope * tolerance`.
- */
-function ridgeSnapTolerance(points: readonly LayoutVec2[]): number {
-	let scale = 1;
-	for (const [x, z] of points) scale = Math.max(scale, Math.abs(x) + Math.abs(z));
-	return 256 * Number.EPSILON * scale;
-}
-
 function normalized(vector: Vec3): Vec3 {
 	const length = Math.hypot(vector[0], vector[1], vector[2]);
 	return length > 0 ? [vector[0] / length, vector[1] / length, vector[2] / length] : [0, 1, 0];
 }
 
 /**
- * Append the vertical perimeter faces for one cleaned footprint, split at the
- * same cached ridge crossings the top and underside use. Keeping this loop out
- * of the main compile keeps both functions within the locality budget and makes
- * the shared-edge contract obvious: bottom→top at the start vertex, top→bottom at
- * the end vertex, reversed relative to the plan ring.
+ * Append the vertical perimeter faces, split at the same cached ridge crossings
+ * the top and underside use: bottom→top at the start vertex, top→bottom at the
+ * end vertex, reversed relative to the plan ring.
  */
 function appendPerimeterFaces(
-	cleaned: readonly LayoutVec2[],
-	stationByKey: ReadonlyMap<PointKey, number>,
-	coordinates: ReadonlyMap<PointKey, LayoutVec2>,
-	underside: ReadonlyMap<PointKey, number>,
-	profile: RegionFormProfile,
+	ringLength: number,
+	partition: Extract<ReturnType<typeof partitionRegionForm>, { kind: 'partitioned' }>,
+	underside: (key: PointKey) => number,
 	thickness: number,
 	faces: Face[],
-	crossingOn: (a: number, b: number) => PointKey,
 ): void {
-	for (let index = 0; index < cleaned.length; index++) {
-		const next = (index + 1) % cleaned.length;
-		const currentKey = keyOfVertex(index);
-		const nextKey = keyOfVertex(next);
-		const currentStation = stationByKey.get(currentKey)!;
-		const nextStation = stationByKey.get(nextKey)!;
-		const keys: PointKey[] =
-			(currentStation < profile.qRidge && nextStation > profile.qRidge) ||
-			(currentStation > profile.qRidge && nextStation < profile.qRidge)
-				? [currentKey, crossingOn(index, next), nextKey]
-				: [currentKey, nextKey];
+	const { field, profile } = partition;
+	for (let index = 0; index < ringLength; index++) {
+		const keys = edgeKeysAtLevel(
+			field,
+			vertexKey(index),
+			vertexKey((index + 1) % ringLength),
+			profile.qRidge,
+			'r',
+		);
 		for (let edge = 0; edge + 1 < keys.length; edge++) {
 			const from = keys[edge]!;
 			const to = keys[edge + 1]!;
-			const fromPoint = coordinates.get(from)!;
-			const toPoint = coordinates.get(to)!;
+			const fromPoint = field.point.get(from)!;
+			const toPoint = field.point.get(to)!;
 			const dx = toPoint[0] - fromPoint[0];
 			const dz = toPoint[1] - fromPoint[1];
 			const length = Math.hypot(dx, dz);
-			// Snapping keeps every crossing strictly inside its edge, so a segment
-			// is never empty; this guards the normal only and never drops a face
-			// the top and underside loops still reference.
+			// A crossing is strictly inside its edge, so a segment is never empty;
+			// this guards the normal only and never drops a face the loops use.
 			if (!(length > 0)) continue;
 			faces.push({
 				surface: 'edge',
 				polygon: [
-					[fromPoint[0], underside.get(from)!, fromPoint[1]],
-					[fromPoint[0], underside.get(from)! + thickness, fromPoint[1]],
-					[toPoint[0], underside.get(to)! + thickness, toPoint[1]],
-					[toPoint[0], underside.get(to)!, toPoint[1]],
+					[fromPoint[0], underside(from), fromPoint[1]],
+					[fromPoint[0], underside(from) + thickness, fromPoint[1]],
+					[toPoint[0], underside(to) + thickness, toPoint[1]],
+					[toPoint[0], underside(to), toPoint[1]],
 				],
 				normal: [dz / length, 0, -dx / length],
 			});
@@ -341,106 +115,27 @@ export function compileRegionFormFaces(
 	if (!(thickness > 0) || !Number.isFinite(thickness)) {
 		return { kind: 'failed', message: 'Region thickness must be positive and finite' };
 	}
-	const profile = regionFormProfile(form, region.footprint);
-	if (profile === null) {
-		return { kind: 'failed', message: 'Region form has no usable projected ridge' };
-	}
-	const cleaned = cleanRing(region.footprint);
-	if (cleaned === null) {
-		return { kind: 'failed', message: 'Region footprint has no usable simple ring' };
-	}
-	const triangles = earClip(cleaned);
-	if (triangles === null) {
-		return { kind: 'failed', message: 'Region footprint could not be triangulated' };
-	}
-
+	const partition = partitionRegionForm(form, region.footprint);
+	if (partition.kind === 'failed') return partition;
+	const { profile, field } = partition;
 	const cos = Math.cos(profile.azimuth);
 	const sin = Math.sin(profile.azimuth);
-	const snap = ridgeSnapTolerance(cleaned);
-	const stationOf = (point: LayoutVec2): number => {
-		const station = point[0] * cos + point[1] * sin;
-		return Math.abs(station - profile.qRidge) <= snap ? profile.qRidge : station;
-	};
-	const stationByKey = new Map<PointKey, number>();
-	const coordinates = new Map<PointKey, LayoutVec2>();
-	const underside = new Map<PointKey, number>();
-	for (const [index, point] of cleaned.entries()) {
-		const key = keyOfVertex(index);
-		coordinates.set(key, point);
-		const station = stationOf(point);
-		stationByKey.set(key, station);
-		underside.set(key, regionUndersideAtStation(form, profile, datumY, station));
-	}
-	const crossingOn = (a: number, b: number): PointKey => {
-		const key = keyOfCrossing(a, b);
-		if (coordinates.has(key)) return key;
-		const first = Math.min(a, b);
-		const second = Math.max(a, b);
-		const from = cleaned[first]!;
-		const to = cleaned[second]!;
-		const fromStation = stationOf(from);
-		const toStation = stationOf(to);
-		const amount = (profile.qRidge - fromStation) / (toStation - fromStation);
-		const point: LayoutVec2 = [
-			from[0] + (to[0] - from[0]) * amount,
-			from[1] + (to[1] - from[1]) * amount,
-		];
-		coordinates.set(key, point);
-		// Both sides read one cached ridge value: the shared ridge edge is exact.
-		stationByKey.set(key, profile.qRidge);
-		underside.set(key, regionUndersideAtStation(form, profile, datumY, profile.qRidge));
-		return key;
-	};
-
-	const belowPieces: PointKey[][] = [];
-	const abovePieces: PointKey[][] = [];
-	// A shed's `qRidge` is its high eave, so it has no above side.
-	const sides =
-		form.kind === 'shed'
-			? ([[belowPieces, true]] as const)
-			: ([
-					[belowPieces, true],
-					[abovePieces, false],
-				] as const);
-	for (const triangle of triangles) {
-		const keys = triangle.map(keyOfVertex);
-		// A sliver lying wholly on the ridge belongs to one side only.
-		const onRidge = keys.every((key) => stationByKey.get(key) === profile.qRidge);
-		for (const [side, keepNegative] of sides) {
-			if (onRidge && !keepNegative) continue;
-			const inside = (key: PointKey): boolean =>
-				keepNegative
-					? stationByKey.get(key)! <= profile.qRidge
-					: stationByKey.get(key)! >= profile.qRidge;
-			const piece: PointKey[] = [];
-			for (let index = 0; index < keys.length; index++) {
-				const current = keys[index]!;
-				const next = keys[(index + 1) % keys.length]!;
-				const currentStation = stationByKey.get(current)!;
-				const nextStation = stationByKey.get(next)!;
-				if (inside(current)) piece.push(current);
-				if (
-					(currentStation < profile.qRidge && nextStation > profile.qRidge) ||
-					(currentStation > profile.qRidge && nextStation < profile.qRidge)
-				) {
-					piece.push(crossingOn(triangle[index]!, triangle[(index + 1) % keys.length]!));
-				}
-			}
-			// A half-plane clip can repeat a point when a vertex lies on the line.
-			const deduped = piece.filter(
-				(key, index) => key !== piece[(index + piece.length - 1) % piece.length],
-			);
-			// Fewer than three keys is the far side's touch of a vertex or edge on
-			// the ridge. Area is never a filter: dropping a rounding-thin piece on
-			// one side only would leave its shared edges unmatched.
-			if (new Set(deduped).size < 3) continue;
-			side.push(deduped);
+	const heights = new Map<PointKey, number>();
+	const underside = (key: PointKey): number => {
+		let height = heights.get(key);
+		if (height === undefined) {
+			// Both sides read one cached ridge value: the shared ridge edge is exact.
+			height = regionUndersideAtStation(form, profile, datumY, field.value.get(key)!);
+			heights.set(key, height);
 		}
+		return height;
+	};
+	const belowLoops = boundaryLoops(partition.below);
+	const aboveLoops = boundaryLoops(partition.above);
+	if (belowLoops === null || aboveLoops === null) {
+		return { kind: 'failed', message: 'Region form split did not close' };
 	}
-
-	const belowLoops = boundaryLoops(belowPieces);
-	const aboveLoops = boundaryLoops(abovePieces);
-	if (belowLoops === null && aboveLoops === null) {
+	if (belowLoops.length === 0 && aboveLoops.length === 0) {
 		return { kind: 'failed', message: 'Region form split produced no faces' };
 	}
 
@@ -452,12 +147,7 @@ export function compileRegionFormFaces(
 	const undersideNormal = (slope: number): Vec3 => normalized([slope * cos, -1, slope * sin]);
 
 	const faces: Face[] = [];
-	const addSide = (
-		loops: readonly (readonly PointKey[])[] | null,
-		below: boolean,
-		top: boolean,
-	): void => {
-		if (loops === null) return;
+	const addSide = (loops: readonly (readonly PointKey[])[], below: boolean, top: boolean): void => {
 		const slope = sideSlope(below);
 		for (const loop of loops) {
 			if (top) {
@@ -465,8 +155,8 @@ export function compileRegionFormFaces(
 					surface: 'top',
 					polygon: loop
 						.map((key): Vec3 => {
-							const point = coordinates.get(key)!;
-							return [point[0], underside.get(key)! + thickness, point[1]];
+							const point = field.point.get(key)!;
+							return [point[0], underside(key) + thickness, point[1]];
 						})
 						.reverse(),
 					normal: topNormal(slope),
@@ -475,8 +165,8 @@ export function compileRegionFormFaces(
 				faces.push({
 					surface: 'underside',
 					polygon: loop.map((key): Vec3 => {
-						const point = coordinates.get(key)!;
-						return [point[0], underside.get(key)!, point[1]];
+						const point = field.point.get(key)!;
+						return [point[0], underside(key), point[1]];
 					}),
 					normal: undersideNormal(slope),
 				});
@@ -491,20 +181,11 @@ export function compileRegionFormFaces(
 	addSide(belowLoops, true, false);
 	addSide(aboveLoops, false, false);
 
-	appendPerimeterFaces(
-		cleaned,
-		stationByKey,
-		coordinates,
-		underside,
-		profile,
-		thickness,
-		faces,
-		crossingOn,
-	);
+	appendPerimeterFaces(partition.ring.length, partition, underside, thickness, faces);
 
 	let bottomY = Infinity;
 	let topOfUnderside = -Infinity;
-	for (const height of underside.values()) {
+	for (const height of heights.values()) {
 		if (height < bottomY) bottomY = height;
 		if (height > topOfUnderside) topOfUnderside = height;
 	}

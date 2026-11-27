@@ -33,7 +33,7 @@ import {
 	evaluateLayoutPlan,
 	fragmentFor,
 	fragmentIndexes,
-	measureCandidate,
+	measureCandidates,
 	measurementContext,
 	membershipIndexes,
 	parameterIssues,
@@ -407,7 +407,7 @@ export function createPlanRetainer(): PlanRetainer {
 		candidates: readonly Candidate[],
 		measurement: MeasurementContext,
 	): void {
-		const measured = candidates.map((candidate) => measureCandidate(candidate, measurement));
+		const measured = measureCandidates(candidates, measurement);
 		const entries: PlanEntry[] = measured.map((entry) => ({
 			reason: entry.reason,
 			regionKey: entry.candidate.regionKey,

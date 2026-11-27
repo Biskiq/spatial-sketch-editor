@@ -80,6 +80,7 @@
 			layout.walls.map((wall) => ({ identity: wall.id, kind: 'Wall', name: wall.name ?? null }))
 		)
 	);
+	const READING_LABELS = { crosses: 'Crosses', meets: 'Meets', unavailable: 'Not read on a sloped roof yet' };
 	const datum = $derived(snapshot.domain.datumMeters);
 	const restingObjects = $derived(
 		region === null ? 0 : restingObjectsOnFloorRegion(snapshot, region.id)
@@ -399,9 +400,7 @@
 							<span class="value" data-region-reading>
 								{relation.reading === 'gap'
 									? `Gap ${relation.measureMeters?.toFixed(2)} m${relation.measureAxis === 'horizontal' ? ' horizontal' : ''}${relation.intended ? ' · intended' : ''}`
-									: relation.reading === 'crosses'
-										? 'Crosses'
-										: 'Meets'}
+									: READING_LABELS[relation.reading]}
 							</span>
 						</div>
 						<div class="relation-actions">
