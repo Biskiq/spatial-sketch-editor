@@ -275,8 +275,8 @@
 		"state": 4,
 		"derived": 0,
 		"effects": 0,
-		"functions": 23,
-		"arrows": 32
+		"functions": 22,
+		"arrows": 31
 	},
 	"src/lib/authoring/look/finish-authoring-contract.ts": {
 		"lines": 262,
