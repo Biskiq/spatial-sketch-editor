@@ -48,11 +48,17 @@ import { isStageDrag, slicePressRefusal, type StagePressTracker } from '../stage
 import { stageWheelZoom } from '../stage-wheel-zoom';
 import type { StageInterruptionReason } from '../stage-interruption';
 import type { ScenePickSource } from '$lib/authoring/scene/scene-pick-source';
+import type { SceneGroupScope } from '$lib/authoring/scene/selection-target';
 import type { StageArtworkInteraction } from './stage-artwork-interaction.svelte';
 import type { StageUnfoldGestures } from './stage-unfold-gestures.svelte';
 
 export type StageInputArbiterInput = {
 	readonly facade: () => StageFacade | null;
+	/**
+	 * The accepted Scene document, for the reads that must know its own groups.
+	 * Hover resolves a member to the group that owns it; the arbiter never writes.
+	 */
+	readonly scene?: () => SceneGroupScope | null;
 	readonly evaluation: () => ViewportEvaluation | null;
 	readonly rect: () => ViewportRect | null;
 	readonly measure: () => ViewportRect;

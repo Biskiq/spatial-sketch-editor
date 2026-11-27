@@ -72,7 +72,7 @@
 		},
 		{
 			"path": "apps/editor/src/lib/authoring/workspace/host/workspace-host.svelte.ts",
-			"lines": 992,
+			"lines": 1000,
 			"reason": "The route's one composition root: core factories, feature entries and the lifecycle run share one mount sequence."
 		},
 		{
@@ -132,7 +132,7 @@
 		},
 		{
 			"path": "apps/editor/src/lib/authoring/stage/route/stage-input.svelte.ts",
-			"lines": 881,
+			"lines": 887,
 			"reason": "The Stage input arbiter: pointer, click, wheel, hover and interruption share one precedence and press tracker."
 		},
 		{
@@ -402,7 +402,7 @@
 		},
 		{
 			"path": "apps/editor/src/lib/authoring/stage/shell/StageCanvas.svelte",
-			"lines": 698,
+			"lines": 705,
 			"reason": "The one persistent Stage Canvas: renderer, reading and lens share one mounted Threlte canvas."
 		},
 		{
@@ -659,8 +659,8 @@
 		{
 			"file": "apps/editor/src/lib/authoring/workspace/host/workspace-host.svelte.ts",
 			"name": "createWorkspaceHost",
-			"line": 105,
-			"lines": 885,
+			"line": 106,
+			"lines": 892,
 			"reason": "The route's one composition root: core factories, feature entries and the lifecycle run share one mount sequence."
 		},
 		{
@@ -1205,8 +1205,8 @@
 		{
 			"file": "apps/editor/src/lib/authoring/stage/route/stage-hover.svelte.ts",
 			"name": "createStageHover",
-			"line": 17,
-			"lines": 241,
+			"line": 58,
+			"lines": 238,
 			"reason": "Baseline exception: the owning split removes this entry."
 		},
 		{

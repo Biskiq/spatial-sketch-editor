@@ -9,11 +9,13 @@
 	 * in the owning domain's words, and never as a disabled control with no
 	 * explanation.
 	 */
+	import type { Snippet } from 'svelte';
 	import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 	import { stageScene } from '$lib/authoring/stage/stage-adapter-host';
 	import { sceneClusterById, sceneClusterMemberIds } from '../../scene/selection-target';
 
-	let { services }: { services: StageAdapterServices } = $props();
+	let { services, secondary }: { services: StageAdapterServices; secondary?: Snippet<[Snippet?]> } =
+		$props();
 
 	const scene = () => stageScene(services.stage.snapshot());
 
@@ -102,6 +104,7 @@
 	{#if reasons().length > 0}
 		<p class="why" role="note">{reasons().join(' ')}</p>
 	{/if}
+	{#if secondary}{@render secondary()}{/if}
 </div>
 
 <style>

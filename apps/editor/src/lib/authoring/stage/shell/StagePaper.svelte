@@ -41,6 +41,7 @@
 		selection = null,
 		hover = null,
 		hoverTone = 'hover',
+		clusterMembers = () => [],
 		revision = 0
 	}: {
 		plan: PlanEvaluation;
@@ -62,6 +63,8 @@
 		hover?: StageSelectionEntry | null;
 		/** `erase` re-strokes the hovered subject in the Eraser's red dashes. */
 		hoverTone?: 'hover' | 'erase' | 'paint';
+		/** A Scene group's own member ids: one group mark covers every member. */
+		clusterMembers?: (clusterId: string) => readonly string[];
 		/** Changes when Scene entity roots mount or unmount, so the drawing follows. */
 		revision?: number;
 	} = $props();
@@ -80,7 +83,10 @@
 	});
 	// The selection is a filter over the drawing Paper already owns; a pan does not
 	// rebuild it, and the entries can never disagree with what is drawn underneath.
-	const marks = $derived.by(() => paperMarkSet(drawing, selection, hover, hoverTone));
+	const marks = $derived.by(() =>
+		paperMarkSet(drawing, selection, hover, hoverTone, clusterMembers)
+	);
+
 
 	$effect(() => {
 		// The unfiltered drawing: a selection changes which instance runs are drawn,

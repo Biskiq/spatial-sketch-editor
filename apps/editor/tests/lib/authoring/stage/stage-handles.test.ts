@@ -603,7 +603,9 @@ describe('disclosure through the Stage host', () => {
 			new URL('../../../../src/lib/authoring/stage/shell/StagePaper.svelte', import.meta.url),
 			'utf8'
 		);
-		expect(paper).toContain('paperMarkSet(drawing, selection, hover, hoverTone)');
+		expect(paper).toContain(
+			'paperMarkSet(drawing, selection, hover, hoverTone, clusterMembers)'
+		);
 		expect(paper).toContain('createPaperMarkScene(marks');
 		const marks = readFileSync(
 			new URL('../../../../src/lib/authoring/stage/paper-marks.ts', import.meta.url),
@@ -616,7 +618,9 @@ describe('disclosure through the Stage host', () => {
 		expect(marks).toContain("PAPER_HOVER_INK = '#4f8f6c'");
 		expect(marks).toContain('PAPER_MARK_HALO_INK');
 		expect(marks).toContain("line.sourceId === id");
-		expect(marks).toContain("footprint.entityId === id");
+		// A Scene group addresses its members; every other Scene subject is its own id.
+		expect(marks).toContain('ids.has(footprint.entityId)');
+		expect(marks).toContain('clusterMembers(entry.reference.subject.id)');
 		expect(marks).toContain('sameReference(hover.reference, selection.reference)');
 		// S04 handoff: overlay layer, no depth test. Contours sit above the
 		// sheet; the selection fill sits above the cut poché and under its stroke.

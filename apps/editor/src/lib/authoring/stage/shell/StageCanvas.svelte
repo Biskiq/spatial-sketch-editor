@@ -60,7 +60,7 @@ import StageMatGround from './StageMatGround.svelte';
 	import StageSelectionLayer from './StageSelectionLayer.svelte';
 	import StageRepairLayer from './StageRepairLayer.svelte';
 	import type { FinishOutcomeSink } from '$lib/render/resources/finish-outcome-sink';
-	import { ghostSubjectOf, selectionObjectsOf } from './stage-selection-source';
+	import { ghostSubjectOf, selectionBodiesOf } from './stage-selection-source';
 	import { subjectWhollyHidden } from '../slice/slice-ghost';
 	import StageWallDevelopment from './StageWallDevelopment.svelte';
 	import StageWallPin from './StageWallPin.svelte';
@@ -116,6 +116,7 @@ import StageMatGround from './StageMatGround.svelte';
 		hoverTone = 'hover',
 		proposals = [],
 		scenePick,
+		clusterMembers = () => [],
 		/** The Stage's captured pointer ids, read before a renderer generation retires. */
 		capturedPointers = null,
 		/**
@@ -190,6 +191,8 @@ import StageMatGround from './StageMatGround.svelte';
 		proposals?: readonly StageSelectionEntry[];
 		dial?: CelestialDialModel | null;
 		scenePick: ScenePickSource;
+		/** A Scene group's own member ids: one group selection marks every member. */
+		clusterMembers?: (clusterId: string) => readonly string[];
 		capturedPointers?: (() => readonly number[]) | null;
 		liftedRoomIds?: readonly string[];
 		liftedRegionIds?: readonly string[];
@@ -274,7 +277,9 @@ import StageMatGround from './StageMatGround.svelte';
 		sceneRootRevision;
 		entityRenderRevision;
 		if (selection === null || selection === undefined) return null;
-		const objects = selectionObjectsOf(scenePick, selection);
+		// A Scene group owns its members' bodies: the ghost of a selected group is
+		// the union of the member bodies, never a bodyless group id.
+		const objects = selectionBodiesOf(scenePick, selection, clusterMembers);
 		if (objects.length === 0) return null;
 		const subject = ghostSubjectOf(objects);
 		return subject === null ? null : { objects, subject };
@@ -567,6 +572,7 @@ import StageMatGround from './StageMatGround.svelte';
 			{selection}
 			{hover}
 			{hoverTone}
+			{clusterMembers}
 			revision={sceneRootRevision + entityRenderRevision}
 		/>
 	{/if}
@@ -588,6 +594,7 @@ import StageMatGround from './StageMatGround.svelte';
 			{proposals}
 			{geometry}
 			{scenePick}
+			{clusterMembers}
 			width={evaluation?.rect.width ?? 1}
 			height={evaluation?.rect.height ?? 1}
 			fade={1 - (paperReveal?.sheet ?? 0)}

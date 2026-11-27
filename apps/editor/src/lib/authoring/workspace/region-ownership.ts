@@ -74,6 +74,7 @@ export const REGION_KEY_OWNER = {
 		proposals: 'appearance',
 		dial: 'sky',
 		scenePick: 'core',
+		clusterMembers: 'core',
 		capturedPointers: 'core',
 		liftedRoomIds: 'layout-readings',
 		liftedRegionIds: 'layout-readings',

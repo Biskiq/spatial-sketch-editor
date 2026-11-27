@@ -30,6 +30,7 @@ export type StageInputWiring = Omit<
 export function wireStageInput(input: StageInputWiring) {
 	return createStageInputArbiter({
 		facade: input.facade,
+		scene: input.scene,
 		evaluation: input.evaluation,
 		rect: input.rect,
 		measure: input.measure,
