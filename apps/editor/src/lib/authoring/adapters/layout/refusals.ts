@@ -225,6 +225,27 @@ export function wallRefusalWords(
 }
 
 /**
+ * One Wall rejection's words, with the Opening its ids or message name.
+ *
+ * Card fields and Stage grips both call this, so a lowered edit names the same
+ * Opening in both places.
+ */
+export function wallEditRejectionWords(
+	document: LayoutDocumentWallFirst,
+	rejection: {
+		readonly code: string;
+		readonly message: string;
+		readonly targetIds?: readonly string[];
+	},
+): string {
+	return wallRefusalWords(
+		rejection.code,
+		rejection.message,
+		refusalSubjects(document, rejection.targetIds, rejection.message),
+	);
+}
+
+/**
  * The split's own words.
  *
  * A split is not a bend: sharing `closed_wall_isolated`'s bend wording would

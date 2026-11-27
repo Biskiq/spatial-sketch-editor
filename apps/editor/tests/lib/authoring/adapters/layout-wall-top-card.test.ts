@@ -30,7 +30,7 @@ import {
 	type LayoutWritePort
 } from '$lib/authoring/adapters/layout/instrument';
 import { LAYOUT_WALL_HEIGHT_KIND, LAYOUT_WALL_TOP_KIND } from '$lib/authoring/adapters/layout/precision';
-import { wallTopRejectionWords } from '$lib/authoring/adapters/layout/precision-planners';
+import { wallEditRejectionWords } from '$lib/authoring/adapters/layout/refusals';
 import {
 	WALL_TOP_DEFAULT_PITCH_RADIANS,
 	wallTopForKnobDrag,
@@ -322,7 +322,7 @@ describe('V2c · the top refusal names the Opening it cuts into', () => {
 		const plan = planSetWallTop(document, 'w1', { kind: 'slope', startRise: 2, endRise: 0 });
 		expect(plan.kind).toBe('rejected');
 		if (plan.kind !== 'rejected') return;
-		expect(wallTopRejectionWords(document, plan.rejection)).toBe(
+		expect(wallEditRejectionWords(document, plan.rejection)).toBe(
 			'This top would cut into "High window". Raise the top there or lower the Opening.'
 		);
 	});
@@ -351,7 +351,7 @@ describe('V2c · the top refusal names the Opening it cuts into', () => {
 		const plan = planExactWallHeight(document, 'w1', 2.4);
 		expect(plan.kind).toBe('rejected');
 		if (plan.kind !== 'rejected') return;
-		expect(wallTopRejectionWords(document, plan.rejection)).toBe(
+		expect(wallEditRejectionWords(document, plan.rejection)).toBe(
 			'This top would cut into "High window". Raise the top there or lower the Opening.'
 		);
 	});

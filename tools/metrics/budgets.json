@@ -417,7 +417,7 @@
 		},
 		{
 			"path": "apps/editor/src/lib/authoring/adapters/layout/precision-planners.ts",
-			"lines": 748,
+			"lines": 725,
 			"reason": "Baseline exception: the owning split removes this entry."
 		},
 		{

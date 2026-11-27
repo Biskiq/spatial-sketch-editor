@@ -29,10 +29,9 @@ import {
 	readLayoutIdCapture,
 } from '@portfolio/layout-core/plan';
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
-import type { LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 import type { DomainPlanner } from '@portfolio/project-model/f4';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
-import { openingRefusalWords, refusalSubjects, wallRefusalWords } from './refusals';
+import { openingRefusalWords, wallEditRejectionWords, wallRefusalWords } from './refusals';
 import {
 	LAYOUT_ENTITY_NAME_KIND,
 	LAYOUT_JUNCTION_MOVE_KIND,
@@ -84,7 +83,7 @@ function wallHeightPlanner(): DomainPlanner<ProjectEnvelope> {
 		if (plan.kind === 'rejected') {
 			// A shorter Wall can cut into a hosted Opening. The V2b formatter names
 			// that Opening, so Height and the top grip say the same words.
-			return rejected(plan.rejection.code, wallTopRejectionWords(baseline, plan.rejection));
+			return rejected(plan.rejection.code, wallEditRejectionWords(baseline, plan.rejection));
 		}
 		return preparedLayoutCandidate(
 			request,
@@ -95,28 +94,6 @@ function wallHeightPlanner(): DomainPlanner<ProjectEnvelope> {
 			{ surfaceLineage: [] },
 		);
 	});
-}
-
-/**
- * The top and height planners' refusal words, with the Opening their ids name.
- *
- * Both report an Opening id in `targetIds` when a lowered edit would cut into it;
- * resolving it here keeps the Card and both Stage grips from saying
- * "an Opening".
- */
-export function wallTopRejectionWords(
-	document: LayoutDocumentWallFirst,
-	rejection: {
-		readonly code: string;
-		readonly message: string;
-		readonly targetIds?: readonly string[];
-	},
-): string {
-	return wallRefusalWords(
-		rejection.code,
-		rejection.message,
-		refusalSubjects(document, rejection.targetIds, rejection.message),
-	);
 }
 
 /**
@@ -139,7 +116,7 @@ function wallTopPlanner(): DomainPlanner<ProjectEnvelope> {
 		const baseline = request.snapshot.domain.source.units.layout.data;
 		const plan = planSetWallTop(baseline, wallId, top, height);
 		if (plan.kind === 'rejected') {
-			return rejected(plan.rejection.code, wallTopRejectionWords(baseline, plan.rejection));
+			return rejected(plan.rejection.code, wallEditRejectionWords(baseline, plan.rejection));
 		}
 		return preparedLayoutCandidate(
 			request,
