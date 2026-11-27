@@ -18,6 +18,24 @@ function readIds(reader: ShapeReader, input: unknown, path: string): string[] | 
 	return ids;
 }
 
+function readCopies(reader: ShapeReader, input: unknown, path: string) {
+	if (!Array.isArray(input)) {
+		reader.problem(path, 'not-an-array', `${path} must be an array of captured member copies`);
+		return null;
+	}
+	const copies: { sourceEntityId: string; entityId: string }[] = [];
+	for (const [index, value] of input.entries()) {
+		const entryPath = `${path}[${index}]`;
+		const record = reader.object(value, entryPath, ['sourceEntityId', 'entityId']);
+		if (record === null) return null;
+		const sourceEntityId = reader.opaqueId(record.sourceEntityId, `${entryPath}.sourceEntityId`);
+		const entityId = reader.opaqueId(record.entityId, `${entryPath}.entityId`);
+		if (sourceEntityId === null || entityId === null) return null;
+		copies.push({ sourceEntityId, entityId });
+	}
+	return copies;
+}
+
 function readContacts(
 	reader: ShapeReader,
 	input: unknown,
@@ -148,16 +166,16 @@ export function readGroupDuplicatePayload(
 	raw: unknown,
 ): SceneOperationPayload | null {
 	const path = '$.payload';
-	const record = reader.object(raw, path, ['clusterId', 'entityIds', 'newClusterId', 'contacts']);
+	const record = reader.object(raw, path, ['clusterId', 'copies', 'newClusterId', 'contacts']);
 	if (record === null) return null;
 	const clusterId = reader.opaqueId(record.clusterId, `${path}.clusterId`);
-	const entityIds = readIds(reader, record.entityIds, `${path}.entityIds`);
+	const copies = readCopies(reader, record.copies, `${path}.copies`);
 	const newClusterId = reader.opaqueId(record.newClusterId, `${path}.newClusterId`);
 	const contacts = readContacts(reader, record.contacts, `${path}.contacts`);
-	if (clusterId === null || entityIds === null || newClusterId === null || contacts === null) {
+	if (clusterId === null || copies === null || newClusterId === null || contacts === null) {
 		return null;
 	}
-	return { kind: 'scene-group-duplicate', clusterId, entityIds, newClusterId, contacts };
+	return { kind: 'scene-group-duplicate', clusterId, copies, newClusterId, contacts };
 }
 
 export function readGroupErasePayload(

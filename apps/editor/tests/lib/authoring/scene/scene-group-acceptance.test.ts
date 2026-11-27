@@ -193,7 +193,10 @@ describe('group acceptance', () => {
 				clusterId: fixture.stillLifeClusterId,
 				payload: {
 					clusterId: fixture.stillLifeClusterId,
-					entityIds: fixture.stillLifeMemberIds.map((id) => `${id}-copy`),
+					copies: fixture.stillLifeMemberIds.map((sourceEntityId) => ({
+						sourceEntityId,
+						entityId: `${sourceEntityId}-copy`
+					})),
 					newClusterId: 'cluster-still-life-copy',
 					contacts: contacts(fixture, fixture.stillLifeMemberIds),
 				},

@@ -11,11 +11,16 @@ import {
 	checkSceneRecordScope,
 	createScenePlanners,
 	groupMemberEligible,
+	planDuplicateOne,
+	planMoveHorizontal,
 	rigidPivot,
 	rigidTurnPosition,
 	rigidYawAdd,
+	rotationForwardVector,
 	type SceneGroupMemberContact,
 } from '@portfolio/project-model/scene-planning';
+import type { SceneLightEntity } from '@portfolio/project-model/scene';
+import type { LayoutRegion } from '@portfolio/layout-core/wall';
 import type { AcceptedSnapshot, AuthoringIntent, DomainPlanner } from '@portfolio/project-model/f4';
 import type { SemanticReference } from '@portfolio/project-model/references';
 import type { CameraFreeSceneDocument } from '@portfolio/project-model/units';
@@ -366,13 +371,18 @@ describe('group planners', () => {
 			(cluster) => cluster.id === fixture.stillLifeClusterId,
 		)!;
 		const copiedIds = sourceCluster.memberIds.map((id) => `${id}-copy`);
+		// Captured in reverse: each copy names its source member, so the mapping is
+		// by captured id and never by array position.
+		const copies = sourceCluster.memberIds
+			.map((sourceEntityId) => ({ sourceEntityId, entityId: `${sourceEntityId}-copy` }))
+			.reverse();
 		const result = prepare({
 			kind: 'scene-group-duplicate',
 			snapshot,
 			clusterId: fixture.stillLifeClusterId,
 			payload: {
 				clusterId: fixture.stillLifeClusterId,
-				entityIds: copiedIds,
+				copies,
 				newClusterId: 'cluster-still-life-copy',
 				contacts: contactsFor(fixture, sourceCluster.memberIds),
 			},
@@ -409,6 +419,25 @@ describe('group planners', () => {
 		expect(result.candidate.correspondence.filter((entry) => entry.relation === 'created')).toHaveLength(
 			sourceCluster.memberIds.length + 1,
 		);
+
+		// A copy list that names an entity outside the group refuses rather than
+		// silently copying a different member.
+		const unknownSource = prepare({
+			kind: 'scene-group-duplicate',
+			snapshot,
+			clusterId: fixture.stillLifeClusterId,
+			payload: {
+				clusterId: fixture.stillLifeClusterId,
+				copies: [
+					...copies.slice(1),
+					{ sourceEntityId: 'neighbour', entityId: 'neighbour-copy' },
+				],
+				newClusterId: 'cluster-still-life-copy-2',
+				contacts: contactsFor(fixture, sourceCluster.memberIds),
+			},
+		});
+		expect(unknownSource.kind).toBe('rejected');
+		if (unknownSource.kind === 'rejected') expect(unknownSource.code).toBe('invalid-value');
 	});
 
 	it('refuses a duplicate whose copy would leave its support', async () => {
@@ -419,7 +448,10 @@ describe('group planners', () => {
 			clusterId: fixture.orderClusterId,
 			payload: {
 				clusterId: fixture.orderClusterId,
-				entityIds: ['order-a-copy', 'order-b-copy'],
+				copies: fixture.orderMemberIds.map((sourceEntityId) => ({
+					sourceEntityId,
+					entityId: `${sourceEntityId}-copy`,
+				})),
 				newClusterId: 'cluster-order-copy',
 				contacts: contactsFor(fixture, fixture.orderMemberIds),
 			},
@@ -503,6 +535,274 @@ describe('group planners', () => {
 			},
 		});
 		expect(refused.kind).toBe('rejected');
+	});
+
+	it('admits a vertical-plane group, refuses its transform by name, and still renames, ungroups and erases it', async () => {
+		const base = groupedSceneFixture();
+		const plane: CameraFreeSceneDocument['entities'][number] = {
+			kind: 'primitive',
+			primitive: 'plane',
+			id: 'plane-member',
+			name: 'Vertical plane',
+			dimensions: { width: 1, height: 1 },
+			materialId: 'plaster-warm',
+			castShadow: false,
+			receiveShadow: true,
+			position: [3, 1.5, 2],
+			rotation: [Math.PI / 2, 0, 0],
+			scale: 1,
+		};
+		const fixture = {
+			...base,
+			scene: {
+				...base.scene,
+				entities: [...base.scene.entities, plane],
+				clusters: [
+					...(base.scene.clusters ?? []),
+					{ id: 'cluster-plane', name: 'Plane group', memberIds: ['plane-member', 'neighbour'] },
+				],
+			},
+		};
+		const { snapshot } = await snapshotOf(fixture);
+		const transformed = prepare({
+			kind: 'scene-group-transform',
+			snapshot,
+			clusterId: 'cluster-plane',
+			payload: transformPayload(fixture, 'cluster-plane', { kind: 'move', deltaXZ: [0.1, 0] }, [
+				'neighbour',
+			]),
+		});
+		expect(transformed.kind).toBe('rejected');
+		if (transformed.kind === 'rejected') {
+			expect(transformed.code).toBe('unsupported-transform');
+			expect(transformed.message).toContain('plane-member');
+		}
+		const duplicated = prepare({
+			kind: 'scene-group-duplicate',
+			snapshot,
+			clusterId: 'cluster-plane',
+			payload: {
+				clusterId: 'cluster-plane',
+				copies: [
+					{ sourceEntityId: 'plane-member', entityId: 'plane-member-copy' },
+					{ sourceEntityId: 'neighbour', entityId: 'neighbour-copy' },
+				],
+				newClusterId: 'cluster-plane-copy',
+				contacts: contactsFor(fixture, ['neighbour']),
+			},
+		});
+		expect(duplicated.kind).toBe('rejected');
+		if (duplicated.kind === 'rejected') expect(duplicated.code).toBe('unsupported-transform');
+
+		const renamed = prepare({
+			kind: 'scene-group-rename',
+			snapshot,
+			clusterId: 'cluster-plane',
+			payload: { clusterId: 'cluster-plane', name: 'Renamed' },
+		});
+		expect(renamed.kind).toBe('prepared');
+		const ungrouped = prepare({
+			kind: 'scene-group-ungroup',
+			snapshot,
+			clusterId: 'cluster-plane',
+			payload: { clusterId: 'cluster-plane' },
+		});
+		expect(ungrouped.kind).toBe('prepared');
+		const erased = prepare({
+			kind: 'scene-group-erase',
+			snapshot,
+			clusterId: 'cluster-plane',
+			payload: { clusterId: 'cluster-plane' },
+		});
+		expect(erased.kind).toBe('prepared');
+	});
+
+	it('keeps a pose under a mezzanine operable by the next Move and Duplicate', async () => {
+		const base = groupedSceneFixture();
+		const carried: CameraFreeSceneDocument['entities'][number] = {
+			kind: 'primitive',
+			primitive: 'box',
+			id: 'under-mezzanine',
+			name: 'Under mezzanine',
+			dimensions: { width: 1, height: 1, depth: 1 },
+			materialId: 'plaster-warm',
+			castShadow: true,
+			receiveShadow: true,
+			position: [5.8, 1.2, 0.2],
+			rotation: [0, 0, 0],
+			scale: 1,
+		};
+		const companion: CameraFreeSceneDocument['entities'][number] = {
+			...carried,
+			id: 'under-mezzanine-companion',
+			name: 'Companion',
+			position: [5.4, 0.5, -0.4],
+		};
+		// A real floor under the mezzanine: the datum is only a fallback where no
+		// region covers the point, so the reported overlap needs both.
+		const groundUnderMezzanine: LayoutRegion = {
+			id: 'region-ground-under-mezzanine',
+			role: 'floor',
+			footprint: {
+				kind: 'polygon',
+				points: [
+					[5.2, 0],
+					[7.2, 0],
+					[7.2, 2],
+					[5.2, 2],
+				],
+			},
+			elevation: 0,
+			thickness: 0.1,
+			form: { kind: 'flat' },
+			intendedGaps: [],
+			name: 'Ground under mezzanine',
+		};
+		const fixture = {
+			...base,
+			layout: { ...base.layout, regions: [...base.layout.regions, groundUnderMezzanine] },
+			scene: {
+				...base.scene,
+				entities: [...base.scene.entities, carried, companion],
+				clusters: [
+					...(base.scene.clusters ?? []),
+					{ id: 'cluster-under', name: 'Under', memberIds: [carried.id, companion.id] },
+				],
+			},
+			contacts: {
+				...base.contacts,
+				'under-mezzanine': -0.5,
+				'under-mezzanine-companion': -0.5,
+			},
+		};
+		const { snapshot } = await snapshotOf(fixture);
+		const context = {
+			layout: fixture.layout,
+			sourceContentId: snapshot.sourceContentId,
+			scene: snapshot.domain.source.units.scene.data,
+		};
+
+		// Base 0.7 m on the datum, with only the datum beneath it at the origin.
+		const firstMove = planMoveHorizontal({
+			context,
+			entityId: 'under-mezzanine',
+			worldXZ: [6.3, 0.7],
+			frame: { origin: [0, 0, 0], yaw: 0 },
+			contactMinY: -0.5,
+		});
+		expect(firstMove.kind).toBe('candidate');
+		if (firstMove.kind !== 'candidate') return;
+		const installed = firstMove.scene.entities.find((entity) => entity.id === 'under-mezzanine')!;
+		expect(installed.position[1]).toBe(1.2);
+
+		// The accepted pose is under the 0.9 m mezzanine over the datum floor. Its
+		// base must classify as lifted above the datum, or a pose this ordinary Move
+		// just installed could not be moved or copied again.
+		const accepted = { ...context, scene: firstMove.scene };
+		const secondMove = planMoveHorizontal({
+			context: accepted,
+			entityId: 'under-mezzanine',
+			worldXZ: [4, 0],
+			frame: { origin: [0, 0, 0], yaw: 0 },
+			contactMinY: -0.5,
+		});
+		expect(secondMove.kind).toBe('candidate');
+		const duplicate = planDuplicateOne({
+			context: accepted,
+			entityId: 'under-mezzanine',
+			newEntityId: 'under-mezzanine-copy',
+			contactMinY: -0.5,
+		});
+		expect(duplicate.kind).toBe('candidate');
+
+		// The group planners share the same rule at the same accepted pose.
+		const groupedSnapshot = await snapshotOf({ ...fixture, scene: accepted.scene });
+		const groupMove = prepare({
+			kind: 'scene-group-transform',
+			snapshot: groupedSnapshot.snapshot,
+			clusterId: 'cluster-under',
+			payload: transformPayload(fixture, 'cluster-under', { kind: 'move', deltaXZ: [-1.5, -0.5] }, [
+				'under-mezzanine',
+				'under-mezzanine-companion',
+			]),
+		});
+		expect(groupMove.kind).toBe('prepared');
+		const groupDuplicate = prepare({
+			kind: 'scene-group-duplicate',
+			snapshot: groupedSnapshot.snapshot,
+			clusterId: 'cluster-under',
+			payload: {
+				clusterId: 'cluster-under',
+				copies: [
+					{
+						sourceEntityId: 'under-mezzanine-companion',
+						entityId: 'under-mezzanine-companion-copy',
+					},
+					{ sourceEntityId: 'under-mezzanine', entityId: 'under-mezzanine-copy-2' },
+				],
+				newClusterId: 'cluster-under-copy',
+				contacts: [
+					{ entityId: 'under-mezzanine', contactMinY: -0.5 },
+					{ entityId: 'under-mezzanine-companion', contactMinY: -0.5 },
+				],
+			},
+		});
+		expect(groupDuplicate.kind).toBe('prepared');
+	});
+
+	it('keeps a near-gimbal spot aimed within 1e-6 through a group Turn', async () => {
+		const base = groupedSceneFixture();
+		const yaw = 0.1;
+		const spot: SceneLightEntity = {
+			kind: 'light',
+			light: 'spot',
+			id: 'order-b',
+			name: 'Near-gimbal spot',
+			color: '#fff4e0',
+			intensity: 3,
+			range: 8,
+			angle: 0.5,
+			penumbra: 0.2,
+			castShadow: false,
+			position: [4.6, 2.5, 3.2],
+			rotation: [0, Math.PI / 2 - 0.0002 - yaw, 0.9],
+		};
+		const fixture = {
+			...base,
+			scene: {
+				...base.scene,
+				entities: base.scene.entities.map((entity) =>
+					entity.id === 'order-b' ? spot : entity,
+				),
+			},
+		};
+		const { snapshot } = await snapshotOf(fixture);
+		const result = prepare({
+			kind: 'scene-group-transform',
+			snapshot,
+			clusterId: fixture.orderClusterId,
+			payload: transformPayload(fixture, fixture.orderClusterId, { kind: 'turn', yaw }, fixture.orderMemberIds),
+		});
+		expect(result.kind).toBe('prepared');
+		if (result.kind !== 'prepared') return;
+		const turned = result.candidate.source.units.scene.data.entities.find(
+			(entity) => entity.id === 'order-b',
+		)!;
+		const before = rotationForwardVector(spot.rotation);
+		const expected = [
+			Math.cos(yaw) * before[0] + Math.sin(yaw) * before[2],
+			before[1],
+			-Math.sin(yaw) * before[0] + Math.cos(yaw) * before[2],
+		] as const;
+		const actual = rotationForwardVector(turned.rotation);
+		const error = Math.hypot(
+			actual[0] - expected[0],
+			actual[1] - expected[1],
+			actual[2] - expected[2],
+		);
+		expect(error).toBeLessThan(1e-9);
+		// The plan's tolerance: forward vector and target point at 8 m.
+		expect(error * 8).toBeLessThan(1e-6);
 	});
 
 	it('exposes the same eligibility predicate the group planners enforce', async () => {

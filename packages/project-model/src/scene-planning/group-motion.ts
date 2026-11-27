@@ -18,6 +18,7 @@ import {
 	movableMembers,
 	readCluster,
 	readContacts,
+	type SceneGroupDuplicateCopy,
 	type SceneGroupMemberContact,
 } from './group-operations';
 import { cloneEntityWithId } from './operations/finalization';
@@ -137,7 +138,7 @@ export function planGroupTransform(input: {
 export function planGroupDuplicate(input: {
 	readonly context: SceneOperationContext;
 	readonly clusterId: string;
-	readonly entityIds: readonly string[];
+	readonly copies: readonly SceneGroupDuplicateCopy[];
 	readonly newClusterId: string;
 	readonly contacts: readonly SceneGroupMemberContact[];
 }): SceneGroupOperationResult {
@@ -146,28 +147,52 @@ export function planGroupDuplicate(input: {
 	if (read.kind !== 'ok') return read;
 	const ineligible = movableMembers(read.entities);
 	if (ineligible !== null) return ineligible;
-	if (!Array.isArray(input.entityIds) || input.entityIds.length !== read.cluster.memberIds.length) {
+	// Every copy is captured against its source member, so a copy list in any
+	// order names the same copies; nothing is remapped by member order.
+	if (!Array.isArray(input.copies) || input.copies.length !== read.cluster.memberIds.length) {
 		return invalid(
-			`A group duplicate needs exactly ${read.cluster.memberIds.length} captured entity ids, one per member.`,
-			['entityIds'],
+			`A group duplicate needs exactly ${read.cluster.memberIds.length} captured member copies, one per member.`,
+			['copies'],
 		);
 	}
+	const members = new Set(read.cluster.memberIds);
+	const copyIdBySource = new Map<string, string>();
 	const captured = new Set<string>();
-	for (const entityId of input.entityIds) {
-		if (typeof entityId !== 'string' || entityId.trim().length === 0) {
-			return invalid('A captured duplicate id must be a non-empty string.', ['entityIds']);
-		}
-		if (captured.has(entityId)) {
-			return invalid(`Captured duplicate id "${entityId}" is used twice.`, [entityId]);
-		}
-		captured.add(entityId);
-		if (scene.entities.some((entity) => entity.id === entityId)) {
-			return invalid(`Captured duplicate id "${entityId}" already exists in the accepted source.`, [
-				entityId,
-				'duplicate-entity-id',
+	for (const copy of input.copies) {
+		if (
+			typeof copy.sourceEntityId !== 'string' ||
+			copy.sourceEntityId.trim().length === 0 ||
+			typeof copy.entityId !== 'string' ||
+			copy.entityId.trim().length === 0
+		) {
+			return invalid('A captured member copy must name its source member and its new id.', [
+				'copies',
 			]);
 		}
+		if (!members.has(copy.sourceEntityId)) {
+			return invalid(
+				`Captured copy source "${copy.sourceEntityId}" is not a member of group "${input.clusterId}".`,
+				[copy.sourceEntityId],
+			);
+		}
+		if (copyIdBySource.has(copy.sourceEntityId)) {
+			return invalid(`Captured copy source "${copy.sourceEntityId}" is used twice.`, [
+				copy.sourceEntityId,
+			]);
+		}
+		if (captured.has(copy.entityId)) {
+			return invalid(`Captured duplicate id "${copy.entityId}" is used twice.`, [copy.entityId]);
+		}
+		captured.add(copy.entityId);
+		if (scene.entities.some((entity) => entity.id === copy.entityId)) {
+			return invalid(
+				`Captured duplicate id "${copy.entityId}" already exists in the accepted source.`,
+				[copy.entityId, 'duplicate-entity-id'],
+			);
+		}
+		copyIdBySource.set(copy.sourceEntityId, copy.entityId);
 	}
+	const copyIds = read.cluster.memberIds.map((memberId) => copyIdBySource.get(memberId)!);
 	if (typeof input.newClusterId !== 'string' || input.newClusterId.trim().length === 0) {
 		return invalid('A group duplicate needs a captured cluster id.', ['newClusterId']);
 	}
@@ -196,8 +221,8 @@ export function planGroupDuplicate(input: {
 		});
 		if (support.kind !== 'resolved') return groupSupportRefusal(entity, position, support);
 	}
-	const copies: SceneEntity[] = read.entities.map((entity, index) => ({
-		...cloneEntityWithId(entity, input.entityIds[index]!),
+	const copies: SceneEntity[] = read.entities.map((entity) => ({
+		...cloneEntityWithId(entity, copyIdBySource.get(entity.id)!),
 		position: [
 			entity.position[0] + DUPLICATE_OFFSET_METERS,
 			entity.position[1],
@@ -209,7 +234,7 @@ export function planGroupDuplicate(input: {
 	const cluster: SceneObjectCluster = {
 		id: input.newClusterId,
 		name: read.cluster.name,
-		memberIds: [...input.entityIds],
+		memberIds: [...copyIds],
 	};
 	return createCandidate({
 		context: input.context,
@@ -224,10 +249,10 @@ export function planGroupDuplicate(input: {
 		scope: {
 			changedEntityIds: [],
 			changedEntityFields: [],
-			createdEntityIds: [...input.entityIds],
+			createdEntityIds: [...copyIds],
 			removedEntityIds: [],
 			clusters: {
-				created: [{ id: cluster.id, memberIds: cluster.memberIds }],
+				created: [{ id: cluster.id, memberIds: [...copyIds] }],
 				removed: [],
 				renamed: [],
 				pruned: [],
@@ -236,7 +261,7 @@ export function planGroupDuplicate(input: {
 		correspondence: [
 			{ relation: 'preserved', clusterId: input.clusterId },
 			{ relation: 'created', clusterId: cluster.id },
-			...input.entityIds.map((entityId) => ({ relation: 'created' as const, entityId })),
+			...copyIds.map((entityId) => ({ relation: 'created' as const, entityId })),
 		],
 	});
 }

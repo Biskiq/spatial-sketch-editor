@@ -150,7 +150,7 @@ function planGroupOperation(
 		return planGroupDuplicate({
 			context,
 			clusterId: subject.clusterId,
-			entityIds: payload.entityIds,
+			copies: payload.copies,
 			newClusterId: payload.newClusterId,
 			contacts: payload.contacts,
 		});

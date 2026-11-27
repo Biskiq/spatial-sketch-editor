@@ -160,7 +160,10 @@ export type SceneOperationPayload =
 	| {
 			readonly kind: 'scene-group-duplicate';
 			readonly clusterId: string;
-			readonly entityIds: readonly string[];
+			readonly copies: readonly {
+				readonly sourceEntityId: string;
+				readonly entityId: string;
+			}[];
 			readonly newClusterId: string;
 			readonly contacts: readonly { readonly entityId: string; readonly contactMinY: number }[];
 	  }

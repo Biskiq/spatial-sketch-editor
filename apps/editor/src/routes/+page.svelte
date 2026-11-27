@@ -148,7 +148,7 @@
 		<h1 id="entry-title">Start creating</h1>
 		<p class="lede">Lay out a whole project, or shape a single object. Sign in when you want cloud projects.</p>
 		{#if recovery !== null}
-			<p class="status" role="alert">This pending Save uses a different Layout format. Download the capture to recover it with its original reader.</p>
+			<p class="status" role="alert">This pending Save uses a different {recovery.unit} format (version {recovery.stamp}). Download the capture to recover it with its original reader.</p>
 			<div class="actions">
 				<button type="button" class="primary" onclick={() => void downloadRecovery()}>Download captured Save</button>
 				<button type="button" onclick={() => void discardRecovery()}>Discard captured Save</button>

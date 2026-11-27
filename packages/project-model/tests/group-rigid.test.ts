@@ -52,6 +52,11 @@ const AIMED_ROTATIONS: Array<readonly [number, number, number]> = [
 	[0, Math.PI / 2, 0],
 	[0.25, 1.1, -0.35],
 	[-0.6, -2.2, 0.8],
+	// The near-gimbal band, where a resolvable roll and a pitch within 1e-4 of
+	// the singularity must not be flattened to a declared roll of zero.
+	[0, Math.PI / 2 - 0.0002, 0.9],
+	[0, -Math.PI / 2 + 0.0002, -0.9],
+	[0, Math.PI / 2 - 1e-6, -1.2],
 ];
 
 function expectMatrixClose(actual: RotationMatrix, expected: RotationMatrix, precision = 14) {
@@ -94,6 +99,58 @@ describe('rigid group pose — probe', () => {
 				}
 			}
 		}
+	});
+
+	it('keeps a near-gimbal aim and orientation rigid instead of flattening roll', () => {
+		const turn = 37 * DEGREES;
+		// Each start is chosen so the Turn ends within 1e-4 of the XYZ singularity.
+		const rotations: Array<readonly [number, number, number]> = [
+			[0, Math.PI / 2 - 0.0002 - turn, 0.9],
+			[0, -Math.PI / 2 + 0.0002 - turn, -0.9],
+			[0, Math.PI / 2 - 1e-6 - turn, -1.2],
+		];
+		for (const rotation of rotations) {
+			const composed = multiplyRotationMatrices(yawMatrix(turn), eulerXyzToMatrix(rotation));
+			const next = rigidTurnRotation(rotation, turn);
+			const nextMatrix = eulerXyzToMatrix(next);
+			// The whole orientation is the rigid image, not just its aim. At
+			// `cos y ≈ 1e-6` the recovered roll is conditioned by the rounding of the
+			// composed entries, so the matrix tolerance follows that band; the aim
+			// below stays exact because its sensitivity to roll scales with `cos y`.
+			for (let row = 0; row < 3; row += 1) {
+				for (let column = 0; column < 3; column += 1) {
+					expect(
+						Math.abs(nextMatrix[row]![column]! - composed[row]![column]!),
+						`rotation ${rotation.join(',')} component ${row},${column}`,
+					).toBeLessThan(1e-9);
+				}
+			}
+			// The aim is an independent world-Y rotation of the forward vector, so
+			// this assertion does not inherit the helper's own composition.
+			const forward = rotationForwardVector(rotation);
+			const expectedForward = [
+				Math.cos(turn) * forward[0] + Math.sin(turn) * forward[2],
+				forward[1],
+				-Math.sin(turn) * forward[0] + Math.cos(turn) * forward[2],
+			] as const;
+			const turnedForward = rotationForwardVector(next);
+			const error = Math.hypot(
+				turnedForward[0] - expectedForward[0],
+				turnedForward[1] - expectedForward[1],
+				turnedForward[2] - expectedForward[2],
+			);
+			expect(error, `rotation ${rotation.join(',')}`).toBeLessThan(1e-9);
+			// The plan's tolerance is 1e-6 for the target point at 8 m.
+			expect(error * 8).toBeLessThan(1e-6);
+		}
+		// The declared branch still resolves a rotation whose third column is
+		// exactly the singular axis, where yaw and roll describe one rotation.
+		const gimbal: RotationMatrix = [
+			[0, 0, 1],
+			[0, 1, 0],
+			[-1, 0, 0],
+		];
+		expectMatrixClose(eulerXyzToMatrix(eulerXyzFromMatrix(gimbal)), gimbal, 12);
 	});
 
 	it('keeps every Euler XYZ matrix orthonormal and its forward vector rigid', () => {

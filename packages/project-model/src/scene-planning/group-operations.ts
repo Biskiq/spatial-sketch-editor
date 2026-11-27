@@ -29,7 +29,12 @@ import type {
 	SceneOperationRefusalCode,
 	SceneOperationSupportEvidence,
 } from './operations';
-import { finalizeSceneCandidate, sameSceneValues, type SceneRecordScope } from './record-scope';
+import {
+	finalizeSceneCandidate,
+	sameSceneValues,
+	type SceneClusterScope,
+	type SceneRecordScope,
+} from './record-scope';
 import { refusal } from './operations/refusals';
 import { floorTransformSupport, readContactMinY } from './operations/support';
 import { SCENE_NAME_LIMIT } from './operations/types';
@@ -85,6 +90,12 @@ export type SceneGroupOperationResult = SceneGroupOperationCandidate | SceneOper
 export type SceneGroupMemberContact = {
 	readonly entityId: string;
 	readonly contactMinY: number;
+};
+
+/** One member's captured copy identity: the source member and its new id. */
+export type SceneGroupDuplicateCopy = {
+	readonly sourceEntityId: string;
+	readonly entityId: string;
 };
 
 type ClusterRead =
@@ -176,7 +187,11 @@ export function createCandidate(input: {
 	const finalized = finalizeSceneCandidate({
 		before,
 		after: input.scene,
-		scope: { operationKind: input.operationKind, ...input.scope },
+		scope: {
+			operationKind: input.operationKind,
+			...input.scope,
+			...snapshotClusterScope(input.scope.clusters),
+		},
 	});
 	if (finalized.kind === 'rejected') {
 		return {
@@ -197,6 +212,26 @@ export function createCandidate(input: {
 		...(input.removedEntityIds === undefined
 			? {}
 			: { removedEntityIds: [...input.removedEntityIds] }),
+	};
+}
+
+/**
+ * The declared cluster grant is a snapshot, never a view of the candidate: a
+ * created membership is copied, so an in-place edit of the candidate's array
+ * cannot change the declaration it is checked against.
+ */
+function snapshotClusterScope(clusters: SceneClusterScope | undefined): {
+	readonly clusters?: SceneClusterScope;
+} {
+	if (clusters === undefined) return {};
+	return {
+		clusters: {
+			...clusters,
+			created: clusters.created.map((cluster) => ({
+				id: cluster.id,
+				memberIds: [...cluster.memberIds],
+			})),
+		},
 	};
 }
 

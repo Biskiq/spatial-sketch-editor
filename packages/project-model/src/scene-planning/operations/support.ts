@@ -251,15 +251,6 @@ export function restingElevation(entity: SceneEntity, contactMinY: number): numb
 }
 
 /**
- * The support an object rests on, or — when it is lifted — the support directly
- * beneath it, with the lift between them.
- *
- * A resting object resolves exactly as before (its resting elevation must be a
- * support). Only when that fails and a support lies strictly below the base is
- * the object lifted from it; any other failure is the original refusal. A form's
- * `contactMinY` already includes its per-axis scale, so its entity scale is 1.
- */
-/**
  * The accepted lift of one entity above the support beneath it, or `null` when
  * neither its resting base nor anything beneath it resolves. Read-only: the
  * lift knob and the Card's Elevation field show this; `set-lift` changes it.
@@ -273,6 +264,20 @@ export function sceneEntityLift(
 	return rest.kind === 'resolved' ? { lift: rest.lift, supportY: rest.support.elevation } : null;
 }
 
+/**
+ * The support an object's base is on, or — when it is lifted — the highest
+ * support at or below that base, with the lift between them.
+ *
+ * A resting base resolves exactly (its elevation must be a support). A base that
+ * no support meets is lifted above the highest candidate at or below it; a
+ * candidate above the base, such as a mezzanine top, never becomes its support.
+ * This is the same at-or-below rule the destination uses, so a pose this helper
+ * classifies stays operable by the next Move or Duplicate instead of becoming an
+ * ambiguous origin those operations cannot leave. A captured choice is still
+ * honoured: a stale or no-longer-yielded choice refuses instead of silently
+ * reclassifying the object. A form's `contactMinY` already includes its per-axis
+ * scale, so its entity scale is 1.
+ */
 export function restSupport(
 	context: SceneOperationContext,
 	entity: SceneEntity,
@@ -291,7 +296,13 @@ export function restSupport(
 	const onIt = resolveSupport(context, point, resting, choice);
 	if (onIt.kind === 'resolved')
 		return { kind: 'resolved', support: onIt.support, resting, lift: 0 };
-	const beneath = resolveSupport(context, point, null, choice);
+	const beneath = resolveSceneSupportAtOrBelow({
+		layout: context.layout,
+		sourceContentId: context.sourceContentId,
+		point,
+		ceiling: resting,
+		...(choice === undefined ? {} : { choice }),
+	});
 	if (
 		beneath.kind === 'resolved' &&
 		resting > beneath.support.elevation + CONTACT_TOLERANCE_METERS
