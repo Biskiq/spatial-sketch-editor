@@ -133,7 +133,9 @@ describe('Library browsing and activation', () => {
 	] as const)('arms Paint from %s without a write and preserves Shift-click', (intent, context) => {
 		const fx = render({ intent });
 		expect(fx.q('[data-library-context]')?.textContent).toMatch(context);
-		fx.q<HTMLButtonElement>(`[data-library-choose="${oak.key}"]`)?.click();
+		const chooseOak = fx.q<HTMLButtonElement>(`[data-library-choose="${oak.key}"]`);
+		expect(chooseOak?.getAttribute('aria-label')).toBe('Oak Veneer — pick for Paint');
+		chooseOak?.click();
 		expect(fx.onPaint).toHaveBeenCalledWith(oak, false);
 		fx.q<HTMLButtonElement>(`[data-library-choose="${walnut.key}"]`)?.dispatchEvent(new MouseEvent('click', { bubbles: true, shiftKey: true }));
 		flushSync();

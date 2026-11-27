@@ -104,7 +104,8 @@
 	);
 
 	function variantLabel(card: LibraryCard): string {
-		return card.variant === null ? '' : `, ${card.variants.find((variant) => variant.id === card.variant)?.label ?? ''}`;
+		const label = card.variants.find((variant) => variant.id === card.variant)?.label;
+		return label === undefined ? '' : `, ${label}`;
 	}
 
 	function cardKeydown(event: KeyboardEvent, entry: LibraryFinishEntry): void {
