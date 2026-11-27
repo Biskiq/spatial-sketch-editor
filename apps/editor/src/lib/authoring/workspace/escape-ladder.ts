@@ -21,6 +21,7 @@ export const ESCAPE_LADDER = [
 	{ rung: 'paint-tool', owner: 'appearance' },
 	// Return to the last committed segment before putting the cut back.
 	{ rung: 'slice-draft', owner: 'layout-readings' },
+	{ rung: 'select-more', owner: 'core' },
 	{ rung: 'palette', owner: 'core' },
 	// Read the focus before closing a task or strip so Select can take it.
 	{ rung: 'task', owner: 'core' },
@@ -32,6 +33,8 @@ export const ESCAPE_LADDER = [
 	// A posture can claim the remaining unwind after the tools and panels close.
 	{ rung: 'unwind-claim', owner: 'core' },
 	{ rung: 'leave', owner: 'studio' },
+	// A drilled member returns to the group that owns it before the clear.
+	{ rung: 'group-drill', owner: 'core' },
 	{ rung: 'selection', owner: 'core' },
 	{ rung: 'lift', owner: 'layout-readings' },
 	// The earlier tool rung keeps the cut. A later Escape puts it back.

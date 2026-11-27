@@ -13,6 +13,7 @@ import {
 	type StageCardActionOutcome,
 } from '$lib/authoring/stage/stage-adapter-host';
 import type { LookCardStratum } from '../look/look-authoring.svelte';
+import { sceneMemberEraseNotice } from '../scene/selection-target';
 import ArtworkCard from './ArtworkCard.svelte';
 import { artworkCommand } from './artwork-command';
 import { artworkHangingGuides, snapArtworkHeight } from './artwork-hanging';
@@ -322,7 +323,7 @@ export function createArtworkAuthoring(host: {
 					id: 'artwork-delete',
 					label: 'Delete Artwork',
 					destructive: true,
-					detail: `Remove ${entity.name} from the Stage. The image stays in This project.`,
+					detail: `Remove ${entity.name} from the Stage.${sceneMemberEraseNotice(stageScene(services.stage.snapshot()), entity.id)} The image stays in This project.`,
 					async run() {
 						const result = await artworkCommand(
 							services,

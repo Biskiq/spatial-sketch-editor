@@ -122,6 +122,7 @@ export type StageHostToolTarget =
 
 /** One guide after the facade projects it into Stage CSS space. */
 export type StageGuideView = {
+	readonly emitter?: readonly [number, number] | null;
 	readonly id: string;
 	readonly role: StageGuideContribution['role'];
 	readonly segments: readonly (readonly [readonly [number, number], readonly [number, number]])[];
@@ -373,6 +374,10 @@ export type StageFacade = {
 	cardWriter(subject: StageCardSubject): StageCardWriterRecord | null;
 	/** Every scoped Card action contributed for a subject, in deterministic order. */
 	cardActions(subject: StageCardSubject): readonly StageCardActionRecord[];
+	/** Every action a multi-identity selection can run as a whole, in deterministic order. */
+	setActions(): readonly StageCardActionRecord[];
+	/** The one Set Card writer, or `null` when no binding contributes one. */
+	setWriter(): StageCardWriterRecord | null;
 	overlays(): readonly StageOverlayContribution[];
 	/** Every adapter's persistent line guide, projected once into Stage CSS space. */
 	guides(): readonly StageGuideView[];

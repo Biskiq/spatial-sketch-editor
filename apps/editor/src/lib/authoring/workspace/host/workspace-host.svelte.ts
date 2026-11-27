@@ -61,6 +61,7 @@ import { wireStageProjectEpoch } from '$lib/authoring/workspace/host/wiring/stag
 import { eyeOfInspectionPose } from '@portfolio/camera-core/viewport';
 import { pickThroughSlice } from '$lib/authoring/stage/slice/stage-slice-pick';
 import { createStagePressTracker } from '$lib/authoring/stage/stage-input';
+import { stageScene } from '$lib/authoring/stage/unit-stage-source';
 import type { StageInterruptionReason } from '$lib/authoring/stage/stage-interruption';
 import '$lib/authoring/stage/shell/shell-roles.css';
 import '$lib/authoring/stage/shell/cursors.css';
@@ -703,6 +704,12 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 
 	const stageInput = wireStageInput({
 		facade: () => stageEpoch.facade,
+		// The accepted Scene, for group-first hover. Null before admission is
+		// simply no group to resolve.
+		scene: () => {
+			const snapshot = stageEpoch.facade?.snapshot() ?? ready.snapshot();
+			return snapshot === null ? null : stageScene(snapshot);
+		},
 		evaluation: () => stageViewport.evaluation,
 		rect: () => stageViewport.rect,
 		measure: () => stageViewport.measure(),
@@ -721,7 +728,7 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		viewMarkAt: (event) => experience.viewMarkAt(event),
 		sliceDraw: () => (sliceDraw.armed ? sliceDraw : null),
 		shell,
-		selectHit: (hit) => commands.selectHit(hit),
+		selectHit: (hit, tap) => commands.selectHit(hit, tap),
 		pan,
 		orbit,
 		zoom,
@@ -749,6 +756,8 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		pan,
 		pressDockSlot: (slot) => commands.pressDockSlot(slot),
 		requestDelete: () => commands.requestDelete(),
+		groupSelection: commands.groupSelection,
+		drillOutOfGroup: commands.drillOutOfGroup,
 		interrupt: interruptPress,
 		shell,
 		closeTask: () => commands.closeTask(),
@@ -765,7 +774,7 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		focusSelectKey: () =>
 			document.querySelector<HTMLElement>('[data-world-toolbar] [data-world-select]')?.focus(),
 		lens: () => experience.lensState,
-		selectionPresent: () => selected.get() !== null,
+		selectionPresent: () => (stageEpoch.facade?.selectionState().ordered.length ?? 0) > 0,
 		closeSelection: () => commands.closeSelection(),
 		leaveStudio: studioFeature.ports.leaveStudio,
 		readingsEscape: readings.escape,
@@ -777,7 +786,6 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		snapshot: ready.snapshot,
 		facade: () => stageEpoch.facade,
 	});
-
 	installLeaveProject(lifecycleCell);
 
 	const regionModels = createStageRegionModels({

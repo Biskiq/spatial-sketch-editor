@@ -105,6 +105,11 @@ export type StageKeyboardInput = {
 	readonly lens: () => 'world' | 'experience';
 	readonly selectionPresent: () => boolean;
 	readonly closeSelection: () => void;
+	/** A single drilled member returns to its group; false leaves the rung. */
+	readonly exitSelectMore?: () => boolean;
+	readonly drillOutOfGroup?: () => boolean;
+	/** ⌘G groups the set; ⇧⌘G ungroups the selected group. */
+	readonly groupSelection?: (ungroup: boolean) => void;
 	/**
 	 * Object Studio's own rung: after every pending gesture, task and tool has unwound,
 	 * Escape leaves a World-entered Studio. Returns whether it left (false: not in
@@ -203,6 +208,7 @@ export function createStageKeyboard(input: StageKeyboardInput): StageKeyboard {
 			input.cancelSliceDraft?.();
 			return 'handled';
 		},
+		'select-more': () => (input.exitSelectMore?.() === true ? 'handled' : 'pass'),
 		palette: () => {
 			const armedKey = input.armedDockKey();
 			if (input.task() === null || armedKey?.palette !== true || !input.paletteOpen())
@@ -240,6 +246,8 @@ export function createStageKeyboard(input: StageKeyboardInput): StageKeyboard {
 			return 'pass';
 		},
 		leave: ({ claimed }) => (!claimed && input.leaveStudio?.() === true ? 'handled' : 'pass'),
+		'group-drill': ({ claimed }) =>
+			claimed || input.drillOutOfGroup?.() !== true ? 'pass' : 'handled',
 		selection: ({ claimed }) => {
 			if (claimed || !input.selectionPresent()) return 'pass';
 			input.closeSelection();
@@ -298,8 +306,17 @@ export function createStageKeyboard(input: StageKeyboardInput): StageKeyboard {
 			if (event.key === 'Escape') input.closePreview();
 			return;
 		}
-		// Esc precedence: a live marker gesture, then place, then Look through,
-		// then the Card's own unwinding.
+		// Group and Ungroup are the two chorded keys of the group interaction.
+		if (
+			(event.key === 'g' || event.key === 'G') &&
+			(event.metaKey || event.ctrlKey) &&
+			!event.altKey &&
+			!stageKeyFromTextEntry(event.target)
+		) {
+			event.preventDefault();
+			input.groupSelection?.(event.shiftKey === true);
+			return;
+		}
 		const activeLayer = input.activeLayer();
 		if (event.key === 'Escape' && activeLayer !== null) {
 			if (activeLayer.key(event, 'capture') === 'claimed') {

@@ -128,5 +128,12 @@ export function wireStageKeyboard(input: StageKeyboardWiring) {
 		leaveStudio: input.leaveStudio,
 		...input.readingsEscape,
 		setCutawayHeld: input.setCutawayHeld,
+		groupSelection: input.groupSelection,
+		drillOutOfGroup: input.drillOutOfGroup,
+		exitSelectMore: () => {
+			if (!input.shell.selectMore) return false;
+			input.shell.setSelectMore(false);
+			return true;
+		},
 	});
 }

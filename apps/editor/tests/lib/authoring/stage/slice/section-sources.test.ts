@@ -19,7 +19,10 @@ import { describe, expect, it } from 'vitest';
 import { BoxGeometry, Group, Mesh } from 'three';
 import { createScenePickSource, LAYOUT_STRUCTURE_GROUP } from '$lib/authoring/scene/scene-pick-source';
 import { tagRenderIdentity } from '$lib/render/render-identity';
-import { ghostSubjectOf } from '$lib/authoring/stage/shell/stage-selection-source';
+import {
+	clusterObjectsOf,
+	ghostSubjectOf
+} from '$lib/authoring/stage/shell/stage-selection-source';
 import { subjectWhollyHidden } from '$lib/authoring/stage/slice/slice-ghost';
 
 function box(
@@ -100,6 +103,28 @@ describe('Slice cap sources: Layout identity decides the scope', () => {
 		// a resolved Wall, so it keeps its edges and contributes no cap source.
 		expect(sources.map((source) => source.identity)).toEqual(['wall:w1']);
 		expect(sources.map((source) => source.group)).toEqual([LAYOUT_STRUCTURE_GROUP]);
+	});
+});
+
+describe('group marks resolve every member body', () => {
+	it('returns the mounted member roots in the group\'s own order', () => {
+		const pick = createScenePickSource();
+		const first = new Group();
+		const second = new Group();
+		pick.register('a', first);
+		pick.register('b', second);
+		// A retired member has no body to ink; the group still marks the rest.
+		expect(clusterObjectsOf(pick, ['b', 'missing', 'a'])).toEqual([second, first]);
+	});
+
+	it('hands the group\'s union of bodies to the ghost rule', () => {
+		const pick = createScenePickSource();
+		const above = new Group();
+		above.add(box([0, 2, 0], [1, 1, 1]));
+		pick.register('a', above);
+		const subject = ghostSubjectOf(clusterObjectsOf(pick, ['a']));
+		expect(subject).not.toBeNull();
+		expect(subjectWhollyHidden({ kind: 'level', cutY: 1.2, lowerY: null }, subject!)).toBe(true);
 	});
 });
 

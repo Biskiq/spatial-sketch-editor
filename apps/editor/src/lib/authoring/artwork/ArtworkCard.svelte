@@ -7,12 +7,13 @@
 	import type { StageCardActionRecord } from '$lib/authoring/stage/stage-facade';
 	import { artworkCommand } from './artwork-command';
 
-	let { services, secondary, actions = [], onAction }: {
+	let { services, secondary, actions = [], onAction, actionControl }: {
 		services: StageAdapterServices;
 		secondary?: Snippet<[Snippet?]>;
 		/** The subject's scoped actions, so Light it and Replace image sit in the foot. */
 		actions?: readonly StageCardActionRecord[];
 		onAction?: (action: StageCardActionRecord) => void;
+		actionControl?: Snippet<[StageCardActionRecord]>;
 	} = $props();
 	let entity = $state.raw<SceneArtworkEntity | null>(null);
 	let error = $state<{ field: string; message: string } | null>(null);
@@ -39,6 +40,7 @@
 	const mat = $derived(entity?.frame?.mat ?? false);
 	const frameColor = $derived(entity?.frame?.color ?? 'black');
 	const lightIt = $derived(actions.find((action) => action.id === 'light-it') ?? null);
+	const selectMore = $derived(actions.find((action) => action.id === 'selection-select-more') ?? null);
 	const replaceAction = $derived(actions.find((action) => action.id === 'artwork-replace') ?? null);
 	const duplicateAction = $derived(actions.find((action) => action.id === 'artwork-duplicate') ?? null);
 	const deleteAction = $derived(actions.find((action) => action.id === 'artwork-delete') ?? null);
@@ -231,7 +233,11 @@
 		</section>
 
 		<div class="foot">
-			{#if lightIt !== null}<button type="button" class="primary" data-card-foot="light-it" onclick={() => run(lightIt)}>Light it</button>{/if}
+			{#if lightIt !== null}
+				{#if actionControl}{@render actionControl(lightIt)}
+				{:else}<button type="button" class="primary" data-card-foot="light-it" onclick={() => run(lightIt)}>Light it</button>{/if}
+			{/if}
+			{#if selectMore && actionControl}{@render actionControl(selectMore)}{/if}
 			{#if replaceAction !== null}<button type="button" data-card-foot="replace" onclick={() => run(replaceAction)}>Replace image</button>{/if}
 			<button type="button" class="advanced" aria-expanded={advancedOpen} data-card-foot="advanced"
 				onclick={() => (advancedOpen = !advancedOpen)}>Advanced <span class="chev" class:open={advancedOpen} aria-hidden="true">⌄</span></button>

@@ -19,6 +19,11 @@ import type {
 	stageTaskHost,
 } from '$lib/authoring/stage/route/stage-contribution-view';
 import type { RegionProps } from '$lib/authoring/workspace/region-ownership';
+import {
+	memberGroupLink,
+	selectionSetActions,
+	selectMoreActions,
+} from '$lib/authoring/stage/route/scene-selection-card';
 import { sameReference } from '$lib/authoring/stage/semantic-selection';
 
 type StageRegionInput = {
@@ -76,16 +81,40 @@ export function createStageRegionModels(input: StageRegionInput) {
 	);
 	const shownCard = $derived.by(() => {
 		if (input.experience.lensState === 'experience') return input.experienceFeature.ports.shownCard;
+		const identity = input.selectionViewView().cardIdentity;
+		// A set has no primary subject: its Card lists the identities and offers
+		// only what a set can do as a whole (Group, Light it, Clear).
+		if (input.selectionViewView().isSelectionSet) {
+			void input.shell.contributionsVersion;
+
+			return {
+				identity,
+				facts: [],
+				nameWriter: null,
+				writer: input.facade()?.setWriter() ?? null,
+				actions: selectionSetActions(input.facade(), input.shell, input.commands.closeSelection),
+				functions: [],
+				kindLink: null,
+				menu: null,
+				back: null,
+				bringIntoView: null,
+			};
+		}
+		const view = input.selectionViewView();
+		const subject = view.cardSubject?.reference;
 		return {
-			identity: input.selectionViewView().cardIdentity,
+			identity,
 			facts: worldCard.facts,
 			nameWriter: worldCard.nameWriter,
 			writer: worldCard.writer,
 			// Studio offers only what it owns: no World functions (Paint, Section, Present),
 			// no Look recipes; the facade withholds Duplicate/Delete of the root being edited.
-			actions: worldCard.actions,
-			functions: studio.active ? [] : null,
-			kindLink: null,
+			actions:
+				!studio.active && subject?.domain === 'scene'
+					? [...worldCard.actions, ...selectMoreActions(input.shell)]
+					: worldCard.actions,
+			functions: studio.active || subject?.subject.kind === 'cluster' ? [] : null,
+			kindLink: memberGroupLink(view, input.commands.selectStageReference),
 			menu: null,
 			back: null,
 			bringIntoView: () => {
@@ -210,7 +239,8 @@ export function createStageRegionModels(input: StageRegionInput) {
 		selectionId: input.selectionViewView().selectedLocatorId,
 		query: input.shell.query,
 		onQuery: (next: string) => input.shell.setQuery(next),
-		onSelect: (sourceId: string) => input.commands.selectSource(sourceId),
+		onSelect: (sourceId: string, additive = false) =>
+			input.commands.selectSource(sourceId, { additive }),
 		onBringIntoView: (sourceId: string) => {
 			const target = input.selectionViewView().sourceWorldPoint(sourceId);
 			if (target !== null) input.bringIntoView(target);

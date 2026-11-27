@@ -383,6 +383,7 @@ export function createContributionView(input: ContributionViewPort) {
 			try {
 				return (entry.contributions.guides?.(handle.context) ?? []).map((guide) => ({
 					id: guide.id,
+					...(guide.emitter === undefined ? {} : { emitter: project(guide.emitter) }),
 					role: guide.role,
 					segments: segmentsOf(guide.segments),
 					derivedSegments: segmentsOf(guide.derivedSegments ?? []),
@@ -574,6 +575,38 @@ export function createContributionView(input: ContributionViewPort) {
 			return a.id === b.id ? 0 : a.id < b.id ? -1 : 1;
 		});
 	};
+	const setActions: StageFacade['setActions'] = () => {
+		if (!isLive()) return [];
+		ensureBindings();
+		const actions: StageCardActionRecord[] = [];
+		for (const [adapterId, entry] of adapters.entries()) {
+			let contributed: readonly StageCardAction[] = [];
+			try {
+				contributed = entry.contributions.setActions?.() ?? [];
+			} catch {
+				contributed = [];
+			}
+			for (const action of contributed) actions.push({ ...action, adapterId });
+		}
+		return actions.sort((a, b) => {
+			if (a.adapterId !== b.adapterId) return a.adapterId < b.adapterId ? -1 : 1;
+			return a.id === b.id ? 0 : a.id < b.id ? -1 : 1;
+		});
+	};
+	const setWriter: StageFacade['setWriter'] = () => {
+		if (!isLive()) return null;
+		ensureBindings();
+		for (const [adapterId, entry] of adapters.entries()) {
+			let content: StageInstrumentContent | null = null;
+			try {
+				content = entry.contributions.setWriter?.() ?? null;
+			} catch {
+				content = null;
+			}
+			if (content !== null) return { ...content, adapterId };
+		}
+		return null;
+	};
 	const cardNameWriter: StageFacade['cardNameWriter'] = (subject) => {
 		if (!isLive()) return null;
 		ensureBindings();
@@ -593,7 +626,6 @@ export function createContributionView(input: ContributionViewPort) {
 		}
 		return null;
 	};
-
 	function resetMarks(): void {
 		openDisclosures.clear();
 		markHover = null;
@@ -667,6 +699,8 @@ export function createContributionView(input: ContributionViewPort) {
 		cardFacts,
 		cardWriter,
 		cardActions,
+		setActions,
+		setWriter,
 		cardNameWriter,
 		invalidateSubjects,
 		handleDiagnostics: () => handleDiagnostics,

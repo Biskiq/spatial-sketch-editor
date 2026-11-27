@@ -57,6 +57,7 @@ import {
 	presentPlacementPreview,
 } from './scene/candidate-presenter';
 import { createObjectMarkSession } from './scene/object-mark-session';
+import { createSceneGroupSession } from './scene/group-session';
 import { liveProjectId } from './scene/object-readings';
 import { createPlacementBinding } from './scene/placement-binding';
 import { createSceneContributions } from './scene/scene-contributions';
@@ -128,11 +129,13 @@ export const createAdapter: StageAdapterFactory = (services: StageAdapterService
 		bind(context): StageAdapterBinding {
 			const placement = createPlacementBinding(services, context);
 			const marks = createObjectMarkSession(services);
-			const contributions = createSceneContributions(services, context, marks);
+			const group = createSceneGroupSession(services, presentMarkOutline);
+			const contributions = createSceneContributions(services, context, marks, group);
 			const profile = createProfileRevisionBinding(services);
 
 			function resetPlacementAndMarks(): void {
 				marks.reset();
+				group.reset();
 				placement.selectionChanged();
 			}
 
@@ -151,9 +154,10 @@ export const createAdapter: StageAdapterFactory = (services: StageAdapterService
 					// move/yaw of the selected entity.
 					if (taskKind === SCENE_COMPOSE_TASK) return false;
 					// With no contributed task open this binding is the selection's direct
-					// manipulation surface: an admitted object or form mark claims its own
-					// drag.
-					if (taskKind === null) return marks.pointer(intent, adapterContext);
+					// manipulation surface: an admitted group mark (or the group's own body)
+					// claims its rigid drag, then an object or form mark claims its own.
+					if (taskKind === null)
+						return group.pointer(intent, adapterContext) || marks.pointer(intent, adapterContext);
 					return placement.pointerInTask(intent, adapterContext);
 				},
 				/**
@@ -163,7 +167,8 @@ export const createAdapter: StageAdapterFactory = (services: StageAdapterService
 				 */
 				keyIntent(intent) {
 					if (placement.key(intent)) return true;
-					return placement.taskKind() === null && marks.key(intent);
+					if (placement.taskKind() !== null) return false;
+					return group.key(intent) || marks.key(intent);
 				},
 				hoverIntent(intent, adapterContext) {
 					// The outline task owns the surface; placement proposes no placement.
@@ -192,6 +197,8 @@ export const createAdapter: StageAdapterFactory = (services: StageAdapterService
 							adapterContext.snapshot.domain.datumMeters,
 						);
 					}
+					const groupOutlines = group.candidatePreviews(adapterContext);
+					if (groupOutlines.length > 0) return groupOutlines;
 					// Plan hides the Canvas ghost, so a mark gesture's proposal is drawn
 					// there as its dashed footprint in the ghost colour.
 					if (adapterContext.evaluation.settledReading === 'plan') {
@@ -227,6 +234,9 @@ export const createAdapter: StageAdapterFactory = (services: StageAdapterService
 					const object = marks.ghost(adapterContext);
 					const leading: StageGhostMesh[] = [];
 					if (placement.drawing()) leading.push(...placement.drawGhosts());
+					// Every group member proposes its own rigid pose: the ghost set is the
+					// same candidate acceptance installs, never one proxy for the group.
+					leading.push(...group.ghosts(adapterContext));
 					if (object !== null) leading.push(object);
 					return presentGhosts(adapterContext, placement.view(adapterContext), leading);
 				},
@@ -268,6 +278,7 @@ export const createAdapter: StageAdapterFactory = (services: StageAdapterService
 				},
 				dispose() {
 					marks.reset();
+					group.reset();
 					placement.dispose();
 					profile.dispose();
 					publishProfileRevision(null, profile.session);

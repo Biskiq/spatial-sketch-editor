@@ -10,7 +10,7 @@
 		onScope: (scope: WorldScope) => void;
 		selectionId: string | null;
 		query: string;
-		onSelect: (id: string) => void;
+		onSelect: (id: string, additive?: boolean) => void;
 		onReveal: (id: string) => void;
 		onRename: (id: string) => void;
 		locationsOpen: boolean;
@@ -91,13 +91,15 @@
 		revealed: boolean;
 		eligible: boolean;
 		membership: string;
+		relation?: string;
 	}): string {
 		const badge = item.revealed
 			? 'Revealed'
 			: !item.eligible
 				? membershipLabel(item.membership)
 				: '';
-		return `${item.kind} ${item.label}.${badge === '' ? '' : ` ${badge}.`}`;
+		const relation = item.relation === undefined ? '' : ` ${item.relation}.`;
+		return `${item.kind} ${item.label}.${relation}${badge === '' ? '' : ` ${badge}.`}`;
 	}
 </script>
 
@@ -167,8 +169,8 @@
 						aria-disabled={!item.eligible}
 						aria-label={accessibleName(item)}
 						title={item.eligible ? item.label : membershipLabel(item.membership)}
-						onclick={() => {
-							if (item.eligible) onSelect(item.sourceId);
+						onclick={(event) => {
+							if (item.eligible) onSelect(item.sourceId, event.shiftKey);
 						}}
 						ondblclick={() => {
 							if (!item.eligible) return;
@@ -177,10 +179,11 @@
 						}}
 					>
 						<ShellIcon
-							name={rowKind(item.group)?.icon ?? 'dot'}
+							name={item.sourceId.startsWith('scene:cluster:') ? 'group' : (rowKind(item.group)?.icon ?? 'dot')}
 							size={15}
 						/>
 						<span class="item-name" class:generated={!item.authored}>{item.label}</span>
+						{#if item.relation}<span class="item-relation">{item.relation}</span>{/if}
 						{#if item.revealed || !item.eligible}
 							<span class="badge"
 								>{item.revealed ? 'Revealed' : membershipLabel(item.membership)}</span

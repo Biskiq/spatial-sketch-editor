@@ -40,6 +40,7 @@ export const shellIcons: Readonly<Record<string, string>> = {
 	path: '<path d="M6.5 17.5 C8 9 14 15 17.5 6.5" stroke-dasharray="2 2.6"/><circle cx="4.5" cy="19.5" r="1.8" fill="currentColor" stroke="none"/><circle cx="19.5" cy="4.5" r="1.8" fill="currentColor" stroke="none"/>',
 	guide:
 		'<rect x="2.5" y="3" width="6" height="6" rx="1"/><rect x="15.5" y="3" width="6" height="6" rx="1"/><rect x="9" y="15" width="6" height="6" rx="1"/><path d="M5.5 9 V12 H12 V15 M18.5 9 V12 H12"/>',
+	group: '<rect x="3" y="3" width="13" height="13" rx="1.5"/><path d="M8 16v4h12V8h-4"/>',
 	indexPanel: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3 V21"/>',
 	close: '<path d="M6 6 L18 18 M18 6 L6 18"/>',
 	more: '<circle cx="5" cy="12" r="1.8" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.8" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.8" fill="currentColor" stroke="none"/>',

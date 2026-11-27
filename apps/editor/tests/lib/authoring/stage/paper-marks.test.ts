@@ -455,6 +455,40 @@ describe('Paper mark filtering', () => {
 		expect(marks.selection.fills[0]!.polygons).toEqual([SQUARE]);
 	});
 
+	it('marks every member of a Scene group as one identity', () => {
+		// A group is selected or hovered by its own id; its members' retained
+		// footprints are the ink, and no footprint exists for the group id itself.
+		const members = (clusterId: string) =>
+			clusterId === 'still-life' ? [ENTITY_ID, CONCAVE_FORM_ID] : [];
+		const selected = paperMarkSet(
+			DRAWING,
+			entry('scene', 'cluster', 'still-life'),
+			null,
+			'hover',
+			members
+		);
+		expect(selected.selection.contours).toHaveLength(1);
+		expect(selected.selection.contours[0]!.segments).toHaveLength(10);
+		expect(selected.selection.fills).toHaveLength(1);
+		// The union of two disjoint footprints keeps both rings, in its own order.
+		expect(
+			selected.selection.fills[0]!.polygons.map((ring) => ringArea(ring)).sort((a, b) => a - b)
+		).toEqual([1, 3]);
+		const hovered = paperMarkSet(
+			DRAWING,
+			null,
+			entry('scene', 'cluster', 'still-life'),
+			'hover',
+			members
+		);
+		expect(hovered.hover.contours).toHaveLength(1);
+		expect(hovered.hover.contours[0]!.segments).toHaveLength(10);
+		// Without the group's members the id addresses nothing, as before.
+		expect(
+			paperMarkSet(DRAWING, entry('scene', 'cluster', 'still-life'), null).selection.contours
+		).toEqual([]);
+	});
+
 	it('fills a concave upright form with its own ring, not a bounding rectangle', () => {
 		const marks = paperMarkSet(DRAWING, entry('scene', 'form', CONCAVE_FORM_ID), null);
 		expect(marks.selection.fills).toHaveLength(1);

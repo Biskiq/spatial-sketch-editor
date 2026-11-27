@@ -60,7 +60,7 @@ import StageMatGround from './StageMatGround.svelte';
 	import StageSelectionLayer from './StageSelectionLayer.svelte';
 	import StageRepairLayer from './StageRepairLayer.svelte';
 	import type { FinishOutcomeSink } from '$lib/render/resources/finish-outcome-sink';
-	import { ghostSubjectOf, selectionObjectsOf } from './stage-selection-source';
+	import { ghostSubjectOf, selectionBodiesOf } from './stage-selection-source';
 	import { subjectWhollyHidden } from '../slice/slice-ghost';
 	import StageWallDevelopment from './StageWallDevelopment.svelte';
 	import StageWallPin from './StageWallPin.svelte';
@@ -112,10 +112,12 @@ import StageMatGround from './StageMatGround.svelte';
 		/** The live candidate's extent; the sheet grows to include it. */
 		datumMeters = 0,
 		selection = null,
+		selectionSet = [],
 		hover = null,
 		hoverTone = 'hover',
 		proposals = [],
 		scenePick,
+		clusterMembers = () => [],
 		/** The Stage's captured pointer ids, read before a renderer generation retires. */
 		capturedPointers = null,
 		/**
@@ -183,6 +185,7 @@ import StageMatGround from './StageMatGround.svelte';
 		datumMeters?: number;
 		/** Canonical primary selection and pointer hover; ink is Stage-owned. */
 		selection?: StageSelectionEntry | null;
+		selectionSet?: readonly StageSelectionEntry[];
 		hover?: StageSelectionEntry | null;
 		/** The armed Eraser draws its winner in red dashes instead of hover. */
 		hoverTone?: 'hover' | 'erase' | 'paint';
@@ -190,6 +193,8 @@ import StageMatGround from './StageMatGround.svelte';
 		proposals?: readonly StageSelectionEntry[];
 		dial?: CelestialDialModel | null;
 		scenePick: ScenePickSource;
+		/** A Scene group's own member ids: one group selection marks every member. */
+		clusterMembers?: (clusterId: string) => readonly string[];
 		capturedPointers?: (() => readonly number[]) | null;
 		liftedRoomIds?: readonly string[];
 		liftedRegionIds?: readonly string[];
@@ -254,18 +259,6 @@ import StageMatGround from './StageMatGround.svelte';
 		clipMasks: (cutaway) => stageClip.clipMasks(cutaway)
 	});
 	onDestroy(() => resources.dispose());
-	/**
-	 * The selected subject **when the cut hides all of it**, or null.
-	 *
-	 * The Index can select anything, including a body the Slice removes from the frame
-	 * entirely (a ceiling light above the cut). That selection must stay visible and
-	 * editable, so the Slice layer draws it as a ghost and the selection ink draws its
-	 * gold contour unclipped (§2.4). A partly cut subject is **not** ghosted: its stub
-	 * and cap are visible and pickable already.
-	 *
-	 * Recomputed on selection, reading or geometry change only — `subjectWhollyHidden`
-	 * walks the subject's own triangles, never the scene.
-	 */
 	const ghostSubject = $derived.by(() => {
 		// A representation rebuild changes the drawn body without changing the object, so
 		// the bake follows the revisions as well as the selection. Without these reads the
@@ -274,7 +267,9 @@ import StageMatGround from './StageMatGround.svelte';
 		sceneRootRevision;
 		entityRenderRevision;
 		if (selection === null || selection === undefined) return null;
-		const objects = selectionObjectsOf(scenePick, selection);
+		// A Scene group owns its members' bodies: the ghost of a selected group is
+		// the union of the member bodies, never a bodyless group id.
+		const objects = selectionBodiesOf(scenePick, selection, clusterMembers);
 		if (objects.length === 0) return null;
 		const subject = ghostSubjectOf(objects);
 		return subject === null ? null : { objects, subject };
@@ -565,8 +560,10 @@ import StageMatGround from './StageMatGround.svelte';
 			{resolvedSlice}
 			{datumMeters}
 			{selection}
+			{selectionSet}
 			{hover}
 			{hoverTone}
+			{clusterMembers}
 			revision={sceneRootRevision + entityRenderRevision}
 		/>
 	{/if}
@@ -583,11 +580,13 @@ import StageMatGround from './StageMatGround.svelte';
 			eye={evaluation ? [evaluation.inverseViewMatrix[12]!, evaluation.inverseViewMatrix[13]!, evaluation.inverseViewMatrix[14]!] : [0, 10, 10]}
 			{cutawayWallIds}
 			{selection}
+			{selectionSet}
 			{hover}
 			{hoverTone}
 			{proposals}
 			{geometry}
 			{scenePick}
+			{clusterMembers}
 			width={evaluation?.rect.width ?? 1}
 			height={evaluation?.rect.height ?? 1}
 			fade={1 - (paperReveal?.sheet ?? 0)}

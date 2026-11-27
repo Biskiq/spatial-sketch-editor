@@ -178,8 +178,16 @@ function groupByElevation<T>(
  * A filled subject is stroked from the **union** of its fills. A Wall is emitted as
  * one band per compiled solid span, so stroking the per-span lines would draw a
  * tick at every shared span boundary; `unionOutline` leaves only the real edge.
+ *
+ * A Scene group is one identity over its member bodies, so its mark is the union
+ * of every member's footprint: hovering or selecting any member marks the whole
+ * group.
  */
-function geometryOf(drawing: PaperPlanDrawing, entry: StageSelectionEntry): PaperMarkGeometry {
+function geometryOf(
+	drawing: PaperPlanDrawing,
+	entry: StageSelectionEntry,
+	clusterMembers: (clusterId: string) => readonly string[],
+): PaperMarkGeometry {
 	const id = entry.reference.subject.id;
 	if (entry.reference.domain === 'layout') {
 		const fills = drawing.fills.filter((fill) => fill.sourceId === id);
@@ -237,7 +245,12 @@ function geometryOf(drawing: PaperPlanDrawing, entry: StageSelectionEntry): Pape
 		};
 	}
 	if (entry.reference.domain === 'scene') {
-		const footprints = drawing.footprints.filter((footprint) => footprint.entityId === id);
+		const ids = new Set(
+			entry.reference.subject.kind === 'cluster'
+				? clusterMembers(entry.reference.subject.id)
+				: [id],
+		);
+		const footprints = drawing.footprints.filter((footprint) => ids.has(footprint.entityId));
 		// Paper already retained the projection's own polygons: a primitive or an
 		// approved model's ring, a tilted form's triangles. The mark overlay tints
 		// exactly those, and never fabricates a bounding box when a footprint retains
@@ -270,13 +283,25 @@ export function paperMarkSet(
 	selection: StageSelectionEntry | null,
 	hover: StageSelectionEntry | null,
 	hoverTone: 'hover' | 'erase' | 'paint' = 'hover',
+	clusterMembers: (clusterId: string) => readonly string[] = () => [],
+	selectionSet: readonly StageSelectionEntry[] = [],
 ): PaperMarkSet {
-	const selected = selection === null ? EMPTY_GEOMETRY : geometryOf(drawing, selection);
+	const marks = selectionSet.map((entry) => geometryOf(drawing, entry, clusterMembers));
+	const selected =
+		selection !== null
+			? geometryOf(drawing, selection, clusterMembers)
+			: marks.length === 0
+				? EMPTY_GEOMETRY
+				: {
+						fills: marks.flatMap((mark) => mark.fills),
+						cutFills: marks.flatMap((mark) => mark.cutFills ?? []),
+						contours: marks.flatMap((mark) => mark.contours),
+					};
 	if (hoverTone === 'erase') {
 		return {
 			selection: selected,
 			hover: EMPTY_GEOMETRY,
-			erase: hover === null ? EMPTY_GEOMETRY : geometryOf(drawing, hover),
+			erase: hover === null ? EMPTY_GEOMETRY : geometryOf(drawing, hover, clusterMembers),
 			paint: EMPTY_GEOMETRY,
 		};
 	}
@@ -285,13 +310,13 @@ export function paperMarkSet(
 			selection: selected,
 			hover: EMPTY_GEOMETRY,
 			erase: EMPTY_GEOMETRY,
-			paint: hover === null ? EMPTY_GEOMETRY : geometryOf(drawing, hover),
+			paint: hover === null ? EMPTY_GEOMETRY : geometryOf(drawing, hover, clusterMembers),
 		};
 	}
 	const hovered =
 		hover === null || (selection !== null && sameReference(hover.reference, selection.reference))
 			? EMPTY_GEOMETRY
-			: geometryOf(drawing, hover);
+			: geometryOf(drawing, hover, clusterMembers);
 	return { selection: selected, hover: hovered, erase: EMPTY_GEOMETRY, paint: EMPTY_GEOMETRY };
 }
 

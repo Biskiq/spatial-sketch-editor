@@ -1,4 +1,5 @@
 <script lang="ts">
+	import StageSelectMore from './StageSelectMore.svelte';
 	/**
 	 * The Stage's overlay layer.
 	 *
@@ -38,6 +39,7 @@
 		viewportHeight = 0,
 		tracePreview = null,
 		hostTools = null,
+		selectMore = null,
 		sliceDraft = null,
 		lightGround = false,
 		onActivateDisclosure = () => {}
@@ -52,6 +54,7 @@
 		viewportWidth?: number;
 		viewportHeight?: number;
 		tracePreview?: import('$lib/platform/perf-marks').PerfTracePreview | null;
+		selectMore?: { readonly onDone: () => void } | null;
 		hostTools?: {
 			readonly measure: { readonly from: readonly [number, number]; readonly to: readonly [number, number]; readonly label: string; readonly live: boolean;
 			} | null;
@@ -195,6 +198,7 @@
 		<g class="guide" data-guide-id={guide.id} data-guide-role={guide.role}>
 			{#if guide.segments.length > 0}<path class="guide-edge" d={candidatePath(guide.segments)} />{/if}
 			{#if guide.derivedSegments.length > 0}<path class="guide-edge derived" d={candidatePath(guide.derivedSegments)} />{/if}
+			{#if guide.emitter}<circle class="guide-emitter" cx={guide.emitter[0]} cy={guide.emitter[1]} r="6.5" />{/if}
 			{#each guide.labels as label, index (`${guide.id}:label:${index}`)}
 				{@const width = tagWidth(label.text)}
 				<g class="tag guide-tag" transform={`translate(${label.css[0] + 8} ${label.css[1] - 26})`}>
@@ -446,7 +450,10 @@
 </svg>
 
 
+{#if selectMore}<StageSelectMore {...selectMore} />{/if}
+
 <style>
+
 	.overlay {
 		position: absolute;
 		inset: 0;
@@ -478,6 +485,7 @@
 		stroke-dasharray: 6 4;
 		stroke-linecap: round;
 	}
+	.guide-emitter { fill: #d9a521; stroke: #fff4cf; stroke-width: 1.5; }
 	.guide-edge {
 		fill: none;
 		stroke: var(--overlay-ink);

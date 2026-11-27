@@ -41,7 +41,7 @@ describe('Stage accepted read and ordered semantic selection', () => {
 		expect(selectAccepted(stage, scene())).toEqual({ kind: 'selected' });
 		expect(stage.selectionState().primary).toEqual(scene());
 	});
-	it('keeps deterministic caller order, one explicit primary, Card facts and live selection echo', async () => {
+	it('keeps deterministic caller order, no primary for a set, Card facts and live selection echo', async () => {
 		const { stage, scene, objectId, snapshot } = await mount();
 		const layout = layoutObjectReference(snapshot.domain.unitRevisions.layout, objectId);
 		const echoes: string[][] = [];
@@ -49,7 +49,8 @@ describe('Stage accepted read and ordered semantic selection', () => {
 			cardFacts: (subject) => subject.reference?.domain === 'scene' ? [{ label: 'Canonical entity', value: subject.reference.subject.id }] : [] });
 		expect(stage.setSelection({ ordered: [{ reference: scene() }, { reference: layout }, { reference: scene() }], primary: layout })).toEqual({ kind: 'selected' });
 		expect(stage.selectionState().ordered.map((entry) => entry.reference.subject.id)).toEqual([FIXTURE_ENTITY_ID, objectId]);
-		expect(stage.selectionState().primary).toEqual(layout);
+		// Two ordered identities are a set: the primary is structurally absent.
+		expect(stage.selectionState().primary).toBeNull();
 		expect(echoes.at(-1)).toEqual([FIXTURE_ENTITY_ID, objectId]);
 		expect(stage.cardFacts({ sourceId: FIXTURE_ENTITY_ID, sourceKind: 'entity', reference: scene(), ref: null })).toEqual([{ label: 'Canonical entity', value: FIXTURE_ENTITY_ID, adapterId: 'scene-reader' }]);
 		const before = stage.selectionState();
@@ -79,11 +80,11 @@ describe('Stage accepted read and ordered semantic selection', () => {
 		// identity map (F.1), so the Layout subject survives as itself.
 		const edited = await edit();
 		expect(edited).toMatchObject({ kind: 'installed', selectionClearedReason: null, install: { selectionRemovals: [] } });
-		expect(stage.selectionState()).toEqual({ ordered: [layoutEntry, { reference: scene() }], primary: scene() });
+		expect(stage.selectionState()).toEqual({ ordered: [layoutEntry, { reference: scene() }], primary: null });
 		expect((await host.undo()).kind).toBe('installed');
-		expect(stage.selectionState()).toEqual({ ordered: [layoutEntry, { reference: scene() }], primary: scene() });
+		expect(stage.selectionState()).toEqual({ ordered: [layoutEntry, { reference: scene() }], primary: null });
 		expect((await host.redo()).kind).toBe('installed');
-		expect(stage.selectionState()).toEqual({ ordered: [layoutEntry, { reference: scene() }], primary: scene() });
+		expect(stage.selectionState()).toEqual({ ordered: [layoutEntry, { reference: scene() }], primary: null });
 		const stale = stage.selectionState();
 		session.replace(snapshot);
 		expect(stage.setSelection(stale)).toMatchObject({ kind: 'refused', code: 'stale-session' });

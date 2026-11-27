@@ -19,6 +19,8 @@
  * the finger is down.
  */
 import { SPATIAL_PAINT_ROLES } from '$lib/design/spatial-paint';
+import { topLevelSceneReference } from '../scene/selection-target';
+import { stageScene } from './unit-stage-source';
 import type { StageFacade, StageSourceHit } from './stage-facade';
 import type { GestureAcquisition } from './stage-session';
 
@@ -106,9 +108,19 @@ export function createStageEraser(
 	function candidateAt(input: PointerInput): StageEraseCandidate | null {
 		syncSource();
 		const target = facade.hostToolTarget({ ...input, tool: 'erase' });
-		return target.kind === 'hit'
-			? { adapterId: target.adapterId, hit: target.hit, refusal: target.refusal }
-			: null;
+		if (target.kind !== 'hit') return null;
+		const { hit } = target;
+		if (hit.reference?.domain === 'scene') {
+			const reference = topLevelSceneReference(stageScene(source), hit.reference);
+			if (reference.subject.kind === 'cluster') {
+				return {
+					adapterId: 'scene',
+					hit: { ...hit, sourceId: reference.subject.id, sourceKind: 'cluster', reference },
+					refusal: null,
+				};
+			}
+		}
+		return { adapterId: target.adapterId, hit, refusal: target.refusal };
 	}
 
 	function endPress(): void {

@@ -7,6 +7,47 @@ import {
 	type StageSelectionEntry,
 } from '../semantic-selection';
 import { planSourceKindOf } from './plan-source-kind';
+import {
+	sceneSelectionTargetForHit,
+	type SceneGroupScope,
+} from '$lib/authoring/scene/selection-target';
+import type { SemanticReference } from '@portfolio/project-model/references';
+
+/**
+ * The entry a hover marks, or null when its subject is already selected.
+ *
+ * Hover follows the same group-first rule as selection: any member of a Scene
+ * group marks the whole group until the group (or a sibling member) is the
+ * addressed subject. Every selected entry suppresses its own hover tone, not
+ * only the primary, so a set holding the group never doubles gold with neutral
+ * ink.
+ */
+function hoverEntryOf(
+	stage: {
+		readonly selectionState: () => { readonly ordered: readonly StageSelectionEntry[] };
+	},
+	sceneReader: (() => SceneGroupScope | null) | undefined,
+	reference: SemanticReference,
+	representation: StageSelectionEntry['representation'],
+): StageSelectionEntry | null {
+	const scene = sceneReader?.() ?? null;
+	const target =
+		scene !== null && reference.domain === 'scene' && reference.subject.kind === 'entity'
+			? sceneSelectionTargetForHit({
+					scene,
+					entityId: reference.subject.id,
+					contentRevision:
+						reference.revision.kind === 'exact' ? reference.revision.contentRevision : '',
+					selected: stage.selectionState().ordered.map((entry) => entry.reference),
+					additive: false,
+				})
+			: reference;
+	if (stage.selectionState().ordered.some((entry) => sameReference(entry.reference, target)))
+		return null;
+	return representation === undefined
+		? { reference: target }
+		: { reference: target, representation };
+}
 
 export type StageHoverPorts = {
 	readonly input: StageInputArbiterInput;
@@ -203,6 +244,8 @@ export function createStageHover(ports: StageHoverPorts) {
 					}
 				: undefined;
 		const reference = hit.reference ?? layoutSelectionReference(representation!, stage.snapshot());
+		// The adapter still receives the body under the pointer; the Stage's marks
+		// resolve it to its group.
 		input.session.setHover({ reference });
 		const primary = primaryEntry(stage.selectionState());
 		// The pick winner is the selected Wall itself, so a press here
@@ -213,12 +256,7 @@ export function createStageHover(ports: StageHoverPorts) {
 			primary.reference.subject.kind === 'wall' &&
 			hit.sourceKind === 'wall' &&
 			hit.sourceId === primary.reference.subject.id;
-		const nextHover =
-			primary !== null && sameReference(primary.reference, reference)
-				? null
-				: representation === undefined
-					? { reference }
-					: { reference, representation };
+		const nextHover = hoverEntryOf(stage, input.scene, reference, representation);
 		// Identity, not object identity: a pointer moving within one subject must not
 		// rebuild the Stage's ink every frame.
 		if (nextHover === null) hoverSelection = null;

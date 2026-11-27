@@ -84,13 +84,20 @@ export type StageShellCommandInput = {
 
 export function createStageShellCommands(input: StageShellCommandInput) {
 	const shell = input.shell;
-	const selection = createStageShellSelection({ ...input, armWorldTool: (id) => armWorldTool(id) });
+	const selection = createStageShellSelection({
+		...input,
+		armWorldTool: (id) => armWorldTool(id),
+		notice: input.notice,
+		selectMore: () => input.shell.selectMore,
+		setSelectMore: (value) => input.shell.setSelectMore(value),
+	});
 	const {
 		syncPrimarySelection,
 		selectHit,
 		selectUnfoldedSubject,
 		selectSource,
 		selectStageReference,
+		drillOutOfGroup,
 		closeSelection,
 		openSpaceCreated,
 		closeCard,
@@ -634,7 +641,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 		if (selected === null || destructive.length !== 1) {
 			shell.setPendingDelete(null);
 			input.notice(
-				selected === null ? 'Select a subject to delete it.' : 'Nothing here can be deleted.',
+				selected === null ? 'Select one subject or a group.' : 'Nothing here can be deleted.',
 			);
 			return;
 		}
@@ -659,6 +666,42 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 		);
 	}
 
+	/**
+	 * ⌘G and ⇧⌘G: run the same contributed action the Card offers, so the key and
+	 * the button are one planner call and one Undo. Nothing is built here.
+	 */
+	function groupSelection(ungroup: boolean): void {
+		const stage = input.facade();
+		if (stage === null) return;
+		if (ungroup) {
+			const primary = stage.selectionState().primary;
+			if (primary === null) {
+				input.notice('Select a group to ungroup.');
+				return;
+			}
+			const action = stage
+				.cardActions({
+					sourceId: primary.subject.id,
+					sourceKind: primary.subject.kind,
+					reference: primary,
+					ref: null,
+				})
+				.find((candidate) => candidate.id === 'scene-group-ungroup');
+			if (action === undefined) {
+				input.notice('Select a group to ungroup.');
+				return;
+			}
+			void runCardAction(action, '');
+			return;
+		}
+		const action = stage.setActions().find((candidate) => candidate.id === 'scene-group-create');
+		if (action === undefined) {
+			input.notice('Select two or more items to group.');
+			return;
+		}
+		void runCardAction(action, '');
+	}
+
 	/** Run one contributed Card action and report exactly what it said. */
 	async function runCardAction(record: StageCardActionRecord, subjectKey: string): Promise<void> {
 		const outcome = await record.run();
@@ -675,6 +718,8 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 		selectUnfoldedSubject,
 		selectSource,
 		selectStageReference,
+		drillOutOfGroup,
+		groupSelection,
 		closeSelection,
 		closeCard,
 		syncContributedTask,

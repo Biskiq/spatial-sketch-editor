@@ -61,11 +61,13 @@
 
 	let {
 		selection,
+		selectionSet = [],
 		hover,
 		hoverTone = 'hover',
 		proposals = [],
 		geometry,
 		scenePick,
+		clusterMembers = () => [],
 		width = 1,
 		height = 1,
 		fade = 1,
@@ -74,6 +76,7 @@
 		cutawayWallIds = []
 	}: {
 		selection: StageSelectionEntry | null;
+		selectionSet?: readonly StageSelectionEntry[];
 		hover: StageSelectionEntry | null;
 		/** The armed Eraser's winner reads as red dashes, never gold. */
 		hoverTone?: 'hover' | 'erase' | 'paint';
@@ -84,6 +87,11 @@
 		proposals?: readonly StageSelectionEntry[];
 		geometry: CompiledLayoutGeometry;
 		scenePick: ScenePickSource;
+		/**
+		 * A Scene group's own member ids, in the group's order. A group entry marks
+		 * every member; no other entry asks.
+		 */
+		clusterMembers?: (clusterId: string) => readonly string[];
 		/**
 		 * The selected subject is wholly hidden by the Slice and drawn as a ghost:
 		 * its gold contour is the one contour the planes must not cut. Every other tone
@@ -358,11 +366,38 @@
 		}
 	}
 
+	/**
+	 * Mark one selection entry.
+	 *
+	 * A Scene group is one identity over several bodies, so its tone is drawn on
+	 * every member: hovering or selecting any member marks the whole group. Each
+	 * member is addressed as the entity it canonically is, keeping the group's
+	 * revision and address, so the ink and the group's own marks agree about the
+	 * Scene.
+	 */
 	function apply(
 		entry: StageSelectionEntry | null,
 		tone: 'selection' | 'hover' | 'erase' | 'paint'
 	): void {
 		if (entry === null) return;
+		if (entry.reference.domain === 'scene' && entry.reference.subject.kind === 'cluster') {
+			for (const id of clusterMembers(entry.reference.subject.id))
+				applySubject(memberEntry(entry, id), tone);
+			return;
+		}
+		applySubject(entry, tone);
+	}
+
+	function memberEntry(entry: StageSelectionEntry, entityId: string): StageSelectionEntry {
+		return {
+			reference: { ...entry.reference, subject: { kind: 'entity', id: entityId } },
+		};
+	}
+
+	function applySubject(
+		entry: StageSelectionEntry,
+		tone: 'selection' | 'hover' | 'erase' | 'paint'
+	): void {
 		// Artwork is selected by its screen-space frame polygon and grips
 		// (ArtworkResizeOverlay), not by mesh contour: a 3 px gold line on every
 		// mesh edge hides thin frames and the image edge. Hover and erase still
@@ -433,6 +468,7 @@
 		fades.length = 0;
 		releaseAll();
 		apply(selection, 'selection');
+		for (const entry of selectionSet) apply(entry, 'selection');
 		for (const proposal of proposals) {
 			if (selection !== null && sameSubject(proposal.reference, selection.reference)) continue;
 			apply(proposal, 'paint');
@@ -457,6 +493,7 @@
 
 	$effect(() => {
 		selection;
+		selectionSet;
 		hover;
 		hoverTone;
 		proposals;

@@ -13,6 +13,8 @@ import type { createStageViewport } from './stage-viewport.svelte';
 import type { createStageHistoryCommand } from './stage-history-command';
 import type { createProjectSession } from '../../project-session/project-session.svelte';
 import type { StageHistoryState } from '../host-acceptance';
+import { stageScene } from '$lib/authoring/stage/stage-adapter-host';
+import { sceneClusterMemberIds } from '$lib/authoring/scene/selection-target';
 
 type Viewport = ReturnType<typeof createStageViewport>;
 type Canvas = RegionProps['canvas'];
@@ -67,6 +69,9 @@ export function createCoreRegionViews(input: {
 	function canvas(snapshot: StageReadSnapshot) {
 		return contribution<'core', 'canvas'>()({
 			scenePick: input.scenePick,
+			// Group membership is a read of the accepted Scene, resolved only when a
+			// group is marked: the Stage ink and Paper's mark both address every member.
+			clusterMembers: (clusterId: string) => sceneClusterMemberIds(stageScene(snapshot), clusterId),
 			// A renderer recovery cancels actual captive pointers through the viewport.
 			capturedPointers: stageInput.capturedPointers,
 			lightPreview: input.lightPreview,
@@ -115,6 +120,11 @@ export function createCoreRegionViews(input: {
 			},
 			get selection() {
 				return input.selection();
+			},
+			get selectionSet() {
+				if (input.selection() !== null) return [];
+				void shell.contributionsVersion;
+				return input.facade()?.selectionState().ordered ?? [];
 			},
 			get hover() {
 				return shell.armedHostTool === 'erase'
@@ -171,6 +181,11 @@ export function createCoreRegionViews(input: {
 		},
 		get hostTools() {
 			return shell.hostToolOverlay;
+		},
+		get selectMore() {
+			return input.lens() === 'world' && shell.selectMore
+				? { onDone: () => shell.setSelectMore(false) }
+				: null;
 		},
 		get lightGround() {
 			return paperVisible() || viewport.evaluation?.renderedReading === '3d';

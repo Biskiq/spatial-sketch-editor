@@ -161,6 +161,12 @@ export function createStageShellState(input: StageShellStateInput) {
 
 	/** The contextual Card's disclosure; closing it never clears selection. */
 	let cardOpen = $state(true);
+	/**
+	 * Coarse-pointer **Select more**: while it is on, a Stage tap toggles its
+	 * target in the set instead of replacing the selection. Session view state,
+	 * never a document write.
+	 */
+	let selectMore = $state(false);
 	/** One pending request to open the Card name editor, optionally qualified by selection. */
 
 	/** Whether the armed tool's palette is open above the dock. */
@@ -650,6 +656,12 @@ export function createStageShellState(input: StageShellStateInput) {
 		},
 		setCardOpen(value: boolean) {
 			cardOpen = value;
+		},
+		get selectMore() {
+			return selectMore;
+		},
+		setSelectMore(value: boolean) {
+			selectMore = value;
 		},
 		get cardRenameRequest() {
 			return status.cardRenameRequest;

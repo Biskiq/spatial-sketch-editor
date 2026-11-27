@@ -102,6 +102,42 @@ export function selectionObjectsOf(
 	return entity === null ? [] : [entity];
 }
 
+/**
+ * One Scene group's drawn member bodies, in the group's own order.
+ *
+ * A group is one selection identity over several bodies, so marking it reaches
+ * every member through the same per-entity answer `selectionObjectsOf` gives. A
+ * member with no mounted body contributes nothing; the group is never a render
+ * root of its own.
+ */
+export function clusterObjectsOf(
+	scenePick: ScenePickSource,
+	memberIds: readonly string[],
+): Object3D[] {
+	const objects: Object3D[] = [];
+	for (const id of memberIds) {
+		const object = scenePick.entityObject(id);
+		if (object !== null) objects.push(object);
+	}
+	return objects;
+}
+
+/**
+ * The bodies one selection entry draws.
+ *
+ * A Scene group is one identity over its members, so its bodies are every
+ * mounted member's; every other entry keeps its own single-subject answer.
+ */
+export function selectionBodiesOf(
+	scenePick: ScenePickSource,
+	entry: StageSelectionEntry,
+	clusterMembers: (clusterId: string) => readonly string[],
+): Object3D[] {
+	return entry.reference.domain === 'scene' && entry.reference.subject.kind === 'cluster'
+		? clusterObjectsOf(scenePick, clusterMembers(entry.reference.subject.id))
+		: selectionObjectsOf(scenePick, entry);
+}
+
 const scratch = new Vector3();
 
 /** One mesh's triangles in world space, plus the AABB they span. */
