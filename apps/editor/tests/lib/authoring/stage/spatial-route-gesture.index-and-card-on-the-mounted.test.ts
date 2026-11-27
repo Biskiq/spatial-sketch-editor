@@ -596,12 +596,11 @@ describe('Index and Card on the mounted route', () => {
 		card.querySelector<HTMLButtonElement>('[data-card-more]')!.click();
 		await frame();
 		expect(card.querySelector('[data-card-more-section] [data-field="thickness"]')).not.toBeNull();
-		// Base and Top are foreseen placeholders: shown, disabled, never working fields.
-		for (const id of ['base', 'top']) {
-			const placeholder = card.querySelector<HTMLInputElement>(`[data-field-placeholder="${id}"]`);
-			expect(placeholder?.disabled).toBe(true);
-			expect(placeholder?.value).toBe('—');
-		}
+		// Base is still a foreseen placeholder: shown, disabled, never a working
+		// field. Top is authored by the shape controls above, not a placeholder.
+		const base = card.querySelector<HTMLInputElement>('[data-field-placeholder="base"]');
+		expect(base?.disabled).toBe(true);
+		expect(base?.value).toBe('—');
 		expect(card.textContent).not.toContain('Datum');
 		expect(card.querySelector('[data-field="startX"]')).toBeNull();
 		// The functions menu no longer carries Thickness.
