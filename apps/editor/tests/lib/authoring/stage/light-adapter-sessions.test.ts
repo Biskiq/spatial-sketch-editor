@@ -16,7 +16,7 @@ import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/la
 import type { SceneEntity, SceneLightEntity, Vec3 } from '@portfolio/project-model/scene';
 import { freshCapture } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
 import { armedLightKind, armLight, clearArmedLight } from '$lib/authoring/look/light-tool.svelte';
-import { rotationForLightDirection } from '$lib/authoring/look/light-aim';
+import { lightForward, rotationForLightDirection } from '$lib/authoring/look/light-aim';
 import { sceneEntityReference } from '$lib/authoring/adapters/scene/placement';
 import { createAdapter as createSceneAdapter } from '$lib/authoring/adapters/scene.adapter';
 import { createAdapter as createLightAdapter } from '$lib/authoring/adapters/light.adapter';
@@ -355,24 +355,29 @@ describe('X8 mark-gesture terminations', () => {
 		expect(facade.selectionState().primary?.subject.id).toBe('light-spot');
 	});
 
-	it('keeps a captured gesture bound to its own light across a selection change: one entry on release', async () => {
+	it('a selection change cancels the captured gesture: no write, no lease and no preview', async () => {
 		const fixture = await mark([spot(), point([1, 2, 1], 3)]);
 		const { facade, host } = fixture;
 		const before = host.history();
+		const sourceBefore = facade.snapshot().canonicalJson;
 		const original = lightOf(facade, 'light-spot');
 		const { evaluationId, css } = press(facade, 'light-body');
-		facade.pointerIntent({ phase: 'move', css: [css[0] + 60, css[1]], evaluationId });
-		select(facade, 'light-point');
-		// The lease and the preview belong to the captured light, not to the selection.
-		expect(leaseOwner(facade)).toBe('light-marks');
+		const to: [number, number] = [css[0] + 60, css[1]];
+		facade.pointerIntent({ phase: 'move', css: to, evaluationId });
 		expect(fixture.lightPreview.overrides.has('light-spot')).toBe(true);
-		facade.pointerIntent({ phase: 'up', css: [css[0] + 60, css[1]], evaluationId });
-		await waitFor(() => host.history().depth === before.depth + 1);
-		await settle();
+		select(facade, 'light-point');
+		// The capture belongs to the light it was pressed on: the new selection
+		// ends it through the same cancel path as a pointer cancel.
 		expect(leaseOwner(facade)).toBeNull();
 		expect(previewIsEmpty(fixture)).toBe(true);
-		expect(lightOf(facade, 'light-spot').position).not.toEqual(original.position);
+		facade.pointerIntent({ phase: 'up', css: to, evaluationId });
+		await settle();
+		expect(leaseOwner(facade)).toBeNull();
+		expect(host.history()).toEqual(before);
+		expect(facade.snapshot().canonicalJson).toBe(sourceBefore);
+		expect(lightOf(facade, 'light-spot').position).toEqual(original.position);
 		expect(lightOf(facade, 'light-point').position).toEqual([1, 2, 1]);
+		expect(facade.selectionState().primary?.subject.id).toBe('light-point');
 	});
 
 	it('releases the lease and the preview when the registration is disposed mid-drag', async () => {
@@ -388,19 +393,35 @@ describe('X8 mark-gesture terminations', () => {
 		expect(host.history()).toEqual(before);
 	});
 
-	it('ends the lease on a reading change; the release still resolves to at most one entry and no lease', async () => {
+	it('a reading change revokes the capture: the stale release writes nothing and clears the preview', async () => {
 		const fixture = await mark();
 		const { facade, host } = fixture;
 		const before = host.history();
+		const sourceBefore = facade.snapshot().canonicalJson;
+		const original = lightOf(facade, 'light-spot');
 		const { evaluationId, css } = press(facade, 'light-body');
-		facade.pointerIntent({ phase: 'move', css: [css[0] + 60, css[1]], evaluationId });
+		const to: [number, number] = [css[0] + 60, css[1]];
+		facade.pointerIntent({ phase: 'move', css: to, evaluationId });
 		expect(facade.session.applyReadingChange()).toMatchObject({ cancelled: true });
 		expect(leaseOwner(facade)).toBeNull();
-		facade.pointerIntent({ phase: 'up', css: [css[0] + 60, css[1]], evaluationId });
+		facade.pointerIntent({ phase: 'up', css: to, evaluationId });
 		await settle();
 		expect(leaseOwner(facade)).toBeNull();
 		expect(previewIsEmpty(fixture)).toBe(true);
-		expect(host.history().depth).toBe(before.depth + 1);
+		expect(host.history()).toEqual(before);
+		expect(facade.snapshot().canonicalJson).toBe(sourceBefore);
+		expect(lightOf(facade, 'light-spot').position).toEqual(original.position);
+	});
+
+	it('a move after the reading change does not republish the revoked capture', async () => {
+		const fixture = await mark();
+		const { facade } = fixture;
+		const { evaluationId, css } = press(facade, 'light-body');
+		facade.pointerIntent({ phase: 'move', css: [css[0] + 40, css[1]], evaluationId });
+		expect(facade.session.applyReadingChange()).toMatchObject({ cancelled: true });
+		facade.pointerIntent({ phase: 'move', css: [css[0] + 90, css[1]], evaluationId });
+		expect(previewIsEmpty(fixture)).toBe(true);
+		expect(leaseOwner(facade)).toBeNull();
 	});
 
 	it('refuses a second gesture while another owner holds the gesture lease', async () => {
@@ -570,21 +591,109 @@ describe('X8 placement lifetimes', () => {
 		expect(armedLightKind(PROJECT_ID)).toBeNull();
 	});
 
-	it('a reading change mid-press ends the lease; the release still resolves its one create', async () => {
+	it('a reading change mid-press revokes the placement: the release creates no light', async () => {
 		const fixture = await mounted({ scenePick: floorPick });
-		const { facade, host } = fixture;
+		const { facade, host, lightPreview } = fixture;
 		open(facade);
 		const evaluationId = facade.evaluationId()!;
 		const before = host.history();
 		facade.pointerIntent({ phase: 'down', css: [640, 380], evaluationId });
+		expect(leaseOwner(facade)).toBe('light-place');
+		facade.pointerIntent({ phase: 'move', css: [700, 380], evaluationId });
 		expect(facade.session.applyReadingChange()).toMatchObject({ cancelled: true });
+		expect(leaseOwner(facade)).toBeNull();
+		facade.pointerIntent({ phase: 'up', css: [700, 380], evaluationId });
+		await settle();
+		expect(leaseOwner(facade)).toBeNull();
+		expect(host.history()).toEqual(before);
+		expect(lights(facade)).toHaveLength(0);
+		// The task stays armed with its zero-intensity candidate, not the press.
+		expect(armedLightKind(PROJECT_ID)).toBe('spot');
+		expect(lightPreview.candidate?.intensity).toBe(0);
+	});
+
+	it('a selection change mid-press cancels the placement: no create and no leaked lease', async () => {
+		const fixture = await mounted({ entities: [point([1, 2, 1], 3)], scenePick: floorPick });
+		const { facade, host, lightPreview } = fixture;
+		open(facade);
+		const evaluationId = facade.evaluationId()!;
+		const before = host.history();
+		facade.pointerIntent({ phase: 'down', css: [640, 380], evaluationId });
+		expect(leaseOwner(facade)).toBe('light-place');
+		select(facade, 'light-point');
 		expect(leaseOwner(facade)).toBeNull();
 		facade.pointerIntent({ phase: 'up', css: [640, 380], evaluationId });
 		await settle();
-		expect(leaseOwner(facade)).toBeNull();
-		// The held press still resolves its own one create; the lease did not.
-		expect(host.history().depth).toBe(before.depth + 1);
+		expect(host.history()).toEqual(before);
 		expect(lights(facade)).toHaveLength(1);
+		expect(lightPreview.candidate?.intensity).toBe(0);
+	});
+
+	it('commits the pointer-up pose, not the last move, and holds that same candidate', async () => {
+		// The pick answers the ray's datum-plane point, so each pointer position
+		// names a distinct world target and the release can be compared exactly.
+		const scenePick = (ray: unknown): SceneRenderedHit => {
+			const { origin, direction } = ray as { origin: Vec3; direction: Vec3 };
+			const t = (0 - origin[1]) / direction[1];
+			return {
+				entityId: 'floor',
+				kind: 'entity',
+				distanceMeters: t,
+				worldPoint: [origin[0] + direction[0] * t, 0, origin[2] + direction[2] * t],
+				normal: [0, 1, 0]
+			};
+		};
+		const fixture = await mounted({ scenePick });
+		const { facade, host, lightPreview } = fixture;
+		open(facade, 'spot');
+		const evaluationId = facade.evaluationId()!;
+		const before = host.history();
+		const start: [number, number] = [560, 340];
+		const moved: [number, number] = [700, 360];
+		const released: [number, number] = [840, 300];
+		const targetAt = (css: readonly [number, number]): Vec3 => {
+			const ray = facade.pointerRay([css[0] + RECT.left, css[1] + RECT.top], evaluationId);
+			if (ray.kind !== 'ray') throw new Error('the pointer position produced no ray');
+			const t = (0 - ray.ray.origin[1]) / ray.ray.direction[1];
+			return [
+				ray.ray.origin[0] + ray.ray.direction[0] * t,
+				0,
+				ray.ray.origin[2] + ray.ray.direction[2] * t
+			];
+		};
+		const aimAt = (light: SceneLightEntity, target: Vec3): number => {
+			const forward = lightForward(light.rotation);
+			const offset: Vec3 = [
+				target[0] - light.position[0],
+				target[1] - light.position[1],
+				target[2] - light.position[2]
+			];
+			const length = Math.hypot(...offset);
+			return (
+				forward[0] * (offset[0] / length) +
+				forward[1] * (offset[1] / length) +
+				forward[2] * (offset[2] / length)
+			);
+		};
+		const moveTarget = targetAt(moved);
+		const releaseTarget = targetAt(released);
+
+		facade.pointerIntent({ phase: 'down', css: start, evaluationId });
+		facade.pointerIntent({ phase: 'move', css: moved, evaluationId });
+		expect(aimAt(lightPreview.candidate!, moveTarget)).toBeCloseTo(1, 6);
+		facade.pointerIntent({ phase: 'up', css: released, evaluationId });
+		// The held ghost is the release pose before the one create settles.
+		const held = lightPreview.candidate;
+		expect(held).not.toBeNull();
+		expect(aimAt(held!, releaseTarget)).toBeCloseTo(1, 6);
+		expect(aimAt(held!, moveTarget)).toBeLessThan(0.999);
+
+		await waitFor(() => lights(facade).length === 1);
+		await settle();
+		const placed = lights(facade)[0]!;
+		expect(host.history().depth).toBe(before.depth + 1);
+		expect(aimAt(placed, releaseTarget)).toBeCloseTo(1, 6);
+		expect(aimAt(placed, moveTarget)).toBeLessThan(0.999);
 	});
 
 	it('closing the task while the create is in flight keeps the arm and still installs once', async () => {

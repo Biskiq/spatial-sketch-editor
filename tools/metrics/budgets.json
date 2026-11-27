@@ -853,8 +853,8 @@
 		{
 			"file": "apps/editor/src/lib/authoring/adapters/light/light-placement-session.ts",
 			"name": "createLightPlacementSession",
-			"line": 132,
-			"lines": 434,
+			"line": 165,
+			"lines": 431,
 			"reason": "One light placement gesture over the captured light and planner."
 		},
 		{

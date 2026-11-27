@@ -80,6 +80,39 @@ function createPayload(input: {
 		: base;
 }
 
+/** The pose a placement commits: a dragged Spot aims from its body at its target. */
+function placementRotation(kind: 'point' | 'spot', moved: boolean, target: Vec3, body: Vec3): Vec3 {
+	return kind === 'spot' && moved
+		? rotationForLightDirection(normalize(sub(target, body)))
+		: rotationForLightDirection([0, -1, 0]);
+}
+
+/**
+ * The placement candidate light. While Point or Spot is armed it stays mounted
+ * at intensity 0 with no valid candidate, so the renderer's light count changes
+ * on arm and disarm rather than on every hover.
+ */
+function previewCandidate(
+	kind: 'point' | 'spot',
+	position: Vec3 | null,
+	rotation: Vec3,
+	intensity: number,
+	datumMeters: number,
+): Light {
+	return {
+		kind: 'light',
+		light: kind,
+		id: 'light-placement-preview',
+		name: 'Preview',
+		color: '#ffffff',
+		intensity,
+		castShadow: false,
+		position: position === null ? [0, datumMeters, 0] : [...position],
+		rotation: [...rotation],
+		...(kind === 'spot' ? { angle: LIGHT_DEFAULT_SPOT_ANGLE } : {}),
+	} as Light;
+}
+
 export type LightPlacementSession = {
 	/** A press is captured and has not been released. */
 	readonly active: boolean;
@@ -155,38 +188,20 @@ export function createLightPlacementSession(deps: LightPlacementDeps): LightPlac
 		return placementRefusal;
 	}
 
-	/**
-	 * The placement candidate light. While Point or Spot is armed it stays
-	 * mounted at intensity 0 with no valid candidate, so the renderer's light
-	 * count changes on arm and disarm rather than on every hover.
-	 */
-	function previewCandidate(
-		kind: 'point' | 'spot',
-		position: Vec3 | null,
-		rotation: Vec3,
-		intensity: number,
-	): Light {
-		return {
-			kind: 'light',
-			light: kind,
-			id: 'light-placement-preview',
-			name: 'Preview',
-			color: '#ffffff',
-			intensity,
-			castShadow: false,
-			position:
-				position === null ? [0, services.stage.snapshot().domain.datumMeters, 0] : [...position],
-			rotation: [...rotation],
-			...(kind === 'spot' ? { angle: LIGHT_DEFAULT_SPOT_ANGLE } : {}),
-		} as Light;
-	}
-
 	function zeroCandidate(): void {
 		const kind = armedLightKind(projectId());
 		if (kind !== 'point' && kind !== 'spot') return;
 		services.stage
 			.lightPreview()
-			?.setCandidate(previewCandidate(kind, null, rotationForLightDirection([0, -1, 0]), 0));
+			?.setCandidate(
+				previewCandidate(
+					kind,
+					null,
+					rotationForLightDirection([0, -1, 0]),
+					0,
+					services.stage.snapshot().domain.datumMeters,
+				),
+			);
 	}
 
 	function placementBodyAt(
@@ -252,6 +267,38 @@ export function createLightPlacementSession(deps: LightPlacementDeps): LightPlac
 		}
 	}
 
+	/**
+	 * Resolve the capture from a pointer position and publish the candidate it
+	 * names: the pose the release commits, so the held ghost and the one write
+	 * cannot disagree.
+	 */
+	function resolvePlacement(
+		css: readonly [number, number],
+		adapterContext: StageAdapterContext,
+	): void {
+		if (placement === null) return;
+		updatePlacement(css, adapterContext);
+		const kind = armedLightKind(projectId());
+		if (kind !== 'point' && kind !== 'spot') return;
+		services.stage
+			.lightPreview()
+			?.setCandidate(
+				previewCandidate(
+					kind,
+					placement.body,
+					placementRotation(kind, placement.moved, placement.target, placement.body),
+					LIGHT_INTENSITY_REFERENCE,
+					adapterContext.snapshot.domain.datumMeters,
+				),
+			);
+	}
+
+	/** The refused-release ghost: one refusal slot and one held candidate. */
+	function holdRefusal(pending: Placement, message: string): void {
+		refusal.note(message);
+		placementRefusal = { placement: pending, message, until: Date.now() + LIGHT_REFUSAL_MS };
+	}
+
 	async function commitPlacement(
 		pending: Placement,
 		adapterContext: StageAdapterContext,
@@ -266,10 +313,7 @@ export function createLightPlacementSession(deps: LightPlacementDeps): LightPlac
 			rotation = [0, 0, 0];
 		} else {
 			position = pending.body;
-			const direction = pending.moved
-				? normalize(sub(pending.target, pending.body))
-				: ([0, -1, 0] as Vec3);
-			rotation = rotationForLightDirection(direction);
+			rotation = placementRotation(kind, pending.moved, pending.target, pending.body);
 			// A new Spot is Unlimited. Press-drag aims it; it never invents a
 			// cutoff, because Reach is a cutoff the author sets on purpose.
 		}
@@ -295,17 +339,11 @@ export function createLightPlacementSession(deps: LightPlacementDeps): LightPlac
 				services.stage.setSelection({ ordered: [{ reference }], primary: reference });
 			} else if (outcome.kind === 'refused') {
 				// A refused placement must say so rather than end silently.
-				refusal.note(outcome.message);
-				placementRefusal = {
-					placement: pending,
-					message: outcome.message,
-					until: Date.now() + LIGHT_REFUSAL_MS,
-				};
+				holdRefusal(pending, outcome.message);
 			}
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'The light could not be placed.';
-			refusal.note(message);
-			placementRefusal = { placement: pending, message, until: Date.now() + LIGHT_REFUSAL_MS };
+			holdRefusal(pending, message);
 		} finally {
 			placing = null;
 			// The committed or refused pose is no longer the hover candidate; the
@@ -360,6 +398,7 @@ export function createLightPlacementSession(deps: LightPlacementDeps): LightPlac
 							nextPlacement.body,
 							rotationForLightDirection([0, -1, 0]),
 							LIGHT_INTENSITY_REFERENCE,
+							adapterContext.snapshot.domain.datumMeters,
 						),
 					);
 			}
@@ -367,34 +406,18 @@ export function createLightPlacementSession(deps: LightPlacementDeps): LightPlac
 			return true;
 		},
 		move(intent, adapterContext) {
-			if (placement === null) return;
-			updatePlacement(intent.css, adapterContext);
-			const kind = armedLightKind(projectId());
-			if (kind === 'point' || kind === 'spot') {
-				const direction =
-					kind === 'spot' && placement.moved
-						? normalize(sub(placement.target, placement.body))
-						: ([0, -1, 0] as Vec3);
-				services.stage
-					.lightPreview()
-					?.setCandidate(
-						previewCandidate(
-							kind,
-							placement.body,
-							rotationForLightDirection(direction),
-							LIGHT_INTENSITY_REFERENCE,
-						),
-					);
-			}
+			resolvePlacement(intent.css, adapterContext);
 		},
-		finish(_intent, adapterContext) {
+		finish(intent, adapterContext) {
 			const pending = placement;
 			if (pending === null) return false;
+			// The pointer-up position is authoritative: resolve and publish it
+			// before the capture ends, so the one create commits the release pose.
+			resolvePlacement(intent.css, adapterContext);
 			placement = null;
 			lease.release();
 			// Hold the drawn ghost under a Placing… chip until the one create
-			// settles; pointer moves and clicks are ignored meanwhile. The payload
-			// is the pose the last move drew.
+			// settles; pointer moves and clicks are ignored meanwhile.
 			placing = pending;
 			void commitPlacement(pending, adapterContext);
 			return true;
@@ -417,12 +440,19 @@ export function createLightPlacementSession(deps: LightPlacementDeps): LightPlac
 			if (preview !== null) {
 				preview.setCandidate(
 					next === null
-						? previewCandidate(kind, null, rotationForLightDirection([0, -1, 0]), 0)
+						? previewCandidate(
+								kind,
+								null,
+								rotationForLightDirection([0, -1, 0]),
+								0,
+								adapterContext.snapshot.domain.datumMeters,
+							)
 						: previewCandidate(
 								kind,
 								next.body,
 								rotationForLightDirection([0, -1, 0]),
 								LIGHT_INTENSITY_REFERENCE,
+								adapterContext.snapshot.domain.datumMeters,
 							),
 				);
 			}
