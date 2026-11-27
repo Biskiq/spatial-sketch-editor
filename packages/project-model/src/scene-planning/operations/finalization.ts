@@ -32,7 +32,6 @@ export function finalizePlacedEntity(input: {
 			changedEntityFields: [],
 			createdEntityIds: [input.entityId],
 			removedEntityIds: [],
-			allowClusterCleanup: false,
 		},
 	});
 	if (finalized.kind === 'rejected') return fromFinalization(finalized);

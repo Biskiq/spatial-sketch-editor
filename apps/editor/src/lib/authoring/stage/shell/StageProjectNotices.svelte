@@ -45,7 +45,7 @@
 
 {#if recoveryOffer !== null}
 	<div class="resume-offer" role="region" aria-label="Pending Save recovery">
-		<p>This pending Save uses a different Layout format. Download the capture to recover it with its original reader.</p>
+		<p>This pending Save uses a different {recoveryOffer.unit} format (version {recoveryOffer.stamp}). Download the capture to recover it with its original reader.</p>
 		<button type="button" class="primary" onclick={() => recoveryOffer && downloadPendingCapture(recoveryOffer)}>Download captured Save</button>
 		<button type="button" onclick={onDiscardRecovery}>Discard captured Save</button>
 	</div>

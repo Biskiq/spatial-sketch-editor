@@ -85,11 +85,41 @@ a rejected outline refuses with its issue code and anchor keys. A form refuses a
 
 **Clusters.** Named member-id groups rendered flat by the visitor. They are **not** a durable
 assembly/instance model: membership only, one group maximum, no nesting, no Three parenting as an
-authored hierarchy, no prefab library. Deleting entities cleans references and selection through one
-Scene authority; no dangling member survives. Duplicate uses a deterministic **+0.5 world X/Z**
-offset, preserves Y and material sharing, and adds no hidden move or grounding entry. A full cluster
-is duplicated as a cluster; a partial member selection is ungrouped with a warning. Validate all
-clone candidates before one commit; an invalid batch leaves the document unchanged.
+authored hierarchy, no prefab library. A Scene 13 cluster is the G1 group record: `id`, `name` and
+at least two ordered `memberIds`. Deleting entities cleans references and selection through one
+Scene authority; no dangling member survives.
+
+- **Create, ungroup and rename** write exactly one cluster. Create captures the cluster id, member
+  order and name; every member must be ungrouped and individually movable. Ungroup removes only the
+  cluster; rename writes only its name.
+- **Transform** is all-or-nothing. Move and Turn are resolved about one captured pivot, every member
+  keeps its Y, and upright floor members turn by an exact yaw add (their sub-tolerance pitch and
+  roll are preserved). Lights and Artwork move rigidly with no support check. Every other member
+  revalidates support from the accepted Layout: a resting member must find its unchanged base at
+  the destination; a lifted member takes the highest support at or below its base and ignores a
+  surface above it. **Resting or lifted is decided at the origin by that rule, from the encoded
+  pose alone:** a base that no support meets is lifted above the highest support at or below it,
+  and a support within the coplanar tolerance of the base — including a platform top just above it
+  at a seam — is the support it rests on, so an accepted pose remains operable by the next Move or
+  Duplicate. The captured support choice is applied at the destination only; an origin that also
+  has a higher support beneath it cannot veto a choice the destination yields, and a stale choice
+  still refuses. Explicit reseating is unchanged: *Place on floor*, `set-lift` and placement keep
+  their prior origin reading and remain the only operations that change a member's Y. Any member
+  failure refuses the whole operation and names the member, the destination and the available
+  elevations. Turn does not re-ground.
+- **Duplicate** is member duplication, not group duplication: it appends one independent copy per
+  member at the deterministic **+0.5 world X/Z** offset, each copy's captured id paired to its
+  source member, then appends one cluster with the captured id and the same name. Copies preserve Y, rotation, material sharing and
+  unrelated records; the source cluster and its members are byte-identical. Support is validated
+  for every copy before one commit, so an invalid batch leaves the document unchanged.
+- **Erase** removes every member, the cluster and any Experience Presentation subject that names a
+  removed member in the same candidate and the same Undo. A member duplicated on its own (outside
+  a group operation) is an independent, ungrouped entity and does not change the source cluster.
+- **Create light rig** appends exactly three lights validated by the single-light gates and one
+  cluster, with every captured id in the payload. Nothing is allocated by F4.
+
+Scene 13 is the group format. Another Scene version refuses with `unsupported_format_version`; no
+reader converts a Scene 12 cluster into a group.
 
 **Lights.** `color` is `#rrggbb`; `intensity` finite ≥ 0; `range` finite > 0; `angle` in `(0, π]`;
 `penumbra` in `[0, 1]`. Point lights reject angle/penumbra; spot lights require angle. Editor-only

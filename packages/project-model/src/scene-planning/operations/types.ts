@@ -19,6 +19,13 @@ export const SCENE_OPERATION_KINDS = [
 	'create-light',
 	'update-light',
 	'duplicate-light',
+	'scene-group-create',
+	'scene-group-ungroup',
+	'scene-group-rename',
+	'scene-group-transform',
+	'scene-group-duplicate',
+	'scene-group-erase',
+	'create-light-rig',
 ] as const;
 
 export type SceneOperationKind = (typeof SCENE_OPERATION_KINDS)[number];
@@ -31,6 +38,7 @@ export type SceneOperationRefusalCode =
 	| 'unsupported-frame'
 	| 'unsupported-surface'
 	| 'unsupported-set'
+	| 'already-grouped'
 	| 'missing-footprint'
 	| 'missing-contact-metadata'
 	| 'no-support'

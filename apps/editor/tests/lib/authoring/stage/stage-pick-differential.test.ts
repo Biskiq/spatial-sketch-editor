@@ -148,6 +148,11 @@ describe('S03 recorded pre-change selection differential', () => {
 			// Layout document now serializes `formatVersion: 11` and every Wall
 			// `top`. Every winner, point and pick field is unchanged (266
 			// generationId values; 0 non-generationId diffs across 2,400 samples).
+			// T2 G1a Scene 13 updates generation IDs and the 16 shared Scene content
+			// revisions because the Scene unit format moves from 12 to 13 and the
+			// source hash covers the header. Every winner, point and pick field is
+			// unchanged (266 generationId values; 16 contentRevision values; 0
+			// other diffs across 2,400 samples).
 			expect(actual).toEqual(expected);
 		}
 	});

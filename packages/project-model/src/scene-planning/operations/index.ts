@@ -34,6 +34,6 @@ export {
 } from './transform';
 export { planCreateForm, planPlaceFormCopy, planSetFormProfile, planSetFormSize } from './form';
 export { planDeleteOne, planDuplicateOne, planSetName } from './lifecycle';
-export { floorTransformSupport, sceneEntityLift } from './support';
+export { floorTransformSupport, resolveDestinationSupport, sceneEntityLift } from './support';
 export type { FloorTransformSupport } from './support';
 export { finalizePlacedEntity } from './finalization';

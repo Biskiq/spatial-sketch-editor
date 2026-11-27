@@ -306,7 +306,7 @@ export function createProjectSession(host: {
 	 */
 	function offerPendingRecovery(): boolean {
 		const pending = readPendingCapture();
-		recoveryOffer = pending.status === 'incompatible-layout' ? pending : null;
+		recoveryOffer = pending.status === 'incompatible-source' ? pending : null;
 		return recoveryOffer !== null;
 	}
 
@@ -318,7 +318,7 @@ export function createProjectSession(host: {
 		const url = new URL(host.url());
 		if (url.searchParams.get('resume-save') !== '1') return;
 		const pending = readPendingCapture();
-		if (pending.status === 'incompatible-layout') {
+		if (pending.status === 'incompatible-source') {
 			recoveryOffer = pending;
 			return;
 		}

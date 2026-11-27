@@ -3,6 +3,7 @@ import { type FormLibraryPayload } from '../../library/form-library';
 import { type FrameReference } from '../../references/types';
 import { type MaterialId, type SceneFormPlane, type Vec3 } from '../../scene';
 import { type CreatorModelResourcePayload } from '../model-resource';
+import { type SceneLightSpec } from '../light-operations';
 import { type SceneSupportChoice } from '../support';
 import { type LocalInputFrame } from '../types';
 
@@ -137,9 +138,45 @@ export type SceneOperationPayload =
 			readonly penumbra?: number | null;
 			readonly castShadow?: boolean;
 	  }
-	| { readonly kind: 'duplicate-light'; readonly entityId: string };
+	| { readonly kind: 'duplicate-light'; readonly entityId: string }
+	| {
+			readonly kind: 'scene-group-create';
+			readonly clusterId: string;
+			readonly memberIds: readonly string[];
+			readonly name: string;
+	  }
+	| { readonly kind: 'scene-group-ungroup'; readonly clusterId: string }
+	| { readonly kind: 'scene-group-rename'; readonly clusterId: string; readonly name: string }
+	| {
+			readonly kind: 'scene-group-transform';
+			readonly clusterId: string;
+			readonly motion:
+				| { readonly kind: 'move'; readonly deltaXZ: readonly [number, number] }
+				| { readonly kind: 'turn'; readonly yaw: number };
+			readonly frame: LocalInputFrame;
+			readonly frameReference: FrameReference;
+			readonly contacts: readonly { readonly entityId: string; readonly contactMinY: number }[];
+	  }
+	| {
+			readonly kind: 'scene-group-duplicate';
+			readonly clusterId: string;
+			readonly copies: readonly {
+				readonly sourceEntityId: string;
+				readonly entityId: string;
+			}[];
+			readonly newClusterId: string;
+			readonly contacts: readonly { readonly entityId: string; readonly contactMinY: number }[];
+	  }
+	| { readonly kind: 'scene-group-erase'; readonly clusterId: string }
+	| {
+			readonly kind: 'create-light-rig';
+			readonly clusterId: string;
+			readonly name: string;
+			readonly lights: readonly (SceneLightSpec & { readonly entityId: string })[];
+	  };
 
 /** The operation's existing subject, or an explicit absence for creation. */
 export type SceneOperationSubject =
 	| { readonly kind: 'none' }
-	| { readonly kind: 'entity'; readonly entityId: string };
+	| { readonly kind: 'entity'; readonly entityId: string }
+	| { readonly kind: 'cluster'; readonly clusterId: string };

@@ -673,8 +673,6 @@ export function validateSemantics(
 					'unknown_cluster_member',
 					`Unknown member in scene cluster ${cluster.id}: ${memberId}`,
 				);
-			else if (entity.kind === 'artwork')
-				addIssue(issues, path, 'invalid_cluster_member', 'Artwork grouping is unavailable');
 			if (clusteredIds.has(memberId))
 				addIssue(
 					issues,

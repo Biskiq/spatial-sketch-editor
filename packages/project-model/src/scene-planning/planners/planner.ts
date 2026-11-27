@@ -53,7 +53,9 @@ import {
 	SCENE_PLANNER_ADMISSION,
 } from './contracts';
 import { planCreateFormIntent, planPlaceFormCopyIntent } from './forms';
+import { planGroupIntent } from './group';
 import { planCreateLightIntent, planDuplicateLightIntent, planUpdateLightIntent } from './light';
+import { SCENE_GROUP_OPERATION_KINDS, type SceneGroupOperationKind } from '../group-operations';
 
 /**
  * The Scene planners, ready to register with the accepted F.4
@@ -71,13 +73,16 @@ export function createScenePlanners(
 		);
 	return SCENE_OPERATION_KINDS.map((kind) =>
 		scenePlanner(kind, (request) => {
+			if (SCENE_GROUP_OPERATION_KINDS.includes(kind as SceneGroupOperationKind)) {
+				return planGroupIntent(request, kind as SceneGroupOperationKind);
+			}
 			if (kind === 'place-object') return planPlaceObject(request, definitionsOf());
 			if (kind === 'create-form') return planCreateFormIntent(request);
 			if (kind === 'place-form-copy') return planPlaceFormCopyIntent(request);
 			if (kind === 'create-light') return planCreateLightIntent(request);
 			if (kind === 'update-light') return planUpdateLightIntent(request);
 			if (kind === 'duplicate-light') return planDuplicateLightIntent(request);
-			return planExistingObject(request, kind);
+			return planExistingObject(request, kind as Parameters<typeof planExistingObject>[1]);
 		}),
 	);
 }
@@ -92,7 +97,7 @@ function scenePlanner(
 		admission:
 			kind === 'place-object'
 				? SCENE_PLACEMENT_ADMISSION
-				: kind === 'delete-one'
+				: kind === 'delete-one' || kind === 'scene-group-erase'
 					? SCENE_DELETE_ADMISSION
 					: SCENE_PLANNER_ADMISSION,
 		sourceKinds: [UNIT_SOURCE_KIND],
@@ -294,6 +299,7 @@ function planExistingObject(
 		| 'create-light'
 		| 'update-light'
 		| 'duplicate-light'
+		| SceneGroupOperationKind
 	>,
 ): PlannerOutcome<ProjectEnvelope> {
 	const reader = new ShapeReader();
@@ -376,6 +382,7 @@ function planOperation(
 		| 'create-light'
 		| 'update-light'
 		| 'duplicate-light'
+		| SceneGroupOperationKind
 	>,
 	payload: Exclude<
 		SceneOperationPayload,

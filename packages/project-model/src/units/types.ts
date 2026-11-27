@@ -12,7 +12,7 @@
  * imported by the project-model root barrel: an F.2 envelope is reached through
  * its own package subpath.
  *
- * The Scene unit is Camera-free Scene 8: the world-local record grammar
+ * The Scene unit is Camera-free Scene 13: the world-local record grammar
  * (textures, materials, entities, clusters), the authored Look (palette, Sky and
  * Treatment) with the navigation graph moved out to the Camera and Experience
  * units, and native forms admitted as entities. The Camera unit keeps the
@@ -59,7 +59,7 @@ export const UNIT_ENVELOPE_FORMAT_VERSION = 1 as const;
 
 /** Admitted unit versions (AM-2). Layout tracks the landed wall-first format. */
 export const LAYOUT_UNIT_FORMAT_VERSION = LAYOUT_WALL_FIRST_FORMAT_VERSION;
-export const SCENE_UNIT_FORMAT_VERSION = 12 as const;
+export const SCENE_UNIT_FORMAT_VERSION = 13 as const;
 export const CAMERA_UNIT_FORMAT_VERSION = 1 as const;
 export const EXPERIENCE_UNIT_FORMAT_VERSION = 4 as const;
 export const RESOURCE_UNIT_FORMAT_VERSION = 3 as const;

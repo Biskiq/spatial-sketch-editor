@@ -400,8 +400,7 @@ describe('scene refusals', () => {
 							changedEntityIds: input.changedEntityIds,
 							changedEntityFields: input.changedEntityFields,
 							createdEntityIds: [],
-							removedEntityIds: [],
-							allowClusterCleanup: false
+							removedEntityIds: []
 						}
 					});
 					if (finalized.kind === 'rejected') {
@@ -475,8 +474,7 @@ describe('scene refusals', () => {
 				changedEntityIds: ['entity-a'],
 				changedEntityFields: ['position'],
 				createdEntityIds: [],
-				removedEntityIds: [],
-				allowClusterCleanup: false
+				removedEntityIds: []
 			}).some((issue) => issue.path.includes('entity-b'))
 		).toBe(true);
 		expect(
@@ -485,9 +483,8 @@ describe('scene refusals', () => {
 				changedEntityIds: [],
 				changedEntityFields: [],
 				createdEntityIds: [],
-				removedEntityIds: [],
-				allowClusterCleanup: false
-			}).some((issue) => issue.path.includes('cluster-1'))
+				removedEntityIds: []
+			}).some((issue) => issue.path === '$.scene.clusters')
 		).toBe(true);
 	});
 });

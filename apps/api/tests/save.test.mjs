@@ -358,6 +358,28 @@ test('no partial version/pointer update when the pointer write fails', async () 
 	assert.equal(repaired.json().version, 2);
 });
 
+test('a Scene 12 envelope is refused as invalid_project and writes nothing', async () => {
+	const cookie = await sessionCookie(app, 'google:s04-save-1');
+	const projectId = track(nextProjectId());
+	const request = await saveRequestBody(projectDocument('Older Scene', { id: projectId }));
+	const envelope = JSON.parse(request.capture.canonicalJson);
+	envelope.units.scene.header.formatVersion = 12;
+	envelope.units.scene.data.formatVersion = 12;
+	const invalid = await save(projectId, cookie, {
+		...request,
+		capture: { ...request.capture, canonicalJson: JSON.stringify(envelope) }
+	});
+	assert.equal(invalid.statusCode, 400);
+	assert.equal(invalid.json().error.code, 'invalid_project');
+	assert.ok(
+		invalid.json().issues.some((issue) => issue.code === 'unsupported_format_version')
+	);
+
+	const state = await counts(projectId);
+	assert.equal(state.versions, 0);
+	assert.equal(state.receipts, 0);
+});
+
 test('a non-F2 envelope is refused as invalid_project and writes nothing', async () => {
 	const cookie = await sessionCookie(app, 'google:s04-save-1');
 	const projectId = track(nextProjectId());

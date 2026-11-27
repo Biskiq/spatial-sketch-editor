@@ -400,7 +400,7 @@ function supportCandidates(
 }
 
 describe('scene operation planners — registration', () => {
-	it('registers exactly the sixteen Scene operations as single-domain planners', () => {
+	it('registers exactly the twenty-three Scene operations as single-domain planners', () => {
 		const planners = createScenePlanners({ definitions: [nativeBoxDefinition()] });
 		expect(
 			planners.flatMap((planner) =>
@@ -408,7 +408,7 @@ describe('scene operation planners — registration', () => {
 					? [planner.kind]
 					: []
 			)
-		).toEqual(['delete-one']);
+		).toEqual(['delete-one', 'scene-group-erase']);
 		expect(planners.map((planner) => planner.kind)).toEqual([
 			'place-object',
 			'create-form',
@@ -425,15 +425,23 @@ describe('scene operation planners — registration', () => {
 			'set-name',
 			'create-light',
 			'update-light',
-			'duplicate-light'
+			'duplicate-light',
+			'scene-group-create',
+			'scene-group-ungroup',
+			'scene-group-rename',
+			'scene-group-transform',
+			'scene-group-duplicate',
+			'scene-group-erase',
+			'create-light-rig'
 		]);
 		for (const planner of planners) {
 			// `place-object` is the single Scene planner that declares typed-resource
 			// staging: a creator model's first placement installs its resource, exact
-			// lock and entity as one accepted result. `delete-one` is the only Scene →
-			// Experience write (A-3); every other operation keeps Scene-only admission.
+			// lock and entity as one accepted result. `delete-one` and group Erase are
+			// the only Scene → Experience writes (A-3); every other operation keeps
+			// Scene-only admission.
 			expect(planner.admission).toEqual(
-				planner.kind === 'delete-one'
+				planner.kind === 'delete-one' || planner.kind === 'scene-group-erase'
 					? { domain: 'scene', compound: true, writes: ['experience'], units: false, resources: false }
 					: {
 							domain: 'scene',
@@ -1099,43 +1107,58 @@ describe('scene operation planners — support and refusals', () => {
 					allocatedIds: [{ kind: 'scene-entity', id: 'entity-copy' }]
 				})
 			)
-		).toMatchObject({ kind: 'rejected', code: 'unsupported-set' });
+		).toMatchObject({ kind: 'prepared' });
 	});
 
-	it('refuses a cluster-member duplicate and a captured id that already exists', async () => {
+	it('duplicates a cluster member independently and refuses a captured id that already exists', async () => {
 		const project = await projectWith(
 			sceneWith([box('entity-a', [3, 0.5, 2]), box('entity-b', [2, 0.5, 2])], [
 				{ id: 'cluster-1', name: 'Group', memberIds: ['entity-a', 'entity-b'] }
 			])
 		);
 		const snapshot = await snapshotOf(project);
-		for (const [newId, code, isExpectedDiagnostic] of [
-			[
-				'entity-copy',
-				'unsupported-set',
-				(issue: { readonly message: string }) => issue.message.includes('cluster-1')
-			],
-			[
-				'entity-b',
-				'invalid-value',
-				(issue: { readonly code: string }) => issue.code === 'duplicate-entity-id'
-			]
-		] as const) {
-			const result = prepare(
-				'duplicate-one',
+		const independent = prepare(
+			'duplicate-one',
+			snapshot,
+			intent({
+				kind: 'duplicate-one',
+				operationId: 'op-entity-copy',
 				snapshot,
-				intent({
-					kind: 'duplicate-one',
-					operationId: `op-${newId}`,
-					snapshot,
-					targets: [entityTarget(sceneTargetRevision(snapshot), 'entity-a')],
-					payload: { entityId: 'entity-a', contactMinY: -0.5 },
-					allocatedIds: [{ kind: 'scene-entity', id: newId }]
-				})
+				targets: [entityTarget(sceneTargetRevision(snapshot), 'entity-a')],
+				payload: { entityId: 'entity-a', contactMinY: -0.5 },
+				allocatedIds: [{ kind: 'scene-entity', id: 'entity-copy' }]
+			})
+		);
+		expect(independent).toMatchObject({ kind: 'prepared' });
+		if (independent.kind === 'prepared') {
+			const scene = independent.candidate.source.units.scene.data;
+			expect(scene.clusters).toEqual([
+				{ id: 'cluster-1', name: 'Group', memberIds: ['entity-a', 'entity-b'] }
+			]);
+			expect(scene.entities.map((entity) => entity.id)).toEqual([
+				'entity-a',
+				'entity-b',
+				'entity-copy'
+			]);
+		}
+
+		const duplicateId = prepare(
+			'duplicate-one',
+			snapshot,
+			intent({
+				kind: 'duplicate-one',
+				operationId: 'op-entity-b',
+				snapshot,
+				targets: [entityTarget(sceneTargetRevision(snapshot), 'entity-a')],
+				payload: { entityId: 'entity-a', contactMinY: -0.5 },
+				allocatedIds: [{ kind: 'scene-entity', id: 'entity-b' }]
+			})
+		);
+		expect(duplicateId).toMatchObject({ kind: 'rejected', code: 'invalid-value' });
+		if (duplicateId.kind === 'rejected') {
+			expect(duplicateId.diagnostics.some((issue) => issue.code === 'duplicate-entity-id')).toBe(
+				true
 			);
-			expect(result, newId).toMatchObject({ kind: 'rejected', code });
-			if (result.kind !== 'rejected') continue;
-			expect(result.diagnostics.some(isExpectedDiagnostic), newId).toBe(true);
 		}
 	});
 
@@ -1422,8 +1445,7 @@ describe('scene record-scope guard', () => {
 				changedEntityIds: ['entity-a'],
 				changedEntityFields: ['position[0]', 'position[2]'],
 				createdEntityIds: [],
-				removedEntityIds: [],
-				allowClusterCleanup: false
+				removedEntityIds: []
 			})
 		).toContainEqual({
 			path: '$.scene.entities.entity-b',
@@ -1444,13 +1466,12 @@ describe('scene record-scope guard', () => {
 				changedEntityIds: ['entity-a'],
 				changedEntityFields: [YAW_SCOPE_FIELD],
 				createdEntityIds: [],
-				removedEntityIds: [],
-				allowClusterCleanup: false
+				removedEntityIds: []
 			})
 		).toContainEqual({
-			path: '$.scene.clusters.cluster-1.memberIds',
+			path: '$.scene.clusters',
 			code: 'record-scope-violation',
-			message: expect.stringContaining('membership')
+			message: expect.stringContaining('outside')
 		});
 
 		const renamed = {
@@ -1463,8 +1484,7 @@ describe('scene record-scope guard', () => {
 				changedEntityIds: ['entity-a'],
 				changedEntityFields: [YAW_SCOPE_FIELD],
 				createdEntityIds: [],
-				removedEntityIds: [],
-				allowClusterCleanup: false
+				removedEntityIds: []
 			})
 		).toContainEqual({
 			path: '$.scene.entities.entity-a',
@@ -1483,16 +1503,14 @@ describe('scene record-scope guard', () => {
 			changedEntityIds: ['entity-a'],
 			changedEntityFields: ['position[0]', 'position[2]'],
 			createdEntityIds: [],
-			removedEntityIds: [],
-			allowClusterCleanup: false
+			removedEntityIds: []
 		};
 		const resizeScope = {
 			operationKind: 'resize-on-floor',
 			changedEntityIds: ['entity-a'],
 			changedEntityFields: ['position[1]', 'scale'],
 			createdEntityIds: [],
-			removedEntityIds: [],
-			allowClusterCleanup: false
+			removedEntityIds: []
 		};
 
 		expect(
@@ -1551,8 +1569,7 @@ describe('scene record-scope guard', () => {
 			changedEntityIds: ['entity-a'],
 			changedEntityFields: [YAW_SCOPE_FIELD],
 			createdEntityIds: [],
-			removedEntityIds: [],
-			allowClusterCleanup: false
+			removedEntityIds: []
 		};
 		const withRotation = (rotation: readonly [number, number, number]): CameraFreeSceneDocument => ({
 			...before,
@@ -1589,8 +1606,7 @@ describe('scene record-scope guard', () => {
 				changedEntityIds: ['entity-a'],
 				changedEntityFields: [YAW_SCOPE_FIELD],
 				createdEntityIds: [],
-				removedEntityIds: [],
-				allowClusterCleanup: false
+				removedEntityIds: []
 			})
 		).toContainEqual({
 			path: '$.scene.storyboard',
@@ -1612,13 +1628,12 @@ describe('scene record-scope guard', () => {
 				changedEntityIds: [],
 				changedEntityFields: [],
 				createdEntityIds: ['entity-new'],
-				removedEntityIds: [],
-				allowClusterCleanup: false
+				removedEntityIds: []
 			})
 		).toContainEqual({
-			path: '$.scene.clusters.cluster-1.memberIds',
+			path: '$.scene.clusters',
 			code: 'record-scope-violation',
-			message: expect.stringContaining('cannot join')
+			message: expect.stringContaining('outside')
 		});
 
 		const newCluster = {
@@ -1632,13 +1647,12 @@ describe('scene record-scope guard', () => {
 				changedEntityIds: [],
 				changedEntityFields: [],
 				createdEntityIds: ['entity-new'],
-				removedEntityIds: [],
-				allowClusterCleanup: false
+				removedEntityIds: []
 			})
 		).toContainEqual({
-			path: '$.scene.clusters.cluster-new',
+			path: '$.scene.clusters',
 			code: 'record-scope-violation',
-			message: expect.stringContaining('is new')
+			message: expect.stringContaining('outside')
 		});
 	});
 
@@ -1656,11 +1670,10 @@ describe('scene record-scope guard', () => {
 				changedEntityIds: ['entity-a'],
 				changedEntityFields: [YAW_SCOPE_FIELD],
 				createdEntityIds: [],
-				removedEntityIds: [],
-				allowClusterCleanup: false
+				removedEntityIds: []
 			})
 		).toContainEqual({
-			path: '$.scene.clusters.cluster-1.tint',
+			path: '$.scene.clusters',
 			code: 'record-scope-violation',
 			message: expect.stringContaining('outside')
 		});
@@ -1682,7 +1695,7 @@ describe('scene record-scope guard', () => {
 				changedEntityFields: [],
 				createdEntityIds: [],
 				removedEntityIds: ['entity-b'],
-				allowClusterCleanup: true
+				clusters: { created: [], removed: [], renamed: [], pruned: ['cluster-1'] }
 			})
 		).toContainEqual({
 			path: '$.scene.clusters.cluster-1.memberIds',
@@ -1698,7 +1711,9 @@ describe('scene record-scope guard', () => {
 				changedEntityFields: [],
 				createdEntityIds: [],
 				removedEntityIds: ['entity-b'],
-				allowClusterCleanup: true
+				// This deliberately invalid fixture puts the entity in two clusters;
+				// each is pruned, and each falls below two members.
+				clusters: { created: [], removed: [], renamed: [], pruned: ['cluster-1', 'cluster-2'] }
 			})
 		).toEqual([]);
 	});
@@ -2348,8 +2363,7 @@ describe('scene operation planners — native forms', () => {
 				changedEntityIds: ['form-1'],
 				changedEntityFields: [FORM_SCALE_SCOPE_FIELD, 'position[1]'],
 				createdEntityIds: [],
-				removedEntityIds: [],
-				allowClusterCleanup: false
+				removedEntityIds: []
 			})
 		).toEqual([]);
 
@@ -2363,8 +2377,7 @@ describe('scene operation planners — native forms', () => {
 				changedEntityIds: ['form-1'],
 				changedEntityFields: [FORM_SCALE_SCOPE_FIELD, 'position[1]'],
 				createdEntityIds: [],
-				removedEntityIds: [],
-				allowClusterCleanup: false
+				removedEntityIds: []
 			}).map((issue) => issue.code)
 		).toContain('record-scope-violation');
 	});

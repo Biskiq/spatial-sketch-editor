@@ -1,4 +1,5 @@
 import { type LayoutVec2 } from '@portfolio/layout-core/geometry';
+import { FLOOR_SUPPORT_TOLERANCES } from '@portfolio/layout-core/room';
 import { sceneFormContactMinY } from '../../form';
 import { type SceneEntity, type ScenePrimitiveEntity } from '../../scene';
 import { framePointToWorld, frameYawToWorld } from '../frame';
@@ -10,7 +11,12 @@ import {
 	UPRIGHT_TOLERANCE,
 	CONTACT_TOLERANCE_METERS,
 } from './types';
-import { resolveSceneSupport, type SceneSupportChoice } from '../support';
+import {
+	resolveSceneSupport,
+	resolveSceneSupportAtOrBelow,
+	type SceneSupportChoice,
+	type SceneSupportResolution,
+} from '../support';
 import { type LocalInputFrame } from '../types';
 import { type CameraFreeSceneDocument as SceneDocument } from '../../units/types';
 
@@ -29,6 +35,50 @@ export function resolveSupport(
 		requiredElevation,
 		...(choice === undefined ? {} : { choice }),
 	});
+	return supportResolutionResult(resolution);
+}
+
+/**
+ * The destination support for a Move or Duplicate that keeps Y.
+ *
+ * A resting member must find its unchanged resting elevation at the new point
+ * (the `move-horizontal` rule). A lifted member must find the highest support
+ * at or below its unchanged base; a surface above the base is not its support
+ * and is ignored. The single and group planners share this one rule (G-6).
+ *
+ * The captured choice is applied at the **destination only**. The origin is read
+ * from the encoded pose by `movableSupport`, so a choice the destination yields
+ * is never vetoed by an origin that also has a higher support beneath it.
+ */
+export function resolveDestinationSupport(input: {
+	readonly context: SceneOperationContext;
+	readonly entity: SceneEntity;
+	readonly contactMinY: number;
+	readonly point: LayoutVec2;
+	readonly choice?: SceneSupportChoice | undefined;
+}):
+	| { readonly kind: 'resolved'; readonly support: SceneOperationSupportEvidence }
+	| SceneOperationRefusal {
+	const rest = movableSupport(input.context, input.entity, input.contactMinY);
+	if (rest.kind !== 'resolved') return rest;
+	if (rest.lift <= CONTACT_TOLERANCE_METERS) {
+		return resolveSupport(input.context, input.point, rest.resting, input.choice);
+	}
+	const resolution = resolveSceneSupportAtOrBelow({
+		layout: input.context.layout,
+		sourceContentId: input.context.sourceContentId,
+		point: input.point,
+		ceiling: rest.resting,
+		...(input.choice === undefined ? {} : { choice: input.choice }),
+	});
+	return supportResolutionResult(resolution);
+}
+
+function supportResolutionResult(
+	resolution: SceneSupportResolution,
+):
+	| { readonly kind: 'resolved'; readonly support: SceneOperationSupportEvidence }
+	| SceneOperationRefusal {
 	if (resolution.kind === 'resolved') {
 		return {
 			kind: 'resolved',
@@ -206,14 +256,52 @@ export function restingElevation(entity: SceneEntity, contactMinY: number): numb
 }
 
 /**
- * The support an object rests on, or — when it is lifted — the support directly
- * beneath it, with the lift between them.
+ * The support a Move or Duplicate keeps its unchanged Y over, with its lift.
  *
- * A resting object resolves exactly as before (its resting elevation must be a
- * support). Only when that fails and a support lies strictly below the base is
- * the object lifted from it; any other failure is the original refusal. A form's
- * `contactMinY` already includes its per-axis scale, so its entity scale is 1.
+ * This is the destination rule's origin half. A base that meets a support is
+ * resting; any other base is lifted above the highest support at or below it. A
+ * support within the platform's coplanar tolerance of the base counts as
+ * resting even when it lies just above — a platform seam both sides of which a
+ * destination query accepts. The captured choice belongs to the destination and
+ * is not an input here.
  */
+function movableSupport(
+	context: SceneOperationContext,
+	entity: SceneEntity,
+	contactMinY: number,
+):
+	| {
+			readonly kind: 'resolved';
+			readonly support: SceneOperationSupportEvidence;
+			readonly resting: number;
+			readonly lift: number;
+	  }
+	| SceneOperationRefusal {
+	const point: LayoutVec2 = [entity.position[0], entity.position[2]];
+	const resting = restingElevation(entity, contactMinY);
+	const onIt = resolveSupport(context, point, resting, undefined);
+	if (onIt.kind === 'resolved')
+		return { kind: 'resolved', support: onIt.support, resting, lift: 0 };
+	const beneath = resolveSceneSupportAtOrBelow({
+		layout: context.layout,
+		sourceContentId: context.sourceContentId,
+		point,
+		ceiling: resting,
+	});
+	if (beneath.kind === 'resolved') {
+		const lift = resting - beneath.support.elevation;
+		if (lift > CONTACT_TOLERANCE_METERS) {
+			return { kind: 'resolved', support: beneath.support, resting, lift };
+		}
+		// A seam admits a support just above the base; it is the same support the
+		// destination query accepts, so the pose is resting on it, not stranded.
+		if (Math.abs(lift) <= FLOOR_SUPPORT_TOLERANCES.coplanarElevationMeters) {
+			return { kind: 'resolved', support: beneath.support, resting, lift: 0 };
+		}
+	}
+	return onIt;
+}
+
 /**
  * The accepted lift of one entity above the support beneath it, or `null` when
  * neither its resting base nor anything beneath it resolves. Read-only: the
@@ -228,6 +316,20 @@ export function sceneEntityLift(
 	return rest.kind === 'resolved' ? { lift: rest.lift, supportY: rest.support.elevation } : null;
 }
 
+/**
+ * The support an object rests on, or — when it is lifted — the support directly
+ * beneath it, with the lift between them.
+ *
+ * A resting object resolves exactly as before (its resting elevation must be a
+ * support). Only when that fails and a support lies strictly below the base is
+ * the object lifted from it; any other failure is the original refusal. A form's
+ * `contactMinY` already includes its per-axis scale, so its entity scale is 1.
+ *
+ * This is the explicit-reseating reading: `place-on-floor`, `resize-on-floor`
+ * and `set-lift` keep their pre-G1 semantics, including a capture that the
+ * unconstrained query cannot disambiguate. Move and Duplicate use
+ * `movableSupport` instead.
+ */
 export function restSupport(
 	context: SceneOperationContext,
 	entity: SceneEntity,
