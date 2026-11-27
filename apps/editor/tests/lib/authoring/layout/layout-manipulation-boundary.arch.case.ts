@@ -137,6 +137,7 @@ const allowed = new Map<string, readonly string[]>([
 		[
 			numeric,
 			host,
+			'$lib/authoring/layout/wall-unfold-store.svelte',
 			'./candidate-preview',
 			'./layout-subjects',
 			'./manipulation-support',
@@ -145,6 +146,8 @@ const allowed = new Map<string, readonly string[]>([
 			'./precision-frames',
 			'./refusals',
 			'./session-ports',
+			'./wall-top-edits',
+			'./wall-top-frame',
 			core
 		]
 	],
