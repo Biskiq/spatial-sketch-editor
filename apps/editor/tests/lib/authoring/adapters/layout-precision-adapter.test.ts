@@ -837,6 +837,52 @@ describe('Layout scalar Stage grips',()=>{
 		facade.dispose();
 	});
 
+	it('lowers the eave end without moving the other gable breakpoints', async () => {
+		const { facade, host, wallId } = await mount(gableFixture());
+		selectWall(facade, wallId);
+		expect(facade.activateDisclosure('layout-wall-size-chip')).toBe(true);
+		const before = stageEnvelope(facade.snapshot()).units.layout.data.walls.find((wall) => wall.id === wallId)!;
+		if (before.top.kind !== 'gable') throw new Error('the gable was not installed');
+		const start = facade.marks().find((mark) => mark.id === 'layout-wall-top-start')!;
+		const evaluationId = facade.evaluationId()!;
+		expect(facade.pointerIntent({ phase: 'down', handleId: start.id, css: start.tip!, evaluationId }).claimed).toBe(true);
+		for (const key of '2.5') expect(facade.gestureKeyIntent({ kind: 'type', key }).claimed).toBe(true);
+		facade.gestureKeyIntent({ kind: 'finish' });
+		await expect.poll(() => host.history().position).toBe(1);
+		const after = stageEnvelope(facade.snapshot()).units.layout.data.walls.find((wall) => wall.id === wallId)!;
+		if (after.top.kind !== 'gable') throw new Error('the gable was lost');
+		// The eave moved; the end and apex keep their absolute tops.
+		expect(after.height).toBeCloseTo(2.5, 9);
+		expect(after.height + after.top.startRise).toBeCloseTo(2.5, 9);
+		expect(after.height + after.top.startRise).toBeLessThan(before.height + before.top.startRise);
+		expect(after.height + after.top.endRise).toBeCloseTo(before.height + before.top.endRise, 9);
+		expect(after.height + after.top.apexRise).toBeCloseTo(before.height + before.top.apexRise, 9);
+		expect(after.top.apexOffset).toBeCloseTo(before.top.apexOffset, 9);
+		facade.dispose();
+	});
+
+	it('refuses an eave below the hosted window, names the Opening and leaves source and history unchanged', async () => {
+		const { facade, host, wallId, openingId } = await mount(gableFixture());
+		selectWall(facade, wallId);
+		expect(facade.activateDisclosure('layout-wall-size-chip')).toBe(true);
+		const start = facade.marks().find((mark) => mark.id === 'layout-wall-top-start')!;
+		const before = facade.snapshot().canonicalJson;
+		const history = host.history();
+		const evaluationId = facade.evaluationId()!;
+		expect(facade.pointerIntent({ phase: 'down', handleId: start.id, css: start.tip!, evaluationId }).claimed).toBe(true);
+		for (const key of '0.25') expect(facade.gestureKeyIntent({ kind: 'type', key }).claimed).toBe(true);
+		facade.gestureKeyIntent({ kind: 'finish' });
+		const refused = facade.marks().find((mark) => mark.id === 'layout-wall-top-start')!;
+		const opening = stageEnvelope(facade.snapshot()).units.layout.data.openings.find((entry) => entry.id === openingId)!;
+		const openingName = opening.name ?? (opening.kind === 'window' ? 'Window' : 'Door');
+		expect(refused.refusal).toContain(openingName);
+		expect(facade.snapshot().canonicalJson).toBe(before);
+		expect(host.history()).toMatchObject({ depth: history.depth, position: history.position });
+		facade.gestureKeyIntent({ kind: 'cancel' });
+		facade.pointerIntent({ phase: 'cancel', css: start.tip!, evaluationId });
+		facade.dispose();
+	});
+
 	it('keeps Opening height in the Card and exposes the 3D top-edge cursor only',async()=>{
 	  const {facade,services,openingId}=await mount();const snapshot=facade.snapshot();
   const reference={version:1 as const,domain:'layout' as const,subject:{kind:'opening' as const,id:openingId},revision:{kind:'exact' as const,contentRevision:snapshot.domain.unitRevisions.layout},instancePath:[],location:{kind:'layout-location' as const,levelId:snapshot.domain.layoutLevelId,structureInstancePath:[]},componentId:null,capabilityId:null};

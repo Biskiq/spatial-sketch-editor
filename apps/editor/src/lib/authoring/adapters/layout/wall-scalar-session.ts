@@ -84,8 +84,8 @@ export function createWallScalarSession({
 		lease: Extract<GestureAcquisition, { kind: 'granted' }>;
 		value: number | null;
 		candidate: LayoutDocumentWallFirst | null;
-		/** The exact top a `top` knob drag previews and commits. */
-		top: LayoutWallTop | null;
+		/** The exact eave + top a `top` knob drag previews and commits. */
+		top: { readonly height: number; readonly top: LayoutWallTop } | null;
 		numeric: PlanNumericEntryState | null;
 		refusal: string | null;
 	};
@@ -280,7 +280,7 @@ export function createWallScalarSession({
 				topLocal: value,
 				length: current.spec.length,
 			});
-			const plan = planSetWallTop(document, current.spec.subjectId, dragged.top);
+			const plan = planSetWallTop(document, current.spec.subjectId, dragged.top, dragged.height);
 			if (plan.kind === 'rejected') {
 				current.value = null;
 				current.candidate = null;
@@ -294,7 +294,7 @@ export function createWallScalarSession({
 			}
 			current.value = value;
 			current.candidate = plan.document;
-			current.top = dragged.top;
+			current.top = dragged;
 			current.refusal = null;
 			return true;
 		}
@@ -356,7 +356,7 @@ export function createWallScalarSession({
 					subject === 'opening'
 						? { openingId: id, field: 'height', value }
 						: field === 'top'
-							? { wallId: id, top: current.top }
+							? { wallId: id, height: current.top!.height, top: current.top!.top }
 							: { wallId: id, [field]: value },
 			}),
 		);

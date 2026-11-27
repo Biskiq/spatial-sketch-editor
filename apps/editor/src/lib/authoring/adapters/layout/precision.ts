@@ -120,6 +120,11 @@ export type LayoutSubject = {
 /** A Room is addressed only by the name planner; it has no field instrument. */
 export type LayoutRoomSubject = { readonly kind: 'room'; readonly id: string };
 
+/** Keys an operation accepts but never requires; a Wall top may carry the eave. */
+const OPTIONAL_PAYLOAD_KEYS: Readonly<Record<string, readonly string[]>> = {
+	[LAYOUT_WALL_TOP_KIND]: ['height'],
+};
+
 const PAYLOAD_KEYS: Readonly<Record<string, readonly string[]>> = {
 	[LAYOUT_WALL_HEIGHT_KIND]: ['wallId', 'height'],
 	[LAYOUT_WALL_TOP_KIND]: ['wallId', 'top'],
@@ -140,9 +145,10 @@ const PAYLOAD_KEYS: Readonly<Record<string, readonly string[]>> = {
 };
 
 /**
- * A payload with exactly the keys its operation owns. An unknown key is refused
- * rather than ignored: a UI that starts sending `keepBottom` must be told the
- * operation does not support it, not silently have it dropped.
+ * A payload with exactly the keys its operation owns, required plus optional. An
+ * unknown key is refused rather than ignored: a UI that starts sending
+ * `keepBottom` must be told the operation does not support it, not silently have
+ * it dropped.
  */
 export function readPayload(
 	kind: string,
@@ -153,7 +159,8 @@ export function readPayload(
 	}
 	const record = payload as Record<string, unknown>;
 	const expected = PAYLOAD_KEYS[kind]!;
-	const unknown = Object.keys(record).filter((key) => !expected.includes(key));
+	const allowed = [...expected, ...(OPTIONAL_PAYLOAD_KEYS[kind] ?? [])];
+	const unknown = Object.keys(record).filter((key) => !allowed.includes(key));
 	if (unknown.length > 0) {
 		return { message: `The ${kind} payload cannot carry ${unknown.join(', ')}.` };
 	}
@@ -166,6 +173,9 @@ export function readPayload(
 export function finitePositive(value: unknown): value is number {
 	return typeof value === 'number' && Number.isFinite(value) && value > 0;
 }
+
+export const isOptionalPositive = (value: unknown): value is number | undefined =>
+	value === undefined || finitePositive(value);
 
 export function finiteNonNegative(value: unknown): value is number {
 	return typeof value === 'number' && Number.isFinite(value) && value >= 0;

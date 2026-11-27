@@ -56,6 +56,7 @@ import {
 	finiteNumber,
 	finitePositive,
 	isFixedEndpoint,
+	isOptionalPositive,
 	isLayoutOpeningField,
 	isLayoutWallTop,
 	layoutPlanner,
@@ -129,17 +130,14 @@ function wallTopPlanner(): DomainPlanner<ProjectEnvelope> {
 	return layoutPlanner(LAYOUT_WALL_TOP_KIND, (request) => {
 		const payload = readPayload(LAYOUT_WALL_TOP_KIND, request.intent.payload);
 		if ('message' in payload) return rejected('invalid-value', payload.message);
-		const { wallId, top } = payload.value;
-		if (!opaqueId(wallId) || !isLayoutWallTop(top)) {
-			return rejected(
-				'invalid-value',
-				'A Wall top needs one wall id and one level, slope or gable top.',
-			);
+		const { wallId, top, height } = payload.value;
+		if (!opaqueId(wallId) || !isLayoutWallTop(top) || !isOptionalPositive(height)) {
+			return rejected('invalid-value', 'Need a Wall id, a shape and an optional eave.');
 		}
 		const addressed = addressedSubject(request, 'wall', wallId);
 		if (!addressed.ok) return rejected('invalid-value', addressed.message);
 		const baseline = request.snapshot.domain.source.units.layout.data;
-		const plan = planSetWallTop(baseline, wallId, top);
+		const plan = planSetWallTop(baseline, wallId, top, height);
 		if (plan.kind === 'rejected') {
 			return rejected(plan.rejection.code, wallTopRejectionWords(baseline, plan.rejection));
 		}
