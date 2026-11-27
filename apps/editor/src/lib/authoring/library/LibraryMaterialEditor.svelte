@@ -702,7 +702,7 @@
 	}
 	.edn { font-size: 11.5px; color: var(--shell-ink-2); }
 	.reason { margin: 0; font-size: 11.5px; color: var(--shell-refuse); }
-	.foot-btn {
+	.foot-btn, .foot :global([data-material-editor-save]) {
 		height: 26px;
 		padding: 0 10px;
 		border: 1px solid var(--shell-hairline-strong);
@@ -719,8 +719,8 @@
 		border-color: var(--shell-action);
 		color: var(--shell-on-action);
 	}
-	.foot-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-	.push { margin-left: auto; }
+	.foot-btn:disabled, .foot :global([data-material-editor-save]):disabled { opacity: 0.5; cursor: not-allowed; }
+	.push, .foot :global([data-material-editor-save]) { margin-left: auto; }
 
 	/* iPad portrait: bottom sheet from ~401 px, keeping TWO columns down to 768 px */
 	@media (max-width: 860px), (orientation: portrait) and (max-width: 900px) {
@@ -745,7 +745,7 @@
 		.ed-r { overflow: visible; }
 	}
 	@media (pointer: coarse) {
-		.foot-btn,
+		.foot-btn, .foot :global([data-material-editor-save]),
 		.back,
 		.x {
 			min-height: var(--shell-touch-target);

@@ -50,6 +50,7 @@
 		openArtworkImport,
 		onShowProject,
 		onShowMine,
+		onRetryMine,
 		onBrowseCurated,
 		onClearSearch,
 		query,
@@ -88,6 +89,7 @@
 		openArtworkImport: () => void;
 		onShowProject: () => void;
 		onShowMine: () => void;
+		onRetryMine: () => void;
 		onBrowseCurated: () => void;
 		onClearSearch: () => void;
 		query: string;
@@ -102,7 +104,8 @@
 	);
 
 	function variantLabel(card: LibraryCard): string {
-		return card.variant === null ? '' : `, ${card.variants.find((variant) => variant.id === card.variant)?.label ?? ''}`;
+		const label = card.variants.find((variant) => variant.id === card.variant)?.label;
+		return label === undefined ? '' : `, ${label}`;
 	}
 
 	function cardKeydown(event: KeyboardEvent, entry: LibraryFinishEntry): void {
@@ -253,7 +256,10 @@
 					<div class="lb-empty">
 						{#if source === 'mine' && !hasMine}
 							<strong>{mineStatus === 'loading' ? 'Reading My library…' : mineStatus === 'offline' ? 'My library is offline.' : 'Nothing saved yet.'}</strong>
-							<span>{mineStatus === 'loading' ? 'One moment.' : mineStatus === 'offline' ? 'Retry when the connection is back; saved copies already in projects stay.' : 'Save to My library from any Finish Card — it travels to every project.'}</span>
+							<span>{mineStatus === 'loading' ? 'One moment.' : mineStatus === 'offline' ? 'Saved copies already in projects stay.' : 'Save to My library from any Finish Card — it travels to every project.'}</span>
+							{#if mineStatus === 'offline'}
+								<button type="button" onclick={onRetryMine}>Retry</button>
+							{/if}
 						{:else if !hasProject && source === 'project'}
 							<strong>No project Finishes yet.</strong>
 							<span>Paint a material onto a surface, then customise it here.</span>
@@ -554,6 +560,12 @@
 		min-height: 30px;
 		cursor: pointer;
 	}
+	@media (max-width: 900px) {
+		@container library (width >= 780px) {
+			.lb-b.with-detail { grid-template-columns: minmax(0, 1fr) minmax(240px, 280px); }
+			.lb-b.with-detail .lb-rail { display: none; }
+		}
+	}
 	@container library (width < 780px) {
 		.lb-b { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
 		.lb-b.with-detail { grid-template-columns: minmax(0, 1fr) minmax(250px, 280px); grid-template-rows: auto minmax(0, 1fr); }
@@ -575,7 +587,7 @@
 		.lb-b.with-detail .lb-grid-wrap { visibility: hidden; }
 	}
 	@media (pointer: coarse) {
-		.ix, .lb-empty button { min-height: 44px; }
-		.mc .star, .mc .xp { width: 36px; height: 36px; }
+		.ix, .ix.sub2, .lb-empty button { min-height: 44px; }
+		.mc .star, .mc .xp { width: 44px; height: 44px; }
 	}
 </style>

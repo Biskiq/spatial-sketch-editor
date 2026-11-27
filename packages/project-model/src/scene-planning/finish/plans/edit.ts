@@ -439,9 +439,9 @@ export function planSceneFinishPatch(context: FinishPlanContext): Result {
 				before.entities.find((entity) => entity.id === (user as { entityId: string }).entityId)
 					?.kind === 'model',
 		);
-		const pristineClone = isPristineInstance(next) && !reachesModel;
+		const pristineClone = isPristineInstance(next);
 		const cloneBase = catalogueBaseOf(next) ?? MATERIAL_NEUTRAL_BASE_ID;
-		if (!pristineClone) {
+		if (!pristineClone || reachesModel) {
 			materials.push(next);
 			addedMaterials.push(next.id);
 		}

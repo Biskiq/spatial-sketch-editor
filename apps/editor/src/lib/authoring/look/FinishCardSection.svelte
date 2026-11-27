@@ -160,7 +160,7 @@
 
 	/** Esc ladder: the innermost Card-local level closes first; deselect is the Card's. */
 	function onKeydown(event: KeyboardEvent): void {
-		if (event.key !== 'Escape') return;
+		if (event.key !== 'Escape' || services.finishCard?.current?.align.active) return;
 		let consumed = true;
 		if (menuOpen) menuOpen = false;
 		else if (card?.cancel()) void 0;

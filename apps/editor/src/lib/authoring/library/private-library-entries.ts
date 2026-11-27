@@ -11,7 +11,7 @@ import type {
 	MaterialLibraryItemSummary,
 	MaterialLibraryPayload,
 } from '@portfolio/project-model/library';
-import type { LibraryFinishEntry } from './library-catalogue';
+import { libraryTileLabel, type LibraryFinishEntry } from './library-catalogue';
 
 export type PrivateLibraryItem = {
 	readonly summary: MaterialLibraryItemSummary;
@@ -25,6 +25,7 @@ export function privateLibraryEntry(
 	imageUri: string | null,
 ): LibraryFinishEntry {
 	const recipe = item.payload?.recipe;
+	const mapping = recipe?.mapping;
 	const reading = finishSheenReading(
 		{ base: { material: item.summary.recipeHash } },
 		recipe === undefined ? new Map() : new Map([[item.summary.recipeHash, recipe]]),
@@ -39,6 +40,7 @@ export function privateLibraryEntry(
 		family: null,
 		familyLabel: 'Other',
 		subline: `Saved Finish · ${imageCount} image${imageCount === 1 ? '' : 's'}`,
+		tileSize: mapping && mapping.kind !== 'uv' ? libraryTileLabel(mapping.metric.tileMeters) : null,
 		color: recipe?.color ?? '#999999',
 		imageUri,
 		curatedId: null,

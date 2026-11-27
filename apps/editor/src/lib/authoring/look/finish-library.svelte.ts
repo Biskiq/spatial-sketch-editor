@@ -32,7 +32,11 @@ import { finishImageWarning } from './finish-image.svelte';
 import { getMaterial, materialById, materials } from '$lib/content/materials';
 import { materialFamilyOf, materialTreatmentFacts } from '$lib/content/material-presentation';
 import { catalogueRecipe } from '@portfolio/project-model/materials';
-import { libraryFamilyLabel, type LibraryFinishEntry } from '../library/library-catalogue';
+import {
+	libraryFamilyLabel,
+	libraryTileLabel,
+	type LibraryFinishEntry,
+} from '../library/library-catalogue';
 import {
 	libraryTargetOf,
 	libraryTargetOfPick,
@@ -147,11 +151,6 @@ export function createFinishLibraryAuthoring(ports: FinishLibraryPorts) {
 		};
 	}
 
-	function libraryTileLabel(tile: readonly [number, number]): string {
-		const value = (number: number): string => `${Math.round(number * 100) / 100} m`;
-		return tile[0] === tile[1] ? value(tile[0]) : `${value(tile[0])} × ${value(tile[1])}`;
-	}
-
 	function finishChangeCount(instance: SceneMaterialInstance): number {
 		const overrides = instance.overrides;
 		if (overrides === undefined) return 0;
@@ -210,6 +209,7 @@ export function createFinishLibraryAuthoring(ports: FinishLibraryPorts) {
 				family,
 				familyLabel,
 				subline: `${familyLabel} · ${libraryTileLabel(tile)}`,
+				tileSize: libraryTileLabel(tile),
 				color: material.swatchColor ?? material.fallbackColor,
 				imageUri: null,
 				curatedId: material.id,
@@ -236,6 +236,7 @@ export function createFinishLibraryAuthoring(ports: FinishLibraryPorts) {
 					labelForMaterial: (id) => catalogueLabel(id as MaterialId),
 				});
 				const users = inspection?.users ?? [];
+				const mapping = inspection?.untreated?.mapping;
 				const definition = ports.definitionOf(instance);
 				const baseId = catalogueBaseOf(instance);
 				const base = baseId === null ? null : catalogueRecipe(baseId);
@@ -266,6 +267,8 @@ export function createFinishLibraryAuthoring(ports: FinishLibraryPorts) {
 						changes === 0
 							? `from ${baseLabel}`
 							: `from ${baseLabel} · ${changes} change${changes === 1 ? '' : 's'}`,
+					tileSize:
+						mapping && mapping.kind !== 'uv' ? libraryTileLabel(mapping.metric.tileMeters) : null,
 					color: ports.colorOfKey(key),
 					/* Only the project's scoped preview; a catalogue map is never a Library picture. */
 					imageUri:

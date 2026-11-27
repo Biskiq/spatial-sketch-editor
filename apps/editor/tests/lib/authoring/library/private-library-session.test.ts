@@ -143,12 +143,11 @@ describe('T2.S8 U7 — private-library session', () => {
 		});
 	});
 
-	it('reports an offline list and keeps the shelf empty', async () => {
-		const client = fakeClient({
-			list: vi.fn(async () => {
-				throw new MaterialLibraryClientError('network', 'offline');
-			}),
-		});
+	it('keeps an offline list idle until the creator retries', async () => {
+		const list = vi.fn()
+			.mockRejectedValueOnce(new MaterialLibraryClientError('network', 'offline'))
+			.mockResolvedValueOnce([]);
+		const client = fakeClient({ list });
 		const session = createPrivateLibrarySession({
 			services: () => null,
 			onNotice: vi.fn(),
@@ -156,10 +155,17 @@ describe('T2.S8 U7 — private-library session', () => {
 			armPaint: vi.fn(),
 			client,
 		});
-		await session.load();
+		session.ensureLoaded();
+		await Promise.resolve();
 		expect(session.status).toBe('offline');
 		expect(session.error).toMatch(/offline/);
 		expect(session.entries()).toEqual([]);
+
+		session.ensureLoaded();
+		expect(list).toHaveBeenCalledTimes(1);
+		await session.load(true);
+		expect(list).toHaveBeenCalledTimes(2);
+		expect(session.status).toBe('ready');
 	});
 
 	it('hydrates a cold list with the saved recipe and its facts', async () => {
@@ -248,6 +254,37 @@ describe('T2.S8 U7 — private-library session', () => {
 		await pending;
 		expect(session.status).toBe('idle');
 		expect(session.entries()).toEqual([]);
+	});
+
+	it('arms Paint with the key of the newly registered Finish', async () => {
+		const stage = await services();
+		const armPaint = vi.fn();
+		const session = createPrivateLibrarySession({
+			services: () => stage,
+			onNotice: vi.fn(),
+			onInserted: vi.fn(),
+			armPaint,
+			client: fakeClient({
+				list: vi.fn(async () => [summary]),
+				transfer: vi.fn(async (_item, _destination, operationId) => ({
+					itemId: summary.id,
+					contentId: summary.contentId,
+					finishId: draftFinishId(operationId),
+					name: summary.name,
+					recipe,
+					recipeHash: 'sha256-transfer',
+					images: [],
+					savedBase: null,
+				})),
+			}),
+		});
+		await session.load();
+
+		const outcome = await session.insert('mine:item-1', null, 'paint');
+
+		expect(outcome).toMatchObject({ ok: true, finishKey: expect.stringMatching(/^project:finish-/) });
+		expect(armPaint).toHaveBeenCalledOnce();
+		expect(armPaint).toHaveBeenCalledWith(outcome.ok ? outcome.finishKey : undefined);
 	});
 
 	it('ignores an obsolete transfer completion after disposal', async () => {

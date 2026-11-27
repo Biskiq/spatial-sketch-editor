@@ -72,7 +72,7 @@
 		"arrows": 13
 	},
 	"src/lib/authoring/look/appearance-feature.svelte.ts": {
-		"lines": 165,
+		"lines": 168,
 		"imports": 12,
 		"state": 0,
 		"derived": 0,
@@ -180,8 +180,8 @@
 		"arrows": 18
 	},
 	"src/lib/authoring/stage/stage-adapter-host.ts": {
-		"lines": 327,
-		"imports": 11,
+		"lines": 329,
+		"imports": 12,
 		"state": 0,
 		"derived": 0,
 		"effects": 0,
@@ -270,13 +270,13 @@
 		"arrows": 53
 	},
 	"src/lib/authoring/look/finish-library.svelte.ts": {
-		"lines": 844,
+		"lines": 847,
 		"imports": 22,
 		"state": 4,
 		"derived": 0,
 		"effects": 0,
-		"functions": 23,
-		"arrows": 32
+		"functions": 22,
+		"arrows": 31
 	},
 	"src/lib/authoring/look/finish-authoring-contract.ts": {
 		"lines": 262,

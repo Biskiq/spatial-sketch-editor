@@ -2,8 +2,7 @@
 	/**
 	 * The professional Library sheet.
 	 *
-	 * One Stage-bounded surface in the measured shell lanes (a bottom sheet above
-	 * the dock in portrait): a kind rail with the Materials families nested under
+	 * One Stage-bounded surface in the measured shell lanes (a bottom sheet in portrait): a kind rail with the Materials families nested under
 	 * it, sources, attribute filters, a searchable grid of square cards and a
 	 * detail pane. Browse cards use `FinishTile` sample-tile derivatives only;
 	 * the one active detail asks the Stage's inspection host for a live draw
@@ -15,7 +14,7 @@
 	 * changes the Card target's material and keeps its treatment, and ordinary
 	 * browse arms Paint for curated cards or selects a project Finish's users.
 	 * The separate detail control never chooses. Shift keeps the Library open
-	 * for Paint, Replace and Swap. A stale or unsupported target refuses in place.
+	 * when choosing a material for Paint, Replace or Swap. A stale or unsupported target refuses in place.
 	 *
 	 * The last browse view is session state the route holds; detail is local and
 	 * ends with the sheet. *Customise…* hands the chosen Finish to the Material
@@ -176,7 +175,6 @@
 	const hasProject = $derived(allEntries.some((entry) => entry.source === 'project'));
 	const hasMine = $derived(mineCount > 0);
 	const mineStatus = $derived(privateLibrary?.status ?? 'offline');
-	const keepable = $derived(intent !== 'browse');
 
 	$effect(() => {
 		if (source === 'all' || source === 'mine') privateLibrary?.ensureLoaded();
@@ -270,8 +268,7 @@
 	}
 
 	/** The one card action, from click, Enter or Space. */
-	function choose(entry: LibraryFinishEntry, keepOpen: boolean): void {
-		const keep = keepable && keepOpen;
+	function choose(entry: LibraryFinishEntry, keep: boolean): void {
 		note = null;
 		if (intent === 'swap') {
 			if (entry.source !== 'curated' || entry.curatedId === null) {
@@ -501,7 +498,7 @@
 				<button type="button" class="fchip clear" onclick={clearFilters}>Clear</button>
 			{/if}
 		{/if}
-		{#if keepable}<span class="note-sm push">Shift-click keeps it open</span>{/if}
+		{#if kind === 'materials'}<span class="note-sm push">Shift-click keeps it open</span>{/if}
 	</div>
 	{#if refusal !== null}
 		<p class="refusal" role="alert" data-library-refusal>{refusal}</p>
@@ -580,6 +577,7 @@
 		detail={selectedCard !== null && kind === 'materials' ? materialDetail : undefined}
 		onShowProject={() => { source = 'project'; selectedKey = null; }}
 		onShowMine={() => { source = 'mine'; selectedKey = null; }}
+		onRetryMine={() => void privateLibrary?.load(true)}
 		onBrowseCurated={() => (source = 'curated')}
 		onClearSearch={() => (query = '')}
 		openArtworkImport={() => artworkInput?.click()}
@@ -591,22 +589,20 @@
 	/*
 		The Library is bounded to the usable Stage: between the visible Index lane
 		(--index-cover on desktop, --library-index-cover where the Index floats) and the Card lane (--card-cover: the span from
-		the Stage's right edge to a shown Card's left edge, set by the route), above the dock's measured lower column, with
-		a band of Stage left above it. It starts near 900 × 560 and shrinks to the
-		lanes; its bounds never depend on what is open inside it.
+		the Stage's right edge to a shown Card's left edge, set by the route), above the dock and below the Stage view controls. Its bounds stay fixed as the contents change.
 	*/
 	.scrim,
 	.library {
 		--lane-l: calc(var(--library-index-cover, var(--index-cover, 0px)) + var(--sheet-lane-left, 0px));
 		--lane-r: max(var(--card-cover, 0px), var(--sheet-lane-right, 0px));
-		--lane-b: var(--lower-column-height, 168px);
+		--lane-b: max(142px, calc(var(--lower-column-height, 0px) + 12px));
 	}
 	.scrim {
 		position: absolute;
 		top: 0;
 		left: var(--lane-l);
 		right: var(--lane-r);
-		bottom: calc(var(--lane-b) + 4px);
+		bottom: var(--lane-b);
 		z-index: 50;
 		/* Outside-click only: the Stage is never dimmed; the panel's own shadow separates it. */
 		background: transparent;
@@ -614,12 +610,11 @@
 		padding: 0;
 	}
 	.library {
-		--lib-w: min(900px, calc(100% - var(--lane-l) - var(--lane-r) - 24px));
 		position: absolute; z-index: 51;
-		width: var(--lib-w);
-		height: min(560px, calc(100% - var(--lane-b) - 12px - 96px));
-		left: calc(var(--lane-l) + (100% - var(--lane-l) - var(--lane-r) - var(--lib-w)) / 2);
-		bottom: calc(var(--lane-b) + 12px);
+		top: 54px;
+		left: calc(var(--lane-l) + 14px);
+		right: calc(var(--lane-r) + 14px);
+		bottom: var(--lane-b);
 		box-sizing: border-box; display: grid;
 		grid-template-rows: auto auto auto minmax(0, 1fr);
 		min-height: 0;
@@ -713,19 +708,12 @@
 
 	.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
-	/*
-		Not room for grid and inspector side by side: detail becomes an in-panel view
-		with Back over the same bounds; the browse behind it leaves the Tab order.
-	*/
-	/* Portrait: a bottom sheet above the dock, the upper third of the usable Stage left visible. */
+	/* At portrait widths the Library takes the lower part of the Stage. */
 	@media (max-width: 860px) {
-		.scrim { left: 0; right: var(--card-cover, 0px); }
+		.scrim { left: 0; right: var(--card-cover, 0px); bottom: 0; }
 		.library {
-			--lib-w: 100%;
-			left: 0;
-			width: 100%;
-			bottom: var(--lane-b);
-			height: calc((100% - var(--lane-b)) * 2 / 3);
+			inset: auto 0 0;
+			height: min(86dvh, 760px);
 			border-radius: 16px 16px 0 0;
 		}
 		.lb-h { flex-wrap: wrap; }

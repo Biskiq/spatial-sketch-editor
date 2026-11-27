@@ -505,7 +505,7 @@
 		color: var(--shell-ink-2);
 		font-size: 12px;
 	}
-	.foot button {
+	.foot button, .foot :global([data-finish-save-library]) {
 		padding: 4px 8px;
 		border: 0;
 		border-radius: 7px;
@@ -517,7 +517,7 @@
 		cursor: pointer;
 	}
 	/* A host narrower than the prototype's 288 shortens the words, never drops ⋯. */
-	.foot .foot-text {
+	.foot .foot-text, .foot :global([data-finish-save-library]) {
 		min-width: 0;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -525,10 +525,10 @@
 	.foot .menu-wrap {
 		flex: none;
 	}
-	.foot button:hover:not(:disabled) {
+	.foot button:hover:not(:disabled), .foot :global([data-finish-save-library]):hover:not(:disabled) {
 		background: var(--shell-hover);
 	}
-	.foot button:focus-visible {
+	.foot button:focus-visible, .foot :global([data-finish-save-library]):focus-visible {
 		outline: var(--shell-focus-ring-light);
 	}
 	.foot .star {
@@ -541,7 +541,7 @@
 		color: var(--shell-ink-2);
 		font-size: 16px;
 	}
-	.foot button:disabled {
+	.foot button:disabled, .foot :global([data-finish-save-library]):disabled {
 		opacity: 0.45;
 		cursor: not-allowed;
 	}
@@ -581,7 +581,7 @@
 	.menu button:disabled {
 		opacity: 0.45;
 	}	@media (pointer: coarse) {
-		.foot button,
+		.foot button, .foot :global([data-finish-save-library]),
 		.link {
 			min-height: var(--shell-touch-target);
 		}

@@ -38,6 +38,7 @@ function curated(id: MaterialId): LibraryFinishEntry {
 		family,
 		familyLabel: family ?? 'Other',
 		subline: 'Wood · 1 m',
+		tileSize: '1 m',
 		color: material.swatchColor ?? material.fallbackColor,
 		imageUri: null,
 		curatedId: id,
@@ -126,16 +127,30 @@ describe('Library browsing and activation', () => {
 		expect(fx.q('[data-library-source="project"]')?.getAttribute('aria-pressed')).toBe('true');
 	});
 
-	it('Paint arms with no write; Shift keeps the sheet open', () => {
-		const fx = render({ intent: 'paint' });
-		expect(fx.q('[data-library-context]')?.textContent).toMatch(/Pick for Paint/);
-		fx.q<HTMLButtonElement>(`[data-library-choose="${oak.key}"]`)?.click();
+	it.each([
+		['paint', /Pick for Paint/],
+		['browse', /Browse/]
+	] as const)('arms Paint from %s without a write and preserves Shift-click', (intent, context) => {
+		const fx = render({ intent });
+		expect(fx.q('[data-library-context]')?.textContent).toMatch(context);
+		const chooseOak = fx.q<HTMLButtonElement>(`[data-library-choose="${oak.key}"]`);
+		expect(chooseOak?.getAttribute('aria-label')).toBe('Oak Veneer — pick for Paint');
+		chooseOak?.click();
 		expect(fx.onPaint).toHaveBeenCalledWith(oak, false);
 		fx.q<HTMLButtonElement>(`[data-library-choose="${walnut.key}"]`)?.dispatchEvent(new MouseEvent('click', { bubbles: true, shiftKey: true }));
 		flushSync();
 		expect(fx.onPaint).toHaveBeenLastCalledWith(walnut, true);
 		expect(fx.q('[data-library-note]')?.textContent).toMatch(/stays open/);
 		expect(fx.onReplace).not.toHaveBeenCalled();
+	});
+
+	it('shows the measured tile size independently of a Finish card’s change count', () => {
+		const fx = render();
+		fx.q<HTMLButtonElement>(`[data-library-detail-open="${project.key}"]`)?.click();
+		flushSync();
+		const detail = fx.q(`[data-library-detail="${project.key}"]`);
+		const label = [...(detail?.querySelectorAll('dt') ?? [])].find((term) => term.textContent === 'Real size');
+		expect(label?.nextElementSibling?.textContent).toBe('1 m');
 	});
 
 	it('the detail control opens detail and never chooses; Escape closes detail first', () => {

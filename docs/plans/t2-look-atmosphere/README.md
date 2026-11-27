@@ -490,7 +490,7 @@ verification in the PR that implements it; the technical boundaries below are th
 | **S6 Looks** | Atmosphere + Treatment for any World; palette, followers, Adopt palette | S2 · S4 | — |
 | **S5a Wall-face finishes** | Paint with Face and Space scope on Walls | S4 · D1 | **bump** |
 | **S5b Floors and overheads** | The same for T1's floor and overhead surfaces | S5a · T1 identity | Scene 11 |
-| **S8 Catalogue and depth** | Original milestone covers manual maps, set import, catalogue depth and gated optics. The [professional material foundation plan](./s8-professional-material-foundation/implementation-plan.md) (#386) delivers revisioned material assets, channel-aware sampling, mapping, reusable libraries and inspection. A–D have landed; E is next. | S4 · S5/S6 integration · merged WebGPU/WebGL2 cutover · D8 for assets · G1 on the separate fixture/rig track | Scene 12 / resources 3 (D, #390) |
+| **S8 Catalogue and depth** | Original milestone covers manual maps, set import, catalogue depth and gated optics. The [professional material foundation plan](./s8-professional-material-foundation/implementation-plan.md) (#386) delivers revisioned material assets, channel-aware sampling, mapping, reusable libraries and inspection. A–G and U1–U8 have landed. [Integrated acceptance](https://github.com/Biskiq/spatial-sketch-editor/issues/405) remains open. | S4 · S5/S6 integration · merged WebGPU/WebGL2 cutover · D8 for assets · G1 on the separate fixture/rig track | Scene 12 / resources 3 (D, #390) |
 
 ```text
 now      P0 seams ─┬─▶ S3 Lights ──┬─▶ S7 Light it ─▶ G1 Groups   (no format change)
