@@ -8,10 +8,9 @@ import { validateWallFirstOpeningSet } from '../../wall/opening-set';
 import { WALL_TOP_PROFILE_UNSUPPORTED_CODE } from '../../wall/wall-top';
 import {
 	REGION_WALL_RELATION_EPSILON,
+	regionWallCoveredTopRangeY,
 	regionWallPlanClass,
-	regionWallReadStations,
 	regionWallRelations,
-	regionWallTopRangeY,
 } from '../region-relations';
 import { MAX_LAYOUT_REGION_POINTS } from '../region-validation';
 import { validateWallFirstLayoutDocument } from '../../wall/codec';
@@ -293,10 +292,10 @@ export function planFitRegionToWalls(
 	let highest = -Infinity;
 	for (const wall of qualifying) {
 		const plan = regionWallPlanClass(compiledRegion.footprint, wall);
-		const stations = regionWallReadStations(compiledRegion.footprint, wall, plan.planClass);
 		highest = Math.max(
 			highest,
-			regionWallTopRangeY(wall, floor.elevation, stations.from, stations.to).maxY,
+			regionWallCoveredTopRangeY(compiledRegion.footprint, wall, plan.planClass, floor.elevation)
+				.maxY,
 		);
 	}
 	const elevation = highest - floor.elevation;

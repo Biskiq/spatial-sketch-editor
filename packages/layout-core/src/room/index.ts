@@ -80,10 +80,16 @@ export type {
 export {
 	REGION_WALL_RELATION_EPSILON,
 	REGION_WALL_RELATION_REACH_METERS,
+	regionWallCoveredTopRangeY,
 	regionWallPlanClass,
 	regionWallRelations,
-	regionWallTopRangeY,
 } from './region-relations';
+export {
+	type RegionWallStationInterval,
+	regionWallCoveredStations,
+	regionWallTopOverStations,
+	regionWallTopRangeY,
+} from './region-wall-coverage';
 
 export type {
 	RegionWallMeasureSegment,

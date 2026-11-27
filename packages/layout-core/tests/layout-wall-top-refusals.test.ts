@@ -266,6 +266,56 @@ describe('V2a · region fits and relations read the Wall top', () => {
 		expect(readingOf(gabled, regionId, wallId).measureMeters!).toBeCloseTo(0.5, 6);
 	});
 
+	// A concave canopy covers stations 1..3 and 7..9 of the south gable, joined by a
+	// bridge south of the Wall; the apex (5 m at station 5) lies outside the
+	// footprint. Each covered interval peaks at 4.2 m, so reading their continuous
+	// hull would wrongly reach the apex.
+	const U_CANOPY: LayoutVec2[] = [[1, -3], [9, -3], [9, 1], [7, 1], [7, -2], [3, -2], [3, 1], [1, 1]];
+
+	it('reads a concave canopy over each covered interval, never their hull through the apex', () => {
+		const base = enclosure();
+		const wallId = southWallId(base);
+		const { document, regionId } = canopy(withTop(base, wallId, GABLE), U_CANOPY, 4.5);
+		const relation = readingOf(document, regionId, wallId);
+		expect(relation).toMatchObject({ planClass: 'through', reading: 'gap', measureAxis: 'vertical' });
+		expect(relation.measureMeters!).toBeCloseTo(0.3, 9);
+		expect(relation.measureSegment!.from[1]).toBeCloseTo(4.2, 9);
+	});
+
+	it('Fit roof over a concave canopy reaches the covered intervals, not the uncovered apex', () => {
+		const base = enclosure();
+		const wallId = southWallId(base);
+		const { document, regionId } = canopy(withTop(base, wallId, GABLE), U_CANOPY, 6);
+		const geometry = compileWallFirstLayoutGeometryFresh(document).geometry;
+		const plan = planFitRegionToWalls(document, geometry, regionId, [wallId]);
+		expect(plan.kind).toBe('success');
+		if (plan.kind !== 'success') return;
+		expect(plan.document.regions.find((entry) => entry.id === regionId)!.elevation).toBeCloseTo(4.2, 9);
+	});
+
+	it.each([
+		['rising', SLOPE],
+		['falling', { kind: 'slope', startRise: 2, endRise: 0 } as LayoutWallTop]
+	] as const)('reads an edge canopy along a %s face over the whole contact, not one contact point', (_name, top) => {
+		const base = enclosure();
+		const wallId = southWallId(base);
+		const sloped = withTop(base, wallId, top);
+		const compiled = compileWallFirstLayoutGeometryFresh(sloped).geometry.walls.find((entry) => entry.wallId === wallId)!;
+		const face = -compiled.thickness / 2;
+		// The canopy boundary lies on the outer face over stations 1..9, where the
+		// slope spans 3.2 m to 4.8 m; its underside at 5 m leaves a 0.2 m gap.
+		const footprint: LayoutVec2[] = [[1, -3], [9, -3], [9, face], [1, face]];
+		const { document, regionId } = canopy(sloped, footprint, 5);
+		const relation = readingOf(document, regionId, wallId);
+		expect(relation).toMatchObject({ planClass: 'edge', reading: 'gap', measureAxis: 'vertical' });
+		expect(relation.measureMeters!).toBeCloseTo(0.2, 9);
+		const geometry = compileWallFirstLayoutGeometryFresh(document).geometry;
+		const plan = planFitRegionToWalls(document, geometry, regionId, [wallId]);
+		expect(plan.kind).toBe('success');
+		if (plan.kind !== 'success') return;
+		expect(plan.document.regions.find((entry) => entry.id === regionId)!.elevation).toBeCloseTo(4.8, 9);
+	});
+
 	it('Fit roof reaches the apex of a covered gable', () => {
 		const base = enclosure();
 		const wallId = southWallId(base);

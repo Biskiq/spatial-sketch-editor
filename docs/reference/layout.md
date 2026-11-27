@@ -74,7 +74,11 @@ edge reads `topProfile` (the mesh adds the apex and any band crossing as clip kn
 horizontal datum only (`id`, `name`, `elevation`, no vertical extent), so there is no Floor-relative
 cap and a Room ceiling is the maximum of its boundary Wall heights. New and split Walls take height
 from layout-core's birth/inheritance rule: explicit height, else the unique incident Wall height, else
-the named authoring default; existing Wall writers carry the authored top unchanged. The landed model
+the named authoring default; existing Wall writers carry the authored top unchanged. Until V2b, split,
+crossing noding, subdivision, Round repack/radius, region fit-walls (`wall_top_profile_unsupported`)
+and join/dissolve (`wall_top_not_joinable`) refuse a sloped or gabled Wall whole. Region relations
+and the roof fit read a Wall's top over each station interval the footprint covers, never the
+continuous hull of disjoint intervals. The landed model
 is one floor; a multi-floor payload is not accepted. Canonical reads accept format 11 only.
 
 ## Spaces (persisted Room records)

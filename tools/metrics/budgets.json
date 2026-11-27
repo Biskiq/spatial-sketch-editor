@@ -1,7 +1,7 @@
 {
 	"generatedFrom": "Budget ratchet baseline; shrink-only from here",
 	"counts": {
-		"filesOver600": 127,
+		"filesOver600": 126,
 		"filesOver1000": 11,
 		"filesOver1500": 0,
 		"functionsOver200": 98,
@@ -569,11 +569,6 @@
 			"path": "packages/project-model/src/scene-planning/finish/model.ts",
 			"lines": 632,
 			"reason": "The Finish identity model: keys, users and the assignment normal form are one vocabulary."
-		},
-		{
-			"path": "packages/layout-core/src/room/region-relations.ts",
-			"lines": 692,
-			"reason": "One region-wall relation reading: plan class, gap and reach are measured from one footprint/segment pair. V2a: region relations read the top over the covered stations."
 		},
 		{
 			"path": "apps/editor/src/lib/authoring/adapters/light/LightAdvancedGroups.svelte",
