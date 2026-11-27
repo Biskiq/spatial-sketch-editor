@@ -33,6 +33,27 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			const placement = createLightPlacementSession({ services, lease, refusal, install });
 			const contributions = createLightContributions({ services, context, gesture, refusal });
 
+			/**
+			 * End every capture this binding holds and clear its preview.
+			 *
+			 * Pointer cancel, a selection change and a lease the host ended all use this
+			 * one path: the capture's samples were projected in the reading that ended,
+			 * so its release must not write.
+			 */
+			function cancelCapture(): void {
+				const cancelled = gesture.drop();
+				placement.drop();
+				lease.release();
+				clearLightPreview(services, cancelled);
+				placement.zeroCandidate();
+				services.stage.notifySurfaceChange();
+			}
+
+			/** A capture outliving the lease the host ended (reading change, replacement). */
+			function leaseRevoked(): boolean {
+				return (gesture.active || placement.active) && !lease.active;
+			}
+
 			return {
 				...contributions,
 				candidatePreview: (adapterContext) => placement.candidatePreview(adapterContext),
@@ -46,6 +67,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					// stays and further moves and clicks are ignored.
 					if (placement.placing) return true;
 					if (intent.phase === 'down') {
+						if (leaseRevoked()) cancelCapture();
 						placement.clearRefusal();
 						const began = gesture.begin(
 							intent,
@@ -56,14 +78,15 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						if (began === 'blocked' || !placement.taskOpen) return false;
 						return placement.press(intent, adapterContext);
 					}
+					// The host released the lease under the capture (reading change,
+					// source replacement): the release is not a commit.
+					if (leaseRevoked()) {
+						cancelCapture();
+						return true;
+					}
 					if (!gesture.active && !placement.active) return false;
 					if (intent.phase === 'cancel') {
-						const cancelled = gesture.drop();
-						placement.drop();
-						lease.release();
-						clearLightPreview(services, cancelled);
-						placement.zeroCandidate();
-						services.stage.notifySurfaceChange();
+						cancelCapture();
 						return true;
 					}
 					if (intent.phase === 'move') {
@@ -78,6 +101,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						return true;
 					}
 					return false;
+				},
+				selectionChanged() {
+					// A capture belongs to the light it was pressed on: a new selection
+					// replaces it, so its stale release must not write. The task is left
+					// as it was, so an armed Lights task stays armed.
+					if (!gesture.active && !placement.active) return;
+					cancelCapture();
 				},
 				instrument: (task) => placement.instrument(task),
 				taskClosed() {

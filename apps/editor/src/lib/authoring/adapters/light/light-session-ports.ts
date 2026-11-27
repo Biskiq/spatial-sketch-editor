@@ -20,6 +20,13 @@ export type LightLease = {
 	acquire(evaluationId: string, owner: 'light-place' | 'light-marks'): boolean;
 	/** Release the lease this binding holds, if it is still active. */
 	release(): void;
+	/**
+	 * Whether this binding still holds a live lease. The host ends a
+	 * `cancel-on-reading-change` lease itself, so a capture can outlive it; the
+	 * dispatch reads this to cancel the capture instead of committing in a
+	 * reading that has ended.
+	 */
+	readonly active: boolean;
 };
 
 /** The binding's one gesture lease, with the cancel-on-reading-change policy. */
@@ -39,6 +46,9 @@ export function createLightLease(services: StageAdapterServices): LightLease {
 		release() {
 			if (lease?.kind === 'granted' && lease.lease.active) lease.lease.release();
 			lease = null;
+		},
+		get active() {
+			return lease?.kind === 'granted' && lease.lease.active;
 		},
 	};
 }
