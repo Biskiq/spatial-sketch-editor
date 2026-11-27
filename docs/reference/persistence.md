@@ -19,11 +19,15 @@ without conversion, sniffing or fallback.
 - **Refused source preserves the session.** Opening refused source leaves the current editor
   session, history and saved base intact. A refused Save leaves the stored head and receipt
   untouched.
-- **Pending incompatible capture.** A pending Save carrying a recognizable incompatible Layout stamp
-  keeps its exact stored bytes and remains available for download or explicit discard. A new sign-in
-  handoff cannot overwrite that capture. Activation against existing storage is gated on an
-  inventory of heads, revisions, pending captures and releases, a tested restore with the outgoing
-  reader, and the owner's approved disposition for every affected source.
+- **Pending incompatible capture.** A pending Save carrying a recognizable incompatible stamp on
+  **any** unit is reported as `incompatible-source`, naming that unit and its captured
+  `formatVersion`. It keeps its exact stored bytes and remains available for download or explicit
+  discard; a new sign-in handoff cannot overwrite it. Activation against existing storage is gated
+  on a read-only inventory of heads, revisions, pending captures and releases, a tested restore with
+  the outgoing reader, and the owner's approved disposition for every affected source. Scene 13
+  activation follows the same rule: stored Scene 12 source stays in place, unreadable by the new
+  reader, never converted or deleted; an incompatible pending capture is preserved byte for byte
+  until explicitly exported or discarded.
 - **Released readers stay separate.** A release reader consumes prepared visitor data and never
   invokes the changing authoring validator or historical authoring compilers.
 
@@ -122,8 +126,9 @@ Before redirect, the Save-owned pending-capture seam stores the exact F2 request
 The auth return page routes to `resume-save`; the spatial route offers it even after a cloud 404 for
 a create-only request. Only explicit Resume installs and replays it, with the original operation ID
 and precondition. Cancellation preserves source, selection, history and saved base; stale admission
-after replacement cannot install. A pending incompatible-stamp capture follows the stronger rule
-above and cannot be overwritten by a sign-in handoff.
+after replacement cannot install. A pending capture stamped `incompatible-source` follows the
+stronger rule above and cannot be overwritten by a sign-in handoff; the recovery offer names the
+unit and stamp and offers download or explicit discard.
 
 ## Accounts and storage boundary
 

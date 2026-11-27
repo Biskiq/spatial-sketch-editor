@@ -21,6 +21,7 @@ import { DUPLICATE_OFFSET_METERS, SCENE_NAME_LIMIT } from './operations';
 import type {
 	SceneOperationCandidate,
 	SceneOperationContext,
+	SceneOperationRefusal,
 	SceneOperationResult,
 } from './operations';
 
@@ -28,9 +29,8 @@ const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
 
 export type SceneLightKind = SceneLightEntity['light'];
 
-export function planCreateLight(input: {
-	readonly context: SceneOperationContext;
-	readonly entityId: string;
+/** One validated light's authored fields, without the captured entity id. */
+export type SceneLightSpec = {
 	readonly light: SceneLightKind;
 	readonly name: string;
 	readonly color: string;
@@ -41,14 +41,17 @@ export function planCreateLight(input: {
 	readonly range?: number;
 	readonly angle?: number;
 	readonly penumbra?: number;
-}): SceneOperationResult {
-	const scene = input.context.scene;
-	if (scene.entities.some((entity) => entity.id === input.entityId)) {
-		return invalid(
-			`Captured light id "${input.entityId}" is already used by the accepted source.`,
-			['entityId', 'duplicate-entity-id'],
-		);
-	}
+};
+
+/**
+ * Validate one light exactly as `create-light` does and return its record.
+ *
+ * `planCreateLight` and `create-light-rig` share this gate, so a rig light can
+ * never be admitted under weaker rules than a single light.
+ */
+export function buildLightEntity(
+	input: SceneLightSpec & { readonly entityId: string },
+): { readonly kind: 'entity'; readonly entity: SceneLightEntity } | SceneOperationRefusal {
 	const name = readLightName(input.name);
 	if (name.kind === 'rejected') return name;
 	if (!HEX_COLOR_PATTERN.test(input.color)) {
@@ -116,10 +119,36 @@ export function planCreateLight(input: {
 					...(input.range === undefined ? {} : { range: input.range }),
 				};
 
+	return { kind: 'entity', entity };
+}
+
+export function planCreateLight(input: {
+	readonly context: SceneOperationContext;
+	readonly entityId: string;
+	readonly light: SceneLightKind;
+	readonly name: string;
+	readonly color: string;
+	readonly intensity: number;
+	readonly castShadow: boolean;
+	readonly position: Vec3;
+	readonly rotation: Vec3;
+	readonly range?: number;
+	readonly angle?: number;
+	readonly penumbra?: number;
+}): SceneOperationResult {
+	const scene = input.context.scene;
+	if (scene.entities.some((entity) => entity.id === input.entityId)) {
+		return invalid(
+			`Captured light id "${input.entityId}" is already used by the accepted source.`,
+			['entityId', 'duplicate-entity-id'],
+		);
+	}
+	const built = buildLightEntity(input);
+	if (built.kind === 'rejected') return built;
 	return finalizeCreatedLight({
 		context: input.context,
 		operationKind: 'create-light',
-		entity,
+		entity: built.entity,
 	});
 }
 
@@ -284,16 +313,8 @@ export function planDuplicateLight(input: {
 			['newEntityId', 'duplicate-entity-id'],
 		);
 	}
-	const cluster = (scene.clusters ?? []).find((candidate) =>
-		candidate.memberIds.includes(input.entityId),
-	);
-	if (cluster !== undefined) {
-		return refusal(
-			'unsupported-set',
-			`Light "${input.entityId}" belongs to cluster "${cluster.id}". Grouping owns duplication; this operation will not silently change cluster membership.`,
-			[cluster.id],
-		);
-	}
+	// G-3: a drilled light duplicates as an independent, ungrouped light; the
+	// source cluster keeps its membership byte-for-byte.
 	const copy = {
 		...existing,
 		id: input.newEntityId,
@@ -324,7 +345,6 @@ function finalizeCreatedLight(input: {
 		changedEntityFields: [],
 		createdEntityIds: [input.entity.id],
 		removedEntityIds: [],
-		allowClusterCleanup: false,
 	};
 	const finalized = finalizeSceneCandidate({ before, after, scope });
 	if (finalized.kind === 'rejected') {
@@ -371,7 +391,6 @@ function finalizeUpdatedLight(input: {
 		changedEntityFields: input.fields,
 		createdEntityIds: [],
 		removedEntityIds: [],
-		allowClusterCleanup: false,
 	};
 	const finalized = finalizeSceneCandidate({ before, after, scope });
 	if (finalized.kind === 'rejected') {

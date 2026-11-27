@@ -13,9 +13,11 @@ import {
 	validateProjectEnvelope,
 } from '@portfolio/project-model/units/validate';
 import {
+	ADMITTED_UNIT_VERSIONS,
+	UNIT_DOMAINS,
 	UNIT_ENVELOPE_FORMAT_VERSION,
-	LAYOUT_UNIT_FORMAT_VERSION,
 	type ProjectEnvelope,
+	type UnitDomain,
 } from '@portfolio/project-model/units';
 import { readSaveRequest, type SaveRequest } from '@portfolio/project-model/save';
 import type { SessionStorageLike } from './project-persistence';
@@ -31,8 +33,12 @@ export const LEGACY_PENDING_CLOUD_SAVE_KEY = 'museum:pending-cloud-save:v1';
 export const PENDING_CLOUD_SAVE_MAX_AGE_MS = 15 * 60 * 1000;
 
 export type IncompatiblePendingCloudSave = {
-	status: 'incompatible-layout';
+	status: 'incompatible-source';
 	projectId: string;
+	/** The unit whose admitted stamp the capture was written under. */
+	unit: UnitDomain;
+	/** That unit's captured format version, preserved exactly for recovery. */
+	stamp: number;
 	raw: string;
 };
 
@@ -91,7 +97,7 @@ export function writePendingCloudSave(
 	// resume a different write than the creator captured.
 	if (!captureDescribesEnvelope(parsed.request.capture, validation.envelope)) return false;
 	try {
-		if (inspectPendingCloudSave(storage, createdAt, false).status === 'incompatible-layout')
+		if (inspectPendingCloudSave(storage, createdAt, false).status === 'incompatible-source')
 			return false;
 		storage.setItem(PENDING_CLOUD_SAVE_KEY, JSON.stringify({ createdAt, save: parsed.request }));
 		return true;
@@ -143,8 +149,15 @@ function inspectPendingCloudSave(
 		const envelope: unknown = JSON.parse(capture.canonicalJson);
 		if (typeof value.createdAt !== 'number' || !Number.isFinite(value.createdAt))
 			throw new Error('invalid timestamp');
-		if (describesIncompatibleLayout(envelope, capture)) {
-			return { status: 'incompatible-layout', projectId: capture.projectId, raw };
+		const incompatible = describesIncompatibleSource(envelope, capture);
+		if (incompatible !== null) {
+			return {
+				status: 'incompatible-source',
+				projectId: capture.projectId,
+				unit: incompatible.unit,
+				stamp: incompatible.stamp,
+				raw,
+			};
 		}
 		if (value.createdAt > now) throw new Error('invalid timestamp');
 		if (now - value.createdAt > PENDING_CLOUD_SAVE_MAX_AGE_MS) {
@@ -170,8 +183,15 @@ function inspectPendingCloudSave(
 	}
 }
 
-/** Inspect only the wire stamps. The current reader cannot validate outgoing Layout data. */
-function describesIncompatibleLayout(envelope: unknown, capture: SaveRequest['capture']): boolean {
+/**
+ * Inspect only the wire stamps. The current reader cannot validate data written
+ * under another format, so it names the first incompatible unit and stamp and
+ * keeps the capture byte for byte.
+ */
+function describesIncompatibleSource(
+	envelope: unknown,
+	capture: SaveRequest['capture'],
+): { readonly unit: UnitDomain; readonly stamp: number } | null {
 	if (
 		!isRecord(envelope) ||
 		envelope.formatVersion !== UNIT_ENVELOPE_FORMAT_VERSION ||
@@ -179,17 +199,27 @@ function describesIncompatibleLayout(envelope: unknown, capture: SaveRequest['ca
 		!isRecord(envelope.acceptedRevision) ||
 		envelope.acceptedRevision.projectId !== capture.acceptedRevision.projectId ||
 		envelope.acceptedRevision.revisionId !== capture.acceptedRevision.revisionId ||
-		!isRecord(envelope.units) ||
-		!isRecord(envelope.units.layout)
+		!isRecord(envelope.units)
 	)
-		return false;
-	const { header, data } = envelope.units.layout;
-	if (!isRecord(header) || header.domain !== 'layout' || !isRecord(data)) return false;
-	const stamps = [header.formatVersion, data.formatVersion];
-	return (
-		stamps.every(Number.isSafeInteger) &&
-		stamps.some((version) => version !== LAYOUT_UNIT_FORMAT_VERSION)
-	);
+		return null;
+	for (const unitDomain of UNIT_DOMAINS) {
+		const unit = envelope.units[unitDomain];
+		if (!isRecord(unit)) continue;
+		const { header, data } = unit;
+		if (!isRecord(header) || header.domain !== unitDomain || !isRecord(data)) continue;
+		const headerStamp = header.formatVersion;
+		const dataStamp = data.formatVersion;
+		if (typeof headerStamp !== 'number' || !Number.isSafeInteger(headerStamp)) continue;
+		if (typeof dataStamp !== 'number' || !Number.isSafeInteger(dataStamp)) continue;
+		const stamp =
+			headerStamp !== ADMITTED_UNIT_VERSIONS[unitDomain]
+				? headerStamp
+				: dataStamp !== ADMITTED_UNIT_VERSIONS[unitDomain]
+					? dataStamp
+					: undefined;
+		if (stamp !== undefined) return { unit: unitDomain, stamp };
+	}
+	return null;
 }
 
 /** Only the explicit recovery action may clear the exact incompatible capture it offered. */
@@ -209,7 +239,7 @@ export function discardIncompatiblePendingCloudSave(
 export function clearPendingCloudSave(
 	storage: SessionStorageLike | null = browserSessionStorage(),
 ): void {
-	if (inspectPendingCloudSave(storage, Date.now(), false).status !== 'incompatible-layout')
+	if (inspectPendingCloudSave(storage, Date.now(), false).status !== 'incompatible-source')
 		safeRemove(storage, PENDING_CLOUD_SAVE_KEY);
 	safeRemove(storage, LEGACY_PENDING_CLOUD_SAVE_KEY);
 }

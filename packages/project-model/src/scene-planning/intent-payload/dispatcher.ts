@@ -17,6 +17,15 @@ import {
 	readResizePayload,
 	readSetLiftPayload,
 } from './transform';
+import {
+	readCreateLightRigPayload,
+	readGroupCreatePayload,
+	readGroupDuplicatePayload,
+	readGroupErasePayload,
+	readGroupRenamePayload,
+	readGroupTransformPayload,
+	readGroupUngroupPayload,
+} from './group';
 import { type SceneOperationPayload } from './types';
 import { ShapeReader } from '../../strict-shape';
 
@@ -72,6 +81,20 @@ export function readSceneOperationPayload(
 			const entityId = reader.opaqueId(record.entityId, '$.payload.entityId');
 			return entityId === null ? null : { kind: 'duplicate-light', entityId };
 		}
+		case 'scene-group-create':
+			return readGroupCreatePayload(reader, raw);
+		case 'scene-group-ungroup':
+			return readGroupUngroupPayload(reader, raw);
+		case 'scene-group-rename':
+			return readGroupRenamePayload(reader, raw);
+		case 'scene-group-transform':
+			return readGroupTransformPayload(reader, raw);
+		case 'scene-group-duplicate':
+			return readGroupDuplicatePayload(reader, raw);
+		case 'scene-group-erase':
+			return readGroupErasePayload(reader, raw);
+		case 'create-light-rig':
+			return readCreateLightRigPayload(reader, raw);
 		default:
 			reader.problem(
 				'$.kind',

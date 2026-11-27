@@ -62,7 +62,6 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind): Result {
 		changedEntityFields: [],
 		createdEntityIds: [],
 		removedEntityIds: [],
-		allowClusterCleanup: false,
 	} satisfies SceneRecordScope;
 	const reference = (id: string): SemanticReference => ({
 		version: 1,

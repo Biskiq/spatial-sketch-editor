@@ -214,6 +214,7 @@ export type {
 } from './intent-payload';
 
 export {
+	buildLightEntity,
 	planCreateLight,
 	planDuplicateLight,
 	planUpdateLight,
@@ -222,7 +223,38 @@ export {
 export type {
 	LightUpdate,
 	SceneLightKind,
+	SceneLightSpec,
 } from './light-operations';
+
+export {
+	CREATE_LIGHT_RIG,
+	groupMemberEligible,
+	planCreateLightRig,
+	planGroupCreate,
+	planGroupErase,
+	planGroupRename,
+	planGroupUngroup,
+	SCENE_GROUP_CREATE,
+	SCENE_GROUP_DUPLICATE,
+	SCENE_GROUP_ERASE,
+	SCENE_GROUP_OPERATION_KINDS,
+	SCENE_GROUP_RENAME,
+	SCENE_GROUP_TRANSFORM,
+	SCENE_GROUP_UNGROUP,
+} from './group-operations';
+
+export { planGroupDuplicate, planGroupTransform } from './group-motion';
+
+export type { SceneGroupMotion } from './group-motion';
+
+export type {
+	SceneGroupCorrespondence,
+	SceneGroupMemberContact,
+	SceneGroupOperationCandidate,
+	SceneGroupOperationKind,
+	SceneGroupOperationResult,
+	SceneGroupSupportEvidence,
+} from './group-operations';
 
 export {
 	canonicalDefinitionMetadata,
@@ -328,7 +360,25 @@ export {
 } from './region-contact';
 
 export {
+	eulerXyzFromMatrix,
+	eulerXyzToMatrix,
+	multiplyRotationMatrices,
+	rigidPivot,
+	rigidMovePosition,
+	rigidTurnPosition,
+	rigidTurnRotation,
+	rigidYawAdd,
+	rotationForwardVector,
+	turnPointAboutPivot,
+	yawMatrix,
+} from './rigid';
+
+export type { RotationMatrix } from './rigid';
+
+export {
 	resolveSceneSupport,
+	resolveSceneSupportAtOrBelow,
+	resolveSceneSupportAtOrBelowOnGeometry,
 	resolveSceneSupportOnGeometry,
 	sceneSupportGenerationId,
 	selectSceneSupport,

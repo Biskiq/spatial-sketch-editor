@@ -22,7 +22,9 @@ export function readSceneOperationSubject(input: {
 		kind === 'place-object' ||
 		kind === 'create-form' ||
 		kind === 'place-form-copy' ||
-		kind === 'create-light'
+		kind === 'create-light' ||
+		kind === 'scene-group-create' ||
+		kind === 'create-light-rig'
 	) {
 		if (targets.length !== 0) {
 			reader.problem(
@@ -46,10 +48,26 @@ export function readSceneOperationSubject(input: {
 		payload.kind === 'place-object' ||
 		payload.kind === 'create-form' ||
 		payload.kind === 'place-form-copy' ||
-		payload.kind === 'create-light'
+		payload.kind === 'create-light' ||
+		payload.kind === 'scene-group-create' ||
+		payload.kind === 'create-light-rig'
 	)
 		return null;
 	const target = targets[0]!;
+	if (
+		payload.kind === 'scene-group-ungroup' ||
+		payload.kind === 'scene-group-rename' ||
+		payload.kind === 'scene-group-transform' ||
+		payload.kind === 'scene-group-duplicate' ||
+		payload.kind === 'scene-group-erase'
+	) {
+		const problem = sceneClusterTargetProblem(target, payload.clusterId, sourceContentId);
+		if (problem !== null) {
+			reader.problem('$.targets[0]', problem.code, problem.message);
+			return null;
+		}
+		return { kind: 'cluster', clusterId: payload.clusterId };
+	}
 	const entityId = payload.entityId;
 	const problem = sceneEntityTargetProblem(target, entityId, sourceContentId);
 	if (problem !== null) {
@@ -111,6 +129,63 @@ export function readSceneOperationAllocation(input: {
 		return null;
 	}
 	return { kind: 'created', entityId: allocation.id };
+}
+
+export function sceneClusterTargetProblem(
+	target: SemanticReference,
+	clusterId: string,
+	sourceContentId: string,
+): ShapeIssue | null {
+	if (target.domain !== 'scene') {
+		return {
+			path: '$.targets[0].domain',
+			code: 'invalid-target',
+			message: `Scene group operations address Scene subjects, not "${target.domain}"`,
+		};
+	}
+	if (target.subject.kind !== 'cluster') {
+		return {
+			path: '$.targets[0].subject.kind',
+			code: 'invalid-target',
+			message: `A group operation addresses a cluster subject, not "${target.subject.kind}"`,
+		};
+	}
+	if (target.subject.id !== clusterId) {
+		return {
+			path: '$.targets[0].subject.id',
+			code: 'invalid-target',
+			message: `The target names "${target.subject.id}" and the payload names "${clusterId}"`,
+		};
+	}
+	if (target.revision.kind !== 'exact' || target.revision.contentRevision !== sourceContentId) {
+		return {
+			path: '$.targets[0].revision',
+			code: 'stale-revision',
+			message: "The target must be exact for this snapshot's content revision",
+		};
+	}
+	if (target.instancePath.length !== 0) {
+		return {
+			path: '$.targets[0].instancePath',
+			code: 'invalid-target',
+			message: 'A root Scene cluster is addressed with an empty instance path',
+		};
+	}
+	if (target.location.kind !== 'project-root') {
+		return {
+			path: '$.targets[0].location',
+			code: 'invalid-target',
+			message: 'A current-format Scene cluster lives at the project root',
+		};
+	}
+	if (target.componentId !== null || target.capabilityId !== null) {
+		return {
+			path: '$.targets[0]',
+			code: 'invalid-target',
+			message: 'A Scene cluster target names no component or capability',
+		};
+	}
+	return null;
 }
 
 export function sceneEntityTargetProblem(

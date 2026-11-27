@@ -25,7 +25,7 @@ const RISO_SKY: SceneSky = {
 
 function sceneOf(environment?: SceneEnvironment): LookScene {
 	return {
-		formatVersion: 12,
+		formatVersion: 13,
 		textures: [],
 		materials: [],
 		entities: [],

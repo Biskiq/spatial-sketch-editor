@@ -3,6 +3,7 @@ import { isFinitePlacementFrame } from '../frame';
 import { finalize } from './finalization';
 import { unsupportedTransform, invalidFrame, nonFinitePoint, invalid, refusal } from './refusals';
 import {
+	resolveDestinationSupport,
 	resolveSupport,
 	readContactMinY,
 	upright,
@@ -39,14 +40,15 @@ export function planMoveHorizontal(input: {
 
 	const point = worldPoint(input.frame, input.worldXZ);
 	if (point === null) return nonFinitePoint();
-	const rest = restSupport(input.context, target.entity, contact.value, input.choice);
-	if (rest.kind !== 'resolved') return rest;
-	const support = resolveSupport(
-		input.context,
+	// The one destination rule: a resting member keeps its resting elevation; a
+	// lifted member keeps its Y over the highest support at or below its base.
+	const support = resolveDestinationSupport({
+		context: input.context,
+		entity: target.entity,
+		contactMinY: contact.value,
 		point,
-		rest.lift > 0 ? null : rest.resting,
-		input.choice,
-	);
+		...(input.choice === undefined ? {} : { choice: input.choice }),
+	});
 	if (support.kind !== 'resolved') return support;
 
 	const next: SceneEntity = {
@@ -63,7 +65,6 @@ export function planMoveHorizontal(input: {
 			changedEntityFields: ['position[0]', 'position[2]'],
 			createdEntityIds: [],
 			removedEntityIds: [],
-			allowClusterCleanup: false,
 		},
 		correspondence: [{ relation: 'preserved', entityId: target.entity.id }],
 		support: support.support,
@@ -101,7 +102,6 @@ export function planSetYaw(input: {
 			changedEntityFields: [YAW_SCOPE_FIELD],
 			createdEntityIds: [],
 			removedEntityIds: [],
-			allowClusterCleanup: false,
 		},
 		correspondence: [{ relation: 'preserved', entityId: target.entity.id }],
 	});
@@ -159,7 +159,6 @@ export function planPlaceOnFloor(input: {
 			changedEntityFields: scopeFields,
 			createdEntityIds: [],
 			removedEntityIds: [],
-			allowClusterCleanup: false,
 		},
 		correspondence: [{ relation: 'preserved', entityId: target.entity.id }],
 		support: support.support,
@@ -217,7 +216,6 @@ export function planResizeOnFloor(input: {
 			changedEntityFields: ['position[1]', 'scale'],
 			createdEntityIds: [],
 			removedEntityIds: [],
-			allowClusterCleanup: false,
 		},
 		correspondence: [{ relation: 'preserved', entityId: target.entity.id }],
 		support: support.support,
@@ -268,7 +266,6 @@ export function planSetLift(input: {
 			changedEntityFields: ['position[1]'],
 			createdEntityIds: [],
 			removedEntityIds: [],
-			allowClusterCleanup: false,
 		},
 		correspondence: [{ relation: 'preserved', entityId: target.entity.id }],
 		support: rest.support,

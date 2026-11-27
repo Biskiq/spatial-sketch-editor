@@ -44,7 +44,7 @@ function row(assetId: string, sha256: string): ProjectAssetMetadata {
 
 function scene(): CameraFreeSceneDocument {
 	return {
-		formatVersion: 12,
+		formatVersion: 13,
 		textures: [],
 		materials: [],
 		artworkLibrary: [
@@ -73,7 +73,7 @@ function api(rows: ProjectAssetMetadata[], bytes: Uint8Array = PNG) {
 
 function finishScene(): CameraFreeSceneDocument {
 	return {
-		formatVersion: 12,
+		formatVersion: 13,
 		textures: [{ id: FINISH, name: 'Brick', uri: `/project-assets/${FINISH}` }],
 		materials: [{ id: 'finish', name: 'Finish', base: { catalogue: 'plaster-warm' }, overrides: { color: '#ffffff', maps: { color: { image: { textureId: FINISH } } } } }],
 		entities: [],

@@ -14,7 +14,7 @@ const PIN = {
 
 function scene(overrides: Partial<CameraFreeSceneDocument> = {}): CameraFreeSceneDocument {
 	return {
-		formatVersion: 12,
+		formatVersion: 13,
 		textures: [],
 		materials: [],
 		entities: [],

@@ -9,11 +9,10 @@ import {
 } from './finalization';
 import { unsupportedTransform, invalid, refusal } from './refusals';
 import {
-	resolveSupport,
+	resolveDestinationSupport,
 	readContactMinY,
 	upright,
 	entityScale,
-	restSupport,
 	readObject,
 } from './support';
 import {
@@ -59,7 +58,6 @@ export function planSetName(input: {
 			changedEntityFields: ['name'],
 			createdEntityIds: [],
 			removedEntityIds: [],
-			allowClusterCleanup: false,
 		},
 		correspondence: [{ relation: 'preserved', entityId: entity.id }],
 	});
@@ -87,29 +85,20 @@ export function planDuplicateOne(input: {
 			['newEntityId', 'duplicate-entity-id'],
 		);
 	}
-	const cluster = (scene.clusters ?? []).find((candidate) =>
-		candidate.memberIds.includes(input.entityId),
-	);
-	if (cluster !== undefined) {
-		return refusal(
-			'unsupported-set',
-			`Entity "${input.entityId}" belongs to cluster "${cluster.id}". Duplicating a cluster member would silently change grouping; set duplication is not supported in this phase.`,
-			[cluster.id],
-		);
-	}
-
-	const rest = restSupport(input.context, target.entity, contact.value, input.choice);
-	if (rest.kind !== 'resolved') return rest;
+	// G-3: duplicating a drilled member copies that member as an independent,
+	// ungrouped entity. The source cluster is not touched; the copy is created
+	// outside every group.
 	const point: LayoutVec2 = [
 		target.entity.position[0] + DUPLICATE_OFFSET_METERS,
 		target.entity.position[2] + DUPLICATE_OFFSET_METERS,
 	];
-	const support = resolveSupport(
-		input.context,
+	const support = resolveDestinationSupport({
+		context: input.context,
+		entity: target.entity,
+		contactMinY: contact.value,
 		point,
-		rest.lift > 0 ? null : rest.resting,
-		input.choice,
-	);
+		...(input.choice === undefined ? {} : { choice: input.choice }),
+	});
 	if (support.kind !== 'resolved') return support;
 
 	const duplicate: SceneEntity = {
@@ -130,7 +119,6 @@ export function planDuplicateOne(input: {
 			changedEntityFields: [],
 			createdEntityIds: [input.newEntityId],
 			removedEntityIds: [],
-			allowClusterCleanup: false,
 		},
 	});
 	if (finalized.kind === 'rejected') return fromFinalization(finalized);
@@ -176,6 +164,13 @@ export function planDeleteOne(input: {
 		...(clusters === undefined ? { clusters: undefined } : { clusters }),
 	};
 	if (clusters === undefined) delete after.clusters;
+	// A delete may only prune the clusters the removed entity belonged to, and
+	// the declaration names exactly those clusters, not every cluster in the
+	// Scene. A cluster that falls below two members disappears through the same
+	// pruned declaration.
+	const prunedClusterIds = (scene.clusters ?? [])
+		.filter((cluster) => cluster.memberIds.includes(input.entityId))
+		.map((cluster) => cluster.id);
 	const finalized = finalizeSceneCandidate({
 		before: scene,
 		after,
@@ -185,7 +180,9 @@ export function planDeleteOne(input: {
 			changedEntityFields: [],
 			createdEntityIds: [],
 			removedEntityIds: [input.entityId],
-			allowClusterCleanup: true,
+			...(prunedClusterIds.length === 0
+				? {}
+				: { clusters: { created: [], removed: [], renamed: [], pruned: prunedClusterIds } }),
 		},
 	});
 	const clustersChanged = !sameSceneValues(scene.clusters ?? [], clusters ?? []);

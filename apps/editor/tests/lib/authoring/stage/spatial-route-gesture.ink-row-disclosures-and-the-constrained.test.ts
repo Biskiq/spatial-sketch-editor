@@ -505,7 +505,7 @@ const ARTWORK_ASSET = harness.artwork.assetId;
 
 function artworkScene(): CameraFreeSceneDocument {
 	return {
-		formatVersion: 12,
+		formatVersion: 13,
 		textures: [],
 		materials: [],
 		artworkLibrary: [

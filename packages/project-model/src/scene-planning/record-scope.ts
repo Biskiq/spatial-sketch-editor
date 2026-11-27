@@ -16,7 +16,8 @@
  *  dotted grant does not own;
  * - a created entity is new, appended and unclustered;
  * - cluster membership may only lose removed ids, and only a cluster that falls
- *  below the codec's two-member minimum may disappear. No cluster is created.
+ *  below the codec's two-member minimum may disappear, unless the operation
+ *  declares an exact `clusters` grant (T2.G1a).
  *
  * Every T2 planner returns through `finalizeSceneCandidate`, so the guard runs
  * once, before F.4 admission, on the same candidate the adapter will validate.
@@ -25,7 +26,7 @@
  *
  * The guard is only as complete as its adoption, and F.4's planner contract has
  * no hook that could require it: `createScenePlanners` is the sole registered
- * producer (all nine operations funnel through `finalizeSceneCandidate`), and
+ * producer (every registered Scene operation funnels through it), and
  * the raw `plan*` exports are test seams. A future planner built outside that
  * registry must call this finalizer itself — the mutation-control acceptance
  * test exists because such a candidate would otherwise be admitted.
@@ -34,6 +35,8 @@ import { validateCameraFreeScenePayload } from '../units/validate';
 import type { ShapeIssue } from '../strict-shape';
 import type { CameraFreeSceneDocument as SceneDocument } from '../units/types';
 import { surfaceKey } from '@portfolio/layout-core/plan';
+import { checkClusterScope, type SceneClusterScope } from './cluster-scope';
+import { stableJson } from './value-equality';
 
 /**
  * The records one operation may touch. `changedEntityFields` is the value-level
@@ -88,12 +91,24 @@ export type SceneRecordScope = {
 	/** Entities this operation may remove. */
 	readonly removedEntityIds: readonly string[];
 	/**
-	 * Whether cluster membership may be cleaned up for removed entities. A
-	 * cluster left with fewer than the codec's two members is dropped; keeping it
-	 * or dropping a still-valid one is a violation.
+	 * The exact cluster declaration (G1a). An absent declaration compares the
+	 * whole `clusters` collection exactly: a pre-G1 operation may not create,
+	 * rename, prune or remove a cluster.
+	 *
+	 * - `created` is the complete final membership of each appended cluster, in
+	 *   declared order; its members are existing or created entities in no other
+	 *   cluster.
+	 * - `removed` is clusters removed whole (Ungroup, group Erase).
+	 * - `renamed` is clusters whose name alone changed.
+	 * - `pruned` is the `delete-one` membership cleanup: the accepted membership
+	 *   minus the removed entities, whether the cluster remains at two or more
+	 *   members or is dropped below the codec minimum.
 	 */
-	readonly allowClusterCleanup: boolean;
+	readonly clusters?: SceneClusterScope;
 };
+
+/** One created cluster's exact, final membership. */
+export type { SceneCreatedCluster, SceneClusterScope } from './cluster-scope';
 
 export type SceneCandidateFinalization =
 	| { readonly kind: 'ready'; readonly scene: SceneDocument }
@@ -275,7 +290,13 @@ export function checkSceneRecordScope(
 		}
 	}
 
-	issues.push(...checkClusterScope(before, after, { created, removed, scope }));
+	issues.push(
+		...checkClusterScope(before, after, {
+			createdEntities: created,
+			removedEntities: removed,
+			scope,
+		}),
+	);
 	return issues;
 }
 
@@ -518,107 +539,6 @@ function checkSurfaceFinishScope(
 	return issues;
 }
 
-function checkClusterScope(
-	before: SceneDocument,
-	after: SceneDocument,
-	input: {
-		readonly created: ReadonlySet<string>;
-		readonly removed: ReadonlySet<string>;
-		readonly scope: SceneRecordScope;
-	},
-): readonly ShapeIssue[] {
-	const issues: ShapeIssue[] = [];
-	const beforeClusters = new Map((before.clusters ?? []).map((cluster) => [cluster.id, cluster]));
-	const afterClusters = new Map((after.clusters ?? []).map((cluster) => [cluster.id, cluster]));
-
-	// Cluster *order* is carried state too: a cleanup may drop a cluster, never
-	// reorder the ones it keeps.
-	const expectedClusterIds = (before.clusters ?? [])
-		.filter((cluster) => {
-			if (!input.scope.allowClusterCleanup) return true;
-			return cluster.memberIds.filter((memberId) => !input.removed.has(memberId)).length >= 2;
-		})
-		.map((cluster) => cluster.id);
-	if (
-		stableJson(expectedClusterIds) !==
-		stableJson((after.clusters ?? []).map((cluster) => cluster.id))
-	) {
-		issues.push({
-			path: '$.scene.clusters',
-			code: 'record-scope-violation',
-			message: `Cluster order must be the accepted order minus any cluster the cleanup had to drop (expected ${JSON.stringify(expectedClusterIds)})`,
-		});
-	}
-
-	for (const cluster of after.clusters ?? []) {
-		const previous = beforeClusters.get(cluster.id);
-		if (previous === undefined) {
-			issues.push({
-				path: `$.scene.clusters.${cluster.id}`,
-				code: 'record-scope-violation',
-				message: `Cluster "${cluster.id}" is new; a Scene operation may not create grouping`,
-			});
-			continue;
-		}
-		// Derived like the top-level fields: a cluster field added to the format is
-		// compared the day it lands, not the day someone extends this list.
-		const clusterFields = [...new Set([...Object.keys(previous), ...Object.keys(cluster)])].filter(
-			(field) => field !== 'id' && field !== 'memberIds',
-		);
-		for (const field of clusterFields) {
-			if (
-				stableJson((previous as Record<string, unknown>)[field]) !==
-				stableJson((cluster as Record<string, unknown>)[field])
-			) {
-				issues.push({
-					path: `$.scene.clusters.${cluster.id}.${field}`,
-					code: 'record-scope-violation',
-					message: `Cluster "${cluster.id}" ${field} is outside the ${input.scope.operationKind} operation's scope`,
-				});
-			}
-		}
-		const expectedMembers = input.scope.allowClusterCleanup
-			? previous.memberIds.filter((memberId) => !input.removed.has(memberId))
-			: previous.memberIds;
-		if (stableJson(expectedMembers) !== stableJson(cluster.memberIds)) {
-			issues.push({
-				path: `$.scene.clusters.${cluster.id}.memberIds`,
-				code: 'record-scope-violation',
-				message: `Cluster "${cluster.id}" membership may only lose the operation's removed entities`,
-			});
-		}
-		if (cluster.memberIds.length < 2) {
-			issues.push({
-				path: `$.scene.clusters.${cluster.id}.memberIds`,
-				code: 'record-scope-violation',
-				message: `Cluster "${cluster.id}" is below the Scene format's two-member minimum and must be removed, not kept`,
-			});
-		}
-		for (const createdId of input.created) {
-			if (cluster.memberIds.includes(createdId)) {
-				issues.push({
-					path: `$.scene.clusters.${cluster.id}.memberIds`,
-					code: 'record-scope-violation',
-					message: `Created entity "${createdId}" cannot join cluster "${cluster.id}" in the same operation`,
-				});
-			}
-		}
-	}
-
-	for (const cluster of beforeClusters.values()) {
-		if (afterClusters.has(cluster.id)) continue;
-		const remaining = cluster.memberIds.filter((memberId) => !input.removed.has(memberId));
-		if (!input.scope.allowClusterCleanup || remaining.length >= 2) {
-			issues.push({
-				path: `$.scene.clusters.${cluster.id}`,
-				code: 'record-scope-violation',
-				message: `Cluster "${cluster.id}" cannot be dropped by the ${input.scope.operationKind} operation`,
-			});
-		}
-	}
-	return issues;
-}
-
 /**
  * Mask the granted values so everything else compares exactly. A
  * `field[index]` grant masks that component in place, preserving array shape
@@ -684,19 +604,4 @@ function omitDottedGrant(target: Record<string, unknown>, path: readonly string[
  */
 export function sameSceneValues(left: unknown, right: unknown): boolean {
 	return stableJson(left) === stableJson(right);
-}
-
-/** Key-order-independent comparison: the guard compares values, never insertion order. */
-function stableJson(value: unknown): string {
-	return JSON.stringify(sortValue(value));
-}
-
-function sortValue(value: unknown): unknown {
-	if (Array.isArray(value)) return value.map(sortValue);
-	if (value === null || typeof value !== 'object') return value;
-	const sorted: Record<string, unknown> = {};
-	for (const key of Object.keys(value as Record<string, unknown>).sort()) {
-		sorted[key] = sortValue((value as Record<string, unknown>)[key]);
-	}
-	return sorted;
 }

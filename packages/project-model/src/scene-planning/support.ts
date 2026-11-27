@@ -215,30 +215,132 @@ export function resolveSceneSupportOnGeometry(input: {
 	readonly choice?: SceneSupportChoice | undefined;
 }): SceneSupportResolution {
 	const { geometry, generationId, point } = input;
+	const withDatum = queryWithDatum(geometry, generationId, point, input.choice);
+	return fromQuery(withDatum, generationId, input.requiredElevation, input.choice);
+}
+
+/**
+ * The corrected lifted-support rule (G-6).
+ *
+ * A lifted floor member keeps its Y, so its destination support is the highest
+ * candidate at or below its unchanged base — never a candidate above it, such
+ * as a mezzanine top. Zero eligible candidates is `no-support`; two distinct
+ * floor contexts at the winning elevation still ask for a choice. This is the
+ * one destination rule for single and group Move/Duplicate.
+ */
+export function resolveSceneSupportAtOrBelow(input: {
+	readonly layout: LayoutDocumentWallFirst;
+	readonly sourceContentId: string;
+	readonly point: LayoutVec2;
+	readonly ceiling: number;
+	readonly choice?: SceneSupportChoice | undefined;
+}): SceneSupportResolution {
+	const generationId = sceneSupportGenerationId(input.sourceContentId);
+	const geometry = compileWallFirstLayoutGeometry(input.layout).geometry;
+	return resolveSceneSupportAtOrBelowOnGeometry({ ...input, geometry, generationId });
+}
+
+export function resolveSceneSupportAtOrBelowOnGeometry(input: {
+	readonly geometry: CompiledLayoutGeometry;
+	readonly generationId: string;
+	readonly point: LayoutVec2;
+	readonly ceiling: number;
+	readonly choice?: SceneSupportChoice | undefined;
+}): SceneSupportResolution {
+	const { geometry, generationId, point, ceiling, choice } = input;
+	if (!Number.isFinite(ceiling)) {
+		return {
+			kind: 'refused',
+			code: 'unsupported-surface',
+			message: 'A lifted support ceiling must be a finite elevation.',
+			candidates: [],
+		};
+	}
+	const queried = queryWithDatum(geometry, generationId, point, choice);
+	if (queried.kind !== 'candidates') return fromQuery(queried, generationId, null, choice);
+	const all = queried.candidates;
+	const eligible = all.filter(
+		(candidate) =>
+			candidate.elevation <= ceiling + FLOOR_SUPPORT_TOLERANCES.coplanarElevationMeters,
+	);
+	if (eligible.length === 0) {
+		return {
+			kind: 'refused',
+			code: 'no-support',
+			message: `Nothing at or below ${ceiling} m supports this point; a lifted object keeps its height and cannot rise onto a higher surface.`,
+			candidates: all,
+		};
+	}
+	const highest = Math.max(...eligible.map((candidate) => candidate.elevation));
+	const atHighest = eligible.filter(
+		(candidate) =>
+			Math.abs(candidate.elevation - highest) <= FLOOR_SUPPORT_TOLERANCES.coplanarElevationMeters,
+	);
+	if (choice !== undefined) {
+		const chosen = chooseFloorSupport(atHighest, choice);
+		if (chosen.kind === 'choice-required' || chosen.kind === 'invalid-choice') {
+			return {
+				kind: 'refused',
+				code: 'support-choice-required',
+				message:
+					chosen.kind === 'choice-required'
+						? 'The captured support choice is ambiguous at the lifted destination.'
+						: `The captured support choice is not the highest support at or below the lifted base (${chosen.message})`,
+				candidates: atHighest,
+			};
+		}
+		if (
+			Math.abs(chosen.support.elevation - highest) >
+			FLOOR_SUPPORT_TOLERANCES.coplanarElevationMeters
+		) {
+			return {
+				kind: 'refused',
+				code: 'support-choice-required',
+				message: `The captured support choice is below the highest support at or below the lifted base (${highest} m).`,
+				candidates: atHighest,
+			};
+		}
+		return { kind: 'resolved', support: chosen.support, generationId };
+	}
+	if (atHighest.length === 1) {
+		return { kind: 'resolved', support: atHighest[0]!, generationId };
+	}
+	return {
+		kind: 'refused',
+		code: 'support-choice-required',
+		message: `${atHighest.length} floor contexts support the lifted destination at ${highest} m; the creator must choose one.`,
+		candidates: atHighest,
+	};
+}
+
+function queryWithDatum(
+	geometry: CompiledLayoutGeometry,
+	generationId: string,
+	point: LayoutVec2,
+	choice: SceneSupportChoice | undefined,
+): FloorSupportQueryResult {
 	// Layout publishes both `room-floor` and `region-top` upward supports; Scene
 	// placement consumes the same query the runtime uses, so an authored floor
 	// region is a genuine support and never a second elevation authority here.
 	const queried = queryFloorSupports(floorSupportSnapshotOf(geometry), {
 		generationId,
-		...(input.choice === undefined ? {} : { evidenceGenerationId: input.choice.generationId }),
+		...(choice === undefined ? {} : { evidenceGenerationId: choice.generationId }),
 		x: point[0],
 		z: point[1],
 	});
-	const withDatum: FloorSupportQueryResult =
-		queried.kind === 'none'
-			? {
-					kind: 'candidates',
-					candidates: [
-						datumSupportCandidate({
-							elevation: layoutDatumElevation(geometry),
-							generationId,
-							x: point[0],
-							z: point[1],
-						}),
-					],
-				}
-			: queried;
-	return fromQuery(withDatum, generationId, input.requiredElevation, input.choice);
+	return queried.kind === 'none'
+		? {
+				kind: 'candidates',
+				candidates: [
+					datumSupportCandidate({
+						elevation: layoutDatumElevation(geometry),
+						generationId,
+						x: point[0],
+						z: point[1],
+					}),
+				],
+			}
+		: queried;
 }
 
 function fromQuery(

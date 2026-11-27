@@ -462,12 +462,17 @@ describe('pending cloud Save draft', () => {
 		expect(pending.save).toEqual(request);
 	});
 
-	it('recovers the exact outgoing Layout 8 and Layout 9 captures after expiration and protects them from replacement', async () => {
-		for (const outgoingVersion of [8, 9]) {
+	it('recovers an exact incompatible capture from any unit, including Scene 12, after expiration', async () => {
+		const cases = [
+			{ unit: 'layout' as const, stamp: 8 },
+			{ unit: 'layout' as const, stamp: 9 },
+			{ unit: 'scene' as const, stamp: 12 }
+		];
+		for (const { unit, stamp } of cases) {
 			const { request, project } = await fixture();
 			const old = JSON.parse(JSON.stringify(project));
-			old.units.layout.header.formatVersion = old.units.layout.data.formatVersion = outgoingVersion;
-			if (outgoingVersion === 8) {
+			old.units[unit].header.formatVersion = old.units[unit].data.formatVersion = stamp;
+			if (unit === 'layout' && stamp === 8) {
 				delete old.units.layout.data.regions;
 				delete old.units.layout.data.identity.regions;
 			}
@@ -480,11 +485,17 @@ describe('pending cloud Save draft', () => {
 			storage.setItem(PENDING_CLOUD_SAVE_KEY, raw);
 			const now = 1000 + 16 * 60 * 1000;
 			const recovery = readPendingCloudSave(storage, now);
-			expect(recovery).toEqual({ status: 'incompatible-layout', projectId: PROJECT_ID, raw });
+			expect(recovery).toEqual({
+				status: 'incompatible-source',
+				projectId: PROJECT_ID,
+				unit,
+				stamp,
+				raw
+			});
 			expect(writePendingCloudSave(request, storage, now)).toBe(false);
 			clearPendingCloudSave(storage);
 			expect(storage.getItem(PENDING_CLOUD_SAVE_KEY)).toBe(raw);
-			if (recovery.status !== 'incompatible-layout') throw new Error('Expected recovery');
+			if (recovery.status !== 'incompatible-source') throw new Error('Expected recovery');
 			expect(discardIncompatiblePendingCloudSave(recovery, storage)).toBe(true);
 			expect(storage.getItem(PENDING_CLOUD_SAVE_KEY)).toBeNull();
 		}

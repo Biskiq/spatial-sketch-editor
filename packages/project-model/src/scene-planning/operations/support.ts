@@ -10,7 +10,12 @@ import {
 	UPRIGHT_TOLERANCE,
 	CONTACT_TOLERANCE_METERS,
 } from './types';
-import { resolveSceneSupport, type SceneSupportChoice } from '../support';
+import {
+	resolveSceneSupport,
+	resolveSceneSupportAtOrBelow,
+	type SceneSupportChoice,
+	type SceneSupportResolution,
+} from '../support';
 import { type LocalInputFrame } from '../types';
 import { type CameraFreeSceneDocument as SceneDocument } from '../../units/types';
 
@@ -29,6 +34,46 @@ export function resolveSupport(
 		requiredElevation,
 		...(choice === undefined ? {} : { choice }),
 	});
+	return supportResolutionResult(resolution);
+}
+
+/**
+ * The destination support for a Move or Duplicate that keeps Y.
+ *
+ * A resting member must find its unchanged resting elevation at the new point
+ * (the `move-horizontal` rule). A lifted member must find the highest support
+ * at or below its unchanged base; a surface above the base is not its support
+ * and is ignored. The single and group planners share this one rule (G-6).
+ */
+export function resolveDestinationSupport(input: {
+	readonly context: SceneOperationContext;
+	readonly entity: SceneEntity;
+	readonly contactMinY: number;
+	readonly point: LayoutVec2;
+	readonly choice?: SceneSupportChoice | undefined;
+}):
+	| { readonly kind: 'resolved'; readonly support: SceneOperationSupportEvidence }
+	| SceneOperationRefusal {
+	const rest = restSupport(input.context, input.entity, input.contactMinY, input.choice);
+	if (rest.kind !== 'resolved') return rest;
+	if (rest.lift <= CONTACT_TOLERANCE_METERS) {
+		return resolveSupport(input.context, input.point, rest.resting, input.choice);
+	}
+	const resolution = resolveSceneSupportAtOrBelow({
+		layout: input.context.layout,
+		sourceContentId: input.context.sourceContentId,
+		point: input.point,
+		ceiling: rest.resting,
+		...(input.choice === undefined ? {} : { choice: input.choice }),
+	});
+	return supportResolutionResult(resolution);
+}
+
+function supportResolutionResult(
+	resolution: SceneSupportResolution,
+):
+	| { readonly kind: 'resolved'; readonly support: SceneOperationSupportEvidence }
+	| SceneOperationRefusal {
 	if (resolution.kind === 'resolved') {
 		return {
 			kind: 'resolved',

@@ -60,7 +60,7 @@
 		try {
 			const { readPendingCapture } = await import('$lib/authoring/save/pending-capture');
 			const pending = readPendingCapture();
-			if (pending.status === 'incompatible-layout') recovery = pending;
+			if (pending.status === 'incompatible-source') recovery = pending;
 			return pending;
 		} catch {
 			return null;
@@ -113,7 +113,7 @@
 			}
 
 			const pending = await readPendingDraft();
-			if (pending?.status === 'incompatible-layout') {
+			if (pending?.status === 'incompatible-source') {
 				redirecting = false;
 				return;
 			}

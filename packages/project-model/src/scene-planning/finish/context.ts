@@ -66,7 +66,6 @@ export function createFinishPlanContext(
 		changedEntityFields: [],
 		createdEntityIds: [],
 		removedEntityIds: [],
-		allowClusterCleanup: false,
 	};
 	const complete = (
 		after: SceneDocument,

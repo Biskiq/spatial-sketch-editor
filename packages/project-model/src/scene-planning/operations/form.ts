@@ -189,7 +189,6 @@ export function planCreateForm(input: {
 			changedEntityFields: [],
 			createdEntityIds: [input.entityId],
 			removedEntityIds: [],
-			allowClusterCleanup: false,
 		},
 	});
 	if (finalized.kind === 'rejected') return fromFinalization(finalized);
@@ -301,7 +300,6 @@ export function planPlaceFormCopy(input: {
 			changedEntityFields: [],
 			createdEntityIds: [input.entityId],
 			removedEntityIds: [],
-			allowClusterCleanup: false,
 		},
 	});
 	if (finalized.kind === 'rejected') return fromFinalization(finalized);
@@ -409,7 +407,6 @@ export function planSetFormSize(input: {
 			changedEntityFields: [FORM_SCALE_SCOPE_FIELD, 'position[1]'],
 			createdEntityIds: [],
 			removedEntityIds: [],
-			allowClusterCleanup: false,
 		},
 		correspondence: [{ relation: 'preserved', entityId: entity.id }],
 		support: support.support,
@@ -568,7 +565,6 @@ export function planSetFormProfile(input: {
 			changedEntityFields: [FORM_GENERATOR_SCOPE_FIELD, 'position[1]'],
 			createdEntityIds: [],
 			removedEntityIds: [],
-			allowClusterCleanup: false,
 		},
 		correspondence: [{ relation: 'preserved', entityId: entity.id }],
 		support: rest.support,

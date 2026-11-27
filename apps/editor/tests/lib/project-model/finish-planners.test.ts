@@ -1067,8 +1067,7 @@ describe('record scope', () => {
 				changedEntityIds: [],
 				changedEntityFields: [],
 				createdEntityIds: [],
-				removedEntityIds: [],
-				allowClusterCleanup: false
+				removedEntityIds: []
 			}).map((issue) => issue.path)
 		).toContain('$.scene.environment');
 
@@ -1082,8 +1081,7 @@ describe('record scope', () => {
 				changedEntityIds: [],
 				changedEntityFields: [],
 				createdEntityIds: [],
-				removedEntityIds: [],
-				allowClusterCleanup: false
+				removedEntityIds: []
 			}).map((issue) => issue.path)
 		).toContain('$.scene.materials');
 	});
@@ -1101,7 +1099,6 @@ describe('record scope', () => {
 				changedEntityFields: [],
 				createdEntityIds: [],
 				removedEntityIds: [],
-				allowClusterCleanup: false,
 				materials: { added: [], changed: ['p1'], removed: [] },
 				palette: { change: 'slots' }
 			})
@@ -1121,7 +1118,6 @@ describe('record scope', () => {
 				changedEntityFields: [],
 				createdEntityIds: [],
 				removedEntityIds: [],
-				allowClusterCleanup: false,
 				materials: { added: ['p2'], changed: [], removed: [] }
 			}).length
 		).toBeGreaterThan(0);
@@ -1550,8 +1546,7 @@ describe('the textures record-scope grant', () => {
 		changedEntityIds: [],
 		changedEntityFields: [],
 		createdEntityIds: [],
-		removedEntityIds: [],
-		allowClusterCleanup: false
+		removedEntityIds: []
 	} as const;
 
 	const before = (): CameraFreeSceneDocument => ({
