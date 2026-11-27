@@ -105,7 +105,7 @@ it.
 | Action | Group G selected | Drilled member | Set |
 | --- | --- | --- | --- |
 | Move / Turn | `scene-group-transform`, rigid (§3.4) | Unchanged member operation | Not offered |
-| Duplicate | `scene-group-duplicate`: N copies + new cluster at +0.5 m X/Z; the copy is selected | **G-3:** an independent ungrouped copy at +0.5 m X/Z; the original membership is unchanged and the copy is selected. The refusals in `duplicate-one`, `duplicate-light` and `artwork-duplicate` are removed | Refused |
+| Duplicate | `scene-group-duplicate`: N copies + new cluster at +0.5 m X/Z; the copy is selected | **G-3:** an independent ungrouped copy made by the kind's existing duplicate behaviour (+0.5 m X/Z for objects and lights; Artwork keeps its 0.15 m offset along the image's horizontal axis); the original membership is unchanged and the copy is selected. The refusals in `duplicate-one`, `duplicate-light` and `artwork-duplicate` are removed | Refused |
 | Erase / Delete key | `scene-group-erase`: members + cluster | Unchanged `delete-one`; a two-member group dissolves, and the Card says so | Refused |
 | Group / Ungroup | Ungroup → selection is the former members as a set | — | Group → selection is the new group |
 | Light it | S7's recipe over the non-light members: a Picture spot for one Artwork, otherwise one Wash. The new light is not grouped (D12) | Unchanged | One Wash over every top-level target, with a group contributing its non-light members. A light as a top-level target refuses, as today. The light is not grouped |
@@ -362,7 +362,7 @@ or the specimen approval separates the two, Showcase moves to its own PR, and on
 | --- | --- | --- |
 | G-1 | Nesting | **Decided:** flat groups, no nesting |
 | G-2 | Shared strata on the group Card | **Decided:** deferred; the Card shows none |
-| G-3 | Duplicate on a drilled member | **Decided:** an independent copy outside the group; membership preserved; the copy selected |
+| G-3 | Duplicate on a drilled member | **Decided:** an independent copy outside the group that keeps the kind's existing duplicate behaviour (Artwork keeps its image-local horizontal offset); membership preserved; the copy selected. G1a implements it |
 | G-4 | Visual target | **Decided:** approved specimens before interaction implementation (§6) |
 | G-5 | Pivot | **Decided:** the centre of the XZ extent of the member positions |
 | Format | Scene 13 | **Decided:** strict policy; obligations in §3.5 |

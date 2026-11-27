@@ -734,7 +734,7 @@ td.pass{color:var(--moss-ink)} td.fail{color:var(--refuse)} td.warn{color:#8a5d0
         <li>The selection is a 1 px gold outline <b>7 px outside</b> the frame, so thin frames stay visible.</li>
         <li>Size tags stay on while the Artwork is selected; a corner drag adds the framed size.</li>
         <li>Card order is Size, Hang, Frame, then actions. Position and rotation live under Advanced.</li>
-        <li><b>Light it ⌄ (G1):</b> the button places the S7 Picture spot; its menu adds <b>Showcase</b>, a Key, Fill and Top rig placed as a new group named <i>Showcase</i>. The Artwork never joins it, and each is one Undo. After a Picture spot the new light's Card offers <i>Group with “Toobig.png”</i>. Group, member and set Cards live in the World interaction sheet's <i>Groups</i> section.</li>
+        <li><b>Light it ⌄ (G1):</b> the button places the S7 Picture spot; its menu adds <b>Showcase</b>, a Key, Fill and Rim rig placed as a new group named <i>Showcase</i>. The Artwork never joins it, and each is one Undo. After a Picture spot the new light's Card offers <i>Group with “Toobig.png”</i>. Group, member and set Cards live in the World interaction sheet's <i>Groups</i> section.</li>
       </ul>
     </div>
   </div>
@@ -787,7 +787,7 @@ td.pass{color:var(--moss-ink)} td.fail{color:var(--refuse)} td.warn{color:#8a5d0
   <div class="g4">
     <div class="later">Finish row on a Wall Card · S4</div>
     <div class="later">Looks tiles in Sky · S6</div>
-    <div class="later">Light group: Scene grouping with a group Brightness multiplier · grouping slice. G1 decision G-2 ships the group Card without shared strata, so this slot stays open (drift noted in the World interaction sheet)</div>
+    <div class="later">Light group: Scene grouping with a group Brightness multiplier · grouping slice. Shared strata stay deferred: G1 (G-2) ships the group Card without them, so this slot stays open</div>
     <div class="later">Area and line emitters · after S3</div>
   </div>
   <div class="spec">
@@ -2336,7 +2336,7 @@ function drawArt() {
 /* G1 · Light it result on the elevation: the new light(s) are selected; the Artwork keeps its Card here for comparison. */
 function artLights(x0, y0, ow, oh, cx, cy) {
   if (!art.lit) { $('artLit').textContent = ''; return ''; }
-  const rig = art.lit === 'spot' ? [['Picture spot', cx, y0 - 64]] : [['Key', x0 - 46, y0 - 40], ['Fill', x0 + ow + 54, y0 + oh * 0.3], ['Top', cx, y0 - 70]];
+  const rig = art.lit === 'spot' ? [['Picture spot', cx, y0 - 64]] : [['Key', x0 - 46, y0 - 40], ['Fill', x0 + ow + 54, y0 + oh * 0.3], ['Rim', x0 + ow - 10, y0 - 58]];
   let s = `<defs><radialGradient id="artPool"><stop offset="0" stop-color="#fff4cf" stop-opacity=".55"/><stop offset="1" stop-color="#fff4cf" stop-opacity="0"/></radialGradient></defs>`;
   s += `<ellipse cx="${f1(cx)}" cy="${f1(cy)}" rx="${f1(ow * .62)}" ry="${f1(oh * .7)}" fill="url(#artPool)"/>`;
   for (const [, x, y] of rig) { const d = [cx - x, cy - y], n = Math.hypot(...d), u = [-d[1] / n, d[0] / n], r = Math.min(ow, oh) * .42;
@@ -2344,12 +2344,12 @@ function artLights(x0, y0, ow, oh, cx, cy) {
   for (const [n, x, y] of rig) { s += emitter(x, y, 'spot', { sel: true, dir: [cx - x, cy - y] }); if (art.lit === 'showcase') s += label([x, y], n, { dx: -12, dy: -18 }); }
   $('artLit').innerHTML = art.lit === 'spot'
     ? 'Picture spot placed and selected; it is not grouped. Its Card offers <i>Group with “Toobig.png”</i> until the selection changes. One Undo. The Card stays on the Artwork here so the menu can be compared. <button class="linkbtn" data-art-undo>Undo</button>'
-    : 'Showcase placed Key, Fill and Top as the group <i>Showcase</i>, selected as a group; Toobig.png is not in it. One Undo. The Card stays on the Artwork here so the menu can be compared. <button class="linkbtn" data-art-undo>Undo</button>';
+    : 'Showcase placed Key, Fill and Rim as the group <i>Showcase</i>, selected as a group; Toobig.png is not in it. One Undo. The Card stays on the Artwork here so the menu can be compared. <button class="linkbtn" data-art-undo>Undo</button>';
   return s;
 }
 function drawArtMenu() {
   const m = $('artMenu'); m.hidden = !art.menu; if (!art.menu) { m.innerHTML = ''; return; }
-  m.innerHTML = `<div class="mh">Light it</div><button role="menuitem" data-recipe="spot"><b>Picture spot</b><span class="det">Places a Picture spot 1.4 m in front and 30° above, fitted to the Artwork. It is not grouped. One undo.</span></button><button role="menuitem" data-recipe="showcase"><b>Showcase</b><span class="det">Places Key, Fill and Top spots around Toobig.png as a new group, Showcase. The Artwork stays out of it. One undo.</span></button>`;
+  m.innerHTML = `<div class="mh">Light it</div><button role="menuitem" data-recipe="spot"><b>Picture spot</b><span class="det">Places a Picture spot 1.4 m in front and 30° above, fitted to the Artwork. It is not grouped. One undo.</span></button><button role="menuitem" data-recipe="showcase"><b>Showcase</b><span class="det">Places Key, Fill and Rim spots around Toobig.png as a new group, Showcase. The Artwork stays out of it. One undo.</span></button>`;
   const sp = $('artCard').querySelector('.split'); m.style.top = f1(sp.offsetTop + sp.offsetHeight + 4) + 'px'; m.style.left = f1(Math.max(4, sp.offsetLeft - 4)) + 'px';
 }
 function artLightIt(r) { art.lit = r; art.menu = false; drawArt(); }

@@ -305,15 +305,27 @@
         : `Moved ${subj.name} Δx ${sgn(C.dx)} · Δz ${sgn(C.dy)} m${all}. One Undo.`;
     render();
   }
-  function copyOf(e, gid) {
-    const c = JSON.parse(JSON.stringify(e));
-    c.id = nid(e.kind[0]); c.name = nextName(e.name); c.x += 0.5; c.y += 0.5;
-    if (c.aim) { c.aim[0] += 0.5; c.aim[1] += 0.5; }
+  /** Group copies take the rigid +0.5 m X/Z offset; a member copy keeps its kind's own offset
+   *  (Artwork: 0.15 m along the image's horizontal axis, as artwork-duplicate does). */
+  const dupOffset = (e, member) => (member && e.kind === 'artwork' ? mul(frame(e.rot).u, 0.15) : [0.5, 0.5]);
+  /** Floor members only: a copy that would rest without a coplanar support refuses the whole duplicate. */
+  function dupRefusal(ids, member) {
+    const why = supportRefusal(ids.map((id) => { const e = ent(id), [dx, dy] = dupOffset(e, member); return { ...e, x: e.x + dx, y: e.y + dy }; }));
+    if (!why) return false;
+    const e = ent(ids.find((id) => why.startsWith(`${ent(id).name} ·`))) || ent(ids[0]);
+    UI.status = `Refused: Duplicate · ${why}. Nothing was written.`;
+    flash(e.kind === 'object' ? iso(e.x, e.y, e.z + e.h) : lp(e), `Duplicate · ${why}`, true); render();
+    return true;
+  }
+  function copyOf(e, gid, member = false) {
+    const c = JSON.parse(JSON.stringify(e)), [dx, dy] = dupOffset(e, member);
+    c.id = nid(e.kind[0]); c.name = nextName(e.name); c.x += dx; c.y += dy;
+    if (c.aim) { c.aim[0] += dx; c.aim[1] += dy; }
     if (gid) c.group = gid; else delete c.group;
     return c;
   }
   function duplicateGroup(gid) {
-    const g = grp(gid); snapshot();
+    const g = grp(gid); if (dupRefusal(g.members, false)) return; snapshot();
     const ng = { id: nid('g'), name: nextName(g.name), members: [], rot: g.rot }, map = {};
     SC.groups[ng.id] = ng;
     for (const id of g.members) { const c = copyOf(ent(id), ng.id); SC.ents[c.id] = c; ng.members.push(c.id); map[id] = c.id; }
@@ -322,9 +334,9 @@
     setSel({ k: 'group', id: ng.id });
   }
   function duplicateEnt(id) {
-    const e = ent(id); snapshot();
-    const c = copyOf(e, null); SC.ents[c.id] = c;
-    UI.status = `Duplicated ${e.name} as ${c.name}: an independent copy, +0.5 m X/Z${e.group ? `; ${grp(e.group).name} is unchanged` : ''}. One Undo.`;
+    const e = ent(id); if (dupRefusal([id], true)) return; snapshot();
+    const c = copyOf(e, null, true); SC.ents[c.id] = c;
+    UI.status = `Duplicated ${e.name} as ${c.name}: an independent copy, ${e.kind === 'artwork' ? '0.15 m along the image' : '+0.5 m X/Z'}${e.group ? `; ${grp(e.group).name} is unchanged` : ''}. One Undo.`;
     setSel({ k: 'ent', id: c.id });
   }
   function eraseGroup(gid) {
@@ -379,7 +391,7 @@
     return {
       es, names, defName: pic ? 'Picture spot' : 'Wash',
       def: pic ? 'Places a Picture spot 1.4 m in front and 30° above, fitted to the Artwork. It is not grouped. One undo.' : `Places one Wash over ${names}. It is not grouped. One undo.`,
-      show: `Places Key, Fill and Top spots around ${names} as a new group, Showcase. ${es.length === 1 ? 'The subject stays' : 'The subjects stay'} out of it. One undo.`,
+      show: `Places Key, Fill and Rim spots around ${names} as a new group, Showcase. ${es.length === 1 ? 'The subject stays' : 'The subjects stay'} out of it. One undo.`,
     };
   }
   function lightIt(keys, recipe) {
@@ -389,9 +401,9 @@
     snapshot();
     const mk = (name, rec, off, z, target) => { const L = { id: nid('l'), name: nextName(name), kind: 'light', recipe: rec, x: cx + off[0], y: cy + off[1], z, aim: [cx, cy, cz], target }; SC.ents[L.id] = L; return L; };
     if (recipe === 'showcase') {
-      const rig = [mk('Key', 'Spot', add(mul(n, 1.5), mul(u, 1.0)), cz + 1.0), mk('Fill', 'Spot', add(mul(n, 1.7), mul(u, -1.2)), cz + 0.4), mk('Top', 'Spot', mul(n, 0.45), cz + 1.45)];
+      const rig = [mk('Key', 'Spot', add(mul(n, 1.5), mul(u, 1.0)), cz + 1.0), mk('Fill', 'Spot', add(mul(n, 1.7), mul(u, -1.2)), cz + 0.4), mk('Rim', 'Spot', add(mul(n, 0.35), mul(u, -0.9)), cz + 1.3)];
       const g = makeGroup(rig.map((L) => L.id), nextName('Showcase'));
-      UI.status = `Showcase placed Key, Fill and Top as the group ${g.name}; ${info.names} ${es.length === 1 ? 'is' : 'are'} not in it. One Undo.`;
+      UI.status = `Showcase placed Key, Fill and Rim as the group ${g.name}; ${info.names} ${es.length === 1 ? 'is' : 'are'} not in it. One Undo.`;
       setSel({ k: 'group', id: g.id }); return;
     }
     const one = es.length === 1 ? es[0] : null;
