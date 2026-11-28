@@ -93,7 +93,7 @@ Core only, on fixtures, no editor change.
 | --- | --- | --- | --- |
 | **SL1** | **Level cut** at the Height Sheet's height, with its pill, depth and Put back. Aligns the toolbar stub with PLATE | Session state. Cap generation is the implementer's choice. Architecture: [sl-plan-slice.md](sl-plan-slice.md) (integrated SL1–SL3 architecture) | – |
 | **SL2** | **Drawn cut**: segment, depth ray, Flip, Put back | Same session; one Slice at a time | SL1 |
-| **SL3** | **Face the cut** and **Section** | Face reuses A6's intent. Section consumes Layout's typed cut and projected streams. Own plan | SL2, A6 |
+| **SL3** | **Face the cut** and **Section** | Face reuses A6's intent. Section consumes Layout's typed cut and projected streams. Plan: [sl3-plan-section.md](sl3-plan-section.md), landing as SL3a Face, SL3b `layout.section@1`, SL3c Section reading | SL2, A6 |
 
 **Acceptance.**
 

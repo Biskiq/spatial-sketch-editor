@@ -491,9 +491,12 @@ at runtime). X2 stubs keep paper + ink edge; yellow stays Slice's.
 - **Not a sideways camera:** the Section is computed geometry, never an orthographic render of the
   3D scene.
 
-**SL3 plan must settle** (not decided here): the Section frame's placement in the shell, its scale
-and dimension marks, and whether `layout.section@1` shares a `layout-core` module with plan
-evaluation or sits beside it.
+**Settled in [sl3-plan-section.md](sl3-plan-section.md)** (Rev 4): the Section is a Paper sheet on
+the cut plane in the one Stage Canvas, in world metres with no print ratio, with selection-driven
+measured Dimension lines; `layout.section@1` sits beside plan evaluation in
+`layout-core/src/plan/section/`. That plan also refines the **2D projection** bullet above: Wall cuts
+come from the V3b strip with per-station bands (not `solidSpans`), Spaces and Regions replace Room
+floor/ceiling lines, and face-based visibility replaces silhouettes.
 
 ## 5. SL2 — Drawn cut (bounded outline; own plan)
 
@@ -809,6 +812,11 @@ Stop and report (do not work around) if:
 > plane signs §2.1, cap assembly §2.2, ghost rule §2.4, depth semantics §1.1.
 
 ## Revision log
+
+**Rev 4 — SL3 planned (2026-11-28).** §4's open decisions are settled in
+[sl3-plan-section.md](sl3-plan-section.md), which also revises §4's 2D-projection bullet against
+V1–V3 and SP1–SP2 (its §A). SL3 lands as SL3a Face the cut, SL3b `layout.section@1` and SL3c the
+Section reading.
 
 **Rev 3 — implementation review on #362 (2026-11-17).** Accepted findings and the one recorded
 deviation:
