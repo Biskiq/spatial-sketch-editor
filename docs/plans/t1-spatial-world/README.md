@@ -1,6 +1,6 @@
 # T1 next batch: product and UX proposal
 
-**Landed:** `A0–A8`, `X0–X2`, `SL1–SL2`, `SP1–SP2`, `C1–C3` and `V1a–V1d` are implementation
+**Landed:** `A0–A8`, `X0–X2`, `SL1–SL2`, `SP1–SP2`, `C1–C4`, `V1a–V1d`, `V2a–V2c` and `V3a–V3c` are implementation
 history; this folder contains only the remaining slices. Each plan file deletes when its slices merge.
 
 **Status:** revision 3, 2026-11-10, final for implementation planning. Owner decisions are approved
@@ -26,9 +26,9 @@ that have not been tried by a creator. What still needs a check is listed once, 
 **At planning time (`97e208d7`), T1 had a wiring gap, not a design gap, in its fundamentals.** Split,
 join, isolated Room duplicate and Opening Repeat existed as tested layout-core planners that no editor
 intent reached, and Arc was disabled on the Walls plate. Those initial wiring slices (`A0–A8`), along
-with `X0–X2`, `SL1–SL2`, `SP1–SP2`, `C1–C4` and `V1a–V1d`, have since landed; the sections below keep
-the planning baseline and design rationale intact for the remaining unshipped slices (`SL3`,
-`SP3`, `V2`, `V3` and `R`).
+with `X0–X2`, `SL1–SL2`, `SP1–SP2`, `C1–C4`, `V1a–V1d`, `V2a–V2c` and `V3a–V3c`, have since landed;
+the sections below keep the planning baseline and design rationale intact for the remaining
+unshipped slices (`SL3`, `SP3` and `R`).
 
 Behind them sit five pieces of real design, now resolved to the level a plan can start from:
 
@@ -450,10 +450,10 @@ Slice's Section, an opened Room before a pavilion, a flat canopy before a gable.
 | X1 Lift, X2 cutaway switch | **Ready for implementation**, pending X0 | After X0 |
 | SL1 Level cut | **Ready for implementation.** Interaction is settled; cap generation is the implementer's | Its PR |
 | Spaces | **Ready for implementation once S2 reports.** Concept and rules are settled; the encoding is not, on purpose | SP-plan, then PR |
-| Verticality | **Ready for implementation.** Order, datum and intent are settled | V-plan, then PR |
+| Verticality | **Landed (`V1a–V1d`, `V2a–V2c`, `V3a–V3c`).** Wall top profiles and shed and gable forms shipped | – |
 | Connected curves | **Landed (`C1–C4`).** The C-plan is retired after acceptance | – |
 | Section (SL3) | **Planned:** [sl3-plan-section.md](sl3-plan-section.md), as SL3a Face the cut, SL3b `layout.section@1` and SL3c the Section reading | Its PRs |
-| SP3, V2, V3 | **Sequenced, not planned.** Each follows a slice that will inform it | Later |
+| SP3 | **Sequenced, not planned.** It follows a slice that will inform it | Later |
 
 Overall: the proposal is ready to drive implementation of the fundamentals and implementation
 planning for Spaces, Reveal, Slice and verticality. It is deliberately **not** a technical plan for

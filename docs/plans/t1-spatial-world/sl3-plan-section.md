@@ -115,7 +115,8 @@ considered and rejected:
      - **Patches**: convex Junction-owned polygons (wedges, keels) at one constant top.
    - It carries top only: no Opening bands. A wedge is solid only to its highest both-solid band
      (`bothSolidTop`).
-   - It states the curved-cell bound `half·(1−cos(dθ/2))`.
+   - It states the curved-cell bound `half·(1−cos(dθ/2))` between the strip and the mesh's
+     render-only knots (Verified 22).
 8. **Wall vertical bands** (`geometry/openings.ts`).
    - `sections` are `side` (full height, or a sill when it carries `openingId`) and `lintel`
      (optional arch `profile` and `profileBaseY`).
@@ -159,6 +160,27 @@ considered and rejected:
     - `StageOverlay.svelte` is 573 lines and `slice-cut.ts` is 511.
 17. The Card's **Section through here** stays disabled (README §1). It needs a cut placed from a
     Card, which is outside SL3.
+18. **Camera face basis and projection.** `facePoseFromBounds` sets `backward = −look` and
+    `right = normalize(up × backward)` with `up = (0, 1, 0)`, and `screenUp = backward × right`.
+    `projectWorld(point, evaluation, token)` (`camera-core/src/viewport/projection.ts`) projects
+    through the evaluation's own `viewProjectionMatrix`, built by `evaluateViewport`. The drawn
+    normal is `drawnHiddenNormal(a, side)` (`slice-cut.ts`): `right` gives `n = (−a_z, 0, a_x)`.
+19. **Exact concave partition already exists.** `room/region/form-partition.ts` ear-clips a cleaned
+    footprint into convex pieces, splits them at a level of an affine field with `splitAtLevel` (each
+    crossing computed once per undirected edge, so neighbours share it; a side that only touches the
+    level gets no piece), and merges them back with `boundaryLoops` into maximal simple loops,
+    splitting at pinch vertices. Plan's sloped-Region section and the V3 face compiler both use it.
+    `cleanRing` and `earClip` are private. Region footprints are single rings, without holes.
+20. **The drawn Slice hides only inside its crop.** `sliceHides` is
+    `|s| ≤ halfLength && (b > 0 || b < −depth)`. Content beyond the crop is drawn as usual.
+21. **SL2 caps use the same evaluated line.** `mesh-plane-section.ts` moves the plane
+    `LAYOUT_SLICE_CONTACT_METERS` into the kept, visible half-space before sectioning, and welds cap
+    vertices at `SECTION_WELD_TOLERANCE_METERS = 5e-5`.
+22. **Compiled vertical profiles are piecewise linear.** Wall tops are `level | slope | gable` in
+    station (`wall/wall-top.ts`). Arch heads are compiled `topBoundary` polylines of 16 chords of
+    the authored curve, which `archProfileTopAt` interpolates linearly. The strip header bounds the
+    Wall mesh's render-only knots: they move a curved face by at most `half·(1−cos(dθ/2))` relative
+    to the strip. That is a strip-versus-mesh bound, not a bound against the authored curve.
 
 ## A. Challenged assumptions
 
@@ -310,11 +332,24 @@ spans.
 
 ### B.10 Reveal (Decided)
 
-- While Section is on, the primary selection, if excluded by `outside-depth` or `outside-crop`, is
-  passed as `reveal`. Its fragments are emitted in **`hidden` only**, as x-ray. They occlude
-  nothing. Its reason is unchanged.
-- This is layout.md's "Reveal affordance … for one source" with no new control. A recovery action
-  that widens the depth is admissible later.
+While Section is on, the primary selection is passed as `reveal`. Reveal acts only on the two
+exclusions layout.md gives a Reveal affordance: `outside-depth` and `outside-crop`. They differ in
+where the source already is, because the drawn Slice hides only inside its crop (Verified 20).
+
+| | `outside-depth` | `outside-crop` |
+| --- | --- | --- |
+| Where the source is | Inside the crop strip, on the removed side (`w < ε`) or beyond the depth. The Slice hides it in the world | Wholly beyond `\|u\| = halfLength`. The Slice does not hide it: it stays drawn and gold-inked in the world beside the sheet |
+| Geometry extent | Its whole body inside the crop strip `\|u\| ≤ halfLength`, at any `w`, with no depth clip. Projected along `normal` | None: no part of its body lies in the crop strip |
+| Fragments | Every feature edge over that extent, in `hidden` with `revealed: true`, under the source's own roles. No cut, symbol or fill | None |
+| Occlusion | Neither occludes nor is occluded | – |
+| Membership | Reason unchanged, `revealed: true`, `eligible: true`, `depthRange` set (`near` may be negative) | Reason unchanged, `revealed: true`, `eligible: true`, `cropOverhangMeters` set |
+| Presentation | X-ray `hidden` ink on the sheet in selection gold | Nothing on the sheet. The world shows the source |
+| Picking | Section pick at the lowest stroke priority (D.2). Selects the same source | Nothing on the sheet |
+| Dimensions | None | None |
+
+Every fragment therefore lies inside the crop strip, revealed or not (N5). `bounds` excludes
+revealed fragments, so selecting never changes the sheet's extent. A recovery action that widens the
+depth or the cut is admissible later.
 
 ## C. `layout.section@1` contract and geometry (SL3b)
 
@@ -354,7 +389,8 @@ export type SectionFragment = {
   readonly geometry: SectionFragmentGeometry;
   readonly membership: SectionMembershipReason;
   readonly role: SectionFragmentRole;          // presentation and dimension rules; never identity
-  readonly depth: { readonly near: number; readonly far: number }; // w range, metres behind the cut
+  readonly depth: { readonly near: number; readonly far: number }; // w range; < 0 only when revealed
+  readonly revealed: boolean;                  // B.10 x-ray; never occludes, never occluded
 };
 export type SectionSourceMembership = {
   readonly sourceId: string;
@@ -375,6 +411,7 @@ export type SectionEvaluation = {
   readonly fragments: readonly SectionFragment[]; // deterministic order (C.8)
   readonly membership: readonly SectionSourceMembership[];
   readonly unmatchedRevealIds: readonly string[];
+  /** Of non-revealed fragments only, so a selection never changes framing or dimensions. */
   readonly bounds: { uMin: number; uMax: number; vMin: number; vMax: number } | null;
 };
 export type SectionEvaluationResult =
@@ -403,8 +440,13 @@ Nothing is normalized silently. Depth has no default: §1.1 makes a finite value
 - `sectionParametersOf(resolved)` is total over drawn readings and absent for Level.
   - `origin` is the segment midpoint.
   - `normal = hiddenNormal`.
-  - **`along = up × normal` in plan**, i.e. `(−n_z, n_x)` with SL2's "right of east is south"
-    convention. Screen-right in the faced view is then `+u`, and Flip mirrors `u`.
+  - **`along = up × normal`**, taken in 3D with Y up: `(0,1,0) × (n_x, 0, n_z) = (n_z, 0, −n_x)`,
+    so in plan **`along = (n_z, −n_x)`**. Camera's face basis is `right = up × backward` with
+    `backward = −look = hiddenNormal` (Verified 18), so `along` is exactly the faced view's
+    screen-right. For SL2's `right` side, `n = (−a_z, a_x)` gives `along = a`, the segment
+    direction. For `left` it gives `−a`, so Flip mirrors `u`. Revision 1 wrote `(−n_z, n_x)`. That
+    is `normal × up`, and it would have mirrored every Section.
+  - The correspondence is proved through Camera's own projection, not a re-derived basis (N16).
   - `halfLength` and `depthMeters` are SL2's.
   - `datumMeters` is the live datum, with filter `null` and reveal per B.10.
 - layout-core never imports session types.
@@ -434,18 +476,58 @@ Nothing is normalized silently. Depth has no default: §1.1 makes a finite value
   - `topY` stays `max(band.top)`, asserted.
   - No V3b output changes. `wall-extrema` fixtures stay byte-identical.
 
-### C.3 Frame and slab (Decided)
+### C.3 Frame, evaluated line, slab and clipping (Decided)
 
 - For plan point `p` and world Y `y`:
   - `u = (p − origin)·along`;
   - `w = −(p − origin)·normal` (depth behind the cut);
   - `v = y − datum`.
-- The **slab** is `|u| ≤ halfLength`, `ε ≤ w ≤ depth`, with **ε = `LAYOUT_SLICE_CONTACT_METERS`
-  (1e-4)**. The cut is evaluated on the offset line `w = ε`, the same offset SL2's caps use.
-- Plan polygons are clipped to the slab with Sutherland–Hodgman against its four half-planes. The
-  subject may be concave, and the clip region is convex.
-- **Clip-generated edges** (at `w = ε`, `w = depth` and `|u| = halfLength`) are flagged and never
-  drawn. The sheet frame shows the extent and the cut poché shows the plane.
+- **The evaluated line is `L_ε: w = ε`**, with **ε = `LAYOUT_SLICE_CONTACT_METERS` (1e-4)**. The cut
+  is the exact intersection of the compiled body with the vertical plane over `L_ε`. This is SL2's
+  cap plane (Verified 21). It resolves face-on cases the same way: a cut on a Wall face, a jamb
+  station or a Region edge reads the visible side's material. `u` on `L_ε` is the same coordinate as
+  on the drawn line. The sheet draws the cut at `w = 0`, and the 0.1 mm offset is never drawn.
+- **What the offset costs.** This is declared behaviour, not an error. Section measures `L_ε`, not
+  the drawn line. A value whose plan gradient across the cut is `g` differs from the same value read
+  on the drawn line by `ε·g`:
+  - a sloped top or Region height differs by `ε·slope`;
+  - the `u` of a Wall face crossed at angle θ differs by `ε·cot θ`.
+  Widths between parallel faces do not move. Every closed form in the tests is evaluated on `L_ε`.
+- The **slab** is `|u| ≤ halfLength`, `ε ≤ w ≤ depth`.
+
+**Clipping preserves components.** Every planar polygon is clipped by four affine half-plane fields:
+`u + L`, `L − u`, `w − ε` and `D − w`.
+
+1. **A 2D frame per face.** Every planar face is clipped in a 2D frame where it projects
+   injectively, and is lifted back exactly:
+   - non-vertical faces use plan `(x, z)` and are lifted by the face's plane, since `y` is affine in
+     plan;
+   - vertical faces use `(t, y)`, with `t` along the face's plan line.
+   The four clip fields are affine in either frame.
+2. **Convex subjects** use Sutherland–Hodgman. Convex ∩ convex is one convex piece, so S–H is exact
+   for them and cannot bridge. Convex subjects are Wall quads, jambs, end caps, patch sides,
+   triangles and most Region edge faces.
+3. **Concave subjects** take the existing exact path (Verified 19). These are Region top and
+   underside faces, a gable slab's chevron edge face, object footprints, and Region footprints for
+   membership.
+   - The subject is reduced to convex pieces by **`convexPiecesOf(ring)`**. This is a new additive
+     export in `form-partition.ts` that wraps the private `cleanRing` and `earClip` and returns them
+     as a keyed `LevelField`. Partition behaviour is unchanged.
+   - Each field is applied with `splitAtLevel`, keeping one side. One `LevelField` is used per clip
+     line, sharing the point map. The next field's values are computed for every point, earlier
+     crossings included, from the same affine formula.
+   - The kept pieces are merged back with `boundaryLoops`.
+   - The result is **one simple loop per connected component**. A pinch vertex yields separate
+     loops, and a side that only touches a clip line yields nothing. No zero-width bridge can arise.
+4. **Provenance.** Every output edge carries its source, either an original edge or a clip field.
+   An edge is clip-generated iff it is not part of an original edge, and it then lies on a clip
+   level. It is never drawn, never a silhouette and never an occluder boundary. An original edge
+   lying exactly on a clip line stays a feature edge.
+
+Why not Sutherland–Hodgman everywhere? On a concave subject whose intersection with the slab is
+disconnected, it returns one ring joined by zero-width bridges along the clip line. Those bridges
+become false edges, corrupt the containment tests visibility relies on, and keep a ring alive where
+nothing is in the slab. Revision 1 used it.
 
 ### C.4 The cut stream (Decided)
 
@@ -453,11 +535,11 @@ Cut fragments are emitted per source piece. They are never merged across pieces 
 
 | Source | Fragments | Exactness |
 | --- | --- | --- |
-| **Wall cell** | Intersect the line `w = ε` with the cell's plan quad to get the crossing `[P_in, P_out]`. Map each point to a station through the cell's own iso-station mapping. Split at `wallBandBreaks`. For each run and each band, emit a polygon whose bottom and top chains run from `u_in` to `u_out`. `subRef = {interval, start: s_min, end: s_max}` | Exact when the cell's front and back are parallel (straight Walls), where `u(s)` is affine. On curved cells, exact at every break and linear between, within the strip bound |
+| **Wall cell** | Intersect `L_ε` with the cell's plan quad to get the crossing `[P_in, P_out]`. Map each point to a station through the cell's own iso-station mapping. Split at `wallBandBreaks`. For each run and each band, emit a polygon whose bottom and top chains run from `u_in` to `u_out`. `subRef = {interval, start: s_min, end: s_max}` | Class **E** at every vertex (C.9). On straight cells `u(s)` is affine and every chain is E throughout. On curved cells the chains between vertices are class **C**. Interior breaks are found by monotone root-finding of `s` along the crossing. When the crossing runs along an iso-station (`\|s_out − s_in\| ≤ 1e-9`), no interior break is emitted and the run takes the bands of its half-open station interval `[s_k, s_{k+1})` |
 | **Junction patch** | The line ∩ convex polygon gives one `u` interval. One rectangle per patch band. Owner is the strip's Wall at `end`, with `subRef: null` | Exact |
-| **Opening crossed** | No poché in the void. A `symbol` fragment (role `void`): the void outline over the crossing, `[sill, head(s)]`, head following the arch knots | Exact (straight), as cells (curved) |
-| **Region** | The line ∩ footprint gives sorted intervals, with a half-open rule at vertices. The intervals are never bridged across a void, which is the V3c lesson. Underside `b(u) = regionUndersideAt(p(u)) − datum` and top `b + thickness`, with breakpoints where `q(p(u)) = qRidge` | Exact: affine per ridge piece. The same evaluator as Plan, V3b and V3c |
-| **Space** | The line ∩ `floorPolygon` gives intervals. For each one: a fill polygon `[floor, ceiling]` (role `space`, kind `room-floor`, stream `cut`); a `floor` span; a `lid` span unless `open-to-sky`; and at each crossing of an `openSides` edge, a `symbol` span (role `open-side`) from floor to ceiling | Exact |
+| **Opening crossed** | No poché in the void. A `symbol` fragment (role `void`): the void outline over the crossing, `[sill, head(s)]`, head following the arch knots | E against the compiled arch polyline (Verified 22). Section does not refine the compiler's 16 chords. On curved cells, as Wall cells |
+| **Region** | The line ∩ footprint gives sorted intervals, with a half-open rule at vertices. The intervals are never bridged across a void, which is the V3c lesson. Underside `b(u) = regionUndersideAt(p(u)) − datum` and top `b + thickness`, with breakpoints where `q(p(u)) = qRidge` | E on `L_ε`: affine per ridge piece. The same evaluator as Plan, V3b and V3c |
+| **Space** | The line ∩ `floorPolygon` gives intervals. For each one: a fill polygon `[floor, ceiling]` (role `space`, kind `room-floor`, stream `cut`); a `floor` span; a `lid` span unless `open-to-sky`; and at each crossing of an `openSides` edge, a `symbol` span (role `open-side`) from floor to ceiling. The fill is a **semantic** reading and never material (C.5) | E |
 | **Layout object** | Footprint ∩ line gives intervals × `[worldAabb.min.y, max.y]` | **Declared approximation**: Plan's own footprint prism. Exact for yaw-only boxes |
 
 - A crossing whose `u` width or `v` height is below `LAYOUT_GEOMETRY_EPSILON` is dropped. A point
@@ -499,7 +581,16 @@ Ownership of edges:
 
 **Visibility.** All projection is orthographic along `normal` onto `(u, v)`, analytically.
 
-- **Occluders:** every face, plus every cut fragment at `w = 0`.
+- **Only material occludes.** Occluders are the faces above of eligible Walls, Junction patches,
+  Regions and objects, plus their `cut` poché polygons at `w = ε`.
+- **Never occluders:**
+  - Space fills, floor lines and lid lines;
+  - `symbol` fragments (Opening voids, open-side marks);
+  - revealed sources;
+  - edge-on faces.
+- A Space is an enclosure reading, not material. An edge behind a Space fill is classified exactly
+  as if the Space did not exist (N14). Presentation agrees: the fill is drawn at Paper's `roomFloor`
+  rank, under projected and hidden ink.
 - A point on an edge is **hidden** iff it lies strictly inside an occluder's projected polygon,
   inset 1e-9, and that occluder's affine depth there is `< w_point − 1e-6`.
 - Per edge and occluder: a Cyrus–Beck interval for a convex occluder, or a sorted edge-crossing
@@ -508,7 +599,8 @@ Ownership of edges:
 - The hidden intervals are unioned. Their complement is `projected`.
 - A `hidden` piece that coincides with a `projected` piece of the same source (collinear, within
   1e-6) is dropped. No two fragments of one source and stream overlap collinearly.
-- **Revealed sources** (B.10) get every feature edge in `hidden` and contribute no occluders.
+- **Revealed sources** (B.10) get every feature edge over their B.10 extent in `hidden`, with
+  `revealed: true`. They are neither occluders nor occluded.
 
 The result is a measured elevation with typed hidden lines. It is computed from compiled faces, not
 rasterized.
@@ -537,6 +629,9 @@ Precedence follows Plan's order, depth before lateral, and the first failure nam
 Rules on top of the precedence:
 
 - `eligible = included ∨ revealed`. Reveal never rewrites the reason.
+- `revealed` is true only for a reveal id whose source is `outside-depth` or `outside-crop`
+  (B.10). A reveal id naming an `included`, `filtered-type` or `no-meaningful-projection` source
+  changes nothing, and its row keeps `revealed: false`.
 - `unmatchedRevealIds` reports reveal ids that name no source.
 - `depthRange` and `cropOverhangMeters` are measured on the body clipped to the crop strip. They
   serve a later recovery action and have no UI in SL3.
@@ -548,9 +643,9 @@ Rules on top of the precedence:
 
 | Stream | Meaning in Section |
 | --- | --- |
-| `cut` | Material, or a Space, crossed by the plane at `w = ε` within the crop |
+| `cut` | Material crossed on `L_ε` within the crop. Also Space fills (kind `room-floor`, role `space`), which are semantic and never occlude |
 | `projected` | Visible feature edges of eligible sources within the slab |
-| `hidden` | Occluded feature edges of eligible sources within the slab, plus every edge of a revealed source |
+| `hidden` | Occluded feature edges of included sources within the slab, plus every edge of a revealed source over its B.10 extent (`revealed: true`) |
 | `symbol` | Opening void outlines at the cut and Space open-side marks |
 
 This intentionally does not copy Plan's `streamFor` (Verified 6). The difference is recorded in
@@ -571,21 +666,44 @@ layout.md when SL3b lands.
 
 ### C.9 Numerical invariants (Decided, each has a test)
 
+**Exactness classes.** Every row uses these words.
+
+- **E (compiled-exact).** A value equals the closed form of the **compiled** body on `L_ε`. It is
+  tested two ways:
+  - as residuals: each vertex lies on its defining surfaces within 1e-9 m. This holds at any
+    crossing angle, because it never divides by the angle;
+  - by forward closed-form checks on fixtures whose crossing angle is at least 1e-3 rad.
+- **C (chord).** Between two E vertices on a curved cell, a top or bottom chain is a chord of the
+  monotone function `T(s(u))`. The compiled height there lies between the chord's endpoint values.
+  Level tops and rectangular heads are therefore exact throughout. No tighter bound is claimed.
+- **Not claimed: anything against authored continuous geometry beyond the compiler's own.**
+  - Curved centrelines are compiled samples, and arches are 16-chord polylines (Verified 22).
+  - Near a grazing crossing of a curved face, a crossing may exist on the compiled body and not on
+    the authored curve, or the reverse. Along-line error there grows as 1/sin of the crossing
+    angle.
+  - Section shares this compiled-body meaning with Plan, V3b, V3c and the Wall mesh.
+  - Revision 1's comparison against a 4096-sample reference body is withdrawn. The strip bound it
+    cited is a strip-versus-mesh bound (Verified 22), and an along-line error is not bounded by any
+    face displacement at grazing angles.
+
 | # | Invariant |
 | --- | --- |
 | N1 | Parameters are refused unless orthonormal within 1e-9, finite, and positive where required |
-| N2 | Straight Walls, Junction patches, rectangular and arched Openings, flat and sloped Regions and Spaces are exact: every emitted vertex is within 1e-9 m of its closed form |
-| N3 | Curved Walls: vertex error against a 4096-sample reference body is ≤ the strip bound `half·(1−cos(dθ/2))` + 1e-9 for the cell's turn `dθ` |
-| N4 | Contact is classified at `w = 1e-4`. The crop is exact at `|u| = halfLength`. Sliver dropping uses `LAYOUT_GEOMETRY_EPSILON` |
-| N5 | Every fragment lies within `[−halfLength, halfLength] × [vMin, vMax]` of the Layout's bounds |
-| N6 | The union area of a crossed straight Wall's cut equals `thickness / |sin θ| × (solid height)` within 1e-9 m², for crossing angle θ, with voids excluded |
-| N7 | A Region's cut top and bottom at any `u` equal `regionTopAt` / `regionUndersideAt` at `p(u)` within 1e-12 |
-| N8 | (editor test, SL3b) Along V3c's `regionSectionOf` line (`adapters/layout/region-section.ts`), the Region cut reproduces the joint heights within 1e-9 |
+| N2 | Straight Walls, Junction patches, rectangular Openings, compiled arch heads, `level`/`slope`/`gable` tops, flat, shed and gable Regions, and Spaces are class E on `L_ε` |
+| N3 | Curved Walls: every vertex is class E. It lies on `L_ε` and on its cell edge or iso-station segment within 1e-9, and its bands equal `wallBandsAt(s)` within 1e-9 for the cell's own station `s`. Chains are class C. A crossing along an iso-station emits no interior break. Nothing is claimed against the authored arc |
+| N4 | The evaluated line is `L_ε`. The crop is class E at `\|u\| = halfLength`. Slivers below `LAYOUT_GEOMETRY_EPSILON` are dropped |
+| N5 | Every fragment, revealed or not, has `\|u\| ≤ halfLength + 1e-9`, and `v` within the Layout's Y bounds less the datum. Non-revealed depths lie in `[ε − 1e-9, depth + 1e-9]`. Revealed depths are unrestricted (B.10). `bounds` covers non-revealed fragments only |
+| N6 | For a straight Wall with a level top, crossed away from its ends and Junctions at angle θ, the cut area equals `thickness / \|sin θ\| × solid height`, voids excluded, within 1e-9 relative |
+| N7 | A Region's cut top and bottom at the `L_ε` point `p(u)` equal `regionTopAt` / `regionUndersideAt` within 1e-9 |
+| N8 | (editor test, SL3b) Take V3c's `regionSectionOf` line through `q` (`adapters/layout/region-section.ts`) and evaluate with `origin = q + ε·normal`, so that `L_ε` *is* V3c's line. The joint plan points and heights then match within 1e-9 |
 | N9 | For every Wall and station, the max band top equals the strip's top within 1e-12. A patch's `topY` equals its max band top |
-| N10 | Output is identical under any permutation of compiled arrays. Under a rigid plan motion of the Layout and the cut, `(u, v)` fragments match within 1e-9 |
-| N11 | For a straight Wall straddling the plane by more than 2ε, Flip gives the same cut polygons mirrored in `u` |
+| N10 | Output is identical under any permutation of compiled arrays. Under a rigid plan motion of the Layout and the cut together, `(u, v)` fragments match within 1e-9 relative to the Layout's extent |
+| N11 | Flip moves `L_ε` by 2ε. With `flip(P)` evaluated at `origin − 2ε·normal`, which is the same `L_ε`, every fragment of every kind equals `P`'s with `u → −u`, within 1e-9. The pill's Flip keeps the origin, so it reads a line 0.2 mm away, and values move by at most `2ε·g` (C.3). That is declared, and a millimetre label may change at a rounding boundary |
 | N12 | No fragment of one source and stream overlaps another collinearly. No `hidden` piece coincides with a same-source `projected` piece |
-| N13 | (SL3c, editor) The analytic cut union per source and SL2's mesh cap per source differ by a symmetric-difference area ≤ perimeter × (tessellation bound + 2e-4) on the whole fixture catalogue |
+| N13 | (SL3c, editor) Differential against SL2 caps, which use the same `L_ε` (Verified 21), with τ = `SECTION_WELD_TOLERANCE_METERS`. **Same-body subset:** for straight Walls, rectangular and arched Openings on straight Walls, Junction patches, tops on straight Walls, and flat and sloped Regions, the per-source Hausdorff distance between analytic cut polygons and cap loops is ≤ 2τ. **Curved Walls:** each analytic cut vertex, lifted to world, lies within `δ + 2τ` of that source's mesh surface, and each cap vertex lies within `δ + 2τ` of the strip body, with `δ = half·(1−cos(dθ/2))` for the cell's turn. Point-to-surface distance stays well conditioned at any crossing angle. No area or along-line comparison is made. **Not compared:** objects (a declared footprint prism), Spaces (no mesh) and Scene content |
+| N14 | Space fills never occlude. Removing every Space from the compiled input leaves every other source's fragments, streams and classifications identical |
+| N15 | Clipping: for every clipped polygon, each output loop is simple, has positive area and is one connected component. The summed area equals the analytic area of polygon ∩ slab within 1e-9 relative. No edge lies on a clip line unless it is flagged clip-generated. There are no zero-width bridges |
+| N16 | Screen-right, proved by Camera. Take drawn readings at eight headings, both sides and after Flip. Build the faced pose with camera-core `facePoseFromBounds({bounds, look: −hiddenNormal})`, evaluate it with `evaluateViewport`, and project `origin`, `origin + along` and `origin + up` with `projectWorld`. Screen x must increase along `+u` and CSS y must decrease along `+v`. In SL3c the same holds for the mounted sheet's local `(u, 0, −v)`, and its frame's determinant is +1 |
 
 ## D. Presentation (SL3c)
 
@@ -637,7 +755,9 @@ in front. It is validated by SL3c step 1, a rendered fixture. Anything beyond th
   - **filled** (cut poché, Space): containment;
   - **stroked** (projected, hidden-when-drawn, symbol): CSS distance ≤ `PLAN_HIT_TOLERANCE_CSS_PX`,
     or 22 / 44 px for coarse pointers per the design system;
-  - ranked by layer (symbol > cut > projected > hidden > Space), then distance.
+  - ranked by layer (symbol > cut > projected > hidden > revealed x-ray > Space fill), then
+    distance. An x-ray stroke ranks above the fill, so clicking it keeps the selection instead of
+    selecting the Room.
 - The hit is `{sourceKind, sourceId, generationId, stream, subRef, worldPoint}`, so
   `layoutSelectionReference` resolves it unchanged.
 - `depthMeters` is the ray distance to the sheet. Blank vellum returns no Layout hit, and the B.9
@@ -678,7 +798,7 @@ in front. It is validated by SL3c step 1, a rendered fixture. Anything beyond th
    - bounds for the E/W/N/S and 30° segments;
    - the zero-thickness AABB;
    - no Layout bounds;
-   - N13-face: the bounds' projection on the derived right axis is `halfLength` within 1e-9.
+   - face bounds: their projection on Camera's derived right axis is `halfLength` within 1e-9.
 2. Pill: add `onFace` to the drawn arm. Add a **Face** button (`data-slice-face`) between Flip and
    Put back. The words are "Face" plus a title such as *"Square the view to the cut"*.
 3. Host wiring:
@@ -690,7 +810,7 @@ in front. It is validated by SL3c step 1, a rendered fixture. Anything beyond th
 4. Tests:
    - pill render and click;
    - the entry captured on first Face, kept across a re-Face, an orbit, Flip and a redraw;
-   - Put back deep-equals the entry `ViewportCameraState` (N14);
+   - Put back deep-equals the entry `ViewportCameraState`;
    - Escape reaches the same path;
    - teardown and lens change clear without a Camera call;
    - A6 Face this wall replacing the reading, after which slice Put back only ends the Slice;
@@ -716,7 +836,8 @@ in front. It is validated by SL3c step 1, a rendered fixture. Anything beyond th
 | --- | --- |
 | `types.ts` | The C.1 types |
 | `parameters.ts` | C.1 refusals |
-| `frame.ts` | C.3: `u`/`v`/`w`, slab clipping, line ∩ polygon intervals with the half-open rule |
+| `frame.ts` | C.3: `u`/`v`/`w` and `L_ε`, line ∩ polygon intervals with the half-open rule |
+| `slab-clip.ts` | C.3 clipping: convex Sutherland–Hodgman, the concave path through `form-partition.ts`, edge provenance |
 | `wall-bands.ts` | C.2 |
 | `wall-section.ts` | C.4 Wall/patch/Opening cut and C.5 Wall faces and edges |
 | `region-cut.ts` | C.4 Region cut and C.5 Region faces |
@@ -730,23 +851,27 @@ in front. It is validated by SL3c step 1, a rendered fixture. Anything beyond th
 
 - `world/index.ts` adds the exports.
 - `room/region/wall-strip.ts` adds the patch `bands`, plus any station helper exports.
+- `room/region/form-partition.ts` adds the additive export `convexPiecesOf(ring)` (C.3) and
+  nothing else.
 - `apps/editor/.../slice/slice-cut.ts` adds `sectionParametersOf`. That keeps the file under 600
   lines; a sibling `slice-section-parameters.ts` is used if it would not.
 
-1. Types, parameters and frame, with refusal tests (F22).
+1. Types, parameters, frame and slab clipping. Refusal tests (F22). Clipping tests (F27–F31, F33,
+   N15), including an unchanged-output check on the existing form-partition fixtures.
 2. Patch `bands` (C.2), with N9 tests over the existing Junction fixtures and unchanged
    `wall-extrema` output.
 3. `wall-bands.ts`, tested against `sections` for every Opening shape and profiled top, including
    the profile dipping under a head.
 4. The Wall, patch and Opening cut (F1–F13, N2–N4, N6).
 5. The Region cut, the Space and the object cut (F14–F17, N7, N8).
-6. Faces, edges and visibility (F19–F21, N12).
-7. Membership and Reveal (F18).
+6. Faces, edges and visibility (F19–F21, F32, F34, N12, N14).
+7. Membership and Reveal per B.10 (F18, N5).
 8. Evaluate, order, determinism and invariance (F23–F25, N10, N11). Work observers count candidates
    and occlusion pairs, with bounded counts in tests. Wall-clock timing is not a gate (bench
    apparatus is disposable).
 9. `sectionParametersOf`, with a property test: every SL2-reachable drawn reading (random
-   segments ≥ 0.1 m, depths in [0.1, far], both sides) is accepted, and `along = up × normal`.
+   segments ≥ 0.1 m, depths in [0.1, far], both sides) is accepted, and `along = (n_z, −n_x)`.
+   Add the Camera projection proof (F35, N16).
 10. layout.md gets the landed Section semantics (C.7) and the membership vocabulary as used.
 
 **Gate:**
@@ -785,6 +910,8 @@ in front. It is validated by SL3c step 1, a rendered fixture. Anything beyond th
    If this needs more than the additive option, **stop**.
 2. Frame, evaluation memo and mirror (D.1, D.3), with unit tests for:
    - the local↔world round trip within 1e-12;
+   - N16 on the mounted frame: `+u` is screen-right and `+v` screen-up through `projectWorld`, and
+     the determinant is +1;
    - ray → `(u, v)`;
    - a front/back-side test;
    - the memo hit and miss counts.
@@ -807,8 +934,10 @@ in front. It is validated by SL3c step 1, a rendered fixture. Anything beyond th
    - label = `formatMeters` of the fragment-point distance;
    - priority and collision culling;
    - no marks for an excluded selection.
-7. Reveal (B.10). An excluded selection is emitted as x-ray with its reason intact.
-8. Differential N13 against SL2 mesh caps over the fixture catalogue.
+7. Reveal (B.10). An `outside-depth` selection is drawn as x-ray inside the crop with its reason
+   intact. An `outside-crop` selection draws nothing on the sheet and stays visible in the world.
+8. Differential N13 against SL2 mesh caps: the same-body subset at 2τ, and curved Walls by
+   point-to-surface distance.
 9. Lifecycle:
    - Section never in history, dirty state, Save, snapshots or Preview;
    - reload drops it;
@@ -860,9 +989,10 @@ in front. It is validated by SL3c step 1, a rendered fixture. Anything beyond th
    - select in the Index → the Section inks it;
    - Undo leaves Section on and unchanged in history.
 8. Selected-but-excluded:
-   - beyond depth → x-ray;
-   - on the removed side → x-ray;
-   - outside the crop → x-ray.
+   - beyond depth → x-ray on the sheet;
+   - on the removed side → x-ray on the sheet;
+   - outside the crop → nothing on the sheet. It stays drawn and gold in the world beside it.
+   A Wall seen through a Space's fill keeps its projected ink.
 9. Put back after orbit, Face, Section on/off, Flip and a redrawn cut → the exact entry pose.
    Escape does the same.
 10. A Card edit (Wall height, Opening sill, Region rise) while Section is on updates the Section
@@ -889,21 +1019,30 @@ in front. It is validated by SL3c step 1, a rendered fixture. Anything beyond th
 | F9 | L mitre, cut through the apex line | Per-source pieces are closed and owned per the strip's `end` |
 | F10 | T, X, Y-keel and both-open wedge | Patches present with bands. N9 |
 | F11 | Wedge where one leg's Opening touches the Junction | Patch bands are the both-solid intervals: a void through the wedge |
-| F12 | Curved Wall: two crossings and a grazing tangent | N3. No seams. One silhouette per side |
+| F12 | Curved Wall: two crossings and a grazing tangent | N3: vertices class E, chains class C. At the grazing tangent, the compiled-body result is checked by residuals only. No seams, one silhouette per side |
 | F13 | Free Wall end inside the slab | End-cap edges drawn |
 | F14 | Concave U floor Region crossed through its notch | Two intervals, no bridge |
 | F15 | Shed oblique. Gable across, along and exactly at the ridge | N7, N8. Ridge vertex present |
 | F16 | Line touching one footprint vertex | No cut fragment. `no-meaningful-projection` unless it is projected behind |
 | F17 | Closed, open-to-sky and open-side Spaces. A concave `floorPolygon` crossed twice | Fill, lines and marks per C.4 |
-| F18 | Removed side, beyond depth, outside crop, filtered, depth-and-crop both, reveal, unmatched reveal | Precedence. The reason is preserved under reveal |
-| F19 | Wall behind a Wall. A Wall seen through a nearer Opening. A roof surface occluding a Wall top. A curved back face | `hidden` exactly equals the overlap. Visible through the void |
+| F18 | Removed side, beyond depth, outside crop, filtered, depth-and-crop both, reveal of each, unmatched reveal | Precedence. The reason is preserved under reveal. An `outside-depth` reveal is hidden-only with `revealed: true`, and its removed-side depths are negative. An `outside-crop` reveal emits no fragment. An `included` reveal changes nothing. N5 |
+| F19 | Wall behind a Wall. A Wall seen through a nearer Opening. A roof surface occluding a Wall top. A curved back face | `hidden` exactly equals the overlap. Visible through the void, because symbols never occlude |
 | F20 | Wall straddling the depth limit | Clipped, with no clip edge |
-| F21 | Wall crossing the lateral crop | Clipped at `|u| = L` exactly, with no clip edge |
+| F21 | Wall crossing the lateral crop | Clipped at `\|u\| = L` exactly, with no clip edge |
 | F22 | Non-unit along, non-orthogonal normal, depth 0/NaN/∞, halfLength ≤ 0, duplicated filter | Each refused with its path |
 | F23 | Shuffled compiled arrays | Deep-equal output |
 | F24 | Rigid plan motion of the Layout and the cut | N10 |
-| F25 | Flip | N11 |
+| F25 | Flip, at the shifted origin and at the pill's unchanged origin | N11, both forms |
 | F26 (SL3c) | The catalogue against SL2 mesh caps | N13 |
+| F27 | U floor Region, both arms in the slab, base beyond the depth | Two projected components after the far clip. No edge along `w = D`. N15 |
+| F28 | U shed overhead, arms straddling `L_ε`, base on the removed side | Two cut intervals. Two in-slab top and two underside components, each vertex on its face plane within 1e-9 |
+| F29 | Comb (E-shaped) Region whose teeth cross the lateral crop | One component per tooth inside the crop. Crop edges not drawn |
+| F30 | Spiral footprint whose slab intersection has three components, two meeting at a pinch vertex | Three simple loops, no bridge. N15 |
+| F31 | Footprint vertex exactly on `w = D`, and an edge collinear with `u = L` | No zero-area piece, no duplicated edge. The collinear original edge is still drawn. Deterministic membership |
+| F32 | A Wall behind the gap of a U gable roof, and one behind an arm | Projected through the gap, hidden behind the arm. A gap never occludes, which a bridged ring would break |
+| F33 | Concave Region whose notch crosses the slab corner (`u = L` and `w = D` together) | Exact component areas. N15 |
+| F34 | Space fill in front of Walls and a roof edge | N14 |
+| F35 (SL3b, editor) | Screen-right at eight headings, both sides and after Flip | N16 |
 
 ## I. Stop conditions
 
@@ -914,8 +1053,10 @@ Stop and report, without working around the problem, if any of these happens:
    through the existing `refusal` and hit vocabulary.
 3. Visibility or clipping needs a general polygon-boolean library, or any new dependency.
 4. Adding patch `bands` changes any V3b output (`wall-extrema`, fits).
-5. N13 fails on a fixture and the cause is not the mesh's stated tessellation bound. In that case
-   one of the two bodies is wrong.
+5. N13 fails beyond 2τ on the same-body subset, or beyond `δ + 2τ` point-to-surface on curved
+   Walls. One of the two bodies is then wrong.
+10. Reusing `form-partition.ts` needs more than the additive `convexPiecesOf` export, or changes
+    any existing partition output.
 6. `face` refuses a valid drawn cut, or Put back cannot reproduce the entry state exactly.
 7. Anything needs a format or codec change, persisted Section or Slice state, a second Camera
    reading, an orthographic projection, a section-local identity, or a merged selectable stream.
@@ -925,6 +1066,8 @@ Stop and report, without working around the problem, if any of these happens:
 ## J. Owner decisions requested on this PR
 
 The Section frame has no approved visual target. The defaults are written in and are reversible.
+The review of revision 1 recommends accepting O-1 to O-5. **The owner has not yet confirmed.**
+This table changes to *Accepted* only after the owner confirms.
 
 | # | Decision | Default |
 | --- | --- | --- |
@@ -983,3 +1126,25 @@ The Section frame has no approved visual target. The defaults are written in and
 > **SL3c.** After SL3a and SL3b merge, implement the Section reading on `t1-sl3c-section-reading`,
 > following §B, §D and §E SL3c. Do the rendered fixture (step 1) before anything else. Do the §G
 > browser acceptance and attach the evidence.
+
+## Revision log
+
+**Rev 2: review of revision 1 on #443 (2026-11-28).** Scope and architecture are unchanged.
+
+1. **Frame sign.** `up × normal` is `(n_z, −n_x)` in plan, not `(−n_z, n_x)`. It is now proved
+   through Camera's own `facePoseFromBounds`, `evaluateViewport` and `projectWorld` (N16, F35).
+2. **Numerical claims.**
+   - The evaluated line is named `L_ε`, and its cost against the drawn line is declared (C.3).
+   - The invariants are restated against classes E and C. Revision 1's continuous-geometry claim
+     on curved Walls is withdrawn.
+   - N8 and N11 are rebuilt on the same `L_ε`.
+   - N13 is reduced to the comparisons that both bodies support: Hausdorff on the same-body subset,
+     point-to-surface on curved Walls.
+3. **Clipping.** Concave subjects are clipped through the existing exact `form-partition.ts`
+   machinery, with one loop per component. Sutherland–Hodgman is kept for convex subjects only.
+   N15 and fixtures F27–F33 are added.
+4. **Reveal.** `outside-depth` and `outside-crop` now have separate geometry extent, presentation,
+   membership and picking (B.10). N5 holds for every fragment.
+5. **Space fills** are excluded from occlusion (C.5, N14, F34).
+6. **Roadmap.** The T1 README and the plans index now record `V2a–V2c` and `V3a–V3c` as landed.
+
