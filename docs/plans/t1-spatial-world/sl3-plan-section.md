@@ -18,8 +18,8 @@ Labels, as in the SL plan:
 - **Approved**: required by the documents above. Not open to change here.
 - **Decided**: this plan's engineering choice. The implementer follows it. Changing one needs a
   stop.
-- **Owner**: a presentation choice with no approved visual target. The recommended default is
-  written in, and the owner rules on it when reviewing this plan.
+- **Owner**: a presentation choice with no approved visual target. The owner accepted every one as
+  written (§J).
 - **Assumption**: reasoned but not proven. Each names how and when it is validated.
 
 ## Goal and acceptance
@@ -1063,19 +1063,19 @@ Stop and report, without working around the problem, if any of these happens:
 8. QA shows drag stutter attributable to Section evaluation (§F).
 9. A file or function would exceed the budgets with no cohesive split available.
 
-## J. Owner decisions requested on this PR
+## J. Owner decisions (accepted)
 
 The Section frame has no approved visual target. The defaults are written in and are reversible.
-The review of revision 1 recommends accepting O-1 to O-5. **The owner has not yet confirmed.**
-This table changes to *Accepted* only after the owner confirms.
+The review of revision 1 recommended accepting O-1 to O-5. **The owner accepted all five on #443
+(2026-11-28).** Changing one now needs a new owner decision.
 
-| # | Decision | Default |
+| # | Decision | Ruling |
 | --- | --- | --- |
-| O-1 | Section as a vellum sheet on the cut plane, in the Stage (B.2) | Yes |
-| O-2 | Pressing Section also Faces (B.7) | Yes |
-| O-3 | Dimension set (B.4), and Paper-ink mono labels instead of the dark Tag | Yes |
-| O-4 | Hidden lines shown only as x-ray for the selection and revealed sources (D.1) | Yes |
-| O-5 | The SL3a / SL3b / SL3c split | Yes |
+| O-1 | Section as a vellum sheet on the cut plane, in the Stage (B.2) | Accepted |
+| O-2 | Pressing Section also Faces (B.7) | Accepted |
+| O-3 | Dimension set (B.4), and Paper-ink mono labels instead of the dark Tag | Accepted |
+| O-4 | Hidden lines shown only as x-ray for the selection and revealed sources (D.1) | Accepted |
+| O-5 | The SL3a / SL3b / SL3c split | Accepted |
 
 ```text
             removed side (eye)                       faced view, after Face
@@ -1148,3 +1148,4 @@ This table changes to *Accepted* only after the owner confirms.
 5. **Space fills** are excluded from occlusion (C.5, N14, F34).
 6. **Roadmap.** The T1 README and the plans index now record `V2a–V2c` and `V3a–V3c` as landed.
 
+**Rev 3: owner ruling (2026-11-28).** O-1 to O-5 accepted as written (§J).
